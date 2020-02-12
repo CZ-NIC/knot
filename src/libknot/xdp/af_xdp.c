@@ -104,6 +104,15 @@ static int configure_xsk_umem(const struct xsk_umem_config *umem_config,
 	return KNOT_EOK;
 }
 
+/** undo configure_xsk_umem() */
+static void deconfigure_xsk_umem(struct xsk_umem_info *umem)
+{
+	xsk_umem__delete(umem->umem); // return code cases don't seem useful
+	free(umem->frames);
+	free(umem->free_indices);
+	free(umem);
+}
+
 static struct umem_frame *kxsk_alloc_umem_frame(struct xsk_umem_info *umem)
 {
 	if (unlikely(umem->free_count == 0)) {
@@ -162,11 +171,7 @@ void knot_xsk_deinit(struct knot_xsk_socket *socket)
 
 	kxsk_socket_stop(socket->iface, socket->if_queue);
 	xsk_socket__delete(socket->xsk);
-	// undo configure_xsk_umem()
-	xsk_umem__delete(socket->umem->umem);
-	free(socket->umem->frames);
-	free(socket->umem->free_indices);
-	free(socket->umem);
+	deconfigure_xsk_umem(socket->umem);
 
 	kxsk_iface_free((struct kxsk_iface *)/*const-cast*/socket->iface);
 	free(socket);
@@ -624,7 +629,7 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 
 	*socket = xsk_configure_socket(umem, iface, if_queue);
 	if (!*socket) {
-		xsk_umem__delete(umem->umem);
+		deconfigure_xsk_umem(umem);
 		kxsk_iface_free(iface);
 		return KNOT_NET_ESOCKET;
 	}
@@ -632,7 +637,7 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 	ret = kxsk_socket_start(iface, (*socket)->if_queue, listen_port, (*socket)->xsk);
 	if (ret != KNOT_EOK) {
 		xsk_socket__delete((*socket)->xsk);
-		xsk_umem__delete((*socket)->umem->umem);
+		deconfigure_xsk_umem(umem);
 		kxsk_iface_free(iface);
 		free(*socket);
 		*socket = NULL;
