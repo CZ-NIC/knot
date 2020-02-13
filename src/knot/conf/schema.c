@@ -159,7 +159,7 @@ static const yp_item_t desc_server[] = {
 	{ C_BG_WORKERS,           YP_TINT,  YP_VINT = { 1, 255, YP_NIL } },
 	{ C_ASYNC_START,          YP_TBOOL, YP_VNONE },
 	{ C_TCP_IDLE_TIMEOUT,     YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },
-	{ C_TCP_IO_TIMEOUT,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 200 } },
+	{ C_TCP_IO_TIMEOUT,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 500 } },
 	{ C_TCP_RMT_IO_TIMEOUT,   YP_TINT,  YP_VINT = { 0, INT32_MAX, 5000 } },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
 	{ C_TCP_REUSEPORT,  	  YP_TBOOL, YP_VNONE },
