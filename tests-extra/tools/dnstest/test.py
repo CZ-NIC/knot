@@ -14,6 +14,7 @@ import dnstest.params as params
 import dnstest.server
 import dnstest.keys
 import dnstest.zonefile
+from dnstest.thread_context import ThreadContext
 
 class Test(object):
     '''Specification of DNS test topology'''
@@ -31,11 +32,13 @@ class Test(object):
     start_time = 0
 
     def __init__(self, address=None, tsig=None, stress=True):
-        if not os.path.exists(params.out_dir):
+        ctx = ThreadContext()
+        if not os.path.exists(ctx.out_dir):
             raise Exception("Output directory doesn't exist")
 
-        self.out_dir = params.out_dir
-        self.data_dir = params.test_dir + "/data/"
+        self.ctx = ctx
+        self.out_dir = ctx.out_dir
+        self.data_dir = ctx.test_dir + "/data/"
         self.zones_dir = self.out_dir + "/zones/"
 
         if address == 4 or address == 6:
@@ -62,7 +65,7 @@ class Test(object):
         dnstest.server.Bind.count = 0
         dnstest.server.Dummy.count = 0
 
-        params.test = self
+        ctx.test = self
 
     def _check_port(self, port):
         if not port:
@@ -248,7 +251,7 @@ class Test(object):
         '''Finish testing'''
 
         self.stop(check=True)
-        params.test = None
+        self.ctx.test = None
 
     def sleep(self, seconds):
         time.sleep(seconds)
