@@ -22,6 +22,7 @@ import dnstest.keys
 import dnstest.module
 import dnstest.response
 import dnstest.update
+from dnstest.thread_context import ThreadContext
 import distutils.dir_util
 from shutil import copyfile
 
@@ -86,7 +87,7 @@ class Zone(object):
     def get_module(self, mod_name):
         for m in self.modules:
             if m.mod_name == mod_name:
-               return m;
+               return m
 
     def clear_modules(self):
         self.modules.clear()
@@ -240,7 +241,7 @@ class Server(object):
             raise Failed("Can't start server='%s'" % self.name)
 
         # Start inquirer if enabled.
-        if params.test.stress and self.inquirer:
+        if ThreadContext().test.stress and self.inquirer:
             self.inquirer.start(self)
 
     def ctl(self, cmd, availability=True):
@@ -361,7 +362,7 @@ class Server(object):
             detail_log(SEP)
 
     def stop(self, check=True):
-        if params.test.stress and self.inquirer:
+        if ThreadContext().test.stress and self.inquirer:
             self.inquirer.stop()
 
         if self.proc:
@@ -379,7 +380,7 @@ class Server(object):
             self._valgrind_check()
 
     def kill(self):
-        if params.test.stress and self.inquirer:
+        if ThreadContext().test.stress and self.inquirer:
             self.inquirer.stop()
 
         if self.proc:
@@ -846,7 +847,7 @@ class Bind(Server):
 
         s.begin("controls")
         s.item("inet %s port %i allow { %s; } keys { %s; }"
-               % (self.addr, self.ctlport, params.test.addr, self.ctlkey.name))
+               % (self.addr, self.ctlport, ThreadContext().test.addr, self.ctlkey.name))
         s.end()
 
         if self.tsig:
@@ -932,7 +933,7 @@ class Bind(Server):
                 if self.tsig_test:
                     upd = "key %s; " % self.tsig_test.name
                 else:
-                    upd = "%s; " % params.test.addr
+                    upd = "%s; " % ThreadContext().test.addr
 
                 if z.masters:
                     s.item("allow-update-forwarding", "{ %s}" % upd)
@@ -1132,13 +1133,13 @@ class Knot(Server):
 
         s.begin("acl")
         s.id_item("id", "acl_local")
-        s.item_str("address", params.test.addr)
+        s.item_str("address", ThreadContext().test.addr)
         if self.tsig:
             s.item_str("key", self.tsig.name)
         s.item("action", "[transfer, notify, update]")
 
         s.id_item("id", "acl_test")
-        s.item_str("address", params.test.addr)
+        s.item_str("address", ThreadContext().test.addr)
         if self.tsig_test:
             s.item_str("key", self.tsig_test.name)
         s.item("action", "[transfer, notify, update]")

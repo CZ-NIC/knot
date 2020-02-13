@@ -10,16 +10,28 @@ import sys
 import tempfile
 import time
 import traceback
+import threading
+import multiprocessing
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(current_dir, "tools"))
 import dnstest.params as params
 import dnstest.utils
+from dnstest.thread_context import ThreadContext
 
 TESTS_DIR = "tests"
+case_cnt = 0
+fail_cnt = 0
+skip_cnt = 0
+included = None
+excluded = None
+included_list = None
+lock = None
+log = None
+outs_dir = None
 
 def save_traceback(outdir):
-    path = os.path.join(params.out_dir, "traceback.log")
+    path = os.path.join(ThreadContext().out_dir, "traceback.log")
     with open(path, mode="a") as f:
         traceback.print_exc(file=f)
 
@@ -105,41 +117,19 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
-def main(args):
-    included, excluded = parse_args(args)
+def work():
+    global case_cnt
+    global fail_cnt
+    global skip_cnt
+    global included_list
+    global lock
 
-    timestamp = int(time.time())
-    today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
-    outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % timestamp,
-                                dir=params.outs_dir)
+    ctx = ThreadContext()
 
-    # Try to create symlink to the latest result.
-    last_link = os.path.join(params.outs_dir, "knottest-last")
-    try:
-        if os.path.exists(last_link):
-            os.remove(last_link)
-        os.symlink(outs_dir, last_link)
-    except:
-        pass
-
-    # Write down environment
-    log_environment(os.path.join(outs_dir, "environment.log"))
-
-    # Set up logging.
-    log = logging.getLogger()
-    log.setLevel(logging.NOTSET)
-    create_log(log)
-    create_log(log, os.path.join(outs_dir, "summary.log"), logging.NOTSET)
-
-    log.info("KNOT TESTING SUITE %s" % today)
-    log.info("Working directory %s" % outs_dir)
-
-    ref_time = datetime.datetime.now().replace(microsecond=0)
-
-    case_cnt = 0
-    fail_cnt = 0
-    skip_cnt = 0
-    for test in sorted(included):
+    while len(included_list) > 0:
+        lock.acquire()
+        test = included_list.pop(0)
+        lock.release()
         # Skip excluded test set.
         if test in excluded and not excluded[test]:
             continue
@@ -184,13 +174,13 @@ def main(args):
                     log_file = os.path.join(out_dir, "case.log")
 
                     os.makedirs(out_dir, exist_ok=True)
-                    params.module = "%s.%s.%s" % (TESTS_DIR, test, case)
-                    params.test_dir = case_dir
-                    params.out_dir = out_dir
-                    params.case_log = open(log_file, mode="a")
-                    params.test = None
-                    params.err = False
-                    params.err_msg = ""
+                    ctx.module = "%s.%s.%s" % (TESTS_DIR, test, case)
+                    ctx.test_dir = case_dir
+                    ctx.out_dir = out_dir
+                    ctx.case_log = open(log_file, mode="a")
+                    ctx.test = None
+                    ctx.err = False
+                    ctx.err_msg = ""
                 except OsError:
                     msg = "EXCEPTION (no dir \'%s\')" % out_dir
                     log.error(case_str_err + msg)
@@ -207,12 +197,12 @@ def main(args):
                     log.error(case_str_err + "SKIPPED (%s)" % format(exc))
                     skip_cnt += 1
                 except dnstest.utils.Failed as exc:
-                    save_traceback(params.out_dir)
+                    save_traceback(ctx.out_dir)
 
                     desc = format(exc)
                     msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
-                    if params.err and params.err_msg:
-                        msg += " AND (" + params.err_msg + ")"
+                    if ctx.err and ctx.err_msg:
+                        msg += " AND (" + ctx.err_msg + ")"
                     log.error(case_str_err + msg)
                     log_failed(outs_dir, case_str_fail + msg)
 
@@ -221,7 +211,7 @@ def main(args):
 
                     fail_cnt += 1
                 except Exception as exc:
-                    save_traceback(params.out_dir)
+                    save_traceback(ctx.out_dir)
 
                     desc = format(exc)
                     msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
@@ -233,19 +223,19 @@ def main(args):
 
                     fail_cnt += 1
                 except BaseException as exc:
-                    save_traceback(params.out_dir)
+                    save_traceback(ctx.out_dir)
                     if params.debug:
                         traceback.print_exc()
                     else:
                         log.info("INTERRUPTED")
                     # Stop servers if still running.
-                    if params.test:
-                        params.test.end()
+                    if ctx.test:
+                        ctx.test.end()
                     sys.exit(1)
                 else:
-                    if params.err:
+                    if ctx.err:
                         msg = "FAILED" + \
-                              ((" (" + params.err_msg + ")") if params.err_msg else "")
+                              ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
                         log.info(case_str_err + msg)
                         log_failed(outs_dir, case_str_fail + msg)
                         fail_cnt += 1
@@ -253,10 +243,62 @@ def main(args):
                         log.info(case_str_err + "OK")
 
                 # Stop servers if still running.
-                if params.test:
-                    params.test.end()
+                if ctx.test:
+                    ctx.test.end()
 
-                params.case_log.close()
+                ctx.case_log.close()
+
+
+def main(args):
+    global included
+    global excluded
+    global log
+    global outs_dir
+    global included_list
+    global lock
+
+    included, excluded = parse_args(args)
+    included_list = sorted(included)
+    lock = threading.Lock()
+
+    timestamp = int(time.time())
+    today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
+    outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % timestamp,
+                                dir=params.outs_dir)
+
+    # Try to create symlink to the latest result.
+    last_link = os.path.join(params.outs_dir, "knottest-last")
+    try:
+        if os.path.exists(last_link):
+            os.remove(last_link)
+        os.symlink(outs_dir, last_link)
+    except:
+        pass
+
+    # Write down environment
+    log_environment(os.path.join(outs_dir, "environment.log"))
+
+    # Set up logging.
+    log = logging.getLogger()
+    log.setLevel(logging.NOTSET)
+    create_log(log)
+    create_log(log, os.path.join(outs_dir, "summary.log"), logging.NOTSET)
+
+    log.info("KNOT TESTING SUITE %s" % today)
+    log.info("Working directory %s" % outs_dir)
+
+    ref_time = datetime.datetime.now().replace(microsecond=0)
+
+    threads = []
+    for _ in range(multiprocessing.cpu_count()):
+    #for _ in range(1):
+        t = threading.Thread(target=work)
+        threads.append(t)
+        t.start()
+
+    for thread in threads:
+        thread.join()
+
 
     time_diff = datetime.datetime.now().replace(microsecond=0) - ref_time
     msg_time = "TOTAL TIME: %s, " % time_diff

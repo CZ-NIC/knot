@@ -3,6 +3,7 @@
 '''Ctl conf and zone commands test.'''
 
 import os
+import threading
 
 from dnstest.libknot import libknot
 from dnstest.module import ModStats
