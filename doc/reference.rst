@@ -286,10 +286,15 @@ tcp-io-timeout
 
 Maximum time (in milliseconds) to receive or send one DNS message over an inbound
 TCP connection. It means this limit applies to normal DNS queries and replies,
-incoming DDNS, and outgoing zone transfers.
+incoming DDNS, and outgoing zone transfers. The timeout is measured since some
+data is already available for processing.
 Set to 0 for infinity.
 
-*Default:* 200 ms
+*Default:* 500 ms
+
+.. CAUTION::
+   In order to reduce the risk of Slow Loris attacks, it's recommended setting
+   this limit as low as possible on public slave servers.
 
 .. _server_tcp-remote-io-timeout:
 
