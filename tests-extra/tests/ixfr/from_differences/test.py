@@ -8,6 +8,7 @@ import importlib
 import dnstest.params
 import dnstest.test
 from dnstest.utils import *
+from dnstest.thread_context import ThreadContext
 
 class IxfrTopology():
     '''This class simplifies testing topology.'''
@@ -102,11 +103,11 @@ patern = re.compile("^([0-9][0-9]_)")
 
 t = dnstest.test.Test()
 
-for dirname in sorted(os.listdir(dnstest.params.test_dir)):
+for dirname in sorted(os.listdir(ThreadContext().test_dir)):
     if patern.match(dirname):
         mod_name = dnstest.params.module + "." + dirname + ".step"
         mod = importlib.import_module(mod_name)
-        storage = dnstest.params.test_dir + "/" + dirname
+        storage = ThreadContext().test_dir + "/" + dirname
 
         i = IxfrTopology(t, storage)
 
