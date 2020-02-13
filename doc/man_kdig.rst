@@ -59,7 +59,8 @@ A *query_type* can be either a DNS resource record type
   Full zone transfer request.
 
 **IXFR=**\ *serial*
-  Incremental zone transfer request for specified starting SOA serial number.
+  Incremental zone transfer request for specified SOA serial number
+  (i. e. all zone changes newer than the specified serial are to be returned).
 
 **NOTIFY=**\ *serial*
   Notify message with a SOA serial hint specified.
