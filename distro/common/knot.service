@@ -37,7 +37,8 @@ ProtectHome=yes
 #ProtectKernelModules=yes
 #ProtectKernelTunables=yes
 # Require systemd >= v232 (strict), v214
-ProtectSystem=strict
+# and ReadWritePaths= OR TemporaryFileSystem= AND BindPaths=
+#ProtectSystem=strict
 # Require systemd >= v232
 #RemoveIPC=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
