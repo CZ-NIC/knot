@@ -175,7 +175,10 @@ static int key_command(int argc, char *argv[], int opt_ind)
 		}
 	} else if (strcmp(argv[1], "serial") == 0) {
 		if (argc > 2) {
-			ret = keymgr_serial_set(&kctx, argv[2]);
+			uint32_t new_serial = 0;
+			if ((ret = str_to_u32(argv[2], &new_serial)) == KNOT_EOK) {
+				ret = keymgr_serial_set(&kctx, new_serial);
+			}
 		} else {
 			ret = keymgr_serial_print(&kctx);
 			print_ok_on_succes = false;

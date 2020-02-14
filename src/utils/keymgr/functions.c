@@ -631,7 +631,6 @@ int keymgr_serial_print(kdnssec_ctx_t *ctx)
 
 int keymgr_serial_set(kdnssec_ctx_t *ctx, uint32_t new_serial)
 {
-	dnssec_binary_t salt_bin = { 0 };
 	int ret = kasp_db_store_serial(ctx->kasp_db, ctx->zone->dname,
 	                               KASPDB_SERIAL_LASTSIGNED, new_serial);
 	return ret;
