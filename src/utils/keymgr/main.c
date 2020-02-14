@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,8 +61,11 @@ static void print_help(void)
 	       "                 (syntax: import-pem <pem_file_path> <attribute_name>=<value>...)\n"
 	       "  import-pkcs11 Import key stored in PKCS11 storage. Specify its parameters manually.\n"
 	       "                 (syntax: import-pkcs11 <key_id> <attribute_name>=<value>...)\n"
-	       "  nsec3-salt    Print current NSEC3 salt. If parameter is specified, set new salt.\n"
+	       "  nsec3-salt    Print current NSEC3 salt. If a parameter is specified, set new salt.\n"
 	       "                 (syntax: nsec3salt [<new_salt>])\n"
+	       "  serial        Print SOA serial stored in KASP database when using on-slave signing.\n"
+	       "                 If a parameter is specified, set new serial.\n"
+	       "                 (syntax: serial <new_serial>)\n"
 	       "  ds            Generate DS record(s) for specified key.\n"
 	       "                 (syntax: ds <key_spec>)\n"
 	       "  dnskey        Generate DNSKEY record for specified key.\n"
@@ -168,6 +171,16 @@ static int key_command(int argc, char *argv[], int opt_ind)
 			ret = keymgr_nsec3_salt_set(&kctx, argv[2]);
 		} else {
 			ret = keymgr_nsec3_salt_print(&kctx);
+			print_ok_on_succes = false;
+		}
+	} else if (strcmp(argv[1], "serial") == 0) {
+		if (argc > 2) {
+			uint32_t new_serial = 0;
+			if ((ret = str_to_u32(argv[2], &new_serial)) == KNOT_EOK) {
+				ret = keymgr_serial_set(&kctx, new_serial);
+			}
+		} else {
+			ret = keymgr_serial_print(&kctx);
 			print_ok_on_succes = false;
 		}
 	} else if (strcmp(argv[1], "set") == 0) {
