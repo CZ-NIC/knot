@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,10 @@ int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[
 int keymgr_nsec3_salt_print(kdnssec_ctx_t *ctx);
 
 int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt);
+
+int keymgr_serial_print(kdnssec_ctx_t *ctx);
+
+int keymgr_serial_set(kdnssec_ctx_t *ctx, uint32_t new_serial);
 
 int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits);
 
