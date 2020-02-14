@@ -66,12 +66,15 @@ def parse_args(cmd_args):
                         help="enable exception traceback on stdout")
     parser.add_argument("-n", dest="repeat", action="store", \
                         help="repeat the test n times")
+    parser.add_argument("-j", dest="jobs", action="store", \
+                        help="number of concurrent jobs")
     parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                         help="([exclude] | run) specific (test set | [test case])")
     args = parser.parse_args(cmd_args)
 
     params.debug = True if args.debug else False
     params.repeat = int(args.repeat) if args.repeat else 1
+    params.jobs = int(args.jobs) if args.jobs else multiprocessing.cpu_count()
     params.common_data_dir = os.path.join(current_dir, "data")
 
     # Process tests/cases arguments.
@@ -117,7 +120,7 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
-def work():
+def job():
     global case_cnt
     global fail_cnt
     global skip_cnt
@@ -140,8 +143,6 @@ def work():
             log.error("Test \'%s\':\tIGNORED (invalid folder)" % test)
             continue
 
-        log.info("Test \'%s\'" % test)
-
         # Set test cases to run.
         if not included[test]:
             # List all test cases.
@@ -158,7 +159,7 @@ def work():
 
                 case_n = case if params.repeat == 1 else case + "#" + str(repeat)
 
-                case_str_err = (" * case \'%s\':" % case_n).ljust(33)
+                case_str_err = (" * case \'%s/%s\':" % (test, case_n)).ljust(40)
                 case_str_fail = ("%s/%s" % (test, case_n)).ljust(30)
                 case_cnt += 1
 
@@ -258,7 +259,8 @@ def main(args):
     global lock
 
     included, excluded = parse_args(args)
-    included_list = sorted(included)
+    # Try to do longest job first
+    included_list = sorted(included, key=lambda k: len(included[k]) if len(included[k]) else sys.maxsize, reverse=True)
     lock = threading.Lock()
 
     timestamp = int(time.time())
@@ -289,15 +291,19 @@ def main(args):
 
     ref_time = datetime.datetime.now().replace(microsecond=0)
 
-    threads = []
-    for _ in range(multiprocessing.cpu_count()):
-    #for _ in range(1):
-        t = threading.Thread(target=work)
-        threads.append(t)
-        t.start()
+    if params.jobs > 1:
+        # Parallel run
+        threads = []
+        for _ in range(params.jobs):
+            t = threading.Thread(target=job)
+            threads.append(t)
+            t.start()
 
-    for thread in threads:
-        thread.join()
+        for thread in threads:
+            thread.join()
+    else:
+        # Single threaded run
+        job()
 
 
     time_diff = datetime.datetime.now().replace(microsecond=0) - ref_time
