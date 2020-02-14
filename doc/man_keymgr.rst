@@ -87,6 +87,10 @@ Commands
   Prints the current NSEC3 salt used for signing. If *new_salt* is specified, the salt is overwritten.
   The salt is printed and expected in hexadecimal, or dash if empty.
 
+**serial** [*new_serial*]
+  Print serial stored in KASP database when using on-slave DNSSEC signing. If *new_serial* is specified,
+  the serial is overwritten.
+
 **set** *key_spec* [*arguments*...]
   Changes a timing argument (or ksk/zsk) of an existing key to a new value. *Key_spec* is either the
   key tag or a prefix of the key ID, with an optional *[id=|keytag=]* prefix; *arguments* 
