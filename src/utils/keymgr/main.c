@@ -63,6 +63,8 @@ static void print_help(void)
 	       "                 (syntax: import-pkcs11 <key_id> <attribute_name>=<value>...)\n"
 	       "  nsec3-salt    Print current NSEC3 salt. If parameter is specified, set new salt.\n"
 	       "                 (syntax: nsec3salt [<new_salt>])\n"
+	       "  serial        Print current serial number. If parameter is specified, set new serial\n"
+	       "                 (syntax: serial <new_serial>)\n"
 	       "  ds            Generate DS record(s) for specified key.\n"
 	       "                 (syntax: ds <key_spec>)\n"
 	       "  dnskey        Generate DNSKEY record for specified key.\n"
@@ -168,6 +170,13 @@ static int key_command(int argc, char *argv[], int opt_ind)
 			ret = keymgr_nsec3_salt_set(&kctx, argv[2]);
 		} else {
 			ret = keymgr_nsec3_salt_print(&kctx);
+			print_ok_on_succes = false;
+		}
+	} else if (strcmp(argv[1], "serial") == 0) {
+		if (argc > 2) {
+			ret = keymgr_serial_set(&kctx, argv[2]);
+		} else {
+			ret = keymgr_serial_print(&kctx);
 			print_ok_on_succes = false;
 		}
 	} else if (strcmp(argv[1], "set") == 0) {
