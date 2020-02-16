@@ -56,12 +56,6 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libs
-Replaces:
- knot-libs (<< 2.0.1-4),
- libknot7 (<< 2.6.8-2~)
-Breaks:
- knot-libs (<< 2.0.1-4),
- libknot7 (<< 2.6.8-2~)
 Description: DNS shared library from Knot DNS
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -80,12 +74,6 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libs
-Replaces:
- knot-libs (<< 2.0.1-4),
- libzscanner1 (<< 2.6.8-2~),
-Breaks:
- knot-libs (<< 2.0.1-4),
- libzscanner1 (<< 2.6.8-2~),
 Description: DNS zone-parsing shared library from Knot DNS
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -104,12 +92,6 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libs
-Replaces:
- knot-libs (<< 2.0.1-4),
- libdnssec5 (<< 2.6.8-2~),
-Breaks:
- knot-libs (<< 2.0.1-4),
- libdnssec5 (<< 2.6.8-2~),
 Description: DNSSEC shared library from Knot DNS
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
@@ -132,10 +114,6 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libdevel
-Replaces:
- knot-libs (<< 2.0.1-4),
-Breaks:
- knot-libs (<< 2.0.1-4),
 Description: Knot DNS shared library development files
  Knot DNS is a fast, authoritative only, high performance, feature
  full and open source name server.
