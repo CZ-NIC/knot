@@ -26,10 +26,13 @@ else
   RUN_TEST := -timeout --kill-after=5s 5m
 endif
 
+PYBUILD = pybuild --dir python --dest-dir debian/python3-libknot
+
 %:
 	dh $@ \
 	 --dbgsym-migration='knot-dbg (<< 2.2.0-2~)' \
-	 --exclude=.la --exclude=example.com.zone
+	 --exclude=.la --exclude=example.com.zone \
+	 --with python3
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
@@ -48,8 +51,12 @@ override_dh_auto_configure:
 	  --disable-silent-rules \
 	  --disable-static
 
+override_dh_auto_configure-indep:
+	$(PYBUILD) --configure
+
 override_dh_auto_build-indep:
 	dh_auto_build -- html
+	$(PYBUILD) --build
 
 override_dh_auto_install-arch:
 	dh_auto_install -- install
@@ -60,6 +67,7 @@ override_dh_auto_install-indep:
 	dh_auto_install -- install-html
 	# rename knot.sample.conf to knot.conf
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
+	$(PYBUILD) --install
 
 override_dh_auto_test-indep:
 override_dh_auto_test-arch:

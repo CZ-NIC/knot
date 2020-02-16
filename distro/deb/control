@@ -6,9 +6,11 @@ Uploaders:
  Tomas Krizek <tomas.krizek@nic.cz>,
  Daniel Salzman <daniel.salzman@nic.cz>,
 Build-Depends-Indep:
+ python3-setuptools,
  python3-sphinx,
 Build-Depends:
  debhelper (>= 9),
+ dh-python,
  libcap-ng-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386],
  libedit-dev,
  libfstrm-dev,
@@ -23,6 +25,7 @@ Build-Depends:
  liburcu-dev (>= 0.4),
  pkg-config,
  protobuf-c-compiler,
+ python3-all,
 Standards-Version: 4.5.0
 Homepage: https://www.knot-dns.cz/
 Vcs-Browser: https://gitlab.labs.nic.cz/knot/knot-dns
@@ -187,3 +190,19 @@ Description: Documentation for Knot DNS
  .
  This package provides various documents that are useful for
  maintaining a working Knot DNS installation.
+
+Package: python3-libknot
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ${python3:Depends},
+Section: python
+Description: Python bindings for libknot
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides Python bindings for the libknot shared library.
