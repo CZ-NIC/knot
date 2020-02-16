@@ -5,6 +5,7 @@ export DEB_CFLAGS_MAINT_APPEND  = -Wall -DNDEBUG
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
 export DPKG_GENSYMBOLS_CHECK_LEVEL := 4
+export KNOT_SOFTHSM2_DSO = /usr/lib/softhsm/libsofthsm2.so
 
 include /usr/share/dpkg/default.mk
 
