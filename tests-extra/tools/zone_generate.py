@@ -577,6 +577,7 @@ def main(args):
         k2 = subprocess.check_output(ps + ["-f", "KSK"] + [ORIGIN], stderr=subprocess.DEVNULL)
         k1 = key_dir + '/' + k1.rstrip().decode('ascii')
         k2 = key_dir + '/' + k2.rstrip().decode('ascii')
+        
 
         # Append to zone
         kf = open(k1 + '.key', 'r')
@@ -595,9 +596,9 @@ def main(args):
         else:
             nsec3_params = ['-3', binascii.hexlify(os.urandom(random.randint(1, 30))).decode('ascii')]
 
-        subprocess.check_output(["dnssec-signzone", "-d", tmp_dir, "-P", "-u", \
-                                 "-k", k2, "-x", "-o", ORIGIN, \
-                                 "-O", "full"] + nsec3_params + [in_fname, k1 + ".key"],
+        subprocess.check_output(["dnssec-signzone", "-d", tmp_dir, "-P", "-p", "-u", \
+                                 "-k", k2, "-x", "-r", "/dev/urandom", "-o", ORIGIN, \
+                                 "-O", "full"] + nsec3_params + [in_fname, k1 + ".key"], \
                                  stderr=subprocess.DEVNULL)
         shutil.copyfile(in_fname + '.signed', out_fname)
         ret = 0
