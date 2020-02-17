@@ -64,7 +64,7 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 void knot_xsk_deinit(struct knot_xsk_socket *socket);
 
 /*!
- * \brief Allocate one buffer for outgoing packet in shared umem.
+ * \brief Allocate one buffer for an outgoing packet.
  *
  * \param socket   XDP socket.
  * \param ipv6     The packet will use IPv6 (IPv4 otherwise).
@@ -117,8 +117,9 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
  */
 int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count);
 
-/*! \brief Free the payload of a received packet. */
-void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg);
+/*! \brief Free payloads of received packets. */
+void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
+			 uint32_t count);
 
 /*! \brief Syscall to kernel to wake up the network card driver after knot_xsk_sendm/mmsg(). */
 int knot_xsk_check(struct knot_xsk_socket *socket);

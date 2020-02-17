@@ -403,17 +403,17 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 {
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 
+	int ret = KNOT_EOK;
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
-		int ret = knot_xsk_alloc_packet(xdp_sock, rq->msgs_rx[i].ip_to.ss_family == AF_INET6,
+		ret = knot_xsk_alloc_packet(xdp_sock, rq->msgs_rx[i].ip_to.ss_family == AF_INET6,
 		                                &rq->msgs_tx[i], &rq->msgs_rx[i]);
+			// LATER(opt.): ^^this might better be batched
 		if (ret != KNOT_EOK) {
-			return ret;
+			break; // still free all RX buffers
 		}
 
 		udp_handle(ctx, knot_xsk_get_poll_fd(xdp_sock), &rq->msgs_rx[i].ip_from,
 		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload, true);
-
-		knot_xsk_free_recvd(xdp_sock, &rq->msgs_rx[i]);
 
 		// FIXME!! :
 		/*
@@ -423,8 +423,9 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 			rq->msgs[TX][i].msg_hdr.msg_namelen = rq->msgs[RX][i].msg_hdr.msg_namelen;
 		} */
 	}
+	knot_xsk_free_recvd(xdp_sock, rq->msgs_rx, rq->rcvd);
 
-	return KNOT_EOK;
+	return ret;
 }
 
 static int xdp_recvmmsg_send(void *d, void *xdp_sock)
