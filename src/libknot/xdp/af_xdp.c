@@ -202,7 +202,6 @@ static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
 		.tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
 		.rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
-		.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST,
 	};
 
 	errno = xsk_socket__create(&xsk_info->xsk, iface->ifname,
