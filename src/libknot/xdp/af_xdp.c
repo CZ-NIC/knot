@@ -38,7 +38,25 @@
 #include "contrib/macros.h"
 
 #define FRAME_SIZE 4096
-#define UMEM_FRAME_COUNT 8192
+#define UMEM_FRAME_COUNT_RX 1024
+#define UMEM_FRAME_COUNT_TX UMEM_FRAME_COUNT_RX /* no reason to differ so far */
+#define UMEM_RING_LEN_RX (UMEM_FRAME_COUNT_RX * 2)
+#define UMEM_RING_LEN_TX (UMEM_FRAME_COUNT_TX * 2)
+#define UMEM_FRAME_COUNT (UMEM_FRAME_COUNT_RX + UMEM_FRAME_COUNT_TX)
+
+/* With recent compilers we statically check #defines for settings that
+ * get refused by AF_XDP drivers (in current versions, at least). */
+#if (__STDC_VERSION__ >= 201112L)
+#define IS_POWER_OF_2(n) (((n) & (n - 1)) == 0)
+_Static_assert((FRAME_SIZE == 4096 || FRAME_SIZE == 2048)
+	&& IS_POWER_OF_2(UMEM_FRAME_COUNT)
+	/* The following two inequalities aren't required by drivers, but they allow
+	 * our implementation assume that the rings can never get filled. */
+	&& IS_POWER_OF_2(UMEM_RING_LEN_RX) && UMEM_RING_LEN_RX > UMEM_FRAME_COUNT_RX
+	&& IS_POWER_OF_2(UMEM_RING_LEN_TX) && UMEM_RING_LEN_TX > UMEM_FRAME_COUNT_TX
+	&& true
+	, "Incorrect #define combination for AF_XDP.");
+#endif
 
 /** The memory layout of each umem frame. */
 struct umem_frame {
@@ -53,51 +71,55 @@ struct umem_frame {
 static const size_t FRAME_PAYLOAD_OFFSET4 = offsetof(struct udpv4, data) + offsetof(struct umem_frame, udpv4);
 static const size_t FRAME_PAYLOAD_OFFSET6 = offsetof(struct udpv6, data) + offsetof(struct umem_frame, udpv6);
 
-static const struct xsk_umem_config global_umem_config = {
-	.fill_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
-	.comp_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
-	.frame_size = FRAME_SIZE, // used in xsk_umem__create()
-	.frame_headroom = XSK_UMEM__DEFAULT_FRAME_HEADROOM,
-};
-
-static int configure_xsk_umem(const struct xsk_umem_config *umem_config,
-                              uint32_t frame_count, struct xsk_umem_info **out_umem)
+static int configure_xsk_umem(struct xsk_umem_info **out_umem)
 {
-	struct xsk_umem_info *umem = calloc(1, sizeof(*umem));
+	/* Allocate memory and call driver to create the UMEM. */
+	struct xsk_umem_info *umem = calloc(1,
+			offsetof(struct xsk_umem_info, tx_free_indices)
+			+ sizeof(umem->tx_free_indices[0]) * UMEM_FRAME_COUNT_TX);
 	if (umem == NULL) {
 		return KNOT_ENOMEM;
 	}
-
-	/* Allocate memory for the frames, aligned to a page boundary. */
-	umem->frame_count = frame_count;
-	int ret = posix_memalign((void **)&umem->frames, getpagesize(), FRAME_SIZE * frame_count);
+	int ret = posix_memalign((void **)&umem->frames, getpagesize(),
+				 FRAME_SIZE * UMEM_FRAME_COUNT);
 	if (ret != 0) {
 		free(umem);
 		return knot_map_errno_code(ret);
 
 	}
-	/* Initialize our "frame allocator". */
-	umem->free_indices = malloc(frame_count * sizeof(umem->free_indices[0]));
-	if (umem->free_indices == NULL) {
-		free(umem->frames);
-		free(umem);
-		return KNOT_ENOMEM;
-	}
-	umem->free_count = frame_count;
-	for (uint32_t i = 0; i < frame_count; ++i) {
-		umem->free_indices[i] = i;
-	}
-
-	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * frame_count,
-	                       &umem->fq, &umem->cq, umem_config);
+	const struct xsk_umem_config config = {
+		.fill_size = UMEM_RING_LEN_RX,
+		.comp_size = UMEM_RING_LEN_TX,
+		.frame_size = FRAME_SIZE,
+		.frame_headroom = 0,
+	};
+	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * UMEM_FRAME_COUNT,
+	                       &umem->fq, &umem->cq, &config);
 	if (ret != KNOT_EOK) {
-		free(umem->free_indices);
 		free(umem->frames);
 		free(umem);
 		return ret;
 	}
-
 	*out_umem = umem;
+
+	/* Designate the starting chunk of buffers for TX, and put them onto the stack. */
+	umem->tx_free_count = UMEM_FRAME_COUNT_TX;
+	for (int buf_i = 0; buf_i < UMEM_FRAME_COUNT_TX; ++buf_i) {
+		umem->tx_free_indices[buf_i] = buf_i;
+	}
+
+	/* Designate the rest of buffers for RX, and pass them to the driver. */
+	uint32_t ring_i = -1/*shut up incorrect warning*/;
+	ret = xsk_ring_prod__reserve(&umem->fq, UMEM_FRAME_COUNT_RX, &ring_i);
+	if (ret != UMEM_FRAME_COUNT - UMEM_FRAME_COUNT_TX) {
+		abort(); // impossible, but let's abort at least
+	}
+	assert(ring_i == 0);
+	for (ssize_t buf_i = UMEM_FRAME_COUNT_TX; buf_i < UMEM_FRAME_COUNT; ++buf_i, ++ring_i) {
+		*xsk_ring_prod__fill_addr(&umem->fq, ring_i) = buf_i * FRAME_SIZE;
+	}
+	xsk_ring_prod__submit(&umem->fq, UMEM_FRAME_COUNT_RX);
+
 	return KNOT_EOK;
 }
 
@@ -106,17 +128,16 @@ static void deconfigure_xsk_umem(struct xsk_umem_info *umem)
 {
 	xsk_umem__delete(umem->umem); // return code cases don't seem useful
 	free(umem->frames);
-	free(umem->free_indices);
 	free(umem);
 }
 
-static struct umem_frame *kxsk_alloc_umem_frame(struct xsk_umem_info *umem)
+static struct umem_frame *kxsk_alloc_tx_frame(struct xsk_umem_info *umem)
 {
-	if (unlikely(umem->free_count == 0)) {
+	if (unlikely(umem->tx_free_count == 0)) {
 		return NULL;
 	}
 
-	uint32_t index = umem->free_indices[--umem->free_count];
+	uint32_t index = umem->tx_free_indices[--umem->tx_free_count];
 	return umem->frames + index;
 }
 
@@ -126,7 +147,7 @@ int knot_xsk_alloc_packet(struct knot_xsk_socket *socket, bool ipv6,
 {
 	size_t ofs = ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4;
 
-	struct umem_frame *uframe = kxsk_alloc_umem_frame(socket->umem);
+	struct umem_frame *uframe = kxsk_alloc_tx_frame(socket->umem);
 	if (uframe == NULL) {
 		return KNOT_ENOENT;
 	}
@@ -150,15 +171,6 @@ int knot_xsk_alloc_packet(struct knot_xsk_socket *socket, bool ipv6,
 	return KNOT_EOK;
 }
 
-static void kxsk_dealloc_umem_frame(struct xsk_umem_info *umem, uint8_t *uframe_p)
-{
-	assert(umem->free_count < umem->frame_count);
-	ptrdiff_t diff = uframe_p - umem->frames->bytes;
-	size_t index = diff / FRAME_SIZE;
-	assert(index < umem->frame_count);
-	umem->free_indices[umem->free_count++] = index;
-}
-
 _public_
 void knot_xsk_deinit(struct knot_xsk_socket *socket)
 {
@@ -174,56 +186,10 @@ void knot_xsk_deinit(struct knot_xsk_socket *socket)
 	free(socket);
 }
 
-/** Add some free frames into the RX fill queue (possibly zero, etc.) */
-static int kxsk_umem_refill(struct xsk_umem_info *umem)
-{
-	/* First find to_reserve: how many frames to move to the RX fill queue.
-	 * Let's keep about as many frames ready for TX (free_count) as for RX (fq_ready),
-	 * and don't fill the queue to more than a half. */
-	const int fq_target = global_umem_config.fill_size / 2;
-	uint32_t fq_free = xsk_prod_nb_free(&umem->fq, 65536*256);
-		/* TODO: not nice - ^^ the caching logic inside is the other way,
-		 * so we disable it clumsily by passing a high value. */
-	if (fq_free <= fq_target) {
-		return KNOT_EOK;
-	}
-	const int fq_ready = global_umem_config.fill_size - fq_free;
-	const int balance = (fq_ready + umem->free_count) / 2;
-	const int fq_want = MIN(balance, fq_target); // don't overshoot the target
-	const int to_reserve = fq_want - fq_ready;
-	if (to_reserve <= 0) {
-		return KNOT_EOK;
-	}
-
-	/* Now really reserve the frames. */
-	uint32_t idx;
-	int ret = xsk_ring_prod__reserve(&umem->fq, to_reserve, &idx);
-	if (ret != to_reserve) {
-		assert(false);
-		return KNOT_ESPACE;
-	}
-	for (int i = 0; i < to_reserve; ++i, ++idx) {
-		struct umem_frame *uframe = kxsk_alloc_umem_frame(umem);
-		if (!uframe) {
-			assert(false);
-			return KNOT_ESPACE;
-		}
-		size_t offset = uframe->bytes - umem->frames->bytes;
-		*xsk_ring_prod__fill_addr(&umem->fq, idx) = offset;
-	}
-	xsk_ring_prod__submit(&umem->fq, to_reserve);
-	return KNOT_EOK;
-}
-
 static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
                                                     const struct kxsk_iface *iface,
                                                     int if_queue)
 {
-	errno = -kxsk_umem_refill(umem);
-	if (errno) {
-		return NULL;
-	}
-
 	struct knot_xsk_socket *xsk_info = calloc(1, sizeof(*xsk_info));
 	if (!xsk_info) {
 		return NULL;
@@ -307,15 +273,18 @@ static int pkt_send(struct knot_xsk_socket *xsk, uint64_t addr, uint32_t len)
 	return KNOT_EOK;
 }
 
-static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
+			/* these are just for debugging */
+			     bool ipv6, bool send)
 {
-	// FIXME: for some reason the message alignment isn't what we expect
-	//uint8_t *uframe_p = msg->payload.iov_base - FRAME_PAYLOAD_OFFSET;
 	uint8_t *uNULL = NULL;
 	uint8_t *uframe_p = uNULL + ((msg->payload.iov_base - NULL) & ~(FRAME_SIZE - 1));
+	assert(uframe_p == msg->payload.iov_base // this assertion is unimportant
+			- (ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4)
+			- (send ? 0 : XDP_PACKET_HEADROOM));
 	const uint8_t *umem_mem_start = socket->umem->frames->bytes;
-	if (//((uframe_p - uNULL) % FRAME_SIZE != 0) ||
-	    ((uframe_p - umem_mem_start) / FRAME_SIZE >= socket->umem->frame_count)) {
+	const uint8_t *umem_mem_end = umem_mem_start + FRAME_SIZE * UMEM_FRAME_COUNT;
+	if (uframe_p < umem_mem_start || uframe_p >= umem_mem_end) {
 		// not allocated msg->payload correctly
 		return NULL;
 	}
@@ -325,7 +294,7 @@ static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_
 
 static int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
-	uint8_t *uframe_p = msg_uframe_p(socket, msg);
+	uint8_t *uframe_p = msg_uframe_p(socket, msg, false, true);
 	if (uframe_p == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -371,7 +340,7 @@ static int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t
 
 static int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 {
-	uint8_t *uframe_p = msg_uframe_p(socket, msg);
+	uint8_t *uframe_p = msg_uframe_p(socket, msg, true, true);
 	if (uframe_p == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -450,10 +419,30 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 	return ret;
 }
 
+/** Collect completed TX buffers from driver,
+ * so they can be used by knot_xsk_alloc_packet(). */
+static void collect_tx_buffers(struct xsk_umem_info *umem)
+{
+	struct xsk_ring_cons *cq = &umem->cq;
+	uint32_t idx_cq;
+	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx_cq);
+	if (!completed) return;
+	assert(umem->tx_free_count + completed <= UMEM_FRAME_COUNT_TX);
+	for (int i = 0; i < completed; ++i, ++idx_cq) {
+		uint64_t addr_relative = *xsk_ring_cons__comp_addr(cq, idx_cq);
+		/* The address may not point to *start* of buffer, but `/` solves that. */
+		uint64_t index = addr_relative / FRAME_SIZE;
+		assert(index < UMEM_FRAME_COUNT);
+		umem->tx_free_indices[umem->tx_free_count++] = index;
+	}
+	xsk_ring_cons__release(cq, completed);
+}
+
 /** Periodical callback. Just using 'the_socket' global. */
 _public_
 int knot_xsk_check(struct knot_xsk_socket *socket)
 {
+	int ret = KNOT_EOK;
 	/* Trigger sending queued packets. */
 	if (socket->kernel_needs_wakeup) {
 		int sendret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
@@ -464,7 +453,7 @@ int knot_xsk_check(struct knot_xsk_socket *socket)
 			// EAGAIN is unclear; we'll retry the syscall later, to be sure
 		}
 		if (!is_ok && !is_again) {
-			return KNOT_EAGAIN;
+			ret = KNOT_EAGAIN;
 		}
 		/* This syscall might be avoided with a newer kernel feature (>= 5.4):
 		   https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-use-need-wakeup-bind-flag
@@ -473,26 +462,10 @@ int knot_xsk_check(struct knot_xsk_socket *socket)
 		 */
 	}
 
-	/* Collect completed packets. */
-	struct xsk_ring_cons *cq = &socket->umem->cq;
-	uint32_t idx_cq;
-	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx_cq);
-	if (!completed) {
-		return KNOT_EOK;
-	}
-
-	/* Free shared memory. */
-	for (int i = 0; i < completed; ++i, ++idx_cq) {
-		uint8_t *uframe_p = (uint8_t *)socket->umem->frames
-		                    + *xsk_ring_cons__comp_addr(cq, idx_cq)
-		                    - offsetof(struct umem_frame, udpv4); // udpv6 has same offset
-		kxsk_dealloc_umem_frame(socket->umem, uframe_p);
-	}
-
-	xsk_ring_cons__release(cq, completed);
+	collect_tx_buffers(socket->umem);
 	//TODO: one uncompleted packet/batch is left until the next I/O :-/
-	/* And feed frames into RX fill queue. */
-	return kxsk_umem_refill(socket->umem);
+	// Perhaps it's worth exposing these two steps separately?
+	return ret;
 }
 
 static int rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,
@@ -568,7 +541,7 @@ static int rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,
 	return KNOT_EOK;
 
 free_frame:
-	kxsk_dealloc_umem_frame(xsi->umem, uframe_p);
+	knot_xsk_free_recvd(xsi, msg, 1);
 	return ret;
 }
 
@@ -589,13 +562,25 @@ int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[], uin
 }
 
 _public_
-void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
+			 uint32_t count)
 {
-	uint8_t *uframe_p = msg_uframe_p(socket, msg);
-	assert(uframe_p);
-	if (uframe_p != NULL) {
-		kxsk_dealloc_umem_frame(socket->umem, uframe_p);
+	struct xsk_ring_prod * const fq = &socket->umem->fq;
+	uint32_t idx = -1/*shut up incorrect warning*/;
+	int ret = xsk_ring_prod__reserve(fq, count, &idx);
+	if (ret != count) abort(); // impossible, but let's abort at least
+
+	uint32_t count_ok = 0;
+	for (uint32_t msg_i = 0; msg_i < count; ++msg_i) {
+		uint8_t *uframe_p = msg_uframe_p(socket, &msgs[msg_i],
+				msgs[msg_i].ip_from.ss_family == AF_INET6, false);
+		if (!uframe_p) continue;
+		uint64_t offset = (uframe_p - socket->umem->frames->bytes) / FRAME_SIZE;
+		*xsk_ring_prod__fill_addr(fq, idx + count_ok) = offset;
+		++count_ok;
 	}
+	assert(count_ok == count);
+	xsk_ring_prod__submit(fq, count_ok);
 }
 
 _public_
@@ -614,7 +599,7 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 
 	/* Initialize shared packet_buffer for umem usage */
 	struct xsk_umem_info *umem = NULL;
-	ret = configure_xsk_umem(&global_umem_config, UMEM_FRAME_COUNT, &umem);
+	ret = configure_xsk_umem(&umem);
 	if (ret != KNOT_EOK) {
 		kxsk_iface_free(iface);
 		return ret;
