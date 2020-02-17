@@ -112,6 +112,7 @@ def main(args):
     today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
     outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % timestamp,
                                 dir=params.outs_dir)
+    os.chmod(outs_dir, 0o755)
 
     # Try to create symlink to the latest result.
     last_link = os.path.join(params.outs_dir, "knottest-last")
