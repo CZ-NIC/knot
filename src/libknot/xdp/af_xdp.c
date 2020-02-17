@@ -199,8 +199,8 @@ static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
 	xsk_info->umem = umem;
 
 	const struct xsk_socket_config sock_conf = {
-		.tx_size = XSK_RING_PROD__DEFAULT_NUM_DESCS,
-		.rx_size = XSK_RING_CONS__DEFAULT_NUM_DESCS,
+		.tx_size = UMEM_RING_LEN_TX,
+		.rx_size = UMEM_RING_LEN_RX,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
 	};
 
