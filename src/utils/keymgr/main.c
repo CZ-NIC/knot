@@ -63,7 +63,7 @@ static void print_help(void)
 	       "                 (syntax: import-pkcs11 <key_id> <attribute_name>=<value>...)\n"
 	       "  nsec3-salt    Print current NSEC3 salt. If a parameter is specified, set new salt.\n"
 	       "                 (syntax: nsec3salt [<new_salt>])\n"
-	       "  serial        Print SOA serial stored in KASP database when using on-slave signing.\n"
+	       "  local-serial  Print SOA serial stored in KASP database when using on-slave signing.\n"
 	       "                 If a parameter is specified, set new serial.\n"
 	       "                 (syntax: serial <new_serial>)\n"
 	       "  ds            Generate DS record(s) for specified key.\n"
@@ -173,7 +173,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 			ret = keymgr_nsec3_salt_print(&kctx);
 			print_ok_on_succes = false;
 		}
-	} else if (strcmp(argv[1], "serial") == 0) {
+	} else if (strcmp(argv[1], "local-serial") == 0) {
 		if (argc > 2) {
 			uint32_t new_serial = 0;
 			if ((ret = str_to_u32(argv[2], &new_serial)) == KNOT_EOK) {
