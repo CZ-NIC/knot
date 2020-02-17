@@ -19,6 +19,7 @@
 
 #include "libknot/endian.h"
 #include "libknot/error.h"
+#include "contrib/openbsd/strlcpy.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -209,11 +210,12 @@ int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id)
 int kxsk_iface_new(const char *ifname, knot_xsk_load_bpf_t load_bpf,
 		   struct kxsk_iface **out_iface)
 {
-	struct kxsk_iface *iface = calloc(1, sizeof(*iface));
+	struct kxsk_iface *iface = calloc(1, sizeof(*iface) + IFNAMSIZ + 1);
 	if (iface == NULL) {
 		return KNOT_ENOMEM;
 	}
-	iface->ifname = ifname; // we strdup it later
+	iface->ifname = (char *)(iface + 1);
+	strlcpy((char *)iface->ifname, ifname, IFNAMSIZ);
 	iface->ifindex = if_nametoindex(ifname);
 	if (!iface->ifindex) {
 		free(iface);
@@ -249,7 +251,6 @@ int kxsk_iface_new(const char *ifname, knot_xsk_load_bpf_t load_bpf,
 		return ret;
 	}
 
-	iface->ifname = strdup(iface->ifname);
 	*out_iface = iface;
 	return KNOT_EOK;
 }
@@ -261,7 +262,5 @@ void kxsk_iface_free(struct kxsk_iface *iface)
 	if (iface->prog_obj != NULL) {
 		(void)bpf_object__close(iface->prog_obj);
 	}
-
-	free((char *)/*const-cast*/iface->ifname);
 	free(iface);
 }
