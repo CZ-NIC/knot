@@ -70,9 +70,8 @@ struct xsk_umem_info {
 	struct xsk_umem *umem;
 
 	struct umem_frame *frames; /**< The memory frames. TODO: (uint8_t *frammem) might be more practical. */
-	uint32_t frame_count;
-	uint32_t free_count; /**< The number of free frames. */
-	uint32_t *free_indices; /**< Stack of indices of the free frames. */
+	uint32_t tx_free_count; /**< The number of free frames (for TX). */
+	uint32_t tx_free_indices[]; /**< Stack of indices of the free frames (for TX). */
 };
 
 typedef struct knot_xsk_socket {
