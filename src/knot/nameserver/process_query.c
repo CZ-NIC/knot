@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -456,6 +456,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Set TC bit if required. */
 	if (qdata->err_truncated) {
+		knot_wire_set_aa(pkt->wire);
 		knot_wire_set_tc(pkt->wire);
 	}
 
@@ -474,7 +475,7 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Set final RCODE to packet. */
-	if (qdata->rcode == KNOT_RCODE_NOERROR) {
+	if (qdata->rcode == KNOT_RCODE_NOERROR && !qdata->err_truncated) {
 		/* Default RCODE is SERVFAIL if not otherwise specified. */
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}
