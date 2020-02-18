@@ -19,7 +19,7 @@ class Failed(Exception):
 
 def prepare_dir(path):
     try:
-        os.makedirs(path, exist_ok=True)
+        os.makedirs(path)
     except OSError:
         if not os.path.isdir(path):
             raise Exception("Can't create directory '%s'" % path)
