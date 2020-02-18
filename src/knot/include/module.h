@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -400,7 +400,7 @@ typedef struct {
 	knot_rrset_t opt_rr;            /*!< OPT record. */
 	knot_sign_context_t sign;       /*!< Signing context. */
 	knot_edns_client_subnet_t *ecs; /*!< EDNS Client Subnet option. */
-	bool err_truncated;             /*!< Set TC bit if error reply. */
+	bool err_truncated;             /*!< Set TC and AA bits if an error reply. */
 
 	/*! Persistent items on processing reset. */
 	knot_mm_t *mm;                /*!< Memory context. */
