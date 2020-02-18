@@ -264,5 +264,5 @@ epub_author = author
 epub_publisher = author
 epub_copyright = copyright
 
-epub_theme = 'epub'
+epub_theme = 'theme_epub'
 epub_cover = ('_static/logo.svg', 'epub-cover.html')
