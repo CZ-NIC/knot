@@ -156,7 +156,7 @@ install-singlehtml: singlehtml
 	$(INSTALL_DATA) $(SPHINXBUILDDIR)/singlehtml/_static/* $(DESTDIR)/$(docdir)/_static/
 
 epub:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b epub -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/epub
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b epub -A today=$(RELEASE_DATE) -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/epub
 	$(AM_V_ECHO)
 	$(AM_V_ECHO) "Build finished. The EPUB file is in $(SPHINXBUILDDIR)/epub/."
 
