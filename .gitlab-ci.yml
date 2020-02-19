@@ -350,26 +350,6 @@ build:documentation:
       - doc/_build/epub/KnotDNS.epub
     expire_in: '1 hour'
 
-deploy:documentation:
-  <<: *debian_stable
-  stage: deploy
-  dependencies:
-    - build:documentation
-  only:
-    - tags
-    - triggers
-  script:
-    - "curl --http1.1 --request POST --form token=$WEBSITE_TOKEN --form ref=master
-      --form \"variables[RELEASE_CI_BUILD_REF_NAME]=$CI_COMMIT_REF_NAME\"
-      --form \"variables[RELEASE_CI_BUILD_ID]=$CI_JOB_ID\"
-      https://gitlab.labs.nic.cz/api/v3/projects/5/trigger/builds"
-  artifacts:
-    name: "knot-dns-$CI_COMMIT_REF_NAME-doc"
-    paths:
-      - doc/_build/html/
-      - doc/_build/singlehtml/
-      - doc/_build/latex/KnotDNS.pdf
-
 .deploytest: &deploytest
   stage: deploy-test
   only:
