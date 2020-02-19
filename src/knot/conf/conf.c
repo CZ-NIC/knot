@@ -167,6 +167,7 @@ conf_val_t conf_zone_get_txn(
 	}
 
 	size_t dname_size = knot_dname_size(dname);
+	knot_catalog_val_t *catval = NULL;
 
 	// Try to get explicit value.
 	conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
@@ -195,9 +196,17 @@ conf_val_t conf_zone_get_txn(
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 	case KNOT_YP_EINVAL_ID:
-		// Use the default template.
-		conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
-		            CONF_DEFAULT_ID[0], &val);
+		// Check if this is a cataloged zone.
+		catval = knot_catalog_get(conf->catalog, dname);
+		if (catval != NULL) {
+			// Use catalog template.
+			conf_db_get(conf, txn, C_TPL, key1_name, (uint8_t *)catval->conf_template,
+			            strlen(catval->conf_template), &val);
+		} else {
+			// Use the default template.
+			conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
+			            CONF_DEFAULT_ID[0], &val);
+		}
 	}
 
 	switch (val.code) {

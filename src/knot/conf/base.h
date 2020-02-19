@@ -22,6 +22,7 @@
 #include "contrib/ucw/lists.h"
 #include "contrib/dynarray.h"
 #include "knot/include/module.h"
+#include "knot/zone/catalog.h"
 
 /*! Default template identifier. */
 #define CONF_DEFAULT_ID		((uint8_t *)"\x08""default\0")
@@ -130,6 +131,8 @@ typedef struct {
 	list_t *query_modules;
 	/*! Default query modules plan. */
 	struct query_plan *query_plan;
+	/*! List of cataloged zones with their templates. */
+	knot_catalog_t *catalog;
 } conf_t;
 
 /*!

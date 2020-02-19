@@ -293,6 +293,12 @@ int conf_new(
 	// Initialize cached values.
 	init_cache(out, false);
 
+	// Init catalog.
+	out->catalog = knot_catalog_new();
+	if (out->catalog == NULL) {
+		goto new_error;
+	}
+
 	// Load module schemas.
 	if (flags & (CONF_FREQMODULES | CONF_FOPTMODULES)) {
 		ret = conf_mod_load_common(out);
@@ -346,6 +352,7 @@ int conf_clone(
 	// Set shared items.
 	out->api = s_conf->api;
 	out->db = s_conf->db;
+	out->catalog = s_conf->catalog;
 
 	// Initialize query modules list.
 	out->query_modules = malloc(sizeof(list_t));
@@ -434,6 +441,10 @@ void conf_free(
 {
 	if (conf == NULL) {
 		return;
+	}
+
+	if (!conf->is_clone) {
+		knot_catalog_free(conf->catalog);
 	}
 
 	yp_schema_free(conf->schema);
