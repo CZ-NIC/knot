@@ -1,8 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = src tests tests-fuzz python samples distro doc
 
-.PHONY: singlehtml install-singlehtml
-singlehtml install-singlehtml:
+.PHONY: singlehtml epub install-singlehtml install-epub
+singlehtml install-singlehtml epub install-epub:
 	$(MAKE) -C doc $@
 
 .PHONY: check-compile
