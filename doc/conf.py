@@ -12,6 +12,7 @@
 # serve to show the default.
 
 import sys, os, time, logging
+from datetime import datetime
 
 sys.setrecursionlimit(1500)
 
@@ -266,3 +267,7 @@ epub_copyright = copyright
 
 epub_theme = 'theme_epub'
 epub_cover = ('_static/logo.svg', 'epub-cover.html')
+epub_theme_options = {
+    'date': datetime.now().strftime("%Y-%m-%d")
+}
+epub_exclude_files = ['epub-cover.xhtml']

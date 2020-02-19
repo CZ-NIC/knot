@@ -19,13 +19,15 @@
 {%- block footer %}{% endblock %}
 
 {% block content %}
-  <center>
-    <div class="epub-cover">
-      <img src="{{ image }}" width="80%" alt="Cover image" />
-      <h1>Knot DNS Documentation</h1>
+  <div class="epub-cover">
+    <img src="{{ image }}" alt="Cover image" />
+    <h1>Knot DNS Documentation</h1>
 {% if version %}
-      <h2>Release {{ version }}</h2>
+    <h2 class="version">Release {{ version }}</h2>
+{% endif %}{% if copyright %}
+    <h2>{{ copyright }}</h2>
+{% endif %}{% if theme_date %}
+    <p class="date">{{ theme_date }}</p>
 {% endif %}
-    </div>
-  </center>
+  </div>
 {% endblock %}
