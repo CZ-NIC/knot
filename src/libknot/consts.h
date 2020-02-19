@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -132,6 +132,7 @@ typedef enum {
  * https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
  */
 typedef enum {
+	KNOT_DNSSEC_ALG_DELETE             =   0,
 	KNOT_DNSSEC_ALG_RSAMD5             =   1,
 	KNOT_DNSSEC_ALG_DH                 =   2,
 	KNOT_DNSSEC_ALG_DSA                =   3,

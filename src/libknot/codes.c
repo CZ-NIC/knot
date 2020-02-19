@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ const knot_lookup_t knot_tsig_rcode_names[] = {
 
 _public_
 const knot_lookup_t knot_dnssec_alg_names[] = {
+	{ KNOT_DNSSEC_ALG_DELETE,             "DELETE" },
 	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
 	{ KNOT_DNSSEC_ALG_DH,                 "DH" },
 	{ KNOT_DNSSEC_ALG_DSA,                "DSA" },
