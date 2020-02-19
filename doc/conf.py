@@ -12,7 +12,6 @@
 # serve to show the default.
 
 import sys, os, time, logging
-from datetime import datetime
 
 sys.setrecursionlimit(1500)
 
