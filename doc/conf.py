@@ -256,3 +256,14 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
+
+# -- Options for Epub output ----------------------------------------------
+
+epub_title = project
+epub_author = author
+epub_publisher = author
+epub_copyright = copyright
+
+epub_theme = 'theme_epub'
+epub_cover = ('_static/logo.svg', 'epub-cover.html')
+epub_exclude_files = ['epub-cover.xhtml']
