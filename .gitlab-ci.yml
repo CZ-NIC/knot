@@ -341,12 +341,13 @@ build:documentation:
   dependencies:
     - build:debian:amd64
   script:
-    - make -C doc html singlehtml pdf V=1
+    - make -C doc html singlehtml pdf epub V=1
   artifacts:
     paths:
       - doc/_build/html/
       - doc/_build/singlehtml/
       - doc/_build/latex/KnotDNS.pdf
+      - doc/_build/epub/KnotDNS.epub
     expire_in: '1 hour'
 
 deploy:documentation:
