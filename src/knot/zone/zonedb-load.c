@@ -20,6 +20,7 @@
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/events/replan.h"
+#include "knot/zone/catalog.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
@@ -54,6 +55,7 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 
 	zone->journaldb = &server->journaldb;
 	zone->kaspdb = &server->kaspdb;
+	zone->catalog_changes = &server->catalog_changes;
 
 	int result = zone_events_setup(zone, server->workers, &server->sched);
 	if (result != KNOT_EOK) {
@@ -115,6 +117,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	}
 
 	zone->contents = old_zone->contents;
+	zone->flags = (old_zone->flags & (ZONE_IS_CATALOG | ZONE_IS_CATALOGED));
 
 	zone->timers = old_zone->timers;
 	timers_sanitize(conf, zone);
@@ -265,6 +268,59 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 		knot_zonedb_insert(db_new, zone);
 	}
 
+	if (full) {
+		knot_catalog_clear(conf->catalog);
+	}
+
+	/* Add cataloged zones. */
+	trie_it_t *tit = trie_it_begin(server->catalog_changes.add);
+	while (!trie_it_finished(tit)) {
+		knot_catalog_val_t *val = *(knot_catalog_val_t **)trie_it_val(tit);
+		if (knot_zonedb_find(db_new, val->zone)) {
+			log_zone_warning(val->zone, "zone already configured or cataloged, skipping creation");
+			trie_it_next(tit);
+			continue;
+		}
+		knot_catalog_add(conf->catalog, val->zone, val->conf_tpl, val->conf_tpl_len);
+
+		zone_t *zone = create_zone(conf, val->zone, server, NULL);
+		if (zone == NULL) {
+			log_zone_error(val->zone, "zone cannot be created");
+			knot_catalog_del(conf->catalog, val->zone);
+			trie_it_next(tit);
+			continue;
+		}
+		zone->flags |= ZONE_IS_CATALOGED;
+		conf_activate_modules(conf, zone->name, &zone->query_modules,
+		                      &zone->query_plan);
+		knot_zonedb_insert(db_new, zone);
+		log_zone_info(val->zone, "zone added from catalog");
+		trie_it_next(tit);
+	}
+	trie_it_free(tit);
+
+	/* Reuse unchanged cataloged zones. */
+	if (!full && db_old != NULL) {
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
+		while (!knot_zonedb_iter_finished(it)) {
+			zone_t *zone = knot_zonedb_iter_val(it);
+			if ((zone->flags & ZONE_IS_CATALOGED) &&
+			    knot_catalog_get(server->catalog_changes.rem, zone->name) == NULL) {
+				zone_t *newzone = create_zone(conf, zone->name, server, zone);
+				if (newzone == NULL) {
+					log_zone_error(zone->name, "zone cannot be created");
+					continue;
+				}
+
+				conf_activate_modules(conf, newzone->name, &newzone->query_modules,
+						      &newzone->query_plan);
+				knot_zonedb_insert(db_new, newzone);
+			}
+			knot_zonedb_iter_next(it);
+		}
+		knot_zonedb_iter_free(it);
+	}
+
 	return db_new;
 }
 
@@ -279,11 +335,13 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
  * \param db_new  New zone database for comparison if full reload.
   */
 static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
-                              knot_zonedb_t *db_new)
+                              server_t *server)
 {
 	if (db_old == NULL) {
 		return;
 	}
+
+	knot_zonedb_t *db_new = server->zone_db;
 
 	bool full = !(conf->io.flags & CONF_IO_FACTIVE) ||
 	            (conf->io.flags & CONF_IO_FRLD_ZONES);
@@ -316,6 +374,21 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 
 	knot_zonedb_iter_free(it);
 
+	/* Remove deleted cataloged zones from conf. */
+	trie_it_t *tit = trie_it_begin(server->catalog_changes.rem);
+	while (!trie_it_finished(tit) && !full) {
+		knot_catalog_val_t *val = *(knot_catalog_val_t **)trie_it_val(tit);
+		if (knot_catalog_get(server->catalog_changes.add, val->zone) == NULL) {
+			knot_catalog_del(conf->catalog, val->zone);
+		}
+		trie_it_next(tit);
+	}
+	trie_it_free(tit);
+
+	/* Clear catalog changes. No need to use mutex as this is done from main thread while all zone events are paused. */
+	knot_catalog_clear(server->catalog_changes.rem);
+	knot_catalog_clear(server->catalog_changes.add);
+
 	if (full) {
 		knot_zonedb_deep_free(&db_old, false);
 	} else {
@@ -344,5 +417,5 @@ void zonedb_reload(conf_t *conf, server_t *server)
 	synchronize_rcu();
 
 	/* Remove old zone DB. */
-	remove_old_zonedb(conf, db_old, db_new);
+	remove_old_zonedb(conf, db_old, server);
 }

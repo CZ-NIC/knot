@@ -18,12 +18,15 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adjust.h"
+#include "knot/zone/catalog.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "contrib/trim.h"
 #include "contrib/ucw/lists.h"
 
+#include <signal.h>
 #include <urcu.h>
+#include <unistd.h>
 
 // Call mem_trim() whenever accumuled size of updated zones reaches this size.
 #define UPDATE_MEMTRIM_AT (10 * 1024 * 1024)
@@ -808,6 +811,31 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, update->new_cont);
+
+	val = conf_zone_get(conf, C_CATALOG_TPL, update->zone->name);
+	if (val.code == KNOT_EOK) {
+		update->zone->flags |= ZONE_IS_CATALOG;
+		pthread_mutex_lock(&update->zone->catalog_changes->mutex);
+		if (update->flags & UPDATE_INCREMENTAL) {
+			ret = knot_catalog_from_zone(update->zone->catalog_changes->rem, update->change.remove, conf);
+			if (ret == KNOT_EOK) {
+				ret = knot_catalog_from_zone(update->zone->catalog_changes->add, update->change.add, conf);
+			}
+		} else {
+			ret = knot_catalog_from_zone(update->zone->catalog_changes->add, update->zone->contents, conf);
+		}
+		pthread_mutex_unlock(&update->zone->catalog_changes->mutex);
+		if (ret == KNOT_EOK) {
+			kill(getpid(), SIGHUP);
+		} else {
+			log_zone_warning(update->zone->name, "catalog zone not fully populated (%s)", knot_strerror(ret));
+		}
+	} else {
+		if ((update->zone->flags & ZONE_IS_CATALOG) && old_contents != NULL) {
+			(void)knot_catalog_from_zone(update->zone->catalog_changes->rem, old_contents, conf);
+		}
+		update->zone->flags &= ~ZONE_IS_CATALOG;
+	}
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);

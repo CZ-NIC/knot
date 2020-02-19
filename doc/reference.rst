@@ -1413,6 +1413,7 @@ Definition of zones served by the server.
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
+     catalog-template: template_id
      module: STR/STR ...
 
 .. _zone_domain:
@@ -1706,6 +1707,15 @@ refresh-max-interval
 --------------------
 
 Forced maximum zone refresh interval.
+
+*Default:* not set
+
+.. _zone_catalog-template:
+
+catalog-template
+----------------
+
+This zone is a catalog zone. For the cataloged zones, the specified configuration template will be applied.
 
 *Default:* not set
 

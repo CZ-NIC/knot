@@ -96,6 +96,9 @@ typedef struct server {
 	/*! \brief List of interfaces. */
 	list_t *ifaces;
 
+	/*! \brief Pending changes to list of cataloged zones. */
+	knot_catalog_change_t catalog_changes;
+
 } server_t;
 
 /*!

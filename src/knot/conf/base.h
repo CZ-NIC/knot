@@ -130,6 +130,8 @@ typedef struct {
 	list_t *query_modules;
 	/*! Default query modules plan. */
 	struct query_plan *query_plan;
+	/*! List of cataloged zones with their templates. */
+	trie_t *catalog;
 } conf_t;
 
 /*!

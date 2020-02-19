@@ -416,6 +416,13 @@ int server_init(server_t *server, int bg_workers)
 		return KNOT_ENOMEM;
 	}
 
+	int ret = knot_catalog_change_new(&server->catalog_changes);
+	if (ret != KNOT_EOK) {
+		worker_pool_destroy(server->workers);
+		evsched_deinit(&server->sched);
+		return ret;
+	}
+
 	char *journal_dir = conf_db(conf(), C_JOURNAL_DB);
 	conf_val_t journal_size = conf_db_param(conf(), C_JOURNAL_DB_MAX_SIZE, C_MAX_JOURNAL_DB_SIZE);
 	conf_val_t journal_mode = conf_db_param(conf(), C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
@@ -450,6 +457,8 @@ void server_deinit(server_t *server)
 				    knot_strerror(ret));
 		}
 	}
+
+	knot_catalog_change_free(&server->catalog_changes);
 
 	/* Free remaining interfaces. */
 	server_deinit_iface_list(server->ifaces);
