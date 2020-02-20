@@ -329,6 +329,7 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	return dnssec_pem_from_x509(key, pem);
 }
 
+#if defined(HAVE_ED25519) || defined(HAVE_ED448)
 static void eddsa_extract_public_params(dnssec_key_t *key, gnutls_ecc_curve_t *curve,
 					gnutls_datum_t *x)
 {
@@ -365,6 +366,7 @@ static int eddsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 
 	return dnssec_pem_from_x509(key, pem);
 }
+#endif
 
 int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary_t *pem)
 {
