@@ -16,30 +16,39 @@
 
 #pragma once
 
+#include <pthread.h>
+
 #include "contrib/qp-trie/trie.h"
 
 #include "libknot/dname.h"
 #include "libknot/error.h"
 
+#include "knot/conf/base.h"
+#include "knot/zone/contents.h"
+
 typedef trie_t knot_catalog_t;
 
 typedef struct {
 	knot_dname_t *zone;
-	char *conf_template;
+	uint8_t *conf_tpl;
+	size_t conf_tpl_len;
 } knot_catalog_val_t;
 
 typedef struct {
 	knot_catalog_t *rem;
 	knot_catalog_t *add;
+	pthread_mutex_t mutex;
 } knot_catalog_change_t;
 
 typedef int (*knot_catalog_cb_t)(knot_catalog_val_t *, void *);
 
 knot_catalog_t *knot_catalog_new(void);
 
-int knot_catalog_foreach(knot_catalog_t *catalog, knot_catalog_cb_t *cb, void *ctx);
+int knot_catalog_foreach(knot_catalog_t *catalog, knot_catalog_cb_t cb, void *ctx);
 
-int knot_catalog_add(knot_catalog_t *catalog, const knot_dname_t *zone, const char *tpl);
+int knot_catalog_add(knot_catalog_t *catalog, const knot_dname_t *zone, const uint8_t *tpl, size_t tpl_len);
+
+int knot_catalog_from_zone(knot_catalog_t *catalog, zone_contents_t *zone, conf_t *conf);
 
 knot_catalog_val_t *knot_catalog_get(knot_catalog_t *catalog, const knot_dname_t *zone);
 

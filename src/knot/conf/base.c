@@ -23,6 +23,7 @@
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
+#include "knot/zone/catalog.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"

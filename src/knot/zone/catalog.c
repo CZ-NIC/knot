@@ -16,8 +16,13 @@
 
 #include "knot/zone/catalog.h"
 
+#include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "knot/conf/conf.h"
+#include "knot/zone/node.h"
 
 knot_catalog_t *knot_catalog_new()
 {
@@ -25,7 +30,7 @@ knot_catalog_t *knot_catalog_new()
 }
 
 struct catcb {
-	knot_catalog_cb_t *cb;
+	knot_catalog_cb_t cb;
 	void *ctx;
 };
 
@@ -33,21 +38,20 @@ static int _catcb(trie_val_t *tval, void *ctx)
 {
 	knot_catalog_val_t *val = *(knot_catalog_val_t **)tval;
 	struct catcb *cb = ctx;
-	return ctx->cb(val, ctx->ctx);
+	return cb->cb(val, cb->ctx);
 }
 
-int knot_catalog_foreach(knot_catalog_t *catalog, knot_catalog_cb_t *cb, void *ctx)
+int knot_catalog_foreach(knot_catalog_t *catalog, knot_catalog_cb_t cb, void *ctx)
 {
-	struct catcb cb = { cb, ctx };
-	return trie_apply(catalog, _catcb, &cb);
+	struct catcb _cb = { cb, ctx };
+	return trie_apply(catalog, _catcb, &_cb);
 }
 
-int knot_catalog_add(knot_catalog_t *catalog, const knot_dname_t *zone, const char *tpl)
+int knot_catalog_add(knot_catalog_t *catalog, const knot_dname_t *zone, const uint8_t *tpl, size_t tpl_len)
 {
 	size_t len_zone = knot_dname_size(zone);
-	size_t len_tpl = tpl == NULL ? 0 : strlen(tpl) + 1;
 
-	knot_catalog_val_t *val = malloc(sizeof(*val) + len_zone + len_tpl);
+	knot_catalog_val_t *val = malloc(sizeof(*val) + len_zone + tpl_len);
 	if (val == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -55,10 +59,12 @@ int knot_catalog_add(knot_catalog_t *catalog, const knot_dname_t *zone, const ch
 	val->zone = (knot_dname_t *)(val + 1);
 	memcpy(val->zone, zone, len_zone);
 	if (tpl == NULL) {
-		val->conf_template = NULL;
+		val->conf_tpl = NULL;
+		val->conf_tpl_len = 0;
 	} else {
-		val->conf_template = (char *)(val->zone + len_zone);
-		memcpy(val->conf_template, tpl, len_tpl);
+		val->conf_tpl = (uint8_t *)(val->zone + len_zone);
+		memcpy(val->conf_tpl, tpl, tpl_len);
+		val->conf_tpl_len = tpl_len;
 	}
 
 	knot_dname_storage_t lf_storage;
@@ -70,6 +76,40 @@ int knot_catalog_add(knot_catalog_t *catalog, const knot_dname_t *zone, const ch
 		free(*tval);
 	}
 	*tval = val;
+	return KNOT_EOK;
+}
+
+struct cat_zone_ctx {
+	knot_catalog_t *catalog;
+	const uint8_t *tpl;
+	size_t tpl_len;
+};
+
+static int cat_zone_cb(zone_node_t *node, void *data)
+{
+	struct cat_zone_ctx *ctx = data;
+	knot_rdataset_t *ptrs = node_rdataset(node, KNOT_RRTYPE_PTR);
+	if (ptrs == NULL) {
+		return KNOT_EOK;
+	}
+	knot_rdata_t *ptr = ptrs->rdata;
+	int ret = KNOT_EOK;
+	for (int i = 0; i < ptrs->count && ret == KNOT_EOK; i++) {
+		ret = knot_catalog_add(ctx->catalog, (const knot_dname_t *)ptr->data,
+		                       ctx->tpl, ctx->tpl_len);
+		ptr = knot_rdataset_next(ptr);
+	}
+	return ret;
+}
+
+int knot_catalog_from_zone(knot_catalog_t *catalog, zone_contents_t *zone, conf_t *conf)
+{
+	conf_val_t val = conf_zone_get(conf, C_CATALOG_TPL, zone->apex->owner);
+	if (val.code != KNOT_EOK) {
+		return KNOT_EINVAL;
+	}
+	struct cat_zone_ctx ctx = { catalog, val.data, val.len };
+	return zone_contents_apply(zone, cat_zone_cb, &ctx);
 }
 
 knot_catalog_val_t *knot_catalog_get(knot_catalog_t *catalog, const knot_dname_t *zone)
@@ -99,6 +139,7 @@ static int freecb(trie_val_t *tval, void *unused)
 {
 	(void)unused;
 	free(*(void **)tval);
+	return 0;
 }
 
 void knot_catalog_clear(knot_catalog_t *catalog)
@@ -124,11 +165,13 @@ int knot_catalog_change_new(knot_catalog_change_t *ch)
 		knot_catalog_free(ch->add);
 		return KNOT_ENOMEM;
 	}
+	pthread_mutex_init(&ch->mutex, 0);
 	return KNOT_EOK;
 }
 
 void knot_catalog_change_free(knot_catalog_change_t *ch)
 {
+	pthread_mutex_destroy(&ch->mutex);
 	knot_catalog_free(ch->add);
 	knot_catalog_free(ch->rem);
 }

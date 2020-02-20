@@ -418,7 +418,7 @@ int server_init(server_t *server, int bg_workers)
 
 	int ret = knot_catalog_change_new(&server->catalog_changes);
 	if (ret != KNOT_EOK) {
-		worker_pool_destroy(bg_workers);
+		worker_pool_destroy(server->workers);
 		evsched_deinit(&server->sched);
 		return ret;
 	}

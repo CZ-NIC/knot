@@ -55,6 +55,7 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 
 	zone->journaldb = &server->journaldb;
 	zone->kaspdb = &server->kaspdb;
+	zone->catalog_changes = &server->catalog_changes;
 
 	int result = zone_events_setup(zone, server->workers, &server->sched);
 	if (result != KNOT_EOK) {
@@ -270,31 +271,39 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 	trie_it_t *tit = trie_it_begin(server->catalog_changes.add);
 	while (!trie_it_finished(tit)) {
 		knot_catalog_val_t *val = *(knot_catalog_val_t **)trie_it_val(tit);
-		zone_t *zone = create_zone(conf, val->zone, server, NULL);
-		if (zone == NULL) {
-			log_zone_error(name, "zone cannot be created");
+		if (knot_zonedb_find(db_new, val->zone)) {
+			log_zone_warning(val->zone, "zone already configured or cataloged, skipping creation");
+			trie_it_next(tit);
 			continue;
 		}
-		knot_catalog_add(conf->catalog, val->zone, val->conf_template);
+		zone_t *zone = create_zone(conf, val->zone, server, NULL);
+		if (zone == NULL) {
+			log_zone_error(val->zone, "zone cannot be created");
+			trie_it_next(tit);
+			continue;
+		}
+		knot_catalog_add(conf->catalog, val->zone, val->conf_tpl, val->conf_tpl_len);
 		conf_activate_modules(conf, zone->name, &zone->query_modules,
 		                      &zone->query_plan);
 		knot_zonedb_insert(db_new, zone);
+		log_zone_info(val->zone, "zone added from catalog");
 		trie_it_next(tit);
 	}
 	trie_it_free(tit);
 
 	/* Reuse unchanged cataloged zones. */
-	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
-	while (!full && !knot_zonedb_iter_finished(it)) {
-		zone_t *zone = knot_zonedb_iter_val(it);
-		if ((zone->flags & ZONE_IS_CATALOGED) &&
-		    knot_catalog_get(server->catalog_changes.rem, zone->name) == NULL) {
-			knot_zonedb_insert(db_new, zone);
+	if (!full && db_old != NULL) {
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
+		while (!knot_zonedb_iter_finished(it)) {
+			zone_t *zone = knot_zonedb_iter_val(it);
+			if ((zone->flags & ZONE_IS_CATALOGED) &&
+			    knot_catalog_get(server->catalog_changes.rem, zone->name) == NULL) {
+				knot_zonedb_insert(db_new, zone);
+			}
+			knot_zonedb_iter_next(it);
 		}
-		knot_zonedb_iter_next(it);
+		knot_zonedb_iter_free(it);
 	}
-	knot_zonedb_iter_free(it);
-
 
 	return db_new;
 }
@@ -352,24 +361,21 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 	/* When full reload, remove all cataloged zones,
 	 * because the reloaded catlog zones will add them as needed. */
 	if (full) {
-		trie_it_t *tit = trie_it_begin(conf->catalog);
-		while (!trie_it_finished(tit)) {
-			knot_catalog_val_t *val = *(knot_catalog_val_t **)trie_it_val(tit);
-			knot_catalog_add(server->catalog_changes.rem, val->zone, val->conf_template);
-			trie_it_next(tit);
-		}
+		knot_catalog_clear(conf->catalog);
 	}
 
 	/* Remove deleted cataloged zones from conf. */
 	trie_it_t *tit = trie_it_begin(server->catalog_changes.rem);
-	while (!trie_it_finished(tit)) {
+	while (!trie_it_finished(tit) && !full) {
 		knot_catalog_val_t *val = *(knot_catalog_val_t **)trie_it_val(tit);
-		knot_catalog_del(conf->catalog, val->zone);
+		if (knot_catalog_get(server->catalog_changes.add, val->zone) == NULL) {
+			knot_catalog_del(conf->catalog, val->zone);
+		}
 		trie_it_next(tit);
 	}
 	trie_it_free(tit);
 
-	/* Clear catalog changes.*/
+	/* Clear catalog changes. No need to use mutex as this is done from main thread while all zone events are paused. */
 	knot_catalog_clear(server->catalog_changes.rem);
 	knot_catalog_clear(server->catalog_changes.add);
 

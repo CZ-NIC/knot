@@ -22,6 +22,7 @@
 #include "knot/journal/journal_basic.h"
 #include "knot/events/events.h"
 #include "knot/updates/changesets.h"
+#include "knot/zone/catalog.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/timers.h"
 #include "libknot/dname.h"
@@ -82,6 +83,9 @@ typedef struct zone
 
 	/*! \brief Ptr to journal DB (in struct server) */
 	knot_lmdb_db_t *kaspdb;
+
+	/*! \brief Ptr to catalog zones' changes (in struct server) */
+	knot_catalog_change_t *catalog_changes;
 
 	/*! \brief Preferred master lock. */
 	pthread_mutex_t preferred_lock;

@@ -24,6 +24,7 @@
 #include "knot/conf/confdb.h"
 #include "knot/common/log.h"
 #include "knot/server/dthreads.h"
+#include "knot/zone/catalog.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
@@ -200,8 +201,8 @@ conf_val_t conf_zone_get_txn(
 		catval = knot_catalog_get(conf->catalog, dname);
 		if (catval != NULL) {
 			// Use catalog template.
-			conf_db_get(conf, txn, C_TPL, key1_name, (uint8_t *)catval->conf_template,
-			            strlen(catval->conf_template), &val);
+			conf_db_get(conf, txn, C_TPL, key1_name, catval->conf_tpl,
+			            catval->conf_tpl_len, &val);
 		} else {
 			// Use the default template.
 			conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,

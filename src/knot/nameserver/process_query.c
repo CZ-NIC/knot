@@ -217,6 +217,11 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 		}
 	}
 
+	if (query_type(query) == KNOTD_QUERY_TYPE_NORMAL &&
+	    zone != NULL && (zone->flags & ZONE_IS_CATALOGED)) {
+		zone = NULL;
+	}
+
 	return zone;
 }
 
