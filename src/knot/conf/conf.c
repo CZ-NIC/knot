@@ -179,6 +179,7 @@ conf_val_t conf_zone_get_txn(
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
 		              &C_ZONE[1], &key1_name[1], knot_strerror(val.code));
 		// FALLTHROUGH
+	case KNOT_YP_EINVAL_ID:
 	case KNOT_ENOENT:
 		break;
 	}
@@ -190,26 +191,42 @@ conf_val_t conf_zone_get_txn(
 		// Use the specified template.
 		conf_val(&val);
 		conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
-		break;
+		goto got_template;
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
 		              &C_ZONE[1], &C_TPL[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 	case KNOT_YP_EINVAL_ID:
-		// Check if this is a cataloged zone.
-		catval = knot_catalog_get(conf->catalog, dname);
-		if (catval != NULL) {
-			// Use catalog template.
-			conf_db_get(conf, txn, C_TPL, key1_name, catval->conf_tpl,
-			            catval->conf_tpl_len, &val);
-		} else {
-			// Use the default template.
-			conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
-			            CONF_DEFAULT_ID[0], &val);
+		break;
+	}
+
+	// Check if this is a cataloged zone.
+	catval = knot_catalog_get(conf->catalog, dname);
+	if (catval != NULL) {
+		// Use catalog template.
+		conf_db_get(conf, txn, C_TPL, key1_name, catval->conf_tpl,
+			    catval->conf_tpl_len, &val);
+		switch (val.code) {
+		case KNOT_EOK:
+			conf_val(&val);
+			conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
+			goto got_template;
+		default:
+			CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
+				      &C_ZONE[1], &C_TPL[1], knot_strerror(val.code));
+			// FALLTHROUGH
+		case KNOT_ENOENT:
+		case KNOT_YP_EINVAL_ID:
+			break;
 		}
 	}
 
+	// Use the default template.
+	conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
+		    CONF_DEFAULT_ID[0], &val);
+
+got_template:
 	switch (val.code) {
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",

@@ -105,6 +105,7 @@ static int cat_zone_cb(zone_node_t *node, void *data)
 int knot_catalog_from_zone(knot_catalog_t *catalog, zone_contents_t *zone, conf_t *conf)
 {
 	conf_val_t val = conf_zone_get(conf, C_CATALOG_TPL, zone->apex->owner);
+	conf_val(&val);
 	if (val.code != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}

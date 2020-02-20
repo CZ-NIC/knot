@@ -267,6 +267,10 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 		knot_zonedb_insert(db_new, zone);
 	}
 
+	if (full) {
+		knot_catalog_clear(conf->catalog);
+	}
+
 	/* Add cataloged zones. */
 	trie_it_t *tit = trie_it_begin(server->catalog_changes.add);
 	while (!trie_it_finished(tit)) {
@@ -357,12 +361,6 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 	}
 
 	knot_zonedb_iter_free(it);
-
-	/* When full reload, remove all cataloged zones,
-	 * because the reloaded catlog zones will add them as needed. */
-	if (full) {
-		knot_catalog_clear(conf->catalog);
-	}
 
 	/* Remove deleted cataloged zones from conf. */
 	trie_it_t *tit = trie_it_begin(server->catalog_changes.rem);
