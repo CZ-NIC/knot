@@ -57,6 +57,11 @@
 #define FILL_IN_INPUT(pdata) if (memcpy(&(pdata), p->in, in_len) == NULL) { p->ret = -1; return; }
 #define CHECK_RET_POSITIVE if (ret <= 0) { p->ret = -1; return; }
 
+#define SNPRINTF_CHECK(ret, max_len)			\
+	if ((ret) < 0 || (size_t)(ret) >= (max_len)) {	\
+		return KNOT_ESPACE;			\
+	}
+
 typedef struct {
 	const knot_dump_style_t *style;
 	const uint8_t *in;
@@ -1245,30 +1250,91 @@ static size_t dnskey_len(const uint8_t *rdata,
 	}
 }
 
+static int ber_to_oid(char *dst,
+                      size_t dst_len,
+                      const uint8_t *src,
+                      const size_t src_len)
+{
+	assert(dst);
+	assert(src);
+
+	static const uint8_t longer_mask = (1 << 7);
+
+	size_t len = src[0];
+	if (len == 0 || len >= src_len || dst_len == 0) {
+		return KNOT_EINVAL;
+	}
+
+	uint64_t node = 0UL;
+	for (int i = 1; i <= len; ++i) {
+		uint8_t longer_node = (src[i] & longer_mask);
+		node <<= 7;
+		node += (longer_node ^ src[i]);
+		if (!longer_node) {
+			int ret = snprintf(dst, dst_len, "%"PRIu64".", node);
+			SNPRINTF_CHECK(ret, dst_len);
+			dst += ret;
+			dst_len -= ret;
+			node = 0UL;
+		}
+	}
+	*(dst - 1) = '\0';
+
+	return KNOT_EOK;
+}
+
 static void dnskey_info(const uint8_t *rdata,
                         const size_t  rdata_len,
                         char          *out,
                         const size_t  out_len)
 {
-	// TODO: migrate key info to libdnssec
+	if (rdata_len < 5) {
+		return;
+	}
 
 	const uint8_t sep = *(rdata + 1) & 0x01;
 	uint16_t      key_tag = 0;
 	const size_t  key_len = dnskey_len(rdata, rdata_len);
 	const uint8_t alg_id = rdata[3];
+	char          alg_info[512] = "";
 
 	const dnssec_binary_t rdata_bin = { .data = (uint8_t *)rdata,
 	                                    .size = rdata_len };
 	dnssec_keytag(&rdata_bin, &key_tag);
 
-	const knot_lookup_t *alg = NULL;
-	alg = knot_lookup_by_id(knot_dnssec_alg_names, alg_id);
+	const knot_lookup_t *alg = knot_lookup_by_id(knot_dnssec_alg_names, alg_id);
 
-	int ret = snprintf(out, out_len, "%s, %s (%zub), id = %u",
+	switch (alg_id) {
+	case KNOT_DNSSEC_ALG_DELETE:
+	case KNOT_DNSSEC_ALG_INDIRECT:
+		break;
+	case KNOT_DNSSEC_ALG_PRIVATEOID:
+		; char oid_str[sizeof(alg_info) - 3];
+		if (ber_to_oid(oid_str, sizeof(oid_str), rdata + 4, rdata_len - 4) != KNOT_EOK ||
+		    snprintf(alg_info, sizeof(alg_info), " (%s)", oid_str) <= 0) {
+			alg_info[0] = '\0';
+		}
+		break;
+	case KNOT_DNSSEC_ALG_PRIVATEDNS:
+		; knot_dname_txt_storage_t alg_str;
+		if (knot_dname_wire_check(rdata + 4, rdata + rdata_len, NULL) <= 0 ||
+		    knot_dname_to_str(alg_str, rdata + 4, sizeof(alg_str)) == NULL ||
+		    snprintf(alg_info, sizeof(alg_info), " (%s)", alg_str) <= 0) {
+			alg_info[0] = '\0';
+		}
+		break;
+	default:
+		if (snprintf(alg_info, sizeof(alg_info), " (%zub)", key_len) <= 0) {
+			alg_info[0] = '\0';
+		}
+		break;
+	}
+
+	int ret = snprintf(out, out_len, "%s, %s%s, id = %u",
 	                   sep ? "KSK" : "ZSK",
 	                   alg ? alg->name : "UNKNOWN",
-	                   key_len, key_tag );
-
+	                   alg_info,
+	                   key_tag);
 	if (ret <= 0) {	// Truncated return is acceptable. Just check for errors.
 		out[0] = '\0';
 	}
@@ -1883,11 +1949,6 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 
 	return ret;
 }
-
-#define SNPRINTF_CHECK(ret, max_len)			\
-	if ((ret) < 0 || (size_t)(ret) >= (max_len)) {	\
-		return KNOT_ESPACE;			\
-	}
 
 _public_
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
