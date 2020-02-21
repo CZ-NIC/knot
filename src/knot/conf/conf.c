@@ -209,8 +209,6 @@ conf_val_t conf_zone_get_txn(
 			    catval->conf_tpl_len, &val);
 		switch (val.code) {
 		case KNOT_EOK:
-			conf_val(&val);
-			conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
 			goto got_template;
 		default:
 			CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",

@@ -280,13 +280,15 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 			trie_it_next(tit);
 			continue;
 		}
+		knot_catalog_add(conf->catalog, val->zone, val->conf_tpl, val->conf_tpl_len);
+
 		zone_t *zone = create_zone(conf, val->zone, server, NULL);
 		if (zone == NULL) {
 			log_zone_error(val->zone, "zone cannot be created");
+			knot_catalog_del(conf->catalog, val->zone);
 			trie_it_next(tit);
 			continue;
 		}
-		knot_catalog_add(conf->catalog, val->zone, val->conf_tpl, val->conf_tpl_len);
 		conf_activate_modules(conf, zone->name, &zone->query_modules,
 		                      &zone->query_plan);
 		knot_zonedb_insert(db_new, zone);
