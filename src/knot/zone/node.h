@@ -43,7 +43,9 @@ typedef struct zone_node {
 	struct zone_node *prev;
 	union {
 		knot_dname_t *nsec3_hash; /*! Name of the NSEC3 corresponding to this node. */
-		struct zone_node *nsec3_node; /*! NSEC3 node corresponding to this node. */
+		struct zone_node *nsec3_node; /*! NSEC3 node corresponding to this node.
+	         \warning This always points to first part of that bi-node!
+                 assert(!(node->nsec3_noed & NODE_FLAGS_SECOND)); */
 	};
 	knot_dname_t *nsec3_wildcard_name; /*! Name of NSEC3 node proving wildcard nonexistence. */
 	uint32_t children; /*!< Count of children nodes in DNS hierarchy. */
