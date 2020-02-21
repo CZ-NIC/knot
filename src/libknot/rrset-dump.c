@@ -1256,6 +1256,7 @@ static void dnskey_info(const uint8_t *rdata,
 	uint16_t      key_tag = 0;
 	const size_t  key_len = dnskey_len(rdata, rdata_len);
 	const uint8_t alg_id = rdata[3];
+	knot_dname_txt_storage_t private_algorithm;
 
 	const dnssec_binary_t rdata_bin = { .data = (uint8_t *)rdata,
 	                                    .size = rdata_len };
@@ -1264,11 +1265,28 @@ static void dnskey_info(const uint8_t *rdata,
 	const knot_lookup_t *alg = NULL;
 	alg = knot_lookup_by_id(knot_dnssec_alg_names, alg_id);
 
-	int ret = snprintf(out, out_len, "%s, %s (%zub), id = %u",
+	int ret = 0;
+	switch (alg->id) {
+	case KNOT_DNSSEC_ALG_PRIVATEDNS:
+		ret = snprintf(out, out_len, "%s, %s (%s), id = %u",
+	                   sep ? "KSK" : "ZSK",
+	                   alg ? alg->name : "UNKNOWN",
+	                   knot_dname_to_str(private_algorithm, rdata + 4, rdata_len - 4),
+					   key_tag );
+		break;
+	case KNOT_DNSSEC_ALG_PRIVATEOID:
+		ret = snprintf(out, out_len, "%s, %s, id = %u",
+	                   sep ? "KSK" : "ZSK",
+	                   alg ? alg->name : "UNKNOWN",
+	                   key_tag );
+		break;
+	default:
+		ret = snprintf(out, out_len, "%s, %s (%zub), id = %u",
 	                   sep ? "KSK" : "ZSK",
 	                   alg ? alg->name : "UNKNOWN",
 	                   key_len, key_tag );
-
+		break;
+	}
 	if (ret <= 0) {	// Truncated return is acceptable. Just check for errors.
 		out[0] = '\0';
 	}
