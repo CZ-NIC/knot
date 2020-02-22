@@ -1256,37 +1256,40 @@ static void dnskey_info(const uint8_t *rdata,
 	uint16_t      key_tag = 0;
 	const size_t  key_len = dnskey_len(rdata, rdata_len);
 	const uint8_t alg_id = rdata[3];
-	knot_dname_txt_storage_t private_algorithm;
+	char          alg_info[512] = "";
 
 	const dnssec_binary_t rdata_bin = { .data = (uint8_t *)rdata,
 	                                    .size = rdata_len };
 	dnssec_keytag(&rdata_bin, &key_tag);
 
-	const knot_lookup_t *alg = NULL;
-	alg = knot_lookup_by_id(knot_dnssec_alg_names, alg_id);
+	const knot_lookup_t *alg = knot_lookup_by_id(knot_dnssec_alg_names, alg_id);
 
-	int ret = 0;
-	switch (alg->id) {
-	case KNOT_DNSSEC_ALG_PRIVATEDNS:
-		ret = snprintf(out, out_len, "%s, %s (%s), id = %u",
-	                   sep ? "KSK" : "ZSK",
-	                   alg ? alg->name : "UNKNOWN",
-	                   knot_dname_to_str(private_algorithm, rdata + 4, rdata_len - 4),
-					   key_tag );
-		break;
+	switch (alg_id) {
+	case KNOT_DNSSEC_ALG_DELETE:
+	case KNOT_DNSSEC_ALG_INDIRECT:
 	case KNOT_DNSSEC_ALG_PRIVATEOID:
-		ret = snprintf(out, out_len, "%s, %s, id = %u",
-	                   sep ? "KSK" : "ZSK",
-	                   alg ? alg->name : "UNKNOWN",
-	                   key_tag );
+		break;
+	case KNOT_DNSSEC_ALG_PRIVATEDNS:
+		; knot_dname_txt_storage_t alg_str;
+		if (rdata_len < 5 || // Check if at least root dname.
+		    knot_dname_wire_check(rdata + 4, rdata + rdata_len, NULL) <= 0 ||
+		    knot_dname_to_str(alg_str, rdata + 4, sizeof(alg_str)) == NULL ||
+		    snprintf(alg_info, sizeof(alg_info), " (%s)", alg_str) <= 0) {
+			alg_info[0] = '\0';
+		}
 		break;
 	default:
-		ret = snprintf(out, out_len, "%s, %s (%zub), id = %u",
-	                   sep ? "KSK" : "ZSK",
-	                   alg ? alg->name : "UNKNOWN",
-	                   key_len, key_tag );
+		if (snprintf(alg_info, sizeof(alg_info), " (%zub)", key_len) <= 0) {
+			alg_info[0] = '\0';
+		}
 		break;
 	}
+
+	int ret = snprintf(out, out_len, "%s, %s%s, id = %u",
+	                   sep ? "KSK" : "ZSK",
+	                   alg ? alg->name : "UNKNOWN",
+	                   alg_info,
+	                   key_tag);
 	if (ret <= 0) {	// Truncated return is acceptable. Just check for errors.
 		out[0] = '\0';
 	}
