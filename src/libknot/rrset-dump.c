@@ -1245,6 +1245,35 @@ static size_t dnskey_len(const uint8_t *rdata,
 	}
 }
 
+static int knot_ber_to_oid(char* dst, size_t dst_len, uint8_t *src, size_t src_len)
+{
+	assert(dst);
+	assert(src);
+	assert(src_len);
+
+	static const uint8_t is_longer = 0b10000000;
+
+	size_t len = src[0];
+	if (len > dst_len && len >= src_len ) {
+		return KNOT_ENOMEM;
+	}
+
+	uint64_t node = 0UL;
+	for (int i = 1; i <= len; ++i) {
+		uint8_t longer_node = (src[i] & is_longer);
+		node += longer_node ^ src[i];
+		if (!longer_node) {
+			size_t ret = snprintf(dst, dst_len, "%"PRIu64".", node);
+			dst += ret;
+			dst_len -= ret;
+			node = 0UL;
+		}
+	}
+	*(dst - 1) = '\0';
+
+	return KNOT_EOK;
+}
+
 static void dnskey_info(const uint8_t *rdata,
                         const size_t  rdata_len,
                         char          *out,
@@ -1267,7 +1296,14 @@ static void dnskey_info(const uint8_t *rdata,
 	switch (alg_id) {
 	case KNOT_DNSSEC_ALG_DELETE:
 	case KNOT_DNSSEC_ALG_INDIRECT:
+		break;
 	case KNOT_DNSSEC_ALG_PRIVATEOID:
+		; char oid_str[510];
+		if (rdata_len < 5 || // Check if at least root dname.
+			knot_ber_to_oid(oid_str, sizeof(oid_str), rdata + 4, rdata_len - 4) ||
+			snprintf(alg_info, sizeof(alg_info), " (%s)", oid_str) <= 0) {
+			alg_info[0] = '\0';
+		}
 		break;
 	case KNOT_DNSSEC_ALG_PRIVATEDNS:
 		; knot_dname_txt_storage_t alg_str;
