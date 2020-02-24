@@ -57,6 +57,11 @@
 #define FILL_IN_INPUT(pdata) if (memcpy(&(pdata), p->in, in_len) == NULL) { p->ret = -1; return; }
 #define CHECK_RET_POSITIVE if (ret <= 0) { p->ret = -1; return; }
 
+#define SNPRINTF_CHECK(ret, max_len)			\
+	if ((ret) < 0 || (size_t)(ret) >= (max_len)) {	\
+		return KNOT_ESPACE;			\
+	}
+
 typedef struct {
 	const knot_dump_style_t *style;
 	const uint8_t *in;
@@ -1253,13 +1258,10 @@ static int ber_to_oid(char *dst,
 	assert(dst);
 	assert(src);
 
-	static const uint8_t longer_mask = 1 << 7;
+	static const uint8_t longer_mask = (1 << 7);
 
 	size_t len = src[0];
-	if (len > dst_len && len >= src_len ) {
-		return KNOT_ENOMEM;
-	}
-	if (len == 0) {
+	if (len == 0 || len >= src_len || dst_len == 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -1270,9 +1272,7 @@ static int ber_to_oid(char *dst,
 		node += (longer_node ^ src[i]);
 		if (!longer_node) {
 			int ret = snprintf(dst, dst_len, "%"PRIu64".", node);
-			if (ret <= 0) {
-				return KNOT_EINVAL;
-			}
+			SNPRINTF_CHECK(ret, dst_len);
 			dst += ret;
 			dst_len -= ret;
 			node = 0UL;
@@ -1949,11 +1949,6 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 
 	return ret;
 }
-
-#define SNPRINTF_CHECK(ret, max_len)			\
-	if ((ret) < 0 || (size_t)(ret) >= (max_len)) {	\
-		return KNOT_ESPACE;			\
-	}
 
 _public_
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
