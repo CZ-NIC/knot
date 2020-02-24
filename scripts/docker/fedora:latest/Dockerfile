@@ -6,6 +6,7 @@ RUN dnf -y install \
 	'autoconf' \
 	'automake' \
 	'clang' \
+	'diffutils' \
 	'libtool' \
 	'llvm' \
 	'lmdb-devel' \
