@@ -78,6 +78,7 @@ resp = master.dig("cataloged1.", "SOA")
 resp.check(rcode="REFUSED")
 resp = slave.dig("cataloged1.", "DNSKEY")
 resp.check(rcode="REFUSED")
+check_keys(slave, "cataloged1", 0)
 
 # Check inaccessibility of catalog zone
 slave.ctl("conf-begin")
