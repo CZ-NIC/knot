@@ -1245,13 +1245,15 @@ static size_t dnskey_len(const uint8_t *rdata,
 	}
 }
 
-static int knot_ber_to_oid(char* dst, size_t dst_len, const uint8_t *src, const size_t src_len)
+static int ber_to_oid(char *dst,
+                      size_t dst_len,
+                      const uint8_t *src,
+                      const size_t src_len)
 {
 	assert(dst);
 	assert(src);
-	assert(src_len);
 
-	static const uint8_t is_longer = 0b10000000;
+	static const uint8_t longer_mask = 1 << 7;
 
 	size_t len = src[0];
 	if (len > dst_len && len >= src_len ) {
@@ -1260,9 +1262,9 @@ static int knot_ber_to_oid(char* dst, size_t dst_len, const uint8_t *src, const 
 
 	uint64_t node = 0UL;
 	for (int i = 1; i <= len; ++i) {
-		uint8_t longer_node = (src[i] & is_longer);
+		uint8_t longer_node = (src[i] & longer_mask);
 		node <<= 7;
-		node += longer_node ^ src[i];
+		node += (longer_node ^ src[i]);
 		if (!longer_node) {
 			int ret = snprintf(dst, dst_len, "%"PRIu64".", node);
 			if (ret <= 0) {
@@ -1283,7 +1285,6 @@ static void dnskey_info(const uint8_t *rdata,
                         char          *out,
                         const size_t  out_len)
 {
-	// TODO: migrate key info to libdnssec
 	if (rdata_len < 5) {
 		return;
 	}
@@ -1305,8 +1306,8 @@ static void dnskey_info(const uint8_t *rdata,
 	case KNOT_DNSSEC_ALG_INDIRECT:
 		break;
 	case KNOT_DNSSEC_ALG_PRIVATEOID:
-		; char oid_str[510];
-		if (knot_ber_to_oid(oid_str, sizeof(oid_str), rdata + 4, rdata_len - 4) != KNOT_EOK ||
+		; char oid_str[sizeof(alg_info) - 3];
+		if (ber_to_oid(oid_str, sizeof(oid_str), rdata + 4, rdata_len - 4) != KNOT_EOK ||
 		    snprintf(alg_info, sizeof(alg_info), " (%s)", oid_str) <= 0) {
 			alg_info[0] = '\0';
 		}
