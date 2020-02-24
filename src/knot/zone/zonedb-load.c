@@ -16,10 +16,12 @@
 
 #include <assert.h>
 #include <urcu.h>
+#include <unistd.h>
 
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/events/replan.h"
+#include "knot/journal/journal_metadata.h"
 #include "knot/zone/catalog.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
@@ -212,6 +214,20 @@ static void mark_changed_zones(knot_zonedb_t *zonedb, trie_t *changed)
 	trie_it_free(it);
 }
 
+static void zone_purge(zone_t *zone, server_t *server)
+{
+	(void)zone_timers_sweep(&server->timerdb, (sweep_cb)knot_dname_cmp, zone->name);
+
+	char *zonefile = conf_zonefile(conf(), zone->name);
+	(void)unlink(zonefile);
+	free(zonefile);
+
+	(void)journal_scrape_with_md(zone_journal(zone));
+	if (knot_lmdb_open(zone->kaspdb) == KNOT_EOK) {
+		(void)kasp_db_delete_all(zone->kaspdb, zone->name);
+	}
+}
+
 /*!
  * \brief Create new zone database.
  *
@@ -351,6 +367,11 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 
 	while (!knot_zonedb_iter_finished(it)) {
 		zone_t *zone = knot_zonedb_iter_val(it);
+
+		if ((zone->flags & ZONE_IS_CATALOGED) &&
+		    knot_catalog_get(server->catalog_changes.rem, zone->name) != NULL) {
+			zone_purge(zone, server);
+		}
 
 		if (full) {
 			/* Check if reloaded (reused contents). */
