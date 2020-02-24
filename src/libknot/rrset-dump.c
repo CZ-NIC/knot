@@ -1259,6 +1259,9 @@ static int ber_to_oid(char *dst,
 	if (len > dst_len && len >= src_len ) {
 		return KNOT_ENOMEM;
 	}
+	if (len == 0) {
+		return KNOT_EINVAL;
+	}
 
 	uint64_t node = 0UL;
 	for (int i = 1; i <= len; ++i) {
