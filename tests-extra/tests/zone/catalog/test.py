@@ -26,12 +26,30 @@ for zf in glob.glob(t.data_dir + "/*.zone"):
 
 t.start()
 
-
 # Basic: master a slave configure cataloged zone.
 t.sleep(2)
-resp = master.dig("cataloged1.", "SOA", dnssec=True)
+resp = master.dig("cataloged1.", "SOA")
 resp.check(rcode="NOERROR")
 resp = slave.dig("cataloged1.", "SOA")
 resp.check(rcode="NOERROR")
+
+# Check adding cataloged zone.
+up = master.update(zone[1])
+up.add("bar.catalog1.", 3600, "PTR", "cataloged2.")
+up.send("NOERROR")
+t.sleep(2)
+resp = master.dig("cataloged2.", "NS")
+resp.check(rcode="NOERROR")
+resp = slave.dig("cataloged2.", "NS")
+resp.check(rcode="NOERROR")
+
+
+# Check inaccessibility of catalog zone
+slave.ctl("conf-begin")
+slave.ctl("conf-unset zone[catalog1.].acl")
+slave.ctl("conf-commit")
+t.sleep(1)
+resp = slave.dig("abc.catalog1.", "A")
+resp.check(rcode="REFUSED")
 
 t.end()

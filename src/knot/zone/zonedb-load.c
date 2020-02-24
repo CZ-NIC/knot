@@ -117,6 +117,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	}
 
 	zone->contents = old_zone->contents;
+	zone->flags = (old_zone->flags & (ZONE_IS_CATALOG | ZONE_IS_CATALOGED));
 
 	zone->timers = old_zone->timers;
 	timers_sanitize(conf, zone);
@@ -289,6 +290,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 			trie_it_next(tit);
 			continue;
 		}
+		zone->flags |= ZONE_IS_CATALOGED;
 		conf_activate_modules(conf, zone->name, &zone->query_modules,
 		                      &zone->query_plan);
 		knot_zonedb_insert(db_new, zone);

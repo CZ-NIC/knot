@@ -814,7 +814,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	val = conf_zone_get(conf, C_CATALOG_TPL, update->zone->name);
 	if (val.code == KNOT_EOK) {
-		update->zone->flags |= ZONE_IS_CATALOGED;
+		update->zone->flags |= ZONE_IS_CATALOG;
 		pthread_mutex_lock(&update->zone->catalog_changes->mutex);
 		if (update->flags & UPDATE_INCREMENTAL) {
 			ret = knot_catalog_from_zone(update->zone->catalog_changes->rem, update->change.remove, conf);
@@ -831,10 +831,10 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			log_zone_warning(update->zone->name, "catalog zone not fully populated (%s)", knot_strerror(ret));
 		}
 	} else {
-		if ((update->zone->flags & ZONE_IS_CATALOGED) && old_contents != NULL) {
+		if ((update->zone->flags & ZONE_IS_CATALOG) && old_contents != NULL) {
 			(void)knot_catalog_from_zone(update->zone->catalog_changes->rem, old_contents, conf);
 		}
-		update->zone->flags &= ~ZONE_IS_CATALOGED;
+		update->zone->flags &= ~ZONE_IS_CATALOG;
 	}
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {

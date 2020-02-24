@@ -217,11 +217,6 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 		}
 	}
 
-	if (query_type(query) == KNOTD_QUERY_TYPE_NORMAL &&
-	    zone != NULL && (zone->flags & ZONE_IS_CATALOGED)) {
-		zone = NULL;
-	}
-
 	return zone;
 }
 
@@ -426,6 +421,14 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 	qdata->extra->zone = answer_zone_find(query, server->zone_db);
 	if (qdata->extra->zone != NULL && qdata->extra->contents == NULL) {
 		qdata->extra->contents = qdata->extra->zone->contents;
+	}
+
+	if (query_type(query) == KNOTD_QUERY_TYPE_NORMAL &&
+	    qdata->extra->zone != NULL && (qdata->extra->zone->flags & ZONE_IS_CATALOG)) {
+		if (!process_query_acl_check(conf(), ACL_ACTION_TRANSFER, qdata)) {
+			qdata->extra->zone = NULL;
+			qdata->extra->contents = NULL;
+		}
 	}
 
 	return KNOT_EOK;
