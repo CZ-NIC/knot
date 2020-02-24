@@ -300,10 +300,11 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 	trie_it_free(tit);
 
 	/* Reuse unchanged cataloged zones. */
-	if (!full && db_old != NULL) {
+	if (/*!full && */db_old != NULL) {
 		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
 		while (!knot_zonedb_iter_finished(it)) {
 			zone_t *zone = knot_zonedb_iter_val(it);
+
 			if ((zone->flags & ZONE_IS_CATALOGED) &&
 			    knot_catalog_get(server->catalog_changes.rem, zone->name) == NULL) {
 				zone_t *newzone = create_zone(conf, zone->name, server, zone);
