@@ -306,7 +306,15 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 			zone_t *zone = knot_zonedb_iter_val(it);
 			if ((zone->flags & ZONE_IS_CATALOGED) &&
 			    knot_catalog_get(server->catalog_changes.rem, zone->name) == NULL) {
-				knot_zonedb_insert(db_new, zone);
+				zone_t *newzone = create_zone(conf, zone->name, server, zone);
+				if (newzone == NULL) {
+					log_zone_error(zone->name, "zone cannot be created");
+					continue;
+				}
+
+				conf_activate_modules(conf, newzone->name, &newzone->query_modules,
+						      &newzone->query_plan);
+				knot_zonedb_insert(db_new, newzone);
 			}
 			knot_zonedb_iter_next(it);
 		}

@@ -1270,6 +1270,12 @@ class Knot(Server):
         if have_catalog is not None:
             s.id_item("id", "catemplate")
             s.item_str("file", self.dir + "/master/%s.zone")
+            s.item_str("zonefile-load", "difference")
+
+            # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
+            if z.dnssec.enable:
+                s.item_str("dnssec-signing", "on")
+                s.item_str("dnssec-policy", z.name)
 
             acl = ""
             if z.masters:
