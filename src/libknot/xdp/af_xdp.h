@@ -21,6 +21,12 @@
 
 #include <sys/socket.h>
 
+enum {
+	KNOT_XDP_LISTEN_PORT_MASK = 0xFFFF0000, /*!< Listen port option mask. */
+	KNOT_XDP_LISTEN_PORT_ALL  = 1 << 16,    /*!< Listen on all ports. */
+	KNOT_XDP_LISTEN_PORT_DROP = 1 << 17,    /*!< Drop all incoming messages. */
+};
+
 /*! \brief A packet with src & dst MAC & IP addrs + UDP payload. */
 typedef struct {
 	struct sockaddr_storage ip_from;
@@ -52,13 +58,13 @@ struct knot_xsk_socket;
  * \param socket        Socket ctx; call with *socket == NULL.
  * \param ifname        Name of the net iface (e.g. eth0).
  * \param if_queue      Network card queue to be used (normally 1 socket per each queue).
- * \param listen_port   Port to listen on, or (1 << 16) to listen on all ports.
+ * \param listen_port   Port to listen on, or KNOT_XSK_LISTEN_PORT_ flag.
  * \param load_bpf      Insert BPF program into packet processing.
  *
  * \return KNOT_E*
  */
 int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue,
-                  int listen_port, knot_xsk_load_bpf_t load_bpf);
+                  uint32_t listen_port, knot_xsk_load_bpf_t load_bpf);
 
 /*! \brief De-init XDP socket. */
 void knot_xsk_deinit(struct knot_xsk_socket *socket);
