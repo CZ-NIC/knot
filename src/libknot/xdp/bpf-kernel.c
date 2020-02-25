@@ -46,16 +46,17 @@ struct ipv6_frag_hdr {
 	unsigned char whatever[7];
 } __attribute__((packed));
 
+/* NOTE: this implementation expects little-endian byte ordering! */
 SEC("xdp_redirect_udp")
 int xdp_redirect_udp_func(struct xdp_md *ctx)
 {
-	void *data = (void *)(long)ctx->data;
-	void *data_end = (void *)(long)ctx->data_end;
+	const void *data = (void *)(long)ctx->data;
+	const void *data_end = (void *)(long)ctx->data_end;
 
-	struct ethhdr *eth = data;
-	struct iphdr *ip4;
-	struct ipv6hdr *ip6;
-	struct udphdr *udp;
+	const struct ethhdr *eth = data;
+	const struct iphdr *ip4;
+	const struct ipv6hdr *ip6;
+	const struct udphdr *udp;
 
 	__u8 ip_proto;
 	__u8 fragmented = 0;
@@ -88,7 +89,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 			data += sizeof(*ip6);
 			if (ip_proto == IPPROTO_FRAGMENT) {
 				fragmented = 1;
-				struct ipv6_frag_hdr *frag = data;
+				const struct ipv6_frag_hdr *frag = data;
 				if ((void *)frag + sizeof(*frag) > data_end) {
 					return XDP_PASS;
 				}
@@ -117,10 +118,17 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		return XDP_ABORTED;
 	}
 
-	/* Treat destination (DNS) port only. */
+	/* Treat specified destination ports only. */
 	__u32 port_info = *qidconf;
-	if (!(port_info & (1 << 16)) && udp->dest != port_info) {
-		return XDP_PASS;
+	switch (port_info & 0xFFFF0000) {
+	case (1 << 17):
+		return XDP_DROP;
+	case (1 << 16):
+		break;
+	default:
+		if (udp->dest != port_info) {
+			return XDP_PASS;
+		}
 	}
 
 	/* Drop fragmented UDP datagrams. */
