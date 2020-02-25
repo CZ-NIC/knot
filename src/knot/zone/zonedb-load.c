@@ -284,9 +284,9 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 		knot_zonedb_insert(db_new, zone);
 	}
 
-	if (full) {
+	/*if (full) {
 		knot_catalog_clear(conf->catalog);
-	}
+	}*/
 
 	/* Add cataloged zones. */
 	trie_it_t *tit = trie_it_begin(server->catalog_changes.add);

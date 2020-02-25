@@ -176,3 +176,16 @@ void knot_catalog_change_free(knot_catalog_change_t *ch)
 	knot_catalog_free(ch->add);
 	knot_catalog_free(ch->rem);
 }
+
+int print_cb(knot_catalog_val_t *val, void *unused)
+{
+	UNUSED(unused);
+	printf("%s [%.*s]\n", val->zone, (int)val->conf_tpl_len, val->conf_tpl);
+	return 0;
+}
+
+void knot_catalog_print(knot_catalog_t *catalog, const char *intro)
+{
+	printf("%s:\n", intro);
+	(void)knot_catalog_foreach(catalog, print_cb, NULL);
+}

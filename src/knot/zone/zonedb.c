@@ -27,7 +27,8 @@
 static void discard_zone(zone_t *zone, bool abort_txn)
 {
 	// Don't flush if removed zone (no previous configuration available).
-	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name))) {
+	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name)) ||
+	    knot_catalog_get(conf()->catalog, zone->name) != NULL) {
 		uint32_t journal_serial, zone_serial = zone_contents_serial(zone->contents);
 		bool exists;
 

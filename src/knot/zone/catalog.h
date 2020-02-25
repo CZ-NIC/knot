@@ -61,3 +61,5 @@ void knot_catalog_free(knot_catalog_t *catalog);
 int knot_catalog_change_new(knot_catalog_change_t *ch);
 
 void knot_catalog_change_free(knot_catalog_change_t *ch);
+
+void knot_catalog_print(knot_catalog_t *catalog, const char *intro);
