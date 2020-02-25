@@ -48,8 +48,8 @@ uint64_t global_pkts_sent = 0;
 uint64_t global_pkts_recv = 0;
 uint64_t global_size_recv = 0;
 
-#define LOCAL_PORT_MIN 31000
-#define LOCAL_PORT_MAX 32000
+#define LOCAL_PORT_MIN  1024
+#define LOCAL_PORT_MAX 65535
 
 typedef struct {
 	char		dev[IFNAMSIZ];
