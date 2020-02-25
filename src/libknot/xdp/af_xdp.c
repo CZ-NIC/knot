@@ -587,7 +587,7 @@ void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t ms
 
 _public_
 int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue,
-                  int listen_port, knot_xsk_load_bpf_t load_bpf)
+                  uint32_t listen_port, knot_xsk_load_bpf_t load_bpf)
 {
 	if (socket == NULL || *socket != NULL) {
 		return KNOT_EINVAL;
