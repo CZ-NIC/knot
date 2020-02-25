@@ -423,11 +423,11 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 	assert(nsec3_nodes);
 	assert(update);
 
-	zone_tree_it_t it = { 0 };
-	int result = zone_tree_it_begin(zone->nodes, &it);
+	zone_tree_delsafe_it_t it = { 0 };
+	int result = zone_tree_delsafe_it_begin(zone->nodes, &it, false); // delsafe - removing nodes that contain only NSEC+RRSIG
 
-	while (!zone_tree_it_finished(&it)) {
-		zone_node_t *node = zone_tree_it_val(&it);
+	while (!zone_tree_delsafe_it_finished(&it)) {
+		zone_node_t *node = zone_tree_delsafe_it_val(&it);
 
 		/*!
 		 * Remove possible NSEC from the node. (Do not allow both NSEC
@@ -438,7 +438,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 			break;
 		}
 		if (node->flags & NODE_FLAGS_NONAUTH || node->flags & NODE_FLAGS_EMPTY || node->flags & NODE_FLAGS_DELETED) {
-			zone_tree_it_next(&it);
+			zone_tree_delsafe_it_next(&it);
 			continue;
 		}
 
@@ -455,10 +455,10 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
 			break;
 		}
 
-		zone_tree_it_next(&it);
+		zone_tree_delsafe_it_next(&it);
 	}
 
-	zone_tree_it_free(&it);
+	zone_tree_delsafe_it_free(&it);
 
 	return result;
 }
