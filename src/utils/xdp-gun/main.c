@@ -51,6 +51,8 @@ uint64_t global_size_recv = 0;
 #define LOCAL_PORT_MIN  1024
 #define LOCAL_PORT_MAX 65535
 
+#define LISTEN_PORT	KNOT_XDP_LISTEN_PORT_ALL
+
 typedef struct {
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
@@ -140,12 +142,12 @@ void *dns_xdp_gun_thread(void *_ctx)
 	uint64_t tot_sent = 0, tot_recv = 0, tot_size = 0;
 	uint64_t duration = 0;
 
-	int ret = knot_xsk_init(&xsk, ctx->dev, ctx->thread_id, (1 << 16), ctx->thread_id == 0);
+	int ret = knot_xsk_init(&xsk, ctx->dev, ctx->thread_id, LISTEN_PORT, ctx->thread_id == 0);
 	if (ret != KNOT_EOK) {
 		printf("failed to init XDP socket#%u: %s\n", ctx->thread_id, knot_strerror(ret));
 		return NULL;
 	}
-	
+
 	struct pollfd pfd = { knot_xsk_get_poll_fd(xsk), POLLIN, 0 };
 
 	while (!dns_xdp_trigger) {
@@ -159,7 +161,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 	timer_start(&timer);
 
 	while (duration < ctx->duration + 1000000) {
-		
+
 		// sending part
 		if (duration < ctx->duration) {
 			ret = alloc_pkts(pkts, ctx->at_once, xsk, ctx, tick, &payload_ptr);
@@ -199,7 +201,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 			if (!pfd.revents) {
 				break;
 			}
-			
+
 			uint32_t recvd = 0;
 			ret = knot_xsk_recvmmsg(xsk, pkts, ctx->at_once, &recvd);
 			if (ret != KNOT_EOK) {
@@ -247,7 +249,7 @@ static int dev2mac(const char *dev, uint8_t *mac)
 		return -errno;
 	}
 	strncpy(ifr.ifr_name, dev, IFNAMSIZ);
-	
+
 	int ret = ioctl(fd, SIOCGIFHWADDR, &ifr);
 	if (ret >= 0) {
 		memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
@@ -375,7 +377,7 @@ int main(int argc, char *argv[])
 		} else {
 			goto pusage;
 		}
-		
+
 		double argf = atof(argv[2]);
 		if (argf > 0) {
 			ctx.duration = argf * 1000000.0;
@@ -458,7 +460,7 @@ int main(int argc, char *argv[])
 	} else {
 		goto pusage;
 	}
-	
+
 	struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY };
 	int ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
 	if (ret) {
