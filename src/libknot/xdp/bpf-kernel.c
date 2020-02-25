@@ -117,10 +117,17 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		return XDP_ABORTED;
 	}
 
-	/* Treat destination (DNS) port only. */
+	/* Treat specified destination ports only. */
 	__u32 port_info = *qidconf;
-	if (!(port_info & (1 << 16)) && udp->dest != port_info) {
-		return XDP_PASS;
+	switch (port_info & 0xFFFF0000) {
+	case (1 << 17):
+		return XDP_DROP;
+	case (1 << 16):
+		break;
+	default:
+		if (udp->dest != port_info) {
+			return XDP_PASS;
+		}
 	}
 
 	/* Drop fragmented UDP datagrams. */
