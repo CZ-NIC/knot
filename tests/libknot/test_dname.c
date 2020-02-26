@@ -577,6 +577,34 @@ int main(int argc, char *argv[])
 
 	knot_dname_free(d, NULL);
 
+	/* DNAME EQUALITY CHECKS IGNORING CASE */
+
+	t = "aB.cd.ef";
+	d = knot_dname_from_str_alloc(t);
+	ok(knot_dname_caseq(d, d), "dname_caseq: equal case");
+
+	t = "aB.cD.ef";
+	d2 = knot_dname_from_str_alloc(t);
+	ok(knot_dname_caseq(d, d2), "dname_caseq: different case");
+	knot_dname_free(d2, NULL);
+
+	t = "aB.dc.ef";
+	d2 = knot_dname_from_str_alloc(t);
+	ok(!knot_dname_caseq(d, d2), "dname_caseq: different name");
+	knot_dname_free(d2, NULL);
+
+	t = "aB.cd";
+	d2 = knot_dname_from_str_alloc(t);
+	ok(!knot_dname_caseq(d, d2), "dname_caseq: different length");
+	knot_dname_free(d2, NULL);
+
+	t = "aB.cdx.ef";
+	d2 = knot_dname_from_str_alloc(t);
+	ok(!knot_dname_caseq(d, d2), "dname_caseq: different label");
+	knot_dname_free(d2, NULL);
+
+	knot_dname_free(d, NULL);
+
 	/* OTHER CHECKS */
 
 	test_dname_lf();

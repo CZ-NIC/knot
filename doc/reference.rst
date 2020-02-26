@@ -1666,6 +1666,24 @@ A :ref:`reference<policy_id>` to DNSSEC signing policy.
 .. NOTE::
    A configured policy called "default" won't be used unless explicitly referenced.
 
+.. _zone_dnssec-validate:
+
+dnssec-validate
+---------------
+
+If enabled, the zone contents are validated for being correctly signed
+(including NSEC/NSEC3 chain) with DNSSEC signatures, every time
+the zone is loaded or changed (including AXFR/IXFR).
+
+When the validation fails, the zone being loaded or update being applied
+is cancelled with an error, and either previous or none zone state
+will be published.
+
+.. NOTE::
+   Some :ref:`zone_dnssec-policy` options apply as well, such as
+   :ref:`policy_nsec`, :ref:`policy_nsec3-opt-out`,
+   :ref:`policy_single-type-signing`.
+
 .. _zone_serial-policy:
 
 serial-policy
