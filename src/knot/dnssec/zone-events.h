@@ -105,3 +105,13 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
  * \return KNOT_E*
  */
 int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_time_t *when_resalt);
+
+/*!
+ * \brief Validate zone DNSSEC based on its contents.
+ *
+ * \param update         Zone update with contents.
+ * \param incremental    Try to validate incrementally.
+ *
+ * \return KNOT_E*
+ */
+int knot_dnssec_validate_zone(zone_update_t *update, bool incremental);

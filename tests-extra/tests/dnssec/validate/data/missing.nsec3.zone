@@ -1,0 +1,64 @@
+; File written on Mon Mar  9 18:04:24 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.11-Ubuntu
+missing.nsec3.		3600	IN SOA	a.missing.nsec3. a.missing.nsec3. (
+					1000000001 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20200309160424 46092 missing.nsec3.
+					aLwhX9/KbyWkPf26nR1pAdM42lQsiwSyrhY9
+					BChw9GmRWZrW2sU3SFWs0mE18yNnLxUfXMTU
+					+4NhSl9lhQ9wxA== )
+			3600	NS	a.missing.nsec3.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20200309160424 46092 missing.nsec3.
+					XNAtRwK6Ug6hDQtxjGVoRa/evTX8kAeRH7sv
+					A2socJ1SZv2tt3/IxiGx/2WijYudAhNAeF2G
+					M8ls7UYy732eaA== )
+			3600	MX	10 a.missing.nsec3.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20200309160424 46092 missing.nsec3.
+					hTsET04mpazFjwZG3bdRvyiR0NKj2dmW36Mp
+					s5ID9FaiMoYP4l6lMmeFAkH26zh/I7T9l77q
+					PFK8tmsycujupg== )
+			3600	DNSKEY	257 3 13 (
+					iCGxIQb6wqtWP92/WK5ubcFgma4TAAbQeeZx
+					Gn2C1Z0faqivJ6E0SwIqOH+t9zj+m/7P7mWB
+					5p5lsQBl4Ey64w==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 46092
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20200309160424 46092 missing.nsec3.
+					buafGumHR118RscX/nnbYAcVi87uy8Do/S58
+					XfTTBVfqxfQW7OOKIUvFU89otBDLeFExBtAz
+					8P4fGLrPkZ+ocA== )
+			0	NSEC3PARAM 1 0 10 5C0F4106B88E7B8B
+			0	RRSIG	NSEC3PARAM 13 2 0 (
+					20601231235959 20200309160424 46092 missing.nsec3.
+					ULtTEutwT/xVnAogBfPNL0hqnDppZQPFl93a
+					MEN97jdLMmMM9dVVFaWSUnmk3IRp+kr0kCUi
+					teTPllO1fOVAvg== )
+DA9QDB397EPEIN0MSO35TNDJ62AJS154.missing.nsec3.	7200 IN	NSEC3 1 0 10 5C0F4106B88E7B8B (
+					8CA75N8SDLHPR4KK2TSPVM9SM6BQR235
+					A RRSIG )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20200309160424 46092 missing.nsec3.
+					4EYIA3Vg7zo2FBCS9bRnoQKfaslEiVG6SpO4
+					xXZFqvc/XVLWd0xtL0+zrD7RRLFLPnfDYj2t
+					EtNecWmpfbKP3w== )
+8CA75N8SDLHPR4KK2TSPVM9SM6BQR235.missing.nsec3.	7200 IN	NSEC3 1 0 10 5C0F4106B88E7B8B (
+					DA9QDB397EPEIN0MSO35TNDJ62AJS154
+					NS SOA MX RRSIG DNSKEY NSEC3PARAM )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20200309160424 46092 missing.nsec3.
+					qWhKll3p0iPMvJGznToHY3NOJy3nJUD9fZyx
+					us/krX6DyHa3I8Y7oGr+AJ6evnRL4pTuA/un
+					5QgL/SoiSL2smg== )
+a.missing.nsec3.	3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160424 46092 missing.nsec3.
+					WR1n1NHQ6DkZfozXHMew1XWHBQVEXQNymN+c
+					AKmN3ZTo8ZrthSDp25fD/Vcv55R8wYxFaZHK
+					uKtb/SEgDRUErw== )

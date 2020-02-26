@@ -147,3 +147,14 @@ int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 int knot_zone_fix_nsec_chain(zone_update_t *update,
                              const zone_keyset_t *zone_keys,
                              const kdnssec_ctx_t *ctx);
+
+/*!
+ * \brief Validate NSEC or NSEC3 chain in the zone.
+ *
+ * \param update         Zone update with current/previous contents.
+ * \param ctx            Signing context.
+ * \param incremental    Validate incremental update.
+ *
+ * \return KNOT_E*
+ */
+int knot_zone_check_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx, bool incremental);

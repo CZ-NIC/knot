@@ -169,6 +169,13 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree);
 zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx);
 
 /*!
+ * \brief Initialize local validating context.
+ * \param dnssec_ctx  DNSSEC context.
+ * \return New local validating context or NULL.
+ */
+zone_sign_ctx_t *zone_validation_ctx(const kdnssec_ctx_t *dnssec_ctx);
+
+/*!
  * \brief Free local signing context.
  *
  * \note This doesn't free the underlying keyset.
@@ -176,3 +183,16 @@ zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t 
  * \param ctx  Local context to be freed.
  */
 void zone_sign_ctx_free(zone_sign_ctx_t *ctx);
+
+/*!
+ * \brief Create key signing structure from DNSKEY zone record.
+ *
+ * \param key     Dnssec key to be allocated.
+ * \param owner   Zone name.
+ * \param rdata   DNSKEY rdata.
+ * \param rdlen   DNSKEY rdata length.
+ *
+ * \return KNOT_E*
+ */
+int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
+                          const uint8_t *rdata, size_t rdlen);

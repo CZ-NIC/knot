@@ -24,6 +24,8 @@
 
 int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key);
 
+bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type);
+
 /*!
  * \brief Prepare DNSKEYs, CDNSKEYs and CDSs to be added to the zone into rrsets.
  *

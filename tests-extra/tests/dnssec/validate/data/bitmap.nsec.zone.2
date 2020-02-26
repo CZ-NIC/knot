@@ -1,0 +1,66 @@
+; File written on Mon Mar  9 18:08:28 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.11-Ubuntu
+bitmap.nsec.		3600	IN SOA	a.bitmap.nsec. a.bitmap.nsec. (
+					1000000003 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20200309160828 3865 bitmap.nsec.
+					uRWMBdYp1Uij9EdBky412v8wNS9ad/DTzmHV
+					oxLqgABqMg7PG+MjIBJmgMn0C7k58IRFJ62W
+					AWqCNcpXu5lhrg== )
+			3600	NS	a.bitmap.nsec.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20200309160828 3865 bitmap.nsec.
+					Cnol3yeOyTcEO4ReQGbGbtCRbP5T42wdK1JN
+					CeF2hKJfmadwzR/xQ1Csx1fUe3fDfnTzaFKk
+					EuZPLooZMPzRHg== )
+			3600	MX	10 a.bitmap.nsec.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20200309160828 3865 bitmap.nsec.
+					D8dq0eQ5zC5040d2Rm55kATG79nD72E5+WVp
+					qycqxnYMdn/xFmStMn4OrEEL2NwIRXA+S7yI
+					W5ZuCClc1hwzxg== )
+			7200	NSEC	a.bitmap.nsec. NS SOA MX RRSIG NSEC DNSKEY
+			7200	RRSIG	NSEC 13 2 7200 (
+					20601231235959 20200309160828 3865 bitmap.nsec.
+					O0QlddM7Z4Yrg7n6TIIvYEHz4+6rYHPd3yMc
+					SF3WjjwSIMidv9+XLFaeLNjCyN/MN9sDu1ME
+					g7X6IECpWNxV+A== )
+			3600	DNSKEY	257 3 13 (
+					4DjMrnF4ZYRDGaaCvhKTFQQNiFr1VBDGHZIt
+					XPU7sTvcUcjZsmqYrgvd5DPzRGS3itKms7IM
+					bJ3Uk+SPoUrliA==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 3865
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20200309160828 3865 bitmap.nsec.
+					fw/v3757O1XMZxb6NFDepLkgylFOy23lBN+L
+					cxIfWtDQzednEdrPFTeTgwqybQCo3SCYczbQ
+					HyRAjK4J/TLSzQ== )
+add.bitmap.nsec.	3600	IN A	2.3.4.5
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160828 3865 bitmap.nsec.
+					8oDId5fzzVJ6Ntq04uob6l7fuNWtdTTU1PpU
+					QATKQy1fTzx8IxrfDhN51x6tgpCX0qrAULhY
+					00ElwEiD1MyK9w== )
+			7200	NSEC	bitmap.nsec. A AAAA RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20200309160828 3865 bitmap.nsec.
+					Omd2gIM8bVJ+VpOt/X4yvWJK8117AKRObVCE
+					8/jOTSnSmT8sS+SB+wtN0uIV2ZQZ9jcDc/tH
+					aHzkUtTQX2HyOQ== )
+a.bitmap.nsec.		3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160828 3865 bitmap.nsec.
+					cxDTnvxAUTUJSMSIbj++yhPpJpPrEUB2qGg3
+					S7FADo7Q7loGf1f0YoqneeiAVGVDuigob+fL
+					Y+gvBj+nppEcFA== )
+			7200	NSEC	add.bitmap.nsec. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20200309160828 3865 bitmap.nsec.
+					gG6+uql/c3PvKpnAiiOjDWvZsxMoLqMoOPCU
+					aWEiqeTY3mFs0y7Qp3r4aT31SdM9+ARasLeA
+					Kl12Nsuc5WL4dQ== )
