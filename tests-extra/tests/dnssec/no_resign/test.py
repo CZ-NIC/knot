@@ -42,7 +42,9 @@ master.dnssec(nsec3_zone).cds_publish = "rollover"
 master.dnssec(static_zone).cds_publish = "rollover"
 
 # install KASP db
-shutil.copytree(os.path.join(t.data_dir, "keys"), master.keydir)
+keydir = master.keydir
+shutil.rmtree(keydir)
+shutil.copytree(os.path.join(t.data_dir, "keys"), keydir)
 
 t.start()
 

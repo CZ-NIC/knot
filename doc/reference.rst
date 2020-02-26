@@ -1210,7 +1210,7 @@ in order to refresh RRSIGs in bigger batches on a frequently updated zone
 
 *Default:* 1 hour
 
-.. _policy_nsec:
+.. _policy_nsec3:
 
 nsec3
 -----
@@ -1474,6 +1474,7 @@ Definition of zones served by the server.
      adjust-threads: INT
      dnssec-signing: BOOL
      dnssec-policy: STR
+     dnssec-validation: BOOL
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
@@ -1730,6 +1731,35 @@ A :ref:`reference<policy_id>` to DNSSEC signing policy.
 
 .. NOTE::
    A configured policy called "default" won't be used unless explicitly referenced.
+
+.. _zone_dnssec-validation:
+
+dnssec-validation
+-----------------
+
+If enabled, the zone contents are validated for being correctly signed
+(including NSEC/NSEC3 chain) with DNSSEC signatures every time the zone
+is loaded or changed (including AXFR/IXFR).
+
+When the validation fails, the zone being loaded or update being applied
+is cancelled with an error, and either none or previous zone state is published.
+
+List of DNSSEC checks:
+
+- Every zone RRSet is correctly signed by at least one present DNSKEY.
+- DNSKEY RRSet is signed by KSK.
+- NSEC(3) RR exists for each name (unless opt-out) with correct bitmap.
+- Every NSEC(3) RR is linked to the lexicographically next one.
+
+The validation can be affected by :ref:`zone_dnssec-policy` configuration.
+Namely :ref:`policy_nsec3`, :ref:`policy_nsec3-opt-out`,
+:ref:`policy_single-type-signing`, and :ref:`policy_signing-threads`.
+
+.. NOTE::
+
+   Redundant or garbage NSEC3 records are ignored.
+
+   This mode is not compatible with :ref:`zone_dnssec-signing`.
 
 .. _zone_serial-policy:
 

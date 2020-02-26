@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,12 @@
 #include "knot/zone/contents.h"
 #include "knot/zone/zone.h"
 
+typedef struct {
+	knot_dname_storage_t next;
+	const knot_dname_t *node;
+	uint16_t rrtype;
+} dnssec_validation_hint_t;
+
 /*! \brief Structure for zone contents updating / querying. */
 typedef struct zone_update {
 	zone_t *zone;                /*!< Zone being updated. */
@@ -31,6 +37,7 @@ typedef struct zone_update {
 	changeset_t extra_ch;        /*!< Extra changeset to store just diff btwn zonefile and result. */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
+	dnssec_validation_hint_t validation_hint;
 } zone_update_t;
 
 typedef struct {
