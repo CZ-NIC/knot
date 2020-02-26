@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -323,4 +323,24 @@ done:
 knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx)
 {
 	return ctx->now + ctx->policy->rrsig_prerefresh;
+}
+
+int knot_dnssec_validate_zone(zone_update_t *update, bool incremental)
+{
+	kdnssec_ctx_t ctx = { 0 };
+	int ret = kdnssec_validation_ctx(conf(), &ctx, update->new_cont);
+	if (ret == KNOT_EOK) {
+		ret = knot_zone_check_nsec_chain(update, &ctx, incremental);
+	}
+	if (ret == KNOT_EOK) {
+		knot_time_t unused = 0;
+		assert(ctx.validation_mode);
+		if (incremental) {
+			ret = knot_zone_sign_update(update, NULL, &ctx, &unused);
+		} else {
+			ret = knot_zone_sign(update, NULL, &ctx, &unused);
+		}
+	}
+	kdnssec_ctx_deinit(&ctx);
+	return ret;
 }

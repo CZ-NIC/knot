@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,43 @@
 
 #include <assert.h>
 
+#include "contrib/base32hex.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/adjust.h"
+
+void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
+                            enum knot_rr_type nsec_type,
+                            const zone_node_t *node,
+                            bool exact)
+{
+	bool deleg = node->flags & NODE_FLAGS_DELEG;
+	bool apex = node->flags & NODE_FLAGS_APEX;
+	for (int i = 0; i < node->rrset_count; i++) {
+		knot_rrset_t rr = node_rrset_at(node, i);
+		if (deleg && (rr.type != KNOT_RRTYPE_NS && rr.type != KNOT_RRTYPE_DS &&
+		              rr.type != KNOT_RRTYPE_NSEC)) {
+			if (rr.type != KNOT_RRTYPE_RRSIG) {
+				continue;
+			}
+			if (!rrsig_covers_type(&rr, KNOT_RRTYPE_DS) &&
+			    !rrsig_covers_type(&rr, KNOT_RRTYPE_NSEC)) {
+				continue;
+			}
+		}
+		if (!exact && (rr.type == KNOT_RRTYPE_NSEC || rr.type == KNOT_RRTYPE_RRSIG)) {
+			continue;
+		}
+		// NSEC3PARAM in zone apex is maintained automatically
+		if (!exact && apex && rr.type == KNOT_RRTYPE_NSEC3PARAM && nsec_type != KNOT_RRTYPE_NSEC3) {
+			continue;
+		}
+
+		dnssec_nsec_bitmap_add(bitmap, rr.type);
+	}
+}
 
 /* - NSEC chain construction ------------------------------------------------ */
 
@@ -64,7 +96,7 @@ static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
 		return KNOT_ENOMEM;
 	}
 
-	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC, from);
+	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC, from, false);
 	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC);
 	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 
@@ -252,6 +284,166 @@ static int nsec_update_bitmaps(zone_tree_t *node_ptrs,
 	}
 	zone_tree_delsafe_it_free(&it);
 	return ret;
+}
+
+int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
+                             nsec_chain_iterate_data_t *data)
+{
+	if (node_no_nsec(b)) {
+		return NSEC_NODE_SKIP;
+	}
+	knot_rdataset_t *nsec = node_rdataset(a, data->nsec_type);
+	if (nsec == NULL || nsec->count != 1) {
+		data->update->validation_hint.node = a->owner;
+		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
+		return KNOT_DNSSEC_ENSEC_CHAIN;
+	}
+	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
+		const knot_dname_t *a_next = knot_nsec_next(nsec->rdata);
+		if (!knot_dname_is_case_equal(a_next, b->owner)) {
+			data->update->validation_hint.node = a->owner;
+			data->update->validation_hint.rrtype = data->nsec_type;
+			return KNOT_DNSSEC_ENSEC_CHAIN;
+		}
+	} else {
+		uint8_t next_len = knot_nsec3_next_len(nsec->rdata);
+		uint8_t bdecoded[next_len];
+		int len = knot_base32hex_decode(b->owner + 1, b->owner[0], bdecoded, next_len);
+		if (len != next_len ||
+		    memcmp(knot_nsec3_next(nsec->rdata), bdecoded, len) != 0) {
+			data->update->validation_hint.node = a->owner;
+			data->update->validation_hint.rrtype = data->nsec_type;
+			return KNOT_DNSSEC_ENSEC_CHAIN;
+		}
+	}
+	return KNOT_EOK;
+}
+
+static zone_node_t *nsec_prev(zone_node_t *node); // declaration
+
+static int nsec_check_prev_next(zone_node_t *node, void *ctx)
+{
+	if (node_no_nsec(node)) {
+		return KNOT_EOK;
+	}
+
+	nsec_chain_iterate_data_t *data = ctx;
+	int ret = nsec_check_connect_nodes(nsec_prev(node), node, data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	dnssec_validation_hint_t *hint = &data->update->validation_hint;
+	knot_rdataset_t *nsec = node_rdataset(node, data->nsec_type);
+	if (nsec == NULL || nsec->count != 1) {
+		hint->node = node->owner;
+		hint->rrtype = KNOT_RRTYPE_ANY;
+		return KNOT_DNSSEC_ENSEC_CHAIN;
+	}
+
+	const zone_node_t *nn;
+	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
+		if (knot_dname_store(hint->next, knot_nsec_next(nsec->rdata)) == 0) {
+			return KNOT_EINVAL;
+		}
+		knot_dname_to_lower(hint->next);
+		nn = zone_contents_find_node(data->update->new_cont, hint->next);
+	} else {
+		ret = knot_nsec3_hash_to_dname(hint->next, sizeof(hint->next),
+		                               knot_nsec3_next(nsec->rdata),
+		                               knot_nsec3_next_len(nsec->rdata),
+		                               data->update->new_cont->apex->owner);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		nn = zone_contents_find_nsec3_node(data->update->new_cont, hint->next);
+	}
+	if (nn == NULL) {
+		hint->node = hint->next;
+		hint->rrtype = KNOT_RRTYPE_ANY;
+		return KNOT_DNSSEC_ENSEC_CHAIN;
+	}
+	if (nsec_prev((zone_node_t *)nn) != node) {
+		hint->node = node->owner;
+		hint->rrtype = data->nsec_type;
+		return KNOT_DNSSEC_ENSEC_CHAIN;
+	}
+	return KNOT_EOK;
+}
+
+int nsec_check_new_connects(zone_tree_t *tree, nsec_chain_iterate_data_t *data)
+{
+	return zone_tree_apply(tree, nsec_check_prev_next, data);
+}
+
+extern bool nsec3_is_empty(zone_node_t *node, bool opt_out); // from nsec3-chain.c
+
+static int check_nsec_bitmap(zone_node_t *node, void *ctx)
+{
+	nsec_chain_iterate_data_t *data = ctx;
+	assert((bool)(data->nsec_type == KNOT_RRTYPE_NSEC3) == (bool)(data->nsec3_params != NULL));
+	const zone_node_t *nsec_node = node;
+	bool shall_no_nsec = node_no_nsec(node);
+	if (data->nsec3_params != NULL) {
+		nsec_node = node_nsec3_get(node);
+		shall_no_nsec = (node->flags & NODE_FLAGS_DELETED) ||
+		                (node->flags & NODE_FLAGS_NONAUTH) ||
+		                nsec3_is_empty(node, data->nsec3_params->flags & KNOT_NSEC3_FLAG_OPT_OUT);
+	}
+	knot_rdataset_t *nsec = node_rdataset(nsec_node, data->nsec_type);
+	if ((nsec == NULL || nsec->count != 1) && !shall_no_nsec) {
+		data->update->validation_hint.node = (nsec_node == NULL ? node->owner : nsec_node->owner);
+		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
+		return KNOT_DNSSEC_ENSEC_BITMAP;
+	}
+	if (shall_no_nsec && nsec != NULL && nsec->count > 0) {
+		data->update->validation_hint.node = nsec_node->owner;
+		data->update->validation_hint.rrtype = data->nsec_type;
+		return KNOT_DNSSEC_ENSEC_BITMAP;
+	}
+	if (shall_no_nsec) {
+		return KNOT_EOK;
+	}
+
+	dnssec_nsec_bitmap_t *rr_types = dnssec_nsec_bitmap_new();
+	if (rr_types == NULL) {
+		return KNOT_ENOMEM;
+	}
+	bitmap_add_node_rrsets(rr_types, data->nsec_type, node, true);
+
+	uint16_t node_wire_size = dnssec_nsec_bitmap_size(rr_types);
+	uint8_t *node_wire = malloc(node_wire_size);
+	if (node_wire == NULL) {
+		dnssec_nsec_bitmap_free(rr_types);
+		return KNOT_ENOMEM;
+	}
+	dnssec_nsec_bitmap_write(rr_types, node_wire);
+	dnssec_nsec_bitmap_free(rr_types);
+
+	const uint8_t *nsec_wire = NULL;
+	uint16_t nsec_wire_size = 0;
+	if (data->nsec3_params == NULL) {
+		nsec_wire = knot_nsec_bitmap(nsec->rdata);
+		nsec_wire_size = knot_nsec_bitmap_len(nsec->rdata);
+	} else {
+		nsec_wire = knot_nsec3_bitmap(nsec->rdata);
+		nsec_wire_size = knot_nsec3_bitmap_len(nsec->rdata);
+	}
+
+	if (node_wire_size != nsec_wire_size ||
+	    memcmp(node_wire, nsec_wire, node_wire_size) != 0) {
+		free(node_wire);
+		data->update->validation_hint.node = node->owner;
+		data->update->validation_hint.rrtype = data->nsec_type;
+		return KNOT_DNSSEC_ENSEC_BITMAP;
+	}
+	free(node_wire);
+	return KNOT_EOK;
+}
+
+int nsec_check_bitmaps(zone_tree_t *nsec_ptrs, nsec_chain_iterate_data_t *data)
+{
+	return zone_tree_apply(nsec_ptrs, check_nsec_bitmap, data);
 }
 
 static zone_node_t *nsec_prev(zone_node_t *node)
@@ -471,7 +663,7 @@ int knot_nsec_create_chain(zone_update_t *update, uint32_t ttl)
 	assert(update);
 	assert(update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, update };
+	nsec_chain_iterate_data_t data = { ttl, update, KNOT_RRTYPE_NSEC };
 
 	return knot_nsec_chain_iterate_create(update->new_cont->nodes,
 	                                      connect_nsec_nodes, &data);
@@ -483,7 +675,7 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 	assert(update->zone->contents->nodes);
 	assert(update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, update };
+	nsec_chain_iterate_data_t data = { ttl, update, KNOT_RRTYPE_NSEC };
 
 	int ret = nsec_update_bitmaps(update->a_ctx->node_ptrs, &data);
 	if (ret != KNOT_EOK) {
@@ -503,4 +695,41 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 
 	return knot_nsec_chain_iterate_fix(update->a_ctx->node_ptrs,
 					   connect_nsec_nodes, reconnect_nsec_nodes, &data);
+}
+
+int knot_nsec_check_chain(zone_update_t *update)
+{
+	if (!zone_tree_is_empty(update->new_cont->nsec3_nodes)) {
+		update->validation_hint.node = update->zone->name;
+		update->validation_hint.rrtype = KNOT_RRTYPE_NSEC3;
+		return KNOT_DNSSEC_ENSEC_BITMAP;
+	}
+
+	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC };
+
+	int ret = nsec_check_bitmaps(update->new_cont->nodes, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return knot_nsec_chain_iterate_create(update->new_cont->nodes,
+					      nsec_check_connect_nodes, &data);
+}
+
+int knot_nsec_check_chain_fix(zone_update_t *update)
+{
+	if (!zone_tree_is_empty(update->new_cont->nsec3_nodes)) {
+		update->validation_hint.node = update->zone->name;
+		update->validation_hint.rrtype = KNOT_RRTYPE_NSEC3;
+		return KNOT_DNSSEC_ENSEC_BITMAP;
+	}
+
+	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC };
+
+	int ret = nsec_check_bitmaps(update->a_ctx->node_ptrs, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return nsec_check_new_connects(update->a_ctx->node_ptrs, &data);
 }

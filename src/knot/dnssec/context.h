@@ -40,6 +40,7 @@ typedef struct {
 	bool rrsig_drop_existing;
 	bool keep_deleted_keys;
 	bool keytag_conflict;
+	bool validation_mode;
 
 	knot_rrset_t *offline_rrsig;
 } kdnssec_ctx_t;
@@ -55,6 +56,17 @@ typedef struct {
  */
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
                      knot_lmdb_db_t *kaspdb, const conf_mod_id_t *from_module);
+
+/*!
+ * \brief Initialize DNSSEC validating context.
+ *
+ * \param conf   Configuration.
+ * \param ctx    Signing context to be initialized.
+ * \param zone   Zone contents to be validated.
+ *
+ * \return KNOT_E*
+ */
+int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents_t *zone);
 
 /*!
  * \brief Save the changes in ctx (in kasp zone).

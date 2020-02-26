@@ -1,0 +1,54 @@
+; File written on Mon Mar  9 18:08:29 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.11-Ubuntu
+rrsig.nsec.		3600	IN SOA	a.rrsig.nsec. a.rrsig.nsec. (
+					1000000001 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20200309160829 26597 rrsig.nsec.
+					1YO5DShqSYDzVBSri6MMjFUlp6KaUAoapscf
+					QDlEZmNXvwstJljk2xkFSzMna1NpDIb0nE4n
+					hNhYhKKRavV+0A== )
+			3600	NS	a.rrsig.nsec.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20200309160829 26597 rrsig.nsec.
+					fPQfVI9RKSI0JNYQaowRaVJnpBRJ+/CaAQKS
+					0TN588eTdFU9aXtl8p+YLJXgb3gNpPsgXY1F
+					DCQ8UtbOj30xTQ== )
+			3600	MX	10 a.rrsig.nsec.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20200309160829 26597 rrsig.nsec.
+					4oYGDUwyTFwnkUobvCQ8VkD/FpMAh7N8D1i+
+					TcAM/qccxJ2HZXFgqmCGRvSD/6NXwBhVVCCn
+					vDRGqD9uxP7Uyg== )
+			7200	NSEC	a.rrsig.nsec. NS SOA MX RRSIG NSEC DNSKEY
+			7200	RRSIG	NSEC 13 2 7200 (
+					20601231235959 20200309160829 26597 rrsig.nsec.
+					PDwyQfwmimWXHkpjylHtk9y83IZVTsHZtE79
+					tsxgMqf7GA+7hlkYa/LdTqoC7MV/BMJHsvrs
+					S1rX4kLQ+cFLMg== )
+			3600	DNSKEY	257 3 13 (
+					Y5jZ6pXAw8rnJ8rESYUQo9uyatS9pLrr54m8
+					K/SKyxtPpPSZxuy5x1mnbJSxXg3w82tJXJXq
+					ak9n84DWVwTW8Q==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 26597
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20200309160829 26597 rrsig.nsec.
+					Aab4HAVoz09eORz0UmJmUC1Sb5Yx730UUwjR
+					NwXaGZefXST0Q41WTABDCSbQEV5CNSgIm+p6
+					nOpNiNmhQ5RF3A== )
+a.rrsig.nsec.		3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160829 26597 rrsig.nsec.
+					Kr+gZGQVMB3+XESkC1C8OB2vDMndceQH4Ljp
+					JdNpMGBBvz+aOFclWlBxxn1OnrJ7IC3enpOE
+					ZwSGwEQKvW3GbQ== )
+			7200	NSEC	rrsig.nsec. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20200309160829 26597 rrsig.nsec.
+					ZMWDcbvZm5gm2rcCNcQZ4W/xHw06S1rcsKlv
+					XXA82S9SvMJekoHCp4eyBf3yjGMCmSS7o0tZ
+					wLp9Iz2O2xrsWg== )

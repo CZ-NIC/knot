@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@
 typedef struct {
 	uint32_t ttl;          // TTL for NSEC(3) records
 	zone_update_t *update; // The zone update for NSECs
+	uint16_t nsec_type;    // NSEC or NSEC3
+	const dnssec_nsec3_params_t *nsec3_params;
 } nsec_chain_iterate_data_t;
 
 /*!
@@ -48,28 +50,44 @@ typedef int (*chain_iterate_create_cb)(zone_node_t *, zone_node_t *,
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
-inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
-                                          enum knot_rr_type nsec_type,
-                                          const zone_node_t *node)
-{
-	bool deleg = node->flags & NODE_FLAGS_DELEG;
-	bool apex = node->flags & NODE_FLAGS_APEX;
-	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rr = node_rrset_at(node, i);
-		if (deleg && (rr.type != KNOT_RRTYPE_NS && rr.type != KNOT_RRTYPE_DS)) {
-			continue;
-		}
-		if (rr.type == KNOT_RRTYPE_NSEC || rr.type == KNOT_RRTYPE_RRSIG) {
-			continue;
-		}
-		// NSEC3PARAM in zone apex is maintained automatically
-		if (apex && rr.type == KNOT_RRTYPE_NSEC3PARAM && nsec_type != KNOT_RRTYPE_NSEC3) {
-			continue;
-		}
+void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
+                            enum knot_rr_type nsec_type,
+                            const zone_node_t *node,
+                            bool exact);
 
-		dnssec_nsec_bitmap_add(bitmap, rr.type);
-	}
-}
+/*!
+ * \brief Check that the NSEC(3) record in node A points to B.
+ *
+ * \param a      Node A.
+ * \param b      Node B.
+ * \param data   Validation context.
+ *
+ * \retval NSEC_NODE_SKIP            Node B is not part of NSEC chain, call again with A and B->next.
+ * \retval KNOT_DNSSEC_ENSEC_CHAIN   The NSEC(3) chain is broken.
+ * \return KNOT_E*
+ */
+int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
+                             nsec_chain_iterate_data_t *data);
+
+/*!
+ * \brief Check NSEC connections of updated nodes.
+ *
+ * \param tree   Trie with updated nodes.
+ * \param data   Validation context.
+ *
+ * \return KNOT_DNSSEC_ENSEC_CHAIN, KNOT_E*
+ */
+int nsec_check_new_connects(zone_tree_t *tree, nsec_chain_iterate_data_t *data);
+
+/*!
+ * \brief Check NSEC(3) bitmaps for updated nodes.
+ *
+ * \param nsec_ptrs   Trie with nodes to be checked.
+ * \param data        Validation context.
+ *
+ * \return KNOT_DNSSEC_ENSEC_BITMAP, KNOT_E*
+ */
+int nsec_check_bitmaps(zone_tree_t *nsec_ptrs, nsec_chain_iterate_data_t *data);
 
 /*!
  * \brief Call a function for each piece of the chain formed by sorted nodes.
@@ -144,3 +162,15 @@ int knot_nsec_create_chain(zone_update_t *update, uint32_t ttl);
  * \return KNOT_E*
  */
 int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl);
+
+/*!
+ * \brief Validate NSEC chain in new_cont as whole.
+ *
+ * \note new_cont must have been adjusted already!
+ */
+int knot_nsec_check_chain(zone_update_t *update);
+
+/*!
+ * \brief Validate NSEC chain in new_cont incrementally.
+ */
+int knot_nsec_check_chain_fix(zone_update_t *update);

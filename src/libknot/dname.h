@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -267,6 +267,18 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2);
  */
 _pure_
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2);
+
+/*!
+ * \brief Compares two domain names (case insensitive).
+ *
+ * \param d1  First domain name.
+ * \param d2  Second domain name.
+ *
+ * \retval true if the domain names are equal
+ * \retval false if the domain names are NOT equal
+ */
+_pure_
+bool knot_dname_is_case_equal(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
  * \brief Count length of the N first labels.
