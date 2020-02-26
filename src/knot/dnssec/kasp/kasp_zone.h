@@ -17,6 +17,7 @@
 #pragma once
 
 #include "knot/dnssec/kasp/kasp_db.h"
+#include "knot/zone/contents.h"
 
 typedef struct {
 	knot_dname_t *dname;
@@ -44,3 +45,9 @@ void kasp_zone_clear(knot_kasp_zone_t *zone);
 void kasp_zone_free(knot_kasp_zone_t **zone);
 
 void free_key_params(key_params_t *parm);
+
+int kasp_zone_from_contents(knot_kasp_zone_t *zone,
+                            const zone_contents_t *contents,
+                            bool policy_single_type_signing,
+                            bool policy_nsec3,
+                            bool *keytag_conflict);

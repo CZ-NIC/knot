@@ -1,0 +1,78 @@
+; File written on Mon Mar  9 18:08:29 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.11-Ubuntu
+chain.nsec3.		3600	IN SOA	a.chain.nsec3. a.chain.nsec3. (
+					1000000003 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					kS7zWyOr40o70ao0Uf8SzDpRT3fcd+9cmjpu
+					3wq8uQ2InDVOC1BinhvwK14hl9Hb/2Plewm4
+					VDwdFvcv8bEZkw== )
+			3600	NS	a.chain.nsec3.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					V9QSELC0dsaLI0U1dh25HNcMaio0FoEL/wBT
+					zZBiNPrV4OzVHb/AqJkRVIp50cbUnFLtQ5sH
+					+3JC1DGn//HG6Q== )
+			3600	MX	10 a.chain.nsec3.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					Fz/XqHjAu8sydG4eKgYAWB/TKl2f8EhP0tpY
+					eRTy654kfOLRtIgBPmSatlkT/jMx7BHGSAcW
+					d0fQWloVGdox+w== )
+			3600	DNSKEY	257 3 13 (
+					dvHoyToCsY1t1sBikq/G5d/J6pecrez/jd1k
+					GlFJsQ/M2s6J3PRxEUeIV7TiUIrUotH33BO2
+					n9AboQJXIZs1XQ==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 55418
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					Aybko1huXSqvbELOGUfDvvaE5j0ZFvOstlD9
+					eo0ZE4qzr3kJIqgxJHhmYOG7caDOSNOMYVGy
+					K1BgHnQ3h2gHtA== )
+			0	NSEC3PARAM 1 0 10 5A52A4320E15FE17
+			0	RRSIG	NSEC3PARAM 13 2 0 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					tKxQdZ2IjdHtxSjTelbwVOZDXPSk9Nqcb58e
+					vo5eGUX2hsgJ8YFGiJfwep5jwVrn8Z8s/lYL
+					vbdnLZZuTXgTmQ== )
+TNBP27F6VMNLEHG6P3UR6A7M5G1K37DD.chain.nsec3. 7200 IN NSEC3 1 0 10 5A52A4320E15FE17 (
+					TAAC49KHTL3LL46IO2UE5O7P9M43DJVU
+					A RRSIG )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					7b3seQB8+c/Vur5USh0yt/itZXpVdvPix/3r
+					UVa2Ny+65+amaX9ByOJg43x+utFqo0OKlGRI
+					xr5KR1TG4uxQNA== )
+LN4FSBCLPU0JAFSTKR5IT6HEC725VNCM.chain.nsec3. 7200 IN NSEC3 1 0 10 5A52A4320E15FE17 (
+					TAAC49KHTL3LL46IO2UE5O7P9M43DJVU
+					A RRSIG )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					xbd1IGBhhJxaHrMacyCKynz+Nzx5wO7pdvGC
+					tlIP+gKC/YNX2Hm/gBGtHyfdYFRZrptSqh6i
+					5BWhmjASedPfkA== )
+a.chain.nsec3.		3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					5dvhzNrX7fznIlEuQPGLSNoDhrfrNJnGUW3j
+					vMgpBMB/v6aAEEOJWAMjZtrmhfqMBC8b/I6N
+					Rm7Fhj94IkA9wQ== )
+TAAC49KHTL3LL46IO2UE5O7P9M43DJVU.chain.nsec3. 7200 IN NSEC3 1 0 10 5A52A4320E15FE17 (
+					TNBP27F6VMNLEHG6P3UR6A7M5G1K37DD
+					NS SOA MX RRSIG DNSKEY NSEC3PARAM )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					MW/ZPszXOhTlsydLTD1sDpcL4skEpOyaCl1x
+					0ejErv6tn0QWXlHO9Xf2z2oRZKRNW8ybte2G
+					BD5/gMf4osdBpg== )
+add.chain.nsec3.	3600	IN A	2.3.4.5
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160829 55418 chain.nsec3.
+					wEC2DXwILRzfRUe8dIrA0ad5CiD6Dz4pxS4a
+					ycbEotaKoXLok0YQWeacIvukhZk/dX5w5c64
+					PBZrPAfkCJ9hMA== )

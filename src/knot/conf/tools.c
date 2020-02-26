@@ -615,6 +615,15 @@ int check_zone(
 		CONF_LOG(LOG_NOTICE, "option 'disable-any' is deprecated and has no effect");
 	}
 
+	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                       C_DNSSEC_SIGNING, yp_dname(args->id));
+	conf_val_t validation = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                          C_DNSSEC_VALIDATION, yp_dname(args->id));
+	if (conf_bool(&signing) == true && conf_bool(&validation) == true) {
+		args->err_str = "'dnssec-validation' is not compatible with 'dnssec-signing'";
+		return KNOT_EINVAL;
+	}
+
 	return KNOT_EOK;
 }
 

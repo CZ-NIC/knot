@@ -52,7 +52,9 @@ knot.dnssec(zone).rrsig_prerefresh = 1
 knot.zonefile_sync = "0"
 
 # install KASP db (one always enabled, one for testing)
-shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
+keydir = knot.keydir
+shutil.rmtree(keydir)
+shutil.copytree(os.path.join(t.data_dir, "keys"), keydir)
 
 # needed for keymgr
 knot.gen_confile()
