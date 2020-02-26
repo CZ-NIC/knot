@@ -826,7 +826,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		}
 		pthread_mutex_unlock(&update->zone->catalog_changes->mutex);
 		if (ret == KNOT_EOK) {
-			kill(getpid(), SIGHUP);
+			kill(getpid(), SIGUSR1);
 		} else {
 			log_zone_warning(update->zone->name, "catalog zone not fully populated (%s)", knot_strerror(ret));
 		}
