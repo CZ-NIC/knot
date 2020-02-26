@@ -22,6 +22,11 @@
 #include "knot/zone/contents.h"
 #include "knot/zone/zone.h"
 
+typedef struct {
+	const knot_dname_t *node;
+	uint16_t rrtype;
+} dnssec_validation_hint_t;
+
 /*! \brief Structure for zone contents updating / querying. */
 typedef struct zone_update {
 	zone_t *zone;                /*!< Zone being updated. */
@@ -31,6 +36,7 @@ typedef struct zone_update {
 	changeset_t extra_ch;        /*!< Extra changeset to store just diff btwn zonefile and result. */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
+	dnssec_validation_hint_t validation_hint;
 } zone_update_t;
 
 typedef struct {

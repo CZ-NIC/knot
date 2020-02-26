@@ -42,6 +42,7 @@
 #define C_DNSKEY_TTL		"\x0A""dnskey-ttl"
 #define C_DNSSEC_POLICY		"\x0D""dnssec-policy"
 #define C_DNSSEC_SIGNING	"\x0E""dnssec-signing"
+#define C_DNSSEC_VALIDATE       "\x0F""dnssec-validate"
 #define C_DOMAIN		"\x06""domain"
 #define C_DS_PUSH		"\x07""ds-push"
 #define C_ECS			"\x12""edns-client-subnet"

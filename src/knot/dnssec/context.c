@@ -231,3 +231,38 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 
 	memset(ctx, 0, sizeof(*ctx));
 }
+
+int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents_t *zone)
+{
+	if (ctx == NULL || zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	memset(ctx, 0, sizeof(*ctx));
+
+	ctx->zone = calloc(1, sizeof(*ctx->zone));
+	if (ctx->zone == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	ctx->policy = calloc(1, sizeof(*ctx->policy));
+	if (ctx->policy == NULL) {
+		free(ctx->zone);
+		return KNOT_ENOMEM;
+	}
+
+	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->apex->owner);
+	conf_id_fix_default(&policy_id);
+	policy_load(ctx->policy, &policy_id);
+
+	int ret = kasp_zone_from_contents(ctx->zone, zone, ctx->policy->single_type_signing, ctx->policy->nsec3_enabled, &ctx->keytag_conflict);
+	if (ret != KNOT_EOK) {
+		memset(ctx->zone, 0, sizeof(*ctx->zone));
+		kdnssec_ctx_deinit(ctx);
+		return ret;
+	}
+
+	ctx->now = knot_time();
+	ctx->validation_mode = true;
+	return KNOT_EOK;
+}

@@ -343,7 +343,6 @@ int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 	return ret;
 }
 
-
 int knot_zone_fix_nsec_chain(zone_update_t *update,
                              const zone_keyset_t *zone_keys,
                              const kdnssec_ctx_t *ctx)
@@ -385,4 +384,27 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 		ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, update);
 	}
 	return ret;
+}
+
+int knot_zone_check_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx, bool incremental)
+{
+	int ret = KNOT_EOK;
+	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
+
+	if (incremental) {
+		ret = ctx->policy->nsec3_enabled
+		    ? knot_nsec3_check_chain_fix(update, &params)
+		    : knot_nsec_check_chain_fix(update);
+	}
+	if (ret == KNOT_ENORECORD) {
+		log_zone_info(update->zone->name, "DNSSEC, re-validating whole NSEC%s chain",
+		              (ctx->policy->nsec3_enabled ? "3" : ""));
+		incremental = false;
+	}
+
+	if (incremental) {
+		return ret;
+	}
+
+	return ctx->policy->nsec3_enabled ? knot_nsec3_check_chain(update, &params) : knot_nsec_check_chain(update);
 }

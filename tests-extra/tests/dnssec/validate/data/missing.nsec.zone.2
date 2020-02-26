@@ -1,0 +1,60 @@
+; File written on Mon Mar  9 18:04:24 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.11-Ubuntu
+missing.nsec.		3600	IN SOA	a.missing.nsec. a.missing.nsec. (
+					1000000003 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20200309160424 62132 missing.nsec.
+					aK8O5QqQ1cOBMS/4Mad0L2j3mrYBwYpx7U+h
+					VvYrXqxx0mK/hWADGOopux+Xpy8XHhv7LrTI
+					qO9lfSsAv097Ag== )
+			3600	NS	a.missing.nsec.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20200309160424 62132 missing.nsec.
+					ghRLWlcfAsmKJMjm7iRW96V8e9lyUvK2QtVh
+					+53A6YvFHwU3HpI0GbBScpUbPX8LvkDXfcR6
+					34VN4hFNgg5vCw== )
+			3600	MX	10 a.missing.nsec.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20200309160424 62132 missing.nsec.
+					Hi9PiSzKIRHqvc/nxvlkzmcO4Tbp51qrnKPE
+					7ijjie+cxVtUHV8o0UMUjW0fJmjbuBMtpbbe
+					DzURFuJYdJtSRg== )
+			7200	NSEC	a.missing.nsec. NS SOA MX RRSIG NSEC DNSKEY
+			7200	RRSIG	NSEC 13 2 7200 (
+					20601231235959 20200309160424 62132 missing.nsec.
+					hVQX+uGih6B+12RGtQMxWgCFEBZTj57t4SS8
+					QGjQAE83614uIJ6DulEiPCv1RiraJ29c7EDU
+					2g9X05qizzDIPA== )
+			3600	DNSKEY	257 3 13 (
+					jvZMzv/FBNPmEw1KesVIkS1Y+/TNkGGzM2s0
+					6o+9nB7XEA7DWbiRoL/Maq0UDXPK/bButCZD
+					BNoEDlKl5EIU2g==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 62132
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20200309160424 62132 missing.nsec.
+					kB70Iv/GmLH+CgqUo5FfuhhLGO7LWR9obPFk
+					sTR85tWceUyds+Kr8Qxu57aLQr8PyM0HEhWf
+					eJ1UYt9cY+W5bw== )
+add.missing.nsec.	3600	IN A	2.3.4.5
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160424 62132 missing.nsec.
+					yz0HxsjN8ZV6zsRm+bblSibmr2dp39r8VOLf
+					uq7DC5Zp4m5TPo+QSlMaoXf1Ws3P2Te1Zynl
+					atCiGaXLJ1E7gQ== )
+a.missing.nsec.		3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160424 62132 missing.nsec.
+					AiLKhMkGEViDqfeBwVuOv8puYtsSj05UvoVt
+					ThvyEBne2/6Z9nzBiHoBgUv++UmeDgDCtEsr
+					GZo78HzfyUBRUQ== )
+			7200	NSEC	add.missing.nsec. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20200309160424 62132 missing.nsec.
+					am8BqVdIWjamQdlrMeWLhgbjF+rhm0ma9X9O
+					WxeUd2JXNVmIKHKfxP2vd3s9zDhZr0G7pFd9
+					ZNxOfyGdL3+gIg== )

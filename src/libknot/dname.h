@@ -269,6 +269,18 @@ _pure_
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
+ * \brief Compares two domain names (case insensitive).
+ *
+ * \param d1  First domain name.
+ * \param d2  Second domain name.
+ *
+ * \retval true if the domain names are equal
+ * \retval false if the domain names are not equal
+ */
+_pure_
+bool knot_dname_caseq(const knot_dname_t *d1, const knot_dname_t *d2);
+
+/*!
  * \brief Count length of the N first labels.
  *
  * \param name     Domain name.
