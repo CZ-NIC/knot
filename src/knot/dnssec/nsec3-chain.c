@@ -34,6 +34,19 @@ static bool nsec3_opt_out(const zone_node_t *node)
 }
 
 /*!
+ * \brief Checks if NSEC3 should be generated for this node.
+ *
+ * \retval true if the node has no children and contains no RRSets or only
+ *         RRSIGs and NSECs.
+ * \retval false otherwise.
+ */
+bool nsec3_is_empty(zone_node_t *node, bool opt_out)
+{
+	return ((node->children == 0 && knot_nsec_empty_nsec_and_rrsigs_in_node(node)) ||
+		(opt_out && nsec3_opt_out(node)));
+}
+
+/*!
  * \brief Check whether at least one RR type in node should be signed,
  *        used when signing with NSEC3.
  *
@@ -253,7 +266,7 @@ static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
 		return NULL;
 	}
 
-	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC3, node);
+	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC3, node, false);
 	if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 	}
@@ -818,10 +831,58 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
-	nsec_chain_iterate_data_t data = { ttl, update };
+	nsec_chain_iterate_data_t data = { ttl, update, KNOT_RRTYPE_NSEC3 };
 
 	ret = knot_nsec_chain_iterate_fix(update->a_ctx->nsec3_ptrs,
 	                                  connect_nsec3_nodes2, reconnect_nsec3_nodes2, &data);
 
 	return ret;
+}
+
+// new_cont must have been adjusted already!
+int knot_nsec3_check_chain(zone_update_t *update, const dnssec_nsec3_params_t *params)
+{
+	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC3, params };
+
+	mark_empty_ctx_t mctx = { (params->flags & KNOT_NSEC3_FLAG_OPT_OUT), false, NULL };
+	int ret = zone_tree_apply(update->new_cont->nodes, nsec3_mark_empty, &mctx);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = nsec_check_bitmaps(update->new_cont->nodes, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = zone_tree_apply(update->new_cont->nodes, nsec3_reset, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return knot_nsec_chain_iterate_create(update->new_cont->nsec3_nodes,
+					      nsec_check_connect_nodes, &data);
+}
+
+int knot_nsec3_check_chain_fix(zone_update_t *update, const dnssec_nsec3_params_t *params)
+{
+	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC3, params };
+
+	mark_empty_ctx_t mctx = { (params->flags & KNOT_NSEC3_FLAG_OPT_OUT), true, update->new_cont };
+	int ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_mark_empty, &mctx);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = nsec_check_bitmaps(update->a_ctx->node_ptrs, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = zone_tree_apply(update->new_cont->nodes, nsec3_reset, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return nsec_check_new_connects(update->a_ctx->nsec3_ptrs, &data);
 }
