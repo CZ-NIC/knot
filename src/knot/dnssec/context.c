@@ -263,5 +263,6 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 	}
 
 	ctx->now = knot_time();
+	ctx->validation_mode = true;
 	return KNOT_EOK;
 }

@@ -295,6 +295,49 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	return result;
 }
 
+static bool key_used(bool ksk, bool zsk, uint16_t type)
+{
+	switch (type) {
+	case KNOT_RRTYPE_DNSKEY:
+	case KNOT_RRTYPE_CDNSKEY:
+	case KNOT_RRTYPE_CDS:
+		return ksk;
+	default:
+		return zsk;
+	}
+}
+
+/*!
+ * \brief Check that at least one correct signature exists to at least one DNSKEY.
+ *
+ * \param covered        RRSet bein validated.
+ * \param rrsigs         RRSIG with signatures.
+ * \param sign_ctx       Signing context (with keys == NULL)
+ * \param skip_crypto    Crypto operations might be skipped as they had been successful earlier.
+ *
+ * \return KNOT_E*
+ */
+static int validate_rrsigs(const knot_rrset_t *covered,
+                           const knot_rrset_t *rrsigs,
+                           zone_sign_ctx_t *sign_ctx,
+                           bool skip_crypto)
+{
+	for (size_t i = 0; i < sign_ctx->count; i++) {
+		const knot_kasp_key_t *key = &sign_ctx->dnssec_ctx->zone->keys[i];
+		if (!key_used(key->is_ksk, key->is_zsk, covered->type)) {
+			continue;
+		}
+
+		uint16_t valid_at;
+		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
+		                           sign_ctx->dnssec_ctx, skip_crypto, &valid_at)) {
+			return KNOT_EOK;
+		}
+	}
+	// TODO log ?
+	return KNOT_DNSSEC_ENOSIG;
+}
+
 /*!
  * \brief Add all RRSIGs into the changeset for removal.
  *
@@ -436,11 +479,15 @@ static int sign_node_rrsets(const zone_node_t *node,
 	for (int i = 0; result == KNOT_EOK && i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
 		if (!knot_zone_sign_rr_should_be_signed(node, &rrset)) {
-			result = remove_rrset_rrsigs(rrset.owner, rrset.type, &rrsigs, changeset);
+			if (!sign_ctx->dnssec_ctx->validation_mode) {
+				result = remove_rrset_rrsigs(rrset.owner, rrset.type, &rrsigs, changeset);
+			}
 			continue;
 		}
 
-		if (sign_ctx->dnssec_ctx->rrsig_drop_existing) {
+		if (sign_ctx->dnssec_ctx->validation_mode) {
+			result = validate_rrsigs(&rrset, &rrsigs, sign_ctx, skip_crypto);
+		} else if (sign_ctx->dnssec_ctx->rrsig_drop_existing) {
 			result = force_resign_rrset(&rrset, &rrsigs,
 			                            sign_ctx, changeset);
 		} else {
@@ -531,9 +578,9 @@ static int zone_tree_sign(zone_tree_t *tree,
                           zone_update_t *update,
                           knot_time_t *expires_at)
 {
-	assert(zone_keys);
+	assert(zone_keys || dnssec_ctx->validation_mode);
 	assert(dnssec_ctx);
-	assert(update);
+	assert(update || dnssec_ctx->validation_mode);
 
 	int ret = KNOT_EOK;
 	node_sign_args_t args[num_threads];
@@ -543,12 +590,14 @@ static int zone_tree_sign(zone_tree_t *tree,
 	// init context structures
 	for (size_t i = 0; i < num_threads; i++) {
 		args[i].tree = tree;
-		args[i].sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
+		args[i].sign_ctx = dnssec_ctx->validation_mode
+		                 ? zone_validation_ctx(dnssec_ctx)
+		                 : zone_sign_ctx(zone_keys, dnssec_ctx);
 		if (args[i].sign_ctx == NULL) {
 			ret = KNOT_ENOMEM;
 			break;
 		}
-		ret = changeset_init(&args[i].changeset, update->zone->name);
+		ret = changeset_init(&args[i].changeset, dnssec_ctx->zone->dname);
 		if (ret != KNOT_EOK) {
 			break;
 		}
@@ -591,11 +640,12 @@ static int zone_tree_sign(zone_tree_t *tree,
 			ret = knot_map_errno_code(args[i].thread_init_errcode);
 		} else {
 			ret = args[i].errcode;
-			if (ret == KNOT_EOK) {
+			if (ret == KNOT_EOK && !dnssec_ctx->validation_mode) {
 				ret = zone_update_apply_changeset(update, &args[i].changeset); // _fix not needed
 				*expires_at = knot_time_min(*expires_at, args[i].expires_at);
 			}
 		}
+		assert(!dnssec_ctx->validation_mode || changeset_empty(&args[i].changeset));
 		changeset_clear(&args[i].changeset);
 		zone_sign_ctx_free(args[i].sign_ctx);
 	}

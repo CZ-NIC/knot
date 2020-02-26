@@ -543,6 +543,29 @@ zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t 
 	return ctx;
 }
 
+zone_sign_ctx_t *zone_validation_ctx(const kdnssec_ctx_t *dnssec_ctx)
+{
+	size_t count = dnssec_ctx->zone->num_keys;
+	zone_sign_ctx_t *ctx = calloc(1, sizeof(*ctx) + count * sizeof(*ctx->sign_ctxs));
+	if (ctx == NULL) {
+		return NULL;
+	}
+
+	ctx->sign_ctxs = (dnssec_sign_ctx_t **)(ctx + 1);
+	ctx->count = count;
+	ctx->keys = NULL;
+	ctx->dnssec_ctx = dnssec_ctx;
+	for (size_t i = 0; i < ctx->count; i++) {
+		int ret = dnssec_sign_new(&ctx->sign_ctxs[i], dnssec_ctx->zone->keys[i].key);
+		if (ret != DNSSEC_EOK) {
+			zone_sign_ctx_free(ctx);
+			return NULL;
+		}
+	}
+
+	return ctx;
+}
+
 void zone_sign_ctx_free(zone_sign_ctx_t *ctx)
 {
 	if (ctx != NULL) {

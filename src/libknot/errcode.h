@@ -108,6 +108,7 @@ enum knot_error {
 	/* DNSSEC errors. */
 	KNOT_DNSSEC_EMISSINGKEYTYPE,
 	KNOT_DNSSEC_ENOKEY,
+	KNOT_DNSSEC_ENOSIG,
 
 	/* Yparser errors. */
 	KNOT_YP_ECHAR_TAB,
