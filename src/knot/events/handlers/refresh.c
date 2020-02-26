@@ -1172,7 +1172,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	// while loop runs 0x or 1x; IXFR to AXFR failover
 	while (ret = knot_requestor_exec(&requestor, req, timeout),
-	       ixfr_error_failover(ret) && data.xfr_type == XFR_TYPE_IXFR) {
+	       ixfr_error_failover(ret) && data.xfr_type == XFR_TYPE_IXFR &&
+	       data.state != STATE_SOA_QUERY) {
 		REFRESH_LOG(LOG_WARNING, data.zone->name, data.remote,
 		            "fallback to AXFR (%s)", knot_strerror(ret));
 		ixfr_cleanup(&data);
