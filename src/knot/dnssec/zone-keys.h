@@ -176,3 +176,16 @@ zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t 
  * \param ctx  Local context to be freed.
  */
 void zone_sign_ctx_free(zone_sign_ctx_t *ctx);
+
+/*!
+ * \brief Create key signing structure from DNSKEY zone record.
+ *
+ * \param key     Dnssec key to be allocated.
+ * \param owner   Zone name.
+ * \param rdata   DNSKEY rdata.
+ * \param rdlen   DNSKEY rdata length.
+ *
+ * \return KNOT_E*
+ */
+int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
+                          const uint8_t *rdata, size_t rdlen);

@@ -26,6 +26,7 @@
 #include "libknot/libknot.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/dnssec/rrset-sign.h"
+#include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-nsec.h"
 
 static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
@@ -192,40 +193,6 @@ static const struct check_function CHECK_FUNCTIONS[] = {
 
 static const int CHECK_FUNCTIONS_LEN = sizeof(CHECK_FUNCTIONS)
                                      / sizeof(struct check_function);
-
-static int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
-				 const uint8_t *rdata, size_t rdlen)
-{
-	if (!key || !rdata || rdlen == 0) {
-		return KNOT_EINVAL;
-	}
-
-	const dnssec_binary_t binary_key = {
-		.size = rdlen,
-		.data = (uint8_t *)rdata
-	};
-
-	dnssec_key_t *new_key = NULL;
-	int ret = dnssec_key_new(&new_key);
-	if (ret != DNSSEC_EOK) {
-		return KNOT_ENOMEM;
-	}
-	ret = dnssec_key_set_rdata(new_key, &binary_key);
-	if (ret != DNSSEC_EOK) {
-		dnssec_key_free(new_key);
-		return KNOT_ENOMEM;
-	}
-	if (owner) {
-		ret = dnssec_key_set_dname(new_key, owner);
-		if (ret != DNSSEC_EOK) {
-			dnssec_key_free(new_key);
-			return KNOT_ENOMEM;
-		}
-	}
-
-	*key = new_key;
-	return KNOT_EOK;
-}
 
 static int check_signature(const knot_rdata_t *rrsig, const dnssec_key_t *key,
                            const knot_rrset_t *covered)

@@ -268,15 +268,6 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 	                               zone->nsec3_salt_created);
 }
 
-int kasp_zone_init(knot_kasp_zone_t **zone)
-{
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-	*zone = calloc(1, sizeof(**zone));
-	return (*zone ? KNOT_EOK : KNOT_ENOMEM);
-}
-
 void kasp_zone_clear(knot_kasp_zone_t *zone)
 {
 	if (zone == NULL) {
@@ -308,4 +299,75 @@ void free_key_params(key_params_t *parm)
 		dnssec_binary_free(&parm->public_key);
 		memset(parm, 0 , sizeof(*parm));
 	}
+}
+
+int kasp_zone_from_contents(knot_kasp_zone_t *zone,
+                            const zone_contents_t *contents,
+                            bool policy_single_type_signing,
+                            bool policy_nsec3,
+                            bool *keytag_conflict)
+{
+	if (zone == NULL || contents == NULL || contents->apex == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	memset(zone, 0, sizeof(*zone));
+	zone->dname = knot_dname_copy(contents->apex->owner, NULL);
+	if (zone->dname == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rdataset_t *zone_dnskey = node_rdataset(contents->apex, KNOT_RRTYPE_DNSKEY);
+	if (zone_dnskey == NULL || zone_dnskey->count < 1) {
+		free(zone->dname);
+		return KNOT_DNSSEC_ENOKEY;
+	}
+	zone->num_keys = zone_dnskey->count;
+	zone->keys = calloc(zone->num_keys, sizeof(*zone->keys));
+	if (zone->keys == NULL) {
+		free(zone->dname);
+		return KNOT_ENOMEM;
+	}
+
+	knot_rdata_t *zkey = zone_dnskey->rdata;
+	for (int i = 0; i < zone->num_keys; i++) {
+		int ret = dnssec_key_from_rdata(&zone->keys[i].key, zone->dname, zkey->data, zkey->len);
+		if (ret == KNOT_EOK) {
+			ret = dnssec_key_get_keyid(zone->keys[i].key, &zone->keys[i].id);
+		}
+		if (ret != KNOT_EOK) {
+			kasp_zone_clear(zone);
+			return ret;
+		}
+		zone->keys[i].is_pub_only = true;
+
+		zone->keys[i].is_ksk = (knot_dnskey_flags(zkey) == DNSKEY_FLAGS_KSK);
+		zone->keys[i].is_zsk = policy_single_type_signing || !zone->keys[i].is_ksk;
+
+		zone->keys[i].timing.publish = 1;
+		zone->keys[i].timing.active = 1;
+
+		zkey = knot_rdataset_next(zkey);
+	}
+
+	zone->nsec3_salt_created = 0;
+	if (policy_nsec3) {
+		knot_rdataset_t *zone_ns3p = node_rdataset(contents->apex, KNOT_RRTYPE_NSEC3PARAM);
+		if (zone_ns3p == NULL || zone_ns3p->count != 1) {
+			kasp_zone_clear(zone);
+			return KNOT_ENSEC3PAR;
+		}
+		zone->nsec3_salt.size = knot_nsec3param_salt_len(zone_ns3p->rdata);
+		zone->nsec3_salt.data = malloc(zone->nsec3_salt.size);
+		if (zone->nsec3_salt.data == NULL) {
+			kasp_zone_clear(zone);
+			return KNOT_ENOMEM;
+		}
+		memcpy(zone->nsec3_salt.data,
+		       knot_nsec3param_salt(zone_ns3p->rdata),
+		       zone->nsec3_salt.size);
+	}
+
+	detect_keytag_conflict(zone, keytag_conflict);
+	return KNOT_EOK;
 }
