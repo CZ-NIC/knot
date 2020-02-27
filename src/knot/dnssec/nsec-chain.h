@@ -30,6 +30,7 @@
 typedef struct {
 	uint32_t ttl;          // TTL for NSEC(3) records
 	zone_update_t *update; // The zone update for NSECs
+	uint16_t nsec_type;    // NSEC or NSEC3
 } nsec_chain_iterate_data_t;
 
 /*!
@@ -70,6 +71,12 @@ inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
 		dnssec_nsec_bitmap_add(bitmap, rr.type);
 	}
 }
+
+int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
+                             nsec_chain_iterate_data_t *data);
+int nsec_check_reconnect_nodes(zone_node_t *a, zone_node_t *b,
+                               nsec_chain_iterate_data_t *data);
+int nsec_check_bitmaps(zone_tree_t *nsec_ptrs, nsec_chain_iterate_data_t *data);
 
 /*!
  * \brief Call a function for each piece of the chain formed by sorted nodes.
@@ -144,3 +151,13 @@ int knot_nsec_create_chain(zone_update_t *update, uint32_t ttl);
  * \return KNOT_E*
  */
 int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl);
+
+/*!
+ * \brief knot_nsec_check_chain   Validate NSEC chain in new_cont as whole.
+ */
+int knot_nsec_check_chain(zone_update_t *update);
+
+/*!
+ * \brief knot_nsec_check_chain   Validate NSEC chain in new_cont incrementally.
+ */
+int knot_nsec_check_chain_fix(zone_update_t *update);

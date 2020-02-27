@@ -254,6 +254,119 @@ static int nsec_update_bitmaps(zone_tree_t *node_ptrs,
 	return ret;
 }
 
+int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
+                             nsec_chain_iterate_data_t *data)
+{
+	knot_rdataset_t *nsec = node_rdataset(a, data->nsec_type);
+	if (nsec == NULL || nsec->count != 1) {
+		return KNOT_DNSSEC_ENSEC;
+	}
+	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
+		const knot_dname_t *a_next = knot_nsec_next(nsec->rdata);
+		if (knot_dname_cmp(a_next, b->owner) != 0) {
+			return KNOT_DNSSEC_ENSEC;
+		}
+	} else {
+		size_t len = knot_nsec3_next_len(nsec->rdata);
+		if (len != b->owner[0] || memcmp(knot_nsec3_next(nsec->rdata), b->owner + 1, len) != 0) {
+			return KNOT_DNSSEC_ENSEC;
+		}
+	}
+	return KNOT_EOK;
+}
+
+int nsec_check_reconnect_nodes(zone_node_t *a, zone_node_t *b,
+                               nsec_chain_iterate_data_t *data)
+{
+	if (!(a->flags & NODE_FLAGS_BINODE)) {
+		return KNOT_EINVAL;
+	}
+	knot_rdataset_t *prev_a = node_rdataset(binode_counterpart(a), data->nsec_type);
+	if (prev_a == NULL || prev_a->count != 1) {
+		return KNOT_ERROR;
+	}
+	knot_rdataset_t *curr_b = node_rdataset(b, data->nsec_type);
+	if (curr_b == NULL || curr_b->count != 1) {
+		return KNOT_DNSSEC_ENSEC;
+	}
+	const uint8_t *prev_a_nxt, *curr_b_nxt;
+	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
+		prev_a_nxt = knot_nsec_next(prev_a->rdata);
+		curr_b_nxt = knot_nsec_next(curr_b->rdata);
+		if (knot_dname_cmp(prev_a_nxt, curr_b_nxt) != 0) {
+			return KNOT_DNSSEC_ENSEC;
+		}
+	} else {
+		prev_a_nxt = knot_nsec3_next(prev_a->rdata);
+		curr_b_nxt = knot_nsec3_next(curr_b->rdata);
+		size_t len = knot_nsec3_next_len(prev_a->rdata);
+		if (len != knot_nsec3_next_len(curr_b->rdata) ||
+		    memcmp(prev_a_nxt, curr_b_nxt, len) != 0) {
+			return KNOT_DNSSEC_ENSEC;
+		}
+	}
+	return KNOT_EOK;
+}
+
+static int check_nsec_bitmap(zone_node_t *node, void *ctx)
+{
+	nsec_chain_iterate_data_t *data = ctx;
+	const zone_node_t *nsec_node = node;
+	if (data->nsec_type == KNOT_RRTYPE_NSEC3) {
+		nsec_node = node->nsec3_node;
+	}
+	if (nsec_node == NULL) {
+		return KNOT_DNSSEC_ENSEC;
+	}
+
+	knot_rdataset_t *nsec = node_rdataset(nsec_node, data->nsec_type);
+	if (nsec == NULL || nsec->count != 1) {
+		return KNOT_DNSSEC_ENSEC;
+	}
+
+	dnssec_nsec_bitmap_t *rr_types = dnssec_nsec_bitmap_new();
+	if (rr_types == NULL) {
+		return KNOT_ENOMEM;
+	}
+	bitmap_add_node_rrsets(rr_types, data->nsec_type, node);
+	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
+		dnssec_nsec_bitmap_add(rr_types, data->nsec_type);
+	}
+	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
+
+	uint16_t node_wire_size = dnssec_nsec_bitmap_size(rr_types);
+	uint8_t *node_wire = malloc(node_wire_size);
+	if (node_wire == NULL) {
+		dnssec_nsec_bitmap_free(rr_types);
+		return KNOT_ENOMEM;
+	}
+	dnssec_nsec_bitmap_write(rr_types, node_wire);
+	dnssec_nsec_bitmap_free(rr_types);
+
+	const uint8_t *nsec_wire = NULL;
+	uint16_t nsec_wire_size = 0;
+	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
+		nsec_wire = knot_nsec_bitmap(nsec->rdata);
+		nsec_wire_size = knot_nsec_bitmap_len(nsec->rdata);
+	} else {
+		nsec_wire = knot_nsec3_bitmap(nsec->rdata);
+		nsec_wire_size = knot_nsec3_bitmap_len(nsec->rdata);
+	}
+
+	if (node_wire_size != nsec_wire_size ||
+	    memcmp(node_wire, nsec_wire, node_wire_size) != 0) {
+		free(node_wire);
+		return KNOT_DNSSEC_ENSEC;
+	}
+	free(node_wire);
+	return KNOT_EOK;
+}
+
+int nsec_check_bitmaps(zone_tree_t *nsec_ptrs, nsec_chain_iterate_data_t *data)
+{
+	return zone_tree_apply(nsec_ptrs, check_nsec_bitmap, data);
+}
+
 static zone_node_t *nsec_prev(zone_node_t *node)
 {
 	zone_node_t *res = node;
@@ -471,7 +584,7 @@ int knot_nsec_create_chain(zone_update_t *update, uint32_t ttl)
 	assert(update);
 	assert(update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, update };
+	nsec_chain_iterate_data_t data = { ttl, update, KNOT_RRTYPE_NSEC };
 
 	return knot_nsec_chain_iterate_create(update->new_cont->nodes,
 	                                      connect_nsec_nodes, &data);
@@ -483,7 +596,7 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 	assert(update->zone->contents->nodes);
 	assert(update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, update };
+	nsec_chain_iterate_data_t data = { ttl, update, KNOT_RRTYPE_NSEC };
 
 	int ret = nsec_update_bitmaps(update->a_ctx->node_ptrs, &data);
 	if (ret != KNOT_EOK) {
@@ -503,4 +616,40 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 
 	return knot_nsec_chain_iterate_fix(update->a_ctx->node_ptrs,
 					   connect_nsec_nodes, reconnect_nsec_nodes, &data);
+}
+
+// new_cont must have been adjusted already!
+int knot_nsec_check_chain(zone_update_t *update)
+{
+	if (!zone_tree_is_empty(update->new_cont->nsec3_nodes)) {
+		return KNOT_DNSSEC_ENSEC;
+	}
+
+	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC };
+
+	int ret = nsec_check_bitmaps(update->new_cont->nodes, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return knot_nsec_chain_iterate_create(update->new_cont->nodes,
+					      nsec_check_connect_nodes, &data);
+}
+
+int knot_nsec_check_chain_fix(zone_update_t *update)
+{
+	if (!zone_tree_is_empty(update->new_cont->nsec3_nodes)) {
+		return KNOT_DNSSEC_ENSEC;
+	}
+
+	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC };
+
+	int ret = nsec_check_bitmaps(update->a_ctx->node_ptrs, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return knot_nsec_chain_iterate_fix(update->a_ctx->node_ptrs,
+					   nsec_check_connect_nodes,
+	                                   nsec_check_reconnect_nodes, &data);
 }

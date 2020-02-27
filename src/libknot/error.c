@@ -108,6 +108,7 @@ static const struct error errors[] = {
 	{ KNOT_DNSSEC_ENOKEY,          "no keys for signing" },
 	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
 	{ KNOT_DNSSEC_ENOSIG,          "no valid signature for a record" },
+	{ KNOT_DNSSEC_ENSEC,           "wrong or missing NSEC(3) record" },
 
 	/* Yparser errors. */
 	{ KNOT_YP_ECHAR_TAB,     "tabulator character is not allowed" },

@@ -700,8 +700,9 @@ int knot_zone_sign(zone_update_t *update,
                    const kdnssec_ctx_t *dnssec_ctx,
                    knot_time_t *expire_at)
 {
-	if (!update || !zone_keys || !dnssec_ctx || !expire_at ||
-	    dnssec_ctx->policy->signing_threads < 1) {
+	if (!update || !dnssec_ctx || !expire_at ||
+	    dnssec_ctx->policy->signing_threads < 1 ||
+	    (zone_keys == NULL && !dnssec_ctx->validation_mode)) {
 		return KNOT_EINVAL;
 	}
 
@@ -1012,8 +1013,9 @@ int knot_zone_sign_update(zone_update_t *update,
                           const kdnssec_ctx_t *dnssec_ctx,
                           knot_time_t *expire_at)
 {
-	if (update == NULL || zone_keys == NULL || dnssec_ctx == NULL || expire_at == NULL ||
-	    dnssec_ctx->policy->signing_threads < 1) {
+	if (update == NULL || dnssec_ctx == NULL || expire_at == NULL ||
+	    dnssec_ctx->policy->signing_threads < 1 ||
+	    (zone_keys == NULL && !dnssec_ctx->validation_mode)) {
 		return KNOT_EINVAL;
 	}
 
@@ -1029,6 +1031,13 @@ int knot_zone_sign_update(zone_update_t *update,
 				     zone_keys, dnssec_ctx, update, expire_at);
 		if (ret == KNOT_EOK) {
 			ret = zone_tree_apply(update->a_ctx->node_ptrs, set_signed, NULL);
+		}
+		if (ret == KNOT_EOK && dnssec_ctx->validation_mode) {
+			ret = zone_tree_sign(update->a_ctx->nsec3_ptrs, dnssec_ctx->policy->signing_threads,
+			                     zone_keys, dnssec_ctx, update, expire_at);
+		}
+		if (ret == KNOT_EOK && dnssec_ctx->validation_mode) {
+			ret = zone_tree_apply(update->a_ctx->nsec3_ptrs, set_signed, NULL);
 		}
 	}
 
