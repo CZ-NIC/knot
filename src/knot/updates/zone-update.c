@@ -805,6 +805,15 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		}
 	}
 
+	val = conf_zone_get(conf, C_DNSSEC_VALIDATE, update->zone->name);
+	if (conf_bool(&val)) {
+		ret = knot_dnssec_validate_zone(update, update->flags & UPDATE_INCREMENTAL);
+		if (ret != KNOT_EOK) {
+			log_zone_error(update->zone->name, "zone DNSSEC validation failed (%s)", knot_strerror(ret));
+			return ret;
+		}
+	}
+
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, update->new_cont);
