@@ -640,24 +640,34 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
 	return set_new_soa(update, conf_opt(&val));
 }
 
+static int commit_journal(conf_t *conf, zone_update_t *update)
+{
+	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
+	unsigned content = conf_opt(&val);
+	int ret = KNOT_EOK;
+	if ((update->flags & UPDATE_INCREMENTAL) ||
+	    (update->flags & UPDATE_HYBRID)) {
+		changeset_t *extra = (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL;
+		if (content != JOURNAL_CONTENT_NONE && !changeset_empty(&update->change)) {
+			ret = zone_change_store(conf, update->zone, &update->change, extra);
+		}
+	} else {
+		if (content == JOURNAL_CONTENT_ALL) {
+			return zone_in_journal_store(conf, update->zone, update->new_cont);
+		} else if (content != JOURNAL_CONTENT_NONE) { // zone_in_journal_store does this automatically
+			return zone_changes_clear(conf, update->zone);
+		}
+	}
+	return ret;
+}
+
 static int commit_incremental(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
 
-	int ret = KNOT_EOK;
 	if (zone_update_to(update) == NULL && !changeset_empty(&update->change)) {
 		/* No SOA in the update, create one according to the current policy */
-		ret = zone_update_increment_soa(update, conf);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	/* Write changes to journal if all went well. */
-	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
-	if (conf_opt(&val) != JOURNAL_CONTENT_NONE && !changeset_empty(&update->change)) {
-		ret = zone_change_store(conf, update->zone, &update->change,
-		                        (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL);
+		int ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -675,15 +685,6 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 	 * - to enable/disable it on demand. */
 	if (!node_rrtype_exists(update->new_cont->apex, KNOT_RRTYPE_SOA)) {
 		return KNOT_ESEMCHECK;
-	}
-
-	/* Store new zone contents in journal. */
-	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
-	unsigned content = conf_opt(&val);
-	if (content == JOURNAL_CONTENT_ALL) {
-		return zone_in_journal_store(conf, update->zone, update->new_cont);
-	} else if (content != JOURNAL_CONTENT_NONE) { // zone_in_journal_store does this automatically
-		return zone_changes_clear(conf, update->zone);
 	}
 
 	return KNOT_EOK;
@@ -755,6 +756,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			zone_update_clear(update);
 			return KNOT_EOK;
 		}
+	}
+	if (update->flags & UPDATE_INCREMENTAL) {
 		ret = commit_incremental(conf, update);
 	} else if ((update->flags & UPDATE_HYBRID)) {
 		ret = commit_incremental(conf, update);
@@ -810,8 +813,18 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		ret = knot_dnssec_validate_zone(update, update->flags & UPDATE_INCREMENTAL);
 		if (ret != KNOT_EOK) {
 			log_zone_error(update->zone->name, "zone DNSSEC validation failed (%s)", knot_strerror(ret));
+			char name_str[KNOT_DNAME_TXT_MAXLEN], type_str[16];
+			if (knot_dname_to_str(name_str, update->validation_hint.node, sizeof(name_str)) != NULL &&
+			    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
+				log_zone_error(update->zone->name, "hint: %s %s", name_str, type_str);
+			}
 			return ret;
 		}
+	}
+
+	ret = commit_journal(conf, update);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	/* Switch zone contents. */

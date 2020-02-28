@@ -295,8 +295,12 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	return result;
 }
 
-static bool key_used(bool ksk, bool zsk, uint16_t type)
+static bool key_used(bool ksk, bool zsk, uint16_t type,
+                     const knot_dname_t *owner, const knot_dname_t *zone_apex)
 {
+	if (knot_dname_cmp(owner, zone_apex) != 0) {
+		return zsk;
+	}
 	switch (type) {
 	case KNOT_RRTYPE_DNSKEY:
 	case KNOT_RRTYPE_CDNSKEY:
@@ -324,7 +328,8 @@ static int validate_rrsigs(const knot_rrset_t *covered,
 {
 	for (size_t i = 0; i < sign_ctx->count; i++) {
 		const knot_kasp_key_t *key = &sign_ctx->dnssec_ctx->zone->keys[i];
-		if (!key_used(key->is_ksk, key->is_zsk, covered->type)) {
+		if (!key_used(key->is_ksk, key->is_zsk, covered->type,
+		              covered->owner, sign_ctx->dnssec_ctx->zone->dname)) {
 			continue;
 		}
 
@@ -466,7 +471,8 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
 static int sign_node_rrsets(const zone_node_t *node,
                             zone_sign_ctx_t *sign_ctx,
                             changeset_t *changeset,
-                            knot_time_t *expires_at)
+                            knot_time_t *expires_at,
+                            dnssec_validation_hint_t *hint)
 {
 	assert(node);
 	assert(sign_ctx);
@@ -487,6 +493,10 @@ static int sign_node_rrsets(const zone_node_t *node,
 
 		if (sign_ctx->dnssec_ctx->validation_mode) {
 			result = validate_rrsigs(&rrset, &rrsigs, sign_ctx, skip_crypto);
+			if (result != KNOT_EOK) {
+				hint->node = node->owner;
+				hint->rrtype = rrset.type;
+			}
 		} else if (sign_ctx->dnssec_ctx->rrsig_drop_existing) {
 			result = force_resign_rrset(&rrset, &rrsigs,
 			                            sign_ctx, changeset);
@@ -510,6 +520,7 @@ typedef struct {
 	zone_sign_ctx_t *sign_ctx;
 	changeset_t changeset;
 	knot_time_t expires_at;
+	dnssec_validation_hint_t *hint;
 	size_t num_threads;
 	size_t thread_index;
 	size_t rrset_index;
@@ -540,7 +551,8 @@ static int sign_node(zone_node_t *node, void *data)
 	}
 
 	int result = sign_node_rrsets(node, args->sign_ctx,
-	                              &args->changeset, &args->expires_at);
+	                              &args->changeset, &args->expires_at,
+	                              args->hint);
 
 	return result;
 }
@@ -602,6 +614,7 @@ static int zone_tree_sign(zone_tree_t *tree,
 			break;
 		}
 		args[i].expires_at = 0;
+		args[i].hint = &update->validation_hint;
 		args[i].num_threads = num_threads;
 		args[i].thread_index = i;
 		args[i].rrset_index = 0;

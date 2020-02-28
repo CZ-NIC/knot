@@ -38,6 +38,7 @@ class ZoneDnssec(object):
 
     def __init__(self):
         self.enable = None
+        self.validate = None
         self.manual = None
         self.single_type_signing = None
         self.alg = None
@@ -1199,7 +1200,7 @@ class Knot(Server):
         have_policy = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
-            if not z.dnssec.enable:
+            if not z.dnssec.enable and not z.dnssec.validate:
                 continue
 
             if not have_policy:
@@ -1307,6 +1308,10 @@ class Knot(Server):
 
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "on")
+                s.item_str("dnssec-policy", z.name)
+
+            if z.dnssec.validate:
+                s.item_str("dnssec-validate", "on")
                 s.item_str("dnssec-policy", z.name)
 
             if len(z.modules) > 0:
