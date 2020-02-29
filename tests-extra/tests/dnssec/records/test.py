@@ -16,6 +16,9 @@ t.start()
 
 master.zone_wait(zone)
 
+resp = master.dig("nxdomain.records", "A", udp=False, dnssec=True)
+resp.check_auth_soa_ttl(dnssec=True)
+
 t.sleep(1)
 master.flush()
 t.sleep(1)
