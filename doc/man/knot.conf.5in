@@ -682,7 +682,7 @@ This value also influences server\(aqs usage of virtual memory.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 20 GiB (1 GiB for 32\-bit)
+\fIDefault:\fP 20 GiB (512 MiB for 32\-bit)
 .SS kasp\-db
 .sp
 An explicit specification of the KASP database directory.
