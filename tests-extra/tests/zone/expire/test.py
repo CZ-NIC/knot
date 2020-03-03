@@ -16,38 +16,39 @@ def break_xfrout(server):
         config = config.replace(" acl:", " #acl:")
         f.write(config)
 
-t = Test(tsig=False)
+def run_test():
+    t = Test(tsig=False)
 
-# this zone has refresh = 1s, retry = 1s and expire = 8s
-zone = t.zone("example.", storage=".")
-EXPIRE_SLEEP = 15
+    # this zone has refresh = 1s, retry = 1s and expire = 8s
+    zone = t.zone("example.", storage=".")
+    EXPIRE_SLEEP = 15
 
-master = t.server("knot")
-slave = t.server("knot")
-slave.tcp_remote_io_timeout = "1000"
+    master = t.server("knot")
+    slave = t.server("knot")
+    slave.tcp_remote_io_timeout = "1000"
 
-t.link(zone, master, slave)
+    t.link(zone, master, slave)
 
-t.start()
+    t.start()
 
-master.zone_wait(zone)
-slave.zone_wait(zone)
+    master.zone_wait(zone)
+    slave.zone_wait(zone)
 
-# expire by shutting down the master
-master.stop()
-t.sleep(EXPIRE_SLEEP);
-test_expire(zone, slave)
+    # expire by shutting down the master
+    master.stop()
+    t.sleep(EXPIRE_SLEEP)
+    test_expire(zone, slave)
 
-# bring back master (notifies slave)
-master.start()
-master.zone_wait(zone)
-slave.zone_wait(zone)
+    # bring back master (notifies slave)
+    master.start()
+    master.zone_wait(zone)
+    slave.zone_wait(zone)
 
-# expire by breaking AXFR
-break_xfrout(master)
-master.update_zonefile(zone, version=1)
-master.reload()
-t.sleep(EXPIRE_SLEEP);
-test_expire(zone, slave)
+    # expire by breaking AXFR
+    break_xfrout(master)
+    master.update_zonefile(zone, version=1)
+    master.reload()
+    t.sleep(EXPIRE_SLEEP)
+    test_expire(zone, slave)
 
-t.stop()
+    t.stop()

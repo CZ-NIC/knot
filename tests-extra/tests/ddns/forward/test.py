@@ -4,35 +4,36 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-master = t.server("knot")
-slave = t.server("knot")
-zone = t.zone("example.com.")
+    master = t.server("knot")
+    slave = t.server("knot")
+    zone = t.zone("example.com.")
 
-t.link(zone, master, slave, ddns=True)
+    t.link(zone, master, slave, ddns=True)
 
-t.start()
+    t.start()
 
-master.zones_wait(zone)
-seri = slave.zones_wait(zone)
+    master.zones_wait(zone)
+    seri = slave.zones_wait(zone)
 
-# OK
-update = slave.update(zone)
-update.add("forwarded.example.com.", 1, "TXT", "forwarded")
-update.send("NOERROR")
-resp = master.dig("forwarded.example.com.", "TXT")
-resp.check("forwarded")
-slave.zones_wait(zone, seri)
-t.xfr_diff(master, slave, zone)
+    # OK
+    update = slave.update(zone)
+    update.add("forwarded.example.com.", 1, "TXT", "forwarded")
+    update.send("NOERROR")
+    resp = master.dig("forwarded.example.com.", "TXT")
+    resp.check("forwarded")
+    slave.zones_wait(zone, seri)
+    t.xfr_diff(master, slave, zone)
 
-# NAME out of zone
-update = slave.update(zone)
-update.add("forwarded.", 1, "TXT", "forwarded")
-update.send("NOTZONE")
-resp = master.dig("forwarded.", "TXT")
-resp.check(rcode="REFUSED")
-t.sleep(3)
-t.xfr_diff(master, slave, zone)
+    # NAME out of zone
+    update = slave.update(zone)
+    update.add("forwarded.", 1, "TXT", "forwarded")
+    update.send("NOTZONE")
+    resp = master.dig("forwarded.", "TXT")
+    resp.check(rcode="REFUSED")
+    t.sleep(3)
+    t.xfr_diff(master, slave, zone)
 
-t.end()
+    t.end()

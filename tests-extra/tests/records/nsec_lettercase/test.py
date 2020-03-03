@@ -4,19 +4,20 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-knot = t.server("knot")
-bind = t.server("bind")
-zone = t.zone("rdatacase.", "rdatacase.zone.signed", storage=".")
+    knot = t.server("knot")
+    bind = t.server("bind")
+    zone = t.zone("rdatacase.", "rdatacase.zone.signed", storage=".")
 
-t.link(zone, knot)
-t.link(zone, bind)
+    t.link(zone, knot)
+    t.link(zone, bind)
 
-t.start()
+    t.start()
 
-knot.zones_wait(zone)
-bind.zones_wait(zone)
-t.xfr_diff(knot, bind, zone)
+    knot.zones_wait(zone)
+    bind.zones_wait(zone)
+    t.xfr_diff(knot, bind, zone)
 
-t.end()
+    t.end()

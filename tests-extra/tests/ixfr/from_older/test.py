@@ -5,23 +5,24 @@
 from dnstest.utils import *
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-knot = t.server("knot")
-zone = t.zone("example.com.")
+    knot = t.server("knot")
+    zone = t.zone("example.com.")
 
-t.link(zone, knot, ixfr=True)
+    t.link(zone, knot, ixfr=True)
 
-t.start()
+    t.start()
 
-serial_init = knot.zone_wait(zone)
+    serial_init = knot.zone_wait(zone)
 
-resp = knot.dig("example.com", "IXFR", serial=serial_init + 1)
-resp.check_xfr()
+    resp = knot.dig("example.com", "IXFR", serial=serial_init + 1)
+    resp.check_xfr()
 
-compare(resp.msg_count(), 1, "Only one message")
-compare(resp.count("SOA"), 1, "Only one RR in Answer section")
-compare(resp.count("ANY"), 1, "Only one RR in the whole message.")
+    compare(resp.msg_count(), 1, "Only one message")
+    compare(resp.count("SOA"), 1, "Only one RR in Answer section")
+    compare(resp.count("ANY"), 1, "Only one RR in the whole message.")
 
-t.end()
+    t.end()
 
