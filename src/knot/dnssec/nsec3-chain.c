@@ -772,7 +772,7 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 	assert(params);
 
 	// ensure that the salt has not changed
-	if (!knot_nsec3param_uptodate(update->zone->contents, params)) {
+	if (!knot_nsec3param_uptodate(update->new_cont, params)) {
 		int ret = knot_nsec3param_update(update, params);
 		if (ret != KNOT_EOK) {
 			return ret;
