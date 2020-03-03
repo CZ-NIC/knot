@@ -63,7 +63,7 @@ slave.ctl("zone-refresh")
 slave.zones_wait(zones)
 
 # initial convenience check
-t.xfr_diff(master, slave, zones)
+t.xfr_diff(master, slave, zones1)
 
 # update master
 master.flush()
@@ -71,17 +71,17 @@ t.sleep(2)
 for zone in zones1:
     master.random_ddns(zone)
 
-up = master0.update(zone0)
-up.add("dk.", "86400", "SOA", "a.nic.dk. mail.dk. 1666666666 600 300 1814400 7200")
-up.delete("nextlevelinlife.dk.", "NS")
-up.delete("nextlevelinlife.dk.", "DS")
-up.add("nextlevelinlife.dk.", "86400", "NS", "test.com.")
-up.send("NOERROR")
+#up = master0.update(zone0)
+#up.add("dk.", "86400", "SOA", "a.nic.dk. mail.dk. 1666666666 600 300 1814400 7200")
+#up.delete("nextlevelinlife.dk.", "NS")
+#up.delete("nextlevelinlife.dk.", "DS")
+#up.add("nextlevelinlife.dk.", "86400", "NS", "test.com.")
+#up.send("NOERROR")
 
-t.sleep(1)
-master.ctl("zone-refresh")
+#t.sleep(1)
+#master.ctl("zone-refresh")
 
-t.sleep(4) # zones_wait fails if an empty update is generated
+#t.sleep(4) # zones_wait fails if an empty update is generated
 after_update = master.zones_wait(zones)
 
 # sync slave with current master's state
@@ -95,7 +95,7 @@ slave.flush()
 master.ctl("zone-sign")
 after_update15 = master.zones_wait(zones, after_update, equal=False, greater=True)
 
-t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
+t.xfr_diff(master, slave, zones1, no_rrsig_rdata=True)
 for zone in zones:
     slave.zone_verify(zone)
 
@@ -130,7 +130,7 @@ slave.flush()
 master.ctl("zone-sign")
 after_update25 = master.zones_wait(zones, after_update2, equal=False, greater=True)
 
-t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
+t.xfr_diff(master, slave, zones1, no_rrsig_rdata=True)
 for zone in zones:
     slave.zone_verify(zone)
 
