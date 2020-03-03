@@ -500,6 +500,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 	// saved hash of next node
 	uint8_t *next_hash = NULL;
 	uint8_t next_length = 0;
+	knot_rrset_t *rem_nsec3_copy = NULL;
 
 	bool add_nsec3 = (new_n != NULL && !node_empty(new_n) && !(new_n->flags & NODE_FLAGS_NONAUTH) &&
 			  !nsec3_opt_out(new_n, opt_out));
@@ -509,14 +510,19 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 	if (old_nsec3_n != NULL) {
 		knot_rrset_t rem_nsec3 = node_rrset(old_nsec3_n, KNOT_RRTYPE_NSEC3);
 		if (!knot_rrset_empty(&rem_nsec3)) {
+			rem_nsec3_copy = knot_rrset_copy(&rem_nsec3, NULL);
+			if (rem_nsec3_copy == NULL) {
+				return KNOT_ENOMEM;
+			}
+
 			knot_rrset_t rem_rrsig = node_rrset(old_nsec3_n, KNOT_RRTYPE_RRSIG);
 			ret = zone_update_remove(update, &rem_nsec3);
 			if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
 				ret = zone_update_remove(update, &rem_rrsig);
 			}
 			assert(update->flags & UPDATE_INCREMENTAL); // to make sure the following pointer remains valid
-			next_hash = (uint8_t *)knot_nsec3_next(rem_nsec3.rrs.rdata);
-			next_length = knot_nsec3_next_len(rem_nsec3.rrs.rdata);
+			next_hash = (uint8_t *)knot_nsec3_next(rem_nsec3_copy->rrs.rdata);
+			next_length = knot_nsec3_next_len(rem_nsec3_copy->rrs.rdata);
 		}
 	}
 
@@ -524,6 +530,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 	if (add_nsec3 && ret == KNOT_EOK) {
 		zone_node_t *new_nsec3_n = create_nsec3_node_for_node(new_n, update->new_cont->apex, params, ttl);
 		if (new_nsec3_n == NULL) {
+			knot_rrset_free(rem_nsec3_copy, NULL);
 			return KNOT_ENOMEM;
 		}
 		knot_rrset_t nsec3 = node_rrset(new_nsec3_n, KNOT_RRTYPE_NSEC3);
@@ -548,6 +555,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		node_free(new_nsec3_n, NULL);
 	}
 
+	knot_rrset_free(rem_nsec3_copy, NULL);
 	return ret;
 }
 
