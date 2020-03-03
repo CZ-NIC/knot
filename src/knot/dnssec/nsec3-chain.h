@@ -62,9 +62,9 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 /*!
  * \brief knot_nsec_check_chain   Validate NSEC3 chain in new_cont as whole.
  */
-int knot_nsec3_check_chain(zone_update_t *update);
+int knot_nsec3_check_chain(zone_update_t *update, const dnssec_nsec3_params_t *params);
 
 /*!
  * \brief knot_nsec_check_chain   Validate NSEC3 chain in new_cont incrementally.
  */
-int knot_nsec3_check_chain_fix(zone_update_t *update);
+int knot_nsec3_check_chain_fix(zone_update_t *update, const dnssec_nsec3_params_t *params);

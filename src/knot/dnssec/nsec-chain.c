@@ -65,7 +65,7 @@ static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
 		return KNOT_ENOMEM;
 	}
 
-	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC, from);
+	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC, from, false);
 	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC);
 	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 
@@ -327,15 +327,19 @@ int nsec_check_reconnect_nodes(zone_node_t *a, zone_node_t *b,
 	return KNOT_EOK;
 }
 
+extern bool nsec3_is_empty(zone_node_t *node, bool opt_out); // from nsec3-chain.c
+
 static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 {
 	nsec_chain_iterate_data_t *data = ctx;
+	assert((bool)(data->nsec_type == KNOT_RRTYPE_NSEC3) == (bool)(data->nsec3_params != NULL));
 	const zone_node_t *nsec_node = node;
-	if (data->nsec_type == KNOT_RRTYPE_NSEC3) {
+	bool shall_no_nsec = node_no_nsec(node);
+	if (data->nsec3_params != NULL) {
 		nsec_node = node_nsec3_get(node);
+		shall_no_nsec = nsec3_is_empty(node, data->nsec3_params->flags & KNOT_NSEC3_FLAG_OPT_OUT);
 	}
 	knot_rdataset_t *nsec = node_rdataset(nsec_node, data->nsec_type);
-	bool shall_no_nsec = node_no_nsec(node);
 	if ((nsec == NULL || nsec->count != 1) && !shall_no_nsec) {
 		data->update->validation_hint.node = (nsec_node == NULL ? node->owner : nsec_node->owner);
 		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
@@ -354,11 +358,7 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 	if (rr_types == NULL) {
 		return KNOT_ENOMEM;
 	}
-	bitmap_add_node_rrsets(rr_types, data->nsec_type, node);
-	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
-		dnssec_nsec_bitmap_add(rr_types, data->nsec_type);
-	}
-	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
+	bitmap_add_node_rrsets(rr_types, data->nsec_type, node, true);
 
 	uint16_t node_wire_size = dnssec_nsec_bitmap_size(rr_types);
 	uint8_t *node_wire = malloc(node_wire_size);
@@ -371,7 +371,7 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 
 	const uint8_t *nsec_wire = NULL;
 	uint16_t nsec_wire_size = 0;
-	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
+	if (data->nsec3_params == NULL) {
 		nsec_wire = knot_nsec_bitmap(nsec->rdata);
 		nsec_wire_size = knot_nsec_bitmap_len(nsec->rdata);
 	} else {
@@ -382,7 +382,7 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 	if (node_wire_size != nsec_wire_size ||
 	    memcmp(node_wire, nsec_wire, node_wire_size) != 0) {
 		free(node_wire);
-		data->update->validation_hint.node = nsec_node->owner;
+		data->update->validation_hint.node = node->owner;
 		data->update->validation_hint.rrtype = data->nsec_type;
 		return KNOT_DNSSEC_ENSEC_BITMAP;
 	}

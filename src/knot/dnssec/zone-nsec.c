@@ -389,9 +389,11 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 int knot_zone_check_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx, bool incremental)
 {
 	int ret = KNOT_EOK;
+	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
+
 	if (incremental) {
 		ret = ctx->policy->nsec3_enabled
-		    ? knot_nsec3_check_chain_fix(update)
+		    ? knot_nsec3_check_chain_fix(update, &params)
 		    : knot_nsec_check_chain_fix(update);
 	}
 	if (ret == KNOT_ENORECORD) {
@@ -404,5 +406,5 @@ int knot_zone_check_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx, 
 		return ret;
 	}
 
-	return ctx->policy->nsec3_enabled ? knot_nsec3_check_chain(update) : knot_nsec_check_chain(update);
+	return ctx->policy->nsec3_enabled ? knot_nsec3_check_chain(update, &params) : knot_nsec_check_chain(update);
 }

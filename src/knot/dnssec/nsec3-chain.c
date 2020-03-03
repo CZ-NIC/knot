@@ -253,7 +253,7 @@ static zone_node_t *create_nsec3_node_for_node(const zone_node_t *node,
 		return NULL;
 	}
 
-	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC3, node);
+	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC3, node, false);
 	if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
 		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 	}
@@ -576,7 +576,7 @@ static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *p
  *         RRSIGs and NSECs.
  * \retval false otherwise.
  */
-static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
+bool nsec3_is_empty(zone_node_t *node, bool opt_out)
 {
 	return ((node->children == 0 && knot_nsec_empty_nsec_and_rrsigs_in_node(node)) ||
 		nsec3_opt_out(node, opt_out));
@@ -804,11 +804,22 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 }
 
 // new_cont must have been adjusted already!
-int knot_nsec3_check_chain(zone_update_t *update)
+int knot_nsec3_check_chain(zone_update_t *update, const dnssec_nsec3_params_t *params)
 {
-	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC3 };
+	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC3, params };
 
-	int ret = nsec_check_bitmaps(update->new_cont->nodes, &data);
+	int ret = zone_tree_apply(update->new_cont->nodes, nsec3_mark_empty,
+	                          ((params->flags & KNOT_NSEC3_FLAG_OPT_OUT) ? (void *)update : NULL));
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = nsec_check_bitmaps(update->new_cont->nodes, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = zone_tree_apply(update->new_cont->nodes, nsec3_reset, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -817,9 +828,9 @@ int knot_nsec3_check_chain(zone_update_t *update)
 					      nsec_check_connect_nodes, &data);
 }
 
-int knot_nsec3_check_chain_fix(zone_update_t *update)
+int knot_nsec3_check_chain_fix(zone_update_t *update, const dnssec_nsec3_params_t *params)
 {
-	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC3 };
+	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC3, params };
 
 	int ret = nsec_check_bitmaps(update->a_ctx->node_ptrs, &data);
 	if (ret != KNOT_EOK) {
