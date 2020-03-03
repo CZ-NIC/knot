@@ -135,6 +135,17 @@ bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2);
 bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr);
 
 /*!
+ * \brief Returns true if \a sub is a subset of \a of, false otherwise.
+ *
+ * \param sub  RRS to be a subset.
+ * \param of   RRS to be a superset.
+ *
+ * \retval true if all rrs from \sub are present in \a of.
+ * \retval false if some rrs from \sub are not present in \a of.
+ */
+bool knot_rdataset_subset(const knot_rdataset_t *sub, const knot_rdataset_t *of);
+
+/*!
  * \brief Merges two RRS into the first one. Second RRS is left intact.
  *        Canonical order is preserved.
  *

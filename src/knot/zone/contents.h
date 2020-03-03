@@ -254,6 +254,33 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
 int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to);
 
 /*!
+ * \brief Create new contents and copy all RRs with specific type (or ANY).
+ *
+ * \note This creates non-bi-node trees!
+ *
+ * \param from          Zone contents to copy from.
+ * \param tree_only     Optional: copy only nodes from specified tree.
+ * \param to            Out: new zone contents.
+ * \param rrtype_only   Copy only RRs of this type.
+ *
+ * \return KNOT_E*
+ */
+int zone_contents_clone(const zone_contents_t *from, const zone_tree_t *tree_only,
+                        zone_contents_t **to, uint16_t rrtype_only);
+
+/*!
+ * \brief Check that all the RRs in "sub" are also in "of".
+ *
+ * \param sub   Contents that shall be subset...
+ * \param of    ...of those ones.
+ *
+ * \retval > 0        Not subset.
+ * \retval KNOT_EOK   They are subset.
+ * \return KNOT_E*    Error occured.
+ */
+int zone_contents_subset(const zone_contents_t *sub, const zone_contents_t *of);
+
+/*!
  * \brief Deallocate directly owned data of zone contents.
  *
  * \param contents  Zone contents to free.
