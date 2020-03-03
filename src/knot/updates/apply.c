@@ -105,6 +105,9 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset, apply
 
 	knot_rdata_t *rr_cmp = rrset->rrs.rdata;
 	for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
+		if (rrset->type == KNOT_RRTYPE_RRSIG && knot_rrsig_type_covered(rr_cmp) == KNOT_RRTYPE_SOA) {
+			continue;
+		}
 		if (!knot_rdataset_member(node_rrs, rr_cmp)) {
 			// At least one RR doesnt' match.
 			can_log_rrset(rrset, i, ctx, true);
