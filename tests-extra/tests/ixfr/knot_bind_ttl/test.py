@@ -4,23 +4,24 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-master = t.server("knot")
-slave = t.server("bind")
-zones = t.zone("example.com.")
+    master = t.server("knot")
+    slave = t.server("bind")
+    zones = t.zone("example.com.")
 
-t.link(zones, master, slave, ixfr=True)
+    t.link(zones, master, slave, ixfr=True)
 
-t.start()
-serials_init = slave.zones_wait(zones)
+    t.start()
+    serials_init = slave.zones_wait(zones)
 
-up = master.update(zones)
-up.add("example.com.", 500, "MX", "20 dns1")
-up.send("NOERROR")
+    up = master.update(zones)
+    up.add("example.com.", 500, "MX", "20 dns1")
+    up.send("NOERROR")
 
-slave.zones_wait(zones, serials_init)
+    slave.zones_wait(zones, serials_init)
 
-t.xfr_diff(master, slave, zones, serials_init)
+    t.xfr_diff(master, slave, zones, serials_init)
 
-t.end()
+    t.end()

@@ -98,30 +98,31 @@ class IxfrTopology():
 
         check_log("====================================")
 
-patern = re.compile("^([0-9][0-9]_)")
+def run_test():
+    patern = re.compile("^([0-9][0-9]_)")
 
-t = dnstest.test.Test()
+    t = dnstest.test.Test()
 
-ctx = ThreadContext()
-for dirname in sorted(os.listdir(ctx.test_dir)):
-    if patern.match(dirname):
-        mod_name = ctx.module + "." + dirname + ".step"
-        mod = importlib.import_module(mod_name)
-        storage = ctx.test_dir + "/" + dirname
+    ctx = ThreadContext()
+    for dirname in sorted(os.listdir(ctx.test_dir)):
+        if patern.match(dirname):
+            mod_name = ctx.module + "." + dirname + ".step"
+            mod = importlib.import_module(mod_name)
+            storage = ctx.test_dir + "/" + dirname
 
-        i = IxfrTopology(t, storage)
+            i = IxfrTopology(t, storage)
 
-        detail_log("####################################")
-        check_log(">> %s <<" % mod_name)
-        detail_log("zone_diffs -> master(%s) -----> ref_slave(%s)" %
-                   (i.master.name, i.ref_slave.name))
-        detail_log("                            -----> slave1(%s)" %
-                   (i.slave1.name))
-        detail_log("           -> ref_master(%s) -> slave2(%s)" %
-                   (i.ref_master.name, i.slave2.name))
-        detail_log("####################################")
+            detail_log("####################################")
+            check_log(">> %s <<" % mod_name)
+            detail_log("zone_diffs -> master(%s) -----> ref_slave(%s)" %
+                    (i.master.name, i.ref_slave.name))
+            detail_log("                            -----> slave1(%s)" %
+                    (i.slave1.name))
+            detail_log("           -> ref_master(%s) -> slave2(%s)" %
+                    (i.ref_master.name, i.slave2.name))
+            detail_log("####################################")
 
-        mod.run(i)
-        i.clean()
+            mod.run(i)
+            i.clean()
 
-t.end()
+    t.end()

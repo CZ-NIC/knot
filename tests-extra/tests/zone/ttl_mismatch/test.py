@@ -4,18 +4,19 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-master = t.server("knot")
-zone = t.zone("ttl-mismatch", storage=".")
+    master = t.server("knot")
+    zone = t.zone("ttl-mismatch", storage=".")
 
-t.link(zone, master)
+    t.link(zone, master)
 
-t.start()
+    t.start()
 
-master.zones_wait(zone)
+    master.zones_wait(zone)
 
-resp = master.dig("ttl.ttl-mismatch.", "A")
-resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA", ttl=7200)
+    resp = master.dig("ttl.ttl-mismatch.", "A")
+    resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA", ttl=7200)
 
-t.end()
+    t.end()

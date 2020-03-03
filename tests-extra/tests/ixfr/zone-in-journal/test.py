@@ -4,44 +4,45 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-master = t.server("knot")
-slave = t.server("knot")
+    master = t.server("knot")
+    slave = t.server("knot")
 
-zone = t.zone_rnd(1, records=100, dnssec=False)
+    zone = t.zone_rnd(1, records=100, dnssec=False)
 
-t.link(zone, master, slave)
+    t.link(zone, master, slave)
 
-for z in master.zones:
-    slave.zones[z].journal_content = "none"
+    for z in master.zones:
+        slave.zones[z].journal_content = "none"
 
-for z in slave.zones:
-    slave.zones[z].journal_content = "all"
+    for z in slave.zones:
+        slave.zones[z].journal_content = "all"
 
-slave.max_journal_usage = 150 * 1024
+    slave.max_journal_usage = 150 * 1024
 
-master.zonefile_sync = "0"
-slave.zonefile_sync = "-1"
+    master.zonefile_sync = "0"
+    slave.zonefile_sync = "-1"
 
-master.dnssec(zone).enable = "true"
+    master.dnssec(zone).enable = "true"
 
-t.start()
+    t.start()
 
-master.zone_wait(zone)
-serial = slave.zone_wait(zone)
+    master.zone_wait(zone)
+    serial = slave.zone_wait(zone)
 
-for i in range(1, 8):
-    master.ctl("zone-sign")
-    serial = slave.zone_wait(zone, serial=serial)
+    for _ in range(1, 8):
+        master.ctl("zone-sign")
+        serial = slave.zone_wait(zone, serial=serial)
 
-slave.stop()
-slave.start() # now the slave starts the zone from zone-in-journal and does not XFR
+    slave.stop()
+    slave.start() # now the slave starts the zone from zone-in-journal and does not XFR
 
-slave.zone_wait(zone)
+    slave.zone_wait(zone)
 
-slave.ctl("zone-refresh") # this is just to ensure that he gives up
+    slave.ctl("zone-refresh") # this is just to ensure that he gives up
 
-t.xfr_diff(master, slave, zone)
+    t.xfr_diff(master, slave, zone)
 
-t.end()
+    t.end()
