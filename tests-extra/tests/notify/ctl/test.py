@@ -4,39 +4,40 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-master = t.server("knot")
-slave = t.server("knot")
+    master = t.server("knot")
+    slave = t.server("knot")
 
-zone = t.zone("notify.", storage=".")
+    zone = t.zone("notify.", storage=".")
 
-t.link(zone, master, slave)
+    t.link(zone, master, slave)
 
-t.start()
+    t.start()
 
-master.zone_wait(zone)
-slave.zone_wait(zone)
+    master.zone_wait(zone)
+    slave.zone_wait(zone)
 
-slave.stop()
+    slave.stop()
 
-master.update_zonefile(zone, version=1) # notify doesn't succeed while slave is offline
-master.reload()
+    master.update_zonefile(zone, version=1) # notify doesn't succeed while slave is offline
+    master.reload()
 
-master.zone_wait(zone)
+    master.zone_wait(zone)
 
-slave.start() # slave starts with older version of zone and doesn't attempt refersh since it's in timers
+    slave.start() # slave starts with older version of zone and doesn't attempt refersh since it's in timers
 
-slave.zone_wait(zone)
+    slave.zone_wait(zone)
 
-resp = slave.dig("node.notify.", "A")
-resp.check(rcode="NXDOMAIN")
+    resp = slave.dig("node.notify.", "A")
+    resp.check(rcode="NXDOMAIN")
 
-master.ctl("zone-notify")
+    master.ctl("zone-notify")
 
-t.sleep(2)
+    t.sleep(2)
 
-resp = slave.dig("node.notify.", "A")
-resp.check(rcode="NOERROR", rdata="1.2.3.4")
+    resp = slave.dig("node.notify.", "A")
+    resp.check(rcode="NOERROR", rdata="1.2.3.4")
 
-t.end()
+    t.end()

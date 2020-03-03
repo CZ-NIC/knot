@@ -4,26 +4,27 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-knot = t.server("knot")
-zone = t.zone("example.com")[0]
+    knot = t.server("knot")
+    zone = t.zone("example.com")[0]
 
-t.link([zone], knot, ixfr=True)
+    t.link([zone], knot, ixfr=True)
 
-knot.dnssec(zone).enable = True
+    knot.dnssec(zone).enable = True
 
-t.start()
+    t.start()
 
-serial = knot.zone_wait(zone)
-knot.flush(zone, wait=True)
-knot.zone_verify(zone)
+    serial = knot.zone_wait(zone)
+    knot.flush(zone, wait=True)
+    knot.zone_verify(zone)
 
-knot.zones[zone.name].zfile.update_soa(serial=int(serial)+1)
-knot.reload()
+    knot.zones[zone.name].zfile.update_soa(serial=int(serial)+1)
+    knot.reload()
 
-knot.zone_wait(zone, serial)
-knot.flush(zone, wait=True)
-knot.zone_verify(zone)
+    knot.zone_wait(zone, serial)
+    knot.flush(zone, wait=True)
+    knot.zone_verify(zone)
 
-t.end()
+    t.end()

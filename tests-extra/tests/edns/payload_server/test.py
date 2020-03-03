@@ -4,60 +4,61 @@
 
 from dnstest.test import Test
 
-t = Test(tsig=False)
+def run_test():
+    t = Test(tsig=False)
 
-server4 = t.server("knot", address=4)
-server6 = t.server("knot", address=6)
-zone = t.zone("flags.")
+    server4 = t.server("knot", address=4)
+    server6 = t.server("knot", address=6)
+    zone = t.zone("flags.")
 
-# Set common payload limit.
-server4.udp_max_payload = 1220
-server6.udp_max_payload = 1220
+    # Set common payload limit.
+    server4.udp_max_payload = 1220
+    server6.udp_max_payload = 1220
 
-t.link(zone, server4)
-t.link(zone, server6)
+    t.link(zone, server4)
+    t.link(zone, server6)
 
-t.start()
+    t.start()
 
-# Check common limit if 1220 fits and 1221 does not.
-resp = server4.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
-resp.check(noflags="TC")
+    # Check common limit if 1220 fits and 1221 does not.
+    resp = server4.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
+    resp.check(noflags="TC")
 
-resp = server4.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
-resp.check(flags="TC")
+    resp = server4.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
+    resp.check(flags="TC")
 
-resp = server6.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
-resp.check(noflags="TC")
+    resp = server6.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
+    resp.check(noflags="TC")
 
-resp = server6.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
-resp.check(flags="TC")
+    resp = server6.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
+    resp.check(flags="TC")
 
-# Set IP family specific limit.
-server4.udp_max_payload_ipv4 = 1220
-server4.udp_max_payload_ipv6 = 1221 # Shoud not affect IPv4
-server4.udp_max_payload      = 1221 # Shoud not override IPv4 specific
+    # Set IP family specific limit.
+    server4.udp_max_payload_ipv4 = 1220
+    server4.udp_max_payload_ipv6 = 1221 # Shoud not affect IPv4
+    server4.udp_max_payload      = 1221 # Shoud not override IPv4 specific
 
-server6.udp_max_payload_ipv6 = 1220
-server6.udp_max_payload_ipv4 = 1221 # Shoul not affect IPv6
-server6.udp_max_payload      = 1221 # Shoud not override IPv6 specific
+    server6.udp_max_payload_ipv6 = 1220
+    server6.udp_max_payload_ipv4 = 1221 # Shoul not affect IPv6
+    server6.udp_max_payload      = 1221 # Shoud not override IPv6 specific
 
-server4.gen_confile()
-server4.reload()
+    server4.gen_confile()
+    server4.reload()
 
-server6.gen_confile()
-server6.reload()
+    server6.gen_confile()
+    server6.reload()
 
-# Check IP specific limit.
-resp = server4.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
-resp.check(noflags="TC")
+    # Check IP specific limit.
+    resp = server4.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
+    resp.check(noflags="TC")
 
-resp = server4.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
-resp.check(flags="TC")
+    resp = server4.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
+    resp.check(flags="TC")
 
-resp = server6.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
-resp.check(noflags="TC")
+    resp = server6.dig("1220resp.flags", "TXT", udp=True, bufsize=4096)
+    resp.check(noflags="TC")
 
-resp = server6.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
-resp.check(flags="TC")
+    resp = server6.dig("1221resp.flags", "TXT", udp=True, bufsize=4096)
+    resp.check(flags="TC")
 
-t.end()
+    t.end()

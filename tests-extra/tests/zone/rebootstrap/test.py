@@ -4,23 +4,24 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-master = t.server("bind")
-slave = t.server("knot")
+    master = t.server("bind")
+    slave = t.server("knot")
 
-zone = t.zone("invalid.", storage=".")
+    zone = t.zone("invalid.", storage=".")
 
-t.link(zone, master, slave)
+    t.link(zone, master, slave)
 
-# Create invalid zone file.
-slave.update_zonefile(zone, version=1)
+    # Create invalid zone file.
+    slave.update_zonefile(zone, version=1)
 
-t.start()
+    t.start()
 
-# Wait for zones and compare them.
-master.zones_wait(zone)
-slave.zones_wait(zone)
-t.xfr_diff(master, slave, zone)
+    # Wait for zones and compare them.
+    master.zones_wait(zone)
+    slave.zones_wait(zone)
+    t.xfr_diff(master, slave, zone)
 
-t.end()
+    t.end()
