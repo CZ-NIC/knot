@@ -531,7 +531,9 @@ int zone_contents_clone(const zone_contents_t *from, const zone_tree_t *tree_onl
 		return KNOT_EINVAL;
 	}
 
-	zone_contents_t *contents = zone_contents_new(from->apex->owner, false);
+	const knot_dname_t *apex = (from->apex == NULL || from->apex->owner == NULL ? (uint8_t *)"\0" : from->apex->owner);
+
+	zone_contents_t *contents = zone_contents_new(apex, false);
 	if (contents == NULL) {
 		return KNOT_ENOMEM;
 	}
