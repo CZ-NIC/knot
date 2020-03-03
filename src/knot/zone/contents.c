@@ -503,6 +503,93 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 	return KNOT_EOK;
 }
 
+typedef struct {
+	zone_contents_t *to;
+	uint16_t rrtype_only;
+} clone_ctx_t;
+
+static int clone_node(const zone_node_t *from, void *_ctx)
+{
+	clone_ctx_t *ctx = _ctx;
+	for (int i = 0; i < from->rrset_count; i++) {
+		knot_rrset_t rr = node_rrset_at(from, i);
+		if (ctx->to == KNOT_RRTYPE_ANY || ctx->to == rr.type) {
+			zone_node_t *unused = NULL;
+			int ret = zone_contents_add_rr(ctx->to, &rr, &unused);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+	return KNOT_EOK;
+}
+
+int zone_contents_clone(const zone_contents_t *from, const zone_tree_t *tree_only,
+                        zone_contents_t **to, uint16_t rrtype_only)
+{
+	if (from == NULL || to == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	zone_contents_t *contents = zone_contents_new(from->apex->owner, false);
+	if (contents == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	clone_ctx_t ctx = { contents, rrtype_only };
+	int ret = KNOT_EOK;
+
+	if (tree_only != NULL) {
+		ret = zone_tree_apply(tree_only, clone_node, &ctx);
+	}
+	if (ret == KNOT_EOK && tree_only == NULL && rrtype_only != KNOT_RRTYPE_NSEC3) {
+		ret = zone_tree_apply(from->nodes, clone_node, &ctx);
+	}
+	if (ret == KNOT_EOK && tree_only == NULL && from->nsec3_nodes != NULL) {
+		ret = zone_tree_apply(from->nsec3_nodes, clone_node, &ctx);
+	}
+
+	if (ret == KNOT_EOK) {
+		*to = contents;
+	} else {
+		zone_contents_deep_free(contents);
+	}
+	return ret;
+}
+
+const static int NOT_SUBSET = 1;
+
+static int subset_node(const zone_node_t *node, void *ctx)
+{
+	const zone_contents_t *of_c = ctx;
+	bool nsec3 = node_rrtype_exists(node, KNOT_RRTYPE_NSEC3);
+	const zone_node_t *of_n = nsec3
+	                        ? get_nsec3_node(of_c, node->owner)
+	                        : get_node(of_c, node->owner);
+
+	for (int i = 0; i < from->rrset_count; i++) {
+		knot_rrset_t rr = node_rrset_at(from, i);
+		knot_rdataset_t *of_r = node_rdataset(of_n, rr.type);
+		if (of_r == NULL || !knot_rdataset_subset(&rr.rrs, of_r)) {
+			return NOT_SUBSET;
+
+		}
+	}
+	return KNOT_EOK;
+}
+
+int zone_contents_subset(const zone_contents_t *sub, const zone_contents_t *of)
+{
+	if (sub == NULL || of == NULL) {
+		return KNOT_EINVAL;
+	}
+	int ret = zone_tree_apply(sub->nodes, subset_node, of);
+	if (ret == KNOT_EOK && sub->nsec3_nodes != NULL) {
+		ret = zone_tree_apply(sub->nsec3_nodes, subset_node, of);
+	}
+	return ret;
+}
+
 void zone_contents_free(zone_contents_t *contents)
 {
 	if (contents == NULL) {

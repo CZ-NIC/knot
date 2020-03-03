@@ -247,6 +247,20 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr)
 }
 
 _public_
+bool knot_rdataset_subset(const knot_rdataset_t *sub, const knot_rdataset_t *of)
+{
+	// TODO: this might be implemented slightly more efficiently
+	knot_rdata_t *cmp_rr = sub->rdata;
+	for (uint16_t i = 0; i < sub->count; ++i) {
+		if (!knot_rdataset_member(of, cmp_rr)) {
+			return false;
+		}
+		cmp_rr = knot_rdataset_next(cmp_rr);
+	}
+	return true;
+}
+
+_public_
 int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2,
                         knot_mm_t *mm)
 {
