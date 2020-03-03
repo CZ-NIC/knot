@@ -597,6 +597,21 @@ int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t
 	return zone_update_apply_changeset(update, &reverse);
 }
 
+int zone_update_undo_type(zone_update_t *update, uint16_t rrtype)
+{
+	changeset_t undo;
+	memset(&undo, 0, sizeof(undo));
+
+	int ret = changeset_filter(&update->change, &undo, rrtype);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = zone_update_apply_changeset_reverse(update, &undo);
+	changeset_clear(&undo);
+	return ret;
+}
+
 static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 {
 	assert(update);

@@ -348,6 +348,24 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags)
 	return KNOT_EOK;
 }
 
+int changeset_filter(const changeset_t *ch, changeset_t *filtered, uint16_t rrtype)
+{
+	if (rrtype == KNOT_RRTYPE_SOA) {
+		return KNOT_ENOTSUP;
+	}
+	int ret = zone_contents_clone(ch->remove, NULL, &filtered->remove, rrtype);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	ret = zone_contents_clone(ch->add, NULL, &filtered->add, rrtype);
+	if (ret != KNOT_EOK) {
+		zone_contents_deep_free(filtered->remove);
+		filtered->remove = NULL;
+		return ret;
+	}
+	return KNOT_EOK;
+}
+
 uint32_t changeset_from(const changeset_t *ch)
 {
 	return ch->soa_from == NULL ? 0 : knot_soa_serial(ch->soa_from->rrs.rdata);
