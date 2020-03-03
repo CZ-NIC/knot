@@ -6,6 +6,7 @@ from dnstest.utils import *
 from dnstest.test import Test
 from dnstest.keys import Keymgr
 import random
+import shutil
 
 t = Test()
 
@@ -32,13 +33,37 @@ for zone in zones:
     master.dnssec(zone).nsec3_salt_len = random.choice([0, 1, 9, 64, 128, 255])
     master.dnssec(zone).nsec3_opt_out = (random.random() < 0.5)
 
+    slave.dnssec(zone).enable = True
+    slave.dnssec(zone).nsec3 = master.dnssec(zone).nsec3
+    slave.dnssec(zone).nsec3_iters = 2
+    slave.dnssec(zone).nsec3_salt_len = master.dnssec(zone).nsec3_salt_len
+    slave.dnssec(zone).nsec3_opt_out = master.dnssec(zone).nsec3_opt_out
+
 t.start()
 master.zones_wait(zones)
 slave.ctl("zone-refresh")
 slave.zones_wait(zones)
 
+slave.stop()
+t.sleep(8)
+try:
+    shutil.rmtree(slave.dir + "/journal")
+except:
+    pass
+for zone in zones:
+    try:
+        os.remove(slave.zones[zone.name].zfile.path)
+    except:
+        raise
+shutil.rmtree(slave.keydir)
+shutil.copytree(master.keydir, slave.keydir)
+slave.start()
+
+slave.ctl("zone-refresh")
+slave.zones_wait(zones)
+
 # initial convenience check
-t.xfr_diff(master, slave, zones)
+t.xfr_diff(master, slave, zones1)
 
 # update master
 master.flush()
@@ -46,22 +71,22 @@ t.sleep(2)
 for zone in zones1:
     master.random_ddns(zone)
 
-up = master0.update(zone0)
-up.add("dk.", "86400", "SOA", "a.nic.dk. mail.dk. 1666666666 600 300 1814400 7200")
-up.delete("nextlevelinlife.dk.", "NS")
-up.delete("nextlevelinlife.dk.", "DS")
-up.add("nextlevelinlife.dk.", "86400", "NS", "test.com.")
-up.send("NOERROR")
+#up = master0.update(zone0)
+#up.add("dk.", "86400", "SOA", "a.nic.dk. mail.dk. 1666666666 600 300 1814400 7200")
+#up.delete("nextlevelinlife.dk.", "NS")
+#up.delete("nextlevelinlife.dk.", "DS")
+#up.add("nextlevelinlife.dk.", "86400", "NS", "test.com.")
+#up.send("NOERROR")
 
-t.sleep(1)
-master.ctl("zone-refresh")
+#t.sleep(1)
+#master.ctl("zone-refresh")
 
-t.sleep(4) # zones_wait fails if an empty update is generated
+#t.sleep(4) # zones_wait fails if an empty update is generated
 after_update = master.zones_wait(zones)
 
 # sync slave with current master's state
 slave.ctl("zone-refresh")
-slave.zones_wait(zones, after_update, equal=True, greater=False)
+slave.zones_wait(zones, after_update, equal=True, greater=True)
 
 # flush so that we can do zone_verify
 slave.flush()
@@ -70,13 +95,13 @@ slave.flush()
 master.ctl("zone-sign")
 after_update15 = master.zones_wait(zones, after_update, equal=False, greater=True)
 
-t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
+t.xfr_diff(master, slave, zones1, no_rrsig_rdata=True)
 for zone in zones:
     slave.zone_verify(zone)
 
 # sync slave with current master's state
 slave.ctl("zone-refresh")
-slave.zones_wait(zones, after_update15, equal=True, greater=False)
+slave.zones_wait(zones, after_update15, equal=True, greater=True)
 
 # update master by adding delegation with nontrivial NONAUTH nodes
 for zone in zones:
@@ -96,7 +121,7 @@ after_update2 = master.zones_wait(zones, after_update15, equal=False, greater=Tr
 
 # sync slave with current master's state
 slave.ctl("zone-refresh")
-slave.zones_wait(zones, after_update2, equal=True, greater=False)
+slave.zones_wait(zones, after_update2, equal=True, greater=True)
 
 # flush so that we can do zone_verify
 slave.flush()
@@ -105,7 +130,7 @@ slave.flush()
 master.ctl("zone-sign")
 after_update25 = master.zones_wait(zones, after_update2, equal=False, greater=True)
 
-t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
+t.xfr_diff(master, slave, zones1, no_rrsig_rdata=True)
 for zone in zones:
     slave.zone_verify(zone)
 
@@ -122,10 +147,11 @@ for z in zones1:
 
 t.sleep(1)
 slave.ctl("zone-refresh")
-t.sleep(3)
+t.sleep(13)
 slave.flush()
+t.sleep(14)
 for z in zones1:
-    slave.zone_wait(z, after_update25[z.name], equal=False, greater=True)
+#   slave.zone_wait(z, after_update25[z.name], equal=False, greater=True)
     slave.zone_verify(z)
 
 t.end()
