@@ -351,6 +351,11 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 	}
 }
 
+extern bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type);
+extern knot_rrset_t create_empty_rrsigs_for(const knot_rrset_t *covered);
+extern int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
+			    knot_rdataset_t *out_sig, knot_mm_t *mm);
+
 int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 {
 	if (node == NULL || rrset == NULL) {
@@ -362,11 +367,36 @@ int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *m
 		return KNOT_ENOENT;
 	}
 
+	knot_rrset_t soa = node_rrset(node, KNOT_RRTYPE_SOA), node_rrsig = node_rrset(node, KNOT_RRTYPE_RRSIG);
+
 	node->flags &= ~NODE_FLAGS_RRSIGS_VALID;
+
+	if (rrset->type == KNOT_RRTYPE_RRSIG && rrsig_covers_type(rrset, KNOT_RRTYPE_SOA) && !knot_rrset_empty(&soa) && rrsig_covers_type(&node_rrsig, KNOT_RRTYPE_SOA)) {
+		knot_rrset_t rrsig_soa_rr = create_empty_rrsigs_for(&soa), rrsig_soa_node = create_empty_rrsigs_for(&soa);
+		knot_rdataset_t rrsig_nosoa_rr = { 0 };
+		int ret = knot_synth_rrsig(KNOT_RRTYPE_SOA, &rrset->rrs, &rrsig_soa_rr.rrs, NULL);
+		assert(ret == KNOT_EOK);
+		ret = knot_synth_rrsig(KNOT_RRTYPE_SOA, node_rrs, &rrsig_soa_node.rrs, NULL);
+		assert(ret == KNOT_EOK);
+		ret = knot_rdataset_copy(&rrsig_nosoa_rr, &rrset->rrs, NULL);
+		assert(ret == KNOT_EOK);
+		ret = knot_rdataset_subtract(&rrsig_nosoa_rr, &rrsig_soa_rr.rrs, NULL);
+		assert(ret == KNOT_EOK);
+		ret = knot_rdataset_subtract(node_rrs, &rrsig_soa_node.rrs, mm);
+		assert(ret == KNOT_EOK);
+		ret = knot_rdataset_subtract(node_rrs, &rrsig_nosoa_rr, mm);
+		knot_rdataset_clear(&rrsig_nosoa_rr, NULL);
+		knot_rdataset_clear(&rrsig_soa_rr.rrs, NULL);
+		knot_rdataset_clear(&rrsig_soa_node.rrs, NULL);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
 
 	int ret = knot_rdataset_subtract(node_rrs, &rrset->rrs, mm);
 	if (ret != KNOT_EOK) {
 		return ret;
+	}
 	}
 
 	if (node_rrs->count == 0) {
