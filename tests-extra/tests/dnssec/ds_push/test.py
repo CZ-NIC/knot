@@ -21,7 +21,7 @@ def pregenerate_key(server, zone, alg):
             self.name = name
 
     server.gen_key(a_class_with_name("notexisting.zone."), ksk=True, alg=alg,
-                   addtopolicy=zone[0].name)
+                addtopolicy=zone[0].name)
 
 # check zone if keys are present and used for signing
 def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
@@ -106,49 +106,50 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     wait_for_dnskey_count(t, server, after_keys, 20)
     check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old key removed")
 
-t = Test(tsig=False)
+def run_test():
+    t = Test(tsig=False)
 
-parent = t.server("knot")
-parent_zone = t.zone("com.", storage=".")
-t.link(parent_zone, parent, ddns=True)
+    parent = t.server("knot")
+    parent_zone = t.zone("com.", storage=".")
+    t.link(parent_zone, parent, ddns=True)
 
-parent.dnssec(parent_zone).enable = True
+    parent.dnssec(parent_zone).enable = True
 
-child = t.server("knot")
-child_zone = t.zone("example.com.", storage=".")
-t.link(child_zone, child)
+    child = t.server("knot")
+    child_zone = t.zone("example.com.", storage=".")
+    t.link(child_zone, child)
 
-child.zonefile_sync = 24 * 60 * 60
+    child.zonefile_sync = 24 * 60 * 60
 
-child.dnssec(child_zone).enable = True
-child.dnssec(child_zone).manual = False
-child.dnssec(child_zone).alg = "ECDSAP256SHA256"
-child.dnssec(child_zone).dnskey_ttl = 2
-child.dnssec(child_zone).zsk_lifetime = 99999
-child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
-child.dnssec(child_zone).propagation_delay = 11
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
-child.dnssec(child_zone).ksk_sbm_check_interval = 2
-child.dnssec(child_zone).ds_push = parent
-child.dnssec(child_zone).ksk_shared = True
-child.dnssec(child_zone).cds_publish = "always"
+    child.dnssec(child_zone).enable = True
+    child.dnssec(child_zone).manual = False
+    child.dnssec(child_zone).alg = "ECDSAP256SHA256"
+    child.dnssec(child_zone).dnskey_ttl = 2
+    child.dnssec(child_zone).zsk_lifetime = 99999
+    child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
+    child.dnssec(child_zone).propagation_delay = 11
+    child.dnssec(child_zone).ksk_sbm_check = [ parent ]
+    child.dnssec(child_zone).ksk_sbm_check_interval = 2
+    child.dnssec(child_zone).ds_push = parent
+    child.dnssec(child_zone).ksk_shared = True
+    child.dnssec(child_zone).cds_publish = "always"
 
-# parameters
-ZONE = "example.com."
+    # parameters
+    ZONE = "example.com."
 
-#t.start()
-t.generate_conf()
-parent.start()
-t.sleep(2)
-child.start()
-child.zone_wait(child_zone)
+    #t.start()
+    t.generate_conf()
+    parent.start()
+    t.sleep(2)
+    child.start()
+    child.zone_wait(child_zone)
 
-t.sleep(5)
+    t.sleep(5)
 
-pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover")
+    pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+    watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover")
 
-resp = parent.dig("example.com.", "DS")
-resp.check_count(1, rtype="DS")
+    resp = parent.dig("example.com.", "DS")
+    resp.check_count(1, rtype="DS")
 
-t.end()
+    t.end()

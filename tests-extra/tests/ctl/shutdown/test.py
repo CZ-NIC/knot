@@ -7,26 +7,27 @@ from dnstest.libknot import libknot
 from dnstest.test import Test
 from dnstest.utils import *
 
-t = Test()
+def run_test():
+    t = Test()
 
-knot = t.server("knot")
-zone = t.zone("example.com.")
-t.link(zone, knot)
+    knot = t.server("knot")
+    zone = t.zone("example.com.")
+    t.link(zone, knot)
 
-ctl = libknot.control.KnotCtl()
+    ctl = libknot.control.KnotCtl()
 
-t.start()
+    t.start()
 
-ctl.connect(os.path.join(knot.dir, "knot.sock"))
-ctl.send_block(cmd="zone-begin", zone=zone[0].name)
-ctl.receive_block()
-ctl.send(libknot.control.KnotCtlType.END)
-ctl.close()
+    ctl.connect(os.path.join(knot.dir, "knot.sock"))
+    ctl.send_block(cmd="zone-begin", zone=zone[0].name)
+    ctl.receive_block()
+    ctl.send(libknot.control.KnotCtlType.END)
+    ctl.close()
 
-knot.stop()
-t.sleep(1)
+    knot.stop()
+    t.sleep(1)
 
-if psutil.pid_exists(knot.proc.pid):
-    set_err("Server still running")
+    if psutil.pid_exists(knot.proc.pid):
+        set_err("Server still running")
 
-t.end()
+    t.end()

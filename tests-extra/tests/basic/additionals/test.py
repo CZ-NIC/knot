@@ -12,59 +12,60 @@ Basic checks of Additional section content.
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-knot = t.server("knot")
-zone = t.zone("test", storage=".")
-t.link(zone, knot)
+    knot = t.server("knot")
+    zone = t.zone("test", storage=".")
+    t.link(zone, knot)
 
-t.start()
+    t.start()
 
-# NS authoritative
+    # NS authoritative
 
-resp = knot.dig("test", "NS")
-resp.check(rcode="NOERROR", flags="AA")
-resp.check_rr("answer", "test", "NS")
-resp.check_rr("additional", "a.ns.test", "A")
-resp.check_rr("additional", "a.ns.test", "AAAA")
-resp.check_rr("additional", "b.ns.test", "AAAA")
+    resp = knot.dig("test", "NS")
+    resp.check(rcode="NOERROR", flags="AA")
+    resp.check_rr("answer", "test", "NS")
+    resp.check_rr("additional", "a.ns.test", "A")
+    resp.check_rr("additional", "a.ns.test", "AAAA")
+    resp.check_rr("additional", "b.ns.test", "AAAA")
 
-# NS delegation
+    # NS delegation
 
-resp = knot.dig("www.deleg.test", "A")
-resp.check(rcode="NOERROR", noflags="AA")
-resp.check_empty(section="answer")
-resp.check_rr("authority", "deleg.test", "NS")
-resp.check_rr("additional", "a.ns.deleg.test", "A")
-resp.check_rr("additional", "a.ns.deleg.test", "AAAA")
+    resp = knot.dig("www.deleg.test", "A")
+    resp.check(rcode="NOERROR", noflags="AA")
+    resp.check_empty(section="answer")
+    resp.check_rr("authority", "deleg.test", "NS")
+    resp.check_rr("additional", "a.ns.deleg.test", "A")
+    resp.check_rr("additional", "a.ns.deleg.test", "AAAA")
 
-# MX record
+    # MX record
 
-resp = knot.dig("mx.test", "MX")
-resp.check(rcode="NOERROR", flags="AA")
-resp.check_rr("answer", "mx.test", "MX")
-resp.check_rr("additional", "a.mail.test", "A")
-resp.check_rr("additional", "b.mail.test", "AAAA")
+    resp = knot.dig("mx.test", "MX")
+    resp.check(rcode="NOERROR", flags="AA")
+    resp.check_rr("answer", "mx.test", "MX")
+    resp.check_rr("additional", "a.mail.test", "A")
+    resp.check_rr("additional", "b.mail.test", "AAAA")
 
-# SRV record (only AAAA in additionals)
+    # SRV record (only AAAA in additionals)
 
-resp = knot.dig("srv.test", "SRV")
-resp.check(rcode="NOERROR", flags="AA")
-resp.check_rr("answer", "srv.test", "SRV")
-resp.check_rr("additional", "b.service.test", "AAAA")
+    resp = knot.dig("srv.test", "SRV")
+    resp.check(rcode="NOERROR", flags="AA")
+    resp.check_rr("answer", "srv.test", "SRV")
+    resp.check_rr("additional", "b.service.test", "AAAA")
 
-# PTR record (no additionals expected)
+    # PTR record (no additionals expected)
 
-resp = knot.dig("ptr.test", "PTR")
-resp.check(rcode="NOERROR", flags="AA")
-resp.check_rr("answer", "ptr.test", "PTR")
-resp.check_empty("additional")
+    resp = knot.dig("ptr.test", "PTR")
+    resp.check(rcode="NOERROR", flags="AA")
+    resp.check_rr("answer", "ptr.test", "PTR")
+    resp.check_empty("additional")
 
-# MX through CNAME (no additionals expected)
+    # MX through CNAME (no additionals expected)
 
-resp = knot.dig("mx-cname.test", "MX")
-resp.check(rcode="NOERROR", flags="AA")
-resp.check_rr("answer", "mx-cname.test", "MX")
-resp.check_empty("additional")
+    resp = knot.dig("mx-cname.test", "MX")
+    resp.check(rcode="NOERROR", flags="AA")
+    resp.check_rr("answer", "mx-cname.test", "MX")
+    resp.check_empty("additional")
 
-t.stop()
+    t.stop()

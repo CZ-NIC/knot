@@ -4,22 +4,23 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-knot = t.server("knot")
-bind = t.server("bind")
-zone = t.zone("example.com.")
+    knot = t.server("knot")
+    bind = t.server("bind")
+    zone = t.zone("example.com.")
 
-t.link(zone, knot)
-t.link(zone, bind)
+    t.link(zone, knot)
+    t.link(zone, bind)
 
-t.start()
+    t.start()
 
-# Wait for zone and get serial.
-serial = bind.zones_wait(zone)
-knot.zone_wait(zone)
+    # Wait for zone and get serial.
+    serial = bind.zones_wait(zone)
+    knot.zone_wait(zone)
 
-# Query IXFR over UDP and compare responses.
-t.xfr_diff(knot, bind, zone, serial, udp=True)
+    # Query IXFR over UDP and compare responses.
+    t.xfr_diff(knot, bind, zone, serial, udp=True)
 
-t.end()
+    t.end()

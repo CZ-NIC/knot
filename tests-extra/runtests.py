@@ -140,6 +140,7 @@ def job():
     global lock
 
     ctx = ThreadContext()
+    loaded_module_name = None
 
     while included_list:
         lock.acquire()
@@ -151,12 +152,10 @@ def job():
         if not os.path.isdir(test_dir):
             log.error("Test \'%s\':\tIGNORED (invalid folder)" % test)
             continue
-
-        loaded_module = None
         
         case_n = case if params.repeat == 1 else case + "#" + str(repeat)
 
-        case_str_err = (" * case \'%s/%s\':" % (test, case_n)).ljust(40)
+        case_str_err = (" * case \'%s/%s\':" % (test, case_n)).ljust(41)
         case_str_fail = ("%s/%s" % (test, case_n)).ljust(30)
         case_cnt += 1
 
@@ -187,10 +186,15 @@ def job():
             continue
 
         try:
-            if loaded_module:
-                importlib.reload(loaded_module)
+            loaded_module_name = "%s.%s.%s.test" % (TESTS_DIR, test, case)
+            if loaded_module_name in sys.modules.keys():
+                loaded_module = sys.modules[loaded_module_name]
             else:
-                loaded_module = importlib.import_module("%s.%s.%s.test" % (TESTS_DIR, test, case))
+                loaded_module = importlib.import_module(loaded_module_name)
+            try:
+                loaded_module.run_test()
+            except AttributeError:
+                raise dnstest.utils.Skip("Missing testcase entry point!")
         except dnstest.utils.Skip as exc:
             log.error(case_str_err + "SKIPPED (%s)" % format(exc))
             skip_cnt += 1

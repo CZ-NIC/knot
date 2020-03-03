@@ -5,32 +5,33 @@
 from dnstest.utils import *
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-master = t.server("knot")
+    master = t.server("knot")
 
-zone = t.zone("example.com.", storage=".")
+    zone = t.zone("example.com.", storage=".")
 
-t.link(zone, master, ixfr=True, journal_content="all")
+    t.link(zone, master, ixfr=True, journal_content="all")
 
-master.dnssec(zone).enable = True
-master.dnssec(zone).repro_sign = True
+    master.dnssec(zone).enable = True
+    master.dnssec(zone).repro_sign = True
 
-t.start()
+    t.start()
 
-serial = master.zone_wait(zone)
+    serial = master.zone_wait(zone)
 
-master.random_ddns(zone, allow_empty=False)
+    master.random_ddns(zone, allow_empty=False)
 
-serial = master.zone_wait(zone, serial)
+    serial = master.zone_wait(zone, serial)
 
-master.stop()
-t.sleep(1)
-master.start()
+    master.stop()
+    t.sleep(1)
+    master.start()
 
-new_serial = master.zone_wait(zone)
+    new_serial = master.zone_wait(zone)
 
-if new_serial != serial:
-    set_err("zone got re-signed")
+    if new_serial != serial:
+        set_err("zone got re-signed")
 
-t.stop()
+    t.stop()

@@ -16,17 +16,13 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
-DOUBLE_DS = random.choice([True, False])
-if DOUBLE_DS:
-    check_log("DOUBLE DS ENABLED")
-
 def pregenerate_key(server, zone, alg):
     class a_class_with_name:
         def __init__(self, name):
             self.name = name
 
     server.gen_key(a_class_with_name("notexisting.zone."), ksk=True, alg=alg,
-                   addtopolicy=zone[0].name)
+                    addtopolicy=zone[0].name)
 
 # check zone if keys are present and used for signing
 def check_zone(server, zone, slave, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
@@ -137,7 +133,7 @@ def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, se
     CDS1 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
     t.sleep(1)
     while CDS1 == str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
-      t.sleep(1)
+    t.sleep(1)
 
     cdnskeys = 2 if DOUBLE_DS else 1
     msg = desc + ": new KSK ready"
@@ -196,19 +192,6 @@ def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_ke
     wait_for_count(t, server, "DNSKEY", after_keys, 14 if before_keys < 2 else 12, 20, msg)
     check_zone(server, zone, slave, after_keys, 1, 1, 1, msg)
 
-t = Test()
-
-parent = t.server("knot")
-parent_zone = t.zone("com.", storage=".")
-t.link(parent_zone, parent)
-
-parent.dnssec(parent_zone).enable = True
-
-child = t.server("knot")
-slave = t.server("knot")
-child_zone = t.zone("example.com.", storage=".")
-t.link(child_zone, child, slave, ixfr=True)
-
 def cds_submission():
     cds = child.dig(ZONE, "CDS")
     cds_rdata = cds.resp.answer[0].to_rdataset()[0].to_text()
@@ -222,53 +205,72 @@ def cds_submission():
             pass
     up.send("NOERROR")
 
-child.zonefile_sync = 24 * 60 * 60
+def run_test():
+    DOUBLE_DS = random.choice([True, False])
+    if DOUBLE_DS:
+        check_log("DOUBLE DS ENABLED")
 
-child.dnssec(child_zone).enable = True
-child.dnssec(child_zone).manual = False
-child.dnssec(child_zone).alg = "ECDSAP384SHA384"
-child.dnssec(child_zone).dnskey_ttl = 2
-child.dnssec(child_zone).zsk_lifetime = 99999
-child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
-child.dnssec(child_zone).propagation_delay = 11
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
-child.dnssec(child_zone).ksk_sbm_check_interval = 2
-child.dnssec(child_zone).ksk_shared = True
-child.dnssec(child_zone).cds_publish = "always"
-if DOUBLE_DS:
-    child.dnssec(child_zone).cds_publish = "double-ds"
+    t = Test()
 
-# parameters
-ZONE = "example.com."
+    parent = t.server("knot")
+    parent_zone = t.zone("com.", storage=".")
+    t.link(parent_zone, parent)
 
-t.start()
-child.zone_wait(child_zone)
+    parent.dnssec(parent_zone).enable = True
 
-cds_submission()
-t.sleep(5)
+    child = t.server("knot")
+    slave = t.server("knot")
+    child_zone = t.zone("example.com.", storage=".")
+    t.link(child_zone, child, slave, ixfr=True)
 
-pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_alg_rollover(t, child, child_zone, slave, 2, 1, "KZSK to CSK alg", "ECDSAP256SHA256", True, cds_submission)
+    child.zonefile_sync = 24 * 60 * 60
 
-pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, slave, 1, 1, 2, "CSK rollover", None, 27, cds_submission)
+    child.dnssec(child_zone).enable = True
+    child.dnssec(child_zone).manual = False
+    child.dnssec(child_zone).alg = "ECDSAP384SHA384"
+    child.dnssec(child_zone).dnskey_ttl = 2
+    child.dnssec(child_zone).zsk_lifetime = 99999
+    child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
+    child.dnssec(child_zone).propagation_delay = 11
+    child.dnssec(child_zone).ksk_sbm_check = [ parent ]
+    child.dnssec(child_zone).ksk_sbm_check_interval = 2
+    child.dnssec(child_zone).ksk_shared = True
+    child.dnssec(child_zone).cds_publish = "always"
+    if DOUBLE_DS:
+        child.dnssec(child_zone).cds_publish = "double-ds"
 
-pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, slave, 1, 2, 3, "CSK to KZSK", False, 0, cds_submission)
+    # parameters
+    ZONE = "example.com."
 
-pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, slave, 2, 2, 3, "KSK rollover", None, 27, cds_submission)
+    t.start()
+    child.zone_wait(child_zone)
 
-pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, slave, 2, 1, 3, "KZSK to CSK", True, 0, cds_submission)
+    cds_submission()
+    t.sleep(5)
 
-pregenerate_key(child, child_zone, "ECDSAP384SHA384")
-watch_alg_rollover(t, child, child_zone, slave, 1, 1, "CSK to CSK alg", "ECDSAP384SHA384", None, cds_submission)
+    pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+    watch_alg_rollover(t, child, child_zone, slave, 2, 1, "KZSK to CSK alg", "ECDSAP256SHA256", True, cds_submission)
 
-pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_alg_rollover(t, child, child_zone, slave, 1, 2, "CSK to KZSK alg", "ECDSAP256SHA256", False, cds_submission)
+    pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+    watch_ksk_rollover(t, child, child_zone, slave, 1, 1, 2, "CSK rollover", None, 27, cds_submission)
 
-pregenerate_key(child, child_zone, "ECDSAP384SHA384")
-watch_alg_rollover(t, child, child_zone, slave, 2, 2, "KZSK alg", "ECDSAP384SHA384", None, cds_submission)
+    pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+    watch_ksk_rollover(t, child, child_zone, slave, 1, 2, 3, "CSK to KZSK", False, 0, cds_submission)
 
-t.end()
+    pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+    watch_ksk_rollover(t, child, child_zone, slave, 2, 2, 3, "KSK rollover", None, 27, cds_submission)
+
+    pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+    watch_ksk_rollover(t, child, child_zone, slave, 2, 1, 3, "KZSK to CSK", True, 0, cds_submission)
+
+    pregenerate_key(child, child_zone, "ECDSAP384SHA384")
+    watch_alg_rollover(t, child, child_zone, slave, 1, 1, "CSK to CSK alg", "ECDSAP384SHA384", None, cds_submission)
+
+    pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+    watch_alg_rollover(t, child, child_zone, slave, 1, 2, "CSK to KZSK alg", "ECDSAP256SHA256", False, cds_submission)
+
+    pregenerate_key(child, child_zone, "ECDSAP384SHA384")
+    watch_alg_rollover(t, child, child_zone, slave, 2, 2, "KZSK alg", "ECDSAP384SHA384", None, cds_submission)
+
+    t.end()
+    

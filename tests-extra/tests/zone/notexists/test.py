@@ -4,29 +4,30 @@
 
 from dnstest.test import Test
 
-t = Test()
+def run_test():
+    t = Test()
 
-master = t.server("knot")
+    master = t.server("knot")
 
-zones = t.zone("notexist.", exists=False) + t.zone("example.com.")
+    zones = t.zone("notexist.", exists=False) + t.zone("example.com.")
 
-t.link(zones, master)
+    t.link(zones, master)
 
-t.start()
+    t.start()
 
-# Check if the server is answering and zone _isn't_ loaded
-resp = master.dig("notexist.", "SOA", udp=True)
-resp.check(rcode="SERVFAIL") # Unloadable zone, but in the zone database
+    # Check if the server is answering and zone _isn't_ loaded
+    resp = master.dig("notexist.", "SOA", udp=True)
+    resp.check(rcode="SERVFAIL") # Unloadable zone, but in the zone database
 
-# Check if the server is answering and zone is unknown
-resp = master.dig("xfiles.", "SOA", udp=True)
-resp.check(rcode="REFUSED")
+    # Check if the server is answering and zone is unknown
+    resp = master.dig("xfiles.", "SOA", udp=True)
+    resp.check(rcode="REFUSED")
 
-# The other zone should answer without problem
-resp = master.dig("example.com.", "SOA", udp=True)
-resp.check(rcode="NOERROR")
+    # The other zone should answer without problem
+    resp = master.dig("example.com.", "SOA", udp=True)
+    resp.check(rcode="NOERROR")
 
-# Stop master.
-master.stop()
+    # Stop master.
+    master.stop()
 
-t.end()
+    t.end()

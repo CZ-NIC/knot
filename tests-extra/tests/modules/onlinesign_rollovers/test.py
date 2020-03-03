@@ -23,7 +23,7 @@ def pregenerate_key(server, zone, alg):
             self.name = name
 
     server.gen_key(a_class_with_name("notexisting.zone."), ksk=True, alg=alg,
-                   addtopolicy="blahblah")
+                addtopolicy="blahblah")
 
 # check zone if keys are present and used for signing
 def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
@@ -89,7 +89,7 @@ def wait_for_dnskey_count(t, server, dnskey_count, timeout):
 def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, key_len, submission_cb):
     check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
 
-    z = server.zones[zone[0].name];
+    z = server.zones[zone[0].name]
     z.get_module("onlinesign").algorithm = set_alg
     z.get_module("onlinesign").key_size = key_len
     server.gen_confile()
@@ -105,7 +105,7 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
     CDS1 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
     t.sleep(3)
     while CDS1 == str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
-      t.sleep(1)
+        t.sleep(1)
 
     check_zone(server, zone, before_keys + after_keys, 2, 1, 2, desc + ": new KSK ready")
 
@@ -121,7 +121,7 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
 
 def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, desc, set_ksk_lifetime, submission_cb):
     check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
-    z = server.zones[zone[0].name];
+    z = server.zones[zone[0].name]
     orig_ksk_lifetime = z.get_module("onlinesign").ksk_life
 
     z.get_module("onlinesign").ksk_life = set_ksk_lifetime if set_ksk_lifetime > 0 else orig_ksk_lifetime
@@ -155,19 +155,6 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     wait_for_dnskey_count(t, server, after_keys, 20)
     check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old key removed")
 
-t = Test(stress=False)
-
-ModOnlineSign.check()
-
-parent = t.server("knot")
-parent_zone = t.zone("com.", storage=".")
-t.link(parent_zone, parent)
-parent.dnssec(parent_zone).enable = True
-
-child = t.server("knot")
-child_zone = t.zone("example.com.", storage=".")
-t.link(child_zone, child)
-
 def cds_submission():
     cds = child.dig(ZONE, "CDS")
     cds_rdata = cds.resp.answer[0].to_rdataset()[0].to_text()
@@ -175,25 +162,39 @@ def cds_submission():
     up.add(ZONE, 7, "DS", cds_rdata)
     up.send("NOERROR")
 
-child.zonefile_sync = 24 * 60 * 60
+def run_test():
+    t = Test(stress=False)
 
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
-child.add_module(child_zone, ModOnlineSign("ECDSAP384SHA384", key_size="384", prop_delay=11, ksc = [ parent ],
-                                           ksci = 2, ksk_shared=True, cds_publish="always"))
+    ModOnlineSign.check()
 
-# parameters
-ZONE = "example.com."
+    parent = t.server("knot")
+    parent_zone = t.zone("com.", storage=".")
+    t.link(parent_zone, parent)
+    parent.dnssec(parent_zone).enable = True
 
-t.start()
-child.zone_wait(child_zone)
+    child = t.server("knot")
+    child_zone = t.zone("example.com.", storage=".")
+    t.link(child_zone, child)
 
-cds_submission() # pass initially generated key to active state
-t.sleep(4) # let the server accept the submission before forced reload
+    child.zonefile_sync = 24 * 60 * 60
 
-pregenerate_key(child, child_zone, "ECDSAP384SHA384")
-watch_ksk_rollover(t, child, child_zone, 1, 1, 2, "CSK rollover", 22, cds_submission)
+    child.dnssec(child_zone).ksk_sbm_check = [ parent ]
+    child.add_module(child_zone, ModOnlineSign("ECDSAP384SHA384", key_size="384", prop_delay=11, ksc = [ parent ],
+                                            ksci = 2, ksk_shared=True, cds_publish="always"))
 
-pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_alg_rollover(t, child, child_zone, 1, 1, "CSK to CSK alg", "ECDSAP256SHA256", 256, cds_submission)
+    # parameters
+    ZONE = "example.com."
 
-t.end()
+    t.start()
+    child.zone_wait(child_zone)
+
+    cds_submission() # pass initially generated key to active state
+    t.sleep(4) # let the server accept the submission before forced reload
+
+    pregenerate_key(child, child_zone, "ECDSAP384SHA384")
+    watch_ksk_rollover(t, child, child_zone, 1, 1, 2, "CSK rollover", 22, cds_submission)
+
+    pregenerate_key(child, child_zone, "ECDSAP256SHA256")
+    watch_alg_rollover(t, child, child_zone, 1, 1, "CSK to CSK alg", "ECDSAP256SHA256", 256, cds_submission)
+
+    t.end()

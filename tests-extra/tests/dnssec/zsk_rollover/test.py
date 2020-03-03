@@ -36,28 +36,29 @@ def wait4key(t, server, zone, dnskeys, not_keytag, min_wait, max_wait, step):
         set_err("%s failed" % step)
     detail_log(SEP)
 
-t = Test()
+def run_test():
+    t = Test()
 
-master = t.server("knot")
-zone = t.zone("example.com.", storage=".")
-t.link(zone, master, ddns=True)
+    master = t.server("knot")
+    zone = t.zone("example.com.", storage=".")
+    t.link(zone, master, ddns=True)
 
-master.dnssec(zone).enable = True
-master.dnssec(zone).manual = False
-master.dnssec(zone).dnskey_ttl = 3
-master.dnssec(zone).zsk_lifetime = 16
-master.dnssec(zone).propagation_delay = 3
+    master.dnssec(zone).enable = True
+    master.dnssec(zone).manual = False
+    master.dnssec(zone).dnskey_ttl = 3
+    master.dnssec(zone).zsk_lifetime = 16
+    master.dnssec(zone).propagation_delay = 3
 
-t.start()
-wait4key(t, master, zone, 3, -1, 12, 20, "ZSK publish") # new ZSK published
-old_key = zsk_keytag(master, zone)
+    t.start()
+    wait4key(t, master, zone, 3, -1, 12, 20, "ZSK publish") # new ZSK published
+    old_key = zsk_keytag(master, zone)
 
-wait4key(t, master, zone, 3, old_key, 4, 7, "ZSK switch") # active ZSK switched
-up = master.update(zone)
-up.delete("longttl.example.com.", "A") # zone max TTL decreases
-up.send()
-master.ctl("zone-sign")
+    wait4key(t, master, zone, 3, old_key, 4, 7, "ZSK switch") # active ZSK switched
+    up = master.update(zone)
+    up.delete("longttl.example.com.", "A") # zone max TTL decreases
+    up.send()
+    master.ctl("zone-sign")
 
-wait4key(t, master, zone, 2, old_key, 9, 13, "ZSK remove") # old ZSK removed
+    wait4key(t, master, zone, 2, old_key, 9, 13, "ZSK remove") # old ZSK removed
 
-t.end()
+    t.end()
