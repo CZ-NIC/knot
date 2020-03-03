@@ -483,9 +483,14 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 	assert(update->zone->contents->nodes);
 	assert(update->new_cont->nodes);
 
+	int ret = zone_update_undo_type(update, KNOT_RRTYPE_NSEC);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	nsec_chain_iterate_data_t data = { ttl, update };
 
-	int ret = nsec_update_bitmaps(update->a_ctx->node_ptrs, &data);
+	ret = nsec_update_bitmaps(update->a_ctx->node_ptrs, &data);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

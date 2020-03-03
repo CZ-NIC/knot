@@ -142,6 +142,17 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
 int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags);
 
 /*!
+ * \brief Create new changeset by copying only removals/additions of specified type.
+ *
+ * \param ch          Changeset to be filtered.
+ * \param filtered    Output: new changeset with filtered changes.
+ * \param rrtype      RRtype in question.
+ *
+ * \return KNOT_E*
+ */
+int changeset_filter(const changeset_t *ch, changeset_t *filtered, uint16_t rrtype);
+
+/*!
  * \brief Get serial "from" of the changeset.
  *
  * \param ch   Changeset in question.

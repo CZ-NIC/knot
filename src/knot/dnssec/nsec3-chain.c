@@ -780,7 +780,12 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return knot_nsec3_create_chain(update->new_cont, params, ttl, opt_out, update);
 	}
 
-	int ret = fix_nsec3_nodes(update, params, ttl, opt_out);
+	int ret = zone_update_undo_type(update, KNOT_RRTYPE_NSEC3);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = fix_nsec3_nodes(update, params, ttl, opt_out);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -233,6 +233,16 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t *changes);
 
 /*!
+ * \brief Undo changes by this update to all RRs of specified type.
+ *
+ * \param update   Zone update to be undone.
+ * \param rrtype   RR type to be undone.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_undo_type(zone_update_t *update, uint16_t rrtype);
+
+/*!
  * \brief Increment SOA serial (according to cofigured policy) in the update.
  *
  * \param update  Update to be modified.
