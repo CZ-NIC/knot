@@ -508,12 +508,12 @@ typedef struct {
 	uint16_t rrtype_only;
 } clone_ctx_t;
 
-static int clone_node(const zone_node_t *from, void *_ctx)
+static int clone_node(zone_node_t *from, void *_ctx)
 {
 	clone_ctx_t *ctx = _ctx;
 	for (int i = 0; i < from->rrset_count; i++) {
 		knot_rrset_t rr = node_rrset_at(from, i);
-		if (ctx->to == KNOT_RRTYPE_ANY || ctx->to == rr.type) {
+		if (ctx->rrtype_only == KNOT_RRTYPE_ANY || ctx->rrtype_only == rr.type) {
 			zone_node_t *unused = NULL;
 			int ret = zone_contents_add_rr(ctx->to, &rr, &unused);
 			if (ret != KNOT_EOK) {
@@ -540,7 +540,7 @@ int zone_contents_clone(const zone_contents_t *from, const zone_tree_t *tree_onl
 	int ret = KNOT_EOK;
 
 	if (tree_only != NULL) {
-		ret = zone_tree_apply(tree_only, clone_node, &ctx);
+		ret = zone_tree_apply((zone_tree_t *)tree_only, clone_node, &ctx);
 	}
 	if (ret == KNOT_EOK && tree_only == NULL && rrtype_only != KNOT_RRTYPE_NSEC3) {
 		ret = zone_tree_apply(from->nodes, clone_node, &ctx);
@@ -559,7 +559,7 @@ int zone_contents_clone(const zone_contents_t *from, const zone_tree_t *tree_onl
 
 const static int NOT_SUBSET = 1;
 
-static int subset_node(const zone_node_t *node, void *ctx)
+static int subset_node(zone_node_t *node, void *ctx)
 {
 	const zone_contents_t *of_c = ctx;
 	bool nsec3 = node_rrtype_exists(node, KNOT_RRTYPE_NSEC3);
@@ -567,8 +567,8 @@ static int subset_node(const zone_node_t *node, void *ctx)
 	                        ? get_nsec3_node(of_c, node->owner)
 	                        : get_node(of_c, node->owner);
 
-	for (int i = 0; i < from->rrset_count; i++) {
-		knot_rrset_t rr = node_rrset_at(from, i);
+	for (int i = 0; i < node->rrset_count; i++) {
+		knot_rrset_t rr = node_rrset_at(node, i);
 		knot_rdataset_t *of_r = node_rdataset(of_n, rr.type);
 		if (of_r == NULL || !knot_rdataset_subset(&rr.rrs, of_r)) {
 			return NOT_SUBSET;
@@ -583,9 +583,9 @@ int zone_contents_subset(const zone_contents_t *sub, const zone_contents_t *of)
 	if (sub == NULL || of == NULL) {
 		return KNOT_EINVAL;
 	}
-	int ret = zone_tree_apply(sub->nodes, subset_node, of);
+	int ret = zone_tree_apply(sub->nodes, subset_node, (void *)of);
 	if (ret == KNOT_EOK && sub->nsec3_nodes != NULL) {
-		ret = zone_tree_apply(sub->nsec3_nodes, subset_node, of);
+		ret = zone_tree_apply(sub->nsec3_nodes, subset_node, (void *)of);
 	}
 	return ret;
 }
