@@ -59,7 +59,7 @@ static knot_rrset_t rrset_init_from(const knot_rrset_t *src, uint16_t type)
 /*!
  * \brief Create empty RRSIG RR set for a given RR set to be covered.
  */
-static knot_rrset_t create_empty_rrsigs_for(const knot_rrset_t *covered)
+knot_rrset_t create_empty_rrsigs_for(const knot_rrset_t *covered)
 {
 	assert(!knot_rrset_empty(covered));
 	return rrset_init_from(covered, KNOT_RRTYPE_RRSIG);
@@ -191,7 +191,7 @@ static void note_earliest_expiration(const knot_rdata_t *rrsig, knot_time_t *exp
 }
 
 // TODO: move somewhere?
-static bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
+bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
 {
 	if (knot_rrset_empty(rrsig)) {
 		return false;
