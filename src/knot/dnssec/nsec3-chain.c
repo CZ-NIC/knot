@@ -509,12 +509,12 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 	const zone_node_t *old_nsec3_n = zone_contents_find_nsec3_node(update->new_cont, for_node_hashed);
 	if (old_nsec3_n != NULL) {
 		knot_rrset_t rem_nsec3 = node_rrset(old_nsec3_n, KNOT_RRTYPE_NSEC3);
-		rem_nsec3_copy = knot_rrset_copy(&rem_nsec3, NULL);
-		if (rem_nsec3_copy == NULL) {
-			return KNOT_ENOMEM;
-		}
-
 		if (!knot_rrset_empty(&rem_nsec3)) {
+			rem_nsec3_copy = knot_rrset_copy(&rem_nsec3, NULL);
+			if (rem_nsec3_copy == NULL) {
+				return KNOT_ENOMEM;
+			}
+
 			knot_rrset_t rem_rrsig = node_rrset(old_nsec3_n, KNOT_RRTYPE_RRSIG);
 			ret = zone_update_remove(update, &rem_nsec3);
 			if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
