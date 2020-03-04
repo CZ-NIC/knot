@@ -577,14 +577,18 @@ int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[], uin
 {
 	uint32_t idx_rx = 0;
 	int ret = KNOT_EOK;
-	*count = xsk_ring_cons__peek(&socket->rx, max_count, &idx_rx);
-	assert(*count <= max_count);
+	const ssize_t i_max = xsk_ring_cons__peek(&socket->rx, max_count, &idx_rx);
+	assert(i_max <= max_count);
 
-	for (size_t i = 0; i < *count && ret == KNOT_EOK; ++i, ++idx_rx) {
+	ssize_t i;
+	for (i = 0; i < i_max && ret == KNOT_EOK; ++idx_rx) {
 		ret = rx_desc(socket, xsk_ring_cons__rx_desc(&socket->rx, idx_rx), &msgs[i]);
+		++i; /* we need to do it even after the last iteration */
 	}
 
-	xsk_ring_cons__release(&socket->rx, *count);
+	/* At this point we processed the first i buffers and skipped the rest (if any). */
+	xsk_ring_cons__release(&socket->rx, i);
+	*count = i;
 	return ret;
 }
 
