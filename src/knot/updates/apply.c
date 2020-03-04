@@ -99,13 +99,16 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rrset, apply
 	const knot_rdataset_t *node_rrs = node_rdataset(node, rrset->type);
 	if (node_rrs == NULL) {
 		// Node does not have this type at all.
+		if (rrset->type == KNOT_RRTYPE_RRSIG && (knot_rrsig_type_covered(rrset->rrs.rdata) == KNOT_RRTYPE_SOA || knot_rrsig_type_covered(rrset->rrs.rdata) == KNOT_RRTYPE_NSEC || knot_rrsig_type_covered(rrset->rrs.rdata) == KNOT_RRTYPE_NSEC3)) {
+			return true;
+		}
 		can_log_rrset(rrset, 0, ctx, true);
 		return false;
 	}
 
 	knot_rdata_t *rr_cmp = rrset->rrs.rdata;
 	for (uint16_t i = 0; i < rrset->rrs.count; ++i) {
-		if (rrset->type == KNOT_RRTYPE_RRSIG && knot_rrsig_type_covered(rr_cmp) == KNOT_RRTYPE_SOA) {
+		if (rrset->type == KNOT_RRTYPE_RRSIG && (knot_rrsig_type_covered(rr_cmp) == KNOT_RRTYPE_SOA || knot_rrsig_type_covered(rr_cmp) == KNOT_RRTYPE_NSEC || knot_rrsig_type_covered(rr_cmp) == KNOT_RRTYPE_NSEC3)) {
 			continue;
 		}
 		if (!knot_rdataset_member(node_rrs, rr_cmp)) {
