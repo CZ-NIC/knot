@@ -77,8 +77,7 @@ inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
 
 int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
                              nsec_chain_iterate_data_t *data);
-int nsec_check_reconnect_nodes(zone_node_t *a, zone_node_t *b,
-                               nsec_chain_iterate_data_t *data);
+int nsec_check_new_connects(zone_tree_t *tree, nsec_chain_iterate_data_t *data);
 int nsec_check_bitmaps(zone_tree_t *nsec_ptrs, nsec_chain_iterate_data_t *data);
 
 /*!

@@ -288,43 +288,74 @@ int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
 	return KNOT_EOK;
 }
 
-int nsec_check_reconnect_nodes(zone_node_t *a, zone_node_t *b,
-                               nsec_chain_iterate_data_t *data)
+static knot_dname_t *nsec3_next_to_dname(const knot_rdata_t *rdata, const knot_dname_t *apex)
 {
-	if (!(a->flags & NODE_FLAGS_BINODE)) {
-		return KNOT_EINVAL;
+	uint16_t next_len = knot_nsec3_next_len(rdata), hash_len = ((next_len + 4) / 5) * 8;
+	uint16_t apex_len = knot_dname_size(apex), out_len = 1 + hash_len + apex_len;
+
+	knot_dname_t *out = malloc(out_len);
+	if (out != NULL) {
+		if (knot_nsec3_hash_to_dname(out, out_len, knot_nsec3_next(rdata),
+		                             knot_nsec3_next_len(rdata), apex) != KNOT_EOK) {
+			free(out);
+			return NULL;
+		}
 	}
-	knot_rdataset_t *prev_a = node_rdataset(binode_counterpart(a), data->nsec_type);
-	if (prev_a == NULL || prev_a->count != 1) {
-		return KNOT_ERROR;
+	return out;
+}
+
+static zone_node_t *nsec_prev(zone_node_t *node); // declaration
+
+static int nsec_check_prev_next(zone_node_t *node, void *ctx)
+{
+	if (node_no_nsec(node)) {
+		return KNOT_EOK;
 	}
-	knot_rdataset_t *curr_b = node_rdataset(b, data->nsec_type);
-	if (curr_b == NULL || curr_b->count != 1) {
-		data->update->validation_hint.node = b->owner;
+
+	nsec_chain_iterate_data_t *data = ctx;
+	int ret = nsec_check_connect_nodes(nsec_prev(node), node, data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_rdataset_t *nsec = node_rdataset(node, data->nsec_type);
+	if (nsec == NULL || nsec->count != 1) {
+		data->update->validation_hint.node = node->owner;
 		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
 		return KNOT_DNSSEC_ENSEC_CHAIN;
 	}
-	const uint8_t *prev_a_nxt, *curr_b_nxt;
+
+	knot_dname_t *next;
+	const zone_node_t *nn;
 	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
-		prev_a_nxt = knot_nsec_next(prev_a->rdata);
-		curr_b_nxt = knot_nsec_next(curr_b->rdata);
-		if (knot_dname_cmp(prev_a_nxt, curr_b_nxt) != 0) {
-			data->update->validation_hint.node = b->owner;
-			data->update->validation_hint.rrtype = data->nsec_type;
-			return KNOT_DNSSEC_ENSEC_CHAIN;
-		}
+		next = knot_dname_copy(knot_nsec_next(nsec->rdata), NULL);
+		nn = zone_contents_find_node(data->update->new_cont, next);
 	} else {
-		prev_a_nxt = knot_nsec3_next(prev_a->rdata);
-		curr_b_nxt = knot_nsec3_next(curr_b->rdata);
-		size_t len = knot_nsec3_next_len(prev_a->rdata);
-		if (len != knot_nsec3_next_len(curr_b->rdata) ||
-		    memcmp(prev_a_nxt, curr_b_nxt, len) != 0) {
-			data->update->validation_hint.node = b->owner;
-			data->update->validation_hint.rrtype = data->nsec_type;
-			return KNOT_DNSSEC_ENSEC_CHAIN;
-		}
+		next = nsec3_next_to_dname(nsec->rdata, data->update->new_cont->apex->owner);
+		nn = zone_contents_find_nsec3_node(data->update->new_cont, next);
+	}
+	if (next == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	if (nn == NULL) {
+		data->update->validation_hint.node = next;
+		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
+		free(next);
+		return KNOT_DNSSEC_ENSEC_CHAIN;
+	}
+	free(next);
+	if (nsec_prev((zone_node_t *)nn) != node) {
+		data->update->validation_hint.node = node->owner;
+		data->update->validation_hint.rrtype = data->nsec_type;
+		return KNOT_DNSSEC_ENSEC_CHAIN;
 	}
 	return KNOT_EOK;
+}
+
+int nsec_check_new_connects(zone_tree_t *tree, nsec_chain_iterate_data_t *data)
+{
+	return zone_tree_apply(tree, nsec_check_prev_next, data);
 }
 
 extern bool nsec3_is_empty(zone_node_t *node, bool opt_out); // from nsec3-chain.c
@@ -681,7 +712,5 @@ int knot_nsec_check_chain_fix(zone_update_t *update)
 		return ret;
 	}
 
-	return knot_nsec_chain_iterate_fix(update->a_ctx->node_ptrs,
-					   nsec_check_connect_nodes,
-	                                   nsec_check_reconnect_nodes, &data);
+	return nsec_check_new_connects(update->a_ctx->node_ptrs, &data);
 }

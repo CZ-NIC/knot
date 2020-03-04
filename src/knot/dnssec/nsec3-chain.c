@@ -837,7 +837,5 @@ int knot_nsec3_check_chain_fix(zone_update_t *update, const dnssec_nsec3_params_
 		return ret;
 	}
 
-	return knot_nsec_chain_iterate_fix(update->a_ctx->nsec3_ptrs,
-					   nsec_check_connect_nodes,
-	                                   nsec_check_reconnect_nodes, &data);
+	return nsec_check_new_connects(update->a_ctx->nsec3_ptrs, &data);
 }
