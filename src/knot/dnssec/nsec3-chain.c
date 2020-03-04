@@ -497,10 +497,6 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		return ret;
 	}
 
-	// saved hash of next node
-	uint8_t *next_hash = NULL;
-	uint8_t next_length = 0;
-
 	bool add_nsec3 = (new_n != NULL && !node_empty(new_n) && !(new_n->flags & NODE_FLAGS_NONAUTH) &&
 			  !nsec3_opt_out(new_n, opt_out));
 
@@ -514,9 +510,6 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 			if (ret == KNOT_EOK && !knot_rrset_empty(&rem_rrsig)) {
 				ret = zone_update_remove(update, &rem_rrsig);
 			}
-			assert(update->flags & UPDATE_INCREMENTAL); // to make sure the following pointer remains valid
-			next_hash = (uint8_t *)knot_nsec3_next(rem_nsec3.rrs.rdata);
-			next_length = knot_nsec3_next_len(rem_nsec3.rrs.rdata);
 		}
 	}
 
@@ -530,7 +523,10 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 		assert(!knot_rrset_empty(&nsec3));
 
 		// copy hash of next element from removed record
-		if (next_hash != NULL) {
+		const knot_rdataset_t *old_nsec3 = node_rdataset(binode_counterpart((zone_node_t *)old_nsec3_n), KNOT_RRTYPE_NSEC3);
+		if (old_nsec3 != NULL && old_nsec3->count == 1) {
+			const uint8_t *next_hash = knot_nsec3_next(old_nsec3->rdata);
+			uint8_t next_length = knot_nsec3_next_len(old_nsec3->rdata);
 			uint8_t *raw_hash = (uint8_t *)knot_nsec3_next(nsec3.rrs.rdata);
 			uint8_t raw_length = knot_nsec3_next_len(nsec3.rrs.rdata);
 			assert(raw_hash != NULL);
