@@ -412,6 +412,9 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 			break; // still free all RX buffers
 		}
 
+		// udp_pktinfo_handle not needed for XDP as one worker is bound
+		// to one interface only.
+
 		udp_handle(ctx, knot_xsk_get_poll_fd(xdp_sock), &rq->msgs_rx[i].ip_from,
 		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload, true);
 

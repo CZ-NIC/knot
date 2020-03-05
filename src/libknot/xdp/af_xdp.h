@@ -109,7 +109,8 @@ int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg);
  *
  * \return KNOT_E*
  */
-int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count, uint32_t *sent);
+int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
+                      uint32_t count, uint32_t *sent);
 
 /*!
  * \brief Receive multiple packets thru XDP.
@@ -121,7 +122,8 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
  *
  * \return KNOT_E*
  */
-int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count);
+int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[],
+                      uint32_t max_count, uint32_t *count);
 
 /*! \brief Free payloads of received packets. */
 void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
