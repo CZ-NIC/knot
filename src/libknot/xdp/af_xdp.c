@@ -22,10 +22,8 @@
 #include "libknot/xdp/bpf-user.h"
 
 #include <assert.h>
-#include <byteswap.h>
 #include <errno.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -405,7 +403,8 @@ int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
 }
 
 _public_
-int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count, uint32_t *sent)
+int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
+                      uint32_t count, uint32_t *sent)
 {
 	int ret = KNOT_EOK;
 	*sent = 0;
@@ -468,7 +467,7 @@ int knot_xsk_check(struct knot_xsk_socket *socket)
 }
 
 static int rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,
-		   knot_xsk_msg_t *msg)
+                   knot_xsk_msg_t *msg)
 {
 	uint8_t *uframe_p = xsi->umem->frames->bytes + desc->addr;
 	const struct ethhdr *eth = (struct ethhdr *)uframe_p;
@@ -545,7 +544,8 @@ free_frame:
 }
 
 _public_
-int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count)
+int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[],
+                      uint32_t max_count, uint32_t *count)
 {
 	int ret = KNOT_EOK;
 	uint32_t idx_rx = 0;
