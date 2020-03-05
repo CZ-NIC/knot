@@ -69,7 +69,6 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 /*! \brief De-init XDP socket. */
 void knot_xsk_deinit(struct knot_xsk_socket *socket);
 
-
 /*!
  * \brief Collect completed TX buffers, so they can be used by knot_xsk_alloc_packet().
  *
@@ -105,7 +104,8 @@ int knot_xsk_alloc_packet(struct knot_xsk_socket *socket, bool ipv6,
  *
  * \return KNOT_E*
  */
-int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count, uint32_t *sent);
+int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
+                      uint32_t count, uint32_t *sent);
 
 /*!
  * \brief Receive multiple packets thru XDP.
@@ -117,15 +117,15 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
  *
  * \return KNOT_E*
  */
-int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[], uint32_t max_count, uint32_t *count);
+int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[],
+                      uint32_t max_count, uint32_t *count);
 
 /*! \brief Free payloads of received packets. */
 void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
-			 uint32_t count);
+                         uint32_t count);
 
 /*! \brief Syscall to kernel to wake up the network card driver after knot_xsk_sendm/mmsg(). */
 int knot_xsk_sendmsg_finish(struct knot_xsk_socket *socket);
-
 
 /*! \brief Returns a file descriptor to be polled on for incomming packets. */
 int knot_xsk_get_poll_fd(struct knot_xsk_socket *socket);
