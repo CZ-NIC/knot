@@ -13,7 +13,7 @@ import time
 import dns.message
 import dns.query
 import dns.update
-from subprocess import Popen, PIPE, check_call, CalledProcessError
+from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, DEVNULL
 from dnstest.utils import *
 import dnstest.config
 import dnstest.inquirer
@@ -694,6 +694,13 @@ class Server(object):
 
         return key
 
+    @property
+    def keydir(self):
+        d = os.path.join(self.dir, "keys")
+        if not os.path.exists(d):
+            os.makedirs(d)
+        return d
+
     def use_keys(self, zone):
         zone = zone_arg_check(zone)
         # copy all keys, even for other zones
@@ -946,6 +953,12 @@ class Bind(Server):
                         (" key %s;" % self.tsig_test.name) if self.tsig_test else ""))
             else:
                 s.item("allow-transfer", "{ any; }")
+
+            if z.dnssec.enable:
+                s.item("inline-signing", "yes")
+                s.item("auto-dnssec", "maintain")
+                s.item_str("key-directory", self.keydir)
+
             s.end()
 
         self.start_params = ["-c", self.confile, "-g"]
@@ -953,6 +966,33 @@ class Bind(Server):
                            "-k", self.ctlkeyfile]
 
         return s.conf
+
+    def start(self, clean=False):
+        for zname in self.zones:
+            z = self.zones[zname]
+
+            # unrelated: generate keys as Bind won't do
+            ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', self.keydir ]
+            if z.dnssec.nsec3:
+                ps += ['-3']
+            k1 = check_output(ps + [z.name], stderr=DEVNULL)
+            k2 = check_output(ps + ["-f", "KSK"] + [z.name], stderr=DEVNULL)
+
+            k1 = self.keydir + '/' + k1.rstrip().decode('ascii')
+            k2 = self.keydir + '/' + k2.rstrip().decode('ascii')
+
+            # Append to zone
+            with open(z.zfile.path, 'a') as outf:
+                with open(k1 + '.key', 'r') as kf:
+                    for line in kf:
+                        if len(line) > 0 and line[0] != ';':
+                            outf.write(line)
+                with open(k2 + '.key', 'r') as kf:
+                    for line in kf:
+                        if len(line) > 0 and line[0] != ';':
+                            outf.write(line)
+
+        super().start(clean)
 
 class Knot(Server):
 
@@ -964,10 +1004,6 @@ class Knot(Server):
         self.control_bin = params.knot_ctl
         self.inquirer = dnstest.inquirer.Inquirer()
         self.includes = set()
-
-    @property
-    def keydir(self):
-        return os.path.join(self.dir, "keys")
 
     def listening(self):
         tcp = super()._check_socket("tcp", self.port)
