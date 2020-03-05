@@ -326,18 +326,32 @@ static int poll_one(int fd, int events, int timeout_ms)
  */
 static bool io_should_wait(int error)
 {
-	/* socket data not ready */
-	if (error == EAGAIN || error == EWOULDBLOCK) {
+	if (error == EAGAIN || error == EWOULDBLOCK ||	/* Socket data not ready. */
+	    error == ENOMEM || error == ENOBUFS) {	/* Insufficient resources. */
 		return true;
 	}
 
 #ifndef __linux__
-	/* FreeBSD: connection in progress */
+	/* FreeBSD: connection in progress. */
 	if (error == ENOTCONN) {
 		return true;
 	}
 #endif
 
+	return false;
+}
+
+/*!
+ * \brief Check if we should wait again.
+ *
+ * \param error  \a errno set by the failed wait operation.
+ */
+static bool wait_should_retry(int error)
+{
+	if (error == EINTR ||				/* System call interrupted. */
+	    error == EAGAIN || error == ENOMEM) {	/* Insufficient resources. */
+		return true;
+	}
 	return false;
 }
 
@@ -435,9 +449,9 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 					TIMEOUT_CTX_UPDATE
 					/* Ready, retry process. */
 					break;
-				} else if (ret == -1 && errno == EINTR) {
+				} else if (ret == -1 && wait_should_retry(errno)) {
 					TIMEOUT_CTX_UPDATE
-					/* Interrupted, continue waiting. */
+					/* Interrupted or transient error, continue waiting. */
 					continue;
 				} else if (ret == 0) {
 					/* Timeouted, exit. */
