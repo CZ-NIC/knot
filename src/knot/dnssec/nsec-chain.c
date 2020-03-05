@@ -368,7 +368,9 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 	bool shall_no_nsec = node_no_nsec(node);
 	if (data->nsec3_params != NULL) {
 		nsec_node = node_nsec3_get(node);
-		shall_no_nsec = nsec3_is_empty(node, data->nsec3_params->flags & KNOT_NSEC3_FLAG_OPT_OUT);
+		shall_no_nsec = (node->flags & NODE_FLAGS_DELETED) ||
+		                (node->flags & NODE_FLAGS_NONAUTH) ||
+		                nsec3_is_empty(node, data->nsec3_params->flags & KNOT_NSEC3_FLAG_OPT_OUT);
 	}
 	knot_rdataset_t *nsec = node_rdataset(nsec_node, data->nsec_type);
 	if ((nsec == NULL || nsec->count != 1) && !shall_no_nsec) {

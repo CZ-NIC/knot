@@ -591,6 +591,10 @@ bool nsec3_is_empty(zone_node_t *node, bool opt_out)
  */
 static int nsec3_mark_empty(zone_node_t *node, void *data)
 {
+	if (node->flags & NODE_FLAGS_DELETED) {
+		return KNOT_EOK;
+	}
+
 	if (!(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node, (data != NULL))) {
 		/*!
 		 * Mark this node and all parent nodes that meet the same
@@ -832,7 +836,18 @@ int knot_nsec3_check_chain_fix(zone_update_t *update, const dnssec_nsec3_params_
 {
 	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC3, params };
 
-	int ret = nsec_check_bitmaps(update->a_ctx->node_ptrs, &data);
+	int ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_mark_empty,
+	                          ((params->flags & KNOT_NSEC3_FLAG_OPT_OUT) ? (void *)update : NULL));
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = nsec_check_bitmaps(update->a_ctx->node_ptrs, &data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_reset, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
