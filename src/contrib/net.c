@@ -452,6 +452,11 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 					/* Timeouted, exit. */
 					return KNOT_ETIMEOUT;
 				} else {
+					/* In specific circumstances with Valgrind,
+					 * poll() returns wrong value.
+					 */
+					assert(ret <= 1);
+					assert(ret >= -1);
 					/* Other error, exit. */
 					return KNOT_ECONN;
 				}
