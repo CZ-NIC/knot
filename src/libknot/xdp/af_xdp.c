@@ -54,7 +54,7 @@ _Static_assert((FRAME_SIZE == 4096 || FRAME_SIZE == 2048)
 	 * our implementation assume that the rings can never get filled. */
 	&& IS_POWER_OF_2(UMEM_RING_LEN_RX) && UMEM_RING_LEN_RX > UMEM_FRAME_COUNT_RX
 	&& IS_POWER_OF_2(UMEM_RING_LEN_TX) && UMEM_RING_LEN_TX > UMEM_FRAME_COUNT_TX
-	&& true
+	&& UMEM_FRAME_COUNT_TX <= (1 << 16) /* see tx_free_indices */
 	, "Incorrect #define combination for AF_XDP.");
 #endif
 
