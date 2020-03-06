@@ -164,6 +164,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 
 		// sending part
 		if (duration < ctx->duration) {
+			knot_xsk_prepare_alloc(xsk);
 			ret = alloc_pkts(pkts, ctx->at_once, xsk, ctx, tick, &payload_ptr);
 			if (ret != KNOT_EOK) {
 				printf("thread#%u alloc_pkts failed: %s\n", ctx->thread_id, knot_strerror(ret));
@@ -184,7 +185,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 			}
 			tot_sent += really_sent;
 
-			ret = knot_xsk_check(xsk);
+			ret = knot_xsk_sendmsg_finish(xsk);
 			if (ret != KNOT_EOK) {
 				printf("thread#%u flush failed: %s\n", ctx->thread_id, knot_strerror(ret));
 				goto end;
