@@ -574,7 +574,7 @@ void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t ms
 		uint8_t *uframe_p = msg_uframe_p(socket, &msgs[msg_i],
 				msgs[msg_i].ip_from.ss_family == AF_INET6, false);
 		if (!uframe_p) continue;
-		uint64_t offset = (uframe_p - socket->umem->frames->bytes) / FRAME_SIZE;
+		uint64_t offset = uframe_p - socket->umem->frames->bytes;
 		*xsk_ring_prod__fill_addr(fq, idx + count_ok) = offset;
 		++count_ok;
 	}
