@@ -437,7 +437,6 @@ void knot_xsk_prepare_alloc(struct knot_xsk_socket *socket)
 	xsk_ring_cons__release(cq, completed);
 }
 
-/** Periodical callback. Just using 'the_socket' global. */
 _public_
 int knot_xsk_sendmsg_finish(struct knot_xsk_socket *socket)
 {
@@ -448,15 +447,17 @@ int knot_xsk_sendmsg_finish(struct knot_xsk_socket *socket)
 	int sendret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
 	bool is_ok = (sendret != -1);
 	const bool is_again = !is_ok && (errno == EWOULDBLOCK || errno == EAGAIN);
-	//FIXME: the logical conditions were wrong
-	if (is_ok || is_again) {
+	// Some of the !is_ok cases are a little unclear - what to do about the syscall,
+	// including how caller of _sendmsg_finish() should react.
+	if (is_ok || !is_again) {
 		socket->kernel_needs_wakeup = false;
-		// EAGAIN is unclear; we'll retry the syscall later, to be sure
 	}
-	if (!is_ok && !is_again) {
+	if (is_again) {
 		return KNOT_EAGAIN;
-	} else {
+	} else if (is_ok) {
 		return KNOT_EOK;
+	} else {
+		return -errno;
 	}
 	/* This syscall might be avoided with a newer kernel feature (>= 5.4):
 	   https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-use-need-wakeup-bind-flag
