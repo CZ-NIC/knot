@@ -418,10 +418,10 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 	return ret;
 }
 
-/** Collect completed TX buffers from driver,
- * so they can be used by knot_xsk_alloc_packet(). */
-static void collect_tx_buffers(struct xsk_umem_info *umem)
+_public_
+void knot_xsk_prepare_alloc(struct knot_xsk_socket *socket)
 {
+	struct xsk_umem_info *umem = socket->umem;
 	struct xsk_ring_cons *cq = &umem->cq;
 	uint32_t idx_cq;
 	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx_cq);
@@ -439,32 +439,30 @@ static void collect_tx_buffers(struct xsk_umem_info *umem)
 
 /** Periodical callback. Just using 'the_socket' global. */
 _public_
-int knot_xsk_check(struct knot_xsk_socket *socket)
+int knot_xsk_sendmsg_finish(struct knot_xsk_socket *socket)
 {
-	int ret = KNOT_EOK;
 	/* Trigger sending queued packets. */
-	if (socket->kernel_needs_wakeup) {
-		int sendret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
-		bool is_ok = (sendret != -1);
-		const bool is_again = !is_ok && (errno == EWOULDBLOCK || errno == EAGAIN);
-		if (is_ok || is_again) {
-			socket->kernel_needs_wakeup = false;
-			// EAGAIN is unclear; we'll retry the syscall later, to be sure
-		}
-		if (!is_ok && !is_again) {
-			ret = KNOT_EAGAIN;
-		}
-		/* This syscall might be avoided with a newer kernel feature (>= 5.4):
-		   https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-use-need-wakeup-bind-flag
-		   Unfortunately it's not easy to continue supporting older kernels
-		   when using this feature on newer ones.
-		 */
+	if (!socket->kernel_needs_wakeup) {
+		return KNOT_EOK;
 	}
-
-	collect_tx_buffers(socket->umem);
-	//TODO: one uncompleted packet/batch is left until the next I/O :-/
-	// Perhaps it's worth exposing these two steps separately?
-	return ret;
+	int sendret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
+	bool is_ok = (sendret != -1);
+	const bool is_again = !is_ok && (errno == EWOULDBLOCK || errno == EAGAIN);
+	//FIXME: the logical conditions were wrong
+	if (is_ok || is_again) {
+		socket->kernel_needs_wakeup = false;
+		// EAGAIN is unclear; we'll retry the syscall later, to be sure
+	}
+	if (!is_ok && !is_again) {
+		return KNOT_EAGAIN;
+	} else {
+		return KNOT_EOK;
+	}
+	/* This syscall might be avoided with a newer kernel feature (>= 5.4):
+	   https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-use-need-wakeup-bind-flag
+	   Unfortunately it's not easy to continue supporting older kernels
+	   when using this feature on newer ones.
+	 */
 }
 
 static int rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,

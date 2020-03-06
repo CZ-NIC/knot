@@ -49,7 +49,7 @@ typedef enum {
 	 * libbpf: Kernel error message: XDP program already attached */
 } knot_xsk_load_bpf_t;
 
-/*! \brief Context structure for une XDP socket. */
+/*! \brief Context structure for one XDP socket. */
 struct knot_xsk_socket;
 
 /*!
@@ -68,6 +68,15 @@ int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_qu
 
 /*! \brief De-init XDP socket. */
 void knot_xsk_deinit(struct knot_xsk_socket *socket);
+
+
+/*!
+ * \brief Collect completed TX buffers, so they can be used by knot_xsk_alloc_packet().
+ *
+ * \param socket   XDP socket.
+ * \note Ideally you call it once just before each batch of _alloc_packet() calls.
+ */
+void knot_xsk_prepare_alloc(struct knot_xsk_socket *socket);
 
 /*!
  * \brief Allocate one buffer for an outgoing packet.
@@ -128,7 +137,8 @@ void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t ms
 			 uint32_t count);
 
 /*! \brief Syscall to kernel to wake up the network card driver after knot_xsk_sendm/mmsg(). */
-int knot_xsk_check(struct knot_xsk_socket *socket);
+int knot_xsk_sendmsg_finish(struct knot_xsk_socket *socket);
+
 
 /*! \brief Returns a file descriptor to be polled on for incomming packets. */
 int knot_xsk_get_poll_fd(struct knot_xsk_socket *socket);
