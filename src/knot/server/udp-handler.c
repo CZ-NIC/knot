@@ -403,6 +403,7 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 {
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 
+	knot_xsk_prepare_alloc(xdp_sock);
 	int ret = KNOT_EOK;
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		ret = knot_xsk_alloc_packet(xdp_sock, rq->msgs_rx[i].ip_to.ss_family == AF_INET6,
@@ -429,10 +430,9 @@ static int xdp_recvmmsg_send(void *d, void *xdp_sock)
 	uint32_t sent = rq->rcvd;
 
 	int ret = knot_xsk_sendmmsg(xdp_sock, rq->msgs_tx, sent, &sent);
+	knot_xsk_sendmsg_finish(xdp_sock);
 
 	memset(rq, 0, sizeof(*rq));
-
-	knot_xsk_check(xdp_sock);
 
 	return ret == KNOT_EOK ? sent : ret;
 }
