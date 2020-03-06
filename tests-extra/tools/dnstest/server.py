@@ -740,14 +740,16 @@ class Server(object):
     def random_ddns(self, zone, allow_empty=True):
         zone = zone_arg_check(zone)
 
-        up = self.update(zone)
+        rc = "NONE"
+        while rc != "NOERROR":
+            up = self.update(zone)
 
-        while True:
-            changes = self.zones[zone.name].zfile.gen_rnd_ddns(up)
-            if allow_empty or changes > 0:
-                break
+            while True:
+                changes = self.zones[zone.name].zfile.gen_rnd_ddns(up)
+                if allow_empty or changes > 0:
+                    break
 
-        up.send("NOERROR")
+            rc = up.try_send()
 
     def add_module(self, zone, module):
         zone = zone_arg_check(zone)
@@ -896,6 +898,7 @@ class Bind(Server):
             s.begin("zone", z.name)
             s.item_str("file", z.zfile.path)
             s.item("check-names", "warn")
+            s.item("check-integrity", "no")
 
             if z.masters:
                 s.item("type", "slave")
@@ -991,8 +994,19 @@ class Bind(Server):
                     for line in kf:
                         if len(line) > 0 and line[0] != ';':
                             outf.write(line)
+                #if z.dnssec.nsec3:
+                    #n3flag =  1 if z.dnssec.nsec3_opt_out else 0
+                    #n3iters = z.dnssec.nsec3_iters or 10
+                    #outf.write("%s NSEC3PARAM 1 %d %d -\n" % (z.name, n3flag, n3iters)) # this does not work!
 
         super().start(clean)
+
+        for zname in self.zones:
+            z = self.zones[zname]
+            if z.dnssec.nsec3:
+                n3flag =  1 if z.dnssec.nsec3_opt_out else 0
+                n3iters = z.dnssec.nsec3_iters or 10
+                self.ctl("signing -nsec3param 1 %d %d - %s" % (n3flag, n3iters, z.name))
 
 class Knot(Server):
 

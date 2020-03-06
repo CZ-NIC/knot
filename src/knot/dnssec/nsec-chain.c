@@ -269,7 +269,7 @@ int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
 	}
 	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
 		const knot_dname_t *a_next = knot_nsec_next(nsec->rdata);
-		if (knot_dname_cmp(a_next, b->owner) != 0) {
+		if (!knot_dname_caseq(a_next, b->owner)) {
 			data->update->validation_hint.node = a->owner;
 			data->update->validation_hint.rrtype = data->nsec_type;
 			return KNOT_DNSSEC_ENSEC_CHAIN;
@@ -329,6 +329,9 @@ static int nsec_check_prev_next(zone_node_t *node, void *ctx)
 	const zone_node_t *nn;
 	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
 		next = knot_dname_copy(knot_nsec_next(nsec->rdata), NULL);
+		if (next != NULL) {
+			knot_dname_to_lower(next);
+		}
 		nn = zone_contents_find_node(data->update->new_cont, next);
 	} else {
 		next = nsec3_next_to_dname(nsec->rdata, data->update->new_cont->apex->owner);

@@ -274,17 +274,27 @@ class ZoneFile(object):
         with open(self.path, 'r') as file:
             for fline in file:
                 line = fline.split(None, 3)
-                if line[0] not in [";;"] and line[2] not in ["SOA", "RRSIG", "DNSKEY", "DS", "CDS", "CDNSKEY", "NSEC", "NSEC3", "NSEC3PARAM"]:
-                    try:
-                        if random.randint(1, 20) in [4, 5]:
-                            ddns.delete(line[0], line[2])
-                            changes += 1
-                        if random.randint(1, 20) in [2, 3] and line[2] not in ["DNAME"]:
-                            ddns.add("xyz."+line[0], line[1], line[2], line[3])
-                            changes += 1
-                    except (dns.rdatatype.UnknownRdatatype, dns.name.LabelTooLong, dns.name.NameTooLong):
-                        # problems - simply skip. This is completely stochastic anyway.
-                        pass
+                if line[0][0] not in [";", "@"] and len(line) > 2:
+                    dname = line[0]
+                    if line[1].isnumeric():
+                        ttl = line[1]
+                        rtype = line[2]
+                        rdata = ' '.join(line[3:])
+                    else:
+                        ttl = 0
+                        rtype = line[1]
+                        rdata = ' '.join(line[2:])
+                    if rtype not in ["SOA", "RRSIG", "DNSKEY", "DS", "CDS", "CDNSKEY", "NSEC", "NSEC3", "NSEC3PARAM"]:
+                        try:
+                            if random.randint(1, 20) in [4, 5]:
+                                ddns.delete(line[0], rtype)
+                                changes += 1
+                            if random.randint(1, 20) in [2, 3] and rtype not in ["DNAME"]:
+                                ddns.add("xyz."+line[0], ttl, rtype, rdata)
+                                changes += 1
+                        except (dns.rdatatype.UnknownRdatatype, dns.name.LabelTooLong, dns.name.NameTooLong, ValueError, dns.exception.SyntaxError):
+                            # problems - simply skip. This is completely stochastic anyway.
+                            pass
         return changes
 
     def remove(self):

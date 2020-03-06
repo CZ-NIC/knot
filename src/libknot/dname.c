@@ -28,9 +28,24 @@
 #include "contrib/mempattern.h"
 #include "contrib/tolower.h"
 
-static int label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
+static bool label_is_equal(const uint8_t *lb1, const uint8_t *lb2, bool no_case)
 {
-	return (*lb1 == *lb2) && memcmp(lb1 + 1, lb2 + 1, *lb1) == 0;
+	if (*lb1 != *lb2) {
+		return false;
+	}
+
+	if (no_case) {
+		uint8_t len = *lb1;
+		for (uint8_t i = 1; i <= len; i++) {
+			if (knot_tolower(lb1[i]) != knot_tolower(lb2[i])) {
+				return false;
+			}
+		}
+
+		return true;
+	} else {
+		return memcmp(lb1 + 1, lb2 + 1, *lb1) == 0;
+	}
 }
 
 /*!
@@ -532,7 +547,7 @@ size_t knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 	/* Count longest chain leading to root label. */
 	size_t matched = 0;
 	while (common > 0) {
-		if (label_is_equal(d1, d2)) {
+		if (label_is_equal(d1, d2, false)) {
 			++matched;
 		} else {
 			matched = 0; /* Broken chain. */
@@ -642,15 +657,14 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 	}
 }
 
-_public_
-bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
+inline static bool dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2, bool no_case)
 {
 	if (d1 == NULL || d2 == NULL) {
 		return false;
 	}
 
 	while (*d1 != '\0' || *d2 != '\0') {
-		if (label_is_equal(d1, d2)) {
+		if (label_is_equal(d1, d2, no_case)) {
 			d1 = knot_wire_next_label(d1, NULL);
 			d2 = knot_wire_next_label(d2, NULL);
 		} else {
@@ -659,6 +673,18 @@ bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 	}
 
 	return true;
+}
+
+_public_
+bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
+{
+	return dname_is_equal(d1, d2, false);
+}
+
+_public_
+bool knot_dname_caseq(const knot_dname_t *d1, const knot_dname_t *d2)
+{
+	return dname_is_equal(d1, d2, true);
 }
 
 _public_
