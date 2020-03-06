@@ -37,8 +37,8 @@
 
 #include "contrib/macros.h"
 
-#define FRAME_SIZE 2048
-#define UMEM_FRAME_COUNT_RX 1024
+#define FRAME_SIZE 4096
+#define UMEM_FRAME_COUNT_RX 4096
 #define UMEM_FRAME_COUNT_TX UMEM_FRAME_COUNT_RX /* no reason to differ so far */
 #define UMEM_RING_LEN_RX (UMEM_FRAME_COUNT_RX * 2)
 #define UMEM_RING_LEN_TX (UMEM_FRAME_COUNT_TX * 2)
