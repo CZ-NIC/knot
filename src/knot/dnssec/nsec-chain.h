@@ -50,30 +50,10 @@ typedef int (*chain_iterate_create_cb)(zone_node_t *, zone_node_t *,
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
-inline static void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
-                                          enum knot_rr_type nsec_type,
-                                          const zone_node_t *node,
-                                          bool exact)
-{
-	bool deleg = node->flags & NODE_FLAGS_DELEG;
-	bool apex = node->flags & NODE_FLAGS_APEX;
-	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rr = node_rrset_at(node, i);
-		if (deleg && (rr.type != KNOT_RRTYPE_NS && rr.type != KNOT_RRTYPE_DS &&
-		              rr.type != KNOT_RRTYPE_NSEC && rr.type != KNOT_RRTYPE_RRSIG)) {
-			continue;
-		}
-		if (!exact && (rr.type == KNOT_RRTYPE_NSEC || rr.type == KNOT_RRTYPE_RRSIG)) {
-			continue;
-		}
-		// NSEC3PARAM in zone apex is maintained automatically
-		if (!exact && apex && rr.type == KNOT_RRTYPE_NSEC3PARAM && nsec_type != KNOT_RRTYPE_NSEC3) {
-			continue;
-		}
-
-		dnssec_nsec_bitmap_add(bitmap, rr.type);
-	}
-}
+void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
+                            enum knot_rr_type nsec_type,
+                            const zone_node_t *node,
+                            bool exact);
 
 int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
                              nsec_chain_iterate_data_t *data);

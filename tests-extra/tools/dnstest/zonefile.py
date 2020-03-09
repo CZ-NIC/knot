@@ -274,7 +274,9 @@ class ZoneFile(object):
         with open(self.path, 'r') as file:
             for fline in file:
                 line = fline.split(None, 3)
-                if line[0][0] not in [";", "@"] and len(line) > 2:
+                if len(line) < 3:
+                    continue
+                if line[0][0] not in [";", "@"]:
                     dname = line[0]
                     if line[1].isnumeric():
                         ttl = line[1]
@@ -289,7 +291,7 @@ class ZoneFile(object):
                             if random.randint(1, 20) in [4, 5]:
                                 ddns.delete(line[0], rtype)
                                 changes += 1
-                            if random.randint(1, 20) in [2, 3] and rtype not in ["DNAME"]:
+                            if random.randint(1, 20) in [2, 3] and rtype not in ["DNAME", "TYPE39"]:
                                 ddns.add("xyz."+line[0], ttl, rtype, rdata)
                                 changes += 1
                         except (dns.rdatatype.UnknownRdatatype, dns.name.LabelTooLong, dns.name.NameTooLong, ValueError, dns.exception.SyntaxError):

@@ -23,6 +23,37 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/adjust.h"
 
+void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
+                            enum knot_rr_type nsec_type,
+                            const zone_node_t *node,
+                            bool exact)
+{
+	bool deleg = node->flags & NODE_FLAGS_DELEG;
+	bool apex = node->flags & NODE_FLAGS_APEX;
+	for (int i = 0; i < node->rrset_count; i++) {
+		knot_rrset_t rr = node_rrset_at(node, i);
+		if (deleg && (rr.type != KNOT_RRTYPE_NS && rr.type != KNOT_RRTYPE_DS &&
+		              rr.type != KNOT_RRTYPE_NSEC)) {
+			if (rr.type != KNOT_RRTYPE_RRSIG) {
+				continue;
+			}
+			if (!rrsig_covers_type(&rr, KNOT_RRTYPE_DS) &&
+			    !rrsig_covers_type(&rr, KNOT_RRTYPE_NSEC)) {
+				continue;
+			}
+		}
+		if (!exact && (rr.type == KNOT_RRTYPE_NSEC || rr.type == KNOT_RRTYPE_RRSIG)) {
+			continue;
+		}
+		// NSEC3PARAM in zone apex is maintained automatically
+		if (!exact && apex && rr.type == KNOT_RRTYPE_NSEC3PARAM && nsec_type != KNOT_RRTYPE_NSEC3) {
+			continue;
+		}
+
+		dnssec_nsec_bitmap_add(bitmap, rr.type);
+	}
+}
+
 /* - NSEC chain construction ------------------------------------------------ */
 
 static int create_nsec_base(knot_rrset_t *rrset, knot_dname_t *from_owner,

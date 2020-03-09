@@ -898,7 +898,6 @@ class Bind(Server):
             s.begin("zone", z.name)
             s.item_str("file", z.zfile.path)
             s.item("check-names", "warn")
-            s.item("check-integrity", "no")
 
             if z.masters:
                 s.item("type", "slave")
@@ -922,6 +921,7 @@ class Bind(Server):
             else:
                 s.item("type", "master")
                 s.item("notify", "explicit")
+                s.item("check-integrity", "no")
 
             if z.ixfr and not z.masters:
                 s.item("ixfr-from-differences", "yes")
@@ -973,6 +973,8 @@ class Bind(Server):
     def start(self, clean=False):
         for zname in self.zones:
             z = self.zones[zname]
+            if z.dnssec.enable != True:
+                continue
 
             # unrelated: generate keys as Bind won't do
             ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', self.keydir ]
@@ -986,6 +988,7 @@ class Bind(Server):
 
             # Append to zone
             with open(z.zfile.path, 'a') as outf:
+                outf.write('\n')
                 with open(k1 + '.key', 'r') as kf:
                     for line in kf:
                         if len(line) > 0 and line[0] != ';':

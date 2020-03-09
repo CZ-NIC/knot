@@ -190,8 +190,7 @@ static void note_earliest_expiration(const knot_rdata_t *rrsig, knot_time_t *exp
 	*expires_at = knot_time_min(current, *expires_at);
 }
 
-// TODO: move somewhere?
-static bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
+bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
 {
 	if (knot_rrset_empty(rrsig)) {
 		return false;
