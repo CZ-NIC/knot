@@ -647,14 +647,16 @@ static int zone_tree_sign(zone_tree_t *tree,
 	}
 
 	// collect return code and results
-	for (size_t i = 0; i < num_threads && ret == KNOT_EOK; i++) {
-		if (args[i].thread_init_errcode != 0) {
-			ret = knot_map_errno_code(args[i].thread_init_errcode);
-		} else {
-			ret = args[i].errcode;
-			if (ret == KNOT_EOK && !dnssec_ctx->validation_mode) {
-				ret = zone_update_apply_changeset(update, &args[i].changeset); // _fix not needed
-				*expires_at = knot_time_min(*expires_at, args[i].expires_at);
+	for (size_t i = 0; i < num_threads; i++) {
+		if (ret == KNOT_EOK) {
+			if (args[i].thread_init_errcode != 0) {
+				ret = knot_map_errno_code(args[i].thread_init_errcode);
+			} else {
+				ret = args[i].errcode;
+				if (ret == KNOT_EOK && !dnssec_ctx->validation_mode) {
+					ret = zone_update_apply_changeset(update, &args[i].changeset); // _fix not needed
+					*expires_at = knot_time_min(*expires_at, args[i].expires_at);
+				}
 			}
 		}
 		assert(!dnssec_ctx->validation_mode || changeset_empty(&args[i].changeset));
