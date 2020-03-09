@@ -283,6 +283,7 @@ static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_
 	const uint8_t *umem_mem_end = umem_mem_start + FRAME_SIZE * UMEM_FRAME_COUNT;
 	if (uframe_p < umem_mem_start || uframe_p >= umem_mem_end) {
 		// not allocated msg->payload correctly
+		assert(0);
 		return NULL;
 	}
 
@@ -420,19 +421,28 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 _public_
 void knot_xsk_prepare_alloc(struct knot_xsk_socket *socket)
 {
-	struct xsk_umem_info *umem = socket->umem;
-	struct xsk_ring_cons *cq = &umem->cq;
-	uint32_t idx_cq;
-	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx_cq);
-	if (!completed) return;
+	if (socket == NULL) {
+		return;
+	}
+
+	struct xsk_umem_info *const umem = socket->umem;
+	struct xsk_ring_cons *const cq = &umem->cq;
+
+	uint32_t idx = 0;
+	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx);
+	if (completed == 0) {
+		return;
+	}
 	assert(umem->tx_free_count + completed <= UMEM_FRAME_COUNT_TX);
-	for (int i = 0; i < completed; ++i, ++idx_cq) {
-		uint64_t addr_relative = *xsk_ring_cons__comp_addr(cq, idx_cq);
-		/* The address may not point to *start* of buffer, but `/` solves that. */
+
+	for (uint32_t i = 0; i < completed; ++i) {
+		uint64_t addr_relative = *xsk_ring_cons__comp_addr(cq, idx++);
+		// The address may not point to *start* of buffer, but `/` solves that.
 		uint64_t index = addr_relative / FRAME_SIZE;
 		assert(index < UMEM_FRAME_COUNT);
 		umem->tx_free_indices[umem->tx_free_count++] = index;
 	}
+
 	xsk_ring_cons__release(cq, completed);
 }
 
@@ -564,24 +574,30 @@ int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[],
 
 _public_
 void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
-			 uint32_t count)
+                         uint32_t count)
 {
-	struct xsk_ring_prod * const fq = &socket->umem->fq;
-	uint32_t idx = -1/*shut up incorrect warning*/;
-	int ret = xsk_ring_prod__reserve(fq, count, &idx);
-	if (ret != count) abort(); // impossible, but let's abort at least
-
-	uint32_t count_ok = 0;
-	for (uint32_t msg_i = 0; msg_i < count; ++msg_i) {
-		uint8_t *uframe_p = msg_uframe_p(socket, &msgs[msg_i],
-				msgs[msg_i].ip_from.ss_family == AF_INET6, false);
-		if (!uframe_p) continue;
-		uint64_t offset = uframe_p - socket->umem->frames->bytes;
-		*xsk_ring_prod__fill_addr(fq, idx + count_ok) = offset;
-		++count_ok;
+	if (socket == NULL || msgs == NULL) {
+		return;
 	}
-	assert(count_ok == count);
-	xsk_ring_prod__submit(fq, count_ok);
+
+	struct xsk_umem_info *const umem = socket->umem;
+	struct xsk_ring_prod *const fq = &umem->fq;
+
+	uint32_t idx = 0;
+	const uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
+	assert(reserved == count);
+
+	for (uint32_t i = 0; i < reserved; ++i) {
+		uint8_t *uframe_p = msg_uframe_p(socket, &msgs[i],
+		                                 msgs[i].ip_from.ss_family == AF_INET6, false);
+		if (uframe_p == NULL) {
+			continue;
+		}
+		uint64_t offset = uframe_p - umem->frames->bytes;
+		*xsk_ring_prod__fill_addr(fq, idx++) = offset;
+	}
+
+	xsk_ring_prod__submit(fq, reserved);
 }
 
 _public_
