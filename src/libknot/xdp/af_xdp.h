@@ -142,3 +142,7 @@ int knot_xsk_sendmsg_finish(struct knot_xsk_socket *socket);
 
 /*! \brief Returns a file descriptor to be polled on for incomming packets. */
 int knot_xsk_get_poll_fd(struct knot_xsk_socket *socket);
+
+
+void knot_xsk_print_frames(const struct knot_xsk_socket *s);
+
