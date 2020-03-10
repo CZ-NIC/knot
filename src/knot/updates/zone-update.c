@@ -17,6 +17,7 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
+#include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
@@ -740,6 +741,13 @@ static void update_clear(struct rcu_head *param)
 	free(ctx);
 }
 
+static void discard_adds_tree(zone_update_t *update)
+{
+	additionals_tree_free(update->new_cont->adds_tree);
+	update->zone->contents->adds_tree = NULL;
+	update->new_cont->adds_tree = NULL;
+}
+
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (conf == NULL || update == NULL) {
@@ -774,6 +782,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		ret = zone_adjust_incremental_update(update);
 	}
 	if (ret != KNOT_EOK) {
+		discard_adds_tree(update);
 		return ret;
 	}
 
@@ -785,7 +794,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	size_t size_limit = conf_int(&val);
 
 	if (update->new_cont->size > size_limit) {
-		/* Recoverable error. */
+		discard_adds_tree(update);
 		return KNOT_EZONESIZE;
 	}
 
@@ -818,12 +827,14 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
 				log_zone_error(update->zone->name, "hint: %s %s", name_str, type_str);
 			}
+			discard_adds_tree(update);
 			return ret;
 		}
 	}
 
 	ret = commit_journal(conf, update);
 	if (ret != KNOT_EOK) {
+		discard_adds_tree(update);
 		return ret;
 	}
 
