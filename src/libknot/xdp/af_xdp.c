@@ -631,3 +631,30 @@ int knot_xsk_get_poll_fd(struct knot_xsk_socket *socket)
 {
 	return xsk_socket__fd(socket->xsk);
 }
+
+_public_
+void knot_xsk_print_frames(const knot_xsk_socket_t *socket)
+{
+	// The number of busy frames
+	#define RING_BUSY(ring) \
+		((*(ring)->producer - *(ring)->consumer) & (ring)->mask)
+
+	#define RING_PRINFO(name, ring) \
+		printf("Ring %s: size %4d, busy %4d (prod %4d, cons %4d)\n", \
+		       name, (unsigned)(ring)->size, \
+		       (unsigned)RING_BUSY((ring)), \
+		       (unsigned)*(ring)->producer, (unsigned)*(ring)->consumer)
+
+	const int rx_busyf = RING_BUSY(&socket->umem->fq) + RING_BUSY(&socket->rx);
+	printf("\nLOST RX frames: %4d", (int)(UMEM_FRAME_COUNT_RX - rx_busyf));
+
+	const int tx_busyf = RING_BUSY(&socket->umem->cq) + RING_BUSY(&socket->tx);
+	const int tx_freef = socket->umem->tx_free_count;
+	printf("\nLOST TX frames: %4d\n", (int)(UMEM_FRAME_COUNT_TX - tx_busyf - tx_freef));
+
+	RING_PRINFO("FQ", &socket->umem->fq);
+	RING_PRINFO("RX", &socket->rx);
+	RING_PRINFO("TX", &socket->tx);
+	RING_PRINFO("CQ", &socket->umem->cq);
+	printf("TX free frames: %4d\n", tx_freef);
+}
