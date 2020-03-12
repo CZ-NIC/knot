@@ -377,13 +377,12 @@ static void xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_
 	};
 }
 
-static void xsk_sendmsg_error(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
-                              uint32_t index)
+static void tx_free_relative(struct xsk_umem_info *umem, uint64_t addr_relative)
 {
-	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
-		.addr = msg,
-		.len = 0,
-	};
+	/* The address may not point to *start* of buffer, but `/` solves that. */
+	uint64_t index = addr_relative / FRAME_SIZE;
+	assert(index < UMEM_FRAME_COUNT);
+	umem->tx_free_indices[umem->tx_free_count++] = index;
 }
 
 _public_
@@ -393,30 +392,29 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 		return KNOT_EINVAL;
 	}
 
-	uint32_t idx = 0;
-	const uint32_t reserved = xsk_ring_prod__reserve(&socket->tx, count, &idx);
+	// FIXME: explain why we do this by hand!
+	uint32_t idx = socket->tx.cached_prod;
 
-	for (uint32_t i = 0; i < reserved; ++i) {
+	for (uint32_t i = 0; i < count; ++i) {
 		const knot_xsk_msg_t *msg = &msgs[i];
 
-		switch (msg->ip_from.ss_family) {
-		case AF_INET:
-			xsk_sendmsg_ipv4(socket, msg, idx);
-			break;
-		case AF_INET6:
-			xsk_sendmsg_ipv6(socket, msg, idx);
-			break;
-		default:
-			xsk_sendmsg_error(socket, msg, idx);
-			break;
+		if (msg->payload.iov_len && msg->ip_from.ss_family == AF_INET) {
+			xsk_sendmsg_ipv4(socket, msg, idx++);
+		} else if (msg->payload.iov_len && msg->ip_from.ss_family == AF_INET6) {
+			xsk_sendmsg_ipv6(socket, msg, idx++);
+		} else {
+			/* Some problem; we just ignore this message. */
+			uint64_t addr_relative = (uint8_t *)msg->payload.iov_base
+						- socket->umem->frames->bytes;
+			tx_free_relative(socket->umem, addr_relative);
 		}
-
-		idx++;
 	}
 
-	xsk_ring_prod__submit(&socket->tx, reserved);
+	*sent = idx - socket->tx.cached_prod;
+	assert(*sent <= count);
+	socket->tx.cached_prod = idx;
+	xsk_ring_prod__submit(&socket->tx, *sent);
 	socket->kernel_needs_wakeup = true;
-	*sent = reserved;
 
 	return KNOT_EOK;
 }
@@ -432,10 +430,7 @@ void knot_xsk_prepare_alloc(struct knot_xsk_socket *socket)
 	assert(umem->tx_free_count + completed <= UMEM_FRAME_COUNT_TX);
 	for (int i = 0; i < completed; ++i, ++idx_cq) {
 		uint64_t addr_relative = *xsk_ring_cons__comp_addr(cq, idx_cq);
-		/* The address may not point to *start* of buffer, but `/` solves that. */
-		uint64_t index = addr_relative / FRAME_SIZE;
-		assert(index < UMEM_FRAME_COUNT);
-		umem->tx_free_indices[umem->tx_free_count++] = index;
+		tx_free_relative(umem, addr_relative);
 	}
 	xsk_ring_cons__release(cq, completed);
 }
