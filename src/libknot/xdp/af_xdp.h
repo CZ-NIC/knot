@@ -92,19 +92,6 @@ int knot_xsk_alloc_packet(struct knot_xsk_socket *socket, bool ipv6,
                           knot_xsk_msg_t *out, const knot_xsk_msg_t *in_reply_to);
 
 /*!
- * \brief Send single packet thru XDP.
- *
- * \param socket   XDP socket.
- * \param msg      Packet to be sent.
- *
- * \note The packet must have been allocated by knot_xsk_alloc_frame()!
- * \note Do not free the packet payload afterwards.
- *
- * \return KNOT_E*
- */
-int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg);
-
-/*!
  * \brief Send multiple packets thru XDP.
  *
  * \param socket   XDP socket.

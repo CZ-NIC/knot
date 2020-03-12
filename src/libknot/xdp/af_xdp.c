@@ -283,23 +283,6 @@ static void udp_checksum_finish(size_t *result)
 	}
 }
 
-static int pkt_send(struct knot_xsk_socket *xsk, uint64_t addr, uint32_t len)
-{
-	uint32_t tx_idx;
-	int ret = xsk_ring_prod__reserve(&xsk->tx, 1, &tx_idx);
-	if (unlikely(ret != 1)) {
-		return KNOT_NET_ESEND;
-	}
-
-	*xsk_ring_prod__tx_desc(&xsk->tx, tx_idx) = (struct xdp_desc){
-		.addr = addr,
-		.len = len,
-	};
-	xsk_ring_prod__submit(&xsk->tx, 1);
-	xsk->kernel_needs_wakeup = true;
-	return KNOT_EOK;
-}
-
 static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
 			/* these are just for debugging */
 			     bool ipv6, bool send)
@@ -313,18 +296,17 @@ static uint8_t *msg_uframe_p(struct knot_xsk_socket *socket, const knot_xsk_msg_
 	const uint8_t *umem_mem_end = umem_mem_start + FRAME_SIZE * UMEM_FRAME_COUNT;
 	if (uframe_p < umem_mem_start || uframe_p >= umem_mem_end) {
 		// not allocated msg->payload correctly
+		assert(0);
 		return NULL;
 	}
 
 	return uframe_p;
 }
 
-static int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+static void xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
+                             uint32_t index)
 {
 	uint8_t *uframe_p = msg_uframe_p(socket, msg, false, true);
-	if (uframe_p == NULL) {
-		return KNOT_EINVAL;
-	}
 
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
 	struct udpv4 *h = &uframe->udpv4;
@@ -362,15 +344,16 @@ static int xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t
 
 	uint32_t eth_len = FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len;
 
-	return pkt_send(socket, h->bytes - socket->umem->frames->bytes, eth_len);
+	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
+		.addr = h->bytes - socket->umem->frames->bytes,
+		.len = eth_len,
+	};
 }
 
-static int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+static void xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
+                             uint32_t index)
 {
 	uint8_t *uframe_p = msg_uframe_p(socket, msg, true, true);
-	if (uframe_p == NULL) {
-		return KNOT_EINVAL;
-	}
 
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
 	struct udpv6 *h = &uframe->udpv6;
@@ -416,34 +399,54 @@ static int xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t
 
 	uint32_t eth_len = FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len;
 
-	return pkt_send(socket, h->bytes - socket->umem->frames->bytes, eth_len);
+	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
+		.addr = h->bytes - socket->umem->frames->bytes,
+		.len = eth_len,
+	};
 }
 
-_public_
-int knot_xsk_sendmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+static void xsk_sendmsg_error(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
+                              uint32_t index)
 {
-	switch (msg->ip_from.ss_family) {
-	case AF_INET:
-		return xsk_sendmsg_ipv4(socket, msg);
-	case AF_INET6:
-		return xsk_sendmsg_ipv6(socket, msg);
-	default:
-		return KNOT_EINVAL;
-	}
+	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
+		.addr = msg,
+		.len = 0,
+	};
 }
 
 _public_
 int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[], uint32_t count, uint32_t *sent)
 {
-	int ret = KNOT_EOK;
-	*sent = 0;
-	for (int i = 0; i < count && ret == KNOT_EOK; i++) {
-		if (msgs[i].payload.iov_len > 0) {
-			ret = knot_xsk_sendmsg(socket, &msgs[i]);
-			*sent += (ret == KNOT_EOK ? 1 : 0);
-		}
+	if (socket == NULL || msgs == NULL || sent == NULL) {
+		return KNOT_EINVAL;
 	}
-	return ret;
+
+	uint32_t idx = 0;
+	const uint32_t reserved = xsk_ring_prod__reserve(&socket->tx, count, &idx);
+
+	for (uint32_t i = 0; i < reserved; ++i) {
+		const knot_xsk_msg_t *msg = &msgs[i];
+
+		switch (msg->ip_from.ss_family) {
+		case AF_INET:
+			xsk_sendmsg_ipv4(socket, msg, idx);
+			break;
+		case AF_INET6:
+			xsk_sendmsg_ipv6(socket, msg, idx);
+			break;
+		default:
+			xsk_sendmsg_error(socket, msg, idx);
+			break;
+		}
+
+		idx++;
+	}
+
+	xsk_ring_prod__submit(&socket->tx, reserved);
+	socket->kernel_needs_wakeup = true;
+	*sent = reserved;
+
+	return KNOT_EOK;
 }
 
 _public_
