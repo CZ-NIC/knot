@@ -82,3 +82,7 @@ void ptrlist_free(list_t *, knot_mm_t *);
 void ptrlist_rem(ptrnode_t *node, knot_mm_t *mm);
 void ptrlist_deep_free(list_t *, knot_mm_t *);
 
+typedef void (*ptrlist_free_cb)(void *);
+void ptrlist_free_custom(list_t *l, knot_mm_t *mm,
+                         ptrlist_free_cb free_cb);
+
