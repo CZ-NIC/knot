@@ -410,7 +410,7 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 		if (rq->msgs_rx[i].payload.iov_len == 0) {
 			continue; // Skip marked (zero length) messages.
 		}
-		int ret = knot_xsk_alloc_packet(xdp_sock, rq->msgs_rx[i].ip_to.ss_family == AF_INET6,
+		int ret = knot_xsk_alloc_packet(xdp_sock, rq->msgs_rx[i].ip_to.sin6_family == AF_INET6,
 		                                &rq->msgs_tx[i], &rq->msgs_rx[i]);
 		if (ret != KNOT_EOK) {
 			break; // Still free all RX buffers.
@@ -419,7 +419,7 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 		// udp_pktinfo_handle not needed for XDP as one worker is bound
 		// to one interface only.
 
-		udp_handle(ctx, knot_xsk_get_poll_fd(xdp_sock), &rq->msgs_rx[i].ip_from,
+		udp_handle(ctx, knot_xsk_get_poll_fd(xdp_sock), (struct sockaddr_storage *)&rq->msgs_rx[i].ip_from,
 		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload, true);
 		responses++;
 	}
