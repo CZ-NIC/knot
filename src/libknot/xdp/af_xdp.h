@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 enum {
 	KNOT_XDP_LISTEN_PORT_MASK = 0xFFFF0000, /*!< Listen port option mask. */
@@ -29,8 +30,8 @@ enum {
 
 /*! \brief A packet with src & dst MAC & IP addrs + UDP payload. */
 typedef struct {
-	struct sockaddr_storage ip_from;
-	struct sockaddr_storage ip_to;
+	struct sockaddr_in6 ip_from;
+	struct sockaddr_in6 ip_to;
 	uint8_t *eth_from;
 	uint8_t *eth_to;
 	struct iovec payload;
