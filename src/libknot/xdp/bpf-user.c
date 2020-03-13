@@ -30,13 +30,57 @@
 #include <linux/if_link.h>
 #include <net/if.h>
 
-static int ensure_udp_prog(struct kxsk_iface *iface, const char *prog_fname, bool overwrite)
+static inline bool IS_ERR_OR_NULL(const void *ptr)
 {
+	return (ptr == NULL) || (unsigned long)ptr >= (unsigned long)-4095;
+}
+
+/** Load the builtin XDP program; output in parameters. */
+static int prog_load(struct bpf_object **pobj, int *prog_fd)
+{
+	struct bpf_program *prog, *first_prog = NULL;
+	struct bpf_object *obj;
+	int err;
+
+	obj = bpf_object__open_mem(bpf_kernel_o, bpf_kernel_o_len, NULL);
+	if (IS_ERR_OR_NULL(obj)) {
+		return KNOT_ENOENT;
+	}
+
+	bpf_object__for_each_program(prog, obj) {
+		bpf_program__set_type(prog, BPF_PROG_TYPE_XDP);
+		if (first_prog == NULL) {
+			first_prog = prog;
+		}
+	}
+
+	if (first_prog == NULL) {
+		bpf_object__close(obj);
+		return KNOT_ENOENT;
+	}
+
+	err = bpf_object__load(obj);
+	if (err) {
+		bpf_object__close(obj);
+		return KNOT_EINVAL;
+	}
+
+	*pobj = obj;
+	*prog_fd = bpf_program__fd(first_prog);
+
+	return KNOT_EOK;
+}
+
+static int ensure_udp_prog(struct kxsk_iface *iface, bool overwrite)
+{
+	if (bpf_kernel_o_len < 2) {
+		return KNOT_ENOTSUP;
+	}
 	/* Use libbpf for extracting BPF byte-code from BPF-ELF object, and
 	 * loading this into the kernel via bpf-syscall */
 	int prog_fd;
-	int ret = bpf_prog_load(prog_fname, BPF_PROG_TYPE_XDP, &iface->prog_obj, &prog_fd);
-	if (ret) {
+	int ret = prog_load(&iface->prog_obj, &prog_fd);
+	if (ret != KNOT_EOK) {
 		return KNOT_EPROGRAM;
 	}
 
@@ -57,43 +101,6 @@ static int ensure_udp_prog(struct kxsk_iface *iface, const char *prog_fname, boo
 	} else {
 		return prog_fd;
 	}
-}
-
-static int array2file(char *filename, const uint8_t *array, unsigned len)
-{
-	int fd = mkstemp(filename);
-	if (fd < 0) {
-		return -errno;
-	}
-
-	int ret = write(fd, array, len);
-	if (ret < len) {
-		return -errno;
-	}
-
-	ret = close(fd);
-	if (ret < 0) {
-		return -errno;
-	}
-
-	return KNOT_EOK;
-}
-
-static int ensure_udp_prog_builtin(struct kxsk_iface *iface, bool overwrite)
-{
-	if (bpf_kernel_o_len < 2) {
-		return KNOT_ENOTSUP;
-	}
-
-	char filename[] = "/tmp/knotd_bpf_prog_obj_XXXXXX";
-	int ret = array2file(filename, bpf_kernel_o, bpf_kernel_o_len);
-	if (ret) {
-		return ret;
-	}
-
-	ret = ensure_udp_prog(iface, filename, overwrite);
-	unlink(filename);
-	return ret;
 }
 
 /** Get FDs for the two maps and assign them into xsk_info-> fields.
@@ -234,10 +241,10 @@ int kxsk_iface_new(const char *ifname, knot_xsk_load_bpf_t load_bpf,
 		}
 		break;
 	case KNOT_XSK_LOAD_BPF_ALWAYS:
-		ret = ensure_udp_prog_builtin(iface, true);
+		ret = ensure_udp_prog(iface, true);
 		break;
 	case KNOT_XSK_LOAD_BPF_MAYBE:
-		ret = ensure_udp_prog_builtin(iface, false);
+		ret = ensure_udp_prog(iface, false);
 		break;
 	default:
 		return KNOT_EINVAL;
