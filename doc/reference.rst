@@ -1715,7 +1715,7 @@ Forced maximum zone refresh interval.
 catalog-template
 ----------------
 
-This zone is a catalog zone. For the cataloged zones, the specified configuration template will be applied.
+This zone is a catalog zone. For the catalog-member zones, the specified configuration template will be applied.
 
 *Default:* not set
 
