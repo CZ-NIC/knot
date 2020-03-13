@@ -392,9 +392,9 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 	for (uint32_t i = 0; i < count; ++i) {
 		const knot_xsk_msg_t *msg = &msgs[i];
 
-		if (msg->payload.iov_len && msg->ip_from.ss_family == AF_INET) {
+		if (msg->payload.iov_len && msg->ip_from.sin6_family == AF_INET) {
 			xsk_sendmsg_ipv4(socket, msg, idx++);
-		} else if (msg->payload.iov_len && msg->ip_from.ss_family == AF_INET6) {
+		} else if (msg->payload.iov_len && msg->ip_from.sin6_family == AF_INET6) {
 			xsk_sendmsg_ipv6(socket, msg, idx++);
 		} else {
 			/* Some problem; we just ignore this message. */
@@ -579,7 +579,7 @@ void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t ms
 
 	for (uint32_t i = 0; i < reserved; ++i) {
 		uint8_t *uframe_p = msg_uframe_ptr(socket, &msgs[i],
-		                                   msgs[i].ip_from.ss_family == AF_INET6,
+		                                   msgs[i].ip_from.sin6_family == AF_INET6,
 		                                   false);
 		uint64_t offset = uframe_p - umem->frames->bytes;
 		*xsk_ring_prod__fill_addr(fq, idx++) = offset;
