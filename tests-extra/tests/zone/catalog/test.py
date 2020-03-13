@@ -59,7 +59,7 @@ check_keys(slave, "cataloged1", 2)
 
 # Check adding cataloged zone.
 up = master.update(zone[1])
-up.add("bar.catalog1.", 3600, "PTR", "cataloged2.")
+up.add("bar.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(6)
 resp = master.dig("cataloged2.", "NS")
@@ -76,13 +76,34 @@ resp = slave.dig("cataloged1.", "SOA", dnssec=True)
 resp.check(rcode="NOERROR")
 resp.check_count(1, "RRSIG")
 
-# Check remove-adding the zone: shall effectively purge it
-resp1 = slave.dig("cataloged2.", "DNSKEY")
-resp1.check_count(2, "DNSKEY")
-dnskey1 = resp1.resp.answer[0].to_rdataset()[0]
+# Check remove-adding tha same catalog record: shall not purge it
+
+resp0 = slave.dig("cataloged2.", "DNSKEY")
+resp0.check_count(2, "DNSKEY")
+dnskey0 = resp0.resp.answer[0].to_rdataset()[0]
 up = master.update(zone[1])
 up.delete("bar.catalog1.", "PTR", "cataloged2.")
-up.add("bar2.catalog1.", 3600, "PTR", "cataloged2.")
+up.add("bar.catalog1.", 0, "PTR", "cataloged2.")
+up.send("NOERROR")
+t.sleep(4)
+resp1 = slave.dig("cataloged2.", "DNSKEY")
+resp1.check_count(2, "DNSKEY")
+match = 0
+if resp1.count("DNSKEY") > 0:
+    for dnskey1 in resp1.resp.answer[0].to_rdataset():
+        if dnskey1.to_text() == dnskey0.to_text():
+             match = match + 1
+if match < 1:
+    set_err("ZONE PURGED")
+    dnskey1 = dnskey0
+else:
+    dnskey1 = resp1.resp.answer[0].to_rdataset()[0]
+
+# Check remove-adding the zone: shall effectively purge it
+
+up = master.update(zone[1])
+up.delete("bar.catalog1.", "PTR", "cataloged2.")
+up.add("bar2.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(4)
 shutil.copy(t.data_dir + "/cataloged2.zone", master.dir + "/master") # because the purge deletes even zonefile
