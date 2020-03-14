@@ -189,7 +189,7 @@ static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
                                                     int if_queue)
 {
 	struct knot_xsk_socket *xsk_info = calloc(1, sizeof(*xsk_info));
-	if (!xsk_info) {
+	if (xsk_info == NULL) {
 		return NULL;
 	}
 	xsk_info->iface = iface;
@@ -213,27 +213,26 @@ static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
 	}
 }
 
-static inline uint16_t from32to16(uint32_t sum)
+static uint16_t from32to16(uint32_t sum)
 {
 	sum = (sum & 0xffff) + (sum >> 16);
 	sum = (sum & 0xffff) + (sum >> 16);
 	return sum;
 }
 
-// TODO: slow?
-static __be16 pkt_ipv4_checksum_2(const struct iphdr *h)
+static uint16_t ipv4_checksum(const struct iphdr *hdr)
 {
-	const uint16_t *ha = (const uint16_t *)h;
+	const uint16_t *h = (const uint16_t *)hdr;
 	uint32_t sum32 = 0;
 	for (int i = 0; i < 10; ++i) {
 		if (i != 5) {
-			sum32 += be16toh(ha[i]);
+			sum32 += be16toh(h[i]);
 		}
 	}
 	return ~htobe16(from32to16(sum32));
 }
 
-static void udp_checksum1(size_t *result, const void *_data, size_t _data_len)
+static void udp_checksum_step(size_t *result, const void *_data, size_t _data_len)
 {
 	assert(!(_data_len & 1));
 	const uint16_t *data = _data;
@@ -281,24 +280,24 @@ static void xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
 	struct udpv4 *h = &uframe->udpv4;
 
-	// sockaddr* contents is already in network byte order
+	// sockaddr* contents is already in network byte order.
 	const struct sockaddr_in *src_v4 = (const struct sockaddr_in *)&msg->ip_from;
 	const struct sockaddr_in *dst_v4 = (const struct sockaddr_in *)&msg->ip_to;
 
 	const uint16_t udp_len = sizeof(h->udp) + msg->payload.iov_len;
-	h->udp.len = htobe16(udp_len);
+	h->udp.len    = htobe16(udp_len);
 	h->udp.source = src_v4->sin_port;
 	h->udp.dest   = dst_v4->sin_port;
 	h->udp.check  = 0;
 
-	h->ipv4.ihl      = 5; // required <= hdr len 20
-	h->ipv4.version  = 4;
-	h->ipv4.tos      = 0; // default: best-effort DSCP + no ECN support
-	h->ipv4.tot_len  = htobe16(20 + udp_len);
-	h->ipv4.id       = 0; // probably anything; details: RFC 6864
+	h->ipv4.version  = IPVERSION;
+	h->ipv4.ihl      = 5;
+	h->ipv4.tos      = 0;
+	h->ipv4.tot_len  = htobe16(5 * 4 + udp_len);
+	h->ipv4.id       = 0;
 	h->ipv4.frag_off = 0;
 	h->ipv4.ttl      = IPDEFTTL;
-	h->ipv4.protocol = 0x11; // UDP
+	h->ipv4.protocol = IPPROTO_UDP;
 
 	memcpy(&h->ipv4.saddr, &src_v4->sin_addr, sizeof(src_v4->sin_addr));
 	memcpy(&h->ipv4.daddr, &dst_v4->sin_addr, sizeof(dst_v4->sin_addr));
@@ -306,7 +305,7 @@ static void xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-	h->ipv4.check = pkt_ipv4_checksum_2(&h->ipv4);
+	h->ipv4.check = ipv4_checksum(&h->ipv4);
 #pragma GCC diagnostic pop
 
 	// MAC addresses are assumed to be already there.
@@ -327,39 +326,39 @@ static void xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
 	struct udpv6 *h = &uframe->udpv6;
 
-	// sockaddr* contents is already in network byte order
+	// sockaddr* contents is already in network byte order.
 	const struct sockaddr_in6 *src_v6 = (const struct sockaddr_in6 *)&msg->ip_from;
 	const struct sockaddr_in6 *dst_v6 = (const struct sockaddr_in6 *)&msg->ip_to;
 
 	const uint16_t udp_len = sizeof(h->udp) + msg->payload.iov_len;
-	h->udp.len = htobe16(udp_len);
+	h->udp.len    = htobe16(udp_len);
 	h->udp.source = src_v6->sin6_port;
 	h->udp.dest   = dst_v6->sin6_port;
 	h->udp.check  = 0;
 
-	h->ipv6.version = 6;
-	h->ipv6.payload_len = htobe16(udp_len);
+	h->ipv6.version     = 6;
+	h->ipv6.priority    = 0;
 	memset(h->ipv6.flow_lbl, 0, sizeof(h->ipv6.flow_lbl));
-	h->ipv6.hop_limit = IPDEFTTL;
-	h->ipv6.nexthdr = 17; // UDP
-	h->ipv6.priority = 0;
+	h->ipv6.payload_len = htobe16(udp_len);
+	h->ipv6.nexthdr     = IPPROTO_UDP;
+	h->ipv6.hop_limit   = IPDEFTTL;
 
 	memcpy(&h->ipv6.saddr, &src_v6->sin6_addr, sizeof(src_v6->sin6_addr));
 	memcpy(&h->ipv6.daddr, &dst_v6->sin6_addr, sizeof(dst_v6->sin6_addr));
 
-	// UDP checksum is mandatory for IPv6, in contrast to IPv4
+	// UDP checksum is mandatory for IPv6, in contrast to IPv4.
 	size_t chk = 0;
-	udp_checksum1(&chk, &h->ipv6.saddr, sizeof(h->ipv6.saddr));
-	udp_checksum1(&chk, &h->ipv6.daddr, sizeof(h->ipv6.daddr));
-	udp_checksum1(&chk, &h->udp.len, sizeof(h->udp.len));
+	udp_checksum_step(&chk, &h->ipv6.saddr, sizeof(h->ipv6.saddr));
+	udp_checksum_step(&chk, &h->ipv6.daddr, sizeof(h->ipv6.daddr));
+	udp_checksum_step(&chk, &h->udp.len, sizeof(h->udp.len));
 	__be16 version = htobe16(h->ipv6.nexthdr);
-	udp_checksum1(&chk, &version, sizeof(version));
-	udp_checksum1(&chk, &h->udp, sizeof(h->udp));
+	udp_checksum_step(&chk, &version, sizeof(version));
+	udp_checksum_step(&chk, &h->udp, sizeof(h->udp));
 	size_t padded_len = msg->payload.iov_len;
 	if (padded_len & 1) {
 		((uint8_t *)msg->payload.iov_base)[padded_len++] = 0;
 	}
-	udp_checksum1(&chk, msg->payload.iov_base, padded_len);
+	udp_checksum_step(&chk, msg->payload.iov_base, padded_len);
 	udp_checksum_finish(&chk);
 	h->udp.check = chk;
 
