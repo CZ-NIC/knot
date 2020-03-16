@@ -59,6 +59,8 @@ typedef struct {
 	unsigned	at_once;
 	uint8_t		local_mac[6], target_mac[6];
 	struct in_addr	local_ipv4, target_ipv4;
+	struct in6_addr local_ipv6, target_ipv6;
+	bool            ipv6;
 	uint16_t	target_port;
 	unsigned	n_threads, thread_id;
 } dns_xdp_gun_ctx_t;
@@ -83,6 +85,14 @@ static void set_sockaddr(void *sa_in, struct in_addr *addr, uint16_t port)
 	saddr->sin_family = AF_INET;
 	saddr->sin_port = htobe16(port);
 	saddr->sin_addr = *addr;
+}
+
+static void set_sockaddr6(void *sa_in, struct in6_addr *addr, uint16_t port)
+{
+	struct sockaddr_in6 *saddr = sa_in;
+	saddr->sin6_family = AF_INET6;
+	saddr->sin6_port = htobe16(port);
+	saddr->sin6_addr = *addr;
 }
 
 inline static void set_pkt_vars(struct iovec pkt, uint16_t ord)
@@ -110,14 +120,19 @@ static int alloc_pkts(knot_xsk_msg_t *pkts, int npkts, struct knot_xsk_socket *x
 	uint64_t unique = (tick * ctx->n_threads + ctx->thread_id) * ctx->at_once;
 
 	for (int i = 0; i < npkts; i++) {
-		int ret = knot_xsk_alloc_packet(xsk, false, &pkts[i], NULL);
+		int ret = knot_xsk_alloc_packet(xsk, ctx->ipv6, &pkts[i], NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
 		uint16_t local_port = LOCAL_PORT_MIN + unique % (LOCAL_PORT_MAX + 1 - LOCAL_PORT_MIN);
-		set_sockaddr(&pkts[i].ip_from, &ctx->local_ipv4, local_port);
-		set_sockaddr(&pkts[i].ip_to, &ctx->target_ipv4, ctx->target_port);
+		if (ctx->ipv6) {
+			set_sockaddr6(&pkts[i].ip_from, &ctx->local_ipv6, local_port);
+			set_sockaddr6(&pkts[i].ip_to, &ctx->target_ipv6, ctx->target_port);
+		} else {
+			set_sockaddr(&pkts[i].ip_from, &ctx->local_ipv4, local_port);
+			set_sockaddr(&pkts[i].ip_to, &ctx->target_ipv4, ctx->target_port);
+		}
 
 		memcpy(pkts[i].eth_from, ctx->local_mac, 6);
 		memcpy(pkts[i].eth_to, ctx->target_mac, 6);
@@ -244,7 +259,8 @@ end:
 
 static int dev2mac(const char *dev, uint8_t *mac)
 {
-	struct ifreq ifr = { { 0 } };
+	struct ifreq ifr;
+	memset(&ifr, 0, sizeof(ifr));
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0) {
 		return -errno;
@@ -261,16 +277,23 @@ static int dev2mac(const char *dev, uint8_t *mac)
 	return ret;
 }
 
-static int send_pkt_to(const struct in_addr *ip)
+static int send_pkt_to(void *ip, bool ipv6)
 {
-	int fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	int fd = socket(ipv6 ? AF_INET6 : AF_INET, SOCK_RAW, ipv6 ? IPPROTO_ICMPV6 : IPPROTO_ICMP);
 	if (fd < 0) {
 		return -errno;
 	}
 
-	struct sockaddr_in sin;
-	sin.sin_family = AF_INET;
-	memcpy(&sin.sin_addr, ip, sizeof(*ip));
+	struct sockaddr s = { 0 };
+	struct sockaddr_in *sin = (struct sockaddr_in *)&s;
+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&s;
+	if (ipv6) {
+		sin6->sin6_family = AF_INET6;
+		memcpy(&sin6->sin6_addr, ip, sizeof(struct in6_addr));
+	} else {
+		sin->sin_family = AF_INET;
+		memcpy(&sin->sin_addr, ip, sizeof(struct in_addr));
+	}
 
 	static const uint8_t dummy_pkt[] = {
 		0x08, 0x00, 0xec, 0x72, 0x0b, 0x87, 0x00, 0x06,
@@ -278,7 +301,7 @@ static int send_pkt_to(const struct in_addr *ip)
 	};
 	static const size_t dummy_pkt_size = sizeof(dummy_pkt);
 
-	int ret = sendto(fd, dummy_pkt, dummy_pkt_size, 0, (struct sockaddr *)&sin, sizeof(sin));
+	int ret = sendto(fd, dummy_pkt, dummy_pkt_size, 0, &s, ipv6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
 	if (ret < 0) {
 		ret = -errno;
 	}
@@ -304,9 +327,9 @@ static bool str2mac(const char *str, uint8_t mac[])
 	return true;
 }
 
-static int remoteIP2MAC(const char *ip_str, char devname[], uint8_t remote_mac[])
+static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t remote_mac[])
 {
-	FILE *p = popen("arp -ne", "r");
+	FILE *p = popen(ipv6 ? "ip -6 neigh" : "arp -ne", "r");
 	if (p == NULL) {
 		return knot_map_errno();
 	}
@@ -321,10 +344,10 @@ static int remoteIP2MAC(const char *ip_str, char devname[], uint8_t remote_mac[]
 		if (strcmp(fields[0], ip_str) != 0) {
 			continue;
 		}
-		if (!str2mac(fields[2], remote_mac)) {
+		if (!str2mac(fields[ipv6 ? 4 : 2], remote_mac)) {
 			ret = KNOT_EMALF;
 		} else {
-			strncpy(devname, fields[4], IFNAMSIZ);
+			strncpy(devname, fields[ipv6 ? 2 : 4], IFNAMSIZ);
 			ret = KNOT_EOK;
 		}
 	}
@@ -332,11 +355,12 @@ static int remoteIP2MAC(const char *ip_str, char devname[], uint8_t remote_mac[]
 	return ret;
 }
 
-static int remoteIP2local(const char *ip_str, char devname[], struct in_addr *local)
+static int remoteIP2local(const char *ip_str, bool ipv6, char devname[], void *local)
 {
-	char cmd[14 + strlen(ip_str)];
+	char cmd[51 + strlen(ip_str)];
 	strcpy(cmd, "ip route get ");
-	strcpy(cmd + 13, ip_str);
+	strcat(cmd, ip_str);
+	strcat(cmd, " | sed 's/from :://;s/proto kernel//'");
 
 	FILE *p = popen(cmd, "r");
 	if (p == NULL) {
@@ -346,14 +370,14 @@ static int remoteIP2local(const char *ip_str, char devname[], struct in_addr *lo
 	char line_buf[1024] = { 0 };
 	int ret = KNOT_ENOENT;
 	while (fgets(line_buf, sizeof(line_buf) - 1, p) != NULL && ret == KNOT_ENOENT) {
-		char fields[6][strlen(line_buf)];
-		if (sscanf(line_buf, "%s%s%s%s%s%s", fields[0], fields[1], fields[2], fields[3], fields[4], fields[5]) != 6) {
+		char fields[7][strlen(line_buf)];
+		if (sscanf(line_buf, "%s%s%s%s%s%s%s", fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6]) != 7) {
 			continue;
 		}
 		if (strcmp(fields[0], ip_str) != 0) {
 			continue;
 		}
-		if (!inet_aton(fields[4], local)) {
+		if (inet_pton(ipv6 ? AF_INET6 : AF_INET, fields[4], local) <= 0) {
 			ret = KNOT_EMALF;
 		} else {
 			strncpy(devname, fields[2], IFNAMSIZ);
@@ -366,7 +390,7 @@ static int remoteIP2local(const char *ip_str, char devname[], struct in_addr *lo
 
 int main(int argc, char *argv[])
 {
-	const char *usage = "usage: dns_xdp_gun <qps> <length_s> <target_IPv4> <target_port> <pkts_at_once> <queries_file>";
+	const char *usage = "usage: dns_xdp_gun <qps> <length_s> <target_IP> <target_port> <pkts_at_once> <queries_file>";
 
 	dns_xdp_gun_ctx_t ctx, *thread_ctxs = NULL;
 	pthread_t *threads = NULL;
@@ -386,11 +410,15 @@ int main(int argc, char *argv[])
 			goto pusage;
 		}
 
+		ctx.ipv6 = false;
 		if (!inet_aton(argv[3], &ctx.target_ipv4)) {
-			printf("invalid target IPv4\n");
-			goto pusage;
+			ctx.ipv6 = true;
+			if (inet_pton(AF_INET6, argv[3], &ctx.target_ipv6) <= 0) {
+				printf("invalid target IP\n");
+				goto pusage;
+			}
 		}
-		int ret = send_pkt_to(&ctx.target_ipv4);
+		int ret = ctx.ipv6 ? send_pkt_to(&ctx.target_ipv6, true) : send_pkt_to(&ctx.target_ipv4, false);
 		if (ret < 0) {
 			printf("can't send dummy packet to `%s`: %s\n", argv[3], strerror(-ret));
 			goto pusage;
@@ -398,12 +426,12 @@ int main(int argc, char *argv[])
 		usleep(10000);
 
 		char dev1[IFNAMSIZ], dev2[IFNAMSIZ];
-		ret = remoteIP2MAC(argv[3], dev1, ctx.target_mac);
+		ret = remoteIP2MAC(argv[3], ctx.ipv6, dev1, ctx.target_mac);
 		if (ret != KNOT_EOK) {
 			printf("can't get remote MAC of `%s` by ARP query: %s\n", argv[3], knot_strerror(ret));
 			goto pusage;
 		}
-		ret = remoteIP2local(argv[3], dev2, &ctx.local_ipv4);
+		ret = remoteIP2local(argv[3], ctx.ipv6, dev2, ctx.ipv6 ? (void *)&ctx.local_ipv6 : (void *)&ctx.local_ipv4);
 		if (ret != KNOT_EOK) {
 			printf("can't get local IP reachig remote `%s`: %s\n", argv[3], knot_strerror(ret));
 			goto pusage;
