@@ -255,14 +255,18 @@ static void udp_checksum_finish(size_t *result)
 
 static uint8_t *msg_uframe_ptr(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
                                /* Next parameters are just for debugging. */
-                               bool ipv6, bool send)
+                               bool ipv6)
 {
 	uint8_t *uNULL = NULL;
 	uint8_t *uframe_p = uNULL + ((msg->payload.iov_base - NULL) & ~(FRAME_SIZE - 1));
 
-	assert(uframe_p == msg->payload.iov_base
-	                   - (ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4)
-	                   - (send ? 0 : XDP_PACKET_HEADROOM));
+#ifndef NDEBUG
+	intptr_t pd = (uint8_t *)msg->payload.iov_base - uframe_p
+			- (ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4);
+	/* This assertion might fire in some OK cases.  For example, the second branch
+	 * had to be added for cases with "emulated" AF_XDP support. */
+	assert(pd == XDP_PACKET_HEADROOM || pd == 0);
+#endif
 	const uint8_t *umem_mem_start = socket->umem->frames->bytes;
 	const uint8_t *umem_mem_end = umem_mem_start + FRAME_SIZE * UMEM_FRAME_COUNT;
 	assert(umem_mem_start <= uframe_p && uframe_p < umem_mem_end);
@@ -273,7 +277,7 @@ static uint8_t *msg_uframe_ptr(struct knot_xsk_socket *socket, const knot_xsk_ms
 static void xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
                              uint32_t index)
 {
-	uint8_t *uframe_p = msg_uframe_ptr(socket, msg, false, true);
+	uint8_t *uframe_p = msg_uframe_ptr(socket, msg, false);
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
 	struct udpv4 *h = &uframe->udpv4;
 
@@ -319,7 +323,7 @@ static void xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_
 static void xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
                              uint32_t index)
 {
-	uint8_t *uframe_p = msg_uframe_ptr(socket, msg, true, true);
+	uint8_t *uframe_p = msg_uframe_ptr(socket, msg, true);
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
 	struct udpv6 *h = &uframe->udpv6;
 
@@ -579,8 +583,7 @@ void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t ms
 
 	for (uint32_t i = 0; i < reserved; ++i) {
 		uint8_t *uframe_p = msg_uframe_ptr(socket, &msgs[i],
-		                                   msgs[i].ip_from.sin6_family == AF_INET6,
-		                                   false);
+		                                   msgs[i].ip_from.sin6_family == AF_INET6);
 		uint64_t offset = uframe_p - umem->frames->bytes;
 		*xsk_ring_prod__fill_addr(fq, idx++) = offset;
 	}
