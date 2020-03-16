@@ -54,7 +54,7 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 
 /*! \brief Require existing zone contents or return failure. */
 #define NS_NEED_ZONE_CONTENTS(qdata, error_rcode) \
-	if ((qdata)->extra->zone->contents == NULL) { \
+	if ((qdata)->extra->contents == NULL) { \
 		qdata->rcode = (error_rcode); \
 		return KNOT_STATE_FAIL; \
 	}
