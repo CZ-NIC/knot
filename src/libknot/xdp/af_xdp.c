@@ -378,7 +378,14 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 		return KNOT_EINVAL;
 	}
 
-	// FIXME: explain why we do this by hand!
+	/* Now we want to do something close to
+	 *   xsk_ring_prod__reserve(&socket->tx, count, *idx)
+	 * but we don't know in advance if we utilize *whole* `count`,
+	 * and the API doesn't allow "cancelling reservations".
+	 * Therefore we handle `socket->tx.cached_prod` by hand;
+	 * that's simplified by the fact that there is always free space.
+	 */
+	assert(UMEM_RING_LEN_TX > UMEM_FRAME_COUNT_TX);
 	uint32_t idx = socket->tx.cached_prod;
 
 	for (uint32_t i = 0; i < count; ++i) {
