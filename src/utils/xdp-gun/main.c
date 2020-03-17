@@ -284,9 +284,9 @@ static int send_pkt_to(void *ip, bool ipv6)
 		return -errno;
 	}
 
-	struct sockaddr s = { 0 };
+	struct sockaddr_in6 s = { 0 };
 	struct sockaddr_in *sin = (struct sockaddr_in *)&s;
-	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&s;
+	struct sockaddr_in6 *sin6 = &s;
 	if (ipv6) {
 		sin6->sin6_family = AF_INET6;
 		memcpy(&sin6->sin6_addr, ip, sizeof(struct in6_addr));
