@@ -261,8 +261,8 @@ static uint8_t *msg_uframe_ptr(struct knot_xsk_socket *socket, const knot_xsk_ms
 	uint8_t *uframe_p = uNULL + ((msg->payload.iov_base - NULL) & ~(FRAME_SIZE - 1));
 
 #ifndef NDEBUG
-	intptr_t pd = uframe_p - (uint8_t *)msg->payload.iov_base
-	                   + (ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4);
+	intptr_t pd = (uint8_t *)msg->payload.iov_base - uframe_p
+			- (ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4);
 	/* This assertion might fire in some OK cases.  For example, the second branch
 	 * had to be added for cases with "emulated" AF_XDP support. */
 	assert(pd == XDP_PACKET_HEADROOM || pd == 0);
