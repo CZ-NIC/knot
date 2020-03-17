@@ -406,6 +406,7 @@ int main(int argc, char *argv[])
 		double argf = atof(argv[2]);
 		if (argf > 0) {
 			ctx.duration = argf * 1000000.0;
+			assert(ctx.duration >= 1000);
 		} else {
 			goto pusage;
 		}
@@ -463,8 +464,12 @@ int main(int argc, char *argv[])
 		}
 
 		arg = knot_eth_get_rx_queues(ctx.dev);
-		if (arg > 0) {
+		if (arg >= 0) {
 			ctx.n_threads = arg;
+			if (ctx.qps < ctx.n_threads) {
+				printf("QPS must be at least the number of threads (%u)\n", ctx.n_threads);
+				goto pusage;
+			}
 			ctx.qps /= ctx.n_threads;
 		} else {
 			printf("unable to get number of queues for %s: %s\n", ctx.dev, knot_strerror(arg));
@@ -511,9 +516,11 @@ int main(int argc, char *argv[])
 	}
 	pthread_mutex_destroy(&global_mutex);
 	printf("total sent %lu (%lu qps)\n", global_pkts_sent, global_pkts_sent * 1000 / (ctx.duration / 1000));
-	printf("total recv %lu (%lu qps) (%lu%%)\n", global_pkts_recv,
-	       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
-	printf("avg recv size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
+	if (global_pkts_sent > 0) {
+		printf("total recv %lu (%lu qps) (%lu%%)\n", global_pkts_recv,
+		       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
+		printf("avg recv size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
+	}
 
 	free(thread_ctxs);
 	free(threads);
