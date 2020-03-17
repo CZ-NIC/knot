@@ -744,7 +744,9 @@ static void update_clear(struct rcu_head *param)
 static void discard_adds_tree(zone_update_t *update)
 {
 	additionals_tree_free(update->new_cont->adds_tree);
-	update->zone->contents->adds_tree = NULL;
+	if (update->zone->contents != NULL) {
+		update->zone->contents->adds_tree = NULL;
+	}
 	update->new_cont->adds_tree = NULL;
 }
 
@@ -798,6 +800,28 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return KNOT_EZONESIZE;
 	}
 
+	val = conf_zone_get(conf, C_DNSSEC_VALIDATE, update->zone->name);
+	if (conf_bool(&val)) {
+		ret = knot_dnssec_validate_zone(update, update->flags & UPDATE_INCREMENTAL);
+		if (ret != KNOT_EOK) {
+			log_zone_error(update->zone->name, "zone DNSSEC validation failed (%s)", knot_strerror(ret));
+			char name_str[KNOT_DNAME_TXT_MAXLEN], type_str[16];
+			if (knot_dname_to_str(name_str, update->validation_hint.node, sizeof(name_str)) != NULL &&
+			    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
+				log_zone_error(update->zone->name, "hint: %s %s", name_str, type_str);
+			}
+			discard_adds_tree(update);
+			return ret;
+		}
+	}
+
+
+	ret = commit_journal(conf, update);
+	if (ret != KNOT_EOK) {
+		discard_adds_tree(update);
+		return ret;
+	}
+
 	/* Check if the zone was re-signed upon zone load to ensure proper flush
 	 * even if the SOA serial wasn't incremented by re-signing. */
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
@@ -815,27 +839,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 				                 "future transfers might be broken");
 			}
 		}
-	}
-
-	val = conf_zone_get(conf, C_DNSSEC_VALIDATE, update->zone->name);
-	if (conf_bool(&val)) {
-		ret = knot_dnssec_validate_zone(update, update->flags & UPDATE_INCREMENTAL);
-		if (ret != KNOT_EOK) {
-			log_zone_error(update->zone->name, "zone DNSSEC validation failed (%s)", knot_strerror(ret));
-			char name_str[KNOT_DNAME_TXT_MAXLEN], type_str[16];
-			if (knot_dname_to_str(name_str, update->validation_hint.node, sizeof(name_str)) != NULL &&
-			    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
-				log_zone_error(update->zone->name, "hint: %s %s", name_str, type_str);
-			}
-			discard_adds_tree(update);
-			return ret;
-		}
-	}
-
-	ret = commit_journal(conf, update);
-	if (ret != KNOT_EOK) {
-		discard_adds_tree(update);
-		return ret;
 	}
 
 	/* Switch zone contents. */
