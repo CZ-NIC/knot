@@ -274,7 +274,8 @@ static uint8_t *msg_uframe_ptr(struct knot_xsk_socket *socket, const knot_xsk_ms
 	return uframe_p;
 }
 
-static int mk_headers_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+static void xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
+                             uint32_t index)
 {
 	uint8_t *uframe_p = msg_uframe_ptr(socket, msg, false);
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
@@ -311,10 +312,16 @@ static int mk_headers_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t 
 	// MAC addresses are assumed to be already there.
 	h->eth.h_proto = htobe16(ETH_P_IP);
 
-	return FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len;
+	uint32_t eth_len = FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len;
+
+	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
+		.addr = h->bytes - socket->umem->frames->bytes,
+		.len = eth_len,
+	};
 }
 
-static int mk_headers_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg)
+static void xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
+                             uint32_t index)
 {
 	uint8_t *uframe_p = msg_uframe_ptr(socket, msg, true);
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
@@ -359,7 +366,12 @@ static int mk_headers_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t 
 	// MAC addresses are assumed to be already there.
 	h->eth.h_proto = htobe16(ETH_P_IPV6);
 
-	return FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len;
+	uint32_t eth_len = FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len;
+
+	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
+		.addr = h->bytes - socket->umem->frames->bytes,
+		.len = eth_len,
+	};
 }
 
 static void tx_free_relative(struct xsk_umem_info *umem, uint64_t addr_relative)
@@ -391,24 +403,16 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 	for (uint32_t i = 0; i < count; ++i) {
 		const knot_xsk_msg_t *msg = &msgs[i];
 
-		const int fam = msg->ip_from.sin6_family;
-
-		const bool ok = msg->payload.iov_len && (fam == AF_INET || fam == AF_INET6);
-		if (!ok) { /* Some problem; we just ignore this message. */
+		if (msg->payload.iov_len && msg->ip_from.sin6_family == AF_INET) {
+			xsk_sendmsg_ipv4(socket, msg, idx++);
+		} else if (msg->payload.iov_len && msg->ip_from.sin6_family == AF_INET6) {
+			xsk_sendmsg_ipv6(socket, msg, idx++);
+		} else {
+			/* Some problem; we just ignore this message. */
 			uint64_t addr_relative = (uint8_t *)msg->payload.iov_base
 						- socket->umem->frames->bytes;
 			tx_free_relative(socket->umem, addr_relative);
-			continue;
 		}
-
-		const int len = fam == AF_INET
-			? mk_headers_ipv4(socket, msg)
-			: mk_headers_ipv6(socket, msg);
-		*xsk_ring_prod__tx_desc(&socket->tx, idx) = (struct xdp_desc){
-			.addr = (uint8_t *)msg->payload.iov_base - socket->umem->frames->bytes,
-			.len = len,
-		};
-		++idx;
 	}
 
 	*sent = idx - socket->tx.cached_prod;
