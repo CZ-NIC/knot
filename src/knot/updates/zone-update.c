@@ -744,7 +744,9 @@ static void update_clear(struct rcu_head *param)
 static void discard_adds_tree(zone_update_t *update)
 {
 	additionals_tree_free(update->new_cont->adds_tree);
-	update->zone->contents->adds_tree = NULL;
+	if (update->zone->contents != NULL) {
+		update->zone->contents->adds_tree = NULL;
+	}
 	update->new_cont->adds_tree = NULL;
 }
 
@@ -798,6 +800,12 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return KNOT_EZONESIZE;
 	}
 
+	ret = commit_journal(conf, update);
+	if (ret != KNOT_EOK) {
+		discard_adds_tree(update);
+		return ret;
+	}
+
 	/* Check if the zone was re-signed upon zone load to ensure proper flush
 	 * even if the SOA serial wasn't incremented by re-signing. */
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
@@ -815,12 +823,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 				                 "future transfers might be broken");
 			}
 		}
-	}
-
-	ret = commit_journal(conf, update);
-	if (ret != KNOT_EOK) {
-		discard_adds_tree(update);
-		return ret;
 	}
 
 	/* Switch zone contents. */
