@@ -453,8 +453,11 @@ int knot_xsk_sendmsg_finish(struct knot_xsk_socket *socket)
 		return KNOT_EOK;
 	}
 	int sendret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
-	bool is_ok = (sendret != -1);
-	const bool is_again = !is_ok && (errno == EWOULDBLOCK || errno == EAGAIN);
+	const bool is_ok = (sendret >= 0);
+	// List of "safe" errors taken from
+	// https://github.com/torvalds/linux/blame/master/samples/bpf/xdpsock_user.c
+	const bool is_again = !is_ok && (errno == ENOBUFS || errno == EAGAIN
+					 || errno == EBUSY || errno == ENETDOWN);
 	// Some of the !is_ok cases are a little unclear - what to do about the syscall,
 	// including how caller of _sendmsg_finish() should react.
 	if (is_ok || !is_again) {
