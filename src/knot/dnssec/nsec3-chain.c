@@ -480,14 +480,12 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 	// check if we need to do something
 	const zone_node_t *old_n = zone_contents_find_node(update->zone->contents, for_node);
 	const zone_node_t *new_n = zone_contents_find_node(update->new_cont, for_node);
-	if (node_bitmap_equal(old_n, new_n)) {
-		return KNOT_EOK;
-	}
 
-	if ((new_n != NULL && knot_nsec_empty_nsec_and_rrsigs_in_node(new_n) && new_n->children > 0) ||
-	    (old_n != NULL && knot_nsec_empty_nsec_and_rrsigs_in_node(old_n) && old_n->children > 0)) {
-		// handling empty non-terminal creation and downfall is too difficult, recreate NSEC3 from scratch
-		return KNOT_ENORECORD;
+	bool had_no_nsec = (old_n == NULL || old_n->nsec3_node == NULL || !(old_n->flags & NODE_FLAGS_NSEC3_NODE));
+	bool shall_no_nsec = (new_n == NULL || new_n->flags & NODE_FLAGS_NONAUTH || new_n->flags & NODE_FLAGS_EMPTY || new_n->flags & NODE_FLAGS_DELETED);
+
+	if (had_no_nsec == shall_no_nsec && node_bitmap_equal(old_n, new_n)) {
+		return KNOT_EOK;
 	}
 
 	knot_dname_storage_t for_node_hashed;
@@ -501,11 +499,9 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 	uint8_t *next_hash = NULL;
 	uint8_t next_length = 0;
 
-	bool add_nsec3 = (new_n != NULL && !node_empty(new_n) && !(new_n->flags & NODE_FLAGS_NONAUTH) &&
-			  !nsec3_opt_out(new_n, opt_out));
-
 	// remove (all) existing NSEC3
 	const zone_node_t *old_nsec3_n = zone_contents_find_nsec3_node(update->new_cont, for_node_hashed);
+	assert((bool)(old_nsec3_n == NULL) == had_no_nsec);
 	if (old_nsec3_n != NULL) {
 		knot_rrset_t rem_nsec3 = node_rrset(old_nsec3_n, KNOT_RRTYPE_NSEC3);
 		if (!knot_rrset_empty(&rem_nsec3)) {
@@ -521,7 +517,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 	}
 
 	// add NSEC3 with correct bitmap
-	if (add_nsec3 && ret == KNOT_EOK) {
+	if (!shall_no_nsec && ret == KNOT_EOK) {
 		zone_node_t *new_nsec3_n = create_nsec3_node_for_node(new_n, update->new_cont->apex, params, ttl);
 		if (new_nsec3_n == NULL) {
 			return KNOT_ENOMEM;
@@ -591,6 +587,10 @@ static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
  */
 static int nsec3_mark_empty(zone_node_t *node, void *data)
 {
+	if (node->flags & NODE_FLAGS_DELETED) {
+		return KNOT_EOK;
+	}
+
 	if (!(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node, (data != NULL))) {
 		/*!
 		 * Mark this node and all parent nodes that meet the same
@@ -772,7 +772,18 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return knot_nsec3_create_chain(update->new_cont, params, ttl, opt_out, update);
 	}
 
-	int ret = fix_nsec3_nodes(update, params, ttl, opt_out);
+	int ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_mark_empty,
+	                          ((params->flags & KNOT_NSEC3_FLAG_OPT_OUT) ? (void *)update : NULL));
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = fix_nsec3_nodes(update, params, ttl, opt_out);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_reset, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
