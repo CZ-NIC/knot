@@ -71,7 +71,7 @@ static void print_help(void)
 	       "  dnskey        Generate DNSKEY record for specified key.\n"
 	       "                 (syntax: dnskey <key_spec>)\n"
 	       "  share         Share an existing key of another zone with the specified zone.\n"
-	       "                 (syntax: share <full_key_ID>\n"
+	       "                 (syntax: share <full_key_ID> <zone2share_from>\n"
 	       "  delete        Remove the specified key from zone.\n"
 	       "                 (syntax: delete <key_spec>)\n"
 	       "  set           Set existing key's timing attribute.\n"
@@ -223,6 +223,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "share") == 0) {
 		CHECK_MISSING_ARG("Key to be shared is not specified");
+		CHECK_MISSING_ARG2("Zone to be shared from not specified");
 		knot_dname_t *other_zone = NULL;
 		char *key_to_share = NULL;
 		ret = keymgr_foreign_key_id(argv, &kaspdb, &other_zone, &key_to_share);

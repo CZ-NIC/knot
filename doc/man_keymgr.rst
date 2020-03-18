@@ -108,7 +108,7 @@ Commands
 **delete** *key_spec*
   Remove the specified key from zone. If the key was not shared, it is also deleted from keystore.
 
-**share** *key_ID*
+**share** *key_ID* *zone_from*
   Import a key (specified by full key ID) from another zone as shared. After this, the key is
   owned by both zones equally.
 
@@ -245,7 +245,7 @@ Examples
 
 5. Share a KSK from another zone::
 
-    $ keymgr example.com. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
+    $ keymgr example.com. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9 another-zone.com.
 
 See Also
 --------

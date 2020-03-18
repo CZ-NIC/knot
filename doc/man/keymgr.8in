@@ -135,7 +135,7 @@ is like for \fBds\fP, if unspecified, all KSKs are used.
 \fBdelete\fP \fIkey_spec\fP
 Remove the specified key from zone. If the key was not shared, it is also deleted from keystore.
 .TP
-\fBshare\fP \fIkey_ID\fP
+\fBshare\fP \fIkey_ID\fP \fIzone_from\fP
 Import a key (specified by full key ID) from another zone as shared. After this, the key is
 owned by both zones equally.
 .UNINDENT
@@ -308,7 +308,7 @@ Share a KSK from another zone:
 .sp
 .nf
 .ft C
-$ keymgr example.com. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9
+$ keymgr example.com. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9 another\-zone.com.
 .ft P
 .fi
 .UNINDENT
