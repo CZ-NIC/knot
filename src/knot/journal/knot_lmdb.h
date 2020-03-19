@@ -242,6 +242,16 @@ inline static bool knot_lmdb_find_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix)
 	     _knot_lmdb_foreach_found = knot_lmdb_next((txn)))
 
 /*!
+ * \brief Execute following block of commands for every key in DB.
+ *
+ * \param txn      DB transaction.
+ */
+#define knot_lmdb_forwhole(txn) \
+	for (bool _knot_lmdb_forwhole_any = knot_lmdb_first((txn)); \
+	     _knot_lmdb_forwhole_any; \
+	     _knot_lmdb_forwhole_any = knot_lmdb_next((txn)))
+
+/*!
  * \brief Delete the one DB record, that the iteration is currently pointing to.
  *
  * \note It's safe to delete during an uncomplicated iteration, e.g. knot_lmdb_foreach().
