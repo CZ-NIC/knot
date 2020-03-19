@@ -333,7 +333,7 @@ int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 
 	if (ctx->policy->nsec3_enabled) {
 		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl,
-					      ctx->policy->nsec3_opt_out, update);
+		                              update);
 	} else {
 		ret = knot_nsec_create_chain(update, nsec_ttl);
 		if (ret == KNOT_EOK) {
@@ -366,8 +366,7 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 	if (nsec_ttl_old != nsec_ttl_new) {
 		ret = KNOT_ENORECORD;
 	} else if (ctx->policy->nsec3_enabled) {
-		ret = knot_nsec3_fix_chain(update, &params, nsec_ttl_new,
-		                           ctx->policy->nsec3_opt_out);
+		ret = knot_nsec3_fix_chain(update, &params, nsec_ttl_new);
 	} else {
 		ret = knot_nsec_fix_chain(update, nsec_ttl_new);
 	}
@@ -375,8 +374,8 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 		log_zone_info(update->zone->name, "DNSSEC, re-creating whole NSEC%s chain",
 		              (ctx->policy->nsec3_enabled ? "3" : ""));
 		if (ctx->policy->nsec3_enabled) {
-			ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl_new,
-			                              ctx->policy->nsec3_opt_out, update);
+			ret = knot_nsec3_create_chain(update->new_cont, &params,
+			                              nsec_ttl_new, update);
 		} else {
 			ret = knot_nsec_create_chain(update, nsec_ttl_new);
 		}

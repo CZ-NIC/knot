@@ -5,6 +5,7 @@
 from dnstest.utils import *
 from dnstest.test import Test
 import random
+import subprocess
 
 zone_name = "example.com."
 
@@ -70,7 +71,28 @@ check_deleg("deleg1", "NS SOA MX RRSIG DNSKEY NSEC3PARAM CDS CDNSKEY", 1, "optou
 
 up = master.update(zone)
 up.add("deleg2", 3600, "NS", "nothing")
+up.add("a.b.c", 3600, "A", "1.2.3.4") # used later
 up.send("NOERROR")
 check_deleg("deleg2", "NS SOA MX RRSIG DNSKEY NSEC3PARAM CDS CDNSKEY", 1, "optout update")
+
+# opt-out on, check empty-non-terminal above node that becomes opt-outed
+
+up = master.update(zone)
+up.add("a.b.c", 3600, "NS", "nothing")
+up.delete("a.b.c", "A")
+up.send("NOERROR")
+master.zone_backup(zone, flush=True)
+master.zone_verify(zone)
+
+master.ctl("zone-sign")
+master.zone_backup(zone, flush=True)
+master.zone_verify(zone)
+
+zf = master.zones[zone_name].zfile
+zf_prev = zf.path + ".back" + str(zf.backup_num - 2)
+zf_post = zf.path + ".back" + str(zf.backup_num - 1)
+p = subprocess.run("diff %s %s  | egrep -v 'RRSIG|SOA|;;|---|^[0-9]' | wc -c | grep -q '^[0-2]$'" % (zf_prev, zf_post), shell=True)
+if p.returncode > 0:
+    set_err("NSEC3 changed upon re-sign")
 
 t.end()
