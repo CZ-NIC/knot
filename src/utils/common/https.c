@@ -464,7 +464,6 @@ void https_ctx_deinit(https_ctx_t *ctx)
 
 	nghttp2_session_del(ctx->session);
 	pthread_mutex_destroy(&ctx->recv_mx);
-	free(ctx->params->path);
 	if(ctx->path_alloc) {
 		free(ctx->path);
 		ctx->path = NULL;
@@ -480,7 +479,7 @@ void https_ctx_deinit(https_ctx_t *ctx)
 
 void print_https(const https_ctx_t *ctx)
 {
-	if (ctx == NULL) {
+	if (!ctx || !ctx->authority || !ctx->path) {
 		return;
 	}
 	printf(";; HTTPS session (HTTP/2)-(%s%s)\n", ctx->authority, ctx->path);
