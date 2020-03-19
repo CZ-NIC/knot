@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 /*! \brief Maximal length of binary input to Base64url encoding. */
 #define MAX_BIN_DATA_LEN	((INT32_MAX / 4) * 3)
 
-/*! \brief Base64url padding character. */ 
+/*! \brief Base64url padding character. */
 static const uint8_t base64url_pad = '\0';
 /*! \brief Base64 alphabet. */
 static const uint8_t base64url_enc[] =
@@ -81,7 +81,7 @@ static const uint8_t base64url_dec[256] = {
 	[ 42] = KO, ['U'] = 20, [128] = KO, [171] = KO, [214] = KO,
 };
 
-int32_t base64url_encode(const uint8_t  *in,
+int32_t knot_base64url_encode(const uint8_t  *in,
                       const uint32_t in_len,
                       uint8_t        *out,
                       const uint32_t out_len)
@@ -115,20 +115,20 @@ int32_t base64url_encode(const uint8_t  *in,
 		text[1] = base64url_enc[(in[0] & 0x03) << 4 | in[1] >> 4];
 		text[2] = base64url_enc[(in[1] & 0x0F) << 2];
 		text[3] = base64url_pad;
-		text += 4;
+		text += 3;
 		break;
 	case 1:
 		text[0] = base64url_enc[in[0] >> 2];
 		text[1] = base64url_enc[(in[0] & 0x03) << 4];
 		text[2] = base64url_pad;
 		text[3] = base64url_pad;
-		text += 4;
+		text += 2;
 		break;
 	}
 	return (text - out);
 }
 
-int32_t base64url_encode_alloc(const uint8_t  *in,
+int32_t knot_base64url_encode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out)
 {
@@ -150,7 +150,7 @@ int32_t base64url_encode_alloc(const uint8_t  *in,
 	}
 
 	// Encode data.
-	int32_t ret = base64url_encode(in, in_len, *out, out_len);
+	int32_t ret = knot_base64url_encode(in, in_len, *out, out_len);
 	if (ret < 0) {
 		free(*out);
 		*out = NULL;
@@ -159,7 +159,7 @@ int32_t base64url_encode_alloc(const uint8_t  *in,
 	return ret;
 }
 
-int32_t base64url_decode(const uint8_t  *in,
+int32_t knot_base64url_decode(const uint8_t  *in,
                       const uint32_t in_len,
                       uint8_t        *out,
                       const uint32_t out_len)
@@ -171,9 +171,6 @@ int32_t base64url_decode(const uint8_t  *in,
 	if (in_len > INT32_MAX || out_len < ((in_len + 3) / 4) * 3) {
 		return KNOT_ERANGE;
 	}
-	if ((in_len % 4) != 0) {
-		return KNOT_BASE64_ESIZE;
-	}
 
 	const uint8_t	*stop = in + in_len;
 	uint8_t		*bin = out;
@@ -183,10 +180,10 @@ int32_t base64url_decode(const uint8_t  *in,
 	// Decoding loop takes 4 characters and creates 3 bytes.
 	while (in < stop) {
 		// Filling and transforming 4 Base64 chars.
-		c1 = base64url_dec[in[0]];
-		c2 = base64url_dec[in[1]];
-		c3 = base64url_dec[in[2]];
-		c4 = base64url_dec[in[3]];
+		c1 =                   base64url_dec[in[0]]     ;
+		c2 = (in + 1 < stop) ? base64url_dec[in[1]] : PD;
+		c3 = (in + 2 < stop) ? base64url_dec[in[2]] : PD;
+		c4 = (in + 3 < stop) ? base64url_dec[in[3]] : PD;
 
 		// Check 4. char if is bad or padding.
 		if (c4 >= PD) {
@@ -242,7 +239,7 @@ int32_t base64url_decode(const uint8_t  *in,
 	return (bin - out);
 }
 
-int32_t base64url_decode_alloc(const uint8_t  *in,
+int32_t knot_base64url_decode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out)
 {
@@ -261,7 +258,7 @@ int32_t base64url_decode_alloc(const uint8_t  *in,
 	}
 
 	// Decode data.
-	int32_t ret = base64url_decode(in, in_len, *out, out_len);
+	int32_t ret = knot_base64url_decode(in, in_len, *out, out_len);
 	if (ret < 0) {
 		free(*out);
 		*out = NULL;
