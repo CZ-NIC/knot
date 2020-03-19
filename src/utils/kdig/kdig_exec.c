@@ -818,6 +818,10 @@ static int process_query(const query_t *query)
 			ret = net_init(query->local, remote, iptype, socktype,
 				       query->wait, flags, &query->tls, &net);
 			if (ret != KNOT_EOK) {
+				if (ret == KNOT_NET_EADDR) {
+					// Requested address family not available.
+					goto next_server;
+				}
 				continue;
 			}
 
@@ -869,8 +873,13 @@ static int process_query(const query_t *query)
 		if (server->next->next && query->style.show_query) {
 			printf("\n");
 		}
+next_server:
+		continue;
 	}
 
+	if (ret == KNOT_NET_EADDR) {
+		WARN("no servers to query\n");
+	}
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
 

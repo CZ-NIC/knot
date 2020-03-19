@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -125,13 +125,16 @@ static int get_addr(const srv_info_t *server,
 	hints.ai_socktype = socktype;
 
 	// Get connection parameters.
-	if (getaddrinfo(server->name, server->service, &hints, info) != 0) {
-		ERR("can't resolve address %s@%s\n",
-		    server->name, server->service);
+	int ret = getaddrinfo(server->name, server->service, &hints, info);
+	switch (ret) {
+	case 0:
+		return 0;
+	default:
+		ERR("%s for %s@%s\n", gai_strerror(ret), server->name, server->service);
+		// FALLTHROUGH
+	case EAI_ADDRFAMILY:
 		return -1;
 	}
-
-	return 0;
 }
 
 void get_addr_str(const struct sockaddr_storage *ss,
