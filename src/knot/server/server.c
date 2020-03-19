@@ -874,32 +874,32 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_listen_xdp = true;
 
 	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_tcp_reuseport(conf)) {
-		log_warning(msg, "tcp-reuseport");
+		log_warning(msg, &C_TCP_REUSEPORT[1]);
 		warn_tcp_reuseport = false;
 	}
 
 	if (warn_udp && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {
-		log_warning(msg, "udp-workers");
+		log_warning(msg, &C_UDP_WORKERS[1]);
 		warn_udp = false;
 	}
 
 	if (warn_tcp && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
-		log_warning(msg, "tcp-workers");
+		log_warning(msg, &C_TCP_WORKERS[1]);
 		warn_tcp = false;
 	}
 
 	if (warn_bg && conf->cache.srv_bg_threads != conf_bg_threads(conf)) {
-		log_warning(msg, "background-workers");
+		log_warning(msg, &C_BG_WORKERS[1]);
 		warn_bg = false;
 	}
 
 	if (warn_listen && listen_changed(conf, server, C_LISTEN)) {
-		log_warning(msg, "listen");
+		log_warning(msg, &C_LISTEN[1]);
 		warn_listen = false;
 	}
 
 	if (warn_listen_xdp && listen_changed(conf, server, C_LISTEN_XDP)) {
-		log_warning(msg, "listen-xdp");
+		log_warning(msg, &C_LISTEN_XDP[1]);
 		warn_listen_xdp = false;
 	}
 }
