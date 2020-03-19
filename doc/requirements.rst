@@ -94,3 +94,7 @@ MaxMind database for **geodb** support in module :ref:`geoip<mod-geoip>`:
 
 * libmaxminddb0
 
+DNS-over-HTTPS (DoH) support in :doc:`kdig<man_kdig>`:
+
+* libnghttp2
+
