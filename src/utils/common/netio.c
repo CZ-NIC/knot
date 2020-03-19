@@ -125,13 +125,15 @@ static int get_addr(const srv_info_t *server,
 	hints.ai_socktype = socktype;
 
 	// Get connection parameters.
-	if (getaddrinfo(server->name, server->service, &hints, info) != 0) {
-		ERR("can't resolve address %s@%s\n",
-		    server->name, server->service);
+	int ret = getaddrinfo(server->name, server->service, &hints, info);
+	switch (ret) {
+	case 0:
+		return 0;
+	default:
+		ERR("%s: %s@%s\n", gai_strerror(ret), server->name, server->service);
+	case EAI_ADDRFAMILY:	// FALLTHROUGH
 		return -1;
 	}
-
-	return 0;
 }
 
 void get_addr_str(const struct sockaddr_storage *ss,

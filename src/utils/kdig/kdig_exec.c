@@ -818,6 +818,10 @@ static int process_query(const query_t *query)
 			ret = net_init(query->local, remote, iptype, socktype,
 				       query->wait, flags, &query->tls, &net);
 			if (ret != KNOT_EOK) {
+				if (ret == KNOT_NET_EADDR) {
+					ret = KNOT_EOK;
+					break;
+				}
 				continue;
 			}
 
@@ -862,6 +866,10 @@ static int process_query(const query_t *query)
 			net_clean(&net);
 		}
 
+		if (ret == KNOT_EOK) {
+			continue;
+		}
+
 		ERR("failed to query server %s@%s(%s)\n",
 		    remote->name, remote->service, get_sockname(socktype));
 
@@ -871,6 +879,7 @@ static int process_query(const query_t *query)
 		}
 	}
 
+	ERR("no servers to query\n");
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
 
