@@ -808,6 +808,7 @@ static int opt_notls_ocsp_stapling(const char *arg, void *query)
 
 static int opt_https(const char *arg, void *query)
 {
+#ifdef LIBNGHTTP2
 	query_t *q = query;
 
 	q->https.enable = true;
@@ -830,10 +831,15 @@ static int opt_https(const char *arg, void *query)
 	}
 
 	return opt_tls(NULL, query);
+
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGHTTP2
 }
 
 static int opt_nohttps(const char *arg, void *query)
 {
+#ifdef LIBNGHTTP2
 	query_t *q = query;
 
 	q->https.enable = false;
@@ -841,12 +847,14 @@ static int opt_nohttps(const char *arg, void *query)
 	q->https.path = NULL;
 
 	return opt_notls(arg, query);
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGHTTP2
 }
-
-
 
 static int opt_https_method(const char *arg, void *query)
 {
+#ifdef LIBNGHTTP2
 	query_t *q = query;
 
 	if (arg) {
@@ -856,20 +864,28 @@ static int opt_https_method(const char *arg, void *query)
 		} else if (strncmp("post", arg, 4) == 0) {
 			q->https.method = POST;
 			return opt_https(NULL, q);
+		} else {
+			return KNOT_ENOTSUP;
 		}
 	}
 	return opt_https(arg, q);
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGHTTP2
 }
 
 static int opt_nohttps_method(const char *arg, void *query)
 {
+#ifdef LIBNGHTTP2
 	query_t *q = query;
 
 	q->https.method = DEFAULT;
 
 	return opt_nohttps(arg, query);
+#else
+	return KNOT_ENOTSUP;
+#endif
 }
-
 
 static int opt_nsid(const char *arg, void *query)
 {
@@ -2086,10 +2102,12 @@ static void print_help(void)
 	       "       +[no]tls-certfile=FILE     Use TLS with a client certfile.\n"
 	       "       +[no]tls-ocsp-stapling[=H] Use TLS with a valid stapled OCSP response for the\n"
 	       "                                  server certificate (%u or specify hours).\n"
-		   "       +[no]https[=URL]           Use HTTPS protocol. It's also possible to specify\n"
-		   "                                  URL where query will be sent.\n"
-		   "       +[no]https-method[=METHOD] Use HTTPS protocol with specified HTTP method.\n"
-		   "                                  Supported transfer methods are 'get' or 'post'.\n"
+#ifdef LIBNGHTTP2
+	       "       +[no]https[=URL]           Use HTTPS protocol. It's also possible to specify\n"
+	       "                                  URL where query will be sent.\n"
+	       "       +[no]https-method[=METHOD] Use HTTPS protocol with specified HTTP method.\n"
+	       "                                  Supported transfer methods are 'get' or 'post'.\n"
+#endif
 	       "       +[no]nsid                  Request NSID.\n"
 	       "       +[no]bufsize=B             Set EDNS buffer size.\n"
 	       "       +[no]padding[=N]           Pad with EDNS(0) (default or specify size).\n"
