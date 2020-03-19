@@ -475,7 +475,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone,
  * \return KNOT_EOK, KNOT_E* if any error.
  */
 static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t *params,
-                              uint32_t ttl, bool opt_out, const knot_dname_t *for_node)
+                              uint32_t ttl, const knot_dname_t *for_node)
 {
 	// check if we need to do something
 	const zone_node_t *old_n = zone_contents_find_node(update->zone->contents, for_node);
@@ -548,7 +548,7 @@ static int fix_nsec3_for_node(zone_update_t *update, const dnssec_nsec3_params_t
 }
 
 static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *params,
-                           uint32_t ttl, bool opt_out)
+                           uint32_t ttl)
 {
 	assert(update);
 
@@ -557,7 +557,7 @@ static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *p
 
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
 		zone_node_t *n = zone_tree_it_val(&it);
-		ret = fix_nsec3_for_node(update, params, ttl, opt_out, n->owner);
+		ret = fix_nsec3_for_node(update, params, ttl, n->owner);
 		zone_tree_it_next(&it);
 	}
 	zone_tree_it_free(&it);
@@ -697,13 +697,12 @@ int delete_nsec3_chain(zone_update_t *up)
 int knot_nsec3_create_chain(const zone_contents_t *zone,
                             const dnssec_nsec3_params_t *params,
                             uint32_t ttl,
-                            bool opt_out,
                             zone_update_t *update)
 {
 	assert(zone);
 	assert(params);
 
-	int result;
+	bool opt_out = (params->flags & KNOT_NSEC3_FLAG_OPT_OUT);
 
 	zone_tree_t *nsec3_nodes = zone_tree_create(false);
 	if (!nsec3_nodes) {
@@ -718,7 +717,8 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	 * The flag will be removed when the node is encountered during NSEC3
 	 * creation procedure.
 	 */
-	result = zone_tree_apply(zone->nodes, nsec3_mark_empty, (opt_out ? (void *)zone : NULL));
+	int result = zone_tree_apply(zone->nodes, nsec3_mark_empty,
+	                             (opt_out ? (void *)zone : NULL));
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
@@ -757,11 +757,12 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 
 int knot_nsec3_fix_chain(zone_update_t *update,
                          const dnssec_nsec3_params_t *params,
-                         uint32_t ttl,
-                         bool opt_out)
+                         uint32_t ttl)
 {
 	assert(update);
 	assert(params);
+
+	bool opt_out = (params->flags & KNOT_NSEC3_FLAG_OPT_OUT);
 
 	// ensure that the salt has not changed
 	if (!knot_nsec3param_uptodate(update->zone->contents, params)) {
@@ -769,16 +770,16 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		return knot_nsec3_create_chain(update->new_cont, params, ttl, opt_out, update);
+		return knot_nsec3_create_chain(update->new_cont, params, ttl, update);
 	}
 
 	int ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_mark_empty,
-	                          ((params->flags & KNOT_NSEC3_FLAG_OPT_OUT) ? (void *)update : NULL));
+	                          (opt_out ? (void *)update : NULL));
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = fix_nsec3_nodes(update, params, ttl, opt_out);
+	ret = fix_nsec3_nodes(update, params, ttl);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
