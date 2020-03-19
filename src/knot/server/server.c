@@ -823,11 +823,11 @@ static int reload_conf(conf_t *new_conf)
 }
 
 /*! \brief Check if parameter listen has been changed since knotd started. */
-static bool listen_changed(conf_t *conf, server_t *server)
+static bool listen_changed(conf_t *conf, server_t *server, const yp_name_t *item)
 {
 	assert(server->ifaces);
 
-	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t listen_val = conf_get(conf, C_SRV, item);
 	size_t new_count = conf_val_count(&listen_val);
 	size_t old_count = server->n_ifaces;
 	if (new_count != old_count) {
@@ -871,6 +871,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_tcp = true;
 	static bool warn_bg = true;
 	static bool warn_listen = true;
+	static bool warn_listen_xdp = true;
 
 	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_tcp_reuseport(conf)) {
 		log_warning(msg, "tcp-reuseport");
@@ -892,9 +893,14 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 		warn_bg = false;
 	}
 
-	if (warn_listen && listen_changed(conf, server)) {
+	if (warn_listen && listen_changed(conf, server, C_LISTEN)) {
 		log_warning(msg, "listen");
 		warn_listen = false;
+	}
+
+	if (warn_listen_xdp && listen_changed(conf, server, C_LISTEN_XDP)) {
+		log_warning(msg, "listen-xdp");
+		warn_listen_xdp = false;
 	}
 }
 
