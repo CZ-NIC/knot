@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@
  * \retval >=0		length of output string.
  * \retval KNOT_E*	if error.
  */
-int32_t base64url_encode(const uint8_t  *in,
+int32_t knot_base64url_encode(const uint8_t  *in,
                       const uint32_t in_len,
                       uint8_t        *out,
                       const uint32_t out_len);
@@ -56,7 +56,7 @@ int32_t base64url_encode(const uint8_t  *in,
  * \retval >=0		length of output string.
  * \retval KNOT_E*	if error.
  */
-int32_t base64url_encode_alloc(const uint8_t  *in,
+int32_t knot_base64url_encode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out);
 
@@ -75,7 +75,7 @@ int32_t base64url_encode_alloc(const uint8_t  *in,
  * \retval >=0		length of output data.
  * \retval KNOT_E*	if error.
  */
-int32_t base64url_decode(const uint8_t  *in,
+int32_t knot_base64url_decode(const uint8_t  *in,
                       const uint32_t in_len,
                       uint8_t        *out,
                       const uint32_t out_len);
@@ -96,7 +96,7 @@ int32_t base64url_decode(const uint8_t  *in,
  * \retval >=0		length of output data.
  * \retval KNOT_E*	if error.
  */
-int32_t base64url_decode_alloc(const uint8_t  *in,
+int32_t knot_base64url_decode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out);
 
