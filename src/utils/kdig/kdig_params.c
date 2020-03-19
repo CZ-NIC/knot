@@ -806,6 +806,7 @@ static int opt_notls_ocsp_stapling(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+#ifdef LIBNGHTTP2
 static int opt_https(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -843,8 +844,6 @@ static int opt_nohttps(const char *arg, void *query)
 	return opt_notls(arg, query);
 }
 
-
-
 static int opt_https_method(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -869,7 +868,7 @@ static int opt_nohttps_method(const char *arg, void *query)
 
 	return opt_nohttps(arg, query);
 }
-
+#endif
 
 static int opt_nsid(const char *arg, void *query)
 {
@@ -1372,11 +1371,13 @@ static const param_t kdig_opts2[] = {
 	{ "tls-ocsp-stapling",   ARG_OPTIONAL, opt_tls_ocsp_stapling },
 	{ "notls-ocsp-stapling", ARG_NONE,     opt_notls_ocsp_stapling },
 
+#ifdef LIBNGHTTP2
 	{ "https",          ARG_OPTIONAL, opt_https },
 	{ "nohttps",        ARG_NONE,     opt_nohttps },
 
 	{ "https-method",   ARG_OPTIONAL, opt_https_method },
 	{ "nohttps-method", ARG_NONE,     opt_nohttps_method },
+#endif
 
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
@@ -2086,10 +2087,12 @@ static void print_help(void)
 	       "       +[no]tls-certfile=FILE     Use TLS with a client certfile.\n"
 	       "       +[no]tls-ocsp-stapling[=H] Use TLS with a valid stapled OCSP response for the\n"
 	       "                                  server certificate (%u or specify hours).\n"
+#ifdef LIBNGHTTP2
 		   "       +[no]https[=URL]           Use HTTPS protocol. It's also possible to specify\n"
 		   "                                  URL where query will be sent.\n"
 		   "       +[no]https-method[=METHOD] Use HTTPS protocol with specified HTTP method.\n"
 		   "                                  Supported transfer methods are 'get' or 'post'.\n"
+#endif
 	       "       +[no]nsid                  Request NSID.\n"
 	       "       +[no]bufsize=B             Set EDNS buffer size.\n"
 	       "       +[no]padding[=N]           Pad with EDNS(0) (default or specify size).\n"
