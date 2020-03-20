@@ -300,6 +300,25 @@ int journal_scrape_with_md(zone_journal_t j)
 	return txn.ret;
 }
 
+int journal_copy_with_md(knot_lmdb_db_t *from, knot_lmdb_db_t *to, const knot_dname_t *zone)
+{
+	knot_lmdb_txn_t tr = { 0 }, tw = { 0 };
+	tr.ret = knot_lmdb_open(from);
+	tw.ret = knot_lmdb_open(to);
+	if (tr.ret != KNOT_EOK || tw.ret != KNOT_EOK) {
+		goto done;
+	}
+	knot_lmdb_begin(from, &tr, true);
+	knot_lmdb_begin(to, &tw, true);
+	update_last_inserter(&tr, NULL);
+	MDB_val prefix = { knot_dname_size(zone), (void *)zone };
+	knot_lmdb_copy_prefix(&tr, &tw, &prefix);
+	knot_lmdb_commit(&tw);
+	knot_lmdb_commit(&tr);
+done:
+	return tr.ret == KNOT_EOK ? tw.ret : tr.ret;
+}
+
 int journal_set_flushed(zone_journal_t j)
 {
 	knot_lmdb_txn_t txn = { 0 };

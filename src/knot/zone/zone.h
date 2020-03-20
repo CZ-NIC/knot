@@ -28,6 +28,7 @@
 #include "libknot/packet/pkt.h"
 
 struct zone_update;
+struct zone_backup_ctx;
 
 /*!
  * \brief Zone flags.
@@ -81,6 +82,9 @@ typedef struct zone
 
 	/*! \brief Ptr to journal DB (in struct server) */
 	knot_lmdb_db_t *kaspdb;
+
+	/*! \brief Zone backup context (NULL unless backup pending). */
+	struct zone_backup_ctx *backup_ctx;
 
 	/*! \brief Preferred master lock. */
 	pthread_mutex_t preferred_lock;

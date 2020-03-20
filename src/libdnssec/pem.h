@@ -60,4 +60,14 @@ int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key);
  */
 int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
 
+/*!
+ * Export GnuTLS private key to PEM binary.
+ *
+ * \param[in]  key  Key to be exported.
+ * \param[out] pem  Generated key in unencrypted PEM format.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem);
+
 /*! @} */

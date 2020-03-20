@@ -465,3 +465,23 @@ int kasp_db_delete_offline_records(knot_lmdb_db_t *db, const knot_dname_t *zone,
 	free(prefix.mv_data);
 	return txn.ret;
 }
+
+int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db)
+{
+	size_t n_prefs = 7; // NOTE: this and following must match number of record types
+	MDB_val prefixes[n_prefs];
+	prefixes[0] = make_key_str(KASPDBKEY_PARAMS, zone, NULL);
+	prefixes[1] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST); // we copy all policy-last records, that doesn't harm
+	prefixes[2] = make_key_str(KASPDBKEY_NSEC3SALT, zone, NULL);
+	prefixes[3] = make_key_str(KASPDBKEY_NSEC3TIME, zone, NULL);
+	prefixes[4] = make_key_str(KASPDBKEY_MASTERSERIAL, zone, NULL);
+	prefixes[5] = make_key_str(KASPDBKEY_LASTSIGNEDSERIAL, zone, NULL);
+	prefixes[6] = make_key_str(KASPDBKEY_OFFLINE_RECORDS, zone, NULL);
+
+	int ret = knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs);
+
+	for (int i = 0; i < n_prefs; i++) {
+		free(prefixes[i].mv_data);
+	}
+	return ret;
+}

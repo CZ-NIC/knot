@@ -178,16 +178,7 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 	conf_id_fix_default(&policy_id);
 	policy_load(ctx->policy, &policy_id);
 
-	conf_val_t keystore_id = conf_id_get(conf, C_POLICY, C_KEYSTORE, &policy_id);
-	conf_id_fix_default(&keystore_id);
-
-	conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, &keystore_id);
-	unsigned backend = conf_opt(&val);
-
-	val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, &keystore_id);
-	const char *config = conf_str(&val);
-
-	ret = keystore_load(config, backend, ctx->kasp_zone_path, &ctx->keystore);
+	ret = zone_init_keystore(conf, &policy_id, &ctx->keystore, NULL);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}
