@@ -43,16 +43,12 @@ a DNSSEC validating resolver.
 
 * CDNSKEY and CDS records are generated as usual to publish valid Secure Entry Point.
 
-.. rubric:: Known issues:
-
-* The `knotc zone-ksk-submitted` command does not work well and is discouraged.
-  The module must be reloaded afterwards.
-
 .. rubric:: Limitations:
 
 * Online-sign module always enforces Single-Type Signing scheme.
 
-* After any change to KASP DB, the module must be reloaded to apply the changed keys.
+* After any change to KASP DB (including `knotc zone-ksk-submitted` command),
+  the server must be reloaded to apply the change.
 
 * The NSEC records may differ for one domain name if queried for different
   types. This is an implementation shortcoming as the dynamic modules
@@ -80,8 +76,9 @@ Example
    policy:
      - id: rsa
        algorithm: RSASHA256
-       zsk-size: 2048
+       ksk-size: 2048
        rrsig-lifetime: 25h
+       rrsig-refresh: 20h
 
    mod-onlinesign:
      - id: explicit
