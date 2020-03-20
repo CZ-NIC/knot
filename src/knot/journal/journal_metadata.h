@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -120,6 +120,17 @@ void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint3
  * \return KNOT_E*
  */
 int journal_scrape_with_md(zone_journal_t j, bool check_existence);
+
+/*!
+ * \brief Copy all records related to this zone from one journal DB to another.
+ *
+ * \param from   DB to copy from.
+ * \param to     DB to copy to.
+ * \param zone   Journal zone.
+ *
+ * \return KNOT_E*
+ */
+int journal_copy_with_md(knot_lmdb_db_t *from, knot_lmdb_db_t *to, const knot_dname_t *zone);
 
 /*!
  * \brief Update the metadata stored in journal DB after a zone flush.

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,6 +45,8 @@
 #define CMD_ZONE_RETRANSFER	"zone-retransfer"
 #define CMD_ZONE_NOTIFY		"zone-notify"
 #define CMD_ZONE_FLUSH		"zone-flush"
+#define CMD_ZONE_BACKUP		"zone-backup"
+#define CMD_ZONE_RESTORE	"zone-restore"
 #define CMD_ZONE_SIGN		"zone-sign"
 #define CMD_ZONE_KEY_ROLL	"zone-key-rollover"
 #define CMD_ZONE_KSK_SBM	"zone-ksk-submitted"
@@ -241,6 +243,8 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_ZONE_RETRANSFER:
 	case CTL_ZONE_NOTIFY:
 	case CTL_ZONE_FLUSH:
+	case CTL_ZONE_BACKUP:
+	case CTL_ZONE_RESTORE:
 	case CTL_ZONE_SIGN:
 	case CTL_ZONE_KEY_ROLL:
 	case CTL_ZONE_KSK_SBM:
@@ -363,6 +367,8 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_RETRANSFER:
 	case CTL_ZONE_NOTIFY:
 	case CTL_ZONE_FLUSH:
+	case CTL_ZONE_BACKUP:
+	case CTL_ZONE_RESTORE:
 	case CTL_ZONE_SIGN:
 	case CTL_ZONE_KEY_ROLL:
 	case CTL_ZONE_KSK_SBM:
@@ -637,6 +643,12 @@ const filter_desc_t zone_flush_filters[MAX_FILTERS] = {
 	{ "+outdir", CTL_FILTER_FLUSH_OUTDIR, true },
 };
 
+const filter_desc_t zone_backup_filters[MAX_FILTERS] = {
+	{ "+backupdir",   CTL_FILTER_FLUSH_OUTDIR,   true },
+	{ "+journal",     CTL_FILTER_PURGE_JOURNAL,  false },
+	{ "+nozonefile",  CTL_FILTER_PURGE_ZONEFILE, false },
+};
+
 const filter_desc_t zone_status_filters[MAX_FILTERS] = {
 	{ "+role",        CTL_FILTER_STATUS_ROLE },
 	{ "+serial",      CTL_FILTER_STATUS_SERIAL },
@@ -662,6 +674,10 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 	switch (cmd) {
 	case CTL_ZONE_FLUSH:
 		fd = zone_flush_filters;
+		break;
+	case CTL_ZONE_BACKUP:
+	case CTL_ZONE_RESTORE:
+		fd = zone_backup_filters;
 		break;
 	case CTL_ZONE_STATUS:
 		fd = zone_status_filters;
@@ -1016,6 +1032,8 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,          CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
 	{ CMD_ZONE_NOTIFY,     cmd_zone_ctl,          CTL_ZONE_NOTIFY,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_FLUSH,      cmd_zone_filter_ctl,   CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
+	{ CMD_ZONE_BACKUP,     cmd_zone_filter_ctl,   CTL_ZONE_BACKUP,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_RESTORE,    cmd_zone_filter_ctl,   CTL_ZONE_RESTORE,    CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,          CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
 	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE },
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,          CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE | CMD_FOPT_ZONE },
