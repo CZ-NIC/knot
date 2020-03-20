@@ -29,6 +29,7 @@
 #include "knot/journal/journal_metadata.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
+#include "knot/zone/backup.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
@@ -351,6 +352,51 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 
 	schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
 
+	return KNOT_EOK;
+}
+
+static size_t backup_init_zones_overhead(void) // to make sure the backup ctx is not de-inited before we schedule all events
+{
+	return conf()->cache.srv_bg_threads + 1;
+}
+
+static int init_backup(ctl_args_t *args)
+{
+	const char *dest = args->data[KNOT_CTL_IDX_DATA];
+
+	size_t kasp_db_size = knot_lmdb_db_usage(&args->server->kaspdb);
+	kasp_db_size *= 2; // to make sure that current contents fit into backup DB
+
+	zone_backup_ctx_t *ctx;
+
+	int ret = zone_backup_init(backup_init_zones_overhead(), dest, kasp_db_size, &ctx);
+	if (ret == KNOT_EOK) {
+		assert(ctx != NULL);
+		args->custom_ctx = ctx;
+	}
+	return ret;
+}
+
+static void deinit_backup(ctl_args_t *args)
+{
+	zone_backup_ctx_t *ctx = args->custom_ctx;
+	pthread_mutex_lock(&ctx->zones_left_mutex);
+	ctx->zones_left -= backup_init_zones_overhead();
+	pthread_mutex_unlock(&ctx->zones_left_mutex);
+	if (ctx->zones_left < 1) {
+		assert(ctx->zones_left == 0);
+		zone_backup_free(ctx);
+	}
+}
+
+static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
+{
+	zone_backup_ctx_t *ctx = args->custom_ctx;
+	zone->backup_ctx = ctx;
+	pthread_mutex_lock(&ctx->zones_left_mutex);
+	ctx->zones_left++;
+	pthread_mutex_unlock(&ctx->zones_left_mutex);
+	schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 	return KNOT_EOK;
 }
 
@@ -1315,6 +1361,7 @@ static int zone_stats(zone_t *zone, ctl_args_t *args)
 
 static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 {
+	int ret = KNOT_EOK;
 	switch (cmd) {
 	case CTL_ZONE_STATUS:
 		return zones_apply(args, zone_status);
@@ -1328,6 +1375,13 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_notify);
 	case CTL_ZONE_FLUSH:
 		return zones_apply(args, zone_flush);
+	case CTL_ZONE_BACKUP:
+		ret = init_backup(args);
+		if (ret == KNOT_EOK) {
+			ret = zones_apply(args, zone_backup_cmd);
+			deinit_backup(args);
+		}
+		return ret;
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
 	case CTL_ZONE_KEY_ROLL:

@@ -14,23 +14,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <assert.h>
 
-#include <pthread.h>
-#include <stdint.h>
+#include "knot/conf/conf.h"
+#include "knot/zone/backup.h"
 
-#include "knot/dnssec/kasp/kasp_db.h"
-#include "knot/zone/zone.h"
+int event_backup(conf_t *conf, zone_t *zone)
+{
+	(void)conf;
+	return zone_backup(zone);
+}
 
-typedef struct zone_backup_ctx {
-	ssize_t zones_left;
-	pthread_mutex_t zones_left_mutex;
-	char *backup_dir;
-	knot_lmdb_db_t bck_kasp_db;
-} zone_backup_ctx_t;
-
-int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_size, zone_backup_ctx_t **out_ctx);
-
-void zone_backup_free(zone_backup_ctx_t *ctx);
-
-int zone_backup(zone_t *zone);

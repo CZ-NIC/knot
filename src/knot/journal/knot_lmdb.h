@@ -342,6 +342,15 @@ int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
 size_t knot_lmdb_usage(knot_lmdb_txn_t *txn);
 
 /*!
+ * \brief Amount of bytes used by the DB storage.
+ *
+ * \param db   LMDB database.
+ *
+ * \return DB usage.
+ */
+size_t knot_lmdb_db_usage(knot_lmdb_db_t *db);
+
+/*!
  * \brief Serialize various parameters into a DB key.
  *
  * \param format   Specifies the number and type of parameters.
