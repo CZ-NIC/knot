@@ -983,6 +983,80 @@ If you want to refresh the slave zones, you can do this with::
 
     $ knotc zone-refresh
 
+.. _Data and metadata backup:
+
+Data and metadata backup
+========================
+
+Some of the zone-related data, such as zone contents or DNSSEC signing keys,
+and metadata, like zone timers, might be worth backing up. For the sake of
+consistency, it's usually necessary to shut down the server, or at least freeze all
+the zones, before copying the data like zone files, KASP database, etc, to
+backup location. To avoid this necessity, Knot DNS provides a feature to
+back-up some or all of the zones seamlessly.
+
+Online backup
+-------------
+
+While the server is running and the zones normally loaded (even when they are
+constantly/frequently being updated), the user can manually trigger the
+back-up by calling::
+
+    $ knotc zone-backup +backupdir /path/of/backup
+
+To backup just some of the zones (instead of all), the user might provide
+their list::
+
+    $ knotc zone-backup +backupdir /path/to/backup zone1.com. zone2.com. ...
+
+The backup directory should be empty (or non-existing) or contain a previous
+backup that will be overwritten.
+The back-up procedure will begin soon and will happen zone-by-zone
+(partially in parallel if more :ref:`server_background-workers` are configured).
+The user shall check the logs for the outcome of each zone's back-up attempt.
+The knotc's ``-b`` parameter might be used if the user desires to wait until
+the back-up work is done.
+
+Offline restore
+---------------
+
+If the Online backup was performed for all zones, it's possible to
+restore the backed-up data by simply copying them to their normal locations,
+since they're simply copies. For example, the user can copy (overwrite)
+tha backed-up KASP database files to their configured location.
+
+This restore of course must be done when the server is stopped. After starting up
+the server, it should run in the same state as in the time of back-up.
+
+This method is recommended in the case of complete data loss, for example
+physical server failure.
+
+Online restore
+--------------
+
+This procedure is symmetrical to Online backup. By calling::
+
+    $ knotc zone-restore +backupdir /path/of/backup
+
+the user triggers a one-by-one zone restore from the backup on a running
+server. Again, a subset of zones might be specified. It must be specified
+if the backup was created for only a subset of zones.
+
+Limitations
+-----------
+
+Neither configuration file, nor :ref:`Configuration database` is backed-up
+by those commands.
+
+If the private keys are stored in a HSM (anything using a PKCS#11 interface),
+they are not backed up. This includes internal metadata of the PKCS#11 provider
+software, such as key mappings, authentication information, and the configuration
+of the provider. Details are vendor-specific.
+
+The restore procedure does not care for keys deleted after taking the snapshot.
+Thus, after restore, there might remain some redundant ``.pem`` files
+of obsolete signing keys.
+
 .. _Statistics:
 
 Statistics
