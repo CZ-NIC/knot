@@ -160,6 +160,7 @@ enum knot_error {
 
 	/* Another general errors. */
 	KNOT_ELOOP,
+	KNOT_EPROGRESS,
 
 	/* XDP errors. */
 	KNOT_EPROGRAM,
