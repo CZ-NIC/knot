@@ -67,6 +67,14 @@ typedef enum {
 typedef bool (*sweep_cb)(const uint8_t *zone, void *data);
 
 /*!
+ * \brief Callback used in copy functions.
+ *
+ * \retval true  if the current record shall be copied
+ * \retval false if the current record shall be skipped
+ */
+typedef bool (*knot_lmdb_copy_cb)(MDB_val *cur_key, MDB_val *cur_val);
+
+/*!
  * \brief Initialise the DB handling structure.
  *
  * \param db          DB handling structure.
@@ -291,6 +299,36 @@ bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val);
  * \return KNOT_E*
  */
 int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val);
+
+/*!
+ * \brief Copy all records matching given key prefix.
+ *
+ * \param from     Open RO/RW transaction in the database to copy from.
+ * \param to       Open RW txn in the DB to copy to.
+ * \param prefix   Prefix for matching records to be copied.
+ *
+ * \note Prior to copying, all records from the target DB, matching the prefix, will be deleted!
+ *
+ * \return KNOT_E*
+ *
+ * \note KNOT_EOK even if none records matched the prefix (and were copied).
+ */
+int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix);
+
+/*!
+ * \brief Copy all records matching any of multiple prefixes.
+ *
+ * \param from        DB to copy from.
+ * \param to          DB to copy to.
+ * \param prefixes    List of prefixes to match.
+ * \param n_prefixes  Number of prefixes in the list.
+ *
+ * \note Prior to copying, all records from the target DB, matching any of the prefixes, will be deleted!
+ *
+ * \return KNOT_E*
+ */
+int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
+                            MDB_val *prefixes, size_t n_prefixes);
 
 /*!
  * \brief Amount of bytes used by the DB storage.

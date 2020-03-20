@@ -427,6 +427,47 @@ int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val)
 	return txn.ret;
 }
 
+int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix)
+{
+	knot_lmdb_foreach(to, prefix) {
+		knot_lmdb_del_cur(to);
+	}
+	if (to->ret != KNOT_EOK) {
+		return to->ret;
+	}
+	knot_lmdb_foreach(from, prefix) {
+		knot_lmdb_insert(to, &from->cur_key, &from->cur_val);
+	}
+	return from->ret == KNOT_EOK ? to->ret : from->ret;
+}
+
+int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
+                            MDB_val *prefixes, size_t n_prefixes)
+{
+	if (n_prefixes < 1) {
+		return KNOT_EOK;
+	}
+	if (from == NULL || to == NULL || prefixes == NULL) {
+		return KNOT_EINVAL;
+	}
+	int ret = knot_lmdb_open(from);
+	if (ret == KNOT_EOK) {
+		ret = knot_lmdb_open(to);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t tr = { 0 }, tw = { 0 };
+	knot_lmdb_begin(from, &tr, false);
+	knot_lmdb_begin(to, &tw, true);
+	for (size_t i = 0; i < n_prefixes && ret == KNOT_EOK; i++) {
+		ret = knot_lmdb_copy_prefix(&tr, &tw, &prefixes[i]);
+	}
+	knot_lmdb_commit(&tw);
+	knot_lmdb_commit(&tr);
+	return ret == KNOT_EOK ? tw.ret : ret;
+}
+
 size_t knot_lmdb_usage(knot_lmdb_txn_t *txn)
 {
 	if (!txn_semcheck(txn)) {
