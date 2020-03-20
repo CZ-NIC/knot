@@ -113,6 +113,16 @@ static int fix_mapsize(knot_lmdb_db_t *db)
 	return KNOT_EOK;
 }
 
+size_t knot_lmdb_copy_size(knot_lmdb_db_t *to_copy)
+{
+	size_t copy_size = 1048576;
+	struct stat st;
+	if (lmdb_stat(to_copy->path, &st)) {
+		copy_size += st.st_size * 2;
+	}
+	return copy_size;
+}
+
 static int lmdb_open(knot_lmdb_db_t *db)
 {
 	MDB_txn *init_txn = NULL;
@@ -427,6 +437,47 @@ int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val)
 	return txn.ret;
 }
 
+int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix)
+{
+	knot_lmdb_foreach(to, prefix) {
+		knot_lmdb_del_cur(to);
+	}
+	if (to->ret != KNOT_EOK) {
+		return to->ret;
+	}
+	knot_lmdb_foreach(from, prefix) {
+		knot_lmdb_insert(to, &from->cur_key, &from->cur_val);
+	}
+	return from->ret == KNOT_EOK ? to->ret : from->ret;
+}
+
+int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
+                            MDB_val *prefixes, size_t n_prefixes)
+{
+	if (n_prefixes < 1) {
+		return KNOT_EOK;
+	}
+	if (from == NULL || to == NULL || prefixes == NULL) {
+		return KNOT_EINVAL;
+	}
+	int ret = knot_lmdb_open(from);
+	if (ret == KNOT_EOK) {
+		ret = knot_lmdb_open(to);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t tr = { 0 }, tw = { 0 };
+	knot_lmdb_begin(from, &tr, false);
+	knot_lmdb_begin(to, &tw, true);
+	for (size_t i = 0; i < n_prefixes && ret == KNOT_EOK; i++) {
+		ret = knot_lmdb_copy_prefix(&tr, &tw, &prefixes[i]);
+	}
+	knot_lmdb_commit(&tw);
+	knot_lmdb_commit(&tr);
+	return ret == KNOT_EOK ? tw.ret : ret;
+}
+
 size_t knot_lmdb_usage(knot_lmdb_txn_t *txn)
 {
 	if (!txn_semcheck(txn)) {
@@ -438,6 +489,18 @@ size_t knot_lmdb_usage(knot_lmdb_txn_t *txn)
 
 	size_t pgs_used = st.ms_branch_pages + st.ms_leaf_pages + st.ms_overflow_pages;
 	return (pgs_used * st.ms_psize);
+}
+
+size_t knot_lmdb_db_usage(knot_lmdb_db_t *db)
+{
+	knot_lmdb_txn_t txn = { 0 };
+	if (knot_lmdb_open(db) != KNOT_EOK) {
+		return 0;
+	}
+	knot_lmdb_begin(db, &txn, false);
+	size_t res = knot_lmdb_usage(&txn);
+	knot_lmdb_commit(&txn);
+	return res;
 }
 
 static bool make_key_part(void *key_data, size_t key_len, const char *format, va_list arg)

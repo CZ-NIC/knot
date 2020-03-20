@@ -127,3 +127,20 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 
 	return DNSSEC_EOK;
 }
+
+_public_
+int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem)
+{
+	if (!key || !pem) {
+		return DNSSEC_EINVAL;
+	}
+
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t _key = NULL;
+
+	int r = gnutls_privkey_export_x509(key, &_key);
+	if (r != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_EXPORT_ERROR;
+	}
+
+	return dnssec_pem_from_x509(_key, pem);
+}
