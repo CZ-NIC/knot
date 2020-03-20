@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -318,6 +318,9 @@ int main(int argc, char *argv[])
 			// FALLTHROUGH
 		case KNOT_EOK:
 			return EXIT_SUCCESS;
+		case KNOT_EFILE:
+			fprintf(stderr, "The specified journal DB is invalid\n");
+			return EXIT_FAILURE;
 		case KNOT_EMALF:
 			fprintf(stderr, "The journal DB is broken\n");
 			return EXIT_FAILURE;
