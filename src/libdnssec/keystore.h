@@ -197,4 +197,14 @@ int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id);
 int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
 			   dnssec_key_t *key);
 
+/*!
+ * Import a DNSSEC key into keystore.
+ *
+ * \param store  Key store.
+ * \param key    DNSSEC key with a private key.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int dnssec_keystore_unexport(dnssec_keystore_t *store, dnssec_key_t *key);
+
 /*! @} */

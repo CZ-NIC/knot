@@ -38,6 +38,7 @@ typedef struct keystore_functions {
 	int (*remove_key)(void *ctx, const char *id);
 	// private key access
 	int (*get_private)(void *ctx, const char *id, gnutls_privkey_t *key_ptr);
+	int (*set_private)(void *ctx, gnutls_privkey_t key);
 } keystore_functions_t;
 
 struct dnssec_keystore {

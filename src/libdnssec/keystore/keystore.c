@@ -170,3 +170,17 @@ int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
 
 	return DNSSEC_EOK;
 }
+
+_public_
+int dnssec_keystore_unexport(dnssec_keystore_t *store, dnssec_key_t *key)
+{
+	if (!store || !key) {
+		return DNSSEC_EINVAL;
+	}
+
+	if (!key->private_key) {
+		return DNSSEC_NO_PRIVATE_KEY;
+	}
+
+	return store->functions->set_private(store->ctx, key->private_key);
+}
