@@ -440,3 +440,6 @@ class Response(object):
         '''Return response size.'''
 
         return len(self.resp.to_wire())
+
+    def rcode(self):
+        return dns.rcode.to_text(self.resp.rcode())
