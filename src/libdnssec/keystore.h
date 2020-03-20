@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -196,5 +196,15 @@ int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id);
  */
 int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
 			   dnssec_key_t *key);
+
+/*!
+ * Import a DNSSEC private key into key store.
+ *
+ * \param store  Key store.
+ * \param key    DNSSEC key with a private key.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int dnssec_keystore_set_private(dnssec_keystore_t *store, dnssec_key_t *key);
 
 /*! @} */

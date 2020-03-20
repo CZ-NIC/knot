@@ -29,6 +29,7 @@
 #include "knot/journal/journal_metadata.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
+#include "knot/zone/backup.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
@@ -371,6 +372,62 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 
 	schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
 
+	return KNOT_EOK;
+}
+
+static int init_backup(ctl_args_t *args, bool restore_mode)
+{
+	if (!MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
+		return KNOT_EINVAL;
+	}
+
+	zone_backup_ctx_t *ctx;
+
+	// The present timer db size is not up-to-date, use the maximum one.
+	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE,
+	                                         C_MAX_TIMER_DB_SIZE);
+
+	int ret = zone_backup_init(restore_mode, 1,
+	                           args->data[KNOT_CTL_IDX_DATA],
+	                           knot_lmdb_copy_size(&args->server->kaspdb),
+	                           conf_int(&timer_db_size),
+	                           knot_lmdb_copy_size(&args->server->journaldb),
+	                           &ctx);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	assert(ctx != NULL);
+	ctx->backup_journal = MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL);
+	ctx->backup_zone = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
+	args->custom_ctx = ctx;
+
+	return ret;
+}
+
+static void deinit_backup(ctl_args_t *args)
+{
+	zone_backup_ctx_t *ctx = args->custom_ctx;
+	pthread_mutex_lock(&ctx->zones_left_mutex);
+	size_t left = ctx->zones_left--; // the counter was in fact # of zones + 1
+	pthread_mutex_unlock(&ctx->zones_left_mutex);
+	if (left == 1) {
+		zone_backup_free(ctx);
+	}
+}
+
+static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
+{
+	zone_backup_ctx_t *ctx = args->custom_ctx;
+	if (zone->backup_ctx != NULL) {
+		log_zone_warning(zone->name, "back-up already pending");
+		return KNOT_ESEMCHECK;
+	}
+	zone->backup_ctx = ctx;
+	pthread_mutex_lock(&ctx->zones_left_mutex);
+	ctx->zones_left++;
+	pthread_mutex_unlock(&ctx->zones_left_mutex);
+	schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 	return KNOT_EOK;
 }
 
@@ -1293,6 +1350,7 @@ static int zone_stats(zone_t *zone, ctl_args_t *args)
 
 static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 {
+	int ret;
 	switch (cmd) {
 	case CTL_ZONE_STATUS:
 		return zones_apply(args, zone_status);
@@ -1306,6 +1364,20 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_notify);
 	case CTL_ZONE_FLUSH:
 		return zones_apply(args, zone_flush);
+	case CTL_ZONE_BACKUP:
+		ret = init_backup(args, false);
+		if (ret == KNOT_EOK) {
+			ret = zones_apply(args, zone_backup_cmd);
+			deinit_backup(args);
+		}
+		return ret;
+	case CTL_ZONE_RESTORE:
+		ret = init_backup(args, true);
+		if (ret == KNOT_EOK) {
+			ret = zones_apply(args, zone_backup_cmd);
+			deinit_backup(args);
+		}
+		return ret;
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
 	case CTL_ZONE_KEY_ROLL:
@@ -1748,6 +1820,8 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone },
 	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone },
+	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone },
+	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone },
 	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone },
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },

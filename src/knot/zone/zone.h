@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 #include "libknot/packet/pkt.h"
 
 struct zone_update;
+struct zone_backup_ctx;
 
 /*!
  * \brief Zone flags.
@@ -84,6 +85,9 @@ typedef struct zone
 
 	/*! \brief Ptr to journal DB (in struct server) */
 	knot_lmdb_db_t *kaspdb;
+
+	/*! \brief Zone backup context (NULL unless backup pending). */
+	struct zone_backup_ctx *backup_ctx;
 
 	/*! \brief Ptr to catalog and ist changeset changes (in struct server) */
 	catalog_t *catalog;

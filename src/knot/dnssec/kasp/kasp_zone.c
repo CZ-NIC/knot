@@ -15,6 +15,7 @@
  */
 
 #include "knot/dnssec/kasp/kasp_zone.h"
+#include "knot/dnssec/kasp/keystore.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libdnssec/binary.h"
 
@@ -304,6 +305,35 @@ void free_key_params(key_params_t *parm)
 		dnssec_binary_free(&parm->public_key);
 		memset(parm, 0 , sizeof(*parm));
 	}
+}
+
+int zone_init_keystore(conf_t *conf, conf_val_t *policy_id,
+                       dnssec_keystore_t **keystore, unsigned *backend)
+{
+	char *zone_path = conf_db(conf, C_KASP_DB);
+	if (zone_path == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	conf_id_fix_default(policy_id);
+
+	conf_val_t keystore_id = conf_id_get(conf, C_POLICY, C_KEYSTORE, policy_id);
+	conf_id_fix_default(&keystore_id);
+
+	conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, &keystore_id);
+	unsigned _backend = conf_opt(&val);
+
+	val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, &keystore_id);
+	const char *config = conf_str(&val);
+
+	int ret = keystore_load(config, _backend, zone_path, keystore);
+
+	if (backend != NULL) {
+		*backend = _backend;
+	}
+
+	free(zone_path);
+	return ret;
 }
 
 int kasp_zone_from_contents(knot_kasp_zone_t *zone,
