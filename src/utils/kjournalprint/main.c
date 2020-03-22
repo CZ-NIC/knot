@@ -33,7 +33,7 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameter] <journal_db> <zone_name>\n"
+	printf("Usage: %s [parameter] <journal_dir> <zone_name>\n"
 	       "\n"
 	       "Parameters:\n"
 	       " -l, --limit <num>  Read only <num> newest changes.\n"

@@ -6,7 +6,7 @@ kjournalprint – Knot DNS journal print utility
 Synopsis
 --------
 
-:program:`kjournalprint` [*options*] *journal_db* *zone_name*
+:program:`kjournalprint` [*options*] *journal_dir* *zone_name*
 
 Description
 -----------
@@ -42,8 +42,8 @@ Options
 Parameters
 ..........
 
-*journal_db*
-  A path to the journal database.
+*journal_dir*
+  A path to the journal database directory.
 
 *zone_name*
   A name of the zone to print the history for.
