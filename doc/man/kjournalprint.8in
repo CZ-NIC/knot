@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkjournalprint\fP [\fIoptions\fP] \fIjournal_db\fP \fIzone_name\fP
+\fBkjournalprint\fP [\fIoptions\fP] \fIjournal_dir\fP \fIzone_name\fP
 .SH DESCRIPTION
 .sp
 The program prints zone history stored in a journal database. As default,
@@ -65,8 +65,8 @@ Print the program version.
 .SS Parameters
 .INDENT 0.0
 .TP
-\fIjournal_db\fP
-A path to the journal database.
+\fIjournal_dir\fP
+A path to the journal database directory.
 .TP
 \fIzone_name\fP
 A name of the zone to print the history for.
