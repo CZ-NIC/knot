@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 
 /* Forwad declarations. */
 struct server;
-struct knot_xsk_socket;
+struct knot_xdp_socket;
 
 /*! \brief I/O handler structure.
   */
@@ -59,7 +59,7 @@ typedef struct iface {
 	int *fd_xdp;
 	int fd_xdp_count;
 	unsigned fd_thread_ids;
-	struct knot_xsk_socket **sock_xdp;
+	struct knot_xdp_socket **sock_xdp;
 	struct sockaddr_storage addr;
 } iface_t;
 

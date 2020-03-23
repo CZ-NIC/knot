@@ -69,12 +69,15 @@ struct xsk_umem_info {
 	/** Handle internal to libbpf. */
 	struct xsk_umem *umem;
 
-	struct umem_frame *frames; /**< The memory frames. TODO: (uint8_t *frammem) might be more practical. */
-	uint32_t tx_free_count; /**< The number of free frames (for TX). */
-	uint16_t tx_free_indices[]; /**< Stack of indices of the free frames (for TX). */
+	/**< The memory frames. TODO: (uint8_t *frammem) might be more practical. */
+	struct umem_frame *frames;
+	/**< The number of free frames (for TX). */
+	uint32_t tx_free_count;
+	/**< Stack of indices of the free frames (for TX). */
+	uint16_t tx_free_indices[];
 };
 
-typedef struct knot_xsk_socket {
+struct knot_xdp_socket {
 	/** Receive queue: passing arrived packets from kernel. */
 	struct xsk_ring_cons rx;
 	/** Transmit queue: passing packets to kernel for sending. */
@@ -84,11 +87,11 @@ typedef struct knot_xsk_socket {
 	/** Handle internal to libbpf. */
 	struct xsk_socket *xsk;
 
-	bool kernel_needs_wakeup;
-
 	const struct kxsk_iface *iface;
-	int if_queue;
-} knot_xsk_socket_t;
+	uint32_t if_queue;
+
+	bool kernel_needs_wakeup;
+};
 
 /*!
  * \brief Set up BPF program and map for one XDP socket.
@@ -99,7 +102,7 @@ typedef struct knot_xsk_socket {
  *
  * \return KNOT_E*
  */
-int kxsk_iface_new(const char *ifname, knot_xsk_load_bpf_t load_bpf,
+int kxsk_iface_new(const char *ifname, knot_xdp_load_bpf_t load_bpf,
 		   struct kxsk_iface **out_iface);
 
 /*!
