@@ -355,11 +355,6 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-static size_t backup_init_zones_overhead(void) // to make sure the backup ctx is not de-inited before we schedule all events
-{
-	return conf()->cache.srv_bg_threads + 1;
-}
-
 static int init_backup(ctl_args_t *args)
 {
 	const char *dest = args->data[KNOT_CTL_IDX_DATA];
@@ -369,7 +364,7 @@ static int init_backup(ctl_args_t *args)
 
 	zone_backup_ctx_t *ctx;
 
-	int ret = zone_backup_init(backup_init_zones_overhead(), dest, kasp_db_size, &ctx);
+	int ret = zone_backup_init(1, dest, kasp_db_size, &ctx);
 	if (ret == KNOT_EOK) {
 		assert(ctx != NULL);
 		args->custom_ctx = ctx;
@@ -381,10 +376,9 @@ static void deinit_backup(ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = args->custom_ctx;
 	pthread_mutex_lock(&ctx->zones_left_mutex);
-	ctx->zones_left -= backup_init_zones_overhead();
+	size_t left = ctx->zones_left--; // the counter was in fact # of zones + 1
 	pthread_mutex_unlock(&ctx->zones_left_mutex);
-	if (ctx->zones_left < 1) {
-		assert(ctx->zones_left == 0);
+	if (left == 1) {
 		zone_backup_free(ctx);
 	}
 }
@@ -1823,6 +1817,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone },
 	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone },
+	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone },
 	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone },
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },

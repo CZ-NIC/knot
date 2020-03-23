@@ -33,4 +33,4 @@ int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_s
 
 void zone_backup_free(zone_backup_ctx_t *ctx);
 
-int zone_backup(zone_t *zone);
+int zone_backup(conf_t *conf, zone_t *zone);

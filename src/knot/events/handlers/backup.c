@@ -21,7 +21,6 @@
 
 int event_backup(conf_t *conf, zone_t *zone)
 {
-	(void)conf;
-	return zone_backup(zone);
+	return zone_backup(conf, zone);
 }
 
