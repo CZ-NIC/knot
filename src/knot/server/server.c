@@ -70,7 +70,7 @@ static void server_deinit_iface(iface_t *iface)
 
 	for (int i = 0; i < iface->fd_xdp_count; i++) {
 #ifdef ENABLE_XDP
-		knot_xsk_deinit(iface->sock_xdp[i]);
+		knot_xdp_deinit(iface->sock_xdp[i]);
 #else
 		assert(0);
 #endif
@@ -332,13 +332,13 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *t
 	*thread_id_start += rx_queues;
 
 	for (int i = 0; i < rx_queues; i++) {
-		int ret = knot_xsk_init(new_if->sock_xdp + i, dev, i, port, i == 0);
+		int ret = knot_xdp_init(new_if->sock_xdp + i, dev, i, port, i == 0);
 
 		if (ret != KNOT_EOK) {
 			log_warning("failed to init XDP in dev %s queue %d (%s)", dev, i, knot_strerror(ret));
 			new_if->fd_xdp[i] = -1;
 		} else {
-			new_if->fd_xdp[i] = knot_xsk_get_poll_fd(new_if->sock_xdp[i]);
+			new_if->fd_xdp[i] = knot_xdp_socket_fd(new_if->sock_xdp[i]);
 
 		}
 		new_if->fd_xdp_count++;

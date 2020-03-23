@@ -214,7 +214,7 @@ int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id)
 	return err;
 }
 
-int kxsk_iface_new(const char *ifname, knot_xsk_load_bpf_t load_bpf,
+int kxsk_iface_new(const char *ifname, knot_xdp_load_bpf_t load_bpf,
 		   struct kxsk_iface **out_iface)
 {
 	struct kxsk_iface *iface = calloc(1, sizeof(*iface) + IFNAMSIZ + 1);
@@ -232,7 +232,7 @@ int kxsk_iface_new(const char *ifname, knot_xsk_load_bpf_t load_bpf,
 
 	int ret;
 	switch (load_bpf) {
-	case KNOT_XSK_LOAD_BPF_NEVER:
+	case KNOT_XDP_LOAD_BPF_NEVER:
 		(void)0;
 		uint32_t prog_id = 0;
 		ret = bpf_get_link_xdp_id(iface->ifindex, &prog_id, 0);
@@ -240,10 +240,10 @@ int kxsk_iface_new(const char *ifname, knot_xsk_load_bpf_t load_bpf,
 			ret = bpf_prog_get_fd_by_id(prog_id);
 		}
 		break;
-	case KNOT_XSK_LOAD_BPF_ALWAYS:
+	case KNOT_XDP_LOAD_BPF_ALWAYS:
 		ret = ensure_udp_prog(iface, true);
 		break;
-	case KNOT_XSK_LOAD_BPF_MAYBE:
+	case KNOT_XDP_LOAD_BPF_MAYBE:
 		ret = ensure_udp_prog(iface, false);
 		break;
 	default:

@@ -114,13 +114,13 @@ static void next_payload(struct pkt_payload **payload, int increment)
 	}
 }
 
-static int alloc_pkts(knot_xsk_msg_t *pkts, int npkts, struct knot_xsk_socket *xsk,
+static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *xsk,
                       dns_xdp_gun_ctx_t *ctx, uint64_t tick, struct pkt_payload **payl)
 {
 	uint64_t unique = (tick * ctx->n_threads + ctx->thread_id) * ctx->at_once;
 
 	for (int i = 0; i < npkts; i++) {
-		int ret = knot_xsk_alloc_packet(xsk, ctx->ipv6, &pkts[i], NULL);
+		int ret = knot_xdp_send_alloc(xsk, ctx->ipv6, &pkts[i], NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -151,19 +151,19 @@ static int alloc_pkts(knot_xsk_msg_t *pkts, int npkts, struct knot_xsk_socket *x
 void *dns_xdp_gun_thread(void *_ctx)
 {
 	dns_xdp_gun_ctx_t *ctx = _ctx;
-	struct knot_xsk_socket *xsk;
+	struct knot_xdp_socket *xsk;
 	struct timespec timer;
-	knot_xsk_msg_t pkts[ctx->at_once];
+	knot_xdp_msg_t pkts[ctx->at_once];
 	uint64_t tot_sent = 0, tot_recv = 0, tot_size = 0;
 	uint64_t duration = 0;
 
-	int ret = knot_xsk_init(&xsk, ctx->dev, ctx->thread_id, LISTEN_PORT, ctx->thread_id == 0);
+	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, LISTEN_PORT, ctx->thread_id == 0);
 	if (ret != KNOT_EOK) {
 		printf("failed to init XDP socket#%u: %s\n", ctx->thread_id, knot_strerror(ret));
 		return NULL;
 	}
 
-	struct pollfd pfd = { knot_xsk_get_poll_fd(xsk), POLLIN, 0 };
+	struct pollfd pfd = { knot_xdp_socket_fd(xsk), POLLIN, 0 };
 
 	while (!dns_xdp_trigger) {
 		usleep(1000);
@@ -179,7 +179,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 
 		// sending part
 		if (duration < ctx->duration) {
-			knot_xsk_prepare_alloc(xsk);
+			knot_xdp_send_prepare(xsk);
 			ret = alloc_pkts(pkts, ctx->at_once, xsk, ctx, tick, &payload_ptr);
 			if (ret != KNOT_EOK) {
 				printf("thread#%u alloc_pkts failed: %s\n", ctx->thread_id, knot_strerror(ret));
@@ -187,11 +187,11 @@ void *dns_xdp_gun_thread(void *_ctx)
 			}
 
 			uint32_t really_sent = 0, retry = 10;
-			ret = knot_xsk_sendmmsg(xsk, pkts, ctx->at_once, &really_sent);
+			ret = knot_xdp_send(xsk, pkts, ctx->at_once, &really_sent);
 			while (ret == KNOT_NET_ESEND && really_sent < ctx->at_once && --retry > 0) {
 				uint32_t sent_now = 0;
 				usleep(10000);
-				ret = knot_xsk_sendmmsg(xsk, pkts + really_sent, ctx->at_once - really_sent, &sent_now);
+				ret = knot_xdp_send(xsk, pkts + really_sent, ctx->at_once - really_sent, &sent_now);
 				really_sent += sent_now;
 			}
 			if (ret != KNOT_EOK) {
@@ -200,7 +200,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 			}
 			tot_sent += really_sent;
 
-			ret = knot_xsk_sendmsg_finish(xsk);
+			ret = knot_xdp_send_finish(xsk);
 			if (ret != KNOT_EOK) {
 				printf("thread#%u flush failed: %s\n", ctx->thread_id, knot_strerror(ret));
 				goto end;
@@ -219,7 +219,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 			}
 
 			uint32_t recvd = 0;
-			ret = knot_xsk_recvmmsg(xsk, pkts, ctx->at_once, &recvd);
+			ret = knot_xdp_recv(xsk, pkts, ctx->at_once, &recvd);
 			if (ret != KNOT_EOK) {
 				printf("thread#%u recv_pkts failed: %s\n", ctx->thread_id, knot_strerror(ret));
 				goto end;
@@ -227,7 +227,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 			for (int i = 0; i < recvd; i++) {
 				tot_size += pkts[i].payload.iov_len; // FIXME this size is only DNS payload w/o IP+UDP
 			}
-			knot_xsk_free_recvd(xsk, pkts, recvd);
+			knot_xdp_recv_finish(xsk, pkts, recvd);
 			tot_recv += recvd;
 			pfd.revents = 0;
 		}
@@ -245,7 +245,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 	}
 
 end:
-	knot_xsk_deinit(xsk);
+	knot_xdp_deinit(xsk);
 
 	printf("thread#%u sent %lu recvd %lu\n", ctx->thread_id, tot_sent, tot_recv);
 	pthread_mutex_lock(&global_mutex);
