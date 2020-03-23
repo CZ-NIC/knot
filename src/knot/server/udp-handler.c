@@ -369,8 +369,8 @@ static udp_api_t udp_recvmmsg_api = {
 #ifdef ENABLE_XDP
 
 struct xdp_recvmmsg {
-	knot_xsk_msg_t msgs_rx[XDP_BATCHLEN];
-	knot_xsk_msg_t msgs_tx[XDP_BATCHLEN];
+	knot_xdp_msg_t msgs_rx[XDP_BATCHLEN];
+	knot_xdp_msg_t msgs_tx[XDP_BATCHLEN];
 	uint32_t rcvd;
 };
 
@@ -394,7 +394,7 @@ static int xdp_recvmmsg_recv(int fd, void *d, void *xdp_sock)
 
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 
-	int ret = knot_xsk_recvmmsg(xdp_sock, rq->msgs_rx, XDP_BATCHLEN, &rq->rcvd);
+	int ret = knot_xdp_recv(xdp_sock, rq->msgs_rx, XDP_BATCHLEN, &rq->rcvd);
 
 	return ret == KNOT_EOK ? rq->rcvd : ret;
 }
@@ -403,15 +403,15 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 {
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 
-	knot_xsk_prepare_alloc(xdp_sock);
+	knot_xdp_send_prepare(xdp_sock);
 
 	uint32_t responses = 0;
 	for (uint32_t i = 0; i < rq->rcvd; ++i) {
 		if (rq->msgs_rx[i].payload.iov_len == 0) {
 			continue; // Skip marked (zero length) messages.
 		}
-		int ret = knot_xsk_alloc_packet(xdp_sock, rq->msgs_rx[i].ip_to.sin6_family == AF_INET6,
-		                                &rq->msgs_tx[i], &rq->msgs_rx[i]);
+		int ret = knot_xdp_send_alloc(xdp_sock, rq->msgs_rx[i].ip_to.sin6_family == AF_INET6,
+		                              &rq->msgs_tx[i], &rq->msgs_rx[i]);
 		if (ret != KNOT_EOK) {
 			break; // Still free all RX buffers.
 		}
@@ -419,12 +419,12 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 		// udp_pktinfo_handle not needed for XDP as one worker is bound
 		// to one interface only.
 
-		udp_handle(ctx, knot_xsk_get_poll_fd(xdp_sock), (struct sockaddr_storage *)&rq->msgs_rx[i].ip_from,
+		udp_handle(ctx, knot_xdp_socket_fd(xdp_sock), (struct sockaddr_storage *)&rq->msgs_rx[i].ip_from,
 		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload, true);
 		responses++;
 	}
 
-	knot_xsk_free_recvd(xdp_sock, rq->msgs_rx, rq->rcvd);
+	knot_xdp_recv_finish(xdp_sock, rq->msgs_rx, rq->rcvd);
 	rq->rcvd = responses;
 
 	return KNOT_EOK;
@@ -435,8 +435,8 @@ static int xdp_recvmmsg_send(void *d, void *xdp_sock)
 	struct xdp_recvmmsg *rq = (struct xdp_recvmmsg *)d;
 	uint32_t sent = rq->rcvd;
 
-	int ret = knot_xsk_sendmmsg(xdp_sock, rq->msgs_tx, sent, &sent);
-	knot_xsk_sendmsg_finish(xdp_sock);
+	int ret = knot_xdp_send(xdp_sock, rq->msgs_tx, sent, &sent);
+	knot_xdp_send_finish(xdp_sock);
 
 	memset(rq, 0, sizeof(*rq));
 
@@ -589,7 +589,7 @@ int udp_master(dthread_t *thread)
 
 	/* Allocate descriptors for the configured interfaces. */
 	size_t nifs = handler->server->n_ifaces;
-	void *socket_ctxs[nifs]; // only for XDP: pointers on knot_xsk_socket
+	void *socket_ctxs[nifs]; // only for XDP: pointers on knot_xdp_socket
 	unsigned nfds = udp_set_ifaces(handler->server->ifaces, handler->server->n_ifaces, &fds,
 	                               udp.thread_id, socket_ctxs);
 	if (nfds == 0) {

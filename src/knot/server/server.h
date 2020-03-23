@@ -29,7 +29,7 @@
 
 /* Forwad declarations. */
 struct server;
-struct knot_xsk_socket;
+struct knot_xdp_socket;
 
 /*! \brief I/O handler structure.
   */
@@ -59,7 +59,7 @@ typedef struct iface {
 	int *fd_xdp;
 	int fd_xdp_count;
 	unsigned fd_thread_ids;
-	struct knot_xsk_socket **sock_xdp;
+	struct knot_xdp_socket **sock_xdp;
 	struct sockaddr_storage addr;
 } iface_t;
 

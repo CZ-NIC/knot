@@ -129,66 +129,11 @@ static void deconfigure_xsk_umem(struct xsk_umem_info *umem)
 	free(umem);
 }
 
-static struct umem_frame *kxsk_alloc_tx_frame(struct xsk_umem_info *umem)
+static knot_xdp_socket_t *configure_xsk_socket(struct xsk_umem_info *umem,
+                                               const struct kxsk_iface *iface,
+                                               uint32_t if_queue)
 {
-	if (unlikely(umem->tx_free_count == 0)) {
-		return NULL;
-	}
-
-	uint32_t index = umem->tx_free_indices[--umem->tx_free_count];
-	return umem->frames + index;
-}
-
-_public_
-int knot_xsk_alloc_packet(struct knot_xsk_socket *socket, bool ipv6,
-                          knot_xsk_msg_t *out, const knot_xsk_msg_t *in_reply_to)
-{
-	size_t ofs = ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4;
-
-	struct umem_frame *uframe = kxsk_alloc_tx_frame(socket->umem);
-	if (uframe == NULL) {
-		return KNOT_ENOENT;
-	}
-
-	memset(out, 0, sizeof(*out));
-
-	out->payload.iov_base = ipv6 ? uframe->udpv6.data : uframe->udpv4.data;
-	out->payload.iov_len = MIN(UINT16_MAX, FRAME_SIZE - ofs);
-
-	const struct ethhdr *eth = (struct ethhdr *)uframe;
-	out->eth_from = (void *)&eth->h_source;
-	out->eth_to = (void *)&eth->h_dest;
-
-	if (in_reply_to != NULL) {
-		memcpy(out->eth_from, in_reply_to->eth_to, ETH_ALEN);
-		memcpy(out->eth_to, in_reply_to->eth_from, ETH_ALEN);
-
-		memcpy(&out->ip_from, &in_reply_to->ip_to, sizeof(out->ip_from));
-		memcpy(&out->ip_to, &in_reply_to->ip_from, sizeof(out->ip_to));
-	}
-	return KNOT_EOK;
-}
-
-_public_
-void knot_xsk_deinit(struct knot_xsk_socket *socket)
-{
-	if (socket == NULL) {
-		return;
-	}
-
-	kxsk_socket_stop(socket->iface, socket->if_queue);
-	xsk_socket__delete(socket->xsk);
-	deconfigure_xsk_umem(socket->umem);
-
-	kxsk_iface_free((struct kxsk_iface *)/*const-cast*/socket->iface);
-	free(socket);
-}
-
-static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
-                                                    const struct kxsk_iface *iface,
-                                                    int if_queue)
-{
-	struct knot_xsk_socket *xsk_info = calloc(1, sizeof(*xsk_info));
+	knot_xdp_socket_t *xsk_info = calloc(1, sizeof(*xsk_info));
 	if (xsk_info == NULL) {
 		return NULL;
 	}
@@ -211,6 +156,150 @@ static struct knot_xsk_socket *xsk_configure_socket(struct xsk_umem_info *umem,
 	} else {
 		return xsk_info;
 	}
+}
+
+_public_
+int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, uint32_t if_queue,
+                  uint32_t listen_port, knot_xdp_load_bpf_t load_bpf)
+{
+	if (socket == NULL || if_name == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	struct kxsk_iface *iface;
+	int ret = kxsk_iface_new(if_name, load_bpf, &iface);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Initialize shared packet_buffer for umem usage */
+	struct xsk_umem_info *umem = NULL;
+	ret = configure_xsk_umem(&umem);
+	if (ret != KNOT_EOK) {
+		kxsk_iface_free(iface);
+		return ret;
+	}
+
+	*socket = configure_xsk_socket(umem, iface, if_queue);
+	if (*socket == NULL) {
+		deconfigure_xsk_umem(umem);
+		kxsk_iface_free(iface);
+		return KNOT_NET_ESOCKET;
+	}
+
+	ret = kxsk_socket_start(iface, (*socket)->if_queue, listen_port, (*socket)->xsk);
+	if (ret != KNOT_EOK) {
+		xsk_socket__delete((*socket)->xsk);
+		deconfigure_xsk_umem(umem);
+		kxsk_iface_free(iface);
+		free(*socket);
+		*socket = NULL;
+		return ret;
+	}
+
+	return ret;
+}
+
+_public_
+void knot_xdp_deinit(knot_xdp_socket_t *socket)
+{
+	if (socket == NULL) {
+		return;
+	}
+
+	kxsk_socket_stop(socket->iface, socket->if_queue);
+	xsk_socket__delete(socket->xsk);
+	deconfigure_xsk_umem(socket->umem);
+
+	kxsk_iface_free((struct kxsk_iface *)/*const-cast*/socket->iface);
+	free(socket);
+}
+
+_public_
+int knot_xdp_socket_fd(knot_xdp_socket_t *socket)
+{
+	if (socket == NULL) {
+		return 0;
+	}
+
+	return xsk_socket__fd(socket->xsk);
+}
+
+static void tx_free_relative(struct xsk_umem_info *umem, uint64_t addr_relative)
+{
+	/* The address may not point to *start* of buffer, but `/` solves that. */
+	uint64_t index = addr_relative / FRAME_SIZE;
+	assert(index < UMEM_FRAME_COUNT);
+	umem->tx_free_indices[umem->tx_free_count++] = index;
+}
+
+_public_
+void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
+{
+	if (socket == NULL) {
+		return;
+	}
+
+	struct xsk_umem_info *const umem = socket->umem;
+	struct xsk_ring_cons *const cq = &umem->cq;
+
+	uint32_t idx = 0;
+	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx);
+	if (completed == 0) {
+		return;
+	}
+	assert(umem->tx_free_count + completed <= UMEM_FRAME_COUNT_TX);
+
+	for (uint32_t i = 0; i < completed; ++i) {
+		uint64_t addr_relative = *xsk_ring_cons__comp_addr(cq, idx++);
+		tx_free_relative(umem, addr_relative);
+	}
+
+	xsk_ring_cons__release(cq, completed);
+}
+
+static struct umem_frame *alloc_tx_frame(struct xsk_umem_info *umem)
+{
+	if (unlikely(umem->tx_free_count == 0)) {
+		return NULL;
+	}
+
+	uint32_t index = umem->tx_free_indices[--umem->tx_free_count];
+	return umem->frames + index;
+}
+
+_public_
+int knot_xdp_send_alloc(knot_xdp_socket_t *socket, bool ipv6, knot_xdp_msg_t *out,
+                        const knot_xdp_msg_t *in_reply_to)
+{
+	if (socket == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	size_t ofs = ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4;
+
+	struct umem_frame *uframe = alloc_tx_frame(socket->umem);
+	if (uframe == NULL) {
+		return KNOT_ENOENT;
+	}
+
+	memset(out, 0, sizeof(*out));
+
+	out->payload.iov_base = ipv6 ? uframe->udpv6.data : uframe->udpv4.data;
+	out->payload.iov_len = MIN(UINT16_MAX, FRAME_SIZE - ofs);
+
+	const struct ethhdr *eth = (struct ethhdr *)uframe;
+	out->eth_from = (void *)&eth->h_source;
+	out->eth_to = (void *)&eth->h_dest;
+
+	if (in_reply_to != NULL) {
+		memcpy(out->eth_from, in_reply_to->eth_to, ETH_ALEN);
+		memcpy(out->eth_to, in_reply_to->eth_from, ETH_ALEN);
+
+		memcpy(&out->ip_from, &in_reply_to->ip_to, sizeof(out->ip_from));
+		memcpy(&out->ip_to, &in_reply_to->ip_from, sizeof(out->ip_to));
+	}
+	return KNOT_EOK;
 }
 
 static uint16_t from32to16(uint32_t sum)
@@ -252,7 +341,7 @@ static void udp_checksum_finish(size_t *result)
 	}
 }
 
-static uint8_t *msg_uframe_ptr(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
+static uint8_t *msg_uframe_ptr(knot_xdp_socket_t *socket, const knot_xdp_msg_t *msg,
                                /* Next parameters are just for debugging. */
                                bool ipv6)
 {
@@ -261,7 +350,7 @@ static uint8_t *msg_uframe_ptr(struct knot_xsk_socket *socket, const knot_xsk_ms
 
 #ifndef NDEBUG
 	intptr_t pd = (uint8_t *)msg->payload.iov_base - uframe_p
-			- (ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4);
+	              - (ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4);
 	/* This assertion might fire in some OK cases.  For example, the second branch
 	 * had to be added for cases with "emulated" AF_XDP support. */
 	assert(pd == XDP_PACKET_HEADROOM || pd == 0);
@@ -273,7 +362,7 @@ static uint8_t *msg_uframe_ptr(struct knot_xsk_socket *socket, const knot_xsk_ms
 	return uframe_p;
 }
 
-static void xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
+static void xsk_sendmsg_ipv4(knot_xdp_socket_t *socket, const knot_xdp_msg_t *msg,
                              uint32_t index)
 {
 	uint8_t *uframe_p = msg_uframe_ptr(socket, msg, false);
@@ -319,7 +408,7 @@ static void xsk_sendmsg_ipv4(struct knot_xsk_socket *socket, const knot_xsk_msg_
 	};
 }
 
-static void xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_t *msg,
+static void xsk_sendmsg_ipv6(knot_xdp_socket_t *socket, const knot_xdp_msg_t *msg,
                              uint32_t index)
 {
 	uint8_t *uframe_p = msg_uframe_ptr(socket, msg, true);
@@ -373,17 +462,9 @@ static void xsk_sendmsg_ipv6(struct knot_xsk_socket *socket, const knot_xsk_msg_
 	};
 }
 
-static void tx_free_relative(struct xsk_umem_info *umem, uint64_t addr_relative)
-{
-	/* The address may not point to *start* of buffer, but `/` solves that. */
-	uint64_t index = addr_relative / FRAME_SIZE;
-	assert(index < UMEM_FRAME_COUNT);
-	umem->tx_free_indices[umem->tx_free_count++] = index;
-}
-
 _public_
-int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
-                      uint32_t count, uint32_t *sent)
+int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
+                  uint32_t count, uint32_t *sent)
 {
 	if (socket == NULL || msgs == NULL || sent == NULL) {
 		return KNOT_EINVAL;
@@ -400,7 +481,7 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 	uint32_t idx = socket->tx.cached_prod;
 
 	for (uint32_t i = 0; i < count; ++i) {
-		const knot_xsk_msg_t *msg = &msgs[i];
+		const knot_xdp_msg_t *msg = &msgs[i];
 
 		if (msg->payload.iov_len && msg->ip_from.sin6_family == AF_INET) {
 			xsk_sendmsg_ipv4(socket, msg, idx++);
@@ -409,7 +490,7 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 		} else {
 			/* Some problem; we just ignore this message. */
 			uint64_t addr_relative = (uint8_t *)msg->payload.iov_base
-						- socket->umem->frames->bytes;
+			                         - socket->umem->frames->bytes;
 			tx_free_relative(socket->umem, addr_relative);
 		}
 	}
@@ -424,43 +505,23 @@ int knot_xsk_sendmmsg(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[
 }
 
 _public_
-void knot_xsk_prepare_alloc(struct knot_xsk_socket *socket)
+int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 {
 	if (socket == NULL) {
-		return;
+		return KNOT_EINVAL;
 	}
 
-	struct xsk_umem_info *const umem = socket->umem;
-	struct xsk_ring_cons *const cq = &umem->cq;
-
-	uint32_t idx = 0;
-	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx);
-	if (completed == 0) {
-		return;
-	}
-	assert(umem->tx_free_count + completed <= UMEM_FRAME_COUNT_TX);
-
-	for (uint32_t i = 0; i < completed; ++i) {
-		uint64_t addr_relative = *xsk_ring_cons__comp_addr(cq, idx++);
-		tx_free_relative(umem, addr_relative);
-	}
-
-	xsk_ring_cons__release(cq, completed);
-}
-
-_public_
-int knot_xsk_sendmsg_finish(struct knot_xsk_socket *socket)
-{
 	/* Trigger sending queued packets. */
 	if (!socket->kernel_needs_wakeup) {
 		return KNOT_EOK;
 	}
-	int sendret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
-	const bool is_ok = (sendret >= 0);
+
+	int ret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
+	const bool is_ok = (ret >= 0);
 	// List of "safe" errors taken from
 	// https://github.com/torvalds/linux/blame/master/samples/bpf/xdpsock_user.c
 	const bool is_again = !is_ok && (errno == ENOBUFS || errno == EAGAIN
-					 || errno == EBUSY || errno == ENETDOWN);
+	                                || errno == EBUSY || errno == ENETDOWN);
 	// Some of the !is_ok cases are a little unclear - what to do about the syscall,
 	// including how caller of _sendmsg_finish() should react.
 	if (is_ok || !is_again) {
@@ -480,8 +541,8 @@ int knot_xsk_sendmsg_finish(struct knot_xsk_socket *socket)
 	 */
 }
 
-static void rx_desc(struct knot_xsk_socket *xsi, const struct xdp_desc *desc,
-                    knot_xsk_msg_t *msg)
+static void rx_desc(knot_xdp_socket_t *xsi, const struct xdp_desc *desc,
+                    knot_xdp_msg_t *msg)
 {
 	uint8_t *uframe_p = xsi->umem->frames->bytes + desc->addr;
 	const struct ethhdr *eth = (struct ethhdr *)uframe_p;
@@ -550,8 +611,8 @@ drop_frame:
 }
 
 _public_
-int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[],
-                      uint32_t max_count, uint32_t *count)
+int knot_xdp_recv(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
+                  uint32_t max_count, uint32_t *count)
 {
 	if (socket == NULL || msgs == NULL || count == NULL) {
 		return KNOT_EINVAL;
@@ -576,8 +637,8 @@ int knot_xsk_recvmmsg(struct knot_xsk_socket *socket, knot_xsk_msg_t msgs[],
 }
 
 _public_
-void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t msgs[],
-                         uint32_t count)
+void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
+                          uint32_t count)
 {
 	if (socket == NULL || msgs == NULL) {
 		return;
@@ -601,60 +662,12 @@ void knot_xsk_free_recvd(struct knot_xsk_socket *socket, const knot_xsk_msg_t ms
 }
 
 _public_
-int knot_xsk_init(struct knot_xsk_socket **socket, const char *ifname, int if_queue,
-                  uint32_t listen_port, knot_xsk_load_bpf_t load_bpf)
-{
-	if (socket == NULL || *socket != NULL) {
-		return KNOT_EINVAL;
-	}
-
-	struct kxsk_iface *iface;
-	int ret = kxsk_iface_new(ifname, load_bpf, &iface);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	/* Initialize shared packet_buffer for umem usage */
-	struct xsk_umem_info *umem = NULL;
-	ret = configure_xsk_umem(&umem);
-	if (ret != KNOT_EOK) {
-		kxsk_iface_free(iface);
-		return ret;
-	}
-
-	*socket = xsk_configure_socket(umem, iface, if_queue);
-	if (!*socket) {
-		deconfigure_xsk_umem(umem);
-		kxsk_iface_free(iface);
-		return KNOT_NET_ESOCKET;
-	}
-
-	ret = kxsk_socket_start(iface, (*socket)->if_queue, listen_port, (*socket)->xsk);
-	if (ret != KNOT_EOK) {
-		xsk_socket__delete((*socket)->xsk);
-		deconfigure_xsk_umem(umem);
-		kxsk_iface_free(iface);
-		free(*socket);
-		*socket = NULL;
-		return ret;
-	}
-
-	return ret;
-}
-
-_public_
-int knot_xsk_get_poll_fd(struct knot_xsk_socket *socket)
+void knot_xdp_info(const knot_xdp_socket_t *socket)
 {
 	if (socket == NULL) {
-		return 0;
+		return;
 	}
 
-	return xsk_socket__fd(socket->xsk);
-}
-
-_public_
-void knot_xsk_print_frames(const knot_xsk_socket_t *socket)
-{
 	// The number of busy frames
 	#define RING_BUSY(ring) \
 		((*(ring)->producer - *(ring)->consumer) & (ring)->mask)
