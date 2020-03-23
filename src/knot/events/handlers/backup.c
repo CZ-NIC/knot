@@ -16,11 +16,20 @@
 
 #include <assert.h>
 
+#include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/zone/backup.h"
 
 int event_backup(conf_t *conf, zone_t *zone)
 {
-	return zone_backup(conf, zone);
+	char *bckdir = strdup(zone->backup_ctx->backup_dir);
+
+	int ret = zone_backup(conf, zone);
+	if (ret == KNOT_EOK) {
+		log_zone_info(zone->name, "zone backed up to %s", bckdir);
+	} // else logged by event system
+
+	free(bckdir);
+	return ret;
 }
 

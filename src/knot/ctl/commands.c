@@ -357,10 +357,15 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 
 static int init_backup(ctl_args_t *args)
 {
+	if (!MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
+		return KNOT_EINVAL;
+	}
+
 	const char *dest = args->data[KNOT_CTL_IDX_DATA];
 
 	size_t kasp_db_size = knot_lmdb_db_usage(&args->server->kaspdb);
 	kasp_db_size *= 2; // to make sure that current contents fit into backup DB
+	kasp_db_size += 1024 * 1024;
 
 	zone_backup_ctx_t *ctx;
 

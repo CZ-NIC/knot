@@ -478,19 +478,5 @@ int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t 
 	prefixes[5] = make_key_str(KASPDBKEY_LASTSIGNEDSERIAL, zone, NULL);
 	prefixes[6] = make_key_str(KASPDBKEY_OFFLINE_RECORDS, zone, NULL);
 
-	int ret = knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs);
-
-	knot_lmdb_txn_t txn = { 0 };
-	knot_lmdb_begin(db, &txn, false);
-	knot_lmdb_foreach(&txn, &prefixes[0]) {
-		char *keyid;
-		if (unmake_key_str(&txn.cur_key, &keyid)) {
-			// TODO backup private keys, use db->path
-		}
-	}
-
-	for (size_t i = 0; i < n_prefs; i++) {
-		free(prefixes[i].mv_data);
-	}
-	return ret;
+	return knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs);
 }

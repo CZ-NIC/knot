@@ -664,6 +664,7 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 	const filter_desc_t *fd = NULL;
 	switch (cmd) {
 	case CTL_ZONE_FLUSH:
+	case CTL_ZONE_BACKUP:
 		fd = zone_flush_filters;
 		break;
 	case CTL_ZONE_STATUS:
@@ -1019,7 +1020,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,          CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
 	{ CMD_ZONE_NOTIFY,     cmd_zone_ctl,          CTL_ZONE_NOTIFY,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_FLUSH,      cmd_zone_filter_ctl,   CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
-	{ CMD_ZONE_BACKUP,     cmd_zone_ctl,          CTL_ZONE_BACKUP,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_BACKUP,     cmd_zone_filter_ctl,   CTL_ZONE_BACKUP,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,          CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
 	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE },
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,          CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE | CMD_FOPT_ZONE },

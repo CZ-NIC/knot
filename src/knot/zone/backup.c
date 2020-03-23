@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/stat.h>
+
 #include "knot/zone/backup.h"
 
 #include "knot/dnssec/kasp/kasp_zone.h"
@@ -43,9 +45,14 @@ int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_s
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 	pthread_mutex_init(&ctx->zones_left_mutex, NULL);
 
-	char temp[backup_dir_len + 16];
-	snprintf(temp, sizeof(temp), "%s/keys", backup_dir);
-	knot_lmdb_init(&ctx->bck_kasp_db, temp, kasp_db_size, 0, "keys_db");
+	struct stat st = {0};
+	if (stat(backup_dir, &st) == -1) {
+	    mkdir(backup_dir, 0777);
+	}
+
+	char kasp_dir[backup_dir_len + 6];
+	snprintf(kasp_dir, sizeof(kasp_dir), "%s/keys", backup_dir);
+	knot_lmdb_init(&ctx->bck_kasp_db, kasp_dir, kasp_db_size, 0, "keys_db");
 
 	*out_ctx = ctx;
 	return KNOT_EOK;
@@ -88,7 +95,9 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 		return ret;
 	}
 
-	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, ctx->backup_dir, &to); // TODO what if PKCS#11 is configured?
+	char kasp_dir[strlen(ctx->backup_dir) + 6];
+	snprintf(kasp_dir, sizeof(kasp_dir), "%s/keys", ctx->backup_dir);
+	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, kasp_dir, &to); // TODO what if PKCS#11 is configured?
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
