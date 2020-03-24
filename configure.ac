@@ -49,6 +49,11 @@ AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-co
 AX_CHECK_LINK_FLAG(["-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs="-Wl,--exclude-libs,ALL"], [ldflag_exclude_libs=""], "")
 AC_SUBST([LDFLAG_EXCLUDE_LIBS], $ldflag_exclude_libs)
 
+# Get processor byte ordering
+AC_C_BIGENDIAN([endianity=big-endian], [endianity=little-endian])
+AS_IF([test "$endianity" == "little-endian"],[
+    AC_DEFINE([ENDIANITY_LITTLE], [1], [System is little-endian.])])
+
 # Check if an archiver is available
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 
@@ -713,7 +718,7 @@ filtered_cppflags=$(echo -n "$CPPFLAGS" | sed 's/\W-f\S*-prefix-map=\S*\W/ /g')
 
 result_msg_base="  Knot DNS $VERSION
 
-    Target:   $host_os $host_cpu
+    Target:   $host_os $host_cpu $endianity
     Compiler: ${CC}
     CFLAGS:   ${filtered_cflags} ${filtered_cppflags}
     LIBS:     ${LIBS} ${LDFLAGS}

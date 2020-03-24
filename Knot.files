@@ -405,6 +405,7 @@ src/libknot/tsig.h
 src/libknot/wire.h
 src/libknot/xdp/af_xdp.c
 src/libknot/xdp/af_xdp.h
+src/libknot/xdp/bpf-consts.h
 src/libknot/xdp/bpf-kernel-obj.c
 src/libknot/xdp/bpf-kernel-obj.h
 src/libknot/xdp/bpf-kernel.c
