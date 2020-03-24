@@ -62,7 +62,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	__u8 ip_proto;
 	__u8 fragmented = 0;
 
-	/* Parse Ethernet header (VLAN not supported). */
+	/* Parse Ethernet header. */
 	if ((void *)eth + sizeof(*eth) > data_end) {
 		return XDP_PASS;
 	}
@@ -70,37 +70,38 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 
 	/* Parse IPv4 or IPv6 header. */
 	switch (eth->h_proto) {
-		case 0x0008: /* htons(ETH_P_IP) */
-			ip4 = data;
-			if ((void *)ip4 + sizeof(*ip4) > data_end) {
-				return XDP_PASS;
-			}
-			if (ip4->frag_off != 0 && ip4->frag_off != 0x0040) { /* htons(IP_DF) */
-				fragmented = 1;
-			}
-			ip_proto = ip4->protocol;
-			udp = data + ip4->ihl * 4;
-			break;
-		case 0xDD86: /* htons(ETH_P_IPV6) */
-			ip6 = data;
-			if ((void *)ip6 + sizeof(*ip6) > data_end) {
-				return XDP_PASS;
-			}
-			ip_proto = ip6->nexthdr;
-			data += sizeof(*ip6);
-			if (ip_proto == IPPROTO_FRAGMENT) {
-				fragmented = 1;
-				const struct ipv6_frag_hdr *frag = data;
-				if ((void *)frag + sizeof(*frag) > data_end) {
-					return XDP_PASS;
-				}
-				ip_proto = frag->nexthdr;
-				data += sizeof(*frag);
-			}
-			udp = data;
-			break;
-		default:
+	case 0x0008: /* htons(ETH_P_IP) */
+		ip4 = data;
+		if ((void *)ip4 + sizeof(*ip4) > data_end) {
 			return XDP_PASS;
+		}
+		if (ip4->frag_off != 0 && ip4->frag_off != 0x0040) { /* htons(IP_DF) */
+			fragmented = 1;
+		}
+		ip_proto = ip4->protocol;
+		udp = data + ip4->ihl * 4;
+		break;
+	case 0xDD86: /* htons(ETH_P_IPV6) */
+		ip6 = data;
+		if ((void *)ip6 + sizeof(*ip6) > data_end) {
+			return XDP_PASS;
+		}
+		ip_proto = ip6->nexthdr;
+		data += sizeof(*ip6);
+		if (ip_proto == IPPROTO_FRAGMENT) {
+			fragmented = 1;
+			const struct ipv6_frag_hdr *frag = data;
+			if ((void *)frag + sizeof(*frag) > data_end) {
+				return XDP_PASS;
+			}
+			ip_proto = frag->nexthdr;
+			data += sizeof(*frag);
+		}
+		udp = data;
+		break;
+	default:
+		/* Also applies to VLAN. */
+		return XDP_PASS;
 	}
 
 	/* Treat UDP only. */
@@ -113,6 +114,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		return XDP_PASS;
 	}
 
+	/* Get the queue options. */
 	int index = ctx->rx_queue_index;
 	int *qidconf = bpf_map_lookup_elem(&qidconf_map, &index);
 	if (!qidconf) {
@@ -137,5 +139,6 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		return XDP_DROP;
 	}
 
+	/* Forward the packet to user space. */
 	return bpf_redirect_map(&xsks_map, index, 0);
 }
