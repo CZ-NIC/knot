@@ -8,7 +8,7 @@ CLEANFILES = bpf-kernel.ll bpf-kernel.o bpf-kernel-obj.c
 EXTRA_DIST = bpf-kernel.c
 
 bpf-kernel.ll: bpf-kernel.c
-	clang -S -target bpf -Wall -O2 -emit-llvm -c -DNDEBUG -o $@ -I/usr/include/x86_64-linux-gnu $<
+	clang -S -target bpf -Wall -O2 -emit-llvm -c -DNDEBUG -o $@ -I/usr/include/x86_64-linux-gnu -include ../../config.h $<
 
 bpf-kernel.o: bpf-kernel.ll
 	llc -march=bpf -filetype=obj -o $@ $<
