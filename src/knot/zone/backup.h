@@ -23,10 +23,11 @@
 #include "knot/zone/zone.h"
 
 typedef struct zone_backup_ctx {
-	ssize_t zones_left;
-	pthread_mutex_t zones_left_mutex;
-	char *backup_dir;
-	knot_lmdb_db_t bck_kasp_db;
+	bool restore_mode;                  // if true, this is not a backup, but restore
+	ssize_t zones_left;                 // when decremented to 0, all zones done, free this context
+	pthread_mutex_t zones_left_mutex;   // mutex covering zones_left counter
+	char *backup_dir;                   // path of directory to backup to / restore from
+	knot_lmdb_db_t bck_kasp_db;         // backup KASP db
 } zone_backup_ctx_t;
 
 int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_size, zone_backup_ctx_t **out_ctx);

@@ -18,18 +18,35 @@
 
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
+#include "knot/events/handlers.h"
 #include "knot/zone/backup.h"
 
 int event_backup(conf_t *conf, zone_t *zone)
 {
 	char *bckdir = strdup(zone->backup_ctx->backup_dir);
+	if (bckdir == NULL) {
+		 return KNOT_ENOMEM;
+	}
+
+	zone_backup_ctx_t *ctx = zone->backup_ctx;
+	if (ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+	bool restore = ctx->restore_mode;
+
+	if (restore) {
+		(void)event_expire(conf, zone); // always returns EOK
+	}
 
 	int ret = zone_backup(conf, zone);
 	if (ret == KNOT_EOK) {
-		log_zone_info(zone->name, "zone backed up to %s", bckdir);
+		log_zone_info(zone->name, "zone %s %s", restore ? "restored from" : "backed up to", bckdir);
 	} // else logged by event system
+
+	if (restore) {
+		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+	}
 
 	free(bckdir);
 	return ret;
 }
-

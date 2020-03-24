@@ -26,6 +26,17 @@
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 
+static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
+{
+	if (ctx->restore_mode) {
+		void *temp = *local;
+		*local = *remote;
+		*remote = temp;
+	}
+}
+
+#define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
+
 int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_size, zone_backup_ctx_t **out_ctx)
 {
 	if (backup_dir == NULL || out_ctx == NULL) {
@@ -102,6 +113,8 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 		goto done;
 	}
 
+	BACKUP_SWAP(ctx, from, to);
+
 	list_t key_params;
 	init_list(&key_params);
 	ret = kasp_db_list_keys(zone->kaspdb, zone->name, &key_params);
@@ -131,7 +144,10 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	int ret = kasp_db_backup(zone->name, zone->kaspdb, &ctx->bck_kasp_db);
+	knot_lmdb_db_t *kasp_from = zone->kaspdb, *kasp_to = &ctx->bck_kasp_db;
+	BACKUP_SWAP(ctx, kasp_from, kasp_to);
+
+	int ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}

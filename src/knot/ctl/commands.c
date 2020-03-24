@@ -355,7 +355,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-static int init_backup(ctl_args_t *args)
+static int init_backup(ctl_args_t *args, bool restore_mode)
 {
 	if (!MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
 		return KNOT_EINVAL;
@@ -372,6 +372,7 @@ static int init_backup(ctl_args_t *args)
 	int ret = zone_backup_init(1, dest, kasp_db_size, &ctx);
 	if (ret == KNOT_EOK) {
 		assert(ctx != NULL);
+		ctx->restore_mode = restore_mode;
 		args->custom_ctx = ctx;
 	}
 	return ret;
@@ -391,6 +392,10 @@ static void deinit_backup(ctl_args_t *args)
 static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = args->custom_ctx;
+	if (zone->backup_ctx != NULL) {
+		log_zone_warning(zone->name, "back-up already pending");
+		return KNOT_ESEMCHECK;
+	}
 	zone->backup_ctx = ctx;
 	pthread_mutex_lock(&ctx->zones_left_mutex);
 	ctx->zones_left++;
@@ -1375,7 +1380,14 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 	case CTL_ZONE_FLUSH:
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_BACKUP:
-		ret = init_backup(args);
+		ret = init_backup(args, false);
+		if (ret == KNOT_EOK) {
+			ret = zones_apply(args, zone_backup_cmd);
+			deinit_backup(args);
+		}
+		return ret;
+	case CTL_ZONE_RESTORE:
+		ret = init_backup(args, true);
 		if (ret == KNOT_EOK) {
 			ret = zones_apply(args, zone_backup_cmd);
 			deinit_backup(args);
@@ -1823,6 +1835,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone },
 	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone },
+	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone },
 	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone },
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
