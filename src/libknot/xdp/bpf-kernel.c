@@ -20,6 +20,7 @@
 #include <linux/ipv6.h>
 #include <linux/udp.h>
 
+#include "bpf-consts.h"
 #include "../../contrib/libbpf/include/uapi/linux/bpf.h"
 #include "../../contrib/libbpf/bpf/bpf_helpers.h"
 
@@ -69,18 +70,19 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 
 	/* Parse IPv4 or IPv6 header. */
 	switch (eth->h_proto) {
-		case 0x0008: /* htons(ETH_P_IP) */
+		case KNOT_XDP_CONST_PROTO_IPV4:
 			ip4 = data;
 			if ((void *)ip4 + sizeof(*ip4) > data_end) {
 				return XDP_PASS;
 			}
-			if (ip4->frag_off != 0 && ip4->frag_off != 0x0040) { /* htons(IP_DF) */
+			if (ip4->frag_off != 0 &&
+			    ip4->frag_off != KNOT_XDP_CONST_FLAG_DF) {
 				fragmented = 1;
 			}
 			ip_proto = ip4->protocol;
 			udp = data + ip4->ihl * 4;
 			break;
-		case 0xDD86: /* htons(ETH_P_IPV6) */
+		case KNOT_XDP_CONST_PROTO_IPV6:
 			ip6 = data;
 			if ((void *)ip6 + sizeof(*ip6) > data_end) {
 				return XDP_PASS;
@@ -120,10 +122,10 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 
 	/* Treat specified destination ports only. */
 	__u32 port_info = *qidconf;
-	switch (port_info & 0xFFFF0000) {
-	case (1 << 17):
+	switch (port_info & KNOT_XDP_LISTEN_PORT_MASK) {
+	case KNOT_XDP_LISTEN_PORT_DROP:
 		return XDP_DROP;
-	case (1 << 16):
+	case KNOT_XDP_LISTEN_PORT_ALL:
 		break;
 	default:
 		if (udp->dest != port_info) {

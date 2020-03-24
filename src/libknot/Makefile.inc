@@ -45,8 +45,6 @@ nobase_include_libknot_HEADERS = \
 	libknot/tsig-op.h			\
 	libknot/tsig.h				\
 	libknot/wire.h				\
-	libknot/xdp/af_xdp.h			\
-	libknot/xdp/eth-tools.h			\
 	libknot/yparser/yparser.h		\
 	libknot/yparser/ypformat.h		\
 	libknot/yparser/ypschema.h		\
@@ -81,6 +79,12 @@ libknot_la_SOURCES = \
 if ENABLE_XDP
 libknot_la_CPPFLAGS += $(libbpf_CFLAGS)
 libknot_la_LIBADD   += $(libbpf_LIBS)
+
+nobase_include_libknot_HEADERS += \
+	libknot/xdp/af_xdp.h			\
+	libknot/xdp/bpf-consts.h		\
+	libknot/xdp/eth-tools.h
+
 libknot_la_SOURCES  += \
 	libknot/xdp/af_xdp.c                    \
 	libknot/xdp/bpf-kernel-obj.c		\

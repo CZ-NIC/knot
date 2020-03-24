@@ -63,6 +63,7 @@
 #include "libknot/rrtype/tsig.h"
 #include "libknot/wire.h"
 #include "libknot/xdp/af_xdp.h"
+#include "libknot/xdp/bpf-consts.h"
 #include "libknot/xdp/eth-tools.h"
 
 /*! @} */
