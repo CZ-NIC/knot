@@ -129,12 +129,20 @@ static int get_addr(const srv_info_t *server,
 	switch (ret) {
 	case 0:
 		return 0;
+#ifdef EAI_ADDRFAMILY	/* EAI_ADDRFAMILY isn't implemented on FreeBSD/macOS anymore. */
+	case EAI_ADDRFAMILY:
+		break;
+#else			/* FreeBSD, macOS, and likely others return EAI_NONAME instead. */
+	case EAI_NONAME:
+		if (iptype != AF_UNSPEC) {
+			break;
+		}
+		/* FALLTHROUGH */
+#endif	/* EAI_ADDRFAMILY */
 	default:
 		ERR("%s for %s@%s\n", gai_strerror(ret), server->name, server->service);
-		// FALLTHROUGH
-	case EAI_ADDRFAMILY:
-		return -1;
 	}
+	return -1;
 }
 
 void get_addr_str(const struct sockaddr_storage *ss,
