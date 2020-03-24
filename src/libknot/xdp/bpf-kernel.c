@@ -20,6 +20,7 @@
 #include <linux/ipv6.h>
 #include <linux/udp.h>
 
+#include "bpf-consts.h"
 #include "../../contrib/libbpf/include/uapi/linux/bpf.h"
 #include "../../contrib/libbpf/bpf/bpf_helpers.h"
 
@@ -120,10 +121,10 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 
 	/* Treat specified destination ports only. */
 	__u32 port_info = *qidconf;
-	switch (port_info & 0xFFFF0000) {
-	case (1 << 17):
+	switch (port_info & KNOT_XDP_LISTEN_PORT_MASK) {
+	case KNOT_XDP_LISTEN_PORT_DROP:
 		return XDP_DROP;
-	case (1 << 16):
+	case KNOT_XDP_LISTEN_PORT_ALL:
 		break;
 	default:
 		if (udp->dest != port_info) {

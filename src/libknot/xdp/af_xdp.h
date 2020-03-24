@@ -21,11 +21,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-enum {
-	KNOT_XDP_LISTEN_PORT_MASK = 0xFFFF0000, /*!< Listen port option mask. */
-	KNOT_XDP_LISTEN_PORT_ALL  = 1 << 16,    /*!< Listen on all ports. */
-	KNOT_XDP_LISTEN_PORT_DROP = 1 << 17,    /*!< Drop all incoming messages. */
-};
+#include "libknot/xdp/bpf-consts.h"
 
 /*! \brief A packet with src & dst MAC & IP addrs + UDP payload. */
 typedef struct {
