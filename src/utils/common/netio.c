@@ -132,7 +132,9 @@ static int get_addr(const srv_info_t *server,
 	default:
 		ERR("%s for %s@%s\n", gai_strerror(ret), server->name, server->service);
 		// FALLTHROUGH
+#ifdef EAI_ADDRFAMILY	/* EAI_ADDRFAMILY isn't implemented on FreeBSD/macOS anymore. */
 	case EAI_ADDRFAMILY:
+#endif	/* EAI_ADDRFAMILY */
 		return -1;
 	}
 }
