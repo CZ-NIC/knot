@@ -102,6 +102,12 @@ Actions
   directory is specified, the current zone is immediately dumped (in the
   blocking mode) to a zone file in the specified directory. (#)
 
+**zone-backup** [*zone*...] **+backupdir** *directory*
+  Trigger a zone data and metadata backup to specified directory. (#)
+
+**zone-restore** [*zone*...] **+backupdir** *directory*
+  Trigger a zone data and metadata restore from specified backup directory. (#)
+
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
   This command is valid for zones with DNSSEC signing enabled. (#)
