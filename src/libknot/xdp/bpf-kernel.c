@@ -22,6 +22,7 @@
 
 #include "bpf-consts.h"
 #include "../../contrib/libbpf/include/uapi/linux/bpf.h"
+#include "../../contrib/libbpf/bpf/bpf_endian.h"
 #include "../../contrib/libbpf/bpf/bpf_helpers.h"
 
 /* Don't fragment flag. */
@@ -66,7 +67,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 
 	/* Parse Ethernet header. */
 	if ((void *)eth + sizeof(*eth) > data_end) {
-		return XDP_PASS;
+		return XDP_DROP;
 	}
 	data += sizeof(*eth);
 
@@ -75,7 +76,10 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	case __constant_htons(ETH_P_IP):
 		ip4 = data;
 		if ((void *)ip4 + sizeof(*ip4) > data_end) {
-			return XDP_PASS;
+			return XDP_DROP;
+		}
+		if (ip4->version != 4) {
+			return XDP_DROP;
 		}
 		if (ip4->frag_off != 0 &&
 		    ip4->frag_off != __constant_htons(IP_DF)) {
@@ -87,7 +91,10 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	case __constant_htons(ETH_P_IPV6):
 		ip6 = data;
 		if ((void *)ip6 + sizeof(*ip6) > data_end) {
-			return XDP_PASS;
+			return XDP_DROP;
+		}
+		if (ip6->version != 6) {
+			return XDP_DROP;
 		}
 		ip_proto = ip6->nexthdr;
 		data += sizeof(*ip6);
@@ -95,7 +102,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 			fragmented = 1;
 			const struct ipv6_frag_hdr *frag = data;
 			if ((void *)frag + sizeof(*frag) > data_end) {
-				return XDP_PASS;
+				return XDP_DROP;
 			}
 			ip_proto = frag->nexthdr;
 			data += sizeof(*frag);
@@ -114,7 +121,13 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 
 	/* Parse UDP header. */
 	if ((void *)udp + sizeof(*udp) > data_end) {
-		return XDP_PASS;
+		return XDP_DROP;
+	}
+
+	/* Check the UDP length. */
+	if (data_end - (void *)udp != __bpf_ntohs(udp->len)) {
+
+		return XDP_DROP;
 	}
 
 	/* Get the queue options. */
