@@ -305,9 +305,9 @@ static uint16_t from32to16(uint32_t sum)
 	return sum;
 }
 
-static uint16_t ipv4_checksum(const struct iphdr *hdr)
+static uint16_t ipv4_checksum(const uint8_t *ipv4_hdr)
 {
-	const uint16_t *h = (const uint16_t *)hdr;
+	const uint16_t *h = (const uint16_t *)ipv4_hdr;
 	uint32_t sum32 = 0;
 	for (int i = 0; i < 10; ++i) {
 		if (i != 5) {
@@ -365,15 +365,11 @@ static void xsk_sendmsg_ipv4(knot_xdp_socket_t *socket, const knot_xdp_msg_t *ms
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
 	struct udpv4 *h = &uframe->udpv4;
 
-	// sockaddr* contents is already in network byte order.
 	const struct sockaddr_in *src_v4 = (const struct sockaddr_in *)&msg->ip_from;
 	const struct sockaddr_in *dst_v4 = (const struct sockaddr_in *)&msg->ip_to;
-
 	const uint16_t udp_len = sizeof(h->udp) + msg->payload.iov_len;
-	h->udp.len    = htobe16(udp_len);
-	h->udp.source = src_v4->sin_port;
-	h->udp.dest   = dst_v4->sin_port;
-	h->udp.check  = 0;
+
+	h->eth.h_proto = __constant_htons(ETH_P_IP);
 
 	h->ipv4.version  = IPVERSION;
 	h->ipv4.ihl      = 5;
@@ -383,24 +379,18 @@ static void xsk_sendmsg_ipv4(knot_xdp_socket_t *socket, const knot_xdp_msg_t *ms
 	h->ipv4.frag_off = 0;
 	h->ipv4.ttl      = IPDEFTTL;
 	h->ipv4.protocol = IPPROTO_UDP;
-
 	memcpy(&h->ipv4.saddr, &src_v4->sin_addr, sizeof(src_v4->sin_addr));
 	memcpy(&h->ipv4.daddr, &dst_v4->sin_addr, sizeof(dst_v4->sin_addr));
+	h->ipv4.check    = ipv4_checksum(h->bytes + sizeof(struct ethhdr));
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpragmas"
-#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-	h->ipv4.check = ipv4_checksum(&h->ipv4);
-#pragma GCC diagnostic pop
-
-	// MAC addresses are assumed to be already there.
-	h->eth.h_proto = htobe16(ETH_P_IP);
-
-	uint32_t eth_len = FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len;
+	h->udp.len    = htobe16(udp_len);
+	h->udp.source = src_v4->sin_port;
+	h->udp.dest   = dst_v4->sin_port;
+	h->udp.check  = 0; // Optional for IPv4 - not computed.
 
 	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
 		.addr = h->bytes - socket->umem->frames->bytes,
-		.len = eth_len,
+		.len = FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len
 	};
 }
 
@@ -411,15 +401,11 @@ static void xsk_sendmsg_ipv6(knot_xdp_socket_t *socket, const knot_xdp_msg_t *ms
 	struct umem_frame *uframe = (struct umem_frame *)uframe_p;
 	struct udpv6 *h = &uframe->udpv6;
 
-	// sockaddr* contents is already in network byte order.
 	const struct sockaddr_in6 *src_v6 = (const struct sockaddr_in6 *)&msg->ip_from;
 	const struct sockaddr_in6 *dst_v6 = (const struct sockaddr_in6 *)&msg->ip_to;
-
 	const uint16_t udp_len = sizeof(h->udp) + msg->payload.iov_len;
-	h->udp.len    = htobe16(udp_len);
-	h->udp.source = src_v6->sin6_port;
-	h->udp.dest   = dst_v6->sin6_port;
-	h->udp.check  = 0;
+
+	h->eth.h_proto = __constant_htons(ETH_P_IPV6);
 
 	h->ipv6.version     = 6;
 	h->ipv6.priority    = 0;
@@ -427,11 +413,14 @@ static void xsk_sendmsg_ipv6(knot_xdp_socket_t *socket, const knot_xdp_msg_t *ms
 	h->ipv6.payload_len = htobe16(udp_len);
 	h->ipv6.nexthdr     = IPPROTO_UDP;
 	h->ipv6.hop_limit   = IPDEFTTL;
-
 	memcpy(&h->ipv6.saddr, &src_v6->sin6_addr, sizeof(src_v6->sin6_addr));
 	memcpy(&h->ipv6.daddr, &dst_v6->sin6_addr, sizeof(dst_v6->sin6_addr));
 
-	// UDP checksum is mandatory for IPv6, in contrast to IPv4.
+	h->udp.len    = htobe16(udp_len);
+	h->udp.source = src_v6->sin6_port;
+	h->udp.dest   = dst_v6->sin6_port;
+	h->udp.check  = 0; // Mandatory for IPv6 - computed afterwards.
+
 	size_t chk = 0;
 	udp_checksum_step(&chk, &h->ipv6.saddr, sizeof(h->ipv6.saddr));
 	udp_checksum_step(&chk, &h->ipv6.daddr, sizeof(h->ipv6.daddr));
@@ -447,14 +436,9 @@ static void xsk_sendmsg_ipv6(knot_xdp_socket_t *socket, const knot_xdp_msg_t *ms
 	udp_checksum_finish(&chk);
 	h->udp.check = chk;
 
-	// MAC addresses are assumed to be already there.
-	h->eth.h_proto = htobe16(ETH_P_IPV6);
-
-	uint32_t eth_len = FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len;
-
 	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
 		.addr = h->bytes - socket->umem->frames->bytes,
-		.len = eth_len,
+		.len = FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len
 	};
 }
 
