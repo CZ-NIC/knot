@@ -40,7 +40,7 @@ static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **rem
 
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
-int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_size, zone_backup_ctx_t **out_ctx)
+int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_size, size_t timer_db_size, zone_backup_ctx_t **out_ctx)
 {
 	if (backup_dir == NULL || out_ctx == NULL) {
 		return KNOT_EINVAL;
@@ -64,9 +64,12 @@ int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_s
 	    mkdir(backup_dir, 0777);
 	}
 
-	char kasp_dir[backup_dir_len + 6];
-	snprintf(kasp_dir, sizeof(kasp_dir), "%s/keys", backup_dir);
-	knot_lmdb_init(&ctx->bck_kasp_db, kasp_dir, kasp_db_size, 0, "keys_db");
+	char db_dir[backup_dir_len + 8];
+	snprintf(db_dir, sizeof(db_dir), "%s/keys", backup_dir);
+	knot_lmdb_init(&ctx->bck_kasp_db, db_dir, kasp_db_size, 0, "keys_db");
+
+	snprintf(db_dir, sizeof(db_dir), "%s/timers", backup_dir);
+	knot_lmdb_init(&ctx->bck_timer_db, db_dir, timer_db_size, 0, NULL);
 
 	*out_ctx = ctx;
 	return KNOT_EOK;
@@ -75,6 +78,7 @@ int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_s
 void zone_backup_free(zone_backup_ctx_t *ctx)
 {
 	if (ctx != NULL) {
+		knot_lmdb_deinit(&ctx->bck_timer_db);
 		knot_lmdb_deinit(&ctx->bck_kasp_db);
 		pthread_mutex_destroy(&ctx->zones_left_mutex);
 		free(ctx);
@@ -207,9 +211,22 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 	ret = backup_keystore(conf, zone, ctx);
+	if (ret != KNOT_EOK) {
+		goto done;
+	}
 
 	if (ctx->restore_mode) {
 		journal_scrape_with_md(zone_journal(zone));
+	}
+
+	ret = knot_lmdb_open(&ctx->bck_timer_db);
+	if (ret != KNOT_EOK) {
+		goto done;
+	}
+	if (ctx->restore_mode) {
+		ret = zone_timers_read(&ctx->bck_timer_db, zone->name, &zone->timers);
+	} else {
+		ret = zone_timers_write(&ctx->bck_timer_db, zone->name, &zone->timers);
 	}
 
 done:
