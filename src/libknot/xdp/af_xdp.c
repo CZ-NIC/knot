@@ -14,13 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "libknot/xdp/af_xdp.h"
-
-#include "libknot/attribute.h"
-#include "libknot/endian.h"
-#include "libknot/error.h"
-#include "libknot/xdp/bpf-user.h"
-
 #include <assert.h>
 #include <errno.h>
 #include <stddef.h>
@@ -28,16 +21,19 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <linux/if_link.h>
-#include <linux/filter.h>
-
+#include "libknot/attribute.h"
+#include "libknot/endian.h"
+#include "libknot/errcode.h"
+#include "libknot/xdp/af_xdp.h"
+#include "libknot/xdp/bpf-user.h"
 #include "contrib/macros.h"
+
+/* Don't fragment flag. */
+#define	IP_DF 0x4000
 
 #define FRAME_SIZE 2048
 #define UMEM_FRAME_COUNT_RX 4096
-#define UMEM_FRAME_COUNT_TX UMEM_FRAME_COUNT_RX /* no reason to differ so far */
+#define UMEM_FRAME_COUNT_TX UMEM_FRAME_COUNT_RX // No reason to differ so far.
 #define UMEM_RING_LEN_RX (UMEM_FRAME_COUNT_RX * 2)
 #define UMEM_RING_LEN_TX (UMEM_FRAME_COUNT_TX * 2)
 #define UMEM_FRAME_COUNT (UMEM_FRAME_COUNT_RX + UMEM_FRAME_COUNT_TX)
@@ -541,40 +537,45 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 	 */
 }
 
-static void rx_desc(knot_xdp_socket_t *xsi, const struct xdp_desc *desc,
+static void rx_desc(knot_xdp_socket_t *socket, const struct xdp_desc *desc,
                     knot_xdp_msg_t *msg)
 {
-	uint8_t *uframe_p = xsi->umem->frames->bytes + desc->addr;
+	uint8_t *uframe_p = socket->umem->frames->bytes + desc->addr;
 	const struct ethhdr *eth = (struct ethhdr *)uframe_p;
-	const struct iphdr *ipv4 = NULL;
-	const struct ipv6hdr *ipv6 = NULL;
+	const struct iphdr *ip4 = NULL;
+	const struct ipv6hdr *ip6 = NULL;
 	const struct udphdr *udp = NULL;
 
-	// FIXME: length checks on multiple places
-	if (eth->h_proto == htobe16(ETH_P_IP)) {
-		ipv4 = (struct iphdr *)(uframe_p + sizeof(struct ethhdr));
-		// Any fragmentation stuff is bad for use, except for the DF flag
-		uint16_t frag_off = be16toh(ipv4->frag_off);
-		if (ipv4->version != 4 || (frag_off & ~(1 << 14))) {
-			goto drop_frame;
-		}
-		if (ipv4->protocol != 0x11) { // UDP
-			goto drop_frame;
-		}
-		// FIXME ipv4->check (sensitive to ipv4->ihl), ipv4->tot_len, udp->len
-		udp = (struct udphdr *)(uframe_p + sizeof(struct ethhdr) + ipv4->ihl * 4);
-
-	} else if (eth->h_proto == htobe16(ETH_P_IPV6)) {
-		ipv6 = (struct ipv6hdr *)(uframe_p + sizeof(struct ethhdr));
-		if (ipv6->version != 6) {
-			goto drop_frame;
-		}
-		udp = (struct udphdr *)(uframe_p + sizeof(struct ethhdr) + sizeof(struct ipv6hdr)); // TODO ???
-	} else {
-		goto drop_frame;
+	switch (eth->h_proto) {
+	case __constant_htons(ETH_P_IP):
+		ip4 = (struct iphdr *)(uframe_p + sizeof(struct ethhdr));
+		// Next conditions are ensured by the BPF filter.
+		assert(ip4->version == 4);
+		assert(ip4->frag_off == 0 ||
+		       ip4->frag_off == __constant_htons(IP_DF));
+		assert(ip4->protocol == IPPROTO_UDP);
+		// IPv4 header checksum is not verified!
+		udp = (struct udphdr *)(uframe_p + sizeof(struct ethhdr) +
+		                        ip4->ihl * 4);
+		break;
+	case __constant_htons(ETH_P_IPV6):
+		ip6 = (struct ipv6hdr *)(uframe_p + sizeof(struct ethhdr));
+		// Next conditions are ensured by the BPF filter.
+		assert(ip6->version == 6);
+		assert(ip6->nexthdr == IPPROTO_UDP);
+		udp = (struct udphdr *)(uframe_p + sizeof(struct ethhdr) +
+		                        sizeof(struct ipv6hdr));
+		break;
+	default:
+		assert(0);
+		msg->payload.iov_len = 0;
+		return;
 	}
+	// UDP checksum is not verified!
 
-	assert(eth && (!!ipv4 != !!ipv6) && udp);
+	assert(eth && (!!ip4 != !!ip6) && udp);
+
+	// Process the packet; ownership is passed on, beware of holding frames.
 
 	msg->payload.iov_base = (uint8_t *)udp + sizeof(struct udphdr);
 	msg->payload.iov_len = be16toh(udp->len) - sizeof(struct udphdr);
@@ -582,32 +583,27 @@ static void rx_desc(knot_xdp_socket_t *xsi, const struct xdp_desc *desc,
 	msg->eth_from = (void *)&eth->h_source;
 	msg->eth_to = (void *)&eth->h_dest;
 
-	// process the packet; ownership is passed on, but beware of holding frames
-	if (ipv4) {
+	if (ip4 != NULL) {
 		struct sockaddr_in *src_v4 = (struct sockaddr_in *)&msg->ip_from;
 		struct sockaddr_in *dst_v4 = (struct sockaddr_in *)&msg->ip_to;
-		memcpy(&src_v4->sin_addr, &ipv4->saddr, sizeof(src_v4->sin_addr));
-		memcpy(&dst_v4->sin_addr, &ipv4->daddr, sizeof(dst_v4->sin_addr));
+		memcpy(&src_v4->sin_addr, &ip4->saddr, sizeof(src_v4->sin_addr));
+		memcpy(&dst_v4->sin_addr, &ip4->daddr, sizeof(dst_v4->sin_addr));
 		src_v4->sin_port = udp->source;
 		dst_v4->sin_port = udp->dest;
 		src_v4->sin_family = AF_INET;
 		dst_v4->sin_family = AF_INET;
 	} else {
-		assert(ipv6);
+		assert(ip6);
 		struct sockaddr_in6 *src_v6 = (struct sockaddr_in6 *)&msg->ip_from;
 		struct sockaddr_in6 *dst_v6 = (struct sockaddr_in6 *)&msg->ip_to;
-		memcpy(&src_v6->sin6_addr, &ipv6->saddr, sizeof(src_v6->sin6_addr));
-		memcpy(&dst_v6->sin6_addr, &ipv6->daddr, sizeof(dst_v6->sin6_addr));
+		memcpy(&src_v6->sin6_addr, &ip6->saddr, sizeof(src_v6->sin6_addr));
+		memcpy(&dst_v6->sin6_addr, &ip6->daddr, sizeof(dst_v6->sin6_addr));
 		src_v6->sin6_port = udp->source;
 		dst_v6->sin6_port = udp->dest;
 		src_v6->sin6_family = AF_INET6;
 		dst_v6->sin6_family = AF_INET6;
-		// TODO shall we anyhow handle flow info ?
+		// Flow label is ignored.
 	}
-
-	return;
-drop_frame:
-	msg->payload.iov_len = 0;
 }
 
 _public_
