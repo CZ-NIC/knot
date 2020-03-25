@@ -644,8 +644,9 @@ const filter_desc_t zone_flush_filters[MAX_FILTERS] = {
 };
 
 const filter_desc_t zone_backup_filters[MAX_FILTERS] = {
-	{ "+backupdir", CTL_FILTER_FLUSH_OUTDIR, true },
-	{ "+kaspdb",    CTL_FILTER_PURGE_KASPDB, false },
+	{ "+backupdir", CTL_FILTER_FLUSH_OUTDIR,   true },
+	{ "+journal",   CTL_FILTER_PURGE_JOURNAL,  false },
+	{ "+nozone",    CTL_FILTER_PURGE_ZONEFILE, false },
 };
 
 const filter_desc_t zone_status_filters[MAX_FILTERS] = {

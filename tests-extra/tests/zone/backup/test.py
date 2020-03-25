@@ -18,18 +18,22 @@ t = Test()
 zones = t.zone("example.", storage=".") + t.zone("serial.", storage=".")
 
 master = t.server("knot")
+slave = t.server("knot")
 
-t.link(zones, master)
+t.link(zones, master, slave)
 
 for z in zones:
     master.dnssec(z).enable = True
+    slave.zones[z.name].journal_content = "all" # also disables zonefile load
 
 backup_dir = master.dir + "/backup"
+slave_bck_dir = slave.dir + "/backup"
 
 t.start()
 master.zones_wait(zones)
 
 master.ctl("zone-backup +backupdir %s" % backup_dir)
+slave.ctl("zone-backup +journal +backupdir %s +nozone" % slave_bck_dir)
 
 (dnskey1_1, dnskey2_1) = get_dnskeys(master, zones)
 
@@ -42,6 +46,7 @@ for z in zones:
 
 t.sleep(1)
 
+slave.stop()
 master.stop()
 shutil.rmtree(master.keydir) # let Knot generate new set of keys
 master.start()
@@ -77,5 +82,23 @@ if dnskey1_4 != dnskey1_1 or dnskey2_4 != dnskey2_1:
     set_err("KEYS NOT RESTORED 2")
 
 test_added(master, zones, [ "NOERROR", "NOERROR" ])
+
+master.stop()
+shutil.rmtree(slave.dir + "/journal")
+shutil.rmtree(slave.dir + "/timers")
+slave.start()
+
+slave.ctl("zone-restore +nozone +backupdir %s +journal" % slave_bck_dir)
+slave.zones_wait(zones) # zones shall be loaded from recovered journal
+
+for i in range(20):
+    t.sleep(1)
+    resp = slave.dig(zones[0].name, "SOA")
+    if resp.rcode() != "NOERROR":
+        break
+# the zone should expire in much less than 45 seconds (45 = SOA) according to restored timers
+
+resp = slave.dig(zones[0].name, "SOA")
+resp.check(rcode="SERVFAIL")
 
 t.stop()

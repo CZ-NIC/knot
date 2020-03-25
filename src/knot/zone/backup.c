@@ -40,7 +40,7 @@ static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **rem
 
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
-int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_size, size_t timer_db_size, zone_backup_ctx_t **out_ctx)
+int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_size, size_t timer_db_size, size_t journal_size, zone_backup_ctx_t **out_ctx)
 {
 	if (backup_dir == NULL || out_ctx == NULL) {
 		return KNOT_EINVAL;
@@ -64,12 +64,15 @@ int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_s
 	    mkdir(backup_dir, 0777);
 	}
 
-	char db_dir[backup_dir_len + 8];
+	char db_dir[backup_dir_len + 9];
 	snprintf(db_dir, sizeof(db_dir), "%s/keys", backup_dir);
 	knot_lmdb_init(&ctx->bck_kasp_db, db_dir, kasp_db_size, 0, "keys_db");
 
 	snprintf(db_dir, sizeof(db_dir), "%s/timers", backup_dir);
 	knot_lmdb_init(&ctx->bck_timer_db, db_dir, timer_db_size, 0, NULL);
+
+	snprintf(db_dir, sizeof(db_dir), "%s/journal", backup_dir);
+	knot_lmdb_init(&ctx->bck_journal, db_dir, journal_size, 0, NULL);
 
 	*out_ctx = ctx;
 	return KNOT_EOK;
@@ -78,6 +81,7 @@ int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_s
 void zone_backup_free(zone_backup_ctx_t *ctx)
 {
 	if (ctx != NULL) {
+		knot_lmdb_deinit(&ctx->bck_journal);
 		knot_lmdb_deinit(&ctx->bck_timer_db);
 		knot_lmdb_deinit(&ctx->bck_kasp_db);
 		pthread_mutex_destroy(&ctx->zones_left_mutex);
@@ -117,8 +121,8 @@ static int file_overwrite(const char *what, const char *with)
 	} else {
 		ret = KNOT_EOK;
 	}
-	fclose(fr);
-	return fclose(fw) == 0 ? ret : (ret == KNOT_EOK ? knot_map_errno() : ret);
+	fr && fclose(fr);
+	return fw && fclose(fw) == 0 ? ret : (ret == KNOT_EOK ? knot_map_errno() : ret);
 }
 
 static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keystore_t *to)
@@ -189,17 +193,19 @@ int zone_backup(conf_t *conf, zone_t *zone)
 
 	int ret = KNOT_EOK;
 
-	if (ctx->restore_mode) {
-		char *local_zf = conf_zonefile(conf, zone->name);
-		char *backup_zf = dir_file(ctx->backup_dir, local_zf);
-		ret = file_overwrite(local_zf, backup_zf);
-		free(backup_zf);
-		free(local_zf);
-	} else {
-		ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
-	}
-	if (ret != KNOT_EOK) {
-		goto done;
+	if (ctx->backup_zone) {
+		if (ctx->restore_mode) {
+			char *local_zf = conf_zonefile(conf, zone->name);
+			char *backup_zf = dir_file(ctx->backup_dir, local_zf);
+			ret = file_overwrite(local_zf, backup_zf);
+			free(backup_zf);
+			free(local_zf);
+		} else {
+			ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
+		}
+		if (ret != KNOT_EOK) {
+			goto done;
+		}
 	}
 
 	knot_lmdb_db_t *kasp_from = zone->kaspdb, *kasp_to = &ctx->bck_kasp_db;
@@ -215,8 +221,16 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		goto done;
 	}
 
-	if (ctx->restore_mode) {
-		journal_scrape_with_md(zone_journal(zone));
+	if (ctx->backup_journal) {
+		knot_lmdb_db_t *j_from = zone->journaldb, *j_to = &ctx->bck_journal;
+		BACKUP_SWAP(ctx, j_from, j_to);
+
+		ret = journal_copy_with_md(j_from, j_to, zone->name);
+	} else if (ctx->restore_mode) {
+		ret = journal_scrape_with_md(zone_journal(zone));
+	}
+	if (ret != KNOT_EOK) {
+		goto done;
 	}
 
 	ret = knot_lmdb_open(&ctx->bck_timer_db);

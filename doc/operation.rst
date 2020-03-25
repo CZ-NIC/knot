@@ -977,6 +977,20 @@ the user triggers a one-by-one zone restore from the backup on a running
 server. Again, a subset of zones might be specified. It must be specified
 in case the backup has been created for only a subset of zones.
 
+Limitations
+-----------
+
+Neither configuration file, nor :ref:`Configuration database` are backed-up
+by those commands.
+
+If the private keys are stored in a HSM (anything using PKCS#11 interface),
+they are not backed up. This also applies to "key mapping" metadata (implementation
+specific).
+
+The restore procedure does not care for keys deleted after taking the snapshot.
+thus, after restore, there might remain some redundant obsolete ``.pem`` files
+of obsolete signing keys.
+
 .. _Statistics:
 
 Statistics

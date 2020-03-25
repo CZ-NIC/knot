@@ -102,11 +102,14 @@ Actions
   directory is specified, the current zone is immediately dumped (in the
   blocking mode) to a zone file in the specified directory. (#)
 
-**zone-backup** [*zone*...] **+backupdir** *directory*
-  Trigger a zone data and metadata backup to specified directory. (#)
+**zone-backup** [*zone*...] **+backupdir** *directory* [**+journal**] [**+nozone**]
+  Trigger a zone data and metadata backup to specified directory.
+  Optional flag **+journal** backs-up also zone journal, whereas **+nozone**
+  avoids backing up zone contents to a zonefile.(#)
 
-**zone-restore** [*zone*...] **+backupdir** *directory*
-  Trigger a zone data and metadata restore from specified backup directory. (#)
+**zone-restore** [*zone*...] **+backupdir** *directory* [**+journal**] [**+nozone**]
+  Trigger a zone data and metadata restore from specified backup directory.
+  Optional flags are equivalent to **zone-backup**.(#)
 
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
