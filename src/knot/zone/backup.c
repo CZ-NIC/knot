@@ -15,9 +15,11 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <sys/stat.h>
 
@@ -25,6 +27,7 @@
 
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
+#include "knot/journal/journal_metadata.h"
 
 static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 {
@@ -76,6 +79,42 @@ void zone_backup_free(zone_backup_ctx_t *ctx)
 		pthread_mutex_destroy(&ctx->zones_left_mutex);
 		free(ctx);
 	}
+}
+
+static char *dir_file(const char *dir_name, const char *file_name)
+{
+	const char *basename = strrchr(file_name, '/');
+	if (basename == NULL) {
+		basename = file_name;
+	} else {
+		basename++;
+	}
+	unsigned dnlen = strlen(dir_name), bnlen = strlen(basename);
+	char *res = malloc(dnlen + 1 + bnlen + 1);
+	if (res != NULL) {
+		strcpy(res, dir_name);
+		strcat(res, "/");
+		strcat(res, basename);
+	}
+	return res;
+}
+
+// TODO rewrite this better!
+static int file_overwrite(const char *what, const char *with)
+{
+	errno = 0;
+	FILE *fr = fopen(with, "r"), *fw = fopen(what, "w");
+	int c, ret = 0;
+	if (fr != NULL && fw != NULL) {
+		while ((c = getc(fr)) != EOF && (ret = putc(c, fw)) != EOF) ;
+	}
+	if (fr == NULL || fw == NULL || ret == EOF) {
+		ret = knot_map_errno();
+	} else {
+		ret = KNOT_EOK;
+	}
+	fclose(fr);
+	return fclose(fw) == 0 ? ret : (ret == KNOT_EOK ? knot_map_errno() : ret);
 }
 
 static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keystore_t *to)
@@ -144,15 +183,34 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
+	int ret = KNOT_EOK;
+
+	if (ctx->restore_mode) {
+		char *local_zf = conf_zonefile(conf, zone->name);
+		char *backup_zf = dir_file(ctx->backup_dir, local_zf);
+		ret = file_overwrite(local_zf, backup_zf);
+		free(backup_zf);
+		free(local_zf);
+	} else {
+		ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
+	}
+	if (ret != KNOT_EOK) {
+		goto done;
+	}
+
 	knot_lmdb_db_t *kasp_from = zone->kaspdb, *kasp_to = &ctx->bck_kasp_db;
 	BACKUP_SWAP(ctx, kasp_from, kasp_to);
 
-	int ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
+	ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
 	ret = backup_keystore(conf, zone, ctx);
+
+	if (ctx->restore_mode) {
+		journal_scrape_with_md(zone_journal(zone));
+	}
 
 done:
 	pthread_mutex_lock(&ctx->zones_left_mutex);
