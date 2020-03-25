@@ -658,9 +658,9 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 }
 
 _public_
-void knot_xdp_info(const knot_xdp_socket_t *socket)
+void knot_xdp_info(const knot_xdp_socket_t *socket, FILE *file)
 {
-	if (socket == NULL) {
+	if (socket == NULL || file == NULL) {
 		return;
 	}
 
@@ -669,21 +669,21 @@ void knot_xdp_info(const knot_xdp_socket_t *socket)
 		((*(ring)->producer - *(ring)->consumer) & (ring)->mask)
 
 	#define RING_PRINFO(name, ring) \
-		printf("Ring %s: size %4d, busy %4d (prod %4d, cons %4d)\n", \
-		       name, (unsigned)(ring)->size, \
-		       (unsigned)RING_BUSY((ring)), \
-		       (unsigned)*(ring)->producer, (unsigned)*(ring)->consumer)
+		fprintf(file, "Ring %s: size %4d, busy %4d (prod %4d, cons %4d)\n", \
+		        name, (unsigned)(ring)->size, \
+		        (unsigned)RING_BUSY((ring)), \
+		        (unsigned)*(ring)->producer, (unsigned)*(ring)->consumer)
 
 	const int rx_busyf = RING_BUSY(&socket->umem->fq) + RING_BUSY(&socket->rx);
-	printf("\nLOST RX frames: %4d", (int)(UMEM_FRAME_COUNT_RX - rx_busyf));
+	fprintf(file, "\nLOST RX frames: %4d", (int)(UMEM_FRAME_COUNT_RX - rx_busyf));
 
 	const int tx_busyf = RING_BUSY(&socket->umem->cq) + RING_BUSY(&socket->tx);
 	const int tx_freef = socket->umem->tx_free_count;
-	printf("\nLOST TX frames: %4d\n", (int)(UMEM_FRAME_COUNT_TX - tx_busyf - tx_freef));
+	fprintf(file, "\nLOST TX frames: %4d\n", (int)(UMEM_FRAME_COUNT_TX - tx_busyf - tx_freef));
 
 	RING_PRINFO("FQ", &socket->umem->fq);
 	RING_PRINFO("RX", &socket->rx);
 	RING_PRINFO("TX", &socket->tx);
 	RING_PRINFO("CQ", &socket->umem->cq);
-	printf("TX free frames: %4d\n", tx_freef);
+	fprintf(file, "TX free frames: %4d\n", tx_freef);
 }

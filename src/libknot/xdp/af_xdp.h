@@ -18,6 +18,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -151,5 +152,6 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
  * \brief Print some info about the XDP socket.
  *
  * \param socket  XDP socket.
+ * \param file    Output file.
  */
-void knot_xdp_info(const knot_xdp_socket_t *socket);
+void knot_xdp_info(const knot_xdp_socket_t *socket, FILE *file);
