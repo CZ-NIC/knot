@@ -311,11 +311,19 @@ static uint16_t ipv4_checksum(const uint8_t *ipv4_hdr)
 	uint32_t sum32 = 0;
 	for (int i = 0; i < 10; ++i) {
 		if (i != 5) {
-			sum32 += be16toh(h[i]);
+			sum32 += h[i];
 		}
 	}
-	return ~htobe16(from32to16(sum32));
+	return ~from32to16(sum32);
 }
+
+/* Checksum endianness implementation notes for ipv4_checksum() and udp_checksum_step().
+ *
+ * The basis for checksum is addition on big-endian 16-bit words, with bit 16 carrying
+ * over to bit 0.  That can be viewed as first byte carrying to the second and the
+ * second one carrying back to the first one, i.e. a symmetrical situation.
+ * Therefore the result is the same even when arithmetics is done on litte-endian (!)
+ */
 
 static void udp_checksum_step(size_t *result, const void *_data, size_t _data_len)
 {
