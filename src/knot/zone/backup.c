@@ -25,6 +25,7 @@
 
 #include "knot/zone/backup.h"
 
+#include "knot/common/log.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
@@ -59,7 +60,7 @@ int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_s
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 	pthread_mutex_init(&ctx->zones_left_mutex, NULL);
 
-	struct stat st = {0};
+	struct stat st = { 0 };
 	if (stat(backup_dir, &st) == -1) {
 	    mkdir(backup_dir, 0777);
 	}
@@ -147,10 +148,17 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 {
 	dnssec_keystore_t *from = NULL, *to = NULL;
 
-	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name); // TODO what if configured onlinesign module?
-	int ret = zone_init_keystore(conf, &policy_id, &from);
+	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name); // TODO what if onlinesign module ?
+
+	unsigned backend_type = 0;
+	int ret = zone_init_keystore(conf, &policy_id, &from, &backend_type);
 	if (ret != KNOT_EOK) {
 		return ret;
+	}
+	if (backend_type == KEYSTORE_BACKEND_PKCS11) {
+		log_zone_warning(zone->name, "private keys from PKCS#11 keystore won't be backed up");
+		(void)dnssec_keystore_deinit(from);
+		return KNOT_EOK;
 	}
 
 	char kasp_dir[strlen(ctx->backup_dir) + 6];

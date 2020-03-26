@@ -113,6 +113,16 @@ static int fix_mapsize(knot_lmdb_db_t *db)
 	return KNOT_EOK;
 }
 
+size_t knot_lmdb_copy_size(knot_lmdb_db_t *to_copy)
+{
+	size_t copy_size = 1048576;
+	struct stat st;
+	if (lmdb_stat(to_copy->path, &st)) {
+		copy_size += st.st_size * 2;
+	}
+	return copy_size;
+}
+
 static int lmdb_open(knot_lmdb_db_t *db)
 {
 	MDB_txn *init_txn = NULL;

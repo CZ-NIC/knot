@@ -311,7 +311,8 @@ void free_key_params(key_params_t *parm)
 	}
 }
 
-int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, dnssec_keystore_t **keystore)
+int zone_init_keystore(conf_t *conf, conf_val_t *policy_id,
+                       dnssec_keystore_t **keystore, unsigned *backend)
 {
 	char *zone_path = conf_db(conf, C_KASP_DB);
 	if (zone_path == NULL) {
@@ -324,12 +325,16 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, dnssec_keystore_t **
 	conf_id_fix_default(&keystore_id);
 
 	conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, &keystore_id);
-	unsigned backend = conf_opt(&val);
+	unsigned _backend = conf_opt(&val);
 
 	val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, &keystore_id);
 	const char *config = conf_str(&val);
 
-	int ret = keystore_load(config, backend, zone_path, keystore);
+	int ret = keystore_load(config, _backend, zone_path, keystore);
+
+	if (backend != NULL) {
+		*backend = _backend;
+	}
 
 	free(zone_path);
 	return ret;

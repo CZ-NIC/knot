@@ -33,7 +33,7 @@ t.start()
 master.zones_wait(zones)
 
 master.ctl("zone-backup +backupdir %s" % backup_dir)
-slave.ctl("zone-backup +journal +backupdir %s +nozone" % slave_bck_dir)
+slave.ctl("zone-backup %s %s +journal +backupdir %s +nozone" % (zones[0].name, zones[1].name, slave_bck_dir))
 
 (dnskey1_1, dnskey2_1) = get_dnskeys(master, zones)
 

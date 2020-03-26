@@ -95,6 +95,11 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
 bool knot_lmdb_exists(knot_lmdb_db_t *db);
 
 /*!
+ * \brief Big enough mapsize for new database to hold a copy of to_copy.
+ */
+size_t knot_lmdb_copy_size(knot_lmdb_db_t *to_copy);
+
+/*!
  * \brief Open the previously initialised DB.
  *
  * \param db   The DB to be opened.

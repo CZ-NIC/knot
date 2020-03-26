@@ -363,17 +363,13 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 
 	const char *dest = args->data[KNOT_CTL_IDX_DATA];
 
-	size_t kasp_db_size = knot_lmdb_db_usage(&args->server->kaspdb);
-	kasp_db_size *= 2; // to make sure that current contents fit into backup DB
-	kasp_db_size += 1024 * 1024;
-	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE, C_MAX_TIMER_DB_SIZE);
-	size_t journal_size = knot_lmdb_db_usage(&args->server->journaldb);
-	journal_size *= 2; // to make sure that current contents fit into backup DB
-	journal_size += 1024 * 1024;
-
 	zone_backup_ctx_t *ctx;
 
-	int ret = zone_backup_init(1, dest, kasp_db_size, conf_int(&timer_db_size), journal_size, &ctx);
+	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE, C_MAX_TIMER_DB_SIZE);
+
+	int ret = zone_backup_init(1, dest, knot_lmdb_copy_size(&args->server->kaspdb),
+	                           conf_int(&timer_db_size),
+	                           knot_lmdb_copy_size(&args->server->journaldb), &ctx);
 	if (ret == KNOT_EOK) {
 		assert(ctx != NULL);
 		ctx->restore_mode = restore_mode;
