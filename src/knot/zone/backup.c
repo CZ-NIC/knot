@@ -219,14 +219,16 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	knot_lmdb_db_t *kasp_from = zone->kaspdb, *kasp_to = &ctx->bck_kasp_db;
 	BACKUP_SWAP(ctx, kasp_from, kasp_to);
 
-	ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
-	if (ret != KNOT_EOK) {
-		goto done;
-	}
+	if (knot_lmdb_exists(kasp_from)) {
+		ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
+		if (ret != KNOT_EOK) {
+			goto done;
+		}
 
-	ret = backup_keystore(conf, zone, ctx);
-	if (ret != KNOT_EOK) {
-		goto done;
+		ret = backup_keystore(conf, zone, ctx);
+		if (ret != KNOT_EOK) {
+			goto done;
+		}
 	}
 
 	if (ctx->backup_journal) {

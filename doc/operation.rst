@@ -927,7 +927,7 @@ Data and metadata backup
 
 Some of the zone-related data, such as zone contents or DNSSEC signing keys,
 and metadata, like zone timers, might be worth backing up. For the sake of
-consistency, it's necessary to shut down the server, or at least freeze all
+consistency, it's usually necessary to shut down the server, or at least freeze all
 the zones, before copying the data like zonefile, KASP database, etc, to
 backup location. To avoid this necessity, Knot DNS provides a feature to
 back-up some or all of the zones seamlessly.
@@ -946,6 +946,8 @@ their list::
 
     $ knotc zone-backup +backupdir /path/to/backup zone1.com. zone2.com. ...
 
+The backup directory should be empty (or non-existing) or contain a previous
+backup that will be overwritten.
 The back-up procedure will begin soon and will happen zone-by-zone
 (partially in parallel if more :ref:`server_background-workers` configured).
 The user shall check the logs for the outcome of each zone's back-up attempt.
@@ -956,11 +958,11 @@ Offline restore
 ---------------
 
 If the Online backup has been performed for all zones, it's possible to
-restore the backed-up data by simply copying them on their normal locations,
-sonce they're simply copies. For example, the user can copy (overwrite)
-tha backed-up KASP db to its configured location.
+restore the backed-up data by simply copying them to their normal locations,
+since they're simply copies. For example, the user can copy (overwrite)
+tha backed-up KASP database files to their configured location.
 
-This of course must be done when the server is stopped. After starting up
+This restore of course must be done when the server is stopped. After starting up
 the server, it should run in the same state as in the time of back-up.
 
 This method is recommended in case of complete data loss, for example
@@ -983,12 +985,13 @@ Limitations
 Neither configuration file, nor :ref:`Configuration database` are backed-up
 by those commands.
 
-If the private keys are stored in a HSM (anything using PKCS#11 interface),
-they are not backed up. This also applies to "key mapping" metadata (implementation
-specific).
+If the private keys are stored in a HSM (anything using a PKCS#11 interface),
+they are not backed up. This includes internal metadata of the PKCS#11 provider
+software, such as key mappings, authentication information, and the configuration
+of the provider. Details are vendor-specific.
 
 The restore procedure does not care for keys deleted after taking the snapshot.
-thus, after restore, there might remain some redundant obsolete ``.pem`` files
+Thus, after restore, there might remain some redundant ``.pem`` files
 of obsolete signing keys.
 
 .. _Statistics:
