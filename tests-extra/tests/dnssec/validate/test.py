@@ -42,7 +42,16 @@ master.ctl("zone-reload")
 
 master.zones_wait(zones, serials=serials_all)
 slave.zones_wait(zones_ok + zones_ok3, serials=serials_ok)
-t.sleep(10) # make sure all the IXFR + AXFR attempts take place
+t.sleep(5) # make sure all the IXFR attempts take place
+
+for z in zones_nok + zones_nok3:
+    mresp = master.dig(z.name, "SOA")
+    sresp = slave.dig(z.name, "SOA")
+    if mresp.soa_serial() == sresp.soa_serial():
+        dnstest.utils.set_err("NOK ZONE %s ACCEPTED" % z.name)
+
+slave.ctl("zone-retransfer") # force AXFR
+t.sleep(7)
 
 for z in zones_nok + zones_nok3:
     mresp = master.dig(z.name, "SOA")
