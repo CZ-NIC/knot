@@ -810,6 +810,9 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
 				log_zone_error(update->zone->name, "hint: %s %s", name_str, type_str);
 			}
+			if (update->validation_hint.tofree) {
+				knot_dname_free((knot_dname_t *)update->validation_hint.node, NULL);
+			}
 			discard_adds_tree(update);
 			return ret;
 		}

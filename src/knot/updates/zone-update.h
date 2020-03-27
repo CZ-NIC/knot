@@ -25,6 +25,7 @@
 typedef struct {
 	const knot_dname_t *node;
 	uint16_t rrtype;
+	bool tofree;
 } dnssec_validation_hint_t;
 
 /*! \brief Structure for zone contents updating / querying. */

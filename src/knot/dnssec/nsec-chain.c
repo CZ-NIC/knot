@@ -375,7 +375,7 @@ static int nsec_check_prev_next(zone_node_t *node, void *ctx)
 	if (nn == NULL) {
 		data->update->validation_hint.node = next;
 		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
-		free(next);
+		data->update->validation_hint.tofree = true;
 		return KNOT_DNSSEC_ENSEC_CHAIN;
 	}
 	free(next);
