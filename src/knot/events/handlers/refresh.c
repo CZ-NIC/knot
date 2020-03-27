@@ -1151,6 +1151,12 @@ static bool ixfr_error_failover(int ret)
 	case KNOT_NET_ERECV:
 	case KNOT_NET_ETIMEOUT:
 		return false;
+	case KNOT_DNSSEC_EMISSINGKEYTYPE:
+	case KNOT_DNSSEC_ENOKEY:
+	case KNOT_DNSSEC_ENOSIG:
+	case KNOT_DNSSEC_ENSEC_BITMAP:
+	case KNOT_DNSSEC_ENSEC_CHAIN: // DNSSEC validation errors
+		return false;
 	default:		// The rest are supposed to be DNS logic errors, do a failover.
 		return true;
 	}
