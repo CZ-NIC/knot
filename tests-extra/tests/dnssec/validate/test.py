@@ -11,7 +11,7 @@ master = t.server("knot")
 slave = t.server("knot")
 
 zones_ok = t.zone("ok.nsec.", storage=".")
-zones_ok3 = t.zone("ok.nsec3.", storage=".")
+zones_ok3 = t.zone("ok.nsec3.", storage=".") + t.zone("ok.2nsec3.", storage=".")
 zones_nok = t.zone("missing.nsec.", storage=".") + t.zone("bitmap.nsec.", storage=".") + \
             t.zone("chain.nsec.", storage=".") + t.zone("rrsig.a.", storage=".") + \
             t.zone("rrsig.nsec.", storage=".")
