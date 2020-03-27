@@ -744,7 +744,9 @@ static void update_clear(struct rcu_head *param)
 static void discard_adds_tree(zone_update_t *update)
 {
 	additionals_tree_free(update->new_cont->adds_tree);
-	update->zone->contents->adds_tree = NULL;
+	if (update->zone->contents != NULL) {
+		update->zone->contents->adds_tree = NULL;
+	}
 	update->new_cont->adds_tree = NULL;
 }
 
@@ -798,25 +800,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return KNOT_EZONESIZE;
 	}
 
-	/* Check if the zone was re-signed upon zone load to ensure proper flush
-	 * even if the SOA serial wasn't incremented by re-signing. */
-	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
-	bool dnssec = conf_bool(&val);
-
-	if (dnssec) {
-		update->zone->zonefile.resigned = true;
-
-		if (zone_is_slave(conf, update->zone)) {
-			ret = zone_set_lastsigned_serial(update->zone,
-			                                 zone_contents_serial(update->new_cont));
-			if (ret != KNOT_EOK) {
-				log_zone_warning(update->zone->name,
-				                 "unable to save lastsigned serial, "
-				                 "future transfers might be broken");
-			}
-		}
-	}
-
 	val = conf_zone_get(conf, C_DNSSEC_VALIDATE, update->zone->name);
 	if (conf_bool(&val)) {
 		ret = knot_dnssec_validate_zone(update, update->flags & UPDATE_INCREMENTAL);
@@ -836,6 +819,25 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	if (ret != KNOT_EOK) {
 		discard_adds_tree(update);
 		return ret;
+	}
+
+	/* Check if the zone was re-signed upon zone load to ensure proper flush
+	 * even if the SOA serial wasn't incremented by re-signing. */
+	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
+	bool dnssec = conf_bool(&val);
+
+	if (dnssec) {
+		update->zone->zonefile.resigned = true;
+
+		if (zone_is_slave(conf, update->zone)) {
+			ret = zone_set_lastsigned_serial(update->zone,
+			                                 zone_contents_serial(update->new_cont));
+			if (ret != KNOT_EOK) {
+				log_zone_warning(update->zone->name,
+				                 "unable to save lastsigned serial, "
+				                 "future transfers might be broken");
+			}
+		}
 	}
 
 	/* Switch zone contents. */
