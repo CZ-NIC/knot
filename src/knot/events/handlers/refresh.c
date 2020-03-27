@@ -1123,6 +1123,12 @@ static bool ixfr_error_failover(int ret)
 	switch (ret) {
 	case KNOT_EOK:
 		return false; // don't failover if IXFR is OK
+	case KNOT_DNSSEC_EMISSINGKEYTYPE:
+	case KNOT_DNSSEC_ENOKEY:
+	case KNOT_DNSSEC_ENOSIG:
+	case KNOT_DNSSEC_ENSEC_BITMAP:
+	case KNOT_DNSSEC_ENSEC_CHAIN: // DNSSEC validation errors
+		return false;
 	case KNOT_ECONN:
 	case KNOT_ETIMEOUT:   // network issues
 		return false;
