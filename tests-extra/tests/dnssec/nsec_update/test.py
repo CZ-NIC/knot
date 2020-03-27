@@ -32,9 +32,10 @@ for zone in zones:
     master.dnssec(zone).nsec3_salt_len = random.choice([0, 1, 9, 64, 128, 255])
     master.dnssec(zone).nsec3_opt_out = (random.random() < 0.5)
 
-    slave.dnssec(zone).validate = True
-    slave.dnssec(zone).nsec3 = master.dnssec(zone).nsec3
-    slave.dnssec(zone).nsec3_opt_out = master.dnssec(zone).nsec3_opt_out
+    if not slave.valgrind:
+        slave.dnssec(zone).validate = True
+        slave.dnssec(zone).nsec3 = master.dnssec(zone).nsec3
+        slave.dnssec(zone).nsec3_opt_out = master.dnssec(zone).nsec3_opt_out
 
 # for flushing 46 zones in blocking mode
 if master.valgrind:

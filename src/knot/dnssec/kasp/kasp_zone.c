@@ -336,7 +336,8 @@ int kasp_zone_from_contents(knot_kasp_zone_t *zone,
 
 	knot_rdata_t *zkey = zone_dnskey->rdata;
 	for (int i = 0; i < zone->num_keys; i++) {
-		int ret = dnssec_key_from_rdata(&zone->keys[i].key, zone->dname, zkey->data, zkey->len);
+		int ret = dnssec_key_from_rdata(&zone->keys[i].key, zone->dname,
+		                                zkey->data, zkey->len);
 		if (ret == KNOT_EOK) {
 			ret = dnssec_key_get_keyid(zone->keys[i].key, &zone->keys[i].id);
 		}
