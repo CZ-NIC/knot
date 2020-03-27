@@ -286,10 +286,12 @@ static int nsec_update_bitmaps(zone_tree_t *node_ptrs,
 	return ret;
 }
 
+bool node_nsec3_unmatching(const zone_node_t *node, const dnssec_nsec3_params_t *params); // from nsec3-chain.c
+
 int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
                              nsec_chain_iterate_data_t *data)
 {
-	if (node_no_nsec(b)) {
+	if (node_no_nsec(b) || node_nsec3_unmatching(b, data->nsec3_params)) {
 		return NSEC_NODE_SKIP;
 	}
 	knot_rdataset_t *nsec = node_rdataset(a, data->nsec_type);
@@ -335,7 +337,7 @@ static knot_dname_t *nsec3_next_to_dname(const knot_rdata_t *rdata, const knot_d
 	return out;
 }
 
-static zone_node_t *nsec_prev(zone_node_t *node); // declaration
+static zone_node_t *nsec_prev(zone_node_t *node, const dnssec_nsec3_params_t *matching_params); // declaration
 
 static int nsec_check_prev_next(zone_node_t *node, void *ctx)
 {
@@ -344,7 +346,10 @@ static int nsec_check_prev_next(zone_node_t *node, void *ctx)
 	}
 
 	nsec_chain_iterate_data_t *data = ctx;
-	int ret = nsec_check_connect_nodes(nsec_prev(node), node, data);
+	int ret = nsec_check_connect_nodes(nsec_prev(node, data->nsec3_params), node, data);
+	if (ret == NSEC_NODE_SKIP) {
+		return KNOT_EOK;
+	}
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -379,7 +384,7 @@ static int nsec_check_prev_next(zone_node_t *node, void *ctx)
 		return KNOT_DNSSEC_ENSEC_CHAIN;
 	}
 	free(next);
-	if (nsec_prev((zone_node_t *)nn) != node) {
+	if (nsec_prev((zone_node_t *)nn, data->nsec3_params) != node) {
 		data->update->validation_hint.node = node->owner;
 		data->update->validation_hint.rrtype = data->nsec_type;
 		return KNOT_DNSSEC_ENSEC_CHAIN;
@@ -462,12 +467,12 @@ int nsec_check_bitmaps(zone_tree_t *nsec_ptrs, nsec_chain_iterate_data_t *data)
 	return zone_tree_apply(nsec_ptrs, check_nsec_bitmap, data);
 }
 
-static zone_node_t *nsec_prev(zone_node_t *node)
+static zone_node_t *nsec_prev(zone_node_t *node, const dnssec_nsec3_params_t *matching_params)
 {
 	zone_node_t *res = node;
 	do {
 		res = node_prev(res);
-	} while (res != NULL && ((res->flags & NODE_FLAGS_NONAUTH) || res->rrset_count == 0));
+	} while (res != NULL && ((res->flags & NODE_FLAGS_NONAUTH) || res->rrset_count == 0 || node_nsec3_unmatching(res, matching_params)));
 	assert(res == NULL || !knot_nsec_empty_nsec_and_rrsigs_in_node(res));
 	return res;
 }
@@ -579,7 +584,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
 		if (!del_old && del_new && started_with != NULL) {
 			zone_node_t *prev_old = curr_old, *prev_new;
 			do {
-				prev_old = nsec_prev(prev_old);
+				prev_old = nsec_prev(prev_old, NULL);
 				prev_new = binode_counterpart(prev_old);
 			} while (node_no_nsec(prev_new));
 
@@ -587,7 +592,7 @@ int knot_nsec_chain_iterate_fix(zone_tree_t *node_ptrs,
 			ret = cb_reconn(curr_old, prev_near, data);
 		}
 		if (del_old && !del_new && started_with != NULL) {
-			zone_node_t *prev_new = nsec_prev(curr_new);
+			zone_node_t *prev_new = nsec_prev(curr_new, NULL);
 			ret = cb_reconn(prev_new, curr_new, data);
 			if (ret == KNOT_EOK) {
 				ret = callback(prev_new, curr_new, data);
