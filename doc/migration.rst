@@ -104,7 +104,7 @@ Upgrading from Knot DNS version 2.7.x to 2.8.x is seamless.
 
 However, if the previous version was migrated (possibly indirectly)
 from version 2.5.x, the format of the keys stored in
-:ref:`Keys And Signature Policy Database <DNSSEC Export Import  KASP DB>`
+Keys And Signature Policy Database
 is no longer compatible and needs to be updated.
 
 The easiest ways to update how keys are stored in KASP DB is to modify
