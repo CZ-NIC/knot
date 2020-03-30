@@ -89,6 +89,18 @@ for zone in zones:
         up.add("ns.deleg390281", 3600, "A", "1.2.54.31")
     up.send("NOERROR")
 
+# update master by making empty-non-terminal from non-empty-non-terminal
+# above a delegation (create first)
+for zone in zones:
+    up = master.update(zone)
+    up.add("ent", 3600, "A", "1.2.3.4")
+    up.add("deleg.ent", 3600, "NS", "ns2.example.net.")
+    up.send("NOERROR")
+    t.sleep(1)
+    up = master.update(zone)
+    up.delete("ent", "A")
+    up.send("NOERROR")
+
 t.sleep(1)
 master.ctl("zone-refresh")
 
