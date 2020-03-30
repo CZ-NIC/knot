@@ -578,6 +578,30 @@ static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
 		nsec3_opt_out(node, opt_out));
 }
 
+typedef struct {
+	bool opt_out;                        // NSEC3 opt-out enabled
+	bool mark_ent_subtrees;              // also recurse to subtrees of empty-non-terminals
+	zone_contents_t *contents;           // current zone contents
+	const knot_dname_t *subtree_already; // private: already iterating over this subtree
+} mark_empty_ctx_t;
+
+static bool mark_empty_recurse(mark_empty_ctx_t *ctx, zone_node_t *node)
+{
+	return ctx->mark_ent_subtrees && ctx->subtree_already == NULL &&
+	       node->children > 0 && knot_nsec_empty_nsec_and_rrsigs_in_node(node); // empty non-terminal
+}
+
+static int do_empty_recurse(mark_empty_ctx_t *ctx, zone_node_t *node, zone_tree_apply_cb_t cb)
+{
+	if (mark_empty_recurse(ctx, node)) {
+		ctx->subtree_already = node->owner;
+		int ret = zone_tree_sub_apply(ctx->contents->nodes, node->owner, cb, ctx);
+		ctx->subtree_already = NULL;
+		return ret;
+	}
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Marks node and its parents as empty if NSEC3 should not be generated
  *        for them.
@@ -587,11 +611,13 @@ static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
  */
 static int nsec3_mark_empty(zone_node_t *node, void *data)
 {
-	if (node->flags & NODE_FLAGS_DELETED) {
+	if ((node->flags & NODE_FLAGS_DELETED) || (node->flags & NODE_FLAGS_EMPTY)) {
 		return KNOT_EOK;
 	}
 
-	if (!(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node, (data != NULL))) {
+	mark_empty_ctx_t *ctx = data;
+
+	if (nsec3_is_empty(node, ctx->opt_out)) {
 		/*!
 		 * Mark this node and all parent nodes that meet the same
 		 * criteria as empty.
@@ -607,6 +633,8 @@ static int nsec3_mark_empty(zone_node_t *node, void *data)
 			/* Recurse using the parent node */
 			return nsec3_mark_empty(node_parent(node), data);
 		}
+	} else {
+		return do_empty_recurse(ctx, node, nsec3_mark_empty);
 	}
 
 	return KNOT_EOK;
@@ -621,7 +649,6 @@ static int nsec3_mark_empty(zone_node_t *node, void *data)
  */
 static int nsec3_reset(zone_node_t *node, void *data)
 {
-	UNUSED(data);
 	if (node->flags & NODE_FLAGS_EMPTY) {
 		/* If node was marked as empty, increase its parent's children
 		 * count.
@@ -629,6 +656,8 @@ static int nsec3_reset(zone_node_t *node, void *data)
 		node_parent(node)->children++;
 		/* Clear the 'empty' flag. */
 		node->flags &= ~NODE_FLAGS_EMPTY;
+	} else {
+		return do_empty_recurse(data, node, nsec3_reset);
 	}
 
 	return KNOT_EOK;
@@ -717,8 +746,8 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	 * The flag will be removed when the node is encountered during NSEC3
 	 * creation procedure.
 	 */
-	int result = zone_tree_apply(zone->nodes, nsec3_mark_empty,
-	                             (opt_out ? (void *)zone : NULL));
+	mark_empty_ctx_t mctx = { opt_out, false, NULL };
+	int result = zone_tree_apply(zone->nodes, nsec3_mark_empty, &mctx);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
@@ -735,7 +764,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	 * so that flags and children count are back to normal before further
 	 * processing.
 	 */
-	result = zone_tree_apply(zone->nodes, nsec3_reset, NULL);
+	result = zone_tree_apply(zone->nodes, nsec3_reset, &mctx);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
@@ -773,8 +802,8 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return knot_nsec3_create_chain(update->new_cont, params, ttl, update);
 	}
 
-	int ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_mark_empty,
-	                          (opt_out ? (void *)update : NULL));
+	mark_empty_ctx_t mctx = { opt_out, true, update->new_cont };
+	int ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_mark_empty, &mctx);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -784,7 +813,7 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
-	ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_reset, NULL);
+	ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_reset, &mctx);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

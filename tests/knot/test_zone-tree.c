@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -68,9 +68,17 @@ static int ztree_iter_data(zone_node_t *node, void *data)
 	return result;
 }
 
+static int ztree_node_counter(zone_node_t *node, void *data)
+{
+	(void)node;
+	int *counter = data;
+	(*counter)++;
+	return KNOT_EOK;
+}
+
 int main(int argc, char *argv[])
 {
-	plan(5);
+	plan_lazy();
 
 	ztree_init_data();
 
@@ -112,6 +120,12 @@ int main(int argc, char *argv[])
 	unsigned i = 0;
 	int ret = zone_tree_apply(t, ztree_iter_data, &i);
 	ok (ret == KNOT_EOK, "ztree: ordered traversal");
+
+	/* 6. subtree apply */
+	int counter = 0;
+	ret = zone_tree_sub_apply(t, (const knot_dname_t *)"\x02""ac",
+	                          ztree_node_counter, &counter);
+	ok(ret == KNOT_EOK && counter == 2, "ztree: subtree iteration");
 
 	zone_tree_free(&t);
 	ztree_free_data();
