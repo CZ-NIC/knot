@@ -19,7 +19,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 
 #include "libknot/xdp/bpf-consts.h"
@@ -33,7 +32,8 @@ typedef struct {
 	struct iovec payload;
 } knot_xdp_msg_t;
 
-/*! \brief Styles of loading BPF program.
+/*!
+ * \brief Styles of loading BPF program.
  *
  * \note In *all* the cases loading can only succeed if at the end
  *       a compatible BPF program is loaded on the interface.
@@ -58,7 +58,7 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
  * \param listen_port  Port to listen on, or KNOT_XDP_LISTEN_PORT_* flag.
  * \param load_bpf     Insert BPF program into packet processing.
  *
- * \return KNOT_E*
+ * \return KNOT_E* or -errno
  */
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, uint32_t if_queue,
                   uint32_t listen_port, knot_xdp_load_bpf_t load_bpf);
@@ -121,7 +121,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
  *
  * \param socket  XDP socket.
  *
- * \return KNOT_E*
+ * \return KNOT_E* or -errno
  */
 int knot_xdp_send_finish(knot_xdp_socket_t *socket);
 

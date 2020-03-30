@@ -28,6 +28,10 @@
 _public_
 int knot_eth_get_rx_queues(const char *devname)
 {
+	if (devname == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0) {
 		return knot_map_errno();
@@ -42,7 +46,7 @@ int knot_eth_get_rx_queues(const char *devname)
 	strlcpy(ifr.ifr_name, devname, IFNAMSIZ);
 
 	int ret = ioctl(fd, SIOCETHTOOL, &ifr);
-	if (ret) {
+	if (ret != 0) {
 		if (errno == EOPNOTSUPP) {
 			ret = 1;
 		} else {
