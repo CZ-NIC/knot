@@ -49,6 +49,7 @@ typedef struct {
 	int binode_second;
 
 	zone_tree_t *next_tree;
+	knot_dname_t *sub_root;
 } zone_tree_it_t;
 
 typedef struct {
@@ -212,6 +213,19 @@ int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool free_deleted);
 int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data);
 
 /*!
+ * \brief Applies given function to each node in a subtree.
+ *
+ * \param tree        Zone tree.
+ * \param sub_root    Name denoting the subtree.
+ * \param function    Callback to be applied.
+ * \param data        Callback context.
+ *
+ * \return KNOT_E*
+ */
+int zone_tree_sub_apply(zone_tree_t *tree, const knot_dname_t *sub_root,
+                        zone_tree_apply_cb_t function, void *data);
+
+/*!
  * \brief Start zone tree iteration.
  *
  * \param tree   Zone tree to iterate over.
@@ -220,6 +234,17 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
  * \return KNOT_OK, KNOT_ENOMEM
  */
 int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it);
+
+/*!
+ * \brief Start iteration over a subtree.
+ *
+ * \param tree        Zone tree to iterate in.
+ * \param sub_root    Iterate over node of this name and all children.
+ * \param it          Out: iteration context, shall be zeroed before.
+ *
+ * \return KNOT_E*
+ */
+int zone_tree_it_sub_begin(zone_tree_t *tree, const knot_dname_t *sub_root, zone_tree_it_t *it);
 
 /*!
  * \brief Start iteration of two zone trees.
