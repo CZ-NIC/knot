@@ -16,6 +16,10 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
+#include <linux/udp.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +56,33 @@ _Static_assert((FRAME_SIZE == 4096 || FRAME_SIZE == 2048)
 	, "Incorrect #define combination for AF_XDP.");
 #endif
 
-/** The memory layout of each umem frame. */
+/*! \brief The memory layout of IPv4 umem frame. */
+struct udpv4 {
+	union {
+		uint8_t bytes[1];
+		struct {
+			struct ethhdr eth; // No VLAN support; CRC at the "end" of .data!
+			struct iphdr ipv4;
+			struct udphdr udp;
+			uint8_t data[];
+		} __attribute__((packed));
+	};
+};
+
+/*! \brief The memory layout of IPv6 umem frame. */
+struct udpv6 {
+	union {
+		uint8_t bytes[1];
+		struct {
+			struct ethhdr eth; // No VLAN support; CRC at the "end" of .data!
+			struct ipv6hdr ipv6;
+			struct udphdr udp;
+			uint8_t data[];
+		} __attribute__((packed));
+	};
+};
+
+/*! \brief The memory layout of each umem frame. */
 struct umem_frame {
 	union {
 		uint8_t bytes[FRAME_SIZE];
@@ -70,24 +100,26 @@ static int configure_xsk_umem(struct xsk_umem_info **out_umem)
 {
 	/* Allocate memory and call driver to create the UMEM. */
 	struct xsk_umem_info *umem = calloc(1,
-			offsetof(struct xsk_umem_info, tx_free_indices)
-			+ sizeof(umem->tx_free_indices[0]) * UMEM_FRAME_COUNT_TX);
+		offsetof(struct xsk_umem_info, tx_free_indices)
+		+ sizeof(umem->tx_free_indices[0]) * UMEM_FRAME_COUNT_TX);
 	if (umem == NULL) {
 		return KNOT_ENOMEM;
 	}
+
 	int ret = posix_memalign((void **)&umem->frames, getpagesize(),
-				 FRAME_SIZE * UMEM_FRAME_COUNT);
+	                         FRAME_SIZE * UMEM_FRAME_COUNT);
 	if (ret != 0) {
 		free(umem);
-		return knot_map_errno_code(ret);
-
+		return KNOT_ENOMEM;
 	}
+
 	const struct xsk_umem_config config = {
 		.fill_size = UMEM_RING_LEN_RX,
 		.comp_size = UMEM_RING_LEN_TX,
 		.frame_size = FRAME_SIZE,
 		.frame_headroom = 0,
 	};
+
 	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * UMEM_FRAME_COUNT,
 	                       &umem->fq, &umem->cq, &config);
 	if (ret != KNOT_EOK) {
@@ -99,19 +131,20 @@ static int configure_xsk_umem(struct xsk_umem_info **out_umem)
 
 	/* Designate the starting chunk of buffers for TX, and put them onto the stack. */
 	umem->tx_free_count = UMEM_FRAME_COUNT_TX;
-	for (int buf_i = 0; buf_i < UMEM_FRAME_COUNT_TX; ++buf_i) {
-		umem->tx_free_indices[buf_i] = buf_i;
+	for (uint32_t i = 0; i < UMEM_FRAME_COUNT_TX; ++i) {
+		umem->tx_free_indices[i] = i;
 	}
 
 	/* Designate the rest of buffers for RX, and pass them to the driver. */
-	uint32_t ring_i = -1/*shut up incorrect warning*/;
-	ret = xsk_ring_prod__reserve(&umem->fq, UMEM_FRAME_COUNT_RX, &ring_i);
+	uint32_t idx = 0;
+	ret = xsk_ring_prod__reserve(&umem->fq, UMEM_FRAME_COUNT_RX, &idx);
 	if (ret != UMEM_FRAME_COUNT - UMEM_FRAME_COUNT_TX) {
-		abort(); // impossible, but let's abort at least
+		assert(0);
+		return KNOT_ERROR;
 	}
-	assert(ring_i == 0);
-	for (ssize_t buf_i = UMEM_FRAME_COUNT_TX; buf_i < UMEM_FRAME_COUNT; ++buf_i, ++ring_i) {
-		*xsk_ring_prod__fill_addr(&umem->fq, ring_i) = buf_i * FRAME_SIZE;
+	assert(idx == 0);
+	for (uint32_t i = UMEM_FRAME_COUNT_TX; i < UMEM_FRAME_COUNT; ++i) {
+		*xsk_ring_prod__fill_addr(&umem->fq, idx++) = i * FRAME_SIZE;
 	}
 	xsk_ring_prod__submit(&umem->fq, UMEM_FRAME_COUNT_RX);
 
@@ -125,13 +158,14 @@ static void deconfigure_xsk_umem(struct xsk_umem_info *umem)
 	free(umem);
 }
 
-static knot_xdp_socket_t *configure_xsk_socket(struct xsk_umem_info *umem,
-                                               const struct kxsk_iface *iface,
-                                               uint32_t if_queue)
+static int configure_xsk_socket(struct xsk_umem_info *umem,
+                                const struct kxsk_iface *iface,
+                                uint32_t if_queue,
+                                knot_xdp_socket_t **out_sock)
 {
 	knot_xdp_socket_t *xsk_info = calloc(1, sizeof(*xsk_info));
 	if (xsk_info == NULL) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 	xsk_info->iface = iface;
 	xsk_info->if_queue = if_queue;
@@ -143,15 +177,16 @@ static knot_xdp_socket_t *configure_xsk_socket(struct xsk_umem_info *umem,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
 	};
 
-	errno = xsk_socket__create(&xsk_info->xsk, iface->ifname,
-	                           xsk_info->if_queue, umem->umem,
-	                           &xsk_info->rx, &xsk_info->tx, &sock_conf);
-	if (errno) {
+	int ret = xsk_socket__create(&xsk_info->xsk, iface->if_name,
+	                             xsk_info->if_queue, umem->umem,
+	                             &xsk_info->rx, &xsk_info->tx, &sock_conf);
+	if (ret != 0) {
 		free(xsk_info);
-		return NULL;
-	} else {
-		return xsk_info;
+		return ret;
 	}
+
+	*out_sock = xsk_info;
+	return KNOT_EOK;
 }
 
 _public_
@@ -168,7 +203,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, uint32_t if_q
 		return ret;
 	}
 
-	/* Initialize shared packet_buffer for umem usage */
+	/* Initialize shared packet_buffer for umem usage. */
 	struct xsk_umem_info *umem = NULL;
 	ret = configure_xsk_umem(&umem);
 	if (ret != KNOT_EOK) {
@@ -176,11 +211,11 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, uint32_t if_q
 		return ret;
 	}
 
-	*socket = configure_xsk_socket(umem, iface, if_queue);
-	if (*socket == NULL) {
+	ret = configure_xsk_socket(umem, iface, if_queue, socket);
+	if (ret != KNOT_EOK) {
 		deconfigure_xsk_umem(umem);
 		kxsk_iface_free(iface);
-		return KNOT_NET_ESOCKET;
+		return ret;
 	}
 
 	ret = kxsk_socket_start(iface, (*socket)->if_queue, listen_port, (*socket)->xsk);
@@ -276,7 +311,7 @@ int knot_xdp_send_alloc(knot_xdp_socket_t *socket, bool ipv6, knot_xdp_msg_t *ou
 
 	struct umem_frame *uframe = alloc_tx_frame(socket->umem);
 	if (uframe == NULL) {
-		return KNOT_ENOENT;
+		return KNOT_ENOMEM;
 	}
 
 	memset(out, 0, sizeof(*out));
@@ -295,6 +330,7 @@ int knot_xdp_send_alloc(knot_xdp_socket_t *socket, bool ipv6, knot_xdp_msg_t *ou
 		memcpy(&out->ip_from, &in_reply_to->ip_to, sizeof(out->ip_from));
 		memcpy(&out->ip_to, &in_reply_to->ip_from, sizeof(out->ip_to));
 	}
+
 	return KNOT_EOK;
 }
 

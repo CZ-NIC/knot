@@ -17,106 +17,97 @@
 #pragma once
 
 #include <bpf/xsk.h>
-#include <linux/if_ether.h>
-#include <linux/ip.h>
-#include <linux/ipv6.h>
-#include <linux/udp.h>
-#include <stdint.h>
 
 #include "libknot/xdp/af_xdp.h"
 
-struct udpv4 {
-	union {
-		uint8_t bytes[1];
-		struct {
-			struct ethhdr eth; // No VLAN support; CRC at the "end" of .data!
-			struct iphdr ipv4;
-			struct udphdr udp;
-			uint8_t data[];
-		} __attribute__((packed));
-	};
-};
-
-struct udpv6 {
-	union {
-		uint8_t bytes[1];
-		struct {
-			struct ethhdr eth; // No VLAN support; CRC at the "end" of .data!
-			struct ipv6hdr ipv6;
-			struct udphdr udp;
-			uint8_t data[];
-		} __attribute__((packed));
-	};
-};
-
-/** Data around one network interface. */
 struct kxsk_iface {
-	const char *ifname;
-	int ifindex; /**< computed from ifname */
+	/*! Interface name. */
+	const char *if_name;
+	/*! Interface name index (derived from ifname). */
+	int if_index;
 
-	/* File-descriptors to BPF maps for the program running on the interface. */
+	/*! Configuration BPF map file descriptor. */
 	int qidconf_map_fd;
+	/*! XSK BPF map file descriptor. */
 	int xsks_map_fd;
 
+	/*! BPF program object. */
 	struct bpf_object *prog_obj;
 };
 
 struct xsk_umem_info {
-	/** Fill queue: passing memory frames to kernel - ready to receive. */
+	/*! Fill queue: passing memory frames to kernel - ready to receive. */
 	struct xsk_ring_prod fq;
-	/** Completion queue: passing memory frames from kernel - after send finishes. */
+	/*! Completion queue: passing memory frames from kernel - after send finishes. */
 	struct xsk_ring_cons cq;
-	/** Handle internal to libbpf. */
+	/*! Handle internal to libbpf. */
 	struct xsk_umem *umem;
 
-	/**< The memory frames. TODO: (uint8_t *frammem) might be more practical. */
+	/*! The memory frames. */
 	struct umem_frame *frames;
-	/**< The number of free frames (for TX). */
+	/*! The number of free frames (for TX). */
 	uint32_t tx_free_count;
-	/**< Stack of indices of the free frames (for TX). */
+	/*! Stack of indices of the free frames (for TX). */
 	uint16_t tx_free_indices[];
 };
 
 struct knot_xdp_socket {
-	/** Receive queue: passing arrived packets from kernel. */
+	/*! Receive queue: passing arrived packets from kernel. */
 	struct xsk_ring_cons rx;
-	/** Transmit queue: passing packets to kernel for sending. */
+	/*! Transmit queue: passing packets to kernel for sending. */
 	struct xsk_ring_prod tx;
-	/** Information about memory frames for all the passed packets. */
+	/*! Information about memory frames for all the passed packets. */
 	struct xsk_umem_info *umem;
-	/** Handle internal to libbpf. */
+	/*! Handle internal to libbpf. */
 	struct xsk_socket *xsk;
 
+	/*! Interface context. */
 	const struct kxsk_iface *iface;
-	uint32_t if_queue;
+	/*! Network card queue id. */
+	int if_queue;
 
+	/*! The kernel has to be woken up by a syscall indication. */
 	bool kernel_needs_wakeup;
 };
 
 /*!
  * \brief Set up BPF program and map for one XDP socket.
  *
- * \param ifname       Name of the net iface (e.g. eth0).
- * \param load_bpf     Insert BPF program into packet processing.
- * \param out_iface    Output: created interface context.
+ * \param if_name    Name of the net iface (e.g. eth0).
+ * \param load_bpf   Insert BPF program into packet processing.
+ * \param out_iface  Output: created interface context.
  *
- * \return KNOT_E*
+ * \return KNOT_E* or -errno
  */
-int kxsk_iface_new(const char *ifname, knot_xdp_load_bpf_t load_bpf,
-		   struct kxsk_iface **out_iface);
+int kxsk_iface_new(const char *if_name, knot_xdp_load_bpf_t load_bpf,
+                   struct kxsk_iface **out_iface);
 
 /*!
  * \brief Unload BPF maps for a socket.
  *
- * \param iface   Interface context to be freed.
- *
  * \note This keeps the loaded BPF program. We don't care.
+ *
+ * \param iface  Interface context to be freed.
  */
 void kxsk_iface_free(struct kxsk_iface *iface);
 
-/*! \brief Activate this AF_XDP socket through the BPF maps. */
+/*!
+ * \brief Activate this AF_XDP socket through the BPF maps.
+ *
+ * \param iface        Interface context.
+ * \param queue_id     Network card queue id.
+ * \param listen_port  Port to listen on, or KNOT_XDP_LISTEN_PORT_* flag.
+ * \param xsk          Socket ctx.
+ *
+ * \return KNOT_E* or -errno
+ */
 int kxsk_socket_start(const struct kxsk_iface *iface, int queue_id,
                       uint32_t listen_port, struct xsk_socket *xsk);
 
-/*! \brief Deactivate this AF_XDP socket through the BPF maps. */
-int kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id);
+/*!
+ * \brief Deactivate this AF_XDP socket through the BPF maps.
+ *
+ * \param iface     Interface context.
+ * \param queue_id  Network card queue id.
+ */
+void kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id);
