@@ -265,7 +265,7 @@ int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *e
 	// avoid discontinuity
 	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && md.serial_to != changeset_from(ch)) {
 		if (journal_contains(&txn, true, 0, j.zone)) {
-			return KNOT_ESEMCHECK;
+			txn.ret = KNOT_ESEMCHECK;
 		} else {
 			MDB_val prefix = { knot_dname_size(j.zone), (void *)j.zone };
 			knot_lmdb_del_prefix(&txn, &prefix);
