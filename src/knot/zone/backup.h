@@ -34,7 +34,9 @@ typedef struct zone_backup_ctx {
 	knot_lmdb_db_t bck_journal;         // backup journal DB
 } zone_backup_ctx_t;
 
-int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_size, size_t timer_db_size, size_t journal_size, zone_backup_ctx_t **out_ctx);
+int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_dir,
+                     size_t kasp_db_size, size_t timer_db_size, size_t journal_size,
+                     zone_backup_ctx_t **out_ctx);
 
 void zone_backup_free(zone_backup_ctx_t *ctx);
 

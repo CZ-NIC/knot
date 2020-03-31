@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
@@ -35,13 +36,21 @@ int event_backup(conf_t *conf, zone_t *zone)
 	bool restore = ctx->restore_mode;
 
 	if (restore) {
-		(void)event_expire(conf, zone); // always returns EOK
+		// expire zone
+		zone_contents_t *expired = zone_switch_contents(zone, NULL);
+		synchronize_rcu();
+		knot_sem_wait(&zone->cow_lock);
+		zone_contents_deep_free(expired);
+		knot_sem_post(&zone->cow_lock);
+		zone->zonefile.exists = false;
 	}
 
 	int ret = zone_backup(conf, zone);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone %s %s", restore ? "restored from" : "backed up to", bckdir);
-	} // else logged by event system
+	} else {
+		log_zone_warning(zone->name, "zone %s failed (%s)", restore ? "restore" : "back-up", knot_strerror(ret));
+	}
 
 	if (restore) {
 		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);

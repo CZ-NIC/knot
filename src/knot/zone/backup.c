@@ -41,7 +41,9 @@ static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **rem
 
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
-int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_size, size_t timer_db_size, size_t journal_size, zone_backup_ctx_t **out_ctx)
+int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_dir,
+                     size_t kasp_db_size, size_t timer_db_size, size_t journal_size,
+                     zone_backup_ctx_t **out_ctx)
 {
 	if (backup_dir == NULL || out_ctx == NULL) {
 		return KNOT_EINVAL;
@@ -55,13 +57,14 @@ int zone_backup_init(size_t zone_count, const char *backup_dir, size_t kasp_db_s
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
+	ctx->restore_mode = restore_mode;
 	ctx->zones_left = zone_count;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 	pthread_mutex_init(&ctx->zones_left_mutex, NULL);
 
 	struct stat st = { 0 };
-	if (stat(backup_dir, &st) == -1) {
+	if (!restore_mode && stat(backup_dir, &st) == -1) {
 	    mkdir(backup_dir, 0777);
 	}
 
@@ -122,7 +125,9 @@ static int file_overwrite(const char *what, const char *with)
 	} else {
 		ret = KNOT_EOK;
 	}
-	fr && fclose(fr);
+	if (fr != NULL) {
+		fclose(fr);
+	}
 	return fw && fclose(fw) == 0 ? ret : (ret == KNOT_EOK ? knot_map_errno() : ret);
 }
 
@@ -156,7 +161,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 		return ret;
 	}
 	if (backend_type == KEYSTORE_BACKEND_PKCS11) {
-		log_zone_warning(zone->name, "private keys from PKCS#11 keystore won't be backed up");
+		log_zone_warning(zone->name, "private keys from PKCS#11 aren't subject of backup/restore procedure");
 		(void)dnssec_keystore_deinit(from);
 		return KNOT_EOK;
 	}
