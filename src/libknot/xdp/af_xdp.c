@@ -160,7 +160,6 @@ static void deconfigure_xsk_umem(struct kxsk_umem *umem)
 
 static int configure_xsk_socket(struct kxsk_umem *umem,
                                 const struct kxsk_iface *iface,
-                                uint32_t if_queue,
                                 knot_xdp_socket_t **out_sock)
 {
 	knot_xdp_socket_t *xsk_info = calloc(1, sizeof(*xsk_info));
@@ -168,7 +167,6 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 		return KNOT_ENOMEM;
 	}
 	xsk_info->iface = iface;
-	xsk_info->if_queue = if_queue;
 	xsk_info->umem = umem;
 
 	const struct xsk_socket_config sock_conf = {
@@ -178,7 +176,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	};
 
 	int ret = xsk_socket__create(&xsk_info->xsk, iface->if_name,
-	                             xsk_info->if_queue, umem->umem,
+	                             iface->if_queue, umem->umem,
 	                             &xsk_info->rx, &xsk_info->tx, &sock_conf);
 	if (ret != 0) {
 		free(xsk_info);
@@ -190,7 +188,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 }
 
 _public_
-int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, uint32_t if_queue,
+int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   uint32_t listen_port, knot_xdp_load_bpf_t load_bpf)
 {
 	if (socket == NULL || if_name == NULL) {
@@ -198,7 +196,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, uint32_t if_q
 	}
 
 	struct kxsk_iface *iface;
-	int ret = kxsk_iface_new(if_name, load_bpf, &iface);
+	int ret = kxsk_iface_new(if_name, if_queue, load_bpf, &iface);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -211,14 +209,14 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, uint32_t if_q
 		return ret;
 	}
 
-	ret = configure_xsk_socket(umem, iface, if_queue, socket);
+	ret = configure_xsk_socket(umem, iface, socket);
 	if (ret != KNOT_EOK) {
 		deconfigure_xsk_umem(umem);
 		kxsk_iface_free(iface);
 		return ret;
 	}
 
-	ret = kxsk_socket_start(iface, (*socket)->if_queue, listen_port, (*socket)->xsk);
+	ret = kxsk_socket_start(iface, listen_port, (*socket)->xsk);
 	if (ret != KNOT_EOK) {
 		xsk_socket__delete((*socket)->xsk);
 		deconfigure_xsk_umem(umem);
@@ -238,7 +236,7 @@ void knot_xdp_deinit(knot_xdp_socket_t *socket)
 		return;
 	}
 
-	kxsk_socket_stop(socket->iface, socket->if_queue);
+	kxsk_socket_stop(socket->iface);
 	xsk_socket__delete(socket->xsk);
 	deconfigure_xsk_umem(socket->umem);
 
