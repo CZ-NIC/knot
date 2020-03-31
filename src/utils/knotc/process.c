@@ -142,6 +142,18 @@ int set_ctl(knot_ctl_t **ctl, const cmd_desc_t *desc, params_t *params)
 		return KNOT_EINVAL;
 	}
 
+	/* Alter privileges */
+	int uid, gid;
+	if (conf_user(conf(), &uid, &gid) != KNOT_EOK ||
+	    log_update_privileges(uid, gid) != KNOT_EOK ||
+	    proc_update_privileges(uid, gid) != KNOT_EOK) {
+		log_fatal("failed to drop privileges");
+		return EXIT_FAILURE;
+	}
+
+	/* Drop POSIX capabilities. */
+	drop_capabilities();
+
 	/* Mask relevant flags. */
 	cmd_flag_t flags = desc->flags & (CMD_FREAD | CMD_FWRITE);
 
