@@ -315,8 +315,17 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		while (!knot_zonedb_iter_finished(it)) {
 			zone_t *zone = knot_zonedb_iter_val(it);
 
-			if ((zone->flags & ZONE_IS_CATALOGED) &&
-			    (!zone_in_rem(zone->name, server) || zone_in_add(zone->name, server))) {
+			if (!(zone->flags & ZONE_IS_CATALOGED)) {
+				knot_zonedb_iter_next(it);
+				continue;
+			}
+
+			if (zone_in_rem(zone->name, server) && zone_in_add(zone->name, server)) {
+				zone_purge(conf, zone, server);
+				ptrlist_add(expired_contents, zone_expire(zone), NULL);
+			}
+
+			if (!zone_in_rem(zone->name, server) || zone_in_add(zone->name, server)) {
 				zone_t *newzone = create_zone(conf, zone->name, server, zone);
 				if (newzone == NULL) {
 					log_zone_error(zone->name, "zone cannot be created");
@@ -342,18 +351,6 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 			continue;
 		}
 		knot_catalog_add(conf->catalog, val->zone, val->conf_tpl, val->conf_tpl_len);
-
-		if (zone_in_rem(val->zone, server)) {
-			zone_t *old_cataloged = knot_zonedb_find(server->zone_db, val->zone);
-			if (old_cataloged == NULL) {
-				knot_catalog_del(server->catalog_changes.rem, val->zone);
-			} else {
-				zone_purge(conf, old_cataloged, server);
-				ptrlist_add(expired_contents, zone_expire(old_cataloged), NULL);
-			}
-			trie_it_next(tit);
-			continue;
-		}
 
 		zone_t *zone = create_zone(conf, val->zone, server, NULL);
 		if (zone == NULL) {
