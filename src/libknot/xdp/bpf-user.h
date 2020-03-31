@@ -25,6 +25,8 @@ struct kxsk_iface {
 	const char *if_name;
 	/*! Interface name index (derived from ifname). */
 	int if_index;
+	/*! Network card queue id. */
+	int if_queue;
 
 	/*! Configuration BPF map file descriptor. */
 	int qidconf_map_fd;
@@ -63,8 +65,6 @@ struct knot_xdp_socket {
 
 	/*! Interface context. */
 	const struct kxsk_iface *iface;
-	/*! Network card queue id. */
-	int if_queue;
 
 	/*! The kernel has to be woken up by a syscall indication. */
 	bool kernel_needs_wakeup;
@@ -74,12 +74,13 @@ struct knot_xdp_socket {
  * \brief Set up BPF program and map for one XDP socket.
  *
  * \param if_name    Name of the net iface (e.g. eth0).
+ * \param if_queue   Network card queue id.
  * \param load_bpf   Insert BPF program into packet processing.
  * \param out_iface  Output: created interface context.
  *
  * \return KNOT_E* or -errno
  */
-int kxsk_iface_new(const char *if_name, knot_xdp_load_bpf_t load_bpf,
+int kxsk_iface_new(const char *if_name, int if_queue, knot_xdp_load_bpf_t load_bpf,
                    struct kxsk_iface **out_iface);
 
 /*!
@@ -95,19 +96,17 @@ void kxsk_iface_free(struct kxsk_iface *iface);
  * \brief Activate this AF_XDP socket through the BPF maps.
  *
  * \param iface        Interface context.
- * \param queue_id     Network card queue id.
  * \param listen_port  Port to listen on, or KNOT_XDP_LISTEN_PORT_* flag.
  * \param xsk          Socket ctx.
  *
  * \return KNOT_E* or -errno
  */
-int kxsk_socket_start(const struct kxsk_iface *iface, int queue_id,
-                      uint32_t listen_port, struct xsk_socket *xsk);
+int kxsk_socket_start(const struct kxsk_iface *iface, uint32_t listen_port,
+                      struct xsk_socket *xsk);
 
 /*!
  * \brief Deactivate this AF_XDP socket through the BPF maps.
  *
- * \param iface     Interface context.
- * \param queue_id  Network card queue id.
+ * \param iface  Interface context.
  */
-void kxsk_socket_stop(const struct kxsk_iface *iface, int queue_id);
+void kxsk_socket_stop(const struct kxsk_iface *iface);
