@@ -309,6 +309,29 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		knot_zonedb_insert(db_new, zone);
 	}
 
+	/* Reuse unchanged cataloged zones. */
+	if (db_old != NULL) {
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
+		while (!knot_zonedb_iter_finished(it)) {
+			zone_t *zone = knot_zonedb_iter_val(it);
+
+			if ((zone->flags & ZONE_IS_CATALOGED) &&
+			    (!zone_in_rem(zone->name, server) || zone_in_add(zone->name, server))) {
+				zone_t *newzone = create_zone(conf, zone->name, server, zone);
+				if (newzone == NULL) {
+					log_zone_error(zone->name, "zone cannot be created");
+					continue;
+				}
+
+				conf_activate_modules(conf, newzone->name, &newzone->query_modules,
+						      &newzone->query_plan);
+				knot_zonedb_insert(db_new, newzone);
+			}
+			knot_zonedb_iter_next(it);
+		}
+		knot_zonedb_iter_free(it);
+	}
+
 	/* Add cataloged zones. */
 	trie_it_t *tit = trie_it_begin(server->catalog_changes.add);
 	while (!trie_it_finished(tit)) {
@@ -347,29 +370,6 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		trie_it_next(tit);
 	}
 	trie_it_free(tit);
-
-	/* Reuse unchanged cataloged zones. */
-	if (db_old != NULL) {
-		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
-		while (!knot_zonedb_iter_finished(it)) {
-			zone_t *zone = knot_zonedb_iter_val(it);
-
-			if ((zone->flags & ZONE_IS_CATALOGED) &&
-			    (!zone_in_rem(zone->name, server) || zone_in_add(zone->name, server))) {
-				zone_t *newzone = create_zone(conf, zone->name, server, zone);
-				if (newzone == NULL) {
-					log_zone_error(zone->name, "zone cannot be created");
-					continue;
-				}
-
-				conf_activate_modules(conf, newzone->name, &newzone->query_modules,
-						      &newzone->query_plan);
-				knot_zonedb_insert(db_new, newzone);
-			}
-			knot_zonedb_iter_next(it);
-		}
-		knot_zonedb_iter_free(it);
-	}
 
 	return db_new;
 }

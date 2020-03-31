@@ -580,7 +580,8 @@ Catalog zones
 
 Catalog zones is a feature intended for setups with large number of zones,
 where the set of zones is constantly changing, and it's needed to transfer
-the changes of set of zones from master(s) to slave(s).
+the changes of set of zones from master(s) to slave(s), or reconfigure
+zones often.
 
 Terminology first. *Catalog zone* is a meta-zone, that shall be not part
 of the DNS tree, but it contains the information about set of zones, and
