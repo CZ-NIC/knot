@@ -60,7 +60,7 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
  *
  * \return KNOT_E* or -errno
  */
-int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, uint32_t if_queue,
+int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   uint32_t listen_port, knot_xdp_load_bpf_t load_bpf);
 
 /*!
