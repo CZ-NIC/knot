@@ -512,7 +512,10 @@ static int process_rem_rr(const knot_rrset_t *rr,
 		return KNOT_EOK;
 	}
 
-	return zone_update_remove(update, rr);
+	knot_rrset_t rr_ttl = *rr;
+	rr_ttl.ttl = to_modify.ttl;
+
+	return zone_update_remove(update, &rr_ttl);
 }
 
 /*!< \brief Removes RRSet from zone. */
