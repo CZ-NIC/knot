@@ -15,6 +15,8 @@
  */
 
 #include <stddef.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 
 #include "contrib/openbsd/strlcat.h"
@@ -55,6 +57,23 @@ static bool get_cmd_blocking_flag(const char *arg)
 		return true;
 	}
 	return false;
+}
+
+static void update_privileges(void)
+{
+	int uid, gid;
+	if (conf_user(conf(), &uid, &gid) != KNOT_EOK) {
+		return;
+	}
+
+	// Just try to alter process privileges if different from configured.
+	int unused __attribute__((unused));
+	if ((gid_t)gid != getgid()) {
+		unused = setregid(gid, gid);
+	}
+	if ((uid_t)uid != getuid()) {
+		unused = setreuid(uid, uid);
+	}
 }
 
 int set_config(const cmd_desc_t *desc, params_t *params)
@@ -131,6 +150,8 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 
 	/* Update to the new config. */
 	conf_update(new_conf, CONF_UPD_FNONE);
+
+	update_privileges();
 
 	return KNOT_EOK;
 }
