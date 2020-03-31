@@ -221,13 +221,16 @@ static void mark_changed_zones(knot_zonedb_t *zonedb, trie_t *changed)
 	trie_it_free(it);
 }
 
-static void zone_purge(zone_t *zone, server_t *server)
+static void zone_purge(conf_t *conf, zone_t *zone, server_t *server)
 {
 	(void)zone_timers_sweep(&server->timerdb, (sweep_cb)knot_dname_cmp, zone->name);
 
-	char *zonefile = conf_zonefile(conf(), zone->name);
-	(void)unlink(zonefile);
-	free(zonefile);
+	conf_val_t sync = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	if (conf_int(&sync) > -1) {
+		char *zonefile = conf_zonefile(conf, zone->name);
+		(void)unlink(zonefile);
+		free(zonefile);
+	}
 
 	(void)journal_scrape_with_md(zone_journal(zone));
 	if (knot_lmdb_open(zone->kaspdb) == KNOT_EOK) {
@@ -322,7 +325,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 			if (old_cataloged == NULL) {
 				knot_catalog_del(server->catalog_changes.rem, val->zone);
 			} else {
-				zone_purge(old_cataloged, server);
+				zone_purge(conf, old_cataloged, server);
 				ptrlist_add(expired_contents, zone_expire(old_cataloged), NULL);
 			}
 			trie_it_next(tit);
@@ -400,7 +403,7 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 
 		if ((zone->flags & ZONE_IS_CATALOGED) &&
 		    zone_in_rem(zone->name, server) && !zone_in_add(zone->name, server)) {
-			zone_purge(zone, server);
+			zone_purge(conf, zone, server);
 		}
 
 		if (full) {

@@ -625,7 +625,8 @@ zone file reload... In case of incremental change, only affected
 member zones are reloaded.
 
 Any de-cataloged member zone is purged immediately, including its
-zone file, journal, timers and DNSSEC keys.
+zone file, journal, timers and DNSSEC keys. The zone file is not
+deleted, if :ref:`zone_zonefile-sync` is set to *-1* for the member zone.
 
 .. _query-modules:
 
