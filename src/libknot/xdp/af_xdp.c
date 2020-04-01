@@ -96,11 +96,11 @@ struct umem_frame {
 static const size_t FRAME_PAYLOAD_OFFSET4 = offsetof(struct udpv4, data) + offsetof(struct umem_frame, udpv4);
 static const size_t FRAME_PAYLOAD_OFFSET6 = offsetof(struct udpv6, data) + offsetof(struct umem_frame, udpv6);
 
-static int configure_xsk_umem(struct xsk_umem_info **out_umem)
+static int configure_xsk_umem(struct kxsk_umem **out_umem)
 {
 	/* Allocate memory and call driver to create the UMEM. */
-	struct xsk_umem_info *umem = calloc(1,
-		offsetof(struct xsk_umem_info, tx_free_indices)
+	struct kxsk_umem *umem = calloc(1,
+		offsetof(struct kxsk_umem, tx_free_indices)
 		+ sizeof(umem->tx_free_indices[0]) * UMEM_FRAME_COUNT_TX);
 	if (umem == NULL) {
 		return KNOT_ENOMEM;
@@ -151,14 +151,14 @@ static int configure_xsk_umem(struct xsk_umem_info **out_umem)
 	return KNOT_EOK;
 }
 
-static void deconfigure_xsk_umem(struct xsk_umem_info *umem)
+static void deconfigure_xsk_umem(struct kxsk_umem *umem)
 {
 	(void)xsk_umem__delete(umem->umem);
 	free(umem->frames);
 	free(umem);
 }
 
-static int configure_xsk_socket(struct xsk_umem_info *umem,
+static int configure_xsk_socket(struct kxsk_umem *umem,
                                 const struct kxsk_iface *iface,
                                 uint32_t if_queue,
                                 knot_xdp_socket_t **out_sock)
@@ -204,7 +204,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, uint32_t if_q
 	}
 
 	/* Initialize shared packet_buffer for umem usage. */
-	struct xsk_umem_info *umem = NULL;
+	struct kxsk_umem *umem = NULL;
 	ret = configure_xsk_umem(&umem);
 	if (ret != KNOT_EOK) {
 		kxsk_iface_free(iface);
@@ -256,7 +256,7 @@ int knot_xdp_socket_fd(knot_xdp_socket_t *socket)
 	return xsk_socket__fd(socket->xsk);
 }
 
-static void tx_free_relative(struct xsk_umem_info *umem, uint64_t addr_relative)
+static void tx_free_relative(struct kxsk_umem *umem, uint64_t addr_relative)
 {
 	/* The address may not point to *start* of buffer, but `/` solves that. */
 	uint64_t index = addr_relative / FRAME_SIZE;
@@ -271,7 +271,7 @@ void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 		return;
 	}
 
-	struct xsk_umem_info *const umem = socket->umem;
+	struct kxsk_umem *const umem = socket->umem;
 	struct xsk_ring_cons *const cq = &umem->cq;
 
 	uint32_t idx = 0;
@@ -289,7 +289,7 @@ void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 	xsk_ring_cons__release(cq, completed);
 }
 
-static struct umem_frame *alloc_tx_frame(struct xsk_umem_info *umem)
+static struct umem_frame *alloc_tx_frame(struct kxsk_umem *umem)
 {
 	if (unlikely(umem->tx_free_count == 0)) {
 		return NULL;
@@ -668,7 +668,7 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 		return;
 	}
 
-	struct xsk_umem_info *const umem = socket->umem;
+	struct kxsk_umem *const umem = socket->umem;
 	struct xsk_ring_prod *const fq = &umem->fq;
 
 	uint32_t idx = 0;
