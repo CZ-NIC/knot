@@ -187,18 +187,13 @@ void *dns_xdp_gun_thread(void *_ctx)
 				goto end;
 			}
 
-			uint32_t really_sent = 0, retry = 10;
+			uint32_t really_sent = 0;
 			ret = knot_xdp_send(xsk, pkts, ctx->at_once, &really_sent);
-			while (ret == KNOT_NET_ESEND && really_sent < ctx->at_once && --retry > 0) {
-				uint32_t sent_now = 0;
-				usleep(10000);
-				ret = knot_xdp_send(xsk, pkts + really_sent, ctx->at_once - really_sent, &sent_now);
-				really_sent += sent_now;
-			}
 			if (ret != KNOT_EOK) {
 				printf("thread#%u send_pkts failed: %s\n", ctx->thread_id, knot_strerror(ret));
 				goto end;
 			}
+			assert(really_sent == ctx->at_once);
 			tot_sent += really_sent;
 
 			ret = knot_xdp_send_finish(xsk);
