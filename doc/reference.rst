@@ -725,6 +725,8 @@ Configuration of databases for zone contents, DNSSEC metadata, or event timers.
      kasp-db-max-size: SIZE
      timer-db: STR
      timer-db-max-size: SIZE
+     catalog-db: str
+     catalog-db-max-size: SIZE
 
 .. _database_storage:
 
@@ -783,7 +785,7 @@ journal usage limits. See more details regarding
 .. NOTE::
    This value also influences server's usage of virtual memory.
 
-*Default:* 20 GiB (512 MiB for 32-bit)
+*Default:* 20 GiB (1 GiB for 32-bit)
 
 .. _database_kasp-db:
 
@@ -830,6 +832,30 @@ The hard limit for the timer database maximum size.
    This value also influences server's usage of virtual memory.
 
 *Default:* 100 MiB
+
+.. _database_catalog-db:
+
+catalog-db
+----------
+
+An explicit specification of the zone catalog database directory.
+Only useful if :ref:`catalog-zones` are enabled.
+Non-absolute path (i.e. not starting with ``/``) is relative to
+:ref:`storage<database_storage>`.
+
+*Default:* :ref:`storage<database_storage>`/catalog
+
+.. _database_catalog-db-max-size:
+
+catalog-db-max-size
+-------------------
+
+The hard limit for the catalog database maximum size.
+
+.. NOTE::
+   This value also influences server's usage of virtual memory.
+
+*Default:* 20 GiB (1 GiB for 32-bit)
 
 .. _Keystore section:
 
@@ -1451,6 +1477,7 @@ Definition of zones served by the server.
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
+     catalog-template: template_id
      module: STR/STR ...
 
 .. _zone_domain:
@@ -1744,6 +1771,15 @@ refresh-max-interval
 --------------------
 
 Forced maximum zone refresh interval.
+
+*Default:* not set
+
+.. _zone_catalog-template:
+
+catalog-template
+----------------
+
+This zone is a catalog zone. For the catalog-member zones, the specified configuration template will be applied.
 
 *Default:* not set
 
