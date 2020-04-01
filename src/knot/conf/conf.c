@@ -24,6 +24,7 @@
 #include "knot/conf/confdb.h"
 #include "knot/common/log.h"
 #include "knot/server/dthreads.h"
+#include "knot/zone/catalog.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
@@ -169,6 +170,7 @@ conf_val_t conf_zone_get_txn(
 	}
 
 	size_t dname_size = knot_dname_size(dname);
+	knot_dname_t *catalog = NULL;
 
 	// Try to get explicit value.
 	conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
@@ -179,6 +181,7 @@ conf_val_t conf_zone_get_txn(
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
 		              &C_ZONE[1], &key1_name[1], knot_strerror(val.code));
 		// FALLTHROUGH
+	case KNOT_YP_EINVAL_ID:
 	case KNOT_ENOENT:
 		break;
 	}
@@ -190,18 +193,36 @@ conf_val_t conf_zone_get_txn(
 		// Use the specified template.
 		conf_val(&val);
 		conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
-		break;
+		goto got_template;
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
 		              &C_ZONE[1], &C_TPL[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 	case KNOT_YP_EINVAL_ID:
-		// Use the default template.
-		conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
-		            CONF_DEFAULT_ID[0], &val);
+		break;
 	}
 
+	// Check if this is a catalog member zone.
+	int ret = knot_cat_get_catzone_thrsafe(conf->catalog, dname, &catalog);
+	if (ret == KNOT_EOK) {
+		conf_db_get(conf, txn, C_ZONE, C_CATALOG_TPL, catalog, knot_dname_size(catalog), &val);
+		if (val.code != KNOT_EOK) {
+			CONF_LOG_ZONE(LOG_ERR, catalog, "catalog zone has no catalog template (%s)",
+			              knot_strerror(val.code));
+			return val;
+		}
+		knot_dname_free(catalog, NULL);
+		conf_val(&val);
+		conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
+		goto got_template;
+	}
+
+	// Use the default template.
+	conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
+		    CONF_DEFAULT_ID[0], &val);
+
+got_template:
 	switch (val.code) {
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
@@ -1059,6 +1080,15 @@ char* conf_zonefile_txn(
 	return get_filename(conf, txn, zone, file);
 }
 
+inline static bool legacy_db_fallback(
+	const yp_name_t *db_type)
+{
+	return (db_type[1] == C_JOURNAL_DB[1] ||
+	        db_type[1] == C_KASP_DB[1] ||
+	        db_type[1] == C_TIMER_DB[1]);
+	// warning comparing by first letter as every database has different!
+}
+
 char* conf_db_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
@@ -1070,7 +1100,7 @@ char* conf_db_txn(
 	}
 
 	conf_val_t db_val = conf_get_txn(conf, txn, C_DB, db_type);
-	if (db_val.code != KNOT_EOK) {
+	if (db_val.code != KNOT_EOK && legacy_db_fallback(db_type)) {
 		db_val = conf_default_get_txn(conf, txn, db_type);
 	}
 
@@ -1088,7 +1118,7 @@ conf_val_t conf_db_param_txn(
 	const yp_name_t *legacy_param)
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_DB, param);
-	if (val.code != KNOT_EOK) {
+	if (val.code != KNOT_EOK && legacy_param != NULL) {
 		val = conf_default_get_txn(conf, txn, legacy_param);
 	}
 

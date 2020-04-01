@@ -230,6 +230,9 @@ static const yp_item_t desc_database[] = {
 	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" } },
 	{ C_TIMER_DB_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(GIGA(100)),
 	                                               MEGA(100), YP_SSIZE } },
+	{ C_CATALOG_DB,          YP_TSTR,  YP_VSTR = { "catalog" } },
+	{ C_CATALOG_DB_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
+	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
 	{ NULL }
 };
 
@@ -356,6 +359,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_REFRESH_MAX_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_REFRESH_MIN_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, 2, YP_STIME } }, \
 	{ C_ADJUST_THR,          YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } }, \
+	{ C_CATALOG_TPL,         YP_TREF,  YP_VREF = { C_TPL }, FLAGS, { check_ref } }, \
 	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI | FLAGS, { check_modref } }, \
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE }, \

@@ -76,6 +76,7 @@ class Zone(object):
         self.journal_content = journal_content # journal contents
         self.modules = []
         self.dnssec = ZoneDnssec()
+        self.catalog = None
 
     @property
     def name(self):
@@ -1304,6 +1305,49 @@ class Knot(Server):
             s.item("global-module", "[%s]" % modules)
         if self.zone_size_limit:
             s.item("zone-max-size", self.zone_size_limit)
+
+        have_catalog = None
+        for zone in self.zones:
+            z = self.zones[zone]
+            if z.catalog:
+                have_catalog = z
+        if have_catalog is not None:
+            s.id_item("id", "catemplate")
+            s.item_str("file", self.dir + "/master/%s.zone")
+            s.item_str("zonefile-load", "difference")
+
+            # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
+            if z.dnssec.enable:
+                s.item_str("dnssec-signing", "on")
+                s.item_str("dnssec-policy", z.name)
+
+            acl = ""
+            if z.masters:
+                masters = ""
+                for master in z.masters:
+                    if masters:
+                        masters += ", "
+                    masters += master.name
+                    if not master.disable_notify:
+                        if acl:
+                            acl += ", "
+                        acl += "acl_%s" % master.name
+                s.item("master", "[%s]" % masters)
+            if z.slaves:
+                slaves = ""
+                for slave in z.slaves:
+                    if slave.disable_notify:
+                        continue
+                    if slaves:
+                        slaves += ", "
+                    slaves += slave.name
+                if slaves:
+                    s.item("notify", "[%s]" % slaves)
+            if acl:
+                acl += ", "
+            acl += "acl_local, acl_test"
+            s.item("acl", "[%s]" % acl)
+
         s.end()
 
         s.begin("zone")
@@ -1352,6 +1396,9 @@ class Knot(Server):
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "on")
                 s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
+
+            if z.catalog:
+                s.item_str("catalog-template", "catemplate")
 
             if len(z.modules) > 0:
                 modules = ""

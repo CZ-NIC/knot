@@ -335,6 +335,17 @@ static bool curget(knot_lmdb_txn_t *txn, MDB_cursor_op op)
 	return (txn->ret == KNOT_EOK);
 }
 
+static int mdb_val_clone(const MDB_val *orig, MDB_val *clone)
+{
+	clone->mv_data = malloc(orig->mv_size);
+	if (clone->mv_data == NULL) {
+		return KNOT_ENOMEM;
+	}
+	clone->mv_size = orig->mv_size;
+	memcpy(clone->mv_data, orig->mv_data, clone->mv_size);
+	return KNOT_EOK;
+}
+
 bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how)
 {
 	if (!txn_semcheck(txn) || !init_cursor(txn) || !txn_enomem(txn, what)) {
@@ -363,6 +374,28 @@ bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how)
 	}
 
 	return succ;
+}
+
+// this is not bulletproof thread-safe (in case of LMDB fail-teardown, but mostly OK
+int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, knot_lmdb_find_t how)
+{
+	assert(how == KNOT_LMDB_EXACT);
+	if (key->mv_data == NULL) {
+		return KNOT_ENOMEM;
+	}
+	if (!txn->opened) {
+		return KNOT_EINVAL;
+	}
+	if (txn->ret != KNOT_EOK) {
+		return txn->ret;
+	}
+	MDB_val tmp = { 0 };
+	int ret = mdb_get(txn->txn, txn->db->dbi, key, &tmp);
+	err_to_knot(&ret);
+	if (ret == KNOT_EOK) {
+		ret = mdb_val_clone(&tmp, val);
+	}
+	return ret;
 }
 
 bool knot_lmdb_first(knot_lmdb_txn_t *txn)

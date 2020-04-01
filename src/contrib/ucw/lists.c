@@ -233,3 +233,13 @@ void ptrlist_deep_free(list_t *l, knot_mm_t *mm)
 	}
 	ptrlist_free(l, mm);
 }
+
+void ptrlist_free_custom(list_t *l, knot_mm_t *mm,
+                         ptrlist_free_cb free_cb)
+{
+	ptrnode_t *n;
+	WALK_LIST(n, *l) {
+		free_cb(n->d);
+	}
+	ptrlist_free(l, mm);
+}

@@ -19,11 +19,14 @@
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
+#include "knot/zone/catalog.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "contrib/trim.h"
 #include "contrib/ucw/lists.h"
 
+#include <signal.h>
+#include <unistd.h>
 #include <urcu.h>
 
 // Call mem_trim() whenever accumuled size of updated zones reaches this size.
@@ -703,6 +706,33 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 	return KNOT_EOK;
 }
 
+static int commit_catalog(conf_t *conf, zone_update_t *update)
+{
+	conf_val_t val = conf_zone_get(conf, C_CATALOG_TPL, update->zone->name);
+	if (val.code != KNOT_EOK) {
+		return val.code == KNOT_ENOENT ? KNOT_EOK : val.code;
+	}
+	update->zone->flags |= ZONE_IS_CATALOG;
+	int ret = KNOT_EOK;
+	if ((update->flags & UPDATE_INCREMENTAL)) {
+		ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.remove, true, update->zone->catalog);
+		if (ret == KNOT_EOK) {
+			ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.add, false, NULL);
+		}
+	} else {
+		ret = knot_cat_update_del_all(update->zone->catalog_upd, update->zone->catalog, update->zone->name);
+		if (ret == KNOT_EOK) {
+			ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->zone->contents, false, NULL);
+		}
+	}
+
+	if (ret == KNOT_EOK) {
+		kill(getpid(), SIGUSR1);
+	}
+	return ret;
+}
+
+
 typedef struct {
 	pthread_mutex_t lock;
 	size_t counter;
@@ -841,6 +871,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, update->new_cont);
+
+	ret = commit_catalog(conf, update);
+	if (ret != KNOT_EOK) {
+		log_zone_warning(update->zone->name, "catalog zone not fully populated (%s)", knot_strerror(ret));
+	}
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);
