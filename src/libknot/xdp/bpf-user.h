@@ -35,7 +35,7 @@ struct kxsk_iface {
 	struct bpf_object *prog_obj;
 };
 
-struct xsk_umem_info {
+struct kxsk_umem {
 	/*! Fill queue: passing memory frames to kernel - ready to receive. */
 	struct xsk_ring_prod fq;
 	/*! Completion queue: passing memory frames from kernel - after send finishes. */
@@ -57,7 +57,7 @@ struct knot_xdp_socket {
 	/*! Transmit queue: passing packets to kernel for sending. */
 	struct xsk_ring_prod tx;
 	/*! Information about memory frames for all the passed packets. */
-	struct xsk_umem_info *umem;
+	struct kxsk_umem *umem;
 	/*! Handle internal to libbpf. */
 	struct xsk_socket *xsk;
 
