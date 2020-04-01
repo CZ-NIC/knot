@@ -73,6 +73,8 @@ typedef struct {
 dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_PUBLIC, 16)
 dynarray_declare(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_PUBLIC, 16)
 
+struct knot_catalog;
+
 /*! Configuration context. */
 typedef struct {
 	/*! Cloned configuration indicator. */
@@ -131,6 +133,8 @@ typedef struct {
 	list_t *query_modules;
 	/*! Default query modules plan. */
 	struct query_plan *query_plan;
+	/*! Zone catalog database. */
+	struct knot_catalog *catalog;
 } conf_t;
 
 /*!

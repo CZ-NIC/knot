@@ -22,6 +22,7 @@
 #include "knot/journal/knot_lmdb.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
+#include "knot/zone/catalog.h"
 #include "knot/zone/zonedb.h"
 
 struct server;
@@ -78,11 +79,11 @@ typedef struct server {
 	/*! \brief Server state tracking. */
 	volatile unsigned state;
 
-	/*! \brief Zone database. */
 	knot_zonedb_t *zone_db;
 	knot_lmdb_db_t timerdb;
 	knot_lmdb_db_t journaldb;
 	knot_lmdb_db_t kaspdb;
+	knot_catalog_t catalog;
 
 	/*! \brief I/O handlers. */
 	struct {
@@ -99,6 +100,9 @@ typedef struct server {
 	/*! \brief List of interfaces. */
 	iface_t *ifaces;
 	size_t n_ifaces;
+
+	/*! \brief Pending changes to catalog member zones. */
+	knot_cat_update_t catalog_upd;
 } server_t;
 
 /*!

@@ -667,6 +667,8 @@ database:
     kasp\-db\-max\-size: SIZE
     timer\-db: STR
     timer\-db\-max\-size: SIZE
+    catalog\-db: str
+    catalog\-db\-max\-size: SIZE
 .ft P
 .fi
 .UNINDENT
@@ -720,7 +722,7 @@ This value also influences server\(aqs usage of virtual memory.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 20 GiB (512 MiB for 32\-bit)
+\fIDefault:\fP 20 GiB (1 GiB for 32\-bit)
 .SS kasp\-db
 .sp
 An explicit specification of the KASP database directory.
@@ -759,6 +761,26 @@ This value also influences server\(aqs usage of virtual memory.
 .UNINDENT
 .sp
 \fIDefault:\fP 100 MiB
+.SS catalog\-db
+.sp
+An explicit specification of the zone catalog database directory.
+Only useful if catalog\-zones are enabled.
+Non\-absolute path (i.e. not starting with \fB/\fP) is relative to
+\fI\%storage\fP\&.
+.sp
+\fIDefault:\fP \fI\%storage\fP/catalog
+.SS catalog\-db\-max\-size
+.sp
+The hard limit for the catalog database maximum size.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This value also influences server\(aqs usage of virtual memory.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP 20 GiB (1 GiB for 32\-bit)
 .SH KEYSTORE SECTION
 .sp
 DNSSEC keystore configuration.
@@ -1325,6 +1347,7 @@ zone:
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
+    catalog\-template: template_id
     module: STR/STR ...
 .ft P
 .fi
@@ -1589,6 +1612,11 @@ Forced minimum zone refresh interval to avoid flooding master.
 .SS refresh\-max\-interval
 .sp
 Forced maximum zone refresh interval.
+.sp
+\fIDefault:\fP not set
+.SS catalog\-template
+.sp
+This zone is a catalog zone. For the catalog\-member zones, the specified configuration template will be applied.
 .sp
 \fIDefault:\fP not set
 .SS module

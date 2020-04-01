@@ -2,7 +2,7 @@
  *	BIRD Library -- Linked Lists
  *
  *	(c) 1998 Martin Mares <mj@ucw.cz>
- *	(c) 2015, 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+ *	(c) 2015, 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
  *	Can be freely distributed and used under the terms of the GNU GPL.
  */
@@ -82,3 +82,5 @@ void ptrlist_free(list_t *, knot_mm_t *);
 void ptrlist_rem(ptrnode_t *node, knot_mm_t *mm);
 void ptrlist_deep_free(list_t *, knot_mm_t *);
 
+typedef void (*ptrlist_free_cb)(void *);
+void ptrlist_free_custom(list_t *l, knot_mm_t *mm, ptrlist_free_cb free_cb);
