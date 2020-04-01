@@ -34,10 +34,11 @@
 #include <sys/socket.h>
 #include <sys/resource.h>
 
-#include <libknot/endian.h>
-#include <libknot/error.h>
-#include <libknot/xdp/af_xdp.h>
-#include <libknot/xdp/eth-tools.h>
+#include "libknot/endian.h"
+#include "libknot/error.h"
+#include "libknot/xdp/af_xdp.h"
+#include "libknot/xdp/eth-tools.h"
+#include "contrib/openbsd/strlcpy.h"
 
 #include "load_queries.h"
 
@@ -60,7 +61,7 @@ typedef struct {
 	uint8_t		local_mac[6], target_mac[6];
 	struct in_addr	local_ipv4, target_ipv4;
 	struct in6_addr local_ipv6, target_ipv6;
-	bool            ipv6;
+	bool		ipv6;
 	uint16_t	target_port;
 	unsigned	n_threads, thread_id;
 } dns_xdp_gun_ctx_t;
@@ -265,7 +266,7 @@ static int dev2mac(const char *dev, uint8_t *mac)
 	if (fd < 0) {
 		return -errno;
 	}
-	strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+	strlcpy(ifr.ifr_name, dev, IFNAMSIZ);
 
 	int ret = ioctl(fd, SIOCGIFHWADDR, &ifr);
 	if (ret >= 0) {
@@ -347,7 +348,7 @@ static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t r
 		if (!str2mac(fields[ipv6 ? 4 : 2], remote_mac)) {
 			ret = KNOT_EMALF;
 		} else {
-			strncpy(devname, fields[ipv6 ? 2 : 4], IFNAMSIZ);
+			strlcpy(devname, fields[ipv6 ? 2 : 4], IFNAMSIZ);
 			ret = KNOT_EOK;
 		}
 	}
@@ -380,7 +381,7 @@ static int remoteIP2local(const char *ip_str, bool ipv6, char devname[], void *l
 		if (inet_pton(ipv6 ? AF_INET6 : AF_INET, fields[4], local) <= 0) {
 			ret = KNOT_EMALF;
 		} else {
-			strncpy(devname, fields[2], IFNAMSIZ);
+			strlcpy(devname, fields[2], IFNAMSIZ);
 			ret = KNOT_EOK;
 		}
 	}
@@ -441,7 +442,7 @@ int main(int argc, char *argv[])
 			printf("device names comming from `ip` and `arp` differ (%s != %s)\n", dev1, dev2);
 			goto pusage;
 		} else {
-			strncpy(ctx.dev, dev1, IFNAMSIZ);
+			strlcpy(ctx.dev, dev1, IFNAMSIZ);
 		}
 		ret = dev2mac(ctx.dev, ctx.local_mac);
 		if (ret < 0) {
