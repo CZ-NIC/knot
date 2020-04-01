@@ -51,6 +51,7 @@
 /* Signal flags. */
 static volatile bool sig_req_stop = false;
 static volatile bool sig_req_reload = false;
+static volatile bool sig_req_zones_reload = false;
 
 /* \brief Signal started state to the init system. */
 static void init_signal_started(void)
@@ -125,6 +126,7 @@ struct signal {
 /*! \brief Signals used by the server. */
 static const struct signal SIGNALS[] = {
 	{ SIGHUP,  true  },  /* Reload server. */
+	{ SIGUSR1, true  },  /* Reload zones. */
 	{ SIGINT,  true  },  /* Terminate server. */
 	{ SIGTERM, true  },  /* Terminate server. */
 	{ SIGALRM, false },  /* Internal thread synchronization. */
@@ -138,6 +140,9 @@ static void handle_signal(int signum)
 	switch (signum) {
 	case SIGHUP:
 		sig_req_reload = true;
+		break;
+	case SIGUSR1:
+		sig_req_zones_reload = true;
 		break;
 	case SIGINT:
 	case SIGTERM:
@@ -262,6 +267,10 @@ static void event_loop(server_t *server, const char *socket)
 		if (sig_req_reload) {
 			sig_req_reload = false;
 			server_reload(server);
+		}
+		if (sig_req_zones_reload) {
+			sig_req_zones_reload = false;
+			server_update_zones(conf(), server);
 		}
 
 		// Update control timeout.
