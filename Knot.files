@@ -265,6 +265,8 @@ src/knot/zone/adds_tree.c
 src/knot/zone/adds_tree.h
 src/knot/zone/adjust.c
 src/knot/zone/adjust.h
+src/knot/zone/catalog.c
+src/knot/zone/catalog.h
 src/knot/zone/contents.c
 src/knot/zone/contents.h
 src/knot/zone/measure.c

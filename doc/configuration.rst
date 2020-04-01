@@ -577,6 +577,65 @@ master's SOA serial in a special variable inside KASP DB and appropriately
 modifiying AXFR/IXFR queries/answers to keep the communication with
 master consistent while applying the changes with a different serial.
 
+.. _catalog-zones:
+
+Catalog zones
+=============
+
+Catalog zone is a concept when the list of zones configured is maintained
+as contents of a special zone. This approach has the benefit of simple propagation
+of the actual zone list to slave servers. Especially when the list is frequently
+updated.
+
+Terminology first. *Catalog zone* is a meta-zone which shall not be a part
+of the DNS tree, but it contains information about the set of member zones and
+is transferable to slaves using common AXFR/IXFR techniques.
+*Catalog-member zone* (or just *member zone*) is a zone based on
+information from the catalog zone and not from configuration file/database.
+
+Catalog zone is handled almost in the same way as a regular zone.
+It can be configured using all the standard options (but for example
+DNSSEC signing would be useless), including master/slave configuration
+and ACLs. Being a catalog zone is indicated by setting the option
+:ref:`zone_catalog-template`. The difference is that standard DNS
+queries to a catalog zone are answered with REFUSED as if such a zone
+wouldn't exist, unless querying from an address with transfers enabled
+by ACL. The name of the catalog zone is arbitrary.
+It's possible to configure more catalog zones.
+
+.. WARNING::
+   Don't choose name for a catalog zone below a name of any other
+   existing zones configured on the server as it would effectively "shadow"
+   part of your DNS subtree.
+
+Upon catalog zone (re)load or change, all the PTR records in the zone
+are processed and member zones created, with zone names taken from the
+PTR records' RData, and zone settings taken from the confguration
+template specified by :ref:`zone_catalog-template`. Owner names of those PTR
+records may be arbitrary, but when a member zone is de-cataloged and
+re-cataloged again, the owner name of the relevant PTR record must
+be changed. It's also recommended that all the PTR records have different
+owner names (in other words, catalog zone RRSets consist of one RR each)
+to prevent oversized RRSets (not AXFR-able) and to achieve interoperability.
+
+All records other than PTR are ignored. However, they remain in the catalog
+zone and might be for example transfered to a slave, possibly interpreting
+catalog zones differently. SOA still needs to be present in the catalog zone
+and its serial handled appropriately. Apex NS record should be present
+for the sake of interoperability.
+
+Catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,
+zone file reload). In the case of incremental change, only affected
+member zones are reloaded.
+
+Any de-cataloged member zone is purged immediately, including its
+zone file, journal, timers, and DNSSEC keys. The zone file is not
+deleted if :ref:`zone_zonefile-sync` is set to *-1* for member zones.
+
+When setting up catalog zones, it might be useful to set
+:ref:`database_catalog-db` and :ref:`database_catalog-db-max-size`
+to non-default values.
+
 .. _query-modules:
 
 Query modules

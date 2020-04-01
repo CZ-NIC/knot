@@ -144,7 +144,7 @@ void knot_lmdb_deinit(knot_lmdb_db_t *db);
 /*!
  * \brief Return true if DB is open.
  */
-inline static bool knot_lmdb_is_open(knot_lmdb_db_t *db) { return db->env != NULL; }
+inline static bool knot_lmdb_is_open(knot_lmdb_db_t *db) { return db != NULL && db->env != NULL; }
 
 /*!
  * \brief Start a DB transaction.
@@ -185,6 +185,21 @@ void knot_lmdb_commit(knot_lmdb_txn_t *txn);
  * \return True if a key found, false if none or failure.
  */
 bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how);
+
+/*!
+ * \brief Simple database lookup in case txn shared among threads.
+ *
+ * \param txn    DB transaction share among threads.
+ * \param key    Key to be searched for.
+ * \param val    Output: database value.
+ * \param how    Must be KNOT_LMDB_EXACT.
+ *
+ * \note Free val->mv_data afterwards!
+ *
+ * \retval KNOT_ENOENT   no such key in DB.
+ * \return KNOT_E*
+ */
+int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, knot_lmdb_find_t how);
 
 /*!
  * \brief Start iteration the whole DB from lexicographically first key.
