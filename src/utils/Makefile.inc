@@ -85,7 +85,7 @@ xdp_gun_SOURCES = \
 	utils/xdp-gun/main.c
 
 xdp_gun_CPPFLAGS       = $(AM_CPPFLAGS)
-xdp_gun_LDADD          = libknot.la $(pthread_LIBS)
+xdp_gun_LDADD          = libcontrib.la libknot.la $(pthread_LIBS)
 endif ENABLE_XDP
 endif HAVE_UTILS
 
