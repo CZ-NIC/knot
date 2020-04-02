@@ -24,6 +24,7 @@
 #include "knot/conf/confdb.h"
 #include "knot/common/log.h"
 #include "knot/server/dthreads.h"
+#include "knot/zone/catalog.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
@@ -167,6 +168,7 @@ conf_val_t conf_zone_get_txn(
 	}
 
 	size_t dname_size = knot_dname_size(dname);
+	const knot_dname_t *catalog = NULL;
 
 	// Try to get explicit value.
 	conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
@@ -177,6 +179,7 @@ conf_val_t conf_zone_get_txn(
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
 		              &C_ZONE[1], &key1_name[1], knot_strerror(val.code));
 		// FALLTHROUGH
+	case KNOT_YP_EINVAL_ID:
 	case KNOT_ENOENT:
 		break;
 	}
@@ -188,18 +191,35 @@ conf_val_t conf_zone_get_txn(
 		// Use the specified template.
 		conf_val(&val);
 		conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
-		break;
+		goto got_template;
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",
 		              &C_ZONE[1], &C_TPL[1], knot_strerror(val.code));
 		// FALLTHROUGH
 	case KNOT_ENOENT:
 	case KNOT_YP_EINVAL_ID:
-		// Use the default template.
-		conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
-		            CONF_DEFAULT_ID[0], &val);
+		break;
 	}
 
+	// Check if this is a catalog member zone.
+	int ret = knot_catalog_get_catzone(conf->catalog, dname, &catalog);
+	if (ret == KNOT_EOK) {
+		conf_db_get(conf, txn, C_ZONE, C_CATALOG_TPL, catalog, knot_dname_size(catalog), &val);
+		if (val.code != KNOT_EOK) {
+			CONF_LOG_ZONE(LOG_ERR, catalog, "catalog zone has no catalog template (%s)",
+			              knot_strerror(val.code));
+			return val;
+		}
+		conf_val(&val);
+		conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
+		goto got_template;
+	}
+
+	// Use the default template.
+	conf_db_get(conf, txn, C_TPL, key1_name, CONF_DEFAULT_ID + 1,
+		    CONF_DEFAULT_ID[0], &val);
+
+got_template:
 	switch (val.code) {
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",

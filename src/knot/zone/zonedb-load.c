@@ -15,11 +15,14 @@
  */
 
 #include <assert.h>
+#include <unistd.h>
 #include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/events/replan.h"
+#include "knot/journal/journal_metadata.h"
+#include "knot/zone/catalog.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
@@ -209,6 +212,86 @@ static void mark_changed_zones(knot_zonedb_t *zonedb, trie_t *changed)
 	trie_it_free(it);
 }
 
+static void zone_purge(conf_t *conf, zone_t *zone, server_t *server)
+{
+	(void)zone_timers_sweep(&server->timerdb, (sweep_cb)knot_dname_cmp, zone->name);
+
+	conf_val_t sync = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	if (conf_int(&sync) > -1) {
+		char *zonefile = conf_zonefile(conf, zone->name);
+		(void)unlink(zonefile);
+		free(zonefile);
+	}
+
+	(void)journal_scrape_with_md(zone_journal(zone));
+	if (knot_lmdb_open(zone->kaspdb) == KNOT_EOK) {
+		(void)kasp_db_delete_all(zone->kaspdb, zone->name);
+	}
+}
+
+static zone_contents_t *zone_expire(zone_t *zone)
+{
+	zone->timers.next_refresh = time(NULL);
+	return zone_switch_contents(zone, NULL);
+}
+
+static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf, list_t *expired_contents)
+{
+	if (!(zone->flags & ZONE_IS_CAT_MEMBER)) {
+		return NULL;
+	}
+
+	knot_cat_upd_val_t *upd = knot_cat_update_get(&server->catalog_upd, zone->name, true);
+	if (upd != NULL) {
+		if (upd->just_reconf) {
+			zone_purge(conf, zone, server);
+			ptrlist_add(expired_contents, zone_expire(zone), NULL);
+		} else {
+			return NULL; // zone to be removed
+		}
+	}
+
+	zone_t *newzone = create_zone(conf, zone->name, server, zone);
+	if (newzone == NULL) {
+		log_zone_error(zone->name, "zone cannot be created");
+	} else {
+		assert(newzone->flags & ZONE_IS_CAT_MEMBER);
+		conf_activate_modules(conf, newzone->name, &newzone->query_modules,
+		                      &newzone->query_plan);
+	}
+	return newzone;
+}
+
+static zone_t *add_member_zone(knot_cat_upd_val_t *val, knot_zonedb_t *check, server_t *server, conf_t *conf)
+{
+	if (val->just_reconf) {
+		return NULL;
+	}
+
+	if (knot_zonedb_find(check, val->member) != NULL) {
+		log_zone_warning(val->member, "zone already configured, skipping creation");
+		return NULL;
+	}
+
+	int ret = knot_catalog_add2(&server->catalog, val);
+	if (ret != KNOT_EOK) {
+		log_zone_error(val->member, "failed adding member zone to catalog (%s)", knot_strerror(ret));
+		return NULL;
+	}
+
+	zone_t *zone = create_zone(conf, val->member, server, NULL);
+	if (zone == NULL) {
+		log_zone_error(val->member, "zone cannot be created");
+		knot_catalog_del(conf->catalog, val->member);
+	} else {
+		zone->flags |= ZONE_IS_CAT_MEMBER;
+		conf_activate_modules(conf, zone->name, &zone->query_modules,
+		                      &zone->query_plan);
+		log_zone_info(val->member, "zone added from catalog");
+	}
+	return zone;
+}
+
 /*!
  * \brief Create new zone database.
  *
@@ -217,10 +300,11 @@ static void mark_changed_zones(knot_zonedb_t *zonedb, trie_t *changed)
  *
  * \param conf    New server configuration.
  * \param server  Server instance.
+ * \param expired_contents   Out: ptrlist of zone_contents_t to be deep freed after sync RCU.
  *
  * \return New zone database.
  */
-static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
+static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expired_contents)
 {
 	assert(conf);
 	assert(server);
@@ -265,6 +349,27 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 		knot_zonedb_insert(db_new, zone);
 	}
 
+	if (db_old != NULL) {
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
+		while (!knot_zonedb_iter_finished(it)) {
+			zone_t *newzone = reuse_member_zone(knot_zonedb_iter_val(it), server, conf, expired_contents);
+			if (newzone != NULL) {
+				knot_zonedb_insert(db_new, newzone);
+			}
+			knot_zonedb_iter_next(it);
+		}
+	}
+
+	knot_cat_it_t *it = knot_cat_it_begin(&server->catalog_upd, false);
+	while (!knot_cat_it_finised(it)) {
+		zone_t *zone = add_member_zone(knot_cat_it_val(it), db_new, server, conf);
+		if (zone != NULL) {
+			knot_zonedb_insert(db_new, zone);
+		}
+		knot_cat_it_next(it);
+	}
+	knot_cat_it_free(it);
+
 	return db_new;
 }
 
@@ -279,11 +384,13 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
  * \param db_new  New zone database for comparison if full reload.
   */
 static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
-                              knot_zonedb_t *db_new)
+                              server_t *server)
 {
 	if (db_old == NULL) {
 		return;
 	}
+
+	knot_zonedb_t *db_new = server->zone_db;
 
 	bool full = !(conf->io.flags & CONF_IO_FACTIVE) ||
 	            (conf->io.flags & CONF_IO_FRLD_ZONES);
@@ -316,6 +423,20 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 
 	knot_zonedb_iter_free(it);
 
+	/* Remove deleted cataloged zones from conf. */
+	knot_cat_it_t *tit = knot_cat_it_begin(&server->catalog_upd, true);
+	while (!knot_cat_it_finised(tit)) {
+		knot_cat_upd_val_t *val = knot_cat_it_val(tit);
+		if (!val->just_reconf) {
+			knot_catalog_del(&server->catalog, val->member);
+		}
+		knot_cat_it_next(tit);
+	}
+	knot_cat_it_free(tit);
+
+	/* Clear catalog changes. No need to use mutex as this is done from main thread while all zone events are paused. */
+	knot_cat_update_clear(&server->catalog_upd);
+
 	if (full) {
 		knot_zonedb_deep_free(&db_old, false);
 	} else {
@@ -329,8 +450,11 @@ void zonedb_reload(conf_t *conf, server_t *server)
 		return;
 	}
 
+	list_t contents_tofree;
+	init_list(&contents_tofree);
+
 	/* Insert all required zones to the new zone DB. */
-	knot_zonedb_t *db_new = create_zonedb(conf, server);
+	knot_zonedb_t *db_new = create_zonedb(conf, server, &contents_tofree);
 	if (db_new == NULL) {
 		log_error("failed to create new zone database");
 		return;
@@ -343,6 +467,8 @@ void zonedb_reload(conf_t *conf, server_t *server)
 	/* Wait for readers to finish reading old zone database. */
 	synchronize_rcu();
 
+	ptrlist_free_custom(&contents_tofree, NULL, (ptrlist_free_cb)zone_contents_deep_free);
+
 	/* Remove old zone DB. */
-	remove_old_zonedb(conf, db_old, db_new);
+	remove_old_zonedb(conf, db_old, server);
 }
