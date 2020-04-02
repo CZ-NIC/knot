@@ -375,6 +375,8 @@ int conf_clone(
 		out->hostname = strdup(s_conf->hostname);
 	}
 
+	out->catalog = s_conf->catalog;
+
 	// Initialize cached values.
 	init_cache(out, false);
 

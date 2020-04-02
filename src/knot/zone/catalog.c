@@ -184,7 +184,7 @@ int knot_cat_update_add(knot_cat_update_t *u, const knot_dname_t *member,
 	assert(bail >= 0 && bail < 256);
 
 	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(catzone, lf_storage);
+	uint8_t *lf = knot_dname_lf(member, lf_storage);
 
 	trie_t *toadd = remove ? u->rem : u->add;
 	trie_t *check = remove ? u->add : u->rem;
@@ -228,6 +228,15 @@ int knot_cat_update_add(knot_cat_update_t *u, const knot_dname_t *member,
 	val->just_reconf = just_reconf;
 	*added = val;
 	return KNOT_EOK;
+}
+
+knot_cat_upd_val_t *knot_cat_update_get(knot_cat_update_t *u, const knot_dname_t *member, bool remove)
+{
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(member, lf_storage);
+
+	trie_val_t *found = trie_get_try(remove ? u->rem : u->add, lf + 1, lf[0]);
+	return found == NULL ? NULL : *(knot_cat_upd_val_t **)found;
 }
 
 typedef struct {

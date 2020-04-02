@@ -25,7 +25,7 @@
 #include "knot/journal/knot_lmdb.h"
 #include "libknot/rrset.h"
 
-typedef struct {
+typedef struct knot_catalog {
 	knot_lmdb_db_t db;
 	knot_lmdb_txn_t txn; // RW transaction open all the time
 } knot_catalog_t;
@@ -89,6 +89,8 @@ void knot_cat_update_deinit(knot_cat_update_t *u);
 int knot_cat_update_add(knot_cat_update_t *u, const knot_dname_t *member,
                         const knot_dname_t *owner, const knot_dname_t *catzone,
                         bool remove);
+
+knot_cat_upd_val_t *knot_cat_update_get(knot_cat_update_t *u, const knot_dname_t *member, bool remove);
 
 struct zone_contents;
 

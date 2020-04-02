@@ -38,6 +38,8 @@ typedef enum zone_flag_t {
 	ZONE_FORCE_FLUSH    = 1 << 2, /*!< Force zone flush. */
 	ZONE_FORCE_KSK_ROLL = 1 << 3, /*!< Force KSK/CSK rollover. */
 	ZONE_FORCE_ZSK_ROLL = 1 << 4, /*!< Force ZSK rollover. */
+	ZONE_IS_CATALOG     = 1 << 5, /*!< This is a catalog. */
+	ZONE_IS_CAT_MEMBER  = 1 << 6, /*!< This zone exists according to a catalog. */
 } zone_flag_t;
 
 /*!
