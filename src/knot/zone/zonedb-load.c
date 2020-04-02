@@ -272,6 +272,25 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf, l
 	return newzone;
 }
 
+// cold start of knot: add unchanged member zone to zonedb
+static zone_t *reuse_cold_zone(const knot_dname_t *zname, server_t *server, conf_t *conf)
+{
+	knot_cat_upd_val_t *upd = knot_cat_update_get(&server->catalog_upd, zname, true);
+	if (upd != NULL && !upd->just_reconf) {
+		return NULL; // zone will be removed immediately
+	}
+
+	zone_t *zone = create_zone(conf, zname, server, NULL);
+	if (zone == NULL) {
+		log_zone_error(zname, "zone cannot be created");
+	} else {
+		zone->flags |= ZONE_IS_CAT_MEMBER;
+		conf_activate_modules(conf, zone->name, &zone->query_modules,
+		                      &zone->query_plan);
+	}
+	return zone;
+}
+
 static zone_t *add_member_zone(knot_cat_upd_val_t *val, knot_zonedb_t *check, server_t *server, conf_t *conf)
 {
 	if (val->just_reconf) {
@@ -368,6 +387,15 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 			}
 			knot_zonedb_iter_next(it);
 		}
+	} else {
+		knot_lmdb_forwhole(&server->catalog.txn) {
+			const knot_dname_t *member = NULL;
+			knot_catalog_curval(&server->catalog, &member, NULL, NULL);
+			zone_t *zone = reuse_cold_zone(member, server, conf);
+			if (zone != NULL) {
+				knot_zonedb_insert(db_new, zone);
+			}
+		}
 	}
 
 	knot_cat_it_t *it = knot_cat_it_begin(&server->catalog_upd, false);
@@ -397,7 +425,7 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
                               server_t *server)
 {
 	if (db_old == NULL) {
-		return;
+		goto catalog_only;
 	}
 
 	knot_zonedb_t *db_new = server->zone_db;
@@ -433,7 +461,8 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 
 	knot_zonedb_iter_free(it);
 
-	/* Remove deleted cataloged zones from conf. */
+catalog_only:
+	; /* Remove deleted cataloged zones from conf. */
 	knot_cat_it_t *tit = knot_cat_it_begin(&server->catalog_upd, true);
 	while (!knot_cat_it_finised(tit)) {
 		knot_cat_upd_val_t *val = knot_cat_it_val(tit);
