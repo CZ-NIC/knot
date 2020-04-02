@@ -24,18 +24,21 @@
 #include "knot/conf/conf.h"
 #include "knot/zone/contents.h"
 
-int knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize)
+void knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize)
 {
 	knot_lmdb_init(&cat->db, path, mapsize, 0, NULL);
+}
+
+int knot_catalog_open(knot_catalog_t *cat)
+{
+	if (knot_lmdb_is_open(&cat->db)) {
+		return KNOT_EOK;
+	}
 	int ret = knot_lmdb_open(&cat->db);
-	if (ret != KNOT_EOK) {
-		knot_lmdb_deinit(&cat->db);
+	if (ret == KNOT_EOK) {
 		return ret;
 	}
 	knot_lmdb_begin(&cat->db, &cat->txn, true);
-	if (cat->txn.ret != KNOT_EOK) {
-		knot_lmdb_deinit(&cat->db);
-	}
 	return cat->txn.ret;
 }
 
@@ -61,6 +64,10 @@ static int bailiwick_shift(const knot_dname_t *subname, const knot_dname_t *name
 int knot_catalog_add(knot_catalog_t *cat, const knot_dname_t *member,
                      const knot_dname_t *owner, const knot_dname_t *catzone)
 {
+	int ret = knot_catalog_open(cat);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	int bail = bailiwick_shift(owner, catzone);
 	if (bail < 0) {
 		return KNOT_EOUTOFZONE;
@@ -103,6 +110,10 @@ void knot_catalog_curval(knot_catalog_t *cat, const knot_dname_t **member,
 int knot_catalog_get_catzone(knot_catalog_t *cat, const knot_dname_t *member,
                              const knot_dname_t **catzone)
 {
+	if (!knot_lmdb_is_open(&cat->db)) {
+		return KNOT_ENOENT;
+	}
+
 	MDB_val key = knot_lmdb_make_key("BN", 0, member);
 	if (knot_lmdb_find(&cat->txn, &key, KNOT_LMDB_EXACT)) {
 		knot_catalog_curval(cat, NULL, NULL, catzone);
@@ -280,12 +291,17 @@ int knot_cat_update_from_zone(knot_cat_update_t *u, struct zone_contents *zone,
 
 int knot_cat_update_del_all(knot_cat_update_t *u, knot_catalog_t *cat, const knot_dname_t *zone)
 {
+	int ret = knot_catalog_open(cat);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	pthread_mutex_lock(&u->mutex);
 	knot_lmdb_forwhole(&cat->txn) { // TODO possible speedup by indexing which member zones belong to a catalog zone
 		const knot_dname_t *mem, *ow, *cz;
 		knot_catalog_curval(cat, &mem, &ow, &cz);
 		if (knot_dname_is_equal(cz, zone)) {
-			int ret = knot_cat_update_add(u, mem, ow, cz, true);
+			ret = knot_cat_update_add(u, mem, ow, cz, true);
 			if (ret != KNOT_EOK) {
 				pthread_mutex_unlock(&u->mutex);
 				return ret;

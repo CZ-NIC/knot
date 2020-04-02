@@ -26,8 +26,11 @@
 /*! \brief Discard zone in zone database. */
 static void discard_zone(zone_t *zone, bool abort_txn)
 {
+	const knot_dname_t *unused = NULL;
+
 	// Don't flush if removed zone (no previous configuration available).
-	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name))) {
+	if (conf_rawid_exists(conf(), C_ZONE, zone->name, knot_dname_size(zone->name)) ||
+	    knot_catalog_get_catzone(conf()->catalog, zone->name, &unused) == KNOT_EOK) {
 		uint32_t journal_serial, zone_serial = zone_contents_serial(zone->contents);
 		bool exists;
 
