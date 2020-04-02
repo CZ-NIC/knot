@@ -423,8 +423,10 @@ int server_init(server_t *server, int bg_workers)
 		return ret;
 	}
 
-	ret = knot_catalog_init(&server->catalog, "/tmp/", 1000000);
-	// TODO !!!
+	char *catalog_dir = conf_db(conf(), C_KASP_DB);
+	conf_val_t catalog_size = conf_db_param(conf(), C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
+	knot_catalog_init(&server->catalog, catalog_dir, conf_int(&catalog_size));
+	free(catalog_dir);
 	conf()->catalog = &server->catalog;
 
 	char *journal_dir = conf_db(conf(), C_JOURNAL_DB);

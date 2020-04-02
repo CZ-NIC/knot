@@ -229,6 +229,9 @@ static const yp_item_t desc_database[] = {
 	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" } },
 	{ C_TIMER_DB_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(GIGA(100)),
 	                                               MEGA(100), YP_SSIZE } },
+	{ C_CATALOG_DB,          YP_TSTR,  YP_VSTR = { "catalog" } },
+	{ C_CATALOG_DB_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
+	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
 	{ NULL }
 };
 

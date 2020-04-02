@@ -51,7 +51,9 @@ typedef struct {
 	bool just_reconf;
 } knot_cat_upd_val_t;
 
-int knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize);
+void knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize);
+
+int knot_catalog_open(knot_catalog_t *cat);
 
 int knot_catalog_deinit(knot_catalog_t *cat);
 

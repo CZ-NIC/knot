@@ -37,15 +37,22 @@ static bool zone_file_updated(conf_t *conf, const zone_t *old_zone,
 	assert(conf);
 	assert(zone_name);
 
+	if (old_zone == NULL) {
+		return false;
+	}
+
 	char *zonefile = conf_zonefile(conf, zone_name);
 	struct timespec mtime;
 	int ret = zonefile_exists(zonefile, &mtime);
 	free(zonefile);
 
-	return (ret == KNOT_EOK && old_zone != NULL &&
-	        !(old_zone->zonefile.exists &&
-		  old_zone->zonefile.mtime.tv_sec == mtime.tv_sec &&
-		  old_zone->zonefile.mtime.tv_nsec == mtime.tv_nsec));
+	if (ret == KNOT_EOK) {
+		return !(old_zone->zonefile.exists &&
+		         old_zone->zonefile.mtime.tv_sec == mtime.tv_sec &&
+		         old_zone->zonefile.mtime.tv_nsec == mtime.tv_nsec);
+	} else {
+		return old_zone->zonefile.exists;
+	}
 }
 
 static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
@@ -57,6 +64,8 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 
 	zone->journaldb = &server->journaldb;
 	zone->kaspdb = &server->kaspdb;
+	zone->catalog = &server->catalog;
+	zone->catalog_upd = &server->catalog_upd;
 
 	int result = zone_events_setup(zone, server->workers, &server->sched);
 	if (result != KNOT_EOK) {
@@ -118,6 +127,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	}
 
 	zone->contents = old_zone->contents;
+	zone->flags = (old_zone->flags & (ZONE_IS_CATALOG | ZONE_IS_CAT_MEMBER));
 
 	zone->timers = old_zone->timers;
 	timers_sanitize(conf, zone);

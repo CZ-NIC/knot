@@ -30,6 +30,8 @@
 #define C_BACKEND		"\x07""backend"
 #define C_BG_WORKERS		"\x12""background-workers"
 #define C_BLOCK_NOTIFY_XFR	"\x1B""block-notify-after-transfer"
+#define C_CATALOG_DB            "\x0A""catalog-db"
+#define C_CATALOG_DB_MAX_SIZE   "\x13""catalog-db-max-size"
 #define C_CATALOG_TPL		"\x10""catalog-template"
 #define C_CDS_CDNSKEY		"\x13""cds-cdnskey-publish"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
