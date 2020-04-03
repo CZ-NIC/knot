@@ -2,6 +2,7 @@ MANPAGES_IN = \
 	man/knot.conf.5in	\
 	man/knotc.8in		\
 	man/knotd.8in		\
+	man/kcatalogprint.8in	\
 	man/keymgr.8in		\
 	man/kjournalprint.8in	\
 	man/kdig.1in		\
@@ -14,6 +15,7 @@ MANPAGES_IN = \
 MANPAGES_RST = \
 	man_knotc.rst		\
 	man_knotd.rst		\
+	man_kcatalogprint.rst	\
 	man_keymgr.rst		\
 	man_kjournalprint.rst	\
 	man_kdig.rst		\
@@ -92,6 +94,7 @@ endif # HAVE_DAEMON
 if HAVE_UTILS
 if HAVE_DAEMON
 man_MANS += \
+	man/kcatalogprint.8	\
 	man/keymgr.8		\
 	man/kjournalprint.8	\
 	man/kzonecheck.1
@@ -111,6 +114,7 @@ endif # HAVE_UTILS
 man/knot.conf.5:	man/knot.conf.5in
 man/knotc.8:		man/knotc.8in
 man/knotd.8:		man/knotd.8in
+man/kcatalogprint.8:	man/kcatalogprint.8in
 man/keymgr.8:		man/keymgr.8in
 man/kjournalprint.8:	man/kjournalprint.8in
 man/kdig.1:		man/kdig.1in

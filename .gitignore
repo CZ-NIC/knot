@@ -67,8 +67,9 @@ src/libknot/libknot.h
 # Binaries
 /src/kdig
 /src/khost
-/src/kjournalprint
+/src/kcatalogprint
 /src/keymgr
+/src/kjournalprint
 /src/knotc
 /src/knotd
 /src/knsec3hash
