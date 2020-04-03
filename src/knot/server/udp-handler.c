@@ -38,9 +38,6 @@
 #include "knot/query/layer.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
-#ifdef ENABLE_XDP
-#include "libknot/xdp/af_xdp.h"
-#endif /* ENABLE_XDP */
 
 /* Buffer identifiers. */
 enum {

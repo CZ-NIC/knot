@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,7 +72,7 @@ static const struct error errors[] = {
 	{ KNOT_ETIMEOUT,     "connection timeout" },
 	{ KNOT_ENODIFF,      "cannot create zone diff" },
 	{ KNOT_ENOTSIG,      "expected a TSIG or SIG(0)" },
-	{ KNOT_ELIMIT,       "exceeded response rate limit" },
+	{ KNOT_ELIMIT,       "exceeded limit" },
 	{ KNOT_EZONESIZE,    "zone size exceeded" },
 	{ KNOT_EOF,          "end of file" },
 	{ KNOT_ESYSTEM,      "system error" },

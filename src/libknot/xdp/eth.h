@@ -16,13 +16,27 @@
 
 #pragma once
 
+#include <stddef.h>
+
 /*!
- * \brief Get number of RX queues of a network iface.
+ * \brief Get number of combined queues of a network interface.
  *
- * \param devname   Name of the ethdev (e.g. eth1).
+ * \param devname  Name of the ethdev (e.g. eth1).
  *
  * \retval < 0   KNOT_E* if error.
  * \retval 1     Default no of queues if the dev does not support.
  * \return > 0   Number of queues.
  */
-int knot_eth_get_rx_queues(const char *devname);
+int knot_eth_queues(const char *devname);
+
+/*!
+ * \brief Get the corresponding network interface name for the address.
+ *
+ * \param addr     Address of the inteface.
+ * \param out      Output buffer for the interface name.
+ * \param out_len  Size of the output buffer.
+ *
+ * \return KNOT_E*
+ */
+int knot_eth_name_from_addr(const struct sockaddr_storage *addr, char *out,
+                            size_t out_len);

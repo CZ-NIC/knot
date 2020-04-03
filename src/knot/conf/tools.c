@@ -227,6 +227,43 @@ int check_ref_dflt(
 	return KNOT_EOK;
 }
 
+int check_xdp(
+	knotd_conf_check_args_t *args)
+{
+#ifndef ENABLE_XDP
+		args->err_str = "XDP is not available";
+		return KNOT_ENOTSUP;
+#else
+	bool no_port;
+	struct sockaddr_storage ss = yp_addr(args->data, &no_port);
+	conf_xdp_iface_t if_new;
+	int ret = conf_xdp_iface(&ss, &if_new);
+	if (ret != KNOT_EOK) {
+		args->err_str = "invalid XDP interface specification";
+		return ret;
+	}
+
+	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
+	                              C_LISTEN_XDP);
+	size_t count = conf_val_count(&xdp);
+	while (xdp.code == KNOT_EOK && count-- > 1) {
+		struct sockaddr_storage addr = conf_addr(&xdp, NULL);
+		conf_xdp_iface_t if_prev;
+		ret = conf_xdp_iface(&addr, &if_prev);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		if (strcmp(if_new.name, if_prev.name) == 0) {
+			args->err_str = "duplicate XDP interface specification";
+			return KNOT_EINVAL;
+		}
+		conf_val_next(&xdp);
+	}
+
+	return KNOT_EOK;
+#endif
+}
+
 int check_modref(
 	knotd_conf_check_args_t *args)
 {
@@ -303,7 +340,7 @@ int check_server(
 	conf_val_t hshake = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
 	                                 C_TCP_HSHAKE_TIMEOUT);
 	if (hshake.code == KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "option 'tcp-handshake-timeout' is no longer supported");
+		CONF_LOG(LOG_NOTICE, "option 'server.tcp-handshake-timeout' is no longer supported");
 	}
 
 	CHECK_LEGACY_NAME(C_SRV, C_TCP_REPLY_TIMEOUT, C_TCP_RMT_IO_TIMEOUT);

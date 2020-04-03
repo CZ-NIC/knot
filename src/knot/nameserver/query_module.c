@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -347,6 +347,9 @@ knotd_conf_t knotd_conf_env(knotd_mod_t *mod, knotd_conf_env_t env)
 		break;
 	case KNOTD_CONF_ENV_WORKERS_TCP:
 		out.single.integer = config->cache.srv_tcp_threads;
+		break;
+	case KNOTD_CONF_ENV_WORKERS_XDP:
+		out.single.integer = config->cache.srv_xdp_threads;
 		break;
 	default:
 		return out;

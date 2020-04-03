@@ -62,8 +62,10 @@
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/wire.h"
-#include "libknot/xdp/af_xdp.h"
+#ifdef ENABLE_XDP
+#include "libknot/xdp/xdp.h"
 #include "libknot/xdp/bpf-consts.h"
-#include "libknot/xdp/eth-tools.h"
+#include "libknot/xdp/eth.h"
+#endif
 
 /*! @} */

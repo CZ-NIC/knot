@@ -28,8 +28,8 @@
 #include "libknot/attribute.h"
 #include "libknot/endian.h"
 #include "libknot/errcode.h"
-#include "libknot/xdp/af_xdp.h"
 #include "libknot/xdp/bpf-user.h"
+#include "libknot/xdp/xdp.h"
 #include "contrib/macros.h"
 
 /* Don't fragment flag. */

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,9 +60,9 @@ int noudp_load(knotd_mod_t *mod)
 	ctx->rate = conf.single.integer;
 	if (ctx->rate > 0) {
 		knotd_conf_t udp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_UDP);
-		// TODO xdp ?
-		size_t udp_workers = udp.single.integer;
-		ctx->counters = calloc(udp_workers, sizeof(uint32_t));
+		knotd_conf_t xdp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_XDP);
+		size_t workers = udp.single.integer + xdp.single.integer;
+		ctx->counters = calloc(workers, sizeof(uint32_t));
 		if (ctx->counters == NULL) {
 			free(ctx);
 			return KNOT_ENOMEM;
