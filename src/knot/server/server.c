@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -641,7 +641,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 		bool found = false;
 		iface_t *iface;
 		WALK_LIST(iface, *server->ifaces) {
-			if (sockaddr_cmp(&addr, &iface->addr) == 0) {
+			if (sockaddr_cmp(&addr, &iface->addr, false) == 0) {
 				matches++;
 				found = true;
 				break;
