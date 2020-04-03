@@ -43,7 +43,7 @@ int knot_catalog_open(knot_catalog_t *cat)
 		}
 	}
 	if (!cat->txn.opened) {
-		knot_lmdb_begin(&cat->db, &cat->txn, true);
+		knot_lmdb_begin(&cat->db, &cat->txn, !(cat->db.env_flags & MDB_RDONLY));
 	}
 	if (cat->txn.ret == KNOT_EOK) {
 		MDB_val key = { 8, "\x01version" };
@@ -51,7 +51,7 @@ int knot_catalog_open(knot_catalog_t *cat)
 			if (strncmp(CATALOG_VERSION, cat->txn.cur_val.mv_data, cat->txn.cur_val.mv_size) != 0) {
 				log_warning("unmatching catalog version");
 			}
-		} else {
+		} else if (!(cat->db.env_flags & MDB_RDONLY)) {
 			MDB_val val = { strlen(CATALOG_VERSION), CATALOG_VERSION };
 			knot_lmdb_insert(&cat->txn, &key, &val);
 		}
