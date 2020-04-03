@@ -73,7 +73,7 @@ static const uint8_t base64url_dec[256] = {
 	[ 34] = KO, ['M'] = 12, ['x'] = 49, [163] = KO, [206] = KO, [249] = KO,
 	[ 35] = KO, ['N'] = 13, ['y'] = 50, [164] = KO, [207] = KO, [250] = KO,
 	[ 36] = KO, ['O'] = 14, ['z'] = 51, [165] = KO, [208] = KO, [251] = KO,
-	[ 37] = KO, ['P'] = 15, [123] = KO, [166] = KO, [209] = KO, [252] = KO,
+	['%'] = PD, ['P'] = 15, [123] = KO, [166] = KO, [209] = KO, [252] = KO,
 	[ 38] = KO, ['Q'] = 16, [124] = KO, [167] = KO, [210] = KO, [253] = KO,
 	[ 39] = KO, ['R'] = 17, [125] = KO, [168] = KO, [211] = KO, [254] = KO,
 	[ 40] = KO, ['S'] = 18, [126] = KO, [169] = KO, [212] = KO, [255] = KO,
@@ -181,31 +181,29 @@ int32_t knot_base64url_decode(const uint8_t  *in,
 	while (in < stop) {
 		// Filling and transforming 4 Base64 chars.
 		c1 =                   base64url_dec[in[0]]     ;
-		c2 = (in + 1 < stop) ? base64url_dec[in[1]] : PD;
+		c2 =                   base64url_dec[in[1]]     ;
 		c3 = (in + 2 < stop) ? base64url_dec[in[2]] : PD;
 		c4 = (in + 3 < stop) ? base64url_dec[in[3]] : PD;
 
-		// Check 4. char if is bad or padding.
-		if (c4 >= PD) {
-			if (c4 == PD && pad_len == 0) {
-				pad_len = 1;
-			} else {
-				return KNOT_BASE64_ECHAR;
-			}
+		// Check 1. and 2. chars if are not padding
+		if (c1 >= PD || c2 >= PD) {
+			return KNOT_BASE64_ECHAR;
 		}
-
 		// Check 3. char if is bad or padding.
-		if (c3 >= PD) {
-			if (c3 == PD && pad_len == 1) {
+		else if (c3 >= PD) {
+			if (c3 == PD) {
 				pad_len = 2;
 			} else {
 				return KNOT_BASE64_ECHAR;
 			}
 		}
-
-		// Check 1. and 2. chars if are not padding.
-		if (c2 >= PD || c1 >= PD) {
-			return KNOT_BASE64_ECHAR;
+		// Check 3. char if is bad or padding.
+		else if (c4 >= PD) {
+			if (c4 == PD) {
+				pad_len = 1;
+			} else {
+				return KNOT_BASE64_ECHAR;
+			}
 		}
 
 		// Computing of output data based on padding length.
@@ -227,16 +225,16 @@ int32_t knot_base64url_decode(const uint8_t  *in,
 			break;
 		case 1:
 			bin += 2;
-			break;
+			goto end;
 		case 2:
 			bin += 1;
-			break;
+			goto end;
 		}
 
 		in += 4;
 	}
 
-	return (bin - out);
+	end: return (bin - out);
 }
 
 int32_t knot_base64url_decode_alloc(const uint8_t  *in,
