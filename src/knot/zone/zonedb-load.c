@@ -481,6 +481,10 @@ catalog_only:
 		knot_cat_upd_val_t *val = knot_cat_it_val(tit);
 		if (!val->just_reconf) {
 			knot_catalog_del(&server->catalog, val->member);
+			zone_t *zone = knot_zonedb_find(db_old, val->member);
+			if (zone != NULL) {
+				zone_purge(conf, zone, server);
+			}
 		}
 		knot_cat_it_next(tit);
 	}

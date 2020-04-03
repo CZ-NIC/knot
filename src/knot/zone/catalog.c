@@ -45,7 +45,9 @@ int knot_catalog_open(knot_catalog_t *cat)
 
 int knot_catalog_deinit(knot_catalog_t *cat)
 {
-	knot_lmdb_commit(&cat->txn);
+	if (cat->txn.opened) {
+		knot_lmdb_commit(&cat->txn);
+	}
 	knot_lmdb_deinit(&cat->db);
 	return cat->txn.ret;
 }
@@ -210,6 +212,7 @@ int knot_cat_update_add(knot_cat_update_t *u, const knot_dname_t *member,
 		if (knot_dname_is_equal(counter->owner, owner)) {
 			assert(knot_dname_is_equal(counter->catzone, catzone));
 			trie_del(check, lf + 1, lf[0], NULL);
+			free(counter);
 			return KNOT_EOK;
 		} else {
 			counter->just_reconf = true;

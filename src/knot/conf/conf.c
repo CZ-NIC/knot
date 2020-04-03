@@ -1077,6 +1077,15 @@ char* conf_zonefile_txn(
 	return get_filename(conf, txn, zone, file);
 }
 
+inline static bool legacy_db_fallback(
+	const yp_name_t *db_type)
+{
+	return (db_type[1] == C_JOURNAL_DB[1] ||
+	        db_type[1] == C_KASP_DB[1] ||
+	        db_type[1] == C_TIMER_DB[1]);
+	// warning comparing by first letter as every database has different!
+}
+
 char* conf_db_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
@@ -1088,7 +1097,7 @@ char* conf_db_txn(
 	}
 
 	conf_val_t db_val = conf_get_txn(conf, txn, C_DB, db_type);
-	if (db_val.code != KNOT_EOK) {
+	if (db_val.code != KNOT_EOK && legacy_db_fallback(db_type)) {
 		db_val = conf_default_get_txn(conf, txn, db_type);
 	}
 
@@ -1106,7 +1115,7 @@ conf_val_t conf_db_param_txn(
 	const yp_name_t *legacy_param)
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_DB, param);
-	if (val.code != KNOT_EOK) {
+	if (val.code != KNOT_EOK && legacy_param != NULL) {
 		val = conf_default_get_txn(conf, txn, legacy_param);
 	}
 
