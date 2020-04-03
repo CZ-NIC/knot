@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,9 +50,14 @@ int sockaddr_len(const struct sockaddr_storage *ss);
 /*!
  * \brief Compare addresses.
  *
+ * \param a            First address.
+ * \param b            Second address.
+ * \param ignore_port  Ignore port indication.
+ *
  * \return like memcmp(3)
  */
-int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storage *k2);
+int sockaddr_cmp(const struct sockaddr_storage *a, const struct sockaddr_storage *b,
+                 bool ignore_port);
 
 /*!
  * \brief Set address and port.
