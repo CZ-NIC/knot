@@ -403,6 +403,7 @@ src/utils/common/tls.c
 src/utils/common/tls.h
 src/utils/common/token.c
 src/utils/common/token.h
+src/utils/kcatalogprint/main.c
 src/utils/kdig/kdig_exec.c
 src/utils/kdig/kdig_exec.h
 src/utils/kdig/kdig_main.c
