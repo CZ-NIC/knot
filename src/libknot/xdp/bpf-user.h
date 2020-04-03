@@ -18,7 +18,7 @@
 
 #include <bpf/xsk.h>
 
-#include "libknot/xdp/af_xdp.h"
+#include "libknot/xdp/xdp.h"
 
 struct kxsk_iface {
 	/*! Interface name. */

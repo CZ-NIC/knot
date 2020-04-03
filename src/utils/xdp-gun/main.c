@@ -34,10 +34,7 @@
 #include <sys/socket.h>
 #include <sys/resource.h>
 
-#include "libknot/endian.h"
-#include "libknot/error.h"
-#include "libknot/xdp/af_xdp.h"
-#include "libknot/xdp/eth-tools.h"
+#include "libknot/libknot.h"
 #include "contrib/openbsd/strlcpy.h"
 
 #include "load_queries.h"
@@ -459,7 +456,7 @@ int main(int argc, char *argv[])
 			goto pusage;
 		}
 
-		arg = knot_eth_get_rx_queues(ctx.dev);
+		arg = knot_eth_queues(ctx.dev);
 		if (arg >= 0) {
 			ctx.n_threads = arg;
 			if (ctx.qps < ctx.n_threads) {

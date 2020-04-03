@@ -66,6 +66,10 @@ int check_ref_dflt(
 	knotd_conf_check_args_t *args
 );
 
+int check_xdp(
+	knotd_conf_check_args_t *args
+);
+
 int check_modref(
 	knotd_conf_check_args_t *args
 );

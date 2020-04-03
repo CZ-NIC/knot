@@ -23,6 +23,10 @@
 
 #include "libknot/xdp/bpf-consts.h"
 
+#ifdef ENABLE_XDP
+#define KNOT_XDP_AVAILABLE	1
+#endif
+
 /*! \brief A packet with src & dst MAC & IP addrs + UDP payload. */
 typedef struct {
 	struct sockaddr_in6 ip_from;
