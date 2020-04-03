@@ -28,9 +28,11 @@
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
+#include "contrib/strtonum.h"
 #include "contrib/string.h"
 #include "contrib/wire_ctx.h"
 #include "contrib/openbsd/strlcat.h"
+#include "contrib/openbsd/strlcpy.h"
 
 #define DBG_LOG(err) CONF_LOG(LOG_DEBUG, "%s (%s)", __func__, knot_strerror((err)));
 
@@ -1127,6 +1129,26 @@ size_t conf_tcp_threads_txn(
 	return workers;
 }
 
+size_t conf_xdp_threads_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	size_t workers = 0;
+
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_LISTEN_XDP);
+	while (val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&val, NULL);
+		conf_xdp_iface_t iface;
+		int ret = conf_xdp_iface(&addr, &iface);
+		if (ret == KNOT_EOK) {
+			workers += iface.queues;
+		}
+		conf_val_next(&val);
+	}
+
+	return workers;
+}
+
 size_t conf_bg_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
@@ -1276,4 +1298,54 @@ conf_remote_t conf_remote_txn(
 	out.block_notify_after_xfr = conf_bool(&val);
 
 	return out;
+}
+
+int conf_xdp_iface(
+	struct sockaddr_storage *addr,
+	conf_xdp_iface_t *iface)
+{
+#ifndef ENABLE_XDP
+	return KNOT_ENOTSUP;
+#else
+	if (addr == NULL || iface == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (addr->ss_family == AF_UNIX) {
+		const char *addr_str = ((struct sockaddr_un *)addr)->sun_path;
+		strlcpy(iface->name, addr_str, sizeof(iface->name));
+
+		const char *port = strchr(addr_str, '@');
+		if (port != NULL) {
+			iface->name[port - addr_str] = '\0';
+			int ret = str_to_u16(port + 1, &iface->port);
+			if (ret != KNOT_EOK) {
+				return ret;
+			} else if (iface->port == 0) {
+				return KNOT_EINVAL;
+			}
+		} else {
+			iface->port = 53;
+		}
+	} else {
+		int ret = knot_eth_name_from_addr(addr, iface->name, sizeof(iface->name));
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		ret = sockaddr_port(addr);
+		if (ret < 1) {
+			return KNOT_EINVAL;
+		}
+		iface->port = ret;
+	}
+
+	int queues = knot_eth_queues(iface->name);
+	if (queues <= 0) {
+		assert(queues != 0);
+		return queues;
+	}
+	iface->queues = queues;
+
+	return KNOT_EOK;
+#endif
 }

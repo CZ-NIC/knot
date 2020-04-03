@@ -16,17 +16,10 @@
 
 #define __APPLE_USE_RFC_3542
 
-#include <stdlib.h>
 #include <assert.h>
-#include <ifaddrs.h>
-#include <netinet/tcp.h>
 #include <sys/resource.h>
 
-#include "libknot/errcode.h"
-#ifdef ENABLE_XDP
-#include "libknot/xdp/af_xdp.h"
-#include "libknot/xdp/eth-tools.h"
-#endif
+#include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
@@ -54,7 +47,7 @@ enum {
 };
 
 /*! \brief Unbind interface and clear the structure. */
-static void server_deinit_iface(iface_t *iface)
+static void server_deinit_iface(iface_t *iface, bool dealloc)
 {
 	assert(iface);
 
@@ -87,6 +80,10 @@ static void server_deinit_iface(iface_t *iface)
 		}
 		free(iface->fd_tcp);
 	}
+
+	if (dealloc) {
+		free(iface);
+	}
 }
 
 /*! \brief Deinit server interface list. */
@@ -94,7 +91,7 @@ static void server_deinit_iface_list(iface_t *ifaces, size_t n)
 {
 	if (ifaces != NULL) {
 		for (size_t i = 0; i < n; i++) {
-			server_deinit_iface(ifaces + i);
+			server_deinit_iface(ifaces + i, false);
 		}
 		free(ifaces);
 	}
@@ -201,148 +198,54 @@ static int enable_fastopen(int sock, int backlog)
 	return KNOT_EOK;
 }
 
-__attribute__((unused)) // ifndef ENABLE_REUSEPORT
-static int iface_addr2name(const struct sockaddr_storage *add, char **out)
-{
-	struct ifaddrs *ifas = NULL, *orig = NULL;
-	if (getifaddrs(&orig)) {
-		return -errno;
-	}
-
-	size_t matches = 0;
-	char *match_name = NULL;
-
-	for (ifas = orig; ifas != NULL; ifas = ifas->ifa_next) {
-		const struct sockaddr_storage *ifss = (struct sockaddr_storage *)ifas->ifa_addr; // ??
-		if (!ifss) { // allowed; observed on interfaces without any address
-			continue;
-		}
-
-		if ((ifss->ss_family == add->ss_family && sockaddr_is_any(add)) ||
-		    sockaddr_net_match(ifss, add, 64)) { // sockaddr_cmp() compares also port numbers
-			matches++;
-			match_name = ifas->ifa_name;
-		}
-	}
-
-	if (matches == 1) {
-		*out = strdup(match_name);
-		freeifaddrs(orig);
-		return *out == NULL ? KNOT_ENOMEM : KNOT_EOK;
-	}
-
-	freeifaddrs(orig);
-	*out = malloc(64);
-	if (*out == NULL) {
-		return KNOT_ENOMEM;
-	}
-	sockaddr_tostr(*out, 64, add);
-	return matches == 0 ? KNOT_EADDRNOTAVAIL : KNOT_ELIMIT;
-}
-
-// returns >= 0: the number of RX queues; < 0 : error
-static int get_xdp_iface(struct sockaddr_storage *addr, char **out_devname, uint16_t *out_port)
-{
-#ifndef ENABLE_XDP
-	return 0;
-#else
-
-	char *dev = NULL;
-	int port = 0;
-	if (addr->ss_family == AF_UNIX) {
-		dev = strdup(((struct sockaddr_un *)addr)->sun_path);
-		if (dev == NULL) {
-			log_warning("%s", knot_strerror(KNOT_ENOMEM));
-			return KNOT_ENOMEM;
-		}
-		char *sport = strchr(dev, '@');
-		if (sport == NULL || (port = atoi(sport + 1)) < 1 || port > 0xffff) {
-			log_warning("Wrong format of XDP listen, expected 'dev@port': '%s'", dev);
-			free(dev);
-			return KNOT_EINVAL;
-		}
-		*sport = '\0';
-	} else {
-		int ret = iface_addr2name(addr, &dev);
-		if (ret != KNOT_EOK) {
-			if (dev != NULL) {
-				log_warning("XDP failed: address %s corresponds to %s net devices", dev, ret == KNOT_EADDRNOTAVAIL ? "none" : "more");
-			} else {
-				log_warning("failed to find dev for address (%s)", knot_strerror(ret));
-			}
-			return ret;
-		}
-		port = sockaddr_port(addr);
-		if (port < 1 || port > 0xffff) {
-			log_warning("port out of range");
-			free(dev);
-			return KNOT_ELIMIT;
-		}
-	}
-
-	int rx_queues = knot_eth_get_rx_queues(dev);
-	if (rx_queues < 0) {
-		log_warning("failed to obtain RX queue count for iface %s (%s)\n", dev, knot_strerror(rx_queues));
-		free(dev);
-		return rx_queues;
-	}
-
-	if (out_devname != NULL) {
-		*out_devname = dev;
-	} else {
-		free(dev);
-	}
-	if (out_port != NULL) {
-		*out_port = port;
-	}
-	return rx_queues;
-#endif
-}
-
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *thread_id_start)
 {
 #ifndef ENABLE_XDP
 	assert(0);
 	return NULL;
 #else
-	char *dev = NULL;
-	uint16_t port = 0;
-	int rx_queues = get_xdp_iface(addr, &dev, &port);
-	if (rx_queues < 0) {
+	conf_xdp_iface_t iface;
+	int ret = conf_xdp_iface(addr, &iface);
+	if (ret != KNOT_EOK) {
+		log_error("failed to initialize XDP interface (%s)",
+		          knot_strerror(ret));
 		return NULL;
 	}
 
 	iface_t *new_if = calloc(1, sizeof(*new_if));
 	if (new_if == NULL) {
-		log_error("failed to initialize interface");
-		free(dev);
+		log_error("failed to initialize XDP interface (%s)",
+		          knot_strerror(KNOT_ENOMEM));
 		return NULL;
 	}
 	memcpy(&new_if->addr, addr, sizeof(*addr));
 
-	new_if->fd_xdp = malloc(rx_queues * sizeof(int));
-	new_if->sock_xdp = calloc(rx_queues, sizeof(*new_if->sock_xdp));
+	new_if->fd_xdp = calloc(iface.queues, sizeof(int));
+	new_if->sock_xdp = calloc(iface.queues, sizeof(*new_if->sock_xdp));
 	if (new_if->fd_xdp == NULL || new_if->sock_xdp == NULL) {
-		log_warning("failed to init XDP: not enough memory\n");
+		log_error("failed to initialize XDP interface (%s)",
+		          knot_strerror(KNOT_ENOMEM));
 		free(new_if);
-		free(dev);
 		return NULL;
 	}
 	new_if->fd_thread_ids = *thread_id_start;
-	*thread_id_start += rx_queues;
+	*thread_id_start += iface.queues;
 
-	for (int i = 0; i < rx_queues; i++) {
-		int ret = knot_xdp_init(new_if->sock_xdp + i, dev, i, port, i == 0);
-
+	for (int i = 0; i < iface.queues; i++) {
+		ret = knot_xdp_init(new_if->sock_xdp + i, iface.name, i,
+		                    iface.port, i == 0);
 		if (ret != KNOT_EOK) {
-			log_warning("failed to init XDP in dev %s queue %d (%s)", dev, i, knot_strerror(ret));
+			log_warning("failed to initialize XDP interface %s@%u, queue %d (%s)",
+			            iface.name, iface.port, i, knot_strerror(ret));
 			new_if->fd_xdp[i] = -1;
 		} else {
 			new_if->fd_xdp[i] = knot_xdp_socket_fd(new_if->sock_xdp[i]);
-
 		}
 		new_if->fd_xdp_count++;
 	}
+
+	log_debug("initialized XDP interface %s@%u, queues %d",
+	          iface.name, iface.port, iface.queues);
 	return new_if;
 #endif
 }
@@ -392,10 +295,9 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
 	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
-
 	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL) {
 		log_error("failed to initialize interface");
-		server_deinit_iface(new_if);
+		server_deinit_iface(new_if, true);
 		return NULL;
 	}
 
@@ -419,7 +321,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		if (sock < 0) {
 			log_error("cannot bind address %s UDP (%s)", addr_str,
 			          knot_strerror(sock));
-			server_deinit_iface(new_if);
+			server_deinit_iface(new_if, true);
 			return NULL;
 		}
 
@@ -465,7 +367,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		if (sock < 0) {
 			log_error("cannot bind address %s TCP (%s)", addr_str,
 			          knot_strerror(sock));
-			server_deinit_iface(new_if);
+			server_deinit_iface(new_if, true);
 			return NULL;
 		}
 
@@ -482,7 +384,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		int ret = listen(sock, TCP_BACKLOG_SIZE);
 		if (ret < 0) {
 			log_error("failed to listen on TCP interface %s", addr_str);
-			server_deinit_iface(new_if);
+			server_deinit_iface(new_if, true);
 			return NULL;
 		}
 
@@ -518,38 +420,44 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	if (lisxdp_val.code == KNOT_EOK) {
 		struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY };
 		int ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
-		if (ret) {
+		if (ret != 0) {
+			log_error("failed to set RLIMIT_MEMLOCK resource limit (%s)",
+			          knot_strerror(ret));
 			return -errno;
 		}
 	}
 
-	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val), real_n = 0;
+	size_t real_nifs = 0;
+	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
 	iface_t *newlist = calloc(nifs, sizeof(*newlist));
 	if (newlist == NULL) {
 		return KNOT_ENOMEM;
 	}
 
+	/* Normal UDP and TCP sockets. */
+	unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
+	unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
+	bool tcp_reuseport = conf->cache.srv_tcp_reuseport;
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	while (listen_val.code == KNOT_EOK) {
-		/* Log interface binding. */
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 		log_info("binding to interface %s", addr_str);
 
-		/* Create new interface. */
-		unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
-		unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
-		bool tcp_reuseport = conf->cache.srv_tcp_reuseport;
-		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp, tcp_reuseport);
+		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp,
+		                                    tcp_reuseport);
 		if (new_if != NULL) {
-			memcpy(&newlist[real_n++], new_if, sizeof(*newlist));
+			memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
 			free(new_if);
 		}
-
 		conf_val_next(&listen_val);
 	}
-	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size + s->handlers[IO_TCP].handler.unit->size;
+	free(rundir);
+
+	/* XDP sockets. */
+	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
+	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
@@ -558,20 +466,19 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 		iface_t *new_if = server_init_xdp_iface(&addr, &thread_id);
 		if (new_if != NULL) {
-			memcpy(&newlist[real_n++], new_if, sizeof(*newlist));
+			memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
 			free(new_if);
 		}
 		conf_val_next(&lisxdp_val);
 	}
-	assert(real_n <= nifs);
-	nifs = real_n;
-	free(rundir);
+	assert(real_nifs <= nifs);
+	nifs = real_nifs;
 
 	/* Publish new list. */
 	s->ifaces = newlist;
 	s->n_ifaces = nifs;
 
-	/* Set the ID's (thread_id) of both the TCP and UDP threads. */
+	/* Set the thread IDs. */
 	unsigned thread_count = 0;
 	for (unsigned proto = IO_UDP; proto <= IO_XDP; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;
@@ -581,22 +488,6 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 	return KNOT_EOK;
-}
-
-int server_count_xdp_threads(conf_t *conf)
-{
-	int res = 0, ret;
-	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
-	while (lisxdp_val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
-		ret = get_xdp_iface(&addr, NULL, NULL);
-		if (ret < 0) {
-			return ret;
-		}
-		res += ret;
-		conf_val_next(&lisxdp_val);
-	}
-	return res;
 }
 
 int server_init(server_t *server, int bg_workers)
@@ -819,13 +710,14 @@ static int reload_conf(conf_t *new_conf)
 	return KNOT_EOK;
 }
 
-/*! \brief Check if parameter listen has been changed since knotd started. */
-static bool listen_changed(conf_t *conf, server_t *server, const yp_name_t *item)
+/*! \brief Check if parameter listen(-xdp) has been changed since knotd started. */
+static bool listen_changed(conf_t *conf, server_t *server)
 {
 	assert(server->ifaces);
 
-	conf_val_t listen_val = conf_get(conf, C_SRV, item);
-	size_t new_count = conf_val_count(&listen_val);
+	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	size_t new_count = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
 	size_t old_count = server->n_ifaces;
 	if (new_count != old_count) {
 		return true;
@@ -846,14 +738,28 @@ static bool listen_changed(conf_t *conf, server_t *server, const yp_name_t *item
 				break;
 			}
 		}
-
 		if (!found) {
 			break;
 		}
 		conf_val_next(&listen_val);
 	}
-
 	free(rundir);
+
+	while (lisxdp_val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
+		bool found = false;
+		for (size_t i = 0; i < server->n_ifaces; i++) {
+			if (sockaddr_cmp(&addr, &server->ifaces[i].addr, false) == 0) {
+				matches++;
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			break;
+		}
+		conf_val_next(&lisxdp_val);
+	}
 
 	return matches != old_count;
 }
@@ -868,7 +774,6 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_tcp = true;
 	static bool warn_bg = true;
 	static bool warn_listen = true;
-	static bool warn_listen_xdp = true;
 
 	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_tcp_reuseport(conf)) {
 		log_warning(msg, &C_TCP_REUSEPORT[1]);
@@ -890,14 +795,9 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 		warn_bg = false;
 	}
 
-	if (warn_listen && listen_changed(conf, server, C_LISTEN)) {
-		log_warning(msg, &C_LISTEN[1]);
+	if (warn_listen && listen_changed(conf, server)) {
+		log_warning(msg, "listen(-xdp)");
 		warn_listen = false;
-	}
-
-	if (warn_listen_xdp && listen_changed(conf, server, C_LISTEN_XDP)) {
-		log_warning(msg, &C_LISTEN_XDP[1]);
-		warn_listen_xdp = false;
 	}
 }
 
@@ -1003,16 +903,15 @@ static int set_handler(server_t *server, int index, unsigned size, runnable_t ru
 	return KNOT_EOK;
 }
 
-/*! \brief Reconfigure UDP and TCP query processing threads. */
-static int configure_threads(conf_t *conf, server_t *server, size_t xdp_threads)
+static int configure_threads(conf_t *conf, server_t *server)
 {
 	int ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	if (xdp_threads > 0) {
-		ret = set_handler(server, IO_XDP, xdp_threads, udp_master);
+	if (conf->cache.srv_xdp_threads > 0) {
+		ret = set_handler(server, IO_XDP, conf->cache.srv_xdp_threads, udp_master);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -1078,14 +977,8 @@ void server_reconfigure(conf_t *conf, server_t *server)
 			         knot_db_lmdb_get_path(conf->db));
 		}
 
-		if ((ret = server_count_xdp_threads(conf)) < 0) {
-			log_error("failed to configure XDP thread count (%s)",
-				  knot_strerror(ret));
-			ret = 0;
-		}
-
 		/* Configure server threads. */
-		if ((ret = configure_threads(conf, server, ret)) != KNOT_EOK) {
+		if ((ret = configure_threads(conf, server)) != KNOT_EOK) {
 			log_error("failed to configure server threads (%s)",
 			          knot_strerror(ret));
 		}

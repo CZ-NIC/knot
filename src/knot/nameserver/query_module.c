@@ -348,6 +348,9 @@ knotd_conf_t knotd_conf_env(knotd_mod_t *mod, knotd_conf_env_t env)
 	case KNOTD_CONF_ENV_WORKERS_TCP:
 		out.single.integer = config->cache.srv_tcp_threads;
 		break;
+	case KNOTD_CONF_ENV_WORKERS_XDP:
+		out.single.integer = config->cache.srv_xdp_threads;
+		break;
 	default:
 		return out;
 	}

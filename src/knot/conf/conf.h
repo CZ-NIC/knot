@@ -696,6 +696,24 @@ static inline size_t conf_tcp_threads(
 }
 
 /*!
+ * Gets the number of used XDP threads.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return Number of threads.
+ */
+size_t conf_xdp_threads_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline size_t conf_xdp_threads(
+	conf_t *conf)
+{
+	return conf_xdp_threads_txn(conf, &conf->read_txn);
+}
+
+/*!
  * Gets the configured number of worker threads.
  *
  * \param[in] conf  Configuration.
@@ -777,5 +795,27 @@ static inline conf_remote_t conf_remote(
 	size_t index)
 {
 	return conf_remote_txn(conf, &conf->read_txn, id, index);
-
 }
+
+/*! XDP interface parameters. */
+typedef struct {
+	/*! Interface name. */
+	char name[32];
+	/*! UDP port to listen on. */
+	uint16_t port;
+	/*! Number of active IO queues. */
+	uint16_t queues;
+} conf_xdp_iface_t;
+
+/*!
+ * Gets the XDP interface parameters for a given configuration value.
+ *
+ * \param[in] addr    XDP interface name stored in the configuration.
+ * \param[out] iface  Interface parameters.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int conf_xdp_iface(
+	struct sockaddr_storage *addr,
+	conf_xdp_iface_t *iface
+);
