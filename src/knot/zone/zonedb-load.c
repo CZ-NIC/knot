@@ -245,6 +245,18 @@ static zone_contents_t *zone_expire(zone_t *zone)
 	return zone_switch_contents(zone, NULL);
 }
 
+static bool check_open_catalog(knot_catalog_t *cat) {
+	if (knot_lmdb_exists(&cat->db)) {
+		int ret = knot_catalog_open(cat);
+		if (ret != KNOT_EOK) {
+			log_error("failed to open existing zone catalog");
+		} else {
+			return true;
+		}
+	}
+	return false;
+}
+
 static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf, list_t *expired_contents)
 {
 	if (!(zone->flags & ZONE_IS_CAT_MEMBER)) {
@@ -311,7 +323,7 @@ static zone_t *add_member_zone(knot_cat_upd_val_t *val, knot_zonedb_t *check, se
 	zone_t *zone = create_zone(conf, val->member, server, NULL);
 	if (zone == NULL) {
 		log_zone_error(val->member, "zone cannot be created");
-		knot_catalog_del(conf->catalog, val->member);
+		knot_catalog_del2(conf->catalog, val);
 	} else {
 		zone->flags |= ZONE_IS_CAT_MEMBER;
 		conf_activate_modules(conf, zone->name, &zone->query_modules,
@@ -387,7 +399,8 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 			}
 			knot_zonedb_iter_next(it);
 		}
-	} else {
+		knot_zonedb_iter_free(it);
+	} else if (check_open_catalog(&server->catalog)) {
 		knot_lmdb_forwhole(&server->catalog.txn) {
 			const knot_dname_t *member = NULL;
 			knot_catalog_curval(&server->catalog, &member, NULL, NULL);
@@ -424,14 +437,14 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
                               server_t *server)
 {
-	if (db_old == NULL) {
-		goto catalog_only;
-	}
-
 	knot_zonedb_t *db_new = server->zone_db;
 
 	bool full = !(conf->io.flags & CONF_IO_FACTIVE) ||
 	            (conf->io.flags & CONF_IO_FRLD_ZONES);
+
+	if (db_old == NULL) {
+		goto catalog_only;
+	}
 
 	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
 

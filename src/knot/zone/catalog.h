@@ -120,3 +120,5 @@ inline static bool knot_cat_it_finised(knot_cat_it_t *it)
 
 #define knot_cat_it_next trie_it_next
 #define knot_cat_it_free trie_it_free
+
+void knot_cat_update_print(const char *intro, knot_catalog_t *cat, knot_cat_update_t *u);

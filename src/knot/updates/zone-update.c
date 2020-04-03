@@ -702,7 +702,7 @@ static int commit_catalog(conf_t *conf, zone_update_t *update)
 	}
 	update->zone->flags |= ZONE_IS_CATALOG;
 	int ret = KNOT_EOK;
-	if ((update->flags & UPDATE_INCREMENTAL) || (update->flags & UPDATE_HYBRID)) {
+	if ((update->flags & UPDATE_INCREMENTAL)) {
 		ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.remove, true, update->zone->catalog);
 		if (ret == KNOT_EOK) {
 			ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.add, false, NULL);

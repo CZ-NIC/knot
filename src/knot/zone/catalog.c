@@ -31,14 +31,15 @@ void knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize)
 
 int knot_catalog_open(knot_catalog_t *cat)
 {
-	if (knot_lmdb_is_open(&cat->db)) {
-		return KNOT_EOK;
+	if (!knot_lmdb_is_open(&cat->db)) {
+		int ret = knot_lmdb_open(&cat->db);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
-	int ret = knot_lmdb_open(&cat->db);
-	if (ret == KNOT_EOK) {
-		return ret;
+	if (!cat->txn.opened) {
+		knot_lmdb_begin(&cat->db, &cat->txn, true);
 	}
-	knot_lmdb_begin(&cat->db, &cat->txn, true);
 	return cat->txn.ret;
 }
 
@@ -267,7 +268,7 @@ static int cat_update_add_node(zone_node_t *node, void *data)
 	knot_rdata_t *rdata = ptr->rdata;
 	int ret = KNOT_EOK;
 	for (int i = 0; ret == KNOT_EOK && i < ptr->count; i++) {
-		const knot_dname_t *member = (const knot_dname_t *)rdata;
+		const knot_dname_t *member = knot_ptr_name(rdata);
 		if (ctx->check != NULL && ctx->remove &&
 		    knot_catalog_find(ctx->check, member, node->owner, ctx->apex) != MEMBER_EXACT) {
 			rdata = knot_rdataset_next(rdata);
@@ -312,30 +313,60 @@ int knot_cat_update_del_all(knot_cat_update_t *u, knot_catalog_t *cat, const kno
 	return cat->txn.ret;
 }
 
-// TODO remove
-int knot_cat_update_check(knot_cat_update_t *u, knot_catalog_t *against, const knot_dname_t *zone_only)
+static void print_dname(const knot_dname_t *d)
 {
-	pthread_mutex_lock(&u->mutex);
-	list_t todel;
-	init_list(&todel);
-	knot_cat_it_t *it = knot_cat_it_begin(u, true);
-	while (!knot_cat_it_finised(it)) {
-		knot_cat_upd_val_t *val = knot_cat_it_val(it);
-		if (zone_only == NULL || knot_dname_is_equal(zone_only, val->catzone)) {
-			if (knot_catalog_find(against, val->member, val->owner, val->catzone) != MEMBER_EXACT) {
-				ptrlist_add(&todel, val->member, NULL);
-			}
-		}
-		knot_cat_it_next(it);
-	}
-	knot_cat_it_free(it);
-
-	ptrnode_t *n;
-	WALK_LIST(n, todel) {
-		// TODO
-	}
-	ptrlist_free(&todel, NULL);
-	pthread_mutex_unlock(&u->mutex);
-	return KNOT_EOK;
+	char tmp[KNOT_DNAME_TXT_MAXLEN];
+	knot_dname_to_str(tmp, d, sizeof(tmp));
+	printf("%s ", tmp);
 }
 
+static void print_dname3(const char *pre, const knot_dname_t *a, const knot_dname_t *b, const knot_dname_t *c, const char *suff)
+{
+	printf("%s ", pre);
+	print_dname(a);
+	print_dname(b);
+	print_dname(c);
+	printf("%s\n", suff);
+}
+
+void knot_cat_update_print(const char *intro, knot_catalog_t *cat, knot_cat_update_t *u)
+{
+	ssize_t cattot = 0, uplus = 0, uminus = 0;
+
+	printf("Catalog (%s)\n", intro);
+
+	if (cat != NULL) {
+		int ret = knot_catalog_open(cat);
+		if (ret != KNOT_EOK) {
+			printf("Catalog print failed (%s)\n", knot_strerror(ret));
+			return;
+		}
+
+		knot_lmdb_forwhole(&cat->txn) {
+			const knot_dname_t *mem, *ow, *cz;
+			knot_catalog_curval(cat, &mem, &ow, &cz);
+			print_dname3("*", mem, ow, cz, "");
+			cattot++;
+		}
+	}
+	if (u != NULL) {
+		knot_cat_it_t *it = knot_cat_it_begin(u, true);
+		while (!knot_cat_it_finised(it)) {
+			knot_cat_upd_val_t *val = knot_cat_it_val(it);
+			print_dname3("-", val->member, val->owner, val->catzone, "");
+			uminus++;
+			knot_cat_it_next(it);
+		}
+		knot_cat_it_free(it);
+
+		it = knot_cat_it_begin(u, false);
+		while (!knot_cat_it_finised(it)) {
+			knot_cat_upd_val_t *val = knot_cat_it_val(it);
+			print_dname3("+", val->member, val->owner, val->catzone, val->just_reconf ? "JR" : "");
+			uplus++;
+			knot_cat_it_next(it);
+		}
+		knot_cat_it_free(it);
+	}
+	printf("Catalog: *%zd -%zd +%zd\n", cattot, uminus, uplus);
+}
