@@ -65,6 +65,7 @@ version.h
 src/libknot/libknot.h
 
 # Binaries
+/src/kcatalogprint
 /src/kdig
 /src/khost
 /src/kjournalprint
