@@ -131,6 +131,22 @@ resp = slave.dig("cataloged2.", "SOA", dnssec=True)
 resp.check(rcode="NOERROR")
 resp.check_count(1, "RRSIG")
 
+# Check adding and removing duplicate
+
+up = master.update(zone[1])
+up.add("bar3.catalog1.", 0, "PTR", "cataloged2.")
+up.send("NOERROR")
+t.sleep(6)
+up = master.update(zone[1])
+up.delete("bar3.catalog1.", "PTR")
+up.send("NOERROR")
+t.sleep(6)
+resp = master.dig("cataloged2.", "SOA")
+resp.check(rcode="NOERROR")
+resp = slave.dig("cataloged2.", "SOA", dnssec=True)
+resp.check(rcode="NOERROR")
+check_keys(slave, "cataloged2", 2)
+
 # Check removing cataloged zone.
 up = master.update(zone[1])
 up.delete("foo.bar.catalog1.", "PTR")
