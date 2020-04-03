@@ -51,6 +51,8 @@ typedef struct {
 	bool just_reconf;
 } knot_cat_upd_val_t;
 
+extern const MDB_val knot_catalog_iter_prefix;
+
 void knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize);
 
 int knot_catalog_open(knot_catalog_t *cat);
@@ -72,6 +74,8 @@ inline static int knot_catalog_del2(knot_catalog_t *cat, const knot_cat_upd_val_
 	assert(!val->just_reconf); // just re-add in this case
 	return knot_catalog_del(cat, val->member);
 }
+
+#define knot_catalog_foreach(cat) knot_lmdb_foreach(&(cat)->txn, (MDB_val *)&knot_catalog_iter_prefix)
 
 void knot_catalog_curval(knot_catalog_t *cat, const knot_dname_t **member,
                          const knot_dname_t **owner, const knot_dname_t **catzone);
