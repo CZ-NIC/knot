@@ -60,6 +60,7 @@ version.h
 /src/libzscanner/scanner.c
 
 # Binaries
+/src/kcatalogprint
 /src/kdig
 /src/khost
 /src/kjournalprint

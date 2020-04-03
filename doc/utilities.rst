@@ -10,6 +10,7 @@ the server. This section collects manual pages for all provided binaries:
 .. toctree::
    :titlesonly:
 
+   man_kcatalogprint
    man_kdig
    man_keymgr
    man_khost
