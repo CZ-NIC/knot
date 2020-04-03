@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -591,7 +591,7 @@ static void test_nonblocking_accept(void)
 
 	ok(!socket_is_blocking(accepted), "accepted, nonblocking mode");
 
-	ok(sockaddr_cmp(&addr_client, &addr_accepted) == 0,
+	ok(sockaddr_cmp(&addr_client, &addr_accepted, false) == 0,
 	   "accepted, correct address");
 
 	close(client);
@@ -671,7 +671,7 @@ static void test_bind_multiple(void)
 	ok(sock_one != sock_two, "descriptors are different");
 
 	const struct sockaddr_storage addr_two = addr_from_socket(sock_two);
-	ok(sockaddr_cmp(&addr_one, &addr_two) == 0,
+	ok(sockaddr_cmp(&addr_one, &addr_two, false) == 0,
 	   "addresses are the same");
 
 	close(sock_one);

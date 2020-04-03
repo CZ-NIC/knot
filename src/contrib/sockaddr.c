@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,22 +42,24 @@ int sockaddr_len(const struct sockaddr_storage *ss)
 	}
 }
 
-static int cmp_ipv4(const struct sockaddr_in *a, const struct sockaddr_in *b)
+static int cmp_ipv4(const struct sockaddr_in *a, const struct sockaddr_in *b,
+                    bool ignore_port)
 {
 	if (a->sin_addr.s_addr < b->sin_addr.s_addr) {
 		return -1;
 	} else if (a->sin_addr.s_addr > b->sin_addr.s_addr) {
 		return 1;
 	} else {
-		return a->sin_port - b->sin_port;
+		return ignore_port ? 0 : a->sin_port - b->sin_port;
 	}
 }
 
-static int cmp_ipv6(const struct sockaddr_in6 *a, const struct sockaddr_in6 *b)
+static int cmp_ipv6(const struct sockaddr_in6 *a, const struct sockaddr_in6 *b,
+                    bool ignore_port)
 {
 	int ret = memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(struct in6_addr));
 	if (ret == 0) {
-		ret = a->sin6_port - b->sin6_port;
+		ret = ignore_port ? 0 : a->sin6_port - b->sin6_port;
 	}
 
 	return ret;
@@ -77,7 +79,8 @@ static int cmp_unix(const struct sockaddr_un *a, const struct sockaddr_un *b)
 	return ret;
 }
 
-int sockaddr_cmp(const struct sockaddr_storage *a, const struct sockaddr_storage *b)
+int sockaddr_cmp(const struct sockaddr_storage *a, const struct sockaddr_storage *b,
+                 bool ignore_port)
 {
 	if (a->ss_family != b->ss_family) {
 		return (int)a->ss_family - (int)b->ss_family;
@@ -87,9 +90,11 @@ int sockaddr_cmp(const struct sockaddr_storage *a, const struct sockaddr_storage
 	case AF_UNSPEC:
 		return 0;
 	case AF_INET:
-		return cmp_ipv4((struct sockaddr_in *)a, (struct sockaddr_in *)b);
+		return cmp_ipv4((struct sockaddr_in *)a, (struct sockaddr_in *)b,
+		                ignore_port);
 	case AF_INET6:
-		return cmp_ipv6((struct sockaddr_in6 *)a, (struct sockaddr_in6 *)b);
+		return cmp_ipv6((struct sockaddr_in6 *)a, (struct sockaddr_in6 *)b,
+		                ignore_port);
 	case AF_UNIX:
 		return cmp_unix((struct sockaddr_un *)a, (struct sockaddr_un *)b);
 	default:
@@ -346,5 +351,6 @@ bool sockaddr_range_match(const struct sockaddr_storage *ss,
 		return false;
 	}
 
-	return sockaddr_cmp(ss, ss_min) >= 0 && sockaddr_cmp(ss, ss_max) <= 0;
+	return sockaddr_cmp(ss, ss_min, true) >= 0 &&
+	       sockaddr_cmp(ss, ss_max, true) <= 0;
 }
