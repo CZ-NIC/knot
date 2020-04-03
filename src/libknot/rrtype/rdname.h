@@ -49,6 +49,13 @@ const knot_dname_t *knot_ns_name(const knot_rdata_t *rdata)
 }
 
 static inline
+const knot_dname_t *knot_ptr_name(const knot_rdata_t *rdata)
+{
+	assert(rdata);
+	return rdata->data;
+}
+
+static inline
 const knot_dname_t *knot_mx_name(const knot_rdata_t *rdata)
 {
 	assert(rdata);
@@ -69,6 +76,8 @@ const knot_dname_t *knot_rdata_name(const knot_rdata_t *rdata, uint16_t type)
 	switch (type) {
 		case KNOT_RRTYPE_NS:
 			return knot_ns_name(rdata);
+		case KNOT_RRTYPE_PTR:
+			return knot_ptr_name(rdata);
 		case KNOT_RRTYPE_MX:
 			return knot_mx_name(rdata);
 		case KNOT_RRTYPE_SRV:

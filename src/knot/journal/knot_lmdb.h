@@ -144,7 +144,7 @@ void knot_lmdb_deinit(knot_lmdb_db_t *db);
 /*!
  * \brief Return true if DB is open.
  */
-inline static bool knot_lmdb_is_open(knot_lmdb_db_t *db) { return db->env != NULL; }
+inline static bool knot_lmdb_is_open(knot_lmdb_db_t *db) { return db != NULL && db->env != NULL; }
 
 /*!
  * \brief Start a DB transaction.
