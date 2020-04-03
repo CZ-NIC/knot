@@ -226,6 +226,7 @@ man_pages = [
     ('reference',         'knot.conf',     'Knot DNS configuration file',               author, 5),
     ('man_knotc',         'knotc',         'Knot DNS control utility',                  author, 8),
     ('man_knotd',         'knotd',         'Knot DNS server daemon',                    author, 8),
+    ('man_kcatalogprint', 'kcatalogprint', 'Knot DNS catalog print utility',            author, 8),
     ('man_keymgr',        'keymgr',        'Knot DNS key management utility',           author, 8),
     ('man_kjournalprint', 'kjournalprint', 'Knot DNS journal print utility',            author, 8),
     ('man_kdig',          'kdig',          'Advanced DNS lookup utility',               author, 1),

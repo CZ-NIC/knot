@@ -10,13 +10,14 @@ the server. This section collects manual pages for all provided binaries:
 .. toctree::
    :titlesonly:
 
-   man_kdig
-   man_keymgr
-   man_khost
-   man_kjournalprint
-   man_knotc
    man_knotd
+   man_knotc
+   man_keymgr
+   man_kjournalprint
+   man_kcatalogprint
+   man_kzonecheck
+   man_kdig
+   man_khost
    man_knsec3hash
    man_knsupdate
-   man_kzonecheck
    man_knot-xdp-gun
