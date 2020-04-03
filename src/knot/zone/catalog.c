@@ -21,8 +21,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/zone/contents.h"
+
+#define CATALOG_VERSION "1.0"
+
+const MDB_val knot_catalog_iter_prefix = { 1, "" };
 
 void knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize)
 {
@@ -39,6 +44,17 @@ int knot_catalog_open(knot_catalog_t *cat)
 	}
 	if (!cat->txn.opened) {
 		knot_lmdb_begin(&cat->db, &cat->txn, true);
+	}
+	if (cat->txn.ret == KNOT_EOK) {
+		MDB_val key = { 8, "\x01version" };
+		if (knot_lmdb_find(&cat->txn, &key, KNOT_LMDB_EXACT)) {
+			if (strncmp(CATALOG_VERSION, cat->txn.cur_val.mv_data, cat->txn.cur_val.mv_size) != 0) {
+				log_warning("unmatching catalog version");
+			}
+		} else {
+			MDB_val val = { strlen(CATALOG_VERSION), CATALOG_VERSION };
+			knot_lmdb_insert(&cat->txn, &key, &val);
+		}
 	}
 	return cat->txn.ret;
 }
@@ -301,7 +317,7 @@ int knot_cat_update_del_all(knot_cat_update_t *u, knot_catalog_t *cat, const kno
 	}
 
 	pthread_mutex_lock(&u->mutex);
-	knot_lmdb_forwhole(&cat->txn) { // TODO possible speedup by indexing which member zones belong to a catalog zone
+	knot_catalog_foreach(cat) { // TODO possible speedup by indexing which member zones belong to a catalog zone
 		const knot_dname_t *mem, *ow, *cz;
 		knot_catalog_curval(cat, &mem, &ow, &cz);
 		if (knot_dname_is_equal(cz, zone)) {
@@ -345,7 +361,7 @@ void knot_cat_update_print(const char *intro, knot_catalog_t *cat, knot_cat_upda
 			return;
 		}
 
-		knot_lmdb_forwhole(&cat->txn) {
+		knot_catalog_foreach(cat) {
 			const knot_dname_t *mem, *ow, *cz;
 			knot_catalog_curval(cat, &mem, &ow, &cz);
 			print_dname3("*", mem, ow, cz, "");

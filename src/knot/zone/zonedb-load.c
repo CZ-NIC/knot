@@ -401,7 +401,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		}
 		knot_zonedb_iter_free(it);
 	} else if (check_open_catalog(&server->catalog)) {
-		knot_lmdb_forwhole(&server->catalog.txn) {
+		knot_catalog_foreach(&server->catalog) {
 			const knot_dname_t *member = NULL;
 			knot_catalog_curval(&server->catalog, &member, NULL, NULL);
 			zone_t *zone = reuse_cold_zone(member, server, conf);
