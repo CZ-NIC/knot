@@ -129,29 +129,25 @@ static int file_overwrite(const char *what, const char *with)
 	FILE *from = fopen(with, "r");
 	if (from == NULL) {
 		ret = knot_map_errno();
-		return ret;
+		goto done4;
 	}
 
 	char *buf = malloc(BUFSIZE);
 	if (buf == NULL) {
-		fclose(from);
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto done3;
 	}
 
 	ret = make_path(what, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP);
 	if (ret != KNOT_EOK) {
-		fclose(from);
-		free(buf);
-		return ret;
+		goto done2;
 	}
 
 	FILE *file = NULL;
 	char *tmp_name = NULL;
 	ret = open_tmp_file(what, &tmp_name, &file, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (ret != KNOT_EOK) {
-		fclose(from);
-		free(buf);
-		return ret;
+		goto done2;
 	}
 
 	ssize_t cnt;
@@ -160,14 +156,11 @@ static int file_overwrite(const char *what, const char *with)
 	}
 
 	ret = !ret || ferror(from);
-	free(buf);
-	fclose(from);
 	fclose(file);
 	if (ret != 0) {
 		ret = knot_map_errno();
 		unlink(tmp_name);
-		free(tmp_name);
-		return ret;
+		goto done1;
 	}
 
 	/* Swap temporary zonefile and new zonefile. */
@@ -175,13 +168,19 @@ static int file_overwrite(const char *what, const char *with)
 	if (ret != 0) {
 		ret = knot_map_errno();
 		unlink(tmp_name);
-		free(tmp_name);
-		return ret;
+		goto done1;
 	}
 
-	free(tmp_name);
+	ret = KNOT_EOK;
 
-	return KNOT_EOK;
+done1:
+	free(tmp_name);
+done2:
+	free(buf);
+done3:
+	fclose(from);
+done4:
+	return ret;
 }
 
 static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keystore_t *to)
