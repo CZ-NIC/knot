@@ -43,7 +43,7 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_UPDATE,       event_update,      "update" },
 	{ ZONE_EVENT_EXPIRE,       event_expire,      "expiration" },
 	{ ZONE_EVENT_FLUSH,        event_flush,       "journal flush" },
-	{ ZONE_EVENT_BACKUP,       event_backup,      "data backup" },
+	{ ZONE_EVENT_BACKUP,       event_backup,      "backup/restore" },
 	{ ZONE_EVENT_NOTIFY,       event_notify,      "notify" },
 	{ ZONE_EVENT_DNSSEC,       event_dnssec,      "DNSSEC re-sign" },
 	{ ZONE_EVENT_UFREEZE,      event_ufreeze,     "update freeze" },
