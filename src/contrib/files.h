@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,3 +41,8 @@ int make_path(const char *path, mode_t mode);
  * Creates and opens for writing a temporary file based on given path.
  */
 int open_tmp_file(const char *path, char **tmp_name, FILE **file, mode_t mode);
+
+/*!
+ * Copies a file, possibly overwriting existing one, as an atomic operation.
+ */
+int copy_file(const char *dest, const char *src);
