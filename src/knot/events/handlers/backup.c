@@ -52,7 +52,7 @@ int event_backup(conf_t *conf, zone_t *zone)
 		log_zone_warning(zone->name, "zone %s failed (%s)", restore ? "restore" : "back-up", knot_strerror(ret));
 	}
 
-	if (restore) {
+	if (restore && ret == KNOT_EOK) {
 		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
 	}
 
