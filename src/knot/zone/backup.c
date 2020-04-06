@@ -23,12 +23,19 @@
 
 #include <sys/stat.h>
 
+#include "contrib/files.h"
 #include "knot/zone/backup.h"
 
 #include "knot/common/log.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
+
+#if defined(MAXBSIZE)
+  #define BUFSIZE MAXBSIZE
+#else
+  #define BUFSIZE (64 * 1024)
+#endif
 
 static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 {
@@ -111,24 +118,70 @@ static char *dir_file(const char *dir_name, const char *file_name)
 	return res;
 }
 
-// TODO rewrite this better!
 static int file_overwrite(const char *what, const char *with)
 {
-	errno = 0;
-	FILE *fr = fopen(with, "r"), *fw = fopen(what, "w");
-	int c, ret = 0;
-	if (fr != NULL && fw != NULL) {
-		while ((c = getc(fr)) != EOF && (ret = putc(c, fw)) != EOF) ;
+	if (!what || !with) {
+		return KNOT_EINVAL;
 	}
-	if (fr == NULL || fw == NULL || ret == EOF) {
+
+	int ret = 0;
+
+	FILE *from = fopen(with, "r");
+	if (from == NULL) {
 		ret = knot_map_errno();
-	} else {
-		ret = KNOT_EOK;
+		return ret;
 	}
-	if (fr != NULL) {
-		fclose(fr);
+
+	char *buf = malloc(sizeof(*buf) * BUFSIZE);
+	if (buf == NULL) {
+		fclose(from);
+		return KNOT_ENOMEM;
 	}
-	return fw && fclose(fw) == 0 ? ret : (ret == KNOT_EOK ? knot_map_errno() : ret);
+
+	ret = make_path(what, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP);
+	if (ret != KNOT_EOK) {
+		fclose(from);
+		free(buf);
+		return ret;
+	}
+
+	FILE *file = NULL;
+	char *tmp_name = NULL;
+	ret = open_tmp_file(what, &tmp_name, &file, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+	if (ret != KNOT_EOK) {
+		fclose(from);
+		free(buf);
+		return ret;
+	}
+
+	ssize_t cnt;
+	while ((cnt = fread(buf, sizeof(*buf), BUFSIZE, from)) != 0 &&
+	        (ret = (fwrite(buf, sizeof(*buf), cnt, file) == cnt))) {
+	}
+
+	ret = !ret || ferror(from);
+	free(buf);
+	fclose(from);
+	fclose(file);
+	if (ret != 0) {
+		ret = knot_map_errno();
+		unlink(tmp_name);
+		free(tmp_name);
+		return ret;
+	}
+
+	/* Swap temporary zonefile and new zonefile. */
+	ret = rename(tmp_name, what);
+	if (ret != 0) {
+		ret = knot_map_errno();
+		unlink(tmp_name);
+		free(tmp_name);
+		return ret;
+	}
+
+	free(tmp_name);
+
+	return KNOT_EOK;
 }
 
 static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keystore_t *to)
