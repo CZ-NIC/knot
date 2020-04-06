@@ -23,6 +23,7 @@
 
 #include <sys/stat.h>
 
+#include "contrib/files.h"
 #include "knot/zone/backup.h"
 
 #include "knot/common/log.h"
@@ -112,26 +113,6 @@ static char *dir_file(const char *dir_name, const char *file_name)
 	return res;
 }
 
-// TODO rewrite this better!
-static int file_overwrite(const char *what, const char *with)
-{
-	errno = 0;
-	FILE *fr = fopen(with, "r"), *fw = fopen(what, "w");
-	int c, ret = 0;
-	if (fr != NULL && fw != NULL) {
-		while ((c = getc(fr)) != EOF && (ret = putc(c, fw)) != EOF) ;
-	}
-	if (fr == NULL || fw == NULL || ret == EOF) {
-		ret = knot_map_errno();
-	} else {
-		ret = KNOT_EOK;
-	}
-	if (fr != NULL) {
-		fclose(fr);
-	}
-	return fw && fclose(fw) == 0 ? ret : (ret == KNOT_EOK ? knot_map_errno() : ret);
-}
-
 static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keystore_t *to)
 {
 	dnssec_key_t *key = NULL;
@@ -211,7 +192,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		if (ctx->restore_mode) {
 			char *local_zf = conf_zonefile(conf, zone->name);
 			char *backup_zf = dir_file(ctx->backup_dir, local_zf);
-			ret = file_overwrite(local_zf, backup_zf);
+			ret = copy_file(local_zf, backup_zf);
 			free(backup_zf);
 			free(local_zf);
 		} else {
