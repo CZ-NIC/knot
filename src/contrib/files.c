@@ -27,6 +27,12 @@
 #include "contrib/string.h"
 #include "libknot/errcode.h"
 
+#if defined(MAXBSIZE)
+  #define BUFSIZE MAXBSIZE
+#else
+  #define BUFSIZE (64 * 1024)
+#endif
+
 static int remove_file(const char *path, const struct stat *stat, int type, struct FTW *ftw)
 {
 	(void)stat;
@@ -130,5 +136,69 @@ open_tmp_failed:
 	*file = NULL;
 
 	assert(ret != KNOT_EOK);
+	return ret;
+}
+
+int copy_file(const char *dest, const char *src)
+{
+	if (!dest || !src) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = 0;
+	char *buf = NULL, *tmp_name = NULL;
+	FILE *file = NULL;
+
+	FILE *from = fopen(src, "r");
+	if (from == NULL) {
+		ret = knot_map_errno();
+		goto done;
+	}
+
+	buf = malloc(sizeof(*buf) * BUFSIZE);
+	if (buf == NULL) {
+		ret = KNOT_ENOMEM;
+		goto done;
+	}
+
+	ret = make_path(dest, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP);
+	if (ret != KNOT_EOK) {
+		goto done;
+	}
+
+	ret = open_tmp_file(dest, &tmp_name, &file, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+	if (ret != KNOT_EOK) {
+		goto done;
+	}
+
+	ssize_t cnt;
+	while ((cnt = fread(buf, sizeof(*buf), BUFSIZE, from)) != 0 &&
+	        (ret = (fwrite(buf, sizeof(*buf), cnt, file) == cnt))) {
+	}
+
+	ret = !ret || ferror(from);
+	if (ret != 0) {
+		ret = knot_map_errno();
+		unlink(tmp_name);
+		goto done;
+	}
+
+	ret = rename(tmp_name, dest);
+	if (ret != 0) {
+		ret = knot_map_errno();
+		unlink(tmp_name);
+		goto done;
+	}
+	ret = KNOT_EOK;
+
+done:
+	free(tmp_name);
+	if (file != NULL) {
+		fclose(file);
+	}
+	free(buf);
+	if (from != NULL) {
+		fclose(from);
+	}
 	return ret;
 }
