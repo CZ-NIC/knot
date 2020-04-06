@@ -41,3 +41,8 @@ int make_path(const char *path, mode_t mode);
  * Creates and opens for writing a temporary file based on given path.
  */
 int open_tmp_file(const char *path, char **tmp_name, FILE **file, mode_t mode);
+
+/*!
+ * Copies a file, possibly overwriting existing one, as an atomic operation.
+ */
+int copy_file(const char *dest, const char *src);
