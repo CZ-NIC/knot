@@ -111,31 +111,26 @@ static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, in
 	if (ret == KNOT_ETIMEOUT) {
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), ss);
-		log_debug("TCP, %s, address %s (%s)", operation, addr_str, knot_strerror(ret));
+		log_debug("TCP, %s, address %s (%s)", operation, addr_str,
+		          knot_strerror(ret));
 	}
 }
 
-/*!
- * \brief Make a TCP fdset from current interfaces list.
- *
- * \param  ifaces    Interface list.
- * \param  fds       File descriptor set.
- * \param  thread_id Thread ID used for geting an ID.
- *
- * \return Number of watched descriptors.
- */
-static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *fds, int thread_id)
+static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
+                               fdset_t *fds, int thread_id)
 {
-	if (ifaces == NULL) {
+	if (n_ifaces == 0) {
 		return 0;
 	}
 
 	fdset_clear(fds);
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
-		int tcp_id = 0;
-		if (i->fd_tcp_count < 1) {
+		if (i->fd_tcp_count == 0) { // Ignore XDP interface.
+			assert(i->fd_xdp_count > 0);
 			continue;
 		}
+
+		int tcp_id = 0;
 #ifdef ENABLE_REUSEPORT
 		if (conf()->cache.srv_tcp_reuseport) {
 			/* Note: thread_ids start with UDP threads, TCP threads follow. */
@@ -198,7 +193,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
-			int sent = net_dns_tcp_send(fd, ans->wire, ans->size, tcp->io_timeout);
+			int sent = net_dns_tcp_send(fd, ans->wire, ans->size,
+			                            tcp->io_timeout);
 			if (sent != ans->size) {
 				tcp_log_error(&ss, "send", sent);
 				ret = KNOT_EOF;
@@ -301,6 +297,7 @@ int tcp_master(dthread_t *thread)
 	}
 
 	iohandler_t *handler = (iohandler_t *)thread->data;
+	int thread_id = handler->thread_id[dt_get_id(thread)];
 
 	int ret = KNOT_EOK;
 
@@ -312,7 +309,7 @@ int tcp_master(dthread_t *thread)
 	tcp_context_t tcp = {
 		.server = handler->server,
 		.is_throttled = false,
-		.thread_id = handler->thread_id[dt_get_id(thread)]
+		.thread_id = thread_id,
 	};
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());
 
@@ -335,7 +332,9 @@ int tcp_master(dthread_t *thread)
 	update_tcp_conf(&tcp);
 
 	/* Set descriptors for the configured interfaces. */
-	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces, handler->server->n_ifaces, &tcp.set, tcp.thread_id);
+	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces,
+	                                      handler->server->n_ifaces,
+	                                      &tcp.set, thread_id);
 	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
