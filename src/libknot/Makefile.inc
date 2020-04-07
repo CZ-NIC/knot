@@ -17,7 +17,6 @@ nobase_include_libknot_HEADERS = \
 	libknot/endian.h			\
 	libknot/errcode.h			\
 	libknot/error.h				\
-	libknot/libknot.h			\
 	libknot/lookup.h			\
 	libknot/mm_ctx.h			\
 	libknot/db/db.h				\
