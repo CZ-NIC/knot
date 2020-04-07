@@ -337,6 +337,14 @@ int check_module_id(
 int check_server(
 	knotd_conf_check_args_t *args)
 {
+	conf_val_t listen = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
+	                                 C_LISTEN);
+	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
+	                              C_LISTEN_XDP);
+	if (xdp.code == KNOT_EOK && listen.code != KNOT_EOK) {
+		CONF_LOG(LOG_WARNING, "unable to process TCP queries due to XDP-only interfaces");
+	}
+
 	conf_val_t hshake = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
 	                                 C_TCP_HSHAKE_TIMEOUT);
 	if (hshake.code == KNOT_EOK) {
