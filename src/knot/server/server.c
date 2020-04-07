@@ -63,13 +63,13 @@ static void server_deinit_iface(iface_t *iface, bool dealloc)
 
 	for (int i = 0; i < iface->fd_xdp_count; i++) {
 #ifdef ENABLE_XDP
-		knot_xdp_deinit(iface->sock_xdp[i]);
+		knot_xdp_deinit(iface->xdp_sockets[i]);
 #else
 		assert(0);
 #endif
 	}
 	free(iface->fd_xdp);
-	free(iface->sock_xdp);
+	free(iface->xdp_sockets);
 
 	/* Free TCP handler. */
 	if (iface->fd_tcp != NULL) {
@@ -214,38 +214,40 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *t
 
 	iface_t *new_if = calloc(1, sizeof(*new_if));
 	if (new_if == NULL) {
-		log_error("failed to initialize XDP interface (%s)",
-		          knot_strerror(KNOT_ENOMEM));
+		log_error("failed to initialize XDP interface");
 		return NULL;
 	}
 	memcpy(&new_if->addr, addr, sizeof(*addr));
 
 	new_if->fd_xdp = calloc(iface.queues, sizeof(int));
-	new_if->sock_xdp = calloc(iface.queues, sizeof(*new_if->sock_xdp));
-	if (new_if->fd_xdp == NULL || new_if->sock_xdp == NULL) {
-		log_error("failed to initialize XDP interface (%s)",
-		          knot_strerror(KNOT_ENOMEM));
-		free(new_if);
+	new_if->xdp_sockets = calloc(iface.queues, sizeof(*new_if->xdp_sockets));
+	if (new_if->fd_xdp == NULL || new_if->xdp_sockets == NULL) {
+		log_error("failed to initialize XDP interface");
+		server_deinit_iface(new_if, true);
 		return NULL;
 	}
-	new_if->fd_thread_ids = *thread_id_start;
+	new_if->xdp_first_thread_id = *thread_id_start;
 	*thread_id_start += iface.queues;
 
 	for (int i = 0; i < iface.queues; i++) {
-		ret = knot_xdp_init(new_if->sock_xdp + i, iface.name, i,
+		ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
 		                    iface.port, i == 0);
 		if (ret != KNOT_EOK) {
 			log_warning("failed to initialize XDP interface %s@%u, queue %d (%s)",
 			            iface.name, iface.port, i, knot_strerror(ret));
-			new_if->fd_xdp[i] = -1;
-		} else {
-			new_if->fd_xdp[i] = knot_xdp_socket_fd(new_if->sock_xdp[i]);
+			server_deinit_iface(new_if, true);
+			new_if = NULL;
+			break;
 		}
+		new_if->fd_xdp[i] = knot_xdp_socket_fd(new_if->xdp_sockets[i]);
 		new_if->fd_xdp_count++;
 	}
 
-	log_debug("initialized XDP interface %s@%u, queues %d",
-	          iface.name, iface.port, iface.queues);
+	if (ret == KNOT_EOK) {
+		log_debug("initialized XDP interface %s@%u, queues %d",
+		          iface.name, iface.port, iface.queues);
+	}
+
 	return new_if;
 #endif
 }
@@ -421,9 +423,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY };
 		int ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
 		if (ret != 0) {
-			log_error("failed to set RLIMIT_MEMLOCK resource limit (%s)",
-			          knot_strerror(ret));
-			return -errno;
+			log_error("failed to increase RLIMIT_MEMLOCK (%s)",
+			          knot_strerror(errno));
+			return KNOT_ESYSTEM;
 		}
 	}
 
@@ -478,7 +480,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	s->ifaces = newlist;
 	s->n_ifaces = nifs;
 
-	/* Set the thread IDs. */
+	/* Assign thread identifiers unique per all handlers. */
 	unsigned thread_count = 0;
 	for (unsigned proto = IO_UDP; proto <= IO_XDP; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;

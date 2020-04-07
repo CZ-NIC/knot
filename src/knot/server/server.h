@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include "sys/socket.h"
-
 #include "knot/conf/conf.h"
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
@@ -25,45 +23,46 @@
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/zonedb.h"
-#include "contrib/ucw/lists.h"
 
-/* Forwad declarations. */
 struct server;
 struct knot_xdp_socket;
 
-/*! \brief I/O handler structure.
-  */
-typedef struct iohandler {
-	struct node        n;
-	struct server      *server; /*!< Reference to server */
-	dt_unit_t          *unit;   /*!< Threading unit */
-	unsigned           *thread_state; /*!< Thread state */
-	unsigned           *thread_id; /*!< Thread identifier. */
+/*!
+ * \brief I/O handler structure.
+ */
+typedef struct {
+	struct server *server;  /*!< Reference to server. */
+	dt_unit_t *unit;        /*!< Threading unit. */
+	unsigned *thread_state; /*!< Thread states. */
+	unsigned *thread_id;    /*!< Thread identifiers per all handlers. */
 } iohandler_t;
 
-/*! \brief Server state flags.
+/*!
+ * \brief Server state flags.
  */
 typedef enum {
 	ServerIdle    = 0 << 0, /*!< Server is idle. */
 	ServerRunning = 1 << 0, /*!< Server is running. */
-} server_state;
+} server_state_t;
 
 /*!
  * \brief Server interface structure.
  */
-typedef struct iface {
+typedef struct {
 	int *fd_udp;
-	int fd_udp_count;
+	unsigned fd_udp_count;
 	int *fd_tcp;
-	int fd_tcp_count;
+	unsigned fd_tcp_count;
 	int *fd_xdp;
-	int fd_xdp_count;
-	unsigned fd_thread_ids;
-	struct knot_xdp_socket **sock_xdp;
+	unsigned fd_xdp_count;
+	unsigned xdp_first_thread_id;
+	struct knot_xdp_socket **xdp_sockets;
 	struct sockaddr_storage addr;
 } iface_t;
 
-/* Handler indexes. */
+/*!
+ * \brief Handler indexes.
+ */
 enum {
 	IO_UDP = 0,
 	IO_TCP = 1,
@@ -76,7 +75,6 @@ enum {
  * Keeps references to all important structures needed for operation.
  */
 typedef struct server {
-
 	/*! \brief Server state tracking. */
 	volatile unsigned state;
 
