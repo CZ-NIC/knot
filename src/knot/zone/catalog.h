@@ -83,6 +83,9 @@ void knot_catalog_curval(knot_catalog_t *cat, const knot_dname_t **member,
 int knot_catalog_get_catzone(knot_catalog_t *cat, const knot_dname_t *member,
                              const knot_dname_t **catzone);
 
+int knot_cat_get_catzone_thrsafe(knot_catalog_t *cat, const knot_dname_t *member,
+                                 knot_dname_t **catzone);
+
 knot_cat_find_res_t knot_catalog_find(knot_catalog_t *cat, const knot_dname_t *member,
                                       const knot_dname_t *owner, const knot_dname_t *catzone);
 

@@ -168,7 +168,7 @@ conf_val_t conf_zone_get_txn(
 	}
 
 	size_t dname_size = knot_dname_size(dname);
-	const knot_dname_t *catalog = NULL;
+	knot_dname_t *catalog = NULL;
 
 	// Try to get explicit value.
 	conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
@@ -202,7 +202,7 @@ conf_val_t conf_zone_get_txn(
 	}
 
 	// Check if this is a catalog member zone.
-	int ret = knot_catalog_get_catzone(conf->catalog, dname, &catalog);
+	int ret = knot_cat_get_catzone_thrsafe(conf->catalog, dname, &catalog);
 	if (ret == KNOT_EOK) {
 		conf_db_get(conf, txn, C_ZONE, C_CATALOG_TPL, catalog, knot_dname_size(catalog), &val);
 		if (val.code != KNOT_EOK) {
@@ -210,6 +210,7 @@ conf_val_t conf_zone_get_txn(
 			              knot_strerror(val.code));
 			return val;
 		}
+		knot_dname_free(catalog, NULL);
 		conf_val(&val);
 		conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
 		goto got_template;
