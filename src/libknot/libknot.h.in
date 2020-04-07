@@ -62,7 +62,7 @@
 #include "libknot/rrtype/soa.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/wire.h"
-#ifdef ENABLE_XDP
+#if @XDP_VISIBLE_HEADERS@
 #include "libknot/xdp/xdp.h"
 #include "libknot/xdp/bpf-consts.h"
 #include "libknot/xdp/eth.h"
