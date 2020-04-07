@@ -267,7 +267,9 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf, l
 	if (upd != NULL) {
 		if (upd->just_reconf) {
 			zone_purge(conf, zone, server);
+			knot_sem_wait(&zone->cow_lock);
 			ptrlist_add(expired_contents, zone_expire(zone), NULL);
+			knot_sem_post(&zone->cow_lock);
 		} else {
 			return NULL; // zone to be removed
 		}

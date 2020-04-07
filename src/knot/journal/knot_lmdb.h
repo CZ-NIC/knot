@@ -187,6 +187,21 @@ void knot_lmdb_commit(knot_lmdb_txn_t *txn);
 bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how);
 
 /*!
+ * \brief Simple databse lookup in case txn shared among threads.
+ *
+ * \param txn    DB transaction share among threads.
+ * \param key    Key to be searched for.
+ * \param val    Output: database value.
+ * \param how    Must be KNOT_LMDB_EXACT.
+ *
+ * \note Free val->mv_data afterwards!
+ *
+ * \retval KNOT_ENOENT   no such key in DB.
+ * \return KNOT_E*
+ */
+int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, knot_lmdb_find_t how);
+
+/*!
  * \brief Start iteration the whole DB from lexicographically first key.
  *
  * \note The first DB record will be in txn->cur_key and txn->cur_val.

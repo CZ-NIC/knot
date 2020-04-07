@@ -143,6 +143,29 @@ int knot_catalog_get_catzone(knot_catalog_t *cat, const knot_dname_t *member,
 	return MIN(cat->txn.ret, KNOT_ENOENT);
 }
 
+int knot_cat_get_catzone_thrsafe(knot_catalog_t *cat, const knot_dname_t *member,
+                                 knot_dname_t **catzone)
+{
+	if (!knot_lmdb_is_open(&cat->db)) {
+		return KNOT_ENOENT;
+	}
+
+	MDB_val key = knot_lmdb_make_key("BN", 0, member), val = { 0 };
+	int ret = knot_lmdb_find_threadsafe(&cat->txn, &key, &val, KNOT_LMDB_EXACT);
+	if (ret == KNOT_EOK) {
+		uint8_t zero, shift;
+		const knot_dname_t *ow = NULL;
+		knot_lmdb_unmake_key(val.mv_data, val.mv_size, "BBN", &zero, &shift, &ow);
+		*catzone = knot_dname_copy(ow + shift, NULL);
+		if (*catzone == NULL) {
+			ret = KNOT_ENOMEM;
+		}
+		free(val.mv_data);
+	}
+	free(key.mv_data);
+	return ret;
+}
+
 knot_cat_find_res_t knot_catalog_find(knot_catalog_t *cat, const knot_dname_t *member,
                                       const knot_dname_t *owner, const knot_dname_t *catzone)
 {
