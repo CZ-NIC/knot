@@ -68,7 +68,60 @@ libcontrib_la_SOURCES = \
 	contrib/ucw/mempool.c			\
 	contrib/ucw/mempool.h			\
 	contrib/vpool/vpool.c			\
-	contrib/vpool/vpool.h
+	contrib/vpool/vpool.h			\
+	contrib/quicly/picotls/picotls/asn1.h			\
+	contrib/quicly/picotls/picotls/certificate_compression.h			\
+	contrib/quicly/picotls/picotls/fxx.h			\
+	contrib/quicly/picotls/picotls/minicrypto.h			\
+	contrib/quicly/picotls/picotls/openssl.h			\
+	contrib/quicly/picotls/picotls/pembase64.h			\
+	contrib/quicly/picotls/picotls/ptlsbcrypt.h			\
+	contrib/quicly/quicly/cc.h			\
+	contrib/quicly/constants.h			\
+	contrib/quicly/defaults.h			\
+	contrib/quicly/frame.h			\
+	contrib/quicly/linklist.h			\
+	contrib/quicly/loss.h			\
+	contrib/quicly/maxsender.h			\
+	contrib/quicly/ranges.h			\
+	contrib/quicly/recvstate.h			\
+	contrib/quicly/sendstate.h			\
+	contrib/quicly/sentmap.h			\
+	contrib/quicly/streambuf.h			\
+	contrib/quicly/picotls/picotls.h			\
+	contrib/quicly/quicly.h			\
+	contrib/quicly/klib/bgzf.h			\
+	contrib/quicly/klib/kbit.h			\
+	contrib/quicly/klib/kbtree.h			\
+	contrib/quicly/klib/kdq.h			\
+	contrib/quicly/klib/kexpr.h			\
+	contrib/quicly/klib/kgraph.h			\
+	contrib/quicly/klib/khash.h			\
+	contrib/quicly/klib/khmm.h			\
+	contrib/quicly/klib/klist.h			\
+	contrib/quicly/klib/kmath.h			\
+	contrib/quicly/klib/knetfile.h			\
+	contrib/quicly/klib/knhx.h			\
+	contrib/quicly/klib/kseq.h			\
+	contrib/quicly/klib/kson.h			\
+	contrib/quicly/klib/ksort.h			\
+	contrib/quicly/klib/kstring.h			\
+	contrib/quicly/klib/ksw.h			\
+	contrib/quicly/klib/kthread.h			\
+	contrib/quicly/klib/kurl.h			\
+	contrib/quicly/klib/kvec.h			\
+	contrib/quicly/picotls/openssl.c			\
+	contrib/quicly/picotls/pembase64.c			\
+	contrib/quicly/picotls/picotls.c			\
+	contrib/quicly/cc-reno.c			\
+	contrib/quicly/defaults.c			\
+	contrib/quicly/frame.c			\
+	contrib/quicly/quicly.c			\
+	contrib/quicly/ranges.c			\
+	contrib/quicly/recvstate.c			\
+	contrib/quicly/sendstate.c			\
+	contrib/quicly/sentmap.c			\
+	contrib/quicly/streambuf.c
 
 if !HAVE_LMDB
 libcontrib_la_SOURCES += \
