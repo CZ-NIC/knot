@@ -161,11 +161,6 @@ int copy_file(const char *dest, const char *src)
 		goto done;
 	}
 
-	ret = make_path(dest, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP);
-	if (ret != KNOT_EOK) {
-		goto done;
-	}
-
 	ret = open_tmp_file(dest, &tmp_name, &file, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	if (ret != KNOT_EOK) {
 		goto done;
