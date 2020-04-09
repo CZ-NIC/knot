@@ -33,6 +33,7 @@ extern "C" {
 #include <assert.h>
 #include <inttypes.h>
 #include <sys/types.h>
+#include <stddef.h>
 
 #if __GNUC__ >= 3
 #define PTLS_LIKELY(x) __builtin_expect(!!(x), 1)
