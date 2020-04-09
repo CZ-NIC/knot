@@ -120,6 +120,8 @@ struct query {
 	uint16_t	alignment;
 	/*!< TLS parameters. */
 	tls_params_t	tls;
+	/*!< QUIC parameters. */
+	quic_params_t	quic;
 	/*!< Transaction signature. */
 	knot_tsig_key_t tsig_key;
 	/*!< EDNS client subnet. */
