@@ -2,7 +2,8 @@ noinst_LTLIBRARIES += libcontrib.la
 
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
-libcontrib_la_LIBADD   = $(pthread_LIBS)
+libcontrib_la_LIBADD   = $(pthread_LIBS) -lssl -lcrypto
+
 if !HAVE_LMDB
 libcontrib_la_CPPFLAGS += -include contrib/lmdb/mute_warnings.h
 endif !HAVE_LMDB
