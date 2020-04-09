@@ -248,6 +248,12 @@ Options
   (%u or specify hours). OCSP responses older than the specified period are
   considered invalid.
 
+**+**\ [\ **no**\ ]\ **quic**
+  Use QUIC protocol.
+
+**+**\ [\ **no**\ ]\ **tls-hostname**\ =\ *STR*
+  Use QUIC with a remote server hostname check.
+
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
