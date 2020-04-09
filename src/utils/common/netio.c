@@ -29,6 +29,7 @@
 #include "utils/common/netio.h"
 #include "utils/common/msg.h"
 #include "utils/common/tls.h"
+#include "utils/common/quic.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
 
@@ -168,6 +169,7 @@ int net_init(const srv_info_t    *local,
              const int           wait,
              const net_flags_t   flags,
              const tls_params_t  *tls_params,
+			 const quic_params_t *quic_params,
              net_t               *net)
 {
 	if (remote == NULL || net == NULL) {
@@ -203,8 +205,15 @@ int net_init(const srv_info_t    *local,
 	net->remote = remote;
 	net->flags = flags;
 
+	if (quic_params != NULL && quic_params->enable) {
+		int ret = quic_ctx_init(&net->quic, quic_params, net->wait);
+		if (ret != KNOT_EOK) {
+			net_clean(net);
+			return ret;
+		}
+	}
 	// Prepare for TLS.
-	if (tls_params != NULL && tls_params->enable) {
+	else if (tls_params != NULL && tls_params->enable) {
 		int ret = tls_ctx_init(&net->tls, tls_params, net->wait);
 		if (ret != KNOT_EOK) {
 			net_clean(net);
@@ -349,6 +358,16 @@ int net_connect(net_t *net)
 				return ret;
 			}
 		}
+	} else if (net->socktype == SOCK_DGRAM) {
+		if (net->quic.params != NULL && net->quic.params->enable) {
+			quicly_conn_t *client = NULL;
+			/* initiate a connection, and open a stream */
+			int ret = 0;
+			if ((ret = quic_ctx_connect(&net->quic, &pfd, net->srv->ai_addr, net->srv->ai_addrlen)) != KNOT_EOK) {
+				close(sockfd);
+				return ret;
+			}
+		}
 	}
 
 	// Store socket descriptor.
@@ -399,8 +418,14 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
+	if (net->quic.params != NULL && net->quic.params->enable) {
+		if (quic_ctx_send(&net->quic, buf, buf_len) != KNOT_EOK) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+	}
 	// Send data over UDP.
-	if (net->socktype == SOCK_DGRAM) {
+	else if (net->socktype == SOCK_DGRAM) {
 		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
 		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
 			WARN("can't send query to %s\n", net->remote_str);
@@ -464,8 +489,14 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		.revents = 0,
 	};
 
+	if (net->quic.params != NULL && net->quic.params->enable) {
+		int ret = quic_ctx_receive(&net->quic, buf, buf_len);
+		if (ret < 0) {
+			return KNOT_NET_ERECV;
+		}
+		return ret;
 	// Receive data over UDP.
-	if (net->socktype == SOCK_DGRAM) {
+	} else if (net->socktype == SOCK_DGRAM) {
 		struct sockaddr_storage from;
 		memset(&from, '\0', sizeof(from));
 

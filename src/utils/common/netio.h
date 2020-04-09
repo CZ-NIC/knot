@@ -22,6 +22,7 @@
 
 #include "utils/common/params.h"
 #include "utils/common/tls.h"
+#include "utils/common/quic.h"
 
 /*! \brief Structure containing server information. */
 typedef struct {
@@ -75,6 +76,8 @@ typedef struct {
 
 	/*! TLS context. */
 	tls_ctx_t tls;
+	/*! QUIC context. */
+	quic_ctx_t quic;
 } net_t;
 
 /*!
@@ -157,6 +160,7 @@ int net_init(const srv_info_t    *local,
              const int           wait,
              const net_flags_t   flags,
              const tls_params_t  *tls_params,
+			 const quic_params_t *quic_params,
              net_t               *net);
 
 /*!
