@@ -236,6 +236,7 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *t
 			log_warning("failed to initialize XDP interface %s@%u, queue %d (%s)",
 			            iface.name, iface.port, i, knot_strerror(ret));
 			server_deinit_iface(new_if, true);
+			new_if = NULL;
 			break;
 		}
 		new_if->fd_xdp[i] = knot_xdp_socket_fd(new_if->xdp_sockets[i]);
