@@ -4840,7 +4840,6 @@ int quicly_open_stream(quicly_conn_t *conn, quicly_stream_t **_stream, int uni)
     uint32_t max_stream_data_local;
     uint64_t max_stream_data_remote;
     int ret;
-
     /* determine the states */
     if (uni) {
         group = &conn->super.host.uni;

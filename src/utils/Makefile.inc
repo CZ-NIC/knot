@@ -28,6 +28,8 @@ libknotus_la_SOURCES = \
 	utils/common/sign.h			\
 	utils/common/tls.c			\
 	utils/common/tls.h			\
+	utils/common/quic.c			\
+	utils/common/quic.h			\
 	utils/common/token.c			\
 	utils/common/token.h
 endif HAVE_LIBUTILS

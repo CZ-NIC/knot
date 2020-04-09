@@ -806,6 +806,26 @@ static int opt_notls_ocsp_stapling(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+
+static int opt_quic(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->protocol = PROTO_UDP;
+	q->quic.enable = true;
+	
+	return KNOT_EOK;
+}
+
+static int opt_noquic(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->quic.enable = false;
+
+	return KNOT_EOK;
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1306,6 +1326,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "tls-ocsp-stapling",   ARG_OPTIONAL, opt_tls_ocsp_stapling },
 	{ "notls-ocsp-stapling", ARG_NONE,     opt_notls_ocsp_stapling },
+
+	{ "quic",           ARG_NONE,     opt_quic },
+	{ "noquic",         ARG_NONE,     opt_noquic },
 
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
@@ -1853,8 +1876,8 @@ static void complete_servers(query_t *query, const query_t *conf)
 		def_port = conf->port;
 	} else if (query->tls.enable) {
 		def_port = DEFAULT_DNS_TLS_PORT;
-	} else {
-		def_port = DEFAULT_DNS_PORT;
+	} else if (query->quic.enable) {
+		def_port = DEFAULT_DNS_QUIC_PORT;
 	}
 
 	// Complete specified nameservers if any.
