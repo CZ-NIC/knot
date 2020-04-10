@@ -490,7 +490,7 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 
 	// Count the request protocol.
 	if (stats->protocol) {
-		bool xdp = qdata->params->flags & KNOTD_QUERY_FLAG_XDP;
+		bool xdp = qdata->params->xdp_msg != NULL;
 		if (qdata->params->remote->ss_family == AF_INET) {
 			if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) {
 				if (xdp) {
