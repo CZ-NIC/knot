@@ -36,7 +36,7 @@
 /*** Query module API. ***/
 
 /*! Current module ABI version. */
-#define KNOTD_MOD_ABI_VERSION	200
+#define KNOTD_MOD_ABI_VERSION	300
 /*! Module configuration name prefix. */
 #define KNOTD_MOD_NAME_PREFIX	"mod-"
 
@@ -380,7 +380,6 @@ typedef enum {
 	KNOTD_QUERY_FLAG_LIMIT_ANY  = 1 << 2, /*!< Limit ANY QTYPE (respond with TC=1). */
 	KNOTD_QUERY_FLAG_LIMIT_SIZE = 1 << 3, /*!< Apply UDP size limit. */
 	KNOTD_QUERY_FLAG_COOKIE     = 1 << 4, /*!< Valid DNS Cookie indication. */
-	KNOTD_QUERY_FLAG_XDP        = 1 << 5, /*!< Processing over XDP indication. */
 } knotd_query_flag_t;
 
 /*! Query processing data context parameters. */
@@ -390,6 +389,7 @@ typedef struct {
 	int socket;                            /*!< Current network socket. */
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
+	struct knot_xdp_msg *xdp_msg;          /*!< Possible XDP message context. */
 } knotd_qdata_params_t;
 
 /*! Query processing data context. */

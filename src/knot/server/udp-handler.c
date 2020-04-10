@@ -59,17 +59,17 @@ static bool udp_state_active(int state)
 }
 
 static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
-                       struct iovec *rx, struct iovec *tx, bool use_xdp)
+                       struct iovec *rx, struct iovec *tx, struct knot_xdp_msg *xdp_msg)
 {
 	/* Create query processing parameter. */
 	knotd_qdata_params_t params = {
 		.remote = ss,
 		.flags = KNOTD_QUERY_FLAG_NO_AXFR | KNOTD_QUERY_FLAG_NO_IXFR | /* No transfers. */
 		         KNOTD_QUERY_FLAG_LIMIT_SIZE | /* Enforce UDP packet size limit. */
-		         KNOTD_QUERY_FLAG_LIMIT_ANY | /* Limit ANY over UDP (depends on zone as well). */
-		         (use_xdp ? KNOTD_QUERY_FLAG_XDP : 0), /* Mark XDP processing. */
+		         KNOTD_QUERY_FLAG_LIMIT_ANY, /* Limit ANY over UDP (depends on zone as well). */
 		.socket = fd,
 		.server = udp->server,
+		.xdp_msg = xdp_msg,
 		.thread_id = udp->thread_id
 	};
 
@@ -213,7 +213,7 @@ static int udp_recvfrom_handle(udp_context_t *ctx, void *d, void *unused)
 	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
 
 	/* Process received pkt. */
-	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX], false);
+	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX], NULL);
 
 	return KNOT_EOK;
 }
@@ -321,7 +321,7 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d, void *unused)
 
 		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr, &rq->msgs[TX][i].msg_hdr);
 
-		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx, false);
+		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx, NULL);
 		rq->msgs[TX][i].msg_len = tx->iov_len;
 		rq->msgs[TX][i].msg_hdr.msg_namelen = 0;
 		if (tx->iov_len > 0) {
@@ -416,7 +416,8 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 
 		udp_handle(ctx, knot_xdp_socket_fd(xdp_sock),
 		           (struct sockaddr_storage *)&rq->msgs_rx[i].ip_from,
-		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload, true);
+		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload,
+		           &rq->msgs_rx[i]);
 		responses++;
 	}
 

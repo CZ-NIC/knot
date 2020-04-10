@@ -28,13 +28,14 @@
 #endif
 
 /*! \brief A packet with src & dst MAC & IP addrs + UDP payload. */
-typedef struct {
+typedef struct knot_xdp_msg knot_xdp_msg_t;
+struct knot_xdp_msg {
 	struct sockaddr_in6 ip_from;
 	struct sockaddr_in6 ip_to;
 	uint8_t *eth_from;
 	uint8_t *eth_to;
 	struct iovec payload;
-} knot_xdp_msg_t;
+};
 
 /*!
  * \brief Styles of loading BPF program.
