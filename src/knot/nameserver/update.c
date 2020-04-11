@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -77,6 +77,12 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 
 int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
+	/* DDNS over XDP not supported. */
+	if (qdata->params->xdp_msg != NULL) {
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
+		return KNOT_STATE_FAIL;
+	}
+
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
