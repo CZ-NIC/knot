@@ -113,6 +113,7 @@ class Server(object):
         self.valgrind = []
         self.start_params = None
         self.ctl_params = None
+        self.ctl_params_append = None # The last parameter wins.
 
         self.data_dir = None
 
@@ -1325,6 +1326,8 @@ class Knot(Server):
 
         self.start_params = ["-c", self.confile]
         self.ctl_params = ["-c", self.confile, "-t", "15"]
+        if self.ctl_params_append != None:
+            self.ctl_params += self.ctl_params_append
 
         return s.conf
 
