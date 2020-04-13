@@ -149,6 +149,9 @@ class Server(object):
         self.zone_size_limit = None
         self.serial_policy = None
 
+        # In knotc, the last repeated parameter wins.
+        self.ctl_params_add = None
+
         self.inquirer = None
 
         self.modules = []
@@ -1325,6 +1328,8 @@ class Knot(Server):
 
         self.start_params = ["-c", self.confile]
         self.ctl_params = ["-c", self.confile, "-t", "15"]
+        if self.ctl_params_add != None:
+            self.ctl_params += self.ctl_params_add
 
         return s.conf
 
