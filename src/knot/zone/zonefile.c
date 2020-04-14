@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -220,7 +220,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	if (!node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
-		loader->err_handler->fatal_error = true;
+		loader->err_handler->error = true;
 		loader->err_handler->cb(loader->err_handler, zc->z, NULL,
 		                        SEM_ERR_SOA_NONE, NULL);
 		goto fail;
@@ -333,7 +333,9 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 	assert(handler != NULL);
 	assert(zone != NULL);
 
-	if (!handler->fatal_error) {
+	if (handler->error) {
+		handler->fatal_error = true;
+	} else {
 		handler->warning = true;
 	}
 
@@ -344,7 +346,7 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 		}
 	}
 
-	log_fmt_zone(handler->fatal_error ? LOG_ERR : LOG_WARNING,
+	log_fmt_zone(handler->error ? LOG_ERR : LOG_WARNING,
 	             LOG_SOURCE_ZONE, zone->apex->owner, NULL,
 	             "check%s%s, %s%s%s",
 	             (node != NULL ? ", node " : ""),
@@ -352,6 +354,8 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 	             sem_error_msg(error),
 	             (data != NULL ? " "  : ""),
 	             (data != NULL ? data : ""));
+
+	handler->error = false;
 }
 
 #undef ERROR
