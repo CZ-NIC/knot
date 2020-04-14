@@ -4,4 +4,5 @@ $TTL 0
 @ SOA ns admin 1 25 25 80 600
   NS ns
 ns AAAA ::0
-foo.bar PTR cataloged1.
+foo.bar.zones PTR cataloged1.
+not.zones.in PTR not-cataloged1.
