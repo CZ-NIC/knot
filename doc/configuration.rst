@@ -89,7 +89,8 @@ zones. There is no inheritance between templates; they are exclusive. The
 Access control list (ACL)
 =========================
 
-The Access control list is a list of rules specifying remotes which are allowed to send certain types of requests to the server.
+The Access control list is a list of rules specifying remotes which are allowed to
+send certain types of requests to the server.
 Remotes can be specified by a single IP address or a network subnet. A TSIG
 key can also be assigned (see :doc:`keymgr<man_keymgr>` on how to generate a TSIG key).
 
@@ -154,6 +155,9 @@ See the following examples and :ref:`ACL section`.
 .. NOTE::
    If more conditions (address ranges and/or a key)
    are given in a single ACL rule, all of them have to be satisfied for the rule to match.
+
+.. TIP::
+   In order to restrict regular DNS queries, use module :ref:`queryacl<mod-queryacl>`.
 
 Slave zone
 ==========
