@@ -325,9 +325,18 @@ static int cat_update_add_node(zone_node_t *node, void *data)
 int knot_cat_update_from_zone(knot_cat_update_t *u, struct zone_contents *zone,
                               bool remove, knot_catalog_t *check)
 {
+	size_t zone_size = knot_dname_size(zone->apex->owner);
+	knot_dname_t sub[zone_size + 6];
+	memcpy(sub, "\x05""zones", 6);
+	memcpy(sub + 6, zone->apex->owner, zone_size);
+
+	if (zone_contents_find_node(zone, sub) == NULL) {
+		return KNOT_EOK;
+	}
+
 	cat_upd_ctx_t ctx = { u, zone->apex->owner, remove, check };
 	pthread_mutex_lock(&u->mutex);
-	int ret = zone_contents_apply(zone, cat_update_add_node, &ctx);
+	int ret = zone_tree_sub_apply(zone->nodes, sub, false, cat_update_add_node, &ctx);
 	pthread_mutex_unlock(&u->mutex);
 	return ret;
 }
