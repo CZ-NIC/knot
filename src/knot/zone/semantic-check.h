@@ -104,9 +104,9 @@ typedef void (*sem_callback) (sem_handler_t *ctx, const zone_contents_t *zone,
 
 struct sem_handler {
 	sem_callback cb;
-	bool fatal_error;
-	bool warning;
-	bool error;
+	bool error;		/* Error(s) in the zonefile. */
+	bool warning;		/* Warning(s) in the zonefile. */
+	bool fatal_error;	/* An error in the current check. */
 };
 
 /*!
