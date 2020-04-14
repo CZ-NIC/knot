@@ -80,14 +80,14 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name,
 
 	zone_contents_t *contents = zonefile_load(&zl);
 	zonefile_close(&zl);
-	if (contents == NULL && !stats.handler.error) {
+	if (contents == NULL && !stats.handler.fatal_error) {
 		return KNOT_ERROR;
 	}
 	zone_contents_deep_free(contents);
 
 	if (stats.error_count > 0) {
 		print_statistics(&stats);
-		return stats.handler.error ? KNOT_EZONEINVAL : KNOT_ESEMCHECK;
+		return stats.handler.fatal_error ? KNOT_EZONEINVAL : KNOT_ESEMCHECK;
 	} else {
 		return KNOT_EOK;
 	}
