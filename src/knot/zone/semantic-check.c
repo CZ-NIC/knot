@@ -1077,12 +1077,12 @@ static int check_cname(const zone_node_t *node, semchecks_data_t *data)
 	}
 
 	if (node->rrset_count > rrset_limit) {
-		data->handler->error = true;
+		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_CNAME_EXTRA_RECORDS, NULL);
 	}
 	if (cname_rrs->count != 1) {
-		data->handler->error = true;
+		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_CNAME_MULTIPLE, NULL);
 	}
@@ -1106,7 +1106,7 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 	/* RFC 6672 Section 2.3 Paragraph 3 */
 	bool is_apex = (node->flags & NODE_FLAGS_APEX);
 	if (!is_apex && node_rrtype_exists(node, KNOT_RRTYPE_NS)) {
-		data->handler->error = true;
+		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_DNAME_EXTRA_NS, NULL);
 	}
@@ -1114,13 +1114,13 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 	/* If the NSEC3 node of the apex is present, it is counted as apex's child. */
 	unsigned allowed_children = (is_apex && node_nsec3_get(node) != NULL) ? 1 : 0;
 	if (node->children > allowed_children) {
-		data->handler->error = true;
+		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_DNAME_CHILDREN, NULL);
 	}
 	/* RFC 6672 Section 2.4 Paragraph 2 */
 	if (dname_rrs->count != 1) {
-		data->handler->error = true;
+		data->handler->fatal_error = true;
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_DNAME_MULTIPLE, NULL);
 	}
@@ -1260,7 +1260,7 @@ int sem_checks_process(zone_contents_t *zone, bool optional, sem_handler_t *hand
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	if (data.handler->fatal_error) {
+	if (data.handler->error) {
 		return KNOT_ESEMCHECK;
 	}
 
@@ -1268,7 +1268,7 @@ int sem_checks_process(zone_contents_t *zone, bool optional, sem_handler_t *hand
 	if (data.level & NSEC) {
 		check_nsec_cyclic(&data);
 	}
-	if (data.handler->fatal_error) {
+	if (data.handler->error) {
 		return KNOT_ESEMCHECK;
 	}
 
