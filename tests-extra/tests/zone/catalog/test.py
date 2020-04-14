@@ -46,6 +46,8 @@ resp = slave.dig("cataloged1.", "DNSKEY", dnssec=True)
 resp.check(rcode="NOERROR")
 resp.check_count(2, "DNSKEY")
 resp.check_count(1, "RRSIG")
+resp = master.dig("not-cataloged1.", "SOA")
+resp.check(rcode="REFUSED")
 
 # Udating a cataloged zone
 subprocess.run(["sed", "-i", "s/10001/10002/;$s/$/\\nxyz A 1.2.3.4/", master.dir + "/master/cataloged1.zone"])
@@ -59,7 +61,7 @@ check_keys(slave, "cataloged1", 2)
 
 # Check adding cataloged zone.
 up = master.update(zone[1])
-up.add("bar.catalog1.", 0, "PTR", "cataloged2.")
+up.add("bar.zones.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(6)
 resp = master.dig("cataloged2.", "NS")
@@ -81,8 +83,8 @@ resp0 = slave.dig("cataloged2.", "DNSKEY")
 resp0.check_count(2, "DNSKEY")
 dnskey0 = resp0.resp.answer[0].to_rdataset()[0]
 up = master.update(zone[1])
-up.delete("bar.catalog1.", "PTR", "cataloged2.")
-up.add("bar.catalog1.", 0, "PTR", "cataloged2.")
+up.delete("bar.zones.catalog1.", "PTR", "cataloged2.")
+up.add("bar.zones.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(4)
 resp1 = slave.dig("cataloged2.", "DNSKEY")
@@ -100,8 +102,8 @@ else:
 
 # Check remove-adding the zone: shall effectively purge it
 up = master.update(zone[1])
-up.delete("bar.catalog1.", "PTR", "cataloged2.")
-up.add("bar2.catalog1.", 0, "PTR", "cataloged2.")
+up.delete("bar.zones.catalog1.", "PTR", "cataloged2.")
+up.add("bar2.zones.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(4)
 shutil.copy(t.data_dir + "/cataloged2.zone", master.dir + "/master") # because the purge deletes even zonefile
@@ -131,11 +133,11 @@ resp.check_count(1, "RRSIG")
 
 # Check adding and removing duplicate
 up = master.update(zone[1])
-up.add("bar3.catalog1.", 0, "PTR", "cataloged2.")
+up.add("bar3.zones.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(6)
 up = master.update(zone[1])
-up.delete("bar3.catalog1.", "PTR")
+up.delete("bar3.zones.catalog1.", "PTR")
 up.send("NOERROR")
 t.sleep(6)
 resp = master.dig("cataloged2.", "SOA")
@@ -146,7 +148,7 @@ check_keys(slave, "cataloged2", 2)
 
 # Check removing cataloged zone
 up = master.update(zone[1])
-up.delete("foo.bar.catalog1.", "PTR")
+up.delete("foo.bar.zones.catalog1.", "PTR")
 up.send("NOERROR")
 t.sleep(6)
 resp = master.dig("cataloged1.", "SOA")

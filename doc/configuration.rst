@@ -609,6 +609,7 @@ It's possible to configure more catalog zones.
    part of your DNS subtree.
 
 Upon catalog zone (re)load or change, all the PTR records in the zone
+sub-tree *zones* (e.g. ``unique-id1.zones.catalog. 0 IN PTR member.com.``)
 are processed and member zones created, with zone names taken from the
 PTR records' RData, and zone settings taken from the confguration
 template specified by :ref:`zone_catalog-template`. Owner names of those PTR
