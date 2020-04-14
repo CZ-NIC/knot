@@ -185,14 +185,18 @@ Show zone statistics counter(s). To print also counters with value 0, use
 force option.
 .TP
 \fBconf\-init\fP
-Initialize the configuration database. (*)
+Initialize the configuration database. If the database doesn\(aqt exist yet,
+execute this command as an intended user to ensure the server is permitted
+to access the database (e.g. \fIsudo \-u knot knotc conf\-init\fP). (*)
 .TP
 \fBconf\-check\fP
 Check the server configuration. (*)
 .TP
 \fBconf\-import\fP \fIfilename\fP
-Import a configuration file into the configuration database. Ensure the
-server is not using the configuration database! (*)
+Import a configuration file into the configuration database. If the database
+doesn\(aqt exist yet, execute this command as an intended user to ensure the server
+is permitted to access the database (e.g. \fIsudo \-u knot knotc conf\-import ...\fP).
+Also ensure the server is not using the configuration database at the same time! (*)
 .TP
 \fBconf\-export\fP [\fIfilename\fP]
 Export the configuration database into a config file or stdout. (*)
