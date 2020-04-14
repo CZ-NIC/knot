@@ -605,6 +605,7 @@ by ACL. The name of the zone is arbitrary.
    part of your DNS subtree.
 
 Upon catalog zone (re)load or change, all the PTR records in the zone
+sub-tree *zones* (e.g. ``unique-id1.zones.catalog. 0 IN PTR member.com.``)
 are processed and member zones created, with zones' names taken from
 PTR records' RData, and zones' configuration taken from the confguration
 template from :ref:`zone_catalog-template`. Owner names of those PTR
