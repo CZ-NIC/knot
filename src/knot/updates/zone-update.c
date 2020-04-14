@@ -715,19 +715,25 @@ static int commit_catalog(conf_t *conf, zone_update_t *update)
 	update->zone->flags |= ZONE_IS_CATALOG;
 	int ret = KNOT_EOK;
 	if ((update->flags & UPDATE_INCREMENTAL)) {
-		ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.remove, true, update->zone->catalog);
+		ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.remove,
+		                                true, false, update->zone->catalog);
 		if (ret == KNOT_EOK) {
-			ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.add, false, NULL);
+			ret = knot_cat_update_from_zone(update->zone->catalog_upd,
+			                                update->change.add, false, false, NULL);
 		}
 	} else {
 		ret = knot_cat_update_del_all(update->zone->catalog_upd, update->zone->catalog, update->zone->name);
 		if (ret == KNOT_EOK) {
-			ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->zone->contents, false, NULL);
+			ret = knot_cat_update_from_zone(update->zone->catalog_upd,
+			                                update->zone->contents, false, true, NULL);
 		}
 	}
 
 	if (ret == KNOT_EOK) {
 		kill(getpid(), SIGUSR1);
+	} else if (ret == KNOT_EZONEINVAL) {
+		log_zone_warning(update->zone->name, "catalog zone has none or invalid version");
+		ret = KNOT_EOK;
 	}
 	return ret;
 }
