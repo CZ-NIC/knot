@@ -26,8 +26,32 @@
 #include "knot/zone/contents.h"
 
 #define CATALOG_VERSION "1.0"
+#define CATALOG_ZONE_VERSION "2" // must be just one char long
 
 const MDB_val knot_catalog_iter_prefix = { 1, "" };
+
+static bool check_zone_version(const zone_contents_t *zone)
+{
+	size_t zone_size = knot_dname_size(zone->apex->owner);
+	knot_dname_t sub[zone_size + 8];
+	memcpy(sub, "\x07""version", 8);
+	memcpy(sub + 8, zone->apex->owner, zone_size);
+
+	const zone_node_t *ver_node = zone_contents_find_node(zone, sub);
+	knot_rdataset_t *ver_rr = node_rdataset(ver_node, KNOT_RRTYPE_TXT);
+	if (ver_rr == NULL) {
+		return false;
+	}
+
+	knot_rdata_t *rd = ver_rr->rdata;
+	for (int i = 0; i < ver_rr->count; i++) {
+		if (rd->len == 2 && rd->data[1] == CATALOG_ZONE_VERSION[0]) {
+			return true;
+		}
+		rd = knot_rdataset_next(rd);
+	}
+	return false;
+}
 
 void knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize)
 {
@@ -323,8 +347,12 @@ static int cat_update_add_node(zone_node_t *node, void *data)
 }
 
 int knot_cat_update_from_zone(knot_cat_update_t *u, struct zone_contents *zone,
-                              bool remove, knot_catalog_t *check)
+                              bool remove, bool check_ver, knot_catalog_t *check)
 {
+	if (check_ver && !check_zone_version(zone)) {
+		return KNOT_EZONEINVAL;
+	}
+
 	size_t zone_size = knot_dname_size(zone->apex->owner);
 	knot_dname_t sub[zone_size + 6];
 	memcpy(sub, "\x05""zones", 6);
