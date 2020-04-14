@@ -104,7 +104,7 @@ knot_cat_upd_val_t *knot_cat_update_get(knot_cat_update_t *u, const knot_dname_t
 struct zone_contents;
 
 int knot_cat_update_from_zone(knot_cat_update_t *u, struct zone_contents *zone,
-                              bool remove, knot_catalog_t *check);
+                              bool remove, bool check_ver, knot_catalog_t *check);
 
 int knot_cat_update_del_all(knot_cat_update_t *u, knot_catalog_t *cat, const knot_dname_t *zone);
 
