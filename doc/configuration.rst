@@ -600,7 +600,8 @@ and ACLs. Being a catalog zone is indicated by setting the option
 :ref:`zone_catalog-template`. The difference is that standard DNS
 queries to a catalog zone are answered with REFUSED as if such a zone
 wouldn't exist, unless querying from an address with transfers enabled
-by ACL. The name of the catalog zone is arbitrary.
+by ACL. The name of the catalog zone is arbitrary. It's however required to
+include version record ``version 0 IN TXT "2"``.
 It's possible to configure more catalog zones.
 
 .. WARNING::

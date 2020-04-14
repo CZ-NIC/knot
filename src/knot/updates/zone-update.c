@@ -717,19 +717,24 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 
 	int ret = KNOT_EOK;
 	if ((update->flags & UPDATE_INCREMENTAL)) {
-		ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.remove, true, update->zone->catalog);
+		ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.remove,
+		                                true, false, update->zone->catalog);
 		if (ret == KNOT_EOK) {
-			ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->change.add, false, NULL);
+			ret = knot_cat_update_from_zone(update->zone->catalog_upd,
+			                                update->change.add, false, false, NULL);
 		}
 	} else {
 		ret = knot_cat_update_del_all(update->zone->catalog_upd, update->zone->catalog, update->zone->name);
 		if (ret == KNOT_EOK) {
-			ret = knot_cat_update_from_zone(update->zone->catalog_upd, update->zone->contents, false, NULL);
+			ret = knot_cat_update_from_zone(update->zone->catalog_upd,
+			                                update->zone->contents, false, true, NULL);
 		}
 	}
 
 	if (ret == KNOT_EOK) {
-		kill(getpid(), SIGUSR1);
+		if (kill(getpid(), SIGUSR1) != 0) {
+			ret = knot_map_errno();
+		}
 	}
 
 	return ret;
@@ -874,9 +879,12 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, update->new_cont);
 
-	ret = commit_catalog(conf, update);
-	if (ret != KNOT_EOK) {
-		log_zone_warning(update->zone->name, "catalog zone not fully populated (%s)", knot_strerror(ret));
+	ret = update_catalog(conf, update);
+	if (ret == KNOT_EZONEINVAL) {
+		log_zone_warning(update->zone->name, "invalid catalog zone version");
+	} else if (ret != KNOT_EOK) {
+		log_zone_warning(update->zone->name, "catalog zone not fully populated (%s)",
+		                 knot_strerror(ret));
 	}
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
