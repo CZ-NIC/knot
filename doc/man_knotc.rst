@@ -162,14 +162,18 @@ Actions
   force option.
 
 **conf-init**
-  Initialize the configuration database. (*)
+  Initialize the configuration database. If the database doesn't exist yet,
+  execute this command as an intended user to ensure the server is permitted
+  to access the database (e.g. *sudo -u knot knotc conf-init*). (*)
 
 **conf-check**
   Check the server configuration. (*)
 
 **conf-import** *filename*
-  Import a configuration file into the configuration database. Ensure the
-  server is not using the configuration database! (*)
+  Import a configuration file into the configuration database. If the database
+  doesn't exist yet, execute this command as an intended user to ensure the server
+  is permitted to access the database (e.g. *sudo -u knot knotc conf-import ...*).
+  Also ensure the server is not using the configuration database at the same time! (*)
 
 **conf-export** [*filename*]
   Export the configuration database into a config file or stdout. (*)
