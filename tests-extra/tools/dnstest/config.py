@@ -8,7 +8,7 @@ class KnotConf(object):
         self.first_item = True
 
     def include(self, path):
-        self.conf += "include: %s\n" % (path)
+        self.conf += "include: \"%s\"\n" % (path)
 
     def begin(self, name):
         self.conf += "%s:\n" % name
