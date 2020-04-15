@@ -217,13 +217,14 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
  *
  * \param tree        Zone tree.
  * \param sub_root    Name denoting the subtree.
+ * \param excl_root   Exclude the subtree root.
  * \param function    Callback to be applied.
  * \param data        Callback context.
  *
  * \return KNOT_E*
  */
 int zone_tree_sub_apply(zone_tree_t *tree, const knot_dname_t *sub_root,
-                        zone_tree_apply_cb_t function, void *data);
+                        bool excl_root, zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Start zone tree iteration.

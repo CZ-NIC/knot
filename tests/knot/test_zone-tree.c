@@ -123,9 +123,11 @@ int main(int argc, char *argv[])
 
 	/* 6. subtree apply */
 	int counter = 0;
-	ret = zone_tree_sub_apply(t, (const knot_dname_t *)"\x02""ac",
-	                          ztree_node_counter, &counter);
+	ret = zone_tree_sub_apply(t, (const knot_dname_t *)"\x02""ac", false, ztree_node_counter, &counter);
 	ok(ret == KNOT_EOK && counter == 2, "ztree: subtree iteration");
+	counter = 0;
+	ret = zone_tree_sub_apply(t, (const knot_dname_t *)"\x02""ac", true, ztree_node_counter, &counter);
+	ok(ret == KNOT_EOK && counter == 1, "ztree: subtree iteration excluding root");
 
 	zone_tree_free(&t);
 	ztree_free_data();

@@ -284,10 +284,13 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 }
 
 int zone_tree_sub_apply(zone_tree_t *tree, const knot_dname_t *sub_root,
-                        zone_tree_apply_cb_t function, void *data)
+                        bool excl_root, zone_tree_apply_cb_t function, void *data)
 {
 	zone_tree_it_t it = { 0 };
 	int ret = zone_tree_it_sub_begin(tree, sub_root, &it);
+	if (excl_root && ret == KNOT_EOK && !zone_tree_it_finished(&it)) {
+		zone_tree_it_next(&it);
+	}
 	while (ret == KNOT_EOK && !zone_tree_it_finished(&it)) {
 		ret = function(zone_tree_it_val(&it), data);
 		zone_tree_it_next(&it);
