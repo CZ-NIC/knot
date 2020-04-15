@@ -47,8 +47,13 @@ a DNSSEC validating resolver.
 
 * Online-sign module always enforces Single-Type Signing scheme.
 
-* After any change to KASP DB (including `knotc zone-ksk-submitted` command),
-  the server must be reloaded to apply the change.
+* Due to limited interaction between the server and the module,
+  after any change to KASP DB (including `knotc zone-ksk-submitted` command)
+  or when a scheduled DNSSEC event shall be processed (e.g. transition to next
+  DNSKEY rollover state) the server must be reloaded or queried to the zone
+  (with the DO bit set) to apply the change or to trigger the event. For optimal
+  operation, the recommended query frequency is at least ones per second for
+  each zone configured.
 
 * The NSEC records may differ for one domain name if queried for different
   types. This is an implementation shortcoming as the dynamic modules
