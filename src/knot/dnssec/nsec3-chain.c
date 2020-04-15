@@ -27,9 +27,9 @@
 #include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
 
-static bool nsec3_opt_out(const zone_node_t *node, bool opt_out_enabled)
+static bool nsec3_opt_out(const zone_node_t *node)
 {
-	return (opt_out_enabled && (node->flags & NODE_FLAGS_DELEG) &&
+	return ((node->flags & NODE_FLAGS_DELEG) &&
 	        !node_rrtype_exists(node, KNOT_RRTYPE_DS));
 }
 
@@ -565,18 +565,18 @@ static int fix_nsec3_nodes(zone_update_t *update, const dnssec_nsec3_params_t *p
 	return ret;
 }
 
-/*!
- * \brief Checks if NSEC3 should be generated for this node.
- *
- * \retval true if the node has no children and contains no RRSets or only
- *         RRSIGs and NSECs.
- * \retval false otherwise.
- */
-static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
+typedef struct {
+	bool opt_out;                        // NSEC3 opt-out enabled
+	bool mark_ent_subtrees;              // also recurse to subtrees of empty-non-terminals
+	zone_contents_t *contents;           // current zone contents
+} mark_empty_ctx_t;
+
+static int do_empty_recurse(mark_empty_ctx_t *ctx, zone_node_t *node, zone_tree_apply_cb_t cb)
 {
-	return ((node->children == 0 && knot_nsec_empty_nsec_and_rrsigs_in_node(node)) ||
-		nsec3_opt_out(node, opt_out));
+	return zone_tree_sub_apply(ctx->contents->nodes, node->owner, true, cb, ctx);
 }
+
+static int nsec3_mark_empty(zone_node_t *node, void *data); // declaration
 
 /*!
  * \brief Marks node and its parents as empty if NSEC3 should not be generated
@@ -585,27 +585,38 @@ static bool nsec3_is_empty(zone_node_t *node, bool opt_out)
  * It also lowers the children count for the parent of marked node. This must be
  * fixed before further operations on the zone.
  */
+static int do_mark_empty(zone_node_t *node, void *data)
+{
+	node->flags |= NODE_FLAGS_EMPTY;
+
+	if (!(node->flags & NODE_FLAGS_APEX)) {
+		/* We must decrease the parent's children count,
+		 * but only temporarily! It must be set back right after
+		 * the operation
+		 */
+		node_parent(node)->children--;
+		/* Recurse using the parent node */
+		return nsec3_mark_empty(node_parent(node), data);
+	}
+
+	return KNOT_EOK;
+}
+
 static int nsec3_mark_empty(zone_node_t *node, void *data)
 {
-	if (node->flags & NODE_FLAGS_DELETED) {
+	if ((node->flags & NODE_FLAGS_DELETED) || (node->flags & NODE_FLAGS_EMPTY)) {
 		return KNOT_EOK;
 	}
 
-	if (!(node->flags & NODE_FLAGS_EMPTY) && nsec3_is_empty(node, (data != NULL))) {
-		/*!
-		 * Mark this node and all parent nodes that meet the same
-		 * criteria as empty.
-		 */
-		node->flags |= NODE_FLAGS_EMPTY;
+	mark_empty_ctx_t *ctx = data;
 
-		if (!(node->flags & NODE_FLAGS_APEX)) {
-			/* We must decrease the parent's children count,
-			 * but only temporarily! It must be set back right after
-			 * the operation
-			 */
-			node_parent(node)->children--;
-			/* Recurse using the parent node */
-			return nsec3_mark_empty(node_parent(node), data);
+	if (ctx->opt_out && nsec3_opt_out(node)) {
+		return do_mark_empty(node, data);
+	} else if (knot_nsec_empty_nsec_and_rrsigs_in_node(node)) {
+		if (node->children == 0) {
+			return do_mark_empty(node, data);
+		} else if (ctx->mark_ent_subtrees) {
+			return do_empty_recurse(ctx, node, nsec3_mark_empty);
 		}
 	}
 
@@ -717,8 +728,8 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	 * The flag will be removed when the node is encountered during NSEC3
 	 * creation procedure.
 	 */
-	int result = zone_tree_apply(zone->nodes, nsec3_mark_empty,
-	                             (opt_out ? (void *)zone : NULL));
+	mark_empty_ctx_t mctx = { opt_out, false, NULL };
+	int result = zone_tree_apply(zone->nodes, nsec3_mark_empty, &mctx);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
@@ -773,8 +784,8 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return knot_nsec3_create_chain(update->new_cont, params, ttl, update);
 	}
 
-	int ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_mark_empty,
-	                          (opt_out ? (void *)update : NULL));
+	mark_empty_ctx_t mctx = { opt_out, true, update->new_cont };
+	int ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_mark_empty, &mctx);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -784,7 +795,7 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
-	ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_reset, NULL);
+	ret = zone_tree_apply(update->new_cont->nodes, nsec3_reset, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

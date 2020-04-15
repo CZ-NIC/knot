@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -283,9 +283,43 @@ int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data
 	return trie_apply(tree->trie, tree_apply_cb, &f);
 }
 
+int zone_tree_sub_apply(zone_tree_t *tree, const knot_dname_t *sub_root,
+                        bool excl_root, zone_tree_apply_cb_t function, void *data)
+{
+	zone_tree_it_t it = { 0 };
+	int ret = zone_tree_it_sub_begin(tree, sub_root, &it);
+	if (excl_root && ret == KNOT_EOK && !zone_tree_it_finished(&it)) {
+		zone_tree_it_next(&it);
+	}
+	while (ret == KNOT_EOK && !zone_tree_it_finished(&it)) {
+		ret = function(zone_tree_it_val(&it), data);
+		zone_tree_it_next(&it);
+	}
+	zone_tree_it_free(&it);
+	return ret;
+}
+
 int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it)
 {
 	return zone_tree_it_double_begin(tree, NULL, it);
+}
+
+int zone_tree_it_sub_begin(zone_tree_t *tree, const knot_dname_t *sub_root,
+                           zone_tree_it_t *it)
+{
+	int ret = zone_tree_it_begin(tree, it);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	it->sub_root = knot_dname_copy(sub_root, NULL);
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(sub_root, lf_storage);
+	ret = trie_it_get_leq(it->it, lf + 1, *lf);
+	if ((ret != KNOT_EOK && ret != KNOT_ENOENT) || it->sub_root == NULL) {
+		zone_tree_it_free(it);
+		return ret == KNOT_EOK ? KNOT_ENOMEM : ret;
+	}
+	return KNOT_EOK;
 }
 
 int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree_it_t *it)
@@ -302,9 +336,15 @@ int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree
 	return KNOT_EOK;
 }
 
+static bool sub_done(zone_tree_it_t *it)
+{
+	return it->sub_root != NULL &&
+	       knot_dname_in_bailiwick(zone_tree_it_val(it)->owner, it->sub_root) < 0;
+}
+
 bool zone_tree_it_finished(zone_tree_it_t *it)
 {
-	return it->it == NULL || it->tree == NULL || trie_it_finished(it->it);
+	return it->it == NULL || it->tree == NULL || trie_it_finished(it->it) || sub_done(it);
 }
 
 zone_node_t *zone_tree_it_val(zone_tree_it_t *it)
@@ -328,12 +368,14 @@ void zone_tree_it_next(zone_tree_it_t *it)
 		it->binode_second = ((it->tree->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0);
 		it->next_tree = NULL;
 		it->it = trie_it_begin(it->tree->trie);
+		assert(it->sub_root == NULL);
 	}
 }
 
 void zone_tree_it_free(zone_tree_it_t *it)
 {
 	trie_it_free(it->it);
+	knot_dname_free(it->sub_root, NULL);
 	memset(it, 0, sizeof(*it));
 }
 
