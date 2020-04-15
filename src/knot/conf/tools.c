@@ -33,6 +33,7 @@
 #include "knot/common/log.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/wire_ctx.h"
 
@@ -222,6 +223,19 @@ int check_ref_dflt(
 	if (check_ref(args) != KNOT_EOK && !is_default_id(args->data, args->data_len)) {
 		args->err_str = "invalid reference";
 		return KNOT_ENOENT;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_listen(
+	knotd_conf_check_args_t *args)
+{
+	bool no_port;
+	struct sockaddr_storage ss = yp_addr(args->data, &no_port);
+	if (!no_port && sockaddr_port(&ss) == 0) {
+		args->err_str = "invalid port";
+		return KNOT_EINVAL;
 	}
 
 	return KNOT_EOK;
