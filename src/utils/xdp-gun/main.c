@@ -320,6 +320,29 @@ static bool str2mac(const char *str, uint8_t mac[])
 	return true;
 }
 
+static int ip_route_get(const char *ip, const char *what, char **res)
+{
+	char cmd[50 + strlen(ip) + strlen(what)];
+	snprintf(cmd, sizeof(cmd), "ip route get %s | grep -o ' %s [^ ]* '", ip, what);
+
+	FILE *p = popen(cmd, "r");
+	if (p == NULL) {
+		return knot_map_errno();
+	}
+
+	char check[16] = { 0 }, got[256] = { 0 };
+	if (fscanf(p, "%15s%255s", check, got) != 2 ||
+	    strcmp(check, what) != 0) {
+		int ret = feof(p) ? KNOT_ENOENT : KNOT_EMALF;
+		fclose(p);
+		return ret;
+	}
+	fclose(p);
+
+	*res = strdup(got);
+	return *res == NULL ? KNOT_ENOMEM : KNOT_EOK;
+}
+
 static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t remote_mac[])
 {
 	FILE *p = popen(ipv6 ? "ip -6 neigh" : "arp -ne", "r");
@@ -348,36 +371,39 @@ static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t r
 	return ret;
 }
 
+static int distantIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t remote_mac[])
+{
+	char *via = NULL;
+	int ret = ip_route_get(ip_str, "via", &via);
+	switch (ret) {
+	case KNOT_ENOENT: // same subnet, no via
+		return remoteIP2MAC(ip_str, ipv6, devname, remote_mac);
+	case KNOT_EOK:
+		ret = remoteIP2MAC(via, ipv6, devname, remote_mac);
+		free(via);
+		return ret;
+	default:
+		return ret;
+	}
+}
+
 static int remoteIP2local(const char *ip_str, bool ipv6, char devname[], void *local)
 {
-	char cmd[51 + strlen(ip_str)];
-	strcpy(cmd, "ip route get ");
-	strcat(cmd, ip_str);
-	strcat(cmd, " | sed 's/from :://;s/proto kernel//'");
-
-	FILE *p = popen(cmd, "r");
-	if (p == NULL) {
-		return knot_map_errno();
+	char *dev = NULL, *loc = NULL;
+	int ret = ip_route_get(ip_str, "dev", &dev);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
+	strncpy(devname, dev, IFNAMSIZ);
+	free(dev);
 
-	char line_buf[1024] = { 0 };
-	int ret = KNOT_ENOENT;
-	while (fgets(line_buf, sizeof(line_buf) - 1, p) != NULL && ret == KNOT_ENOENT) {
-		char fields[7][strlen(line_buf)];
-		if (sscanf(line_buf, "%s%s%s%s%s%s%s", fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6]) != 7) {
-			continue;
-		}
-		if (strcmp(fields[0], ip_str) != 0) {
-			continue;
-		}
-		if (inet_pton(ipv6 ? AF_INET6 : AF_INET, fields[4], local) <= 0) {
-			ret = KNOT_EMALF;
-		} else {
-			strlcpy(devname, fields[2], IFNAMSIZ);
-			ret = KNOT_EOK;
-		}
+	ret = ip_route_get(ip_str, "src", &loc);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
-	pclose(p);
+	ret = (inet_pton(ipv6 ? AF_INET6 : AF_INET, loc, local) <= 0 ? KNOT_EMALF : KNOT_EOK);
+	free(loc);
+
 	return ret;
 }
 
@@ -420,7 +446,7 @@ int main(int argc, char *argv[])
 		usleep(10000);
 
 		char dev1[IFNAMSIZ], dev2[IFNAMSIZ];
-		ret = remoteIP2MAC(argv[3], ctx.ipv6, dev1, ctx.target_mac);
+		ret = distantIP2MAC(argv[3], ctx.ipv6, dev1, ctx.target_mac);
 		if (ret != KNOT_EOK) {
 			printf("can't get remote MAC of `%s` by ARP query: %s\n", argv[3], knot_strerror(ret));
 			goto pusage;
