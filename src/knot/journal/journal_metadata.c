@@ -284,9 +284,9 @@ void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint3
 	md->flags |= (JOURNAL_MERGED_SERIAL_VALID | JOURNAL_LAST_FLUSHED_VALID);
 }
 
-int journal_scrape_with_md(zone_journal_t j)
+int journal_scrape_with_md(zone_journal_t j, bool check_existence)
 {
-	if (!journal_is_existing(j)) {
+	if (check_existence && !journal_is_existing(j)) {
 		return KNOT_EOK;
 	}
 	knot_lmdb_txn_t txn = { 0 };

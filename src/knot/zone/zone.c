@@ -258,7 +258,7 @@ int zone_changes_clear(conf_t *conf, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	return journal_scrape_with_md(zone_journal(zone));
+	return journal_scrape_with_md(zone_journal(zone), true);
 }
 
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents)

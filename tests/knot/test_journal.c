@@ -450,7 +450,7 @@ static void test_store_load(const knot_dname_t *apex)
 	changeset_clear(&e_ch);
 	changeset_clear(&r_ch);
 
-	ret = journal_scrape_with_md(jj);
+	ret = journal_scrape_with_md(jj, true);
 	is_int(KNOT_EOK, ret, "journal: scrape with md (%s)", knot_strerror(ret));
 
 	unset_conf();
@@ -578,7 +578,7 @@ static void test_merge(const knot_dname_t *apex)
 	set_conf(-1, 100 * 1024, apex);
 	ok(!journal_allow_flush(jj), "journal: merge allowed");
 
-	ret = journal_scrape_with_md(jj);
+	ret = journal_scrape_with_md(jj, false);
 	is_int(KNOT_EOK, ret, "journal: journal_drop_changesets must be ok");
 
 	// insert stuff and check the merge
@@ -614,7 +614,7 @@ static void test_merge(const knot_dname_t *apex)
 	journal_read_end(read);
 
 
-	ret = journal_scrape_with_md(jj);
+	ret = journal_scrape_with_md(jj, false);
 	assert(ret == KNOT_EOK);
 
 	// disallow merge
