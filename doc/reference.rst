@@ -147,7 +147,7 @@ General options related to the server.
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      listen: ADDR[@INT] ...
-     listen-xdp: STR ...
+     listen-xdp: STR[@INT] | ADDR[@INT] ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -410,21 +410,21 @@ Change of this parameter requires restart of the Knot server to take effect.
 listen-xdp
 ----------
 
-One or more specifications in the form ``eth_dev@port``, e.g. ``eth1@53``.
-Alternatively, an IP address can be used instead of a device name, but Knot
-will still listen on all addresses belonging to the same interface!
-
-If specified, Knot will create additional XDP workers, listening
-on specified interface(s) and port(s) on UDP protocol, with enhanced
-performance. The number of XDP workers is equal to the sum of the
-interfaces' RX queues.
-
-It is strongly recommended to also :ref:`server_listen` on all those
-addresses, at least to fulfill the requirement of working TCP fallback.
+One or more network device names (e.g. ``ens786f0``) on which the :ref:`Mode XDP`
+is enabled. Alternatively, an IP address can be used instead of a device name,
+but the server will still listen on all addresses belonging to the same interface!
+Optional port specification (default is 53) can be appended to each device name
+or address using ``@`` separator.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
+
+.. CAUTION::
+   Since XDP workers only process regular DNS traffic over UDP, it is strongly
+   recommended to also :ref:`listen <server_listen>` on the addresses which are
+   intended to offer the DNS service, at least to fulfil the DNS requirement for
+   working TCP.
 
 .. _Key section:
 

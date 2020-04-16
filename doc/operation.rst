@@ -947,45 +947,60 @@ which could, for example, publish the data in the JSON format via HTTP(S)
 or upload the data to a more efficient time series database. Take a look into
 the python folder of the project for these scripts.
 
-.. _eXpress Data Path:
+.. _Mode XDP:
 
-eXpress Data Path
-=================
+Mode XDP
+========
 
-This is an optional method to significantly improve the server's performance
-(queries per second) by bypassing Linux network stack. It works only with simple
-UDP queries, the rest is processed as usual by UDP and TCP workers.
+Thanks to recent Linux kernel capabilities, namely eXpress Data Path and AF_XDP
+address family, Knot DNS offers a high-performance DNS over UDP packet processing
+mode. The basic idea is to filter DNS messages close to the network device and
+efectively forwarding them to the nameserver without touching the network stack
+of the operating system. Other messages (including DNS over TCP) are processed
+as usual.
+
+If :ref:`listen-xdp <server_listen-xdp>` is configured, the server creates
+additional XDP workers, listening on specified interface(s) and port(s) for DNS
+over UDP queries. Each XDP worker handles one RX and TX network queue pair.
 
 Pre-requisites
 --------------
 
-Linux kernel 5.x+, libbpf.
+* Linux kernel 4.18+ (5.x+ is recommended for optimal performance).
+* A network card with native XDP support is highly recommended (successfully
+  tested cards are Intel series 500 and 700).
+* If the `knotd` service is not directly executed in the privileged mode, some
+  additional Linux capabilities have to be set:
 
-Recommended new ixgbe or i40e network card drivers.
+  Execute command::
 
-Start knotd as root (it may drop to unpriv user after init).
+    systemctl edit knot
 
-Notes
------
+  And insert these lines::
 
-Don't attempt settings like::
+      [Service]
+      CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
+      AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
 
-   # ip link set mtu $mtu dev $dev
+Optimizations
+-------------
 
-Troubleshooting
----------------
+Some helpful commands::
 
-"Can't create socket" ... probably another instance is already using XDP on the same interface.
+ ethtool -N <interface> rx-flow-hash udp4 sdfn
+ ethtool -N <interface> rx-flow-hash udp6 sdfn
+ ethtool -L <interface> combined <?>
+ ethtool -G <interface> rx <?> tx <?>
+ renice -n 19 -p $(pgrep '^ksoftirqd/[0-9]*$')
 
-"Invalid parameter" ... the network card driver is in an incosistent state. Try removing
-and inserting the kernel modules (ixgbe...) or rebooting the whole server.
+Limitations
+-----------
 
-Re-building BPF program
------------------------
-
-The BPF program bytecode is (as a binary blob) part of Knot DNS source codes, in file
-``src/libknot/xdp/bpf-kernel-obj.c``. It may be re-generated with::
-
-   $ make -C src/libknot/xdp
-
-Pre-requisites: clang, llc, kernel-headers.
+* VLAN segmentation is not supported.
+* Dynamic DNS over XDP is not supported.
+* MTU higher than 1792 bytes is not supported.
+* Symmetrical routing is required (query source address and reply destination address are the same).
+* Systems with big-endian byte ordering require special recompilation of the nameserver.
+* IPv4 header and UDP checksums are not verified on received DNS messages.
+* DNS over XDP traffic is not visible to common system tools (e.g. firewall, tcpdump etc.).
+* BPF filter is not automatically unloaded from the network device.
