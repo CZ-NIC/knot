@@ -422,10 +422,7 @@ int server_init(server_t *server, int bg_workers)
 	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode)), NULL);
 	free(journal_dir);
 
-	char *kasp_dir = conf_db(conf(), C_KASP_DB);
-	conf_val_t kasp_size = conf_db_param(conf(), C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
-	knot_lmdb_init(&server->kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
-	free(kasp_dir);
+	kasp_db_ensure_init(&server->kaspdb, conf());
 
 	char *timer_dir = conf_db(conf(), C_TIMER_DB);
 	conf_val_t timer_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE, C_MAX_TIMER_DB_SIZE);
@@ -728,7 +725,7 @@ int server_reload(server_t *server)
 			return ret;
 		}
 
-		conf_activate_modules(new_conf, NULL, new_conf->query_modules,
+		conf_activate_modules(new_conf, server, NULL, new_conf->query_modules,
 		                      &new_conf->query_plan);
 	}
 
