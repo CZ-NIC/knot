@@ -32,7 +32,7 @@ typedef struct {
     int fd;
     quicly_context_t quicly;
     quicly_conn_t *client;
-    quicly_cid_plaintext_t next_cid;
+    quicly_cid_plaintext_t cid;
 } quic_ctx_t;
 
 int quic_ctx_init(quic_ctx_t *ctx, const quic_params_t *params, int wait);

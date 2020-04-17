@@ -494,6 +494,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		if (ret < 0) {
 			return KNOT_NET_ERECV;
 		}
+		return ret;
 	// Receive data over UDP.
 	} else if (net->socktype == SOCK_DGRAM) {
 		struct sockaddr_storage from;
