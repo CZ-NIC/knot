@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
 #pragma once
 
 #include "knot/conf/base.h"
+
+struct server;
 
 /*!
  * Finds specific module in static or dynamic modules.
@@ -93,6 +95,7 @@ void conf_mod_unload_shared(
  */
 void conf_activate_modules(
 	conf_t *conf,
+	struct server *server,
 	const knot_dname_t *zone_name,
 	list_t *query_modules,
 	struct query_plan **query_plan

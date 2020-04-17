@@ -12,10 +12,13 @@ t = Test(stress=False)
 ModOnlineSign.check()
 
 knot = t.server("knot")
-zones = t.zone_rnd(2, dnssec=False, records=5)
-t.link(zones, knot)
+zones = t.zone_rnd(4, dnssec=False, records=5)
+t.link(zones, knot, journal_content="none")
 knot.add_module(zones[0], ModOnlineSign())
 knot.add_module(zones[1], ModOnlineSign("ECDSAP384SHA384", key_size="384"))
+knot.dnssec(zones[2]).enable = True
+knot.dnssec(zones[3]).enable = True
+knot.dnssec(zones[3]).nsec3 = True
 
 def check_zone(zone, dnskey_rdata_start):
     # Check SOA record.
@@ -64,10 +67,16 @@ def check_zone(zone, dnskey_rdata_start):
     resp.check_count(2, "RRSIG", section="authority")
 
 t.start()
-knot.zones_wait(zones)
+serial = knot.zones_wait(zones)
 
 check_zone(zones[0], "257 3 13")
 check_zone(zones[1], "257 3 14")
+
+for z in zones:
+    knot.update_zonefile(z, random=True)
+
+knot.reload()
+knot.zones_wait(zones, serial)
 
 t.end()
 

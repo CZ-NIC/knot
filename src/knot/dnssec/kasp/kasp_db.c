@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -464,4 +464,15 @@ int kasp_db_delete_offline_records(knot_lmdb_db_t *db, const knot_dname_t *zone,
 	knot_lmdb_commit(&txn);
 	free(prefix.mv_data);
 	return txn.ret;
+}
+
+void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf)
+{
+	if (db->path == NULL) {
+		char *kasp_dir = conf_db(conf, C_KASP_DB);
+		conf_val_t kasp_size = conf_db_param(conf, C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
+		knot_lmdb_init(db, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
+		free(kasp_dir);
+		assert(db->path != NULL);
+	}
 }

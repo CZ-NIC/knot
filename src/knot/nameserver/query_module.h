@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/include/module.h"
+#include "knot/server/server.h"
 #include "contrib/ucw/lists.h"
 
 #ifdef HAVE_ATOMIC
@@ -60,7 +61,7 @@ int query_plan_step(struct query_plan *plan, knotd_stage_t stage,
                     query_step_process_f process, void *ctx);
 
 /*! \brief Open query module identified by name. */
-knotd_mod_t *query_module_open(conf_t *conf, conf_mod_id_t *mod_id,
+knotd_mod_t *query_module_open(conf_t *conf, server_t *server, conf_mod_id_t *mod_id,
                                struct query_plan *plan, const knot_dname_t *zone);
 
 /*! \brief Close query module. */
@@ -83,6 +84,7 @@ typedef struct {
 struct knotd_mod {
 	node_t node;
 	conf_t *config;
+	server_t *server;
 	conf_mod_id_t *id;
 	struct query_plan *plan;
 	const knot_dname_t *zone;
