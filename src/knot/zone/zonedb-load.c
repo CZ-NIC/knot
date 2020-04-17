@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -259,7 +259,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server)
 			continue;
 		}
 
-		conf_activate_modules(conf, zone->name, &zone->query_modules,
+		conf_activate_modules(conf, server, zone->name, &zone->query_modules,
 		                      &zone->query_plan);
 
 		knot_zonedb_insert(db_new, zone);
