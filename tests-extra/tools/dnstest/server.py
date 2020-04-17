@@ -102,6 +102,8 @@ class Server(object):
 
     START_WAIT = 2
     START_WAIT_VALGRIND = 5
+    START_WAIT_ATTEMPTS = 60
+    START_MAX_ATTEMPTS = 10
     STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 5
@@ -164,6 +166,8 @@ class Server(object):
         self.valgrind_log = None
         self.confile = None
 
+        self.binding_errors = 0
+
     def _check_socket(self, proto, port):
         if ipaddress.ip_address(self.addr).version == 4:
             iface = "4%s@%s:%i" % (proto, self.addr, port)
@@ -221,7 +225,8 @@ class Server(object):
         except:
             raise Failed("Can't compile server='%s'" %self.name)
 
-    def start(self, clean=False):
+    def start_server(self, clean=False):
+        '''Start the server'''
         mode = "w" if clean else "a"
 
         try:
@@ -244,6 +249,28 @@ class Server(object):
         # Start inquirer if enabled.
         if params.test.stress and self.inquirer:
             self.inquirer.start(self)
+
+    def start(self, clean=False):
+        '''Start the server with all bindings successfull'''
+        attempts = Server.START_MAX_ATTEMPTS
+
+        errors = 0 if clean else self.binding_errors
+        while attempts > 0:
+            self.binding_errors = errors
+            self.start_server(clean)
+            attempts -= 1
+            errors = self.log_search_count(self.binding_fail)
+            if errors == self.binding_errors:
+                break
+            self.stop()
+            if attempts > 0:
+                time.sleep(Server.START_WAIT_ATTEMPTS)
+                check_log("STARTING %s AGAIN" % self.name)
+
+        if errors > self.binding_errors:
+            raise Failed("Couldn't bind all addresses or ports")
+
+        self.binding_errors = errors
 
     def ctl(self, cmd, availability=True):
         if availability:
@@ -597,6 +624,18 @@ class Server(object):
                     return True
         return False
 
+    def log_search_count(self, pattern):
+        count = 0
+        with open(self.fout) as log:
+            for line in log:
+                if pattern in line:
+                    count += 1
+        with open(self.ferr) as log:
+            for line in log:
+                if pattern in line:
+                    count += 1
+        return count
+
     def zone_wait(self, zone, serial=None, equal=False, greater=True):
         '''Try to get SOA record. With an optional serial number and given
            relation (equal or/and greater).'''
@@ -794,6 +833,7 @@ class Bind(Server):
         self.daemon_bin = params.bind_bin
         self.control_bin = params.bind_ctl
         self.ctlkey = dnstest.keys.Tsig(alg="hmac-md5")
+        self.binding_fail = "address in use"
 
     def listening(self):
         tcp = super()._check_socket("tcp", self.port)
@@ -965,6 +1005,7 @@ class Knot(Server):
         self.control_bin = params.knot_ctl
         self.inquirer = dnstest.inquirer.Inquirer()
         self.includes = set()
+        self.binding_fail = "cannot bind address"
 
     @property
     def keydir(self):
@@ -1342,6 +1383,7 @@ class Dummy(Server):
         super().__init__(*args, **kwargs)
         self.daemon_bin = None
         self.control_bin = None
+        self.binding_fail = "There won't be such a message"
 
     def get_config(self):
         return ''
