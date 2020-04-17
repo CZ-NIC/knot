@@ -857,9 +857,12 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	val = conf_zone_get(conf, C_DNSSEC_VALIDATE, update->zone->name);
 	if (conf_bool(&val)) {
-		ret = knot_dnssec_validate_zone(update, update->flags & UPDATE_INCREMENTAL);
+		bool incr_valid = update->flags & UPDATE_INCREMENTAL;
+		const char *msg_valid = incr_valid ? "incremental " : "";
+
+		ret = knot_dnssec_validate_zone(update, incr_valid);
 		if (ret != KNOT_EOK) {
-			log_zone_error(update->zone->name, "zone DNSSEC validation failed (%s)", knot_strerror(ret));
+			log_zone_error(update->zone->name, "DNSSEC, %svalidation failed (%s)", msg_valid, knot_strerror(ret));
 			char name_str[KNOT_DNAME_TXT_MAXLEN], type_str[16];
 			if (knot_dname_to_str(name_str, update->validation_hint.node, sizeof(name_str)) != NULL &&
 			    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
@@ -870,6 +873,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			}
 			discard_adds_tree(update);
 			return ret;
+		} else {
+			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful", msg_valid);
 		}
 	}
 
