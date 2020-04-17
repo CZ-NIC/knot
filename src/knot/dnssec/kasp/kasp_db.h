@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -223,3 +223,11 @@ int kasp_db_load_offline_records(knot_lmdb_db_t *db, const knot_dname_t *for_dna
  */
 int kasp_db_delete_offline_records(knot_lmdb_db_t *db, const knot_dname_t *zone,
                                    knot_time_t from_time, knot_time_t to_time);
+
+/*!
+ * \brief Initialize KASP database according to conf, if not already.
+ *
+ * \param db      KASP DB to be initialized.
+ * \param conf    COnfiguration to take options from.
+ */
+void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf);
