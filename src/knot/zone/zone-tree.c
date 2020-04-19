@@ -307,6 +307,9 @@ int zone_tree_it_begin(zone_tree_t *tree, zone_tree_it_t *it)
 int zone_tree_it_sub_begin(zone_tree_t *tree, const knot_dname_t *sub_root,
                            zone_tree_it_t *it)
 {
+	if (tree == NULL || sub_root == NULL) {
+		return KNOT_EINVAL;
+	}
 	int ret = zone_tree_it_begin(tree, it);
 	if (ret != KNOT_EOK) {
 		return ret;
