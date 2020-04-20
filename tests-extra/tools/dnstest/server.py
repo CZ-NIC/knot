@@ -60,6 +60,7 @@ class ZoneDnssec(object):
         self.ksk_sbm_check_interval = None
         self.ds_push = None
         self.ksk_shared = None
+        self.shared_policy_with = None
         self.cds_publish = None
         self.offline_ksk = None
 
@@ -1202,6 +1203,9 @@ class Knot(Server):
             if not z.dnssec.enable:
                 continue
 
+            if (z.dnssec.shared_policy_with or z.name) != z.name:
+                continue
+
             if not have_policy:
                 s.begin("policy")
                 have_policy = True
@@ -1307,7 +1311,7 @@ class Knot(Server):
 
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "on")
-                s.item_str("dnssec-policy", z.name)
+                s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
 
             if len(z.modules) > 0:
                 modules = ""

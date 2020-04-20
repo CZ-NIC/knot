@@ -394,7 +394,7 @@ int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const
 		uint8_t unuse1, *unuse2;
 		const char *real_last_keyid;
 		if (knot_lmdb_unmake_curval(&txn, "BNS", &unuse1, &unuse2, &real_last_keyid) &&
-		    last_lp_keyid != NULL && strcmp(last_lp_keyid, real_last_keyid) != 0) {
+		    (last_lp_keyid == NULL || strcmp(last_lp_keyid, real_last_keyid) != 0)) {
 			txn.ret = KNOT_ESEMCHECK;
 		}
 	}
