@@ -98,6 +98,7 @@ typedef struct {
 	uint32_t ksk_lifetime;              // like knot_time_t
 	bool ksk_shared;
 	bool single_type_signing;
+	bool sts_default;                   // single-type-signing was set to default value
 	// RRSIG
 	uint32_t rrsig_lifetime;            // like knot_time_t
 	uint32_t rrsig_refresh_before;      // like knot_timediff_t

@@ -45,8 +45,6 @@ a DNSSEC validating resolver.
 
 .. rubric:: Limitations:
 
-* Online-sign module always enforces Single-Type Signing scheme.
-
 * Due to limited interaction between the server and the module,
   after any change to KASP DB (including `knotc zone-ksk-submitted` command)
   or when a scheduled DNSSEC event shall be processed (e.g. transition to next
@@ -66,6 +64,9 @@ a DNSSEC validating resolver.
 
 * Configure the module with an explicit signing policy which has the
   :ref:`policy_rrsig-lifetime` value in the order of hours.
+
+* Note that :ref:`policy_single-type-signing` should be set explicitly to
+  avoid fallback to backward-compatible default.
 
 Example
 -------

@@ -973,7 +973,7 @@ single-type-signing
 If enabled, Single-Type Signing Scheme is used in the automatic key management
 mode.
 
-*Default:* off
+*Default:* off (:ref:`module onlinesign<mod-onlinesign>` has default on)
 
 .. _policy_algorithm:
 
