@@ -105,3 +105,12 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
  * \return KNOT_E*
  */
 int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_time_t *when_resalt);
+
+/*!
+ * \brief When DNSSEC signing failed, re-plan on this time.
+ *
+ * \param ctx    zone signing context
+ *
+ * \return Timestamp of next signing attempt.
+ */
+knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx);
