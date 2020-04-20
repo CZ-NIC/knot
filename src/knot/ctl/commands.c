@@ -1050,7 +1050,7 @@ static int drop_journal_if_orphan(const knot_dname_t *for_zone, void *ctx)
 	server_t *server = ctx;
 	zone_journal_t j = { &server->journaldb, for_zone };
 	if (!zone_exists(for_zone, server->zone_db)) {
-		(void)journal_scrape_with_md(j);
+		return journal_scrape_with_md(j, false);
 	}
 	return KNOT_EOK;
 }
@@ -1104,7 +1104,7 @@ static int orphans_purge(ctl_args_t *args)
 				// Purge zone journal.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
 					zone_journal_t j = { &args->server->journaldb, zone_name };
-					(void)journal_scrape_with_md(j);
+					(void)journal_scrape_with_md(j, true);
 				}
 
 				// Purge zone timers.
@@ -1154,7 +1154,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 
 	// Purge the zone journal.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
-		(void)journal_scrape_with_md(zone_journal(zone));
+		(void)journal_scrape_with_md(zone_journal(zone), true);
 	}
 
 	// Purge KASP DB.
