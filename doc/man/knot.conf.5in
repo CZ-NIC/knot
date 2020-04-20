@@ -890,7 +890,7 @@ If enabled, automatic key management is not used.
 If enabled, Single\-Type Signing Scheme is used in the automatic key management
 mode.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP off (module onlinesign has default on)
 .SS algorithm
 .sp
 An algorithm of signing keys and issued signatures. See

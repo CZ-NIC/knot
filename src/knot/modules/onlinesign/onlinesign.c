@@ -639,8 +639,10 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 		return ret;
 	}
 
-	// Force Single-Type signing scheme. This is only important for compatibility with older versions.
-	mod->dnssec->policy->single_type_signing = true;
+	// Historically, the default scheme is Single-Type signing.
+	if (mod->dnssec->policy->sts_default) {
+		mod->dnssec->policy->single_type_signing = true;
+	}
 
 	zone_sign_reschedule_t resch = { 0 };
 	ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
