@@ -979,6 +979,9 @@ mode.
 
 *Default:* off
 
+.. WARNING::
+   In case of :ref:`onlinesign<mod-onlinesign>` module, the default value is *on*.
+
 .. _policy_algorithm:
 
 algorithm

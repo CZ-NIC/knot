@@ -891,6 +891,13 @@ If enabled, Single\-Type Signing Scheme is used in the automatic key management
 mode.
 .sp
 \fIDefault:\fP off
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+In case of onlinesign module, the default value is \fIon\fP\&.
+.UNINDENT
+.UNINDENT
 .SS algorithm
 .sp
 An algorithm of signing keys and issued signatures. See
