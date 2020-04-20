@@ -374,6 +374,11 @@ static int verify_certificate(gnutls_session_t session)
 		return GNUTLS_E_SUCCESS;
 	}
 
+	if (ctx->params->ocsp_stapling > 0 && !verify_ocsp(&session)) {
+		WARN("TLS, failed to validate required OCSP data\n");
+		return GNUTLS_E_CERTIFICATE_ERROR;
+	}
+
 	// Set server certificate check.
 	gnutls_typed_vdata_st data[2] = {
 		{ .type = GNUTLS_DT_KEY_PURPOSE_OID,
@@ -402,11 +407,6 @@ static int verify_certificate(gnutls_session_t session)
 	gnutls_free(msg.data);
 
 	if (status != 0) {
-		return GNUTLS_E_CERTIFICATE_ERROR;
-	}
-
-	if (ctx->params->ocsp_stapling > 0 && !verify_ocsp(&session)) {
-		WARN("TLS, failed to validate required OCSP data\n");
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 
