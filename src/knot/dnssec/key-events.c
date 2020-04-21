@@ -718,8 +718,6 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 				log_zone_warning(ctx->zone->dname, "DNSSEC, key rollover, action %s (%s)",
 				                 roll_action_name(next.type), knot_strerror(ret));
 			}
-			// fail => try in 10 seconds #TODO better?
-			reschedule->next_rollover = knot_time_add(knot_time(), 10);
 		}
 	}
 

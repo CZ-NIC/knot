@@ -36,7 +36,7 @@
 #define GIGA(x)		(MEGA(1024) * (x))
 #define TERA(x)		(GIGA(1024) * (x))
 
-#define VIRT_MEM_TOP_32BIT	GIGA(1)
+#define VIRT_MEM_TOP_32BIT	MEGA(500)
 #define VIRT_MEM_LIMIT(x)	(((sizeof(void *) < 8) && ((x) > VIRT_MEM_TOP_32BIT)) \
 				 ? VIRT_MEM_TOP_32BIT : (x))
 
@@ -162,7 +162,7 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_IO_TIMEOUT,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 500 } },
 	{ C_TCP_RMT_IO_TIMEOUT,   YP_TINT,  YP_VINT = { 0, INT32_MAX, 5000 } },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
-	{ C_TCP_REUSEPORT,  	  YP_TBOOL, YP_VNONE },
+	{ C_TCP_REUSEPORT,        YP_TBOOL, YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD,      YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                                1232, YP_SSIZE } },
@@ -172,7 +172,8 @@ static const yp_item_t desc_server[] = {
 	{ C_UDP_MAX_PAYLOAD_IPV6, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                                1232, YP_SSIZE } },
-	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
+	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
+	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },

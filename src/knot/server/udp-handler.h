@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "knot/server/dthreads.h"
 
 #define RECVMMSG_BATCHLEN 10 /*!< Default recvmmsg() batch size. */
+#define XDP_BATCHLEN      32
 
 /*!
  * \brief UDP handler thread runnable.

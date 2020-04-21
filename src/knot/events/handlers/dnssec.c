@@ -73,6 +73,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	zone_sign_reschedule_t resch = { 0 };
 	zone_sign_roll_flags_t r_flags = KEY_ROLL_ALLOW_ALL;
 	int sign_flags = 0;
+	bool zone_changed = false;
 
 	if (zone->flags & ZONE_FORCE_RESIGN) {
 		log_zone_info(zone->name, "DNSSEC, dropping previous "
@@ -104,7 +105,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		goto done;
 	}
 
-	bool zone_changed = !zone_update_no_change(&up);
+	zone_changed = !zone_update_no_change(&up);
 	if (zone_changed) {
 		ret = zone_update_commit(conf, &up);
 		if (ret != KNOT_EOK) {
@@ -114,10 +115,10 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		zone_update_clear(&up);
 	}
 
+done:
 	// Schedule dependent events
 	event_dnssec_reschedule(conf, zone, &resch, zone_changed);
 
-done:
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 	}

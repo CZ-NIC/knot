@@ -11,6 +11,7 @@ class Update(object):
     def __init__(self, server, upd):
         self.server = server
         self.upd = upd
+        self.rc = None
 
     def add(self, owner, ttl, rtype, rdata):
         self.upd.add(owner, ttl, rtype, rdata)
@@ -26,7 +27,7 @@ class Update(object):
 
     def send(self, rcode="NOERROR"):
 
-        if type(rcode) is not str:
+        if type(rcode) is not str and rcode is not None:
             rc = dns.rcode.to_text(rcode)
         else:
             rc = rcode
@@ -36,8 +37,9 @@ class Update(object):
         detail_log(SEP)
 
         resp = dns.query.tcp(self.upd, self.server.addr, port=self.server.port)
-        resp_rc = dns.rcode.to_text(resp.rcode())
-        compare(resp_rc, rc, "UPDATE RCODE")
+        self.rc = dns.rcode.to_text(resp.rcode())
+        if rc is not None:
+            compare(self.rc, rc, "UPDATE RCODE")
 
         if self.upd.keyring and not resp.had_tsig:
             set_err("INVALID RESPONSE")

@@ -36,7 +36,7 @@
 /*** Query module API. ***/
 
 /*! Current module ABI version. */
-#define KNOTD_MOD_ABI_VERSION	200
+#define KNOTD_MOD_ABI_VERSION	300
 /*! Module configuration name prefix. */
 #define KNOTD_MOD_NAME_PREFIX	"mod-"
 
@@ -277,6 +277,7 @@ typedef enum {
 	KNOTD_CONF_ENV_HOSTNAME    = 1, /*!< Current hostname. */
 	KNOTD_CONF_ENV_WORKERS_UDP = 2, /*!< Current number of UDP workers. */
 	KNOTD_CONF_ENV_WORKERS_TCP = 3, /*!< Current number of TCP workers. */
+	KNOTD_CONF_ENV_WORKERS_XDP = 4, /*!< Current number of UDP-over-XDP workers. */
 } knotd_conf_env_t;
 
 /*!
@@ -388,6 +389,7 @@ typedef struct {
 	int socket;                            /*!< Current network socket. */
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
+	struct knot_xdp_msg *xdp_msg;          /*!< Possible XDP message context. */
 } knotd_qdata_params_t;
 
 /*! Query processing data context. */

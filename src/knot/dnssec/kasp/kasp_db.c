@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -234,13 +234,11 @@ int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	}
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
-	bool found = knot_lmdb_first(&txn);
-	while (found) {
+	knot_lmdb_forwhole(&txn) {
 		if (*(const uint8_t *)txn.cur_key.mv_data != KASPDBKEY_POLICYLAST &&
 		    !keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data)) {
 			knot_lmdb_del_cur(&txn);
 		}
-		found = knot_lmdb_next(&txn);
 	}
 	knot_lmdb_commit(&txn);
 	return txn.ret;
@@ -394,7 +392,7 @@ int kasp_db_set_policy_last(knot_lmdb_db_t *db, const char *policy_string, const
 		uint8_t unuse1, *unuse2;
 		const char *real_last_keyid;
 		if (knot_lmdb_unmake_curval(&txn, "BNS", &unuse1, &unuse2, &real_last_keyid) &&
-		    last_lp_keyid != NULL && strcmp(last_lp_keyid, real_last_keyid) != 0) {
+		    (last_lp_keyid == NULL || strcmp(last_lp_keyid, real_last_keyid) != 0)) {
 			txn.ret = KNOT_ESEMCHECK;
 		}
 	}
@@ -466,4 +464,15 @@ int kasp_db_delete_offline_records(knot_lmdb_db_t *db, const knot_dname_t *zone,
 	knot_lmdb_commit(&txn);
 	free(prefix.mv_data);
 	return txn.ret;
+}
+
+void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf)
+{
+	if (db->path == NULL) {
+		char *kasp_dir = conf_db(conf, C_KASP_DB);
+		conf_val_t kasp_size = conf_db_param(conf, C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
+		knot_lmdb_init(db, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
+		free(kasp_dir);
+		assert(db->path != NULL);
+	}
 }

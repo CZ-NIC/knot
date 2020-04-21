@@ -227,6 +227,8 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 done:
 	if (result == KNOT_EOK) {
 		reschedule->next_sign = schedule_next(&ctx, &keyset, next_resign, zone_expire);
+	} else {
+		reschedule->next_sign = knot_dnssec_failover_delay(&ctx);
 	}
 
 	free_zone_keys(&keyset);
@@ -314,4 +316,9 @@ done:
 	kdnssec_ctx_deinit(&ctx);
 
 	return result;
+}
+
+knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx)
+{
+	return ctx->now + ctx->policy->rrsig_prerefresh;
 }

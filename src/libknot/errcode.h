@@ -142,6 +142,10 @@ enum knot_error {
 	/* Another general errors. */
 	KNOT_ELOOP,
 
+	/* XDP errors. */
+	KNOT_EPROGRAM,
+	KNOT_EFD,
+
 	KNOT_ERROR_MAX = -501
 };
 

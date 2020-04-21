@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -273,8 +273,9 @@ int dnstap_load(knotd_mod_t *mod)
 
 	/* Initialize queues. */
 	knotd_conf_t udp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_UDP);
+	knotd_conf_t xdp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_XDP);
 	knotd_conf_t tcp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_TCP);
-	size_t qcount = udp.single.integer + tcp.single.integer;
+	size_t qcount = udp.single.integer + xdp.single.integer + tcp.single.integer;
 	fstrm_iothr_options_set_num_input_queues(opt, qcount);
 
 	/* Create the I/O thread. */

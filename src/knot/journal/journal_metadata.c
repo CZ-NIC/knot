@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -284,9 +284,9 @@ void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint3
 	md->flags |= (JOURNAL_MERGED_SERIAL_VALID | JOURNAL_LAST_FLUSHED_VALID);
 }
 
-int journal_scrape_with_md(zone_journal_t j)
+int journal_scrape_with_md(zone_journal_t j, bool check_existence)
 {
-	if (!journal_is_existing(j)) {
+	if (check_existence && !journal_is_existing(j)) {
 		return KNOT_EOK;
 	}
 	knot_lmdb_txn_t txn = { 0 };
@@ -360,7 +360,7 @@ int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial, bool *h
 int journals_walk(knot_lmdb_db_t *db, journals_walk_cb_t cb, void *ctx)
 {
 	if (!knot_lmdb_exists(db)) {
-		return KNOT_EOK;
+		return KNOT_EFILE;
 	}
 	int ret = knot_lmdb_open(db);
 	if (ret != KNOT_EOK) {

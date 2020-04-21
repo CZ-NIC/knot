@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -123,10 +123,10 @@ int knotd_mod_in_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_in_hook_f
 	return query_plan_step(mod->plan, stage, hook, mod);
 }
 
-knotd_mod_t *query_module_open(conf_t *conf, conf_mod_id_t *mod_id,
+knotd_mod_t *query_module_open(conf_t *conf, server_t *server, conf_mod_id_t *mod_id,
                                struct query_plan *plan, const knot_dname_t *zone)
 {
-	if (conf == NULL || mod_id == NULL || plan == NULL) {
+	if (conf == NULL || server == NULL || mod_id == NULL || plan == NULL) {
 		return NULL;
 	}
 
@@ -145,6 +145,7 @@ knotd_mod_t *query_module_open(conf_t *conf, conf_mod_id_t *mod_id,
 
 	module->plan = plan;
 	module->config = conf;
+	module->server = server;
 	module->zone = zone;
 	module->id = mod_id;
 	module->api = mod->api;
@@ -165,7 +166,6 @@ void query_module_close(knotd_mod_t *module)
 	free_zone_keys(module->keyset);
 	free(module->keyset);
 	if (module->dnssec != NULL) {
-		knot_lmdb_deinit(module->dnssec->kasp_db);
 		kdnssec_ctx_deinit(module->dnssec);
 		free(module->dnssec);
 	}
@@ -347,6 +347,9 @@ knotd_conf_t knotd_conf_env(knotd_mod_t *mod, knotd_conf_env_t env)
 		break;
 	case KNOTD_CONF_ENV_WORKERS_TCP:
 		out.single.integer = config->cache.srv_tcp_threads;
+		break;
+	case KNOTD_CONF_ENV_WORKERS_XDP:
+		out.single.integer = config->cache.srv_xdp_threads;
 		break;
 	default:
 		return out;
@@ -568,24 +571,18 @@ int knotd_mod_dnssec_init(knotd_mod_t *mod)
 		return KNOT_EINVAL;
 	}
 
-	knot_lmdb_db_t *kaspdb;
+	knot_lmdb_db_t *kaspdb = &mod->server->kaspdb;
+	kasp_db_ensure_init(kaspdb, mod->config); // probably redundant
 
-	mod->dnssec = calloc(1, sizeof(*(mod->dnssec)) + sizeof(*kaspdb));
+	mod->dnssec = calloc(1, sizeof(*(mod->dnssec)));
 	if (mod->dnssec == NULL) {
 		return KNOT_ENOMEM;
 	}
-	kaspdb = (knot_lmdb_db_t *)(mod->dnssec + 1);
-
-	char *kasp_dir = conf_db(mod->config, C_KASP_DB);
-	conf_val_t kasp_size = conf_db_param(mod->config, C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
-	knot_lmdb_init(kaspdb, kasp_dir, conf_int(&kasp_size), 0, "keys_db");
-	free(kasp_dir);
 
 	conf_val_t conf = conf_zone_get(mod->config, C_DNSSEC_SIGNING, mod->zone);
 	int ret = kdnssec_ctx_init(mod->config, mod->dnssec, mod->zone, kaspdb,
 	                           conf_bool(&conf) ? NULL : mod->id);
 	if (ret != KNOT_EOK) {
-		knot_lmdb_deinit(kaspdb);
 		free(mod->dnssec);
 		return ret;
 	}

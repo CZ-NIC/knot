@@ -59,6 +59,11 @@ version.h
 # zscanner
 /src/libzscanner/scanner.c
 
+# xdp
+/src/libknot/xdp/bpf-kernel.ll
+
+src/libknot/libknot.h
+
 # Binaries
 /src/kdig
 /src/khost
@@ -69,6 +74,7 @@ version.h
 /src/knsec3hash
 /src/knsupdate
 /src/kzonecheck
+/src/xdp-gun
 
 # Generated tarballs
 /knot-*.tar.xz

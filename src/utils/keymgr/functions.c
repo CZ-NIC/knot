@@ -768,7 +768,7 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 
 int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **key_zone, char **key_id)
 {
-	*key_zone = knot_dname_from_str_alloc(argv[0]);
+	*key_zone = knot_dname_from_str_alloc(argv[3]);
 	if (*key_zone == NULL) {
 		return KNOT_ENOMEM;
 	}

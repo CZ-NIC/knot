@@ -53,5 +53,17 @@ resp.check_record(section="answer", rtype="A", ttl="1000", rdata="1.2.3.4")
 resp.check_record(section="answer", rtype="A", nordata="192.0.2.3")
 resp.check_record(section="answer", rtype="AAAA", ttl="3600", rdata="2001:db8::3")
 
+# Add and delete the same RR in one update and check that this is cancelled-out
+# in the changeset. Otherwise the next load fails.
+
+check_log("Add+delete same record + restart")
+up = master.update(zone)
+up.add("cancelout.example.com.", 3600, "A", "1.2.3.4")
+up.delete("cancelout.example.com.", "A", "1.2.3.4")
+up.send("NOERROR")
+master.stop()
+master.start()
+master.zone_wait(zone)
+
 t.end()
 

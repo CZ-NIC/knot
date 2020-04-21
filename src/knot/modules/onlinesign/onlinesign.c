@@ -516,6 +516,9 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 	if (ret == KNOT_EOK || knot_time_cmp(ctx->event_rollover, mod->dnssec->now) <= 0) {
 		update_policy_from_zone(mod->dnssec->policy, qdata->extra->contents);
 		ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
+		if (ret != KNOT_EOK) {
+			ctx->event_rollover = knot_dnssec_failover_delay(mod->dnssec);
+		}
 	}
 	if (ret == KNOT_EOK) {
 		if (resch.plan_ds_check && mod->dnssec->policy->ksk_sbm_check_interval > 0) {
@@ -636,8 +639,10 @@ static int online_sign_ctx_new(online_sign_ctx_t **ctx_ptr, knotd_mod_t *mod)
 		return ret;
 	}
 
-	// Force Single-Type signing scheme. This is only important for compatibility with older versions.
-	mod->dnssec->policy->single_type_signing = true;
+	// Historically, the default scheme is Single-Type signing.
+	if (mod->dnssec->policy->sts_default) {
+		mod->dnssec->policy->single_type_signing = true;
+	}
 
 	zone_sign_reschedule_t resch = { 0 };
 	ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);

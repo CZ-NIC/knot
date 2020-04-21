@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameter] <journal_db> <zone_name>\n"
+	printf("Usage: %s [parameter] <journal_dir> <zone_name>\n"
 	       "\n"
 	       "Parameters:\n"
 	       " -l, --limit <num>  Read only <num> newest changes.\n"
@@ -166,6 +166,11 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 	uint64_t occupied, occupied_all;
 
 	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST), NULL);
+	if (!knot_lmdb_exists(&jdb)) {
+		knot_lmdb_deinit(&jdb);
+		return KNOT_EFILE;
+	}
+
 	int ret = knot_lmdb_open(&jdb);
 	if (ret != KNOT_EOK) {
 		knot_lmdb_deinit(&jdb);
@@ -210,24 +215,63 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 	return ret;
 }
 
-static int list_zone(const knot_dname_t *zone, void *ctx)
+static int add_zone_to_list(const knot_dname_t *zone, void *list)
 {
-	(void)ctx;
+	knot_dname_t *copy = knot_dname_copy(zone, NULL);
+	if (copy == NULL) {
+		return KNOT_ENOMEM;
+	}
+	return ptrlist_add(list, copy, NULL) == NULL ? KNOT_ENOMEM : KNOT_EOK;
+}
+
+static int list_zone(const knot_dname_t *zone, bool detailed, knot_lmdb_db_t *jdb, uint64_t *occupied_all)
+{
 	knot_dname_txt_storage_t zone_str;
 	if (knot_dname_to_str(zone_str, zone, sizeof(zone_str)) == NULL) {
 		return KNOT_EINVAL;
 	}
-	printf("%s\n", zone_str);
+
+	if (detailed) {
+		zone_journal_t j = { jdb, zone };
+		bool exists;
+		uint64_t occupied;
+
+		int ret = journal_info(j, &exists, NULL, NULL, NULL, NULL, NULL, &occupied, occupied_all);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		assert(exists);
+		printf("%s \t%"PRIu64" KiB\n", zone_str, occupied / 1024);
+	} else {
+		printf("%s\n", zone_str);
+	}
 	return KNOT_EOK;
 }
 
-int list_zones(char *path)
+int list_zones(char *path, bool detailed)
 {
 	knot_lmdb_db_t jdb = { 0 };
 	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST), NULL);
 
-	int ret = journals_walk(&jdb, list_zone, NULL);
+	list_t zones;
+	init_list(&zones);
+	ptrnode_t *zone;
+	uint64_t occupied_all = 0;
+
+	int ret = journals_walk(&jdb, add_zone_to_list, &zones);
+	WALK_LIST(zone, zones) {
+		if (ret != KNOT_EOK) {
+			break;
+		}
+		ret = list_zone(zone->d, detailed, &jdb, &occupied_all);
+	}
+
 	knot_lmdb_deinit(&jdb);
+	ptrlist_deep_free(&zones, NULL);
+
+	if (detailed && ret == KNOT_EOK) {
+		printf("Occupied all zones together: %"PRIu64" KiB\n", occupied_all / 1024);
+	}
 	return ret;
 }
 
@@ -308,13 +352,16 @@ int main(int argc, char *argv[])
 	}
 
 	if (justlist) {
-		int ret = list_zones(db);
+		int ret = list_zones(db, params.debug);
 		switch (ret) {
 		case KNOT_ENOENT:
 			printf("No zones in journal DB\n");
 			// FALLTHROUGH
 		case KNOT_EOK:
 			return EXIT_SUCCESS;
+		case KNOT_EFILE:
+			fprintf(stderr, "The specified journal DB is invalid\n");
+			return EXIT_FAILURE;
 		case KNOT_EMALF:
 			fprintf(stderr, "The journal DB is broken\n");
 			return EXIT_FAILURE;
@@ -336,6 +383,9 @@ int main(int argc, char *argv[])
 	case KNOT_ENOENT:
 		printf("The journal is empty\n");
 		break;
+	case KNOT_EFILE:
+		fprintf(stderr, "The specified journal DB is invalid\n");
+		return EXIT_FAILURE;
 	case KNOT_EOUTOFZONE:
 		fprintf(stderr, "The specified journal DB does not contain the specified zone\n");
 		return EXIT_FAILURE;

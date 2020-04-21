@@ -17,6 +17,7 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
+#include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
@@ -391,6 +392,16 @@ void zone_update_clear(zone_update_t *update)
 	memset(update, 0, sizeof(*update));
 }
 
+inline static void update_affected_rrtype(zone_update_t *update, uint16_t rrtype)
+{
+	switch (rrtype) {
+	case KNOT_RRTYPE_NSEC:
+	case KNOT_RRTYPE_NSEC3:
+		update->flags |= UPDATE_CHANGED_NSEC;
+		break;
+	}
+}
+
 static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *add)
 {
 	if (add->type == KNOT_RRTYPE_RRSIG || add->type == KNOT_RRTYPE_SOA) {
@@ -464,6 +475,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 			return ret;
 		}
 
+		update_affected_rrtype(update, rrset->type);
 		return KNOT_EOK;
 	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
@@ -521,6 +533,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 			return ret;
 		}
 
+		update_affected_rrtype(update, rrset->type);
 		return KNOT_EOK;
 	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		zone_node_t *n = NULL;
@@ -640,24 +653,34 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
 	return set_new_soa(update, conf_opt(&val));
 }
 
+static int commit_journal(conf_t *conf, zone_update_t *update)
+{
+	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
+	unsigned content = conf_opt(&val);
+	int ret = KNOT_EOK;
+	if ((update->flags & UPDATE_INCREMENTAL) ||
+	    (update->flags & UPDATE_HYBRID)) {
+		changeset_t *extra = (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL;
+		if (content != JOURNAL_CONTENT_NONE && !changeset_empty(&update->change)) {
+			ret = zone_change_store(conf, update->zone, &update->change, extra);
+		}
+	} else {
+		if (content == JOURNAL_CONTENT_ALL) {
+			return zone_in_journal_store(conf, update->zone, update->new_cont);
+		} else if (content != JOURNAL_CONTENT_NONE) { // zone_in_journal_store does this automatically
+			return zone_changes_clear(conf, update->zone);
+		}
+	}
+	return ret;
+}
+
 static int commit_incremental(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
 
-	int ret = KNOT_EOK;
 	if (zone_update_to(update) == NULL && !changeset_empty(&update->change)) {
 		/* No SOA in the update, create one according to the current policy */
-		ret = zone_update_increment_soa(update, conf);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	/* Write changes to journal if all went well. */
-	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
-	if (conf_opt(&val) != JOURNAL_CONTENT_NONE && !changeset_empty(&update->change)) {
-		ret = zone_change_store(conf, update->zone, &update->change,
-		                        (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL);
+		int ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -675,15 +698,6 @@ static int commit_full(conf_t *conf, zone_update_t *update)
 	 * - to enable/disable it on demand. */
 	if (!node_rrtype_exists(update->new_cont->apex, KNOT_RRTYPE_SOA)) {
 		return KNOT_ESEMCHECK;
-	}
-
-	/* Store new zone contents in journal. */
-	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
-	unsigned content = conf_opt(&val);
-	if (content == JOURNAL_CONTENT_ALL) {
-		return zone_in_journal_store(conf, update->zone, update->new_cont);
-	} else if (content != JOURNAL_CONTENT_NONE) { // zone_in_journal_store does this automatically
-		return zone_changes_clear(conf, update->zone);
 	}
 
 	return KNOT_EOK;
@@ -739,6 +753,15 @@ static void update_clear(struct rcu_head *param)
 	free(ctx);
 }
 
+static void discard_adds_tree(zone_update_t *update)
+{
+	additionals_tree_free(update->new_cont->adds_tree);
+	if (update->zone->contents != NULL) {
+		update->zone->contents->adds_tree = NULL;
+	}
+	update->new_cont->adds_tree = NULL;
+}
+
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (conf == NULL || update == NULL) {
@@ -755,6 +778,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			zone_update_clear(update);
 			return KNOT_EOK;
 		}
+	}
+	if (update->flags & UPDATE_INCREMENTAL) {
 		ret = commit_incremental(conf, update);
 	} else if ((update->flags & UPDATE_HYBRID)) {
 		ret = commit_incremental(conf, update);
@@ -771,6 +796,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		ret = zone_adjust_incremental_update(update);
 	}
 	if (ret != KNOT_EOK) {
+		discard_adds_tree(update);
 		return ret;
 	}
 
@@ -782,8 +808,14 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	size_t size_limit = conf_int(&val);
 
 	if (update->new_cont->size > size_limit) {
-		/* Recoverable error. */
+		discard_adds_tree(update);
 		return KNOT_EZONESIZE;
+	}
+
+	ret = commit_journal(conf, update);
+	if (ret != KNOT_EOK) {
+		discard_adds_tree(update);
+		return ret;
 	}
 
 	/* Check if the zone was re-signed upon zone load to ensure proper flush

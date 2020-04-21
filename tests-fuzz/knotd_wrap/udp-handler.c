@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,8 +60,9 @@ static void udp_stdin_deinit(void *d)
 	free(d);
 }
 
-static int udp_stdin_recv(int fd, void *d)
+static int udp_stdin_recv(int fd, void *d, void *unused)
 {
+	UNUSED(unused);
 	udp_stdin_t *rq = (udp_stdin_t *)d;
 	rq->iov[RX].iov_len = fread(rq->iov[RX].iov_base, 1,
 	                            KNOT_WIRE_MAX_PKTSIZE, stdin);
@@ -72,19 +73,29 @@ static int udp_stdin_recv(int fd, void *d)
 	return rq->iov[RX].iov_len;
 }
 
-static int udp_stdin_handle(udp_context_t *ctx, void *d)
+static int udp_stdin_handle(udp_context_t *ctx, void *d, void *unused)
 {
+	UNUSED(unused);
 	udp_stdin_t *rq = (udp_stdin_t *)d;
-	udp_handle(ctx, STDIN_FILENO, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
+	udp_handle(ctx, STDIN_FILENO, &rq->addr, &rq->iov[RX], &rq->iov[TX], false);
 	return 0;
 }
 
-static int udp_stdin_send(void *d)
+static int udp_stdin_send(void *d, void *unused)
 {
+	UNUSED(unused);
 	udp_stdin_t *rq = (udp_stdin_t *)d;
 	next(rq);
 	return 0;
 }
+
+static udp_api_t stdin_api = {
+	udp_stdin_init,
+	udp_stdin_deinit,
+	udp_stdin_recv,
+	udp_stdin_handle,
+	udp_stdin_send
+};
 
 void udp_master_init_stdio(server_t *server) {
 
@@ -98,11 +109,11 @@ void udp_master_init_stdio(server_t *server) {
 	ifc->fd_udp[0] = STDIN_FILENO;
 	ifc->fd_udp_count = 1;
 
-	add_tail(server->ifaces, (node_t *)ifc);
+	server->n_ifaces = 1;
+	server->ifaces = ifc;
 
-	_udp_init = udp_stdin_init;
-	_udp_recv = udp_stdin_recv;
-	_udp_handle = udp_stdin_handle;
-	_udp_send = udp_stdin_send;
-	_udp_deinit = udp_stdin_deinit;
+	udp_recvfrom_api = stdin_api;
+#ifdef ENABLE_RECVMMSG
+	udp_recvmmsg_api = stdin_api;
+#endif
 }

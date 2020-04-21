@@ -17,7 +17,6 @@ nobase_include_libknot_HEADERS = \
 	libknot/endian.h			\
 	libknot/errcode.h			\
 	libknot/error.h				\
-	libknot/libknot.h			\
 	libknot/lookup.h			\
 	libknot/mm_ctx.h			\
 	libknot/db/db.h				\
@@ -75,3 +74,23 @@ libknot_la_SOURCES = \
 	libknot/yparser/ypformat.c		\
 	libknot/yparser/ypschema.c		\
 	libknot/yparser/yptrafo.c
+
+if ENABLE_XDP
+libknot_la_CPPFLAGS += $(libbpf_CFLAGS)
+libknot_la_LIBADD   += $(libbpf_LIBS)
+
+nobase_include_libknot_HEADERS += \
+	libknot/xdp/bpf-consts.h		\
+	libknot/xdp/eth.h			\
+	libknot/xdp/xdp.h
+
+libknot_la_SOURCES  += \
+	libknot/xdp/bpf-kernel-obj.c		\
+	libknot/xdp/bpf-kernel-obj.h		\
+	libknot/xdp/bpf-user.c			\
+	libknot/xdp/bpf-user.h			\
+	libknot/xdp/eth.c			\
+	libknot/xdp/xdp.c
+endif ENABLE_XDP
+
+DIST_SUBDIRS = libknot/xdp

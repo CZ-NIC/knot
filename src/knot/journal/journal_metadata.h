@@ -115,10 +115,11 @@ void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint3
  * \brief Completely delete all journal records belonging to this zone, including metadata.
  *
  * \param j   Journal to be scraped.
+ * \param check_existence   Don't operate if the journal seems not to exist.
  *
  * \return KNOT_E*
  */
-int journal_scrape_with_md(zone_journal_t j);
+int journal_scrape_with_md(zone_journal_t j, bool check_existence);
 
 /*!
  * \brief Update the metadata stored in journal DB after a zone flush.

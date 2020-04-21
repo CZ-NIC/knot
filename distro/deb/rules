@@ -31,7 +31,6 @@ PYBUILD = pybuild --dir python --dest-dir debian/python3-libknot
 
 %:
 	dh $@ \
-	 --dbgsym-migration='knot-dbg (<< 2.2.0-2~)' \
 	 --exclude=.la --exclude=example.com.zone \
 	 --with python3
 
@@ -73,10 +72,6 @@ override_dh_auto_install-indep:
 override_dh_auto_test-indep:
 override_dh_auto_test-arch:
 	$(RUN_TEST) dh_auto_test
-
-override_dh_installdirs-arch:
-	dh_installdirs --arch --package=knot /usr/lib/$(DEB_HOST_MULTIARCH)/knot
-	dh_installdirs --arch --remaining-packages
 
 override_dh_missing:
 	dh_missing --fail-missing

@@ -334,29 +334,26 @@ Journal behaviour
 
 The zone journal keeps some history of changes made to the zone. It is useful for
 responding to IXFR queries. Also if :ref:`zone file flush <zone_zonefile-sync>` is disabled,
-journal keeps diff between the zone file and zone for the case of server shutdown.
-The history is stored in changesets – diffs of zone contents between two
-(usually subsequent) zone serials.
+journal keeps the difference between the zone file and the current zone for the case of server shutdown.
+The history is stored in changesets – differences of zone contents between two
+(usually subsequent) zone versions (specified by SOA serials).
 
 Journals of all zones are stored in a common LMDB database. Huge changesets are
 split into 70 KiB [#fn-hc]_ blocks to prevent fragmentation of the DB.
 Journal does each operation in one transaction to keep consistency of the DB and performance.
-The exception is when store transaction exceeds 5 % of the whole DB mapsize, it is split into multiple ones
-and some dirty-chunks-management involves.
 
-Each zone journal has own :ref:`usage limit <zone_journal-max-usage>`
-on how much DB space it may occupy. Before hitting the limit,
-changesets are stored one-by-one and whole history is linear. While hitting the limit,
-the zone is flushed into the zone file, and oldest changesets are deleted as needed to free
-some space. Actually, twice [#fn-hc]_ the needed amount is deleted to
-prevent too frequent deletes. Further zone file flush is invoked after the journal runs out of deletable
-"flushed changesets".
+Each zone journal has its own occupation limits :ref:`maximum usage <zone_journal-max-usage>`
+and :ref:`maximum depth <zone_journal-max-depth>`. Changesets are stored in the journal
+one by one. When hitting any of the limits, the zone is flushed into the zone file
+if there are no redundant changesets to delete, and the oldest changesets are deleted.
+In the case of the size limit, twice [#fn-hc]_ the needed amount of space is purged
+to prevent too frequent deletes.
 
-If :ref:`zone file flush <zone_zonefile-sync>` is disabled, then instead of flushing the zone, the journal tries to
-save space by merging older changesets into one. It works well if the changes rewrite
-each other, e.g. periodically changing few zone records, re-signing whole zone...
-The difference between the zone file and the zone is thus preserved, even if journal deletes some
-older changesets.
+If :ref:`zone file flush <zone_zonefile-sync>` is disabled, then instead of flushing
+the zone, the journal tries to save space by merging the changesets into a special one.
+This approach is effective if the changes rewrite each other, e.g. periodically
+changing the same zone records, re-signing whole zone etc. Thus the difference between the zone
+file and the zone is still preserved even if the journal deletes some older changesets.
 
 If the journal is used to store both zone history and contents, a special changeset
 is present with zone contents. When the journal gets full, the changes are merged into this
@@ -949,3 +946,61 @@ it is possible to create an arbitrary script (Python is supported at the moment)
 which could, for example, publish the data in the JSON format via HTTP(S)
 or upload the data to a more efficient time series database. Take a look into
 the python folder of the project for these scripts.
+
+.. _Mode XDP:
+
+Mode XDP
+========
+
+Thanks to recent Linux kernel capabilities, namely eXpress Data Path and AF_XDP
+address family, Knot DNS offers a high-performance DNS over UDP packet processing
+mode. The basic idea is to filter DNS messages close to the network device and
+efectively forwarding them to the nameserver without touching the network stack
+of the operating system. Other messages (including DNS over TCP) are processed
+as usual.
+
+If :ref:`listen-xdp <server_listen-xdp>` is configured, the server creates
+additional XDP workers, listening on specified interface(s) and port(s) for DNS
+over UDP queries. Each XDP worker handles one RX and TX network queue pair.
+
+Pre-requisites
+--------------
+
+* Linux kernel 4.18+ (5.x+ is recommended for optimal performance).
+* A network card with native XDP support is highly recommended (successfully
+  tested cards are Intel series 500 and 700).
+* If the `knotd` service is not directly executed in the privileged mode, some
+  additional Linux capabilities have to be set:
+
+  Execute command::
+
+    systemctl edit knot
+
+  And insert these lines::
+
+      [Service]
+      CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
+      AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
+
+Optimizations
+-------------
+
+Some helpful commands::
+
+ ethtool -N <interface> rx-flow-hash udp4 sdfn
+ ethtool -N <interface> rx-flow-hash udp6 sdfn
+ ethtool -L <interface> combined <?>
+ ethtool -G <interface> rx <?> tx <?>
+ renice -n 19 -p $(pgrep '^ksoftirqd/[0-9]*$')
+
+Limitations
+-----------
+
+* VLAN segmentation is not supported.
+* Dynamic DNS over XDP is not supported.
+* MTU higher than 1792 bytes is not supported.
+* Symmetrical routing is required (query source address and reply destination address are the same).
+* Systems with big-endian byte ordering require special recompilation of the nameserver.
+* IPv4 header and UDP checksums are not verified on received DNS messages.
+* DNS over XDP traffic is not visible to common system tools (e.g. firewall, tcpdump etc.).
+* BPF filter is not automatically unloaded from the network device.

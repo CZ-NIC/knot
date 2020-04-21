@@ -43,6 +43,8 @@ Depends:
  lsb-base (>= 3.0-6),
  ${misc:Depends},
  ${shlibs:Depends},
+Pre-Depends:
+ ${misc:Pre-Depends},
 Suggests:
  systemd,
 Description: Authoritative domain name server

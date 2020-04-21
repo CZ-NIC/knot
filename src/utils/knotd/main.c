@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -503,7 +503,7 @@ int main(int argc, char **argv)
 	drop_capabilities();
 
 	/* Activate global query modules. */
-	conf_activate_modules(conf(), NULL, conf()->query_modules,
+	conf_activate_modules(conf(), &server, NULL, conf()->query_modules,
 	                      &conf()->query_plan);
 
 	/* Check and create PID file. */

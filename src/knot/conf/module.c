@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -345,6 +345,7 @@ void conf_mod_unload_shared(
 
 void conf_activate_modules(
 	conf_t *conf,
+	struct server *server,
 	const knot_dname_t *zone_name,
 	list_t *query_modules,
 	struct query_plan **query_plan)
@@ -395,7 +396,7 @@ void conf_activate_modules(
 		}
 
 		// Open the module.
-		knotd_mod_t *mod = query_module_open(conf, mod_id, *query_plan,
+		knotd_mod_t *mod = query_module_open(conf, server, mod_id, *query_plan,
 		                                     zone_name);
 		if (mod == NULL) {
 			MOD_ID_LOG(zone_name, error, mod_id, "failed to open");
