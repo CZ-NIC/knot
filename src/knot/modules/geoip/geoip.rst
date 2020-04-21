@@ -218,7 +218,7 @@ geodb-file
 
 Full path to a .mmdb file containing the GeoIP database.
 
-*Reqired if* :ref:`mod-geoip_mode` *is set to* **geodb**
+*Required if* :ref:`mod-geoip_mode` *is set to* **geodb**
 
 .. _mod-geoip_geodb-key:
 
