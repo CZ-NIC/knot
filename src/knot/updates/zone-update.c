@@ -392,6 +392,16 @@ void zone_update_clear(zone_update_t *update)
 	memset(update, 0, sizeof(*update));
 }
 
+inline static void update_affected_rrtype(zone_update_t *update, uint16_t rrtype)
+{
+	switch (rrtype) {
+	case KNOT_RRTYPE_NSEC:
+	case KNOT_RRTYPE_NSEC3:
+		update->flags |= UPDATE_CHANGED_NSEC;
+		break;
+	}
+}
+
 static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *add)
 {
 	if (add->type == KNOT_RRTYPE_RRSIG || add->type == KNOT_RRTYPE_SOA) {
@@ -465,6 +475,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 			return ret;
 		}
 
+		update_affected_rrtype(update, rrset->type);
 		return KNOT_EOK;
 	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
@@ -522,6 +533,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 			return ret;
 		}
 
+		update_affected_rrtype(update, rrset->type);
 		return KNOT_EOK;
 	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		zone_node_t *n = NULL;

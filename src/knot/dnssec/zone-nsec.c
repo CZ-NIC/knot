@@ -363,7 +363,7 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
 	int ret;
-	if (nsec_ttl_old != nsec_ttl_new) {
+	if (nsec_ttl_old != nsec_ttl_new || (update->flags & UPDATE_CHANGED_NSEC)) {
 		ret = KNOT_ENORECORD;
 	} else if (ctx->policy->nsec3_enabled) {
 		ret = knot_nsec3_fix_chain(update, &params, nsec_ttl_new);
