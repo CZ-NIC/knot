@@ -103,10 +103,11 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
  * than nsec3-related pointers and additionals.
  *
  * \param zone   Zone to be adjusted.
+ * \param threads  Parallelize some adjusting.
  *
  * \return KNOT_E*
  */
-int zone_adjust_full(zone_contents_t *zone);
+int zone_adjust_full(zone_contents_t *zone, unsigned adjust_threads);
 
 /*!
  * \brief Do a generally approved adjust after incremental update.

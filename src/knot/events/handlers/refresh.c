@@ -153,11 +153,17 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 
 static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 {
+	conf_val_t thr = conf_zone_get(conf(), C_ADJUST_THR, zone->apex->owner);
+	int ret = zone_adjust_contents(zone, adjust_cb_flags, NULL, false, false, conf_int(&thr), NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	sem_handler_t handler = {
 		.cb = err_handler_logger
 	};
 
-	int ret = sem_checks_process(zone, false, &handler, time(NULL));
+	ret = sem_checks_process(zone, false, &handler, time(NULL));
 	if (ret != KNOT_EOK) {
 		// error is logged by the error handler
 		return ret;
@@ -252,10 +258,7 @@ static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
 
-	int ret = zone_adjust_contents(new_zone, adjust_cb_flags, NULL, false, true, 1, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
-	if (ret == KNOT_EOK) {
-		ret = xfr_validate(new_zone, data);
-	}
+	int ret = xfr_validate(new_zone, data);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -527,10 +530,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	ret = zone_adjust_contents(up.new_cont, adjust_cb_flags, NULL, false, true, 1, NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
-	if (ret == KNOT_EOK) {
-		ret = xfr_validate(up.new_cont, data);
-	}
+	ret = xfr_validate(up.new_cont, data);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		return ret;

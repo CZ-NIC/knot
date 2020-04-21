@@ -477,11 +477,11 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 	return ret;
 }
 
-int zone_adjust_full(zone_contents_t *zone)
+int zone_adjust_full(zone_contents_t *zone, unsigned threads)
 {
 	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags, true, true, 1, NULL);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false, true, 1, NULL);
+		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false, false, threads, NULL);
 	}
 	if (ret == KNOT_EOK) {
 		additionals_tree_free(zone->adds_tree);
