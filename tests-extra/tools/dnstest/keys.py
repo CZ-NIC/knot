@@ -94,6 +94,13 @@ class Keymgr(object):
 
         cmd = Popen(cmdline, stdout=PIPE, stderr=PIPE, universal_newlines=True)
         (stdout, stderr) = cmd.communicate()
+
+        with open(dnstest.params.out_dir + "/keymgr.out", "a") as outf:
+            outf.write(' '.join(cmdline))
+            outf.write("\n" + stdout)
+        with open(dnstest.params.out_dir + "/keymgr.err", "a") as errf:
+            errf.write(stderr)
+
         return (cmd.returncode, stdout, stderr)
 
     @classmethod
