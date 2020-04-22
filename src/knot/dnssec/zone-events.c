@@ -141,6 +141,13 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 	return ret;
 }
 
+static int adjust_before_nsec(zone_update_t *update)
+{
+	conf_val_t thr = conf_zone_get(conf(), C_ADJUST_THR, update->zone->name);
+	return zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false,
+	                            false, conf_int(&thr), update->a_ctx->node_ptrs);
+}
+
 int knot_dnssec_zone_sign(zone_update_t *update,
                           zone_sign_flags_t flags,
                           zone_sign_roll_flags_t roll_flags,
@@ -181,7 +188,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, false, 1, update->a_ctx->node_ptrs);
+	result = adjust_before_nsec(update);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -262,7 +269,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
-	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, false, 1, update->a_ctx->node_ptrs);
+	result = adjust_before_nsec(update);
 	if (result != KNOT_EOK) {
 		goto done;
 	}
