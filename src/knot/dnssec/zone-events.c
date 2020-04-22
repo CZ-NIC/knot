@@ -181,7 +181,9 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
+	log_zone_info(zone_name, "START adjust DNSSEC flags one thread");
 	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, false, 1, update->a_ctx->node_ptrs);
+	log_zone_info(zone_name, "FINISH adjust DNSSEC flags one thread (%s)", knot_strerror(result));
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -262,7 +264,9 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
+	log_zone_info(zone_name, "START adjust DNSSEC flags one thread");
 	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL, false, false, 1, update->a_ctx->node_ptrs);
+	log_zone_info(zone_name, "FINISH adjust DNSSEC flags one thread (%s)", knot_strerror(result));
 	if (result != KNOT_EOK) {
 		goto done;
 	}
