@@ -123,7 +123,7 @@ class Server(object):
 
         self.addr = None
         self.addr_extra = list()
-        self.port = 0 # Needed for keymgr when port not yet generated
+        self.port = 53 # Needed for keymgr when port not yet generated
         self.fixed_port = False
         self.ctlport = None
         self.external = False
