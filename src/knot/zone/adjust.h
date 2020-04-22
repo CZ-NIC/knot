@@ -113,7 +113,8 @@ int zone_adjust_full(zone_contents_t *zone, unsigned threads);
  * \brief Do a generally approved adjust after incremental update.
  *
  * \param update   Zone update to be adjusted incrementally.
+ * \param threads  Parallelize some adjusting using specified threads.
  *
  * \return KNOT_E*
  */
-int zone_adjust_incremental_update(zone_update_t *update);
+int zone_adjust_incremental_update(zone_update_t *update, unsigned threads);
