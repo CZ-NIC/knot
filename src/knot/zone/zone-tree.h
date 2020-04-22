@@ -306,6 +306,16 @@ void zone_tree_delsafe_it_next(zone_tree_delsafe_it_t *it);
 void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it);
 
 /*!
+ * \brief Merge all nodes from 'what' to 'into'.
+ *
+ * \param into  Zone tree to be inserted into..
+ * \param what  ...all nodes from this one.
+ *
+ * \return KNOT_E*
+ */
+int zone_tree_merge(zone_tree_t *into, zone_tree_t *what);
+
+/*!
  * \brief Unify all bi-nodes in specified trees.
  */
 void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool free_deleted);
