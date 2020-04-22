@@ -154,7 +154,9 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 {
 	conf_val_t thr = conf_zone_get(conf(), C_ADJUST_THR, zone->apex->owner);
+	log_zone_info(zone->apex->owner, "START adjust XFR flags %u threads", (unsigned)conf_int(&thr));
 	int ret = zone_adjust_contents(zone, adjust_cb_flags, NULL, false, false, conf_int(&thr), NULL); // adjust_cb_nsec3_pointer not needed as we don't check DNSSEC in xfr_validate()
+	log_zone_info(zone->apex->owner, "FINISH adjust XFR flags %u threads (%s)", (unsigned)conf_int(&thr), knot_strerror(ret));
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

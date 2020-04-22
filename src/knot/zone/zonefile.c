@@ -246,7 +246,9 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 
 	/* The contents will now change possibly messing up NSEC3 tree, it will
 	   be adjusted again at zone_update_commit. */
+	log_zone_info(zc->z->apex->owner, "START adjust zonefile point2nsec3 %u threads", loader->adjust_threads);
 	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL, false, false, loader->adjust_threads, NULL);
+	log_zone_info(zc->z->apex->owner, "FINISH adjust zonefile point2nsec3 %u threads (%s)", loader->adjust_threads, knot_strerror(ret));
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));

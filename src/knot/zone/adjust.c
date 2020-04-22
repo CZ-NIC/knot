@@ -481,7 +481,9 @@ int zone_adjust_full(zone_contents_t *zone, unsigned threads)
 {
 	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags, true, true, 1, NULL);
 	if (ret == KNOT_EOK) {
+		log_zone_info(zone->apex->owner, "START adjust zone nsec3additionals %u threads", threads);
 		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false, false, threads, NULL);
+		log_zone_info(zone->apex->owner, "FINISH adjust zone nsec3additionals %u threads (%s)", threads, knot_strerror(ret));
 	}
 	if (ret == KNOT_EOK) {
 		additionals_tree_free(zone->adds_tree);
