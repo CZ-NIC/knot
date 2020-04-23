@@ -24,6 +24,7 @@ RUN apt-get -y install \
 	libsystemd-dev \
 	libtool \
 	liburcu-dev \
+	llvm \
 	locales-all \
 	osc \
 	pkg-config \
