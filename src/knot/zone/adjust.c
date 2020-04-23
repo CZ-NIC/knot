@@ -534,7 +534,12 @@ int zone_adjust_incremental_update(zone_update_t *update, unsigned threads)
 	                           false, true, 1, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, true, false, 1, update->a_ctx->adjust_ptrs);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, NULL,
+			                           false, false, threads, update->a_ctx->adjust_ptrs);
+			if (ret == KNOT_EOK) {
+				// just measure zone size
+				ret = zone_adjust_update(update, adjust_cb_void, adjust_cb_void, true);
+			}
 		} else {
 			ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 		}
