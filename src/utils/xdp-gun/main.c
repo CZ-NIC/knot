@@ -323,7 +323,7 @@ static bool str2mac(const char *str, uint8_t mac[])
 static int ip_route_get(const char *ip, const char *what, char **res)
 {
 	char cmd[50 + strlen(ip) + strlen(what)];
-	snprintf(cmd, sizeof(cmd), "ip route get %s | grep -o ' %s [^ ]* '", ip, what);
+	(void)snprintf(cmd, sizeof(cmd), "ip route get %s | grep -o ' %s [^ ]* '", ip, what);
 
 	FILE *p = popen(cmd, "r");
 	if (p == NULL) {
@@ -334,10 +334,10 @@ static int ip_route_get(const char *ip, const char *what, char **res)
 	if (fscanf(p, "%15s%255s", check, got) != 2 ||
 	    strcmp(check, what) != 0) {
 		int ret = feof(p) ? KNOT_ENOENT : KNOT_EMALF;
-		fclose(p);
+		pclose(p);
 		return ret;
 	}
-	fclose(p);
+	pclose(p);
 
 	*res = strdup(got);
 	return *res == NULL ? KNOT_ENOMEM : KNOT_EOK;
@@ -353,7 +353,7 @@ static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t r
 	char line_buf[1024] = { 0 };
 	int ret = KNOT_ENOENT;
 	while (fgets(line_buf, sizeof(line_buf) - 1, p) != NULL && ret == KNOT_ENOENT) {
-		char fields[5][strlen(line_buf)];
+		char fields[5][strlen(line_buf) + 1];
 		if (sscanf(line_buf, "%s%s%s%s%s", fields[0], fields[1], fields[2], fields[3], fields[4]) != 5) {
 			continue;
 		}
@@ -394,7 +394,7 @@ static int remoteIP2local(const char *ip_str, bool ipv6, char devname[], void *l
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	strncpy(devname, dev, IFNAMSIZ);
+	strlcpy(devname, dev, IFNAMSIZ);
 	free(dev);
 
 	ret = ip_route_get(ip_str, "src", &loc);
@@ -411,7 +411,7 @@ int main(int argc, char *argv[])
 {
 	const char *usage = "usage: dns_xdp_gun <qps> <length_s> <target_IP> <target_port> <pkts_at_once> <queries_file>";
 
-	dns_xdp_gun_ctx_t ctx, *thread_ctxs = NULL;
+	dns_xdp_gun_ctx_t ctx = { 0 }, *thread_ctxs = NULL;
 	pthread_t *threads = NULL;
 
 	if (argc == 7) {
