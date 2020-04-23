@@ -10,6 +10,7 @@ RUN apt-get -y install \
 	automake \
 	autotools-dev \
 	build-essential \
+	clang \
 	curl \
 	ghostscript \
 	git \
