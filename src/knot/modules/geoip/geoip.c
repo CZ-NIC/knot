@@ -115,6 +115,8 @@ typedef struct {
 	size_t count, avail;
 	knot_rrset_t *rrsets;
 	knot_rrset_t *rrsigs;
+
+	knot_dname_t *cname;
 } geo_view_t;
 
 typedef struct {
@@ -298,6 +300,7 @@ static int init_geo_view(geo_view_t *view)
 	if (view->rrsets == NULL) {
 		return KNOT_ENOMEM;
 	}
+	view->cname = NULL;
 	return KNOT_EOK;
 }
 
@@ -320,6 +323,8 @@ static void clear_geo_view(geo_view_t *view)
 	view->rrsets = NULL;
 	free(view->rrsigs);
 	view->rrsigs = NULL;
+	free(view->cname);
+	view->cname = NULL;
 }
 
 static int parse_origin(yp_parser_t *yp, zs_scanner_t *scanner)
@@ -435,6 +440,18 @@ static int parse_rr(knotd_mod_t *mod, yp_parser_t *yp, zs_scanner_t *scanner,
 		return KNOT_EINVAL;
 	}
 
+	if (rr_type == KNOT_RRTYPE_CNAME && view->count > 0) {
+		knotd_mod_log(mod, LOG_ERR, "cannot add CNAME to view with other RRs on line %zu",
+		              yp->line_count);
+		return KNOT_EINVAL;
+	}
+
+	if (view->cname != NULL) {
+		knotd_mod_log(mod, LOG_ERR, "cannot add RR to view with CNAME on line %zu",
+		              yp->line_count);
+		return KNOT_EINVAL;
+	}
+
 	if (knot_rrtype_is_dnssec(rr_type)) {
 		knotd_mod_log(mod, LOG_ERR, "DNSSEC record (%s) not allowed on line %zu",
 		              yp->key, yp->line_count);
@@ -480,6 +497,10 @@ static int parse_rr(knotd_mod_t *mod, yp_parser_t *yp, zs_scanner_t *scanner,
 		return KNOT_EPARSEFAIL;
 	}
 	free(input_string);
+
+	if (rr_type == KNOT_RRTYPE_CNAME) {
+		view->cname = knot_dname_from_str_alloc(yp->data);
+	}
 
 	// Add new rdata to current rrset.
 	return knot_rrset_add_rdata(add_rr, scanner->r_data, scanner->r_data_length, NULL);
