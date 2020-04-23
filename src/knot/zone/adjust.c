@@ -529,7 +529,9 @@ int zone_adjust_incremental_update(zone_update_t *update, unsigned threads)
 	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false, true, 1, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
+			log_zone_info(update->zone->name, "START adjust resalt nsec3wildcard %u threads", threads);
 			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, false, false, threads, update->a_ctx->adjust_ptrs);
+			log_zone_info(update->zone->name, "FINISH adjust resalt nsec3wildcard %u threads (%s)", threads, knot_strerror(ret));
 			if (ret == KNOT_EOK) {
 				ret = zone_adjust_update(update, adjust_cb_void, adjust_cb_void, true); // just measure zone size
 			}
