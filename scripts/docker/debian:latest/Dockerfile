@@ -35,4 +35,5 @@ RUN apt-get -y install \
 	texlive-font-utils \
 	texlive-generic-extra \
 	texlive-latex-extra \
-	unzip
+	unzip \
+	xxd
