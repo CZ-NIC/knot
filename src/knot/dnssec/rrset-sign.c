@@ -202,6 +202,8 @@ int knot_sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
  * \param[in]  key           Key used for signing.
  * \param[in]  sig_incepted  Timestamp of signature inception.
  * \param[in]  sig_expires   Timestamp of signature expiration.
+ * \param[in]  sign_flags    Signing flags.
+ * \param[in]  mm            Memory context.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -209,6 +211,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
                                const knot_rrset_t *covered,
                                const dnssec_key_t *key,
                                uint32_t sig_incepted, uint32_t sig_expires,
+                               dnssec_sign_flags_t sign_flags,
                                knot_mm_t *mm)
 {
 	assert(rrsigs);
@@ -241,7 +244,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 	}
 
 	dnssec_binary_t signature = { 0 };
-	res = dnssec_sign_write(ctx, &signature);
+	res = dnssec_sign_write(ctx, sign_flags, &signature);
 	if (res != DNSSEC_EOK) {
 		return res;
 	}
@@ -270,9 +273,11 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 
 	uint32_t sig_incept = dnssec_ctx->now - RRSIG_INCEPT_IN_PAST;
 	uint32_t sig_expire = dnssec_ctx->now + dnssec_ctx->policy->rrsig_lifetime;
+	dnssec_sign_flags_t sign_flags = dnssec_ctx->policy->reproducible_sign ?
+	                                 DNSSEC_SIGN_REPRODUCIBLE : DNSSEC_SIGN_NORMAL;
 
 	int ret = rrsigs_create_rdata(rrsigs, sign_ctx, covered, key, sig_incept,
-	                              sig_expire, mm);
+	                              sig_expire, sign_flags, mm);
 	if (ret == KNOT_EOK && expires != NULL) {
 		*expires = knot_time_min(*expires, sig_expire);
 	}

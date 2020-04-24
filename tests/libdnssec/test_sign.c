@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -110,7 +110,7 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 		r = dnssec_sign_add(ctx, data);
 		ok(r == DNSSEC_EOK, "add data to be signed");
 		dnssec_binary_t new_signature = { 0 };
-		r = dnssec_sign_write(ctx, &new_signature);
+		r = dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &new_signature);
 		ok(r == DNSSEC_EOK, "write the signature");
 		ok(dnssec_binary_cmp(signature, &new_signature) == 0,
 		   "signature exact match");
@@ -142,7 +142,7 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 	ok(r == DNSSEC_EOK, "add data (3)");
 
 	dnssec_binary_t new_signature = { 0 };
-	r = dnssec_sign_write(ctx, &new_signature);
+	r = dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &new_signature);
 	ok(r == DNSSEC_EOK, "write signature");
 
 	r = dnssec_sign_init(ctx);

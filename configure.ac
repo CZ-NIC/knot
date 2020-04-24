@@ -173,6 +173,12 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
         [enable_ed448=no],
         [#include <gnutls/gnutls.h>])
 
+    AC_CHECK_DECL([GNUTLS_PRIVKEY_FLAG_REPRODUCIBLE],
+        [AC_DEFINE([HAVE_GLNUTLS_REPRODUCIBLE], [1], [GnuTLS reproducible signing available])
+         enable_repro_signing=yes],
+        [enable_repro_signing=no],
+        [#include <gnutls/abstract.h>])
+
     AC_CHECK_FUNC([gnutls_privkey_sign_data2],
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
 
@@ -751,6 +757,7 @@ result_msg_base="  Knot DNS $VERSION
     PKCS #11 support:       ${enable_pkcs11}
     Ed25519 support:        ${enable_ed25519}
     Ed448 support:          ${enable_ed448}
+    Reproducible signing:   ${enable_repro_signing}
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
     LibFuzzer:              ${with_fuzzer}
