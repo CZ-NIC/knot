@@ -280,7 +280,7 @@ static void test_sign(dnssec_key_t *p11_key, dnssec_key_t *soft_key)
 	r = dnssec_sign_add(ctx, &input);
 	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_add()");
 
-	r = dnssec_sign_write(ctx, &sign);
+	r = dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &sign);
 	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_write()");
 
 	// PKCS #11 key verification

@@ -180,6 +180,12 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
         [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset available])
          gnutls_memset=yes], [gnutls_memset=no])
 
+    AC_CHECK_DECL([GNUTLS_PRIVKEY_FLAG_REPRODUCIBLE],
+        [AC_DEFINE([HAVE_GLNUTLS_REPRODUCIBLE], [1], [GnuTLS reproducible sign available])
+         enable_repro_sign=yes],
+        [enable_repro_sign=no],
+        [#include <gnutls/abstract.h>])
+
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
 ])

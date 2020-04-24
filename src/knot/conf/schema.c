@@ -318,6 +318,7 @@ static const yp_item_t desc_policy[] = {
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_RRSIG_PREREFRESH,    YP_TINT,  YP_VINT = { 0, UINT32_MAX, HOURS(1), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
+	{ C_REPRO_SIGN,          YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_NSEC3,               YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_NSEC3_ITER,          YP_TINT,  YP_VINT = { 0, UINT16_MAX, 10 }, CONF_IO_FRLD_ZONES },
 	{ C_NSEC3_OPT_OUT,       YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },

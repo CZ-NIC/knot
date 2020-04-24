@@ -872,6 +872,7 @@ policy:
     rrsig\-lifetime: TIME
     rrsig\-refresh: TIME
     rrsig\-pre\-refresh: TIME
+    reproducible\-sign: BOOL
     nsec3: BOOL
     nsec3\-iterations: INT
     nsec3\-opt\-out: BOOL
@@ -1073,6 +1074,11 @@ in order to refresh RRSIGs in bigger batches on a frequently updated zone
 (avoid re\-sign event too often).
 .sp
 \fIDefault:\fP 1 hour
+.SS reproducible\-sign
+.sp
+For (EC)DSA algorithms, generate RRSIG signatures deterministicly.
+.sp
+\fIDefault:\fP off
 .SS nsec3
 .sp
 Specifies if NSEC3 will be used instead of NSEC.

@@ -100,6 +100,7 @@ typedef struct {
 	bool single_type_signing;
 	bool sts_default;                   // single-type-signing was set to default value
 	// RRSIG
+	bool reproducible_sign;             // (EC)DSA creates reproducible signatures
 	uint32_t rrsig_lifetime;            // like knot_time_t
 	uint32_t rrsig_refresh_before;      // like knot_timediff_t
 	uint32_t rrsig_prerefresh;          // like knot_timediff_t

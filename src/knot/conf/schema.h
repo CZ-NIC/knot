@@ -84,6 +84,7 @@
 #define C_PROPAG_DELAY		"\x11""propagation-delay"
 #define C_REFRESH_MAX_INTERVAL	"\x14""refresh-max-interval"
 #define C_REFRESH_MIN_INTERVAL	"\x14""refresh-min-interval"
+#define C_REPRO_SIGN		"\x11""reproducible-sign"
 #define C_RMT			"\x06""remote"
 #define C_RRSIG_LIFETIME	"\x0E""rrsig-lifetime"
 #define C_RRSIG_PREREFRESH	"\x11""rrsig-pre-refresh"

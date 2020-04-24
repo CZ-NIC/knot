@@ -334,7 +334,7 @@ int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data)
 }
 
 _public_
-int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
+int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_binary_t *signature)
 {
 	if (!ctx || !signature) {
 		return DNSSEC_EINVAL;
@@ -349,17 +349,24 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 		.size = vpool_get_length(&ctx->buffer)
 	};
 
+	unsigned gnutls_flags = 0;
+#ifdef HAVE_GLNUTLS_REPRODUCIBLE
+	if (flags & DNSSEC_SIGN_REPRODUCIBLE) {
+		gnutls_flags |= GNUTLS_PRIVKEY_FLAG_REPRODUCIBLE;
+	}
+#endif
+
 	assert(ctx->key->private_key);
 	_cleanup_datum_ gnutls_datum_t raw = { 0 };
 #ifdef HAVE_SIGN_DATA2
 	int result = gnutls_privkey_sign_data2(ctx->key->private_key,
 					       ctx->sign_algorithm,
-					       0, &data, &raw);
+					       gnutls_flags, &data, &raw);
 #else
 	gnutls_digest_algorithm_t digest_algorithm = get_digest_algorithm(ctx->key);
 	int result = gnutls_privkey_sign_data(ctx->key->private_key,
 					      digest_algorithm,
-					      0, &data, &raw);
+					      gnutls_flags, &data, &raw);
 #endif
 	if (result < 0) {
 		return DNSSEC_SIGN_ERROR;

@@ -51,6 +51,7 @@ class ZoneDnssec(object):
         self.rrsig_lifetime = None
         self.rrsig_refresh = None
         self.rrsig_prerefresh = None
+        self.repro_sign = None
         self.nsec3 = None
         self.nsec3_iters = None
         self.nsec3_opt_out = None
@@ -1223,6 +1224,7 @@ class Knot(Server):
             self._str(s, "rrsig-lifetime", z.dnssec.rrsig_lifetime)
             self._str(s, "rrsig-refresh", z.dnssec.rrsig_refresh)
             self._str(s, "rrsig-pre-refresh", z.dnssec.rrsig_prerefresh)
+            self._str(s, "reproducible-sign", z.dnssec.repro_sign)
             self._bool(s, "nsec3", z.dnssec.nsec3)
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
             self._bool(s, "nsec3-opt-out", z.dnssec.nsec3_opt_out)

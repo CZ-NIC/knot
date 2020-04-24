@@ -951,6 +951,7 @@ DNSSEC policy configuration.
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
      rrsig-pre-refresh: TIME
+     reproducible-sign: BOOL
      nsec3: BOOL
      nsec3-iterations: INT
      nsec3-opt-out: BOOL
@@ -1167,6 +1168,15 @@ in order to refresh RRSIGs in bigger batches on a frequently updated zone
 (avoid re-sign event too often).
 
 *Default:* 1 hour
+
+.. _policy_reproducible-sign:
+
+reproducible-sign
+-----------------
+
+For (EC)DSA algorithms, generate RRSIG signatures deterministicly.
+
+*Default:* off
 
 .. _policy_nsec:
 
