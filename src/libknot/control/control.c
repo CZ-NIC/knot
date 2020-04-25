@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,6 +35,9 @@
 #ifndef CTL_BUFF_SIZE
 #define CTL_BUFF_SIZE		(256 * 1024)
 #endif
+
+/*! Listen backlog size. */
+#define LISTEN_BACKLOG		5
 
 /*! Default socket operations timeout in milliseconds. */
 #define DEFAULT_TIMEOUT		(5 * 1000)
@@ -208,7 +211,7 @@ int knot_ctl_bind(knot_ctl_t *ctx, const char *path)
 	}
 
 	// Start listening.
-	if (listen(ctx->listen_sock, 1) != 0) {
+	if (listen(ctx->listen_sock, LISTEN_BACKLOG) != 0) {
 		close_sock(&ctx->listen_sock);
 		return knot_map_errno();
 	}
