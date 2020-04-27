@@ -331,9 +331,9 @@ def g_ipseckey(rt):
     gwtype = 3 #rnd(1, 3) # TODO: fix, 1,2 needs valid IPs as dnames in zone
     algo = rnd(1, 2)
     gw = ''
-    if gwtype is 1:
+    if gwtype == 1:
         gw = rnd_ip4()
-    elif gwtype is 2:
+    elif gwtype == 2:
         gw = rnd_ip6()
     else:
         gw = rnd_dnl()
@@ -347,7 +347,7 @@ def g_apl(rt):
     for i in range(0, dcount):
         afi = choice([1, 2])
         ip = ''
-        if afi is 1:
+        if afi == 1:
             ip = rnd_ip4()
         else:
             ip = rnd_ip6()
@@ -459,9 +459,9 @@ def main(args):
         if o in ('-s', '--sign'):
             sign = 1
         if o in ('-3', '--nsec3'):
-            if a is 'y':
+            if a == 'y':
                 nsec3 = True
-            elif a is 0:
+            elif str(a) == "0":
                 nsec3 = 0
             else:
                 nsec3 = False
@@ -570,7 +570,7 @@ def main(args):
     ret = 1
     try:
         # Generate keys
-        ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', key_dir ]
+        ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'RSASHA256', '-b', '1024', '-K', key_dir ]
         if nsec3 is not False:
             ps += ['-3']
         k1 = subprocess.check_output(ps + [ORIGIN], stderr=subprocess.DEVNULL)
@@ -588,15 +588,15 @@ def main(args):
 
         outf.close()
 
-        if nsec3 is 0:
-            nsec3_params = ['-3', '-']
-        elif nsec3:
-            nsec3_params = ['-3', binascii.hexlify(os.urandom(random.randint(1, 30))).decode('ascii')]
-        else:
+        if nsec3 is False:
             nsec3_params = []
+        elif nsec3 == 0:
+            nsec3_params = ['-3', '-']
+        else:
+            nsec3_params = ['-3', binascii.hexlify(os.urandom(random.randint(1, 30))).decode('ascii')]
 
-        subprocess.check_output(["dnssec-signzone", "-d", tmp_dir, "-P", "-p", "-u", \
-                                 "-k", k2, "-x", "-r", "/dev/urandom", "-o", ORIGIN, \
+        subprocess.check_output(["dnssec-signzone", "-d", tmp_dir, "-P", "-u", \
+                                 "-k", k2, "-x", "-o", ORIGIN, \
                                  "-O", "full"] + nsec3_params + [in_fname, k1 + ".key"],
                                  stderr=subprocess.DEVNULL)
         shutil.copyfile(in_fname + '.signed', out_fname)
