@@ -885,6 +885,7 @@ class Bind(Server):
         s.item("additional-from-cache", "false")
         s.item("notify-delay", "0")
         s.item("notify-rate", "1000")
+        s.item("max-journal-size", "unlimited")
         s.item("startup-notify-rate", "1000")
         s.item("serial-query-rate", "1000")
         s.end()
@@ -1079,7 +1080,7 @@ class Knot(Server):
             conf.item_str(name, value)
 
     def data_add(self, file_name, storage=None):
-        if storage is ".":
+        if storage == ".":
             src_dir = self.data_dir
         elif storage:
             src_dir = storage

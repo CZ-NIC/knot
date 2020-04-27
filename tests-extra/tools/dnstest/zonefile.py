@@ -107,7 +107,7 @@ class ZoneFile(object):
             params = ["-i", serial, "-o", self.path, self.name, records]
             if dnssec:
                 prepare_dir(self.key_dir_bind)
-                params = ["-s", "-3", 0 if nsec3 is 0 else "y" if nsec3 else "n",
+                params = ["-s", "-3", "n" if nsec3 is False else "y" if nsec3 else "0",
                           "-k", self.key_dir_bind] + params
             if zone_generate.main(params) != 0:
                 raise OSError
