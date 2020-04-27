@@ -268,7 +268,7 @@ class Test(object):
         zone = dnstest.zonefile.ZoneFile(self.zones_dir)
         zone.set_name(name)
 
-        if storage is ".":
+        if storage == ".":
             src_dir = self.data_dir
         elif storage:
             src_dir = storage

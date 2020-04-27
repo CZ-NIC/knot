@@ -1028,7 +1028,7 @@ class Knot(Server):
             conf.item_str(name, value)
 
     def data_add(self, file_name, storage=None):
-        if storage is ".":
+        if storage == ".":
             src_dir = self.data_dir
         elif storage:
             src_dir = storage
