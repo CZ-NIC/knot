@@ -226,6 +226,18 @@ int kxsk_iface_new(const char *if_name, int if_queue, knot_xdp_load_bpf_t load_b
 
 	int ret;
 	switch (load_bpf) {
+	case KNOT_XDP_LOAD_BPF_NEVER:
+		(void)0;
+		uint32_t prog_id = 0;
+		ret = bpf_get_link_xdp_id(iface->if_index, &prog_id, 0);
+		if (ret == 0) {
+			if (prog_id == 0) {
+				ret = KNOT_EPROGRAM;
+			} else {
+				ret = bpf_prog_get_fd_by_id(prog_id);
+			}
+		}
+		break;
 	case KNOT_XDP_LOAD_BPF_ALWAYS:
 		ret = ensure_prog(iface, true);
 		break;

@@ -230,8 +230,10 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *t
 	*thread_id_start += iface.queues;
 
 	for (int i = 0; i < iface.queues; i++) {
+		knot_xdp_load_bpf_t mode =
+			(i == 0 ? KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 		ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
-		                    iface.port, i == 0);
+		                    iface.port, mode);
 		if (ret != KNOT_EOK) {
 			log_warning("failed to initialize XDP interface %s@%u, queue %d (%s)",
 			            iface.name, iface.port, i, knot_strerror(ret));

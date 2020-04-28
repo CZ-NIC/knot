@@ -44,6 +44,7 @@ struct knot_xdp_msg {
  *       a compatible BPF program is loaded on the interface.
  */
 typedef enum {
+	KNOT_XDP_LOAD_BPF_NEVER,  /*!< Do not load; error out if not loaded already. */
 	KNOT_XDP_LOAD_BPF_ALWAYS, /*!< Always load a program (overwrite it). */
 	KNOT_XDP_LOAD_BPF_MAYBE,  /*!< Try with present program or load if none. */
 	/* Implementation caveat: when re-using program in _MAYBE case, we get a message:

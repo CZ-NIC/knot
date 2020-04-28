@@ -155,7 +155,9 @@ void *dns_xdp_gun_thread(void *_ctx)
 	uint64_t tot_sent = 0, tot_recv = 0, tot_size = 0;
 	uint64_t duration = 0;
 
-	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, LISTEN_PORT, ctx->thread_id == 0);
+	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
+	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
+	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, LISTEN_PORT, mode);
 	if (ret != KNOT_EOK) {
 		printf("failed to init XDP socket#%u: %s\n", ctx->thread_id, knot_strerror(ret));
 		return NULL;
