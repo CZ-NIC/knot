@@ -570,7 +570,7 @@ def main(args):
     ret = 1
     try:
         # Generate keys
-        ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'RSASHA256', '-K', key_dir ]
+        ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'RSASHA256', '-b', '1024', '-K', key_dir ]
         if nsec3 is not False:
             ps += ['-3']
         k1 = subprocess.check_output(ps + [ORIGIN], stderr=subprocess.DEVNULL)
