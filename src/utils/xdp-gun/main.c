@@ -411,7 +411,7 @@ int main(int argc, char *argv[])
 {
 	const char *usage = "usage: dns_xdp_gun <qps> <length_s> <target_IP> <target_port> <pkts_at_once> <queries_file>";
 
-	dns_xdp_gun_ctx_t ctx = { 0 }, *thread_ctxs = NULL;
+	dns_xdp_gun_ctx_t ctx = { { 0 } }, *thread_ctxs = NULL;
 	pthread_t *threads = NULL;
 
 	if (argc == 7) {
