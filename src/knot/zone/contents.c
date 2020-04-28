@@ -538,6 +538,17 @@ void zone_contents_deep_free(zone_contents_t *contents)
 	zone_contents_free(contents);
 }
 
+void zone_contents_free_nsec3tree(zone_contents_t *contents)
+{
+	if (contents->nsec3_nodes == NULL) {
+		return;
+	}
+	(void)zone_tree_apply(contents->nsec3_nodes,
+	                      destroy_node_rrsets_from_tree, NULL);
+	zone_tree_free(&contents->nsec3_nodes);
+	contents->nsec3_nodes = NULL;
+}
+
 uint32_t zone_contents_serial(const zone_contents_t *zone)
 {
 	if (zone == NULL) {

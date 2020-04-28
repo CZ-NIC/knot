@@ -363,9 +363,11 @@ void apply_rollback(apply_ctx_t *ctx)
 
 	trie_cow_rollback(ctx->contents->nodes->cow, NULL, NULL);
 	ctx->contents->nodes->cow = NULL;
-	if (ctx->contents->nsec3_nodes != NULL) {
+	if (ctx->contents->nsec3_nodes != NULL && ctx->contents->nsec3_nodes->cow != NULL) {
 		trie_cow_rollback(ctx->contents->nsec3_nodes->cow, NULL, NULL);
 		ctx->contents->nsec3_nodes->cow = NULL;
+	} else if (ctx->contents->nsec3_nodes != NULL) {
+		zone_contents_free_nsec3tree(ctx->contents);
 	}
 
 	free(ctx->contents->nodes);
@@ -388,7 +390,7 @@ void update_free_zone(zone_contents_t *contents)
 
 	trie_cow_commit(contents->nodes->cow, NULL, NULL);
 	contents->nodes->cow = NULL;
-	if (contents->nsec3_nodes != NULL) {
+	if (contents->nsec3_nodes != NULL && contents->nsec3_nodes->cow != NULL) {
 		trie_cow_commit(contents->nsec3_nodes->cow, NULL, NULL);
 		contents->nsec3_nodes->cow = NULL;
 	}

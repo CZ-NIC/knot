@@ -268,6 +268,11 @@ void zone_contents_free(zone_contents_t *contents);
 void zone_contents_deep_free(zone_contents_t *contents);
 
 /*!
+ * \brief Deep free of just nsec3_nodes inside the contents.
+ */
+void zone_contents_free_nsec3tree(zone_contents_t *contents);
+
+/*!
  * \brief Fetch zone serial.
  *
  * \param zone Zone.
