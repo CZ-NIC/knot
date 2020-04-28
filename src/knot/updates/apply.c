@@ -367,7 +367,8 @@ void apply_rollback(apply_ctx_t *ctx)
 		trie_cow_rollback(ctx->contents->nsec3_nodes->cow, NULL, NULL);
 		ctx->contents->nsec3_nodes->cow = NULL;
 	} else if (ctx->contents->nsec3_nodes != NULL) {
-		zone_contents_free_nsec3tree(ctx->contents);
+		zone_tree_free(&ctx->contents->nsec3_nodes);
+		ctx->contents->nsec3_nodes = NULL;
 	}
 
 	free(ctx->contents->nodes);
