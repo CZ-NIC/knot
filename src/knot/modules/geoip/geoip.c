@@ -777,7 +777,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	assert(pkt && qdata && mod);
 
 	// Nothing to do if the query was already resolved by a previous module.
-	if (state == KNOTD_IN_STATE_HIT) {
+	if (state == KNOTD_IN_STATE_HIT || state == KNOTD_IN_STATE_FOLLOW) {
 		return state;
 	}
 
