@@ -409,6 +409,8 @@ static int zone_adjust_tree_parallel(zone_tree_t *tree, adjust_ctx_t *ctx,
 			arg[i].ctx.changed_nodes = zone_tree_create(true);
 			if (arg[i].ctx.changed_nodes == NULL) {
 				arg[i].ret = KNOT_ENOMEM;
+			} else {
+				arg[i].ctx.changed_nodes->flags = tree->flags;
 			}
 		}
 	}
@@ -419,8 +421,8 @@ static int zone_adjust_tree_parallel(zone_tree_t *tree, adjust_ctx_t *ctx,
 		}
 		if (ret == KNOT_EOK && ctx->changed_nodes != NULL) {
 			ret = zone_tree_merge(ctx->changed_nodes, arg[i].ctx.changed_nodes);
-			zone_tree_free(&arg[i].ctx.changed_nodes);
 		}
+		zone_tree_free(&arg[i].ctx.changed_nodes);
 		if (ret == KNOT_EOK) {
 			ret = arg[i].ret;
 		}
