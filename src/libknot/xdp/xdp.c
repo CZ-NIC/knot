@@ -392,11 +392,11 @@ static uint8_t *msg_uframe_ptr(knot_xdp_socket_t *socket, const knot_xdp_msg_t *
 	/* This assertion might fire in some OK cases.  For example, the second branch
 	 * had to be added for cases with "emulated" AF_XDP support. */
 	assert(pd == XDP_PACKET_HEADROOM || pd == 0);
-#endif
+
 	const uint8_t *umem_mem_start = socket->umem->frames->bytes;
 	const uint8_t *umem_mem_end = umem_mem_start + FRAME_SIZE * UMEM_FRAME_COUNT;
 	assert(umem_mem_start <= uframe_p && uframe_p < umem_mem_end);
-
+#endif
 	return uframe_p;
 }
 
