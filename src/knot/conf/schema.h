@@ -70,6 +70,7 @@
 #define C_MANUAL		"\x06""manual"
 #define C_MASTER		"\x06""master"
 #define C_MODULE		"\x06""module"
+#define C_NO_EDNS		"\x07""no-edns"
 #define C_NOTIFY		"\x06""notify"
 #define C_NSEC3			"\x05""nsec3"
 #define C_NSEC3_ITER		"\x10""nsec3-iterations"

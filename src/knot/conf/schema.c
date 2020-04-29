@@ -273,6 +273,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_KEY,              YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
 	{ C_COMMENT,          YP_TSTR,  YP_VNONE },
 	{ C_BLOCK_NOTIFY_XFR, YP_TBOOL, YP_VNONE },
+	{ C_NO_EDNS,          YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 
