@@ -99,6 +99,7 @@ struct refresh_data {
 	const struct sockaddr *remote;    //!< Remote endpoint.
 	const knot_rrset_t *soa;          //!< Local SOA (NULL for AXFR).
 	const size_t max_zone_size;       //!< Maximal zone size.
+	bool use_edns;                    //!< Allow EDNS in SOA/AXFR/IXFR queries.
 	struct query_edns_data edns;      //!< EDNS data to be used in queries.
 
 	// internal state, initialize with zeroes:
@@ -890,9 +891,11 @@ static int soa_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_FAIL;
 	}
 
-	ret = query_put_edns(pkt, &data->edns);
-	if (ret != KNOT_EOK) {
-		return KNOT_STATE_FAIL;
+	if (data->use_edns) {
+		ret = query_put_edns(pkt, &data->edns);
+		if (ret != KNOT_EOK) {
+			return KNOT_STATE_FAIL;
+		}
 	}
 
 	return KNOT_STATE_CONSUME;
@@ -972,9 +975,11 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		knot_rrset_free(sending_soa, data->mm);
 	}
 
-	ret = query_put_edns(pkt, &data->edns);
-	if (ret != KNOT_EOK) {
-		return KNOT_STATE_FAIL;
+	if (data->use_edns) {
+		ret = query_put_edns(pkt, &data->edns);
+		if (ret != KNOT_EOK) {
+			return KNOT_STATE_FAIL;
+		}
 	}
 
 	return KNOT_STATE_CONSUME;
@@ -1144,6 +1149,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		.remote = (struct sockaddr *)&master->addr,
 		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
+		.use_edns = !master->no_edns,
 	};
 
 	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
