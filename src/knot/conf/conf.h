@@ -31,6 +31,8 @@ typedef struct {
 	knot_tsig_key_t key;
 	/*! Suppress sending NOTIFY after zone transfer from this master. */
 	bool block_notify_after_xfr;
+	/*! Disable EDNS on XFR queries. */
+	bool no_edns;
 } conf_remote_t;
 
 /*! Configuration section iterator. */

@@ -1275,5 +1275,8 @@ conf_remote_t conf_remote_txn(
 	val = conf_id_get_txn(conf, txn, C_RMT, C_BLOCK_NOTIFY_XFR, id);
 	out.block_notify_after_xfr = conf_bool(&val);
 
+	val = conf_id_get_txn(conf, txn, C_RMT, C_NO_EDNS, id);
+	out.no_edns = conf_bool(&val);
+
 	return out;
 }
