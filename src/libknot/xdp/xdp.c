@@ -173,6 +173,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 		.tx_size = UMEM_RING_LEN_TX,
 		.rx_size = UMEM_RING_LEN_RX,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
+		.bind_flags = XDP_USE_NEED_WAKEUP,
 	};
 
 	int ret = xsk_socket__create(&xsk_info->xsk, iface->if_name,
@@ -534,7 +535,7 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 	}
 
 	/* Trigger sending queued packets. */
-	if (!socket->kernel_needs_wakeup) {
+	if (!xsk_ring_prod__needs_wakeup(&socket->tx)) {
 		return KNOT_EOK;
 	}
 
