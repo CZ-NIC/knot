@@ -1107,6 +1107,7 @@ class Knot(Server):
                         have_remote = True
                     s.id_item("id", master.name)
                     s.item_str("address", "%s@%s" % (master.addr, master.port))
+                    s.item_str("no-edns", "true")
                     if master.tsig:
                         s.item_str("key", master.tsig.name)
                     servers.add(master.name)
