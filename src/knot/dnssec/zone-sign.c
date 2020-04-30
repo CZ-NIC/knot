@@ -671,9 +671,10 @@ int knot_zone_sign(zone_update_t *update,
 		return result;
 	}
 
-	result = zone_tree_apply(update->a_ctx->node_ptrs, set_signed, NULL);
+	bool whole = !(update->flags & UPDATE_INCREMENTAL);
+	result = zone_tree_apply(whole ? update->new_cont->nodes : update->a_ctx->node_ptrs, set_signed, NULL);
 	if (result == KNOT_EOK) {
-		result = zone_tree_apply(update->a_ctx->nsec3_ptrs, set_signed, NULL);
+		result = zone_tree_apply(whole ? update->new_cont->nsec3_nodes : update->a_ctx->nsec3_ptrs, set_signed, NULL);
 	}
 
 	*expire_at = knot_time_min(normal_expire, nsec3_expire);
