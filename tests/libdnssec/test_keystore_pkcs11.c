@@ -291,7 +291,7 @@ static void test_sign(dnssec_key_t *p11_key, dnssec_key_t *soft_key)
 	r = dnssec_sign_add(ctx, &input);
 	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_add()");
 
-	r = dnssec_sign_verify(ctx, &sign);
+	r = dnssec_sign_verify(ctx, false, &sign);
 	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_verify()");
 
 	// software verification
@@ -305,7 +305,7 @@ static void test_sign(dnssec_key_t *p11_key, dnssec_key_t *soft_key)
 	r = dnssec_sign_add(ctx, &input);
 	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_sign_add()");
 
-	r = dnssec_sign_verify(ctx, &sign);
+	r = dnssec_sign_verify(ctx, false, &sign);
 	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_sign_verify()");
 
 	dnssec_binary_free(&sign);

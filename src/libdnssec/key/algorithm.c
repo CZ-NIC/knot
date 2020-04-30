@@ -116,6 +116,22 @@ bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algo)
 }
 
 _public_
+bool dnssec_algorithm_allow_dsa_reproducible(dnssec_key_algorithm_t algo)
+{
+#ifdef HAVE_GLNUTLS_REPRODUCIBLE
+	switch (algo) {
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+		return true;
+	default:
+		return false;
+	}
+#else
+	return false;
+#endif
+}
+
+_public_
 int dnssec_algorithm_key_size_range(dnssec_key_algorithm_t algorithm,
 				    unsigned *min_ptr, unsigned *max_ptr)
 {

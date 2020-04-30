@@ -256,7 +256,7 @@ static int check_signature(const knot_rdata_t *rrsig, const dnssec_key_t *key,
 		goto fail;
 	}
 
-	if (dnssec_sign_verify(sign_ctx, &signature) != KNOT_EOK) {
+	if (dnssec_sign_verify(sign_ctx, false, &signature) != KNOT_EOK) {
 		ret = KNOT_EINVAL;
 		goto fail;
 	}

@@ -108,6 +108,11 @@ typedef struct dnssec_key dnssec_key_t;
 bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algo);
 
 /*!
+ * Tell whether algo allows DSA deterministing signing.
+ */
+bool dnssec_algorithm_allow_dsa_reproducible(dnssec_key_algorithm_t algo);
+
+/*!
  * Allocate new DNSSEC key.
  *
  * The protocol field of the key is set to 3 (DNSSEC).

@@ -378,10 +378,21 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_
 }
 
 _public_
-int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
+int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binary_t *signature)
 {
 	if (!ctx || !signature) {
 		return DNSSEC_EINVAL;
+	}
+
+	if (sign_cmp && dnssec_key_can_sign(ctx->key)) {
+		dnssec_binary_t sign = { 0 };
+		int ret = dnssec_sign_write(ctx, DNSSEC_SIGN_REPRODUCIBLE, &sign);
+		if (ret == KNOT_EOK) {
+			ret = dnssec_binary_cmp(&sign, signature)
+			      ? DNSSEC_INVALID_SIGNATURE
+			      : DNSSEC_EOK;
+		}
+		return ret;
 	}
 
 	if (!dnssec_key_can_verify(ctx->key)) {
