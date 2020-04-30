@@ -122,6 +122,7 @@ bool dnssec_algorithm_allow_dsa_reproducible(dnssec_key_algorithm_t algo)
 	switch (algo) {
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+	case DNSSEC_KEY_ALGORITHM_ED448:
 		return true;
 	default:
 		return false;

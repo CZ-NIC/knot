@@ -15,6 +15,7 @@ t.link(zone, master, ixfr=True, journal_content="all")
 
 master.dnssec(zone).enable = True
 master.dnssec(zone).repro_sign = True
+master.dnssec(zone).alg = "ED448"
 
 t.start()
 
