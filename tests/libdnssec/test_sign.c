@@ -96,7 +96,7 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 	ok(r == DNSSEC_EOK, "create signing context");
 	r = dnssec_sign_add(ctx, data);
 	ok(r == DNSSEC_EOK, "add data to be signed");
-	r = dnssec_sign_verify(ctx, signature);
+	r = dnssec_sign_verify(ctx, false, signature);
 	ok(r == DNSSEC_EOK, "signature verified");
 
 	// create new signature and self-validate
@@ -114,7 +114,7 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 		ok(r == DNSSEC_EOK, "write the signature");
 		ok(dnssec_binary_cmp(signature, &new_signature) == 0,
 		   "signature exact match");
-		r = dnssec_sign_verify(ctx, &new_signature);
+		r = dnssec_sign_verify(ctx, false, &new_signature);
 		ok(r == DNSSEC_EOK, "reverify the new signature");
 		dnssec_binary_free(&new_signature);
 	}
@@ -152,7 +152,7 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 	r = dnssec_sign_add(ctx, &tmp);
 	ok(r == DNSSEC_EOK, "add data (4)");
 
-	r = dnssec_sign_verify(ctx, &new_signature);
+	r = dnssec_sign_verify(ctx, false, &new_signature);
 	ok(r == DNSSEC_EOK, "verify signature");
 
 	dnssec_binary_free(&new_signature);

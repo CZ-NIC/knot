@@ -127,18 +127,22 @@ int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data);
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_binary_t *signature);
+int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags,
+                      dnssec_binary_t *signature);
 
 /*!
  * Verify DNSSEC signature.
  *
  * \param ctx        Signing context.
+ * \param sign_cmp   Verify by signing and comparing signatures.
+ *                   Not possible for non-deterministic algorithms!
  * \param signature  Signature to be verified.
  *
  * \return Error code.
  * \retval DNSSEC_EOK                Validation successful, valid signature.
  * \retval DNSSEC_INVALID_SIGNATURE  Validation successful, invalid signature.
  */
-int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature);
+int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp,
+                       const dnssec_binary_t *signature);
 
 /*! @} */
