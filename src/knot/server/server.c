@@ -517,7 +517,7 @@ int server_init(server_t *server, int bg_workers)
 	char *journal_dir = conf_db(conf(), C_JOURNAL_DB);
 	conf_val_t journal_size = conf_db_param(conf(), C_JOURNAL_DB_MAX_SIZE, C_MAX_JOURNAL_DB_SIZE);
 	conf_val_t journal_mode = conf_db_param(conf(), C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
-	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode)), NULL);
+	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode), false), NULL);
 	free(journal_dir);
 
 	kasp_db_ensure_init(&server->kaspdb, conf());
@@ -930,7 +930,7 @@ static int reconfigure_journal_db(conf_t *conf, server_t *server)
 	conf_val_t journal_size = conf_db_param(conf, C_JOURNAL_DB_MAX_SIZE, C_MAX_JOURNAL_DB_SIZE);
 	conf_val_t journal_mode = conf_db_param(conf, C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
 	int ret = knot_lmdb_reinit(&server->journaldb, journal_dir, conf_int(&journal_size),
-	                           journal_env_flags(conf_opt(&journal_mode)));
+	                           journal_env_flags(conf_opt(&journal_mode), false));
 	if (ret != KNOT_EOK) {
 		log_warning("ignored reconfiguration of journal DB (%s)", knot_strerror(ret));
 	}
