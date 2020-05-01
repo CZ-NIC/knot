@@ -1271,7 +1271,6 @@ zone:
     notify: remote_id ...
     acl: acl_id ...
     semantic\-checks: BOOL
-    disable\-any: BOOL
     zonefile\-sync: TIME
     zonefile\-load: none | difference | difference\-no\-serial | whole
     journal\-content: none | changes | all
@@ -1394,13 +1393,6 @@ Invalid NSEC(3) record
 .IP \(bu 2
 Broken or non\-cyclic NSEC(3) chain
 .UNINDENT
-.sp
-\fIDefault:\fP off
-.SS disable\-any
-.sp
-If enabled, all authoritative ANY queries sent over UDP will be answered
-with an empty response and with the TC bit set. Use this option to minimize
-the risk of DNS reflection attack.
 .sp
 \fIDefault:\fP off
 .SS zonefile\-sync

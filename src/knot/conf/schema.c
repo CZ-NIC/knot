@@ -342,7 +342,6 @@ static const yp_item_t desc_policy[] = {
 	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
 	{ C_ACL,                 YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
 	{ C_SEM_CHECKS,          YP_TBOOL, YP_VNONE, FLAGS }, \
-	{ C_DISABLE_ANY,         YP_TBOOL, YP_VNONE }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES } }, \
 	{ C_ZONEFILE_LOAD,       YP_TOPT,  YP_VOPT = { zonefile_load, ZONEFILE_LOAD_WHOLE } }, \
@@ -358,6 +357,7 @@ static const yp_item_t desc_policy[] = {
 	                                   YP_FMULTI | FLAGS, { check_modref } }, \
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE }, \
 	/* Legacy items.*/ \
+	{ C_DISABLE_ANY,         YP_TBOOL, YP_VNONE }, \
 	{ C_MAX_ZONE_SIZE,       YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \
 	{ C_MAX_JOURNAL_USAGE,   YP_TINT,  YP_VINT = { KILO(40), SSIZE_MAX, MEGA(100), YP_SSIZE } }, \
 	{ C_MAX_JOURNAL_DEPTH,   YP_TINT,  YP_VINT = { 2, SSIZE_MAX, SSIZE_MAX } }, \

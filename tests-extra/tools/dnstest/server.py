@@ -142,7 +142,6 @@ class Server(object):
         self.udp_max_payload = None
         self.udp_max_payload_ipv4 = None
         self.udp_max_payload_ipv6 = None
-        self.disable_any = None
         self.disable_notify = None
         self.semantic_check = True
         self.zonefile_sync = "1d"
@@ -1295,8 +1294,6 @@ class Knot(Server):
         s.item_str("zonefile-sync", self.zonefile_sync)
         s.item_str("journal-max-usage", self.journal_max_usage)
         s.item_str("semantic-checks", "on" if self.semantic_check else "off")
-        if self.disable_any:
-            s.item_str("disable-any", "on")
         if len(self.modules) > 0:
             modules = ""
             for module in self.modules:
