@@ -78,23 +78,23 @@ resp.cmp(bind, additional=True)
 ''' ANY query type. '''
 
 # ANY to SOA record
-resp = knot.dig("flags", "ANY", udp=True)
+resp = knot.dig("flags", "ANY", udp=False)
 resp.cmp(bind)
 
 # ANY to A record
-resp = knot.dig("dns1.flags", "ANY", udp=True)
+resp = knot.dig("dns1.flags", "ANY", udp=False)
 resp.cmp(bind)
 
 # ANY to delegation point
-resp = knot.dig("sub.flags", "ANY", udp=True)
+resp = knot.dig("sub.flags", "ANY", udp=False)
 resp.cmp(bind, additional=True)
 
 # ANY to CNAME record
-resp = knot.dig("cname.flags", "ANY", udp=True)
+resp = knot.dig("cname.flags", "ANY", udp=False)
 resp.cmp(bind)
 
 # ANY to DNAME record
-resp = knot.dig("dname.flags", "ANY", udp=True)
+resp = knot.dig("dname.flags", "ANY", udp=False)
 resp.cmp(bind)
 
 

@@ -1423,7 +1423,6 @@ Definition of zones served by the server.
      notify: remote_id ...
      acl: acl_id ...
      semantic-checks: BOOL
-     disable-any: BOOL
      zonefile-sync: TIME
      zonefile-load: none | difference | difference-no-serial | whole
      journal-content: none | changes | all
@@ -1556,17 +1555,6 @@ Extra checks:
 - Missing, invalid, or unverifiable RRSIG record
 - Invalid NSEC(3) record
 - Broken or non-cyclic NSEC(3) chain
-
-*Default:* off
-
-.. _zone_disable-any:
-
-disable-any
------------
-
-If enabled, all authoritative ANY queries sent over UDP will be answered
-with an empty response and with the TC bit set. Use this option to minimize
-the risk of DNS reflection attack.
 
 *Default:* off
 
