@@ -30,9 +30,10 @@ typedef struct {
 #define JOURNAL_HEADER_SIZE (32)
 
 /*! \brief Convert journal_mode to LMDB environment flags. */
-inline static unsigned journal_env_flags(int journal_mode)
+inline static unsigned journal_env_flags(int journal_mode, bool readonly)
 {
-	return journal_mode == JOURNAL_MODE_ASYNC ? (MDB_WRITEMAP | MDB_MAPASYNC) : 0;
+	return (journal_mode == JOURNAL_MODE_ASYNC ? (MDB_WRITEMAP | MDB_MAPASYNC) : 0) |
+	       (readonly ? MDB_RDONLY : 0);
 }
 
 /*!
