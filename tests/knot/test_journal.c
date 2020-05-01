@@ -262,7 +262,7 @@ static bool test_continuity(list_t *l)
 
 static void test_journal_db(void)
 {
-	env_flag = journal_env_flags(JOURNAL_MODE_ASYNC);
+	env_flag = journal_env_flags(JOURNAL_MODE_ASYNC, false);
 	knot_lmdb_init(&jdb, test_dir_name, 2048 * 1024, env_flag, NULL);
 
 	int ret = knot_lmdb_open(&jdb);
@@ -634,7 +634,7 @@ static void test_stress_base(const knot_dname_t *apex,
 	uint32_t serial = 0;
 
 
-	ret = knot_lmdb_reconfigure(&jdb, test_dir_name, file_size, journal_env_flags(JOURNAL_MODE_ASYNC));
+	ret = knot_lmdb_reconfigure(&jdb, test_dir_name, file_size, journal_env_flags(JOURNAL_MODE_ASYNC, false));
 	is_int(KNOT_EOK, ret, "journal: recofigure to mapsize %zu (%s)", file_size, knot_strerror(ret));
 
 	set_conf(1000, file_size / 2, apex);

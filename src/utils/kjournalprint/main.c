@@ -168,7 +168,7 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 	bool exists;
 	uint64_t occupied, occupied_all;
 
-	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST), NULL);
+	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST, true), NULL);
 	if (!knot_lmdb_exists(&jdb)) {
 		knot_lmdb_deinit(&jdb);
 		return KNOT_EFILE;
@@ -254,7 +254,7 @@ static int list_zone(const knot_dname_t *zone, bool detailed, knot_lmdb_db_t *jd
 int list_zones(char *path, bool detailed)
 {
 	knot_lmdb_db_t jdb = { 0 };
-	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST), NULL);
+	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST, true), NULL);
 
 	list_t zones;
 	init_list(&zones);
