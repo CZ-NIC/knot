@@ -144,20 +144,16 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, knotd_qdata_t *qdata)
 	int ret = KNOT_EOK;
 	switch (type) {
 	case KNOT_RRTYPE_ANY: /* Append all RRSets. */ {
-		conf_val_t val = conf_zone_get(conf(), C_DISABLE_ANY,
-		                               qdata->extra->zone->name);
-		/* If ANY not allowed, set TC bit. */
-		if ((qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_ANY) &&
-		    conf_bool(&val)) {
-			knot_wire_set_tc(pkt->wire);
-			return KNOT_ESPACE;
-		}
-		for (unsigned i = 0; i < qdata->extra->node->rrset_count; ++i) {
-			rrset = node_rrset_at(qdata->extra->node, i);
-			ret = process_query_put_rr(pkt, qdata, &rrset, NULL,
+		if ((qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_ANY)) {
+			rrset = node_rrset_at(qdata->extra->node, 0);
+			knot_rrset_t rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
+			ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
 			                           compr_hint, put_rr_flags);
-			if (ret != KNOT_EOK) {
-				break;
+		} else {
+			for (int i = 0; i < qdata->extra->node->rrset_count && ret == KNOT_EOK; ++i) {
+				rrset = node_rrset_at(qdata->extra->node, i);
+				ret = process_query_put_rr(pkt, qdata, &rrset, NULL,
+				                           compr_hint, put_rr_flags);
 			}
 		}
 		break;

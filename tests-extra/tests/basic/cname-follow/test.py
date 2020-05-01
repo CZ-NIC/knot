@@ -73,9 +73,36 @@ resp.check_rr("answer", "test.follow", "NSEC")
 resp.check_no_rr("answer", "test")
 resp.check_empty("authority")
 
-# query for ANY
+# query for ANY over TCP
 
-resp = knot.dig("test.follow", "ANY")
+resp = knot.dig("any.follow", "ANY", udp=False)
+resp.check(rcode="NOERROR", flags="AA")
+resp.check_rr("answer", "any.follow", "A")
+resp.check_rr("answer", "any.follow", "AAAA")
+resp.check_rr("answer", "any.follow", "NSEC")
+resp.check_rr("answer", "any.follow", "RRSIG")
+
+# query for ANY over UDP with DNSSEC
+
+resp = knot.dig("any.follow", "ANY", udp=True, dnssec=True)
+resp.check(rcode="NOERROR", flags="AA")
+resp.check_rr("answer", "any.follow", "A")
+resp.check_no_rr("answer", "any.follow", "AAAA")
+resp.check_no_rr("answer", "any.follow", "NSEC")
+resp.check_rr("answer", "any.follow", "RRSIG")
+
+# query for ANY over UDP
+
+resp = knot.dig("any.follow", "ANY", udp=True)
+resp.check(rcode="NOERROR", flags="AA")
+resp.check_rr("answer", "any.follow", "A")
+resp.check_no_rr("answer", "any.follow", "AAAA")
+resp.check_no_rr("answer", "any.follow", "NSEC")
+resp.check_no_rr("answer", "any.follow", "RRSIG")
+
+# query for ANY over TCP on CNAME
+
+resp = knot.dig("test.follow", "ANY", udp=False)
 resp.check(rcode="NOERROR", flags="AA")
 resp.check_rr("answer", "test.follow", "CNAME")
 resp.check_rr("answer", "test.follow", "NSEC")
