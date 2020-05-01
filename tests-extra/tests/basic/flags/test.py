@@ -10,9 +10,6 @@ knot = t.server("knot")
 bind = t.server("bind")
 zone = t.zone("flags.")
 
-# Disable ANY over UDP
-knot.disable_any = True
-
 t.link(zone, knot)
 t.link(zone, bind)
 
@@ -78,12 +75,12 @@ resp = knot.dig("513resp.flags", "TXT", udp=False)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD Z")
 resp.cmp(bind)
 
-# Check ANY over UDP (expects TC=1)
+# Check ANY over UDP
 resp = knot.dig("flags", "ANY", udp=True)
-resp.check(flags="QR AA TC", noflags="RD RA AD CD Z")
+resp.check(flags="QR AA", noflags="RD RA AD CD Z")
 # nothing to compare
 
-# Check ANY over TCP (expects TC=0)
+# Check ANY over TCP
 resp = knot.dig("flags", "ANY", udp=False)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD Z")
 resp.cmp(bind)
