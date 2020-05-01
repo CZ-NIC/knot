@@ -164,13 +164,6 @@ static int xfr_validate(zone_contents_t *zone, struct refresh_data *data)
 		return ret;
 	}
 
-	if (zone->size > data->max_zone_size) {
-		ns_log(LOG_WARNING, data->zone->name,
-		       data->xfr_type == XFR_TYPE_IXFR ? LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
-		       LOG_DIRECTION_IN, data->remote, "zone size exceeded");
-		return KNOT_EZONESIZE;
-	}
-
 	return KNOT_EOK;
 }
 
