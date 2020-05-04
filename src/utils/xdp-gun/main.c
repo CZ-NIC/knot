@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <getopt.h>
 #include <ifaddrs.h>
 #include <poll.h>
 #include <pthread.h>
@@ -36,8 +37,11 @@
 
 #include "libknot/libknot.h"
 #include "contrib/openbsd/strlcpy.h"
+#include "utils/common/params.h"
 
 #include "load_queries.h"
+
+#define PROGRAM_NAME "xdp-gun"
 
 volatile bool dns_xdp_trigger = false;
 
@@ -57,10 +61,19 @@ typedef struct {
 	struct in_addr	local_ipv4, target_ipv4;
 	struct in6_addr local_ipv6, target_ipv6;
 	bool		ipv6;
+	bool		configured_target;
 	uint16_t	target_port;
 	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_ALL, KNOT_XDP_LISTEN_PORT_DROP
 	unsigned	n_threads, thread_id;
 } dns_xdp_gun_ctx_t;
+
+const static dns_xdp_gun_ctx_t ctx_defaults = {
+	.qps = 1000,
+	.duration = 5000000UL, // usecs
+	.at_once = 10,
+	.target_port = 53,
+	.listen_port = KNOT_XDP_LISTEN_PORT_ALL,
+};
 
 inline static void timer_start(struct timespec *timesp)
 {
@@ -408,123 +421,182 @@ static int remoteIP2local(const char *ip_str, bool ipv6, char devname[], void *l
 	return ret;
 }
 
+static void print_help(void) {
+	printf("Usage: %s -d dest_ip [-p port] [-l duration] [-q qps] [-n at_once] [-t] -i queries_file\n", PROGRAM_NAME);
+}
+
+static bool configure_target(const char *target_str, dns_xdp_gun_ctx_t *ctx)
+{
+	ctx->ipv6 = false;
+	if (!inet_aton(target_str, &ctx->target_ipv4)) {
+		ctx->ipv6 = true;
+		if (inet_pton(AF_INET6, target_str, &ctx->target_ipv6) <= 0) {
+			printf("invalid target IP\n");
+			return false;
+		}
+	}
+
+	int ret = ctx->ipv6 ? send_pkt_to(&ctx->target_ipv6, true) : send_pkt_to(&ctx->target_ipv4, false);
+	if (ret < 0) {
+		printf("can't send dummy packet to `%s`: %s\n", target_str, strerror(-ret));
+		return false;
+	}
+	usleep(10000);
+
+	char dev1[IFNAMSIZ], dev2[IFNAMSIZ];
+	ret = distantIP2MAC(target_str, ctx->ipv6, dev1, ctx->target_mac);
+	if (ret != KNOT_EOK) {
+		printf("can't get remote MAC of `%s` by ARP query: %s\n", target_str, knot_strerror(ret));
+		return false;
+	}
+	ret = remoteIP2local(target_str, ctx->ipv6, dev2, ctx->ipv6 ? (void *)&ctx->local_ipv6 : (void *)&ctx->local_ipv4);
+	if (ret != KNOT_EOK) {
+		printf("can't get local IP reachig remote `%s`: %s\n", target_str, knot_strerror(ret));
+		return false;
+	}
+	if (strncmp(dev1, dev2, IFNAMSIZ) != 0) {
+		printf("device names comming from `ip` and `arp` differ (%s != %s)\n", dev1, dev2);
+		return false;
+	} else {
+		strlcpy(ctx->dev, dev1, IFNAMSIZ);
+	}
+	ret = dev2mac(ctx->dev, ctx->local_mac);
+	if (ret < 0) {
+		printf("failed to get MAC of device `%s`: %s\n", ctx->dev, strerror(-ret));
+		return false;
+	}
+
+	ret = knot_eth_queues(ctx->dev);
+	if (ret >= 0) {
+		ctx->n_threads = ret;
+	} else {
+		printf("unable to get number of queues for %s: %s\n", ctx->dev, knot_strerror(ret));
+		return false;
+	}
+
+	ctx->configured_target = true;
+	return true;
+}
+
+static bool get_opts(int argc, char *argv[], dns_xdp_gun_ctx_t *ctx)
+{
+	struct option opts[] = {
+		{ "help",     no_argument,       NULL, 'h' },
+		{ "version",  no_argument,       NULL, 'V' },
+		{ "infile",   required_argument, NULL, 'i' },
+		{ "port",     required_argument, NULL, 'p' },
+		{ "turbo",    no_argument,       NULL, 't' },
+		{ "at-once",  required_argument, NULL, 'n' },
+		{ "qps",      required_argument, NULL, 'q' },
+		{ "duration", required_argument, NULL, 'l' },
+		{ "dest",     required_argument, NULL, 'd' },
+		{ NULL }
+	};
+
+	int opt = 0, arg;
+	double argf;
+	while ((opt = getopt_long(argc, argv, "hVi:p:tn:q:l:d:", opts, NULL)) != -1) {
+		switch (opt) {
+		case 'h':
+			print_help();
+			exit(EXIT_SUCCESS);
+			break;
+		case 'V':
+			print_version(PROGRAM_NAME);
+			exit(EXIT_SUCCESS);
+			break;
+		case 'i':
+			if (!load_queries(optarg)) {
+				printf("Failed to load queries from file '%s'\n", optarg);
+				return false;
+			}
+			break;
+		case 'p':
+			arg = atoi(optarg);
+			if (arg > 0 && arg <= 0xffff) {
+				ctx->target_port = arg;
+			} else {
+				return false;
+			}
+			break;
+		case 't':
+			ctx->listen_port = KNOT_XDP_LISTEN_PORT_DROP;
+			break;
+		case 'n':
+			arg = atoi(optarg);
+			if (arg > 0) {
+				ctx->at_once = arg;
+			} else {
+				return false;
+			}
+			break;
+		case 'q':
+			arg = atoi(optarg);
+			if (arg > 0) {
+				ctx->qps = arg;
+			} else {
+				return false;
+			}
+			break;
+		case 'l':
+			argf = atof(optarg);
+			if (argf > 0) {
+				ctx->duration = argf * 1000000.0;
+				assert(ctx->duration >= 1000);
+			} else {
+				return false;
+			}
+			break;
+		case 'd':
+			(void)configure_target(optarg, ctx);
+			break;
+		default:
+			return false;
+		}
+	}
+	if (!ctx->configured_target || global_payloads == NULL) {
+		return false;
+	}
+	if (ctx->qps < ctx->n_threads) {
+		printf("QPS must be at least the number of threads (%u)\n", ctx->n_threads);
+		return false;
+	}
+	ctx->qps /= ctx->n_threads;
+
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
-	const char *usage = "usage: dns_xdp_gun <qps> <length_s> <target_IP> <target_port> <drop_replys?> <pkts_at_once> <queries_file>";
-
-	dns_xdp_gun_ctx_t ctx = { { 0 } }, *thread_ctxs = NULL;
+	dns_xdp_gun_ctx_t ctx = ctx_defaults, *thread_ctxs = NULL;
 	pthread_t *threads = NULL;
 
-	if (argc == 8) {
-		int arg = atoi(argv[1]);
-		if (arg > 0) {
-			ctx.qps = arg;
-		} else {
-			goto pusage;
-		}
+	if (!get_opts(argc, argv, &ctx)) {
+		print_help();
+		free_global_payloads();
+		return EXIT_FAILURE;
+	}
 
-		double argf = atof(argv[2]);
-		if (argf > 0) {
-			ctx.duration = argf * 1000000.0;
-			assert(ctx.duration >= 1000);
-		} else {
-			goto pusage;
-		}
-
-		ctx.ipv6 = false;
-		if (!inet_aton(argv[3], &ctx.target_ipv4)) {
-			ctx.ipv6 = true;
-			if (inet_pton(AF_INET6, argv[3], &ctx.target_ipv6) <= 0) {
-				printf("invalid target IP\n");
-				goto pusage;
-			}
-		}
-		int ret = ctx.ipv6 ? send_pkt_to(&ctx.target_ipv6, true) : send_pkt_to(&ctx.target_ipv4, false);
-		if (ret < 0) {
-			printf("can't send dummy packet to `%s`: %s\n", argv[3], strerror(-ret));
-			goto pusage;
-		}
-		usleep(10000);
-
-		char dev1[IFNAMSIZ], dev2[IFNAMSIZ];
-		ret = distantIP2MAC(argv[3], ctx.ipv6, dev1, ctx.target_mac);
-		if (ret != KNOT_EOK) {
-			printf("can't get remote MAC of `%s` by ARP query: %s\n", argv[3], knot_strerror(ret));
-			goto pusage;
-		}
-		ret = remoteIP2local(argv[3], ctx.ipv6, dev2, ctx.ipv6 ? (void *)&ctx.local_ipv6 : (void *)&ctx.local_ipv4);
-		if (ret != KNOT_EOK) {
-			printf("can't get local IP reachig remote `%s`: %s\n", argv[3], knot_strerror(ret));
-			goto pusage;
-		}
-		if (strncmp(dev1, dev2, IFNAMSIZ) != 0) {
-			printf("device names comming from `ip` and `arp` differ (%s != %s)\n", dev1, dev2);
-			goto pusage;
-		} else {
-			strlcpy(ctx.dev, dev1, IFNAMSIZ);
-		}
-		ret = dev2mac(ctx.dev, ctx.local_mac);
-		if (ret < 0) {
-			printf("failed to get MAC of device `%s`: %s\n", ctx.dev, strerror(-ret));
-			goto pusage;
-		}
-
-		arg = atoi(argv[4]);
-		if (arg > 0 && arg <= 0xffff) {
-			ctx.target_port = arg;
-		} else {
-			goto pusage;
-		}
-
-		if (argv[5][0] == 'y') {
-			ctx.listen_port = KNOT_XDP_LISTEN_PORT_DROP;
-		} else {
-			ctx.listen_port = KNOT_XDP_LISTEN_PORT_ALL;
-		}
-
-		arg = atoi(argv[6]);
-		if (arg > 0) {
-			ctx.at_once = arg;
-		} else {
-			goto pusage;
-		}
-
-		arg = knot_eth_queues(ctx.dev);
-		if (arg >= 0) {
-			ctx.n_threads = arg;
-			if (ctx.qps < ctx.n_threads) {
-				printf("QPS must be at least the number of threads (%u)\n", ctx.n_threads);
-				goto pusage;
-			}
-			ctx.qps /= ctx.n_threads;
-		} else {
-			printf("unable to get number of queues for %s: %s\n", ctx.dev, knot_strerror(arg));
-			goto pusage;
-		}
-
-		thread_ctxs = malloc(ctx.n_threads * sizeof(*thread_ctxs));
-		threads = malloc(ctx.n_threads * sizeof(*threads));
-		if (thread_ctxs == NULL || threads == NULL) {
-			printf("out of memory\n");
-			goto pusage;
-		}
-		for (int i = 0; i < ctx.n_threads; i++) {
-			thread_ctxs[i] = ctx;
-			thread_ctxs[i].thread_id = i;
-		}
-
-		if (!load_queries(argv[7])) {
-			goto pusage;
-		}
-	} else {
-		goto pusage;
+	thread_ctxs = malloc(ctx.n_threads * sizeof(*thread_ctxs));
+	threads = malloc(ctx.n_threads * sizeof(*threads));
+	if (thread_ctxs == NULL || threads == NULL) {
+		printf("out of memory\n");
+		free_global_payloads();
+		return EXIT_FAILURE;
+	}
+	for (int i = 0; i < ctx.n_threads; i++) {
+		thread_ctxs[i] = ctx;
+		thread_ctxs[i].thread_id = i;
 	}
 
 	struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY };
 	int ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
 	if (ret) {
 		printf("unable to unset memory lock limit: %s\n", strerror(errno));
-		goto pusage;
+		free(thread_ctxs);
+		free(threads);
+		free_global_payloads();
+		return EXIT_FAILURE;
 	}
 	pthread_mutex_init(&global_mutex, NULL);
 
@@ -551,11 +623,5 @@ int main(int argc, char *argv[])
 	free(thread_ctxs);
 	free(threads);
 	free_global_payloads();
-	return 0;
-
-pusage:
-	printf("%s\n", usage);
-	free(thread_ctxs);
-	free(threads);
-	return 1;
+	return EXIT_SUCCESS;
 }
