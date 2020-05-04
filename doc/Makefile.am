@@ -8,7 +8,8 @@ MANPAGES_IN = \
 	man/khost.1in		\
 	man/knsupdate.1in	\
 	man/knsec3hash.1in	\
-	man/kzonecheck.1in
+	man/kzonecheck.1in	\
+	man/xdp-gun.8in
 
 MANPAGES_RST = \
 	man_knotc.rst		\
@@ -19,7 +20,8 @@ MANPAGES_RST = \
 	man_khost.rst		\
 	man_knsupdate.rst	\
 	man_knsec3hash.rst	\
-	man_kzonecheck.rst
+	man_kzonecheck.rst	\
+	man_xdp-gun.rst
 
 EXTRA_DIST = \
 	conf.py			\
@@ -100,6 +102,8 @@ man_MANS += \
 	man/khost.1		\
 	man/knsupdate.1		\
 	man/knsec3hash.1
+
+man_MANS += man/xdp-gun.8
 endif # HAVE_UTILS
 
 man/knot.conf.5:	man/knot.conf.5in
@@ -112,6 +116,7 @@ man/khost.1:		man/khost.1in
 man/knsupdate.1:	man/knsupdate.1in
 man/knsec3hash.1:	man/knsec3hash.1in
 man/kzonecheck.1:	man/kzonecheck.1in
+man/xdp-gun.8:		man/xdp-gun.8in
 
 man_SUBST = $(AM_V_GEN)mkdir -p man; \
             sed -e 's,[@]VERSION@,$(VERSION),' \
