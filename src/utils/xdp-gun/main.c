@@ -49,8 +49,6 @@ uint64_t global_size_recv = 0;
 #define LOCAL_PORT_MIN  1024
 #define LOCAL_PORT_MAX 65535
 
-#define LISTEN_PORT	KNOT_XDP_LISTEN_PORT_ALL
-
 typedef struct {
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
@@ -60,6 +58,7 @@ typedef struct {
 	struct in6_addr local_ipv6, target_ipv6;
 	bool		ipv6;
 	uint16_t	target_port;
+	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_ALL, KNOT_XDP_LISTEN_PORT_DROP
 	unsigned	n_threads, thread_id;
 } dns_xdp_gun_ctx_t;
 
@@ -157,7 +156,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
-	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, LISTEN_PORT, mode);
+	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->listen_port, mode);
 	if (ret != KNOT_EOK) {
 		printf("failed to init XDP socket#%u: %s\n", ctx->thread_id, knot_strerror(ret));
 		return NULL;
@@ -411,12 +410,12 @@ static int remoteIP2local(const char *ip_str, bool ipv6, char devname[], void *l
 
 int main(int argc, char *argv[])
 {
-	const char *usage = "usage: dns_xdp_gun <qps> <length_s> <target_IP> <target_port> <pkts_at_once> <queries_file>";
+	const char *usage = "usage: dns_xdp_gun <qps> <length_s> <target_IP> <target_port> <drop_replys?> <pkts_at_once> <queries_file>";
 
 	dns_xdp_gun_ctx_t ctx = { { 0 } }, *thread_ctxs = NULL;
 	pthread_t *threads = NULL;
 
-	if (argc == 7) {
+	if (argc == 8) {
 		int arg = atoi(argv[1]);
 		if (arg > 0) {
 			ctx.qps = arg;
@@ -477,7 +476,13 @@ int main(int argc, char *argv[])
 			goto pusage;
 		}
 
-		arg = atoi(argv[5]);
+		if (argv[5][0] == 'y') {
+			ctx.listen_port = KNOT_XDP_LISTEN_PORT_DROP;
+		} else {
+			ctx.listen_port = KNOT_XDP_LISTEN_PORT_ALL;
+		}
+
+		arg = atoi(argv[6]);
 		if (arg > 0) {
 			ctx.at_once = arg;
 		} else {
@@ -508,7 +513,7 @@ int main(int argc, char *argv[])
 			thread_ctxs[i].thread_id = i;
 		}
 
-		if (!load_queries(argv[6])) {
+		if (!load_queries(argv[7])) {
 			goto pusage;
 		}
 	} else {
@@ -537,7 +542,7 @@ int main(int argc, char *argv[])
 	}
 	pthread_mutex_destroy(&global_mutex);
 	printf("total sent %lu (%lu qps)\n", global_pkts_sent, global_pkts_sent * 1000 / (ctx.duration / 1000));
-	if (global_pkts_sent > 0) {
+	if (global_pkts_sent > 0 && ctx.listen_port != KNOT_XDP_LISTEN_PORT_DROP) {
 		printf("total recv %lu (%lu qps) (%lu%%)\n", global_pkts_recv,
 		       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
 		printf("avg recv size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
