@@ -27,6 +27,9 @@ Options
 **-R**
   Allow key roll-overs nad NSEC3 re-salt.
 
+**-T** *timestamp*
+  Sign the zone (and roll the keys) as if it would be specific timestamp now.
+
 **-h**, **--help**
   Print the program help.
 

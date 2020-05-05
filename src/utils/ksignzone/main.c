@@ -50,7 +50,7 @@ static bool init_conf(const char *confdb)
 
 static void print_help(void)
 {
-	printf("Usage: %s -c <knot_conf> [-R] [-o <outdir>] zone_name\n", PROGRAM_NAME);
+	printf("Usage: %s -c <knot_conf> [-R] [-T <timestamp>] [-o <outdir>] zone_name\n", PROGRAM_NAME);
 }
 
 int main(int argc, char *argv[])
@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
 	zone_update_t up = { 0 };
 	knot_lmdb_db_t kasp_db = { 0 };
 	zone_sign_roll_flags_t rollover = 0;
+	int64_t timestamp = 0;
 	zone_sign_reschedule_t next_sign = { 0 };
 
 	int opt;
@@ -69,7 +70,7 @@ int main(int argc, char *argv[])
 			{ "help",     no_argument,       NULL, 'h' },
 			{ "version",  no_argument,       NULL, 'V' },
 	};
-	while ((opt = getopt_long(argc, argv, "Vhc:Ro:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "Vhc:RT:o:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'V':
 			print_version(PROGRAM_NAME);
@@ -82,6 +83,13 @@ int main(int argc, char *argv[])
 			break;
 		case 'R':
 			rollover = KEY_ROLL_ALLOW_ALL;
+			break;
+		case 'T':
+			timestamp = atol(optarg);
+			if (timestamp <= 0) {
+				print_help();
+				return EXIT_FAILURE;
+			}
 			break;
 		case 'o':
 			global_outdir = optarg;
@@ -149,10 +157,10 @@ int main(int argc, char *argv[])
 	kasp_db_ensure_init(&kasp_db, conf());
 	zone_struct->kaspdb = &kasp_db;
 
-	ret = knot_dnssec_zone_sign(&up, 0, rollover, &next_sign);
+	ret = knot_dnssec_zone_sign(&up, 0, rollover, timestamp, &next_sign);
 	if (ret == KNOT_DNSSEC_ENOKEY) { // exception: allow generating initial keys
 		rollover = KEY_ROLL_ALLOW_ALL;
-		ret = knot_dnssec_zone_sign(&up, 0, rollover, &next_sign);
+		ret = knot_dnssec_zone_sign(&up, 0, rollover, timestamp, &next_sign);
 	}
 	if (ret != KNOT_EOK) {
 		printf("Failed to sign the zone (%s)\n", knot_strerror(ret));
