@@ -29,7 +29,7 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/adjust.h"
 
-static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
+static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags, knot_time_t adjust_now,
 		     knot_lmdb_db_t *kaspdb, kdnssec_ctx_t *ctx, zone_sign_reschedule_t *reschedule)
 {
 	assert(zone);
@@ -40,6 +40,9 @@ static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_r
 	int r = kdnssec_ctx_init(conf(), ctx, zone_name, kaspdb, NULL);
 	if (r != KNOT_EOK) {
 		return r;
+	}
+	if (adjust_now) {
+		ctx->now = adjust_now;
 	}
 
 	// perform nsec3resalt if pending
@@ -144,6 +147,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 int knot_dnssec_zone_sign(zone_update_t *update,
                           zone_sign_flags_t flags,
                           zone_sign_roll_flags_t roll_flags,
+                          knot_time_t adjust_now,
                           zone_sign_reschedule_t *reschedule)
 {
 	if (!update || !reschedule) {
@@ -157,7 +161,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	// signing pipeline
 
-	result = sign_init(update->new_cont, flags, roll_flags, update->zone->kaspdb, &ctx, reschedule);
+	result = sign_init(update->new_cont, flags, roll_flags, adjust_now, update->zone->kaspdb, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -249,7 +253,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
 
-	result = sign_init(update->new_cont, 0, 0, update->zone->kaspdb, &ctx, reschedule);
+	result = sign_init(update->new_cont, 0, 0, 0, update->zone->kaspdb, &ctx, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));

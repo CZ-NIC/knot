@@ -50,6 +50,9 @@ Write the output zone file to different directory than configured.
 \fB\-R\fP
 Allow key roll\-overs nad NSEC3 re\-salt.
 .TP
+\fB\-T\fP \fItimestamp\fP
+Sign the zone (and roll the keys) as if it would be specific timestamp now.
+.TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP

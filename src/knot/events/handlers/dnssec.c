@@ -100,7 +100,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	ret = knot_dnssec_zone_sign(&up, sign_flags, r_flags, &resch);
+	ret = knot_dnssec_zone_sign(&up, sign_flags, r_flags, 0, &resch);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
