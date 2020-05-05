@@ -73,6 +73,7 @@ src/libknot/libknot.h
 /src/knotd
 /src/knsec3hash
 /src/knsupdate
+/src/ksignzone
 /src/kzonecheck
 /src/xdp-gun
 
