@@ -481,6 +481,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 		return iface->fd_xdp[xdp_wrk_id];
 #else
 		assert(0);
+		return -1;
 #endif
 	} else { // UDP thread.
 		if (iface->fd_udp_count == 0) { // No UDP interfaces.
