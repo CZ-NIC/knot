@@ -130,12 +130,15 @@ knotd_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
 
 if HAVE_UTILS
 bin_PROGRAMS += kzonecheck
-sbin_PROGRAMS += keymgr kjournalprint kcatalogprint
+sbin_PROGRAMS += keymgr kjournalprint kcatalogprint ksignzone
 
 kzonecheck_SOURCES = \
 	utils/kzonecheck/main.c			\
 	utils/kzonecheck/zone_check.c		\
 	utils/kzonecheck/zone_check.h
+
+ksignzone_SOURCES = \
+	utils/ksignzone/main.c
 
 keymgr_SOURCES = \
 	utils/keymgr/bind_privkey.c		\
@@ -154,6 +157,9 @@ kcatalogprint_SOURCES = \
 
 kzonecheck_CPPFLAGS    = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 kzonecheck_LDADD       = libcontrib.la libknotd.la
+ksignzone_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(lmdb_CFLAGS)
+ksignzone_LDADD        = libcontrib.la libknotd.la libknotus.la libdnssec.la \
+                         libzscanner.la
 keymgr_CPPFLAGS        = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(lmdb_CFLAGS)
 keymgr_LDADD           = libcontrib.la libknotd.la libknotus.la libdnssec.la \
                          libzscanner.la
