@@ -312,6 +312,16 @@ static dnssec_nsec3_params_t nsec3param_init(const knot_kasp_policy_t *policy,
 	return params;
 }
 
+static void warn_zero_owner(nsec_chain_iterate_data_t *data, bool nsec3)
+{
+	if (data->zero_owner != NULL) {
+		assert(!nsec3);
+		char zero_owner[KNOT_DNAME_TXT_MAXLEN];
+		knot_dname_to_str(zero_owner, data->zero_owner, sizeof(zero_owner));
+		log_zone_warning(data->update->zone->name, "DNSSEC, NSEC chain possibly broken due to subdomain with \\000: '%s'", zero_owner);
+	}
+}
+
 int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 {
 	if (update == NULL || ctx == NULL) {
@@ -325,6 +335,7 @@ int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 
 	uint32_t nsec_ttl = knot_soa_minimum(soa->rdata);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
+	nsec_chain_iterate_data_t data = { nsec_ttl, update, NULL };
 
 	int ret = knot_nsec3param_update(update, &params);
 	if (ret != KNOT_EOK) {
@@ -335,11 +346,12 @@ int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 		ret = knot_nsec3_create_chain(update->new_cont, &params, nsec_ttl,
 		                              update);
 	} else {
-		ret = knot_nsec_create_chain(update, nsec_ttl);
+		ret = knot_nsec_create_chain(&data);
 		if (ret == KNOT_EOK) {
 			ret = delete_nsec3_chain(update);
 		}
 	}
+	warn_zero_owner(&data, ctx->policy->nsec3_enabled);
 	return ret;
 }
 
@@ -361,14 +373,15 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 	uint32_t nsec_ttl_old = knot_soa_minimum(soa_old->rdata);
 	uint32_t nsec_ttl_new = knot_soa_minimum(soa_new->rdata);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
+	nsec_chain_iterate_data_t data = { nsec_ttl_new, update, NULL };
 
 	int ret;
 	if (nsec_ttl_old != nsec_ttl_new || (update->flags & UPDATE_CHANGED_NSEC)) {
 		ret = KNOT_ENORECORD;
 	} else if (ctx->policy->nsec3_enabled) {
-		ret = knot_nsec3_fix_chain(update, &params, nsec_ttl_new);
+		ret = knot_nsec3_fix_chain(&data, &params);
 	} else {
-		ret = knot_nsec_fix_chain(update, nsec_ttl_new);
+		ret = knot_nsec_fix_chain(&data);
 	}
 	if (ret == KNOT_ENORECORD) {
 		log_zone_info(update->zone->name, "DNSSEC, re-creating whole NSEC%s chain",
@@ -377,9 +390,10 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 			ret = knot_nsec3_create_chain(update->new_cont, &params,
 			                              nsec_ttl_new, update);
 		} else {
-			ret = knot_nsec_create_chain(update, nsec_ttl_new);
+			ret = knot_nsec_create_chain(&data);
 		}
 	}
+	warn_zero_owner(&data, ctx->policy->nsec3_enabled);
 	if (ret == KNOT_EOK) {
 		ret = knot_zone_sign_nsecs_in_changeset(zone_keys, ctx, update);
 	}

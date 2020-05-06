@@ -22,6 +22,8 @@
 #include "knot/updates/zone-update.h"
 #include "knot/zone/contents.h"
 
+struct nsec_chain_iterate_data; // nsec-chain.h
+
 /*!
  * \brief delete_nsec3_chain   Delete all NSEC3 records and their RRSIGs.
  */
@@ -45,13 +47,8 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 /*!
  * \brief Updates zone's NSEC3 chain to follow the differences in zone update.
  *
- * \param update     Zone Update structure holding the zone and its update. Also modified!
- * \param params     NSEC3 parameters.
- * \param ttl        TTL for new records.
- *
  * \retval KNOT_ENORECORD if the chain must be recreated from scratch.
  * \return KNOT_E*
  */
-int knot_nsec3_fix_chain(zone_update_t *update,
-                         const dnssec_nsec3_params_t *params,
-                         uint32_t ttl);
+int knot_nsec3_fix_chain(struct nsec_chain_iterate_data *data,
+                         const dnssec_nsec3_params_t *params);
