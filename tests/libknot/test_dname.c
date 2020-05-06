@@ -155,6 +155,29 @@ static void test_dname_storage(void)
 	   "knot_dname_storage: valid name");
 }
 
+static void test_dname_cmp(const char *str1, const char *str2, bool safe, int expect)
+{
+	const knot_dname_t *d1 = (const knot_dname_t *)str1;
+	const knot_dname_t *d2 = (const knot_dname_t *)str2;
+	int res;
+
+	if (safe) {
+		res = knot_dname_cmp_safe(d1, d2);
+	} else {
+		res = knot_dname_cmp(d1, d2);
+	}
+
+	if (res < 0) {
+		res = -1;
+	}
+	if (res > 0) {
+		res = 1;
+	}
+
+	ok(res == expect, "knot_dname_cmp%s (%d x %d)",
+	   safe ? "_safe" : "", res, expect);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -576,6 +599,29 @@ int main(int argc, char *argv[])
 	knot_dname_free(d2, NULL);
 
 	knot_dname_free(d, NULL);
+
+	/* DNAME CMP CHECKS */
+	t = "\002ab\002cd\002ef";
+	test_dname_cmp(t, t, false, 0);
+	test_dname_cmp(t, t, true, 0);
+
+	w = "\002aa\002cc\002ff";
+	test_dname_cmp(t, w, false, -1);
+	test_dname_cmp(t, w, true, -1);
+
+	w = "\002ab\003cde\002ef";
+	test_dname_cmp(t, w, false, -1);
+	test_dname_cmp(t, w, true, -1);
+	test_dname_cmp(w, t, false, 1);
+	test_dname_cmp(w, t, true, 1);
+
+	w = "\005cd\000aa\002ef";
+	test_dname_cmp(t, w, true, -1);
+	test_dname_cmp(t, w, false, 1); // wrong result due to knot_dname_lf
+
+	w = "\005cd\000ab\002ef";
+	test_dname_cmp(t, w, true, -1);
+	test_dname_cmp(t, w, false, 0); // wrong result due to knot_dname_lf
 
 	/* OTHER CHECKS */
 

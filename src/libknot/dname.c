@@ -605,6 +605,8 @@ void knot_dname_free(knot_dname_t *name, knot_mm_t *mm)
 	mm_free(mm, name);
 }
 
+static int lf_cmp(const uint8_t *lf1, const uint8_t *lf2);
+
 _public_
 int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 {
@@ -622,6 +624,11 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 	uint8_t *lf2 = knot_dname_lf(d2, lf2_storage);
 	assert(lf1 && lf2);
 
+	return lf_cmp(lf1, lf2);
+}
+
+static int lf_cmp(const uint8_t *lf1, const uint8_t *lf2)
+{
 	/* Compare common part. */
 	uint8_t common = lf1[0];
 	if (common > lf2[0]) {
@@ -640,6 +647,44 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 	} else {
 		return 0;
 	}
+}
+
+static void dname_reverse(const knot_dname_t *src, size_t src_len, knot_dname_t *dst)
+{
+	knot_dname_t *idx = dst + src_len - 1;
+	assert(src[src_len - 1] == '\0');
+	*idx = '\0';
+
+	while (*src) {
+		uint16_t len = *src + 1;
+		idx -= len;
+		memcpy(idx, src, len);
+		src += len;
+	}
+	assert(idx == dst);
+}
+
+_public_
+int knot_dname_cmp_safe(const knot_dname_t *d1, const knot_dname_t *d2)
+{
+	size_t d1_len = knot_dname_size(d1);
+	size_t d2_len = knot_dname_size(d2);
+
+	knot_dname_t d1_rev_arr[d1_len], d2_rev_arr[d2_len];
+	const knot_dname_t *d1_rev = d1_rev_arr, *d2_rev = d2_rev_arr;
+
+	dname_reverse(d1, d1_len, d1_rev_arr);
+	dname_reverse(d2, d2_len, d2_rev_arr);
+
+	int res = 0;
+	while (res == 0 && d1_rev != NULL) {
+		res = lf_cmp(d1_rev, d2_rev);
+		d1_rev = knot_wire_next_label(d1_rev, NULL);
+		d2_rev = knot_wire_next_label(d2_rev, NULL);
+	}
+
+	assert(res != 0 || d2_rev == NULL);
+	return res;
 }
 
 _public_
