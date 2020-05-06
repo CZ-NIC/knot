@@ -14,6 +14,7 @@ if not master.valgrind:
 else:
   zones = t.zone_rnd(4, records=100)
   slave.tcp_remote_io_timeout = 20000
+  master.ctl_params_append = ["-t", "30"]
 
 t.link(zones, master, slave, ixfr=True)
 
