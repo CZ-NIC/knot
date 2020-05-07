@@ -9,7 +9,7 @@ t = Test(tsig=False)
 
 master = t.server("knot")
 
-zone = t.zone_rnd(1, records=200, dnssec=False)
+zone = t.zone_rnd(1, records=300, dnssec=False)
 t.link(zone, master)
 
 master.dnssec(zone[0]).enable = True
@@ -30,7 +30,7 @@ rrsig1 = soa_rrsig(master, zone)
 if rrsig1 != rrsig0:
     set_err("Test failure.")
 
-master.ctl("-t 20 -b zone-sign") # blocking re-sign
+master.ctl("-t 35 -b zone-sign") # blocking re-sign
 
 rrsig2 = soa_rrsig(master, zone)
 if rrsig2 == rrsig1:
