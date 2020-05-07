@@ -9,7 +9,7 @@ t = Test(tsig=False)
 
 master = t.server("knot")
 
-zone = t.zone_rnd(1, records=200, dnssec=False)
+zone = t.zone_rnd(1, records=300, dnssec=False)
 t.link(zone, master)
 
 master.dnssec(zone[0]).enable = True
