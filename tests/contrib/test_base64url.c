@@ -28,7 +28,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(48);
+	plan(50);
 
 	int32_t  ret;
 	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN], *out3;
@@ -55,15 +55,11 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EINVAL, ret, "knot_base64ulr_decode: NULL input buffer");
 	ret = knot_base64url_decode(in, BUF_LEN, NULL, 0);
 	is_int(KNOT_EINVAL, ret, "knot_base64ulr_decode: NULL output buffer");
-	ret = knot_base64url_decode(in, UINT32_MAX, out, BUF_LEN);
-	is_int(KNOT_ERANGE, ret, "knot_base64ulr_decode: input buffer too large");
 	ret = knot_base64url_decode(in, BUF_LEN, out, 0);
 	is_int(KNOT_ERANGE, ret, "knot_base64ulr_decode: output buffer too small");
 
 	ret = knot_base64url_decode_alloc(NULL, 0, &out3);
 	is_int(KNOT_EINVAL, ret, "knot_base64ulr_decode_alloc: NULL input buffer");
-	ret = knot_base64url_decode_alloc(in, UINT32_MAX, &out3);
-	is_int(KNOT_ERANGE, ret, "knot_base64ulr_decode_aloc: input buffer too large");
 	ret = knot_base64url_decode_alloc(in, BUF_LEN, NULL);
 	is_int(KNOT_EINVAL, ret, "knot_base64ulr_decode_alloc: NULL output buffer");
 
@@ -221,11 +217,30 @@ int main(int argc, char *argv[])
 		ok(memcmp(out, ref, ret) == 0, "8. test vector - DEC output content");
 	}
 
+	strlcpy((char *)in, "Zm9vYmFyCg%3d%3d", BUF_LEN);
+	in_len = strlen((char *)in);
+	strlcpy((char *)ref, "foobar\n", BUF_LEN);
+	ref_len = strlen((char *)ref);
+
+	ret = knot_base64url_decode(in, in_len, out, BUF_LEN);
+	ok(ret == ref_len, "9. test vector - DEC output length");
+	if (ret < 0) {
+		skip("Decode err");
+	} else {
+		ok(memcmp(out, ref, ret) == 0, "9. test vector - DEC output content");
+	}
+
 	// Bad paddings
 	ret = knot_base64url_decode((uint8_t *)"A", 1, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 3");
 	ret = knot_base64url_decode((uint8_t *)"%3D", 3, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 4");
+
+	// Paddings not at the end
+	ret = knot_base64url_decode((uint8_t *)"AB%3DCDEFG", 10, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ECHAR, "Bad padding 1");
+	ret = knot_base64url_decode((uint8_t *)"AB\0CDEFG", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ECHAR, "Bad padding 2");
 
 	// Bad data character
 	ret = knot_base64url_decode((uint8_t *)"AAA$", 4, out, BUF_LEN);
