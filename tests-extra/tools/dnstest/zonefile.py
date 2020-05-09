@@ -276,7 +276,7 @@ class ZoneFile(object):
                 line = fline.split(None, 3)
                 if line[0] not in [";;"] and line[2] not in ["SOA", "RRSIG", "DNSKEY", "DS", "CDS", "CDNSKEY", "NSEC", "NSEC3", "NSEC3PARAM"]:
                     try:
-                        if random.randint(1, 20) in [4, 5]:
+                        if random.randint(1, 20) in [4, 5] and line[2] not in ["NS"]:
                             ddns.delete(line[0], line[2])
                             changes += 1
                         if random.randint(1, 20) in [2, 3] and line[2] not in ["DNAME"]:
