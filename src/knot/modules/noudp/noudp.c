@@ -60,8 +60,9 @@ int noudp_load(knotd_mod_t *mod)
 	ctx->rate = conf.single.integer;
 	if (ctx->rate > 0) {
 		knotd_conf_t udp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_UDP);
+		knotd_conf_t tcp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_TCP);
 		knotd_conf_t xdp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_XDP);
-		size_t workers = udp.single.integer + xdp.single.integer;
+		size_t workers = udp.single.integer + tcp.single.integer + xdp.single.integer;
 		ctx->counters = calloc(workers, sizeof(uint32_t));
 		if (ctx->counters == NULL) {
 			free(ctx);
