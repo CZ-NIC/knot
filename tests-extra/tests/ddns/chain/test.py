@@ -52,8 +52,7 @@ def modify_added_name(up):
 
 def verify(master, zone):
     t.sleep(3)
-    master.flush()
-    t.sleep(3)
+    master.flush(wait=True)
     master.zone_verify(zone)
 
 def test_run(master, zone, msg):

@@ -17,7 +17,6 @@ t.start()
 master.zones_wait(zone)
 slave.zones_wait(zone)
 
-slave.flush()
-t.sleep(1)
+slave.flush(wait=True)
 
 t.end()

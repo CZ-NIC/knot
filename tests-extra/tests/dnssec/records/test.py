@@ -20,8 +20,7 @@ resp = master.dig("nxdomain.records", "A", udp=False, dnssec=True)
 resp.check_auth_soa_ttl(dnssec=True)
 
 t.sleep(1)
-master.flush()
-t.sleep(1)
+master.flush(wait=True)
 
 # Verify signed zone file.
 master.zone_verify(zone)
