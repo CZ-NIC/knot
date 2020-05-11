@@ -702,7 +702,7 @@ class Server(object):
         zone = zone_arg_check(zone)
 
         if flush:
-            self.flush(zone=zone)
+            self.flush(zone=zone, wait=True)
 
         self.zones[zone.name].zfile.backup()
 
@@ -840,9 +840,14 @@ class Bind(Server):
         ctltcp = super()._check_socket("tcp", self.ctlport)
         return (tcp and udp and ctltcp)
 
-    def flush(self):
-        self.ctl("sync")
-        time.sleep(Server.START_WAIT)
+    def flush(self, zone=None, wait=False):
+        zone_name = " " + zone.name if zone else ""
+        self.ctl("sync%s" % zone_name)
+
+        sleep = Server.START_WAIT
+        if wait:
+            sleep += 3  # There's no blocking mode in rndc.
+        time.sleep(sleep)
 
     def _str(self, conf, name, value):
         if value and value != True:
