@@ -12,19 +12,22 @@ RUN apt-get -y install \
 	ghostscript \
 	git \
 	language-pack-en \
+	latexmk \
 	libedit-dev \
+	libfstrm-dev \
 	libgnutls28-dev \
 	libidn2-0-dev \
 	liblmdb-dev \
 	libmaxminddb-dev \
+	libprotobuf-c-dev \
 	libsystemd-dev \
 	libtool \
 	liburcu-dev \
 	pkg-config \
-	python-sphinx \
+	protobuf-c-compiler \
+	python3-sphinx \
 	texinfo \
 	texlive \
 	texlive-font-utils \
-	texlive-generic-extra \
 	texlive-latex-extra \
 	unzip
