@@ -174,10 +174,10 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
 	}
 
 	ctx->tls = tls_ctx;
-	ctx->params = params;
+	ctx->params = *params;
 	ctx->authority = (tls_ctx->params->hostname) ? tls_ctx->params->hostname : NULL;
 	ctx->authority_alloc = false;
-	ctx->path = (ctx->params->path) ? ctx->params->path : (char *)default_path;
+	ctx->path = (ctx->params.path) ? ctx->params.path : (char *)default_path;
 	ctx->path_alloc = false;
 	ctx->read = true;
 
@@ -426,7 +426,12 @@ int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_
 	ctx->send_buf = buf;
 	ctx->send_buflen = buf_len;
 
-	if (ctx->params->method == POST || HTTPS_USE_POST(ctx->params->method, buf_len)) {
+	if (ctx->params.method == DEFAULT) {
+		ctx->params.method = buf_len >= HTTPS_POST_THRESHOLD ? POST : GET;
+	}
+	assert(ctx->params.method == POST || ctx->params.method == GET);
+
+	if (ctx->params.method == POST) {
 		return https_send_dns_query_post(ctx);
 	} else {
 		return https_send_dns_query_get(ctx);
@@ -482,7 +487,7 @@ void print_https(const https_ctx_t *ctx)
 	if (!ctx || !ctx->authority || !ctx->path) {
 		return;
 	}
-	printf(";; HTTPS session (HTTP/2)-(%s%s)\n", ctx->authority, ctx->path);
+	printf(";; HTTPS session (HTTP/2)-(%s%s)-(%s)\n", ctx->authority, ctx->path, ctx->params.method == POST ? "POST" : "GET");
 }
 
 #endif //LIBNGHTTP2

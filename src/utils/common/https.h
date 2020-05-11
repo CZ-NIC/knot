@@ -66,7 +66,6 @@ typedef struct {
 #define HTTPS_AUTHORITY_LEN (INET6_ADDRSTRLEN + 2)
 
 #define HTTPS_POST_THRESHOLD 1024UL
-#define HTTPS_USE_POST(M, S) (M == DEFAULT && S >= HTTPS_POST_THRESHOLD)
 
 /*! \brief Structure that stores data source for DATA frames. */
 typedef struct {
@@ -77,7 +76,7 @@ typedef struct {
 /*! \brief HTTPS context. */
 typedef struct {
 	//Parameters
-	const https_params_t *params;
+	https_params_t params;
 
 	//Contexts
 	nghttp2_session *session;

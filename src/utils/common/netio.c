@@ -352,7 +352,7 @@ int net_connect(net_t *net)
 
 		if (net->tls.params != NULL) {
 #ifdef LIBNGHTTP2
-			if (net->https.params != NULL && net->https.params->enable) {
+			if (net->https.params.enable) {
 				//Establish HTTPS connection
 				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, net->tls.params->sni);
 			} else {
@@ -426,7 +426,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		}
 #ifdef LIBNGHTTP2
 	// Send data over HTTPS
-	} else if (net->https.params != NULL && net->https.params->enable) {
+	} else if (net->https.params.enable) {
 		int ret = https_send_dns_query((https_ctx_t *)&net->https, buf, buf_len);
 		if (ret != KNOT_EOK) {
 			WARN("can't send query to %s\n", net->remote_str);
@@ -530,7 +530,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		}
 #ifdef LIBNGHTTP2
 	// Receive data over HTTPS.
-	} else if (net->https.params != NULL && net->https.params->enable) {
+	} else if (net->https.params.enable) {
 		int ret = https_recv_dns_response((https_ctx_t *)&net->https, buf, buf_len);
 		return ret;
 #endif //LIBNGHTTP2
