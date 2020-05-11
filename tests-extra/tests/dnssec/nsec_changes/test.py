@@ -56,8 +56,7 @@ master.reload()
 master.zones_wait(zones, old_serials)
 old_serials = slave.zones_wait(zones, old_serials)
 t.xfr_diff(master, slave, zones)
-master.flush()
-t.sleep(1)
+master.flush(wait=True)
 
 # Check the NSEC3PARAM record.
 resp = master.dig(zone1, "NSEC3PARAM", dnssec=True)
@@ -99,8 +98,7 @@ master.start()
 master.zones_wait(zones, old_serials)
 old_serials = slave.zones_wait(zones, old_serials)
 t.xfr_diff(master, slave, zones)
-master.flush()
-t.sleep(1)
+master.flush(wait=True)
 
 # Check the NSEC3PARAM record.
 resp = master.dig(zone1, "NSEC3PARAM", dnssec=True)
@@ -139,8 +137,7 @@ master.reload()
 master.zones_wait(zones, old_serials)
 old_serials = slave.zones_wait(zones, old_serials)
 t.xfr_diff(master, slave, zones)
-master.flush()
-t.sleep(1)
+master.flush(wait=True)
 
 # Check the NSEC3PARAM record.
 resp = master.dig(zone1, "NSEC3PARAM", dnssec=True)
@@ -177,8 +174,7 @@ t.sleep(1)
 master.zones_wait(zones, old_serials, equal=True, greater=False)
 slave.zones_wait(zones, old_serials, equal=True, greater=False)
 t.xfr_diff(master, slave, zones)
-master.flush()
-t.sleep(1)
+master.flush(wait=True)
 
 # Check the NSEC3PARAM record (unchanged).
 resp = master.dig(zone1, "NSEC3PARAM", dnssec=True)
