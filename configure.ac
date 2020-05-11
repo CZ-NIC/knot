@@ -437,80 +437,46 @@ AS_CASE([$enable_maxminddb],
 AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
-dnl Check for LMDB
-lmdb_MIN_VERSION_MAJOR=0
-lmdb_MIN_VERSION_MINOR=9
-lmdb_MIN_VERSION_PATCH=15
-lmdb_MIN_VERSION_STRING="$lmdb_MIN_VERSION_MAJOR.$lmdb_MIN_VERSION_MINOR.$lmdb_MIN_VERSION_PATCH"
-lmdb_MIN_VERSION_FULL="$((($lmdb_MIN_VERSION_MAJOR << 24) | ($lmdb_MIN_VERSION_MINOR << 16) | $lmdb_MIN_VERSION_PATCH))"
 AC_ARG_WITH([lmdb],
-    AC_HELP_STRING([--with-lmdb=[DIR]], [Link with external LMDB (>= $lmdb_MIN_VERSION_STRING)]),[
-    with_lmdb=$withval
+  [AC_HELP_STRING([--with-lmdb=DIR], [explicit location where to find LMDB])]
+)
+PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
+  save_CPPFLAGS=$CPPFLAGS
+  save_LIBS=$LIBS
+
+  have_lmdb=no
+
+  for try_lmdb in "$with_lmdb" "" "/usr/local" "/usr/pkg"; do
+    AS_IF([test -d "$try_lmdb"], [
+      lmdb_CFLAGS="-I$try_lmdb/include"
+      lmdb_LIBS="-L$try_lmdb/lib"
     ],[
-    with_lmdb=auto
+      lmdb_CFLAGS=""
+      lmdb_LIBS=""
     ])
 
-have_lmdb=no
+    CPPFLAGS="$save_CPPFLAGS $lmdb_CFLAGS"
+    LIBS="$save_LIBS $lmdb_LIBS"
 
-AS_IF([test "$with_lmdb" != "no"],[
-    save_CPPFLAGS=$CPPFLAGS
-    save_LIBS=$LIBS
-
-    # Look for lmdb in given path and common locations
-    for try_lmdb in "$with_lmdb" "" "/usr/local"; do
-
-      AS_IF([test -d "$try_lmdb"], [
-        lmdb_CFLAGS="-I$try_lmdb/include"
-        lmdb_LIBS="-L$try_lmdb/lib"
-        ],[
-        lmdb_CFLAGS=""
-        lmdb_LIBS=""
-        ])
-
-      CPPFLAGS="$save_CPPFLAGS $lmdb_CFLAGS"
-      LIBS="$save_LIBS $lmdb_LIBS"
-
-      AC_SEARCH_LIBS([mdb_env_open], [lmdb], [
-          AC_CHECK_HEADERS([lmdb.h], [], [
-              AC_MSG_ERROR([lmdb headers not found in `$try_lmdb', is your installation complete?])])
-          AC_COMPUTE_INT(lmdb_VERSION_FULL, MDB_VERSION_FULL, [#include <lmdb.h>],
-              AC_MSG_ERROR([Unable to determine lmdb version from MDB_VERSION_FULL]))
-          AS_IF([test "$lmdb_VERSION_FULL" -ge "$lmdb_MIN_VERSION_FULL"],[
-              lmdb_LIBS="$lmdb_LIBS -llmdb"
-              have_lmdb=yes],[
-              unset lmdb_CFLAGS
-              unset lmdb_LIBS
-              AC_MSG_WARN([lmdb version 0.9.15 and higher not found, using embedded version])
-              ])
-          break
-          ])
-
-      unset lmdb_CFLAGS
-      unset lmdb_LIBS
-      # do not cache result of AC_SEARCH_LIBS test
-      unset ac_cv_search_mdb_env_open
-    done
-
-    CPPFLAGS="$save_CPPFLAGS"
-    LIBS="$save_LIBS"
-
-    # fail the configure if we haven't found lmdb library in the system
-    AS_IF([test "$with_lmdb" != "auto" -a "$have_lmdb" = "no"],[
-        AC_MSG_ERROR([shared lmdb library not found])
-        ])
+    AC_SEARCH_LIBS([mdb_txn_id], [lmdb], [
+      have_lmdb=yes
+      lmdb_LIBS="$lmdb_LIBS -llmdb"
+      AC_SUBST([lmdb_CFLAGS])
+      AC_SUBST([lmdb_LIBS])
+      break
     ])
 
-AS_IF([test "$have_lmdb" != "no"],[
-    AC_SUBST([lmdb_LIBS])
-    enable_lmdb=shared
-    external_lmdb_LIBS=$lmdb_LIBS
-    ],[
-    enable_lmdb=embedded
-    lmdb_CFLAGS="-I\$(top_srcdir)/src/contrib/lmdb"
-    ])
-AM_CONDITIONAL([HAVE_LMDB], test "$enable_lmdb" = "shared")
-AC_SUBST([lmdb_CFLAGS])
-AC_SUBST([external_lmdb_LIBS])
+    # do not cache result of AC_SEARCH_LIBS test
+    unset ac_cv_search_mdb_txn_id
+  done
+
+  CPPFLAGS="$save_CPPFLAGS"
+  LIBS="$save_LIBS"
+
+  AS_IF([test "$have_lmdb" = "no"], [
+    AC_MSG_ERROR([lmdb library not found])
+  ])
+])
 
 # LMDB mapping sizes
 conf_mapsize_default=500
@@ -726,7 +692,7 @@ result_msg_base="  Knot DNS $VERSION
     LibURCU:  ${liburcu_LIBS} ${liburcu_CFLAGS}
     GnuTLS:   ${gnutls_LIBS} ${gnutls_CFLAGS}
     Libedit:  ${libedit_LIBS} ${libedit_CFLAGS}
-    LMDB:     ${enable_lmdb} ${lmdb_LIBS} ${lmdb_CFLAGS}
+    LMDB:     ${lmdb_LIBS} ${lmdb_CFLAGS}
     Config:   ${conf_mapsize} MiB default mapsize
 
     Prefix:      ${knot_prefix}

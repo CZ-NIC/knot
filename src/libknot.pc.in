@@ -10,5 +10,5 @@ URL: https://www.knot-dns.cz
 Version: @PACKAGE_VERSION@
 Requires.private: libdnssec = @PACKAGE_VERSION@
 Libs: -L${libdir} -lknot
-Libs.private: -lm @external_lmdb_LIBS@
+Libs.private: -lm @lmdb_LIBS@
 Cflags: -I${includedir}
