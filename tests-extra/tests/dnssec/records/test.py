@@ -23,8 +23,7 @@ resp = master.dig("mail.records.", "RRSIG", dnssec=True)
 resp.check_count(1, rtype="RRSIG")
 
 t.sleep(1)
-master.flush()
-t.sleep(1)
+master.flush(wait=True)
 
 # Verify signed zone file.
 master.zone_verify(zone)

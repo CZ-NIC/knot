@@ -27,8 +27,7 @@ for z in zones:
 
 t.start()
 knot.zones_wait(zones)
-knot.flush()
-t.sleep(2)
+knot.flush(wait=True)
 
 shared_ksk = query_ksk(knot, zones[1])
 
