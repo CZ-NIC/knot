@@ -122,19 +122,28 @@ static int https_on_header_callback(nghttp2_session *session, const nghttp2_fram
 		
 		struct http_parser_url redirect_url;
 		http_parser_parse_url((const char *)value, valuelen, 0, &redirect_url);
-		
-		if (redirect_url.field_set & (1 << UF_HOST)) {
-			if (ctx->authority_alloc) {
-				free(ctx->authority);
-			}
+
+		bool r_auth = redirect_url.field_set & (1 << UF_HOST);
+		bool r_path = redirect_url.field_set & (1 << UF_PATH);
+		char *old_auth = ctx->authority, *old_path = ctx->path;
+
+		if (r_auth) {
 			ctx->authority = strndup((const char *)(value + redirect_url.field_data[UF_HOST].off), redirect_url.field_data[UF_HOST].len);
+		}
+		if (r_path) {
+			ctx->path = strndup((const char *)(value + redirect_url.field_data[UF_PATH].off), redirect_url.field_data[UF_PATH].len);
+		}
+		WARN("HTTP redirect (%s%s)->(%s%s)\n", old_auth, old_path, ctx->authority, ctx->path);
+		if (r_auth) {
+			if (ctx->authority_alloc) {
+				free(old_auth);
+			}
 			ctx->authority_alloc = true;
 		}
-		if (redirect_url.field_set & (1 << UF_PATH)) {
+		if (r_path) {
 			if(ctx->path_alloc) {
-				free(ctx->path);
+				free(old_path);
 			}
-			ctx->path = strndup((const char *)(value + redirect_url.field_data[UF_PATH].off), redirect_url.field_data[UF_PATH].len);
 			ctx->path_alloc = true;
 		}
 		https_send_dns_query(ctx, ctx->send_buf, ctx->send_buflen);
