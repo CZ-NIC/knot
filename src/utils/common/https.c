@@ -146,7 +146,7 @@ static int https_on_header_callback(nghttp2_session *session, const nghttp2_fram
 			}
 			ctx->path_alloc = true;
 		}
-		https_send_dns_query(ctx, ctx->send_buf, ctx->send_buflen);
+		return https_send_dns_query(ctx, ctx->send_buf, ctx->send_buflen);
 	}
 	return KNOT_EOK;
 }
@@ -334,14 +334,14 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 
 static int https_send_dns_query_get(https_ctx_t *ctx)
 {
-	const size_t dns_query_len = strlen(ctx->path) + sizeof(default_query) + 1 + (ctx->send_buflen * 4) / 3;
+	const size_t dns_query_len = strlen(ctx->path) + sizeof(default_query) + (ctx->send_buflen * 4) / 3 + 3;
 	char dns_query[dns_query_len];
 	strncpy(dns_query, ctx->path, dns_query_len);
 	strncat(dns_query, default_query, dns_query_len);
 
 	size_t tmp_strlen = strlen(dns_query);
 	int32_t ret = knot_base64url_encode(ctx->send_buf, ctx->send_buflen,
-		(uint8_t *)(dns_query + tmp_strlen), dns_query_len - (tmp_strlen - 1)
+		(uint8_t *)(dns_query + tmp_strlen), dns_query_len - tmp_strlen - 1
 	);
 	if (ret < 0) {
 		return KNOT_EINVAL;
@@ -351,7 +351,7 @@ static int https_send_dns_query_get(https_ctx_t *ctx)
 		MAKE_STATIC_NV(":method", "GET"),
 		MAKE_STATIC_NV(":scheme", "https"),
 		MAKE_NV(":authority", 10, ctx->authority, strlen(ctx->authority)),
-		MAKE_NV(":path", 5, dns_query, tmp_strlen + ret - 1),
+		MAKE_NV(":path", 5, dns_query, tmp_strlen + ret),
 		MAKE_STATIC_NV("accept", "application/dns-message"),
 	};
 
