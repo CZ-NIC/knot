@@ -18,10 +18,7 @@ $ sudo apt-get upgrade
 
 Install prerequisites:
 $ sudo apt-get install \
-  libtool autoconf make pkg-config liburcu-dev libgnutls28-dev libedit-dev
-
-Install optional packages to override embedded libraries:
-$ sudo apt-get install liblmdb-dev
+  libtool autoconf make pkg-config liburcu-dev libgnutls28-dev libedit-dev liblmdb-dev
 
 Install optional packages:
 $ sudo apt-get install \
@@ -37,10 +34,7 @@ Install basic development tools:
 
 Install prerequisites:
 # dnf install \
-  libtool autoconf pkgconfig automake userspace-rcu-devel gnutls-devel libedit-devel
-
-Install optional packages to override embedded libraries:
-# dnf install lmdb-devel
+  libtool autoconf pkgconfig automake userspace-rcu-devel gnutls-devel libedit-devel lmdb-devel
 
 Install optional packages:
 # dnf install \
