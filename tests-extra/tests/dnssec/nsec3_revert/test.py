@@ -22,6 +22,6 @@ master.gen_confile()
 master.reload()
 
 t.sleep(8) # unfixed knotd will crash upon update reversal
-master.ctl("zone-flush")
+master.flush(wait=True)
 
 t.end()
