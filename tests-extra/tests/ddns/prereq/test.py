@@ -205,6 +205,6 @@ update.send("NOERROR")
 resp = srv.dig("21.ddns.", "TXT")
 resp.check("text")
 
-srv.flush()
+srv.flush(wait=True)
 
 t.end()
