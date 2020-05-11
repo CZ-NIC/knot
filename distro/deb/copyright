@@ -47,11 +47,6 @@ Copyright: 2013-2015 Alexei Starovoitov <ast@kernel.org>
            2018-2019 Facebook
 License: LGPL-2.1
 
-Files: src/contrib/lmdb/lmdb.h src/contrib/lmdb/mdb.c src/contrib/lmdb/midl.*
-Copyright: 2000-2018 The OpenLDAP Foundation
-           2001-2018 Howard Chu, Symas Corp.
-License: OLDAP-2.8
-
 Files: src/contrib/openbsd/siphash.*
 Copyright: 2013 Andre Oppermann <andre@FreeBSD.org>
 License: BSD-3-Clause
@@ -133,52 +128,6 @@ License: LGPL-2.1
  .
  On Debian systems, the complete text of the GNU Lesser General Public
  License version 2.1 can be found in `/usr/share/common-licenses/LGPL-2.1'.
-
-License: OLDAP-2.8
- Redistribution and use of this software and associated documenta-
- tion ("Software"), with or without  modification,  are  permitted
- provided that the following conditions are met:
- .
- 1.  Redistributions  in  source form must retain copyright statements
-    and notices,
- .
- 2. Redistributions in binary form must reproduce applicable copyright
-    statements  and notices, this list of conditions, and the following
-    disclaimer in the documentation and/or other materials provided
-   with the distribution, and
- .
- 3. Redistributions must contain a verbatim copy of this document.
- .
- The  OpenLDAP  Foundation  may  revise  this license from time to
- time.  Each revision is distinguished by a version  number.   You
- may use this Software under terms of this license revision or un-
- der the terms of any subsequent revision of the license.
- .
- THIS SOFTWARE IS PROVIDED BY THE OPENLDAP FOUNDATION AND ITS CON-
- TRIBUTORS  ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES, IN-
- CLUDING, BUT NOT LIMITED  TO,  THE  IMPLIED  WARRANTIES  OF  MER-
- CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- IN NO EVENT SHALL THE OPENLDAP FOUNDATION, ITS  CONTRIBUTORS,  OR
- THE  AUTHOR(S)  OR OWNER(S) OF THE SOFTWARE BE LIABLE FOR ANY DI-
- RECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR  CONSEQUENTIAL
- DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS IN-
- TERRUPTION)  HOWEVER  CAUSED  AND  ON  ANY  THEORY  OF LIABILITY,
- WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING  NEGLI-
- GENCE  OR  OTHERWISE)  ARISING  IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- .
- The names of the authors and copyright holders must not  be  used
- in  advertising  or  otherwise  to promote the sale, use or other
- dealing in this Software without specific, written prior  permis-
- sion.  Title to copyright in this Software shall at all times re-
- main with copyright holders.
- .
- OpenLDAP is a registered trademark of the OpenLDAP Foundation.
- .
- Copyright 1999-2003 The OpenLDAP Foundation, Redwood City,  Cali-
- fornia,  USA.   All Rights Reserved.  Permission to copy and dis-
- tribute verbatim copies of this document is granted.
 
 License: 0BSD
  Permission to use, copy, modify, and distribute this software for any

@@ -60,11 +60,6 @@ src/contrib/libbpf/include/uapi/linux/btf.h
 src/contrib/libbpf/include/uapi/linux/if_link.h
 src/contrib/libbpf/include/uapi/linux/if_xdp.h
 src/contrib/libbpf/include/uapi/linux/netlink.h
-src/contrib/lmdb/lmdb.h
-src/contrib/lmdb/mdb.c
-src/contrib/lmdb/midl.c
-src/contrib/lmdb/midl.h
-src/contrib/lmdb/mute_warnings.h
 src/contrib/macros.h
 src/contrib/mempattern.c
 src/contrib/mempattern.h
