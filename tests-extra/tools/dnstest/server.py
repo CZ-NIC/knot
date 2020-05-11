@@ -702,7 +702,7 @@ class Server(object):
         zone = zone_arg_check(zone)
 
         if flush:
-            self.flush(zone=zone)
+            self.flush(zone=zone, wait=True)
 
         self.zones[zone.name].zfile.backup()
 

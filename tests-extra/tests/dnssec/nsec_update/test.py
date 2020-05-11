@@ -41,8 +41,7 @@ slave.zones_wait(zones)
 t.xfr_diff(master, slave, zones)
 
 # update master
-master.flush()
-t.sleep(2)
+master.flush(wait=True)
 for zone in zones1:
     master.random_ddns(zone)
 
@@ -64,7 +63,7 @@ slave.ctl("zone-refresh")
 slave.zones_wait(zones, after_update, equal=True, greater=False)
 
 # flush so that we can do zone_verify
-slave.flush()
+slave.flush(wait=True)
 
 # re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
@@ -111,7 +110,7 @@ slave.ctl("zone-refresh")
 slave.zones_wait(zones, after_update2, equal=True, greater=False)
 
 # flush so that we can do zone_verify
-slave.flush()
+slave.flush(wait=True)
 
 # re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
@@ -135,7 +134,7 @@ for z in zones1:
 t.sleep(1)
 slave.ctl("zone-refresh")
 t.sleep(3)
-slave.flush()
+slave.flush(wait=True)
 for z in zones1:
     slave.zone_wait(z, after_update25[z.name], equal=False, greater=True)
     slave.zone_verify(z)
