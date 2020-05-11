@@ -44,9 +44,10 @@ struct knot_xdp_msg {
  *       a compatible BPF program is loaded on the interface.
  */
 typedef enum {
-	KNOT_XDP_LOAD_BPF_NEVER,  /*!< Do not load; error out if not loaded already. */
-	KNOT_XDP_LOAD_BPF_ALWAYS, /*!< Always load a program (overwrite it). */
-	KNOT_XDP_LOAD_BPF_MAYBE,  /*!< Try with present program or load if none. */
+	KNOT_XDP_LOAD_BPF_NEVER,         /*!< Do not load; error out if not loaded already. */
+	KNOT_XDP_LOAD_BPF_ALWAYS,        /*!< Always load a program (overwrite it). */
+	KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD, /*!< KNOT_XDP_LOAD_BPF_ALWAYS + unload previous. */
+	KNOT_XDP_LOAD_BPF_MAYBE,         /*!< Try with present program or load if none. */
 	/* Implementation caveat: when re-using program in _MAYBE case, we get a message:
 	 * libbpf: Kernel error message: XDP program already attached */
 } knot_xdp_load_bpf_t;

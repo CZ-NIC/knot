@@ -238,6 +238,10 @@ int kxsk_iface_new(const char *if_name, int if_queue, knot_xdp_load_bpf_t load_b
 			}
 		}
 		break;
+	case KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD:
+		(void)bpf_set_link_xdp_fd(iface->if_index, -1, 0);
+		sleep(1);
+		// FALLTHROUGH
 	case KNOT_XDP_LOAD_BPF_ALWAYS:
 		ret = ensure_prog(iface, true);
 		break;
