@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -316,6 +316,9 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
 
 	knot_rdata_t *rr_to_copy = rrsig_rrs->rdata;
 	for (int i = 0; i < rrsig_rrs->count; ++i) {
+		if (type == KNOT_RRTYPE_ANY) {
+			type = knot_rrsig_type_covered(rr_to_copy);
+		}
 		if (type == knot_rrsig_type_covered(rr_to_copy)) {
 			int ret = knot_rdataset_add(out_sig, rr_to_copy, mm);
 			if (ret != KNOT_EOK) {
