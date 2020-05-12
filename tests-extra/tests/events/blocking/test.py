@@ -18,6 +18,8 @@ def soa_rrsig(server, zones):
     resp = server.dig(zones[0].name, "SOA", dnssec=True)
     return resp.resp.answer[1].to_rdataset()[0].to_text()
 
+master.ctl_params_append = ["-t", "35"]
+
 t.start()
 
 master.zone_wait(zone)
@@ -30,14 +32,14 @@ rrsig1 = soa_rrsig(master, zone)
 if rrsig1 != rrsig0:
     set_err("Test failure.")
 
-master.ctl("-t 35 -b zone-sign") # blocking re-sign
+master.ctl("zone-sign", wait=True) # blocking re-sign
 
 rrsig2 = soa_rrsig(master, zone)
 if rrsig2 == rrsig1:
     set_err("Not re-signed before re-query.")
 
 master.ctl("zone-sign") # non-blocking
-master.ctl("-b zone-freeze") # followed by blocking freeze
+master.ctl("zone-freeze", wait=True) # followed by blocking freeze
 
 rrsig3 = soa_rrsig(master, zone)
 if rrsig3 == rrsig2:

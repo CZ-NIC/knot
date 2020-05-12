@@ -22,9 +22,9 @@ else:
     s1.tcp_remote_io_timeout = 45000
     s2.tcp_remote_io_timeout = 45000
     s3.tcp_remote_io_timeout = 45000
-    s1.ctl_params_append = ["-b", "-t", "45"]
-    s2.ctl_params_append = ["-b", "-t", "45"]
-    s3.ctl_params_append = ["-b", "-t", "45"]
+    s1.ctl_params_append = ["-t", "45"]
+    s2.ctl_params_append = ["-t", "45"]
+    s3.ctl_params_append = ["-t", "45"]
 
 for zone in zones:
     s1.dnssec(zone).enable = True
@@ -33,15 +33,12 @@ t.start()
 
 serials_init = s3.zones_wait(zones)
 
-s2.ctl("zone-freeze")
-t.sleep(1)
+s2.ctl("zone-freeze", wait=True)
 
-s1.ctl("zone-sign")
-t.sleep(2)
-s1.ctl("zone-sign")
-t.sleep(2)
+s1.ctl("zone-sign", wait=True)
+s1.ctl("zone-sign", wait=True)
 
-s2.ctl("zone-thaw")
+s2.ctl("zone-thaw", wait=True)
 
 s3.zones_wait(zones, serials_init)
 
