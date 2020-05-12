@@ -313,13 +313,14 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 	}
 
 	// Save authority server
-	free(ctx->authority);
-	ctx->authority = (char*)calloc(HTTPS_AUTHORITY_LEN, sizeof(char));
-	ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, address);
-	if (ret != KNOT_EOK) {
-		free(ctx->authority);
-		ctx->authority = NULL;
-		return KNOT_EINVAL;
+	if (ctx->authority == NULL) {
+		ctx->authority = (char*)calloc(HTTPS_AUTHORITY_LEN, sizeof(char));
+		ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, address);
+		if (ret != KNOT_EOK) {
+			free(ctx->authority);
+			ctx->authority = NULL;
+			return KNOT_EINVAL;
+		}
 	}
 
 	return KNOT_EOK;
