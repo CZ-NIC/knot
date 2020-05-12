@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -79,6 +79,8 @@ int knot_sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
 /*!
  * \brief Creates new RRS using \a rrsig_rrs as a source. Only those RRs that
  *        cover given \a type are copied into \a out_sig
+ *
+ * \note If given \a type is ANY, put a random subset, not all.
  *
  * \param type       Covered type.
  * \param rrsig_rrs  Source RRS.
