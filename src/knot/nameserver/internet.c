@@ -15,6 +15,7 @@
  */
 
 #include "libknot/libknot.h"
+#include "knot/dnssec/rrset-sign.h" // knot_synth_rrsig
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/query_module.h"
@@ -148,6 +149,17 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, knotd_qdata_t *qdata)
 		rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
 		ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
 		                           compr_hint, put_rr_flags);
+		break;
+	case KNOT_RRTYPE_RRSIG: /* Put some RRSIGs, not all. */
+		rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
+		if (!knot_rrset_empty(&rrsigs)) {
+			knot_rrset_init(&rrset, rrsigs.owner, rrsigs.type, rrsigs.rclass, rrsigs.ttl);
+			ret = knot_synth_rrsig(KNOT_RRTYPE_ANY, &rrsigs.rrs, &rrset.rrs, qdata->mm);
+			if (ret == KNOT_EOK) {
+				ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
+				                           compr_hint, put_rr_flags);
+			}
+		}
 		break;
 	default: /* Single RRSet of given type. */
 		rrset = node_rrset(qdata->extra->node, type);

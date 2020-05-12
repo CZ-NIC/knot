@@ -791,6 +791,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 {
 	knot_rdataset_t synth_rrs;
 	knot_rdataset_init(&synth_rrs);
+	assert(type != KNOT_RRTYPE_ANY);
 	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_rrs, qdata->mm);
 	if (ret == KNOT_ENOENT) {
 		// No signature

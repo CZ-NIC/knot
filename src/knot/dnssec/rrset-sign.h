@@ -80,6 +80,8 @@ int knot_sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
  * \brief Creates new RRS using \a rrsig_rrs as a source. Only those RRs that
  *        cover given \a type are copied into \a out_sig
  *
+ * \note If given \a type is ANY, put a random subset, not all.
+ *
  * \param type       Covered type.
  * \param rrsig_rrs  Source RRS.
  * \param out_sig    Output RRS.
