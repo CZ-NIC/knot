@@ -83,6 +83,6 @@ resp.check(flags="QR AA", noflags="RD RA AD CD Z")
 # Check ANY over TCP
 resp = knot.dig("flags", "ANY", udp=False)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD Z")
-resp.cmp(bind)
+# nothing to compare
 
 t.end()

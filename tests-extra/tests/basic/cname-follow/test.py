@@ -78,9 +78,9 @@ resp.check_empty("authority")
 resp = knot.dig("any.follow", "ANY", udp=False)
 resp.check(rcode="NOERROR", flags="AA")
 resp.check_rr("answer", "any.follow", "A")
-resp.check_rr("answer", "any.follow", "AAAA")
-resp.check_rr("answer", "any.follow", "NSEC")
-resp.check_rr("answer", "any.follow", "RRSIG")
+resp.check_no_rr("answer", "any.follow", "AAAA")
+resp.check_no_rr("answer", "any.follow", "NSEC")
+resp.check_no_rr("answer", "any.follow", "RRSIG")
 
 # query for ANY over UDP
 
@@ -105,9 +105,6 @@ resp.check_rr("answer", "any.follow", "RRSIG")
 resp = knot.dig("test.follow", "ANY", udp=False)
 resp.check(rcode="NOERROR", flags="AA")
 resp.check_rr("answer", "test.follow", "CNAME")
-resp.check_rr("answer", "test.follow", "NSEC")
-resp.check_rr("answer", "test.follow", "RRSIG")
-resp.check_no_rr("answer", "test")
 resp.check_empty("authority")
 
 # DNAME systhetizes too long CNAME
