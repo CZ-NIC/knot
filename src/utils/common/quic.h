@@ -37,11 +37,21 @@ typedef struct {
     /*! QUIC parameters. */
     const quic_params_t *params;
     /*! Poll timeout. */
-    const int wait;
+    int wait;
     /*! Receive fd pool. */
     struct pollfd pfd;
     /*! Quicly context. */
     quicly_context_t quicly;
+    /*! 
+     *  !Caution! Do not move this struct.
+     *  Function `quic_conn_get_ctx` use
+     *  static position in struct.
+     */
+    struct recv_buf {
+        uint8_t *base;
+        uint8_t *ptr;
+        size_t capacity;
+    } buf;
     /*! Quicly connection context. */
     quicly_conn_t *client;
     /*! Connection ID. */
@@ -64,3 +74,5 @@ int quic_ctx_receive(quic_ctx_t *ctx, uint8_t *buf, size_t buflen);
 
 /*! \brief Close all streams and then connection itself. */
 void quic_ctx_close(quic_ctx_t *ctx);
+
+struct recv_buf *quic_conn_get_ctx(quicly_conn_t *conn);
