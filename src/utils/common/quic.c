@@ -47,6 +47,9 @@ static void on_receive(quicly_stream_t *stream, size_t off, const void *src, siz
 	
 	/* obtain contiguous bytes from the receive buffer */
 	ptls_iovec_t input = quicly_streambuf_ingress_get(stream);
+	struct recv_buf *buff = quic_conn_get_ctx(stream->conn);
+	memcpy(buff->ptr, input.base, input.len);
+	buff->ptr += input.len;
 
 	/* remove used bytes from receive buffer */
 	quicly_streambuf_ingress_shift(stream, input.len);
@@ -112,6 +115,7 @@ static void process_msg(quic_ctx_t *ctx, quicly_conn_t *conn, struct msghdr *msg
 			quicly_receive(conn, NULL, msg->msg_name, &decoded);
 		}
 	}
+	printf("recv: %ld\n", off);
 }
 
 static int send_one(const int fd, quicly_datagram_t *p)
@@ -168,14 +172,17 @@ int quic_ctx_send(quic_ctx_t *ctx, const uint8_t *buf, const size_t buflen)
 
 static int _quic_ctx_send(quic_ctx_t *ctx)
 {
+	size_t sent = 0; //TODO remove - testing
 	quicly_datagram_t *dgrams[16];
 	size_t num_dgrams = sizeof(dgrams) / sizeof(*dgrams);
 	int ret = quicly_send(ctx->client, dgrams, &num_dgrams);
 	if (ret == 0) {
 		for (size_t j = 0; j < num_dgrams; ++j) {
+			sent += dgrams[j]->data.len;
 			send_one(ctx->pfd.fd, dgrams[j]);
 			ctx->quicly.packet_allocator->free_packet(ctx->quicly.packet_allocator, dgrams[j]);
 		}
+		if (sent) printf("sent: %ld\n", sent);
 	}
 	return ret;
 }
@@ -187,13 +194,17 @@ int quic_ctx_receive(quic_ctx_t *ctx, uint8_t *buf, size_t buflen)
 	stream = quicly_get_stream(ctx->client, 0);
 	
 	// Setup receive buffer
-	quicly_streambuf_t *sbuf = (quicly_streambuf_t *)stream->data;
-	if(sbuf->ingress.is_allocated) {
-		free(sbuf->ingress.base);
-	}
-	sbuf->ingress.base = buf;
-	sbuf->ingress.capacity = buflen;
-	sbuf->ingress.is_allocated = 0;
+	//quicly_streambuf_t *sbuf = (quicly_streambuf_t *)stream->data;
+	//if(sbuf->ingress.is_allocated) {
+	//	free(sbuf->ingress.base);
+	//}
+	//sbuf->ingress.base = buf;
+	//sbuf->ingress.capacity = buflen;
+	//sbuf->ingress.is_allocated = 0;
+	ctx->buf.base = buf;
+	ctx->buf.ptr = buf;
+	ctx->buf.capacity = buflen;
+
 
 	while (1) {
 		// Send what needed to be sent by QUIC
@@ -207,11 +218,13 @@ int quic_ctx_receive(quic_ctx_t *ctx, uint8_t *buf, size_t buflen)
 		}
 
 		if (quicly_recvstate_transfer_complete(&stream->recvstate)) {
-			return sbuf->egress.bytes_written;
+		//if (ctx->buf.ptr - ctx->buf.base) {
+			//return sbuf->egress.bytes_written;
+			return ctx->buf.ptr - ctx->buf.base;
 		}
 
 		//Receive
-		if (poll(&ctx->pfd, 1, ctx->wait * 1000) < 0) {
+		if (poll(&ctx->pfd, 1, /*ctx->wait **/ 1000) < 0) {
 			return KNOT_NET_ETIMEOUT;
 		}
 		if (ctx->pfd.revents & POLLIN) {
@@ -227,6 +240,10 @@ int quic_ctx_receive(quic_ctx_t *ctx, uint8_t *buf, size_t buflen)
 				process_msg(ctx, ctx->client, &msg, rret);
 			}
 		}
+
+		if (quicly_recvstate_transfer_complete(&stream->recvstate)) {
+			return ctx->buf.ptr - ctx->buf.base;
+		}
 	}
 }
 
@@ -237,4 +254,9 @@ void quic_ctx_close(quic_ctx_t *ctx)
 		_quic_ctx_send(ctx);
 		quicly_free(ctx->client);
 	}
+}
+
+struct recv_buf *quic_conn_get_ctx(quicly_conn_t *conn)
+{
+	return (struct recv_buf *)(quicly_get_context(conn) + 1);
 }
