@@ -150,25 +150,13 @@ static void bitmap_add_forced(dnssec_nsec_bitmap_t *map, uint16_t qtype,
 }
 
 /*!
- * \brief Add bitmap records from the actual response.
- */
-static void bitmap_add_section(dnssec_nsec_bitmap_t *map, const knot_pktsection_t *answer)
-{
-	for (int i = 0; i < answer->count; i++) {
-		const knot_rrset_t *rr = knot_pkt_rr(answer, i);
-		dnssec_nsec_bitmap_add(map, rr->type);
-	}
-}
-
-/*!
  * \brief Synthesize NSEC type bitmap.
  *
  * - The bitmap will contain types synthesized by this module.
- * - For ANY query, the bitmap will contain types from the actual response.
- * - For non-ANY query, the bitmap will contain types from zone and forced
+ * - The bitmap will contain types from zone and forced
  *   types which can be potentionally synthesized by other query modules.
  */
-static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *qdata,
+static dnssec_nsec_bitmap_t *synth_bitmap(const knotd_qdata_t *qdata,
                                           const uint16_t *force_types)
 {
 	dnssec_nsec_bitmap_t *map = dnssec_nsec_bitmap_new();
@@ -182,14 +170,9 @@ static dnssec_nsec_bitmap_t *synth_bitmap(knot_pkt_t *pkt, const knotd_qdata_t *
 
 	bitmap_add_synth(map, is_apex);
 
-	if (qtype == KNOT_RRTYPE_ANY) {
-		const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-		bitmap_add_section(map, answer);
-	} else {
-		bitmap_add_zone(map, qdata->extra->node);
-		if (force_types != NULL && !node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
-			bitmap_add_forced(map, qtype, force_types);
-		}
+	bitmap_add_zone(map, qdata->extra->node);
+	if (force_types != NULL && !node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
+		bitmap_add_forced(map, qtype, force_types);
 	}
 
 	return map;
@@ -223,7 +206,7 @@ static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knotd_mod
 		force_types = ctx->nsec_force_types;
 	}
 
-	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(pkt, qdata, force_types);
+	dnssec_nsec_bitmap_t *bitmap = synth_bitmap(qdata, force_types);
 	if (!bitmap) {
 		free(next);
 		knot_rrset_free(nsec, mm);
@@ -480,7 +463,7 @@ static knot_rrset_t *synth_cds(knotd_qdata_t *qdata, knotd_mod_t *mod,
 static bool qtype_match(knotd_qdata_t *qdata, uint16_t type)
 {
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
-	return (qtype == KNOT_RRTYPE_ANY || qtype == type);
+	return (qtype == type);
 }
 
 static bool is_apex_query(knotd_qdata_t *qdata)
