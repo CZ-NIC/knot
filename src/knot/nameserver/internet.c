@@ -125,9 +125,6 @@ static bool have_dnssec(knotd_qdata_t *qdata)
  */
 static int put_answer(knot_pkt_t *pkt, uint16_t type, knotd_qdata_t *qdata)
 {
-	knot_rrset_t rrset, rrsigs;
-	knot_rrset_init_empty(&rrset);
-
 	/* Wildcard expansion or exact match, either way RRSet owner is
 	 * is QNAME. We can fake name synthesis by setting compression hint to
 	 * QNAME position. Just need to check if we're answering QNAME and not
@@ -142,36 +139,33 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, knotd_qdata_t *qdata)
 	                        KNOT_PF_NULL : KNOT_PF_NOTRUNC;
 	put_rr_flags |= KNOT_PF_ORIGTTL;
 
-	int ret = KNOT_EOK;
+	knot_rrset_t rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t rrset;
 	switch (type) {
 	case KNOT_RRTYPE_ANY: /* Put one RRSet, not all. */
 		rrset = node_rrset_at(qdata->extra->node, 0);
-		rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
-		ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
-		                           compr_hint, put_rr_flags);
 		break;
 	case KNOT_RRTYPE_RRSIG: /* Put some RRSIGs, not all. */
-		rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
 		if (!knot_rrset_empty(&rrsigs)) {
 			knot_rrset_init(&rrset, rrsigs.owner, rrsigs.type, rrsigs.rclass, rrsigs.ttl);
-			ret = knot_synth_rrsig(KNOT_RRTYPE_ANY, &rrsigs.rrs, &rrset.rrs, qdata->mm);
-			if (ret == KNOT_EOK) {
-				ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
-				                           compr_hint, put_rr_flags);
+			int ret = knot_synth_rrsig(KNOT_RRTYPE_ANY, &rrsigs.rrs, &rrset.rrs, qdata->mm);
+			if (ret != KNOT_EOK) {
+				return ret;
 			}
+		} else {
+			knot_rrset_init_empty(&rrset);
 		}
 		break;
 	default: /* Single RRSet of given type. */
 		rrset = node_rrset(qdata->extra->node, type);
-		if (!knot_rrset_empty(&rrset)) {
-			rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
-			ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
-			                           compr_hint, put_rr_flags);
-		}
 		break;
 	}
 
-	return ret;
+	if (knot_rrset_empty(&rrset)) {
+		return KNOT_EOK;
+	}
+
+	return process_query_put_rr(pkt, qdata, &rrset, &rrsigs, compr_hint, put_rr_flags);
 }
 
 /*! \brief Puts optional SOA RRSet to the Authority section of the response. */
