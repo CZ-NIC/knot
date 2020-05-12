@@ -60,7 +60,6 @@ up.send("NOERROR")
 t.sleep(1)
 master.ctl("zone-refresh")
 
-t.sleep(4) # zones_wait fails if an empty update is generated
 after_update = master.zones_wait(zones)
 
 # sync slave with current master's state
@@ -125,8 +124,7 @@ for z in zones1:
     up.send("NOERROR")
 
 t.sleep(1)
-slave.ctl("zone-refresh")
-t.sleep(3)
+slave.ctl("zone-refresh", wait=True)
 slave.flush(wait=True)
 for z in zones1:
     slave.zone_wait(z, after_update25[z.name], equal=False, greater=True)
