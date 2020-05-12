@@ -116,7 +116,8 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
  * \param ctx      HTTPS context.
  * \param sockfd   TLS context.
  * \param address  Socket address storage with address to server side.
- * \param remote   [optional] Remote name.
+ * \param remote   [optional] Remote SNI.
+ * \param remote   Remote name.
  *
  * \retval KNOT_EOK           When successfully connected.
  * \retval KNOT_EINVAL        When parameters are invalid.
@@ -125,7 +126,7 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
  * \retval KNOT_NET_ECONNECT  When unnable to connect to the server.
  */
 int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storage *address,
-                      const char *remote);
+                      const char *remote, const char *remote_name);
 
 /*!
  * \brief Send buffer as DNS message over HTTPS.

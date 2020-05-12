@@ -354,7 +354,7 @@ int net_connect(net_t *net)
 #ifdef LIBNGHTTP2
 			if (net->https.params.enable) {
 				//Establish HTTPS connection
-				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, net->tls.params->sni);
+				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, net->tls.params->sni, net->remote->name);
 			} else {
 				// Establish TLS connection.
 				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
