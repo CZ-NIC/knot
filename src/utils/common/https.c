@@ -135,16 +135,10 @@ static int https_on_header_callback(nghttp2_session *session, const nghttp2_fram
 		}
 		WARN("HTTP redirect (%s%s)->(%s%s)\n", old_auth, old_path, ctx->authority, ctx->path);
 		if (r_auth) {
-			if (ctx->authority_alloc) {
-				free(old_auth);
-			}
-			ctx->authority_alloc = true;
+			free(old_auth);
 		}
 		if (r_path) {
-			if(ctx->path_alloc) {
-				free(old_path);
-			}
-			ctx->path_alloc = true;
+			free(old_path);
 		}
 		return https_send_dns_query(ctx, ctx->send_buf, ctx->send_buflen);
 	}
@@ -184,10 +178,8 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
 
 	ctx->tls = tls_ctx;
 	ctx->params = *params;
-	ctx->authority = (tls_ctx->params->hostname) ? tls_ctx->params->hostname : NULL;
-	ctx->authority_alloc = false;
-	ctx->path = (ctx->params.path) ? ctx->params.path : (char *)default_path;
-	ctx->path_alloc = false;
+	ctx->authority = (tls_ctx->params->hostname) ? strdup(tls_ctx->params->hostname) : NULL;
+	ctx->path = strdup((ctx->params.path) ? ctx->params.path : (char *)default_path);
 	ctx->read = true;
 
 	return KNOT_EOK;
@@ -253,12 +245,14 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 
 	ret = gnutls_set_default_priority(ctx->tls->session);
 	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(ctx->tls->session);
 		return KNOT_NET_ECONNECT;
 	}
 
 	ret = gnutls_credentials_set(ctx->tls->session, GNUTLS_CRD_CERTIFICATE,
 	                             ctx->tls->credentials);
 	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(ctx->tls->session);
 		return KNOT_NET_ECONNECT;
 	}
 
@@ -266,6 +260,7 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 		ret = gnutls_server_name_set(ctx->tls->session, GNUTLS_NAME_DNS, remote,
 		                             strlen(remote));
 		if (ret != GNUTLS_E_SUCCESS) {
+			gnutls_deinit(ctx->tls->session);
 			return KNOT_NET_ECONNECT;
 		}
 	}
@@ -276,6 +271,7 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 
 	ret = gnutls_alpn_set_protocols(ctx->tls->session, https_protocols, sizeof(https_protocols)/sizeof(*https_protocols), 0);
 	if(ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(ctx->tls->session);
 		return KNOT_NET_ECONNECT;
 	}
 
@@ -292,6 +288,7 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 		if (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0) {
 			if (poll(&pfd, 1, 1000 * ctx->tls->wait) != 1) {
 				WARN("TLS, peer took too long to respond\n");
+				gnutls_deinit(ctx->tls->session);
 				return KNOT_NET_ETIMEOUT;
 			}
 		}
@@ -316,16 +313,12 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 	}
 
 	// Save authority server
-	if (ctx->authority_alloc) {
-		free(ctx->authority);
-	}
+	free(ctx->authority);
 	ctx->authority = (char*)calloc(HTTPS_AUTHORITY_LEN, sizeof(char));
-	ctx->authority_alloc = true;
 	ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, address);
 	if (ret != KNOT_EOK) {
 		free(ctx->authority);
 		ctx->authority = NULL;
-		ctx->authority_alloc = false;
 		return KNOT_EINVAL;
 	}
 
@@ -478,16 +471,10 @@ void https_ctx_deinit(https_ctx_t *ctx)
 
 	nghttp2_session_del(ctx->session);
 	pthread_mutex_destroy(&ctx->recv_mx);
-	if(ctx->path_alloc) {
-		free(ctx->path);
-		ctx->path = NULL;
-		ctx->path_alloc = false;
-	}
-	if(ctx->authority_alloc) {
-		free(ctx->authority);
-		ctx->authority = NULL;
-		ctx->authority_alloc = false;
-	}
+	free(ctx->path);
+	ctx->path = NULL;
+	free(ctx->authority);
+	ctx->authority = NULL;
 }
 
 

@@ -81,9 +81,7 @@ typedef struct {
 	nghttp2_session *session;
 	tls_ctx_t *tls;
 	char *authority;
-	bool authority_alloc;
 	char *path;
-	bool path_alloc;
 
 	//Send destination
 	const uint8_t *send_buf;
