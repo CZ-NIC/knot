@@ -1028,7 +1028,6 @@ class Knot(Server):
             self.ctl("%szone-flush %s" % (params, zone.name))
         else:
             self.ctl("%szone-flush" % params)
-        time.sleep(Server.START_WAIT)
 
     def key_gen(self, zone_name, **new_params):
         set_params = [ option + "=" + value for option, value in new_params.items() ]
