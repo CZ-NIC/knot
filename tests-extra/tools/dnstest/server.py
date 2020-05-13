@@ -271,7 +271,7 @@ class Server(object):
 
         self.binding_errors = errors
 
-    def ctl(self, cmd, availability=True, wait=False):
+    def ctl(self, cmd, wait=False, availability=True):
         if availability:
             # Check for listening control interface.
             ok = False
