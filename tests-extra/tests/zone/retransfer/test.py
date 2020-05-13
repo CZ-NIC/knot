@@ -30,8 +30,7 @@ serial_slave = slave.zone_wait(zone)
 assert serial_master <= serial_slave
 
 # Retransfer zone with lower serial
-slave.ctl("zone-retransfer example.com.")
-t.sleep(2)
+slave.ctl("zone-retransfer example.com.", wait=True)
 
 serial_slave = slave.zone_wait(zone)
 compare(serial_slave, serial_master, "Serial after retransfer")
@@ -44,8 +43,7 @@ if mtime1 == mtime0:
 master.update_zonefile(zone, version="master")
 master.reload()
 
-slave.ctl("zone-retransfer example.com.")
-t.sleep(2)
+slave.ctl("zone-retransfer example.com.", wait=True)
 
 resp = slave.dig("diff.example.com", "A")
 resp.check(rcode="NOERROR")
