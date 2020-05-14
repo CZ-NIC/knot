@@ -55,6 +55,13 @@ BuildRequires:	lmdb-devel
 BuildRequires:	python3-sphinx
 BuildRequires:	pkgconfig(lmdb)
 %endif
+%if 0%{?rhel} >= 8 || 0%{?suse_version}
+%define configure_xdp --enable-xdp=yes
+BuildRequires:	elfutils-libelf-devel
+%endif
+%if 0%{?fedora} >= 31
+BuildRequires: pkgconfig(libbpf) >= 0.0.6
+%endif
 
 Requires(post):		systemd %{_sbindir}/runuser
 Requires(preun):	systemd
@@ -120,6 +127,10 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
 %define configure_db_sizes --with-conf-mapsize=64
 %endif
 
+%if 0%{?rhel} >= 8 || 0%{?suse_version}
+--enable-xdp=yes
+
+
 %configure \
   --sysconfdir=/etc \
   --localstatedir=/var/lib \
@@ -127,6 +138,7 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
   --with-rundir=/run/knot \
   --with-storage=/var/lib/knot \
   %{?configure_db_sizes} \
+  %{?configure_xdp} \
   --disable-static \
   --enable-dnstap=yes \
   --with-module-dnstap=yes
