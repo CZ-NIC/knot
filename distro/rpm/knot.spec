@@ -127,10 +127,6 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
 %define configure_db_sizes --with-conf-mapsize=64
 %endif
 
-%if 0%{?rhel} >= 8 || 0%{?suse_version}
---enable-xdp=yes
-
-
 %configure \
   --sysconfdir=/etc \
   --localstatedir=/var/lib \
