@@ -49,6 +49,7 @@ override_dh_auto_configure:
 	  $(RECVMMSG) \
 	  $(FASTPARSER) \
 	  --disable-silent-rules \
+	  --enable-xdp=yes \
 	  --disable-static
 
 override_dh_auto_configure-indep:
