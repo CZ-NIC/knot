@@ -420,17 +420,17 @@ obs:debian10:x86_64:
     DISTROTEST_NAME: debian10
     DISTROTEST_REPO: Debian_10
 
-obs:fedora30:x86_64:
-  <<: *distrotest
-  variables:
-    DISTROTEST_NAME: fedora30
-    DISTROTEST_REPO: Fedora_30
-
 obs:fedora31:x86_64:
   <<: *distrotest
   variables:
     DISTROTEST_NAME: fedora31
     DISTROTEST_REPO: Fedora_31
+
+obs:fedora32:x86_64:
+  <<: *distrotest
+  variables:
+    DISTROTEST_NAME: fedora32
+    DISTROTEST_REPO: Fedora_32
 
 obs:leap15:x86_64:
   <<: *distrotest
