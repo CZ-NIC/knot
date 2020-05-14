@@ -92,7 +92,7 @@ struct knotd_mod {
 	kdnssec_ctx_t *dnssec;
 	zone_keyset_t *keyset;
 	zone_sign_ctx_t *sign_ctx;
-	mod_ctr_t *stats;
+	mod_ctr_t **stats;
 	uint32_t stats_count;
 	void *ctx;
 };

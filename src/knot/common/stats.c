@@ -56,18 +56,22 @@ const stats_item_t server_stats[] = {
 	{ 0 }
 };
 
-static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr)
+static void dump_counters(FILE *fd, int level, uint32_t count, mod_ctr_t **pstats,
+                          int id, int64_t threads, mod_idx_to_str_f idx_to_str)
 {
-	for (uint32_t j = 0; j < ctr->count; j++) {
-		uint64_t counter = ATOMIC_GET(ctr->counters[j]);
+	for (uint32_t j = 0; j < count; j++) {
+		uint64_t counter = 0;
+		for (int64_t i = 0; i < threads; i++) {
+			counter += ATOMIC_GET(pstats[i][id].counters[j]);
+		}
 
 		// Skip empty counters.
 		if (counter == 0) {
 			continue;
 		}
 
-		if (ctr->idx_to_str != NULL) {
-			char *str = ctr->idx_to_str(j, ctr->count);
+		if (idx_to_str != NULL) {
+			char *str = idx_to_str(j, count);
 			if (str != NULL) {
 				DUMP_CTR(fd, level, "%s", str, counter);
 				free(str);
@@ -106,22 +110,30 @@ static void dump_modules(dump_ctx_t *ctx)
 			level = 0;
 		}
 
+		int64_t threads = knotd_mod_threads(mod);
+		assert(threads > 0);
+
 		// Dump module counters.
 		DUMP_STR(ctx->fd, level, "%s", mod->id->name + 1, "");
-		for (int i = 0; i < mod->stats_count; i++) {
-			mod_ctr_t *ctr = mod->stats + i;
-			if (ctr->name == NULL) {
+		for (int id = 0; id < mod->stats_count; id++) {
+			const char *ctr_name = mod->stats[0][id].name; // independent on thread
+			uint32_t ctr_count = mod->stats[0][id].count;
+			if (ctr_name == NULL) {
 				// Empty counter.
 				continue;
 			}
-			if (ctr->count == 1) {
+			if (ctr_count == 1) {
 				// Simple counter.
-				uint64_t counter = ATOMIC_GET(ctr->counter);
-				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name, counter);
+				uint64_t counter = 0;
+				for (int64_t i = 0; i < threads; i++) {
+					counter += ATOMIC_GET(mod->stats[i][id].counter);
+				}
+				DUMP_CTR(ctx->fd, level + 1, "%s", ctr_name, counter);
 			} else {
 				// Array of counters.
-				DUMP_STR(ctx->fd, level + 1, "%s", ctr->name, "");
-				dump_counters(ctx->fd, level + 2, ctr);
+				DUMP_STR(ctx->fd, level + 1, "%s", ctr_name, "");
+				dump_counters(ctx->fd, level + 2, ctr_count, mod->stats,
+				              id, threads, mod->stats[0][id].idx_to_str);
 			}
 		}
 	}

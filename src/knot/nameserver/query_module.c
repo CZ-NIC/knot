@@ -235,42 +235,58 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 		return KNOT_EINVAL;
 	}
 
-	mod_ctr_t *stats = NULL;
+	int64_t threads = knotd_mod_threads(mod);
+
+	int id = 0;
 	if (mod->stats == NULL) {
 		assert(mod->stats_count == 0);
-		stats = malloc(sizeof(*stats));
-		if (stats == NULL) {
+
+		mod->stats = calloc(threads, sizeof(*mod->stats));
+		if (mod->stats == NULL) {
 			return KNOT_ENOMEM;
 		}
-		mod->stats = stats;
+		for (int64_t i = 0; i < threads; i++) {
+			mod->stats[i] = malloc(sizeof(*mod->stats[i]));
+			if (mod->stats[i] == NULL) {
+				knotd_mod_stats_free(mod);
+				return KNOT_ENOMEM;
+			}
+		}
+		mod->stats_count = 1;
 	} else {
 		assert(mod->stats_count > 0);
-		size_t old_size = mod->stats_count * sizeof(*stats);
-		size_t new_size = old_size + sizeof(*stats);
-		stats = realloc(mod->stats, new_size);
-		if (stats == NULL) {
-			knotd_mod_stats_free(mod);
-			return KNOT_ENOMEM;
+		size_t old_size = mod->stats_count * sizeof(*mod->stats[0]);
+		size_t new_size = old_size + sizeof(*mod->stats[0]);
+		for (int64_t i = 0; i < threads; i++) {
+			mod_ctr_t *statsnew = realloc(mod->stats[i], new_size);
+			if (statsnew == NULL) {
+				knotd_mod_stats_free(mod);
+				return KNOT_ENOMEM;
+			}
+			mod->stats[i] = statsnew;
 		}
-		mod->stats = stats;
-		stats += mod->stats_count;
+		id = mod->stats_count++;
 	}
 
 	if (idx_count == 1) {
-		stats->counter = 0;
+		for (int64_t i = 0; i < threads; i++) {
+			mod->stats[i][id].counter = 0;
+		}
 	} else {
 		size_t size = idx_count * sizeof(((mod_ctr_t *)0)->counter);
-		stats->counters = calloc(1, size);
-		if (stats->counters == NULL) {
-			knotd_mod_stats_free(mod);
-			return KNOT_ENOMEM;
+		for (int64_t i = 0; i < threads; i++) {
+			mod->stats[i][id].counters = calloc(1, size);
+			if (mod->stats[i][id].counters == NULL) {
+				knotd_mod_stats_free(mod);
+				return KNOT_ENOMEM;
+			}
+			mod->stats[i][id].idx_to_str = idx_to_str;
 		}
-		stats->idx_to_str = idx_to_str;
 	}
-	stats->name = ctr_name;
-	stats->count = idx_count;
-
-	mod->stats_count++;
+	for (int64_t i = 0; i < threads; i++) {
+		mod->stats[i][id].name = ctr_name;
+		mod->stats[i][id].count = idx_count;
+	}
 
 	return KNOT_EOK;
 }
@@ -282,19 +298,22 @@ void knotd_mod_stats_free(knotd_mod_t *mod)
 		return;
 	}
 
-	for (int i = 0; i < mod->stats_count; i++) {
-		if (mod->stats[i].count > 1) {
-			free(mod->stats[i].counters);
+	int64_t threads = knotd_mod_threads(mod);
+	for (int64_t i = 0; i < threads; i++) {
+		for (int id = 0; id < mod->stats_count; id++) {
+			if (mod->stats[i][id].count > 1) {
+				free(mod->stats[i][id].counters);
+			}
 		}
+		free(mod->stats[i]);
 	}
-
 	free(mod->stats);
 }
 
 #define STATS_BODY(OPERATION) { \
 	if (mod == NULL) return; \
 	\
-	mod_ctr_t *ctr = mod->stats + ctr_id; \
+	mod_ctr_t *ctr = mod->stats[thr_id] + ctr_id; \
 	if (ctr->count == 1) { \
 		assert(idx == 0); \
 		OPERATION(ctr->counter, val); \
@@ -305,19 +324,19 @@ void knotd_mod_stats_free(knotd_mod_t *mod)
 }
 
 _public_
-void knotd_mod_stats_incr(knotd_mod_t *mod, uint32_t ctr_id, uint32_t idx, uint64_t val)
+void knotd_mod_stats_incr(knotd_mod_t *mod, uint32_t thr_id, uint32_t ctr_id, uint32_t idx, uint64_t val)
 {
 	STATS_BODY(ATOMIC_ADD)
 }
 
 _public_
-void knotd_mod_stats_decr(knotd_mod_t *mod, uint32_t ctr_id, uint32_t idx, uint64_t val)
+void knotd_mod_stats_decr(knotd_mod_t *mod, uint32_t thr_id, uint32_t ctr_id, uint32_t idx, uint64_t val)
 {
 	STATS_BODY(ATOMIC_SUB)
 }
 
 _public_
-void knotd_mod_stats_store(knotd_mod_t *mod, uint32_t ctr_id, uint32_t idx, uint64_t val)
+void knotd_mod_stats_store(knotd_mod_t *mod, uint32_t thr_id, uint32_t ctr_id, uint32_t idx, uint64_t val)
 {
 	STATS_BODY(ATOMIC_SET)
 }
@@ -358,6 +377,15 @@ knotd_conf_t knotd_conf_env(knotd_mod_t *mod, knotd_conf_env_t env)
 	out.count = 1;
 
 	return out;
+}
+
+_public_
+int64_t knotd_mod_threads(knotd_mod_t *mod)
+{
+	knotd_conf_t udp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_UDP);
+	knotd_conf_t xdp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_XDP);
+	knotd_conf_t tcp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_TCP);
+	return udp.single.integer + xdp.single.integer + tcp.single.integer;
 }
 
 static void set_val(yp_type_t type, knotd_conf_val_t *item, conf_val_t *val)

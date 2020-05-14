@@ -137,12 +137,12 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 
 	if (rrl_slip_roll(ctx->slip)) {
 		// Slip the answer.
-		knotd_mod_stats_incr(mod, 0, 0, 1);
+		knotd_mod_stats_incr(mod, qdata->params->thread_id, 0, 0, 1);
 		qdata->err_truncated = true;
 		return KNOTD_STATE_FAIL;
 	} else {
 		// Drop the answer.
-		knotd_mod_stats_incr(mod, 1, 0, 1);
+		knotd_mod_stats_incr(mod, qdata->params->thread_id, 1, 0, 1);
 		return KNOTD_STATE_NOOP;
 	}
 }
