@@ -55,6 +55,13 @@ BuildRequires:	lmdb-devel
 BuildRequires:	python3-sphinx
 BuildRequires:	pkgconfig(lmdb)
 %endif
+%if 0%{?rhel} >= 8 || 0%{?suse_version}
+%define configure_xdp --enable-xdp=yes
+BuildRequires:	pkgconfig(libelf)
+%endif
+%if 0%{?fedora} >= 31
+BuildRequires: pkgconfig(libbpf) >= 0.0.6
+%endif
 
 Requires(post):		systemd %{_sbindir}/runuser
 Requires(preun):	systemd
@@ -127,6 +134,7 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
   --with-rundir=/run/knot \
   --with-storage=/var/lib/knot \
   %{?configure_db_sizes} \
+  %{?configure_xdp} \
   --disable-static \
   --enable-dnstap=yes \
   --with-module-dnstap=yes
@@ -236,6 +244,9 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_bindir}/khost
 %{_bindir}/knsec3hash
 %{_bindir}/knsupdate
+%if 0%{?rhel} >= 8 || 0%{?suse_version} || 0%{?fedora} >= 31
+%{_bindir}/xdp-gun
+%endif
 %{_mandir}/man1/kdig.*
 %{_mandir}/man1/khost.*
 %{_mandir}/man1/knsec3hash.*
