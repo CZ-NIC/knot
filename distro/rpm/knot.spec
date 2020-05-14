@@ -13,7 +13,7 @@ License:	GPL-3.0-or-later
 URL:		https://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
 
-%if 0%{GPG_CHECK}
+%if 0%{?GPG_CHECK}
 Source1:	https://secure.nic.cz/files/knot-dns/%{name}-%{version}.tar.xz.asc
 # PGP keys used to sign upstream releases
 # Export with --armor using command from https://fedoraproject.org/wiki/PackagingDrafts:GPGSignatures
@@ -100,9 +100,10 @@ The package contains documentation for the Knot DNS server.
 On-line version is available on https://www.knot-dns.cz/documentation/
 
 %prep
-%if 0%{GPG_CHECK}
+%if 0%{?GPG_CHECK}
 export GNUPGHOME=./gpg-keyring
-mkdir ${GNUPGHOME}
+[ -d ${GNUPGHOME} ] && rm -r ${GNUPGHOME}
+mkdir --mode=700 ${GNUPGHOME}
 gpg2 --import %{SOURCE100}
 gpg2 --verify %{SOURCE1} %{SOURCE0}
 %endif
