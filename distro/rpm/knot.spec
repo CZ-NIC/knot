@@ -57,7 +57,7 @@ BuildRequires:	pkgconfig(lmdb)
 %endif
 %if 0%{?rhel} >= 8 || 0%{?suse_version}
 %define configure_xdp --enable-xdp=yes
-BuildRequires:	elfutils-libelf-devel
+BuildRequires:	pkgconfig(libelf)
 %endif
 %if 0%{?fedora} >= 31
 BuildRequires: pkgconfig(libbpf) >= 0.0.6
