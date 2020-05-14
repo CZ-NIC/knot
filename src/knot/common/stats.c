@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,10 +56,19 @@ const stats_item_t server_stats[] = {
 	{ 0 }
 };
 
-static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr)
+uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads)
+{
+	uint64_t res = 0;
+	for (unsigned i = 0; i < threads; i++) {
+		res += ATOMIC_GET(stats_vals[i][offset]);
+	}
+	return res;
+}
+
+static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr, uint64_t **stats_vals, unsigned threads)
 {
 	for (uint32_t j = 0; j < ctr->count; j++) {
-		uint64_t counter = ATOMIC_GET(ctr->counters[j]);
+		uint64_t counter = stats_get_counter(stats_vals, ctr->offset + j, threads);
 
 		// Skip empty counters.
 		if (counter == 0) {
@@ -106,22 +115,25 @@ static void dump_modules(dump_ctx_t *ctx)
 			level = 0;
 		}
 
+		unsigned threads = knotd_mod_threads(mod);
+
 		// Dump module counters.
 		DUMP_STR(ctx->fd, level, "%s", mod->id->name + 1, "");
 		for (int i = 0; i < mod->stats_count; i++) {
-			mod_ctr_t *ctr = mod->stats + i;
+			mod_ctr_t *ctr = mod->stats_info + i;
 			if (ctr->name == NULL) {
 				// Empty counter.
 				continue;
 			}
 			if (ctr->count == 1) {
 				// Simple counter.
-				uint64_t counter = ATOMIC_GET(ctr->counter);
+				uint64_t counter = stats_get_counter(mod->stats_vals,
+				                                     ctr->offset, threads);
 				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name, counter);
 			} else {
 				// Array of counters.
 				DUMP_STR(ctx->fd, level + 1, "%s", ctr->name, "");
-				dump_counters(ctx->fd, level + 2, ctr);
+				dump_counters(ctx->fd, level + 2, ctr, mod->stats_vals, threads);
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -162,7 +162,7 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Increment the statistics counter.
-	knotd_mod_stats_incr(mod, 0, 0, 1);
+	knotd_mod_stats_incr(mod, qdata->params->thread_id, 0, 0, 1);
 
 	knot_edns_cookie_t cc;
 	knot_edns_cookie_t sc;
