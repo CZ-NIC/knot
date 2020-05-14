@@ -353,7 +353,7 @@ static const ctr_desc_t ctr_descs[] = {
 	{ NULL }
 };
 
-static void incr_edns_option(knotd_mod_t *mod, const knot_pkt_t *pkt, unsigned ctr_name)
+static void incr_edns_option(knotd_mod_t *mod, unsigned thr_id, const knot_pkt_t *pkt, unsigned ctr_name)
 {
 	if (!knot_pkt_has_edns(pkt)) {
 		return;
@@ -372,7 +372,7 @@ static void incr_edns_option(knotd_mod_t *mod, const knot_pkt_t *pkt, unsigned c
 		if (wire.error != KNOT_EOK) {
 			break;
 		}
-		knotd_mod_stats_incr(mod, ctr_name, MIN(opt_code, EOPT_OTHER), 1);
+		knotd_mod_stats_incr(mod, thr_id, ctr_name, MIN(opt_code, EOPT_OTHER), 1);
 	}
 }
 
@@ -385,6 +385,7 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 
 	uint16_t operation;
 	unsigned xfr_packets = 0;
+	unsigned tid = qdata->params->thread_id;
 
 	// Get the server operation.
 	switch (qdata->type) {
@@ -418,16 +419,16 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	if (stats->req_bytes) {
 		switch (operation) {
 		case OPERATION_QUERY:
-			knotd_mod_stats_incr(mod, CTR_REQ_BYTES, REQ_BYTES_QUERY,
+			knotd_mod_stats_incr(mod, tid, CTR_REQ_BYTES, REQ_BYTES_QUERY,
 			                     knot_pkt_size(qdata->query));
 			break;
 		case OPERATION_UPDATE:
-			knotd_mod_stats_incr(mod, CTR_REQ_BYTES, REQ_BYTES_UPDATE,
+			knotd_mod_stats_incr(mod, tid, CTR_REQ_BYTES, REQ_BYTES_UPDATE,
 			                     knot_pkt_size(qdata->query));
 			break;
 		default:
 			if (xfr_packets <= 1) {
-				knotd_mod_stats_incr(mod, CTR_REQ_BYTES, REQ_BYTES_OTHER,
+				knotd_mod_stats_incr(mod, tid, CTR_REQ_BYTES, REQ_BYTES_OTHER,
 				                     knot_pkt_size(qdata->query));
 			}
 			break;
@@ -438,16 +439,16 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	if (stats->resp_bytes && state != KNOTD_STATE_NOOP) {
 		switch (operation) {
 		case OPERATION_QUERY:
-			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_REPLY,
+			knotd_mod_stats_incr(mod, tid, CTR_RESP_BYTES, RESP_BYTES_REPLY,
 			                     knot_pkt_size(pkt));
 			break;
 		case OPERATION_AXFR:
 		case OPERATION_IXFR:
-			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_TRANSFER,
+			knotd_mod_stats_incr(mod, tid, CTR_RESP_BYTES, RESP_BYTES_TRANSFER,
 			                     knot_pkt_size(pkt));
 			break;
 		default:
-			knotd_mod_stats_incr(mod, CTR_RESP_BYTES, RESP_BYTES_OTHER,
+			knotd_mod_stats_incr(mod, tid, CTR_RESP_BYTES, RESP_BYTES_OTHER,
 			                     knot_pkt_size(pkt));
 			break;
 		}
@@ -465,14 +466,14 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 			if (xfr_packets > 1) {
 				assert(rcode != KNOT_RCODE_NOERROR);
 				// Ignore the leading XFR message NOERROR.
-				knotd_mod_stats_decr(mod, CTR_RCODE,
+				knotd_mod_stats_decr(mod, tid, CTR_RCODE,
 				                     KNOT_RCODE_NOERROR, 1);
 			}
 
 			if (qdata->rcode_tsig == KNOT_RCODE_BADSIG) {
-				knotd_mod_stats_incr(mod, CTR_RCODE, RCODE_BADSIG, 1);
+				knotd_mod_stats_incr(mod, tid, CTR_RCODE, RCODE_BADSIG, 1);
 			} else {
-				knotd_mod_stats_incr(mod, CTR_RCODE,
+				knotd_mod_stats_incr(mod, tid, CTR_RCODE,
 				                     MIN(rcode, RCODE_OTHER), 1);
 			}
 		}
@@ -485,7 +486,7 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 
 	// Count the server opearation.
 	if (stats->operation) {
-		knotd_mod_stats_incr(mod, CTR_OPERATION, operation, 1);
+		knotd_mod_stats_incr(mod, tid, CTR_OPERATION, operation, 1);
 	}
 
 	// Count the request protocol.
@@ -494,27 +495,27 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 		if (qdata->params->remote->ss_family == AF_INET) {
 			if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) {
 				if (xdp) {
-					knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_UDP4_XDP, 1);
 				} else {
-					knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_UDP4, 1);
 				}
 			} else {
-				knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+				knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 				                     PROTOCOL_TCP4, 1);
 			}
 		} else {
 			if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) {
 				if (xdp) {
-					knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_UDP6_XDP, 1);
 				} else {
-					knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_UDP6, 1);
 				}
 			} else {
-				knotd_mod_stats_incr(mod, CTR_PROTOCOL,
+				knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 				                     PROTOCOL_TCP6, 1);
 			}
 		}
@@ -523,29 +524,29 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	// Count EDNS occurrences.
 	if (stats->edns) {
 		if (knot_pkt_has_edns(qdata->query)) {
-			knotd_mod_stats_incr(mod, CTR_EDNS, EDNS_REQ, 1);
+			knotd_mod_stats_incr(mod, tid, CTR_EDNS, EDNS_REQ, 1);
 		}
 		if (knot_pkt_has_edns(pkt) && state != KNOTD_STATE_NOOP) {
-			knotd_mod_stats_incr(mod, CTR_EDNS, EDNS_RESP, 1);
+			knotd_mod_stats_incr(mod, tid, CTR_EDNS, EDNS_RESP, 1);
 		}
 	}
 
 	// Count interesting message header flags.
 	if (stats->flag) {
 		if (state != KNOTD_STATE_NOOP && knot_wire_get_tc(pkt->wire)) {
-			knotd_mod_stats_incr(mod, CTR_FLAG, FLAG_TC, 1);
+			knotd_mod_stats_incr(mod, tid, CTR_FLAG, FLAG_TC, 1);
 		}
 		if (knot_pkt_has_dnssec(pkt)) {
-			knotd_mod_stats_incr(mod, CTR_FLAG, FLAG_DO, 1);
+			knotd_mod_stats_incr(mod, tid, CTR_FLAG, FLAG_DO, 1);
 		}
 	}
 
 	// Count EDNS options.
 	if (stats->req_eopt) {
-		incr_edns_option(mod, qdata->query, CTR_REQ_EOPT);
+		incr_edns_option(mod, tid, qdata->query, CTR_REQ_EOPT);
 	}
 	if (stats->resp_eopt) {
-		incr_edns_option(mod, pkt, CTR_RESP_EOPT);
+		incr_edns_option(mod, tid, pkt, CTR_RESP_EOPT);
 	}
 
 	// Return if not query operation.
@@ -560,13 +561,13 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	     knot_pkt_rr(knot_pkt_section(pkt, KNOT_AUTHORITY), 0)->type == KNOT_RRTYPE_SOA)) {
 		switch (knot_pkt_qtype(qdata->query)) {
 		case KNOT_RRTYPE_A:
-			knotd_mod_stats_incr(mod, CTR_NODATA, NODATA_A, 1);
+			knotd_mod_stats_incr(mod, tid, CTR_NODATA, NODATA_A, 1);
 			break;
 		case KNOT_RRTYPE_AAAA:
-			knotd_mod_stats_incr(mod, CTR_NODATA, NODATA_AAAA, 1);
+			knotd_mod_stats_incr(mod, tid, CTR_NODATA, NODATA_AAAA, 1);
 			break;
 		default:
-			knotd_mod_stats_incr(mod, CTR_NODATA, NODATA_OTHER, 1);
+			knotd_mod_stats_incr(mod, tid, CTR_NODATA, NODATA_OTHER, 1);
 			break;
 		}
 	}
@@ -583,19 +584,19 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 		default:                        idx = QTYPE_OTHER; break;
 		}
 
-		knotd_mod_stats_incr(mod, CTR_QTYPE, idx, 1);
+		knotd_mod_stats_incr(mod, tid, CTR_QTYPE, idx, 1);
 	}
 
 	// Count the query size.
 	if (stats->qsize) {
 		uint64_t idx = knot_pkt_size(qdata->query) / BUCKET_SIZE;
-		knotd_mod_stats_incr(mod, CTR_QSIZE, MIN(idx, QSIZE_MAX_IDX), 1);
+		knotd_mod_stats_incr(mod, tid, CTR_QSIZE, MIN(idx, QSIZE_MAX_IDX), 1);
 	}
 
 	// Count the reply size.
 	if (stats->rsize && state != KNOTD_STATE_NOOP) {
 		uint64_t idx = knot_pkt_size(pkt) / BUCKET_SIZE;
-		knotd_mod_stats_incr(mod, CTR_RSIZE, MIN(idx, RSIZE_MAX_IDX), 1);
+		knotd_mod_stats_incr(mod, tid, CTR_RSIZE, MIN(idx, RSIZE_MAX_IDX), 1);
 	}
 
 	return state;

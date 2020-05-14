@@ -220,31 +220,34 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
  * Increments a statistics counter.
  *
  * \param[in] mod     Module context.
+ * \param[in] thr_id  Index of worker thread.
  * \param[in] ctr_id  Counter id (counted in the order the counters were registered).
  * \param[in] idx     Subcounter index (set 0 for single-counter).
  * \param[in] val     Value increment.
  */
-void knotd_mod_stats_incr(knotd_mod_t *mod, uint32_t ctr_id, uint32_t idx, uint64_t val);
+void knotd_mod_stats_incr(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id, uint32_t idx, uint64_t val);
 
 /*!
  * Decrements a statistics counter.
  *
  * \param[in] mod     Module context.
+ * \param[in] thr_id  Index of worker thread.
  * \param[in] ctr_id  Counter id (counted in the order the counters were registered).
  * \param[in] idx     Subcounter index (set 0 for single-counter).
  * \param[in] val     Value decrement.
  */
-void knotd_mod_stats_decr(knotd_mod_t *mod, uint32_t ctr_id, uint32_t idx, uint64_t val);
+void knotd_mod_stats_decr(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id, uint32_t idx, uint64_t val);
 
 /*!
  * Sets a statistics counter value.
  *
  * \param[in] mod     Module context.
+ * \param[in] thr_id  Index of worker thread.
  * \param[in] ctr_id  Counter id (counted in the order the counters were registered).
  * \param[in] idx     Subcounter index (set 0 for single-counter).
  * \param[in] val     Value.
  */
-void knotd_mod_stats_store(knotd_mod_t *mod, uint32_t ctr_id, uint32_t idx, uint64_t val);
+void knotd_mod_stats_store(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id, uint32_t idx, uint64_t val);
 
 /*! Configuration single-value abstraction. */
 typedef union {
@@ -302,6 +305,15 @@ knotd_conf_t knotd_conf(knotd_mod_t *mod, const yp_name_t *section_name,
  * \return Configuration value.
  */
 knotd_conf_t knotd_conf_env(knotd_mod_t *mod, knotd_conf_env_t env);
+
+/*!
+ * Gets number of Knot ansering threads.
+ *
+ * \param[in] mod  Module context.
+ *
+ * \return Number of worker threads.
+ */
+unsigned knotd_mod_threads(knotd_mod_t *mod);
 
 /*!
  * Gets module configuration value.

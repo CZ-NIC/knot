@@ -71,13 +71,8 @@ typedef char* (*mod_idx_to_str_f)(uint32_t idx, uint32_t count);
 
 typedef struct {
 	const char *name;
-	union {
-		uint64_t counter;
-		struct {
-			uint64_t *counters;
-			mod_idx_to_str_f idx_to_str;
-		};
-	};
+	mod_idx_to_str_f idx_to_str; // unused if count == 1
+	uint32_t offset; // offset of counters in stats_vals[thread_id]
 	uint32_t count;
 } mod_ctr_t;
 
@@ -92,7 +87,8 @@ struct knotd_mod {
 	kdnssec_ctx_t *dnssec;
 	zone_keyset_t *keyset;
 	zone_sign_ctx_t *sign_ctx;
-	mod_ctr_t *stats;
+	mod_ctr_t *stats_info;
+	uint64_t **stats_vals;
 	uint32_t stats_count;
 	void *ctx;
 };

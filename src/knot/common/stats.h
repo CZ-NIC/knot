@@ -38,6 +38,11 @@ typedef struct {
 extern const stats_item_t server_stats[];
 
 /*!
+ * \brief Read out value of single counter summed across threads.
+ */
+uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads);
+
+/*!
  * \brief Reconfigures the statistics facility.
  */
 void stats_reconfigure(conf_t *conf, server_t *server);

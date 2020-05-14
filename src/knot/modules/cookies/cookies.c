@@ -162,7 +162,7 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Increment the statistics counter.
-	knotd_mod_stats_incr(mod, 0, 0, 1);
+	knotd_mod_stats_incr(mod, qdata->params->thread_id, 0, 0, 1);
 
 	knot_edns_cookie_t cc;
 	knot_edns_cookie_t sc;
