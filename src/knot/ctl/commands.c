@@ -1167,13 +1167,14 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *data)
+static int send_stats_ctr(mod_ctr_t *ctr, uint64_t **stats_vals, unsigned threads,
+                          ctl_args_t *args, knot_ctl_data_t *data)
 {
 	char index[128];
 	char value[32];
 
 	if (ctr->count == 1) {
-		uint64_t counter = ATOMIC_GET(ctr->counter);
+		uint64_t counter = stats_get_counter(stats_vals, ctr->offset, threads);
 		int ret = snprintf(value, sizeof(value), "%"PRIu64, counter);
 		if (ret <= 0 || ret >= sizeof(value)) {
 			return KNOT_ESPACE;
@@ -1191,7 +1192,7 @@ static int send_stats_ctr(mod_ctr_t *ctr, ctl_args_t *args, knot_ctl_data_t *dat
 		                          CTL_FLAG_FORCE);
 
 		for (uint32_t i = 0; i < ctr->count; i++) {
-			uint64_t counter = ATOMIC_GET(ctr->counters[i]);
+			uint64_t counter = stats_get_counter(stats_vals, ctr->offset + i, threads);
 
 			// Skip empty counters.
 			if (counter == 0 && !force) {
@@ -1268,8 +1269,10 @@ static int modules_stats(list_t *query_modules, ctl_args_t *args, knot_dname_t *
 
 		data[KNOT_CTL_IDX_SECTION] = mod->id->name + 1;
 
+		unsigned threads = knotd_mod_threads(mod);
+
 		for (int i = 0; i < mod->stats_count; i++) {
-			mod_ctr_t *ctr = mod->stats + i;
+			mod_ctr_t *ctr = mod->stats_info + i;
 
 			// Skip empty counter.
 			if (ctr->name == NULL) {
@@ -1298,7 +1301,7 @@ static int modules_stats(list_t *query_modules, ctl_args_t *args, knot_dname_t *
 			data[KNOT_CTL_IDX_ITEM] = ctr->name;
 
 			// Send the counters.
-			int ret = send_stats_ctr(ctr, args, &data);
+			int ret = send_stats_ctr(ctr, mod->stats_vals, threads, args, &data);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}

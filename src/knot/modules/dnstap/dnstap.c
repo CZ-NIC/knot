@@ -272,11 +272,7 @@ int dnstap_load(knotd_mod_t *mod)
 	}
 
 	/* Initialize queues. */
-	knotd_conf_t udp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_UDP);
-	knotd_conf_t xdp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_XDP);
-	knotd_conf_t tcp = knotd_conf_env(mod, KNOTD_CONF_ENV_WORKERS_TCP);
-	size_t qcount = udp.single.integer + xdp.single.integer + tcp.single.integer;
-	fstrm_iothr_options_set_num_input_queues(opt, qcount);
+	fstrm_iothr_options_set_num_input_queues(opt, knotd_mod_threads(mod));
 
 	/* Create the I/O thread. */
 	ctx->iothread = fstrm_iothr_init(opt, &writer);

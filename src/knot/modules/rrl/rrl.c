@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -137,12 +137,12 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 
 	if (rrl_slip_roll(ctx->slip)) {
 		// Slip the answer.
-		knotd_mod_stats_incr(mod, 0, 0, 1);
+		knotd_mod_stats_incr(mod, qdata->params->thread_id, 0, 0, 1);
 		qdata->err_truncated = true;
 		return KNOTD_STATE_FAIL;
 	} else {
 		// Drop the answer.
-		knotd_mod_stats_incr(mod, 1, 0, 1);
+		knotd_mod_stats_incr(mod, qdata->params->thread_id, 1, 0, 1);
 		return KNOTD_STATE_NOOP;
 	}
 }

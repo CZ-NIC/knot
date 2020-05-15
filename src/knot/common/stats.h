@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,6 +36,11 @@ typedef struct {
  * \brief Basic server metrics.
  */
 extern const stats_item_t server_stats[];
+
+/*!
+ * \brief Read out value of single counter summed across threads.
+ */
+uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads);
 
 /*!
  * \brief Reconfigures the statistics facility.
