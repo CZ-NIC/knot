@@ -1,4 +1,5 @@
 usr/bin/kdig
 usr/bin/knsupdate
+usr/bin/xdp-gun
 usr/share/man/man1/kdig.1
 usr/share/man/man1/knsupdate.1
