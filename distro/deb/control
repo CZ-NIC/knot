@@ -39,7 +39,7 @@ Architecture: any
 Depends:
  adduser,
  libdnssec7 (= ${binary:Version}),
- libknot10 (= ${binary:Version}),
+ libknot11 (= ${binary:Version}),
  libzscanner3 (= ${binary:Version}),
  lsb-base (>= 3.0-6),
  ${misc:Depends},
@@ -56,7 +56,7 @@ Description: Authoritative domain name server
  registry and hence is well suited to run anything from the root
  zone, the top-level domain, to many smaller standard domain names.
 
-Package: libknot10
+Package: libknot11
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -116,7 +116,7 @@ Multi-Arch: same
 Depends:
  libdnssec7 (= ${binary:Version}),
  libgnutls28-dev,
- libknot10 (= ${binary:Version}),
+ libknot11 (= ${binary:Version}),
  libzscanner3 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -135,7 +135,7 @@ Package: knot-dnsutils
 Architecture: any
 Depends:
  libdnssec7 (= ${binary:Version}),
- libknot10 (= ${binary:Version}),
+ libknot11 (= ${binary:Version}),
  libzscanner3 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -161,7 +161,7 @@ Package: knot-host
 Architecture: any
 Depends:
  libdnssec7 (= ${binary:Version}),
- libknot10 (= ${binary:Version}),
+ libknot11 (= ${binary:Version}),
  libzscanner3 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
