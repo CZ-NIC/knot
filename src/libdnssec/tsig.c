@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -93,16 +93,16 @@ static bool match_name(const algorithm_id_t *algorithm, const void *data)
 
 static bool match_id(const algorithm_id_t *algorithm, const void *data)
 {
-	dnssec_tsig_algorithm_t search = (dnssec_tsig_algorithm_t)data;
+	dnssec_tsig_algorithm_t search = *((dnssec_tsig_algorithm_t *)data);
 	return algorithm->id == search;
 }
 
 /*!
  * Convert TSIG algorithm identifier to GnuTLS identifier.
  */
-static gnutls_mac_algorithm_t algorithm_to_gnutls(dnssec_tsig_algorithm_t tsig)
+static gnutls_mac_algorithm_t algorithm_to_gnutls(dnssec_tsig_algorithm_t algorithm)
 {
-	const algorithm_id_t *found = lookup_algorithm(match_id, (void *)tsig);
+	const algorithm_id_t *found = lookup_algorithm(match_id, &algorithm);
 	return (found ? found->gnutls_id : GNUTLS_MAC_UNKNOWN);
 }
 
@@ -122,7 +122,7 @@ dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_dname(const uint8_t *dname)
 _public_
 const uint8_t *dnssec_tsig_algorithm_to_dname(dnssec_tsig_algorithm_t algorithm)
 {
-	const algorithm_id_t *found = lookup_algorithm(match_id, (void *)algorithm);
+	const algorithm_id_t *found = lookup_algorithm(match_id, &algorithm);
 	return (found ? (uint8_t *)found->dname : NULL);
 }
 
@@ -140,7 +140,7 @@ dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_name(const char *name)
 _public_
 const char *dnssec_tsig_algorithm_to_name(dnssec_tsig_algorithm_t algorithm)
 {
-	const algorithm_id_t *found = lookup_algorithm(match_id, (void *)algorithm);
+	const algorithm_id_t *found = lookup_algorithm(match_id, &algorithm);
 	return (found ? found->name : NULL);
 }
 
