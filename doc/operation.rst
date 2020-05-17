@@ -967,8 +967,9 @@ Pre-requisites
 --------------
 
 * Linux kernel 4.18+ (5.x+ is recommended for optimal performance).
-* A network card with native XDP support is highly recommended (successfully
-  tested cards are Intel series 500 and 700).
+* A multiqueue network card, which offers enough Combined channels, with native
+  XDP support is highly recommended (successfully tested cards are Intel series
+  500 and 700).
 * If the `knotd` service is not directly executed in the privileged mode, some
   additional Linux capabilities have to be set:
 
@@ -999,7 +1000,9 @@ Limitations
 * VLAN segmentation is not supported.
 * Dynamic DNS over XDP is not supported.
 * MTU higher than 1792 bytes is not supported.
-* Symmetrical routing is required (query source address and reply destination address are the same).
+* Multiple BPF filters per one network device are not supported.
+* Symmetrical routing is required (query source MAC/IP addresses and
+  reply destination MAC/IP addresses are the same).
 * Systems with big-endian byte ordering require special recompilation of the nameserver.
 * IPv4 header and UDP checksums are not verified on received DNS messages.
 * DNS over XDP traffic is not visible to common system tools (e.g. firewall, tcpdump etc.).
