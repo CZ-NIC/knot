@@ -63,6 +63,11 @@ override_dh_auto_install-arch:
 	dh_auto_install -- install
 	# rename knot.sample.conf to knot.conf
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
+	# Some workarounds for Debian Stretch and Ubuntu Xenial
+	if [ ! -f $(CURDIR)/debian/tmp/usr/bin/xdp-gun ]; then \
+	  cp -f $(CURDIR)/debian/noxdp/xdp-gun $(CURDIR)/debian/tmp/usr/bin/xdp-gun; \
+	  cp -f $(CURDIR)/debian/noxdp/libknot11.symbols $(CURDIR)/debian/libknot11.symbols; \
+	fi
 
 override_dh_auto_install-indep:
 	dh_auto_install -- install-html

@@ -209,10 +209,15 @@ AC_ARG_ENABLE([xdp],
 AS_CASE([$enable_xdp],
    [auto],[PKG_CHECK_MODULES([libbpf],[libbpf >= 0.0.6],[enable_xdp=yes],[enable_xdp=no])],
    [yes],[PKG_CHECK_MODULES([libelf],[libelf],[
-     enable_xdp=embedded
-     embedded_libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf/include -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"
-     embedded_libbpf_LIBS=$libelf_LIBS
-     libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"
+     AC_CHECK_FUNC([reallocarray],[
+       enable_xdp=embedded
+       embedded_libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf/include -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"
+       embedded_libbpf_LIBS=$libelf_LIBS
+       libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"
+     ],[
+       enable_xdp=no
+       AC_MSG_WARN([reallocarray not available])
+     ])
    ],[AC_MSG_ERROR([libelf is required])])],
    [no],[],
    [*],[AC_MSG_ERROR([Invalid value of --enable-xdp.]
