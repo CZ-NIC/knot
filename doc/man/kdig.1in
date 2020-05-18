@@ -272,11 +272,11 @@ considered invalid.
 \fB+\fP[\fBno\fP]\fBhttps\fP[=\fIURL\fP]
 Use HTTPS (DNS\-over\-HTTPS) in wire format (\fI\%RFC 1035#section\-4.2.1\fP).
 It is also possible to specify URL=[authority][/path] where request
-will be send. Library \fIlibnghttp2\fP is required.
+will be send. Authority might also be specified as server name (parameter \fI@\fP).
+Library \fIlibnghttp2\fP is required.
 .TP
-\fB+\fP[\fBno\fP]\fBhttps\-method\fP[=\fIMETHOD\fP]
-Use HTTPS with specified HTTP METHOD=(\fIget\fP|\fIpost\fP). The default method
-is GET for queries of less than 1024 bytes and POST for longer queries.
+\fB+\fP[\fBno\fP]\fBhttps\-get\fP
+Use HTTPS with HTTP/GET method instead of the default HTTP/POST method.
 Library \fIlibnghttp2\fP is required.
 .TP
 \fB+\fP[\fBno\fP]\fBnsid\fP
