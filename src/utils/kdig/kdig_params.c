@@ -852,34 +852,25 @@ static int opt_nohttps(const char *arg, void *query)
 #endif //LIBNGHTTP2
 }
 
-static int opt_https_method(const char *arg, void *query)
+static int opt_https_get(const char *arg, void *query)
 {
 #ifdef LIBNGHTTP2
 	query_t *q = query;
 
-	if (arg) {
-		if (strncmp("get", arg, 3) == 0) {
-			q->https.method = GET;
-			return opt_https(NULL, q);
-		} else if (strncmp("post", arg, 4) == 0) {
-			q->https.method = POST;
-			return opt_https(NULL, q);
-		} else {
-			return KNOT_ENOTSUP;
-		}
-	}
+	q->https.method = GET;
+	
 	return opt_https(arg, q);
 #else
 	return KNOT_ENOTSUP;
 #endif //LIBNGHTTP2
 }
 
-static int opt_nohttps_method(const char *arg, void *query)
+static int opt_nohttps_get(const char *arg, void *query)
 {
 #ifdef LIBNGHTTP2
 	query_t *q = query;
 
-	q->https.method = DEFAULT;
+	q->https.method = POST;
 
 	return opt_nohttps(arg, query);
 #else
@@ -1391,8 +1382,8 @@ static const param_t kdig_opts2[] = {
 	{ "https",          ARG_OPTIONAL, opt_https },
 	{ "nohttps",        ARG_NONE,     opt_nohttps },
 
-	{ "https-method",   ARG_OPTIONAL, opt_https_method },
-	{ "nohttps-method", ARG_NONE,     opt_nohttps_method },
+	{ "https-get",      ARG_NONE,     opt_https_get },
+	{ "nohttps-get",    ARG_NONE,     opt_nohttps_get },
 
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
