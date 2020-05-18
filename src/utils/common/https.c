@@ -18,6 +18,8 @@
 
 #ifdef LIBNGHTTP2
 
+#define HTTP_STATUS_SUCCESS 200
+
 static const char default_path[] = "/dns-query";
 static const char default_query[] = "?dns=";
 
@@ -28,6 +30,17 @@ static const gnutls_datum_t https_protocols[] = {
 static const nghttp2_settings_entry settings[] = {
 	{ NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, HTTPS_MAX_STREAMS }
 };
+
+static bool https_status_is_redirect(unsigned long status) {
+	switch (status) {
+		case 301UL:
+		case 302UL:
+		case 307UL:
+		case 308UL:
+			return true;
+	}
+	return false;
+}
 
 static ssize_t https_send_callback(nghttp2_session *session, const uint8_t *data,
                                    size_t length, int flags, void *user_data)
@@ -116,10 +129,17 @@ static int https_on_header_callback(nghttp2_session *session, const nghttp2_fram
 									uint8_t flags, void *user_data)
 {
 	assert(user_data);
+	https_ctx_t *ctx = (https_ctx_t *)user_data;
 
-	if (!strncasecmp("location", (const char *)name, namelen)) {
-		https_ctx_t *ctx = (https_ctx_t *)user_data;
-		
+	if (!strncasecmp(":status", (const char *)name, namelen)) {
+		char *end;
+		long status;
+		status = strtoul((const char *)value, &end, 10);
+		if (value != (const uint8_t *)end) {
+			ctx->status = status;
+		}
+	}
+	else if (!strncasecmp("location", (const char *)name, namelen) && https_status_is_redirect(ctx->status)) {
 		struct http_parser_url redirect_url;
 		http_parser_parse_url((const char *)value, valuelen, 0, &redirect_url);
 
@@ -429,9 +449,6 @@ int https_send_dns_query(https_ctx_t *ctx, const uint8_t *buf, const size_t buf_
 	ctx->send_buf = buf;
 	ctx->send_buflen = buf_len;
 
-	if (ctx->params.method == DEFAULT) {
-		ctx->params.method = buf_len >= HTTPS_POST_THRESHOLD ? POST : GET;
-	}
 	assert(ctx->params.method == POST || ctx->params.method == GET);
 
 	if (ctx->params.method == POST) {
@@ -461,6 +478,11 @@ int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len
 
 	pthread_mutex_unlock(&ctx->recv_mx);
 
+	if (ctx->status != HTTP_STATUS_SUCCESS) {
+		print_https(ctx);
+		return KNOT_NET_ERECV;
+	}
+
 	return ctx->recv_buflen;
 }
 
@@ -484,7 +506,7 @@ void print_https(const https_ctx_t *ctx)
 	if (!ctx || !ctx->authority || !ctx->path) {
 		return;
 	}
-	printf(";; HTTPS session (HTTP/2)-(%s%s)-(%s)\n", ctx->authority, ctx->path, ctx->params.method == POST ? "POST" : "GET");
+	printf(";; HTTPS session (HTTP/2-%s)-(%s%s)-(status: %ld)\n", ctx->params.method == POST ? "POST" : "GET", ctx->authority, ctx->path, ctx->status);
 }
 
 #endif //LIBNGHTTP2
