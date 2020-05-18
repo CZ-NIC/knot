@@ -20,9 +20,8 @@
 
 /*! \brief HTTP method to transfer query. */
 typedef enum {
-	DEFAULT, //Pick one using default algorithm
-	GET,
-	POST
+	POST,
+	GET
 } https_method_t;
 
 /*! \brief HTTPS parameters. */
@@ -64,8 +63,6 @@ typedef struct {
 #define HTTPS_MAX_STREAMS 16
 #define HTTPS_AUTHORITY_LEN (INET6_ADDRSTRLEN + 2)
 
-#define HTTPS_POST_THRESHOLD 1024UL
-
 /*! \brief Structure that stores data source for DATA frames. */
 typedef struct {
 	const uint8_t *buf;
@@ -90,6 +87,7 @@ typedef struct {
 	//Recv destination
 	uint8_t *recv_buf;
 	size_t recv_buflen;
+	unsigned long status;
 
 	//Recv locks
 	pthread_mutex_t recv_mx;
