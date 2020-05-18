@@ -253,9 +253,8 @@ Options
   It is also possible to specify URL=\[authority\]\[/path\] where request
   will be send. Library *libnghttp2* is required.
 
-**+**\ [\ **no**\ ]\ **https-method**\[\ =\ *METHOD*\]
-  Use HTTPS with specified HTTP METHOD=(*get*\|\ *post*). The default method
-  is GET for queries of less than 1024 bytes and POST for longer queries.
+**+**\ [\ **no**\ ]\ **https-get**
+  Use HTTPS with HTTP/GET method instead of the default HTTP/POST method.
   Library *libnghttp2* is required.
 
 **+**\ [\ **no**\ ]\ **nsid**
