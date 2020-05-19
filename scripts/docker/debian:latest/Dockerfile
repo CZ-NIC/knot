@@ -16,6 +16,7 @@ RUN apt-get -y install \
 	git \
 	latexmk \
 	libedit-dev \
+	libelf-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
 	libidn2-0-dev \
