@@ -66,7 +66,11 @@ override_dh_auto_install-arch:
 	# Some workarounds for Debian Stretch and Ubuntu Xenial
 	if [ ! -f $(CURDIR)/debian/tmp/usr/bin/xdp-gun ]; then \
 	  printf '#!/bin/sh\n\necho "xdp-gun not available"\n' > $(CURDIR)/debian/tmp/usr/bin/xdp-gun; \
-	  sed -i -E '/knot_xdp_|knot_eth_/d' $(CURDIR)/debian/libknot*.symbols; \
+	  if [ -f debian/libknot*.symbols ]; then \
+	    sed -i -E '/knot_xdp_|knot_eth_/d' debian/libknot*.symbols; \
+	  else \
+	    sed -i -E '/knot_xdp_|knot_eth_/d' $(CURDIR)/debian/libknot*.symbols; \
+	  fi \
 	fi
 
 override_dh_auto_install-indep:
