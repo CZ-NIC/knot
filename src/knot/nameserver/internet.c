@@ -146,9 +146,11 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, knotd_qdata_t *qdata)
 	case KNOT_RRTYPE_ANY: /* Append one or all RRSets. */
 		if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_ANY) {
 			rrset = node_rrset_at(qdata->extra->node, 0);
-			knot_rrset_t rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
-			ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
-			                           compr_hint, put_rr_flags);
+			if (!knot_rrset_empty(&rrset)) {
+				knot_rrset_t rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
+				ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
+				                           compr_hint, put_rr_flags);
+			}
 		} else {
 			for (int i = 0; i < qdata->extra->node->rrset_count && ret == KNOT_EOK; ++i) {
 				rrset = node_rrset_at(qdata->extra->node, i);
