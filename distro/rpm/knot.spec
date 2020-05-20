@@ -13,7 +13,7 @@ License:	GPL-3.0-or-later
 URL:		https://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
 
-%if 0%{GPG_CHECK}
+%if 0%{?GPG_CHECK}
 Source1:	https://secure.nic.cz/files/knot-dns/%{name}-%{version}.tar.xz.asc
 # PGP keys used to sign upstream releases
 # Export with --armor using command from https://fedoraproject.org/wiki/PackagingDrafts:GPGSignatures
@@ -54,6 +54,13 @@ BuildRequires:	lmdb-devel
 %if 0%{?fedora} || 0%{?rhel} > 7
 BuildRequires:	python3-sphinx
 BuildRequires:	pkgconfig(lmdb)
+%endif
+%if 0%{?rhel} >= 8 || 0%{?suse_version}
+%define configure_xdp --enable-xdp=yes
+BuildRequires:	pkgconfig(libelf)
+%endif
+%if 0%{?fedora} >= 31
+BuildRequires: pkgconfig(libbpf) >= 0.0.6
 %endif
 
 Requires(post):		systemd %{_sbindir}/runuser
@@ -100,9 +107,10 @@ The package contains documentation for the Knot DNS server.
 On-line version is available on https://www.knot-dns.cz/documentation/
 
 %prep
-%if 0%{GPG_CHECK}
+%if 0%{?GPG_CHECK}
 export GNUPGHOME=./gpg-keyring
-mkdir ${GNUPGHOME}
+[ -d ${GNUPGHOME} ] && rm -r ${GNUPGHOME}
+mkdir --mode=700 ${GNUPGHOME}
 gpg2 --import %{SOURCE100}
 gpg2 --verify %{SOURCE1} %{SOURCE0}
 %endif
@@ -126,6 +134,7 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
   --with-rundir=/run/knot \
   --with-storage=/var/lib/knot \
   %{?configure_db_sizes} \
+  %{?configure_xdp} \
   --disable-static \
   --enable-dnstap=yes \
   --with-module-dnstap=yes
@@ -235,6 +244,9 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_bindir}/khost
 %{_bindir}/knsec3hash
 %{_bindir}/knsupdate
+%if 0%{?rhel} >= 8 || 0%{?suse_version} || 0%{?fedora} >= 31
+%{_bindir}/xdp-gun
+%endif
 %{_mandir}/man1/kdig.*
 %{_mandir}/man1/khost.*
 %{_mandir}/man1/knsec3hash.*
