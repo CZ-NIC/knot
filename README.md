@@ -1,0 +1,118 @@
+# Requirements
+
+`./doc/requirements.rst`
+
+# Installation
+
+`./doc/installation.rst`
+
+## 1. Install prerequisites
+
+### Debian based distributions
+
+#### Update the system:
+```bash
+sudo apt-get update
+sudo apt-get upgrade
+```
+
+#### Install prerequisites:
+```bash
+sudo apt-get install \
+  libtool autoconf automake make pkg-config liburcu-dev libgnutls28-dev libedit-dev liblmdb-dev
+```
+
+#### Install optional packages:
+```bash
+sudo apt-get install \
+  libcap-ng-dev libsystemd-dev libidn2-0-dev protobuf-c-compiler libfstrm-dev libmaxminddb-dev
+```
+
+### Fedora like distributions
+
+#### Update the system:
+```bash
+dnf upgrade
+```
+
+#### Install basic development tools:
+```bash
+dnf install @buildsys-build
+```
+
+#### Install prerequisites:
+```bash
+dnf install \
+  libtool autoconf automake pkgconfig userspace-rcu-devel gnutls-devel libedit-devel lmdb-devel
+```
+
+#### Install optional packages:
+```bash
+dnf install \
+  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel
+```
+
+When compiling on RHEL based system, the Fedora EPEL repository has to be
+enabled. Also for RHEL 6, forward compatibility package gnutls30-devel
+with newer GnuTLS is required instead of gnutls-devel.
+
+## 2. Install Knot DNS
+
+Get the source code:
+```bash
+git clone https://gitlab.labs.nic.cz/knot/knot-dns.git
+```
+Or extract source package to knot-dns directory.
+
+Compile the source code:
+```bash
+cd knot-dns
+autoreconf -if
+./configure
+make
+```
+
+Install Knot DNS into system:
+```bash
+sudo make install
+sudo ldconfig
+```
+
+# Running
+
+### 1. Ensure some configuration
+
+`./doc/configuration.rst`
+
+Please see samples/knot.sample.conf, project documentation,
+or `man 5 knot.conf` for more details. Basically the configuration should specify:
+- network interfaces
+- served zones
+
+E.g. use the default configuration file:
+```bash
+cd /etc/knot
+mv knot.sample.conf knot.conf
+```
+Modify the configuration file:
+```bash
+editor knot.conf
+```
+
+### 2. Prepare working directory
+
+```bash
+mv example.com.zone /var/lib/knot/
+```
+
+### 3. Start the server
+
+`./doc/operation.rst`
+
+This can be done by running the `knotd` command. Alternatively, your distribution
+should have an init script available, if you installed Knot DNS from a binary package.
+
+Start the server in foreground to see if it runs:
+```bash
+knotd -c /etc/knot/knot.conf
+```
