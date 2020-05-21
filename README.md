@@ -80,7 +80,8 @@ sudo ldconfig
 
 `./doc/operation.rst`
 
-1) Each server needs configuration file. Please see samples/knot.sample.conf,
+### 1. Each server needs configuration file.
+Please see samples/knot.sample.conf,
 project documentation, or man 5 knot.conf for more details.
 Configuration file has to specify:
 - storage for PID files, journal and timer databases etc.
@@ -97,12 +98,13 @@ Modify the config:
 editor knot.conf
 ```
 
-2) Prepare working directory
+### 2. Prepare working directory
 ```bash
 mv example.com.zone /var/lib/knot/
 ```
 
-3) Start the server. This can be done by running the 'knotd' command.
+### 3. Start the server.
+This can be done by running the 'knotd' command.
 Alternatively, your distribution should have an init script available, if you've
 installed Knot using a binary package.
 
