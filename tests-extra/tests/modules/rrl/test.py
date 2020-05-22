@@ -132,6 +132,7 @@ knot.zones_wait(zones)
 # Disabled
 res = send_queries(knot, zones[0].name)
 check_result("disabled", res)
+detail_log(SEP)
 
 # All drop
 reconfigure(knot, None, 5, 0)
@@ -166,8 +167,8 @@ detail_log(SEP)
 # Whitelist
 reconfigure(knot, None, 5, 0, whitelist=knot.addr)
 res = send_queries(knot, zones[0].name)
-cmp_stats(knot, res)
 check_result("global, zone 1, whitelist", res, 0)
+cmp_stats(knot, res)
 time.sleep(2)
 res = send_queries(knot, zones[1].name)
 check_result("global, zone 2, whitelist", res, 0)
