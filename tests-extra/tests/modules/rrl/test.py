@@ -23,10 +23,15 @@ knot = t.server("knot")
 zones = t.zone_rnd(2, dnssec=False, records=1)
 t.link(zones, knot)
 
-def send_queries(server, name, run_time=1.0, query_time=0.05):
+def send_queries(server, name, run_time=None, query_time=None):
     """
     Send UDP queries to the server for certain time and get replies statistics.
     """
+    if run_time is None:
+        run_time = 1.0 if not server.valgrind else 3.0
+    if query_time is None:
+        query_time = 0.05 if not server.valgrind else 0.25
+
     replied, slipped, dropped = 0, 0, 0
     start = time.time()
     while time.time() < start + run_time:
@@ -156,11 +161,11 @@ detail_log(SEP)
 
 # 50% slip
 reconfigure(knot, None, 5, 2)
-res = send_queries(knot, zones[0].name)
+res = send_queries(knot, zones[0].name, run_time=5.0)
 check_result("global, zone 1, 50% slip", res, 5, 2)
 cmp_stats(knot, res)
 time.sleep(2)
-res = send_queries(knot, zones[1].name)
+res = send_queries(knot, zones[1].name, run_time=5.0)
 check_result("global, zone 2, 50% slip", res, 5, 2)
 detail_log(SEP)
 
@@ -198,11 +203,11 @@ detail_log(SEP)
 
 # 50% slip
 reconfigure(knot, zones[0], 5, 2)
-res = send_queries(knot, zones[0].name)
+res = send_queries(knot, zones[0].name, run_time=5.0)
 check_result("zone 1, 50% slip", res, 5, 2)
 cmp_stats(knot, res, zones[0].name)
 time.sleep(2)
-res = send_queries(knot, zones[1].name)
+res = send_queries(knot, zones[1].name, run_time=5.0)
 check_result("zone 2, disabled", res)
 detail_log(SEP)
 
