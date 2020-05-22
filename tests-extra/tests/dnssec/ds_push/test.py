@@ -60,10 +60,8 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
 
     detail_log(SEP)
 
-    # Valgrind delay breaks the timing!
-    if not server.valgrind:
-        server.zone_backup(zone, flush=True)
-        server.zone_verify(zone)
+    server.zone_backup(zone, flush=True)
+    server.zone_verify(zone)
 
 def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
     rtime = 0
