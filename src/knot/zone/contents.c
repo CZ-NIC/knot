@@ -207,6 +207,7 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binod
 		goto cleanup;
 	}
 	contents->apex->flags |= NODE_FLAGS_APEX;
+	contents->max_ttl = UINT32_MAX;
 
 	return contents;
 
@@ -498,6 +499,7 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 	}
 	contents->adds_tree = from->adds_tree;
 	contents->size = from->size;
+	contents->max_ttl = from->max_ttl;
 
 	*to = contents;
 	return KNOT_EOK;
