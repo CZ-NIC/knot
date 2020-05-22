@@ -551,7 +551,13 @@ AS_IF([test "$enable_utilities" = "yes"], [
   ])
 ]) # Knot DNS utilities dependencies
 
+AC_ARG_ENABLE([cap-ng],
+    AS_HELP_STRING([--enable-cap-ng=auto|no], [enable POSIX capabilities [default=auto]]),
+    [enable_cap_ng="$enableval"], [enable_cap_ng=auto])
+
 AS_IF([test "$enable_daemon" = "yes"], [
+
+AS_IF([test "$enable_cap_ng" != "no"],[
   PKG_CHECK_MODULES([cap_ng], [cap-ng], [enable_cap_ng=yes], [
     enable_cap_ng=no
     AC_CHECK_HEADER([cap-ng.h], [
@@ -567,7 +573,7 @@ AS_IF([test "$enable_daemon" = "yes"], [
 ], [
   enable_cap_ng=no
   cap_ng_LIBS=
-])
+])])
 
 AS_IF([test "$enable_cap_ng" = yes],
   [AC_DEFINE([ENABLE_CAP_NG], [1], [POSIX capabilities available])]
