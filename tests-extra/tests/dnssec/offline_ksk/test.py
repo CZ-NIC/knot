@@ -45,10 +45,8 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, soa_rrsigs, msg):
 
     detail_log(SEP)
 
-    # Valgrind delay breaks the timing!
-    if not server.valgrind:
-        server.zone_backup(zone, flush=True)
-        server.zone_verify(zone)
+    server.zone_backup(zone, flush=True)
+    server.zone_verify(zone)
 
 def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
     endtime = time.monotonic() + timeout - 0.5
@@ -59,11 +57,8 @@ def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
             break
 
         # Verify the zone instead of a dumb sleep
-        if not server.valgrind:
-            server.zone_backup(zone, flush=True)
-            server.zone_verify(zone)
-        else:
-            t.sleep(1)
+        server.zone_backup(zone, flush=True)
+        server.zone_verify(zone)
 
         if time.monotonic() > endtime:
             break
@@ -77,11 +72,8 @@ def wait_for_dnskey_count(t, server, dnskey_count, timeout):
             break
 
         # Verify the zone instead of a dumb sleep
-        if not server.valgrind:
-            server.zone_backup(zone, flush=True)
-            server.zone_verify(zone)
-        else:
-            t.sleep(1)
+        server.zone_backup(zone, flush=True)
+        server.zone_verify(zone)
 
         if time.monotonic() > endtime:
             break
