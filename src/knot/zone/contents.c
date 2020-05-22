@@ -498,6 +498,7 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 	}
 	contents->adds_tree = from->adds_tree;
 	contents->size = from->size;
+	contents->max_ttl = from->max_ttl;
 
 	*to = contents;
 	return KNOT_EOK;
