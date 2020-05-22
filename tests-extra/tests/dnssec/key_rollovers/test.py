@@ -69,10 +69,8 @@ def check_zone(server, zone, slave, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs
     slave.zone_wait(zone, serial, equal=True, greater=False)
     t.xfr_diff(server, slave, zone)
 
-    # Valgrind delay breaks the timing!
-    if not server.valgrind:
-        server.zone_backup(zone, flush=True)
-        server.zone_verify(zone, ldns_check=False) # ldns-verify-zone complains about RRSIG without corresponding DNSKEY
+    server.zone_backup(zone, flush=True)
+    server.zone_verify(zone, ldns_check=False) # ldns-verify-zone complains about RRSIG without corresponding DNSKEY
 
 def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
     rtime = 0
