@@ -7,7 +7,6 @@ m4_include([m4/knot-version.m4])
 
 AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([foreign std-options subdir-objects no-dist-gzip dist-xz -Wall -Werror])
-AM_PATH_PYTHON([3.4],[],[AC_MSG_NOTICE([building of libknot Python module is not possible])])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot])
 AC_CONFIG_HEADERS([src/config.h])
