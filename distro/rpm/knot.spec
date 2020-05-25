@@ -147,7 +147,7 @@ make install DESTDIR=%{buildroot}
 # install documentation
 install -d -m 0755 %{buildroot}%{_pkgdocdir}/samples
 install -p -m 0644 -t %{buildroot}%{_pkgdocdir}/samples samples/*.zone*
-install -p -m 0644 NEWS README %{buildroot}%{_pkgdocdir}
+install -p -m 0644 NEWS README.md %{buildroot}%{_pkgdocdir}
 cp -av doc/_build/html %{buildroot}%{_pkgdocdir}
 [ -r %{buildroot}%{_pkgdocdir}/html/index.html ] || exit 1
 rm -f %{buildroot}%{_pkgdocdir}/html/.buildinfo
@@ -215,7 +215,7 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %files
 %license COPYING
 %{_pkgdocdir}/NEWS
-%{_pkgdocdir}/README
+%{_pkgdocdir}/README.md
 %{_pkgdocdir}/samples
 %dir %attr(750,root,knot) %{_sysconfdir}/%{name}
 %config(noreplace) %attr(640,root,knot) %{_sysconfdir}/%{name}/%{name}.conf
@@ -255,7 +255,7 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %files libs
 %license COPYING
 %doc NEWS
-%doc README
+%doc README.md
 %{_libdir}/libdnssec.so.*
 %{_libdir}/libknot.so.*
 %{_libdir}/libzscanner.so.*
