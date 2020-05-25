@@ -1,3 +1,17 @@
+Knot DNS 2.9.5 (2020-05-25)
+===========================
+
+Bugfixes:
+---------
+ - Old ZSK can be withdrawn too early during a ZSK rollover if maximum zone TTL
+   is computed automatically
+ - Server responds SERVFAIL to ANY queries on empty non-terminal nodes
+
+Improvements:
+-------------
+ - Also module onlinesign returns minimized responses to ANY queries
+ - Linking against libcap-ng can be disabled via a configure option
+
 Knot DNS 2.9.4 (2020-05-05)
 ===========================
 
