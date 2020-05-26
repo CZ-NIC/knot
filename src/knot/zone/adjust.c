@@ -390,41 +390,42 @@ static int zone_adjust_tree_parallel(zone_tree_t *tree, adjust_ctx_t *ctx,
 		return KNOT_EOK;
 	}
 
-	zone_adjust_arg_t arg[threads];
+	zone_adjust_arg_t args[threads];
+	memset(args, 0, sizeof(args));
 	int ret = KNOT_EOK;
 
 	for (unsigned i = 0; i < threads; i++) {
-		arg[i].ctx = *ctx;
-		arg[i].adjust_cb = adjust_cb;
-		arg[i].adjust_prevs = false;
-		arg[i].first_node = NULL;
-		arg[i].m = NULL;
-		arg[i].tree = tree;
-		arg[i].threads = threads;
-		arg[i].i = 0;
-		arg[i].thr_id = i;
-		arg[i].ret = pthread_create(&arg[i].thread, NULL, adjust_tree_thread, &arg[i]);
-		arg[i].ctx.changed_nodes = NULL;
-		if (arg[i].ret == KNOT_EOK && ctx->changed_nodes != NULL) {
-			arg[i].ctx.changed_nodes = zone_tree_create(true);
-			if (arg[i].ctx.changed_nodes == NULL) {
-				arg[i].ret = KNOT_ENOMEM;
+		args[i].first_node = NULL;
+		args[i].ctx = *ctx;
+		args[i].adjust_cb = adjust_cb;
+		args[i].adjust_prevs = false;
+		args[i].m = NULL;
+		args[i].tree = tree;
+		args[i].threads = threads;
+		args[i].i = 0;
+		args[i].thr_id = i;
+		args[i].ret = pthread_create(&args[i].thread, NULL, adjust_tree_thread, &args[i]);
+		args[i].ctx.changed_nodes = NULL;
+		if (args[i].ret == KNOT_EOK && ctx->changed_nodes != NULL) {
+			args[i].ctx.changed_nodes = zone_tree_create(true);
+			if (args[i].ctx.changed_nodes == NULL) {
+				args[i].ret = KNOT_ENOMEM;
 			} else {
-				arg[i].ctx.changed_nodes->flags = tree->flags;
+				args[i].ctx.changed_nodes->flags = tree->flags;
 			}
 		}
 	}
 
 	for (unsigned i = 0; i < threads; i++) {
-		if (arg[i].ret != -KNOT_EAGAIN) {
-			pthread_join(arg[i].thread, NULL);
+		if (args[i].ret != -KNOT_EAGAIN) {
+			pthread_join(args[i].thread, NULL);
 		}
 		if (ret == KNOT_EOK && ctx->changed_nodes != NULL) {
-			ret = zone_tree_merge(ctx->changed_nodes, arg[i].ctx.changed_nodes);
+			ret = zone_tree_merge(ctx->changed_nodes, args[i].ctx.changed_nodes);
 		}
-		zone_tree_free(&arg[i].ctx.changed_nodes);
+		zone_tree_free(&args[i].ctx.changed_nodes);
 		if (ret == KNOT_EOK) {
-			ret = arg[i].ret;
+			ret = args[i].ret;
 		}
 	}
 
