@@ -404,29 +404,38 @@ static int zone_adjust_tree_parallel(zone_tree_t *tree, adjust_ctx_t *ctx,
 		args[i].threads = threads;
 		args[i].i = 0;
 		args[i].thr_id = i;
-		args[i].ret = pthread_create(&args[i].thread, NULL, adjust_tree_thread, &args[i]);
-		args[i].ctx.changed_nodes = NULL;
-		if (args[i].ret == KNOT_EOK && ctx->changed_nodes != NULL) {
+		args[i].ret = -1;
+		if (ctx->changed_nodes != NULL) {
 			args[i].ctx.changed_nodes = zone_tree_create(true);
 			if (args[i].ctx.changed_nodes == NULL) {
-				args[i].ret = KNOT_ENOMEM;
-			} else {
-				args[i].ctx.changed_nodes->flags = tree->flags;
+				ret = KNOT_ENOMEM;
+				break;
 			}
+			args[i].ctx.changed_nodes->flags = tree->flags;
 		}
+	}
+	if (ret != KNOT_EOK) {
+		for (unsigned i = 0; i < threads; i++) {
+			free(args[i].ctx.changed_nodes);
+		}
+		return ret;
 	}
 
 	for (unsigned i = 0; i < threads; i++) {
-		if (args[i].ret != -KNOT_EAGAIN) {
-			pthread_join(args[i].thread, NULL);
+		args[i].ret = pthread_create(&args[i].thread, NULL, adjust_tree_thread, &args[i]);
+	}
+
+	for (unsigned i = 0; i < threads; i++) {
+		if (args[i].ret == 0) {
+			args[i].ret = pthread_join(args[i].thread, NULL);
+		}
+		if (args[i].ret != 0) {
+			ret = knot_map_errno_code(args[i].ret);
 		}
 		if (ret == KNOT_EOK && ctx->changed_nodes != NULL) {
 			ret = zone_tree_merge(ctx->changed_nodes, args[i].ctx.changed_nodes);
 		}
 		zone_tree_free(&args[i].ctx.changed_nodes);
-		if (ret == KNOT_EOK) {
-			ret = args[i].ret;
-		}
 	}
 
 	return ret;
