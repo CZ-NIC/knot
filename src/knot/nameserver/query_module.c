@@ -311,10 +311,11 @@ void knotd_mod_stats_free(knotd_mod_t *mod)
 		return;
 	}
 
-	unsigned threads = knotd_mod_threads(mod);
-
-	for (unsigned i = 0; i < threads; i++) {
-		free(mod->stats_vals[i]);
+	if (mod->stats_vals != NULL) {
+		unsigned threads = knotd_mod_threads(mod);
+		for (unsigned i = 0; i < threads; i++) {
+			free(mod->stats_vals[i]);
+		}
 	}
 
 	free(mod->stats_vals);
