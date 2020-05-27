@@ -448,6 +448,16 @@ void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it)
 	memset(it, 0, sizeof(*it));
 }
 
+static int merge_cb(zone_node_t *node, void *ctx)
+{
+	return zone_tree_insert(ctx, &node);
+}
+
+int zone_tree_merge(zone_tree_t *into, zone_tree_t *what)
+{
+	return zone_tree_apply(what, merge_cb, into);
+}
+
 static int binode_unify_cb(zone_node_t *node, void *ctx)
 {
 	binode_unify(node, *(bool *)ctx, NULL);

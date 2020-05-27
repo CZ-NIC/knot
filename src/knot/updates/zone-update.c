@@ -790,10 +790,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return ret;
 	}
 
+	conf_val_t thr = conf_zone_get(conf, C_ADJUST_THR, update->zone->name);
 	if ((update->flags & (UPDATE_HYBRID | UPDATE_FULL))) {
-		ret = zone_adjust_full(update->new_cont);
+		ret = zone_adjust_full(update->new_cont, conf_int(&thr));
 	} else {
-		ret = zone_adjust_incremental_update(update);
+		ret = zone_adjust_incremental_update(update, conf_int(&thr));
 	}
 	if (ret != KNOT_EOK) {
 		discard_adds_tree(update);
