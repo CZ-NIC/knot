@@ -343,9 +343,10 @@ static int ip_route_get(const char *ip, const char *what, char **res)
 	char cmd[50 + strlen(ip) + strlen(what)];
 	(void)snprintf(cmd, sizeof(cmd), "ip route get %s | grep -o ' %s [^ ]* '", ip, what);
 
+	errno = 0;
 	FILE *p = popen(cmd, "r");
 	if (p == NULL) {
-		return knot_map_errno();
+		return (errno != 0) ? knot_map_errno() : KNOT_ENOMEM;
 	}
 
 	char check[16] = { 0 }, got[256] = { 0 };
