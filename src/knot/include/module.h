@@ -225,7 +225,7 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
  * \param[in] idx     Subcounter index (set 0 for single-counter).
  * \param[in] val     Value increment.
  */
-void knotd_mod_stats_incr(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id,
+void knotd_mod_stats_incr(knotd_mod_t *mod, unsigned thr_id, uint32_t ctr_id,
                           uint32_t idx, uint64_t val);
 
 /*!
@@ -237,7 +237,7 @@ void knotd_mod_stats_incr(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id,
  * \param[in] idx     Subcounter index (set 0 for single-counter).
  * \param[in] val     Value decrement.
  */
-void knotd_mod_stats_decr(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id,
+void knotd_mod_stats_decr(knotd_mod_t *mod, unsigned thr_id, uint32_t ctr_id,
                           uint32_t idx, uint64_t val);
 
 /*!
@@ -249,7 +249,7 @@ void knotd_mod_stats_decr(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id,
  * \param[in] idx     Subcounter index (set 0 for single-counter).
  * \param[in] val     Value.
  */
-void knotd_mod_stats_store(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id,
+void knotd_mod_stats_store(knotd_mod_t *mod, unsigned thr_id, uint32_t ctr_id,
                            uint32_t idx, uint64_t val);
 
 /*! Configuration single-value abstraction. */
