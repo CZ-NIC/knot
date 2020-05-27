@@ -192,7 +192,7 @@ def g_rdata(rt, data, chance=30):
     return data
 
 def g_rtype(rt):
-    if rnd_fl(0, 100) < 70: # 30%
+    if rnd_fl(0, 100) < 70: # 70%
         return rt[0]
     return "TYPE%d" % rt[3]
 
@@ -378,7 +378,7 @@ def gen_soa(origin, serial, auth = None):
     soa =  ''
     soa += '$TTL %d\n' % TTL
     s = '@ IN SOA %s %s' % (g_fqdn('ns'), g_fqdn('username'))
-    s += ' %s %d %d %s %s\n' % (serial, refresh, refresh * 3, '4w', '1h' )
+    s += ' %s %d %d %s %s\n' % (serial, refresh, refresh / 3, '4w', '1h' )
     if auth != None:
         if auth != '.':
             auth += '.'
