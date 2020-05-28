@@ -105,7 +105,8 @@ def wait_after_submission(t, server):
 def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, set_alg, set_stss, submission_cb):
     check_zone(server, zone, slave, before_keys, 1, 1, 1, desc + ": initial keys")
 
-    server.dnssec(zone).single_type_signing = set_stss
+    if set_stss is not None:
+        server.dnssec(zone).single_type_signing = set_stss
     server.dnssec(zone).alg = set_alg
     server.gen_confile()
     server.reload()
@@ -137,12 +138,14 @@ def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, se
 
 def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_keys, desc, set_stss, set_ksk_lifetime, submission_cb):
     check_zone(server, zone, slave, before_keys, 1, 1, 1, desc + ": initial keys")
-    orig_ksk_lifetime = server.dnssec(zone).ksk_lifetime
 
-    server.dnssec(zone).single_type_signing = set_stss
-    server.dnssec(zone).ksk_lifetime = set_ksk_lifetime if set_ksk_lifetime > 0 else orig_ksk_lifetime
-    server.gen_confile()
-    server.reload()
+    if set_stss is not None:
+        server.dnssec(zone).single_type_signing = set_stss
+        server.gen_confile()
+        server.reload()
+    else:
+        for z in zone:
+            server.ctl("zone-key-rollover %s ksk" % z.name)
 
     wait_for_count(t, server, "DNSKEY", total_keys, 20)
 
@@ -153,10 +156,6 @@ def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_ke
     cdnskeys = 2 if DOUBLE_DS else 1
     expect_zone_rrsigs = (2 if before_keys == 1 and after_keys > 1 else 1) # there is an exception for CSK->KZSK rollover that we have double signatures for the zone. Sorry, we don't care...
     check_zone(server, zone, slave, total_keys, 2, cdnskeys, expect_zone_rrsigs, desc + ": new KSK ready")
-
-    server.dnssec(zone).ksk_lifetime = orig_ksk_lifetime
-    server.gen_confile()
-    server.reload()
 
     t.sleep(server.dnssec(zone).propagation_delay + 1) # check that Knot does wait for the submittion to succeed
     submission_cb()
@@ -228,24 +227,24 @@ pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_alg_rollover(t, child, child_zone, slave, 2, 1, "KZSK to CSK alg", "ECDSAP256SHA256", True, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, slave, 1, 1, 2, "CSK rollover", True, 27, cds_submission)
+watch_ksk_rollover(t, child, child_zone, slave, 1, 1, 2, "CSK rollover", None, 27, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone, slave, 1, 2, 3, "CSK to KZSK", False, 0, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, slave, 2, 2, 3, "KSK rollover", False, 27, cds_submission)
+watch_ksk_rollover(t, child, child_zone, slave, 2, 2, 3, "KSK rollover", None, 27, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone, slave, 2, 1, 3, "KZSK to CSK", True, 0, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP384SHA384")
-watch_alg_rollover(t, child, child_zone, slave, 1, 1, "CSK to CSK alg", "ECDSAP384SHA384", True, cds_submission)
+watch_alg_rollover(t, child, child_zone, slave, 1, 1, "CSK to CSK alg", "ECDSAP384SHA384", None, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_alg_rollover(t, child, child_zone, slave, 1, 2, "CSK to KZSK alg", "ECDSAP256SHA256", False, cds_submission)
 
 pregenerate_key(child, child_zone, "ECDSAP384SHA384")
-watch_alg_rollover(t, child, child_zone, slave, 2, 2, "KZSK alg", "ECDSAP384SHA384", False, cds_submission)
+watch_alg_rollover(t, child, child_zone, slave, 2, 2, "KZSK alg", "ECDSAP384SHA384", None, cds_submission)
 
 t.end()
