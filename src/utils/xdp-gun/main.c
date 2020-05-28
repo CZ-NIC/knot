@@ -621,7 +621,7 @@ int main(int argc, char *argv[])
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		pthread_create(&threads[i], NULL, dns_xdp_gun_thread, &thread_ctxs[i]);
-		usleep((i + 1) * 10000);
+		usleep((i + 1) * 70000);
 	}
 
 	dns_xdp_trigger = true;
