@@ -27,7 +27,9 @@ nobase_include_libknot_HEADERS = \
 	libknot/packet/pkt.h			\
 	libknot/packet/rrset-wire.h		\
 	libknot/packet/wire.h			\
-	libknot/probe/unix.h			\
+	libknot/probe/client.h			\
+	libknot/probe/common.h			\
+	libknot/probe/server.h			\
 	libknot/rdata.h				\
 	libknot/rdataset.h			\
 	libknot/rrset-dump.h			\
@@ -63,7 +65,8 @@ libknot_la_SOURCES = \
 	libknot/db/db_trie.c			\
 	libknot/packet/pkt.c			\
 	libknot/packet/rrset-wire.c		\
-	libknot/probe/unix.c			\
+	libknot/probe/client.c			\
+	libknot/probe/server.c			\
 	libknot/rdataset.c			\
 	libknot/rrset-dump.c			\
 	libknot/rrset.c				\
