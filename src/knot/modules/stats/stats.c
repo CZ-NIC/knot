@@ -376,7 +376,7 @@ static void incr_edns_option(knotd_mod_t *mod, unsigned thr_id, const knot_pkt_t
 	}
 }
 
-static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
+static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
 	assert(pkt && qdata);
@@ -626,7 +626,7 @@ int stats_load(knotd_mod_t *mod)
 
 	knotd_mod_ctx_set(mod, stats);
 
-	return knotd_mod_hook(mod, KNOTD_STAGE_END, update_counters);
+	return knotd_mod_hook(mod, KNOTD_STAGE_END, transfer);
 }
 
 void stats_unload(knotd_mod_t *mod)
