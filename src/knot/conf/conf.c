@@ -652,6 +652,14 @@ struct sockaddr_storage conf_addr(
 	return out;
 }
 
+bool conf_addr_match(
+	conf_val_t *match,
+	const struct sockaddr_storage *addr)
+{
+	struct sockaddr_storage maddr = conf_addr(match, NULL);
+	return sockaddr_cmp(&maddr, addr, true);
+}
+
 struct sockaddr_storage conf_addr_range(
 	conf_val_t *val,
 	struct sockaddr_storage *max_ss,

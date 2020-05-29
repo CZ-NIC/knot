@@ -490,6 +490,19 @@ struct sockaddr_storage conf_addr(
 );
 
 /*!
+ * Checks the configured address is equal to given one (except port).
+ *
+ * \param[in] match   Configured address.
+ * \param[in] addr    Address to check.
+ *
+ * \return True if matches.
+ */
+bool conf_addr_match(
+	conf_val_t *match,
+	const struct sockaddr_storage *addr
+);
+
+/*!
  * Gets the socket address range value of the item.
  *
  * \param[in] val            Item value.

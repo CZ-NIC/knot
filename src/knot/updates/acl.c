@@ -163,34 +163,52 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 	}
 
 	while (acl->code == KNOT_EOK) {
-		/* Check if the address matches the current acl address list. */
-		conf_val_t val = conf_id_get(conf, C_ACL, C_ADDR, acl);
-		if (val.code != KNOT_ENOENT && !conf_addr_range_match(&val, addr)) {
-			goto next_acl;
+		conf_val_t addr_val = conf_id_get(conf, C_ACL, C_ADDR, acl);
+		conf_val_t key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
+		conf_val_t rmt_val = conf_id_get(conf, C_ACL, C_RMT, acl);
+		if (rmt_val.code != KNOT_ENOENT) {
+			assert(addr_val.code == KNOT_ENOENT);
+			assert(key_val.code == KNOT_ENOENT);
+			addr_val = conf_id_get(conf, C_RMT, C_ADDR, &rmt_val);
+			key_val = conf_id_get(conf, C_RMT, C_KEY, &rmt_val);
+
+			/* Check if the address matches the current acl address list. */
+			if (addr_val.code != KNOT_ENOENT && conf_addr_match(&addr_val, addr)) {
+				goto next_acl;
+			}
+		} else {
+			/* Check if the address matches the current acl address list. */
+			if (addr_val.code != KNOT_ENOENT && !conf_addr_range_match(&addr_val, addr)) {
+				goto next_acl;
+			}
 		}
 
+#define NEXT_KEY \
+	if (key_val.item->flags & YP_FMULTI) { \
+		conf_val_next(&key_val); \
+	} else { \
+		key_val.code = KNOT_EOF; \
+	} \
+	continue; \
+
 		/* Check if the key matches the current acl key list. */
-		conf_val_t key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
 		while (key_val.code == KNOT_EOK) {
 			/* No key provided, but required. */
 			if (tsig->name == NULL) {
-				conf_val_next(&key_val);
-				continue;
+				NEXT_KEY
 			}
 
 			/* Compare key names (both in lower-case). */
 			const knot_dname_t *key_name = conf_dname(&key_val);
 			if (!knot_dname_is_equal(key_name, tsig->name)) {
-				conf_val_next(&key_val);
-				continue;
+				NEXT_KEY
 			}
 
 			/* Compare key algorithms. */
 			conf_val_t alg_val = conf_id_get(conf, C_KEY, C_ALG,
 			                                 &key_val);
 			if (conf_opt(&alg_val) != tsig->algorithm) {
-				conf_val_next(&key_val);
-				continue;
+				NEXT_KEY
 			}
 
 			break;
@@ -203,7 +221,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 
 		/* Check if the action is allowed. */
 		if (action != ACL_ACTION_NONE) {
-			val = conf_id_get(conf, C_ACL, C_ACTION, acl);
+			conf_val_t val = conf_id_get(conf, C_ACL, C_ACTION, acl);
 			while (val.code == KNOT_EOK) {
 				if (conf_opt(&val) != action) {
 					conf_val_next(&val);
@@ -229,7 +247,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		}
 
 		/* Check if denied. */
-		val = conf_id_get(conf, C_ACL, C_DENY, acl);
+		conf_val_t val = conf_id_get(conf, C_ACL, C_DENY, acl);
 		if (conf_bool(&val)) {
 			return false;
 		}
