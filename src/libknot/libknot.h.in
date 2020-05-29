@@ -50,7 +50,7 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/packet/wire.h"
-#include "libknot/probe/unix.h"
+#include "libknot/probe/server.h"
 #include "libknot/rrtype/dnskey.h"
 #include "libknot/rrtype/ds.h"
 #include "libknot/rrtype/naptr.h"
