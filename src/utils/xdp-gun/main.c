@@ -61,7 +61,7 @@ typedef struct {
 	bool		ipv6;
 	uint16_t	target_port;
 	unsigned	n_threads, thread_id;
-} dns_xdp_gun_ctx_t;
+} xdp_gun_ctx_t;
 
 inline static void timer_start(struct timespec *timesp)
 {
@@ -113,7 +113,7 @@ static void next_payload(struct pkt_payload **payload, int increment)
 }
 
 static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *xsk,
-                      dns_xdp_gun_ctx_t *ctx, uint64_t tick, struct pkt_payload **payl)
+                      xdp_gun_ctx_t *ctx, uint64_t tick, struct pkt_payload **payl)
 {
 	uint64_t unique = (tick * ctx->n_threads + ctx->thread_id) * ctx->at_once;
 
@@ -146,9 +146,9 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 	return KNOT_EOK;
 }
 
-void *dns_xdp_gun_thread(void *_ctx)
+void *xdp_gun_thread(void *_ctx)
 {
-	dns_xdp_gun_ctx_t *ctx = _ctx;
+	xdp_gun_ctx_t *ctx = _ctx;
 	struct knot_xdp_socket *xsk;
 	struct timespec timer;
 	knot_xdp_msg_t pkts[ctx->at_once];
@@ -411,9 +411,9 @@ static int remoteIP2local(const char *ip_str, bool ipv6, char devname[], void *l
 
 int main(int argc, char *argv[])
 {
-	const char *usage = "usage: dns_xdp_gun <qps> <length_s> <target_IP> <target_port> <pkts_at_once> <queries_file>";
+	const char *usage = "usage: knot-xdp-gun <qps> <length_s> <target_IP> <target_port> <pkts_at_once> <queries_file>";
 
-	dns_xdp_gun_ctx_t ctx = { { 0 } }, *thread_ctxs = NULL;
+	xdp_gun_ctx_t ctx = { { 0 } }, *thread_ctxs = NULL;
 	pthread_t *threads = NULL;
 
 	if (argc == 7) {
@@ -524,7 +524,7 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&global_mutex, NULL);
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
-		pthread_create(&threads[i], NULL, dns_xdp_gun_thread, &thread_ctxs[i]);
+		pthread_create(&threads[i], NULL, xdp_gun_thread, &thread_ctxs[i]);
 		usleep((i + 1) * 10000);
 	}
 

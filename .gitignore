@@ -74,7 +74,7 @@ src/libknot/libknot.h
 /src/knsec3hash
 /src/knsupdate
 /src/kzonecheck
-/src/xdp-gun
+/src/knot-xdp-gun
 
 # Generated tarballs
 /knot-*.tar.xz
