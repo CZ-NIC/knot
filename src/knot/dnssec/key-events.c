@@ -327,13 +327,13 @@ static knot_time_t ksk_retire_time(knot_time_t retire_active_time, const kdnssec
 	return knot_time_add(retire_active_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
 }
 
-static knot_time_t ksk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t *ctx)
+static knot_time_t ksk_remove_time(knot_time_t retire_time, bool is_csk, const kdnssec_ctx_t *ctx)
 {
 	if (retire_time <= 0) {
 		return 0;
 	}
 	knot_timediff_t use_ttl = ctx->policy->dnskey_ttl;
-	if (ctx->policy->single_type_signing && ctx->policy->zone_maximal_ttl > use_ttl) {
+	if (is_csk) {
 		use_ttl = ctx->policy->zone_maximal_ttl;
 	}
 	return knot_time_add(retire_time, ctx->policy->propagation_delay + use_ttl);
@@ -351,7 +351,7 @@ static knot_time_t alg_publish_time(knot_time_t pre_active_time, const kdnssec_c
 
 static knot_time_t alg_remove_time(knot_time_t post_active_time, const kdnssec_ctx_t *ctx)
 {
-	return MAX(ksk_remove_time(post_active_time, ctx), zsk_remove_time(post_active_time, ctx));
+	return MAX(ksk_remove_time(post_active_time, false, ctx), zsk_remove_time(post_active_time, ctx));
 }
 
 static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags)
@@ -407,7 +407,7 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				// (key in removed state is instantly deleted)
 				// but if imported keys, they can be in this state
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
-				keytime = ksk_remove_time(keytime, ctx);
+				keytime = ksk_remove_time(keytime, key->is_zsk, ctx);
 				restype = REMOVE;
 				break;
 			default:
