@@ -474,6 +474,7 @@ acl:
   \- id: STR
     address: ADDR[/INT] | ADDR\-ADDR ...
     key: key_id ...
+    remote: remote_id ...
     action: notify | transfer | update ...
     deny: BOOL
     update\-type: STR ...
@@ -498,6 +499,21 @@ required.
 .sp
 An ordered list of \fI\%reference\fPs to TSIG keys. The query must
 match one of them. Empty value means that transaction authentication is not used.
+.sp
+\fIDefault:\fP not set
+.SS remote
+.sp
+An ordered list of \fI\%references\fP to remotes. The query must
+match one of the remotes. Specifically, one of the remote\(aqs addresses and remote\(aqs
+TSIG key if configured must match.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option cannot be specified along with the \fI\%address\fP or
+\fI\%key\fP option at one ACL item.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP not set
 .SS action
