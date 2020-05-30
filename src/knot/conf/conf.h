@@ -490,7 +490,7 @@ struct sockaddr_storage conf_addr(
 );
 
 /*!
- * Checks the configured address is equal to given one (except port).
+ * Checks the configured address if equal to given one (except port).
  *
  * \param[in] match   Configured address.
  * \param[in] addr    Address to check.

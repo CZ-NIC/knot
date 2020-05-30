@@ -657,7 +657,7 @@ bool conf_addr_match(
 	const struct sockaddr_storage *addr)
 {
 	struct sockaddr_storage maddr = conf_addr(match, NULL);
-	return sockaddr_cmp(&maddr, addr, true);
+	return sockaddr_cmp(&maddr, addr, true) == 0;
 }
 
 struct sockaddr_storage conf_addr_range(

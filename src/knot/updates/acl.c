@@ -173,7 +173,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 			key_val = conf_id_get(conf, C_RMT, C_KEY, &rmt_val);
 
 			/* Check if the address matches the current acl address list. */
-			if (addr_val.code != KNOT_ENOENT && conf_addr_match(&addr_val, addr)) {
+			if (addr_val.code != KNOT_ENOENT && !conf_addr_match(&addr_val, addr)) {
 				goto next_acl;
 			}
 		} else {
