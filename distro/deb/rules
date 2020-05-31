@@ -66,15 +66,15 @@ override_dh_auto_install-arch:
 	# rename knot.sample.conf to knot.conf
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
 	# Some workarounds for Debian Stretch and Ubuntu Xenial
-	@if [ -f "$(CURDIR)/debian/tmp/usr/bin/xdp-gun" ]; then \
+	@if [ -f "$(CURDIR)/debian/tmp/usr/sbin/knot-xdp-gun" ]; then \
 	  echo "Embedded XDP enabled"; \
 	elif [ -f "$(LIBKNOT_SYMBOLS)" ]; then \
 	  echo "No XDP"; \
-	  printf '#!/bin/sh\n\necho "xdp-gun not available"\n' > $(CURDIR)/debian/tmp/usr/bin/xdp-gun; \
+	  printf '#!/bin/sh\n\necho "knot-xdp-gun not available"\n' > $(CURDIR)/debian/tmp/usr/sbin/knot-xdp-gun; \
 	  sed -i -E '/knot_xdp_|knot_eth_/d' $(LIBKNOT_SYMBOLS); \
 	else \
 	  echo "No XDP, no libknot symbols"; \
-	  printf '#!/bin/sh\n\necho "xdp-gun not available"\n' > $(CURDIR)/debian/tmp/usr/bin/xdp-gun; \
+	  printf '#!/bin/sh\n\necho "knot-xdp-gun not available"\n' > $(CURDIR)/debian/tmp/usr/sbin/knot-xdp-gun; \
 	fi
 
 override_dh_auto_install-indep:
