@@ -1,12 +1,12 @@
 .. highlight:: console
 
-xdp-gun – DNS benchmarking tool
-===============================
+knot-xdp-gun – DNS benchmarking tool
+====================================
 
 Synopsis
 --------
 
-:program:`xdp-gun` [*options*] **-i** *filename* *targetIP*
+:program:`knot-xdp-gun` [*options*] **-i** *filename* *targetIP*
 
 Description
 -----------
@@ -76,7 +76,7 @@ an error.
 Examples
 --------
 
-Queries file example::
+Queries file::
 
   abc6.example.com. AAAA
   nxdomain.example.com. A
@@ -85,13 +85,13 @@ Queries file example::
   ab.example.com. A D
   abcd.example.com. DS D
 
-xdp-gun examples::
+Program usage::
 
-  # xdp-gun -i ~/queries.txt 2001:1489:fffe:10::16
+  # knot-xdp-gun -i ~/queries.txt 2001:1489:fffe:10::16
 
 ::
 
-  # xdp-gun -t 120 -Q 6000000 -i ~/queries.txt -b 5 -r -p 8853 192.168.101.2
+  # knot-xdp-gun -t 120 -Q 6000000 -i ~/queries.txt -b 5 -r -p 8853 192.168.101.2
 
 See Also
 --------
