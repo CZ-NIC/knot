@@ -41,9 +41,9 @@
 
 #include "load_queries.h"
 
-#define PROGRAM_NAME "xdp-gun"
+#define PROGRAM_NAME "knot-xdp-gun"
 
-volatile bool dns_xdp_trigger = false;
+volatile bool xdp_trigger = false;
 
 pthread_mutex_t global_mutex;
 uint64_t global_pkts_sent = 0;
@@ -64,9 +64,9 @@ typedef struct {
 	uint16_t	target_port;
 	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_ALL, KNOT_XDP_LISTEN_PORT_DROP
 	unsigned	n_threads, thread_id;
-} dns_xdp_gun_ctx_t;
+} xdp_gun_ctx_t;
 
-const static dns_xdp_gun_ctx_t ctx_defaults = {
+const static xdp_gun_ctx_t ctx_defaults = {
 	.qps = 1000,
 	.duration = 5000000UL, // usecs
 	.at_once = 10,
@@ -124,7 +124,7 @@ static void next_payload(struct pkt_payload **payload, int increment)
 }
 
 static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *xsk,
-                      dns_xdp_gun_ctx_t *ctx, uint64_t tick, struct pkt_payload **payl)
+                      xdp_gun_ctx_t *ctx, uint64_t tick, struct pkt_payload **payl)
 {
 	uint64_t unique = (tick * ctx->n_threads + ctx->thread_id) * ctx->at_once;
 
@@ -157,9 +157,9 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 	return KNOT_EOK;
 }
 
-void *dns_xdp_gun_thread(void *_ctx)
+void *xdp_gun_thread(void *_ctx)
 {
-	dns_xdp_gun_ctx_t *ctx = _ctx;
+	xdp_gun_ctx_t *ctx = _ctx;
 	struct knot_xdp_socket *xsk;
 	struct timespec timer;
 	knot_xdp_msg_t pkts[ctx->at_once];
@@ -176,7 +176,7 @@ void *dns_xdp_gun_thread(void *_ctx)
 
 	struct pollfd pfd = { knot_xdp_socket_fd(xsk), POLLIN, 0 };
 
-	while (!dns_xdp_trigger) {
+	while (!xdp_trigger) {
 		usleep(1000);
 	}
 
@@ -426,7 +426,7 @@ static int remoteIP2local(const char *ip_str, bool ipv6, char devname[], void *l
 	return ret;
 }
 
-static bool configure_target(char *target_str, dns_xdp_gun_ctx_t *ctx)
+static bool configure_target(char *target_str, xdp_gun_ctx_t *ctx)
 {
 	char *at = strrchr(target_str, '@');
 	int newport;
@@ -497,7 +497,7 @@ static void print_help(void) {
 	       "-i queries_file dest_ip\n", PROGRAM_NAME);
 }
 
-static bool get_opts(int argc, char *argv[], dns_xdp_gun_ctx_t *ctx)
+static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
 	struct option opts[] = {
 		{ "help",     no_argument,       NULL, 'h' },
@@ -585,7 +585,7 @@ static bool get_opts(int argc, char *argv[], dns_xdp_gun_ctx_t *ctx)
 
 int main(int argc, char *argv[])
 {
-	dns_xdp_gun_ctx_t ctx = ctx_defaults, *thread_ctxs = NULL;
+	xdp_gun_ctx_t ctx = ctx_defaults, *thread_ctxs = NULL;
 	pthread_t *threads = NULL;
 
 	if (!get_opts(argc, argv, &ctx)) {
@@ -620,13 +620,13 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&global_mutex, NULL);
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
-		pthread_create(&threads[i], NULL, dns_xdp_gun_thread, &thread_ctxs[i]);
+		pthread_create(&threads[i], NULL, xdp_gun_thread, &thread_ctxs[i]);
 		usleep((i + 1) * 10000);
 	}
 
-	dns_xdp_trigger = true;
+	xdp_trigger = true;
 	usleep(1000000);
-	dns_xdp_trigger = false;
+	xdp_trigger = false;
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		pthread_join(threads[i], NULL);

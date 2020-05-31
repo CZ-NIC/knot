@@ -1,3 +1,6 @@
+bin_PROGRAMS =
+sbin_PROGRAMS =
+
 if HAVE_LIBUTILS
 noinst_LTLIBRARIES += libknotus.la
 
@@ -33,7 +36,7 @@ libknotus_la_SOURCES = \
 endif HAVE_LIBUTILS
 
 if HAVE_UTILS
-bin_PROGRAMS = kdig khost knsec3hash knsupdate
+bin_PROGRAMS += kdig khost knsec3hash knsupdate
 
 kdig_SOURCES = \
 	utils/kdig/kdig_exec.c			\
@@ -78,14 +81,14 @@ khost_LDADD            += $(DNSTAP_LIBS) libdnstap.la
 endif HAVE_DNSTAP
 
 if ENABLE_XDP
-bin_PROGRAMS += xdp-gun
-xdp_gun_SOURCES = \
-	utils/xdp-gun/load_queries.c		\
-	utils/xdp-gun/load_queries.h		\
-	utils/xdp-gun/main.c
+sbin_PROGRAMS += knot-xdp-gun
+knot_xdp_gun_SOURCES = \
+	utils/knot-xdp-gun/load_queries.c	\
+	utils/knot-xdp-gun/load_queries.h	\
+	utils/knot-xdp-gun/main.c
 
-xdp_gun_CPPFLAGS       = $(AM_CPPFLAGS)
-xdp_gun_LDADD          = libcontrib.la libknot.la $(pthread_LIBS)
+knot_xdp_gun_CPPFLAGS  = $(AM_CPPFLAGS)
+knot_xdp_gun_LDADD     = libcontrib.la libknot.la $(pthread_LIBS)
 endif ENABLE_XDP
 endif HAVE_UTILS
 
@@ -96,7 +99,7 @@ install-data-hook:
 	$(INSTALL) -d $(DESTDIR)/@run_dir@
 	$(INSTALL) -d $(DESTDIR)/@storage_dir@
 
-sbin_PROGRAMS = knotc knotd
+sbin_PROGRAMS += knotc knotd
 
 knotc_SOURCES = \
 	utils/knotc/commands.c			\
