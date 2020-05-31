@@ -9,7 +9,7 @@ MANPAGES_IN = \
 	man/knsupdate.1in	\
 	man/knsec3hash.1in	\
 	man/kzonecheck.1in	\
-	man/xdp-gun.8in
+	man/knot-xdp-gun.8in
 
 MANPAGES_RST = \
 	man_knotc.rst		\
@@ -21,7 +21,7 @@ MANPAGES_RST = \
 	man_knsupdate.rst	\
 	man_knsec3hash.rst	\
 	man_kzonecheck.rst	\
-	man_xdp-gun.rst
+	man_knot-xdp-gun.rst
 
 EXTRA_DIST = \
 	conf.py			\
@@ -104,7 +104,7 @@ man_MANS += \
 	man/knsec3hash.1
 
 if ENABLE_XDP
-man_MANS += man/xdp-gun.8
+man_MANS += man/knot-xdp-gun.8
 endif # ENABLE_XDP
 endif # HAVE_UTILS
 
@@ -118,7 +118,7 @@ man/khost.1:		man/khost.1in
 man/knsupdate.1:	man/knsupdate.1in
 man/knsec3hash.1:	man/knsec3hash.1in
 man/kzonecheck.1:	man/kzonecheck.1in
-man/xdp-gun.8:		man/xdp-gun.8in
+man/knot-xdp-gun.8:	man/knot-xdp-gun.8in
 
 man_SUBST = $(AM_V_GEN)mkdir -p man; \
             sed -e 's,[@]VERSION@,$(VERSION),' \

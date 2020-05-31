@@ -1,8 +1,8 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "XDP-GUN" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
+.TH "KNOT-XDP-GUN" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
-xdp-gun \- XDP-powered DNS benchmarking tool
+knot-xdp-gun \- XDP-powered DNS benchmarking tool
 .
 .nr rst2man-indent-level 0
 .
@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBxdp\-gun\fP [\fIoptions\fP] \fB\-i\fP \fIfilename\fP \fItargetIP\fP
+\fBknot\-xdp\-gun\fP [\fIoptions\fP] \fB\-i\fP \fIfilename\fP \fItargetIP\fP
 .SH DESCRIPTION
 .sp
 Powerful generator of DNS traffic, sending and receving packets through XDP.
@@ -94,7 +94,7 @@ Exit status of 0 means successful operation. Any other exit status indicates
 an error.
 .SH EXAMPLES
 .sp
-Queries file example:
+Queries file:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -111,13 +111,13 @@ abcd.example.com. DS D
 .UNINDENT
 .UNINDENT
 .sp
-xdp\-gun examples:
+Program usage:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-# xdp\-gun \-i ~/queries.txt 2001:1489:fffe:10::16
+# knot\-xdp\-gun \-i ~/queries.txt 2001:1489:fffe:10::16
 .ft P
 .fi
 .UNINDENT
@@ -127,7 +127,7 @@ xdp\-gun examples:
 .sp
 .nf
 .ft C
-# xdp\-gun \-t 120 \-Q 6000000 \-i ~/queries.txt \-b 5 \-r \-p 8853 192.168.101.2
+# knot\-xdp\-gun \-t 120 \-Q 6000000 \-i ~/queries.txt \-b 5 \-r \-p 8853 192.168.101.2
 .ft P
 .fi
 .UNINDENT
