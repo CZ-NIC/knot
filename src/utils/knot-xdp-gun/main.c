@@ -338,10 +338,10 @@ static bool str2mac(const char *str, uint8_t mac[])
 	return true;
 }
 
-static int ip_route_get(const char *ip, const char *what, char **res)
+static int ip_route_get(const char *ip_str, const char *what, char **res)
 {
-	char cmd[50 + strlen(ip) + strlen(what)];
-	(void)snprintf(cmd, sizeof(cmd), "ip route get %s | grep -o ' %s [^ ]* '", ip, what);
+	char cmd[50 + strlen(ip_str) + strlen(what)];
+	(void)snprintf(cmd, sizeof(cmd), "ip route get %s | grep -o ' %s [^ ]* '", ip_str, what);
 
 	errno = 0;
 	FILE *p = popen(cmd, "r");
@@ -364,9 +364,10 @@ static int ip_route_get(const char *ip, const char *what, char **res)
 
 static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t remote_mac[])
 {
+	errno = 0;
 	FILE *p = popen(ipv6 ? "ip -6 neigh" : "arp -ne", "r");
 	if (p == NULL) {
-		return knot_map_errno();
+		return (errno != 0) ? knot_map_errno() : KNOT_ENOMEM;
 	}
 
 	char line_buf[1024] = { 0 };
@@ -398,6 +399,7 @@ static int distantIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t 
 	case KNOT_ENOENT: // same subnet, no via
 		return remoteIP2MAC(ip_str, ipv6, devname, remote_mac);
 	case KNOT_EOK:
+		assert(via);
 		ret = remoteIP2MAC(via, ipv6, devname, remote_mac);
 		free(via);
 		return ret;
@@ -561,7 +563,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			break;
 		case 'i':
 			if (!load_queries(optarg)) {
-				printf("Failed to load queries from file '%s'\n", optarg);
+				printf("failed to load queries from file '%s'\n", optarg);
 				return false;
 			}
 			break;
