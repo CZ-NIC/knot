@@ -163,14 +163,15 @@ void *xdp_gun_thread(void *_ctx)
 	struct knot_xdp_socket *xsk;
 	struct timespec timer;
 	knot_xdp_msg_t pkts[ctx->at_once];
-	uint64_t tot_sent = 0, tot_recv = 0, tot_size = 0;
+	uint64_t tot_sent = 0, tot_recv = 0, tot_size = 0, errors = 0;
 	uint64_t duration = 0;
 
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->listen_port, mode);
 	if (ret != KNOT_EOK) {
-		printf("failed to init XDP socket#%u: %s\n", ctx->thread_id, knot_strerror(ret));
+		printf("failed to initialize XDP socket#%u: %s\n",
+		       ctx->thread_id, knot_strerror(ret));
 		return NULL;
 	}
 
@@ -190,26 +191,30 @@ void *xdp_gun_thread(void *_ctx)
 
 		// sending part
 		if (duration < ctx->duration) {
-			knot_xdp_send_prepare(xsk);
-			ret = alloc_pkts(pkts, ctx->at_once, xsk, ctx, tick, &payload_ptr);
-			if (ret != KNOT_EOK) {
-				printf("thread#%u alloc_pkts failed: %s\n", ctx->thread_id, knot_strerror(ret));
-				goto end;
-			}
+			while (1) {
+				knot_xdp_send_prepare(xsk);
+				ret = alloc_pkts(pkts, ctx->at_once, xsk, ctx,
+				                 tick, &payload_ptr);
+				if (ret != KNOT_EOK) {
+					errors++;
+					break;
+				}
 
-			uint32_t really_sent = 0;
-			ret = knot_xdp_send(xsk, pkts, ctx->at_once, &really_sent);
-			if (ret != KNOT_EOK) {
-				printf("thread#%u send_pkts failed: %s\n", ctx->thread_id, knot_strerror(ret));
-				goto end;
-			}
-			assert(really_sent == ctx->at_once);
-			tot_sent += really_sent;
+				uint32_t really_sent = 0;
+				ret = knot_xdp_send(xsk, pkts, ctx->at_once,
+				                    &really_sent);
+				if (ret != KNOT_EOK) {
+					errors++;
+					break;
+				}
+				assert(really_sent == ctx->at_once);
+				tot_sent += really_sent;
 
-			ret = knot_xdp_send_finish(xsk);
-			if (ret != KNOT_EOK) {
-				printf("thread#%u flush failed: %s\n", ctx->thread_id, knot_strerror(ret));
-				goto end;
+				ret = knot_xdp_send_finish(xsk);
+				if (ret != KNOT_EOK) {
+					errors++;
+					break;
+				}
 			}
 		}
 
@@ -218,10 +223,8 @@ void *xdp_gun_thread(void *_ctx)
 			while (1) {
 				ret = poll(&pfd, 1, 0);
 				if (ret < 0) {
-					char err[128];
-					printf("thread#%u poll failed: %s\n", ctx->thread_id,
-					       strerror_r(errno, err, sizeof(err)));
-					goto end;
+					errors++;
+					break;
 				}
 				if (!pfd.revents) {
 					break;
@@ -230,9 +233,8 @@ void *xdp_gun_thread(void *_ctx)
 				uint32_t recvd = 0;
 				ret = knot_xdp_recv(xsk, pkts, ctx->at_once, &recvd);
 				if (ret != KNOT_EOK) {
-					printf("thread#%u recv_pkts failed: %s\n",
-					       ctx->thread_id, knot_strerror(ret));
-					goto end;
+					errors++;
+					break;
 				}
 				for (int i = 0; i < recvd; i++) {
 					tot_size += pkts[i].payload.iov_len;
@@ -255,10 +257,10 @@ void *xdp_gun_thread(void *_ctx)
 		tick++;
 	}
 
-end:
 	knot_xdp_deinit(xsk);
 
-	printf("thread#%02u sent %lu received %lu\n", ctx->thread_id, tot_sent, tot_recv);
+	printf("thread#%02u: sent %lu, received %lu, errors %lu\n",
+	       ctx->thread_id, tot_sent, tot_recv, errors);
 	pthread_mutex_lock(&global_mutex);
 	global_pkts_sent += tot_sent;
 	global_pkts_recv += tot_recv;
@@ -634,11 +636,11 @@ int main(int argc, char *argv[])
 		pthread_join(threads[i], NULL);
 	}
 	pthread_mutex_destroy(&global_mutex);
-	printf("total sent %lu (%lu qps)\n", global_pkts_sent, global_pkts_sent * 1000 / (ctx.duration / 1000));
+	printf("total queries: %lu (%lu qps)\n", global_pkts_sent, global_pkts_sent * 1000 / (ctx.duration / 1000));
 	if (global_pkts_sent > 0 && ctx.listen_port != KNOT_XDP_LISTEN_PORT_DROP) {
-		printf("total received %lu (%lu qps) (%lu%%)\n", global_pkts_recv,
+		printf("total replies: %lu (%lu qps) (%lu%%)\n", global_pkts_recv,
 		       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
-		printf("average received size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
+		printf("average reply size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
 	}
 
 	free(thread_ctxs);
