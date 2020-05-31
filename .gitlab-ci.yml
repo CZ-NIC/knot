@@ -126,7 +126,7 @@ docker:knot-dns:fedora:
   stage: build
   script:
     - autoreconf -fi
-    - ./configure --disable-fastparser || ( cat config.log && exit 1 )
+    - ./configure --disable-fastparser $EXTRA_CONFIGURE || ( cat config.log && exit 1 )
     - make -k all V=1
   artifacts:
     untracked: true
@@ -185,6 +185,8 @@ test:ubuntu:amd64:
     - build:ubuntu:amd64
 
 build:debian:amd64:
+  variables:
+    EXTRA_CONFIGURE: --enable-xdp=yes
   <<: *debian_stable
   <<: *build_job
   except:  # run on schedules as well, for debian:symbols tests
