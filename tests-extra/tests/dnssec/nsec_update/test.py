@@ -32,6 +32,11 @@ for zone in zones:
     master.dnssec(zone).nsec3_salt_len = random.choice([0, 1, 9, 64, 128, 255])
     master.dnssec(zone).nsec3_opt_out = (random.random() < 0.5)
 
+# for flushing 46 zones in blocking mode
+if master.valgrind:
+    master.ctl_params_append = ["-t", "30"]
+    slave.ctl_params_append = ["-t", "30"]
+
 t.start()
 master.zones_wait(zones)
 slave.ctl("zone-refresh")
@@ -41,8 +46,7 @@ slave.zones_wait(zones)
 t.xfr_diff(master, slave, zones)
 
 # update master
-master.flush()
-t.sleep(2)
+master.flush(wait=True)
 for zone in zones1:
     master.random_ddns(zone)
 
@@ -56,7 +60,6 @@ up.send("NOERROR")
 t.sleep(1)
 master.ctl("zone-refresh")
 
-t.sleep(4) # zones_wait fails if an empty update is generated
 after_update = master.zones_wait(zones)
 
 # sync slave with current master's state
@@ -64,7 +67,7 @@ slave.ctl("zone-refresh")
 slave.zones_wait(zones, after_update, equal=True, greater=False)
 
 # flush so that we can do zone_verify
-slave.flush()
+slave.flush(wait=True)
 
 # re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
@@ -111,7 +114,7 @@ slave.ctl("zone-refresh")
 slave.zones_wait(zones, after_update2, equal=True, greater=False)
 
 # flush so that we can do zone_verify
-slave.flush()
+slave.flush(wait=True)
 
 # re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
@@ -133,9 +136,8 @@ for z in zones1:
     up.send("NOERROR")
 
 t.sleep(1)
-slave.ctl("zone-refresh")
-t.sleep(3)
-slave.flush()
+slave.ctl("zone-refresh", wait=True)
+slave.flush(wait=True)
 for z in zones1:
     slave.zone_wait(z, after_update25[z.name], equal=False, greater=True)
     slave.zone_verify(z)

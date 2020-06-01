@@ -12,6 +12,12 @@ slave = t.server("knot")
 zone = t.zone("example.", storage=".")
 t.link(zone, master, slave)
 
+def sleep_alt(time1, option=False, time2=None):
+    if not option:
+        t.sleep(time1)
+    else:
+        t.sleep(time2)
+
 t.start()
 
 master.zone_wait(zone)
@@ -40,7 +46,7 @@ resp.check(rcode="NOERROR", rdata="1.2.3.4")
 up = slave.update(zone)
 up.add("noddns", 3600, "A", "1.2.3.6")
 up.send("REFUSED")
-t.sleep(2)
+sleep_alt(2, master.valgrind, 4)
 resp = slave.dig("noddns.example.", "A")
 resp.check(rcode="NXDOMAIN", nordata="1.2.3.6")
 
@@ -60,7 +66,7 @@ resp.check(rcode="NOERROR", rdata="1.2.3.5")
 up = slave.update(zone)
 up.add("ddns", 3600, "A", "1.2.3.7")
 up.send("NOERROR")
-t.sleep(2)
+sleep_alt(2, master.valgrind, 4)
 resp = slave.dig("ddns.example.", "A")
 resp.check(rcode="NOERROR", rdata="1.2.3.7")
 

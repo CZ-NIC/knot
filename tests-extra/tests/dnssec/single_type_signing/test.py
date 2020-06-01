@@ -39,8 +39,7 @@ knot.dnssec(zones[-1]).single_type_signing = True
 knot.gen_confile()
 knot.reload()
 t.sleep(7)
-knot.flush()
-t.sleep(2)
+knot.flush(wait=True)
 knot.stop()
 
 for zone in zones:

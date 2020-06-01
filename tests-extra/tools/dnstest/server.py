@@ -271,7 +271,7 @@ class Server(object):
 
         self.binding_errors = errors
 
-    def ctl(self, cmd, availability=True):
+    def ctl(self, cmd, wait=False, availability=True):
         if availability:
             # Check for listening control interface.
             ok = False
@@ -288,14 +288,18 @@ class Server(object):
                 raise Failed("Unavailable remote control server='%s'" % self.name)
 
         # Send control command.
+        args = self.ctl_params + (self.control_wait if wait else []) + cmd.split()
         try:
-            check_call([self.control_bin] + self.ctl_params + cmd.split(),
+            check_call([self.control_bin] + args,
                        stdout=open(self.dir + "/call.out", mode="a"),
                        stderr=open(self.dir + "/call.err", mode="a"))
         except CalledProcessError as e:
             self.backtrace()
             raise Failed("Can't control='%s' server='%s', ret='%i'" %
                          (cmd, self.name, e.returncode))
+
+        # Allow the command to complete, Bind needs this.
+        self.wait_function(wait)
 
     def reload(self):
         self.ctl("reload")
@@ -702,7 +706,7 @@ class Server(object):
         zone = zone_arg_check(zone)
 
         if flush:
-            self.flush(zone=zone)
+            self.flush(zone=zone, wait=True)
 
         self.zones[zone.name].zfile.backup()
 
@@ -831,6 +835,7 @@ class Bind(Server):
             raise Skip("No Bind")
         self.daemon_bin = params.bind_bin
         self.control_bin = params.bind_ctl
+        self.control_wait = []
         self.ctlkey = dnstest.keys.Tsig(alg="hmac-md5")
         self.binding_fail = "address in use"
 
@@ -840,9 +845,13 @@ class Bind(Server):
         ctltcp = super()._check_socket("tcp", self.ctlport)
         return (tcp and udp and ctltcp)
 
-    def flush(self):
-        self.ctl("sync")
-        time.sleep(Server.START_WAIT)
+    def wait_function(self, wait=False):
+        # There's no blocking mode in rndc, simulating it.
+        time.sleep(Server.START_WAIT + (3 if wait else 0))
+
+    def flush(self, zone=None, wait=False):
+        zone_name = (" " + zone.name) if zone else ""
+        self.ctl("sync%s" % zone_name, wait=wait)
 
     def _str(self, conf, name, value):
         if value and value != True:
@@ -1002,6 +1011,7 @@ class Knot(Server):
             raise Skip("No Knot")
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
+        self.control_wait = ["-b"]
         self.inquirer = dnstest.inquirer.Inquirer()
         self.includes = set()
         self.binding_fail = "cannot bind address"
@@ -1015,15 +1025,15 @@ class Knot(Server):
         udp = super()._check_socket("udp", self.port)
         return (tcp and udp)
 
+    def wait_function(self, wait=False): # needed for compatibility with Bind class
+        pass
+
     def flush(self, zone=None, wait=False):
-        force = "-f " if str(self.zonefile_sync)[0] == '-' else ""
-        blocking = "-b " if wait else ""
-        params = force + blocking
+        params = "-f " if str(self.zonefile_sync)[0] == '-' else ""
         if zone:
-            self.ctl("%szone-flush %s" % (params, zone.name))
+            self.ctl("%szone-flush %s" % (params, zone.name), wait=wait)
         else:
-            self.ctl("%szone-flush" % params)
-        time.sleep(Server.START_WAIT)
+            self.ctl("%szone-flush" % params, wait=wait)
 
     def key_gen(self, zone_name, **new_params):
         set_params = [ option + "=" + value for option, value in new_params.items() ]
@@ -1381,6 +1391,7 @@ class Dummy(Server):
         super().__init__(*args, **kwargs)
         self.daemon_bin = None
         self.control_bin = None
+        self.control_wait = []
         self.binding_fail = "There won't be such a message"
 
     def get_config(self):
@@ -1391,6 +1402,9 @@ class Dummy(Server):
 
     def listening(self):
         return True # Fake listening
+
+    def wait_function(self, wait=False):
+        pass
 
     def running(self):
         return True # Fake running
