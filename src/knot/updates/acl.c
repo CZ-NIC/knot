@@ -162,19 +162,21 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		return false;
 	}
 
+	conf_val_t rmt = conf_id_get(conf, C_ACL, C_RMT, acl);
+
 	while (acl->code == KNOT_EOK) {
+		assert(rmt.code != KNOT_EOF);
 		conf_val_t addr_val = conf_id_get(conf, C_ACL, C_ADDR, acl);
 		conf_val_t key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
-		conf_val_t rmt_val = conf_id_get(conf, C_ACL, C_RMT, acl);
-		if (rmt_val.code != KNOT_ENOENT) {
+		if (rmt.code == KNOT_EOK) {
 			assert(addr_val.code == KNOT_ENOENT);
 			assert(key_val.code == KNOT_ENOENT);
-			addr_val = conf_id_get(conf, C_RMT, C_ADDR, &rmt_val);
-			key_val = conf_id_get(conf, C_RMT, C_KEY, &rmt_val);
+			addr_val = conf_id_get(conf, C_RMT, C_ADDR, &rmt);
+			key_val = conf_id_get(conf, C_RMT, C_KEY, &rmt);
 
 			/* Check if the address matches the current acl address list. */
 			if (addr_val.code != KNOT_ENOENT && !conf_addr_match(&addr_val, addr)) {
-				goto next_acl;
+				goto next_addr;
 			}
 		} else {
 			/* Check if the address matches the current acl address list. */
@@ -216,7 +218,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		/* Check for key match or empty list without key provided. */
 		if (key_val.code != KNOT_EOK &&
 		    !(key_val.code == KNOT_ENOENT && tsig->name == NULL)) {
-			goto next_acl;
+			goto next_addr;
 		}
 
 		/* Check if the action is allowed. */
@@ -259,8 +261,15 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		}
 
 		return true;
+next_addr:
+		if (rmt.code == KNOT_EOK) {
+			conf_val_next(&rmt);
+		}
+		if (rmt.code != KNOT_EOK) {
 next_acl:
-		conf_val_next(acl);
+			conf_val_next(acl);
+			rmt = conf_id_get(conf, C_ACL, C_RMT, acl);
+		}
 	}
 
 	return false;
