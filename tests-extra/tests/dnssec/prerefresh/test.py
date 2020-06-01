@@ -20,7 +20,7 @@ t.start()
 
 serial_init = master.zone_wait(zone)
 
-master.ctl("zone-sign")
+master.ctl("zone-sign", wait=True)
 
 t.sleep(2)
 
