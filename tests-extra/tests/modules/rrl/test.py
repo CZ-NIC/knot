@@ -28,9 +28,9 @@ def send_queries(server, name, run_time=None, query_time=None):
     Send UDP queries to the server for certain time and get replies statistics.
     """
     if run_time is None:
-        run_time = 1.0 if not server.valgrind else 3.0
+        run_time = 2.0 if not server.valgrind else 3.0
     if query_time is None:
-        query_time = 0.05 if not server.valgrind else 0.25
+        query_time = 0.15 if not server.valgrind else 0.25
 
     replied, slipped, dropped = 0, 0, 0
     start = time.time()
