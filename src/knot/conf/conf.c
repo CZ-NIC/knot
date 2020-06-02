@@ -656,8 +656,20 @@ bool conf_addr_match(
 	conf_val_t *match,
 	const struct sockaddr_storage *addr)
 {
-	struct sockaddr_storage maddr = conf_addr(match, NULL);
-	return sockaddr_cmp(&maddr, addr, true) == 0;
+	if (match == NULL || addr == NULL) {
+		return false;
+	}
+
+	while (match->code == KNOT_EOK) {
+		struct sockaddr_storage maddr = conf_addr(match, NULL);
+		if (sockaddr_cmp(&maddr, addr, true) == 0) {
+			return true;
+		}
+
+		conf_val_next(match);
+	}
+
+	return false;
 }
 
 struct sockaddr_storage conf_addr_range(

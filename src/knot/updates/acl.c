@@ -154,6 +154,62 @@ static bool update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
 	return true;
 }
 
+static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_val,
+                           bool remote, const struct sockaddr_storage *addr,
+                           const knot_tsig_key_t *tsig)
+{
+	/* Check if the address matches the acl address list or remote addresses. */
+	if (addr_val->code != KNOT_ENOENT) {
+		if (remote) {
+			if (!conf_addr_match(addr_val, addr)) {
+				return false;
+			}
+		} else {
+			if (!conf_addr_range_match(addr_val, addr)) {
+				return false;
+			}
+		}
+	}
+
+	/* Check if the key matches the acl key list or remote key. */
+	while (key_val->code == KNOT_EOK) {
+		/* No key provided, but required. */
+		if (tsig->name == NULL) {
+			goto next_key;
+		}
+
+		/* Compare key names (both in lower-case). */
+		const knot_dname_t *key_name = conf_dname(key_val);
+		if (!knot_dname_is_equal(key_name, tsig->name)) {
+			goto next_key;
+		}
+
+		/* Compare key algorithms. */
+		conf_val_t alg_val = conf_id_get(conf, C_KEY, C_ALG, key_val);
+		if (conf_opt(&alg_val) != tsig->algorithm) {
+			goto next_key;
+		}
+
+		break;
+	next_key:
+		if (remote) {
+			assert(!(key_val->item->flags & YP_FMULTI));
+			key_val->code = KNOT_EOF;
+			break;
+		} else {
+			assert(key_val->item->flags & YP_FMULTI);
+			conf_val_next(key_val);
+		}
+	}
+	/* Check for key match or empty list without key provided. */
+	if (key_val->code != KNOT_EOK &&
+	    !(key_val->code == KNOT_ENOENT && tsig->name == NULL)) {
+		return false;
+	}
+
+	return true;
+}
+
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query)
@@ -162,63 +218,29 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		return false;
 	}
 
-	conf_val_t rmt = conf_id_get(conf, C_ACL, C_RMT, acl);
-
 	while (acl->code == KNOT_EOK) {
-		assert(rmt.code != KNOT_EOF);
-		conf_val_t addr_val = conf_id_get(conf, C_ACL, C_ADDR, acl);
-		conf_val_t key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
-		if (rmt.code == KNOT_EOK) {
-			assert(addr_val.code == KNOT_ENOENT);
-			assert(key_val.code == KNOT_ENOENT);
-			addr_val = conf_id_get(conf, C_RMT, C_ADDR, &rmt);
-			key_val = conf_id_get(conf, C_RMT, C_KEY, &rmt);
+		conf_val_t rmt_val = conf_id_get(conf, C_ACL, C_RMT, acl);
+		bool remote = (rmt_val.code == KNOT_EOK);
 
-			/* Check if the address matches the current acl address list. */
-			if (addr_val.code != KNOT_ENOENT && !conf_addr_match(&addr_val, addr)) {
-				goto next_addr;
+		conf_val_t addr_val, key_val;
+		if (remote) {
+			while (rmt_val.code == KNOT_EOK) {
+				addr_val = conf_id_get(conf, C_RMT, C_ADDR, &rmt_val);
+				key_val = conf_id_get(conf, C_RMT, C_KEY, &rmt_val);
+				if (check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig)) {
+					break;
+				}
+				conf_val_next(&rmt_val);
 			}
-		} else {
-			/* Check if the address matches the current acl address list. */
-			if (addr_val.code != KNOT_ENOENT && !conf_addr_range_match(&addr_val, addr)) {
+			if (rmt_val.code == KNOT_EOF) {
 				goto next_acl;
 			}
-		}
-
-#define NEXT_KEY \
-	if (key_val.item->flags & YP_FMULTI) { \
-		conf_val_next(&key_val); \
-	} else { \
-		key_val.code = KNOT_EOF; \
-	} \
-	continue; \
-
-		/* Check if the key matches the current acl key list. */
-		while (key_val.code == KNOT_EOK) {
-			/* No key provided, but required. */
-			if (tsig->name == NULL) {
-				NEXT_KEY
+		} else {
+			addr_val = conf_id_get(conf, C_ACL, C_ADDR, acl);
+			key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
+			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig)) {
+				goto next_acl;
 			}
-
-			/* Compare key names (both in lower-case). */
-			const knot_dname_t *key_name = conf_dname(&key_val);
-			if (!knot_dname_is_equal(key_name, tsig->name)) {
-				NEXT_KEY
-			}
-
-			/* Compare key algorithms. */
-			conf_val_t alg_val = conf_id_get(conf, C_KEY, C_ALG,
-			                                 &key_val);
-			if (conf_opt(&alg_val) != tsig->algorithm) {
-				NEXT_KEY
-			}
-
-			break;
-		}
-		/* Check for key match or empty list without key provided. */
-		if (key_val.code != KNOT_EOK &&
-		    !(key_val.code == KNOT_ENOENT && tsig->name == NULL)) {
-			goto next_addr;
 		}
 
 		/* Check if the action is allowed. */
@@ -261,15 +283,8 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		}
 
 		return true;
-next_addr:
-		if (rmt.code == KNOT_EOK) {
-			conf_val_next(&rmt);
-		}
-		if (rmt.code != KNOT_EOK) {
 next_acl:
-			conf_val_next(acl);
-			rmt = conf_id_get(conf, C_ACL, C_RMT, acl);
-		}
+		conf_val_next(acl);
 	}
 
 	return false;

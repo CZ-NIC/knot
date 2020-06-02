@@ -98,7 +98,7 @@ static void test_acl_allowed(void)
 		"    address: [ 2009::1 ]\n"
 		"    key: key1_md5\n"
 		"  - id: remote_v6_ok\n"
-		"    address: [ 2001::1 ]\n"
+		"    address: [ 127.0.0.1, 2001::1 ]\n"
 		"    key: key1_md5\n"
 		"\n"
 		"acl:\n"
