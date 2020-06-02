@@ -370,7 +370,7 @@ static knotd_in_state_t synth_authority(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	// promote NXDOMAIN to NODATA
 
-	if (state == KNOTD_IN_STATE_MISS) {
+	if (want_dnssec(qdata) && state == KNOTD_IN_STATE_MISS) {
 		//! \todo Override RCODE set in solver_authority. Review.
 		qdata->rcode = KNOT_RCODE_NOERROR;
 		return KNOTD_IN_STATE_NODATA;
