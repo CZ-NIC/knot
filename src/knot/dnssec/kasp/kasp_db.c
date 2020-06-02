@@ -31,6 +31,7 @@ typedef enum {
 	KASPDBKEY_MASTERSERIAL = 0x5,
 	KASPDBKEY_LASTSIGNEDSERIAL = 0x6,
 	KASPDBKEY_OFFLINE_RECORDS = 0x7,
+	KASPDBKEY_SAVED_TTLS = 0x8,
 } keyclass_t;
 
 static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const char *str)
@@ -464,6 +465,28 @@ int kasp_db_delete_offline_records(knot_lmdb_db_t *db, const knot_dname_t *zone,
 	knot_lmdb_commit(&txn);
 	free(prefix.mv_data);
 	return txn.ret;
+}
+
+int kasp_db_get_saved_ttls(knot_lmdb_db_t *db, const knot_dname_t *zone,
+                           uint32_t *max_ttl, uint32_t *key_ttl)
+{
+	MDB_val key = make_key_str(KASPDBKEY_SAVED_TTLS, zone, NULL);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, false);
+	if (knot_lmdb_find(&txn, &key, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
+		knot_lmdb_unmake_curval(&txn, "II", max_ttl, key_ttl);
+	}
+	knot_lmdb_abort(&txn);
+	free(key.mv_data);
+	return txn.ret;
+}
+
+int kasp_db_set_saved_ttls(knot_lmdb_db_t *db, const knot_dname_t *zone,
+                           uint32_t max_ttl, uint32_t key_ttl)
+{
+	MDB_val key = make_key_str(KASPDBKEY_SAVED_TTLS, zone, NULL);
+	MDB_val val = knot_lmdb_make_key("II", max_ttl, key_ttl);
+	return knot_lmdb_quick_insert(db, key, val);
 }
 
 void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf)

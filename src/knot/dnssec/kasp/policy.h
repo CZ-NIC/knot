@@ -111,6 +111,8 @@ typedef struct {
 	uint8_t nsec3_salt_length;
 	// zone
 	uint32_t zone_maximal_ttl;          // like knot_timediff_t
+	uint32_t saved_max_ttl;
+	uint32_t saved_key_ttl;
 	// data propagation delay
 	uint32_t propagation_delay;         // like knot_timediff_t
 	// various
