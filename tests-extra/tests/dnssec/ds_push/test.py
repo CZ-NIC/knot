@@ -95,7 +95,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     wait_for_dnskey_count(t, server, total_keys, 20)
     check_zone(server, zone, total_keys, 1, 1, 1, desc + ": published new")
 
-    t.sleep(2)
+    t.sleep(3)
 
     wait_for_rrsig_count(t, server, "DNSKEY", 2, 20)
     check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both keys active")
