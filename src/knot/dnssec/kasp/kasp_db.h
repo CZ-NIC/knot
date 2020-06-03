@@ -225,6 +225,31 @@ int kasp_db_delete_offline_records(knot_lmdb_db_t *db, const knot_dname_t *zone,
                                    knot_time_t from_time, knot_time_t to_time);
 
 /*!
+ * \brief Load saved zone-max-TTL and DNSKEY-TTL.
+ *
+ * \param db        KASP db.
+ * \param max_ttl   Out: saved zone max TTL.
+ * \param key_ttl   Out: saved DNSKEY TTL.
+ *
+ * \retval KNOT_ENOENT   If not saved yet.
+ * \return KNOT_E*
+ */
+int kasp_db_get_saved_ttls(knot_lmdb_db_t *db, const knot_dname_t *zone,
+                           uint32_t *max_ttl, uint32_t *key_ttl);
+
+/*!
+ * \brief Save current zone-max-TTL and DNSKEY-TTL.
+ *
+ * \param db        KASP db.
+ * \param max_ttl   Current zone max TTL.
+ * \param key_ttl   Current DNSKEY TTL.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_set_saved_ttls(knot_lmdb_db_t *db, const knot_dname_t *zone,
+                           uint32_t max_ttl, uint32_t key_ttl);
+
+/*!
  * \brief Initialize KASP database according to conf, if not already.
  *
  * \param db      KASP DB to be initialized.

@@ -283,7 +283,7 @@ static knot_time_t zsk_active_time(knot_time_t publish_time, const kdnssec_ctx_t
 	if (publish_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(publish_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
+	return knot_time_add(publish_time, ctx->policy->propagation_delay + ctx->policy->saved_key_ttl);
 }
 
 static knot_time_t zsk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t *ctx)
@@ -291,7 +291,7 @@ static knot_time_t zsk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t 
 	if (retire_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(retire_time, ctx->policy->propagation_delay + ctx->policy->zone_maximal_ttl);
+	return knot_time_add(retire_time, ctx->policy->propagation_delay + ctx->policy->saved_max_ttl);
 }
 
 static knot_time_t ksk_rollover_time(knot_time_t created_time, const kdnssec_ctx_t *ctx)
@@ -307,7 +307,7 @@ static knot_time_t ksk_ready_time(knot_time_t publish_time, const kdnssec_ctx_t 
 	if (publish_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(publish_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
+	return knot_time_add(publish_time, ctx->policy->propagation_delay + ctx->policy->saved_key_ttl);
 }
 
 static knot_time_t ksk_sbm_max_time(knot_time_t ready_time, const kdnssec_ctx_t *ctx)
@@ -324,7 +324,7 @@ static knot_time_t ksk_retire_time(knot_time_t retire_active_time, const kdnssec
 		return 0;
 	}
 	// this is not correct! It should be parent DS TTL.
-	return knot_time_add(retire_active_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
+	return knot_time_add(retire_active_time, ctx->policy->propagation_delay + ctx->policy->saved_key_ttl);
 }
 
 static knot_time_t ksk_remove_time(knot_time_t retire_time, bool is_csk, const kdnssec_ctx_t *ctx)
@@ -332,9 +332,9 @@ static knot_time_t ksk_remove_time(knot_time_t retire_time, bool is_csk, const k
 	if (retire_time <= 0) {
 		return 0;
 	}
-	knot_timediff_t use_ttl = ctx->policy->dnskey_ttl;
+	knot_timediff_t use_ttl = ctx->policy->saved_key_ttl;
 	if (is_csk) {
-		use_ttl = ctx->policy->zone_maximal_ttl;
+		use_ttl = ctx->policy->saved_max_ttl;
 	}
 	return knot_time_add(retire_time, ctx->policy->propagation_delay + use_ttl);
 }
@@ -346,7 +346,7 @@ static knot_time_t alg_publish_time(knot_time_t pre_active_time, const kdnssec_c
 	if (pre_active_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(pre_active_time, ctx->policy->propagation_delay + ctx->policy->zone_maximal_ttl);
+	return knot_time_add(pre_active_time, ctx->policy->propagation_delay + ctx->policy->saved_max_ttl);
 }
 
 static knot_time_t alg_remove_time(knot_time_t post_active_time, const kdnssec_ctx_t *ctx)
