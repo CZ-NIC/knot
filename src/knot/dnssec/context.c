@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -170,6 +170,13 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		goto init_error;
 	}
 
+	ret = kasp_db_get_saved_ttls(ctx->kasp_db, zone_name,
+	                             &ctx->policy->saved_max_ttl,
+	                             &ctx->policy->saved_key_ttl);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		return ret;
+	}
+
 	conf_val_t policy_id;
 	if (from_module == NULL) {
 		policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone_name);
@@ -207,7 +214,15 @@ int kdnssec_ctx_commit(kdnssec_ctx_t *ctx)
 		return KNOT_EINVAL;
 	}
 
-	// do something with keytore? Probably not..
+	if (ctx->policy->dnskey_ttl != UINT32_MAX &&
+	    ctx->policy->zone_maximal_ttl != UINT32_MAX) {
+		int ret = kasp_db_set_saved_ttls(ctx->kasp_db, ctx->zone->dname,
+		                                 ctx->policy->zone_maximal_ttl,
+		                                 ctx->policy->dnskey_ttl);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
 
 	return kasp_zone_save(ctx->zone, ctx->zone->dname, ctx->kasp_db);
 }
