@@ -76,6 +76,8 @@ typedef struct {
 	bool	show_section;
 	/*!< Show EDNS pseudosection. */
 	bool	show_edns;
+	/*!< Show unknown EDNS options in printable format. */
+	bool	show_edns_opt_text;
 	/*!< Show QUERY/ZONE section. */
 	bool	show_question;
 	/*!< Show ANSWER/PREREQ section. */
