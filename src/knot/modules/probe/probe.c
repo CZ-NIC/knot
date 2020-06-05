@@ -16,6 +16,7 @@
 
 #include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
+#include "contrib/time.h"
 #include "knot/include/module.h"
 #include "knot/conf/base.h"
 #include "knot/conf/schema.h"
@@ -24,8 +25,12 @@
 
 #include <stdio.h>
 #include <netinet/ip.h>
+#include <netinet/tcp.h>
 
-#define MOD_PREFIX		"\x06""prefix"
+#define MOD_PREFIX      "\x06""prefix"
+#define MOD_RATE_LIMIT  "\x0A""rate-limit"
+
+#define PROBE_MAX_WINDOW_COUNT 5
 
 static int check_prefix(knotd_conf_check_args_t *args)
 {
@@ -38,7 +43,8 @@ static int check_prefix(knotd_conf_check_args_t *args)
 }
 
 const yp_item_t probe_conf[] = {
-	{ MOD_PREFIX,      YP_TSTR, YP_VSTR = { "kprobe-" },           YP_FNONE, { check_prefix } },
+	{ MOD_PREFIX,       YP_TSTR, YP_VSTR = { "kprobe-" },     YP_FNONE, { check_prefix } },
+	{ MOD_RATE_LIMIT,   YP_TINT, YP_VINT = {0, INT64_MAX, 0} },
 	{ NULL }
 };
 
@@ -53,13 +59,20 @@ int probe_conf_check(knotd_conf_check_args_t *args)
 	return KNOT_EOK;
 }
 
+typedef struct {
+	knot_probe_channel_t channel;
+	struct timespec last;
+	uint64_t tokens;
+} probe_channel_ctx_t;
+
 typedef struct probe_ctx {
-	knot_probe_channel_t *probes;
+	probe_channel_ctx_t *probes;
 	size_t probe_count;
+	uint64_t rate;
 } probe_ctx_t;
 
 
-static int ss_to_addr(addr_t *addr, const struct sockaddr_storage *ss)
+static int ss_to_addr(knot_addr_t *addr, const struct sockaddr_storage *ss)
 {
 	if (ss->ss_family == AF_INET) {
 		struct sockaddr_in *sa = (struct sockaddr_in *)ss;
@@ -78,25 +91,91 @@ static int ss_to_addr(addr_t *addr, const struct sockaddr_storage *ss)
 	return KNOT_EINVAL;
 }
 
+
+static void store_edns_nsid(knot_probe_edns_t *dst, const knot_rrset_t *src) {
+	assert(dst);
+
+	if (src) {
+		uint8_t *nsid = NULL, *destination = dst->nsid;
+		while((nsid = knot_edns_get_option(src, KNOT_EDNS_OPTION_NSID, nsid)) != NULL) {
+			size_t size = MIN(4 + ntohs(((uint16_t *)nsid)[1]), dst->nsid + sizeof(dst->nsid) - destination);
+			memcpy(destination, nsid, size);
+			destination += size;
+		}
+	}
+}
+
+static void store_edns_cs(knot_probe_edns_t *dst, const knot_edns_options_t *src)
+{
+	assert(dst);
+
+	if (src && src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET]) {
+		size_t size = 4 + ntohs(((uint16_t *)src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET])[1]);
+		if (size > sizeof(dst->client_subnet)) {
+			return;
+		}
+		memcpy(dst->client_subnet, src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET], size);
+	}
+}
+
+static uint64_t count_windows(const struct timespec *interval)
+{
+	/* window every 1/5th of second (5Hz) */
+	return interval->tv_nsec / 200000000L + interval->tv_sec * 5;
+}
+
 static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
-                                     knotd_qdata_t *qdata, knotd_mod_t *mod)
+                              knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
 	assert(pkt && qdata);
 
 	unsigned tid = qdata->params->thread_id;
 	probe_ctx_t *p = knotd_mod_ctx(mod);
-	knot_probe_channel_t *probe = &(p->probes[tid % p->probe_count]);
+
+	probe_channel_ctx_t *ctx = &(p->probes[tid % p->probe_count]);
+	/* packet rate restriction */
+	if (p->rate) {
+		struct timespec now = time_now();
+		struct timespec diff = time_diff(&ctx->last, &now);
+		uint64_t dt = MIN(count_windows(&diff), PROBE_MAX_WINDOW_COUNT);
+		if (dt > 0) {/* Window moved */
+			/* Store time of change floored to window resolution */
+			ctx->last.tv_sec = now.tv_sec;
+			ctx->last.tv_nsec = (now.tv_nsec / 200000000L) * 200000000L; 
+
+			uint64_t dn = (dt * p->rate) / PROBE_MAX_WINDOW_COUNT;
+			ctx->tokens = MIN(ctx->tokens + dn, p->rate); 
+		}
+		if (ctx->tokens == 0) {
+			/* Drop */
+			return state;
+		}
+		--ctx->tokens;
+	}
+
+	/* Prepare and send data */ 
+	knot_probe_channel_t *probe = &(ctx->channel);
 	
 	const struct sockaddr_storage *src = qdata->params->remote;
 	const struct sockaddr_storage *dst = qdata->params->server;
 	
-	knot_probe_datagram_t d;
+	knot_probe_data_t d;
 	
+	store_edns_nsid(&d.edns_opts, pkt->opt_rr);
+	store_edns_cs(&d.edns_opts, qdata->query->edns_opts);
+	strncpy((char *)d.dname, (const char *)knot_pkt_qname(pkt), sizeof(d.dname) - 1);
+
+	struct tcp_info info = { 0 };
+	socklen_t tcp_info_length = sizeof(info);
+	if (getsockopt(qdata->params->socket, SOL_TCP, TCP_INFO, (void *)&info, &tcp_info_length) == 0) {
+		d.tcp_rtt = info.tcpi_rtt;
+	}
+
 	ss_to_addr(&d.src, src);
 	ss_to_addr(&d.dst, dst);
 
-	memcpy(d.query_wire, qdata->query->wire, sizeof(d.query_wire));
-	memcpy(d.response_wire, pkt->wire, sizeof(d.response_wire));
+	memcpy(d.query_hdr, qdata->query->wire, sizeof(d.query_hdr));
+	memcpy(d.response_hdr, pkt->wire, sizeof(d.response_hdr));
 
 	knot_probe_channel_send(probe, (uint8_t *)&d, sizeof(d), 0);
 
@@ -125,21 +204,24 @@ int probe_load(knotd_mod_t *mod)
 		return KNOT_ENOMEM;
 	}
 
+	mod_conf = knotd_conf_mod(mod, MOD_RATE_LIMIT);
+	p->rate = mod_conf.single.integer;
+
 	if ((p->probe_count = conf()->cache.srv_bg_threads) == 0) {
 		free(p);
 		return KNOT_EINVAL;
 	}
 
-	p->probes = (knot_probe_channel_t *)calloc(p->probe_count, sizeof(knot_probe_channel_t));
+	p->probes = (probe_channel_ctx_t *)calloc(p->probe_count, sizeof(probe_channel_ctx_t));
 	if (!p->probes) {
 		free(p);
 		return KNOT_ENOMEM;
 	}
 	int ret;
-	for (knot_probe_channel_t *it = p->probes; it < &p->probes[p->probe_count]; ++it) {
-		if (unlikely((ret = knot_probe_channel_init(it, prefix, (it - p->probes))) != KNOT_EOK)) {
+	for (probe_channel_ctx_t *it = p->probes; it < &p->probes[p->probe_count]; ++it) {
+		if (unlikely((ret = knot_probe_channel_init(&it->channel, prefix, (it - p->probes))) != KNOT_EOK)) {
 			for (--it; it >= p->probes; --it) { // On error close all previous sockets
-				knot_probe_channel_close(it);
+				knot_probe_channel_close(&it->channel);
 			}
 			free(p->probes);
 			free(p);
@@ -156,7 +238,7 @@ void probe_unload(knotd_mod_t *mod)
 {
 	probe_ctx_t *p = (probe_ctx_t *)knotd_mod_ctx(mod);
 	for (int i = 0; i < p->probe_count; ++i) {
-		knot_probe_channel_close(&p->probes[i]);
+		knot_probe_channel_close(&p->probes[i].channel);
 	}
 	free(p->probes);
 	free(knotd_mod_ctx(mod));
