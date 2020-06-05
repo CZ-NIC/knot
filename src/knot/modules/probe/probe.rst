@@ -22,6 +22,7 @@ Explicit module configuration::
     mod-probe:
       - id: custom
         prefix: knot-probe-
+        rate-limit: 1000
 
     template:
       - id: default
@@ -35,6 +36,7 @@ Module reference
  mod-probe:
    - id: STR
      prefix: STR
+     rate-limit: INT
 
 .. _mod-probe_id:
 
@@ -54,8 +56,20 @@ channel identificator (hexadecimal number that represents identificator of threa
 
 *Default:* kprobe-
 
+.. _mod-probe_rate-limit:
+
+rate limit per channel
+......................
+
+Set rate limit of send packets through channel per second. Once set, server will not
+send more probe packets than specified *rate-limit* per channel. None limit will be
+restricted when set to 0.
+
+*Default:* 0
+
 Client side
 -----------
 
-For third party software in *libknot* is API for receive data from probe. Definition of API function can be
-found under *libknot/probe/client.h* header. Example of client can be found in file *samples/knot-probe-client.c*.
+For third party software in *libknot* is API for receive data from probe. Definition
+of API function can be found under *libknot/probe/client.h* header. Example of client
+can be found in file *samples/knot-probe-client.c*.
