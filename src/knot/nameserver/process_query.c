@@ -425,7 +425,8 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 
 	if (query_type(query) == KNOTD_QUERY_TYPE_NORMAL &&
 	    qdata->extra->zone != NULL && (qdata->extra->zone->flags & ZONE_IS_CATALOG)) {
-		if (!process_query_acl_check(conf(), ACL_ACTION_TRANSFER, qdata)) {
+		if ((qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) || // TODO any better way to detect query over UDP ?
+		    !process_query_acl_check(conf(), ACL_ACTION_TRANSFER, qdata)) {
 			qdata->extra->zone = NULL;
 			qdata->extra->contents = NULL;
 		}
