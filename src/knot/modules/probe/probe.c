@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include <netinet/ip.h>
+#include <netinet/tcp.h>
 
 #define MOD_PREFIX		"\x06""prefix"
 
@@ -78,8 +79,35 @@ static int ss_to_addr(addr_t *addr, const struct sockaddr_storage *ss)
 	return KNOT_EINVAL;
 }
 
+
+static void store_edns_nsid(edns_opts_t *dst, const knot_rrset_t *src) {
+	assert(dst);
+
+	if (src) {
+		uint8_t *nsid = NULL, *destination = dst->nsid;
+		while((nsid = knot_edns_get_option(src, KNOT_EDNS_OPTION_NSID, nsid)) != NULL) {
+			size_t size = MIN(4 + ntohs(((uint16_t *)nsid)[1]), dst->nsid + sizeof(dst->nsid) - destination);
+			memcpy(destination, nsid, size);
+			destination += size;
+		}
+	}
+}
+
+static void store_edns_cs(edns_opts_t *dst, const knot_edns_options_t *src)
+{
+	assert(dst);
+
+	if (src && src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET]) {
+		size_t size = 4 + ntohs(((uint16_t *)src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET])[1]);
+		if (size > sizeof(dst->client_subnet)) {
+			return;
+		}
+		memcpy(dst->client_subnet, src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET], size);
+	}
+}
+
 static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
-                                     knotd_qdata_t *qdata, knotd_mod_t *mod)
+                              knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
 	assert(pkt && qdata);
 
@@ -92,6 +120,16 @@ static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
 	
 	knot_probe_datagram_t d;
 	
+	store_edns_nsid(&d.edns_opts, pkt->opt_rr);
+	store_edns_cs(&d.edns_opts, qdata->query->edns_opts);
+	strncpy((char *)d.dname, (const char *)knot_pkt_qname(pkt), sizeof(d.dname) - 1);
+
+	struct tcp_info info = { 0 };
+	socklen_t tcp_info_length = sizeof(info);
+	if (getsockopt(qdata->params->socket, SOL_TCP, TCP_INFO, (void *)&info, &tcp_info_length) == 0) {
+		d.tcp_rtt = info.tcpi_rtt;
+	}
+
 	ss_to_addr(&d.src, src);
 	ss_to_addr(&d.dst, dst);
 

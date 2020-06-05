@@ -13,8 +13,7 @@ int main(int argc, char **argv)
 	knot_probe_datagram_t d;
 
 	int ret = poll(pfd.pfds, pfd.nfds, -1);
-	struct pollfd *it;
-	for (it = pfd.pfds; it < &pfd.pfds[pfd.nfds]; ++it) {
+	for (struct pollfd *it = pfd.pfds; it < &pfd.pfds[pfd.nfds]; ++it) {
 		if (it->revents & POLLIN) {
 			recv(it->fd, &d, sizeof(d), 0);
 			// Here you can process datagram
