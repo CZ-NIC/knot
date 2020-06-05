@@ -183,6 +183,9 @@ Options
 **+**\ [\ **no**\ ]\ **opt**
   Show the EDNS pseudosection.
 
+**+**\ [\ **no**\ ]\ **opttext**
+  Try to show unknown EDNS options as text.
+
 **+**\ [\ **no**\ ]\ **question**
   Show the question section.
 
