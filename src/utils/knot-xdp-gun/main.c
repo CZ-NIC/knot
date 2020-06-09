@@ -37,6 +37,7 @@
 
 #include "libknot/libknot.h"
 #include "contrib/openbsd/strlcpy.h"
+#include "contrib/popenve.h"
 #include "utils/common/params.h"
 
 #include "load_queries.h"
@@ -342,34 +343,41 @@ static bool str2mac(const char *str, uint8_t mac[])
 	return true;
 }
 
+static FILE *popen_ip(char *arg1, char *arg2, char *arg3)
+{
+	char *args[5] = { "ip", arg1, arg2, arg3, NULL };
+	char *env[] = { NULL };
+	return kpopenve2("/sbin/ip", args, env);
+}
+
 static int ip_route_get(const char *ip_str, const char *what, char **res)
 {
-	char cmd[50 + strlen(ip_str) + strlen(what)];
-	(void)snprintf(cmd, sizeof(cmd), "ip route get %s | grep -o ' %s [^ ]* '", ip_str, what);
-
 	errno = 0;
-	FILE *p = popen(cmd, "r");
+	FILE *p = popen_ip("route", "get", (char *)ip_str); // hope ip_str gets not broken
 	if (p == NULL) {
 		return (errno != 0) ? knot_map_errno() : KNOT_ENOMEM;
 	}
 
-	char check[16] = { 0 }, got[256] = { 0 };
-	if (fscanf(p, "%15s%255s", check, got) != 2 ||
-	    strcmp(check, what) != 0) {
-		int ret = feof(p) ? KNOT_ENOENT : KNOT_EMALF;
-		pclose(p);
-		return ret;
+	char buf[256] = { 0 };
+	bool hit = false;
+	while (fscanf(p, "%255s", buf) == 1) {
+		if (hit) {
+			*res = strdup(buf);
+			fclose(p);
+			return *res == NULL ? KNOT_ENOMEM : KNOT_EOK;
+		}
+		if (strcmp(buf, what) == 0) {
+			hit = true;
+		}
 	}
-	pclose(p);
-
-	*res = strdup(got);
-	return *res == NULL ? KNOT_ENOMEM : KNOT_EOK;
+	fclose(p);
+	return KNOT_ENOENT;
 }
 
 static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t remote_mac[])
 {
 	errno = 0;
-	FILE *p = popen(ipv6 ? "ip -6 neigh" : "arp -ne", "r");
+	FILE *p = popen_ip(ipv6 ? "-6" : "-4", "neigh", NULL);
 	if (p == NULL) {
 		return (errno != 0) ? knot_map_errno() : KNOT_ENOMEM;
 	}
@@ -384,14 +392,14 @@ static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t r
 		if (strcmp(fields[0], ip_str) != 0) {
 			continue;
 		}
-		if (!str2mac(fields[ipv6 ? 4 : 2], remote_mac)) {
+		if (!str2mac(fields[4], remote_mac)) {
 			ret = KNOT_EMALF;
 		} else {
-			strlcpy(devname, fields[ipv6 ? 2 : 4], IFNAMSIZ);
+			strlcpy(devname, fields[2], IFNAMSIZ);
 			ret = KNOT_EOK;
 		}
 	}
-	pclose(p);
+	fclose(p);
 	return ret;
 }
 
