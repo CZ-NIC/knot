@@ -135,20 +135,20 @@ static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
 	probe_channel_ctx_t *ctx = &(p->probes[tid % p->probe_count]);
 	/* packet rate restriction */
 	if (p->rate) {
-		struct timespec now = time_now();
-		struct timespec diff = time_diff(&ctx->last, &now);
-		uint64_t dt = MIN(count_windows(&diff), PROBE_MAX_WINDOW_COUNT);
-		if (dt > 0) {/* Window moved */
-			/* Store time of change floored to window resolution */
-			ctx->last.tv_sec = now.tv_sec;
-			ctx->last.tv_nsec = (now.tv_nsec / PROBE_WINDOW_LEN_NSEC) * PROBE_WINDOW_LEN_NSEC; 
-
-			uint64_t dn = (dt * p->rate) / PROBE_MAX_WINDOW_COUNT;
-			ctx->tokens = MIN(ctx->tokens + dn, p->rate); 
-		}
 		if (ctx->tokens == 0) {
-			/* Drop */
-			return state;
+			struct timespec now = time_now();
+			struct timespec diff = time_diff(&ctx->last, &now);
+			uint64_t dt = MIN(count_windows(&diff), PROBE_MAX_WINDOW_COUNT);
+			ctx->tokens = (dt * p->rate) / PROBE_MAX_WINDOW_COUNT;
+			if (ctx->tokens > 0) {/* Window moved */
+				/* Store time of change floored to window resolution */
+				ctx->last.tv_sec = now.tv_sec;
+				ctx->last.tv_nsec = (now.tv_nsec / PROBE_WINDOW_LEN_NSEC) * PROBE_WINDOW_LEN_NSEC; 
+			}
+			else {
+				/* Drop */
+				return state;
+			}
 		}
 		--ctx->tokens;
 	}
