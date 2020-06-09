@@ -141,6 +141,9 @@ static const struct error errors[] = {
 	/* Another general errors. */
 	{ KNOT_ELOOP,                 "loop detected" },
 
+	/* Backported. */
+	{ KNOT_NO_READY_KEY,          "no key ready for submission" },
+
 	{ KNOT_ERROR, NULL } /* Terminator */
 };
 

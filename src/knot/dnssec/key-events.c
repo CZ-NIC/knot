@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -757,7 +757,7 @@ int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay)
 			return ret;
 		}
 	}
-	return KNOT_ENOENT;
+	return KNOT_NO_READY_KEY;
 }
 
 bool zone_has_key_sbm(const kdnssec_ctx_t *ctx)
