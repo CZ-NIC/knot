@@ -73,6 +73,8 @@ src/contrib/openbsd/strlcat.c
 src/contrib/openbsd/strlcat.h
 src/contrib/openbsd/strlcpy.c
 src/contrib/openbsd/strlcpy.h
+src/contrib/popenve.c
+src/contrib/popenve.h
 src/contrib/qp-trie/trie.c
 src/contrib/qp-trie/trie.h
 src/contrib/semaphore.c
