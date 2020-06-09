@@ -138,6 +138,7 @@ enum knot_error {
 	KNOT_INVALID_KEY_NAME,
 	KNOT_NO_PUBLIC_KEY,
 	KNOT_NO_PRIVATE_KEY,
+	KNOT_NO_READY_KEY,
 
 	/* Another general errors. */
 	KNOT_ELOOP,

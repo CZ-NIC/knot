@@ -757,7 +757,7 @@ int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay)
 			return ret;
 		}
 	}
-	return KNOT_ENOENT;
+	return KNOT_NO_READY_KEY;
 }
 
 bool zone_has_key_sbm(const kdnssec_ctx_t *ctx)

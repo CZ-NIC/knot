@@ -241,5 +241,5 @@ int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t time
 			}
 		}
 	}
-	return KNOT_ENOENT;
+	return KNOT_NO_READY_KEY;
 }
