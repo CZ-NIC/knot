@@ -31,7 +31,7 @@ int knot_probe_init(knot_probe_pollfd_t *p, const uint16_t channel_count)
 }
 
 _public_
-int knot_probe_bind(knot_probe_pollfd_t *p, char *prefix)
+int knot_probe_bind(knot_probe_pollfd_t *p, const char *prefix)
 {
 	assert(p && p->pfds && p->nfds);
 	if (strlen(prefix) > KNOT_PROBE_PREFIX_MAXSIZE) {
@@ -58,7 +58,7 @@ int knot_probe_bind(knot_probe_pollfd_t *p, char *prefix)
 			goto err;
 		}
 	}
-	return 0;
+	return KNOT_EOK;
 
 	err: knot_probe_close(p);
 	return ret;
