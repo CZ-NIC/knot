@@ -143,7 +143,7 @@ static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
 			if (ctx->tokens > 0) {/* Window moved */
 				/* Store time of change floored to window resolution */
 				ctx->last.tv_sec = now.tv_sec;
-				ctx->last.tv_nsec = (now.tv_nsec / PROBE_WINDOW_LEN_NSEC) * PROBE_WINDOW_LEN_NSEC; 
+				ctx->last.tv_nsec = (now.tv_nsec / PROBE_WINDOW_LEN_NSEC) * PROBE_WINDOW_LEN_NSEC;
 			}
 			else {
 				/* Drop */
@@ -161,7 +161,9 @@ static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
 	
 	store_edns_nsid(&d.edns_opts, pkt->opt_rr);
 	store_edns_cs(&d.edns_opts, qdata->query->edns_opts);
-	strncpy((char *)d.dname, (const char *)knot_pkt_qname(pkt), sizeof(d.dname) - 1);
+
+	const char *dname = (const char *)knot_pkt_qname(pkt);
+	memcpy(d.dname, dname, MIN(strlen(dname) + 5, sizeof(d.dname)));
 
 	struct tcp_info info = { 0 };
 	socklen_t tcp_info_length = sizeof(info);
