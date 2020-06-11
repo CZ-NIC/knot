@@ -22,7 +22,22 @@
 
 #include "popenve.h"
 
-int kpopenve(const char *binfile, char *const args[], char *const env[])
+#ifdef ENABLE_CAP_NG
+#include <cap-ng.h>
+
+static void drop_capabilities(void)
+{
+	/* Drop all capabilities. */
+	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+		capng_clear(CAPNG_SELECT_BOTH);
+		capng_apply(CAPNG_SELECT_BOTH);
+	}
+}
+#else /* ENABLE_CAP_NG */
+static void drop_capabilities(void) {  }
+#endif
+
+int kpopenve(const char *binfile, char *const args[], char *const env[], bool drop_cap)
 {
         int pipefds[2];
         if (pipe(pipefds) < 0) {
@@ -56,6 +71,10 @@ dup_stdout:
 		}
                 close(pipefds[1]);
 
+		if (drop_cap) {
+			drop_capabilities();
+		}
+
                 execve(binfile, args, env);
                 perror("execve");
                 exit(99);
@@ -65,9 +84,9 @@ dup_stdout:
         return pipefds[0];
 }
 
-FILE *kpopenve2(const char *binfile, char *const args[], char *const env[])
+FILE *kpopenve2(const char *binfile, char *const args[], char *const env[], bool drop_cap)
 {
-	int p = kpopenve(binfile, args, env);
+	int p = kpopenve(binfile, args, env, drop_cap);
 	if (p < 0) {
 		errno = -p;
 		return NULL;

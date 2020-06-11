@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdio.h>
 
 /*!
@@ -27,11 +28,12 @@
  * \param binfile   Executable file to be executed.
  * \param args      NULL-terminated arguments; first shall be the prog name!
  * \param env       NULL-terminated environment variables "key=value"
+ * \param drop_cap  Drop capabilities for the subprocess.
  *
  * \retval < 0   Error occured, set to -errno.
  * \return > 0   File descriptor of the pipe reading end.
  */
-int kpopenve(const char *binfile, char *const args[], char *const env[]);
+int kpopenve(const char *binfile, char *const args[], char *const env[], bool drop_cap);
 
 /*!
  * \brief Variant of kpopenve() returning FILE*
@@ -39,8 +41,9 @@ int kpopenve(const char *binfile, char *const args[], char *const env[]);
  * \param binfile   Executable file to be executed.
  * \param args      NULL-terminated arguments; first shall be the prog name!
  * \param env       NULL-terminated environment variables "key=value"
+ * \param drop_cap  Drop capabilities for the subprocess.
  *
  * \retval NULL   Error occured, see errno.
  * \return Pointer to open file descriptor.
  */
-FILE *kpopenve2(const char *binfile, char *const args[], char *const env[]);
+FILE *kpopenve2(const char *binfile, char *const args[], char *const env[], bool drop_cap);
