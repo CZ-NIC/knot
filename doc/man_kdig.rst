@@ -348,6 +348,12 @@ Examples
      $ kdig -d @185.49.141.38 +tls-ca +tls-host=getdnsapi.net \
        +tls-pin=foxZRnIh9gZpWnl+zEiKa0EJ2rdCGroMWm02gaxSc9S= soa example.com
 
+5. DNS over HTTPS examples (various DoH implementations)::
+
+     $ kdig @1.1.1.1 +https example.com.
+     $ kdig @193.17.47.1 +https=/doh example.com.
+     $ kdig @8.8.4.4 +https +https-get example.com.
+
 Files
 -----
 

@@ -396,6 +396,20 @@ $ kdig \-d @185.49.141.38 +tls\-ca +tls\-host=getdnsapi.net \e
 .fi
 .UNINDENT
 .UNINDENT
+.IP 5. 3
+DNS over HTTPS examples (various DoH implementations):
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ kdig @1.1.1.1 +https example.com.
+$ kdig @193.17.47.1 +https=/doh example.com.
+$ kdig @8.8.4.4 +https +https\-get example.com.
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
 .UNINDENT
 .SH FILES
 .sp
