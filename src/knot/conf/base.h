@@ -134,7 +134,7 @@ typedef struct {
 	/*! Default query modules plan. */
 	struct query_plan *query_plan;
 	/*! Zone catalog database. */
-	struct knot_catalog *catalog;
+	struct catalog *catalog;
 } conf_t;
 
 /*!

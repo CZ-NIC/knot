@@ -717,22 +717,22 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 
 	int ret = KNOT_EOK;
 	if ((update->flags & UPDATE_INCREMENTAL)) {
-		ret = knot_cat_update_from_zone(update->zone->catalog_upd,
-		                                update->change.remove,
-		                                true, false, update->zone->catalog);
+		ret = catalog_update_from_zone(update->zone->catalog_upd,
+		                               update->change.remove,
+		                               true, false, update->zone->catalog);
 		if (ret == KNOT_EOK) {
-			ret = knot_cat_update_from_zone(update->zone->catalog_upd,
-			                                update->change.add,
-			                                false, false, NULL);
+			ret = catalog_update_from_zone(update->zone->catalog_upd,
+			                               update->change.add,
+			                               false, false, NULL);
 		}
 	} else {
-		ret = knot_cat_update_del_all(update->zone->catalog_upd,
-		                              update->zone->catalog,
-		                              update->zone->name);
+		ret = catalog_update_del_all(update->zone->catalog_upd,
+		                             update->zone->catalog,
+		                             update->zone->name);
 		if (ret == KNOT_EOK) {
-			ret = knot_cat_update_from_zone(update->zone->catalog_upd,
-			                                update->zone->contents,
-			                                false, true, NULL);
+			ret = catalog_update_from_zone(update->zone->catalog_upd,
+			                               update->zone->contents,
+			                               false, true, NULL);
 		}
 	}
 

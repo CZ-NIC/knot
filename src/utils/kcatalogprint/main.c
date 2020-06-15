@@ -42,9 +42,9 @@ int main(int argc, char *argv[])
 		print_help();
 		return 1;
 	}
-	knot_catalog_t c;
+	catalog_t c;
 	memset(&c, 0, sizeof(c));
-	knot_catalog_init(&c, argv[1], 0); // mapsize grows automatically
-	knot_cat_update_print("Catalog:", &c, NULL);
-	return knot_catalog_deinit(&c) == KNOT_EOK ? 0 : 1;
+	catalog_init(&c, argv[1], 0); // mapsize grows automatically
+	catalog_update_print("Catalog:", &c, NULL);
+	return catalog_deinit(&c) == KNOT_EOK ? 0 : 1;
 }

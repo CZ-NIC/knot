@@ -83,7 +83,7 @@ typedef struct server {
 	knot_lmdb_db_t timerdb;
 	knot_lmdb_db_t journaldb;
 	knot_lmdb_db_t kaspdb;
-	knot_catalog_t catalog;
+	catalog_t catalog;
 
 	/*! \brief I/O handlers. */
 	struct {
@@ -102,7 +102,7 @@ typedef struct server {
 	size_t n_ifaces;
 
 	/*! \brief Pending changes to catalog member zones. */
-	knot_cat_update_t catalog_upd;
+	catalog_update_t catalog_upd;
 } server_t;
 
 /*!
