@@ -18,12 +18,9 @@
 
 #include <pthread.h>
 
-#include "libknot/dname.h"
-#include "libknot/error.h"
-
+#include "libknot/libknot.h"
 #include "contrib/qp-trie/trie.h"
 #include "knot/journal/knot_lmdb.h"
-#include "libknot/rrset.h"
 
 typedef struct knot_catalog {
 	knot_lmdb_db_t db;
