@@ -46,6 +46,27 @@
 #define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] != NULL && \
                                       strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
 
+typedef struct {
+	ctl_args_t *args;
+	int type_filter; // -1: no specific type, [0, 2^16]: specific type.
+	knot_dump_style_t style;
+	knot_ctl_data_t data;
+	knot_dname_txt_storage_t zone;
+	knot_dname_txt_storage_t owner;
+	char ttl[16];
+	char type[32];
+	char rdata[2 * 65536];
+} send_ctx_t;
+
+struct {
+	send_ctx_t send_ctx;
+	zs_scanner_t scanner;
+	char txt_rr[sizeof(((send_ctx_t *)0)->owner) +
+	            sizeof(((send_ctx_t *)0)->ttl) +
+	            sizeof(((send_ctx_t *)0)->type) +
+	            sizeof(((send_ctx_t *)0)->rdata)];
+} ctl_globals;
+
 static void schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t event,
                              bool user)
 {
@@ -515,25 +536,10 @@ static int zone_txn_abort(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-typedef struct {
-	ctl_args_t *args;
-	int type_filter; // -1: no specific type, [0, 2^16]: specific type.
-	knot_dump_style_t style;
-	knot_ctl_data_t data;
-	knot_dname_txt_storage_t zone;
-	knot_dname_txt_storage_t owner;
-	char ttl[16];
-	char type[32];
-	char rdata[2 * 65536];
-} send_ctx_t;
-
-static int create_send_ctx(send_ctx_t **out, const knot_dname_t *zone_name,
-                           ctl_args_t *args)
+static int init_send_ctx(send_ctx_t *ctx, const knot_dname_t *zone_name,
+                         ctl_args_t *args)
 {
-	send_ctx_t *ctx = mm_calloc(&args->mm, 1, sizeof(*ctx));
-	if (ctx == NULL) {
-		return KNOT_ENOMEM;
-	}
+	memset(ctx, 0, sizeof(*ctx));
 
 	ctx->args = args;
 
@@ -551,7 +557,6 @@ static int create_send_ctx(send_ctx_t **out, const knot_dname_t *zone_name,
 
 	// Set the ZONE.
 	if (knot_dname_to_str(ctx->zone, zone_name, sizeof(ctx->zone)) == NULL) {
-		mm_free(&args->mm, ctx);
 		return KNOT_EINVAL;
 	}
 
@@ -559,15 +564,12 @@ static int create_send_ctx(send_ctx_t **out, const knot_dname_t *zone_name,
 	if (args->data[KNOT_CTL_IDX_TYPE] != NULL) {
 		uint16_t type;
 		if (knot_rrtype_from_string(args->data[KNOT_CTL_IDX_TYPE], &type) != 0) {
-			mm_free(&args->mm, ctx);
 			return KNOT_EINVAL;
 		}
 		ctx->type_filter = type;
 	} else {
 		ctx->type_filter = -1;
 	}
-
-	*out = ctx;
 
 	return KNOT_EOK;
 }
@@ -677,8 +679,8 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 
 static int zone_read(zone_t *zone, ctl_args_t *args)
 {
-	send_ctx_t *ctx;
-	int ret = create_send_ctx(&ctx, zone->name, args);
+	send_ctx_t *ctx = &ctl_globals.send_ctx;
+	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -706,8 +708,6 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 	}
 
 zone_read_failed:
-	mm_free(&args->mm, ctx);
-
 	return ret;
 }
 
@@ -717,8 +717,8 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	send_ctx_t *ctx;
-	int ret = create_send_ctx(&ctx, zone->name, args);
+	send_ctx_t *ctx = &ctl_globals.send_ctx;
+	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -752,8 +752,6 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 	}
 
 zone_txn_get_failed:
-	mm_free(&args->mm, ctx);
-
 	return ret;
 }
 
@@ -838,15 +836,13 @@ static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
 		return zone_flag_txn_get(zone, args, CTL_FLAG_ADD);
 	}
 
-	send_ctx_t *ctx;
-	int ret = create_send_ctx(&ctx, zone->name, args);
+	send_ctx_t *ctx = &ctl_globals.send_ctx;
+	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = send_changeset(&zone->control_update->change, ctx);
-	mm_free(&args->mm, ctx);
-	return ret;
+	return send_changeset(&zone->control_update->change, ctx);
 }
 
 static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
@@ -888,20 +884,13 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	const char *ttl   = need_ttl ? args->data[KNOT_CTL_IDX_TTL] : NULL;
 
 	// Prepare a buffer for a reconstructed record.
-	const size_t buff_len = sizeof(((send_ctx_t *)0)->owner) +
-	                        sizeof(((send_ctx_t *)0)->ttl) +
-	                        sizeof(((send_ctx_t *)0)->type) +
-	                        sizeof(((send_ctx_t *)0)->rdata);
-	char *buff = mm_alloc(&args->mm, buff_len);
-	if (buff == NULL) {
-		return KNOT_ENOMEM;
-	}
+	const size_t buff_len = sizeof(ctl_globals.txt_rr);
+	char *buff = ctl_globals.txt_rr;
 
 	uint32_t default_ttl = 0;
 	if (ttl == NULL) {
 		int ret = get_ttl(zone, args, &default_ttl);
 		if (need_ttl && ret != KNOT_EOK) {
-			mm_free(&args->mm, buff);
 			return ret;
 		}
 	}
@@ -913,19 +902,12 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	                   (type  != NULL ? type  : ""),
 	                   (data  != NULL ? data  : ""));
 	if (ret <= 0 || ret >= buff_len) {
-		mm_free(&args->mm, buff);
 		return KNOT_ESPACE;
 	}
 	size_t rdata_len = ret;
 
-	// Initialize RR parser.
-	zs_scanner_t *scanner = mm_alloc(&args->mm, sizeof(*scanner));
-	if (scanner == NULL) {
-		ret = KNOT_ENOMEM;
-		goto parser_failed;
-	}
-
 	// Parse the record.
+	zs_scanner_t *scanner = &ctl_globals.scanner;
 	if (zs_init(scanner, origin, KNOT_CLASS_IN, default_ttl) != 0 ||
 	    zs_set_input_string(scanner, buff, rdata_len) != 0 ||
 	    zs_parse_record(scanner) != 0 ||
@@ -947,8 +929,6 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	                           NULL);
 parser_failed:
 	zs_deinit(scanner);
-	mm_free(&args->mm, scanner);
-	mm_free(&args->mm, buff);
 
 	return ret;
 }
