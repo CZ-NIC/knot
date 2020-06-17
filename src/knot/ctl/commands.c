@@ -689,13 +689,12 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 
 		ret = get_owner(owner, sizeof(owner), zone->name, args);
 		if (ret != KNOT_EOK) {
-			goto zone_read_failed;
+			return ret;
 		}
 
 		const zone_node_t *node = zone_contents_node_or_nsec3(zone->contents, owner);
 		if (node == NULL) {
-			ret = KNOT_ENONODE;
-			goto zone_read_failed;
+			return (ret = KNOT_ENONODE);
 		}
 
 		ret = send_node((zone_node_t *)node, ctx);
@@ -705,9 +704,6 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 			ret = zone_contents_nsec3_apply(zone->contents, send_node, ctx);
 		}
 	}
-
-zone_read_failed:
-	return ret;
 }
 
 static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
