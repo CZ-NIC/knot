@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,8 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "contrib/mempattern.h"
-#include "contrib/ucw/mempool.h"
 #include "knot/common/log.h"
 #include "knot/ctl/commands.h"
 #include "knot/ctl/process.h"
@@ -33,8 +31,6 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		.server = server
 	};
 
-	mm_ctx_mempool(&args.mm, MM_DEFAULT_BLKSIZE);
-
 	// Strip redundant/unprocessed data units in the current block.
 	bool strip = false;
 
@@ -44,7 +40,6 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		if (ret != KNOT_EOK) {
 			log_ctl_debug("control, failed to receive (%s)",
 			              knot_strerror(ret));
-			mp_delete(args.mm.ctx);
 			return ret;
 		}
 
@@ -66,7 +61,6 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 			strip = false;
 			continue;
 		case KNOT_CTL_TYPE_END:
-			mp_delete(args.mm.ctx);
 			return KNOT_EOF;
 		default:
 			assert(0);
@@ -121,7 +115,6 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 				              knot_strerror(ret));
 			}
 
-			mp_delete(args.mm.ctx);
 			return cmd_ret;
 		}
 	}
