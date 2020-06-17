@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -84,7 +84,6 @@ typedef enum {
 
 /*! Control command parameters. */
 typedef struct {
-	knot_mm_t mm;
 	knot_ctl_t *ctl;
 	knot_ctl_type_t type;
 	knot_ctl_data_t data;
