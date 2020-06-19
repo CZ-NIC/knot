@@ -280,7 +280,7 @@ int net_connect(net_t *net)
 		return KNOT_EINVAL;
 	}
 
-	// Set remote information string.
+	// Set local and remote information string.
 	get_addr_str((struct sockaddr_storage *)net->srv->ai_addr,
 	             net->socktype, &net->remote_str);
 

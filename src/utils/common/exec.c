@@ -172,14 +172,25 @@ static void print_footer(const size_t total_len,
 
 	// Print connection statistics.
 	if (net != NULL) {
+		char from[INET6_ADDRSTRLEN + 6] = { 0 };
+		char to[INET6_ADDRSTRLEN + 6] = { 0 };
+
 		if (incoming) {
-			printf(";; From %s", net->remote_str);
-		} else {
-			printf(";; To %s", net->remote_str);
+			if (net->remote_info) sockaddr_tostr(from, sizeof(from) - 1, (struct sockaddr_storage *)net->remote_info->ai_addr);
+			if (net->local_info) sockaddr_tostr(to, sizeof(to) - 1, (struct sockaddr_storage *)net->local_info->ai_addr);
+		}
+		else {
+			if (net->local_info) sockaddr_tostr(from, sizeof(from) - 1, (struct sockaddr_storage *)net->local_info->ai_addr);
+			if (net->remote_info) sockaddr_tostr(to, sizeof(to) - 1, (struct sockaddr_storage *)net->remote_info->ai_addr);
 		}
 
+		printf(";;");
+		if (from[0]) printf(" From %s", from);
+		if (to[0]) printf(" To %s", to);
+		printf(" (%s)", get_sockname(net->socktype));
+
 		if (elapsed >= 0) {
-			printf(" in %.1f ms\n", elapsed);
+			printf(" In %.1f ms\n", elapsed);
 		} else {
 			printf("\n");
 		}
