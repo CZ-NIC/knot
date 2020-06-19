@@ -172,14 +172,24 @@ static void print_footer(const size_t total_len,
 
 	// Print connection statistics.
 	if (net != NULL) {
+		char *from = NULL;
+		char *to = NULL;
+
 		if (incoming) {
-			printf(";; From %s", net->remote_str);
-		} else {
-			printf(";; To %s", net->remote_str);
+			from = net->remote_str;
+			to = net->local_str;
 		}
+		else {
+			from = net->local_str;
+			to = net->remote_str;
+		}
+		
+		printf(";;");
+		if (from) printf(" From %s", from);
+		if (to) printf(" To %s", to);
 
 		if (elapsed >= 0) {
-			printf(" in %.1f ms\n", elapsed);
+			printf(" In %.1f ms\n", elapsed);
 		} else {
 			printf("\n");
 		}

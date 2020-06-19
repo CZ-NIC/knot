@@ -280,9 +280,13 @@ int net_connect(net_t *net)
 		return KNOT_EINVAL;
 	}
 
-	// Set remote information string.
+	// Set local and remote information string.
 	get_addr_str((struct sockaddr_storage *)net->srv->ai_addr,
 	             net->socktype, &net->remote_str);
+	if (net->local_info) {
+		get_addr_str((struct sockaddr_storage *)net->local_info->ai_addr,
+		             net->local_info->ai_family, &net->local_str);
+	}
 
 	// Create socket.
 	int sockfd = socket(net->srv->ai_family, net->socktype, 0);
