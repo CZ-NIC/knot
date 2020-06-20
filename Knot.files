@@ -198,6 +198,7 @@ src/knot/modules/noudp/noudp.c
 src/knot/modules/onlinesign/nsec_next.c
 src/knot/modules/onlinesign/nsec_next.h
 src/knot/modules/onlinesign/onlinesign.c
+src/knot/modules/probe/probe.c
 src/knot/modules/queryacl/queryacl.c
 src/knot/modules/rrl/functions.c
 src/knot/modules/rrl/functions.h
@@ -372,6 +373,11 @@ src/libknot/packet/pkt.h
 src/libknot/packet/rrset-wire.c
 src/libknot/packet/rrset-wire.h
 src/libknot/packet/wire.h
+src/libknot/probe/client.c
+src/libknot/probe/client.h
+src/libknot/probe/data.h
+src/libknot/probe/server.c
+src/libknot/probe/server.h
 src/libknot/rdata.h
 src/libknot/rdataset.c
 src/libknot/rdataset.h

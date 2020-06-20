@@ -28,7 +28,7 @@ nobase_include_libknot_HEADERS = \
 	libknot/packet/rrset-wire.h		\
 	libknot/packet/wire.h			\
 	libknot/probe/client.h			\
-	libknot/probe/common.h			\
+	libknot/probe/data.h			\
 	libknot/probe/server.h			\
 	libknot/rdata.h				\
 	libknot/rdataset.h			\
