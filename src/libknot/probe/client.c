@@ -27,6 +27,13 @@
 #include "libknot/errcode.h"
 #include "libknot/probe/client.h"
 
+#ifndef UNIX_PATH_MAX
+struct sockaddr_un sizecheck;
+#define UNIX_PATH_MAX sizeof(sizecheck.sun_path)
+#endif
+
+#define KNOT_PROBE_PREFIX_MAXSIZE (UNIX_PATH_MAX - sizeof("ffff.unix"))
+
 _public_
 int knot_probe_init(knot_probe_pollfd_t *p, const uint16_t channel_count)
 {
