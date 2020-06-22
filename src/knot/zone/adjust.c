@@ -290,11 +290,19 @@ int adjust_cb_void(zone_node_t *node, adjust_ctx_t *ctx)
 
 typedef struct {
 	zone_node_t *first_node;
-	adjust_ctx_t *ctx;
+	adjust_ctx_t ctx;
 	zone_node_t *previous_node;
 	adjust_cb_t adjust_cb;
 	bool adjust_prevs;
 	measure_t *m;
+
+	// just for parallel
+	unsigned threads;
+	unsigned thr_id;
+	size_t i;
+	pthread_t thread;
+	int ret;
+	zone_tree_t *tree;
 } zone_adjust_arg_t;
 
 static int adjust_single(zone_node_t *node, void *data)
@@ -304,7 +312,16 @@ static int adjust_single(zone_node_t *node, void *data)
 
 	zone_adjust_arg_t *args = (zone_adjust_arg_t *)data;
 
-	knot_measure_node(node, args->m);
+	// parallel adjust support
+	if (args->threads > 1) {
+		if (args->i++ % args->threads != args->thr_id) {
+			return KNOT_EOK;
+		}
+	}
+
+	if (args->m != NULL) {
+		knot_measure_node(node, args->m);
+	}
 
 	if ((node->flags & NODE_FLAGS_DELETED)) {
 		return KNOT_EOK;
@@ -319,7 +336,7 @@ static int adjust_single(zone_node_t *node, void *data)
 	if (args->adjust_prevs && args->previous_node != NULL &&
 	    node->prev != args->previous_node &&
 	    node->prev != binode_counterpart(args->previous_node)) {
-		zone_tree_insert(args->ctx->changed_nodes, &node);
+		zone_tree_insert(args->ctx.changed_nodes, &node);
 		node->prev = args->previous_node;
 	}
 
@@ -328,7 +345,7 @@ static int adjust_single(zone_node_t *node, void *data)
 		args->previous_node = node;
 	}
 
-	return args->adjust_cb(node, args->ctx);
+	return args->adjust_cb(node, &args->ctx);
 }
 
 static int zone_adjust_tree(zone_tree_t *tree, adjust_ctx_t *ctx, adjust_cb_t adjust_cb,
@@ -339,7 +356,7 @@ static int zone_adjust_tree(zone_tree_t *tree, adjust_ctx_t *ctx, adjust_cb_t ad
 	}
 
 	zone_adjust_arg_t arg = { 0 };
-	arg.ctx = ctx;
+	arg.ctx = *ctx;
 	arg.adjust_cb = adjust_cb;
 	arg.adjust_prevs = adjust_prevs;
 	arg.m = measure_ctx;
@@ -357,8 +374,76 @@ static int zone_adjust_tree(zone_tree_t *tree, adjust_ctx_t *ctx, adjust_cb_t ad
 	return KNOT_EOK;
 }
 
+static void *adjust_tree_thread(void *ctx)
+{
+	zone_adjust_arg_t *arg = ctx;
+
+	arg->ret = zone_tree_apply(arg->tree, adjust_single, ctx);
+
+	return NULL;
+}
+
+static int zone_adjust_tree_parallel(zone_tree_t *tree, adjust_ctx_t *ctx,
+                                     adjust_cb_t adjust_cb, unsigned threads)
+{
+	if (zone_tree_is_empty(tree)) {
+		return KNOT_EOK;
+	}
+
+	zone_adjust_arg_t args[threads];
+	memset(args, 0, sizeof(args));
+	int ret = KNOT_EOK;
+
+	for (unsigned i = 0; i < threads; i++) {
+		args[i].first_node = NULL;
+		args[i].ctx = *ctx;
+		args[i].adjust_cb = adjust_cb;
+		args[i].adjust_prevs = false;
+		args[i].m = NULL;
+		args[i].tree = tree;
+		args[i].threads = threads;
+		args[i].i = 0;
+		args[i].thr_id = i;
+		args[i].ret = -1;
+		if (ctx->changed_nodes != NULL) {
+			args[i].ctx.changed_nodes = zone_tree_create(true);
+			if (args[i].ctx.changed_nodes == NULL) {
+				ret = KNOT_ENOMEM;
+				break;
+			}
+			args[i].ctx.changed_nodes->flags = tree->flags;
+		}
+	}
+	if (ret != KNOT_EOK) {
+		for (unsigned i = 0; i < threads; i++) {
+			zone_tree_free(&args[i].ctx.changed_nodes);
+		}
+		return ret;
+	}
+
+	for (unsigned i = 0; i < threads; i++) {
+		args[i].ret = pthread_create(&args[i].thread, NULL, adjust_tree_thread, &args[i]);
+	}
+
+	for (unsigned i = 0; i < threads; i++) {
+		if (args[i].ret == 0) {
+			args[i].ret = pthread_join(args[i].thread, NULL);
+		}
+		if (args[i].ret != 0) {
+			ret = knot_map_errno_code(args[i].ret);
+		}
+		if (ret == KNOT_EOK && ctx->changed_nodes != NULL) {
+			ret = zone_tree_merge(ctx->changed_nodes, args[i].ctx.changed_nodes);
+		}
+		zone_tree_free(&args[i].ctx.changed_nodes);
+	}
+
+	return ret;
+}
+
 int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb,
-                         bool measure_zone, zone_tree_t *add_changed)
+                         bool measure_zone, bool adjust_prevs, unsigned threads,
+                         zone_tree_t *add_changed)
 {
 	int ret = zone_contents_load_nsec3param(zone);
 	if (ret != KNOT_EOK) {
@@ -372,12 +457,27 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 	measure_t m = knot_measure_init(measure_zone, false);
 	adjust_ctx_t ctx = { zone, add_changed, true };
 
-	if (nsec3_cb != NULL) {
-		ret = zone_adjust_tree(zone->nsec3_nodes, &ctx, nsec3_cb, true, &m);
+	if (threads > 1) {
+		assert(nodes_cb != adjust_cb_flags); // This cb demands parent to be adjusted before child
+		                                     // => required sequential adjusting (also true for
+		                                     // adjust_cb_flags_and_nsec3) !!
+		assert(!measure_zone);
+		assert(!adjust_prevs);
+		if (nsec3_cb != NULL) {
+			ret = zone_adjust_tree_parallel(zone->nsec3_nodes, &ctx, nsec3_cb, threads);
+		}
+		if (ret == KNOT_EOK && nodes_cb != NULL) {
+			ret = zone_adjust_tree_parallel(zone->nodes, &ctx, nodes_cb, threads);
+		}
+	} else {
+		if (nsec3_cb != NULL) {
+			ret = zone_adjust_tree(zone->nsec3_nodes, &ctx, nsec3_cb, adjust_prevs, &m);
+		}
+		if (ret == KNOT_EOK && nodes_cb != NULL) {
+			ret = zone_adjust_tree(zone->nodes, &ctx, nodes_cb, adjust_prevs, &m);
+		}
 	}
-	if (ret == KNOT_EOK && nodes_cb != NULL) {
-		ret = zone_adjust_tree(zone->nodes, &ctx, nodes_cb, true, &m);
-	}
+
 	if (ret == KNOT_EOK && measure_zone && nodes_cb != NULL && nsec3_cb != NULL) {
 		knot_measure_finish_zone(&m, zone);
 	}
@@ -402,11 +502,13 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 	return ret;
 }
 
-int zone_adjust_full(zone_contents_t *zone)
+int zone_adjust_full(zone_contents_t *zone, unsigned threads)
 {
-	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags, true, NULL);
+	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags,
+	                               true, true, 1, NULL);
 	if (ret == KNOT_EOK) {
-		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL, false, NULL);
+		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL,
+		                           false, false, threads, NULL);
 	}
 	if (ret == KNOT_EOK) {
 		additionals_tree_free(zone->adds_tree);
@@ -429,7 +531,7 @@ static int adjust_point_to_nsec3_cb(zone_node_t *node, void *ctx)
 	return adjust_cb_nsec3_pointer(real_node, actx);
 }
 
-int zone_adjust_incremental_update(zone_update_t *update)
+int zone_adjust_incremental_update(zone_update_t *update, unsigned threads)
 {
 	int ret = zone_contents_load_nsec3param(update->new_cont);
 	if (ret != KNOT_EOK) {
@@ -438,10 +540,16 @@ int zone_adjust_incremental_update(zone_update_t *update)
 	bool nsec3change = zone_update_changed_nsec3param(update);
 	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs, nsec3change };
 
-	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false, update->a_ctx->adjust_ptrs);
+	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags,
+	                           false, true, 1, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, true, update->a_ctx->adjust_ptrs);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, NULL,
+			                           false, false, threads, update->a_ctx->adjust_ptrs);
+			if (ret == KNOT_EOK) {
+				// just measure zone size
+				ret = zone_adjust_update(update, adjust_cb_void, adjust_cb_void, true);
+			}
 		} else {
 			ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 		}
@@ -470,7 +578,8 @@ int zone_adjust_incremental_update(zone_update_t *update)
 	}
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_pointer, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_pointer, adjust_cb_void,
+			                           false, false, threads, update->a_ctx->adjust_ptrs);
 		} else {
 			ret = additionals_reverse_apply_multi(
 				update->new_cont->adds_tree,

@@ -82,7 +82,7 @@ serial = knot_slave1.zone_wait(zone, serial)
 
 check_rrsig(knot_slave1, rrsig1, "After IXFR")
 
-knot_slave1.ctl("zone-retransfer")
+knot_slave1.ctl("zone-retransfer", wait=True)
 t.sleep(4)
 
 check_rrsig(knot_slave1, rrsig1, "After AXFR")

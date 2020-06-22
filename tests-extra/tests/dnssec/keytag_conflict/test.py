@@ -36,8 +36,7 @@ def check_zone4(server, min_dnskeys, min_rrsigs, msg):
         set_err("BAD DNSKEY COUNT: " + msg)
         detail_log("!DNSKEYs not published and activated as expected: " + msg)
 
-    server.flush()
-    t.sleep(2)
+    server.flush(wait=True)
     server.zone_verify(server.zones["example.com."])
 
     detail_log(SEP)

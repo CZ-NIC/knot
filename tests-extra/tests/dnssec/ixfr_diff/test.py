@@ -14,6 +14,7 @@ if not master.valgrind:
 else:
   zones = t.zone_rnd(4, records=100)
   slave.tcp_remote_io_timeout = 20000
+  master.ctl_params_append = ["-t", "30"]
 
 t.link(zones, master, slave, ixfr=True)
 
@@ -30,8 +31,7 @@ slave.zones_wait(zones, ser1, greater=False, equal=True)
 for zone in zones:
   slave.zone_backup(zone, flush=True)
 
-master.flush()
-t.sleep(3)
+master.flush(wait=True)
 
 for zone in zones:
   master.update_zonefile(zone, random=True)

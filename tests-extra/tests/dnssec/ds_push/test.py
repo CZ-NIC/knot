@@ -60,10 +60,8 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
 
     detail_log(SEP)
 
-    # Valgrind delay breaks the timing!
-    if not server.valgrind:
-        server.zone_backup(zone, flush=True)
-        server.zone_verify(zone)
+    server.zone_backup(zone, flush=True)
+    server.zone_verify(zone)
 
 def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
     rtime = 0
@@ -89,22 +87,15 @@ def wait_for_dnskey_count(t, server, dnskey_count, timeout):
         if rtime > timeout:
             break
 
-def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, desc, set_ksk_lifetime):
+def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, desc):
     check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
-    orig_ksk_lifetime = server.dnssec(zone).ksk_lifetime
 
-    server.dnssec(zone).ksk_lifetime = set_ksk_lifetime if set_ksk_lifetime > 0 else orig_ksk_lifetime
-    server.gen_confile()
-    server.reload()
+    server.ctl("zone-key-rollover %s ksk" % zone[0].name)
 
     wait_for_dnskey_count(t, server, total_keys, 20)
-
-    t.sleep(3)
     check_zone(server, zone, total_keys, 1, 1, 1, desc + ": published new")
 
-    server.dnssec(zone).ksk_lifetime = orig_ksk_lifetime
-    server.gen_confile()
-    server.reload()
+    t.sleep(2)
 
     wait_for_rrsig_count(t, server, "DNSKEY", 2, 20)
     check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both keys active")
@@ -155,7 +146,7 @@ child.zone_wait(child_zone)
 t.sleep(5)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover", 27)
+watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover")
 
 resp = parent.dig("example.com.", "DS")
 resp.check_count(1, rtype="DS")

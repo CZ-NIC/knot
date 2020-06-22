@@ -474,6 +474,7 @@ acl:
   \- id: STR
     address: ADDR[/INT] | ADDR\-ADDR ...
     key: key_id ...
+    remote: remote_id ...
     action: notify | transfer | update ...
     deny: BOOL
     update\-type: STR ...
@@ -498,6 +499,21 @@ required.
 .sp
 An ordered list of \fI\%reference\fPs to TSIG keys. The query must
 match one of them. Empty value means that transaction authentication is not used.
+.sp
+\fIDefault:\fP not set
+.SS remote
+.sp
+An ordered list of \fI\%references\fP to remotes. The query must
+match one of the remotes. Specifically, one of the remote\(aqs addresses and remote\(aqs
+TSIG key if configured must match.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option cannot be specified along with the \fI\%address\fP or
+\fI\%key\fP option at one ACL item.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP not set
 .SS action
@@ -1303,6 +1319,7 @@ zone:
     journal\-max\-usage: SIZE
     journal\-max\-depth: INT
     zone\-max\-size : SIZE
+    adjust\-threads: INT
     dnssec\-signing: BOOL
     dnssec\-policy: STR
     serial\-policy: increment | unixtime | dateserial
@@ -1511,6 +1528,13 @@ the records in the transfer is twice the configured value. However the final
 size of the zone must satisfy the configured value.
 .sp
 \fIDefault:\fP 2^64
+.SS adjust\-threads
+.sp
+Parallelize internal zone adjusting procedures. This is useful with huge
+zones with NSEC3. Speedup observable at server startup and while processing
+NSEC3 re\-salt.
+.sp
+\fIDefault:\fP 1
 .SS dnssec\-signing
 .sp
 If enabled, automatic DNSSEC signing for the zone is turned on.

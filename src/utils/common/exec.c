@@ -210,6 +210,22 @@ static void print_nsid(const uint8_t *data, uint16_t len)
 	printf(" \"%.*s\"", len, data);
 }
 
+static bool print_text(const uint8_t *data, uint16_t len)
+{
+	if (len == 0) {
+		return false;
+	}
+
+	// Check if printable string.
+	for (int i = 0; i < len; i++) {
+		if (!is_print(data[i])) {
+			return false;
+		}
+	}
+	printf("%.*s", len, data);
+	return true;
+}
+
 static void print_edns_client_subnet(const uint8_t *data, uint16_t len)
 {
 	knot_edns_client_subnet_t ecs = { 0 };
@@ -228,7 +244,7 @@ static void print_edns_client_subnet(const uint8_t *data, uint16_t len)
 	printf("%s/%u/%u", addr_str, ecs.source_len, ecs.scope_len);
 }
 
-static void print_section_opt(const knot_pkt_t *packet)
+static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 {
 	char unknown_ercode[64] = "";
 	const char *ercode_str = NULL;
@@ -285,7 +301,13 @@ static void print_section_opt(const knot_pkt_t *packet)
 			break;
 		default:
 			printf(";; Option (%u): ", opt_code);
-			print_hex(opt_data, opt_len);
+			if (style->show_edns_opt_text) {
+				if (!print_text(opt_data, opt_len)) {
+					print_hex(opt_data, opt_len);
+				}
+			} else {
+				print_hex(opt_data, opt_len);
+			}
 		}
 		printf("\n");
 
@@ -609,7 +631,7 @@ void print_packet(const knot_pkt_t *packet,
 	// Print EDNS section.
 	if (style->show_edns && knot_pkt_has_edns(packet)) {
 		printf("%s", style->show_section ? "\n;; EDNS PSEUDOSECTION:\n;; " : ";;");
-		print_section_opt(packet);
+		print_section_opt(packet, style);
 	}
 
 	// Print DNS sections.

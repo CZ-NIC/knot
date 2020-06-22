@@ -32,7 +32,7 @@ slave.zone_wait(zone)
 resp = slave.dig("node.notify.", "A")
 resp.check(rcode="NXDOMAIN")
 
-master.ctl("zone-notify")
+master.ctl("zone-notify", wait=True)
 
 t.sleep(2)
 

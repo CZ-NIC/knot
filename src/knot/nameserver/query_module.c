@@ -311,10 +311,11 @@ void knotd_mod_stats_free(knotd_mod_t *mod)
 		return;
 	}
 
-	unsigned threads = knotd_mod_threads(mod);
-
-	for (unsigned i = 0; i < threads; i++) {
-		free(mod->stats_vals[i]);
+	if (mod->stats_vals != NULL) {
+		unsigned threads = knotd_mod_threads(mod);
+		for (unsigned i = 0; i < threads; i++) {
+			free(mod->stats_vals[i]);
+		}
 	}
 
 	free(mod->stats_vals);
@@ -326,25 +327,25 @@ void knotd_mod_stats_free(knotd_mod_t *mod)
 	\
 	mod_ctr_t *ctr = mod->stats_info + ctr_id; \
 	assert(idx < ctr->count); \
-	OPERATION(mod->stats_vals[thread_id][ctr->offset + idx], val); \
+	OPERATION(mod->stats_vals[thr_id][ctr->offset + idx], val); \
 }
 
 _public_
-void knotd_mod_stats_incr(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id,
+void knotd_mod_stats_incr(knotd_mod_t *mod, unsigned thr_id, uint32_t ctr_id,
                           uint32_t idx, uint64_t val)
 {
 	STATS_BODY(ATOMIC_ADD)
 }
 
 _public_
-void knotd_mod_stats_decr(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id,
+void knotd_mod_stats_decr(knotd_mod_t *mod, unsigned thr_id, uint32_t ctr_id,
                           uint32_t idx, uint64_t val)
 {
 	STATS_BODY(ATOMIC_SUB)
 }
 
 _public_
-void knotd_mod_stats_store(knotd_mod_t *mod, unsigned thread_id, uint32_t ctr_id,
+void knotd_mod_stats_store(knotd_mod_t *mod, unsigned thr_id, uint32_t ctr_id,
                            uint32_t idx, uint64_t val)
 {
 	STATS_BODY(ATOMIC_SET)

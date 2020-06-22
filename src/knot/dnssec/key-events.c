@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -283,7 +283,7 @@ static knot_time_t zsk_active_time(knot_time_t publish_time, const kdnssec_ctx_t
 	if (publish_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(publish_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
+	return knot_time_add(publish_time, ctx->policy->propagation_delay + ctx->policy->saved_key_ttl);
 }
 
 static knot_time_t zsk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t *ctx)
@@ -291,7 +291,7 @@ static knot_time_t zsk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t 
 	if (retire_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(retire_time, ctx->policy->propagation_delay + ctx->policy->zone_maximal_ttl);
+	return knot_time_add(retire_time, ctx->policy->propagation_delay + ctx->policy->saved_max_ttl);
 }
 
 static knot_time_t ksk_rollover_time(knot_time_t created_time, const kdnssec_ctx_t *ctx)
@@ -307,7 +307,7 @@ static knot_time_t ksk_ready_time(knot_time_t publish_time, const kdnssec_ctx_t 
 	if (publish_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(publish_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
+	return knot_time_add(publish_time, ctx->policy->propagation_delay + ctx->policy->saved_key_ttl);
 }
 
 static knot_time_t ksk_sbm_max_time(knot_time_t ready_time, const kdnssec_ctx_t *ctx)
@@ -324,17 +324,17 @@ static knot_time_t ksk_retire_time(knot_time_t retire_active_time, const kdnssec
 		return 0;
 	}
 	// this is not correct! It should be parent DS TTL.
-	return knot_time_add(retire_active_time, ctx->policy->propagation_delay + ctx->policy->dnskey_ttl);
+	return knot_time_add(retire_active_time, ctx->policy->propagation_delay + ctx->policy->saved_key_ttl);
 }
 
-static knot_time_t ksk_remove_time(knot_time_t retire_time, const kdnssec_ctx_t *ctx)
+static knot_time_t ksk_remove_time(knot_time_t retire_time, bool is_csk, const kdnssec_ctx_t *ctx)
 {
 	if (retire_time <= 0) {
 		return 0;
 	}
-	knot_timediff_t use_ttl = ctx->policy->dnskey_ttl;
-	if (ctx->policy->single_type_signing && ctx->policy->zone_maximal_ttl > use_ttl) {
-		use_ttl = ctx->policy->zone_maximal_ttl;
+	knot_timediff_t use_ttl = ctx->policy->saved_key_ttl;
+	if (is_csk) {
+		use_ttl = ctx->policy->saved_max_ttl;
 	}
 	return knot_time_add(retire_time, ctx->policy->propagation_delay + use_ttl);
 }
@@ -346,12 +346,12 @@ static knot_time_t alg_publish_time(knot_time_t pre_active_time, const kdnssec_c
 	if (pre_active_time <= 0) {
 		return 0;
 	}
-	return knot_time_add(pre_active_time, ctx->policy->propagation_delay + ctx->policy->zone_maximal_ttl);
+	return knot_time_add(pre_active_time, ctx->policy->propagation_delay + ctx->policy->saved_max_ttl);
 }
 
 static knot_time_t alg_remove_time(knot_time_t post_active_time, const kdnssec_ctx_t *ctx)
 {
-	return MAX(ksk_remove_time(post_active_time, ctx), zsk_remove_time(post_active_time, ctx));
+	return MAX(ksk_remove_time(post_active_time, false, ctx), zsk_remove_time(post_active_time, ctx));
 }
 
 static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags)
@@ -407,7 +407,7 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				// (key in removed state is instantly deleted)
 				// but if imported keys, they can be in this state
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
-				keytime = ksk_remove_time(keytime, ctx);
+				keytime = ksk_remove_time(keytime, key->is_zsk, ctx);
 				restype = REMOVE;
 				break;
 			default:
@@ -757,7 +757,7 @@ int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay)
 			return ret;
 		}
 	}
-	return KNOT_ENOENT;
+	return KNOT_NO_READY_KEY;
 }
 
 bool zone_has_key_sbm(const kdnssec_ctx_t *ctx)

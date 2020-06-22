@@ -494,6 +494,7 @@ update, etc.).
    - id: STR
      address: ADDR[/INT] | ADDR-ADDR ...
      key: key_id ...
+     remote: remote_id ...
      action: notify | transfer | update ...
      deny: BOOL
      update-type: STR ...
@@ -526,6 +527,21 @@ key
 
 An ordered list of :ref:`reference<key_id>`\ s to TSIG keys. The query must
 match one of them. Empty value means that transaction authentication is not used.
+
+*Default:* not set
+
+.. _acl_remote:
+
+remote
+------
+
+An ordered list of :ref:`references<remote_id>` to remotes. The query must
+match one of the remotes. Specifically, one of the remote's addresses and remote's
+TSIG key if configured must match.
+
+.. NOTE::
+   This option cannot be specified along with the :ref:`acl_address` or
+   :ref:`acl_key` option at one ACL item.
 
 *Default:* not set
 
@@ -1429,6 +1445,7 @@ Definition of zones served by the server.
      journal-max-usage: SIZE
      journal-max-depth: INT
      zone-max-size : SIZE
+     adjust-threads: INT
      dnssec-signing: BOOL
      dnssec-policy: STR
      serial-policy: increment | unixtime | dateserial
@@ -1654,6 +1671,17 @@ the records in the transfer is twice the configured value. However the final
 size of the zone must satisfy the configured value.
 
 *Default:* 2^64
+
+.. _zone_adjust-threads:
+
+adjust-threads
+--------------
+
+Parallelize internal zone adjusting procedures. This is useful with huge
+zones with NSEC3. Speedup observable at server startup and while processing
+NSEC3 re-salt.
+
+*Default:* 1
 
 .. _zone_dnssec-signing:
 
