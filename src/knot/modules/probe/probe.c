@@ -32,6 +32,7 @@
 
 #define PROBE_MAX_WINDOW_COUNT 5
 #define PROBE_WINDOW_LEN_NSEC (1000000000L / 5L)
+
 static int check_prefix(knotd_conf_check_args_t *args)
 {
 	if (strchr((const char *)args->data, '.') != NULL) {
@@ -72,49 +73,53 @@ typedef struct probe_ctx {
 } probe_ctx_t;
 
 
-static int ss_to_addr(knot_addr_t *addr, const struct sockaddr_storage *ss)
+static int store_addr(knot_probe_data_t *data, const struct sockaddr_storage *src_addr, const struct sockaddr_storage *dst_addr)
 {
-	if (ss->ss_family == AF_INET) {
-		struct sockaddr_in *sa = (struct sockaddr_in *)ss;
-		memcpy(addr->addr, &sa->sin_addr, sizeof(sa->sin_addr));
-		addr->family = ss->ss_family;
-		addr->port = sa->sin_port;
-		return KNOT_EOK;
+	assert(data);
+
+	if (src_addr) {
+		if (src_addr->ss_family == AF_INET) {
+			struct sockaddr_in *sa = (struct sockaddr_in *)src_addr;
+			memcpy(data->remote.addr, &sa->sin_addr, sizeof(sa->sin_addr));
+			data->remote.port = sa->sin_port;
+			data->ip = 4;
+		}
+		else if (src_addr->ss_family == AF_INET6) {
+			struct sockaddr_in6 *sa = (struct sockaddr_in6 *)src_addr;
+			memcpy(data->remote.addr, &sa->sin6_addr, sizeof(sa->sin6_addr));
+			data->remote.port = sa->sin6_port;
+			data->ip = 6;
+		}
 	}
-	else if (ss->ss_family == AF_INET6) {
-		struct sockaddr_in6 *sa = (struct sockaddr_in6 *)ss;
-		memcpy(addr->addr, &sa->sin6_addr, sizeof(sa->sin6_addr));
-		addr->family = sa->sin6_family;
-		addr->port = sa->sin6_port;
-		return KNOT_EOK;
+
+	if (dst_addr) {
+		if (dst_addr->ss_family == AF_INET) {
+			struct sockaddr_in *sa = (struct sockaddr_in *)dst_addr;
+			memcpy(data->local.addr, &sa->sin_addr, sizeof(sa->sin_addr));
+			data->local.port = sa->sin_port;
+			data->ip = 4;
+		}
+		else if (dst_addr->ss_family == AF_INET6) {
+			struct sockaddr_in6 *sa = (struct sockaddr_in6 *)dst_addr;
+			memcpy(data->local.addr, &sa->sin6_addr, sizeof(sa->sin6_addr));
+			data->local.port = sa->sin6_port;
+			data->ip = 6;
+		}
 	}
+
 	return KNOT_EINVAL;
 }
 
-
-static void store_edns_nsid(knot_probe_edns_t *dst, const knot_rrset_t *src) {
-	assert(dst);
-
-	if (src) {
-		uint8_t *nsid = NULL, *destination = dst->nsid;
-		while((nsid = knot_edns_get_option(src, KNOT_EDNS_OPTION_NSID, nsid)) != NULL) {
-			size_t size = MIN(4 + ntohs(((uint16_t *)nsid)[1]), dst->nsid + sizeof(dst->nsid) - destination);
-			memcpy(destination, nsid, size);
-			destination += size;
-		}
-	}
-}
-
-static void store_edns_cs(knot_probe_edns_t *dst, const knot_edns_options_t *src)
+static void store_edns_cs(knot_probe_data_t *dst, const knot_edns_options_t *src)
 {
 	assert(dst);
 
 	if (src && src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET]) {
-		size_t size = 4 + ntohs(((uint16_t *)src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET])[1]);
-		if (size > sizeof(dst->client_subnet)) {
+		size_t size = ntohs(((uint16_t *)src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET])[1]);
+		if (size > sizeof(dst->edns.client_subnet)) {
 			return;
 		}
-		memcpy(dst->client_subnet, src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET], size);
+		memcpy(dst->edns.client_subnet, src->ptr[KNOT_EDNS_OPTION_CLIENT_SUBNET], size);
 	}
 }
 
@@ -158,24 +163,31 @@ static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
 	const struct sockaddr_storage *dst = qdata->params->server;
 	
 	knot_probe_data_t d;
+	d.proto = 0; //TODO missing knot_net
+	store_addr(&d, src, dst);
 	
-	store_edns_nsid(&d.edns_opts, pkt->opt_rr);
-	store_edns_cs(&d.edns_opts, qdata->query->edns_opts);
-
-	const char *dname = (const char *)knot_pkt_qname(pkt);
-	memcpy(d.dname, dname, MIN(strlen(dname) + 5, sizeof(d.dname)));
-
-	struct tcp_info info = { 0 };
-	socklen_t tcp_info_length = sizeof(info);
-	if (getsockopt(qdata->params->socket, SOL_TCP, TCP_INFO, (void *)&info, &tcp_info_length) == 0) {
-		d.tcp_rtt = info.tcpi_rtt;
+	if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) { 
+		struct tcp_info info = { 0 };
+		socklen_t tcp_info_length = sizeof(info);
+		if (getsockopt(qdata->params->socket, SOL_TCP, TCP_INFO, (void *)&info, &tcp_info_length) == 0) {
+			d.tcp_rtt = info.tcpi_rtt;
+		}
 	}
 
-	ss_to_addr(&d.src, src);
-	ss_to_addr(&d.dst, dst);
+	memcpy(d.query.hdr, qdata->query->wire, sizeof(d.query.hdr));
+	d.query.qclass = knot_pkt_qclass(qdata->query);
+	d.query.qtype = knot_pkt_qtype(qdata->query);
+	strncpy(d.query.qname, knot_pkt_qname(qdata->query), sizeof(d.query.qname));
 
-	memcpy(d.query_hdr, qdata->query->wire, sizeof(d.query_hdr));
-	memcpy(d.response_hdr, pkt->wire, sizeof(d.response_hdr));
+	memcpy(d.reply.hdr, pkt->wire, sizeof(d.reply.hdr));
+	d.reply.missing = 0; //TODO
+
+	d.edns.payload = knot_edns_get_payload(pkt->opt_rr);
+	d.edns.rcode = knot_wire_get_rcode(pkt->wire);
+	d.edns.version = knot_edns_get_version(pkt->opt_rr);
+	d.edns.flags = pkt->flags;
+	d.edns.options = 0; //TODO
+	store_edns_cs(&d, qdata->query->edns_opts);
 
 	knot_probe_channel_send(&(ctx->channel), (uint8_t *)&d, sizeof(d), 0);
 
