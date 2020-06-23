@@ -92,6 +92,8 @@ enum {
 #define KNOT_EDNS_RCODE_HI(rc) ((rc >> 4) & 0x00ff)
 #define KNOT_EDNS_RCODE_LO(rc) (rc & 0x000f)
 
+#define KNOT_EDNS_EXT_FLAGS_MASK 0x0000FFFF
+
 /*!
  * \brief Initialize OPT RR.
  *
@@ -270,6 +272,23 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 	opt_rr->ttl |= KNOT_EDNS_DO_MASK;
+}
+
+/*!
+ * \brief Returns the state of OPT RR flags.
+ *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ *
+ * \param opt_rr  OPT RR to get the EDNS flags from.
+ *
+ * \return EDNS flags set in OPT RR.
+ */
+static inline
+uint16_t knot_edns_get_flags(const knot_rrset_t *opt_rr)
+{
+	assert(opt_rr != NULL);
+	return opt_rr->ttl & KNOT_EDNS_EXT_FLAGS_MASK;
 }
 
 /*!
