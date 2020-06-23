@@ -43,8 +43,8 @@ typedef struct {
 	} remote;
 
 	struct {
-		uint8_t qname[KNOT_DNAME_MAXLEN];
 		uint8_t hdr[KNOT_WIRE_HEADER_SIZE];
+		uint8_t qname[KNOT_DNAME_MAXLEN];
 		uint16_t qtype;
 		uint16_t qclass;
 	} query;
@@ -63,5 +63,3 @@ typedef struct {
 		uint8_t version;
 	} edns;
 } knot_probe_data_t;
-
-
