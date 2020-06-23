@@ -28,6 +28,7 @@ struct sockaddr_un sizecheck;
 #define KNOT_PROBE_PREFIX_MAXSIZE (UNIX_PATH_MAX - sizeof("ffff.unix"))
 
 typedef struct {
+	uint32_t tcp_rtt;
 	uint8_t ip;
 	uint8_t proto;
 
@@ -41,13 +42,11 @@ typedef struct {
 		uint16_t port;
 	} remote;
 
-	uint32_t tcp_rtt;
-
 	struct {
-		uint8_t hdr[KNOT_WIRE_HEADER_SIZE];
-		uint16_t qclass;
-		uint16_t qtype;
 		uint8_t qname[KNOT_DNAME_MAXLEN];
+		uint8_t hdr[KNOT_WIRE_HEADER_SIZE];
+		uint16_t qtype;
+		uint16_t qclass;
 	} query;
 
 	struct {
@@ -56,11 +55,13 @@ typedef struct {
 	} reply;
 
 	struct {
+		uint8_t client_subnet[KNOT_EDNS_CLIENT_SUBNET_ADDRESS_MAXLEN];
+		uint32_t options;
 		uint16_t payload;
+		uint16_t flags;
 		uint8_t rcode;
 		uint8_t version;
-		uint16_t flags;
-		uint32_t options;
-		uint8_t client_subnet[KNOT_EDNS_CLIENT_SUBNET_ADDRESS_MAXLEN];
 	} edns;
 } knot_probe_data_t;
+
+
