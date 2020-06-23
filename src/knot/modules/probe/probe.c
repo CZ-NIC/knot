@@ -177,7 +177,7 @@ static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
 	memcpy(d.query.hdr, qdata->query->wire, sizeof(d.query.hdr));
 	d.query.qclass = knot_pkt_qclass(qdata->query);
 	d.query.qtype = knot_pkt_qtype(qdata->query);
-	strncpy(d.query.qname, knot_pkt_qname(qdata->query), sizeof(d.query.qname));
+	strncpy((char *)d.query.qname, (const char *)knot_pkt_qname(qdata->query), sizeof(d.query.qname));
 
 	memcpy(d.reply.hdr, pkt->wire, sizeof(d.reply.hdr));
 	d.reply.missing = 0; //TODO
