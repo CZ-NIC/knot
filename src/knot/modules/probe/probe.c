@@ -166,7 +166,7 @@ static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
 	d.proto = 0; //TODO missing knot_net
 	store_addr(&d, src, dst);
 	
-	if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) { 
+	if ((qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) == 0) { 
 		struct tcp_info info = { 0 };
 		socklen_t tcp_info_length = sizeof(info);
 		if (getsockopt(qdata->params->socket, SOL_TCP, TCP_INFO, (void *)&info, &tcp_info_length) == 0) {
@@ -180,13 +180,23 @@ static knotd_state_t transfer(knotd_state_t state, knot_pkt_t *pkt,
 	strncpy((char *)d.query.qname, (const char *)knot_pkt_qname(qdata->query), sizeof(d.query.qname));
 
 	memcpy(d.reply.hdr, pkt->wire, sizeof(d.reply.hdr));
-	d.reply.missing = 0; //TODO
+	d.reply.missing = (state == KNOTD_STATE_NOOP);
 
-	d.edns.payload = knot_edns_get_payload(pkt->opt_rr);
+	if (pkt->opt_rr) {
+		d.edns.payload = knot_edns_get_payload(pkt->opt_rr);
+		d.edns.version = knot_edns_get_version(pkt->opt_rr);
+	}
 	d.edns.rcode = knot_wire_get_rcode(pkt->wire);
-	d.edns.version = knot_edns_get_version(pkt->opt_rr);
 	d.edns.flags = pkt->flags;
-	d.edns.options = 0; //TODO
+	d.edns.options = 0;
+	if (qdata && qdata->query && qdata->query->edns_opts) {
+		for (uint8_t **it = &qdata->query->edns_opts->ptr[0]; it < &qdata->query->edns_opts->ptr[KNOT_EDNS_MAX_OPTION_CODE + 1]; ++it) {
+			int shift = 0;
+			if (*it && ((shift = knot_edns_opt_get_code(*it)) <= KNOT_EDNS_MAX_OPTION_CODE)) {
+				d.edns.options |= (1 << shift);
+			}
+		}
+	}
 	store_edns_cs(&d, qdata->query->edns_opts);
 
 	knot_probe_channel_send(&(ctx->channel), (uint8_t *)&d, sizeof(d), 0);
