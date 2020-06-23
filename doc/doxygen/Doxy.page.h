@@ -26,6 +26,7 @@
  - \ref db        — Database abstraction
  - \ref dname     — Domain name manipulation
  - \ref pkt       — DNS packet manipulation
+ - \ref probe     — DNS traffic probe interface
  - \ref rr        — DNS resource record mmanipulation
  - \ref rrtype    — DNS resource record types
  - \ref knot-tsig — TSIG operations
@@ -37,6 +38,7 @@
 \defgroup db         db
 \defgroup dname      dname
 \defgroup pkt        pkt
+\defgroup probe      probe
 \defgroup rr         rr
 \defgroup rrtype     rrtype
 \defgroup knot-tsig  tsig
