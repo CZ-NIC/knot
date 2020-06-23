@@ -61,5 +61,6 @@ typedef struct {
 		uint16_t flags;
 		uint8_t rcode;
 		uint8_t version;
+		uint8_t is_present;
 	} edns;
 } knot_probe_data_t;
