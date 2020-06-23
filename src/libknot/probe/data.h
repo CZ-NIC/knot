@@ -51,7 +51,7 @@ typedef struct {
 
 	struct {
 		uint8_t hdr[KNOT_WIRE_HEADER_SIZE];
-		uint8_t missing;
+		uint8_t is_present;
 	} reply;
 
 	struct {
@@ -61,5 +61,6 @@ typedef struct {
 		uint16_t flags;
 		uint8_t rcode;
 		uint8_t version;
+		uint8_t is_present;
 	} edns;
 } knot_probe_data_t;
