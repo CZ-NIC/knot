@@ -155,7 +155,7 @@ kzonecheck_LDADD       = libcontrib.la libknotd.la
 keymgr_CPPFLAGS        = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(lmdb_CFLAGS)
 keymgr_LDADD           = libcontrib.la libknotd.la libknotus.la libdnssec.la \
                          libzscanner.la
-kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(lmdb_CFLAGS)
+kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 kjournalprint_LDADD    = libcontrib.la libknotd.la
 kcatalogprint_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
 kcatalogprint_LDADD    = libcontrib.la libknotd.la
