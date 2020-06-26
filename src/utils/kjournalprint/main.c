@@ -14,8 +14,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
 #include <getopt.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 
 #include "libknot/libknot.h"
@@ -33,7 +33,7 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameter] <journal_dir> <zone_name>\n"
+	printf("Usage: %s [parameters] <journal_dir> <zone_name>\n"
 	       "\n"
 	       "Parameters:\n"
 	       " -l, --limit <num>  Read only <num> newest changes.\n"
