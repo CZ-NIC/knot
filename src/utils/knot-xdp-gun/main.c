@@ -347,7 +347,7 @@ static FILE *popen_ip(char *arg1, char *arg2, char *arg3)
 {
 	char *args[5] = { "ip", arg1, arg2, arg3, NULL };
 	char *env[] = { NULL };
-	return kpopenve2("/sbin/ip", args, env, true);
+	return kpopenve("/sbin/ip", args, env, true);
 }
 
 static int ip_route_get(const char *ip_str, const char *what, char **res)
