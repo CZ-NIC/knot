@@ -20,7 +20,7 @@
 #include <stdio.h>
 
 /*!
- * \brief Hybrid of popen() and execve().
+ * \brief Hybrid of popen() and execve() returning a file descriptor
  *
  * This function is a safer altervative to popen(), it is the same to
  * popen() as execve() is to system().
@@ -33,10 +33,10 @@
  * \retval < 0   Error occured, set to -errno.
  * \return > 0   File descriptor of the pipe reading end.
  */
-int kpopenve(const char *binfile, char *const args[], char *const env[], bool drop_cap);
+int kpopenvef(const char *binfile, char *const args[], char *const env[], bool drop_cap);
 
 /*!
- * \brief Variant of kpopenve() returning FILE*
+ * \brief Variant of kpopenvef() returning FILE*
  *
  * \param binfile   Executable file to be executed.
  * \param args      NULL-terminated arguments; first shall be the prog name!
@@ -46,4 +46,4 @@ int kpopenve(const char *binfile, char *const args[], char *const env[], bool dr
  * \retval NULL   Error occured, see errno.
  * \return Pointer to open file descriptor.
  */
-FILE *kpopenve2(const char *binfile, char *const args[], char *const env[], bool drop_cap);
+FILE *kpopenve(const char *binfile, char *const args[], char *const env[], bool drop_cap);

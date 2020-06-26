@@ -37,7 +37,7 @@ static void drop_capabilities(void)
 static void drop_capabilities(void) {  }
 #endif
 
-int kpopenve(const char *binfile, char *const args[], char *const env[], bool drop_cap)
+int kpopenvef(const char *binfile, char *const args[], char *const env[], bool drop_cap)
 {
         int pipefds[2];
         if (pipe(pipefds) < 0) {
@@ -84,9 +84,9 @@ dup_stdout:
         return pipefds[0];
 }
 
-FILE *kpopenve2(const char *binfile, char *const args[], char *const env[], bool drop_cap)
+FILE *kpopenve(const char *binfile, char *const args[], char *const env[], bool drop_cap)
 {
-	int p = kpopenve(binfile, args, env, drop_cap);
+	int p = kpopenvef(binfile, args, env, drop_cap);
 	if (p < 0) {
 		errno = -p;
 		return NULL;
