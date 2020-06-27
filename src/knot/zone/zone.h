@@ -86,8 +86,8 @@ typedef struct zone
 	knot_lmdb_db_t *kaspdb;
 
 	/*! \brief Ptr to catalog and ist changeset changes (in struct server) */
-	knot_catalog_t *catalog;
-	knot_cat_update_t *catalog_upd;
+	catalog_t *catalog;
+	catalog_update_t *catalog_upd;
 
 	/*! \brief Preferred master lock. */
 	pthread_mutex_t preferred_lock;

@@ -245,9 +245,10 @@ static zone_contents_t *zone_expire(zone_t *zone)
 	return zone_switch_contents(zone, NULL);
 }
 
-static bool check_open_catalog(knot_catalog_t *cat) {
+static bool check_open_catalog(catalog_t *cat)
+{
 	if (knot_lmdb_exists(&cat->db)) {
-		int ret = knot_catalog_open(cat);
+		int ret = catalog_open(cat);
 		if (ret != KNOT_EOK) {
 			log_error("failed to open existing zone catalog");
 		} else {
@@ -264,7 +265,7 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 		return NULL;
 	}
 
-	knot_cat_upd_val_t *upd = knot_cat_update_get(&server->catalog_upd, zone->name, true);
+	catalog_upd_val_t *upd = catalog_update_get(&server->catalog_upd, zone->name, true);
 	if (upd != NULL) {
 		if (upd->just_reconf) {
 			zone_purge(conf, zone, server);
@@ -290,7 +291,7 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 // cold start of knot: add unchanged member zone to zonedb
 static zone_t *reuse_cold_zone(const knot_dname_t *zname, server_t *server, conf_t *conf)
 {
-	knot_cat_upd_val_t *upd = knot_cat_update_get(&server->catalog_upd, zname, true);
+	catalog_upd_val_t *upd = catalog_update_get(&server->catalog_upd, zname, true);
 	if (upd != NULL && !upd->just_reconf) {
 		return NULL; // zone will be removed immediately
 	}
@@ -306,7 +307,8 @@ static zone_t *reuse_cold_zone(const knot_dname_t *zname, server_t *server, conf
 	return zone;
 }
 
-static zone_t *add_member_zone(knot_cat_upd_val_t *val, knot_zonedb_t *check, server_t *server, conf_t *conf)
+static zone_t *add_member_zone(catalog_upd_val_t *val, knot_zonedb_t *check,
+                               server_t *server, conf_t *conf)
 {
 	if (val->just_reconf) {
 		return NULL;
@@ -317,7 +319,7 @@ static zone_t *add_member_zone(knot_cat_upd_val_t *val, knot_zonedb_t *check, se
 		return NULL;
 	}
 
-	int ret = knot_catalog_add2(&server->catalog, val);
+	int ret = catalog_add2(&server->catalog, val);
 	if (ret != KNOT_EOK) {
 		log_zone_error(val->member, "failed adding member zone to catalog (%s)",
 		               knot_strerror(ret));
@@ -327,7 +329,7 @@ static zone_t *add_member_zone(knot_cat_upd_val_t *val, knot_zonedb_t *check, se
 	zone_t *zone = create_zone(conf, val->member, server, NULL);
 	if (zone == NULL) {
 		log_zone_error(val->member, "zone cannot be created");
-		knot_catalog_del2(conf->catalog, val);
+		catalog_del2(conf->catalog, val);
 	} else {
 		zone->flags |= ZONE_IS_CAT_MEMBER;
 		conf_activate_modules(conf, server, zone->name, &zone->query_modules,
@@ -406,9 +408,9 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		}
 		knot_zonedb_iter_free(it);
 	} else if (check_open_catalog(&server->catalog)) {
-		knot_catalog_foreach(&server->catalog) {
+		catalog_foreach(&server->catalog) {
 			const knot_dname_t *member = NULL;
-			knot_catalog_curval(&server->catalog, &member, NULL, NULL);
+			catalog_curval(&server->catalog, &member, NULL, NULL);
 			zone_t *zone = reuse_cold_zone(member, server, conf);
 			if (zone != NULL) {
 				knot_zonedb_insert(db_new, zone);
@@ -416,15 +418,15 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		}
 	}
 
-	knot_cat_it_t *it = knot_cat_it_begin(&server->catalog_upd, false);
-	while (!knot_cat_it_finised(it)) {
-		zone_t *zone = add_member_zone(knot_cat_it_val(it), db_new, server, conf);
+	catalog_it_t *it = catalog_it_begin(&server->catalog_upd, false);
+	while (!catalog_it_finished(it)) {
+		zone_t *zone = add_member_zone(catalog_it_val(it), db_new, server, conf);
 		if (zone != NULL) {
 			knot_zonedb_insert(db_new, zone);
 		}
-		knot_cat_it_next(it);
+		catalog_it_next(it);
 	}
-	knot_cat_it_free(it);
+	catalog_it_free(it);
 
 	return db_new;
 }
@@ -471,30 +473,29 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 			}
 			/* Completely reused zone. */
 		}
-
 		knot_zonedb_iter_next(it);
 	}
-
 	knot_zonedb_iter_free(it);
 
 catalog_only:
 	; /* Remove deleted cataloged zones from conf. */
-	knot_cat_it_t *tit = knot_cat_it_begin(&server->catalog_upd, true);
-	while (!knot_cat_it_finised(tit)) {
-		knot_cat_upd_val_t *val = knot_cat_it_val(tit);
-		if (!val->just_reconf) {
-			knot_catalog_del(&server->catalog, val->member);
-			zone_t *zone = knot_zonedb_find(db_old, val->member);
+	catalog_it_t *cat_it = catalog_it_begin(&server->catalog_upd, true);
+	while (!catalog_it_finished(cat_it)) {
+		catalog_upd_val_t *upd = catalog_it_val(cat_it);
+		if (!upd->just_reconf) {
+			catalog_del(&server->catalog, upd->member);
+			zone_t *zone = knot_zonedb_find(db_old, upd->member);
 			if (zone != NULL) {
 				zone_purge(conf, zone, server);
 			}
 		}
-		knot_cat_it_next(tit);
+		catalog_it_next(cat_it);
 	}
-	knot_cat_it_free(tit);
+	catalog_it_free(cat_it);
 
-	/* Clear catalog changes. No need to use mutex as this is done from main thread while all zone events are paused. */
-	knot_cat_update_clear(&server->catalog_upd);
+	/* Clear catalog changes. No need to use mutex as this is done from main
+	 * thread while all zone events are paused. */
+	catalog_update_clear(&server->catalog_upd);
 
 	if (full) {
 		knot_zonedb_deep_free(&db_old, false);
