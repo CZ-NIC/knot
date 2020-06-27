@@ -28,7 +28,7 @@
 #define CATALOG_VERSION "1.0"
 #define CATALOG_ZONE_VERSION "2" // must be just one char long
 
-const MDB_val knot_catalog_iter_prefix = { 1, "" };
+const MDB_val catalog_iter_prefix = { 1, "" };
 
 static bool check_zone_version(const zone_contents_t *zone)
 {
@@ -53,12 +53,12 @@ static bool check_zone_version(const zone_contents_t *zone)
 	return false;
 }
 
-void knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize)
+void catalog_init(catalog_t *cat, const char *path, size_t mapsize)
 {
 	knot_lmdb_init(&cat->db, path, mapsize, 0, NULL);
 }
 
-int knot_catalog_open(knot_catalog_t *cat)
+int catalog_open(catalog_t *cat)
 {
 	if (!knot_lmdb_is_open(&cat->db)) {
 		int ret = knot_lmdb_open(&cat->db);
@@ -84,7 +84,7 @@ int knot_catalog_open(knot_catalog_t *cat)
 	return cat->txn.ret;
 }
 
-int knot_catalog_deinit(knot_catalog_t *cat)
+int catalog_deinit(catalog_t *cat)
 {
 	if (cat->txn.opened) {
 		knot_lmdb_commit(&cat->txn);
@@ -105,10 +105,10 @@ static int bailiwick_shift(const knot_dname_t *subname, const knot_dname_t *name
 	return res - subname;
 }
 
-int knot_catalog_add(knot_catalog_t *cat, const knot_dname_t *member,
-                     const knot_dname_t *owner, const knot_dname_t *catzone)
+int catalog_add(catalog_t *cat, const knot_dname_t *member,
+                const knot_dname_t *owner, const knot_dname_t *catzone)
 {
-	int ret = knot_catalog_open(cat);
+	int ret = catalog_open(cat);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -126,7 +126,7 @@ int knot_catalog_add(knot_catalog_t *cat, const knot_dname_t *member,
 	return cat->txn.ret;
 }
 
-int knot_catalog_del(knot_catalog_t *cat, const knot_dname_t *member)
+int catalog_del(catalog_t *cat, const knot_dname_t *member)
 {
 	MDB_val key = knot_lmdb_make_key("BN", 0, member);
 	knot_lmdb_del_prefix(&cat->txn, &key); // deletes one record
@@ -134,8 +134,8 @@ int knot_catalog_del(knot_catalog_t *cat, const knot_dname_t *member)
 	return cat->txn.ret;
 }
 
-void knot_catalog_curval(knot_catalog_t *cat, const knot_dname_t **member,
-                         const knot_dname_t **owner, const knot_dname_t **catzone)
+void catalog_curval(catalog_t *cat, const knot_dname_t **member,
+                    const knot_dname_t **owner, const knot_dname_t **catzone)
 {
 	uint8_t zero, shift;
 	if (member != NULL) {
@@ -152,8 +152,8 @@ void knot_catalog_curval(knot_catalog_t *cat, const knot_dname_t **member,
 	}
 }
 
-int knot_catalog_get_catzone(knot_catalog_t *cat, const knot_dname_t *member,
-                             const knot_dname_t **catzone)
+int catalog_get_zone(catalog_t *cat, const knot_dname_t *member,
+                     const knot_dname_t **catzone)
 {
 	if (!knot_lmdb_is_open(&cat->db)) {
 		return KNOT_ENOENT;
@@ -161,7 +161,7 @@ int knot_catalog_get_catzone(knot_catalog_t *cat, const knot_dname_t *member,
 
 	MDB_val key = knot_lmdb_make_key("BN", 0, member);
 	if (knot_lmdb_find(&cat->txn, &key, KNOT_LMDB_EXACT)) {
-		knot_catalog_curval(cat, NULL, NULL, catzone);
+		catalog_curval(cat, NULL, NULL, catzone);
 		free(key.mv_data);
 		return KNOT_EOK;
 	}
@@ -169,8 +169,8 @@ int knot_catalog_get_catzone(knot_catalog_t *cat, const knot_dname_t *member,
 	return MIN(cat->txn.ret, KNOT_ENOENT);
 }
 
-int knot_cat_get_catzone_thrsafe(knot_catalog_t *cat, const knot_dname_t *member,
-                                 knot_dname_t **catzone)
+int catalog_get_zone_threadsafe(catalog_t *cat, const knot_dname_t *member,
+                                knot_dname_t **catzone)
 {
 	if (!knot_lmdb_is_open(&cat->db)) {
 		return KNOT_ENOENT;
@@ -192,14 +192,14 @@ int knot_cat_get_catzone_thrsafe(knot_catalog_t *cat, const knot_dname_t *member
 	return ret;
 }
 
-knot_cat_find_res_t knot_catalog_find(knot_catalog_t *cat, const knot_dname_t *member,
-                                      const knot_dname_t *owner, const knot_dname_t *catzone)
+catalog_find_res_t catalog_find(catalog_t *cat, const knot_dname_t *member,
+                                const knot_dname_t *owner, const knot_dname_t *catzone)
 {
 	MDB_val key = knot_lmdb_make_key("BN", 0, member);
 	int ret = MEMBER_NONE;
 	if (knot_lmdb_find(&cat->txn, &key, KNOT_LMDB_EXACT)) {
 		const knot_dname_t *ow, *cz;
-		knot_catalog_curval(cat, NULL, &ow, &cz);
+		catalog_curval(cat, NULL, &ow, &cz);
 		if (!knot_dname_is_equal(cz, catzone)) {
 			ret = MEMBER_ZONE;
 		} else if (!knot_dname_is_equal(ow, owner)) {
@@ -215,7 +215,7 @@ knot_cat_find_res_t knot_catalog_find(knot_catalog_t *cat, const knot_dname_t *m
 	return ret;
 }
 
-int knot_cat_update_init(knot_cat_update_t *u)
+int catalog_update_init(catalog_update_t *u)
 {
 	u->add = trie_create(NULL);
 	if (u->add == NULL) {
@@ -237,7 +237,7 @@ static int freecb(trie_val_t *tval, void *unused)
 	return 0;
 }
 
-void knot_cat_update_clear(knot_cat_update_t *u)
+void catalog_update_clear(catalog_update_t *u)
 {
 	trie_apply(u->add, freecb, NULL);
 	trie_clear(u->add);
@@ -245,16 +245,16 @@ void knot_cat_update_clear(knot_cat_update_t *u)
 	trie_clear(u->rem);
 }
 
-void knot_cat_update_deinit(knot_cat_update_t *u)
+void catalog_update_deinit(catalog_update_t *u)
 {
 	pthread_mutex_destroy(&u->mutex);
 	trie_free(u->add);
 	trie_free(u->rem);
 }
 
-int knot_cat_update_add(knot_cat_update_t *u, const knot_dname_t *member,
-                        const knot_dname_t *owner, const knot_dname_t *catzone,
-                        bool remove)
+int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
+                       const knot_dname_t *owner, const knot_dname_t *catzone,
+                       bool remove)
 {
 	int bail = bailiwick_shift(owner, catzone);
 	if (bail < 0) {
@@ -272,7 +272,7 @@ int knot_cat_update_add(knot_cat_update_t *u, const knot_dname_t *member,
 
 	trie_val_t *found = trie_get_try(check, lf + 1, lf[0]);
 	if (found != NULL) {
-		knot_cat_upd_val_t *counter = *found;
+		catalog_upd_val_t *counter = *found;
 		assert(knot_dname_is_equal(counter->member, member));
 		if (knot_dname_is_equal(counter->owner, owner)) {
 			assert(knot_dname_is_equal(counter->catzone, catzone));
@@ -288,7 +288,7 @@ int knot_cat_update_add(knot_cat_update_t *u, const knot_dname_t *member,
 	size_t member_size = knot_dname_size(member);
 	size_t owner_size = knot_dname_size(owner);
 
-	knot_cat_upd_val_t *val = malloc(sizeof(*val) + member_size + owner_size);
+	catalog_upd_val_t *val = malloc(sizeof(*val) + member_size + owner_size);
 	if (val == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -310,20 +310,20 @@ int knot_cat_update_add(knot_cat_update_t *u, const knot_dname_t *member,
 	return KNOT_EOK;
 }
 
-knot_cat_upd_val_t *knot_cat_update_get(knot_cat_update_t *u, const knot_dname_t *member, bool remove)
+catalog_upd_val_t *catalog_update_get(catalog_update_t *u, const knot_dname_t *member, bool remove)
 {
 	knot_dname_storage_t lf_storage;
 	uint8_t *lf = knot_dname_lf(member, lf_storage);
 
 	trie_val_t *found = trie_get_try(remove ? u->rem : u->add, lf + 1, lf[0]);
-	return found == NULL ? NULL : *(knot_cat_upd_val_t **)found;
+	return found == NULL ? NULL : *(catalog_upd_val_t **)found;
 }
 
 typedef struct {
-	knot_cat_update_t *u;
+	catalog_update_t *u;
 	const knot_dname_t *apex;
 	bool remove;
-	knot_catalog_t *check;
+	catalog_t *check;
 } cat_upd_ctx_t;
 
 static int cat_update_add_node(zone_node_t *node, void *data)
@@ -338,18 +338,18 @@ static int cat_update_add_node(zone_node_t *node, void *data)
 	for (int i = 0; ret == KNOT_EOK && i < ptr->count; i++) {
 		const knot_dname_t *member = knot_ptr_name(rdata);
 		if (ctx->check != NULL && ctx->remove &&
-		    knot_catalog_find(ctx->check, member, node->owner, ctx->apex) != MEMBER_EXACT) {
+		    catalog_find(ctx->check, member, node->owner, ctx->apex) != MEMBER_EXACT) {
 			rdata = knot_rdataset_next(rdata);
 			continue;
 		}
-		ret = knot_cat_update_add(ctx->u, member, node->owner, ctx->apex, ctx->remove);
+		ret = catalog_update_add(ctx->u, member, node->owner, ctx->apex, ctx->remove);
 		rdata = knot_rdataset_next(rdata);
 	}
 	return ret;
 }
 
-int knot_cat_update_from_zone(knot_cat_update_t *u, struct zone_contents *zone,
-                              bool remove, bool check_ver, knot_catalog_t *check)
+int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
+                             bool remove, bool check_ver, catalog_t *check)
 {
 	if (check_ver && !check_zone_version(zone)) {
 		return KNOT_EZONEINVAL;
@@ -371,19 +371,19 @@ int knot_cat_update_from_zone(knot_cat_update_t *u, struct zone_contents *zone,
 	return ret;
 }
 
-int knot_cat_update_del_all(knot_cat_update_t *u, knot_catalog_t *cat, const knot_dname_t *zone)
+int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname_t *zone)
 {
-	int ret = knot_catalog_open(cat);
+	int ret = catalog_open(cat);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	pthread_mutex_lock(&u->mutex);
-	knot_catalog_foreach(cat) { // TODO possible speedup by indexing which member zones belong to a catalog zone
+	catalog_foreach(cat) { // TODO possible speedup by indexing which member zones belong to a catalog zone
 		const knot_dname_t *mem, *ow, *cz;
-		knot_catalog_curval(cat, &mem, &ow, &cz);
+		catalog_curval(cat, &mem, &ow, &cz);
 		if (knot_dname_is_equal(cz, zone)) {
-			ret = knot_cat_update_add(u, mem, ow, cz, true);
+			ret = catalog_update_add(u, mem, ow, cz, true);
 			if (ret != KNOT_EOK) {
 				pthread_mutex_unlock(&u->mutex);
 				return ret;
@@ -410,44 +410,44 @@ static void print_dname3(const char *pre, const knot_dname_t *a, const knot_dnam
 	printf("%s\n", suff);
 }
 
-void knot_cat_update_print(const char *intro, knot_catalog_t *cat, knot_cat_update_t *u)
+void catalog_update_print(const char *intro, catalog_t *cat, catalog_update_t *u)
 {
 	ssize_t cattot = 0, uplus = 0, uminus = 0;
 
 	printf("Catalog (%s)\n", intro);
 
 	if (cat != NULL) {
-		int ret = knot_catalog_open(cat);
+		int ret = catalog_open(cat);
 		if (ret != KNOT_EOK) {
 			printf("Catalog print failed (%s)\n", knot_strerror(ret));
 			return;
 		}
 
-		knot_catalog_foreach(cat) {
+		catalog_foreach(cat) {
 			const knot_dname_t *mem, *ow, *cz;
-			knot_catalog_curval(cat, &mem, &ow, &cz);
+			catalog_curval(cat, &mem, &ow, &cz);
 			print_dname3("*", mem, ow, cz, "");
 			cattot++;
 		}
 	}
 	if (u != NULL) {
-		knot_cat_it_t *it = knot_cat_it_begin(u, true);
-		while (!knot_cat_it_finised(it)) {
-			knot_cat_upd_val_t *val = knot_cat_it_val(it);
+		catalog_it_t *it = catalog_it_begin(u, true);
+		while (!catalog_it_finished(it)) {
+			catalog_upd_val_t *val = catalog_it_val(it);
 			print_dname3("-", val->member, val->owner, val->catzone, "");
 			uminus++;
-			knot_cat_it_next(it);
+			catalog_it_next(it);
 		}
-		knot_cat_it_free(it);
+		catalog_it_free(it);
 
-		it = knot_cat_it_begin(u, false);
-		while (!knot_cat_it_finised(it)) {
-			knot_cat_upd_val_t *val = knot_cat_it_val(it);
+		it = catalog_it_begin(u, false);
+		while (!catalog_it_finished(it)) {
+			catalog_upd_val_t *val = catalog_it_val(it);
 			print_dname3("+", val->member, val->owner, val->catzone, val->just_reconf ? "JR" : "");
 			uplus++;
-			knot_cat_it_next(it);
+			catalog_it_next(it);
 		}
-		knot_cat_it_free(it);
+		catalog_it_free(it);
 	}
 	printf("Catalog: *%zd -%zd +%zd\n", cattot, uminus, uplus);
 }

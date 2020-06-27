@@ -22,10 +22,10 @@
 #include "contrib/qp-trie/trie.h"
 #include "knot/journal/knot_lmdb.h"
 
-typedef struct knot_catalog {
+typedef struct catalog {
 	knot_lmdb_db_t db;
 	knot_lmdb_txn_t txn; // RW transaction open all the time
-} knot_catalog_t;
+} catalog_t;
 
 typedef enum {
 	MEMBER_NONE,   // this member zone is not in any catalog
@@ -33,96 +33,96 @@ typedef enum {
 	MEMBER_ZONE,   // this member zone is in different catalog
 	MEMBER_OWNER,  // this member zone is in same catalog with diferent owner
 	MEMBER_ERROR,  // find error code in cat->txn.ret
-} knot_cat_find_res_t;
+} catalog_find_res_t;
 
 typedef struct {
 	trie_t *rem;
 	trie_t *add;
 	pthread_mutex_t mutex;
-} knot_cat_update_t;
+} catalog_update_t;
 
 typedef struct {
 	knot_dname_t *member;
 	knot_dname_t *owner;
 	knot_dname_t *catzone;
 	bool just_reconf;
-} knot_cat_upd_val_t;
+} catalog_upd_val_t;
 
-extern const MDB_val knot_catalog_iter_prefix;
+extern const MDB_val catalog_iter_prefix;
 
-void knot_catalog_init(knot_catalog_t *cat, const char *path, size_t mapsize);
+void catalog_init(catalog_t *cat, const char *path, size_t mapsize);
 
-int knot_catalog_open(knot_catalog_t *cat);
+int catalog_open(catalog_t *cat);
 
-int knot_catalog_deinit(knot_catalog_t *cat);
+int catalog_deinit(catalog_t *cat);
 
-int knot_catalog_add(knot_catalog_t *cat, const knot_dname_t *member,
-                     const knot_dname_t *owner, const knot_dname_t *catzone);
+int catalog_add(catalog_t *cat, const knot_dname_t *member,
+                const knot_dname_t *owner, const knot_dname_t *catzone);
 
-inline static int knot_catalog_add2(knot_catalog_t *cat, const knot_cat_upd_val_t *val)
+inline static int catalog_add2(catalog_t *cat, const catalog_upd_val_t *val)
 {
-	return knot_catalog_add(cat, val->member, val->owner, val->catzone);
+	return catalog_add(cat, val->member, val->owner, val->catzone);
 }
 
-int knot_catalog_del(knot_catalog_t *cat, const knot_dname_t *member);
+int catalog_del(catalog_t *cat, const knot_dname_t *member);
 
-inline static int knot_catalog_del2(knot_catalog_t *cat, const knot_cat_upd_val_t *val)
+inline static int catalog_del2(catalog_t *cat, const catalog_upd_val_t *val)
 {
 	assert(!val->just_reconf); // just re-add in this case
-	return knot_catalog_del(cat, val->member);
+	return catalog_del(cat, val->member);
 }
 
-#define knot_catalog_foreach(cat) knot_lmdb_foreach(&(cat)->txn, (MDB_val *)&knot_catalog_iter_prefix)
+#define catalog_foreach(cat) knot_lmdb_foreach(&(cat)->txn, (MDB_val *)&catalog_iter_prefix)
 
-void knot_catalog_curval(knot_catalog_t *cat, const knot_dname_t **member,
-                         const knot_dname_t **owner, const knot_dname_t **catzone);
+void catalog_curval(catalog_t *cat, const knot_dname_t **member,
+                    const knot_dname_t **owner, const knot_dname_t **catzone);
 
-int knot_catalog_get_catzone(knot_catalog_t *cat, const knot_dname_t *member,
-                             const knot_dname_t **catzone);
+int catalog_get_zone(catalog_t *cat, const knot_dname_t *member,
+                     const knot_dname_t **catzone);
 
-int knot_cat_get_catzone_thrsafe(knot_catalog_t *cat, const knot_dname_t *member,
-                                 knot_dname_t **catzone);
+int catalog_get_zone_threadsafe(catalog_t *cat, const knot_dname_t *member,
+                                knot_dname_t **catzone);
 
-knot_cat_find_res_t knot_catalog_find(knot_catalog_t *cat, const knot_dname_t *member,
-                                      const knot_dname_t *owner, const knot_dname_t *catzone);
+catalog_find_res_t catalog_find(catalog_t *cat, const knot_dname_t *member,
+                                const knot_dname_t *owner, const knot_dname_t *catzone);
 
-int knot_cat_update_init(knot_cat_update_t *u);
+int catalog_update_init(catalog_update_t *u);
 
-void knot_cat_update_clear(knot_cat_update_t *u);
+void catalog_update_clear(catalog_update_t *u);
 
-void knot_cat_update_deinit(knot_cat_update_t *u);
+void catalog_update_deinit(catalog_update_t *u);
 
-int knot_cat_update_add(knot_cat_update_t *u, const knot_dname_t *member,
-                        const knot_dname_t *owner, const knot_dname_t *catzone,
-                        bool remove);
+int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
+                       const knot_dname_t *owner, const knot_dname_t *catzone,
+                       bool remove);
 
-knot_cat_upd_val_t *knot_cat_update_get(knot_cat_update_t *u, const knot_dname_t *member, bool remove);
+catalog_upd_val_t *catalog_update_get(catalog_update_t *u, const knot_dname_t *member, bool remove);
 
 struct zone_contents;
 
-int knot_cat_update_from_zone(knot_cat_update_t *u, struct zone_contents *zone,
-                              bool remove, bool check_ver, knot_catalog_t *check);
+int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
+                             bool remove, bool check_ver, catalog_t *check);
 
-int knot_cat_update_del_all(knot_cat_update_t *u, knot_catalog_t *cat, const knot_dname_t *zone);
+int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname_t *zone);
 
-typedef trie_it_t knot_cat_it_t;
+typedef trie_it_t catalog_it_t;
 
-inline static knot_cat_it_t *knot_cat_it_begin(knot_cat_update_t *u, bool remove)
+inline static catalog_it_t *catalog_it_begin(catalog_update_t *u, bool remove)
 {
 	return trie_it_begin(remove ? u->rem : u->add);
 }
 
-inline static knot_cat_upd_val_t *knot_cat_it_val(knot_cat_it_t *it)
+inline static catalog_upd_val_t *catalog_it_val(catalog_it_t *it)
 {
-	return *(knot_cat_upd_val_t **)trie_it_val(it);
+	return *(catalog_upd_val_t **)trie_it_val(it);
 }
 
-inline static bool knot_cat_it_finised(knot_cat_it_t *it)
+inline static bool catalog_it_finished(catalog_it_t *it)
 {
 	return it == NULL || trie_it_finished(it);
 }
 
-#define knot_cat_it_next trie_it_next
-#define knot_cat_it_free trie_it_free
+#define catalog_it_next trie_it_next
+#define catalog_it_free trie_it_free
 
-void knot_cat_update_print(const char *intro, knot_catalog_t *cat, knot_cat_update_t *u);
+void catalog_update_print(const char *intro, catalog_t *cat, catalog_update_t *u);

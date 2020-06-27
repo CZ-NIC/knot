@@ -520,7 +520,7 @@ int server_init(server_t *server, int bg_workers)
 		return KNOT_ENOMEM;
 	}
 
-	int ret = knot_cat_update_init(&server->catalog_upd);
+	int ret = catalog_update_init(&server->catalog_upd);
 	if (ret != KNOT_EOK) {
 		worker_pool_destroy(server->workers);
 		evsched_deinit(&server->sched);
@@ -529,7 +529,7 @@ int server_init(server_t *server, int bg_workers)
 
 	char *catalog_dir = conf_db(conf(), C_CATALOG_DB);
 	conf_val_t catalog_size = conf_db_param(conf(), C_CATALOG_DB_MAX_SIZE, NULL);
-	knot_catalog_init(&server->catalog, catalog_dir, conf_int(&catalog_size));
+	catalog_init(&server->catalog, catalog_dir, conf_int(&catalog_size));
 	free(catalog_dir);
 	conf()->catalog = &server->catalog;
 
@@ -566,8 +566,8 @@ void server_deinit(server_t *server)
 	}
 
 	/* Free catalog zone context. */
-	knot_cat_update_deinit(&server->catalog_upd);
-	knot_catalog_deinit(&server->catalog);
+	catalog_update_deinit(&server->catalog_upd);
+	catalog_deinit(&server->catalog);
 
 	/* Free remaining interfaces. */
 	server_deinit_iface_list(server->ifaces, server->n_ifaces);
