@@ -125,4 +125,5 @@ inline static bool catalog_it_finished(catalog_it_t *it)
 #define catalog_it_next trie_it_next
 #define catalog_it_free trie_it_free
 
-void catalog_update_print(const char *intro, catalog_t *cat, catalog_update_t *u);
+void catalog_print(catalog_t *cat);
+void catalog_update_print(catalog_update_t *u);
