@@ -396,25 +396,26 @@ int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname
 
 static void print_dname(const knot_dname_t *d)
 {
-	char tmp[KNOT_DNAME_TXT_MAXLEN];
+	knot_dname_txt_storage_t tmp;
 	knot_dname_to_str(tmp, d, sizeof(tmp));
-	printf("%s ", tmp);
+	printf("%s  ", tmp);
 }
 
-static void print_dname3(const char *pre, const knot_dname_t *a, const knot_dname_t *b, const knot_dname_t *c, const char *suff)
+static void print_dname3(const char *pre, const knot_dname_t *a, const knot_dname_t *b,
+                         const knot_dname_t *c, const char *suff)
 {
-	printf("%s ", pre);
+	printf("%s", pre);
 	print_dname(a);
 	print_dname(b);
 	print_dname(c);
 	printf("%s\n", suff);
 }
 
-void catalog_update_print(const char *intro, catalog_t *cat, catalog_update_t *u)
+void catalog_print(catalog_t *cat)
 {
-	ssize_t cattot = 0, uplus = 0, uminus = 0;
+	ssize_t total = 0;
 
-	printf("Catalog (%s)\n", intro);
+	printf(";; <catalog zone> <record owner> <record zone>\n");
 
 	if (cat != NULL) {
 		int ret = catalog_open(cat);
@@ -426,16 +427,26 @@ void catalog_update_print(const char *intro, catalog_t *cat, catalog_update_t *u
 		catalog_foreach(cat) {
 			const knot_dname_t *mem, *ow, *cz;
 			catalog_curval(cat, &mem, &ow, &cz);
-			print_dname3("*", mem, ow, cz, "");
-			cattot++;
+			print_dname3("", mem, ow, cz, "");
+			total++;
 		}
 	}
+
+	printf("Total zones: %zd\n", total);
+}
+
+void catalog_update_print(catalog_update_t *u)
+{
+	ssize_t plus = 0, minus = 0;
+
+	printf(";; <catalog zone> <record owner> <record zone>\n");
+
 	if (u != NULL) {
 		catalog_it_t *it = catalog_it_begin(u, true);
 		while (!catalog_it_finished(it)) {
 			catalog_upd_val_t *val = catalog_it_val(it);
-			print_dname3("-", val->member, val->owner, val->catzone, "");
-			uminus++;
+			print_dname3("- ", val->member, val->owner, val->catzone, "");
+			minus++;
 			catalog_it_next(it);
 		}
 		catalog_it_free(it);
@@ -443,11 +454,13 @@ void catalog_update_print(const char *intro, catalog_t *cat, catalog_update_t *u
 		it = catalog_it_begin(u, false);
 		while (!catalog_it_finished(it)) {
 			catalog_upd_val_t *val = catalog_it_val(it);
-			print_dname3("+", val->member, val->owner, val->catzone, val->just_reconf ? "JR" : "");
-			uplus++;
+			print_dname3("+ ", val->member, val->owner, val->catzone,
+			             val->just_reconf ? "JR" : "");
+			plus++;
 			catalog_it_next(it);
 		}
 		catalog_it_free(it);
 	}
-	printf("Catalog: *%zd -%zd +%zd\n", cattot, uminus, uplus);
+
+	printf("Total changes: -%zd +%zd\n", minus, plus);
 }

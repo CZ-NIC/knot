@@ -60,9 +60,14 @@ int main(int argc, char *argv[])
 		print_help();
 		return EXIT_FAILURE;
 	}
-	catalog_t c;
-	memset(&c, 0, sizeof(c));
+
+	catalog_t c = { { 0 } };
+
 	catalog_init(&c, argv[1], 0); // mapsize grows automatically
-	catalog_update_print("Catalog:", &c, NULL);
-	return catalog_deinit(&c) == KNOT_EOK ? 0 : 1;
+	catalog_print(&c);
+	if (catalog_deinit(&c) != KNOT_EOK) {
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
 }
