@@ -67,7 +67,7 @@ dup_stdout:
 			perror("dup_stdout");
 			close(pipefds[0]);
 			close(pipefds[1]);
-			exit(98);
+			exit(EXIT_FAILURE);
 		}
                 close(pipefds[1]);
 
@@ -77,7 +77,7 @@ dup_stdout:
 
                 execve(binfile, args, env);
                 perror("execve");
-                exit(99);
+                exit(EXIT_FAILURE);
         }
 
         close(pipefds[1]);
