@@ -25,6 +25,10 @@
  * This function is a safer altervative to popen(), it is the same to
  * popen() as execve() is to system().
  *
+ * Warning: this function is designed to be as simple as possible,
+ *          for reliable operation proper checking for transient
+ *          error is needed.
+ *
  * \param binfile   Executable file to be executed.
  * \param args      NULL-terminated arguments; first shall be the prog name!
  * \param env       NULL-terminated environment variables "key=value"
@@ -37,6 +41,8 @@ int kpopenvef(const char *binfile, char *const args[], char *const env[], bool d
 
 /*!
  * \brief Variant of kpopenvef() returning FILE*
+ *
+ * Warning: the same warning as for kpopenvef() applies here too.
  *
  * \param binfile   Executable file to be executed.
  * \param args      NULL-terminated arguments; first shall be the prog name!
