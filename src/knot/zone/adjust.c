@@ -89,8 +89,8 @@ int adjust_cb_wildcard_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 		zone_tree_insert(ctx->changed_nodes, &node);
 	}
 
-	assert(wildcard_size > 2);
 	knot_dname_t wildcard[wildcard_size];
+	assert(wildcard_size > 2);
 	memcpy(wildcard, "\x01""*", 2);
 	memcpy(wildcard + 2, node->owner, wildcard_size - 2);
 	return knot_create_nsec3_owner(node->nsec3_wildcard_name, wildcard_nsec3,
