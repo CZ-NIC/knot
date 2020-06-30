@@ -419,7 +419,11 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 	}
 
 	catalog_it_t *it = catalog_it_begin(&server->catalog_upd, false);
-	while (!catalog_it_finished(it)) {
+	int catret = 1;
+	if (!catalog_it_finished(it)) {
+		catret = catalog_begin(&server->catalog);
+	}
+	while (!catalog_it_finished(it) && catret == KNOT_EOK) {
 		zone_t *zone = add_member_zone(catalog_it_val(it), db_new, server, conf);
 		if (zone != NULL) {
 			knot_zonedb_insert(db_new, zone);
@@ -427,6 +431,12 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		catalog_it_next(it);
 	}
 	catalog_it_free(it);
+	if (catret == KNOT_EOK) {
+		catret = catalog_commit(&server->catalog);
+	}
+	if (catret < 0) {
+		log_error("failed to process zone catalog (%s)", knot_strerror(catret));
+	}
 
 	return db_new;
 }
@@ -480,6 +490,10 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 catalog_only:
 	; /* Remove deleted cataloged zones from conf. */
 	catalog_it_t *cat_it = catalog_it_begin(&server->catalog_upd, true);
+	int catret = 1;
+	if (!catalog_it_finished(cat_it)) {
+		catret = catalog_begin(&server->catalog);
+	}
 	while (!catalog_it_finished(cat_it)) {
 		catalog_upd_val_t *upd = catalog_it_val(cat_it);
 		if (!upd->just_reconf) {
@@ -492,6 +506,12 @@ catalog_only:
 		catalog_it_next(cat_it);
 	}
 	catalog_it_free(cat_it);
+	if (catret == KNOT_EOK) {
+		catret = catalog_commit(&server->catalog);
+	}
+	if (catret < 0) {
+		log_error("failed to process zone catalog (%s)", knot_strerror(catret));
+	}
 
 	/* Clear catalog changes. No need to use mutex as this is done from main
 	 * thread while all zone events are paused. */

@@ -54,6 +54,10 @@ void catalog_init(catalog_t *cat, const char *path, size_t mapsize);
 
 int catalog_open(catalog_t *cat);
 
+int catalog_begin(catalog_t *cat);
+
+int catalog_commit(catalog_t *cat);
+
 int catalog_deinit(catalog_t *cat);
 
 int catalog_add(catalog_t *cat, const knot_dname_t *member,
