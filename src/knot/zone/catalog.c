@@ -58,6 +58,23 @@ void catalog_init(catalog_t *cat, const char *path, size_t mapsize)
 	knot_lmdb_init(&cat->db, path, mapsize, 0, NULL);
 }
 
+// does NOT check for catalog zone version by RFC, this is Knot-specific in the cat LMDB !
+static void check_cat_version(catalog_t *cat)
+{
+	if (cat->txn.ret == KNOT_EOK) {
+		MDB_val key = { 8, "\x01version" };
+		if (knot_lmdb_find(&cat->txn, &key, KNOT_LMDB_EXACT)) {
+			if (strncmp(CATALOG_VERSION, cat->txn.cur_val.mv_data,
+			            cat->txn.cur_val.mv_size) != 0) {
+				log_warning("unmatching catalog version");
+			}
+		} else if (cat->txn.is_rw) {
+			MDB_val val = { strlen(CATALOG_VERSION), CATALOG_VERSION };
+			knot_lmdb_insert(&cat->txn, &key, &val);
+		}
+	}
+}
+
 int catalog_open(catalog_t *cat)
 {
 	if (!knot_lmdb_is_open(&cat->db)) {
@@ -67,19 +84,28 @@ int catalog_open(catalog_t *cat)
 		}
 	}
 	if (!cat->txn.opened) {
-		knot_lmdb_begin(&cat->db, &cat->txn, !(cat->db.env_flags & MDB_RDONLY));
+		knot_lmdb_begin(&cat->db, &cat->txn, false);
 	}
+	check_cat_version(cat);
+	return cat->txn.ret;
+}
+
+int catalog_begin(catalog_t *cat)
+{
+	assert(!cat->txn.is_rw);
+	knot_lmdb_abort(&cat->txn); // end long-term RO txn
 	if (cat->txn.ret == KNOT_EOK) {
-		MDB_val key = { 8, "\x01version" };
-		if (knot_lmdb_find(&cat->txn, &key, KNOT_LMDB_EXACT)) {
-			if (strncmp(CATALOG_VERSION, cat->txn.cur_val.mv_data,
-			            cat->txn.cur_val.mv_size) != 0) {
-				log_warning("unmatching catalog version");
-			}
-		} else if (!(cat->db.env_flags & MDB_RDONLY)) {
-			MDB_val val = { strlen(CATALOG_VERSION), CATALOG_VERSION };
-			knot_lmdb_insert(&cat->txn, &key, &val);
-		}
+		knot_lmdb_begin(&cat->db, &cat->txn, true); // start short-term RW txn
+	}
+	check_cat_version(cat);
+	return cat->txn.ret;
+}
+
+int catalog_commit(catalog_t *cat)
+{
+	knot_lmdb_commit(&cat->txn);
+	if (cat->txn.ret == KNOT_EOK) {
+		knot_lmdb_begin(&cat->db, &cat->txn, false);
 	}
 	return cat->txn.ret;
 }
@@ -87,7 +113,7 @@ int catalog_open(catalog_t *cat)
 int catalog_deinit(catalog_t *cat)
 {
 	if (cat->txn.opened) {
-		knot_lmdb_commit(&cat->txn);
+		knot_lmdb_abort(&cat->txn);
 	}
 	knot_lmdb_deinit(&cat->db);
 	return cat->txn.ret;
