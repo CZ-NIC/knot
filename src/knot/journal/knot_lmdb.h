@@ -229,7 +229,7 @@ bool knot_lmdb_next(knot_lmdb_txn_t *txn);
  *
  * \return True iff 'prefix' is a prefix of 'of'.
  */
-bool knot_lmdb_is_prefix_of(MDB_val *prefix, MDB_val *of);
+bool knot_lmdb_is_prefix_of(const MDB_val *prefix, const MDB_val *of);
 
 /*!
  * \brief Find leftmost key in DB matching given prefix.
@@ -282,6 +282,24 @@ void knot_lmdb_del_cur(knot_lmdb_txn_t *txn);
  * \param prefix   Prefix to be deleted.
  */
 void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix);
+
+typedef int (*lmdb_apply_cb)(MDB_val *key, MDB_val *val, void *ctx);
+
+/*!
+ * \brief Call a callback for any item matching given key.
+ *
+ * \note This function does not affect fields within txn struct,
+ *       thus can be used on txn shared between threads.
+ *
+ * \param txn      DB transaction.
+ * \param key      Key to be searched for.
+ * \param prefix   The 'key' is in fact prefix, apply on all items matching prefix.
+ * \param cb       Callback to be called.
+ * \param ctx      Arbitrary context for the callback.
+ *
+ * \return KNOT_E*
+ */
+int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool prefix, lmdb_apply_cb cb, void *ctx);
 
 /*!
  * \brief Insert a new record into the DB.
