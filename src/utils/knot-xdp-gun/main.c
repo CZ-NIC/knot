@@ -405,6 +405,13 @@ static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t r
 
 static int distantIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t remote_mac[])
 {
+	if ((!ipv6 && strncmp(ip_str, "127.", 4) == 0) ||
+	    (ipv6 && strcmp(ip_str, "::1") == 0)) {
+		strcpy(devname, "lo");
+		memset(remote_mac, 0, 6);
+		return KNOT_EOK;
+	}
+
 	char *via = NULL;
 	int ret = ip_route_get(ip_str, "via", &via);
 	switch (ret) {
