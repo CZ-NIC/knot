@@ -54,6 +54,8 @@ uint64_t global_size_recv = 0;
 #define LOCAL_PORT_MIN  1024
 #define LOCAL_PORT_MAX 65535
 
+#define KNOWN_RCODE_MAX 17
+
 typedef struct {
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
@@ -65,6 +67,7 @@ typedef struct {
 	uint16_t	target_port;
 	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_ALL, KNOT_XDP_LISTEN_PORT_DROP
 	unsigned	n_threads, thread_id;
+	uint64_t	rcode_counts[KNOWN_RCODE_MAX];
 } xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
@@ -241,6 +244,11 @@ void *xdp_gun_thread(void *_ctx)
 				}
 				for (int i = 0; i < recvd; i++) {
 					tot_size += pkts[i].payload.iov_len;
+					if (pkts[i].payload.iov_len < 4) {
+						ctx->rcode_counts[KNOWN_RCODE_MAX - 1]++;
+					} else {
+						ctx->rcode_counts[((uint8_t *)pkts[i].payload.iov_base)[3] & 0xf]++;
+					}
 				}
 				knot_xdp_recv_finish(xsk, pkts, recvd);
 				tot_recv += recvd;
@@ -659,6 +667,17 @@ int main(int argc, char *argv[])
 		printf("total replies: %lu (%lu qps) (%lu%%)\n", global_pkts_recv,
 		       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
 		printf("average reply size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
+		for (int i = 0; i < KNOWN_RCODE_MAX; i++) {
+			uint64_t rcode_count = 0;
+			for (size_t j = 0; j < ctx.n_threads; j++) {
+				rcode_count += thread_ctxs[j].rcode_counts[i];
+			}
+			if (rcode_count > 0) {
+				const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, i);
+				const char *rcname = rcode == NULL ? "unknown" : rcode->name;
+				printf("responded %s:\t%lu\n", rcname, rcode_count);
+			}
+		}
 	}
 
 	free(thread_ctxs);
