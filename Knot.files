@@ -95,6 +95,8 @@ src/contrib/ucw/lists.c
 src/contrib/ucw/lists.h
 src/contrib/ucw/mempool.c
 src/contrib/ucw/mempool.h
+src/contrib/url-parser/url_parser.c
+src/contrib/url-parser/url_parser.h
 src/contrib/vpool/vpool.c
 src/contrib/vpool/vpool.h
 src/contrib/wire_ctx.h
