@@ -331,7 +331,7 @@ static int https_send_dns_query_get(https_ctx_t *ctx)
 	strncat(dns_query, default_query, dns_query_len);
 
 	size_t tmp_strlen = strlen(dns_query);
-	int32_t ret = base64url_encode(ctx->send_buf, ctx->send_buflen,
+	int32_t ret = knot_base64url_encode(ctx->send_buf, ctx->send_buflen,
 		(uint8_t *)(dns_query + tmp_strlen), dns_query_len - (tmp_strlen - 1)
 	);
 	if (ret < 0) {
