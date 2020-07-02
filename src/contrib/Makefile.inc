@@ -20,6 +20,8 @@ EXTRA_DIST += \
 	contrib/libbpf/LICENSE			\
 	contrib/openbsd/LICENSE			\
 	contrib/ucw/LICENSE			\
+	contrib/url-parser/LICENSE		\
+	contrib/url-parser/README.md		\
 	contrib/dnstap/dnstap.proto
 
 libcontrib_la_SOURCES = \
@@ -28,6 +30,8 @@ libcontrib_la_SOURCES = \
 	contrib/base32hex.h			\
 	contrib/base64.c			\
 	contrib/base64.h			\
+	contrib/base64url.c			\
+	contrib/base64url.h			\
 	contrib/ctype.h				\
 	contrib/dynarray.h			\
 	contrib/files.c				\
@@ -68,6 +72,8 @@ libcontrib_la_SOURCES = \
 	contrib/ucw/lists.h			\
 	contrib/ucw/mempool.c			\
 	contrib/ucw/mempool.h			\
+	contrib/url-parser/url_parser.c		\
+	contrib/url-parser/url_parser.h		\
 	contrib/vpool/vpool.c			\
 	contrib/vpool/vpool.h
 
