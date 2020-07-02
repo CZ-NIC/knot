@@ -3,6 +3,8 @@ src/contrib/base32hex.c
 src/contrib/base32hex.h
 src/contrib/base64.c
 src/contrib/base64.h
+src/contrib/base64url.c
+src/contrib/base64url.h
 src/contrib/ctype.h
 src/contrib/dnstap/convert.c
 src/contrib/dnstap/convert.h
@@ -93,6 +95,8 @@ src/contrib/ucw/lists.c
 src/contrib/ucw/lists.h
 src/contrib/ucw/mempool.c
 src/contrib/ucw/mempool.h
+src/contrib/url-parser/url_parser.c
+src/contrib/url-parser/url_parser.h
 src/contrib/vpool/vpool.c
 src/contrib/vpool/vpool.h
 src/contrib/wire_ctx.h
@@ -431,6 +435,8 @@ src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/hex.c
 src/utils/common/hex.h
+src/utils/common/https.c
+src/utils/common/https.h
 src/utils/common/lookup.c
 src/utils/common/lookup.h
 src/utils/common/msg.c
@@ -494,6 +500,7 @@ tests-fuzz/knotd_wrap/udp-handler.c
 tests-fuzz/main.c
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
+tests/contrib/test_base64url.c
 tests/contrib/test_dynarray.c
 tests/contrib/test_heap.c
 tests/contrib/test_net.c
