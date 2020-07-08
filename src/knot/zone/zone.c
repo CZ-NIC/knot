@@ -424,6 +424,11 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		}
 
 		log_try_addr_error(zone, NULL, &preferred.addr, err_str, ret);
+
+		char addr_str[SOCKADDR_STRLEN] = { 0 };
+		sockaddr_tostr(addr_str, sizeof(addr_str), &preferred.addr);
+		log_zone_warning(zone->name, "%s, address %s not usable",
+		                 err_str, addr_str);
 	}
 
 	/* Try all the other servers. */
@@ -435,6 +440,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &masters);
 		size_t addr_count = conf_val_count(&addr);
 
+		bool tried = false;
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t master = conf_remote(conf, &masters, i);
 			if (preferred.addr.ss_family != AF_UNSPEC &&
@@ -443,6 +449,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 				continue;
 			}
 
+			tried = true;
 			int ret = callback(conf, zone, &master, callback_data);
 			if (ret == KNOT_EOK) {
 				success = true;
@@ -453,7 +460,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 			                   err_str, ret);
 		}
 
-		if (!success) {
+		if (!success && tried) {
 			log_zone_warning(zone->name, "%s, remote %s not usable",
 			                 err_str, conf_str(&masters));
 		}
