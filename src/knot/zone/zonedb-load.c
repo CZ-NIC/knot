@@ -436,7 +436,6 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 	}
 	if (catret < 0) {
 		log_error("failed to process zone catalog (%s)", knot_strerror(catret));
-		// TODO return NULL ?
 	}
 
 	return db_new;
