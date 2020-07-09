@@ -178,8 +178,8 @@ void catalog_curval(catalog_t *cat, const knot_dname_t **member,
 	}
 }
 
-void catalog_curval2(MDB_val *key, MDB_val *val, const knot_dname_t **member,
-                     const knot_dname_t **owner, const knot_dname_t **catzone)
+static void catalog_curval2(MDB_val *key, MDB_val *val, const knot_dname_t **member,
+                            const knot_dname_t **owner, const knot_dname_t **catzone)
 {
 	uint8_t zero, shift;
 	if (member != NULL) {
@@ -263,7 +263,7 @@ catalog_find_res_t catalog_find(catalog_t *cat, const knot_dname_t *member,
                                 const knot_dname_t *owner, const knot_dname_t *catzone)
 {
 	MDB_val key = knot_lmdb_make_key("BN", 0, member);
-	find_ctx_t ctx = { member, owner, catzone, 0 };
+	find_ctx_t ctx = { member, owner, catzone, MEMBER_NONE };
 	int ret = knot_lmdb_apply_threadsafe(&cat->txn, &key, false, find_cb, &ctx);
 	free(key.mv_data);
 	switch (ret) {
@@ -443,7 +443,8 @@ static int del_all_cb(MDB_val *key, MDB_val *val, void *dactx)
 	catalog_curval2(key, val, &mem, &ow, &cz);
 	del_all_ctx_t *ctx = dactx;
 	if (knot_dname_is_equal(cz, ctx->zone)) {
-		return catalog_update_add(ctx->u, mem, ow, cz, true); // TODO possible speedup by indexing which member zones belong to a catalog zone
+		// TODO possible speedup by indexing which member zones belong to a catalog zone
+		return catalog_update_add(ctx->u, mem, ow, cz, true);
 	} else {
 		return KNOT_EOK;
 	}
