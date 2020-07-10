@@ -1113,11 +1113,10 @@ static bool ixfr_error_failover(int ret)
 	switch (ret) {
 	case KNOT_EOK:
 		return false; // don't failover if IXFR is OK
-	case KNOT_ECONN:
-	case KNOT_ETIMEOUT:   // network issues
-		return false;
-	default:
+	case KNOT_EAGAIN:     // it's worth it to try again
 		return true;
+	default:              // failover for DNS logic errors; don't for networking issues
+		return ret <= KNOT_ERROR_MAX;
 	}
 }
 
