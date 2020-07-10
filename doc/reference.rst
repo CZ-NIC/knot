@@ -785,7 +785,7 @@ journal usage limits. See more details regarding
 .. NOTE::
    This value also influences server's usage of virtual memory.
 
-*Default:* 20 GiB (1 GiB for 32-bit)
+*Default:* 20 GiB (512 MiB for 32-bit)
 
 .. _database_kasp-db:
 
@@ -855,7 +855,7 @@ The hard limit for the catalog database maximum size.
 .. NOTE::
    This value also influences server's usage of virtual memory.
 
-*Default:* 20 GiB (1 GiB for 32-bit)
+*Default:* 20 GiB (512 MiB for 32-bit)
 
 .. _Keystore section:
 
