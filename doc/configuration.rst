@@ -693,6 +693,15 @@ or I/O response during the operation. It may be caused by Knot design not fittin
 The user should try increasing the number of workers (of the related type) slightly above 100 and if
 the performance gets better, he can decide about further exact setting.
 
+Number of available file descriptors
+------------------------------------
+
+A name server configured for higher number of zones (hundreds and more) needs enough file descriptors
+available, which a default OS setting often doesn't provide. It's necessary to check with the OS
+configuration and documentation and make sure the number of file descriptors (a number of concurrently
+open files) effective for the kntod process is set high enough. The required setting can be affected by
+the :ref:`server_tcp-max-clients` setting.
+
 Sysctl and NIC optimizations
 ----------------------------
 
