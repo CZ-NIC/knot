@@ -45,7 +45,7 @@ static int request_ensure_connected(knot_request_t *request)
 	                                   &request->remote,
 	                                   &request->source);
 	if (request->fd < 0) {
-		return KNOT_ECONN;
+		return request->fd;
 	}
 
 	return KNOT_EOK;
