@@ -57,6 +57,8 @@ enum knot_error {
 	KNOT_ERANGE        = -ERANGE,
 	KNOT_EADDRNOTAVAIL = -EADDRNOTAVAIL,
 
+	KNOT_ERRNO_ERROR   = -500,
+
 	KNOT_ERROR_MIN = -1000,
 
 	/* General errors. */
