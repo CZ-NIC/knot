@@ -58,6 +58,8 @@ static const struct error errors[] = {
 	{ KNOT_ERANGE,        "value is out of range" },
 	{ KNOT_EADDRNOTAVAIL, "address is not available" },
 
+	{ KNOT_ERRNO_ERROR,   "syscall failed" },
+
 	/* General errors. */
 	{ KNOT_ERROR,        "failed" },
 	{ KNOT_EPARSEFAIL,   "parser failed" },
