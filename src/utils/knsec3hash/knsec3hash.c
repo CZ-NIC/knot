@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -27,8 +26,10 @@
 #include "libdnssec/error.h"
 #include "libdnssec/nsec.h"
 #include "libknot/libknot.h"
+#include "utils/common/params.h"
 
-#define PROGRAM_NAME "knsec3hash"
+#define PROGRAM_NAME	"knsec3hash"
+
 #define error(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 
 /*!
@@ -38,14 +39,6 @@ static void print_help(void)
 {
 	printf("Usage:   " PROGRAM_NAME " <salt> <algorithm> <iterations> <domain-name>\n");
 	printf("Example: " PROGRAM_NAME " c01dcafe 1 10 knot-dns.cz\n");
-}
-
-/*!
- * \brief Print program version.
- */
-static void print_version(void)
-{
-	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
 }
 
 /*!
@@ -119,23 +112,23 @@ int main(int argc, char *argv[])
 		switch(opt) {
 		case 'h':
 			print_help();
-			return 0;
+			return EXIT_SUCCESS;
 		case 'V':
-			print_version();
-			return 0;
+			print_version(PROGRAM_NAME);
+			return EXIT_SUCCESS;
 		default:
 			print_help();
-			return 1;
+			return EXIT_FAILURE;
 		}
 	}
 
 	// knsec3hash <salt> <algorithm> <iterations> <domain>
 	if (argc != 5) {
 		print_help();
-		return 1;
+		return EXIT_FAILURE;
 	}
 
-	int exit_code = 1;
+	int exit_code = EXIT_FAILURE;
 	dnssec_nsec3_params_t nsec3_params = { 0 };
 
 	dnssec_binary_t dname = { 0 };
@@ -167,7 +160,7 @@ int main(int argc, char *argv[])
 	}
 	digest_print.size = r;
 
-	exit_code = 0;
+	exit_code = EXIT_SUCCESS;
 
 	printf("%.*s (salt=%s, hash=%d, iterations=%d)\n", (int)digest_print.size,
 	       digest_print.data, argv[1], nsec3_params.algorithm,

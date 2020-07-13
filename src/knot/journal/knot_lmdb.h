@@ -144,7 +144,7 @@ void knot_lmdb_deinit(knot_lmdb_db_t *db);
 /*!
  * \brief Return true if DB is open.
  */
-inline static bool knot_lmdb_is_open(knot_lmdb_db_t *db) { return db->env != NULL; }
+inline static bool knot_lmdb_is_open(knot_lmdb_db_t *db) { return db != NULL && db->env != NULL; }
 
 /*!
  * \brief Start a DB transaction.
@@ -187,6 +187,21 @@ void knot_lmdb_commit(knot_lmdb_txn_t *txn);
 bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how);
 
 /*!
+ * \brief Simple database lookup in case txn shared among threads.
+ *
+ * \param txn    DB transaction share among threads.
+ * \param key    Key to be searched for.
+ * \param val    Output: database value.
+ * \param how    Must be KNOT_LMDB_EXACT.
+ *
+ * \note Free val->mv_data afterwards!
+ *
+ * \retval KNOT_ENOENT   no such key in DB.
+ * \return KNOT_E*
+ */
+int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, knot_lmdb_find_t how);
+
+/*!
  * \brief Start iteration the whole DB from lexicographically first key.
  *
  * \note The first DB record will be in txn->cur_key and txn->cur_val.
@@ -214,7 +229,7 @@ bool knot_lmdb_next(knot_lmdb_txn_t *txn);
  *
  * \return True iff 'prefix' is a prefix of 'of'.
  */
-bool knot_lmdb_is_prefix_of(MDB_val *prefix, MDB_val *of);
+bool knot_lmdb_is_prefix_of(const MDB_val *prefix, const MDB_val *of);
 
 /*!
  * \brief Find leftmost key in DB matching given prefix.
@@ -267,6 +282,24 @@ void knot_lmdb_del_cur(knot_lmdb_txn_t *txn);
  * \param prefix   Prefix to be deleted.
  */
 void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix);
+
+typedef int (*lmdb_apply_cb)(MDB_val *key, MDB_val *val, void *ctx);
+
+/*!
+ * \brief Call a callback for any item matching given key.
+ *
+ * \note This function does not affect fields within txn struct,
+ *       thus can be used on txn shared between threads.
+ *
+ * \param txn      DB transaction.
+ * \param key      Key to be searched for.
+ * \param prefix   The 'key' is in fact prefix, apply on all items matching prefix.
+ * \param cb       Callback to be called.
+ * \param ctx      Arbitrary context for the callback.
+ *
+ * \return KNOT_E*
+ */
+int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool prefix, lmdb_apply_cb cb, void *ctx);
 
 /*!
  * \brief Insert a new record into the DB.
