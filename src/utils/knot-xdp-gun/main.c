@@ -38,8 +38,8 @@
 #include "libknot/libknot.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "utils/common/params.h"
-
-#include "load_queries.h"
+#include "utils/knot-xdp-gun/load_queries.h"
+#include "utils/knot-xdp-gun/popenve.h"
 
 #define PROGRAM_NAME "knot-xdp-gun"
 
@@ -53,6 +53,8 @@ uint64_t global_size_recv = 0;
 #define LOCAL_PORT_MIN  1024
 #define LOCAL_PORT_MAX 65535
 
+#define KNOWN_RCODE_MAX (KNOT_RCODE_NOTZONE + 1)
+
 typedef struct {
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
@@ -64,6 +66,7 @@ typedef struct {
 	uint16_t	target_port;
 	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_ALL, KNOT_XDP_LISTEN_PORT_DROP
 	unsigned	n_threads, thread_id;
+	uint64_t	rcode_counts[KNOWN_RCODE_MAX];
 } xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
@@ -240,6 +243,11 @@ void *xdp_gun_thread(void *_ctx)
 				}
 				for (int i = 0; i < recvd; i++) {
 					tot_size += pkts[i].payload.iov_len;
+					if (pkts[i].payload.iov_len < KNOT_WIRE_HEADER_SIZE) {
+						ctx->rcode_counts[KNOWN_RCODE_MAX - 1]++;
+					} else {
+						ctx->rcode_counts[((uint8_t *)pkts[i].payload.iov_base)[3] & 0xf]++;
+					}
 				}
 				knot_xdp_recv_finish(xsk, pkts, recvd);
 				tot_recv += recvd;
@@ -342,34 +350,41 @@ static bool str2mac(const char *str, uint8_t mac[])
 	return true;
 }
 
+static FILE *popen_ip(char *arg1, char *arg2, char *arg3)
+{
+	char *args[5] = { "ip", arg1, arg2, arg3, NULL };
+	char *env[] = { NULL };
+	return kpopenve("/sbin/ip", args, env, true);
+}
+
 static int ip_route_get(const char *ip_str, const char *what, char **res)
 {
-	char cmd[50 + strlen(ip_str) + strlen(what)];
-	(void)snprintf(cmd, sizeof(cmd), "ip route get %s | grep -o ' %s [^ ]* '", ip_str, what);
-
 	errno = 0;
-	FILE *p = popen(cmd, "r");
+	FILE *p = popen_ip("route", "get", (char *)ip_str); // hope ip_str gets not broken
 	if (p == NULL) {
 		return (errno != 0) ? knot_map_errno() : KNOT_ENOMEM;
 	}
 
-	char check[16] = { 0 }, got[256] = { 0 };
-	if (fscanf(p, "%15s%255s", check, got) != 2 ||
-	    strcmp(check, what) != 0) {
-		int ret = feof(p) ? KNOT_ENOENT : KNOT_EMALF;
-		pclose(p);
-		return ret;
+	char buf[256] = { 0 };
+	bool hit = false;
+	while (fscanf(p, "%255s", buf) == 1) {
+		if (hit) {
+			*res = strdup(buf);
+			fclose(p);
+			return *res == NULL ? KNOT_ENOMEM : KNOT_EOK;
+		}
+		if (strcmp(buf, what) == 0) {
+			hit = true;
+		}
 	}
-	pclose(p);
-
-	*res = strdup(got);
-	return *res == NULL ? KNOT_ENOMEM : KNOT_EOK;
+	fclose(p);
+	return KNOT_ENOENT;
 }
 
 static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t remote_mac[])
 {
 	errno = 0;
-	FILE *p = popen(ipv6 ? "ip -6 neigh" : "arp -ne", "r");
+	FILE *p = popen_ip(ipv6 ? "-6" : "-4", "neigh", NULL);
 	if (p == NULL) {
 		return (errno != 0) ? knot_map_errno() : KNOT_ENOMEM;
 	}
@@ -384,14 +399,14 @@ static int remoteIP2MAC(const char *ip_str, bool ipv6, char devname[], uint8_t r
 		if (strcmp(fields[0], ip_str) != 0) {
 			continue;
 		}
-		if (!str2mac(fields[ipv6 ? 4 : 2], remote_mac)) {
+		if (!str2mac(fields[4], remote_mac)) {
 			ret = KNOT_EMALF;
 		} else {
-			strlcpy(devname, fields[ipv6 ? 2 : 4], IFNAMSIZ);
+			strlcpy(devname, fields[2], IFNAMSIZ);
 			ret = KNOT_EOK;
 		}
 	}
-	pclose(p);
+	fclose(p);
 	return ret;
 }
 
@@ -644,6 +659,17 @@ int main(int argc, char *argv[])
 		printf("total replies: %lu (%lu qps) (%lu%%)\n", global_pkts_recv,
 		       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
 		printf("average reply size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
+		for (int i = 0; i < KNOWN_RCODE_MAX; i++) {
+			uint64_t rcode_count = 0;
+			for (size_t j = 0; j < ctx.n_threads; j++) {
+				rcode_count += thread_ctxs[j].rcode_counts[i];
+			}
+			if (rcode_count > 0) {
+				const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, i);
+				const char *rcname = rcode == NULL ? "unknown" : rcode->name;
+				printf("responded %s:\t%lu\n", rcname, rcode_count);
+			}
+		}
 	}
 
 	free(thread_ctxs);

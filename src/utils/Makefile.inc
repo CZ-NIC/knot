@@ -88,10 +88,12 @@ sbin_PROGRAMS += knot-xdp-gun
 knot_xdp_gun_SOURCES = \
 	utils/knot-xdp-gun/load_queries.c	\
 	utils/knot-xdp-gun/load_queries.h	\
-	utils/knot-xdp-gun/main.c
+	utils/knot-xdp-gun/main.c		\
+	utils/knot-xdp-gun/popenve.c		\
+	utils/knot-xdp-gun/popenve.h
 
 knot_xdp_gun_CPPFLAGS  = $(AM_CPPFLAGS)
-knot_xdp_gun_LDADD     = libcontrib.la libknot.la $(pthread_LIBS)
+knot_xdp_gun_LDADD     = libcontrib.la libknot.la $(pthread_LIBS) $(cap_ng_LIBS)
 endif ENABLE_XDP
 endif HAVE_UTILS
 
