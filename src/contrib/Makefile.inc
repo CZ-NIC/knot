@@ -1,7 +1,7 @@
 noinst_LTLIBRARIES += libcontrib.la
 
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
-libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS) $(cap_ng_LIBS)
+libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libcontrib_la_LIBADD   = $(pthread_LIBS)
 if USE_GNUTLS_MEMSET
 libcontrib_la_CPPFLAGS += $(gnutls_CFLAGS)
@@ -43,8 +43,6 @@ libcontrib_la_SOURCES = \
 	contrib/mempattern.h			\
 	contrib/net.c				\
 	contrib/net.h				\
-	contrib/popenve.c			\
-	contrib/popenve.h			\
 	contrib/qp-trie/trie.c			\
 	contrib/qp-trie/trie.h			\
 	contrib/semaphore.c			\

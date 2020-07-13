@@ -16,11 +16,10 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "popenve.h"
+#include "utils/knot-xdp-gun/popenve.h"
 
 #ifdef ENABLE_CAP_NG
 #include <cap-ng.h>
@@ -39,26 +38,26 @@ static void drop_capabilities(void) {  }
 
 int kpopenvef(const char *binfile, char *const args[], char *const env[], bool drop_cap)
 {
-        int pipefds[2];
-        if (pipe(pipefds) < 0) {
-                return -errno;
-        }
-        if (fcntl(pipefds[0], F_SETFD, FD_CLOEXEC) < 0) {
-                int fcntlerrno = errno;
-                close(pipefds[0]);
-                close(pipefds[1]);
-                return -fcntlerrno;
-        }
+	int pipefds[2];
+	if (pipe(pipefds) < 0) {
+		return -errno;
+	}
+	if (fcntl(pipefds[0], F_SETFD, FD_CLOEXEC) < 0) {
+		int fcntlerrno = errno;
+		close(pipefds[0]);
+		close(pipefds[1]);
+		return -fcntlerrno;
+	}
 
-        pid_t forkpid = fork();
-        if (forkpid < 0) {
-                int forkerrno = errno;
-                close(pipefds[0]);
-                close(pipefds[1]);
-                return -forkerrno;
-        }
+	pid_t forkpid = fork();
+	if (forkpid < 0) {
+		int forkerrno = errno;
+		close(pipefds[0]);
+		close(pipefds[1]);
+		return -forkerrno;
+	}
 
-        if (forkpid == 0) {
+	if (forkpid == 0) {
 dup_stdout:
 		if (dup2(pipefds[1], STDOUT_FILENO) < 0) {
 			if (errno == EINTR) {
@@ -69,19 +68,19 @@ dup_stdout:
 			close(pipefds[1]);
 			exit(EXIT_FAILURE);
 		}
-                close(pipefds[1]);
+		close(pipefds[1]);
 
 		if (drop_cap) {
 			drop_capabilities();
 		}
 
-                execve(binfile, args, env);
-                perror("execve");
-                exit(EXIT_FAILURE);
-        }
+		execve(binfile, args, env);
+		perror("execve");
+		exit(EXIT_FAILURE);
+	}
 
-        close(pipefds[1]);
-        return pipefds[0];
+	close(pipefds[1]);
+	return pipefds[0];
 }
 
 FILE *kpopenve(const char *binfile, char *const args[], char *const env[], bool drop_cap)

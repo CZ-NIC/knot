@@ -73,8 +73,6 @@ src/contrib/openbsd/strlcat.c
 src/contrib/openbsd/strlcat.h
 src/contrib/openbsd/strlcpy.c
 src/contrib/openbsd/strlcpy.h
-src/contrib/popenve.c
-src/contrib/popenve.h
 src/contrib/qp-trie/trie.c
 src/contrib/qp-trie/trie.h
 src/contrib/semaphore.c
@@ -471,6 +469,11 @@ src/utils/khost/khost_main.c
 src/utils/khost/khost_params.c
 src/utils/khost/khost_params.h
 src/utils/kjournalprint/main.c
+src/utils/knot-xdp-gun/load_queries.c
+src/utils/knot-xdp-gun/load_queries.h
+src/utils/knot-xdp-gun/main.c
+src/utils/knot-xdp-gun/popenve.c
+src/utils/knot-xdp-gun/popenve.h
 src/utils/knotc/commands.c
 src/utils/knotc/commands.h
 src/utils/knotc/interactive.c
@@ -488,9 +491,6 @@ src/utils/knsupdate/knsupdate_params.h
 src/utils/kzonecheck/main.c
 src/utils/kzonecheck/zone_check.c
 src/utils/kzonecheck/zone_check.h
-src/utils/knot-xdp-gun/load_queries.c
-src/utils/knot-xdp-gun/load_queries.h
-src/utils/knot-xdp-gun/main.c
 tests-fuzz/fuzz_dname_from_str.c
 tests-fuzz/fuzz_dname_to_str.c
 tests-fuzz/fuzz_packet.c

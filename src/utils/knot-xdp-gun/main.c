@@ -37,10 +37,9 @@
 
 #include "libknot/libknot.h"
 #include "contrib/openbsd/strlcpy.h"
-#include "contrib/popenve.h"
 #include "utils/common/params.h"
-
-#include "load_queries.h"
+#include "utils/knot-xdp-gun/load_queries.h"
+#include "utils/knot-xdp-gun/popenve.h"
 
 #define PROGRAM_NAME "knot-xdp-gun"
 
