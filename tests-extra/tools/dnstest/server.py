@@ -150,6 +150,7 @@ class Server(object):
         self.journal_max_usage = 5 * 1024 * 1024
         self.timer_db_size = 1 * 1024 * 1024
         self.kasp_db_size = 10 * 1024 * 1024
+        self.catalog_db_size = 10 * 1024 * 1024
         self.zone_size_limit = None
         self.serial_policy = None
 
@@ -1297,6 +1298,7 @@ class Knot(Server):
         s.item_str("kasp-db-max-size", self.kasp_db_size)
         s.item_str("journal-db-max-size", self.journal_db_size)
         s.item_str("timer-db-max-size", self.timer_db_size)
+        s.item_str("catalog-db-max-size", self.catalog_db_size)
         s.end()
 
         s.begin("template")
