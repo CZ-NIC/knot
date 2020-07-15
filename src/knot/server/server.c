@@ -565,10 +565,6 @@ void server_deinit(server_t *server)
 		}
 	}
 
-	/* Free catalog zone context. */
-	catalog_update_deinit(&server->catalog_upd);
-	catalog_deinit(&server->catalog);
-
 	/* Free remaining interfaces. */
 	server_deinit_iface_list(server->ifaces, server->n_ifaces);
 
@@ -580,6 +576,10 @@ void server_deinit(server_t *server)
 
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
+
+	/* Free catalog zone context. */
+	catalog_update_deinit(&server->catalog_upd);
+	catalog_deinit(&server->catalog);
 
 	/* Close persistent timers DB. */
 	knot_lmdb_deinit(&server->timerdb);
