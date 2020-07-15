@@ -305,10 +305,19 @@ int bind_pubkey_parse(const char *filename, dnssec_key_t **key_ptr)
 	    zs_set_input_file(scanner, filename) != 0 ||
 	    zs_set_processing(scanner, parse_record, NULL, key) != 0 ||
 	    zs_parse_all(scanner) != 0) {
+		int ret;
+		switch (scanner->error.code) {
+		case ZS_FILE_OPEN:
+		case ZS_FILE_INVALID:
+			ret = KNOT_EFILE;
+			break;
+		default:
+			ret = KNOT_EPARSEFAIL;
+		}
 		zs_deinit(scanner);
 		free(scanner);
 		dnssec_key_free(key);
-		return KNOT_ENOENT;
+		return ret;
 	}
 	zs_deinit(scanner);
 	free(scanner);
