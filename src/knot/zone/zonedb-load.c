@@ -319,13 +319,6 @@ static zone_t *add_member_zone(catalog_upd_val_t *val, knot_zonedb_t *check,
 		return NULL;
 	}
 
-	int ret = catalog_add2(&server->catalog, val);
-	if (ret != KNOT_EOK) {
-		log_zone_error(val->member, "failed adding member zone to catalog (%s)",
-		               knot_strerror(ret));
-		return NULL;
-	}
-
 	zone_t *zone = create_zone(conf, val->member, server, NULL);
 	if (zone == NULL) {
 		log_zone_error(val->member, "zone cannot be created");
@@ -418,11 +411,26 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		}
 	}
 
+	catalog_rw_cleanup(&server->catalog);
+
 	catalog_it_t *it = catalog_it_begin(&server->catalog_upd, false);
 	int catret = 1;
 	if (!catalog_it_finished(it)) {
 		catret = catalog_begin(&server->catalog);
 	}
+	while (!catalog_it_finished(it) && catret == KNOT_EOK) {
+		catalog_upd_val_t *val = catalog_it_val(it);
+		if (!val->just_reconf && knot_zonedb_find(db_new, val->member) == NULL) { // warning for existing zone later in add_member_zone()
+			catret = catalog_add2(&server->catalog, val);
+		}
+		catalog_it_next(it);
+	}
+	catalog_it_free(it);
+	if (catret == KNOT_EOK) {
+		catret = catalog_commit(&server->catalog);
+	}
+
+	it = catalog_it_begin(&server->catalog_upd, false);
 	while (!catalog_it_finished(it) && catret == KNOT_EOK) {
 		zone_t *zone = add_member_zone(catalog_it_val(it), db_new, server, conf);
 		if (zone != NULL) {
@@ -431,9 +439,6 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		catalog_it_next(it);
 	}
 	catalog_it_free(it);
-	if (catret == KNOT_EOK) {
-		catret = catalog_commit(&server->catalog);
-	}
 	if (catret < 0) {
 		log_error("failed to process zone catalog (%s)", knot_strerror(catret));
 	}
@@ -454,6 +459,8 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
                               server_t *server)
 {
+	catalog_rw_cleanup(&server->catalog);
+
 	knot_zonedb_t *db_new = server->zone_db;
 
 	bool full = !(conf->io.flags & CONF_IO_FACTIVE) ||

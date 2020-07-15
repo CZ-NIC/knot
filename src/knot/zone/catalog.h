@@ -24,7 +24,11 @@
 
 typedef struct catalog {
 	knot_lmdb_db_t db;
-	knot_lmdb_txn_t txn; // RO transaction open all the time or temporary RW txn
+	knot_lmdb_txn_t *ro_txn; // persistent RO transaction
+	knot_lmdb_txn_t *rw_txn; // temporary RW transaction
+
+	// private
+	knot_lmdb_txn_t *old_ro_txn;
 } catalog_t;
 
 typedef enum {
@@ -78,13 +82,22 @@ int catalog_open(catalog_t *cat);
 int catalog_begin(catalog_t *cat);
 
 /*!
- * \brief Commit the temporary RW transaction in catalog, go back to RO txn.
+ * \brief End using the temporary RW txn, refresh the persistent RO txn.
  *
  * \param cat   Catalog in question.
  *
  * \return KNOT_E*
  */
 int catalog_commit(catalog_t *cat);
+
+/*!
+ * \brief Free up old txns.
+ *
+ * \note This must be called after catalog_commit() with a delay of synchronnize_rcu().
+ *
+ * \param cat   Catalog.
+ */
+void catalog_rw_cleanup(catalog_t *cat);
 
 /*!
  * \brief Close the catalog and de-init the structure.
@@ -129,7 +142,7 @@ inline static int catalog_del2(catalog_t *cat, const catalog_upd_val_t *val)
 	return catalog_del(cat, val->member);
 }
 
-#define catalog_foreach(cat) knot_lmdb_foreach(&(cat)->txn, (MDB_val *)&catalog_iter_prefix)
+#define catalog_foreach(cat) knot_lmdb_foreach((cat)->ro_txn, (MDB_val *)&catalog_iter_prefix)
 
 /*!
  * \brief Deserialize a value in catalog database.
