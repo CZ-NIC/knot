@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ typedef struct {
 	bool is_ready;
 	bool is_zsk_active_plus;
 	bool is_ksk_active_plus;
+	bool is_revoked;
 } zone_key_t;
 
 dynarray_declare(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC, 1)
@@ -64,8 +65,9 @@ typedef struct {
  * \brief Flags determining key type
  */
 enum {
-	DNSKEY_FLAGS_KSK = KNOT_DNSKEY_FLAG_ZONE | KNOT_DNSKEY_FLAG_SEP,
-	DNSKEY_FLAGS_ZSK = KNOT_DNSKEY_FLAG_ZONE,
+	DNSKEY_FLAGS_ZSK     = KNOT_DNSKEY_FLAG_ZONE,
+	DNSKEY_FLAGS_KSK     = KNOT_DNSKEY_FLAG_ZONE | KNOT_DNSKEY_FLAG_SEP,
+	DNSKEY_FLAGS_REVOKED = KNOT_DNSKEY_FLAG_ZONE | KNOT_DNSKEY_FLAG_SEP | KNOT_DNSKEY_FLAG_REVOKE,
 };
 
 inline static uint16_t dnskey_flags(bool is_ksk)

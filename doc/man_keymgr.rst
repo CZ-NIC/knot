@@ -185,6 +185,9 @@ The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key sta
 **post_active**
   Key no longer published, but still used for signing (only for algorithm rollover).
 
+**revoke**
+  Key revoked according to RFC 5011 trust anchor roll-over.
+
 **remove**
   Key deleted.
 

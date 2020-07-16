@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,6 +47,11 @@ static int dnskey_guess_flags(dnssec_key_t *key, uint16_t keytag)
 	}
 
 	dnssec_key_set_flags(key, DNSKEY_FLAGS_ZSK);
+	if (dnssec_key_get_keytag(key) == keytag) {
+		return KNOT_EOK;
+	}
+
+	dnssec_key_set_flags(key, DNSKEY_FLAGS_REVOKED);
 	if (dnssec_key_get_keytag(key) == keytag) {
 		return KNOT_EOK;
 	}

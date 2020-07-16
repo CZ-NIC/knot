@@ -94,12 +94,12 @@ static MDB_val params_serialize(const key_params_t *params)
 	flags |= (params->is_pub_only ? 0x04 : 0);
 	flags |= (params->is_csk ? 0x08 : 0);
 
-	return knot_lmdb_make_key("LLHBBLLLLLLLLLD", (uint64_t)params->public_key.size,
-		(uint64_t)0, params->keytag, params->algorithm, flags,
+	return knot_lmdb_make_key("LLHBBLLLLLLLLLDL", (uint64_t)params->public_key.size,
+		(uint64_t)sizeof(params->timing.revoke), params->keytag, params->algorithm, flags,
 		params->timing.created, params->timing.pre_active, params->timing.publish,
 		params->timing.ready, params->timing.active, params->timing.retire_active,
 		params->timing.retire, params->timing.post_active, params->timing.remove,
-		params->public_key.data, params->public_key.size);
+		params->public_key.data, params->public_key.size, params->timing.revoke);
 }
 
 // this is no longer compatible with keys created by Knot 2.5.x (and unmodified since)
@@ -127,6 +127,15 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 		params->is_ksk = ((flags & 0x01) ? true : false);
 		params->is_pub_only = ((flags & 0x04) ? true : false);
 		params->is_csk = ((flags & 0x08) ? true : false);
+
+		if (future > 0) {
+			if (future < sizeof(params->timing.revoke)) {
+				free(params->public_key.data);
+				return false;
+			}
+			// 'revoked' timer is part of 'future' section since it was added later
+			params->timing.revoke = be64toh(*(uint64_t *)(val->mv_data + val->mv_size - future));
+		}
 
 		if ((flags & 0x02) && (params->is_ksk || !params->is_csk)) {
 			return true;
