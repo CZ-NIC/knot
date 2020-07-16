@@ -1111,12 +1111,37 @@ typedef struct {
 static bool ixfr_error_failover(int ret)
 {
 	switch (ret) {
-	case KNOT_EOK:
-		return false; // don't failover if IXFR is OK
-	case KNOT_ECONN:
-	case KNOT_ETIMEOUT:   // network issues
+	case KNOT_EOK:		// Don't failover if IXFR is OK.
 		return false;
-	default:
+	case KNOT_ENOMEM:	// Don't failover for networking issues (the following list).
+	case KNOT_EINVAL:
+	case KNOT_ENOBUFS:
+	case KNOT_EMFILE:
+	case KNOT_ENFILE:
+	case KNOT_EISCONN:
+	case KNOT_ECONNREFUSED:
+	case KNOT_EALREADY:
+	case KNOT_ECONNRESET:
+	case KNOT_ECONNABORTED:
+	case KNOT_ENETRESET:
+	case KNOT_EHOSTUNREACH:
+	case KNOT_ENETUNREACH:
+	case KNOT_EHOSTDOWN:
+	case KNOT_ENETDOWN:
+	case KNOT_EADDRINUSE:
+	case KNOT_EADDRNOTAVAIL:
+
+	case KNOT_ECONN:
+	case KNOT_ETIMEOUT:
+
+	case KNOT_NET_EADDR:
+	case KNOT_NET_ESOCKET:
+	case KNOT_NET_ECONNECT:
+	case KNOT_NET_ESEND:
+	case KNOT_NET_ERECV:
+	case KNOT_NET_ETIMEOUT:
+		return false;
+	default:		// The rest are supposed to be DNS logic errors, do a failover.
 		return true;
 	}
 }
