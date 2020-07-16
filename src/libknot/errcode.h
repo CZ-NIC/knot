@@ -57,6 +57,8 @@ enum knot_error {
 	KNOT_ERANGE        = -ERANGE,
 	KNOT_EADDRNOTAVAIL = -EADDRNOTAVAIL,
 
+	KNOT_ERRNO_ERROR   = -500,
+
 	KNOT_ERROR_MIN = -1000,
 
 	/* General errors. */
@@ -164,11 +166,12 @@ enum knot_error {
 /*!
  * \brief Map POSIX errno code to Knot error code.
  *
- * \param code Errno code to transform (set -1 to use the current errno).
+ * \param code       Errno code to transform (set -1 to use the current errno).
+ * \param dflt_error Default return value, if code is unknown.
  *
- * \return Mapped errno or KNOT_ERROR if unknown.
+ * \return Mapped errno or the value of dflt_error if unknown.
  */
-inline static int knot_map_errno_code(int code)
+inline static int knot_map_errno_code_def(int code, int dflt_error)
 {
 	if (code < 0) {
 		code = errno;
@@ -206,8 +209,8 @@ inline static int knot_map_errno_code(int code)
 		ERR_ITEM(ERANGE),
 		ERR_ITEM(EADDRNOTAVAIL),
 
-		/* Terminator - default value. */
-		{ 0, KNOT_ERROR }
+		/* Terminator - the value isn't used. */
+		{ 0, KNOT_ERRNO_ERROR }
 	};
 	#undef ERR_ITEM
 
@@ -217,17 +220,41 @@ inline static int knot_map_errno_code(int code)
 		err++;
 	}
 
-	return err->libknot_code;
+	return err->errno_code != 0 ? err->libknot_code : dflt_error;
+}
+
+/*!
+ * \brief Map POSIX errno code to Knot error code.
+ *
+ * \param code Errno code to transform (set -1 to use the current errno).
+ *
+ * \return Mapped errno or KNOT_ERRNO_ERROR if unknown.
+ */
+inline static int knot_map_errno_code(int code)
+{
+	return knot_map_errno_code_def(code, KNOT_ERRNO_ERROR);
 }
 
 /*!
  * \brief Get a POSIX errno mapped to Knot error code.
  *
- * \return Mapped errno or KNOT_ERROR if unknown.
+ * \param dflt_error Default return value, if code is unknown.
+ *
+ * \return Mapped errno.
+ */
+inline static int knot_map_errno_def(int dflt_error)
+{
+	return knot_map_errno_code_def(-1, dflt_error);
+}
+
+/*!
+ * \brief Get a POSIX errno mapped to Knot error code.
+ *
+ * \return Mapped errno or KNOT_ERRNO_ERROR if unknown.
  */
 inline static int knot_map_errno(void)
 {
-	return knot_map_errno_code(-1);
+	return knot_map_errno_code_def(-1, KNOT_ERRNO_ERROR);
 }
 
 /*! @} */
