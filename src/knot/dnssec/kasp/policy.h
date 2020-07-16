@@ -34,6 +34,7 @@ typedef struct {
 	knot_time_t retire_active;	/*!< Still active, but obsoleted. */
 	knot_time_t retire;		/*!< End of RRSIG records generating. */
 	knot_time_t post_active;	/*!< Still signing with old algorithm, not published. */
+	knot_time_t revoke;             /*!< RFC 5011 state of KSK with 'revoked' flag and signed by self. */
 	knot_time_t remove;		/*!< Time of DNSKEY record removal. */
 } knot_kasp_key_timing_t;
 

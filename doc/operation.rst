@@ -470,6 +470,16 @@ Special states for algorithm rollover:
 
 - ``post-active`` — The key is no longer published in the zone, but still used for signing.
 
+Special states for RFC 5011 trust anchor roll-over
+
+- ``revoke`` (only for KSK) — The key is published and used for signing, and the Revoked flag is set.
+
+.. NOTE::
+   Trust anchor roll-over is not implemented with automatic key management.
+
+   The ``revoke`` state can only be established using :doc:`keymgr<man_keymgr>` wen using
+   :ref:`dnssec-manual-key-management`.
+
 The states listed above are relevant for :doc:`keymgr<man_keymgr>` operations like generating
 a key, setting its timers and listing KASP database.
 

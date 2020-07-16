@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -208,6 +208,14 @@ static bool alg_has_active_zsk(kdnssec_ctx_t *ctx, uint8_t alg)
 	return false;
 }
 
+static void fix_revoked_flag(knot_kasp_key_t *key)
+{
+	uint16_t flags = dnssec_key_get_flags(key->key);
+	if (!(flags & DNSKEY_FLAGS_REVOKED)) {
+		dnssec_key_set_flags(key->key, flags | DNSKEY_FLAGS_REVOKED); // FYI leading to change of keytag
+	}
+}
+
 /*!
  * \brief Get key feature flags from key parameters.
  */
@@ -233,6 +241,7 @@ static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now,
 		timing->retire_active,
 		timing->retire,
 		timing->post_active,
+		timing->revoke,
 		timing->remove,
 	};
 
@@ -269,6 +278,16 @@ static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now,
 	    knot_time_cmp(timing->remove, now) > 0) {
 		zone_key->is_ksk_active_plus = false;
 		zone_key->is_zsk_active_plus = zone_key->is_zsk;
+	}
+	if (zone_key->is_ksk &&
+	    knot_time_cmp(timing->revoke, now) <= 0 &&
+	    knot_time_cmp(timing->remove, now) > 0) {
+		zone_key->is_ready = false;
+		zone_key->is_active = false;
+		zone_key->is_ksk_active_plus = true;
+		zone_key->is_public = true;
+		zone_key->is_revoked = true;
+		fix_revoked_flag(kasp_key);
 	}
 }
 
