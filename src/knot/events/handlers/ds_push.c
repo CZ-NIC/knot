@@ -243,6 +243,7 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 			conf_remote_t parent = conf_remote(conf, &ds_push, i);
 			ret = send_ds_push(conf, zone, &parent, timeout);
 			if (ret == KNOT_EOK) {
+				zone->timers.next_ds_push = 0;
 				break;
 			}
 		}
