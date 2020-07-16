@@ -459,7 +459,7 @@ static int https_send_dns_query_post(https_ctx_t *ctx)
 {
 	                                             // size of number in text form (base 10)
 	char content_length[sizeof(size_t) * 3 + 1]; // limit for x->inf: log10(2^(8*sizeof(x))-1)/sizeof(x) = 2,408239965 -> 3
-	int content_length_len = sprintf(content_length, "%ld", ctx->send_buflen);
+	int content_length_len = sprintf(content_length, "%zu", ctx->send_buflen);
 
 	nghttp2_nv hdrs[] = {
 		MAKE_STATIC_NV(":method", "POST"),
@@ -560,7 +560,7 @@ void print_https(const https_ctx_t *ctx)
 	if (!ctx || !ctx->authority || !ctx->path) {
 		return;
 	}
-	printf(";; HTTPS session (HTTP/2-%s)-(%s%s)-(status: %ld)\n",
+	printf(";; HTTPS session (HTTP/2-%s)-(%s%s)-(status: %lu)\n",
 	       ctx->params.method == POST ? "POST" : "GET", ctx->authority,
 	       ctx->path, ctx->status);
 }
