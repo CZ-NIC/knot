@@ -64,26 +64,26 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
     server.zone_verify(zone)
 
 def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
-    rtime = 0
+    rtime = 0.0
     while True:
         qdnskeyrrsig = server.dig("example.com", rrtype, dnssec=True, bufsize=4096)
         found_rrsigs = qdnskeyrrsig.count("RRSIG")
         if found_rrsigs == rrsig_count:
             break
-        rtime = rtime + 1
-        t.sleep(1)
+        rtime = rtime + 0.1
+        t.sleep(0.1)
         if rtime > timeout:
             break
 
 def wait_for_dnskey_count(t, server, dnskey_count, timeout):
-    rtime = 0
+    rtime = 0.0
     while True:
         qdnskeyrrsig = server.dig("example.com", "DNSKEY", dnssec=True, bufsize=4096)
         found_dnskeys = qdnskeyrrsig.count("DNSKEY")
         if found_dnskeys == dnskey_count:
             break
-        rtime = rtime + 1
-        t.sleep(1)
+        rtime = rtime + 0.1
+        t.sleep(0.1)
         if rtime > timeout:
             break
 
