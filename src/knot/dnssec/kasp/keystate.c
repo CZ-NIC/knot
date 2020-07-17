@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ key_state_t get_key_state(const knot_kasp_key_t *key, knot_time_t moment)
 	const knot_kasp_key_timing_t *t = &key->timing;
 
 	bool removed = (knot_time_cmp(t->remove, moment) <= 0);
+	bool revoked = (knot_time_cmp(t->revoke, moment) <= 0);
 	bool post_active = (knot_time_cmp(t->post_active, moment) <= 0);
 	bool retired = (knot_time_cmp(t->retire, moment) <= 0);
 	bool retire_active = (knot_time_cmp(t->retire_active, moment) <= 0);
@@ -36,6 +37,9 @@ key_state_t get_key_state(const knot_kasp_key_t *key, knot_time_t moment)
 
 	if (removed) {
 		return DNSSEC_KEY_STATE_REMOVED;
+	}
+	if (revoked) {
+		return DNSSEC_KEY_STATE_REVOKED;
 	}
 	if (post_active) {
 		if (retired) {

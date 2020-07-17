@@ -214,6 +214,9 @@ Key still published, but no longer used for signing.
 \fBpost_active\fP
 Key no longer published, but still used for signing (only for algorithm rollover).
 .TP
+\fBrevoke\fP
+Key revoked according to RFC 5011 trust anchor roll\-over.
+.TP
 \fBremove\fP
 Key deleted.
 .UNINDENT
