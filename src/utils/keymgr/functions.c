@@ -72,6 +72,8 @@ static bool init_timestamps(char *arg, knot_kasp_key_timing_t *timing)
 		dst = &timing->post_active;
 	} else if (strncasecmp(arg, "retire_active=", 14) == 0) {
 		dst = &timing->retire_active;
+	} else if (strncasecmp(arg, "revoke=", 7) == 0) {
+		dst = &timing->revoke;
 	} else {
 		return false;
 	}
@@ -847,6 +849,7 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, knot_time_print_t format)
 		print_timer("retire-active", key->timing.retire_active,  format, ' ');
 		print_timer("retire",        key->timing.retire,         format, ' ');
 		print_timer("post-active",   key->timing.post_active,    format, ' ');
+		print_timer("revoke",        key->timing.revoke,         format, ' ');
 		print_timer("remove",        key->timing.remove,         format, '\n');
 	}
 	return KNOT_EOK;
