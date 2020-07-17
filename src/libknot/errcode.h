@@ -37,14 +37,27 @@ enum knot_error {
 	KNOT_ENOTSUP       = -ENOTSUP,
 	KNOT_EBUSY         = -EBUSY,
 	KNOT_EAGAIN        = -EAGAIN,
+	KNOT_ENOBUFS       = -ENOBUFS,
+	KNOT_EMFILE        = -EMFILE,
+	KNOT_ENFILE        = -ENFILE,
 	KNOT_EACCES        = -EACCES,
-	KNOT_ECONNREFUSED  = -ECONNREFUSED,
 	KNOT_EISCONN       = -EISCONN,
+	KNOT_ECONNREFUSED  = -ECONNREFUSED,
+	KNOT_EALREADY      = -EALREADY,
+	KNOT_ECONNRESET    = -ECONNRESET,
+	KNOT_ECONNABORTED  = -ECONNABORTED,
+	KNOT_ENETRESET     = -ENETRESET,
+	KNOT_EHOSTUNREACH  = -EHOSTUNREACH,
+	KNOT_ENETUNREACH   = -ENETUNREACH,
+	KNOT_EHOSTDOWN     = -EHOSTDOWN,
+	KNOT_ENETDOWN      = -ENETDOWN,
 	KNOT_EADDRINUSE    = -EADDRINUSE,
 	KNOT_ENOENT        = -ENOENT,
 	KNOT_EEXIST        = -EEXIST,
 	KNOT_ERANGE        = -ERANGE,
 	KNOT_EADDRNOTAVAIL = -EADDRNOTAVAIL,
+
+	KNOT_ERRNO_ERROR   = -500,
 
 	KNOT_ERROR_MIN = -1000,
 
@@ -153,11 +166,12 @@ enum knot_error {
 /*!
  * \brief Map POSIX errno code to Knot error code.
  *
- * \param code Errno code to transform (set -1 to use the current errno).
+ * \param code       Errno code to transform (set -1 to use the current errno).
+ * \param dflt_error Default return value, if code is unknown.
  *
- * \return Mapped errno or KNOT_ERROR if unknown.
+ * \return Mapped errno or the value of dflt_error if unknown.
  */
-inline static int knot_map_errno_code(int code)
+inline static int knot_map_errno_code_def(int code, int dflt_error)
 {
 	if (code < 0) {
 		code = errno;
@@ -175,17 +189,28 @@ inline static int knot_map_errno_code(int code)
 		ERR_ITEM(ENOTSUP),
 		ERR_ITEM(EBUSY),
 		ERR_ITEM(EAGAIN),
+		ERR_ITEM(ENOBUFS),
+		ERR_ITEM(EMFILE),
+		ERR_ITEM(ENFILE),
 		ERR_ITEM(EACCES),
-		ERR_ITEM(ECONNREFUSED),
 		ERR_ITEM(EISCONN),
+		ERR_ITEM(ECONNREFUSED),
+		ERR_ITEM(EALREADY),
+		ERR_ITEM(ECONNRESET),
+		ERR_ITEM(ECONNABORTED),
+		ERR_ITEM(ENETRESET),
+		ERR_ITEM(EHOSTUNREACH),
+		ERR_ITEM(ENETUNREACH),
+		ERR_ITEM(EHOSTDOWN),
+		ERR_ITEM(ENETDOWN),
 		ERR_ITEM(EADDRINUSE),
 		ERR_ITEM(ENOENT),
 		ERR_ITEM(EEXIST),
 		ERR_ITEM(ERANGE),
 		ERR_ITEM(EADDRNOTAVAIL),
 
-		/* Terminator - default value. */
-		{ 0, KNOT_ERROR }
+		/* Terminator - the value isn't used. */
+		{ 0, KNOT_ERRNO_ERROR }
 	};
 	#undef ERR_ITEM
 
@@ -195,17 +220,41 @@ inline static int knot_map_errno_code(int code)
 		err++;
 	}
 
-	return err->libknot_code;
+	return err->errno_code != 0 ? err->libknot_code : dflt_error;
+}
+
+/*!
+ * \brief Map POSIX errno code to Knot error code.
+ *
+ * \param code Errno code to transform (set -1 to use the current errno).
+ *
+ * \return Mapped errno or KNOT_ERRNO_ERROR if unknown.
+ */
+inline static int knot_map_errno_code(int code)
+{
+	return knot_map_errno_code_def(code, KNOT_ERRNO_ERROR);
 }
 
 /*!
  * \brief Get a POSIX errno mapped to Knot error code.
  *
- * \return Mapped errno or KNOT_ERROR if unknown.
+ * \param dflt_error Default return value, if code is unknown.
+ *
+ * \return Mapped errno.
+ */
+inline static int knot_map_errno_def(int dflt_error)
+{
+	return knot_map_errno_code_def(-1, dflt_error);
+}
+
+/*!
+ * \brief Get a POSIX errno mapped to Knot error code.
+ *
+ * \return Mapped errno or KNOT_ERRNO_ERROR if unknown.
  */
 inline static int knot_map_errno(void)
 {
-	return knot_map_errno_code(-1);
+	return knot_map_errno_code_def(-1, KNOT_ERRNO_ERROR);
 }
 
 /*! @} */
