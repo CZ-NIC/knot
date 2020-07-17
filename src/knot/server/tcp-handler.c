@@ -183,10 +183,11 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, tcp->layer.mm);
 
 	/* Input packet. */
-	(void) knot_pkt_parse(query, 0);
+	int ret = knot_pkt_parse(query, 0);
+	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
+		query->parsed--; // artificially decreasing "parsed" leads to FORMERR
+	}
 	knot_layer_consume(&tcp->layer, query);
-
-	int ret = KNOT_EOK;
 
 	/* Resolve until NOOP or finished. */
 	while (tcp_active_state(tcp->layer.state)) {

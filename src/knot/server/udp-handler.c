@@ -80,7 +80,10 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, udp->layer.mm);
 
 	/* Input packet. */
-	(void) knot_pkt_parse(query, 0);
+	int ret = knot_pkt_parse(query, 0);
+	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
+		query->parsed--; // artificially decreasing "parsed" leads to FORMERR
+	}
 	knot_layer_consume(&udp->layer, query);
 
 	/* Process answer. */
