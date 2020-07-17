@@ -1474,6 +1474,7 @@ Definition of zones served by the server.
      adjust-threads: INT
      dnssec-signing: BOOL
      dnssec-policy: STR
+     dnssec-validate: BOOL
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
@@ -1744,8 +1745,16 @@ When the validation fails, the zone being loaded or update being applied
 is cancelled with an error, and either previous or none zone state
 will be published.
 
+List of what is checked for correctness:
+
+- every zone RRSet is signed by at least one present DNSKEY (incl. crypto verify)
+- DNSKEY RRSet is signed by KSK
+- NSEC(3) exists for each name (unless opt-out) with correct bitmap
+- each NSEC(3) record is linked with lexicographically next one
+- (however, additonal garbage NSEC3 records are ignored)
+
 .. NOTE::
-   Some :ref:`zone_dnssec-policy` options apply as well, such as
+   Some :ref:`zone_dnssec-policy` options are related as well, such as
    :ref:`policy_nsec`, :ref:`policy_nsec3-opt-out`,
    :ref:`policy_single-type-signing`.
 
