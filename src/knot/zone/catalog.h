@@ -179,7 +179,7 @@ int catalog_get_zone(catalog_t *cat, const knot_dname_t *member,
  * \return KNOT_E*
  */
 int catalog_get_zone_threadsafe(catalog_t *cat, const knot_dname_t *member,
-                                knot_dname_t **catzone);
+                                knot_dname_storage_t catzone);
 
 /*!
  * \brief Find specific member record in catalog database.

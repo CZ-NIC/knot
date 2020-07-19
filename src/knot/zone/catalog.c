@@ -260,7 +260,7 @@ int catalog_get_zone(catalog_t *cat, const knot_dname_t *member,
 }
 
 int catalog_get_zone_threadsafe(catalog_t *cat, const knot_dname_t *member,
-                                knot_dname_t **catzone)
+                                knot_dname_storage_t catzone)
 {
 	if (cat->ro_txn == NULL) {
 		return KNOT_ENOENT;
@@ -273,9 +273,8 @@ int catalog_get_zone_threadsafe(catalog_t *cat, const knot_dname_t *member,
 		uint8_t zero, shift;
 		const knot_dname_t *ow = NULL;
 		knot_lmdb_unmake_key(val.mv_data, val.mv_size, "BBN", &zero, &shift, &ow);
-		*catzone = knot_dname_copy(ow + shift, NULL);
-		if (*catzone == NULL) {
-			ret = KNOT_ENOMEM;
+		if (knot_dname_store(catzone, ow + shift) == 0) {
+			ret = KNOT_EINVAL;
 		}
 		free(val.mv_data);
 	}

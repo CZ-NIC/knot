@@ -204,8 +204,8 @@ conf_val_t conf_zone_get_txn(
 
 	// Check if this is a catalog member zone.
 	if (conf->catalog != NULL) {
-		knot_dname_t *catalog = NULL;
-		int ret = catalog_get_zone_threadsafe(conf->catalog, dname, &catalog);
+		knot_dname_storage_t catalog;
+		int ret = catalog_get_zone_threadsafe(conf->catalog, dname, catalog);
 		if (ret == KNOT_EOK) {
 			conf_db_get(conf, txn, C_ZONE, C_CATALOG_TPL, catalog,
 			            knot_dname_size(catalog), &val);
@@ -215,7 +215,6 @@ conf_val_t conf_zone_get_txn(
 				              knot_strerror(val.code));
 				return val;
 			}
-			knot_dname_free(catalog, NULL);
 			conf_val(&val);
 			conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
 			goto got_template;
