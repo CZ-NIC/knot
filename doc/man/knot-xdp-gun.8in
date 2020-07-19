@@ -88,6 +88,12 @@ name, and \fIflags\fP is a single character:
 \fBE\fP Send query with EDNS.
 .sp
 \fBD\fP Request DNSSEC (EDNS + DO flag).
+.SH NOTES
+.sp
+Linux kernel 4.18+ is required.
+.sp
+The utility has to be executed under root or with these capabilities:
+CAP_NET_RAW, CAP_NET_ADMIN, CAP_SYS_ADMIN, CAP_SYS_RESOURCE, CAP_SETPCAP.
 .SH EXIT VALUES
 .sp
 Exit status of 0 means successful operation. Any other exit status indicates

@@ -67,6 +67,14 @@ name, and *flags* is a single character:
 
 **D** Request DNSSEC (EDNS + DO flag).
 
+Notes
+-----
+
+Linux kernel 4.18+ is required.
+
+The utility has to be executed under root or with these capabilities:
+CAP_NET_RAW, CAP_NET_ADMIN, CAP_SYS_ADMIN, CAP_SYS_RESOURCE, CAP_SETPCAP.
+
 Exit values
 -----------
 
