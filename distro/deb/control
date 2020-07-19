@@ -150,8 +150,9 @@ Description: DNS clients provided with Knot DNS (kdig, knsupdate)
  .
  This package delivers various DNS client programs from Knot DNS.
  .
-  - kdig - query the DNS in various ways
+  - kdig - query a DNS server in various ways
   - knsupdate - perform dynamic updates (See RFC2136)
+  - knot-xdp-gun - send a DNS query stream over UDP to a DNS server
  .
  Those clients were designed to be almost 1:1 compatible with BIND dnsutils,
  but they provide some enhancements, which are documented.
