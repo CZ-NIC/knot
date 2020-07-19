@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ static void check_name(const char *zone, const char *name, const char *ref)
 {
 	knot_dname_t *z = knot_dname_from_str_alloc(zone);
 
-	char *file = get_filename(NULL, NULL, z, name);
+	char *file = get_filename(conf(), NULL, z, name);
 	ok(file != NULL, "Get zonefile path for %s", zone);
 	if (file != NULL) {
 		ok(strcmp(file, ref) == 0, "Zonefile path compare %s", name);
