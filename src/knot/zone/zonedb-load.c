@@ -237,6 +237,8 @@ static void zone_purge(conf_t *conf, zone_t *zone, server_t *server)
 	if (knot_lmdb_open(zone->kaspdb) == KNOT_EOK) {
 		(void)kasp_db_delete_all(zone->kaspdb, zone->name);
 	}
+
+	log_zone_notice(zone->name, "zone purged");
 }
 
 static zone_contents_t *zone_expire(zone_t *zone)
@@ -420,7 +422,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 	}
 	while (!catalog_it_finished(it) && catret == KNOT_EOK) {
 		catalog_upd_val_t *val = catalog_it_val(it);
-		if (!val->just_reconf && knot_zonedb_find(db_new, val->member) == NULL) {
+		if (val->just_reconf || knot_zonedb_find(db_new, val->member) == NULL) {
 			// ^ warning for existing zone later in add_member_zone()
 			catret = catalog_add2(&server->catalog, val);
 		}
