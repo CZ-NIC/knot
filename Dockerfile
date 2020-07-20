@@ -13,6 +13,7 @@ ENV BUILD_PKGS \
     libidn2-0-dev \
     liblmdb-dev \
     libmaxminddb-dev \
+    libnghttp2-dev \
     libprotobuf-c-dev \
     libtool \
     liburcu-dev \
@@ -51,6 +52,7 @@ ENV RUNTIME_PKGS \
     libidn2-0 \
     liblmdb0 \
     libmaxminddb0 \
+    libnghttp2-14 \
     libprotobuf-c1 \
     liburcu6
 
