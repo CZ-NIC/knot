@@ -48,10 +48,7 @@ int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 int unadjust_cb_point_to_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	// downgrade the NSEC3 node pointer to NSEC3 name
-	if (node->flags & NODE_FLAGS_NSEC3_NODE) {
-		node->nsec3_hash = knot_dname_copy(node->nsec3_node->owner, NULL);
-		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
-	}
+	node->nsec3_node = NULL;
 	assert(ctx->changed_nodes == NULL);
 	return KNOT_EOK;
 }
@@ -136,21 +133,21 @@ int adjust_cb_nsec3_flags(zone_node_t *node, adjust_ctx_t *ctx)
 int adjust_cb_nsec3_pointer(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	uint16_t flags_orig = node->flags;
-	zone_node_t *ptr_orig = node->nsec3_node;
+	const knot_dname_t *hash_orig = node->nsec3_hash;
+	zone_node_t *node_orig = node->nsec3_node;
 	int ret = KNOT_EOK;
 	if (ctx->nsec3_param_changed) {
-		if (!(node->flags & NODE_FLAGS_NSEC3_NODE) &&
-		    node->nsec3_hash != binode_counterpart(node)->nsec3_hash) {
+		if (node->nsec3_hash != binode_counterpart(node)->nsec3_hash) {
 			free(node->nsec3_hash);
 		}
 		node->nsec3_hash = NULL;
-		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
+		node->nsec3_node = NULL;
 		(void)node_nsec3_node(node, ctx->zone);
 	} else {
 		ret = binode_fix_nsec3_pointer(node, ctx->zone);
 	}
 	if (ret == KNOT_EOK && ctx->changed_nodes != NULL &&
-	    (flags_orig != node->flags || ptr_orig != node->nsec3_node)) {
+	    (flags_orig != node->flags || node_orig != node->nsec3_node || hash_orig != node->nsec3_hash)) {
 		ret = zone_tree_insert(ctx->changed_nodes, &node);
 	}
 	return ret;
