@@ -762,6 +762,12 @@ static void discard_adds_tree(zone_update_t *update)
 	update->new_cont->adds_tree = NULL;
 }
 
+static int check_nsec3_pointer(zone_node_t *node, void *ctx)
+{
+	(void)node_nsec3_get(node, ctx);
+	return KNOT_EOK;
+}
+
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (conf == NULL || update == NULL) {
@@ -835,6 +841,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 				                 "future transfers might be broken");
 			}
 		}
+	}
+
+	ret = zone_contents_apply(update->new_cont, check_nsec3_pointer, update->new_cont);
+	if (ret != KNOT_EOK) {
+		log_zone_warning(update->zone->name, "CRASH failed to check NSEC3 pointers (%s)", knot_strerror(ret));
 	}
 
 	/* Switch zone contents. */
