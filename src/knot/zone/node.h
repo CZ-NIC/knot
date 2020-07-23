@@ -41,10 +41,10 @@ typedef struct zone_node {
 	 *        nodes or delegation points are referenced by this.
 	 */
 	struct zone_node *prev;
-	union {
-		knot_dname_t *nsec3_hash; /*! Name of the NSEC3 corresponding to this node. */
-		struct zone_node *nsec3_node; /*! NSEC3 node corresponding to this node. */
-	};
+
+	knot_dname_t *nsec3_hash; /*! Name of the NSEC3 corresponding to this node. */
+	struct zone_node *nsec3_node; /*! NSEC3 node corresponding to this node. */
+
 	knot_dname_t *nsec3_wildcard_name; /*! Name of NSEC3 node proving wildcard nonexistence. */
 	uint32_t children; /*!< Count of children nodes in DNS hierarchy. */
 	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */
@@ -90,8 +90,6 @@ enum node_flags {
 	NODE_FLAGS_IN_NSEC3_CHAIN =  1 << 5,
 	/*! \brief Node is the zone Apex. */
 	NODE_FLAGS_APEX =            1 << 6,
-	/*! \brief The nsec3_node pointer is valid and and nsec3_hash pointer invalid. */
-	NODE_FLAGS_NSEC3_NODE =      1 << 7,
 	/*! \brief Is this i bi-node? */
 	NODE_FLAGS_BINODE =          1 << 8, // this value shall be fixed
 	/*! \brief Is this the second half of bi-node? */
@@ -395,9 +393,5 @@ static inline knot_rrset_t node_rrset_at(const zone_node_t *node, size_t pos)
  */
 static inline zone_node_t *node_nsec3_get(const zone_node_t *node)
 {
-	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) || node->nsec3_node == NULL) {
-		return NULL;
-	} else {
-		return binode_node_as(node->nsec3_node, node);
-	}
+	return binode_node_as(node->nsec3_node, node);
 }
