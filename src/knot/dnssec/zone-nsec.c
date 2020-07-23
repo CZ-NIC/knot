@@ -112,7 +112,7 @@ zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
 		}
 	}
 
-	return node_nsec3_get(node);
+	return node_nsec3_get(node, zone);
 }
 
 int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)

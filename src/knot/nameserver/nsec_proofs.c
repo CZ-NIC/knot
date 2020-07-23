@@ -40,9 +40,9 @@ static bool wildcard_expanded(const zone_node_t *node, const knot_dname_t *qname
 /*!
  * \brief Check if opt-out can take an effect.
  */
-static bool ds_optout(const zone_node_t *node)
+static bool ds_optout(const zone_node_t *node, const zone_contents_t *zone)
 {
-	return node_nsec3_get(node) == NULL && node->flags & NODE_FLAGS_DELEG;
+	return node_nsec3_get(node, zone) == NULL && node->flags & NODE_FLAGS_DELEG;
 }
 
 /*!
@@ -65,9 +65,9 @@ static bool node_in_nsec(const zone_node_t *node)
  *
  * \see https://tools.ietf.org/html/rfc5155#section-7.1
  */
-static bool node_in_nsec3(const zone_node_t *node)
+static bool node_in_nsec3(const zone_node_t *node, const zone_contents_t *zone)
 {
-	return (node->flags & NODE_FLAGS_NONAUTH) == 0 && !ds_optout(node);
+	return (node->flags & NODE_FLAGS_NONAUTH) == 0 && !ds_optout(node, zone);
 }
 
 /*!
@@ -89,11 +89,11 @@ static const zone_node_t *nsec_previous(const zone_node_t *previous)
 /*!
  * \brief Get closest provable encloser from closest matching parent node.
  */
-static const zone_node_t *nsec3_encloser(const zone_node_t *closest)
+static const zone_node_t *nsec3_encloser(const zone_node_t *closest, const zone_contents_t *zone)
 {
 	assert(closest);
 
-	while (!node_in_nsec3(closest)) {
+	while (!node_in_nsec3(closest, zone)) {
 		closest = node_parent(closest);
 		assert(closest);
 	}
@@ -273,7 +273,7 @@ static int put_closest_encloser_proof(const knot_dname_t *qname,
 {
 	// An NSEC3 RR that matches the closest (provable) encloser.
 
-	int ret = put_nsec3_from_node(node_nsec3_get(cpe), qdata, resp);
+	int ret = put_nsec3_from_node(node_nsec3_get(cpe, zone), qdata, resp);
 	if (ret !=  KNOT_EOK) {
 		return ret;
 	}
@@ -322,7 +322,7 @@ static int put_nsec3_wildcard(const zone_node_t *wildcard,
                               knotd_qdata_t *qdata,
                               knot_pkt_t *resp)
 {
-	const zone_node_t *cpe = nsec3_encloser(node_parent(wildcard));
+	const zone_node_t *cpe = nsec3_encloser(node_parent(wildcard), zone);
 
 	return put_nsec3_next_closer(cpe, qname, zone, qdata, resp);
 }
@@ -428,7 +428,7 @@ static int put_nsec3_nxdomain(const knot_dname_t *qname,
                               knotd_qdata_t *qdata,
                               knot_pkt_t *resp)
 {
-	const zone_node_t *cpe = nsec3_encloser(closest);
+	const zone_node_t *cpe = nsec3_encloser(closest, zone);
 
 	// Closest encloser proof.
 
@@ -530,7 +530,7 @@ static int put_nsec3_nodata(const knot_dname_t *qname,
 
 	// NSEC3 matching QNAME is always included.
 
-	zone_node_t *nsec3_match = node_nsec3_get(match);
+	zone_node_t *nsec3_match = node_nsec3_get(match, zone);
 	if (nsec3_match != NULL) {
 		ret = put_nsec3_from_node(nsec3_match, qdata, resp);
 		if (ret != KNOT_EOK) {
@@ -540,8 +540,8 @@ static int put_nsec3_nodata(const knot_dname_t *qname,
 
 	// Closest encloser proof for wildcard effect or NSEC3 opt-out.
 
-	if (wildcard_expanded(match, qname) || ds_optout(match)) {
-		const zone_node_t *cpe = nsec3_encloser(closest);
+	if (wildcard_expanded(match, qname) || ds_optout(match, zone)) {
+		const zone_node_t *cpe = nsec3_encloser(closest, zone);
 		ret = put_closest_encloser_proof(qname, zone, cpe, qdata, resp);
 	}
 

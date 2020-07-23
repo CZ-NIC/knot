@@ -762,7 +762,7 @@ static int check_nsec_bitmap(const zone_node_t *node, semchecks_data_t *data)
 	bool nsec = data->level & NSEC;
 	knot_rdataset_t *nsec_rrs = NULL;
 
-	zone_node_t *nsec3_node = node_nsec3_get(node);
+	zone_node_t *nsec3_node = node_nsec3_get(node, data->zone);
 
 	if (nsec) {
 		nsec_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC);
@@ -880,7 +880,7 @@ static int check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data)
 	bool deleg = (node->flags & NODE_FLAGS_DELEG) != 0;
 
 	if ((deleg && node_rrtype_exists(node, KNOT_RRTYPE_DS)) || (auth && !deleg)) {
-		if (node_nsec3_get(node) == NULL) {
+		if (node_nsec3_get(node, data->zone) == NULL) {
 			data->handler->cb(data->handler, data->zone, node,
 			                  SEM_ERR_NSEC3_NONE, NULL);
 		}
@@ -897,7 +897,7 @@ static int check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data)
  */
 static int check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 {
-	if (!(node_nsec3_get(node) == NULL && node->flags & NODE_FLAGS_DELEG)) {
+	if (!(node_nsec3_get(node, data->zone) == NULL && node->flags & NODE_FLAGS_DELEG)) {
 		return KNOT_EOK;
 	}
 	/* Insecure delegation, check whether it is part of opt-out span. */
@@ -945,7 +945,7 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 		return KNOT_EOK;
 	}
 
-	zone_node_t *nsec3_node = node_nsec3_get(node);
+	zone_node_t *nsec3_node = node_nsec3_get(node, data->zone);
 	if (nsec3_node == NULL) {
 		return KNOT_EOK;
 	}
@@ -1117,7 +1117,7 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 	}
 	/* RFC 6672 Section 2.4 Paragraph 1 */
 	/* If the NSEC3 node of the apex is present, it is counted as apex's child. */
-	unsigned allowed_children = (is_apex && node_nsec3_get(node) != NULL) ? 1 : 0;
+	unsigned allowed_children = (is_apex && node_nsec3_get(node, data->zone) != NULL) ? 1 : 0;
 	if (node->children > allowed_children) {
 		data->handler->error = true;
 		data->handler->cb(data->handler, data->zone, node,
