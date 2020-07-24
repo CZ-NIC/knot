@@ -211,7 +211,7 @@ static bool alg_has_active_zsk(kdnssec_ctx_t *ctx, uint8_t alg)
 static void fix_revoked_flag(knot_kasp_key_t *key)
 {
 	uint16_t flags = dnssec_key_get_flags(key->key);
-	if (!(flags & DNSKEY_FLAGS_REVOKED)) {
+	if ((flags & DNSKEY_FLAGS_REVOKED) != DNSKEY_FLAGS_REVOKED) {
 		dnssec_key_set_flags(key->key, flags | DNSKEY_FLAGS_REVOKED); // FYI leading to change of keytag
 	}
 }
