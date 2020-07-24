@@ -170,8 +170,12 @@ void replan_load_current(conf_t *conf, zone_t *zone, zone_t *old_zone)
 	replan_ddns(zone, old_zone);
 	replan_notify(zone, old_zone);
 
-	replan_from_timers(conf, zone);
-	replan_dnssec(conf, zone);
+	if (zone->contents != NULL || zone_expired(zone)) {
+		replan_from_timers(conf, zone);
+		replan_dnssec(conf, zone);
+	} else {
+		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+	}
 }
 
 void replan_load_updated(zone_t *zone, zone_t *old_zone)

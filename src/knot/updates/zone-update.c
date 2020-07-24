@@ -710,7 +710,7 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 {
 	conf_val_t val = conf_zone_get(conf, C_CATALOG_TPL, update->zone->name);
 	if (val.code != KNOT_EOK) {
-		return val.code == KNOT_ENOENT ? KNOT_EOK : val.code;
+		return (val.code == KNOT_ENOENT || val.code == KNOT_YP_EINVAL_ID) ? KNOT_EOK : val.code;
 	}
 
 	update->zone->flags |= ZONE_IS_CATALOG;
