@@ -387,9 +387,3 @@ static inline knot_rrset_t node_rrset_at(const zone_node_t *node, size_t pos)
 	rrset.additional = rr_data->additional;
 	return rrset;
 }
-
-/*!
- * \brief Return the relevant NSEC3 node (if specified by adjusting), or NULL.
- */
-typedef struct zone_contents zone_contents_t;
-zone_node_t *node_nsec3_get(const zone_node_t *node, const zone_contents_t *zone);

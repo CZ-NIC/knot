@@ -607,3 +607,16 @@ bool zone_contents_is_empty(const zone_contents_t *zone)
 
 	return (apex_empty && no_non_apex && no_nsec3);
 }
+
+zone_node_t *node_nsec3_get(const zone_node_t *node, const zone_contents_t *zone)
+{
+	zone_node_t *res = zone_tree_get(zone->nsec3_nodes, node->nsec3_hash);
+	if (unlikely(res != binode_node_as(node->nsec3_node, node))) {
+		char owner[KNOT_DNAME_TXT_MAXLEN] = { 0 };
+		(void)knot_dname_to_str(owner, node->owner, sizeof(owner));
+		log_zone_warning(zone->apex->owner, "CRASH %s %p != %p",
+		                 owner,
+		                 binode_node_as(node->nsec3_node, node), res);
+	}
+	return res;
+}
