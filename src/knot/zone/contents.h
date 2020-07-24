@@ -295,3 +295,5 @@ int zone_contents_load_nsec3param(zone_contents_t *contents);
  * \brief Return true if zone is empty.
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
+
+zone_node_t *node_nsec3_get(const zone_node_t *node, const zone_contents_t *zone);

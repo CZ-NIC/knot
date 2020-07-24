@@ -452,18 +452,3 @@ bool node_bitmap_equal(const zone_node_t *a, const zone_node_t *b)
 	}
 	return true;
 }
-
-#include "knot/common/log.h"
-#include "knot/zone/contents.h"
-zone_node_t *node_nsec3_get(const zone_node_t *node, const zone_contents_t *zone)
-{
-	zone_node_t *res = zone_tree_get(zone->nsec3_nodes, node->nsec3_hash);
-	if (unlikely(res != binode_node_as(node->nsec3_node, node))) {
-		char owner[KNOT_DNAME_TXT_MAXLEN] = { 0 };
-		(void)knot_dname_to_str(owner, node->owner, sizeof(owner));
-		log_zone_warning(zone->apex->owner, "CRASH %s %p != %p",
-		                 owner,
-		                 binode_node_as(node->nsec3_node, node), res);
-	}
-	return res;
-}
