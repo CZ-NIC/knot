@@ -195,6 +195,19 @@ catalog_find_res_t catalog_find(catalog_t *cat, const knot_dname_t *member,
                                 const knot_dname_t *owner, const knot_dname_t *catzone);
 
 /*!
+ * \brief Copy records from one catalog database to other.
+ *
+ * \param from            Catalog DB to copy from.
+ * \param to              Catalog db to copy to.
+ * \param zone_only       Optional: copy only records for this catalog zone.
+ * \param read_rw_txn     Use RW txn for read operations.
+ *
+ * \return KNOT_E*
+ */
+int catalog_copy(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
+                 const knot_dname_t *zone_only, bool read_rw_txn);
+
+/*!
  * \brief Initialize catalog update structure.
  *
  * \param u   Catalog update to be initialized.
