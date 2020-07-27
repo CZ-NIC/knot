@@ -146,6 +146,7 @@ resp = slave.dig("cataloged2.", "SOA", dnssec=True)
 resp.check(rcode="NOERROR")
 check_keys(slave, "cataloged2", 2)
 
+master.ctl("zone-backup +journal +backupdir %s/backup %s" % (master.dir, zone[1].name))
 # Check removing cataloged zone
 up = master.update(zone[1])
 up.delete("foo.bar.zones.catalog1.", "PTR")
@@ -156,6 +157,12 @@ resp.check(rcode="REFUSED")
 resp = slave.dig("cataloged1.", "DNSKEY")
 resp.check(rcode="REFUSED")
 check_keys(slave, "cataloged1", 0)
+
+# Check restoring catalog from backup
+master.ctl("zone-restore +journal +backupdir %s/backup %s" % (master.dir, zone[1].name))
+t.sleep(6)
+resp = master.dig("cataloged2.", "SOA")
+resp.check(rcode="NOERROR")
 
 # Check inaccessibility of catalog zone
 slave.ctl("conf-begin")
