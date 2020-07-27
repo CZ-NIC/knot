@@ -39,7 +39,7 @@ for zone in zones:
 # for flushing 46 zones in blocking mode
 if master.valgrind:
     master.ctl_params_append = ["-t", "30"]
-    slave.ctl_params_append = ["-t", "30"]
+    slave.ctl_params_append = ["-t", "60"]
 
 t.start()
 master.zones_wait(zones)

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,9 +50,7 @@ typedef int (*chain_iterate_create_cb)(zone_node_t *, zone_node_t *,
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
-void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
-                            enum knot_rr_type nsec_type,
-                            const zone_node_t *node,
+void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap, const zone_node_t *node,
                             bool exact);
 
 int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
