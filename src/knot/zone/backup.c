@@ -28,6 +28,7 @@
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
+#include "knot/zone/catalog.h"
 #include "libdnssec/error.h"
 #include "contrib/files.h"
 #include "contrib/string.h"
@@ -45,7 +46,7 @@ static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 
 int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
-                     zone_backup_ctx_t **out_ctx)
+                     size_t catalog_db_size, zone_backup_ctx_t **out_ctx)
 {
 	if (backup_dir == NULL || out_ctx == NULL) {
 		return KNOT_EINVAL;
@@ -60,6 +61,7 @@ int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_di
 		return KNOT_ENOMEM;
 	}
 	ctx->restore_mode = restore_mode;
+	ctx->backup_global = false;
 	ctx->zones_left = zone_count;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
@@ -80,6 +82,9 @@ int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_di
 	(void)snprintf(db_dir, sizeof(db_dir), "%s/journal", backup_dir);
 	knot_lmdb_init(&ctx->bck_journal, db_dir, journal_db_size, 0, NULL);
 
+	(void)snprintf(db_dir, sizeof(db_dir), "%s/catalog", backup_dir);
+	knot_lmdb_init(&ctx->bck_catalog, db_dir, catalog_db_size, 0, NULL);
+
 	*out_ctx = ctx;
 	return KNOT_EOK;
 }
@@ -87,6 +92,7 @@ int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_di
 void zone_backup_free(zone_backup_ctx_t *ctx)
 {
 	if (ctx != NULL) {
+		knot_lmdb_deinit(&ctx->bck_catalog);
 		knot_lmdb_deinit(&ctx->bck_journal);
 		knot_lmdb_deinit(&ctx->bck_timer_db);
 		knot_lmdb_deinit(&ctx->bck_kasp_db);
@@ -243,4 +249,12 @@ done:
 	}
 	zone->backup_ctx = NULL;
 	return ret;
+}
+
+int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
+                  const knot_dname_t *zone_only)
+{
+	knot_lmdb_db_t *cat_from = &catalog->db, *cat_to = &ctx->bck_catalog;
+	BACKUP_SWAP(ctx, cat_from, cat_to);
+	return catalog_copy(cat_from, cat_to, zone_only, !ctx->restore_mode);
 }
