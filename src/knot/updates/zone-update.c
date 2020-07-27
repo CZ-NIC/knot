@@ -737,6 +737,9 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 	}
 
 	if (ret == KNOT_EOK) {
+		log_zone_info(update->zone->name, "catalog zone reload, -%zu +%zu members",
+		              trie_weight(update->zone->catalog_upd->rem),
+		              trie_weight(update->zone->catalog_upd->add));
 		if (kill(getpid(), SIGUSR1) != 0) {
 			ret = knot_map_errno();
 		}
