@@ -322,6 +322,52 @@ catalog_find_res_t catalog_find(catalog_t *cat, const knot_dname_t *member,
 	}
 }
 
+inline static bool same_catalog(knot_lmdb_txn_t *txn, const knot_dname_t *catalog)
+{
+	if (catalog == NULL) {
+		return true;
+	}
+	const knot_dname_t *txn_cat = NULL;
+	catalog_curval2(&txn->cur_key, &txn->cur_val, NULL, NULL, &txn_cat);
+	return knot_dname_is_equal(txn_cat, catalog);
+}
+
+int catalog_copy(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
+                 const knot_dname_t *zone_only, bool read_rw_txn)
+{
+	if (!knot_lmdb_exists(from)) {
+		return KNOT_EOK;
+	}
+	int ret = knot_lmdb_open(from);
+	if (ret == KNOT_EOK) {
+		ret = knot_lmdb_open(to);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn_r = { 0 }, txn_w = { 0 };
+	knot_lmdb_begin(from, &txn_r, read_rw_txn); // using RW txn not to conflict with still-open RO txn
+	knot_lmdb_begin(to, &txn_w, true);
+	knot_lmdb_foreach(&txn_w, (MDB_val *)&catalog_iter_prefix) {
+		if (same_catalog(&txn_w, zone_only)) {
+			knot_lmdb_del_cur(&txn_w);
+		}
+	}
+	knot_lmdb_foreach(&txn_r, (MDB_val *)&catalog_iter_prefix) {
+		if (same_catalog(&txn_r, zone_only)) {
+			knot_lmdb_insert(&txn_w, &txn_r.cur_key, &txn_r.cur_val);
+		}
+	}
+	if (txn_r.ret != KNOT_EOK) {
+		knot_lmdb_abort(&txn_r);
+		knot_lmdb_abort(&txn_w);
+		return txn_r.ret;
+	}
+	knot_lmdb_commit(&txn_r);
+	knot_lmdb_commit(&txn_w);
+	return txn_w.ret;
+}
+
 int catalog_update_init(catalog_update_t *u)
 {
 	u->add = trie_create(NULL);

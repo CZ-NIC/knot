@@ -392,6 +392,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           conf_int(&timer_db_size),
 	                           knot_lmdb_copy_size(&args->server->journaldb),
+	                           knot_lmdb_copy_size(&args->server->catalog.db),
 	                           &ctx);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -401,6 +402,11 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	ctx->backup_journal = MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL);
 	ctx->backup_zonefile = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
 	args->custom_ctx = ctx;
+
+	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		ctx->backup_global = true;
+		ret = global_backup(ctx, &args->server->catalog, NULL);
+	}
 
 	return ret;
 }
@@ -428,7 +434,11 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	ctx->zones_left++;
 	pthread_mutex_unlock(&ctx->zones_left_mutex);
 	schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
-	return KNOT_EOK;
+	if (ctx->backup_global) {
+		return KNOT_EOK;
+	} else {
+		return global_backup(ctx, zone->catalog, zone->name);
+	}
 }
 
 static int zone_sign(zone_t *zone, ctl_args_t *args)
