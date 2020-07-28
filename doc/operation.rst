@@ -977,9 +977,13 @@ Pre-requisites
 --------------
 
 * Linux kernel 4.18+ (5.x+ is recommended for optimal performance).
-* A multiqueue network card, which offers enough Combined channels, with native
-  XDP support is highly recommended (successfully tested cards are Intel series
-  500 and 700).
+* A multiqueue network card, which offers enough Combined RX/TX channels, with
+  native XDP support is highly recommended. Successfully tested cards:
+
+  * Intel series 700 (driver `i40e`), maximum number of channels per interface is 64.
+  * Intel series 500 (driver `ixgbe`), maximum number of channels per interface is 64.
+    The number of CPUs available has to be at most 64!
+
 * If the `knotd` service is not directly executed in the privileged mode, some
   additional Linux capabilities have to be set:
 
@@ -989,9 +993,9 @@ Pre-requisites
 
   And insert these lines::
 
-      [Service]
-      CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
-      AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
+    [Service]
+    CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
+    AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
 
 Optimizations
 -------------
@@ -1016,4 +1020,6 @@ Limitations
 * Systems with big-endian byte ordering require special recompilation of the nameserver.
 * IPv4 header and UDP checksums are not verified on received DNS messages.
 * DNS over XDP traffic is not visible to common system tools (e.g. firewall, tcpdump etc.).
-* BPF filter is not automatically unloaded from the network device.
+* BPF filter is not automatically unloaded from the network device. Manual filtr unload::
+
+   ip link set dev <ETH> xdp off
