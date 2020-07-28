@@ -641,7 +641,11 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&global_mutex, NULL);
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
-		pthread_create(&threads[i], NULL, xdp_gun_thread, &thread_ctxs[i]);
+		cpu_set_t set;
+		CPU_ZERO(&set);
+		CPU_SET(i, &set);
+		(void)pthread_create(&threads[i], NULL, xdp_gun_thread, &thread_ctxs[i]);
+		(void)pthread_setaffinity_np(threads[i], sizeof(cpu_set_t), &set);
 		usleep(20000);
 	}
 	usleep(1000000);
