@@ -60,7 +60,7 @@ with newer GnuTLS is required instead of gnutls-devel.
 
 Get the source code:
 ```bash
-git clone https://gitlab.labs.nic.cz/knot/knot-dns.git
+git clone https://gitlab.nic.cz/knot/knot-dns.git
 ```
 Or extract source package to knot-dns directory.
 
