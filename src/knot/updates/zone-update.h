@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,9 +23,9 @@
 #include "knot/zone/zone.h"
 
 typedef struct {
+	knot_dname_storage_t next;
 	const knot_dname_t *node;
 	uint16_t rrtype;
-	bool tofree;
 } dnssec_validation_hint_t;
 
 /*! \brief Structure for zone contents updating / querying. */
