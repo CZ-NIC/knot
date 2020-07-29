@@ -50,9 +50,7 @@ typedef int (*chain_iterate_create_cb)(zone_node_t *, zone_node_t *,
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
-void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
-                            enum knot_rr_type nsec_type,
-                            const zone_node_t *node,
+void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap, const zone_node_t *node,
                             bool exact);
 
 /*!
