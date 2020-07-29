@@ -20,6 +20,7 @@
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/udp.h>
+#include <poll.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -173,6 +174,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 		.tx_size = UMEM_RING_LEN_TX,
 		.rx_size = UMEM_RING_LEN_RX,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
+		.bind_flags = XDP_USE_NEED_WAKEUP,
 	};
 
 	int ret = xsk_socket__create(&xsk_info->xsk, iface->if_name,
@@ -521,7 +523,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	assert(*sent <= count);
 	socket->tx.cached_prod = idx;
 	xsk_ring_prod__submit(&socket->tx, *sent);
-	socket->kernel_needs_wakeup = true;
+	socket->kernel_needs_wakeup = xsk_ring_prod__needs_wakeup(&socket->tx);
 
 	return KNOT_EOK;
 }
@@ -644,6 +646,10 @@ int knot_xdp_recv(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
 	const uint32_t available = xsk_ring_cons__peek(&socket->rx, max_count, &idx);
 	if (available == 0) {
 		*count = 0;
+		if (xsk_ring_prod__needs_wakeup(&socket->umem->fq)) {
+			struct pollfd pfd = { .fd = knot_xdp_socket_fd(socket), .events = POLLIN };
+			(void)poll(&pfd, 1, 1000 /* ? */);
+		}
 		return KNOT_EOK;
 	}
 	assert(available <= max_count);
