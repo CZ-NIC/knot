@@ -272,7 +272,8 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 	policy_load(ctx->policy, &policy_id);
 
 	int ret = kasp_zone_from_contents(ctx->zone, zone, ctx->policy->single_type_signing,
-	                                  ctx->policy->nsec3_enabled, &ctx->keytag_conflict);
+	                                  ctx->policy->nsec3_enabled, &ctx->policy->nsec3_iterations,
+	                                  &ctx->keytag_conflict);
 	if (ret != KNOT_EOK) {
 		memset(ctx->zone, 0, sizeof(*ctx->zone));
 		kdnssec_ctx_deinit(ctx);
