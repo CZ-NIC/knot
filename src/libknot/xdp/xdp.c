@@ -525,6 +525,15 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	xsk_ring_prod__submit(&socket->tx, *sent);
 	socket->kernel_needs_wakeup = xsk_ring_prod__needs_wakeup(&socket->tx);
 
+	static size_t tot = 0, nw = 0;
+	tot++;
+	if (socket->kernel_needs_wakeup) {
+		nw++;
+	}
+	if (tot % 1000 == 1) {
+		printf("need wakeup send: %zu/%zu\n", nw, tot);
+	}
+
 	return KNOT_EOK;
 }
 
@@ -646,9 +655,15 @@ int knot_xdp_recv(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
 	const uint32_t available = xsk_ring_cons__peek(&socket->rx, max_count, &idx);
 	if (available == 0) {
 		*count = 0;
+		static size_t tot = 0, nw = 0;
+		tot++;
 		if (xsk_ring_prod__needs_wakeup(&socket->umem->fq)) {
 			struct pollfd pfd = { .fd = knot_xdp_socket_fd(socket), .events = POLLIN };
 			(void)poll(&pfd, 1, 1000 /* ? */);
+			nw++;
+		}
+		if (tot % 1000 == 1) {
+			printf("need wakeup recv: %zu/%zu\n", nw, tot);
 		}
 		return KNOT_EOK;
 	}
