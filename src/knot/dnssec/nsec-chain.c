@@ -314,22 +314,6 @@ int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
 	return KNOT_EOK;
 }
 
-static knot_dname_t *nsec3_next_to_dname(const knot_rdata_t *rdata, const knot_dname_t *apex)
-{
-	uint16_t next_len = knot_nsec3_next_len(rdata), hash_len = ((next_len + 4) / 5) * 8;
-	uint16_t apex_len = knot_dname_size(apex), out_len = 1 + hash_len + apex_len;
-
-	knot_dname_t *out = malloc(out_len);
-	if (out != NULL) {
-		if (knot_nsec3_hash_to_dname(out, out_len, knot_nsec3_next(rdata),
-		                             knot_nsec3_next_len(rdata), apex) != KNOT_EOK) {
-			free(out);
-			return NULL;
-		}
-	}
-	return out;
-}
-
 static zone_node_t *nsec_prev(zone_node_t *node, const dnssec_nsec3_params_t *matching_params); // declaration
 
 static int nsec_check_prev_next(zone_node_t *node, void *ctx)
@@ -347,39 +331,39 @@ static int nsec_check_prev_next(zone_node_t *node, void *ctx)
 		return ret;
 	}
 
+	dnssec_validation_hint_t *hint = &data->update->validation_hint;
 	knot_rdataset_t *nsec = node_rdataset(node, data->nsec_type);
 	if (nsec == NULL || nsec->count != 1) {
-		data->update->validation_hint.node = node->owner;
-		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
+		hint->node = node->owner;
+		hint->rrtype = KNOT_RRTYPE_ANY;
 		return KNOT_DNSSEC_ENSEC_CHAIN;
 	}
 
-	knot_dname_t *next;
 	const zone_node_t *nn;
 	if (data->nsec_type == KNOT_RRTYPE_NSEC) {
-		next = knot_dname_copy(knot_nsec_next(nsec->rdata), NULL);
-		if (next != NULL) {
-			knot_dname_to_lower(next);
+		if (knot_dname_store(hint->next, knot_nsec_next(nsec->rdata)) == 0) {
+			return KNOT_EINVAL;
 		}
-		nn = zone_contents_find_node(data->update->new_cont, next);
+		knot_dname_to_lower(hint->next);
+		nn = zone_contents_find_node(data->update->new_cont, hint->next);
 	} else {
-		next = nsec3_next_to_dname(nsec->rdata, data->update->new_cont->apex->owner);
-		nn = zone_contents_find_nsec3_node(data->update->new_cont, next);
+		ret = knot_nsec3_hash_to_dname(hint->next, sizeof(hint->next),
+		                               knot_nsec3_next(nsec->rdata),
+		                               knot_nsec3_next_len(nsec->rdata),
+		                               data->update->new_cont->apex->owner);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		nn = zone_contents_find_nsec3_node(data->update->new_cont, hint->next);
 	}
-	if (next == NULL) {
-		return KNOT_ENOMEM;
-	}
-
 	if (nn == NULL) {
-		data->update->validation_hint.node = next;
-		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
-		data->update->validation_hint.tofree = true;
+		hint->node = hint->next;
+		hint->rrtype = KNOT_RRTYPE_ANY;
 		return KNOT_DNSSEC_ENSEC_CHAIN;
 	}
-	free(next);
 	if (nsec_prev((zone_node_t *)nn, data->nsec3_params) != node) {
-		data->update->validation_hint.node = node->owner;
-		data->update->validation_hint.rrtype = data->nsec_type;
+		hint->node = node->owner;
+		hint->rrtype = data->nsec_type;
 		return KNOT_DNSSEC_ENSEC_CHAIN;
 	}
 	return KNOT_EOK;
