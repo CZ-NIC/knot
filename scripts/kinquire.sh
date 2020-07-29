@@ -1,10 +1,19 @@
 #!/bin/sh
 #
-# Knot DNS utility script
-#
 # Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 #
-# Note: mostly GNU/Linux specific
+# Knot DNS utility script
+#
+# This script collects selected system and Knot DNS configuration
+# data and prints them out to the standard output. If the output
+# is sent through a secure channel to the Knot DNS development team,
+# the data can serve as a basis for the Knot DNS performace troubleshooting.
+#
+# Usage:  ./kinquire.sh <Knot DNS configuration file>
+#         ./kinquire.sh <Knot DNS configuration DB directory>
+#         ./kinquire.sh <control socket of a running knotd daemon>
+#
+# Note: the script is currently mostly GNU/Linux specific
 #
 
 
@@ -15,32 +24,32 @@ PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 #WHICH=${WHICH:-$(which which)}	# ;-)
 
 KNOTD=${KNOTD:-$(which knotd)}
-KNOTC=${KNOTC:-$(which knotc)}
+KNOTC=${KNOTC:-$(which knotc || echo \#knotc)}
 KNOTPID=${KNOTPID:-$(pgrep knotd |head -n 1)}
 KNOTCONF=
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
-AWK=${AWK:-$(which awk)}
-CAT=${CAT:-$(which cat)}
-DATE=${DATE:-$(which date)}
-ETHTOOL=${ETHTOOL:-$(which ethtool)}
-FILE=${FILE:-$(which file)}
-FREE=${FREE:-$(which free)}
-GREP=${GREP:-$(which grep)}
-HOSTNAME=${HOSTNAME:-$(which hostname)}
-HOSTNAMECTL=${HOSTNAMECTL:-$(which hostnamectl)}
-ID=${ID:-$(which id)}
-IFCONFIG=${IFCONFIG:-$(which ifconfig)}
-IP=${IP:-$(which ip)}
-LDD=${LDD:-$(which ldd)}
-LS=${LS:-$(which ls)}
-LSCPU=${LSCPU:-$(which lscpu)}
-PRLIMIT=${PRLIMIT:-$(which prlimit)}
-SED=${SED:-$(which sed)}
-STRINGS=${STRINGS:-$(which strings)}
-SYSCTL=${SYSCTL:-$(which sysctl)}
-UNAME=${UNAME:-$(which uname)}
+AWK=${AWK:-$(which awk || echo \#awk)}
+CAT=${CAT:-$(which cat || echo \#cat)}
+DATE=${DATE:-$(which date || echo \#date)}
+ETHTOOL=${ETHTOOL:-$(which ethtool || echo \#ethtool)}
+FILE=${FILE:-$(which file || echo \#file)}
+FREE=${FREE:-$(which free || echo \#free)}
+GREP=${GREP:-$(which grep || echo \#grep)}
+HOSTNAME=${HOSTNAME:-$(which hostname || echo \#hostname)}
+HOSTNAMECTL=${HOSTNAMECTL:-$(which hostnamectl || \#hostnamectl)}
+ID=${ID:-$(which id || echo \#id)}
+IFCONFIG=${IFCONFIG:-$(which ifconfig || echo \#ifconfig)}
+IP=${IP:-$(which ip || echo \#ip)}
+LDD=${LDD:-$(which ldd || echo \#ldd)}
+LS=${LS:-$(which ls || echo \#ls)}
+LSCPU=${LSCPU:-$(which lscpu || echo \#lscpu)}
+PRLIMIT=${PRLIMIT:-$(which prlimit || echo \#prlimit)}
+SED=${SED:-$(which sed || echo \#sed)}
+STRINGS=${STRINGS:-$(which strings || echo \#strings)}
+SYSCTL=${SYSCTL:-$(which sysctl || echo \#sysctl)}
+UNAME=${UNAME:-$(which uname || echo \#uname)}
 
 CPUINFO=/proc/cpuinfo
 MEMINFO=/proc/meminfo
@@ -75,11 +84,11 @@ ku_execute() {
 
 ku_get_params() {
 	if [ -f "$1" ]; then
-		KNOTCONFFILE="$1"
+		KNOTCONF="$KNOTCONF -c $1"
 	elif [ -d "$1" ]; then
-		KNOTCONFDB="$1"
+		KNOTCONF="$KNOTCONF -C $1"
 	elif [ -S "$1" ]; then
-		KNOTSOCK="$1"
+		KNOTCONF="$KNOTCONF -s $1"
 	else
 		echo "$KU_SCRIPT_VERSION"					>&2
 		echo "Usage:  $0 <Knot DNS configuration file>"			>&2
@@ -87,7 +96,6 @@ ku_get_params() {
 		echo "        $0 <control socket of a running knotd daemon>"	>&2
 		exit 99
 	fi
-	KNOTCONF=${KNOTCONF}${KNOTCONFFILE:+" -c $KNOTCONFFILE"}${KNOTCONFDB:+" -C $KNOTCONFDB"}${KNOTSOCK:+" -s $KNOTSOCK"}
 }
 
 ku_net_devs_info() {
@@ -131,7 +139,7 @@ ku_knotd_binary_info() {
 	ku_execute "$STRINGS $KNOTD |$GREP -e ^GCC -e ^clang\ version"
 	ku_execute "$STRINGS $KNOTD |$AWK -c /^\ \ Knot\ DNS\ /,/^\[^\ \]/ |$SED \\\$d"
 
-	[ ! -x $LDD ] && return
+	[ ! -x "$LDD" ] && return
 
 	ku_execute $LDD -v "$KNOTD"
 	ku_execute $LS -ld  --full-time $($LDD "$KNOTD" |$SED -E '/linux-vdso.so.1/d;s@^.*=> @@;s@^[ \t]*@@;s@ \(0x.*$@@')
@@ -153,18 +161,18 @@ ku_print_data() {
 
     # General OS info
 	ku_execute $UNAME -a
-	[ -x $HOSTNAMECTL ] && ku_execute $HOSTNAMECTL
-	[ -r $LSB_VERSION ] && ku_execute $CAT $LSB_VERSION
-	[ -r $DISTRO_VERSION ] && ku_execute $CAT $DISTRO_VERSION
-	[ -r $DEBIAN_VERSION ] && ku_execute $CAT $DEBIAN_VERSION
-	[ -r $GENTOO_VERSION ] && ku_execute $CAT $GENTOO_VERSION
-	[ -r $ALPINE_VERSION ] && ku_execute $CAT $ALPINE_VERSION
-	[ -r $CENTOS_VERSION ] && ku_execute $CAT $CENTOS_VERSION
-	[ -r $REDHAT_VERSION ] && ku_execute $CAT $REDHAT_VERSION
-	[ -r $RH_SYSTEM_VERSION ] && ku_execute $CAT $RH_SYSTEM_VERSION
+	[ -x "$HOSTNAMECTL" ] && ku_execute $HOSTNAMECTL
+	[ -r "$LSB_VERSION" ] && ku_execute $CAT $LSB_VERSION
+	[ -r "$DISTRO_VERSION" ] && ku_execute $CAT $DISTRO_VERSION
+	[ -r "$DEBIAN_VERSION" ] && ku_execute $CAT $DEBIAN_VERSION
+	[ -r "$GENTOO_VERSION" ] && ku_execute $CAT $GENTOO_VERSION
+	[ -r "$ALPINE_VERSION" ] && ku_execute $CAT $ALPINE_VERSION
+	[ -r "$CENTOS_VERSION" ] && ku_execute $CAT $CENTOS_VERSION
+	[ -r "$REDHAT_VERSION" ] && ku_execute $CAT $REDHAT_VERSION
+	[ -r "$RH_SYSTEM_VERSION" ] && ku_execute $CAT $RH_SYSTEM_VERSION
 
     # Some hardware details
-	if [ -x $LSCPU ]; then
+	if [ -x "$LSCPU" ]; then
 		ku_execute $LSCPU
 	else
 		ku_execute $CAT $CPUINFO
@@ -175,7 +183,8 @@ ku_print_data() {
 	ku_execute $CAT $SIRQINFO
 
     # Some OS details
-	ku_execute $SYSCTL -a
+	# Not yet.
+	# ku_execute $SYSCTL -a
 	ku_net_devs_info
 
     # Some knotd binary details
@@ -185,7 +194,7 @@ ku_print_data() {
 	if [ ${KNOTPID}X != X ]; then
 	 	ku_execute $PRLIMIT -p $KNOTPID
 		ku_execute $KNOTC $KNOTCONF conf-read server.listen
-		ku_execute $KNOTC $KNOTCONF conf-read server.xdp-listen
+		ku_execute $KNOTC $KNOTCONF conf-read server.listen-xdp
 		ku_execute $KNOTC $KNOTCONF conf-read server.udp-workers
 		ku_execute $KNOTC $KNOTCONF conf-read server.tcp-workers
 		ku_execute $KNOTC $KNOTCONF conf-read server.background-workers
@@ -196,7 +205,6 @@ ku_print_data() {
 		ku_execute $KNOTC $KNOTCONF status version
 		ku_execute $KNOTC $KNOTCONF status workers
 		ku_execute $KNOTC $KNOTCONF status configure
-		ku_execute $KNOTC $KNOTCONF -f stats
 	else
 		ku_log_failure "Running knotd process not found."
 	fi
