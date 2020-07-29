@@ -329,7 +329,17 @@ int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
 	return KNOT_EOK;
 }
 
-static zone_node_t *nsec_prev(zone_node_t *node, const dnssec_nsec3_params_t *matching_params); // declaration
+static zone_node_t *nsec_prev(zone_node_t *node, const dnssec_nsec3_params_t *matching_params)
+{
+	zone_node_t *res = node;
+	do {
+		res = node_prev(res);
+	} while (res != NULL && ((res->flags & NODE_FLAGS_NONAUTH) ||
+	                         res->rrset_count == 0 ||
+	                         node_nsec3_unmatching(res, matching_params)));
+	assert(res == NULL || !knot_nsec_empty_nsec_and_rrsigs_in_node(res));
+	return res;
+}
 
 static int nsec_check_prev_next(zone_node_t *node, void *ctx)
 {
@@ -457,16 +467,6 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 int nsec_check_bitmaps(zone_tree_t *nsec_ptrs, nsec_chain_iterate_data_t *data)
 {
 	return zone_tree_apply(nsec_ptrs, check_nsec_bitmap, data);
-}
-
-static zone_node_t *nsec_prev(zone_node_t *node, const dnssec_nsec3_params_t *matching_params)
-{
-	zone_node_t *res = node;
-	do {
-		res = node_prev(res);
-	} while (res != NULL && ((res->flags & NODE_FLAGS_NONAUTH) || res->rrset_count == 0 || node_nsec3_unmatching(res, matching_params)));
-	assert(res == NULL || !knot_nsec_empty_nsec_and_rrsigs_in_node(res));
-	return res;
 }
 
 /*! \brief Return the one from those nodes which has
