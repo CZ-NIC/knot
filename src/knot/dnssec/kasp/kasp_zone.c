@@ -310,6 +310,7 @@ int kasp_zone_from_contents(knot_kasp_zone_t *zone,
                             const zone_contents_t *contents,
                             bool policy_single_type_signing,
                             bool policy_nsec3,
+                            uint16_t *policy_nsec3_iters,
                             bool *keytag_conflict)
 {
 	if (zone == NULL || contents == NULL || contents->apex == NULL) {
@@ -372,6 +373,8 @@ int kasp_zone_from_contents(knot_kasp_zone_t *zone,
 		memcpy(zone->nsec3_salt.data,
 		       knot_nsec3param_salt(zone_ns3p->rdata),
 		       zone->nsec3_salt.size);
+
+		*policy_nsec3_iters = knot_nsec3param_iters(zone_ns3p->rdata);
 	}
 
 	detect_keytag_conflict(zone, keytag_conflict);

@@ -50,4 +50,5 @@ int kasp_zone_from_contents(knot_kasp_zone_t *zone,
                             const zone_contents_t *contents,
                             bool policy_single_type_signing,
                             bool policy_nsec3,
+                            uint16_t *policy_nsec3_iters,
                             bool *keytag_conflict);

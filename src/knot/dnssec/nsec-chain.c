@@ -287,7 +287,9 @@ static bool node_nsec3_unmatching(const zone_node_t *node, const dnssec_nsec3_pa
 	}
 	knot_rdata_t *rdata = nsec3->rdata;
 	for (int i = 0; i < nsec3->count; i++) {
-		if (knot_nsec3_salt_len(rdata) == params->salt.size &&
+		if (knot_nsec3_alg(rdata) == params->algorithm &&
+		    knot_nsec3_iters(rdata) == params->iterations &&
+		    knot_nsec3_salt_len(rdata) == params->salt.size &&
 		    memcmp(knot_nsec3_salt(rdata), params->salt.data, params->salt.size) == 0) {
 			return false;
 		}
