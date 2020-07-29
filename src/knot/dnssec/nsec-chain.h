@@ -53,9 +53,38 @@ typedef int (*chain_iterate_create_cb)(zone_node_t *, zone_node_t *,
 void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap, const zone_node_t *node,
                             bool exact);
 
+/*!
+ * \brief Check that the NSEC(3) record in node A points to B.
+ *
+ * \param a      Node A.
+ * \param b      Node B.
+ * \param data   Validation context.
+ *
+ * \retval NSEC_NODE_SKIP            Node B is not part of NSEC chain, call again with A nad B->next.
+ * \retval KNOT_DNSSEC_ENSEC_CHAIN   The NSEC(3) chain is broken.
+ * \return KNOT_E*
+ */
 int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
                              nsec_chain_iterate_data_t *data);
+
+/*!
+ * \brief Check NSEC connections of updated nodes.
+ *
+ * \param tree   Trie with updated nodes.
+ * \param data   Validation context.
+ *
+ * \return KNOT_DNSSEC_ENSEC_CHAIN, KNOT_E*
+ */
 int nsec_check_new_connects(zone_tree_t *tree, nsec_chain_iterate_data_t *data);
+
+/*!
+ * \brief Check NSEC(3) bitmaps for updated nodes.
+ *
+ * \param nsec_ptrs   Trie with nodes to be checked.
+ * \param data        Validation context.
+ *
+ * \return KNOT_DNSSEC_ENSEC_BITMAP, KNOT_E*
+ */
 int nsec_check_bitmaps(zone_tree_t *nsec_ptrs, nsec_chain_iterate_data_t *data);
 
 /*!
