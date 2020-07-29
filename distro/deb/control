@@ -29,8 +29,8 @@ Build-Depends:
  python3-all,
 Standards-Version: 4.5.0
 Homepage: https://www.knot-dns.cz/
-Vcs-Browser: https://gitlab.labs.nic.cz/knot/knot-dns
-Vcs-Git: https://gitlab.labs.nic.cz/knot/knot-dns.git
+Vcs-Browser: https://gitlab.nic.cz/knot/knot-dns
+Vcs-Git: https://gitlab.nic.cz/knot/knot-dns.git
 Rules-Requires-Root: no
 
 Package: knot

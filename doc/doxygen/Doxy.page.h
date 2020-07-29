@@ -6,7 +6,7 @@
   https://www.knot-dns.cz
 
 \par Git repository
-  https://gitlab.labs.nic.cz/knot/knot-dns
+  https://gitlab.nic.cz/knot/knot-dns
 
 \par Modules
 - \subpage libknot-page
