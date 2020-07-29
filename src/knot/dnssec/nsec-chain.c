@@ -23,13 +23,10 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/adjust.h"
 
-void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
-                            enum knot_rr_type nsec_type,
-                            const zone_node_t *node,
+void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap, const zone_node_t *node,
                             bool exact)
 {
 	bool deleg = node->flags & NODE_FLAGS_DELEG;
-	bool apex = node->flags & NODE_FLAGS_APEX;
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rr = node_rrset_at(node, i);
 		if (deleg && (rr.type != KNOT_RRTYPE_NS && rr.type != KNOT_RRTYPE_DS &&
@@ -43,10 +40,6 @@ void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap,
 			}
 		}
 		if (!exact && (rr.type == KNOT_RRTYPE_NSEC || rr.type == KNOT_RRTYPE_RRSIG)) {
-			continue;
-		}
-		// NSEC3PARAM in zone apex is maintained automatically
-		if (!exact && apex && rr.type == KNOT_RRTYPE_NSEC3PARAM && nsec_type != KNOT_RRTYPE_NSEC3) {
 			continue;
 		}
 
@@ -96,7 +89,7 @@ static int create_nsec_rrset(knot_rrset_t *rrset, const zone_node_t *from,
 		return KNOT_ENOMEM;
 	}
 
-	bitmap_add_node_rrsets(rr_types, KNOT_RRTYPE_NSEC, from, false);
+	bitmap_add_node_rrsets(rr_types, from, false);
 	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_NSEC);
 	dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 
@@ -430,7 +423,7 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 	if (rr_types == NULL) {
 		return KNOT_ENOMEM;
 	}
-	bitmap_add_node_rrsets(rr_types, data->nsec_type, node, true);
+	bitmap_add_node_rrsets(rr_types, node, true);
 
 	uint16_t node_wire_size = dnssec_nsec_bitmap_size(rr_types);
 	uint8_t *node_wire = malloc(node_wire_size);
