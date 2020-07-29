@@ -279,7 +279,22 @@ static int nsec_update_bitmaps(zone_tree_t *node_ptrs,
 	return ret;
 }
 
-bool node_nsec3_unmatching(const zone_node_t *node, const dnssec_nsec3_params_t *params); // from nsec3-chain.c
+static bool node_nsec3_unmatching(const zone_node_t *node, const dnssec_nsec3_params_t *params)
+{
+	knot_rdataset_t *nsec3 = node_rdataset(node, KNOT_RRTYPE_NSEC3);
+	if (nsec3 == NULL || nsec3->count < 1 || params == NULL) {
+		return false;
+	}
+	knot_rdata_t *rdata = nsec3->rdata;
+	for (int i = 0; i < nsec3->count; i++) {
+		if (knot_nsec3_salt_len(rdata) == params->salt.size &&
+		    memcmp(knot_nsec3_salt(rdata), params->salt.data, params->salt.size) == 0) {
+			return false;
+		}
+		rdata = knot_rdataset_next(rdata);
+	}
+	return true;
+}
 
 int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
                              nsec_chain_iterate_data_t *data)
