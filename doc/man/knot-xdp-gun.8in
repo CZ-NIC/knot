@@ -47,29 +47,29 @@ configured for the nework interface.
 .SS Options
 .INDENT 0.0
 .TP
-\fB\-t\fP, \fBduration\fP \fIseconds\fP
+\fB\-t\fP, \fB\-\-duration\fP \fIseconds\fP
 Duration of traffic generation, specified as a decimal number in seconds
 (default is 5.0).
 .TP
-\fB\-Q\fP, \fBqps\fP \fIqueries\fP
+\fB\-Q\fP, \fB\-\-qps\fP \fIqueries\fP
 Number of queries\-per\-second (approximately) to be sent (default is 1000).
 .TP
-\fB\-b\fP, \fBbatch\fP \fIsize\fP
+\fB\-b\fP, \fB\-\-batch\fP \fIsize\fP
 Send more queries in a batch. Improves QPS but may affect the counterpart\(aqs
 packet loss (default is 10).
 .TP
-\fB\-r\fP, \fBdrop\fP
+\fB\-r\fP, \fB\-\-drop\fP
 Drop incoming responses. Improves QPS, but disables response statistics.
 .TP
-\fB\-p\fP \fIport\fP \fInumber\fP
+\fB\-p\fP, \fB\-\-port\fP \fInumber\fP
 Remote destination port (default is 53).
 .TP
-\fB\-F\fP \fIcpu\fP \fIaffinity\fP
+\fB\-F\fP, \fB\-\-affinity\fP \fIcpu_spec\fP
 CPU affinity for all threads specified in the format [<cpu_start>][s<cpu_step>],
 where <cpu_start> is the CPU ID for the first thread and <cpu_step> is the
 CPU ID increment for next thread (default is 0s1).
 .TP
-\fB\-i\fP, \fBinfile\fP \fIfilename\fP
+\fB\-i\fP, \fB\-\-infile\fP \fIfilename\fP
 Path to a file with query templates.
 .TP
 \fItargetIP\fP
