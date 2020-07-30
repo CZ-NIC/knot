@@ -241,16 +241,15 @@ void *xdp_gun_thread(void *_ctx)
 					break;
 				}
 				for (int i = 0; i < recvd; i++) {
-					tot_size += pkts[i].payload.iov_len;
 					if (pkts[i].payload.iov_len < KNOT_WIRE_HEADER_SIZE ||
 					    *(uint16_t *)(pkts[i].payload.iov_base + 0) != TRANSACTION_ID) {
-						ctx->rcode_counts[KNOWN_RCODE_MAX - 1]++;
-					} else {
-						ctx->rcode_counts[((uint8_t *)pkts[i].payload.iov_base)[3] & 0xf]++;
+						continue;
 					}
+					ctx->rcode_counts[((uint8_t *)pkts[i].payload.iov_base)[3] & 0xf]++;
+					tot_size += pkts[i].payload.iov_len;
+					tot_recv++;
 				}
 				knot_xdp_recv_finish(xsk, pkts, recvd);
-				tot_recv += recvd;
 				pfd.revents = 0;
 			}
 		}
