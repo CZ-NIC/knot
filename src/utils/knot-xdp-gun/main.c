@@ -43,6 +43,8 @@
 
 #define PROGRAM_NAME "knot-xdp-gun"
 
+#define TRANSACTION_ID htobe16(0xbaf8) // entirely arbitrary magic constant to distinguish from other traffic
+
 volatile bool xdp_trigger = false;
 
 pthread_mutex_t global_mutex;
@@ -107,11 +109,6 @@ static void set_sockaddr6(void *sa_in, struct in6_addr *addr, uint16_t port)
 	saddr->sin6_addr = *addr;
 }
 
-inline static void set_pkt_vars(struct iovec pkt, uint16_t ord)
-{
-	*(uint16_t *)(pkt.iov_base + 0) = htobe16(ord); // transaction ID
-}
-
 static void next_payload(struct pkt_payload **payload, int increment)
 {
 	if (*payload == NULL) {
@@ -152,7 +149,7 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 		memcpy(pkts[i].payload.iov_base, (*payl)->payload, (*payl)->len);
 		pkts[i].payload.iov_len = (*payl)->len;
 
-		set_pkt_vars(pkts[i].payload, unique & 0xffff);
+		*(uint16_t *)(pkts[i].payload.iov_base + 0) = TRANSACTION_ID;
 
 		unique++;
 		next_payload(payl, ctx->n_threads);
@@ -243,7 +240,8 @@ void *xdp_gun_thread(void *_ctx)
 				}
 				for (int i = 0; i < recvd; i++) {
 					tot_size += pkts[i].payload.iov_len;
-					if (pkts[i].payload.iov_len < KNOT_WIRE_HEADER_SIZE) {
+					if (pkts[i].payload.iov_len < KNOT_WIRE_HEADER_SIZE ||
+					    *(uint16_t *)(pkts[i].payload.iov_base + 0) != TRANSACTION_ID) {
 						ctx->rcode_counts[KNOWN_RCODE_MAX - 1]++;
 					} else {
 						ctx->rcode_counts[((uint8_t *)pkts[i].payload.iov_base)[3] & 0xf]++;
