@@ -24,24 +24,29 @@ configured for the nework interface.
 Options
 .......
 
-**-t**, **duration** *seconds*
+**-t**, **--duration** *seconds*
   Duration of traffic generation, specified as a decimal number in seconds
   (default is 5.0).
 
-**-Q**, **qps** *queries*
+**-Q**, **--qps** *queries*
   Number of queries-per-second (approximately) to be sent (default is 1000).
 
-**-b**, **batch** *size*
+**-b**, **--batch** *size*
   Send more queries in a batch. Improves QPS but may affect the counterpart's
   packet loss (default is 10).
 
-**-r**, **drop**
+**-r**, **--drop**
   Drop incoming responses. Improves QPS, but disables response statistics.
 
-**-p** *port* *number*
+**-p**, **--port** *number*
   Remote destination port (default is 53).
 
-**-i**, **infile** *filename*
+**-F**, **--affinity** *cpu_spec*
+  CPU affinity for all threads specified in the format [<cpu_start>][s<cpu_step>],
+  where <cpu_start> is the CPU ID for the first thread and <cpu_step> is the
+  CPU ID increment for next thread (default is 0s1).
+
+**-i**, **--infile** *filename*
   Path to a file with query templates.
 
 *targetIP*
