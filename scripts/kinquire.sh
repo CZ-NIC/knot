@@ -17,7 +17,7 @@
 #
 
 
-KU_SCRIPT_VERSION="Knot DNS utility script, version 0.1"
+KU_SCRIPT_VERSION="Knot DNS utility script, version 0.2"
 
 PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
@@ -34,7 +34,6 @@ KNOTPID=${KNOTPID:-$(pgrep knotd |head -n 1)}
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
-AWK=$(which awk || echo \#awk)
 CAT=$(which cat || echo \#cat)
 DATE=$(which date || echo \#date)
 ETHTOOL=$(which ethtool || echo \#ethtool)
@@ -49,7 +48,9 @@ IP=$(which ip || echo \#ip)
 LDD=$(which ldd || echo \#ldd)
 LS=$(which ls || echo \#ls)
 LSCPU=$(which lscpu || echo \#lscpu)
+LSPCI=$(which lspci || echo \#lspci)
 PRLIMIT=$(which prlimit || echo \#prlimit)
+PS=$(which ps || echo \#ps)
 SED=$(which sed || echo \#sed)
 STRINGS=$(which strings || echo \#strings)
 SYSCTL=$(which sysctl || echo \#sysctl)
@@ -146,7 +147,6 @@ ku_knotd_binary_info() {
 	ku_execute $LS -ld --full-time "$KNOTD"
 	ku_execute $FILE "$KNOTD"
 	ku_execute "$STRINGS $KNOTD |$GREP -e ^GCC -e ^clang\ version"
-	ku_execute "$STRINGS $KNOTD |$AWK -c /^\ \ Knot\ DNS\ /,/^\[^\ \]/ |$SED \\\$d"
 
 	[ ! -x "$LDD" ] && return
 
@@ -194,6 +194,7 @@ ku_print_data() {
     # Some OS details
 	# Not yet.
 	# ku_execute $SYSCTL -a
+	[ -x $LSPCI ] && ku_execute "$LSPCI |$GREP -i Ethernet"
 	ku_net_devs_info
 
     # Some knotd binary details
@@ -201,7 +202,9 @@ ku_print_data() {
 
     # Some knotd configuration details
 	if [ ${KNOTPID}X != X -a -x "$KNOTC" ]; then
-	 	ku_execute $PRLIMIT -p $KNOTPID
+		ku_execute $PS -uww -p ${$KNOTPID}
+		ku_execute $PS -vww -p ${$KNOTPID}
+		[ -x "${PRLIMIT}" ] && ku_execute $PRLIMIT -p $KNOTPID
 		ku_execute $KNOTC $KNOTCONF conf-read server.listen
 		ku_execute $KNOTC $KNOTCONF conf-read server.listen-xdp
 		ku_execute $KNOTC $KNOTCONF conf-read server.udp-workers
