@@ -34,26 +34,26 @@ KNOTPID=${KNOTPID:-$(pgrep knotd |head -n 1)}
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
-AWK=${AWK:-$(which awk || echo \#awk)}
-CAT=${CAT:-$(which cat || echo \#cat)}
-DATE=${DATE:-$(which date || echo \#date)}
-ETHTOOL=${ETHTOOL:-$(which ethtool || echo \#ethtool)}
-FILE=${FILE:-$(which file || echo \#file)}
-FREE=${FREE:-$(which free || echo \#free)}
-GREP=${GREP:-$(which grep || echo \#grep)}
-HOSTNAME=${HOSTNAME:-$(which hostname || echo \#hostname)}
-HOSTNAMECTL=${HOSTNAMECTL:-$(which hostnamectl || echo \#hostnamectl)}
-ID=${ID:-$(which id || echo \#id)}
-IFCONFIG=${IFCONFIG:-$(which ifconfig || echo \#ifconfig)}
-IP=${IP:-$(which ip || echo \#ip)}
-LDD=${LDD:-$(which ldd || echo \#ldd)}
-LS=${LS:-$(which ls || echo \#ls)}
-LSCPU=${LSCPU:-$(which lscpu || echo \#lscpu)}
-PRLIMIT=${PRLIMIT:-$(which prlimit || echo \#prlimit)}
-SED=${SED:-$(which sed || echo \#sed)}
-STRINGS=${STRINGS:-$(which strings || echo \#strings)}
-SYSCTL=${SYSCTL:-$(which sysctl || echo \#sysctl)}
-UNAME=${UNAME:-$(which uname || echo \#uname)}
+AWK=$(which awk || echo \#awk)
+CAT=$(which cat || echo \#cat)
+DATE=$(which date || echo \#date)
+ETHTOOL=$(which ethtool || echo \#ethtool)
+FILE=$(which file || echo \#file)
+FREE=$(which free || echo \#free)
+GREP=$(which grep || echo \#grep)
+HOSTNAME=$(which hostname || echo \#hostname)
+HOSTNAMECTL=$(which hostnamectl || echo \#hostnamectl)
+ID=$(which id || echo \#id)
+IFCONFIG=$(which ifconfig || echo \#ifconfig)
+IP=$(which ip || echo \#ip)
+LDD=$(which ldd || echo \#ldd)
+LS=$(which ls || echo \#ls)
+LSCPU=$(which lscpu || echo \#lscpu)
+PRLIMIT=$(which prlimit || echo \#prlimit)
+SED=$(which sed || echo \#sed)
+STRINGS=$(which strings || echo \#strings)
+SYSCTL=$(which sysctl || echo \#sysctl)
+UNAME=$(which uname || echo \#uname)
 
 CPUINFO=/proc/cpuinfo
 MEMINFO=/proc/meminfo
@@ -195,7 +195,7 @@ ku_print_data() {
 	ku_knotd_binary_info
 
     # Some knotd configuration details
-	if [ ${KNOTPID}X != X ]; then
+	if [ ${KNOTPID}X != X -a -x "$KNOTC" ]; then
 	 	ku_execute $PRLIMIT -p $KNOTPID
 		ku_execute $KNOTC $KNOTCONF conf-read server.listen
 		ku_execute $KNOTC $KNOTCONF conf-read server.listen-xdp
