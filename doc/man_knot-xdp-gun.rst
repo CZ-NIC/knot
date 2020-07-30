@@ -41,6 +41,11 @@ Options
 **-p** *port* *number*
   Remote destination port (default is 53).
 
+**-F** *cpu* *affinity*
+  CPU affinity for all threads specified in the format [<cpu_start>][s<cpu_step>],
+  where <cpu_start> is the CPU ID for the first thread and <cpu_step> is the
+  CPU ID increment for next thread (default is 0s1).
+
 **-i**, **infile** *filename*
   Path to a file with query templates.
 

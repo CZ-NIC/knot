@@ -51,6 +51,8 @@ pthread_mutex_t global_mutex;
 uint64_t global_pkts_sent = 0;
 uint64_t global_pkts_recv = 0;
 uint64_t global_size_recv = 0;
+unsigned global_cpu_aff_start = 0;
+unsigned global_cpu_aff_step = 1;
 
 #define LOCAL_PORT_MIN  1024
 #define LOCAL_PORT_MAX 65535
@@ -513,7 +515,7 @@ static bool configure_target(char *target_str, xdp_gun_ctx_t *ctx)
 
 static void print_help(void) {
 	printf("Usage: %s [-t duration] [-Q qps] [-b batch_size] [-r] [-p port] "
-	       "-i queries_file dest_ip\n", PROGRAM_NAME);
+	       "[-F cpu_affinity] -i queries_file dest_ip\n", PROGRAM_NAME);
 }
 
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
@@ -526,13 +528,15 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "batch",    required_argument, NULL, 'b' },
 		{ "drop",     no_argument,       NULL, 'r' },
 		{ "port",     required_argument, NULL, 'p' },
+		{ "affinity", required_argument, NULL, 'F' },
 		{ "infile",   required_argument, NULL, 'i' },
 		{ NULL }
 	};
 
 	int opt = 0, arg;
 	double argf;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:i:", opts, NULL)) != -1) {
+	char *argcp;
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:F:i:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -582,6 +586,15 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (!load_queries(optarg)) {
 				printf("failed to load queries from file '%s'\n", optarg);
 				return false;
+			}
+			break;
+		case 'F':
+			if ((arg = atoi(optarg)) > 0) {
+				global_cpu_aff_start = arg;
+			}
+			argcp = strchr(optarg, 's');
+			if (argcp != NULL && (arg = atoi(argcp + 1)) > 0) {
+				global_cpu_aff_step = arg;
 			}
 			break;
 		default:
@@ -639,11 +652,15 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&global_mutex, NULL);
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
+		unsigned affinity = global_cpu_aff_start + i * global_cpu_aff_step;
 		cpu_set_t set;
 		CPU_ZERO(&set);
-		CPU_SET(i, &set);
+		CPU_SET(affinity, &set);
 		(void)pthread_create(&threads[i], NULL, xdp_gun_thread, &thread_ctxs[i]);
-		(void)pthread_setaffinity_np(threads[i], sizeof(cpu_set_t), &set);
+		ret = pthread_setaffinity_np(threads[i], sizeof(cpu_set_t), &set);
+		if (ret != 0) {
+			printf("failed to set affinity of thread#%zu to CPU#%u\n", i, affinity);
+		}
 		usleep(20000);
 	}
 	usleep(1000000);
