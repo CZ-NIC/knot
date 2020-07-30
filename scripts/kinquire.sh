@@ -69,8 +69,13 @@ CENTOS_VERSION=/etc/centos-release
 REDHAT_VERSION=/etc/redhat-release
 RH_SYSTEM_VERSION=/etc/system-release
 
-ku_separator() echo -----------------------------------------------------------------------------------------
-ku_hd_separator() echo ========================================================
+ku_separator() {
+	echo -----------------------------------------------------------------------------------------
+}
+
+ku_hd_separator() {
+	echo ========================================================
+}
 
 ku_log_failure() {
 	ku_separator
@@ -154,9 +159,9 @@ ku_print_header() {
 	ku_hd_separator
 	echo "  $KU_SCRIPT_VERSION"
 	echo
-	echo "  hostname:\t$($HOSTNAME)"
-	echo "  date:\t\t$($DATE)"
-	echo "  run as root:\t$([ $($ID -u) -eq 0 ] && echo yes || echo no)"
+	echo "  hostname:     $($HOSTNAME)"
+	echo "  date:         $($DATE)"
+	echo "  run as root:  $([ $($ID -u) -eq 0 ] && echo yes || echo no)"
 	ku_hd_separator
 	echo
 }
