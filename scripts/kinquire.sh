@@ -111,10 +111,10 @@ ku_get_params() {
 ku_net_devs_info() {
 	if [ -x "$IFCONFIG" ]; then
 		ku_execute $IFCONFIG -a
-		DEVICES=$($IFCONFIG -a |$SED '/^ /d;/^$/d;s/: .*$//;/^lo$/d')
+		DEVICES=$($IFCONFIG -a |$SED -E '/^ /d;/^$/d;s/: .*$//;/^lo(:.*)?$/d')
 	elif [ -x "$IP" ]; then
 		ku_execute $IP -s addr
-		DEVICES=$($IP link show |$SED '/^ /d;s/^[^:]*: //;s/: .*$//;/^lo$/d')
+		DEVICES=$($IP link show |$SED -E '/^ /d;s/^[^:]*: //;s/: .*$//;/^lo(:.*)?$/d')
 	else
 		ku_log_failure "No ifconfig/ip found."
 		return
@@ -212,7 +212,7 @@ ku_print_data() {
 		ku_execute $KNOTC $KNOTCONF conf-read server.background-workers
 		ku_execute $KNOTC $KNOTCONF conf-read server.tcp-max-clients
 		ku_execute $KNOTC $KNOTCONF conf-read database
-		ku_execute $KNOTC $KNOTCONF conf-read stats server
+		ku_execute $KNOTC $KNOTCONF stats server
 
 		ku_execute $KNOTC $KNOTCONF status version
 		ku_execute $KNOTC $KNOTCONF status workers
