@@ -201,10 +201,15 @@ ku_print_data() {
 	ku_knotd_binary_info
 
     # Some knotd configuration details
-	if [ ${KNOTPID}X != X -a -x "$KNOTC" ]; then
+	if [ ${KNOTPID}X != X ]; then
 		ku_execute $PS -uww -p ${KNOTPID}
 		ku_execute $PS -vww -p ${KNOTPID}
 		[ -x "${PRLIMIT}" ] && ku_execute $PRLIMIT -p $KNOTPID
+	else
+		ku_log_failure "Running knotd process not found."
+	fi
+
+	if [ -x "$KNOTC" ]; then
 		ku_execute $KNOTC $KNOTCONF conf-read server.listen
 		ku_execute $KNOTC $KNOTCONF conf-read server.listen-xdp
 		ku_execute $KNOTC $KNOTCONF conf-read server.udp-workers
@@ -218,7 +223,7 @@ ku_print_data() {
 		ku_execute $KNOTC $KNOTCONF status workers
 		ku_execute $KNOTC $KNOTCONF status configure
 	else
-		ku_log_failure "Running knotd process not found."
+		ku_log_failure "knotc not found."
 	fi
 
 	ku_separator
