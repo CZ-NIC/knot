@@ -207,8 +207,8 @@ ku_print_data() {
 
     # Some knotd configuration details
 	if [ ${KNOTPID}X != X -a -x "$KNOTC" ]; then
-		ku_execute $PS -uww -p ${KNOTPID}
-		ku_execute $PS -vww -p ${KNOTPID}
+		ku_execute $PS uww -p ${KNOTPID}
+		ku_execute $PS vww -p ${KNOTPID}
 		[ -x "${PRLIMIT}" ] && ku_execute $PRLIMIT -p $KNOTPID
 		ku_execute $KNOTC $KNOTCONF conf-read server.listen
 		ku_execute $KNOTC $KNOTCONF conf-read server.listen-xdp
