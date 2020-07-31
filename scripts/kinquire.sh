@@ -21,40 +21,44 @@ KU_SCRIPT_VERSION="Knot DNS utility script, version 0.2"
 
 PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
-WHICH=${WHICH:-$(which which || echo /usr/bin/which)}
-if [ ! -x "$WHICH" ]; then
-	echo "Command \"which\" not found." >&2
-	exit 98
-fi
+ku_which() {
+	local RET=$(command -v "$@")
+	if [ -f "$RET" -a -x "$RET" ]; then
+		echo "$RET"
+		return 0
+	else
+		return 1
+	fi
+}
 
-KNOTD=${KNOTD:-$(which knotd)}
-KNOTC=${KNOTC:-$(which knotc || echo \#knotc)}
+KNOTD=${KNOTD:-$(ku_which knotd)}
+KNOTC=${KNOTC:-$(ku_which knotc || echo \#knotc)}
 KNOTPID=${KNOTPID:-$(pgrep knotd |head -n 1)}
 # General knotc options can be set in KNOTCONF environment variable.
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
-CAT=$(which cat || echo \#cat)
-DATE=$(which date || echo \#date)
-ETHTOOL=$(which ethtool || echo \#ethtool)
-FILE=$(which file || echo \#file)
-FREE=$(which free || echo \#free)
-GREP=$(which grep || echo \#grep)
-HOSTNAME=$(which hostname || echo \#hostname)
-HOSTNAMECTL=$(which hostnamectl || echo \#hostnamectl)
-ID=$(which id || echo \#id)
-IFCONFIG=$(which ifconfig || echo \#ifconfig)
-IP=$(which ip || echo \#ip)
-LDD=$(which ldd || echo \#ldd)
-LS=$(which ls || echo \#ls)
-LSCPU=$(which lscpu || echo \#lscpu)
-LSPCI=$(which lspci || echo \#lspci)
-PRLIMIT=$(which prlimit || echo \#prlimit)
-PS=$(which ps || echo \#ps)
-SED=$(which sed || echo \#sed)
-STRINGS=$(which strings || echo \#strings)
-SYSCTL=$(which sysctl || echo \#sysctl)
-UNAME=$(which uname || echo \#uname)
+CAT=$(ku_which cat || echo \#cat)
+DATE=$(ku_which date || echo \#date)
+ETHTOOL=$(ku_which ethtool || echo \#ethtool)
+FILE=$(ku_which file || echo \#file)
+FREE=$(ku_which free || echo \#free)
+GREP=$(ku_which grep || echo \#grep)
+HOSTNAME=$(ku_which hostname || echo \#hostname)
+HOSTNAMECTL=$(ku_which hostnamectl || echo \#hostnamectl)
+ID=$(ku_which id || echo \#id)
+IFCONFIG=$(ku_which ifconfig || echo \#ifconfig)
+IP=$(ku_which ip || echo \#ip)
+LDD=$(ku_which ldd || echo \#ldd)
+LS=$(ku_which ls || echo \#ls)
+LSCPU=$(ku_which lscpu || echo \#lscpu)
+LSPCI=$(ku_which lspci || echo \#lspci)
+PRLIMIT=$(ku_which prlimit || echo \#prlimit)
+PS=$(ku_which ps || echo \#ps)
+SED=$(ku_which sed || echo \#sed)
+STRINGS=$(ku_which strings || echo \#strings)
+SYSCTL=$(ku_which sysctl || echo \#sysctl)
+UNAME=$(ku_which uname || echo \#uname)
 
 CPUINFO=/proc/cpuinfo
 MEMINFO=/proc/meminfo
