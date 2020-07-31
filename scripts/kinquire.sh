@@ -17,7 +17,7 @@
 #
 
 
-KU_SCRIPT_VERSION="Knot DNS utility script, version 0.2"
+KU_SCRIPT_VERSION="Knot DNS utility script, version 0.3"
 
 PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 
@@ -116,7 +116,7 @@ ku_get_params() {
 ku_net_devs_info() {
 	if [ -x "$IFCONFIG" ]; then
 		ku_execute $IFCONFIG -a
-		DEVICES=$($IFCONFIG -a |$SED -E '/^ /d;/^$/d;s/: .*$//;/^lo(:.*)?$/d')
+		DEVICES=$($IFCONFIG -a |$SED -E '/^ /d;/^$/d;s/:? .*$//;/^lo(:.*)?$/d')
 	elif [ -x "$IP" ]; then
 		ku_execute $IP -s addr
 		DEVICES=$($IP link show |$SED -E '/^ /d;s/^[^:]*: //;s/(: |@).*$//;/^lo(:.*)?$/d')
