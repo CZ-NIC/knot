@@ -114,7 +114,7 @@ ku_net_devs_info() {
 		DEVICES=$($IFCONFIG -a |$SED -E '/^ /d;/^$/d;s/: .*$//;/^lo(:.*)?$/d')
 	elif [ -x "$IP" ]; then
 		ku_execute $IP -s addr
-		DEVICES=$($IP link show |$SED -E '/^ /d;s/^[^:]*: //;s/: .*$//;/^lo(:.*)?$/d')
+		DEVICES=$($IP link show |$SED -E '/^ /d;s/^[^:]*: //;s/(: |@).*$//;/^lo(:.*)?$/d')
 	else
 		ku_log_failure "No ifconfig/ip found."
 		return
