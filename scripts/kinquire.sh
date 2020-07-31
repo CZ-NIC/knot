@@ -33,7 +33,7 @@ ku_which() {
 
 KNOTD=${KNOTD:-$(ku_which knotd)}
 KNOTC=${KNOTC:-$(ku_which knotc || echo \#knotc)}
-KNOTPID=${KNOTPID:-$(pgrep knotd |head -n 1)}
+KNOTPID=${KNOTPID:-$(ps -A |awk '$NF~"knotd" {print $1; exit}')}
 # General knotc options can be set in KNOTCONF environment variable.
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
