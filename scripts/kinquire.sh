@@ -130,7 +130,10 @@ ku_net_devs_info() {
 		return
 	fi
 
+	local DEV_SEPARATOR="#########################################################################"
+
 	for DEV in $DEVICES; do
+		ku_execute echo "$DEV_SEPARATOR"
 		ku_execute $ETHTOOL $DEV
 		ku_execute $ETHTOOL -i $DEV
 		ku_execute $ETHTOOL -l $DEV
@@ -140,7 +143,10 @@ ku_net_devs_info() {
 		ku_execute $ETHTOOL -c $DEV
 		ku_execute $ETHTOOL -n $DEV rx-flow-hash udp4
 		ku_execute $ETHTOOL -n $DEV rx-flow-hash udp6
+		ku_execute $ETHTOOL -S $DEV
+		[ $DEV = bond* ] && ku_execute $CAT /proc/net/bonding/$DEV
 	done
+	ku_execute echo "$DEV_SEPARATOR"
 }
 
 ku_knotd_binary_info() {
