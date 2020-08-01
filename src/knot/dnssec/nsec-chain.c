@@ -43,6 +43,22 @@ static int create_nsec_base(knot_rrset_t *rrset, knot_dname_t *from_owner,
 	return ret;
 }
 
+// check that knot_dname_lf ordering in zone-tree is not wrong due to \000
+int check_zero_owner(const knot_dname_t *owner, const knot_dname_t *next,
+                     const knot_dname_t **zero_owner)
+{
+	if (knot_dname_size(owner) != strlen((const char *)owner) + 1) {
+		*zero_owner = owner;
+
+		int cmp_rl = knot_dname_cmp_safe(owner, next);
+		int cmp_lf = knot_dname_cmp(owner, next);
+		if (cmp_rl * cmp_lf <= 0) {
+			return KNOT_ENOTSUP;
+		}
+	}
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Create NSEC RR set.
  *
@@ -118,6 +134,11 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 		return NSEC_NODE_SKIP;
 	}
 
+	ret = check_zero_owner(a->owner, b->owner, &data->zero_owner);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	// create new NSEC
 	knot_rrset_t new_nsec;
 	ret = create_nsec_rrset(&new_nsec, a, b->owner, data->ttl);
@@ -180,12 +201,17 @@ static int reconnect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 	knot_rrset_t bnorig = node_rrset(b, KNOT_RRTYPE_NSEC);
 	assert(!knot_rrset_empty(&bnorig));
 
+	const knot_dname_t *an_next = knot_nsec_next(an.rrs.rdata);
 	size_t b_bitmap_len = knot_nsec_bitmap_len(bnorig.rrs.rdata);
+
+	int ret = check_zero_owner(bnorig.owner, an_next, &data->zero_owner);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	knot_rrset_t bnnew;
 	uint8_t *bitmap_write;
-	int ret = create_nsec_base(&bnnew, bnorig.owner, knot_nsec_next(an.rrs.rdata),
-	                           bnorig.ttl, b_bitmap_len, &bitmap_write);
+	ret = create_nsec_base(&bnnew, bnorig.owner, an_next, bnorig.ttl, b_bitmap_len, &bitmap_write);
 	if (ret == KNOT_EOK) {
 		memcpy(bitmap_write, knot_nsec_bitmap(bnorig.rrs.rdata), b_bitmap_len);
 	}
@@ -466,26 +492,24 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n)
 /*!
  * \brief Create new NSEC chain, add differences from current into a changeset.
  */
-int knot_nsec_create_chain(zone_update_t *update, uint32_t ttl)
+int knot_nsec_create_chain(nsec_chain_iterate_data_t *data)
 {
-	assert(update);
-	assert(update->new_cont->nodes);
+	assert(data);
+	assert(data->update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, update };
-
-	return knot_nsec_chain_iterate_create(update->new_cont->nodes,
-	                                      connect_nsec_nodes, &data);
+	return knot_nsec_chain_iterate_create(data->update->new_cont->nodes,
+	                                      connect_nsec_nodes, data);
 }
 
-int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
+int knot_nsec_fix_chain(nsec_chain_iterate_data_t *data)
 {
+	assert(data);
+	zone_update_t *update = data->update;
 	assert(update);
 	assert(update->zone->contents->nodes);
 	assert(update->new_cont->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, update };
-
-	int ret = nsec_update_bitmaps(update->a_ctx->node_ptrs, &data);
+	int ret = nsec_update_bitmaps(update->a_ctx->node_ptrs, data);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -502,5 +526,5 @@ int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl)
 	}
 
 	return knot_nsec_chain_iterate_fix(update->a_ctx->node_ptrs,
-					   connect_nsec_nodes, reconnect_nsec_nodes, &data);
+					   connect_nsec_nodes, reconnect_nsec_nodes, data);
 }

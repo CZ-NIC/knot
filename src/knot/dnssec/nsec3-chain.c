@@ -766,10 +766,11 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 	return result;
 }
 
-int knot_nsec3_fix_chain(zone_update_t *update,
-                         const dnssec_nsec3_params_t *params,
-                         uint32_t ttl)
+int knot_nsec3_fix_chain(struct nsec_chain_iterate_data *data,
+                         const dnssec_nsec3_params_t *params)
 {
+	assert(data);
+	zone_update_t *update = data->update;
 	assert(update);
 	assert(params);
 
@@ -781,7 +782,7 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		return knot_nsec3_create_chain(update->new_cont, params, ttl, update);
+		return knot_nsec3_create_chain(update->new_cont, params, data->ttl, update);
 	}
 
 	mark_empty_ctx_t mctx = { opt_out, true, update->new_cont };
@@ -790,7 +791,7 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
-	ret = fix_nsec3_nodes(update, params, ttl);
+	ret = fix_nsec3_nodes(update, params, data->ttl);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -818,10 +819,8 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
-	nsec_chain_iterate_data_t data = { ttl, update };
-
 	ret = knot_nsec_chain_iterate_fix(update->a_ctx->nsec3_ptrs,
-	                                  connect_nsec3_nodes2, reconnect_nsec3_nodes2, &data);
+	                                  connect_nsec3_nodes2, reconnect_nsec3_nodes2, data);
 
 	return ret;
 }

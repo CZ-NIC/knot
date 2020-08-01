@@ -257,6 +257,19 @@ _pure_
 int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
+ * \brief Compares two domain names, stable with '\0' character.
+ *
+ * \param d1  First domain name.
+ * \param d2  Second domain name.
+ *
+ * \retval < 0 if \a d1 goes before \a d2 in canonical order.
+ * \retval > 0 if \a d1 goes after \a d2 in canonical order.
+ * \retval 0 if the domain names are identical.
+ */
+_pure_
+int knot_dname_cmp_safe(const knot_dname_t *d1, const knot_dname_t *d2);
+
+/*!
  * \brief Compares two domain names (case sensitive).
  *
  * \param d1  First domain name.

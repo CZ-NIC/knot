@@ -27,9 +27,10 @@
 /*!
  * \brief Parameters to be used in connect_nsec_nodes callback.
  */
-typedef struct {
+typedef struct nsec_chain_iterate_data {
 	uint32_t ttl;          // TTL for NSEC(3) records
 	zone_update_t *update; // The zone update for NSECs
+	const knot_dname_t *zero_owner; // Out: an owner in a zone contains '\000'
 } nsec_chain_iterate_data_t;
 
 /*!
@@ -127,20 +128,16 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
 /*!
  * \brief Create new NSEC chain.
  *
- * \param update     Zone update to create NSEC chain for.
- * \param ttl        TTL for created NSEC records.
- *
- * \return Error code, KNOT_EOK if successful.
+ * \retval KNOT_ENOTSUP   if owners containing \000 affect zone ordering
+ * \return KNOT_E*
  */
-int knot_nsec_create_chain(zone_update_t *update, uint32_t ttl);
+int knot_nsec_create_chain(nsec_chain_iterate_data_t *data);
 
 /*!
  * \brief Fix existing NSEC chain to cover the changes in zone contents.
  *
- * \param update     Zone update to update NSEC chain for.
- * \param ttl        TTL for created NSEC records.
- *
  * \retval KNOT_ENORECORD if the chain must be recreated from scratch.
+ * \retval KNOT_ENOTSUP   if owners containing \000 affect zone ordering
  * \return KNOT_E*
  */
-int knot_nsec_fix_chain(zone_update_t *update, uint32_t ttl);
+int knot_nsec_fix_chain(nsec_chain_iterate_data_t *data);
