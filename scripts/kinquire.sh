@@ -65,6 +65,7 @@ CPUINFO=/proc/cpuinfo
 MEMINFO=/proc/meminfo
 IRQINFO=/proc/interrupts
 SIRQINFO=/proc/softirqs
+BONDINFO=/proc/net/bonding
 
 LSB_VERSION=/etc/lsb-release
 DISTRO_VERSION=/etc/os-release
@@ -130,7 +131,11 @@ ku_net_devs_info() {
 		return
 	fi
 
+	local DEV_START="############################"
+	local DEVS_END="#########################################################################"
+
 	for DEV in $DEVICES; do
+		ku_execute echo "$DEV_START  " $DEV "  $DEV_START"
 		ku_execute $ETHTOOL $DEV
 		ku_execute $ETHTOOL -i $DEV
 		ku_execute $ETHTOOL -l $DEV
@@ -140,7 +145,10 @@ ku_net_devs_info() {
 		ku_execute $ETHTOOL -c $DEV
 		ku_execute $ETHTOOL -n $DEV rx-flow-hash udp4
 		ku_execute $ETHTOOL -n $DEV rx-flow-hash udp6
+		ku_execute $ETHTOOL -S $DEV
+		[ $DEV = bond* ] && ku_execute $CAT $BONDINFO/$DEV
 	done
+	ku_execute echo "$DEVS_END"
 }
 
 ku_knotd_binary_info() {
