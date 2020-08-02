@@ -114,6 +114,17 @@ ku_get_params() {
 	fi
 }
 
+ku_print_header() {
+	ku_hd_separator
+	echo "  $KU_SCRIPT_VERSION"
+	echo
+	echo "  hostname:     $($HOSTNAME)"
+	echo "  date:         $($DATE)"
+	echo "  run as root:  $([ $($ID -u) -eq 0 ] && echo yes || echo no)"
+	ku_hd_separator
+	echo
+}
+
 ku_net_devs_info() {
 	if [ -x "$IFCONFIG" ]; then
 		ku_execute $IFCONFIG -a
@@ -126,13 +137,15 @@ ku_net_devs_info() {
 		return
 	fi
 
+	ku_execute $CAT $IRQINFO
+	ku_execute $CAT $SIRQINFO
+
 	if [ ! -x "$ETHTOOL" ]; then
 		ku_log_failure "No ethtool utility found."
 		return
 	fi
 
 	local DEV_START="############################"
-	local DEVS_END="#########################################################################"
 
 	for DEV in $DEVICES; do
 		ku_execute echo "$DEV_START  " $DEV "  $DEV_START"
@@ -148,7 +161,6 @@ ku_net_devs_info() {
 		ku_execute $ETHTOOL -S $DEV
 		[ $DEV = bond* ] && ku_execute $CAT $BONDINFO/$DEV
 	done
-	ku_execute echo "$DEVS_END"
 }
 
 ku_knotd_binary_info() {
@@ -166,17 +178,6 @@ ku_knotd_binary_info() {
 	ku_execute $LDD -v "$KNOTD"
 	ku_execute $LS -ld  --full-time $($LDD "$KNOTD" |$SED -E '/linux-vdso.so.1/d;s@^.*=> @@;s@^[ \t]*@@;s@ \(0x.*$@@')
 	ku_execute $LS -ldL --full-time $($LDD "$KNOTD" |$SED -E '/linux-vdso.so.1/d;s@^.*=> @@;s@^[ \t]*@@;s@ \(0x.*$@@')
-}
-
-ku_print_header() {
-	ku_hd_separator
-	echo "  $KU_SCRIPT_VERSION"
-	echo
-	echo "  hostname:     $($HOSTNAME)"
-	echo "  date:         $($DATE)"
-	echo "  run as root:  $([ $($ID -u) -eq 0 ] && echo yes || echo no)"
-	ku_hd_separator
-	echo
 }
 
 ku_print_data() {
@@ -201,14 +202,10 @@ ku_print_data() {
 	fi
 	ku_execute $FREE -h
 	ku_execute $CAT $MEMINFO
-	ku_execute $CAT $IRQINFO
-	ku_execute $CAT $SIRQINFO
 
     # Some OS details
 	# Not yet.
 	# ku_execute $SYSCTL -a
-	[ -x $LSPCI ] && ku_execute "$LSPCI |$GREP -i Ethernet"
-	ku_net_devs_info
 
     # Some knotd binary details
 	ku_knotd_binary_info
@@ -233,6 +230,10 @@ ku_print_data() {
 	else
 		ku_log_failure "Running knotd process not found."
 	fi
+
+    # Network adapters details
+	[ -x $LSPCI ] && ku_execute "$LSPCI |$GREP -i Ethernet"
+	ku_net_devs_info
 
 	ku_separator
 }
