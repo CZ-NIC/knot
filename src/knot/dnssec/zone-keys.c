@@ -598,7 +598,7 @@ void zone_sign_ctx_free(zone_sign_ctx_t *ctx)
 int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
                           const uint8_t *rdata, size_t rdlen)
 {
-	if (!key || !rdata || rdlen == 0) {
+	if (key == NULL || rdata == NULL || rdlen == 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -617,7 +617,7 @@ int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
 		dnssec_key_free(new_key);
 		return KNOT_ENOMEM;
 	}
-	if (owner) {
+	if (owner != NULL) {
 		ret = dnssec_key_set_dname(new_key, owner);
 		if (ret != DNSSEC_EOK) {
 			dnssec_key_free(new_key);
