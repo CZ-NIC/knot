@@ -13,7 +13,7 @@ import time
 import dns.message
 import dns.query
 import dns.update
-from subprocess import Popen, PIPE, check_call, CalledProcessError
+from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, DEVNULL
 from dnstest.utils import *
 import dnstest.config
 import dnstest.inquirer
@@ -38,6 +38,7 @@ class ZoneDnssec(object):
 
     def __init__(self):
         self.enable = None
+        self.validate = None
         self.manual = None
         self.single_type_signing = None
         self.alg = None
@@ -739,6 +740,13 @@ class Server(object):
 
         return key
 
+    @property
+    def keydir(self):
+        d = os.path.join(self.dir, "keys")
+        if not os.path.exists(d):
+            os.makedirs(d)
+        return d
+
     def use_keys(self, zone):
         zone = zone_arg_check(zone)
         # copy all keys, even for other zones
@@ -778,14 +786,16 @@ class Server(object):
     def random_ddns(self, zone, allow_empty=True):
         zone = zone_arg_check(zone)
 
-        up = self.update(zone)
-
         while True:
-            changes = self.zones[zone.name].zfile.gen_rnd_ddns(up)
-            if allow_empty or changes > 0:
-                break
+            up = self.update(zone)
 
-        up.send("NOERROR")
+            while True:
+                changes = self.zones[zone.name].zfile.gen_rnd_ddns(up)
+                if allow_empty or changes > 0:
+                    break
+
+            if up.try_send() == "NOERROR":
+                break
 
     def add_module(self, zone, module):
         zone = zone_arg_check(zone)
@@ -963,6 +973,7 @@ class Bind(Server):
             else:
                 s.item("type", "master")
                 s.item("notify", "explicit")
+                s.item("check-integrity", "no")
 
             if z.ixfr and not z.masters:
                 s.item("ixfr-from-differences", "yes")
@@ -997,6 +1008,12 @@ class Bind(Server):
                         (" key %s;" % self.tsig_test.name) if self.tsig_test else ""))
             else:
                 s.item("allow-transfer", "{ any; }")
+
+            if z.dnssec.enable:
+                s.item("inline-signing", "yes")
+                s.item("auto-dnssec", "maintain")
+                s.item_str("key-directory", self.keydir)
+
             s.end()
 
         self.start_params = ["-c", self.confile, "-g"]
@@ -1004,6 +1021,47 @@ class Bind(Server):
                            "-k", self.ctlkeyfile]
 
         return s.conf
+
+    def start(self, clean=False):
+        for zname in self.zones:
+            z = self.zones[zname]
+            if z.dnssec.enable != True:
+                continue
+
+            # unrelated: generate keys as Bind won't do
+            ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', self.keydir ]
+            if z.dnssec.nsec3:
+                ps += ['-3']
+            k1 = check_output(ps + [z.name], stderr=DEVNULL)
+            k2 = check_output(ps + ["-f", "KSK"] + [z.name], stderr=DEVNULL)
+
+            k1 = self.keydir + '/' + k1.rstrip().decode('ascii')
+            k2 = self.keydir + '/' + k2.rstrip().decode('ascii')
+
+            # Append to zone
+            with open(z.zfile.path, 'a') as outf:
+                outf.write('\n')
+                with open(k1 + '.key', 'r') as kf:
+                    for line in kf:
+                        if len(line) > 0 and line[0] != ';':
+                            outf.write(line)
+                with open(k2 + '.key', 'r') as kf:
+                    for line in kf:
+                        if len(line) > 0 and line[0] != ';':
+                            outf.write(line)
+                #if z.dnssec.nsec3:
+                    #n3flag =  1 if z.dnssec.nsec3_opt_out else 0
+                    #n3iters = z.dnssec.nsec3_iters or 10
+                    #outf.write("%s NSEC3PARAM 1 %d %d -\n" % (z.name, n3flag, n3iters)) # this does not work!
+
+        super().start(clean)
+
+        for zname in self.zones:
+            z = self.zones[zname]
+            if z.dnssec.nsec3:
+                n3flag =  1 if z.dnssec.nsec3_opt_out else 0
+                n3iters = z.dnssec.nsec3_iters or 10
+                self.ctl("signing -nsec3param 1 %d %d - %s" % (n3flag, n3iters, z.name))
 
 class Knot(Server):
 
@@ -1017,10 +1075,6 @@ class Knot(Server):
         self.inquirer = dnstest.inquirer.Inquirer()
         self.includes = set()
         self.binding_fail = "cannot bind address"
-
-    @property
-    def keydir(self):
-        return os.path.join(self.dir, "keys")
 
     def listening(self):
         tcp = super()._check_socket("tcp", self.port)
@@ -1253,7 +1307,7 @@ class Knot(Server):
         have_policy = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
-            if not z.dnssec.enable:
+            if not z.dnssec.enable and not z.dnssec.validate:
                 continue
 
             if (z.dnssec.shared_policy_with or z.name) != z.name:
@@ -1411,6 +1465,10 @@ class Knot(Server):
 
             if z.catalog:
                 s.item_str("catalog-template", "catemplate")
+
+            if z.dnssec.validate:
+                s.item_str("dnssec-validation", "on")
+                s.item_str("dnssec-policy", z.name)
 
             if len(z.modules) > 0:
                 modules = ""

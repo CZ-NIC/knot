@@ -1,0 +1,66 @@
+; File written on Mon Mar  9 18:08:29 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.11-Ubuntu
+chain.nsec.		3600	IN SOA	a.chain.nsec. a.chain.nsec. (
+					1000000003 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20200309160829 24254 chain.nsec.
+					aSWPzUXjid6Ka93/iZQUGdftxmQF2Zkp7+Fv
+					ztlhQo/rpHw/R+El/ICdveOj4YuIaPWNvUG/
+					FWN0jfaUOLFrCA== )
+			3600	NS	a.chain.nsec.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20200309160829 24254 chain.nsec.
+					JAGdj8i93oGQt4Kyusi/05ARBmVxAJJIlUze
+					t4xG5O2ne0+dSDk6J7z7EJzatbpDQemYwtLS
+					J9ZePvniXv9wgQ== )
+			3600	MX	10 a.chain.nsec.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20200309160829 24254 chain.nsec.
+					/hDKmT68A0WsFyjs/tGV+cseA86ZNGqonJkp
+					Nbt/Zj5ZosSStvzWAIT8q4e6CbkKVVEMCV4b
+					axVyYFAzeXHhGg== )
+			7200	NSEC	a.chain.nsec. NS SOA MX RRSIG NSEC DNSKEY
+			7200	RRSIG	NSEC 13 2 7200 (
+					20601231235959 20200309160829 24254 chain.nsec.
+					mKc5YOT2talvruVcP/+e8hIbFr81t8LrL0Ou
+					cuodFfs6FIZOI/NS1uScbb4M7BUKTsAEeR+a
+					4jqNgcJ6uCifCg== )
+			3600	DNSKEY	257 3 13 (
+					rBcr1urUlw1afVAygKV0jOvGZ03HEVOXUbd+
+					2H+UzsV4KZC+53o7tudjLmCHAgrEa7GCt20A
+					ZAbCP9KWqEoEIg==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 24254
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20200309160829 24254 chain.nsec.
+					RRu95c4J9hu06uZYt0oF+kOAt8mjpUOW+Nr7
+					tzxqUF1BQMExSUP1ylvqx3n9ULNAQRH6E8/V
+					I/YtMOBPF3CU8A== )
+add.chain.nsec.		3600	IN A	2.3.4.5
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160829 24254 chain.nsec.
+					OLFkLF70SGqxA+qlp4bL42//sSt4nfW4CwaT
+					VUJTNl/VPGflgiBWl/keL7pLPpaGWiTtNtdC
+					xXfITM6l05VNoQ== )
+			7200	NSEC	a.chain.nsec. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20200309160829 24254 chain.nsec.
+					fmQKnetDldVTo3WO+0/7IOWcjr/Vq2aQFoDN
+					C7CimGLuAuywkIQ351+UmlCCi1hr4vByfhj9
+					995iNnoFEqiJZw== )
+a.chain.nsec.		3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160829 24254 chain.nsec.
+					s5/c/pZ8U9OQBTft6C33dpvP2JSeOP39IRrH
+					c+Fu0hRgsoPctiJEIJJpYvzQGS5kfyHle2RI
+					mtftrhOkEr9jfg== )
+			7200	NSEC	add.chain.nsec. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20200309160829 24254 chain.nsec.
+					p9lhRQ187oz4J9AVDO4yQwXk+2eMv0yNU6th
+					v4oWde+tRONEVFpDTtdYKJKmhocwpoDbjBr2
+					8AgCXHdMAZ15Vg== )

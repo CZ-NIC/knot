@@ -1,0 +1,78 @@
+; File written on Mon Mar  9 18:08:29 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.11-Ubuntu
+bitmap.nsec3.		3600	IN SOA	a.bitmap.nsec3. a.bitmap.nsec3. (
+					1000000003 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					wsycaQJaTAjQ9lz3BoEOCETepjZCTx1oVGYk
+					H7Xr55s4DDunW10YYTUSBfvK7/n49j9EQ6u0
+					GCLPBhbXVziy5g== )
+			3600	NS	a.bitmap.nsec3.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					xNRiheyvvBaPDZBzz1M6t9OnxC3Jm2aG5/Ne
+					Itfqdb+YUgJzhuBz67oysnDTjf8N5st3e/Vk
+					bKT0IlWMIwexSQ== )
+			3600	MX	10 a.bitmap.nsec3.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					nkN1lDsurFa9yDjcHjReOsoKwyBjJlaQatC8
+					KllrBY7Y2A2Dr3GitjUqcepTfKDnix4jm1Lx
+					bLwKjFHKRXvb+A== )
+			3600	DNSKEY	257 3 13 (
+					dNq/K8DlgEQFiGAUXvz9hEGoQiv+Olr+njqj
+					EnenNCzV+Mv5e6wKXBCYShW9t/86kLcmq3sT
+					OMqT7Z7NWMXLCg==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 1777
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					yBrmFOqo9/+4CSSa+LJePgT5WyeiHF2EBpAp
+					qHbKaw8zXsaerMhkXCEDpMX5uC6mlH3Ht3Vk
+					Q7Gn5ig+tzv1iQ== )
+			0	NSEC3PARAM 1 0 10 BE7FCB0AC6D67318
+			0	RRSIG	NSEC3PARAM 13 2 0 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					5DTttDtPI7NgoautTxwqIj2Js3BGbVHP+grH
+					HZBLbIoV/pIA6PpbeP2w2HCVI1os26J+p9zg
+					SvQcFmFYJRte7g== )
+add.bitmap.nsec3.	3600	IN A	2.3.4.5
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					1MgutHrzTtr625bw8uibaXYtYxYEiTYdAMoZ
+					Eq0SWkXR6XoukrEdihdvuqSeJT7PpjDmfYU4
+					zZeplTDHh2ZrzQ== )
+EDI84TVDFTTIG8AGFMQ953DI00HET7VA.bitmap.nsec3. 7200 IN NSEC3 1 0 10 BE7FCB0AC6D67318 (
+					N2IE7MLR8MJ6OQB3IM31TBBCMJJ8HGJF
+					A AAAA RRSIG )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					2g0BkN+w8h2sg+OiAtn0N3X3tqeoAqvlAQoY
+					AjVMP4iOGoEe02IpakjTAJwSXhN0xg8s8tqF
+					cRi/n9ysiJl4Kw== )
+N2IE7MLR8MJ6OQB3IM31TBBCMJJ8HGJF.bitmap.nsec3. 7200 IN NSEC3 1 0 10 BE7FCB0AC6D67318 (
+					6U83PMHU2L10UOUH0KA6OSVKEH305OSP
+					A RRSIG )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					72kOa+mWHz6Qynn1eUQerMavRx2e312sPkgY
+					z2wwQWIqNSudMlYiDGKoexV3m7zH6NcdzaNT
+					+k6d5bOA1oWN6g== )
+a.bitmap.nsec3.		3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					5wKp5L1P56AlgFvSO3pJ11XYudiFzrFqgjyo
+					ZcNM9ydl568pcA6kysxtIK28pynapvUJhLAH
+					k40MfcsE77oOZg== )
+6U83PMHU2L10UOUH0KA6OSVKEH305OSP.bitmap.nsec3. 7200 IN NSEC3 1 0 10 BE7FCB0AC6D67318 (
+					EDI84TVDFTTIG8AGFMQ953DI00HET7VA
+					NS SOA MX RRSIG DNSKEY NSEC3PARAM )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20200309160829 1777 bitmap.nsec3.
+					zqcWB2lOJoztG08/z2dflp+vSx7mL+6F/Lng
+					ahn+PzZXn0G1ZqxynYIo79ZrAaxvDQNqDRZy
+					zopRMe7GGUIWew== )

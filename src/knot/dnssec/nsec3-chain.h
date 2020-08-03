@@ -55,3 +55,15 @@ int knot_nsec3_create_chain(const zone_contents_t *zone,
 int knot_nsec3_fix_chain(zone_update_t *update,
                          const dnssec_nsec3_params_t *params,
                          uint32_t ttl);
+
+/*!
+ * \brief Validate NSEC3 chain in new_cont as whole.
+ *
+ * \note new_cont must have been adjusted already!
+ */
+int knot_nsec3_check_chain(zone_update_t *update, const dnssec_nsec3_params_t *params);
+
+/*!
+ * \brief Validate NSEC3 chain in new_cont incrementally.
+ */
+int knot_nsec3_check_chain_fix(zone_update_t *update, const dnssec_nsec3_params_t *params);

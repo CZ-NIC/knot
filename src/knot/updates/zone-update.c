@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -853,6 +853,28 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	if (update->new_cont->size > size_limit) {
 		discard_adds_tree(update);
 		return KNOT_EZONESIZE;
+	}
+
+	val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
+	if (conf_bool(&val)) {
+		bool incr_valid = update->flags & UPDATE_INCREMENTAL;
+		const char *msg_valid = incr_valid ? "incremental " : "";
+
+		ret = knot_dnssec_validate_zone(update, incr_valid);
+		if (ret != KNOT_EOK) {
+			log_zone_error(update->zone->name, "DNSSEC, %svalidation failed (%s)",
+			               msg_valid, knot_strerror(ret));
+			char name_str[KNOT_DNAME_TXT_MAXLEN], type_str[16];
+			if (knot_dname_to_str(name_str, update->validation_hint.node, sizeof(name_str)) != NULL &&
+			    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
+				log_zone_error(update->zone->name, "DNSSEC, validation hint: %s %s",
+				               name_str, type_str);
+			}
+			discard_adds_tree(update);
+			return ret;
+		} else {
+			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful", msg_valid);
+		}
 	}
 
 	ret = commit_journal(conf, update);

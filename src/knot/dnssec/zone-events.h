@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -114,3 +114,13 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
  * \return Timestamp of next signing attempt.
  */
 knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx);
+
+/*!
+ * \brief Validate zone DNSSEC based on its contents.
+ *
+ * \param update         Zone update with contents.
+ * \param incremental    Try to validate incrementally.
+ *
+ * \return KNOT_E*
+ */
+int knot_dnssec_validate_zone(zone_update_t *update, bool incremental);

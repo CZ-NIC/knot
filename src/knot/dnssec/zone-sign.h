@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 #include "knot/dnssec/zone-keys.h"
 
 int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key);
+
+bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type);
 
 /*!
  * \brief Prepare DNSKEYs, CDNSKEYs and CDSs to be added to the zone into rrsets.

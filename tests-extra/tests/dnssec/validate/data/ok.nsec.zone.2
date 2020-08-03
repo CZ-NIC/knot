@@ -1,0 +1,66 @@
+; File written on Mon Mar  9 18:04:24 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.11-Ubuntu
+ok.nsec.		3600	IN SOA	a.ok.nsec. a.ok.nsec. (
+					1000000003 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20200309160424 3309 ok.nsec.
+					TEXuopqDvkYI1g/kXnPrHfA0IELwfsWsoWY4
+					M56O8nX5vH3rwcMbT1qh1eHaLrqMYdcGOmOn
+					ePLVduiAkm0tmw== )
+			3600	NS	a.ok.nsec.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20200309160424 3309 ok.nsec.
+					Ho6tsV930DfQMm78ZkS2Bfwu3gMew1JgN/tp
+					TwgKiDKM6Alc1JPujoe4Jd9G74CjoaZafnKI
+					f5CZM2Bz1txpbg== )
+			3600	MX	10 a.ok.nsec.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20200309160424 3309 ok.nsec.
+					r40JAInNrfTJ4sAEEjRK5dUjLEPnY4RP64nI
+					i3CGGWu4FEAx9cShbclwBgKO783/pDp/RuFL
+					N9Cout2kIW4FcA== )
+			7200	NSEC	a.ok.nsec. NS SOA MX RRSIG NSEC DNSKEY
+			7200	RRSIG	NSEC 13 2 7200 (
+					20601231235959 20200309160424 3309 ok.nsec.
+					j43Hf/3YZFm1KPoUOxkeCBM6po21iEdlHNZ1
+					uo8sYT69/DwWa0NjP6VjjeE+OOBhNrQk1Nc7
+					wwlL9FL4PeLmYg== )
+			3600	DNSKEY	257 3 13 (
+					+xjydbKc+Iylp/IGE3qcH0PQID3pBKDK9nF8
+					TDxDoobTbVNzq1w1c9m4nwuRPl8XmUlMo//9
+					WTpv9pPgpDeReQ==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 3309
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20200309160424 3309 ok.nsec.
+					bDP0ULFzKUx2gmuAeJmsxd8jaTPDWp5iv+VS
+					NvLjlHsjsNZ69uC7SDC8gzh5nlmzy+n64FmF
+					dI0gywxPSzTZ0w== )
+add.ok.nsec.		3600	IN A	2.3.4.5
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160424 3309 ok.nsec.
+					uM3Ilg6IlvA7UFKwi8i7kbJFHhBpaVFBfZNp
+					tIQKP/ylLwcvxWpr64AU26f2XQfxd/zoobj2
+					cj6SUWNOnMHlkg== )
+			7200	NSEC	ok.nsec. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20200309160424 3309 ok.nsec.
+					LxohiOsFN97vGT2y8lFUgULMfoP9/HRXUP8Y
+					AH1unc6fdG+q2DEcJC0upIw/W6RFLI20mW5B
+					1+DlwBPfuE9Nig== )
+a.ok.nsec.		3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160424 3309 ok.nsec.
+					m2gOztuboxnymBXaCSIXpYIt5U/CedFAgDj+
+					ZOF0POEhYq8yatJ/TvFHh+/m7UTEmxo7lcNc
+					akgGvvOG39jJjg== )
+			7200	NSEC	add.ok.nsec. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20200309160424 3309 ok.nsec.
+					tl8ZcSX6o5dt9SfCmXkEQfgy9bwwm8IFhZFF
+					zVsIkktcXIbD6miJUQhdt/741RByXTW+gZsY
+					uvwE9EPh5GtcCA== )
