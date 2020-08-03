@@ -1,0 +1,54 @@
+; File written on Mon Mar  9 18:08:29 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.11-Ubuntu
+rrsig.a.		3600	IN SOA	a.rrsig.a. a.rrsig.a. (
+					1000000001 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20200309160829 34945 rrsig.a.
+					O0yPRRQTRQzT9seTtR30yNVDHkbUaPwYkqFg
+					BlUML7nBpuoeeFIV2YznY0jMT8JzsZqru6bc
+					uYDgylizw+YaHw== )
+			3600	NS	a.rrsig.a.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20200309160829 34945 rrsig.a.
+					eWFw/BQ1x4hXHLQWC9HtIfZz0CincOKLkAeK
+					ebVaA5JtiYJtnkSi43uKYylRc2++nFlMs0Bc
+					QeOATJKz5YcRWA== )
+			3600	MX	10 a.rrsig.a.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20200309160829 34945 rrsig.a.
+					q0q0k8cM6REB/hyaVMiSa/nVjOt8b1bdgrQ9
+					VVVZuZKKSbNSEbYubxqxCY7zmK+XyaLMbiHF
+					n5Y3DMtw7SHHkg== )
+			7200	NSEC	a.rrsig.a. NS SOA MX RRSIG NSEC DNSKEY
+			7200	RRSIG	NSEC 13 2 7200 (
+					20601231235959 20200309160829 34945 rrsig.a.
+					9kwH7aKMGc+GpQzBx7uUEENyaEuiEEJHOl+j
+					b3czVZdUa/QeWl8BP1oC3jbd+T6REcb4y+vy
+					R50+tkybT/qTfw== )
+			3600	DNSKEY	257 3 13 (
+					FDL4+wEMuF4F+wE98y1UaUoDwJ+KJFc73JCw
+					SdxYwLiCbSN1UvdvhE4OS4Cf9k+HJU3S2Vti
+					NHW1ismzVwUJbw==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 34945
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20200309160829 34945 rrsig.a.
+					nCsjMHNuT8QXLopF9BSNuf9y2U7gyej/sbdu
+					x0bRltHkI5sIov88J0/POq6hbkpVls2B/ieH
+					CQkFsjjLs0+CtQ== )
+a.rrsig.a.		3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20200309160829 34945 rrsig.a.
+					BCukdELow/n4KWiQHHTNsEAP4COXkj1W0gIa
+					1/pcu27/DG15Fu3t0RdGGEpnc2v3LEQjtpp2
+					twCYlc8IBrWg4w== )
+			7200	NSEC	rrsig.a. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20200309160829 34945 rrsig.a.
+					dWe2pnoVOqCP6o8uV3rn/AuVry+zSpe+yjNx
+					kokyl1FcbhaTjWAQpVh+uGDdXSY1eBn1rJ5c
+					U2vV0PzULEJ1kQ== )

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -573,6 +573,34 @@ int main(int argc, char *argv[])
 	t = "ab.cd.e";
 	d2 = knot_dname_from_str_alloc(t);
 	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: last label shorter");
+	knot_dname_free(d2, NULL);
+
+	knot_dname_free(d, NULL);
+
+	/* DNAME EQUALITY CHECKS IGNORING CASE */
+
+	t = "aB.cd.ef";
+	d = knot_dname_from_str_alloc(t);
+	ok(knot_dname_is_case_equal(d, d), "dname_is_case_equal: equal case");
+
+	t = "aB.cD.ef";
+	d2 = knot_dname_from_str_alloc(t);
+	ok(knot_dname_is_case_equal(d, d2), "dname_is_case_equal: different case");
+	knot_dname_free(d2, NULL);
+
+	t = "aB.dc.ef";
+	d2 = knot_dname_from_str_alloc(t);
+	ok(!knot_dname_is_case_equal(d, d2), "dname_is_case_equal: different name");
+	knot_dname_free(d2, NULL);
+
+	t = "aB.cd";
+	d2 = knot_dname_from_str_alloc(t);
+	ok(!knot_dname_is_case_equal(d, d2), "dname_is_case_equal: different length");
+	knot_dname_free(d2, NULL);
+
+	t = "aB.cdx.ef";
+	d2 = knot_dname_from_str_alloc(t);
+	ok(!knot_dname_is_case_equal(d, d2), "dname_is_case_equal: different label");
 	knot_dname_free(d2, NULL);
 
 	knot_dname_free(d, NULL);
