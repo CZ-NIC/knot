@@ -152,7 +152,7 @@ Description: DNS clients provided with Knot DNS (kdig, knsupdate)
  .
   - kdig - query a DNS server in various ways
   - knsupdate - perform dynamic updates (See RFC2136)
-  - knot-xdp-gun - send a DNS query stream over UDP to a DNS server
+  - kxdpgun - send a DNS query stream over UDP to a DNS server
  .
  Those clients were designed to be almost 1:1 compatible with BIND dnsutils,
  but they provide some enhancements, which are documented.

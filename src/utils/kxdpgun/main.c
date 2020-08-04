@@ -38,10 +38,10 @@
 #include "libknot/libknot.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "utils/common/params.h"
-#include "utils/knot-xdp-gun/load_queries.h"
-#include "utils/knot-xdp-gun/popenve.h"
+#include "utils/kxdpgun/load_queries.h"
+#include "utils/kxdpgun/popenve.h"
 
-#define PROGRAM_NAME "knot-xdp-gun"
+#define PROGRAM_NAME "kxdpgun"
 
 #define TRANSACTION_ID htobe16(0xbaf8) // entirely arbitrary magic constant to distinguish from other traffic
 

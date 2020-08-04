@@ -84,16 +84,16 @@ khost_LDADD            += $(DNSTAP_LIBS) libdnstap.la
 endif HAVE_DNSTAP
 
 if ENABLE_XDP
-sbin_PROGRAMS += knot-xdp-gun
-knot_xdp_gun_SOURCES = \
-	utils/knot-xdp-gun/load_queries.c	\
-	utils/knot-xdp-gun/load_queries.h	\
-	utils/knot-xdp-gun/main.c		\
-	utils/knot-xdp-gun/popenve.c		\
-	utils/knot-xdp-gun/popenve.h
+sbin_PROGRAMS += kxdpgun
+kxdpgun_SOURCES = \
+	utils/kxdpgun/load_queries.c		\
+	utils/kxdpgun/load_queries.h		\
+	utils/kxdpgun/main.c			\
+	utils/kxdpgun/popenve.c			\
+	utils/kxdpgun/popenve.h
 
-knot_xdp_gun_CPPFLAGS  = $(AM_CPPFLAGS)
-knot_xdp_gun_LDADD     = libcontrib.la libknot.la $(pthread_LIBS) $(cap_ng_LIBS)
+kxdpgun_CPPFLAGS  = $(AM_CPPFLAGS)
+kxdpgun_LDADD     = libcontrib.la libknot.la $(pthread_LIBS) $(cap_ng_LIBS)
 endif ENABLE_XDP
 endif HAVE_UTILS
 
