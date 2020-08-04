@@ -806,6 +806,62 @@ Generating and signing future ZSKs
    or whenever a configuration is changed significantly. Over-importing new SKR across some previously-imported
    one leads to deleting the old offline records.
 
+Offline KSK and manual ZSK management
+-------------------------------------
+
+If the automatic ZSK roll-overs like in above described procedure are not desired, just set the :ref:`policy_zsk-lifetime`
+to zero (means infinity) and skip the *pregenerate* section (as it does nothing in such case). The ZSK rollovers can
+then be pre-planned by setting keys' timers, and after any such change to ZSK timers,
+the *generate-ksr* — *sign-ksr* — *import-skr* — *zone-sign* ceremonial must be re-performed.
+
+Offline KSK roll-over
+---------------------
+
+The KSKs (on the KSK side) must be managed manually, but manual KSK roll-over is possible. Just plan the steps
+of KSK roll-over in advance, and whenever KSK set or timers are changed, re-perform the relevant rest of the ceremonial
+(i.e. *sign-ksr* — *import-skr* — *zone-sign*).
+
+Emergency SKR
+-------------
+
+One of general recommendations for large deployments is to have some backup pre-published keys, so that if the current ones are
+compromised, they can be rolled-over to the backup ones without any delay. But in case of Offline KSK, according to
+the procedures above, both ZSK and KSK immediate rollovers require the KSR—SKR ceremony.
+
+However, a trick can be done to achieve really immediate key substitution. This is no longer about Knot DNS functionality,
+just a hint for the operator.
+
+The idea is to pre-perform every KSR—SKR ceremony twice: once with normal state of keys (the backup key is only published),
+and once with the keys already exchanged (the backup key is (temporarily) marked as active and the standard key (temporarily)
+as public only). The second, backup SKR wouldn't be imported, rather saved for the emergency case.
+
+Summary of steps:
+
+* prepare KSK and ZSK side as usual, including public-only emergency key
+* perform normal Offline KSK ceremony:
+
+  * pre-generate ZSKs (only in case of automatic ZSK management)
+  * generate KSR
+  * sign KSR on KSK side
+  * import SKR
+  * re-sign zone
+
+* freeze the zone on ZSK side
+* temporarily set the backup key as active and the normal key as publish-only
+* perform backup Offline KSK ceremony:
+
+  * generate KSR (only in case the backup key is a replacement for ZSK)
+  * sign KSR on KSK side
+  * save the SKR to a backup storage, don't import yet
+
+* return the keys to previous state and thaw the zone
+
+In case of standard key compromise:
+
+* import the backup SKR
+* align the keys with the new states (backup key as active, compromised key as public)
+* re-sign zone
+
 .. _DNSSEC Export Import  KASP DB:
 
 Export/import  KASP DB
