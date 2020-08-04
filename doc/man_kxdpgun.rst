@@ -1,12 +1,12 @@
 .. highlight:: console
 
-knot-xdp-gun – DNS benchmarking tool
-====================================
+kxdpgun – DNS benchmarking tool
+===============================
 
 Synopsis
 --------
 
-:program:`knot-xdp-gun` [*options*] **-i** *filename* *targetIP*
+:program:`kxdpgun` [*options*] **-i** *filename* *targetIP*
 
 Description
 -----------
@@ -100,11 +100,11 @@ Queries file::
 
 Program usage::
 
-  # knot-xdp-gun -i ~/queries.txt 2001:1489:fffe:10::16
+  # kxdpgun -i ~/queries.txt 2001:1489:fffe:10::16
 
 ::
 
-  # knot-xdp-gun -t 120 -Q 6000000 -i ~/queries.txt -b 5 -r -p 8853 192.168.101.2
+  # kxdpgun -t 120 -Q 6000000 -i ~/queries.txt -b 5 -r -p 8853 192.168.101.2
 
 See Also
 --------
