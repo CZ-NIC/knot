@@ -1,8 +1,8 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "KSIGNZONE" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
+.TH "KZONESIGN" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
 .SH NAME
-ksignzone \- DNSSEC signing utility
+kzonesign \- DNSSEC signing utility
 .
 .nr rst2man-indent-level 0
 .
@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBksignzone\fP \fIoptions\fP \fIzone_name\fP
+\fBkzonesign\fP \fIoptions\fP \fIzone_name\fP
 .SH DESCRIPTION
 .sp
 This utility reads the zone\(aqs zone file, signs the zone according to given

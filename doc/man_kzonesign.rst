@@ -1,12 +1,12 @@
 .. highlight:: console
 
-ksignzone – DNSSEC signing utility
+kzonesign – DNSSEC signing utility
 ==================================
 
 Synopsis
 --------
 
-:program:`ksignzone` *options* *zone_name*
+:program:`kzonesign` *options* *zone_name*
 
 Description
 -----------

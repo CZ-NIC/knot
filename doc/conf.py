@@ -233,7 +233,7 @@ man_pages = [
     ('man_khost',         'khost',         'Simple DNS lookup utility',                 author, 1),
     ('man_knsec3hash',    'knsec3hash',    'Simple utility to compute NSEC3 hash',      author, 1),
     ('man_knsupdate',     'knsupdate',     'Dynamic DNS update utility',                author, 1),
-    ('man_ksignzone',     'ksignzone',     'DNSSEC signing utility',                    author, 8),
+    ('man_kzonesign',     'kzonesign',     'DNSSEC signing utility',                    author, 8),
     ('man_kzonecheck',    'kzonecheck',    'Knot DNS zone check tool',                  author, 1),
     ('man_kxdpgun',       'kxdpgun',       'XDP-powered DNS benchmarking tool',         author, 8),
 ]

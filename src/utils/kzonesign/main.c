@@ -23,7 +23,7 @@
 #include "knot/zone/zonefile.h"
 #include "utils/common/params.h"
 
-#define PROGRAM_NAME "ksignzone"
+#define PROGRAM_NAME "kzonesign"
 
 static const char *global_outdir = NULL;
 
