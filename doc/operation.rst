@@ -792,9 +792,65 @@ Generating and signing future ZSKs
 
 6. Now the future ZSKs and DNSKEY records with signatures are ready in KASP DB for later usage.
    Knot automatically uses them in correct time intervals.
-   The entire procedure must to be repeated before the time period selected at the beginning passes,
+   The entire procedure must be repeated before the time period selected at the beginning passes,
    or whenever a configuration is changed significantly. Over-importing new SKR across some previously-imported
    one leads to deleting the old offline records.
+
+Offline KSK and manual ZSK management
+-------------------------------------
+
+If the automatically preplanned ZSK roll-overs (first step) are not desired, just set the :ref:`policy_zsk-lifetime`
+to zero, and manually pregenerate ZSK keys and set their timers. Then follow the steps
+``generate-ksr — sign-ksr — import-skr — zone-sign`` and repeat the ceremony when necessary.
+
+Offline KSK roll-over
+---------------------
+
+The KSKs (on the KSK side) must be managed manually, but manual KSK roll-over is possible. Just plan the steps
+of the KSK roll-over in advance, and whenever the KSK set or timers are changed, re-perform the relevant rest of the ceremony
+``sign-ksr — import-skr — zone-sign``.
+
+Emergency SKR
+-------------
+
+One of general recommendations for large deployments is to have some backup pre-published keys, so that if the current ones are
+compromised, they can be rolled-over to the backup ones without any delay. But in the case of Offline KSK, according to
+the procedures above, both ZSK and KSK immediate rollovers require the KSR-SKR ceremony.
+
+However, a trick can be done to achieve really immediate key substitution. This is no longer about Knot DNS functionality,
+just a hint for the operator.
+
+The idea is to perform every KSR-SKR ceremony twice: once with normal state of the keys (the backup key is only published),
+and once with the keys already exchanged (the backup key is temporarily marked as active and the standard key temporarily
+as public only). The second (backup) SKR should be saved for emergency key replacement.
+
+Summary of the steps:
+
+* Prepare KSK and ZSK side as usual, including public-only emergency key
+* Perform normal Offline KSK ceremony:
+
+  * Pre-generate ZSKs (only in the case of automatic ZSK management)
+  * Generate KSR
+  * Sign KSR on the KSK side
+  * Import SKR
+  * Re-sign the zone
+
+* Freeze the zone on the ZSK side
+* Temporarily set the backup key as active and the normal key as publish-only
+* Perform backup Offline KSK ceremony:
+
+  * Generate KSR (only if the backup key is a replacement for ZSK)
+  * Sign the KSR on the KSK side
+  * Save the SKR to a backup storage, don't import it yet
+
+* Return the keys to the previous state
+* Thaw the zone on the ZSK side
+
+Emergency key replacement:
+
+* Import the backup SKR
+* Align the keys with the new states (backup key as active, compromised key as public)
+* Re-sign the zone
 
 .. _DNSSEC Export Import  KASP DB:
 
