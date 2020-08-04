@@ -215,12 +215,8 @@ ku_print_data() {
 		ku_execute $PS uww -p ${KNOTPID}
 		ku_execute $PS vww -p ${KNOTPID}
 		[ -x "${PRLIMIT}" ] && ku_execute $PRLIMIT -p $KNOTPID
-		ku_execute $KNOTC $KNOTCONF conf-read server.listen
-		ku_execute $KNOTC $KNOTCONF conf-read server.listen-xdp
-		ku_execute $KNOTC $KNOTCONF conf-read server.udp-workers
-		ku_execute $KNOTC $KNOTCONF conf-read server.tcp-workers
-		ku_execute $KNOTC $KNOTCONF conf-read server.background-workers
-		ku_execute $KNOTC $KNOTCONF conf-read server.tcp-max-clients
+		ku_execute $KNOTC $KNOTCONF conf-read server
+		ku_execute $KNOTC $KNOTCONF conf-read template
 		ku_execute $KNOTC $KNOTCONF conf-read database
 		ku_execute $KNOTC $KNOTCONF stats server
 
