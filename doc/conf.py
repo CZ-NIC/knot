@@ -234,7 +234,7 @@ man_pages = [
     ('man_knsec3hash',    'knsec3hash',    'Simple utility to compute NSEC3 hash',      author, 1),
     ('man_knsupdate',     'knsupdate',     'Dynamic DNS update utility',                author, 1),
     ('man_kzonecheck',    'kzonecheck',    'Knot DNS zone check tool',                  author, 1),
-    ('man_knot-xdp-gun',  'knot-xdp-gun',  'XDP-powered DNS benchmarking tool',         author, 8),
+    ('man_kxdpgun',  'kxdpgun',  'XDP-powered DNS benchmarking tool',         author, 8),
 ]
 
 # If true, show URL addresses after external links.

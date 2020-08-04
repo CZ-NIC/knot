@@ -1,6 +1,6 @@
 usr/bin/kdig
 usr/bin/knsupdate
-usr/sbin/knot-xdp-gun
+usr/sbin/kxdpgun
 usr/share/man/man1/kdig.1
 usr/share/man/man1/knsupdate.1
-usr/share/man/man8/knot-xdp-gun.8
+usr/share/man/man8/kxdpgun.8

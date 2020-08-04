@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "utils/knot-xdp-gun/popenve.h"
+#include "utils/kxdpgun/popenve.h"
 
 #ifdef ENABLE_CAP_NG
 #include <cap-ng.h>

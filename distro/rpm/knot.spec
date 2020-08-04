@@ -249,8 +249,8 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_bindir}/knsec3hash
 %{_bindir}/knsupdate
 %if 0%{?rhel} >= 8 || 0%{?suse_version} || 0%{?fedora} >= 31
-%{_sbindir}/knot-xdp-gun
-%{_mandir}/man8/knot-xdp-gun.*
+%{_sbindir}/kxdpgun
+%{_mandir}/man8/kxdpgun.*
 %endif
 %{_mandir}/man1/kdig.*
 %{_mandir}/man1/khost.*
