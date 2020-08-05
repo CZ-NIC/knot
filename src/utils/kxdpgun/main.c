@@ -672,9 +672,9 @@ int main(int argc, char *argv[])
 		pthread_join(threads[i], NULL);
 	}
 	pthread_mutex_destroy(&global_mutex);
-	printf("total queries: %lu (%lu qps)\n", global_pkts_sent, global_pkts_sent * 1000 / (ctx.duration / 1000));
+	printf("total queries: %lu (%lu pps)\n", global_pkts_sent, global_pkts_sent * 1000 / (ctx.duration / 1000));
 	if (global_pkts_sent > 0 && ctx.listen_port != KNOT_XDP_LISTEN_PORT_DROP) {
-		printf("total replies: %lu (%lu qps) (%lu%%)\n", global_pkts_recv,
+		printf("total replies: %lu (%lu pps) (%lu%%)\n", global_pkts_recv,
 		       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
 		printf("average reply size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
 		for (int i = 0; i < KNOWN_RCODE_MAX; i++) {
