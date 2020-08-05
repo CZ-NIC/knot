@@ -65,18 +65,18 @@ version.h
 src/libknot/libknot.h
 
 # Binaries
-/src/kdig
-/src/khost
 /src/kcatalogprint
+/src/kdig
 /src/keymgr
+/src/khost
 /src/kjournalprint
 /src/knotc
 /src/knotd
 /src/knsec3hash
 /src/knsupdate
-/src/kzonesign
-/src/kzonecheck
 /src/kxdpgun
+/src/kzonecheck
+/src/kzonesign
 
 # Generated tarballs
 /knot-*.tar.xz

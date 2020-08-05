@@ -9,8 +9,8 @@ MANPAGES_IN = \
 	man/khost.1in		\
 	man/knsupdate.1in	\
 	man/knsec3hash.1in	\
-	man/kzonesign.8in	\
 	man/kzonecheck.1in	\
+	man/kzonesign.1in	\
 	man/kxdpgun.8in
 
 MANPAGES_RST = \
@@ -23,8 +23,8 @@ MANPAGES_RST = \
 	man_khost.rst		\
 	man_knsupdate.rst	\
 	man_knsec3hash.rst	\
-	man_kzonesign.rst	\
 	man_kzonecheck.rst	\
+	man_kzonesign.rst	\
 	man_kxdpgun.rst
 
 EXTRA_DIST = \
@@ -99,8 +99,8 @@ man_MANS += \
 	man/kcatalogprint.8	\
 	man/keymgr.8		\
 	man/kjournalprint.8	\
-	man/kzonesign.8		\
-	man/kzonecheck.1
+	man/kzonecheck.1	\
+	man/kzonesign.1
 endif # HAVE_DAEMON
 
 man_MANS += \
@@ -124,8 +124,8 @@ man/kdig.1:		man/kdig.1in
 man/khost.1:		man/khost.1in
 man/knsupdate.1:	man/knsupdate.1in
 man/knsec3hash.1:	man/knsec3hash.1in
-man/kzonesign.8:	man/kzonesign.8in
 man/kzonecheck.1:	man/kzonecheck.1in
+man/kzonesign.1:	man/kzonesign.1in
 man/kxdpgun.8:		man/kxdpgun.8in
 
 man_SUBST = $(AM_V_GEN)mkdir -p man; \
