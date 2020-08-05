@@ -93,8 +93,10 @@ struct umem_frame {
 	};
 };
 
-static const size_t FRAME_PAYLOAD_OFFSET4 = offsetof(struct udpv4, data) + offsetof(struct umem_frame, udpv4);
-static const size_t FRAME_PAYLOAD_OFFSET6 = offsetof(struct udpv6, data) + offsetof(struct umem_frame, udpv6);
+_public_
+const size_t KNOT_XDP_PAYLOAD_OFFSET4 = offsetof(struct udpv4, data) + offsetof(struct umem_frame, udpv4);
+_public_
+const size_t KNOT_XDP_PAYLOAD_OFFSET6 = offsetof(struct udpv6, data) + offsetof(struct umem_frame, udpv6);
 
 static int configure_xsk_umem(struct kxsk_umem **out_umem)
 {
@@ -305,7 +307,7 @@ int knot_xdp_send_alloc(knot_xdp_socket_t *socket, bool ipv6, knot_xdp_msg_t *ou
 		return KNOT_EINVAL;
 	}
 
-	size_t ofs = ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4;
+	size_t ofs = ipv6 ? KNOT_XDP_PAYLOAD_OFFSET6 : KNOT_XDP_PAYLOAD_OFFSET4;
 
 	struct umem_frame *uframe = alloc_tx_frame(socket->umem);
 	if (uframe == NULL) {
@@ -388,7 +390,7 @@ static uint8_t *msg_uframe_ptr(knot_xdp_socket_t *socket, const knot_xdp_msg_t *
 
 #ifndef NDEBUG
 	intptr_t pd = (uint8_t *)msg->payload.iov_base - uframe_p
-	              - (ipv6 ? FRAME_PAYLOAD_OFFSET6 : FRAME_PAYLOAD_OFFSET4);
+	              - (ipv6 ? KNOT_XDP_PAYLOAD_OFFSET6 : KNOT_XDP_PAYLOAD_OFFSET4);
 	/* This assertion might fire in some OK cases.  For example, the second branch
 	 * had to be added for cases with "emulated" AF_XDP support. */
 	assert(pd == XDP_PACKET_HEADROOM || pd == 0);
@@ -432,7 +434,7 @@ static void xsk_sendmsg_ipv4(knot_xdp_socket_t *socket, const knot_xdp_msg_t *ms
 
 	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
 		.addr = h->bytes - socket->umem->frames->bytes,
-		.len = FRAME_PAYLOAD_OFFSET4 + msg->payload.iov_len
+		.len = KNOT_XDP_PAYLOAD_OFFSET4 + msg->payload.iov_len
 	};
 }
 
@@ -480,7 +482,7 @@ static void xsk_sendmsg_ipv6(knot_xdp_socket_t *socket, const knot_xdp_msg_t *ms
 
 	*xsk_ring_prod__tx_desc(&socket->tx, index) = (struct xdp_desc){
 		.addr = h->bytes - socket->umem->frames->bytes,
-		.len = FRAME_PAYLOAD_OFFSET6 + msg->payload.iov_len
+		.len = KNOT_XDP_PAYLOAD_OFFSET6 + msg->payload.iov_len
 	};
 }
 

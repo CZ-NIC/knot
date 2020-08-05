@@ -55,6 +55,10 @@ typedef enum {
 /*! \brief Context structure for one XDP socket. */
 typedef struct knot_xdp_socket knot_xdp_socket_t;
 
+/*! \brief Offset of DNS payload inside ethernet frame (IPv4 and v6 variants). */
+extern const size_t KNOT_XDP_PAYLOAD_OFFSET4;
+extern const size_t KNOT_XDP_PAYLOAD_OFFSET6;
+
 /*!
  * \brief Initialize XDP socket.
  *
