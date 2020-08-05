@@ -677,6 +677,8 @@ int main(int argc, char *argv[])
 		printf("total replies: %lu (%lu pps) (%lu%%)\n", global_pkts_recv,
 		       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
 		printf("average reply size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
+		size_t bytes_recv = global_size_recv + (ctx.ipv6 ? XDP_FRAME_PAYLOAD_OFFSET6 : XDP_FRAME_PAYLOAD_OFFSET4) * global_pkts_recv;
+		printf("reply data rate (incl eth/IP headers): %lu bps\n", bytes_recv * 8 * 1000 / (ctx.duration / 1000));
 		for (int i = 0; i < KNOWN_RCODE_MAX; i++) {
 			uint64_t rcode_count = 0;
 			for (size_t j = 0; j < ctx.n_threads; j++) {
