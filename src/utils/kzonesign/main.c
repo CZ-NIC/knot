@@ -50,7 +50,8 @@ static bool init_conf(const char *confdb)
 
 static void print_help(void)
 {
-	printf("Usage: %s -c <knot_conf> [-R] [-T <timestamp>] [-o <outdir>] zone_name\n", PROGRAM_NAME);
+	printf("Usage: %s -c <knot_conf> [-R] [-T <timestamp>] [-o <outdir>] zone_name\n",
+	       PROGRAM_NAME);
 }
 
 int main(int argc, char *argv[])
@@ -65,18 +66,24 @@ int main(int argc, char *argv[])
 	int64_t timestamp = 0;
 	zone_sign_reschedule_t next_sign = { 0 };
 
-	int opt;
 	struct option opts[] = {
-			{ "help",     no_argument,       NULL, 'h' },
-			{ "version",  no_argument,       NULL, 'V' },
+		{ "config",    required_argument, NULL, 'c' },
+		{ "rollover",  no_argument,       NULL, 'R' },
+		{ "timestamp", required_argument, NULL, 'T' },
+		{ "outdir",    required_argument, NULL, 'o' },
+		{ "help",      no_argument,       NULL, 'h' },
+		{ "version",   no_argument,       NULL, 'V' },
+		{ NULL }
 	};
-	while ((opt = getopt_long(argc, argv, "Vhc:RT:o:", opts, NULL)) != -1) {
+
+	int opt;
+	while ((opt = getopt_long(argc, argv, "hVc:RT:o:", opts, NULL)) != -1) {
 		switch (opt) {
-		case 'V':
-			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
 		case 'h':
 			print_help();
+			return EXIT_SUCCESS;
+		case 'V':
+			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
 		case 'c':
 			confile = optarg;
@@ -107,7 +114,7 @@ int main(int argc, char *argv[])
 	zone_str = argv[optind];
 	zone_name = knot_dname_from_str_alloc(zone_str);
 	if (zone_name == NULL) {
-		printf("inproper zone name\n");
+		printf("Invalid zone name '%s'\n", zone_str);
 		return EXIT_FAILURE;
 	}
 
@@ -118,20 +125,20 @@ int main(int argc, char *argv[])
 
 	int ret = conf_import(conf(), confile, true, false);
 	if (ret != KNOT_EOK) {
-		printf("Failed opening configuration file %s (%s)\n",
+		printf("Failed opening configuration file '%s' (%s)\n",
 		       confile, knot_strerror(ret));
 		goto fail;
 	}
 
 	conf_val_t val = conf_zone_get(conf(), C_DOMAIN, zone_name);
 	if (val.code != KNOT_EOK) {
-		printf("Zone not found in configuation (%s)\n", knot_strerror(val.code));
+		printf("Zone '%s' not configured\n", zone_str);
 		ret = val.code;
 		goto fail;
 	}
 	val = conf_zone_get(conf(), C_DNSSEC_POLICY, zone_name);
 	if (val.code != KNOT_EOK) {
-		printf("Waring: DNSSEC policy not configured for zone %s, taking defaults.\n", zone_str);
+		printf("Waring: DNSSEC policy not configured for zone '%s', taking defaults\n", zone_str);
 	}
 
 	zone_struct = zone_new(zone_name);
@@ -191,7 +198,7 @@ int main(int argc, char *argv[])
 			printf("Next NSEC3 re-sign: %lu\n", next_sign.next_nsec3resalt);
 		}
 		if (next_sign.plan_ds_check) {
-			printf("Submit keys to parent zone.\n");
+			printf("Submit keys to parent zone\n");
 		}
 	}
 
