@@ -38,6 +38,10 @@
 #include "contrib/sockaddr.h"
 #include "contrib/trim.h"
 
+#ifdef SO_ATTACH_REUSEPORT_CBPF
+#include <linux/filter.h>
+#endif
+
 /*! \brief Minimal send/receive buffer sizes. */
 enum {
 	UDP_MIN_RCVSIZE = 4096,
@@ -95,6 +99,35 @@ static void server_deinit_iface_list(iface_t *ifaces, size_t n)
 		}
 		free(ifaces);
 	}
+}
+
+/*!
+ * \brief Attach CBPF filter at SO_REUSEPORT socket for perfect CPU locality
+ *
+ * \param sock        Socket where to attach the CBPF filter to.
+ * \param sock_count  Number of sockets.
+ */
+static bool server_attach_reuseport_bpf(const int sock, const int sock_count)
+{
+#ifdef SO_ATTACH_REUSEPORT_CBPF
+	struct sock_filter code[] = {
+		/* A = raw_smp_processor_id() */
+		{ BPF_LD  | BPF_W | BPF_ABS, 0, 0, SKF_AD_OFF + SKF_AD_CPU },
+		/* Adjust the CPUID to socket group size */
+		{ BPF_ALU | BPF_MOD | BPF_K, 0, 0, sock_count },
+		/* return A */
+		{ BPF_RET | BPF_A, 0, 0, 0 },
+	};
+
+	struct sock_fprog prog = {
+		.len = sizeof(code)/sizeof(*code),
+		.filter = code,
+	};
+
+	return setsockopt(sock, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF, &prog, sizeof(prog)) == 0;
+#else
+	return KNOT_ENOTSUP;
+#endif
 }
 
 /*! \brief Set lower bound for socket option. */
@@ -312,6 +345,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	}
 
 	bool warn_bind = true;
+	bool warn_cbpf = true;
 	bool warn_bufsize = true;
 	bool warn_pktinfo = true;
 	bool warn_flag_misc = true;
@@ -333,6 +367,14 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			          knot_strerror(sock));
 			server_deinit_iface(new_if, true);
 			return NULL;
+		}
+
+		if (udp_bind_flags & NET_BIND_MULTIPLE) {
+			if (!server_attach_reuseport_bpf(sock, udp_socket_count) &&
+			    warn_cbpf) {
+				log_warning("cannot ensure optimal CPU locality for UDP");
+				warn_cbpf = false;
+			}
 		}
 
 		if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE) &&
@@ -397,6 +439,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			server_deinit_iface(new_if, true);
 			return NULL;
 		}
+
+		/* Suitable place for possible server_attach_reuseport_bpf(). */
 
 		/* TCP Fast Open. */
 		ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
