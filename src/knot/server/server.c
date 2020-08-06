@@ -398,6 +398,14 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
+		if (tcp_bind_flags & NET_BIND_MULTIPLE) {
+			ret = net_attach_reuseport_bpf(sock);
+			if (ret != KNOT_EOK) {
+				close(sock);
+				return NULL;
+			}
+		}
+
 		/* TCP Fast Open. */
 		ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
 		if (ret < 0 && warn_flag_misc) {
