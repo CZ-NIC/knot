@@ -41,6 +41,13 @@ enum net_flags {
 int net_unbound_socket(int type, const struct sockaddr_storage *addr);
 
 /*!
+ * \brief Attach CBPF filter at SO_REUSEPORT socket for perfect CPU locality
+ *
+ * \param sock  Socket where will be CBPF filter attached
+ */
+int net_attach_reuseport_bpf(int sock);
+
+/*!
  * \brief Create socket bound to given address.
  *
  * The socket is set to non-blocking mode.
