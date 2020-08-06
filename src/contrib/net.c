@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <linux/filter.h>
 
 #include "libknot/errcode.h"
 #include "contrib/macros.h"
@@ -148,10 +149,37 @@ static int enable_reuseport(int sock)
 {
 #ifdef ENABLE_REUSEPORT
 #  if defined(__FreeBSD__)
-	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT_LB);
+        return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT_LB);
 #  else
-	return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT);
+        return sockopt_enable(sock, SOL_SOCKET, SO_REUSEPORT);
 #  endif
+#else
+        return KNOT_ENOTSUP;
+#endif
+}
+
+int attach_reuseport_bpf(int sock)
+{
+#ifdef SO_ATTACH_REUSEPORT_CBPF
+	struct sock_filter code[] = {
+		/* A = raw_smp_processor_id() */
+		{ BPF_LD  | BPF_W | BPF_ABS, 0, 0, SKF_AD_OFF + SKF_AD_CPU },
+		//{ BPF_ALU | BPF_MOD | BPF_K, 0, 0, 1 },
+		/* return A */
+		{ BPF_RET | BPF_A, 0, 0, 0 },
+	};
+
+	struct sock_fprog prog = {
+		.len = sizeof(code)/sizeof(*code),
+		.filter = code,
+	};
+
+	int err = setsockopt(sock, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF, &prog, sizeof(prog));
+	if (err) {
+		return knot_map_errno();
+	}
+
+	return err;
 #else
 	return KNOT_ENOTSUP;
 #endif
@@ -212,6 +240,14 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr, enum net_fla
 		ret = knot_map_errno();
 		close(sock);
 		return ret;
+	}
+
+	if (flags & NET_BIND_MULTIPLE && type == SOCK_DGRAM) {
+		ret = attach_reuseport_bpf(sock);
+		if (ret != KNOT_EOK) {
+			close(sock);
+			return ret;
+		}
 	}
 
 	return sock;
