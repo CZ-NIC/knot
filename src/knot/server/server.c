@@ -18,6 +18,7 @@
 
 #include <assert.h>
 #include <sys/resource.h>
+#include <linux/filter.h>
 
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
@@ -261,6 +262,38 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *t
 }
 
 /*!
+ * \brief Attach CBPF filter at SO_REUSEPORT socket for perfect CPU locality
+ *
+ * \param sock  Socket where will be CBPF filter attached
+ */
+static int server_attach_reuseport_bpf(const int sock, const int group_size)
+{
+#ifdef SO_ATTACH_REUSEPORT_CBPF
+	struct sock_filter code[] = {
+		/* A = raw_smp_processor_id() */
+		{ BPF_LD  | BPF_W | BPF_ABS, 0, 0, SKF_AD_OFF + SKF_AD_CPU },
+		{ BPF_ALU | BPF_MOD | BPF_K, 0, 0, group_size },
+		/* return A */
+		{ BPF_RET | BPF_A, 0, 0, 0 },
+	};
+
+	struct sock_fprog prog = {
+		.len = sizeof(code)/sizeof(*code),
+		.filter = code,
+	};
+
+	int err = setsockopt(sock, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF, &prog, sizeof(prog));
+	if (err) {
+		return knot_map_errno();
+	}
+
+	return err;
+#else
+	return KNOT_ENOTSUP;
+#endif
+}
+
+/*!
  * \brief Create and initialize new interface.
  *
  * Both TCP and UDP sockets will be created for the interface.
@@ -335,6 +368,14 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
+		if (udp_bind_flags & NET_BIND_MULTIPLE) {
+			if (server_attach_reuseport_bpf(sock, udp_socket_count)) {
+				log_warning("address %s UDP bound, but required nonlocal bind", addr_str);
+				return NULL;
+			}
+		}
+
+
 		if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE) &&
 		    warn_bufsize) {
 			log_warning("failed to set network buffer sizes for UDP");
@@ -399,7 +440,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 
 		if (tcp_bind_flags & NET_BIND_MULTIPLE) {
-			ret = net_attach_reuseport_bpf(sock);
+			ret = server_attach_reuseport_bpf(sock, tcp_socket_count);
 			if (ret != KNOT_EOK) {
 				close(sock);
 				return NULL;
