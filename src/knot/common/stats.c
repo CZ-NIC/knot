@@ -159,7 +159,7 @@ static void dump_to_file(FILE *fd, server_t *server)
 	struct tm tm;
 	time_t now = time(NULL);
 	localtime_r(&now, &tm);
-	strftime(date, sizeof(date), "%Y-%m-%dT%H:%M:%S%z", &tm);
+	strftime(date, sizeof(date), KNOT_LOG_TIME_FORMAT, &tm);
 
 	// Get the server identity.
 	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);

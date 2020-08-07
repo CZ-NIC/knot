@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 #include "knot/conf/conf.h"
 
 /*! \brief Format for timestamps in log files. */
-#define KNOT_LOG_TIME_FORMAT "%Y-%m-%dT%H:%M:%S"
+#define KNOT_LOG_TIME_FORMAT "%Y-%m-%dT%H:%M:%S%z"
 
 /*! \brief Logging targets. */
 typedef enum {
