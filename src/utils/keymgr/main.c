@@ -315,10 +315,9 @@ static bool init_confile(const char *confile)
 
 static bool init_conf_blank(const char *kasp_dir)
 {
-	char *confstr = sprintf_alloc("template:\n"""
-	                              "  - id: default\n"
-	                              "    storage: .\n"
-	                              "    kasp-db: \"%s\"\n", kasp_dir);
+	char *confstr = sprintf_alloc("database:\n"
+	                              "  storage: .\n"
+	                              "  kasp-db: \"%s\"\n", kasp_dir);
 	int ret = conf_import(conf(), confstr, false, false);
 	free(confstr);
 	if (ret != KNOT_EOK) {
