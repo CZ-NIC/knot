@@ -472,11 +472,6 @@ src/utils/khost/khost_main.c
 src/utils/khost/khost_params.c
 src/utils/khost/khost_params.h
 src/utils/kjournalprint/main.c
-src/utils/kxdpgun/load_queries.c
-src/utils/kxdpgun/load_queries.h
-src/utils/kxdpgun/main.c
-src/utils/kxdpgun/popenve.c
-src/utils/kxdpgun/popenve.h
 src/utils/knotc/commands.c
 src/utils/knotc/commands.h
 src/utils/knotc/interactive.c
@@ -491,9 +486,15 @@ src/utils/knsupdate/knsupdate_exec.h
 src/utils/knsupdate/knsupdate_main.c
 src/utils/knsupdate/knsupdate_params.c
 src/utils/knsupdate/knsupdate_params.h
+src/utils/kxdpgun/load_queries.c
+src/utils/kxdpgun/load_queries.h
+src/utils/kxdpgun/main.c
+src/utils/kxdpgun/popenve.c
+src/utils/kxdpgun/popenve.h
 src/utils/kzonecheck/main.c
 src/utils/kzonecheck/zone_check.c
 src/utils/kzonecheck/zone_check.h
+src/utils/kzonesign/main.c
 tests-fuzz/fuzz_dname_from_str.c
 tests-fuzz/fuzz_dname_to_str.c
 tests-fuzz/fuzz_packet.c

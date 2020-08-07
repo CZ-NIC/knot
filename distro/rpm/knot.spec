@@ -225,6 +225,7 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_unitdir}/knot.service
 %{_tmpfilesdir}/%{name}.conf
 %{_bindir}/kzonecheck
+%{_bindir}/kzonesign
 %{_sbindir}/kcatalogprint
 %{_sbindir}/kjournalprint
 %{_sbindir}/keymgr
@@ -234,6 +235,7 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_sbindir}/rcknot
 %endif
 %{_mandir}/man1/kzonecheck.*
+%{_mandir}/man1/kzonesign.*
 %{_mandir}/man5/knot.conf.*
 %{_mandir}/man8/kcatalogprint.*
 %{_mandir}/man8/kjournalprint.*

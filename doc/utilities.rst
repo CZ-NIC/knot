@@ -16,6 +16,7 @@ the server. This section collects manual pages for all provided binaries:
    man_kjournalprint
    man_kcatalogprint
    man_kzonecheck
+   man_kzonesign
    man_kdig
    man_khost
    man_knsec3hash
