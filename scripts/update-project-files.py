@@ -10,6 +10,10 @@ SOURCES = [
     "tests-fuzz/*.c", "tests-fuzz/*.h",
 ]
 
+SOURCES_EXTRA = [
+    "src/libknot/libknot.h"
+]
+
 OUTPUT_FILE = "Knot.files"
 
 # ----------------------------------------------------------------------------
@@ -31,7 +35,7 @@ git_root = run(["git", "rev-parse", "--show-toplevel"]).strip()
 os.chdir(git_root)
 
 command = ["git", "ls-files"] + SOURCES
-files = run(command).splitlines()
+files = run(command).splitlines() + SOURCES_EXTRA
 
 with open(OUTPUT_FILE, "w") as output:
     output.write("\n".join(sorted(files)))

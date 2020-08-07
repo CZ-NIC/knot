@@ -69,6 +69,7 @@ int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
  * \param update       Zone Update structure with current zone contents to be updated by signing.
  * \param flags        Zone signing flags.
  * \param roll_flags   Key rollover flags.
+ * \param adjust_now   If not zero: adjust "now" to this timestamp.
  * \param reschedule   Signature refresh time of the oldest signature in zone.
  *
  * \return Error code, KNOT_EOK if successful.
@@ -76,6 +77,7 @@ int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
 int knot_dnssec_zone_sign(zone_update_t *update,
                           zone_sign_flags_t flags,
                           zone_sign_roll_flags_t roll_flags,
+                          knot_time_t adjust_now,
                           zone_sign_reschedule_t *reschedule);
 
 /*!
