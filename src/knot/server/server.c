@@ -400,6 +400,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	}
 
 	warn_bind = true;
+	warn_cbpf = true;
 	warn_bufsize = true;
 	warn_flag_misc = true;
 
@@ -439,7 +440,13 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
-		/* Suitable place for possible server_attach_reuseport_bpf(). */
+		if (tcp_bind_flags & NET_BIND_MULTIPLE) {
+			if (!server_attach_reuseport_bpf(sock, tcp_socket_count) &&
+			    warn_cbpf) {
+				log_warning("cannot ensure optimal CPU locality for TCP");
+				warn_cbpf = false;
+			}
+		}
 
 		/* TCP Fast Open. */
 		ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
