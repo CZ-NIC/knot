@@ -300,6 +300,17 @@ int tcp_master(dthread_t *thread)
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	int thread_id = handler->thread_id[dt_get_id(thread)];
 
+#ifdef ENABLE_REUSEPORT
+	/* Set thread affinity to CPU core (overlaps with UDP/XDP). */
+	if (conf()->cache.srv_tcp_reuseport) {
+		unsigned cpu = dt_online_cpus();
+		if (cpu > 1) {
+			unsigned cpu_mask = (dt_get_id(thread) % cpu);
+			dt_setaffinity(thread, &cpu_mask, 1);
+		}
+	}
+#endif
+
 	int ret = KNOT_EOK;
 
 	/* Create big enough memory cushion. */
