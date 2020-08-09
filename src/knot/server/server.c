@@ -102,7 +102,7 @@ static void server_deinit_iface_list(iface_t *ifaces, size_t n)
 }
 
 /*!
- * \brief Attach CBPF filter at SO_REUSEPORT socket for perfect CPU locality
+ * \brief Attach SO_REUSEPORT socket filter for perfect CPU locality.
  *
  * \param sock        Socket where to attach the CBPF filter to.
  * \param sock_count  Number of sockets.
@@ -111,22 +111,21 @@ static bool server_attach_reuseport_bpf(const int sock, const int sock_count)
 {
 #ifdef SO_ATTACH_REUSEPORT_CBPF
 	struct sock_filter code[] = {
-		/* A = raw_smp_processor_id() */
+		/* A = raw_smp_processor_id(). */
 		{ BPF_LD  | BPF_W | BPF_ABS, 0, 0, SKF_AD_OFF + SKF_AD_CPU },
-		/* Adjust the CPUID to socket group size */
+		/* Adjust the CPUID to socket group size. */
 		{ BPF_ALU | BPF_MOD | BPF_K, 0, 0, sock_count },
-		/* return A */
+		/* Return A. */
 		{ BPF_RET | BPF_A, 0, 0, 0 },
 	};
 
-	struct sock_fprog prog = {
-		.len = sizeof(code)/sizeof(*code),
-		.filter = code,
-	};
+	struct sock_fprog prog = { 0 };
+	prog.len = sizeof(code) / sizeof(*code);
+	prog.filter = code;
 
 	return setsockopt(sock, SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF, &prog, sizeof(prog)) == 0;
 #else
-	return KNOT_ENOTSUP;
+	return true;
 #endif
 }
 
