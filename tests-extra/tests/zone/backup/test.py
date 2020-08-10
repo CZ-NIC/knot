@@ -71,8 +71,10 @@ if dnskey2_3 == dnskey2_1:
 test_added(master, zones, [ "NOERROR", "NXDOMAIN" ])
 
 master.stop()
-shutil.rmtree(master.keydir)
-shutil.copytree(backup_dir + "/keys", master.keydir) # offline restore
+keydir = master.keydir # BEWARE this is function invocation
+shutil.rmtree(keydir)
+shutil.copytree(backup_dir + "/keys", keydir) # offline restore
+
 shutil.rmtree(master.dir + "/journal")
 master.start()
 master.zones_wait(zones)
