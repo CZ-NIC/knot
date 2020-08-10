@@ -1348,6 +1348,7 @@ zone:
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
+    catalog\-role: none | interpret
     catalog\-template: template_id
     module: STR/STR ...
 .ft P
@@ -1648,9 +1649,27 @@ Forced minimum zone refresh interval to avoid flooding master.
 Forced maximum zone refresh interval.
 .sp
 \fIDefault:\fP not set
+.SS catalog\-role
+.sp
+Trigger zone catalog feature. Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBnone\fP \- No catalog zone.
+.IP \(bu 2
+\fBinterpret\fP \- This zone is loaded from zone file or XFR, and member zones shall be configured based on its contents.
+.UNINDENT
+.sp
+\fIDefault:\fP none
 .SS catalog\-template
 .sp
-This zone is a catalog zone. For the catalog\-member zones, the specified configuration template will be applied.
+For the catalog\-member zones, the specified configuration template will be applied.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option must be set iff \fBcatalog\-role\fP is \fBinterpret\fP\&.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP not set
 .SS module
