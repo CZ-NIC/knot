@@ -676,9 +676,9 @@ int main(int argc, char *argv[])
 	if (global_pkts_sent > 0 && ctx.listen_port != KNOT_XDP_LISTEN_PORT_DROP) {
 		printf("total replies: %lu (%lu pps) (%lu%%)\n", global_pkts_recv,
 		       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
-		printf("average reply size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
+		printf("average DNS reply size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
 		size_t bytes_recv = global_size_recv + (ctx.ipv6 ? KNOT_XDP_PAYLOAD_OFFSET6 : KNOT_XDP_PAYLOAD_OFFSET4) * global_pkts_recv;
-		printf("reply data rate (incl eth/IP headers): %lu bps\n", bytes_recv * 8 * 1000 / (ctx.duration / 1000));
+		printf("average Ethernet reply rate: %lu bps\n", bytes_recv * 8 * 1000 / (ctx.duration / 1000));
 		for (int i = 0; i < KNOWN_RCODE_MAX; i++) {
 			uint64_t rcode_count = 0;
 			for (size_t j = 0; j < ctx.n_threads; j++) {
@@ -687,7 +687,7 @@ int main(int argc, char *argv[])
 			if (rcode_count > 0) {
 				const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, i);
 				const char *rcname = rcode == NULL ? "unknown" : rcode->name;
-				printf("responded %s:\t%lu\n", rcname, rcode_count);
+				printf("responded %s: %lu\n", rcname, rcode_count);
 			}
 		}
 	}
