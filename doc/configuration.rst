@@ -597,7 +597,7 @@ Catalog zone is handled almost in the same way as a regular zone.
 It can be configured using all the standard options (but for example
 DNSSEC signing would be useless), including master/slave configuration
 and ACLs. Being a catalog zone is indicated by setting the option
-:ref:`zone_catalog-template`. The difference is that standard DNS
+:ref:`zone_catalog-role`. The difference is that standard DNS
 queries to a catalog zone are answered with REFUSED as if such a zone
 wouldn't exist, unless querying over TCP from an address with transfers enabled
 by ACL. The name of the catalog zone is arbitrary. It's however required to

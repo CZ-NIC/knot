@@ -624,6 +624,16 @@ int check_zone(
 		return KNOT_EINVAL;
 	}
 
+	conf_val_t catalog_role = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                            C_CATALOG_ROLE, yp_dname(args->id));
+	conf_val_t catalog_tpl = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                           C_CATALOG_TPL, yp_dname(args->id));
+	if ((bool)(conf_opt(&catalog_role) == CATALOG_ROLE_INTERPRET) !=
+	    (bool)(catalog_tpl.code == KNOT_EOK)) {
+		args->err_str = "'catalog-role' must correspond to configured 'catalog-template'";
+		return KNOT_EINVAL;
+	}
+
 	return KNOT_EOK;
 }
 
