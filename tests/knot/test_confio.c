@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -955,11 +955,18 @@ static const yp_item_t desc_remote[] = {
 	{ NULL }
 };
 
+static const knot_lookup_t catalog_roles[] = {
+	{ 0, NULL }
+};
+
 #define ZONE_ITEMS \
-	{ C_FILE,           YP_TSTR,  YP_VNONE }, \
-	{ C_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
-	{ C_DNSSEC_SIGNING, YP_TBOOL, YP_VNONE }, \
-	{ C_COMMENT,        YP_TSTR,  YP_VNONE },
+	{ C_FILE,              YP_TSTR,  YP_VNONE }, \
+	{ C_MASTER,            YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
+	{ C_DNSSEC_SIGNING,    YP_TBOOL, YP_VNONE }, \
+	{ C_DNSSEC_VALIDATION, YP_TBOOL, YP_VNONE }, \
+	{ C_CATALOG_ROLE,      YP_TOPT,  YP_VOPT = { catalog_roles, 0 } }, \
+	{ C_CATALOG_TPL,       YP_TREF,  YP_VREF = { C_RMT } }, \
+	{ C_COMMENT,           YP_TSTR,  YP_VNONE },
 
 static const yp_item_t desc_template[] = {
 	{ C_ID, YP_TSTR, YP_VNONE },
