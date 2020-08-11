@@ -25,6 +25,8 @@ int main(int argc, char *argv[])
 {
 	int ret = EXIT_SUCCESS;
 
+	tzset();
+
 	kdig_params_t params;
 	if (kdig_parse(&params, argc, argv) == KNOT_EOK) {
 		if (!params.stop) {

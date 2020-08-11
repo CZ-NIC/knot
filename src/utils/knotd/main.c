@@ -396,6 +396,9 @@ int main(int argc, char **argv)
 		{ NULL }
 	};
 
+	/* Set the time zone. */
+	tzset();
+
 	/* Parse command line arguments. */
 	int opt = 0;
 	while ((opt = getopt_long(argc, argv, "c:C:m:s:dvhV", opts, NULL)) != -1) {
