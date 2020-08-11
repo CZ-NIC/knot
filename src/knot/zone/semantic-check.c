@@ -333,6 +333,10 @@ static int check_rrsig_rdata(sem_handler_t *handler,
 					continue;
 				}
 
+				if (dnssec_key_get_keytag(key) != knot_rrsig_key_tag(rrsig)) {
+					continue;
+				}
+
 				ret = check_signature(rrsig, key, rrset);
 				dnssec_key_free(key);
 				if (ret == KNOT_EOK) {
