@@ -368,6 +368,8 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
+	tzset();
+
 	int opt = 0, parm = 0;
 	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:", opts, NULL)) != -1) {
 		switch (opt) {
