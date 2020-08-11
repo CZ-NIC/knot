@@ -26,6 +26,8 @@ int main(int argc, char *argv[])
 
 	int ret = EXIT_SUCCESS;
 
+	tzset();
+
 	knsupdate_params_t params;
 	if (knsupdate_parse(&params, argc, argv) == KNOT_EOK) {
 		if (!params.stop) {
