@@ -334,6 +334,7 @@ static int check_rrsig_rdata(sem_handler_t *handler,
 				}
 
 				if (dnssec_key_get_keytag(key) != knot_rrsig_key_tag(rrsig)) {
+					dnssec_key_free(key);
 					continue;
 				}
 
