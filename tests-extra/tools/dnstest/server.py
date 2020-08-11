@@ -1465,6 +1465,7 @@ class Knot(Server):
                 s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
 
             if z.catalog:
+                s.item_str("catalog-role", "interpret")
                 s.item_str("catalog-template", "catemplate")
 
             if z.dnssec.validate:

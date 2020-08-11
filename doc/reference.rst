@@ -1478,6 +1478,7 @@ Definition of zones served by the server.
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
+     catalog-role: none | interpret
      catalog-template: template_id
      module: STR/STR ...
 
@@ -1804,12 +1805,28 @@ Forced maximum zone refresh interval.
 
 *Default:* not set
 
+.. _zone_catalog-role:
+
+catalog-role
+------------
+
+Trigger zone catalog feature. Possible values:
+
+- ``none`` – Not a catalog zone.
+- ``interpret`` – A catalog zone which is loaded from a zone file or XFR,
+  and member zones shall be configured based on its contents.
+
+*Default:* none
+
 .. _zone_catalog-template:
 
 catalog-template
 ----------------
 
-This zone is a catalog zone. For the catalog-member zones, the specified configuration template will be applied.
+For the catalog-member zones, the specified configuration template will be applied.
+
+.. NOTE::
+   This option must be set if and only if :ref:`zone_catalog-role` is *interpret*.
 
 *Default:* not set
 
