@@ -525,7 +525,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	dnssec_key_set_algorithm(key, ctx->policy->algorithm);
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
-	ret = dnssec_keystore_export(ctx->keystore, keyid, key);
+	ret = dnssec_keystore_get_private(ctx->keystore, keyid, key);
 	if (ret != DNSSEC_EOK) {
 		goto fail;
 	}

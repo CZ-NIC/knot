@@ -184,7 +184,7 @@ int dnssec_keystore_import(dnssec_keystore_t *store, const dnssec_binary_t *pem,
 int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id);
 
 /*!
- * Export public and/or private key from the key store into a DNSSEC key.
+ * Export private key from the key store into a DNSSEC key.
  *
  * The key algorithm has to be set before calling this function.
  *
@@ -194,8 +194,8 @@ int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id);
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
-			   dnssec_key_t *key);
+int dnssec_keystore_get_private(dnssec_keystore_t *store, const char *id,
+				dnssec_key_t *key);
 
 /*!
  * Import a DNSSEC private key into key store.
