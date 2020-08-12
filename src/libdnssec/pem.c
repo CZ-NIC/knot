@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -142,5 +142,13 @@ int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem)
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	return dnssec_pem_from_x509(_key, pem);
+	dnssec_binary_t _pem = { 0 };
+	r = dnssec_pem_from_x509(_key, &_pem);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	*pem = _pem;
+
+	return DNSSEC_EOK;
 }
