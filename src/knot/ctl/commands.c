@@ -385,13 +385,14 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 
 	zone_backup_ctx_t *ctx;
 
-	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE, C_MAX_TIMER_DB_SIZE);
+	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE,
+	                                         C_MAX_TIMER_DB_SIZE);
 
 	int ret = zone_backup_init(restore_mode, 1, dest,
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           conf_int(&timer_db_size),
 	                           knot_lmdb_copy_size(&args->server->journaldb),
-				   knot_lmdb_copy_size(&args->server->catalog.db),
+	                           knot_lmdb_copy_size(&args->server->catalog.db),
 	                           &ctx);
 	if (ret == KNOT_EOK) {
 		assert(ctx != NULL);
@@ -1358,7 +1359,7 @@ static int zone_stats(zone_t *zone, ctl_args_t *args)
 
 static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	int ret = KNOT_EOK;
+	int ret;
 	switch (cmd) {
 	case CTL_ZONE_STATUS:
 		return zones_apply(args, zone_status);
