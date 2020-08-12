@@ -179,6 +179,22 @@ Miscellaneous changes
   the module :ref:`DNS Cookies<mod-cookies>` was updated to be interoperable
 - Number of open files limit is set to 1048576 in upstream packages
 
+.. _Upgrade 2.9.x to 3.0.x:
+
+Upgrade 2.9.x to 3.0.x
+======================
+
+Knot DNS version 3.0.x is fully compatible with 2.9.x.
+
+Building notes
+--------------
+
+- The embedded library *LMDB* is no longer part of the source code. Almost every
+  modern operating system has a sufficient version of this library.
+- DoH support in kdig requires optional library *libnghttp2*.
+- XDP support on Linux requires optional library *libbpf >= 0.0.6*. If not available,
+  an embedded library can be used via ``--enable-xdp=yes`` configure option.
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users
