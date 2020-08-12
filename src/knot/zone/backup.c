@@ -122,7 +122,7 @@ static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keysto
 	}
 	dnssec_key_set_algorithm(key, parm->algorithm);
 
-	ret = dnssec_keystore_export(from, parm->id, key);
+	ret = dnssec_keystore_get_private(from, parm->id, key);
 	if (ret == DNSSEC_EOK) {
 		ret = dnssec_keystore_set_private(to, key);
 	}
