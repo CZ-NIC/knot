@@ -145,8 +145,8 @@ int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id)
 }
 
 _public_
-int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
-			   dnssec_key_t *key)
+int dnssec_keystore_get_private(dnssec_keystore_t *store, const char *id,
+				dnssec_key_t *key)
 {
 	if (!store || !id || dnssec_key_get_algorithm(key) == 0 || !key) {
 		return DNSSEC_EINVAL;

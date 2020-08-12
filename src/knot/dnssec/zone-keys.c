@@ -81,7 +81,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	dnssec_key_set_flags(dnskey, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
 	dnssec_key_set_algorithm(dnskey, algorithm);
 
-	r = dnssec_keystore_export(ctx->keystore, id, dnskey);
+	r = dnssec_keystore_get_private(ctx->keystore, id, dnskey);
 	if (r != KNOT_EOK) {
 		dnssec_key_free(dnskey);
 		free(id);
@@ -371,7 +371,7 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 		if (!key->is_active && !key->is_ksk_active_plus && !key->is_zsk_active_plus) {
 			continue;
 		}
-		int r = dnssec_keystore_export(keystore, key->id, key->key);
+		int r = dnssec_keystore_get_private(keystore, key->id, key->key);
 		switch (r) {
 		case DNSSEC_EOK:
 		case DNSSEC_KEY_ALREADY_PRESENT:

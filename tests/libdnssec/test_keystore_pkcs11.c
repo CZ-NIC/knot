@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -232,10 +232,10 @@ static void create_dnskeys(dnssec_keystore_t *keystore,
 	ok(r == DNSSEC_EOK && p11_key != NULL, MSG_PKCS11 " dnssec_key_new()");
 
 	r = dnssec_key_set_algorithm(p11_key, algorithm);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_set_key_algorithm()");
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_key_set_algorithm()");
 
-	r = dnssec_keystore_export(keystore, id, p11_key);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_key_import_keystore()");
+	r = dnssec_keystore_get_private(keystore, id, p11_key);
+	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_keystore_get_private()");
 
 	// construct software public key
 

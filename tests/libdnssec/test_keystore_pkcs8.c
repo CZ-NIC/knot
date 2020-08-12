@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,13 +59,13 @@ int main(void)
 	dnssec_key_t *key = NULL;
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
-	r = dnssec_keystore_export(store, id_A, key);
+	r = dnssec_keystore_get_private(store, id_A, key);
 	ok(r == DNSSEC_EOK, "read A");
 	dnssec_key_free(key);
 
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
-	r = dnssec_keystore_export(store, id_B, key);
+	r = dnssec_keystore_get_private(store, id_B, key);
 	ok(r == DNSSEC_EOK, "read B");
 	dnssec_key_free(key);
 
@@ -76,7 +76,7 @@ int main(void)
 
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
-	r = dnssec_keystore_export(store, id_A, key);
+	r = dnssec_keystore_get_private(store, id_A, key);
 	ok(r == DNSSEC_ENOENT, "read removed");
 	dnssec_key_free(key);
 
