@@ -31,6 +31,7 @@
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
 #include "knot/zone/catalog.h"
+#include "libdnssec/error.h"
 
 static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 {
@@ -128,8 +129,8 @@ static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keysto
 	dnssec_key_set_algorithm(key, parm->algorithm);
 
 	ret = dnssec_keystore_export(from, parm->id, key);
-	if (ret == 0 /* DNSSEC_EOK */) {
-		ret = dnssec_keystore_unexport(to, key);
+	if (ret == DNSSEC_EOK) {
+		ret = dnssec_keystore_set_private(to, key);
 	}
 
 	dnssec_key_free(key);
