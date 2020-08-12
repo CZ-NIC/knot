@@ -562,18 +562,6 @@ size_t knot_lmdb_usage(knot_lmdb_txn_t *txn)
 	return (pgs_used * st.ms_psize);
 }
 
-size_t knot_lmdb_db_usage(knot_lmdb_db_t *db)
-{
-	knot_lmdb_txn_t txn = { 0 };
-	if (knot_lmdb_open(db) != KNOT_EOK) {
-		return 0;
-	}
-	knot_lmdb_begin(db, &txn, false);
-	size_t res = knot_lmdb_usage(&txn);
-	knot_lmdb_commit(&txn);
-	return res;
-}
-
 static bool make_key_part(void *key_data, size_t key_len, const char *format, va_list arg)
 {
 	wire_ctx_t wire = wire_ctx_init(key_data, key_len);
