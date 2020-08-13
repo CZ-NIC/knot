@@ -45,7 +45,7 @@ static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **rem
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
 int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_dir,
-                     size_t kasp_db_size, size_t timer_db_size, size_t journal_size,
+                     size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx)
 {
 	if (backup_dir == NULL || out_ctx == NULL) {
@@ -80,7 +80,7 @@ int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_di
 	knot_lmdb_init(&ctx->bck_timer_db, db_dir, timer_db_size, 0, NULL);
 
 	snprintf(db_dir, sizeof(db_dir), "%s/journal", backup_dir);
-	knot_lmdb_init(&ctx->bck_journal, db_dir, journal_size, 0, NULL);
+	knot_lmdb_init(&ctx->bck_journal, db_dir, journal_db_size, 0, NULL);
 
 	snprintf(db_dir, sizeof(db_dir), "%s/catalog", backup_dir);
 	knot_lmdb_init(&ctx->bck_catalog, db_dir, catalog_db_size, 0, NULL);
