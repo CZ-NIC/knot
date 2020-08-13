@@ -385,12 +385,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 
 	zone_backup_ctx_t *ctx;
 
-	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE,
-	                                         C_MAX_TIMER_DB_SIZE);
-
 	int ret = zone_backup_init(restore_mode, 1, dest,
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
-	                           conf_int(&timer_db_size),
+	                           knot_lmdb_copy_size(&args->server->timerdb),
 	                           knot_lmdb_copy_size(&args->server->journaldb),
 	                           knot_lmdb_copy_size(&args->server->catalog.db),
 	                           &ctx);
