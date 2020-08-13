@@ -391,19 +391,21 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	                           knot_lmdb_copy_size(&args->server->journaldb),
 	                           knot_lmdb_copy_size(&args->server->catalog.db),
 	                           &ctx);
-	if (ret == KNOT_EOK) {
-		assert(ctx != NULL);
-		ctx->backup_journal = MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL);
-		ctx->backup_zone = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
-		args->custom_ctx = ctx;
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
-	if (ret == KNOT_EOK) {
-		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-			ret = global_backup(ctx, &args->server->catalog, NULL);
-		} else {
-			ctx->backup_global = true;
-		}
+
+	assert(ctx != NULL);
+	ctx->backup_journal = MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL);
+	ctx->backup_zone = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
+	args->custom_ctx = ctx;
+
+	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		ret = global_backup(ctx, &args->server->catalog, NULL);
+	} else {
+		ctx->backup_global = true;
 	}
+
 	return ret;
 }
 
