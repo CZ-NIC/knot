@@ -89,7 +89,7 @@ an error.
 Examples
 --------
 
-Queries file::
+Manually created queries file::
 
   abc6.example.com. AAAA
   nxdomain.example.com. A
@@ -97,6 +97,10 @@ Queries file::
   a.example.com. NS E
   ab.example.com. A D
   abcd.example.com. DS D
+
+Queries file generated from a zone file (Knot DNS format)::
+
+  cat ZONE_FILE | awk "{print \$1,\$3}" | grep -E "(NS|DS|A|AAAA|PTR|MX|SOA)$" | sort -u -R > queries.txt
 
 Program usage::
 

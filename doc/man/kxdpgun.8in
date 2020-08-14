@@ -105,7 +105,7 @@ Exit status of 0 means successful operation. Any other exit status indicates
 an error.
 .SH EXAMPLES
 .sp
-Queries file:
+Manually created queries file:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -117,6 +117,18 @@ notzone. A
 a.example.com. NS E
 ab.example.com. A D
 abcd.example.com. DS D
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Queries file generated from a zone file (Knot DNS format):
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cat ZONE_FILE | awk "{print \e$1,\e$3}" | grep \-E "(NS|DS|A|AAAA|PTR|MX|SOA)$" | sort \-u \-R > queries.txt
 .ft P
 .fi
 .UNINDENT
