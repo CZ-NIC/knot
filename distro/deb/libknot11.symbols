@@ -7,6 +7,8 @@ libknot.so.11 libknot11 #MINVER#
  KNOT_DB_LMDB_RDONLY@Base 3.0.0-1
  KNOT_DB_LMDB_WRITEMAP@Base 3.0.0-1
  KNOT_DUMP_STYLE_DEFAULT@Base 3.0.0-1
+ KNOT_XDP_PAYLOAD_OFFSET4@Base 3.0.0-1
+ KNOT_XDP_PAYLOAD_OFFSET6@Base 3.0.0-1
  knot_ctl_accept@Base 3.0.0-1
  knot_ctl_alloc@Base 3.0.0-1
  knot_ctl_bind@Base 3.0.0-1
@@ -30,6 +32,7 @@ libknot.so.11 libknot11 #MINVER#
  knot_dname_free@Base 3.0.0-1
  knot_dname_from_str@Base 3.0.0-1
  knot_dname_in_bailiwick@Base 3.0.0-1
+ knot_dname_is_case_equal@Base 3.0.0-1
  knot_dname_is_equal@Base 3.0.0-1
  knot_dname_labels@Base 3.0.0-1
  knot_dname_lf@Base 3.0.0-1
