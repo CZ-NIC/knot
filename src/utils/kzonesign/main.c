@@ -50,7 +50,16 @@ static bool init_conf(const char *confdb)
 
 static void print_help(void)
 {
-	printf("Usage: %s -c <knot_conf> [-R] [-T <timestamp>] [-o <outdir>] zone_name\n",
+	printf("Usage: %s [parameters] -c <conf_file> <zone_name>\n",
+	       "\n"
+	       "Parameters:\n"
+	       " -o, --outdir <dir_name>  Output directory.\n"
+	       " -r, --rollover           Allow key rollovers and NSEC3 re-salt.\n"
+	       " -t, --time <timestamp>   Current time specification.\n"
+	       "                            (default current UNIX time)\n"
+	       " -h, --help               Print the program help.\n"
+	       " -V, --version            Print the program version.\n"
+	       "\n",
 	       PROGRAM_NAME);
 }
 
@@ -68,39 +77,41 @@ int main(int argc, char *argv[])
 
 	struct option opts[] = {
 		{ "config",    required_argument, NULL, 'c' },
-		{ "rollover",  no_argument,       NULL, 'R' },
-		{ "timestamp", required_argument, NULL, 'T' },
 		{ "outdir",    required_argument, NULL, 'o' },
+		{ "rollover",  no_argument,       NULL, 'r' },
+		{ "time",      required_argument, NULL, 't' },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
+	tzset();
+
 	int opt;
-	while ((opt = getopt_long(argc, argv, "hVc:RT:o:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:o:rt:hV", opts, NULL)) != -1) {
 		switch (opt) {
-		case 'h':
-			print_help();
-			return EXIT_SUCCESS;
-		case 'V':
-			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
 		case 'c':
 			confile = optarg;
 			break;
-		case 'R':
+		case 'o':
+			global_outdir = optarg;
+			break;
+		case 'r':
 			rollover = KEY_ROLL_ALLOW_ALL;
 			break;
-		case 'T':
+		case 't':
 			timestamp = atol(optarg);
 			if (timestamp <= 0) {
 				print_help();
 				return EXIT_FAILURE;
 			}
 			break;
-		case 'o':
-			global_outdir = optarg;
-			break;
+		case 'h':
+			print_help();
+			return EXIT_SUCCESS;
+		case 'V':
+			print_version(PROGRAM_NAME);
+			return EXIT_SUCCESS;
 		default:
 			print_help();
 			return EXIT_FAILURE;
