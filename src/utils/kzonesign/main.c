@@ -50,7 +50,7 @@ static bool init_conf(const char *confdb)
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] -c <conf_file> <zone_name>\n",
+	printf("Usage: %s [parameters] -c <conf_file> <zone_name>\n"
 	       "\n"
 	       "Parameters:\n"
 	       " -o, --outdir <dir_name>  Output directory.\n"
