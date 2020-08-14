@@ -362,7 +362,11 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		rcu_read_lock();
 		int ret = zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
 		rcu_read_unlock();
-		return ret;
+		if (ret != KNOT_EOK) {
+			log_zone_warning(zone->name, "failed to update zone file (%s)",
+			                 knot_strerror(ret));
+		}
+		return args->data[KNOT_CTL_IDX_ZONE] == NULL ? KNOT_EOK : ret;
 	}
 
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
