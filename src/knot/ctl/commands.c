@@ -381,14 +381,14 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 		return KNOT_EINVAL;
 	}
 
-	const char *dest = args->data[KNOT_CTL_IDX_DATA];
-
 	zone_backup_ctx_t *ctx;
 
+	// The present timer db size is not up-to-date, use the maximum one.
 	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE,
 	                                         C_MAX_TIMER_DB_SIZE);
 
-	int ret = zone_backup_init(restore_mode, 1, dest,
+	int ret = zone_backup_init(restore_mode, 1,
+	                           args->data[KNOT_CTL_IDX_DATA],
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           conf_int(&timer_db_size),
 	                           knot_lmdb_copy_size(&args->server->journaldb),
@@ -416,6 +416,7 @@ static void deinit_backup(ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = args->custom_ctx;
 	pthread_mutex_lock(&ctx->zones_left_mutex);
+	assert(ctx->zones_left > 0);
 	size_t left = ctx->zones_left--; // the counter was in fact # of zones + 1
 	pthread_mutex_unlock(&ctx->zones_left_mutex);
 	if (left == 1) {
