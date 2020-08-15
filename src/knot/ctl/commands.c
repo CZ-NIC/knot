@@ -385,7 +385,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 
 	zone_backup_ctx_t *ctx;
 
-	int ret = zone_backup_init(restore_mode, dest,
+	int ret = zone_backup_init(restore_mode, 1, dest,
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           knot_lmdb_copy_size(&args->server->timerdb),
 	                           knot_lmdb_copy_size(&args->server->journaldb),
@@ -413,10 +413,9 @@ static void deinit_backup(ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = args->custom_ctx;
 	pthread_mutex_lock(&ctx->zones_left_mutex);
-	assert(ctx->zones_left > 0);
-	size_t left = ctx->zones_left--;
+	size_t left = ctx->zones_left--; // the counter was in fact # of zones + 1
 	pthread_mutex_unlock(&ctx->zones_left_mutex);
-	if (left == 0) {
+	if (left == 1) {
 		zone_backup_free(ctx);
 	}
 }

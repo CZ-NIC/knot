@@ -44,14 +44,16 @@ static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **rem
 
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
-int zone_backup_init(bool restore_mode, const char *backup_dir,
+int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx)
 {
 	if (backup_dir == NULL || out_ctx == NULL) {
 		return KNOT_EINVAL;
 	}
-
+	if (zone_count < 1) {
+		return KNOT_ENOZONE;
+	}
 	size_t backup_dir_len = strlen(backup_dir) + 1;
 
 	zone_backup_ctx_t *ctx = malloc(sizeof(*ctx) + backup_dir_len);
@@ -60,7 +62,7 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	}
 	ctx->restore_mode = restore_mode;
 	ctx->backup_global = false;
-	ctx->zones_left = 0;
+	ctx->zones_left = zone_count;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 	pthread_mutex_init(&ctx->zones_left_mutex, NULL);
@@ -246,7 +248,6 @@ int zone_backup(conf_t *conf, zone_t *zone)
 
 done:
 	pthread_mutex_lock(&ctx->zones_left_mutex);
-	assert(ctx->zones_left > 0);
 	size_t left = ctx->zones_left--;
 	pthread_mutex_unlock(&ctx->zones_left_mutex);
 	if (left == 1) {
