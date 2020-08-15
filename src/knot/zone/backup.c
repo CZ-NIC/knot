@@ -248,9 +248,10 @@ int zone_backup(conf_t *conf, zone_t *zone)
 
 done:
 	pthread_mutex_lock(&ctx->zones_left_mutex);
+	assert(ctx->zones_left > 0);
 	size_t left = ctx->zones_left--;
 	pthread_mutex_unlock(&ctx->zones_left_mutex);
-	if (left == 1) {
+	if (left == 0) {
 		zone_backup_free(ctx);
 	}
 	zone->backup_ctx = NULL;

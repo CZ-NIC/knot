@@ -381,11 +381,10 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 		return KNOT_EINVAL;
 	}
 
-	const char *dest = args->data[KNOT_CTL_IDX_DATA];
-
 	zone_backup_ctx_t *ctx;
 
-	int ret = zone_backup_init(restore_mode, 1, dest,
+	int ret = zone_backup_init(restore_mode, knot_zonedb_size(args->server->zone_db),
+	                           args->data[KNOT_CTL_IDX_DATA],
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           knot_lmdb_copy_size(&args->server->timerdb),
 	                           knot_lmdb_copy_size(&args->server->journaldb),
@@ -409,17 +408,6 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	return ret;
 }
 
-static void deinit_backup(ctl_args_t *args)
-{
-	zone_backup_ctx_t *ctx = args->custom_ctx;
-	pthread_mutex_lock(&ctx->zones_left_mutex);
-	size_t left = ctx->zones_left--; // the counter was in fact # of zones + 1
-	pthread_mutex_unlock(&ctx->zones_left_mutex);
-	if (left == 1) {
-		zone_backup_free(ctx);
-	}
-}
-
 static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = args->custom_ctx;
@@ -428,10 +416,9 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 		return KNOT_ESEMCHECK;
 	}
 	zone->backup_ctx = ctx;
-	pthread_mutex_lock(&ctx->zones_left_mutex);
-	ctx->zones_left++;
-	pthread_mutex_unlock(&ctx->zones_left_mutex);
+
 	schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
+
 	if (ctx->backup_global) {
 		return global_backup(ctx, zone->catalog, zone->name);
 	} else {
@@ -1376,14 +1363,12 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		ret = init_backup(args, false);
 		if (ret == KNOT_EOK) {
 			ret = zones_apply(args, zone_backup_cmd);
-			deinit_backup(args);
 		}
 		return ret;
 	case CTL_ZONE_RESTORE:
 		ret = init_backup(args, true);
 		if (ret == KNOT_EOK) {
 			ret = zones_apply(args, zone_backup_cmd);
-			deinit_backup(args);
 		}
 		return ret;
 	case CTL_ZONE_SIGN:
