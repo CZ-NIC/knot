@@ -415,13 +415,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 static void deinit_backup(ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = args->custom_ctx;
-	pthread_mutex_lock(&ctx->readers_mutex);
-	assert(ctx->readers > 0);
-	size_t left = ctx->readers--;
-	pthread_mutex_unlock(&ctx->readers_mutex);
-	if (left == 0) {
-		zone_backup_free(ctx);
-	}
+	zone_backup_deinit(ctx);
 }
 
 static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)

@@ -87,9 +87,18 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	return KNOT_EOK;
 }
 
-void zone_backup_free(zone_backup_ctx_t *ctx)
+void zone_backup_deinit(zone_backup_ctx_t *ctx)
 {
 	if (ctx != NULL) {
+		return;
+	}
+
+	pthread_mutex_lock(&ctx->readers_mutex);
+	assert(ctx->readers > 0);
+	size_t left = ctx->readers--;
+	pthread_mutex_unlock(&ctx->readers_mutex);
+
+	if (left == 0) {
 		knot_lmdb_deinit(&ctx->bck_catalog);
 		knot_lmdb_deinit(&ctx->bck_journal);
 		knot_lmdb_deinit(&ctx->bck_timer_db);
@@ -245,13 +254,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 done:
-	pthread_mutex_lock(&ctx->readers_mutex);
-	assert(ctx->readers > 0);
-	size_t left = ctx->readers--;
-	pthread_mutex_unlock(&ctx->readers_mutex);
-	if (left == 0) {
-		zone_backup_free(ctx);
-	}
+	zone_backup_deinit(ctx);
 	zone->backup_ctx = NULL;
 	return ret;
 }
