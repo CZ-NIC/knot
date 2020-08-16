@@ -27,8 +27,8 @@ typedef struct zone_backup_ctx {
 	bool backup_journal;                // if true, also backup journal
 	bool backup_zone;                   // if true, also backup zone contents to a zonefile (default on)
 	bool backup_global;                 // perform global backup per-zone
-	ssize_t zones_left;                 // when decremented to 0, all zones done, free this context
-	pthread_mutex_t zones_left_mutex;   // mutex covering zones_left counter
+	ssize_t readers;                    // when decremented to 0, all zones done, free this context
+	pthread_mutex_t readers_mutex;      // mutex covering readers counter
 	char *backup_dir;                   // path of directory to backup to / restore from
 	knot_lmdb_db_t bck_kasp_db;         // backup KASP db
 	knot_lmdb_db_t bck_timer_db;        // backup timer DB
@@ -36,7 +36,7 @@ typedef struct zone_backup_ctx {
 	knot_lmdb_db_t bck_catalog;         // backup catalog DB
 } zone_backup_ctx_t;
 
-int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_dir,
+int zone_backup_init(bool restore_mode, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx);
 
