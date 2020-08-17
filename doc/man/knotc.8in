@@ -184,6 +184,12 @@ will be held up until the zone is thawed. (#)
 \fBzone\-thaw\fP [\fIzone\fP\&...]
 Trigger dismissal of zone freeze. (#)
 .TP
+\fBzone\-xfr\-freeze\fP [\fIzone\fP\&...]
+Temporarily disable outgoing AXFR/IXFR for the zone(s). (#)
+.TP
+\fBzone\-xfr\-thaw\fP [\fIzone\fP\&...]
+Dismiss outgoing XFR freeze. (#)
+.TP
 \fBzone\-read\fP \fIzone\fP [\fIowner\fP [\fItype\fP]]
 Get zone data that are currently being presented.
 .TP

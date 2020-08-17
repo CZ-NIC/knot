@@ -367,19 +367,29 @@ void zone_clear_preferred_master(zone_t *zone)
 	pthread_mutex_unlock(&zone->preferred_lock);
 }
 
-void zone_set_flag(zone_t *zone, zone_flag_t flag)
+static void set_flag(zone_t *zone, zone_flag_t flag, bool remove)
 {
 	if (zone == NULL) {
 		return;
 	}
 
 	pthread_mutex_lock(&zone->preferred_lock); // this mutex seems OK to be reused for this
-	zone->flags |= flag;
+	zone->flags = remove ? (zone->flags & ~flag) : (zone->flags | flag);
 	pthread_mutex_unlock(&zone->preferred_lock);
 
 	if (flag & ZONE_IS_CATALOG) {
 		zone->is_catalog_flag = true;
 	}
+}
+
+void zone_set_flag(zone_t *zone, zone_flag_t flag)
+{
+	return set_flag(zone, flag, false);
+}
+
+void zone_unset_flag(zone_t *zone, zone_flag_t flag)
+{
+	return set_flag(zone, flag, true);
 }
 
 zone_flag_t zone_get_flag(zone_t *zone, zone_flag_t flag, bool clear)

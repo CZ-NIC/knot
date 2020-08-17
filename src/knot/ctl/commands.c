@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -633,6 +633,24 @@ static int zone_freeze(zone_t *zone, _unused_ ctl_args_t *args)
 static int zone_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	return schedule_trigger(zone, args, ZONE_EVENT_UTHAW, false);
+}
+
+static int zone_xfr_freeze(zone_t *zone, _unused_ ctl_args_t *args)
+{
+	zone_set_flag(zone, ZONE_XFR_FROZEN);
+
+	log_zone_info(zone->name, "outgoing XFR frozen");
+
+	return KNOT_EOK;
+}
+
+static int zone_xfr_thaw(zone_t *zone, _unused_ ctl_args_t *args)
+{
+	zone_unset_flag(zone, ZONE_XFR_FROZEN);
+
+	log_zone_info(zone->name, "outgoing XFR unfrozen");
+
+	return KNOT_EOK;
 }
 
 static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
@@ -1565,6 +1583,10 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_freeze);
 	case CTL_ZONE_THAW:
 		return zones_apply(args, zone_thaw);
+	case CTL_ZONE_XFR_FREEZE:
+		return zones_apply(args, zone_xfr_freeze);
+	case CTL_ZONE_XFR_THAW:
+		return zones_apply(args, zone_xfr_thaw);
 	case CTL_ZONE_READ:
 		return zones_apply(args, zone_read);
 	case CTL_ZONE_BEGIN:
@@ -2007,6 +2029,8 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
 	[CTL_ZONE_FREEZE]     = { "zone-freeze",        ctl_zone },
 	[CTL_ZONE_THAW]       = { "zone-thaw",          ctl_zone },
+	[CTL_ZONE_XFR_FREEZE] = { "zone-xfr-freeze",    ctl_zone },
+	[CTL_ZONE_XFR_THAW]   = { "zone-xfr-thaw",      ctl_zone },
 
 	[CTL_ZONE_READ]       = { "zone-read",       ctl_zone },
 	[CTL_ZONE_BEGIN]      = { "zone-begin",      ctl_zone },

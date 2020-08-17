@@ -275,19 +275,19 @@ class ZoneFile(object):
         changes = 0
         with open(self.path, 'r') as file:
             for fline in file:
-                line = fline.split(None, 3)
+                line = fline.split(None, 4)
                 if len(line) < 3:
                     continue
                 if line[0][0] not in [";", "@"]:
                     dname = line[0]
+                    ttl = 0
                     if line[1].isnumeric():
                         ttl = line[1]
-                        rtype = line[2]
-                        rdata = ' '.join(line[3:])
-                    else:
-                        ttl = 0
-                        rtype = line[1]
-                        rdata = ' '.join(line[2:])
+                        del line[1]
+                    if line[1] == "IN":
+                        del line[1]
+                    rtype = line[1]
+                    rdata = ' '.join(line[2:])
                     if rtype not in ["SOA", "RRSIG", "DNSKEY", "DS", "CDS", "CDNSKEY", "NSEC", "NSEC3", "NSEC3PARAM"]:
                         try:
                             if random.randint(1, 20) in [4, 5]:

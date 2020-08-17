@@ -42,6 +42,7 @@ typedef enum {
 	ZONE_FORCE_ZSK_ROLL = 1 << 4, /*!< Force ZSK rollover. */
 	ZONE_IS_CATALOG     = 1 << 5, /*!< This is a catalog. */
 	ZONE_IS_CAT_MEMBER  = 1 << 6, /*!< This zone exists according to a catalog. */
+	ZONE_XFR_FROZEN     = 1 << 7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
 } zone_flag_t;
 
 /*!
@@ -176,6 +177,9 @@ void zone_clear_preferred_master(zone_t *zone);
 
 /*! \brief Sets a zone flag. */
 void zone_set_flag(zone_t *zone, zone_flag_t flag);
+
+/*! \brief Unsets a zone flag. */
+void zone_unset_flag(zone_t *zone, zone_flag_t flag);
 
 /*! \brief Returns if a flag is set (and optionally clears it). */
 zone_flag_t zone_get_flag(zone_t *zone, zone_flag_t flag, bool clear);
