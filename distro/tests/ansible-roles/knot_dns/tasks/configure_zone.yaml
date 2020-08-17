@@ -2,6 +2,7 @@
 - name: create example.com zone
   copy:
     dest: /etc/knot/example.com.zone
+    mode: 0644
     content: |
       $ORIGIN example.com.
       $TTL 3600
