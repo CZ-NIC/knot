@@ -202,11 +202,11 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	printf("Next signing: %lu\n", next_sign.next_sign);
+	printf("Next signing: %"KNOT_TIME_PRINTF"\n", next_sign.next_sign);
 	if (rollover) {
-		printf("Next roll-over: %lu\n", next_sign.next_rollover);
+		printf("Next roll-over: %"KNOT_TIME_PRINTF"\n", next_sign.next_rollover);
 		if (next_sign.next_nsec3resalt) {
-			printf("Next NSEC3 re-salt: %lu\n", next_sign.next_nsec3resalt);
+			printf("Next NSEC3 re-salt: %"KNOT_TIME_PRINTF"\n", next_sign.next_nsec3resalt);
 		}
 		if (next_sign.plan_ds_check) {
 			printf("KSK submittion to parent zone needed\n");
