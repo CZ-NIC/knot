@@ -290,7 +290,8 @@ class ZoneFile(object):
                         try:
                             if random.randint(1, 20) in [4, 5]:
                                 ddns.delete(dname, rtype)
-                                if not (dname == ddns.upd.origin and rtype in ["NS"]):  # RFC 2136, Section 7.13
+                                origin = dns.name.Name.to_text(ddns.upd.origin)
+                                if not (dname == origin and rtype in ["NS"]):  # RFC 2136, Section 7.13
                                     changes += 1
                             if random.randint(1, 20) in [2, 3] and rtype not in ["DNAME", "TYPE39"]:
                                 ddns.add("xyz."+dname, ttl, rtype, rdata)
