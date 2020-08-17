@@ -387,7 +387,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE,
 	                                         C_MAX_TIMER_DB_SIZE);
 
-	int ret = zone_backup_init(restore_mode, 1,
+	int ret = zone_backup_init(restore_mode,
 	                           args->data[KNOT_CTL_IDX_DATA],
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           conf_int(&timer_db_size),
@@ -415,12 +415,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 static void deinit_backup(ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = args->custom_ctx;
-	pthread_mutex_lock(&ctx->zones_left_mutex);
-	size_t left = ctx->zones_left--; // the counter was in fact # of zones + 1
-	pthread_mutex_unlock(&ctx->zones_left_mutex);
-	if (left == 1) {
-		zone_backup_free(ctx);
-	}
+	zone_backup_deinit(ctx);
 }
 
 static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
@@ -431,9 +426,9 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 		return KNOT_ESEMCHECK;
 	}
 	zone->backup_ctx = ctx;
-	pthread_mutex_lock(&ctx->zones_left_mutex);
-	ctx->zones_left++;
-	pthread_mutex_unlock(&ctx->zones_left_mutex);
+	pthread_mutex_lock(&ctx->readers_mutex);
+	ctx->readers++;
+	pthread_mutex_unlock(&ctx->readers_mutex);
 	schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 	if (ctx->backup_global) {
 		return global_backup(ctx, zone->catalog, zone->name);

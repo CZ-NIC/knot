@@ -44,16 +44,14 @@ static inline void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **rem
 
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
-int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_dir,
+int zone_backup_init(bool restore_mode, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx)
 {
 	if (backup_dir == NULL || out_ctx == NULL) {
 		return KNOT_EINVAL;
 	}
-	if (zone_count < 1) {
-		return KNOT_ENOZONE;
-	}
+
 	size_t backup_dir_len = strlen(backup_dir) + 1;
 
 	zone_backup_ctx_t *ctx = malloc(sizeof(*ctx) + backup_dir_len);
@@ -62,10 +60,10 @@ int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_di
 	}
 	ctx->restore_mode = restore_mode;
 	ctx->backup_global = false;
-	ctx->zones_left = zone_count;
+	ctx->readers = 1;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
-	pthread_mutex_init(&ctx->zones_left_mutex, NULL);
+	pthread_mutex_init(&ctx->readers_mutex, NULL);
 
 	struct stat st = { 0 };
 	if (!restore_mode && stat(backup_dir, &st) == -1) {
@@ -89,14 +87,23 @@ int zone_backup_init(bool restore_mode, size_t zone_count, const char *backup_di
 	return KNOT_EOK;
 }
 
-void zone_backup_free(zone_backup_ctx_t *ctx)
+void zone_backup_deinit(zone_backup_ctx_t *ctx)
 {
-	if (ctx != NULL) {
+	if (ctx == NULL) {
+		return;
+	}
+
+	pthread_mutex_lock(&ctx->readers_mutex);
+	assert(ctx->readers > 0);
+	size_t left = ctx->readers--;
+	pthread_mutex_unlock(&ctx->readers_mutex);
+
+	if (left == 1) {
 		knot_lmdb_deinit(&ctx->bck_catalog);
 		knot_lmdb_deinit(&ctx->bck_journal);
 		knot_lmdb_deinit(&ctx->bck_timer_db);
 		knot_lmdb_deinit(&ctx->bck_kasp_db);
-		pthread_mutex_destroy(&ctx->zones_left_mutex);
+		pthread_mutex_destroy(&ctx->readers_mutex);
 		free(ctx);
 	}
 }
@@ -247,12 +254,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 done:
-	pthread_mutex_lock(&ctx->zones_left_mutex);
-	size_t left = ctx->zones_left--;
-	pthread_mutex_unlock(&ctx->zones_left_mutex);
-	if (left == 1) {
-		zone_backup_free(ctx);
-	}
+	zone_backup_deinit(ctx);
 	zone->backup_ctx = NULL;
 	return ret;
 }
