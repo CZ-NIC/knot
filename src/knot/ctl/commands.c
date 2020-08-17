@@ -404,9 +404,8 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	args->custom_ctx = ctx;
 
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-		ret = global_backup(ctx, &args->server->catalog, NULL);
-	} else {
 		ctx->backup_global = true;
+		ret = global_backup(ctx, &args->server->catalog, NULL);
 	}
 
 	return ret;
@@ -431,9 +430,9 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	pthread_mutex_unlock(&ctx->readers_mutex);
 	schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 	if (ctx->backup_global) {
-		return global_backup(ctx, zone->catalog, zone->name);
-	} else {
 		return KNOT_EOK;
+	} else {
+		return global_backup(ctx, zone->catalog, zone->name);
 	}
 }
 
