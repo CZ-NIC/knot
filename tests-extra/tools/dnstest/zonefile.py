@@ -289,11 +289,11 @@ class ZoneFile(object):
                     if rtype not in ["SOA", "RRSIG", "DNSKEY", "DS", "CDS", "CDNSKEY", "NSEC", "NSEC3", "NSEC3PARAM"]:
                         try:
                             if random.randint(1, 20) in [4, 5]:
-                                ddns.delete(line[0], rtype)
-                                if not (line[0] == ddns.upd.origin and rtype in ["NS"]):  # RFC 2136, Section 7.13
+                                ddns.delete(dname, rtype)
+                                if not (dname == ddns.upd.origin and rtype in ["NS"]):  # RFC 2136, Section 7.13
                                     changes += 1
                             if random.randint(1, 20) in [2, 3] and rtype not in ["DNAME", "TYPE39"]:
-                                ddns.add("xyz."+line[0], ttl, rtype, rdata)
+                                ddns.add("xyz."+dname, ttl, rtype, rdata)
                                 changes += 1
                         except (dns.rdatatype.UnknownRdatatype, dns.name.LabelTooLong, dns.name.NameTooLong, ValueError, dns.exception.SyntaxError):
                             # problems - simply skip. This is completely stochastic anyway.
