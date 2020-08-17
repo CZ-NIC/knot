@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -182,12 +182,12 @@ static int query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 }
 
 /*! \brief Find zone for given question. */
-static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
+static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 {
 	uint16_t qtype = knot_pkt_qtype(query);
 	uint16_t qclass = knot_pkt_qclass(query);
 	const knot_dname_t *qname = knot_pkt_qname(query);
-	const zone_t *zone = NULL;
+	zone_t *zone = NULL;
 
 	// search for zone only for IN and ANY classes
 	if (qclass != KNOT_CLASS_IN && qclass != KNOT_CLASS_ANY) {

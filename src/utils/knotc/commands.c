@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,6 +54,8 @@
 #define CMD_ZONE_KSK_SBM	"zone-ksk-submitted"
 #define CMD_ZONE_FREEZE		"zone-freeze"
 #define CMD_ZONE_THAW		"zone-thaw"
+#define CMD_ZONE_XFR_FREEZE	"zone-xfr-freeze"
+#define CMD_ZONE_XFR_THAW	"zone-xfr-thaw"
 
 #define CMD_ZONE_READ		"zone-read"
 #define CMD_ZONE_BEGIN		"zone-begin"
@@ -380,6 +382,8 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_KSK_SBM:
 	case CTL_ZONE_FREEZE:
 	case CTL_ZONE_THAW:
+	case CTL_ZONE_XFR_FREEZE:
+	case CTL_ZONE_XFR_THAW:
 	case CTL_ZONE_BEGIN:
 	case CTL_ZONE_COMMIT:
 	case CTL_ZONE_ABORT:
@@ -1186,6 +1190,8 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,          CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,          CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_THAW,       cmd_zone_ctl,          CTL_ZONE_THAW,       CMD_FOPT_ZONE },
+	{ CMD_ZONE_XFR_FREEZE, cmd_zone_ctl,          CTL_ZONE_XFR_FREEZE, CMD_FOPT_ZONE },
+	{ CMD_ZONE_XFR_THAW,   cmd_zone_ctl,          CTL_ZONE_XFR_THAW,   CMD_FOPT_ZONE },
 
 	{ CMD_ZONE_READ,       cmd_zone_node_ctl,   CTL_ZONE_READ,       CMD_FREQ_ZONE },
 	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,        CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
@@ -1236,6 +1242,8 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_KSK_SBM,    " <zone>...",                                 "When KSK submission, confirm parent's DS presence. (#)" },
 	{ CMD_ZONE_FREEZE,     "[<zone>...]",                                "Temporarily postpone automatic zone-changing events. (#)" },
 	{ CMD_ZONE_THAW,       "[<zone>...]",                                "Dismiss zone freeze. (#)" },
+	{ CMD_ZONE_XFR_FREEZE, "[<zone>...]",                                "Temporarily disable outgoing AXFR/IXFR. (#)" },
+	{ CMD_ZONE_XFR_THAW,   "[<zone>...]",                                "Dismiss outgoing XFR freeze. (#)" },
 	{ "",                  "",                                           "" },
 	{ CMD_ZONE_READ,       "<zone> [<owner> [<type>]]",                  "Get zone data that are currently being presented." },
 	{ CMD_ZONE_BEGIN,      "<zone>...",                                  "Begin a zone transaction." },
