@@ -123,6 +123,11 @@ static int axfr_query_init(knotd_qdata_t *qdata)
 		}
 	}
 
+	if (qdata->extra->zone->flags & ZONE_XFR_FROZEN) {
+		qdata->rcode = KNOT_RCODE_NOTAUTH;
+		return KNOT_EAGAIN;
+	}
+
 	/* Create transfer processing context. */
 	knot_mm_t *mm = qdata->mm;
 	struct axfr_proc *axfr = mm_alloc(mm, sizeof(struct axfr_proc));
@@ -179,6 +184,9 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 			return KNOT_STATE_FAIL;
 		case KNOT_EMALF:    /* Malformed query. */
 			AXFROUT_LOG(LOG_DEBUG, qdata, "malformed query");
+			return KNOT_STATE_FAIL;
+		case KNOT_EAGAIN:   /* Outgoing AXFR temporarily disabled. */
+			AXFROUT_LOG(LOG_INFO, qdata, "outgoing AXFR frozen");
 			return KNOT_STATE_FAIL;
 		default:
 			AXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",

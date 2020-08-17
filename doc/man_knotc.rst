@@ -125,6 +125,12 @@ Actions
 **zone-thaw** [*zone*...]
   Dismiss zone freeze. (#)
 
+**zone-xfr-freeze** [*zone*...]
+  Temporarily disable outgoing AXFR/IXFR for the zone(s). (#)
+
+**zone-xfr-thaw** [*zone*...]
+  Dismiss outgoing XFR freeze. (#)
+
 **zone-read** *zone* [*owner* [*type*]]
   Get zone data that are currently being presented.
 
