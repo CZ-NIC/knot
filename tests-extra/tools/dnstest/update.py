@@ -47,6 +47,11 @@ class Update(object):
 
     def try_send(self):
         resp = dns.query.tcp(self.upd, self.server.addr, port=self.server.port)
+        if dns.rcode.to_text(resp.rcode()) == "NOERROR":
+            check_log("UPDATE")
+            detail_log(str(self.upd))
+            detail_log(SEP)
+
         return dns.rcode.to_text(resp.rcode())
 
     def query_size(self):
