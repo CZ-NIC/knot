@@ -201,7 +201,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 
 	int ret = KNOT_EOK;
 
-	if (ctx->backup_zone) {
+	if (ctx->backup_zonefile) {
 		if (ctx->restore_mode) {
 			char *local_zf = conf_zonefile(conf, zone->name);
 			char *backup_zf = dir_file(ctx->backup_dir, local_zf);

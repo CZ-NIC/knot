@@ -400,7 +400,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 
 	assert(ctx != NULL);
 	ctx->backup_journal = MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL);
-	ctx->backup_zone = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
+	ctx->backup_zonefile = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
 	args->custom_ctx = ctx;
 
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {

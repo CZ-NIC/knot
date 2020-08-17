@@ -25,7 +25,7 @@
 typedef struct zone_backup_ctx {
 	bool restore_mode;                  // if true, this is not a backup, but restore
 	bool backup_journal;                // if true, also backup journal
-	bool backup_zone;                   // if true, also backup zone contents to a zonefile (default on)
+	bool backup_zonefile;               // if true, also backup zone contents to a zonefile (default on)
 	bool backup_global;                 // perform global backup per-zone
 	ssize_t readers;                    // when decremented to 0, all zones done, free this context
 	pthread_mutex_t readers_mutex;      // mutex covering readers counter
