@@ -368,6 +368,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
+/*
 		if (udp_bind_flags & NET_BIND_MULTIPLE) {
 			if (!server_attach_reuseport_bpf(sock, udp_socket_count) &&
 			    warn_cbpf) {
@@ -375,6 +376,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 				warn_cbpf = false;
 			}
 		}
+*/
 
 		if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE) &&
 		    warn_bufsize) {
@@ -440,6 +442,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
+/*
 		if (tcp_bind_flags & NET_BIND_MULTIPLE) {
 			if (!server_attach_reuseport_bpf(sock, tcp_socket_count) &&
 			    warn_cbpf) {
@@ -447,6 +450,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 				warn_cbpf = false;
 			}
 		}
+*/
 
 		/* TCP Fast Open. */
 		ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
