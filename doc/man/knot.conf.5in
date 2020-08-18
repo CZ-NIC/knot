@@ -1439,6 +1439,7 @@ zone:
     refresh\-max\-interval: TIME
     catalog\-role: none | interpret
     catalog\-template: template_id
+    catalog\-zone: DNAME
     module: STR/STR ...
 .ft P
 .fi
@@ -1747,6 +1748,11 @@ Trigger zone catalog feature. Possible values:
 .IP \(bu 2
 \fBinterpret\fP – A catalog zone which is loaded from a zone file or XFR,
 and member zones shall be configured based on its contents.
+.IP \(bu 2
+\fBgenerate\fP – A catalog zone whose contents are generated according to
+assigned member zones.
+.IP \(bu 2
+\fBmember\fP – A member zone that is assigned to one generated catalog zone.
 .UNINDENT
 .sp
 \fIDefault:\fP none
@@ -1758,6 +1764,20 @@ For the catalog\-member zones, the specified configuration template will be appl
 .INDENT 0.0
 .INDENT 3.5
 This option must be set if and only if \fI\%catalog\-role\fP is \fIinterpret\fP\&.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS catalog\-zone
+.sp
+Assign this member zone to specified generated catalog zone.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option must be set if and only if \fI\%catalog\-role\fP is \fImember\fP\&.
+.sp
+The referenced catalog zone must exist and have \fI\%catalog\-role\fP set to \fIgenerate\fP\&.
 .UNINDENT
 .UNINDENT
 .sp

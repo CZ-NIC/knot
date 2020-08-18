@@ -80,6 +80,7 @@ class Zone(object):
         self.modules = []
         self.dnssec = ZoneDnssec()
         self.catalog = None
+        self.catz = None
 
     @property
     def name(self):
@@ -95,6 +96,10 @@ class Zone(object):
 
     def clear_modules(self):
         self.modules.clear()
+
+    def catalog_gen_link(self, catz):
+        self.catz = catz
+        catz.catz = catz
 
     def disable_master(self, new_zone_file):
         self.zfile.remove()
@@ -647,7 +652,7 @@ class Server(object):
                     count += 1
         return count
 
-    def zone_wait(self, zone, serial=None, equal=False, greater=True):
+    def zone_wait(self, zone, serial=None, equal=False, greater=True, udp=True, tsig=None):
         '''Try to get SOA record. With an optional serial number and given
            relation (equal or/and greater).'''
 
@@ -659,8 +664,8 @@ class Server(object):
 
         for t in range(60):
             try:
-                resp = self.dig(zone.name, "SOA", udp=True, tries=1,
-                                timeout=2, log_no_sep=True)
+                resp = self.dig(zone.name, "SOA", udp=udp, tries=1,
+                                timeout=2, log_no_sep=True, tsig=tsig)
             except:
                 pass
             else:
@@ -1471,6 +1476,12 @@ class Knot(Server):
                 s.item_str("zonefile-load", self.zonefile_load)
             elif z.ixfr:
                 s.item_str("zonefile-load", "difference")
+
+            if z.catz == z:
+                s.item_str("catalog-role", "generate")
+            elif z.catz is not None:
+                s.item_str("catalog-role", "member")
+                s.item_str("catalog-zone", z.catz.name)
 
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "on")

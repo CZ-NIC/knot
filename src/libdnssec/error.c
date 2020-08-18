@@ -68,6 +68,8 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_P11_TOO_MANY_MODULES,      "too many PKCS #11 modules loaded" },
 	{ DNSSEC_P11_TOKEN_NOT_AVAILABLE,   "PKCS #11 token not available" },
 
+	{ DNSSEC_HASH_ERROR,            "hashing error" },
+
 	{ 0 }
 };
 

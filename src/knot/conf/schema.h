@@ -35,6 +35,7 @@
 #define C_CATALOG_DB_MAX_SIZE   "\x13""catalog-db-max-size"
 #define C_CATALOG_ROLE		"\x0C""catalog-role"
 #define C_CATALOG_TPL		"\x10""catalog-template"
+#define C_CATALOG_ZONE		"\x0C""catalog-zone"
 #define C_CDS_CDNSKEY		"\x13""cds-cdnskey-publish"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
 #define C_COMMENT		"\x07""comment"
@@ -194,6 +195,8 @@ enum {
 enum {
 	CATALOG_ROLE_NONE      = 0,
 	CATALOG_ROLE_INTERPRET = 1,
+	CATALOG_ROLE_GENERATE  = 2,
+	CATALOG_ROLE_MEMBER    = 3,
 };
 
 extern const knot_lookup_t acl_actions[];

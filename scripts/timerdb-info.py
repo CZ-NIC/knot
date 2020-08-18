@@ -32,15 +32,17 @@ class TimerDBInfo:
                 0x02: ("legacy_expire",  cls.format_timestamp),
                 0x03: ("legacy_flush",   cls.format_timestamp),
                 # knot >= 2.4
-                0x80: ("soa_expire",   cls.format_seconds),
-                0x81: ("last_flush",   cls.format_timestamp),
-                0x82: ("last_refresh", cls.format_timestamp),
-                0x83: ("next_refresh", cls.format_timestamp),
+                0x80: ("soa_expire",     cls.format_seconds),
+                0x81: ("last_flush",     cls.format_timestamp),
+                0x82: ("last_refresh",   cls.format_timestamp),
+                0x83: ("next_refresh",   cls.format_timestamp),
                 # knot >= 2.6
-                0x84: ("last_resalt",   cls.format_timestamp),
-                0x85: ("next_ds_check", cls.format_timestamp),
+                0x84: ("last_resalt",    cls.format_timestamp),
+                0x85: ("next_ds_check",  cls.format_timestamp),
                 # knot >= 2.8
-                0x86: ("next_ds_push",  cls.format_timestamp),
+                0x86: ("next_ds_push",   cls.format_timestamp),
+                # knot >= 3.1
+                0x87: ("catalog_member", cls.format_timestamp),
         }
         if id in timers:
             return (timers[id][0], timers[id][1](value))

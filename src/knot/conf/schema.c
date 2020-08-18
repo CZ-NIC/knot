@@ -143,6 +143,8 @@ static const knot_lookup_t journal_modes[] = {
 static const knot_lookup_t catalog_roles[] = {
 	{ CATALOG_ROLE_NONE,      "none" },
 	{ CATALOG_ROLE_INTERPRET, "interpret" },
+	{ CATALOG_ROLE_GENERATE,  "generate" },
+	{ CATALOG_ROLE_MEMBER,    "member" },
 	{ 0, NULL }
 };
 
@@ -370,6 +372,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_REFRESH_MAX_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_CATALOG_ROLE,        YP_TOPT,  YP_VOPT = { catalog_roles, CATALOG_ROLE_NONE }, FLAGS }, \
 	{ C_CATALOG_TPL,         YP_TREF,  YP_VREF = { C_TPL }, FLAGS, { check_ref } }, \
+	{ C_CATALOG_ZONE,        YP_TDNAME,YP_VNONE, FLAGS | CONF_IO_FRLD_ZONES }, \
 	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI | FLAGS, { check_modref } }, \
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE }, \

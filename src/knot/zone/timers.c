@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ enum timer_id {
 	TIMER_LAST_RESALT,
 	TIMER_NEXT_DS_CHECK,
 	TIMER_NEXT_DS_PUSH,
+	TIMER_CATALOG_MEMBER,
 };
 
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
@@ -86,6 +87,7 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		case TIMER_LAST_RESALT:   timers.last_resalt = value; break;
 		case TIMER_NEXT_DS_CHECK: timers.next_ds_check = value; break;
 		case TIMER_NEXT_DS_PUSH:  timers.next_ds_push = value; break;
+		case TIMER_CATALOG_MEMBER:timers.catalog_member = value; break;
 		default:                 break; // ignore
 		}
 	}
@@ -104,14 +106,15 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
                              const zone_timers_t *timers)
 {
 	MDB_val k = { knot_dname_size(zone), (void *)zone };
-	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBL",
+	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBL",
 		TIMER_SOA_EXPIRE,    (uint64_t)timers->soa_expire,
 		TIMER_LAST_FLUSH,    (uint64_t)timers->last_flush,
 		TIMER_LAST_REFRESH,  (uint64_t)timers->last_refresh,
 		TIMER_NEXT_REFRESH,  (uint64_t)timers->next_refresh,
 		TIMER_LAST_RESALT,   (uint64_t)timers->last_resalt,
 		TIMER_NEXT_DS_CHECK, (uint64_t)timers->next_ds_check,
-		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push);
+		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push,
+		TIMER_CATALOG_MEMBER,(uint64_t)timers->catalog_member);
 	knot_lmdb_insert(txn, &k, &v);
 	free(v.mv_data);
 }

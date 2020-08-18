@@ -66,7 +66,9 @@ int event_load(conf_t *conf, zone_t *zone)
 	int ret = KNOT_EOK;
 
 	// If configured, load journal contents.
-	if (load_from == JOURNAL_CONTENT_ALL && !old_contents_exist && zf_from != ZONEFILE_LOAD_WHOLE) {
+	if (!old_contents_exist &&
+	    ((load_from == JOURNAL_CONTENT_ALL && zf_from != ZONEFILE_LOAD_WHOLE) ||
+	     zone->cat_members != NULL)) {
 		ret = zone_load_from_journal(conf, zone, &journal_conts);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			goto cleanup;
@@ -77,7 +79,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	// If configured, attempt to load zonefile.
-	if (zf_from != ZONEFILE_LOAD_NONE) {
+	if (zf_from != ZONEFILE_LOAD_NONE && zone->cat_members == NULL) {
 		struct timespec mtime;
 		char *filename = conf_zonefile(conf, zone->name);
 		ret = zonefile_exists(filename, &mtime);
@@ -135,9 +137,18 @@ int event_load(conf_t *conf, zone_t *zone)
 			}
 		}
 	}
+	if (zone->cat_members != NULL && !old_contents_exist) {
+		uint32_t serial = journal_conts == NULL ? 1 : zone_contents_serial(journal_conts);
+		serial = serial_next(serial, SERIAL_POLICY_UNIXTIME); // unixtime hardcoded
+		zf_conts = catalog_update_to_zone(zone->cat_members, zone->name, serial);
+		if (zf_conts == NULL) {
+			ret = zone->cat_members->error == KNOT_EOK ? KNOT_ENOMEM : zone->cat_members->error;
+			goto cleanup;
+		}
+	}
 
 	// If configured contents=all, but not present, store zonefile.
-	if (load_from == JOURNAL_CONTENT_ALL &&
+	if ((load_from == JOURNAL_CONTENT_ALL || zone->cat_members != NULL) &&
 	    !zone_in_journal_exists && zf_conts != NULL) {
 		ret = zone_in_journal_store(conf, zone, zf_conts);
 		if (ret != KNOT_EOK) {
@@ -147,13 +158,21 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	bool dnssec_enable = conf_bool(&val), zu_from_zf_conts = false;
-	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE);
+	bool dnssec_enable = (conf_bool(&val) && zone->cat_members == NULL), zu_from_zf_conts = false;
+	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE || zone->cat_members != NULL);
 	bool ignore_dnssec = (do_diff && dnssec_enable);
 
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
-		if (zf_conts == NULL) {
+		if (zone->cat_members != NULL) {
+			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
+			if (ret == KNOT_EOK) {
+				ret = catalog_update_to_update(zone->cat_members, &up);
+			}
+			if (ret == KNOT_EOK) {
+				ret = zone_update_increment_soa(&up, conf);
+			}
+		} else if (zf_conts == NULL) {
 			// nothing to be re-loaded
 			ret = KNOT_EOK;
 			goto cleanup;
@@ -168,7 +187,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
 		}
 	} else {
-		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
+		if (journal_conts != NULL && (zf_from != ZONEFILE_LOAD_WHOLE || zone->cat_members != NULL)) {
 			if (zf_conts == NULL) {
 				// load zone-in-journal
 				ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
@@ -249,7 +268,8 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	// If the change is only automatically incremented SOA serial, make it no change.
-	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
+	if ((zf_from == ZONEFILE_LOAD_DIFSE || zone->cat_members != NULL) &&
+	    (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
 	    changeset_differs_just_serial(&up.change)) {
 		changeset_t *cpy = changeset_clone(&up.change);
 		if (cpy == NULL) {
@@ -281,6 +301,10 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	log_zone_info(zone->name, "loaded, serial %s -> %u%s, %zu bytes",
 	              old_serial_str, middle_serial, new_serial_str, zone->contents->size);
+
+	if (zone->cat_members != NULL) {
+		catalog_update_clear(zone->cat_members);
+	}
 
 	// Schedule depedent events.
 	const knot_rdataset_t *soa = zone_soa(zone);
