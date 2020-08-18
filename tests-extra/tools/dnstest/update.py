@@ -46,11 +46,14 @@ class Update(object):
             check_log("ERROR: Expected TSIG signed response")
 
     def try_send(self):
+        check_log("UPDATE")
+        detail_log(str(self.upd))
+        detail_log(SEP)
+
         resp = dns.query.tcp(self.upd, self.server.addr, port=self.server.port)
-        if dns.rcode.to_text(resp.rcode()) == "NOERROR":
-            check_log("UPDATE")
-            detail_log(str(self.upd))
-            detail_log(SEP)
+        check_log("RCODE")
+        detail_log(dns.rcode.to_text(resp.rcode()))
+        detail_log(SEP)
 
         return dns.rcode.to_text(resp.rcode())
 
