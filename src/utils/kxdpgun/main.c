@@ -43,7 +43,7 @@
 
 #define PROGRAM_NAME "kxdpgun"
 
-#define TRANSACTION_ID htobe16(0xbaf8) // entirely arbitrary magic constant to distinguish from other traffic
+uint16_t TRANSACTION_ID; // random constant to distinguish foreign replies
 
 volatile bool xdp_trigger = false;
 
@@ -624,6 +624,8 @@ int main(int argc, char *argv[])
 		free_global_payloads();
 		return EXIT_FAILURE;
 	}
+
+	TRANSACTION_ID = time(NULL) % UINT16_MAX;
 
 	thread_ctxs = calloc(ctx.n_threads, sizeof(*thread_ctxs));
 	threads = calloc(ctx.n_threads, sizeof(*threads));
