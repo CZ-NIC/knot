@@ -413,10 +413,11 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 		nsec_node = node_nsec3_get(node);
 		shall_no_nsec = (node->flags & NODE_FLAGS_DELETED) ||
 		                (node->flags & NODE_FLAGS_NONAUTH) ||
-		                nsec3_is_empty(node, data->nsec3_params->flags & KNOT_NSEC3_FLAG_OPT_OUT);
+		                nsec3_is_empty(node, false);
 	}
+	bool may_no_nsec = (data->nsec3_params != NULL && nsec3_is_empty(node, true));
 	knot_rdataset_t *nsec = node_rdataset(nsec_node, data->nsec_type);
-	if ((nsec == NULL || nsec->count != 1) && !shall_no_nsec) {
+	if ((nsec == NULL || nsec->count != 1) && !shall_no_nsec && !may_no_nsec) {
 		data->update->validation_hint.node = (nsec_node == NULL ? node->owner : nsec_node->owner);
 		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
 		return KNOT_DNSSEC_ENSEC_BITMAP;
@@ -427,6 +428,22 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 		return KNOT_DNSSEC_ENSEC_BITMAP;
 	}
 	if (shall_no_nsec) {
+		return KNOT_EOK;
+	}
+	if (may_no_nsec && nsec == NULL) {
+		assert(data->nsec_type == KNOT_RRTYPE_NSEC3);
+		const zone_node_t *found_nsec3 = NULL, *prev_nsec3 = NULL;
+		if (node->nsec3_hash == NULL ||
+		    zone_contents_find_nsec3(data->update->new_cont, node->nsec3_hash, &found_nsec3, &prev_nsec3) != ZONE_NAME_NOT_FOUND ||
+		    found_nsec3 != NULL) {
+			return KNOT_ERROR;
+		}
+		knot_rdataset_t *nsec3 = node_rdataset(prev_nsec3, KNOT_RRTYPE_NSEC3);
+		if (nsec3->count != 1 || !(knot_nsec3param_flags(nsec3->rdata) & KNOT_NSEC3_FLAG_OPT_OUT)) {
+			data->update->validation_hint.node = prev_nsec3->owner;
+			data->update->validation_hint.rrtype = data->nsec_type;
+			return KNOT_DNSSEC_ENSEC3_OPTOUT;
+		}
 		return KNOT_EOK;
 	}
 

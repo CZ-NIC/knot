@@ -20,6 +20,7 @@ for z in zones:
 
 for z in zones_nsec3:
     master.dnssec(z).nsec3 = True
+    master.dnssec(z).nsec3_opt_out = True
     slave.dnssec(z).nsec3 = True
 
 t.start()

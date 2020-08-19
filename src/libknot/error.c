@@ -123,6 +123,7 @@ static const struct error errors[] = {
 	{ KNOT_DNSSEC_ENOSIG,          "no valid signature for a record" },
 	{ KNOT_DNSSEC_ENSEC_BITMAP,    "missing NSEC(3) record or wrong bitmap" },
 	{ KNOT_DNSSEC_ENSEC_CHAIN,     "inconsistent NSEC(3) chain" },
+	{ KNOT_DNSSEC_ENSEC3_OPTOUT,   "wrong NSEC3 opt-out" },
 
 	/* Yparser errors. */
 	{ KNOT_YP_ECHAR_TAB,     "tabulator character is not allowed" },
