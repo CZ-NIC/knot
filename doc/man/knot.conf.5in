@@ -183,6 +183,7 @@ server:
     pidfile: STR
     udp\-workers: INT
     tcp\-workers: INT
+    tls\-workers: INT
     background\-workers: INT
     async\-start: BOOL
     tcp\-idle\-timeout: TIME
@@ -190,6 +191,9 @@ server:
     tcp\-remote\-io\-timeout: INT
     tcp\-max\-clients: INT
     tcp\-reuseport: BOOL
+    tls\-idle\-timeout: TIME
+    tls\-io\-timeout: INT
+    tls\-max\-clients: INT
     udp\-max\-payload: SIZE
     udp\-max\-payload\-ipv4: SIZE
     udp\-max\-payload\-ipv6: SIZE
@@ -265,6 +269,14 @@ Change of this parameter requires restart of the Knot server to take effect.
 .sp
 A number of TCP workers (threads) used to process incoming queries
 over TCP.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP equal to the number of online CPUs, default value is at least 10
+.SS tls\-workers
+.sp
+A number of TLS workers (threads) used to process incoming queries
+over TLS.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
@@ -346,6 +358,52 @@ operating system configuration.
 .UNINDENT
 .sp
 \fIDefault:\fP one half of the file descriptor limit for the server process
+.SS tls\-idle\-timeout
+.sp
+Maximum idle time (in seconds) between requests on an inbound TLS connection.
+It means if there is no activity on an inbound TCP connection during this limit,
+the connection is closed by the server.
+.sp
+\fIMinimum:\fP 1 s
+.sp
+\fIDefault:\fP 10 s
+.SS tls\-io\-timeout
+.sp
+Maximum time (in milliseconds) to receive or send one DNS message over an inbound
+TLS connection. It means this limit applies to normal DNS queries and replies,
+incoming DDNS, and outgoing zone transfers.
+Set to 0 for infinity.
+.sp
+\fIDefault:\fP 200 ms
+.SS tls\-max\-clients
+.sp
+A maximum number of TLS clients connected in parallel, set this below the file
+descriptor limit to avoid resource exhaustion.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+It is advisable to adjust the maximum number of open files per process in your
+operating system configuration.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP one half of the file descriptor limit for the server process
+.SS tls\-trust\-file
+.sp
+Set trust authority certificate for TLS
+.sp
+\fITODO\fP
+.SS tls\-cert\-file
+.sp
+Set certificate for TLS
+.sp
+\fITODO\fP
+.SS tls\-key\-file
+.sp
+Set certificate key for TLS
+.sp
+\fITODO\fP
 .SS udp\-max\-payload
 .sp
 Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.

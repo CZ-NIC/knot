@@ -134,6 +134,7 @@ General options related to the server.
      pidfile: STR
      udp-workers: INT
      tcp-workers: INT
+     tls-workers: INT
      background-workers: INT
      async-start: BOOL
      tcp-idle-timeout: TIME
@@ -141,6 +142,9 @@ General options related to the server.
      tcp-remote-io-timeout: INT
      tcp-max-clients: INT
      tcp-reuseport: BOOL
+     tls-idle-timeout: TIME
+     tls-io-timeout: INT
+     tls-max-clients: INT
      udp-max-payload: SIZE
      udp-max-payload-ipv4: SIZE
      udp-max-payload-ipv6: SIZE
@@ -245,6 +249,18 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* equal to the number of online CPUs, default value is at least 10
 
+.. _server_tls-workers:
+
+tls-workers
+-----------
+
+A number of TLS workers (threads) used to process incoming queries
+over TLS.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* equal to the number of online CPUs, default value is at least 10
+
 .. _server_background-workers:
 
 background-workers
@@ -341,6 +357,73 @@ descriptor limit to avoid resource exhaustion.
    operating system configuration.
 
 *Default:* one half of the file descriptor limit for the server process
+
+
+.. _server_tls-idle-timeout:
+
+tls-idle-timeout
+----------------
+
+Maximum idle time (in seconds) between requests on an inbound TLS connection.
+It means if there is no activity on an inbound TCP connection during this limit,
+the connection is closed by the server.
+
+*Minimum:* 1 s
+
+*Default:* 10 s
+
+.. _server_tls-io-timeout:
+
+tls-io-timeout
+--------------
+
+Maximum time (in milliseconds) to receive or send one DNS message over an inbound
+TLS connection. It means this limit applies to normal DNS queries and replies,
+incoming DDNS, and outgoing zone transfers.
+Set to 0 for infinity.
+
+*Default:* 200 ms
+
+.. _server_tls-max-clients:
+
+tls-max-clients
+---------------
+
+A maximum number of TLS clients connected in parallel, set this below the file
+descriptor limit to avoid resource exhaustion.
+
+.. NOTE::
+   It is advisable to adjust the maximum number of open files per process in your
+   operating system configuration.
+
+*Default:* one half of the file descriptor limit for the server process
+
+.. _server_tls-trust-file:
+
+tls-trust-file
+--------------
+
+Set trust authority certificate for TLS
+
+*TODO*
+
+.. _server_tls-cert-file:
+
+tls-cert-file
+-------------
+
+Set certificate for TLS
+
+*TODO*
+
+.. _server_tls-key-file:
+
+tls-key-file
+--------------
+
+Set certificate key for TLS
+
+*TODO*
 
 .. _server_udp-max-payload:
 
