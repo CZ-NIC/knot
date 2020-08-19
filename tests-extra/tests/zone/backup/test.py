@@ -3,6 +3,8 @@
 '''Test zone backup.'''
 
 from dnstest.test import Test
+from dnstest.module import ModOnlineSign
+from dnstest.utils import *
 import shutil
 
 def get_dnskeys(server, zones):
@@ -23,7 +25,8 @@ slave = t.server("knot")
 t.link(zones, master, slave)
 
 for z in zones:
-    master.dnssec(z).enable = True
+    #master.dnssec(z).enable = True
+    master.add_module(z, ModOnlineSign())
     slave.zones[z.name].journal_content = "all" # also disables zonefile load
 
 backup_dir = master.dir + "/backup"
