@@ -1598,9 +1598,8 @@ NSEC(3) RR exists for each name (unless opt\-out) with correct bitmap.
 Every NSEC(3) RR is linked to the lexicographically next one.
 .UNINDENT
 .sp
-The validation can be affected by \fI\%dnssec\-policy\fP configuration.
-Namely \fI\%nsec3\fP, \fI\%nsec3\-opt\-out\fP,
-\fI\%single\-type\-signing\fP, and \fI\%signing\-threads\fP\&.
+The validation is not affected by \fI\%dnssec\-policy\fP configuration,
+except for \fI\%signing\-threads\fP option.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
