@@ -281,12 +281,10 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 		return KNOT_ENOMEM;
 	}
 
+	policy_from_zone(ctx->policy, zone);
 	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->apex->owner);
-	if (policy_id.code != KNOT_EOK) {
-		policy_from_zone(ctx->policy, zone);
-	} else {
-		policy_load(ctx->policy, &policy_id);
-	}
+	conf_val_t num_threads = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, &policy_id);
+	ctx->policy->signing_threads = conf_int(&num_threads);
 
 	int ret = kasp_zone_from_contents(ctx->zone, zone, ctx->policy->single_type_signing,
 	                                  ctx->policy->nsec3_enabled, &ctx->policy->nsec3_iterations,
