@@ -146,13 +146,20 @@ static int get_zone(ctl_args_t *args, zone_t **zone)
 
 static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 {
+	int ret = KNOT_EOK;
+
 	// Process all configured zones if none is specified.
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		args->failed = false;
 		knot_zonedb_foreach(args->server->zone_db, fcn, args);
+		if (args->failed) {
+			ret = KNOT_ERRNO_ERROR;		/* TODO: allocate a dedicated error code. */
+			log_ctl_error("control, error (%s)", knot_strerror(ret));
+			send_error(args, knot_strerror(ret));
+			args->failed = false;
+		}
 		return KNOT_EOK;
 	}
-
-	int ret = KNOT_EOK;
 
 	while (true) {
 		zone_t *zone;
@@ -365,6 +372,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to update zone file (%s)",
 			                 knot_strerror(ret));
+			args->failed = true;
 		}
 		return ret;
 	}
