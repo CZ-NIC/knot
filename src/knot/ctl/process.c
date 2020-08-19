@@ -28,7 +28,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 	ctl_args_t args = {
 		.ctl = ctl,
 		.type = KNOT_CTL_TYPE_END,
-		.server = server
+		.server = server,
+		.failed = false
 	};
 
 	// Strip redundant/unprocessed data units in the current block.

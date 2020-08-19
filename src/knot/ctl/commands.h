@@ -88,6 +88,7 @@ typedef struct {
 	knot_ctl_type_t type;
 	knot_ctl_data_t data;
 	server_t *server;
+	bool failed;
 } ctl_args_t;
 
 /*!
