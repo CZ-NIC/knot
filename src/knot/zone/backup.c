@@ -136,11 +136,43 @@ static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keysto
 	return knot_error_from_libdnssec(ret);
 }
 
+static bool get_module_policy(conf_t *conf, conf_val_t *modules, conf_val_t *policy)
+{
+	while (modules->code == KNOT_EOK) {
+		conf_mod_id_t *mod_id = conf_mod_id(modules);
+		if (strcmp(mod_id->name, "mod-onlinesign") == 0) {
+			*policy = conf_mod_get(conf, C_POLICY, mod_id);
+			conf_id_fix_default(policy);
+			return true;
+		}
+		conf_free_mod_id(mod_id);
+		conf_val_next(modules);
+	}
+	return false;
+}
+
+static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)
+{
+	conf_val_t res, mod = conf_zone_get(conf, C_MODULE, zone);
+	if (get_module_policy(conf, &mod, &res)) {
+		return res;
+	}
+
+	mod = conf_default_get(conf, C_GLOBAL_MODULE);
+	if (get_module_policy(conf, &mod, &res)) {
+		return res;
+	}
+
+	res = conf_zone_get(conf, C_DNSSEC_POLICY, zone);
+	conf_id_fix_default(&res);
+	return res;
+}
+
 static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 {
 	dnssec_keystore_t *from = NULL, *to = NULL;
 
-	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name); // TODO what if onlinesign module ?
+	conf_val_t policy_id = get_zone_policy(conf, zone->name);
 
 	unsigned backend_type = 0;
 	int ret = zone_init_keystore(conf, &policy_id, &from, &backend_type);
@@ -155,7 +187,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 
 	char kasp_dir[strlen(ctx->backup_dir) + 6];
 	snprintf(kasp_dir, sizeof(kasp_dir), "%s/keys", ctx->backup_dir);
-	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, kasp_dir, &to); // TODO what if PKCS#11 is configured?
+	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, kasp_dir, &to);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
