@@ -111,3 +111,16 @@ void conf_deactivate_modules(
 	list_t *query_modules,
 	struct query_plan **query_plan
 );
+
+/*!
+ * Re-activates query modules in list.
+ *
+ * \param[in] conf            Configuration.
+ * \param[in] query_modules   Query modules list-
+ * \param[in] query_plan      Query plan.
+ */
+void conf_reset_modules(
+	conf_t *conf,
+	list_t *query_modules,
+	struct query_plan **query_plan
+);
