@@ -58,7 +58,7 @@ int event_backup(conf_t *conf, zone_t *zone)
 	}
 
 	if (restore && ret == KNOT_EOK) {
-		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+		zone_reset(conf, zone);
 	}
 
 	free(back_dir);

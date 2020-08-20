@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -230,6 +230,18 @@ void zone_free(zone_t **zone_ptr)
 
 	free(zone);
 	*zone_ptr = NULL;
+}
+
+void zone_reset(conf_t *conf, zone_t *zone)
+{
+	if (zone == NULL) {
+		return;
+	}
+
+	zone_contents_t *old_contents = zone_switch_contents(zone, NULL);
+	conf_reset_modules(conf, &zone->query_modules, &zone->query_plan); // includes synchronize_rcu()
+	zone_contents_deep_free(old_contents);
+	zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
 }
 
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset_t *extra)

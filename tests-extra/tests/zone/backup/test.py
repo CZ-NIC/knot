@@ -6,6 +6,7 @@ from dnstest.test import Test
 from dnstest.module import ModOnlineSign
 from dnstest.utils import *
 import shutil
+import random
 
 def get_dnskeys(server, zones):
    return [ str(server.dig(z.name, "DNSKEY").resp.answer[0].to_rdataset()) for z in zones ]
@@ -25,8 +26,10 @@ slave = t.server("knot")
 t.link(zones, master, slave)
 
 for z in zones:
-    #master.dnssec(z).enable = True
-    master.add_module(z, ModOnlineSign())
+    if random.choice([True, False]):
+        master.dnssec(z).enable = True
+    else:
+        master.add_module(z, ModOnlineSign())
     slave.zones[z.name].journal_content = "all" # also disables zonefile load
 
 backup_dir = master.dir + "/backup"
