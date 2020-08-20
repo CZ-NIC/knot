@@ -412,8 +412,7 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 	if (data->nsec3_params != NULL) {
 		nsec_node = node_nsec3_get(node);
 		shall_no_nsec = (node->flags & NODE_FLAGS_DELETED) ||
-		                (node->flags & NODE_FLAGS_NONAUTH) ||
-		                nsec3_is_empty(node, false);
+		                (node->flags & NODE_FLAGS_NONAUTH);
 	}
 	bool may_no_nsec = (data->nsec3_params != NULL && nsec3_is_empty(node, true));
 	knot_rdataset_t *nsec = node_rdataset(nsec_node, data->nsec_type);
