@@ -153,7 +153,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 		args->failed = false;
 		knot_zonedb_foreach(args->server->zone_db, fcn, args);
 		if (args->failed) {
-			ret = KNOT_ERRNO_ERROR;		/* TODO: allocate a dedicated error code. */
+			ret = KNOT_CTL_EZONE;
 			log_ctl_error("control, error (%s)", knot_strerror(ret));
 			send_error(args, knot_strerror(ret));
 			args->failed = false;
