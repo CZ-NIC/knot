@@ -173,6 +173,28 @@ void query_module_close(knotd_mod_t *module)
 	free(module);
 }
 
+void query_module_reset(conf_t *conf, knotd_mod_t *module, struct query_plan *new_plan)
+{
+	knotd_mod_stats_free(module);
+	module->stats_vals = NULL;
+	module->stats_info = NULL;
+	module->stats_count = 0;
+
+	zone_sign_ctx_free(module->sign_ctx);
+	free_zone_keys(module->keyset);
+	free(module->keyset);
+	if (module->dnssec != NULL) {
+		kdnssec_ctx_deinit(module->dnssec);
+		free(module->dnssec);
+	}
+	module->sign_ctx = NULL;
+	module->keyset = NULL;
+	module->dnssec = NULL;
+
+	module->plan = new_plan;
+	module->config = conf;
+}
+
 _public_
 void *knotd_mod_ctx(knotd_mod_t *mod)
 {

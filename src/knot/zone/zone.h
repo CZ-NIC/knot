@@ -122,6 +122,14 @@ zone_t* zone_new(const knot_dname_t *name);
 void zone_free(zone_t **zone_ptr);
 
 /*!
+ * \brief Clear zone contents (->SERVFAIL), reset modules, plan LOAD.
+ *
+ * \param conf   Current configuration.
+ * \param zone   Zone to be re-set.
+ */
+void zone_reset(conf_t *conf, zone_t *zone);
+
+/*!
  * \brief Clears possible control update transaction.
  *
  * \param zone Zone to be cleared.
