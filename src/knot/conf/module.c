@@ -461,3 +461,44 @@ void conf_deactivate_modules(
 	}
 	init_list(query_modules);
 }
+
+void conf_reset_modules(
+	conf_t *conf,
+	list_t *query_modules,
+	struct query_plan **query_plan)
+{
+	if (query_modules == NULL || query_plan == NULL) {
+		return;
+	}
+
+	struct query_plan *new_plan = query_plan_create();
+	if (new_plan == NULL) {
+		CONF_LOG(LOG_ERR, "failed to activate modules (%s)", knot_strerror(KNOT_ENOMEM));
+		return;
+	}
+
+	struct query_plan *old_plan = rcu_xchg_pointer(query_plan, NULL);
+	synchronize_rcu();
+	query_plan_free(old_plan);
+
+	knotd_mod_t *mod;
+	WALK_LIST(mod, *query_modules) {
+		if (mod->api->unload != NULL) {
+			mod->api->unload(mod);
+		}
+		query_module_reset(conf, mod, new_plan);
+	}
+
+	WALK_LIST(mod, *query_modules) {
+		int ret = mod->api->load(mod);
+		if (ret != KNOT_EOK) {
+			MOD_ID_LOG(mod->zone, error, mod->id, "failed to load (%s)",
+			           knot_strerror(ret));
+			query_module_close(mod);
+			return;
+		}
+		mod->config = NULL; // Invalidate the current config.
+	}
+
+	rcu_xchg_pointer(query_plan, new_plan);
+}
