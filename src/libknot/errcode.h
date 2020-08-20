@@ -97,6 +97,7 @@ enum knot_error {
 
 	/* Control states. */
 	KNOT_CTL_ESTOP,
+	KNOT_CTL_EZONE,
 
 	/* Network errors. */
 	KNOT_NET_EADDR,
