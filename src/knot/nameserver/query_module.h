@@ -67,6 +67,9 @@ knotd_mod_t *query_module_open(conf_t *conf, server_t *server, conf_mod_id_t *mo
 /*! \brief Close query module. */
 void query_module_close(knotd_mod_t *module);
 
+/*! \brief Cloase/open existing query module. */
+void query_module_reset(knotd_mod_t *module, struct query_plan *new_plan);
+
 typedef char* (*mod_idx_to_str_f)(uint32_t idx, uint32_t count);
 
 typedef struct {

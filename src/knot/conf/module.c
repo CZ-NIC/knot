@@ -461,3 +461,36 @@ void conf_deactivate_modules(
 	}
 	init_list(query_modules);
 }
+
+void conf_reset_modules(
+	list_t *query_modules,
+	struct query_plan **query_plan)
+{
+	struct query_plan *old_plan = *query_plan;
+	struct query_plan *new_plan = query_plan_create();
+	if (new_plan == NULL) {
+		return; // FIXME
+	}
+	*query_plan = NULL;
+	synchronize_rcu();
+	*query_plan = new_plan;
+	query_plan_free(old_plan);
+
+	knotd_mod_t *mod;
+	WALK_LIST(mod, *query_modules) {
+		if (mod->api->unload != NULL) {
+			mod->api->unload(mod);
+		}
+		query_module_reset(mod, *query_plan);
+	}
+
+	WALK_LIST(mod, *query_modules) {
+		int ret = mod->api->load(mod);
+		if (ret != KNOT_EOK) {
+			//MOD_ID_LOG(zone_name, error, mod_id, "failed to load (%s)",
+			//        knot_strerror(ret)); //FIXME
+			query_module_close(mod);
+			return;
+		}
+	}
+}
