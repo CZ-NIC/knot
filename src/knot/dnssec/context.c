@@ -248,6 +248,20 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 	memset(ctx, 0, sizeof(*ctx));
 }
 
+static void policy_from_zone(knot_kasp_policy_t *policy, const zone_contents_t *zone)
+{
+	// expects policy struct to be zeroed
+	policy->manual = true;
+	policy->single_type_signing = (node_rdataset(zone->apex, KNOT_RRTYPE_DNSKEY)->count == 1);
+	knot_rdataset_t *n3p = node_rdataset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
+	if (n3p != NULL) {
+		policy->nsec3_enabled = true;
+		policy->nsec3_iterations = knot_nsec3param_iters(n3p->rdata);
+		policy->nsec3_salt_length = knot_nsec3param_salt_len(n3p->rdata);
+	}
+	policy->signing_threads = 1;
+}
+
 int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents_t *zone)
 {
 	if (ctx == NULL || zone == NULL) {
@@ -267,9 +281,10 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 		return KNOT_ENOMEM;
 	}
 
+	policy_from_zone(ctx->policy, zone);
 	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->apex->owner);
-	conf_id_fix_default(&policy_id);
-	policy_load(ctx->policy, &policy_id);
+	conf_val_t num_threads = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, &policy_id);
+	ctx->policy->signing_threads = conf_int(&num_threads);
 
 	int ret = kasp_zone_from_contents(ctx->zone, zone, ctx->policy->single_type_signing,
 	                                  ctx->policy->nsec3_enabled, &ctx->policy->nsec3_iterations,

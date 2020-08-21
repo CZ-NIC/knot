@@ -843,7 +843,7 @@ int knot_nsec3_check_chain(zone_update_t *update, const dnssec_nsec3_params_t *p
 {
 	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC3, params };
 
-	mark_empty_ctx_t mctx = { (params->flags & KNOT_NSEC3_FLAG_OPT_OUT), false, NULL };
+	mark_empty_ctx_t mctx = { true, false, NULL };
 	int ret = zone_tree_apply(update->new_cont->nodes, nsec3_mark_empty, &mctx);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -867,7 +867,7 @@ int knot_nsec3_check_chain_fix(zone_update_t *update, const dnssec_nsec3_params_
 {
 	nsec_chain_iterate_data_t data = { 0, update, KNOT_RRTYPE_NSEC3, params };
 
-	mark_empty_ctx_t mctx = { (params->flags & KNOT_NSEC3_FLAG_OPT_OUT), true, update->new_cont };
+	mark_empty_ctx_t mctx = { true, true, update->new_cont };
 	int ret = zone_tree_apply(update->a_ctx->node_ptrs, nsec3_mark_empty, &mctx);
 	if (ret != KNOT_EOK) {
 		return ret;

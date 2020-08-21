@@ -1752,9 +1752,9 @@ List of DNSSEC checks:
 - NSEC(3) RR exists for each name (unless opt-out) with correct bitmap.
 - Every NSEC(3) RR is linked to the lexicographically next one.
 
-The validation can be affected by :ref:`zone_dnssec-policy` configuration.
-Namely :ref:`policy_nsec3`, :ref:`policy_nsec3-opt-out`,
-:ref:`policy_single-type-signing`, and :ref:`policy_signing-threads`.
+The validation is not affected by :ref:`zone_dnssec-policy` configuration,
+except for :ref:`policy_signing-threads` option, which specifies the number
+of threads for parallel validation.
 
 .. NOTE::
 
