@@ -319,6 +319,7 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (zone_expired(zone)) {
+		args->failed = true;
 		return KNOT_ENOTSUP;
 	}
 
@@ -332,6 +333,7 @@ static int zone_refresh(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (!zone_is_slave(conf(), zone)) {
+		args->failed = true;
 		return KNOT_ENOTSUP;
 	}
 
@@ -345,6 +347,7 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (!zone_is_slave(conf(), zone)) {
+		args->failed = true;
 		return KNOT_ENOTSUP;
 	}
 
@@ -392,6 +395,7 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (!conf_bool(&val)) {
+		args->failed = true;
 		return KNOT_ENOTSUP;
 	}
 
