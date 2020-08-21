@@ -136,9 +136,6 @@ int zone_contents_find_dname(const zone_contents_t *contents,
  * \brief Tries to find a node with the specified name among the NSEC3 nodes
  *        of the zone.
  *
- * \note This function is identical to zone_contents_get_nsec3_node(), only it
- *       returns constant reference.
- *
  * \param contents Zone where the name should be searched for.
  * \param name Name to find.
  *
