@@ -143,6 +143,8 @@ policy
 A :ref:`reference<policy_id>` to DNSSEC signing policy. A special *default*
 value can be used for the default policy setting.
 
+*Default:* an imaginary policy with all default values
+
 .. _mod-onlinesign_nsec-bitmap:
 
 nsec-bitmap
