@@ -142,11 +142,11 @@ the user confirms manually that the parent zone contains DS record for the new
 KSK in submission phase and the old KSK can be retired. (#)
 .TP
 \fBzone\-freeze\fP [\fIzone\fP\&...]
-Temporarily postpone zone\-changing events (load, refresh, update, flush, and
-DNSSEC signing). (#)
+Trigger temporary stop of zone\-changing events (load, refresh, update, flush,
+and DNSSEC signing). (#)
 .TP
 \fBzone\-thaw\fP [\fIzone\fP\&...]
-Dismiss zone freeze. (#)
+Trigger dismissal of zone freeze. (#)
 .TP
 \fBzone\-read\fP \fIzone\fP [\fIowner\fP [\fItype\fP]]
 Get zone data that are currently being presented.
@@ -242,6 +242,10 @@ Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\
 (#) indicates an optionally blocking operation.
 .sp
 The \fI\-b\fP and \fI\-f\fP options can be placed right after the command name.
+.sp
+The \fIOK\fP response to triggering commands means that the command has been successfully sent
+to the server. To verify if the operation succeeded it\(aqs necessary to check the server
+log.
 .SS Interactive mode
 .sp
 The utility provides interactive mode with basic line editing functionality,

@@ -119,11 +119,11 @@ Actions
   KSK in submission phase and the old KSK can be retired. (#)
 
 **zone-freeze** [*zone*...]
-  Temporarily postpone zone-changing events (load, refresh, update, flush, and
-  DNSSEC signing). (#)
+  Trigger temporary stop of zone-changing events (load, refresh, update, flush,
+  and DNSSEC signing). (#)
 
 **zone-thaw** [*zone*...]
-  Dismiss zone freeze. (#)
+  Trigger dismissal of zone freeze. (#)
 
 **zone-read** *zone* [*owner* [*type*]]
   Get zone data that are currently being presented.
@@ -220,6 +220,10 @@ Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *n
 (\#) indicates an optionally blocking operation.
 
 The *-b* and *-f* options can be placed right after the command name.
+
+The `OK` response to triggering commands means that the command has been successfully sent
+to the server. To verify if the operation succeeded it's necessary to check the server
+log.
 
 Interactive mode
 ................
