@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -455,6 +455,23 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 	return DNSSEC_EOK;
 }
 
+static int pkcs8_set_private(void *ctx, gnutls_privkey_t key)
+{
+	if (!ctx) {
+		return DNSSEC_EINVAL;
+	}
+
+	_cleanup_binary_ dnssec_binary_t pem = { 0 };
+	int r = dnssec_pem_from_privkey(key, &pem);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	_cleanup_free_ char *keyid = NULL;
+
+	return pkcs8_import_key(ctx, &pem, &keyid);
+}
+
 /* -- public API ----------------------------------------------------------- */
 
 _public_
@@ -470,6 +487,7 @@ int dnssec_keystore_init_pkcs8(dnssec_keystore_t **store_ptr)
 		.import_key   = pkcs8_import_key,
 		.remove_key   = pkcs8_remove_key,
 		.get_private  = pkcs8_get_private,
+		.set_private  = pkcs8_set_private,
 	};
 
 	return keystore_create(store_ptr, &IMPLEMENTATION);

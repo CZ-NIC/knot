@@ -54,6 +54,8 @@ typedef enum {
 	CTL_ZONE_RETRANSFER,
 	CTL_ZONE_NOTIFY,
 	CTL_ZONE_FLUSH,
+	CTL_ZONE_BACKUP,
+	CTL_ZONE_RESTORE,
 	CTL_ZONE_SIGN,
 	CTL_ZONE_KEY_ROLL,
 	CTL_ZONE_KSK_SBM,
@@ -89,6 +91,7 @@ typedef struct {
 	knot_ctl_data_t data;
 	server_t *server;
 	bool failed;
+	void *custom_ctx;
 } ctl_args_t;
 
 /*!

@@ -125,6 +125,15 @@ Trigger a zone journal flush to the configured zone file. If an output
 directory is specified, the current zone is immediately dumped (in the
 blocking mode) to a zone file in the specified directory. (#)
 .TP
+\fBzone\-backup\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fB+journal\fP] [\fB+nozonefile\fP]
+Trigger a zone data and metadata backup to specified directory.
+Optional flag \fB+journal\fP backs\-up also zone journal, whereas \fB+nozonefile\fP
+avoids backing up zone contents to a zonefile. (#)
+.TP
+\fBzone\-restore\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fB+journal\fP] [\fB+nozonefile\fP]
+Trigger a zone data and metadata restore from specified backup directory.
+Optional flags are equivalent to \fBzone\-backup\fP\&. (#)
+.TP
 \fBzone\-sign\fP [\fIzone\fP\&...]
 Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.
 This command is valid for zones with DNSSEC signing enabled. (#)

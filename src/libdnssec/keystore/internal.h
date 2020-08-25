@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ typedef struct keystore_functions {
 	int (*remove_key)(void *ctx, const char *id);
 	// private key access
 	int (*get_private)(void *ctx, const char *id, gnutls_privkey_t *key_ptr);
+	int (*set_private)(void *ctx, gnutls_privkey_t key);
 } keystore_functions_t;
 
 struct dnssec_keystore {

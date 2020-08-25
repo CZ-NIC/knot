@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,6 +45,8 @@
 #define CMD_ZONE_RETRANSFER	"zone-retransfer"
 #define CMD_ZONE_NOTIFY		"zone-notify"
 #define CMD_ZONE_FLUSH		"zone-flush"
+#define CMD_ZONE_BACKUP		"zone-backup"
+#define CMD_ZONE_RESTORE	"zone-restore"
 #define CMD_ZONE_SIGN		"zone-sign"
 #define CMD_ZONE_KEY_ROLL	"zone-key-rollover"
 #define CMD_ZONE_KSK_SBM	"zone-ksk-submitted"
@@ -241,6 +243,8 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_ZONE_RETRANSFER:
 	case CTL_ZONE_NOTIFY:
 	case CTL_ZONE_FLUSH:
+	case CTL_ZONE_BACKUP:
+	case CTL_ZONE_RESTORE:
 	case CTL_ZONE_SIGN:
 	case CTL_ZONE_KEY_ROLL:
 	case CTL_ZONE_KSK_SBM:
@@ -363,6 +367,8 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_RETRANSFER:
 	case CTL_ZONE_NOTIFY:
 	case CTL_ZONE_FLUSH:
+	case CTL_ZONE_BACKUP:
+	case CTL_ZONE_RESTORE:
 	case CTL_ZONE_SIGN:
 	case CTL_ZONE_KEY_ROLL:
 	case CTL_ZONE_KSK_SBM:
@@ -637,6 +643,12 @@ const filter_desc_t zone_flush_filters[MAX_FILTERS] = {
 	{ "+outdir", CTL_FILTER_FLUSH_OUTDIR, true },
 };
 
+const filter_desc_t zone_backup_filters[MAX_FILTERS] = {
+	{ "+backupdir",   CTL_FILTER_FLUSH_OUTDIR,   true },
+	{ "+journal",     CTL_FILTER_PURGE_JOURNAL,  false },
+	{ "+nozonefile",  CTL_FILTER_PURGE_ZONEFILE, false },
+};
+
 const filter_desc_t zone_status_filters[MAX_FILTERS] = {
 	{ "+role",        CTL_FILTER_STATUS_ROLE },
 	{ "+serial",      CTL_FILTER_STATUS_SERIAL },
@@ -662,6 +674,10 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 	switch (cmd) {
 	case CTL_ZONE_FLUSH:
 		fd = zone_flush_filters;
+		break;
+	case CTL_ZONE_BACKUP:
+	case CTL_ZONE_RESTORE:
+		fd = zone_backup_filters;
 		break;
 	case CTL_ZONE_STATUS:
 		fd = zone_status_filters;
@@ -1016,6 +1032,8 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,          CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
 	{ CMD_ZONE_NOTIFY,     cmd_zone_ctl,          CTL_ZONE_NOTIFY,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_FLUSH,      cmd_zone_filter_ctl,   CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
+	{ CMD_ZONE_BACKUP,     cmd_zone_filter_ctl,   CTL_ZONE_BACKUP,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_RESTORE,    cmd_zone_filter_ctl,   CTL_ZONE_RESTORE,    CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,          CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
 	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE },
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,          CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE | CMD_FOPT_ZONE },
@@ -1050,50 +1068,52 @@ const cmd_desc_t cmd_table[] = {
 };
 
 static const cmd_help_t cmd_help_table[] = {
-	{ CMD_EXIT,            "",                                       "Exit interactive mode." },
-	{ "",                  "",                                       "" },
-	{ CMD_STATUS,          "[<detail>]",                             "Check if the server is running." },
-	{ CMD_STOP,            "",                                       "Stop the server if running." },
-	{ CMD_RELOAD,          "",                                       "Reload the server configuration and modified zones." },
-	{ CMD_STATS,           "[<module>[.<counter>]]",                 "Show global statistics counter(s)." },
-	{ "",                  "",                                       "" },
-	{ CMD_ZONE_CHECK,      "[<zone>...]",                            "Check if the zone can be loaded. (*)" },
-	{ CMD_ZONE_RELOAD,     "[<zone>...]",                            "Reload a zone from a disk. (#)" },
-	{ CMD_ZONE_REFRESH,    "[<zone>...]",                            "Force slave zone refresh. (#)" },
-	{ CMD_ZONE_NOTIFY,     "[<zone>...]",                            "Send a NOTIFY message to all configured remotes. (#)" },
-	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                            "Force slave zone retransfer (no serial check). (#)" },
-	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",              "Flush zone journal into the zone file. (#)" },
-	{ CMD_ZONE_SIGN,       "[<zone>...]",                            "Re-sign the automatically signed zone. (#)" },
-	{ CMD_ZONE_KEY_ROLL,   " <zone> ksk|zsk",                        "Trigger immediate key rollover. (#)" },
-	{ CMD_ZONE_KSK_SBM,    " <zone>...",                             "When KSK submission, confirm parent's DS presence. (#)" },
-	{ CMD_ZONE_FREEZE,     "[<zone>...]",                            "Temporarily postpone automatic zone-changing events. (#)" },
-	{ CMD_ZONE_THAW,       "[<zone>...]",                            "Dismiss zone freeze. (#)" },
-	{ "",                  "",                                       "" },
-	{ CMD_ZONE_READ,       "<zone> [<owner> [<type>]]",              "Get zone data that are currently being presented." },
-	{ CMD_ZONE_BEGIN,      "<zone>...",                              "Begin a zone transaction." },
-	{ CMD_ZONE_COMMIT,     "<zone>...",                              "Commit the zone transaction." },
-	{ CMD_ZONE_ABORT,      "<zone>...",                              "Abort the zone transaction." },
-	{ CMD_ZONE_DIFF,       "<zone>",                                 "Get zone changes within the transaction." },
-	{ CMD_ZONE_GET,        "<zone> [<owner> [<type>]]",              "Get zone data within the transaction." },
-	{ CMD_ZONE_SET,        "<zone>  <owner> [<ttl>] <type> <rdata>", "Add zone record within the transaction." },
-	{ CMD_ZONE_UNSET,      "<zone>  <owner> [<type> [<rdata>]]",     "Remove zone data within the transaction." },
-	{ CMD_ZONE_PURGE,      "<zone>... [<filter>...]",                "Purge zone data, zone file, journal, timers, and KASP data. (#)" },
-	{ CMD_ZONE_STATS,      "<zone> [<module>[.<counter>]]",          "Show zone statistics counter(s)."},
-	{ CMD_ZONE_STATUS,     "<zone> [<filter>...]",                   "Show the zone status." },
-	{ "",                  "",                                       "" },
-	{ CMD_CONF_INIT,       "",                                       "Initialize the confdb. (*)" },
-	{ CMD_CONF_CHECK,      "",                                       "Check the server configuration. (*)" },
-	{ CMD_CONF_IMPORT,     " <filename>",                            "Import a config file into the confdb. (*)" },
-	{ CMD_CONF_EXPORT,     "[<filename>]",                           "Export the confdb into a config file or stdout. (*)" },
-	{ CMD_CONF_LIST,       "[<item>...]",                            "List the confdb sections or section items." },
-	{ CMD_CONF_READ,       "[<item>...]",                            "Get the item from the active confdb." },
-	{ CMD_CONF_BEGIN,      "",                                       "Begin a writing confdb transaction." },
-	{ CMD_CONF_COMMIT,     "",                                       "Commit the confdb transaction." },
-	{ CMD_CONF_ABORT,      "",                                       "Rollback the confdb transaction." },
-	{ CMD_CONF_DIFF,       "[<item>...]",                            "Get the item difference within the transaction." },
-	{ CMD_CONF_GET,        "[<item>...]",                            "Get the item data within the transaction." },
-	{ CMD_CONF_SET,        " <item>  [<data>...]",                   "Set the item data within the transaction." },
-	{ CMD_CONF_UNSET,      "[<item>] [<data>...]",                   "Unset the item data within the transaction." },
+	{ CMD_EXIT,            "",                                           "Exit interactive mode." },
+	{ "",                  "",                                           "" },
+	{ CMD_STATUS,          "[<detail>]",                                 "Check if the server is running." },
+	{ CMD_STOP,            "",                                           "Stop the server if running." },
+	{ CMD_RELOAD,          "",                                           "Reload the server configuration and modified zones." },
+	{ CMD_STATS,           "[<module>[.<counter>]]",                     "Show global statistics counter(s)." },
+	{ "",                  "",                                           "" },
+	{ CMD_ZONE_CHECK,      "[<zone>...]",                                "Check if the zone can be loaded. (*)" },
+	{ CMD_ZONE_RELOAD,     "[<zone>...]",                                "Reload a zone from a disk. (#)" },
+	{ CMD_ZONE_REFRESH,    "[<zone>...]",                                "Force slave zone refresh. (#)" },
+	{ CMD_ZONE_NOTIFY,     "[<zone>...]",                                "Send a NOTIFY message to all configured remotes. (#)" },
+	{ CMD_ZONE_RETRANSFER, "[<zone>...]",                                "Force slave zone retransfer (no serial check). (#)" },
+	{ CMD_ZONE_FLUSH,      "[<zone>...] [<filter>...]",                  "Flush zone journal into the zone file. (#)" },
+	{ CMD_ZONE_BACKUP,     "[<zone>...] [<filter>...] +backupdir <dir>", "Backup zone data and metadata. (#)" },
+	{ CMD_ZONE_RESTORE,    "[<zone>...] [<filter>...] +backupdir <dir>", "Restore zone data and metadata. (#)" },
+	{ CMD_ZONE_SIGN,       "[<zone>...]",                                "Re-sign the automatically signed zone. (#)" },
+	{ CMD_ZONE_KEY_ROLL,   " <zone> ksk|zsk",                            "Trigger immediate key rollover. (#)" },
+	{ CMD_ZONE_KSK_SBM,    " <zone>...",                                 "When KSK submission, confirm parent's DS presence. (#)" },
+	{ CMD_ZONE_FREEZE,     "[<zone>...]",                                "Temporarily postpone automatic zone-changing events. (#)" },
+	{ CMD_ZONE_THAW,       "[<zone>...]",                                "Dismiss zone freeze. (#)" },
+	{ "",                  "",                                           "" },
+	{ CMD_ZONE_READ,       "<zone> [<owner> [<type>]]",                  "Get zone data that are currently being presented." },
+	{ CMD_ZONE_BEGIN,      "<zone>...",                                  "Begin a zone transaction." },
+	{ CMD_ZONE_COMMIT,     "<zone>...",                                  "Commit the zone transaction." },
+	{ CMD_ZONE_ABORT,      "<zone>...",                                  "Abort the zone transaction." },
+	{ CMD_ZONE_DIFF,       "<zone>",                                     "Get zone changes within the transaction." },
+	{ CMD_ZONE_GET,        "<zone> [<owner> [<type>]]",                  "Get zone data within the transaction." },
+	{ CMD_ZONE_SET,        "<zone>  <owner> [<ttl>] <type> <rdata>",     "Add zone record within the transaction." },
+	{ CMD_ZONE_UNSET,      "<zone>  <owner> [<type> [<rdata>]]",         "Remove zone data within the transaction." },
+	{ CMD_ZONE_PURGE,      "<zone>... [<filter>...]",                    "Purge zone data, zone file, journal, timers, and KASP data. (#)" },
+	{ CMD_ZONE_STATS,      "<zone> [<module>[.<counter>]]",              "Show zone statistics counter(s)."},
+	{ CMD_ZONE_STATUS,     "<zone> [<filter>...]",                       "Show the zone status." },
+	{ "",                  "",                                           "" },
+	{ CMD_CONF_INIT,       "",                                           "Initialize the confdb. (*)" },
+	{ CMD_CONF_CHECK,      "",                                           "Check the server configuration. (*)" },
+	{ CMD_CONF_IMPORT,     " <filename>",                                "Import a config file into the confdb. (*)" },
+	{ CMD_CONF_EXPORT,     "[<filename>]",                               "Export the confdb into a config file or stdout. (*)" },
+	{ CMD_CONF_LIST,       "[<item>...]",                                "List the confdb sections or section items." },
+	{ CMD_CONF_READ,       "[<item>...]",                                "Get the item from the active confdb." },
+	{ CMD_CONF_BEGIN,      "",                                           "Begin a writing confdb transaction." },
+	{ CMD_CONF_COMMIT,     "",                                           "Commit the confdb transaction." },
+	{ CMD_CONF_ABORT,      "",                                           "Rollback the confdb transaction." },
+	{ CMD_CONF_DIFF,       "[<item>...]",                                "Get the item difference within the transaction." },
+	{ CMD_CONF_GET,        "[<item>...]",                                "Get the item data within the transaction." },
+	{ CMD_CONF_SET,        " <item>  [<data>...]",                       "Set the item data within the transaction." },
+	{ CMD_CONF_UNSET,      "[<item>] [<data>...]",                       "Unset the item data within the transaction." },
 	{ NULL }
 };
 

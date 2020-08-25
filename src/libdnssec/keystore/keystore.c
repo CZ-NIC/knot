@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -145,8 +145,8 @@ int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id)
 }
 
 _public_
-int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
-			   dnssec_key_t *key)
+int dnssec_keystore_get_private(dnssec_keystore_t *store, const char *id,
+				dnssec_key_t *key)
 {
 	if (!store || !id || dnssec_key_get_algorithm(key) == 0 || !key) {
 		return DNSSEC_EINVAL;
@@ -169,4 +169,18 @@ int dnssec_keystore_export(dnssec_keystore_t *store, const char *id,
 	}
 
 	return DNSSEC_EOK;
+}
+
+_public_
+int dnssec_keystore_set_private(dnssec_keystore_t *store, dnssec_key_t *key)
+{
+	if (!store || !key) {
+		return DNSSEC_EINVAL;
+	}
+
+	if (!key->private_key) {
+		return DNSSEC_NO_PRIVATE_KEY;
+	}
+
+	return store->functions->set_private(store->ctx, key->private_key);
 }
