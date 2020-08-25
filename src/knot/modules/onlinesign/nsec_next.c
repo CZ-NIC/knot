@@ -88,7 +88,7 @@ knot_dname_t *online_nsec_next(const knot_dname_t *dname, const knot_dname_t *ap
 	memmove(pos, dname, dname_len);
 
 	// add new zero-byte label
-	if (empty_len >= 2) {
+	if (pos >= copy + 2 && empty_len >= 2) {
 		pos -= 2;
 		pos[0] = 0x01;
 		pos[1] = 0x00;
