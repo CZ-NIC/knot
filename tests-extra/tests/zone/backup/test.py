@@ -99,7 +99,7 @@ slave.start()
 slave.ctl("zone-restore +nozonefile +backupdir %s +journal" % slave_bck_dir)
 slave.zones_wait(zones) # zones shall be loaded from recovered journal
 
-for i in range(20):
+for i in range(30):
     t.sleep(1)
     resp = slave.dig(zones[0].name, "SOA")
     if resp.rcode() != "NOERROR":
