@@ -84,7 +84,7 @@ knot_dname_t *online_nsec_next(const knot_dname_t *dname, const knot_dname_t *ap
 	knot_dname_storage_t copy = { 0 };
 	size_t dname_len = knot_dname_size(dname);
 	size_t empty_len = sizeof(copy) - dname_len;
-	uint8_t *pos = copy + empty_len;
+	uint8_t *pos = (uint8_t *)copy + empty_len;
 	memmove(pos, dname, dname_len);
 
 	// add new zero-byte label
