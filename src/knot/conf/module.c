@@ -489,16 +489,18 @@ void conf_reset_modules(
 		query_module_reset(conf, mod, new_plan);
 	}
 
-	WALK_LIST(mod, *query_modules) {
+	knotd_mod_t *next;
+	WALK_LIST_DELSAFE(mod, next, *query_modules) {
 		int ret = mod->api->load(mod);
 		if (ret != KNOT_EOK) {
 			MOD_ID_LOG(mod->zone, error, mod->id, "failed to load (%s)",
 			           knot_strerror(ret));
+			rem_node(&mod->node);
 			query_module_close(mod);
-			return;
+			continue;
 		}
 		mod->config = NULL; // Invalidate the current config.
 	}
 
-	rcu_xchg_pointer(query_plan, new_plan);
+	(void)rcu_xchg_pointer(query_plan, new_plan);
 }
