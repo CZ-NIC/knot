@@ -7,6 +7,7 @@ Validate reproducible signatures.
 import os
 import shutil
 import os.path
+import random
 
 from dnstest.test import Test
 from dnstest.keys import Keymgr
@@ -32,9 +33,6 @@ if gvn < 0x03060a:
 
 t = Test()
 
-ALGORITHM=13
-keysize = "1024" if ALGORITHM < 11 else "256"
-
 master = t.server("knot")
 slave1 = t.server("knot")
 slave2 = t.server("knot")
@@ -44,15 +42,24 @@ zone = t.zone("example.com.")
 t.link(zone, master, slave1)
 t.link(zone, master, slave2)
 
+algorithms = [
+        { 'code': 13, 'name': 'ECDSAP256SHA256', 'size': 256, 'always_reproducible': False },
+        { 'code': 15, 'name': 'ED25519',         'size': 256, 'always_reproducible': True  },
+        { 'code': 16, 'name': 'ED448',           'size': 456, 'always_reproducible': True  }
+]
+
+alg = random.choice(algorithms)
+
 for z in zone:
     for s in [slave1, slave2]:
         s.dnssec(z).enable = True
         s.dnssec(z).manual = True
-        s.dnssec(z).repro_sign = True
+        s.dnssec(z).alg = alg['name']
+        s.dnssec(z).repro_sign = not alg['always_reproducible']
 
 slave1.gen_confile() # needed for keymgr
 
-slave1.key_gen(zone[0].name, algorithm=str(ALGORITHM), ksk="true", zsk="true", size=keysize)
+slave1.key_gen(zone[0].name, algorithm=str(alg['code']), ksk="true", zsk="true", size=str(alg['size']))
 
 shutil.copytree(slave1.keydir, slave2.keydir)
 

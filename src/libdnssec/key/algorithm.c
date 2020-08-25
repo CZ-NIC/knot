@@ -116,19 +116,23 @@ bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algo)
 }
 
 _public_
-bool dnssec_algorithm_allow_dsa_reproducible(dnssec_key_algorithm_t algo)
+bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algo, bool explicit)
 {
-#ifdef HAVE_GLNUTLS_REPRODUCIBLE
+	(void)explicit;
 	switch (algo) {
+	case DNSSEC_KEY_ALGORITHM_ED25519:
+	case DNSSEC_KEY_ALGORITHM_ED448:
+		return true; // those are always reproducible
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
-		return true;
+#ifdef HAVE_GLNUTLS_REPRODUCIBLE
+		return explicit; // reproducible only if GnuTLS supports && explicitly configured
+#else
+		return false;
+#endif
 	default:
 		return false;
 	}
-#else
-	return false;
-#endif
 }
 
 _public_

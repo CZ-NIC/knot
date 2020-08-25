@@ -406,9 +406,9 @@ int knot_check_signature(const knot_rrset_t *covered,
 		return result;
 	}
 
-	bool sign_cmp = dnssec_ctx->policy->reproducible_sign &&
-	                dnssec_algorithm_allow_dsa_reproducible(
-	                    dnssec_ctx->policy->algorithm);
+	bool sign_cmp = dnssec_algorithm_reproducible(
+				dnssec_ctx->policy->algorithm,
+				dnssec_ctx->policy->reproducible_sign);
 
 	return dnssec_sign_verify(sign_ctx, sign_cmp, &signature);
 }
