@@ -82,14 +82,13 @@ knot_dname_t *online_nsec_next(const knot_dname_t *dname, const knot_dname_t *ap
 
 	// right aligned copy of the domain name
 	knot_dname_storage_t copy = { 0 };
-	size_t dname_len = knot_dname_size(dname);
-	size_t empty_len = sizeof(copy) - dname_len;
-	uint8_t *pos = copy + empty_len;
-	memmove(pos, dname, dname_len);
+	const size_t dname_len = knot_dname_size(dname);
+	const size_t empty_len = sizeof(copy) - dname_len;
+	memmove(copy + empty_len, dname, dname_len);
 
 	// add new zero-byte label
 	if (empty_len >= 2) {
-		pos -= 2;
+		uint8_t *pos = copy + empty_len - 2;
 		pos[0] = 0x01;
 		pos[1] = 0x00;
 		return knot_dname_copy(pos, NULL);
@@ -101,6 +100,7 @@ knot_dname_t *online_nsec_next(const knot_dname_t *dname, const knot_dname_t *ap
 	assert(knot_dname_is_equal(apex, apex_pos));
 
 	// find first label which can be incremented
+	uint8_t *pos = copy + empty_len;
 	while (pos != apex_pos) {
 		if (inc_label(copy, &pos)) {
 			return knot_dname_copy(pos, NULL);
