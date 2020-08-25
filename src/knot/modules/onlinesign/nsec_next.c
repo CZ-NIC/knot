@@ -90,8 +90,8 @@ knot_dname_t *online_nsec_next(const knot_dname_t *dname, const knot_dname_t *ap
 	// add new zero-byte label
 	if (empty_len >= 2) {
 		pos -= 2;
-		pos[0] = 0x01;
-		pos[1] = 0x00;
+		copy[empty_len - 2] = 0x01;
+		copy[empty_len - 1] = 0x00;
 		return knot_dname_copy(pos, NULL);
 	}
 
