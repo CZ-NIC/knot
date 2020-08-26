@@ -166,6 +166,11 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 		}
 	}
 
+	if (qdata->extra->zone->flags & ZONE_XFR_FROZEN) {
+		qdata->rcode = KNOT_RCODE_NOTAUTH;
+		return KNOT_EAGAIN;
+	}
+
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
 	const knot_rrset_t *their_soa = knot_pkt_rr(authority, 0);
 	*serial_from = knot_soa_serial(their_soa->rrs.rdata);
@@ -270,6 +275,9 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 			return KNOT_STATE_FAIL;
 		case KNOT_EMALF:    /* Malformed query. */
 			IXFROUT_LOG(LOG_DEBUG, qdata, "malformed query");
+			return KNOT_STATE_FAIL;
+		case KNOT_EAGAIN:
+			IXFROUT_LOG(LOG_INFO, qdata, "outgoing IXFR frozen");
 			return KNOT_STATE_FAIL;
 		default:             /* Server errors. */
 			IXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
