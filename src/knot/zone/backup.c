@@ -68,6 +68,8 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	if (!restore_mode) {
 		int ret = mkdir(backup_dir, 0750);
 		if (ret == -1 && errno != EEXIST) {
+			pthread_mutex_destroy(&ctx->readers_mutex);
+			free(ctx);
 			return knot_map_errno();
 		}
 	}
