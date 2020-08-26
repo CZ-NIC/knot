@@ -19,6 +19,7 @@
 /* BSD IPv6 */
 #ifndef __POSIX_VISIBLE
 #define __POSIX_VISIBLE 200112
+#define __BSD_SOURCE	/* If __POSIX_VISIBLE is defined, at least OpenBSD needs this. */
 #endif
 
 #include <stdbool.h>
