@@ -94,6 +94,12 @@ enum knot_error {
 	KNOT_ESOAINVAL,
 	KNOT_ETRAIL,
 	KNOT_EPROCESSING,
+	KNOT_EPROGRESS,
+	KNOT_ELOOP,
+	KNOT_EPROGRAM,
+	KNOT_EFD,
+
+	KNOT_GENERAL_ERROR = -900,
 
 	/* Control states. */
 	KNOT_CTL_ESTOP,
@@ -157,14 +163,6 @@ enum knot_error {
 	KNOT_NO_PUBLIC_KEY,
 	KNOT_NO_PRIVATE_KEY,
 	KNOT_NO_READY_KEY,
-
-	/* Another general errors. */
-	KNOT_ELOOP,
-	KNOT_EPROGRESS,
-
-	/* XDP errors. */
-	KNOT_EPROGRAM,
-	KNOT_EFD,
 
 	KNOT_ERROR_MAX = -501
 };

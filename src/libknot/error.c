@@ -93,6 +93,12 @@ static const struct error errors[] = {
 	{ KNOT_ESOAINVAL,    "SOA mismatch" },
 	{ KNOT_ETRAIL,       "trailing data" },
 	{ KNOT_EPROCESSING,  "processing error" },
+	{ KNOT_EPROGRESS,    "in progress" },
+	{ KNOT_ELOOP,        "loop detected" },
+	{ KNOT_EPROGRAM,     "program not loaded" },
+	{ KNOT_EFD,          "file descriptor error" },
+
+	{ KNOT_GENERAL_ERROR, "unknown general error" },
 
 	/* Control states. */
 	{ KNOT_CTL_ESTOP,     "stopping server" },
@@ -157,15 +163,8 @@ static const struct error errors[] = {
 	{ KNOT_NO_PRIVATE_KEY,        "no private key" },
 	{ KNOT_NO_READY_KEY,          "no key ready for submission" },
 
-	/* Another general errors. */
-	{ KNOT_ELOOP,                 "loop detected" },
-	{ KNOT_EPROGRESS,             "in progress" },
-
-	/* XDP errors. */
-	{ KNOT_EPROGRAM,              "program not loaded" },
-	{ KNOT_EFD,                   "file descriptor error" },
-
-	{ KNOT_ERROR, NULL } /* Terminator */
+	/* Terminator */
+	{ KNOT_ERROR, NULL }
 };
 
 /*!
