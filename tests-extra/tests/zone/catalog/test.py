@@ -4,12 +4,14 @@
 
 from dnstest.test import Test
 from dnstest.utils import set_err, detail_log
+from dnstest.module import ModOnlineSign
 import dnstest.params
 
 import glob
 import shutil
 from subprocess import DEVNULL, PIPE, Popen
 import subprocess
+import random
 
 def check_keys(server, zone_name, expect_keys):
     cmd = Popen([dnstest.params.keymgr_bin, "-d", server.dir + "/keys", zone_name, "list"], stdout=PIPE, stderr=PIPE, universal_newlines=True)
@@ -31,7 +33,10 @@ t.link(zone, master, slave, ixfr=True)
 master.zones["catalog1."].catalog = True
 slave.zones["catalog1."].catalog = True
 
-slave.dnssec(zone[1]).enable = True
+if random.choice([True, False]):
+    slave.dnssec(zone[1]).enable = True
+else:
+    slave.add_module(zone[1], ModOnlineSign(algorithm="ECDSAP256SHA256", single_type_signing=False))
 
 for zf in glob.glob(t.data_dir + "/*.zone"):
     shutil.copy(zf, master.dir + "/master")
