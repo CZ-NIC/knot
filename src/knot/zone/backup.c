@@ -65,9 +65,11 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 	pthread_mutex_init(&ctx->readers_mutex, NULL);
 
-	struct stat st = { 0 };
-	if (!restore_mode && stat(backup_dir, &st) == -1) {
-	    mkdir(backup_dir, 0750);
+	if (!restore_mode) {
+		int ret = mkdir(backup_dir, 0750);
+		if (ret == -1 && errno != EEXIST) {
+			return knot_map_errno();
+		}
 	}
 
 	char db_dir[backup_dir_len + 16];
