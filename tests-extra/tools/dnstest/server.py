@@ -1389,6 +1389,9 @@ class Knot(Server):
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "on")
                 s.item_str("dnssec-policy", z.name)
+            for module in z.modules:
+                if module.conf_name == "mod-onlinesign":
+                    s.item("module", "[%s]" % module.get_conf_ref())
 
             acl = ""
             if z.masters:
