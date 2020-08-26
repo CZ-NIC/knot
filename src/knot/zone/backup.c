@@ -182,7 +182,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	}
 
 	char kasp_dir[strlen(ctx->backup_dir) + 6];
-	snprintf(kasp_dir, sizeof(kasp_dir), "%s/keys", ctx->backup_dir);
+	(void)snprintf(kasp_dir, sizeof(kasp_dir), "%s/keys", ctx->backup_dir);
 	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, kasp_dir, &to);
 	if (ret != KNOT_EOK) {
 		goto done;

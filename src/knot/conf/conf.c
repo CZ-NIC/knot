@@ -837,6 +837,10 @@ conf_mod_id_t* conf_mod_id(
 void conf_free_mod_id(
 	conf_mod_id_t *mod_id)
 {
+	if (mod_id == NULL) {
+		return;
+	}
+
 	free(mod_id->name);
 	free(mod_id->data);
 	free(mod_id);
