@@ -36,7 +36,8 @@ backup_dir = master.dir + "/backup"
 slave_bck_dir = slave.dir + "/backup"
 
 t.start()
-master.zones_wait(zones)
+slave.zones_wait(zones)
+start_time = int(t.uptime())
 
 master.ctl("zone-backup +backupdir %s" % backup_dir)
 slave.ctl("zone-backup %s %s +journal +backupdir %s +nozonefile" % \
@@ -100,12 +101,12 @@ slave.start()
 slave.ctl("zone-restore +nozonefile +backupdir %s +journal" % slave_bck_dir)
 slave.zones_wait(zones) # zones shall be loaded from recovered journal
 
-for i in range(30):
+for i in range(start_time + 45 - int(t.uptime())):
     t.sleep(1)
     resp = slave.dig(zones[0].name, "SOA")
     if resp.rcode() != "NOERROR":
         break
-# the zone should expire in much less than 45 seconds (45 = SOA) according to restored timers
+# the zone should expire in 45 seconds (45 = SOA) according to restored timers
 
 resp = slave.dig(zones[0].name, "SOA")
 resp.check(rcode="SERVFAIL")
