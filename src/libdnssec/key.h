@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,6 +106,11 @@ typedef struct dnssec_key dnssec_key_t;
  * @note: less secure algorithms may go unsupported on purpose.
  */
 bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algo);
+
+/*!
+ * Check if the algorithm allows deterministic signing.
+ */
+bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algo, bool explicit);
 
 /*!
  * Allocate new DNSSEC key.
