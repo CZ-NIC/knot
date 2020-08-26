@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -111,6 +111,16 @@ static int fix_mapsize(knot_lmdb_db_t *db)
 		db->env_flags |= MDB_RDONLY;
 	}
 	return KNOT_EOK;
+}
+
+size_t knot_lmdb_copy_size(knot_lmdb_db_t *to_copy)
+{
+	size_t copy_size = 1048576;
+	struct stat st;
+	if (lmdb_stat(to_copy->path, &st)) {
+		copy_size += st.st_size * 2;
+	}
+	return copy_size;
 }
 
 static int lmdb_open(knot_lmdb_db_t *db)
@@ -496,6 +506,47 @@ int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val)
 	free(val.mv_data);
 	knot_lmdb_commit(&txn);
 	return txn.ret;
+}
+
+int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix)
+{
+	knot_lmdb_foreach(to, prefix) {
+		knot_lmdb_del_cur(to);
+	}
+	if (to->ret != KNOT_EOK) {
+		return to->ret;
+	}
+	knot_lmdb_foreach(from, prefix) {
+		knot_lmdb_insert(to, &from->cur_key, &from->cur_val);
+	}
+	return from->ret == KNOT_EOK ? to->ret : from->ret;
+}
+
+int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
+                            MDB_val *prefixes, size_t n_prefixes)
+{
+	if (n_prefixes < 1) {
+		return KNOT_EOK;
+	}
+	if (from == NULL || to == NULL || prefixes == NULL) {
+		return KNOT_EINVAL;
+	}
+	int ret = knot_lmdb_open(from);
+	if (ret == KNOT_EOK) {
+		ret = knot_lmdb_open(to);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t tr = { 0 }, tw = { 0 };
+	knot_lmdb_begin(from, &tr, false);
+	knot_lmdb_begin(to, &tw, true);
+	for (size_t i = 0; i < n_prefixes && ret == KNOT_EOK; i++) {
+		ret = knot_lmdb_copy_prefix(&tr, &tw, &prefixes[i]);
+	}
+	knot_lmdb_commit(&tw);
+	knot_lmdb_commit(&tr);
+	return ret == KNOT_EOK ? tw.ret : ret;
 }
 
 size_t knot_lmdb_usage(knot_lmdb_txn_t *txn)

@@ -256,3 +256,14 @@ int kasp_db_set_saved_ttls(knot_lmdb_db_t *db, const knot_dname_t *zone,
  * \param conf    COnfiguration to take options from.
  */
 void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf);
+
+/*!
+ * \brief Backup KASP DB for one zone with keys and all metadata to backup location.
+ *
+ * \param zone         Name of the zone to be backed up.
+ * \param db           DB to backup from.
+ * \param backup_db    DB to backup to.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db);

@@ -153,15 +153,17 @@ knotd_mod_t *query_module_open(conf_t *conf, server_t *server, conf_mod_id_t *mo
 	return module;
 }
 
-void query_module_close(knotd_mod_t *module)
+static void module_reset(conf_t *conf, knotd_mod_t *module, struct query_plan *new_plan)
 {
-	if (module == NULL) {
-		return;
-	}
+	// Keep ->node
+	module->config = conf;
+	// Keep ->server
+	// Keep ->id
+	module->plan = new_plan;
+	// Keep ->zone
+	// Keep ->api
 
-	knotd_mod_stats_free(module);
-	conf_free_mod_id(module->id);
-
+	// Reset DNSSEC
 	zone_sign_ctx_free(module->sign_ctx);
 	free_zone_keys(module->keyset);
 	free(module->keyset);
@@ -169,8 +171,37 @@ void query_module_close(knotd_mod_t *module)
 		kdnssec_ctx_deinit(module->dnssec);
 		free(module->dnssec);
 	}
+	module->dnssec = NULL;
+	module->keyset = NULL;
+	module->sign_ctx = NULL;
 
+	// Reset statistics
+	knotd_mod_stats_free(module);
+	module->stats_info = NULL;
+	module->stats_vals = NULL;
+	module->stats_count = 0;
+
+	// Keep ->ctx
+}
+
+void query_module_close(knotd_mod_t *module)
+{
+	if (module == NULL) {
+		return;
+	}
+
+	module_reset(NULL, module, NULL);
+	conf_free_mod_id(module->id);
 	free(module);
+}
+
+void query_module_reset(conf_t *conf, knotd_mod_t *module, struct query_plan *new_plan)
+{
+	if (module == NULL) {
+		return;
+	}
+
+	module_reset(conf, module, new_plan);
 }
 
 _public_
