@@ -207,7 +207,7 @@ pkg:debian:symbols:libknot:
 pkg:debian:symbols:libdnssec:
   variables:
     LIB_NAME: libdnssec
-    LIB_ABI: 7
+    LIB_ABI: 8
   <<: *debian_stable
   <<: *pkg_symbols
 
