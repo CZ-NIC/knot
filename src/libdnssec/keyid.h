@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,27 +18,10 @@
  * \file
  *
  * \addtogroup keyid
- * 
+ *
  * \brief DNSSEC key ID manipulation.
  *
  * The module contains auxiliary functions for manipulation with key IDs.
- *
- * Example:
- *
- * ~~~~~ {.c}
- *
- * char *key_id = "ef26672cafede0732dd18fba6488fa390b5589af";
- * assert(dnssec_keyid_is_valid(key_id));
- *
- * char copy[DNSSEC_KEY_ID_SIZE + 1] = { 0 };
- * memcpy(copy, key_id, sizeof(copy));
- * for (int i = 0; i < DNSSEC_KEY_ID_SIZE; i++) {
- *     copy[i] = toupper((unsigned char)copy[i]);
- * }
- *
- * assert(dnssec_keyid_equal(key_id, copy));
- *
- * ~~~~~
  *
  * @{
  */

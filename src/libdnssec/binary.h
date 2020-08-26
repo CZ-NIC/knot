@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,24 +23,6 @@
  *
  * The module provides universal binary data container extensively used by
  * a lot of functions provided by the library.
- *
- * Example of use:
- * ~~~~~ {.c}
- *
- * dnssec_binary_t data = { 0 };
- *
- * int result = dnssec_binary_alloc(&data, 32);
- * if (result != DNSSEC_EOK) {
- *     return result;
- * }
- *
- * memcpy(&data.data, buffer, data.size);
- *
- * // ...
- *
- * dnssec_binary_free(&data);
- *
- * ~~~~~
  *
  * @{
  */

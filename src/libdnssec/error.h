@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,16 +23,6 @@
  *
  * The module defines all error codes used in the library, and functions
  * to convert the error codes to sensible error strings.
- *
- * ~~~~~ {.c}
- * int result;
- *
- * result = dnssec_key_set_pubkey(NULL, NULL);
- * assert(result == DNSSEC_EINVAL);
- *
- * fprintf(stderr, "Error: %s.\n", dnssec_strerror(result));
- * // Error: Invalid argument.
- * ~~~~~
  *
  * @{
  */

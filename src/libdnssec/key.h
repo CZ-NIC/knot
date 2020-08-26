@@ -30,42 +30,6 @@
  * The module interface provides various functions to retrieve information
  * about the key. But the key is mostly used by other modules of the library.
  *
- * The following example shows construction of a key from DNSKEY RDATA:
- *
- * ~~~~~ {.c}
- *
- * dnssec_binary_t rdata = // ...;
- *
- * int result;
- * dnssec_key_t *key = NULL;
- *
- * // create new DNSSEC key
- * result = dnssec_key_new(&key);
- * if (result != DNSSEC_EOK) {
- *     return result;
- * }
- *
- * // load the DNSKEY RDATA
- * result = dnssec_key_set_rdata(key, &rdata);
- * if (result != DNSSEC_EOK) {
- *     dnssec_key_free(key);
- *     return result;
- * }
- *
- * // print key tag
- * printf("key %s\n", dnssec_key_get_keytag(key));
- *
- * // make sure what we can do with the key
- * assert(dnssec_key_can_verify(key) == true);
- * assert(dnssec_key_can_sign(key) == false);
- *
- * // ...
- *
- * // cleanup
- * dnssec_key_free(key);
- *
- * ~~~~~
- *
  * @{
  */
 

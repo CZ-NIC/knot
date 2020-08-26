@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,14 +22,6 @@
  * \brief Pseudo-random number generating API.
  *
  * The module provides generating of pseudo-random numbers and buffers.
- *
- * Example:
- *
- * ~~~
- *
- * uint16_t transaction_id = dnssec_random_uint16_t();
- *
- * ~~~
  *
  * @{
  */

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,24 +23,6 @@
  *
  * The module provides simple interface for DNSKEY key id computation.
  *
- * Example:
- *
- * ~~~~~ {.c}
- *
- * dnssec_binary_t dnskey_rdata = // ... ;
- *
- * int result;
- * uint16_t keytag = 0;
- *
- * result = dnssec_keytag(&dnskey_rdata, &keytag);
- * if (result != DNSSEC_EOK) {
- *     return result;
- * }
- *
- * printf("keytag: %s\n", keytag);
- *
- * ~~~~~
- *
  * @{
  */
 
@@ -59,6 +41,4 @@
  */
 int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag);
 
-/*!
- * @}
- */
+/*! @} */

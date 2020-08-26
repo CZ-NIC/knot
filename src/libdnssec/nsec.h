@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,77 +23,6 @@
  *
  * The module provides interface for computation of NSEC3 hashes and for
  * construction of bit maps used in NSEC and NSEC3 records.
- *
- * Example of NSEC3 hash computation:
- *
- * ~~~~~ {.c}
- *
- * int result;
- *
- * // NSEC3 parameters for hashing
- * nssec_nsec3_params_t params = {
- *     .algorithm = DNSSEC_NSEC3_ALGORITHM_SHA1,
- *     .flags = 0,
- *     .iterations = 10,
- *     .salt = {
- *         .size = 4,
- *         .data = (uint8_t *){ 0xc0, 0x1d, 0xca, 0xfe }
- *     }
- * };
- *
- * // domain name (in wire format)
- * uint8_t *dname = "\0x08""knot-dns""\0x02""cz";
- *
- * // resulting hash
- * dnssec_binary_t hash = { 0 };
- *
- * result = dnssec_nsec3_hash(&dname, &params, &hash);
- * if (result != DNSSEC_EOK) {
- *     return result;
- * }
- *
- * assert(hash.size == 20);
- * // hash.data contains binary data, which encoded in Base32 would be:
- * // 7PTVGE7QV67EM61ROS9238P5RAKR2DM7
- *
- * dnssec_binary_free(&hash);
- *
- * ~~~~~
- *
- * Example of NSEC/NSEC3 bitmap construction.
- *
- * ~~~~~ {.c}
- *
- * int result;
- * dnssec_nsec_bitmap_t *ctx;
- * dnssec_binary_t bitmap;
- *
- * // create encoding context
- * ctx = dnssec_nsec_bitmap_new();
- * if (ctx == NULL) {
- *     return KNOT_ENOMEM;
- * }
- *
- * // add resource records into the bitmap
- * dnssec_nsec_bitmap_add(ctx, 1);  // A RR type
- * dnssec_nsec_bitmap_add(ctx, 28); // AAAA RR type
- *
- * // allocate space for the encoded bitmap
- * size_t size = dnssec_nsec_bitmap_size(ctx);
- * result = dnssec_binary_alloc(&bitmap, size);
- * if (result != DNSSEC_EOK) {
- *     dnssec_nsec_bitmap_free(ctx);
- *     return result;
- * }
- *
- * // write the encoded bitmap and free the context
- * dnssec_nsec_bitmap_write(ctx, &bitmap);
- * dnssec_nsec_bitmap_free(ctx);
- *
- * // use the bitmap ...
- *
- * dnssec_binary_free(&bitmap);
- * ~~~~~
  *
  * @{
  */

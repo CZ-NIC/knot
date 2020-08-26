@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,59 +20,6 @@
  * \addtogroup tsig
  *
  * \brief Low-level TSIG signing API.
- *
- * Example:
- *
- * ~~~~~ {.c}
- *
- * int result;
- *
- * dnssec_binary_t *covered = // ... ;
- * dnssec_binary_t *signature = // ... ;
- *
- * // convert algorithm from textual representation
- * dnssec_tsig_algorithm_t algorithm;
- * algorithm = dnssec_tsig_algorithm_from_name("hmac-sha256");
- * assert(algorithm == DNSSEC_TSIG_HMAC_SHA256);
- *
- * // get shared key
- * dnssec_binary_t key = {
- *     .size = 4,
- *     .data = (uint8_t *) { 0x11, 0x22, 0x33, 0x44 }
- * };
- *
- * // create computation context
- * dnssec_tsig_ctx_t *ctx;
- * result = dnssec_tsig_new(&ctx, algorithm, &key);
- * if (result != DNSSEC_EOK) {
- *     return result;
- * }
- *
- * // add data to be covered by the signature
- * dnssec_tsig_add(ctx, covered);
- *
- * // compute the expected signature (MAC)
- * size_t size = dnssec_tsig_size(ctx);
- * dnssec_binary_t expected_signature = { 0 };
- * result = dnssec_binary_alloc(&expected_signature, size);
- * if (result != DNSSEC_EOK) {
- *     dnssec_tsig_free(ctx);
- *     return result;
- * }
- * dnssec_tsig_write(ctx, &expected_signature);
- *
- * // compare the signatures
- * if (dnssec_binary_cmp(signature, &expected_signature) == 0) {
- *     // valid signature
- * } else {
- *     // invalid signature
- * }
- *
- * // cleanup
- * dnssec_binary_free(&expected_signature);
- * dnssec_tsig_free(ctx);
- *
- * ~~~~~
  *
  * @{
  */
