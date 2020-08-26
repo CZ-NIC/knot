@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,6 +113,26 @@ _public_
 bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algo)
 {
 	return algorithm_to_gnutls(algo) != GNUTLS_PK_UNKNOWN;
+}
+
+_public_
+bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algo, bool explicit)
+{
+	(void)explicit;
+	switch (algo) {
+	case DNSSEC_KEY_ALGORITHM_ED25519:
+	case DNSSEC_KEY_ALGORITHM_ED448:
+		return true; // those are always reproducible
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+#ifdef HAVE_GLNUTLS_REPRODUCIBLE
+		return explicit; // reproducible only if GnuTLS supports && explicitly configured
+#else
+		return false;
+#endif
+	default:
+		return false;
+	}
 }
 
 _public_
