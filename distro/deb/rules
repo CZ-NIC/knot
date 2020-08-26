@@ -6,6 +6,11 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
 export DPKG_GENSYMBOLS_CHECK_LEVEL := 4
 export KNOT_SOFTHSM2_DSO = /usr/lib/softhsm/libsofthsm2.so
+export KNOT_VERSION_FORMAT = release
+
+ifeq ($(DEB_HOST_ARCH),$(filter $(DEB_HOST_ARCH),riscv64))
+  export DEB_LDFLAGS_MAINT_APPEND += -latomic
+endif
 
 include /usr/share/dpkg/default.mk
 
@@ -35,6 +40,11 @@ PYBUILD = pybuild --dir python --dest-dir debian/python3-libknot
 	 --with python3
 
 override_dh_auto_configure:
+	echo confirming architecture...
+	echo 'arch:' $(DEB_HOST_ARCH)
+	echo 'filtered arch:' $(filter $(DEB_HOST_ARCH),mips powerpc riscv64)
+	echo 'DEB_LDFLAGS_MAINT_APPEND:' $(DEB_LDFLAGS_MAINT_APPEND)
+	echo done
 	dh_auto_configure -- \
 	  --sysconfdir=/etc \
 	  --localstatedir=/var/lib \
@@ -55,7 +65,7 @@ override_dh_auto_configure-indep:
 	$(PYBUILD) --configure
 
 override_dh_auto_build-indep:
-	dh_auto_build -- html
+	dh_auto_build -- info html
 	$(PYBUILD) --build
 
 override_dh_auto_install-arch:
@@ -64,7 +74,7 @@ override_dh_auto_install-arch:
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
 
 override_dh_auto_install-indep:
-	dh_auto_install -- install-html
+	dh_auto_install -- install-info install-html
 	# rename knot.sample.conf to knot.conf
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
 	$(PYBUILD) --install
