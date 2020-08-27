@@ -128,7 +128,7 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 	return DNSSEC_EOK;
 }
 
-int privkey_export_x509(gnutls_privkey_t key, gnutls_x509_privkey_t *_key)
+static int privkey_export_x509(gnutls_privkey_t key, gnutls_x509_privkey_t *_key)
 {
 #ifdef HAVE_EXPORT_X509
 	if (gnutls_privkey_export_x509(key, _key) != GNUTLS_E_SUCCESS) {
