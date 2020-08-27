@@ -182,6 +182,9 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
     AC_CHECK_FUNC([gnutls_privkey_sign_data2],
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
 
+    AC_CHECK_FUNC([gnutls_privkey_export_x509],
+        [AC_DEFINE([HAVE_EXPORT_X509], [1], [gnutls_privkey_export_x509 available])])
+
     AC_CHECK_FUNC([gnutls_memset],
         [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset available])
          gnutls_memset=yes], [gnutls_memset=no])

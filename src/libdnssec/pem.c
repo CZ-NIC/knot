@@ -128,6 +128,34 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 	return DNSSEC_EOK;
 }
 
+int privkey_export_x509(gnutls_privkey_t key, gnutls_x509_privkey_t *_key)
+{
+#ifdef HAVE_EXPORT_X509
+	if (gnutls_privkey_export_x509(key, &_key) != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_EXPORT_ERROR;
+	}
+#else // Needed for GnuTLS < 3.4.0 (CentOS7)
+	struct privkey { // Extracted needed items only!
+		gnutls_privkey_type_t type;
+		gnutls_pk_algorithm_t pk_algorithm;
+		gnutls_x509_privkey_t x509;
+	};
+	struct privkey *pkey = (struct privkey *)key;
+
+	assert(pkey->type == GNUTLS_PRIVKEY_X509);
+
+	if (gnutls_x509_privkey_init(_key) != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_EXPORT_ERROR;
+	}
+
+	if (gnutls_x509_privkey_cpy(*_key, pkey->x509) != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(*_key);
+		return DNSSEC_KEY_EXPORT_ERROR;
+	}
+#endif
+	return DNSSEC_EOK;
+}
+
 _public_
 int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem)
 {
@@ -137,9 +165,9 @@ int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem)
 
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t _key = NULL;
 
-	int r = gnutls_privkey_export_x509(key, &_key);
-	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_EXPORT_ERROR;
+	int r = privkey_export_x509(key, &_key);
+	if (r != DNSSEC_EOK) {
+		return r;
 	}
 
 	dnssec_binary_t _pem = { 0 };
