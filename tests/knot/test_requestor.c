@@ -96,6 +96,8 @@ static void test_disconnected(knot_requestor_t *requestor,
 {
 	knot_request_t *req = make_query(requestor, dst, src);
 	int ret = knot_requestor_exec(requestor, req, TIMEOUT);
+	/* ECONNREFUSED is OK too on FreeBSD. */
+	ret = (ret == KNOT_ECONNREFUSED) ? KNOT_ECONN : ret;
 	is_int(KNOT_ECONN, ret, "requestor: disconnected/exec");
 	knot_request_free(req, requestor->mm);
 
