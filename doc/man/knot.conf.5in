@@ -67,9 +67,9 @@ the following symbols:
 .UNINDENT
 .sp
 The configuration consists of several fixed sections and optional module
-sections. There are 14 fixed sections (\fBmodule\fP, \fBserver\fP, \fBkey\fP, \fBacl\fP,
-\fBcontrol\fP, \fBstatistics\fP, \fBdatabase\fP, \fBkeystore\fP, \fBsubmission\fP,
-\fBpolicy\fP, \fBremote\fP, \fBtemplate\fP, \fBzone\fP, \fBlog\fP).
+sections. There are 14 fixed sections (\fBmodule\fP, \fBserver\fP, \fBcontrol\fP,
+\fBlog\fP, \fBstatistics\fP, \fBdatabase\fP, \fBkeystore\fP, \fBkey\fP, \fBremote\fP,
+\fBacl\fP, \fBsubmission\fP, \fBpolicy\fP, \fBtemplate\fP, \fBzone\fP).
 Module sections are prefixed with the \fBmod\-\fP prefix (e.g. \fBmod\-stats\fP).
 .sp
 Most of the sections (e.g. \fBzone\fP) are sequences of settings blocks. Each
@@ -406,191 +406,6 @@ intended to offer the DNS service, at least to fulfil the DNS requirement for
 working TCP.
 .UNINDENT
 .UNINDENT
-.SH KEY SECTION
-.sp
-Shared TSIG keys used to authenticate communication with the server.
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-key:
-  \- id: DNAME
-    algorithm: hmac\-md5 | hmac\-sha1 | hmac\-sha224 | hmac\-sha256 | hmac\-sha384 | hmac\-sha512
-    secret: BASE64
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.SS id
-.sp
-A key name identifier.
-.sp
-\fBNOTE:\fP
-.INDENT 0.0
-.INDENT 3.5
-This value MUST be exactly the same as the name of the TSIG key on the
-opposite master/slave server(s).
-.UNINDENT
-.UNINDENT
-.SS algorithm
-.sp
-A TSIG key algorithm. See
-\fI\%TSIG Algorithm Numbers\fP\&.
-.sp
-Possible values:
-.INDENT 0.0
-.IP \(bu 2
-\fBhmac\-md5\fP
-.IP \(bu 2
-\fBhmac\-sha1\fP
-.IP \(bu 2
-\fBhmac\-sha224\fP
-.IP \(bu 2
-\fBhmac\-sha256\fP
-.IP \(bu 2
-\fBhmac\-sha384\fP
-.IP \(bu 2
-\fBhmac\-sha512\fP
-.UNINDENT
-.sp
-\fIDefault:\fP not set
-.SS secret
-.sp
-Shared key secret.
-.sp
-\fIDefault:\fP not set
-.SH ACL SECTION
-.sp
-Access control list rule definitions. The ACLs are used to match incoming
-connections to allow or deny requested operation (zone transfer request, DDNS
-update, etc.).
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-acl:
-  \- id: STR
-    address: ADDR[/INT] | ADDR\-ADDR ...
-    key: key_id ...
-    remote: remote_id ...
-    action: notify | transfer | update ...
-    deny: BOOL
-    update\-type: STR ...
-    update\-owner: key | zone | name
-    update\-owner\-match: sub\-or\-equal | equal | sub
-    update\-owner\-name: STR ...
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.SS id
-.sp
-An ACL rule identifier.
-.SS address
-.sp
-An ordered list of IP addresses, network subnets, or network ranges. The query\(aqs
-source address must match one of them. Empty value means that address match is not
-required.
-.sp
-\fIDefault:\fP not set
-.SS key
-.sp
-An ordered list of \fI\%reference\fPs to TSIG keys. The query must
-match one of them. Empty value means that transaction authentication is not used.
-.sp
-\fIDefault:\fP not set
-.SS remote
-.sp
-An ordered list of \fI\%references\fP to remotes. The query must
-match one of the remotes. Specifically, one of the remote\(aqs addresses and remote\(aqs
-TSIG key if configured must match.
-.sp
-\fBNOTE:\fP
-.INDENT 0.0
-.INDENT 3.5
-This option cannot be specified along with the \fI\%address\fP or
-\fI\%key\fP option at one ACL item.
-.UNINDENT
-.UNINDENT
-.sp
-\fIDefault:\fP not set
-.SS action
-.sp
-An ordered list of allowed (or denied) actions.
-.sp
-Possible values:
-.INDENT 0.0
-.IP \(bu 2
-\fBnotify\fP – Allow incoming notify.
-.IP \(bu 2
-\fBtransfer\fP – Allow zone transfer.
-.IP \(bu 2
-\fBupdate\fP – Allow zone updates.
-.UNINDENT
-.sp
-\fIDefault:\fP not set
-.SS deny
-.sp
-If enabled, instead of allowing, deny the specified \fI\%action\fP,
-\fI\%address\fP, \fI\%key\fP, or combination if these
-items. If no action is specified, deny all actions.
-.sp
-\fIDefault:\fP off
-.SS update\-type
-.sp
-A list of allowed types of Resource Records in a zone update. Every record in an update
-must match one of the specified types.
-.sp
-\fIDefault:\fP not set
-.SS update\-owner
-.sp
-This option restricts possible owners of Resource Records in a zone update by comparing
-them to either the \fI\%TSIG key\fP identity, the current zone name, or to a list of
-domain names given by the \fI\%update\-owner\-name\fP option.
-The comparison method is given by the \fI\%update\-owner\-match\fP option.
-.sp
-Possible values:
-.INDENT 0.0
-.IP \(bu 2
-\fBkey\fP — The owner of each updated RR must match the identity of the TSIG key if used.
-.IP \(bu 2
-\fBname\fP — The owner of each updated RR must match at least one name in the
-\fI\%update\-owner\-name\fP list.
-.IP \(bu 2
-\fBzone\fP — The owner of each updated RR must match the current zone name.
-.UNINDENT
-.sp
-\fIDefault:\fP not set
-.SS update\-owner\-match
-.sp
-This option defines how the owners of Resource Records in an update are matched to the domain name(s)
-set by the \fI\%update\-owner\fP option.
-.sp
-Possible values:
-.INDENT 0.0
-.IP \(bu 2
-\fBsub\-or\-equal\fP — The owner of each Resource Record in an update must either be equal to
-or be a subdomain of at least one domain set by \fI\%update\-owner\fP\&.
-.IP \(bu 2
-\fBequal\fP — The owner of each updated RR must be equal to at least one domain set by
-\fI\%update\-owner\fP\&.
-.IP \(bu 2
-\fBsub\fP — The owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
-one domain set by \fI\%update\-owner\fP\&.
-.UNINDENT
-.sp
-\fIDefault:\fP sub\-or\-equal
-.SS update\-owner\-name
-.sp
-A list of allowed owners of RRs in a zone update used with \fI\%update\-owner\fP
-set to \fBname\fP\&. Every listed owner name which is not FQDN (i.e. it doesn\(aqt end
-in a dot) is considered as if it was appended with the target zone name.
-Such a relative owner name specification allows better ACL rule reusability across
-multiple zones.
-.sp
-\fIDefault:\fP not set
 .SH CONTROL SECTION
 .sp
 Configuration of the server control interface.
@@ -617,6 +432,86 @@ Maximum time (in seconds) the control socket operations can take.
 Set to 0 for infinity.
 .sp
 \fIDefault:\fP 5
+.SH LOGGING SECTION
+.sp
+Server can be configured to log to the standard output, standard error
+output, syslog (or systemd journal if systemd is enabled) or into an arbitrary
+file.
+.sp
+There are 6 logging severity levels:
+.INDENT 0.0
+.IP \(bu 2
+\fBcritical\fP – Non\-recoverable error resulting in server shutdown.
+.IP \(bu 2
+\fBerror\fP – Recoverable error, action should be taken.
+.IP \(bu 2
+\fBwarning\fP – Warning that might require user action.
+.IP \(bu 2
+\fBnotice\fP – Server notice or hint.
+.IP \(bu 2
+\fBinfo\fP – Informational message.
+.IP \(bu 2
+\fBdebug\fP – Debug or detailed message.
+.UNINDENT
+.sp
+In the case of missing log section, \fBwarning\fP or more serious messages
+will be logged to both standard error output and syslog. The \fBinfo\fP and
+\fBnotice\fP messages will be logged to standard output.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+log:
+  \- target: stdout | stderr | syslog | STR
+    server: critical | error | warning | notice | info | debug
+    control: critical | error | warning | notice | info | debug
+    zone: critical | error | warning | notice | info | debug
+    any: critical | error | warning | notice | info | debug
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS target
+.sp
+A logging output.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBstdout\fP – Standard output.
+.IP \(bu 2
+\fBstderr\fP – Standard error output.
+.IP \(bu 2
+\fBsyslog\fP – Syslog or systemd journal.
+.IP \(bu 2
+\fIfile_name\fP – A specific file.
+.UNINDENT
+.sp
+With \fBsyslog\fP target, syslog service is used. However, if Knot DNS has been compiled
+with systemd support and operating system has been booted with systemd, systemd journal
+is used for logging instead of syslog.
+.SS server
+.sp
+Minimum severity level for messages related to general operation of the server to be
+logged.
+.sp
+\fIDefault:\fP not set
+.SS control
+.sp
+Minimum severity level for messages related to server control to be logged.
+.sp
+\fIDefault:\fP not set
+.SS zone
+.sp
+Minimum severity level for messages related to zones to be logged.
+.sp
+\fIDefault:\fP not set
+.SS any
+.sp
+Minimum severity level for all message types to be logged.
+.sp
+\fIDefault:\fP not set
 .SH STATISTICS SECTION
 .sp
 Periodic server statistics dumping.
@@ -837,6 +732,248 @@ Example configuration string for PKCS #11:
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%kasp\-db\fP/keys
+.SH KEY SECTION
+.sp
+Shared TSIG keys used to authenticate communication with the server.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+key:
+  \- id: DNAME
+    algorithm: hmac\-md5 | hmac\-sha1 | hmac\-sha224 | hmac\-sha256 | hmac\-sha384 | hmac\-sha512
+    secret: BASE64
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A key name identifier.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This value MUST be exactly the same as the name of the TSIG key on the
+opposite master/slave server(s).
+.UNINDENT
+.UNINDENT
+.SS algorithm
+.sp
+A TSIG key algorithm. See
+\fI\%TSIG Algorithm Numbers\fP\&.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBhmac\-md5\fP
+.IP \(bu 2
+\fBhmac\-sha1\fP
+.IP \(bu 2
+\fBhmac\-sha224\fP
+.IP \(bu 2
+\fBhmac\-sha256\fP
+.IP \(bu 2
+\fBhmac\-sha384\fP
+.IP \(bu 2
+\fBhmac\-sha512\fP
+.UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS secret
+.sp
+Shared key secret.
+.sp
+\fIDefault:\fP not set
+.SH REMOTE SECTION
+.sp
+Definitions of remote servers for outgoing connections (source of a zone
+transfer, target for a notification, etc.).
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+remote:
+  \- id: STR
+    address: ADDR[@INT] ...
+    via: ADDR[@INT] ...
+    key: key_id
+    block\-notify\-after\-transfer: BOOL
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A remote identifier.
+.SS address
+.sp
+An ordered list of destination IP addresses which are used for communication
+with the remote server. The addresses are tried in sequence until the
+remote is reached. Optional destination port (default is 53)
+can be appended to the address using \fB@\fP separator.
+.sp
+\fIDefault:\fP not set
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+If the remote is contacted and it refuses to perform requested action,
+no more addresses will be tried for this remote.
+.UNINDENT
+.UNINDENT
+.SS via
+.sp
+An ordered list of source IP addresses. The first address with the same family
+as the destination address is used. Optional source port (default is random)
+can be appended to the address using \fB@\fP separator.
+.sp
+\fIDefault:\fP not set
+.SS key
+.sp
+A \fI\%reference\fP to the TSIG key which is used to authenticate
+the communication with the remote server.
+.sp
+\fIDefault:\fP not set
+.SS block\-notify\-after\-transfer
+.sp
+When incoming AXFR/IXFR from this remote (as a master), suppress sending
+NOTIFY messages to all configured slaves.
+.sp
+\fIDefault:\fP off
+.SH ACL SECTION
+.sp
+Access control list rule definitions. The ACLs are used to match incoming
+connections to allow or deny requested operation (zone transfer request, DDNS
+update, etc.).
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+acl:
+  \- id: STR
+    address: ADDR[/INT] | ADDR\-ADDR ...
+    key: key_id ...
+    remote: remote_id ...
+    action: notify | transfer | update ...
+    deny: BOOL
+    update\-type: STR ...
+    update\-owner: key | zone | name
+    update\-owner\-match: sub\-or\-equal | equal | sub
+    update\-owner\-name: STR ...
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+An ACL rule identifier.
+.SS address
+.sp
+An ordered list of IP addresses, network subnets, or network ranges. The query\(aqs
+source address must match one of them. Empty value means that address match is not
+required.
+.sp
+\fIDefault:\fP not set
+.SS key
+.sp
+An ordered list of \fI\%reference\fPs to TSIG keys. The query must
+match one of them. Empty value means that transaction authentication is not used.
+.sp
+\fIDefault:\fP not set
+.SS remote
+.sp
+An ordered list of \fI\%references\fP to remotes. The query must
+match one of the remotes. Specifically, one of the remote\(aqs addresses and remote\(aqs
+TSIG key if configured must match.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option cannot be specified along with the \fI\%address\fP or
+\fI\%key\fP option at one ACL item.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS action
+.sp
+An ordered list of allowed (or denied) actions.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBnotify\fP – Allow incoming notify.
+.IP \(bu 2
+\fBtransfer\fP – Allow zone transfer.
+.IP \(bu 2
+\fBupdate\fP – Allow zone updates.
+.UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS deny
+.sp
+If enabled, instead of allowing, deny the specified \fI\%action\fP,
+\fI\%address\fP, \fI\%key\fP, or combination if these
+items. If no action is specified, deny all actions.
+.sp
+\fIDefault:\fP off
+.SS update\-type
+.sp
+A list of allowed types of Resource Records in a zone update. Every record in an update
+must match one of the specified types.
+.sp
+\fIDefault:\fP not set
+.SS update\-owner
+.sp
+This option restricts possible owners of Resource Records in a zone update by comparing
+them to either the \fI\%TSIG key\fP identity, the current zone name, or to a list of
+domain names given by the \fI\%update\-owner\-name\fP option.
+The comparison method is given by the \fI\%update\-owner\-match\fP option.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBkey\fP — The owner of each updated RR must match the identity of the TSIG key if used.
+.IP \(bu 2
+\fBname\fP — The owner of each updated RR must match at least one name in the
+\fI\%update\-owner\-name\fP list.
+.IP \(bu 2
+\fBzone\fP — The owner of each updated RR must match the current zone name.
+.UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS update\-owner\-match
+.sp
+This option defines how the owners of Resource Records in an update are matched to the domain name(s)
+set by the \fI\%update\-owner\fP option.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBsub\-or\-equal\fP — The owner of each Resource Record in an update must either be equal to
+or be a subdomain of at least one domain set by \fI\%update\-owner\fP\&.
+.IP \(bu 2
+\fBequal\fP — The owner of each updated RR must be equal to at least one domain set by
+\fI\%update\-owner\fP\&.
+.IP \(bu 2
+\fBsub\fP — The owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
+one domain set by \fI\%update\-owner\fP\&.
+.UNINDENT
+.sp
+\fIDefault:\fP sub\-or\-equal
+.SS update\-owner\-name
+.sp
+A list of allowed owners of RRs in a zone update used with \fI\%update\-owner\fP
+set to \fBname\fP\&. Every listed owner name which is not FQDN (i.e. it doesn\(aqt end
+in a dot) is considered as if it was appended with the target zone name.
+Such a relative owner name specification allows better ACL rule reusability across
+multiple zones.
+.sp
+\fIDefault:\fP not set
 .SH SUBMISSION SECTION
 .sp
 Parameters of KSK submission checks.
@@ -904,8 +1041,8 @@ policy:
     ksk\-shared: BOOL
     dnskey\-ttl: TIME
     zone\-max\-ttl: TIME
-    zsk\-lifetime: TIME
     ksk\-lifetime: TIME
+    zsk\-lifetime: TIME
     propagation\-delay: TIME
     rrsig\-lifetime: TIME
     rrsig\-refresh: TIME
@@ -1038,6 +1175,23 @@ really reasonable when records are generated dynamically
 .UNINDENT
 .sp
 \fIDefault:\fP computed after zone is loaded
+.SS ksk\-lifetime
+.sp
+A period between KSK activation and the next rollover initiation.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+KSK key lifetime is also infuenced by propagation\-delay, dnskey\-ttl,
+and KSK submission delay.
+.sp
+Zero (aka infinity) value causes no KSK rollover as a result.
+.sp
+This applies for CSK lifetime if single\-type\-signing is enabled.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP 0
 .SS zsk\-lifetime
 .sp
 A period between ZSK activation and the next rollover initiation.
@@ -1056,23 +1210,6 @@ Zero (aka infinity) value causes no ZSK rollover as a result.
 .UNINDENT
 .sp
 \fIDefault:\fP 30 days
-.SS ksk\-lifetime
-.sp
-A period between KSK activation and the next rollover initiation.
-.sp
-\fBNOTE:\fP
-.INDENT 0.0
-.INDENT 3.5
-KSK key lifetime is also infuenced by propagation\-delay, dnskey\-ttl,
-and KSK submission delay.
-.sp
-Zero (aka infinity) value causes no KSK rollover as a result.
-.sp
-This applies for CSK lifetime if single\-type\-signing is enabled.
-.UNINDENT
-.UNINDENT
-.sp
-\fIDefault:\fP 0
 .SS propagation\-delay
 .sp
 An extra delay added for each key rollover step. This value should be high
@@ -1157,6 +1294,20 @@ A validity period of newly issued salt field.
 Zero value means infinity.
 .sp
 \fIDefault:\fP 30 days
+.SS signing\-threads
+.sp
+When signing zone or update, use this number of threads for parallel signing.
+.sp
+Those are extra threads independent of \fI\%Background workers\fP\&.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Some steps of the DNSSEC signing operation are not parallelized.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP 1 (no extra threads)
 .SS ksk\-submission
 .sp
 A reference to \fI\%submission\fP section holding parameters of
@@ -1188,20 +1339,6 @@ Module Onlinesign doesn\(aqt support DS push.
 .UNINDENT
 .sp
 \fIDefault:\fP not set
-.SS signing\-threads
-.sp
-When signing zone or update, use this number of threads for parallel signing.
-.sp
-Those are extra threads independent of \fI\%Background workers\fP\&.
-.sp
-\fBNOTE:\fP
-.INDENT 0.0
-.INDENT 3.5
-Some steps of the DNSSEC signing operation are not parallelized.
-.UNINDENT
-.UNINDENT
-.sp
-\fIDefault:\fP 1 (no extra threads)
 .SS cds\-cdnskey\-publish
 .sp
 Controls if and how shall the CDS and CDNSKEY be published in the zone.
@@ -1232,63 +1369,6 @@ more records depending on the keys available.
 .SS offline\-ksk
 .sp
 Specifies if Offline KSK feature is enabled.
-.sp
-\fIDefault:\fP off
-.SH REMOTE SECTION
-.sp
-Definitions of remote servers for outgoing connections (source of a zone
-transfer, target for a notification, etc.).
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-remote:
-  \- id: STR
-    address: ADDR[@INT] ...
-    via: ADDR[@INT] ...
-    key: key_id
-    block\-notify\-after\-transfer: BOOL
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.SS id
-.sp
-A remote identifier.
-.SS address
-.sp
-An ordered list of destination IP addresses which are used for communication
-with the remote server. The addresses are tried in sequence until the
-remote is reached. Optional destination port (default is 53)
-can be appended to the address using \fB@\fP separator.
-.sp
-\fIDefault:\fP not set
-.sp
-\fBNOTE:\fP
-.INDENT 0.0
-.INDENT 3.5
-If the remote is contacted and it refuses to perform requested action,
-no more addresses will be tried for this remote.
-.UNINDENT
-.UNINDENT
-.SS via
-.sp
-An ordered list of source IP addresses. The first address with the same family
-as the destination address is used. Optional source port (default is random)
-can be appended to the address using \fB@\fP separator.
-.sp
-\fIDefault:\fP not set
-.SS key
-.sp
-A \fI\%reference\fP to the TSIG key which is used to authenticate
-the communication with the remote server.
-.sp
-\fIDefault:\fP not set
-.SS block\-notify\-after\-transfer
-.sp
-When incoming AXFR/IXFR from this remote (as a master), suppress sending
-NOTIFY messages to all configured slaves.
 .sp
 \fIDefault:\fP off
 .SH TEMPLATE SECTION
@@ -1352,8 +1432,8 @@ zone:
     zone\-max\-size : SIZE
     adjust\-threads: INT
     dnssec\-signing: BOOL
-    dnssec\-policy: STR
     dnssec\-validation: BOOL
+    dnssec\-policy: STR
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
@@ -1574,18 +1654,6 @@ NSEC3 re\-salt.
 If enabled, automatic DNSSEC signing for the zone is turned on.
 .sp
 \fIDefault:\fP off
-.SS dnssec\-policy
-.sp
-A \fI\%reference\fP to DNSSEC signing policy.
-.sp
-\fIDefault:\fP an imaginary policy with all default values
-.sp
-\fBNOTE:\fP
-.INDENT 0.0
-.INDENT 3.5
-A configured policy called "default" won\(aqt be used unless explicitly referenced.
-.UNINDENT
-.UNINDENT
 .SS dnssec\-validation
 .sp
 If enabled, the zone contents are validated for being correctly signed
@@ -1617,6 +1685,18 @@ of threads for parallel validation.
 Redundant or garbage NSEC3 records are ignored.
 .sp
 This mode is not compatible with \fI\%dnssec\-signing\fP\&.
+.UNINDENT
+.UNINDENT
+.SS dnssec\-policy
+.sp
+A \fI\%reference\fP to DNSSEC signing policy.
+.sp
+\fIDefault:\fP an imaginary policy with all default values
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+A configured policy called "default" won\(aqt be used unless explicitly referenced.
 .UNINDENT
 .UNINDENT
 .SS serial\-policy
@@ -1686,86 +1766,6 @@ This option must be set if and only if \fI\%catalog\-role\fP is \fIinterpret\fP\
 .sp
 An ordered list of references to query modules in the form of \fImodule_name\fP or
 \fImodule_name/module_id\fP\&. These modules apply only to the current zone queries.
-.sp
-\fIDefault:\fP not set
-.SH LOGGING SECTION
-.sp
-Server can be configured to log to the standard output, standard error
-output, syslog (or systemd journal if systemd is enabled) or into an arbitrary
-file.
-.sp
-There are 6 logging severity levels:
-.INDENT 0.0
-.IP \(bu 2
-\fBcritical\fP – Non\-recoverable error resulting in server shutdown.
-.IP \(bu 2
-\fBerror\fP – Recoverable error, action should be taken.
-.IP \(bu 2
-\fBwarning\fP – Warning that might require user action.
-.IP \(bu 2
-\fBnotice\fP – Server notice or hint.
-.IP \(bu 2
-\fBinfo\fP – Informational message.
-.IP \(bu 2
-\fBdebug\fP – Debug or detailed message.
-.UNINDENT
-.sp
-In the case of missing log section, \fBwarning\fP or more serious messages
-will be logged to both standard error output and syslog. The \fBinfo\fP and
-\fBnotice\fP messages will be logged to standard output.
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-log:
-  \- target: stdout | stderr | syslog | STR
-    server: critical | error | warning | notice | info | debug
-    control: critical | error | warning | notice | info | debug
-    zone: critical | error | warning | notice | info | debug
-    any: critical | error | warning | notice | info | debug
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.SS target
-.sp
-A logging output.
-.sp
-Possible values:
-.INDENT 0.0
-.IP \(bu 2
-\fBstdout\fP – Standard output.
-.IP \(bu 2
-\fBstderr\fP – Standard error output.
-.IP \(bu 2
-\fBsyslog\fP – Syslog or systemd journal.
-.IP \(bu 2
-\fIfile_name\fP – A specific file.
-.UNINDENT
-.sp
-With \fBsyslog\fP target, syslog service is used. However, if Knot DNS has been compiled
-with systemd support and operating system has been booted with systemd, systemd journal
-is used for logging instead of syslog.
-.SS server
-.sp
-Minimum severity level for messages related to general operation of the server to be
-logged.
-.sp
-\fIDefault:\fP not set
-.SS control
-.sp
-Minimum severity level for messages related to server control to be logged.
-.sp
-\fIDefault:\fP not set
-.SS zone
-.sp
-Minimum severity level for messages related to zones to be logged.
-.sp
-\fIDefault:\fP not set
-.SS any
-.sp
-Minimum severity level for all message types to be logged.
 .sp
 \fIDefault:\fP not set
 .SH AUTHOR

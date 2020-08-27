@@ -178,10 +178,10 @@ static const yp_item_t desc_server[] = {
 	{ C_UDP_MAX_PAYLOAD_IPV6, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                                1232, YP_SSIZE } },
-	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
-	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
+	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
+	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
 	{ C_MAX_TCP_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
@@ -259,23 +259,6 @@ static const yp_item_t desc_key[] = {
 	{ NULL }
 };
 
-static const yp_item_t desc_acl[] = {
-	{ C_ID,                 YP_TSTR,   YP_VNONE, CONF_IO_FREF },
-	{ C_ADDR,               YP_TNET,   YP_VNONE, YP_FMULTI },
-	{ C_KEY,                YP_TREF,   YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
-	{ C_RMT,                YP_TREF,   YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } },
-	{ C_ACTION,             YP_TOPT,   YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
-	{ C_DENY,               YP_TBOOL,  YP_VNONE },
-	{ C_UPDATE_OWNER,       YP_TOPT,   YP_VOPT = { acl_update_owner, ACL_UPDATE_OWNER_NONE } },
-	{ C_UPDATE_OWNER_MATCH, YP_TOPT,   YP_VOPT = { acl_update_owner_match, ACL_UPDATE_MATCH_SUBEQ } },
-	{ C_UPDATE_OWNER_NAME,  YP_TDATA,  YP_VDATA = { 0, NULL, rdname_to_bin, rdname_to_txt },
-	                                   YP_FMULTI, },
-	{ C_UPDATE_TYPE,        YP_TDATA,  YP_VDATA = { 0, NULL, rrtype_to_bin, rrtype_to_txt },
-	                                   YP_FMULTI, },
-	{ C_COMMENT,            YP_TSTR,   YP_VNONE },
-	{ NULL }
-};
-
 static const yp_item_t desc_remote[] = {
 	{ C_ID,               YP_TSTR,  YP_VNONE, CONF_IO_FREF },
 	{ C_ADDR,             YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
@@ -284,6 +267,23 @@ static const yp_item_t desc_remote[] = {
 	{ C_BLOCK_NOTIFY_XFR, YP_TBOOL, YP_VNONE },
 	{ C_NO_EDNS,          YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,          YP_TSTR,  YP_VNONE },
+	{ NULL }
+};
+
+static const yp_item_t desc_acl[] = {
+	{ C_ID,                 YP_TSTR,   YP_VNONE, CONF_IO_FREF },
+	{ C_ADDR,               YP_TNET,   YP_VNONE, YP_FMULTI },
+	{ C_KEY,                YP_TREF,   YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
+	{ C_RMT,                YP_TREF,   YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } },
+	{ C_ACTION,             YP_TOPT,   YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
+	{ C_DENY,               YP_TBOOL,  YP_VNONE },
+	{ C_UPDATE_TYPE,        YP_TDATA,  YP_VDATA = { 0, NULL, rrtype_to_bin, rrtype_to_txt },
+	                                   YP_FMULTI, },
+	{ C_UPDATE_OWNER,       YP_TOPT,   YP_VOPT = { acl_update_owner, ACL_UPDATE_OWNER_NONE } },
+	{ C_UPDATE_OWNER_MATCH, YP_TOPT,   YP_VOPT = { acl_update_owner_match, ACL_UPDATE_MATCH_SUBEQ } },
+	{ C_UPDATE_OWNER_NAME,  YP_TDATA,  YP_VDATA = { 0, NULL, rdname_to_bin, rdname_to_txt },
+	                                   YP_FMULTI, },
+	{ C_COMMENT,            YP_TSTR,   YP_VNONE },
 	{ NULL }
 };
 
@@ -304,7 +304,6 @@ static const yp_item_t desc_policy[] = {
 	{ C_KEYSTORE,            YP_TREF,  YP_VREF = { C_KEYSTORE }, CONF_IO_FRLD_ZONES,
 	                                   { check_ref_dflt } },
 	{ C_MANUAL,              YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
-	{ C_KSK_SHARED,          YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_SINGLE_TYPE_SIGNING, YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_ALG,                 YP_TOPT,  YP_VOPT = { dnssec_key_algs,
 	                                               DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 },
@@ -313,13 +312,14 @@ static const yp_item_t desc_policy[] = {
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_ZSK_SIZE,            YP_TINT,  YP_VINT = { 0, UINT16_MAX, YP_NIL, YP_SSIZE },
 	                                   CONF_IO_FRLD_ZONES },
+	{ C_KSK_SHARED,          YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_DNSKEY_TTL,          YP_TINT,  YP_VINT = { 0, UINT32_MAX, YP_NIL, YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_ZONE_MAX_TLL,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, YP_NIL, YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
-	{ C_ZSK_LIFETIME,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(30), YP_STIME },
-	                                   CONF_IO_FRLD_ZONES },
 	{ C_KSK_LIFETIME,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_ZSK_LIFETIME,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(30), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_PROPAG_DELAY,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, HOURS(1), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
@@ -336,11 +336,11 @@ static const yp_item_t desc_policy[] = {
 	{ C_NSEC3_SALT_LEN,      YP_TINT,  YP_VINT = { 0, UINT8_MAX, 8 }, CONF_IO_FRLD_ZONES },
 	{ C_NSEC3_SALT_LIFETIME, YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(30), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
+	{ C_SIGNING_THREADS,     YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } },
 	{ C_KSK_SBM,             YP_TREF,  YP_VREF = { C_SBM }, CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
 	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
-	{ C_SIGNING_THREADS,     YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } },
 	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ROLLOVER } },
 	{ C_OFFLINE_KSK,         YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
@@ -356,18 +356,18 @@ static const yp_item_t desc_policy[] = {
 	{ C_ACL,                 YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
 	{ C_SEM_CHECKS,          YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
-	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES } }, \
 	{ C_ZONEFILE_LOAD,       YP_TOPT,  YP_VOPT = { zonefile_load, ZONEFILE_LOAD_WHOLE } }, \
-	{ C_ZONE_MAX_SIZE,       YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \
+	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES } }, \
 	{ C_JOURNAL_MAX_USAGE,   YP_TINT,  YP_VINT = { KILO(40), SSIZE_MAX, MEGA(100), YP_SSIZE } }, \
 	{ C_JOURNAL_MAX_DEPTH,   YP_TINT,  YP_VINT = { 2, SSIZE_MAX, SSIZE_MAX } }, \
+	{ C_ZONE_MAX_SIZE,       YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \
+	{ C_ADJUST_THR,          YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } }, \
 	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_VALIDATION,   YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, FLAGS, { check_ref_dflt } }, \
 	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
-	{ C_REFRESH_MAX_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_REFRESH_MIN_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, 2, YP_STIME } }, \
-	{ C_ADJUST_THR,          YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } }, \
+	{ C_REFRESH_MAX_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_CATALOG_ROLE,        YP_TOPT,  YP_VOPT = { catalog_roles, CATALOG_ROLE_NONE }, FLAGS }, \
 	{ C_CATALOG_TPL,         YP_TREF,  YP_VREF = { C_TPL }, FLAGS, { check_ref } }, \
 	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \

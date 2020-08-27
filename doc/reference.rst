@@ -34,7 +34,7 @@ the following symbols:
 The configuration consists of several fixed sections and optional module
 sections. There are 14 fixed sections (``module``, ``server``, ``control``,
 ``log``, ``statistics``, ``database``, ``keystore``, ``key``, ``remote``,
- ``acl``, ``submission``, ``policy``, ``template``, ``zone``).
+``acl``, ``submission``, ``policy``, ``template``, ``zone``).
 Module sections are prefixed with the ``mod-`` prefix (e.g. ``mod-stats``).
 
 Most of the sections (e.g. ``zone``) are sequences of settings blocks. Each
@@ -1144,8 +1144,8 @@ DNSSEC policy configuration.
      ksk-shared: BOOL
      dnskey-ttl: TIME
      zone-max-ttl: TIME
-     zsk-lifetime: TIME
      ksk-lifetime: TIME
+     zsk-lifetime: TIME
      propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
@@ -1286,6 +1286,23 @@ Declare (override) maximal TTL value among all the records in zone.
 
 *Default:* computed after zone is loaded
 
+.. _policy_ksk-lifetime:
+
+ksk-lifetime
+------------
+
+A period between KSK activation and the next rollover initiation.
+
+.. NOTE::
+   KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
+   and KSK submission delay.
+
+   Zero (aka infinity) value causes no KSK rollover as a result.
+
+   This applies for CSK lifetime if single-type-signing is enabled.
+
+*Default:* 0
+
 .. _policy_zsk-lifetime:
 
 zsk-lifetime
@@ -1303,23 +1320,6 @@ A period between ZSK activation and the next rollover initiation.
    Zero (aka infinity) value causes no ZSK rollover as a result.
 
 *Default:* 30 days
-
-.. _policy_ksk-lifetime:
-
-ksk-lifetime
-------------
-
-A period between KSK activation and the next rollover initiation.
-
-.. NOTE::
-   KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
-   and KSK submission delay.
-
-   Zero (aka infinity) value causes no KSK rollover as a result.
-
-   This applies for CSK lifetime if single-type-signing is enabled.
-
-*Default:* 0
 
 .. _policy_propagation-delay:
 
@@ -1433,6 +1433,20 @@ Zero value means infinity.
 
 *Default:* 30 days
 
+.. _policy_signing-threads:
+
+signing-threads
+---------------
+
+When signing zone or update, use this number of threads for parallel signing.
+
+Those are extra threads independent of :ref:`Background workers<server_background-workers>`.
+
+.. NOTE::
+   Some steps of the DNSSEC signing operation are not parallelized.
+
+*Default:* 1 (no extra threads)
+
 .. _policy_ksk-submission-check:
 
 ksk-submission
@@ -1463,20 +1477,6 @@ It's possible to manage both child and parent zones by the same Knot DNS server.
    Module :ref:`Onlinesign<mod-onlinesign>` doesn't support DS push.
 
 *Default:* not set
-
-.. _policy_signing-threads:
-
-signing-threads
----------------
-
-When signing zone or update, use this number of threads for parallel signing.
-
-Those are extra threads independent of :ref:`Background workers<server_background-workers>`.
-
-.. NOTE::
-   Some steps of the DNSSEC signing operation are not parallelized.
-
-*Default:* 1 (no extra threads)
 
 .. _policy_cds-cdnskey-publish:
 
@@ -1572,8 +1572,8 @@ Definition of zones served by the server.
      zone-max-size : SIZE
      adjust-threads: INT
      dnssec-signing: BOOL
-     dnssec-policy: STR
      dnssec-validation: BOOL
+     dnssec-policy: STR
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
@@ -1820,18 +1820,6 @@ If enabled, automatic DNSSEC signing for the zone is turned on.
 
 *Default:* off
 
-.. _zone_dnssec-policy:
-
-dnssec-policy
--------------
-
-A :ref:`reference<policy_id>` to DNSSEC signing policy.
-
-*Default:* an imaginary policy with all default values
-
-.. NOTE::
-   A configured policy called "default" won't be used unless explicitly referenced.
-
 .. _zone_dnssec-validation:
 
 dnssec-validation
@@ -1860,6 +1848,18 @@ of threads for parallel validation.
    Redundant or garbage NSEC3 records are ignored.
 
    This mode is not compatible with :ref:`zone_dnssec-signing`.
+
+.. _zone_dnssec-policy:
+
+dnssec-policy
+-------------
+
+A :ref:`reference<policy_id>` to DNSSEC signing policy.
+
+*Default:* an imaginary policy with all default values
+
+.. NOTE::
+   A configured policy called "default" won't be used unless explicitly referenced.
 
 .. _zone_serial-policy:
 
