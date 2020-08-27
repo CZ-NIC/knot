@@ -28,6 +28,7 @@ class Test(object):
     start_tries = 0
 
     rel_time = time.time()
+    start_time = 0
 
     def __init__(self, address=None, tsig=None, stress=True):
         if not os.path.exists(params.out_dir):
@@ -204,6 +205,7 @@ class Test(object):
         if self.start_tries > Test.MAX_START_TRIES:
             raise Failed("Can't start all servers")
 
+        self.start_time = time.monotonic()
         self.start_tries += 1
 
         self.generate_conf()
@@ -262,6 +264,9 @@ class Test(object):
         if to_wait > 0:
             self.sleep(to_wait)
         return res
+
+    def uptime(self):
+        return time.monotonic() - self.start_time
 
     def zone(self, name, file_name=None, storage=None, version=None, exists=True):
 
