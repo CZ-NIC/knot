@@ -32,9 +32,9 @@ the following symbols:
 - \| – Choice
 
 The configuration consists of several fixed sections and optional module
-sections. There are 14 fixed sections (``module``, ``server``, ``key``, ``acl``,
-``control``, ``statistics``, ``database``, ``keystore``, ``submission``,
-``policy``, ``remote``, ``template``, ``zone``, ``log``).
+sections. There are 14 fixed sections (``module``, ``server``, ``control``,
+``log``, ``statistics``, ``database``, ``keystore``, ``key``, ``remote``,
+ ``acl``, ``submission``, ``policy``, ``template``, ``zone``).
 Module sections are prefixed with the ``mod-`` prefix (e.g. ``mod-stats``).
 
 Most of the sections (e.g. ``zone``) are sequences of settings blocks. Each
@@ -426,212 +426,6 @@ Change of this parameter requires restart of the Knot server to take effect.
    intended to offer the DNS service, at least to fulfil the DNS requirement for
    working TCP.
 
-.. _Key section:
-
-Key section
-===========
-
-Shared TSIG keys used to authenticate communication with the server.
-
-::
-
- key:
-   - id: DNAME
-     algorithm: hmac-md5 | hmac-sha1 | hmac-sha224 | hmac-sha256 | hmac-sha384 | hmac-sha512
-     secret: BASE64
-
-.. _key_id:
-
-id
---
-
-A key name identifier.
-
-.. NOTE::
-   This value MUST be exactly the same as the name of the TSIG key on the
-   opposite master/slave server(s).
-
-.. _key_algorithm:
-
-algorithm
----------
-
-A TSIG key algorithm. See
-`TSIG Algorithm Numbers <https://www.iana.org/assignments/tsig-algorithm-names/tsig-algorithm-names.xhtml>`_.
-
-Possible values:
-
-- ``hmac-md5``
-- ``hmac-sha1``
-- ``hmac-sha224``
-- ``hmac-sha256``
-- ``hmac-sha384``
-- ``hmac-sha512``
-
-*Default:* not set
-
-.. _key_secret:
-
-secret
-------
-
-Shared key secret.
-
-*Default:* not set
-
-.. _ACL section:
-
-ACL section
-===========
-
-Access control list rule definitions. The ACLs are used to match incoming
-connections to allow or deny requested operation (zone transfer request, DDNS
-update, etc.).
-
-::
-
- acl:
-   - id: STR
-     address: ADDR[/INT] | ADDR-ADDR ...
-     key: key_id ...
-     remote: remote_id ...
-     action: notify | transfer | update ...
-     deny: BOOL
-     update-type: STR ...
-     update-owner: key | zone | name
-     update-owner-match: sub-or-equal | equal | sub
-     update-owner-name: STR ...
-
-.. _acl_id:
-
-id
---
-
-An ACL rule identifier.
-
-.. _acl_address:
-
-address
--------
-
-An ordered list of IP addresses, network subnets, or network ranges. The query's
-source address must match one of them. Empty value means that address match is not
-required.
-
-*Default:* not set
-
-.. _acl_key:
-
-key
----
-
-An ordered list of :ref:`reference<key_id>`\ s to TSIG keys. The query must
-match one of them. Empty value means that transaction authentication is not used.
-
-*Default:* not set
-
-.. _acl_remote:
-
-remote
-------
-
-An ordered list of :ref:`references<remote_id>` to remotes. The query must
-match one of the remotes. Specifically, one of the remote's addresses and remote's
-TSIG key if configured must match.
-
-.. NOTE::
-   This option cannot be specified along with the :ref:`acl_address` or
-   :ref:`acl_key` option at one ACL item.
-
-*Default:* not set
-
-.. _acl_action:
-
-action
-------
-
-An ordered list of allowed (or denied) actions.
-
-Possible values:
-
-- ``notify`` – Allow incoming notify.
-- ``transfer`` – Allow zone transfer.
-- ``update`` – Allow zone updates.
-
-*Default:* not set
-
-.. _acl_deny:
-
-deny
-----
-
-If enabled, instead of allowing, deny the specified :ref:`action<acl_action>`,
-:ref:`address<acl_address>`, :ref:`key<acl_key>`, or combination if these
-items. If no action is specified, deny all actions.
-
-*Default:* off
-
-.. _acl_update_type:
-
-update-type
------------
-
-A list of allowed types of Resource Records in a zone update. Every record in an update
-must match one of the specified types.
-
-*Default:* not set
-
-.. _acl_update_owner:
-
-update-owner
-------------
-
-This option restricts possible owners of Resource Records in a zone update by comparing
-them to either the :ref:`TSIG key<acl_key>` identity, the current zone name, or to a list of
-domain names given by the :ref:`update-owner-name<acl_update_owner_name>` option.
-The comparison method is given by the :ref:`update-owner-match<acl_update_owner_match>` option.
-
-Possible values:
-
-- ``key`` — The owner of each updated RR must match the identity of the TSIG key if used.
-- ``name`` — The owner of each updated RR must match at least one name in the
-  :ref:`update-owner-name<acl_update_owner_name>` list.
-- ``zone`` — The owner of each updated RR must match the current zone name.
-
-*Default:* not set
-
-.. _acl_update_owner_match:
-
-update-owner-match
-------------------
-
-This option defines how the owners of Resource Records in an update are matched to the domain name(s)
-set by the :ref:`update-owner<acl_update_owner>` option.
-
-Possible values:
-
-- ``sub-or-equal`` — The owner of each Resource Record in an update must either be equal to
-  or be a subdomain of at least one domain set by :ref:`update-owner<acl_update_owner>`.
-- ``equal`` — The owner of each updated RR must be equal to at least one domain set by
-  :ref:`update-owner<acl_update_owner>`.
-- ``sub`` — The owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
-  one domain set by :ref:`update-owner<acl_update_owner>`.
-
-*Default:* sub-or-equal
-
-.. _acl_update_owner_name:
-
-update-owner-name
------------------
-
-A list of allowed owners of RRs in a zone update used with :ref:`update-owner<acl_update_owner>`
-set to ``name``. Every listed owner name which is not FQDN (i.e. it doesn't end
-in a dot) is considered as if it was appended with the target zone name.
-Such a relative owner name specification allows better ACL rule reusability across
-multiple zones.
-
-*Default:* not set
-
 .. _Control section:
 
 Control section
@@ -663,6 +457,92 @@ Maximum time (in seconds) the control socket operations can take.
 Set to 0 for infinity.
 
 *Default:* 5
+
+.. _Logging section:
+
+Logging section
+===============
+
+Server can be configured to log to the standard output, standard error
+output, syslog (or systemd journal if systemd is enabled) or into an arbitrary
+file.
+
+There are 6 logging severity levels:
+
+- ``critical`` – Non-recoverable error resulting in server shutdown.
+- ``error`` – Recoverable error, action should be taken.
+- ``warning`` – Warning that might require user action.
+- ``notice`` – Server notice or hint.
+- ``info`` – Informational message.
+- ``debug`` – Debug or detailed message.
+
+In the case of missing log section, ``warning`` or more serious messages
+will be logged to both standard error output and syslog. The ``info`` and
+``notice`` messages will be logged to standard output.
+
+::
+
+ log:
+   - target: stdout | stderr | syslog | STR
+     server: critical | error | warning | notice | info | debug
+     control: critical | error | warning | notice | info | debug
+     zone: critical | error | warning | notice | info | debug
+     any: critical | error | warning | notice | info | debug
+
+.. _log_target:
+
+target
+------
+
+A logging output.
+
+Possible values:
+
+- ``stdout`` – Standard output.
+- ``stderr`` – Standard error output.
+- ``syslog`` – Syslog or systemd journal.
+- *file\_name* – A specific file.
+
+With ``syslog`` target, syslog service is used. However, if Knot DNS has been compiled
+with systemd support and operating system has been booted with systemd, systemd journal
+is used for logging instead of syslog.
+
+.. _log_server:
+
+server
+------
+
+Minimum severity level for messages related to general operation of the server to be
+logged.
+
+*Default:* not set
+
+.. _log_control:
+
+control
+-------
+
+Minimum severity level for messages related to server control to be logged.
+
+*Default:* not set
+
+.. _log_zone:
+
+zone
+----
+
+Minimum severity level for messages related to zones to be logged.
+
+*Default:* not set
+
+.. _log_any:
+
+any
+---
+
+Minimum severity level for all message types to be logged.
+
+*Default:* not set
 
 .. _statistics_section:
 
@@ -908,6 +788,283 @@ a configuration string for PKCS #11 storage (`<pkcs11-url> <module-path>`).
      "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
 
 *Default:* :ref:`kasp-db<database_kasp-db>`/keys
+
+.. _Key section:
+
+Key section
+===========
+
+Shared TSIG keys used to authenticate communication with the server.
+
+::
+
+ key:
+   - id: DNAME
+     algorithm: hmac-md5 | hmac-sha1 | hmac-sha224 | hmac-sha256 | hmac-sha384 | hmac-sha512
+     secret: BASE64
+
+.. _key_id:
+
+id
+--
+
+A key name identifier.
+
+.. NOTE::
+   This value MUST be exactly the same as the name of the TSIG key on the
+   opposite master/slave server(s).
+
+.. _key_algorithm:
+
+algorithm
+---------
+
+A TSIG key algorithm. See
+`TSIG Algorithm Numbers <https://www.iana.org/assignments/tsig-algorithm-names/tsig-algorithm-names.xhtml>`_.
+
+Possible values:
+
+- ``hmac-md5``
+- ``hmac-sha1``
+- ``hmac-sha224``
+- ``hmac-sha256``
+- ``hmac-sha384``
+- ``hmac-sha512``
+
+*Default:* not set
+
+.. _key_secret:
+
+secret
+------
+
+Shared key secret.
+
+*Default:* not set
+
+.. _Remote section:
+
+Remote section
+==============
+
+Definitions of remote servers for outgoing connections (source of a zone
+transfer, target for a notification, etc.).
+
+::
+
+ remote:
+   - id: STR
+     address: ADDR[@INT] ...
+     via: ADDR[@INT] ...
+     key: key_id
+     block-notify-after-transfer: BOOL
+
+.. _remote_id:
+
+id
+--
+
+A remote identifier.
+
+.. _remote_address:
+
+address
+-------
+
+An ordered list of destination IP addresses which are used for communication
+with the remote server. The addresses are tried in sequence until the
+remote is reached. Optional destination port (default is 53)
+can be appended to the address using ``@`` separator.
+
+*Default:* not set
+
+.. NOTE::
+   If the remote is contacted and it refuses to perform requested action,
+   no more addresses will be tried for this remote.
+
+.. _remote_via:
+
+via
+---
+
+An ordered list of source IP addresses. The first address with the same family
+as the destination address is used. Optional source port (default is random)
+can be appended to the address using ``@`` separator.
+
+*Default:* not set
+
+.. _remote_key:
+
+key
+---
+
+A :ref:`reference<key_id>` to the TSIG key which is used to authenticate
+the communication with the remote server.
+
+*Default:* not set
+
+.. _remote_block-notify-after-transfer:
+
+block-notify-after-transfer
+---------------------------
+
+When incoming AXFR/IXFR from this remote (as a master), suppress sending
+NOTIFY messages to all configured slaves.
+
+*Default:* off
+
+.. _ACL section:
+
+ACL section
+===========
+
+Access control list rule definitions. The ACLs are used to match incoming
+connections to allow or deny requested operation (zone transfer request, DDNS
+update, etc.).
+
+::
+
+ acl:
+   - id: STR
+     address: ADDR[/INT] | ADDR-ADDR ...
+     key: key_id ...
+     remote: remote_id ...
+     action: notify | transfer | update ...
+     deny: BOOL
+     update-type: STR ...
+     update-owner: key | zone | name
+     update-owner-match: sub-or-equal | equal | sub
+     update-owner-name: STR ...
+
+.. _acl_id:
+
+id
+--
+
+An ACL rule identifier.
+
+.. _acl_address:
+
+address
+-------
+
+An ordered list of IP addresses, network subnets, or network ranges. The query's
+source address must match one of them. Empty value means that address match is not
+required.
+
+*Default:* not set
+
+.. _acl_key:
+
+key
+---
+
+An ordered list of :ref:`reference<key_id>`\ s to TSIG keys. The query must
+match one of them. Empty value means that transaction authentication is not used.
+
+*Default:* not set
+
+.. _acl_remote:
+
+remote
+------
+
+An ordered list of :ref:`references<remote_id>` to remotes. The query must
+match one of the remotes. Specifically, one of the remote's addresses and remote's
+TSIG key if configured must match.
+
+.. NOTE::
+   This option cannot be specified along with the :ref:`acl_address` or
+   :ref:`acl_key` option at one ACL item.
+
+*Default:* not set
+
+.. _acl_action:
+
+action
+------
+
+An ordered list of allowed (or denied) actions.
+
+Possible values:
+
+- ``notify`` – Allow incoming notify.
+- ``transfer`` – Allow zone transfer.
+- ``update`` – Allow zone updates.
+
+*Default:* not set
+
+.. _acl_deny:
+
+deny
+----
+
+If enabled, instead of allowing, deny the specified :ref:`action<acl_action>`,
+:ref:`address<acl_address>`, :ref:`key<acl_key>`, or combination if these
+items. If no action is specified, deny all actions.
+
+*Default:* off
+
+.. _acl_update_type:
+
+update-type
+-----------
+
+A list of allowed types of Resource Records in a zone update. Every record in an update
+must match one of the specified types.
+
+*Default:* not set
+
+.. _acl_update_owner:
+
+update-owner
+------------
+
+This option restricts possible owners of Resource Records in a zone update by comparing
+them to either the :ref:`TSIG key<acl_key>` identity, the current zone name, or to a list of
+domain names given by the :ref:`update-owner-name<acl_update_owner_name>` option.
+The comparison method is given by the :ref:`update-owner-match<acl_update_owner_match>` option.
+
+Possible values:
+
+- ``key`` — The owner of each updated RR must match the identity of the TSIG key if used.
+- ``name`` — The owner of each updated RR must match at least one name in the
+  :ref:`update-owner-name<acl_update_owner_name>` list.
+- ``zone`` — The owner of each updated RR must match the current zone name.
+
+*Default:* not set
+
+.. _acl_update_owner_match:
+
+update-owner-match
+------------------
+
+This option defines how the owners of Resource Records in an update are matched to the domain name(s)
+set by the :ref:`update-owner<acl_update_owner>` option.
+
+Possible values:
+
+- ``sub-or-equal`` — The owner of each Resource Record in an update must either be equal to
+  or be a subdomain of at least one domain set by :ref:`update-owner<acl_update_owner>`.
+- ``equal`` — The owner of each updated RR must be equal to at least one domain set by
+  :ref:`update-owner<acl_update_owner>`.
+- ``sub`` — The owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
+  one domain set by :ref:`update-owner<acl_update_owner>`.
+
+*Default:* sub-or-equal
+
+.. _acl_update_owner_name:
+
+update-owner-name
+-----------------
+
+A list of allowed owners of RRs in a zone update used with :ref:`update-owner<acl_update_owner>`
+set to ``name``. Every listed owner name which is not FQDN (i.e. it doesn't end
+in a dot) is considered as if it was appended with the target zone name.
+Such a relative owner name specification allows better ACL rule reusability across
+multiple zones.
+
+*Default:* not set
 
 .. _Submission section:
 
@@ -1351,77 +1508,6 @@ Specifies if :ref:`Offline KSK <DNSSEC Offline KSK>` feature is enabled.
 
 *Default:* off
 
-.. _Remote section:
-
-Remote section
-==============
-
-Definitions of remote servers for outgoing connections (source of a zone
-transfer, target for a notification, etc.).
-
-::
-
- remote:
-   - id: STR
-     address: ADDR[@INT] ...
-     via: ADDR[@INT] ...
-     key: key_id
-     block-notify-after-transfer: BOOL
-
-.. _remote_id:
-
-id
---
-
-A remote identifier.
-
-.. _remote_address:
-
-address
--------
-
-An ordered list of destination IP addresses which are used for communication
-with the remote server. The addresses are tried in sequence until the
-remote is reached. Optional destination port (default is 53)
-can be appended to the address using ``@`` separator.
-
-*Default:* not set
-
-.. NOTE::
-   If the remote is contacted and it refuses to perform requested action,
-   no more addresses will be tried for this remote.
-
-.. _remote_via:
-
-via
----
-
-An ordered list of source IP addresses. The first address with the same family
-as the destination address is used. Optional source port (default is random)
-can be appended to the address using ``@`` separator.
-
-*Default:* not set
-
-.. _remote_key:
-
-key
----
-
-A :ref:`reference<key_id>` to the TSIG key which is used to authenticate
-the communication with the remote server.
-
-*Default:* not set
-
-.. _remote_block-notify-after-transfer:
-
-block-notify-after-transfer
----------------------------
-
-When incoming AXFR/IXFR from this remote (as a master), suppress sending
-NOTIFY messages to all configured slaves.
-
-*Default:* off
-
 .. _Template section:
 
 Template section
@@ -1850,91 +1936,5 @@ module
 
 An ordered list of references to query modules in the form of *module_name* or
 *module_name/module_id*. These modules apply only to the current zone queries.
-
-*Default:* not set
-
-.. _Logging section:
-
-Logging section
-===============
-
-Server can be configured to log to the standard output, standard error
-output, syslog (or systemd journal if systemd is enabled) or into an arbitrary
-file.
-
-There are 6 logging severity levels:
-
-- ``critical`` – Non-recoverable error resulting in server shutdown.
-- ``error`` – Recoverable error, action should be taken.
-- ``warning`` – Warning that might require user action.
-- ``notice`` – Server notice or hint.
-- ``info`` – Informational message.
-- ``debug`` – Debug or detailed message.
-
-In the case of missing log section, ``warning`` or more serious messages
-will be logged to both standard error output and syslog. The ``info`` and
-``notice`` messages will be logged to standard output.
-
-::
-
- log:
-   - target: stdout | stderr | syslog | STR
-     server: critical | error | warning | notice | info | debug
-     control: critical | error | warning | notice | info | debug
-     zone: critical | error | warning | notice | info | debug
-     any: critical | error | warning | notice | info | debug
-
-.. _log_target:
-
-target
-------
-
-A logging output.
-
-Possible values:
-
-- ``stdout`` – Standard output.
-- ``stderr`` – Standard error output.
-- ``syslog`` – Syslog or systemd journal.
-- *file\_name* – A specific file.
-
-With ``syslog`` target, syslog service is used. However, if Knot DNS has been compiled
-with systemd support and operating system has been booted with systemd, systemd journal
-is used for logging instead of syslog.
-
-.. _log_server:
-
-server
-------
-
-Minimum severity level for messages related to general operation of the server to be
-logged.
-
-*Default:* not set
-
-.. _log_control:
-
-control
--------
-
-Minimum severity level for messages related to server control to be logged.
-
-*Default:* not set
-
-.. _log_zone:
-
-zone
-----
-
-Minimum severity level for messages related to zones to be logged.
-
-*Default:* not set
-
-.. _log_any:
-
-any
----
-
-Minimum severity level for all message types to be logged.
 
 *Default:* not set
