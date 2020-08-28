@@ -66,9 +66,9 @@ if dnskey1_2 == dnskey1_1 or dnskey2_2 == dnskey2_1:
 
 test_added(master, zones, [ "NXDOMAIN", "NXDOMAIN" ])
 
-master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[0].name))
+master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[0].name), wait=True)
 
-t.sleep(6)
+t.sleep(5)
 
 (dnskey1_3, dnskey2_3) = get_dnskeys(master, zones)
 if dnskey1_3 != dnskey1_1:
@@ -101,12 +101,15 @@ slave.start()
 slave.ctl("zone-restore +nozonefile +backupdir %s +journal" % slave_bck_dir)
 slave.zones_wait(zones) # zones shall be loaded from recovered journal
 
-for i in range(start_time + 45 - int(t.uptime())):
+for i in range(start_time + 60 - int(t.uptime())):
     t.sleep(1)
     resp = slave.dig(zones[0].name, "SOA")
     if resp.rcode() != "NOERROR":
         break
-# the zone should expire in 45 seconds (45 = SOA) according to restored timers
+# the zone should expire in 60 seconds (60 = SOA) according to restored timers
+
+if slave.valgrind:    # Compensate for time dilation under Valgrind.
+    t.sleep(2)
 
 resp = slave.dig(zones[0].name, "SOA")
 resp.check(rcode="SERVFAIL")
