@@ -35,6 +35,9 @@ for z in zones:
 backup_dir = master.dir + "/backup"
 slave_bck_dir = slave.dir + "/backup"
 
+zone0_expire = 45   # zone zones[0] expiration time in its SOA
+valgrind_delay = 1 if slave.valgrind else 0  # allow a little time margin under Valgrind
+
 t.start()
 slave.zones_wait(zones)
 start_time = int(t.uptime())
@@ -66,9 +69,9 @@ if dnskey1_2 == dnskey1_1 or dnskey2_2 == dnskey2_1:
 
 test_added(master, zones, [ "NXDOMAIN", "NXDOMAIN" ])
 
-master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[0].name))
+master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[0].name), wait=True)
 
-t.sleep(6)
+t.sleep(5)
 
 (dnskey1_3, dnskey2_3) = get_dnskeys(master, zones)
 if dnskey1_3 != dnskey1_1:
@@ -99,15 +102,15 @@ shutil.rmtree(slave.dir + "/timers")
 slave.start()
 
 slave.ctl("zone-restore +nozonefile +backupdir %s +journal" % slave_bck_dir)
-if int(t.uptime()) - start_time < 45:
+if int(t.uptime()) - start_time < zone0_expire - valgrind_delay:
     slave.zones_wait(zones) # zones shall be loaded from recovered journal iff not expired yet
 
-for i in range(start_time + 45 - int(t.uptime())):
+for i in range(start_time + zone0_expire + valgrind_delay - int(t.uptime())):
     t.sleep(1)
     resp = slave.dig(zones[0].name, "SOA")
     if resp.rcode() != "NOERROR":
         break
-# the zone should expire in 45 seconds (45 = SOA) according to restored timers
+# the zone should expire in zone0_expire seconds (SOA) according to restored timers
 
 resp = slave.dig(zones[0].name, "SOA")
 resp.check(rcode="SERVFAIL")
