@@ -66,9 +66,9 @@ if dnskey1_2 == dnskey1_1 or dnskey2_2 == dnskey2_1:
 
 test_added(master, zones, [ "NXDOMAIN", "NXDOMAIN" ])
 
-master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[0].name))
+master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[0].name), wait=True)
 
-t.sleep(6)
+t.sleep(5)
 
 (dnskey1_3, dnskey2_3) = get_dnskeys(master, zones)
 if dnskey1_3 != dnskey1_1:
@@ -97,6 +97,9 @@ master.stop()
 shutil.rmtree(slave.dir + "/journal")
 shutil.rmtree(slave.dir + "/timers")
 slave.start()
+
+if slave.valgrind:    # a cheat - allow a little more time for processing under Valgrind
+    start_time -= 1
 
 slave.ctl("zone-restore +nozonefile +backupdir %s +journal" % slave_bck_dir)
 if int(t.uptime()) - start_time < 45:
