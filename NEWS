@@ -1,3 +1,26 @@
+Knot DNS 2.9.6 (2020-08-31)
+===========================
+
+Features:
+---------
+ - New kdig option '+[no]opttext' to print unknown EDNS options as text if possible (Thanks to Robert Edmonds)
+
+Improvements:
+-------------
+ - Better error message if no key is ready for submission
+ - Improved logging when master is not usable
+ - Improved control logging of zone-flush errors if output directory is specified
+ - More precise system error messages when a zone transfer fails
+ - Some documentation improvements (especially Offline KSK)
+
+Bugfixes:
+---------
+ - In the case of many zones, control operations over all zones take lots of memory
+ - Misleading error message on keymgr import-bind #683
+ - DS push is triggered upon every zone change even though CDS wasn't changed
+ - Kzonecheck performance penalty with passive keys #688
+ - CSK->KSK+ZSK scheme rollover can end too early
+
 Knot DNS 2.9.5 (2020-05-25)
 ===========================
 
