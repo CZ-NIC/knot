@@ -1,3 +1,40 @@
+Knot DNS 3.0.0 (2020-09-09)
+===========================
+
+Features:
+---------
+ - High-performance networking mode using XDP sockets (requires Linux 4.18+)
+ - Support for Catalog zones including kcatalogprint utility
+ - New DNSSEC validation mode
+ - New kzonesign utility — an interface for manual DNSSEC signing
+ - New kxdpgun utility — high-performance DNS over UDP traffic generator for Linux
+ - DoH support in kdig using GnuTLS and libnghttp2
+ - New KSK revoked state (RFC 5011) in manual DNSSEC key management mode
+ - Deterministic signing with ECDSA algorithms (requires GnuTLS 3.6.10+)
+ - Module synthrecord supports reverse pointer shortening
+ - Safe persistent zone data backup and restore
+
+Improvements:
+-------------
+ - Processing depth of CNAME and DNAME chains is limited to 20
+ - Non-FQDN is allowed as 'update-owner-name' configuration option value
+ - Kdig prints detailed algorithm idendifier for PRIVATEDNS and PRIVATEOID
+   in multiline mode #334
+ - Queries with QTYPE ANY or RRSIG are always responded with at most one random RRSet
+ - The statistics module has negligible performance overhead on modern CPUs
+ - If multithreaded zone signing is enabled, some additional zone maintenance
+   steps are newly parallelized
+ - ACL can be configured by reference to a remote
+ - Better CPU cache locality for higher query processing performance
+ - Logging to non-syslog streams contains timestamps with the timezone
+ - Keeping initial DNSKEY TTL and zone maximum TTL in KASP database to ensure
+   proper rollover timing in case of TTL changes during the rollover
+ - Responding FORMERR to queries with more OPT records
+
+Bugfixes:
+---------
+ - Module onlinesign responds NXDOMAIN insted of NOERROR (NODATA) if DNSSEC not requested
+
 Knot DNS 2.9.6 (2020-08-31)
 ===========================
 
