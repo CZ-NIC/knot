@@ -15,32 +15,32 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
+# check zone if keys are present and used for signing
+def check_zone4(server, min_dnskeys, min_rrsigs, msg):
+    dnskeys = server.dig("example.com", "DNSKEY")
+    found_dnskeys = dnskeys.count("DNSKEY")
+
+    soa = server.dig("mail.example.com", "A", dnssec=True)
+    found_rrsigs = soa.count("RRSIG")
+
+    check_log("RRSIGs: %d (expected min %d)" % (found_rrsigs, min_rrsigs));
+    check_log("DNSKEYs: %d (expected min %d)" % (found_dnskeys, min_dnskeys));
+
+    if found_rrsigs < min_rrsigs:
+        set_err("BAD RRSIG COUNT: " + msg)
+        detail_log("!RRSIGs not published and activated as expected: " + msg)
+
+    if found_dnskeys < min_dnskeys:
+        set_err("BAD DNSKEY COUNT: " + msg)
+        detail_log("!DNSKEYs not published and activated as expected: " + msg)
+
+    server.flush(wait=True)
+    server.zone_verify(server.zones["example.com."])
+
+    detail_log(SEP)
+
 def run_test():
     t = Test()
-
-    # check zone if keys are present and used for signing
-    def check_zone4(server, min_dnskeys, min_rrsigs, msg):
-        dnskeys = server.dig("example.com", "DNSKEY")
-        found_dnskeys = dnskeys.count("DNSKEY")
-
-        soa = server.dig("mail.example.com", "A", dnssec=True)
-        found_rrsigs = soa.count("RRSIG")
-
-        check_log("RRSIGs: %d (expected min %d)" % (found_rrsigs, min_rrsigs));
-        check_log("DNSKEYs: %d (expected min %d)" % (found_dnskeys, min_dnskeys));
-
-        if found_rrsigs < min_rrsigs:
-            set_err("BAD RRSIG COUNT: " + msg)
-            detail_log("!RRSIGs not published and activated as expected: " + msg)
-
-        if found_dnskeys < min_dnskeys:
-            set_err("BAD DNSKEY COUNT: " + msg)
-            detail_log("!DNSKEYs not published and activated as expected: " + msg)
-
-        server.flush(wait=True)
-        server.zone_verify(server.zones["example.com."])
-
-        detail_log(SEP)
 
     knot = t.server("knot")
     zone = t.zone("example.com.")

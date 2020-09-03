@@ -10,25 +10,25 @@ import os.path
 import dnstest.zonefile
 from dnstest.test import Test
 
+TEST_CASES = {
+    "rsa":                  True,
+    "rsa_ecdsa":            True,
+    "rsa_now_ecdsa_future": True,
+    "rsa_ecdsa_roll":       True,
+    "stss_ksk":             True,
+#   "stss_zsk":             True, # No longer supported.
+    "stss_two_ksk":         True,
+    "stss_rsa256_rsa512":   True,
+    "rsa_split_ecdsa_stss": True,
+
+    "rsa_future_all":       False,
+    "rsa_future_publish":   False,
+    "rsa_future_active":    False,
+    "rsa_inactive_zsk":     False,
+    "rsa_no_zsk":           False,
+}
+
 def run_test():
-    TEST_CASES = {
-        "rsa":                  True,
-        "rsa_ecdsa":            True,
-        "rsa_now_ecdsa_future": True,
-        "rsa_ecdsa_roll":       True,
-        "stss_ksk":             True,
-    #   "stss_zsk":             True, # No longer supported.
-        "stss_two_ksk":         True,
-        "stss_rsa256_rsa512":   True,
-        "rsa_split_ecdsa_stss": True,
-
-        "rsa_future_all":       False,
-        "rsa_future_publish":   False,
-        "rsa_future_active":    False,
-        "rsa_inactive_zsk":     False,
-        "rsa_no_zsk":           False,
-    }
-
     t = Test()
 
     knot = t.server("knot")

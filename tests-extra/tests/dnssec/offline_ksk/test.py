@@ -16,79 +16,80 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
-def run_test():
-    # check zone if keys are present and used for signing
-    def check_zone(server, zone, dnskeys, dnskey_rrsigs, soa_rrsigs, msg):
-        qdnskeys = server.dig("example.com", "DNSKEY", bufsize=4096)
-        found_dnskeys = qdnskeys.count("DNSKEY")
+# check zone if keys are present and used for signing
+def check_zone(server, zone, dnskeys, dnskey_rrsigs, soa_rrsigs, msg):
+    qdnskeys = server.dig("example.com", "DNSKEY", bufsize=4096)
+    found_dnskeys = qdnskeys.count("DNSKEY")
 
-        qdnskeyrrsig = server.dig("example.com", "DNSKEY", dnssec=True, bufsize=4096)
+    qdnskeyrrsig = server.dig("example.com", "DNSKEY", dnssec=True, bufsize=4096)
+    found_rrsigs = qdnskeyrrsig.count("RRSIG")
+
+    qsoa = server.dig("example.com", "SOA", dnssec=True, bufsize=4096)
+    found_soa_rrsigs = qsoa.count("RRSIG")
+
+    server.zone_backup(zone, flush=True)
+    server.zone_verify(zone)
+
+    if found_dnskeys != dnskeys:
+        set_err("BAD DNSKEY COUNT: " + msg)
+        detail_log("!DNSKEYs not published and activated as expected: " + msg)
+
+    # Verify the zone instead of a dumb sleep
+    server.zone_backup(zone, flush=True)
+    server.zone_verify(zone)
+
+    if found_rrsigs != dnskey_rrsigs:
+        set_err("BAD DNSKEY RRSIG COUNT: " + msg)
+        detail_log("!RRSIGs not published and activated as expected: " + msg)
+
+    detail_log(SEP)
+
+    # Verify the zone instead of a dumb sleep
+    server.zone_backup(zone, flush=True)
+    server.zone_verify(zone)
+
+def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
+    endtime = time.monotonic() + timeout - 0.5
+    while True:
+        qdnskeyrrsig = server.dig("example.com", rrtype, dnssec=True, bufsize=4096)
         found_rrsigs = qdnskeyrrsig.count("RRSIG")
-
-        qsoa = server.dig("example.com", "SOA", dnssec=True, bufsize=4096)
-        found_soa_rrsigs = qsoa.count("RRSIG")
-
-        server.zone_backup(zone, flush=True)
-        server.zone_verify(zone)
-
-        if found_dnskeys != dnskeys:
-            set_err("BAD DNSKEY COUNT: " + msg)
-            detail_log("!DNSKEYs not published and activated as expected: " + msg)
+        if found_rrsigs == rrsig_count:
+            break
 
         # Verify the zone instead of a dumb sleep
-        server.zone_backup(zone, flush=True)
-        server.zone_verify(zone)
+        if not server.valgrind:
+            server.zone_backup(zone, flush=True)
+            server.zone_verify(zone)
+        else:
+            t.sleep(1)
 
-        if found_rrsigs != dnskey_rrsigs:
-            set_err("BAD DNSKEY RRSIG COUNT: " + msg)
-            detail_log("!RRSIGs not published and activated as expected: " + msg)
+        if time.monotonic() > endtime:
+            break
 
-        detail_log(SEP)
+def wait_for_dnskey_count(t, server, dnskey_count, timeout):
+    endtime = time.monotonic() + timeout - 0.5
+    while True:
+        qdnskeyrrsig = server.dig("example.com", "DNSKEY", dnssec=True, bufsize=4096)
+        found_dnskeys = qdnskeyrrsig.count("DNSKEY")
+        if found_dnskeys == dnskey_count:
+            break
 
         # Verify the zone instead of a dumb sleep
-        server.zone_backup(zone, flush=True)
-        server.zone_verify(zone)
+        if not server.valgrind:
+            server.zone_backup(zone, flush=True)
+            server.zone_verify(zone)
+        else:
+            t.sleep(1)
 
-    def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
-        endtime = time.monotonic() + timeout - 0.5
-        while True:
-            qdnskeyrrsig = server.dig("example.com", rrtype, dnssec=True, bufsize=4096)
-            found_rrsigs = qdnskeyrrsig.count("RRSIG")
-            if found_rrsigs == rrsig_count:
-                break
+        if time.monotonic() > endtime:
+            break
 
-            # Verify the zone instead of a dumb sleep
-            if not server.valgrind:
-                server.zone_backup(zone, flush=True)
-                server.zone_verify(zone)
-            else:
-                t.sleep(1)
+def writef(filename, contents):
+    with open(filename, "w") as f:
+        f.write(contents)
 
-            if time.monotonic() > endtime:
-                break
 
-    def wait_for_dnskey_count(t, server, dnskey_count, timeout):
-        endtime = time.monotonic() + timeout - 0.5
-        while True:
-            qdnskeyrrsig = server.dig("example.com", "DNSKEY", dnssec=True, bufsize=4096)
-            found_dnskeys = qdnskeyrrsig.count("DNSKEY")
-            if found_dnskeys == dnskey_count:
-                break
-
-            # Verify the zone instead of a dumb sleep
-            if not server.valgrind:
-                server.zone_backup(zone, flush=True)
-                server.zone_verify(zone)
-            else:
-                t.sleep(1)
-
-            if time.monotonic() > endtime:
-                break
-
-    def writef(filename, contents):
-        with open(filename, "w") as f:
-            f.write(contents)
-
+def run_test():
     t = Test()
 
     knot = t.server("knot")
@@ -144,7 +145,7 @@ def run_test():
     writef(SKR, out)
     Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 
-    TICK_SAFE = TICK + TICK // 2;
+    TICK_SAFE = TICK + TICK // 2
 
     # run it and see if the signing and rollovers work well
     t.start()

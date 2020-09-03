@@ -94,6 +94,7 @@ def run_test():
             ctl = libknot.control.KnotCtl()
             ctl.connect(os.path.join(server.dir, "knot.sock"))
 
+            ok = False
             if zone_name:
                 ctl.send_block(cmd="zone-stats", section="mod-rrl", zone=zone_name, flags="F")
             else:

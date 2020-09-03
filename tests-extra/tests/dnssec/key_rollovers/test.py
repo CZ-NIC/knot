@@ -16,18 +16,24 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
+
+global_last_roll = 0
+
+def pregenerate_key(server, zone, alg):
+    class a_class_with_name:
+        def __init__(self, name):
+            self.name = name
+
+    server.gen_key(a_class_with_name("notexisting.zone."), ksk=True, alg=alg,
+                    addtopolicy=zone[0].name)
+
 def run_test():
     DOUBLE_DS = random.choice([True, False])
     if DOUBLE_DS:
         check_log("DOUBLE DS ENABLED")
 
-    def pregenerate_key(server, zone, alg):
-        class a_class_with_name:
-            def __init__(self, name):
-                self.name = name
-
-        server.gen_key(a_class_with_name("notexisting.zone."), ksk=True, alg=alg,
-                       addtopolicy=zone[0].name)
+    global global_last_roll
+    global_last_roll = 0
 
     # check zone if keys are present and used for signing
     def check_zone(server, zone, slave, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
@@ -72,8 +78,6 @@ def run_test():
 
         server.zone_backup(zone, flush=True)
         server.zone_verify(zone, ldns_check=False) # ldns-verify-zone complains about RRSIG without corresponding DNSKEY
-
-    global_last_roll = 0
 
     def check_min_time(min_time, msg):
         global global_last_roll
@@ -138,7 +142,7 @@ def run_test():
         CDS1 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
         t.sleep(1)
         while CDS1 == str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
-        t.sleep(1)
+            t.sleep(1)
 
         cdnskeys = 2 if DOUBLE_DS else 1
         msg = desc + ": new KSK ready"

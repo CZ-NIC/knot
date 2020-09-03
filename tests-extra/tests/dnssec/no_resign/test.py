@@ -8,6 +8,10 @@ import dns
 import shutil
 
 def run_test():
+    t = Test()
+
+    master = t.server("knot")
+
     # Changes in NSEC allowed due to case changes (Knot lowercases all owners).
     def only_nsec_changed(server, zone, serial):
         resp = master.dig(nsec_zone, "IXFR", serial=serial)
@@ -21,10 +25,6 @@ def run_test():
                         # RRSIG covering something else than NSEC or SOA.
                         return False
         return True
-
-    t = Test()
-
-    master = t.server("knot")
 
     nsec_zone = t.zone_rnd(1, dnssec=True, nsec3=False)
     nsec3_zone = t.zone_rnd(1, dnssec=True, nsec3=0)
