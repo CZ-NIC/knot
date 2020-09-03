@@ -184,7 +184,17 @@ Miscellaneous changes
 Upgrade 2.9.x to 3.0.x
 ======================
 
-Knot DNS version 3.0.x is fully compatible with 2.9.x.
+Knot DNS version 3.0.x is functionally compatible with 2.9.x.
+
+Query module API change
+-----------------------
+
+The following functions require additional parameter (thread id – ``qdata->params->thread_id``)
+on the second position::
+
+  knotd_mod_stats_incr()
+  knotd_mod_stats_decr()
+  knotd_mod_stats_store()
 
 Building notes
 --------------
