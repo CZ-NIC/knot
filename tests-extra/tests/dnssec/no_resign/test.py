@@ -7,21 +7,21 @@ from dnstest.test import Test
 import dns
 import shutil
 
-def run_test():
-    # Changes in NSEC allowed due to case changes (Knot lowercases all owners).
-    def only_nsec_changed(server, zone, serial):
-        resp = master.dig(nsec_zone, "IXFR", serial=serial)
-        for msg in resp.resp:
-            for rr in msg.answer:
-                if rr.rdtype not in [dns.rdatatype.SOA, dns.rdatatype.NSEC, dns.rdatatype.RRSIG]:
+# Changes in NSEC allowed due to case changes (Knot lowercases all owners).
+def only_nsec_changed(server, zone, serial):
+    resp = master.dig(nsec_zone, "IXFR", serial=serial)
+    for msg in resp.resp:
+        for rr in msg.answer:
+            if rr.rdtype not in [dns.rdatatype.SOA, dns.rdatatype.NSEC, dns.rdatatype.RRSIG]:
+                return False
+            if rr.rdtype == dns.rdatatype.RRSIG:
+                if (not rr.match(rr.name, rr.rdclass, dns.rdatatype.RRSIG, dns.rdatatype.NSEC)) and \
+                (not rr.match(rr.name, rr.rdclass, dns.rdatatype.RRSIG, dns.rdatatype.SOA)):
+                    # RRSIG covering something else than NSEC or SOA.
                     return False
-                if rr.rdtype == dns.rdatatype.RRSIG:
-                    if (not rr.match(rr.name, rr.rdclass, dns.rdatatype.RRSIG, dns.rdatatype.NSEC)) and \
-                    (not rr.match(rr.name, rr.rdclass, dns.rdatatype.RRSIG, dns.rdatatype.SOA)):
-                        # RRSIG covering something else than NSEC or SOA.
-                        return False
-        return True
+    return True
 
+def run_test():
     t = Test()
 
     master = t.server("knot")

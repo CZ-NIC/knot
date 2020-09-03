@@ -37,39 +37,40 @@ def check_revoked_key(server):
         for rr in resp.resp.answer[0].to_rdataset():
             detail_log(rr.to_text())
 
-t = Test()
+def run_test():
+    t = Test()
 
-knot = t.server("knot")
-zone = t.zone(ZONE)
-t.link(zone, knot)
-knot.dnssec(zone).enable = True
-knot.dnssec(zone).manual = True
+    knot = t.server("knot")
+    zone = t.zone(ZONE)
+    t.link(zone, knot)
+    knot.dnssec(zone).enable = True
+    knot.dnssec(zone).manual = True
 
-# needed for keymgr
-knot.gen_confile()
+    # needed for keymgr
+    knot.gen_confile()
 
-# scenario 1: plan revoked timestamp in the future
-knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0", retire="+12s", revoke="+15s", remove="+18s")
-knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", ready="0", active="+0", retire="+1d", remove="+1d")
-KSK = knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+10s", active="+10s")
+    # scenario 1: plan revoked timestamp in the future
+    knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0", retire="+12s", revoke="+15s", remove="+18s")
+    knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", ready="0", active="+0", retire="+1d", remove="+1d")
+    KSK = knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+10s", active="+10s")
 
-t.start()
-knot.zone_wait(zone)
+    t.start()
+    knot.zone_wait(zone)
 
-wait_for_rrsig_count(t, knot, "DNSKEY", 2, 8)
-wait_for_rrsig_count(t, knot, "DNSKEY", 1, 2)
-wait_for_rrsig_count(t, knot, "DNSKEY", 2, 3)
-check_revoked_key(knot)
+    wait_for_rrsig_count(t, knot, "DNSKEY", 2, 8)
+    wait_for_rrsig_count(t, knot, "DNSKEY", 1, 2)
+    wait_for_rrsig_count(t, knot, "DNSKEY", 2, 3)
+    check_revoked_key(knot)
 
-# scenario 2: plan revoked timestamp in the past
-wait_for_rrsig_count(t, knot, "DNSKEY", 1, 3)
+    # scenario 2: plan revoked timestamp in the past
+    wait_for_rrsig_count(t, knot, "DNSKEY", 1, 3)
 
-knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0")
-knot.key_set(ZONE, KSK, retire="+0", revoke="+0")
+    knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0")
+    knot.key_set(ZONE, KSK, retire="+0", revoke="+0")
 
-t.sleep(2)
-knot.ctl("zone-sign")
-t.sleep(2)
-check_revoked_key(knot)
+    t.sleep(2)
+    knot.ctl("zone-sign")
+    t.sleep(2)
+    check_revoked_key(knot)
 
-t.end()
+    t.end()

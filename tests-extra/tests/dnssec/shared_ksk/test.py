@@ -14,28 +14,29 @@ def query_ksk(server, zone): # returns KSK hash
             return fields[3]
     return "error"
 
-t = Test()
+def run_test():
+    t = Test()
 
-knot = t.server("knot")
-zones = t.zone_rnd(5, dnssec=False, records=10)
-t.link(zones, knot)
+    knot = t.server("knot")
+    zones = t.zone_rnd(5, dnssec=False, records=10)
+    t.link(zones, knot)
 
-for z in zones:
-    knot.dnssec(z).enable = True
-    knot.dnssec(z).ksk_shared = True
-    knot.dnssec(z).shared_policy_with = zones[0].name
+    for z in zones:
+        knot.dnssec(z).enable = True
+        knot.dnssec(z).ksk_shared = True
+        knot.dnssec(z).shared_policy_with = zones[0].name
 
-t.start()
-knot.zones_wait(zones)
-knot.flush(wait=True)
+    t.start()
+    knot.zones_wait(zones)
+    knot.flush(wait=True)
 
-shared_ksk = query_ksk(knot, zones[1])
+    shared_ksk = query_ksk(knot, zones[1])
 
-for z in zones:
-    z_ksk = query_ksk(knot, z)
-    if z_ksk != shared_ksk:
-        set_err("KSK NOT SHARED (%s versus %s)" % (z.name, zones[1].name))
+    for z in zones:
+        z_ksk = query_ksk(knot, z)
+        if z_ksk != shared_ksk:
+            set_err("KSK NOT SHARED (%s versus %s)" % (z.name, zones[1].name))
 
-    knot.zone_verify(z)
+        knot.zone_verify(z)
 
-t.end()
+    t.end()

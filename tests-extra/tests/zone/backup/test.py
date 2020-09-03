@@ -15,100 +15,100 @@ def test_added(server, zones, results):
     for (z, res) in zip(zones, results):
         resp = server.dig("added.%s" % z.name, "A")
         resp.check(rcode=res)
+def run_test():
+    t = Test()
 
-t = Test()
+    zones = t.zone("example.", storage=".") + t.zone("serial.", storage=".")
 
-zones = t.zone("example.", storage=".") + t.zone("serial.", storage=".")
+    master = t.server("knot")
+    slave = t.server("knot")
 
-master = t.server("knot")
-slave = t.server("knot")
+    t.link(zones, master, slave)
 
-t.link(zones, master, slave)
+    for z in zones:
+        if random.choice([True, False]):
+            master.dnssec(z).enable = True
+        else:
+            master.add_module(z, ModOnlineSign())
+        slave.zones[z.name].journal_content = "all" # also disables zonefile load
 
-for z in zones:
-    if random.choice([True, False]):
-        master.dnssec(z).enable = True
-    else:
-        master.add_module(z, ModOnlineSign())
-    slave.zones[z.name].journal_content = "all" # also disables zonefile load
+    backup_dir = master.dir + "/backup"
+    slave_bck_dir = slave.dir + "/backup"
 
-backup_dir = master.dir + "/backup"
-slave_bck_dir = slave.dir + "/backup"
+    t.start()
+    slave.zones_wait(zones)
+    start_time = int(t.uptime())
 
-t.start()
-slave.zones_wait(zones)
-start_time = int(t.uptime())
+    master.ctl("zone-backup +backupdir %s" % backup_dir)
+    slave.ctl("zone-backup %s %s +journal +backupdir %s +nozonefile" % \
+            (zones[0].name, zones[1].name, slave_bck_dir))
 
-master.ctl("zone-backup +backupdir %s" % backup_dir)
-slave.ctl("zone-backup %s %s +journal +backupdir %s +nozonefile" % \
-          (zones[0].name, zones[1].name, slave_bck_dir))
+    (dnskey1_1, dnskey2_1) = get_dnskeys(master, zones)
 
-(dnskey1_1, dnskey2_1) = get_dnskeys(master, zones)
+    t.sleep(2)
 
-t.sleep(2)
+    for z in zones:
+        up = master.update(z)
+        up.delete("added.%s" % z.name, "A")
+        up.send()
 
-for z in zones:
-    up = master.update(z)
-    up.delete("added.%s" % z.name, "A")
-    up.send()
-
-t.sleep(1)
-
-slave.stop()
-master.stop()
-shutil.rmtree(master.keydir) # let Knot generate new set of keys
-master.start()
-master.zones_wait(zones)
-
-(dnskey1_2, dnskey2_2) = get_dnskeys(master, zones)
-if dnskey1_2 == dnskey1_1 or dnskey2_2 == dnskey2_1:
-    set_err("TEST ERROR")
-
-test_added(master, zones, [ "NXDOMAIN", "NXDOMAIN" ])
-
-master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[0].name))
-
-t.sleep(6)
-
-(dnskey1_3, dnskey2_3) = get_dnskeys(master, zones)
-if dnskey1_3 != dnskey1_1:
-    set_err("KEYS NOT RESTORED")
-if dnskey2_3 == dnskey2_1:
-    set_err("KEYS WRONGLY RESTORED")
-
-test_added(master, zones, [ "NOERROR", "NXDOMAIN" ])
-
-master.stop()
-keydir = master.keydir # BEWARE this is function invocation
-shutil.rmtree(keydir)
-shutil.copytree(backup_dir + "/keys", keydir) # offline restore
-
-shutil.rmtree(master.dir + "/journal")
-master.start()
-master.zones_wait(zones)
-
-(dnskey1_4, dnskey2_4) = get_dnskeys(master, zones)
-if dnskey1_4 != dnskey1_1 or dnskey2_4 != dnskey2_1:
-    set_err("KEYS NOT RESTORED 2")
-
-test_added(master, zones, [ "NOERROR", "NOERROR" ])
-
-master.stop()
-shutil.rmtree(slave.dir + "/journal")
-shutil.rmtree(slave.dir + "/timers")
-slave.start()
-
-slave.ctl("zone-restore +nozonefile +backupdir %s +journal" % slave_bck_dir)
-slave.zones_wait(zones) # zones shall be loaded from recovered journal
-
-for i in range(start_time + 45 - int(t.uptime())):
     t.sleep(1)
+
+    slave.stop()
+    master.stop()
+    shutil.rmtree(master.keydir) # let Knot generate new set of keys
+    master.start()
+    master.zones_wait(zones)
+
+    (dnskey1_2, dnskey2_2) = get_dnskeys(master, zones)
+    if dnskey1_2 == dnskey1_1 or dnskey2_2 == dnskey2_1:
+        set_err("TEST ERROR")
+
+    test_added(master, zones, [ "NXDOMAIN", "NXDOMAIN" ])
+
+    master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[0].name))
+
+    t.sleep(6)
+
+    (dnskey1_3, dnskey2_3) = get_dnskeys(master, zones)
+    if dnskey1_3 != dnskey1_1:
+        set_err("KEYS NOT RESTORED")
+    if dnskey2_3 == dnskey2_1:
+        set_err("KEYS WRONGLY RESTORED")
+
+    test_added(master, zones, [ "NOERROR", "NXDOMAIN" ])
+
+    master.stop()
+    keydir = master.keydir # BEWARE this is function invocation
+    shutil.rmtree(keydir)
+    shutil.copytree(backup_dir + "/keys", keydir) # offline restore
+
+    shutil.rmtree(master.dir + "/journal")
+    master.start()
+    master.zones_wait(zones)
+
+    (dnskey1_4, dnskey2_4) = get_dnskeys(master, zones)
+    if dnskey1_4 != dnskey1_1 or dnskey2_4 != dnskey2_1:
+        set_err("KEYS NOT RESTORED 2")
+
+    test_added(master, zones, [ "NOERROR", "NOERROR" ])
+
+    master.stop()
+    shutil.rmtree(slave.dir + "/journal")
+    shutil.rmtree(slave.dir + "/timers")
+    slave.start()
+
+    slave.ctl("zone-restore +nozonefile +backupdir %s +journal" % slave_bck_dir)
+    slave.zones_wait(zones) # zones shall be loaded from recovered journal
+
+    for i in range(start_time + 45 - int(t.uptime())):
+        t.sleep(1)
+        resp = slave.dig(zones[0].name, "SOA")
+        if resp.rcode() != "NOERROR":
+            break
+    # the zone should expire in 45 seconds (45 = SOA) according to restored timers
+
     resp = slave.dig(zones[0].name, "SOA")
-    if resp.rcode() != "NOERROR":
-        break
-# the zone should expire in 45 seconds (45 = SOA) according to restored timers
+    resp.check(rcode="SERVFAIL")
 
-resp = slave.dig(zones[0].name, "SOA")
-resp.check(rcode="SERVFAIL")
-
-t.stop()
+    t.stop()

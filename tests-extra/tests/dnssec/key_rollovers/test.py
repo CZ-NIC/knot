@@ -138,7 +138,7 @@ def run_test():
         CDS1 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
         t.sleep(1)
         while CDS1 == str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
-        t.sleep(1)
+            t.sleep(1)
 
         cdnskeys = 2 if DOUBLE_DS else 1
         msg = desc + ": new KSK ready"

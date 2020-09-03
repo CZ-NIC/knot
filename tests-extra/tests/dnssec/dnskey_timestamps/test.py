@@ -15,27 +15,27 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
+# check zone if keys are present and used for signing
+def check_zone(server, expect_dnskey, expect_rrsig, msg):
+    dnskeys = server.dig("example.com", "DNSKEY")
+    soa = server.dig("example.com", "SOA", dnssec=True)
+
+    found_dnskeys = dnskeys.count("DNSKEY")
+    found_rrsigs = soa.count("RRSIG")
+
+    expect_dnskeys = 3 if expect_dnskey else 2
+    expect_rrsigs = 2 if expect_rrsig else 1
+
+    check_log("DNSKEYs: %d (expected %d) RRSIGs: %d (expected %d)" %
+            (found_dnskeys, expect_dnskeys, found_rrsigs, expect_rrsigs))
+
+    if found_dnskeys != expect_dnskeys or found_rrsigs != expect_rrsigs:
+        set_err("BAD DNSKEY: " + msg)
+        detail_log("!DNSKEYs not published and activated as expected: " + msg)
+
+    detail_log(SEP)
+
 def run_test():
-    # check zone if keys are present and used for signing
-    def check_zone(server, expect_dnskey, expect_rrsig, msg):
-        dnskeys = server.dig("example.com", "DNSKEY")
-        soa = server.dig("example.com", "SOA", dnssec=True)
-
-        found_dnskeys = dnskeys.count("DNSKEY")
-        found_rrsigs = soa.count("RRSIG")
-
-        expect_dnskeys = 3 if expect_dnskey else 2
-        expect_rrsigs = 2 if expect_rrsig else 1
-
-        check_log("DNSKEYs: %d (expected %d) RRSIGs: %d (expected %d)" %
-                (found_dnskeys, expect_dnskeys, found_rrsigs, expect_rrsigs));
-
-        if found_dnskeys != expect_dnskeys or found_rrsigs != expect_rrsigs:
-            set_err("BAD DNSKEY: " + msg)
-            detail_log("!DNSKEYs not published and activated as expected: " + msg)
-
-        detail_log(SEP)
-
     t = Test()
 
     knot = t.server("knot")

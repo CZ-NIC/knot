@@ -43,23 +43,13 @@ def run_test():
     resp = slave.dig("added.example.", "A")
     resp.check(rcode="NOERROR", rdata="1.2.3.4")
 
-<<<<<<< HEAD
-# check that update is refused
-up = slave.update(zone)
-up.add("noddns", 3600, "A", "1.2.3.6")
-up.send("REFUSED")
-sleep_alt(2, master.valgrind, 4)
-resp = slave.dig("noddns.example.", "A")
-resp.check(rcode="NXDOMAIN", nordata="1.2.3.6")
-=======
     # check that update is refused
     up = slave.update(zone)
     up.add("noddns", 3600, "A", "1.2.3.6")
     up.send("REFUSED")
-    t.sleep(2)
+    sleep_alt(2, master.valgrind, 4)
     resp = slave.dig("noddns.example.", "A")
     resp.check(rcode="NXDOMAIN", nordata="1.2.3.6")
->>>>>>> tests-extra: added entry point of tests needed for parallel testing
 
     master.update_zonefile(zone, version=2)
     master.reload()
@@ -73,22 +63,12 @@ resp.check(rcode="NXDOMAIN", nordata="1.2.3.6")
     resp = slave.dig("more.example.", "A")
     resp.check(rcode="NOERROR", rdata="1.2.3.5")
 
-<<<<<<< HEAD
-# check that update works now
-up = slave.update(zone)
-up.add("ddns", 3600, "A", "1.2.3.7")
-up.send("NOERROR")
-sleep_alt(2, master.valgrind, 4)
-resp = slave.dig("ddns.example.", "A")
-resp.check(rcode="NOERROR", rdata="1.2.3.7")
-=======
     # check that update works now
     up = slave.update(zone)
     up.add("ddns", 3600, "A", "1.2.3.7")
     up.send("NOERROR")
-    t.sleep(2)
+    sleep_alt(2, master.valgrind, 4)
     resp = slave.dig("ddns.example.", "A")
     resp.check(rcode="NOERROR", rdata="1.2.3.7")
->>>>>>> tests-extra: added entry point of tests needed for parallel testing
 
     t.stop()
