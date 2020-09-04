@@ -163,7 +163,7 @@ conf_val_t conf_zone_get_txn(
 {
 	conf_val_t val = { NULL };
 
-	if (key1_name == NULL || dname == NULL) {
+	if (conf == NULL || key1_name == NULL || dname == NULL) {
 		val.code = KNOT_EINVAL;
 		DBG_LOG(val.code);
 		return val;
