@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
 	const bool copy_ok = ret == KNOT_EOK && copy.count == rdataset.count &&
 	                     rdataset_size(&copy) == rdataset_size(&rdataset) &&
+						 rdataset.rdata != NULL && copy.rdata != NULL &&
 	                     memcmp(rdataset.rdata, copy.rdata,
 	                            rdataset_size(&rdataset)) == 0;
 	ok(copy_ok, "rdataset: copy");
