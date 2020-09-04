@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
 	const bool copy_ok = ret == KNOT_EOK && copy.count == rdataset.count &&
 	                     rdataset_size(&copy) == rdataset_size(&rdataset) &&
+	                     rdataset.rdata != NULL && copy.rdata != NULL &&
 	                     memcmp(rdataset.rdata, copy.rdata,
 	                            rdataset_size(&rdataset)) == 0;
 	ok(copy_ok, "rdataset: copy");
