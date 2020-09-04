@@ -120,6 +120,7 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 					p.addr[i] = conf_remote(conf(), &val, i);
 				}
 				parent_dynarray_add(&policy->parents, &p);
+				free(p.addr);
 			}
 			conf_val_next(&val);
 		}
