@@ -74,7 +74,7 @@ static int dname_align(const uint8_t **d1, uint8_t d1_labels,
 
 _public_
 int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
-                          const uint8_t *pkt)
+                          const uint8_t *pkt, size_t *compr_incr, size_t *compt_incr)
 {
 	if (name == NULL || name == endp) {
 		return KNOT_EINVAL;
@@ -83,6 +83,10 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 	int wire_len = 0;
 	int name_len = 1; /* Keep \x00 terminal label in advance. */
 	bool is_compressed = false;
+
+	if (knot_wire_is_pointer(name)) {
+		(*compt_incr)++;
+	}
 
 	while (*name != '\0') {
 		/* Check bounds (must have at least 2 octets remaining). */
@@ -134,6 +138,8 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 
 	if (!is_compressed) { /* Terminal label. */
 		wire_len += 1;
+	} else if (compr_incr != NULL) {
+		(*compr_incr)++;
 	}
 
 	return wire_len;

@@ -24,7 +24,7 @@
 /* Test dname_parse_from_wire */
 static int test_fw(size_t l, const char *w) {
 	const uint8_t *np = (const uint8_t *)w + l;
-	return knot_dname_wire_check((const uint8_t *)w, np, NULL) > 0;
+	return knot_dname_wire_check((const uint8_t *)w, np, NULL, NULL, NULL) > 0;
 }
 
 /* Test dname to/from string operations */
@@ -45,7 +45,7 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len)
 	}
 
 	/* dname_wire_check */
-	ret = knot_dname_wire_check(d1, d1 + sizeof(d1), NULL);
+	ret = knot_dname_wire_check(d1, d1 + sizeof(d1), NULL, NULL, NULL);
 	ok(ret == bin_len, "dname_wire_check: %s", in_str);
 
 	/* dname compare */
@@ -68,7 +68,7 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len)
 	}
 
 	/* dname_wire_check */
-	ret = knot_dname_wire_check(d2, d2 + bin_len, NULL);
+	ret = knot_dname_wire_check(d2, d2 + bin_len, NULL, NULL, NULL);
 	ok(ret == bin_len, "dname_wire_check: %s", s1);
 
 	/* dname compare */
@@ -95,7 +95,7 @@ static void test_str(const char *in_str, const char *in_bin, size_t bin_len)
 	}
 
 	/* dname_wire_check */
-	ret = knot_dname_wire_check(d2, d2 + bin_len, NULL);
+	ret = knot_dname_wire_check(d2, d2 + bin_len, NULL, NULL, NULL);
 	ok(ret == bin_len, "dname_wire_check: %s", s2);
 
 	/* dname compare */

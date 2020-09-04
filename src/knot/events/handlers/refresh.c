@@ -353,6 +353,7 @@ static int axfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
 	for (uint16_t i = 0; i < answer->count && ret == KNOT_STATE_CONSUME; ++i) {
 		ret = axfr_consume_rr(knot_pkt_rr(answer, i), data);
 	}
+	printf("AXFR: consumed %zu, rrs %hu, compressed owners %zu (totally %zu), rdata %zu (totally %zu)\n", pkt->size, pkt->rrset_count, pkt->conpressed_owners, pkt->compr_tot_owners, pkt->compressed_rdata, pkt->compr_tot_rdata);
 	return ret;
 }
 

@@ -19,7 +19,7 @@
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	// Skip invalid dnames.
-	if (knot_dname_wire_check(data, data + size, NULL) <= 0) {
+	if (knot_dname_wire_check(data, data + size, NULL, NULL, NULL) <= 0) {
 		return 0;
 	}
 

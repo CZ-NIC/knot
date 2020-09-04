@@ -80,6 +80,11 @@ struct knot_pkt {
 	uint16_t rrset_count;  /*!< Packet RRSet count. */
 	uint16_t flags;        /*!< Packet flags. */
 
+	size_t conpressed_owners;
+	size_t compressed_rdata;
+	size_t compr_tot_owners;
+	size_t compr_tot_rdata;
+
 	knot_rrset_t *opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 

@@ -602,7 +602,7 @@ int knot_edns_chain_parse(knot_dname_t **point, const uint8_t *option,
 		return KNOT_EINVAL;
 	}
 
-	int ret = knot_dname_wire_check(option, option + option_len, NULL);
+	int ret = knot_dname_wire_check(option, option + option_len, NULL, NULL, NULL);
 	if (ret <= 0) {
 		return KNOT_EMALF;
 	}

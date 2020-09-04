@@ -64,6 +64,10 @@ static void pkt_free_data(knot_pkt_t *pkt)
 		}
 	}
 	pkt->rrset_count = 0;
+	pkt->compressed_rdata = 0;
+	pkt->conpressed_owners = 0;
+	pkt->compr_tot_owners = 0;
+	pkt->compr_tot_rdata = 0;
 
 	/* Free EDNS option positions. */
 	mm_free(&pkt->mm, pkt->edns_opts);
@@ -289,6 +293,10 @@ int knot_pkt_copy(knot_pkt_t *dst, const knot_pkt_t *src)
 	dst->rr_info = NULL;
 	dst->rrset_count = 0;
 	dst->rrset_allocd = 0;
+	dst->compressed_rdata = 0;
+	dst->conpressed_owners = 0;
+	dst->compr_tot_owners = 0;
+	dst->compr_tot_rdata = 0;
 
 	/* @note This could be done more effectively if needed. */
 	return knot_pkt_parse(dst, 0);
@@ -587,7 +595,7 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	/* Process question. */
 	int len = knot_dname_wire_check(pkt->wire + pkt->parsed,
 	                                pkt->wire + pkt->size,
-	                                NULL /* No compression in QNAME. */);
+	                                NULL /* No compression in QNAME. */, NULL, NULL);
 	if (len <= 0) {
 		return KNOT_EMALF;
 	}
@@ -666,7 +674,7 @@ static int parse_rr(knot_pkt_t *pkt, unsigned flags)
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
 	ret = knot_rrset_rr_from_wire(pkt->wire, &pkt->parsed, pkt->size,
-	                              rr, &pkt->mm, !(flags & KNOT_PF_NOCANON));
+	                              rr, &pkt->mm, !(flags & KNOT_PF_NOCANON), &pkt->conpressed_owners, &pkt->compressed_rdata, &pkt->compr_tot_owners, &pkt->compr_tot_rdata);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

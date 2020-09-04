@@ -64,6 +64,6 @@ static inline int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
 * \return KNOT_E*
 */
 int knot_rrset_rr_from_wire(const uint8_t *wire, size_t *pos, size_t max_size,
-                            knot_rrset_t *rrset, knot_mm_t *mm, bool canonical);
+                            knot_rrset_t *rrset, knot_mm_t *mm, bool canonical, size_t *pkt_compr_ow, size_t *pkt_compr_rd, size_t *pkt_compt_ow, size_t *pkt_compt_rd);
 
 /*! @} */

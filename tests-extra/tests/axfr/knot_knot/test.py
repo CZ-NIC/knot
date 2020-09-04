@@ -4,11 +4,11 @@
 
 from dnstest.test import Test
 
-t = Test()
+t = Test(stress=False)
 
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(10) + t.zone(".") + t.zone("records.")
+zones = t.zone_rnd(4, records=100, dnssec=True)
 
 t.link(zones, master, slave)
 

@@ -1317,7 +1317,7 @@ static void dnskey_info(const uint8_t *rdata,
 		break;
 	case KNOT_DNSSEC_ALG_PRIVATEDNS:
 		; knot_dname_txt_storage_t alg_str;
-		if (knot_dname_wire_check(rdata + 4, rdata + rdata_len, NULL) <= 0 ||
+		if (knot_dname_wire_check(rdata + 4, rdata + rdata_len, NULL, NULL, NULL) <= 0 ||
 		    knot_dname_to_str(alg_str, rdata + 4, sizeof(alg_str)) == NULL ||
 		    snprintf(alg_info, sizeof(alg_info), " (%s)", alg_str) <= 0) {
 			alg_info[0] = '\0';

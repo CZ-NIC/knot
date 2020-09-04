@@ -26,7 +26,7 @@
  * \brief Assert that a domain name in a static buffer is valid.
  */
 #define _assert_dname(name) \
-	assert(knot_dname_wire_check(name, name + KNOT_DNAME_MAXLEN, NULL) > 0)
+	assert(knot_dname_wire_check(name, name + KNOT_DNAME_MAXLEN, NULL, NULL, NULL) > 0)
 
 static void _test_nsec_next(const char *msg,
                             const knot_dname_t *input,

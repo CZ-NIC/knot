@@ -54,9 +54,9 @@ typedef char knot_dname_txt_storage_t[KNOT_DNAME_TXT_MAXLEN + 1];
  * \retval KNOT_EINVAL
  * \retval KNOT_EMALF
  */
-_pure_ _mustcheck_
+_mustcheck_
 int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
-                          const uint8_t *pkt);
+                          const uint8_t *pkt, size_t *compr_incr, size_t *compt_incr);
 
 /*!
  * \brief Duplicates the given domain name to a local storage.

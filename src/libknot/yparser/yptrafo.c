@@ -702,7 +702,7 @@ int yp_dname_to_bin(
 	// Check the result and count the length.
 	int ret = knot_dname_wire_check(out->position,
 	                                out->position + wire_ctx_available(out),
-	                                NULL);
+	                                NULL, NULL, NULL);
 	if (ret <= 0) {
 		return KNOT_EINVAL;
 	}
