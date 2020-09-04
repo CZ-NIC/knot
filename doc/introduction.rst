@@ -27,6 +27,8 @@ DNS features:
 * Internet class (IN)
 * DNS extension (EDNS0)
 * TCP and UDP protocols
+* Zone catalogs
+* Minimal responses
 * Dynamic zone updates
 * DNSSEC with NSEC and NSEC3
 * Transaction signature using TSIG
@@ -48,8 +50,9 @@ Server features:
 * YAML-based or database-based configuration
 * Query processing modules with dynamic loading
 * On-the-fly zone management and server reconfiguration
-* Multithreaded DNSSEC signing
+* Multithreaded DNSSEC zone signing and zone validation
 * Automatic DNSSEC key maganement
+* Zone data backup and restore
 * Offline KSK operation
 * PKCS #11 interface
 
@@ -65,6 +68,7 @@ Remarkable module extensions:
 Remarkable supported networking features:
 
 * TCP Fast Open
+* AF_XDP (on Linux 4.18+)
 * SO_REUSEPORT (on Linux) or SO_REUSEPORT_LB (on FreeBSD 12.0+) on UDP and by choice on TCP
 * Binding to non-local addresses (IP_FREEBIND on Linux, IP_BINDANY/IPV6_BINDANY on FreeBSD)
 * Ignoring PMTU information for IPv4/UDP via IP_PMTUDISC_OMIT
