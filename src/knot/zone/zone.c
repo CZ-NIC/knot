@@ -22,6 +22,7 @@
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/dnssec/kasp/kasp_db.h"
+#include "knot/events/replan.h"
 #include "knot/journal/journal_read.h"
 #include "knot/journal/journal_write.h"
 #include "knot/nameserver/process_query.h"
@@ -241,7 +242,11 @@ void zone_reset(conf_t *conf, zone_t *zone)
 	zone_contents_t *old_contents = zone_switch_contents(zone, NULL);
 	conf_reset_modules(conf, &zone->query_modules, &zone->query_plan); // includes synchronize_rcu()
 	zone_contents_deep_free(old_contents);
-	zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+	if (zone_expired(zone)) {
+		replan_from_timers(conf, zone);
+	} else {
+		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+	}
 }
 
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset_t *extra)
