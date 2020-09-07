@@ -401,7 +401,9 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 			resp->max_size = MAX(resp->max_size, transfer);
 		}
 	} else {
-		resp->max_size = KNOT_WIRE_MAX_PKTSIZE;
+		// theoretical limit is KNOT_WIRE_MAX_PKTSIZE (== 64 KiB)
+		// however, we limit to 16 KiB to achieve max effectivity of compression
+		resp->max_size = KNOT_WIRE_PTR_MAX;
 	}
 
 	/* All supported OPCODEs require a question. */
