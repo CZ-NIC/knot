@@ -55,6 +55,11 @@ Operating system
 Knot DNS itself is written in a portable way and can be compiled
 and run on most UNIX-like systems, such as Linux, \*BSD, and macOS.
 
+The :ref:`XDP funcionality <Mode XDP>` and :doc:`kxdpgun <man_kxdpgun>`
+tool are only supported on Linux operating systems. See the chapter
+:ref:`Mode XDP <Mode XDP_pre-requisites>` software and hardware
+recommendations.
+
 Required libraries
 ==================
 
