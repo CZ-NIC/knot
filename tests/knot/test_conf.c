@@ -43,7 +43,7 @@ static void check_name_err(const char *zone, const char *name)
 {
 	knot_dname_t *z = knot_dname_from_str_alloc(zone);
 
-	char *filename = get_filename(NULL, NULL, z, name);
+	char *filename = get_filename(conf(), NULL, z, name);
 	ok(filename == NULL, "Invalid name %s", name);
 	free(filename);
 
@@ -52,6 +52,9 @@ static void check_name_err(const char *zone, const char *name)
 
 static void test_get_filename(void)
 {
+	int ret = test_conf("", NULL);
+	is_int(KNOT_EOK, ret, "Prepare empty configuration");
+
 	// Name formatter.
 	char *zone = "abc";
 	check_name(zone, "/%s", "/abc");
@@ -110,6 +113,8 @@ static void test_get_filename(void)
 	zone = ".";
 	check_name(zone, "/%l[0]", "/");
 	check_name(zone, "/%l[1]", "/");
+
+	test_conf_free();
 }
 
 static void test_conf_zonefile(void)
@@ -190,7 +195,7 @@ static void test_conf_zonefile(void)
 		free(file);
 	}
 
-	conf_free(conf());
+	test_conf_free();
 	knot_dname_free(zone_arpa, NULL);
 	knot_dname_free(zone_root, NULL);
 	knot_dname_free(zone_1label, NULL);
