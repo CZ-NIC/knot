@@ -137,6 +137,7 @@ class Server(object):
         self.ctlkeyfile = None
         self.tsig = None
         self.tsig_test = None
+        self.no_xfr_edns = None
 
         self.zones = dict()
 
@@ -1217,6 +1218,8 @@ class Knot(Server):
                     s.item_str("address", "%s@%s" % (master.addr, master.port))
                     if master.tsig:
                         s.item_str("key", master.tsig.name)
+                    if master.no_xfr_edns:
+                        s.item_str("no-edns", "on")
                     servers.add(master.name)
             for slave in z.slaves:
                 if slave.name not in servers:
