@@ -354,6 +354,9 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	/* Clear payload. */
 	payload_clear(pkt);
 
+	/* Clear compression context. */
+	compr_clear(&pkt->compr);
+
 	return KNOT_EOK;
 }
 
