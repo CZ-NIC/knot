@@ -242,12 +242,15 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 	memset(ctx, 0, sizeof(*ctx));
 }
 
+// expects policy struct to be zeroed
 static void policy_from_zone(knot_kasp_policy_t *policy, const zone_contents_t *zone)
 {
-	// expects policy struct to be zeroed
-	policy->manual = true;
-	policy->single_type_signing = (node_rdataset(zone->apex, KNOT_RRTYPE_DNSKEY)->count == 1);
+	knot_rdataset_t *dnskey = node_rdataset(zone->apex, KNOT_RRTYPE_DNSKEY);
 	knot_rdataset_t *n3p = node_rdataset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
+
+	policy->manual = true;
+	policy->single_type_signing = (dnskey != NULL && dnskey->count == 1);
+
 	if (n3p != NULL) {
 		policy->nsec3_enabled = true;
 		policy->nsec3_iterations = knot_nsec3param_iters(n3p->rdata);
