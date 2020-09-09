@@ -23,11 +23,8 @@ t.link(zones, master, slave, ixfr=True)
 
 for z in zones_ok + zones_nok:
     slave.dnssec(z).validate = True
-    slave.dnssec(z).single_type_signing = True
 for z in zones_ok3 + zones_nok3:
     slave.dnssec(z).validate = True
-    slave.dnssec(z).nsec3 = True
-    slave.dnssec(z).single_type_signing = True
 
 t.start()
 
