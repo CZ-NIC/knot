@@ -277,6 +277,7 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 
 	policy_from_zone(ctx->policy, zone);
 	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->apex->owner);
+	conf_id_fix_default(&policy_id);
 	conf_val_t num_threads = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, &policy_id);
 	ctx->policy->signing_threads = conf_int(&num_threads);
 
