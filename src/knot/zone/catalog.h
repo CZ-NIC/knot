@@ -55,6 +55,21 @@ typedef struct {
 extern const MDB_val catalog_iter_prefix;
 
 /*!
+ * \brief Generate owner name for catalog PTR record.
+ *
+ * \param member        Name of the member zone respective to the PTR record.
+ * \param catz          Catalog zone name to contain the PTR.
+ * \param member_time   Timestamp of member zone addition.
+ *
+ * \return Owner name or NULL on error (e.g. ENOMEM, too long result...).
+ *
+ * \note Don't forget to free the return value later.
+ */
+knot_dname_t *catalog_member_owner(const knot_dname_t *member,
+                                   const knot_dname_t *catz,
+                                   time_t member_time);
+
+/*!
  * \brief Initialize catalog structure.
  *
  * \param cat        Catalog structure.
@@ -202,6 +217,7 @@ catalog_find_res_t catalog_find(catalog_t *cat, const knot_dname_t *member,
  * \return KNOT_EOK, KNOT_ENOMEM
  */
 int catalog_update_init(catalog_update_t *u);
+catalog_update_t *catalog_update_new(void);
 
 /*!
  * \brief Clear contents of catalog update structure.
@@ -216,6 +232,7 @@ void catalog_update_clear(catalog_update_t *u);
  * \param u   Catalog update structure.
  */
 void catalog_update_deinit(catalog_update_t *u);
+void catalog_update_free(catalog_update_t *u);
 
 /*!
  * \brief Add a new record to catalog update structure.

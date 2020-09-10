@@ -219,6 +219,8 @@ void zone_free(zone_t **zone_ptr)
 	/* Control update. */
 	zone_control_clear(zone);
 
+	free(zone->catalog_gen);
+
 	/* Free preferred master. */
 	pthread_mutex_destroy(&zone->preferred_lock);
 	free(zone->preferred_master);

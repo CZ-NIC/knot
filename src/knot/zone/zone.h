@@ -89,6 +89,10 @@ typedef struct zone
 	catalog_t *catalog;
 	catalog_update_t *catalog_upd;
 
+	/*! \brief Catalog-generate feature. */
+	knot_dname_t *catalog_gen;
+	catalog_update_t *cat_members;
+
 	/*! \brief Preferred master lock. */
 	pthread_mutex_t preferred_lock;
 	/*! \brief Preferred master for remote operation. */

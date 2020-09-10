@@ -22,14 +22,61 @@
 #include <string.h>
 #include <urcu.h>
 
+#include "contrib/string.h"
+#include "contrib/wire_ctx.h"
+#include "libdnssec/binary.h"
+
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/zone/contents.h"
 
 #define CATALOG_VERSION "1.0"
 #define CATALOG_ZONE_VERSION "2" // must be just one char long
+#define CATALOG_ZONES_LABEL "zones"
 
 const MDB_val catalog_iter_prefix = { 1, "" };
+
+knot_dname_t *catalog_member_owner(const knot_dname_t *member,
+                                   const knot_dname_t *catz,
+                                   time_t member_time)
+{
+	dnssec_binary_t membbin = { knot_dname_size(member), (void *)member };
+	uint64_t u64time = htobe64(member_time);
+	dnssec_binary_t timebin = { sizeof(uint64_t), (void *)&u64time };
+	dnssec_binary_t rawhash;
+
+	int ret = dnssec_binary_hash(DNSSEC_BIN_HASH_MD5, &rawhash, 2, &membbin, &timebin);
+	if (ret != KNOT_EOK) {
+		return NULL;
+	}
+
+	char *hexhash = bin_to_hex(rawhash.data, rawhash.size);
+	dnssec_binary_free(&rawhash);
+
+	long hexlen = strlen(hexhash);
+	assert(hexlen == 32);
+	long zoneslen = strlen(CATALOG_ZONES_LABEL);
+	assert(hexlen <= KNOT_DNAME_MAXLABELLEN && zoneslen <= KNOT_DNAME_MAXLABELLEN);
+	size_t catzlen = knot_dname_size(catz);
+
+	size_t outlen = 1 + hexlen + 1 + zoneslen + catzlen;
+	knot_dname_t *out;
+	if (outlen > KNOT_DNAME_MAXLEN || (out = malloc(outlen)) == NULL) {
+		free(hexhash);
+		return NULL;
+	}
+
+	wire_ctx_t wire = wire_ctx_init(out, outlen);
+	wire_ctx_write_u8(&wire, hexlen);
+	wire_ctx_write(&wire, hexhash, hexlen);
+	wire_ctx_write_u8(&wire, zoneslen);
+	wire_ctx_write(&wire, CATALOG_ZONES_LABEL, zoneslen);
+	wire_ctx_write(&wire, catz, catzlen);
+	assert(wire.error == KNOT_EOK);
+
+	free(hexhash);
+	return out;
+}
 
 static bool check_zone_version(const zone_contents_t *zone)
 {
@@ -337,6 +384,19 @@ int catalog_update_init(catalog_update_t *u)
 	return KNOT_EOK;
 }
 
+catalog_update_t *catalog_update_new()
+{
+	catalog_update_t *u = calloc(1, sizeof(*u));
+	if (u != NULL) {
+		int ret = catalog_update_init(u);
+		if (ret != KNOT_EOK) {
+			free(u);
+			u = NULL;
+		}
+	}
+	return u;
+}
+
 static int freecb(trie_val_t *tval, void *unused)
 {
 	(void)unused;
@@ -357,6 +417,12 @@ void catalog_update_deinit(catalog_update_t *u)
 	pthread_mutex_destroy(&u->mutex);
 	trie_free(u->add);
 	trie_free(u->rem);
+}
+
+void catalog_update_free(catalog_update_t *u)
+{
+	catalog_update_deinit(u);
+	free(u);
 }
 
 int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
