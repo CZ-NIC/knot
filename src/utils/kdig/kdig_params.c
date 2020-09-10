@@ -1463,7 +1463,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->operation = OPERATION_QUERY;
 		query->ip = IP_ALL;
 		query->protocol = PROTO_ALL;
-		query->fastopen = false;
+		query->fastopen = true;
 		query->port = strdup("");
 		query->udp_size = -1;
 		query->retries = DEFAULT_RETRIES_DIG;

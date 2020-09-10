@@ -368,7 +368,7 @@ int net_connect(net_t *net)
 				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, net->tls.params->sni);
 			} else {
 				// Establish TLS connection.
-				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
+				ret = tls_ctx_connect(&net->tls, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, net->tls.params->sni);
 			}
 #else
 			ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
@@ -446,7 +446,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 #endif //LIBNGHTTP2
 	// Send data over TLS.
 	} else if (net->tls.params != NULL) {
-		int ret = tls_ctx_send((tls_ctx_t *)&net->tls, buf, buf_len);
+		int ret = tls_ctx_send(&net->tls, buf, buf_len);
 		if (ret != KNOT_EOK) {
 			WARN("can't send query to %s\n", net->remote_str);
 			return KNOT_NET_ESEND;

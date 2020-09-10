@@ -21,6 +21,7 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/ocsp.h>
 #include <gnutls/x509.h>
+#include <gnutls/socket.h>
 #include <poll.h>
 
 #include "utils/common/tls.h"
@@ -489,8 +490,10 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 	return KNOT_EOK;
 }
 
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, struct sockaddr_storage *address, const char *remote)
 {
+	assert(ctx);
+
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -519,8 +522,8 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 		}
 	}
 
-	gnutls_session_set_ptr(ctx->session, ctx);
-	gnutls_transport_set_int(ctx->session, sockfd);
+	gnutls_session_set_ptr(ctx->session, ctx); //TODO Hey codeline, does we need you?
+	gnutls_transport_set_fastopen(ctx->session, sockfd, address, sizeof(*address), 0);
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
 
 	// Initialize poll descriptor structure.
@@ -529,6 +532,10 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 		.events = POLLIN,
 		.revents = 0,
 	};
+
+	// Setup context
+	ctx->sockfd = sockfd;
+	ctx->addr = address;
 
 	// Perform the TLS handshake
 	do {
@@ -545,9 +552,6 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 		tls_ctx_close(ctx);
 		return KNOT_NET_ESOCKET;
 	}
-
-	// Save the socket descriptor.
-	ctx->sockfd = sockfd;
 
 	return KNOT_EOK;
 }
