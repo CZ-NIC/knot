@@ -1,10 +1,10 @@
 # Requirements
 
-`./doc/requirements.rst`
+[doc/requirements.rst](doc/requirements.rst)
 
 # Installation
 
-`./doc/installation.rst`
+[doc/installation.rst](doc/installation.rst)
 
 ## 1. Install prerequisites
 
@@ -82,9 +82,10 @@ sudo ldconfig
 
 ### 1. Ensure some configuration
 
-`./doc/configuration.rst`
+[doc/configuration.rst](doc/configuration.rst)
 
-Please see samples/knot.sample.conf, project documentation,
+Please see [samples/knot.sample.conf](samples/knot.sample.conf),
+[project documentation](https://www.knot-dns.cz/documentation/),
 or `man 5 knot.conf` for more details. Basically the configuration should specify:
 - network interfaces
 - served zones
@@ -107,7 +108,7 @@ mv example.com.zone /var/lib/knot/
 
 ### 3. Start the server
 
-`./doc/operation.rst`
+[doc/operation.rst](doc/operation.rst)
 
 This can be done by running the `knotd` command. Alternatively, your distribution
 should have an init script available, if you installed Knot DNS from a binary package.
