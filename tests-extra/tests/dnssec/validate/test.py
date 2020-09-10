@@ -17,23 +17,27 @@ zones_nok = t.zone("missing.nsec.", storage=".") + t.zone("bitmap.nsec.", storag
             t.zone("rrsig.nsec.", storage=".")
 zones_nok3 = t.zone("missing.nsec3", storage=".") + t.zone("bitmap.nsec3.", storage=".") + \
              t.zone("chain.nsec3.", storage=".") + t.zone("rrsig.nsec3", storage=".")
+zones_unsigned = t.zone("example.com.")
 
 zones = zones_ok + zones_ok3 + zones_nok + zones_nok3
-t.link(zones, master, slave, ixfr=True)
+t.link(zones + zones_unsigned, master, slave, ixfr=True)
 
 for z in zones_ok + zones_nok:
     slave.dnssec(z).validate = True
-    slave.dnssec(z).single_type_signing = True
 for z in zones_ok3 + zones_nok3:
     slave.dnssec(z).validate = True
-    slave.dnssec(z).nsec3 = True
-    slave.dnssec(z).single_type_signing = True
+for z in zones_unsigned:
+    slave.dnssec(z).validate = True
 
 t.start()
 
 serials_ok = master.zones_wait(zones_ok + zones_ok3)
 serials_all = master.zones_wait(zones)
 slave.zones_wait(zones)
+
+for z in zones_unsigned:
+    servfail = slave.dig(z.name, "SOA")
+    servfail.check(rcode="SERVFAIL")
 
 for z in zones:
     master.update_zonefile(z, version=2)
