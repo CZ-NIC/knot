@@ -21,6 +21,7 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/ocsp.h>
 #include <gnutls/x509.h>
+#include <gnutls/socket.h>
 #include <poll.h>
 
 #include "utils/common/tls.h"
@@ -489,8 +490,67 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 	return KNOT_EOK;
 }
 
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
+static ssize_t tls_writev(gnutls_transport_ptr_t _ctx, const giovec_t *iov, int iovcnt)
 {
+	tls_ctx_t *ctx = (tls_ctx_t *)_ctx;
+
+	struct msghdr msg = {0};
+	msg.msg_iov = iov;
+	msg.msg_iovlen = iovcnt;
+	msg.msg_name = ctx->addr;
+	msg.msg_namelen = sizeof(*ctx->addr);
+
+#if __APPLE__
+	return sendmsg(ctx->sockfd, msg, 0);
+#elif defined(MSG_FASTOPEN)
+	int ret = sendmsg(ctx->sockfd, &msg, MSG_FASTOPEN);
+
+	if (ret == -1 && errno == EINPROGRESS) {
+		struct pollfd pfd = {
+			.fd = ctx->sockfd,
+			.events = POLLOUT,
+			.revents = 0,
+		};
+		if (poll(&pfd, 1, 1000 * 100 * ctx->wait) != 1) {
+			errno = ETIMEDOUT;
+			return 0;
+		}
+		ret = sendmsg(ctx->sockfd, &msg, 0);
+	}
+	return ret;
+#else
+	errno = ENOTSUP;
+	return -1;
+#endif
+}
+
+static ssize_t tls_pull(gnutls_transport_ptr_t _ctx, void *buf, size_t buf_len) {
+	tls_ctx_t *ctx = (tls_ctx_t *)_ctx;
+	struct pollfd pfd = {
+		.fd = ctx->sockfd,
+		.events = POLLIN,
+		.revents = 0,
+	};	
+	
+	// Receive TCP message header.
+	if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
+		//WARN("response timeout for %s\n", net->remote_str);
+		return 0;
+	}
+
+	// Receive piece of message.
+	ssize_t ret = recv(ctx->sockfd, (uint8_t *)buf, buf_len, 0);
+	if (ret <= 0) {
+		//WARN("can't receive reply from %s\n", net->remote_str);
+		return KNOT_NET_ERECV;
+	}
+	return ret;
+}
+
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, struct sockaddr_storage *address, const char *remote)
+{
+	assert(ctx);
+
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -519,8 +579,11 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 		}
 	}
 
-	gnutls_session_set_ptr(ctx->session, ctx);
+	gnutls_session_set_ptr(ctx->session, ctx); //TODO Hey codeline, does we need you?
 	gnutls_transport_set_int(ctx->session, sockfd);
+	gnutls_transport_set_ptr(ctx->session, (gnutls_transport_ptr_t)ctx);
+	gnutls_transport_set_vec_push_function(ctx->session, &tls_writev);
+	gnutls_transport_set_pull_function(ctx->session, &tls_pull);
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
 
 	// Initialize poll descriptor structure.
@@ -529,6 +592,10 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 		.events = POLLIN,
 		.revents = 0,
 	};
+
+	// Setup context
+	ctx->sockfd = sockfd;
+	ctx->addr = address;
 
 	// Perform the TLS handshake
 	do {
@@ -545,9 +612,6 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 		tls_ctx_close(ctx);
 		return KNOT_NET_ESOCKET;
 	}
-
-	// Save the socket descriptor.
-	ctx->sockfd = sockfd;
 
 	return KNOT_EOK;
 }
