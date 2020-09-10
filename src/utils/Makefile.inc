@@ -67,13 +67,13 @@ knsupdate_SOURCES = \
 	utils/knsupdate/knsupdate_params.c	\
 	utils/knsupdate/knsupdate_params.h
 
-kdig_CPPFLAGS          = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+kdig_CPPFLAGS          = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(libnghttp2_CFLAGS)
 kdig_LDADD             = libknotus.la
-khost_CPPFLAGS         = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+khost_CPPFLAGS         = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(libnghttp2_CFLAGS)
 khost_LDADD            = libknotus.la
 knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS)
 knsec3hash_LDADD       = libcontrib.la libdnssec.la libknot.la
-knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS)
+knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(libnghttp2_CFLAGS)
 knsupdate_LDADD        = libknotus.la libzscanner.la
 
 if HAVE_DNSTAP
