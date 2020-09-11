@@ -28,11 +28,14 @@
 
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
-#include "knot/zone/contents.h"
+#include "knot/updates/zone-update.h"
 
 #define CATALOG_VERSION "1.0"
 #define CATALOG_ZONE_VERSION "2" // must be just one char long
 #define CATALOG_ZONES_LABEL "zones"
+#define CATALOG_SOA_REFRESH 3600
+#define CATALOG_SOA_RETRY 600
+#define CATALOG_SOA_EXPIRE (INT32_MAX - 1)
 
 const MDB_val catalog_iter_prefix = { 1, "" };
 
@@ -381,6 +384,7 @@ int catalog_update_init(catalog_update_t *u)
 		return KNOT_ENOMEM;
 	}
 	pthread_mutex_init(&u->mutex, 0);
+	u->error = KNOT_EOK;
 	return KNOT_EOK;
 }
 
@@ -410,6 +414,7 @@ void catalog_update_clear(catalog_update_t *u)
 	trie_clear(u->add);
 	trie_apply(u->rem, freecb, NULL);
 	trie_clear(u->rem);
+	u->error = KNOT_EOK;
 }
 
 void catalog_update_deinit(catalog_update_t *u)
@@ -541,6 +546,129 @@ int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
 	pthread_mutex_lock(&u->mutex);
 	int ret = zone_tree_sub_apply(zone->nodes, sub, false, cat_update_add_node, &ctx);
 	pthread_mutex_unlock(&u->mutex);
+	return ret;
+}
+
+inline static void set_rdata(knot_rrset_t *rrset, uint8_t *data, uint16_t len)
+{
+	knot_rdata_init(rrset->rrs.rdata, len, data);
+	rrset->rrs.size = knot_rdata_size(len);
+}
+
+struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dname_t *catz_name, uint32_t soa_serial)
+{
+	if (u->error != KNOT_EOK) {
+		return NULL;
+	}
+	zone_contents_t *c = zone_contents_new(catz_name, true);
+	if (c == NULL) {
+		return c;
+	}
+
+	// temporary storage to avoid allocations
+	uint8_t tmp[512];
+	knot_rdata_t *rdata = (knot_rdata_t *)tmp;
+	knot_dname_t *tmpname = tmp + 256;
+	wire_ctx_t wire;
+	zone_node_t *unused;
+	knot_rrset_t rrset = { 0 };
+	char invalid[9] = "\x07""invalid";
+	char version[9] = "\x07""version";
+	uint8_t version2[2] = "\x01" CATALOG_ZONE_VERSION;
+
+	// set catalog zone's SOA
+	rrset.owner = (knot_dname_t *)catz_name;
+	rrset.type = KNOT_RRTYPE_SOA;
+	rrset.rclass = KNOT_CLASS_IN;
+	rrset.ttl = 0;
+	rrset.rrs.count = 1;
+	rrset.rrs.rdata = rdata;
+	wire_ctx_init(rdata->data, 250);
+	wire_ctx_write(&wire, invalid, sizeof(invalid));
+	wire_ctx_write(&wire, invalid, sizeof(invalid));
+	wire_ctx_write_u32(&wire, soa_serial);
+	wire_ctx_write_u32(&wire, CATALOG_SOA_REFRESH);
+	wire_ctx_write_u32(&wire, CATALOG_SOA_RETRY);
+	wire_ctx_write_u32(&wire, CATALOG_SOA_EXPIRE);
+	wire_ctx_write_u32(&wire, 0);
+	rdata->len = wire_ctx_offset(&wire);
+	rrset.rrs.size = knot_rdata_size(rdata->len);
+	if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+		goto fail;
+	}
+
+	// set catalog zone's NS
+	rrset.type = KNOT_RRTYPE_NS;
+	set_rdata(&rrset, (uint8_t *)invalid, sizeof(invalid));
+	if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+		goto fail;
+	}
+
+	// set catalog zone's version TXT
+	rrset.type = KNOT_RRTYPE_TXT;
+	set_rdata(&rrset, version2, 2);
+	size_t catz_len = knot_dname_size(catz_name);
+	if (catz_len + sizeof(version) > KNOT_DNAME_MAXLEN) {
+		goto fail;
+	}
+	memcpy(tmpname, version, sizeof(version));
+	rrset.owner = tmpname;
+	if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+		goto fail;
+	}
+
+	// insert member zone PTR records
+	rrset.type = KNOT_RRTYPE_PTR;
+	catalog_it_t *it = catalog_it_begin(u, false);
+	while (!catalog_it_finished(it)) {
+		catalog_upd_val_t *val = catalog_it_val(it);
+		rrset.owner = val->owner;
+		set_rdata(&rrset, val->member, knot_dname_size(val->member));
+		if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+			goto fail;
+		}
+		catalog_it_next(it);
+	}
+	catalog_it_free(it);
+
+	return c;
+
+fail:
+	zone_contents_deep_free(c);
+	return NULL;
+}
+
+int catalog_update_to_update(catalog_update_t *u, struct zone_update *zu)
+{
+	knot_rrset_t ptr = { 0 };
+	ptr.type = KNOT_RRTYPE_PTR;
+	ptr.rclass = KNOT_CLASS_IN;
+	ptr.ttl = 0;
+	uint8_t tmp[KNOT_DNAME_MAXLEN + sizeof(knot_rdata_t)];
+	ptr.rrs.count = 1;
+	ptr.rrs.rdata = (knot_rdata_t *)tmp;
+
+	int ret = u->error;
+	catalog_it_t *it = catalog_it_begin(u, true);
+	while (!catalog_it_finished(it) && ret == KNOT_EOK) {
+		catalog_upd_val_t *val = catalog_it_val(it);
+		ptr.owner = val->owner;
+		set_rdata(&ptr, val->member, knot_dname_size(val->member));
+		ret = zone_update_remove(zu, &ptr);
+		catalog_it_next(it);
+	}
+	catalog_it_free(it);
+
+	it = catalog_it_begin(u, false);
+	while (!catalog_it_finished(it) && ret == KNOT_EOK) {
+		catalog_upd_val_t *val = catalog_it_val(it);
+		ptr.owner = val->owner;
+		set_rdata(&ptr, val->member, knot_dname_size(val->member));
+		ret = zone_update_add(zu, &ptr);
+		catalog_it_next(it);
+	}
+	catalog_it_free(it);
+
 	return ret;
 }
 

@@ -42,6 +42,7 @@ typedef enum {
 typedef struct {
 	trie_t *rem;             // tree of catalog_upd_val_t, that gonna be removed from catalog
 	trie_t *add;             // tree of catalog_upd_val_t, that gonna be added to catalog
+	int error;               // error occured during generating of upd
 	pthread_mutex_t mutex;   // lock for accessing this struct
 } catalog_update_t;
 
@@ -275,6 +276,29 @@ struct zone_contents;
  */
 int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
                              bool remove, bool check_ver, catalog_t *check);
+
+/*!
+ * \brief Generate catalog zone contents from (full) catalog update.
+ *
+ * \param u           Catalog update to read.
+ * \param catz_name   Catalog zone name.
+ * \param soa_serial  SOA serial of the generated zone.
+ *
+ * \return Catalog zone contents, or NULL if ENOMEM.
+ */
+struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dname_t *catz_name, uint32_t soa_serial);
+
+struct zone_update;
+
+/*!
+ * \brief Incrementally update catalog zone from catalog update.
+ *
+ * \param u    Catalog update to read.
+ * \param zu   Zone update to be updated.
+ *
+ * \return KNOT_E*
+ */
+int catalog_update_to_update(catalog_update_t *u, struct zone_update *zu);
 
 /*!
  * \brief Add to catalog update removals of all member zones of a single catalog zone.
