@@ -58,24 +58,6 @@ docker:knot-dns:fedora:
     IMAGE_NAME: fedora:latest
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
-.freebsd_i386: &freebsd_i386
-  tags:
-    - freebsd
-    - i386
-  only:
-    - master
-    - triggers
-    - tags
-
-.freebsd_amd64: &freebsd_amd64
-  tags:
-    - freebsd
-    - amd64
-  only:
-    - master
-    - triggers
-    - tags
-
 .fedora_latest: &fedora_latest
   image: "$CI_REGISTRY/knot/knot-dns/fedora:latest"
   tags:
@@ -275,26 +257,6 @@ test:debian:unstable:amd64:ubsan:
   <<: *test_job
   dependencies:
     - build:debian:unstable:amd64:ubsan
-
-build:freebsd:i386:
-  <<: *freebsd_i386
-  <<: *build_job
-
-test:freebsd:i386:
-  <<: *freebsd_i386
-  <<: *test_job
-  dependencies:
-    - build:freebsd:i386
-
-build:freebsd:amd64:
-  <<: *freebsd_amd64
-  <<: *build_job
-
-test:freebsd:amd64:
-  <<: *freebsd_amd64
-  <<: *test_job
-  dependencies:
-    - build:freebsd:amd64
 
 build:archive:
   <<: *debian_stable
