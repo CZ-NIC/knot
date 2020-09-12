@@ -127,27 +127,9 @@ AM_CONDITIONAL([HAVE_LIBUTILS], test "$enable_utilities" != "no" -o \
 ######################
 
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--disable-fastparser], [Disable use of fastest zone parser]),[],[
-    # Set zone parser type - fastest on release build, slowest on dev build
-    AS_IF([test -d ".git" -o "$PATCH_VERSION" = "dev"],[
-        enable_fastparser=no
-        ],[
-        enable_fastparser=yes
-        ])
-    ])
-
-AX_CC_CLANG
-AS_IF([test "$enable_fastparser" = "yes"],[
-    AS_IF([test -n "$CC_CLANG_VERSION"],[
-      enable_fastparser=no
-      AC_MSG_WARN([Fast zone parser disabled due to possible compiler bug.])
-      AC_MSG_WARN([See https://llvm.org/bugs/show_bug.cgi?id=23490 for details.])
-      AC_MSG_WARN([Use --enable-fastparser=force if your know your clang is fixed.])
-    ])
-])
-
-AS_IF([test "$enable_fastparser" = "force"],[enable_fastparser=yes])
-
+    AS_HELP_STRING([--disable-fastparser], [Disable use of fast zone parser]),
+    [], [AS_IF([test -d ".git"], [enable_fastparser=no], [enable_fastparser=yes])]
+)
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
