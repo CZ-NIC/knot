@@ -78,6 +78,7 @@ class Zone(object):
         self.modules = []
         self.dnssec = ZoneDnssec()
         self.catalog = None
+        self.catz = None
 
     @property
     def name(self):
@@ -93,6 +94,10 @@ class Zone(object):
 
     def clear_modules(self):
         self.modules.clear()
+
+    def catalog_gen_link(self, catz):
+        self.catz = catz
+        catz.catz = catz
 
     def disable_master(self, new_zone_file):
         self.zfile.remove()
@@ -1459,6 +1464,12 @@ class Knot(Server):
                 s.item_str("zonefile-load", "none")
             elif z.ixfr:
                 s.item_str("zonefile-load", "difference")
+
+            if z.catz == z:
+                s.item_str("catalog-role", "generate")
+            elif z.catz is not None:
+                s.item_str("catalog-role", "member")
+                s.item_str("catalog-zone", z.catz.name)
 
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "on")

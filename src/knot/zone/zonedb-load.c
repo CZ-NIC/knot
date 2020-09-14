@@ -134,6 +134,7 @@ static void catalogs_generate(knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 				continue;
 			}
 			int ret = catalog_update_add(catz->cat_members, zone->name, owner, cg, false);
+			free(owner);
 			if (ret != KNOT_EOK) {
 				catz->cat_members->error = ret;
 			}

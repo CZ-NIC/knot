@@ -220,6 +220,7 @@ void zone_free(zone_t **zone_ptr)
 	zone_control_clear(zone);
 
 	free(zone->catalog_gen);
+	catalog_update_free(zone->cat_members);
 
 	/* Free preferred master. */
 	pthread_mutex_destroy(&zone->preferred_lock);
