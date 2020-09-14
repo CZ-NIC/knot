@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,8 +44,8 @@ typedef struct zone_node {
 	union {
 		knot_dname_t *nsec3_hash; /*! Name of the NSEC3 corresponding to this node. */
 		struct zone_node *nsec3_node; /*! NSEC3 node corresponding to this node.
-	         \warning This always points to first part of that bi-node!
-                 assert(!(node->nsec3_noed & NODE_FLAGS_SECOND)); */
+		\warning This always points to first part of that bi-node!
+		assert(!(node->nsec3_node & NODE_FLAGS_SECOND)); */
 	};
 	knot_dname_t *nsec3_wildcard_name; /*! Name of NSEC3 node proving wildcard nonexistence. */
 	uint32_t children; /*!< Count of children nodes in DNS hierarchy. */
@@ -176,7 +176,7 @@ inline static zone_node_t *binode_node_as(zone_node_t *node, const zone_node_t *
  *
  * \param node   A node in a bi-node.
  *
- * \return The counterpart node in the smae bi-node.
+ * \return The counterpart node in the same bi-node.
  */
 zone_node_t *binode_counterpart(zone_node_t *node);
 
