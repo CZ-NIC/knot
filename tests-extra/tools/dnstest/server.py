@@ -647,7 +647,7 @@ class Server(object):
                     count += 1
         return count
 
-    def zone_wait(self, zone, serial=None, equal=False, greater=True):
+    def zone_wait(self, zone, serial=None, equal=False, greater=True, udp=True, tsig=None):
         '''Try to get SOA record. With an optional serial number and given
            relation (equal or/and greater).'''
 
@@ -659,8 +659,8 @@ class Server(object):
 
         for t in range(60):
             try:
-                resp = self.dig(zone.name, "SOA", udp=True, tries=1,
-                                timeout=2, log_no_sep=True)
+                resp = self.dig(zone.name, "SOA", udp=udp, tries=1,
+                                timeout=2, log_no_sep=True, tsig=tsig)
             except:
                 pass
             else:

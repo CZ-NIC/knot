@@ -145,7 +145,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	// If configured contents=all, but not present, store zonefile.
-	if (load_from == JOURNAL_CONTENT_ALL &&
+	if ((load_from == JOURNAL_CONTENT_ALL || zone->cat_members != NULL) &&
 	    journal_conts == NULL && zf_conts != NULL && !old_contents_exist) {
 		ret = zone_in_journal_store(conf, zone, zf_conts);
 		if (ret != KNOT_EOK) {
@@ -165,6 +165,9 @@ int event_load(conf_t *conf, zone_t *zone)
 			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
 			if (ret == KNOT_EOK) {
 				ret = catalog_update_to_update(zone->cat_members, &up);
+			}
+			if (ret == KNOT_EOK) {
+				ret = zone_update_increment_soa(&up, conf);
 			}
 		} else if (zf_conts == NULL) {
 			// nothing to be re-loaded

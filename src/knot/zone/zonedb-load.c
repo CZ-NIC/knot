@@ -106,7 +106,8 @@ static void catalogs_generate(knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 						catz->cat_members->error = KNOT_ENOENT;
 						continue;
 					}
-					int ret = catalog_update_add(catz->cat_members, owner, zone->name, cg, true);
+					int ret = catalog_update_add(catz->cat_members, zone->name, owner, cg, true);
+					free(owner);
 					if (ret != KNOT_EOK) {
 						catz->cat_members->error = ret;
 					}
@@ -199,6 +200,9 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 		log_zone_warning(old_zone->name, "control transaction aborted");
 		zone_control_clear(old_zone);
 	}
+
+	zone->cat_members = old_zone->cat_members;
+	old_zone->cat_members = NULL;
 
 	return zone;
 }
