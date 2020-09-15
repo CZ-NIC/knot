@@ -585,7 +585,8 @@ Catalog zones
 Catalog zone is a concept when the list of zones configured is maintained
 as contents of a special zone. This approach has the benefit of simple propagation
 of the actual zone list to slave servers. Especially when the list is frequently
-updated.
+updated. Currently, catalog zones are described in this `Internet Draft
+<https://tools.ietf.org/html/draft-ietf-dnsop-dns-catalog-zones>`_.
 
 Terminology first. *Catalog zone* is a meta-zone which shall not be a part
 of the DNS tree, but it contains information about the set of member zones and
