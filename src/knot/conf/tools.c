@@ -485,6 +485,14 @@ int check_policy(
 		return KNOT_EINVAL;
 	}
 
+#ifndef HAVE_GLNUTLS_REPRODUCIBLE
+	conf_val_t repro_sign = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                           C_REPRO_SIGNING, args->id, args->id_len);
+	if (conf_bool(&repro_sign)) {
+		CONF_LOG(LOG_WARNING, "reproducible signing not available, signing normally");
+	}
+#endif
+
 	return KNOT_EOK;
 }
 
