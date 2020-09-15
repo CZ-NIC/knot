@@ -470,7 +470,7 @@ Special states for algorithm rollover:
 
 - ``post-active`` — The key is no longer published in the zone, but still used for signing.
 
-Special states for RFC 5011 trust anchor roll-over
+Special states for :rfc:`5011` trust anchor roll-over
 
 - ``revoke`` (only for KSK) — The key is published and used for signing, and the Revoked flag is set.
 
