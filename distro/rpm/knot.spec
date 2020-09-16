@@ -46,7 +46,7 @@ BuildRequires:	pkgconfig(systemd)
 BuildRequires:	python3-Sphinx
 BuildRequires:	lmdb-devel
 BuildRequires:	protobuf-c
-Requires(pre):  pwdutils
+Requires(pre):	pwdutils
 %endif
 %if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:	python-sphinx
@@ -215,8 +215,8 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 
 %files
 %license COPYING
-%{_pkgdocdir}/NEWS
-%{_pkgdocdir}/README.md
+%doc %{_pkgdocdir}/NEWS
+%doc %{_pkgdocdir}/README.md
 %{_pkgdocdir}/samples
 %dir %attr(750,root,knot) %{_sysconfdir}/%{name}
 %config(noreplace) %attr(640,root,knot) %{_sysconfdir}/%{name}/%{name}.conf
