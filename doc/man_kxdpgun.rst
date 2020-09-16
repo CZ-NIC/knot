@@ -49,6 +49,10 @@ Options
 **-i**, **--infile** *filename*
   Path to a file with query templates.
 
+**-I**, **--interface** *interface*
+  Network interface for outgoing communication. This can be useful in situations
+  when the interfaces are in a bond for example.
+
 *targetIP*
   The IPv4 or IPv6 address of remote destination.
 
