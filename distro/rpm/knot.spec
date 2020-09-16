@@ -46,7 +46,7 @@ BuildRequires:	pkgconfig(systemd)
 BuildRequires:	python3-Sphinx
 BuildRequires:	lmdb-devel
 BuildRequires:	protobuf-c
-Requires(pre):  pwdutils
+Requires(pre):	pwdutils
 %endif
 %if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:	python-sphinx
@@ -215,15 +215,17 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 
 %files
 %license COPYING
-%{_pkgdocdir}/NEWS
-%{_pkgdocdir}/README.md
-%{_pkgdocdir}/samples
-%dir %attr(750,root,knot) %{_sysconfdir}/%{name}
-%config(noreplace) %attr(640,root,knot) %{_sysconfdir}/%{name}/%{name}.conf
-%dir %attr(775,root,knot) %{_sharedstatedir}/%{name}
-%dir %attr(770,root,knot) %{_sharedstatedir}/%{name}/keys
+%doc %{_pkgdocdir}
+%exclude %{_pkgdocdir}/html
+%attr(750,root,knot) %dir %{_sysconfdir}/knot
+%config(noreplace) %attr(640,root,knot) %{_sysconfdir}/knot/knot.conf
+%attr(775,root,knot) %dir %{_sharedstatedir}/knot
+%attr(770,root,knot) %dir %{_sharedstatedir}/knot/catalog
+%attr(770,root,knot) %dir %{_sharedstatedir}/knot/journal
+%attr(770,root,knot) %dir %{_sharedstatedir}/knot/keys
+%attr(770,root,knot) %dir %{_sharedstatedir}/knot/timers
 %{_unitdir}/knot.service
-%{_tmpfilesdir}/%{name}.conf
+%{_tmpfilesdir}/knot.conf
 %{_bindir}/kzonecheck
 %{_bindir}/kzonesign
 %{_sbindir}/kcatalogprint
@@ -242,8 +244,7 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_mandir}/man8/keymgr.*
 %{_mandir}/man8/knotc.*
 %{_mandir}/man8/knotd.*
-%{_mandir}/man8/knotd.*
-%ghost /run/knot
+%ghost %attr(755,knot,knot) %dir %{_rundir}/knot
 
 %files utils
 %{_bindir}/kdig
@@ -282,7 +283,7 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 
 %files doc
 %dir %{_pkgdocdir}
-%{_pkgdocdir}/html
+%doc %{_pkgdocdir}/html
 
 %changelog
 * Wed Feb 21 2018 Tomas Krizek <tomas.krizek@nic.cz> - 2.6.5-1
