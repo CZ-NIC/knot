@@ -72,6 +72,10 @@ CPU ID increment for next thread (default is 0s1).
 \fB\-i\fP, \fB\-\-infile\fP \fIfilename\fP
 Path to a file with query templates.
 .TP
+\fB\-I\fP, \fB\-\-interface\fP \fIinterface\fP
+Network interface for outgoing communication. This can be useful in situations
+when the interfaces are in a bond.
+.TP
 \fItargetIP\fP
 The IPv4 or IPv6 address of remote destination.
 .TP

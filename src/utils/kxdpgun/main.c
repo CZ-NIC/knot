@@ -74,6 +74,7 @@ typedef struct {
 } xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
+	.dev[0] = '\0',
 	.qps = 1000,
 	.duration = 5000000UL, // usecs
 	.at_once = 10,
@@ -491,7 +492,7 @@ static bool configure_target(char *target_str, xdp_gun_ctx_t *ctx)
 		printf("device names comming from `ip` and `arp` differ (%s != %s)\n",
 		       dev1, dev2);
 		return false;
-	} else {
+	} else if (!ctx->dev[0]) {
 		strlcpy(ctx->dev, dev1, IFNAMSIZ);
 	}
 	ret = dev2mac(ctx->dev, ctx->local_mac);
@@ -514,28 +515,29 @@ static bool configure_target(char *target_str, xdp_gun_ctx_t *ctx)
 
 static void print_help(void) {
 	printf("Usage: %s [-t duration] [-Q qps] [-b batch_size] [-r] [-p port] "
-	       "[-F cpu_affinity] -i queries_file dest_ip\n", PROGRAM_NAME);
+	       "[-F cpu_affinity] [-I interface] -i queries_file dest_ip\n", PROGRAM_NAME);
 }
 
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
 	struct option opts[] = {
-		{ "help",     no_argument,       NULL, 'h' },
-		{ "version",  no_argument,       NULL, 'V' },
-		{ "duration", required_argument, NULL, 't' },
-		{ "qps",      required_argument, NULL, 'Q' },
-		{ "batch",    required_argument, NULL, 'b' },
-		{ "drop",     no_argument,       NULL, 'r' },
-		{ "port",     required_argument, NULL, 'p' },
-		{ "affinity", required_argument, NULL, 'F' },
-		{ "infile",   required_argument, NULL, 'i' },
+		{ "help",      no_argument,       NULL, 'h' },
+		{ "version",   no_argument,       NULL, 'V' },
+		{ "duration",  required_argument, NULL, 't' },
+		{ "qps",       required_argument, NULL, 'Q' },
+		{ "batch",     required_argument, NULL, 'b' },
+		{ "drop",      no_argument,       NULL, 'r' },
+		{ "port",      required_argument, NULL, 'p' },
+		{ "affinity",  required_argument, NULL, 'F' },
+		{ "infile",    required_argument, NULL, 'i' },
+		{ "interface", required_argument, NULL, 'I' },
 		{ NULL }
 	};
 
 	int opt = 0, arg;
 	double argf;
 	char *argcp;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:F:i:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:F:i:I:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -596,6 +598,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				global_cpu_aff_step = arg;
 			}
 			break;
+		case 'I':
+			strlcpy(ctx->dev, optarg, IFNAMSIZ);
+			break;
 		default:
 			return false;
 		}
@@ -610,6 +615,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		return false;
 	}
 	ctx->qps /= ctx->n_threads;
+	printf("using interface %s, XDP threads %d\n", ctx->dev, ctx->n_threads);
 
 	return true;
 }
