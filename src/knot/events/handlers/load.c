@@ -217,8 +217,8 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	uint32_t middle_serial = zone_contents_serial(up.new_cont);
 
-	if (do_diff && old_contents_exist && dnssec_enable &&
-	    zone->zonefile.serial != zone_contents_serial(zone->contents) &&
+	if (do_diff && old_contents_exist && dnssec_enable && zf_conts != NULL &&
+	    zone_contents_serial(zf_conts) != zone_contents_serial(zone->contents) &&
 	    !zone_journal_has_zij(zone)) {
 		ret = zone_update_start_extra(&up);
 		if (ret != KNOT_EOK) {
