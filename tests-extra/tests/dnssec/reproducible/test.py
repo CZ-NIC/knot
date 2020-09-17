@@ -11,7 +11,7 @@ import random
 
 from dnstest.test import Test
 from dnstest.keys import Keymgr
-from dnstest.utils import Skip
+from dnstest.utils import *
 
 def gnutls_ver_num():
     try:
@@ -61,7 +61,9 @@ slave1.gen_confile() # needed for keymgr
 
 slave1.key_gen(zone[0].name, algorithm=str(alg['code']), ksk="true", zsk="true", size=str(alg['size']))
 
-shutil.copytree(slave1.keydir, slave2.keydir)
+slave2keydir = slave2.keydir
+os.rmdir(slave2keydir)
+shutil.copytree(slave1.keydir, slave2keydir)
 
 # hide zonefile, in order to let servers start slowly
 ZFILE=master.zones[zone[0].name].zfile.path
@@ -74,10 +76,19 @@ t.start()
 os.rename(ZFILE_, ZFILE)
 master.ctl("zone-reload")
 
-slave1.zones_wait(zone)
+serial_orig = slave1.zone_wait(zone)
 t.sleep(1)
 
 t.xfr_diff(slave1, slave2, zone)
+
+# now stop and start slave1 and check if it doesn't re-sign the zone
+slave1.stop()
+t.sleep(3)
+slave1.start()
+
+serial = slave1.zone_wait(zone)
+if serial != serial_orig:
+    set_err("zone was re-signed")
 
 t.end()
 
