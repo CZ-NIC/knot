@@ -19,6 +19,9 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef ENABLE_SYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
 
 #include "libknot/libknot.h"
 #include "knot/server/dthreads.h"
@@ -197,9 +200,17 @@ void worker_pool_wait(worker_pool_t *pool)
 		return;
 	}
 
+	const struct timespec timeout = {
+		.tv_sec = 10,
+		.tv_nsec = 0,
+	};
+
 	pthread_mutex_lock(&pool->lock);
 	while (!EMPTY_LIST(pool->tasks.list) || pool->running > 0) {
-		pthread_cond_wait(&pool->wake, &pool->lock);
+#ifdef ENABLE_SYSTEMD
+		sd_notify(0, "EXTEND_TIMEOUT_USEC=15000000");
+#endif
+		pthread_cond_timedwait(&pool->wake, &pool->lock, &timeout);
 	}
 	pthread_mutex_unlock(&pool->lock);
 }
