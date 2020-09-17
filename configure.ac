@@ -157,7 +157,8 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
 
     AC_CHECK_DECL([GNUTLS_PRIVKEY_FLAG_REPRODUCIBLE],
         [AC_DEFINE([HAVE_GLNUTLS_REPRODUCIBLE], [1], [GnuTLS reproducible signing available])
-         enable_repro_signing=yes],
+         # Ensure the version is at least 3.6.10
+         AC_CHECK_FUNC([gnutls_aead_cipher_encryptv2], [enable_repro_signing=yes], [enable_repro_signing=no])],
         [enable_repro_signing=no],
         [#include <gnutls/abstract.h>])
 
