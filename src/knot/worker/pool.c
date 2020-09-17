@@ -19,10 +19,19 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#ifdef ENABLE_SYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
 
 #include "libknot/libknot.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
+
+#define XSTR(x) #x
+#define STR(x) XSTR(x)
+#define SYSTEMD_TIMEOUT 15
+
 
 /*!
  * \brief Worker pool state.
@@ -197,9 +206,18 @@ void worker_pool_wait(worker_pool_t *pool)
 		return;
 	}
 
+	const struct timespec timeout = {
+		.tv_sec = SYSTEMD_TIMEOUT - 1,
+		.tv_nsec = 0,
+	};
+	
 	pthread_mutex_lock(&pool->lock);
 	while (!EMPTY_LIST(pool->tasks.list) || pool->running > 0) {
-		pthread_cond_wait(&pool->wake, &pool->lock);
+		if (pthread_cond_timedwait(&pool->wake, &pool->lock, &timeout) == ETIMEDOUT) {
+#ifdef ENABLE_SYSTEMD
+			sd_notify(0, "EXTEND_TIMEOUT_USEC=" STR(SYSTEMD_TIMEOUT) "000000");
+#endif
+		}
 	}
 	pthread_mutex_unlock(&pool->lock);
 }
