@@ -104,7 +104,7 @@ class ZoneFile(object):
         self.file_name = self.name + "rndzone"
 
         try:
-            params = ["-i", serial, "-o", self.path, self.name, records]
+            params = ["-i", serial, "-o", self.path, "-c", records, self.name]
             if dnssec:
                 prepare_dir(self.key_dir_bind)
                 params = ["-s", "-3", "n" if nsec3 is False else "y" if nsec3 else "0",

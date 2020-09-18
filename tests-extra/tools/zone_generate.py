@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 '''
-Usage: zone_generate.py [parameters] origin [rr_count]
+Usage: zone_generate.py [parameters] origin
 Parameters:
     -h, --help         This help.
     -s, --sign         Sign the zone with dnssec-signzone.
@@ -12,6 +12,7 @@ Parameters:
     -t, --ttl=sec      Specify default TTL.
     -o, --outfile=file Specify output file name.
     -k, --keydir=dir   Specify output key directory.
+    -c, --count=num    RR count
 '''
 
 import binascii
@@ -24,28 +25,28 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import dns
 import dns.rdataclass
 import dns.rdatatype
 import dns.rdata
 
-# Word databases
-ORIGIN = '' # Zone origin (default=com)
-RORIGIN = None # Domain for reverse zones
-RPREFIX = None # Zone is RPREFIX classless-type
-WORD_MRATE = 1.0 # 0.0 - 1.0, percentage of mangled words
-RR_EXISTS = 1.0 # 0.0 - 1.0, percentage of CNAME/DNAME... pointing to existing name
-SUB_CHANCE = 0.0 # 0.0 - 1.0, chance of dname bing a subdomain
-FQDN_CHANCE = 0.5 # 0.0 - 1.0, chance for FQDN
-WILD_IN_SUB = 0.0 # 0.0 - 1.0, chance of wildcard in case of subdomain
-ENABLE_BINRTYPE = True # Enable RR type format as 'TYPEXXXX'
-ENABLE_BINRR = True # Enable RR data in binary format
-TTL = random.randint(1800, 18000)
+class Context(threading.local):
+    def __init__(self):
+        # Zone name
+        self.ORIGIN = 'com'
+        # Domain for reverse zones
+        self.RORIGIN = None
+        # Zone is RPREFIX classless-type
+        self.RPREFIX = None
+        # 0.0 - 1.0, chance of dname bing a subdomain
+        self.SUB_CHANCE = 0.0
+        # 0.0 - 1.0, percentage of mangled words
+        self.WORD_MRATE = 1.0
+        # 0.0 - 1.0, chance for FQDN
+        self.FQDN_CHANCE = 0.5
 
-# Defaults
-SERIAL = '2007120713'
-SERVICES = [ 'sip', 'xmpp', 'ldap' ]
-PROTOCOLS = [ 'udp', 'tcp' ]
+ctx = Context()
 
 RRTYPES = [ \
 #   [ typename, generator, probability, typeid ]
@@ -121,7 +122,7 @@ def rnd_hex(l):
 def rnd_str():
     i = rnd(0, len(WORDS)-1)
     word = WORDS[i]
-    if rnd_fl(0, 1) < WORD_MRATE:
+    if rnd_fl(0, 1) < ctx.WORD_MRATE:
         i = rnd(1, len(word))
         word = word[0:i] + rnd_hex(rnd(2,8))
     return word
@@ -129,10 +130,10 @@ def rnd_str():
 def rnd_dname(enable_sub = 1):
     dname = rnd_str()
     # Chance for subdomain
-    if enable_sub == 1 and rnd_fl(0, 1) < SUB_CHANCE:
+    if enable_sub == 1 and rnd_fl(0, 1) < ctx.SUB_CHANCE:
         dname += '.%s' % rnd_dnl(0) # DNAME must not have children
     # Chance for FQDN
-    if rnd_fl(0, 1) < FQDN_CHANCE:
+    if rnd_fl(0, 1) < ctx.FQDN_CHANCE:
         dname = g_fqdn(dname)
     return dname
 
@@ -152,7 +153,7 @@ def rnd_dnr():
             src = A_NAMES
         else:
             src = AAAA_NAMES
-    if src and (rnd_fl(0.0, 1.0) <= RR_EXISTS):
+    if src:
         return choice(src)
     else :
         return rnd_dname()
@@ -163,15 +164,15 @@ def rnd_ip4():
 def rnd_ip6():
     # Private address range
     addr = 'fd9c:20c0:91fc:cb36'
-    for i in range(0,4):
+    for _ in range(0,4):
         addr += ':' + rnd_hex(4)
     return addr
 
 def rnd_srv():
-    return random.choice(SERVICES)
+    return random.choice(['sip', 'xmpp', 'ldap'])
 
 def rnd_proto():
-    return random.choice(PROTOCOLS)
+    return random.choice(['udp', 'tcp'])
 
 def shuffle_str(s):
     s = list(s)
@@ -184,11 +185,11 @@ def g_rdbin(data):
     return '\\# %d %s' % (dl, hs)
 
 def g_rdata(rt, data, chance=30):
-    if ENABLE_BINRR and rnd(0, 100) < chance:
+    if rnd(0, 100) < chance:
         cls = dns.rdataclass.IN
         tpe = dns.rdatatype.from_text(rt[0])
         rd = dns.rdata.from_text(cls, tpe, data)
-        return g_rdbin(rd.to_digestable(dns.name.from_text(ORIGIN))) + ' ;rdata=' + data
+        return g_rdbin(rd.to_digestable(dns.name.from_text(ctx.ORIGIN))) + ' ;rdata=' + data
     return data
 
 def g_rtype(rt):
@@ -198,10 +199,10 @@ def g_rtype(rt):
 
 def g_fqdn(dn):
     if not dn.endswith('.'):
-        if ORIGIN == ".":
+        if ctx.ORIGIN == ".":
             dn += '.'
         else:
-            dn += '.%s.' % ORIGIN
+            dn += '.%s.' % ctx.ORIGIN
     return dn
 
 def g_customrr(rt):
@@ -212,28 +213,12 @@ def g_customrr(rt):
 
 def g_a(rt):
     dn = rnd_dnl(0)
-    # Chance for wildcard
-    if rnd_fl(0.0, 1.0) < WILD_IN_SUB:
-        # Append some valid names
-        for i in range(1, rnd(2,5)):
-            A_NAMES.append(g_fqdn(rnd_str() + '.' + dn))
-        NAME_EXIST.add(g_fqdn(dn).lower())
-        dn = '*.%s' % dn
-    else:
-        A_NAMES.append(dn)
+    A_NAMES.append(dn)
     return '%s A %s' % (dn, rnd_ip4())
 
 def g_aaaa(rt):
     dn = rnd_dnl(0)
-    # Chance for wildcard
-    if rnd_fl(0.0, 1.0) < WILD_IN_SUB:
-        # Append some valid names
-        for i in range(1, rnd(2,5)):
-            AAAA_NAMES.append(g_fqdn(rnd_str() + '.' + dn))
-        NAME_EXIST.add(g_fqdn(dn).lower())
-        dn = '*.%s' % dn
-    else:
-        AAAA_NAMES.append(dn)
+    AAAA_NAMES.append(dn)
     return '%s AAAA %s' % (dn, rnd_ip6())
 
 def g_srv(rt):
@@ -261,7 +246,7 @@ def g_mx(rt):
 
 def g_txt(rt):
     sentences = ""
-    for i in range(1, 32):
+    for _ in range(1, 32):
         sentences += ' "%s"' % (' '.join(random.sample(WORDS, rnd(1, 5))))
     return '%s %s %s' % (rnd_dnl(), g_rtype(rt), g_rdata(rt, sentences, 10))
 
@@ -344,7 +329,7 @@ def g_ipseckey(rt):
 def g_apl(rt):
     data = ''
     dcount = rnd(1,3)
-    for i in range(0, dcount):
+    for _ in range(0, dcount):
         afi = choice([1, 2])
         ip = ''
         if afi == 1:
@@ -371,12 +356,12 @@ def gen_rr_rev(dn):
     return '%s\tPTR\t%s' % (dn, g_fqdn(rnd_dnl()))
 
 # Generate SOA
-def gen_soa(origin, serial, auth = None):
+def gen_soa(origin, serial, ttl, auth = None):
     refresh = 3600
     if origin != '.':
         origin += '.'
     soa =  ''
-    soa += '$TTL %d\n' % TTL
+    soa += '$TTL %d\n' % ttl
     s = '@ IN SOA %s %s' % (g_fqdn('ns'), g_fqdn('username'))
     s += ' %s %d %d %s %s\n' % (serial, refresh, refresh / 3, '4w', '1h' )
     if auth != None:
@@ -407,20 +392,15 @@ def g_unique():
     return dn
 
 def g_unique_names(count):
-    global SUB_CHANCE
-    global WORD_MRATE
-    global ORIGIN
-    global FQDN_CHANCE
-    global TTL
-    FQDN_CHANCE = 0.0
-    SUB_CHANCE = 0
-    ORIGIN = g_unique()
-    SUB_CHANCE = 0.2
-    WORD_MRATE = 0.3
+    ctx.FQDN_CHANCE = 0.0
+    ctx.SUB_CHANCE = 0
+    ctx.ORIGIN = g_unique()
+    ctx.SUB_CHANCE = 0.2
+    ctx.WORD_MRATE = 0.3
     o = ''
-    for i in range(0, count):
-        if rnd(0,1) < SUB_CHANCE:
-            ORIGIN = rnd_dnl()
+    for _ in range(0, count):
+        if rnd(0,1) < ctx.SUB_CHANCE:
+            ctx.ORIGIN = rnd_dnl()
         o += g_unique() + ' '
 
     if __name__ == "__main__":
@@ -430,23 +410,20 @@ def g_unique_names(count):
         return o
 
 def main(args):
-    global ORIGIN
-    global SERIAL
-    global TTL
-    global RORIGIN
-    global RPREFIX
+    serial = '2020091813'
+    ttl = random.randint(1800, 18000)
+    count = 100
     UPDATE = None
     sign = 0
     nsec3 = random.choice([True, 0, False])
-    count = 0
     out_fname = None
     key_dir = None
 
     # Parse parameters
     try:
-        opts, args = getopt.getopt(args, 'hs3:i:u:n:t:o:k:', ['help', 'sign',
+        opts, args = getopt.getopt(args, 'hs3:i:u:n:t:o:k:c:', ['help', 'sign',
                                    'nsec3=', 'serial=', 'update=', 'names=',
-                                   'ttl=', 'outfile=', 'keydir='])
+                                   'ttl=', 'outfile=', 'keydir=', 'count='])
     except getopt.error as msg:
         print(msg)
         print('for help use --help')
@@ -466,49 +443,44 @@ def main(args):
             else:
                 nsec3 = False
         if o in ('-i', '--serial') and a != None:
-            SERIAL = a
+            serial = a
         if o in ('-u', '--update') and a != None:
             UPDATE = a
         if o in ('-n', '--names') and a != None:
             return g_unique_names(int(a))
         if o in ('-t', '--ttl') and a != None:
-            TTL = int(a)
+            ttl = int(a)
         if o in ('-o', '--outfile') and a != None:
             out_fname = a
         if o in ('-k', '--keydir') and a != None:
             key_dir = a
+        if o in ('-c', '--count') and a != None:
+            count = int(a)
 
     # Check arguments
-    if len(args) > 2:
+    if len(args) > 1:
         print('Too many arguments.')
         print(__doc__)
         sys.exit(2)
 
     # Parse non-option arguments
-    ORIGIN = ""
-    for a in args:
-        if len(ORIGIN) == 0:
-            if a != '.':
-                a = a.rstrip('.')
-            ORIGIN = a
-        else:
-            count = int(a)
+    if args:
+        a = args[0]
+        if a != '.':
+            a = a.rstrip('.')
+        ctx.ORIGIN = a
 
     # Check values
-    if len(ORIGIN) == 0:
-        ORIGIN = 'com'
-    if count == 0:
-        count = 100 # (default)
     if not out_fname:
-        out_fname = UPDATE if UPDATE else ORIGIN + '.zone'
+        out_fname = UPDATE if UPDATE else ctx.ORIGIN + '.zone'
 
     # Reverse zones
-    if ORIGIN.find('in-addr') > 0:
-        RORIGIN = ORIGIN
-        ORIGIN = rnd_str()
-        pp = RORIGIN.find('/')
+    if ctx.ORIGIN.find('in-addr') > 0:
+        ctx.RORIGIN = ctx.ORIGIN
+        ctx.ORIGIN = rnd_str()
+        pp = ctx.RORIGIN.find('/')
         if pp > 0:
-            RPREFIX = int(RORIGIN[0:pp])
+            ctx.RPREFIX = int(ctx.RORIGIN[0:pp])
 
     tmp_dir = tempfile.mkdtemp()
     in_fname = tmp_dir + '/zfile'
@@ -525,14 +497,14 @@ def main(args):
     outf = open(in_fname, "a")
 
     if not UPDATE:
-        outf.write(gen_soa(ORIGIN, SERIAL, RORIGIN))
+        outf.write(gen_soa(ctx.ORIGIN, serial, ttl, ctx.RORIGIN))
 
     # Check if prefix exists
-    if RPREFIX != None and count > RPREFIX:
-        count = RPREFIX - 1  # <1,RPREFIX)
+    if ctx.RPREFIX != None and count > ctx.RPREFIX:
+        count = ctx.RPREFIX - 1  # <1,RPREFIX)
 
     # @TODO update reverse zone
-    if UPDATE and RPREFIX != None:
+    if UPDATE and ctx.RPREFIX != None:
         count = 0
 
     # Now generate RRs
@@ -542,7 +514,7 @@ def main(args):
     for i in range(0, count):
         # Make a batch of A/AAAAs at start
         rr = None
-        if RORIGIN != None: # Reverse zone records
+        if ctx.RORIGIN != None: # Reverse zone records
             rr = gen_rr_rev(i + 1)
         elif i < a_pool:
             if rnd(0,1.0) < 0.5:
@@ -573,8 +545,8 @@ def main(args):
         ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'RSASHA256', '-b', '1024', '-K', key_dir ]
         if nsec3 is not False:
             ps += ['-3']
-        k1 = subprocess.check_output(ps + [ORIGIN], stderr=subprocess.DEVNULL)
-        k2 = subprocess.check_output(ps + ["-f", "KSK"] + [ORIGIN], stderr=subprocess.DEVNULL)
+        k1 = subprocess.check_output(ps + [ctx.ORIGIN], stderr=subprocess.DEVNULL)
+        k2 = subprocess.check_output(ps + ["-f", "KSK"] + [ctx.ORIGIN], stderr=subprocess.DEVNULL)
         k1 = key_dir + '/' + k1.rstrip().decode('ascii')
         k2 = key_dir + '/' + k2.rstrip().decode('ascii')
 
@@ -596,7 +568,7 @@ def main(args):
             nsec3_params = ['-3', binascii.hexlify(os.urandom(random.randint(1, 30))).decode('ascii')]
 
         subprocess.check_output(["dnssec-signzone", "-d", tmp_dir, "-P", "-u", \
-                                 "-k", k2, "-x", "-o", ORIGIN, \
+                                 "-k", k2, "-x", "-o", ctx.ORIGIN, \
                                  "-O", "full"] + nsec3_params + [in_fname, k1 + ".key"],
                                  stderr=subprocess.DEVNULL)
         shutil.copyfile(in_fname + '.signed', out_fname)
