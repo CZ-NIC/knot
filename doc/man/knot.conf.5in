@@ -1530,7 +1530,7 @@ An extra record together with CNAME record except for RRSIG and DS (\fI\%RFC 103
 .IP \(bu 2
 Multiple CNAME record with the same owner
 .IP \(bu 2
-DNAME record having a record under it (\fI\%RFC 2672\fP)
+DNAME record having a record under it (\fI\%RFC 6672\fP)
 .UNINDENT
 .sp
 Extra checks:

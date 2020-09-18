@@ -1689,7 +1689,7 @@ Mandatory checks:
 - SOA record missing in the zone (:rfc:`1034`)
 - An extra record together with CNAME record except for RRSIG and DS (:rfc:`1034`)
 - Multiple CNAME record with the same owner
-- DNAME record having a record under it (:rfc:`2672`)
+- DNAME record having a record under it (:rfc:`6672`)
 
 Extra checks:
 
