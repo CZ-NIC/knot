@@ -4,7 +4,7 @@ import inspect
 import os
 import time
 
-import dnstest.params as params
+from dnstest.context import Context
 
 SEP = "------------------------------------"
 
@@ -29,8 +29,8 @@ def test_info():
     info = ""
     frames = inspect.getouterframes(inspect.currentframe())
     for frame in frames:
-        if params.test_dir == os.path.dirname(frame[1]):
-            info = "%s#%i" % (params.test_dir, frame[2])
+        if Context().test_dir == os.path.dirname(frame[1]):
+            info = "%s#%i" % (Context().test_dir, frame[2])
             break
     parts = info.split("/")
 
@@ -43,22 +43,22 @@ def check_log(text):
     '''Log message header'''
 
     msg = "(%s) %s (%s)\n" % (time.strftime("%H:%M:%S"), str(text), test_info())
-    params.case_log.write(msg)
-    params.case_log.flush()
+    Context().case_log.write(msg)
+    Context().case_log.flush()
 
 def detail_log(text):
     '''Log message body'''
 
     msg = "%s\n" % text
-    params.case_log.write(msg)
-    params.case_log.flush()
+    Context().case_log.write(msg)
+    Context().case_log.flush()
 
 def set_err(msg):
     '''Set error state'''
 
-    params.err = True
-    if not params.err_msg:
-        params.err_msg = msg
+    Context().err = True
+    if not Context().err_msg:
+        Context().err_msg = msg
 
 def isset(value, name):
     '''Check if value is True'''
