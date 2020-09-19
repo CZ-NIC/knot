@@ -901,8 +901,6 @@ class Bind(Server):
         s.item("transfers-in", "30")
         s.item("transfers-out", "30")
         s.item("minimal-responses", "true")
-        s.item("additional-from-auth", "false")
-        s.item("additional-from-cache", "false")
         s.item("notify-delay", "0")
         s.item("notify-rate", "1000")
         s.item("max-journal-size", "unlimited")
@@ -1038,7 +1036,7 @@ class Bind(Server):
                 continue
 
             # unrelated: generate keys as Bind won't do
-            ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', self.keydir ]
+            ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'RSASHA256', '-b', '1024', '-K', self.keydir ]
             if z.dnssec.nsec3:
                 ps += ['-3']
             k1 = check_output(ps + [z.name], stderr=DEVNULL)
