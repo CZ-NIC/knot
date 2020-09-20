@@ -143,7 +143,6 @@ def job():
     global included_list
 
     ctx = Context()
-    loaded_module_name = None
 
     while True:
         lock.acquire()
@@ -186,11 +185,11 @@ def job():
             continue
 
         try:
-            loaded_module_name = "%s.%s.%s.test" % (TESTS_DIR, test, case)
-            if loaded_module_name in sys.modules.keys():
-                loaded_module = sys.modules[loaded_module_name]
-            else:
-                loaded_module = importlib.import_module(loaded_module_name)
+            module_name = "%s_%s_%i" % (test, case, repeat)
+            module_path = "%s/%s/%s/test.py" % (TESTS_DIR, test, case)
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
         except dnstest.utils.Skip as exc:
             log.error(case_str_err + "SKIPPED (%s)" % format(exc))
             skip_cnt += 1
