@@ -143,7 +143,6 @@ def job():
     global included_list
 
     ctx = Context()
-    loaded_module_name = None
 
     while True:
         lock.acquire()
@@ -171,7 +170,8 @@ def job():
             log_file = os.path.join(out_dir, "case.log")
 
             os.makedirs(out_dir, exist_ok=True)
-            ctx.module = "%s.%s.%s" % (TESTS_DIR, test, case)
+            ctx.module_name = "%s_%s_%i" % (test, case, repeat)
+            ctx.module_path = os.path.join(os.path.dirname(sys.argv[0]), TESTS_DIR, test, case)
             ctx.test_dir = case_dir
             ctx.out_dir = out_dir
             ctx.case_log = open(log_file, mode="a")
@@ -186,11 +186,10 @@ def job():
             continue
 
         try:
-            loaded_module_name = "%s.%s.%s.test" % (TESTS_DIR, test, case)
-            if loaded_module_name in sys.modules.keys():
-                loaded_module = sys.modules[loaded_module_name]
-            else:
-                loaded_module = importlib.import_module(loaded_module_name)
+            module_entry = os.path.join(ctx.module_path, "test.py")
+            spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
         except dnstest.utils.Skip as exc:
             log.error(case_str_err + "SKIPPED (%s)" % format(exc))
             skip_cnt += 1
