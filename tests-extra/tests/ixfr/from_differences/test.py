@@ -104,9 +104,12 @@ t = dnstest.test.Test()
 
 for dirname in sorted(os.listdir(Context().test_dir)):
     if patern.match(dirname):
-        mod_name = Context().module + "." + dirname + ".step"
-        mod = importlib.import_module(mod_name)
-        storage = Context().test_dir + "/" + dirname
+        mod_name = Context().module_name + "_" + dirname
+        mod_path = os.path.join(Context().module_path, dirname, "step.py")
+        spec = importlib.util.spec_from_file_location(mod_name, mod_path)
+        mod = importlib.util.module_from_spec(spec)
+
+        storage = os.path.join(Context().test_dir, dirname)
 
         i = IxfrTopology(t, storage)
 
@@ -120,6 +123,7 @@ for dirname in sorted(os.listdir(Context().test_dir)):
                    (i.ref_master.name, i.slave2.name))
         detail_log("####################################")
 
+        spec.loader.exec_module(mod)
         mod.run(i)
         i.clean()
 
