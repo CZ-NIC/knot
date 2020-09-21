@@ -84,8 +84,8 @@ class Test(object):
         return True
 
     def _gen_port(self):
-        min_port = 10000
-        max_port = 50000
+        min_port = 1500
+        max_port = 65000
 
         port = Test.last_port
         if port:
