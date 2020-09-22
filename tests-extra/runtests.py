@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 import traceback
-import threading
+from multiprocessing import Queue, Process
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(current_dir, "tools"))
@@ -25,9 +25,8 @@ fail_cnt = 0
 skip_cnt = 0
 
 log = None
-lock = None
 outs_dir = None
-included_list = []
+included_list = Queue()
 
 def save_traceback(outdir):
     path = os.path.join(Context().out_dir, "traceback.log")
@@ -135,8 +134,7 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
-def job():
-    global lock
+def job(tasks):
     global case_cnt
     global fail_cnt
     global skip_cnt
@@ -145,12 +143,9 @@ def job():
     ctx = Context()
 
     while True:
-        lock.acquire()
-        if not included_list:
-            lock.release()
+        if tasks.empty():
             break
-        test, case, repeat = included_list.pop(0)
-        lock.release()
+        test, case, repeat = tasks.get()
 
         test_dir = os.path.join(current_dir, TESTS_DIR, test)
         case_n = case if params.repeat == 1 else case + " #" + str(repeat)
@@ -247,7 +242,6 @@ def job():
 
 def main(args):
     global log
-    global lock
     global outs_dir
     global included_list
 
@@ -255,9 +249,7 @@ def main(args):
     for n in range(1, params.repeat + 1):
         for test, cases in included.items():
             for case in cases:
-                included_list.append((test, case, n))
-
-    lock = threading.Lock()
+                included_list.put((test, case, n))
 
     timestamp = int(time.time())
     today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
@@ -291,14 +283,14 @@ def main(args):
     if params.jobs > 1: # Multi-thread run
         threads = []
         for _ in range(params.jobs):
-            t = threading.Thread(target=job, daemon=True)
+            t = Process(target=job, args=(included_list,))
             threads.append(t)
             t.start()
 
         for thread in threads:
             thread.join()
     else: # Single-thread run
-        job()
+        job(included_list)
 
     time_diff = datetime.datetime.now().replace(microsecond=0) - ref_time
     msg_time = "TOTAL TIME: %s, " % time_diff
