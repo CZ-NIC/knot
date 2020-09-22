@@ -33,17 +33,38 @@ Module reference
   mod-noudp:
    - id: STR
      udp-allow-rate: INT
+     udp-truncate-rate: INT
+
+.. NOTE::
+   Both *udp-allow-rate* and *udp-truncate-rate* cannot be specified at
+   the same time. 
 
 .. _mod-noudp_udp-allow-rate:
 
 udp-allow-rate
 ..............
 
-Specifies how many UDP queries will pass the filter. Value 0 means none.
-A non-zero value means every N\ :sup:`th` UDP query will pass the filter.
+Specifies how many UDP queries pass through the filter. A value 0 means that
+none will pass. A non-zero value means that every N\ :sup:`th` UDP query passes
+the filter.
 
 .. NOTE::
    The rate value is associated with one UDP worker. If more UDP workers are
    configured, the specified value may not be obvious to clients.
 
 *Default:* 0
+
+.. _mod-noudp_udp-truncate-rate:
+
+udp-truncate-rate
+.................
+
+Specifies how many UDP queries pass throuh the filter. A value 0 means that
+every query passes. A non-zero value means that every N\ :sup:`th` UDP query
+does not pass the filter.
+
+.. NOTE::
+   The rate value is associated with one UDP worker. If more UDP workers are
+   configured, the specified value may not be obvious to clients.
+
+*Default:* 1
