@@ -16,16 +16,31 @@
 
 #include "knot/include/module.h"
 
-#define MOD_UDP_ALLOW_RATE	"\x0e""udp-allow-rate"
+#define MOD_UDP_ALLOW_RATE     "\x0e""udp-allow-rate"
+#define MOD_UDP_TRUNCATE_RATE  "\x11""udp-truncate-rate"
 
 const yp_item_t noudp_conf[] = {
-	{ MOD_UDP_ALLOW_RATE, YP_TINT, YP_VINT = { 0, UINT32_MAX, 0 } },
+	{ MOD_UDP_ALLOW_RATE,    YP_TINT, YP_VINT = { 0, UINT32_MAX, 0 } },
+	{ MOD_UDP_TRUNCATE_RATE, YP_TINT, YP_VINT = { 0, UINT32_MAX, 1 } },
 	{ NULL }
 };
+
+int noudp_conf_check(knotd_conf_check_args_t *args)
+{
+	knotd_conf_t allow = knotd_conf_check_item(args, MOD_UDP_ALLOW_RATE);
+	knotd_conf_t truncate = knotd_conf_check_item(args, MOD_UDP_TRUNCATE_RATE);
+	/* count is equal 1 if there is one or more items */
+	if (allow.count & truncate.count) {
+		args->err_str = "both udp-allow-rate and udp-truncate-rate were specified";
+		return KNOT_EINVAL;
+	}
+	return KNOT_EOK;
+}
 
 typedef struct {
 	uint32_t rate;
 	uint32_t *counters;
+	bool deny_mode;
 } noudp_ctx_t;
 
 static bool is_udp(knotd_qdata_t *qdata)
@@ -38,14 +53,22 @@ static knotd_state_t noudp_begin(knotd_state_t state, knot_pkt_t *pkt,
 {
 	if (is_udp(qdata)) {
 		noudp_ctx_t *ctx = knotd_mod_ctx(mod);
-		if (ctx->rate > 0 && ++ctx->counters[qdata->params->thread_id] >= ctx->rate) {
-			ctx->counters[qdata->params->thread_id] = 0;
+		if (ctx->deny_mode) {
+			if (ctx->rate > 0 && ++ctx->counters[qdata->params->thread_id] >= ctx->rate) {
+				ctx->counters[qdata->params->thread_id] = 0;
+				knot_wire_set_tc(pkt->wire);
+				return KNOTD_STATE_DONE;
+			}
 			return state;
+		} else {
+			if (ctx->rate > 0 && ++ctx->counters[qdata->params->thread_id] >= ctx->rate) {
+				ctx->counters[qdata->params->thread_id] = 0;
+				return state;
+			}
+			knot_wire_set_tc(pkt->wire);
+			return KNOTD_STATE_DONE;
 		}
-		knot_wire_set_tc(pkt->wire);
-		return KNOTD_STATE_DONE;
 	}
-
 	return state;
 }
 
@@ -56,14 +79,29 @@ int noudp_load(knotd_mod_t *mod)
 		return KNOT_ENOMEM;
 	}
 
-	knotd_conf_t conf = knotd_conf_mod(mod, MOD_UDP_ALLOW_RATE);
-	ctx->rate = conf.single.integer;
-	if (ctx->rate > 0) {
+	knotd_conf_t conf = knotd_conf_mod(mod, MOD_UDP_TRUNCATE_RATE);
+	int rate = conf.single.integer;
+	if (conf.count) {
+		if (rate) {
+			ctx->counters = calloc(knotd_mod_threads(mod), sizeof(uint32_t));
+			if (ctx->counters == NULL) {
+				free(ctx);
+				return KNOT_ENOMEM;
+			}
+			ctx->rate = rate;
+		}
+		ctx->deny_mode = true;
+	}
+
+	conf = knotd_conf_mod(mod, MOD_UDP_ALLOW_RATE);
+	rate = conf.single.integer;
+	if (rate) {
 		ctx->counters = calloc(knotd_mod_threads(mod), sizeof(uint32_t));
 		if (ctx->counters == NULL) {
 			free(ctx);
 			return KNOT_ENOMEM;
 		}
+		ctx->rate = rate;
 	}
 
 	knotd_mod_ctx_set(mod, ctx);
@@ -79,4 +117,4 @@ void noudp_unload(knotd_mod_t *mod)
 }
 
 KNOTD_MOD_API(noudp, KNOTD_MOD_FLAG_SCOPE_ANY | KNOTD_MOD_FLAG_OPT_CONF,
-              noudp_load, noudp_unload, noudp_conf, NULL);
+              noudp_load, noudp_unload, noudp_conf, noudp_conf_check);
