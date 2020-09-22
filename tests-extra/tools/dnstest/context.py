@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-import threading
-
-class Context:
-    class ThreadContext(threading.local):
+class Context(object):
+    class _Context(object):
         def __init__(self):
             # Current module name.
             self.module = ""
@@ -25,7 +23,7 @@ class Context:
 
     def __new__(cls):
         if not Context._INSTANCE:
-            Context._INSTANCE = Context.ThreadContext()
+            Context._INSTANCE = Context._Context()
         return Context._INSTANCE
     def __getattribute__(self, name):
         return getattr(self._INSTANCE, name)

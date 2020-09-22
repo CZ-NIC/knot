@@ -25,26 +25,24 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import threading
 import dns
 import dns.rdataclass
 import dns.rdatatype
 import dns.rdata
 
-class Context(threading.local):
-    def __init__(self):
-        # Zone name
-        self.ORIGIN = 'com'
-        # Domain for reverse zones
-        self.RORIGIN = None
-        # Zone is RPREFIX classless-type
-        self.RPREFIX = None
-        # 0.0 - 1.0, chance of dname bing a subdomain
-        self.SUB_CHANCE = 0.0
-        # 0.0 - 1.0, percentage of mangled words
-        self.WORD_MRATE = 1.0
-        # 0.0 - 1.0, chance for FQDN
-        self.FQDN_CHANCE = 0.5
+class Context(object):
+    # Zone name
+    ORIGIN = 'com'
+    # Domain for reverse zones
+    RORIGIN = None
+    # Zone is RPREFIX classless-type
+    RPREFIX = None
+    # 0.0 - 1.0, chance of dname bing a subdomain
+    SUB_CHANCE = 0.0
+    # 0.0 - 1.0, percentage of mangled words
+    WORD_MRATE = 1.0
+    # 0.0 - 1.0, chance for FQDN
+    FQDN_CHANCE = 0.5
 
 ctx = Context()
 
