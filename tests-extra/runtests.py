@@ -171,7 +171,7 @@ def job():
 
             os.makedirs(out_dir, exist_ok=True)
             ctx.module_name = "%s_%s_%i" % (test, case, repeat)
-            ctx.module_path = os.path.join(TESTS_DIR, test, case)
+            ctx.module_path = os.path.join(os.path.dirname(sys.argv[0]), TESTS_DIR, test, case)
             ctx.test_dir = case_dir
             ctx.out_dir = out_dir
             ctx.case_log = open(log_file, mode="a")
