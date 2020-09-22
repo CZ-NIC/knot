@@ -131,6 +131,7 @@ class Server(object):
         self.addr = None
         self.addr_extra = list()
         self.port = 53 # Needed for keymgr when port not yet generated
+        self.udp_workers = None
         self.fixed_port = False
         self.ctlport = None
         self.external = False
@@ -1169,6 +1170,9 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         s.item_str("rundir", self.dir)
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
+        if self.udp_workers:
+            s.item_str("udp-workers", self.udp_workers)
+
         for addr in self.addr_extra:
             s.item_str("listen", "%s@%s" % (addr, self.port))
         self._str(s, "tcp-remote-io-timeout", self.tcp_remote_io_timeout)
