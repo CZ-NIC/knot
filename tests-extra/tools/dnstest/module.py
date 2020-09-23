@@ -374,3 +374,29 @@ class ModGeoip(KnotModule):
         return conf
 
 
+class ModNoudp(KnotModule):
+    '''Dnstap module'''
+
+    mod_name = "noudp"
+
+    def __init__(self, rate : int = -1, deny_mode : bool = False):
+        super().__init__()
+        self.deny_mode = deny_mode
+        if rate <= -1:
+            self.rate = 1 if deny_mode else 0
+        else:
+            self.rate = rate
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        if self.deny_mode:
+            conf.item_str("udp-truncate-rate", self.rate)
+        else:
+            conf.item_str("udp-allow-rate", self.rate)
+        conf.end()
+
+        return conf
