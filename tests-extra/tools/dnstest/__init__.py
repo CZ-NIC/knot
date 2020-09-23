@@ -1,7 +1,9 @@
 __all__ = [
     "config",
+    "context",
     "inquirer",
     "keys",
+    "libknot",
     "module",
     "params",
     "response",

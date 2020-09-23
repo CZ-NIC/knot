@@ -10,6 +10,7 @@ from subprocess import DEVNULL, PIPE, Popen
 import dnstest.server
 import dnstest.params
 from dnstest.utils import *
+from dnstest.context import Context
 
 class Tsig(object):
     '''TSIG key generator'''
@@ -95,10 +96,10 @@ class Keymgr(object):
         cmd = Popen(cmdline, stdout=PIPE, stderr=PIPE, universal_newlines=True)
         (stdout, stderr) = cmd.communicate()
 
-        with open(dnstest.params.out_dir + "/keymgr.out", "a") as outf:
+        with open(Context().out_dir + "/keymgr.out", "a") as outf:
             outf.write(' '.join(cmdline))
             outf.write("\n" + stdout)
-        with open(dnstest.params.out_dir + "/keymgr.err", "a") as errf:
+        with open(Context().out_dir + "/keymgr.err", "a") as errf:
             errf.write(stderr)
 
         return (cmd.returncode, stdout, stderr)

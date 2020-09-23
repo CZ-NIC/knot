@@ -10,6 +10,7 @@ import dns.name
 import dns.zone
 import zone_generate
 from dnstest.utils import *
+from dnstest.context import Context
 import dnstest.params as params
 import dnstest.server
 import dnstest.keys
@@ -31,11 +32,11 @@ class Test(object):
     start_time = 0
 
     def __init__(self, address=None, tsig=None, stress=True):
-        if not os.path.exists(params.out_dir):
+        if not os.path.exists(Context().out_dir):
             raise Exception("Output directory doesn't exist")
 
-        self.out_dir = params.out_dir
-        self.data_dir = params.test_dir + "/data/"
+        self.out_dir = Context().out_dir
+        self.data_dir = Context().test_dir + "/data/"
         self.zones_dir = self.out_dir + "/zones/"
 
         if address == 4 or address == 6:
@@ -62,7 +63,7 @@ class Test(object):
         dnstest.server.Bind.count = 0
         dnstest.server.Dummy.count = 0
 
-        params.test = self
+        Context().test = self
 
     def _check_port(self, port):
         if not port:
@@ -83,8 +84,8 @@ class Test(object):
         return True
 
     def _gen_port(self):
-        min_port = 10000
-        max_port = 50000
+        min_port = 1500
+        max_port = 65000
 
         port = Test.last_port
         if port:
@@ -248,7 +249,7 @@ class Test(object):
         '''Finish testing'''
 
         self.stop(check=True)
-        params.test = None
+        Context().test = None
 
     def sleep(self, seconds):
         time.sleep(seconds)

@@ -15,6 +15,7 @@ import dns.query
 import dns.update
 from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, DEVNULL
 from dnstest.utils import *
+from dnstest.context import Context
 import dnstest.config
 import dnstest.inquirer
 import dnstest.params as params
@@ -251,7 +252,7 @@ class Server(object):
             raise Failed("Can't start server='%s'" % self.name)
 
         # Start inquirer if enabled.
-        if params.test.stress and self.inquirer:
+        if Context().test.stress and self.inquirer:
             self.inquirer.start(self)
 
     def start(self, clean=False):
@@ -398,7 +399,7 @@ class Server(object):
             detail_log(SEP)
 
     def stop(self, check=True):
-        if params.test.stress and self.inquirer:
+        if Context().test.stress and self.inquirer:
             self.inquirer.stop()
 
         if self.proc:
@@ -416,7 +417,7 @@ class Server(object):
             self._valgrind_check()
 
     def kill(self):
-        if params.test.stress and self.inquirer:
+        if Context().test.stress and self.inquirer:
             self.inquirer.stop()
 
         if self.proc:
@@ -895,8 +896,6 @@ class Bind(Server):
         s.item("transfers-in", "30")
         s.item("transfers-out", "30")
         s.item("minimal-responses", "true")
-        s.item("additional-from-auth", "false")
-        s.item("additional-from-cache", "false")
         s.item("notify-delay", "0")
         s.item("notify-rate", "1000")
         s.item("max-journal-size", "unlimited")
@@ -911,7 +910,7 @@ class Bind(Server):
 
         s.begin("controls")
         s.item("inet %s port %i allow { %s; } keys { %s; }"
-               % (self.addr, self.ctlport, params.test.addr, self.ctlkey.name))
+               % (self.addr, self.ctlport, Context().test.addr, self.ctlkey.name))
         s.end()
 
         if self.tsig:
@@ -998,7 +997,7 @@ class Bind(Server):
                 if self.tsig_test:
                     upd = "key %s; " % self.tsig_test.name
                 else:
-                    upd = "%s; " % params.test.addr
+                    upd = "%s; " % Context().test.addr
 
                 if z.masters:
                     s.item("allow-update-forwarding", "{ %s}" % upd)
@@ -1032,7 +1031,7 @@ class Bind(Server):
                 continue
 
             # unrelated: generate keys as Bind won't do
-            ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', self.keydir ]
+            ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'RSASHA256', '-b', '1024', '-K', self.keydir ]
             if z.dnssec.nsec3:
                 ps += ['-3']
             k1 = check_output(ps + [z.name], stderr=DEVNULL)
@@ -1245,13 +1244,13 @@ class Knot(Server):
 
         s.begin("acl")
         s.id_item("id", "acl_local")
-        s.item_str("address", params.test.addr)
+        s.item_str("address", Context().test.addr)
         if self.tsig:
             s.item_str("key", self.tsig.name)
         s.item("action", "[transfer, notify, update]")
 
         s.id_item("id", "acl_test")
-        s.item_str("address", params.test.addr)
+        s.item_str("address", Context().test.addr)
         if self.tsig_test:
             s.item_str("key", self.tsig_test.name)
         s.item("action", "[transfer, notify, update]")
