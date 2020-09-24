@@ -231,7 +231,12 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			free(backup_zf);
 			free(local_zf);
 		} else {
-			ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
+			if (zone->contents) {
+				ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
+			} else {
+				log_zone_warning(zone->name, "records backup skipped (no records in zone)");
+				/* continue with db backup*/
+			}
 		}
 		if (ret != KNOT_EOK) {
 			goto done;
