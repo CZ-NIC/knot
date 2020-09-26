@@ -29,8 +29,9 @@ def test_info():
     info = ""
     frames = inspect.getouterframes(inspect.currentframe())
     for frame in frames:
-        if Context().test_dir == os.path.dirname(frame[1]):
-            info = "%s#%i" % (Context().test_dir, frame[2])
+        frame_dir = os.path.normpath(os.path.dirname(frame[1]))
+        if frame_dir in Context().test_dir:
+            info = "%s#%i" % (frame_dir, frame[2])
             break
     parts = info.split("/")
 
