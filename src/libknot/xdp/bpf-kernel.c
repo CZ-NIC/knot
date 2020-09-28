@@ -27,6 +27,9 @@
 
 /* Don't fragment flag. */
 #define	IP_DF 0x4000
+#define IPV6_FLOWINFO_MASK __constant_htonl(0x0FFFFFFF)
+#define AF_INET  2
+#define AF_INET6 10
 
 /* Assume netdev has no more than 128 queues. */
 #define QUEUE_MAX 128
@@ -65,6 +68,8 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	__u8 ip_proto;
 	__u8 fragmented = 0;
 
+	struct bpf_fib_lookup fib_params;
+
 	/* Parse Ethernet header. */
 	if ((void *)eth + sizeof(*eth) > data_end) {
 		return XDP_DROP;
@@ -87,6 +92,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		}
 		ip_proto = ip4->protocol;
 		udp = data + ip4->ihl * 4;
+
 		break;
 	case __constant_htons(ETH_P_IPV6):
 		ip6 = data;
@@ -129,6 +135,48 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		return XDP_DROP;
 	}
 
+	if (1) {
+		__builtin_memset(&fib_params, 0, sizeof(fib_params));
+
+		if (eth->h_proto == __constant_htons(ETH_P_IP)) {
+			if ((void *)ip4 + sizeof(*ip4) > data_end) {
+				return XDP_DROP;
+			}
+
+			fib_params.family	= AF_INET;
+			fib_params.tos		= ip4->tos;
+			fib_params.l4_protocol	= ip4->protocol;
+			fib_params.tot_len	= __bpf_ntohs(ip4->tot_len);
+			fib_params.ipv4_src	= ip4->saddr;
+			fib_params.ipv4_dst	= ip4->daddr;
+		} else {
+			if ((void *)ip6 + sizeof(*ip6) > data_end) {
+				return XDP_DROP;
+			}
+
+			struct in6_addr *src = (struct in6_addr *) fib_params.ipv6_src;
+			struct in6_addr *dst = (struct in6_addr *) fib_params.ipv6_dst;
+
+			fib_params.family	= AF_INET6;
+			fib_params.flowinfo	= *(__be32 *)ip6 & IPV6_FLOWINFO_MASK;
+			fib_params.l4_protocol	= ip6->nexthdr;
+			fib_params.tot_len	= __bpf_ntohs(ip6->payload_len);
+			*src			= ip6->saddr;
+			*dst			= ip6->daddr;
+		}
+
+		fib_params.ifindex = ctx->ingress_ifindex;
+
+		int rc = bpf_fib_lookup(ctx, &fib_params, sizeof(fib_params), BPF_FIB_LOOKUP_DIRECT);
+		if (rc != BPF_FIB_LKUP_RET_SUCCESS) {
+			return XDP_PASS;
+		}
+
+		if (fib_params.ifindex != ctx->ingress_ifindex) {
+			return XDP_PASS;
+		}
+	}
+
 	/* Get the queue options. */
 	int index = ctx->rx_queue_index;
 	int *qidconf = bpf_map_lookup_elem(&qidconf_map, &index);
@@ -157,3 +205,5 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	/* Forward the packet to user space. */
 	return bpf_redirect_map(&xsks_map, index, 0);
 }
+
+char _license[] SEC("license") = "GPL";
