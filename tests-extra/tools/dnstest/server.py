@@ -13,7 +13,7 @@ import time
 import dns.message
 import dns.query
 import dns.update
-from subprocess import Popen, PIPE, check_call, CalledProcessError
+from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, DEVNULL
 from dnstest.utils import *
 import dnstest.config
 import dnstest.inquirer
@@ -38,6 +38,7 @@ class ZoneDnssec(object):
 
     def __init__(self):
         self.enable = None
+        self.validate = None
         self.manual = None
         self.single_type_signing = None
         self.alg = None
@@ -51,6 +52,7 @@ class ZoneDnssec(object):
         self.rrsig_lifetime = None
         self.rrsig_refresh = None
         self.rrsig_prerefresh = None
+        self.repro_sign = None
         self.nsec3 = None
         self.nsec3_iters = None
         self.nsec3_opt_out = None
@@ -76,6 +78,7 @@ class Zone(object):
         self.journal_content = journal_content # journal contents
         self.modules = []
         self.dnssec = ZoneDnssec()
+        self.catalog = None
 
     @property
     def name(self):
@@ -126,7 +129,7 @@ class Server(object):
 
         self.addr = None
         self.addr_extra = list()
-        self.port = 0 # Needed for keymgr when port not yet generated
+        self.port = 53 # Needed for keymgr when port not yet generated
         self.fixed_port = False
         self.ctlport = None
         self.external = False
@@ -134,6 +137,7 @@ class Server(object):
         self.ctlkeyfile = None
         self.tsig = None
         self.tsig_test = None
+        self.no_xfr_edns = None
 
         self.zones = dict()
 
@@ -149,6 +153,7 @@ class Server(object):
         self.journal_max_usage = 5 * 1024 * 1024
         self.timer_db_size = 1 * 1024 * 1024
         self.kasp_db_size = 10 * 1024 * 1024
+        self.catalog_db_size = 10 * 1024 * 1024
         self.zone_size_limit = None
         self.serial_policy = None
 
@@ -737,6 +742,13 @@ class Server(object):
 
         return key
 
+    @property
+    def keydir(self):
+        d = os.path.join(self.dir, "keys")
+        if not os.path.exists(d):
+            os.makedirs(d)
+        return d
+
     def use_keys(self, zone):
         zone = zone_arg_check(zone)
         # copy all keys, even for other zones
@@ -776,14 +788,16 @@ class Server(object):
     def random_ddns(self, zone, allow_empty=True):
         zone = zone_arg_check(zone)
 
-        up = self.update(zone)
-
         while True:
-            changes = self.zones[zone.name].zfile.gen_rnd_ddns(up)
-            if allow_empty or changes > 0:
-                break
+            up = self.update(zone)
 
-        up.send("NOERROR")
+            while True:
+                changes = self.zones[zone.name].zfile.gen_rnd_ddns(up)
+                if allow_empty or changes > 0:
+                    break
+
+            if up.try_send() == "NOERROR":
+                break
 
     def add_module(self, zone, module):
         zone = zone_arg_check(zone)
@@ -885,6 +899,7 @@ class Bind(Server):
         s.item("additional-from-cache", "false")
         s.item("notify-delay", "0")
         s.item("notify-rate", "1000")
+        s.item("max-journal-size", "unlimited")
         s.item("startup-notify-rate", "1000")
         s.item("serial-query-rate", "1000")
         s.end()
@@ -961,6 +976,7 @@ class Bind(Server):
             else:
                 s.item("type", "master")
                 s.item("notify", "explicit")
+                s.item("check-integrity", "no")
 
             if z.ixfr and not z.masters:
                 s.item("ixfr-from-differences", "yes")
@@ -995,6 +1011,12 @@ class Bind(Server):
                         (" key %s;" % self.tsig_test.name) if self.tsig_test else ""))
             else:
                 s.item("allow-transfer", "{ any; }")
+
+            if z.dnssec.enable:
+                s.item("inline-signing", "yes")
+                s.item("auto-dnssec", "maintain")
+                s.item_str("key-directory", self.keydir)
+
             s.end()
 
         self.start_params = ["-c", self.confile, "-g"]
@@ -1002,6 +1024,47 @@ class Bind(Server):
                            "-k", self.ctlkeyfile]
 
         return s.conf
+
+    def start(self, clean=False):
+        for zname in self.zones:
+            z = self.zones[zname]
+            if z.dnssec.enable != True:
+                continue
+
+            # unrelated: generate keys as Bind won't do
+            ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', self.keydir ]
+            if z.dnssec.nsec3:
+                ps += ['-3']
+            k1 = check_output(ps + [z.name], stderr=DEVNULL)
+            k2 = check_output(ps + ["-f", "KSK"] + [z.name], stderr=DEVNULL)
+
+            k1 = self.keydir + '/' + k1.rstrip().decode('ascii')
+            k2 = self.keydir + '/' + k2.rstrip().decode('ascii')
+
+            # Append to zone
+            with open(z.zfile.path, 'a') as outf:
+                outf.write('\n')
+                with open(k1 + '.key', 'r') as kf:
+                    for line in kf:
+                        if len(line) > 0 and line[0] != ';':
+                            outf.write(line)
+                with open(k2 + '.key', 'r') as kf:
+                    for line in kf:
+                        if len(line) > 0 and line[0] != ';':
+                            outf.write(line)
+                #if z.dnssec.nsec3:
+                    #n3flag =  1 if z.dnssec.nsec3_opt_out else 0
+                    #n3iters = z.dnssec.nsec3_iters or 10
+                    #outf.write("%s NSEC3PARAM 1 %d %d -\n" % (z.name, n3flag, n3iters)) # this does not work!
+
+        super().start(clean)
+
+        for zname in self.zones:
+            z = self.zones[zname]
+            if z.dnssec.nsec3:
+                n3flag =  1 if z.dnssec.nsec3_opt_out else 0
+                n3iters = z.dnssec.nsec3_iters or 10
+                self.ctl("signing -nsec3param 1 %d %d - %s" % (n3flag, n3iters, z.name))
 
 class Knot(Server):
 
@@ -1015,10 +1078,6 @@ class Knot(Server):
         self.inquirer = dnstest.inquirer.Inquirer()
         self.includes = set()
         self.binding_fail = "cannot bind address"
-
-    @property
-    def keydir(self):
-        return os.path.join(self.dir, "keys")
 
     def listening(self):
         tcp = super()._check_socket("tcp", self.port)
@@ -1079,7 +1138,7 @@ class Knot(Server):
             conf.item_str(name, value)
 
     def data_add(self, file_name, storage=None):
-        if storage is ".":
+        if storage == ".":
             src_dir = self.data_dir
         elif storage:
             src_dir = storage
@@ -1159,6 +1218,8 @@ class Knot(Server):
                     s.item_str("address", "%s@%s" % (master.addr, master.port))
                     if master.tsig:
                         s.item_str("key", master.tsig.name)
+                    if master.no_xfr_edns:
+                        s.item_str("no-edns", "on")
                     servers.add(master.name)
             for slave in z.slaves:
                 if slave.name not in servers:
@@ -1274,6 +1335,7 @@ class Knot(Server):
             self._str(s, "rrsig-lifetime", z.dnssec.rrsig_lifetime)
             self._str(s, "rrsig-refresh", z.dnssec.rrsig_refresh)
             self._str(s, "rrsig-pre-refresh", z.dnssec.rrsig_prerefresh)
+            self._str(s, "reproducible-signing", z.dnssec.repro_sign)
             self._bool(s, "nsec3", z.dnssec.nsec3)
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
             self._bool(s, "nsec3-opt-out", z.dnssec.nsec3_opt_out)
@@ -1286,7 +1348,7 @@ class Knot(Server):
             self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
             self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
             self._str(s, "offline-ksk", z.dnssec.offline_ksk)
-            self._str(s, "signing-threads", "4")
+            self._str(s, "signing-threads", str(random.randint(1,4)))
         if have_policy:
             s.end()
 
@@ -1296,6 +1358,7 @@ class Knot(Server):
         s.item_str("kasp-db-max-size", self.kasp_db_size)
         s.item_str("journal-db-max-size", self.journal_db_size)
         s.item_str("timer-db-max-size", self.timer_db_size)
+        #s.item_str("catalog-db-max-size", self.catalog_db_size)
         s.end()
 
         s.begin("template")
@@ -1303,6 +1366,7 @@ class Knot(Server):
         s.item_str("storage", self.dir)
         s.item_str("zonefile-sync", self.zonefile_sync)
         s.item_str("journal-max-usage", self.journal_max_usage)
+        #s.item_str("adjust-threads", str(random.randint(1,4)))
         s.item_str("semantic-checks", "on" if self.semantic_check else "off")
         if len(self.modules) > 0:
             modules = ""
@@ -1313,6 +1377,52 @@ class Knot(Server):
             s.item("global-module", "[%s]" % modules)
         if self.zone_size_limit:
             s.item("zone-max-size", self.zone_size_limit)
+
+        have_catalog = None
+        for zone in self.zones:
+            z = self.zones[zone]
+            if z.catalog:
+                have_catalog = z
+        if have_catalog is not None:
+            s.id_item("id", "catemplate")
+            s.item_str("file", self.dir + "/master/%s.zone")
+            s.item_str("zonefile-load", "difference")
+
+            # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
+            if z.dnssec.enable:
+                s.item_str("dnssec-signing", "on")
+                s.item_str("dnssec-policy", z.name)
+            for module in z.modules:
+                if module.conf_name == "mod-onlinesign":
+                    s.item("module", "[%s]" % module.get_conf_ref())
+
+            acl = ""
+            if z.masters:
+                masters = ""
+                for master in z.masters:
+                    if masters:
+                        masters += ", "
+                    masters += master.name
+                    if not master.disable_notify:
+                        if acl:
+                            acl += ", "
+                        acl += "acl_%s" % master.name
+                s.item("master", "[%s]" % masters)
+            if z.slaves:
+                slaves = ""
+                for slave in z.slaves:
+                    if slave.disable_notify:
+                        continue
+                    if slaves:
+                        slaves += ", "
+                    slaves += slave.name
+                if slaves:
+                    s.item("notify", "[%s]" % slaves)
+            if acl:
+                acl += ", "
+            acl += "acl_local, acl_test"
+            s.item("acl", "[%s]" % acl)
+
         s.end()
 
         s.begin("zone")
@@ -1361,6 +1471,13 @@ class Knot(Server):
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "on")
                 s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
+
+            if z.catalog:
+                s.item_str("catalog-role", "interpret")
+                s.item_str("catalog-template", "catemplate")
+
+            if z.dnssec.validate:
+                s.item_str("dnssec-validation", "on")
 
             if len(z.modules) > 0:
                 modules = ""
