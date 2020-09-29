@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 	int server = net_bound_socket(SOCK_STREAM, &addr, 0);
 	ok(server >= 0, "server: bind socket");
 
-	r = listen(server, 0);
+	r = listen(server, 1);
 	ok(r == 0, "server: start listening");
 
 	struct sockaddr *sa = (struct sockaddr *)&addr;
