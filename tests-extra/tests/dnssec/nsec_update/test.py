@@ -64,12 +64,12 @@ up.add("nextlevelinlife.dk.", "86400", "NS", "test.com.")
 up.send("NOERROR")
 
 t.sleep(1)
-master.ctl("zone-refresh")
+master.ctl("zone-refresh", wait=True)
 
 after_update = master.zones_wait(zones)
 
 # sync slave with current master's state
-slave.ctl("zone-refresh")
+slave.ctl("zone-refresh", wait=True)
 slave.zones_wait(zones, after_update, equal=True, greater=False)
 
 # flush so that we can do zone_verify
