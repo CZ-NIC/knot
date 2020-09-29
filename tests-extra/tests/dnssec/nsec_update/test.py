@@ -64,7 +64,7 @@ up.add("nextlevelinlife.dk.", "86400", "NS", "test.com.")
 up.send("NOERROR")
 
 t.sleep(1)
-master.ctl("zone-refresh")
+master.ctl("zone-refresh", wait=True)
 
 after_update = master.zones_wait(zones)
 
@@ -76,7 +76,7 @@ slave.zones_wait(zones, after_update, equal=True, greater=False)
 slave.flush(wait=True)
 
 # re-sign master and check that the re-sign made nothing
-master.ctl("zone-sign")
+master.ctl("zone-sign", wait=True)
 after_update15 = master.zones_wait(zones, after_update, equal=False, greater=True)
 
 t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
@@ -111,7 +111,7 @@ for zone in zones:
     up.send("NOERROR")
 
 t.sleep(1)
-master.ctl("zone-refresh")
+master.ctl("zone-refresh", wait=True)
 
 after_update2 = master.zones_wait(zones, after_update15, equal=False, greater=True)
 
@@ -123,7 +123,7 @@ slave.zones_wait(zones, after_update2, equal=True, greater=False)
 slave.flush(wait=True)
 
 # re-sign master and check that the re-sign made nothing
-master.ctl("zone-sign")
+master.ctl("zone-sign", wait=True)
 after_update25 = master.zones_wait(zones, after_update2, equal=False, greater=True)
 
 t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
