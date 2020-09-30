@@ -15,11 +15,12 @@
  */
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "knot/zone/zone-tree.h"
 #include "libknot/consts.h"
-#include "libknot/errcode.h"
+#include "libknot/error.h"
 #include "libknot/packet/wire.h"
 #include "contrib/macros.h"
 
@@ -471,6 +472,25 @@ void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool
 	}
 	if (nsec3_nodes != NULL) {
 		zone_tree_apply(nsec3_nodes, binode_unify_cb, &free_deleted);
+	}
+}
+
+int print_owner_cb(zone_node_t *node, void *ctx)
+{
+	char *buf = ctx;
+	buf = knot_dname_to_str(buf, node->owner, KNOT_DNAME_TXT_MAXLEN);
+	if (buf != NULL) {
+		printf("%s\n", buf);
+	}
+	return buf == NULL ? KNOT_ENOMEM : KNOT_EOK;
+}
+
+void zone_tree_print_owners(zone_tree_t *tree)
+{
+	char buf[KNOT_DNAME_TXT_MAXLEN];
+	int ret = zone_tree_apply(tree, print_owner_cb, buf);
+	if (ret != KNOT_EOK) {
+		printf("error listing zone tree (%s)\n", knot_strerror(ret));
 	}
 }
 
