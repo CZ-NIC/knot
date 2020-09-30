@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -281,6 +281,15 @@ int adjust_cb_nsec3_and_additionals(zone_node_t *node, adjust_ctx_t *ctx)
 	return ret;
 }
 
+int adjust_cb_nsec3_and_wildcard(zone_node_t *node, adjust_ctx_t *ctx)
+{
+	int ret = adjust_cb_wildcard_nsec3(node, ctx);
+	if (ret == KNOT_EOK) {
+		ret = adjust_cb_nsec3_pointer(node, ctx);
+	}
+	return ret;
+}
+
 int adjust_cb_void(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	UNUSED(node);
@@ -544,7 +553,7 @@ int zone_adjust_incremental_update(zone_update_t *update, unsigned threads)
 	                           false, true, 1, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, NULL,
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_and_wildcard, NULL,
 			                           false, false, threads, update->a_ctx->adjust_ptrs);
 			if (ret == KNOT_EOK) {
 				// just measure zone size
@@ -555,13 +564,14 @@ int zone_adjust_incremental_update(zone_update_t *update, unsigned threads)
 		}
 	}
 	if (ret == KNOT_EOK) {
-		if (update->new_cont->adds_tree != NULL) {
+		if (update->new_cont->adds_tree != NULL && !nsec3change) {
 			ret = additionals_tree_update_from_binodes(
 				update->new_cont->adds_tree,
 				update->a_ctx->node_ptrs,
 				update->new_cont
 			);
 		} else {
+			additionals_tree_free(update->new_cont->adds_tree);
 			ret = additionals_tree_from_zone(&update->new_cont->adds_tree, update->new_cont);
 		}
 	}
@@ -577,10 +587,7 @@ int zone_adjust_incremental_update(zone_update_t *update, unsigned threads)
 		ret = zone_adjust_update(update, adjust_cb_additionals, adjust_cb_void, false);
 	}
 	if (ret == KNOT_EOK) {
-		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_pointer, adjust_cb_void,
-			                           false, false, threads, update->a_ctx->adjust_ptrs);
-		} else {
+		if (!nsec3change) {
 			ret = additionals_reverse_apply_multi(
 				update->new_cont->adds_tree,
 				update->a_ctx->nsec3_ptrs,
