@@ -456,13 +456,14 @@ int zone_adjust_incremental_update(zone_update_t *update)
 		}
 	}
 	if (ret == KNOT_EOK) {
-		if (update->new_cont->adds_tree != NULL) {
+		if (update->new_cont->adds_tree != NULL && !nsec3change) {
 			ret = additionals_tree_update_from_binodes(
 				update->new_cont->adds_tree,
 				update->a_ctx->node_ptrs,
 				update->new_cont
 			);
 		} else {
+			additionals_tree_free(update->new_cont->adds_tree);
 			ret = additionals_tree_from_zone(&update->new_cont->adds_tree, update->new_cont);
 		}
 	}
