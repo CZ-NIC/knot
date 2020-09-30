@@ -321,6 +321,11 @@ int zone_tree_merge(zone_tree_t *into, zone_tree_t *what);
 void zone_trees_unify_binodes(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool free_deleted);
 
 /*!
+ * \brief Print to stdout all owners of nodes in zone tree.
+ */
+void zone_tree_print_owners(zone_tree_t *tree);
+
+/*!
  * \brief Destroys the zone tree, not touching the saved data.
  *
  * \param tree Zone tree to be destroyed.
