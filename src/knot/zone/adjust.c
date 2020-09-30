@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -281,6 +281,15 @@ int adjust_cb_nsec3_and_additionals(zone_node_t *node, adjust_ctx_t *ctx)
 	return ret;
 }
 
+int adjust_cb_nsec3_and_wildcard(zone_node_t *node, adjust_ctx_t *ctx)
+{
+	int ret = adjust_cb_wildcard_nsec3(node, ctx);
+	if (ret == KNOT_EOK) {
+		ret = adjust_cb_nsec3_pointer(node, ctx);
+	}
+	return ret;
+}
+
 int adjust_cb_void(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	UNUSED(node);
@@ -441,7 +450,7 @@ int zone_adjust_incremental_update(zone_update_t *update)
 	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags, false, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_wildcard_nsec3, adjust_cb_void, true, update->a_ctx->adjust_ptrs);
+			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_and_wildcard, adjust_cb_void, true, update->a_ctx->adjust_ptrs);
 		} else {
 			ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
 		}
@@ -469,9 +478,7 @@ int zone_adjust_incremental_update(zone_update_t *update)
 		ret = zone_adjust_update(update, adjust_cb_additionals, adjust_cb_void, false);
 	}
 	if (ret == KNOT_EOK) {
-		if (nsec3change) {
-			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_pointer, adjust_cb_void, false, update->a_ctx->adjust_ptrs);
-		} else {
+		if (!nsec3change) {
 			ret = additionals_reverse_apply_multi(
 				update->new_cont->adds_tree,
 				update->a_ctx->nsec3_ptrs,
