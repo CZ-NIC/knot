@@ -24,6 +24,12 @@ slave.zones_wait(zones)
 
 serials_prev = serials_init
 for i in range(2):
+    master.stop()
+    t.sleep(2)
+    master.dnssec(zones[0]).nsec3_iters = i + 5;
+    master.start()
+    master.zones_wait(zones)
+
     # Update zone files on master.
     for zone in zones:
         master.update_zonefile(zone, version=i+1)
