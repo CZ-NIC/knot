@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,6 +59,9 @@ int adjust_cb_flags_and_nsec3(zone_node_t *node, adjust_ctx_t *ctx);
 
 // adjust_cb_nsec3_pointer, adjust_cb_wildcard_nsec3 and adjust_cb_additionals at once
 int adjust_cb_nsec3_and_additionals(zone_node_t *node, adjust_ctx_t *ctx);
+
+// adjust_cb_wildcard_nsec3 and adjust_cb_nsec3_pointer at once
+int adjust_cb_nsec3_and_wildcard(zone_node_t *node, adjust_ctx_t *ctx);
 
 // dummy callback, just make prev pointers adjusting and zone size measuring work
 int adjust_cb_void(zone_node_t *node, adjust_ctx_t *ctx);
