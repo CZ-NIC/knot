@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -777,7 +777,7 @@ int knot_nsec3_fix_chain(zone_update_t *update,
 		return ret;
 	}
 
-	ret = zone_adjust_contents(update->new_cont, NULL, adjust_cb_void, false, update->a_ctx->node_ptrs);
+	ret = zone_adjust_contents(update->new_cont, NULL, adjust_cb_void, false, update->a_ctx->nsec3_ptrs);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
