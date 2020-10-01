@@ -328,7 +328,11 @@ done:
 
 knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx)
 {
-	return ctx->now + ctx->policy->rrsig_prerefresh;
+	if (ctx->policy == NULL) {
+		return ctx->now + 3600; // failed before allocating ctx->policy, use default
+	} else {
+		return ctx->now + ctx->policy->rrsig_prerefresh;
+	}
 }
 
 int knot_dnssec_validate_zone(zone_update_t *update, bool incremental)
