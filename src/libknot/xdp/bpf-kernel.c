@@ -147,8 +147,8 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 			fib_params.tos		= ip4->tos;
 			fib_params.l4_protocol	= ip4->protocol;
 			fib_params.tot_len	= __bpf_ntohs(ip4->tot_len);
-			fib_params.ipv4_src	= ip4->saddr;
-			fib_params.ipv4_dst	= ip4->daddr;
+			fib_params.ipv4_src	= ip4->daddr;
+			fib_params.ipv4_dst	= ip4->saddr;
 		} else {
 			if ((void *)ip6 + sizeof(*ip6) > data_end) {
 				return XDP_DROP;
@@ -161,14 +161,19 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 			fib_params.flowinfo	= *(__be32 *)ip6 & IPV6_FLOWINFO_MASK;
 			fib_params.l4_protocol	= ip6->nexthdr;
 			fib_params.tot_len	= __bpf_ntohs(ip6->payload_len);
-			*src			= ip6->saddr;
-			*dst			= ip6->daddr;
+			*src			= ip6->daddr;
+			*dst			= ip6->saddr;
 		}
 
 		fib_params.ifindex = ctx->ingress_ifindex;
 
-		int rc = bpf_fib_lookup(ctx, &fib_params, sizeof(fib_params), BPF_FIB_LOOKUP_DIRECT);
-		if (rc != BPF_FIB_LKUP_RET_SUCCESS) {
+		int rc = bpf_fib_lookup(ctx, &fib_params, sizeof(fib_params), BPF_FIB_LOOKUP_DIRECT | BPF_FIB_LOOKUP_DIRECT);
+		if (rc == BPF_FIB_LKUP_RET_FWD_DISABLED) {
+			/* Allow `sudo sysctl net.ipv{4,6}.conf.all.forwarding=1` at OS*/
+			const char err_msg[] = "Error: Forwarding not allowed!";
+			bpf_trace_printk(err_msg, sizeof(err_msg));
+			return XDP_PASS;
+		} else if (rc != BPF_FIB_LKUP_RET_SUCCESS) {
 			return XDP_PASS;
 		}
 
