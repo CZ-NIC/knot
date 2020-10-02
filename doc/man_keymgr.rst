@@ -134,9 +134,11 @@ Commands related to Offline KSK feature
 **sign-ksr** *ksr_file*
   Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
 
+**validate-skr** *skr_file*
+  Read SignedKeyResponse from a text file and validate the RRSIGs in it if not corrupt.
+
 **import-skr** *skr_file*
-  Read SignedKeyResponse from a text file and import the signatures for later use in zone. (The signatures
-  are not checked at import time, but they will be ignored at signing time if invalid.) If some
+  Read SignedKeyResponse from a text file and import the signatures for later use in zone. If some
   signatures have already been imported, they will be deleted for the period from beginning of the SKR
   to infinity.
 
