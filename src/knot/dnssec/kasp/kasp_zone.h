@@ -50,6 +50,11 @@ void free_key_params(key_params_t *parm);
 int zone_init_keystore(conf_t *conf, conf_val_t *policy_id,
                        dnssec_keystore_t **keystore, unsigned *backend);
 
+int kasp_zone_keys_from_rr(knot_kasp_zone_t *zone,
+                           const knot_rdataset_t *zone_dnskey,
+                           bool policy_single_type_signing,
+                           bool *keytag_conflict);
+
 int kasp_zone_from_contents(knot_kasp_zone_t *zone,
                             const zone_contents_t *contents,
                             bool policy_single_type_signing,

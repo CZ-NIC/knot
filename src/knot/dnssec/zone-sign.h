@@ -74,6 +74,21 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 					      zone_keyset_t *zone_keys);
 
 /*!
+ * \brief Check that at least one correct signature exists to at least one DNSKEY and that none incorrect exists.
+ *
+ * \param covered        RRSet bein validated.
+ * \param rrsigs         RRSIG with signatures.
+ * \param sign_ctx       Signing context (with keys == NULL)
+ * \param skip_crypto    Crypto operations might be skipped as they had been successful earlier.
+ *
+ * \return KNOT_E*
+ */
+int knot_validate_rrsigs(const knot_rrset_t *covered,
+                         const knot_rrset_t *rrsigs,
+                         zone_sign_ctx_t *sign_ctx,
+                         bool skip_crypto);
+
+/*!
  * \brief Update zone signatures and store performed changes in update.
  *
  * Updates RRSIGs, NSEC(3)s, and DNSKEYs.
