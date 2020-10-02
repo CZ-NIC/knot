@@ -36,7 +36,7 @@ backup_dir = master.dir + "/backup"
 slave_bck_dir = slave.dir + "/backup"
 
 zone0_expire = 45   # zone zones[0] expiration time in its SOA
-valgrind_delay = 1 if slave.valgrind else 0  # allow a little time margin under Valgrind
+valgrind_delay = 2 if slave.valgrind else 0  # allow a little time margin under Valgrind
 
 t.start()
 slave.zones_wait(zones)

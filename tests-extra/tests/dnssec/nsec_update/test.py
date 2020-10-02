@@ -64,7 +64,7 @@ up.add("nextlevelinlife.dk.", "86400", "NS", "test.com.")
 up.send("NOERROR")
 
 t.sleep(1)
-master.ctl("zone-refresh")
+master.ctl("zone-refresh", wait=True)
 
 after_update = master.zones_wait(zones)
 
@@ -111,7 +111,7 @@ for zone in zones:
     up.send("NOERROR")
 
 t.sleep(1)
-master.ctl("zone-refresh")
+master.ctl("zone-refresh", wait=True)
 
 after_update2 = master.zones_wait(zones, after_update15, equal=False, greater=True)
 
