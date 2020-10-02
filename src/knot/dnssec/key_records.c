@@ -152,6 +152,31 @@ int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_
 	return ret;
 }
 
+int key_records_verify(key_records_t *r, kdnssec_ctx_t *kctx, knot_time_t timestamp)
+{
+	kctx->now = timestamp;
+	int ret = kasp_zone_keys_from_rr(kctx->zone, &r->dnskey.rrs, false, &kctx->keytag_conflict);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	zone_sign_ctx_t *sign_ctx = zone_validation_ctx(kctx);
+	if (sign_ctx == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	ret = knot_validate_rrsigs(&r->dnskey, &r->rrsig, sign_ctx, false);
+	if (ret == KNOT_EOK && !knot_rrset_empty(&r->cdnskey)) {
+		ret = knot_validate_rrsigs(&r->cdnskey, &r->rrsig, sign_ctx, false);
+	}
+	if (ret == KNOT_EOK && !knot_rrset_empty(&r->cds)) {
+		ret = knot_validate_rrsigs(&r->cds, &r->rrsig, sign_ctx, false);
+	}
+
+	zone_sign_ctx_free(sign_ctx);
+	return ret;
+}
+
 size_t key_records_serialized_size(const key_records_t *r)
 {
 	return rrset_serialized_size(&r->dnskey) + rrset_serialized_size(&r->cdnskey) +
