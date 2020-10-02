@@ -383,6 +383,11 @@ static void skr_import_header(zs_scanner_t *sc)
 
 	// store previous SKR
 	if (ctx->timestamp > 0 && ctx->ret == KNOT_EOK) {
+		ctx->ret = key_records_verify(&ctx->r, ctx->kctx, ctx->timestamp);
+		if (ctx->ret != KNOT_EOK) {
+			return;
+		}
+
 		ctx->ret = kasp_db_store_offline_records(ctx->kctx->kasp_db,
 		                                         ctx->timestamp, &ctx->r);
 		key_records_clear_rdatasets(&ctx->r);
