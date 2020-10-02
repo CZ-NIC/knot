@@ -397,6 +397,30 @@ static void skr_import_header(zs_scanner_t *sc)
 	ctx->timestamp = next_timestamp;
 }
 
+static void skr_validate_header(zs_scanner_t *sc)
+{
+	ksr_sign_ctx_t *ctx = sc->process.data;
+
+	float header_ver;
+	knot_time_t next_timestamp;
+	if (sc->error.code != 0 || ctx->ret != KNOT_EOK ||
+	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %"PRIu64,
+	           &header_ver, &next_timestamp) < 1) {
+		return;
+	}
+	(void)header_ver;
+
+	if (ctx->timestamp > 0 && ctx->ret == KNOT_EOK) {
+		int ret = key_records_verify(&ctx->r, ctx->kctx, ctx->timestamp);
+		if (ret != KNOT_EOK) { // ctx->ret untouched
+			printf("error: invalid SignedKeyResponse for %lu (%s)\n", ctx->timestamp, knot_strerror(ret));
+		}
+		key_records_clear_rdatasets(&ctx->r);
+	}
+
+	ctx->timestamp = next_timestamp;
+}
+
 static void skr_import_once(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
@@ -457,4 +481,9 @@ int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file)
 int keymgr_import_skr(kdnssec_ctx_t *ctx, const char *skr_file)
 {
 	return read_ksr_skr(ctx, skr_file, skr_import_header, skr_import_once);
+}
+
+int keymgr_validate_skr(kdnssec_ctx_t *ctx, const char *skr_file)
+{
+	return read_ksr_skr(ctx, skr_file, skr_validate_header, skr_import_once);
 }

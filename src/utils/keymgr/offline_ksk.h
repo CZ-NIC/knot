@@ -31,3 +31,5 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to);
 int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file);
 
 int keymgr_import_skr(kdnssec_ctx_t *ctx, const char *skr_file);
+
+int keymgr_validate_skr(kdnssec_ctx_t *ctx, const char *skr_file);
