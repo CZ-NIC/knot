@@ -89,6 +89,8 @@ static void print_help(void)
 	       "                 (syntax: generate-ksr <from> <to>)\n"
 	       "  sign-ksr      Read KeySigningRequest from a file, sign it and print SignedKeyResponse to stdout.\n"
 	       "                 (syntax: sign-ksr <ksr_file>)\n"
+	       "  validate-skr  Validate RRSIGs in a SignedKeyResponse (if not corrupt).\n"
+	       "                 (syntax: validate-skr <skr_file>)\n"
 	       "  import-skr    Import DNSKEY record signatures from a SignedKeyResponse.\n"
 	       "                 (syntax: import-skr <skr_file>)\n"
 	       "\n"
@@ -258,6 +260,9 @@ static int key_command(int argc, char *argv[], int opt_ind)
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_sign_ksr(&kctx, argv[2]);
 		print_ok_on_succes = false;
+	} else if (strcmp(argv[1], "validate-skr") == 0) {
+		CHECK_MISSING_ARG("Input file not specified");
+		ret = keymgr_validate_skr(&kctx, argv[2]);
 	} else if (strcmp(argv[1], "import-skr") == 0) {
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_import_skr(&kctx, argv[2]);
