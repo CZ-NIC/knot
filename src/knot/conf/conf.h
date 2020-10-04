@@ -59,6 +59,18 @@ typedef struct {
 } conf_mod_id_t;
 
 /*!
+ * Check if the configuration database exists on the filesystem.
+ *
+ * \param[in] db_dir  Database path.
+ *
+ * \return True if it already exists.
+ */
+
+bool conf_db_exists(
+	const char *db_dir
+);
+
+/*!
  * Gets the configuration item value of the section without identifiers.
  *
  * \param[in] conf       Configuration.
