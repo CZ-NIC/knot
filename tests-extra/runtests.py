@@ -240,7 +240,7 @@ def main(args):
     global outs_dir
 
     tasks = multiprocessing.Queue()
-    results = multiprocessing.Queue()
+    results = multiprocessing.SimpleQueue()
 
     case_cnt = 0
     fail_cnt = 0
@@ -294,7 +294,7 @@ def main(args):
         job(tasks, results)
 
     while not results.empty():
-        a, b, c = results.get(block=False)
+        a, b, c = results.get()
         case_cnt += a
         fail_cnt += b
         skip_cnt += c
