@@ -10,11 +10,31 @@ import shutil
 import datetime
 import subprocess
 import time
+import random
 from subprocess import check_call
 
 from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
+
+def cripple_skr(skr_in, skr_out):
+    rrsigs_total = 9
+    after_rrsig = -1000
+    rrsig_now = 0
+    rrsig_chosen = random.randint(1, rrsigs_total)
+    with open(skr_in, "r") as fin:
+        with open(skr_out, "w") as fout:
+            for linein in fin:
+                lineout = linein
+                linesplit = linein.split()
+                if len(linesplit) > 2 and linesplit[2] == "RRSIG":
+                    after_rrsig = 0
+                    rrsig_now += 1
+                else:
+                    after_rrsig += 1
+                    if after_rrsig == 3 and rrsig_now == rrsig_chosen:
+                        lineout = linein.lower() # this crippels the rrsig
+                fout.write(lineout)
 
 # check zone if keys are present and used for signing
 def check_zone(server, zone, dnskeys, dnskey_rrsigs, soa_rrsigs, msg):
@@ -130,11 +150,20 @@ key_zsk1 = knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", active="+
 # pregenerate keys, exchange KSR, pre-sign it, exchange SKR
 KSR = knot.keydir + "/ksr"
 SKR = knot.keydir + "/skr"
+SKR_BROKEN = SKR + "_broken"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+" + str(FUTURE))
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
 _, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
 writef(SKR, out)
+
+cripple_skr(SKR, SKR_BROKEN)
+_, out, _ = Keymgr.run_check(knot.confile, ZONE, "validate-skr", SKR_BROKEN)
+if out.split()[0] != "error:":
+    set_err("keymgr validate-skr")
+    detail_log(out)
+Keymgr.run_fail(knot.confile, ZONE, "import-skr", SKR_BROKEN)
+
 Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 
 TICK_SAFE = TICK + TICK // 2;
