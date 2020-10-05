@@ -55,7 +55,7 @@ Set maximum size of the configuration database
 Use a control UNIX socket path (default is \fB@run_dir@/knot.sock\fP).
 .TP
 \fB\-t\fP, \fB\-\-timeout\fP \fIseconds\fP
-Use a control timeout in seconds. Set to 0 for infinity (default is 10).
+Use a control timeout in seconds. Set to 0 for infinity (default is 60).
 The control socket operations are also subject to the timeout
 parameter set on the server side in server\(aqs Control configuration section.
 .TP
