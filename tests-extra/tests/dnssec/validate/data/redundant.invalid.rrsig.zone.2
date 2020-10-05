@@ -1,0 +1,71 @@
+; File written on Mon Oct  5 11:34:49 2020
+; dnssec_signzone version 9.11.3-1ubuntu1.13-Ubuntu
+redundant.invalid.rrsig. 3600	IN SOA	a.redundant.invalid.rrsig. a.redundant.invalid.rrsig. (
+					1000000003 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 3 3600 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					KJpyI2NbT9CTpGEl2TMZAdnCbAal+o7ov4H0
+					4WGuLt/c79OhkCjBslocjTybmjwyppxDRWFF
+					YsYCEdnTAXqlKA== )
+			3600	NS	a.redundant.invalid.rrsig.
+			3600	RRSIG	NS 13 3 3600 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					LQ21V7PF2FcBS3fb/XJ/6C0prVS9TOD8fI/1
+					koXUPzt3tI53w7lSuxxDFSvq9WmfhSzFgjG2
+					NCuZZ63790hQvg== )
+			3600	MX	10 a.redundant.invalid.rrsig.
+			3600	RRSIG	MX 13 3 3600 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					VLze7tx5eOrozkE0NdRT4PNbvoPzQLkaQReS
+					QfXw62fE8sunWkduZBeRXJhrMMy0swFLGq25
+					IWYomK8CxQnTgg== )
+			7200	NSEC	a.redundant.invalid.rrsig. NS SOA MX RRSIG NSEC DNSKEY
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					tvKnSrg0lnayVjPpkBaViguPIra27S68mkUk
+					EG5Nq7sq+4nWyTChNpz/OloyHrJzmw+qxAaY
+					wrSxQkXTX3uCsg== )
+			3600	DNSKEY	257 3 13 (
+					2T+SCOyXMyx3HdqiwsTfKBgx0z4BJev2MHu4
+					pr50omyViZzaF6fbfXmVQfa45Pi44ZI0m2pl
+					yarCQx4d8YOWDw==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 59964
+			3600	RRSIG	DNSKEY 13 3 3600 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					2m7MKWftF/tPELliBdVMxUwUO27gVAMTn8p6
+					GXm0pNR8Mqv/JArikSf2Gxq22FLrcaVQWskt
+					9Dla4SdmEVSWWQ== )
+add.redundant.invalid.rrsig. 3600 IN A	2.3.4.5
+			3600	RRSIG	A 13 4 3600 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					gU6TMEgkrGUkSAozCdcskxnUyizwyXpRyJGP
+					Yi7QFPMNp8Zcvua2sp/ShNka3IcaKFdJfYDm
+					3ReUp/xIqjLw+g== )
+			3600	RRSIG	A 13 4 3600 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					gU6TMEgkrGUkSAozCdcskxnUyizwyXpRyJGP
+					Yi7QFPMNp8Zcvua2sp/ShNka3IcaKFdJfYDM
+					3ReUp/xIqjLw+g== )
+			7200	NSEC	redundant.invalid.rrsig. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 4 7200 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					h3pqWTYUl/MOdb8oAI+B0ddd6TUBaM8zcqN+
+					QxwY2F1kb3FQeUrmd0LLdoztJBr/uOB173aH
+					JAbAFroi7h6R8w== )
+a.redundant.invalid.rrsig. 3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 4 3600 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					AtyD50ZV1MrTniyr/ZGIYTqqR21otKyO14Uk
+					NYbbio1LoJc1iQvKGcRieZ63hHQBdKu/oRms
+					H5cdN18xPDLPHg== )
+			7200	NSEC	add.redundant.invalid.rrsig. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 4 7200 (
+					20601231235959 20201005083449 59964 redundant.invalid.rrsig.
+					irkV6pnU3rddr2QBHme75PclQDr4hcuC1Nao
+					myAv7SUxJC+c9o1Waqt8yCyAfJA92TFBanu/
+					OyTTgwgnRt3Fzw== )
