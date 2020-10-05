@@ -93,13 +93,14 @@ static bool apex_dnssec_changed(zone_update_t *update)
 /*!
  * \brief Check if there is a valid signature for a given RR set and key.
  *
- * \param covered  RR set with covered records.
- * \param rrsigs   RR set with RRSIGs.
- * \param key      Signing key.
- * \param ctx      Signing context.
- * \param policy   DNSSEC policy.
- * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
- * \param at       RRSIG position.
+ * \param covered         RR set with covered records.
+ * \param rrsigs          RR set with RRSIGs.
+ * \param key             Signing key.
+ * \param ctx             Signing context.
+ * \param policy          DNSSEC policy.
+ * \param skip_crypto     All RRSIGs in this node have been verified, just check validity.
+ * \param found_invalid   Out: some matching but expired%invalid RRSIG found.
+ * \param at              Out: RRSIG position.
  *
  * \return The signature exists and is valid.
  */
@@ -109,6 +110,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   dnssec_sign_ctx_t *ctx,
 				   const kdnssec_ctx_t *dnssec_ctx,
                                    bool skip_crypto,
+                                   int *found_invalid,
 				   uint16_t *at)
 {
 	assert(key);
@@ -119,26 +121,36 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 
 	uint16_t rrsigs_rdata_count = rrsigs->rrs.count;
 	knot_rdata_t *rdata = rrsigs->rrs.rdata;
+	bool found_valid = false;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; i++) {
 		uint16_t rr_keytag = knot_rrsig_key_tag(rdata);
 		uint16_t rr_covered = knot_rrsig_type_covered(rdata);
+		uint8_t rr_algo = knot_rrsig_alg(rdata);
 		rdata = knot_rdataset_next(rdata);
 
 		uint16_t keytag = dnssec_key_get_keytag(key);
-		if (rr_keytag != keytag || rr_covered != covered->type) {
+		uint8_t algo = dnssec_key_get_algorithm(key);
+		if (rr_keytag != keytag || rr_algo != algo || rr_covered != covered->type) {
 			continue;
 		}
 
-		if (knot_check_signature(covered, rrsigs, i, key, ctx,
-		                         dnssec_ctx, skip_crypto) == KNOT_EOK) {
+		int ret = knot_check_signature(covered, rrsigs, i, key, ctx,
+					       dnssec_ctx, skip_crypto);
+		if (ret == KNOT_EOK) {
 			if (at != NULL) {
 				*at = i;
 			}
-			return true;
+			if (found_invalid == NULL) {
+				return true;
+			} else {
+				found_valid = true; // continue searching for invalid RRSIG
+			}
+		} else if (found_invalid != NULL) {
+			*found_invalid = ret;
 		}
 	}
 
-	return false;
+	return found_valid;
 }
 
 /*!
@@ -164,7 +176,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 
 		if (!valid_signature_exists(covered, rrsigs, key->key,
 		                            sign_ctx->sign_ctxs[i],
-		                            sign_ctx->dnssec_ctx, false, NULL)) {
+		                            sign_ctx->dnssec_ctx, false, NULL, NULL)) {
 			return false;
 		}
 	}
@@ -261,7 +273,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 		uint16_t valid_at;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
-		                           sign_ctx->dnssec_ctx, skip_crypto, &valid_at)) {
+		                           sign_ctx->dnssec_ctx, skip_crypto, NULL, &valid_at)) {
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
 			result = knot_rdataset_remove(&to_remove.rrs, valid_rr, NULL);
 			note_earliest_expiration(valid_rr, expires_at);
@@ -311,7 +323,7 @@ static bool key_used(bool ksk, bool zsk, uint16_t type,
 }
 
 /*!
- * \brief Check that at least one correct signature exists to at least one DNSKEY.
+ * \brief Check that at least one correct signature exists to at least one DNSKEY and that none incorrect exists.
  *
  * \param covered        RRSet bein validated.
  * \param rrsigs         RRSIG with signatures.
@@ -325,6 +337,8 @@ static int validate_rrsigs(const knot_rrset_t *covered,
                            zone_sign_ctx_t *sign_ctx,
                            bool skip_crypto)
 {
+	bool valid_exists = false;
+	int ret = KNOT_EOK;
 	for (size_t i = 0; i < sign_ctx->count; i++) {
 		const knot_kasp_key_t *key = &sign_ctx->dnssec_ctx->zone->keys[i];
 		if (!key_used(key->is_ksk, key->is_zsk, covered->type,
@@ -334,12 +348,12 @@ static int validate_rrsigs(const knot_rrset_t *covered,
 
 		uint16_t valid_at;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
-		                           sign_ctx->dnssec_ctx, skip_crypto, &valid_at)) {
-			return KNOT_EOK;
+		                           sign_ctx->dnssec_ctx, skip_crypto, &ret, &valid_at)) {
+			valid_exists = true;
 		}
 	}
 
-	return KNOT_DNSSEC_ENOSIG;
+	return valid_exists ? ret : KNOT_DNSSEC_ENOSIG;
 }
 
 /*!
