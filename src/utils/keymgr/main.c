@@ -413,7 +413,7 @@ int main(int argc, char *argv[])
 
 	if (!conf_initialized) {
 		struct stat st;
-		if (stat(CONF_DEFAULT_DBDIR, &st) == 0 && init_conf(CONF_DEFAULT_DBDIR)) {
+		if (conf_db_exists(CONF_DEFAULT_DBDIR) && init_conf(CONF_DEFAULT_DBDIR)) {
 			// initialized conf from default DB location
 		} else if (stat(CONF_DEFAULT_FILE, &st) == 0 &&
 			   init_conf(NULL) && init_confile(CONF_DEFAULT_FILE)) {

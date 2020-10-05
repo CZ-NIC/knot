@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 		params->confdb = CONF_DEFAULT_DBDIR;
 	} else if (params->config != NULL){
 		import = true;
-	} else if (stat(CONF_DEFAULT_DBDIR, &st) == 0) {
+	} else if (conf_db_exists(CONF_DEFAULT_DBDIR)) {
 		import = false;
 		params->confdb = CONF_DEFAULT_DBDIR;
 	} else if (stat(CONF_DEFAULT_FILE, &st) == 0) {
