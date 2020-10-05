@@ -19,6 +19,7 @@
 #include <pwd.h>
 #include <stdio.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 
 #include "knot/conf/base.h"
 #include "knot/conf/confdb.h"
@@ -40,6 +41,19 @@
 #define DFLT_TCP_WORKERS_MIN		10
 #define DFLT_BG_WORKERS_MAX		10
 #define FALLBACK_MAX_TCP_CLIENTS	100
+
+bool conf_db_exists(
+	const char *db_dir)
+{
+	if (db_dir == NULL) {
+		return false;
+	}
+
+	struct stat st;
+	char data_mdb[strlen(db_dir) + 10];
+	(void)snprintf(data_mdb, sizeof(data_mdb), "%s/data.mdb", db_dir);
+	return (stat(data_mdb, &st) == 0 && st.st_size > 0);
+}
 
 conf_val_t conf_get_txn(
 	conf_t *conf,

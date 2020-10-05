@@ -327,13 +327,12 @@ static int set_config(const char *confdb, const char *config, size_t max_conf_si
 	}
 
 	/* Choose the optimal config source. */
-	struct stat st;
 	bool import = false;
 	if (confdb != NULL) {
 		import = false;
 	} else if (config != NULL){
 		import = true;
-	} else if (stat(CONF_DEFAULT_DBDIR, &st) == 0) {
+	} else if (conf_db_exists(CONF_DEFAULT_DBDIR)) {
 		import = false;
 		confdb = CONF_DEFAULT_DBDIR;
 	} else {
