@@ -243,6 +243,22 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 	return ret;
 }
 
+static inline int poll_wrk(struct pollfd *pfd, unsigned nfds, int timeout)
+{
+	int ret = poll(pfd, nfds, timeout);
+	if (unlikely(ret > (int)nfds)) { // in specific circumstances with valgrind, it sometimes happens that nfds=1 and ret=7
+		assert(nfds == 1);
+		assert(ret == 7);
+		ret = 0;
+		for (unsigned i = 0; i < nfds; i++) {
+			if (pfd[i].revents) {
+				ret++;
+			}
+		}
+	}
+	return ret;
+}
+
 static void tcp_wait_for_events(tcp_context_t *tcp)
 {
 	fdset_t *set = &tcp->set;
@@ -255,13 +271,14 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
 
 	/* Wait for events. */
-	int nfds = poll(&(set->pfd[i]), set->n - i, TCP_SWEEP_INTERVAL * 1000);
+	int nfds = poll_wrk(&(set->pfd[i]), set->n - i, TCP_SWEEP_INTERVAL * 1000);
 
 	/* Mark the time of last poll call. */
 	tcp->last_poll_time = time_now();
 
 	/* Process events. */
-	while (nfds > 0 && i < set->n) {
+	while (nfds > 0) {
+		assert(i < set->n);
 		bool should_close = false;
 		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
 			should_close = (i >= tcp->client_threshold);
@@ -279,6 +296,8 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 				should_close = true;
 			}
 			--nfds;
+		} else if (set->pfd[i].revents) {
+			assert(0);
 		}
 
 		/* Evaluate. */
