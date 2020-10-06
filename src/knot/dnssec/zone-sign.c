@@ -109,8 +109,8 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   const dnssec_key_t *key,
 				   dnssec_sign_ctx_t *ctx,
 				   const kdnssec_ctx_t *dnssec_ctx,
-                                   bool skip_crypto,
-                                   int *found_invalid,
+				   bool skip_crypto,
+				   int *found_invalid,
 				   uint16_t *at)
 {
 	assert(key);
@@ -322,21 +322,15 @@ static bool key_used(bool ksk, bool zsk, uint16_t type,
 	}
 }
 
-/*!
- * \brief Check that at least one correct signature exists to at least one DNSKEY and that none incorrect exists.
- *
- * \param covered        RRSet bein validated.
- * \param rrsigs         RRSIG with signatures.
- * \param sign_ctx       Signing context (with keys == NULL)
- * \param skip_crypto    Crypto operations might be skipped as they had been successful earlier.
- *
- * \return KNOT_E*
- */
-static int validate_rrsigs(const knot_rrset_t *covered,
-                           const knot_rrset_t *rrsigs,
-                           zone_sign_ctx_t *sign_ctx,
-                           bool skip_crypto)
+int knot_validate_rrsigs(const knot_rrset_t *covered,
+                         const knot_rrset_t *rrsigs,
+                         zone_sign_ctx_t *sign_ctx,
+                         bool skip_crypto)
 {
+	if (covered == NULL || rrsigs == NULL || sign_ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	bool valid_exists = false;
 	int ret = KNOT_EOK;
 	for (size_t i = 0; i < sign_ctx->count; i++) {
@@ -507,7 +501,7 @@ static int sign_node_rrsets(const zone_node_t *node,
 		}
 
 		if (sign_ctx->dnssec_ctx->validation_mode) {
-			result = validate_rrsigs(&rrset, &rrsigs, sign_ctx, skip_crypto);
+			result = knot_validate_rrsigs(&rrset, &rrsigs, sign_ctx, skip_crypto);
 			if (result != KNOT_EOK) {
 				hint->node = node->owner;
 				hint->rrtype = rrset.type;

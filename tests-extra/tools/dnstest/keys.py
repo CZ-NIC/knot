@@ -113,6 +113,15 @@ class Keymgr(object):
         else:
             return result
 
+    @classmethod
+    def run_fail(cls, conf_file, *args):
+        result = cls.run(conf_file, *args)
+        exit_code, _, _ = result
+        if exit_code == 0:
+            raise Failed("Keymgr passed when shall fail %s." % list(args))
+        else:
+            return result
+
 class Key(object):
     '''DNSSEC key generator'''
 

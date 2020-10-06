@@ -161,9 +161,11 @@ Print to stdout KeySigningRequest based on pre\-generated ZSKs for specified per
 \fBsign\-ksr\fP \fIksr_file\fP
 Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
 .TP
+\fBvalidate\-skr\fP \fIskr_file\fP
+Read SignedKeyResponse from a text file and validate the RRSIGs in it if not corrupt.
+.TP
 \fBimport\-skr\fP \fIskr_file\fP
-Read SignedKeyResponse from a text file and import the signatures for later use in zone. (The signatures
-are not checked at import time, but they will be ignored at signing time if invalid.) If some
+Read SignedKeyResponse from a text file and import the signatures for later use in zone. If some
 signatures have already been imported, they will be deleted for the period from beginning of the SKR
 to infinity.
 .UNINDENT
