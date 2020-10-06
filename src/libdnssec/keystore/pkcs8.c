@@ -120,7 +120,7 @@ static int pkcs8_dir_read(pkcs8_dir_handle_t *handle, const char *id, dnssec_bin
 
 	// open file and get it's size
 
-	_cleanup_close_ int file = 0;
+	_cleanup_close_ int file = -1;
 	int result = key_open_read(handle->dir_name, id, &file);
 	if (result != DNSSEC_EOK) {
 		return result;
@@ -302,7 +302,7 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 
 	// create the file
 
-	_cleanup_close_ int file = 0;
+	_cleanup_close_ int file = -1;
 	r = key_open_write(handle->dir_name, id, &file);
 	if (r != DNSSEC_EOK) {
 		if (key_is_duplicate(r, handle, id, &pem)) {
@@ -351,7 +351,7 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 
 	// create the file
 
-	_cleanup_close_ int file = 0;
+	_cleanup_close_ int file = -1;
 	r = key_open_write(handle->dir_name, id, &file);
 	if (r != DNSSEC_EOK) {
 		if (key_is_duplicate(r, handle, id, pem)) {
@@ -408,7 +408,7 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 
 	// load private key data
 
-	_cleanup_close_ int file = 0;
+	_cleanup_close_ int file = -1;
 	int r = key_open_read(handle->dir_name, id, &file);
 	if (r != DNSSEC_EOK) {
 		return r;
