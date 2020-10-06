@@ -41,6 +41,91 @@ void normalize_generate_flags(kdnssec_generate_flags_t *flags)
 	}
 }
 
+static int generate_dnssec_key(dnssec_keystore_t *keystore,
+                               const knot_dname_t *zone_name,
+                               dnssec_key_algorithm_t alg,
+                               unsigned size,
+                               kdnssec_generate_flags_t flags,
+                               char **id,
+                               dnssec_key_t **key)
+{
+	*key = NULL;
+	*id = NULL;
+
+	int ret = dnssec_keystore_generate(keystore, alg, size, id);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = dnssec_key_new(key);
+	if (ret != KNOT_EOK) {
+		goto fail;
+	}
+
+	ret = dnssec_key_set_dname(*key, zone_name);
+	if (ret != KNOT_EOK) {
+		goto fail;
+	}
+
+	dnssec_key_set_flags(*key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
+	dnssec_key_set_algorithm(*key, alg);
+
+	ret = dnssec_keystore_get_private(keystore, *id, *key);
+	if (ret != KNOT_EOK) {
+		goto fail;
+	}
+
+	return KNOT_EOK;
+
+fail:
+	dnssec_key_free(*key);
+	*key = NULL;
+	free(*id);
+	*id = NULL;
+	return ret;
+}
+
+static bool keytag_in_use(kdnssec_ctx_t *ctx, uint16_t keytag)
+{
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		uint16_t used = dnssec_key_get_keytag(ctx->zone->keys[i].key);
+		if (used == keytag) {
+			return true;
+		}
+	}
+	return false;
+}
+
+#define GENERATE_KEYTAG_ATTEMPTS (20)
+
+static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
+                                      kdnssec_generate_flags_t flags,
+                                      char **id,
+                                      dnssec_key_t **key)
+{
+	unsigned size = (flags & DNSKEY_GENERATE_KSK) ? ctx->policy->ksk_size :
+	                                                ctx->policy->zsk_size;
+
+	for (size_t i = 0; i < GENERATE_KEYTAG_ATTEMPTS; i++) {
+		dnssec_key_free(*key);
+		free(*id);
+
+		int ret = generate_dnssec_key(ctx->keystore, ctx->zone->dname,
+		                              ctx->policy->algorithm, size, flags,
+		                              id, key);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		if (!keytag_in_use(ctx, dnssec_key_get_keytag(*key))) {
+			return KNOT_EOK;
+		}
+	}
+
+	log_zone_notice(ctx->zone->dname, "generated key with conflicting keytag %hu",
+	                dnssec_key_get_keytag(*key));
+	return KNOT_EOK;
+}
+
 int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 			 knot_kasp_key_t **key_ptr)
 {
@@ -51,40 +136,13 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 
 	normalize_generate_flags(&flags);
 
-	dnssec_key_algorithm_t algorithm = ctx->policy->algorithm;
-	unsigned size = (flags & DNSKEY_GENERATE_KSK) ? ctx->policy->ksk_size : ctx->policy->zsk_size;
-
 	// generate key in the keystore
 
 	char *id = NULL;
-	int r = dnssec_keystore_generate(ctx->keystore, algorithm, size, &id);
-	if (r != KNOT_EOK) {
-		return r;
-	}
-
-	// create KASP key
-
 	dnssec_key_t *dnskey = NULL;
-	r = dnssec_key_new(&dnskey);
-	if (r != KNOT_EOK) {
-		free(id);
-		return r;
-	}
 
-	r = dnssec_key_set_dname(dnskey, ctx->zone->dname);
+	int r = generate_keytag_unconflict(ctx, flags, &id, &dnskey);
 	if (r != KNOT_EOK) {
-		dnssec_key_free(dnskey);
-		free(id);
-		return r;
-	}
-
-	dnssec_key_set_flags(dnskey, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
-	dnssec_key_set_algorithm(dnskey, algorithm);
-
-	r = dnssec_keystore_get_private(ctx->keystore, id, dnskey);
-	if (r != KNOT_EOK) {
-		dnssec_key_free(dnskey);
-		free(id);
 		return r;
 	}
 
