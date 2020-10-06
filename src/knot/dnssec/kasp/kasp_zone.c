@@ -274,17 +274,24 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 	                               zone->nsec3_salt_created);
 }
 
+static void kasp_zone_clear_keys(knot_kasp_zone_t *zone)
+{
+	for (size_t i = 0; i < zone->num_keys; i++) {
+		dnssec_key_free(zone->keys[i].key);
+		free(zone->keys[i].id);
+	}
+	free(zone->keys);
+	zone->keys = NULL;
+	zone->num_keys = 0;
+}
+
 void kasp_zone_clear(knot_kasp_zone_t *zone)
 {
 	if (zone == NULL) {
 		return;
 	}
 	knot_dname_free(zone->dname, NULL);
-	for (size_t i = 0; i < zone->num_keys; i++) {
-		dnssec_key_free(zone->keys[i].key);
-		free(zone->keys[i].id);
-	}
-	free(zone->keys);
+	kasp_zone_clear_keys(zone);
 	free(zone->nsec3_salt.data);
 	memset(zone, 0, sizeof(*zone));
 }
@@ -345,7 +352,7 @@ int kasp_zone_keys_from_rr(knot_kasp_zone_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	free(zone->keys);
+	kasp_zone_clear_keys(zone);
 
 	zone->num_keys = zone_dnskey->count;
 	zone->keys = calloc(zone->num_keys, sizeof(*zone->keys));
