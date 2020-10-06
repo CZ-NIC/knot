@@ -22,7 +22,12 @@ for z in zones:
 t.start()
 serials_init = master.zones_wait(zones)
 
-master.ctl("zone-backup +backupdir %s" % backup_dir)
+for i in range(10):
+    try:
+        master.ctl("zone-backup +backupdir %s" % backup_dir)
+    except:
+        pass
+    t.sleep(0.2)
 t.sleep(10)
 
 for z in zones:
