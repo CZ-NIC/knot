@@ -57,6 +57,12 @@ static int axfr_put_rrsets(knot_pkt_t *pkt, zone_node_t *node,
 			state->cur_rrset = i;
 			return ret;
 		}
+		if (pkt->size > KNOT_WIRE_PTR_MAX) {
+			// optimization: once the XFR DNS message is > 16 KiB, compression
+			// is limited. Better wrap to next message.
+			state->cur_rrset = i + 1;
+			return KNOT_ESPACE;
+		}
 	}
 
 	state->cur_rrset = 0;
