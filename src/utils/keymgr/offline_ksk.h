@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,3 +31,5 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to);
 int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file);
 
 int keymgr_import_skr(kdnssec_ctx_t *ctx, const char *skr_file);
+
+int keymgr_validate_skr(kdnssec_ctx_t *ctx, const char *skr_file);
