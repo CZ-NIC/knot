@@ -1389,6 +1389,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		if (ret == KNOT_EOK) {
 			ret = zones_apply(args, zone_backup_cmd);
 			deinit_backup(args);
+		} else {
+			send_error(args, knot_strerror(ret));
 		}
 		return ret;
 	case CTL_ZONE_RESTORE:
@@ -1396,6 +1398,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		if (ret == KNOT_EOK) {
 			ret = zones_apply(args, zone_backup_cmd);
 			deinit_backup(args);
+		} else {
+			send_error(args, knot_strerror(ret));
 		}
 		return ret;
 	case CTL_ZONE_SIGN:
