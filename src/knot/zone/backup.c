@@ -248,15 +248,28 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	int ret = KNOT_EOK;
 
 	if (ctx->backup_zonefile) {
+		char *local_zf = conf_zonefile(conf, zone->name);
+		char *backup_zf = dir_file(ctx->backup_dir, local_zf);
+
 		if (ctx->restore_mode) {
-			char *local_zf = conf_zonefile(conf, zone->name);
-			char *backup_zf = dir_file(ctx->backup_dir, local_zf);
 			ret = copy_file(local_zf, backup_zf);
-			free(backup_zf);
-			free(local_zf);
 		} else {
-			ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
+			conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+			bool can_flush = (conf_int(&val) > -1);
+
+			if (can_flush) {
+				if (zone->contents != NULL) {
+					ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
+				} else {
+					log_zone_notice(zone->name, "empty zone, skipping zone file backup");
+				}
+			} else {
+				ret = copy_file(backup_zf, local_zf);
+			}
 		}
+
+		free(backup_zf);
+		free(local_zf);
 		if (ret != KNOT_EOK) {
 			goto done;
 		}
