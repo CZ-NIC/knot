@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,6 +45,11 @@ static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
+#define BACKUP_LOCKFILE(ctx, lockfile_name) \
+	size_t _backup_dir_len = strlen((ctx)->backup_dir); \
+	char lockfile_name[_backup_dir_len + 22]; \
+	sprintf(lockfile_name, "%s/knot.backup.lockfile", (ctx)->backup_dir);
+
 int zone_backup_init(bool restore_mode, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx)
@@ -63,6 +69,19 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	ctx->readers = 1;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
+
+	BACKUP_LOCKFILE(ctx, lockfile);
+	if (mkdir(backup_dir, S_IRWXU|S_IRWXG) != 0 && errno != EEXIST) {
+		free(ctx);
+		return knot_map_errno();
+	}
+	ctx->lock_file = open(lockfile, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
+	if (ctx->lock_file < 0) {
+		free(ctx);
+		// Make the reported error better understandable than KNOT_EEXIST.
+		return errno == EEXIST ? KNOT_EBUSY : knot_map_errno();
+	}
+
 	pthread_mutex_init(&ctx->readers_mutex, NULL);
 
 	if (!restore_mode) {
@@ -108,6 +127,11 @@ void zone_backup_deinit(zone_backup_ctx_t *ctx)
 		knot_lmdb_deinit(&ctx->bck_timer_db);
 		knot_lmdb_deinit(&ctx->bck_kasp_db);
 		pthread_mutex_destroy(&ctx->readers_mutex);
+
+		close(ctx->lock_file);
+		BACKUP_LOCKFILE(ctx, lockfile);
+		unlink(lockfile);
+
 		free(ctx);
 	}
 }

@@ -4,8 +4,6 @@
 
 from dnstest.test import Test
 from dnstest.utils import *
-import shutil
-import random
 
 t = Test()
 
@@ -22,7 +20,12 @@ for z in zones:
 t.start()
 serials_init = master.zones_wait(zones)
 
-master.ctl("zone-backup +backupdir %s" % backup_dir)
+for i in range(10):
+    try:
+        master.ctl("zone-backup +backupdir %s" % backup_dir)
+    except:
+        pass
+    t.sleep(i * 0.05)
 t.sleep(10)
 
 for z in zones:
