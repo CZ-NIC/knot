@@ -390,7 +390,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 static int init_backup(ctl_args_t *args, bool restore_mode)
 {
 	if (!MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
-		return KNOT_EINVAL;
+		return KNOT_ENOPARAM;
 	}
 
 	zone_backup_ctx_t *ctx;
