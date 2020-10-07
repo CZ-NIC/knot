@@ -34,6 +34,7 @@ typedef struct zone_backup_ctx {
 	knot_lmdb_db_t bck_timer_db;        // backup timer DB
 	knot_lmdb_db_t bck_journal;         // backup journal DB
 	knot_lmdb_db_t bck_catalog;         // backup catalog DB
+	int lock_file;                      // lock file preventing simultaneous backups to same directory
 } zone_backup_ctx_t;
 
 int zone_backup_init(bool restore_mode, const char *backup_dir,
