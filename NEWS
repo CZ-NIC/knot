@@ -1,3 +1,17 @@
+Knot DNS 2.9.7 (2020-10-09)
+===========================
+
+Bugfixes:
+---------
+ - NSEC3 re-salt can cause server crash due to possible zone inconsistencies
+ - Zone reload logs 'invalid parameter' if zone file not changed
+ - Outgoing multi-message transfer can contain invalid compression pointers under specific conditions
+ - Improper handling of file descriptors in libdnssec
+
+Improvements:
+-------------
+ - Module noudp has new configuration option for UDP truncation rate
+
 Knot DNS 2.9.6 (2020-08-31)
 ===========================
 
