@@ -433,7 +433,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = args->custom_ctx;
 	if (zone->backup_ctx != NULL) {
-		log_zone_warning(zone->name, "back-up already in progress");
+		log_zone_warning(zone->name, "backup already in progress");
 		args->failed = true;
 		return KNOT_EPROGRESS;
 	}

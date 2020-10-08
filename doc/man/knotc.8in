@@ -127,7 +127,7 @@ blocking mode) to a zone file in the specified directory. (#)
 .TP
 \fBzone\-backup\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fB+journal\fP] [\fB+nozonefile\fP]
 Trigger a zone data and metadata backup to specified directory.
-Optional flag \fB+journal\fP backs\-up also zone journal, whereas \fB+nozonefile\fP
+Optional flag \fB+journal\fP backs up also zone journal, whereas \fB+nozonefile\fP
 avoids backing up current zone contents to a zone file. If zone flushing is disabled,
 original zone file is backed up instead. (#)
 .TP
