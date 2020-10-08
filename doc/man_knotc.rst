@@ -104,7 +104,7 @@ Actions
 
 **zone-backup** [*zone*...] **+backupdir** *directory* [**+journal**] [**+nozonefile**]
   Trigger a zone data and metadata backup to specified directory.
-  Optional flag **+journal** backs-up also zone journal, whereas **+nozonefile**
+  Optional flag **+journal** backs up also zone journal, whereas **+nozonefile**
   avoids backing up current zone contents to a zone file. If zone flushing is disabled,
   original zone file is backed up instead. (#)
 

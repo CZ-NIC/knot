@@ -54,7 +54,7 @@ int event_backup(conf_t *conf, zone_t *zone)
 		              restore ? "restored from" : "backed up to", back_dir);
 	} else {
 		log_zone_warning(zone->name, "zone %s failed (%s)",
-		                 restore ? "restore" : "back-up", knot_strerror(ret));
+		                 restore ? "restore" : "backup", knot_strerror(ret));
 	}
 
 	if (restore && ret == KNOT_EOK) {
