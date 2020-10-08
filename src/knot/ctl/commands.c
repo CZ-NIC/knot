@@ -390,7 +390,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 static int init_backup(ctl_args_t *args, bool restore_mode)
 {
 	if (!MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
-		return KNOT_EINVAL;
+		return KNOT_ENOPARAM;
 	}
 
 	zone_backup_ctx_t *ctx;
@@ -433,7 +433,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = args->custom_ctx;
 	if (zone->backup_ctx != NULL) {
-		log_zone_warning(zone->name, "back-up already in progress");
+		log_zone_warning(zone->name, "backup already in progress");
 		args->failed = true;
 		return KNOT_EPROGRESS;
 	}
@@ -1389,6 +1389,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		if (ret == KNOT_EOK) {
 			ret = zones_apply(args, zone_backup_cmd);
 			deinit_backup(args);
+		} else {
+			send_error(args, knot_strerror(ret));
 		}
 		return ret;
 	case CTL_ZONE_RESTORE:
@@ -1396,6 +1398,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		if (ret == KNOT_EOK) {
 			ret = zones_apply(args, zone_backup_cmd);
 			deinit_backup(args);
+		} else {
+			send_error(args, knot_strerror(ret));
 		}
 		return ret;
 	case CTL_ZONE_SIGN:
