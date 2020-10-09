@@ -69,6 +69,7 @@ if dnskey1_2 == dnskey1_1 or dnskey2_2 == dnskey2_1:
 
 test_added(master, zones, [ "NXDOMAIN", "NXDOMAIN" ])
 
+shutil.rmtree(master.dir + "/master")
 master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[0].name), wait=True)
 
 t.sleep(5)
@@ -81,6 +82,7 @@ if dnskey2_3 == dnskey2_1:
 
 test_added(master, zones, [ "NOERROR", "NXDOMAIN" ])
 
+master.ctl("zone-restore +backupdir %s %s" % (backup_dir, zones[1].name), wait=True)
 master.stop()
 keydir = master.keydir # BEWARE this is function invocation
 shutil.rmtree(keydir)
