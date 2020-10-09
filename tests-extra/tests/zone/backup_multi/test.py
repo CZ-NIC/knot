@@ -34,6 +34,9 @@ for z in zones:
 master.zones_wait(zones, serials_init, equal=False, greater=True)
 
 master.ctl("zone-restore +backupdir %s" % backup_dir)
+if master.valgrind:
+    t.sleep(45);
+
 master.zones_wait(zones, serials_init, equal=True, greater=False)
 
 t.stop()
