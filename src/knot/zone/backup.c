@@ -252,7 +252,10 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		char *backup_zf = dir_file(ctx->backup_dir, local_zf);
 
 		if (ctx->restore_mode) {
-			ret = copy_file(local_zf, backup_zf);
+			ret = make_path(local_zf, S_IRWXU | S_IRWXG);
+			if (ret == KNOT_EOK) {
+				ret = copy_file(local_zf, backup_zf);
+			}
 		} else {
 			conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 			bool can_flush = (conf_int(&val) > -1);
