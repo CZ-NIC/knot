@@ -25,6 +25,9 @@ Options
   Zone origin. If not specified, the origin is determined from the file name
   (possibly removing the ``.zone`` suffix).
 
+**-d**, **--dnssec** **on**\|\ **off**
+  Also check DNSSEC-related records if present in the zone file.
+
 **-t**, **--time** *time*
   Current time specification. Use UNIX timestamp, YYYYMMDDHHmmSS
   format, or [+/-]\ *time*\ [unit] format, where unit can be **Y**, **M**,

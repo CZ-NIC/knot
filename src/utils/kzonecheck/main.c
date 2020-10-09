@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <stdio.h>
 
 #include "contrib/time.h"
+#include "contrib/tolower.h"
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
 #include "utils/common/params.h"
@@ -33,6 +34,7 @@ static void print_help(void)
 	       "Parameters:\n"
 	       " -o, --origin <zone_origin>  Zone name.\n"
 	       "                              (default filename without .zone)\n"
+	       " -d, --dnssec <on|off>       Also check DNSSEC-related records.\n"
 	       " -t, --time <timestamp>      Current time specification.\n"
 	       "                              (default current UNIX time)\n"
 	       " -v, --verbose               Enable debug output.\n"
@@ -42,16 +44,32 @@ static void print_help(void)
 	       PROGRAM_NAME);
 }
 
+static bool str2bool(const char *s)
+{
+	switch (knot_tolower(s[0])) {
+	case '1':
+	case 'y':
+	case 't':
+		return true;
+	case 'o':
+		return knot_tolower(s[1]) == 'n';
+	default:
+		return false;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	const char *origin = NULL;
 	bool verbose = false;
+	bool dnssec = true; // default value for --dnssec
 	knot_time_t check_time = (knot_time_t)time(NULL);
 
 	/* Long options. */
 	struct option opts[] = {
 		{ "origin",  required_argument, NULL, 'o' },
 		{ "time",    required_argument, NULL, 't' },
+		{ "dnssec",  required_argument, NULL, 'd' },
 		{ "verbose", no_argument,       NULL, 'v' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ "version", no_argument,       NULL, 'V' },
@@ -63,7 +81,7 @@ int main(int argc, char *argv[])
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "o:t:vVh", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "o:t:d:vVh", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'o':
 			origin = optarg;
@@ -77,6 +95,9 @@ int main(int argc, char *argv[])
 		case 'V':
 			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
+		case 'd':
+			dnssec = str2bool(optarg);
+			break;
 		case 't':
 			if (knot_time_parse("YMDhms|#|+-#U|+-#",
 			                    optarg, &check_time) != KNOT_EOK) {
@@ -124,7 +145,7 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
 	free(zonename);
-	int ret = zone_check(filename, dname, stdout, (time_t)check_time);
+	int ret = zone_check(filename, dname, stdout, dnssec, (time_t)check_time);
 	knot_dname_free(dname, NULL);
 
 	log_close();
