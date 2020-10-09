@@ -36,6 +36,13 @@ test_correct()
 	ok "$1 - correct zone, without error" test $? -eq 0
 }
 
+#param zonefile
+test_correct_no_dnssec()
+{
+	$KZONECHECK -o example.com -d off "$DATA/$1" > /dev/null
+	ok "$1 - correct zone, without error" test $? -eq 0
+}
+
 if [ ! -x $KZONECHECK ]; then
 	skip_all "kzonecheck is missing or is not executable"
 fi
@@ -136,5 +143,38 @@ test_correct "glue_in_deleg.valid"
 test_correct "cdnskey.cds"
 test_correct "cdnskey.delete.both"
 test_correct "dname_apex_nsec3.signed"
+
+test_correct_no_dnssec "no_rrsig.signed"
+test_correct_no_dnssec "no_rrsig_with_delegation.signed"
+test_correct_no_dnssec "nsec_broken_chain_01.signed"
+test_correct_no_dnssec "nsec_broken_chain_02.signed"
+test_correct_no_dnssec "nsec_missing.signed"
+test_correct_no_dnssec "nsec_multiple.signed"
+test_correct_no_dnssec "nsec_wrong_bitmap_01.signed"
+test_correct_no_dnssec "nsec_wrong_bitmap_02.signed"
+test_correct_no_dnssec "nsec3_missing.signed"
+test_correct_no_dnssec "nsec3_wrong_bitmap_01.signed"
+test_correct_no_dnssec "nsec3_wrong_bitmap_02.signed"
+test_correct_no_dnssec "nsec3_ds.signed"
+test_correct_no_dnssec "nsec3_optout.signed"
+test_correct_no_dnssec "nsec3_chain_01.signed"
+test_correct_no_dnssec "nsec3_chain_02.signed"
+test_correct_no_dnssec "nsec3_chain_03.signed"
+test_correct_no_dnssec "nsec3_param_invalid.signed"
+test_correct_no_dnssec "rrsig_signed.signed"
+test_correct_no_dnssec "rrsig_rdata_ttl.signed"
+test_correct_no_dnssec "duplicate.signature"
+test_correct_no_dnssec "missing.signed"
+test_correct_no_dnssec "dnskey_param_error.signed"
+test_correct_no_dnssec "invalid_ds.signed"
+test_correct_no_dnssec "cdnskey.invalid"
+test_correct_no_dnssec "cdnskey.invalid.param"
+test_correct_no_dnssec "cdnskey.nocds"
+test_correct_no_dnssec "cdnskey.nocdnskey"
+test_correct_no_dnssec "cdnskey.nodnskey"
+test_correct_no_dnssec "cdnskey.orphan.cds"
+test_correct_no_dnssec "cdnskey.orphan.cdnskey"
+test_correct_no_dnssec "cdnskey.delete.invalid.cds"
+test_correct_no_dnssec "cdnskey.delete.invalid.cdnskey"
 
 rm $LOG
