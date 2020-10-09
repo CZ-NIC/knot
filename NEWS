@@ -1,3 +1,33 @@
+Knot DNS 3.0.1 (2020-10-10)
+===========================
+
+Features:
+---------
+ - New command in keymgr for validation of RRSIGs in SKR
+ - Keymgr validates RRSIGs in SKR during import
+ - New option in kzonecheck to skip DNSSEC-related checks
+
+Improvements:
+-------------
+ - Module noudp has new configuration option for UDP truncation rate
+ - Better detection of reproducible signing availability
+ - Kxdpgun allows setting of network interface
+ - Default control timeout in knotc was increased to 60 seconds
+ - DNSSEC validation searches for invalid redundant RRSIGs
+ - Configuration source detection no longer considers empty confdb directory as active configuration
+ - Zone backup preserves original zone file if zone file synchronization is disabled
+
+Bugfixes:
+---------
+ - NSEC3 re-salt can cause server crash due to possible zone inconsistencies
+ - Zone reload logs 'invalid parameter' if zone file not changed
+ - Outgoing multi-message transfer can contain invalid compression pointers under specific conditions
+ - Improper handling of file descriptors in libdnssec
+ - Server crashes if no policy is configured with DNSSEC validation
+ - Server crashes if DNSSEC validation is enabled for unsigned zone
+ - Failed to build with libnghttp2 (Thanks to Robert Edmonds)
+ - Various bugs in zone data backup/restore
+
 Knot DNS 3.0.0 (2020-09-09)
 ===========================
 
@@ -35,6 +65,20 @@ Bugfixes:
 ---------
  - Module onlinesign responds NXDOMAIN insted of NOERROR (NODATA) if DNSSEC not requested
  - Outgoing multi-message transfer can contain invalid compression pointers under specific conditions
+
+Knot DNS 2.9.7 (2020-10-09)
+===========================
+
+Bugfixes:
+---------
+ - NSEC3 re-salt can cause server crash due to possible zone inconsistencies
+ - Zone reload logs 'invalid parameter' if zone file not changed
+ - Outgoing multi-message transfer can contain invalid compression pointers under specific conditions
+ - Improper handling of file descriptors in libdnssec
+
+Improvements:
+-------------
+ - Module noudp has new configuration option for UDP truncation rate
 
 Knot DNS 2.9.6 (2020-08-31)
 ===========================
