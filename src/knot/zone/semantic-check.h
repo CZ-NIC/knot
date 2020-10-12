@@ -19,6 +19,13 @@
 #include "knot/zone/node.h"
 #include "knot/zone/contents.h"
 
+typedef enum {
+	SEMCHECK_MANDATORY_ONLY,
+	SEMCHECK_NO_DNSSEC,
+	SEMCHECK_AUTO_DNSSEC,
+	SEMCHECK_DNSSEC,
+} semcheck_optional_t;
+
 /*!
  *\brief Internal error constants.
  */
@@ -123,5 +130,5 @@ struct sem_handler {
  * \retval KNOT_ESEMCHECK found semantic error
  * \retval KNOT_EINVAL or other error
  */
-int sem_checks_process(zone_contents_t *zone, bool optional, sem_handler_t *handler,
+int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_handler_t *handler,
                        time_t time);

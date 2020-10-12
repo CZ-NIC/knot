@@ -22,6 +22,7 @@
 #include "contrib/tolower.h"
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
+#include "knot/zone/semantic-check.h"
 #include "utils/common/params.h"
 #include "utils/kzonecheck/zone_check.h"
 
@@ -62,7 +63,7 @@ int main(int argc, char *argv[])
 {
 	const char *origin = NULL;
 	bool verbose = false;
-	bool dnssec = true; // default value for --dnssec
+	semcheck_optional_t optional = SEMCHECK_AUTO_DNSSEC; // default value for --dnssec
 	knot_time_t check_time = (knot_time_t)time(NULL);
 
 	/* Long options. */
@@ -96,7 +97,7 @@ int main(int argc, char *argv[])
 			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
 		case 'd':
-			dnssec = str2bool(optarg);
+			optional = str2bool(optarg) ? SEMCHECK_DNSSEC : SEMCHECK_NO_DNSSEC;
 			break;
 		case 't':
 			if (knot_time_parse("YMDhms|#|+-#U|+-#",
@@ -145,7 +146,7 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
 	free(zonename);
-	int ret = zone_check(filename, dname, stdout, dnssec, (time_t)check_time);
+	int ret = zone_check(filename, dname, stdout, optional, (time_t)check_time);
 	knot_dname_free(dname, NULL);
 
 	log_close();
