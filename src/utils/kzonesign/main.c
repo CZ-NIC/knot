@@ -20,6 +20,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
 #include "knot/server/server.h"
+#include "knot/zone/adjust.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
 #include "utils/common/msg.h"
@@ -40,6 +41,7 @@ static void print_help(void)
 	       "                           (default %s)\n"
 	       " -o, --outdir <dir_name>  Output directory.\n"
 	       " -r, --rollover           Allow key rollovers and NSEC3 re-salt.\n"
+	       " -v, --verify             Only verify if zone is signed correctly.\n"
 	       " -t, --time <timestamp>   Current time specification.\n"
 	       "                           (default current UNIX time)\n"
 	       " -h, --help               Print the program help.\n"
@@ -54,6 +56,7 @@ typedef struct {
 	const char *outdir;
 	zone_sign_roll_flags_t rollover;
 	int64_t timestamp;
+	bool verify;
 } sign_params_t;
 
 static int zonesign(sign_params_t *params)
@@ -95,6 +98,30 @@ static int zonesign(sign_params_t *params)
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize zone update (%s)\n", knot_strerror(ret));
 		zone_contents_deep_free(unsigned_conts);
+		goto fail;
+	}
+
+	if (params->verify) {
+		val = conf_zone_get(conf(), C_ADJUST_THR, params->zone_name);
+		ret = zone_adjust_full(up.new_cont, conf_int(&val));
+		if (ret != KNOT_EOK) {
+			ERR2("failed to adjust the zone (%s)\n", knot_strerror(ret));
+			zone_update_clear(&up);
+			goto fail;
+		}
+
+		ret = knot_dnssec_validate_zone(&up, conf(), params->timestamp, false);
+		if (ret != KNOT_EOK) {
+			ERR2("DNSSEC validation failed (%s)\n", knot_strerror(ret));
+			char name_str[KNOT_DNAME_TXT_MAXLEN], type_str[16];
+			if (knot_dname_to_str(name_str, up.validation_hint.node, sizeof(name_str)) != NULL &&
+			    knot_rrtype_to_string(up.validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
+				ERR2("affected node: '%s' type '%s'\n", name_str, type_str);
+			}
+		} else {
+			INFO2("DNSSEC validation successful\n");
+		}
+		zone_update_clear(&up);
 		goto fail;
 	}
 
@@ -166,6 +193,7 @@ int main(int argc, char *argv[])
 		{ "confdb",    required_argument, NULL, 'C' },
 		{ "outdir",    required_argument, NULL, 'o' },
 		{ "rollover",  no_argument,       NULL, 'r' },
+		{ "verify" ,   no_argument,       NULL, 'v' },
 		{ "time",      required_argument, NULL, 't' },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
@@ -175,7 +203,7 @@ int main(int argc, char *argv[])
 	tzset();
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:o:rt:hV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:o:rvt:hV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
@@ -192,6 +220,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'r':
 			params.rollover = KEY_ROLL_ALLOW_ALL;
+			break;
+		case 'v':
+			params.verify = true;
 			break;
 		case 't':
 			; uint32_t num = 0;

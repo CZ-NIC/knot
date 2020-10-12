@@ -397,10 +397,13 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx)
 	}
 }
 
-int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf, bool incremental)
+int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf, knot_time_t now, bool incremental)
 {
 	kdnssec_ctx_t ctx = { 0 };
 	int ret = kdnssec_validation_ctx(conf, &ctx, update->new_cont);
+	if (now != 0) {
+		ctx.now = now;
+	}
 	if (ret == KNOT_EOK) {
 		ret = knot_zone_check_nsec_chain(update, &ctx, incremental);
 	}
