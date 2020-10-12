@@ -1210,6 +1210,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	if (ret == KNOT_EOK) {
 		trctx->send_notify = data.updated && !master->block_notify_after_xfr;
+		trctx->force_axfr = false;
 	}
 
 	return ret;
