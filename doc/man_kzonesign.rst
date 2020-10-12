@@ -27,8 +27,11 @@ Options
   Allow key roll-overs and NSEC3 re-salt. In order to finish possible KSK submission,
   set the KSK's **active** timestamp to now (**+0**) using :doc:`keymgr<man_keymgr>`.
 
+**-v**, **--verify**
+  Instead of (re-)signing the zone, just verify that the zone is correctly signed.
+
 **-t**, **--time** *timestamp*
-  Sign the zone (and roll the keys if necessary) as if it was at the time
+  Sign/verify the zone (and roll the keys if necessary) as if it was at the time
   specified by timestamp.
 
 **-h**, **--help**

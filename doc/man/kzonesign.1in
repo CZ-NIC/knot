@@ -50,8 +50,11 @@ Write the output zone file to the specified directory instead of the configured 
 Allow key roll\-overs and NSEC3 re\-salt. In order to finish possible KSK submission,
 set the KSK\(aqs \fBactive\fP timestamp to now (\fB+0\fP) using keymgr\&.
 .TP
+\fB\-v\fP, \fB\-\-verify\fP
+Instead of (re\-)signing the zone, just verify that the zone is correctly signed.
+.TP
 \fB\-t\fP, \fB\-\-time\fP \fItimestamp\fP
-Sign the zone (and roll the keys if necessary) as if it was at the time
+Sign/verify the zone (and roll the keys if necessary) as if it was at the time
 specified by timestamp.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
