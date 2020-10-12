@@ -49,7 +49,8 @@ Zone origin. If not specified, the origin is determined from the file name
 (possibly removing the \fB\&.zone\fP suffix).
 .TP
 \fB\-d\fP, \fB\-\-dnssec\fP \fBon\fP|\fBoff\fP
-Also check DNSSEC\-related records if present in the zone file.
+Also check DNSSEC\-related records. The default is to decide based on the
+existence of a RRSIG for SOA.
 .TP
 \fB\-t\fP, \fB\-\-time\fP \fItime\fP
 Current time specification. Use UNIX timestamp, YYYYMMDDHHmmSS

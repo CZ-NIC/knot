@@ -26,7 +26,8 @@ Options
   (possibly removing the ``.zone`` suffix).
 
 **-d**, **--dnssec** **on**\|\ **off**
-  Also check DNSSEC-related records if present in the zone file.
+  Also check DNSSEC-related records. The default is to decide based on the
+  existence of a RRSIG for SOA.
 
 **-t**, **--time** *time*
   Current time specification. Use UNIX timestamp, YYYYMMDDHHmmSS

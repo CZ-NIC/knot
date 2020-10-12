@@ -165,7 +165,7 @@ static int xfr_validate(zone_contents_t *zone)
 		.cb = err_handler_logger
 	};
 
-	ret = sem_checks_process(zone, false, &handler, time(NULL));
+	ret = sem_checks_process(zone, SEMCHECK_MANDATORY_ONLY, &handler, time(NULL));
 	if (ret != KNOT_EOK) {
 		// error is logged by the error handler
 		return ret;
