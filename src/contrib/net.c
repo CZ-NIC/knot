@@ -166,8 +166,6 @@ static void unlink_unix_socket(const struct sockaddr_storage *addr)
 
 int net_bound_socket(int type, const struct sockaddr_storage *addr, enum net_flags flags)
 {
-	int ret;
-
 	/* Create socket. */
 	int sock = net_unbound_socket(type, addr);
 	if (sock < 0) {
@@ -177,6 +175,13 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr, enum net_fla
 	/* Unlink UNIX sock if exists. */
 	if (addr->ss_family == AF_UNIX) {
 		unlink_unix_socket(addr);
+	}
+
+	/* Reuse old address if taken. */
+	int ret = sockopt_enable(sock, SOL_SOCKET, SO_REUSEADDR);
+	if (ret != KNOT_EOK) {
+		close(sock);
+		return ret;
 	}
 
 	/* Don't bind IPv4 for IPv6 any address. */
