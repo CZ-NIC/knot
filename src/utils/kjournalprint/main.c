@@ -37,6 +37,7 @@ static void print_help(void)
 	       "\n"
 	       "Parameters:\n"
 	       " -l, --limit <num>  Read only <num> newest changes.\n"
+	       " -s, --serial <soa> Start with specific SOA serial.\n"
 	       " -n, --no-color     Get output without terminal coloring.\n"
 	       " -z, --zone-list    Instead of reading jurnal, display the list\n"
 	       "                    of zones in the DB (<zone_name> not needed).\n"
@@ -53,6 +54,8 @@ typedef struct {
 	bool check;
 	int limit;
 	int counter;
+	uint32_t serial;
+	bool from_serial;
 } print_params_t;
 
 static void print_changeset(const changeset_t *chs, print_params_t *params)
@@ -194,7 +197,11 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 	}
 
 	if (params->limit >= 0 && ret == KNOT_EOK) {
-		ret = journal_walk(j, count_changeset_cb, params);
+		if (params->from_serial) {
+			ret = journal_walk_from(j, params->serial, count_changeset_cb, params);
+		} else {
+			ret = journal_walk(j, count_changeset_cb, params);
+		}
 	}
 	if (ret == KNOT_EOK) {
 		if (params->limit < 0 || params->counter <= params->limit) {
@@ -203,7 +210,11 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 			params->limit = params->counter - params->limit;
 		}
 		params->counter = 0;
-		ret = journal_walk(j, print_changeset_cb, params);
+		if (params->from_serial) {
+			ret = journal_walk_from(j, params->serial, print_changeset_cb, params);
+		} else {
+			ret = journal_walk(j, print_changeset_cb, params);
+		}
 	}
 
 	if (params->debug && ret == KNOT_EOK) {
@@ -284,10 +295,12 @@ int main(int argc, char *argv[])
 		.color = true,
 		.check = false,
 		.limit = -1,
+		.from_serial = false,
 	};
 
 	struct option opts[] = {
 		{ "limit",     required_argument, NULL, 'l' },
+		{ "serial",    required_argument, NULL, 's' },
 		{ "no-color",  no_argument,       NULL, 'n' },
 		{ "zone-list", no_argument,       NULL, 'z' },
 		{ "check",     no_argument,       NULL, 'c' },
@@ -298,13 +311,20 @@ int main(int argc, char *argv[])
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "l:nzcdhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "l:s:nzcdhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
 			if (str_to_int(optarg, &params.limit, 0, INT_MAX) != KNOT_EOK) {
 				print_help();
 				return EXIT_FAILURE;
 			}
+			break;
+		case 's':
+			if (str_to_u32(optarg, &params.serial) != KNOT_EOK) {
+				print_help();
+				return EXIT_FAILURE;
+			}
+			params.from_serial = true;
 			break;
 		case 'n':
 			params.color = false;
@@ -381,7 +401,11 @@ int main(int argc, char *argv[])
 
 	switch (ret) {
 	case KNOT_ENOENT:
-		printf("The journal is empty\n");
+		if (params.from_serial) {
+			printf("The journal is empty or the serial not present\n");
+		} else {
+			printf("The journal is empty\n");
+		}
 		break;
 	case KNOT_EFILE:
 		fprintf(stderr, "The specified journal DB is invalid\n");

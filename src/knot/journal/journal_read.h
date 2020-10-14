@@ -108,6 +108,26 @@ int journal_read_get_error(const journal_read_t *ctx, int another_error);
 void journal_read_end(journal_read_t *ctx);
 
 /*!
+ * \brief Call a function for each changeset in journal.
+ *
+ * This is a variant of journal_walk() see below.
+ * The difference is that iteration starts at specified serial.
+ * Similarly to how IXFR works.
+ * The callback is called for each found changeset, or just once
+ * with ch=NULL if none is found.
+ *
+ * \param j      Zone journal to be read.
+ * \param from   SOA serial to start at.
+ * \param cb     Callback to be called for each changeset (or its non-existence).
+ * \param ctx    Arbitrary context to be passed to the callback.
+ *
+ * \return An error code from either journal operations or from the callback.
+ * \retval KNOT_ENOENT if the journal is not empty, but the requested serial not present.
+ */
+int journal_walk_from(zone_journal_t j, uint32_t from,
+                      journal_walk_cb_t cb, void *ctx);
+
+/*!
  * \brief Call a function for each changeset stored in journal.
  *
  * First, the callback will be called for the special changeset -
