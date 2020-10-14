@@ -160,8 +160,10 @@ void server_stop(server_t *server);
  * \brief Server reconfiguration routine.
  *
  * Routine for dynamic server reconfiguration.
+ *
+ * \return Error code, KNOT_EOK if success.
  */
-void server_reconfigure(conf_t *conf, server_t *server);
+int server_reconfigure(conf_t *conf, server_t *server);
 
 /*!
  * \brief Reconfigure zone database.
