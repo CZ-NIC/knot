@@ -7,6 +7,7 @@ from dnstest.module import ModGeoip
 from dnstest.utils import *
 import random
 import os
+import shutil
 
 iso_codes = ['AD', 'AE', 'AF', 'AG', 'AI', 'AL', 'AM', 'AO', 'AQ', 'AR', 'AS', 'AT',
              'AU', 'AW', 'AX', 'AZ', 'BA', 'BB', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI',
@@ -39,22 +40,28 @@ t.link(zone, knot)
 # Generate configuration files for geoip module.
 geodb_filename = knot.dir + "geo.conf"
 subnet_filename = knot.dir + "net.conf"
+subnet2_filename = knot.dir + "net2.conf"
 geo_conf = open(geodb_filename, "w")
 net_conf = open(subnet_filename, "w")
+net2_conf = open(subnet2_filename, "w")
 dname_count = 10
 iso_count = len(iso_codes)
 for i in range(1, dname_count + 1):
     print("d" + str(i) + ".example.com:", file=geo_conf)
     print("d" + str(i) + ".example.com:", file=net_conf)
+    print("d" + str(i) + ".example.com:", file=net2_conf)
     geo_id = 1
     for iso_code in iso_codes:
         print("  - geo: \"" + iso_code + ";" + str(geo_id) + "\"", file=geo_conf)
         print("    A: 127.255." + str(geo_id) + ".0", file=geo_conf)
         print("  - net: 127.255." + str(geo_id) + ".0/24", file=net_conf)
         print("    A: 127.255." + str(geo_id) + ".0", file=net_conf)
+        print("  - net: 127.255." + str(geo_id) + ".0/24", file=net2_conf)
+        print("    A: 126.255." + str(geo_id) + ".0", file=net2_conf)
         geo_id += 1
 geo_conf.close()
 net_conf.close()
+net2_conf.close()
 
 ModGeoip.check()
 
@@ -74,12 +81,13 @@ resp.check(rcode="NOERROR", rdata="192.0.2.4")
 
 # Test geo-dependent answers.
 for i in range(1, 1000):
-    random_client = "127.255." + str(random.randint(1, iso_count)) + ".0"
+    middle = str(random.randint(1, iso_count))
+    random_client = "127.255." + middle + ".0"
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
 
 # Restart with subnet module.
-knot.clear_modules(None)
+knot.clear_modules(zone)
 knot.add_module(zone, mod_subnet);
 knot.gen_confile()
 knot.reload()
@@ -91,6 +99,19 @@ resp.check(rcode="NOERROR", rdata="192.0.2.4")
 
 # Test subnet-dependent answers.
 for i in range(1, 1000):
-    random_client = "127.255." + str(random.randint(1, iso_count)) + ".0"
+    middle = str(random.randint(1, iso_count))
+    random_client = "127.255." + middle + ".0"
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
+
+# Switch subnet file.
+shutil.move(subnet2_filename, subnet_filename)
+knot.ctl("-f zone-reload example.com.", wait=True)
+
+# Test that dependent answers differ
+for i in range(1, 1000):
+    middle = str(random.randint(1, iso_count))
+    random_client = "127.255." + middle + ".0"
+    expected_rdata = "126.255." + middle + ".0"
+    resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
+    resp.check(rcode="NOERROR", rdata=expected_rdata, nordata=random_client)

@@ -31,6 +31,7 @@
 #include "knot/updates/zone-update.h"
 #include "knot/zone/backup.h"
 #include "knot/zone/timers.h"
+#include "knot/zone/zonedb-load.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
@@ -321,6 +322,10 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 
 	if (zone_expired(zone)) {
 		return KNOT_ENOTSUP;
+	}
+
+	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
+		return zone_reload_modules(conf(), args->server, zone->name);
 	}
 
 	schedule_trigger(zone, args, ZONE_EVENT_LOAD, true);
