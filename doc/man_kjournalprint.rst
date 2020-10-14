@@ -20,6 +20,9 @@ Options
 **-l**, **--limit** *limit*
   Limits the number of displayed changes.
 
+**-s**, **--serial** *soa*
+  Start at specific SOA serial.
+
 **-d**, **--debug**
   Debug mode brief output.
 

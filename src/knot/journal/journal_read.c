@@ -253,6 +253,36 @@ static int just_load_md(zone_journal_t j, journal_metadata_t *md, bool *has_zij)
 	return txn.ret;
 }
 
+int journal_walk_from(zone_journal_t j, uint32_t from,
+                      journal_walk_cb_t cb, void *ctx)
+{
+	bool at_least_one = false;
+	journal_metadata_t md = { 0 };
+	journal_read_t *read = NULL;
+	changeset_t ch;
+
+	int ret = just_load_md(j, &md, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && from != md.serial_to &&
+	    ret == KNOT_EOK) {
+		ret = journal_read_begin(j, false, from, &read);
+		while (ret == KNOT_EOK && journal_read_changeset(read, &ch)) {
+			ret = cb(false, &ch, ctx);
+			at_least_one = true;
+			journal_read_clear_changeset(&ch);
+		}
+		ret = journal_read_get_error(read, ret);
+		journal_read_end(read);
+	}
+	if (!at_least_one && ret == KNOT_EOK) {
+		ret = cb(false, NULL, ctx);
+	}
+	return ret;
+}
+
 // beware, this function does not operate in single txn!
 int journal_walk(zone_journal_t j, journal_walk_cb_t cb, void *ctx)
 {
@@ -271,7 +301,7 @@ int journal_walk(zone_journal_t j, journal_walk_cb_t cb, void *ctx)
 	journal_metadata_t md = { 0 };
 	journal_read_t *read = NULL;
 	changeset_t ch;
-	bool at_least_one = false, zone_in_j = false;
+	bool zone_in_j = false;
 	ret = just_load_md(j, &md, &zone_in_j);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -293,19 +323,8 @@ read_one_special:
 		ret = cb(true, NULL, ctx);
 	}
 
-	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && md.first_serial != md.serial_to &&
-	    ret == KNOT_EOK) {
-		ret = journal_read_begin(j, false, md.first_serial, &read);
-		while (ret == KNOT_EOK && journal_read_changeset(read, &ch)) {
-			ret = cb(false, &ch, ctx);
-			at_least_one = true;
-			journal_read_clear_changeset(&ch);
-		}
-		ret = journal_read_get_error(read, ret);
-		journal_read_end(read);
-	}
-	if (!at_least_one && ret == KNOT_EOK) {
-		ret = cb(false, NULL, ctx);
+	if (ret == KNOT_EOK) {
+		ret = journal_walk_from(j, md.first_serial, cb, ctx);
 	}
 	return ret;
 }
