@@ -507,10 +507,13 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp,
 		                                    tcp_reuseport);
-		if (new_if != NULL) {
-			memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
-			free(new_if);
+		if (new_if == NULL) {
+			free(rundir);
+			return KNOT_ERROR;
 		}
+		memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
+		free(new_if);
+
 		conf_val_next(&listen_val);
 	}
 	free(rundir);
@@ -525,10 +528,12 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		log_info("binding to XDP interface %s", addr_str);
 
 		iface_t *new_if = server_init_xdp_iface(&addr, &thread_id);
-		if (new_if != NULL) {
-			memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
-			free(new_if);
+		if (new_if == NULL) {
+			return KNOT_ERROR;
 		}
+		memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
+		free(new_if);
+
 		conf_val_next(&lisxdp_val);
 	}
 	assert(real_nifs <= nifs);
@@ -930,7 +935,7 @@ int server_reload(server_t *server)
 		log_reconfigure(conf());
 	}
 	if (full || (flags & CONF_IO_FRLD_SRV)) {
-		server_reconfigure(conf(), server);
+		(void)server_reconfigure(conf(), server);
 		warn_server_reconfigure(conf(), server);
 		stats_reconfigure(conf(), server);
 	}
@@ -1034,10 +1039,10 @@ static int reconfigure_timer_db(conf_t *conf, server_t *server)
 	return ret;
 }
 
-void server_reconfigure(conf_t *conf, server_t *server)
+int server_reconfigure(conf_t *conf, server_t *server)
 {
 	if (conf == NULL || server == NULL) {
-		return;
+		return KNOT_EINVAL;
 	}
 
 	int ret;
@@ -1064,6 +1069,7 @@ void server_reconfigure(conf_t *conf, server_t *server)
 		if ((ret = configure_sockets(conf, server)) != KNOT_EOK) {
 			log_error("failed to configure server sockets (%s)",
 			          knot_strerror(ret));
+			return ret;
 		}
 	}
 
@@ -1084,6 +1090,8 @@ void server_reconfigure(conf_t *conf, server_t *server)
 		log_error("failed to reconfigure Timer DB (%s)",
 		          knot_strerror(ret));
 	}
+
+	return KNOT_EOK;
 }
 
 void server_update_zones(conf_t *conf, server_t *server)
