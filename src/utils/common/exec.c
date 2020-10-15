@@ -244,6 +244,21 @@ static void print_edns_client_subnet(const uint8_t *data, uint16_t len)
 	printf("%s/%u/%u", addr_str, ecs.source_len, ecs.scope_len);
 }
 
+static void print_edns_option_errcode(const uint8_t *data, uint16_t len)
+{
+	if (len < 2) {
+		printf("(malformed)");
+		return;
+	}
+	uint16_t errcode = be16toh(*(uint16_t *)data);
+	const char *strerr = knot_edns_extended_strerr(errcode);
+	if (len > 2) {
+		printf("%hu (%s): '%.*s'", errcode, strerr, (int)(len - 2), data + 2);
+	} else {
+		printf("%hu (%s)", errcode, strerr);
+	}
+}
+
 static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 {
 	char unknown_ercode[64] = "";
@@ -298,6 +313,10 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 		case KNOT_EDNS_OPTION_COOKIE:
 			printf(";; COOKIE: ");
 			print_hex(opt_data, opt_len);
+			break;
+		case KNOT_EDNS_OPTION_ERRCODE:
+			printf(";; ERRCODE: ");
+			print_edns_option_errcode(opt_data, opt_len);
 			break;
 		default:
 			printf(";; Option (%u): ", opt_code);

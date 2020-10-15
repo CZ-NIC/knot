@@ -682,3 +682,47 @@ int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
 
 	return KNOT_EOK;
 }
+
+struct error {
+	int code;
+	const char *message;
+};
+
+static const struct error extended_errors[] = {
+	{ KNOT_EDOPERR_OTHER,            "Other" },
+	{ KNOT_EDOPERR_DNSKEY_ALG,       "Unsupported DNSKEY Algorithm" },
+	{ KNOT_EDOPERR_DS_DIGEST,        "Unsupported DS Digest Type" },
+	{ KNOT_EDOPERR_STALE,            "Stale Answer" },
+	{ KNOT_EDOPERR_FORGED,           "Forged Answer" },
+	{ KNOT_EDOPERR_INDETERMINATE,    "DNSSEC Indeterminate" },
+	{ KNOT_EDOPERR_BOGUS,            "DNSSEC Bogus" },
+	{ KNOT_EDOPERR_SIG_EXPIRED,      "Signature Expired" },
+	{ KNOT_EDOPERR_SIG_NOTYET,       "Signature Not Yet Valid" },
+	{ KNOT_EDOPERR_DNSKEY_MISS,      "DNSKEY Missing" },
+	{ KNOT_EDOPERR_RRSIG_MISS,       "RRSIGs Missing" },
+	{ KNOT_EDOPERR_DNSKEY_BIT,       "No Zone Key Bit Set" },
+	{ KNOT_EDOPERR_NSEC_MISS,        "NSEC Missing" },
+	{ KNOT_EDOPERR_CACHED_ERR,       "Cached Error" },
+	{ KNOT_EDOPERR_NOT_READY,        "Not Ready" },
+	{ KNOT_EDOPERR_BLOCKED,          "Blocked" },
+	{ KNOT_EDOPERR_CENSORED,         "Censored" },
+	{ KNOT_EDOPERR_FILTERED,         "Filtered" },
+	{ KNOT_EDOPERR_PROHIBITED,       "Prohibited" },
+	{ KNOT_EDOPERR_STALE_NXD,        "Stale NXDOMAIN Answer" },
+	{ KNOT_EDOPERR_NOTAUTH,          "Not Authoritative" },
+	{ KNOT_EDOPERR_NOTSUP,           "Not Supported" },
+	{ KNOT_EDOPERR_NREACH_AUTH,      "No Reachable Authority" },
+	{ KNOT_EDOPERR_NETWORK,          "Network Error" },
+	{ KNOT_EDOPERR_INV_DATA,         "Invalid Data" },
+};
+
+_public_
+const char *knot_edns_extended_strerr(uint16_t exterr_code)
+{
+	for (int i = 0; i < KNOT_EDOPERR_COUNT; i++) {
+		if (exterr_code == extended_errors[i].code) {
+			return extended_errors[i].message;
+		}
+	}
+	return "Unknown Code";
+}
