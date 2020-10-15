@@ -497,6 +497,8 @@ src/utils/kxdpgun/popenve.h
 src/utils/kzonecheck/main.c
 src/utils/kzonecheck/zone_check.c
 src/utils/kzonecheck/zone_check.h
+src/utils/kzonesign/crazy_sign.c
+src/utils/kzonesign/crazy_sign.h
 src/utils/kzonesign/main.c
 tests-fuzz/fuzz_dname_from_str.c
 tests-fuzz/fuzz_dname_to_str.c

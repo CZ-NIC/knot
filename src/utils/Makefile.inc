@@ -138,6 +138,8 @@ kzonecheck_SOURCES = \
 	utils/kzonecheck/zone_check.h
 
 kzonesign_SOURCES = \
+	utils/kzonesign/crazy_sign.c		\
+	utils/kzonesign/crazy_sign.h		\
 	utils/kzonesign/main.c
 
 keymgr_SOURCES = \

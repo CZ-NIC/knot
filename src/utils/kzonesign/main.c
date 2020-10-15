@@ -22,6 +22,7 @@
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
 #include "utils/common/params.h"
+#include "utils/kzonesign/crazy_sign.h"
 
 #define PROGRAM_NAME "kzonesign"
 
@@ -74,12 +75,14 @@ int main(int argc, char *argv[])
 	zone_sign_roll_flags_t rollover = 0;
 	int64_t timestamp = 0;
 	zone_sign_reschedule_t next_sign = { 0 };
+	bool crazy_sign = false;
 
 	struct option opts[] = {
 		{ "config",    required_argument, NULL, 'c' },
 		{ "outdir",    required_argument, NULL, 'o' },
 		{ "rollover",  no_argument,       NULL, 'r' },
 		{ "time",      required_argument, NULL, 't' },
+		{ "crazy",     no_argument,       NULL, 1 },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
 		{ NULL }
@@ -105,6 +108,9 @@ int main(int argc, char *argv[])
 				print_help();
 				return EXIT_FAILURE;
 			}
+			break;
+		case 1:
+			crazy_sign = true;
 			break;
 		case 'h':
 			print_help();
@@ -174,6 +180,30 @@ int main(int argc, char *argv[])
 
 	kasp_db_ensure_init(&kasp_db, conf());
 	zone_struct->kaspdb = &kasp_db;
+
+	if (crazy_sign) {
+		zone_contents_t *temp = zone_struct->contents;
+		zone_struct->contents = up.new_cont;
+
+		ret = crazy_sign_zone(conf(), zone_struct);
+		if (ret != KNOT_EOK) {
+			printf("Failed to crazy-sign the zone (%s)\n", knot_strerror(ret));
+		} else {
+			if (global_outdir == NULL) {
+				char *zonefile = conf_zonefile(conf(), zone_name);
+				ret = zonefile_write(zonefile, zone_struct->contents);
+				free(zonefile);
+			} else {
+				ret = zone_dump_to_dir(conf(), zone_struct, global_outdir);
+			}
+			if (ret != KNOT_EOK) {
+				printf("Failed to flush crazy-signed zone file (%s)\n", knot_strerror(ret));
+			}
+		}
+		zone_struct->contents = temp;
+		zone_update_clear(&up);
+		goto fail;
+	}
 
 	ret = knot_dnssec_zone_sign(&up, 0, rollover, timestamp, &next_sign);
 	if (ret == KNOT_DNSSEC_ENOKEY) { // exception: allow generating initial keys

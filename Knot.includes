@@ -6,3 +6,4 @@ src/libzscanner
 tests
 tests-fuzz
 tests-fuzz/knotd_wrap
+src/utils/kzonesign
