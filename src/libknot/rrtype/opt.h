@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -85,10 +85,10 @@ enum {
 	KNOT_EDNS_OPTION_CHAIN         = 13,
 
 	/*! \brief EDNS Extended error code. */
-	KNOT_EDNS_OPTION_ERRCODE       = 15,
+	KNOT_EDNS_OPTION_EDE           = 15,
 
-	/*! \brief Maximal currently relevant option code. */
-	KNOT_EDNS_MAX_OPTION_CODE      = 16,
+	/*! \brief Maximal currently known option code. */
+	KNOT_EDNS_MAX_OPTION_CODE      = 17,
 };
 
 /*!
@@ -96,33 +96,31 @@ enum {
  * \warning Don't mix this up with EDNS extended errcode.
  */
 enum {
-	KNOT_EDOPERR_OTHER            = 0,
-	KNOT_EDOPERR_DNSKEY_ALG       = 1,
-	KNOT_EDOPERR_DS_DIGEST        = 2,
-	KNOT_EDOPERR_STALE            = 3,
-	KNOT_EDOPERR_FORGED           = 4,
-	KNOT_EDOPERR_INDETERMINATE    = 5,
-	KNOT_EDOPERR_BOGUS            = 6,
-	KNOT_EDOPERR_SIG_EXPIRED      = 7,
-	KNOT_EDOPERR_SIG_NOTYET       = 8,
-	KNOT_EDOPERR_DNSKEY_MISS      = 9,
-	KNOT_EDOPERR_RRSIG_MISS       = 10,
-	KNOT_EDOPERR_DNSKEY_BIT       = 11,
-	KNOT_EDOPERR_NSEC_MISS        = 12,
-	KNOT_EDOPERR_CACHED_ERR       = 13,
-	KNOT_EDOPERR_NOT_READY        = 14,
-	KNOT_EDOPERR_BLOCKED          = 15,
-	KNOT_EDOPERR_CENSORED         = 16,
-	KNOT_EDOPERR_FILTERED         = 17,
-	KNOT_EDOPERR_PROHIBITED       = 18,
-	KNOT_EDOPERR_STALE_NXD        = 19,
-	KNOT_EDOPERR_NOTAUTH          = 20,
-	KNOT_EDOPERR_NOTSUP           = 21,
-	KNOT_EDOPERR_NREACH_AUTH      = 22,
-	KNOT_EDOPERR_NETWORK          = 23,
-	KNOT_EDOPERR_INV_DATA         = 24,
-
-	KNOT_EDOPERR_COUNT            = 25,
+	KNOT_EDNS_EDE_OTHER            = 0,
+	KNOT_EDNS_EDE_DNSKEY_ALG       = 1,
+	KNOT_EDNS_EDE_DS_DIGEST        = 2,
+	KNOT_EDNS_EDE_STALE            = 3,
+	KNOT_EDNS_EDE_FORGED           = 4,
+	KNOT_EDNS_EDE_INDETERMINATE    = 5,
+	KNOT_EDNS_EDE_BOGUS            = 6,
+	KNOT_EDNS_EDE_SIG_EXPIRED      = 7,
+	KNOT_EDNS_EDE_SIG_NOTYET       = 8,
+	KNOT_EDNS_EDE_DNSKEY_MISS      = 9,
+	KNOT_EDNS_EDE_RRSIG_MISS       = 10,
+	KNOT_EDNS_EDE_DNSKEY_BIT       = 11,
+	KNOT_EDNS_EDE_NSEC_MISS        = 12,
+	KNOT_EDNS_EDE_CACHED_ERR       = 13,
+	KNOT_EDNS_EDE_NOT_READY        = 14,
+	KNOT_EDNS_EDE_BLOCKED          = 15,
+	KNOT_EDNS_EDE_CENSORED         = 16,
+	KNOT_EDNS_EDE_FILTERED         = 17,
+	KNOT_EDNS_EDE_PROHIBITED       = 18,
+	KNOT_EDNS_EDE_STALE_NXD        = 19,
+	KNOT_EDNS_EDE_NOTAUTH          = 20,
+	KNOT_EDNS_EDE_NOTSUP           = 21,
+	KNOT_EDNS_EDE_NREACH_AUTH      = 22,
+	KNOT_EDNS_EDE_NETWORK          = 23,
+	KNOT_EDNS_EDE_INV_DATA         = 24,
 };
 
 /* Helpers for splitting extended RCODE. */
@@ -619,6 +617,6 @@ int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
  *
  * \warning Don't use with ext_errcode from knot_edns_get_ext_rcode().
  */
-const char *knot_edns_extended_strerr(uint16_t exterr_code);
+const char *knot_edns_ede_strerr(uint16_t exterr_code);
 
 /*! @} */

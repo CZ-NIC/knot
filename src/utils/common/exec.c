@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -244,14 +244,14 @@ static void print_edns_client_subnet(const uint8_t *data, uint16_t len)
 	printf("%s/%u/%u", addr_str, ecs.source_len, ecs.scope_len);
 }
 
-static void print_edns_option_errcode(const uint8_t *data, uint16_t len)
+static void print_ede(const uint8_t *data, uint16_t len)
 {
 	if (len < 2) {
 		printf("(malformed)");
 		return;
 	}
 	uint16_t errcode = be16toh(*(uint16_t *)data);
-	const char *strerr = knot_edns_extended_strerr(errcode);
+	const char *strerr = knot_edns_ede_strerr(errcode);
 	if (len > 2) {
 		printf("%hu (%s): '%.*s'", errcode, strerr, (int)(len - 2), data + 2);
 	} else {
@@ -314,9 +314,9 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 			printf(";; COOKIE: ");
 			print_hex(opt_data, opt_len);
 			break;
-		case KNOT_EDNS_OPTION_ERRCODE:
-			printf(";; ERRCODE: ");
-			print_edns_option_errcode(opt_data, opt_len);
+		case KNOT_EDNS_OPTION_EDE:
+			printf(";; EDE: ");
+			print_ede(opt_data, opt_len);
 			break;
 		default:
 			printf(";; Option (%u): ", opt_code);
