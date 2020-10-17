@@ -65,6 +65,7 @@ libknot.so.11 libknot11 #MINVER#
  knot_edns_cookie_server_generate@Base 3.0.0
  knot_edns_cookie_size@Base 3.0.0
  knot_edns_cookie_write@Base 3.0.0
+ knot_edns_ede_strerr@Base 3.0.2
  knot_edns_get_ext_rcode@Base 3.0.0
  knot_edns_get_option@Base 3.0.0
  knot_edns_get_options@Base 3.0.0
