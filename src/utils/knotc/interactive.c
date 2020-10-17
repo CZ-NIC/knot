@@ -382,6 +382,7 @@ int interactive_loop(params_t *process_params)
 
 	HistEvent hev = { 0 };
 	history(hist, &hev, H_SETSIZE, 100);
+	history(hist, &hev, H_SETUNIQUE, 1);
 	el_set(el, EL_HIST, history, hist);
 	history(hist, &hev, H_LOAD, hist_file);
 
