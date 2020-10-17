@@ -399,8 +399,6 @@ int interactive_loop(params_t *process_params)
 	int count;
 	const char *line;
 	while ((line = el_gets(el, &count)) != NULL && count > 0) {
-		history(hist, &hev, H_ENTER, line);
-
 		Tokenizer *tok = tok_init(NULL);
 
 		// Tokenize the current line.
@@ -408,14 +406,16 @@ int interactive_loop(params_t *process_params)
 		const char **argv;
 		const LineInfo *li = el_line(el);
 		int ret = tok_line(tok, li, &argc, &argv, NULL, NULL);
-		if (ret != 0) {
+		if (ret != 0 || argc == 0) {
 			continue;
 		}
+
+		history(hist, &hev, H_ENTER, line);
+		history(hist, &hev, H_SAVE, hist_file);
 
 		// Process the command.
 		ret = process_cmd(argc, argv, process_params);
 
-		history(hist, &hev, H_SAVE, hist_file);
 		tok_reset(tok);
 		tok_end(tok);
 
