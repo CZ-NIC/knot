@@ -184,7 +184,26 @@ Miscellaneous changes
 Upgrade 2.9.x to 3.0.x
 ======================
 
-Knot DNS version 3.0.x is functionally compatible with 2.9.x.
+Knot DNS version 3.0.x is functionally compatible with 2.9.x with the following
+exceptions.
+
+ACL
+---
+
+Configuration option :ref:`acl_update_owner_name` is newly FQDN-sensitive.
+It means that values ``a.example.com`` and ``a.example.com.`` are not equivalent.
+
+Module synthrecord
+------------------
+
+:ref:`Reverse IPv6 address shortening<mod-synthrecord_reverse-short>` is enabled by default.
+For example, the module generates::
+
+  dynamic-2620-0-b61-100--1.test. 400 IN AAAA 2620:0:b61:100::1
+
+instead of::
+
+  dynamic-2620-0000-0b61-0100-0000-0000-0000-0001.test. 400 IN AAAA 2620:0:b61:100::1
 
 Query module API change
 -----------------------
