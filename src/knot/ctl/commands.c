@@ -1642,7 +1642,7 @@ static int send_block(conf_io_t *io)
 	if (io->key0 != NULL) {
 		data[KNOT_CTL_IDX_SECTION] = io->key0->name + 1;
 	}
-	if (io->key1 != NULL) {
+	if (io->key1 != NULL && !io->id_as_data) {
 		data[KNOT_CTL_IDX_ITEM] = io->key1->name + 1;
 	}
 
@@ -1663,11 +1663,7 @@ static int send_block(conf_io_t *io)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		if (io->id_as_data) {
-			data[KNOT_CTL_IDX_DATA] = id;
-		} else {
-			data[KNOT_CTL_IDX_ID] = id;
-		}
+		data[KNOT_CTL_IDX_ID] = id;
 	}
 
 	if (io->data.val == NULL && io->data.bin == NULL) {
