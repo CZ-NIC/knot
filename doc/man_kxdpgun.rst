@@ -53,6 +53,10 @@ Options
   Network interface for outgoing communication. This can be useful in situations
   when the interfaces are in a bond for example.
 
+**-l**, **--local** *localIP*\ [**/**\ *prefix*]
+  Override the auto-detected source IP address. If an address range is specified
+  instead, various IPs from the range will be used for different queries uniformly.
+
 *targetIP*
   The IPv4 or IPv6 address of remote destination.
 
