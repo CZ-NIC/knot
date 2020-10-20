@@ -66,6 +66,7 @@ typedef struct {
 	uint8_t		local_mac[6], target_mac[6];
 	struct in_addr	local_ipv4, target_ipv4;
 	struct in6_addr	local_ipv6, target_ipv6;
+	uint8_t		local_ip_range;
 	bool		ipv6;
 	uint16_t	target_port;
 	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_ALL, KNOT_XDP_LISTEN_PORT_DROP
@@ -96,20 +97,29 @@ inline static uint64_t timer_end(struct timespec *timesp)
 	return res;
 }
 
-static void set_sockaddr(void *sa_in, struct in_addr *addr, uint16_t port)
+static void set_sockaddr(void *sa_in, struct in_addr *addr, uint16_t port, uint64_t increment)
 {
 	struct sockaddr_in *saddr = sa_in;
 	saddr->sin_family = AF_INET;
 	saddr->sin_port = htobe16(port);
 	saddr->sin_addr = *addr;
+	if (increment > 0) {
+		saddr->sin_addr.s_addr = htobe32(be32toh(addr->s_addr) + increment);
+	}
 }
 
-static void set_sockaddr6(void *sa_in, struct in6_addr *addr, uint16_t port)
+static void set_sockaddr6(void *sa_in, struct in6_addr *addr, uint16_t port, uint64_t increment)
 {
 	struct sockaddr_in6 *saddr = sa_in;
 	saddr->sin6_family = AF_INET6;
 	saddr->sin6_port = htobe16(port);
 	saddr->sin6_addr = *addr;
+	if (increment > 0) {
+		saddr->sin6_addr.__in6_u.__u6_addr32[2] =
+			htobe32(be32toh(addr->__in6_u.__u6_addr32[2]) + (increment >> 32));
+		saddr->sin6_addr.__in6_u.__u6_addr32[3] =
+			htobe32(be32toh(addr->__in6_u.__u6_addr32[3]) + (increment & 0xffffffff));
+	}
 }
 
 static void next_payload(struct pkt_payload **payload, int increment)
@@ -139,11 +149,13 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 
 		uint16_t local_port = LOCAL_PORT_MIN + unique % (LOCAL_PORT_MAX + 1 - LOCAL_PORT_MIN);
 		if (ctx->ipv6) {
-			set_sockaddr6(&pkts[i].ip_from, &ctx->local_ipv6, local_port);
-			set_sockaddr6(&pkts[i].ip_to, &ctx->target_ipv6, ctx->target_port);
+			uint64_t ip_incr = unique % (1 << (128 - ctx->local_ip_range));
+			set_sockaddr6(&pkts[i].ip_from, &ctx->local_ipv6, local_port, ip_incr);
+			set_sockaddr6(&pkts[i].ip_to, &ctx->target_ipv6, ctx->target_port, 0);
 		} else {
-			set_sockaddr(&pkts[i].ip_from, &ctx->local_ipv4, local_port);
-			set_sockaddr(&pkts[i].ip_to, &ctx->target_ipv4, ctx->target_port);
+			uint64_t ip_incr = unique % (1 << (32 - ctx->local_ip_range));
+			set_sockaddr(&pkts[i].ip_from, &ctx->local_ipv4, local_port, ip_incr);
+			set_sockaddr(&pkts[i].ip_to, &ctx->target_ipv4, ctx->target_port, 0);
 		}
 
 		memcpy(pkts[i].eth_from, ctx->local_mac, 6);
@@ -447,12 +459,12 @@ static int remoteIP2local(const char *ip_str, bool ipv6, char devname[], void *l
 	return ret;
 }
 
-static bool configure_target(char *target_str, xdp_gun_ctx_t *ctx)
+static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ctx)
 {
+	int val;
 	char *at = strrchr(target_str, '@');
-	int newport;
-	if (at != NULL && (newport = atoi(at + 1)) > 0 && newport <= 0xffff) {
-		ctx->target_port = newport;
+	if (at != NULL && (val = atoi(at + 1)) > 0 && val <= 0xffff) {
+		ctx->target_port = val;
 		*at = '\0';
 	}
 
@@ -481,18 +493,41 @@ static bool configure_target(char *target_str, xdp_gun_ctx_t *ctx)
 		       target_str, knot_strerror(ret));
 		return false;
 	}
-	ret = remoteIP2local(target_str, ctx->ipv6, dev2, ctx->ipv6 ? (void *)&ctx->local_ipv6 :
-	                                                              (void *)&ctx->local_ipv4);
-	if (ret != KNOT_EOK) {
-		printf("can't get local IP reachig remote `%s`: %s\n",
-		       target_str, knot_strerror(ret));
-		return false;
+	ctx->local_ip_range = ctx->ipv6 ? 128 : 32; // by default use one IP
+	if (local_ip != NULL) {
+		at = strrchr(local_ip, '/');
+		if (at != NULL && (val = atoi(at + 1)) > 0 && val <= ctx->local_ip_range) {
+			ctx->local_ip_range = val;
+			*at = '\0';
+		}
+		if (ctx->ipv6) {
+			if (ctx->local_ip_range < 64 ||
+			    inet_pton(AF_INET6, local_ip, &ctx->local_ipv6) <= 0) {
+				printf("invalid local IPv6 or unsupported prefix length\n");
+				return false;
+			}
+		} else {
+			if (inet_pton(AF_INET, local_ip, &ctx->local_ipv4) <= 0) {
+				printf("invalid local IPv4\n");
+				return false;
+			}
+		}
+	} else {
+		ret = remoteIP2local(target_str, ctx->ipv6, dev2, ctx->ipv6 ? (void *)&ctx->local_ipv6 :
+		                                                              (void *)&ctx->local_ipv4);
+		if (ret != KNOT_EOK) {
+			printf("can't get local IP reachig remote `%s`: %s\n",
+			       target_str, knot_strerror(ret));
+			return false;
+		}
+		if (strncmp(dev1, dev2, IFNAMSIZ) != 0) {
+			printf("device names coming from `ip` and `arp` differ (%s != %s)\n",
+			       dev1, dev2);
+			return false;
+		}
 	}
-	if (strncmp(dev1, dev2, IFNAMSIZ) != 0) {
-		printf("device names coming from `ip` and `arp` differ (%s != %s)\n",
-		       dev1, dev2);
-		return false;
-	} else if (ctx->dev[0] == '\0') {
+
+	if (ctx->dev[0] == '\0') {
 		strlcpy(ctx->dev, dev1, IFNAMSIZ);
 	}
 	ret = dev2mac(ctx->dev, ctx->local_mac);
@@ -515,7 +550,8 @@ static bool configure_target(char *target_str, xdp_gun_ctx_t *ctx)
 
 static void print_help(void) {
 	printf("Usage: %s [-t duration] [-Q qps] [-b batch_size] [-r] [-p port] "
-	       "[-F cpu_affinity] [-I interface] -i queries_file dest_ip\n", PROGRAM_NAME);
+	       "[-F cpu_affinity] [-I interface] [-l local_ip] -i queries_file dest_ip\n",
+	       PROGRAM_NAME);
 }
 
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
@@ -530,14 +566,15 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "port",      required_argument, NULL, 'p' },
 		{ "affinity",  required_argument, NULL, 'F' },
 		{ "interface", required_argument, NULL, 'I' },
+		{ "local",     required_argument, NULL, 'l' },
 		{ "infile",    required_argument, NULL, 'i' },
 		{ NULL }
 	};
 
 	int opt = 0, arg;
 	double argf;
-	char *argcp;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:F:I:i:", opts, NULL)) != -1) {
+	char *argcp, *local_ip = NULL;
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:F:I:l:i:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -595,6 +632,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		case 'I':
 			strlcpy(ctx->dev, optarg, IFNAMSIZ);
 			break;
+		case 'l':
+			local_ip = optarg;
+			break;
 		case 'i':
 			if (!load_queries(optarg)) {
 				printf("failed to load queries from file '%s'\n", optarg);
@@ -606,7 +646,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		}
 	}
 	if (global_payloads == NULL || argc - optind != 1 ||
-	    !configure_target(argv[optind], ctx)) {
+	    !configure_target(argv[optind], local_ip, ctx)) {
 		return false;
 	}
 
