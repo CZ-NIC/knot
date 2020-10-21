@@ -491,6 +491,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
 	iface_t *newlist = calloc(nifs, sizeof(*newlist));
 	if (newlist == NULL) {
+		log_error("failed to allocate memory for network sockets");
 		return KNOT_ENOMEM;
 	}
 
@@ -1067,8 +1068,6 @@ int server_reconfigure(conf_t *conf, server_t *server)
 
 		/* Configure sockets. */
 		if ((ret = configure_sockets(conf, server)) != KNOT_EOK) {
-			log_error("failed to configure server sockets (%s)",
-			          knot_strerror(ret));
 			return ret;
 		}
 	}
