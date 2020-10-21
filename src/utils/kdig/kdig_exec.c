@@ -741,7 +741,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 	}
 
 	// Check for BADCOOKIE RCODE and repeat query with the new cookie if required.
-	if (knot_pkt_ext_rcode(reply) == KNOT_RCODE_BADCOOKIE && query_ctx->badcookie) {
+	if (knot_pkt_ext_rcode(reply) == KNOT_RCODE_BADCOOKIE && query_ctx->badcookie > 0) {
 		printf("\n");
 		WARN("bad cookie from %s, retrying with the received one\n",
 		     net->remote_str);
@@ -769,6 +769,8 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 		// Restore the original client cookie.
 		new_ctx.cc = query_ctx->cc;
+
+		new_ctx.badcookie--;
 
 		knot_pkt_t *new_query = create_query_packet(&new_ctx);
 		ret = process_query_packet(new_query, net, &new_ctx, ignore_tc,

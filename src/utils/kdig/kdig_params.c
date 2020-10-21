@@ -43,6 +43,8 @@
 #define DEFAULT_ALIGNMENT_SIZE		128
 #define DEFAULT_TLS_OCSP_STAPLING	(7 * 24 * 3600)
 
+#define BADCOOKIE_RETRY_MAX		10
+
 static const flags_t DEFAULT_FLAGS_DIG = {
 	.aa_flag = false,
 	.tc_flag = false,
@@ -1005,14 +1007,14 @@ static int opt_nocookie(const char *arg, void *query)
 static int opt_badcookie(const char *arg, void *query)
 {
 	query_t *q = query;
-	q->badcookie = true;
+	q->badcookie = BADCOOKIE_RETRY_MAX;
 	return KNOT_EOK;
 }
 
 static int opt_nobadcookie(const char *arg, void *query)
 {
 	query_t *q = query;
-	q->badcookie = false;
+	q->badcookie = 0;
 	return KNOT_EOK;
 }
 
@@ -1480,7 +1482,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->edns = -1;
 		query->cc.len = 0;
 		query->sc.len = 0;
-		query->badcookie = true;
+		query->badcookie = BADCOOKIE_RETRY_MAX;
 		query->padding = -1;
 		query->alignment = 0;
 		tls_params_init(&query->tls);
