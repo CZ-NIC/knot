@@ -35,7 +35,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 \fBkxdpgun\fP [\fIoptions\fP] \fB\-i\fP \fIfilename\fP \fItargetIP\fP
 .SH DESCRIPTION
 .sp
-Powerful generator of DNS traffic, sending and receving packets through XDP.
+Powerful generator of DNS traffic, sending and receiving packets through XDP.
 .sp
 Queries are generated according to a textual file which is read sequentially
 in a loop until a configured duration elapses. The order of queries is not
@@ -43,7 +43,7 @@ guaranteed. Responses are received (unless disabled) and counted, but not
 checked against queries.
 .sp
 The number of parallel threads is autodected according to the number of queues
-configured for the nework interface.
+configured for the network interface.
 .SS Options
 .INDENT 0.0
 .TP
