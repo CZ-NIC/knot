@@ -11,7 +11,7 @@ Synopsis
 Description
 -----------
 
-Powerful generator of DNS traffic, sending and receving packets through XDP.
+Powerful generator of DNS traffic, sending and receiving packets through XDP.
 
 Queries are generated according to a textual file which is read sequentially
 in a loop until a configured duration elapses. The order of queries is not
@@ -19,7 +19,7 @@ guaranteed. Responses are received (unless disabled) and counted, but not
 checked against queries.
 
 The number of parallel threads is autodected according to the number of queues
-configured for the nework interface.
+configured for the network interface.
 
 Options
 .......
