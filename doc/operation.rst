@@ -1067,8 +1067,8 @@ over UDP queries. Each XDP worker handles one RX and TX network queue pair.
 Pre-requisites
 --------------
 
-* Linux kernel 4.18+ (5.x+ is recommended for optimal performance). The XDP mode
-  isn't supported in other operating systems.
+* Linux kernel 4.18+ (5.x+ is recommended for optimal performance) compiled with
+  the `CONFIG_XDP_SOCKETS=y` option. The XDP mode isn't supported in other operating systems.
 * A multiqueue network card, which offers enough Combined RX/TX channels, with
   native XDP support is highly recommended. Successfully tested cards:
 
