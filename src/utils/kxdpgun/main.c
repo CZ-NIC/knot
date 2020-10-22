@@ -489,7 +489,7 @@ static bool configure_target(char *target_str, xdp_gun_ctx_t *ctx)
 		return false;
 	}
 	if (strncmp(dev1, dev2, IFNAMSIZ) != 0) {
-		printf("device names comming from `ip` and `arp` differ (%s != %s)\n",
+		printf("device names coming from `ip` and `arp` differ (%s != %s)\n",
 		       dev1, dev2);
 		return false;
 	} else if (ctx->dev[0] == '\0') {
