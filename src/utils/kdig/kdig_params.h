@@ -114,7 +114,7 @@ struct query {
 	/*!< EDNS server cookie. */
 	knot_edns_cookie_t sc;
 	/*!< Repeat query after BADCOOKIE. */
-	bool		badcookie;
+	int		badcookie;
 	/*!< EDNS0 padding (16unsigned + -1 ~ uninitialized, -2 ~ default, -3 ~ none). */
 	int32_t		padding;
 	/*!< Query alignment with EDNS0 padding (0 ~ uninitialized). */
