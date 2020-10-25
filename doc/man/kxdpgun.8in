@@ -76,6 +76,10 @@ Path to a file with query templates.
 Network interface for outgoing communication. This can be useful in situations
 when the interfaces are in a bond for example.
 .TP
+\fB\-l\fP, \fB\-\-local\fP \fIlocalIP\fP[\fB/\fP\fIprefix\fP]
+Override the auto\-detected source IP address. If an address range is specified
+instead, various IPs from the range will be used for different queries uniformly.
+.TP
 \fItargetIP\fP
 The IPv4 or IPv6 address of remote destination.
 .TP
