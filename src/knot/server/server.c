@@ -509,6 +509,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp,
 		                                    tcp_reuseport);
 		if (new_if == NULL) {
+			server_deinit_iface_list(newlist, nifs);
 			free(rundir);
 			return KNOT_ERROR;
 		}
@@ -530,6 +531,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 		iface_t *new_if = server_init_xdp_iface(&addr, &thread_id);
 		if (new_if == NULL) {
+			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
 		}
 		memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
