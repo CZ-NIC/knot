@@ -16,7 +16,8 @@
 
 #pragma once
 
+#include "knot/zone/semantic-check.h"
 #include "libknot/libknot.h"
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name,
-               FILE *outfile, bool dnssec, time_t time);
+               FILE *outfile, semcheck_optional_t optional, time_t time);

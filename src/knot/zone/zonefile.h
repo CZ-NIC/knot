@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ typedef struct zcreator {
  */
 typedef struct {
 	char *source;                /*!< Zone source file. */
-	bool semantic_checks;        /*!< Do semantic checks. */
+	semcheck_optional_t semantic_checks;  /*!< Do semantic checks. */
 	sem_handler_t *err_handler;  /*!< Semantic checks error handler. */
 	zcreator_t *creator;         /*!< Loader context. */
 	zs_scanner_t scanner;        /*!< Zone scanner. */
@@ -59,7 +59,7 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
  * \retval NULL on error.
  */
 int zonefile_open(zloader_t *loader, const char *source,
-                  const knot_dname_t *origin, bool semantic_checks, time_t time);
+                  const knot_dname_t *origin, semcheck_optional_t semantic_checks, time_t time);
 
 /*!
  * \brief Loads zone from a zone file.

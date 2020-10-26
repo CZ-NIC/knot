@@ -1,10 +1,123 @@
-;; Zone dump (Knot DNS 2.5.0-dev)
-example.com.        	3600	SOA	dns2.example.com. hostmaster.example.com. 2010135808 10800 3600 1209600 7200
-example.com.        	3600	NS	dns2.example.com.
-example.com.        	3600	MX	10 mail.example.com.
-example.com.        	3600	DNSKEY	256 3 8 AwEAAdKraxDdGTL4HDOkXTDI1Md1UdHuYhVwYkB+u2umVjTJ1H9Qb2oBryqwXI+gklnuCqrH1znkDvzGEAeHRQUCbtKbjmqErTAcRRHW3D+6jsOGXzbyGCfbyzRBwsbNCLWr3ONpPi5JOWEeCUJfyc/mRXcmh5uYl1JvzAM1zprtljZt
-example.com.        	3600	DNSKEY	257 3 8 AwEAAcQ1EqTPebcJyUnpxO3Xjx6ehRtsiZYToARoJsJG12XR6Ci9yy4SCCsejtaWIFO4XVfM2BHzFWqmABtQHtN7AazXAFMLsrSE4DYbgk5WmnQv5Jloi6jhhmmXwr8EOi3HR2jdG0gVq/Tax7ztNNZsflJrs3rZs2TVO00BkyyOkmO35jCNbGPUwm5cW1vse137BMa7jAcMyNLPIiQubj1/mJcIyzF2duvfpjBTgEmSvNcXqLfYFjK8lG4NodQG8AcK0MvWqN4mxW/hK0U9nMSjhCnfzPg5tjyqdheWRyhkLGjM/mR7gBhtqoSPMr+2KMJQEHYAd/AP8YgaovS8N1fJyh0=
-example.com.        	3600	DNSKEY	257 3 8 AwEAAetE6qfN/GbtMmvM0PXUTyskauES2FKfjqLVz7EQlfS8iAFWLi1eHjHXDkueZ1OYRzQ4IBy6MIsce4XVXLQoS8njtfaU7c5NZvktH5la7JuH32KYr3PdWL5KDsUdED3GSxfNV+DbcYU80AZxTxy6Bm6EP+DztL1dpYrmqr8JRl+qlSbmLIrPemZFUEQzhiepcYMWviDUz+ixSVzjEzpMCLsrNxA30Ziiq9GKA8KKlFHdAmxuNcH0TzRndpo6bu5nKyJHiREIazHVuPBEzUmHtcWETCDs9UVsbji2Z2ozqLz9cqnfYV/kOD+OZBAqvZ0n/4lgdSiBtvByLCXoWEYIGRs=
-example.com.        	3600	CDNSKEY	257 3 8 AwEAAcQ1EqTPebcJyUnpxO3Xjx6ehRtsiZYToARoJsJG12XR6Ci9yy4SCCsejtaWIFO4XVfM2BHzFWqmABtQHtN7AazXAFMLsrSE4DYbgk5WmnQv5Jloi6jhhmmXwr8EOi3HR2jdG0gVq/Tax7ztNNZsflJrs3rZs2TVO00BkyyOkmO35jCNbGPUwm5cW1vse137BMa7jAcMyNLPIiQubj1/mJcIyzF2duvfpjBTgEmSvNcXqLfYFjK8lG4NodQG8AcK0MvWqN4mxW/hK0U9nMSjhCnfzPg5tjyqdheWRyhkLGjM/mR7gBhtqoSPMr+2KMJQEHYAd/AP8YgaovS8N1fJyh0=
-example.com.        	3600	CDS	53851 4 2 6F8129D687EC387C948E6F4B0AC9AA01481CCEBF7570AFEC582897E7725122D6
-dns2.example.com.   	3600	A	192.0.2.1
+example.com.		3600	IN SOA	dns2.example.com. hostmaster.example.com. (
+					2010135808 ; serial
+					10800      ; refresh (3 hours)
+					3600       ; retry (1 hour)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20201012144756 33730 example.com.
+					tBomI7xR670RBUw9IjNL2A5eMVKtYqDUdhiq
+					XJI3CFdb4j6plfdUF75SfaiCP70aLX8Atzxm
+					2RAzpR6M2Q3gbQ== )
+			3600	NS	dns2.example.com.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20201012144756 33730 example.com.
+					8mHEeq/7fnXpM/CaOFsIqTKyTrixQVZr8V+P
+					Lwn641YbbKniEP+KacrJ7Ul2jt2jCT2cnxC0
+					b9XicHENmd0phA== )
+			3600	MX	10 mail.example.com.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20201012144756 33730 example.com.
+					f8ZdC3vD/oIltQLyL4zBmwo9rRyijN183BGw
+					L6iZ6DnH4BASlUyrGa0IceRH4yD5pP+gnhCc
+					lBzWFgvtEIyPPQ== )
+			7200	NSEC	dns2.example.com. NS SOA MX RRSIG NSEC DNSKEY CDS CDNSKEY
+			7200	RRSIG	NSEC 13 2 7200 (
+					20601231235959 20201012144756 33730 example.com.
+					UK+oQx75Gdn82LKBzht8KxrtwPE5JCBhEMcR
+					hRhHTeMqRUjbbeEOSWRdjg/36329yNYrxC60
+					l7bBcqolo9dDmw== )
+			3600	DNSKEY	256 3 8 (
+					AwEAAdKraxDdGTL4HDOkXTDI1Md1UdHuYhVw
+					YkB+u2umVjTJ1H9Qb2oBryqwXI+gklnuCqrH
+					1znkDvzGEAeHRQUCbtKbjmqErTAcRRHW3D+6
+					jsOGXzbyGCfbyzRBwsbNCLWr3ONpPi5JOWEe
+					CUJfyc/mRXcmh5uYl1JvzAM1zprtljZt
+					) ; ZSK; alg = RSASHA256 ; key id = 48849
+			3600	DNSKEY	256 3 13 (
+					kr0M2egbhUXhH0i6fYiSl+zRH1pU7XhamCdO
+					nPhMEgFa3CsGp61kCuZFulpY0ODh8WrAPZcO
+					qC0tCj5Bz7nWZQ==
+					) ; ZSK; alg = ECDSAP256SHA256 ; key id = 33730
+			3600	DNSKEY	257 3 8 (
+					AwEAAcQ1EqTPebcJyUnpxO3Xjx6ehRtsiZYT
+					oARoJsJG12XR6Ci9yy4SCCsejtaWIFO4XVfM
+					2BHzFWqmABtQHtN7AazXAFMLsrSE4DYbgk5W
+					mnQv5Jloi6jhhmmXwr8EOi3HR2jdG0gVq/Ta
+					x7ztNNZsflJrs3rZs2TVO00BkyyOkmO35jCN
+					bGPUwm5cW1vse137BMa7jAcMyNLPIiQubj1/
+					mJcIyzF2duvfpjBTgEmSvNcXqLfYFjK8lG4N
+					odQG8AcK0MvWqN4mxW/hK0U9nMSjhCnfzPg5
+					tjyqdheWRyhkLGjM/mR7gBhtqoSPMr+2KMJQ
+					EHYAd/AP8YgaovS8N1fJyh0=
+					) ; KSK; alg = RSASHA256 ; key id = 53851
+			3600	DNSKEY	257 3 8 (
+					AwEAAetE6qfN/GbtMmvM0PXUTyskauES2FKf
+					jqLVz7EQlfS8iAFWLi1eHjHXDkueZ1OYRzQ4
+					IBy6MIsce4XVXLQoS8njtfaU7c5NZvktH5la
+					7JuH32KYr3PdWL5KDsUdED3GSxfNV+DbcYU8
+					0AZxTxy6Bm6EP+DztL1dpYrmqr8JRl+qlSbm
+					LIrPemZFUEQzhiepcYMWviDUz+ixSVzjEzpM
+					CLsrNxA30Ziiq9GKA8KKlFHdAmxuNcH0TzRn
+					dpo6bu5nKyJHiREIazHVuPBEzUmHtcWETCDs
+					9UVsbji2Z2ozqLz9cqnfYV/kOD+OZBAqvZ0n
+					/4lgdSiBtvByLCXoWEYIGRs=
+					) ; KSK; alg = RSASHA256 ; key id = 19420
+			3600	DNSKEY	257 3 13 (
+					7fs6TMYYlkkxI1PCunVT9dxcxWVGXu1N7xVv
+					2EUyVYMXSn/Z04URNTaxXcoWuDafy99G8rcT
+					oPycl2oOhc+s0w==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 60664
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20201012144756 60664 example.com.
+					WpjHrB8ZfAhOSjq79gAaPEiQgSxvEatTi8nC
+					AYYpGs4dc1n54iYZ4IjCfMW/etlkZsMzXbVE
+					s6t+Dj/gJ3JKZg== )
+			3600	CDS	53851 4 2 (
+					6F8129D687EC387C948E6F4B0AC9AA01481C
+					CEBF7570AFEC582897E7725122D6 )
+			3600	RRSIG	CDS 13 2 3600 (
+					20601231235959 20201012144756 33730 example.com.
+					IAgBYDhTIYQvmF2vUy72TWoRlPJQGyGErJuT
+					0xxZDStaSfoAVM3Hr6VEqIq7R3B+Xel/urDM
+					WYUbIAinEnvpOw== )
+			3600	RRSIG	CDS 13 2 3600 (
+					20601231235959 20201012144756 60664 example.com.
+					IpzPg5fx+O1HUqjN0lR1Bbo6Zx/Lq1wrrJvv
+					Y518ooGelg8Q2wH7NgScsyhLY342+MHk0fKX
+					RcxRzfaFohiEZg== )
+			3600	CDNSKEY	257 3 8 (
+					AwEAAcQ1EqTPebcJyUnpxO3Xjx6ehRtsiZYT
+					oARoJsJG12XR6Ci9yy4SCCsejtaWIFO4XVfM
+					2BHzFWqmABtQHtN7AazXAFMLsrSE4DYbgk5W
+					mnQv5Jloi6jhhmmXwr8EOi3HR2jdG0gVq/Ta
+					x7ztNNZsflJrs3rZs2TVO00BkyyOkmO35jCN
+					bGPUwm5cW1vse137BMa7jAcMyNLPIiQubj1/
+					mJcIyzF2duvfpjBTgEmSvNcXqLfYFjK8lG4N
+					odQG8AcK0MvWqN4mxW/hK0U9nMSjhCnfzPg5
+					tjyqdheWRyhkLGjM/mR7gBhtqoSPMr+2KMJQ
+					EHYAd/AP8YgaovS8N1fJyh0=
+					) ; KSK; alg = RSASHA256 ; key id = 53851
+			3600	RRSIG	CDNSKEY 13 2 3600 (
+					20601231235959 20201012144756 33730 example.com.
+					WMqSVG8Tcq7e5E2y8oHThr6Ip7ASu/35m10m
+					TzsEANrlFf0e1Z6XG5ca/6//NSolXoTu6jBx
+					2kvnsX2bA222PA== )
+			3600	RRSIG	CDNSKEY 13 2 3600 (
+					20601231235959 20201012144756 60664 example.com.
+					LLGAWxuAhlKM/3i9+FFGngy6Zqo6NsxdXScR
+					wgVe3Ilw+3vU/Nih70uRE/xUjZpfFBOlMEk6
+					EBSf/DJr6awY/A== )
+dns2.example.com.	3600	IN A	192.0.2.1
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20201012144756 33730 example.com.
+					mpcGxsR9c/K6wuaJCeFds1kg0af6Xj8K24o6
+					FHzqn60w7HXXNnDjxS0jPTHpaVUkWhuKUcCR
+					9EcvMW7uwVfULQ== )
+			7200	NSEC	example.com. A RRSIG NSEC
+			7200	RRSIG	NSEC 13 3 7200 (
+					20601231235959 20201012144756 33730 example.com.
+					gLwhcu1t0qloiWb5/XHuv0PAQZ+ChmDdMuMS
+					qS3hi0VPk9cscMjd7ZH7shJBH+9KKMI6YbMz
+					VGU4MSCj5/kT0A== )

@@ -137,7 +137,7 @@ static void process_data(zs_scanner_t *scanner)
 }
 
 int zonefile_open(zloader_t *loader, const char *source,
-                  const knot_dname_t *origin, bool semantic_checks, time_t time)
+                  const knot_dname_t *origin, semcheck_optional_t semantic_checks, time_t time)
 {
 	if (!loader) {
 		return KNOT_EINVAL;

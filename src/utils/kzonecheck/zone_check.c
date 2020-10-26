@@ -63,7 +63,7 @@ static void print_statistics(err_handler_stats_t *stats)
 }
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name,
-               FILE *outfile, bool dnssec, time_t time)
+               FILE *outfile, semcheck_optional_t optional, time_t time)
 {
 	err_handler_stats_t stats = {
 		.handler = { .cb = err_callback },
@@ -71,7 +71,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name,
 	};
 
 	zloader_t zl;
-	int ret = zonefile_open(&zl, zone_file, zone_name, dnssec, time);
+	int ret = zonefile_open(&zl, zone_file, zone_name, optional, time);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

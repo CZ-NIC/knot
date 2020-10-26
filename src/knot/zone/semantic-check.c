@@ -180,8 +180,8 @@ static const struct check_function CHECK_FUNCTIONS[] = {
 	{ check_cname,          MANDATORY },
 	{ check_dname,          MANDATORY },
 	{ check_delegation,     MANDATORY }, // mandatory for apex, optional for others
-	{ check_submission,     OPTIONAL },
 	{ check_ds,             OPTIONAL },
+	{ check_submission,     NSEC | NSEC3 },
 	{ check_rrsig,          NSEC | NSEC3 },
 	{ check_rrsig_signed,   NSEC | NSEC3 },
 	{ check_nsec_bitmap,    NSEC | NSEC3 },
@@ -1198,7 +1198,7 @@ static void check_dnskey(zone_contents_t *zone, sem_handler_t *handler)
 	}
 }
 
-int sem_checks_process(zone_contents_t *zone, bool optional, sem_handler_t *handler,
+int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_handler_t *handler,
                        time_t time)
 {
 	if (zone == NULL || handler == NULL) {
@@ -1213,9 +1213,10 @@ int sem_checks_process(zone_contents_t *zone, bool optional, sem_handler_t *hand
 		.time = time,
 	};
 
-	if (optional) {
+	if (optional != SEMCHECK_MANDATORY_ONLY) {
 		data.level |= OPTIONAL;
-		if (zone->dnssec) {
+		if (optional == SEMCHECK_DNSSEC ||
+		    (optional == SEMCHECK_AUTO_DNSSEC && zone->dnssec)) {
 			knot_rdataset_t *nsec3param = node_rdataset(zone->apex,
 			                                            KNOT_RRTYPE_NSEC3PARAM);
 			if (nsec3param != NULL) {
