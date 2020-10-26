@@ -1064,6 +1064,7 @@ int server_reconfigure(conf_t *conf, server_t *server)
 		if ((ret = configure_threads(conf, server)) != KNOT_EOK) {
 			log_error("failed to configure server threads (%s)",
 			          knot_strerror(ret));
+			return ret;
 		}
 
 		/* Configure sockets. */
