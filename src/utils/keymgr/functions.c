@@ -352,7 +352,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 		return KNOT_EINVAL;
 	}
 
-	knot_kasp_key_timing_t timing = { 0 };
+	knot_kasp_key_timing_t timing = { ctx->now, 0 };
 	dnssec_key_t *key = NULL;
 	char *keyid = NULL;
 

@@ -386,7 +386,10 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 			case DNSSEC_KEY_STATE_ACTIVE:
 				if (!running_rollover(ctx) &&
 				    dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm) {
-					keytime = ksk_rollover_time(key->timing.created, ctx);
+					knot_time_t ksk_created = key->timing.created == 0 ?
+					                          key->timing.active :
+					                          key->timing.created;
+					keytime = ksk_rollover_time(ksk_created, ctx);
 					restype = GENERATE;
 				}
 				break;
