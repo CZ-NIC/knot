@@ -78,7 +78,7 @@ more values can be specified as individual (command line) arguments.
 
 .. CAUTION::
    Beware of the possibility of pathname expansion by the shell. For this reason,
-   it is advisable to slash square brackets or to quote command parameters if
+   it is advisable to escape (with backslash) square brackets or to quote command parameters if
    not executed in the interactive mode.
 
 To get the list of configuration sections or to get the list of section items::
