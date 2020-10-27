@@ -495,8 +495,8 @@ the new key gets activated:
   $ keymgr myzone.test. set <old_key_id> retire=+1d remove=+1d
 
 Reload the server again. The new key will be published (i.e. the DNSKEY record
-will be added into the zone). Do not forget to update the DS record in the
-parent zone to include a reference to the new RSA key. This must happen in one
+will be added into the zone). Remember to update the DS record in the
+parent zone to include a reference to the new RSA key. This must happen within one
 day (in this case) including a delay required to propagate the new DS to
 caches.
 
