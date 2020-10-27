@@ -606,7 +606,7 @@ include version record ``version 0 IN TXT "2"``.
 It's possible to configure more catalog zones.
 
 .. WARNING::
-   Don't choose name for a catalog zone below a name of any other
+   Don't choose a name for a catalog zone below a name of any other
    existing zones configured on the server as it would effectively "shadow"
    part of your DNS subtree.
 
