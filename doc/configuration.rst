@@ -681,40 +681,40 @@ Numbers of Workers
 
 There are three types of workers ready for parallel execution of performance-oriented tasks:
 UDP workers, TCP workers, and Background workers. The first two types handle all network requests
-coming through UDP and TCP protocol (respectively) and do all the response job for common
+via the UDP and TCP protocol (respectively) and do the response jobs for common
 queries. Background workers process changes to the zone.
 
-By default, Knot determines well-fitting number of workers based on the number of CPU cores.
-The user can specify the numbers of workers for each type with configuration/server section:
+By default, Knot determines a well-fitting number of workers based on the number of CPU cores.
+The user can specify the number of workers for each type with configuration/server section:
 :ref:`server_udp-workers`, :ref:`server_tcp-workers`, :ref:`server_background-workers`.
 
-An indication on when to increase number of workers is a situation when the server is lagging behind
-the expected performance, while the CPU usage is low. This is usually because of waiting for network
-or I/O response during the operation. It may be caused by Knot design not fitting well the use-case.
+An indication of when to increase the number of workers is when the server is lagging behind
+expected performance, while CPU usage remains low. This is usually due to waiting for network
+or I/O response during the operation. It may be caused by Knot design not fitting the use-case well.
 The user should try increasing the number of workers (of the related type) slightly above 100 and if
-the performance gets better, he can decide about further exact setting.
+the performance improves, decide a further, exact setting.
 
 Number of available file descriptors
 ------------------------------------
 
-A name server configured for higher number of zones (hundreds and more) needs enough file descriptors
-available for zone transfers and zone file updates, which a default OS setting often doesn't provide.
-It's necessary to check with the OS configuration and documentation and make sure the number of file
+A name server configured for a higher number of zones (hundreds and more) needs enough file descriptors
+available for zone transfers and zone file updates, which default OS settings often don't provide.
+It's necessary to check with the OS configuration and documentation and ensure the number of file
 descriptors (sometimes called a number of concurrently open files) effective for the knotd process
-is set high enough. The number of concurrently open incoming TCP connections must be taken into
-account too, in other words, the required setting is affected by the :ref:`server_tcp-max-clients`
+is set suitably high. The number of concurrently open incoming TCP connections must be taken into
+account too. In other words, the required setting is affected by the :ref:`server_tcp-max-clients`
 setting.
 
 Sysctl and NIC optimizations
 ----------------------------
 
 There are several recommendations based on Knot developers' experience with their specific HW and SW
-(mainstream Intel-based servers, Debian-based GNU/Linux distribution). They may or may not positively
-(or negatively) influence performance in common use cases.
+(mainstream Intel-based servers, Debian-based GNU/Linux distribution). They may improve or impact
+performance in common use cases.
 
 If your NIC driver allows it (see /proc/interrupts for hint), set CPU affinity (/proc/irq/$IRQ/smp_affinity)
 manually so that each NIC channel is served by unique CPU core(s). You must turn off irqbalance service
-before to avoid configuration override.
+to avoid configuration override.
 
 Configure sysctl as follows: ::
 
