@@ -51,7 +51,7 @@ Server features:
 * Query processing modules with dynamic loading
 * On-the-fly zone management and server reconfiguration
 * Multithreaded DNSSEC zone signing and zone validation
-* Automatic DNSSEC key maganement
+* Automatic DNSSEC key management
 * Zone data backup and restore
 * Offline KSK operation
 * PKCS #11 interface

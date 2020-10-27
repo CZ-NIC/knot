@@ -13,7 +13,7 @@ Installation from a package
 Knot DNS may already be included in your operating system distribution and
 therefore can be installed from packages (Linux), ports (BSD), or via
 Homebrew (macOS). This is always preferred unless you want to test the latest
-features, contribute to Knot development, or you just know what you are doing.
+features, contribute to Knot development, or you know what you are doing.
 
 See the project `download <https://www.knot-dns.cz/download>`_ page for
 the latest information.
@@ -34,9 +34,9 @@ The build process relies on these standard tools:
 * autoconf >= 2.65
 * python-sphinx (optional, for documentation building)
 
-GCC at least 4.1 is strictly required for atomic built-ins, but the latest
-available version is recommended. Another requirements ``_GNU_SOURCE``
-and C99 support, otherwise it adapts to the compiler available features.
+GCC >= 4.1 is mandatory for atomic built-ins, but the latest
+available version is recommended. Another requirement is ``_GNU_SOURCE``
+and C99 support, otherwise it adapts to the available compiler features.
 LLVM clang compiler since version 2.9 can be used as well.
 
 Getting the source code
@@ -46,7 +46,7 @@ You can find the source code for the latest release on `www.knot-dns.cz <https:/
 Alternatively, you can fetch the whole project from the git repository
 `https://gitlab.nic.cz/knot/knot-dns.git <https://gitlab.nic.cz/knot/knot-dns>`_.
 
-After obtaining the source code, compilation and installation is a quite
+After obtaining the source code, compilation and installation is quite a
 straightforward process using autotools.
 
 .. _Configuring and generating Makefiles:
@@ -54,7 +54,7 @@ straightforward process using autotools.
 Configuring and generating Makefiles
 ------------------------------------
 
-If compiling from the git source, you need to bootstrap the ``./configure`` file first::
+If compiling from git source, you need to bootstrap the ``./configure`` file first::
 
     $ autoreconf -i -f
 

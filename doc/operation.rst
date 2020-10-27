@@ -11,7 +11,7 @@ doesn't create a PID file.  Other than that, there are no differences and you
 can control both the same way.
 
 The tool :doc:`knotc<man_knotc>` is designed as a user front-end, making it easier
-to control running server daemon. If you want to control the daemon directly,
+to control a running server daemon. If you want to control the daemon directly,
 use ``SIGINT`` to quit the process or ``SIGHUP`` to reload the configuration.
 
 If you pass neither configuration file (``-c`` parameter) nor configuration
@@ -54,9 +54,9 @@ Also the configuration database can be exported into a textual file::
     $ knotc conf-export output.conf
 
 .. WARNING::
-   The import and export commands access the configuration database
-   directly, without any interaction with the server. So it is strictly
-   recommended to perform these operations when the server is not running.
+   The import and export commands lock the configuration database, 
+   preventing access from the server. So it is necessary to perform 
+   these operations when the server is not running.
 
 .. _Dynamic configuration:
 
@@ -78,7 +78,7 @@ more values can be specified as individual (command line) arguments.
 
 .. CAUTION::
    Beware of the possibility of pathname expansion by the shell. For this reason,
-   it is advisable to slash square brackets or to quote command parameters if
+   it is advisable to escape (with backslash) square brackets or to quote command parameters if
    not executed in the interactive mode.
 
 To get the list of configuration sections or to get the list of section items::
@@ -145,7 +145,7 @@ identified section or for a specific item::
 .. CAUTION::
    While it is possible to change most of the configuration parameters
    dynamically or via configuration file reload, a few of the parameters
-   in the section ``server`` require restarting the server, so as the changes
+   in the section ``server`` require restarting the server, such that the changes
    take effect. These parameters are:
    :ref:`rundir<server_rundir>`,
    :ref:`user<server_user>`,
@@ -189,7 +189,7 @@ If you just want to check the zone files before starting, you can use::
 
     $ knotc zone-check example.com
 
-For an approximate estimation of server's memory consumption, you can use::
+For an approximate estimation of a server's memory consumption, you can use::
 
     $ knotc zone-memstats example.com
 
@@ -205,13 +205,13 @@ or higher during transfers.
 Reading and editing zones
 =========================
 
-Knot DNS allows you to read or change zone contents online using server
+Knot DNS allows you to read or change zone contents online using the server
 control interface.
 
 .. WARNING::
    Avoid concurrent zone access when a zone event (zone file load, refresh,
    DNSSEC signing, dynamic update) is in progress or pending. In such a case
-   zone events must be frozen before. For more information how to freeze the
+   zone events must be frozen before. For more information on how to freeze the
    zone read :ref:`Editing zone file`.
 
 To get contents of all configured zones, or a specific zone contents, or zone
@@ -241,7 +241,7 @@ zones with an open transaction::
     $ knotc zone-set example.com ns1 3600 A 192.168.0.1
     $ knotc zone-set -- ns1 3600 A 192.168.0.1
 
-To remove all records with a specific owner, or a specific rrset, or a
+To remove all records with a specific owner, or a specific rrset, or
 specific record data::
 
     $ knotc zone-unset example.com ns1
@@ -269,7 +269,7 @@ A full example of setting up a completely new zone from scratch::
     $ knotc zone-commit example.com
 
 .. NOTE::
-    If quotes are necessary for record data specification, don't forget to escape them::
+    If quotes are necessary for record data specification, remember to escape them::
 
        $ knotc zone-set example.com @ 3600 TXT \"v=spf1 a:mail.example.com -all\"
 
@@ -279,15 +279,15 @@ Reading and editing the zone file safely
 ========================================
 
 It's always possible to read and edit zone contents via zone file manipulation.
-However, it may lead to confusion if the zone contents are continuously being
+It may lead to confusion, however, if the zone contents are continuously being
 changed by DDNS, DNSSEC signing and the like. In such a case, the safe way to
 modify the zone file is to freeze zone events first::
 
     $ knotc -b zone-freeze example.com.
     $ knotc -b zone-flush example.com.
 
-After calling freeze to the zone, there still may be running zone operations (e.g. signing),
-causing freeze pending. Because of it the blocking mode is used to ensure
+After calling freeze on the zone, there still may be running zone operations (e.g. signing),
+causing freeze pending. Because of this, the blocking mode is used to ensure
 the operation was finished. Then the zone can be flushed to a file.
 
 Now the zone file can be safely modified (e.g. using a text editor).
@@ -303,7 +303,7 @@ modified zone file and if successful, thaw the zone::
 Zone loading
 ============
 
-The process how the server loads a zone is influenced by the configuration of the
+The process of how the server loads a zone is influenced by the configuration of the
 :ref:`zonefile-load <zone_zonefile-load>` and :ref:`journal-content <zone_journal-content>`
 parameters (also DNSSEC signing applies), the existence of a zone file and journal
 (and their relative out-of-dateness), and whether it is a cold start of the server
@@ -312,17 +312,17 @@ that zone transfers are not taken into account here – they are planned after t
 is loaded (including AXFR bootstrap).
 
 If the zone file exists and is not excluded by the configuration, it is first loaded
-and according to its SOA serial number relevant journal changesets are applied.
+and according to its SOA serial number, relevant journal changesets are applied.
 If this is a zone reload and we have :ref:`zone_zonefile-load` set to `difference`, the difference
-between old and new contents is computed and stored into the journal like an update.
-The zone file should be either unchaged since last load or changed with incremented
+between old and new contents is computed and stored in the journal like an update.
+The zone file should be either unchanged since last load or changed with incremented
 SOA serial. In the case of a decreased SOA serial, the load is interrupted with
 an error; if unchanged, it is increased by the server.
 
 If the procedure described above succeeds without errors, the resulting zone contents are (after potential DNSSEC signing)
 used as the new zone.
 
-The option :ref:`zone_journal-content` set to `all` lets the server, beside better performance, to keep
+The option :ref:`zone_journal-content` set to `all` lets the server, beside better performance, keep
 track of the zone contents also across server restarts. It makes the cold start
 effectively work like a zone reload with the old contents loaded from the journal
 (unless this is the very first start with the zone not yet saved into the journal).
@@ -333,26 +333,26 @@ Journal behaviour
 =================
 
 The zone journal keeps some history of changes made to the zone. It is useful for
-responding to IXFR queries. Also if :ref:`zone file flush <zone_zonefile-sync>` is disabled,
-journal keeps the difference between the zone file and the current zone for the case of server shutdown.
+responding to IXFR queries. Also if :ref:`zone file flush <zone_zonefile-sync>` is disabled, the
+journal keeps the difference between the zone file and the current zone in case of server shutdown.
 The history is stored in changesets – differences of zone contents between two
 (usually subsequent) zone versions (specified by SOA serials).
 
 Journals of all zones are stored in a common LMDB database. Huge changesets are
-split into 70 KiB [#fn-hc]_ blocks to prevent fragmentation of the DB.
-Journal does each operation in one transaction to keep consistency of the DB and performance.
+split into 70 KiB [#fn-hc]_ blocks to prevent fragmentation of the DB. The
+journal does each operation in one transaction to keep consistency of the DB and performance.
 
 Each zone journal has its own occupation limits :ref:`maximum usage <zone_journal-max-usage>`
 and :ref:`maximum depth <zone_journal-max-depth>`. Changesets are stored in the journal
 one by one. When hitting any of the limits, the zone is flushed into the zone file
 if there are no redundant changesets to delete, and the oldest changesets are deleted.
 In the case of the size limit, twice [#fn-hc]_ the needed amount of space is purged
-to prevent too frequent deletes.
+to prevent overly frequent deletes.
 
 If :ref:`zone file flush <zone_zonefile-sync>` is disabled, then instead of flushing
 the zone, the journal tries to save space by merging the changesets into a special one.
 This approach is effective if the changes rewrite each other, e.g. periodically
-changing the same zone records, re-signing whole zone etc. Thus the difference between the zone
+changing the same zone records, re-signing the whole zone etc. Thus the difference between the zone
 file and the zone is still preserved even if the journal deletes some older changesets.
 
 If the journal is used to store both zone history and contents, a special changeset
@@ -373,8 +373,8 @@ Handling zone file, journal, changes, serials
 =============================================
 
 Some configuration options regarding the zone file and journal, together with operation
-procedures, might lead to unexpected results. This chapter shall point out
-some interference and both recommend and warn before some combinations thereof.
+procedures, might lead to unexpected results. This chapter points out
+potential interference and both recommends and warns before some combinations thereof.
 Unfortunately, there is no optimal combination of configuration options,
 every approach has some disadvantages.
 
@@ -387,9 +387,9 @@ Keep the zone file updated::
    zonefile-load: whole
    journal-content: changes
 
-This is actually setting default values. The user can always check the current zone
+These are default values. The user can always check the current zone
 contents in the zone file, and also modify it (recommended with server turned-off or
-taking the :ref:`safe way<Editing zone file>`). Journal serves here just as a source of
+taking the :ref:`safe way<Editing zone file>`). The journal serves here just as a source of
 history for slaves' IXFR. Some users dislike that the server overwrites their prettily
 prepared zone file.
 
@@ -402,12 +402,12 @@ Zonefileless setup::
    zonefile-load: none
    journal-content: all
 
-Zone contents are stored just in the journal. The zone is updated by DDNS,
+Zone contents are stored only in the journal. The zone is updated by DDNS,
 zone transfer, or via the control interface. The user might have filled the
 zone contents initially from a zone file by setting :ref:`zone_zonefile-load` to
 `whole` temporarily.
 It's also a good setup for slaves. Anyway, it's recommended to carefully tune
-the journal-size-related options to avoid surprises of journal getting full.
+the journal-size-related options to avoid surprises like the journal getting full.
 
 Example 3
 ---------
@@ -419,14 +419,14 @@ Input-only zone file::
    journal-content: changes
 
 The user can make changes to the zone by editing the zone file, and his pretty zone file
-gets never overwritten and filled with DNSSEC-related autogenerated records – they are
+is never overwritten or filled with DNSSEC-related autogenerated records – they are
 only stored in the journal.
 
 The zone file's SOA serial must be properly set to a number which is higher than the
 current SOA serial in the zone (not in the zone file) if manually updated!
 
 .. NOTE::
-   In the case of :ref:`zone_zonefile-load` is set to `difference-no-serial`,
+   In case :ref:`zone_zonefile-load` is set to `difference-no-serial`,
    the SOA serial is handled by the server automatically during server reload.
 
 .. _DNSSEC Key states:
@@ -434,10 +434,10 @@ current SOA serial in the zone (not in the zone file) if manually updated!
 DNSSEC key states
 =================
 
-During its lifetime, DNSSEC key finds itself in different states. Most of the time it
-is usually used for signing the zone and published in the zone. In order to change
+During its lifetime, a DNSSEC key finds itself in different states. Most of the time it
+is used for signing the zone and published in the zone. In order to change
 this state, one type of a key rollover is necessary, and during this rollover,
-the key goes through various states, with respect to the rollover type and also the
+the key goes through various states with respect to the rollover type and also the
 state of the other key being rolled-over.
 
 First, let's list the states of the key being rolled-in.
@@ -460,7 +460,7 @@ Second, we list the states of the key being rolled-out.
 
 Standard states:
 
-- ``retire-active`` — The key is still used for signing and published in the zone, waiting for
+- ``retire-active`` — The key is still used for signing, and is published in the zone, waiting for
   the updated DS records in parent zone to be acked by resolvers (KSK case) or synchronizing
   with KSK during algorithm rollover (ZSK case).
 - ``retired`` — The key is no longer used for signing, but still published in the zone.
@@ -483,8 +483,8 @@ Special states for :rfc:`5011` trust anchor roll-over
 The states listed above are relevant for :doc:`keymgr<man_keymgr>` operations like generating
 a key, setting its timers and listing KASP database.
 
-On the other hand, the key "states" displayed in the server log lines while zone signing
-are not according to listed above, but just a hint what the key is currently used to
+Note that the key "states" displayed in the server log lines while zone signing
+are not according to those listed above, but just a hint as to what the key is currently used for
 (e.g. "public, active" = key is published in the zone and used for signing).
 
 .. _DNSSEC Key rollovers:
@@ -500,7 +500,7 @@ The prerequisite is automatic zone signing with enabled
 The KSK and ZSK rollovers are triggered by the respective zone key getting old according
 to the settings (see :ref:`KSK<policy_ksk-lifetime>` and :ref:`ZSK<policy_zsk-lifetime>` lifetimes).
 
-The algorithm rollover happens when the policy :ref:`algorithm<policy_algorithm>`
+The rollover algorithm runs when the policy :ref:`algorithm<policy_algorithm>`
 field is updated to a different value.
 
 The signing scheme rollover happens when the policy :ref:`signing scheme<policy_single-type-signing>`
@@ -706,10 +706,10 @@ in each zone.
 
 If we have an initial setting with brand new zones without any DNSSEC keys,
 the initial keys for all zones are generated. With shared KSK, they will all have the same KSK,
-but different ZSKs. The KSK rollovers may take place at slightly different time for each of the zones,
+but different ZSKs. The KSK rollovers may take place at slightly different times for each of the zones,
 but the resulting new KSK will be shared again among all of them.
 
-If we have zones already having their keys, turning on the shared KSK feature triggers no action.
+If we have zones which already have their keys, turning on the shared KSK feature triggers no action.
 But when a KSK rollover takes place, they will use the same new key afterwards.
 
 .. _DNSSEC Delete algorithm:
@@ -717,7 +717,7 @@ But when a KSK rollover takes place, they will use the same new key afterwards.
 DNSSEC delete algorithm
 =======================
 
-This is a way how to "disconnect" a signed zone from DNSSEC-aware parent zone.
+This is how to "disconnect" a signed zone from a DNSSEC-aware parent zone.
 More precisely, we tell the parent zone to remove our zone's DS record by
 publishing a special formatted CDNSKEY and CDS record. This is mostly useful
 if we want to turn off DNSSEC on our zone so it becomes insecure, but not bogus.
@@ -744,14 +744,14 @@ The Zone Signing Key is always fully available to the daemon in order to sign co
 The server (or the "ZSK side") only uses ZSK to sign zone contents and its changes. Before
 performing a ZSK rollover, the DNSKEY records will be pre-generated and signed by the
 signer (the "KSK side"). Both sides exchange keys in the form of human-readable messages with the help
-of :doc:`keymgr<man_keymgr>` utility.
+of the :doc:`keymgr<man_keymgr>` utility.
 
 Pre-requisites
 --------------
 
 For the ZSK side (i.e. the operator of the DNS server), the pre-requisites are:
 
-- properly configured :ref:`DNSSEC policy <Policy section>` (e.g. :ref:`zsk-lifetime <policy_zsk-lifetime>`),
+- a properly configured :ref:`DNSSEC policy <Policy section>` (e.g. :ref:`zsk-lifetime <policy_zsk-lifetime>`),
 - :ref:`manual <policy_manual>` set to `on`
 - :ref:`offline-ksk <policy_offline-ksk>` set to `on`
 - :ref:`dnskey-ttl <policy_dnskey-ttl>` and :ref:`zone-max-ttl <policy_zone-max-ttl>` set up explicitly
@@ -801,9 +801,9 @@ Generating and signing future ZSKs
     $ knotc -c /path/to/ZSK/side.conf zone-sign example.com.
 
 6. Now the future ZSKs and DNSKEY records with signatures are ready in KASP DB for later usage.
-   Knot automatically uses them in correct time intervals.
+   Knot automatically uses them at the correct time intervals.
    The entire procedure must be repeated before the time period selected at the beginning passes,
-   or whenever a configuration is changed significantly. Over-importing new SKR across some previously-imported
+   or whenever a configuration is changed significantly. Importing new SKR over some previously-imported
    one leads to deleting the old offline records.
 
 Offline KSK and manual ZSK management
@@ -823,7 +823,7 @@ of the KSK roll-over in advance, and whenever the KSK set or timers are changed,
 Emergency SKR
 -------------
 
-One of general recommendations for large deployments is to have some backup pre-published keys, so that if the current ones are
+A general recommendation for large deployments is to have some backup pre-published keys, so that if the current ones are
 compromised, they can be rolled-over to the backup ones without any delay. But in the case of Offline KSK, according to
 the procedures above, both ZSK and KSK immediate rollovers require the KSR-SKR ceremony.
 
@@ -916,7 +916,7 @@ or module used for communication with the HSM.
      --write-object c4eae5dea3ee8c15395680085c515f2ad41941b6.pub.der --type pubkey \
      --usage-sign --id c4eae5dea3ee8c15395680085c515f2ad41941b6
 
-.. _Controlling running daemon:
+.. _Controlling a running daemon:
 
 Daemon controls
 ===============
@@ -972,10 +972,10 @@ Offline restore
 If the Online backup was performed for all zones, it's possible to
 restore the backed up data by simply copying them to their normal locations,
 since they're simply copies. For example, the user can copy (overwrite)
-tha backed up KASP database files to their configured location.
+the backed up KASP database files to their configured location.
 
 This restore of course must be done when the server is stopped. After starting up
-the server, it should run in the same state as in the time of backup.
+the server, it should run in the same state as at the time of backup.
 
 This method is recommended in the case of complete data loss, for example
 physical server failure.
@@ -1013,7 +1013,7 @@ of obsolete signing keys.
 
    - The maximum delay between beginning of the zone signing and publishing
      re-signed zone on all public slave servers.
-   - How long it takes to the backup server to start up with the restored data.
+   - How long it takes for the backup server to start up with the restored data.
    - The period between taking backup snapshots of the live environment.
 
 .. _Statistics:
@@ -1035,14 +1035,14 @@ Per zone statistics can be shown by::
 
     $ knotc zone-stats example.com mod-stats
 
-To show all supported counters even with 0 value use the force option.
+To show all supported counters even with 0 value, use the force option.
 
-A simple periodic statistic dumping to a YAML file can also be enabled. See
+A simple periodic statistic dumped to a YAML file can also be enabled. See
 :ref:`statistics_section` for the configuration details.
 
 As the statistics data can be accessed over the server control socket,
 it is possible to create an arbitrary script (Python is supported at the moment)
-which could, for example, publish the data in the JSON format via HTTP(S)
+which could, for example, publish the data in JSON format via HTTP(S)
 or upload the data to a more efficient time series database. Take a look into
 the python folder of the project for these scripts.
 
@@ -1054,7 +1054,7 @@ Mode XDP
 Thanks to recent Linux kernel capabilities, namely eXpress Data Path and AF_XDP
 address family, Knot DNS offers a high-performance DNS over UDP packet processing
 mode. The basic idea is to filter DNS messages close to the network device and
-efectively forwarding them to the nameserver without touching the network stack
+effectively forward them to the nameserver without touching the network stack
 of the operating system. Other messages (including DNS over TCP) are processed
 as usual.
 
@@ -1112,6 +1112,6 @@ Limitations
 * Systems with big-endian byte ordering require special recompilation of the nameserver.
 * IPv4 header and UDP checksums are not verified on received DNS messages.
 * DNS over XDP traffic is not visible to common system tools (e.g. firewall, tcpdump etc.).
-* BPF filter is not automatically unloaded from the network device. Manual filtr unload::
+* BPF filter is not automatically unloaded from the network device. Manual filter unload::
 
    ip link set dev <ETH> xdp off
