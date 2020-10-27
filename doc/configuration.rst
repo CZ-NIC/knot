@@ -582,9 +582,9 @@ master consistent while applying the changes with a different serial.
 Catalog zones
 =============
 
-Catalog zone is a concept when the list of zones configured is maintained
-as contents of a special zone. This approach has the benefit of simple propagation
-of the actual zone list to slave servers. Especially when the list is frequently
+Catalog zones are a concept whereby a list of zones to be configured is maintained
+as contents of a separate, special zone file. This approach has the benefit of simple propagation
+of a zone-file list to slave servers, especially when the list is frequently
 updated. Currently, catalog zones are described in this `Internet Draft
 <https://tools.ietf.org/html/draft-ietf-dnsop-dns-catalog-zones>`_.
 
@@ -594,16 +594,16 @@ is transferable to slaves using common AXFR/IXFR techniques.
 *Catalog-member zone* (or just *member zone*) is a zone based on
 information from the catalog zone and not from configuration file/database.
 
-Catalog zone is handled almost in the same way as a regular zone.
+A catalog zone is handled almost in the same way as a regular zone:
 It can be configured using all the standard options (but for example
 DNSSEC signing would be useless), including master/slave configuration
-and ACLs. Being a catalog zone is indicated by setting the option
+and ACLs. A catalog zone is indicated by setting the option
 :ref:`zone_catalog-role`. The difference is that standard DNS
-queries to a catalog zone are answered with REFUSED as if such a zone
-wouldn't exist, unless querying over TCP from an address with transfers enabled
-by ACL. The name of the catalog zone is arbitrary. It's however required to
-include version record ``version 0 IN TXT "2"``.
-It's possible to configure more catalog zones.
+queries to a catalog zone are answered with REFUSED as though the zone
+doesn't exist, unless querying over TCP from an address with transfers enabled
+by ACL. The name of the catalog zone is arbitrary. It's required to
+include version record ``version 0 IN TXT "2"``, however.
+It's possible to configure multiple catalog zones.
 
 .. WARNING::
    Don't choose a name for a catalog zone below a name of any other
@@ -621,13 +621,13 @@ be changed. It's also recommended that all the PTR records have different
 owner names (in other words, catalog zone RRSets consist of one RR each)
 to prevent oversized RRSets (not AXFR-able) and to achieve interoperability.
 
-All records other than PTR are ignored. However, they remain in the catalog
-zone and might be for example transferred to a slave, possibly interpreting
+All records other than PTR are ignored. They remain in the catalog
+zone, however, and might be for example transferred to a slave, which may interpret
 catalog zones differently. SOA still needs to be present in the catalog zone
-and its serial handled appropriately. Apex NS record should be present
+and its serial handled appropriately. An apex NS record should be present
 for the sake of interoperability.
 
-Catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,
+A catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,
 zone file reload). In the case of incremental change, only affected
 member zones are reloaded.
 
