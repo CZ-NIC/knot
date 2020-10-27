@@ -214,8 +214,8 @@ independent::
 
 .. NOTE::
    When transferring a lot of zones, the server may easily get into a state
-   when all available ports are in the TIME_WAIT state, thus the transfers
-   seize until the operating system closes the ports for good. There are
+   where all available ports are in the TIME_WAIT state, thus transfers
+   cease until the operating system closes the ports for good. There are
    several ways to work around this:
 
    * Allow reusing of ports in TIME_WAIT (sysctl -w net.ipv4.tcp_tw_reuse=1)
