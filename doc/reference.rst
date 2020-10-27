@@ -51,7 +51,7 @@ or as more single-valued items each on an extra line::
  address: 10.0.0.2
 
 If an item value contains spaces or other special characters, it is necessary
-to enclose such value within double quotes ``"`` ``"``.
+to enclose such a value within double quotes ``"`` ``"``.
 
 .. _Comments:
 
@@ -152,7 +152,7 @@ General options related to the server.
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
    reload, some parameters in the Server section require restarting the Knot server
-   so as the change take effect. See below for the details.
+   so that the changes take effect. See below for the details.
 
 .. _server_identity:
 
@@ -476,7 +476,7 @@ There are 6 logging severity levels:
 - ``info`` – Informational message.
 - ``debug`` – Debug or detailed message.
 
-In the case of missing log section, ``warning`` or more serious messages
+In the case of a missing log section, ``warning`` or more serious messages
 will be logged to both standard error output and syslog. The ``info`` and
 ``notice`` messages will be logged to standard output.
 

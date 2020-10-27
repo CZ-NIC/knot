@@ -165,7 +165,7 @@ Slave zone
 Knot DNS doesn't strictly differ between master and slave zones. The
 only requirement is to have a :ref:`master<zone_master>` statement set for
 the given zone. Also note that you need to explicitly allow incoming zone
-changed notifications via ``notify`` :ref:`acl_action` through zone's
+changed notifications via ``notify`` :ref:`acl_action` through a zone's
 :ref:`zone_acl` list, otherwise the update will be rejected by the server.
 If the zone file doesn't exist it will be bootstrapped over AXFR::
 
@@ -214,8 +214,8 @@ independent::
 
 .. NOTE::
    When transferring a lot of zones, the server may easily get into a state
-   when all available ports are in the TIME_WAIT state, thus the transfers
-   seize until the operating system closes the ports for good. There are
+   where all available ports are in the TIME_WAIT state, thus transfers
+   cease until the operating system closes the ports for good. There are
    several ways to work around this:
 
    * Allow reusing of ports in TIME_WAIT (sysctl -w net.ipv4.tcp_tw_reuse=1)
@@ -394,7 +394,7 @@ the server logs to see whether everything went well.
   enabling the automatic key management. If the zone was already signed, all
   existing keys must be imported using ``keymgr import-bind`` command
   before enabling the automatic signing. Also the algorithm in the policy must
-  match the algorithm of all imported keys. Otherwise the zone will be re-signed
+  match the algorithm of all imported keys. Otherwise the zone will not be re-signed
   at all.
 
 .. _dnssec-automatic-ksk-management:
@@ -495,8 +495,8 @@ the new key gets activated:
   $ keymgr myzone.test. set <old_key_id> retire=+1d remove=+1d
 
 Reload the server again. The new key will be published (i.e. the DNSKEY record
-will be added into the zone). Do not forget to update the DS record in the
-parent zone to include a reference to the new RSA key. This must happen in one
+will be added into the zone). Remember to update the DS record in the
+parent zone to include a reference to the new RSA key. This must happen within one
 day (in this case) including a delay required to propagate the new DS to
 caches.
 
@@ -574,7 +574,7 @@ while the master zone remains unchanged, such as a key rollover or
 refreshing of RRSIG records, which cause inequality of zone SOA serial
 between master and slave. The slave server handles this by saving the
 master's SOA serial in a special variable inside KASP DB and appropriately
-modifiying AXFR/IXFR queries/answers to keep the communication with
+modifying AXFR/IXFR queries/answers to keep the communication with
 master consistent while applying the changes with a different serial.
 
 .. _catalog-zones:
@@ -582,9 +582,9 @@ master consistent while applying the changes with a different serial.
 Catalog zones
 =============
 
-Catalog zone is a concept when the list of zones configured is maintained
-as contents of a special zone. This approach has the benefit of simple propagation
-of the actual zone list to slave servers. Especially when the list is frequently
+Catalog zones are a concept whereby a list of zones to be configured is maintained
+as contents of a separate, special zone file. This approach has the benefit of simple propagation
+of a zone-file list to slave servers, especially when the list is frequently
 updated. Currently, catalog zones are described in this `Internet Draft
 <https://tools.ietf.org/html/draft-ietf-dnsop-dns-catalog-zones>`_.
 
@@ -594,26 +594,26 @@ is transferable to slaves using common AXFR/IXFR techniques.
 *Catalog-member zone* (or just *member zone*) is a zone based on
 information from the catalog zone and not from configuration file/database.
 
-Catalog zone is handled almost in the same way as a regular zone.
+A catalog zone is handled almost in the same way as a regular zone:
 It can be configured using all the standard options (but for example
 DNSSEC signing would be useless), including master/slave configuration
-and ACLs. Being a catalog zone is indicated by setting the option
+and ACLs. A catalog zone is indicated by setting the option
 :ref:`zone_catalog-role`. The difference is that standard DNS
-queries to a catalog zone are answered with REFUSED as if such a zone
-wouldn't exist, unless querying over TCP from an address with transfers enabled
-by ACL. The name of the catalog zone is arbitrary. It's however required to
-include version record ``version 0 IN TXT "2"``.
-It's possible to configure more catalog zones.
+queries to a catalog zone are answered with REFUSED as though the zone
+doesn't exist, unless querying over TCP from an address with transfers enabled
+by ACL. The name of the catalog zone is arbitrary. It's required to
+include version record ``version 0 IN TXT "2"``, however.
+It's possible to configure multiple catalog zones.
 
 .. WARNING::
-   Don't choose name for a catalog zone below a name of any other
+   Don't choose a name for a catalog zone below a name of any other
    existing zones configured on the server as it would effectively "shadow"
    part of your DNS subtree.
 
 Upon catalog zone (re)load or change, all the PTR records in the zone
 sub-tree *zones* (e.g. ``unique-id1.zones.catalog. 0 IN PTR member.com.``)
 are processed and member zones created, with zone names taken from the
-PTR records' RData, and zone settings taken from the confguration
+PTR records' RData, and zone settings taken from the configuration
 template specified by :ref:`zone_catalog-template`. Owner names of those PTR
 records may be arbitrary, but when a member zone is de-cataloged and
 re-cataloged again, the owner name of the relevant PTR record must
@@ -621,13 +621,13 @@ be changed. It's also recommended that all the PTR records have different
 owner names (in other words, catalog zone RRSets consist of one RR each)
 to prevent oversized RRSets (not AXFR-able) and to achieve interoperability.
 
-All records other than PTR are ignored. However, they remain in the catalog
-zone and might be for example transfered to a slave, possibly interpreting
+All records other than PTR are ignored. They remain in the catalog
+zone, however, and might be for example transferred to a slave, which may interpret
 catalog zones differently. SOA still needs to be present in the catalog zone
-and its serial handled appropriately. Apex NS record should be present
+and its serial handled appropriately. An apex NS record should be present
 for the sake of interoperability.
 
-Catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,
+A catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,
 zone file reload). In the case of incremental change, only affected
 member zones are reloaded.
 
@@ -681,40 +681,40 @@ Numbers of Workers
 
 There are three types of workers ready for parallel execution of performance-oriented tasks:
 UDP workers, TCP workers, and Background workers. The first two types handle all network requests
-coming through UDP and TCP protocol (respectively) and do all the response job for common
+via the UDP and TCP protocol (respectively) and do the response jobs for common
 queries. Background workers process changes to the zone.
 
-By default, Knot determines well-fitting number of workers based on the number of CPU cores.
-The user can specify the numbers of workers for each type with configuration/server section:
+By default, Knot determines a well-fitting number of workers based on the number of CPU cores.
+The user can specify the number of workers for each type with configuration/server section:
 :ref:`server_udp-workers`, :ref:`server_tcp-workers`, :ref:`server_background-workers`.
 
-An indication on when to increase number of workers is a situation when the server is lagging behind
-the expected performance, while the CPU usage is low. This is usually because of waiting for network
-or I/O response during the operation. It may be caused by Knot design not fitting well the usecase.
+An indication of when to increase the number of workers is when the server is lagging behind
+expected performance, while CPU usage remains low. This is usually due to waiting for network
+or I/O response during the operation. It may be caused by Knot design not fitting the use-case well.
 The user should try increasing the number of workers (of the related type) slightly above 100 and if
-the performance gets better, he can decide about further exact setting.
+the performance improves, decide a further, exact setting.
 
 Number of available file descriptors
 ------------------------------------
 
-A name server configured for higher number of zones (hundreds and more) needs enough file descriptors
-available for zone transfers and zone file updates, which a default OS setting often doesn't provide.
-It's necessary to check with the OS configuration and documentation and make sure the number of file
+A name server configured for a large number of zones (hundreds or more) needs enough file descriptors
+available for zone transfers and zone file updates, which default OS settings often don't provide.
+It's necessary to check with the OS configuration and documentation and ensure the number of file
 descriptors (sometimes called a number of concurrently open files) effective for the knotd process
-is set high enough. The number of concurrently open incoming TCP connections must be taken into
-account too, in other words, the required setting is affected by the :ref:`server_tcp-max-clients`
+is set suitably high. The number of concurrently open incoming TCP connections must be taken into
+account too. In other words, the required setting is affected by the :ref:`server_tcp-max-clients`
 setting.
 
 Sysctl and NIC optimizations
 ----------------------------
 
 There are several recommendations based on Knot developers' experience with their specific HW and SW
-(mainstream Intel-based servers, Debian-based GNU/Linux distribution). They may or may not positively
-(or negatively) influence performance in common use cases.
+(mainstream Intel-based servers, Debian-based GNU/Linux distribution). They may improve or impact
+performance in common use cases.
 
 If your NIC driver allows it (see /proc/interrupts for hint), set CPU affinity (/proc/irq/$IRQ/smp_affinity)
 manually so that each NIC channel is served by unique CPU core(s). You must turn off irqbalance service
-before to avoid configuration override.
+to avoid configuration override.
 
 Configure sysctl as follows: ::
 
