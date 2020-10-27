@@ -394,7 +394,7 @@ the server logs to see whether everything went well.
   enabling the automatic key management. If the zone was already signed, all
   existing keys must be imported using ``keymgr import-bind`` command
   before enabling the automatic signing. Also the algorithm in the policy must
-  match the algorithm of all imported keys. Otherwise the zone will be re-signed
+  match the algorithm of all imported keys. Otherwise the zone will not be re-signed
   at all.
 
 .. _dnssec-automatic-ksk-management:
