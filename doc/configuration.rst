@@ -574,7 +574,7 @@ while the master zone remains unchanged, such as a key rollover or
 refreshing of RRSIG records, which cause inequality of zone SOA serial
 between master and slave. The slave server handles this by saving the
 master's SOA serial in a special variable inside KASP DB and appropriately
-modifiying AXFR/IXFR queries/answers to keep the communication with
+modifying AXFR/IXFR queries/answers to keep the communication with
 master consistent while applying the changes with a different serial.
 
 .. _catalog-zones:
@@ -613,7 +613,7 @@ It's possible to configure more catalog zones.
 Upon catalog zone (re)load or change, all the PTR records in the zone
 sub-tree *zones* (e.g. ``unique-id1.zones.catalog. 0 IN PTR member.com.``)
 are processed and member zones created, with zone names taken from the
-PTR records' RData, and zone settings taken from the confguration
+PTR records' RData, and zone settings taken from the configuration
 template specified by :ref:`zone_catalog-template`. Owner names of those PTR
 records may be arbitrary, but when a member zone is de-cataloged and
 re-cataloged again, the owner name of the relevant PTR record must
@@ -622,7 +622,7 @@ owner names (in other words, catalog zone RRSets consist of one RR each)
 to prevent oversized RRSets (not AXFR-able) and to achieve interoperability.
 
 All records other than PTR are ignored. However, they remain in the catalog
-zone and might be for example transfered to a slave, possibly interpreting
+zone and might be for example transferred to a slave, possibly interpreting
 catalog zones differently. SOA still needs to be present in the catalog zone
 and its serial handled appropriately. Apex NS record should be present
 for the sake of interoperability.
@@ -690,7 +690,7 @@ The user can specify the numbers of workers for each type with configuration/ser
 
 An indication on when to increase number of workers is a situation when the server is lagging behind
 the expected performance, while the CPU usage is low. This is usually because of waiting for network
-or I/O response during the operation. It may be caused by Knot design not fitting well the usecase.
+or I/O response during the operation. It may be caused by Knot design not fitting well the use-case.
 The user should try increasing the number of workers (of the related type) slightly above 100 and if
 the performance gets better, he can decide about further exact setting.
 
