@@ -165,7 +165,7 @@ Slave zone
 Knot DNS doesn't strictly differ between master and slave zones. The
 only requirement is to have a :ref:`master<zone_master>` statement set for
 the given zone. Also note that you need to explicitly allow incoming zone
-changed notifications via ``notify`` :ref:`acl_action` through zone's
+changed notifications via ``notify`` :ref:`acl_action` through a zone's
 :ref:`zone_acl` list, otherwise the update will be rejected by the server.
 If the zone file doesn't exist it will be bootstrapped over AXFR::
 
