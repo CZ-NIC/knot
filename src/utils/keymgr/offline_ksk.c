@@ -38,7 +38,7 @@ static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 	// generate ZSKs
 	int ret = knot_dnssec_key_rollover(ctx, KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 	if (ret != KNOT_EOK) {
-		printf("rollover failed\n");
+		ERROR("key rollover failed\n");
 		return ret;
 	}
 	// we don't need to do anything explicitly with the generated ZSKs
@@ -61,7 +61,7 @@ static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_ke
 
 	int ret = load_zone_keys(ctx, keyset, false);
 	if (ret != KNOT_EOK) {
-		printf("load keys failed\n");
+		ERROR("failed to load keys\n");
 		return ret;
 	}
 
@@ -70,7 +70,7 @@ static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_ke
 		if (key->is_public) {
 			ret = rrset_add_zone_key(dnskey, key);
 			if (ret != KNOT_EOK) {
-				printf("add zone key failed\n");
+				ERROR("failed to add zone key\n");
 				return ret;
 			}
 		}
@@ -95,7 +95,7 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg)
 
 	if (ctx->policy->dnskey_ttl       == UINT32_MAX ||
 	    ctx->policy->zone_maximal_ttl == UINT32_MAX) {
-		printf("Error: dnskey-ttl and zone-max-ttl not configured.\n");
+		ERROR("dnskey-ttl or zone-max-ttl not configured\n");
 		return KNOT_ESEMCHECK;
 	}
 
@@ -221,8 +221,16 @@ done:
 	return ret;
 }
 
+#define OFFLINE_KSK_CONF_CHECK \
+	if (!ctx->policy->offline_ksk || !ctx->policy->manual) { \
+		ERROR("offline-ksk and manual must be enabled in configuration\n"); \
+		return KNOT_ESEMCHECK; \
+	}
+
 int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 {
+	OFFLINE_KSK_CONF_CHECK
+
 	knot_time_t from, to;
 	int ret = parse_timestamp(arg_from, &from);
 	if (ret != KNOT_EOK) {
@@ -413,7 +421,7 @@ static void skr_validate_header(zs_scanner_t *sc)
 	if (ctx->timestamp > 0 && ctx->ret == KNOT_EOK) {
 		int ret = key_records_verify(&ctx->r, ctx->kctx, ctx->timestamp);
 		if (ret != KNOT_EOK) { // ctx->ret untouched
-			printf("error: invalid SignedKeyResponse for %lu (%s)\n",
+			ERROR("invalid SignedKeyResponse for %lu (%s)\n",
 			       ctx->timestamp, knot_strerror(ret));
 		}
 		key_records_clear_rdatasets(&ctx->r);
@@ -473,6 +481,8 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
 
 int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file)
 {
+	OFFLINE_KSK_CONF_CHECK
+
 	int ret = read_ksr_skr(ctx, ksr_file, ksr_sign_header, ksr_sign_once);
 	printf(";; SignedKeyResponse %s ", KSR_SKR_VER);
 	print_generated_message();
@@ -481,6 +491,8 @@ int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file)
 
 int keymgr_import_skr(kdnssec_ctx_t *ctx, const char *skr_file)
 {
+	OFFLINE_KSK_CONF_CHECK
+
 	return read_ksr_skr(ctx, skr_file, skr_import_header, skr_import_once);
 }
 

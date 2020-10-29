@@ -16,7 +16,11 @@
 
 #pragma once
 
+#include <stdio.h>
+
 #include "knot/dnssec/context.h"
+
+#define ERROR(msg, ...)	{ fprintf(stderr, "Error: " msg, ##__VA_ARGS__); fflush(stderr); }
 
 int parse_timestamp(char *arg, knot_time_t *stamp);
 
