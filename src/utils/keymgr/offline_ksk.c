@@ -221,8 +221,16 @@ done:
 	return ret;
 }
 
+#define OFFLINE_KSK_CONF_CHECK \
+	if (!ctx->policy->offline_ksk || !ctx->policy->manual) { \
+		ERROR("offline-ksk and manual must be enabled in configuration\n"); \
+		return KNOT_ESEMCHECK; \
+	}
+
 int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 {
+	OFFLINE_KSK_CONF_CHECK
+
 	knot_time_t from, to;
 	int ret = parse_timestamp(arg_from, &from);
 	if (ret != KNOT_EOK) {
@@ -473,6 +481,8 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
 
 int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file)
 {
+	OFFLINE_KSK_CONF_CHECK
+
 	int ret = read_ksr_skr(ctx, ksr_file, ksr_sign_header, ksr_sign_once);
 	printf(";; SignedKeyResponse %s ", KSR_SKR_VER);
 	print_generated_message();
@@ -481,6 +491,8 @@ int keymgr_sign_ksr(kdnssec_ctx_t *ctx, const char *ksr_file)
 
 int keymgr_import_skr(kdnssec_ctx_t *ctx, const char *skr_file)
 {
+	OFFLINE_KSK_CONF_CHECK
+
 	return read_ksr_skr(ctx, skr_file, skr_import_header, skr_import_once);
 }
 
