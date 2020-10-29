@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 #include <linux/in.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
+#include <linux/tcp.h>
 #include <linux/udp.h>
 
 #include "bpf-consts.h"
@@ -51,6 +52,62 @@ struct ipv6_frag_hdr {
 	unsigned char whatever[7];
 } __attribute__((packed));
 
+static int process_l4(const struct xdp_md *ctx, const void *l4hdr, __u8 is_tcp,
+                      __u32 port_info, const __u8 fragmented)
+{
+	const void *data_end = (void *)(long)ctx->data_end;
+	int index = ctx->rx_queue_index;
+	__u16 port_conf = port_info & ~KNOT_XDP_LISTEN_PORT_MASK;
+	__u16 port_dest;
+
+	if (is_tcp) {
+		const struct tcphdr *tcp = l4hdr;
+
+		/* Parse TCP header. */
+		if (l4hdr + sizeof(*tcp) > data_end) {
+			return XDP_DROP;
+		}
+
+		port_dest = __bpf_ntohs(tcp->dest);
+	} else {
+		const struct udphdr *udp = l4hdr;
+
+		/* Parse UDP header. */
+		if (l4hdr + sizeof(*udp) > data_end) {
+			return XDP_DROP;
+		}
+
+		/* Check the UDP length. */
+		if (data_end - (void *)udp < __bpf_ntohs(udp->len)) {
+			return XDP_DROP;
+		}
+
+		port_dest = __bpf_ntohs(udp->dest);
+	}
+
+	/* Treat specified destination ports. */
+	if (port_info & (KNOT_XDP_LISTEN_PORT_PASS | KNOT_XDP_LISTEN_PORT_DROP)) {
+		if (port_dest < port_conf) {
+			return XDP_PASS;
+		}
+		if (port_info & KNOT_XDP_LISTEN_PORT_DROP) {
+			return XDP_DROP;
+		}
+	} else {
+		if (port_dest != port_conf) {
+			return XDP_PASS;
+		}
+	}
+
+	/* Drop fragmented packet. */
+	if (fragmented) {
+		return XDP_DROP;
+	}
+
+	/* Forward the packet to user space. */
+	return bpf_redirect_map(&xsks_map, index, 0);
+}
+
 SEC("xdp_redirect_udp")
 int xdp_redirect_udp_func(struct xdp_md *ctx)
 {
@@ -60,7 +117,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	const struct ethhdr *eth = data;
 	const struct iphdr *ip4;
 	const struct ipv6hdr *ip6;
-	const struct udphdr *udp;
+	const void *l4hdr;
 
 	__u8 ip_proto;
 	__u8 fragmented = 0;
@@ -86,7 +143,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 			fragmented = 1;
 		}
 		ip_proto = ip4->protocol;
-		udp = data + ip4->ihl * 4;
+		l4hdr = data + ip4->ihl * 4;
 		break;
 	case __constant_htons(ETH_P_IPV6):
 		ip6 = data;
@@ -107,26 +164,11 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 			ip_proto = frag->nexthdr;
 			data += sizeof(*frag);
 		}
-		udp = data;
+		l4hdr = data;
 		break;
 	default:
 		/* Also applies to VLAN. */
 		return XDP_PASS;
-	}
-
-	/* Treat UDP only. */
-	if (ip_proto != IPPROTO_UDP) {
-		return XDP_PASS;
-	}
-
-	/* Parse UDP header. */
-	if ((void *)udp + sizeof(*udp) > data_end) {
-		return XDP_DROP;
-	}
-
-	/* Check the UDP length. */
-	if (data_end - (void *)udp < __bpf_ntohs(udp->len)) {
-		return XDP_DROP;
 	}
 
 	/* Get the queue options. */
@@ -135,25 +177,21 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	if (!qidconf) {
 		return XDP_ABORTED;
 	}
-
-	/* Treat specified destination ports only. */
 	__u32 port_info = *qidconf;
-	switch (port_info & KNOT_XDP_LISTEN_PORT_MASK) {
-	case KNOT_XDP_LISTEN_PORT_DROP:
-		return XDP_DROP;
-	case KNOT_XDP_LISTEN_PORT_ALL:
+
+	/* Treat UDP or TCP transport protocol. */
+	__u8 is_tcp = 0;
+	switch (ip_proto) {
+	case IPPROTO_UDP:
 		break;
-	default:
-		if (udp->dest != port_info) {
-			return XDP_PASS;
+	case IPPROTO_TCP:
+		if (port_info & KNOT_XDP_LISTEN_PORT_TCP) {
+			is_tcp = 1;
+			break;
 		}
+	default: // FALLTHROUGH
+		return XDP_PASS;
 	}
 
-	/* Drop fragmented UDP datagrams. */
-	if (fragmented) {
-		return XDP_DROP;
-	}
-
-	/* Forward the packet to user space. */
-	return bpf_redirect_map(&xsks_map, index, 0);
+	return process_l4(ctx, l4hdr, is_tcp, port_info, fragmented);
 }
