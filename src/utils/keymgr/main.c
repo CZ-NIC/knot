@@ -111,7 +111,7 @@ static void print_help(void)
 static int key_command(int argc, char *argv[], int opt_ind)
 {
 	if (argc < opt_ind + 2) {
-		printf("Zone name and/or command not specified\n");
+		ERROR("zone name and/or command not specified\n");
 		print_help();
 		return KNOT_EINVAL;
 	}
@@ -134,20 +134,20 @@ static int key_command(int argc, char *argv[], int opt_ind)
 
 	int ret = kdnssec_ctx_init(conf(), &kctx, zone_name, &kaspdb, NULL);
 	if (ret != KNOT_EOK) {
-		printf("Failed to initialize KASP (%s)\n", knot_strerror(ret));
+		ERROR("failed to initialize KASP (%s)\n", knot_strerror(ret));
 		goto main_end;
 	}
 
 #define CHECK_MISSING_ARG(msg) \
 	if (argc < 3) { \
-		printf("%s\n", (msg)); \
+		ERROR("%s\n", (msg)); \
 		ret = KNOT_EINVAL; \
 		goto main_end; \
 	}
 
 #define CHECK_MISSING_ARG2(msg) \
 	if (argc < 4) { \
-		printf("%s\n", (msg)); \
+		ERROR("%s\n", (msg)); \
 		ret = KNOT_EINVAL; \
 		goto main_end; \
 	}
@@ -267,7 +267,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_import_skr(&kctx, argv[2]);
 	} else {
-		printf("Wrong zone-key command: %s\n", argv[1]);
+		ERROR("wrong zone-key command: %s\n", argv[1]);
 		goto main_end;
 	}
 
@@ -276,7 +276,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 	if (ret == KNOT_EOK) {
 		printf("%s", print_ok_on_succes ? "OK\n" : "");
 	} else {
-		printf("Error (%s)\n", knot_strerror(ret));
+		ERROR("%s\n", knot_strerror(ret));
 	}
 
 main_end:
@@ -299,7 +299,7 @@ static bool init_conf(const char *confdb)
 	conf_t *new_conf = NULL;
 	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, flags);
 	if (ret != KNOT_EOK) {
-		printf("Failed opening configuration database %s (%s)\n",
+		ERROR("failed opening configuration database %s (%s)\n",
 		       (confdb == NULL ? "" : confdb), knot_strerror(ret));
 		return false;
 	}
@@ -311,7 +311,7 @@ static bool init_confile(const char *confile)
 {
 	int ret = conf_import(conf(), confile, true, false);
 	if (ret != KNOT_EOK) {
-		printf("Failed opening configuration file %s (%s)\n",
+		ERROR("failed opening configuration file %s (%s)\n",
 		       confile, knot_strerror(ret));
 		return false;
 	}
@@ -326,7 +326,7 @@ static bool init_conf_blank(const char *kasp_dir)
 	int ret = conf_import(conf(), confstr, false, false);
 	free(confstr);
 	if (ret != KNOT_EOK) {
-		printf("Failed creating fake configuration (%s)\n",
+		ERROR("failed creating fake configuration (%s)\n",
 		       knot_strerror(ret));
 		return false;
 	}
@@ -354,7 +354,7 @@ static bool conf_initialized = false; // This is a singleton as well as conf() i
 
 #define CHECK_CONF_UNINIT \
 	if ((conf_initialized = !conf_initialized) == false) { \
-		printf("Error: multiple arguments attempting configuration initializatioin.\n"); \
+		ERROR("multiple arguments attempting configuration initializatioin\n"); \
 		return EXIT_FAILURE; \
 	}
 
@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
 			}
 			ret = keymgr_generate_tsig(optarg, (argc > optind ? argv[optind] : "hmac-sha256"), parm);
 			if (ret != KNOT_EOK) {
-				printf("Failed to generate TSIG (%s)\n", knot_strerror(ret));
+				ERROR("failed to generate TSIG (%s)\n", knot_strerror(ret));
 			}
 			return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
 		default:
@@ -424,7 +424,7 @@ int main(int argc, char *argv[])
 			   init_conf(NULL) && init_confile(CONF_DEFAULT_FILE)) {
 			// initialized conf from default confile
 		} else {
-			printf("Couldn't initialize configuration, please provide -c, -C, or -d option\n");
+			ERROR("couldn't initialize configuration, please provide -c, -C, or -d option\n");
 			return EXIT_FAILURE;
 		}
 	}
