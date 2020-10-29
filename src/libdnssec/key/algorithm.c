@@ -110,12 +110,6 @@ gnutls_pk_algorithm_t algorithm_to_gnutls(dnssec_key_algorithm_t dnssec)
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algo)
-{
-	return algorithm_to_gnutls(algo) != GNUTLS_PK_UNKNOWN;
-}
-
-_public_
 bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algo, bool explicit)
 {
 	(void)explicit;

@@ -68,8 +68,10 @@ typedef struct dnssec_key dnssec_key_t;
  * Check whether a DNSKEY algorithm is supported.
  *
  * @note: less secure algorithms may go unsupported on purpose.
+ *   - if IETF RFCs deprecate algorithm even for validation (see RFC 8624)
+ *   - if (local) GnuTLS policy considers an algorithm insecure
  */
-bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algo);
+bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algorithm);
 
 /*!
  * Check if the algorithm allows deterministic signing.
@@ -269,9 +271,9 @@ typedef enum dnssec_key_digest {
 /*!
  * Check whether a DS algorithm is supported.
  *
- * @note: less secure algorithms may go unsupported on purpose.
+ * @note: see note at dnssec_algorithm_key_support().
  */
-bool dnssec_algorithm_digest_support(dnssec_key_digest_t algo);
+bool dnssec_algorithm_digest_support(dnssec_key_digest_t algorithm);
 
 /*!
  * Create DS (Delgation Signer) RDATA from DNSSEC key.
