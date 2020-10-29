@@ -44,7 +44,7 @@ int parse_timestamp(char *arg, knot_time_t *stamp)
 	int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
 	                          arg, stamp);
 	if (ret < 0) {
-		printf("Invalid timestamp: %s\n", arg);
+		ERROR("invalid timestamp: %s\n", arg);
 		return KNOT_EINVAL;
 	}
 	return KNOT_EOK;
@@ -137,7 +137,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				}
 			}
 			if (alg > 255) {
-				printf("Unknown algorithm: %s\n", argv[i] + 10);
+				ERROR("unknown algorithm: %s\n", argv[i] + 10);
 				return false;
 			}
 			*algorithm = alg;
@@ -150,13 +150,13 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, str2bool(argv[i] + 4));
 		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
 			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
-				printf("Invalid size: '%s'\n", argv[i] + 5);
+				ERROR("invalid size: '%s'\n", argv[i] + 5);
 				return false;
 			}
 		} else if (!just_timing && strncasecmp(argv[i], "addtopolicy=", 12) == 0) {
 			*addtopolicy = argv[i] + 12;
 		} else if (!init_timestamps(argv[i], timing)) {
-			printf("Invalid parameter: %s\n", argv[i]);
+			ERROR("invalid parameter: %s\n", argv[i]);
 			return false;
 		}
 	}
@@ -168,7 +168,7 @@ static bool _check_lower(knot_time_t a, knot_time_t b,
 			 const char *a_name, const char *b_name)
 {
 	if (knot_time_cmp(a, b) > 0) {
-		fprintf(stderr, "Semantic error: expected '%s' before '%s'.\n", a_name, b_name);
+		ERROR("semantic error: expected '%s' before '%s'\n", a_name, b_name);
 		return false;
 	}
 	return true;
@@ -689,20 +689,20 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
 	_cleanup_binary_ dnssec_binary_t key = { 0 };
 	int r = dnssec_binary_alloc(&key, bits / CHAR_BIT);
 	if (r != DNSSEC_EOK) {
-		printf("Failed to allocate memory.");
+		ERROR("failed to allocate memory\n");
 		return knot_error_from_libdnssec(r);
 	}
 
 	r = gnutls_rnd(GNUTLS_RND_KEY, key.data, key.size);
 	if (r != 0) {
-		printf("Failed to generate secret the key.");
+		ERROR("failed to generate secret the key\n");
 		return knot_error_from_libdnssec(r);
 	}
 
 	_cleanup_binary_ dnssec_binary_t key_b64 = { 0 };
 	r = dnssec_binary_to_base64(&key, &key_b64);
 	if (r != DNSSEC_EOK) {
-		printf("Failed to convert the key to Base64.");
+		ERROR("failed to convert the key to Base64\n");
 		return knot_error_from_libdnssec(r);
 	}
 
@@ -741,7 +741,7 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 	if ((is_keytag && !can_be_keytag) ||
 	    (is_id && !is_hex(key_spec)) ||
 	    (!can_be_keytag && !is_hex(key_spec))) {
-		printf("Error in key specification.\n");
+		ERROR("invalid key specification\n");
 		return KNOT_EINVAL;
 	}
 
@@ -765,13 +765,13 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 			if (*key == NULL) {
 				*key = candidate;
 			} else {
-				printf("Key is not specified uniquely. Please use id=Full_Key_ID.\n");
+				ERROR("key is not specified uniquely. Please use id=Full_Key_ID\n");
 				return KNOT_EINVAL;
 			}
 		}
 	}
 	if (*key == NULL) {
-		printf("Key not found.\n");
+		ERROR("key not found\n");
 		return KNOT_ENOENT;
 	}
 	return KNOT_EOK;
@@ -788,7 +788,7 @@ int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **k
 	kdnssec_ctx_t kctx = { 0 };
 	int ret = kdnssec_ctx_init(conf(), &kctx, *key_zone, kaspdb, NULL);
 	if (ret != KNOT_EOK) {
-		printf("Failed to initialize zone %s (%s)\n", argv[0], knot_strerror(ret));
+		ERROR("failed to initialize zone %s (%s)\n", argv[0], knot_strerror(ret));
 		free(*key_zone);
 		*key_zone = NULL;
 		return KNOT_ENOZONE;
