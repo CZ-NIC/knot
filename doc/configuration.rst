@@ -697,7 +697,7 @@ the performance improves, decide a further, exact setting.
 Number of available file descriptors
 ------------------------------------
 
-A name server configured for a higher number of zones (hundreds and more) needs enough file descriptors
+A name server configured for a large number of zones (hundreds or more) needs enough file descriptors
 available for zone transfers and zone file updates, which default OS settings often don't provide.
 It's necessary to check with the OS configuration and documentation and ensure the number of file
 descriptors (sometimes called a number of concurrently open files) effective for the knotd process
