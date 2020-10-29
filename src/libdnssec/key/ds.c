@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,9 +40,22 @@ static gnutls_digest_algorithm_t lookup_algorithm(dnssec_key_digest_t algorithm)
 }
 
 _public_
-bool dnssec_algorithm_digest_support(dnssec_key_digest_t algo)
+bool dnssec_algorithm_digest_support(dnssec_key_digest_t algorithm)
 {
-	return lookup_algorithm(algo) != GNUTLS_DIG_UNKNOWN;
+	/* GnuTLS docs:
+	 * > It is not possible to query for insecure hash algorithms directly
+	 * > (only indirectly through the signature API).
+	 * So let's query combining the hash with RSA.
+	 */
+	gnutls_sign_algorithm_t rsa;
+	switch (algorithm) {
+	case DNSSEC_KEY_DIGEST_SHA1:   rsa = GNUTLS_SIGN_RSA_SHA1;   break;
+	case DNSSEC_KEY_DIGEST_SHA256: rsa = GNUTLS_SIGN_RSA_SHA256; break;
+	case DNSSEC_KEY_DIGEST_SHA384: rsa = GNUTLS_SIGN_RSA_SHA384; break;
+	default:
+		return false;
+	};
+	return gnutls_sign_is_secure(rsa);
 }
 
 static void wire_write_digest(wire_ctx_t *wire,

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -230,11 +230,9 @@ static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 }
 #endif
 
-static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_key_t *key)
+static gnutls_sign_algorithm_t algo_dnssec2gnutls(dnssec_key_algorithm_t algorithm)
 {
-	uint8_t algorithm = dnssec_key_get_algorithm(key);
-
-	switch ((dnssec_key_algorithm_t)algorithm) {
+	switch (algorithm) {
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
 		return GNUTLS_SIGN_RSA_SHA1;
@@ -262,6 +260,13 @@ static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_key_t *key)
 /* -- public API ---------------------------------------------------------- */
 
 _public_
+bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algorithm)
+{
+	gnutls_sign_algorithm_t a = algo_dnssec2gnutls(algorithm);
+	return a != GNUTLS_SIGN_UNKNOWN && gnutls_sign_is_secure(a);
+}
+
+_public_
 int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 {
 	if (!ctx_ptr) {
@@ -278,7 +283,8 @@ int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 
-	ctx->sign_algorithm = get_sign_algorithm(key);
+	const uint8_t algo_raw = dnssec_key_get_algorithm(key);
+	ctx->sign_algorithm = algo_dnssec2gnutls((dnssec_key_algorithm_t)algo_raw);
 	int result = dnssec_sign_init(ctx);
 	if (result != DNSSEC_EOK) {
 		free(ctx);
