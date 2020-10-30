@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,6 +57,11 @@ char *strcdup(const char *s1, const char *s2);
  * \return Newly allocated string, NULL in case of error.
  */
 char *strstrip(const char *str);
+
+/*!
+ * \brief Convert upper-case letters to lower-case in a string.
+ */
+void strtolower(char *str);
 
 /*!
  * \brief Compare data in time based on string length.

@@ -18,6 +18,7 @@
 #include "knot/ctl/commands.h"
 #include "knot/ctl/process.h"
 #include "libknot/error.h"
+#include "contrib/string.h"
 
 int ctl_process(knot_ctl_t *ctl, server_t *server)
 {
@@ -65,6 +66,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		default:
 			assert(0);
 		}
+
+		strtolower((char *)args.data[KNOT_CTL_IDX_ZONE]);
 
 		const char *cmd_name = args.data[KNOT_CTL_IDX_CMD];
 		const char *zone_name = args.data[KNOT_CTL_IDX_ZONE];
