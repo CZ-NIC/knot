@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 
 #include "contrib/string.h"
 #include "contrib/ctype.h"
+#include "contrib/tolower.h"
 
 uint8_t *memdup(const uint8_t *data, size_t data_size)
 {
@@ -103,6 +104,17 @@ char *strstrip(const char *str)
 	trimmed[len] = '\0';
 
 	return trimmed;
+}
+
+void strtolower(char *str)
+{
+	if (str == NULL) {
+		return;
+	}
+
+	for (char *it = str; *it != '\0'; ++it) {
+		*it = knot_tolower(*it);
+	}
 }
 
 int const_time_memcmp(const void *s1, const void *s2, size_t n)
