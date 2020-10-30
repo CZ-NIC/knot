@@ -327,6 +327,7 @@ build:documentation:
 
 obs:build:all:
   <<: *deploytest
+  allow_failure: true
   script:
     - "osc results home:CZ-NIC:$OBS_REPO knot -w"
     - version=$(sed 's/^v//' <(git describe --exact-match HEAD || git rev-parse --short HEAD) )
