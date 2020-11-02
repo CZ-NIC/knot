@@ -54,9 +54,11 @@ Also the configuration database can be exported into a textual file::
     $ knotc conf-export output.conf
 
 .. WARNING::
-   The import and export commands lock the configuration database, 
-   preventing access from the server. So it is necessary to perform 
-   these operations when the server is not running.
+   The import and export commands access the configuration database
+   directly, without any interaction with the server. Therefore, any data
+   not yet commited to the database won't be exported. And the server won't
+   reflect imported configuration correctly. So it is strictly recommended to
+   import new configuration when the server is not running.
 
 .. _Dynamic configuration:
 
@@ -188,17 +190,6 @@ Master mode
 If you just want to check the zone files before starting, you can use::
 
     $ knotc zone-check example.com
-
-For an approximate estimation of a server's memory consumption, you can use::
-
-    $ knotc zone-memstats example.com
-
-This action prints the count of resource records, percentage of signed
-records and finally estimation of memory consumption for each zone, unless
-specified otherwise. Please note that the estimated values may differ from the
-actual consumption. Also, for slave servers with incoming transfers
-enabled, be aware that the actual memory consumption might be double
-or higher during transfers.
 
 .. _Editing zones:
 
@@ -500,7 +491,7 @@ The prerequisite is automatic zone signing with enabled
 The KSK and ZSK rollovers are triggered by the respective zone key getting old according
 to the settings (see :ref:`KSK<policy_ksk-lifetime>` and :ref:`ZSK<policy_zsk-lifetime>` lifetimes).
 
-The rollover algorithm runs when the policy :ref:`algorithm<policy_algorithm>`
+The algorithm rollover starts when the policy :ref:`algorithm<policy_algorithm>`
 field is updated to a different value.
 
 The signing scheme rollover happens when the policy :ref:`signing scheme<policy_single-type-signing>`
@@ -1037,7 +1028,7 @@ Per zone statistics can be shown by::
 
 To show all supported counters even with 0 value, use the force option.
 
-A simple periodic statistic dumped to a YAML file can also be enabled. See
+A simple periodic statistic dump to a YAML file can also be enabled. See
 :ref:`statistics_section` for the configuration details.
 
 As the statistics data can be accessed over the server control socket,
