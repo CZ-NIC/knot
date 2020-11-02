@@ -489,7 +489,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	char dev1[IFNAMSIZ], dev2[IFNAMSIZ];
 	ret = distantIP2MAC(target_str, ctx->ipv6, dev1, ctx->target_mac);
 	if (ret != KNOT_EOK) {
-		printf("can't get remote MAC of `%s` by ARP query: %s\n",
+		printf("can't get remote MAC of `%s`: %s\n",
 		       target_str, knot_strerror(ret));
 		return false;
 	}
