@@ -102,7 +102,7 @@ address: 10.0.0.2
 .UNINDENT
 .sp
 If an item value contains spaces or other special characters, it is necessary
-to enclose such value within double quotes \fB"\fP \fB"\fP\&.
+to enclose such a value within double quotes \fB"\fP \fB"\fP\&.
 .SH COMMENTS
 .sp
 A comment begins with a \fB#\fP character and is ignored during processing.
@@ -207,7 +207,7 @@ server:
 .INDENT 3.5
 When you change configuration parameters dynamically or via configuration file
 reload, some parameters in the Server section require restarting the Knot server
-so as the change take effect. See below for the details.
+so that the changes take effect. See below for the details.
 .UNINDENT
 .UNINDENT
 .SS identity
@@ -454,7 +454,7 @@ There are 6 logging severity levels:
 \fBdebug\fP – Debug or detailed message.
 .UNINDENT
 .sp
-In the case of missing log section, \fBwarning\fP or more serious messages
+In the case of a missing log section, \fBwarning\fP or more serious messages
 will be logged to both standard error output and syslog. The \fBinfo\fP and
 \fBnotice\fP messages will be logged to standard output.
 .INDENT 0.0

@@ -394,8 +394,8 @@ the server logs to see whether everything went well.
   enabling the automatic key management. If the zone was already signed, all
   existing keys must be imported using ``keymgr import-bind`` command
   before enabling the automatic signing. Also the algorithm in the policy must
-  match the algorithm of all imported keys. Otherwise the zone will not be re-signed
-  at all.
+  match the algorithm of all imported keys. Otherwise the zone will be completely
+  re-signed with a new, automatically generated key.
 
 .. _dnssec-automatic-ksk-management:
 
@@ -583,9 +583,9 @@ Catalog zones
 =============
 
 Catalog zones are a concept whereby a list of zones to be configured is maintained
-as contents of a separate, special zone file. This approach has the benefit of simple propagation
-of a zone-file list to slave servers, especially when the list is frequently
-updated. Currently, catalog zones are described in this `Internet Draft
+as contents of a separate, special zone. This approach has the benefit of simple
+propagation of a zone list to slave servers, especially when the list is
+frequently updated. Currently, catalog zones are described in this `Internet Draft
 <https://tools.ietf.org/html/draft-ietf-dnsop-dns-catalog-zones>`_.
 
 Terminology first. *Catalog zone* is a meta-zone which shall not be a part
@@ -714,7 +714,7 @@ performance in common use cases.
 
 If your NIC driver allows it (see /proc/interrupts for hint), set CPU affinity (/proc/irq/$IRQ/smp_affinity)
 manually so that each NIC channel is served by unique CPU core(s). You must turn off irqbalance service
-to avoid configuration override.
+in advance to avoid configuration override.
 
 Configure sysctl as follows: ::
 
