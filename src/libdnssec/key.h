@@ -76,7 +76,7 @@ bool dnssec_algorithm_key_support(dnssec_key_algorithm_t algorithm);
 /*!
  * Check if the algorithm allows deterministic signing.
  */
-bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algo, bool explicit);
+bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algorithm, bool enabled);
 
 /*!
  * Allocate new DNSSEC key.

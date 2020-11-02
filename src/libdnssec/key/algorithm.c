@@ -110,17 +110,17 @@ gnutls_pk_algorithm_t algorithm_to_gnutls(dnssec_key_algorithm_t dnssec)
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algo, bool explicit)
+bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algorithm, bool enabled)
 {
-	(void)explicit;
-	switch (algo) {
+	(void)enabled;
+	switch (algorithm) {
 	case DNSSEC_KEY_ALGORITHM_ED25519:
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return true; // those are always reproducible
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 #ifdef HAVE_GLNUTLS_REPRODUCIBLE
-		return explicit; // reproducible only if GnuTLS supports && explicitly configured
+		return enabled; // Reproducible only if GnuTLS supports && enabled
 #else
 		return false;
 #endif
