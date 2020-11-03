@@ -390,7 +390,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 			goto fail;
 		}
 
-		bind_privkey_to_timing(&bpriv, &timing); // time created remains always zero
+		bind_privkey_to_timing(&bpriv, &timing);
 
 		bind_privkey_free(&bpriv);
 
