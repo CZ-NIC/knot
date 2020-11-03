@@ -38,6 +38,10 @@
 #include "contrib/sockaddr.h"
 #include "contrib/trim.h"
 
+#ifdef ENABLE_XDP
+#include <net/if.h>
+#endif
+
 #ifdef SO_ATTACH_REUSEPORT_CBPF
 #include <linux/filter.h>
 #endif
@@ -284,8 +288,10 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *t
 	}
 
 	if (ret == KNOT_EOK) {
-		log_debug("initialized XDP interface %s@%u, queues %d",
-		          iface.name, iface.port, iface.queues);
+		knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(iface.name));
+		log_debug("initialized XDP interface %s@%u, queues %d, %s mode",
+		          iface.name, iface.port, iface.queues,
+		          (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"));
 	}
 
 	return new_if;
