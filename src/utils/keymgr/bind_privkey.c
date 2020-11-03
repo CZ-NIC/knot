@@ -396,11 +396,11 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 
 void bind_privkey_to_timing(bind_privkey_t *params, knot_kasp_key_timing_t *timing)
 {
-	// unsupported: time_created, time_revoke
-
+	// timing->created remains "now"
 	timing->publish = (knot_time_t)params->time_publish;
 	timing->ready   = 0;
 	timing->active  = (knot_time_t)params->time_activate;
 	timing->retire  = (knot_time_t)params->time_inactive;
+	timing->revoke  = (knot_time_t)params->time_revoke;
 	timing->remove  = (knot_time_t)params->time_delete;
 }

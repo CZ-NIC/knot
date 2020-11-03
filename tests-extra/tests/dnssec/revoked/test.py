@@ -65,9 +65,18 @@ check_revoked_key(knot)
 wait_for_rrsig_count(t, knot, "DNSKEY", 1, 3)
 
 knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0")
-knot.key_set(ZONE, KSK, retire="+0", revoke="+0")
+knot.key_set(ZONE, KSK, retire="+0", revoke="+0", remove="+8s")
 
 t.sleep(2)
+knot.ctl("zone-sign")
+t.sleep(2)
+check_revoked_key(knot)
+
+# scenario 3: import revoked key from Bind
+wait_for_rrsig_count(t, knot, "DNSKEY", 1, 6)
+
+Keymgr.run_check(knot.confile, ZONE, "import-bind", knot.data_dir + "/Kexample.com.+013+65449.key")
+
 knot.ctl("zone-sign")
 t.sleep(2)
 check_revoked_key(knot)
