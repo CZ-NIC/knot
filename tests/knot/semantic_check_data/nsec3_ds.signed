@@ -2,8 +2,9 @@
 
 deleg.example.com.	3600	IN NS	deleg.example.com.
 			3600	A	192.0.2.1
-			3600	IN	DS 60485 5 1 ( 2BB183AF5F22588179A53B0A
-					               98631FAD1A292118 )
+			3600	IN	DS 60485 5 2 ( 4EFB4310DB01A42E7882E102
+					               7A73CC28E2E0FE938F2D5888
+					               A0DA0005B99E7FF8 )
 deleg.example.com.	3600	IN	RRSIG DS 7 3 3600 (
 					20840201000000 20160302125715 29600 example.com.
 					DummySignatureDummySignature4ey0Qcln
