@@ -40,3 +40,18 @@ int knot_eth_queues(const char *devname);
  */
 int knot_eth_name_from_addr(const struct sockaddr_storage *addr, char *out,
                             size_t out_len);
+
+typedef enum {
+	KNOT_XDP_MODE_NONE, /*!< XDP not available or error. */
+	KNOT_XDP_MODE_FULL, /*!< Full XDP support in driver or HW. */
+	KNOT_XDP_MODE_EMUL, /*!< Emulated XDP support. */
+} knot_xdp_mode_t;
+
+/*!
+ * \brief Check if the network inteface supports XDP.
+ *
+ * \param if_index  Index of interface, output from if_nametoindex().
+ *
+ * \return Supported XDP mode.
+ */
+knot_xdp_mode_t knot_eth_xdp_mode(int if_index);

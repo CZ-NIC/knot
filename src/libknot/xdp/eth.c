@@ -14,10 +14,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bpf/libbpf.h>
 #include <errno.h>
 #include <ifaddrs.h>
 #include <linux/ethtool.h>
 #include <linux/if.h>
+#include <linux/if_link.h>
 #include <linux/sockios.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -104,4 +106,24 @@ int knot_eth_name_from_addr(const struct sockaddr_storage *addr, char *out,
 
 	freeifaddrs(ifaces);
 	return matches == 0 ? KNOT_EADDRNOTAVAIL : KNOT_ELIMIT;
+}
+
+_public_
+knot_xdp_mode_t knot_eth_xdp_mode(int if_index)
+{
+	struct xdp_link_info info;
+	int ret = bpf_get_link_xdp_info(if_index, &info, sizeof(info), 0);
+	if (ret != 0) {
+		return KNOT_XDP_MODE_NONE;
+	}
+
+	switch (info.attach_mode) {
+	case XDP_ATTACHED_DRV:
+	case XDP_ATTACHED_HW:
+		return KNOT_XDP_MODE_FULL;
+	case XDP_ATTACHED_SKB:
+		return KNOT_XDP_MODE_EMUL;
+	default:
+		return KNOT_XDP_MODE_NONE;
+	}
 }
