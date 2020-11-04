@@ -824,7 +824,11 @@ static int check_nsec(const zone_node_t *node, semchecks_data_t *data)
 	 * so checking should only be matter of testing
 	 * the next link in each node.
 	 */
-	const knot_dname_t *next_domain = knot_nsec_next(nsec_rrs->rdata);
+	knot_dname_storage_t next_domain;
+	if (knot_dname_store(next_domain, knot_nsec_next(nsec_rrs->rdata)) == 0) {
+		return KNOT_EINVAL;
+	}
+	knot_dname_to_lower(next_domain);
 
 	data->next_nsec = zone_contents_find_node(data->zone, next_domain);
 	if (data->next_nsec == NULL) {
