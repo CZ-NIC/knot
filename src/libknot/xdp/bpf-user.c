@@ -25,6 +25,7 @@
 #include "libknot/error.h"
 #include "libknot/xdp/bpf-kernel-obj.h"
 #include "libknot/xdp/bpf-user.h"
+#include "libknot/xdp/eth.h"
 #include "contrib/openbsd/strlcpy.h"
 
 #define NO_BPF_MAPS	2
@@ -223,6 +224,12 @@ int kxsk_iface_new(const char *if_name, int if_queue, knot_xdp_load_bpf_t load_b
 	}
 	iface->if_queue = if_queue;
 	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
+
+	knot_xdp_mode_t mode = knot_eth_xdp_mode(if_queue);
+	if (mode == KNOT_XDP_MODE_NONE) {
+		free(iface);
+		return KNOT_ENOTSUP;
+	}
 
 	int ret;
 	switch (load_bpf) {
