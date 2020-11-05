@@ -364,8 +364,19 @@ int net_connect(net_t *net)
 		if (net->tls.params != NULL) {
 #ifdef LIBNGHTTP2
 			if (net->https.params.enable) {
-				//Establish HTTPS connection
-				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, net->tls.params->sni);
+				// Establish HTTPS connection.
+				char *remote = NULL;
+				if (net->tls.params->sni != NULL) {
+					remote = net->tls.params->sni;
+				} else if (net->tls.params->hostname != NULL) {
+					remote = net->tls.params->hostname;
+				} else if (strchr(net->remote_str, ':') == NULL) {
+					char *at = strchr(net->remote_str, '@');
+					if (at != NULL && strncmp(net->remote->name, net->remote_str, at - net->remote_str)) {
+						remote = net->remote->name;
+					}
+				}
+				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, remote);
 			} else {
 				// Establish TLS connection.
 				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
