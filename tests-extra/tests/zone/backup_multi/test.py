@@ -17,6 +17,9 @@ t.link(zones, master)
 for z in zones:
     master.dnssec(z).enable = True
 
+if master.valgrind:
+    master.ctl_params_append = ["-t", "240"]
+
 t.start()
 serials_init = master.zones_wait(zones)
 
@@ -33,7 +36,7 @@ for z in zones:
 
 master.zones_wait(zones, serials_init, equal=False, greater=True)
 
-master.ctl("zone-restore +backupdir %s" % backup_dir)
+master.ctl("zone-restore +backupdir %s" % backup_dir, wait=True)
 if master.valgrind:
     t.sleep(45);
 
