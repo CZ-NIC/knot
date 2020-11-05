@@ -25,6 +25,8 @@
 
 #include "load_queries.h"
 
+#define ERR_PREFIX "failed loading queries "
+
 uint16_t global_edns_size = 1232;
 
 enum qflags {
@@ -48,7 +50,7 @@ bool load_queries(const char *filename)
 {
 	FILE *f = fopen(filename, "r");
 	if (f == NULL) {
-		printf("Failed loading queries (file open): %s\n", strerror(errno));
+		printf(ERR_PREFIX "file '%s' (%s)\n", filename, strerror(errno));
 		return false;
 	}
 	struct pkt_payload *g_payloads_top = NULL;
@@ -62,7 +64,7 @@ bool load_queries(const char *filename)
 	} *bufs;
 	bufs = malloc(sizeof(*bufs)); // avoiding too much stuff on stack
 	if (bufs == NULL) {
-		printf("Failed loading queries (out of memory)\n");
+		printf(ERR_PREFIX "(out of memory)\n");
 		goto fail;
 	}
 
@@ -70,20 +72,21 @@ bool load_queries(const char *filename)
 		bufs->flags_txt[0] = '\0';
 		int ret = sscanf(bufs->line, "%s%s%s", bufs->dname_txt, bufs->type_txt, bufs->flags_txt);
 		if (ret < 2) {
-			printf("Failed loading queries. Faulty line: '%s'\n", bufs->line);
+			printf(ERR_PREFIX "(faulty line): '%.*s'\n",
+			       (int)strcspn(bufs->line, "\n"), bufs->line);
 			goto fail;
 		}
 
 		void *pret = knot_dname_from_str(bufs->dname, bufs->dname_txt, sizeof(bufs->dname));
 		if (pret == NULL) {
-			printf("Failed loading queries. Faulty dname: '%s'\n", bufs->dname_txt);
+			printf(ERR_PREFIX "(faulty dname): '%s'\n", bufs->dname_txt);
 			goto fail;
 		}
 
 		uint16_t type;
 		ret = knot_rrtype_from_string(bufs->type_txt, &type);
 		if (ret < 0) {
-			printf("Failed loading queries. Faulty type: '%s'\n", bufs->type_txt);
+			printf(ERR_PREFIX "(faulty type): '%s'\n", bufs->type_txt);
 		}
 
 		enum qflags flags = 0;
@@ -99,7 +102,7 @@ bool load_queries(const char *filename)
 			flags |= QFLAG_EDNS | QFLAG_DO;
 			break;
 		default:
-			printf("Failed loading queries. Faulty flags: '%s'\n", bufs->flags_txt);
+			printf(ERR_PREFIX "(faulty flag): '%s'\n", bufs->flags_txt);
 			goto fail;
 		}
 
@@ -111,7 +114,7 @@ bool load_queries(const char *filename)
 
 		struct pkt_payload *pkt = calloc(1, sizeof(void *) + sizeof(size_t) + pkt_len);
 		if (pkt == NULL) {
-			printf("Failed loading queries (out of memory)\n");
+			printf(ERR_PREFIX "(out of memory)\n");
 			goto fail;
 		}
 		pkt->len = pkt_len;
@@ -140,7 +143,7 @@ bool load_queries(const char *filename)
 	}
 
 	if (global_payloads == NULL) {
-		printf("Failed loading queries (no queries in file)\n");
+		printf(ERR_PREFIX "(no queries in file)\n");
 		goto fail;
 	}
 
@@ -154,4 +157,3 @@ fail:
 	fclose(f);
 	return false;
 }
-

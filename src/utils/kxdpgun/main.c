@@ -637,7 +637,6 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			break;
 		case 'i':
 			if (!load_queries(optarg)) {
-				printf("failed to load queries from file '%s'\n", optarg);
 				return false;
 			}
 			break;
