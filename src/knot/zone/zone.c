@@ -65,8 +65,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	int ret = KNOT_EOK;
 	zone_journal_t j = zone_journal(zone);
 
-	bool force = zone->flags & ZONE_FORCE_FLUSH;
-	zone->flags &= ~ZONE_FORCE_FLUSH;
+	bool force = zone_get_flag(zone, ZONE_FORCE_FLUSH, true);
 
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
@@ -355,6 +354,38 @@ void zone_clear_preferred_master(zone_t *zone)
 	free(zone->preferred_master);
 	zone->preferred_master = NULL;
 	pthread_mutex_unlock(&zone->preferred_lock);
+}
+
+void zone_set_flag(zone_t *zone, zone_flag_t flag)
+{
+	if (zone == NULL) {
+		return;
+	}
+
+	pthread_mutex_lock(&zone->preferred_lock); // this mutex seems OK to be reused for this
+	zone->flags |= flag;
+	pthread_mutex_unlock(&zone->preferred_lock);
+
+	if (flag & ZONE_IS_CATALOG) {
+		zone->is_catalog_flag = true;
+	}
+}
+
+zone_flag_t zone_get_flag(zone_t *zone, zone_flag_t flag, bool clear)
+{
+	if (zone == NULL) {
+		return 0;
+	}
+
+	pthread_mutex_lock(&zone->preferred_lock);
+	zone_flag_t res = (zone->flags & flag);
+	if (clear && res) {
+		zone->flags &= ~flag;
+	}
+	assert(((bool)(zone->flags & ZONE_IS_CATALOG)) == zone->is_catalog_flag);
+	pthread_mutex_unlock(&zone->preferred_lock);
+
+	return res;
 }
 
 const knot_rdataset_t *zone_soa(const zone_t *zone)

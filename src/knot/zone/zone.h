@@ -34,7 +34,7 @@ struct zone_backup_ctx;
 /*!
  * \brief Zone flags.
  */
-typedef enum zone_flag_t {
+typedef enum {
 	ZONE_FORCE_AXFR     = 1 << 0, /*!< Force AXFR as next transfer. */
 	ZONE_FORCE_RESIGN   = 1 << 1, /*!< Force zone re-sign. */
 	ZONE_FORCE_FLUSH    = 1 << 2, /*!< Force zone flush. */
@@ -52,6 +52,7 @@ typedef struct zone
 	knot_dname_t *name;
 	zone_contents_t *contents;
 	zone_flag_t flags;
+	bool is_catalog_flag; //!< Lock-less indication of ZONE_IS_CATALOG flag.
 
 	/*! \brief Dynamic configuration zone change type. */
 	conf_io_type_t change_type;
@@ -93,7 +94,7 @@ typedef struct zone
 	catalog_t *catalog;
 	catalog_update_t *catalog_upd;
 
-	/*! \brief Preferred master lock. */
+	/*! \brief Preferred master lock. Also used for flags access. */
 	pthread_mutex_t preferred_lock;
 	/*! \brief Preferred master for remote operation. */
 	struct sockaddr_storage *preferred_master;
@@ -164,6 +165,12 @@ void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr
 
 /*! \brief Clears the current preferred master address. */
 void zone_clear_preferred_master(zone_t *zone);
+
+/*! \brief Sets a zone flag. */
+void zone_set_flag(zone_t *zone, zone_flag_t flag);
+
+/*! \brief Returns if a flag is set (and optionally clears it). */
+zone_flag_t zone_get_flag(zone_t *zone, zone_flag_t flag, bool clear);
 
 /*! \brief Get zone SOA RR. */
 const knot_rdataset_t *zone_soa(const zone_t *zone);
