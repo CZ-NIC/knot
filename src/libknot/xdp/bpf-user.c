@@ -225,12 +225,6 @@ int kxsk_iface_new(const char *if_name, int if_queue, knot_xdp_load_bpf_t load_b
 	iface->if_queue = if_queue;
 	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
 
-	knot_xdp_mode_t mode = knot_eth_xdp_mode(iface->if_index);
-	if (mode == KNOT_XDP_MODE_NONE) {
-		free(iface);
-		return KNOT_ENOTSUP;
-	}
-
 	int ret;
 	switch (load_bpf) {
 	case KNOT_XDP_LOAD_BPF_NEVER:
@@ -265,6 +259,12 @@ int kxsk_iface_new(const char *if_name, int if_queue, knot_xdp_load_bpf_t load_b
 	if (ret < 0) {
 		free(iface);
 		return ret;
+	}
+
+	knot_xdp_mode_t mode = knot_eth_xdp_mode(iface->if_index);
+	if (mode == KNOT_XDP_MODE_NONE) {
+		free(iface);
+		return KNOT_ENOTSUP;
 	}
 
 	*out_iface = iface;
