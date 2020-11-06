@@ -349,7 +349,7 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone->flags |= ZONE_FORCE_AXFR;
+	zone_set_flag(zone, ZONE_FORCE_AXFR);
 	schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 
 	return KNOT_EOK;
@@ -379,7 +379,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 	}
 
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
-		zone->flags |= ZONE_FORCE_FLUSH;
+		zone_set_flag(zone, ZONE_FORCE_FLUSH);
 	}
 
 	schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
@@ -460,7 +460,7 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone->flags |= ZONE_FORCE_RESIGN;
+	zone_set_flag(zone, ZONE_FORCE_RESIGN);
 	schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 
 	return KNOT_EOK;
@@ -475,9 +475,9 @@ static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 
 	const char *key_type = args->data[KNOT_CTL_IDX_TYPE];
 	if (strncasecmp(key_type, "ksk", 3) == 0) {
-		zone->flags |= ZONE_FORCE_KSK_ROLL;
+		zone_set_flag(zone, ZONE_FORCE_KSK_ROLL);
 	} else if (strncasecmp(key_type, "zsk", 3) == 0) {
-		zone->flags |= ZONE_FORCE_ZSK_ROLL;
+		zone_set_flag(zone, ZONE_FORCE_ZSK_ROLL);
 	} else {
 		return KNOT_EINVAL;
 	}

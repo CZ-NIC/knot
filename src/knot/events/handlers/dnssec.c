@@ -75,22 +75,19 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	int sign_flags = 0;
 	bool zone_changed = false;
 
-	if (zone->flags & ZONE_FORCE_RESIGN) {
+	if (zone_get_flag(zone, ZONE_FORCE_RESIGN, true)) {
 		log_zone_info(zone->name, "DNSSEC, dropping previous "
 		              "signatures, re-signing zone");
-		zone->flags &= ~ZONE_FORCE_RESIGN;
 		sign_flags = ZONE_SIGN_DROP_SIGNATURES;
 	} else {
 		log_zone_info(zone->name, "DNSSEC, signing zone");
 		sign_flags = 0;
 	}
 
-	if (zone->flags & ZONE_FORCE_KSK_ROLL) {
-		zone->flags &= ~ZONE_FORCE_KSK_ROLL;
+	if (zone_get_flag(zone, ZONE_FORCE_KSK_ROLL, true)) {
 		r_flags |= KEY_ROLL_FORCE_KSK_ROLL;
 	}
-	if (zone->flags & ZONE_FORCE_ZSK_ROLL) {
-		zone->flags &= ~ZONE_FORCE_ZSK_ROLL;
+	if (zone_get_flag(zone, ZONE_FORCE_ZSK_ROLL, true)) {
 		r_flags |= KEY_ROLL_FORCE_ZSK_ROLL;
 	}
 
