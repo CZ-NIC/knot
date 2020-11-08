@@ -127,7 +127,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	}
 
 	zone->contents = old_zone->contents;
-	zone->flags = (old_zone->flags & (ZONE_IS_CATALOG | ZONE_IS_CAT_MEMBER));
+	zone_set_flag(zone, zone_get_flag(old_zone, ZONE_IS_CATALOG | ZONE_IS_CAT_MEMBER, false));
 
 	zone->timers = old_zone->timers;
 	timers_sanitize(conf, zone);
@@ -263,7 +263,7 @@ static bool check_open_catalog(catalog_t *cat)
 static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
                                  list_t *expired_contents)
 {
-	if (!(zone->flags & ZONE_IS_CAT_MEMBER)) {
+	if (!zone_get_flag(zone, ZONE_IS_CAT_MEMBER, false)) {
 		return NULL;
 	}
 
@@ -283,7 +283,7 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 	if (newzone == NULL) {
 		log_zone_error(zone->name, "zone cannot be created");
 	} else {
-		assert(newzone->flags & ZONE_IS_CAT_MEMBER);
+		assert(zone_get_flag(newzone, ZONE_IS_CAT_MEMBER, false));
 		conf_activate_modules(conf, server, newzone->name, &newzone->query_modules,
 		                      &newzone->query_plan);
 	}
@@ -302,7 +302,7 @@ static zone_t *reuse_cold_zone(const knot_dname_t *zname, server_t *server, conf
 	if (zone == NULL) {
 		log_zone_error(zname, "zone cannot be created");
 	} else {
-		zone->flags |= ZONE_IS_CAT_MEMBER;
+		zone_set_flag(zone, ZONE_IS_CAT_MEMBER);
 		conf_activate_modules(conf, server, zone->name, &zone->query_modules,
 		                      &zone->query_plan);
 	}
@@ -326,7 +326,7 @@ static zone_t *add_member_zone(catalog_upd_val_t *val, knot_zonedb_t *check,
 		log_zone_error(val->member, "zone cannot be created");
 		catalog_del2(conf->catalog, val);
 	} else {
-		zone->flags |= ZONE_IS_CAT_MEMBER;
+		zone_set_flag(zone, ZONE_IS_CAT_MEMBER);
 		conf_activate_modules(conf, server, zone->name, &zone->query_modules,
 		                      &zone->query_plan);
 		log_zone_info(val->member, "zone added from catalog");

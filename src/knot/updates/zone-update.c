@@ -713,7 +713,7 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 		return (val.code == KNOT_ENOENT || val.code == KNOT_YP_EINVAL_ID) ? KNOT_EOK : val.code;
 	}
 
-	update->zone->flags |= ZONE_IS_CATALOG;
+	zone_set_flag(update->zone, ZONE_IS_CATALOG);
 
 	int ret = KNOT_EOK;
 	if ((update->flags & UPDATE_INCREMENTAL)) {

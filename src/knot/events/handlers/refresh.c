@@ -1263,8 +1263,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	try_refresh_ctx_t trctx = { 0 };
 
 	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
-	if (zone->flags & ZONE_FORCE_AXFR) {
-		zone->flags &= ~ZONE_FORCE_AXFR;
+	if (zone_get_flag(zone, ZONE_FORCE_AXFR, true)) {
 		trctx.force_axfr = true;
 		zone->zonefile.retransfer = true;
 	}
