@@ -53,6 +53,7 @@ typedef struct zone_events {
 
 	zone_event_type_t type;		//!< Type of running event.
 	bool running;			//!< Some zone event is being run.
+	pthread_cond_t *run_end;	//!< Notify this one after finishing a job.
 
 	bool frozen;			//!< Terminated, don't schedule new events.
 	bool ufrozen;			//!< Updates to the zone temporarily frozen by user.
@@ -156,6 +157,13 @@ void zone_events_schedule_blocking(struct zone *zone, zone_event_type_t type, bo
  * \param zone  Zone to freeze events for.
  */
 void zone_events_freeze(struct zone *zone);
+
+/*!
+ * \brief Freeze zone events and wait for running event to finish.
+ *
+ * \param zone  Zone to freeze events for.
+ */
+void zone_events_freeze_blocking(struct zone *zone);
 
 /*!
  * \brief ufreeze_applies
