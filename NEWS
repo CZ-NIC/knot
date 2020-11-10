@@ -1,3 +1,37 @@
+Knot DNS 3.0.2 (2020-11-11)
+===========================
+
+Features:
+---------
+ - kdig prints Extended DNS Error (Gift for Marek Vavruša)
+ - kxdpgun allows source IP address/subnet specification
+
+Improvements:
+-------------
+ - Server doesn't start if any of listen addresses fails to bind
+ - knotc no longer stores empty and adjacent identical commands to interactive history
+ - Depth of interactive history of knotc was increased to 1000 commands
+ - keymgr prints error messages to stderr instead of stdout
+ - keymgr checks for proper offline-ksk configuration before processing KSR or SKR
+ - keymgr imports Revoked timer from BIND keys
+ - Additional XDP support detection in server
+ - Lots of spelling and grammar fixes in documentation (Thanks to Paul Dee)
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - If more masters configured, zone retransfer triggers AXFR from all masters
+ - Server can fail to bind address during restart due to missing SO_REUSEADDR
+ - KSK imported from BIND doesn't roll over automatically
+ - libdnssec respects local GnuTLS policy — affects DNSSEC operations and Knot Resolver
+ - kdig can stuck in infinite loop when solving BADCOOKIE responses
+ - Zone names received over control interface are not lower-cased
+ - Zone attributes not secured with multi-threaded changes
+ - kzonecheck ignores forced dnssec checks if zone not signed
+ - kzonecheck fails on case-sensitivity of owner names in NSEC records #699
+ - kdig fails to establish TLS connection #700
+ - Server responds NOTIMPL to queries with QDCOUNT 0 and known OPCODE
+
 Knot DNS 3.0.1 (2020-10-10)
 ===========================
 
