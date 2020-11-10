@@ -407,7 +407,15 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 	/* All supported OPCODEs require a question. */
 	const knot_dname_t *qname = knot_pkt_qname(query);
 	if (qname == NULL) {
-		qdata->rcode = KNOT_RCODE_NOTIMPL;
+		switch (knot_wire_get_opcode(query->wire)) {
+		case KNOT_OPCODE_QUERY:
+		case KNOT_OPCODE_NOTIFY:
+		case KNOT_OPCODE_UPDATE:
+			qdata->rcode = KNOT_RCODE_FORMERR;
+			break;
+		default:
+			qdata->rcode = KNOT_RCODE_NOTIMPL;
+		}
 		return KNOT_ENOTSUP;
 	}
 
