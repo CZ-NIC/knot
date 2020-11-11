@@ -103,7 +103,7 @@ shutil.rmtree(slave.dir + "/journal")
 shutil.rmtree(slave.dir + "/timers")
 slave.start()
 
-slave.ctl("zone-restore +nozonefile +backupdir %s +journal" % slave_bck_dir)
+slave.ctl("zone-restore +nozonefile +backupdir %s +journal" % slave_bck_dir, wait=True)
 if int(t.uptime()) - start_time < zone0_expire - valgrind_delay:
     slave.zones_wait(zones) # zones shall be loaded from recovered journal iff not expired yet
 
