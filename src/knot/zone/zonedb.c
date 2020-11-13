@@ -119,6 +119,24 @@ zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 	return *val;
 }
 
+zone_t **knot_zonedb_find_ptr(knot_zonedb_t *db, const knot_dname_t *zone_name)
+{
+	if (db == NULL) {
+		return NULL;
+	}
+
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(zone_name, lf_storage);
+	assert(lf);
+
+	trie_val_t *val = trie_get_try(db->trie, lf + 1, *lf);
+	if (val == NULL) {
+		return NULL;
+	}
+
+	return (zone_t **)val;
+}
+
 zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *zone_name)
 {
 	if (db == NULL || zone_name == NULL) {

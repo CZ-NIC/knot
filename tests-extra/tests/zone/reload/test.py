@@ -4,6 +4,7 @@
 
 from dnstest.test import Test
 from dnstest.utils import set_err, detail_log
+import random
 
 t = Test()
 
@@ -21,7 +22,12 @@ serial = master.zone_wait(zone)
 
 def reload_zone(version, exp_serial, exp_version):
     master.update_zonefile(zone, version)
-    master.reload()
+
+    if random.random() < 0.5:
+        master.reload()
+    else:
+        master.ctl(random.choice(["-f", " "]) + " zone-reload " + zone[0].name, wait=True)
+
     new_serial = master.zone_wait(zone)
     if new_serial != exp_serial:
         set_err("SOA MISMATCH")

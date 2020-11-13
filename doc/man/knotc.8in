@@ -99,14 +99,15 @@ Show the zone status. Filters are \fB+role\fP, \fB+serial\fP, \fB+transaction\fP
 .TP
 \fBzone\-check\fP [\fIzone\fP\&...]
 Test if the server can load the zone. Semantic checks are executed if enabled
-in the configuration. When invoked with flag \fB\-f\fP/\fB\-\-force\fP an error is
-returned when semantic check warning appears. (*)
+in the configuration. If invoked with the forced flag, an error is returned
+when semantic check warning appears. (*)
 .TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
 Trigger a zone reload from a disk without checking its modification time. For
 slave zone, the refresh from a master server is scheduled; for master zone,
 the notification of slave servers is scheduled. An open zone transaction
-will be aborted! (#)
+will be aborted! If invoked with the forced flag, also zone modules will be
+re\-loaded. (#)
 .TP
 \fBzone\-refresh\fP [\fIzone\fP\&...]
 Trigger a check for the zone serial on the zone\(aqs master. If the master has a

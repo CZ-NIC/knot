@@ -247,6 +247,10 @@ static void event_wrap(task_t *task)
 		pthread_cond_broadcast(blocking);
 	}
 
+	if (events->run_end != NULL) {
+		pthread_cond_broadcast(events->run_end);
+	}
+
 	pthread_mutex_unlock(&events->mx);
 	reschedule(events);
 }
@@ -443,6 +447,29 @@ void zone_events_freeze(zone_t *zone)
 
 	/* Cancel current event. */
 	evsched_cancel(events->event);
+}
+
+void zone_events_freeze_blocking(zone_t *zone)
+{
+	if (!zone) {
+		return;
+	}
+
+	zone_events_freeze(zone);
+
+	zone_events_t *events = &zone->events;
+
+	/* Wait for running event to finish. */
+	pthread_cond_t cond;
+	pthread_cond_init(&cond, NULL);
+	pthread_mutex_lock(&events->mx);
+	while (events->running) {
+		events->run_end = &cond;
+		pthread_cond_wait(&cond, &events->mx);
+	}
+	events->run_end = NULL;
+	pthread_mutex_unlock(&events->mx);
+	pthread_cond_destroy(&cond);
 }
 
 void zone_events_start(zone_t *zone)

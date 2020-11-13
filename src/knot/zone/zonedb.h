@@ -96,6 +96,16 @@ int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name);
 zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name);
 
 /*!
+ * \brief Finds pointer to zone exactly matching the given zone name.
+ *
+ * \param db          Zone database to search in.
+ * \param zone_name   Domain name representing the zone name.
+ *
+ * \return Pointer in zoneDB pointing at the zone structure, or NULL.
+ */
+zone_t **knot_zonedb_find_ptr(knot_zonedb_t *db, const knot_dname_t *zone_name);
+
+/*!
  * \brief Finds zone the given domain name should belong to.
  *
  * \param db Zone database to search in.
