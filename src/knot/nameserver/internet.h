@@ -49,6 +49,7 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 #define NS_NEED_ZONE(qdata, error_rcode) \
 	if ((qdata)->extra->zone == NULL) { \
 		qdata->rcode = (error_rcode); \
+		qdata->rcode_ede = KNOT_EDNS_EDE_NOTAUTH; \
 		return KNOT_STATE_FAIL; \
 	}
 
@@ -56,6 +57,11 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 #define NS_NEED_ZONE_CONTENTS(qdata, error_rcode) \
 	if ((qdata)->extra->contents == NULL) { \
 		qdata->rcode = (error_rcode); \
+		if (qdata->extra->zone != NULL && qdata->extra->zone->is_being_started) { \
+			qdata->rcode_ede = KNOT_EDNS_EDE_NOT_READY; \
+		} else { \
+			qdata->rcode_ede = KNOT_EDNS_EDE_INV_DATA; \
+		} \
 		return KNOT_STATE_FAIL; \
 	}
 
@@ -67,8 +73,9 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 	}
 
 /*! \brief Require the zone not to be frozen. */
-#define NS_NEED_NOT_FROZEN(qdata, error_rcode) \
+#define NS_NEED_NOT_FROZEN(qdata, error_rcode, ede_rcode) \
 	if ((qdata)->extra->zone->events.ufrozen) { \
 		(qdata)->rcode = (error_rcode); \
+		(qdata)->rcode_ede = (ede_rcode); \
 		return KNOT_STATE_FAIL; \
 	}
