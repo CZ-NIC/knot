@@ -14,6 +14,9 @@ zone = t.zone_rnd(1, records=450)
 t.link(zone, knot)
 knot.dnssec(zone).enable = True
 
+if knot.valgrind:
+    knot.ctl_params_append = ["-t", "30"]
+
 t.start()
 serial = knot.zone_wait(zone)
 
