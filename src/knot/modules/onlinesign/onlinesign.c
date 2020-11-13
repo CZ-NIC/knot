@@ -535,6 +535,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_RRSIG) {
 		qdata->rcode = KNOT_RCODE_REFUSED;
+		qdata->rcode_ede = KNOT_EDNS_EDE_BLOCKED;
 		return KNOTD_IN_STATE_ERROR;
 	}
 

@@ -168,6 +168,7 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* If AXFR is disabled, respond with NOTIMPL. */
 	if (qdata->params->flags & KNOTD_QUERY_FLAG_NO_AXFR) {
 		qdata->rcode = KNOT_RCODE_NOTIMPL;
+		qdata->rcode_ede = KNOT_EDNS_EDE_BLOCKED;
 		return KNOT_STATE_FAIL;
 	}
 
