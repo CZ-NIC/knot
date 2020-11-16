@@ -159,6 +159,16 @@ resp.cmp(bind)
 resp = knot.dig("dname.flags", "A", udp=True)
 resp.cmp(bind)
 
+# DNAME query (NXDOMAIN)
+resp = knot.dig("nxd.dname-dangl.flags", "A", udp=True)
+resp.check(rcode="NXDOMAIN")
+resp.cmp(bind)
+
+# CNAME type query on DNAME
+resp = knot.dig("nxd.dname-dangl.flags", "CNAME", udp=True)
+resp.check(rcode="NOERROR")
+#resp.cmp(bind) NOTE: this does not work well on Bind (yet)
+
 # DNAME type query
 resp = knot.dig("dname.flags", "DNAME", udp=True)
 resp.cmp(bind)

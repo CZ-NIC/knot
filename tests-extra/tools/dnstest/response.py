@@ -250,8 +250,11 @@ class Response(object):
                 compare(option.data.decode('ascii'), nsid, "TXT NSID")
 
     def diff(self, resp, flags=True, answer=True, authority=True,
-             additional=False):
+             additional=False, rcode=True):
         '''Compares specified response sections against another response'''
+
+        if rcode:
+            compare(self.resp.rcode(), resp.resp.rcode(), "RCODE")
 
         if flags:
             compare(dns.flags.to_text(self.resp.flags),
@@ -272,7 +275,7 @@ class Response(object):
                              "ADDITIONAL")
 
     def cmp(self, server, flags=True, answer=True, authority=True,
-            additional=False):
+            additional=False, rcode=True):
         '''
         Asks server for the same question an compares specified sections
 
@@ -280,7 +283,7 @@ class Response(object):
         '''
 
         resp = server.dig(**self.args)
-        self.diff(resp, flags, answer, authority, additional)
+        self.diff(resp, flags, answer, authority, additional, rcode)
 
     def count(self, rtype=None, section="answer"):
         '''Returns number of records of given type in specified section'''

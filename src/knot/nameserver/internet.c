@@ -291,6 +291,10 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 			case KNOT_ESPACE: return KNOTD_IN_STATE_TRUNC;
 			default:          return KNOTD_IN_STATE_ERROR;
 			}
+			if (knot_pkt_qtype(pkt) == KNOT_RRTYPE_CNAME) {
+				/* Synthesized CNAME is a perfect answer to query. */
+				return KNOTD_IN_STATE_HIT;
+			}
 		}
 	}
 

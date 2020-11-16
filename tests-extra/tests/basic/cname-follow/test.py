@@ -98,7 +98,8 @@ resp.check(rcode="NOERROR", flags="AA")
 resp.check_rr("answer", "test.follow", "CNAME")
 resp.check_empty("authority")
 
-# DNAME systhetizes too long CNAME
+# DNAME synthesizes too long CNAME
+
 resp = knot.dig("63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx." +
                 "63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx." +
                 "63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx." +
@@ -107,5 +108,12 @@ resp = knot.dig("63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 resp.check(rcode="YXDOMAIN")
 resp.check_record(section="answer", rtype="DNAME", rdata="uhuh.follow.")
 resp.check_rr(section="answer", rname="big.follow.", rtype="RRSIG")
+
+# query for DNAME-synthesized-CNAME exactly
+
+resp = knot.dig("nxd.big.follow.", "CNAME")
+resp.check(rcode="NOERROR")
+resp.check_rr("answer", "big.follow.", "DNAME")
+resp.check_rr("answer", "nxd.big.follow.", "CNAME")
 
 t.end()
