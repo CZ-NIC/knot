@@ -50,7 +50,9 @@ static int write_dnstap(dt_writer_t           *writer,
 		return KNOT_EOK;
 	}
 
-	net_set_local_info(net);
+	if (net->local == NULL) {
+		net_set_local_info(net);
+	}
 
 	msg_type = is_query ? DNSTAP__MESSAGE__TYPE__TOOL_QUERY :
 	                      DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE;
