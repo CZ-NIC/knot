@@ -372,27 +372,30 @@ int net_set_local_info(net_t *net)
 		return KNOT_EINVAL;
 	}
 
-	if (net->local_info != NULL) {
-		free(net->local_info->ai_addr);
-		freeaddrinfo(net->local_info);
+	socklen_t local_addr_len = sizeof(struct sockaddr_storage);
+
+	struct addrinfo *new_info = calloc(1, sizeof(*new_info) + local_addr_len);
+	if (new_info == NULL) {
+		return KNOT_ENOMEM;
 	}
 
-	socklen_t local_addr_len = sizeof(struct sockaddr_storage);
-	struct sockaddr_storage *local_addr = calloc(1, local_addr_len);
+	new_info->ai_addr = (struct sockaddr *)(new_info + 1);
+	new_info->ai_family = net->srv->ai_family;
+	new_info->ai_socktype = net->srv->ai_socktype;
+	new_info->ai_protocol = net->srv->ai_protocol;
+	new_info->ai_addrlen = local_addr_len;
 
-	if (getsockname(net->sockfd, (struct sockaddr *)local_addr,
-	                &local_addr_len) == -1) {
+	if (getsockname(net->sockfd, new_info->ai_addr,	&local_addr_len) == -1) {
 		WARN("can't get local address\n");
-		free(local_addr);
+		free(new_info);
 		return KNOT_NET_ESOCKET;
 	}
 
-	net->local_info = calloc(1, sizeof(struct addrinfo));
-	net->local_info->ai_family = net->srv->ai_family;
-	net->local_info->ai_socktype = net->srv->ai_socktype;
-	net->local_info->ai_protocol = net->srv->ai_protocol;
-	net->local_info->ai_addrlen = local_addr_len;
-	net->local_info->ai_addr = (struct sockaddr *)local_addr;
+	if (net->local_info != NULL) {
+		freeaddrinfo(net->local_info);
+	}
+
+	net->local_info = new_info;
 
 	get_addr_str((struct sockaddr_storage *)net->local_info->ai_addr,
 	             net->socktype, &net->local_str);
