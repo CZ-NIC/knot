@@ -68,6 +68,7 @@ e.dname-tree	CNAME	e.dname
 f.dname-tree	DNAME	dname-tree
 
 dname-out	DNAME	outside.zone.
+dname-dangl	DNAME	dangling
 
 ; DS tests
 ds-sub		NS	dns.net.ds-sub
