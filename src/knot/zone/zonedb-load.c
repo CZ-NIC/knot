@@ -572,6 +572,7 @@ int zone_reload_modules(conf_t *conf, server_t *server, const knot_dname_t *zone
 	assert(knot_dname_is_equal((*zone)->name, zone_name));
 
 	zone_events_freeze_blocking(*zone);
+	knot_sem_wait(&(*zone)->cow_lock);
 
 	zone_t *newzone = create_zone(conf, zone_name, server, *zone);
 	if (newzone == NULL) {
@@ -586,6 +587,7 @@ int zone_reload_modules(conf_t *conf, server_t *server, const knot_dname_t *zone
 	assert(newzone->contents == oldzone->contents);
 	oldzone->contents = NULL; // contents have been re-used by newzone
 
+	knot_sem_post(&oldzone->cow_lock);
 	zone_free(&oldzone);
 
 	return KNOT_EOK;
