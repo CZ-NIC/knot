@@ -392,7 +392,11 @@ int net_set_local_info(net_t *net)
 	}
 
 	if (net->local_info != NULL) {
-		freeaddrinfo(net->local_info);
+		if (net->local == NULL) {
+			free(net->local_info);
+		} else {
+			freeaddrinfo(net->local_info);
+		}
 	}
 
 	net->local_info = new_info;
@@ -600,7 +604,11 @@ void net_clean(net_t *net)
 	free(net->remote_str);
 
 	if (net->local_info != NULL) {
-		freeaddrinfo(net->local_info);
+		if (net->local == NULL) {
+			free(net->local_info);
+		} else {
+			freeaddrinfo(net->local_info);
+		}
 	}
 
 	if (net->remote_info != NULL) {
