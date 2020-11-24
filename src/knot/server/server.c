@@ -758,7 +758,7 @@ static int reload_conf(conf_t *new_conf)
 		return ret;
 	}
 
-	/* Re-import zonefile if specified. */
+	/* Re-import config file if specified. */
 	const char *filename = conf()->filename;
 	if (filename != NULL) {
 		log_info("reloading configuration file '%s'", filename);
