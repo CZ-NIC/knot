@@ -1,119 +1,87 @@
-; File written on Thu Nov 12 17:08:19 2020
-; dnssec_signzone version 9.11.24-RedHat-9.11.24-2.fc33
-example.				      3600 IN SOA	ns1.example. bugs.x.w.example. 1081539377 3600 300 3600000 3600
-example.				      3600 IN RRSIG	SOA 13 1 3600 20500101000000 20201112150819 10034 example. Ox2gpP1tedAXH22Z1gOJe02KSkzcN2Bc8W6F4QDtbFG0uAMtXK5UEMDb js/bQ4s2eKMv3/3fDBWFqxoNFk3lsA==
-; resign=20500101000000
-example.				      3600 IN NS	ns1.example.
-example.				      3600 IN NS	ns2.example.
-example.				      3600 IN RRSIG	NS 13 1 3600 20500101000000 20201112150819 10034 example. Cg9BkzrNJ1r64i/zeJ7B5dfhbOGEINVUgThPA1IWjm3/6XPkOHx3O1Bs 7PnQWr2h+r6IAw1MhjuS0NirajwMMA==
-; resign=20500101000000
-example.				      3600 IN MX	1 xx.example.
-example.				      3600 IN RRSIG	MX 13 1 3600 20500101000000 20201112150819 10034 example. AOAxjuVJMSecYcVV/yYAPrTUQzCBY/X2dYjtvX+0YtdzNLrNYSooSfhw TIZadwtc7davYi3Tu586jorrIkUMYQ==
-; resign=20500101000000
-example.				      3600 IN NSEC	a.example. NS SOA MX RRSIG NSEC DNSKEY
-example.				      3600 IN RRSIG	NSEC 13 1 3600 20500101000000 20201112150819 10034 example. 3dlVX1Gr3tStomXwOzyOB231PJoczZLtkKyzSdX2rkpa5ytj7Mkiaxdy 9Jztb9T1Ms2N0+rYv5tNpaZHvhtNYA==
-; resign=20500101000000
-example.				      3600 IN DNSKEY	256 3 13 HoUbIjV6mXPldsG8/Grda5QC/zY8F+VBbqtuPbei8uUxY9oeDEYQnr8/ K08MoIZE7KkF1gQiDmkX01NF6bZdzQ==
-example.				      3600 IN DNSKEY	257 3 13 3fKXb7CpibPXfV7LoKmQdlfekcIiVBWZG20jItUXCt/Is28zJ+pBFcaV UMNDOJ7YxskDzzVfG1piI3r7HSauyQ==
-example.				      3600 IN RRSIG	DNSKEY 13 1 3600 20500101000000 20201112150819 47612 example. IjIlB2I63TntuKe2nvQhNW40dnU9FD2Ar4HcHhwWVbAqXkMN+p/xd+yl uA0xfIzjn6dj80q+dLUsdgWXOjJZ0g==
-; resign=20500101000000
-*.a.example.				      3600 IN A		192.0.2.11
-ns1.a.example.				      3600 IN A		192.0.2.5
-ns2.a.example.				      3600 IN A		192.0.2.6
-ns1.b.example.				      3600 IN A		192.0.2.7
-ns2.b.example.				      3600 IN A		192.0.2.8
-a.example.				      3600 IN NS	ns1.a.example.
-a.example.				      3600 IN NS	ns2.a.example.
-a.example.				      3600 IN DS	57855 5 1 B6DCD485719ADCA18E5F3D48A2331627FDD3636B
-a.example.				      3600 IN RRSIG	DS 13 2 3600 20500101000000 20201112150819 10034 example. FM/2t4KF8flul31hCc4dZBzBlr/IwZUyphoKaFA4nJMKt/EiXuaxOPnb jwgC/lyzlVl8JTyJ3I+/A++HXJKjhw==
-; resign=20500101000000
-a.example.				      3600 IN NSEC	ai.example. NS DS RRSIG NSEC
-a.example.				      3600 IN RRSIG	NSEC 13 2 3600 20500101000000 20201112150819 10034 example. +OtszyAQaI2bbeWXZUF3Bb8r3pJUFxTFtzyPZWyRoMa0se7vmNsl6iC4 eqQ/e6VtwLjvmLVn32ucr8UUdjJNSg==
-; resign=20500101000000
-ns1.example.				      3600 IN A		192.0.2.1
-ns1.example.				      3600 IN RRSIG	A 13 2 3600 20500101000000 20201112150819 10034 example. 6bqkd+PYR4Z/cCVJAORvawrCVL65N2lQSy38iARI9gp3e4fDQy9LPT3w /s7Ei56bPJ84Q5142fwgJ/BTlJNFVQ==
-; resign=20500101000000
-ns1.example.				      3600 IN NSEC	ns2.example. A RRSIG NSEC
-ns1.example.				      3600 IN RRSIG	NSEC 13 2 3600 20500101000000 20201112150819 10034 example. 6vLxG/AbB1nrltN/MsYZ464Tm8NVJ4KrK4EMbRubO+uDtezDHazCFkPc Bnpu603qGQO8UvCG/2X7DyAzGCTsiQ==
-; resign=20500101000000
-ai.example.				      3600 IN A		192.0.2.9
-ai.example.				      3600 IN RRSIG	A 13 2 3600 20500101000000 20201112150819 10034 example. PfmWIjm7DqI5n2itaMXG68ELKRaBrfoquDq6JqKV+9AR9XoUj2i9WUvf 7ZDKns7bfooCgarAr/XzVOq9hfaOAQ==
-; resign=20500101000000
-ai.example.				      3600 IN HINFO	"KLH-10" "ITS"
-ai.example.				      3600 IN RRSIG	HINFO 13 2 3600 20500101000000 20201112150819 10034 example. 8GWeGH2K9VyFUCy+iP65rw/5agvPgTwIaw6x3G7OUMZ2nhb/fmBTsp3x FAss3YAL/B56lujVF8TmGONHPy6Ebw==
-; resign=20500101000000
-ai.example.				      3600 IN AAAA	2001:db8::f00:baa9
-ai.example.				      3600 IN RRSIG	AAAA 13 2 3600 20500101000000 20201112150819 10034 example. Hpbg3G4sFNMkUhGwipAk0FwAFyWTUAblskJerS6jUJTFqAfUaK1ix9rh bIMDiB3nXbUWNFpCYarIz9LR5IIMIA==
-; resign=20500101000000
-ai.example.				      3600 IN NSEC	b.example. A HINFO AAAA RRSIG NSEC
-ai.example.				      3600 IN RRSIG	NSEC 13 2 3600 20500101000000 20201112150819 10034 example. UgpQozKIrUGBR6xzQWrfeBGrVq47UmN2abXadzeWpnn9NJ4uLotISsEt deWiWiHzxkiAvns3anq3sofSOG1KdQ==
-; resign=20500101000000
-ns2.example.				      3600 IN A		192.0.2.2
-ns2.example.				      3600 IN RRSIG	A 13 2 3600 20500101000000 20201112150819 10034 example. NLkwOegbg6Bg2jGg3755WkH4qOD0Z/S4GsinKd4uvmDLzqid6pRLLGxK JohVpGTdsQ8oS6mwnqoJA4Y9idt85Q==
-; resign=20500101000000
-ns2.example.				      3600 IN NSEC	*.to-apex.example. A RRSIG NSEC
-ns2.example.				      3600 IN RRSIG	NSEC 13 2 3600 20500101000000 20201112150819 10034 example. WVAOB0CWYKxe/EhlaQa6fIjFAZQjjrvx2pRu7nx9zV18fXN2e4BStRaD ET+//pAwjNtIi/QTsXR/4o3kZxcuqA==
-; resign=20500101000000
-*.to-apex.example.			      3600 IN CNAME	example.
-*.to-apex.example.			      3600 IN RRSIG	CNAME 13 2 3600 20500101000000 20201112150819 10034 example. E4NDchccAjJTcrYAfBH9tb25NCIf88QkNGpIGx1macvU+baQA8XXwfYJ 72DNpYl2ek5k1jTzR5Ut7yYtOQsqTg==
-; resign=20500101000000
-*.to-apex.example.			      3600 IN NSEC	*.to-nxdomain.example. CNAME RRSIG NSEC
-*.to-apex.example.			      3600 IN RRSIG	NSEC 13 2 3600 20500101000000 20201112150819 10034 example. 3T+hNAgQbp2kXeXePVPTyeQixtjvxtKymU0cIlBuY+6yf1yCpUJ/PQVi dDF6Bhf60sg54Vig8ahEMg6cc+aWqg==
-; resign=20500101000000
-*.to-nxdomain.example.			      3600 IN CNAME	nxdomain.example.
-*.to-nxdomain.example.			      3600 IN RRSIG	CNAME 13 2 3600 20500101000000 20201112150819 10034 example. seYsKxTj5YrsJSFr/REUyXmGuH6f5+WH8j+RL1Gkpm9wmtgfdUvZY3xM HXJ1N6B7Cwopi2iq2waaJ8pG9hbfnA==
-; resign=20500101000000
-*.to-nxdomain.example.			      3600 IN NSEC	*.w.example. CNAME RRSIG NSEC
-*.to-nxdomain.example.			      3600 IN RRSIG	NSEC 13 2 3600 20500101000000 20201112150819 10034 example. HRDaKmoNH81RMGYnfClwfyESc0HTzLxzY2Bzk1esuMpbjM787Nxi8SJO svFERfS4sk0hmkISHuUARjqSM1K+Hg==
-; resign=20500101000000
-*.w.example.				      3600 IN MX	1 ai.example.
-*.w.example.				      3600 IN RRSIG	MX 13 2 3600 20500101000000 20201112150819 10034 example. bxv46p7YhpVBpC9OXT90PTxftW3G//g+hdCnWH0nQLw1fo2a8UaRX6T6 EU5I3gnb3/qrk50vsuxgbYcQUDd4wA==
-; resign=20500101000000
-*.w.example.				      3600 IN NSEC	x.w.example. MX RRSIG NSEC
-*.w.example.				      3600 IN RRSIG	NSEC 13 2 3600 20500101000000 20201112150819 10034 example. RDTAb9Gk6Waop2bhOwJvg1SzxFAanKDuUpACMUn9+gWip4cQqA+vxVwm WEwn2zlhxCghuL/j8Lj58ZbPUbqg/w==
-; resign=20500101000000
-x.w.example.				      3600 IN MX	1 xx.example.
-x.w.example.				      3600 IN RRSIG	MX 13 3 3600 20500101000000 20201112150819 10034 example. 8DGKB3O2VImlZiiGNkiz7TeV16px94nT0tYclx2x6HxxV0fuN2DcOK+9 lhUiOCh4RtSfidwnD+JN82TX7FQLJw==
-; resign=20500101000000
-x.w.example.				      3600 IN NSEC	x.y.w.example. MX RRSIG NSEC
-x.w.example.				      3600 IN RRSIG	NSEC 13 3 3600 20500101000000 20201112150819 10034 example. WnpozPu3ijcDJuFTUTc92DZZb3/zEpLg2NlRdUfx+0jDI1hZpvVD8mHR +S8rf/gbOUBJ4oUOdE9P+JJOktFJAA==
-; resign=20500101000000
-x.y.w.example.				      3600 IN MX	1 xx.example.
-x.y.w.example.				      3600 IN RRSIG	MX 13 4 3600 20500101000000 20201112150819 10034 example. pYPIhXaF5hyAQF36o7aip3kan7McFh1dAKoDj9fUJwLT7uaUGAenhyv7 i018IcWmzDf4ua1Chuc5Dmfp8/liKg==
-; resign=20500101000000
-x.y.w.example.				      3600 IN NSEC	xx.example. MX RRSIG NSEC
-x.y.w.example.				      3600 IN RRSIG	NSEC 13 4 3600 20500101000000 20201112150819 10034 example. 9vq/5Pzmb/4sgT50/o6PuBF8ayqGdyw2Jo5qqzeoXb6G8PYQ+HKgvrFP ZgYxDdTxeU6eUvFsE7HE6Ake8bTk/g==
-; resign=20500101000000
-\000.nsec-deleg.z.z.example.		      3600 IN NS	ns1.a.example.
-\000.nsec-deleg.z.z.example.		      3600 IN NSEC	a.nsec-deleg.z.z.example. NS RRSIG NSEC
-\000.nsec-deleg.z.z.example.		      3600 IN RRSIG	NSEC 13 5 3600 20500101000000 20201112150819 10034 example. cUYHHrBy+7IiW8ZLMCzPpt2BpDJ0c25XAV0fkHlGzdG3Ul8nFPIoKYJ3 t1zKyHOX6DLybqDuNRtvPb2byAmTrA==
-; resign=20500101000000
-xx.example.				      3600 IN A		192.0.2.10
-xx.example.				      3600 IN RRSIG	A 13 2 3600 20500101000000 20201112150819 10034 example. mAR5WPIlaMLy8WHYOpTTQ2KA1kf+JIllYz/XQZsbH6/fF2j+ifw0BFzM PFAaQzWzZdA528R/ohIHkJ1tFb1ukw==
-; resign=20500101000000
-xx.example.				      3600 IN HINFO	"KLH-10" "TOPS-20"
-xx.example.				      3600 IN RRSIG	HINFO 13 2 3600 20500101000000 20201112150819 10034 example. B44ToSDuHuk3RLZH5kNRQ06q2VjObkyIEbWRVgqbM464+JlTKbaPmYXL GLL+AGfQ5+Dfy12twXre8dd7a3Cw1Q==
-; resign=20500101000000
-xx.example.				      3600 IN AAAA	2001:db8::f00:baaa
-xx.example.				      3600 IN RRSIG	AAAA 13 2 3600 20500101000000 20201112150819 10034 example. NpbrvyggQ+22CD5E/ts5XlCuMtsL2jIuWhWByr1ObPtWYagWfy+8WBAE jttnc4YnM0Xev2x+JDho23ZqnfIg3g==
-; resign=20500101000000
-xx.example.				      3600 IN NSEC	\000.nsec-deleg.z.z.example. A HINFO AAAA RRSIG NSEC
-xx.example.				      3600 IN RRSIG	NSEC 13 2 3600 20500101000000 20201112150819 10034 example. vsi/0E1g5iOhQHGvHQDC5CudSx/YpmwXfBqMZsdIZvGewgRzVoxm17zZ JBMeR0mf10s6UbjzE6D6UHwQCHfmvw==
-; resign=20500101000000
-a.nsec-deleg.z.z.example.		      3600 IN A		192.0.2.1
-a.nsec-deleg.z.z.example.		      3600 IN RRSIG	A 13 5 3600 20500101000000 20201112150819 10034 example. ZGhclwx6MrzuFbe7CsKR/90ZePvjwz7LeLa8Q05Bcx9VRLnp28Yh3Mhc +8WPZ048KAyPiaWBq79jt/9SGTSZuQ==
-; resign=20500101000000
-a.nsec-deleg.z.z.example.		      3600 IN NSEC	c.nsec-deleg.z.z.example. A RRSIG NSEC
-a.nsec-deleg.z.z.example.		      3600 IN RRSIG	NSEC 13 5 3600 20500101000000 20201112150819 10034 example. yoDlki/JoGCveewGuySeRDpCTXaJ7nILMvcRWKOsIQw0dql0sa/KmI89 mSU7pyyqH8cqkeynYBV6UatgS/Wilw==
-; resign=20500101000000
-c.nsec-deleg.z.z.example.		      3600 IN A		192.0.2.1
-c.nsec-deleg.z.z.example.		      3600 IN RRSIG	A 13 5 3600 20500101000000 20201112150819 10034 example. IFcv/pRKqZKBRrGQakx7kZMy7Tz6bOELWMjP/eSoDylgYMrsjwITFXLS 62Nvk4HuAaIq39zRPgsA3VxnkXRDLg==
-; resign=20500101000000
-c.nsec-deleg.z.z.example.		      3600 IN NSEC	example. A RRSIG NSEC
-c.nsec-deleg.z.z.example.		      3600 IN RRSIG	NSEC 13 5 3600 20500101000000 20201112150819 10034 example. gres0W1V6bQQnRKDpf2kIIklJBveguJdDlbMpHAbsBWdVv2PDZDx4vnI sURqvi5cGGg26f+CiNQYmHmERGPq8A==
-; resign=20500101000000
-b.example.				      3600 IN NS	ns1.b.example.
-b.example.				      3600 IN NS	ns2.b.example.
-b.example.				      3600 IN NSEC	ns1.example. NS RRSIG NSEC
-b.example.				      3600 IN RRSIG	NSEC 13 2 3600 20500101000000 20201112150819 10034 example. O34EonmAYxAvz4h4uIkFyZQals/AKABLM9wvdypfjaaFUD5zu7bo6Hgz 8QXtVzkK3i4cW56OXUlGq4dQ+HHY3Q==
-; resign=20500101000000
+;; Zone dump (Knot DNS 3.1.dev.1605506958.657510044)
+example.            	1800	SOA	ns1.example. bugs.x.w.example. 1081539379 3600 300 3600000 3600
+example.            	3600	NS	ns1.example.
+example.            	3600	NS	ns2.example.
+example.            	3600	MX	1 xx.example.
+example.            	1800	DNSKEY	256 3 13 TZzHPHmjv5L18OZTEO+our8VkzRqcAgiAzHO7vqZHAlVEGdOiJGqR9u8KTFlqBy+DoMX1xqOzAfXex4Als4oKQ==
+example.            	1800	DNSKEY	257 3 13 dPZ998ykNzLXbRejTKQZzyp2HEyPpiOu/akV5bJR6qEOyjVAf+oeoLjcNp/6vGjbqBJVXnEX12DgDqfIF8oZ7g==
+a.example.          	3600	NS	ns1.a.example.
+a.example.          	3600	NS	ns2.a.example.
+a.example.          	3600	DS	57855 5 1 B6DCD485719ADCA18E5F3D48A2331627FDD3636B
+*.a.example.        	3600	A	192.0.2.11
+ns1.a.example.      	3600	A	192.0.2.5
+ns2.a.example.      	3600	A	192.0.2.6
+ai.example.         	3600	A	192.0.2.9
+ai.example.         	3600	HINFO	"KLH-10" "ITS"
+ai.example.         	3600	AAAA	2001:db8::f00:baa9
+b.example.          	3600	NS	ns1.b.example.
+b.example.          	3600	NS	ns2.b.example.
+ns1.b.example.      	3600	A	192.0.2.7
+ns2.b.example.      	3600	A	192.0.2.8
+ns1.example.        	3600	A	192.0.2.1
+ns2.example.        	3600	A	192.0.2.2
+*.to-apex.example.  	3600	CNAME	example.
+*.to-nxdomain.example.	3600	CNAME	nxdomain.example.
+*.w.example.        	3600	MX	1 ai.example.
+x.w.example.        	3600	MX	1 xx.example.
+x.y.w.example.      	3600	MX	1 xx.example.
+xx.example.         	3600	A	192.0.2.10
+xx.example.         	3600	HINFO	"KLH-10" "TOPS-20"
+xx.example.         	3600	AAAA	2001:db8::f00:baaa
+\000.nsec-deleg.z.z.example.	3600	NS	ns1.a.example.
+a.nsec-deleg.z.z.example.	3600	A	192.0.2.1
+c.nsec-deleg.z.z.example.	3600	A	192.0.2.1
+;; DNSSEC signatures
+example.            	3600	RRSIG	NS 13 1 3600 20881212125908 20201124094501 52634 example. oDwhp6uQjJjgSlr1XDxZlgBWnuXjf2dmp4SdH4UwRavoMYmOeYMlJJnkS/oh2GjisZdoUX498NYU7hmvc3CKVg==
+example.            	1800	RRSIG	SOA 13 1 1800 20881212130733 20201124095326 52634 example. G6WZnm/cx/D7+VG+ZQwhHs7eUwBkcO0x6GurCiCmgPkwrdxaXASQgDMnyur6FgtQFOslb5Od9MBfCcWRUztGHA==
+example.            	3600	RRSIG	MX 13 1 3600 20881212125908 20201124094501 52634 example. zJMbVO5Am77emRccrxhkE3SLiQ4lAy6D9+I8fK1hIIRgCwOZk8e0gDJ1g2CoYa+nE0iZGkmbcO83m3DKB4G1QA==
+example.            	1800	RRSIG	NSEC 13 1 1800 20881212130328 20201124094921 52634 example. BEqre7s4WS738Wch17zQFV5DBJGbFs045fyhOe/6gXBG2VIeBwSlTb364oSeZJ7UnGu/7LmALss5PR/Bs0Evdg==
+example.            	1800	RRSIG	DNSKEY 13 1 1800 20881212130733 20201124095326 12307 example. CMutQxj5MtlCnOUtyddIGnjPOq7PplrI9Kfd3FqTKi8A6hvEKyTnRdfyNvg2s4usHlJglG6WEMg0x3Q7/zmoow==
+a.example.          	3600	RRSIG	DS 13 2 3600 20881212125908 20201124094501 52634 example. Gz0rPFevHrwUyviJlng4M3BrLTKanqNSCKyG6a4TJbJJyVK8VC946N2HmDGnKjBDyKqyJsSrwnGPTNVfuBMcrw==
+a.example.          	1800	RRSIG	NSEC 13 2 1800 20881212130203 20201124094756 52634 example. w/dh5gQvc/pFKCXZV3YuvCh8eHpIhAC4VCv09YALnN8ca0fUWz3J9jBirzegEuj0ffKtmb9tmkLLpyFBi6p1wg==
+ai.example.         	3600	RRSIG	A 13 2 3600 20881212125908 20201124094501 52634 example. 24S1o4ySaXWok8MgYJorokmHaR06OglLxoqvtFEDJMHqt8QEdpVXzqcK24KwuLdmG/JS65xzTriOWS548b110w==
+ai.example.         	3600	RRSIG	HINFO 13 2 3600 20881212125908 20201124094501 52634 example. uLEfl3fqVJg+zEzaUVMSuNWaLVFWjDcRo4pa7DftrFxV7hwqA3TMzfUB7ZTS+cH0RyLliaQZ5ptWfY29YpmIbg==
+ai.example.         	3600	RRSIG	AAAA 13 2 3600 20881212125908 20201124094501 52634 example. jjSuBVmCEFyaLP1UT67cWVGBDUif7fxL0PIIe8XPr/pd+g2FADVXO1bMJlPPBQgDHAWky96f7zfFqy+a2fObTw==
+ai.example.         	1800	RRSIG	NSEC 13 2 1800 20881212130203 20201124094756 52634 example. mWmrKGn++aMSMLiR5So9lFqjNkcS1slmc1RLWxsmX/GPRUJV9xMzfuN+vOtxPBGoeRBy/J7hf0kpD5uvEUt4Zw==
+b.example.          	1800	RRSIG	NSEC 13 2 1800 20881212130203 20201124094756 52634 example. Mz8lFFDVMvUsNO6nLE5Q4Ul0dPXkF7OqeODzO/aAt2Tvr7MDMJKSsFZTyHgMdNVcjIAioR8jWEzcTxpR2v2+lA==
+ns1.example.        	3600	RRSIG	A 13 2 3600 20881212125908 20201124094501 52634 example. A6bgnZ7rbrQDw2jmLWPNxieCWtLzqGi2Jf8pRq9ULAGkWjEBf2F4srIIPymtdTmdgzyKpZN6OPZUoT7V0GAITg==
+ns1.example.        	1800	RRSIG	NSEC 13 2 1800 20881212130203 20201124094756 52634 example. 26jn+8u8Xi9P+vRpdySPv23k7zkzRnSMcQI7u+s0irRLYqRC5X45RAGvrbXIQx/osi7PCT4iZ/AAd7oOrcNGPA==
+ns2.example.        	3600	RRSIG	A 13 2 3600 20881212125908 20201124094501 52634 example. Lc4qh2YJllCx5JuGJR0V5yiKx7FAld12/87qYk3832LmA3hJVSat/qYakJAmSIOozWRpw8fXfl4G2XuTvBtVTw==
+ns2.example.        	1800	RRSIG	NSEC 13 2 1800 20881212130203 20201124094756 52634 example. uykeMd83IV3NozHSTMyimObrNMMXV6aDq3cjF3L5IWclg4T7M8IBbhW0VHFsZFsRktMg8TYsRGfLYf5hc+uvVw==
+*.to-apex.example.  	3600	RRSIG	CNAME 13 2 3600 20881212125908 20201124094501 52634 example. NIl2nLDiWHrGP8sdOYMTf0ewJ5skv0i2qzoIAwanNwNzg2k3tC8yutOUOfdCRsK+0kFy5eFSGU4DG12eC5f61g==
+*.to-apex.example.  	1800	RRSIG	NSEC 13 2 1800 20881212130203 20201124094756 52634 example. IXyXj6MlF3zy1xoPldbw8GN5Yik5cVexLAHVzub0tgeSi/NUfbdppWM/sKydLxKV7Y7zZCyCNL/v10rtYBIyHA==
+*.to-nxdomain.example.	3600	RRSIG	CNAME 13 2 3600 20881212125908 20201124094501 52634 example. ixLRukkE6YUzqs13CBTHmguB73shcff4YzeTSGbwOYkebT/uuKc88kJsZ1Kd9tUF1iu/26YphnkrwGNHf7u2hg==
+*.to-nxdomain.example.	1800	RRSIG	NSEC 13 2 1800 20881212130203 20201124094756 52634 example. lfnHR7a1lebU4guj4MpqfoG+XRbYjcSxICbKcusPUMZ3PgATgnIOfhiBNOvCuWjDy6O2kJV0pL6JSLyEkbwuJw==
+*.w.example.        	3600	RRSIG	MX 13 2 3600 20881212125908 20201124094501 52634 example. 2LnYeA6BOAMgnw6SrZ6vFR7EHZu/zIuvLt51qPOQgEQgHG6GtWJHbaZ5aPNof+lHJMsbwygH73HgqawwHyt1HA==
+*.w.example.        	1800	RRSIG	NSEC 13 2 1800 20881212130203 20201124094756 52634 example. vZbISQwkr+nlPEGHLs2v/9UWquKP6qfkUN/1D1GF8kvXUh6vqju3EGlaB3iVOfQzRJksPyLJ4UGfheW0N2325w==
+x.w.example.        	3600	RRSIG	MX 13 3 3600 20881212125908 20201124094501 52634 example. 6kEQd2egtdiMIyDRuYI0i+Rott4F/R2c5z8iOUOvq4MqvYBrK32FE2CmJ/ImkiOo6EkFmIvEt5ubCvZwvVGgUQ==
+x.w.example.        	1800	RRSIG	NSEC 13 3 1800 20881212130203 20201124094756 52634 example. smEJmzbtsGSwHONSQUf4vi12czznCBiN6qCFdlzKdmJ3lZg7V+rg5MlwhwIstV6LjcT3M1QDuBwq+8JVLWWjCQ==
+x.y.w.example.      	3600	RRSIG	MX 13 4 3600 20881212125908 20201124094501 52634 example. 0K3DsCVuB+zQDp5EpJk5OuATT5bluykHsOUyi3XajAXn9jAGRcxQBou9by6KvblA8G2HTqbm2cRkbhRTMuxC7g==
+x.y.w.example.      	1800	RRSIG	NSEC 13 4 1800 20881212130203 20201124094756 52634 example. tPj7HdyVtDzppebxp+VMaNMPr8SBEzFTgPoy0Jb77YX7ZFfJVGH/H79VunJ2Rr2Wu/0VgvI1Wf+tnBIC60gKWw==
+xx.example.         	3600	RRSIG	A 13 2 3600 20881212125908 20201124094501 52634 example. j/Qko5fRAA/RaughKHQlKR1ITfkS1jrWWpCAlTzZPoCmOfFYyxxfXfwutRcwoD2J9SP2EO3uBrDjOyTjtG6qOA==
+xx.example.         	3600	RRSIG	HINFO 13 2 3600 20881212125908 20201124094501 52634 example. j96fF2Zfm6YHRL2bbK5+jshQI6QMMhLHZJuQkRSsdgr+EJzYnrLJXiTO2FWwN8OvOD7yeymks065FsAY+2P39A==
+xx.example.         	3600	RRSIG	AAAA 13 2 3600 20881212125908 20201124094501 52634 example. 3DSTlFrF//MkIBv3xXYBU5ILn3DU1+BNL8Aa4oRGSsxlYHFTg4E0RaJNolo75qyGG6mblkGdsNe4AHHUSE/3Xg==
+xx.example.         	1800	RRSIG	NSEC 13 2 1800 20881212130203 20201124094756 52634 example. Fm02eN+XWJgqWxtGBRog4OM8uFxTxDdbK0Joxzf/L8HKV3vXjbUnI6Z2CpFm0Dw7tzi9LwZU5fGm3hKBGu2l4g==
+\000.nsec-deleg.z.z.example.	1800	RRSIG	NSEC 13 5 1800 20881212130203 20201124094756 52634 example. 700OekEhlXyWhBIPURubUSqRvDgIFooYlQUekmaJqXr2B/A4MoVUD9ymlT/F/3NgZRa/yRvFxLt4PqKxc/ebXA==
+a.nsec-deleg.z.z.example.	3600	RRSIG	A 13 5 3600 20881212125908 20201124094501 52634 example. fdfF2y6joJZv9OmJYXKAuruU99jmGUJhwD5MgDWtQ6gjT0Vh8SqFhI2MEirVPg+/ygUDReSOmkmCtPsOCXQVtQ==
+a.nsec-deleg.z.z.example.	1800	RRSIG	NSEC 13 5 1800 20881212130203 20201124094756 52634 example. T9QbehWk6xjJjI+cOjFhGbOZTmRf99Hto0NIp/7dybkDjSDPYwFLArCJ7jp12a8lAwYF1pwEKoK/0vgZXZaIAQ==
+c.nsec-deleg.z.z.example.	3600	RRSIG	A 13 5 3600 20881212125908 20201124094501 52634 example. NC7HVbewRYNqBVIWDPUCxWCXFfbdvPrRqC7dC11bV0dg/bAoF7r5Hp6Yk2rmEkdwwl77l+wScUbt9ob692WN6w==
+c.nsec-deleg.z.z.example.	1800	RRSIG	NSEC 13 5 1800 20881212130203 20201124094756 52634 example. qDtjtjUN+LHzUnLq6nUZ1FOATfeQ21Qvp8vxkRYHVvbqydEqv/6UGn8VUixV3KUJpTAU8QpwbIqKKZrUD1K1oA==
+;; DNSSEC NSEC chain
+example.            	1800	NSEC	a.example. NS SOA MX RRSIG NSEC DNSKEY
+a.example.          	1800	NSEC	ai.example. NS DS RRSIG NSEC
+ai.example.         	1800	NSEC	b.example. A HINFO AAAA RRSIG NSEC
+b.example.          	1800	NSEC	ns1.example. NS RRSIG NSEC
+ns1.example.        	1800	NSEC	ns2.example. A RRSIG NSEC
+ns2.example.        	1800	NSEC	*.to-apex.example. A RRSIG NSEC
+*.to-apex.example.  	1800	NSEC	*.to-nxdomain.example. CNAME RRSIG NSEC
+*.to-nxdomain.example.	1800	NSEC	*.w.example. CNAME RRSIG NSEC
+*.w.example.        	1800	NSEC	x.w.example. MX RRSIG NSEC
+x.w.example.        	1800	NSEC	x.y.w.example. MX RRSIG NSEC
+x.y.w.example.      	1800	NSEC	xx.example. MX RRSIG NSEC
+xx.example.         	1800	NSEC	\000.nsec-deleg.z.z.example. A HINFO AAAA RRSIG NSEC
+\000.nsec-deleg.z.z.example.	1800	NSEC	a.nsec-deleg.z.z.example. NS RRSIG NSEC
+a.nsec-deleg.z.z.example.	1800	NSEC	c.nsec-deleg.z.z.example. A RRSIG NSEC
+c.nsec-deleg.z.z.example.	1800	NSEC	example. A RRSIG NSEC
+;; Written 82 records
+;; Time 2020-11-24 12:23:26 CET
