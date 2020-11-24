@@ -793,7 +793,7 @@ int server_start(server_t *server, bool async)
 
 	/* Start I/O handlers. */
 	server->state |= ServerRunning;
-	for (int proto = IO_UDP; proto <= IO_HANDLERS_SIZE; ++proto) {
+	for (int proto = IO_UDP; proto < IO_HANDLERS_SIZE; ++proto) {
 		if (server->handlers[proto].size > 0) {
 			int ret = dt_start(server->handlers[proto].handler.unit);
 			if (ret != KNOT_EOK) {
