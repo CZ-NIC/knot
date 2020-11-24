@@ -312,18 +312,28 @@ static dnssec_nsec3_params_t nsec3param_init(const knot_kasp_policy_t *policy,
 	return params;
 }
 
+// int: returns KNOT_E* if error
+static int zone_nsec_ttl(zone_contents_t *zone)
+{
+	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	if (knot_rrset_empty(&soa)) {
+		return KNOT_EINVAL;
+	}
+
+	return MIN(knot_soa_minimum(soa.rrs.rdata), soa.ttl);
+}
+
 int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 {
 	if (update == NULL || ctx == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	const knot_rdataset_t *soa = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL) {
-		return KNOT_EINVAL;
+	int nsec_ttl = zone_nsec_ttl(update->new_cont);
+	if (nsec_ttl < 0) {
+		return nsec_ttl;
 	}
 
-	uint32_t nsec_ttl = knot_soa_minimum(soa->rdata);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
 	int ret = knot_nsec3param_update(update, &params);
@@ -351,14 +361,12 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 		return KNOT_EINVAL;
 	}
 
-	const knot_rdataset_t *soa_old = node_rdataset(update->zone->contents->apex, KNOT_RRTYPE_SOA);
-	const knot_rdataset_t *soa_new = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
-	if (soa_old == NULL || soa_new == NULL) {
-		return KNOT_EINVAL;
+	int nsec_ttl_old = zone_nsec_ttl(update->zone->contents);
+	int nsec_ttl_new = zone_nsec_ttl(update->new_cont);
+	if (nsec_ttl_old < 0 || nsec_ttl_new < 0) {
+		return MIN(nsec_ttl_old, nsec_ttl_new);
 	}
 
-	uint32_t nsec_ttl_old = knot_soa_minimum(soa_old->rdata);
-	uint32_t nsec_ttl_new = knot_soa_minimum(soa_new->rdata);
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
 	int ret;
