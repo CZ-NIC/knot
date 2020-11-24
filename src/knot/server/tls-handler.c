@@ -129,24 +129,23 @@ static void tls_log_error(struct sockaddr_storage *ss, const char *operation, in
  *
  * \return Number of watched descriptors.
  */
-static unsigned tls_set_ifaces(const list_t *ifaces, fdset_t *fds, int thread_id)
+static unsigned tls_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *fds, int thread_id)
 {
 	if (ifaces == NULL) {
 		return 0;
 	}
 
 	fdset_clear(fds);
-	iface_t *i;
-	WALK_LIST(i, *ifaces) {
+	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
 		int tls_id = 0;
 #ifdef ENABLE_REUSEPORT
 		if (conf()->cache.srv_tcp_reuseport) {
 			/* Note: thread_ids start with UDP threads, TCP threads follow. */
-			assert((i->fd_udp_count + i->fd_tcp_count <= thread_id) &&
-				(thread_id < i->fd_udp_count + i->fd_tcp_count + i->fd_tls_count)
+			assert((i->fd_udp_count + i->fd_tcp_count + i->fd_xdp_count <= thread_id) &&
+				(thread_id < i->fd_udp_count + i->fd_tcp_count + i->fd_xdp_count + i->fd_tls_count)
 			);
 
-			tls_id = thread_id - (i->fd_udp_count + i->fd_tcp_count);
+			tls_id = thread_id - (i->fd_udp_count + i->fd_tcp_count + i->fd_xdp_count);
 		}
 #endif
 		fdset_add(fds, i->fd_tls[tls_id], POLLIN, NULL);
@@ -421,7 +420,7 @@ int tls_master(dthread_t *thread)
 	update_tls_conf(&tls); //TODO
 
 	/* Set descriptors for the configured interfaces. */
-	tls.client_threshold = tls_set_ifaces(handler->server->ifaces, &tls.set, tls.thread_id);
+	tls.client_threshold = tls_set_ifaces(handler->server->ifaces, handler->server->n_ifaces, &tls.set, tls.thread_id);
 	if (tls.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
