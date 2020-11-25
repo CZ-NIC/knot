@@ -132,7 +132,9 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone->timers = old_zone->timers;
 	timers_sanitize(conf, zone);
 
-	if (zone_file_updated(conf, old_zone, name) && !zone_expired(zone)) {
+	bool conf_updated = (old_zone->change_type & CONF_IO_TRELOAD);
+
+	if ((zone_file_updated(conf, old_zone, name) || conf_updated) && !zone_expired(zone)) {
 		replan_load_updated(zone, old_zone);
 	} else {
 		zone->zonefile = old_zone->zonefile;
