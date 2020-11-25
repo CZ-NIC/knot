@@ -30,7 +30,8 @@ for z in zones:
         master.dnssec(z).enable = True
     else:
         master.add_module(z, ModOnlineSign())
-    slave.zones[z.name].journal_content = "all" # also disables zonefile load
+    slave.zones[z.name].journal_content = "all"
+    slave.zonefile_load = "none"
 
 backup_dir = master.dir + "/backup"
 slave_bck_dir = slave.dir + "/backup"

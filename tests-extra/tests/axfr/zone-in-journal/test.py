@@ -13,6 +13,7 @@ zone = t.zone("example.com.")
 
 t.link(zone, master, slave, journal_content="all")
 slave.zonefile_sync = "-1"
+slave.zonefile_load = "none"
 
 t.start()
 
