@@ -151,6 +151,7 @@ class Server(object):
         self.disable_notify = None
         self.semantic_check = True
         self.zonefile_sync = "1d"
+        self.zonefile_load = None
         self.journal_db_size = 20 * 1024 * 1024
         self.journal_max_usage = 5 * 1024 * 1024
         self.timer_db_size = 1 * 1024 * 1024
@@ -1466,8 +1467,8 @@ class Knot(Server):
 
             s.item_str("journal-content", z.journal_content)
 
-            if z.journal_content == "all" and z.masters:
-                s.item_str("zonefile-load", "none")
+            if self.zonefile_load is not None:
+                s.item_str("zonefile-load", self.zonefile_load)
             elif z.ixfr:
                 s.item_str("zonefile-load", "difference")
 
