@@ -55,7 +55,7 @@ int event_load(conf_t *conf, zone_t *zone)
 {
 	zone_update_t up = { 0 };
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
-	bool old_contents_exist = (zone->contents != NULL);
+	bool old_contents_exist = (zone->contents != NULL), zone_in_journal_exists = false;
 
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, zone->name);
 	unsigned load_from = conf_opt(&val);
@@ -71,6 +71,9 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			goto cleanup;
 		}
+		zone_in_journal_exists = true;
+	} else {
+		zone_in_journal_exists = zone_journal_has_zij(zone);
 	}
 
 	// If configured, attempt to load zonefile.
@@ -135,7 +138,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// If configured contents=all, but not present, store zonefile.
 	if (load_from == JOURNAL_CONTENT_ALL &&
-	    journal_conts == NULL && zf_conts != NULL && !old_contents_exist) {
+	    !zone_in_journal_exists && zf_conts != NULL) {
 		ret = zone_in_journal_store(conf, zone, zf_conts);
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to write zone-in-journal (%s)",
@@ -219,7 +222,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	if (do_diff && old_contents_exist && dnssec_enable && zf_conts != NULL &&
 	    zone_contents_serial(zf_conts) != zone_contents_serial(zone->contents) &&
-	    !zone_journal_has_zij(zone)) {
+	    !zone_in_journal_exists) {
 		ret = zone_update_start_extra(&up);
 		if (ret != KNOT_EOK) {
 			goto cleanup;

@@ -23,6 +23,7 @@ slave.max_journal_usage = 150 * 1024
 
 master.zonefile_sync = "0"
 slave.zonefile_sync = "-1"
+slave.zonefile_load = "none"
 
 master.dnssec(zone).enable = "true"
 
