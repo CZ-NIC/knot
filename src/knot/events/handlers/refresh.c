@@ -507,8 +507,11 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
+	val = conf_zone_get(data->conf, C_IXFR_BENEVOLENT, data->zone->name);
+	zone_update_flags_t strict = conf_bool(&val) ? 0 : UPDATE_STRICT;
+
 	zone_update_t up = { 0 };
-	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
+	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | strict);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

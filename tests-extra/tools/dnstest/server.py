@@ -149,6 +149,7 @@ class Server(object):
         self.udp_max_payload_ipv4 = None
         self.udp_max_payload_ipv6 = None
         self.disable_notify = None
+        self.ixfr_benevolent = None
         self.semantic_check = True
         self.zonefile_sync = "1d"
         self.zonefile_load = None
@@ -1482,6 +1483,9 @@ class Knot(Server):
 
             if z.dnssec.validate:
                 s.item_str("dnssec-validation", "on")
+
+            if self.ixfr_benevolent:
+                s.item_str("ixfr-benevolent", "on")
 
             if len(z.modules) > 0:
                 modules = ""

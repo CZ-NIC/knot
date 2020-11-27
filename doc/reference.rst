@@ -1570,6 +1570,7 @@ Definition of zones served by the server.
      journal-max-usage: SIZE
      journal-max-depth: INT
      zone-max-size : SIZE
+     ixfr-benevolent: BOOL
      adjust-threads: INT
      dnssec-signing: BOOL
      dnssec-validation: BOOL
@@ -1799,6 +1800,16 @@ the records in the transfer is twice the configured value. However the final
 size of the zone must satisfy the configured value.
 
 *Default:* 2^64
+
+.. _zone_ixfr-benevolent:
+
+ixfr-benevolent
+---------------
+
+If enabled, incomming IXFR is applied even when contains removals of non-existing
+or additions of existing records.
+
+*Default:* off
 
 .. _zone_adjust-threads:
 
