@@ -460,6 +460,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES }, FLAGS }, \
 	{ C_JOURNAL_MAX_USAGE,   YP_TINT,  YP_VINT = { KILO(40), SSIZE_MAX, MEGA(100), YP_SSIZE } }, \
 	{ C_JOURNAL_MAX_DEPTH,   YP_TINT,  YP_VINT = { 2, SSIZE_MAX, 20 } }, \
+	{ C_IXFR_BENEVOLENT,     YP_TBOOL, YP_VNONE }, \
 	{ C_IXFR_BY_ONE,         YP_TBOOL, YP_VNONE }, \
 	{ C_IXFR_FROM_AXFR,      YP_TBOOL, YP_VNONE }, \
 	{ C_ZONE_MAX_SIZE,       YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \

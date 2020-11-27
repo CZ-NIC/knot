@@ -611,8 +611,11 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
+	val = conf_zone_get(data->conf, C_IXFR_BENEVOLENT, data->zone->name);
+	zone_update_flags_t strict = conf_bool(&val) ? 0 : UPDATE_STRICT;
+
 	zone_update_t up = { 0 };
-	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET);
+	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET | strict);
 	if (ret != KNOT_EOK) {
 		data->fallback_axfr = false;
 		data->fallback->remote = false;
