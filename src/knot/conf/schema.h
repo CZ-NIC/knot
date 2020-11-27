@@ -67,6 +67,7 @@
 #define C_ID			"\x02""id"
 #define C_IDENT			"\x08""identity"
 #define C_INCL			"\x07""include"
+#define C_IXFR_BENEVOLENT	"\x0F""ixfr-benevolent"
 #define C_IXFR_BY_ONE		"\x0B""ixfr-by-one"
 #define C_IXFR_FROM_AXFR	"\x0E""ixfr-from-axfr"
 #define C_JOURNAL_CONTENT	"\x0F""journal-content"
