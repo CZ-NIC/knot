@@ -416,9 +416,20 @@ only stored in the journal.
 The zone file's SOA serial must be properly set to a number which is higher than the
 current SOA serial in the zone (not in the zone file) if manually updated!
 
-.. NOTE::
-   In case :ref:`zone_zonefile-load` is set to `difference-no-serial`,
-   the SOA serial is handled by the server automatically during server reload.
+Example 4
+---------
+
+Auto-increment SOA serial::
+
+   zonefile-sync: -1
+   zonefile-load: difference-no-serial
+   journal-content: all
+
+This is similar to the previous setup, but the SOA serial is handled by the server
+automatically. So the user no longer needs to care about it in the zone file.
+
+However, this requires setting :ref:`zone_journal-content` to `all` so that
+the information about the last real SOA serial is preserved in case of server re-start.
 
 .. _DNSSEC Key states:
 

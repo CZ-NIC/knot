@@ -955,16 +955,18 @@ static const yp_item_t desc_remote[] = {
 	{ NULL }
 };
 
-static const knot_lookup_t catalog_roles[] = {
+static const knot_lookup_t opts[] = {
 	{ 0, NULL }
 };
 
 #define ZONE_ITEMS \
 	{ C_FILE,              YP_TSTR,  YP_VNONE }, \
 	{ C_MASTER,            YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
+	{ C_ZONEFILE_LOAD,     YP_TOPT,  YP_VOPT = { opts, 0 } }, \
+	{ C_JOURNAL_CONTENT,   YP_TOPT,  YP_VOPT = { opts, 0 } }, \
 	{ C_DNSSEC_SIGNING,    YP_TBOOL, YP_VNONE }, \
 	{ C_DNSSEC_VALIDATION, YP_TBOOL, YP_VNONE }, \
-	{ C_CATALOG_ROLE,      YP_TOPT,  YP_VOPT = { catalog_roles, 0 } }, \
+	{ C_CATALOG_ROLE,      YP_TOPT,  YP_VOPT = { opts, 0 } }, \
 	{ C_CATALOG_TPL,       YP_TREF,  YP_VREF = { C_RMT } }, \
 	{ C_COMMENT,           YP_TSTR,  YP_VNONE },
 
