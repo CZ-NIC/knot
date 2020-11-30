@@ -17,7 +17,6 @@ Build-Depends:
  libfstrm-dev,
  libgnutls28-dev,
  libidn2-0-dev,
- libjemalloc-dev,
  liblmdb-dev,
  libmaxminddb-dev [!powerpcspe !sh4 !x32],
  libnghttp2-dev,
