@@ -22,6 +22,7 @@
 #include <string.h>
 #include <urcu.h>
 
+#include "contrib/openbsd/siphash.h"
 #include "contrib/string.h"
 #include "contrib/wire_ctx.h"
 #include "libdnssec/binary.h"
@@ -43,22 +44,21 @@ knot_dname_t *catalog_member_owner(const knot_dname_t *member,
                                    const knot_dname_t *catzone,
                                    time_t member_time)
 {
-	dnssec_binary_t membbin = { knot_dname_size(member), (void *)member };
+	SIPHASH_CTX hash;
+	SIPHASH_KEY shkey = { 0 }; // only used for hashing -> zero key
+	SipHash24_Init(&hash, &shkey);
+	SipHash24_Update(&hash, member, knot_dname_size(member));
 	uint64_t u64time = htobe64(member_time);
-	dnssec_binary_t timebin = { sizeof(uint64_t), (void *)&u64time };
-	dnssec_binary_t rawhash;
+	SipHash24_Update(&hash, &u64time, sizeof(u64time));
+	uint64_t hashres = SipHash24_End(&hash);
 
-	int ret = dnssec_binary_hash(DNSSEC_BIN_HASH_MD5, &rawhash, 2, &membbin, &timebin);
-	if (ret != KNOT_EOK) {
+	char *hexhash = bin_to_hex((uint8_t *)&hashres, sizeof(hashres));
+	if (hexhash == NULL) {
 		return NULL;
 	}
-
-	char *hexhash = bin_to_hex(rawhash.data, rawhash.size);
-	dnssec_binary_free(&rawhash);
-
-	long hexlen = strlen(hexhash);
-	assert(hexlen == 32);
-	long zoneslen = strlen(CATALOG_ZONES_LABEL);
+	size_t hexlen = strlen(hexhash);
+	assert(hexlen == 16);
+	size_t zoneslen = strlen(CATALOG_ZONES_LABEL);
 	assert(hexlen <= KNOT_DNAME_MAXLABELLEN && zoneslen <= KNOT_DNAME_MAXLABELLEN);
 	size_t catzlen = knot_dname_size(catzone);
 
