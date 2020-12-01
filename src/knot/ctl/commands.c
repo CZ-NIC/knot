@@ -152,18 +152,28 @@ static int get_zone(ctl_args_t *args, zone_t **zone)
 
 static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 {
-	int ret = KNOT_EOK;
+	int ret;
 
 	// Process all configured zones if none is specified.
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-		args->failed = false;
-		knot_zonedb_foreach(args->server->zone_db, fcn, args);
-		if (args->failed) {
+		bool failed = false;
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(args->server->zone_db);
+		while (!knot_zonedb_iter_finished(it)) {
+			args->suppress = false;
+			ret = fcn((zone_t *)knot_zonedb_iter_val(it), args);
+			if (ret != KNOT_EOK && !args->suppress) {
+				failed = true;
+			}
+			knot_zonedb_iter_next(it);
+		}
+		knot_zonedb_iter_free(it);
+
+		if (failed) {
 			ret = KNOT_CTL_EZONE;
 			log_ctl_error("control, error (%s)", knot_strerror(ret));
 			send_error(args, knot_strerror(ret));
-			args->failed = false;
 		}
+
 		return KNOT_EOK;
 	}
 
@@ -325,6 +335,7 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (zone_expired(zone)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
@@ -340,6 +351,7 @@ static int zone_refresh(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (!zone_is_slave(conf(), zone)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
@@ -351,6 +363,7 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (!zone_is_slave(conf(), zone)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
@@ -374,7 +387,6 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to update zone file (%s)",
 			                 knot_strerror(ret));
-			args->failed = true;
 		}
 		return ret;
 	}
@@ -436,7 +448,6 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	zone_backup_ctx_t *ctx = args->custom_ctx;
 	if (zone->backup_ctx != NULL) {
 		log_zone_warning(zone->name, "backup already in progress");
-		args->failed = true;
 		return KNOT_EPROGRESS;
 	}
 	zone->backup_ctx = ctx;
@@ -459,6 +470,7 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (!conf_bool(&val)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
@@ -470,6 +482,7 @@ static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 {
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (!conf_bool(&val)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
