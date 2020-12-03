@@ -455,13 +455,13 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	ctx->readers++;
 	pthread_mutex_unlock(&ctx->readers_mutex);
 
-	(void)schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
+	int ret = schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 
-	if (ctx->backup_global) {
-		return KNOT_EOK;
-	} else {
-		return global_backup(ctx, zone->catalog, zone->name);
+	if (ret == KNOT_EOK && !ctx->backup_global) {
+		ret = global_backup(ctx, zone->catalog, zone->name);
 	}
+
+	return ret;
 }
 
 static int zone_sign(zone_t *zone, ctl_args_t *args)
