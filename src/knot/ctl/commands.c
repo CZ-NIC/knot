@@ -47,6 +47,13 @@
 #define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] != NULL && \
                                       strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
 
+#define RETURN_IF_FAILED(exception) \
+{ \
+	if (ret != KNOT_EOK && ret != (exception)) { \
+		return ret; \
+	} \
+}
+
 typedef struct {
 	ctl_args_t *args;
 	int type_filter; // -1: no specific type, [0, 2^16]: specific type.
@@ -1197,9 +1204,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	// Abort possible editing transaction.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
 		ret = zone_txn_abort(zone, args);
-		if (ret != KNOT_EOK && ret != KNOT_TXN_ENOTEXISTS) {
-			return ret;
-		}
+		RETURN_IF_FAILED(KNOT_TXN_ENOTEXISTS);
 	}
 
 	// Purge the zone timers.
@@ -1207,9 +1212,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		memset(&zone->timers, 0, sizeof(zone->timers));
 		ret = zone_timers_sweep(&args->server->timerdb,
 		                        zone_names_distinct, zone->name);
-		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
-			return ret;
-		}
+		RETURN_IF_FAILED(KNOT_ENOENT);
 	}
 
 	// Expire the zone.
@@ -1225,17 +1228,13 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 			ret = knot_map_errno();
 		}
 		free(zonefile);
-		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
-			return ret;
-		}
+		RETURN_IF_FAILED(KNOT_ENOENT);
 	}
 
 	// Purge the zone journal.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
 		ret = journal_scrape_with_md(zone_journal(zone), true);
-		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
-			return ret;
-		}
+		RETURN_IF_FAILED(KNOT_ENOENT);
 	}
 
 	// Purge KASP DB.
@@ -1244,12 +1243,10 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		if (ret == KNOT_EOK) {
 			ret = kasp_db_delete_all(zone->kaspdb, zone->name);
 		}
-		if (ret == KNOT_ENOENT) {
-			ret = KNOT_EOK;
-		}
+		RETURN_IF_FAILED(KNOT_ENOENT);
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 static int send_stats_ctr(mod_ctr_t *ctr, uint64_t **stats_vals, unsigned threads,
