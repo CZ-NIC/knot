@@ -1196,37 +1196,56 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 
 	// Abort possible editing transaction.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
-		(void)zone_txn_abort(zone, args);
+		ret = zone_txn_abort(zone, args);
+		if (ret != KNOT_EOK && ret != KNOT_TXN_ENOTEXISTS) {
+			return ret;
+		}
 	}
 
 	// Purge the zone timers.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
 		memset(&zone->timers, 0, sizeof(zone->timers));
-		(void)zone_timers_sweep(&args->server->timerdb,
+		ret = zone_timers_sweep(&args->server->timerdb,
 		                        zone_names_distinct, zone->name);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			return ret;
+		}
 	}
 
 	// Expire the zone.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
-		ret = schedule_trigger(zone, args, ZONE_EVENT_EXPIRE, true);
+		// KNOT_EOK is the only return value from event_expire().
+		(void)schedule_trigger(zone, args, ZONE_EVENT_EXPIRE, true);
 	}
 
 	// Purge the zone file.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_ZONEFILE)) {
 		char *zonefile = conf_zonefile(conf(), zone->name);
-		(void)unlink(zonefile);
+		if (unlink(zonefile) == -1) {
+			ret = knot_map_errno();
+		}
 		free(zonefile);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			return ret;
+		}
 	}
 
 	// Purge the zone journal.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
-		(void)journal_scrape_with_md(zone_journal(zone), true);
+		ret = journal_scrape_with_md(zone_journal(zone), true);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			return ret;
+		}
 	}
 
 	// Purge KASP DB.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-		if (knot_lmdb_open(zone->kaspdb) == KNOT_EOK) {
-			(void)kasp_db_delete_all(zone->kaspdb, zone->name);
+		ret = knot_lmdb_open(zone->kaspdb);
+		if (ret == KNOT_EOK) {
+			ret = kasp_db_delete_all(zone->kaspdb, zone->name);
+		}
+		if (ret == KNOT_ENOENT) {
+			ret = KNOT_EOK;
 		}
 	}
 
