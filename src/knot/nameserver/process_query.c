@@ -647,28 +647,31 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		tsig.algorithm = knot_tsig_rdata_alg(query->tsig_rr);
 	}
 
-	/* Check if authenticated. */
+	/* Log ACL details. */
+	char addr_str[SOCKADDR_STRLEN];
+	if (sockaddr_tostr(addr_str, sizeof(addr_str), query_source) <= 0) {
+		addr_str[0] = '\0';
+	}
+	knot_dname_txt_storage_t key_name;
+	if (knot_dname_to_str(key_name, tsig.name, sizeof(key_name)) == NULL) {
+		key_name[0] = '\0';
+	}
+	const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions, action);
+
 	conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
-
-	char addr_str[SOCKADDR_STRLEN] = { 0 };
-	sockaddr_tostr(addr_str, sizeof(addr_str), query_source);
-	const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions,
-		                                         action);
-	char *key_name = knot_dname_to_str_alloc(tsig.name);
-
-	bool _acl_allowed = acl_allowed(conf, &acl, action, query_source, &tsig, zone_name, query);
+	bool allowed = acl_allowed(conf, &acl, action, query_source, &tsig, zone_name, query);
 
 	log_zone_debug(zone_name,
-		           "ACL, %s, action %s, remote %s, key %s%s%s",
-		           _acl_allowed ? "allowed" : "denied",
-		           (act != NULL) ? act->name : "query",
-		           addr_str,
-		           (key_name != NULL) ? "'" : "",
-		           (key_name != NULL) ? key_name : "none",
-		           (key_name != NULL) ? "'" : "");
-	free(key_name);
+	               "ACL, %s, action %s, remote %s, key %s%s%s",
+	               allowed ? "allowed" : "denied",
+	               (act != NULL) ? act->name : "query",
+	               addr_str,
+	               (key_name[0] != '\0') ? "'" : "",
+	               (key_name[0] != '\0') ? key_name : "none",
+	               (key_name[0] != '\0') ? "'" : "");
 
-	if (!_acl_allowed) {
+	/* Check if authorized. */
+	if (!allowed) {
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
 		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
 		return false;
