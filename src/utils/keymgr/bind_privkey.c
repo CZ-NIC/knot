@@ -162,6 +162,11 @@ static int parse_line(bind_privkey_t *params, char *line, size_t length)
 	assert(params);
 	assert(line);
 
+	strip(&line, &length);
+	if (length == 0) {
+		return KNOT_EOK; // blank line
+	}
+
 	char *separator = memchr(line, ':', length);
 	if (!separator) {
 		return DNSSEC_MALFORMED_DATA;
