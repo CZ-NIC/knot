@@ -153,10 +153,10 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
-static int xfr_validate(zone_contents_t *zone)
+static int xfr_validate(zone_contents_t *zone, zone_tree_t *update_node_ptrs)
 {
 	// adjust_cb_nsec3_pointer not needed as we don't check DNSSEC here
-	int ret = zone_adjust_contents(zone, adjust_cb_flags, NULL, false, false, 1, NULL);
+	int ret = zone_adjust_contents(zone, adjust_cb_flags, NULL, false, false, 1, update_node_ptrs);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -253,7 +253,7 @@ static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
 
-	int ret = xfr_validate(new_zone);
+	int ret = xfr_validate(new_zone, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -527,7 +527,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	ret = xfr_validate(up.new_cont);
+	ret = xfr_validate(up.new_cont, up.a_ctx->node_ptrs);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		return ret;
