@@ -1,17 +1,15 @@
 # Useful commands:
+#   make filter
 #   ip link show $eth
 #   sudo ip link set dev $eth xdp off
 #   sudo ip link set dev $eth xdp obj ./bpf-kernel.o
 
-BUILT_SOURCES = bpf-kernel-obj.c
-CLEANFILES = bpf-kernel.ll bpf-kernel.o bpf-kernel-obj.c
-EXTRA_DIST = bpf-kernel.c
+EXTRA_DIST = bpf-kernel-obj.c bpf-kernel.c
 
-bpf-kernel.ll: bpf-kernel.c
-	clang -S -target bpf -Wall -O2 -emit-llvm -c -DNDEBUG -o $@ -I/usr/include/x86_64-linux-gnu -include ../../config.h $<
+.PHONY: filter
 
-bpf-kernel.o: bpf-kernel.ll
-	llc -march=bpf -filetype=obj -o $@ $<
-
-bpf-kernel-obj.c: bpf-kernel.o
-	xxd -i $< > $@
+filter:
+	rm -f bpf-kernel.ll bpf-kernel.o bpf-kernel-obj.c
+	clang -S -target bpf -Wall -O2 -emit-llvm -c -DNDEBUG -o bpf-kernel.ll -I/usr/include/x86_64-linux-gnu -include ../../config.h bpf-kernel.c
+	llc -march=bpf -filetype=obj -o bpf-kernel.o bpf-kernel.ll
+	xxd -i bpf-kernel.o > bpf-kernel-obj.c
