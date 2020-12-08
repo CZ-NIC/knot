@@ -113,27 +113,4 @@ int dnssec_binary_from_base64(const dnssec_binary_t *base64,
  */
 int dnssec_binary_to_base64(const dnssec_binary_t *binary,
 			    dnssec_binary_t *base64);
-
-typedef enum dnssec_bin_hash {
-	DNSSEC_BIN_HASH_INVALID = 0,
-	DNSSEC_BIN_HASH_MD5 = 1,
-	DNSSEC_BIN_HASH_SHA1 = 2,
-	DNSSEC_BIN_HASH_SHA256 = 3,
-	DNSSEC_BIN_HASH_SHA384 = 4,
-} dnssec_bin_hash_t;
-
-/*!
- * \brief Perform MD5/SHA/... checksum of any data.
- *
- * \param alg   Hash algorithm to use.
- * \param out   Output: resulting hash in the form of binary.
- * \param nbin  Number of input binaries.
- * \param ...   Any number of (dnssec_binary_t *) input data.
- *
- * \note Don't forget to dnssec_binary_free() the output.
- *
- * \return DNSSEC_E*
- */
-int dnssec_binary_hash(dnssec_bin_hash_t alg, dnssec_binary_t *out, size_t nbin, ...);
-
 /*! @} */

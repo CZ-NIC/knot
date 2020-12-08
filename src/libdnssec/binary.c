@@ -15,7 +15,6 @@
  */
 
 #include <assert.h>
-#include <stdarg.h>
 #include <string.h>
 
 #include "contrib/base64.h"
@@ -160,48 +159,5 @@ int dnssec_binary_to_base64(const dnssec_binary_t *binary,
 	base64->data = data;
 	base64->size = size;
 
-	return DNSSEC_EOK;
-}
-
-_public_
-int dnssec_binary_hash(dnssec_bin_hash_t alg, dnssec_binary_t *out, size_t nbin, ...)
-{
-	if (alg == DNSSEC_BIN_HASH_INVALID || !out || nbin == 0) {
-		return DNSSEC_EINVAL;
-	}
-
-	gnutls_digest_algorithm_t gnutls_alg = GNUTLS_DIG_UNKNOWN;
-	switch (alg) {
-	case DNSSEC_BIN_HASH_INVALID: break;
-	case DNSSEC_BIN_HASH_MD5:    gnutls_alg = GNUTLS_DIG_MD5;    break;
-	case DNSSEC_BIN_HASH_SHA1:   gnutls_alg = GNUTLS_DIG_SHA1;   break;
-	case DNSSEC_BIN_HASH_SHA256: gnutls_alg = GNUTLS_DIG_SHA256; break;
-	case DNSSEC_BIN_HASH_SHA384: gnutls_alg = GNUTLS_DIG_SHA384; break;
-	}
-
-	_cleanup_hash_ gnutls_hash_hd_t digest = NULL;
-	int r = gnutls_hash_init(&digest, gnutls_alg);
-	if (r < 0) {
-		return DNSSEC_HASH_ERROR;
-	}
-
-	va_list arg;
-	va_start(arg, nbin);
-	for (size_t i = 0; i < nbin; i++) {
-		dnssec_binary_t *bin = va_arg(arg, dnssec_binary_t *);
-
-		r = gnutls_hash(digest, bin->data, bin->size);
-		if (r != 0) {
-			return DNSSEC_HASH_ERROR;
-		}
-	}
-	va_end(arg);
-
-	out->size = gnutls_hash_get_len(gnutls_alg);
-	out->data = malloc(out->size);
-	if (out->data == NULL) {
-		return DNSSEC_ENOMEM;
-	}
-	gnutls_hash_output(digest, out->data);
 	return DNSSEC_EOK;
 }
