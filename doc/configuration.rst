@@ -639,6 +639,29 @@ When setting up catalog zones, it might be useful to set
 :ref:`database_catalog-db` and :ref:`database_catalog-db-max-size`
 to non-default values.
 
+.. WARNING::
+   Bugs, limitations:
+
+   Knot does purge the member zone's metadata whenever the respective PTR
+   record owner changes in any way. This differs from the specification
+   (see `Internet Draft` above),
+   which requires this to be done only when the "unique" label (i.e. the
+   one immediately left of the `zones` label) changes. It's expected that
+   Knot's behaviour will be aligned to the specification in the future.
+
+   Knot does not work well if one member zone appears in two catalog zones
+   concurrently. The user is encouraged to avoid this situation whatsoever.
+   Thus, there is no way a member zone can be migrated from one catalog
+   to another while preserving its metadata. Following steps may be used
+   as a workaround:
+
+   * :ref:`Back up<Data and metadata backup>` the member zone's metadata
+     (on each server separately).
+   * Remove the member zone from the catalog it's a member of.
+   * Wait for the catalog zone to be propagated to all servers.
+   * Add the member zone to the other catalog.
+   * Restore the backed up metadata (on each server separately).
+
 .. _query-modules:
 
 Query modules
