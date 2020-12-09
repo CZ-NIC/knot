@@ -190,6 +190,8 @@ static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)
 	return policy;
 }
 
+#define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)\n", ctx->restore_mode ? "restore" : "backup", (action), knot_strerror(ret))
+
 static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 {
 	dnssec_keystore_t *from = NULL, *to = NULL;
@@ -199,6 +201,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	unsigned backend_type = 0;
 	int ret = zone_init_keystore(conf, &policy_id, &from, &backend_type);
 	if (ret != KNOT_EOK) {
+		LOG_FAIL("keystore init");
 		return ret;
 	}
 	if (backend_type == KEYSTORE_BACKEND_PKCS11) {
@@ -211,6 +214,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	(void)snprintf(kasp_dir, sizeof(kasp_dir), "%s/keys", ctx->backup_dir);
 	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, kasp_dir, &to);
 	if (ret != KNOT_EOK) {
+		LOG_FAIL("keystore load");
 		goto done;
 	}
 
@@ -221,6 +225,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	ret = kasp_db_list_keys(zone->kaspdb, zone->name, &key_params);
 	ret = (ret == KNOT_ENOENT ? KNOT_EOK : ret);
 	if (ret != KNOT_EOK) {
+		LOG_FAIL("keystore list");
 		goto done;
 	}
 	ptrnode_t *n;
@@ -229,6 +234,9 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 			ret = backup_key(n->d, from, to);
 			free_key_params(n->d);
 		}
+	}
+	if (ret != KNOT_EOK) {
+		LOG_FAIL("key copy");
 	}
 	ptrlist_deep_free(&key_params, NULL);
 
@@ -274,6 +282,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		free(backup_zf);
 		free(local_zf);
 		if (ret != KNOT_EOK) {
+			LOG_FAIL("zone file");
 			goto done;
 		}
 	}
@@ -284,6 +293,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	if (knot_lmdb_exists(kasp_from)) {
 		ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
 		if (ret != KNOT_EOK) {
+			LOG_FAIL("KASP database");
 			goto done;
 		}
 
@@ -302,17 +312,22 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		ret = journal_scrape_with_md(zone_journal(zone), true);
 	}
 	if (ret != KNOT_EOK) {
+		LOG_FAIL("journal");
 		goto done;
 	}
 
 	ret = knot_lmdb_open(&ctx->bck_timer_db);
 	if (ret != KNOT_EOK) {
+		LOG_FAIL("timers open");
 		goto done;
 	}
 	if (ctx->restore_mode) {
 		ret = zone_timers_read(&ctx->bck_timer_db, zone->name, &zone->timers);
 	} else {
 		ret = zone_timers_write(&ctx->bck_timer_db, zone->name, &zone->timers);
+	}
+	if (ret != KNOT_EOK) {
+		LOG_FAIL("timers");
 	}
 
 done:
