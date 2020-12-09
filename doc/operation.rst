@@ -953,7 +953,7 @@ The backup directory should be empty (or non-existing) or contain a previous
 backup that will be overwritten.
 The backup procedure will begin soon and will happen zone-by-zone
 (partially in parallel if more :ref:`server_background-workers` are configured).
-The user shall check the logs for the outcome of each zone's backup attempt.
+**The user shall check the logs for the outcome of each zone's backup attempt.**
 The knotc's ``-b`` parameter might be used if the user desires to wait until
 the backup work is done.
 
