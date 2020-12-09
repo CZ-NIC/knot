@@ -248,6 +248,8 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_ZONE_SIGN:
 	case CTL_ZONE_KEY_ROLL:
 	case CTL_ZONE_KSK_SBM:
+	case CTL_ZONE_FREEZE:
+	case CTL_ZONE_THAW:
 	case CTL_ZONE_BEGIN:
 	case CTL_ZONE_COMMIT:
 	case CTL_ZONE_ABORT:
