@@ -88,6 +88,65 @@ static void time_set_default(time_t *time, time_t value)
 	}
 }
 
+static void catalogs_generate(knot_zonedb_t *db_new, knot_zonedb_t *db_old)
+{
+	// general comment: catz->contents!=NULL means incremental update of catalog
+
+	if (db_old != NULL) {
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
+		while (!knot_zonedb_iter_finished(it)) {
+			zone_t *zone = knot_zonedb_iter_val(it);
+			knot_dname_t *cg = zone->catalog_gen;
+			if (cg != NULL && knot_zonedb_find(db_new, zone->name) == NULL) {
+				zone_t *catz = knot_zonedb_find(db_new, cg);
+				if (catz != NULL && catz->contents != NULL) {
+					assert(catz->cat_members != NULL); // if this failed to allocate, catz wasn't added to zonedb
+					knot_dname_t *owner = catalog_member_owner(zone->name, cg, zone->timers.catalog_member);
+					if (owner == NULL) {
+						catz->cat_members->error = KNOT_ENOENT;
+						knot_zonedb_iter_next(it);
+						continue;
+					}
+					int ret = catalog_update_add(catz->cat_members, zone->name, owner, cg, true);
+					free(owner);
+					if (ret != KNOT_EOK) {
+						catz->cat_members->error = ret;
+					}
+				}
+			}
+			knot_zonedb_iter_next(it);
+		}
+		knot_zonedb_iter_free(it);
+	}
+
+	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_new);
+	while (!knot_zonedb_iter_finished(it)) {
+		zone_t *zone = knot_zonedb_iter_val(it);
+		knot_dname_t *cg = zone->catalog_gen;
+		zone_t *catz = cg != NULL ? knot_zonedb_find(db_new, cg) : NULL;
+		if (cg != NULL && catz == NULL) {
+			log_zone_warning(zone->name, "member zone belongs to non-existing catalog zone");
+			continue;
+		}
+		if (cg != NULL && (catz->contents == NULL || knot_zonedb_find(db_old, zone->name) == NULL)) {
+			assert(catz->cat_members != NULL);
+			knot_dname_t *owner = catalog_member_owner(zone->name, cg, zone->timers.catalog_member);
+			if (owner == NULL) {
+				catz->cat_members->error = KNOT_ENOENT;
+				knot_zonedb_iter_next(it);
+				continue;
+			}
+			int ret = catalog_update_add(catz->cat_members, zone->name, owner, cg, false);
+			free(owner);
+			if (ret != KNOT_EOK) {
+				catz->cat_members->error = ret;
+			}
+		}
+		knot_zonedb_iter_next(it);
+	}
+	knot_zonedb_iter_free(it);
+}
+
 /*!
  * \brief Set default timers for new zones or invalidate if not valid.
  */
@@ -146,6 +205,12 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 		zone_control_clear(old_zone);
 	}
 
+	zone->cat_members = old_zone->cat_members;
+	old_zone->cat_members = NULL;
+
+	zone->catalog_gen = old_zone->catalog_gen;
+	old_zone->catalog_gen = NULL;
+
 	return zone;
 }
 
@@ -166,6 +231,30 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 	}
 
 	timers_sanitize(conf, zone);
+
+	conf_val_t role = conf_zone_get(conf, C_CATALOG_ROLE, name);
+	if (conf_opt(&role) == CATALOG_ROLE_MEMBER) {
+		conf_val_t catz = conf_zone_get(conf, C_CATALOG_ZONE, name);
+		assert(catz.code == KNOT_EOK); // conf consistency checked in conf/tools.c
+		zone->catalog_gen = knot_dname_copy(conf_dname(&catz), NULL);
+		if (zone->timers.catalog_member == 0) {
+			zone->timers.catalog_member = time(NULL);
+		}
+		if (zone->catalog_gen == NULL) {
+			log_zone_error(zone->name, "failed to initialize catalog member zone (%s)",
+			               knot_strerror(KNOT_ENOMEM));
+			zone_free(&zone);
+			return NULL;
+		}
+	} else if (conf_opt(&role) == CATALOG_ROLE_GENERATE) {
+		zone->cat_members = catalog_update_new();
+		if (zone->cat_members == NULL) {
+			log_zone_error(zone->name, "failed to initialize catalog zone (%s)",
+			               knot_strerror(KNOT_ENOMEM));
+			zone_free(&zone);
+			return NULL;
+		}
+	}
 
 	if (zone_expired(zone)) {
 		// expired => force bootstrap, no load attempt
@@ -551,6 +640,8 @@ void zonedb_reload(conf_t *conf, server_t *server)
 		log_error("failed to create new zone database");
 		return;
 	}
+
+	catalogs_generate(db_new, server->zone_db);
 
 	/* Switch the databases. */
 	knot_zonedb_t **db_current = &server->zone_db;

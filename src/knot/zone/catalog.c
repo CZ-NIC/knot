@@ -22,14 +22,63 @@
 #include <string.h>
 #include <urcu.h>
 
+#include "contrib/openbsd/siphash.h"
+#include "contrib/string.h"
+#include "contrib/wire_ctx.h"
+
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
-#include "knot/zone/contents.h"
+#include "knot/updates/zone-update.h"
 
 #define CATALOG_VERSION "1.0"
 #define CATALOG_ZONE_VERSION "2" // must be just one char long
+#define CATALOG_ZONES_LABEL "\x05""zones"
+#define CATALOG_SOA_REFRESH 3600
+#define CATALOG_SOA_RETRY 600
+#define CATALOG_SOA_EXPIRE (INT32_MAX - 1)
 
 const MDB_val catalog_iter_prefix = { 1, "" };
+
+knot_dname_t *catalog_member_owner(const knot_dname_t *member,
+                                   const knot_dname_t *catzone,
+                                   time_t member_time)
+{
+	SIPHASH_CTX hash;
+	SIPHASH_KEY shkey = { 0 }; // only used for hashing -> zero key
+	SipHash24_Init(&hash, &shkey);
+	SipHash24_Update(&hash, member, knot_dname_size(member));
+	uint64_t u64time = htobe64(member_time);
+	SipHash24_Update(&hash, &u64time, sizeof(u64time));
+	uint64_t hashres = SipHash24_End(&hash);
+
+	char *hexhash = bin_to_hex((uint8_t *)&hashres, sizeof(hashres));
+	if (hexhash == NULL) {
+		return NULL;
+	}
+	size_t hexlen = strlen(hexhash);
+	assert(hexlen == 16);
+	size_t zoneslen = knot_dname_size((uint8_t *)CATALOG_ZONES_LABEL);
+	assert(hexlen <= KNOT_DNAME_MAXLABELLEN && zoneslen <= KNOT_DNAME_MAXLABELLEN);
+	size_t catzlen = knot_dname_size(catzone);
+
+	size_t outlen = hexlen + zoneslen + catzlen;
+	knot_dname_t *out;
+	if (outlen > KNOT_DNAME_MAXLEN || (out = malloc(outlen)) == NULL) {
+		free(hexhash);
+		return NULL;
+	}
+
+	wire_ctx_t wire = wire_ctx_init(out, outlen);
+	wire_ctx_write_u8(&wire, hexlen);
+	wire_ctx_write(&wire, hexhash, hexlen);
+	wire_ctx_write(&wire, CATALOG_ZONES_LABEL, zoneslen);
+	wire_ctx_skip(&wire, -1);
+	wire_ctx_write(&wire, catzone, catzlen);
+	assert(wire.error == KNOT_EOK);
+
+	free(hexhash);
+	return out;
+}
 
 static bool check_zone_version(const zone_contents_t *zone)
 {
@@ -380,13 +429,28 @@ int catalog_update_init(catalog_update_t *u)
 		return KNOT_ENOMEM;
 	}
 	pthread_mutex_init(&u->mutex, 0);
+	u->error = KNOT_EOK;
 	return KNOT_EOK;
+}
+
+catalog_update_t *catalog_update_new()
+{
+	catalog_update_t *u = calloc(1, sizeof(*u));
+	if (u != NULL) {
+		int ret = catalog_update_init(u);
+		if (ret != KNOT_EOK) {
+			free(u);
+			u = NULL;
+		}
+	}
+	return u;
 }
 
 static int freecb(trie_val_t *tval, void *unused)
 {
+	catalog_upd_val_t *val = *tval;
 	(void)unused;
-	free(*(void **)tval);
+	free(val);
 	return 0;
 }
 
@@ -396,6 +460,7 @@ void catalog_update_clear(catalog_update_t *u)
 	trie_clear(u->add);
 	trie_apply(u->rem, freecb, NULL);
 	trie_clear(u->rem);
+	u->error = KNOT_EOK;
 }
 
 void catalog_update_deinit(catalog_update_t *u)
@@ -403,6 +468,14 @@ void catalog_update_deinit(catalog_update_t *u)
 	pthread_mutex_destroy(&u->mutex);
 	trie_free(u->add);
 	trie_free(u->rem);
+}
+
+void catalog_update_free(catalog_update_t *u)
+{
+	if (u != NULL) {
+		catalog_update_deinit(u);
+		free(u);
+	}
 }
 
 int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
@@ -501,6 +574,18 @@ static int cat_update_add_node(zone_node_t *node, void *data)
 	return ret;
 }
 
+static size_t dname_append(knot_dname_storage_t storage, const knot_dname_t *name)
+{
+	size_t old_len = knot_dname_size(storage);
+	size_t name_len = knot_dname_size(name);
+	size_t new_len = old_len - 1 + name_len;
+	if (old_len == 0 || name_len == 0 || new_len > KNOT_DNAME_MAXLEN) {
+		return 0;
+	}
+	memcpy(storage + old_len - 1, name, name_len);
+	return new_len;
+}
+
 int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
                              bool remove, bool check_ver, catalog_t *check)
 {
@@ -508,10 +593,11 @@ int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
 		return KNOT_EZONEINVAL;
 	}
 
-	size_t zone_size = knot_dname_size(zone->apex->owner);
-	knot_dname_t sub[zone_size + 6];
-	memcpy(sub, "\x05""zones", 6);
-	memcpy(sub + 6, zone->apex->owner, zone_size);
+	knot_dname_storage_t sub;
+	if (knot_dname_store(sub, (uint8_t *)CATALOG_ZONES_LABEL) == 0 ||
+	    dname_append(sub, zone->apex->owner ) == 0) {
+		return KNOT_EINVAL;
+	}
 
 	if (zone_contents_find_node(zone, sub) == NULL) {
 		return KNOT_EOK;
@@ -521,6 +607,126 @@ int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
 	pthread_mutex_lock(&u->mutex);
 	int ret = zone_tree_sub_apply(zone->nodes, sub, false, cat_update_add_node, &ctx);
 	pthread_mutex_unlock(&u->mutex);
+	return ret;
+}
+
+static void set_rdata(knot_rrset_t *rrset, uint8_t *data, uint16_t len)
+{
+	knot_rdata_init(rrset->rrs.rdata, len, data);
+	rrset->rrs.size = knot_rdata_size(len);
+}
+
+struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dname_t *catzone,
+                                             uint32_t soa_serial)
+{
+	if (u->error != KNOT_EOK) {
+		return NULL;
+	}
+	zone_contents_t *c = zone_contents_new(catzone, true);
+	if (c == NULL) {
+		return c;
+	}
+
+	zone_node_t *unused = NULL;
+	uint8_t invalid[9] = "\x07""invalid";
+	uint8_t version[9] = "\x07""version";
+	uint8_t cat_version[2] = "\x01" CATALOG_ZONE_VERSION;
+
+	// prepare common rrset with one rdata item
+	uint8_t rdata[256] = { 0 };
+	knot_rrset_t rrset;
+	knot_rrset_init(&rrset, (knot_dname_t *)catzone, KNOT_RRTYPE_SOA, KNOT_CLASS_IN, 0);
+	rrset.rrs.rdata = (knot_rdata_t *)rdata;
+	rrset.rrs.count = 1;
+
+	// set catalog zone's SOA
+	uint8_t data[250];
+	assert(sizeof(knot_rdata_t) + sizeof(data) <= sizeof(rdata));
+	wire_ctx_t wire = wire_ctx_init(data, sizeof(data));
+	wire_ctx_write(&wire, invalid, sizeof(invalid));
+	wire_ctx_write(&wire, invalid, sizeof(invalid));
+	wire_ctx_write_u32(&wire, soa_serial);
+	wire_ctx_write_u32(&wire, CATALOG_SOA_REFRESH);
+	wire_ctx_write_u32(&wire, CATALOG_SOA_RETRY);
+	wire_ctx_write_u32(&wire, CATALOG_SOA_EXPIRE);
+	wire_ctx_write_u32(&wire, 0);
+	set_rdata(&rrset, data, wire_ctx_offset(&wire));
+	if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+		goto fail;
+	}
+
+	// set catalog zone's NS
+	unused = NULL;
+	rrset.type = KNOT_RRTYPE_NS;
+	set_rdata(&rrset, invalid, sizeof(invalid));
+	if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+		goto fail;
+	}
+
+	// set catalog zone's version TXT
+	unused = NULL;
+	knot_dname_storage_t owner;
+	if (knot_dname_store(owner, version) == 0 || dname_append(owner, catzone) == 0) {
+		goto fail;
+	}
+	rrset.owner = owner;
+	rrset.type = KNOT_RRTYPE_TXT;
+	set_rdata(&rrset, cat_version, sizeof(cat_version));
+	if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+		goto fail;
+	}
+
+	// insert member zone PTR records
+	rrset.type = KNOT_RRTYPE_PTR;
+	catalog_it_t *it = catalog_it_begin(u, false);
+	while (!catalog_it_finished(it)) {
+		catalog_upd_val_t *val = catalog_it_val(it);
+		rrset.owner = val->owner;
+		set_rdata(&rrset, val->member, knot_dname_size(val->member));
+		unused = NULL;
+		if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+			goto fail;
+		}
+		catalog_it_next(it);
+	}
+	catalog_it_free(it);
+
+	return c;
+
+fail:
+	zone_contents_deep_free(c);
+	return NULL;
+}
+
+int catalog_update_to_update(catalog_update_t *u, struct zone_update *zu)
+{
+	knot_rrset_t ptr;
+	knot_rrset_init(&ptr, NULL, KNOT_RRTYPE_PTR, KNOT_CLASS_IN, 0);
+	uint8_t tmp[KNOT_DNAME_MAXLEN + sizeof(knot_rdata_t)];
+	ptr.rrs.rdata = (knot_rdata_t *)tmp;
+	ptr.rrs.count = 1;
+
+	int ret = u->error;
+	catalog_it_t *it = catalog_it_begin(u, true);
+	while (!catalog_it_finished(it) && ret == KNOT_EOK) {
+		catalog_upd_val_t *val = catalog_it_val(it);
+		ptr.owner = val->owner;
+		set_rdata(&ptr, val->member, knot_dname_size(val->member));
+		ret = zone_update_remove(zu, &ptr);
+		catalog_it_next(it);
+	}
+	catalog_it_free(it);
+
+	it = catalog_it_begin(u, false);
+	while (!catalog_it_finished(it) && ret == KNOT_EOK) {
+		catalog_upd_val_t *val = catalog_it_val(it);
+		ptr.owner = val->owner;
+		set_rdata(&ptr, val->member, knot_dname_size(val->member));
+		ret = zone_update_add(zu, &ptr);
+		catalog_it_next(it);
+	}
+	catalog_it_free(it);
+
 	return ret;
 }
 

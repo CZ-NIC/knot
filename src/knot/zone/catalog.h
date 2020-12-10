@@ -42,6 +42,7 @@ typedef enum {
 typedef struct {
 	trie_t *rem;             // tree of catalog_upd_val_t, that gonna be removed from catalog
 	trie_t *add;             // tree of catalog_upd_val_t, that gonna be added to catalog
+	int error;               // error occured during generating of upd
 	pthread_mutex_t mutex;   // lock for accessing this struct
 } catalog_update_t;
 
@@ -53,6 +54,21 @@ typedef struct {
 } catalog_upd_val_t;
 
 extern const MDB_val catalog_iter_prefix;
+
+/*!
+ * \brief Generate owner name for catalog PTR record.
+ *
+ * \param member        Name of the member zone respective to the PTR record.
+ * \param catzone       Catalog zone name to contain the PTR.
+ * \param member_time   Timestamp of member zone addition.
+ *
+ * \return Owner name or NULL on error (e.g. ENOMEM, too long result...).
+ *
+ * \note Don't forget to free the return value later.
+ */
+knot_dname_t *catalog_member_owner(const knot_dname_t *member,
+                                   const knot_dname_t *catzone,
+                                   time_t member_time);
 
 /*!
  * \brief Initialize catalog structure.
@@ -215,6 +231,7 @@ int catalog_copy(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
  * \return KNOT_EOK, KNOT_ENOMEM
  */
 int catalog_update_init(catalog_update_t *u);
+catalog_update_t *catalog_update_new(void);
 
 /*!
  * \brief Clear contents of catalog update structure.
@@ -229,6 +246,7 @@ void catalog_update_clear(catalog_update_t *u);
  * \param u   Catalog update structure.
  */
 void catalog_update_deinit(catalog_update_t *u);
+void catalog_update_free(catalog_update_t *u);
 
 /*!
  * \brief Add a new record to catalog update structure.
@@ -271,6 +289,30 @@ struct zone_contents;
  */
 int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
                              bool remove, bool check_ver, catalog_t *check);
+
+/*!
+ * \brief Generate catalog zone contents from (full) catalog update.
+ *
+ * \param u           Catalog update to read.
+ * \param catzone     Catalog zone name.
+ * \param soa_serial  SOA serial of the generated zone.
+ *
+ * \return Catalog zone contents, or NULL if ENOMEM.
+ */
+struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dname_t *catzone,
+                                             uint32_t soa_serial);
+
+struct zone_update;
+
+/*!
+ * \brief Incrementally update catalog zone from catalog update.
+ *
+ * \param u    Catalog update to read.
+ * \param zu   Zone update to be updated.
+ *
+ * \return KNOT_E*
+ */
+int catalog_update_to_update(catalog_update_t *u, struct zone_update *zu);
 
 /*!
  * \brief Add to catalog update removals of all member zones of a single catalog zone.

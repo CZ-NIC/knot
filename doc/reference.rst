@@ -1579,6 +1579,7 @@ Definition of zones served by the server.
      refresh-max-interval: TIME
      catalog-role: none | interpret
      catalog-template: template_id
+     catalog-zone: DNAME
      module: STR/STR ...
 
 .. _zone_domain:
@@ -1914,6 +1915,9 @@ Trigger zone catalog feature. Possible values:
 - ``none`` – Not a catalog zone.
 - ``interpret`` – A catalog zone which is loaded from a zone file or XFR,
   and member zones shall be configured based on its contents.
+- ``generate`` – A catalog zone whose contents are generated according to
+  assigned member zones.
+- ``member`` – A member zone that is assigned to one generated catalog zone.
 
 *Default:* none
 
@@ -1926,6 +1930,20 @@ For the catalog-member zones, the specified configuration template will be appli
 
 .. NOTE::
    This option must be set if and only if :ref:`zone_catalog-role` is *interpret*.
+
+*Default:* not set
+
+.. _zone_catalog-zone:
+
+catalog-zone
+------------
+
+Assign this member zone to specified generated catalog zone.
+
+.. NOTE::
+   This option must be set if and only if :ref:`zone_catalog-role` is *member*.
+
+   The referenced catalog zone must exist and have :ref:`zone_catalog-role` set to *generate*.
 
 *Default:* not set
 
