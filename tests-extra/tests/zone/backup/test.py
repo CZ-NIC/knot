@@ -5,6 +5,7 @@
 from dnstest.test import Test
 from dnstest.module import ModOnlineSign
 from dnstest.utils import *
+from dnstest.keys import Keymgr
 import shutil
 import random
 
@@ -28,8 +29,10 @@ t.link(zones, master, slave)
 for z in zones:
     if random.choice([True, False]):
         master.dnssec(z).enable = True
+        master.dnssec(z).algorithm = "ECDSAP256SHA256"
+        master.dnssec(z).single_type_signing = False
     else:
-        master.add_module(z, ModOnlineSign())
+        master.add_module(z, ModOnlineSign(algorithm="ECDSAP256SHA256"))
     slave.zones[z.name].journal_content = "all"
     slave.zonefile_load = "none"
 
@@ -40,8 +43,14 @@ zone0_expire = 45   # zone zones[0] expiration time in its SOA
 valgrind_delay = 2 if slave.valgrind else 0  # allow a little time margin under Valgrind
 
 t.start()
-slave.zones_wait(zones)
+serials_init = slave.zones_wait(zones)
 start_time = int(t.uptime())
+
+for z in zones:
+    if master.dnssec(z).enable:
+        Keymgr.run_check(master.confile, z.name, "import-pub", "%s/%skey" % (t.data_dir, z.name))
+        master.ctl("zone-sign " + z.name)
+        slave.zone_wait(z, serials_init[z.name])
 
 master.ctl("zone-backup +backupdir %s" % backup_dir)
 slave.ctl("zone-backup %s %s +journal +backupdir %s +nozonefile" % \

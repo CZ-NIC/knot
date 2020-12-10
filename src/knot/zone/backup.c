@@ -190,7 +190,7 @@ static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)
 	return policy;
 }
 
-#define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)\n", ctx->restore_mode ? "restore" : "backup", (action), knot_strerror(ret))
+#define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)", ctx->restore_mode ? "restore" : "backup", (action), knot_strerror(ret))
 
 static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 {
@@ -230,9 +230,10 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	}
 	ptrnode_t *n;
 	WALK_LIST(n, key_params) {
-		if (ret == KNOT_EOK) {
-			ret = backup_key(n->d, from, to);
-			free_key_params(n->d);
+		key_params_t *parm = n->d;
+		if (ret == KNOT_EOK && !parm->is_pub_only) {
+			ret = backup_key(parm, from, to);
+			free_key_params(parm);
 		}
 	}
 	if (ret != KNOT_EOK) {
