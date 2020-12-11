@@ -1442,7 +1442,7 @@ static int check_zone_section(
 		size_t id_len;
 		const uint8_t *id = (const uint8_t *)trie_it_key(it, &id_len);
 
-		conf_io_type_t type = (conf_io_type_t)(*trie_it_val(it));
+		conf_io_type_t type = conf_io_trie_val(it);
 		if (type == CONF_IO_TUNSET) {
 			// Nothing to check.
 			continue;
