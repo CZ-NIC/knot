@@ -504,7 +504,7 @@ class Server(object):
         # Set EDNS.
         if edns != None or bufsize or nsid:
             class NsidFix(object):
-                '''Current pythondns doesn't implement NSID option.'''
+                '''Old pythondns doesn't implement NSID option.'''
                 def __init__(self):
                     self.otype = dns.edns.NSID
                 def to_wire(self, file=None):
@@ -523,7 +523,10 @@ class Server(object):
             dig_flags += " +bufsize=%i" % payload
 
             if nsid:
-                options = [NsidFix()]
+                if not hasattr(dns, 'version') or dns.version.MAJOR == 1:
+                    options = [NsidFix()]
+                else:
+                    options = [dns.edns.GenericOption(dns.edns.NSID, b'')]
                 dig_flags += " +nsid"
             else:
                 options = None
