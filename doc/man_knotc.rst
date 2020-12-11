@@ -76,15 +76,15 @@ Actions
 
 **zone-check** [*zone*...]
   Test if the server can load the zone. Semantic checks are executed if enabled
-  in the configuration. If invoked with the forced flag, an error is returned
+  in the configuration. If invoked with the force option, an error is returned
   when semantic check warning appears. (*)
 
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For
   slave zone, the refresh from a master server is scheduled; for master zone,
   the notification of slave servers is scheduled. An open zone transaction
-  will be aborted! If invoked with the forced flag, also zone modules will be
-  re-loaded. (#)
+  will be aborted! If invoked with the force option, also zone modules will be
+  re-loaded, but blocking mode might not work reliably. (#)
 
 **zone-refresh** [*zone*...]
   Trigger a check for the zone serial on the zone's master. If the master has a
