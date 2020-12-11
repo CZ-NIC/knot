@@ -305,7 +305,7 @@ static void mark_changed_zones(knot_zonedb_t *zonedb, trie_t *changed)
 
 		zone_t *zone = knot_zonedb_find(zonedb, name);
 		if (zone != NULL) {
-			conf_io_type_t type = (conf_io_type_t)(*trie_it_val(it));
+			conf_io_type_t type = conf_io_trie_val(it);
 			assert(!(type & CONF_IO_TSET));
 			zone->change_type = type;
 		}

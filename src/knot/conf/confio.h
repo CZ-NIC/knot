@@ -88,6 +88,11 @@ struct conf_io {
 	void *misc;
 };
 
+inline static conf_io_type_t conf_io_trie_val(trie_it_t *it)
+{
+	return (conf_io_type_t)(uintptr_t)(*trie_it_val(it));
+}
+
 /*!
  * Starts new writing transaction.
  *
