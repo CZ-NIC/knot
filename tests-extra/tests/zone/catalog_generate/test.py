@@ -4,9 +4,24 @@
 
 from dnstest.test import Test
 from dnstest.utils import set_err, detail_log
+import os
 import random
+import time
 
 t = Test()
+
+def wait_for_zonefile(server, role, zonename, max_age, timeout):
+    fn = os.path.join(server.dir, role, zonename + "zone")
+    while timeout > 0:
+        if os.path.exists(fn):
+            age = time.time() - os.path.getmtime(fn)
+        else:
+            age = max_age + 1
+        if age <= max_age:
+            break
+        timeout -= 1
+        t.sleep(1)
+    t.sleep(max_age)
 
 master = t.server("knot")
 slave = t.server("knot")
@@ -82,9 +97,9 @@ master.gen_confile()
 master.reload()
 
 slave.start()
-t.sleep(3)
+wait_for_zonefile(slave, "master", "records.", 3, 30)
 slave.ctl("zone-refresh")
-t.sleep(7)
+wait_for_zonefile(slave, "master", "records.", 3, 30)
 resp1 = slave.dig("records.", "DNSKEY")
 resp1.check_count(1, "DNSKEY")
 dnskey1 = resp1.resp.answer[0].to_rdataset()
