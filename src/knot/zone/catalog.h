@@ -40,17 +40,26 @@ typedef enum {
 } catalog_find_res_t;
 
 typedef struct {
-	trie_t *rem;             // tree of catalog_upd_val_t, that gonna be removed from catalog
-	trie_t *add;             // tree of catalog_upd_val_t, that gonna be added to catalog
+	trie_t *upd;             // tree of catalog_upd_val_t, that gonna be changed in catalog
 	int error;               // error occured during generating of upd
 	pthread_mutex_t mutex;   // lock for accessing this struct
 } catalog_update_t;
 
-typedef struct {
+typedef enum {
+	MEMB_UPD_INVALID,   // invalid value
+	MEMB_UPD_ADD,       // member addition
+	MEMB_UPD_REM,       // member removal
+	MEMB_UPD_MINOR,     // owner or catzone change, uniqID preserved
+	MEMB_UPD_UNIQ,      // uniqID change
+	MEMB_UPD_MAX,       // number of options in ths enum
+} catalog_upd_type_t;
+
+typedef struct catalog_upd_val {
 	knot_dname_t *member;     // name of catalog member zone
 	knot_dname_t *owner;      // the owner of PTR record defining the member zone
 	knot_dname_t *catzone;    // the catalog zone the PTR is in
-	bool just_reconf;         // this addition is of an existing member zone, which however shall be reset (purged)
+	catalog_upd_type_t type;  // what kind of update this is
+	struct catalog_upd_val *counter; // original owner/catzone before this update
 } catalog_upd_val_t;
 
 extern const MDB_val catalog_iter_prefix;
@@ -154,7 +163,7 @@ int catalog_del(catalog_t *cat, const knot_dname_t *member);
 
 inline static int catalog_del2(catalog_t *cat, const catalog_upd_val_t *val)
 {
-	assert(!val->just_reconf); // just re-add in this case
+	assert(val->type != MEMB_UPD_ADD);
 	return catalog_del(cat, val->member);
 }
 
@@ -272,7 +281,7 @@ int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
  *
  * \return Found update record for given member zone; or NULL.
  */
-catalog_upd_val_t *catalog_update_get(catalog_update_t *u, const knot_dname_t *member, bool remove);
+catalog_upd_val_t *catalog_update_get(catalog_update_t *u, const knot_dname_t *member);
 
 struct zone_contents;
 
@@ -327,9 +336,9 @@ int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname
 
 typedef trie_it_t catalog_it_t;
 
-inline static catalog_it_t *catalog_it_begin(catalog_update_t *u, bool remove)
+inline static catalog_it_t *catalog_it_begin(catalog_update_t *u)
 {
-	return trie_it_begin(remove ? u->rem : u->add);
+	return trie_it_begin(u->upd);
 }
 
 inline static catalog_upd_val_t *catalog_it_val(catalog_it_t *it)
