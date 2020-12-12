@@ -43,6 +43,9 @@ changes are colored for terminal.
 \fB\-l\fP, \fB\-\-limit\fP \fIlimit\fP
 Limits the number of displayed changes.
 .TP
+\fB\-s\fP, \fB\-\-serial\fP \fIsoa\fP
+Start at specific SOA serial.
+.TP
 \fB\-d\fP, \fB\-\-debug\fP
 Debug mode brief output.
 .TP
