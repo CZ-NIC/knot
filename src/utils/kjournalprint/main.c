@@ -56,20 +56,24 @@ typedef struct {
 	int counter;
 	uint32_t serial;
 	bool from_serial;
+	size_t changes;
 } print_params_t;
 
 static void print_changeset(const changeset_t *chs, print_params_t *params)
 {
+	static size_t count = 1;
 	const char *YLW = "\x1B[93m";
 	printf("%s", params->color ? YLW : "");
 
 	if (chs->soa_from == NULL) {
-		printf(";; Zone-in-journal, serial: %u\n",
-		       knot_soa_serial(chs->soa_to->rrs.rdata));
+		printf(";; Zone-in-journal, serial: %u, changeset: %zu\n",
+		       knot_soa_serial(chs->soa_to->rrs.rdata),
+		       count++);
 	} else {
-		printf(";; Changes between zone versions: %u -> %u\n",
+		printf(";; Changes between zone versions: %u -> %u, changeset: %zu\n",
 		       knot_soa_serial(chs->soa_from->rrs.rdata),
-		       knot_soa_serial(chs->soa_to->rrs.rdata));
+		       knot_soa_serial(chs->soa_to->rrs.rdata),
+		       count++);
 	}
 	changeset_print(chs, stdout, params->color);
 }
@@ -151,6 +155,7 @@ static int print_changeset_cb(bool special, const changeset_t *ch, void *ctx)
 	if (ch != NULL && params->counter++ >= params->limit) {
 		if (params->debug) {
 			print_changeset_debugmode(ch);
+			params->changes++;
 		} else {
 			print_changeset(ch, params);
 		}
@@ -218,6 +223,7 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 	}
 
 	if (params->debug && ret == KNOT_EOK) {
+		printf("Total number of changesets:  %zu\n", params->changes);
 		printf("Occupied this zone (approx): %"PRIu64" KiB\n", occupied / 1024);
 		printf("Occupied all zones together: %"PRIu64" KiB\n", occupied_all / 1024);
 	}
