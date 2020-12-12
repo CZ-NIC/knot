@@ -534,7 +534,7 @@ class Server(object):
             dig_flags += " +bufsize=%i" % payload
 
             if nsid:
-                if dns.version.version[0] == '1':
+                if not hasattr(dns, 'version') or dns.version.MAJOR == 1:
                     options = [NsidFix()]
                 else:
                     options = [dns.edns.GenericOption(dns.edns.NSID, b'')]
