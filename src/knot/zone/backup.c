@@ -233,8 +233,8 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 		key_params_t *parm = n->d;
 		if (ret == KNOT_EOK && !parm->is_pub_only) {
 			ret = backup_key(parm, from, to);
-			free_key_params(parm);
 		}
+		free_key_params(parm);
 	}
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("key copy");
