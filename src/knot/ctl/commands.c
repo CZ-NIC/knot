@@ -471,6 +471,35 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	return ret;
 }
 
+static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
+{
+	int ret = init_backup(args, restore_mode);
+
+	if (ret == KNOT_EOK) {
+		ret = zones_apply(args, zone_backup_cmd);
+		deinit_backup(args);
+	} else {
+		char *msg = sprintf_alloc("%s init failed (%s)",
+		                          restore_mode ? "restore" : "backup",
+		                          knot_strerror(ret));
+
+		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+			log_ctl_error("%s", msg);
+		} else {
+			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
+			                       "%s", msg);
+		}
+		free (msg);
+
+		/* Warning: zone name in the control command params discarded here. */
+		args->data[KNOT_CTL_IDX_ZONE] = NULL;
+		send_error(args, knot_strerror(ret));
+		ret = KNOT_CTL_EZONE;
+	}
+
+	return ret;
+}
+
 static int zone_sign(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
@@ -1400,7 +1429,6 @@ static int zone_stats(zone_t *zone, ctl_args_t *args)
 
 static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	int ret;
 	switch (cmd) {
 	case CTL_ZONE_STATUS:
 		return zones_apply(args, zone_status);
@@ -1415,23 +1443,9 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 	case CTL_ZONE_FLUSH:
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_BACKUP:
-		ret = init_backup(args, false);
-		if (ret == KNOT_EOK) {
-			ret = zones_apply(args, zone_backup_cmd);
-			deinit_backup(args);
-		} else {
-			send_error(args, knot_strerror(ret));
-		}
-		return ret;
+		return zones_apply_backup(args, false);
 	case CTL_ZONE_RESTORE:
-		ret = init_backup(args, true);
-		if (ret == KNOT_EOK) {
-			ret = zones_apply(args, zone_backup_cmd);
-			deinit_backup(args);
-		} else {
-			send_error(args, knot_strerror(ret));
-		}
-		return ret;
+		return zones_apply_backup(args, true);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
 	case CTL_ZONE_KEY_ROLL:
