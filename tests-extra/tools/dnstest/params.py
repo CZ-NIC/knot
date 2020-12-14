@@ -67,6 +67,9 @@ bind_ctl = get_binary("KNOT_TEST_BINDC", "rndc")
 # KNOT_TEST_OUTS_DIR - working directories location.
 outs_dir = get_param("KNOT_TEST_OUTS_DIR", "/tmp")
 
+# HOME - tester's home directory for the "knottest-last" symbolic link.
+home_dir = get_param("HOME", "/tmp")
+
 # Common data directory (e.g. zone files).
 common_data_dir = ""
 
