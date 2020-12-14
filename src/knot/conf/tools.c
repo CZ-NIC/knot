@@ -598,12 +598,20 @@ int check_template(
 		CONF_LOG(LOG_NOTICE, "option 'disable-any' is deprecated and has no effect");
 	}
 
-	// Stop if the default template.
 	if (is_default_id(args->id, args->id_len)) {
-		return KNOT_EOK;
+		conf_val_t db_storage = conf_get_txn(args->extra->conf, args->extra->txn,
+		                                     C_DB, C_STORAGE);
+		conf_val_t tpl_storage = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
+		                                            C_TPL, C_STORAGE, args->id, args->id_len);
+		if (db_storage.code != KNOT_EOK && tpl_storage.code == KNOT_EOK &&
+		    strcmp(conf_str(&tpl_storage), STORAGE_DIR) != 0) {
+			CONF_LOG(LOG_NOTICE, "non-default 'template[default].storage' detected, "
+			                     "please configure also 'db.storage' to avoid compatibility "
+			                     "issues with future versions");
+		}
+	} else {
+		CHECK_DFLT(C_GLOBAL_MODULE, "global module");
 	}
-
-	CHECK_DFLT(C_GLOBAL_MODULE, "global module");
 
 	return KNOT_EOK;
 }
