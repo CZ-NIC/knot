@@ -623,6 +623,16 @@ int check_zone(
 		CONF_LOG(LOG_NOTICE, "option 'disable-any' is deprecated and has no effect");
 	}
 
+	conf_val_t zf_load = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                       C_ZONEFILE_LOAD, yp_dname(args->id));
+	conf_val_t journal = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                       C_JOURNAL_CONTENT, yp_dname(args->id));
+	if (conf_opt(&zf_load) == ZONEFILE_LOAD_DIFSE &&
+	    conf_opt(&journal) != JOURNAL_CONTENT_ALL) {
+		CONF_LOG(LOG_NOTICE, "'zonefile-load: difference-no-serial' will require 'journal-content: all' "
+		                     "in versions >= 3.1");
+	}
+
 	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_DNSSEC_SIGNING, yp_dname(args->id));
 	conf_val_t validation = conf_zone_get_txn(args->extra->conf, args->extra->txn,
