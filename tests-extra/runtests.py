@@ -260,13 +260,23 @@ def main(args):
     os.chmod(outs_dir, 0o755)
 
     # Try to create symlink to the latest result.
-    last_link = os.path.join(params.outs_dir, "knottest-last")
+    last_link = os.path.join(params.home_dir, "knottest-last")
     try:
         if os.path.exists(last_link):
             os.remove(last_link)
         os.symlink(outs_dir, last_link)
     except:
         pass
+
+    # Make the symlink in the test directory too.
+    # (For backward compatibility?)
+    if os.path.realpath(params.outs_dir) != "/tmp":
+        outs_dir_relative = os.path.basename(outs_dir)
+        last_link_relative = os.path.join(params.outs_dir,"knottest-last")
+        try:
+            os.symlink(outs_dir_relative, last_link_relative)
+        except:
+            pass
 
     # Write down environment.
     log_environment(os.path.join(outs_dir, "environment.log"))
