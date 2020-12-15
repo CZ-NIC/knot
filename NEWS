@@ -1,3 +1,29 @@
+Knot DNS 3.0.3 (2020-12-15)
+===========================
+
+Features:
+---------
+ - Kjournalprint can display changesets starting from specific SOA serial
+
+Improvements:
+-------------
+ - New configuration check on ambiguous 'storage' specification #706
+ - New configuration check on problematic 'zonefile-load' with 'journal-contents' combination
+ - Server logs positive ACL check in debug severity level (Thanks to Andreas Schrägle)
+ - More verbose logging of failed zone backup
+ - Extended documentation for catalog zones
+
+Bugfixes:
+---------
+ - On-slave signing produces broken NSEC(3) chain if glue node becomes (un-)orphaned #705
+ - Server responds CNAME query with NXDOMAIN for CNAME synthesized from DNAME
+ - Kdig crashes if source address and dnstap logging are specified together #702
+ - Knotc fails to display error returned from zone freeze or zone thaw
+ - Dynamically reconfigured zone isn't loaded upon configuration commit
+ - Keymgr is unable to import BIND-style private key if it contains empty lines
+ - Zone backup fails to backup keys if any of them is public-only
+ - Failed to build with XDP support on Debian testing
+
 Knot DNS 3.0.2 (2020-11-11)
 ===========================
 
