@@ -1,3 +1,17 @@
+Knot DNS 2.9.8 (2020-12-15)
+===========================
+
+Bugfixes:
+---------
+ - On-slave signing produces broken NSEC(3) chain if glue node becomes (un-)orphaned #705
+ - If more masters configured, zone retransfer triggers AXFR from all masters
+ - KSK imported from BIND doesn't roll over automatically
+ - kzonecheck fails on case-sensitivity of owner names in NSEC records #699
+ - Server responds NOTIMPL to queries with QDCOUNT 0 and known OPCODE
+ - Kdig crashes if source address and dnstap logging are specified together #702
+ - Keymgr is unable to import BIND-style private key if it contains empty lines
+ - Knotc fails to display error returned from zone freeze or zone thaw
+
 Knot DNS 2.9.7 (2020-10-09)
 ===========================
 
