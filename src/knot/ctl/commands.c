@@ -565,6 +565,11 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
+	int ret = zone_update_semcheck(zone->control_update);
+	if (ret != KNOT_EOK) {
+		return ret; // Recoverable error.
+	}
+
 	// NOOP if empty changeset/contents.
 	if (((zone->control_update->flags & UPDATE_INCREMENTAL) &&
 	     changeset_empty(&zone->control_update->change)) ||
@@ -581,8 +586,8 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		zone_sign_reschedule_t resch = { 0 };
 		bool full = (zone->control_update->flags & UPDATE_FULL);
 		zone_sign_roll_flags_t rflags = KEY_ROLL_ALLOW_ALL;
-		int ret = (full ? knot_dnssec_zone_sign(zone->control_update, 0, rflags, 0, &resch) :
-		                  knot_dnssec_sign_update(zone->control_update, &resch));
+		ret = (full ? knot_dnssec_zone_sign(zone->control_update, 0, rflags, 0, &resch) :
+		              knot_dnssec_sign_update(zone->control_update, &resch));
 		if (ret != KNOT_EOK) {
 			zone_control_clear(zone);
 			return ret;
@@ -590,7 +595,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 		event_dnssec_reschedule(conf(), zone, &resch, false);
 	}
 
-	int ret = zone_update_commit(conf(), zone->control_update);
+	ret = zone_update_commit(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
 		zone_control_clear(zone);
 		return ret;
