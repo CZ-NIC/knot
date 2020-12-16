@@ -153,29 +153,6 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
-static int xfr_validate(zone_update_t *up)
-{
-	zone_tree_t *node_ptrs = (up->flags & UPDATE_INCREMENTAL) ? up->a_ctx->node_ptrs : NULL;
-
-	// adjust_cb_nsec3_pointer not needed as we don't check DNSSEC here
-	int ret = zone_adjust_contents(up->new_cont, adjust_cb_flags, NULL, false, false, 1, node_ptrs);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	sem_handler_t handler = {
-		.cb = err_handler_logger
-	};
-
-	ret = sem_checks_process(up->new_cont, SEMCHECK_MANDATORY_ONLY, &handler, time(NULL));
-	if (ret != KNOT_EOK) {
-		// error is logged by the error handler
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
 static void xfr_log_publish(const struct refresh_data *data,
                             const uint32_t old_serial,
                             const uint32_t new_serial,
@@ -272,7 +249,7 @@ static int axfr_finalize(struct refresh_data *data)
 	// Seized by zone_update. Don't free the contents again in axfr_cleanup.
 	data->axfr.zone = NULL;
 
-	ret = xfr_validate(&up);
+	ret = zone_update_semcheck(&up);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		return ret;
@@ -529,7 +506,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	ret = xfr_validate(&up);
+	ret = zone_update_semcheck(&up);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		return ret;

@@ -251,6 +251,15 @@ int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t
 int zone_update_increment_soa(zone_update_t *update, conf_t *conf);
 
 /*!
+ * \brief Executes mandatory semantic checks on the zone contents.
+ *
+ * \param update  Update to be checked.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_semcheck(zone_update_t *update);
+
+/*!
  * \brief Commits all changes to the zone, signs it, saves changes to journal.
  *
  * \param conf          Configuration.
