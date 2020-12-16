@@ -83,6 +83,7 @@ libknot_la_LIBADD   += $(libbpf_LIBS)
 nobase_include_libknot_HEADERS += \
 	libknot/xdp/bpf-consts.h		\
 	libknot/xdp/eth.h			\
+	libknot/xdp/msg.h			\
 	libknot/xdp/xdp.h
 
 libknot_la_SOURCES  += \
@@ -91,6 +92,8 @@ libknot_la_SOURCES  += \
 	libknot/xdp/bpf-user.c			\
 	libknot/xdp/bpf-user.h			\
 	libknot/xdp/eth.c			\
+	libknot/xdp/msg_init.h			\
+	libknot/xdp/protocols.h			\
 	libknot/xdp/xdp.c
 endif ENABLE_XDP
 

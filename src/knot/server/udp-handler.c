@@ -391,7 +391,7 @@ static int xdp_recvmmsg_recv(int fd, void *d, void *xdp_sock)
 	UNUSED(fd);
 	struct xdp_recvmmsg *rq = d;
 
-	int ret = knot_xdp_recv(xdp_sock, rq->msgs_rx, XDP_BATCHLEN, &rq->rcvd);
+	int ret = knot_xdp_recv(xdp_sock, rq->msgs_rx, XDP_BATCHLEN, &rq->rcvd, NULL);
 
 	return ret == KNOT_EOK ? rq->rcvd : ret;
 }
@@ -407,8 +407,7 @@ static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 		if (rq->msgs_rx[i].payload.iov_len == 0) {
 			continue; // Skip marked (zero length) messages.
 		}
-		int ret = knot_xdp_send_alloc(xdp_sock, rq->msgs_rx[i].ip_to.sin6_family == AF_INET6,
-		                              &rq->msgs_tx[i], &rq->msgs_rx[i]);
+		int ret = knot_xdp_reply_alloc(xdp_sock, &rq->msgs_rx[i], &rq->msgs_tx[i]);
 		if (ret != KNOT_EOK) {
 			break; // Still free all RX buffers.
 		}
