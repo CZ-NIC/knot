@@ -418,6 +418,8 @@ src/libknot/xdp/eth.h
 src/libknot/xdp/msg.h
 src/libknot/xdp/msg_init.h
 src/libknot/xdp/protocols.h
+src/libknot/xdp/tcp.c
+src/libknot/xdp/tcp.h
 src/libknot/xdp/xdp.c
 src/libknot/xdp/xdp.h
 src/libknot/yparser/yparser.c
