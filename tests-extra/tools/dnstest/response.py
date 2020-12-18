@@ -4,7 +4,6 @@ import binascii
 import dns.name
 import collections
 import itertools
-
 from dnstest.utils import *
 
 class Response(object):
@@ -104,7 +103,7 @@ class Response(object):
     def check_no_rr(self, section=None, rname=None, rtype=None):
         self._check_rr(False, section, rname, rtype)
 
-    def check_record(self, section="answer", rtype=None, ttl=None, rdata=None,
+    def check_record(self, section="answer", name=None, rtype=None, ttl=None, rdata=None,
                      nordata=None):
         '''Checks given section for particular record/rdata'''
 
@@ -122,6 +121,8 @@ class Response(object):
 
             # Check answer section if contains reference rdata.
             for data in sect:
+                if name is not None and str(data.name) != str(name):
+                    continue
                 for rd in data.to_rdataset():
                     # Compare Rdataset instances.
                     if str(rd) == ref:
@@ -331,6 +332,18 @@ class Response(object):
                 section
             ))
             detail_log(SEP)
+
+    def check_counts(self, answer=None, authority=None, additional=None):
+        for section in ["answer", "authority", "additional"]:
+            expected = locals()[section]
+            if expected is not None:
+                section_count = self.count(rtype="ANY", section=section)
+                if section_count != expected:
+                    set_err("CHECK RR COUNT")
+                    check_log("ERROR: CHECK RR COUNT")
+                    detail_log("!RR count %i != %i in section=%s" %
+                               (section_count, expected, section))
+                    detail_log(SEP)
 
     def check_empty(self, section="answer"):
         self.check_count(0, None, section)
