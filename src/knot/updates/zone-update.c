@@ -22,6 +22,7 @@
 #include "knot/zone/catalog.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
+#include "knot/zone/zonefile.h"
 #include "contrib/trim.h"
 #include "contrib/ucw/lists.h"
 
@@ -805,6 +806,36 @@ static void discard_adds_tree(zone_update_t *update)
 		update->zone->contents->adds_tree = NULL;
 	}
 	update->new_cont->adds_tree = NULL;
+}
+
+int zone_update_semcheck(zone_update_t *update)
+{
+	if (update == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	zone_tree_t *node_ptrs = (update->flags & UPDATE_INCREMENTAL) ?
+	                         update->a_ctx->node_ptrs : NULL;
+
+	// adjust_cb_nsec3_pointer not needed as we don't check DNSSEC here
+	int ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL,
+	                               false, false, 1, node_ptrs);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	sem_handler_t handler = {
+		.cb = err_handler_logger
+	};
+
+	ret = sem_checks_process(update->new_cont, SEMCHECK_MANDATORY_ONLY,
+	                         &handler, time(NULL));
+	if (ret != KNOT_EOK) {
+		// error is logged by the error handler
+		return ret;
+	}
+
+	return KNOT_EOK;
 }
 
 int zone_update_commit(conf_t *conf, zone_update_t *update)

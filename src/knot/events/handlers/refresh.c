@@ -153,27 +153,6 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
-static int xfr_validate(zone_contents_t *zone, zone_tree_t *update_node_ptrs)
-{
-	// adjust_cb_nsec3_pointer not needed as we don't check DNSSEC here
-	int ret = zone_adjust_contents(zone, adjust_cb_flags, NULL, false, false, 1, update_node_ptrs);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	sem_handler_t handler = {
-		.cb = err_handler_logger
-	};
-
-	ret = sem_checks_process(zone, SEMCHECK_MANDATORY_ONLY, &handler, time(NULL));
-	if (ret != KNOT_EOK) {
-		// error is logged by the error handler
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
 static void xfr_log_publish(const struct refresh_data *data,
                             const uint32_t old_serial,
                             const uint32_t new_serial,
@@ -253,11 +232,6 @@ static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
 
-	int ret = xfr_validate(new_zone, NULL);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
 	uint32_t old_serial = zone_contents_serial(data->zone->contents), master_serial = 0;
@@ -268,13 +242,18 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	zone_update_t up = { 0 };
-	ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
+	int ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
 	// Seized by zone_update. Don't free the contents again in axfr_cleanup.
 	data->axfr.zone = NULL;
+
+	ret = zone_update_semcheck(&up);
+	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
+		return ret;
+	}
 
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
@@ -527,7 +506,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	ret = xfr_validate(up.new_cont, up.a_ctx->node_ptrs);
+	ret = zone_update_semcheck(&up);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		return ret;
