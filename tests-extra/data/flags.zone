@@ -65,7 +65,7 @@ a.dname-tree	A	5.6.7.8
 c.dname-tree	CNAME	dns1
 d.dname-tree	CNAME	cname-wildcard
 e.dname-tree	CNAME	e.dname
-f.dname-tree	DNAME	dname-tree
+f.dname-tree	DNAME	f.f.dname-tree
 
 dname-out	DNAME	outside.zone.
 dname-dangl	DNAME	dangling

@@ -198,8 +198,14 @@ resp = knot.dig("e.dname.flags", "A", udp=True)
 resp.cmp(bind)
 
 # DNAME-DNAME loop
-resp = knot.dig("f.dname.flags", "A", udp=True)
-resp.cmp(bind)
+resp = knot.dig("x.f.dname.flags", "A", udp=True)
+resp.check(rcode="NOERROR")
+resp.check_record(name="dname.flags.",          rtype="DNAME", ttl=3600, rdata="dname-tree.flags.")
+resp.check_record(name="x.f.dname.flags.",      rtype="CNAME", ttl=3600, rdata="x.f.dname-tree.flags.")
+resp.check_record(name="f.dname-tree.flags.",   rtype="DNAME", ttl=3600, rdata="f.f.dname-tree.flags.")
+resp.check_record(name="x.f.dname-tree.flags.", rtype="CNAME", ttl=3600, rdata="x.f.f.dname-tree.flags.")
+resp.check_counts(4, 0, 0)
+# resp.cmp(bind) BIND responds partially unrolled CNAME loop
 
 ''' Wildcard answers. '''
 
