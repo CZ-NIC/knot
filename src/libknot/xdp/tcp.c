@@ -184,6 +184,8 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, tcprelay_dynarray_t *relays)
 	uint32_t sent_unused;
 	if (ret == KNOT_EOK) {
 		ret = knot_xdp_send(socket, msgs, n_msgs, &sent_unused);
+	} else {
+		knot_xdp_send_free(socket, msgs, n_msgs);
 	}
 	if (ret == KNOT_EOK) {
 		ret = knot_xdp_send_finish(socket);

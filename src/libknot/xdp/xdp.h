@@ -125,6 +125,18 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
                   uint32_t count, uint32_t *sent);
 
 /*!
+ * \brief Cleanup messages that have not been knot_xdp_send().
+ *
+ * ...possibly due to some error.
+ *
+ * \param socket   XDP socket.
+ * \param msgs     Messages to be freed.
+ * \param count    Number of messages.
+ */
+void knot_xdp_send_free(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
+                        uint32_t count);
+
+/*!
  * \brief Syscall to kernel to wake up the network card driver after knot_xdp_send().
  *
  * \param socket  XDP socket.

@@ -301,7 +301,15 @@ int knot_xdp_reply_alloc(knot_xdp_socket_t *socket, const knot_xdp_msg_t *query,
 
 	msg_init_reply(out, query);
 	prepare_payload(out, uframe);
+
 	return KNOT_EOK;
+}
+
+static void free_unsent(knot_xdp_socket_t *socket, const knot_xdp_msg_t *msg)
+{
+	uint64_t addr_relative = (uint8_t *)msg->payload.iov_base
+	                         - socket->umem->frames->bytes;
+	tx_free_relative(socket->umem, addr_relative);
 }
 
 _public_
@@ -326,9 +334,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 		const knot_xdp_msg_t *msg = &msgs[i];
 
 		if (empty_msg(msg)) {
-			uint64_t addr_relative = (uint8_t *)msg->payload.iov_base
-			                         - socket->umem->frames->bytes;
-			tx_free_relative(socket->umem, addr_relative);
+			free_unsent(socket, msg);
 		} else {
 			size_t hdr_len = prot_write_hdrs_len(msg);
 			size_t tot_len = hdr_len + msg->payload.iov_len;
@@ -349,6 +355,15 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	socket->kernel_needs_wakeup = true;
 
 	return KNOT_EOK;
+}
+
+_public_
+void knot_xdp_send_free(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
+                        uint32_t count)
+{
+	for (uint32_t i = 0; i < count; i++) {
+		free_unsent(socket, &msgs[i]);
+	}
 }
 
 _public_

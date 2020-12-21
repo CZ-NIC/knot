@@ -168,6 +168,7 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 	for (int i = 0; i < npkts; i++) {
 		int ret = knot_xdp_send_alloc(xsk, flags, &pkts[i]);
 		if (ret != KNOT_EOK) {
+			knot_xdp_send_free(xsk, pkts, i);
 			return ret;
 		}
 
