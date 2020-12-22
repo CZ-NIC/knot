@@ -118,7 +118,7 @@ def main(args):
     # Try to create symlink to the latest result.
     last_link = os.path.join(params.home_dir, "knottest-last")
     try:
-        if os.path.exists(last_link):
+        if os.path.lexists(last_link):
             os.remove(last_link)
         os.symlink(outs_dir, last_link)
     except:
