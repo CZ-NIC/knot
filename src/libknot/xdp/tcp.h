@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "contrib/dynarray.h"
 #include "libknot/xdp/msg.h"
 #include "libknot/xdp/xdp.h"
 
@@ -36,27 +35,29 @@ typedef struct {
 	struct iovec data;
 } knot_tcp_relay_t;
 
-dynarray_declare(tcprelay, knot_tcp_relay_t, DYNARRAY_VISIBILITY_PUBLIC, 10)
-
 /*!
- * \brief Process received packets, send ACKs, pick incomming data.
+ * \brief Process received packets, send ACKs, pick incoming data.
  *
- * \param msgs      Packets received by knot_xdp_recv().
- * \param n_msgs    Their count.
- * \param socket    XDP socket to answer through.
- * \param relays    Output: connection changes and data.
+ * \param socket       XDP socket to answer through.
+ * \param msgs         Packets received by knot_xdp_recv().
+ * \param msg_count    Number of received packets.
+ * \param relays       Out: connection changes and data.
+ * \param relay_count  Out: number of connection changes and data.
  *
  * \return KNOT_E*
  */
-int knot_xdp_tcp_relay(knot_xdp_msg_t *msgs, size_t n_msgs,
-                       knot_xdp_socket_t *socket, tcprelay_dynarray_t *relays);
+int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
+                       uint32_t msg_count, knot_tcp_relay_t *relays[],
+                       uint32_t *relay_count);
 
 /*!
- * \brief Send TCp packets.
+ * \brief Send TCP packets.
  *
- * \param socket    XDP socket to send through.
- * \param relays    Connection changes and data.
+ * \param socket       XDP socket to send through.
+ * \param relays       Connection changes and data.
+ * \param relay_count  Number of connection changes and data.
  *
  * \return KNOT_E*
  */
-int knot_xdp_tcp_send(knot_xdp_socket_t *socket, tcprelay_dynarray_t *relays);
+int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
+                      uint32_t relay_count);

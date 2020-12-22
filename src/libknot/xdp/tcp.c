@@ -22,24 +22,49 @@
 #include "libknot/attribute.h"
 #include "libknot/error.h"
 
-dynarray_define(tcprelay, knot_tcp_relay_t, DYNARRAY_VISIBILITY_LIBRARY)
+static int add_relay(knot_tcp_relay_t *relays[], uint32_t *max_relays,
+                     uint32_t *n_relays, knot_tcp_relay_t *to_add)
+{
+	assert(*n_relays <= *max_relays);
+	if (*relays == NULL) {
+		assert(*n_relays == 0);
+		*relays = malloc(*max_relays * sizeof(**relays));
+		if (*relays == NULL) {
+			return KNOT_ENOMEM;
+		}
+	} else if (*n_relays == *max_relays) {
+		uint32_t new_max_relays = 2 * *max_relays;
+		knot_tcp_relay_t *new_relays = malloc(new_max_relays * sizeof(*new_relays));
+		if (new_relays == NULL) {
+			return KNOT_ENOMEM;
+		}
+		memcpy(new_relays, *relays, *max_relays * sizeof(*new_relays));
+		free(*relays);
+		*relays = new_relays;
+		*max_relays = new_max_relays;
+	}
+	memcpy(&(*relays)[(*n_relays)++], to_add, sizeof(*to_add));
+	return KNOT_EOK;
+}
 
 _public_
-int knot_xdp_tcp_relay(knot_xdp_msg_t *msgs, size_t n_msgs,
-                       knot_xdp_socket_t *socket, tcprelay_dynarray_t *relays)
+int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
+                       uint32_t msg_count, knot_tcp_relay_t *relays[],
+                       uint32_t *relay_count)
 {
-	if (n_msgs == 0) {
+	if (msg_count == 0) {
 		return KNOT_EOK;
 	}
-	if (msgs == NULL || socket == NULL || relays == NULL ||
-	    relays->capacity < 0 || relays->size != 0) {
+	if (socket == NULL || msgs == NULL || relays == NULL ||
+	    relay_count == NULL || *relay_count != 0) {
 		return KNOT_EINVAL;
 	}
 
 	knot_xdp_send_prepare(socket);
 
-	knot_xdp_msg_t acks[n_msgs];
-	size_t n_acks = 0;
+	knot_xdp_msg_t acks[msg_count];
+	uint32_t n_acks = 0, max_relays = msg_count;
+	int ret = KNOT_EOK;
 
 #define resp_ack(msg) \
 	{ \
@@ -53,7 +78,9 @@ int knot_xdp_tcp_relay(knot_xdp_msg_t *msgs, size_t n_msgs,
 		ack->flags |= KNOT_XDP_MSG_ACK; \
 	}
 
-	for (size_t i = 0; i < n_msgs; i++) {
+#define add_to_relays(relay) add_relay(relays, &max_relays, relay_count, (relay));
+
+	for (size_t i = 0; i < msg_count && ret == KNOT_EOK; i++) {
 		knot_xdp_msg_t *msg = &msgs[i];
 		if (!(msg->flags & KNOT_XDP_MSG_TCP)) {
 			continue;
@@ -68,7 +95,7 @@ int knot_xdp_tcp_relay(knot_xdp_msg_t *msgs, size_t n_msgs,
 		case (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK):
 			resp_ack(msg);
 			relay.action = XDP_TCP_ESTABLISH;
-			tcprelay_dynarray_add(relays, &relay);
+			ret = add_to_relays(&relay);
 			break;
 		case KNOT_XDP_MSG_ACK:
 			if (msg->payload.iov_len > 0) {
@@ -79,12 +106,12 @@ int knot_xdp_tcp_relay(knot_xdp_msg_t *msgs, size_t n_msgs,
 				uint8_t *payl = msg->payload.iov_base;
 				size_t paylen = msg->payload.iov_len;
 
-				while (paylen >= sizeof(dns_len) &&
+				while (ret == KNOT_EOK && paylen >= sizeof(dns_len) &&
 				       paylen >= sizeof(dns_len) + (dns_len = be16toh(*(uint16_t *)payl))) {
 
 					relay.data.iov_base = payl + sizeof(dns_len);
 					relay.data.iov_len = dns_len - sizeof(dns_len);
-					tcprelay_dynarray_add(relays, &relay);
+					ret = add_to_relays(&relay);
 
 					payl += sizeof(dns_len) + dns_len;
 					paylen -= sizeof(dns_len) + dns_len;
@@ -94,19 +121,18 @@ int knot_xdp_tcp_relay(knot_xdp_msg_t *msgs, size_t n_msgs,
 		case (KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK):
 			resp_ack(msg);
 			relay.action = XDP_TCP_CLOSE;
-			tcprelay_dynarray_add(relays, &relay);
+			ret = add_to_relays(&relay);
 			break;
 		case KNOT_XDP_MSG_RST:
 			relay.action = XDP_TCP_RESET;
-			tcprelay_dynarray_add(relays, &relay);
+			ret = add_to_relays(&relay);
 			break;
 		default:
 			break;
 		}
 	}
 
-	int ret = KNOT_EOK;
-	if (n_acks > 0) {
+	if (n_acks > 0 && ret == KNOT_EOK) {
 		uint32_t sent_unused;
 		ret = knot_xdp_send(socket, acks, n_acks, &sent_unused);
 		if (ret == KNOT_EOK) {
@@ -118,18 +144,20 @@ int knot_xdp_tcp_relay(knot_xdp_msg_t *msgs, size_t n_msgs,
 }
 
 _public_
-int knot_xdp_tcp_send(knot_xdp_socket_t *socket, tcprelay_dynarray_t *relays)
+int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
+                      uint32_t relay_count)
 {
-	if (socket == NULL || relays == NULL || relays->capacity < 0) {
+	if (socket == NULL || relays == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	knot_xdp_msg_t msgs[relays->size], *msg = &msgs[0];
+	knot_xdp_msg_t msgs[relay_count], *msg = &msgs[0];
 	int ret = KNOT_EOK, n_msgs = 0;
 
 	knot_xdp_send_prepare(socket);
 
-	dynarray_foreach(tcprelay, knot_tcp_relay_t, rl, *relays) {
+	for (size_t irl = 0; irl < relay_count; irl++) {
+		knot_tcp_relay_t *rl = &relays[irl];
 		if ((rl->answer & 0x07) == XDP_TCP_NOOP) {
 			continue;
 		}

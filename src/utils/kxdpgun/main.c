@@ -301,14 +301,16 @@ void *xdp_gun_thread(void *_ctx)
 					break;
 				}
 				if (ctx->tcp) {
-					tcprelay_dynarray_t relays = { 0 };
-					ret = knot_xdp_tcp_relay(pkts, recvd, xsk, &relays);
+					knot_tcp_relay_t *relays = NULL;
+					uint32_t n_relays = 0;
+					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, &relays, &n_relays);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
 					}
 
-					dynarray_foreach(tcprelay, knot_tcp_relay_t, rl, relays) {
+					for (int irl = 0; irl < n_relays; irl++) {
+						knot_tcp_relay_t *rl = &relays[irl];
 						switch (rl->action) {
 						case XDP_TCP_ESTABLISH:
 							tot_synack++;
@@ -331,12 +333,12 @@ void *xdp_gun_thread(void *_ctx)
 						}
 					}
 
-					ret = knot_xdp_tcp_send(xsk, &relays);
+					ret = knot_xdp_tcp_send(xsk, relays, n_relays);
 					if (ret != KNOT_EOK) {
 						errors++;
 					}
 
-					tcprelay_dynarray_free(&relays);
+					free(relays);
 				} else {
 					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx, &tot_ans, &tot_size);
