@@ -82,8 +82,7 @@
 	data_char =
 		( (ascii - space - cntrl - quote_char - sep_char -
 		   comment_char - list_char - backslash_char)
-		| (backslash_char . (quote_char) >_item_unbackslash)
-		| (backslash_char . (32..126 - quote_char))
+		| (backslash_char . (32..126))
 		) $_item_data;
 	data_str_char =
 		( (data_char)
