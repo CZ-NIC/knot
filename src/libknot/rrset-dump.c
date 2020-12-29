@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -578,24 +578,29 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 	}
 }
 
-static void wire_text_to_str(rrset_dump_params_t *p, bool quote, bool with_header)
+static void wire_text_to_str(rrset_dump_params_t *p, bool quote, unsigned with_header_len)
 {
 	CHECK_PRET
 
 	size_t in_len = 0;
 
-	if (with_header) {
-		// First byte is string length.
-		CHECK_INMAX(1)
-		in_len = *(p->in);
-		p->in++;
-		p->in_max--;
-
-		// Check if the given length makes sense.
-		CHECK_INMAX(in_len)
-	} else {
+	CHECK_INMAX(with_header_len)
+	switch (with_header_len) {
+	case 0:
 		in_len = p->in_max;
+		break;
+	case 1:
+		in_len = *(p->in);
+		break;
+	case 2:
+		in_len = knot_wire_read_u16(p->in);
+		break;
+	default:
+		assert(0);
 	}
+	p->in += with_header_len;
+	p->in_max -= with_header_len;
+	CHECK_INMAX(in_len)
 
 	// Check if quotation can ever be disabled (parser protection fallback).
 	if (!quote) {
@@ -1198,6 +1203,122 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 	p->in_max -= in_len;
 }
 
+static void wire_svcb_paramkey_to_str(rrset_dump_params_t *p)
+{
+	uint16_t param_key = knot_wire_read_u16(p->in);
+	const knot_lookup_t *type = knot_lookup_by_id(knot_svcb_param_names, param_key);
+
+	if (type != NULL) {
+		dump_string(p, type->name);
+		CHECK_PRET
+		p->in += sizeof(param_key);
+		p->in_max -= sizeof(param_key);
+	} else {
+		dump_string(p, "key");
+		CHECK_PRET
+		wire_num16_to_str(p);
+		CHECK_PRET
+	}
+}
+
+static void wire_value_list_to_str(rrset_dump_params_t *p,
+                                   void (*list_item_dump_fcn)(rrset_dump_params_t *p),
+                                   const uint8_t *expect_end)
+{
+	bool first = true;
+
+	while (expect_end > p->in) {
+		if (first) {
+			first = false;
+		} else {
+			dump_string(p, ",");
+			CHECK_PRET
+		}
+
+		list_item_dump_fcn(p);
+		CHECK_PRET
+	}
+	if (expect_end != p->in) {
+		p->ret = -1;
+	}
+}
+
+static void wire_text_to_str1(rrset_dump_params_t *p)
+{
+	wire_text_to_str(p, false, 1);
+}
+
+static void wire_ech_to_base64(rrset_dump_params_t *p, unsigned ech_len)
+{
+	CHECK_INMAX(ech_len)
+
+	int ret = knot_base64_encode(p->in, ech_len, (uint8_t *)(p->out), p->out_max);
+	CHECK_RET_POSITIVE
+	size_t out_len = ret;
+
+	p->in += ech_len;
+	p->in_max -= ech_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+
+	STRING_TERMINATION
+}
+
+static void wire_svcparam_to_str(rrset_dump_params_t *p)
+{
+	CHECK_PRET
+
+	CHECK_INMAX(4)
+
+	// Pre-fetch key and length for later use.
+	uint16_t key_type = knot_wire_read_u16(p->in);
+	uint16_t val_len = knot_wire_read_u16(p->in + sizeof(key_type));
+
+	wire_svcb_paramkey_to_str(p);
+
+	p->in += sizeof(val_len);
+	p->in_max -= sizeof(val_len);
+	CHECK_INMAX(val_len)
+
+	if (val_len > 0) {
+		dump_string(p, "=");
+		CHECK_PRET
+
+		switch (key_type) {
+		case KNOT_SVCB_PARAM_MANDATORY:
+			wire_value_list_to_str(p, wire_svcb_paramkey_to_str, p->in + val_len);
+			break;
+		case KNOT_SVCB_PARAM_ALPN:
+			wire_value_list_to_str(p, wire_text_to_str1, p->in + val_len);
+			break;
+		case KNOT_SVCB_PARAM_NDALPN:
+			p->ret = -1; // must not have value
+			break;
+		case KNOT_SVCB_PARAM_PORT:
+			if (val_len != sizeof(uint16_t)) {
+				p->ret = -1;
+			} else {
+				wire_num16_to_str(p);
+			}
+			break;
+		case KNOT_SVCB_PARAM_IPV4HINT:
+			wire_value_list_to_str(p, wire_ipv4_to_str, p->in + val_len);
+			break;
+		case KNOT_SVCB_PARAM_ECH:
+			wire_ech_to_base64(p, val_len);
+			break;
+		case KNOT_SVCB_PARAM_IPV6HINT:
+			wire_value_list_to_str(p, wire_ipv6_to_str, p->in + val_len);
+			break;
+		default:
+			p->in -= sizeof(val_len); // Rollback to where the string length resides.
+			p->in_max += sizeof(val_len);
+			wire_text_to_str(p, true, sizeof(val_len));
+		}
+	}
+}
+
 static size_t dnskey_len(const uint8_t *rdata,
                          const size_t  rdata_len)
 {
@@ -1379,9 +1500,9 @@ static void dnskey_info(const uint8_t *rdata,
 				2, true, ""); CHECK_RET(p);
 #define DUMP_OMIT	wire_data_omit(p); CHECK_RET(p);
 #define DUMP_KEY_OMIT	wire_dnskey_to_tag(p); CHECK_RET(p);
-#define DUMP_TEXT	wire_text_to_str(p, true, true); CHECK_RET(p);
+#define DUMP_TEXT	wire_text_to_str(p, true, 1); CHECK_RET(p);
 #define DUMP_LONG_TEXT	wire_text_to_str(p, true, false); CHECK_RET(p);
-#define DUMP_UNQUOTED	wire_text_to_str(p, false, true); CHECK_RET(p);
+#define DUMP_UNQUOTED	wire_text_to_str(p, false, 1); CHECK_RET(p);
 #define DUMP_BITMAP	wire_bitmap_to_str(p); CHECK_RET(p);
 #define DUMP_APL	wire_apl_to_str(p); CHECK_RET(p);
 #define DUMP_LOC	wire_loc_to_str(p); CHECK_RET(p);
@@ -1389,6 +1510,7 @@ static void dnskey_info(const uint8_t *rdata,
 #define DUMP_L64	wire_l64_to_str(p); CHECK_RET(p);
 #define DUMP_EUI	wire_eui_to_str(p); CHECK_RET(p);
 #define DUMP_TSIG_RCODE	wire_tsig_rcode_to_str(p); CHECK_RET(p);
+#define DUMP_SVCPARAM	wire_svcparam_to_str(p); CHECK_RET(p);
 #define DUMP_UNKNOWN	wire_unknown_to_str(p); CHECK_RET(p);
 
 static int dump_a(DUMP_PARAMS)
@@ -1802,6 +1924,28 @@ static int dump_caa(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int dump_svcb(DUMP_PARAMS)
+{
+	DUMP_NUM16; DUMP_SPACE;
+	DUMP_DNAME; DUMP_SPACE;
+	if (p->style->wrap) {
+		WRAP_INIT;
+		if (p->in_max > 0) {
+			DUMP_SVCPARAM; DUMP_SPACE;
+		}
+		while (p->in_max > 0) {
+			WRAP_LINE; DUMP_SVCPARAM; DUMP_SPACE;
+		}
+		WRAP_END;
+	} else {
+		while (p->in_max > 0) {
+			DUMP_SVCPARAM; DUMP_SPACE;
+		}
+	}
+
+	DUMP_END;
+}
+
 static int dump_unknown(DUMP_PARAMS)
 {
 	if (p->style->wrap) {
@@ -1896,6 +2040,9 @@ static int txt_dump_data(rrset_dump_params_t *p, uint16_t type)
 			return dump_uri(p);
 		case KNOT_RRTYPE_CAA:
 			return dump_caa(p);
+		case KNOT_RRTYPE_SVCB:
+		case KNOT_RRTYPE_HTTPS:
+			return dump_svcb(p);
 		default:
 			return dump_unknown(p);
 	}

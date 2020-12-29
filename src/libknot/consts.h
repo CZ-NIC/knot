@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -155,5 +155,20 @@ typedef enum {
 	KNOT_DNSSEC_ALG_PRIVATEDNS         = 253,
 	KNOT_DNSSEC_ALG_PRIVATEOID         = 254
 } knot_dnssec_algorithm_t;
+
+/*!
+ * \brief Service Binding (SVCB) Parameter Registry
+ *
+ * https://tools.ietf.org/html/draft-ietf-dnsop-svcb-https-05 // FIXME
+ */
+typedef enum {
+	KNOT_SVCB_PARAM_MANDATORY = 0,
+	KNOT_SVCB_PARAM_ALPN      = 1,
+	KNOT_SVCB_PARAM_NDALPN    = 2,
+	KNOT_SVCB_PARAM_PORT      = 3,
+	KNOT_SVCB_PARAM_IPV4HINT  = 4,
+	KNOT_SVCB_PARAM_ECH       = 5,
+	KNOT_SVCB_PARAM_IPV6HINT  = 6,
+} knot_svcb_param_t;
 
 /*! @} */

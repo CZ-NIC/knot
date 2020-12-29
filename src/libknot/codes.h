@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,5 +46,10 @@ extern const knot_lookup_t knot_tsig_rcode_names[];
  * \brief DNSSEC algorithm names.
  */
 extern const knot_lookup_t knot_dnssec_alg_names[];
+
+/*!
+ * \brief Service binding (SVCB) param types.
+ */
+extern const knot_lookup_t knot_svcb_param_names[];
 
 /*! @} */
