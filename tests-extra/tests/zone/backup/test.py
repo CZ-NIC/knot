@@ -41,6 +41,7 @@ slave_bck_dir = slave.dir + "/backup"
 
 zone0_expire = 45   # zone zones[0] expiration time in its SOA
 valgrind_delay = 2 if slave.valgrind else 0  # allow a little time margin under Valgrind
+valgrind_delay += 2 # even without valgrind, add some tolerance because rounding timestamps to whole seconds multiple times
 
 t.start()
 serials_init = slave.zones_wait(zones)
@@ -58,7 +59,7 @@ slave.ctl("zone-backup %s %s +journal +backupdir %s +nozonefile" % \
 
 (dnskey1_1, dnskey2_1) = get_dnskeys(master, zones)
 
-t.sleep(2)
+t.sleep(4)
 
 for z in zones:
     up = master.update(z)
