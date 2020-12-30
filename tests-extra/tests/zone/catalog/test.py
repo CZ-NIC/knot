@@ -66,7 +66,7 @@ check_keys(slave, "cataloged1", 2)
 
 # Check adding cataloged zone.
 up = master.update(zone[1])
-up.add("bar.zones.catalog1.", 0, "PTR", "cataloged2.")
+up.add("junk.bar.zones.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(6)
 resp = master.dig("cataloged2.", "NS")
@@ -88,8 +88,8 @@ resp0 = slave.dig("cataloged2.", "DNSKEY")
 resp0.check_count(2, "DNSKEY")
 dnskey0 = resp0.resp.answer[0].to_rdataset()[0]
 up = master.update(zone[1])
-up.delete("bar.zones.catalog1.", "PTR", "cataloged2.")
-up.add("bar.zones.catalog1.", 0, "PTR", "cataloged2.")
+up.delete("junk.bar.zones.catalog1.", "PTR", "cataloged2.")
+up.add("junk.bar.zones.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(4)
 resp1 = slave.dig("cataloged2.", "DNSKEY")
@@ -107,8 +107,8 @@ else:
 
 # Check remove-adding the zone: shall effectively purge it
 up = master.update(zone[1])
-up.delete("bar.zones.catalog1.", "PTR", "cataloged2.")
-up.add("bar2.zones.catalog1.", 0, "PTR", "cataloged2.")
+up.delete("junk.bar.zones.catalog1.", "PTR", "cataloged2.")
+up.add("junk.bar2.zones.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(4)
 shutil.copy(t.data_dir + "/cataloged2.zone", master.dir + "/master") # because the purge deletes even zonefile
@@ -120,6 +120,23 @@ if resp2.count("DNSKEY") > 0:
     for dnskey2 in resp2.resp.answer[0].to_rdataset():
         if dnskey1.to_text() == dnskey2.to_text():
             set_err("ZONE NOT PURGED")
+dnskey2 = resp2.resp.answer[0].to_rdataset()[0]
+
+# Check remove-adding while keeping the 'uniq' label
+up = master.update(zone[1])
+up.delete("junk.bar2.zones.catalog1.", "PTR", "cataloged2.")
+up.add("jang.bar2.zones.catalog1.", 0, "PTR", "cataloged2.")
+up.send("NOERROR")
+t.sleep(4)
+resp3 = slave.dig("cataloged2.", "DNSKEY")
+resp3.check_count(2, "DNSKEY")
+match = 0
+if resp3.count("DNSKEY") > 0:
+    for dnskey3 in resp3.resp.answer[0].to_rdataset():
+        if dnskey3.to_text() == dnskey2.to_text():
+             match = match + 1
+if match < 1:
+    set_err("ZONE PURGED2")
 
 # Check persistence after server restart
 slave.stop()

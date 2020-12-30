@@ -358,15 +358,19 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 		return NULL;
 	}
 
-	catalog_upd_val_t *upd = catalog_update_get(&server->catalog_upd, zone->name, true);
+	catalog_upd_val_t *upd = catalog_update_get(&server->catalog_upd, zone->name);
 	if (upd != NULL) {
-		if (upd->just_reconf) {
+		switch (upd->type) {
+		case MEMB_UPD_UNIQ:
 			zone_purge(conf, zone, server);
 			knot_sem_wait(&zone->cow_lock);
 			ptrlist_add(expired_contents, zone_expire(zone), NULL);
 			knot_sem_post(&zone->cow_lock);
-		} else {
+			break;
+		case MEMB_UPD_REM:
 			return NULL; // zone to be removed
+		default:
+			break;
 		}
 	}
 
@@ -384,8 +388,8 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 // cold start of knot: add unchanged member zone to zonedb
 static zone_t *reuse_cold_zone(const knot_dname_t *zname, server_t *server, conf_t *conf)
 {
-	catalog_upd_val_t *upd = catalog_update_get(&server->catalog_upd, zname, true);
-	if (upd != NULL && !upd->just_reconf) {
+	catalog_upd_val_t *upd = catalog_update_get(&server->catalog_upd, zname);
+	if (upd != NULL && upd->type == MEMB_UPD_REM) {
 		return NULL; // zone will be removed immediately
 	}
 
@@ -403,7 +407,7 @@ static zone_t *reuse_cold_zone(const knot_dname_t *zname, server_t *server, conf
 static zone_t *add_member_zone(catalog_upd_val_t *val, knot_zonedb_t *check,
                                server_t *server, conf_t *conf)
 {
-	if (val->just_reconf) {
+	if (val->type != MEMB_UPD_ADD) {
 		return NULL;
 	}
 
@@ -506,14 +510,15 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 
 	catalog_commit_cleanup(&server->catalog);
 
-	catalog_it_t *it = catalog_it_begin(&server->catalog_upd, false);
+	catalog_it_t *it = catalog_it_begin(&server->catalog_upd);
 	int catret = 1;
 	if (!catalog_it_finished(it)) {
 		catret = catalog_begin(&server->catalog);
 	}
 	while (!catalog_it_finished(it) && catret == KNOT_EOK) {
 		catalog_upd_val_t *val = catalog_it_val(it);
-		if (val->just_reconf || knot_zonedb_find(db_new, val->member) == NULL) {
+		if (val->type == MEMB_UPD_UNIQ || val->type == MEMB_UPD_MINOR ||
+		    knot_zonedb_find(db_new, val->member) == NULL) {
 			// ^ warning for existing zone later in add_member_zone()
 			catret = catalog_add2(&server->catalog, val);
 		}
@@ -524,9 +529,10 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		catret = catalog_commit(&server->catalog);
 	}
 
-	it = catalog_it_begin(&server->catalog_upd, false);
+	it = catalog_it_begin(&server->catalog_upd);
 	while (!catalog_it_finished(it) && catret == KNOT_EOK) {
-		zone_t *zone = add_member_zone(catalog_it_val(it), db_new, server, conf);
+		catalog_upd_val_t *val = catalog_it_val(it);
+		zone_t *zone = add_member_zone(val, db_new, server, conf);
 		if (zone != NULL) {
 			knot_zonedb_insert(db_new, zone);
 		}
@@ -590,14 +596,14 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 
 catalog_only:
 	; /* Remove deleted cataloged zones from conf. */
-	catalog_it_t *cat_it = catalog_it_begin(&server->catalog_upd, true);
+	catalog_it_t *cat_it = catalog_it_begin(&server->catalog_upd);
 	int catret = 1;
 	if (!catalog_it_finished(cat_it)) {
 		catret = catalog_begin(&server->catalog);
 	}
 	while (!catalog_it_finished(cat_it)) {
 		catalog_upd_val_t *upd = catalog_it_val(cat_it);
-		if (!upd->just_reconf) {
+		if (upd->type == MEMB_UPD_REM) {
 			catalog_del(&server->catalog, upd->member);
 			zone_t *zone = knot_zonedb_find(db_old, upd->member);
 			if (zone != NULL) {

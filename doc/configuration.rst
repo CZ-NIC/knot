@@ -601,9 +601,8 @@ and ACLs. A catalog zone is indicated by setting the option
 :ref:`zone_catalog-role`. The difference is that standard DNS
 queries to a catalog zone are answered with REFUSED as though the zone
 doesn't exist, unless querying over TCP from an address with transfers enabled
-by ACL. The name of the catalog zone is arbitrary. It's required to
-include version record ``version 0 IN TXT "2"``, however.
-It's possible to configure multiple catalog zones.
+by ACL. The name of the catalog zone is arbitrary. It's possible to configure
+multiple catalog zones.
 
 .. WARNING::
    Don't choose a name for a catalog zone below a name of any other
@@ -614,18 +613,27 @@ Upon catalog zone (re)load or change, all the PTR records in the zone
 sub-tree *zones* (e.g. ``unique-id1.zones.catalog. 0 IN PTR member.com.``)
 are processed and member zones created, with zone names taken from the
 PTR records' RData, and zone settings taken from the configuration
-template specified by :ref:`zone_catalog-template`. Owner names of those PTR
-records may be arbitrary, but when a member zone is de-cataloged and
-re-cataloged again, the owner name of the relevant PTR record must
-be changed. It's also recommended that all the PTR records have different
-owner names (in other words, catalog zone RRSets consist of one RR each)
-to prevent oversized RRSets (not AXFR-able) and to achieve interoperability.
+template specified by :ref:`zone_catalog-template`.
+
+The owner names of the PTR records shall follow this scheme:
+
+.. code-block:: console
+
+    <any-junk>.<unique-id>.zones.<catalog-zone>.
+
+where the mentioned group of labels shall match:
+
+- *<any-junk>* — (optional) Any additional labels with no particular meaning.
+- *<unique-id>* — Single label that is recommended to be unique among member zones.
+- ``zones`` — Required label.
+- *<catalog-zone>* — Name of the catalog zone.
 
 All records other than PTR are ignored. They remain in the catalog
 zone, however, and might be for example transferred to a slave, which may interpret
 catalog zones differently. SOA still needs to be present in the catalog zone
 and its serial handled appropriately. An apex NS record should be present
-for the sake of interoperability.
+for the sake of interoperability. The version record ``version 0 IN TXT "2"``
+is required at the catalog zone apex.
 
 A catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,
 zone file reload). In the case of incremental change, only affected
@@ -634,22 +642,16 @@ member zones are reloaded.
 Any de-cataloged member zone is purged immediately, including its
 zone file, journal, timers, and DNSSEC keys. The zone file is not
 deleted if :ref:`zone_zonefile-sync` is set to *-1* for member zones.
+Any member zone, whose PTR record's owner has been changed, is purged
+immediately if and only if the *<unique-id>* has been changed.
 
 When setting up catalog zones, it might be useful to set
 :ref:`database_catalog-db` and :ref:`database_catalog-db-max-size`
 to non-default values.
 
 .. WARNING::
-   Bugs, limitations:
 
-   Knot does purge the member zone's metadata whenever the respective PTR
-   record owner changes in any way. This differs from the specification
-   (see `Internet Draft` above),
-   which requires this to be done only when the "unique" label (i.e. the
-   one immediately left of the `zones` label) changes. It's expected that
-   Knot's behaviour will be aligned to the specification in the future.
-
-   Knot does not work well if one member zone appears in two catalog zones
+   The server does not work well if one member zone appears in two catalog zones
    concurrently. The user is encouraged to avoid this situation whatsoever.
    Thus, there is no way a member zone can be migrated from one catalog
    to another while preserving its metadata. Following steps may be used
