@@ -21,25 +21,26 @@
 
 #include "libknot/attribute.h"
 #include "libknot/error.h"
+#include "contrib/mempattern.h"
 
 static int add_relay(knot_tcp_relay_t *relays[], uint32_t *max_relays,
-                     uint32_t *n_relays, knot_tcp_relay_t *to_add)
+                     uint32_t *n_relays, knot_tcp_relay_t *to_add, knot_mm_t *mm)
 {
 	assert(*n_relays <= *max_relays);
 	if (*relays == NULL) {
 		assert(*n_relays == 0);
-		*relays = malloc(*max_relays * sizeof(**relays));
+		*relays = mm_alloc(mm, *max_relays * sizeof(**relays));
 		if (*relays == NULL) {
 			return KNOT_ENOMEM;
 		}
 	} else if (*n_relays == *max_relays) {
 		uint32_t new_max_relays = 2 * *max_relays;
-		knot_tcp_relay_t *new_relays = malloc(new_max_relays * sizeof(*new_relays));
+		knot_tcp_relay_t *new_relays = mm_alloc(mm, new_max_relays * sizeof(*new_relays));
 		if (new_relays == NULL) {
 			return KNOT_ENOMEM;
 		}
 		memcpy(new_relays, *relays, *max_relays * sizeof(*new_relays));
-		free(*relays);
+		mm_free(mm, *relays);
 		*relays = new_relays;
 		*max_relays = new_max_relays;
 	}
@@ -50,7 +51,7 @@ static int add_relay(knot_tcp_relay_t *relays[], uint32_t *max_relays,
 _public_
 int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
                        uint32_t msg_count, knot_tcp_relay_t *relays[],
-                       uint32_t *relay_count)
+                       uint32_t *relay_count, knot_mm_t *mm)
 {
 	if (msg_count == 0) {
 		return KNOT_EOK;
@@ -78,7 +79,7 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
 		ack->flags |= KNOT_XDP_MSG_ACK; \
 	}
 
-#define add_to_relays(relay) add_relay(relays, &max_relays, relay_count, (relay));
+#define add_to_relays(relay) add_relay(relays, &max_relays, relay_count, (relay), mm);
 
 	for (size_t i = 0; i < msg_count && ret == KNOT_EOK; i++) {
 		knot_xdp_msg_t *msg = &msgs[i];

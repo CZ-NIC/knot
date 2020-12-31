@@ -38,7 +38,9 @@
 #include "libknot/libknot.h"
 #include "contrib/macros.h"
 #include "libknot/xdp/tcp.h"
+#include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcpy.h"
+#include "contrib/ucw/mempool.h"
 #include "utils/common/params.h"
 #include "utils/kxdpgun/load_queries.h"
 #include "utils/kxdpgun/popenve.h"
@@ -213,6 +215,11 @@ void *xdp_gun_thread(void *_ctx)
 	uint64_t tot_rst = 0, tot_size = 0, tot_wire = 0, errors = 0;
 	uint64_t duration = 0;
 
+	knot_mm_t mm;
+	if (ctx->tcp) {
+		mm_ctx_mempool(&mm, ctx->at_once * 16 * MM_DEFAULT_BLKSIZE);
+	}
+
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->listen_port, mode);
@@ -303,7 +310,7 @@ void *xdp_gun_thread(void *_ctx)
 				if (ctx->tcp) {
 					knot_tcp_relay_t *relays = NULL;
 					uint32_t n_relays = 0;
-					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, &relays, &n_relays);
+					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, &relays, &n_relays, &mm);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
@@ -338,7 +345,7 @@ void *xdp_gun_thread(void *_ctx)
 						errors++;
 					}
 
-					free(relays);
+					mp_flush(mm.ctx);
 				} else {
 					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx, &tot_ans, &tot_size);
@@ -363,6 +370,10 @@ void *xdp_gun_thread(void *_ctx)
 	}
 
 	knot_xdp_deinit(xsk);
+
+	if (ctx->tcp) {
+		mp_delete(mm.ctx);
+	}
 
 	printf("thread#%02u: sent %lu, received %lu, errors %lu\n",
 	       ctx->thread_id, tot_sent, tot_ans, errors);
