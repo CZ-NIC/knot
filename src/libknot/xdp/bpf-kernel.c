@@ -138,6 +138,13 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		if (ip4->version != 4) {
 			return XDP_DROP;
 		}
+
+		/* Check the IP length. Cannot use strict equality due to
+		 * Ethernet padding applied to frames shorter than 64 octects. */
+		if (data_end - data < __bpf_ntohs(ip4->tot_len)) {
+			return XDP_DROP;
+		}
+
 		if (ip4->frag_off != 0 &&
 		    ip4->frag_off != __constant_htons(IP_DF)) {
 			fragmented = 1;
@@ -153,6 +160,13 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 		if (ip6->version != 6) {
 			return XDP_DROP;
 		}
+
+		/* Check the IP length. Cannot use strict equality due to
+		 * Ethernet padding applied to frames shorter than 64 octects. */
+		if (data_end - data < __bpf_ntohs(ip6->payload_len) + sizeof(*ip6)) {
+			return XDP_DROP;
+		}
+
 		ip_proto = ip6->nexthdr;
 		data += sizeof(*ip6);
 		if (ip_proto == IPPROTO_FRAGMENT) {
