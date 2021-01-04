@@ -122,6 +122,8 @@ struct zs_scanner {
 	uint32_t item_length_position;
 	/*! Auxiliary pointer to item length. */
 	uint8_t *item_length_location;
+	/*! Auxiliary 2-byte length locator. */
+	uint8_t *item_length2_location;
 	/*! Auxiliary buffer length. Is zero if no comment after a valid record. */
 	uint32_t buffer_length;
 	/*! Auxiliary buffer. Contains a comment after a valid record. */

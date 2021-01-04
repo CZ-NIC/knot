@@ -271,6 +271,25 @@
 			fhold; fgoto err_line;
 		}
 	}
+	action _item_length_init2 {
+		if (rdata_tail < rdata_stop) {
+			s->item_length2_location = rdata_tail;
+			rdata_tail += 2;
+		} else {
+			WARN(ZS_RDATA_OVERFLOW);
+			fhold; fgoto err_line;
+		}
+	}
+	action _item_length_exit2 {
+		s->item_length = rdata_tail - s->item_length2_location - 2;
+
+		if (s->item_length <= MAX_ITEM_LENGTH2) {
+			*(uint16_t *)(s->item_length2_location) = htobe16((uint16_t)(s->item_length));
+		} else {
+			WARN(ZS_ITEM_OVERFLOW);
+			fhold; fgoto err_line;
+		}
+	}
 	# END
 
 	# BEGIN - Owner processing
@@ -633,10 +652,14 @@
 		  )
 		) $!_text_char_error;
 
+	text_char_nodash = ((33..126 - [,\\;\"]) $_text_char | ('\\' . (32..126 - digit)) @_text_char | ('\\' %_text_dec_init . digit {3} $_text_dec %_text_dec_exit $!_text_dec_error )) $!_text_char_error;
+
 	quoted_text_char =
 		( text_char
 		| ([ \t;] | [\n] when { s->multiline }) $_text_char
 		) $!_text_char_error;
+
+	quoted_text_char_nodash = ( text_char_nodash | ([ \t;] | [\n] when { s->multiline }) $_text_char) $!_text_char_error;
 
 	# Text string machine instantiation (for smaller code).
 	text_ := (('\"' . quoted_text_char* . '\"') | text_char+)
@@ -645,6 +668,9 @@
 
 	# Text string with forward 1-byte length.
 	text_string = text >_item_length_init %_item_length_exit;
+
+	# Text string with forward 2-byte length.
+	text_string2 = text >_item_length_init2 %_item_length_exit2; # note that s->long_string must stay false because this doesn't fit to the manipulation in _text_char
 
 	action _text_array_init {
 		s->long_string = true;
@@ -1229,6 +1255,10 @@
 		*(rdata_tail++) = 254;
 	}
 
+	action _write16_0 {
+		*((uint16_t *)rdata_tail) = htons(0);
+		rdata_tail += 2;
+	}
 	action _write16_1 {
 		*((uint16_t *)rdata_tail) = htons(1);
 		rdata_tail += 2;
@@ -1346,6 +1376,8 @@
 	    | "EUI64"i      %{ type_num(KNOT_RRTYPE_EUI64, &rdata_tail); }
 	    | "URI"i        %{ type_num(KNOT_RRTYPE_URI, &rdata_tail); }
 	    | "CAA"i        %{ type_num(KNOT_RRTYPE_CAA, &rdata_tail); }
+	    | "SVCB"i       %{ type_num(KNOT_RRTYPE_SVCB, &rdata_tail); }
+	    | "HTTPS"i      %{ type_num(KNOT_RRTYPE_HTTPS, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
 	    ) $!_type_error;
 	# END
@@ -1410,6 +1442,8 @@
 	    | "EUI64"i      %{ window_add_bit(KNOT_RRTYPE_EUI64, s); }
 	    | "URI"i        %{ window_add_bit(KNOT_RRTYPE_URI, s); }
 	    | "CAA"i        %{ window_add_bit(KNOT_RRTYPE_CAA, s); }
+	    | "SVCB"i       %{ window_add_bit(KNOT_RRTYPE_SVCB, s); }
+	    | "HTTPS"i      %{ window_add_bit(KNOT_RRTYPE_HTTPS, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
 
@@ -1681,6 +1715,56 @@
 	l32 = ipv4_addr %_ipv4_addr_write;
 	# END
 
+	# BEGIN - SvcParams processing (SVCB/HTTPS records)
+	action _svc_params_init {
+	}
+	action _svc_params_exit {
+	}
+	action _svc_params_error {
+		WARN(ZS_BAD_SVC_PARAM);
+		fhold; fgoto err_line;
+	}
+
+	svc_key_generic   = ("key"             . num16);
+	svc_key_mandatory = ("mandatory"       %_write16_0);
+	svc_key_alpn      = ("alpn"            %_write16_1);
+	svc_key_ndalpn    = ("no-default-alpn" %_write16_2);
+	svc_key_port      = ("port"            %_write16_3);
+	svc_key_ipv4hint  = ("ipv4hint"        %_write16_4);
+	svc_key_echconfig = ("echconfig"       %_write16_5);
+	svc_key_ipv6hint  = ("ipv6hint"        %_write16_6);
+
+	svc_key_any = (svc_key_generic | svc_key_mandatory | svc_key_alpn | svc_key_ndalpn |
+	               svc_key_port | svc_key_ipv4hint | svc_key_echconfig | svc_key_ipv6hint);
+
+	svc_alpn   = (text_char_nodash+        >_item_length_init %_item_length_exit);
+	svc_alpnq  = (quoted_text_char_nodash+ >_item_length_init %_item_length_exit);
+	svc_alpns  = (svc_alpn . ("," . svc_alpn)*);
+	svc_alpnqs = ('\"' . svc_alpnq . ("," . svc_alpnq)* . '\"');
+
+	svc_keys  = ((svc_key_any . ("," . svc_key_any)*)         >_item_length_init2 %_item_length_exit2);
+	svc_alpnl = ((svc_alpns | svc_alpnqs)                     >_item_length_init2 %_item_length_exit2);
+	svc_ipv4s = ((ipv4_addr_write . ("," . ipv4_addr_write)*) >_item_length_init2 %_item_length_exit2);
+	svc_echc  = (base64_quartet+                              >_item_length_init2 %_item_length_exit2);
+	svc_ipv6s = ((ipv6_addr_write . ("," . ipv6_addr_write)*) >_item_length_init2 %_item_length_exit2);
+
+	svc_param_generic   = (svc_key_generic   . ("\=" . text_string2)?);
+	svc_param_mandatory = (svc_key_mandatory . "\=" . (svc_keys | ('\"' . svc_keys . '\"')));
+	svc_param_alpn      = (svc_key_alpn      . "\=" . svc_alpnl);
+	svc_param_ndalpn    = (svc_key_ndalpn    %_write16_0);
+	svc_param_port      = (svc_key_port      %_write16_2 . "\=" . num16);
+	svc_param_ipv4hint  = (svc_key_ipv4hint  . "\=" . (svc_ipv4s | ('\"' . svc_ipv4s . '\"')));
+	svc_param_echconfig = (svc_key_echconfig . "\=" . (svc_echc  | ('\"' . svc_echc  . '\"')));
+	svc_param_ipv6hint  = (svc_key_ipv6hint  . "\=" . (svc_ipv6s | ('\"' . svc_ipv6s . '\"')));
+
+	svc_param_any = (svc_param_generic | svc_param_mandatory | svc_param_alpn |
+	                 svc_param_ndalpn | svc_param_port | svc_param_ipv4hint |
+	                 svc_param_echconfig | svc_param_ipv6hint);
+	svc_params_ := ((sep . svc_param_any)* . sep?) >_svc_params_init
+	               %_svc_params_exit %_ret $!_svc_params_error . end_wchar;
+	svc_params = all_wchar ${ fhold; fcall svc_params_; };
+	# END
+
 	# BEGIN - Mnemomic names processing
 	action _dns_alg_error {
 		WARN(ZS_BAD_ALGORITHM);
@@ -1866,6 +1950,10 @@
 		(num8 . sep . text_string . sep . text)
 		$!_r_data_error %_ret . all_wchar;
 
+	r_data_svcb :=
+		(num16 . sep . r_dname . svc_params)
+		$!_r_data_error %_ret . all_wchar;
+
 	action _text_r_data {
 		fhold;
 		switch (s->r_type) {
@@ -1946,6 +2034,9 @@
 			fcall r_data_uri;
 		case KNOT_RRTYPE_CAA:
 			fcall r_data_caa;
+		case KNOT_RRTYPE_SVCB:
+		case KNOT_RRTYPE_HTTPS:
+			fcall r_data_svcb;
 		default:
 			WARN(ZS_CANNOT_TEXT_DATA);
 			fgoto err_line;
@@ -1999,6 +2090,8 @@
 		case KNOT_RRTYPE_EUI64:
 		case KNOT_RRTYPE_URI:
 		case KNOT_RRTYPE_CAA:
+		case KNOT_RRTYPE_SVCB:
+		case KNOT_RRTYPE_HTTPS:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
@@ -2081,6 +2174,8 @@
 		| "EUI64"i      %{ s->r_type = KNOT_RRTYPE_EUI64; }
 		| "URI"i        %{ s->r_type = KNOT_RRTYPE_URI; }
 		| "CAA"i        %{ s->r_type = KNOT_RRTYPE_CAA; }
+		| "SVCB"i       %{ s->r_type = KNOT_RRTYPE_SVCB; }
+		| "HTTPS"i      %{ s->r_type = KNOT_RRTYPE_HTTPS; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
 	# END

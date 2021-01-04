@@ -1,0 +1,9 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	HTTPS	1	.
+
+; KO
+;@	SMIMEA
+

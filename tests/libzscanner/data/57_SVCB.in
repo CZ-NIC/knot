@@ -1,0 +1,26 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	SVCB	1	.
+@	TYPE64	2	@
+@	SVCB	3	x.	key1026=foo
+@	TYPE64	4	.	key1026="foo bar" key1027=baz
+@	SVCB	5	.	mandatory=key1,port alpn="h1,h2\,h3" port=1029
+@	TYPE64	6	.	(
+                                mandatory="ipv4hint"
+                                alpn="h\010h"
+                                ipv4hint=1.2.3.4,1.2.3.5
+                                ipv6hint=1::2
+                                )
+@	SVCB	7	.	alpn=h1,h2\044h3 echconfig="YWhvag=="
+
+; KO
+@	SVCB	70000	.
+@	SVCB	8	abcdef012345678901234567890123456789012345678901234567890123456789.
+@	SVCB	9	.	key70000=foo
+@	SVCB	10	.	nonextype=bar
+@	SVCB	11	.	mandatory=alpn,nonextype
+@	SVCB	12	.	port=70000
+@	SVCB	13	.	ipv4hint=1.2.3.400
+@	SVCB	14	.	ipv6hint=1::2,foo

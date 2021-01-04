@@ -147,6 +147,8 @@ static const err_table_t err_msgs[] = {
 	          "invalid certificate type" ),
 	ERR_ITEM( ZS_BAD_EUI_LENGTH,
 	          "invalid EUI length" ),
+	ERR_ITEM( ZS_BAD_SVC_PARAM,
+	          "invalid SvcParam" ),
 	ERR_ITEM( ZS_BAD_L64_LENGTH,
 	          "invalid 64-bit locator" ),
 	ERR_ITEM( ZS_BAD_CHAR_COLON,
