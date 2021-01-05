@@ -1,0 +1,12 @@
+$ORIGIN example.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 1 1 1 10 600
+	NS	dns1
+
+dns1	A	192.0.2.1
+
+@	SVCB	1 www
+@	HTTPS	1 www
+www	SVCB	2 . key0="\000\001" key1="\002h2\002h3" key3="\000\080" key5=ahoj
+www	HTTPS	1 . key4="\001\002\003\004\001\002\003\005" key6=\000\001\000\000\000\000\000\000\000\000\000\000\000\000\000\002
