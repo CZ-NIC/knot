@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
 
 #include <stddef.h>
 
+#define KNOT_XDP_MAX_MTU 1792
+
 /*!
  * \brief Get number of combined queues of a network interface.
  *
@@ -28,6 +30,16 @@
  * \return > 0   Number of queues.
  */
 int knot_eth_queues(const char *devname);
+
+/*!
+ * \brief Get value of MTU setup on a network interface.
+ *
+ * \param devname  Name of the ethdev (e.g. eth1).
+ *
+ * \retval < 0    KNOT_E* if error.
+ * \return >= 0   Interface MTU.
+ */
+int knot_eth_mtu(const char *devname);
 
 /*!
  * \brief Get the corresponding network interface name for the address.
