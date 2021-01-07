@@ -29,6 +29,9 @@ endif
 
 LIBKNOT_SYMBOLS := $(wildcard $(CURDIR)/debian/libknot*.symbols)
 
+# MAJOR.MINOR version part
+BASE_VERSION := $(shell echo $(DEB_VERSION) | sed 's/^\([^.]\+\.[^.]\+\).*/\1/')
+
 PYBUILD = pybuild --dir python --dest-dir debian/python3-libknot
 
 %:
@@ -42,11 +45,11 @@ override_dh_auto_configure:
 	  --localstatedir=/var/lib \
 	  --libexecdir=/usr/lib/knot \
 	  --with-rundir=/run/knot \
-	  --with-moduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/knot \
+	  --with-moduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/knot/modules-$(BASE_VERSION) \
 	  --with-storage=/var/lib/knot \
 	  --enable-systemd=auto \
 	  --enable-dnstap \
-	  --with-module-dnstap=yes \
+	  --with-module-dnstap=shared \
 	  $(RECVMMSG) \
 	  $(FASTPARSER) \
 	  --disable-silent-rules \

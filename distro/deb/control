@@ -177,6 +177,22 @@ Description: Version of 'host' bundled with Knot DNS
  This package provides the 'host' program from Knot DNS. This program is
  designed to be almost 1:1 compatible with BIND 9.x 'host' program.
 
+Package: knot-module-dnstap
+Architecture: any
+Depends:
+ knot (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
+Description: dnstap module for Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package contains dnstap module for logging DNS traffic.
+
 Package: knot-doc
 Architecture: all
 Multi-Arch: foreign
