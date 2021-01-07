@@ -50,6 +50,7 @@ override_dh_auto_configure:
 	  --enable-systemd=auto \
 	  --enable-dnstap \
 	  --with-module-dnstap=shared \
+	  --with-module-geoip=shared \
 	  $(RECVMMSG) \
 	  $(FASTPARSER) \
 	  --disable-silent-rules \
