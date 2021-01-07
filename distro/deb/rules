@@ -86,7 +86,9 @@ override_dh_auto_install-indep:
 
 override_dh_auto_test-indep:
 override_dh_auto_test-arch:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	$(RUN_TEST) dh_auto_test
+endif
 
 override_dh_missing:
 	dh_missing --fail-missing
