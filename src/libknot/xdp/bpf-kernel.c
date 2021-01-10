@@ -125,7 +125,7 @@ int xdp_redirect_udp_func(struct xdp_md *ctx)
 	}
 
 	/* Check the UDP length. */
-	if (data_end - (void *)udp != __bpf_ntohs(udp->len)) {
+	if (data_end - (void *)udp < __bpf_ntohs(udp->len)) {
 		return XDP_DROP;
 	}
 
