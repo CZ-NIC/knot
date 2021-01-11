@@ -35,13 +35,14 @@ BuildRequires:	pkgconfig(libedit)
 # Optional dependencies
 BuildRequires:	pkgconfig(libcap-ng)
 BuildRequires:	pkgconfig(libidn2)
-BuildRequires:	pkgconfig(libmaxminddb)
 BuildRequires:	pkgconfig(libnghttp2)
 BuildRequires:	pkgconfig(libsystemd)
 BuildRequires:	pkgconfig(systemd)
 # dnstap dependencies
 BuildRequires:	pkgconfig(libfstrm)
 BuildRequires:	pkgconfig(libprotobuf-c)
+# geoip dependencies
+BuildRequires:	pkgconfig(libmaxminddb)
 
 # Distro-dependent dependencies
 %if 0%{?suse_version}
@@ -107,6 +108,13 @@ Requires:	%{name} = %{version}-%{release}
 %description module-dnstap
 The package contains dnstap Knot DNS module for logging DNS traffic.
 
+%package module-geoip
+Summary:	geoip module for Knot DNS
+Requires:	%{name} = %{version}-%{release}
+
+%description module-geoip
+The package contains geoip Knot DNS module for geography-based responses.
+
 %package doc
 Summary:	Documentation for the Knot DNS server
 BuildArch:	noarch
@@ -148,7 +156,8 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
   %{?configure_xdp} \
   --disable-static \
   --enable-dnstap=yes \
-  --with-module-dnstap=shared
+  --with-module-dnstap=shared \
+  --with-module-geoip=shared
 make %{?_smp_mflags}
 make html
 
@@ -267,6 +276,9 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 
 %files module-dnstap
 %{_libdir}/knot/modules-*/dnstap.so
+
+%files module-geoip
+%{_libdir}/knot/modules-*/geoip.so
 
 %files libs
 %license COPYING
