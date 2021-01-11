@@ -119,7 +119,7 @@ Improvements:
  - Logging to non-syslog streams contains timestamps with the timezone
  - Keeping initial DNSKEY TTL and zone maximum TTL in KASP database to ensure
    proper rollover timing in case of TTL changes during the rollover
- - Responding FORMERR to queries with more OPT records
+ - Responding FORMERR to queries with more OPT or TSIG records
 
 Bugfixes:
 ---------
