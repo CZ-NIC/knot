@@ -81,7 +81,7 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
  * \param zone     Init with this zone.
  * \param old_cont The current zone contents the diff will be against. Probably zone->contents.
  * \param new_cont New zone contents. Will be taken over (and later freed) by zone update.
- * \param flags    Flags for update. Must be UPDATE_INCREMENTAL.
+ * \param flags    Flags for update. Must be UPDATE_INCREMENTAL or UPDATE_HYBRID.
  *
  * \return KNOT_E*
  */
