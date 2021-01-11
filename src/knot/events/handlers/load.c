@@ -70,10 +70,16 @@ int event_load(conf_t *conf, zone_t *zone)
 	    ((load_from == JOURNAL_CONTENT_ALL && zf_from != ZONEFILE_LOAD_WHOLE) ||
 	     zone->cat_members != NULL)) {
 		ret = zone_load_from_journal(conf, zone, &journal_conts);
-		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		switch (ret) {
+		case KNOT_EOK:
+			zone_in_journal_exists = true;
+			break;
+		case KNOT_ENOENT:
+			zone_in_journal_exists = false;
+			break;
+		default:
 			goto cleanup;
 		}
-		zone_in_journal_exists = true;
 	} else {
 		zone_in_journal_exists = zone_journal_has_zij(zone);
 	}
