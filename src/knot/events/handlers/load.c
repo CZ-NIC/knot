@@ -206,6 +206,7 @@ int event_load(conf_t *conf, zone_t *zone)
 					                 "zone file changed with SOA serial %s, "
 					                 "ignoring zone file and loading from journal",
 					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
+					zone_contents_deep_free(zf_conts);
 					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
 				}
 			}
