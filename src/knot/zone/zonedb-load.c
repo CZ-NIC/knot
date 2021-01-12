@@ -406,8 +406,17 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		knot_zonedb_iter_free(it);
 	} else if (check_open_catalog(&server->catalog)) {
 		catalog_foreach(&server->catalog) {
-			const knot_dname_t *member = NULL;
-			catalog_curval(&server->catalog, &member, NULL, NULL);
+			const knot_dname_t *member = NULL, *catzone = NULL;
+			catalog_curval(&server->catalog, &member, NULL, &catzone);
+
+			// Check if there is a catalog zone for this member zone.
+			if (!conf_rawid_exists(conf, C_ZONE, catzone, knot_dname_size(catzone))) {
+				knot_dname_txt_storage_t cat_str;
+				(void)knot_dname_to_str(cat_str, catzone, sizeof(cat_str));
+				log_zone_error(member, "catalog zone '%s' not configured", cat_str);
+				continue;
+			}
+
 			zone_t *zone = reuse_cold_zone(member, server, conf);
 			if (zone != NULL) {
 				knot_zonedb_insert(db_new, zone);
