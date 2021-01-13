@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "libknot/xdp/msg.h"
+#include "libdnssec/random.h"
 
 inline static bool empty_msg(const knot_xdp_msg_t *msg)
 {
@@ -27,15 +28,6 @@ inline static bool empty_msg(const knot_xdp_msg_t *msg)
 	                           KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_RST;
 
 	return (msg->payload.iov_len == 0 && !(msg->flags & tcp_flags));
-}
-
-// FIXME do we care for better random?
-inline static uint32_t rnd_uint32(void)
-{
-	uint32_t res = rand() & 0xffff;
-	res <<= 16;
-	res |= rand() & 0xffff;
-	return res;
 }
 
 inline static void msg_init_base(knot_xdp_msg_t *msg, knot_xdp_msg_flag_t flags)
@@ -51,7 +43,7 @@ inline static void msg_init(knot_xdp_msg_t *msg, knot_xdp_msg_flag_t flags)
 
 	if (flags & KNOT_XDP_MSG_TCP) {
 		msg->ackno = 0;
-		msg->seqno = rnd_uint32();
+		msg->seqno = dnssec_random_uint32_t();
 	}
 }
 
@@ -73,7 +65,7 @@ inline static void msg_init_reply(knot_xdp_msg_t *msg, const knot_xdp_msg_t *que
 		}
 		msg->seqno = query->ackno;
 		if (msg->seqno == 0) {
-			msg->seqno = rnd_uint32();
+			msg->seqno = dnssec_random_uint32_t();
 		}
 	}
 }
