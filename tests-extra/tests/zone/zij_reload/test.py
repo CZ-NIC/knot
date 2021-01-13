@@ -19,6 +19,7 @@ knot.zone_wait(zone)
 knot.ctl("conf-begin")
 knot.ctl("conf-set zone[%s].journal-content all" % zone[0].name)
 knot.ctl("conf-commit")
+t.sleep(2)
 
 knot.stop()
 
