@@ -185,7 +185,16 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 	}
 
 	ret = zone_contents_diff(old_cont, new_cont, &diff, ignore_dnssec);
-	if (ret != KNOT_EOK && ret != KNOT_ENODIFF && ret != KNOT_ESEMCHECK) {
+	switch (ret) {
+	case KNOT_ENODIFF:
+	case KNOT_ESEMCHECK:
+	case KNOT_EOK:
+		break;
+	case KNOT_ERANGE:
+		update->new_cont = NULL; // Prevent deep_free as old_cont will be used later.
+		update->a_ctx->flags &= ~APPLY_UNIFY_FULL; // Prevent Unify of old_cont that will be used later.
+		// FALLTHROUGH
+	default:
 		changeset_clear(&diff);
 		zone_update_clear(update);
 		return ret;
@@ -244,6 +253,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		int ret = changeset_init(&update->change, zone_without_contents->name);
 		if (ret != KNOT_EOK) {
 			free(update->a_ctx);
+			update->a_ctx = NULL;
 			knot_sem_post(&update->zone->cow_lock);
 			return ret;
 		}
@@ -252,6 +262,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		if (update->change.soa_from == NULL) {
 			changeset_clear(&update->change);
 			free(update->a_ctx);
+			update->a_ctx = NULL;
 			knot_sem_post(&update->zone->cow_lock);
 			return KNOT_ENOMEM;
 		}
@@ -262,6 +273,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	if (ret != KNOT_EOK) {
 		changeset_clear(&update->change);
 		free(update->a_ctx);
+		update->a_ctx = NULL;
 		knot_sem_post(&update->zone->cow_lock);
 		return ret;
 	}
