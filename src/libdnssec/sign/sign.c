@@ -398,6 +398,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binar
 			      ? DNSSEC_INVALID_SIGNATURE
 			      : DNSSEC_EOK;
 		}
+		dnssec_binary_free(&sign);
 		return ret;
 	}
 
