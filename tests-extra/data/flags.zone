@@ -32,6 +32,9 @@ cname-ns	CNAME	sub
 ; CNAME to a name below delegation
 cname-below-ns	CNAME	below.sub
 
+; CNAME being below a delegation
+cname.below.sub	CNAME	mail
+
 ; CNAME to out
 cname-out	CNAME	another.world.
 
