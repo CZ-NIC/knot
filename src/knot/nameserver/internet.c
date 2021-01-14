@@ -381,8 +381,9 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Name is under DNAME, use it for substitution. */
+	bool encloser_auth = !(qdata->extra->encloser->flags & (NODE_FLAGS_NONAUTH | NODE_FLAGS_DELEG));
 	knot_rrset_t dname_rrset = node_rrset(qdata->extra->encloser, KNOT_RRTYPE_DNAME);
-	if (!knot_rrset_empty(&dname_rrset)) {
+	if (encloser_auth && !knot_rrset_empty(&dname_rrset)) {
 		qdata->extra->node = qdata->extra->encloser; /* Follow encloser as new node. */
 		return follow_cname(pkt, KNOT_RRTYPE_DNAME, qdata);
 	}
