@@ -3,6 +3,7 @@
 
 %define GPG_CHECK 0
 %define VERSION __VERSION__
+%define BASE_VERSION %(echo %{version} | sed 's/^\([^.]\+\.[^.]\+\).*/\1/')
 %define repodir %{_builddir}/%{name}-%{version}
 
 Summary:	High-performance authoritative DNS server
@@ -33,13 +34,15 @@ BuildRequires:	pkgconfig(libedit)
 
 # Optional dependencies
 BuildRequires:	pkgconfig(libcap-ng)
-BuildRequires:	pkgconfig(libfstrm)
 BuildRequires:	pkgconfig(libidn2)
-BuildRequires:	pkgconfig(libmaxminddb)
 BuildRequires:	pkgconfig(libnghttp2)
-BuildRequires:	pkgconfig(libprotobuf-c)
 BuildRequires:	pkgconfig(libsystemd)
 BuildRequires:	pkgconfig(systemd)
+# dnstap dependencies
+BuildRequires:	pkgconfig(libfstrm)
+BuildRequires:	pkgconfig(libprotobuf-c)
+# geoip dependencies
+BuildRequires:	pkgconfig(libmaxminddb)
 
 # Distro-dependent dependencies
 %if 0%{?suse_version}
@@ -98,6 +101,20 @@ Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 %description utils
 The package contains DNS client utilities shipped with the Knot DNS server.
 
+%package module-dnstap
+Summary:	dnstap module for Knot DNS
+Requires:	%{name} = %{version}-%{release}
+
+%description module-dnstap
+The package contains dnstap Knot DNS module for logging DNS traffic.
+
+%package module-geoip
+Summary:	geoip module for Knot DNS
+Requires:	%{name} = %{version}-%{release}
+
+%description module-geoip
+The package contains geoip Knot DNS module for geography-based responses.
+
 %package doc
 Summary:	Documentation for the Knot DNS server
 BuildArch:	noarch
@@ -133,12 +150,14 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
   --localstatedir=/var/lib \
   --libexecdir=/usr/lib/knot \
   --with-rundir=/run/knot \
+  --with-moduledir=%{_libdir}/knot/modules-%{BASE_VERSION} \
   --with-storage=/var/lib/knot \
   %{?configure_db_sizes} \
   %{?configure_xdp} \
   --disable-static \
   --enable-dnstap=yes \
-  --with-module-dnstap=yes
+  --with-module-dnstap=shared \
+  --with-module-geoip=shared
 make %{?_smp_mflags}
 make html
 
@@ -254,6 +273,12 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_mandir}/man1/khost.*
 %{_mandir}/man1/knsec3hash.*
 %{_mandir}/man1/knsupdate.*
+
+%files module-dnstap
+%{_libdir}/knot/modules-*/dnstap.so
+
+%files module-geoip
+%{_libdir}/knot/modules-*/geoip.so
 
 %files libs
 %license COPYING
