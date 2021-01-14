@@ -212,8 +212,15 @@ resp.check_record(name="dname.flags.",          rtype="DNAME", ttl=3600, rdata="
 resp.check_record(name="x.f.dname.flags.",      rtype="CNAME", ttl=3600, rdata="x.f.dname-tree.flags.")
 resp.check_record(name="f.dname-tree.flags.",   rtype="DNAME", ttl=3600, rdata="f.f.dname-tree.flags.")
 resp.check_record(name="x.f.dname-tree.flags.", rtype="CNAME", ttl=3600, rdata="x.f.f.dname-tree.flags.")
-resp.check_counts(4, 0, 0)
+resp.check_counts(22, 0, 0)
 # resp.cmp(bind) BIND responds partially unrolled CNAME loop
+
+# Infinite DNAME loop
+resp = knot.dig("end.dname-loop.flags", "A", udp=False)
+resp.check(rcode="NOERROR")
+resp.check_record(name="dname-loop.flags.", rtype="DNAME", ttl=3600, rdata="loop.dname-loop.flags.")
+compare(resp.count(rtype="CNAME", section="answer"), 20, "Count of synthesized CNAME records in loop.")
+resp.check_record(name="end.loop.loop.loop.dname-loop.flags.", rtype="CNAME", ttl=3600, rdata="end.loop.loop.loop.loop.dname-loop.flags.")
 
 ''' Wildcard answers. '''
 

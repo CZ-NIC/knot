@@ -70,6 +70,7 @@ d.dname-tree	CNAME	cname-wildcard
 e.dname-tree	CNAME	e.dname
 f.dname-tree	DNAME	f.f.dname-tree
 
+dname-loop	DNAME	loop.dname-loop
 dname-out	DNAME	outside.zone.
 dname-dangl	DNAME	dangling
 dname.below.sub	DNAME	dname-tree
