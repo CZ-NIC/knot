@@ -177,6 +177,10 @@ resp.check(rcode="NOERROR")
 resp = knot.dig("dname.flags", "DNAME", udp=True)
 resp.cmp(bind)
 
+# DNAME being below a delegation
+resp = knot.dig("a.dname.below.sub.flags", "A", udp=True)
+resp.cmp(bind, additional=True)
+
 # DNAME query leading out of zone
 resp = knot.dig("a.dname-out.flags", "A", udp=True)
 resp.cmp(bind)
