@@ -324,19 +324,19 @@ static int name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
 
+	/* DS query at DP is answered normally, but everything else at/below DP
+	 * triggers referral response. */
+	if (((qdata->extra->node->flags & NODE_FLAGS_DELEG) && qtype != KNOT_RRTYPE_DS) ||
+	    (qdata->extra->node->flags & NODE_FLAGS_NONAUTH)) {
+		return KNOTD_IN_STATE_DELEG;
+	}
+
 	if (node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)
 	    && qtype != KNOT_RRTYPE_CNAME
 	    && qtype != KNOT_RRTYPE_RRSIG
 	    && qtype != KNOT_RRTYPE_NSEC
 	    && qtype != KNOT_RRTYPE_ANY) {
 		return follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);
-	}
-
-	/* DS query at DP is answered normally, but everything else at/below DP
-	 * triggers referral response. */
-	if (((qdata->extra->node->flags & NODE_FLAGS_DELEG) && qtype != KNOT_RRTYPE_DS) ||
-	    (qdata->extra->node->flags & NODE_FLAGS_NONAUTH)) {
-		return KNOTD_IN_STATE_DELEG;
 	}
 
 	uint16_t old_rrcount = pkt->rrset_count;
