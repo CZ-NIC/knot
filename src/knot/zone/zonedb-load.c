@@ -415,6 +415,9 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 				(void)knot_dname_to_str(cat_str, catzone, sizeof(cat_str));
 				log_zone_error(member, "catalog zone '%s' not configured", cat_str);
 				continue;
+			} else if (conf_rawid_exists(conf, C_ZONE, member, knot_dname_size(member))) {
+				log_zone_error(member, "non-catalog zone already configured, ignoring");
+				continue;
 			}
 
 			zone_t *zone = reuse_cold_zone(member, server, conf);
