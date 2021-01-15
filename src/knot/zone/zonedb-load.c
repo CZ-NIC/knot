@@ -319,7 +319,7 @@ static zone_t *add_member_zone(catalog_upd_val_t *val, knot_zonedb_t *check,
 	}
 
 	if (knot_zonedb_find(check, val->member) != NULL) {
-		log_zone_warning(val->member, "zone already configured, skipping creation");
+		log_zone_error(val->member, "zone already configured, ignoring");
 		return NULL;
 	}
 
@@ -409,11 +409,10 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 			const knot_dname_t *member = NULL, *catzone = NULL;
 			catalog_curval(&server->catalog, &member, NULL, &catzone);
 
-			// Check if there is a catalog zone for this member zone.
 			if (!conf_rawid_exists(conf, C_ZONE, catzone, knot_dname_size(catzone))) {
 				knot_dname_txt_storage_t cat_str;
 				(void)knot_dname_to_str(cat_str, catzone, sizeof(cat_str));
-				log_zone_error(member, "catalog zone '%s' not configured", cat_str);
+				log_zone_error(member, "catalog template zone '%s' not configured, ignoring", cat_str);
 				continue;
 			} else if (conf_rawid_exists(conf, C_ZONE, member, knot_dname_size(member))) {
 				log_zone_error(member, "non-catalog zone already configured, ignoring");
