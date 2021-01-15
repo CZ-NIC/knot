@@ -196,7 +196,8 @@ static bool token_init(void)
 
 	fprintf(file, "directories.tokendir = %s\n", token_path);
 	fprintf(file, "objectstore.backend = file\n");
-	fprintf(file, "log.debug = INFO\n");
+	fprintf(file, "log.level = INFO\n");
+	fprintf(file, "slots.removable = false\n");
 
 	fclose(file);
 
