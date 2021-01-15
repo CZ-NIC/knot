@@ -324,19 +324,19 @@ static int name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
 
+	/* DS query at DP is answered normally, but everything else at/below DP
+	 * triggers referral response. */
+	if (((qdata->extra->node->flags & NODE_FLAGS_DELEG) && qtype != KNOT_RRTYPE_DS) ||
+	    (qdata->extra->node->flags & NODE_FLAGS_NONAUTH)) {
+		return KNOTD_IN_STATE_DELEG;
+	}
+
 	if (node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)
 	    && qtype != KNOT_RRTYPE_CNAME
 	    && qtype != KNOT_RRTYPE_RRSIG
 	    && qtype != KNOT_RRTYPE_NSEC
 	    && qtype != KNOT_RRTYPE_ANY) {
 		return follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);
-	}
-
-	/* DS query at DP is answered normally, but everything else at/below DP
-	 * triggers referral response. */
-	if (((qdata->extra->node->flags & NODE_FLAGS_DELEG) && qtype != KNOT_RRTYPE_DS) ||
-	    (qdata->extra->node->flags & NODE_FLAGS_NONAUTH)) {
-		return KNOTD_IN_STATE_DELEG;
 	}
 
 	uint16_t old_rrcount = pkt->rrset_count;
@@ -381,8 +381,9 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Name is under DNAME, use it for substitution. */
+	bool encloser_auth = !(qdata->extra->encloser->flags & (NODE_FLAGS_NONAUTH | NODE_FLAGS_DELEG));
 	knot_rrset_t dname_rrset = node_rrset(qdata->extra->encloser, KNOT_RRTYPE_DNAME);
-	if (!knot_rrset_empty(&dname_rrset)) {
+	if (encloser_auth && !knot_rrset_empty(&dname_rrset)) {
 		qdata->extra->node = qdata->extra->encloser; /* Follow encloser as new node. */
 		return follow_cname(pkt, KNOT_RRTYPE_DNAME, qdata);
 	}

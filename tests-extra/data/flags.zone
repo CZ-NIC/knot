@@ -32,6 +32,9 @@ cname-ns	CNAME	sub
 ; CNAME to a name below delegation
 cname-below-ns	CNAME	below.sub
 
+; CNAME being below a delegation
+cname.below.sub	CNAME	mail
+
 ; CNAME to out
 cname-out	CNAME	another.world.
 
@@ -69,6 +72,7 @@ f.dname-tree	DNAME	f.f.dname-tree
 
 dname-out	DNAME	outside.zone.
 dname-dangl	DNAME	dangling
+dname.below.sub	DNAME	dname-tree
 
 ; DS tests
 ds-sub		NS	dns.net.ds-sub
