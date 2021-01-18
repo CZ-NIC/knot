@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1171,6 +1171,14 @@ bool conf_tcp_reuseport_txn(
 	knot_db_txn_t *txn)
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_REUSEPORT);
+	return conf_bool(&val);
+}
+
+bool conf_socket_affinity_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_SOCKET_AFFINITY);
 	return conf_bool(&val);
 }
 
