@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -138,6 +138,10 @@
 #define C_ZONE_MAX_TLL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
+
+// New terminology as per RFC 8499, section 6.
+#define C_DDNS_PRIMARY		"\x0B""ddns-primary"
+#define C_PRIMARY		"\x06""primary"
 
 // Legacy items.
 #define C_MAX_TIMER_DB_SIZE	"\x11""max-timer-db-size"

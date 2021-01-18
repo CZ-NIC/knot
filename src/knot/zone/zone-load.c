@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -166,6 +166,9 @@ bool zone_load_can_bootstrap(conf_t *conf, const knot_dname_t *zone_name)
 	}
 
 	conf_val_t val = conf_zone_get(conf, C_MASTER, zone_name);
+	if (val.code != KNOT_EOK) {
+		val = conf_zone_get(conf, C_PRIMARY, zone_name);
+	}
 	size_t count = conf_val_count(&val);
 
 	return count > 0;

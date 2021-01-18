@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -331,6 +331,10 @@ bool zone_is_slave(conf_t *conf, const zone_t *zone)
 	}
 
 	conf_val_t val = conf_zone_get(conf, C_MASTER, zone->name);
+	if (val.code != KNOT_EOK) {
+		val = conf_zone_get(conf, C_PRIMARY, zone->name);
+	}
+
 	return conf_val_count(&val) > 0 ? true : false;
 }
 
@@ -425,6 +429,9 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 	}
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
+	if (masters.code != KNOT_EOK) {
+		masters = conf_zone_get(conf, C_PRIMARY, zone->name);
+	}
 	while (masters.code == KNOT_EOK) {
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &masters);
 		size_t addr_count = conf_val_count(&addr);
@@ -487,6 +494,10 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 	bool success = false;
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
+	if (masters.code != KNOT_EOK) {
+		masters = conf_zone_get(conf, C_PRIMARY, zone->name);
+	}
+
 	while (masters.code == KNOT_EOK) {
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &masters);
 		size_t addr_count = conf_val_count(&addr);
