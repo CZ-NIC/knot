@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -171,6 +171,7 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_RMT_IO_TIMEOUT,   YP_TINT,  YP_VINT = { 0, INT32_MAX, 5000 } },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
 	{ C_TCP_REUSEPORT,        YP_TBOOL, YP_VNONE },
+	{ C_SOCKET_AFFINITY,      YP_TBOOL, YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD,      YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                                1232, YP_SSIZE } },

@@ -141,6 +141,7 @@ General options related to the server.
      tcp-remote-io-timeout: INT
      tcp-max-clients: INT
      tcp-reuseport: BOOL
+     socket-affinity: BOOL
      udp-max-payload: SIZE
      udp-max-payload-ipv4: SIZE
      udp-max-payload-ipv6: SIZE
@@ -323,6 +324,20 @@ higher response rate processing over TCP. However, in the case of
 time-consuming requests (e.g. zone transfers of a TLD zone), enabled reuseport
 may result in delayed or not being responded client requests. So it is
 advisable to use this option on slave servers.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* off
+
+.. _server_socket-affinity:
+
+socket-affinity
+---------------
+
+If enabled and if SO_REUSEPORT is available on Linux, all configured network
+sockets are bound to UDP and TCP workers in order to increase the networking performance.
+This mode isn't recommended for setups where the number of network card queues
+is lower than the number of UDP or TCP workers.
 
 Change of this parameter requires restart of the Knot server to take effect.
 

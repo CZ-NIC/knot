@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -124,6 +124,7 @@ static void init_cache(
 
 	static bool   first_init = true;
 	static bool   running_tcp_reuseport;
+	static bool   running_socket_affinity;
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
 	static size_t running_xdp_threads;
@@ -131,6 +132,7 @@ static void init_cache(
 
 	if (first_init || reinit_cache) {
 		running_tcp_reuseport = conf_tcp_reuseport(conf);
+		running_socket_affinity = conf_socket_affinity(conf);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
@@ -182,6 +184,8 @@ static void init_cache(
 	}
 
 	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
+
+	conf->cache.srv_socket_affinity = running_socket_affinity;
 
 	conf->cache.srv_udp_threads = running_udp_threads;
 

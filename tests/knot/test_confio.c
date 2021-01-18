@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -908,6 +908,7 @@ static void test_conf_io_list(void)
 	      "server.tcp-remote-io-timeout\n"
 	      "server.tcp-max-clients\n"
 	      "server.tcp-reuseport\n"
+	      "server.socket-affinity\n"
 	      "server.udp-workers\n"
 	      "server.tcp-workers\n"
 	      "server.background-workers\n"
@@ -930,6 +931,7 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_RMT_IO_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_MAX_CLIENTS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_REUSEPORT,	  YP_TBOOL, YP_VNONE },
+	{ C_SOCKET_AFFINITY,	  YP_TBOOL, YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_BG_WORKERS,		  YP_TINT,  YP_VNONE },

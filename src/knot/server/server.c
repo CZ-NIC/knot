@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -307,13 +307,14 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *t
  * \param udp_thread_count  Number of created UDP workers.
  * \param tcp_thread_count  Number of created TCP workers.
  * \param tcp_reuseport     Indication if reuseport on TCP is enabled.
+ * \param socket_affinity   Indication if CBPF should be attached.
  *
  * \retval Pointer to a new initialized inteface.
  * \retval NULL if error.
  */
 static iface_t *server_init_iface(struct sockaddr_storage *addr,
                                   int udp_thread_count, int tcp_thread_count,
-                                  bool tcp_reuseport)
+                                  bool tcp_reuseport, bool socket_affinity)
 {
 	iface_t *new_if = calloc(1, sizeof(*new_if));
 	if (new_if == NULL) {
@@ -374,7 +375,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
-		if (udp_bind_flags & NET_BIND_MULTIPLE) {
+		if ((udp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
 			if (!server_attach_reuseport_bpf(sock, udp_socket_count) &&
 			    warn_cbpf) {
 				log_warning("cannot ensure optimal CPU locality for UDP");
@@ -446,7 +447,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
-		if (tcp_bind_flags & NET_BIND_MULTIPLE) {
+		if ((tcp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
 			if (!server_attach_reuseport_bpf(sock, tcp_socket_count) &&
 			    warn_cbpf) {
 				log_warning("cannot ensure optimal CPU locality for TCP");
@@ -475,7 +476,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 #ifdef ENABLE_REUSEPORT
 	/* Log info if reuseport is used and for what protocols. */
-	log_info("using reuseport for UDP%s", conf->cache.srv_tcp_reuseport ? " and TCP" : "");
+	log_info("using reuseport%s for UDP%s",
+	         conf->cache.srv_socket_affinity ? " with socket affinity" : "",
+	         conf->cache.srv_tcp_reuseport ? " and TCP" : "");
 #endif
 
 	/* Update bound interfaces. */
@@ -505,6 +508,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
 	unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
 	bool tcp_reuseport = conf->cache.srv_tcp_reuseport;
+	bool socket_affinity = conf->cache.srv_socket_affinity;
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	while (listen_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
@@ -513,7 +517,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		log_info("binding to interface %s", addr_str);
 
 		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp,
-		                                    tcp_reuseport);
+		                                    tcp_reuseport, socket_affinity);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			free(rundir);
@@ -861,6 +865,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	const char *msg = "changes of %s require restart to take effect";
 
 	static bool warn_tcp_reuseport = true;
+	static bool warn_socket_affinity = true;
 	static bool warn_udp = true;
 	static bool warn_tcp = true;
 	static bool warn_bg = true;
@@ -869,6 +874,11 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_tcp_reuseport(conf)) {
 		log_warning(msg, &C_TCP_REUSEPORT[1]);
 		warn_tcp_reuseport = false;
+	}
+
+	if (warn_socket_affinity && conf->cache.srv_socket_affinity != conf_socket_affinity(conf)) {
+		log_warning(msg, &C_SOCKET_AFFINITY[1]);
+		warn_socket_affinity = false;
 	}
 
 	if (warn_udp && server->handlers[IO_UDP].size != conf_udp_threads(conf)) {

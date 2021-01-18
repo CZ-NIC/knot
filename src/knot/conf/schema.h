@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -105,6 +105,7 @@
 #define C_SERVER		"\x06""server"
 #define C_SIGNING_THREADS	"\x0F""signing-threads"
 #define C_SINGLE_TYPE_SIGNING	"\x13""single-type-signing"
+#define C_SOCKET_AFFINITY	"\x0F""socket-affinity"
 #define C_SRV			"\x06""server"
 #define C_STATS			"\x0A""statistics"
 #define C_STORAGE		"\x07""storage"

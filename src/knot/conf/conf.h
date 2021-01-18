@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -684,6 +684,24 @@ static inline bool conf_tcp_reuseport(
 	conf_t *conf)
 {
 	return conf_tcp_reuseport_txn(conf, &conf->read_txn);
+}
+
+/*!
+ * Gets the configured setting of the socket affinity switch.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return True if enabled, false otherwise.
+ */
+bool conf_socket_affinity_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline bool conf_socket_affinity(
+	conf_t *conf)
+{
+	return conf_socket_affinity_txn(conf, &conf->read_txn);
 }
 
 /*!
