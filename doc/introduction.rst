@@ -23,7 +23,7 @@ Knot DNS features
 
 DNS features:
 
-* Master and slave operation
+* Primary and secondary server operation
 * Internet class (IN)
 * DNS extension (EDNS0)
 * TCP and UDP protocols

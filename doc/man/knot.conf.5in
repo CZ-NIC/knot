@@ -328,7 +328,7 @@ on FreeBSD). Due to the lack of one shared socket, the server can offer
 higher response rate processing over TCP. However, in the case of
 time\-consuming requests (e.g. zone transfers of a TLD zone), enabled reuseport
 may result in delayed or not being responded client requests. So it is
-advisable to use this option on slave servers.
+advisable to use this option on secondary servers.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
@@ -604,7 +604,7 @@ durability but is generally slower.
 .IP \(bu 2
 \fBasynchronous\fP – The journal database disk synchronization is optimized for
 better performance at the expense of lower database durability in the case of
-a crash. This mode is recommended on slave nodes with many zones.
+a crash. This mode is recommended on secondary servers with many zones.
 .UNINDENT
 .sp
 \fIDefault:\fP robust
@@ -767,7 +767,7 @@ A key name identifier.
 .INDENT 0.0
 .INDENT 3.5
 This value MUST be exactly the same as the name of the TSIG key on the
-opposite master/slave server(s).
+opposite primary/secondary server(s).
 .UNINDENT
 .UNINDENT
 .SS algorithm
@@ -850,8 +850,8 @@ the communication with the remote server.
 \fIDefault:\fP not set
 .SS block\-notify\-after\-transfer
 .sp
-When incoming AXFR/IXFR from this remote (as a master), suppress sending
-NOTIFY messages to all configured slaves.
+When incoming AXFR/IXFR from this remote (as a primary server), suppress
+sending NOTIFY messages to all configured secondary servers.
 .sp
 \fIDefault:\fP off
 .SH ACL SECTION
@@ -1224,7 +1224,8 @@ Zero (aka infinity) value causes no ZSK rollover as a result.
 .SS propagation\-delay
 .sp
 An extra delay added for each key rollover step. This value should be high
-enough to cover propagation of data from the master server to all slaves.
+enough to cover propagation of data from the primary server to all
+secondary servers.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -1250,7 +1251,7 @@ time period is not counted to the signature lifetime.
 .SS rrsig\-refresh
 .sp
 A period how long at least before a signature expiration the signature will be refreshed,
-in order to prevent expired RRSIGs on slaves or resolvers\(aq caches.
+in order to prevent expired RRSIGs on secondary servers or resolvers\(aq caches.
 .sp
 \fIDefault:\fP 7 days
 .SS rrsig\-pre\-refresh
@@ -1503,13 +1504,14 @@ where DDD is corresponding decimal ASCII code.
 \fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.zone
 .SS master
 .sp
-An ordered list of \fI\%references\fP to zone master servers.
+An ordered list of \fI\%references\fP to zone primary servers
+(formerly known as master servers).
 .sp
 \fIDefault:\fP not set
 .SS ddns\-master
 .sp
-A \fI\%reference\fP to zone primary master server.
-If not specified, the first \fI\%master\fP server is used.
+A \fI\%reference\fP to zone primary master. If not specified,
+the first \fI\%master\fP server is used.
 .sp
 \fIDefault:\fP not set
 .SS notify
@@ -1741,7 +1743,7 @@ Use dateserial only if you expect less than 100 updates per day per zone.
 \fIDefault:\fP increment
 .SS refresh\-min\-interval
 .sp
-Forced minimum zone refresh interval to avoid flooding master.
+Forced minimum zone refresh interval to avoid flooding primary server.
 .sp
 \fIDefault:\fP 2
 .SS refresh\-max\-interval
