@@ -322,7 +322,7 @@ on FreeBSD). Due to the lack of one shared socket, the server can offer
 higher response rate processing over TCP. However, in the case of
 time-consuming requests (e.g. zone transfers of a TLD zone), enabled reuseport
 may result in delayed or not being responded client requests. So it is
-advisable to use this option on slave servers.
+advisable to use this option on secondary (slave) servers.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -642,7 +642,7 @@ Possible values:
   durability but is generally slower.
 - ``asynchronous`` – The journal database disk synchronization is optimized for
   better performance at the expense of lower database durability in the case of
-  a crash. This mode is recommended on slave nodes with many zones.
+  a crash. This mode is recommended on secondary (slave) nodes with many zones.
 
 *Default:* robust
 
@@ -812,7 +812,7 @@ A key name identifier.
 
 .. NOTE::
    This value MUST be exactly the same as the name of the TSIG key on the
-   opposite master/slave server(s).
+   opposite primary/secondary (formerly master and slave) server(s).
 
 .. _key_algorithm:
 
@@ -908,8 +908,8 @@ the communication with the remote server.
 block-notify-after-transfer
 ---------------------------
 
-When incoming AXFR/IXFR from this remote (as a master), suppress sending
-NOTIFY messages to all configured slaves.
+When incoming AXFR/IXFR from this remote (as a primary/master server), suppress
+sending NOTIFY messages to all configured secondary (slave) servers.
 
 *Default:* off
 
@@ -1327,7 +1327,8 @@ propagation-delay
 -----------------
 
 An extra delay added for each key rollover step. This value should be high
-enough to cover propagation of data from the master server to all slaves.
+enough to cover propagation of data from the primary (master) server to all
+secondary (slave) servers.
 
 .. NOTE::
    Has infuence over ZSK key lifetime.
@@ -1353,7 +1354,7 @@ rrsig-refresh
 -------------
 
 A period how long at least before a signature expiration the signature will be refreshed,
-in order to prevent expired RRSIGs on slaves or resolvers' caches.
+in order to prevent expired RRSIGs on secondary (slave) servers' or resolvers' caches.
 
 *Default:* 7 days
 
@@ -1640,7 +1641,8 @@ It is also possible to use the following formatters:
 master
 ------
 
-An ordered list of :ref:`references<remote_id>` to zone master servers.
+An ordered list of :ref:`references<remote_id>` to zone primary servers
+(formerly known as master servers).
 
 *Default:* not set
 
@@ -1649,8 +1651,8 @@ An ordered list of :ref:`references<remote_id>` to zone master servers.
 ddns-master
 -----------
 
-A :ref:`reference<remote_id>` to zone primary master server.
-If not specified, the first :ref:`master<zone_master>` server is used.
+A :ref:`reference<remote_id>` to zone primary master. If not specified,
+the first :ref:`master<zone_master>` server is used.
 
 *Default:* not set
 
@@ -1892,7 +1894,7 @@ Possible values:
 refresh-min-interval
 --------------------
 
-Forced minimum zone refresh interval to avoid flooding master.
+Forced minimum zone refresh interval to avoid flooding primary (master) server.
 
 *Default:* 2
 

@@ -81,22 +81,25 @@ Actions
 
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For
-  slave zone, the refresh from a master server is scheduled; for master zone,
-  the notification of slave servers is scheduled. An open zone transaction
-  will be aborted! If invoked with the force option, also zone modules will be
-  re-loaded, but blocking mode might not work reliably. (#)
+  secondary (slave) zone, the refresh from a primary (master) server is scheduled;
+  for primary zone, the notification of secondary servers is scheduled. An open
+  zone transaction will be aborted! If invoked with the force option, also zone
+  modules will be re-loaded, but blocking mode might not work reliably. (#)
 
 **zone-refresh** [*zone*...]
-  Trigger a check for the zone serial on the zone's master. If the master has a
-  newer zone, a transfer is scheduled. This command is valid for slave zones. (#)
+  Trigger a check for the zone serial on the zone's primary (master) server. If
+  the primary server has a newer zone, a transfer is scheduled. This command is
+  valid for secondary (slave) zones. (#)
 
 **zone-retransfer** [*zone*...]
-  Trigger a zone transfer from the zone's master. The server doesn't check the
-  serial of the master's zone. This command is valid for slave zones. (#)
+  Trigger a zone transfer from the zone's primary (master) server. The server
+  doesn't check the serial of the primary server's zone. This command is valid
+  for secondary (slave) zones. (#)
 
 **zone-notify** [*zone*...]
   Trigger a NOTIFY message to all configured remotes. This can help in cases
-  when previous NOTIFY had been lost or the slaves offline. (#)
+  when previous NOTIFY had been lost or the secondary (slave) servers have been
+  offline. (#)
 
 **zone-flush** [*zone*...] [**+outdir** *directory*]
   Trigger a zone journal flush to the configured zone file. If an output
@@ -285,8 +288,8 @@ Get the list of the current zones
 
   $ knotc conf-read zone.domain
 
-Get the master remotes for the example.com zone
-...............................................
+Get the primary (master) servers for the example.com zone
+.........................................................
 
 ::
 

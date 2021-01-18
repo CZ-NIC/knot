@@ -88,9 +88,10 @@ Commands
   The salt is printed and expected in hexadecimal, or dash if empty.
 
 **local-serial** [*new_serial*]
-  Print SOA serial stored in KASP database when using on-slave DNSSEC signing. If *new_serial* is specified,
-  the serial is overwritten. After updating the serial, expire the zone (**zone-purge +expire +zonefile +journal**)
-  if the server is running, or remove corresponding zone file and journal contents if the server is stopped.
+  Print SOA serial stored in KASP database when using on-secondary (on-slave) DNSSEC signing.
+  If *new_serial* is specified, the serial is overwritten. After updating the serial, expire the zone
+  (**zone-purge +expire +zonefile +journal**) if the server is running, or remove corresponding zone file
+  and journal contents if the server is stopped.
 
 **set** *key_spec* [*arguments*...]
   Changes a timing argument (or ksk/zsk) of an existing key to a new value. *Key_spec* is either the

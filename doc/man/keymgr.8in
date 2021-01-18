@@ -115,9 +115,10 @@ Prints the current NSEC3 salt used for signing. If \fInew_salt\fP is specified, 
 The salt is printed and expected in hexadecimal, or dash if empty.
 .TP
 \fBlocal\-serial\fP [\fInew_serial\fP]
-Print SOA serial stored in KASP database when using on\-slave DNSSEC signing. If \fInew_serial\fP is specified,
-the serial is overwritten. After updating the serial, expire the zone (\fBzone\-purge +expire +zonefile +journal\fP)
-if the server is running, or remove corresponding zone file and journal contents if the server is stopped.
+Print SOA serial stored in KASP database when using on\-secondary (on\-slave) DNSSEC signing.
+If \fInew_serial\fP is specified, the serial is overwritten. After updating the serial, expire the zone
+(\fBzone\-purge +expire +zonefile +journal\fP) if the server is running, or remove corresponding zone file
+and journal contents if the server is stopped.
 .TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
 Changes a timing argument (or ksk/zsk) of an existing key to a new value. \fIKey_spec\fP is either the

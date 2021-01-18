@@ -159,15 +159,15 @@ See the following examples and :ref:`ACL section`.
 .. TIP::
    In order to restrict regular DNS queries, use module :ref:`queryacl<mod-queryacl>`.
 
-Slave zone
-==========
+Secondary (slave) zone
+=======================
 
-Knot DNS doesn't strictly differ between master and slave zones. The
-only requirement is to have a :ref:`master<zone_master>` statement set for
-the given zone. Also note that you need to explicitly allow incoming zone
-changed notifications via ``notify`` :ref:`acl_action` through a zone's
-:ref:`zone_acl` list, otherwise the update will be rejected by the server.
-If the zone file doesn't exist it will be bootstrapped over AXFR::
+Knot DNS doesn't strictly differ between primary (formerly known as master)
+and secondary (formerly known as slave) zones. The only requirement for a secondary
+zone is to have a :ref:`master<zone_master>` statement set. Also note that you need
+to explicitly allow incoming zone changed notifications via ``notify`` :ref:`acl_action`
+through a zone's :ref:`zone_acl` list, otherwise the update will be rejected by the
+server. If the zone file doesn't exist it will be bootstrapped over AXFR::
 
     remote:
       - id: master
@@ -222,8 +222,8 @@ independent::
    * Shorten TIME_WAIT timeout (tcp_fin_timeout)
    * Increase available local port count
 
-Master zone
-===========
+Primary (master) zone
+=====================
 
 An ACL with the ``transfer`` action must be configured to allow outgoing zone
 transfers. An ACL rule consists of a single address or a network subnet::
@@ -270,7 +270,7 @@ Optionally, a TSIG key can be specified::
         address: 192.168.3.0/24
         action: transfer
 
-Note that a slave zone may serve as a master zone at the same time::
+Note that a secondary zone may serve as a primary zone at the same time::
 
     remote:
       - id: master
@@ -303,11 +303,11 @@ Dynamic updates
 ===============
 
 Dynamic updates for the zone are allowed via proper ACL rule with the
-``update`` action. If the zone is configured as a slave and a DNS update
+``update`` action. If the zone is configured as a secondary and a DNS update
 message is accepted, the server forwards the message to its primary master.
-The master's response is then forwarded back to the originator.
+The primary master's response is then forwarded back to the originator.
 
-However, if the zone is configured as a master, the update is accepted and
+However, if the zone is configured as a primary, the update is accepted and
 processed::
 
     acl:
@@ -431,7 +431,7 @@ desired (finite) lifetime for KSK: ::
 After the initially-generated KSK reaches its lifetime, new KSK is published and after
 convenience delay the submission is started. The server publishes CDS and CDNSKEY records
 and the user shall propagate them to the parent. The server periodically checks for
-DS at the master and when positive, finishes the rollover.
+DS at the primary (master) server and when positive, finishes the rollover.
 
 To share KSKs among zones, set the ksk-shared policy parameter. It is strongly discouraged to
 change the policy ``id`` afterwards! The shared key's creation timestamp will be equal for all
@@ -558,24 +558,24 @@ DNSSEC re-sign will happen.
 
 .. _dnssec-on-slave-signing:
 
-On-slave signing
-----------------
+On-secondary signing (formerly on-slave signing)
+------------------------------------------------
 
-It is possible to enable automatic DNSSEC zone signing even on a slave
+It is possible to enable automatic DNSSEC zone signing even on a secondary
 server. If enabled, the zone is signed after every AXFR/IXFR transfer
-from master, so that the slave always serves a signed up-to-date version
+from primary, so that the seondary always serves a signed up-to-date version
 of the zone.
 
-It is strongly recommended to block any outside access to the master
-server, so that only the slave's signed version of the zone is served.
+It is strongly recommended to block any outside access to the primary
+server, so that only the secondary server's signed version of the zone is served.
 
-Enabled on-slave signing introduces events when the slave zone changes
-while the master zone remains unchanged, such as a key rollover or
+Enabled on-secondary signing introduces events when the secondary zone changes
+while the primary zone remains unchanged, such as a key rollover or
 refreshing of RRSIG records, which cause inequality of zone SOA serial
-between master and slave. The slave server handles this by saving the
-master's SOA serial in a special variable inside KASP DB and appropriately
+between primary and secondary. The secondary server handles this by saving the
+primary's SOA serial in a special variable inside KASP DB and appropriately
 modifying AXFR/IXFR queries/answers to keep the communication with
-master consistent while applying the changes with a different serial.
+primary server consistent while applying the changes with a different serial.
 
 .. _catalog-zones:
 
@@ -584,19 +584,19 @@ Catalog zones
 
 Catalog zones are a concept whereby a list of zones to be configured is maintained
 as contents of a separate, special zone. This approach has the benefit of simple
-propagation of a zone list to slave servers, especially when the list is
+propagation of a zone list to secondary (slave) servers, especially when the list is
 frequently updated. Currently, catalog zones are described in this `Internet Draft
 <https://tools.ietf.org/html/draft-ietf-dnsop-dns-catalog-zones>`_.
 
 Terminology first. *Catalog zone* is a meta-zone which shall not be a part
 of the DNS tree, but it contains information about the set of member zones and
-is transferable to slaves using common AXFR/IXFR techniques.
+is transferable to secondary server using common AXFR/IXFR techniques.
 *Catalog-member zone* (or just *member zone*) is a zone based on
 information from the catalog zone and not from configuration file/database.
 
 A catalog zone is handled almost in the same way as a regular zone:
 It can be configured using all the standard options (but for example
-DNSSEC signing would be useless), including master/slave configuration
+DNSSEC signing would be useless), including primary/secondary configuration
 and ACLs. A catalog zone is indicated by setting the option
 :ref:`zone_catalog-role`. The difference is that standard DNS
 queries to a catalog zone are answered with REFUSED as though the zone
@@ -629,10 +629,10 @@ where the mentioned group of labels shall match:
 - *<catalog-zone>* — Name of the catalog zone.
 
 All records other than PTR are ignored. They remain in the catalog
-zone, however, and might be for example transferred to a slave, which may interpret
-catalog zones differently. SOA still needs to be present in the catalog zone
-and its serial handled appropriately. An apex NS record should be present
-for the sake of interoperability. The version record ``version 0 IN TXT "2"``
+zone, however, and might be for example transferred to a secondary (slave) server,
+which may interpret catalog zones differently. SOA still needs to be present in
+the catalog zone and its serial handled appropriately. An apex NS record should be
+present for the sake of interoperability. The version record ``version 0 IN TXT "2"``
 is required at the catalog zone apex.
 
 A catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,

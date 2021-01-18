@@ -171,21 +171,21 @@ An example of possible configuration initialization::
     $ knotc conf-diff
     $ knotc conf-commit
 
-.. _Running a slave server:
+.. _Running a secondary (slave) server:
 
-Slave mode
-==========
+Secondary mode (formerly called a slave mode)
+=============================================
 
-Running the server as a slave is very straightforward as you usually
-bootstrap zones over AXFR and thus avoid any manual zone operations.
+Running the server as a secondary server is very straightforward as you
+usually bootstrap zones over AXFR and thus avoid any manual zone operations.
 In contrast to AXFR, when the incremental transfer finishes, it stores
 the differences in the journal file and doesn't update the zone file
 immediately but after the :ref:`zone_zonefile-sync` period elapses.
 
-.. _Running a master server:
+.. _Running a primary (master) server:
 
-Master mode
-===========
+Primary mode (formerly called a master mode)
+============================================
 
 If you just want to check the zone files before starting, you can use::
 
@@ -381,8 +381,8 @@ Keep the zone file updated::
 These are default values. The user can always check the current zone
 contents in the zone file, and also modify it (recommended with server turned-off or
 taking the :ref:`safe way<Editing zone file>`). The journal serves here just as a source of
-history for slaves' IXFR. Some users dislike that the server overwrites their prettily
-prepared zone file.
+history for secondary servers' IXFR. Some users dislike that the server overwrites their
+prettily prepared zone file.
 
 Example 2
 ---------
@@ -397,7 +397,7 @@ Zone contents are stored only in the journal. The zone is updated by DDNS,
 zone transfer, or via the control interface. The user might have filled the
 zone contents initially from a zone file by setting :ref:`zone_zonefile-load` to
 `whole` temporarily.
-It's also a good setup for slaves. Anyway, it's recommended to carefully tune
+It's also a good setup for secondary servers. Anyway, it's recommended to carefully tune
 the journal-size-related options to avoid surprises like the journal getting full.
 
 Example 3
@@ -930,7 +930,7 @@ restarting the server. This can be done with::
 
     $ knotc reload
 
-If you want to refresh the slave zones, you can do this with::
+If you want to refresh the secondary server's zones, you can do this with::
 
     $ knotc zone-refresh
 
@@ -1021,7 +1021,7 @@ of obsolete signing keys.
    :ref:`propagation-delay <policy_propagation-delay>` to the sum of:
 
    - The maximum delay between beginning of the zone signing and publishing
-     re-signed zone on all public slave servers.
+     re-signed zone on all public secondary (slave) servers.
    - How long it takes for the backup server to start up with the restored data.
    - The period between taking backup snapshots of the live environment.
 
