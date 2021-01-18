@@ -14,18 +14,18 @@ database:
     storage: "@storage_dir@"
 
 remote:
-#  - id: slave
+#  - id: secondary
 #    address: 192.168.1.1@53
 #
-#  - id: master
+#  - id: primary
 #    address: 192.168.2.1@53
 
 acl:
-#  - id: acl_slave
+#  - id: acl_secondary
 #    address: 192.168.1.1
 #    action: transfer
 
-#  - id: acl_master
+#  - id: acl_primary
 #    address: 192.168.2.1
 #    action: notify
 
@@ -35,12 +35,12 @@ template:
     file: "%s.zone"
 
 zone:
-#    # Master zone
+#    # Primary zone
 #  - domain: example.com
-#    notify: slave
-#    acl: acl_slave
+#    notify: secondary
+#    acl: acl_secondary
 
-#    # Slave zone
+#    # Secondary zone
 #  - domain: example.net
-#    master: master
-#    acl: acl_master
+#    master: primary
+#    acl: acl_primary
