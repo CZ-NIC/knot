@@ -1,3 +1,24 @@
+Knot DNS 3.0.4 (2021-01-20)
+===========================
+
+Improvements:
+-------------
+ - Sockets to CPUs binding is no longer enabled by default but can be enabled
+   via new configuration option 'server.socket-affinity'
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - DNS queries without EDNS to the root zone apex are dropped in the XDP mode
+ - Deterministic ECDSA signing leaks memory
+ - Zone not stored to journal if zonefile-load isn't ZONEFILE_LOAD_WHOLE
+ - Server crashes if the catalog zone isn't configured for registered member zones
+ - Server crashes when loading conflicting catalog member zones
+ - CNAME and DNAME records below delegation are not ignored #713
+ - Not all udp/tcp workers are used if the number of NIC queues is lower than
+   the number of udp/tcp workers
+ - Failed to load statistics and geoip modules if built as shared
+
 Knot DNS 3.0.3 (2020-12-15)
 ===========================
 
