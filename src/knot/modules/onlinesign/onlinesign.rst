@@ -57,8 +57,7 @@ a DNSSEC validating resolver.
   types. This is an implementation shortcoming as the dynamic modules
   cooperate loosely. Possible synthesis of a type by other module cannot
   be predicted. This dissimilarity should not affect response validation,
-  even with validators performing `aggressive negative caching
-  <https://datatracker.ietf.org/doc/draft-fujiwara-dnsop-nsec-aggressiveuse/>`_.
+  even with validators performing aggressive negative caching (:rfc:`8198`).
 
 .. rubric:: Recommendations:
 
