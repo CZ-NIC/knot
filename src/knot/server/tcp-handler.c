@@ -32,7 +32,7 @@
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"
-#include "knot/common/epoll_set.h"
+#include "knot/common/aioset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "contrib/macros.h"
@@ -50,7 +50,7 @@ typedef struct tcp_context {
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
-	epoll_set_t set;                 /*!< Set of server/client sockets. */
+	aioset_t set;                 /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
@@ -76,11 +76,11 @@ static void update_tcp_conf(tcp_context_t *tcp)
 }
 
 /*! \brief Sweep TCP connection. */
-static enum epoll_set_sweep_state tcp_sweep(epoll_set_t *set, int i, void *data)
+static enum epoll_set_sweep_state tcp_sweep(aioset_t *set, int i, void *data)
 {
 	UNUSED(data);
 	assert(set && i < set->n && i >= 0);
-	int fd = set->ev[i].data.fd;
+	int fd = set->ev[i].aio_fildes;
 
 	/* Best-effort, name and shame. */
 	struct sockaddr_storage ss;
@@ -118,7 +118,7 @@ static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, in
 }
 
 static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
-                               epoll_set_t *fds, int thread_id)
+                               aioset_t *fds, int thread_id)
 {
 	if (n_ifaces == 0) {
 		return 0;
@@ -140,7 +140,7 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 			tcp_id = thread_id - i->fd_udp_count;
 		}
 #endif
-		epoll_set_add(fds, i->fd_tcp[tcp_id], POLLIN, NULL);
+		aioset_add(fds, i->fd_tcp[tcp_id], POLLIN, NULL);
 	}
 
 	return fds->n;
@@ -216,28 +216,28 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
 {
 	/* Accept client. */
-	int fd = tcp->set.ev[i].data.fd;
+	int fd = tcp->set.ev[i].aio_fildes;
 	int client = net_accept(fd, NULL);
 	if (client >= 0) {
 		/* Assign to fdset. */
-		int next_id = epoll_set_add(&tcp->set, client, POLLIN, NULL);
+		int next_id = aioset_add(&tcp->set, client, POLLIN, NULL);
 		if (next_id < 0) {
 			close(client);
 			return;
 		}
 
 		/* Update watchdog timer. */
-		epoll_set_set_watchdog(&tcp->set, next_id, tcp->idle_timeout);
+		aioset_set_watchdog(&tcp->set, next_id, tcp->idle_timeout);
 	}
 }
 
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 {
-	int fd = tcp->set.ev[i].data.fd;
+	int fd = tcp->set.ev[i].aio_fildes;
 	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
-		epoll_set_set_watchdog(&tcp->set, i, tcp->idle_timeout);
+		aioset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
 	}
 
 	return ret;
@@ -245,35 +245,40 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 
 static void tcp_wait_for_events(tcp_context_t *tcp)
 {
-	epoll_set_t *set = &tcp->set;
+	aioset_t *set = &tcp->set;
 
 	/* Check if throttled with many open TCP connections. */
 	assert(set->n <= tcp->max_worker_fds);
 	tcp->is_throttled = set->n == tcp->max_worker_fds;
 
 	/* Wait for events. */
-	struct epoll_event events[set->n];
-	int nfds = epoll_wait(set->epoll_fd, events, set->n, TCP_SWEEP_INTERVAL * 1000);
+	struct io_event events[set->n];
+	struct timespec timeout = {
+		.tv_nsec = 0,
+		.tv_sec = TCP_SWEEP_INTERVAL
+	};
+	int nfds = aioset_wait(set, events, set->n, &timeout);
 
 	/* Mark the time of last poll call. */
 	tcp->last_poll_time = time_now();
 
 	/* Process events. */
-	for (struct epoll_event *it = events; nfds > 0; ++it) {
+	for (struct io_event *it = events; nfds > 0; ++it) {
+		struct iocb *dit = (struct iocb *)it->obj;
 		bool should_close = false;
-		if (it->events & (POLLERR|POLLHUP|POLLNVAL)) {
-			should_close = (it->data.u64 >= tcp->client_threshold);
+		if (dit->aio_buf & (POLLERR|POLLHUP|POLLNVAL)) {
+			should_close = (dit - set->ev >= tcp->client_threshold);
 			--nfds;
-		} else if (it->events & (POLLIN)) {
+		} else if (dit->aio_buf & (POLLIN)) {
 			/* Master sockets - new connection to accept. */
-			if (it->data.u64 < tcp->client_threshold) {
+			if (dit - set->ev < tcp->client_threshold) {
 				/* Don't accept more clients than configured. */
 				if (set->n < tcp->max_worker_fds) {
-					tcp_event_accept(tcp, it->data.u64);
+					tcp_event_accept(tcp, dit - set->ev);
 				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
-			} else if (tcp_event_serve(tcp, it->data.u64) != KNOT_EOK) {
+			} else if (tcp_event_serve(tcp, dit - set->ev) != KNOT_EOK) {
 				should_close = true;
 			}
 			--nfds;
@@ -281,8 +286,8 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
-			close(set->ev[it->data.u64].data.fd);
-			epoll_set_remove(set, it->data.u64);
+			close(dit->aio_fildes);
+			aioset_remove(set, dit - set->ev);
 		}
 	}
 }
@@ -322,7 +327,7 @@ int tcp_master(dthread_t *thread)
 	knot_layer_init(&tcp.layer, &mm, process_query_layer());
 
 	/* Prepare initial buffer for listening and bound sockets. */
-	epoll_set_init(&tcp.set, FDSET_INIT_SIZE);
+	aioset_init(&tcp.set, FDSET_INIT_SIZE);
 
 	/* Create iovec abstraction. */
 	for (unsigned i = 0; i < 2; ++i) {
@@ -358,7 +363,7 @@ int tcp_master(dthread_t *thread)
 
 		/* Sweep inactive clients and refresh TCP configuration. */
 		if (tcp.last_poll_time.tv_sec >= next_sweep.tv_sec) {
-			epoll_set_sweep(&tcp.set, &tcp_sweep, NULL);
+			aioset_sweep(&tcp.set, &tcp_sweep, NULL);
 			update_sweep_timer(&next_sweep);
 			update_tcp_conf(&tcp);
 		}
@@ -368,8 +373,8 @@ finish:
 	free(tcp.iov[0].iov_base);
 	free(tcp.iov[1].iov_base);
 	mp_delete(mm.ctx);
-	epoll_set_close(&tcp.set);
-	epoll_set_clear(&tcp.set);
+	aioset_close(&tcp.set);
+	aioset_clear(&tcp.set);
 
 	return ret;
 }

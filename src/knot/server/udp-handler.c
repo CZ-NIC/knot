@@ -38,7 +38,7 @@
 #include "knot/query/layer.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
-#include "knot/common/epoll_set.h"
+#include "knot/common/aioset.h"
 
 /* Buffer identifiers. */
 enum {
@@ -500,7 +500,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 	}
 }
 
-static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, epoll_set_t *fds,
+static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, aioset_t *fds,
                                int thread_id, void **xdp_socket)
 {
 	if (n_ifaces == 0) {
@@ -517,7 +517,7 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, epoll_set
 		if (fd < 0) {
 			continue;
 		}
-		epoll_set_add(fds, fd, POLLIN, NULL);
+		aioset_add(fds, fd, POLLIN, NULL);
 		count++;
 	}
 
@@ -576,8 +576,8 @@ int udp_master(dthread_t *thread)
 	/* Allocate descriptors for the configured interfaces. */
 	void *xdp_socket = NULL;
 	size_t nifs = handler->server->n_ifaces;
-	epoll_set_t epollset;
-	epoll_set_init(&epollset, nifs);
+	aioset_t epollset;
+	aioset_init(&epollset, nifs);
 	unsigned fds = udp_set_ifaces(handler->server->ifaces, nifs, &epollset,
 	                               thread_id, &xdp_socket);
 	if (fds == 0) {
@@ -592,8 +592,8 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Wait for events. */
-		struct epoll_event events[epollset.n];
-		int nfds = epoll_wait(epollset.epoll_fd, events, epollset.n, -1);
+		struct io_event events[epollset.n];
+		int nfds = aioset_wait(&epollset, events, epollset.n, NULL);
 		if (nfds < 0) {
 			if (errno == EINTR || errno == EAGAIN) {
 				continue;
@@ -602,8 +602,9 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Process the events. */
-		for (struct epoll_event *it = events; nfds > 0; ++it) {
-			if (api->udp_recv(epollset.ev[it->data.u64].data.fd, rq, xdp_socket) > 0) {
+		for (struct io_event *it = events; nfds > 0; ++it) {
+			struct iocb *dit = (struct iocb *)it->obj;
+			if (api->udp_recv(dit->aio_fildes, rq, xdp_socket) > 0) {
 				api->udp_handle(&udp, rq, xdp_socket);
 				api->udp_send(rq, xdp_socket);
 			}
@@ -614,8 +615,8 @@ int udp_master(dthread_t *thread)
 finish:
 	api->udp_deinit(rq);
 	mp_delete(mm.ctx);
-	epoll_set_close(&epollset);
-	epoll_set_clear(&epollset);
+	aioset_close(&epollset);
+	aioset_clear(&epollset);
 
 	return KNOT_EOK;
 }
