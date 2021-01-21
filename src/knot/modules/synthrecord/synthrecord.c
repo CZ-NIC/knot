@@ -258,7 +258,7 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 		memset(((uint8_t *)blocks) + buf6_len, 0x30, sizeof(blocks) - buf6_len);
 
 		for (int i = 0; i < 8; i++) {
-			addr_block_t *block = &blocks[7 - i];
+			addr_block_t *block = &blocks[i];
 
 			/* The Unicode string MUST NOT contain "--" in the third and fourth
 			   character positions and MUST NOT start or end with a "-".
@@ -273,21 +273,16 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 			                      0 0 0
 			                      0 0
 			 */
-			if (!tpl->reverse_short || i < 2 || i > 5) {
-				continue;
-			}
 			const uint64_t *bi_block = (const uint64_t *)block;
 			// Check for trailing zero dual-blocks.
-			if (*bi_block == 0x3030303030303030ULL) {
-				if (compr_end == -1) { // Set compression end.
-					compr_end = 8 - i;
-				} else if (i == 5 && compr_start == -1) { // Set max compression start.
-					compr_start = 7 - i;
+			if (tpl->reverse_short && i > 1 && i < 6 &&
+			    *bi_block == 0x3030303030303030ULL) {
+				if (compr_start == -1) {
+					compr_start = i;
 				}
 			} else {
-				// Set compression start.
-				if (compr_end != -1 && compr_start == -1) {
-					compr_start = 8 - i;
+				if (compr_start != -1 && compr_end == -1) {
+					compr_end = i;
 				}
 			}
 		}
