@@ -168,8 +168,7 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 	for (int i = 0; i < npkts; i++) {
 		int ret = knot_xdp_send_alloc(xsk, flags, &pkts[i]);
 		if (ret != KNOT_EOK) {
-			knot_xdp_send_free(xsk, pkts, i);
-			return ret;
+			return i;
 		}
 
 		uint16_t local_port = LOCAL_PORT_MIN + unique % (LOCAL_PORT_MAX + 1 - LOCAL_PORT_MIN);
@@ -188,7 +187,7 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 
 		unique++;
 	}
-	return KNOT_EOK;
+	return npkts;
 }
 
 inline static bool check_dns_payload(struct iovec *payl, xdp_gun_ctx_t *ctx,
@@ -241,30 +240,32 @@ void *xdp_gun_thread(void *_ctx)
 		if (duration < ctx->duration) {
 			while (1) {
 				knot_xdp_send_prepare(xsk);
-				ret = alloc_pkts(pkts, ctx->at_once, xsk, ctx, tick);
-				if (ret != KNOT_EOK) {
+				int alloced = alloc_pkts(pkts, ctx->at_once, xsk, ctx, tick);
+				if (alloced < ctx->at_once) {
 					errors++;
-					break;
+					if (alloced == 0) {
+						break;
+					}
 				}
 
 				if (ctx->tcp) {
-					for (unsigned i = 0; i < ctx->at_once; i++) {
+					for (int i = 0; i < alloced; i++) {
 						pkts[i].payload.iov_len = 0;
 					}
 				} else {
-					for (unsigned i = 0; i < ctx->at_once; i++) {
-						put_dns_payload(&pkts[i].payload, false, ctx, &payload_ptr);
+					for (int i = 0; i < alloced; i++) {
+						put_dns_payload(&pkts[i].payload, false,
+						                ctx, &payload_ptr);
 					}
 				}
 
 				uint32_t really_sent = 0;
-				ret = knot_xdp_send(xsk, pkts, ctx->at_once,
-				                    &really_sent);
+				ret = knot_xdp_send(xsk, pkts, alloced, &really_sent);
 				if (ret != KNOT_EOK) {
 					errors++;
 					break;
 				}
-				assert(really_sent == ctx->at_once);
+				assert(really_sent == alloced);
 				tot_sent += really_sent;
 
 				ret = knot_xdp_send_finish(xsk);
@@ -337,7 +338,7 @@ void *xdp_gun_thread(void *_ctx)
 
 					tcprelay_dynarray_free(&relays);
 				} else {
-					for (unsigned i = 0; i < recvd; i++) {
+					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx, &tot_ans, &tot_size);
 					}
 				}
