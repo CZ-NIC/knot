@@ -4,6 +4,7 @@
 
 from dnstest.test import Test
 from dnstest.module import ModSynthRecord
+import re
 
 t = Test()
 
@@ -97,6 +98,13 @@ for (addr, reverse, forward) in dynamic_map:
     resp.check(nordata=forward, rcode="SERVFAIL")
     resp = knot.dig(forward, "TXT", dnssec=True)
     resp.check(nordata=addr, rcode="SERVFAIL")
+
+# Check NODATA on resulting empty-non-terminals
+for (_, reverse, forward) in dynamic_map + reverse_extra:
+    while knot.dig(reverse, "SOA").count("SOA") < 1: # until we hit zone apex
+        reverse = re.sub(r'^[^.]*\.', '', reverse) # cut out the leftmost label
+        resp = knot.dig(reverse, "PTR")
+        resp.check(nordata=forward, rcode="NOERROR", flags="QR AA", ttl=172800)
 
 # Check "out of subnet range" query response
 nxdomain_map = [ ("192.168.1.128", "128." + zone[REV4].name, "dynamic-192-168-1-128." + zone[FWD].name),
