@@ -34,6 +34,7 @@
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
+#include "knot/common/apoll.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "knot/server/server.h"
@@ -498,7 +499,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 	}
 }
 
-static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, struct pollfd *fds,
+static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, apoll_t *fds,
                                int thread_id, void **xdp_socket)
 {
 	if (n_ifaces == 0) {
@@ -515,9 +516,7 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, struct po
 		if (fd < 0) {
 			continue;
 		}
-		fds[count].fd = fd;
-		fds[count].events = POLLIN;
-		fds[count].revents = 0;
+		apoll_add(fds, fd, APOLL_POLLIN, NULL);
 		count++;
 	}
 
@@ -576,10 +575,11 @@ int udp_master(dthread_t *thread)
 	/* Allocate descriptors for the configured interfaces. */
 	void *xdp_socket = NULL;
 	size_t nifs = handler->server->n_ifaces;
-	struct pollfd fds[nifs];
-	unsigned nfds = udp_set_ifaces(handler->server->ifaces, nifs, fds,
-	                               thread_id, &xdp_socket);
-	if (nfds == 0) {
+	apoll_t fds;
+	apoll_init(&fds, nifs);
+	unsigned fds_count = udp_set_ifaces(handler->server->ifaces, nifs, &fds,
+	                                    thread_id, &xdp_socket);
+	if (fds_count == 0) {
 		goto finish;
 	}
 
@@ -591,8 +591,9 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Wait for events. */
-		int events = poll(fds, nfds, -1);
-		if (events <= 0) {
+		apoll_it_t it;
+		int ret = apoll_poll(&fds, &it, 0, -1);
+		if (ret <= 0) {
 			if (errno == EINTR || errno == EAGAIN) {
 				continue;
 			}
@@ -600,12 +601,8 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Process the events. */
-		for (unsigned i = 0; i < nfds && events > 0; i++) {
-			if (fds[i].revents == 0) {
-				continue;
-			}
-			events -= 1;
-			if (api->udp_recv(fds[i].fd, rq, xdp_socket) > 0) {
+		for(; !apoll_it_done(&it); apoll_it_next(&it)) {
+			if (api->udp_recv(apoll_it_get_fd(&it), rq, xdp_socket) > 0) {
 				api->udp_handle(&udp, rq, xdp_socket);
 				api->udp_send(rq, xdp_socket);
 			}
@@ -615,6 +612,8 @@ int udp_master(dthread_t *thread)
 finish:
 	api->udp_deinit(rq);
 	mp_delete(mm.ctx);
+	apoll_close(&fds);
+	apoll_clear(&fds);
 
 	return KNOT_EOK;
 }
