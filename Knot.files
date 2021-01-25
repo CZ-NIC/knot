@@ -108,6 +108,9 @@ src/knot/catalog/generate.c
 src/knot/catalog/generate.h
 src/knot/catalog/interpret.c
 src/knot/catalog/interpret.h
+src/knot/common/apoll.h
+src/knot/common/epoll_ctx.c
+src/knot/common/epoll_ctx.h
 src/knot/common/evsched.c
 src/knot/common/evsched.h
 src/knot/common/fdset.c
