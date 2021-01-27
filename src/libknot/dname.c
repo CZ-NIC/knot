@@ -740,25 +740,27 @@ uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t storage)
 		return NULL;
 	}
 
-	/* Writing from the end. */
-	storage[KNOT_DNAME_MAXLEN - 1] = '\0';
-	size_t idx = KNOT_DNAME_MAXLEN - 1;
+	const knot_dname_t *rdp = src, *nxtrdlab = src;
+	uint8_t *wrp, *prevwrlab = storage + KNOT_DNAME_MAXLEN - 1;
 
-	while (*src != 0) {
-		size_t len = *src + 1;
+	while (1) {
+		if (rdp == nxtrdlab) {
+			if (*rdp == 0) {
+				break;
+			}
+			*prevwrlab = '\0';
+			wrp = prevwrlab - *rdp;
+			prevwrlab = wrp - 1;
+			assert(prevwrlab >= storage);
 
-		assert(idx >= len);
-		idx -= len;
-		memcpy(&storage[idx], src, len);
-		storage[idx] = '\0';
-
-		src += len;
+			rdp++;
+			nxtrdlab = rdp + *nxtrdlab;
+		}
+		*wrp++ = *rdp++;
 	}
 
-	assert(KNOT_DNAME_MAXLEN >= 1 + idx);
-	storage[idx] = KNOT_DNAME_MAXLEN - 1 - idx;
-
-	return &storage[idx];
+	*prevwrlab = storage + KNOT_DNAME_MAXLEN - 1 - prevwrlab;
+	return prevwrlab;
 }
 
 _public_
