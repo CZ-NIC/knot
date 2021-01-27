@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,8 +20,10 @@
 
 extern void udp_master_init_stdio(server_t *server);
 
-void server_reconfigure(conf_t *conf, server_t *server)
+int server_reconfigure(conf_t *conf, server_t *server)
 {
 	orig_server_reconfigure(conf, server);
 	udp_master_init_stdio(server);
+
+	return KNOT_EOK;
 }
