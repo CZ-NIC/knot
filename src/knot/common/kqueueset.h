@@ -22,21 +22,20 @@
 
 #include <stddef.h>
 #include <signal.h>
-#include <sys/epoll.h>
 #include <sys/time.h>
-#include <linux/aio_abi.h>
+#include <sys/event.h>
 
 #define FDSET_INIT_SIZE 256 /* Resize step. */
 
 /*! \brief Set of filedescriptors with associated context and timeouts. */
-typedef struct aioset {
-    aio_context_t ctx;
+typedef struct kqueueset {
+    int ctx;
 	unsigned n;               /*!< Active fds. */
 	unsigned size;            /*!< Array size (allocated). */
-	struct iocb *ev;          /*!< Epoll event storage for each fd */
+	struct kevent *ev;          /*!< Epoll event storage for each fd */
 	void* *usrctx;            /*!< Context for each fd. */
 	time_t *timeout;          /*!< Timeout for each fd (seconds precision). */
-} aioset_t;
+} kqueueset_t;
 
 /*! \brief Mark-and-sweep state. */
 enum epoll_set_sweep_state {
@@ -45,12 +44,12 @@ enum epoll_set_sweep_state {
 };
 
 /*! \brief Sweep callback (set, index, data) */
-typedef enum epoll_set_sweep_state (*epoll_set_sweep_cb_t)(aioset_t*, int, void*);
+typedef enum epoll_set_sweep_state (*epoll_set_sweep_cb_t)(kqueueset_t*, int, void*);
 
 /*!
  * \brief Initialize fdset to given size.
  */
-int aioset_init(aioset_t *set, unsigned size);
+int aioset_init(kqueueset_t *set, unsigned size);
 
 /*!
  * \brief Destroy FDSET.
@@ -58,9 +57,9 @@ int aioset_init(aioset_t *set, unsigned size);
  * \retval 0 if successful.
  * \retval -1 on error.
  */
-int aioset_clear(aioset_t* set);
+int aioset_clear(kqueueset_t* set);
 
-void aioset_close(aioset_t* set);
+void aioset_close(kqueueset_t* set);
 
 /*!
  * \brief Add file descriptor to watched set.
@@ -73,7 +72,7 @@ void aioset_close(aioset_t* set);
  * \retval index of the added fd if successful.
  * \retval -1 on errors.
  */
-int aioset_add(aioset_t *set, int fd, unsigned events, void *ctx);
+int aioset_add(kqueueset_t *set, int fd, unsigned events, void *ctx);
 
 /*!
  * \brief Remove file descriptor from watched set.
@@ -84,9 +83,9 @@ int aioset_add(aioset_t *set, int fd, unsigned events, void *ctx);
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int aioset_remove(aioset_t *set, unsigned i);
+int aioset_remove(kqueueset_t *set, unsigned i);
 
-int aioset_wait(aioset_t *set, struct io_event *ev, size_t ev_size, struct timespec *timeout);
+int aioset_wait(kqueueset_t *set, struct kevent *ev, size_t ev_size, int timeout);
 
 /*!
  * \brief Set file descriptor watchdog interval.
@@ -104,7 +103,7 @@ int aioset_wait(aioset_t *set, struct io_event *ev, size_t ev_size, struct times
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int aioset_set_watchdog(aioset_t* set, int i, int interval);
+int aioset_set_watchdog(kqueueset_t* set, int i, int interval);
 
 /*!
  * \brief Sweep file descriptors with exceeding inactivity period.
@@ -116,4 +115,4 @@ int aioset_set_watchdog(aioset_t* set, int i, int interval);
  * \retval number of sweeped descriptors.
  * \retval -1 on errors.
  */
-int aioset_sweep(aioset_t* set, epoll_set_sweep_cb_t cb, void *data);
+int aioset_sweep(kqueueset_t* set, epoll_set_sweep_cb_t cb, void *data);

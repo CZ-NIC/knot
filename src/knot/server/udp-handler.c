@@ -38,7 +38,7 @@
 #include "knot/query/layer.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
-#include "knot/common/aioset.h"
+#include "knot/common/kqueueset.h"
 
 /* Buffer identifiers. */
 enum {
@@ -500,7 +500,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 	}
 }
 
-static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, aioset_t *fds,
+static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, kqueueset_t *fds,
                                int thread_id, void **xdp_socket)
 {
 	if (n_ifaces == 0) {
@@ -576,7 +576,7 @@ int udp_master(dthread_t *thread)
 	/* Allocate descriptors for the configured interfaces. */
 	void *xdp_socket = NULL;
 	size_t nifs = handler->server->n_ifaces;
-	aioset_t epollset;
+	kqueueset_t epollset;
 	aioset_init(&epollset, nifs);
 	unsigned fds = udp_set_ifaces(handler->server->ifaces, nifs, &epollset,
 	                               thread_id, &xdp_socket);
@@ -592,8 +592,8 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Wait for events. */
-		struct io_event events[epollset.n];
-		int nfds = aioset_wait(&epollset, events, epollset.n, NULL);
+		struct kevent events[epollset.n];
+		int nfds = aioset_wait(&epollset, events, epollset.n, 0);
 		if (nfds < 0) {
 			if (errno == EINTR || errno == EAGAIN) {
 				continue;
@@ -602,9 +602,8 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Process the events. */
-		for (struct io_event *it = events; nfds > 0; ++it) {
-			struct iocb *dit = (struct iocb *)it->obj;
-			if (api->udp_recv(dit->aio_fildes, rq, xdp_socket) > 0) {
+		for (struct kevent *it = events; nfds > 0; ++it) {
+			if (api->udp_recv((int)(intptr_t)it->ident, rq, xdp_socket) > 0) {
 				api->udp_handle(&udp, rq, xdp_socket);
 				api->udp_send(rq, xdp_socket);
 			}

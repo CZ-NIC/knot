@@ -32,7 +32,7 @@
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"
-#include "knot/common/aioset.h"
+#include "knot/common/kqueueset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "contrib/macros.h"
@@ -50,7 +50,7 @@ typedef struct tcp_context {
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
-	aioset_t set;                 /*!< Set of server/client sockets. */
+	kqueueset_t set;                 /*!< Set of server/client sockets. */
 	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
@@ -76,11 +76,11 @@ static void update_tcp_conf(tcp_context_t *tcp)
 }
 
 /*! \brief Sweep TCP connection. */
-static enum epoll_set_sweep_state tcp_sweep(aioset_t *set, int i, void *data)
+static enum epoll_set_sweep_state tcp_sweep(kqueueset_t *set, int i, void *data)
 {
 	UNUSED(data);
 	assert(set && i < set->n && i >= 0);
-	int fd = set->ev[i].aio_fildes;
+	int fd = (int)(intptr_t)set->ev[i].ident;
 
 	/* Best-effort, name and shame. */
 	struct sockaddr_storage ss;
@@ -118,7 +118,7 @@ static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, in
 }
 
 static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
-                               aioset_t *fds, int thread_id)
+                               kqueueset_t *fds, int thread_id)
 {
 	if (n_ifaces == 0) {
 		return 0;
@@ -216,7 +216,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
 {
 	/* Accept client. */
-	int fd = tcp->set.ev[i].aio_fildes;
+	int fd = (int)(intptr_t)tcp->set.ev[i].ident;
 	int client = net_accept(fd, NULL);
 	if (client >= 0) {
 		/* Assign to fdset. */
@@ -233,7 +233,7 @@ static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
 
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 {
-	int fd = tcp->set.ev[i].aio_fildes;
+	int fd = (int)(intptr_t)tcp->set.ev[i].ident;
 	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
@@ -245,40 +245,35 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 
 static void tcp_wait_for_events(tcp_context_t *tcp)
 {
-	aioset_t *set = &tcp->set;
+	kqueueset_t *set = &tcp->set;
 
 	/* Check if throttled with many open TCP connections. */
 	assert(set->n <= tcp->max_worker_fds);
 	tcp->is_throttled = set->n == tcp->max_worker_fds;
 
 	/* Wait for events. */
-	struct io_event events[set->n];
-	struct timespec timeout = {
-		.tv_nsec = 0,
-		.tv_sec = TCP_SWEEP_INTERVAL
-	};
-	int nfds = aioset_wait(set, events, set->n, &timeout);
+	struct kevent events[set->n];
+	int nfds = aioset_wait(set, events, set->n, TCP_SWEEP_INTERVAL);
 
 	/* Mark the time of last poll call. */
 	tcp->last_poll_time = time_now();
 
 	/* Process events. */
-	for (struct io_event *it = events; nfds > 0; ++it) {
-		struct iocb *dit = (struct iocb *)it->obj;
+	for (struct kevent *it = events; nfds > 0; ++it) {
 		bool should_close = false;
-		if (dit->aio_buf & (POLLERR|POLLHUP|POLLNVAL)) {
-			should_close = (dit - set->ev >= tcp->client_threshold);
+		if ((it->filter & EVFILT_READ) == 0) {
+			should_close = ((int)(intptr_t)it->udata >= tcp->client_threshold);
 			--nfds;
-		} else if (dit->aio_buf & (POLLIN)) {
+		} else if (it->filter & EVFILT_READ) {
 			/* Master sockets - new connection to accept. */
-			if (dit - set->ev < tcp->client_threshold) {
+			if ((int)(intptr_t)it->udata < tcp->client_threshold) {
 				/* Don't accept more clients than configured. */
 				if (set->n < tcp->max_worker_fds) {
-					tcp_event_accept(tcp, dit - set->ev);
+					tcp_event_accept(tcp, (int)(intptr_t)it->udata);
 				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
-			} else if (tcp_event_serve(tcp, dit - set->ev) != KNOT_EOK) {
+			} else if (tcp_event_serve(tcp, (int)(intptr_t)it->udata) != KNOT_EOK) {
 				should_close = true;
 			}
 			--nfds;
@@ -286,8 +281,8 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
-			close(dit->aio_fildes);
-			aioset_remove(set, dit - set->ev);
+			close(it->ident);
+			aioset_remove(set, (int)(intptr_t)it->udata);
 		}
 	}
 }
