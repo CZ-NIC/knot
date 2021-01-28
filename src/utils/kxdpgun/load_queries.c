@@ -20,9 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libknot/descriptor.h>
-#include <libknot/dname.h>
 #include "load_queries.h"
+#include <libknot/libknot.h>
 
 #define ERR_PREFIX "failed loading queries "
 
@@ -104,12 +103,12 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 		}
 
 		size_t dname_len = knot_dname_size(bufs->dname);
-		size_t pkt_len = 16 + dname_len;
+		size_t pkt_len = KNOT_WIRE_HEADER_SIZE + 2 * sizeof(uint16_t) + dname_len;
 		if (flags & QFLAG_EDNS) {
-			pkt_len += 11;
+			pkt_len += KNOT_EDNS_MIN_SIZE;
 		}
 
-		struct pkt_payload *pkt = calloc(1, sizeof(void *) + sizeof(size_t) + pkt_len);
+		struct pkt_payload *pkt = calloc(1, sizeof(struct pkt_payload) + pkt_len);
 		if (pkt == NULL) {
 			printf(ERR_PREFIX "(out of memory)\n");
 			goto fail;
@@ -122,9 +121,9 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 		memcpy(pkt->payload + 12, bufs->dname, dname_len);
 		pkt->payload[dname_len + 12] = type >> 8;
 		pkt->payload[dname_len + 13] = type & 0xff;
-		pkt->payload[dname_len + 15] = 0x01; // class IN
+		pkt->payload[dname_len + 15] = KNOT_CLASS_IN;
 		if (flags & QFLAG_EDNS) {
-			pkt->payload[dname_len + 18] = 41; // OPT RRtype
+			pkt->payload[dname_len + 18] = KNOT_RRTYPE_OPT;
 			pkt->payload[dname_len + 19] = edns_size >> 8;
 			pkt->payload[dname_len + 20] = edns_size & 0xff;
 			pkt->payload[dname_len + 23] = (flags & QFLAG_DO) ? 0x80 : 0x00;

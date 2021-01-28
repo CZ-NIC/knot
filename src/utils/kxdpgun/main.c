@@ -63,7 +63,7 @@ unsigned global_cpu_aff_step = 1;
 #define LOCAL_PORT_MIN  2000
 #define LOCAL_PORT_MAX 65535
 
-#define KNOWN_RCODE_MAX (KNOT_RCODE_NOTZONE + 1)
+#define RCODE_MAX (0x0F + 1)
 
 typedef struct {
 	char		dev[IFNAMSIZ];
@@ -80,7 +80,7 @@ typedef struct {
 	uint16_t	target_port;
 	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_*
 	unsigned	n_threads, thread_id;
-	uint64_t	rcode_counts[KNOWN_RCODE_MAX];
+	uint64_t	rcode_counts[RCODE_MAX];
 } xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
@@ -157,7 +157,7 @@ static void put_dns_payload(struct iovec *put_into, bool zero_copy, xdp_gun_ctx_
 	next_payload(payl, ctx->n_threads);
 }
 
-static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *xsk,
+static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
                       xdp_gun_ctx_t *ctx, uint64_t tick)
 {
 	uint64_t unique = (tick * ctx->n_threads + ctx->thread_id) * ctx->at_once;
@@ -167,7 +167,7 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 		flags |= (KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_MSS);
 	}
 
-	for (int i = 0; i < npkts; i++) {
+	for (int i = 0; i < ctx->at_once; i++) {
 		int ret = knot_xdp_send_alloc(xsk, flags, &pkts[i]);
 		if (ret != KNOT_EOK) {
 			return i;
@@ -189,7 +189,7 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 
 		unique++;
 	}
-	return npkts;
+	return ctx->at_once;
 }
 
 inline static bool check_dns_payload(struct iovec *payl, xdp_gun_ctx_t *ctx,
@@ -199,7 +199,7 @@ inline static bool check_dns_payload(struct iovec *payl, xdp_gun_ctx_t *ctx,
 	    memcmp(payl->iov_base, &ctx->msgid, sizeof(ctx->msgid)) != 0) {
 		return false;
 	}
-	ctx->rcode_counts[((uint8_t *)payl->iov_base)[3] & 0xf]++;
+	ctx->rcode_counts[((uint8_t *)payl->iov_base)[3] & 0x0F]++;
 	(*tot_size) += payl->iov_len;
 	(*tot_recv)++;
 	return true;
@@ -247,7 +247,7 @@ void *xdp_gun_thread(void *_ctx)
 		if (duration < ctx->duration) {
 			while (1) {
 				knot_xdp_send_prepare(xsk);
-				int alloced = alloc_pkts(pkts, ctx->at_once, xsk, ctx, tick);
+				int alloced = alloc_pkts(pkts, xsk, ctx, tick);
 				if (alloced < ctx->at_once) {
 					errors++;
 					if (alloced == 0) {
@@ -838,7 +838,7 @@ int main(int argc, char *argv[])
 		printf("average DNS reply size: %lu B\n", global_ans_recv > 0 ? global_size_recv / global_ans_recv : 0);
 		printf("average Ethernet reply rate: %lu bps\n", ps(global_wire_recv * 8));
 
-		for (int i = 0; i < KNOWN_RCODE_MAX; i++) {
+		for (int i = 0; i < RCODE_MAX; i++) {
 			uint64_t rcode_count = 0;
 			for (size_t j = 0; j < ctx.n_threads; j++) {
 				rcode_count += thread_ctxs[j].rcode_counts[i];
