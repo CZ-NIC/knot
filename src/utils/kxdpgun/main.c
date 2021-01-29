@@ -57,6 +57,8 @@ enum {
 
 volatile int xdp_trigger = KXDPGUN_WAIT_START;
 
+volatile unsigned stats_trigger = 0;
+
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
 
@@ -114,6 +116,14 @@ static void sigterm_handler(int signo)
 	xdp_trigger = KXDPGUN_STOP;
 }
 
+static void sigusr_handler(int signo)
+{
+	assert(signo == SIGUSR1);
+	if (global_stats.collected == 0) {
+		stats_trigger++;
+	}
+}
+
 static void clear_stats(kxdpgun_stats_t *st)
 {
 	pthread_mutex_lock(&st->mutex);
@@ -156,29 +166,39 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool recv)
 #define ps(counter)  ((counter) * 1000 / (st->duration / 1000))
 #define pct(counter) ((counter) * 100 / st->qry_sent)
 
-	printf("duration: %lu ms\n", (st->duration / 1000));
-	printf("total %s     %lu (%lu pps)\n", tcp ? "SYN:    " : "queries:", st->qry_sent, ps(st->qry_sent));
+	printf("total %s     %lu (%lu pps)\n",
+	       tcp ? "SYN:    " : "queries:", st->qry_sent, ps(st->qry_sent));
 	if (st->qry_sent > 0 && recv) {
 		if (tcp) {
-		printf("total established: %lu (%lu pps) (%lu%%)\n", st->synack_recv, ps(st->synack_recv), pct(st->synack_recv));
+		printf("total established: %lu (%lu pps) (%lu%%)\n",
+		       st->synack_recv, ps(st->synack_recv), pct(st->synack_recv));
 		}
-		printf("total replies:     %lu (%lu pps) (%lu%%)\n", st->ans_recv, ps(st->ans_recv), pct(st->ans_recv));
+		printf("total replies:     %lu (%lu pps) (%lu%%)\n",
+		       st->ans_recv, ps(st->ans_recv), pct(st->ans_recv));
 		if (tcp) {
-		printf("total closed:      %lu (%lu pps) (%lu%%)\n", st->finack_recv, ps(st->finack_recv), pct(st->finack_recv));
-		printf("total reset:       %lu (%lu pps) (%lu%%)\n", st->rst_recv, ps(st->rst_recv), pct(st->rst_recv));
+		printf("total closed:      %lu (%lu pps) (%lu%%)\n",
+		       st->finack_recv, ps(st->finack_recv), pct(st->finack_recv));
+		printf("total reset:       %lu (%lu pps) (%lu%%)\n",
+		       st->rst_recv, ps(st->rst_recv), pct(st->rst_recv));
 		}
-		printf("average DNS reply size: %lu B\n", st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
-		printf("average Ethernet reply rate: %lu bps (%lu kBps)\n", ps(st->wire_recv * 8), ps(st->wire_recv / 1024));
+		printf("average DNS reply size: %lu B\n",
+		       st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
+		printf("average Ethernet reply rate: %lu bps (%.2f Mbps)\n",
+		       ps(st->wire_recv * 8), ps((float)st->wire_recv * 8 / (1000 * 1000)));
 
 		for (int i = 0; i < RCODE_MAX; i++) {
 			if (st->rcodes_recv[i] > 0) {
 				const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, i);
 				const char *rcname = rcode == NULL ? "unknown" : rcode->name;
 				int space = MAX(9 - strlen(rcname), 0);
-				printf("responded %s: %.*s%lu\n", rcname, space, "         ", st->rcodes_recv[i]);
+				printf("responded %s: %.*s%lu\n",
+				       rcname, space, "         ", st->rcodes_recv[i]);
 			}
 		}
 	}
+	printf("duration: %lu s\n", (st->duration / (1000 * 1000)));
+
+	pthread_mutex_unlock(&st->mutex);
 }
 
 inline static void timer_start(struct timespec *timesp)
@@ -301,6 +321,7 @@ void *xdp_gun_thread(void *_ctx)
 	knot_xdp_msg_t pkts[ctx->at_once];
 	uint64_t errors = 0, duration = 0;
 	kxdpgun_stats_t local_stats = { 0 };
+	unsigned stats_triggered = 0;
 
 	knot_mm_t mm;
 	if (ctx->tcp) {
@@ -444,11 +465,23 @@ void *xdp_gun_thread(void *_ctx)
 			}
 		}
 
-		// speed part
+		// speed and signal part
 		uint64_t dura_exp = (local_stats.qry_sent * 1000000) / ctx->qps;
 		duration = timer_end(&timer);
 		if (xdp_trigger == KXDPGUN_STOP && ctx->duration > duration) {
 			ctx->duration = duration;
+		}
+		if (stats_trigger > stats_triggered) {
+			assert(stats_trigger == stats_triggered + 1);
+			stats_triggered++;
+
+			local_stats.duration = duration;
+			size_t collected = collect_stats(&global_stats, &local_stats);
+			assert(collected <= ctx->n_threads);
+			if (collected == ctx->n_threads) {
+				print_stats(&global_stats, ctx->tcp, !(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP));
+				clear_stats(&global_stats);
+			}
 		}
 		if (dura_exp > duration) {
 			usleep(dura_exp - duration);
@@ -888,8 +921,11 @@ int main(int argc, char *argv[])
 	if (sig_ret != SIG_ERR) {
 		sig_ret = signal(SIGINT, sigterm_handler);
 	}
+	if (sig_ret != SIG_ERR) {
+		sig_ret = signal(SIGUSR1, sigusr_handler);
+	}
 	if (sig_ret == SIG_ERR) {
-		printf("warning: unable to handle SIGTERM and SIGINT: %s\n", strerror(errno));
+		printf("warning: unable to handle SIGTERM, SIGINT and SIGUSR1: %s\n", strerror(errno));
 	}
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
