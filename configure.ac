@@ -220,7 +220,7 @@ AC_SUBST([embedded_libbpf_CFLAGS])
 AC_SUBST([embedded_libbpf_LIBS])
 AC_SUBST([libbpf_CFLAGS])
 AC_SUBST([libbpf_LIBS])
-AC_SUBST([XDP_VISIBLE_HEADERS], [$(test "$enable_xdp" == "no"; echo "$?")])
+AC_SUBST([XDP_VISIBLE_HEADERS], [$(test "$enable_xdp" = "no"; echo "$?")])
 
 AS_IF([test "$enable_xdp" != "no"],[
     AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])])
