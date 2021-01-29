@@ -51,7 +51,7 @@ AC_SUBST([LDFLAG_EXCLUDE_LIBS], $ldflag_exclude_libs)
 
 # Get processor byte ordering
 AC_C_BIGENDIAN([endianity=big-endian], [endianity=little-endian])
-AS_IF([test "$endianity" == "little-endian"],[
+AS_IF([test "$endianity" = "little-endian"],[
     AC_DEFINE([ENDIANITY_LITTLE], [1], [System is little-endian.])])
 
 # Check if an archiver is available
