@@ -20,6 +20,7 @@
 #include <ifaddrs.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -47,9 +48,17 @@
 
 #define PROGRAM_NAME "kxdpgun"
 
-volatile bool xdp_trigger = false;
+enum {
+	KXDPGUN_WAIT_START,
+	KXDPGUN_START,
+	KXDPGUN_RUN,
+	KXDPGUN_STOP,
+};
+
+volatile int xdp_trigger = KXDPGUN_WAIT_START;
 
 pthread_mutex_t global_mutex;
+uint64_t global_duration = 0;
 uint64_t global_qry_sent = 0;
 uint64_t global_synack_recv = 0;
 uint64_t global_ans_recv = 0;
@@ -92,6 +101,12 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.target_port = 53,
 	.listen_port = KNOT_XDP_LISTEN_PORT_PASS | LOCAL_PORT_MIN,
 };
+
+void sigterm_handler(int signo)
+{
+	assert(signo == SIGTERM || signo == SIGINT);
+	xdp_trigger = KXDPGUN_STOP;
+}
 
 inline static void timer_start(struct timespec *timesp)
 {
@@ -231,7 +246,7 @@ void *xdp_gun_thread(void *_ctx)
 
 	struct pollfd pfd = { knot_xdp_socket_fd(xsk), POLLIN, 0 };
 
-	while (!xdp_trigger) {
+	while (xdp_trigger == KXDPGUN_WAIT_START) {
 		usleep(1000);
 	}
 
@@ -360,6 +375,9 @@ void *xdp_gun_thread(void *_ctx)
 		// speed part
 		uint64_t dura_exp = (tot_sent * 1000000) / ctx->qps;
 		duration = timer_end(&timer);
+		if (xdp_trigger == KXDPGUN_STOP && ctx->duration > duration) {
+			ctx->duration = duration;
+		}
 		if (dura_exp > duration) {
 			usleep(dura_exp - duration);
 		}
@@ -375,9 +393,10 @@ void *xdp_gun_thread(void *_ctx)
 		mp_delete(mm.ctx);
 	}
 
-	printf("thread#%02u: sent %lu, received %lu, errors %lu\n",
-	       ctx->thread_id, tot_sent, tot_ans, errors);
+	printf("thread#%02u: dur %lu ms, sent %lu, received %lu, errors %lu\n",
+	       ctx->thread_id, ctx->duration / 1000, tot_sent, tot_ans, errors);
 	pthread_mutex_lock(&global_mutex);
+	global_duration = MAX(global_duration, ctx->duration);
 	global_qry_sent += tot_sent;
 	global_synack_recv += tot_synack;
 	global_ans_recv += tot_ans;
@@ -801,6 +820,14 @@ int main(int argc, char *argv[])
 	}
 	pthread_mutex_init(&global_mutex, NULL);
 
+	void (*sig_ret)(int) = signal(SIGTERM, sigterm_handler);
+	if (sig_ret != SIG_ERR) {
+		sig_ret = signal(SIGINT, sigterm_handler);
+	}
+	if (sig_ret == SIG_ERR) {
+		printf("warning: unable to handle SIGTERM and SIGINT: %s\n", strerror(errno));
+	}
+
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		unsigned affinity = global_cpu_aff_start + i * global_cpu_aff_step;
 		cpu_set_t set;
@@ -815,18 +842,19 @@ int main(int argc, char *argv[])
 	}
 	usleep(1000000);
 
-	xdp_trigger = true;
+	xdp_trigger = KXDPGUN_START;
 	usleep(1000000);
-	xdp_trigger = false;
+	xdp_trigger = KXDPGUN_RUN;
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		pthread_join(threads[i], NULL);
 	}
 	pthread_mutex_destroy(&global_mutex);
 
-#define ps(counter)  ((counter) * 1000 / (ctx.duration / 1000))
+#define ps(counter)  ((counter) * 1000 / (global_duration / 1000))
 #define pct(counter) ((counter) * 100 / global_qry_sent)
 
+	printf("duration: %lu ms\n", (global_duration / 1000));
 	printf("total %s     %lu (%lu pps)\n", ctx.tcp ? "SYN:    " : "queries:", global_qry_sent, ps(global_qry_sent));
 	if (global_qry_sent > 0 && !(ctx.listen_port & KNOT_XDP_LISTEN_PORT_DROP)) {
 		if (ctx.tcp) {
