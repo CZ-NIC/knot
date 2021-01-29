@@ -788,14 +788,16 @@ int main(int argc, char *argv[])
 		thread_ctxs[i].thread_id = i;
 	}
 
-	struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY };
-	int ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
+	struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY }, cur_limit = { 0 };
+	int ret = getrlimit(RLIMIT_MEMLOCK, &cur_limit);
 	if (ret != 0) {
-		printf("unable to unset memory lock limit: %s\n", strerror(errno));
-		free(thread_ctxs);
-		free(threads);
-		free_global_payloads();
-		return EXIT_FAILURE;
+		printf("warning: unable to get memory lock limit: %s\n", strerror(errno));
+	}
+	if (memcmp(&cur_limit, &no_limit, sizeof(no_limit)) != 0) {
+		ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
+	}
+	if (ret != 0) {
+		printf("warning: unable to unset memory lock limit: %s\n", strerror(errno));
 	}
 	pthread_mutex_init(&global_mutex, NULL);
 
