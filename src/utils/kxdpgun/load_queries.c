@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,14 +20,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libknot/descriptor.h>
-#include <libknot/dname.h>
-
 #include "load_queries.h"
+#include <libknot/libknot.h>
 
 #define ERR_PREFIX "failed loading queries "
-
-uint16_t global_edns_size = 1232;
 
 enum qflags {
 	QFLAG_EDNS = 1,
@@ -46,7 +42,7 @@ void free_global_payloads()
 	}
 }
 
-bool load_queries(const char *filename)
+bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 {
 	FILE *f = fopen(filename, "r");
 	if (f == NULL) {
@@ -107,28 +103,29 @@ bool load_queries(const char *filename)
 		}
 
 		size_t dname_len = knot_dname_size(bufs->dname);
-		size_t pkt_len = 16 + dname_len;
+		size_t pkt_len = KNOT_WIRE_HEADER_SIZE + 2 * sizeof(uint16_t) + dname_len;
 		if (flags & QFLAG_EDNS) {
-			pkt_len += 11;
+			pkt_len += KNOT_EDNS_MIN_SIZE;
 		}
 
-		struct pkt_payload *pkt = calloc(1, sizeof(void *) + sizeof(size_t) + pkt_len);
+		struct pkt_payload *pkt = calloc(1, sizeof(struct pkt_payload) + pkt_len);
 		if (pkt == NULL) {
 			printf(ERR_PREFIX "(out of memory)\n");
 			goto fail;
 		}
 		pkt->len = pkt_len;
+		memcpy(pkt->payload, &msgid, sizeof(msgid));
 		pkt->payload[2] = 0x01; // QR bit
 		pkt->payload[5] = 0x01; // 1 question
 		pkt->payload[11] = (flags & QFLAG_EDNS) ? 0x01 : 0x00;
 		memcpy(pkt->payload + 12, bufs->dname, dname_len);
 		pkt->payload[dname_len + 12] = type >> 8;
 		pkt->payload[dname_len + 13] = type & 0xff;
-		pkt->payload[dname_len + 15] = 0x01; // class IN
+		pkt->payload[dname_len + 15] = KNOT_CLASS_IN;
 		if (flags & QFLAG_EDNS) {
-			pkt->payload[dname_len + 18] = 41; // OPT RRtype
-			pkt->payload[dname_len + 19] = global_edns_size >> 8;
-			pkt->payload[dname_len + 20] = global_edns_size & 0xff;
+			pkt->payload[dname_len + 18] = KNOT_RRTYPE_OPT;
+			pkt->payload[dname_len + 19] = edns_size >> 8;
+			pkt->payload[dname_len + 20] = edns_size & 0xff;
 			pkt->payload[dname_len + 23] = (flags & QFLAG_DO) ? 0x80 : 0x00;
 		}
 

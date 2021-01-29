@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,51 +36,61 @@
 #include <sys/resource.h>
 
 #include "libknot/libknot.h"
+#include "contrib/macros.h"
+#include "libknot/xdp/tcp.h"
+#include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcpy.h"
+#include "contrib/ucw/mempool.h"
 #include "utils/common/params.h"
 #include "utils/kxdpgun/load_queries.h"
 #include "utils/kxdpgun/popenve.h"
 
 #define PROGRAM_NAME "kxdpgun"
 
-uint16_t TRANSACTION_ID; // random constant to distinguish foreign replies
-
 volatile bool xdp_trigger = false;
 
 pthread_mutex_t global_mutex;
-uint64_t global_pkts_sent = 0;
-uint64_t global_pkts_recv = 0;
+uint64_t global_qry_sent = 0;
+uint64_t global_synack_recv = 0;
+uint64_t global_ans_recv = 0;
+uint64_t global_finack_recv = 0;
+uint64_t global_rst_recv = 0;
 uint64_t global_size_recv = 0;
+uint64_t global_wire_recv = 0;
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
 
-#define LOCAL_PORT_MIN  1024
+#define LOCAL_PORT_MIN  2000
 #define LOCAL_PORT_MAX 65535
 
-#define KNOWN_RCODE_MAX (KNOT_RCODE_NOTZONE + 1)
+#define RCODE_MAX (0x0F + 1)
 
 typedef struct {
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
 	unsigned	at_once;
+	uint16_t	msgid;
+	uint16_t	edns_size;
 	uint8_t		local_mac[6], target_mac[6];
 	struct in_addr	local_ipv4, target_ipv4;
 	struct in6_addr	local_ipv6, target_ipv6;
 	uint8_t		local_ip_range;
 	bool		ipv6;
+	bool		tcp;
 	uint16_t	target_port;
-	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_ALL, KNOT_XDP_LISTEN_PORT_DROP
+	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_*
 	unsigned	n_threads, thread_id;
-	uint64_t	rcode_counts[KNOWN_RCODE_MAX];
+	uint64_t	rcode_counts[RCODE_MAX];
 } xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
 	.dev[0] = '\0',
+	.edns_size = 1232,
 	.qps = 1000,
 	.duration = 5000000UL, // usecs
 	.at_once = 10,
 	.target_port = 53,
-	.listen_port = KNOT_XDP_LISTEN_PORT_ALL,
+	.listen_port = KNOT_XDP_LISTEN_PORT_PASS | LOCAL_PORT_MIN,
 };
 
 inline static void timer_start(struct timespec *timesp)
@@ -136,15 +146,31 @@ static void next_payload(struct pkt_payload **payload, int increment)
 	}
 }
 
-static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *xsk,
-                      xdp_gun_ctx_t *ctx, uint64_t tick, struct pkt_payload **payl)
+static void put_dns_payload(struct iovec *put_into, bool zero_copy, xdp_gun_ctx_t *ctx, struct pkt_payload **payl)
+{
+	if (zero_copy) {
+		put_into->iov_base = (*payl)->payload;
+	} else {
+		memcpy(put_into->iov_base, (*payl)->payload, (*payl)->len);
+	}
+	put_into->iov_len = (*payl)->len;
+	next_payload(payl, ctx->n_threads);
+}
+
+static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
+                      xdp_gun_ctx_t *ctx, uint64_t tick)
 {
 	uint64_t unique = (tick * ctx->n_threads + ctx->thread_id) * ctx->at_once;
 
-	for (int i = 0; i < npkts; i++) {
-		int ret = knot_xdp_send_alloc(xsk, ctx->ipv6, &pkts[i], NULL);
+	knot_xdp_msg_flag_t flags = ctx->ipv6 ? KNOT_XDP_MSG_IPV6 : 0;
+	if (ctx->tcp) {
+		flags |= (KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_MSS);
+	}
+
+	for (int i = 0; i < ctx->at_once; i++) {
+		int ret = knot_xdp_send_alloc(xsk, flags, &pkts[i]);
 		if (ret != KNOT_EOK) {
-			return ret;
+			return i;
 		}
 
 		uint16_t local_port = LOCAL_PORT_MIN + unique % (LOCAL_PORT_MAX + 1 - LOCAL_PORT_MIN);
@@ -161,15 +187,22 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, int npkts, struct knot_xdp_socket *x
 		memcpy(pkts[i].eth_from, ctx->local_mac, 6);
 		memcpy(pkts[i].eth_to, ctx->target_mac, 6);
 
-		memcpy(pkts[i].payload.iov_base, (*payl)->payload, (*payl)->len);
-		pkts[i].payload.iov_len = (*payl)->len;
-
-		*(uint16_t *)(pkts[i].payload.iov_base + 0) = TRANSACTION_ID;
-
 		unique++;
-		next_payload(payl, ctx->n_threads);
 	}
-	return KNOT_EOK;
+	return ctx->at_once;
+}
+
+inline static bool check_dns_payload(struct iovec *payl, xdp_gun_ctx_t *ctx,
+                                     uint64_t *tot_recv, uint64_t *tot_size)
+{
+	if (payl->iov_len < KNOT_WIRE_HEADER_SIZE ||
+	    memcmp(payl->iov_base, &ctx->msgid, sizeof(ctx->msgid)) != 0) {
+		return false;
+	}
+	ctx->rcode_counts[((uint8_t *)payl->iov_base)[3] & 0x0F]++;
+	(*tot_size) += payl->iov_len;
+	(*tot_recv)++;
+	return true;
 }
 
 void *xdp_gun_thread(void *_ctx)
@@ -178,8 +211,14 @@ void *xdp_gun_thread(void *_ctx)
 	struct knot_xdp_socket *xsk;
 	struct timespec timer;
 	knot_xdp_msg_t pkts[ctx->at_once];
-	uint64_t tot_sent = 0, tot_recv = 0, tot_size = 0, errors = 0;
+	uint64_t tot_sent = 0, tot_synack = 0, tot_ans = 0, tot_finack = 0;
+	uint64_t tot_rst = 0, tot_size = 0, tot_wire = 0, errors = 0;
 	uint64_t duration = 0;
+
+	knot_mm_t mm;
+	if (ctx->tcp) {
+		mm_ctx_mempool(&mm, ctx->at_once * 16 * MM_DEFAULT_BLKSIZE);
+	}
 
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
@@ -208,21 +247,32 @@ void *xdp_gun_thread(void *_ctx)
 		if (duration < ctx->duration) {
 			while (1) {
 				knot_xdp_send_prepare(xsk);
-				ret = alloc_pkts(pkts, ctx->at_once, xsk, ctx,
-				                 tick, &payload_ptr);
-				if (ret != KNOT_EOK) {
+				int alloced = alloc_pkts(pkts, xsk, ctx, tick);
+				if (alloced < ctx->at_once) {
 					errors++;
-					break;
+					if (alloced == 0) {
+						break;
+					}
+				}
+
+				if (ctx->tcp) {
+					for (int i = 0; i < alloced; i++) {
+						pkts[i].payload.iov_len = 0;
+					}
+				} else {
+					for (int i = 0; i < alloced; i++) {
+						put_dns_payload(&pkts[i].payload, false,
+						                ctx, &payload_ptr);
+					}
 				}
 
 				uint32_t really_sent = 0;
-				ret = knot_xdp_send(xsk, pkts, ctx->at_once,
-				                    &really_sent);
+				ret = knot_xdp_send(xsk, pkts, alloced, &really_sent);
 				if (ret != KNOT_EOK) {
 					errors++;
 					break;
 				}
-				assert(really_sent == ctx->at_once);
+				assert(really_sent == alloced);
 				tot_sent += really_sent;
 
 				ret = knot_xdp_send_finish(xsk);
@@ -236,7 +286,7 @@ void *xdp_gun_thread(void *_ctx)
 		}
 
 		// receiving part
-		if (ctx->listen_port == KNOT_XDP_LISTEN_PORT_ALL) {
+		if (!(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP)) {
 			while (1) {
 				ret = poll(&pfd, 1, 0);
 				if (ret < 0) {
@@ -248,20 +298,60 @@ void *xdp_gun_thread(void *_ctx)
 				}
 
 				uint32_t recvd = 0;
-				ret = knot_xdp_recv(xsk, pkts, ctx->at_once, &recvd);
+				size_t wire = 0;
+				ret = knot_xdp_recv(xsk, pkts, ctx->at_once, &recvd, &wire);
 				if (ret != KNOT_EOK) {
 					errors++;
 					break;
 				}
-				for (int i = 0; i < recvd; i++) {
-					if (pkts[i].payload.iov_len < KNOT_WIRE_HEADER_SIZE ||
-					    *(uint16_t *)(pkts[i].payload.iov_base + 0) != TRANSACTION_ID) {
-						continue;
-					}
-					ctx->rcode_counts[((uint8_t *)pkts[i].payload.iov_base)[3] & 0xf]++;
-					tot_size += pkts[i].payload.iov_len;
-					tot_recv++;
+				if (recvd == 0) {
+					break;
 				}
+				if (ctx->tcp) {
+					knot_tcp_relay_t *relays = NULL;
+					uint32_t n_relays = 0;
+					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, &relays, &n_relays, &mm);
+					if (ret != KNOT_EOK) {
+						errors++;
+						break;
+					}
+
+					for (int irl = 0; irl < n_relays; irl++) {
+						knot_tcp_relay_t *rl = &relays[irl];
+						switch (rl->action) {
+						case XDP_TCP_ESTABLISH:
+							tot_synack++;
+							rl->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
+							put_dns_payload(&rl->data, true, ctx, &payload_ptr);
+							break;
+						case XDP_TCP_DATA:
+							if (check_dns_payload(&rl->data, ctx, &tot_ans, &tot_size)) {
+								rl->answer = XDP_TCP_ANSWER | XDP_TCP_CLOSE;
+							}
+							break;
+						case XDP_TCP_CLOSE:
+							tot_finack++;
+							break;
+						case XDP_TCP_RESET:
+							tot_rst++;
+							break;
+						default:
+							break;
+						}
+					}
+
+					ret = knot_xdp_tcp_send(xsk, relays, n_relays);
+					if (ret != KNOT_EOK) {
+						errors++;
+					}
+
+					mp_flush(mm.ctx);
+				} else {
+					for (int i = 0; i < recvd; i++) {
+						(void)check_dns_payload(&pkts[i].payload, ctx, &tot_ans, &tot_size);
+					}
+				}
+				tot_wire += wire;
 				knot_xdp_recv_finish(xsk, pkts, recvd);
 				pfd.revents = 0;
 			}
@@ -281,12 +371,20 @@ void *xdp_gun_thread(void *_ctx)
 
 	knot_xdp_deinit(xsk);
 
+	if (ctx->tcp) {
+		mp_delete(mm.ctx);
+	}
+
 	printf("thread#%02u: sent %lu, received %lu, errors %lu\n",
-	       ctx->thread_id, tot_sent, tot_recv, errors);
+	       ctx->thread_id, tot_sent, tot_ans, errors);
 	pthread_mutex_lock(&global_mutex);
-	global_pkts_sent += tot_sent;
-	global_pkts_recv += tot_recv;
+	global_qry_sent += tot_sent;
+	global_synack_recv += tot_synack;
+	global_ans_recv += tot_ans;
+	global_finack_recv += tot_finack;
+	global_rst_recv += tot_rst;
 	global_size_recv += tot_size;
+	global_wire_recv += tot_wire;
 	pthread_mutex_unlock(&global_mutex);
 
 	return NULL;
@@ -549,7 +647,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 }
 
 static void print_help(void) {
-	printf("Usage: %s [-t duration] [-Q qps] [-b batch_size] [-r] [-p port] "
+	printf("Usage: %s [-t duration] [-Q qps] [-b batch_size] [-r] [-p port] [-T] "
 	       "[-F cpu_affinity] [-I interface] [-l local_ip] -i queries_file dest_ip\n",
 	       PROGRAM_NAME);
 }
@@ -564,6 +662,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "batch",     required_argument, NULL, 'b' },
 		{ "drop",      no_argument,       NULL, 'r' },
 		{ "port",      required_argument, NULL, 'p' },
+		{ "tcp",       no_argument,       NULL, 'T' },
 		{ "affinity",  required_argument, NULL, 'F' },
 		{ "interface", required_argument, NULL, 'I' },
 		{ "local",     required_argument, NULL, 'l' },
@@ -574,7 +673,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	int opt = 0, arg;
 	double argf;
 	char *argcp, *local_ip = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:F:I:l:i:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:TF:I:l:i:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -610,7 +709,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		case 'r':
-			ctx->listen_port = KNOT_XDP_LISTEN_PORT_DROP;
+			ctx->listen_port |= KNOT_XDP_LISTEN_PORT_DROP;
 			break;
 		case 'p':
 			arg = atoi(optarg);
@@ -619,6 +718,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			} else {
 				return false;
 			}
+			break;
+		case 'T':
+			ctx->tcp = true;
+			ctx->listen_port |= KNOT_XDP_LISTEN_PORT_TCP;
 			break;
 		case 'F':
 			if ((arg = atoi(optarg)) > 0) {
@@ -636,7 +739,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			local_ip = optarg;
 			break;
 		case 'i':
-			if (!load_queries(optarg)) {
+			if (!load_queries(optarg, ctx->edns_size, ctx->msgid)) {
 				return false;
 			}
 			break;
@@ -662,6 +765,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 int main(int argc, char *argv[])
 {
 	xdp_gun_ctx_t ctx = ctx_defaults, *thread_ctxs = NULL;
+	ctx.msgid = time(NULL) % UINT16_MAX;
 	pthread_t *threads = NULL;
 
 	if (!get_opts(argc, argv, &ctx)) {
@@ -669,8 +773,6 @@ int main(int argc, char *argv[])
 		free_global_payloads();
 		return EXIT_FAILURE;
 	}
-
-	TRANSACTION_ID = time(NULL) % UINT16_MAX;
 
 	thread_ctxs = calloc(ctx.n_threads, sizeof(*thread_ctxs));
 	threads = calloc(ctx.n_threads, sizeof(*threads));
@@ -719,14 +821,24 @@ int main(int argc, char *argv[])
 		pthread_join(threads[i], NULL);
 	}
 	pthread_mutex_destroy(&global_mutex);
-	printf("total queries: %lu (%lu pps)\n", global_pkts_sent, global_pkts_sent * 1000 / (ctx.duration / 1000));
-	if (global_pkts_sent > 0 && ctx.listen_port != KNOT_XDP_LISTEN_PORT_DROP) {
-		printf("total replies: %lu (%lu pps) (%lu%%)\n", global_pkts_recv,
-		       global_pkts_recv * 1000 / (ctx.duration / 1000), global_pkts_recv * 100 / global_pkts_sent);
-		printf("average DNS reply size: %lu B\n", global_pkts_recv > 0 ? global_size_recv / global_pkts_recv : 0);
-		size_t bytes_recv = global_size_recv + (ctx.ipv6 ? KNOT_XDP_PAYLOAD_OFFSET6 : KNOT_XDP_PAYLOAD_OFFSET4) * global_pkts_recv;
-		printf("average Ethernet reply rate: %lu bps\n", bytes_recv * 8 * 1000 / (ctx.duration / 1000));
-		for (int i = 0; i < KNOWN_RCODE_MAX; i++) {
+
+#define ps(counter)  ((counter) * 1000 / (ctx.duration / 1000))
+#define pct(counter) ((counter) * 100 / global_qry_sent)
+
+	printf("total %s     %lu (%lu pps)\n", ctx.tcp ? "SYN:    " : "queries:", global_qry_sent, ps(global_qry_sent));
+	if (global_qry_sent > 0 && !(ctx.listen_port & KNOT_XDP_LISTEN_PORT_DROP)) {
+		if (ctx.tcp) {
+		printf("total established: %lu (%lu pps) (%lu%%)\n", global_synack_recv, ps(global_synack_recv), pct(global_synack_recv));
+		}
+		printf("total replies:     %lu (%lu pps) (%lu%%)\n", global_ans_recv, ps(global_ans_recv), pct(global_ans_recv));
+		if (ctx.tcp) {
+		printf("total closed:      %lu (%lu pps) (%lu%%)\n", global_finack_recv, ps(global_finack_recv), pct(global_finack_recv));
+		printf("total reset:       %lu (%lu pps) (%lu%%)\n", global_rst_recv, ps(global_rst_recv), pct(global_rst_recv));
+		}
+		printf("average DNS reply size: %lu B\n", global_ans_recv > 0 ? global_size_recv / global_ans_recv : 0);
+		printf("average Ethernet reply rate: %lu bps\n", ps(global_wire_recv * 8));
+
+		for (int i = 0; i < RCODE_MAX; i++) {
 			uint64_t rcode_count = 0;
 			for (size_t j = 0; j < ctx.n_threads; j++) {
 				rcode_count += thread_ctxs[j].rcode_counts[i];
@@ -734,7 +846,8 @@ int main(int argc, char *argv[])
 			if (rcode_count > 0) {
 				const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, i);
 				const char *rcname = rcode == NULL ? "unknown" : rcode->name;
-				printf("responded %s: %lu\n", rcname, rcode_count);
+				int space = MAX(9 - strlen(rcname), 0);
+				printf("responded %s: %.*s%lu\n", rcname, space, "         ", rcode_count);
 			}
 		}
 	}

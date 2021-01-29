@@ -36,7 +36,7 @@
 
 #define DYNARRAY_VISIBILITY_STATIC static
 #define DYNARRAY_VISIBILITY_PUBLIC
-#define DYNARRAY_VISIBILITY_LIBRARY __public__
+#define DYNARRAY_VISIBILITY_LIBRARY __attribute__((visibility("default")))
 
 #define dynarray_declare(prefix, ntype, visibility, initial_capacity) \
 	typedef struct prefix ## _dynarray { \
