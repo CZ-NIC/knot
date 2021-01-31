@@ -724,6 +724,7 @@ struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dna
 		set_rdata(&rrset, val->member, knot_dname_size(val->member));
 		unused = NULL;
 		if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+			catalog_it_free(it);
 			goto fail;
 		}
 		catalog_it_next(it);
