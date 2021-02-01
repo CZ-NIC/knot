@@ -1732,11 +1732,13 @@ Possible values:
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-In case of \fBunixtime\fP, if the resulting serial is lower or equal than current zone
-(this happens e.g. in case of migrating from other policy or frequent updates)
-the serial is incremented instead.
+If the resulting serial for \fBunixtime\fP or \fBdateserial\fP is lower or equal
+than the current serial (this happens e.g. when migrating from other policy or
+frequent updates), the serial is incremented instead.
 .sp
-Use dateserial only if you expect less than 100 updates per day per zone.
+To avoid user confusion, use \fBdateserial\fP only if you expect at most
+100 updates per day per zone and \fBunixtime\fP only if you expect at most
+one update per second per zone.
 .UNINDENT
 .UNINDENT
 .sp
