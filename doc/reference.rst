@@ -1900,8 +1900,9 @@ Possible values:
    current zone's (this happens e.g. in case of migrating from other policy or
    frequent updates), the serial is incremented instead.
 
-   To avoid user confusion, use ``dateserial`` only if you expect fewer than
-   100 updates per day per zone.
+   To avoid user confusion, use ``dateserial`` only if you expect at most
+   100 updates per day per zone and ``unixtime`` only if you expect at most
+   one update per second per zone.
 
 *Default:* increment
 

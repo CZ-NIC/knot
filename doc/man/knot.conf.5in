@@ -1737,8 +1737,9 @@ If the serial for \fBunixtime\fP or \fBdateserial\fP is lower or equal than the
 current zone's (this happens e.g. in case of migrating from other policy or
 frequent updates), the serial is incremented instead.
 .sp
-To avoid user confusion, use \fBdateserial\fP only if you expect fewer than
-100 updates per day per zone.
+To avoid user confusion, use \fBdateserial\fP only if you expect at most
+100 updates per day per zone and \fBunixtime\fP only if you expect at most
+one update per second per zone.
 .UNINDENT
 .UNINDENT
 .sp
