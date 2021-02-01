@@ -1896,11 +1896,12 @@ Possible values:
   8 digits match the current iso-date.
 
 .. NOTE::
-   In case of ``unixtime``, if the resulting serial is lower or equal than current zone
-   (this happens e.g. in case of migrating from other policy or frequent updates)
-   the serial is incremented instead.
+   If the serial for ``unixtime`` or ``dateserial`` is lower or equal than the
+   current zone's (this happens e.g. in case of migrating from other policy or
+   frequent updates), the serial is incremented instead.
 
-   Use dateserial only if you expect less than 100 updates per day per zone.
+   To avoid user confusion, use ``dateserial`` only if you expect fewer than
+   100 updates per day per zone.
 
 *Default:* increment
 
