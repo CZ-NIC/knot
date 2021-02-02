@@ -145,6 +145,7 @@ int main(int argc, char *argv[])
 	}
 
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
+	knot_dname_to_lower(dname);
 	free(zonename);
 	int ret = zone_check(filename, dname, stdout, optional, (time_t)check_time);
 	knot_dname_free(dname, NULL);
