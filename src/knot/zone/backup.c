@@ -84,15 +84,6 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 
 	pthread_mutex_init(&ctx->readers_mutex, NULL);
 
-	if (!restore_mode) {
-		int ret = mkdir(backup_dir, 0750);
-		if (ret == -1 && errno != EEXIST) {
-			pthread_mutex_destroy(&ctx->readers_mutex);
-			free(ctx);
-			return knot_map_errno();
-		}
-	}
-
 	char db_dir[backup_dir_len + 16];
 	(void)snprintf(db_dir, sizeof(db_dir), "%s/keys", backup_dir);
 	knot_lmdb_init(&ctx->bck_kasp_db, db_dir, kasp_db_size, 0, "keys_db");
