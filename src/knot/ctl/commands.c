@@ -423,6 +423,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
 		ctx->backup_global = true;
 		ret = global_backup(ctx, &args->server->catalog, NULL);
+		if (ret != KNOT_EOK) {
+			zone_backup_deinit(ctx);
+		}
 	}
 
 	return ret;
