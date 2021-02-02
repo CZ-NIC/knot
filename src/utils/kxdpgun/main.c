@@ -49,13 +49,12 @@
 #define PROGRAM_NAME "kxdpgun"
 
 enum {
-	KXDPGUN_WAIT_START,
+	KXDPGUN_WAIT,
 	KXDPGUN_START,
-	KXDPGUN_RUN,
 	KXDPGUN_STOP,
 };
 
-volatile int xdp_trigger = KXDPGUN_WAIT_START;
+volatile int xdp_trigger = KXDPGUN_WAIT;
 
 volatile unsigned stats_trigger = 0;
 
@@ -339,7 +338,7 @@ void *xdp_gun_thread(void *_ctx)
 
 	struct pollfd pfd = { knot_xdp_socket_fd(xsk), POLLIN, 0 };
 
-	while (xdp_trigger == KXDPGUN_WAIT_START) {
+	while (xdp_trigger == KXDPGUN_WAIT) {
 		usleep(1000);
 	}
 
@@ -941,7 +940,6 @@ int main(int argc, char *argv[])
 
 	xdp_trigger = KXDPGUN_START;
 	usleep(1000000);
-	xdp_trigger = KXDPGUN_RUN;
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		pthread_join(threads[i], NULL);
