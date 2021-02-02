@@ -913,16 +913,11 @@ int main(int argc, char *argv[])
 	}
 	pthread_mutex_init(&global_stats.mutex, NULL);
 
-	void (*sig_ret)(int) = signal(SIGTERM, sigterm_handler);
-	if (sig_ret != SIG_ERR) {
-		sig_ret = signal(SIGINT, sigterm_handler);
-	}
-	if (sig_ret != SIG_ERR) {
-		sig_ret = signal(SIGUSR1, sigusr_handler);
-	}
-	if (sig_ret == SIG_ERR) {
-		printf("warning: unable to handle SIGTERM, SIGINT and SIGUSR1: %s\n", strerror(errno));
-	}
+	struct sigaction stop_action = { .sa_handler = sigterm_handler };
+	struct sigaction stats_action = { .sa_handler = sigusr_handler };
+	sigaction(SIGINT,  &stop_action, NULL);
+	sigaction(SIGTERM, &stop_action, NULL);
+	sigaction(SIGUSR1, &stats_action, NULL);
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		unsigned affinity = global_cpu_aff_start + i * global_cpu_aff_step;
