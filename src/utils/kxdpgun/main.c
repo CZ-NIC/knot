@@ -497,8 +497,8 @@ void *xdp_gun_thread(void *_ctx)
 		mp_delete(mm.ctx);
 	}
 
-	printf("thread#%02u: dur %lu ms, sent %lu, received %lu, errors %lu\n",
-	       ctx->thread_id, ctx->duration / 1000, local_stats.qry_sent, local_stats.ans_recv, errors);
+	printf("thread#%02u: sent %lu, received %lu, errors %lu\n",
+	       ctx->thread_id, local_stats.qry_sent, local_stats.ans_recv, errors);
 	local_stats.duration = ctx->duration;
 	collect_stats(&global_stats, &local_stats);
 
