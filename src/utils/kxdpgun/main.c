@@ -904,16 +904,13 @@ int main(int argc, char *argv[])
 		thread_ctxs[i].thread_id = i;
 	}
 
-	struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY }, cur_limit = { 0 };
-	int ret = getrlimit(RLIMIT_MEMLOCK, &cur_limit);
-	if (ret != 0) {
-		printf("warning: unable to get memory lock limit: %s\n", strerror(errno));
-	}
-	if (memcmp(&cur_limit, &no_limit, sizeof(no_limit)) != 0) {
-		ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
-	}
-	if (ret != 0) {
-		printf("warning: unable to unset memory lock limit: %s\n", strerror(errno));
+	struct rlimit min_limit = { KNOT_XDP_MIN_MEMLOCK, KNOT_XDP_MIN_MEMLOCK }, cur_limit = { 0 };
+	if (getrlimit(RLIMIT_MEMLOCK, &cur_limit) != 0 ||
+	    cur_limit.rlim_cur < min_limit.rlim_cur || cur_limit.rlim_max < min_limit.rlim_max) {
+		int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
+		if (ret != 0) {
+			printf("warning: unable to increase memory lock limit: %s\n", strerror(errno));
+		}
 	}
 	pthread_mutex_init(&global_stats.mutex, NULL);
 
@@ -934,7 +931,7 @@ int main(int argc, char *argv[])
 		CPU_ZERO(&set);
 		CPU_SET(affinity, &set);
 		(void)pthread_create(&threads[i], NULL, xdp_gun_thread, &thread_ctxs[i]);
-		ret = pthread_setaffinity_np(threads[i], sizeof(cpu_set_t), &set);
+		int ret = pthread_setaffinity_np(threads[i], sizeof(cpu_set_t), &set);
 		if (ret != 0) {
 			printf("failed to set affinity of thread#%zu to CPU#%u\n", i, affinity);
 		}
