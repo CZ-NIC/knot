@@ -109,10 +109,10 @@ void zone_backup_deinit(zone_backup_ctx_t *ctx)
 
 	pthread_mutex_lock(&ctx->readers_mutex);
 	assert(ctx->readers > 0);
-	size_t left = ctx->readers--;
+	size_t left = --ctx->readers;
 	pthread_mutex_unlock(&ctx->readers_mutex);
 
-	if (left == 1) {
+	if (left == 0) {
 		knot_lmdb_deinit(&ctx->bck_catalog);
 		knot_lmdb_deinit(&ctx->bck_journal);
 		knot_lmdb_deinit(&ctx->bck_timer_db);
