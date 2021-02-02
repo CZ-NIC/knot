@@ -433,14 +433,6 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	ctx->backup_zonefile = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
 	args->custom_ctx = ctx;
 
-	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-		ctx->backup_global = true;
-		ret = global_backup(ctx, &args->server->catalog, NULL);
-		if (ret != KNOT_EOK) {
-			zone_backup_deinit(ctx);
-		}
-	}
-
 	return ret;
 }
 
@@ -474,11 +466,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 {
 	int ret = init_backup(args, restore_mode);
-
-	if (ret == KNOT_EOK) {
-		ret = zones_apply(args, zone_backup_cmd);
-		deinit_backup(args);
-	} else {
+	if (ret != KNOT_EOK) {
 		char *msg = sprintf_alloc("%s init failed (%s)",
 		                          restore_mode ? "restore" : "backup",
 		                          knot_strerror(ret));
@@ -494,9 +482,23 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		/* Warning: zone name in the control command params discarded here. */
 		args->data[KNOT_CTL_IDX_ZONE] = NULL;
 		send_error(args, knot_strerror(ret));
-		ret = KNOT_CTL_EZONE;
+		return KNOT_CTL_EZONE;
 	}
 
+	/* Global catalog zones backup. */
+	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		zone_backup_ctx_t *ctx = args->custom_ctx;
+		ctx->backup_global = true;
+		ret = global_backup(ctx, &args->server->catalog, NULL);
+		if (ret != KNOT_EOK) {
+			goto done;
+		}
+	}
+
+	ret = zones_apply(args, zone_backup_cmd);
+
+done:
+	deinit_backup(args);
 	return ret;
 }
 
