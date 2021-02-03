@@ -41,12 +41,34 @@ static uint32_t random_serial(void)
 	return s;
 }
 
-static void check_dateserial(uint32_t current, uint32_t expected, const char *msg)
+static void check_unixtime(uint32_t current, uint32_t increment, uint32_t expected, const char *msg)
 {
-	uint32_t next = serial_next(current, SERIAL_POLICY_DATESERIAL);
+	uint32_t next = serial_next(current, SERIAL_POLICY_UNIXTIME, increment);
+	ok(next == expected, "unixtime: %s", msg);
+}
+
+/* Test will wrongly fail if the next second starts while running;
+ * this is unlikely, so not taking any action */
+static void test_unixtime(void)
+{
+	time_t serial0 = time(NULL);
+
+	check_unixtime(1000000000, 1, serial0, "from old second or policy");
+	check_unixtime(serial0, 0, serial0, "reuse current second");
+	check_unixtime(serial0, 1, serial0 + 1, "this second's first increment");
+	check_unixtime(serial0 + 1, 1, serial0 + 2, "this second's second increment");
+	check_unixtime(3000000000, 1, 3000000001, "from future second");
+	check_unixtime(3000000000, 0, 3000000000, "at future second");
+}
+
+static void check_dateserial(uint32_t current, uint32_t increment, uint32_t expected, const char *msg)
+{
+	uint32_t next = serial_next(current, SERIAL_POLICY_DATESERIAL, increment);
 	ok(next == expected, "dateserial: %s", msg);
 }
 
+/* Test will wrongly fail if the next day starts while running;
+ * this is EXTREMELY unlikely, so definitely not taking any action */
 static void test_dateserial(void)
 {
 	time_t now = time(NULL);
@@ -60,12 +82,14 @@ static void test_dateserial(void)
 	int ret2 = str_to_u32(str, &serial0);
 
 	ok(gm_ret != NULL && ret1 > 0 && ret2 == KNOT_EOK,
-	   "dateseril: prepare current value");
+	   "dateserial: prepare current value");
 
-	check_dateserial(2000010100, serial0, "from old date");
-	check_dateserial(serial0, serial0 + 1, "today's first increment");
-	check_dateserial(serial0 + 98, serial0 + 99, "today's last increment");
-	check_dateserial(2100010100, 2100010101, "from future date");
+	check_dateserial(2000010100, 1, serial0, "from old date or policy");
+	check_dateserial(serial0, 1, serial0 + 1, "today's first increment");
+	check_dateserial(serial0 + 98, 1, serial0 + 99, "today's last increment");
+	check_dateserial(serial0 + 99, 1, serial0 + 100, "wrap from today");
+	check_dateserial(2100010100, 1, 2100010101, "from future date");
+	check_dateserial(2100010100, 0, 2100010100, "at future date");
 }
 
 int main(int argc, char *argv[])
@@ -129,6 +153,7 @@ int main(int argc, char *argv[])
 	   "serial compare: random opposites (s2 < s1)");
 
 	test_dateserial();
+	test_unixtime();
 
 	return 0;
 }
