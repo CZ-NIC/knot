@@ -67,6 +67,7 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	ctx->restore_mode = restore_mode;
 	ctx->backup_global = false;
 	ctx->readers = 1;
+	ctx->server_self_ptr = NULL;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 
@@ -122,6 +123,10 @@ void zone_backup_deinit(zone_backup_ctx_t *ctx)
 		close(ctx->lock_file);
 		BACKUP_LOCKFILE(ctx, lockfile);
 		unlink(lockfile);
+
+		if (ctx->server_self_ptr != NULL) {
+			*ctx->server_self_ptr = NULL;
+		}
 
 		free(ctx);
 	}

@@ -431,24 +431,27 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	assert(ctx != NULL);
 	ctx->backup_journal = MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL);
 	ctx->backup_zonefile = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
-	args->custom_ctx = ctx;
+	if (args->server->backup_ctx != NULL) {
+		log_warning("backup already in progress");
+		zone_backup_deinit(ctx);
+		return KNOT_EPROGRESS;
+	}
+	args->server->backup_ctx = ctx;
+	ctx->server_self_ptr = &args->server->backup_ctx;
 
 	return ret;
 }
 
 static void deinit_backup(ctl_args_t *args)
 {
-	zone_backup_ctx_t *ctx = args->custom_ctx;
+	zone_backup_ctx_t *ctx = args->server->backup_ctx;
 	zone_backup_deinit(ctx);
 }
 
 static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 {
-	zone_backup_ctx_t *ctx = args->custom_ctx;
-	if (zone->backup_ctx != NULL) {
-		log_zone_warning(zone->name, "backup already in progress");
-		return KNOT_EPROGRESS;
-	}
+	zone_backup_ctx_t *ctx = args->server->backup_ctx;
+	assert(zone->backup_ctx == NULL);
 	zone->backup_ctx = ctx;
 	pthread_mutex_lock(&ctx->readers_mutex);
 	ctx->readers++;
@@ -487,7 +490,7 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 
 	/* Global catalog zones backup. */
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-		zone_backup_ctx_t *ctx = args->custom_ctx;
+		zone_backup_ctx_t *ctx = args->server->backup_ctx;
 		ctx->backup_global = true;
 		ret = global_backup(ctx, &args->server->catalog, NULL);
 		if (ret != KNOT_EOK) {

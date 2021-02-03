@@ -630,6 +630,12 @@ void server_deinit(server_t *server)
 		return;
 	}
 
+	if (server->backup_ctx != NULL) {
+		log_warning("backup in progress, terminating, will be incomplete");
+		server->backup_ctx->readers = 1; // ensure complete deinit
+		zone_backup_deinit(server->backup_ctx);
+	}
+
 	/* Save zone timers. */
 	if (server->zone_db != NULL) {
 		log_info("updating persistent timer DB");

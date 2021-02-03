@@ -22,6 +22,7 @@
 #include "knot/journal/knot_lmdb.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
+#include "knot/zone/backup.h"
 #include "knot/zone/catalog.h"
 #include "knot/zone/zonedb.h"
 
@@ -103,6 +104,9 @@ typedef struct server {
 
 	/*! \brief Pending changes to catalog member zones. */
 	catalog_update_t catalog_upd;
+
+	/*! \brief Context of pending zones' backup. */
+	zone_backup_ctx_t *backup_ctx;
 } server_t;
 
 /*!
