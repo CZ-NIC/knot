@@ -323,6 +323,14 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		}
 	}
 
+	if (!ctx->backup_global) {
+		ret = global_backup(ctx, zone->catalog, zone->name);
+		if (ret != KNOT_EOK) {
+			LOG_FAIL("catalog");
+			goto done;
+		}
+	}
+
 	knot_lmdb_db_t *kasp_from = zone->kaspdb, *kasp_to = &ctx->bck_kasp_db;
 	BACKUP_SWAP(ctx, kasp_from, kasp_to);
 
