@@ -26,16 +26,16 @@ int event_backup(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
-	char *back_dir = strdup(zone->backup_ctx->backup_dir);
+	zone_backup_ctx_t *ctx = zone->backup_ctx;
+	if (ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	char *back_dir = strdup(ctx->backup_dir);
 	if (back_dir == NULL) {
 		 return KNOT_ENOMEM;
 	}
 
-	zone_backup_ctx_t *ctx = zone->backup_ctx;
-	if (ctx == NULL) {
-		free(back_dir);
-		return KNOT_EINVAL;
-	}
 	bool restore = ctx->restore_mode;
 
 	if (restore) {
