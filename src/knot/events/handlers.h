@@ -30,8 +30,10 @@ int event_update(conf_t *conf, zone_t *zone);
 int event_expire(conf_t *conf, zone_t *zone);
 /*! \brief Flushes zone contents into text file. */
 int event_flush(conf_t *conf, zone_t *zone);
-/*! \brief Backs up zone contents, metadata, keys, etc to a directory. */
+/*! \brief Backs up/restores zone contents, metadata, keys, etc to/from a directory. */
 int event_backup(conf_t *conf, zone_t *zone);
+/*! \brief Backs up/restores contents of all catalog zones to/from a directory. */
+int event_backup_catz(conf_t *conf, zone_t *zone);
 /*! \brief Sends notify to slaves. */
 int event_notify(conf_t *conf, zone_t *zone);
 /*! \brief Signs the zone using its DNSSEC keys, perform key rollovers. */

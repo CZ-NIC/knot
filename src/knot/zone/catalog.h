@@ -29,6 +29,9 @@ typedef struct catalog {
 
 	// private
 	knot_lmdb_txn_t *old_ro_txn;
+
+	struct zone_backup_ctx *backup_ctx; // Whole-catalog backup context
+	                                    // (NULL unless a whole-catalog backup is pending).
 } catalog_t;
 
 typedef enum {

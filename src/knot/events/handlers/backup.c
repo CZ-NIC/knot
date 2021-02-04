@@ -64,3 +64,17 @@ int event_backup(conf_t *conf, zone_t *zone)
 	free(back_dir);
 	return ret;
 }
+
+int event_backup_catz(conf_t *conf, zone_t *zone)
+{
+	catalog_t *catalog = conf->catalog;
+	zone_backup_ctx_t *ctx = catalog->backup_ctx;
+	if (ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = global_backup(ctx, catalog, NULL);
+	catalog->backup_ctx = NULL;
+
+	return ret;
+}

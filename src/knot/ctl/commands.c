@@ -486,12 +486,32 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		return KNOT_CTL_EZONE;
 	}
 
-	/* Global catalog zones backup. */
+	/* Trigger a backup/restore of the whole catalog. */
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
 		zone_backup_ctx_t *ctx = latest_backup_ctx(args);
 		ctx->backup_global = true;
-		ret = global_backup(ctx, &args->server->catalog, NULL);
+		if (args->server->catalog.backup_ctx == NULL) {
+			args->server->catalog.backup_ctx = ctx;
+		} else {
+// XXXXX
+			ret = KNOT_EPROGRESS;
+			log_ctl_error("control, another catalog backup/restore in progress");
+			send_error(args, knot_strerror(ret));
+			ret = KNOT_EOK;
+			goto done;
+		}
+
+		/* Pick any zone - the backup of the catalog will proceed on its account. */
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(args->server->zone_db);
+		zone_t *zone = knot_zonedb_iter_val(it);
+		knot_zonedb_iter_free(it);
+
+		ret = schedule_trigger(zone, args, ZONE_EVENT_BACKUP_CATZ, true);
 		if (ret != KNOT_EOK) {
+// XXXXX
+			log_ctl_error("control, error (%s)", knot_strerror(ret));
+			send_error(args, knot_strerror(ret));
+			ret = KNOT_EOK;
 			goto done;
 		}
 	}

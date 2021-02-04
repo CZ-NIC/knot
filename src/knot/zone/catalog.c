@@ -106,6 +106,7 @@ static bool check_zone_version(const zone_contents_t *zone)
 void catalog_init(catalog_t *cat, const char *path, size_t mapsize)
 {
 	knot_lmdb_init(&cat->db, path, mapsize, MDB_NOTLS, NULL);
+	cat->backup_ctx = NULL;
 }
 
 // does NOT check for catalog zone version by RFC, this is Knot-specific in the cat LMDB !
