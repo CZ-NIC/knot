@@ -934,10 +934,10 @@ static int check_nsec3(const zone_node_t *node, semchecks_data_t *data)
 		goto nsec3_cleanup;
 	}
 
-	const knot_rdataset_t *soa_rrs = node_rdataset(data->zone->apex, KNOT_RRTYPE_SOA);
-	assert(soa_rrs);
-	uint32_t minimum_ttl = knot_soa_minimum(soa_rrs->rdata);
-	if (nsec3_rrs.ttl != minimum_ttl) {
+	knot_rrset_t soa_rrset = node_rrset(data->zone->apex, KNOT_RRTYPE_SOA);
+	assert(!knot_rrset_empty(&soa_rrset));
+	uint32_t minimum_ttl = knot_soa_minimum(soa_rrset.rrs.rdata);
+	if (nsec3_rrs.ttl != MIN(minimum_ttl, soa_rrset.ttl)) {
 		data->handler->cb(data->handler, data->zone, node,
 		                  SEM_ERR_NSEC3_RDATA_TTL, info);
 	}
