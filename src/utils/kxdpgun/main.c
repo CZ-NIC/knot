@@ -939,9 +939,9 @@ int main(int argc, char *argv[])
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		pthread_join(threads[i], NULL);
 	}
-
-	print_stats(&global_stats, ctx.tcp, !(ctx.listen_port & KNOT_XDP_LISTEN_PORT_DROP));
-
+	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
+		print_stats(&global_stats, ctx.tcp, !(ctx.listen_port & KNOT_XDP_LISTEN_PORT_DROP));
+	}
 	pthread_mutex_destroy(&global_stats.mutex);
 
 	free(thread_ctxs);
