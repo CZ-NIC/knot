@@ -1,73 +1,29 @@
 ; Zone without any semantic error
 
-example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
-					2010111221 ; serial
-					21600      ; refresh (6 hours)
-					3600       ; retry (1 hour)
-					604800     ; expire (1 week)
-					86400      ; minimum (1 day)
-					)
-			3600	RRSIG	SOA 13 2 3600 (
-					20601231235959 20201008173847 50991 example.com.
-					Sx+KLjF5CXA72DpzNAPGTnvxgVkYnFTby5iB
-					s9W3jKGzAulrULc1vQT+3qlwcn5QEbSF5hgn
-					1END5XSBda09+w== )
-			3600	NS	dns1.example.com.
-			3600	RRSIG	NS 13 2 3600 (
-					20601231235959 20201008173847 50991 example.com.
-					zVKNLQD7rZGMyvDgve6owlzFJMSlYl5ipNQK
-					csRD1zxDFuHleXvQCm8FIUycDNfMWhHNc2s9
-					4egmySesIYU0uQ== )
-			3600	DNSKEY	256 3 13 (
-					fsusYo6WwsvIRG0sUChUxT/+OVjbsIstAUKt
-					9K1XUJhVohQ5vcl+ouVNHI3Y2qS/QG+GUydo
-					3V07g6mj8RkXUQ==
-					) ; ZSK; alg = ECDSAP256SHA256 ; key id = 50991
-			3600	DNSKEY	257 3 13 (
-					MGFyaDr1XwpvtG9aI0YQqTb04vq4OdlQmshL
-					pevx+/Zyyy/ObA1+5TaxiMMW/awpr+Oe+BCU
-					nlO/vkwdE+Y5TA==
-					) ; KSK; alg = ECDSAP256SHA256 ; key id = 13472
-			3600	RRSIG	DNSKEY 13 2 3600 (
-					20601231235959 20201008173847 13472 example.com.
-					WrFYEyOsZRdS3dycDhEO2taiDWExHP6u9B82
-					vsEuKPReSdRo9J7rh73/7lLJnCy3s2nIF/3w
-					JI+YSujbCi6hLA== )
-			0	NSEC3PARAM 1 0 10 7A148F1404032E16
-			0	RRSIG	NSEC3PARAM 13 2 0 (
-					20601231235959 20201008173847 50991 example.com.
-					sqHv1vGfOvCrJZAModjKOQdggsI+q1554oWk
-					8uP8aDNcqMIFsJNYnAaKw+tUwQ3a3qwNrtnB
-					oJwKCvEdodfzew== )
-deleg.example.com.	3600	IN NS	deleg.example.com.
-			3600	A	192.0.2.1
-dns1.example.com.	3600	IN A	192.0.2.1
-			3600	RRSIG	A 13 3 3600 (
-					20601231235959 20201008173847 50991 example.com.
-					BHxNoR/8eDuOf0uro0FhAr32lvLPXVHYtkJk
-					hLytkaJE8TeZrbmvQqOZPQFvpd+bKXEVfaPX
-					BNghbFskO8wlUw== )
-bgv0lkamjsoec22arugdnlttcb70af7u.example.com. 86400 IN NSEC3 1 0 10 7A148F1404032E16 (
-					S57MPBJ9OEOU9OH6HSV2ANMCV8BHLRMR
-					NS SOA RRSIG DNSKEY NSEC3PARAM )
-			86400	RRSIG	NSEC3 13 3 86400 (
-					20601231235959 20201008173847 50991 example.com.
-					154MoFdP2smx09KBMiy36uNh+I7FVcwqUkHv
-					2Tq6CpJJvsZcTH0TBx2rwQ0UEARbVg1fsEZw
-					S3mCUat1VTbhVg== )
-036n766anb525cqa642tmm3r4occikb7.example.com. 86400 IN NSEC3 1 0 10 7A148F1404032E16 (
-					BGV0LKAMJSOEC22ARUGDNLTTCB70AF7U
-					A RRSIG )
-			86400	RRSIG	NSEC3 13 3 86400 (
-					20601231235959 20201008173847 50991 example.com.
-					TS1jDhhKnv4QbWLzdvKbE0y4TduOJD8Tk+Ns
-					vvGv4x2cpNyqhbueaN2Uko+OAEmYQJYPfK/y
-					msRbeh57E0qsBQ== )
-s57mpbj9oeou9oh6hsv2anmcv8bhlrmr.example.com. 86400 IN NSEC3 1 0 10 7A148F1404032E16 (
-					036N766ANB525CQA642TMM3R4OCCIKB7
-					NS )
-			86400	RRSIG	NSEC3 13 3 86400 (
-					20601231235959 20201008173847 50991 example.com.
-					0ET1wQ/5K9JEqb0U2moyZ2g3H5UVlORB3o83
-					brB22Sr/SKklbtWaixENYKli0m3j1RohtDeM
-					dSm0rS8vPG3FUA== )
+;; Zone dump (Knot DNS 3.1.dev.1612270066.d215637a6)
+example.com.        	3600	SOA	dns1.example.com. hostmaster.example.com. 2010111222 21600 3600 604800 86400
+example.com.        	3600	NS	dns1.example.com.
+example.com.        	0	CDNSKEY	257 3 13 Yk8KOmyVzOij3x+Zs+eT4J2Up9+ipwXEKOhL9fTYY/DU10yIQt+zYm02UFZJX2oVTdHBCajpBFsZLH2X4ho1yw==
+example.com.        	0	CDS	25674 13 2 2EC05563A3537BD32EA3EB92C44794C644F249EE440785CF28207B903E35322D
+example.com.        	3600	DNSKEY	256 3 13 tCoteOM+A4o/A9uxgLyDg3HOg2DClU+3d+1XPQRtTfuaEFOGIpyH6qiFUv2b4DYuvmMyTkL99nxvyhA8yo0Cgg==
+example.com.        	3600	DNSKEY	257 3 13 Yk8KOmyVzOij3x+Zs+eT4J2Up9+ipwXEKOhL9fTYY/DU10yIQt+zYm02UFZJX2oVTdHBCajpBFsZLH2X4ho1yw==
+example.com.        	0	NSEC3PARAM	1 0 10 151E9F1094FE188F
+deleg.example.com.  	3600	NS	deleg.example.com.
+deleg.example.com.  	3600	A	192.0.2.1
+dns1.example.com.   	3600	A	192.0.2.1
+;; DNSSEC signatures
+example.com.        	3600	RRSIG	NS 13 2 3600 20400406110811 20210205093811 61806 example.com. VD3IclxLUSi1tgv4+FJ+9e3EWiRny6de1y4jUFn1Ama8+Cl2vZO2Jc34Q9MKY/S9m4id7Xe8MtkkrKThQcaaXw==
+example.com.        	3600	RRSIG	SOA 13 2 3600 20400406110811 20210205093811 61806 example.com. BniH53lEM1hYGcorTmqF7At3+neZkifPT1sM15nGlQUQ6RfkPxh7Uy8Pj3PxLL5v7WDTyFGbLVThEFWZUh/h6w==
+example.com.        	3600	RRSIG	DNSKEY 13 2 3600 20400406110811 20210205093811 25674 example.com. 3FSDEJ9f54++FX/EHWXXnbHW8iJPaDG4kc7qf772y62dtqTfAvb22lq2yKzCOaRFFwpPKEdcS4OEkhx0IbC27w==
+example.com.        	0	RRSIG	NSEC3PARAM 13 2 0 20400406110811 20210205093811 61806 example.com. BTT+7Gj8V2pATxogxJ8xEO5eiVHoVIDxdK60zDS3MWNcbUc/n9vJR8NrCECel9egQUWrejawikO4DkyQxLZpkw==
+example.com.        	0	RRSIG	CDS 13 2 0 20400406110811 20210205093811 25674 example.com. h43kZiM1EFETWQEtMM8Xls/RFDsAkLIpLf+DUnJ+zzxv37xpGvtf/s//3ew9qEhouBnGh/1FWtNr8vjhzh0tsg==
+example.com.        	0	RRSIG	CDNSKEY 13 2 0 20400406110811 20210205093811 25674 example.com. 4mf7C/zyWoFRllUEaLHpdxJdlbEQXIRKNH6JOH3sTKSQMGj1SMmkWm9qlO9tVaUm1ggB6r8TPWgrAUBG+4A9gQ==
+dns1.example.com.   	3600	RRSIG	A 13 3 3600 20400406110811 20210205093811 61806 example.com. lMj63MgZYiCl6Fdf0Q5C4/K99AAXTqCI9HSBQcrc7qiZDjRpZXzBUO8yv7+5JSMIo/A3tJtQL/12VFPGZ9NQ5w==
+;; DNSSEC NSEC3 chain
+ple28jlp3q5anh045ssk9f3u7ltd4qlc.example.com. 3600	NSEC3	1 1 10 151E9F1094FE188F rvcd9h11kcnenarqcmtmrhusdmb24rm4 NS SOA RRSIG DNSKEY NSEC3PARAM CDS CDNSKEY
+rvcd9h11kcnenarqcmtmrhusdmb24rm4.example.com. 3600	NSEC3	1 1 10 151E9F1094FE188F ple28jlp3q5anh045ssk9f3u7ltd4qlc A RRSIG
+;; DNSSEC NSEC3 signatures
+ple28jlp3q5anh045ssk9f3u7ltd4qlc.example.com. 3600	RRSIG	NSEC3 13 3 3600 20400406110811 20210205093811 61806 example.com. 7AdxaQLQ16ORwtf3t9lNQrzOP1BKu0TOIiKfx8/7o0JKoVtDYjqTC+ilWSD/Mbfb6PI6ND3NQKsIbnApOa2SUA==
+rvcd9h11kcnenarqcmtmrhusdmb24rm4.example.com. 3600	RRSIG	NSEC3 13 3 3600 20400406110811 20210205093811 61806 example.com. bOUzqzuIhV/SPyXiFOgsJbnS77dijFWcLDY/0X3r9aNiAo3/vSE4OTT0f6CkcBQDka+LjIoRaE7NIaTMl24fdg==
+;; Written 21 records
+;; Time 2021-02-05 12:08:11 CET
