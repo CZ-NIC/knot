@@ -8,6 +8,7 @@ ENV BUILD_PKGS \
     gcc \
     git-core \
     libedit-dev \
+    libelf-dev \
     libfstrm-dev \
     libgnutls28-dev \
     libidn2-0-dev \
@@ -34,6 +35,7 @@ RUN autoreconf -if && \
                 --with-storage=/storage \
                 --with-configdir=/config \
                 --with-module-dnstap=yes \
+                --enable-xdp=yes \
                 --disable-fastparser \
                 --disable-static \
                 --disable-documentation && \
@@ -46,7 +48,9 @@ MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 
 # Environment
 ENV RUNTIME_PKGS \
+    iproute2 \
     libedit2 \
+    libelf1 \
     libfstrm0 \
     libgnutls30 \
     libidn2-0 \
