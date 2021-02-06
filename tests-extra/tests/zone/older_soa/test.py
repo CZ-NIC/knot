@@ -33,7 +33,8 @@ master.update_zonefile(zone, version=1)
 master.stop()
 master.start()
 t.sleep(2)
-slave.ctl("zone-refresh", wait=True)
+slave.ctl("zone-refresh") # the refresh should fail -> no blocking mode, no error
+t.sleep(2)
 
 resp = master.dig("added.example.", "A")
 resp.check(rcode="NXDOMAIN")
