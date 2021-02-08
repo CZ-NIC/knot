@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,13 +43,14 @@ int set_config(const cmd_desc_t *desc, params_t *params);
 /*!
  * Estabilishes a control interface if necessary.
  *
- * \param[in] ctl     Control context.
- * \param[in] desc    Utility command descriptor.
- * \param[in] params  Utility parameters.
+ * \param[in] ctl      Control context.
+ * \param[in] socket   Control socket path.
+ * \param[in] timeout  Control socket timeout.
+ * \param[in] desc     Utility command descriptor.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int set_ctl(knot_ctl_t **ctl, const cmd_desc_t *desc, params_t *params);
+int set_ctl(knot_ctl_t **ctl, const char *socket, int timeout, const cmd_desc_t *desc);
 
 /*!
  * Cleans up the control context.
