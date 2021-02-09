@@ -60,7 +60,8 @@ The control socket operations are also subject to the timeout
 parameter set on the server side in server\(aqs Control configuration section.
 .TP
 \fB\-b\fP, \fB\-\-blocking\fP
-Zone event trigger commands wait until the event is finished.
+Zone event trigger commands wait until the event is finished. Control timeout
+is set to infinity.
 .TP
 \fB\-f\fP, \fB\-\-force\fP
 Forced operation. Overrides some checks.

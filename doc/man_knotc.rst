@@ -37,7 +37,8 @@ Parameters
   parameter set on the server side in server's Control configuration section.
 
 **-b**, **--blocking**
-  Zone event trigger commands wait until the event is finished.
+  Zone event trigger commands wait until the event is finished. Control timeout
+  is set to infinity.
 
 **-f**, **--force**
   Forced operation. Overrides some checks.
