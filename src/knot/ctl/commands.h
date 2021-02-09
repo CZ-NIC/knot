@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@ typedef struct {
 	knot_ctl_type_t type;
 	knot_ctl_data_t data;
 	server_t *server;
-	bool failed;
+	bool suppress;	// Suppress error reporting in the "all zones" ctl commands.
 	void *custom_ctx;
 } ctl_args_t;
 

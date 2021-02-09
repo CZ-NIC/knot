@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -135,7 +135,7 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 	return KNOT_EOK;
 }
 
-int set_ctl(knot_ctl_t **ctl, const cmd_desc_t *desc, params_t *params)
+int set_ctl(knot_ctl_t **ctl, const char *socket, int timeout, const cmd_desc_t *desc)
 {
 	if (desc == NULL) {
 		*ctl = NULL;
@@ -153,8 +153,8 @@ int set_ctl(knot_ctl_t **ctl, const cmd_desc_t *desc, params_t *params)
 
 	/* Get control socket path. */
 	char *path = NULL;
-	if (params->socket != NULL) {
-		path = strdup(params->socket);
+	if (socket != NULL) {
+		path = strdup(socket);
 	} else {
 		conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
 		conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
@@ -175,7 +175,7 @@ int set_ctl(knot_ctl_t **ctl, const cmd_desc_t *desc, params_t *params)
 		return KNOT_ENOMEM;
 	}
 
-	knot_ctl_set_timeout(*ctl, params->timeout);
+	knot_ctl_set_timeout(*ctl, timeout);
 
 	int ret = knot_ctl_connect(*ctl, path);
 	if (ret != KNOT_EOK) {
@@ -263,7 +263,8 @@ int process_cmd(int argc, const char **argv, params_t *params)
 	}
 
 	/* Set control interface if necessary. */
-	ret = set_ctl(&args.ctl, desc, params);
+	int cmd_timeout = args.blocking ? 0 : params->timeout;
+	ret = set_ctl(&args.ctl, params->socket, cmd_timeout, desc);
 	if (ret != KNOT_EOK) {
 		conf_update(NULL, CONF_UPD_FNONE);
 		return ret;

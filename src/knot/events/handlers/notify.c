@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -129,6 +129,8 @@ int event_notify(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
+	bool failed = false;
+
 	if (zone_contents_is_empty(zone->contents)) {
 		return KNOT_EOK;
 	}
@@ -143,16 +145,22 @@ int event_notify(conf_t *conf, zone_t *zone)
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &notify);
 		size_t addr_count = conf_val_count(&addr);
 
+		int ret = KNOT_EOK;
+
 		for (int i = 0; i < addr_count; i++) {
 			conf_remote_t slave = conf_remote(conf, &notify, i);
-			int ret = send_notify(conf, zone, &soa, &slave, timeout);
+			ret = send_notify(conf, zone, &soa, &slave, timeout);
 			if (ret == KNOT_EOK) {
 				break;
 			}
 		}
 
+		if (ret != KNOT_EOK) {
+			failed = true;
+		}
+
 		conf_val_next(&notify);
 	}
 
-	return KNOT_EOK;
+	return failed ? KNOT_ERROR : KNOT_EOK;
 }

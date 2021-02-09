@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1233,7 +1233,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	if (!zone_is_slave(conf, zone)) {
-		return KNOT_EOK;
+		return KNOT_ENOTSUP;
 	}
 
 	try_refresh_ctx_t trctx = { 0 };
@@ -1277,11 +1277,11 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone->timers.next_refresh = now + max_refresh;
 	}
 
-	/* Rechedule events. */
+	/* Reschedule events. */
 	replan_from_timers(conf, zone);
 	if (trctx.send_notify) {
 		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
 	}
 
-	return KNOT_EOK;
+	return ret;
 }

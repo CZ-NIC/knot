@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,6 +47,13 @@
 #define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] != NULL && \
                                       strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
 
+#define RETURN_IF_FAILED(exception) \
+{ \
+	if (ret != KNOT_EOK && ret != (exception)) { \
+		return ret; \
+	} \
+}
+
 typedef struct {
 	ctl_args_t *args;
 	int type_filter; // -1: no specific type, [0, 2^16]: specific type.
@@ -68,16 +75,20 @@ static struct {
 	            sizeof(((send_ctx_t *)0)->rdata)];
 } ctl_globals;
 
-static void schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t event,
-                             bool user)
+static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t event,
+                            bool user)
 {
+	int ret = KNOT_EOK;
+
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_BLOCKING)) {
-		zone_events_schedule_blocking(zone, event, user);
+		ret = zone_events_schedule_blocking(zone, event, user);
 	} else if (user) {
 		zone_events_schedule_user(zone, event);
 	} else {
 		zone_events_schedule_now(zone, event);
 	}
+
+	return ret;
 }
 
 void ctl_log_data(knot_ctl_data_t *data)
@@ -148,18 +159,28 @@ static int get_zone(ctl_args_t *args, zone_t **zone)
 
 static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 {
-	int ret = KNOT_EOK;
+	int ret;
 
 	// Process all configured zones if none is specified.
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-		args->failed = false;
-		knot_zonedb_foreach(args->server->zone_db, fcn, args);
-		if (args->failed) {
+		bool failed = false;
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(args->server->zone_db);
+		while (!knot_zonedb_iter_finished(it)) {
+			args->suppress = false;
+			ret = fcn((zone_t *)knot_zonedb_iter_val(it), args);
+			if (ret != KNOT_EOK && !args->suppress) {
+				failed = true;
+			}
+			knot_zonedb_iter_next(it);
+		}
+		knot_zonedb_iter_free(it);
+
+		if (failed) {
 			ret = KNOT_CTL_EZONE;
 			log_ctl_error("control, error (%s)", knot_strerror(ret));
 			send_error(args, knot_strerror(ret));
-			args->failed = false;
 		}
+
 		return KNOT_EOK;
 	}
 
@@ -321,6 +342,7 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (zone_expired(zone)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
@@ -328,9 +350,7 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 		return zone_reload_modules(conf(), args->server, zone->name);
 	}
 
-	schedule_trigger(zone, args, ZONE_EVENT_LOAD, true);
-
-	return KNOT_EOK;
+	return schedule_trigger(zone, args, ZONE_EVENT_LOAD, true);
 }
 
 static int zone_refresh(zone_t *zone, ctl_args_t *args)
@@ -338,12 +358,11 @@ static int zone_refresh(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (!zone_is_slave(conf(), zone)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
-	schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
-
-	return KNOT_EOK;
+	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 }
 
 static int zone_retransfer(zone_t *zone, ctl_args_t *args)
@@ -351,22 +370,19 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (!zone_is_slave(conf(), zone)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
 	zone_set_flag(zone, ZONE_FORCE_AXFR);
-	schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
-
-	return KNOT_EOK;
+	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 }
 
 static int zone_notify(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	schedule_trigger(zone, args, ZONE_EVENT_NOTIFY, true);
-
-	return KNOT_EOK;
+	return schedule_trigger(zone, args, ZONE_EVENT_NOTIFY, true);
 }
 
 static int zone_flush(zone_t *zone, ctl_args_t *args)
@@ -378,7 +394,6 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to update zone file (%s)",
 			                 knot_strerror(ret));
-			args->failed = true;
 		}
 		return ret;
 	}
@@ -387,9 +402,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		zone_set_flag(zone, ZONE_FORCE_FLUSH);
 	}
 
-	schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
-
-	return KNOT_EOK;
+	return schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
 }
 
 static int init_backup(ctl_args_t *args, bool restore_mode)
@@ -420,14 +433,6 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	ctx->backup_zonefile = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
 	args->custom_ctx = ctx;
 
-	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-		ctx->backup_global = true;
-		ret = global_backup(ctx, &args->server->catalog, NULL);
-		if (ret != KNOT_EOK) {
-			zone_backup_deinit(ctx);
-		}
-	}
-
 	return ret;
 }
 
@@ -442,7 +447,6 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	zone_backup_ctx_t *ctx = args->custom_ctx;
 	if (zone->backup_ctx != NULL) {
 		log_zone_warning(zone->name, "backup already in progress");
-		args->failed = true;
 		return KNOT_EPROGRESS;
 	}
 	zone->backup_ctx = ctx;
@@ -450,13 +454,52 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	ctx->readers++;
 	pthread_mutex_unlock(&ctx->readers_mutex);
 
-	schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
+	int ret = schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 
-	if (ctx->backup_global) {
-		return KNOT_EOK;
-	} else {
-		return global_backup(ctx, zone->catalog, zone->name);
+	if (ret == KNOT_EOK && !ctx->backup_global) {
+		ret = global_backup(ctx, zone->catalog, zone->name);
 	}
+
+	return ret;
+}
+
+static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
+{
+	int ret = init_backup(args, restore_mode);
+	if (ret != KNOT_EOK) {
+		char *msg = sprintf_alloc("%s init failed (%s)",
+		                          restore_mode ? "restore" : "backup",
+		                          knot_strerror(ret));
+
+		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+			log_ctl_error("%s", msg);
+		} else {
+			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
+			                       "%s", msg);
+		}
+		free (msg);
+
+		/* Warning: zone name in the control command params discarded here. */
+		args->data[KNOT_CTL_IDX_ZONE] = NULL;
+		send_error(args, knot_strerror(ret));
+		return KNOT_CTL_EZONE;
+	}
+
+	/* Global catalog zones backup. */
+	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		zone_backup_ctx_t *ctx = args->custom_ctx;
+		ctx->backup_global = true;
+		ret = global_backup(ctx, &args->server->catalog, NULL);
+		if (ret != KNOT_EOK) {
+			goto done;
+		}
+	}
+
+	ret = zones_apply(args, zone_backup_cmd);
+
+done:
+	deinit_backup(args);
+	return ret;
 }
 
 static int zone_sign(zone_t *zone, ctl_args_t *args)
@@ -465,19 +508,19 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (!conf_bool(&val)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
 	zone_set_flag(zone, ZONE_FORCE_RESIGN);
-	schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
-
-	return KNOT_EOK;
+	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 }
 
 static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 {
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (!conf_bool(&val)) {
+		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
@@ -490,9 +533,7 @@ static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
-
-	return KNOT_EOK;
+	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 }
 
 static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
@@ -512,7 +553,7 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (ret == KNOT_EOK && conf_bool(&val)) {
 		// NOT zone_events_schedule_user(), intentionally!
-		schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, false);
+		ret = schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, false);
 	}
 
 	return ret;
@@ -522,18 +563,14 @@ static int zone_freeze(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	schedule_trigger(zone, args, ZONE_EVENT_UFREEZE, false);
-
-	return KNOT_EOK;
+	return schedule_trigger(zone, args, ZONE_EVENT_UFREEZE, false);
 }
 
 static int zone_thaw(zone_t *zone, ctl_args_t *args)
 {
 	UNUSED(args);
 
-	schedule_trigger(zone, args, ZONE_EVENT_UTHAW, false);
-
-	return KNOT_EOK;
+	return schedule_trigger(zone, args, ZONE_EVENT_UTHAW, false);
 }
 
 static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
@@ -554,10 +591,9 @@ static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
 	if (ret != KNOT_EOK) {
 		free(zone->control_update);
 		zone->control_update = NULL;
-		return ret;
 	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
@@ -794,6 +830,7 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 			ret = zone_contents_nsec3_apply(zone->contents, send_node, ctx);
 		}
 	}
+
 	return ret;
 }
 
@@ -902,12 +939,7 @@ static int send_changeset(changeset_t *ch, send_ctx_t *ctx)
 	}
 
 	// Second send 'to' changeset part.
-	ret = send_changeset_part(ch, ctx, false);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return send_changeset_part(ch, ctx, false);
 }
 
 static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
@@ -1193,40 +1225,51 @@ static int orphans_purge(ctl_args_t *args)
 
 static int zone_purge(zone_t *zone, ctl_args_t *args)
 {
+	int ret = KNOT_EOK;
+
 	// Abort possible editing transaction.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
-		(void)zone_txn_abort(zone, args);
+		ret = zone_txn_abort(zone, args);
+		RETURN_IF_FAILED(KNOT_TXN_ENOTEXISTS);
 	}
 
 	// Purge the zone timers.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
 		memset(&zone->timers, 0, sizeof(zone->timers));
-		(void)zone_timers_sweep(&args->server->timerdb,
+		ret = zone_timers_sweep(&args->server->timerdb,
 		                        zone_names_distinct, zone->name);
+		RETURN_IF_FAILED(KNOT_ENOENT);
 	}
 
 	// Expire the zone.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
-		schedule_trigger(zone, args, ZONE_EVENT_EXPIRE, true);
+		// KNOT_EOK is the only return value from event_expire().
+		(void)schedule_trigger(zone, args, ZONE_EVENT_EXPIRE, true);
 	}
 
 	// Purge the zone file.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_ZONEFILE)) {
 		char *zonefile = conf_zonefile(conf(), zone->name);
-		(void)unlink(zonefile);
+		if (unlink(zonefile) == -1) {
+			ret = knot_map_errno();
+		}
 		free(zonefile);
+		RETURN_IF_FAILED(KNOT_ENOENT);
 	}
 
 	// Purge the zone journal.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
-		(void)journal_scrape_with_md(zone_journal(zone), true);
+		ret = journal_scrape_with_md(zone_journal(zone), true);
+		RETURN_IF_FAILED(KNOT_ENOENT);
 	}
 
 	// Purge KASP DB.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-		if (knot_lmdb_open(zone->kaspdb) == KNOT_EOK) {
-			(void)kasp_db_delete_all(zone->kaspdb, zone->name);
+		ret = knot_lmdb_open(zone->kaspdb);
+		if (ret == KNOT_EOK) {
+			ret = kasp_db_delete_all(zone->kaspdb, zone->name);
 		}
+		RETURN_IF_FAILED(KNOT_ENOENT);
 	}
 
 	return KNOT_EOK;
@@ -1383,7 +1426,6 @@ static int zone_stats(zone_t *zone, ctl_args_t *args)
 
 static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 {
-	int ret;
 	switch (cmd) {
 	case CTL_ZONE_STATUS:
 		return zones_apply(args, zone_status);
@@ -1398,23 +1440,9 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 	case CTL_ZONE_FLUSH:
 		return zones_apply(args, zone_flush);
 	case CTL_ZONE_BACKUP:
-		ret = init_backup(args, false);
-		if (ret == KNOT_EOK) {
-			ret = zones_apply(args, zone_backup_cmd);
-			deinit_backup(args);
-		} else {
-			send_error(args, knot_strerror(ret));
-		}
-		return ret;
+		return zones_apply_backup(args, false);
 	case CTL_ZONE_RESTORE:
-		ret = init_backup(args, true);
-		if (ret == KNOT_EOK) {
-			ret = zones_apply(args, zone_backup_cmd);
-			deinit_backup(args);
-		} else {
-			send_error(args, knot_strerror(ret));
-		}
-		return ret;
+		return zones_apply_backup(args, true);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
 	case CTL_ZONE_KEY_ROLL:

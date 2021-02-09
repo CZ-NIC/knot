@@ -37,7 +37,8 @@ Parameters
   parameter set on the server side in server's Control configuration section.
 
 **-b**, **--blocking**
-  Zone event trigger commands wait until the event is finished.
+  Zone event trigger commands wait until the event is finished. Control timeout
+  is set to infinity.
 
 **-f**, **--force**
   Forced operation. Overrides some checks.
@@ -236,9 +237,16 @@ Type *item* parameter in the form of *section*\ [**[**\ *id*\ **]**\ ][**.**\ *n
 
 The *-b* and *-f* options can be placed right after the command name.
 
-The *OK* response to triggering commands means that the command has been successfully sent
-to the server. To verify if the operation succeeded it's necessary to check the server
-log.
+Responses returned by *knotc* commands depend on the mode:
+
+- In the blocking mode, *knotc* reports if an error occurred during processing
+  of the command by the server. If an error is reported, a more detailed information
+  about the failure can usually be found in the server log.
+
+- In the non-blocking (default) mode, *knotc* doesn't report processing errors.
+  The *OK* response to triggering commands means that the command has been successfully
+  sent to the server. To verify if the operation succeeded, it's necessary to
+  check the server log.
 
 Interactive mode
 ................
