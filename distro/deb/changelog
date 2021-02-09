@@ -1,4 +1,4 @@
-knot (__VERSION__-1) unstable; urgency=medium
+knot (__VERSION__-cznic.1) unstable; urgency=medium
 
   * move changelog to OBS
   * see NEWS or https://knot-dns.cz
