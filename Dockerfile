@@ -1,12 +1,12 @@
 ## Intermediate stage ##
-FROM debian:stable-slim
+FROM debian:bullseye-slim
 
 # Environment
 ENV BUILD_PKGS \
     autoconf \
     automake \
     gcc \
-    git-core \
+    libbpf-dev \
     libedit-dev \
     libelf-dev \
     libfstrm-dev \
@@ -35,7 +35,6 @@ RUN autoreconf -if && \
                 --with-storage=/storage \
                 --with-configdir=/config \
                 --with-module-dnstap=yes \
-                --enable-xdp=yes \
                 --disable-fastparser \
                 --disable-static \
                 --disable-documentation && \
@@ -43,12 +42,13 @@ RUN autoreconf -if && \
     make install DESTDIR=/tmp/knot-install
 
 ## Final stage ##
-FROM debian:stable-slim
+FROM debian:bullseye-slim
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 
 # Environment
 ENV RUNTIME_PKGS \
     iproute2 \
+    libbpf0 \
     libedit2 \
     libelf1 \
     libfstrm0 \
