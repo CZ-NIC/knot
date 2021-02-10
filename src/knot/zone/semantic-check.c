@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -839,6 +839,11 @@ static int check_nsec(const zone_node_t *node, semchecks_data_t *data)
 	return KNOT_EOK;
 }
 
+static bool nsec3_optout_allow(const zone_node_t *node)
+{
+	return (node->flags & NODE_FLAGS_DELEG) && !node_rrtype_exists(node, KNOT_RRTYPE_DS);
+}
+
 /*!
  * \brief Check if node has NSEC3 node.
  *
@@ -848,9 +853,9 @@ static int check_nsec(const zone_node_t *node, semchecks_data_t *data)
 static int check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data)
 {
 	bool auth = (node->flags & NODE_FLAGS_NONAUTH) == 0;
-	bool deleg = (node->flags & NODE_FLAGS_DELEG) != 0;
+	bool empty = (node->flags & NODE_FLAGS_EMPTY) != 0;
 
-	if ((deleg && node_rrtype_exists(node, KNOT_RRTYPE_DS)) || (auth && !deleg)) {
+	if (!nsec3_optout_allow(node) && auth && !empty) {
 		if (node_nsec3_get(node) == NULL) {
 			data->handler->cb(data->handler, data->zone, node,
 			                  SEM_ERR_NSEC3_NONE, NULL);
@@ -868,7 +873,7 @@ static int check_nsec3_presence(const zone_node_t *node, semchecks_data_t *data)
  */
 static int check_nsec3_opt_out(const zone_node_t *node, semchecks_data_t *data)
 {
-	if (!(node_nsec3_get(node) == NULL && node->flags & NODE_FLAGS_DELEG)) {
+	if (!(node_nsec3_get(node) == NULL && node->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_EMPTY))) {
 		return KNOT_EOK;
 	}
 	/* Insecure delegation, check whether it is part of opt-out span. */
@@ -1202,6 +1207,30 @@ static void check_dnskey(zone_contents_t *zone, sem_handler_t *handler)
 	}
 }
 
+static int mark_nsec3_optout(zone_node_t *node, void *ctx)
+{
+	UNUSED(ctx);
+	if (nsec3_optout_allow(node) && node_nsec3_get(node) == NULL) {
+		do {
+			assert(!(node->flags & NODE_FLAGS_APEX));
+			node->flags |= NODE_FLAGS_EMPTY;
+			node = node_parent(node);
+			node->children--;
+		} while (node->rrset_count == 0 && node->children == 0 && node_nsec3_get(node) == NULL);
+	}
+	return KNOT_EOK;
+}
+
+static int unmark_nsec3_optout(zone_node_t *node, void *ctx)
+{
+	UNUSED(ctx);
+	if (node->flags & NODE_FLAGS_EMPTY) {
+		node->flags &= ~NODE_FLAGS_EMPTY;
+		node_parent(node)->children++;
+	}
+	return KNOT_EOK;
+}
+
 int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_handler_t *handler,
                        time_t time)
 {
@@ -1233,7 +1262,16 @@ int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_
 		}
 	}
 
+	if (data.level & NSEC3) {
+		int ret = zone_tree_apply(zone->nodes, mark_nsec3_optout, NULL);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
 	int ret = zone_contents_apply(zone, do_checks_in_tree, &data);
+	if (data.level & NSEC3) {
+		(void)zone_tree_apply(zone->nodes, unmark_nsec3_optout, NULL);
+	}
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

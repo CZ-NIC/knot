@@ -1,0 +1,20 @@
+example.com.        	3600	SOA	dns1.com. hostmaster.com. 2010111217 21600 3600 604800 86400
+example.com.        	3600	NS	dns1.com.
+example.com.        	3600	DNSKEY	256 3 13 tCoteOM+A4o/A9uxgLyDg3HOg2DClU+3d+1XPQRtTfuaEFOGIpyH6qiFUv2b4DYuvmMyTkL99nxvyhA8yo0Cgg==
+example.com.        	3600	DNSKEY	257 3 13 Yk8KOmyVzOij3x+Zs+eT4J2Up9+ipwXEKOhL9fTYY/DU10yIQt+zYm02UFZJX2oVTdHBCajpBFsZLH2X4ho1yw==
+example.com.        	0	NSEC3PARAM	1 0 10 151E9F1094FE188F
+deleg1.ent.example.com.	3600	NS	glue.outofzone.net.
+deleg2.ent.example.com.	3600	NS	glue.outofzone.net.
+
+example.com.        	3600	RRSIG	NS 13 2 3600 20400410173236 20210209160236 61806 example.com. C4ierSNpy03xjH5rQEfb01wCj4SVIzX9b15FVEMIbn3lmDo5jXO6stOrW8Z7OjoVuCaRi1Qj997TeCYqOxNXSQ==
+example.com.        	3600	RRSIG	SOA 13 2 3600 20400410173236 20210209160236 61806 example.com. NNyQzYOcPbfEsqv61I78MuMguN/KIFi/wSJc940pj7rv+riA3J+XVzpaHSSh//q8CmrvpBAk2g8KsQG/6kOXmg==
+example.com.        	3600	RRSIG	DNSKEY 13 2 3600 20400410173236 20210209160236 25674 example.com. ZY3nxZJeOfSOEhs02mfhQgt6N1EgZubtPp3HuV69gStFSu4aCLi8a2aseQGilOFW64dOAYNm3LL/WqhPi7MZ1Q==
+example.com.        	0	RRSIG	NSEC3PARAM 13 2 0 20400410173236 20210209160236 61806 example.com. JITs/EH8nLaFRidlkT6+mcTwEpjgp2TMjb9fU5TBIlKn94og8YtOWFbNmzdEYBKlGLlkg8LwY2ortrSoRHS6Hw==
+
+ej69a9a2k2j0ntktmdvihrv5ao8fl1jt.example.com. 3600	NSEC3	1 1 10 151E9F1094FE188F gtr2v0c3d7eqh7ob8rbad7ta90tq8lci
+gtr2v0c3d7eqh7ob8rbad7ta90tq8lci.example.com. 3600	NSEC3	1 1 10 151E9F1094FE188F ple28jlp3q5anh045ssk9f3u7ltd4qlc NS
+ple28jlp3q5anh045ssk9f3u7ltd4qlc.example.com. 3600	NSEC3	1 1 10 151E9F1094FE188F ej69a9a2k2j0ntktmdvihrv5ao8fl1jt NS SOA RRSIG DNSKEY NSEC3PARAM
+
+ej69a9a2k2j0ntktmdvihrv5ao8fl1jt.example.com. 3600	RRSIG	NSEC3 13 3 3600 20400410173236 20210209160236 61806 example.com. yatL/lbFSUyN4UyRtMXymxsiqhOXHp+N+pTI/zNOc0NXCdaaLceh+tZHlc+E4napRfP53XXEhuGavjShTIJ/+g==
+gtr2v0c3d7eqh7ob8rbad7ta90tq8lci.example.com. 3600	RRSIG	NSEC3 13 3 3600 20400410173236 20210209160236 61806 example.com. 20XNZrfJ4l/JIDjCbsba3mUOrNyOxJ2VuCju/yLc0XbdzqMcKJR87g3u967GEnoYY5f5+rJt/IHsuJWHcLApCQ==
+ple28jlp3q5anh045ssk9f3u7ltd4qlc.example.com. 3600	RRSIG	NSEC3 13 3 3600 20400410173236 20210209160236 61806 example.com. eLRo9y8Rxf157qcciWM/LSUbtjYks2zLO5xQ9Ff5bidHc9m2XEqjWxqdPZz5gurEf+uPnM8mnix36X4YH4ZXwg==
