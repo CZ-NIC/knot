@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@
 
 #define PROGRAM_NAME		"knotc"
 #define SPACE			"  "
-#define DEFAULT_CTL_TIMEOUT	60
 
 static void print_help(void)
 {
@@ -41,7 +40,7 @@ static void print_help(void)
 	       "                          "SPACE" (default %d MiB)\n"
 	       " -s, --socket <path>      "SPACE"Use a control UNIX socket path.\n"
 	       "                          "SPACE" (default %s)\n"
-	       " -t, --timeout <sec>      "SPACE"Use a control socket timeout (max 7200 seconds).\n"
+	       " -t, --timeout <sec>      "SPACE"Use a control socket timeout (max 86400 seconds).\n"
 	       "                          "SPACE" (default %u seconds)\n"
 	       " -b, --blocking	          "SPACE"Zone event trigger commands wait until the event is finished.\n"
 	       " -f, --force              "SPACE"Forced operation. Overrides some checks.\n"
@@ -49,14 +48,14 @@ static void print_help(void)
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n",
 	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR,
-	       CONF_MAPSIZE, RUN_DIR "/knot.sock", DEFAULT_CTL_TIMEOUT);
+	       CONF_MAPSIZE, RUN_DIR "/knot.sock", DEFAULT_CTL_TIMEOUT_MS / 1000);
 
 	print_commands();
 }
 
 params_t params = {
 	.max_conf_size = (size_t)CONF_MAPSIZE * 1024 * 1024,
-	.timeout = DEFAULT_CTL_TIMEOUT * 1000
+	.timeout = -1
 };
 
 int main(int argc, char **argv)
@@ -101,7 +100,7 @@ int main(int argc, char **argv)
 			params.socket = optarg;
 			break;
 		case 't':
-			if (str_to_int(optarg, &params.timeout, 0, 7200) != KNOT_EOK) {
+			if (str_to_int(optarg, &params.timeout, 0, 86400) != KNOT_EOK) {
 				print_help();
 				return EXIT_FAILURE;
 			}

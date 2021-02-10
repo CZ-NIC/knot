@@ -263,7 +263,10 @@ int process_cmd(int argc, const char **argv, params_t *params)
 	}
 
 	/* Set control interface if necessary. */
-	int cmd_timeout = args.blocking ? 0 : params->timeout;
+	int cmd_timeout = params->timeout != -1 ? params->timeout : DEFAULT_CTL_TIMEOUT_MS;
+	if (args.blocking && params->timeout == -1) {
+		cmd_timeout = 0;
+	}
 	ret = set_ctl(&args.ctl, params->socket, cmd_timeout, desc);
 	if (ret != KNOT_EOK) {
 		conf_update(NULL, CONF_UPD_FNONE);

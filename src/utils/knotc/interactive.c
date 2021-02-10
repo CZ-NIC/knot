@@ -97,7 +97,7 @@ static char *get_id_name(const char *section)
 	knot_ctl_data_t reply;
 
 	// Try to get the first group item (possible id).
-	if (set_ctl(&ctl, params.socket, params.timeout, desc) != KNOT_EOK ||
+	if (set_ctl(&ctl, params.socket, DEFAULT_CTL_TIMEOUT_MS, desc) != KNOT_EOK ||
 	    knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &query) != KNOT_EOK ||
 	    knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL) != KNOT_EOK ||
 	    knot_ctl_receive(ctl, &type, &reply) != KNOT_EOK ||
@@ -140,7 +140,7 @@ static void id_lookup(EditLine *el, const char *str, size_t str_len,
 	lookup_t lookup;
 	knot_ctl_t *ctl = NULL;
 
-	if (set_ctl(&ctl, params.socket, params.timeout, desc) != KNOT_EOK ||
+	if (set_ctl(&ctl, params.socket, DEFAULT_CTL_TIMEOUT_MS, desc) != KNOT_EOK ||
 	    knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &query) != KNOT_EOK ||
 	    knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL) != KNOT_EOK ||
 	    lookup_init(&lookup) != KNOT_EOK) {
@@ -195,7 +195,7 @@ static void list_lookup(EditLine *el, const char *section, const char *item)
 	lookup_t lookup;
 	knot_ctl_t *ctl = NULL;
 
-	if (set_ctl(&ctl, params.socket, params.timeout, desc) != KNOT_EOK ||
+	if (set_ctl(&ctl, params.socket, DEFAULT_CTL_TIMEOUT_MS, desc) != KNOT_EOK ||
 	    knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &query) != KNOT_EOK ||
 	    knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL) != KNOT_EOK ||
 	    lookup_init(&lookup) != KNOT_EOK) {

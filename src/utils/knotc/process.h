@@ -18,6 +18,8 @@
 
 #include "utils/knotc/commands.h"
 
+#define DEFAULT_CTL_TIMEOUT_MS	(60 * 1000)
+
 /*! Utility command line parameters. */
 typedef struct {
 	const char *config;
