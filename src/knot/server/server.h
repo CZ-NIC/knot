@@ -106,7 +106,7 @@ typedef struct server {
 	catalog_update_t catalog_upd;
 
 	/*! \brief Context of pending zones' backup. */
-	zone_backup_ctx_t *backup_ctx;
+	zone_backup_ctxs_t backup_ctxs;
 } server_t;
 
 /*!

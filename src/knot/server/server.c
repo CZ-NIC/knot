@@ -602,6 +602,8 @@ int server_init(server_t *server, int bg_workers)
 		return ret;
 	}
 
+	zone_backups_init(&server->backup_ctxs);
+
 	char *catalog_dir = conf_db(conf(), C_CATALOG_DB);
 	conf_val_t catalog_size = conf_db_param(conf(), C_CATALOG_DB_MAX_SIZE, NULL);
 	catalog_init(&server->catalog, catalog_dir, conf_int(&catalog_size));
@@ -630,11 +632,7 @@ void server_deinit(server_t *server)
 		return;
 	}
 
-	if (server->backup_ctx != NULL) {
-		log_warning("backup in progress, terminating, will be incomplete");
-		server->backup_ctx->readers = 1; // ensure complete deinit
-		zone_backup_deinit(server->backup_ctx);
-	}
+	zone_backups_deinit(&server->backup_ctxs);
 
 	/* Save zone timers. */
 	if (server->zone_db != NULL) {

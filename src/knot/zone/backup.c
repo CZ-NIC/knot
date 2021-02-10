@@ -67,7 +67,6 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	ctx->restore_mode = restore_mode;
 	ctx->backup_global = false;
 	ctx->readers = 1;
-	ctx->server_self_ptr = NULL;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 
@@ -124,12 +123,51 @@ void zone_backup_deinit(zone_backup_ctx_t *ctx)
 		BACKUP_LOCKFILE(ctx, lockfile);
 		unlink(lockfile);
 
-		if (ctx->server_self_ptr != NULL) {
-			*ctx->server_self_ptr = NULL;
-		}
+		zone_backups_rem(ctx);
 
 		free(ctx);
 	}
+}
+
+void zone_backups_init(zone_backup_ctxs_t *ctxs)
+{
+	init_list(&ctxs->ctxs);
+	pthread_mutex_init(&ctxs->mutex, NULL);
+}
+
+void zone_backups_deinit(zone_backup_ctxs_t *ctxs)
+{
+	zone_backup_ctx_t *ctx, *nxt;
+	WALK_LIST_DELSAFE(ctx, nxt, ctxs->ctxs) {
+		log_warning("backup in progress, terminating, will be incomplete");
+		ctx->readers = 1; // ensure full deinit
+		zone_backup_deinit(ctx);
+	}
+	pthread_mutex_destroy(&ctxs->mutex);
+}
+
+void zone_backups_add(zone_backup_ctxs_t *ctxs, zone_backup_ctx_t *ctx)
+{
+	pthread_mutex_lock(&ctxs->mutex);
+	add_tail(&ctxs->ctxs, (node_t *)ctx);
+	pthread_mutex_unlock(&ctxs->mutex);
+}
+
+static zone_backup_ctxs_t *get_ctxs_trick(zone_backup_ctx_t *ctx)
+{
+	node_t *n = (node_t *)ctx;
+	while (n->prev != NULL) {
+		n = n->prev;
+	}
+	return (zone_backup_ctxs_t *)n;
+}
+
+void zone_backups_rem(zone_backup_ctx_t *ctx)
+{
+	zone_backup_ctxs_t *ctxs = get_ctxs_trick(ctx);
+	pthread_mutex_lock(&ctxs->mutex);
+	rem_node((node_t *)ctx);
+	pthread_mutex_unlock(&ctxs->mutex);
 }
 
 static char *dir_file(const char *dir_name, const char *file_name)
