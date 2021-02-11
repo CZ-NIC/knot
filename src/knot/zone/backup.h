@@ -23,6 +23,7 @@
 #include "knot/zone/zone.h"
 
 typedef struct zone_backup_ctx {
+	node_t n;                           // ability to be put into list_t
 	bool restore_mode;                  // if true, this is not a backup, but restore
 	bool backup_journal;                // if true, also backup journal
 	bool backup_zonefile;               // if true, also backup zone contents to a zonefile (default on)
@@ -37,6 +38,11 @@ typedef struct zone_backup_ctx {
 	int lock_file;                      // lock file preventing simultaneous backups to same directory
 } zone_backup_ctx_t;
 
+typedef struct {
+	list_t ctxs;
+	pthread_mutex_t mutex;
+} zone_backup_ctxs_t;
+
 int zone_backup_init(bool restore_mode, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx);
@@ -47,3 +53,8 @@ int zone_backup(conf_t *conf, zone_t *zone);
 
 int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
                   const knot_dname_t *zone_only);
+
+void zone_backups_init(zone_backup_ctxs_t *ctxs);
+void zone_backups_deinit(zone_backup_ctxs_t *ctxs);
+void zone_backups_add(zone_backup_ctxs_t *ctxs, zone_backup_ctx_t *ctx);
+void zone_backups_rem(zone_backup_ctx_t *ctx);
