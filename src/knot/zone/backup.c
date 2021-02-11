@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -139,7 +139,8 @@ void zone_backups_deinit(zone_backup_ctxs_t *ctxs)
 {
 	zone_backup_ctx_t *ctx, *nxt;
 	WALK_LIST_DELSAFE(ctx, nxt, ctxs->ctxs) {
-		log_warning("backup in progress, terminating, will be incomplete");
+		log_warning("backup to '%s' in progress, terminating, will be incomplete",
+		            ctx->backup_dir);
 		ctx->readers = 1; // ensure full deinit
 		zone_backup_deinit(ctx);
 	}

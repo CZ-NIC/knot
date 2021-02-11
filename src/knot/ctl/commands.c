@@ -451,7 +451,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = latest_backup_ctx(args);
 	if (zone->backup_ctx != NULL) {
-		log_zone_warning(zone->name, "zone backup already in progress, skipping zone");
+		log_zone_warning(zone->name, "backup already in progress, skipping zone");
 		return KNOT_EOK;
 	}
 	zone->backup_ctx = ctx;
