@@ -409,6 +409,42 @@ bool zone_expired(const zone_t *zone)
 	       timers->last_refresh + timers->soa_expire <= time(NULL);
 }
 
+static void time_set_default(time_t *time, time_t value)
+{
+	assert(time);
+
+	if (*time == 0) {
+		*time = value;
+	}
+}
+
+void zone_timers_sanitize(conf_t *conf, zone_t *zone)
+{
+	assert(conf);
+	assert(zone);
+
+	time_t now = time(NULL);
+
+	// replace SOA expire if we have better knowledge
+	if (!zone_contents_is_empty(zone->contents)) {
+		const knot_rdataset_t *soa = zone_soa(zone);
+		zone->timers.soa_expire = knot_soa_expire(soa->rdata);
+	}
+
+	// assume now if we don't know when we flushed
+	time_set_default(&zone->timers.last_flush, now);
+
+	if (zone_is_slave(conf, zone)) {
+		// assume now if we don't know
+		time_set_default(&zone->timers.last_refresh, now);
+		time_set_default(&zone->timers.next_refresh, now);
+	} else {
+		// invalidate if we don't have a master
+		zone->timers.last_refresh = 0;
+		zone->timers.next_refresh = 0;
+	}
+}
+
 /*!
  * \brief Get preferred zone master while checking its existence.
  */
