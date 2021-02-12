@@ -76,18 +76,6 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	return zone;
 }
 
-/*!
- * \brief Set timer if unset (value is 0).
- */
-static void time_set_default(time_t *time, time_t value)
-{
-	assert(time);
-
-	if (*time == 0) {
-		*time = value;
-	}
-}
-
 static void catalogs_generate(knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 {
 	// general comment: catz->contents!=NULL means incremental update of catalog
@@ -147,36 +135,6 @@ static void catalogs_generate(knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 	knot_zonedb_iter_free(it);
 }
 
-/*!
- * \brief Set default timers for new zones or invalidate if not valid.
- */
-static void timers_sanitize(conf_t *conf, zone_t *zone)
-{
-	assert(conf);
-	assert(zone);
-
-	time_t now = time(NULL);
-
-	// replace SOA expire if we have better knowledge
-	if (!zone_contents_is_empty(zone->contents)) {
-		const knot_rdataset_t *soa = zone_soa(zone);
-		zone->timers.soa_expire = knot_soa_expire(soa->rdata);
-	}
-
-	// assume now if we don't know when we flushed
-	time_set_default(&zone->timers.last_flush, now);
-
-	if (zone_is_slave(conf, zone)) {
-		// assume now if we don't know
-		time_set_default(&zone->timers.last_refresh, now);
-		time_set_default(&zone->timers.next_refresh, now);
-	} else {
-		// invalidate if we don't have a master
-		zone->timers.last_refresh = 0;
-		zone->timers.next_refresh = 0;
-	}
-}
-
 static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
                                   server_t *server, zone_t *old_zone)
 {
@@ -189,7 +147,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone_set_flag(zone, zone_get_flag(old_zone, ZONE_IS_CATALOG | ZONE_IS_CAT_MEMBER, false));
 
 	zone->timers = old_zone->timers;
-	timers_sanitize(conf, zone);
+	zone_timers_sanitize(conf, zone);
 
 	bool conf_updated = (old_zone->change_type & CONF_IO_TRELOAD);
 
@@ -230,7 +188,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	timers_sanitize(conf, zone);
+	zone_timers_sanitize(conf, zone);
 
 	conf_val_t role = conf_zone_get(conf, C_CATALOG_ROLE, name);
 	if (conf_opt(&role) == CATALOG_ROLE_MEMBER) {
