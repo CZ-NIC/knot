@@ -130,15 +130,20 @@ Trigger a zone journal flush to the configured zone file. If an output
 directory is specified, the current zone is immediately dumped (in the
 blocking mode) to a zone file in the specified directory. (#)
 .TP
-\fBzone\-backup\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fB+journal\fP] [\fB+nozonefile\fP]
-Trigger a zone data and metadata backup to specified directory.
-Optional flag \fB+journal\fP backs up also zone journal, whereas \fB+nozonefile\fP
-avoids backing up current zone contents to a zone file. If zone flushing is disabled,
-original zone file is backed up instead. (#)
+\fBzone\-backup\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fIflag\fP\&...]
+Trigger a zone data and metadata backup to a specified directory.
+Available flags are \fB+journal\fP, \fB+timers\fP, \fB+kaspdb\fP, \fB+zonefile\fP, and
+their negative counterparts \fB+nojournal\fP, \fB+notimers\fP, \fB+nokaspdb\fP, and
+\fB+nozonefile\fP\&. With these flags set, zone\(aqs journal, zone related timers,
+zone related data in the KASP database, and the zone contents, respectively,
+are backed up, or omitted from the backup. By default, flags \fB+timers\fP,
+\fB+kaspdb\fP, \fB+zonefile\fP, and \fB+nojournal\fP are set. If zone flushing is
+disabled, original zone file is backed up instead of writing out zone contents
+to a file. (#)
 .TP
-\fBzone\-restore\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fB+journal\fP] [\fB+nozonefile\fP]
-Trigger a zone data and metadata restore from specified backup directory.
-Optional flags are equivalent to \fBzone\-backup\fP\&. (#)
+\fBzone\-restore\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fIflag\fP\&...]
+Trigger a zone data and metadata restore from a specified backup directory.
+Optional flags are equivalent to the same flags of \fBzone\-backup\fP\&. (#)
 .TP
 \fBzone\-sign\fP [\fIzone\fP\&...]
 Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.

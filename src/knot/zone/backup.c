@@ -323,19 +323,21 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	knot_lmdb_db_t *kasp_from = zone->kaspdb, *kasp_to = &ctx->bck_kasp_db;
-	BACKUP_SWAP(ctx, kasp_from, kasp_to);
+	if (ctx->backup_kaspdb) {
+		knot_lmdb_db_t *kasp_from = zone->kaspdb, *kasp_to = &ctx->bck_kasp_db;
+		BACKUP_SWAP(ctx, kasp_from, kasp_to);
 
-	if (knot_lmdb_exists(kasp_from)) {
-		ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
-		if (ret != KNOT_EOK) {
-			LOG_FAIL("KASP database");
-			goto done;
-		}
+		if (knot_lmdb_exists(kasp_from)) {
+			ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
+			if (ret != KNOT_EOK) {
+				LOG_FAIL("KASP database");
+				goto done;
+			}
 
-		ret = backup_keystore(conf, zone, ctx);
-		if (ret != KNOT_EOK) {
-			goto done;
+			ret = backup_keystore(conf, zone, ctx);
+			if (ret != KNOT_EOK) {
+				goto done;
+			}
 		}
 	}
 
@@ -352,19 +354,21 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		goto done;
 	}
 
-	ret = knot_lmdb_open(&ctx->bck_timer_db);
-	if (ret != KNOT_EOK) {
-		LOG_FAIL("timers open");
-		goto done;
-	}
-	if (ctx->restore_mode) {
-		ret = zone_timers_read(&ctx->bck_timer_db, zone->name, &zone->timers);
-		zone_timers_sanitize(conf, zone);
-	} else {
-		ret = zone_timers_write(&ctx->bck_timer_db, zone->name, &zone->timers);
-	}
-	if (ret != KNOT_EOK) {
-		LOG_FAIL("timers");
+	if (ctx->backup_timers) {
+		ret = knot_lmdb_open(&ctx->bck_timer_db);
+		if (ret != KNOT_EOK) {
+			LOG_FAIL("timers open");
+			goto done;
+		}
+		if (ctx->restore_mode) {
+			ret = zone_timers_read(&ctx->bck_timer_db, zone->name, &zone->timers);
+			zone_timers_sanitize(conf, zone);
+		} else {
+			ret = zone_timers_write(&ctx->bck_timer_db, zone->name, &zone->timers);
+		}
+		if (ret != KNOT_EOK) {
+			LOG_FAIL("timers");
+		}
 	}
 
 done:

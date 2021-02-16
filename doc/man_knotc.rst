@@ -107,15 +107,20 @@ Actions
   directory is specified, the current zone is immediately dumped (in the
   blocking mode) to a zone file in the specified directory. (#)
 
-**zone-backup** [*zone*...] **+backupdir** *directory* [**+journal**] [**+nozonefile**]
-  Trigger a zone data and metadata backup to specified directory.
-  Optional flag **+journal** backs up also zone journal, whereas **+nozonefile**
-  avoids backing up current zone contents to a zone file. If zone flushing is disabled,
-  original zone file is backed up instead. (#)
+**zone-backup** [*zone*...] **+backupdir** *directory* [*flag*...]
+  Trigger a zone data and metadata backup to a specified directory.
+  Available flags are **+journal**, **+timers**, **+kaspdb**, **+zonefile**, and
+  their negative counterparts **+nojournal**, **+notimers**, **+nokaspdb**, and
+  **+nozonefile**. With these flags set, zone's journal, zone related timers,
+  zone related data in the KASP database, and the zone contents, respectively,
+  are backed up, or omitted from the backup. By default, flags **+timers**,
+  **+kaspdb**, **+zonefile**, and **+nojournal** are set. If zone flushing is
+  disabled, original zone file is backed up instead of writing out zone contents
+  to a file. (#)
 
-**zone-restore** [*zone*...] **+backupdir** *directory* [**+journal**] [**+nozonefile**]
-  Trigger a zone data and metadata restore from specified backup directory.
-  Optional flags are equivalent to **zone-backup**. (#)
+**zone-restore** [*zone*...] **+backupdir** *directory* [*flag*...]
+  Trigger a zone data and metadata restore from a specified backup directory.
+  Optional flags are equivalent to the same flags of **zone-backup**. (#)
 
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
