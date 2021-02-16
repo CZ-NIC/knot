@@ -661,9 +661,9 @@ const filter_desc_t zone_status_filters[MAX_FILTERS] = {
 
 const filter_desc_t zone_purge_filters[MAX_FILTERS] = {
 	{ "+expire",   CTL_FILTER_PURGE_EXPIRE },
-	{ "+timers",   CTL_FILTER_PURGE_TIMERS },
 	{ "+zonefile", CTL_FILTER_PURGE_ZONEFILE },
 	{ "+journal",  CTL_FILTER_PURGE_JOURNAL },
+	{ "+timers",   CTL_FILTER_PURGE_TIMERS },
 	{ "+kaspdb",   CTL_FILTER_PURGE_KASPDB },
 	{ "+orphan",   CTL_FILTER_PURGE_ORPHAN },
 };
