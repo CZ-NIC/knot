@@ -109,13 +109,13 @@ Actions
 
 **zone-backup** [*zone*...] **+backupdir** *directory* [*filter*...]
   Trigger a zone data and metadata backup to a specified directory.
-  Available filters are **+journal**, **+timers**, **+kaspdb**, **+catalog**,
-  **+zonefile**, and their negative counterparts **+nojournal**, **+notimers**,
-  **+nokaspdb**, **+nocatalog**, and **+nozonefile**. With these filters set,
-  zone's journal, zone related timers, zone related data in the KASP database,
-  zone's catalog, and the zone contents, respectively, are backed up,
-  or omitted from the backup. By default, filters **+timers**, **+kaspdb**,
-  **+catalog**, **+zonefile**, and **+nojournal** are set. Setting a filter
+  Available filters are **+zonefile**, **+journal**, **+timers**, **+kaspdb**,
+  **+catalog**, and their negative counterparts **+nozonefile**, **+nojournal**,
+  **+notimers**, **+nokaspdb**, and **+nocatalog**. With these filters set,
+  zone contents, zone's journal, zone related timers, zone related data in the
+  KASP database together with keys, and zone's catalog, respectively, are backed up,
+  or omitted from the backup. By default, filters **+zonefile**, **+timers**,
+  **+kaspdb**, **+catalog**, and **+nojournal** are set. Setting a filter
   for an item doesn't change default settings for other items. If zone flushing
   is disabled, original zone file is backed up instead of writing out zone
   contents to a file. (#)

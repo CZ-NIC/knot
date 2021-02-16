@@ -647,6 +647,8 @@ const filter_desc_t zone_flush_filters[MAX_FILTERS] = {
 
 const filter_desc_t zone_backup_filters[MAX_FILTERS] = {
 	{ "+backupdir",   CTL_FILTER_BACKUP_OUTDIR,      true },
+	{ "+zonefile",    CTL_FILTER_BACKUP_ZONEFILE,   false },
+	{ "+nozonefile",  CTL_FILTER_BACKUP_NOZONEFILE, false },
 	{ "+journal",     CTL_FILTER_BACKUP_JOURNAL,    false },
 	{ "+nojournal",   CTL_FILTER_BACKUP_NOJOURNAL,  false },
 	{ "+timers",      CTL_FILTER_BACKUP_TIMERS,     false },
@@ -655,8 +657,6 @@ const filter_desc_t zone_backup_filters[MAX_FILTERS] = {
 	{ "+nokaspdb",    CTL_FILTER_BACKUP_NOKASPDB,   false },
 	{ "+catalog",     CTL_FILTER_BACKUP_CATALOG,    false },
 	{ "+nocatalog",   CTL_FILTER_BACKUP_NOCATALOG,  false },
-	{ "+zonefile",    CTL_FILTER_BACKUP_ZONEFILE,   false },
-	{ "+nozonefile",  CTL_FILTER_BACKUP_NOZONEFILE, false },
 };
 
 const filter_desc_t zone_status_filters[MAX_FILTERS] = {
@@ -669,9 +669,9 @@ const filter_desc_t zone_status_filters[MAX_FILTERS] = {
 
 const filter_desc_t zone_purge_filters[MAX_FILTERS] = {
 	{ "+expire",   CTL_FILTER_PURGE_EXPIRE },
-	{ "+timers",   CTL_FILTER_PURGE_TIMERS },
 	{ "+zonefile", CTL_FILTER_PURGE_ZONEFILE },
 	{ "+journal",  CTL_FILTER_PURGE_JOURNAL },
+	{ "+timers",   CTL_FILTER_PURGE_TIMERS },
 	{ "+kaspdb",   CTL_FILTER_PURGE_KASPDB },
 	{ "+orphan",   CTL_FILTER_PURGE_ORPHAN },
 };
