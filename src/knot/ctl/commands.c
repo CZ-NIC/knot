@@ -75,6 +75,27 @@ static struct {
 	            sizeof(((send_ctx_t *)0)->rdata)];
 } ctl_globals;
 
+static bool eval_opposite_flags(ctl_args_t *args, bool *param, bool dflt, int flag, int neg_flag)
+{
+	bool set = MATCH_AND_FILTER(args, flag);
+	bool unset = MATCH_AND_FILTER(args, neg_flag);
+
+	*param = dflt ? set || !unset : set && !unset;
+	return !(set && unset);
+}
+
+// A temporary solution for CTL_FILTER_PURGE_ZONEFILE as an alias for CTL_FILTER_BACKUP_NOZONE.
+static bool eval_opposite_flags2(ctl_args_t *args, bool *param, bool dflt,
+                                 int flag, int neg_flag, int neg_flag2)
+{
+	bool set = MATCH_AND_FILTER(args, flag);
+	bool unset = MATCH_AND_FILTER(args, neg_flag) ||
+	             MATCH_AND_FILTER(args, neg_flag2);
+
+	*param = dflt ? set || !unset : set && !unset;
+	return !(set && unset);
+}
+
 static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t event,
                             bool user)
 {
@@ -407,7 +428,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 
 static int init_backup(ctl_args_t *args, bool restore_mode)
 {
-	if (!MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
+	if (!MATCH_AND_FILTER(args, CTL_FILTER_BACKUP_OUTDIR)) {
 		return KNOT_ENOPARAM;
 	}
 
@@ -429,8 +450,18 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	assert(ctx != NULL);
-	ctx->backup_journal = MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL);
-	ctx->backup_zonefile = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
+	if (!(eval_opposite_flags2(args, &ctx->backup_zonefile, true,
+	                           CTL_FILTER_BACKUP_ZONE, CTL_FILTER_BACKUP_NOZONE,
+	                           CTL_FILTER_PURGE_ZONEFILE) &&	// For backward compatibility.
+	    eval_opposite_flags(args, &ctx->backup_journal, false,
+	                        CTL_FILTER_BACKUP_JOURNAL, CTL_FILTER_BACKUP_NOJOURNAL) &&
+	    eval_opposite_flags(args, &ctx->backup_timers, true,
+	                        CTL_FILTER_BACKUP_TIMERS, CTL_FILTER_BACKUP_NOTIMERS) &&
+	    eval_opposite_flags(args, &ctx->backup_kasp, true,
+	                        CTL_FILTER_BACKUP_KASP, CTL_FILTER_BACKUP_NOKASP))) {
+		return KNOT_EXPARAM;
+	}
+
 	zone_backups_add(&args->server->backup_ctxs, ctx);
 
 	return ret;
