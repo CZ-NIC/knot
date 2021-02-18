@@ -27,7 +27,7 @@ typedef struct zone_backup_ctx {
 	bool restore_mode;                  // if true, this is not a backup, but restore
 	bool backup_journal;                // if true, also backup journal (default off)
 	bool backup_timers;                 // if true, also backup timers (default on)
-	bool backup_kasp;                   // if true, also backup KASP database (default on)
+	bool backup_kaspdb;                 // if true, also backup KASP database (default on)
 	bool backup_zonefile;               // if true, also backup zone contents to a zonefile (default on)
 	bool backup_global;                 // perform global backup for all zones
 	ssize_t readers;                    // when decremented to 0, all zones done, free this context
