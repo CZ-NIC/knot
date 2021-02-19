@@ -494,6 +494,8 @@ src/utils/knsupdate/knsupdate_exec.h
 src/utils/knsupdate/knsupdate_main.c
 src/utils/knsupdate/knsupdate_params.c
 src/utils/knsupdate/knsupdate_params.h
+src/utils/kxdpgun/ip_route.c
+src/utils/kxdpgun/ip_route.h
 src/utils/kxdpgun/load_queries.c
 src/utils/kxdpgun/load_queries.h
 src/utils/kxdpgun/main.c
