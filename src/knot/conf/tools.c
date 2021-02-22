@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#ifdef ENABLE_XDP
+#include <linux/ip.h>
+#include <linux/ipv6.h>
+#include <linux/udp.h>
+#endif
 
 #include "libdnssec/key.h"
 #include "knot/conf/tools.h"
@@ -348,6 +353,56 @@ int check_module_id(
 	} \
 }
 
+static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp)
+{
+#ifdef ENABLE_XDP
+	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                              C_SRV, C_UDP_MAX_PAYLOAD_IPV4);
+	if (val.code != KNOT_EOK) {
+		val = conf_get_txn(args->extra->conf, args->extra->txn,
+		                   C_SRV, C_UDP_MAX_PAYLOAD);
+	}
+	int64_t ipv4_max = conf_int(&val) + sizeof(struct udphdr) + 4 + // Eth. CRC
+	                   sizeof(struct iphdr) + sizeof(struct ethhdr);
+
+	val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                   C_SRV, C_UDP_MAX_PAYLOAD_IPV6);
+	if (val.code != KNOT_EOK) {
+		val = conf_get_txn(args->extra->conf, args->extra->txn,
+		                   C_SRV, C_UDP_MAX_PAYLOAD);
+	}
+	int64_t ipv6_max = conf_int(&val) + sizeof(struct udphdr) + 4 + // Eth. CRC
+	                   sizeof(struct ipv6hdr) + sizeof(struct ethhdr);
+
+	if (ipv6_max > KNOT_XDP_MAX_MTU || ipv4_max > KNOT_XDP_MAX_MTU) {
+		CONF_LOG(LOG_WARNING, "maximum UDP payload not compatible with XDP MTU (%u)",
+		         KNOT_XDP_MAX_MTU);
+	}
+
+	while (xdp->code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(xdp, NULL);
+		conf_xdp_iface_t iface;
+		int ret = conf_xdp_iface(&addr, &iface);
+		if (ret != KNOT_EOK) {
+			CONF_LOG(LOG_WARNING, "failed to check XDP interface MTU");
+			return;
+		}
+		int mtu = knot_eth_mtu(iface.name);
+		if (mtu < 0) {
+			CONF_LOG(LOG_WARNING, "failed to read MTU of interface %s",
+			         iface.name);
+			continue;
+		}
+		mtu += sizeof(struct ethhdr) + 4;
+		if (ipv6_max > mtu || ipv4_max > mtu) {
+			CONF_LOG(LOG_WARNING, "maximum UDP payload not compatible "
+			                      "with MTU of interface %s", iface.name);
+		}
+		conf_val_next(xdp);
+	}
+#endif
+}
+
 int check_server(
 	knotd_conf_check_args_t *args)
 {
@@ -355,8 +410,11 @@ int check_server(
 	                                 C_LISTEN);
 	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
 	                              C_LISTEN_XDP);
-	if (xdp.code == KNOT_EOK && listen.code != KNOT_EOK) {
-		CONF_LOG(LOG_WARNING, "unable to process TCP queries due to XDP-only interfaces");
+	if (xdp.code == KNOT_EOK) {
+		if (listen.code != KNOT_EOK) {
+			CONF_LOG(LOG_WARNING, "unable to process TCP queries due to XDP-only interfaces");
+		}
+		check_mtu(args, &xdp);
 	}
 
 	conf_val_t hshake = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
