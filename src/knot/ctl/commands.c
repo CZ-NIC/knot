@@ -414,8 +414,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	zone_backup_ctx_t *ctx;
 
 	// The present timer db size is not up-to-date, use the maximum one.
-	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE,
-	                                         C_MAX_TIMER_DB_SIZE);
+	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE);
 
 	int ret = zone_backup_init(restore_mode,
 	                           args->data[KNOT_CTL_IDX_DATA],

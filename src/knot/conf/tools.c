@@ -612,7 +612,7 @@ int check_remote(
 	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
 	                                    C_TPL, old_item, args->id, args->id_len); \
 	if (val.code == KNOT_EOK) { \
-		CONF_LOG(LOG_NOTICE, "option 'template.%s' is obsolete, " \
+		CONF_LOG(LOG_NOTICE, "option 'template.%s' has no effect, " \
 		                     "use option 'database.%s' instead", \
 		                     &old_item[1], &new_item[1]); \
 	} \
@@ -644,18 +644,7 @@ int check_template(
 	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
 	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
 
-	if (is_default_id(args->id, args->id_len)) {
-		conf_val_t db_storage = conf_get_txn(args->extra->conf, args->extra->txn,
-		                                     C_DB, C_STORAGE);
-		conf_val_t tpl_storage = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
-		                                            C_TPL, C_STORAGE, args->id, args->id_len);
-		if (db_storage.code != KNOT_EOK && tpl_storage.code == KNOT_EOK &&
-		    strcmp(conf_str(&tpl_storage), STORAGE_DIR) != 0) {
-			CONF_LOG(LOG_NOTICE, "non-default 'template[default].storage' detected, "
-			                     "please configure also 'db.storage' to avoid compatibility "
-			                     "issues with future versions");
-		}
-	} else {
+	if (!is_default_id(args->id, args->id_len)) {
 		CHECK_DFLT(C_GLOBAL_MODULE, "global module");
 	}
 
