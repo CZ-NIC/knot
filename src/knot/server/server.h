@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,13 +17,13 @@
 #pragma once
 
 #include "knot/conf/conf.h"
+#include "knot/catalog/catalog_update.h"
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
 #include "knot/journal/knot_lmdb.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
 #include "knot/zone/backup.h"
-#include "knot/zone/catalog.h"
 #include "knot/zone/zonedb.h"
 
 struct server;

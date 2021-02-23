@@ -100,6 +100,14 @@ src/contrib/url-parser/url_parser.h
 src/contrib/vpool/vpool.c
 src/contrib/vpool/vpool.h
 src/contrib/wire_ctx.h
+src/knot/catalog/catalog_db.c
+src/knot/catalog/catalog_db.h
+src/knot/catalog/catalog_update.c
+src/knot/catalog/catalog_update.h
+src/knot/catalog/generate.c
+src/knot/catalog/generate.h
+src/knot/catalog/interpret.c
+src/knot/catalog/interpret.h
 src/knot/common/evsched.c
 src/knot/common/evsched.h
 src/knot/common/fdset.c
@@ -268,8 +276,6 @@ src/knot/zone/adjust.c
 src/knot/zone/adjust.h
 src/knot/zone/backup.c
 src/knot/zone/backup.h
-src/knot/zone/catalog.c
-src/knot/zone/catalog.h
 src/knot/zone/contents.c
 src/knot/zone/contents.h
 src/knot/zone/measure.c

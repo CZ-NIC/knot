@@ -23,9 +23,9 @@
 
 #include "knot/conf/base.h"
 #include "knot/conf/confdb.h"
+#include "knot/catalog/catalog_db.h"
 #include "knot/common/log.h"
 #include "knot/server/dthreads.h"
-#include "knot/zone/catalog.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/macros.h"
@@ -218,11 +218,13 @@ conf_val_t conf_zone_get_txn(
 
 	// Check if this is a catalog member zone.
 	if (conf->catalog != NULL) {
-		knot_dname_storage_t catalog;
-		int ret = catalog_get_zone_threadsafe(conf->catalog, dname, catalog);
+		void *tofree = NULL;
+		const knot_dname_t *catalog;
+		int ret = catalog_get_catz(conf->catalog, dname, &catalog, &tofree);
 		if (ret == KNOT_EOK) {
 			conf_db_get(conf, txn, C_ZONE, C_CATALOG_TPL, catalog,
 			            knot_dname_size(catalog), &val);
+			free(tofree);
 			if (val.code != KNOT_EOK) {
 				CONF_LOG_ZONE(LOG_ERR, catalog,
 				              "catalog zone has no catalog template (%s)",

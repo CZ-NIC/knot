@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "knot/zone/catalog.h"
+#include "knot/catalog/catalog_db.h"
 #include "utils/common/params.h"
 
 #define PROGRAM_NAME	"kcatalogprint"

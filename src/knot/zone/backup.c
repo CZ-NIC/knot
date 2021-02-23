@@ -25,11 +25,11 @@
 
 #include "contrib/files.h"
 #include "knot/zone/backup.h"
+#include "knot/catalog/catalog_db.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
-#include "knot/zone/catalog.h"
 #include "libdnssec/error.h"
 #include "contrib/files.h"
 #include "contrib/string.h"

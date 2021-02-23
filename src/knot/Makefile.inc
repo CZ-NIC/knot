@@ -9,6 +9,14 @@ include_libknotd_HEADERS = \
 	knot/include/module.h
 
 libknotd_la_SOURCES = \
+	knot/catalog/catalog_db.c		\
+	knot/catalog/catalog_db.h		\
+	knot/catalog/catalog_update.c		\
+	knot/catalog/catalog_update.h		\
+	knot/catalog/generate.c			\
+	knot/catalog/generate.h			\
+	knot/catalog/interpret.c		\
+	knot/catalog/interpret.h		\
 	knot/conf/base.c			\
 	knot/conf/base.h			\
 	knot/conf/conf.c			\
@@ -159,8 +167,6 @@ libknotd_la_SOURCES = \
 	knot/zone/adjust.h			\
 	knot/zone/backup.c			\
 	knot/zone/backup.h			\
-	knot/zone/catalog.c			\
-	knot/zone/catalog.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
 	knot/zone/measure.h			\
