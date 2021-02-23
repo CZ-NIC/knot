@@ -650,12 +650,6 @@ int check_template(
 	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
 	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
 
-	conf_val_t any = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
-	                                    C_TPL, C_DISABLE_ANY, args->id, args->id_len);
-	if (any.code == KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "option 'disable-any' is deprecated and has no effect");
-	}
-
 	if (is_default_id(args->id, args->id_len)) {
 		conf_val_t db_storage = conf_get_txn(args->extra->conf, args->extra->txn,
 		                                     C_DB, C_STORAGE);
@@ -682,12 +676,6 @@ int check_zone(
 	CHECK_LEGACY_NAME_ID(C_ZONE, C_MIN_REFRESH_INTERVAL, C_REFRESH_MIN_INTERVAL);
 	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
 	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
-
-	conf_val_t any = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
-	                                    C_TPL, C_DISABLE_ANY, args->id, args->id_len);
-	if (any.code == KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "option 'disable-any' is deprecated and has no effect");
-	}
 
 	conf_val_t zf_load = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_ZONEFILE_LOAD, yp_dname(args->id));

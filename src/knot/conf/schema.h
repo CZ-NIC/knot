@@ -44,7 +44,6 @@
 #define C_DB			"\x08""database"
 #define C_DDNS_MASTER		"\x0B""ddns-master"
 #define C_DENY			"\x04""deny"
-#define C_DISABLE_ANY		"\x0B""disable-any"
 #define C_DNSKEY_TTL		"\x0A""dnskey-ttl"
 #define C_DNSSEC_POLICY		"\x0D""dnssec-policy"
 #define C_DNSSEC_SIGNING	"\x0E""dnssec-signing"
@@ -141,6 +140,7 @@
 #define C_ZSK_SIZE		"\x08""zsk-size"
 
 // Legacy items.
+#define C_DISABLE_ANY		"\x0B""disable-any"
 #define C_MAX_TIMER_DB_SIZE	"\x11""max-timer-db-size"
 #define C_MAX_JOURNAL_DB_SIZE	"\x13""max-journal-db-size"
 #define C_MAX_KASP_DB_SIZE	"\x10""max-kasp-db-size"
