@@ -335,7 +335,7 @@ int check_module_id(
 	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn, \
 	                              section, old_item); \
 	if (val.code == KNOT_EOK) { \
-		CONF_LOG(LOG_NOTICE, "option '%s.%s' is obsolete, " \
+		CONF_LOG(LOG_NOTICE, "option '%s.%s' has no effect, " \
 		                     "use option '%s.%s' instead", \
 		                     &section[1], &old_item[1], \
 		                     &section[1], &new_item[1]); \
@@ -415,12 +415,6 @@ int check_server(
 			CONF_LOG(LOG_WARNING, "unable to process TCP queries due to XDP-only interfaces");
 		}
 		check_mtu(args, &xdp);
-	}
-
-	conf_val_t hshake = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
-	                                 C_TCP_HSHAKE_TIMEOUT);
-	if (hshake.code == KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "option 'server.tcp-handshake-timeout' is no longer supported");
 	}
 
 	CHECK_LEGACY_NAME(C_SRV, C_TCP_REPLY_TIMEOUT, C_TCP_RMT_IO_TIMEOUT);
