@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -890,9 +890,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	/* Check the zone size. */
 	conf_val_t val = conf_zone_get(conf, C_ZONE_MAX_SIZE, update->zone->name);
-	if (val.code != KNOT_EOK) {
-		val = conf_zone_get(conf, C_MAX_ZONE_SIZE, update->zone->name);
-	}
 	size_t size_limit = conf_int(&val);
 
 	if (update->new_cont->size > size_limit) {

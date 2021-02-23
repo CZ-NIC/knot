@@ -71,17 +71,11 @@ bool journal_allow_flush(zone_journal_t j)
 size_t journal_conf_max_usage(zone_journal_t j)
 {
 	conf_val_t val = conf_zone_get(conf(), C_JOURNAL_MAX_USAGE, j.zone);
-	if (val.code != KNOT_EOK) {
-		val = conf_zone_get(conf(), C_MAX_JOURNAL_USAGE, j.zone);
-	}
 	return conf_int(&val);
 }
 
 size_t journal_conf_max_changesets(zone_journal_t j)
 {
 	conf_val_t val = conf_zone_get(conf(), C_JOURNAL_MAX_DEPTH, j.zone);
-	if (val.code != KNOT_EOK) {
-		val = conf_zone_get(conf(), C_MAX_JOURNAL_DEPTH, j.zone);
-	}
 	return conf_int(&val);
 }

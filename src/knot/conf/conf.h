@@ -647,25 +647,22 @@ static inline char* conf_db(
 /*!
  * Gets database-specific parameter.
  *
- * \param[in] conf          Configuration.
- * \param[in] txn           Configuration DB transaction.
- * \param[in] param         Parameter name.
- * \param[in] legacy_param  Legacy parameter name.
+ * \param[in] conf   Configuration.
+ * \param[in] txn    Configuration DB transaction.
+ * \param[in] param  Parameter name.
  *
  * \return Item value.
  */
 conf_val_t conf_db_param_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
-	const yp_name_t *param,
-	const yp_name_t *legacy_param
+	const yp_name_t *param
 );
 static inline conf_val_t conf_db_param(
 	conf_t *conf,
-	const yp_name_t *param,
-	const yp_name_t *legacy_param)
+	const yp_name_t *param)
 {
-	return conf_db_param_txn(conf, &conf->read_txn, param, legacy_param);
+	return conf_db_param_txn(conf, &conf->read_txn, param);
 }
 
 /*!

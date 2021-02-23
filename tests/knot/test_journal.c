@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,8 +51,8 @@ static void set_conf(int zonefile_sync, size_t journal_usage, const knot_dname_t
 	         "zone:\n"
 	         " - domain: %s\n"
 	         "   zonefile-sync: %d\n"
-	         "   max-journal-usage: %zu\n"
-	         "   max-journal-depth: 1000\n",
+	         "   journal-max-usage: %zu\n"
+	         "   journal-max-depth: 1000\n",
 	         (const char *)(apex + 1), zonefile_sync, journal_usage);
 	int ret = test_conf(conf_str, NULL);
 	(void)ret;
