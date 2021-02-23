@@ -561,6 +561,12 @@ AS_IF([test "$enable_utilities" = "yes"], [
       AC_MSG_WARN([libnghttp2 not found])
     ])
   ])
+
+  AS_IF([test "$enable_xdp" != "no"], [
+    PKG_CHECK_MODULES([libmnl], [libmnl], [], [
+      AC_MSG_ERROR([libmnl not found])
+    ])
+  ])
 ]) # Knot DNS utilities dependencies
 
 AC_ARG_ENABLE([cap-ng],

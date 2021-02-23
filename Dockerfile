@@ -14,6 +14,7 @@ ENV BUILD_PKGS \
     libidn2-0-dev \
     liblmdb-dev \
     libmaxminddb-dev \
+    libmnl-dev \
     libnghttp2-dev \
     libprotobuf-c-dev \
     libtool \
@@ -47,7 +48,6 @@ MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 
 # Environment
 ENV RUNTIME_PKGS \
-    iproute2 \
     libbpf0 \
     libedit2 \
     libelf1 \
@@ -56,6 +56,7 @@ ENV RUNTIME_PKGS \
     libidn2-0 \
     liblmdb0 \
     libmaxminddb0 \
+    libmnl0 \
     libnghttp2-14 \
     libprotobuf-c1 \
     liburcu6
