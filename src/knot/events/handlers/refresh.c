@@ -1082,9 +1082,6 @@ static const knot_layer_api_t REFRESH_API = {
 static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 {
 	conf_val_t val = conf_zone_get(conf, C_ZONE_MAX_SIZE, zone);
-	if (val.code != KNOT_EOK) {
-		val = conf_zone_get(conf, C_MAX_ZONE_SIZE, zone);
-	}
 	return conf_int(&val);
 }
 
@@ -1213,18 +1210,12 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 static int64_t min_refresh_interval(conf_t *conf, const knot_dname_t *zone)
 {
 	conf_val_t val = conf_zone_get(conf, C_REFRESH_MIN_INTERVAL, zone);
-	if (val.code != KNOT_EOK) {
-		val = conf_zone_get(conf, C_MIN_REFRESH_INTERVAL, zone);
-	}
 	return conf_int(&val);
 }
 
 static int64_t max_refresh_interval(conf_t *conf, const knot_dname_t *zone)
 {
 	conf_val_t val = conf_zone_get(conf, C_REFRESH_MAX_INTERVAL, zone);
-	if (val.code != KNOT_EOK) {
-		val = conf_zone_get(conf, C_MAX_REFRESH_INTERVAL, zone);
-	}
 	return conf_int(&val);
 }
 

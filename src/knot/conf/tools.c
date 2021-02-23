@@ -346,7 +346,7 @@ int check_module_id(
 	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
 	                                    section, old_item, args->id, args->id_len); \
 	if (val.code == KNOT_EOK) { \
-		CONF_LOG(LOG_NOTICE, "option '%s.%s' is obsolete, " \
+		CONF_LOG(LOG_NOTICE, "option '%s.%s' has no effect, " \
 		                     "use option '%s.%s' instead", \
 		                     &section[1], &old_item[1], \
 		                     &section[1], &new_item[1]); \
