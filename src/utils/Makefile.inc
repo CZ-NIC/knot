@@ -90,9 +90,7 @@ kxdpgun_SOURCES = \
 	utils/kxdpgun/ip_route.h		\
 	utils/kxdpgun/load_queries.c		\
 	utils/kxdpgun/load_queries.h		\
-	utils/kxdpgun/main.c			\
-	utils/kxdpgun/popenve.c			\
-	utils/kxdpgun/popenve.h
+	utils/kxdpgun/main.c
 
 kxdpgun_CPPFLAGS  = $(AM_CPPFLAGS)
 kxdpgun_LDADD     = libcontrib.la libknot.la $(pthread_LIBS) $(cap_ng_LIBS) $(libmnl_LIBS)
