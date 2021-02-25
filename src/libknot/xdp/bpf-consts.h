@@ -16,8 +16,6 @@
 
 #pragma once
 
-#define KNOT_XDP_MIN_MEMLOCK	(10 * 1024 * 1024)
-
 enum {
 	KNOT_XDP_LISTEN_PORT_MASK  = 0xFFFF0000, /*!< Listen port option mask. */
 	KNOT_XDP_LISTEN_PORT_TCP   = 1 << 16,    /*!< Apply to TCP. */

@@ -488,11 +488,11 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 #ifdef ENABLE_XDP
 	if (lisxdp_val.code == KNOT_EOK) {
-		struct rlimit min_limit = { KNOT_XDP_MIN_MEMLOCK, KNOT_XDP_MIN_MEMLOCK };
+		struct rlimit min_limit = { RLIM_INFINITY, RLIM_INFINITY };
 		struct rlimit cur_limit = { 0 };
 		if (getrlimit(RLIMIT_MEMLOCK, &cur_limit) != 0 ||
-		    cur_limit.rlim_cur < min_limit.rlim_cur ||
-		    cur_limit.rlim_max < min_limit.rlim_max) {
+		    cur_limit.rlim_cur != min_limit.rlim_cur ||
+		    cur_limit.rlim_max != min_limit.rlim_max) {
 			int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
 			if (ret != 0) {
 				log_error("failed to increase RLIMIT_MEMLOCK (%s)",

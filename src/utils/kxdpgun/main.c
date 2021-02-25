@@ -757,12 +757,12 @@ int main(int argc, char *argv[])
 		thread_ctxs[i].thread_id = i;
 	}
 
-	struct rlimit min_limit = { KNOT_XDP_MIN_MEMLOCK, KNOT_XDP_MIN_MEMLOCK }, cur_limit = { 0 };
+	struct rlimit min_limit = { RLIM_INFINITY, RLIM_INFINITY }, cur_limit = { 0 };
 	if (getrlimit(RLIMIT_MEMLOCK, &cur_limit) != 0 ||
-	    cur_limit.rlim_cur < min_limit.rlim_cur || cur_limit.rlim_max < min_limit.rlim_max) {
+	    cur_limit.rlim_cur != min_limit.rlim_cur || cur_limit.rlim_max != min_limit.rlim_max) {
 		int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
 		if (ret != 0) {
-			printf("warning: unable to increase memory lock limit: %s\n", strerror(errno));
+			printf("warning: unable to increase RLIMIT_MEMLOCK: %s\n", strerror(errno));
 		}
 	}
 	pthread_mutex_init(&global_stats.mutex, NULL);
