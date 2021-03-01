@@ -532,14 +532,6 @@ static int dev2mac(const char *dev, uint8_t *mac)
 	return ret;
 }
 
-__attribute__((unused))
-static void mac2str(char *buf, size_t len, uint8_t *mac)
-{
-	snprintf(buf, len, "%02X:%02X:%02X:%02X:%02X:%02X",
-	         (unsigned)mac[0], (unsigned)mac[1], (unsigned)mac[2],
-	         (unsigned)mac[3], (unsigned)mac[4], (unsigned)mac[5]);
-}
-
 static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ctx)
 {
 	int val;
