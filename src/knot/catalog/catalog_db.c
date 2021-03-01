@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
 #include <string.h>
 #include <urcu.h>
 
@@ -326,49 +325,4 @@ int catalog_copy(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
 	knot_lmdb_commit(&txn_r);
 	knot_lmdb_commit(&txn_w);
 	return txn_w.ret;
-}
-
-static void print_dname(const knot_dname_t *d)
-{
-	knot_dname_txt_storage_t tmp;
-	knot_dname_to_str(tmp, d, sizeof(tmp));
-	printf("%s  ", tmp);
-}
-
-static void print_dname3(const char *prefix, const knot_dname_t *a,
-                         const knot_dname_t *b,const knot_dname_t *c)
-{
-	printf("%s", prefix);
-	print_dname(a);
-	print_dname(b);
-	print_dname(c);
-	printf("\n");
-}
-
-static int catalog_print_cb(const knot_dname_t *mem, const knot_dname_t *ow,
-                            const knot_dname_t *cz, void *ctx)
-{
-	print_dname3("", mem, ow, cz);
-	(*(ssize_t *)ctx)++;
-	return KNOT_EOK;
-}
-
-void catalog_print(catalog_t *cat)
-{
-	ssize_t total = 0;
-
-	printf(";; <catalog zone> <record owner> <record zone>\n");
-
-	if (cat != NULL) {
-		int ret = catalog_open(cat);
-		if (ret == KNOT_EOK) {
-			ret = catalog_apply(cat, NULL, catalog_print_cb, &total, false);
-		}
-		if (ret != KNOT_EOK) {
-			printf("Catalog print failed (%s)\n", knot_strerror(ret));
-			return;
-		}
-	}
-
-	printf("Total records: %zd\n", total);
 }

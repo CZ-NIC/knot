@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,44 @@ static void print_help(void)
 	       " -h, --help         Print the program help.\n"
 	       " -V, --version      Print the program version.\n",
 	       PROGRAM_NAME);
+}
+
+static void print_dname(const knot_dname_t *d)
+{
+	knot_dname_txt_storage_t tmp;
+	knot_dname_to_str(tmp, d, sizeof(tmp));
+	printf("%s  ", tmp);
+}
+
+static int catalog_print_cb(const knot_dname_t *mem, const knot_dname_t *ow,
+                            const knot_dname_t *cz, void *ctx)
+{
+	print_dname(mem);
+	print_dname(ow);
+	print_dname(cz);
+	printf("\n");
+	(*(ssize_t *)ctx)++;
+	return KNOT_EOK;
+}
+
+static void catalog_print(catalog_t *cat)
+{
+	ssize_t total = 0;
+
+	printf(";; <catalog zone> <record owner> <record zone>\n");
+
+	if (cat != NULL) {
+		int ret = catalog_open(cat);
+		if (ret == KNOT_EOK) {
+			ret = catalog_apply(cat, NULL, catalog_print_cb, &total, false);
+		}
+		if (ret != KNOT_EOK) {
+			printf("Catalog print failed (%s)\n", knot_strerror(ret));
+			return;
+		}
+	}
+
+	printf("Total records: %zd\n", total);
 }
 
 int main(int argc, char *argv[])

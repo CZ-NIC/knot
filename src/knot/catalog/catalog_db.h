@@ -181,11 +181,4 @@ int catalog_apply(catalog_t *cat, const knot_dname_t *for_member,
  * \return KNOT_E*
  */
 int catalog_copy(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
-                 const knot_dname_t *zone_only, bool read_rw_txn);
-
-/*!
- * \brief Print to stdout whole contents of catalog database (for human).
- *
- * \param cat   Catalog database to be printed.
- */
-void catalog_print(catalog_t *cat);
+                 const knot_dname_t *cat_only, bool read_rw_txn);
