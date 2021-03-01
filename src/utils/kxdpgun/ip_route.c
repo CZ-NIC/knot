@@ -47,8 +47,6 @@ static size_t addr_len(int family)
 
 static int send_dummy_pkt(const struct sockaddr_storage *ip)
 {
-	int fd = socket(ip->ss_family, SOCK_RAW,
-			ip->ss_family == AF_INET6 ? IPPROTO_ICMPV6 : IPPROTO_ICMP);
 	static const uint8_t dummy_pkt[] = {
 		// dummy data
 		0x08, 0x00, 0xec, 0x72, 0x0b, 0x87, 0x00, 0x06,
@@ -58,8 +56,15 @@ static int send_dummy_pkt(const struct sockaddr_storage *ip)
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	};
+
+	int fd = socket(ip->ss_family, SOCK_RAW,
+	                ip->ss_family == AF_INET6 ? IPPROTO_ICMPV6 : IPPROTO_ICMP);
+	if (fd < 0) {
+		return -errno;
+	}
 	int ret = sendto(fd, dummy_pkt, sizeof(dummy_pkt), 0, (const struct sockaddr *)ip,
-	                 ip->ss_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
+	                 ip->ss_family == AF_INET6 ? sizeof(struct sockaddr_in6) :
+	                                             sizeof(struct sockaddr_in));
 	if (ret < 0) {
 		ret = -errno;
 	}
