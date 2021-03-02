@@ -35,6 +35,7 @@ BuildRequires:	pkgconfig(libedit)
 # Optional dependencies
 BuildRequires:	pkgconfig(libcap-ng)
 BuildRequires:	pkgconfig(libidn2)
+BuildRequires:	pkgconfig(libmnl)
 BuildRequires:	pkgconfig(libnghttp2)
 BuildRequires:	pkgconfig(libsystemd)
 BuildRequires:	pkgconfig(systemd)
