@@ -633,7 +633,7 @@ static int cmd_zone_ctl(cmd_args_t *args)
 	return ctl_receive(args);
 }
 
-#define MAX_FILTERS 10
+#define MAX_FILTERS 12
 
 typedef struct {
 	const char *name;
@@ -653,6 +653,8 @@ const filter_desc_t zone_backup_filters[MAX_FILTERS] = {
 	{ "+notimers",    CTL_FILTER_BACKUP_NOTIMERS,   false },
 	{ "+kaspdb",      CTL_FILTER_BACKUP_KASPDB,     false },
 	{ "+nokaspdb",    CTL_FILTER_BACKUP_NOKASPDB,   false },
+	{ "+catalog",     CTL_FILTER_BACKUP_CATALOG,    false },
+	{ "+nocatalog",   CTL_FILTER_BACKUP_NOCATALOG,  false },
 	{ "+zonefile",    CTL_FILTER_BACKUP_ZONEFILE,   false },
 	{ "+nozonefile",  CTL_FILTER_BACKUP_NOZONEFILE, false },
 };

@@ -48,6 +48,8 @@
 #define CTL_FILTER_BACKUP_NOTIMERS	'T'
 #define CTL_FILTER_BACKUP_KASPDB	'k'
 #define CTL_FILTER_BACKUP_NOKASPDB	'K'
+#define CTL_FILTER_BACKUP_CATALOG	'c'
+#define CTL_FILTER_BACKUP_NOCATALOG	'C'
 
 /*! Control commands. */
 typedef enum {

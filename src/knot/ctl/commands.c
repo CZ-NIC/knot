@@ -421,7 +421,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	// Evaluate flags (and possibly fail) before writing to the filesystem.
-	bool flag_zonefile, flag_journal, flag_timers, flag_kaspdb;
+	bool flag_zonefile, flag_journal, flag_timers, flag_kaspdb, flag_catalog;
 
 	if (!(eval_opposite_flags(args, &flag_zonefile, true,
 	                          CTL_FILTER_BACKUP_ZONEFILE, CTL_FILTER_BACKUP_NOZONEFILE) &&
@@ -430,7 +430,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	    eval_opposite_flags(args, &flag_timers, true,
 	                        CTL_FILTER_BACKUP_TIMERS, CTL_FILTER_BACKUP_NOTIMERS) &&
 	    eval_opposite_flags(args, &flag_kaspdb, true,
-	                        CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB))) {
+	                        CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB) &&
+	    eval_opposite_flags(args, &flag_catalog, true,
+	                        CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG))) {
 		return KNOT_EXPARAM;
 	}
 
@@ -455,6 +457,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	ctx->backup_journal = flag_journal;
 	ctx->backup_timers = flag_timers;
 	ctx->backup_kaspdb = flag_kaspdb;
+	ctx->backup_catalog = flag_catalog;
 
 	zone_backups_add(&args->server->backup_ctxs, ctx);
 
