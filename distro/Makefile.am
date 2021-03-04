@@ -1,6 +1,4 @@
 EXTRA_DIST =	\
-	arch	\
 	common	\
-	deb	\
-	rpm	\
+	pkg	\
 	tests
