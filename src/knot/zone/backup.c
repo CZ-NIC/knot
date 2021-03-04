@@ -380,6 +380,10 @@ done:
 int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
                   const knot_dname_t *zone_only)
 {
+	if (!ctx->backup_catalog) {
+		return KNOT_EOK;
+	}
+
 	knot_lmdb_db_t *cat_from = &catalog->db, *cat_to = &ctx->bck_catalog;
 	BACKUP_SWAP(ctx, cat_from, cat_to);
 	return catalog_copy(cat_from, cat_to, zone_only, !ctx->restore_mode);

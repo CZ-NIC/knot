@@ -109,12 +109,13 @@ Actions
 
 **zone-backup** [*zone*...] **+backupdir** *directory* [*flag*...]
   Trigger a zone data and metadata backup to a specified directory.
-  Available flags are **+journal**, **+timers**, **+kaspdb**, **+zonefile**, and
-  their negative counterparts **+nojournal**, **+notimers**, **+nokaspdb**, and
-  **+nozonefile**. With these flags set, zone's journal, zone related timers,
-  zone related data in the KASP database, and the zone contents, respectively,
-  are backed up, or omitted from the backup. By default, flags **+timers**,
-  **+kaspdb**, **+zonefile**, and **+nojournal** are set. If zone flushing is
+  Available flags are **+journal**, **+timers**, **+kaspdb**, **+catalog**,
+  **+zonefile**, and their negative counterparts **+nojournal**, **+notimers**,
+  **+nokaspdb**, **+nocatalog**, and **+nozonefile**. With these flags set,
+  zone's journal, zone related timers, zone related data in the KASP database,
+  zone's catalog, and the zone contents, respectively, are backed up,
+  or omitted from the backup. By default, flags **+timers**, **+kaspdb**,
+  **+catalog**, **+zonefile**, and **+nojournal** are set. If zone flushing is
   disabled, original zone file is backed up instead of writing out zone contents
   to a file. (#)
 

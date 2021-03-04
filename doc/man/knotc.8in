@@ -132,12 +132,13 @@ blocking mode) to a zone file in the specified directory. (#)
 .TP
 \fBzone\-backup\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fIflag\fP\&...]
 Trigger a zone data and metadata backup to a specified directory.
-Available flags are \fB+journal\fP, \fB+timers\fP, \fB+kaspdb\fP, \fB+zonefile\fP, and
-their negative counterparts \fB+nojournal\fP, \fB+notimers\fP, \fB+nokaspdb\fP, and
-\fB+nozonefile\fP\&. With these flags set, zone\(aqs journal, zone related timers,
-zone related data in the KASP database, and the zone contents, respectively,
-are backed up, or omitted from the backup. By default, flags \fB+timers\fP,
-\fB+kaspdb\fP, \fB+zonefile\fP, and \fB+nojournal\fP are set. If zone flushing is
+Available flags are \fB+journal\fP, \fB+timers\fP, \fB+kaspdb\fP, \fB+catalog\fP,
+\fB+zonefile\fP, and their negative counterparts \fB+nojournal\fP, \fB+notimers\fP,
+\fB+nokaspdb\fP, \fB+nocatalog\fP, and \fB+nozonefile\fP\&. With these flags set,
+zone\(aqs journal, zone related timers, zone related data in the KASP database,
+zone\(aqs catalog, and the zone contents, respectively, are backed up,
+or omitted from the backup. By default, flags \fB+timers\fP, \fB+kaspdb\fP,
+\fB+catalog\fP, \fB+zonefile\fP, and \fB+nojournal\fP are set. If zone flushing is
 disabled, original zone file is backed up instead of writing out zone contents
 to a file. (#)
 .TP
