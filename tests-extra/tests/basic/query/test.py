@@ -131,7 +131,7 @@ resp.cmp(bind)
 # Long CNAME loop (Bind truncates the loop at 17 records)
 resp = knot.dig("ab.flags", "A", udp=True)
 resp.check(rcode="NOERROR")
-compare(resp.count(rtype="CNAME", section="answer"), 19, "Count of CNAME records in loop.")
+compare(resp.count(rtype="CNAME", section="answer"), 5, "Count of CNAME records in loop.")
 
 ''' CNAME in MX EXCHANGE. '''
 
@@ -212,15 +212,32 @@ resp.check_record(name="dname.flags.",          rtype="DNAME", ttl=3600, rdata="
 resp.check_record(name="x.f.dname.flags.",      rtype="CNAME", ttl=3600, rdata="x.f.dname-tree.flags.")
 resp.check_record(name="f.dname-tree.flags.",   rtype="DNAME", ttl=3600, rdata="f.f.dname-tree.flags.")
 resp.check_record(name="x.f.dname-tree.flags.", rtype="CNAME", ttl=3600, rdata="x.f.f.dname-tree.flags.")
-resp.check_counts(22, 0, 0)
-# resp.cmp(bind) BIND responds partially unrolled CNAME loop
+resp.check_counts(7, 0, 0)
+# resp.cmp(bind) BIND responds deeply unrolled CNAME loop
 
 # Infinite DNAME loop
-resp = knot.dig("end.dname-loop.flags", "A", udp=False)
+resp = knot.dig("end.dname-outloop.flags", "A", udp=True)
 resp.check(rcode="NOERROR")
-resp.check_record(name="dname-loop.flags.", rtype="DNAME", ttl=3600, rdata="loop.dname-loop.flags.")
-compare(resp.count(rtype="CNAME", section="answer"), 20, "Count of synthesized CNAME records in loop.")
-resp.check_record(name="end.loop.loop.loop.dname-loop.flags.", rtype="CNAME", ttl=3600, rdata="end.loop.loop.loop.loop.dname-loop.flags.")
+resp.check_record(name="dname-outloop.flags.", rtype="DNAME", ttl=3600, rdata="loop.dname-outloop.flags.")
+compare(resp.count(rtype="CNAME", section="answer"), 5, "Count of synthesized CNAME records in loop.")
+resp.check_record(name="end.loop.loop.loop.loop.dname-outloop.flags.", rtype="CNAME", ttl=3600,
+                  rdata="end.loop.loop.loop.loop.loop.dname-outloop.flags.")
+resp.check_counts(6, 0, 0)
+
+# Recursive DNAME loop - full
+resp = knot.dig("loop.loop.loop.loop.loop.loop.dname-inloop.flags", "A", udp=True)
+resp.check(rcode="NOERROR")
+resp.check_record(name="loop.dname-inloop.flags.", rtype="DNAME", ttl=3600, rdata="dname-inloop.flags.")
+compare(resp.count(rtype="CNAME", section="answer"), 5, "Count of synthesized CNAME records in loop.")
+resp.check_record(name="loop.dname-inloop.flags.", rtype="A", ttl=3600, rdata="1.2.3.4")
+resp.check_counts(7, 0, 0)
+
+# Recursive DNAME loop - incomplete
+resp = knot.dig("loop.loop.loop.loop.loop.loop.loop.dname-inloop.flags", "A", udp=True)
+resp.check(rcode="NOERROR")
+resp.check_record(name="loop.dname-inloop.flags.", rtype="DNAME", ttl=3600, rdata="dname-inloop.flags.")
+compare(resp.count(rtype="CNAME", section="answer"), 5, "Count of synthesized CNAME records in loop.")
+resp.check_counts(6, 0, 0)
 
 ''' Wildcard answers. '''
 
