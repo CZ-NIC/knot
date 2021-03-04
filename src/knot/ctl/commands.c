@@ -75,6 +75,18 @@ static struct {
 	            sizeof(((send_ctx_t *)0)->rdata)];
 } ctl_globals;
 
+/*!
+ * Evaluates a flag pair and checks for conflicting flags.
+ *
+ * \param[in]  args      Command arguments.
+ * \param[out] param     The flag to be set.
+ * \param[in]  dflt      Default flag value.
+ * \param[in]  flag      Name of the flag.
+ * \param[in]  neg_flag  Name of the negative flag.
+ *
+ * \return false if there is a flags conflict, true otherwise.
+ */
+
 static bool eval_opposite_flags(ctl_args_t *args, bool *param, bool dflt, int flag, int neg_flag)
 {
 	bool set = MATCH_AND_FILTER(args, flag);
