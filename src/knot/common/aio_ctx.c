@@ -327,7 +327,7 @@ int aio_ctx_sweep(aio_ctx_t* set, aio_ctx_sweep_cb_t cb, void *data)
 void aio_it_next(aio_it_t *it)
 {
 	it->left--;
-	if (it->left <= 0) {
+	if (it->left >= 0) {
 		it->ptr++;
 	}
 }
