@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
  */
 
 #include <netinet/in.h>
+#include <sys/socket.h>
 
 #include "contrib/dnstap/dnstap.h"
 #include "contrib/dnstap/dnstap.pb-c.h"
@@ -88,12 +89,18 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 		protocol = IPPROTO_UDP;
 	}
 
+	/* Try to get the destination address. */
+	struct sockaddr_storage dst_addr;
+	socklen_t dst_addr_len = sizeof(dst_addr);
+	(void)getsockname(qdata->params->socket, (struct sockaddr *)&dst_addr,
+	                  &dst_addr_len);
+
 	/* Create a dnstap message. */
 	Dnstap__Message msg;
 	int ret = dt_message_fill(&msg, msgtype,
 	                          (const struct sockaddr *)qdata->params->remote,
-	                          NULL, /* todo: fill me! */
-				  protocol, pkt->wire, pkt->size, &tv);
+	                          (struct sockaddr *)&dst_addr, protocol, pkt->wire,
+	                          pkt->size, &tv);
 	if (ret != KNOT_EOK) {
 		return state;
 	}
