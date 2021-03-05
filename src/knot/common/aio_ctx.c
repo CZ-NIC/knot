@@ -30,6 +30,9 @@
 #include "contrib/time.h"
 #include "libknot/errcode.h"
 
+static const unsigned long UNQUEUED = ~1UL;
+static const unsigned long CLOSING = ~0UL;
+
 inline static int io_setup(unsigned nr, aio_context_t *ctxp)
 {
 	return syscall(__NR_io_setup, nr, ctxp);
@@ -142,7 +145,7 @@ int aio_ctx_init(aio_ctx_t *set, unsigned size)
 
 	memset(set, 0, sizeof(aio_ctx_t));
 
-	int ret = io_setup(size, &set->ctx);
+	int ret = io_setup(1024, &set->ctx);
 	if (ret < 0) {
 		return KNOT_ENOMEM;
 	}
@@ -182,7 +185,7 @@ int aio_ctx_add(aio_ctx_t *set, int fd, unsigned events, void *ctx)
 	set->ev[i].aio_fildes = fd;
 	set->ev[i].aio_lio_opcode = IOCB_CMD_POLL;
 	set->ev[i].aio_buf = events;
-	set->ev[i].aio_data = 0;
+	set->ev[i].aio_data = UNQUEUED;
 	set->usrctx[i] = ctx;
 	set->timeout[i] = 0;
 	return i;
@@ -206,15 +209,19 @@ int aio_ctx_wait(aio_ctx_t *ctx, aio_it_t *it, size_t offset, size_t ev_size, in
 	};
 
 	struct iocb *list_of_iocb[ev_size];
+	int j = 0;
 	for (int i = offset; i < offset + ev_size; ++i) {
-		list_of_iocb[i - offset] = &(ctx->ev[i]);
+		if (ctx->ev[i].aio_data == UNQUEUED) {
+			ctx->ev[i].aio_data = i;
+			list_of_iocb[j++] = &(ctx->ev[i]);
+		}
 	}
 
 	int ret = 0;
 	ret = io_submit(ctx->ctx, ev_size, list_of_iocb);
-	if (ret < 0) {
-		return ret;
-	}
+	// if (ret < 0) {
+	// 	return ret;
+	// }
 	return it->left = io_getevents(ctx->ctx, 1, ev_size, ctx->recv_ev, timeout > 0 ? &to : NULL);
 }
 
@@ -232,6 +239,7 @@ static int aio_ctx_remove(aio_ctx_t *set, unsigned i)
 	unsigned last = set->n; /* Already decremented */
 	if (i < last) {
 		set->ev[i] = set->ev[last];
+		set->ev[i].aio_data = i;
 		set->timeout[i] = set->timeout[last];
 		set->usrctx[i] = set->usrctx[last];
 	}
@@ -257,7 +265,7 @@ int aio_ctx_remove_it(aio_ctx_t *set, aio_it_t *it)
 	// 	set->timeout[i] = set->timeout[last];
 	// 	set->usrctx[i] = set->usrctx[last];
 	// }
-	((struct iocb *)it->ptr->obj)->aio_data = 1;
+	((struct iocb *)it->ptr->obj)->aio_data = CLOSING;
 
 	return KNOT_EOK;
 }
@@ -328,6 +336,7 @@ void aio_it_next(aio_it_t *it)
 {
 	it->left--;
 	if (it->left >= 0) {
+		((struct iocb *)it->ptr->obj)->aio_data = UNQUEUED;
 		it->ptr++;
 	}
 }
@@ -341,7 +350,7 @@ void aio_it_commit(aio_it_t *it)
 {
 	aio_ctx_t *ctx = it->ctx;
 	for (int i = 0; i < ctx->n; ++i) {
-		if (ctx->ev[i].aio_data) {
+		if (ctx->ev[i].aio_data == CLOSING) {
 			aio_ctx_remove(ctx, i);
 		}
 	}
@@ -356,7 +365,7 @@ int aio_it_get_fd(aio_it_t *it)
 unsigned aio_it_get_idx(aio_it_t *it)
 {
 	assert(it != NULL);
-	return ((struct iocb *)it->ptr->obj - it->ctx->ev);
+	return it->ptr->data;
 }
 
 int aio_it_ev_is_poll(aio_it_t *it)
