@@ -92,8 +92,8 @@ kxdpgun_SOURCES = \
 	utils/kxdpgun/load_queries.h		\
 	utils/kxdpgun/main.c
 
-kxdpgun_CPPFLAGS  = $(AM_CPPFLAGS)
-kxdpgun_LDADD     = libcontrib.la libknot.la $(pthread_LIBS) $(cap_ng_LIBS) $(libmnl_LIBS)
+kxdpgun_CPPFLAGS  = $(AM_CPPFLAGS) $(libmnl_CFLAGS)
+kxdpgun_LDADD     = libcontrib.la libknot.la $(pthread_LIBS) $(libmnl_LIBS)
 endif ENABLE_XDP
 endif HAVE_UTILS
 
