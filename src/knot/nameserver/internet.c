@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -267,12 +267,6 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 	default:          return KNOTD_IN_STATE_ERROR;
 	}
 
-	/* Check if RR count increased. */
-	if (pkt->rrset_count <= rr_count_before) {
-		qdata->extra->node = NULL; /* Act as if the name leads to nowhere. */
-		return KNOTD_IN_STATE_HIT;
-	}
-
 	/* Synthesize CNAME if followed DNAME. */
 	if (rrtype == KNOT_RRTYPE_DNAME) {
 		if (dname_cname_cannot_synth(&cname_rr, qdata->name)) {
@@ -296,6 +290,12 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 				return KNOTD_IN_STATE_HIT;
 			}
 		}
+	}
+
+	/* Check if RR count increased. */
+	if (pkt->rrset_count <= rr_count_before) {
+		qdata->extra->node = NULL; /* Act as if the name leads to nowhere. */
+		return KNOTD_IN_STATE_HIT;
 	}
 
 	/* If node is a wildcard, follow only if we didn't visit the same node
