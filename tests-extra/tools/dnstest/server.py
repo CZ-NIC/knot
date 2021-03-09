@@ -61,6 +61,7 @@ class ZoneDnssec(object):
         self.nsec3_salt_len = None
         self.ksk_sbm_check = []
         self.ksk_sbm_check_interval = None
+        self.ksk_sbm_timeout = None
         self.ds_push = None
         self.ksk_shared = None
         self.shared_policy_with = None
@@ -1306,7 +1307,7 @@ class Knot(Server):
             z = self.zones[zone]
             if not z.dnssec.enable:
                 continue
-            if len(z.dnssec.ksk_sbm_check) < 1:
+            if len(z.dnssec.ksk_sbm_check) < 1 and z.dnssec.ksk_sbm_timeout is None:
                 continue
             if not have_sbm:
                 s.begin("submission")
@@ -1317,8 +1318,11 @@ class Knot(Server):
                 if parents:
                     parents += ", "
                 parents += parent.name
-            s.item("parent", "[%s]" % parents)
+            if parents != "":
+                s.item("parent", "[%s]" % parents)
             self._str(s, "check-interval", z.dnssec.ksk_sbm_check_interval)
+            if z.dnssec.ksk_sbm_timeout is not None:
+                self._str(s, "timeout", z.dnssec.ksk_sbm_timeout)
         if have_sbm:
             s.end()
 
@@ -1354,7 +1358,7 @@ class Knot(Server):
             self._bool(s, "nsec3-opt-out", z.dnssec.nsec3_opt_out)
             self._str(s, "nsec3-salt-lifetime", z.dnssec.nsec3_salt_lifetime)
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
-            if len(z.dnssec.ksk_sbm_check) > 0:
+            if len(z.dnssec.ksk_sbm_check) > 0 or z.dnssec.ksk_sbm_timeout is not None:
                 s.item("ksk-submission", z.name)
             if z.dnssec.ds_push:
                 self._str(s, "ds-push", z.dnssec.ds_push.name)
