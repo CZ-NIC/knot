@@ -17,6 +17,7 @@
 #define __APPLE_USE_RFC_3542
 
 #include <assert.h>
+#include <netinet/tcp.h> // TCP_FASTOPEN
 #include <sys/resource.h>
 
 #include "libknot/libknot.h"
