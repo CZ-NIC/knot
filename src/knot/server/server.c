@@ -37,6 +37,7 @@
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
 #include "contrib/net.h"
+#include "contrib/openbsd/strlcat.h"
 #include "contrib/sockaddr.h"
 #include "contrib/trim.h"
 
@@ -469,6 +470,30 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	return new_if;
 }
 
+static void log_sock_conf(conf_t *conf)
+{
+	char buf[512] = "";
+#if defined(ENABLE_REUSEPORT)
+	strlcat(buf, "UDP", sizeof(buf));
+	if (conf->cache.srv_tcp_reuseport) {
+		strlcat(buf, "/TCP", sizeof(buf));
+	}
+	strlcat(buf, " reuseport", sizeof(buf));
+	if (conf->cache.srv_socket_affinity) {
+		strlcat(buf, ", socket affinity", sizeof(buf));
+	}
+#endif
+#if defined(TCP_FASTOPEN)
+	if (buf[0] != '\0') {
+		strlcat(buf, ", ", sizeof(buf));
+	}
+	strlcat(buf, "TCP Fast Open", sizeof(buf));
+#endif
+	if (buf[0] != '\0') {
+		log_info("enabled %s", buf);
+	}
+}
+
 /*! \brief Initialize bound sockets according to configuration. */
 static int configure_sockets(conf_t *conf, server_t *s)
 {
@@ -476,12 +501,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		return KNOT_EOK;
 	}
 
-#ifdef ENABLE_REUSEPORT
-	/* Log info if reuseport is used and for what protocols. */
-	log_info("using reuseport%s for UDP%s",
-	         conf->cache.srv_socket_affinity ? " with socket affinity" : "",
-	         conf->cache.srv_tcp_reuseport ? " and TCP" : "");
-#endif
+	log_sock_conf(conf);
 
 	/* Update bound interfaces. */
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
