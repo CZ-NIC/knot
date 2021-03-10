@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 
 	// create TCP client
 
-	int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
+	int client = net_connected_socket(SOCK_STREAM, &addr, NULL, false);
 	ok(client >= 0, "client: connect to server");
 
 	int optval = 8192;
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
 	for (size_t i = 0; i < sizeof(sndbuf); i++) {
 		sndbuf[i] = i;
 	}
-	r = net_dns_tcp_send(client, sndbuf, sizeof(sndbuf), TIMEOUT);
+	r = net_dns_tcp_send(client, sndbuf, sizeof(sndbuf), TIMEOUT, NULL);
 	ok(r == sizeof(sndbuf), "client: net_dns_tcp_send() with short-write");
 
 	// receive message
