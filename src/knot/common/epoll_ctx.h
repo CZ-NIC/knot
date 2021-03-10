@@ -49,10 +49,10 @@ typedef struct epoll_it {
 } epoll_it_t;
 
 /*! \brief Mark-and-sweep state. */
-enum epoll_ctx_sweep_state {
+typedef enum epoll_ctx_sweep_state {
 	EPOLL_CTX_KEEP,
 	EPOLL_CTX_SWEEP
-};
+} epoll_ctx_sweep_state_t;
 
 /*! \brief Sweep callback (set, index, data) */
 typedef enum epoll_ctx_sweep_state (*epoll_ctx_sweep_cb_t)(epoll_ctx_t*, int, void*);

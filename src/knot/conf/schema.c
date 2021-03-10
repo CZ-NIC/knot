@@ -148,21 +148,6 @@ static const knot_lookup_t catalog_roles[] = {
 	{ 0, NULL }
 };
 
-#define USE_EPOLL 1
-#define USE_AIO 1
-
-static const knot_lookup_t poll_methods[] = {
-	{ POLL_METHOD_UNIX,   "unix" },
-#ifdef USE_EPOLL
-	{ POLL_METHOD_EPOLL,  "epoll" },
-#endif
-#ifdef USE_AIO
-	{ POLL_METHOD_AIO,    "aio" },
-#endif
-	{ POLL_METHOD_KQUEUE, "kqueue" },
-	{ 0, NULL }
-};
-
 static const yp_item_t desc_module[] = {
 	{ C_ID,      YP_TSTR, YP_VNONE, YP_FNONE, { check_module_id } },
 	{ C_FILE,    YP_TSTR, YP_VNONE },
@@ -200,8 +185,6 @@ static const yp_item_t desc_server[] = {
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
 	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
-	{ C_POLL_MTHD_UDP,        YP_TOPT,  YP_VOPT = { poll_methods, POLL_METHOD_UNIX } },
-	{ C_POLL_MTHD_TCP,        YP_TOPT,  YP_VOPT = { poll_methods, POLL_METHOD_UNIX } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
 	{ C_MAX_TCP_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },

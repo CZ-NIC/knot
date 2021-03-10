@@ -51,7 +51,6 @@ typedef struct tcp_context {
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
 	apoll_ctx_t set;                 /*!< Set of server/client sockets. */
-	apoll_api_t *poll_api;
 	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
@@ -77,7 +76,7 @@ static void update_tcp_conf(tcp_context_t *tcp)
 }
 
 /*! \brief Sweep TCP connection. */
-static int tcp_sweep(apoll_ctx_t *set, int fd, void *data)
+static apoll_sweep_state tcp_sweep(apoll_ctx_t *set, int fd, void *data)
 {
 	UNUSED(data);
 	assert(set && fd >= 0);
@@ -118,13 +117,13 @@ static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, in
 }
 
 static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
-                               apoll_ctx_t *fds, apoll_api_t *poll_api, int thread_id)
+                               apoll_ctx_t *fds, int thread_id)
 {
 	if (n_ifaces == 0) {
 		return 0;
 	}
 
-	poll_api->ctx_clear(fds);
+	apoll_ctx_clear(fds);
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
 		if (i->fd_tcp_count == 0) { // Ignore XDP interface.
 			assert(i->fd_xdp_count > 0);
@@ -141,10 +140,10 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 			tcp_id = thread_id - i->fd_udp_count;
 		}
 #endif
-		poll_api->ctx_add(fds, i->fd_tcp[tcp_id], POLLIN, NULL);
+		apoll_ctx_add(fds, i->fd_tcp[tcp_id], POLLIN, NULL);
 	}
 
-	return poll_api->ctx_get_length(fds);
+	return apoll_ctx_get_length(fds);
 }
 
 static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec *tx)
@@ -217,28 +216,28 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
 {
 	/* Accept client. */
-	int fd = tcp->poll_api->ctx_get_fd((&tcp->set), i);
+	int fd = apoll_ctx_get_fd((&tcp->set), i);
 	int client = net_accept(fd, NULL);
 	if (client >= 0) {
 		/* Assign to fdset. */
-		int next_id = tcp->poll_api->ctx_add(&tcp->set, client, POLLIN, NULL);
+		int next_id = apoll_ctx_add(&tcp->set, client, POLLIN, NULL);
 		if (next_id < 0) {
 			close(client);
 			return;
 		}
 
 		/* Update watchdog timer. */
-		tcp->poll_api->ctx_set_watchdog(&tcp->set, next_id, tcp->idle_timeout);
+		apoll_ctx_set_watchdog(&tcp->set, next_id, tcp->idle_timeout);
 	}
 }
 
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 {
-	int fd = tcp->poll_api->ctx_get_fd((&tcp->set), i);
+	int fd = apoll_ctx_get_fd((&tcp->set), i);
 	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
-		tcp->poll_api->ctx_set_watchdog(&tcp->set, i, tcp->idle_timeout);
+		apoll_ctx_set_watchdog(&tcp->set, i, tcp->idle_timeout);
 	}
 
 	return ret;
@@ -249,30 +248,30 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	apoll_ctx_t *set = &tcp->set;
 
 	/* Check if throttled with many open TCP connections. */
-	assert(tcp->poll_api->ctx_get_length(set) <= tcp->max_worker_fds);
-	tcp->is_throttled = tcp->poll_api->ctx_get_length(set) == tcp->max_worker_fds;
+	assert(apoll_ctx_get_length(set) <= tcp->max_worker_fds);
+	tcp->is_throttled = apoll_ctx_get_length(set) == tcp->max_worker_fds;
 
 	/* If throttled, temporarily ignore new TCP connections. */
 	unsigned i = tcp->is_throttled ? tcp->client_threshold : 0;
 
 	/* Wait for events. */
 	apoll_it_t it;
-	tcp->poll_api->ctx_poll(set, &it, i, tcp->poll_api->ctx_get_length(set) - i, TCP_SWEEP_INTERVAL);
+	apoll_ctx_poll(set, &it, i, apoll_ctx_get_length(set) - i, TCP_SWEEP_INTERVAL);
 
 	/* Mark the time of last poll call. */
 	tcp->last_poll_time = time_now();
 
 	/* Process events. */
-	for(; !tcp->poll_api->it_done(&it); tcp->poll_api->it_next(&it)) {
+	for(; !apoll_it_done(&it); apoll_it_next(&it)) {
 		bool should_close = false;
-		unsigned int idx = tcp->poll_api->it_get_idx(&it);
-		if (tcp->poll_api->it_ev_is_error(&it)) {
+		unsigned int idx = apoll_it_get_idx(&it);
+		if (apoll_it_ev_is_error(&it)) {
 			should_close = (idx >= tcp->client_threshold);
-		} else if (tcp->poll_api->it_ev_is_pollin(&it)) {
+		} else if (apoll_it_ev_is_pollin(&it)) {
 			/* Master sockets - new connection to accept. */
 			if (idx < tcp->client_threshold) {
 				/* Don't accept more clients than configured. */
-				if (tcp->poll_api->ctx_get_length(set) < tcp->max_worker_fds) {
+				if (apoll_ctx_get_length(set) < tcp->max_worker_fds) {
 					tcp_event_accept(tcp, idx);
 				}
 			/* Client sockets - already accepted connection or
@@ -284,11 +283,11 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
-			close(tcp->poll_api->ctx_get_fd(set, idx));
-			tcp->poll_api->ctx_remove(set, &it);
+			close(apoll_ctx_get_fd(set, idx));
+			apoll_ctx_remove(set, &it);
 		}
 	}
-	tcp->poll_api->it_commit(&it);
+	apoll_it_commit(&it);
 }
 
 int tcp_master(dthread_t *thread)
@@ -340,26 +339,13 @@ int tcp_master(dthread_t *thread)
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
 
-	conf_val_t poll_api_val = conf_get(conf(), C_SRV, C_POLL_MTHD_TCP);
-	switch (conf_opt(&poll_api_val)) {
-		case POLL_METHOD_AIO:
-			tcp.poll_api = &aio_poll_api;
-			break;
-		case POLL_METHOD_EPOLL:
-			tcp.poll_api = &epoll_api;
-			break;
-		default:
-			tcp.poll_api = &unix_poll_api;
-			break;
-	}
-
 	/* Prepare initial buffer for listening and bound sockets. */
-	tcp.poll_api->ctx_init(&tcp.set, FDSET_INIT_SIZE);
+	apoll_ctx_init(&tcp.set, FDSET_INIT_SIZE);
 
 	/* Set descriptors for the configured interfaces. */
 	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces,
 	                                      handler->server->n_ifaces,
-	                                      &tcp.set, tcp.poll_api, thread_id);
+	                                      &tcp.set, thread_id);
 	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
@@ -375,7 +361,7 @@ int tcp_master(dthread_t *thread)
 
 		/* Sweep inactive clients and refresh TCP configuration. */
 		if (tcp.last_poll_time.tv_sec >= next_sweep.tv_sec) {
-			tcp.poll_api->ctx_sweep(&tcp.set, &tcp_sweep, NULL);
+			apoll_ctx_sweep(&tcp.set, &tcp_sweep, NULL);
 			update_sweep_timer(&next_sweep);
 			update_tcp_conf(&tcp);
 		}
@@ -385,8 +371,8 @@ finish:
 	free(tcp.iov[0].iov_base);
 	free(tcp.iov[1].iov_base);
 	mp_delete(mm.ctx);
-	tcp.poll_api->ctx_close(&tcp.set);
-	tcp.poll_api->ctx_clear(&tcp.set);
+	apoll_ctx_close(&tcp.set);
+	apoll_ctx_clear(&tcp.set);
 
 	return ret;
 }

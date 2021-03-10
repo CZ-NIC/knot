@@ -43,10 +43,10 @@ typedef struct fdset_it {
 } fdset_it_t;
 
 /*! \brief Mark-and-sweep state. */
-enum fdset_sweep_state {
+typedef enum fdset_sweep_state {
 	FDSET_KEEP,
 	FDSET_SWEEP
-};
+} fdset_sweep_state_t;
 
 /*! \brief Sweep callback (set, index, data) */
 typedef enum fdset_sweep_state (*fdset_sweep_cb_t)(fdset_t*, int, void*);

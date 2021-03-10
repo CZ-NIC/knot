@@ -171,8 +171,8 @@ int epoll_ctx_wait(epoll_ctx_t *ctx, epoll_it_t *it, unsigned offset, unsigned e
 	/*
 	 *  NOTE: Can't skip offset without bunch of syscalls!!
 	 *  Becouse of that wait for offset + ev_size. Offset is set when TCP trotlling is ON.
-	 *  We don't need to worry to accept non-zero events, and none of them are higher than
-	 *  offet.
+	 *  Sometimes it can acceptsockets and none of them are higher than offet, but it
+	 *  should not be common.
 	 *  It can cause problems when implemented in other use-case.
 	 */
 	return it->left = epoll_wait(ctx->efd, ctx->recv_ev, offset + ev_size, timeout * 1000);
