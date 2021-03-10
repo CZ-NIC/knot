@@ -30,16 +30,6 @@
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 
-/*
- * OS X doesn't support MSG_NOSIGNAL. Use SO_NOSIGPIPE socket option instead.
- */
-#if defined(__APPLE__) && !defined(MSG_NOSIGNAL)
-#  define MSG_NOSIGNAL 0
-#  define osx_block_sigpipe(sock) sockopt_enable(sock, SOL_SOCKET, SO_NOSIGPIPE)
-#else
-#  define osx_block_sigpipe(sock) KNOT_EOK
-#endif
-
 /*!
  * \brief Enable socket option.
  */
@@ -77,10 +67,16 @@ static int socket_create(int family, int type, int proto)
 	}
 #endif
 
-	int ret = osx_block_sigpipe(sock);
+/*
+ * OS X doesn't support MSG_NOSIGNAL. Use SO_NOSIGPIPE socket option instead.
+ */
+#if defined(__APPLE__) && !defined(MSG_NOSIGNAL)
+#define MSG_NOSIGNAL 0
+	int ret = sockopt_enable(sock, SOL_SOCKET, SO_NOSIGPIPE);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+#endif
 
 	return sock;
 }
