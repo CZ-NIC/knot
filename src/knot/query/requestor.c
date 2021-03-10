@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,8 @@ static int request_ensure_connected(knot_request_t *request)
 	int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
 	request->fd = net_connected_socket(sock_type,
 	                                   &request->remote,
-	                                   &request->source);
+	                                   &request->source,
+	                                   request->flags & KNOT_REQUEST_TFO);
 	if (request->fd < 0) {
 		return request->fd;
 	}
@@ -63,10 +64,13 @@ static int request_send(knot_request_t *request, int timeout_ms)
 	knot_pkt_t *query = request->query;
 	uint8_t *wire = query->wire;
 	size_t wire_len = query->size;
+	struct sockaddr_storage *tfo_addr = (request->flags & KNOT_REQUEST_TFO) ?
+	                                    &request->remote : NULL;
 
 	/* Send query. */
 	if (use_tcp(request)) {
-		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms);
+		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms,
+		                       tfo_addr);
 	} else {
 		ret = net_dgram_send(request->fd, wire, wire_len, NULL);
 	}
