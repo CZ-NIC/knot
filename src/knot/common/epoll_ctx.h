@@ -20,130 +20,208 @@
 
 #pragma once
 
-#ifdef USE_EPOLL
+#ifdef ENABLE_EPOLL
 
 #include <stddef.h>
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/epoll.h>
 
-#define FDSET_INIT_SIZE 256 /* Resize step. */
+#define EPOLL_INIT_SIZE 256 /* Resize step. */
 
 /*! \brief Set of filedescriptors with associated context and timeouts. */
 typedef struct epoll_ctx {
-	int efd;
-	unsigned n;               /*!< Active fds. */
-	unsigned size;            /*!< Array size (allocated). */
-	struct epoll_event *ev;   /*!< Epoll event storage for each fd */
-	void* *usrctx;            /*!< Context for each fd. */
-	time_t *timeout;          /*!< Timeout for each fd (seconds precision). */
-    unsigned recv_size;
-    struct epoll_event *recv_ev;
+	int efd;                      /*!< File descriptor of epoll. */
+	unsigned n;                   /*!< Active fds. */
+	unsigned size;                /*!< Array size (allocated). */
+    unsigned recv_size;           /*!< Size of array for received events. */
+	struct epoll_event *ev;       /*!< Epoll event storage for each fd */
+	void* *usrctx;                /*!< Context for each fd. */
+	time_t *timeout;              /*!< Timeout for each fd (seconds precision). */
+    struct epoll_event *recv_ev;  /*!< Array for received events. */
 } epoll_ctx_t;
 
 typedef struct epoll_it {
-    epoll_ctx_t *ctx;
-    struct epoll_event *ptr;
-    int offset;
-    int left;
+    epoll_ctx_t *ctx;         /*!< Iterator related context. */
+    struct epoll_event *ptr;  /*!< Pointer on processed event. */
+    int offset;               /*!< Event index offset. */
+    int unprocessed;          /*!< Unprocessed events left. */
 } epoll_it_t;
 
 /*! \brief Mark-and-sweep state. */
-enum epoll_ctx_sweep_state {
+typedef enum epoll_ctx_sweep_state {
 	EPOLL_CTX_KEEP,
 	EPOLL_CTX_SWEEP
-};
+} epoll_ctx_sweep_state_t;
 
 /*! \brief Sweep callback (set, index, data) */
 typedef enum epoll_ctx_sweep_state (*epoll_ctx_sweep_cb_t)(epoll_ctx_t*, int, void*);
 
 /*!
- * \brief Initialize fdset to given size.
+ * \brief Initialize epoll_ctx to given size.
+ *
+ * \param ctx Target ctx.
+ * \param size Initial ctx size.
+ *
+ * \retval ret == 0 if successful.
+ * \retval ret < 0 on error.
  */
-int epoll_ctx_init(epoll_ctx_t *set, unsigned size);
+int epoll_ctx_init(epoll_ctx_t *ctx, const unsigned size);
 
 /*!
- * \brief Destroy FDSET.
+ * \brief Clear whole context of epoll_ctx.
  *
- * \retval 0 if successful.
- * \retval -1 on error.
+ * \param ctx Target ctx.
+ *
+ * \retval ret == 0 if successful.
+ * \retval ret < 0 on error.
  */
-int epoll_ctx_clear(epoll_ctx_t* set);
-
-void epoll_ctx_close(epoll_ctx_t* set);
+int epoll_ctx_clear(epoll_ctx_t* ctx);
 
 /*!
- * \brief Add file descriptor to watched set.
+ * \brief Close epoll related file descriptor.
  *
- * \param set Target set.
+ * \param ctx Target ctx.
+ */
+void epoll_ctx_close(const epoll_ctx_t* ctx);
+
+/*!
+ * \brief Add file descriptor to watched ctx.
+ *
+ * \param ctx Target ctx.
  * \param fd Added file descriptor.
  * \param events Mask of watched events.
- * \param ctx Context (optional).
+ * \param usrctx Context (optional).
  *
- * \retval index of the added fd if successful.
- * \retval -1 on errors.
+ * \retval ret >= 0 is index of the added fd.
+ * \retval ret < 0 on errors.
  */
-int epoll_ctx_add(epoll_ctx_t *set, int fd, unsigned events, void *ctx);
+int epoll_ctx_add(epoll_ctx_t *ctx, const int fd, const unsigned events, void *usrctx);
 
 /*!
- * \brief Remove file descriptor from watched set.
+ * \brief Wait for receive events.
  *
- * \param set Target set.
- * \param i Index of the removed fd.
+ * \param ctx Target ctx.
+ * \param it Event iterator storage.
+ * \param offset Index of first event.
+ * \param timeout Timeout of operation (negative number for unlimited).
  *
- * \retval 0 if successful.
- * \retval -1 on errors.
+ * \retval ret >= 0 represents number of events received.
+ * \retval ret < 0 on error.
  */
-int epoll_ctx_remove_it(epoll_ctx_t *set, epoll_it_t *it);
-
-int epoll_ctx_wait(epoll_ctx_t *ctx, epoll_it_t *it, unsigned offset, unsigned ev_size, int timeout);
+int epoll_ctx_wait(epoll_ctx_t *ctx, epoll_it_t *it, const unsigned offset, const int timeout);
 
 /*!
  * \brief Set file descriptor watchdog interval.
  *
  * Set time (interval from now) after which the associated file descriptor
- * should be sweeped (see fdset_sweep). Good example is setting a grace period
+ * should be sweeped (see epoll_ctx_sweep). Good example is setting a grace period
  * of N seconds between socket activity. If socket is not active within
  * <now, now + interval>, it is sweeped and potentially closed.
  *
- * \param set Target set.
+ * \param ctx Target ctx.
  * \param i Index for the file descriptor.
  * \param interval Allowed interval without activity (seconds).
  *                 -1 disables watchdog timer
  *
- * \retval 0 if successful.
- * \retval -1 on errors.
+ * \retval ret == 0 on success.
+ * \retval ret < 0 on errors.
  */
-int epoll_ctx_set_watchdog(epoll_ctx_t *set, unsigned i, int interval);
+int epoll_ctx_set_watchdog(epoll_ctx_t *ctx, const unsigned idx, const int interval);
 
-unsigned epoll_ctx_get_length(epoll_ctx_t *ctx);
+/*!
+ * \brief Returns file descriptor based on index.
+ *
+ * \param ctx Target ctx.
+ * \param idx Index of the file descriptor.
+ *
+ * \retval ret >= 0 for file descriptor.
+ * \retval ret < 0 on errors.
+ */
+int epoll_ctx_get_fd(const epoll_ctx_t *ctx, const unsigned idx);
 
-
-int epoll_ctx_get_fd(epoll_ctx_t *set, unsigned i);
+/*!
+ * \brief Returns number of file descriptors stored in ctx.
+ *
+ * \param ctx Target ctx.
+ *
+ * \retval Number of descriptors stored
+ */
+unsigned epoll_ctx_get_length(const epoll_ctx_t *ctx);
 
 /*!
  * \brief Sweep file descriptors with exceeding inactivity period.
  *
- * \param set Target set.
+ * \param ctx Target ctx.
  * \param cb Callback for sweeped descriptors.
  * \param data Pointer to extra data.
  *
  * \retval number of sweeped descriptors.
  * \retval -1 on errors.
  */
-int epoll_ctx_sweep(epoll_ctx_t* set, epoll_ctx_sweep_cb_t cb, void *data);
+int epoll_ctx_sweep(epoll_ctx_t* ctx, const epoll_ctx_sweep_cb_t cb, void *data);
 
-
+/*!
+ * \brief Move iterator on next received event.
+ *
+ * \param it Target iterator.
+ */
 void epoll_it_next(epoll_it_t *it);
 
-int epoll_it_done(epoll_it_t *it);
+/*!
+ * \brief Decide if there is more received events.
+ *
+ * \param it Target iterator.
+ *
+ * \retval Logical flag represents 'done' state.
+ */
+int epoll_it_done(const epoll_it_t *it);
 
-int epoll_it_get_fd(epoll_it_t *it);
+/*!
+ * \brief Remove file descriptor from watched ctx.
+ *
+ * \param it Target iterator.
+ *
+ * \retval 0 if successful.
+ * \retval ret < 0 on error.
+ */
+int epoll_it_remove(epoll_it_t *it);
 
-unsigned epoll_it_get_idx(epoll_it_t *it);
+/*!
+ * \brief Get file descriptor of event referenced by iterator.
+ *
+ * \param it Target iterator.
+ *
+ * \retval ret >= 0 for file descriptor.
+ * \retval ret < 0 on errors.
+ */
+int epoll_it_get_fd(const epoll_it_t *it);
 
-int epoll_it_ev_is_poll(epoll_it_t *it);
+/*!
+ * \brief Get index of event in set referenced by iterator.
+ *
+ * \param it Target iterator.
+ *
+ * \retval Index of event.
+ */
+unsigned epoll_it_get_idx(const epoll_it_t *it);
 
-int epoll_it_ev_is_err(epoll_it_t *it);
+/*!
+ * \brief Decide if event referenced by iterator is POLLIN event.
+ *
+ * \param it Target iterator.
+ *
+ * \retval Logical flag represents 'POLLIN' event received.
+ */
+int epoll_it_ev_is_pollin(const epoll_it_t *it);
+
+/*!
+ * \brief Decide if event referenced by iterator is error event.
+ *
+ * \param it Target iterator.
+ *
+ * \retval Logical flag represents error event received.
+ */
+int epoll_it_ev_is_err(const epoll_it_t *it);
 
 #endif

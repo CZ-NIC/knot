@@ -89,8 +89,6 @@
 #define C_PARENT		"\x06""parent"
 #define C_PIDFILE		"\x07""pidfile"
 #define C_POLICY		"\x06""policy"
-#define C_POLL_MTHD_UDP		"\x0F""poll-method-udp"
-#define C_POLL_MTHD_TCP		"\x0F""poll-method-tcp"
 #define C_PROPAG_DELAY		"\x11""propagation-delay"
 #define C_REFRESH_MAX_INTERVAL	"\x14""refresh-max-interval"
 #define C_REFRESH_MIN_INTERVAL	"\x14""refresh-min-interval"
@@ -200,13 +198,6 @@ enum {
 	CATALOG_ROLE_INTERPRET = 1,
 	CATALOG_ROLE_GENERATE  = 2,
 	CATALOG_ROLE_MEMBER    = 3,
-};
-
-enum {
-	POLL_METHOD_UNIX   = 0,
-	POLL_METHOD_EPOLL  = 1,
-	POLL_METHOD_AIO    = 2,
-	POLL_METHOD_KQUEUE = 3,
 };
 
 extern const knot_lookup_t acl_actions[];

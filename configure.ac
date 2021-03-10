@@ -258,6 +258,14 @@ AS_CASE([$enable_reuseport],
 AS_IF([test "$enable_reuseport" = yes],[
    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])])
 
+# Check suitable polling methods
+AC_CHECK_FUNCS([epoll_create epoll_wait epoll_ctl],
+               [AC_DEFINE([ENABLE_EPOLL], [1], [Use epoll integration.])],
+               [])
+AC_CHECK_FUNC([poll],
+              [AC_DEFINE([ENABLE_POLL], [1], [Use poll integration.])],
+              [])
+
 #########################################
 # Dependencies needed for Knot DNS daemon
 #########################################

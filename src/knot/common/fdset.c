@@ -14,6 +14,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#ifdef ENABLE_POLL
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -29,7 +31,7 @@
 		return KNOT_ENOMEM; \
 	(p) = tmp;
 
-static int fdset_resize(fdset_t *set, unsigned size)
+static int fdset_resize(fdset_t *set, const unsigned size)
 {
 	void *tmp = NULL;
 	MEM_RESIZE(tmp, set->ctx, size);
@@ -39,7 +41,7 @@ static int fdset_resize(fdset_t *set, unsigned size)
 	return KNOT_EOK;
 }
 
-int fdset_init(fdset_t *set, unsigned size)
+int fdset_init(fdset_t *set, const unsigned size)
 {
 	if (set == NULL) {
 		return KNOT_EINVAL;
@@ -62,7 +64,7 @@ int fdset_clear(fdset_t* set)
 	return KNOT_EOK;
 }
 
-int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx)
+int fdset_add(fdset_t *set, const int fd, const unsigned events, void *ctx)
 {
 	if (set == NULL || fd < 0) {
 		return KNOT_EINVAL;
@@ -73,7 +75,7 @@ int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx)
 		return KNOT_ENOMEM;
 
 	/* Initialize. */
-	int i = set->n++;
+	const int i = set->n++;
 	set->pfd[i].fd = fd;
 	set->pfd[i].events = events;
 	set->pfd[i].revents = 0;
@@ -84,141 +86,124 @@ int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx)
 	return i;
 }
 
-int fdset_remove_it(fdset_t *set, fdset_it_t *it)
+//TODO should be static, but it is a dependency in tests (? remove from
+//     tests or something ?)
+int fdset_remove(fdset_t *set, const unsigned idx)
 {
-	if (set == NULL || it == NULL) {
+	if (set == NULL || idx >= set->n) {
 		return KNOT_EINVAL;
 	}
 
-	/* Decrement number of elms. */
-	--set->n;
-
+	const unsigned last = --set->n;
 	/* Nothing else if it is the last one.
 	 * Move last -> i if some remain. */
-	unsigned last = set->n; /* Already decremented */
-	unsigned int i = it->idx;
-	if (i < last) {
-		set->pfd[i] = set->pfd[last];
-		set->timeout[i] = set->timeout[last];
-		set->ctx[i] = set->ctx[last];
-	}
-	it->idx--;
-
-	return KNOT_EOK;
-}
-
-int fdset_remove(fdset_t *set, unsigned i)
-{
-	if (set == NULL || i >= set->n) {
-		return KNOT_EINVAL;
-	}
-
-	/* Decrement number of elms. */
-	--set->n;
-
-	/* Nothing else if it is the last one.
-	 * Move last -> i if some remain. */
-	unsigned last = set->n; /* Already decremented */
-	if (i < last) {
-		set->pfd[i] = set->pfd[last];
-		set->timeout[i] = set->timeout[last];
-		set->ctx[i] = set->ctx[last];
+	if (idx < last) {
+		set->pfd[idx] = set->pfd[last];
+		set->timeout[idx] = set->timeout[last];
+		set->ctx[idx] = set->ctx[last];
 	}
 
 	return KNOT_EOK;
 }
 
-int fdset_wait(fdset_t *set, fdset_it_t *it, unsigned offset, unsigned ev_size, int timeout)
+int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int timeout)
 {
 	it->ctx = set;
 	it->idx = offset;
-
-	it->left = poll(&set->pfd[offset], ev_size, 1000 * timeout);
-	while(it->left > 0 && set->pfd[it->idx].revents == 0) {
+	it->unprocessed = poll(&set->pfd[offset], set->n - offset, 1000 * timeout);
+	while(it->unprocessed > 0 && set->pfd[it->idx].revents == 0) {
 		it->idx++;
 	}
-	return it->left;
+	return it->unprocessed;
 }
 
-int fdset_set_watchdog(fdset_t* set, unsigned i, int interval)
+int fdset_set_watchdog(fdset_t* set, const unsigned idx, const int interval)
 {
-	if (set == NULL || i >= set->n) {
+	if (set == NULL || idx >= set->n) {
 		return KNOT_EINVAL;
 	}
 
 	/* Lift watchdog if interval is negative. */
 	if (interval < 0) {
-		set->timeout[i] = 0;
+		set->timeout[idx] = 0;
 		return KNOT_EOK;
 	}
 
 	/* Update clock. */
-	struct timespec now = time_now();
+	const struct timespec now = time_now();
+	set->timeout[idx] = now.tv_sec + interval; /* Only seconds precision. */
 
-	set->timeout[i] = now.tv_sec + interval; /* Only seconds precision. */
 	return KNOT_EOK;
 }
 
-int fdset_get_fd(fdset_t *set, unsigned i)
+int fdset_get_fd(const fdset_t *set, const unsigned idx)
 {
-	if (set == NULL || i >= set->n) {
+	if (set == NULL || idx >= set->n) {
 		return KNOT_EINVAL;
 	}
 
-	return set->pfd[i].fd;
+	return set->pfd[idx].fd;
 }
 
 
-unsigned fdset_get_length(fdset_t *set)
+unsigned fdset_get_length(const fdset_t *set)
 {
+	assert(set);
 	return set->n;
 }
 
-int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data)
+int fdset_sweep(fdset_t* set, const fdset_sweep_cb_t cb, void *data)
 {
 	if (set == NULL || cb == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	/* Get time threshold. */
-	struct timespec now = time_now();
-
-	unsigned i = 0;
-	while (i < set->n) {
-
+	const struct timespec now = time_now();
+	unsigned idx = 0;
+	while (idx < set->n) {
 		/* Check sweep state, remove if requested. */
-		if (set->timeout[i] > 0 && set->timeout[i] <= now.tv_sec) {
-			int fd = fdset_get_fd(set, i);
+		if (set->timeout[idx] > 0 && set->timeout[idx] <= now.tv_sec) {
+			const int fd = fdset_get_fd(set, idx);
 			if (cb(set, fd, data) == FDSET_SWEEP) {
-				if (fdset_remove(set, i) == KNOT_EOK)
+				if (fdset_remove(set, idx) == KNOT_EOK) {
 					continue; /* Stay on the index. */
+				}
 			}
 		}
-
-		/* Next descriptor. */
-		++i;
+		++idx;
 	}
-
 	return KNOT_EOK;
 }
 
 void fdset_it_next(fdset_it_t *it)
 {
-	it->left--;
-	if (it->left > 0) {
-		do {
-			it->idx++;
-		} while (it->ctx->pfd[it->idx].revents == 0);
+	if (--it->unprocessed > 0) {
+		while (it->ctx->pfd[++it->idx].revents == 0); /* nop */
 	}
 }
 
-int fdset_it_done(fdset_it_t *it)
+int fdset_it_done(const fdset_it_t *it)
 {
-	return it->left <= 0;
+	return it->unprocessed <= 0;
 }
 
+int fdset_it_remove(fdset_it_t *it)
+{
+	if (it == NULL || it->ctx == NULL) {
+		return KNOT_EINVAL;
+	}
 
-int fdset_it_get_fd(fdset_it_t *it)
+	fdset_t *set = it->ctx;
+	const unsigned idx = fdset_it_get_idx(it);
+	fdset_remove(set, idx);
+	/* Iterator should return on last valid already processed element. */
+	/* On `next` call (in for-loop) will point on first unprocessed. */
+	--it->idx;
+	return KNOT_EOK;
+}
+
+int fdset_it_get_fd(const fdset_it_t *it)
 {
 	if (it == NULL) {
 		return KNOT_EINVAL;
@@ -227,20 +212,22 @@ int fdset_it_get_fd(fdset_it_t *it)
 	return it->ctx->pfd[it->idx].fd;
 }
 
-unsigned fdset_it_get_idx(fdset_it_t *it)
+unsigned fdset_it_get_idx(const fdset_it_t *it)
 {
 	assert(it);
 	return it->idx;
 }
 
-int fdset_it_ev_is_poll(fdset_it_t *it)
+int fdset_it_ev_is_pollin(const fdset_it_t *it)
 {
 	assert(it);
 	return it->ctx->pfd[it->idx].revents & POLLIN;
 }
 
-int fdset_it_ev_is_err(fdset_it_t *it)
+int fdset_it_ev_is_err(const fdset_it_t *it)
 {
 	assert(it);
 	return it->ctx->pfd[it->idx].revents & (POLLERR|POLLHUP|POLLNVAL);
 }
+
+#endif

@@ -20,6 +20,8 @@
 
 #pragma once
 
+#ifdef ENABLE_POLL
+
 #include <stddef.h>
 #include <poll.h>
 #include <sys/time.h>
@@ -36,31 +38,40 @@ typedef struct fdset {
 	time_t *timeout;     /*!< Timeout for each fd (seconds precision). */
 } fdset_t;
 
+/*! \brief State of iterator over received events */
 typedef struct fdset_it {
-    fdset_t *ctx;
-    unsigned idx;
-    int left;
+	fdset_t *ctx;     /*!< Source fdset_t. */
+	unsigned idx;     /*!< Index of processed event. */
+	int unprocessed;  /*!< Unprocessed events left. */
 } fdset_it_t;
 
 /*! \brief Mark-and-sweep state. */
-enum fdset_sweep_state {
+typedef enum fdset_sweep_state {
 	FDSET_KEEP,
 	FDSET_SWEEP
-};
+} fdset_sweep_state_t;
 
 /*! \brief Sweep callback (set, index, data) */
 typedef enum fdset_sweep_state (*fdset_sweep_cb_t)(fdset_t*, int, void*);
 
 /*!
  * \brief Initialize fdset to given size.
+ *
+ * \param set Target set.
+ * \param size Initial set size.
+ *
+ * \retval ret == 0 if successful.
+ * \retval ret < 0 on error.
  */
-int fdset_init(fdset_t *set, unsigned size);
+int fdset_init(fdset_t *set, const unsigned size);
 
 /*!
- * \brief Destroy FDSET.
+ * \brief Clear whole context of FDSET.
  *
- * \retval 0 if successful.
- * \retval -1 on error.
+ * \param set Target set.
+ *
+ * \retval ret == 0 if successful.
+ * \retval ret < 0 on error.
  */
 int fdset_clear(fdset_t* set);
 
@@ -72,26 +83,36 @@ int fdset_clear(fdset_t* set);
  * \param events Mask of watched events.
  * \param ctx Context (optional).
  *
- * \retval index of the added fd if successful.
- * \retval -1 on errors.
+ * \retval ret >= 0 is index of the added fd.
+ * \retval ret < 0 on errors.
  */
-int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx);
+int fdset_add(fdset_t *set, const int fd, const unsigned events, void *ctx);
 
 /*!
  * \brief Remove file descriptor from watched set.
- * \brief Keep just becouse of test_fdset.c, remove in future
  *
  * \param set Target set.
  * \param i Index of the removed fd.
  *
  * \retval 0 if successful.
- * \retval -1 on errors.
+ * \retval ret < 0 on errors.
  */
-int fdset_remove(fdset_t *set, unsigned i);
+int fdset_remove(fdset_t *set, const unsigned idx);
 
-int fdset_remove_it(fdset_t *set, fdset_it_t *it);
-
-int fdset_wait(fdset_t *set, fdset_it_t *it, unsigned offset, unsigned ev_size, int timeout);
+/*!
+ * \brief Wait for receive events.
+ *
+ * Skip events based on offset and set iterator on first event.
+ *
+ * \param set Target set.
+ * \param it Event iterator storage.
+ * \param offset Index of first event.
+ * \param timeout Timeout of operation (negative number for unlimited).
+ *
+ * \retval ret >= 0 represents number of events received.
+ * \retval ret < 0 on error.
+ */
+int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int timeout);
 
 /*!
  * \brief Set file descriptor watchdog interval.
@@ -102,18 +123,34 @@ int fdset_wait(fdset_t *set, fdset_it_t *it, unsigned offset, unsigned ev_size, 
  * <now, now + interval>, it is sweeped and potentially closed.
  *
  * \param set Target set.
- * \param i Index for the file descriptor.
+ * \param idx Index of the file descriptor.
  * \param interval Allowed interval without activity (seconds).
  *                 -1 disables watchdog timer
  *
- * \retval 0 if successful.
- * \retval -1 on errors.
+ * \retval ret == 0 on success.
+ * \retval ret < 0 on errors.
  */
-int fdset_set_watchdog(fdset_t *set, unsigned i, int interval);
+int fdset_set_watchdog(fdset_t *set, const unsigned idx, const int interval);
 
-int fdset_get_fd(fdset_t *set, unsigned i);
+/*!
+ * \brief Returns file descriptor based on index.
+ *
+ * \param set Target set.
+ * \param idx Index of the file descriptor.
+ *
+ * \retval ret >= 0 for file descriptor.
+ * \retval ret < 0 on errors.
+ */
+int fdset_get_fd(const fdset_t *set, const unsigned idx);
 
-unsigned fdset_get_length(fdset_t *set);
+/*!
+ * \brief Returns number of file descriptors stored in set.
+ *
+ * \param set Target set.
+ *
+ * \retval Number of descriptors stored
+ */
+unsigned fdset_get_length(const fdset_t *set);
 
 /*!
  * \brief Sweep file descriptors with exceeding inactivity period.
@@ -125,15 +162,69 @@ unsigned fdset_get_length(fdset_t *set);
  * \retval number of sweeped descriptors.
  * \retval -1 on errors.
  */
-int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data);
+int fdset_sweep(fdset_t* set, const fdset_sweep_cb_t cb, void *data);
 
+/*!
+ * \brief Move iterator on next received event.
+ *
+ * \param it Target iterator.
+ */
 void fdset_it_next(fdset_it_t *it);
 
-int fdset_it_done(fdset_it_t *it);
+/*!
+ * \brief Decide if there is more received events.
+ *
+ * \param it Target iterator.
+ *
+ * \retval Logical flag represents 'done' state.
+ */
+int fdset_it_done(const fdset_it_t *it);
 
-int fdset_it_get_fd(fdset_it_t *it);
+/*!
+ * \brief Remove file descriptor referenced by iterator from watched set.
+ *
+ * \param it Target iterator.
+ *
+ * \retval 0 if successful.
+ * \retval ret < 0 on error.
+ */
+int fdset_it_remove(fdset_it_t *it);
 
-unsigned fdset_it_get_idx(fdset_it_t *it);
+/*!
+ * \brief Get file descriptor of event referenced by iterator.
+ *
+ * \param it Target iterator.
+ *
+ * \retval ret >= 0 for file descriptor.
+ * \retval ret < 0 on errors.
+ */
+int fdset_it_get_fd(const fdset_it_t *it);
 
-int fdset_it_ev_is_poll(fdset_it_t *it);
-int fdset_it_ev_is_err(fdset_it_t *it);
+/*!
+ * \brief Get index of event in set referenced by iterator.
+ *
+ * \param it Target iterator.
+ *
+ * \retval Index of event.
+ */
+unsigned fdset_it_get_idx(const fdset_it_t *it);
+
+/*!
+ * \brief Decide if event referenced by iterator is POLLIN event.
+ *
+ * \param it Target iterator.
+ *
+ * \retval Logical flag represents 'POLLIN' event received.
+ */
+int fdset_it_ev_is_pollin(const fdset_it_t *it);
+
+/*!
+ * \brief Decide if event referenced by iterator is error event.
+ *
+ * \param it Target iterator.
+ *
+ * \retval Logical flag represents error event received.
+ */
+int fdset_it_ev_is_err(const fdset_it_t *it);
+
+#endif
