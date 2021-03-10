@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -164,7 +164,7 @@ static void unlink_unix_socket(const struct sockaddr_storage *addr)
 	unlink(path);
 }
 
-int net_bound_socket(int type, const struct sockaddr_storage *addr, enum net_flags flags)
+int net_bound_socket(int type, const struct sockaddr_storage *addr, net_bind_flag_t flags)
 {
 	/* Create socket. */
 	int sock = net_unbound_socket(type, addr);

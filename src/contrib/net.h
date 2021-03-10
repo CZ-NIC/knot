@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 /*!
  * \brief Network interface flags.
  */
-enum net_flags {
+typedef enum {
 	NET_BIND_NONLOCAL = (1 << 0), //!< Allow to bind unavailable address.
 	NET_BIND_MULTIPLE = (1 << 1), //!< Allow to bind address multiple times.
-};
+} net_bind_flag_t;
 
 /*!
  * \brief Create unbound socket of given family and type.
@@ -51,7 +51,7 @@ int net_unbound_socket(int type, const struct sockaddr_storage *addr);
  *
  * \return socket or error code
  */
-int net_bound_socket(int type, const struct sockaddr_storage *addr, enum net_flags flags);
+int net_bound_socket(int type, const struct sockaddr_storage *addr, net_bind_flag_t flags);
 
 /*!
  * \brief Create socket connected (asynchronously) to destination address.
