@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -212,7 +212,7 @@ static void test_connected_one(const struct sockaddr_storage *server_addr,
 {
 	int r;
 
-	int client = net_connected_socket(type, server_addr, NULL);
+	int client = net_connected_socket(type, server_addr, source_addr, false);
 	ok(client >= 0, "%s, %s: client, create connected socket", name, addr_name);
 
 	const uint8_t out[] = "test message";
@@ -365,7 +365,7 @@ static void test_refused(void)
 	r = listen(server, LISTEN_BACKLOG);
 	ok(r == 0, "server, start listening");
 
-	client = net_connected_socket(SOCK_STREAM, &addr, NULL);
+	client = net_connected_socket(SOCK_STREAM, &addr, NULL, false);
 	ok(client >= 0, "client, connect");
 
 	r = net_stream_send(client, (uint8_t *)"", 1, TIMEOUT);
@@ -378,7 +378,7 @@ static void test_refused(void)
 
 	// listening, closed immediately
 
-	client = net_connected_socket(SOCK_STREAM, &addr, NULL);
+	client = net_connected_socket(SOCK_STREAM, &addr, NULL, false);
 	ok(client >= 0, "client, connect");
 
 	r = close(server);
@@ -442,7 +442,7 @@ static void handler_dns(int sock, void *_ctx)
 
 static void dns_send_hello(int sock)
 {
-	net_dns_tcp_send(sock, (uint8_t *)"wimbgunts", 9, TIMEOUT);
+	net_dns_tcp_send(sock, (uint8_t *)"wimbgunts", 9, TIMEOUT, NULL);
 }
 
 static void dns_send_fragmented(int sock)
@@ -510,7 +510,7 @@ static void test_dns_tcp(void)
 		ok(r, "%s, server, start handler", t->name);
 
 		addr = addr_from_socket(server);
-		int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
+		int client = net_connected_socket(SOCK_STREAM, &addr, NULL, false);
 		ok(client >= 0, "%s, client, create connected socket", t->name);
 
 		sync_wait(client);
@@ -549,7 +549,7 @@ static void test_nonblocking_mode(int type)
 	}
 
 	struct sockaddr_storage server_addr = addr_from_socket(server);
-	client = net_connected_socket(type, &server_addr, NULL);
+	client = net_connected_socket(type, &server_addr, NULL, false);
 	ok(client >= 0, "%s: connected, create", name);
 	ok(!socket_is_blocking(client), "%s: connected, nonblocking mode", name);
 
@@ -575,7 +575,7 @@ static void test_nonblocking_accept(void)
 
 	// create client
 
-	int client = net_connected_socket(SOCK_STREAM, &addr_server, NULL);
+	int client = net_connected_socket(SOCK_STREAM, &addr_server, NULL, false);
 	ok(client >= 0, "client, create connected socket");
 
 	struct sockaddr_storage addr_client = addr_from_socket(client);
@@ -599,7 +599,7 @@ static void test_nonblocking_accept(void)
 	// client reconnect
 
 	close(client);
-	client = net_connected_socket(SOCK_STREAM, &addr_server, NULL);
+	client = net_connected_socket(SOCK_STREAM, &addr_server, NULL, false);
 	ok(client >= 0, "client, reconnect");
 
 	r = poll_read(server);

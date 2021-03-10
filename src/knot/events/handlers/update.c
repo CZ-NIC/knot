@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -323,7 +323,7 @@ static void send_update_response(conf_t *conf, const zone_t *zone, knot_request_
 
 		if (net_is_stream(req->fd)) {
 			net_dns_tcp_send(req->fd, req->resp->wire, req->resp->size,
-			                 conf->cache.srv_tcp_remote_io_timeout);
+			                 conf->cache.srv_tcp_remote_io_timeout, NULL);
 		} else {
 			net_dgram_send(req->fd, req->resp->wire, req->resp->size,
 			               &req->remote);

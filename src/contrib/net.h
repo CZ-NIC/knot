@@ -61,11 +61,21 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr, net_bind_fla
  * \param type      Socket transport type (SOCK_STREAM, SOCK_DGRAM).
  * \param dst_addr  Destination address.
  * \param src_addr  Source address (can be NULL).
+ * \param tfo       Enable TCP Fast Open.
  *
  * \return socket or error code
  */
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_addr);
+                         const struct sockaddr_storage *src_addr, bool tfo);
+
+/*!
+ * \brief Enables TCP Fast Open on a bound socket.
+ *
+ * \param sock  Socket.
+ *
+ * \return KNOT_EOK or error code
+ */
+int net_bound_tfo(int sock, int backlog);
 
 /*!
  * \brief Return true if the socket is fully connected.
@@ -169,9 +179,12 @@ ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
  * message size according to the specification. These two bytes are not
  * reflected in the return value.
  *
+ * \param[in]  tfo_addr  If not NULL, send using TCP Fast Open to this address.
+ *
  * \see net_base_send
  */
-ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms);
+ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms,
+                         struct sockaddr_storage *tfo_addr);
 
 /*!
  * \brief Receive a DNS message from a TCP socket.
