@@ -114,6 +114,7 @@ typedef struct {
 		int srv_tcp_io_timeout;
 		int srv_tcp_remote_io_timeout;
 		bool srv_tcp_reuseport;
+		bool srv_tcp_fastopen;
 		bool srv_socket_affinity;
 		size_t srv_udp_threads;
 		size_t srv_tcp_threads;
