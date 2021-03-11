@@ -76,15 +76,15 @@ static struct {
 } ctl_globals;
 
 /*!
- * Evaluates a flag pair and checks for conflicting flags.
+ * Evaluates a filter pair and checks for conflicting filters.
  *
- * \param[in]  args      Command arguments.
- * \param[out] param     The flag to be set.
- * \param[in]  dflt      Default flag value.
- * \param[in]  flag      Name of the flag.
- * \param[in]  neg_flag  Name of the negative flag.
+ * \param[in]  args        Command arguments.
+ * \param[out] param       The filter to be set.
+ * \param[in]  dflt        Default filter value.
+ * \param[in]  filter      Name of the filter.
+ * \param[in]  neg_filter  Name of the negative filter.
  *
- * \return false if there is a flags conflict, true otherwise.
+ * \return false if there is a filter conflict, true otherwise.
  */
 
 static bool eval_opposite_filters(ctl_args_t *args, bool *param, bool dflt,
