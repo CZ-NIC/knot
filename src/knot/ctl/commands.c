@@ -87,10 +87,11 @@ static struct {
  * \return false if there is a flags conflict, true otherwise.
  */
 
-static bool eval_opposite_flags(ctl_args_t *args, bool *param, bool dflt, int flag, int neg_flag)
+static bool eval_opposite_filters(ctl_args_t *args, bool *param, bool dflt,
+                                  int filter, int neg_filter)
 {
-	bool set = MATCH_AND_FILTER(args, flag);
-	bool unset = MATCH_AND_FILTER(args, neg_flag);
+	bool set = MATCH_AND_FILTER(args, filter);
+	bool unset = MATCH_AND_FILTER(args, neg_filter);
 
 	*param = dflt ? set || !unset : set && !unset;
 	return !(set && unset);
@@ -432,19 +433,19 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 		return KNOT_ENOPARAM;
 	}
 
-	// Evaluate flags (and possibly fail) before writing to the filesystem.
-	bool flag_zonefile, flag_journal, flag_timers, flag_kaspdb, flag_catalog;
+	// Evaluate filters (and possibly fail) before writing to the filesystem.
+	bool filter_zonefile, filter_journal, filter_timers, filter_kaspdb, filter_catalog;
 
-	if (!(eval_opposite_flags(args, &flag_zonefile, true,
-	                          CTL_FILTER_BACKUP_ZONEFILE, CTL_FILTER_BACKUP_NOZONEFILE) &&
-	    eval_opposite_flags(args, &flag_journal, false,
-	                        CTL_FILTER_BACKUP_JOURNAL, CTL_FILTER_BACKUP_NOJOURNAL) &&
-	    eval_opposite_flags(args, &flag_timers, true,
-	                        CTL_FILTER_BACKUP_TIMERS, CTL_FILTER_BACKUP_NOTIMERS) &&
-	    eval_opposite_flags(args, &flag_kaspdb, true,
-	                        CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB) &&
-	    eval_opposite_flags(args, &flag_catalog, true,
-	                        CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG))) {
+	if (!(eval_opposite_filters(args, &filter_zonefile, true,
+	                            CTL_FILTER_BACKUP_ZONEFILE, CTL_FILTER_BACKUP_NOZONEFILE) &&
+	    eval_opposite_filters(args, &filter_journal, false,
+	                          CTL_FILTER_BACKUP_JOURNAL, CTL_FILTER_BACKUP_NOJOURNAL) &&
+	    eval_opposite_filters(args, &filter_timers, true,
+	                          CTL_FILTER_BACKUP_TIMERS, CTL_FILTER_BACKUP_NOTIMERS) &&
+	    eval_opposite_filters(args, &filter_kaspdb, true,
+	                          CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB) &&
+	    eval_opposite_filters(args, &filter_catalog, true,
+	                          CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG))) {
 		return KNOT_EXPARAM;
 	}
 
@@ -465,11 +466,11 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	assert(ctx != NULL);
-	ctx->backup_zonefile = flag_zonefile;
-	ctx->backup_journal = flag_journal;
-	ctx->backup_timers = flag_timers;
-	ctx->backup_kaspdb = flag_kaspdb;
-	ctx->backup_catalog = flag_catalog;
+	ctx->backup_zonefile = filter_zonefile;
+	ctx->backup_journal = filter_journal;
+	ctx->backup_timers = filter_timers;
+	ctx->backup_kaspdb = filter_kaspdb;
+	ctx->backup_catalog = filter_catalog;
 
 	zone_backups_add(&args->server->backup_ctxs, ctx);
 
