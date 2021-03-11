@@ -183,6 +183,9 @@ static void init_cache(
 		conf->cache.srv_tcp_remote_io_timeout = infinite_adjust(timeout);
 	}
 
+	val = conf_get(conf, C_SRV, C_TCP_FASTOPEN);
+	conf->cache.srv_tcp_fastopen = conf_bool(&val);
+
 	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
 
 	conf->cache.srv_socket_affinity = running_socket_affinity;
