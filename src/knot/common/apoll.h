@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef ENABLE_EPOLL	
+#ifdef ENABLE_EPOLL
 	#include "knot/common/epoll_ctx.h"
 
 	#define apoll_ctx_t epoll_ctx_t

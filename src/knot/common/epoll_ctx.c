@@ -53,7 +53,7 @@ int epoll_ctx_init(epoll_ctx_t *ctx, const unsigned size)
 	if (ctx->efd < 0) {
 		return KNOT_EMFILE;
 	}
-	
+
 	return epoll_ctx_resize(ctx, size);
 }
 
@@ -107,7 +107,7 @@ static int epoll_ctx_remove(epoll_ctx_t *ctx, const unsigned idx)
 {
 	if (ctx == NULL || idx >= ctx->n) {
 		return KNOT_EINVAL;
-	}	
+	}
 
 	epoll_ctl(ctx->efd, EPOLL_CTL_DEL, ctx->ev[idx].data.fd, NULL);
 	const unsigned last = --ctx->n;
@@ -123,7 +123,6 @@ static int epoll_ctx_remove(epoll_ctx_t *ctx, const unsigned idx)
 		};
 		epoll_ctl(ctx->efd, EPOLL_CTL_MOD, ctx->ev[last].data.fd, &ev);
 	}
-	
 
 	return KNOT_EOK;
 }
@@ -135,7 +134,7 @@ int epoll_ctx_wait(epoll_ctx_t *ctx, epoll_it_t *it, const unsigned offset, cons
 		MEM_RESIZE(tmp, ctx->recv_ev, ctx->size);
 		ctx->recv_size = ctx->size;
 	}
-	
+
 	it->ctx = ctx;
 	it->ptr = ctx->recv_ev;
 	it->offset = offset;
