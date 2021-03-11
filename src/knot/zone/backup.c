@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -84,15 +84,6 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 
 	pthread_mutex_init(&ctx->readers_mutex, NULL);
 
-	if (!restore_mode) {
-		int ret = mkdir(backup_dir, 0750);
-		if (ret == -1 && errno != EEXIST) {
-			pthread_mutex_destroy(&ctx->readers_mutex);
-			free(ctx);
-			return knot_map_errno();
-		}
-	}
-
 	char db_dir[backup_dir_len + 16];
 	(void)snprintf(db_dir, sizeof(db_dir), "%s/keys", backup_dir);
 	knot_lmdb_init(&ctx->bck_kasp_db, db_dir, kasp_db_size, 0, "keys_db");
@@ -118,10 +109,10 @@ void zone_backup_deinit(zone_backup_ctx_t *ctx)
 
 	pthread_mutex_lock(&ctx->readers_mutex);
 	assert(ctx->readers > 0);
-	size_t left = ctx->readers--;
+	size_t left = --ctx->readers;
 	pthread_mutex_unlock(&ctx->readers_mutex);
 
-	if (left == 1) {
+	if (left == 0) {
 		knot_lmdb_deinit(&ctx->bck_catalog);
 		knot_lmdb_deinit(&ctx->bck_journal);
 		knot_lmdb_deinit(&ctx->bck_timer_db);
@@ -132,8 +123,52 @@ void zone_backup_deinit(zone_backup_ctx_t *ctx)
 		BACKUP_LOCKFILE(ctx, lockfile);
 		unlink(lockfile);
 
+		zone_backups_rem(ctx);
+
 		free(ctx);
 	}
+}
+
+void zone_backups_init(zone_backup_ctxs_t *ctxs)
+{
+	init_list(&ctxs->ctxs);
+	pthread_mutex_init(&ctxs->mutex, NULL);
+}
+
+void zone_backups_deinit(zone_backup_ctxs_t *ctxs)
+{
+	zone_backup_ctx_t *ctx, *nxt;
+	WALK_LIST_DELSAFE(ctx, nxt, ctxs->ctxs) {
+		log_warning("backup to '%s' in progress, terminating, will be incomplete",
+		            ctx->backup_dir);
+		ctx->readers = 1; // ensure full deinit
+		zone_backup_deinit(ctx);
+	}
+	pthread_mutex_destroy(&ctxs->mutex);
+}
+
+void zone_backups_add(zone_backup_ctxs_t *ctxs, zone_backup_ctx_t *ctx)
+{
+	pthread_mutex_lock(&ctxs->mutex);
+	add_tail(&ctxs->ctxs, (node_t *)ctx);
+	pthread_mutex_unlock(&ctxs->mutex);
+}
+
+static zone_backup_ctxs_t *get_ctxs_trick(zone_backup_ctx_t *ctx)
+{
+	node_t *n = (node_t *)ctx;
+	while (n->prev != NULL) {
+		n = n->prev;
+	}
+	return (zone_backup_ctxs_t *)n;
+}
+
+void zone_backups_rem(zone_backup_ctx_t *ctx)
+{
+	zone_backup_ctxs_t *ctxs = get_ctxs_trick(ctx);
+	pthread_mutex_lock(&ctxs->mutex);
+	rem_node((node_t *)ctx);
+	pthread_mutex_unlock(&ctxs->mutex);
 }
 
 static char *dir_file(const char *dir_name, const char *file_name)
@@ -324,6 +359,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 	if (ctx->restore_mode) {
 		ret = zone_timers_read(&ctx->bck_timer_db, zone->name, &zone->timers);
+		zone_timers_sanitize(conf, zone);
 	} else {
 		ret = zone_timers_write(&ctx->bck_timer_db, zone->name, &zone->timers);
 	}

@@ -17,6 +17,8 @@
 #define __APPLE_USE_RFC_3542
 
 #include <assert.h>
+#include <sys/types.h>   // OpenBSD
+#include <netinet/tcp.h> // TCP_FASTOPEN
 #include <sys/resource.h>
 
 #include "libknot/libknot.h"
@@ -35,6 +37,7 @@
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
 #include "contrib/net.h"
+#include "contrib/openbsd/strlcat.h"
 #include "contrib/sockaddr.h"
 #include "contrib/trim.h"
 
@@ -467,6 +470,30 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	return new_if;
 }
 
+static void log_sock_conf(conf_t *conf)
+{
+	char buf[512] = "";
+#if defined(ENABLE_REUSEPORT)
+	strlcat(buf, "UDP", sizeof(buf));
+	if (conf->cache.srv_tcp_reuseport) {
+		strlcat(buf, "/TCP", sizeof(buf));
+	}
+	strlcat(buf, " reuseport", sizeof(buf));
+	if (conf->cache.srv_socket_affinity) {
+		strlcat(buf, ", socket affinity", sizeof(buf));
+	}
+#endif
+#if defined(TCP_FASTOPEN)
+	if (buf[0] != '\0') {
+		strlcat(buf, ", ", sizeof(buf));
+	}
+	strlcat(buf, "TCP Fast Open", sizeof(buf));
+#endif
+	if (buf[0] != '\0') {
+		log_info("enabled %s", buf);
+	}
+}
+
 /*! \brief Initialize bound sockets according to configuration. */
 static int configure_sockets(conf_t *conf, server_t *s)
 {
@@ -474,27 +501,29 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		return KNOT_EOK;
 	}
 
-#ifdef ENABLE_REUSEPORT
-	/* Log info if reuseport is used and for what protocols. */
-	log_info("using reuseport%s for UDP%s",
-	         conf->cache.srv_socket_affinity ? " with socket affinity" : "",
-	         conf->cache.srv_tcp_reuseport ? " and TCP" : "");
-#endif
+	log_sock_conf(conf);
 
 	/* Update bound interfaces. */
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
 	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 
+#ifdef ENABLE_XDP
 	if (lisxdp_val.code == KNOT_EOK) {
-		struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY };
-		int ret = setrlimit(RLIMIT_MEMLOCK, &no_limit);
-		if (ret != 0) {
-			log_error("failed to increase RLIMIT_MEMLOCK (%s)",
-			          knot_strerror(errno));
-			return KNOT_ESYSTEM;
+		struct rlimit min_limit = { RLIM_INFINITY, RLIM_INFINITY };
+		struct rlimit cur_limit = { 0 };
+		if (getrlimit(RLIMIT_MEMLOCK, &cur_limit) != 0 ||
+		    cur_limit.rlim_cur != min_limit.rlim_cur ||
+		    cur_limit.rlim_max != min_limit.rlim_max) {
+			int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
+			if (ret != 0) {
+				log_error("failed to increase RLIMIT_MEMLOCK (%s)",
+				          knot_strerror(errno));
+				return KNOT_ESYSTEM;
+			}
 		}
 	}
+#endif
 
 	size_t real_nifs = 0;
 	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
@@ -595,22 +624,24 @@ int server_init(server_t *server, int bg_workers)
 		return ret;
 	}
 
+	zone_backups_init(&server->backup_ctxs);
+
 	char *catalog_dir = conf_db(conf(), C_CATALOG_DB);
-	conf_val_t catalog_size = conf_db_param(conf(), C_CATALOG_DB_MAX_SIZE, NULL);
+	conf_val_t catalog_size = conf_db_param(conf(), C_CATALOG_DB_MAX_SIZE);
 	catalog_init(&server->catalog, catalog_dir, conf_int(&catalog_size));
 	free(catalog_dir);
 	conf()->catalog = &server->catalog;
 
 	char *journal_dir = conf_db(conf(), C_JOURNAL_DB);
-	conf_val_t journal_size = conf_db_param(conf(), C_JOURNAL_DB_MAX_SIZE, C_MAX_JOURNAL_DB_SIZE);
-	conf_val_t journal_mode = conf_db_param(conf(), C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
+	conf_val_t journal_size = conf_db_param(conf(), C_JOURNAL_DB_MAX_SIZE);
+	conf_val_t journal_mode = conf_db_param(conf(), C_JOURNAL_DB_MODE);
 	knot_lmdb_init(&server->journaldb, journal_dir, conf_int(&journal_size), journal_env_flags(conf_opt(&journal_mode), false), NULL);
 	free(journal_dir);
 
 	kasp_db_ensure_init(&server->kaspdb, conf());
 
 	char *timer_dir = conf_db(conf(), C_TIMER_DB);
-	conf_val_t timer_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE, C_MAX_TIMER_DB_SIZE);
+	conf_val_t timer_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE);
 	knot_lmdb_init(&server->timerdb, timer_dir, conf_int(&timer_size), 0, NULL);
 	free(timer_dir);
 
@@ -622,6 +653,8 @@ void server_deinit(server_t *server)
 	if (server == NULL) {
 		return;
 	}
+
+	zone_backups_deinit(&server->backup_ctxs);
 
 	/* Save zone timers. */
 	if (server->zone_db != NULL) {
@@ -1024,8 +1057,8 @@ static int configure_threads(conf_t *conf, server_t *server)
 static int reconfigure_journal_db(conf_t *conf, server_t *server)
 {
 	char *journal_dir = conf_db(conf, C_JOURNAL_DB);
-	conf_val_t journal_size = conf_db_param(conf, C_JOURNAL_DB_MAX_SIZE, C_MAX_JOURNAL_DB_SIZE);
-	conf_val_t journal_mode = conf_db_param(conf, C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
+	conf_val_t journal_size = conf_db_param(conf, C_JOURNAL_DB_MAX_SIZE);
+	conf_val_t journal_mode = conf_db_param(conf, C_JOURNAL_DB_MODE);
 	int ret = knot_lmdb_reinit(&server->journaldb, journal_dir, conf_int(&journal_size),
 	                           journal_env_flags(conf_opt(&journal_mode), false));
 	if (ret != KNOT_EOK) {
@@ -1039,7 +1072,7 @@ static int reconfigure_journal_db(conf_t *conf, server_t *server)
 static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 {
 	char *kasp_dir = conf_db(conf, C_KASP_DB);
-	conf_val_t kasp_size = conf_db_param(conf, C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
+	conf_val_t kasp_size = conf_db_param(conf, C_KASP_DB_MAX_SIZE);
 	int ret = knot_lmdb_reinit(&server->kaspdb, kasp_dir, conf_int(&kasp_size), 0);
 	if (ret != KNOT_EOK) {
 		log_warning("ignored reconfiguration of KASP DB (%s)", knot_strerror(ret));
@@ -1052,7 +1085,7 @@ static int reconfigure_kasp_db(conf_t *conf, server_t *server)
 static int reconfigure_timer_db(conf_t *conf, server_t *server)
 {
 	char *timer_dir = conf_db(conf, C_TIMER_DB);
-	conf_val_t timer_size = conf_db_param(conf, C_TIMER_DB_MAX_SIZE, C_MAX_TIMER_DB_SIZE);
+	conf_val_t timer_size = conf_db_param(conf, C_TIMER_DB_MAX_SIZE);
 	int ret = knot_lmdb_reconfigure(&server->timerdb, timer_dir, conf_int(&timer_size), 0);
 	free(timer_dir);
 	return ret;

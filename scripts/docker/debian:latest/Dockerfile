@@ -22,6 +22,7 @@ RUN apt-get -y install \
 	libidn2-0-dev \
 	liblmdb-dev \
 	libmaxminddb-dev \
+	libmnl-dev \
 	libprotobuf-c-dev \
 	libsystemd-dev \
 	libtool \

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -214,16 +214,13 @@ static void axfr_slave_sign_serial(zone_contents_t *new_contents, zone_t *zone,
 	uint32_t new_serial, lastsigned_serial;
 	if (zone->contents != NULL) {
 		// Retransfer or AXFR-fallback - increment current serial.
-		new_serial = serial_next(zone_contents_serial(zone->contents), serial_policy);
+		new_serial = serial_next(zone_contents_serial(zone->contents), serial_policy, 1);
 	} else if (zone_get_lastsigned_serial(zone, &lastsigned_serial) == KNOT_EOK) {
 		// Bootstrap - increment stored serial.
-		new_serial = serial_next(lastsigned_serial, serial_policy);
-	} else if (serial_must_increment(*master_serial, serial_policy)) {
-		// Bootstrap - increment master's serial, consider policy.
-		new_serial = serial_next(*master_serial, serial_policy);
+		new_serial = serial_next(lastsigned_serial, serial_policy, 1);
 	} else {
-		// Bootstrap - simply use master's serial.
-		new_serial = *master_serial;
+		// Bootstrap - try to reuse master's serial, considering policy.
+		new_serial = serial_next(*master_serial, serial_policy, 0);
 	}
 	zone_contents_set_soa_serial(new_contents, new_serial);
 }
@@ -431,7 +428,7 @@ static bool ixfr_serial_once(changeset_t *ch, int policy, uint32_t *master_seria
 	}
 
 	uint32_t new_from = *local_serial;
-	uint32_t new_to = serial_next(new_from, policy);
+	uint32_t new_to = serial_next(new_from, policy, 1);
 	knot_soa_serial_set(ch->soa_from->rrs.rdata, new_from);
 	knot_soa_serial_set(ch->soa_to->rrs.rdata, new_to);
 
@@ -1085,9 +1082,6 @@ static const knot_layer_api_t REFRESH_API = {
 static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 {
 	conf_val_t val = conf_zone_get(conf, C_ZONE_MAX_SIZE, zone);
-	if (val.code != KNOT_EOK) {
-		val = conf_zone_get(conf, C_MAX_ZONE_SIZE, zone);
-	}
 	return conf_int(&val);
 }
 
@@ -1216,18 +1210,12 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 static int64_t min_refresh_interval(conf_t *conf, const knot_dname_t *zone)
 {
 	conf_val_t val = conf_zone_get(conf, C_REFRESH_MIN_INTERVAL, zone);
-	if (val.code != KNOT_EOK) {
-		val = conf_zone_get(conf, C_MIN_REFRESH_INTERVAL, zone);
-	}
 	return conf_int(&val);
 }
 
 static int64_t max_refresh_interval(conf_t *conf, const knot_dname_t *zone)
 {
 	conf_val_t val = conf_zone_get(conf, C_REFRESH_MAX_INTERVAL, zone);
-	if (val.code != KNOT_EOK) {
-		val = conf_zone_get(conf, C_MAX_REFRESH_INTERVAL, zone);
-	}
 	return conf_int(&val);
 }
 
@@ -1236,7 +1224,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	if (!zone_is_slave(conf, zone)) {
-		return KNOT_EOK;
+		return KNOT_ENOTSUP;
 	}
 
 	try_refresh_ctx_t trctx = { 0 };
@@ -1280,11 +1268,11 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone->timers.next_refresh = now + max_refresh;
 	}
 
-	/* Rechedule events. */
+	/* Reschedule events. */
 	replan_from_timers(conf, zone);
 	if (trctx.send_notify) {
 		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
 	}
 
-	return KNOT_EOK;
+	return ret;
 }

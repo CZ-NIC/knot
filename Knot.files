@@ -415,6 +415,11 @@ src/libknot/xdp/bpf-user.c
 src/libknot/xdp/bpf-user.h
 src/libknot/xdp/eth.c
 src/libknot/xdp/eth.h
+src/libknot/xdp/msg.h
+src/libknot/xdp/msg_init.h
+src/libknot/xdp/protocols.h
+src/libknot/xdp/tcp.c
+src/libknot/xdp/tcp.h
 src/libknot/xdp/xdp.c
 src/libknot/xdp/xdp.h
 src/libknot/yparser/yparser.c
@@ -489,11 +494,11 @@ src/utils/knsupdate/knsupdate_exec.h
 src/utils/knsupdate/knsupdate_main.c
 src/utils/knsupdate/knsupdate_params.c
 src/utils/knsupdate/knsupdate_params.h
+src/utils/kxdpgun/ip_route.c
+src/utils/kxdpgun/ip_route.h
 src/utils/kxdpgun/load_queries.c
 src/utils/kxdpgun/load_queries.h
 src/utils/kxdpgun/main.c
-src/utils/kxdpgun/popenve.c
-src/utils/kxdpgun/popenve.h
 src/utils/kzonecheck/main.c
 src/utils/kzonecheck/zone_check.c
 src/utils/kzonecheck/zone_check.h

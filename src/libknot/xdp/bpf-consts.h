@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,8 @@
 #pragma once
 
 enum {
-	KNOT_XDP_LISTEN_PORT_MASK = 0xFFFF0000, /*!< Listen port option mask. */
-	KNOT_XDP_LISTEN_PORT_ALL  = 1 << 16,    /*!< Listen on all ports. */
-	KNOT_XDP_LISTEN_PORT_DROP = 1 << 17,    /*!< Drop all incoming messages. */
+	KNOT_XDP_LISTEN_PORT_MASK  = 0xFFFF0000, /*!< Listen port option mask. */
+	KNOT_XDP_LISTEN_PORT_TCP   = 1 << 16,    /*!< Apply to TCP. */
+	KNOT_XDP_LISTEN_PORT_PASS  = 1 << 17,    /*!< Pass incoming messages to ports >= port value. */
+	KNOT_XDP_LISTEN_PORT_DROP  = 1 << 18,    /*!< Drop incoming messages to ports >= port value. */
 };

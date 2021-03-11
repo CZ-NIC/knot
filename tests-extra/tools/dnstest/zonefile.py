@@ -89,7 +89,7 @@ class ZoneFile(object):
 
         self.set_file(file_name=file_name, storage=storage, version=version)
 
-    def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None):
+    def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None, ttl=None):
         '''Generate zone file.'''
 
         if dnssec == None:
@@ -109,6 +109,8 @@ class ZoneFile(object):
                 prepare_dir(self.key_dir_bind)
                 params = ["-s", "-3", "n" if nsec3 is False else "y" if nsec3 else "0",
                           "-k", self.key_dir_bind] + params
+            if ttl is not None:
+                params = [ "-t", str(ttl) ] + params
             if zone_generate.main(params) != 0:
                 raise OSError
 

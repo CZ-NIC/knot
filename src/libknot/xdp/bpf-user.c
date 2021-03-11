@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -185,7 +185,7 @@ int kxsk_socket_start(const struct kxsk_iface *iface, uint32_t listen_port,
 		return ret;
 	}
 
-	int qid = (listen_port & KNOT_XDP_LISTEN_PORT_MASK) | htobe16(listen_port & 0xFFFF);
+	int qid = (listen_port & KNOT_XDP_LISTEN_PORT_MASK) | (listen_port & 0xFFFF);
 	ret = bpf_map_update_elem(iface->qidconf_map_fd, &iface->if_queue, &qid, 0);
 	if (ret != 0) {
 		bpf_map_delete_elem(iface->xsks_map_fd, &iface->if_queue);

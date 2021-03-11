@@ -3,13 +3,13 @@
 
 %define GPG_CHECK 0
 %define VERSION __VERSION__
-%define BASE_VERSION %(echo %{version} | sed 's/^\([^.]\+\.[^.]\+\).*/\1/')
+%define BASE_VERSION %(echo "%{version}" | sed 's/^\\([^.]\\+\\.[^.]\\+\\).*/\\1/')
 %define repodir %{_builddir}/%{name}-%{version}
 
 Summary:	High-performance authoritative DNS server
 Name:		knot
 Version:	%{VERSION}
-Release:	1%{?dist}
+Release:	cznic.1%{?dist}
 License:	GPL-3.0-or-later
 URL:		https://www.knot-dns.cz
 Source0:	%{name}_%{version}.orig.tar.xz
@@ -35,6 +35,7 @@ BuildRequires:	pkgconfig(libedit)
 # Optional dependencies
 BuildRequires:	pkgconfig(libcap-ng)
 BuildRequires:	pkgconfig(libidn2)
+BuildRequires:	pkgconfig(libmnl)
 BuildRequires:	pkgconfig(libnghttp2)
 BuildRequires:	pkgconfig(libsystemd)
 BuildRequires:	pkgconfig(systemd)
@@ -238,6 +239,8 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %attr(770,root,knot) %dir %{_sysconfdir}/knot
 %config(noreplace) %attr(640,root,knot) %{_sysconfdir}/knot/knot.conf
 %attr(770,root,knot) %dir %{_sharedstatedir}/knot
+%dir %{_libdir}/knot
+%dir %{_libdir}/knot/modules-*
 %{_unitdir}/knot.service
 %{_tmpfilesdir}/knot.conf
 %{_bindir}/kzonecheck

@@ -54,7 +54,7 @@ resp.check_count(3, rtype="CNAME")
 
 resp = knot.dig("chain.follow", "AAAA", udp=False)
 resp.check(rcode="NOERROR")
-resp.check_count(20, rtype="CNAME")
+resp.check_count(5, rtype="CNAME")
 resp.check_count(0, rtype="AAAA")
 
 # query for RRSIG

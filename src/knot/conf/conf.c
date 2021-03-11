@@ -1121,29 +1121,13 @@ char* conf_zonefile_txn(
 	return get_filename(conf, txn, zone, file);
 }
 
-inline static bool legacy_db_fallback(
-	const yp_name_t *db_type)
-{
-	return (db_type[1] == C_JOURNAL_DB[1] ||
-	        db_type[1] == C_KASP_DB[1] ||
-	        db_type[1] == C_TIMER_DB[1]);
-	// warning comparing by first letter as every database has different!
-}
-
 char* conf_db_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
 	const yp_name_t *db_type)
 {
 	conf_val_t storage_val = conf_get_txn(conf, txn, C_DB, C_STORAGE);
-	if (storage_val.code != KNOT_EOK) {
-		storage_val = conf_default_get_txn(conf, txn, C_STORAGE);
-	}
-
 	conf_val_t db_val = conf_get_txn(conf, txn, C_DB, db_type);
-	if (db_val.code != KNOT_EOK && legacy_db_fallback(db_type)) {
-		db_val = conf_default_get_txn(conf, txn, db_type);
-	}
 
 	char *storage = conf_abs_path(&storage_val, NULL);
 	char *dbdir = conf_abs_path(&db_val, storage);
@@ -1155,15 +1139,9 @@ char* conf_db_txn(
 conf_val_t conf_db_param_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
-	const yp_name_t *param,
-	const yp_name_t *legacy_param)
+	const yp_name_t *param)
 {
-	conf_val_t val = conf_get_txn(conf, txn, C_DB, param);
-	if (val.code != KNOT_EOK && legacy_param != NULL) {
-		val = conf_default_get_txn(conf, txn, legacy_param);
-	}
-
-	return val;
+	return conf_get_txn(conf, txn, C_DB, param);
 }
 
 bool conf_tcp_reuseport_txn(
@@ -1246,9 +1224,6 @@ size_t conf_tcp_max_clients_txn(
 	knot_db_txn_t *txn)
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_MAX_CLIENTS);
-	if (val.code != KNOT_EOK) {
-		val = conf_get_txn(conf, txn, C_SRV, C_MAX_TCP_CLIENTS);
-	}
 	int64_t clients = conf_int(&val);
 	if (clients == YP_NIL) {
 		static size_t permval = 0;

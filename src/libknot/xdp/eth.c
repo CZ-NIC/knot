@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -63,6 +63,36 @@ int knot_eth_queues(const char *devname)
 		} else {
 			ret = ch.combined_count;
 		}
+	}
+
+	close(fd);
+	return ret;
+}
+
+_public_
+int knot_eth_mtu(const char *devname)
+{
+	if (devname == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0) {
+		return knot_map_errno();
+	}
+
+	struct ifreq ifr = { 0 };
+	strlcpy(ifr.ifr_name, devname, IFNAMSIZ);
+
+	int ret = ioctl(fd, SIOCGIFMTU, &ifr);
+	if (ret != 0) {
+		if (errno == EOPNOTSUPP) {
+			ret = KNOT_ENOTSUP;
+		} else {
+			ret = knot_map_errno();
+		}
+	} else {
+		ret = ifr.ifr_mtu;
 	}
 
 	close(fd);

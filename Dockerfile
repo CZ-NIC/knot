@@ -1,18 +1,20 @@
 ## Intermediate stage ##
-FROM debian:stable-slim
+FROM debian:bullseye-slim
 
 # Environment
 ENV BUILD_PKGS \
     autoconf \
     automake \
     gcc \
-    git-core \
+    libbpf-dev \
     libedit-dev \
+    libelf-dev \
     libfstrm-dev \
     libgnutls28-dev \
     libidn2-0-dev \
     liblmdb-dev \
     libmaxminddb-dev \
+    libmnl-dev \
     libnghttp2-dev \
     libprotobuf-c-dev \
     libtool \
@@ -41,17 +43,20 @@ RUN autoreconf -if && \
     make install DESTDIR=/tmp/knot-install
 
 ## Final stage ##
-FROM debian:stable-slim
+FROM debian:bullseye-slim
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 
 # Environment
 ENV RUNTIME_PKGS \
+    libbpf0 \
     libedit2 \
+    libelf1 \
     libfstrm0 \
     libgnutls30 \
     libidn2-0 \
     liblmdb0 \
     libmaxminddb0 \
+    libmnl0 \
     libnghttp2-14 \
     libprotobuf-c1 \
     liburcu6

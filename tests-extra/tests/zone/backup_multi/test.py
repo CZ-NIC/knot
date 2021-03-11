@@ -4,6 +4,7 @@
 
 from dnstest.test import Test
 from dnstest.utils import *
+import random
 
 t = Test()
 
@@ -41,5 +42,8 @@ if master.valgrind:
     t.sleep(45);
 
 master.zones_wait(zones, serials_init, equal=True, greater=False)
+
+master.ctl("zone-backup +backupdir %s" % backup_dir)
+t.sleep(random.randint(0, 5))
 
 t.stop()

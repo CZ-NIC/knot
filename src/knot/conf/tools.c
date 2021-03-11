@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#ifdef ENABLE_XDP
+#include <linux/ip.h>
+#include <linux/ipv6.h>
+#include <linux/udp.h>
+#endif
 
 #include "libdnssec/key.h"
 #include "knot/conf/tools.h"
@@ -330,7 +335,7 @@ int check_module_id(
 	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn, \
 	                              section, old_item); \
 	if (val.code == KNOT_EOK) { \
-		CONF_LOG(LOG_NOTICE, "option '%s.%s' is obsolete, " \
+		CONF_LOG(LOG_NOTICE, "option '%s.%s' has no effect, " \
 		                     "use option '%s.%s' instead", \
 		                     &section[1], &old_item[1], \
 		                     &section[1], &new_item[1]); \
@@ -341,11 +346,61 @@ int check_module_id(
 	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
 	                                    section, old_item, args->id, args->id_len); \
 	if (val.code == KNOT_EOK) { \
-		CONF_LOG(LOG_NOTICE, "option '%s.%s' is obsolete, " \
+		CONF_LOG(LOG_NOTICE, "option '%s.%s' has no effect, " \
 		                     "use option '%s.%s' instead", \
 		                     &section[1], &old_item[1], \
 		                     &section[1], &new_item[1]); \
 	} \
+}
+
+static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp)
+{
+#ifdef ENABLE_XDP
+	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                              C_SRV, C_UDP_MAX_PAYLOAD_IPV4);
+	if (val.code != KNOT_EOK) {
+		val = conf_get_txn(args->extra->conf, args->extra->txn,
+		                   C_SRV, C_UDP_MAX_PAYLOAD);
+	}
+	int64_t ipv4_max = conf_int(&val) + sizeof(struct udphdr) + 4 + // Eth. CRC
+	                   sizeof(struct iphdr) + sizeof(struct ethhdr);
+
+	val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                   C_SRV, C_UDP_MAX_PAYLOAD_IPV6);
+	if (val.code != KNOT_EOK) {
+		val = conf_get_txn(args->extra->conf, args->extra->txn,
+		                   C_SRV, C_UDP_MAX_PAYLOAD);
+	}
+	int64_t ipv6_max = conf_int(&val) + sizeof(struct udphdr) + 4 + // Eth. CRC
+	                   sizeof(struct ipv6hdr) + sizeof(struct ethhdr);
+
+	if (ipv6_max > KNOT_XDP_MAX_MTU || ipv4_max > KNOT_XDP_MAX_MTU) {
+		CONF_LOG(LOG_WARNING, "maximum UDP payload not compatible with XDP MTU (%u)",
+		         KNOT_XDP_MAX_MTU);
+	}
+
+	while (xdp->code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(xdp, NULL);
+		conf_xdp_iface_t iface;
+		int ret = conf_xdp_iface(&addr, &iface);
+		if (ret != KNOT_EOK) {
+			CONF_LOG(LOG_WARNING, "failed to check XDP interface MTU");
+			return;
+		}
+		int mtu = knot_eth_mtu(iface.name);
+		if (mtu < 0) {
+			CONF_LOG(LOG_WARNING, "failed to read MTU of interface %s",
+			         iface.name);
+			continue;
+		}
+		mtu += sizeof(struct ethhdr) + 4;
+		if (ipv6_max > mtu || ipv4_max > mtu) {
+			CONF_LOG(LOG_WARNING, "maximum UDP payload not compatible "
+			                      "with MTU of interface %s", iface.name);
+		}
+		conf_val_next(xdp);
+	}
+#endif
 }
 
 int check_server(
@@ -355,14 +410,11 @@ int check_server(
 	                                 C_LISTEN);
 	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
 	                              C_LISTEN_XDP);
-	if (xdp.code == KNOT_EOK && listen.code != KNOT_EOK) {
-		CONF_LOG(LOG_WARNING, "unable to process TCP queries due to XDP-only interfaces");
-	}
-
-	conf_val_t hshake = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
-	                                 C_TCP_HSHAKE_TIMEOUT);
-	if (hshake.code == KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "option 'server.tcp-handshake-timeout' is no longer supported");
+	if (xdp.code == KNOT_EOK) {
+		if (listen.code != KNOT_EOK) {
+			CONF_LOG(LOG_WARNING, "unable to process TCP queries due to XDP-only interfaces");
+		}
+		check_mtu(args, &xdp);
 	}
 
 	CHECK_LEGACY_NAME(C_SRV, C_TCP_REPLY_TIMEOUT, C_TCP_RMT_IO_TIMEOUT);
@@ -560,7 +612,7 @@ int check_remote(
 	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
 	                                    C_TPL, old_item, args->id, args->id_len); \
 	if (val.code == KNOT_EOK) { \
-		CONF_LOG(LOG_NOTICE, "option 'template.%s' is obsolete, " \
+		CONF_LOG(LOG_NOTICE, "option 'template.%s' has no effect, " \
 		                     "use option 'database.%s' instead", \
 		                     &old_item[1], &new_item[1]); \
 	} \
@@ -592,24 +644,7 @@ int check_template(
 	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
 	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
 
-	conf_val_t any = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
-	                                    C_TPL, C_DISABLE_ANY, args->id, args->id_len);
-	if (any.code == KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "option 'disable-any' is deprecated and has no effect");
-	}
-
-	if (is_default_id(args->id, args->id_len)) {
-		conf_val_t db_storage = conf_get_txn(args->extra->conf, args->extra->txn,
-		                                     C_DB, C_STORAGE);
-		conf_val_t tpl_storage = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
-		                                            C_TPL, C_STORAGE, args->id, args->id_len);
-		if (db_storage.code != KNOT_EOK && tpl_storage.code == KNOT_EOK &&
-		    strcmp(conf_str(&tpl_storage), STORAGE_DIR) != 0) {
-			CONF_LOG(LOG_NOTICE, "non-default 'template[default].storage' detected, "
-			                     "please configure also 'db.storage' to avoid compatibility "
-			                     "issues with future versions");
-		}
-	} else {
+	if (!is_default_id(args->id, args->id_len)) {
 		CHECK_DFLT(C_GLOBAL_MODULE, "global module");
 	}
 
@@ -624,12 +659,6 @@ int check_zone(
 	CHECK_LEGACY_NAME_ID(C_ZONE, C_MIN_REFRESH_INTERVAL, C_REFRESH_MIN_INTERVAL);
 	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
 	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
-
-	conf_val_t any = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
-	                                    C_TPL, C_DISABLE_ANY, args->id, args->id_len);
-	if (any.code == KNOT_EOK) {
-		CONF_LOG(LOG_NOTICE, "option 'disable-any' is deprecated and has no effect");
-	}
 
 	conf_val_t zf_load = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_ZONEFILE_LOAD, yp_dname(args->id));

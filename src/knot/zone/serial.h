@@ -44,26 +44,17 @@ inline static bool serial_equal(uint32_t a, uint32_t b)
 }
 
 /*!
- * \brief Get next serial for given serial update policy.
+ * \brief Get (next) serial for given serial update policy.
  *
  * \param current  Current SOA serial.
  * \param policy   SERIAL_POLICY_INCREMENT, SERIAL_POLICY_UNIXTIME or
  *                 SERIAL_POLICY_DATESERIAL.
+ * \param must_increment The minimum difference to the current value.
+ *                 0 only ensures policy; 1 also increments.
  *
  * \return New serial.
  */
-uint32_t serial_next(uint32_t current, int policy);
-
-/*!
- * \brief Check if the current serial must be incremented to match local policy.
- *
- * \param current  Current SOA serial.
- * \param policy   SERIAL_POLICY_INCREMENT, SERIAL_POLICY_UNIXTIME or
- *                 SERIAL_POLICY_DATESERIAL.
- *
- * \return True if update is necessary.
- */
-bool serial_must_increment(uint32_t current, int policy);
+uint32_t serial_next(uint32_t current, int policy, uint32_t must_increment);
 
 typedef struct {
 	uint32_t serial;

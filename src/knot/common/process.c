@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,7 +74,7 @@ static pid_t pid_read(const char *filename)
 	return (pid_t)pid;
 }
 
-static int pid_write(const char *filename)
+static int pid_write(const char *filename, pid_t pid)
 {
 	if (filename == NULL) {
 		return KNOT_EINVAL;
@@ -83,7 +83,7 @@ static int pid_write(const char *filename)
 	/* Convert. */
 	char buf[64];
 	int len = 0;
-	len = snprintf(buf, sizeof(buf), "%lu", (unsigned long)getpid());
+	len = snprintf(buf, sizeof(buf), "%lu", (unsigned long)pid);
 	if (len < 0 || len >= sizeof(buf)) {
 		return KNOT_ENOMEM;
 	}
@@ -103,7 +103,7 @@ static int pid_write(const char *filename)
 	return ret;
 }
 
-char *pid_check_and_create(void)
+unsigned long pid_check_and_create(void)
 {
 	struct stat st;
 	char *pidfile = pid_filename();
@@ -111,24 +111,28 @@ char *pid_check_and_create(void)
 
 	/* Check PID for existence and liveness. */
 	if (pid > 0 && pid_running(pid)) {
-		log_error("server PID found, already running");
+		log_fatal("server PID found, already running");
 		free(pidfile);
-		return NULL;
+		return 0;
 	} else if (stat(pidfile, &st) == 0) {
 		log_warning("removing stale PID file '%s'", pidfile);
 		pid_cleanup();
 	}
 
+	/* Get current PID. */
+	pid = getpid();
+
 	/* Create a PID file. */
-	int ret = pid_write(pidfile);
+	int ret = pid_write(pidfile, pid);
 	if (ret != KNOT_EOK) {
-		log_error("failed to create a PID file '%s' (%s)", pidfile,
+		log_fatal("failed to create a PID file '%s' (%s)", pidfile,
 		          knot_strerror(ret));
 		free(pidfile);
-		return NULL;
+		return 0;
 	}
+	free(pidfile);
 
-	return pidfile;
+	return (unsigned long)pid;
 }
 
 void pid_cleanup(void)

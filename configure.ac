@@ -51,7 +51,7 @@ AC_SUBST([LDFLAG_EXCLUDE_LIBS], $ldflag_exclude_libs)
 
 # Get processor byte ordering
 AC_C_BIGENDIAN([endianity=big-endian], [endianity=little-endian])
-AS_IF([test "$endianity" == "little-endian"],[
+AS_IF([test "$endianity" = "little-endian"],[
     AC_DEFINE([ENDIANITY_LITTLE], [1], [System is little-endian.])])
 
 # Check if an archiver is available
@@ -220,7 +220,7 @@ AC_SUBST([embedded_libbpf_CFLAGS])
 AC_SUBST([embedded_libbpf_LIBS])
 AC_SUBST([libbpf_CFLAGS])
 AC_SUBST([libbpf_LIBS])
-AC_SUBST([XDP_VISIBLE_HEADERS], [$(test "$enable_xdp" == "no"; echo "$?")])
+AC_SUBST([XDP_VISIBLE_HEADERS], [$(test "$enable_xdp" = "no"; echo "$?")])
 
 AS_IF([test "$enable_xdp" != "no"],[
     AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])])
@@ -567,6 +567,12 @@ AS_IF([test "$enable_utilities" = "yes"], [
     ], [
       with_libnghttp2=no
       AC_MSG_WARN([libnghttp2 not found])
+    ])
+  ])
+
+  AS_IF([test "$enable_xdp" != "no"], [
+    PKG_CHECK_MODULES([libmnl], [libmnl], [], [
+      AC_MSG_ERROR([libmnl not found])
     ])
   ])
 ]) # Knot DNS utilities dependencies

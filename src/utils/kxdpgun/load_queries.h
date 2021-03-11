@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,6 @@ struct pkt_payload {
 
 extern struct pkt_payload *global_payloads;
 
-bool load_queries(const char *filename);
+bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid);
 
 void free_global_payloads(void);

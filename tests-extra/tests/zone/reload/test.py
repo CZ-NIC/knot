@@ -27,7 +27,8 @@ def reload_zone(version, exp_serial, exp_version, msg):
     if opt == 1:
         master.reload()
     if opt == 2:
-        master.ctl("zone-reload " + zone[0].name, wait=True)
+        master.ctl("zone-reload " + zone[0].name) # the reload should fail -> no blocking mode, no error
+        t.sleep(2)
     if opt == 3:
         master.ctl("-f zone-reload " + zone[0].name, wait=True)
         t.sleep(1) # forced zone-reload does *only schedule* LOAD event

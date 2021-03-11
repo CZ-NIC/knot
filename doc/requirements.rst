@@ -104,3 +104,4 @@ tool. These are only supported on Linux operating systems. See the chapter
 recommendations.
 
 * libbpf >= 0.0.6
+* libmnl (for kxdpgun)

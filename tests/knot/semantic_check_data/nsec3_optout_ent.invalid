@@ -1,0 +1,18 @@
+example.com.        	3600	SOA	dns1.com. hostmaster.com. 2010111217 21600 3600 604800 86400
+example.com.        	3600	NS	dns1.com.
+example.com.        	3600	DNSKEY	256 3 13 tCoteOM+A4o/A9uxgLyDg3HOg2DClU+3d+1XPQRtTfuaEFOGIpyH6qiFUv2b4DYuvmMyTkL99nxvyhA8yo0Cgg==
+example.com.        	3600	DNSKEY	257 3 13 Yk8KOmyVzOij3x+Zs+eT4J2Up9+ipwXEKOhL9fTYY/DU10yIQt+zYm02UFZJX2oVTdHBCajpBFsZLH2X4ho1yw==
+example.com.        	0	NSEC3PARAM	1 0 10 151E9F1094FE188F
+deleg1.ent.example.com.	3600	NS	glue.outofzone.net.
+deleg2.ent.example.com.	3600	NS	glue.outofzone.net.
+
+example.com.        	3600	RRSIG	NS 13 2 3600 20400410173442 20210209160442 61806 example.com. laxHzto10anAyWXb/IqVEoBsybVmb/aCMb4SdxEC3YiJFj1IX9rxChVnuXrQ5zgr1f6YaRyc/DDTP8NFvwyTWg==
+example.com.        	3600	RRSIG	SOA 13 2 3600 20400410173442 20210209160442 61806 example.com. /eNl2bkB/SJ6qBX+Jpm5KTXIs5Xi978JWRN2jtbEh5Z9udy7liS73oMkBLlJ33amKc7Gwfqi2+SgdHHud4j0Ug==
+example.com.        	3600	RRSIG	DNSKEY 13 2 3600 20400410173442 20210209160442 25674 example.com. TpePckJM7GcsE72vbfSf49LzEM1chUFIiKBN0VyCHdB3YFpRH5d8Qx+XWh8Vs9AuLoKMWTQ0UD4kZK8yF70N4A==
+example.com.        	0	RRSIG	NSEC3PARAM 13 2 0 20400410173442 20210209160442 61806 example.com. RfPCpoA94H+dm7fqxhZ+GIf4fQwzN19yJVbhmEOtx6if9U/H6mJalvoy4d5UD/L2bferTBbie4I/TzAIXgVETQ==
+
+gtr2v0c3d7eqh7ob8rbad7ta90tq8lci.example.com. 3600	NSEC3	1 1 10 151E9F1094FE188F ple28jlp3q5anh045ssk9f3u7ltd4qlc NS
+ple28jlp3q5anh045ssk9f3u7ltd4qlc.example.com. 3600	NSEC3	1 1 10 151E9F1094FE188F gtr2v0c3d7eqh7ob8rbad7ta90tq8lci NS SOA RRSIG DNSKEY NSEC3PARAM
+
+gtr2v0c3d7eqh7ob8rbad7ta90tq8lci.example.com. 3600	RRSIG	NSEC3 13 3 3600 20400410173442 20210209160442 61806 example.com. gb3uKByt54iwCsd284xzOVnnpN97r7ARz6UacMdm2Xs4M8t6Ao9bRG7jvbNpFCALfaU/xDQF7K3v31iKBeVwjw==
+ple28jlp3q5anh045ssk9f3u7ltd4qlc.example.com. 3600	RRSIG	NSEC3 13 3 3600 20400410173442 20210209160442 61806 example.com. kpuFRuzOhsG5zy0Sdql0AB44IDUtf9ccTwJXdULoIqUNKeRqvgWJ7ekEhBKvntVHlBQZPescgPMvvq7PLcA2Dw==

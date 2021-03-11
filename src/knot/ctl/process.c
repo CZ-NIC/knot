@@ -95,6 +95,9 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		case KNOT_EOK:
 			strip = false;
 		case KNOT_CTL_ESTOP:
+		case KNOT_CTL_EZONE:
+			// KNOT_CTL_EZONE - don't change strip, but don't be reported
+			// as a ctl/communication error either.
 			break;
 		default:
 			log_ctl_debug("control, command '%s' (%s)", cmd_name,

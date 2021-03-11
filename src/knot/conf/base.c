@@ -143,25 +143,13 @@ static void init_cache(
 
 	conf_val_t val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD_IPV4);
 	if (val.code != KNOT_EOK) {
-		val = conf_get(conf, C_SRV, C_MAX_IPV4_UDP_PAYLOAD);
-	}
-	if (val.code != KNOT_EOK) {
 		val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD);
-	}
-	if (val.code != KNOT_EOK) {
-		val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
 	}
 	conf->cache.srv_udp_max_payload_ipv4 = conf_int(&val);
 
 	val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD_IPV6);
 	if (val.code != KNOT_EOK) {
-		val = conf_get(conf, C_SRV, C_MAX_IPV6_UDP_PAYLOAD);
-	}
-	if (val.code != KNOT_EOK) {
 		val = conf_get(conf, C_SRV, C_UDP_MAX_PAYLOAD);
-	}
-	if (val.code != KNOT_EOK) {
-		val = conf_get(conf, C_SRV, C_MAX_UDP_PAYLOAD);
 	}
 	conf->cache.srv_udp_max_payload_ipv6 = conf_int(&val);
 
@@ -172,16 +160,7 @@ static void init_cache(
 	conf->cache.srv_tcp_io_timeout = infinite_adjust(conf_int(&val));
 
 	val = conf_get(conf, C_SRV, C_TCP_RMT_IO_TIMEOUT);
-	if (val.code == KNOT_EOK) {
-		conf->cache.srv_tcp_remote_io_timeout = infinite_adjust(conf_int(&val));
-	} else {
-		int timeout = conf_int(&val); // New default value.
-		conf_val_t legacy = conf_get(conf, C_SRV, C_TCP_REPLY_TIMEOUT);
-		if (legacy.code == KNOT_EOK) {
-			timeout = 1000 * conf_int(&legacy); // Explicit legacy value.
-		}
-		conf->cache.srv_tcp_remote_io_timeout = infinite_adjust(timeout);
-	}
+	conf->cache.srv_tcp_remote_io_timeout = infinite_adjust(conf_int(&val));
 
 	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
 

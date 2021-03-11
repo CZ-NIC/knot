@@ -182,6 +182,11 @@ const knot_rdataset_t *zone_soa(const zone_t *zone);
 /*! \brief Check if zone is expired according to timers. */
 bool zone_expired(const zone_t *zone);
 
+/*!
+ * \brief Set default timers for new zones or invalidate if not valid.
+ */
+void zone_timers_sanitize(conf_t *conf, zone_t *zone);
+
 typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *remote,
                               void *data);
 

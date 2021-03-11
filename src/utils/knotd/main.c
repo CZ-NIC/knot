@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -526,19 +526,16 @@ int main(int argc, char **argv)
 	                      &conf()->query_plan);
 
 	/* Check and create PID file. */
-	long pid = (long)getpid();
-	if (daemonize) {
-		char *pidfile = pid_check_and_create();
-		if (pidfile == NULL) {
-			server_wait(&server);
-			server_deinit(&server);
-			conf_free(conf());
-			log_close();
-			return EXIT_FAILURE;
-		}
+	unsigned long pid = pid_check_and_create();
+	if (pid == 0) {
+		server_wait(&server);
+		server_deinit(&server);
+		conf_free(conf());
+		log_close();
+		return EXIT_FAILURE;
+	}
 
-		log_info("PID stored in '%s'", pidfile);
-		free(pidfile);
+	if (daemonize) {
 		if (chdir(daemon_root) != 0) {
 			log_warning("failed to change working directory to %s",
 			            daemon_root);
@@ -578,9 +575,9 @@ int main(int argc, char **argv)
 	}
 
 	if (daemonize) {
-		log_info("server started as a daemon, PID %ld", pid);
+		log_info("server started as a daemon, PID %lu", pid);
 	} else {
-		log_info("server started in the foreground, PID %ld", pid);
+		log_info("server started in the foreground, PID %lu", pid);
 		init_signal_started();
 	}
 

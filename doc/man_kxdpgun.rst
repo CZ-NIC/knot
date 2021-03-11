@@ -86,7 +86,13 @@ Notes
 Linux kernel 4.18+ is required.
 
 The utility has to be executed under root or with these capabilities:
-CAP_NET_RAW, CAP_NET_ADMIN, CAP_SYS_ADMIN, CAP_SYS_RESOURCE, CAP_SETPCAP.
+CAP_NET_RAW, CAP_NET_ADMIN, CAP_SYS_ADMIN, and CAP_SYS_RESOURCE if maximum
+locked memory limit is too low.
+
+Sending USR1 signal to a running process triggers current statistics dump
+to the standard output.
+
+The utility allocates source UDP/TCP ports from the range 2000-65535.
 
 Exit values
 -----------

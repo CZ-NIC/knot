@@ -118,7 +118,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE && relevant != NULL) {
 			uint32_t serial = zone_contents_serial(relevant);
 			conf_val_t policy = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
-			uint32_t set = serial_next(serial, conf_opt(&policy));
+			uint32_t set = serial_next(serial, conf_opt(&policy), 1);
 			zone_contents_set_soa_serial(zf_conts, set);
 			log_zone_info(zone->name, "zone file parsed, serial corrected %u -> %u",
 			              zone->zonefile.serial, set);
@@ -145,7 +145,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 	if (zone->cat_members != NULL && !old_contents_exist) {
 		uint32_t serial = journal_conts == NULL ? 1 : zone_contents_serial(journal_conts);
-		serial = serial_next(serial, SERIAL_POLICY_UNIXTIME); // unixtime hardcoded
+		serial = serial_next(serial, SERIAL_POLICY_UNIXTIME, 1); // unixtime hardcoded
 		zf_conts = catalog_update_to_zone(zone->cat_members, zone->name, serial);
 		if (zf_conts == NULL) {
 			ret = zone->cat_members->error == KNOT_EOK ? KNOT_ENOMEM : zone->cat_members->error;

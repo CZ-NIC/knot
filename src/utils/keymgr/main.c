@@ -127,7 +127,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 	knot_lmdb_db_t kaspdb = { 0 };
 	kdnssec_ctx_t kctx = { 0 };
 
-	conf_val_t mapsize = conf_db_param(conf(), C_KASP_DB_MAX_SIZE, C_MAX_KASP_DB_SIZE);
+	conf_val_t mapsize = conf_db_param(conf(), C_KASP_DB_MAX_SIZE);
 	char *kasp_dir = conf_db(conf(), C_KASP_DB);
 	knot_lmdb_init(&kaspdb, kasp_dir, conf_int(&mapsize), 0, "keys_db");
 	free(kasp_dir);

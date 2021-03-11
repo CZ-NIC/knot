@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -297,9 +297,8 @@ int main(int argc, char *argv[])
 	snprintf(conf_str, sizeof(conf_str),
 	         "zone:\n"
 	         " - domain: test.\n"
-	         "template:\n"
-	         " - id: default\n"
-		 "   max-journal-db-size: 100M\n"
+	         "database:\n"
+	         "   journal-db-max-size: 100M\n"
 	         "   storage: %s\n",
 	         temp_dir);
 

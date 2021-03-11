@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -244,6 +244,7 @@ static void event_wrap(task_t *task)
 
 	if (blocking != NULL) {
 		events->blocking[type] = NULL;
+		events->result[type] = ret;
 		pthread_cond_broadcast(blocking);
 	}
 
@@ -374,10 +375,10 @@ void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 	reschedule(events);
 }
 
-void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool user)
+int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool user)
 {
 	if (!zone || !valid_event(type)) {
-		return;
+		return KNOT_EINVAL;
 	}
 
 	zone_events_t *events = &zone->events;
@@ -401,8 +402,11 @@ void zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool us
 	while (events->blocking[type] == &local_cond) {
 		pthread_cond_wait(&local_cond, &events->mx);
 	}
+	int ret = events->result[type];
 	pthread_mutex_unlock(&events->mx);
 	pthread_cond_destroy(&local_cond);
+
+	return ret;
 }
 
 void zone_events_enqueue(zone_t *zone, zone_event_type_t type)

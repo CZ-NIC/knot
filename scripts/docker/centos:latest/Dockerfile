@@ -3,7 +3,7 @@ MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 ENV DEBIAN_FRONTEND noninteractive
 RUN dnf -y upgrade
 RUN dnf -y install epel-release
-RUN dnf -y --enablerepo PowerTools install \
+RUN dnf -y --enablerepo powertools install \
 	'autoconf' \
 	'automake' \
 	'diffutils' \

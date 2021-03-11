@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,10 +26,10 @@
 /*!
  * \brief Check if PID file exists and create it if possible.
  *
- * \retval NULL if failed.
- * \retval Created PID file path.
+ * \retval 0 if failed.
+ * \retval Current PID.
  */
-char *pid_check_and_create(void);
+unsigned long pid_check_and_create(void);
 
 /*!
  * \brief Remove PID file.
