@@ -171,6 +171,7 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_RMT_IO_TIMEOUT,   YP_TINT,  YP_VINT = { 0, INT32_MAX, 5000 } },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
 	{ C_TCP_REUSEPORT,        YP_TBOOL, YP_VNONE },
+	{ C_TCP_FASTOPEN,         YP_TBOOL, YP_VNONE },
 	{ C_SOCKET_AFFINITY,      YP_TBOOL, YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD,      YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,

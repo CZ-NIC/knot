@@ -141,6 +141,7 @@ General options related to the server.
      tcp-remote-io-timeout: INT
      tcp-max-clients: INT
      tcp-reuseport: BOOL
+     tcp-fastopen: BOOL
      socket-affinity: BOOL
      udp-max-payload: SIZE
      udp-max-payload-ipv4: SIZE
@@ -326,6 +327,28 @@ may result in delayed or not being responded client requests. So it is
 advisable to use this option on secondary servers.
 
 Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* off
+
+.. _server_tcp-fastopen:
+
+tcp-fastopen
+------------
+
+If enabled, use TCP Fast Open for outbound TCP communication (client side):
+incoming zone transfers, sending NOTIFY, and DDNS forwarding. This mode simplifies
+TCP handshake and can result in better networking performance. TCP Fast Open
+for inbound TCP communication (server side) isn't affected by this
+configuration as it's enabled automatically if supported by OS.
+
+.. NOTE::
+   The TCP Fast Open support must also be enabled on the OS level:
+
+   * Linux/macOS: ensure kernel parameter ``net.ipv4.tcp_fastopen`` is ``2`` or
+     ``3`` for server side, and ``1`` or ``3`` for client side.
+   * FreeBSD: ensure kernel parameter ``net.inet.tcp.fastopen.server_enable``
+     is ``1`` for server side, and ``net.inet.tcp.fastopen.client_enable`` is
+     ``1`` for client side.
 
 *Default:* off
 

@@ -190,6 +190,7 @@ server:
     tcp\-remote\-io\-timeout: INT
     tcp\-max\-clients: INT
     tcp\-reuseport: BOOL
+    tcp\-fastopen: BOOL
     socket\-affinity: BOOL
     udp\-max\-payload: SIZE
     udp\-max\-payload\-ipv4: SIZE
@@ -331,6 +332,31 @@ may result in delayed or not being responded client requests. So it is
 advisable to use this option on secondary servers.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP off
+.SS tcp\-fastopen
+.sp
+If enabled, use TCP Fast Open for outbound TCP communication (client side):
+incoming zone transfers, sending NOTIFY, and DDNS forwarding. This mode simplifies
+TCP handshake and can result in better networking performance. TCP Fast Open
+for inbound TCP communication (server side) isn\(aqt affected by this
+configuration as it\(aqs enabled automatically if supported by OS.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+The TCP Fast Open support must also be enabled on the OS level:
+.INDENT 0.0
+.IP \(bu 2
+Linux/macOS: ensure kernel parameter \fBnet.ipv4.tcp_fastopen\fP is \fB2\fP or
+\fB3\fP for server side, and \fB1\fP or \fB3\fP for client side.
+.IP \(bu 2
+FreeBSD: ensure kernel parameter \fBnet.inet.tcp.fastopen.server_enable\fP
+is \fB1\fP for server side, and \fBnet.inet.tcp.fastopen.client_enable\fP is
+\fB1\fP for client side.
+.UNINDENT
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP off
 .SS socket\-affinity
