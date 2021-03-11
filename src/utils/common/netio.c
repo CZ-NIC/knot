@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
 #include <poll.h>
 #include <stdlib.h>
 #include <netinet/in.h>
+#include <sys/types.h>   // OpenBSD
+#include <netinet/tcp.h> // TCP_FASTOPEN
 #include <sys/socket.h>
 
 #ifdef HAVE_SYS_UIO_H
@@ -240,7 +242,10 @@ int net_init(const srv_info_t     *local,
  */
 static int fastopen_connect(int sockfd, const struct addrinfo *srv)
 {
-#if __APPLE__
+#if defined( __FreeBSD__)
+	const int enable = 1;
+	return setsockopt(sockfd, IPPROTO_TCP, TCP_FASTOPEN, &enable, sizeof(enable));
+#elif defined(__APPLE__)
 	// connection is performed lazily when first data are sent
 	struct sa_endpoints ep = {0};
 	ep.sae_dstaddr = srv->ai_addr;
@@ -248,7 +253,7 @@ static int fastopen_connect(int sockfd, const struct addrinfo *srv)
 	int flags =  CONNECT_DATA_IDEMPOTENT|CONNECT_RESUME_ON_READ_WRITE;
 
 	return connectx(sockfd, &ep, SAE_ASSOCID_ANY, flags, NULL, 0, NULL, NULL);
-#elif defined(MSG_FASTOPEN) // Linux with RFC 7413
+#elif defined(__linux__)
 	// connect() will be called implicitly with sendto(), sendmsg()
 	return 0;
 #else
@@ -262,9 +267,9 @@ static int fastopen_connect(int sockfd, const struct addrinfo *srv)
  */
 static int fastopen_send(int sockfd, const struct msghdr *msg, int timeout)
 {
-#if __APPLE__
+#if defined(__FreeBSD__) || defined(__APPLE__)
 	return sendmsg(sockfd, msg, 0);
-#elif defined(MSG_FASTOPEN)
+#elif defined(__linux__)
 	int ret = sendmsg(sockfd, msg, MSG_FASTOPEN);
 	if (ret == -1 && errno == EINPROGRESS) {
 		struct pollfd pfd = {
