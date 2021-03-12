@@ -454,7 +454,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 static void log_sock_conf(conf_t *conf)
 {
-	char buf[512] = "";
+	char buf[128] = "";
 #if defined(ENABLE_REUSEPORT)
 	strlcat(buf, "UDP", sizeof(buf));
 	if (conf->cache.srv_tcp_reuseport) {
@@ -469,10 +469,14 @@ static void log_sock_conf(conf_t *conf)
 	if (buf[0] != '\0') {
 		strlcat(buf, ", ", sizeof(buf));
 	}
-	strlcat(buf, "TCP Fast Open", sizeof(buf));
+	strlcat(buf, "incoming", sizeof(buf));
+	if (conf->cache.srv_tcp_fastopen) {
+		strlcat(buf, "/outgoing", sizeof(buf));
+	}
+	strlcat(buf, " TCP Fast Open", sizeof(buf));
 #endif
 	if (buf[0] != '\0') {
-		log_info("enabled %s", buf);
+		log_info("using %s", buf);
 	}
 }
 
