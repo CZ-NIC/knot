@@ -616,7 +616,7 @@ static int opt_fastopen(const char *arg, void *query)
 
 	q->fastopen = true;
 
-	return KNOT_EOK;
+	return opt_tcp(arg, query);
 }
 
 static int opt_nofastopen(const char *arg, void *query)
@@ -625,7 +625,7 @@ static int opt_nofastopen(const char *arg, void *query)
 
 	q->fastopen = false;
 
-	return opt_ignore(arg, query);
+	return KNOT_EOK;
 }
 
 static int opt_tls(const char *arg, void *query)
