@@ -53,6 +53,7 @@ Module reference
      remote: remote_id
      timeout: INT
      fallback: BOOL
+     tcp-fastopen: BOOL
      catch-nxdomain: BOOL
 
 .. _mod-dnsproxy_id:
@@ -91,6 +92,15 @@ If disabled, all queries are directly forwarded without any local attempts
 to resolve them.
 
 *Default:* on
+
+.. _mod-dnsproxy_tcp-fastopen:
+
+tcp-fastopen
+............
+
+If enabled, TCP Fast Open is used when forwarding TCP queries.
+
+*Default:* off
 
 .. _mod-dnsproxy_catch-nxdomain:
 

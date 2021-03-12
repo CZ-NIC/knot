@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "knot/nameserver/process_query.h" // Forces static module!
 
 #define MOD_REMOTE		"\x06""remote"
+#define MOD_TCP_FASTOPEN	"\x0C""tcp-fastopen"
 #define MOD_TIMEOUT		"\x07""timeout"
 #define MOD_FALLBACK		"\x08""fallback"
 #define MOD_CATCH_NXDOMAIN	"\x0E""catch-nxdomain"
@@ -31,6 +32,7 @@ const yp_item_t dnsproxy_conf[] = {
 	                                { knotd_conf_check_ref } },
 	{ MOD_TIMEOUT,        YP_TINT,  YP_VINT = { 0, INT32_MAX, 500 } },
 	{ MOD_FALLBACK,       YP_TBOOL, YP_VBOOL = { true } },
+	{ MOD_TCP_FASTOPEN,   YP_TBOOL, YP_VNONE },
 	{ MOD_CATCH_NXDOMAIN, YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
@@ -50,6 +52,7 @@ typedef struct {
 	struct sockaddr_storage remote;
 	struct sockaddr_storage via;
 	bool fallback;
+	bool tfo;
 	bool catch_nxdomain;
 	int timeout;
 } dnsproxy_t;
@@ -87,11 +90,16 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 		return state; /* Ignore, not enough memory. */
 	}
 
-	bool is_tcp = net_is_stream(qdata->params->socket);
+	knot_request_flag_t flags = KNOT_REQUEST_NONE;
+	if (!net_is_stream(qdata->params->socket)) {
+		flags = KNOT_REQUEST_UDP;
+	} else if (proxy->tfo) {
+		flags = KNOT_REQUEST_TFO;
+	}
 	const struct sockaddr_storage *dst = &proxy->remote;
 	const struct sockaddr_storage *src = &proxy->via;
 	knot_request_t *req = knot_request_make(re.mm, dst, src, qdata->query, NULL,
-	                                        is_tcp ? 0 : KNOT_REQUEST_UDP);
+	                                        flags);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
 		return state; /* Ignore, not enough memory. */
@@ -143,6 +151,9 @@ int dnsproxy_load(knotd_mod_t *mod)
 
 	conf = knotd_conf_mod(mod, MOD_FALLBACK);
 	proxy->fallback = conf.single.boolean;
+
+	conf = knotd_conf_mod(mod, MOD_TCP_FASTOPEN);
+	proxy->tfo = conf.single.boolean;
 
 	conf = knotd_conf_mod(mod, MOD_CATCH_NXDOMAIN);
 	proxy->catch_nxdomain = conf.single.boolean;
