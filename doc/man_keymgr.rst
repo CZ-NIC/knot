@@ -163,7 +163,7 @@ Arguments are separated by space, each of them is in format 'name=value'.
   be set concurrently with the **ksk** flag.
 
 **sep**
-  Overrides the standard setting of the Secure Entry Point flag for the generated key.
+  Overrides the standard setting of the Secure Entry Point flag.
 
 The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key states`):
 
