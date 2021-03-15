@@ -109,6 +109,7 @@
 #define C_STATS			"\x0A""statistics"
 #define C_STORAGE		"\x07""storage"
 #define C_TARGET		"\x06""target"
+#define C_TCP_FASTOPEN		"\x0C""tcp-fastopen"
 #define C_TCP_IDLE_TIMEOUT	"\x10""tcp-idle-timeout"
 #define C_TCP_IO_TIMEOUT	"\x0E""tcp-io-timeout"
 #define C_TCP_MAX_CLIENTS	"\x0F""tcp-max-clients"

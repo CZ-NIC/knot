@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,9 @@
 #include "libknot/rrtype/tsig.h"
 
 typedef enum {
-	KNOT_REQUEST_UDP = 1 << 0  /*!< Use UDP for requests. */
+	KNOT_REQUEST_NONE = 0,       /*!< Empty flag. */
+	KNOT_REQUEST_UDP  = 1 << 0,  /*!< Use UDP for requests. */
+	KNOT_REQUEST_TFO  = 1 << 1,  /*!< Enable TCP Fast Open for requests. */
 } knot_request_flag_t;
 
 typedef enum {

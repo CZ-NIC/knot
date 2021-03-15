@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -195,7 +195,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
 			int sent = net_dns_tcp_send(fd, ans->wire, ans->size,
-			                            tcp->io_timeout);
+			                            tcp->io_timeout, NULL);
 			if (sent != ans->size) {
 				tcp_log_error(&ss, "send", sent);
 				ret = KNOT_EOF;

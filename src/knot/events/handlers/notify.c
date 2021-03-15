@@ -98,7 +98,8 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	const struct sockaddr_storage *dst = &slave->addr;
 	const struct sockaddr_storage *src = &slave->via;
-	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &slave->key, 0);
+	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
+	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &slave->key, flags);
 	if (!req) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);

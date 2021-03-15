@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 /*!
  * \brief Network interface flags.
  */
-enum net_flags {
+typedef enum {
 	NET_BIND_NONLOCAL = (1 << 0), //!< Allow to bind unavailable address.
 	NET_BIND_MULTIPLE = (1 << 1), //!< Allow to bind address multiple times.
-};
+} net_bind_flag_t;
 
 /*!
  * \brief Create unbound socket of given family and type.
@@ -51,7 +51,7 @@ int net_unbound_socket(int type, const struct sockaddr_storage *addr);
  *
  * \return socket or error code
  */
-int net_bound_socket(int type, const struct sockaddr_storage *addr, enum net_flags flags);
+int net_bound_socket(int type, const struct sockaddr_storage *addr, net_bind_flag_t flags);
 
 /*!
  * \brief Create socket connected (asynchronously) to destination address.
@@ -61,11 +61,21 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr, enum net_fla
  * \param type      Socket transport type (SOCK_STREAM, SOCK_DGRAM).
  * \param dst_addr  Destination address.
  * \param src_addr  Source address (can be NULL).
+ * \param tfo       Enable TCP Fast Open.
  *
  * \return socket or error code
  */
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_addr);
+                         const struct sockaddr_storage *src_addr, bool tfo);
+
+/*!
+ * \brief Enables TCP Fast Open on a bound socket.
+ *
+ * \param sock  Socket.
+ *
+ * \return KNOT_EOK or error code
+ */
+int net_bound_tfo(int sock, int backlog);
 
 /*!
  * \brief Return true if the socket is fully connected.
@@ -169,9 +179,12 @@ ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms);
  * message size according to the specification. These two bytes are not
  * reflected in the return value.
  *
+ * \param[in]  tfo_addr  If not NULL, send using TCP Fast Open to this address.
+ *
  * \see net_base_send
  */
-ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms);
+ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms,
+                         struct sockaddr_storage *tfo_addr);
 
 /*!
  * \brief Receive a DNS message from a TCP socket.

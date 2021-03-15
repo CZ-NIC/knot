@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <tap/basic.h>
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -29,6 +30,8 @@
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
+
+bool TFO = false;
 
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */
@@ -69,7 +72,7 @@ static void *responder_thread(void *arg)
 			break;
 		}
 		knot_wire_set_qr(buf);
-		net_dns_tcp_send(client, buf, len, -1);
+		net_dns_tcp_send(client, buf, len, -1, NULL);
 		close(client);
 	}
 
@@ -87,7 +90,9 @@ static knot_request_t *make_query(knot_requestor_t *requestor,
 	static const knot_dname_t *root = (uint8_t *)"";
 	knot_pkt_put_question(pkt, root, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
-	return knot_request_make(requestor->mm, dst, src, pkt, NULL, 0);
+	knot_request_flag_t flags = TFO ? KNOT_REQUEST_TFO: KNOT_REQUEST_NONE;
+
+	return knot_request_make(requestor->mm, dst, src, pkt, NULL, flags);
 }
 
 static void test_disconnected(knot_requestor_t *requestor,
@@ -116,6 +121,18 @@ static void test_connected(knot_requestor_t *requestor,
 
 int main(int argc, char *argv[])
 {
+#if defined(__linux__)
+	FILE *fd = fopen("/proc/sys/net/ipv4/tcp_fastopen", "r");
+	if (fd != NULL) {
+		char val = fgetc(fd);
+		fclose(fd);
+		// 0 - disabled, 1 - server TFO (client fallbacks),
+		// 2 - client TFO, 3 - both
+		if (val == '1' || val == '3') {
+			TFO = true;
+		}
+	}
+#endif
 	plan_lazy();
 
 	knot_mm_t mm;
@@ -145,6 +162,11 @@ int main(int argc, char *argv[])
 	ret = listen(responder_fd, 10);
 	ok(ret == 0, "check listen return");
 
+	if (TFO) {
+		ret = net_bound_tfo(responder_fd, 10);
+		ok(ret == KNOT_EOK, "check bound TFO return");
+	}
+
 	pthread_t thread;
 	pthread_create(&thread, 0, responder_thread, &responder_fd);
 
@@ -152,9 +174,9 @@ int main(int argc, char *argv[])
 	test_connected(&requestor, &server, &client);
 
 	/* Terminate responder. */
-	int conn = net_connected_socket(SOCK_STREAM, &server, NULL);
+	int conn = net_connected_socket(SOCK_STREAM, &server, NULL, false);
 	assert(conn > 0);
-	conn = net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT);
+	conn = net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT, NULL);
 	assert(conn > 0);
 	pthread_join(thread, NULL);
 	close(responder_fd);

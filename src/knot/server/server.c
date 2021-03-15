@@ -219,24 +219,6 @@ static int disable_pmtudisc(int sock, int family)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Enable TCP Fast Open.
- */
-static int enable_fastopen(int sock, int backlog)
-{
-#if defined(TCP_FASTOPEN)
-#if __APPLE__
-	if (backlog > 0) {
-		backlog = 1; // just on-off switch on macOS
-	}
-#endif
-	if (setsockopt(sock, IPPROTO_TCP, TCP_FASTOPEN, &backlog, sizeof(backlog)) != 0) {
-		return knot_map_errno();
-	}
-#endif
-	return KNOT_EOK;
-}
-
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *thread_id_start)
 {
 #ifndef ENABLE_XDP
@@ -458,9 +440,9 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			}
 		}
 
-		/* TCP Fast Open. */
-		ret = enable_fastopen(sock, TCP_BACKLOG_SIZE);
-		if (ret < 0 && warn_flag_misc) {
+		/* Try to enable TCP Fast Open. */
+		ret = net_bound_tfo(sock, TCP_BACKLOG_SIZE);
+		if (ret != KNOT_EOK && ret != KNOT_ENOTSUP && warn_flag_misc) {
 			log_warning("failed to enable TCP Fast Open on %s (%s)",
 			            addr_str, knot_strerror(ret));
 			warn_flag_misc = false;
@@ -472,7 +454,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 static void log_sock_conf(conf_t *conf)
 {
-	char buf[512] = "";
+	char buf[128] = "";
 #if defined(ENABLE_REUSEPORT)
 	strlcat(buf, "UDP", sizeof(buf));
 	if (conf->cache.srv_tcp_reuseport) {
@@ -487,10 +469,14 @@ static void log_sock_conf(conf_t *conf)
 	if (buf[0] != '\0') {
 		strlcat(buf, ", ", sizeof(buf));
 	}
-	strlcat(buf, "TCP Fast Open", sizeof(buf));
+	strlcat(buf, "incoming", sizeof(buf));
+	if (conf->cache.srv_tcp_fastopen) {
+		strlcat(buf, "/outgoing", sizeof(buf));
+	}
+	strlcat(buf, " TCP Fast Open", sizeof(buf));
 #endif
 	if (buf[0] != '\0') {
-		log_info("enabled %s", buf);
+		log_info("using %s", buf);
 	}
 }
 

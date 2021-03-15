@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -283,7 +283,7 @@ int knot_ctl_connect(knot_ctl_t *ctx, const char *path)
 	}
 
 	// Connect to socket.
-	ctx->sock = net_connected_socket(SOCK_STREAM, &addr, NULL);
+	ctx->sock = net_connected_socket(SOCK_STREAM, &addr, NULL, false);
 	if (ctx->sock < 0) {
 		return ctx->sock;
 	}
