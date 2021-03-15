@@ -143,7 +143,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			bitmap_set(flags, DNSKEY_GENERATE_KSK, str2bool(argv[i] + 4));
 		} else if (strncasecmp(argv[i], "zsk=", 4) == 0) {
 			bitmap_set(flags, DNSKEY_GENERATE_ZSK, str2bool(argv[i] + 4));
-		} else if (!just_timing && strncasecmp(argv[i], "sep=", 4) == 0) {
+		} else if (strncasecmp(argv[i], "sep=", 4) == 0) {
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_SPEC, true);
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, str2bool(argv[i] + 4));
 		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
@@ -814,8 +814,14 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 			return ret;
 		}
 		key->timing = temp;
-		key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
-		key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
+		if (key->is_ksk != (bool)(flags & DNSKEY_GENERATE_KSK) ||
+		    key->is_zsk != (bool)(flags & DNSKEY_GENERATE_ZSK) ||
+		    flags & DNSKEY_GENERATE_SEP_SPEC) {
+			normalize_generate_flags(&flags);
+			key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
+			key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
+			return dnssec_key_set_flags(key->key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
+		}
 		return KNOT_EOK;
 	}
 	return KNOT_EINVAL;

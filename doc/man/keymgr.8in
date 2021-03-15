@@ -187,7 +187,7 @@ If set to \fByes\fP, the key will be used for signing zone (except DNSKEY rrset)
 be set concurrently with the \fBksk\fP flag.
 .TP
 \fBsep\fP
-Overrides the standard setting of the Secure Entry Point flag for the generated key.
+Overrides the standard setting of the Secure Entry Point flag.
 .UNINDENT
 .sp
 The following arguments are timestamps of key lifetime (see DNSSEC Key states):
