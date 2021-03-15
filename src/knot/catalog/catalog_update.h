@@ -18,6 +18,7 @@
 
 #include "contrib/qp-trie/trie.h"
 #include "knot/catalog/catalog_db.h"
+#include "knot/conf/conf.h"
 
 typedef enum {
 	CAT_UPD_INVALID,   // invalid value
@@ -120,14 +121,13 @@ inline static bool catalog_it_finished(catalog_it_t *it)
 #define catalog_it_free trie_it_free
 
 /*!
- * \brief CHeck and align Catalog update to avoid conflicts with conf or other catalogs.
+ * \brief Check Catalog update for conflicts with conf or other catalogs.
  *
  * \param u      Catalog update to be aligned in-place.
  * \param cat    Catalog DB to check against.
- *
- * \note Also accesses conf().
+ * \param conf   Relevant configuration.
  */
-void catalog_update_finalize(catalog_update_t *u, catalog_t *cat);
+void catalog_update_finalize(catalog_update_t *u, catalog_t *cat, conf_t *conf);
 
 /*!
  * \brief Put changes from Catalog Update into persistent Catalog database.

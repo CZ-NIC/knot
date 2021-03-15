@@ -238,32 +238,30 @@ static bool check_member(catalog_upd_val_t *val, conf_t *conf, catalog_t *cat)
 static int rem_conf_conflict(const knot_dname_t *mem, const knot_dname_t *ow,
                              const knot_dname_t *cz, void *ctx)
 {
-	if (conf_rawid_exists(conf(), C_ZONE, mem, knot_dname_size(mem))) {
+	conf_t *conf = ctx;
+
+	if (conf_rawid_exists(conf, C_ZONE, mem, knot_dname_size(mem))) {
 		return catalog_update_add(ctx, mem, ow, cz, true, NULL);
 	}
 	return KNOT_EOK;
 }
 
-void catalog_update_finalize(catalog_update_t *u, catalog_t *cat)
+void catalog_update_finalize(catalog_update_t *u, catalog_t *cat, conf_t *conf)
 {
-	conf_t *cnf = conf();
-
 	catalog_it_t *it = catalog_it_begin(u);
 	while (!catalog_it_finished(it)) {
 		catalog_upd_val_t *val = catalog_it_val(it);
-		if (!check_member(val, cnf, cat)) {
+		if (!check_member(val, conf, cat)) {
 			val->type = (val->type == CAT_UPD_ADD ? CAT_UPD_INVALID : CAT_UPD_REM);
 		}
 		catalog_it_next(it);
 	}
 	catalog_it_free(it);
 
-	// TODO this takes time. Is it really useful?
-	// it checks if the configuration file has not
-	// changed in the way to create confict with
-	// existing member zone and let config take precendence
+	// This checks if the configuration file has not changed in the way
+	// it conflicts with existing member zone and let config take precendence.
 	if (cat->ro_txn != NULL) {
-		(void)catalog_apply(cat, NULL, rem_conf_conflict, u, false);
+		(void)catalog_apply(cat, NULL, rem_conf_conflict, conf, false);
 	}
 }
 
