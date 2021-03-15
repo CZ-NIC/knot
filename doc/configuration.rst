@@ -470,41 +470,34 @@ with manual key management flag has to be set::
       dnssec-policy: manual
 
 To generate signing keys, use the :doc:`keymgr<man_keymgr>` utility.
-Let's use the Single-Type Signing scheme with two algorithms. Run:
+For example, we can use Single-Type Signing:
 
 .. code-block:: console
 
-  $ keymgr myzone.test. generate algorithm=ECDSAP256SHA256
-  $ keymgr myzone.test. generate algorithm=ED25519
+  $ keymgr myzone.test. generate algorithm=ECDSAP256SHA256 ksk=yes zsk=yes
 
 And reload the server. The zone will be signed.
 
 To perform a manual rollover of a key, the timing parameters of the key need
-to be set. Let's roll the RSA key. Generate a new RSA key, but do not activate
+to be set. Let's roll the key. Generate a new key, but do not activate
 it yet:
 
 .. code-block:: console
 
-  $ keymgr myzone.test. generate algorithm=RSASHA256 size=1024 active=+1d
+  $ keymgr myzone.test. generate algorithm=ECDSAP256SHA256 ksk=yes zsk=yes active=+1d
 
-Take the key ID (or key tag) of the old RSA key and disable it the same time
+Take the key ID (or key tag) of the old key and disable it the same time
 the new key gets activated:
 
 .. code-block:: console
 
-  $ keymgr myzone.test. set <old_key_id> retire=+1d remove=+1d
+  $ keymgr myzone.test. set <old_key_id> retire=+2d remove=+3d
 
 Reload the server again. The new key will be published (i.e. the DNSKEY record
 will be added into the zone). Remember to update the DS record in the
-parent zone to include a reference to the new RSA key. This must happen within one
+parent zone to include a reference to the new key. This must happen within one
 day (in this case) including a delay required to propagate the new DS to
 caches.
-
-Note that as the ``+1d`` time specification is computed from the current time,
-the key replacement will not happen at once. First, a new key will be
-activated.  A few moments later, the old key will be deactivated and removed.
-You can use exact time specification to make these two actions happen in one
-go.
 
 .. WARNING::
    If you ever decide to switch from manual key management to automatic key management,
