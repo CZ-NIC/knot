@@ -17,6 +17,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <netdb.h>
 #include <gnutls/gnutls.h>
 
 #include "contrib/ucw/lists.h"
@@ -62,7 +63,7 @@ int tls_params_copy(tls_params_t *dst, const tls_params_t *src);
 void tls_params_clean(tls_params_t *params);
 
 int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait);
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote);
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, struct addrinfo *remote_info, bool fastopen);
 int tls_ctx_send(tls_ctx_t *ctx, const uint8_t *buf, const size_t buf_len);
 int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len);
 void tls_ctx_close(tls_ctx_t *ctx);
