@@ -18,10 +18,11 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <string.h>
+#include <poll.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/ocsp.h>
 #include <gnutls/x509.h>
-#include <poll.h>
+#include <gnutls/socket.h>
 
 #include "utils/common/tls.h"
 #include "utils/common/cert.h"
@@ -489,7 +490,7 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 	return KNOT_EOK;
 }
 
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, struct addrinfo *remote_info, bool fastopen)
 {
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
@@ -520,7 +521,11 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,  const char *remote)
 	}
 
 	gnutls_session_set_ptr(ctx->session, ctx);
-	gnutls_transport_set_int(ctx->session, sockfd);
+	if (fastopen) {
+		gnutls_transport_set_fastopen(ctx->session, sockfd, remote_info->ai_addr, remote_info->ai_addrlen, 0);
+	} else {
+		gnutls_transport_set_int(ctx->session, sockfd);
+	}
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
 
 	// Initialize poll descriptor structure.

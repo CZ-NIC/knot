@@ -384,10 +384,10 @@ int net_connect(net_t *net)
 				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, remote);
 			} else {
 				// Establish TLS connection.
-				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
+				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni, net->srv, fastopen);
 			}
 #else
-			ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
+			ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni, net->srv, fastopen);
 #endif //LIBNGHTTP2
 			if (ret != KNOT_EOK) {
 				close(sockfd);
