@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -843,14 +843,14 @@ static int opt_https(const char *arg, void *query)
 				free(q->tls.hostname);
 				q->tls.hostname = strndup(arg, (size_t)(tmp_path - arg));
 			}
-			return opt_tls(NULL, query);
+			return opt_tls(arg, query);
 		} else {
-			return opt_tls_hostname(arg, q);
+			return opt_tls_hostname(arg, query);
 		}
 
 	}
 
-	return opt_tls(NULL, query);
+	return opt_tls(arg, query);
 
 #else
 	return KNOT_ENOTSUP;
@@ -877,7 +877,7 @@ static int opt_https_get(const char *arg, void *query)
 
 	q->https.method = GET;
 
-	return opt_https(arg, q);
+	return opt_https(arg, query);
 #else
 	return KNOT_ENOTSUP;
 #endif //LIBNGHTTP2
