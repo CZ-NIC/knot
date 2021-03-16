@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -490,7 +490,8 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 	return KNOT_EOK;
 }
 
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, struct addrinfo *remote_info, bool fastopen)
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, bool fastopen,
+                    struct sockaddr_storage *addr, const gnutls_datum_t *protocol)
 {
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
@@ -503,12 +504,14 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, struct addri
 
 	ret = gnutls_set_default_priority(ctx->session);
 	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(ctx->session);
 		return KNOT_NET_ECONNECT;
 	}
 
 	ret = gnutls_credentials_set(ctx->session, GNUTLS_CRD_CERTIFICATE,
 	                             ctx->credentials);
 	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(ctx->session);
 		return KNOT_NET_ECONNECT;
 	}
 
@@ -516,17 +519,27 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, struct addri
 		ret = gnutls_server_name_set(ctx->session, GNUTLS_NAME_DNS, remote,
 		                             strlen(remote));
 		if (ret != GNUTLS_E_SUCCESS) {
+			gnutls_deinit(ctx->session);
 			return KNOT_NET_ECONNECT;
 		}
 	}
 
 	gnutls_session_set_ptr(ctx->session, ctx);
 	if (fastopen) {
-		gnutls_transport_set_fastopen(ctx->session, sockfd, remote_info->ai_addr, remote_info->ai_addrlen, 0);
+		gnutls_transport_set_fastopen(ctx->session, sockfd, (struct sockaddr *)addr,
+		                              sockaddr_len(addr), 0);
 	} else {
 		gnutls_transport_set_int(ctx->session, sockfd);
 	}
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
+
+	if (protocol != NULL) {
+		ret = gnutls_alpn_set_protocols(ctx->session, protocol, 1, 0);
+		if (ret != GNUTLS_E_SUCCESS) {
+			gnutls_deinit(ctx->session);
+			return KNOT_NET_ECONNECT;
+		}
+	}
 
 	// Initialize poll descriptor structure.
 	struct pollfd pfd = {
@@ -541,6 +554,7 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, struct addri
 		if (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0) {
 			if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
 				WARN("TLS, peer took too long to respond\n");
+				gnutls_deinit(ctx->session);
 				return KNOT_NET_ETIMEOUT;
 			}
 		}
