@@ -235,7 +235,7 @@ Show the TTL value.
 Use the TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
 .TP
 \fB+\fP[\fBno\fP]\fBfastopen\fP
-Use TCP Fast Open (default with TCP).
+Use TCP Fast Open.
 .TP
 \fB+\fP[\fBno\fP]\fBignore\fP
 Don\(aqt use TCP automatically if a truncated reply is received.
@@ -406,6 +406,7 @@ DNS over HTTPS examples (various DoH implementations):
 $ kdig @1.1.1.1 +https example.com.
 $ kdig @193.17.47.1 +https=/doh example.com.
 $ kdig @8.8.4.4 +https +https\-get example.com.
+$ kdig @8.8.8.8 +https +tls\-hostname=dns.google +fastopen example.com.
 .ft P
 .fi
 .UNINDENT

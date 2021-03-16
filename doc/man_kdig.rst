@@ -214,7 +214,7 @@ Options
   Use the TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
 
 **+**\ [\ **no**\ ]\ **fastopen**
-  Use TCP Fast Open (default with TCP).
+  Use TCP Fast Open.
 
 **+**\ [\ **no**\ ]\ **ignore**
   Don't use TCP automatically if a truncated reply is received.
@@ -353,6 +353,7 @@ Examples
      $ kdig @1.1.1.1 +https example.com.
      $ kdig @193.17.47.1 +https=/doh example.com.
      $ kdig @8.8.4.4 +https +https-get example.com.
+     $ kdig @8.8.8.8 +https +tls-hostname=dns.google +fastopen example.com.
 
 Files
 -----
