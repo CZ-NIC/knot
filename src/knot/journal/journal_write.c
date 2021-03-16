@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -68,6 +68,20 @@ void journal_write_zone(knot_lmdb_txn_t *txn, const zone_contents_t *z)
 	journal_write_serialize(txn, ser, &fake_ch, zone_contents_serial(z));
 }
 
+static bool delete_one(knot_lmdb_txn_t *txn, bool del_zij, uint32_t del_serial,
+                       const knot_dname_t *zone, uint64_t *freed, uint32_t *next_serial)
+{
+	*freed = 0;
+	MDB_val prefix = journal_changeset_id_to_key(del_zij, del_serial, zone);
+	knot_lmdb_foreach(txn, &prefix) {
+		*freed += txn->cur_val.mv_size;
+		*next_serial = journal_next_serial(&txn->cur_val);
+		knot_lmdb_del_cur(txn);
+	}
+	free(prefix.mv_data);
+	return (*freed > 0);
+}
+
 static int merge_cb(bool remove, const knot_rrset_t *rr, void *ctx)
 {
 	changeset_t *ch = ctx;
@@ -90,23 +104,16 @@ void journal_merge(zone_journal_t j, knot_lmdb_txn_t *txn, bool merge_zij,
 		*original_serial_to = changeset_to(&merge);
 	}
 	txn->ret = journal_read_rrsets(read, merge_cb, &merge);
-	journal_write_changeset(txn, &merge);
-	//knot_rrset_clear(&rr, NULL);
-	journal_read_clear_changeset(&merge);
-}
 
-static bool delete_one(knot_lmdb_txn_t *txn, bool del_zij, uint32_t del_serial,
-                       const knot_dname_t *zone, uint64_t *freed, uint32_t *next_serial)
-{
-	*freed = 0;
-	MDB_val prefix = journal_changeset_id_to_key(del_zij, del_serial, zone);
-	knot_lmdb_foreach(txn, &prefix) {
-		*freed += txn->cur_val.mv_size;
-		*next_serial = journal_next_serial(&txn->cur_val);
-		knot_lmdb_del_cur(txn);
-	}
-	free(prefix.mv_data);
-	return (*freed > 0);
+	// deleting seems redundant since the merge changeset will be overwritten
+	// but it would cause EMALF or invalid data if the new merged has less chunks than before
+	uint32_t del_next_serial;
+	uint64_t del_freed;
+	delete_one(txn, merge_zij, merge_serial, j.zone, &del_freed, &del_next_serial);
+	assert(del_freed > 0 && del_next_serial == *original_serial_to);
+
+	journal_write_changeset(txn, &merge);
+	journal_read_clear_changeset(&merge);
 }
 
 static void delete_merged(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
