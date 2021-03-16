@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -93,10 +93,11 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
 /*!
  * \brief Create TLS connection and perform HTTPS handshake.
  *
- * \param ctx      HTTPS context.
- * \param sockfd   TLS context.
- * \param address  Socket address storage with address to server side.
- * \param remote   [optional] Remote name.
+ * \param ctx       HTTPS context.
+ * \param sockfd    Socket descriptor.
+ * \param remote    [optional] Remote name.
+ * \param fastopen  Use TCP Fast Open indication.
+ * \param addr      Socket address storage with address to server side.
  *
  * \retval KNOT_EOK           When successfully connected.
  * \retval KNOT_EINVAL        When parameters are invalid.
@@ -104,8 +105,8 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
  * \retval KNOT_NET_ETIMEOUT  When server respond takes too long.
  * \retval KNOT_NET_ECONNECT  When unnable to connect to the server.
  */
-int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storage *address,
-                      const char *remote);
+int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
+                      bool fastopen, struct sockaddr_storage *addr);
 
 /*!
  * \brief Send buffer as DNS message over HTTPS.

@@ -302,78 +302,18 @@ static int sockaddr_to_authority(char *buf, const size_t buf_len, const struct s
 	return KNOT_EOK;
 }
 
-int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storage *address,
-                      const char *remote)
+int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
+                      bool fastopen, struct sockaddr_storage *addr)
 {
-	if (ctx == NULL || address == NULL) {
+	if (ctx == NULL || addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	// Create TLS connection
-	int ret = gnutls_init(&ctx->tls->session, GNUTLS_CLIENT | GNUTLS_NONBLOCK);
-	if (ret != GNUTLS_E_SUCCESS) {
-		return KNOT_NET_ECONNECT;
+	int ret = tls_ctx_connect(ctx->tls, sockfd, remote, fastopen, addr, https_protocols);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
-
-	ret = gnutls_set_default_priority(ctx->tls->session);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_deinit(ctx->tls->session);
-		return KNOT_NET_ECONNECT;
-	}
-
-	ret = gnutls_credentials_set(ctx->tls->session, GNUTLS_CRD_CERTIFICATE,
-	                             ctx->tls->credentials);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_deinit(ctx->tls->session);
-		return KNOT_NET_ECONNECT;
-	}
-
-	if (remote != NULL) {
-		ret = gnutls_server_name_set(ctx->tls->session, GNUTLS_NAME_DNS, remote,
-		                             strlen(remote));
-		if (ret != GNUTLS_E_SUCCESS) {
-			gnutls_deinit(ctx->tls->session);
-			return KNOT_NET_ECONNECT;
-		}
-	}
-
-	gnutls_session_set_ptr(ctx->tls->session, ctx->tls);
-	gnutls_transport_set_int(ctx->tls->session, sockfd);
-	gnutls_handshake_set_timeout(ctx->tls->session, 1000 * ctx->tls->wait);
-
-	ret = gnutls_alpn_set_protocols(ctx->tls->session, https_protocols,
-	                                sizeof(https_protocols) / sizeof(*https_protocols), 0);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_deinit(ctx->tls->session);
-		return KNOT_NET_ECONNECT;
-	}
-
-	// Initialize poll descriptor structure.
-	struct pollfd pfd = {
-		.fd = sockfd,
-		.events = POLLIN,
-		.revents = 0,
-	};
-
-	// Perform the TLS handshake
-	do {
-		ret = gnutls_handshake(ctx->tls->session);
-		if (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0) {
-			if (poll(&pfd, 1, 1000 * ctx->tls->wait) != 1) {
-				WARN("TLS, peer took too long to respond\n");
-				gnutls_deinit(ctx->tls->session);
-				return KNOT_NET_ETIMEOUT;
-			}
-		}
-	} while (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0);
-	if (ret != GNUTLS_E_SUCCESS) {
-		WARN("TLS, handshake failed (%s)\n", gnutls_strerror(ret));
-		tls_ctx_close(ctx->tls);
-		return KNOT_NET_ESOCKET;
-	}
-
-	// Save the socket descriptor.
-	ctx->tls->sockfd = sockfd;
 
 	// Perform HTTP handshake
 	ret = nghttp2_submit_settings(ctx->session, NGHTTP2_FLAG_NONE, settings,
@@ -392,7 +332,7 @@ int https_ctx_connect(https_ctx_t *ctx, const int sockfd, struct sockaddr_storag
 			ctx->authority = strdup(remote);
 		} else {
 			ctx->authority = (char*)calloc(HTTPS_AUTHORITY_LEN, sizeof(char));
-			ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, address);
+			ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, addr);
 			if (ret != KNOT_EOK) {
 				free(ctx->authority);
 				ctx->authority = NULL;

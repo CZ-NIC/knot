@@ -337,33 +337,35 @@ int net_connect(net_t *net)
 	if (net->socktype == SOCK_STREAM) {
 		int  cs, err, ret = 0;
 		socklen_t err_len = sizeof(err);
-		bool     fastopen = net->flags & NET_FLAGS_FASTOPEN;
+		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
 
-		// Connect using socket.
-		if (fastopen) {
-			ret = fastopen_connect(sockfd, net->srv);
-		} else {
-			ret = connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen);
-		}
-		if (ret != 0 && errno != EINPROGRESS) {
-			WARN("can't connect to %s\n", net->remote_str);
-			close(sockfd);
-			return KNOT_NET_ECONNECT;
-		}
+		// Establish a connection.
+		if (net->tls.params == NULL || !fastopen) {
+			if (fastopen) {
+				ret = fastopen_connect(sockfd, net->srv);
+			} else {
+				ret = connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen);
+			}
+			if (ret != 0 && errno != EINPROGRESS) {
+				WARN("can't connect to %s\n", net->remote_str);
+				close(sockfd);
+				return KNOT_NET_ECONNECT;
+			}
 
-		// Check for connection timeout.
-		if (!fastopen && poll(&pfd, 1, 1000 * net->wait) != 1) {
-			WARN("connection timeout for %s\n", net->remote_str);
-			close(sockfd);
-			return KNOT_NET_ECONNECT;
-		}
+			// Check for connection timeout.
+			if (!fastopen && poll(&pfd, 1, 1000 * net->wait) != 1) {
+				WARN("connection timeout for %s\n", net->remote_str);
+				close(sockfd);
+				return KNOT_NET_ECONNECT;
+			}
 
-		// Check if NB socket is writeable.
-		cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
-		if (cs < 0 || err != 0) {
-			WARN("can't connect to %s\n", net->remote_str);
-			close(sockfd);
-			return KNOT_NET_ECONNECT;
+			// Check if NB socket is writeable.
+			cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
+			if (cs < 0 || err != 0) {
+				WARN("can't connect to %s\n", net->remote_str);
+				close(sockfd);
+				return KNOT_NET_ECONNECT;
+			}
 		}
 
 		if (net->tls.params != NULL) {
@@ -377,17 +379,20 @@ int net_connect(net_t *net)
 					remote = net->tls.params->hostname;
 				} else if (strchr(net->remote_str, ':') == NULL) {
 					char *at = strchr(net->remote_str, '@');
-					if (at != NULL && strncmp(net->remote->name, net->remote_str, at - net->remote_str)) {
+					if (at != NULL && strncmp(net->remote->name, net->remote_str,
+					                          at - net->remote_str)) {
 						remote = net->remote->name;
 					}
 				}
-				ret = https_ctx_connect(&net->https, sockfd, (struct sockaddr_storage *)net->srv->ai_addr, remote);
+				ret = https_ctx_connect(&net->https, sockfd, remote, fastopen,
+				                        (struct sockaddr_storage *)net->srv->ai_addr);
 			} else {
+#endif //LIBNGHTTP2
 				// Establish TLS connection.
-				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
+				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni, fastopen,
+				                      (struct sockaddr_storage *)net->srv->ai_addr, NULL);
+#ifdef LIBNGHTTP2
 			}
-#else
-			ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni);
 #endif //LIBNGHTTP2
 			if (ret != KNOT_EOK) {
 				close(sockfd);
