@@ -481,6 +481,13 @@ static knot_dname_t *tm_owner(const char *prefix, const knot_dname_t *apex)
 	return out;
 }
 
+static knot_dname_t *tm_owner_int(int x, const knot_dname_t *apex)
+{
+	char buf[12] = { 0 };
+	(void)snprintf(buf, sizeof(buf), "i%d", x);
+	return tm_owner(buf, apex);
+}
+
 static knot_rrset_t * tm_rrs(const knot_dname_t * apex, int x)
 {
 	static knot_rrset_t * rrsA = NULL;
@@ -506,6 +513,27 @@ static knot_rrset_t * tm_rrs(const knot_dname_t * apex, int x)
 	assert(0); return NULL;
 }
 
+#define TM_RRS_INT_MAX 1000
+
+static knot_rrset_t *tm_rrs_int(const knot_dname_t *apex, int x)
+{
+	assert(x < TM_RRS_INT_MAX);
+	static knot_rrset_t *stat_rrs[TM_RRS_INT_MAX] = { 0 };
+
+	if (apex == NULL) {
+		for (int i = 0; i < TM_RRS_INT_MAX; i++) {
+			knot_rrset_free(stat_rrs[i], NULL);
+			stat_rrs[i] = NULL;
+		}
+		return NULL;
+	}
+
+	if (stat_rrs[x] == NULL) {
+		stat_rrs[x] = tm_rrset(tm_owner_int(x, apex), rdA);
+	}
+	return stat_rrs[x];
+}
+
 int tm_rrcnt(const changeset_t * ch, int flg)
 {
 	changeset_iter_t it;
@@ -524,6 +552,10 @@ static changeset_t * tm_chs(const knot_dname_t * apex, int x)
 {
 	static changeset_t * chsI = NULL, * chsX = NULL, * chsY = NULL;
 	static uint32_t serial = 0;
+	if (x < 0) {
+		serial = 0;
+		return NULL;
+	}
 
 	if (apex == NULL) {
 		changeset_free(chsI);
@@ -561,6 +593,43 @@ static changeset_t * tm_chs(const knot_dname_t * apex, int x)
 	serial++;
 
 	return ret;
+}
+
+static void tm2_add_all(zone_contents_t *toadd)
+{
+	assert(toadd != NULL);
+	for (int i = 1; i < TM_RRS_INT_MAX; i++) {
+		zone_node_t *unused = NULL;
+		int ret = zone_contents_add_rr(toadd, tm_rrs_int(toadd->apex->owner, i), &unused);
+		assert(ret == KNOT_EOK);
+	}
+}
+
+static zone_contents_t *tm2_zone(const knot_dname_t *apex)
+{
+	zone_contents_t *z = zone_contents_new(apex, false);
+	if (z != NULL) {
+		knot_rrset_t soa;
+		zone_node_t *unused = NULL;
+		init_soa(&soa, 1, apex);
+		int ret = zone_contents_add_rr(z, &soa, &unused);
+		knot_rrset_clear(&soa, NULL);
+		assert(ret == KNOT_EOK);
+		tm2_add_all(z);
+	}
+	return z;
+}
+
+static changeset_t *tm2_chs_unzone(const knot_dname_t *apex)
+{
+	changeset_t *ch = changeset_new(apex);
+	if (ch != NULL) {
+		changeset_set_soa_serials(ch, 1, 2, apex);
+		tm2_add_all(ch->remove);
+		int ret = changeset_add_addition(ch, tm_rrs_int(apex, 0), 0);
+		assert(ret == KNOT_EOK);
+	}
+	return ch;
 }
 
 static int merged_present(void)
@@ -613,6 +682,33 @@ static void test_merge(const knot_dname_t *apex)
 	changesets_free(&l);
 	journal_read_end(read);
 
+	// insert large zone-in-journal taking more than one chunk
+	zone_contents_t *bigz = tm2_zone(apex);
+	ret = journal_insert_zone(jj, bigz);
+	zone_contents_deep_free(bigz);
+	is_int(KNOT_EOK, ret, "journal: insert large zone-in-journal");
+
+	// insert changeset that will cancel it mostly out
+	changeset_t *bigz_cancelout = tm2_chs_unzone(apex);
+	ret = journal_insert(jj, bigz_cancelout, NULL);
+	changeset_free(bigz_cancelout);
+	is_int(KNOT_EOK, ret, "journal: insert cancel-out changeset");
+
+	// now fill up with dumy changesets to enforce merge
+	tm_chs(apex, -1);
+	while (changeset_to(tm_chs(apex, 0)) != 2) {  }
+	for (i = 0; i < 400; i++) {
+		ret = journal_insert(jj, tm_chs(apex, i), NULL);
+		assert(ret == KNOT_EOK);
+	}
+
+	// finally: the test case. Reading the journal now must be no EMALF and
+	// the zone-in-journal must be little
+	ret = load_j_list(&jj, true, 0, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: read chunks-shrinked zone-in-journal");
+	is_int(4, trie_weight(((changeset_t *)HEAD(l))->add->nodes->trie), "journal: small merged zone-in-journal");
+	changesets_free(&l);
+	journal_read_end(read);
 
 	ret = journal_scrape_with_md(jj, false);
 	assert(ret == KNOT_EOK);
@@ -624,6 +720,7 @@ static void test_merge(const knot_dname_t *apex)
 
 	tm_rrs(NULL, 0);
 	tm_chs(NULL, 0);
+	tm_rrs_int(NULL, 0);
 	unset_conf();
 }
 
