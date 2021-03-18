@@ -40,6 +40,7 @@ class ZoneDnssec(object):
     def __init__(self):
         self.enable = None
         self.validate = None
+        self.disable = None # create the policy in config, but set dnssec-signing: off
         self.manual = None
         self.single_type_signing = None
         self.alg = None
@@ -1407,7 +1408,7 @@ class Knot(Server):
 
             # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
             if z.dnssec.enable:
-                s.item_str("dnssec-signing", "on")
+                s.item_str("dnssec-signing", "off" if z.dnssec.disable else "on")
                 s.item_str("dnssec-policy", z.name)
             for module in z.modules:
                 if module.conf_name == "mod-onlinesign":
@@ -1492,7 +1493,7 @@ class Knot(Server):
                 s.item_str("catalog-zone", z.catz.name)
 
             if z.dnssec.enable:
-                s.item_str("dnssec-signing", "on")
+                s.item_str("dnssec-signing", "off" if z.dnssec.disable else "on")
                 s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
 
             if z.catalog:
