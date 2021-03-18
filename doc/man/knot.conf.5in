@@ -1140,7 +1140,7 @@ Possible values:
 .IP \(bu 2
 \fBdelete\-dnssec\fP – Publish special CDS and CDNSKEY records indicating turning off DNSSEC.
 .IP \(bu 2
-\fBrollover\fP – Publish CDS and CDNSKEY records only in the submission phase of KSK rollover.
+\fBrollover\fP – Publish CDS and CDNSKEY records for ready and not yet active KSK (submission phase of KSK rollover).
 .IP \(bu 2
 \fBalways\fP – Always publish one CDS and one CDNSKEY records for the current KSK.
 .IP \(bu 2
