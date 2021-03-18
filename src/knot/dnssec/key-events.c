@@ -128,7 +128,8 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 	}
 
 	// if we already have the policy-last key, we have to generate new one
-	if (ret == KNOT_ENOENT || key_id_present(ctx, borrow_key, true)) {
+	if (ret == KNOT_ENOENT || key_id_present(ctx, borrow_key, true) ||
+	    kasp_db_get_key_algorithm(ctx->kasp_db, borrow_zone, borrow_key) != (int)ctx->policy->algorithm) {
 		knot_kasp_key_t *key = NULL;
 		ret = kdnssec_generate_key(ctx, flags, &key);
 		if (ret != KNOT_EOK) {

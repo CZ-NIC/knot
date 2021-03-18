@@ -44,6 +44,19 @@ typedef enum { // the enum values MUST match those from keyclass_t !!
 int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t *dst);
 
 /*!
+ * \brief Obtain the algorithm of a key.
+ *
+ * \param db          KASP db.
+ * \param zone_name   name of the zone
+ * \param key_id      ID of the key in question
+ *
+ * \retval KNOT_E* if error
+ * \return >0 The algorithm of the key.
+ */
+int kasp_db_get_key_algorithm(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                              const char *key_id);
+
+/*!
  * \brief Remove a key from zone. Delete the key if no zone has it anymore.
  *
  * \param db            KASP db
