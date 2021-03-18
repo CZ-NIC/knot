@@ -1404,6 +1404,7 @@ class Knot(Server):
             s.id_item("id", "catemplate")
             s.item_str("file", self.dir + "/master/%s.zone")
             s.item_str("zonefile-load", "difference")
+            s.item_str("journal-content", z.journal_content)
 
             # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
             if z.dnssec.enable:

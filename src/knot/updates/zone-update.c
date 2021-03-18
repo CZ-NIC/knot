@@ -14,12 +14,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "knot/catalog/interpret.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
-#include "knot/zone/catalog.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zonefile.h"
