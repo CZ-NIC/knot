@@ -44,5 +44,8 @@ int open_tmp_file(const char *path, char **tmp_name, FILE **file, mode_t mode);
 
 /*!
  * Copies a file, possibly overwriting existing one, as an atomic operation.
+ *
+ * \return KNOT_EOK on success, KNOT_EFILE if the source file doesn't exist,
+ *         \or other KNOT_E* values in case of other errors.
  */
 int copy_file(const char *dest, const char *src);
