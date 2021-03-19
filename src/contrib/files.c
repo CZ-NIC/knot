@@ -151,7 +151,7 @@ int copy_file(const char *dest, const char *src)
 
 	FILE *from = fopen(src, "r");
 	if (from == NULL) {
-		ret = knot_map_errno();
+		ret = errno == ENOENT ? KNOT_EFILE : knot_map_errno();
 		goto done;
 	}
 
