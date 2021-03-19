@@ -255,6 +255,9 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			ret = make_path(local_zf, S_IRWXU | S_IRWXG);
 			if (ret == KNOT_EOK) {
 				ret = copy_file(local_zf, backup_zf);
+				if (ret == KNOT_EFILE) {
+					unlink(local_zf);
+				}
 			}
 		} else {
 			conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
@@ -264,7 +267,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 				if (zone->contents != NULL) {
 					ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
 				} else {
-					log_zone_notice(zone->name, "empty zone, skipping zone file backup");
+					log_zone_notice(zone->name, "empty zone, skipping a zone file backup");
 				}
 			} else {
 				ret = copy_file(backup_zf, local_zf);
@@ -273,6 +276,11 @@ int zone_backup(conf_t *conf, zone_t *zone)
 
 		free(backup_zf);
 		free(local_zf);
+		if (ret == KNOT_EFILE) {
+			log_zone_notice(zone->name, "no zone file, skipping a zone file %s",
+			                ctx->restore_mode ? "restore" : "backup");
+			ret = KNOT_EOK;
+		}
 		if (ret != KNOT_EOK) {
 			LOG_FAIL("zone file");
 			goto done;
