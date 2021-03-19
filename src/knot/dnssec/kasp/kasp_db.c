@@ -182,6 +182,23 @@ int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t 
 	return (EMPTY_LIST(*dst) ? KNOT_ENOENT : KNOT_EOK);
 }
 
+int kasp_db_get_key_algorithm(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                              const char *key_id)
+{
+	knot_lmdb_txn_t txn = { 0 };
+	MDB_val search = make_key_str(KASPDBKEY_PARAMS, zone_name, key_id);
+	knot_lmdb_begin(db, &txn, false);
+	int ret = txn.ret == KNOT_EOK ? KNOT_ENOENT : txn.ret;
+	if (knot_lmdb_find(&txn, &search, KNOT_LMDB_EXACT)) {
+		key_params_t p = { 0 };
+		ret = params_deserialize(&txn.cur_val, &p) ? p.algorithm : KNOT_EMALF;
+		free(p.public_key.data);
+	}
+	knot_lmdb_abort(&txn);
+	free(search.mv_data);
+	return ret;
+}
+
 static bool keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t **params)
 {
 	uint8_t pf = KASPDBKEY_PARAMS;
