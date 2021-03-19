@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <signal.h>
 #include <tap/basic.h>
 #include "knot/server/server.h"
 #include "test_conf.h"

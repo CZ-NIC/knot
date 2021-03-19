@@ -14,6 +14,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <signal.h>
+
 #include "knot/server/udp-handler.c"
 #include "knot/common/log.h"
 
