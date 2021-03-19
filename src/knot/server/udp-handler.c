@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,25 +16,25 @@
 
 #define __APPLE_USE_RFC_3542
 
+#include <assert.h>
 #include <dlfcn.h>
-#include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <string.h>
-#include <assert.h>
 #include <sys/param.h>
 #ifdef HAVE_SYS_UIO_H	// struct iovec (OpenBSD)
 #include <sys/uio.h>
 #endif /* HAVE_SYS_UIO_H */
+#include <unistd.h>
 
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
-#include "knot/common/apoll.h"
+#include "knot/common/fdset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "knot/server/server.h"
@@ -499,7 +499,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 	}
 }
 
-static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, apoll_t *fds,
+static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *fds,
                                int thread_id, void **xdp_socket)
 {
 	if (n_ifaces == 0) {
@@ -516,7 +516,7 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, apoll_t *
 		if (fd < 0) {
 			continue;
 		}
-		apoll_add(fds, fd, APOLL_POLLIN, NULL);
+		fdset_add(fds, fd, FDSET_POLLIN, NULL);
 		count++;
 	}
 
@@ -575,8 +575,8 @@ int udp_master(dthread_t *thread)
 	/* Allocate descriptors for the configured interfaces. */
 	void *xdp_socket = NULL;
 	size_t nifs = handler->server->n_ifaces;
-	apoll_t fds;
-	apoll_init(&fds, nifs);
+	fdset_t fds;
+	fdset_init(&fds, nifs);
 	unsigned fds_count = udp_set_ifaces(handler->server->ifaces, nifs, &fds,
 	                                    thread_id, &xdp_socket);
 	if (fds_count == 0) {
@@ -591,8 +591,8 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Wait for events. */
-		apoll_it_t it;
-		int ret = apoll_poll(&fds, &it, 0, -1);
+		fdset_it_t it;
+		int ret = fdset_poll(&fds, &it, 0, -1);
 		if (ret <= 0) {
 			if (errno == EINTR || errno == EAGAIN) {
 				continue;
@@ -601,8 +601,11 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Process the events. */
-		for(; !apoll_it_done(&it); apoll_it_next(&it)) {
-			if (api->udp_recv(apoll_it_get_fd(&it), rq, xdp_socket) > 0) {
+		for (; !fdset_it_is_done(&it); fdset_it_next(&it)) {
+			if (!fdset_it_is_pollin(&it)) {
+				continue;
+			}
+			if (api->udp_recv(fdset_it_get_fd(&it), rq, xdp_socket) > 0) {
 				api->udp_handle(&udp, rq, xdp_socket);
 				api->udp_send(rq, xdp_socket);
 			}
@@ -612,8 +615,7 @@ int udp_master(dthread_t *thread)
 finish:
 	api->udp_deinit(rq);
 	mp_delete(mm.ctx);
-	apoll_close(&fds);
-	apoll_clear(&fds);
+	fdset_clear(&fds);
 
 	return KNOT_EOK;
 }

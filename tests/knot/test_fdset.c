@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,139 +14,73 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <sys/time.h>
 #include <pthread.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <tap/basic.h>
-#include <time.h>
+#include <unistd.h>
 
 #include "knot/common/fdset.h"
+#include "contrib/time.h"
 
-#define WRITE_PATTERN ((char) 0xde)
-#define WRITE_PATTERN_LEN sizeof(char)
+#define WRITE_PATTERN		((char)0xde)
+#define WRITE_PATTERN_LEN	(sizeof(char))
 
-/* Subtract the `struct timeval' values X and Y,
-   storing the result in RESULT.
-   Return 1 if the difference is negative, otherwise 0.
-   Copyright http://www.delorie.com/gnu/docs/glibc/libc_428.html
-*/
-static int timeval_subtract (struct timeval *result, struct timeval *x,  struct timeval* y)
+void *thr_action(void *arg)
 {
-  /* Perform the carry for the later subtraction by updating y. */
-  if (x->tv_usec < y->tv_usec) {
-    int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
-    y->tv_usec -= 1000000 * nsec;
-    y->tv_sec += nsec;
-  }
-  if (x->tv_usec - y->tv_usec > 1000000) {
-    int nsec = (x->tv_usec - y->tv_usec) / 1000000;
-    y->tv_usec += 1000000 * nsec;
-    y->tv_sec -= nsec;
-  }
+	int *fd = arg;
 
-  /* Compute the time remaining to wait.
-     tv_usec is certainly positive. */
-  result->tv_sec = x->tv_sec - y->tv_sec;
-  result->tv_usec = x->tv_usec - y->tv_usec;
+	usleep(10000);
 
-  /* Return 1 if result is negative. */
-  return x->tv_sec < y->tv_sec;
-}
-
-static size_t timeval_diff(struct timeval *from, struct timeval *to) {
-	struct timeval res;
-	timeval_subtract(&res, to, from);
-	return res.tv_sec*1000 + res.tv_usec/1000;
-}
-
-void* thr_action(void *arg)
-{
-	int *fd = (int *)arg;
-
-	/* Sleep for 100ms. */
-	struct timespec ts = { .tv_nsec = 1e8 };
-	nanosleep(&ts, NULL);
-
-	/* Write pattern. */
 	char pattern = WRITE_PATTERN;
-	if (write(*fd, &pattern, WRITE_PATTERN_LEN) == -1) {
-		// Error.
-	}
+	(void)write(*fd, &pattern, sizeof(pattern));
 
 	return NULL;
 }
 
 int main(int argc, char *argv[])
 {
-	plan(12);
+	plan_lazy();
 
-	/* 1. Create fdset. */
-	fdset_t set;
-	int ret = fdset_init(&set, 32);
-	is_int(0, ret, "fdset: init");
+	fdset_t fdset;
+	int ret = fdset_init(&fdset, 32);
+	is_int(0, ret, "fdset_init");
 
-	/* 2. Create pipe. */
-	int fds[2], tmpfds[2];
+	int empty_fds[2], fds[2];
+	ret = pipe(empty_fds);
+	ok(ret >= 0, "create pipe 1");
 	ret = pipe(fds);
-	ok(ret >= 0, "fdset: pipe() works");
-	ret = pipe(tmpfds);
-	ok(ret >= 0, "fdset: 2nd pipe() works");
+	ok(ret >= 0, "create pipe 2");
 
-	/* 3. Add fd to set. */
-	ret = fdset_add(&set, fds[0], POLLIN, NULL);
-	is_int(0, ret, "fdset: add to set works");
-	fdset_add(&set, tmpfds[0], POLLIN, NULL);
+	ret = fdset_add(&fdset, empty_fds[0], FDSET_POLLIN, NULL);
+	ok(ret == 0, "fdset_add 1");
+	ret = fdset_add(&fdset, fds[0], FDSET_POLLIN, NULL);
+	ok(ret == 1, "fdset_add 2");
 
-	/* Schedule write. */
-	struct timeval ts, te;
-	gettimeofday(&ts, 0);
+	struct timespec time0 = time_now();
+
 	pthread_t t;
-	pthread_create(&t, 0, thr_action, &fds[1]);
+	ret = pthread_create(&t, 0, thr_action, &fds[1]);
+	ok(ret == 0, "create thread");
 
-	/* 4. Watch fdset. */
-	int nfds = poll(set.pfd, set.n, 60 * 1000);
-	gettimeofday(&te, 0);
-	size_t diff = timeval_diff(&ts, &te);
+	fdset_it_t it;
+	int nfds = fdset_poll(&fdset, &it, 0, 20);
+	struct timespec time1 = time_now();
+	double diff = time_diff_ms(&time0, &time1);
+	ok(nfds == 1, "fdset_poll return");
+	ok(diff > 5 && diff < 20, "fdset_poll timeout");
 
-	ok(nfds > 0, "fdset: poll returned %d events in %zu ms", nfds, diff);
+	ok(fdset_it_is_pollin(&it), "fdset_it is POLLIN");
+	ok(fdset_it_get_idx(&it) == 1, "fdset_it index");
 
-	/* 5. Prepare event set. */
-	ok(set.pfd[0].revents & POLLIN, "fdset: pipe is active");
-
-	/* 6. Receive data. */
 	char buf = 0x00;
-	ret = read(set.pfd[0].fd, &buf, WRITE_PATTERN_LEN);
-	ok(ret >= 0 && buf == WRITE_PATTERN, "fdset: contains valid data");
+	ret = read(fdset_it_get_fd(&it), &buf, sizeof(buf));
+	ok(ret == 1 && buf == WRITE_PATTERN, "fdset_it access");
 
-	/* 7-9. Remove from event set. */
-	ret = fdset_remove(&set, 0);
-	is_int(0, ret, "fdset: remove from fdset works");
-	close(fds[0]);
-	close(fds[1]);
-	ret = fdset_remove(&set, 0);
-	close(tmpfds[1]);
-	close(tmpfds[1]);
-	is_int(0, ret, "fdset: remove from fdset works (2)");
-	ret = fdset_remove(&set, 0);
-	ok(ret != 0, "fdset: removing nonexistent item");
+	fdset_clear(&fdset);
 
-	/* 10. Crash test. */
-	fdset_init(0, 0);
-	fdset_add(0, 1, 1, 0);
-	fdset_add(0, 0, 1, 0);
-	fdset_remove(0, 1);
-	fdset_remove(0, 0);
-	ok(1, "fdset: crash test successful");
-
-	/* 11. Destroy fdset. */
-	ret = fdset_clear(&set);
-	is_int(0, ret, "fdset: destroyed");
-
-	/* Cleanup. */
 	pthread_join(t, 0);
+
+	close(empty_fds[0]); close(empty_fds[1]);
+	close(fds[0]); close(fds[1]);
 
 	return 0;
 }

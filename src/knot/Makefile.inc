@@ -117,9 +117,6 @@ libknotd_la_SOURCES = \
 	knot/query/query.h			\
 	knot/query/requestor.c			\
 	knot/query/requestor.h			\
-	knot/common/apoll.h			\
-	knot/common/epoll_ctx.c			\
-	knot/common/epoll_ctx.h			\
 	knot/common/evsched.c			\
 	knot/common/evsched.h			\
 	knot/common/fdset.c			\

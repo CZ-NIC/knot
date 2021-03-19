@@ -283,6 +283,27 @@ AS_IF([test "$enable_systemd" = "yes"],[
 
 ]) dnl enable_daemon
 
+# Socket polling method
+socket_polling=
+AC_ARG_WITH([socket-polling],
+  AS_HELP_STRING([--with-socket-polling=auto|poll|epoll],
+                 [Use specific socket polling method [default=auto]]),
+  [socket_polling=$withval], [socket_polling=auto]
+)
+
+AS_CASE([$socket_polling],
+  [auto],  [AC_CHECK_FUNCS([epoll_create],
+                           [AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
+                            socket_polling=epoll],
+                           [socket_polling=poll])],
+  [poll],  [socket_polling=poll],
+  [epoll], [AC_CHECK_FUNCS([epoll_create],
+                           [AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
+                            socket_polling=epoll],
+                           [AC_MSG_ERROR([Epoll not available.])])],
+  [*],     [AC_MSG_ERROR([Invalid value of --socket-polling.])]
+)
+
 # Alternative memory allocator
 malloc_LIBS=
 AC_ARG_WITH([memory-allocator],
@@ -639,12 +660,6 @@ AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h bsd/string.h])
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
                 setgroups strlcat strlcpy sysctlbyname])
 
-# Check for a better polling method.
-AC_CHECK_FUNCS([epoll_create], [
-  AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
-  poll_method=epoll], [poll_method=poll]
-)
-
 # Check for robust memory cleanup implementations.
 AC_CHECK_FUNC([explicit_bzero], [
   AC_DEFINE([HAVE_EXPLICIT_BZERO], [1], [explicit_bzero available])
@@ -744,7 +759,7 @@ result_msg_base="  Knot DNS $VERSION
     Use recvmmsg:           ${enable_recvmmsg}
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
     XDP support:            ${enable_xdp}
-    Polling method:         ${poll_method}
+    Socket polling:         ${socket_polling}
     Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}

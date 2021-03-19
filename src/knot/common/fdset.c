@@ -14,29 +14,33 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifdef ENABLE_POLL
-
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
-#include <assert.h>
-#include "knot/common/fdset.h"
-#include "contrib/time.h"
-#include "libknot/errcode.h"
 
-/* Realloc memory or return error (part of fdset_resize). */
-#define MEM_RESIZE(tmp, p, n) \
-	if ((tmp = realloc((p), (n) * sizeof(*p))) == NULL) \
+#include "knot/common/fdset.h"
+#include "libknot/errcode.h"
+#include "contrib/time.h"
+
+#define MEM_RESIZE(p, n) { \
+	void *tmp = NULL; \
+	if ((tmp = realloc((p), (n) * sizeof(*p))) == NULL) { \
 		return KNOT_ENOMEM; \
-	(p) = tmp;
+	} \
+	(p) = tmp; \
+}
 
 static int fdset_resize(fdset_t *set, const unsigned size)
 {
-	void *tmp = NULL;
-	MEM_RESIZE(tmp, set->ctx, size);
-	MEM_RESIZE(tmp, set->pfd, size);
-	MEM_RESIZE(tmp, set->timeout, size);
+	assert(set);
+
+	MEM_RESIZE(set->ctx, size);
+	MEM_RESIZE(set->timeout, size);
+#ifdef HAVE_EPOLL
+	MEM_RESIZE(set->ev, size);
+#else
+	MEM_RESIZE(set->pfd, size);
+#endif
 	set->size = size;
 	return KNOT_EOK;
 }
@@ -47,77 +51,136 @@ int fdset_init(fdset_t *set, const unsigned size)
 		return KNOT_EINVAL;
 	}
 
-	memset(set, 0, sizeof(fdset_t));
+	memset(set, 0, sizeof(*set));
+
+#ifdef HAVE_EPOLL
+	set->efd = epoll_create1(0);
+	if (set->efd < 0) {
+		return knot_map_errno();
+	}
+#endif
 	return fdset_resize(set, size);
 }
 
-int fdset_clear(fdset_t* set)
+void fdset_clear(fdset_t *set)
 {
 	if (set == NULL) {
-		return KNOT_EINVAL;
+		return;
 	}
 
 	free(set->ctx);
-	free(set->pfd);
 	free(set->timeout);
-	memset(set, 0, sizeof(fdset_t));
-	return KNOT_EOK;
+#ifdef HAVE_EPOLL
+	free(set->ev);
+	free(set->recv_ev);
+	close(set->efd);
+#else
+	free(set->pfd);
+#endif
+	memset(set, 0, sizeof(*set));
 }
 
-int fdset_add(fdset_t *set, const int fd, const unsigned events, void *ctx)
+int fdset_add(fdset_t *set, const int fd, const fdset_event_t events, void *ctx)
 {
 	if (set == NULL || fd < 0) {
 		return KNOT_EINVAL;
 	}
 
-	/* Realloc needed. */
-	if (set->n == set->size && fdset_resize(set, set->size + FDSET_INIT_SIZE))
+	if (set->n == set->size &&
+	    fdset_resize(set, set->size + FDSET_RESIZE_STEP) != KNOT_EOK) {
 		return KNOT_ENOMEM;
+	}
 
-	/* Initialize. */
-	const int i = set->n++;
-	set->pfd[i].fd = fd;
-	set->pfd[i].events = events;
-	set->pfd[i].revents = 0;
-	set->ctx[i] = ctx;
-	set->timeout[i] = 0;
+	const int idx = set->n++;
+	set->ctx[idx] = ctx;
+	set->timeout[idx] = 0;
+#ifdef HAVE_EPOLL
+	set->ev[idx].data.fd = fd;
+	set->ev[idx].events = events;
+	struct epoll_event ev = {
+		.data.u64 = idx,
+		.events = events
+	};
+	if (epoll_ctl(set->efd, EPOLL_CTL_ADD, fd, &ev) != 0) {
+		return knot_map_errno();
+	}
+#else
+	set->pfd[idx].fd = fd;
+	set->pfd[idx].events = events;
+	set->pfd[idx].revents = 0;
+#endif
 
-	/* Return index to this descriptor. */
-	return i;
+	return idx;
 }
 
-//TODO should be static, but it is a dependency in tests (? remove from
-//     tests or something ?)
 int fdset_remove(fdset_t *set, const unsigned idx)
 {
 	if (set == NULL || idx >= set->n) {
 		return KNOT_EINVAL;
 	}
 
+	const int fd = fdset_get_fd(set, idx);
+#ifdef HAVE_EPOLL
+	/* This is necessary as DDNS duplicates file descriptors! */
+	(void)epoll_ctl(set->efd, EPOLL_CTL_DEL, fd, NULL);
+#endif
+	close(fd);
+
 	const unsigned last = --set->n;
-	/* Nothing else if it is the last one.
-	 * Move last -> i if some remain. */
+	/* Nothing else if it is the last one. Move last -> i if some remain. */
 	if (idx < last) {
-		set->pfd[idx] = set->pfd[last];
-		set->timeout[idx] = set->timeout[last];
 		set->ctx[idx] = set->ctx[last];
+		set->timeout[idx] = set->timeout[last];
+#ifdef HAVE_EPOLL
+		set->ev[idx] = set->ev[last];
+		struct epoll_event ev = {
+			.data.u64 = idx,
+			.events = set->ev[idx].events
+		};
+		if (epoll_ctl(set->efd, EPOLL_CTL_MOD, set->ev[last].data.fd, &ev) != 0) {
+			return knot_map_errno();
+		}
+#else
+		set->pfd[idx] = set->pfd[last];
+#endif
 	}
 
 	return KNOT_EOK;
 }
 
-int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int timeout)
+int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int timeout_ms)
 {
-	it->ctx = set;
+	if (set == NULL || it == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	it->fdset = set;
 	it->idx = offset;
-	it->unprocessed = poll(&set->pfd[offset], set->n - offset, 1000 * timeout);
+#ifdef HAVE_EPOLL
+	if (set->recv_size != set->size) {
+		MEM_RESIZE(set->recv_ev, set->size);
+		set->recv_size = set->size;
+	}
+	it->ptr = set->recv_ev;
+	it->dirty = 0;
+	/*
+	 *  NOTE: Can't skip offset without bunch of syscalls!!
+	 *  Because of that it waits for `ctx->n` (every socket). Offset is set when TCP
+	 *  trotlling is ON. Sometimes it can return with sockets where none of them are
+	 *  connection socket, but it should not be common.
+	 *  But it can cause problems when adopted in other use-case.
+	 */
+	return it->unprocessed = epoll_wait(set->efd, set->recv_ev, set->n, timeout_ms);
+#else
+	it->unprocessed = poll(&set->pfd[offset], set->n - offset, timeout_ms);
 	while (it->unprocessed > 0 && set->pfd[it->idx].revents == 0) {
 		it->idx++;
 	}
 	return it->unprocessed;
+#endif
 }
 
-int fdset_set_watchdog(fdset_t* set, const unsigned idx, const int interval)
+int fdset_set_watchdog(fdset_t *set, const unsigned idx, const int interval)
 {
 	if (set == NULL || idx >= set->n) {
 		return KNOT_EINVAL;
@@ -136,26 +199,10 @@ int fdset_set_watchdog(fdset_t* set, const unsigned idx, const int interval)
 	return KNOT_EOK;
 }
 
-int fdset_get_fd(const fdset_t *set, const unsigned idx)
-{
-	if (set == NULL || idx >= set->n) {
-		return KNOT_EINVAL;
-	}
-
-	return set->pfd[idx].fd;
-}
-
-
-unsigned fdset_get_length(const fdset_t *set)
-{
-	assert(set);
-	return set->n;
-}
-
-int fdset_sweep(fdset_t* set, const fdset_sweep_cb_t cb, void *data)
+void fdset_sweep(fdset_t *set, const fdset_sweep_cb_t cb, void *data)
 {
 	if (set == NULL || cb == NULL) {
-		return KNOT_EINVAL;
+		return;
 	}
 
 	/* Get time threshold. */
@@ -166,68 +213,9 @@ int fdset_sweep(fdset_t* set, const fdset_sweep_cb_t cb, void *data)
 		if (set->timeout[idx] > 0 && set->timeout[idx] <= now.tv_sec) {
 			const int fd = fdset_get_fd(set, idx);
 			if (cb(set, fd, data) == FDSET_SWEEP) {
-				if (fdset_remove(set, idx) == KNOT_EOK) {
-					continue; /* Stay on the index. */
-				}
+				(void)fdset_remove(set, idx);
 			}
 		}
 		++idx;
 	}
-	return KNOT_EOK;
 }
-
-void fdset_it_next(fdset_it_t *it)
-{
-	if (--it->unprocessed > 0) {
-		while (it->ctx->pfd[++it->idx].revents == 0); /* nop */
-	}
-}
-
-int fdset_it_done(const fdset_it_t *it)
-{
-	return it->unprocessed <= 0;
-}
-
-int fdset_it_remove(fdset_it_t *it)
-{
-	if (it == NULL || it->ctx == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	fdset_t *set = it->ctx;
-	const unsigned idx = fdset_it_get_idx(it);
-	fdset_remove(set, idx);
-	/* Iterator should return on last valid already processed element. */
-	/* On `next` call (in for-loop) will point on first unprocessed. */
-	--it->idx;
-	return KNOT_EOK;
-}
-
-int fdset_it_get_fd(const fdset_it_t *it)
-{
-	if (it == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return it->ctx->pfd[it->idx].fd;
-}
-
-unsigned fdset_it_get_idx(const fdset_it_t *it)
-{
-	assert(it);
-	return it->idx;
-}
-
-int fdset_it_ev_is_pollin(const fdset_it_t *it)
-{
-	assert(it);
-	return it->ctx->pfd[it->idx].revents & POLLIN;
-}
-
-int fdset_it_ev_is_err(const fdset_it_t *it)
-{
-	assert(it);
-	return it->ctx->pfd[it->idx].revents & (POLLERR|POLLHUP|POLLNVAL);
-}
-
-#endif
