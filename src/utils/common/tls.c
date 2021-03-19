@@ -22,7 +22,10 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/ocsp.h>
 #include <gnutls/x509.h>
+#define GNUTLS_VERSION_FASTOPEN_READY 0x030503
+#if GNUTLS_VERSION_NUMBER >= GNUTLS_VERSION_FASTOPEN_READY
 #include <gnutls/socket.h>
+#endif
 
 #include "utils/common/tls.h"
 #include "utils/common/cert.h"
@@ -525,12 +528,19 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, bool fastope
 	}
 
 	gnutls_session_set_ptr(ctx->session, ctx);
+
 	if (fastopen) {
+#if GNUTLS_VERSION_NUMBER >= GNUTLS_VERSION_FASTOPEN_READY
 		gnutls_transport_set_fastopen(ctx->session, sockfd, (struct sockaddr *)addr,
 		                              sockaddr_len(addr), 0);
+#else
+		gnutls_deinit(ctx->session);
+		return KNOT_ENOTSUP;
+#endif
 	} else {
 		gnutls_transport_set_int(ctx->session, sockfd);
 	}
+
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
 
 	if (protocol != NULL) {
