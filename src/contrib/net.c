@@ -32,6 +32,9 @@
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 
+// 1280 (IPv6 minimum link MTU) - 40 (IPv6 fixed header) - 20 (TCP fixed header)
+#define KNOT_TCP_MSS	1220
+
 /*!
  * \brief Enable socket option.
  */
@@ -181,6 +184,18 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr, net_bind_fla
 		close(sock);
 		return ret;
 	}
+
+#if defined(__linux__)
+	/* Set MSS (Maximum Segment Size) limit. */
+	if (addr->ss_family != AF_UNIX && type == SOCK_STREAM) {
+		const int mss = KNOT_TCP_MSS;
+		if (setsockopt(sock, IPPROTO_TCP, TCP_MAXSEG, &mss, sizeof(mss)) != 0) {
+			ret = knot_map_errno();
+			close(sock);
+			return ret;
+		}
+	}
+#endif
 
 	/* Don't bind IPv4 for IPv6 any address. */
 	if (addr->ss_family == AF_INET6) {
