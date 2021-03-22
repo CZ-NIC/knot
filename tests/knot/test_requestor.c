@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 #if defined(__linux__)
 	FILE *fd = fopen("/proc/sys/net/ipv4/tcp_fastopen", "r");
 	if (fd != NULL) {
-		char val = fgetc(fd);
+		int val = fgetc(fd);
 		fclose(fd);
 		// 0 - disabled, 1 - server TFO (client fallbacks),
 		// 2 - client TFO, 3 - both
