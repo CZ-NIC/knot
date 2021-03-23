@@ -281,6 +281,8 @@ src/knot/zone/backup.c
 src/knot/zone/backup.h
 src/knot/zone/contents.c
 src/knot/zone/contents.h
+src/knot/zone/digest.c
+src/knot/zone/digest.h
 src/knot/zone/measure.c
 src/knot/zone/measure.h
 src/knot/zone/node.c
@@ -311,6 +313,8 @@ src/libdnssec/binary.c
 src/libdnssec/binary.h
 src/libdnssec/crypto.c
 src/libdnssec/crypto.h
+src/libdnssec/digest.c
+src/libdnssec/digest.h
 src/libdnssec/dnssec.h
 src/libdnssec/error.c
 src/libdnssec/error.h
@@ -415,6 +419,7 @@ src/libknot/rrtype/rrsig.h
 src/libknot/rrtype/soa.h
 src/libknot/rrtype/tsig.c
 src/libknot/rrtype/tsig.h
+src/libknot/rrtype/zonemd.h
 src/libknot/tsig-op.c
 src/libknot/tsig-op.h
 src/libknot/tsig.c
@@ -547,6 +552,7 @@ tests/knot/test_conf.h
 tests/knot/test_conf_tools.c
 tests/knot/test_confdb.c
 tests/knot/test_confio.c
+tests/knot/test_digest.c
 tests/knot/test_dthreads.c
 tests/knot/test_fdset.c
 tests/knot/test_journal.c
