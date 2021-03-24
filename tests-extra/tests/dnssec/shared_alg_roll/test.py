@@ -68,8 +68,8 @@ for z in zones:
 knot.gen_confile()
 knot.reload()
 
-wait_for_rrsig_count(t, knot, zones, "DNSKEY", 2, 0, 20, "algorithm roll start")
-wait_for_rrsig_count(t, knot, zones, "DNSKEY", 1, 0, 80, "algorithm roll finish")
+wait_for_rrsig_count(t, knot, zones, "SOA", 2, 0, 20, "algorithm roll start")
+wait_for_rrsig_count(t, knot, zones, "SOA", 1, 0, 80, "algorithm roll finish")
 knot.flush(wait=True)
 
 shared_ksk = query_ksk(knot, zones[1], 14)
