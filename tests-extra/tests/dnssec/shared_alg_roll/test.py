@@ -18,13 +18,17 @@ def query_ksk(server, zone, expect_alg): # returns KSK data
             return fields[3]
     return "error"
 
-def wait_for_rrsig_count(t, server, rrtype, rrsig_count, min_time, timeout, msg):
-    rtime = 0
-    while True:
-        qdnskeyrrsig = server.dig("example.com", rrtype, dnssec=True, bufsize=4096)
+def check_rrsig_counts(server, zones, rrtype, expect_count):
+    for z in zones:
+        qdnskeyrrsig = server.dig(z.name, rrtype, dnssec=True, bufsize=4096)
         found_rrsigs = qdnskeyrrsig.count("RRSIG")
-        if found_rrsigs == rrsig_count:
-            break
+        if found_rrsigs != expect_count:
+            return False
+    return True
+
+def wait_for_rrsig_count(t, server, zones, rrtype, rrsig_count, min_time, timeout, msg):
+    rtime = 0
+    while not check_rrsig_counts(server, zones, rrtype, rrsig_count):
         rtime = rtime + 1
         t.sleep(1)
         if rtime > timeout:
@@ -64,8 +68,8 @@ for z in zones:
 knot.gen_confile()
 knot.reload()
 
-wait_for_rrsig_count(t, knot, "DNSKEY", 2, 0, 10, "algorithm roll start")
-wait_for_rrsig_count(t, knot, "DNSKEY", 1, 0, 40, "algorithm roll finish")
+wait_for_rrsig_count(t, knot, zones, "DNSKEY", 2, 0, 20, "algorithm roll start")
+wait_for_rrsig_count(t, knot, zones, "DNSKEY", 1, 0, 80, "algorithm roll finish")
 knot.flush(wait=True)
 
 shared_ksk = query_ksk(knot, zones[1], 14)
