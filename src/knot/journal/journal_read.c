@@ -105,6 +105,11 @@ static bool make_data_available(journal_read_t *ctx)
 		if (!knot_lmdb_is_prefix_of(&ctx->key_prefix, &ctx->txn.cur_key)) {
 			return false;
 		}
+		if (ctx->next != journal_next_serial(&ctx->txn.cur_val)) {
+			// consistency check, see also MR !1270
+			ctx->txn.ret = KNOT_EMALF;
+			return false;
+		}
 		update_ctx_wire(ctx);
 	}
 	return true;
