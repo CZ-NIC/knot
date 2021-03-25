@@ -118,6 +118,8 @@ docker:knot-dns:fedora:
 
 .test: &test_job
   stage: test
+  before_script:
+    - find -exec touch -t $(date +%m%d%H%M) {} \;
   script:
     - make -k check V=1
   except:
