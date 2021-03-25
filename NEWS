@@ -1,3 +1,27 @@
+Knot DNS 3.0.5 (2021-03-25)
+===========================
+
+Improvements:
+-------------
+ - kdig: added support for TCP Fast Open on FreeBSD
+ - keymgr: the SEP flag can be changed on already generated keys
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - knotd: journal contents can be considered malformed after changeset merge
+ - knotd: broken detection of TCP Fast Open availability
+ - knotd: zone restore can stuck in an infinite loop if zone configuration changed
+ - knotd: failed zone backup makes control socket unavailable
+ - knotd: zone not stored to journal after reload if difference-no-serial is enabled
+ - knotd: old key is being used after an algorithm rollover with a shared policy #721
+ - keymgr: keytag not recomputed upon key flag change
+ - kdig: TCP not used if +fastopen is set
+ - mod-dnstap: the local address is empty
+ - kzonecheck: missing letter lower-casing of the origin parameter
+ - XDP mode wrongly detected on NetBSD
+ - Failed to build knotd_stdio fuzzing utility
+
 Knot DNS 3.0.4 (2021-01-20)
 ===========================
 
