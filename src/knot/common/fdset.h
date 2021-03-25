@@ -27,11 +27,15 @@
 
 #ifdef HAVE_EPOLL
 #include <sys/epoll.h>
+#include "libknot/errcode.h"
 #else
 #include <poll.h>
 #endif
 
 #define FDSET_INIT_SIZE 256 /* Resize step. */
+#ifdef HAVE_EPOLL
+#define FDSET_REMOVE_FLAG ~0U
+#endif
 
 /*! \brief Set of filedescriptors with associated context and timeouts. */
 typedef struct {
@@ -56,6 +60,7 @@ typedef struct {
 	int unprocessed;          /*!< Unprocessed events left. */
 #ifdef HAVE_EPOLL
 	struct epoll_event *ptr;  /*!< Pointer on processed event. */
+	unsigned dirty;           /*!< Number of fd to be removed on commit. */
 #endif
 } fdset_it_t;
 
@@ -196,11 +201,7 @@ inline static unsigned fdset_get_length(const fdset_t *set)
 {
 	assert(set);
 
-#ifdef HAVE_EPOLL
 	return set->n;
-#else
-	return set->n;
-#endif
 }
 
 /*!
@@ -273,13 +274,18 @@ inline static int fdset_it_remove(fdset_it_t *it)
 {
 	assert(it);
 
+#ifdef HAVE_EPOLL
+	const int idx = fdset_it_get_idx(it);
+	it->fdset->ev[idx].events = FDSET_REMOVE_FLAG;
+	it->dirty++;
+	return KNOT_EOK;
+#else
 	int ret = fdset_remove(it->fdset, fdset_it_get_idx(it));
 	/* Iterator should return on last valid already processed element. */
 	/* On `next` call (in for-loop) will point on first unprocessed. */
-#ifndef HAVE_EPOLL
 	it->idx--;
-#endif
 	return ret;
+#endif	
 }
 
 /*!
@@ -293,10 +299,32 @@ inline static bool fdset_it_is_done(const fdset_it_t *it)
 {
 	assert(it);
 
+	return it->unprocessed <= 0;
+}
+
+/*!
+ * \brief Commit changes made in fdset using iterator.
+ *
+ * \param it Target iterator.
+ */
+inline static void fdset_it_commit(fdset_it_t *it)
+{
 #ifdef HAVE_EPOLL
-	return it->unprocessed <= 0;
-#else
-	return it->unprocessed <= 0;
+	assert(it);
+	/* NOTE: reverse iteration to avoid as much "remove last" operations
+	 *       as possible. I'm not sure about performance improvement. It
+	 *       will skip some syscalls at begin of iteration, but what
+	 *       performance increase do we get is a question. It would be good
+	 *       test it.
+	 */
+	fdset_t *set = it->fdset;
+	for (int i = set->n - 1; it->dirty > 0 && i >= 0; --i) {
+		if (set->ev[i].events == FDSET_REMOVE_FLAG) {
+			fdset_remove(set, i);
+			it->dirty--;
+		}
+	}
+	assert(it->dirty == 0);
 #endif
 }
 

@@ -120,12 +120,15 @@ int fdset_remove(fdset_t *set, const unsigned idx)
 	}
 
 #ifdef HAVE_EPOLL
-	if (epoll_ctl(set->efd, EPOLL_CTL_DEL, set->ev[idx].data.fd, NULL) != 0) {
+	const int fd = set->ev[idx].data.fd;
+	if (epoll_ctl(set->efd, EPOLL_CTL_DEL, fd, NULL) != 0) {
 		return knot_map_errno();
 	}
+#else
+	const int fd = set->pfd[idx].fd;
 #endif
-	const unsigned last = --set->n;
 
+	const unsigned last = --set->n;
 	/* Nothing else if it is the last one. Move last -> i if some remain. */
 	if (idx < last) {
 		set->ctx[idx] = set->ctx[last];
@@ -143,6 +146,7 @@ int fdset_remove(fdset_t *set, const unsigned idx)
 		set->pfd[idx] = set->pfd[last];
 #endif
 	}
+	close(fd);
 
 	return KNOT_EOK;
 }
@@ -162,6 +166,7 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 		set->recv_size = set->size;
 	}
 	it->ptr = set->recv_ev;
+	it->dirty = 0;
 	/*
 	 *  NOTE: Can't skip offset without bunch of syscalls!!
 	 *  Because of that it waits for `ctx->n` (every socket). Offset is set when TCP
@@ -213,7 +218,6 @@ int fdset_sweep(fdset_t *set, const fdset_sweep_cb_t cb, void *data)
 			const int fd = fdset_get_fd(set, idx);
 			if (cb(set, fd, data) == FDSET_SWEEP) {
 				if (fdset_remove(set, idx) == KNOT_EOK) {
-					close(fd);
 					continue; /* Stay on the index. */
 				}
 			}

@@ -233,8 +233,8 @@ static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
 
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 {
-	int fd = fdset_get_fd((&tcp->set), i);
-	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
+	int ret = tcp_handle(tcp, fdset_get_fd((&tcp->set), i),
+	                     &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
@@ -283,11 +283,10 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
-			int fd = fdset_get_fd(set, idx);
 			fdset_it_remove(&it);
-			close(fd);
 		}
 	}
+	fdset_it_commit(&it);
 }
 
 int tcp_master(dthread_t *thread)
