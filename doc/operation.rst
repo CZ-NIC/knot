@@ -1003,8 +1003,9 @@ if the backup was created for only a subset of zones.
 Limitations
 -----------
 
-Neither configuration file, nor :ref:`Configuration database` is backed up
-by those commands.
+Neither configuration file nor :ref:`Configuration database` is backed up
+by zone backup. The configuration has to be synchronized before zone restore
+is performed!
 
 If the private keys are stored in a HSM (anything using a PKCS#11 interface),
 they are not backed up. This includes internal metadata of the PKCS#11 provider
