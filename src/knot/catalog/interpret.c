@@ -22,6 +22,7 @@
 typedef struct {
 	catalog_update_t *u;
 	const knot_dname_t *apex;
+	int apex_labels;
 	bool remove;
 	catalog_t *check;
 } cat_upd_ctx_t;
@@ -52,6 +53,13 @@ static bool check_zone_version(const zone_contents_t *zone)
 static int cat_update_add_node(zone_node_t *node, void *data)
 {
 	cat_upd_ctx_t *ctx = data;
+	int labels_diff = knot_dname_labels(node->owner, NULL) - ctx->apex_labels
+	                  - 1 /* "zones" label */ - 1 /* unique-N label */;
+	assert(labels_diff >= 0);
+	if (labels_diff > 0) {
+		return KNOT_EOK;
+	}
+
 	const knot_rdataset_t *ptr = node_rdataset(node, KNOT_RRTYPE_PTR);
 	if (ptr == NULL || ptr->count == 0) {
 		return KNOT_EOK;
@@ -84,9 +92,9 @@ int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
 		return KNOT_EOK;
 	}
 
-	cat_upd_ctx_t ctx = { u, zone->apex->owner, remove, check };
+	cat_upd_ctx_t ctx = { u, zone->apex->owner, knot_dname_labels(zone->apex->owner, NULL), remove, check };
 	pthread_mutex_lock(&u->mutex);
-	int ret = zone_tree_sub_apply(zone->nodes, sub, false, cat_update_add_node, &ctx);
+	int ret = zone_tree_sub_apply(zone->nodes, sub, true, cat_update_add_node, &ctx);
 	pthread_mutex_unlock(&u->mutex);
 	return ret;
 }

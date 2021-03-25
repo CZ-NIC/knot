@@ -5,5 +5,7 @@ $TTL 0
   NS ns
 ns AAAA ::0
 version TXT "2"
-foo.bar.zones PTR cataloged1.
+foo.zones PTR cataloged1.
 not.zones.in PTR not-cataloged1.
+too.deep.zones PTR not-cataloged2.
+zones PTR not-cataloged3.
