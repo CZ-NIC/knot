@@ -1646,7 +1646,7 @@ Definition of zones served by the server.
      refresh-min-interval: TIME
      refresh-max-interval: TIME
      catalog-role: none | interpret
-     catalog-template: template_id
+     catalog-template: template_id ...
      catalog-zone: DNAME
      module: STR/STR ...
 
@@ -1997,7 +1997,10 @@ Trigger zone catalog feature. Possible values:
 catalog-template
 ----------------
 
-For the catalog-member zones, the specified configuration template will be applied.
+For the catalog member zones, the specified configuration template will be applied.
+
+Multiple catalog templates may be defined. The first one is used unless the member zone
+has the *group* property defined, matching another catalog template.
 
 .. NOTE::
    This option must be set if and only if :ref:`zone_catalog-role` is *interpret*.

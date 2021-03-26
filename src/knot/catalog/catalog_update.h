@@ -26,6 +26,7 @@ typedef enum {
 	CAT_UPD_REM,       // member removal
 	CAT_UPD_MINOR,     // owner or catzone change, uniqID preserved
 	CAT_UPD_UNIQ,      // uniqID change
+	CAT_UPD_PROP,      // ONLY change of properties of existing member
 	CAT_UPD_MAX,       // number of options in ths enum
 } catalog_upd_type_t;
 
@@ -37,6 +38,8 @@ typedef struct catalog_upd_val {
 	knot_dname_t *rem_catz;   // catalog zone the member being removed from
 	knot_dname_t *add_owner;  // owner of PTR record being added
 	knot_dname_t *add_catz;   // catalog zone the member being added to
+
+	char *new_group;          // the desired configuration group for the member
 } catalog_upd_val_t;
 
 typedef struct {
@@ -77,14 +80,17 @@ void catalog_update_free(catalog_update_t *u);
  * \param member    Member zone name to be added.
  * \param owner     Owner of respective PTR record.
  * \param catzone   Catalog zone holding the member.
- * \param remove    Add a removal of such record.
+ * \param type      CAT_UPD_REM, CAT_UPD_ADD, CAT_UPD_PROP.
+ * \param group     Optional: member group property value.
+ * \param group_len Length of 'group' string (if not NULL).
  * \param check_rem Check catalog DB for existing record to be removed.
  *
  * \return KNOT_E*
  */
 int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
                        const knot_dname_t *owner, const knot_dname_t *catzone,
-                       bool remove, catalog_t *check_rem);
+                       catalog_upd_type_t type, const char *group,
+                       size_t group_len, catalog_t *check_rem);
 
 /*!
  * \brief Read catalog update record for given member zone.

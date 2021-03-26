@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,6 +29,11 @@
  * Like \c strdup, but for binary data.
  */
 uint8_t *memdup(const uint8_t *data, size_t data_size);
+
+/*!
+ * \brief Compare a zero-terminated string with fixed-size memory.
+ */
+int strmemcmp(const char *str, const uint8_t *mem, size_t mem_size);
 
 /*!
  * \brief Format string and take care of allocating memory.

@@ -586,6 +586,8 @@ of the DNS tree, but it contains information about the set of member zones and
 is transferable to secondary servers using common AXFR/IXFR techniques.
 *Catalog-member zone* (or just *member zone*) is a zone based on
 information from the catalog zone and not from configuration file/database.
+*Member properties* are some additional information related to each member zone,
+also distributed by the catalog zone.
 
 A catalog zone is handled almost in the same way as a regular zone:
 It can be configured using all the standard options (but for example
@@ -606,7 +608,7 @@ Upon catalog zone (re)load or change, all the PTR records in the format
 ``unique-id.zones.catalog. 0 IN PTR member.com.`` (but not ``too.deep.zones.catalog.``!)
 are processed and member zones created, with zone names taken from the
 PTR records' RData, and zone settings taken from the configuration
-template specified by :ref:`zone_catalog-template`.
+templates specified by :ref:`zone_catalog-template`.
 
 The owner names of the PTR records shall follow this scheme:
 
@@ -614,13 +616,18 @@ The owner names of the PTR records shall follow this scheme:
 
     <unique-id>.zones.<catalog-zone>.
 
-where the mentioned group of labels shall match:
+where the mentioned labels shall match:
 
 - *<unique-id>* — Single label that is recommended to be unique among member zones.
 - ``zones`` — Required label.
 - *<catalog-zone>* — Name of the catalog zone.
 
-All records other than PTR are ignored. They remain in the catalog
+Additionally, records in the format
+``group.unique-id.zones.catalog. 0 IN TXT "conf-template"``
+are processed as a definition of the member's *group* property. The
+``unique-id`` must match the one of the PTR record defining the member.
+
+All other records and other member properties are ignored. They remain in the catalog
 zone, however, and might be for example transferred to a secondary server,
 which may interpret catalog zones differently. SOA still needs to be present in
 the catalog zone and its serial handled appropriately. An apex NS record should be
@@ -630,6 +637,13 @@ is required at the catalog zone apex.
 A catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,
 zone file reload). In the case of incremental change, only affected
 member zones are reloaded.
+
+The catalog zone must have at least one :ref:`zone_catalog-template`
+configured. The configuration for any defined member zone is taken from its
+*group* property value, which should match some catalog-template name.
+If the *group* property is not defined for a member, is empty, or doesn't match
+any of defined catalog-template names, the first catalog-template
+(in the order from configuration) is used.
 
 Any de-cataloged member zone is purged immediately, including its
 zone file, journal, timers, and DNSSEC keys. The zone file is not

@@ -220,18 +220,28 @@ conf_val_t conf_zone_get_txn(
 	if (conf->catalog != NULL) {
 		void *tofree = NULL;
 		const knot_dname_t *catalog;
-		int ret = catalog_get_catz(conf->catalog, dname, &catalog, &tofree);
+		const char *group;
+		int ret = catalog_get_catz(conf->catalog, dname, &catalog, &group, &tofree);
 		if (ret == KNOT_EOK) {
 			conf_db_get(conf, txn, C_ZONE, C_CATALOG_TPL, catalog,
 			            knot_dname_size(catalog), &val);
-			free(tofree);
 			if (val.code != KNOT_EOK) {
 				CONF_LOG_ZONE(LOG_ERR, catalog,
 				              "catalog zone has no catalog template (%s)",
 				              knot_strerror(val.code));
+				free(tofree);
 				return val;
 			}
 			conf_val(&val);
+			while (val.code == KNOT_EOK) {
+				if (strmemcmp(group, val.data, val.len) == 0) {
+					break;
+				}
+				conf_val_next(&val);
+			}
+			conf_val(&val); // Use first value if no match.
+			free(tofree);
+
 			conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
 			goto got_template;
 		}

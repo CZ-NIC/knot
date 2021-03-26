@@ -1402,7 +1402,7 @@ class Knot(Server):
             if z.catalog:
                 have_catalog = z
         if have_catalog is not None:
-            s.id_item("id", "catemplate")
+            s.id_item("id", "catalog-default")
             s.item_str("file", self.dir + "/master/%s.zone")
             s.item_str("zonefile-load", "difference")
             s.item_str("journal-content", z.journal_content)
@@ -1440,6 +1440,17 @@ class Knot(Server):
             if acl:
                 acl += ", "
             acl += "acl_local, acl_test"
+            s.item("acl", "[%s]" % acl)
+
+            s.id_item("id", "catalog-signed")
+            s.item_str("file", self.dir + "/master/%s.zone")
+            s.item_str("journal-content", z.journal_content)
+            s.item_str("dnssec-signing", "on")
+            s.item("acl", "[%s]" % acl)
+
+            s.id_item("id", "catalog-unsigned")
+            s.item_str("file", self.dir + "/master/%s.zone")
+            s.item_str("journal-content", z.journal_content)
             s.item("acl", "[%s]" % acl)
 
         s.end()
@@ -1499,7 +1510,7 @@ class Knot(Server):
 
             if z.catalog:
                 s.item_str("catalog-role", "interpret")
-                s.item_str("catalog-template", "catemplate")
+                s.item("catalog-template", "[ catalog-default, catalog-signed, catalog-unsigned ]")
 
             if z.dnssec.validate:
                 s.item_str("dnssec-validation", "on")
