@@ -602,8 +602,8 @@ multiple catalog zones.
    existing zones configured on the server as it would effectively "shadow"
    part of your DNS subtree.
 
-Upon catalog zone (re)load or change, all the PTR records in the zone
-sub-tree *zones* (e.g. ``unique-id1.zones.catalog. 0 IN PTR member.com.``)
+Upon catalog zone (re)load or change, all the PTR records in the format
+``unique-id.zones.catalog. 0 IN PTR member.com.`` (but not ``too.deep.zones.catalog.``!)
 are processed and member zones created, with zone names taken from the
 PTR records' RData, and zone settings taken from the configuration
 template specified by :ref:`zone_catalog-template`.
@@ -612,11 +612,10 @@ The owner names of the PTR records shall follow this scheme:
 
 .. code-block:: console
 
-    <any-junk>.<unique-id>.zones.<catalog-zone>.
+    <unique-id>.zones.<catalog-zone>.
 
 where the mentioned group of labels shall match:
 
-- *<any-junk>* — (optional) Any additional labels with no particular meaning.
 - *<unique-id>* — Single label that is recommended to be unique among member zones.
 - ``zones`` — Required label.
 - *<catalog-zone>* — Name of the catalog zone.
