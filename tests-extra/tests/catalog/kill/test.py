@@ -19,12 +19,19 @@ master.zones[catz[0].name].catalog = True
 master.zones[catz[0].name].journal_content = "all"
 
 master.dnssec(stuckzone).enable = True
+master.dnssec(stuckzone).single_type_signing = True
 master.dnssec(stuckzone).ds_push = stuck_parent
 master.tcp_remote_io_timeout = 40000
+
+master.gen_confile()
+master.key_gen(stuckzone[0].name, ksk="true", zsk="true", active="+0")
 
 t.start()
 
 serial = master.zone_wait(catz, udp=False, tsig=True)
+
+master.key_gen(stuckzone[0].name, ksk="true", zsk="true", ready="+0", active="+100")
+master.ctl("zone-sign")
 t.sleep(4)
 
 resp = master.dig("example.", "SOA")
