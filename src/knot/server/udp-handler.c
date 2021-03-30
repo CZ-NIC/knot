@@ -40,6 +40,14 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 
+#ifdef HAVE_EPOLL
+#include <sys/epoll.h>
+typedef struct epoll_event poll_event_t;
+#else
+#include <poll.h>
+typedef struct pollfd poll_event_t;
+#endif
+
 /* Buffer identifiers. */
 enum {
 	RX = 0,
@@ -499,8 +507,8 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 	}
 }
 
-static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *fds,
-                               int thread_id, void **xdp_socket)
+static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, poll_event_t *fds,
+                               int thread_id, void **xdp_socket, int epoll_fd)
 {
 	if (n_ifaces == 0) {
 		return 0;
@@ -516,7 +524,19 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *
 		if (fd < 0) {
 			continue;
 		}
-		fdset_add(fds, fd, FDSET_POLLIN, NULL);
+#ifdef HAVE_EPOLL
+		struct epoll_event ev = {
+			.data.fd = fd,
+			.events = EPOLLIN
+		};
+		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev) != 0) {
+			return 0;
+		}
+#else
+		fds[count].fd = fd;
+		fds[count].events = POLLIN;
+		fds[count].revents = 0;
+#endif
 		count++;
 	}
 
@@ -575,10 +595,15 @@ int udp_master(dthread_t *thread)
 	/* Allocate descriptors for the configured interfaces. */
 	void *xdp_socket = NULL;
 	size_t nifs = handler->server->n_ifaces;
-	fdset_t fds;
-	fdset_init(&fds, nifs);
-	unsigned fds_count = udp_set_ifaces(handler->server->ifaces, nifs, &fds,
-	                                    thread_id, &xdp_socket);
+	poll_event_t events[nifs];
+	int efd;
+#ifdef HAVE_EPOLL
+	if ((efd = epoll_create1(0)) < 0) {
+		return knot_map_errno();
+	}
+#endif
+	unsigned fds_count = udp_set_ifaces(handler->server->ifaces, nifs, events,
+	                                    thread_id, &xdp_socket, efd);
 	if (fds_count == 0) {
 		goto finish;
 	}
@@ -591,21 +616,20 @@ int udp_master(dthread_t *thread)
 		}
 
 		/* Wait for events. */
-		fdset_it_t it;
-		int ret = fdset_poll(&fds, &it, 0, -1);
-		if (ret <= 0) {
-			if (errno == EINTR || errno == EAGAIN) {
+		int ret = epoll_wait(efd, events, nifs, -1);
+		if (ret < 0) {
+			if (errno == EINTR) {
 				continue;
 			}
 			break;
 		}
 
 		/* Process the events. */
-		for (; !fdset_it_is_done(&it); fdset_it_next(&it)) {
-			if (!fdset_it_is_pollin(&it)) {
+		for (int i = 0; i < ret; i++) {
+			if (events[i].events != EPOLLIN) {
 				continue;
 			}
-			if (api->udp_recv(fdset_it_get_fd(&it), rq, xdp_socket) > 0) {
+			if (api->udp_recv(events[i].data.fd, rq, xdp_socket) > 0) {
 				api->udp_handle(&udp, rq, xdp_socket);
 				api->udp_send(rq, xdp_socket);
 			}
@@ -615,7 +639,9 @@ int udp_master(dthread_t *thread)
 finish:
 	api->udp_deinit(rq);
 	mp_delete(mm.ctx);
-	fdset_clear(&fds);
+#ifdef HAVE_EPOLL
+	close(efd);
+#endif
 
 	return KNOT_EOK;
 }
