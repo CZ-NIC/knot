@@ -9,7 +9,7 @@ Build-Depends-Indep:
  python3-setuptools,
  python3-sphinx,
 Build-Depends:
- debhelper (>= 9),
+ debhelper (>= 11),
  dh-python,
  libcap-ng-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386],
  libedit-dev,
