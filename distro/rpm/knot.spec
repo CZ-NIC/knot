@@ -26,6 +26,7 @@ BuildRequires:	gnupg2
 Patch1:		01-test_net-disable-udp-send-on-unconnected.patch
 
 # Required dependencies
+BuildRequires:	make
 BuildRequires:	gcc
 BuildRequires:	pkgconfig(liburcu)
 BuildRequires:	pkgconfig(gnutls) >= 3.3
