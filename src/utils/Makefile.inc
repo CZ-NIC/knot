@@ -8,7 +8,7 @@ libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libidn2_CFLAGS) \
                         $(libidn_CFLAGS) $(libedit_CFLAGS) $(libnghttp2_CFLAGS) \
                         $(gnutls_CFLAGS)
 libknotus_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
-libknotus_la_LIBADD   = libcontrib.la libknot.la $(libidn2_LIBS) $(libidn_LIBS) \
+libknotus_la_LIBADD   = libcontrib.la libdnssec.la libknot.la $(libidn2_LIBS) $(libidn_LIBS) \
                         $(libedit_LIBS) $(libnghttp2_LIBS) $(gnutls_LIBS)
 
 libknotus_la_SOURCES = \
