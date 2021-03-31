@@ -27,6 +27,10 @@
 
 #ifdef HAVE_EPOLL
 #include <sys/epoll.h>
+#elif HAVE_AIO
+#include <poll.h>
+#include <linux/aio_abi.h>
+#include <sys/syscall.h>
 #else
 #include <poll.h>
 #endif
@@ -34,6 +38,8 @@
 #define FDSET_RESIZE_STEP	256
 #ifdef HAVE_EPOLL
 #define FDSET_REMOVE_FLAG	~0U
+#elif HAVE_AIO
+#define FDSET_REMOVE_FLAG   ~0UL
 #endif
 
 /*! \brief Set of filedescriptors with associated context and timeouts. */
@@ -47,6 +53,11 @@ typedef struct {
 	struct epoll_event *recv_ev;  /*!< Array for polled events. */
 	unsigned recv_size;           /*!< Size of array for polled events. */
 	int efd;                      /*!< File descriptor of epoll. */
+#elif HAVE_AIO
+    struct iocb *ev;              /*!< AIO event storage for each fd */
+	struct io_event *recv_ev;     /*!< Array for polled events. */
+	unsigned recv_size;           /*!< Size of array for polled events. */
+    aio_context_t aioctx;         /*!< File descriptor of aio. */
 #else
 	struct pollfd *pfd;           /*!< Poll state for each fd. */
 #endif
@@ -57,8 +68,12 @@ typedef struct {
 	fdset_t *fdset;           /*!< Source fdset_t. */
 	unsigned idx;             /*!< Event index offset. */
 	int unprocessed;          /*!< Unprocessed events left. */
+#if defined(HAVE_EPOLL) || defined(HAVE_AIO)
 #ifdef HAVE_EPOLL
 	struct epoll_event *ptr;  /*!< Pointer on processed event. */
+#else
+    struct io_event *ptr;     /*!< Pointer on processed event. */
+#endif
 	unsigned dirty;           /*!< Number of fd to be removed on commit. */
 #endif
 } fdset_it_t;
@@ -67,7 +82,7 @@ typedef enum {
 #ifdef HAVE_EPOLL
 	FDSET_POLLIN  = EPOLLIN,
 	FDSET_POLLOUT = EPOLLOUT,
-#else
+#else /* UNIX and AIO */
 	FDSET_POLLIN  = POLLIN,
 	FDSET_POLLOUT = POLLOUT,
 #endif
@@ -181,6 +196,8 @@ inline static int fdset_get_fd(const fdset_t *set, const unsigned idx)
 
 #ifdef HAVE_EPOLL
 	return set->ev[idx].data.fd;
+#elif HAVE_AIO
+    return set->ev[idx].aio_fildes;
 #else
 	return set->pfd[idx].fd;
 #endif
@@ -213,6 +230,8 @@ inline static unsigned fdset_it_get_idx(const fdset_it_t *it)
 
 #ifdef HAVE_EPOLL
 	return it->ptr->data.u64;
+#elif HAVE_AIO
+    return it->ptr->data;
 #else
 	return it->idx;
 #endif
@@ -232,6 +251,8 @@ inline static int fdset_it_get_fd(const fdset_it_t *it)
 
 #ifdef HAVE_EPOLL
 	return it->fdset->ev[fdset_it_get_idx(it)].data.fd;
+#elif HAVE_AIO
+    return ((struct iocb *)it->ptr->obj)->aio_fildes;
 #else
 	return it->fdset->pfd[it->idx].fd;
 #endif
@@ -251,6 +272,9 @@ inline static void fdset_it_next(fdset_it_t *it)
 		it->ptr++;
 		it->unprocessed--;
 	} while (it->unprocessed > 0 && fdset_it_get_idx(it) < it->idx);
+#elif HAVE_AIO
+    it->ptr++;
+    it->unprocessed--;
 #else
 	if (--it->unprocessed > 0) {
 		while (it->fdset->pfd[++it->idx].revents == 0); /* nop */
@@ -270,10 +294,14 @@ inline static void fdset_it_remove(fdset_it_t *it)
 {
 	assert(it);
 
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_AIO)
 	const int idx = fdset_it_get_idx(it);
-	it->fdset->ev[idx].events = FDSET_REMOVE_FLAG;
 	it->dirty++;
+#ifdef HAVE_EPOLL
+	it->fdset->ev[idx].events = FDSET_REMOVE_FLAG;
+#else
+	it->fdset->ev[idx].aio_buf = FDSET_REMOVE_FLAG;
+#endif
 #else
 	(void)fdset_remove(it->fdset, fdset_it_get_idx(it));
 	/* Iterator should return on last valid already processed element. */
@@ -289,7 +317,7 @@ inline static void fdset_it_remove(fdset_it_t *it)
  */
 inline static void fdset_it_commit(fdset_it_t *it)
 {
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_AIO)
 	assert(it);
 	/* NOTE: reverse iteration to avoid as much "remove last" operations
 	 *       as possible. I'm not sure about performance improvement. It
@@ -299,7 +327,13 @@ inline static void fdset_it_commit(fdset_it_t *it)
 	 */
 	fdset_t *set = it->fdset;
 	for (int i = set->n - 1; it->dirty > 0 && i >= 0; --i) {
-		if (set->ev[i].events == FDSET_REMOVE_FLAG) {
+        if (
+#ifdef HAVE_EPOLL
+		    set->ev[i].events == FDSET_REMOVE_FLAG
+#else
+		    set->ev[i].aio_buf == FDSET_REMOVE_FLAG
+#endif
+        ) {
 			(void)fdset_remove(set, i);
 			it->dirty--;
 		}
@@ -335,6 +369,8 @@ inline static bool fdset_it_is_pollin(const fdset_it_t *it)
 
 #ifdef HAVE_EPOLL
 	return it->ptr->events & EPOLLIN;
+#elif HAVE_AIO
+    return ((struct iocb *)it->ptr->obj)->aio_buf & POLLIN;
 #else
 	return it->fdset->pfd[it->idx].revents & POLLIN;
 #endif
@@ -353,6 +389,8 @@ inline static bool fdset_it_is_error(const fdset_it_t *it)
 
 #ifdef HAVE_EPOLL
 	return it->ptr->events & (EPOLLERR | EPOLLHUP);
+#elif HAVE_AIO
+    return ((struct iocb *)it->ptr->obj)->aio_buf & (POLLERR | POLLHUP | POLLNVAL);
 #else
 	return it->fdset->pfd[it->idx].revents & (POLLERR | POLLHUP | POLLNVAL);
 #endif

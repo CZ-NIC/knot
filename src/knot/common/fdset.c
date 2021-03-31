@@ -30,13 +30,103 @@
 	(p) = tmp; \
 }
 
+#ifdef HAVE_AIO
+#ifndef IOCB_CMD_POLL
+#define IOCB_CMD_POLL 5 /* from 4.18 */
+#endif
+
+#ifdef __x86_64__
+#define read_barrier() __asm__ __volatile__("lfence" ::: "memory")
+#else
+#ifdef __i386__
+#define read_barrier() __asm__ __volatile__("" : : : "memory")
+#else
+#define read_barrier() __sync_synchronize()
+#endif
+#endif
+
+#define AIO_RING_MAGIC 0xa10a10a1
+struct aio_ring {
+	unsigned id; /** kernel internal index number */
+	unsigned nr; /** number of io_events */
+	unsigned head;
+	unsigned tail;
+
+	unsigned magic;
+	unsigned compat_features;
+	unsigned incompat_features;
+	unsigned header_length; /** size of aio_ring */
+
+	struct io_event events[0];
+};
+
+inline static int io_setup(unsigned nr, aio_context_t *ctxp)
+{
+	return syscall(__NR_io_setup, nr, ctxp);
+}
+
+inline static int io_destroy(aio_context_t ctx)
+{
+	return syscall(__NR_io_destroy, ctx);
+}
+
+inline static int io_submit(aio_context_t ctx, long nr, struct iocb **iocbpp)
+{
+	return syscall(__NR_io_submit, ctx, nr, iocbpp);
+}
+
+/* Code based on axboe/fio:
+ * https://github.com/axboe/fio/blob/702906e9e3e03e9836421d5e5b5eaae3cd99d398/engines/libaio.c#L149-L172
+ */
+inline static int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
+			       struct io_event *events,
+			       struct timespec *timeout)
+{
+	int i = 0;
+
+	struct aio_ring *ring = (struct aio_ring *)ctx;
+	if (ring == NULL || ring->magic != AIO_RING_MAGIC) {
+		goto do_syscall;
+	}
+
+	while (i < max_nr) {
+		unsigned head = ring->head;
+		if (head == ring->tail) {
+			/* There are no more completions */
+			break;
+		} else {
+			/* There is another completion to reap */
+			events[i] = ring->events[head];
+			read_barrier();
+			ring->head = (head + 1) % ring->nr;
+			i++;
+		}
+	}
+
+	if (i == 0 && timeout != NULL && timeout->tv_sec == 0 &&
+	    timeout->tv_nsec == 0) {
+		/* Requested non blocking operation. */
+		return 0;
+	}
+
+	if (i && i >= min_nr) {
+		return i;
+	}
+
+do_syscall:
+	return syscall(__NR_io_getevents, ctx, min_nr - i, max_nr - i,
+	               &events[i], timeout);
+}
+
+#endif
+
 static int fdset_resize(fdset_t *set, const unsigned size)
 {
 	assert(set);
 
 	MEM_RESIZE(set->ctx, size);
 	MEM_RESIZE(set->timeout, size);
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_AIO)
 	MEM_RESIZE(set->ev, size);
 #else
 	MEM_RESIZE(set->pfd, size);
@@ -58,6 +148,11 @@ int fdset_init(fdset_t *set, const unsigned size)
 	if (set->efd < 0) {
 		return knot_map_errno();
 	}
+#elif HAVE_AIO
+	int ret = io_setup(1024, &set->aioctx);
+	if (ret < 0) {
+		return knot_map_errno();
+	}
 #endif
 	return fdset_resize(set, size);
 }
@@ -74,6 +169,9 @@ void fdset_clear(fdset_t *set)
 	free(set->ev);
 	free(set->recv_ev);
 	close(set->efd);
+#elif HAVE_AIO
+	free(set->ev);
+	io_destroy(set->aioctx);
 #else
 	free(set->pfd);
 #endif
@@ -104,6 +202,11 @@ int fdset_add(fdset_t *set, const int fd, const fdset_event_t events, void *ctx)
 	if (epoll_ctl(set->efd, EPOLL_CTL_ADD, fd, &ev) != 0) {
 		return knot_map_errno();
 	}
+#elif HAVE_AIO
+	set->ev[idx].aio_fildes = fd;
+	set->ev[idx].aio_lio_opcode = IOCB_CMD_POLL;
+	set->ev[idx].aio_buf = events;
+	set->ev[idx].aio_data = idx;
 #else
 	set->pfd[idx].fd = fd;
 	set->pfd[idx].events = events;
@@ -140,6 +243,9 @@ int fdset_remove(fdset_t *set, const unsigned idx)
 		if (epoll_ctl(set->efd, EPOLL_CTL_MOD, set->ev[last].data.fd, &ev) != 0) {
 			return knot_map_errno();
 		}
+#elif HAVE_AIO
+		set->ev[idx] = set->ev[last];
+		set->ev[idx].aio_data = idx;
 #else
 		set->pfd[idx] = set->pfd[last];
 #endif
@@ -156,13 +262,14 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 
 	it->fdset = set;
 	it->idx = offset;
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_AIO)
 	if (set->recv_size != set->size) {
 		MEM_RESIZE(set->recv_ev, set->size);
 		set->recv_size = set->size;
 	}
 	it->ptr = set->recv_ev;
 	it->dirty = 0;
+#ifdef HAVE_EPOLL
 	/*
 	 *  NOTE: Can't skip offset without bunch of syscalls!!
 	 *  Because of that it waits for `ctx->n` (every socket). Offset is set when TCP
@@ -171,6 +278,24 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 	 *  But it can cause problems when adopted in other use-case.
 	 */
 	return it->unprocessed = epoll_wait(set->efd, set->recv_ev, set->n, timeout_ms);
+#else
+    struct timespec to = {
+		.tv_nsec = (timeout_ms % 1000) * 1000000,
+		.tv_sec = timeout_ms / 1000
+	};
+
+	struct iocb *list_of_iocb[set->n - offset];
+	for (int i = 0; i + offset < set->n; ++i) {
+		list_of_iocb[i] = &(set->ev[i + offset]);
+	}
+
+	int ret = 0;
+	ret = io_submit(set->aioctx, set->n - offset, list_of_iocb);
+	if (ret < 0) {
+	 	return knot_map_errno();
+	}
+	return it->unprocessed = io_getevents(set->aioctx, 1, set->recv_size, set->recv_ev, timeout_ms > 0 ? &to : NULL);
+#endif
 #else
 	it->unprocessed = poll(&set->pfd[offset], set->n - offset, timeout_ms);
 	while (it->unprocessed > 0 && set->pfd[it->idx].revents == 0) {

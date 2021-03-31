@@ -286,7 +286,7 @@ AS_IF([test "$enable_systemd" = "yes"],[
 # Socket polling method
 socket_polling=
 AC_ARG_WITH([socket-polling],
-  AS_HELP_STRING([--with-socket-polling=auto|poll|epoll],
+  AS_HELP_STRING([--with-socket-polling=auto|poll|epoll|aio],
                  [Use specific socket polling method [default=auto]]),
   [socket_polling=$withval], [socket_polling=auto]
 )
@@ -301,6 +301,7 @@ AS_CASE([$socket_polling],
                            [AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
                             socket_polling=epoll],
                            [AC_MSG_ERROR([Epoll not available.])])],
+  [aio],   [AC_DEFINE([HAVE_AIO], [1], [aio available]) socket_polling=aio],
   [*],     [AC_MSG_ERROR([Invalid value of --socket-polling.])]
 )
 
