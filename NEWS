@@ -1,3 +1,18 @@
+Knot DNS 2.9.9 (2021-04-01)
+===========================
+
+Improvements:
+-------------
+ - keymgr: the SEP flag can be changed on already generated keys
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - knotd: journal contents can be considered malformed after changeset merge
+ - knotd: old key is being used after an algorithm rollover with a shared policy #721
+ - keymgr: keytag not recomputed upon key flag change
+ - kzonecheck: missing letter lower-casing of the origin parameter
+
 Knot DNS 2.9.8 (2020-12-15)
 ===========================
 
