@@ -1511,6 +1511,7 @@ zone:
     dnssec\-signing: BOOL
     dnssec\-validation: BOOL
     dnssec\-policy: STR
+    digest: none | zonemd\-verify
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
@@ -1778,6 +1779,26 @@ A \fI\%reference\fP to DNSSEC signing policy.
 A configured policy called "default" won\(aqt be used unless explicitly referenced.
 .UNINDENT
 .UNINDENT
+.SS digest
+.sp
+Specifies how zone digests shall be handled, at any occasion of zone change.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBnone\fP \- No handling of zone digests, ZONEMD ignored.
+.IP \(bu 2
+\fBzonemd\-verify\fP \- Ensure ZONEMD is present in the zone and valid.
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Zone digest calculation may take much time and CPU on large zones.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP none
 .SS serial\-policy
 .sp
 Specifies how the zone serial is updated after a dynamic update or

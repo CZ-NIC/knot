@@ -45,6 +45,7 @@
 #define C_DB			"\x08""database"
 #define C_DDNS_MASTER		"\x0B""ddns-master"
 #define C_DENY			"\x04""deny"
+#define C_DIGEST		"\x06""digest"
 #define C_DNSKEY_TTL		"\x0A""dnskey-ttl"
 #define C_DNSSEC_POLICY		"\x0D""dnssec-policy"
 #define C_DNSSEC_SIGNING	"\x0E""dnssec-signing"
@@ -176,6 +177,11 @@ enum {
 	SERIAL_POLICY_INCREMENT  = 1,
 	SERIAL_POLICY_UNIXTIME   = 2,
 	SERIAL_POLICY_DATESERIAL = 3,
+};
+
+enum {
+	ZONE_DIGEST_NONE             = 0,
+	ZONE_DIGEST_ZONEMD_VERIFY    = 1,
 };
 
 enum {

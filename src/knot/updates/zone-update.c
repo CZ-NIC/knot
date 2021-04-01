@@ -20,6 +20,7 @@
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
+#include "knot/zone/digest.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zonefile.h"
@@ -909,6 +910,17 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			return ret;
 		} else {
 			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful", msg_valid);
+		}
+	}
+
+	val = conf_zone_get(conf, C_DIGEST, update->zone->name);
+	if (conf_opt(&val) == ZONE_DIGEST_ZONEMD_VERIFY) {
+		ret = zone_contents_digest_verify(update->new_cont);
+		if (ret != KNOT_EOK) {
+			log_zone_error(update->zone->name, "ZONEMD verification failed (%s)", knot_strerror(ret));
+			return ret;
+		} else {
+			log_zone_info(update->zone->name, "ZONEMD verified OK");
 		}
 	}
 
