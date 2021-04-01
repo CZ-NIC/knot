@@ -20,6 +20,7 @@
 
 #include "knot/common/fdset.h"
 #include "contrib/time.h"
+#include "contrib/macros.h"
 
 #define MEM_RESIZE(p, n) { \
 	void *tmp = NULL; \
@@ -180,9 +181,39 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 	 *  connection socket, but it should not be common.
 	 *  But it can cause problems when adopted in other use-case.
 	 */
-	return it->unprocessed = epoll_wait(set->efd, set->recv_ev, set->n, timeout_ms);
+	it->unprocessed = epoll_wait(set->efd, set->recv_ev, set->n, timeout_ms);
+#ifndef NDEBUG
+	/* In specific circumstances with valgrind, it sometimes happens that
+	 * `set->n < it->unprocessed`. */
+	if (it->unprocessed > 0 && unlikely(it->unprocessed > set->n)) {
+		assert(it->unprocessed == 232);
+		it->unprocessed = 0;
+		for (unsigned i = 0; i < set->recv_size; ++i) {
+			const uint64_t idx = set->recv_ev[i].data.u64;
+			if (idx > set->n) {
+				break;
+			} else if (set->recv_ev[i].events != 0) {
+				it->unprocessed++;
+			}
+		}
+	}
+#endif
+	return it->unprocessed;
 #else
 	it->unprocessed = poll(&set->pfd[offset], set->n - offset, timeout_ms);
+#ifndef NDEBUG
+	/* In specific circumstances with valgrind, it sometimes happens that
+	 * `set->n < it->unprocessed`. */
+	if (it->unprocessed > 0 && unlikely(it->unprocessed > set->n - offset)) {
+		assert(it->unprocessed == 7);
+		it->unprocessed = 0;
+		for (unsigned i = offset; i < set->n - offset; i++) {
+			if (set->pfd[i].revents != 0) {
+				it->unprocessed++;
+			}
+		}
+	}
+#endif
 	while (it->unprocessed > 0 && set->pfd[it->idx].revents == 0) {
 		it->idx++;
 	}
