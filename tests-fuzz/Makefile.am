@@ -21,14 +21,28 @@ check_PROGRAMS += knotd_stdio
 nodist_knotd_stdio_SOURCES = knotd_wrap/main.c
 
 knotd_stdio_SOURCES = \
-	knotd_wrap/afl-loop.h		\
-	knotd_wrap/server.c		\
-	knotd_wrap/tcp-handler.c	\
+	knotd_wrap/afl-loop.h			\
+	knotd_wrap/server.c			\
+	knotd_wrap/tcp-handler.c		\
 	knotd_wrap/udp-handler.c
 
-knotd_stdio_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS) $(lmdb_CFLAGS)
-knotd_stdio_LDADD = $(top_builddir)/src/libknotd.la $(top_builddir)/src/libcontrib.la \
-                    $(liburcu_LIBS) $(cap_ng_LIBS)
+knotd_stdio_CPPFLAGS =				\
+	$(AM_CPPFLAGS)				\
+	$(liburcu_CFLAGS)			\
+	$(lmdb_CFLAGS)				\
+	$(systemd_CFLAGS)
+
+knotd_stdio_LDADD = \
+	$(top_builddir)/src/libknotd.la		\
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libdnssec.la	\
+	$(top_builddir)/src/libcontrib.la	\
+	$(top_builddir)/src/libzscanner.la	\
+	$(cap_ng_LIBS)				\
+	$(gnutls_LIBS)				\
+	$(liburcu_LIBS)				\
+	$(lmdb_LIBS)				\
+	$(systemd_LIBS)
 
 BUILT_SOURCES = knotd_wrap/main.c
 CLEANFILES = knotd_wrap/main.c
@@ -41,19 +55,32 @@ endif HAVE_DAEMON
 
 fuzz_packet_SOURCES    = fuzz_packet.c
 fuzz_packet_CPPFLAGS   = $(AM_CPPFLAGS)
-fuzz_packet_LDADD      = $(top_builddir)/src/libknot.la
+fuzz_packet_LDADD      = \
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libdnssec.la	\
+	$(top_builddir)/src/libcontrib.la	\
+	$(lmdb_LIBS)
 
 fuzz_zscanner_SOURCES  = fuzz_zscanner.c
 fuzz_zscanner_CPPFLAGS = $(AM_CPPFLAGS)
-fuzz_zscanner_LDADD    = $(top_builddir)/src/libzscanner.la
+fuzz_zscanner_LDADD    = \
+	$(top_builddir)/src/libzscanner.la
 
 fuzz_dname_to_str_SOURCES  = fuzz_dname_to_str.c
 fuzz_dname_to_str_CPPFLAGS = $(AM_CPPFLAGS)
-fuzz_dname_to_str_LDADD    = $(top_builddir)/src/libknot.la
+fuzz_dname_to_str_LDADD    = \
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libdnssec.la	\
+	$(top_builddir)/src/libcontrib.la	\
+	$(lmdb_LIBS)
 
 fuzz_dname_from_str_SOURCES  = fuzz_dname_from_str.c
 fuzz_dname_from_str_CPPFLAGS = $(AM_CPPFLAGS)
-fuzz_dname_from_str_LDADD    = $(top_builddir)/src/libknot.la
+fuzz_dname_from_str_LDADD    = \
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libdnssec.la	\
+	$(top_builddir)/src/libcontrib.la	\
+	$(lmdb_LIBS)
 
 if OSS_FUZZ
 

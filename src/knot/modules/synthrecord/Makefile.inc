@@ -8,6 +8,6 @@ endif
 if SHARED_MODULE_synthrecord
 knot_modules_synthrecord_la_LDFLAGS = $(KNOTD_MOD_LDFLAGS)
 knot_modules_synthrecord_la_CPPFLAGS = $(KNOTD_MOD_CPPFLAGS)
-knot_modules_synthrecord_la_LIBADD = libcontrib.la
+knot_modules_synthrecord_la_LIBADD = $(libcontrib_LIBS)
 pkglib_LTLIBRARIES += knot/modules/synthrecord.la
 endif

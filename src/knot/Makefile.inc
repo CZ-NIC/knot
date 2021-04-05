@@ -1,8 +1,10 @@
-libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(systemd_CFLAGS) \
-                       $(liburcu_CFLAGS) $(lmdb_CFLAGS) -DKNOTD_MOD_STATIC
+libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(liburcu_CFLAGS) \
+                       $(lmdb_CFLAGS) $(systemd_CFLAGS) -DKNOTD_MOD_STATIC
 libknotd_la_LDFLAGS  = $(AM_LDFLAGS) -export-symbols-regex '^knotd_'
-libknotd_la_LIBADD   = libcontrib.la libknot.la libzscanner.la $(systemd_LIBS) \
-                       $(liburcu_LIBS) $(lmdb_LIBS) $(pthread_LIBS) $(dlopen_LIBS)
+libknotd_la_LIBADD   = $(dlopen_LIBS) $(pthread_LIBS)
+libknotd_LIBS        = libknotd.la libknot.la libdnssec.la libzscanner.la \
+                       $(libcontrib_LIBS) $(liburcu_LIBS) $(lmdb_LIBS) \
+                       $(systemd_LIBS)
 
 include_libknotddir = $(includedir)/knot
 include_libknotd_HEADERS = \

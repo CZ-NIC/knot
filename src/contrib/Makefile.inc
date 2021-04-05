@@ -3,13 +3,14 @@ noinst_LTLIBRARIES += libcontrib.la
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libcontrib_la_LIBADD   = $(pthread_LIBS)
+libcontrib_LIBS        = libcontrib.la
 if USE_GNUTLS_MEMSET
 libcontrib_la_CPPFLAGS += $(gnutls_CFLAGS)
-libcontrib_la_LIBADD   += $(gnutls_LIBS)
+libcontrib_LIBS        += $(gnutls_LIBS)
 endif USE_GNUTLS_MEMSET
 if EMBEDDED_LIBBPF
 libcontrib_la_CPPFLAGS += $(embedded_libbpf_CFLAGS)
-libcontrib_la_LIBADD   += $(embedded_libbpf_LIBS)
+libcontrib_LIBS        += $(embedded_libbpf_LIBS)
 endif EMBEDDED_LIBBPF
 
 EXTRA_DIST += \

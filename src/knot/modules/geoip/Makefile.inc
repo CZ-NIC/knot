@@ -12,6 +12,6 @@ endif
 if SHARED_MODULE_geoip
 knot_modules_geoip_la_LDFLAGS = $(KNOTD_MOD_LDFLAGS)
 knot_modules_geoip_la_CPPFLAGS = $(KNOTD_MOD_CPPFLAGS) $(libmaxminddb_CFLAGS)
-knot_modules_geoip_la_LIBADD = libcontrib.la $(libmaxminddb_LIBS)
+knot_modules_geoip_la_LIBADD = $(libcontrib_LIBS) $(libmaxminddb_LIBS)
 pkglib_LTLIBRARIES += knot/modules/geoip.la
 endif

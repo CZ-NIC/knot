@@ -4,12 +4,13 @@ sbin_PROGRAMS =
 if HAVE_LIBUTILS
 noinst_LTLIBRARIES += libknotus.la
 
-libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libidn2_CFLAGS) \
-                        $(libidn_CFLAGS) $(libedit_CFLAGS) $(libnghttp2_CFLAGS) \
-                        $(gnutls_CFLAGS)
+libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS) \
+                        $(libedit_CFLAGS) $(libidn2_CFLAGS) $(libidn_CFLAGS) \
+                        $(libnghttp2_CFLAGS) $(lmdb_CFLAGS)
 libknotus_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
-libknotus_la_LIBADD   = libcontrib.la libknot.la $(libidn2_LIBS) $(libidn_LIBS) \
-                        $(libedit_LIBS) $(libnghttp2_LIBS) $(gnutls_LIBS)
+libknotus_la_LIBADD   = $(libidn2_LIBS) $(libidn_LIBS) $(libnghttp2_LIBS)
+libknotus_LIBS        = libknotus.la libknot.la libdnssec.la $(libcontrib_LIBS) \
+                        $(gnutls_LIBS) $(libedit_LIBS)
 
 libknotus_la_SOURCES = \
 	utils/common/cert.c			\
@@ -67,14 +68,14 @@ knsupdate_SOURCES = \
 	utils/knsupdate/knsupdate_params.c	\
 	utils/knsupdate/knsupdate_params.h
 
-kdig_CPPFLAGS          = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(libnghttp2_CFLAGS)
-kdig_LDADD             = libknotus.la
-khost_CPPFLAGS         = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(libnghttp2_CFLAGS)
-khost_LDADD            = libknotus.la
-knsec3hash_CPPFLAGS    = $(AM_CPPFLAGS)
-knsec3hash_LDADD       = libcontrib.la libdnssec.la libknot.la
-knsupdate_CPPFLAGS     = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(libnghttp2_CFLAGS)
-knsupdate_LDADD        = libknotus.la libzscanner.la
+kdig_CPPFLAGS          = $(libknotus_la_CPPFLAGS)
+kdig_LDADD             = $(libknotus_LIBS)
+khost_CPPFLAGS         = $(libknotus_la_CPPFLAGS)
+khost_LDADD            = $(libknotus_LIBS)
+knsec3hash_CPPFLAGS    = $(libknotus_la_CPPFLAGS)
+knsec3hash_LDADD       = libknot.la libdnssec.la $(libcontrib_LIBS)
+knsupdate_CPPFLAGS     = $(libknotus_la_CPPFLAGS)
+knsupdate_LDADD        = $(libknotus_LIBS) libzscanner.la
 
 if HAVE_DNSTAP
 kdig_CPPFLAGS          += $(DNSTAP_CFLAGS)
@@ -92,8 +93,8 @@ kxdpgun_SOURCES = \
 	utils/kxdpgun/load_queries.h		\
 	utils/kxdpgun/main.c
 
-kxdpgun_CPPFLAGS  = $(AM_CPPFLAGS) $(libmnl_CFLAGS)
-kxdpgun_LDADD     = libcontrib.la libknot.la $(pthread_LIBS) $(libmnl_LIBS)
+kxdpgun_CPPFLAGS  = $(libknotus_la_CPPFLAGS) $(libmnl_CFLAGS)
+kxdpgun_LDADD     = libknot.la $(libcontrib_LIBS) $(libmnl_LIBS) $(pthread_LIBS)
 endif ENABLE_XDP
 endif HAVE_UTILS
 
@@ -118,14 +119,11 @@ knotc_SOURCES = \
 knotd_SOURCES = \
 	utils/knotd/main.c
 
-knotc_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libedit_CFLAGS) \
-                         $(lmdb_CFLAGS)
-knotc_LDADD            = libcontrib.la libknotd.la libknotus.la $(libedit_LIBS)
+knotc_CPPFLAGS         = $(libknotus_la_CPPFLAGS)
+knotc_LDADD            = $(libknotd_LIBS) $(libknotus_LIBS)
 knotc_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
-knotd_CPPFLAGS         = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(liburcu_CFLAGS) \
-                         $(lmdb_CFLAGS)
-knotd_LDADD            = $(malloc_LIBS) libcontrib.la libknotd.la $(liburcu_LIBS) \
-                         $(cap_ng_LIBS)
+knotd_CPPFLAGS         = $(libknotus_la_CPPFLAGS) $(liburcu_CFLAGS) $(systemd_CFLAGS)
+knotd_LDADD            = $(malloc_LIBS) $(libknotd_LIBS) $(cap_ng_LIBS)
 knotd_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
 
 if HAVE_UTILS
@@ -155,16 +153,15 @@ kjournalprint_SOURCES = \
 kcatalogprint_SOURCES = \
 	utils/kcatalogprint/main.c
 
-kzonecheck_CPPFLAGS    = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
-kzonecheck_LDADD       = libcontrib.la libknotd.la
-kzonesign_CPPFLAGS     = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
-kzonesign_LDADD        = libcontrib.la libknotd.la
-keymgr_CPPFLAGS        = $(AM_CPPFLAGS) $(gnutls_CFLAGS) $(lmdb_CFLAGS)
-keymgr_LDADD           = libcontrib.la libknotd.la libknotus.la libdnssec.la \
-                         libzscanner.la
-kjournalprint_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
-kjournalprint_LDADD    = libcontrib.la libknotd.la
-kcatalogprint_CPPFLAGS = $(AM_CPPFLAGS) $(lmdb_CFLAGS)
-kcatalogprint_LDADD    = libcontrib.la libknotd.la
+kzonecheck_CPPFLAGS    = $(libknotus_la_CPPFLAGS)
+kzonecheck_LDADD       = $(libknotd_LIBS)
+kzonesign_CPPFLAGS     = $(libknotus_la_CPPFLAGS)
+kzonesign_LDADD        = $(libknotd_LIBS)
+keymgr_CPPFLAGS        = $(libknotus_la_CPPFLAGS)
+keymgr_LDADD           = $(libknotd_LIBS) $(libknotus_LIBS)
+kjournalprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
+kjournalprint_LDADD    = $(libknotd_LIBS)
+kcatalogprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
+kcatalogprint_LDADD    = $(libknotd_LIBS)
 endif HAVE_UTILS
 endif HAVE_DAEMON
