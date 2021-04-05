@@ -3,19 +3,26 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src			\
 	-I$(top_srcdir)/src/libdnssec		\
 	-I$(top_srcdir)/src/libdnssec/shared	\
-	$(gnutls_CFLAGS) $(lmdb_CFLAGS)
+	$(gnutls_CFLAGS)			\
+	$(lmdb_CFLAGS)
 
 LDADD = \
-	libtap.la				\
-	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libdnssec.la	\
-	$(top_builddir)/src/libcontrib.la	\
-	$(top_builddir)/src/libzscanner.la
+	libtap.la
 
 if HAVE_DAEMON
 LDADD += \
-	$(top_builddir)/src/libknotd.la
+	$(top_builddir)/src/libknotd.la		\
+	$(liburcu_LIBS)				\
+	$(systemd_LIBS)
 endif HAVE_DAEMON
+
+LDADD += \
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libdnssec.la	\
+	$(top_builddir)/src/libcontrib.la       \
+	$(top_builddir)/src/libzscanner.la      \
+	$(gnutls_LIBS)				\
+	$(lmdb_LIBS)
 
 EXTRA_DIST = \
 	tap/libtap.sh				\
@@ -173,34 +180,34 @@ endif
 endif HAVE_DAEMON
 
 libdnssec_test_keystore_pkcs11_CPPFLAGS = \
-	$(AM_CPPFLAGS) \
+	$(AM_CPPFLAGS)				\
 	-DLIBDIR='"$(libdir)"'
 
 if HAVE_LIBUTILS
 utils_test_lookup_CPPFLAGS = \
-	$(AM_CPPFLAGS) \
+	$(AM_CPPFLAGS)				\
 	$(libedit_CFLAGS)
 
 utils_test_lookup_LDADD = \
-	libtap.la \
-	$(top_builddir)/src/libknotus.la \
-	$(libedit_LIBS)
+	$(top_builddir)/src/libknotus.la	\
+	$(libedit_LIBS)				\
+	$(LDADD)
 
 utils_test_cert_CPPFLAGS = \
-	$(AM_CPPFLAGS) \
+	$(AM_CPPFLAGS)				\
 	$(libedit_CFLAGS)
 
 utils_test_cert_LDADD = \
-	libtap.la \
-	$(top_builddir)/src/libknotus.la \
-	$(libedit_LIBS)
+	$(top_builddir)/src/libknotus.la	\
+	$(libedit_LIBS)				\
+	$(LDADD)
 endif HAVE_LIBUTILS
 
 EXTRA_PROGRAMS += libzscanner/zscanner-tool
 
 libzscanner_zscanner_tool_SOURCES = \
-	libzscanner/zscanner-tool.c	\
-	libzscanner/processing.h	\
+	libzscanner/zscanner-tool.c		\
+	libzscanner/processing.h		\
 	libzscanner/processing.c
 
 check_SCRIPTS = \

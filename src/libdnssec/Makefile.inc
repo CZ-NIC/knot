@@ -3,7 +3,7 @@ pkgconfig_DATA  += libdnssec.pc
 
 libdnssec_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS)
 libdnssec_la_LDFLAGS  = $(AM_LDFLAGS) $(libdnssec_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS)
-libdnssec_la_LIBADD   = libcontrib.la $(gnutls_LIBS)
+libdnssec_la_LIBADD   = $(libcontrib_LIBS) $(gnutls_LIBS)
 if ENABLE_PKCS11
 libdnssec_la_LIBADD  += $(pthread_LIBS)
 endif

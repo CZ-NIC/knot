@@ -10,6 +10,6 @@ endif
 if SHARED_MODULE_onlinesign
 knot_modules_onlinesign_la_LDFLAGS = $(KNOTD_MOD_LDFLAGS)
 knot_modules_onlinesign_la_CPPFLAGS = $(KNOTD_MOD_CPPFLAGS)
-knot_modules_onlinesign_la_LIBADD = libcontrib.la
+knot_modules_onlinesign_la_LIBADD = $(libcontrib_LIBS)
 pkglib_LTLIBRARIES += knot/modules/onlinesign.la
 endif
