@@ -157,13 +157,13 @@ static int pkt_rr_array_alloc(knot_pkt_t *pkt, uint16_t count)
 		return KNOT_ENOMEM;
 	}
 
-	/* Copy the old data. */
-	memcpy(rr_info, pkt->rr_info, pkt->rrset_allocd * sizeof(knot_rrinfo_t));
-	memcpy(rr, pkt->rr, pkt->rrset_allocd * sizeof(knot_rrset_t));
-
-	/* Reassign and free old data. */
-	mm_free(&pkt->mm, pkt->rr);
-	mm_free(&pkt->mm, pkt->rr_info);
+	/* Copy and free the old data, if any. */
+	if (pkt->rrset_allocd > 0) {
+		memcpy(rr_info, pkt->rr_info, pkt->rrset_allocd * sizeof(knot_rrinfo_t));
+		memcpy(rr, pkt->rr, pkt->rrset_allocd * sizeof(knot_rrset_t));
+		mm_free(&pkt->mm, pkt->rr);
+		mm_free(&pkt->mm, pkt->rr_info);
+	}
 	pkt->rr = rr;
 	pkt->rr_info = rr_info;
 	pkt->rrset_allocd = next_size;
