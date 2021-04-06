@@ -128,8 +128,9 @@ endif EMBEDDED_LIBBPF
 if HAVE_LIBDNSTAP
 noinst_LTLIBRARIES += libdnstap.la
 
-libdnstap_la_CPPFLAGS = $(AM_CPPFLAGS) $(DNSTAP_CFLAGS)
-libdnstap_la_LIBADD   = $(DNSTAP_LIBS)
+libdnstap_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(DNSTAP_CFLAGS)
+libdnstap_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
+libdnstap_LIBS        = libdnstap.la $(DNSTAP_LIBS)
 
 SUFFIXES = .proto .pb-c.c .pb-c.h
 

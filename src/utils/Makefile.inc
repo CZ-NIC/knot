@@ -79,9 +79,9 @@ knsupdate_LDADD        = $(libknotus_LIBS) libzscanner.la
 
 if HAVE_DNSTAP
 kdig_CPPFLAGS          += $(DNSTAP_CFLAGS)
-kdig_LDADD             += $(DNSTAP_LIBS) libdnstap.la
+kdig_LDADD             += $(libdnstap_LIBS)
 khost_CPPFLAGS         += $(DNSTAP_CFLAGS)
-khost_LDADD            += $(DNSTAP_LIBS) libdnstap.la
+khost_LDADD            += $(libdnstap_LIBS)
 endif HAVE_DNSTAP
 
 if ENABLE_XDP
