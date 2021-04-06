@@ -8,10 +8,6 @@ if USE_GNUTLS_MEMSET
 libcontrib_la_CPPFLAGS += $(gnutls_CFLAGS)
 libcontrib_LIBS        += $(gnutls_LIBS)
 endif USE_GNUTLS_MEMSET
-if EMBEDDED_LIBBPF
-libcontrib_la_CPPFLAGS += $(embedded_libbpf_CFLAGS)
-libcontrib_LIBS        += $(embedded_libbpf_LIBS)
-endif EMBEDDED_LIBBPF
 
 EXTRA_DIST += \
 	contrib/licenses/0BSD			\
@@ -79,7 +75,13 @@ libcontrib_la_SOURCES = \
 	contrib/vpool/vpool.h
 
 if EMBEDDED_LIBBPF
-libcontrib_la_SOURCES += \
+noinst_LTLIBRARIES += libembbpf.la
+
+libembbpf_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(embedded_libbpf_CFLAGS)
+libembbpf_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
+libembbpf_LIBS        = libembbpf.la $(embedded_libbpf_LIBS)
+
+libembbpf_la_SOURCES = \
 	contrib/libbpf/include/asm/barrier.h		\
 	contrib/libbpf/include/linux/compiler.h		\
 	contrib/libbpf/include/linux/err.h		\
