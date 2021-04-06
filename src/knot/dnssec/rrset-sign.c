@@ -272,12 +272,13 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	}
 
 	uint32_t sig_incept = dnssec_ctx->now - RRSIG_INCEPT_IN_PAST;
-	uint32_t sig_expire = dnssec_ctx->now + dnssec_ctx->policy->rrsig_lifetime;
+	uint64_t sig_expire = dnssec_ctx->now + dnssec_ctx->policy->rrsig_lifetime;
+	sig_expire = MIN(sig_expire, UINT32_MAX);
 	dnssec_sign_flags_t sign_flags = dnssec_ctx->policy->reproducible_sign ?
 	                                 DNSSEC_SIGN_REPRODUCIBLE : DNSSEC_SIGN_NORMAL;
 
 	int ret = rrsigs_create_rdata(rrsigs, sign_ctx, covered, key, sig_incept,
-	                              sig_expire, sign_flags, mm);
+	                              (uint32_t)sig_expire, sign_flags, mm);
 	if (ret == KNOT_EOK && expires != NULL) {
 		*expires = knot_time_min(*expires, sig_expire);
 	}
