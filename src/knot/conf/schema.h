@@ -181,7 +181,9 @@ enum {
 
 enum {
 	ZONE_DIGEST_NONE             = 0,
-	ZONE_DIGEST_ZONEMD_VERIFY    = 1,
+	ZONE_DIGEST_SHA384           = 1,
+	ZONE_DIGEST_SHA512           = 2,
+	ZONE_DIGEST_ZONEMD_VERIFY    = 255,
 };
 
 enum {

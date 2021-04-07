@@ -14,16 +14,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "knot/zone/digest.h"
-
 #include <stdio.h>
 
+#include "knot/zone/digest.h"
+#include "knot/dnssec/rrset-sign.h"
+#include "knot/updates/zone-update.h"
+#include "contrib/wire_ctx.h"
 #include "libdnssec/digest.h"
-#include "libknot/error.h"
-#include "libknot/packet/rrset-wire.h"
-#include "libknot/rrtype/rrsig.h"
-#include "libknot/rrtype/zonemd.h"
-#include "knot/dnssec/rrset-sign.h" // only knot_synth_rrsig()
+#include "libknot/libknot.h"
 
 #define DIGEST_BUF_MIN 4096
 #define DIGEST_BUF_MAX (40 * 1024 * 1024)
@@ -101,7 +99,8 @@ static int digest_node(zone_node_t *node, void *ctx)
 	return ret;
 }
 
-int zone_contents_digest(const zone_contents_t *contents, int algorithm, uint8_t **out_digest, size_t *out_size)
+int zone_contents_digest(const zone_contents_t *contents, int algorithm,
+                         uint8_t **out_digest, size_t *out_size)
 {
 	if (contents == NULL || out_digest == NULL || out_size == NULL) {
 		return KNOT_EINVAL;
@@ -199,4 +198,81 @@ int zone_contents_digest_verify(const zone_contents_t *contents)
 	}
 
 	return supported == NULL ? KNOT_ENOTSUP : verify_zonemd(supported, contents);
+}
+
+static ptrdiff_t zonemd_hash_offs(void)
+{
+	knot_rdata_t fake = { 0 };
+	return knot_zonemd_digest(&fake) - fake.data;
+}
+
+int zone_update_add_digest(struct zone_update *update, int algorithm, bool placeholder)
+{
+	if (update == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *digest = NULL;
+	size_t dsize = 0;
+
+	knot_rrset_t exists = node_rrset(update->new_cont->apex, KNOT_RRTYPE_ZONEMD);
+	if (placeholder) {
+		if (!knot_rrset_empty(&exists) &&
+		    !check_duplicate_schalg(&exists.rrs, exists.rrs.count,
+		                            KNOT_ZONEMD_SCHEME_SIMPLE, algorithm)) {
+			return KNOT_EOK;
+		}
+	} else {
+		int ret = zone_contents_digest(update->new_cont, algorithm, &digest, &dsize);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		ret = zone_update_remove(update, &exists);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			free(digest);
+			return ret;
+		}
+	}
+
+	knot_rrset_t zonemd, soa = node_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_init(&zonemd, update->new_cont->apex->owner, KNOT_RRTYPE_ZONEMD,
+	                KNOT_CLASS_IN, soa.ttl);
+
+	uint8_t rd[sizeof(zonemd.rrs.rdata->len) + zonemd_hash_offs() + dsize + 1];
+	wire_ctx_t wire = wire_ctx_init(rd, sizeof(rd));
+	wire_ctx_write_u16(&wire, 0); // placeholder for rdata len
+	wire_ctx_write_u32(&wire, knot_soa_serial(soa.rrs.rdata));
+	wire_ctx_write_u8(&wire, KNOT_ZONEMD_SCHEME_SIMPLE);
+	wire_ctx_write_u8(&wire, algorithm);
+	wire_ctx_write(&wire, digest, dsize);
+	if (wire_ctx_offset(&wire) & 1) {
+		wire_ctx_write_u8(&wire, 0);
+	}
+
+	zonemd.rrs.count = 1;
+	zonemd.rrs.rdata = (knot_rdata_t *)rd;
+	zonemd.rrs.size = wire_ctx_offset(&wire);
+	zonemd.rrs.rdata->len = zonemd.rrs.size - sizeof(zonemd.rrs.rdata->len);
+
+	free(digest);
+
+	return zone_update_add(update, &zonemd);
+}
+
+int conf_zonemd_algorithm(const knot_dname_t *zone)
+{
+	conf_val_t val = conf_zone_get(conf(), C_DIGEST, zone);
+	int opt = conf_opt(&val);
+	switch (opt) {
+	case ZONE_DIGEST_NONE:
+	case ZONE_DIGEST_ZONEMD_VERIFY:
+		return 0;
+	case ZONE_DIGEST_SHA384:
+	case ZONE_DIGEST_SHA512:
+		return opt;
+	default:
+		assert(0);
+		return 0;
+	}
 }

@@ -1652,7 +1652,7 @@ Definition of zones served by the server.
      dnssec-signing: BOOL
      dnssec-validation: BOOL
      dnssec-policy: STR
-     digest: none | zonemd-verify
+     digest: none | zonemd-verify | zonemd-sha384 | zonemd-sha512
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
@@ -1953,9 +1953,18 @@ Possible values:
 
 - ``none`` - No handling of zone digests, ZONEMD ignored.
 - ``zonemd-verify`` - Ensure ZONEMD is present in the zone and valid.
+- ``zonemd-sha384`` - Generate ZONEMD using SHA384 algorithm.
+- ``zonemd-sha512`` - Generate ZONEMD using SHA512 algorithm.
 
 .. NOTE::
    Zone digest calculation may take much time and CPU on large zones.
+
+.. WARNING::
+   After this configuration is changed, it's possible that new ZONEMD
+   won't be generated until some other update/change to the zone appears.
+   If DNSSEC is enabled, it's recommended to force re-sign the zone
+   after setting this option to generating ZONEMD, or after changing
+   the algorithm.
 
 *Default:* none
 

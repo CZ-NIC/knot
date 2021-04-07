@@ -160,19 +160,15 @@ int knot_zone_sign_update(zone_update_t *update,
                           knot_time_t *expire_at);
 
 /*!
- * \brief Sign the new SOA record in the Zone Update.
+ * \brief Force re-sign of a RRSet in zone apex.
  *
- * The reason for having this separate is: not updating
- * SOA if everything else is unchanged. So, the procedure is
- * [refresh_DNSKEY_records]->[recreate_nsec]->[sign_zone]->
- * ->[check_unchanged]->[update_soa]->[sign_soa]
+ * \param update        Zone update to be updated.
+ * \param rrtype        Type of the apex RR.
+ * \param zone_keys     Zone keyset.
+ * \param dnssec_ctx    DNSSEC context.
  *
- * \param update     Zone Update with new SOA and to be updated with SOA RRSIG.
- * \param zone_keys  Zone keys.
- * \param dnssec_ctx DNSSEC context.
- *
- * \return Error code, KNOT_EOK if successful.
+ * \return KNOT_E*
  */
-int knot_zone_sign_soa(zone_update_t *update,
-                       const zone_keyset_t *zone_keys,
-                       const kdnssec_ctx_t *dnssec_ctx);
+int knot_zone_sign_apex_rr(zone_update_t *update, uint16_t rrtype,
+                           const zone_keyset_t *zone_keys,
+                           const kdnssec_ctx_t *dnssec_ctx);

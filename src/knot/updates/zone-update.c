@@ -527,6 +527,9 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 	if (update == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
+	if (knot_rrset_empty(rrset)) {
+		return KNOT_EOK;
+	}
 
 	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && rrset->type != KNOT_RRTYPE_SOA) {
 		int ret = changeset_add_removal(&update->change, rrset, CHANGESET_CHECK);
@@ -862,10 +865,22 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		zone_update_clear(update);
 		return KNOT_EOK;
 	}
+
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		ret = commit_incremental(conf, update);
 	} else {
 		ret = commit_full(conf, update);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
+	bool dnssec = conf_bool(&val);
+	int digest_alg = conf_zonemd_algorithm(update->zone->name);
+	if (digest_alg > 0 && !dnssec && // in case of DNSSEC, digest is part of signing routine
+	    ((update->flags & UPDATE_FULL) || zone_update_to(update) != NULL)) {
+		ret = zone_update_add_digest(update, digest_alg, false);
 	}
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -883,7 +898,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	/* Check the zone size. */
-	conf_val_t val = conf_zone_get(conf, C_ZONE_MAX_SIZE, update->zone->name);
+	val = conf_zone_get(conf, C_ZONE_MAX_SIZE, update->zone->name);
 	size_t size_limit = conf_int(&val);
 
 	if (update->new_cont->size > size_limit) {
@@ -930,8 +945,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return ret;
 	}
 
-	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
-	if (conf_bool(&val) && zone_is_slave(conf, update->zone)) {
+	if (dnssec && zone_is_slave(conf, update->zone)) {
 		ret = zone_set_lastsigned_serial(update->zone,
 		                                 zone_contents_serial(update->new_cont));
 		if (ret != KNOT_EOK) {

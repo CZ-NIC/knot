@@ -117,6 +117,8 @@ static const knot_lookup_t serial_policies[] = {
 
 static const knot_lookup_t zone_digest[] = {
 	{ ZONE_DIGEST_NONE,             "none" },
+	{ ZONE_DIGEST_SHA384,           "zonemd-sha384" },
+	{ ZONE_DIGEST_SHA512,           "zonemd-sha512" },
 	{ ZONE_DIGEST_ZONEMD_VERIFY,    "zonemd-verify" },
 	{ 0, NULL }
 };

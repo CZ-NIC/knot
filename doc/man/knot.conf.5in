@@ -1511,7 +1511,7 @@ zone:
     dnssec\-signing: BOOL
     dnssec\-validation: BOOL
     dnssec\-policy: STR
-    digest: none | zonemd\-verify
+    digest: none | zonemd\-verify | zonemd\-sha384 | zonemd\-sha512
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
@@ -1789,12 +1789,27 @@ Possible values:
 \fBnone\fP \- No handling of zone digests, ZONEMD ignored.
 .IP \(bu 2
 \fBzonemd\-verify\fP \- Ensure ZONEMD is present in the zone and valid.
+.IP \(bu 2
+\fBzonemd\-sha384\fP \- Generate ZONEMD using SHA384 algorithm.
+.IP \(bu 2
+\fBzonemd\-sha512\fP \- Generate ZONEMD using SHA512 algorithm.
 .UNINDENT
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
 Zone digest calculation may take much time and CPU on large zones.
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+After this configuration is changed, it\(aqs possible that new ZONEMD
+won\(aqt be generated until some other update/change to the zone appears.
+If DNSSEC is enabled, it\(aqs recommended to force re\-sign the zone
+after setting this option to generating ZONEMD, or after changing
+the algorithm.
 .UNINDENT
 .UNINDENT
 .sp
