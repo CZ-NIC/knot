@@ -26,6 +26,7 @@
 #pragma once
 
 #include <stddef.h>
+#include "contrib/memcheck.h"
 
 /* Memory allocation function prototypes. */
 typedef void* (*knot_mm_alloc_t)(void *ctx, size_t len);

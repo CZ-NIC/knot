@@ -21,6 +21,8 @@
 #include "knot/nameserver/query_module.h"
 #include "knot/zone/serial.h"
 #include "contrib/mempattern.h"
+#include "knot/nameserver/query_states.h"
+#include "knot/nameserver/query_states.h"
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(knotd_qdata_t *qdata, const zone_node_t *node)
@@ -574,70 +576,141 @@ static int solve_additional_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qd
 	}
 }
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+#define HANDLE_ASYNC_STATE(state) \
+    if (state == KNOTD_IN_STATE_ASYNC) { \
+	    return KNOT_STATE_ASYNC; \
+	}
+#else
+#define HANDLE_ASYNC_STATE(state)
+#endif
+
+#define HANDLE_STATE(state) \
+    { \
+		if (state == KNOTD_IN_STATE_TRUNC) { \
+			return KNOT_STATE_DONE; \
+		} else if (state == KNOTD_IN_STATE_ERROR) { \
+			return KNOT_STATE_FAIL; \
+		} \
+		HANDLE_ASYNC_STATE(state) \
+	}
+
 /*! \brief Helper for internet_query repetitive code. */
 #define SOLVE_STEP(solver, state, context) \
 	state = (solver)(state, pkt, qdata, context); \
-	if (state == KNOTD_IN_STATE_TRUNC) { \
-		return KNOT_STATE_DONE; \
-	} else if (state == KNOTD_IN_STATE_ERROR) { \
-		return KNOT_STATE_FAIL; \
-	}
+	HANDLE_STATE(state)
 
-static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata, state_machine_t *state_machine)
 {
-	int state = KNOTD_IN_STATE_BEGIN;
+	int state = state_machine->process_query_next_state_in;
+	HANDLE_STATE(state);
 	struct query_plan *plan = qdata->extra->zone->query_plan;
-	struct query_step *step;
 
 	bool with_dnssec = have_dnssec(qdata);
 
-	/* Resolve PREANSWER. */
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_PREANSWER]) {
-			SOLVE_STEP(step->process, state, step->ctx);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_preanswer) {
+		/* Resolve PREANSWER. */
+		if (plan != NULL) {
+			WALK_LIST_RESUME(state_machine->step, plan->stage[KNOTD_STAGE_PREANSWER]) {
+				SOLVE_STEP(state_machine->step->process, state, state_machine->step->ctx);
+			}
 		}
+
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_preanswer);
 	}
 
 	/* Resolve ANSWER. */
-	knot_pkt_begin(pkt, KNOT_ANSWER);
-	SOLVE_STEP(solve_answer, state, NULL);
-	if (with_dnssec) {
-		SOLVE_STEP(solve_answer_dnssec, state, NULL);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_answer_begin) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_answer_begin);
+		knot_pkt_begin(pkt, KNOT_ANSWER);
 	}
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_ANSWER]) {
-			SOLVE_STEP(step->process, state, step->ctx);
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_answer) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_answer);
+		SOLVE_STEP(solve_answer, state, NULL);
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_answer_dnssec) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_answer_dnssec);
+		if (with_dnssec) {
+			SOLVE_STEP(solve_answer_dnssec, state, NULL);
 		}
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_stage_answer) {
+		if (plan != NULL) {
+			WALK_LIST_RESUME(state_machine->step, plan->stage[KNOTD_STAGE_ANSWER]) {
+				SOLVE_STEP(state_machine->step->process, state, state_machine->step->ctx);
+			}
+		}
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_stage_answer);
 	}
 
 	/* Resolve AUTHORITY. */
-	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	SOLVE_STEP(solve_authority, state, NULL);
-	if (with_dnssec) {
-		SOLVE_STEP(solve_authority_dnssec, state, NULL);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_auth_begin) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_auth_begin);
+		knot_pkt_begin(pkt, KNOT_AUTHORITY);
 	}
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_AUTHORITY]) {
-			SOLVE_STEP(step->process, state, step->ctx);
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_auth) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_auth);
+		SOLVE_STEP(solve_authority, state, NULL);
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_auth_dnssec) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_auth_dnssec);
+		if (with_dnssec) {
+			SOLVE_STEP(solve_authority_dnssec, state, NULL);
 		}
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_stage_auth) {
+		if (plan != NULL) {
+			WALK_LIST_RESUME(state_machine->step, plan->stage[KNOTD_STAGE_AUTHORITY]) {
+				SOLVE_STEP(state_machine->step->process, state, state_machine->step->ctx);
+			}
+		}
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_stage_auth);
 	}
 
 	/* Resolve ADDITIONAL. */
-	knot_pkt_begin(pkt, KNOT_ADDITIONAL);
-	SOLVE_STEP(solve_additional, state, NULL);
-	if (with_dnssec) {
-		SOLVE_STEP(solve_additional_dnssec, state, NULL);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_additional_begin) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_additional_begin);
+		knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 	}
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_ADDITIONAL]) {
-			SOLVE_STEP(step->process, state, step->ctx);
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_additional) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_additional);
+		SOLVE_STEP(solve_additional, state, NULL);
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_aadditional_dnssec) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_solve_aadditional_dnssec);
+		if (with_dnssec) {
+			SOLVE_STEP(solve_additional_dnssec, state, NULL);
 		}
 	}
 
-	/* Write resulting RCODE. */
-	knot_wire_set_rcode(pkt->wire, qdata->rcode);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_stage_aadditional) {
+		if (plan != NULL) {
+			WALK_LIST_RESUME(state_machine->step, plan->stage[KNOTD_STAGE_ADDITIONAL]) {
+				SOLVE_STEP(state_machine->step->process, state, state_machine->step->ctx);
+			}
+		}
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_stage_aadditional);
+	}
 
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_set_error) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, answer_query_state_done_set_error);
+		/* Write resulting RCODE. */
+		knot_wire_set_rcode(pkt->wire, qdata->rcode);
+	}
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	return state == KNOTD_IN_STATE_ASYNC ? KNOT_STATE_ASYNC : KNOT_STATE_DONE;
+#else
 	return KNOT_STATE_DONE;
+#endif
 }
 
 int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
@@ -646,25 +719,31 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		return KNOT_STATE_FAIL;
 	}
 
-	/* Check valid zone, transaction security (optional) and contents. */
-	NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
+	state_machine_t *state = qdata->state;
 
-	/* No applicable ACL, refuse transaction security. */
-	if (knot_pkt_has_tsig(qdata->query)) {
-		/* We have been challenged... */
-		NS_NEED_AUTH(qdata, ACL_ACTION_NONE);
+	STATE_MACHINE_RUN_STATE(state, KNOT_STATE_PRODUCE, KNOT_STATE_ASYNC, internet_process_query_state, internet_process_query_state_done_preprocess) {
+		/* Check valid zone, transaction security (optional) and contents. */
+		NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
 
-		/* Reserve space for TSIG. */
-		int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
-		if (ret != KNOT_EOK) {
-			return KNOT_STATE_FAIL;
+		/* No applicable ACL, refuse transaction security. */
+		if (knot_pkt_has_tsig(qdata->query)) {
+			/* We have been challenged... */
+			NS_NEED_AUTH(qdata, ACL_ACTION_NONE);
+
+			/* Reserve space for TSIG. */
+			int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+			if (ret != KNOT_EOK) {
+				return KNOT_STATE_FAIL;
+			}
 		}
+
+		NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
+
+		/* Get answer to QNAME. */
+		qdata->name = knot_pkt_qname(qdata->query);
+
+		STATE_MACHINE_COMPLETED_STATE(state, KNOT_STATE_PRODUCE, KNOT_STATE_ASYNC, internet_process_query_state, internet_process_query_state_done_preprocess);
 	}
 
-	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
-
-	/* Get answer to QNAME. */
-	qdata->name = knot_pkt_qname(qdata->query);
-
-	return answer_query(pkt, qdata);
+	return answer_query(pkt, qdata, state);
 }

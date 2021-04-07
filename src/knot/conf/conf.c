@@ -1195,6 +1195,52 @@ size_t conf_udp_threads_txn(
 	return workers;
 }
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+size_t conf_udp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_UDP_ASYNC_REQS);
+	int64_t reqs = conf_int(&val);
+	if (reqs == YP_NIL) {
+		return 10000;
+	}
+
+	return reqs;
+}
+
+size_t conf_tcp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_ASYNC_REQS);
+	int64_t reqs = conf_int(&val);
+	if (reqs == YP_NIL) {
+		return 10000;
+	}
+
+	return reqs;
+}
+
+size_t conf_xdp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	if (lisxdp_val.code == KNOT_EOK) {
+		conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_XDP_ASYNC_REQS);
+		int64_t reqs = conf_int(&val);
+		if (reqs == YP_NIL) {
+			return 10000;
+		}
+
+		return reqs;
+	} else {
+		return 0;
+	}
+}
+#endif
+
 size_t conf_tcp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)

@@ -39,6 +39,7 @@ libcontrib_la_SOURCES = \
 	contrib/getline.c			\
 	contrib/getline.h			\
 	contrib/macros.h			\
+        contrib/memcheck.h                      \
 	contrib/mempattern.c			\
 	contrib/mempattern.h			\
 	contrib/net.c				\

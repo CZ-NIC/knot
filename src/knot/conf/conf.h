@@ -722,6 +722,62 @@ static inline size_t conf_udp_threads(
 	return conf_udp_threads_txn(conf, &conf->read_txn);
 }
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+/*!
+ * Gets the configured number of UDP async requests.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return Number of threads.
+ */
+size_t conf_udp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline size_t conf_udp_async_req(
+	conf_t *conf)
+{
+	return conf_udp_async_req_txn(conf, &conf->read_txn);
+}
+
+/*!
+ * Gets the configured number of TCP async requests.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return Number of threads.
+ */
+size_t conf_tcp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline size_t conf_tcp_async_req(
+	conf_t *conf)
+{
+	return conf_tcp_async_req_txn(conf, &conf->read_txn);
+}
+
+/*!
+ * Gets the configured number of XDP async requests.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return Number of threads.
+ */
+size_t conf_xdp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline size_t conf_xdp_async_req(
+	conf_t *conf)
+{
+	return conf_xdp_async_req_txn(conf, &conf->read_txn);
+}
+#endif
+
 /*!
  * Gets the configured number of TCP threads.
  *

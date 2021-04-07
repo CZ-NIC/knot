@@ -94,6 +94,7 @@ libknotd_la_SOURCES = \
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\
 	knot/nameserver/process_query.h		\
+        knot/nameserver/query_states.h          \
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/tsig_ctx.c		\
@@ -135,6 +136,8 @@ libknotd_la_SOURCES = \
 	knot/journal/serialization.h		\
 	knot/server/server.c			\
 	knot/server/server.h			\
+        knot/server/network-handler.h           \
+        knot/server/network-handler.c           \
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
@@ -190,6 +193,10 @@ libknotd_la_SOURCES = \
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
+if USE_LIBATOMIC
+libknotd_la_SOURCES += knot/include/lstack.h knot/nameserver/lstack.c
+endif USE_LIBATOMIC
+
 if HAVE_DAEMON
 noinst_LTLIBRARIES += libknotd.la
 pkgconfig_DATA     += knotd.pc
@@ -212,3 +219,4 @@ include $(srcdir)/knot/modules/rrl/Makefile.inc
 include $(srcdir)/knot/modules/stats/Makefile.inc
 include $(srcdir)/knot/modules/synthrecord/Makefile.inc
 include $(srcdir)/knot/modules/whoami/Makefile.inc
+include $(srcdir)/knot/modules/delay/Makefile.inc

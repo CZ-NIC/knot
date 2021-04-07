@@ -101,6 +101,43 @@ AC_ARG_WITH([moduledir],
 AC_SUBST(module_instdir)
 AC_SUBST(module_dir)
 
+AC_ARG_WITH([memcheck],
+        AC_HELP_STRING([--with-memcheck=yes|no|memcheck_include_folder], [Build with memcheck api. If memcheck.h is not in path, define include path in CFLAGS or pass the memcheck.h include folder for this parameter. [default=no]]),
+        [with_memcheck=$withval], [with_memcheck=no])
+
+AS_CASE([$with_memcheck],
+    [no], [],
+    [yes|*], [
+      AS_IF([test "x$with_memcheck" != "xyes"], [AC_SUBST(CPPFLAGS, "$CPPFLAGS -I$with_memcheck")])
+      AC_CHECK_HEADER([memcheck.h], [], [AC_MSG_ERROR([--with-memcheck requries memcheck.h header files. If memcheck.h is not in path, define include path in CFLAGS or pass the memcheck.h include folder for --with-memcheck parameter.])])
+      AC_DEFINE_UNQUOTED([KNOT_ENABLE_MEMCHECK],[1], [Memcheck enabled for this build (1)])
+      with_memcheck=yes
+    ])
+    
+
+AC_ARG_WITH([udp-max-size],
+        AC_HELP_STRING([--with-udp-max-size=size], [Size of UDP request/response max size supported. [default=65535]]),
+        [udp_max_size=$withval], [udp_max_size=65535])
+
+AC_DEFINE_UNQUOTED([KNOT_MAX_UDP_REQRESP_SIZE_BYTES],[$udp_max_size], [Value of udp max message size])
+
+# Enable async processing
+AC_SEARCH_LIBS([__atomic_compare_exchange_16], [atomic], [], [have_atomic=0])
+AM_CONDITIONAL([USE_LIBATOMIC],[test "x$have_atomic" != "x0"])
+
+AC_ARG_ENABLE([async-query],
+    AS_HELP_STRING([--enable-async-query=yes|no], [Enable asynchronous query handling [default=no]]), [], [enable_async_query=no])
+
+AS_CASE([$enable_async_query],
+   [yes],[
+     AC_DEFINE([ENABLE_ASYNC_QUERY_HANDLING], [], [Enable support for handling queries asynchronously])
+     AS_IF([test "x$have_atomic" = "x0"],
+       [AC_MSG_ERROR([Async query support requires atomic library, which is not found])])
+   ],
+   [no],[],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-async-query.]
+ )])
+
 # Build Knot DNS daemon
 AC_ARG_ENABLE([daemon],
     AS_HELP_STRING([--disable-daemon], [Don't build Knot DNS main daemon]), [], [enable_daemon=yes])
@@ -376,6 +413,7 @@ doc_modules=""
 KNOT_MODULE([cookies],     "yes")
 KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
 KNOT_MODULE([dnstap],      "no")
+KNOT_MODULE([delay],       "no")
 KNOT_MODULE([geoip],       "yes")
 KNOT_MODULE([noudp],       "yes")
 KNOT_MODULE([onlinesign],  "yes", "non-shareable")
@@ -384,6 +422,12 @@ KNOT_MODULE([rrl],         "yes")
 KNOT_MODULE([stats],       "yes")
 KNOT_MODULE([synthrecord], "yes")
 KNOT_MODULE([whoami],      "yes")
+
+AS_IF([test "x$STATIC_MODULE_delay" = "xyes" -o "x$SHARED_MODULE_delay" = "xyes"],[
+    AS_IF([test "x$enable_async_query" != "xyes"], [
+      AC_MSG_ERROR([delay module requires async query support in knot. Enable with --enable-async-query])
+    ])
+])
 
 AC_SUBST([STATIC_MODULES_DECLARS], [$(printf "$static_modules_declars")])
 AM_SUBST_NOTMAKE([STATIC_MODULES_DECLARS])
@@ -738,6 +782,8 @@ result_msg_base="  Knot DNS $VERSION
     Storage dir: ${storage_dir}
     Config dir:  ${config_dir}
     Module dir:  ${module_dir}
+    With valgrind memcheck: ${with_memcheck}
+    UDP Max Size: ${udp_max_size}
 
     Static modules: ${static_modules}
     Shared modules: ${shared_modules}
@@ -750,6 +796,7 @@ result_msg_base="  Knot DNS $VERSION
     Use recvmmsg:           ${enable_recvmmsg}
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
     XDP support:            ${enable_xdp}
+    Async Query Handling:   ${enable_async_query}
     Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}

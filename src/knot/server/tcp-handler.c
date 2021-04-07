@@ -30,6 +30,7 @@
 #endif // HAVE_SYS_UIO_H
 
 #include "knot/server/server.h"
+#include "knot/server/network-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/process_query.h"
@@ -43,14 +44,12 @@
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
-	knot_layer_t layer;              /*!< Query processing layer. */
-	server_t *server;                /*!< Name server structure. */
-	struct iovec iov[2];             /*!< TX/RX buffers. */
+	network_context_t network_ctx;   /*!< Network context to handle query. */
+	network_request_t *req;          /*!< Request currently in progress. */
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
-	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
@@ -95,16 +94,6 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	return FDSET_SWEEP;
 }
 
-static bool tcp_active_state(int state)
-{
-	return (state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL);
-}
-
-static bool tcp_send_state(int state)
-{
-	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
-}
-
 static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, int ret)
 {
 	/* Don't log ECONN as it usually means client closed the connection. */
@@ -146,73 +135,6 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 	return fds->n;
 }
 
-static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec *tx)
-{
-	/* Get peer name. */
-	struct sockaddr_storage ss;
-	socklen_t addrlen = sizeof(struct sockaddr_storage);
-	if (getpeername(fd, (struct sockaddr *)&ss, &addrlen) != 0) {
-		return KNOT_EADDRNOTAVAIL;
-	}
-
-	/* Create query processing parameter. */
-	knotd_qdata_params_t params = {
-		.remote = &ss,
-		.socket = fd,
-		.server = tcp->server,
-		.thread_id = tcp->thread_id
-	};
-
-	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
-	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
-
-	/* Receive data. */
-	int recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout);
-	if (recv > 0) {
-		rx->iov_len = recv;
-	} else {
-		tcp_log_error(&ss, "receive", recv);
-		return KNOT_EOF;
-	}
-
-	/* Initialize processing layer. */
-	knot_layer_begin(&tcp->layer, &params);
-
-	/* Create packets. */
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, tcp->layer.mm);
-
-	/* Input packet. */
-	int ret = knot_pkt_parse(query, 0);
-	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
-		query->parsed--; // artificially decreasing "parsed" leads to FORMERR
-	}
-	knot_layer_consume(&tcp->layer, query);
-
-	/* Resolve until NOOP or finished. */
-	while (tcp_active_state(tcp->layer.state)) {
-		knot_layer_produce(&tcp->layer, ans);
-		/* Send, if response generation passed and wasn't ignored. */
-		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
-			int sent = net_dns_tcp_send(fd, ans->wire, ans->size,
-			                            tcp->io_timeout);
-			if (sent != ans->size) {
-				tcp_log_error(&ss, "send", sent);
-				ret = KNOT_EOF;
-				break;
-			}
-		}
-	}
-
-	/* Reset after processing. */
-	knot_layer_finish(&tcp->layer);
-
-	/* Flush per-query memory (including query and answer packets). */
-	mp_flush(tcp->layer.mm->ctx);
-
-	return ret;
-}
-
 static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
 {
 	/* Accept client. */
@@ -233,12 +155,39 @@ static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
 
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 {
+	struct iovec *in = request_get_iovec(tcp->req, RX);
+	struct iovec *out = request_get_iovec(tcp->req, TX);
+	in->iov_len = KNOT_WIRE_MAX_PKTSIZE;
+	out->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	int fd = tcp->set.pfd[i].fd;
-	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
+	socklen_t addrlen = sizeof(struct sockaddr_storage);
+	network_request_tcp_t *tcp_req = tcp_req_from_req(tcp->req);
+	if (getpeername(fd, (struct sockaddr *)&tcp_req->addr, &addrlen) != 0) {
+		return KNOT_EADDRNOTAVAIL;
+	}
+
+	int recv = net_dns_tcp_recv(fd, in->iov_base, in->iov_len, tcp->io_timeout);
+	if (recv > 0) {
+		in->iov_len = recv;
+	} else {
+		tcp_log_error(&tcp_req->addr, "receive", recv);
+		return KNOT_EOF;
+	}
+
+	tcp->req->fd = fd;
+	int ret = network_handle(&tcp->network_ctx, tcp->req, NULL);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
 	}
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	if (tcp->req->flag & network_request_flag_is_async) {
+		/* Save the current request in fd's context and allocate new request for others */
+		fdset_set_ctx(&tcp->set, i, tcp->req);
+		tcp->req = network_allocate_request(&tcp->network_ctx, NULL, network_request_flag_tcp_buff);
+	}
+#endif
 
 	return ret;
 }
@@ -260,9 +209,23 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	/* Mark the time of last poll call. */
 	tcp->last_poll_time = time_now();
 
+	if (tcp->req == NULL) {
+		/* Previous req went async and we could not allocate new.
+		 * try allocating now, in case any req is freed by others */
+		tcp->req = network_allocate_request(&tcp->network_ctx, NULL, network_request_flag_tcp_buff);
+	}
+
 	/* Process events. */
 	while (nfds > 0 && i < set->n) {
 		bool should_close = false;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		if (set->pfd[i].fd == network_context_get_async_notify_handle(&tcp->network_ctx)) {
+			if (set->pfd[i].revents & POLLIN) {
+				network_handle_async_completed_queries(&tcp->network_ctx);
+				set->pfd[i].revents = 0;
+			}
+		} else
+#endif
 		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
 			should_close = (i >= tcp->client_threshold);
 			--nfds;
@@ -275,7 +238,11 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
-			} else if (tcp_event_serve(tcp, i) != KNOT_EOK) {
+
+			} else if (tcp->req  /* if request is not allocated, we can't handle incoming request, so skip and try next time around */
+				&& (fdset_get_ctx(set, i) == NULL) /* we are not async processing other request from same client */
+				&& tcp_event_serve(tcp, i) != KNOT_EOK) {
+
 				should_close = true;
 			}
 			--nfds;
@@ -283,12 +250,51 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+			network_request_t *pending_req = fdset_get_ctx(set, i);
+			if (pending_req) {
+				pending_req->flag |= network_request_flag_is_cancelled;
+				pending_req->fd = -1;
+			}
+#endif
 			close(set->pfd[i].fd);
 			fdset_remove(set, i);
 		} else {
 			++i;
 		}
 	}
+}
+
+static int tcp_send_response(struct network_context *ctx, network_request_t *req)
+{
+	struct iovec *out = request_get_iovec(req, TX);
+	tcp_context_t *tcp_ctx = container_of(ctx, tcp_context_t, network_ctx);
+	int sent = net_dns_tcp_send(req->fd, out->iov_base, req->ans->size,
+							tcp_ctx->io_timeout);
+
+	if (sent != req->ans->size) {
+		network_request_tcp_t *tcp_req = tcp_req_from_req(req);
+		tcp_log_error(&tcp_req->addr, "send", sent);
+	} else {
+		/* Reset watchdog so connection gets new idle timeout */
+		fdset_set_watchdog_on_fd(&tcp_ctx->set, req->fd, tcp_ctx->idle_timeout);
+	}
+	return sent;
+}
+
+static int tcp_async_complete(struct network_context *ctx, network_request_t *req)
+{
+	int ret = KNOT_EOK;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	if (! (req->flag & network_request_flag_is_cancelled) ) { /* if a request is cancelled, the fdset context is cleaned up as part of cancellation */
+		tcp_context_t *tcp_ctx = container_of(ctx, tcp_context_t, network_ctx);
+		fdset_set_ctx_on_fd(&tcp_ctx->set, req->fd, NULL);
+	}
+
+	network_free_request(ctx, NULL, req);
+#endif
+
+	return ret;
 }
 
 int tcp_master(dthread_t *thread)
@@ -313,30 +319,23 @@ int tcp_master(dthread_t *thread)
 
 	int ret = KNOT_EOK;
 
-	/* Create big enough memory cushion. */
-	knot_mm_t mm;
-	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
-
 	/* Create TCP answering context. */
 	tcp_context_t tcp = {
-		.server = handler->server,
 		.is_throttled = false,
-		.thread_id = thread_id,
 	};
-	knot_layer_init(&tcp.layer, &mm, process_query_layer());
+
+	if (network_context_initialize(&tcp.network_ctx, handler->server, thread_id,
+									0, response_handler_type_intermediate, tcp_send_response, tcp_async_complete) != KNOT_EOK) {
+		goto finish;
+	}
+
+	tcp.req = network_allocate_request(&tcp.network_ctx, NULL, network_request_flag_tcp_buff);
+	if (tcp.req == NULL) {
+		goto finish;
+	}
 
 	/* Prepare initial buffer for listening and bound sockets. */
 	fdset_init(&tcp.set, FDSET_INIT_SIZE);
-
-	/* Create iovec abstraction. */
-	for (unsigned i = 0; i < 2; ++i) {
-		tcp.iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
-		tcp.iov[i].iov_base = malloc(tcp.iov[i].iov_len);
-		if (tcp.iov[i].iov_base == NULL) {
-			ret = KNOT_ENOMEM;
-			goto finish;
-		}
-	}
 
 	/* Initialize sweep interval and TCP configuration. */
 	struct timespec next_sweep;
@@ -350,6 +349,10 @@ int tcp_master(dthread_t *thread)
 	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	fdset_add(&tcp.set, network_context_get_async_notify_handle(&tcp.network_ctx), POLLIN, NULL);
+#endif
 
 	for (;;) {
 		/* Check for cancellation. */
@@ -369,9 +372,10 @@ int tcp_master(dthread_t *thread)
 	}
 
 finish:
-	free(tcp.iov[0].iov_base);
-	free(tcp.iov[1].iov_base);
-	mp_delete(mm.ctx);
+	if (tcp.req == NULL) {
+		network_free_request(&tcp.network_ctx, NULL, tcp.req);
+	}
+
 	fdset_clear(&tcp.set);
 
 	return ret;

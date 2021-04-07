@@ -72,6 +72,39 @@ int fdset_clear(fdset_t* set);
 int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx);
 
 /*!
+ * \brief Clear the context for the given fd
+ *
+ * \param set Target set.
+ * \param fd Handle whose context needs to be cancelled.
+ * \param ctx Context (optional).
+ *
+ * \retval index of the fd if successful.
+ * \retval -1 on errors.
+ */
+int fdset_set_ctx_on_fd(fdset_t *set, int fd, void *ctx);
+
+/*!
+ * \brief Set the context on the descriptor at i.
+ *
+ * \param set Target set.
+ * \param i Index to set ctx at.
+ *
+ * \retval index of the added fd if successful.
+ * \retval -1 on errors.
+ */
+int fdset_set_ctx(fdset_t *set, unsigned i, void *ctx);
+
+/*!
+ * \brief Get the context on the descriptor at i.
+ *
+ * \param set Target set.
+ * \param i Index to get ctx at.
+ *
+ * \retval context value.
+ */
+void* fdset_get_ctx(fdset_t *set, unsigned i);
+
+/*!
  * \brief Remove file descriptor from watched set.
  *
  * \param set Target set.
@@ -99,6 +132,24 @@ int fdset_remove(fdset_t *set, unsigned i);
  * \retval -1 on errors.
  */
 int fdset_set_watchdog(fdset_t* set, int i, int interval);
+
+/*!
+ * \brief Set file descriptor watchdog interval based on fd.
+ *
+ * Set time (interval from now) after which the associated file descriptor
+ * should be sweeped (see fdset_sweep). Good example is setting a grace period
+ * of N seconds between socket activity. If socket is not active within
+ * <now, now + interval>, it is sweeped and potentially closed.
+ *
+ * \param set Target set.
+ * \param fd File descriptor.
+ * \param interval Allowed interval without activity (seconds).
+ *                 -1 disables watchdog timer
+ *
+ * \retval 0 if successful.
+ * \retval -1 on errors.
+ */
+int fdset_set_watchdog_on_fd(fdset_t* set, int fd, int interval);
 
 /*!
  * \brief Sweep file descriptors with exceeding inactivity period.

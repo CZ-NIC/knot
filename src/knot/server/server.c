@@ -31,6 +31,7 @@
 #include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/journal/journal_basic.h"
 #include "knot/server/server.h"
+#include "knot/server/network-handler.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/zone/timers.h"
@@ -1008,7 +1009,15 @@ static int set_handler(server_t *server, int index, unsigned size, runnable_t ru
 
 static int configure_threads(conf_t *conf, server_t *server)
 {
-	int ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
+	int ret;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	ret = network_initialize_async_handling(conf->cache.udp_srv_async_reqs, conf->cache.tcp_srv_async_reqs, conf->cache.xdp_srv_async_reqs);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+#endif
+
+	ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

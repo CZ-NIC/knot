@@ -120,6 +120,11 @@ typedef struct {
 		size_t srv_xdp_threads;
 		size_t srv_bg_threads;
 		size_t srv_tcp_max_clients;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		size_t udp_srv_async_reqs;
+		size_t tcp_srv_async_reqs;
+		size_t xdp_srv_async_reqs;
+#endif
 		int ctl_timeout;
 		conf_val_t srv_nsid;
 		bool srv_ecs;

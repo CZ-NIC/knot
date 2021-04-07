@@ -911,6 +911,11 @@ static void test_conf_io_list(void)
 	      "server.socket-affinity\n"
 	      "server.udp-workers\n"
 	      "server.tcp-workers\n"
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		  "server.udp-async-req\n"
+		  "server.tcp-async-req\n"
+		  "server.xdp-async-req\n"
+#endif
 	      "server.background-workers\n"
 	      "server.udp-max-payload\n"
 	      "server.udp-max-payload-ipv4\n"
@@ -934,6 +939,11 @@ static const yp_item_t desc_server[] = {
 	{ C_SOCKET_AFFINITY,	  YP_TBOOL, YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	{ C_UDP_ASYNC_REQS,       YP_TINT,  YP_VNONE },
+	{ C_TCP_ASYNC_REQS,       YP_TINT,  YP_VNONE },
+	{ C_XDP_ASYNC_REQS,       YP_TINT,  YP_VNONE },
+#endif
 	{ C_BG_WORKERS,		  YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD,      YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD_IPV4, YP_TINT,  YP_VNONE },

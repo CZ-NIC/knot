@@ -124,6 +124,11 @@
 #define C_UDP_MAX_PAYLOAD_IPV4	"\x14""udp-max-payload-ipv4"
 #define C_UDP_MAX_PAYLOAD_IPV6	"\x14""udp-max-payload-ipv6"
 #define C_UDP_WORKERS		"\x0B""udp-workers"
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+#define C_UDP_ASYNC_REQS    "\x0d""udp-async-req"
+#define C_TCP_ASYNC_REQS    "\x0d""tcp-async-req"
+#define C_XDP_ASYNC_REQS    "\x0d""xdp-async-req"
+#endif
 #define C_UPDATE_OWNER		"\x0C""update-owner"
 #define C_UPDATE_OWNER_MATCH	"\x12""update-owner-match"
 #define C_UPDATE_OWNER_NAME	"\x11""update-owner-name"

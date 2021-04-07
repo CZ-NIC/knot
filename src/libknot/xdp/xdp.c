@@ -31,6 +31,8 @@
 #include "libknot/xdp/bpf-user.h"
 #include "libknot/xdp/xdp.h"
 #include "contrib/macros.h"
+#include "contrib/asan.h"
+#include "contrib/memcheck.h"
 
 /* Don't fragment flag. */
 #define	IP_DF 0x4000
@@ -314,6 +316,11 @@ int knot_xdp_send_alloc(knot_xdp_socket_t *socket, bool ipv6, knot_xdp_msg_t *ou
 		return KNOT_ENOMEM;
 	}
 
+	/* Ideally we should declare the memory not valid when we free the tx frame.
+	 * But tx is added to pool with actual data and bpf after sending makes the data invalid.
+	 * Since no way to intercept and declare invalid after sent, let us at least reset the data validity before reusing the buffer */
+	VALGRIND_MAKE_MEM_UNDEFINED(uframe, sizeof(struct umem_frame));
+
 	memset(out, 0, sizeof(*out));
 
 	out->payload.iov_base = ipv6 ? uframe->udpv6.data : uframe->udpv4.data;
@@ -573,9 +580,19 @@ static void rx_desc(knot_xdp_socket_t *socket, const struct xdp_desc *desc,
 	const struct iphdr *ip4 = NULL;
 	const struct ipv6hdr *ip6 = NULL;
 	const struct udphdr *udp = NULL;
+	VALGRIND_MAKE_MEM_DEFINED(uframe_p, desc->len);
+
+	if (desc->len <= sizeof(*eth)) {
+		assert(0);
+		msg->payload.iov_len  = 0; // not enough data to be a valid eth packet.
+	}
 
 	switch (eth->h_proto) {
 	case __constant_htons(ETH_P_IP):
+		if (desc->len <= KNOT_XDP_PAYLOAD_OFFSET4) {
+			assert(0);
+			msg->payload.iov_len  = 0; // not enough data to be a valid ipv4 udp request.
+		}
 		ip4 = (struct iphdr *)(uframe_p + sizeof(struct ethhdr));
 		// Next conditions are ensured by the BPF filter.
 		assert(ip4->version == 4);
@@ -587,6 +604,10 @@ static void rx_desc(knot_xdp_socket_t *socket, const struct xdp_desc *desc,
 		                        ip4->ihl * 4);
 		break;
 	case __constant_htons(ETH_P_IPV6):
+		if (desc->len <= KNOT_XDP_PAYLOAD_OFFSET6) {
+			assert(0);
+			msg->payload.iov_len  = 0; // not enough data to be a valid ipv6 udp request.
+		}
 		ip6 = (struct ipv6hdr *)(uframe_p + sizeof(struct ethhdr));
 		// Next conditions are ensured by the BPF filter.
 		assert(ip6->version == 6);
@@ -676,8 +697,10 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	assert(reserved == count);
 
 	for (uint32_t i = 0; i < reserved; ++i) {
-		uint8_t *uframe_p = msg_uframe_ptr(socket, &msgs[i],
-		                                   msgs[i].ip_from.sin6_family == AF_INET6);
+		bool ipv6 = msgs[i].ip_from.sin6_family == AF_INET6;
+		/* Since memory buffer is reused, inform valgrind that data in the buffer is not valid even though app has set the value at somepoint. */
+		VALGRIND_MAKE_MEM_UNDEFINED((uint8_t*)msgs[i].payload.iov_base - (ipv6 ? KNOT_XDP_PAYLOAD_OFFSET6 : KNOT_XDP_PAYLOAD_OFFSET4), FRAME_SIZE);
+		uint8_t *uframe_p = msg_uframe_ptr(socket, &msgs[i], ipv6);
 		uint64_t offset = uframe_p - umem->frames->bytes;
 		*xsk_ring_prod__fill_addr(fq, idx++) = offset;
 	}

@@ -29,6 +29,18 @@
 #define RECVMMSG_BATCHLEN 10 /*!< Default recvmmsg() batch size. */
 #define XDP_BATCHLEN      32
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+/*!
+ * \brief UDP handler initializer.
+ *
+ * \param async_reqs number of async requests.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL invalid parameters.
+ */
+int udp_start(size_t async_reqs);
+#endif
+
 /*!
  * \brief UDP handler thread runnable.
  *

@@ -162,6 +162,11 @@ static const yp_item_t desc_server[] = {
 	{ C_PIDFILE,              YP_TSTR,  YP_VSTR = { "knot.pid" } },
 	{ C_UDP_WORKERS,          YP_TINT,  YP_VINT = { 1, 255, YP_NIL } },
 	{ C_TCP_WORKERS,          YP_TINT,  YP_VINT = { 1, 255, YP_NIL } },
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	{ C_UDP_ASYNC_REQS,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 16 * 1024 } },
+	{ C_TCP_ASYNC_REQS,       YP_TINT,  YP_VINT = { 0, INT32_MAX,  2 * 1024 } },
+	{ C_XDP_ASYNC_REQS,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 16 * 1024 } },
+#endif
 	{ C_BG_WORKERS,           YP_TINT,  YP_VINT = { 1, 255, YP_NIL } },
 	{ C_ASYNC_START,          YP_TBOOL, YP_VNONE },
 	{ C_TCP_IDLE_TIMEOUT,     YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },

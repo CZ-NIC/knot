@@ -34,7 +34,14 @@ typedef enum {
 	KNOT_STATE_DONE,       //!< Finished.
 	KNOT_STATE_FAIL,       //!< Error.
 	KNOT_STATE_FINAL,      //!< Finished and finalized.
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	KNOT_STATE_ASYNC,      //!< The request needs to be async handled
+#endif
 } knot_layer_state_t;
+
+
+#define knot_layer_active_state(state) ((state) == KNOT_STATE_PRODUCE || (state) == KNOT_STATE_FAIL)
+#define knot_layer_send_state(state)   ((state) != KNOT_STATE_FAIL && (state) != KNOT_STATE_NOOP)
 
 typedef struct knot_layer_api knot_layer_api_t;
 
@@ -55,6 +62,10 @@ struct knot_layer_api {
 	int (*finish)(knot_layer_t *ctx);
 	int (*consume)(knot_layer_t *ctx, knot_pkt_t *pkt);
 	int (*produce)(knot_layer_t *ctx, knot_pkt_t *pkt);
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	int (*get_async_state)(knot_layer_t *ctx, knot_pkt_t *pkt, int layer_state);
+	int (*set_async_state)(knot_layer_t *ctx, knot_pkt_t *pkt, int layer_state);
+#endif
 };
 
 /*! \brief Helper for conditional layer call. */
@@ -133,3 +144,28 @@ inline static void knot_layer_produce(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	LAYER_CALL(ctx, produce, pkt);
 }
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+/*!
+ * \brief Cancel the request from layer.
+ *
+ * \param ctx Layer context.
+ * \param pkt Data packet.
+ */
+inline static void knot_layer_get_async_state(knot_layer_t *ctx, knot_pkt_t *pkt)
+{
+	LAYER_CALL(ctx, get_async_state, pkt, ctx->state);
+}
+
+/*!
+ * \brief Cancel the request from layer.
+ *
+ * \param ctx Layer context.
+ * \param pkt Data packet.
+ * \param state State to be set.
+ */
+inline static void knot_layer_set_async_state(knot_layer_t *ctx, knot_pkt_t *pkt, int state)
+{
+	LAYER_CALL(ctx, set_async_state, pkt, ctx->state);
+}
+#endif

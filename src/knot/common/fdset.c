@@ -54,7 +54,7 @@ int fdset_clear(fdset_t* set)
 		return KNOT_EINVAL;
 	}
 
-	free(set->ctx);
+	// free(set->ctx); // Currently not used in code. Changing the behavior to not free, so we can have context whose life is externally managed.
 	free(set->pfd);
 	free(set->timeout);
 	memset(set, 0, sizeof(fdset_t));
@@ -82,6 +82,38 @@ int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx)
 	/* Return index to this descriptor. */
 	return i;
 }
+
+int fdset_set_ctx(fdset_t *set, unsigned i, void *ctx)
+{
+	if (i < set->n) {
+		set->ctx[i] = ctx;
+		return i;
+	} else {
+		return -1;
+	}
+}
+
+int fdset_set_ctx_on_fd(fdset_t *set, int fd, void *ctx)
+{
+	for (unsigned i = 0; i < set->n; i++) {
+		if (set->pfd[i].fd == fd) {
+			set->ctx[i] = ctx;
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+void* fdset_get_ctx(fdset_t *set, unsigned i)
+{
+	if (i < set->n) {
+		return set->ctx[i];
+	} else {
+		return NULL;
+	}
+}
+
 
 int fdset_remove(fdset_t *set, unsigned i)
 {
@@ -121,6 +153,21 @@ int fdset_set_watchdog(fdset_t* set, int i, int interval)
 
 	set->timeout[i] = now.tv_sec + interval; /* Only seconds precision. */
 	return KNOT_EOK;
+}
+
+int fdset_set_watchdog_on_fd(fdset_t* set, int fd, int interval)
+{
+	if (set == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (unsigned i = 0; i < set-> n; i++) {
+		if (fd == set->pfd[i].fd) {
+			return fdset_set_watchdog(set, i, interval);
+		}
+	}
+
+	return KNOT_EINVAL;
 }
 
 int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data)

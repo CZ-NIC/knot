@@ -397,17 +397,21 @@ typedef enum {
 } knotd_query_flag_t;
 
 /*! Query processing data context parameters. */
-typedef struct {
+typedef struct knotd_qdata_params {
 	knotd_query_flag_t flags;              /*!< Current query flgas. */
 	const struct sockaddr_storage *remote; /*!< Current remote address. */
 	int socket;                            /*!< Current network socket. */
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
 	struct knot_xdp_msg *xdp_msg;          /*!< Possible XDP message context. */
+	void *req;                             /*!< Request this param belongs to. */
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	int (*layer_async_operation_completed)(struct knotd_qdata_params *params); /*!< handler for async operation completion at layer */
+#endif
 } knotd_qdata_params_t;
 
 /*! Query processing data context. */
-typedef struct {
+typedef struct knotd_qdata {
 	knot_pkt_t *query;              /*!< Query to be solved. */
 	knotd_query_type_t type;        /*!< Query packet type. */
 	const knot_dname_t *name;       /*!< Currently processed name. */
@@ -423,6 +427,11 @@ typedef struct {
 	knotd_qdata_params_t *params; /*!< Low-level processing parameters. */
 
 	struct knotd_qdata_extra *extra; /*!< Private items (process_query.h). */
+	void *state;                     /*!< State of the query processor. */
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	int (*module_async_operation_completed)(struct knotd_qdata *query, int state); /*!< handler for completinig the query async in module */
+	int (*module_async_operation_completed_in)(struct knotd_qdata *query, int state); /*!< handler for completinig the query in async in module */
+#endif
 } knotd_qdata_t;
 
 /*!
@@ -462,6 +471,9 @@ typedef enum {
 	KNOTD_IN_STATE_FOLLOW, /*!< Resolution not complete (CNAME/DNAME chain). */
 	KNOTD_IN_STATE_TRUNC,  /*!< Finished, packet size limit encountered. */
 	KNOTD_IN_STATE_ERROR,  /*!< Resolution failed. */
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	KNOTD_IN_STATE_ASYNC,      //!< The request needs to be async handled
+#endif
 } knotd_in_state_t;
 
 /*! Query module processing stages. */

@@ -129,6 +129,11 @@ static void init_cache(
 	static size_t running_tcp_threads;
 	static size_t running_xdp_threads;
 	static size_t running_bg_threads;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	static size_t udp_async_reqs;
+	static size_t tcp_async_reqs;
+	static size_t xdp_async_reqs;
+#endif
 
 	if (first_init || reinit_cache) {
 		running_tcp_reuseport = conf_tcp_reuseport(conf);
@@ -137,7 +142,11 @@ static void init_cache(
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
 		running_bg_threads = conf_bg_threads(conf);
-
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		udp_async_reqs = conf_udp_async_req(conf);
+		tcp_async_reqs = conf_tcp_async_req(conf);
+		xdp_async_reqs = conf_xdp_async_req(conf);
+#endif
 		first_init = false;
 	}
 
@@ -194,6 +203,12 @@ static void init_cache(
 	conf->cache.srv_xdp_threads = running_xdp_threads;
 
 	conf->cache.srv_bg_threads = running_bg_threads;
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	conf->cache.udp_srv_async_reqs = udp_async_reqs;
+	conf->cache.tcp_srv_async_reqs = tcp_async_reqs;
+	conf->cache.xdp_srv_async_reqs = xdp_async_reqs;
+#endif
 
 	conf->cache.srv_tcp_max_clients = conf_tcp_max_clients(conf);
 
