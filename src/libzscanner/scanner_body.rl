@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -951,7 +951,8 @@
 			fhold; fgoto err_line;
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;

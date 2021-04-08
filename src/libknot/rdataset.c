@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -197,7 +197,7 @@ int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_mm_t *m
 		}
 	}
 
-	assert((uint8_t *)rrs->rdata + rrs->size == (uint8_t *)ins_pos);
+	assert(rrs->rdata == NULL || (uint8_t *)rrs->rdata + rrs->size == (uint8_t *)ins_pos);
 
 	// If flow gets here, it means that we should insert at the current position (append).
 	return add_rr_at(rrs, rr, ins_pos, mm);

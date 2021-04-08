@@ -69388,7 +69388,8 @@ tr2638:
 			p--; {goto st299;}
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;
@@ -69440,7 +69441,8 @@ tr2639:
 			p--; {goto st299;}
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;
@@ -69499,7 +69501,8 @@ tr2640:
 			p--; {goto st299;}
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;
@@ -69558,7 +69561,8 @@ tr2642:
 			p--; {goto st299;}
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;
@@ -69836,7 +69840,8 @@ tr2643:
 			p--; {goto st299;}
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;
@@ -69923,7 +69928,8 @@ tr2644:
 			p--; {goto st299;}
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;
@@ -69991,7 +69997,8 @@ tr2645:
 			p--; {goto st299;}
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;
@@ -70166,7 +70173,8 @@ tr2646:
 			p--; {goto st299;}
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;

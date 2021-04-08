@@ -7265,7 +7265,8 @@ _match:
 			p--; {cs = 299;goto _again;}
 		}
 		// Write address family.
-		*((uint16_t *)rdata_tail) = htons(s->apl.addr_family);
+		uint16_t af = htons(s->apl.addr_family);
+		memcpy(rdata_tail, &af, sizeof(af));
 		rdata_tail += 2;
 		// Write prefix length in bits.
 		*(rdata_tail) = s->apl.prefix_length;
