@@ -142,6 +142,7 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 		}
 	}
 	free(params->public_key.data);
+	params->public_key.data = NULL;
 	return false;
 }
 
