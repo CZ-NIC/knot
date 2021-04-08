@@ -49,15 +49,15 @@ master.dnssec(zone).zsk_lifetime = 16
 master.dnssec(zone).propagation_delay = 3
 
 t.start()
-wait4key(t, master, zone, 3, -1, 12, 20, "ZSK publish") # new ZSK published
+wait4key(t, master, zone, 3, -1, 6, 20, "ZSK publish") # new ZSK published
 old_key = zsk_keytag(master, zone)
 
-wait4key(t, master, zone, 3, old_key, 4, 7, "ZSK switch") # active ZSK switched
+wait4key(t, master, zone, 3, old_key, 4, 8, "ZSK switch") # active ZSK switched
 up = master.update(zone)
 up.delete("longttl.example.com.", "A") # zone max TTL decreases
 up.send()
 master.ctl("zone-sign")
 
-wait4key(t, master, zone, 2, old_key, 9, 13, "ZSK remove") # old ZSK removed
+wait4key(t, master, zone, 2, old_key, 9, 14, "ZSK remove") # old ZSK removed
 
 t.end()
