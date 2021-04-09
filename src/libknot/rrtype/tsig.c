@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -231,7 +231,9 @@ int knot_tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
 	knot_wire_write_u16(rd, len);
 
 	/* Copy the actual data. */
-	memcpy(rd + sizeof(uint16_t), other_data, len);
+	if (len > 0) {
+		memcpy(rd + sizeof(uint16_t), other_data, len);
+	}
 	return KNOT_EOK;
 }
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -108,8 +108,8 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 	if (val->mv_size < 2 * sizeof(uint64_t)) {
 		return false;
 	}
-	uint64_t *_lengths = (uint64_t *)val->mv_data;
-	uint64_t keylen = be64toh(_lengths[0]), future = be64toh(_lengths[1]);
+	uint64_t keylen = knot_wire_read_u64(val->mv_data);
+	uint64_t future = knot_wire_read_u64(val->mv_data + sizeof(keylen));
 	uint8_t flags;
 
 	if ((params->public_key.data = malloc(keylen)) == NULL) {
@@ -134,7 +134,7 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 				return false;
 			}
 			// 'revoked' timer is part of 'future' section since it was added later
-			params->timing.revoke = be64toh(*(uint64_t *)(val->mv_data + val->mv_size - future));
+			params->timing.revoke = knot_wire_read_u64(val->mv_data + val->mv_size - future);
 		}
 
 		if ((flags & 0x02) && (params->is_ksk || !params->is_csk)) {

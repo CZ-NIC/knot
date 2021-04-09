@@ -273,10 +273,9 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 			                      0 0 0
 			                      0 0
 			 */
-			const uint64_t *bi_block = (const uint64_t *)block;
 			// Check for trailing zero dual-blocks.
 			if (tpl->reverse_short && i > 1 && i < 6 &&
-			    *bi_block == 0x3030303030303030ULL) {
+			    block[0].b32 == 0x30303030UL && block[1].b32 == 0x30303030UL) {
 				if (compr_start == -1) {
 					compr_start = i;
 				}

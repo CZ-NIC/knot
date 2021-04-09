@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ void journal_make_header(void *chunk, uint32_t ch_serial_to)
 
 uint32_t journal_next_serial(const MDB_val *chunk)
 {
-	return be32toh(*(uint32_t *)chunk->mv_data);
+	return knot_wire_read_u32(chunk->mv_data);
 }
 
 bool journal_serial_to(knot_lmdb_txn_t *txn, bool zij, uint32_t serial,

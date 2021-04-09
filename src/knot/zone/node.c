@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -181,7 +181,7 @@ void binode_unify(zone_node_t *node, bool free_deleted, knot_mm_t *mm)
 int binode_prepare_change(zone_node_t *node, knot_mm_t *mm)
 {
 	zone_node_t *counter = binode_counterpart(node);
-	if (counter != NULL && counter->rrs == node->rrs) {
+	if (counter != NULL && counter->rrs == node->rrs && counter->rrs != NULL) {
 		size_t rrlen = sizeof(struct rr_data) * counter->rrset_count;
 		node->rrs = mm_alloc(mm, rrlen);
 		if (node->rrs == NULL) {
