@@ -49,7 +49,7 @@ AC_DEFUN([AX_SANITIZER], [
       AC_MSG_ERROR([clang >= 6.0 required for fuzzer])])])
 
   # Default values
-  AS_IF([test "$with_sanitizer" = "yes"], [ with_sanitizer=address ])
+  AS_IF([test "$with_sanitizer" = "yes"], [ with_sanitizer=address,undefined ])
   AS_IF([test "$with_fuzzer" = "yes"], [ with_fuzzer=fuzzer ])
 
   # Construct output variables
