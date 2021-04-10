@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,9 @@ void knot_tsig_key_deinit(knot_tsig_key_t *key)
 
 	knot_dname_free(key->name, NULL);
 
-	memzero(key->secret.data, key->secret.size);
+	if (key->secret.data) {
+		memzero(key->secret.data, key->secret.size);
+	}
 	dnssec_binary_free(&key->secret);
 
 	memzero(key, sizeof(*key));
