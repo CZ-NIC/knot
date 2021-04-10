@@ -2007,8 +2007,11 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 		len += ret;
 	}
 
+/* TEMPORARY WORKAROUND (#725) until #654 is resolved - BEGIN */
+#define WORKAROUND725 || rrset->type == KNOT_RRTYPE_SVCB || rrset->type == KNOT_RRTYPE_HTTPS
+/* TEMPORARY WORKAROUND - END */
 	// Dump rrset type.
-	if (style->generic) {
+	if (style->generic WORKAROUND725) {
 		if (snprintf(buf, sizeof(buf), "TYPE%u", rrset->type) < 0) {
 			return KNOT_ESPACE;
 		}
