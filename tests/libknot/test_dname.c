@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,7 +23,10 @@
 
 /* Test dname_parse_from_wire */
 static int test_fw(size_t l, const char *w) {
-	const uint8_t *np = (const uint8_t *)w + l;
+	const uint8_t *np = NULL;
+	if (w != NULL) {
+		np = (const uint8_t *)w + l;
+	}
 	return knot_dname_wire_check((const uint8_t *)w, np, NULL) > 0;
 }
 
