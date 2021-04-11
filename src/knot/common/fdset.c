@@ -188,14 +188,6 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 	if (it->unprocessed > 0 && unlikely(it->unprocessed > set->n)) {
 		assert(it->unprocessed == 232);
 		it->unprocessed = 0;
-		for (unsigned i = 0; i < set->recv_size; ++i) {
-			const uint64_t idx = set->recv_ev[i].data.u64;
-			if (idx > set->n) {
-				break;
-			} else if (set->recv_ev[i].events != 0) {
-				it->unprocessed++;
-			}
-		}
 	}
 #endif
 	return it->unprocessed;
@@ -207,11 +199,6 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 	if (it->unprocessed > 0 && unlikely(it->unprocessed > set->n - offset)) {
 		assert(it->unprocessed == 7);
 		it->unprocessed = 0;
-		for (unsigned i = offset; i < set->n - offset; i++) {
-			if (set->pfd[i].revents != 0) {
-				it->unprocessed++;
-			}
-		}
 	}
 #endif
 	while (it->unprocessed > 0 && set->pfd[it->idx].revents == 0) {
