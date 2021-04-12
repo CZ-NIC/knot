@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -111,13 +111,11 @@ int yp_set_input_file(
 		return KNOT_EFILE;
 	}
 
-	char *start = NULL;
-
 	// Check for empty file (cannot mmap).
 	if (file_stat.st_size > 0) {
 		// Map the file to the memory.
-		start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
-		             parser->file.descriptor, 0);
+		char *start = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED,
+		                   parser->file.descriptor, 0);
 		if (start == MAP_FAILED) {
 			close(parser->file.descriptor);
 			return KNOT_ENOMEM;
@@ -132,17 +130,17 @@ int yp_set_input_file(
 #endif /* POSIX_MADV_SEQUENTIAL */
 #endif /* MADV_SEQUENTIAL && !__sun */
 
+		// Set the parser input limits.
+		parser->input.start   = start;
+		parser->input.current = start;
+		parser->input.end     = start + file_stat.st_size;
+
 		parser->input.eof = false;
 	} else {
 		parser->input.eof = true;
 	}
 
 	parser->file.name = strdup(file_name);
-
-	// Set the parser input limits.
-	parser->input.start   = start;
-	parser->input.current = start;
-	parser->input.end     = start + file_stat.st_size;
 
 	return KNOT_EOK;
 }
