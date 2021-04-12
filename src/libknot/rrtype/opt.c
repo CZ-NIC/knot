@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -208,7 +208,9 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(wire, data, size);
+	if (size > 0) {
+		memcpy(wire, data, size);
+	}
 
 	return KNOT_EOK;
 }
