@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,13 +62,26 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 }
 
 /* Create fake server. */
-static inline int create_fake_server(server_t *server, knot_mm_t *mm)
+static inline int create_fake_server(server_t *server, knot_mm_t *mm, const char *db_storage)
 {
 	int ret;
 
+	/* Create test configuration. */
+	/* String `db_storage' obtained from test_mkdtemp() may be up to 4096 bytes. */
+	char conf_str[4096 + 512];
+	snprintf(conf_str, sizeof(conf_str),
+		"server:\n"
+		"    identity: bogus.ns\n"
+		"    version: 0.11\n"
+		"    nsid: \n"
+		"database:\n"
+		"    storage: %s\n"
+		"zone:\n"
+		"  - domain: .\n"
+		"    zonefile-sync: -1\n",
+		db_storage);
+
 	/* Load test configuration. */
-	const char *conf_str = "server:\n identity: bogus.ns\n version: 0.11\n nsid: ""\n"
-	                       "zone:\n - domain: .\n   zonefile-sync: -1\n";
 	ret = test_conf(conf_str, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
