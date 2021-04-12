@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <tap/basic.h>
+#include <tap/files.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -88,9 +89,13 @@ int main(int argc, char *argv[])
 	memset(&proc, 0, sizeof(knot_layer_t));
 	knot_layer_init(&proc, &mm, process_query_layer());
 
+	/* Create temporary storage directory. */
+	char *temp_dir = test_mkdtemp();
+	ok(temp_dir != NULL, "make temporary directory");
+
 	/* Create fake server environment. */
 	server_t server;
-	int ret = create_fake_server(&server, proc.mm);
+	int ret = create_fake_server(&server, proc.mm, temp_dir);
 	is_int(KNOT_EOK, ret, "ns: fake server initialization");
 	if (ret != KNOT_EOK) {
 		goto fatal;
@@ -186,6 +191,8 @@ fatal:
 	mp_delete((struct mempool *)mm.ctx);
 	server_deinit(&server);
 	conf_free(conf());
+	test_rm_rf(temp_dir);
+	free(temp_dir);
 
 	return 0;
 }
