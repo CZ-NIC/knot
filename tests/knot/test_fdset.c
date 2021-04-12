@@ -96,6 +96,9 @@ int main(int argc, char *argv[])
 	ok(fdset_get_length(&fdset) == 2, "fdset size 2");
 	close(fds1[1]);
 
+	int fd2_dup = dup(fds2[0]);
+	ok(fd2_dup >= 0, "duplicate fd");
+
 	ret = fdset_poll(&fdset, &it, 0, 100);
 	struct timespec time2 = time_now();
 	double diff2 = time_diff_ms(&time0, &time2);
@@ -116,16 +119,22 @@ int main(int argc, char *argv[])
 	}
 	fdset_it_commit(&it);
 	ok(fdset_get_length(&fdset) == 1, "fdset size 1");
-	close(fds2[1]);
+
+	pthread_join(t1, 0);
+	pthread_join(t2, 0);
 
 	ret = fdset_remove(&fdset, 0);
 	ok(ret == KNOT_EOK, "fdset remove");
 	close(fds0[1]);
 	ok(fdset_get_length(&fdset) == 0, "fdset size 0");
 
-	pthread_join(t1, 0);
-	pthread_join(t2, 0);
+	write(fds2[1], &PATTERN2, 1);
+	ret = fdset_poll(&fdset, &it, 0, 100);
+	ok(ret == 0, "fdset_poll return 3");
 
+
+	close(fds2[1]);
+	close(fd2_dup);
 	fdset_clear(&fdset);
 
 	return 0;

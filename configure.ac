@@ -286,22 +286,33 @@ AS_IF([test "$enable_systemd" = "yes"],[
 # Socket polling method
 socket_polling=
 AC_ARG_WITH([socket-polling],
-  AS_HELP_STRING([--with-socket-polling=auto|poll|epoll],
+  AS_HELP_STRING([--with-socket-polling=auto|poll|epoll|kqueue|libkqueue],
                  [Use specific socket polling method [default=auto]]),
   [socket_polling=$withval], [socket_polling=auto]
 )
 
 AS_CASE([$socket_polling],
-  [auto],  [AC_CHECK_FUNCS([epoll_create],
-                           [AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
-                            socket_polling=epoll],
-                           [socket_polling=poll])],
-  [poll],  [socket_polling=poll],
+  [auto], [AC_CHECK_FUNCS([kqueue],
+             [AC_DEFINE([HAVE_KQUEUE], [1], [kqueue available])
+              socket_polling=kqueue],
+             [AC_CHECK_FUNCS([epoll_create],
+                [AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
+                 socket_polling=epoll],
+                [socket_polling=poll])])],
+  [poll], [socket_polling=poll],
   [epoll], [AC_CHECK_FUNCS([epoll_create],
-                           [AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
-                            socket_polling=epoll],
-                           [AC_MSG_ERROR([Epoll not available.])])],
-  [*],     [AC_MSG_ERROR([Invalid value of --socket-polling.])]
+              [AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
+               socket_polling=epoll],
+              [AC_MSG_ERROR([epoll not available.])])],
+  [kqueue], [AC_CHECK_FUNCS([kqueue],
+               [AC_DEFINE([HAVE_KQUEUE], [1], [kqueue available])
+                socket_polling=kqueue],
+               [AC_MSG_ERROR([kqueue not available.])])],
+  [libkqueue], [PKG_CHECK_MODULES([libkqueue], [libkqueue],
+                  [AC_DEFINE([HAVE_KQUEUE], [1], [libkqueue available])
+                   socket_polling=libkqueue],
+                  [AC_MSG_ERROR([libkqueue not available.])])],
+  [*], [AC_MSG_ERROR([Invalid value of --socket-polling.])]
 )
 
 # Alternative memory allocator

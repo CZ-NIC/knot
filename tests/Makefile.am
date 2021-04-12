@@ -4,6 +4,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/libdnssec		\
 	-I$(top_srcdir)/src/libdnssec/shared	\
 	$(gnutls_CFLAGS)			\
+	$(libkqueue_CFLAGS)			\
 	$(lmdb_CFLAGS)
 
 LDADD = \
