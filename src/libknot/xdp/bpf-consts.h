@@ -21,4 +21,5 @@ enum {
 	KNOT_XDP_LISTEN_PORT_TCP   = 1 << 16,    /*!< Apply to TCP. */
 	KNOT_XDP_LISTEN_PORT_PASS  = 1 << 17,    /*!< Pass incoming messages to ports >= port value. */
 	KNOT_XDP_LISTEN_PORT_DROP  = 1 << 18,    /*!< Drop incoming messages to ports >= port value. */
+	KNOT_XDP_LISTEN_PORT_ROUTE = 1 << 19,    /*!< Consider routing information from kernel. */
 };
