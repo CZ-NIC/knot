@@ -28,6 +28,7 @@ knotd_stdio_SOURCES = \
 
 knotd_stdio_CPPFLAGS =				\
 	$(AM_CPPFLAGS)				\
+	$(libkqueue_CFLAGS)			\
 	$(liburcu_CFLAGS)			\
 	$(lmdb_CFLAGS)				\
 	$(systemd_CFLAGS)

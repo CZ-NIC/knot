@@ -27,6 +27,8 @@
 
 #ifdef HAVE_EPOLL
 #include <sys/epoll.h>
+#elif HAVE_KQUEUE
+#include <sys/event.h>
 #else
 #include <poll.h>
 #endif
@@ -44,11 +46,16 @@ typedef struct {
 	unsigned size;                /*!< Array size (allocated). */
 	void **ctx;                   /*!< Context for each fd. */
 	time_t *timeout;              /*!< Timeout for each fd (seconds precision). */
+#if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 #ifdef HAVE_EPOLL
 	struct epoll_event *ev;       /*!< Epoll event storage for each fd. */
 	struct epoll_event *recv_ev;  /*!< Array for polled events. */
+#elif HAVE_KQUEUE
+	struct kevent *ev;            /*!< Kqueue event storage for each fd. */
+	struct kevent *recv_ev;       /*!< Array for polled events. */
+#endif
 	unsigned recv_size;           /*!< Size of array for polled events. */
-	int efd;                      /*!< File descriptor of epoll. */
+	int pfd;                      /*!< File descriptor of kernel polling structure (epoll or kqueue). */
 #else
 	struct pollfd *pfd;           /*!< Poll state for each fd. */
 #endif
@@ -59,8 +66,12 @@ typedef struct {
 	fdset_t *set;             /*!< Source fdset_t. */
 	unsigned idx;             /*!< Event index offset. */
 	int unprocessed;          /*!< Unprocessed events left. */
+#if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 #ifdef HAVE_EPOLL
 	struct epoll_event *ptr;  /*!< Pointer on processed event. */
+#elif HAVE_KQUEUE
+	struct kevent *ptr;       /*!< Pointer on processed event. */
+#endif
 	unsigned dirty;           /*!< Number of fd to be removed on commit. */
 #endif
 } fdset_it_t;
@@ -69,6 +80,9 @@ typedef enum {
 #ifdef HAVE_EPOLL
 	FDSET_POLLIN  = EPOLLIN,
 	FDSET_POLLOUT = EPOLLOUT,
+#elif HAVE_KQUEUE
+	FDSET_POLLIN  = EVFILT_READ,
+	FDSET_POLLOUT = EVFILT_WRITE,
 #else
 	FDSET_POLLIN  = POLLIN,
 	FDSET_POLLOUT = POLLOUT,
@@ -180,6 +194,8 @@ inline static int fdset_get_fd(const fdset_t *set, const unsigned idx)
 
 #ifdef HAVE_EPOLL
 	return set->ev[idx].data.fd;
+#elif HAVE_KQUEUE
+	return set->ev[idx].ident;
 #else
 	return set->pfd[idx].fd;
 #endif
@@ -212,6 +228,8 @@ inline static unsigned fdset_it_get_idx(const fdset_it_t *it)
 
 #ifdef HAVE_EPOLL
 	return it->ptr->data.u64;
+#elif HAVE_KQUEUE
+	return (unsigned)(intptr_t)it->ptr->udata;
 #else
 	return it->idx;
 #endif
@@ -231,6 +249,8 @@ inline static int fdset_it_get_fd(const fdset_it_t *it)
 
 #ifdef HAVE_EPOLL
 	return it->set->ev[fdset_it_get_idx(it)].data.fd;
+#elif HAVE_KQUEUE
+	return it->ptr->ident;
 #else
 	return it->set->pfd[it->idx].fd;
 #endif
@@ -245,7 +265,7 @@ inline static void fdset_it_next(fdset_it_t *it)
 {
 	assert(it);
 
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	do {
 		it->ptr++;
 		it->unprocessed--;
@@ -271,6 +291,26 @@ inline static void fdset_it_remove(fdset_it_t *it)
 #ifdef HAVE_EPOLL
 	const int idx = fdset_it_get_idx(it);
 	it->set->ev[idx].events = FDSET_REMOVE_FLAG;
+	it->dirty++;
+#elif HAVE_KQUEUE
+	const int idx = fdset_it_get_idx(it);
+	/* Bitwise negated filter marks event for delete.  */
+	/* Filters become:                                 */
+	/*   [FreeBSD]                                     */
+	/*       EVFILT_READ  (-1) -> 0                    */
+	/*       EVFILT_WRITE (-2) -> 1                    */
+	/*   [NetBSD]                                      */
+	/*       EVFILT_READ  (0) -> -1                    */
+	/*       EVFILT_WRITE (1) -> -2                    */
+	/* If not marked for delete then mark for delete.  */
+#if defined(__NetBSD__)
+	if ((signed short)it->set->ev[idx].filter >= 0) 
+#else
+	if (it->set->ev[idx].filter < 0) 
+#endif
+	{
+		it->set->ev[idx].filter = ~it->set->ev[idx].filter;
+	}
 	it->dirty++;
 #else
 	(void)fdset_remove(it->set, fdset_it_get_idx(it));
@@ -314,6 +354,8 @@ inline static bool fdset_it_is_pollin(const fdset_it_t *it)
 
 #ifdef HAVE_EPOLL
 	return it->ptr->events & EPOLLIN;
+#elif HAVE_KQUEUE
+	return it->ptr->filter == EVFILT_READ;
 #else
 	return it->set->pfd[it->idx].revents & POLLIN;
 #endif
@@ -332,6 +374,8 @@ inline static bool fdset_it_is_error(const fdset_it_t *it)
 
 #ifdef HAVE_EPOLL
 	return it->ptr->events & (EPOLLERR | EPOLLHUP);
+#elif HAVE_KQUEUE
+	return it->ptr->flags & EV_ERROR;
 #else
 	return it->set->pfd[it->idx].revents & (POLLERR | POLLHUP | POLLNVAL);
 #endif

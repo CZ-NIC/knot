@@ -36,7 +36,7 @@ static int fdset_resize(fdset_t *set, const unsigned size)
 
 	MEM_RESIZE(set->ctx, size);
 	MEM_RESIZE(set->timeout, size);
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	MEM_RESIZE(set->ev, size);
 #else
 	MEM_RESIZE(set->pfd, size);
@@ -53,16 +53,20 @@ int fdset_init(fdset_t *set, const unsigned size)
 
 	memset(set, 0, sizeof(*set));
 
+#if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 #ifdef HAVE_EPOLL
-	set->efd = epoll_create1(0);
-	if (set->efd < 0) {
+	set->pfd = epoll_create1(0);
+#elif HAVE_KQUEUE
+	set->pfd = kqueue();
+#endif
+	if (set->pfd < 0) {
 		return knot_map_errno();
 	}
 #endif
 	int ret = fdset_resize(set, size);
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	if (ret != KNOT_EOK) {
-		close(set->efd);
+		close(set->pfd);
 	}
 #endif
 	return ret;
@@ -76,10 +80,10 @@ void fdset_clear(fdset_t *set)
 
 	free(set->ctx);
 	free(set->timeout);
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	free(set->ev);
 	free(set->recv_ev);
-	close(set->efd);
+	close(set->pfd);
 #else
 	free(set->pfd);
 #endif
@@ -107,7 +111,12 @@ int fdset_add(fdset_t *set, const int fd, const fdset_event_t events, void *ctx)
 		.data.u64 = idx,
 		.events = events
 	};
-	if (epoll_ctl(set->efd, EPOLL_CTL_ADD, fd, &ev) != 0) {
+	if (epoll_ctl(set->pfd, EPOLL_CTL_ADD, fd, &ev) != 0) {
+		return knot_map_errno();
+	}
+#elif HAVE_KQUEUE
+	EV_SET(&set->ev[idx], fd, events, EV_ADD, 0, 0, (void *)(intptr_t)idx);
+	if (kevent(set->pfd, &set->ev[idx], 1, NULL, 0, NULL) < 0) {
 		return knot_map_errno();
 	}
 #else
@@ -128,7 +137,25 @@ int fdset_remove(fdset_t *set, const unsigned idx)
 	const int fd = fdset_get_fd(set, idx);
 #ifdef HAVE_EPOLL
 	/* This is necessary as DDNS duplicates file descriptors! */
-	(void)epoll_ctl(set->efd, EPOLL_CTL_DEL, fd, NULL);
+	if (epoll_ctl(set->pfd, EPOLL_CTL_DEL, fd, NULL) != 0) {
+		close(fd);
+		return knot_map_errno();
+	}
+#elif HAVE_KQUEUE
+	/* Return delete flag back to original filter number. */
+#if defined(__NetBSD__)
+	if ((signed short)set->ev[idx].filter < 0)
+#else
+	if (set->ev[idx].filter >= 0)
+#endif
+	{
+		set->ev[idx].filter = ~set->ev[idx].filter;
+	}
+	set->ev[idx].flags = EV_DELETE;
+	if (kevent(set->pfd, &set->ev[idx], 1, NULL, 0, NULL) < 0) {
+		close(fd);
+		return knot_map_errno();
+	}
 #endif
 	close(fd);
 
@@ -137,15 +164,23 @@ int fdset_remove(fdset_t *set, const unsigned idx)
 	if (idx < last) {
 		set->ctx[idx] = set->ctx[last];
 		set->timeout[idx] = set->timeout[last];
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined (HAVE_KQUEUE)
 		set->ev[idx] = set->ev[last];
+#ifdef HAVE_EPOLL
 		struct epoll_event ev = {
 			.data.u64 = idx,
 			.events = set->ev[idx].events
 		};
-		if (epoll_ctl(set->efd, EPOLL_CTL_MOD, set->ev[last].data.fd, &ev) != 0) {
+		if (epoll_ctl(set->pfd, EPOLL_CTL_MOD, set->ev[last].data.fd, &ev) != 0) {
 			return knot_map_errno();
 		}
+#elif HAVE_KQUEUE
+		EV_SET(&set->ev[idx], set->ev[last].ident, set->ev[last].filter,
+		       EV_ADD, 0, 0, (void *)(intptr_t)idx);
+		if (kevent(set->pfd, &set->ev[idx], 1, NULL, 0, NULL) < 0) {
+			return knot_map_errno();
+		}
+#endif
 #else
 		set->pfd[idx] = set->pfd[last];
 #endif
@@ -167,21 +202,21 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 
 	it->set = set;
 	it->idx = offset;
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	if (set->recv_size != set->size) {
 		MEM_RESIZE(set->recv_ev, set->size);
 		set->recv_size = set->size;
 	}
 	it->ptr = set->recv_ev;
 	it->dirty = 0;
-	/*
-	 *  NOTE: Can't skip offset without bunch of syscalls!!
-	 *  Because of that it waits for `ctx->n` (every socket). Offset is set when TCP
-	 *  trotlling is ON. Sometimes it can return with sockets where none of them are
-	 *  connection socket, but it should not be common.
-	 *  But it can cause problems when adopted in other use-case.
-	 */
-	it->unprocessed = epoll_wait(set->efd, set->recv_ev, set->n, timeout_ms);
+#ifdef HAVE_EPOLL
+	if (set->n == 0) {
+		return 0;
+	}
+	if ((it->unprocessed = epoll_wait(set->pfd, set->recv_ev, set->recv_size,
+	                                  timeout_ms)) == -1) {
+		return knot_map_errno();
+	}
 #ifndef NDEBUG
 	/* In specific circumstances with valgrind, it sometimes happens that
 	 * `set->n < it->unprocessed`. */
@@ -190,6 +225,26 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 		it->unprocessed = 0;
 	}
 #endif
+#elif HAVE_KQUEUE
+	struct timespec timeout = {
+		.tv_sec = timeout_ms / 1000,
+		.tv_nsec = (timeout_ms % 1000) * 1000000
+	};
+	if ((it->unprocessed = kevent(set->pfd, NULL, 0, set->recv_ev, set->recv_size,
+	                              (timeout_ms >= 0) ? &timeout : NULL)) == -1) {
+		return knot_map_errno();
+	}
+#endif
+	/*
+	 *  NOTE: Can't skip offset without bunch of syscalls!
+	 *  Because of that it waits for `ctx->n` (every socket). Offset is set when TCP
+	 *  trotlling is ON. Sometimes it can return with sockets where none of them is
+	 *  connected socket, but it should not be common.
+	 */
+	while (it->unprocessed > 0 && fdset_it_get_idx(it) < it->idx) {
+		it->ptr++;
+		it->unprocessed--;
+	}
 	return it->unprocessed;
 #else
 	it->unprocessed = poll(&set->pfd[offset], set->n - offset, timeout_ms);
@@ -213,7 +268,7 @@ void fdset_it_commit(fdset_it_t *it)
 	if (it == NULL) {
 		return;
 	}
-#ifdef HAVE_EPOLL
+#if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	/* NOTE: reverse iteration to avoid as much "remove last" operations
 	 *       as possible. I'm not sure about performance improvement. It
 	 *       will skip some syscalls at begin of iteration, but what
@@ -221,7 +276,16 @@ void fdset_it_commit(fdset_it_t *it)
 	 */
 	fdset_t *set = it->set;
 	for (int i = set->n - 1; it->dirty > 0 && i >= 0; --i) {
-		if (set->ev[i].events == FDSET_REMOVE_FLAG) {
+#ifdef HAVE_EPOLL
+		if (set->ev[i].events == FDSET_REMOVE_FLAG)
+#else
+#if defined(__NetBSD__)
+		if ((signed short)set->ev[i].filter < 0)
+#else
+		if (set->ev[i].filter >= 0)
+#endif
+#endif
+		{
 			(void)fdset_remove(set, i);
 			it->dirty--;
 		}
@@ -264,6 +328,7 @@ void fdset_sweep(fdset_t *set, const fdset_sweep_cb_t cb, void *data)
 			const int fd = fdset_get_fd(set, idx);
 			if (cb(set, fd, data) == FDSET_SWEEP) {
 				(void)fdset_remove(set, idx);
+				continue;
 			}
 		}
 		++idx;
