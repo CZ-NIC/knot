@@ -508,11 +508,8 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *
 
 	bool xdp_thread = is_xdp_thread(ifaces, thread_id);
 
-	unsigned count = 0;
-
-	for (size_t i = 0; i < n_ifaces; i++) {
-		int fd = iface_udp_fd(&ifaces[i], thread_id, xdp_thread,
-		                      xdp_socket);
+	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
+		int fd = iface_udp_fd(i, thread_id, xdp_thread, xdp_socket);
 		if (fd < 0) {
 			continue;
 		}
@@ -520,11 +517,10 @@ static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *
 		if (ret < 0) {
 			return 0;
 		}
-		count++;
 	}
 
-	assert((count == n_ifaces) || (xdp_thread && count == 1));
-	return count;
+	assert(!xdp_thread || fdset_get_length(fds) == 1);
+	return fdset_get_length(fds);
 }
 
 int udp_master(dthread_t *thread)
