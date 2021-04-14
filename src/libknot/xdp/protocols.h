@@ -24,6 +24,7 @@
 #include <netinet/in.h>
 #include <string.h>
 
+#include "libknot/endian.h"
 #include "libknot/xdp/msg.h"
 
 /* Don't fragment flag. */
@@ -142,7 +143,9 @@ inline static void *prot_read_ipv6(void *data, knot_xdp_msg_t *msg, void **data_
 	memcpy(&dst->sin6_addr, &ip6->daddr, sizeof(dst->sin6_addr));
 	src->sin6_family = AF_INET6;
 	dst->sin6_family = AF_INET6;
-	// Flow label is ignored.
+	src->sin6_flowinfo = 0;
+	dst->sin6_flowinfo = 0;
+	// Scope ID is ignored.
 
 	data += sizeof(*ip6);
 	*data_end = data + be16toh(ip6->payload_len);
