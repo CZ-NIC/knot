@@ -334,12 +334,19 @@ void *xdp_gun_thread(void *_ctx)
 		mm_ctx_mempool(&mm, ctx->at_once * 16 * MM_DEFAULT_BLKSIZE);
 	}
 
+	knot_tcp_table_t *tcp_table = knot_tcp_table_new(ctx->qps); // FIXME: qps is not the best choice?
+	if (tcp_table == NULL) {
+		printf("failed to allocate TCP connection table\n");
+		return NULL;
+	}
+
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->listen_port, mode);
 	if (ret != KNOT_EOK) {
 		printf("failed to initialize XDP socket#%u: %s\n",
 		       ctx->thread_id, knot_strerror(ret));
+		knot_tcp_table_free(tcp_table);
 		return NULL;
 	}
 
@@ -424,7 +431,7 @@ void *xdp_gun_thread(void *_ctx)
 				if (ctx->tcp) {
 					knot_tcp_relay_t *relays = NULL;
 					uint32_t n_relays = 0;
-					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, &relays, &n_relays, &mm);
+					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, tcp_table, NULL, &relays, &n_relays, &mm);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
@@ -499,6 +506,8 @@ void *xdp_gun_thread(void *_ctx)
 	}
 
 	knot_xdp_deinit(xsk);
+
+	knot_tcp_table_free(tcp_table);
 
 	if (ctx->tcp) {
 		mp_delete(mm.ctx);
