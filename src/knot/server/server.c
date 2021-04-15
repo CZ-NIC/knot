@@ -219,7 +219,8 @@ static int disable_pmtudisc(int sock, int family)
 	return KNOT_EOK;
 }
 
-static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *thread_id_start)
+static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
+                                      unsigned *thread_id_start)
 {
 #ifndef ENABLE_XDP
 	assert(0);
@@ -250,16 +251,18 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *t
 	new_if->xdp_first_thread_id = *thread_id_start;
 	*thread_id_start += iface.queues;
 
+	uint32_t xdp_flags = route_check ? KNOT_XDP_LISTEN_PORT_ROUTE : 0;
+
 	for (int i = 0; i < iface.queues; i++) {
 		knot_xdp_load_bpf_t mode =
 			(i == 0 ? KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 		ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
-		                    iface.port, mode);
+		                    iface.port | xdp_flags, mode);
 		if (ret == -EBUSY && i == 0) {
 			log_notice("XDP interface %s@%u is busy, retrying initializaion",
 			           iface.name, iface.port);
 			ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
-			                    iface.port, KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD);
+			                    iface.port | xdp_flags, KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD);
 		}
 		if (ret != KNOT_EOK) {
 			log_warning("failed to initialize XDP interface %s@%u, queue %d (%s)",
@@ -274,9 +277,10 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, unsigned *t
 
 	if (ret == KNOT_EOK) {
 		knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(iface.name));
-		log_debug("initialized XDP interface %s@%u, queues %d, %s mode",
+		log_debug("initialized XDP interface %s@%u, queues %d, %s mode%s",
 		          iface.name, iface.port, iface.queues,
-		          (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"));
+		          (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"),
+		          route_check ? ", route check" : "");
 	}
 
 	return new_if;
@@ -546,6 +550,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	free(rundir);
 
 	/* XDP sockets. */
+	bool route_check = conf->cache.srv_xdp_route_check;
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
@@ -554,7 +559,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 		log_info("binding to XDP interface %s", addr_str);
 
-		iface_t *new_if = server_init_xdp_iface(&addr, &thread_id);
+		iface_t *new_if = server_init_xdp_iface(&addr, route_check, &thread_id);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
@@ -889,13 +894,14 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_tcp = true;
 	static bool warn_bg = true;
 	static bool warn_listen = true;
+	static bool warn_route_check = true;
 
-	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_tcp_reuseport(conf)) {
+	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_srv_bool(conf, C_TCP_REUSEPORT)) {
 		log_warning(msg, &C_TCP_REUSEPORT[1]);
 		warn_tcp_reuseport = false;
 	}
 
-	if (warn_socket_affinity && conf->cache.srv_socket_affinity != conf_socket_affinity(conf)) {
+	if (warn_socket_affinity && conf->cache.srv_socket_affinity != conf_srv_bool(conf, C_SOCKET_AFFINITY)) {
 		log_warning(msg, &C_SOCKET_AFFINITY[1]);
 		warn_socket_affinity = false;
 	}
@@ -918,6 +924,11 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_listen && listen_changed(conf, server)) {
 		log_warning(msg, "listen(-xdp)");
 		warn_listen = false;
+	}
+
+	if (warn_route_check && conf->cache.srv_xdp_route_check != conf_srv_bool(conf, C_XDP_ROUTE_CHECK)) {
+		log_warning(msg, &C_XDP_ROUTE_CHECK[1]);
+		warn_route_check = false;
 	}
 }
 

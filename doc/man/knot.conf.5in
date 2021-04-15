@@ -197,6 +197,7 @@ server:
     udp\-max\-payload\-ipv6: SIZE
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
+    xdp\-route\-check: BOOL
     listen: ADDR[@INT] ...
     listen\-xdp: STR[@INT] | ADDR[@INT] ...
 .ft P
@@ -409,6 +410,37 @@ always contain a valid EDNS Client Subnet option according to \fI\%RFC 7871\fP\&
 .sp
 Enable or disable sorted\-rrset rotation in the answer section of normal replies.
 The rotation shift is simply determined by a query ID.
+.sp
+\fIDefault:\fP off
+.SS xdp\-route\-check
+.sp
+If enabled, routing information from the operating system is considered
+when processing every incoming DNS packet received over the XDP interface:
+.INDENT 0.0
+.IP \(bu 2
+If the outgoing interface of the corresponding DNS response differs from
+the incoming one, the packet is processed normally by UDP workers
+(XDP isn\(aqt used).
+.IP \(bu 2
+If the destination address is blackholed, unreachable, or prohibited,
+the DNS packet is dropped without any response.
+.IP \(bu 2
+The destination MAC address for the response is taken from the routing system.
+.UNINDENT
+.sp
+If disabled, symmetrical routing is applied. It means that the query source
+MAC address is used as a response destination MAC address.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This mode requires forwarding enabled on the loopback interface
+(\fBsysctl \-w net.ipv4.conf.lo.forwarding=1\fP and \fBsysctl \-w net.ipv6.conf.lo.forwarding=1\fP).
+If forwarding is disabled, all incoming DNS packets are dropped!
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP off
 .SS listen

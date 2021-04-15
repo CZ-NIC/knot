@@ -1146,19 +1146,12 @@ conf_val_t conf_db_param_txn(
 	return conf_get_txn(conf, txn, C_DB, param);
 }
 
-bool conf_tcp_reuseport_txn(
+bool conf_srv_bool_txn(
 	conf_t *conf,
-	knot_db_txn_t *txn)
+	knot_db_txn_t *txn,
+	const yp_name_t *param)
 {
-	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_REUSEPORT);
-	return conf_bool(&val);
-}
-
-bool conf_socket_affinity_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn)
-{
-	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_SOCKET_AFFINITY);
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, param);
 	return conf_bool(&val);
 }
 

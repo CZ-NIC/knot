@@ -125,14 +125,16 @@ static void init_cache(
 	static bool   first_init = true;
 	static bool   running_tcp_reuseport;
 	static bool   running_socket_affinity;
+	static bool   running_route_check;
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
 	static size_t running_xdp_threads;
 	static size_t running_bg_threads;
 
 	if (first_init || reinit_cache) {
-		running_tcp_reuseport = conf_tcp_reuseport(conf);
-		running_socket_affinity = conf_socket_affinity(conf);
+		running_tcp_reuseport = conf_srv_bool(conf, C_TCP_REUSEPORT);
+		running_socket_affinity = conf_srv_bool(conf, C_SOCKET_AFFINITY);
+		running_route_check = conf_srv_bool(conf, C_XDP_ROUTE_CHECK);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
@@ -168,6 +170,8 @@ static void init_cache(
 	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
 
 	conf->cache.srv_socket_affinity = running_socket_affinity;
+
+	conf->cache.srv_xdp_route_check = running_route_check;
 
 	conf->cache.srv_udp_threads = running_udp_threads;
 

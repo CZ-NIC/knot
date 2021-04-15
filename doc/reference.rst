@@ -148,6 +148,7 @@ General options related to the server.
      udp-max-payload-ipv6: SIZE
      edns-client-subnet: BOOL
      answer-rotation: BOOL
+     xdp-route-check: BOOL
      listen: ADDR[@INT] ...
      listen-xdp: STR[@INT] | ADDR[@INT] ...
 
@@ -425,6 +426,33 @@ answer-rotation
 
 Enable or disable sorted-rrset rotation in the answer section of normal replies.
 The rotation shift is simply determined by a query ID.
+
+*Default:* off
+
+.. _server_xdp-route-check:
+
+xdp-route-check
+---------------
+
+If enabled, routing information from the operating system is considered
+when processing every incoming DNS packet received over the XDP interface:
+
+- If the outgoing interface of the corresponding DNS response differs from
+  the incoming one, the packet is processed normally by UDP workers
+  (XDP isn't used).
+- If the destination address is blackholed, unreachable, or prohibited,
+  the DNS packet is dropped without any response.
+- The destination MAC address for the response is taken from the routing system.
+
+If disabled, symmetrical routing is applied. It means that the query source
+MAC address is used as a response destination MAC address.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+.. NOTE::
+   This mode requires forwarding enabled on the loopback interface
+   (``sysctl -w net.ipv4.conf.lo.forwarding=1`` and ``sysctl -w net.ipv6.conf.lo.forwarding=1``).
+   If forwarding is disabled, all incoming DNS packets are dropped!
 
 *Default:* off
 
