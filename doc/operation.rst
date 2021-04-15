@@ -1117,8 +1117,6 @@ Limitations
 * Dynamic DNS over XDP is not supported.
 * MTU higher than 1792 bytes is not supported.
 * Multiple BPF filters per one network device are not supported.
-* Symmetrical routing is required (query source MAC/IP addresses and
-  reply destination MAC/IP addresses are the same).
 * Systems with big-endian byte ordering require special recompilation of the nameserver.
 * IPv4 header and UDP checksums are not verified on received DNS messages.
 * DNS over XDP traffic is not visible to common system tools (e.g. firewall, tcpdump etc.).

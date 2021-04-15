@@ -184,6 +184,7 @@ static const yp_item_t desc_server[] = {
 	                                                1232, YP_SSIZE } },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
+	{ C_XDP_ROUTE_CHECK,      YP_TBOOL, YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
 	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },

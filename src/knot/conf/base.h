@@ -116,6 +116,7 @@ typedef struct {
 		bool srv_tcp_reuseport;
 		bool srv_tcp_fastopen;
 		bool srv_socket_affinity;
+		bool srv_xdp_route_check;
 		size_t srv_udp_threads;
 		size_t srv_tcp_threads;
 		size_t srv_xdp_threads;

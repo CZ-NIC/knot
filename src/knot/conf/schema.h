@@ -132,6 +132,7 @@
 #define C_USER			"\x04""user"
 #define C_VERSION		"\x07""version"
 #define C_VIA			"\x03""via"
+#define C_XDP_ROUTE_CHECK	"\x0F""xdp-route-check"
 #define C_ZONE			"\x04""zone"
 #define C_ZONEFILE_LOAD		"\x0D""zonefile-load"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"

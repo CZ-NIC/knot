@@ -666,39 +666,24 @@ static inline conf_val_t conf_db_param(
 }
 
 /*!
- * Gets the configured setting of the TCP reuseport switch.
+ * Gets the configured setting of the bool option in server section.
  *
- * \param[in] conf  Configuration.
- * \param[in] txn   Configuration DB transaction.
- *
- * \return True if enabled, false otherwise.
- */
-bool conf_tcp_reuseport_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn
-);
-static inline bool conf_tcp_reuseport(
-	conf_t *conf)
-{
-	return conf_tcp_reuseport_txn(conf, &conf->read_txn);
-}
-
-/*!
- * Gets the configured setting of the socket affinity switch.
- *
- * \param[in] conf  Configuration.
- * \param[in] txn   Configuration DB transaction.
+ * \param[in] conf   Configuration.
+ * \param[in] txn    Configuration DB transaction.
+ * \param[in] param  Parameter name.
  *
  * \return True if enabled, false otherwise.
  */
-bool conf_socket_affinity_txn(
+bool conf_srv_bool_txn(
 	conf_t *conf,
-	knot_db_txn_t *txn
+	knot_db_txn_t *txn,
+	const yp_name_t *param
 );
-static inline bool conf_socket_affinity(
-	conf_t *conf)
+static inline bool conf_srv_bool(
+	conf_t *conf,
+	const yp_name_t *param)
 {
-	return conf_socket_affinity_txn(conf, &conf->read_txn);
+	return conf_srv_bool_txn(conf, &conf->read_txn, param);
 }
 
 /*!
