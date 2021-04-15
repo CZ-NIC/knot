@@ -1278,7 +1278,7 @@ Specifies if NSEC3 will be used instead of NSEC.
 .sp
 A number of additional times the hashing is performed.
 .sp
-\fIDefault:\fP 5
+\fIDefault:\fP 10
 .SS nsec3\-opt\-out
 .sp
 If set, NSEC3 records won\(aqt be created for insecure delegations.

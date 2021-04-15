@@ -1412,7 +1412,7 @@ nsec3-iterations
 
 A number of additional times the hashing is performed.
 
-*Default:* 5
+*Default:* 10
 
 .. _policy_nsec3-opt-out:
 
