@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,18 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/types.h>
+
+/*!
+ * Gets the absolute path.
+ *
+ * \note The result must be explicitly deallocated.
+ *
+ * \param[in] path      Absolute path or a relative path suffix; a string.
+ * \param[in] base_dir  Path prefix for a relative string.
+ *
+ * \return Absolute path string pointer.
+ */
+char* abs_path(const char *path, const char *base_dir);
 
 /*!
  * \brief Delete file or directory (recursive).
