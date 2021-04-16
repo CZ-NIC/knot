@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,6 +32,25 @@
 #else
   #define BUFSIZE (64 * 1024)
 #endif
+
+char* abs_path(const char *path, const char *base_dir)
+{
+	if (path == NULL) {
+		return NULL;
+	} else if (path[0] == '/') {
+		return strdup(path);
+	} else {
+		char *full_path;
+		if (base_dir == NULL) {
+			char *cwd = realpath("./", NULL);
+			full_path = sprintf_alloc("%s/%s", cwd, path);
+			free(cwd);
+		} else {
+			full_path = sprintf_alloc("%s/%s", base_dir, path);
+		}
+		return full_path;
+	}
+}
 
 static int remove_file(const char *path, const struct stat *stat, int type, struct FTW *ftw)
 {

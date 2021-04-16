@@ -28,6 +28,7 @@
 #include "knot/zone/catalog.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/files.h"
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
 #include "contrib/strtonum.h"
@@ -788,21 +789,7 @@ char* conf_abs_path(
 	const char *base_dir)
 {
 	const char *path = conf_str(val);
-	if (path == NULL) {
-		return NULL;
-	} else if (path[0] == '/') {
-		return strdup(path);
-	} else {
-		char *abs_path;
-		if (base_dir == NULL) {
-			char *cwd = realpath("./", NULL);
-			abs_path = sprintf_alloc("%s/%s", cwd, path);
-			free(cwd);
-		} else {
-			abs_path = sprintf_alloc("%s/%s", base_dir, path);
-		}
-		return abs_path;
-	}
+	return abs_path(path, base_dir);
 }
 
 conf_mod_id_t* conf_mod_id(
