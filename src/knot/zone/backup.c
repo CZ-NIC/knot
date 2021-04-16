@@ -71,10 +71,12 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 
 	BACKUP_LOCKFILE(ctx, lockfile);
-	if (mkdir(backup_dir, S_IRWXU|S_IRWXG) != 0 && errno != EEXIST) {
+	int ret = make_dir(backup_dir, S_IRWXU|S_IRWXG, true);
+	if (ret != KNOT_EOK) {
 		free(ctx);
-		return knot_map_errno();
+		return ret;
 	}
+
 	ctx->lock_file = open(lockfile, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
 	if (ctx->lock_file < 0) {
 		free(ctx);
