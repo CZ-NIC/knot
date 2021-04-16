@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "libknot/attribute.h"
 #include "libknot/errcode.h"
 #include "libknot/db/db_lmdb.h"
+#include "contrib/files.h"
 #include "contrib/mempattern.h"
 
 #include <lmdb.h>
@@ -79,12 +80,7 @@ static int lmdb_error_to_knot(int error)
 
 static int create_env_dir(const char *path)
 {
-	int r = mkdir(path, LMDB_DIR_MODE);
-	if (r == -1 && errno != EEXIST) {
-		return lmdb_error_to_knot(errno);
-	}
-
-	return KNOT_EOK;
+	return make_dir(path, LMDB_DIR_MODE, true);
 }
 
 /*! \brief Set the environment map size.
