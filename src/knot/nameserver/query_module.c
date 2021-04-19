@@ -510,10 +510,13 @@ knotd_conf_t knotd_conf(knotd_mod_t *mod, const yp_name_t *section_name,
 
 	conf_t *config = (mod->config != NULL) ? mod->config : conf();
 
-	const uint8_t *raw_id = (id != NULL) ? id->single.data : NULL;
-	size_t raw_id_len = (id != NULL) ? id->single.data_len : 0;
-	conf_val_t val = conf_rawid_get(config, section_name, item_name,
-	                                raw_id, raw_id_len);
+	conf_val_t val;
+	if (id != NULL) {
+		val = conf_rawid_get(config, section_name, item_name,
+		                     id->single.data, id->single.data_len);
+	} else {
+		val = conf_get(config, section_name, item_name);
+	}
 
 	set_conf_out(&out, &val);
 
