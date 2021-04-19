@@ -298,9 +298,17 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		char *backup_zf = dir_file(ctx->backup_dir, local_zf);
 
 		if (ctx->restore_mode) {
-			ret = make_path(local_zf, S_IRWXU | S_IRWXG);
-			if (ret == KNOT_EOK) {
-				ret = copy_file(local_zf, backup_zf);
+			struct stat st;
+			if (stat(backup_zf, &st) == 0) {
+				ret = make_path(local_zf, S_IRWXU | S_IRWXG);
+				if (ret == KNOT_EOK) {
+					ret = copy_file(local_zf, backup_zf);
+				}
+			} else {
+				ret = errno == ENOENT ? KNOT_EFILE : knot_map_errno();
+				/* If there's no zone file in the backup, remove any old zone file
+				 * from the repository.
+				 */
 				if (ret == KNOT_EFILE) {
 					unlink(local_zf);
 				}
@@ -326,8 +334,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			log_zone_notice(zone->name, "no zone file, skipping a zone file %s",
 			                ctx->restore_mode ? "restore" : "backup");
 			ret = KNOT_EOK;
-		}
-		if (ret != KNOT_EOK) {
+		} else if (ret != KNOT_EOK) {
 			LOG_FAIL("zone file");
 			goto done;
 		}
