@@ -34,6 +34,7 @@
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/files.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
@@ -391,6 +392,25 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 {
 	if (!MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
 		return KNOT_ENOPARAM;
+	}
+
+	// Make sure that the backup outdir is not the same as the server DB storage.
+	conf_val_t db_storage_val = conf_get(conf(), C_DB, C_STORAGE);
+	const char *db_storage = conf_str(&db_storage_val);
+
+	const char *backup_dir = args->data[KNOT_CTL_IDX_DATA];
+
+	if (same_path(backup_dir, db_storage)) {
+		char *msg = sprintf_alloc("%s the database storage directory not allowed",
+		                          restore_mode ? "restore from" : "backup to");
+
+		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+			log_ctl_error("%s", msg);
+		} else {
+			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE], "%s", msg);
+		}
+		free(msg);
+		return KNOT_EINVAL;
 	}
 
 	zone_backup_ctx_t *ctx;
