@@ -33,6 +33,20 @@
 char* abs_path(const char *path, const char *base_dir);
 
 /*!
+ * Try to compare two paths whether they are identical.
+ *
+ * \note If any of the two paths doesn't physically exist, their indentity can't
+ *       be detected in some special corner cases.
+ *
+ * \param[in] path1     Absolute or a relative path (a file, a directory, etc.)
+ * \param[in] path2     Absolute or a relative path (a file, a directory, etc.)
+ *
+ * \return True if both paths are identical (if they point to the same inode),
+ *         false otherwise.
+ */
+bool same_path(const char *path1, const char *path2);
+
+/*!
  * \brief Delete file or directory (recursive).
  *
  * \return true on success, false when one or more files failed to be removed.
