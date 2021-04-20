@@ -207,6 +207,7 @@ include $(srcdir)/knot/modules/dnstap/Makefile.inc
 include $(srcdir)/knot/modules/geoip/Makefile.inc
 include $(srcdir)/knot/modules/noudp/Makefile.inc
 include $(srcdir)/knot/modules/onlinesign/Makefile.inc
+include $(srcdir)/knot/modules/probe/Makefile.inc
 include $(srcdir)/knot/modules/queryacl/Makefile.inc
 include $(srcdir)/knot/modules/rrl/Makefile.inc
 include $(srcdir)/knot/modules/stats/Makefile.inc
