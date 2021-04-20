@@ -29,7 +29,7 @@ static bool key_present(const kdnssec_ctx_t *ctx, bool ksk, bool zsk)
 	assert(ctx->zone);
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		const knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (key->is_ksk == ksk && key->is_zsk == zsk) {
+		if (key->is_ksk == ksk && key->is_zsk == zsk && !key->is_pub_only) {
 			return true;
 		}
 	}
@@ -59,7 +59,7 @@ static unsigned algorithm_present(const kdnssec_ctx_t *ctx, uint8_t alg)
 		const knot_kasp_key_t *key = &ctx->zone->keys[i];
 		knot_time_t activated = knot_time_min(key->timing.pre_active, key->timing.ready);
 		if (knot_time_cmp(knot_time_min(activated, key->timing.active), ctx->now) <= 0 &&
-		    dnssec_key_get_algorithm(key->key) == alg) {
+		    dnssec_key_get_algorithm(key->key) == alg && !key->is_pub_only) {
 			ret++;
 		}
 	}
@@ -211,12 +211,15 @@ static bool running_rollover(const kdnssec_ctx_t *ctx)
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		if (key->is_pub_only) {
+			continue;
+		}
 		switch (get_key_state(key, ctx->now)) {
 		case DNSSEC_KEY_STATE_PRE_ACTIVE:
 			res = true;
 			break;
 		case DNSSEC_KEY_STATE_PUBLISHED:
-			res = (res || !key->is_pub_only);
+			res = true;
 			break;
 		case DNSSEC_KEY_STATE_READY:
 			ready_ksk = (ready_ksk || key->is_ksk);
@@ -479,7 +482,8 @@ static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 	// pushing from READY into ACTIVE decreases the other key's cds_priority
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (key->is_ksk && get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
+		if (key->is_ksk && !key->is_pub_only &&
+		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
 			key->timing.active = ctx->now;
 		}
 	}
@@ -759,7 +763,8 @@ int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay)
 {
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (key->is_ksk && get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
+		if (key->is_ksk && !key->is_pub_only &&
+		    get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY) {
 			int ret = exec_new_signatures(ctx, key, retire_delay);
 			if (ret == KNOT_EOK) {
 				ret = kdnssec_ctx_commit(ctx);
@@ -776,7 +781,7 @@ bool zone_has_key_sbm(const kdnssec_ctx_t *ctx)
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (key->is_ksk &&
+		if (key->is_ksk && !key->is_pub_only &&
 		    (get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_READY ||
 		     get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_ACTIVE)) {
 			return true;

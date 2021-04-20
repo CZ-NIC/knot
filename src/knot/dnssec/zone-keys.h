@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@ typedef struct {
 	bool is_ready;
 	bool is_zsk_active_plus;
 	bool is_ksk_active_plus;
+	bool is_pub_only;
 	bool is_revoked;
 } zone_key_t;
 

@@ -10,9 +10,29 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
+PUB_ONLY_SCENARIO = random.choice([0, 1, 2])
+PUB_ONLY_KEYS = 1 if PUB_ONLY_SCENARIO > 0 else 0
+PUB_ONLY_CDS = 1 if PUB_ONLY_SCENARIO > 1 else 0
+PUB_ONLY_KEYID = ""
+
 DOUBLE_DS = random.choice([True, False])
-if DOUBLE_DS:
-    check_log("DOUBLE DS ENABLED")
+check_log("DOUBLE DS %s, PUB_ONLY_KEYS %d, PUB_ONLY_CDS %d" % \
+          (str(DOUBLE_DS), PUB_ONLY_KEYS, PUB_ONLY_CDS))
+
+def generate_public_only(server, zone, alg):
+    global PUB_ONLY_KEYID
+    if PUB_ONLY_KEYID != "":
+        Keymgr.run_check(server.confile, zone.name, "delete", PUB_ONLY_KEYID)
+
+    if PUB_ONLY_KEYS == 0:
+        return
+    _, keymgr_stdout, _ = Keymgr.run_check(server.confile, zone.name, "import-pub", \
+                                           t.data_dir + "/public-only-%s.key" % alg)
+    PUB_ONLY_KEYID = keymgr_stdout.split('\n')[0]
+
+    if PUB_ONLY_CDS == 0:
+        return
+    Keymgr.run_check(server.confile, zone.name, "set", PUB_ONLY_KEYID, "ready=+0")
 
 CDS_DT = random.choice(["sha256", "sha384"])
 
@@ -26,6 +46,9 @@ def pregenerate_key(server, zone, alg):
 
 # check zone if keys are present and used for signing
 def check_zone(server, zone, slave, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
+    dnskeys += PUB_ONLY_KEYS
+    cdnskeys += PUB_ONLY_CDS
+
     qdnskeys = server.dig("example.com", "DNSKEY", bufsize=4096)
     found_dnskeys = qdnskeys.count("DNSKEY")
 
@@ -94,6 +117,12 @@ def wait_for_rrsig_count(t, server, rrtype, rrsig_count, min_time, timeout, msg)
 
 def wait_for_count(t, server, rrtype, count, min_time, timeout, msg):
     rtime = 0
+
+    if rrtype == "DNSKEY":
+        count += PUB_ONLY_KEYS
+    if rrtype == "CDNSKEY" or rrtype == "CDS":
+        count += PUB_ONLY_CDS
+
     while True:
         q = server.dig("example.com", rrtype, dnssec=True, bufsize=4096)
         found = q.count(rrtype)
@@ -141,6 +170,8 @@ def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, se
     msg = desc + ": both algorithms active"
     wait_for_count(t, server, "DNSKEY", before_keys + after_keys, 13, 20, msg)
     check_zone(server, zone, slave, before_keys + after_keys, 2, 1, 2, msg)
+
+    generate_public_only(server, zone[0], set_alg)
 
     # wait for any change in CDS records
     CDS1 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
@@ -220,15 +251,10 @@ t.link(child_zone, child, slave, ixfr=True)
 
 def cds_submission():
     cds = child.dig(ZONE, "CDS")
-    cds_rdata = cds.resp.answer[0].to_rdataset()[0].to_text()
     up = parent.update(parent_zone)
-    up.add(ZONE, 7, "DS", cds_rdata)
-    if DOUBLE_DS:
-        try:
-            cds_rdata = cds.resp.answer[0].to_rdataset()[1].to_text()
-            up.add(ZONE, 7, "DS", cds_rdata)
-        except:
-            pass
+    up.delete(ZONE, "DS")
+    for rd in cds.resp.answer[0].to_rdataset():
+        up.add(ZONE, 7, "DS", rd.to_text())
     up.send("NOERROR")
 
 child.zonefile_sync = 24 * 60 * 60
@@ -253,6 +279,7 @@ ZONE = "example.com."
 
 t.start()
 child.zone_wait(child_zone)
+generate_public_only(child, child_zone[0], "ECDSAP384SHA384")
 
 cds_submission()
 t.sleep(5)
