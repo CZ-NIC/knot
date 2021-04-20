@@ -52,6 +52,36 @@ char* abs_path(const char *path, const char *base_dir)
 	}
 }
 
+bool same_path(const char *path1, const char *path2)
+{
+	bool equal = false;
+	int err = 0;
+
+	struct stat sb1;
+	if (stat(path1, &sb1) == 0) {
+		struct stat sb2;
+		if (stat(path2, &sb2) == 0) {
+			if (sb1.st_dev == sb2.st_dev &&
+			    sb1.st_ino == sb2.st_ino) {
+				equal = true;
+			}
+		} else {
+			err = errno;
+		}
+	} else {
+		err = errno;
+	}
+
+	if (err != 0) {
+		// Can't compare real absolute paths, as stat() failed already. Try the best.
+		if (strcmp(abs_path(path1, NULL), abs_path(path2, NULL)) == 0) {
+			equal = true;
+		}
+	}
+
+	return equal;
+}
+
 static int remove_file(const char *path, const struct stat *stat, int type, struct FTW *ftw)
 {
 	(void)stat;
