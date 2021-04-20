@@ -21,7 +21,7 @@ Options
   Limits the number of displayed changes.
 
 **-s**, **--serial** *soa*
-  Start at specific SOA serial.
+  Start at a specific SOA serial.
 
 **-d**, **--debug**
   Debug mode brief output.
@@ -30,7 +30,7 @@ Options
   Removes changes coloring.
 
 **-z**, **--zone-list**
-  Instead of reading jurnal, display the list of zones in the DB.
+  Instead of reading the journal, display the list of zones in the DB.
   (*zone_name* not needed)
 
 **-c**, **--check**

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,9 +37,9 @@ static void print_help(void)
 	       "\n"
 	       "Parameters:\n"
 	       " -l, --limit <num>  Read only <num> newest changes.\n"
-	       " -s, --serial <soa> Start with specific SOA serial.\n"
+	       " -s, --serial <soa> Start with a specific SOA serial.\n"
 	       " -n, --no-color     Get output without terminal coloring.\n"
-	       " -z, --zone-list    Instead of reading jurnal, display the list\n"
+	       " -z, --zone-list    Instead of reading the journal, display the list\n"
 	       "                    of zones in the DB (<zone_name> not needed).\n"
 	       " -c, --check        Additional journal semantic checks.\n"
 	       " -d, --debug        Debug mode output.\n"
