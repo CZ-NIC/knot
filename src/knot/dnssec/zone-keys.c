@@ -352,6 +352,12 @@ static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now,
 		zone_key->is_revoked = true;
 		fix_revoked_flag(kasp_key);
 	}
+	if (kasp_key->is_pub_only) {
+		zone_key->is_active = false;
+		zone_key->is_ksk_active_plus = false;
+		zone_key->is_zsk_active_plus = false;
+		zone_key->is_pub_only = true;
+	}
 }
 
 /*!
