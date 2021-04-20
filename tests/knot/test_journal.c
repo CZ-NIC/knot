@@ -765,7 +765,7 @@ static void test_stress_base(const knot_dname_t *apex,
 	unset_conf();
 }
 
-/*! \brief Test behavior when writing to jurnal and flushing it. */
+/*! \brief Test behavior when writing to the journal and flushing it. */
 static void test_stress(const knot_dname_t *apex)
 {
 	diag("stress test: small data");
