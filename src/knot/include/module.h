@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -424,6 +424,26 @@ typedef struct {
 
 	struct knotd_qdata_extra *extra; /*!< Private items (process_query.h). */
 } knotd_qdata_t;
+
+/*!
+ * Gets the local (destination) address of the query.
+ *
+ * \param[in] qdata  Query data.
+ * \param[out] buff  Auxiliary buffer (not used for XDP).
+ *
+ * \return Local address or NULL if error.
+ */
+const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata,
+                                                      struct sockaddr_storage *buff);
+
+/*!
+ * Gets the remote (source) address of the query.
+ *
+ * \param[in] qdata  Query data.
+ *
+ * \return Remote address or NULL if error.
+ */
+const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata);
 
 /*!
  * Gets the current zone name.

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 
 	/* Store socket and remote address. */
 	req->fd = dup(qdata->params->socket);
-	memcpy(&req->remote, qdata->params->remote, sizeof(req->remote));
+	memcpy(&req->remote, knotd_qdata_remote_addr(qdata), sizeof(req->remote));
 
 	/* Store update request. */
 	req->query = knot_pkt_new(NULL, qdata->query->max_size, NULL);

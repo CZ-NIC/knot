@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include "libknot/libknot.h"
 
 #define ZONE_NAME(qdata) knot_pkt_qname((qdata)->query)
-#define REMOTE(qdata) (struct sockaddr *)(qdata)->params->remote
+#define REMOTE(qdata) (struct sockaddr *)knotd_qdata_remote_addr(qdata)
 
 #define AXFROUT_LOG(priority, qdata, fmt...) \
 	ns_log(priority, ZONE_NAME(qdata), LOG_OPERATION_AXFR, \

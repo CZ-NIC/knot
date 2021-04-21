@@ -30,7 +30,7 @@
 
 #define UPDATE_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_UPDATE, \
-	       LOG_DIRECTION_IN, (struct sockaddr *)qdata->params->remote, fmt)
+	       LOG_DIRECTION_IN, (struct sockaddr *)knotd_qdata_remote_addr(qdata), fmt)
 
 static void init_qdata_from_request(knotd_qdata_t *qdata,
                                     const zone_t *zone,

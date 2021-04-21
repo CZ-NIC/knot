@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -182,7 +182,7 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 		.timestamp = (uint32_t)time(NULL),
 		.lifetime_before = 3600,
 		.lifetime_after = 300,
-		.client_addr = qdata->params->remote
+		.client_addr = knotd_qdata_remote_addr(qdata)
 	};
 	uint64_t current_secret = ATOMIC_GET(ctx->secret.variable);
 	memcpy(params.secret, &current_secret, sizeof(current_secret));

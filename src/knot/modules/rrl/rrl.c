@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,7 +92,7 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Exempt clients.
-	if (knotd_conf_addr_range_match(&ctx->whitelist, qdata->params->remote)) {
+	if (knotd_conf_addr_range_match(&ctx->whitelist, knotd_qdata_remote_addr(qdata))) {
 		return state;
 	}
 
@@ -130,7 +130,7 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 		}
 	}
 
-	if (rrl_query(ctx->rrl, qdata->params->remote, &req, zone_name, mod) == KNOT_EOK) {
+	if (rrl_query(ctx->rrl, knotd_qdata_remote_addr(qdata), &req, zone_name, mod) == KNOT_EOK) {
 		// Rate limiting not applied.
 		return state;
 	}
