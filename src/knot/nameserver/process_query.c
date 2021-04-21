@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -239,7 +239,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 
 	/* Initialize OPT record. */
 	uint16_t max_payload;
-	switch (qdata->params->remote->ss_family) {
+	switch (knotd_qdata_remote_addr(qdata)->ss_family) {
 	case AF_INET:
 		max_payload = conf()->cache.srv_udp_max_payload_ipv4;
 		break;
@@ -386,7 +386,7 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
 		if (knot_pkt_has_edns(query)) {
 			uint16_t server_size;
-			switch (qdata->params->remote->ss_family) {
+			switch (knotd_qdata_remote_addr(qdata)->ss_family) {
 			case AF_INET:
 				server_size = conf()->cache.srv_udp_max_payload_ipv4;
 				break;
@@ -633,7 +633,7 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 {
 	const knot_dname_t *zone_name = qdata->extra->zone->name;
 	knot_pkt_t *query = qdata->query;
-	const struct sockaddr_storage *query_source = qdata->params->remote;
+	const struct sockaddr_storage *query_source = knotd_qdata_remote_addr(qdata);
 	knot_tsig_key_t tsig = { 0 };
 
 	/* Skip if already checked and valid. */

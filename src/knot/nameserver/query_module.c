@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -611,6 +611,50 @@ void knotd_conf_free(knotd_conf_t *conf)
 		free(conf->multi);
 	}
 	memset(conf, 0, sizeof(*conf));
+}
+
+_public_
+const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata,
+                                                      struct sockaddr_storage *buff)
+{
+	if (qdata == NULL) {
+		return NULL;
+	}
+
+	if (qdata->params->xdp_msg != NULL) {
+#ifdef ENABLE_XDP
+		return (struct sockaddr_storage *)&qdata->params->xdp_msg->ip_to;
+#else
+		assert(0);
+		return NULL;
+#endif
+	} else {
+		socklen_t buff_len = sizeof(*buff);
+		if (getsockname(qdata->params->socket, (struct sockaddr *)buff,
+		                &buff_len) != 0) {
+			return NULL;
+		}
+		return buff;
+	}
+}
+
+_public_
+const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata)
+{
+	if (qdata == NULL) {
+		return NULL;
+	}
+
+	if (qdata->params->xdp_msg != NULL) {
+#ifdef ENABLE_XDP
+		return (struct sockaddr_storage *)&qdata->params->xdp_msg->ip_from;
+#else
+		assert(0);
+		return NULL;
+#endif
+	} else {
+		return qdata->params->remote;
+	}
 }
 
 _public_
