@@ -6,7 +6,7 @@
 # Contributor: Otto Sabart <seberm[at]gmail[dot]com>
 
 pkgname=knot
-pkgver=__VERSION__
+pkgver={{ version }}
 pkgrel=1
 pkgdesc="High-performance authoritative-only DNS server"
 arch=('x86_64')
@@ -23,7 +23,7 @@ depends=('fstrm'
          'protobuf-c'
          'systemd')
 backup=('etc/knot/knot.conf')
-source=("${pkgname}_${pkgver}.orig.tar.xz")
+source=("${pkgname}-${pkgver}.tar.xz")
 sha256sums=('SKIP')
 validpgpkeys=('742FA4E95829B6C5EAC6B85710BB7AF6FEBBD6AB') # Daniel Salzman <daniel.salzman@nic.cz>
 
