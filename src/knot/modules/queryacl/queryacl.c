@@ -54,7 +54,7 @@ static knotd_state_t queryacl_process(knotd_state_t state, knot_pkt_t *pkt,
 	if (ctx->allow_iface.count > 0) {
 		struct sockaddr_storage buff;
 		const struct sockaddr_storage *addr = knotd_qdata_local_addr(qdata, &buff);
-		if (addr == NULL || !knotd_conf_addr_range_match(&ctx->allow_iface, addr)) {
+		if (!knotd_conf_addr_range_match(&ctx->allow_iface, addr)) {
 			qdata->rcode = KNOT_RCODE_NOTAUTH;
 			return KNOTD_STATE_FAIL;
 		}
