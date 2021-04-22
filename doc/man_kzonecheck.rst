@@ -37,6 +37,10 @@ Options
 **-v**, **--verbose**
   Enable debug output.
 
+**filename**
+  Path to a zone file to be checked. For read from *stdin* use */dev/stdin*
+  or just *-*.
+
 **-h**, **--help**
   Print the program help.
 

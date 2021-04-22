@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@
 #include "utils/kzonecheck/zone_check.h"
 
 #define PROGRAM_NAME "kzonecheck"
+
+#define STDIN_SUBST "-"
+#define STDIN_REPL "/dev/stdin"
 
 static void print_help(void)
 {
@@ -120,6 +123,9 @@ int main(int argc, char *argv[])
 	}
 
 	char *filename = argv[optind];
+	if (strncmp(filename, STDIN_SUBST, sizeof(STDIN_SUBST)) == 0) {
+		filename = STDIN_REPL;
+	}
 
 	char *zonename;
 	if (origin == NULL) {
