@@ -89,18 +89,13 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 		protocol = IPPROTO_UDP;
 	}
 
-	/* Try to get the destination address. */
-	struct sockaddr_storage dst_addr;
-	socklen_t dst_addr_len = sizeof(dst_addr);
-	(void)getsockname(qdata->params->socket, (struct sockaddr *)&dst_addr,
-	                  &dst_addr_len);
-
 	/* Create a dnstap message. */
+	struct sockaddr_storage buff;
 	Dnstap__Message msg;
 	int ret = dt_message_fill(&msg, msgtype,
-	                          (const struct sockaddr *)qdata->params->remote,
-	                          (struct sockaddr *)&dst_addr, protocol, pkt->wire,
-	                          pkt->size, &tv);
+	                          (const struct sockaddr *)knotd_qdata_remote_addr(qdata),
+	                          (const struct sockaddr *)knotd_qdata_local_addr(qdata, &buff),
+	                          protocol, pkt->wire, pkt->size, &tv);
 	if (ret != KNOT_EOK) {
 		return state;
 	}

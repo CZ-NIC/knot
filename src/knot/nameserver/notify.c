@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 #define NOTIFY_IN_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_NOTIFY, \
-	       LOG_DIRECTION_IN, qdata->params->remote, fmt)
+	       LOG_DIRECTION_IN, knotd_qdata_remote_addr(qdata), fmt)
 
 static int notify_check_query(knotd_qdata_t *qdata)
 {
@@ -84,7 +84,7 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
-	zone_set_preferred_master(zone, qdata->params->remote);
+	zone_set_preferred_master(zone, knotd_qdata_remote_addr(qdata));
 	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 
 	return KNOT_STATE_DONE;

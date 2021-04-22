@@ -49,7 +49,7 @@ static knotd_in_state_t whoami_query(knotd_in_state_t state, knot_pkt_t *pkt,
 	}
 
 	/* Retrieve the IP address that sent the query. */
-	const struct sockaddr_storage *query_source = qdata->params->remote;
+	const struct sockaddr_storage *query_source = knotd_qdata_remote_addr(qdata);
 	if (query_source == NULL) {
 		return KNOTD_IN_STATE_ERROR;
 	}

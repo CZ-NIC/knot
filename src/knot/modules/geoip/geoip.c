@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -803,7 +803,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	// Check if EDNS Client Subnet is available.
 	struct sockaddr_storage ecs_addr = { 0 };
-	const struct sockaddr_storage *remote = qdata->params->remote;
+	const struct sockaddr_storage *remote = knotd_qdata_remote_addr(qdata);
 	if (knot_edns_client_subnet_get_addr(&ecs_addr, qdata->ecs) == KNOT_EOK) {
 		remote = &ecs_addr;
 	}
