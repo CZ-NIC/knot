@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -382,7 +382,7 @@ int log_update_privileges(int uid, int gid)
 
 	for (int i = 0; i < s_log->file_count; ++i) {
 		if (fchown(fileno(s_log->file[i]), uid, gid) < 0) {
-			return knot_map_errno();
+			log_error("failed to change log file owner");
 		}
 	}
 
