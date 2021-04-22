@@ -18,6 +18,13 @@ DNS server.
 Please, refer to the ``semantic-checks`` configuration option in
 :manpage:`knot.conf(5)` for the full list of available semantic checks.
 
+Parameters
+..........
+
+*filename*
+  Path to the zone file to be checked. For reading from **stdin** use **/dev/stdin**
+  or just **-**.
+
 Options
 .......
 
