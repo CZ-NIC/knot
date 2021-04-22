@@ -45,6 +45,18 @@ static bool match_key_ds(zone_key_t *key, knot_rdata_t *ds)
 	return (dnssec_binary_cmp(&cds_rdata, &ds_rdata) == 0);
 }
 
+static bool match_key_ds_rrset(zone_key_t *key, const knot_rrset_t *rr)
+{
+	knot_rdata_t *rd = rr->rrs.rdata;
+	for (int i = 0; i < rr->rrs.count; i++) {
+		if (match_key_ds(key, rd)) {
+			return true;
+		}
+		rd = knot_rdataset_next(rd);
+	}
+	return false;
+}
+
 struct ds_query_data {
 	const knot_dname_t *zone_name;
 	const struct sockaddr *remote;
@@ -109,7 +121,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		const knot_rrset_t *rr = knot_pkt_rr(answer, j);
 		switch ((rr && rr->rrs.count > 0) ? rr->type : 0) {
 		case KNOT_RRTYPE_DS:
-			if (match_key_ds(data->key, rr->rrs.rdata)) {
+			if (match_key_ds_rrset(data->key, rr)) {
 				match = true;
 				if (data->ttl == 0) { // fallback: if there is no RRSIG
 					data->ttl = rr->ttl;
