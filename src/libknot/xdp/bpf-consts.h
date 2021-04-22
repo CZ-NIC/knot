@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief XDP filter constants.
+ *
+ * \addtogroup xdp
+ * @{
+ */
+
 #pragma once
 
 enum {
@@ -23,3 +32,5 @@ enum {
 	KNOT_XDP_LISTEN_PORT_DROP  = 1 << 18,    /*!< Drop incoming messages to ports >= port value. */
 	KNOT_XDP_LISTEN_PORT_ROUTE = 1 << 19,    /*!< Consider routing information from kernel. */
 };
+
+/*! @} */

@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief XDP IO interface.
+ *
+ * \addtogroup xdp
+ * @{
+ */
+
 #pragma once
 
 #include <stdbool.h>
@@ -176,3 +185,5 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
  * \param file    Output file.
  */
 void knot_xdp_info(const knot_xdp_socket_t *socket, FILE *file);
+
+/*! @} */

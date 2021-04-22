@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief TCP over XDP IO interface.
+ *
+ * \addtogroup xdp
+ * @{
+ */
+
 #pragma once
 
 #include "libknot/mm_ctx.h"
@@ -63,3 +72,5 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
  */
 int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
                       uint32_t relay_count);
+
+/*! @} */

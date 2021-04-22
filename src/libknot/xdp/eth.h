@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief Ethernet device info interface.
+ *
+ * \addtogroup xdp
+ * @{
+ */
+
 #pragma once
 
 #include <stddef.h>
@@ -67,3 +76,5 @@ typedef enum {
  * \return Current XDP mode.
  */
 knot_xdp_mode_t knot_eth_xdp_mode(int if_index);
+
+/*! @} */

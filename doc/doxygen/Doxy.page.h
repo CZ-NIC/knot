@@ -30,6 +30,7 @@
  - \ref rrtype    — DNS resource record types
  - \ref knot-tsig — TSIG operations
  - \ref wire      — Packet wire data manipulation
+ - \ref xdp       — XDP interface
  - \ref yparser   — Simple YAML parser
 
 \defgroup ctl        ctl
@@ -40,6 +41,7 @@
 \defgroup rrtype     rrtype
 \defgroup knot-tsig  tsig
 \defgroup wire       wire
+\defgroup xdp        xdp
 \defgroup yparser    yparser
 
 

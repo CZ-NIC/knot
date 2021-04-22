@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief XDP message description.
+ *
+ * \addtogroup xdp
+ * @{
+ */
+
 #pragma once
 
 #include <stdint.h>
@@ -43,3 +52,5 @@ typedef struct knot_xdp_msg {
 	uint32_t ackno;
 	struct iovec payload;
 } knot_xdp_msg_t;
+
+/*! @} */

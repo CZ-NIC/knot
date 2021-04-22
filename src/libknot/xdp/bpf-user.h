@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief XDP socket interface.
+ *
+ * \addtogroup xdp
+ * @{
+ */
+
 #pragma once
 
 #include <bpf/xsk.h>
@@ -110,3 +119,5 @@ int kxsk_socket_start(const struct kxsk_iface *iface, uint32_t listen_port,
  * \param iface  Interface context.
  */
 void kxsk_socket_stop(const struct kxsk_iface *iface);
+
+/*! @} */
