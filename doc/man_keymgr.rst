@@ -36,6 +36,9 @@ Basic options
   TSIG key is only displayed on `stdout`: the command does not create a file, nor include the
   key in a keystore.
 
+**-l**, **--list**
+  Print the list of zones that have at least one key stored in the configured KASP db.
+
 Config options
 ..............
 

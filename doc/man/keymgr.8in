@@ -58,6 +58,9 @@ Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac\-
 bit length of the key by number (default: optimal length given by algorithm). The generated
 TSIG key is only displayed on \fIstdout\fP: the command does not create a file, nor include the
 key in a keystore.
+.TP
+\fB\-l\fP, \fB\-\-list\fP
+Print the list of zones that have at least one key stored in the configured KASP db.
 .UNINDENT
 .SS Config options
 .INDENT 0.0
