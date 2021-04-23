@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -87,6 +87,16 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
  * \return KNOT_E*
  */
 int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
+
+/*!
+ * \brief List all zones that have at least one key in KASP db.
+ *
+ * \param db       KASP database.
+ * \param zones    Output: ptrlist with zone names.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *zones);
 
 /*!
  * \brief Add a key to the DB (possibly overwrite) and link it to a zone.

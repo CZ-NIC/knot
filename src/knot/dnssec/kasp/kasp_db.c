@@ -296,6 +296,38 @@ int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	return txn.ret;
 }
 
+int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *zones)
+{
+	if (!knot_lmdb_exists(db)) {
+		return KNOT_EOK;
+	}
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, false);
+
+	uint8_t prefix_data = KASPDBKEY_PARAMS;
+	MDB_val prefix = { sizeof(prefix_data), &prefix_data };
+	knot_lmdb_foreach(&txn, &prefix) {
+		const knot_dname_t *found = txn.cur_key.mv_data + sizeof(prefix_data);
+		if (!knot_dname_is_equal(found, ((ptrnode_t *)TAIL(*zones))->d)) {
+			knot_dname_t *copy = knot_dname_copy(found, NULL);
+			if (copy == NULL || ptrlist_add(zones, copy, NULL) == NULL) {
+				free(copy);
+				ptrlist_deep_free(zones, NULL);
+				return KNOT_ENOMEM;
+			}
+		}
+	}
+	knot_lmdb_abort(&txn);
+	if (txn.ret != KNOT_EOK) {
+		ptrlist_deep_free(zones, NULL);
+	}
+	return txn.ret;
+}
+
 int kasp_db_add_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const key_params_t *params)
 {
 	MDB_val v = params_serialize(params);
