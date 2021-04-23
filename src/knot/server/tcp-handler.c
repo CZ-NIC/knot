@@ -37,6 +37,7 @@
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
+#include "contrib/openbsd/strlcpy.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
@@ -74,6 +75,15 @@ static void update_tcp_conf(tcp_context_t *tcp)
 	rcu_read_unlock();
 }
 
+static void client_addr(const struct sockaddr_storage *ss, char *out, size_t out_len)
+{
+	if (ss->ss_family == AF_UNIX) {
+		strlcpy(out, "UNIX", out_len);
+	} else if (sockaddr_tostr(out, out_len, ss) < 0) {
+		strlcpy(out, "unknown", out_len);
+	}
+}
+
 /*! \brief Sweep TCP connection. */
 static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 {
@@ -84,9 +94,9 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	/* Best-effort, name and shame. */
 	struct sockaddr_storage ss;
 	socklen_t len = sizeof(struct sockaddr_storage);
-	if (getpeername(fd, (struct sockaddr*)&ss, &len) == 0) {
-		char addr_str[SOCKADDR_STRLEN] = {0};
-		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
+	if (getpeername(fd, (struct sockaddr *)&ss, &len) == 0) {
+		char addr_str[SOCKADDR_STRLEN];
+		client_addr(&ss, addr_str, sizeof(addr_str));
 		log_notice("TCP, terminated inactive client, address %s", addr_str);
 	}
 
@@ -109,8 +119,8 @@ static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, in
 {
 	/* Don't log ECONN as it usually means client closed the connection. */
 	if (ret == KNOT_ETIMEOUT) {
-		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), ss);
+		char addr_str[SOCKADDR_STRLEN];
+		client_addr(ss, addr_str, sizeof(addr_str));
 		log_debug("TCP, %s, address %s (%s)", operation, addr_str,
 		          knot_strerror(ret));
 	}
