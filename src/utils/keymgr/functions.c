@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -947,5 +947,23 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 
 	free(base64_output);
 	free(name);
+	return KNOT_EOK;
+}
+
+int keymgr_list_zones(knot_lmdb_db_t *kaspdb)
+{
+	list_t zones;
+	init_list(&zones);
+	int ret = kasp_db_list_zones(kaspdb, &zones);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_dname_txt_storage_t buf;
+	ptrnode_t *node;
+	WALK_LIST(node, zones) {
+		printf("%s\n", knot_dname_to_str(buf, node->d, sizeof(buf)));
+	}
+	ptrlist_deep_free(&zones, NULL);
 	return KNOT_EOK;
 }
