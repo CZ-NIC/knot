@@ -413,8 +413,9 @@ listen
 One or more IP addresses where the server listens for incoming queries.
 Optional port specification (default is 53) can be appended to each address
 using ``@`` separator. Use ``0.0.0.0`` for all configured IPv4 addresses or
-``::`` for all configured IPv6 addresses. Non-local address binding is
-automatically enabled if supported by the operating system.
+``::`` for all configured IPv6 addresses. Filesystem path can be specified
+for listening on local unix SOCK_STREAM socket. Non-local address binding
+is automatically enabled if supported by the operating system.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
