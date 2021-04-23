@@ -34,6 +34,32 @@ typedef enum {
 	KASPDBKEY_SAVED_TTLS = 0x8,
 } keyclass_t;
 
+static const keyclass_t zone_related_classes[] = {
+	KASPDBKEY_PARAMS,
+	KASPDBKEY_NSEC3SALT,
+	KASPDBKEY_NSEC3TIME,
+	KASPDBKEY_MASTERSERIAL,
+	KASPDBKEY_LASTSIGNEDSERIAL,
+	KASPDBKEY_OFFLINE_RECORDS,
+	KASPDBKEY_SAVED_TTLS,
+};
+static const size_t zone_related_classes_size = sizeof(zone_related_classes) / sizeof(*zone_related_classes);
+
+static bool is_zone_related_class(uint8_t class)
+{
+	for (size_t i = 0; i < zone_related_classes_size; i++) {
+		if (zone_related_classes[i] == class) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool is_zone_related(const MDB_val *key)
+{
+	return is_zone_related_class(*(uint8_t *)key->mv_data);
+}
+
 static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const char *str)
 {
 	switch (kclass) {
@@ -237,14 +263,11 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 
 int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 {
-	keyclass_t del_classes[] = { KASPDBKEY_NSEC3SALT, KASPDBKEY_NSEC3TIME,
-		KASPDBKEY_LASTSIGNEDSERIAL, KASPDBKEY_MASTERSERIAL,
-		KASPDBKEY_PARAMS, KASPDBKEY_OFFLINE_RECORDS, };
 	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone, NULL);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
-	for (int i = 0; i < sizeof(del_classes) / sizeof(*del_classes) && prefix.mv_data != NULL; i++) {
-		*(uint8_t *)prefix.mv_data = del_classes[i];
+	for (size_t i = 0; i < zone_related_classes_size && prefix.mv_data != NULL; i++) {
+		*(uint8_t *)prefix.mv_data = zone_related_classes[i];
 		knot_lmdb_del_prefix(&txn, &prefix);
 	}
 	knot_lmdb_commit(&txn);
@@ -264,7 +287,7 @@ int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_forwhole(&txn) {
-		if (*(const uint8_t *)txn.cur_key.mv_data != KASPDBKEY_POLICYLAST &&
+		if (is_zone_related(&txn.cur_key) &&
 		    !keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data)) {
 			knot_lmdb_del_cur(&txn);
 		}
@@ -530,16 +553,12 @@ void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf)
 
 int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db)
 {
-	size_t n_prefs = 8; // NOTE: this and following must match number of record types
+	size_t n_prefs = zone_related_classes_size + 1; // NOTE: this and following must match number of record types
 	MDB_val prefixes[n_prefs];
-	prefixes[0] = make_key_str(KASPDBKEY_PARAMS, zone, NULL);
-	prefixes[1] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST); // we copy all policy-last records, that doesn't harm
-	prefixes[2] = make_key_str(KASPDBKEY_NSEC3SALT, zone, NULL);
-	prefixes[3] = make_key_str(KASPDBKEY_NSEC3TIME, zone, NULL);
-	prefixes[4] = make_key_str(KASPDBKEY_MASTERSERIAL, zone, NULL);
-	prefixes[5] = make_key_str(KASPDBKEY_LASTSIGNEDSERIAL, zone, NULL);
-	prefixes[6] = make_key_str(KASPDBKEY_OFFLINE_RECORDS, zone, NULL);
-	prefixes[7] = make_key_str(KASPDBKEY_SAVED_TTLS, zone, NULL);
+	prefixes[0] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST); // we copy all policy-last records, that doesn't harm
+	for (size_t i = 1; i < n_prefs; i++) {
+		prefixes[i] = make_key_str(zone_related_classes[i - 1], zone, NULL);
+	}
 
 	int ret = knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs);
 
