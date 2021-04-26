@@ -399,6 +399,5 @@ bool knot_tsig_rdata_is_ok(const knot_rrset_t *tsig)
 	return (tsig != NULL
 	        && knot_rdataset_at(&tsig->rrs, 0) != NULL
 	        && rdata_seek(tsig, TSIG_OTHER_O, 0) != NULL
-	        && knot_tsig_rdata_alg_name(tsig) != NULL
-	        && knot_tsig_rdata_time_signed(tsig) != 0);
+	        && knot_tsig_rdata_alg_name(tsig) != NULL);
 }
