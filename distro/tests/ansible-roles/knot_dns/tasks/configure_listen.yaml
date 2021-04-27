@@ -1,0 +1,6 @@
+---
+- name: Uncomment listen configuration
+  replace:
+    path: /etc/knot/knot.conf
+    regexp: '(\s*)#(\s*listen:.*)'
+    replace: '\1\2'

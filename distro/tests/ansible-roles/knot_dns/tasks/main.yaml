@@ -16,6 +16,7 @@
 - name: Always print package version at the end
   block:
 
+    - include: configure_listen.yaml
     - include: configure_zone.yaml
     - include: restart_knot.yaml
 
