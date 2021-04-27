@@ -4,7 +4,7 @@
 server:
     rundir: "@run_dir@"
     user: knot:knot
-    listen: [ 127.0.0.1@53, ::1@53 ]
+#    listen: [ 127.0.0.1@53, ::1@53 ]
 
 log:
   - target: syslog
