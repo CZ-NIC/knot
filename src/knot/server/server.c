@@ -495,9 +495,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 
-	if (listen_val.code == KNOT_EOK || lisxdp_val.code == KNOT_EOK) {
+	if (listen_val.code == KNOT_EOK) {
 		log_sock_conf(conf);
-	} else {
+	} else if (lisxdp_val.code != KNOT_EOK) {
 		log_warning("no network interface configured");
 		return KNOT_EOK;
 	}
