@@ -10,7 +10,9 @@ FUZZERS = \
 	fuzz_packet		\
 	fuzz_zscanner		\
 	fuzz_dname_to_str	\
-	fuzz_dname_from_str
+	fuzz_dname_from_str	\
+	fuzz_addr_parse_forward	\
+	fuzz_addr_parse_reverse
 
 check_PROGRAMS = $(FUZZERS)
 
@@ -78,9 +80,36 @@ fuzz_dname_to_str_LDADD    = \
 fuzz_dname_from_str_SOURCES  = fuzz_dname_from_str.c
 fuzz_dname_from_str_CPPFLAGS = $(AM_CPPFLAGS)
 fuzz_dname_from_str_LDADD    = \
+	$(top_builddir)/src/libknotd.la		\
 	$(top_builddir)/src/libknot.la		\
 	$(top_builddir)/src/libdnssec.la	\
 	$(top_builddir)/src/libcontrib.la	\
+	$(top_builddir)/src/libzscanner.la	\
+	$(liburcu_LIBS)						\
+	$(lmdb_LIBS)
+
+fuzz_addr_parse_forward_SOURCES  = fuzz_addr_parse_forward.c
+fuzz_addr_parse_forward_CPPFLAGS = $(AM_CPPFLAGS)
+fuzz_addr_parse_forward_LDADD    = \
+	$(top_builddir)/src/libknotd.la		\
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libdnssec.la	\
+	$(top_builddir)/src/libcontrib.la	\
+	$(top_builddir)/src/libzscanner.la	\
+	$(systemd_LIBS)						\
+	$(liburcu_LIBS)						\
+	$(lmdb_LIBS)
+
+fuzz_addr_parse_reverse_SOURCES  = fuzz_addr_parse_reverse.c
+fuzz_addr_parse_reverse_CPPFLAGS = $(AM_CPPFLAGS)
+fuzz_addr_parse_reverse_LDADD    = \
+	$(top_builddir)/src/libknotd.la		\
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libdnssec.la	\
+	$(top_builddir)/src/libcontrib.la	\
+	$(top_builddir)/src/libzscanner.la	\
+	$(systemd_LIBS)						\
+	$(liburcu_LIBS)						\
 	$(lmdb_LIBS)
 
 if OSS_FUZZ
@@ -88,10 +117,12 @@ if OSS_FUZZ
 # CFLAGS, LDFLAGS, etc. are defined by the oss-fuzz environment; just link
 # in the fuzzing engine
 
-fuzz_packet_LDADD         += ${LIB_FUZZING_ENGINE} -lc++
-fuzz_zscanner_LDADD       += ${LIB_FUZZING_ENGINE} -lc++
-fuzz_dname_to_str_LDADD   += ${LIB_FUZZING_ENGINE} -lc++
-fuzz_dname_from_str_LDADD += ${LIB_FUZZING_ENGINE} -lc++
+fuzz_packet_LDADD             += ${LIB_FUZZING_ENGINE} -lc++
+fuzz_zscanner_LDADD           += ${LIB_FUZZING_ENGINE} -lc++
+fuzz_dname_to_str_LDADD       += ${LIB_FUZZING_ENGINE} -lc++
+fuzz_dname_from_str_LDADD     += ${LIB_FUZZING_ENGINE} -lc++
+fuzz_addr_parse_forward_LDADD         += ${LIB_FUZZING_ENGINE} -lc++
+fuzz_addr_parse_reverse_LDADD += ${LIB_FUZZING_ENGINE} -lc++
 
 else
 
@@ -109,6 +140,12 @@ fuzz_dname_to_str_LDFLAGS   = ${fuzzer_LDFLAGS}
 fuzz_dname_from_str_CPPFLAGS += ${fuzzer_CFLAGS}
 fuzz_dname_from_str_LDFLAGS   = ${fuzzer_LDFLAGS}
 
+fuzz_addr_parse_forward_CPPFLAGS += ${fuzzer_CFLAGS}
+fuzz_addr_parse_forward_LDFLAGS   = ${fuzzer_LDFLAGS}
+
+fuzz_addr_parse_reverse_CPPFLAGS += ${fuzzer_CFLAGS}
+fuzz_addr_parse_reverse_LDFLAGS   = ${fuzzer_LDFLAGS}
+
 # Ensure that fuzzers execute successfully with a benign input
 
 TESTS = check/check_fuzzers.test
@@ -116,10 +153,12 @@ EXTRA_DIST = check/check_fuzzers.test
 
 else
 
-fuzz_packet_SOURCES         += main.c
-fuzz_zscanner_SOURCES       += main.c
-fuzz_dname_to_str_SOURCES   += main.c
-fuzz_dname_from_str_SOURCES += main.c
+fuzz_packet_SOURCES             += main.c
+fuzz_zscanner_SOURCES           += main.c
+fuzz_dname_to_str_SOURCES       += main.c
+fuzz_dname_from_str_SOURCES     += main.c
+fuzz_addr_parse_forward_SOURCES += main.c
+fuzz_addr_parse_reverse_SOURCES += main.c
 
 TESTS = $(FUZZERS)
 

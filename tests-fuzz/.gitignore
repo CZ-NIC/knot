@@ -6,6 +6,8 @@
 
 *.trs
 *.log
+/fuzz_addr_parse_forward
+/fuzz_addr_parse_reverse
 /fuzz_packet
 /fuzz_zscanner
 /fuzz_dname_to_str
