@@ -476,17 +476,21 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		return KNOT_EOK;
 	}
 
-#ifdef ENABLE_REUSEPORT
-	/* Log info if reuseport is used and for what protocols. */
-	log_info("using reuseport%s for UDP%s",
-	         conf->cache.srv_socket_affinity ? " with socket affinity" : "",
-	         conf->cache.srv_tcp_reuseport ? " and TCP" : "");
-#endif
-
-	/* Update bound interfaces. */
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
 	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
+
+	if (listen_val.code == KNOT_EOK) {
+#ifdef ENABLE_REUSEPORT
+		/* Log info if reuseport is used and for what protocols. */
+		log_info("using reuseport%s for UDP%s",
+			 conf->cache.srv_socket_affinity ? " with socket affinity" : "",
+		         conf->cache.srv_tcp_reuseport ? " and TCP" : "");
+#endif
+	} else if (lisxdp_val.code != KNOT_EOK) {
+		log_warning("no network interface configured");
+		return KNOT_EOK;
+	}
 
 	if (lisxdp_val.code == KNOT_EOK) {
 		struct rlimit no_limit = { RLIM_INFINITY, RLIM_INFINITY };
