@@ -744,7 +744,7 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 		                             update->zone->name);
 		if (ret == KNOT_EOK) {
 			ret = catalog_update_from_zone(update->zone->catalog_upd,
-			                               update->zone->contents, update->new_cont, // TODO why update->zone->contents ??
+			                               update->new_cont, update->new_cont,
 			                               false, true, NULL);
 		}
 	}
