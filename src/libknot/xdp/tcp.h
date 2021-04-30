@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "contrib/dynarray.h"
 #include "contrib/ucw/lists.h"
 #include "libknot/mm_ctx.h"
 #include "libknot/xdp/msg.h"
@@ -75,6 +76,10 @@ typedef struct {
 	knot_tcp_conn_t *conn;
 } knot_tcp_relay_t;
 
+#define TCP_RELAY_DEFAULT_COUNT 10
+
+dynarray_declare(tcp_relay, knot_tcp_relay_t, DYNARRAY_VISIBILITY_PUBLIC, TCP_RELAY_DEFAULT_COUNT)
+
 inline static uint32_t knot_tcp_next_seqno(const knot_xdp_msg_t *msg)
 {
 	uint32_t res = msg->seqno + msg->payload.iov_len;
@@ -111,16 +116,13 @@ void knot_tcp_table_free(knot_tcp_table_t *t);
  * \param tcp_table    Table of TCP connections.
  * \param syn_table    Optional: extra table for handling partially established connections.
  * \param relays       Out: connection changes and data.
- * \param relay_count  Out: number of connection changes and data.
  * \param mm           Memory context.
  *
  * \return KNOT_E*
  */
-int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
-                       uint32_t msg_count,
+int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
                        knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
-                       knot_tcp_relay_t *relays[], uint32_t *relay_count,
-                       knot_mm_t *mm);
+                       tcp_relay_dynarray_t *relays, knot_mm_t *mm);
 
 /*!
  * \brief Send TCP packets.
