@@ -37,10 +37,10 @@ const int TIMEOUT_SHORT = 500;
 static struct sockaddr_storage addr_local(void)
 {
 	struct sockaddr_storage addr = { 0 };
-	struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 
-	addr6->sin6_family = AF_INET6;
-	addr6->sin6_addr = in6addr_loopback;
+	struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
+	addr4->sin_family = AF_INET;
+	addr4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
 	return addr;
 }
