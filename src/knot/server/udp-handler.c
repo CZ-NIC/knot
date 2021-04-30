@@ -39,6 +39,7 @@
 #include "knot/query/layer.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
+#include "knot/server/xdp-handler.h"
 
 /* Buffer identifiers. */
 enum {
@@ -366,80 +367,31 @@ static udp_api_t udp_recvmmsg_api = {
 #endif /* ENABLE_RECVMMSG */
 
 #ifdef ENABLE_XDP
-struct xdp_recvmmsg {
-	knot_xdp_msg_t msgs_rx[XDP_BATCHLEN];
-	knot_xdp_msg_t msgs_tx[XDP_BATCHLEN];
-	uint32_t rcvd;
-};
 
 static void *xdp_recvmmsg_init(void)
 {
-	struct xdp_recvmmsg *rq = malloc(sizeof(*rq));
-	if (rq != NULL) {
-		memset(rq, 0, sizeof(*rq));
-	}
-	return rq;
+	return xdp_handle_init();
 }
 
 static void xdp_recvmmsg_deinit(void *d)
 {
-	struct xdp_recvmmsg *rq = d;
-	free(rq);
+	xdp_handle_free(d);
 }
 
 static int xdp_recvmmsg_recv(int fd, void *d, void *xdp_sock)
 {
 	UNUSED(fd);
-	struct xdp_recvmmsg *rq = d;
-
-	int ret = knot_xdp_recv(xdp_sock, rq->msgs_rx, XDP_BATCHLEN, &rq->rcvd, NULL);
-
-	return ret == KNOT_EOK ? rq->rcvd : ret;
+	return xdp_handle_recv(d, xdp_sock);
 }
 
 static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *xdp_sock)
 {
-	struct xdp_recvmmsg *rq = d;
-
-	knot_xdp_send_prepare(xdp_sock);
-
-	uint32_t responses = 0;
-	for (uint32_t i = 0; i < rq->rcvd; ++i) {
-		if (rq->msgs_rx[i].payload.iov_len == 0) {
-			continue; // Skip marked (zero length) messages.
-		}
-		int ret = knot_xdp_reply_alloc(xdp_sock, &rq->msgs_rx[i], &rq->msgs_tx[i]);
-		if (ret != KNOT_EOK) {
-			break; // Still free all RX buffers.
-		}
-
-		// udp_pktinfo_handle not needed for XDP as one worker is bound
-		// to one interface only.
-
-		udp_handle(ctx, knot_xdp_socket_fd(xdp_sock),
-		           (struct sockaddr_storage *)&rq->msgs_rx[i].ip_from,
-		           &rq->msgs_rx[i].payload, &rq->msgs_tx[i].payload,
-		           &rq->msgs_rx[i]);
-		responses++;
-	}
-
-	knot_xdp_recv_finish(xdp_sock, rq->msgs_rx, rq->rcvd);
-	rq->rcvd = responses;
-
-	return KNOT_EOK;
+	return xdp_handle_msgs(d, xdp_sock, &ctx->layer, ctx->server, ctx->thread_id);
 }
 
 static int xdp_recvmmsg_send(void *d, void *xdp_sock)
 {
-	struct xdp_recvmmsg *rq = d;
-	uint32_t sent = rq->rcvd;
-
-	int ret = knot_xdp_send(xdp_sock, rq->msgs_tx, sent, &sent);
-	knot_xdp_send_finish(xdp_sock);
-
-	memset(rq, 0, sizeof(*rq));
-
-	return ret == KNOT_EOK ? sent : ret;
+	return xdp_handle_send(d, xdp_sock);
 }
 
 static udp_api_t xdp_recvmmsg_api = {
