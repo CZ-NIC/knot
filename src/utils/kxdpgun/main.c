@@ -429,16 +429,14 @@ void *xdp_gun_thread(void *_ctx)
 					break;
 				}
 				if (ctx->tcp) {
-					knot_tcp_relay_t *relays = NULL;
-					uint32_t n_relays = 0;
-					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, tcp_table, NULL, &relays, &n_relays, &mm);
+					tcp_relay_dynarray_t relays = { 0 };
+					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, tcp_table, NULL, &relays, &mm);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
 					}
 
-					for (int irl = 0; irl < n_relays; irl++) {
-						knot_tcp_relay_t *rl = &relays[irl];
+					dynarray_foreach(tcp_relay, knot_tcp_relay_t, rl, relays) {
 						switch (rl->action) {
 						case XDP_TCP_ESTABLISH:
 							local_stats.synack_recv++;
@@ -461,11 +459,12 @@ void *xdp_gun_thread(void *_ctx)
 						}
 					}
 
-					ret = knot_xdp_tcp_send(xsk, relays, n_relays);
+					ret = knot_xdp_tcp_send(xsk, tcp_relay_dynarray_arr(&relays), relays.size);
 					if (ret != KNOT_EOK) {
 						errors++;
 					}
 
+					tcp_relay_dynarray_free(&relays);
 					mp_flush(mm.ctx);
 				} else {
 					for (int i = 0; i < recvd; i++) {
