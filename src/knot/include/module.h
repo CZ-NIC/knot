@@ -403,7 +403,7 @@ typedef struct {
 	int socket;                            /*!< Current network socket. */
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
-	struct knot_xdp_msg *xdp_msg;          /*!< Possible XDP message context. */
+	const struct knot_xdp_msg *xdp_msg;    /*!< Possible XDP message context. */
 } knotd_qdata_params_t;
 
 /*! Query processing data context. */

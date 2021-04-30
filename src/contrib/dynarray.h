@@ -50,7 +50,7 @@
 	} prefix ## _dynarray_t; \
 	\
 	visibility ntype *prefix ## _dynarray_arr(prefix ## _dynarray_t *dynarray); \
-	visibility void prefix ## _dynarray_add(prefix ## _dynarray_t *dynarray, \
+	visibility ntype *prefix ## _dynarray_add(prefix ## _dynarray_t *dynarray, \
 	                                        ntype const *to_add); \
 	visibility void prefix ## _dynarray_free(prefix ## _dynarray_t *dynarray);
 
@@ -88,11 +88,11 @@
 	} \
 	\
 	_unused_ \
-	visibility void prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
-	                                        ntype const *to_add) \
+	visibility ntype *prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
+	                                          ntype const *to_add) \
 	{ \
 		if (dynarray->capacity < 0) { \
-			return; \
+			return NULL; \
 		} \
 		if (dynarray->capacity == 0) { \
 			dynarray->capacity = sizeof(dynarray->init) / sizeof(*dynarray->init); \
@@ -104,7 +104,7 @@
 			if (new_arr == NULL) { \
 				prefix ## _dynarray_free__(dynarray); \
 				dynarray->capacity = dynarray->size = -1; \
-				return; \
+				return NULL; \
 			} \
 			if (dynarray->capacity > 0) { \
 				memcpy(new_arr, prefix ## _dynarray_arr(dynarray), \
@@ -115,7 +115,9 @@
 			dynarray->capacity = new_capacity; \
 			dynarray->arr = prefix ## _dynarray_arr_arr__; \
 		} \
-		prefix ## _dynarray_arr(dynarray)[dynarray->size++] = *to_add; \
+		ntype *add_to = &prefix ## _dynarray_arr(dynarray)[dynarray->size++]; \
+		*add_to = *to_add; \
+		return add_to; \
 	} \
 	\
 	_unused_ \

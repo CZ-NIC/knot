@@ -259,6 +259,8 @@ src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
 src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
+src/knot/server/xdp-handler.c
+src/knot/server/xdp-handler.h
 src/knot/updates/acl.c
 src/knot/updates/acl.h
 src/knot/updates/apply.c

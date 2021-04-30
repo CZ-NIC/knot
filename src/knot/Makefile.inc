@@ -152,6 +152,8 @@ libknotd_la_SOURCES = \
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
 	knot/server/udp-handler.h		\
+	knot/server/xdp-handler.c		\
+	knot/server/xdp-handler.h		\
 	knot/updates/acl.c			\
 	knot/updates/acl.h			\
 	knot/updates/apply.c			\
