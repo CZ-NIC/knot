@@ -20,8 +20,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <urcu.h>
 
+#include "contrib/files.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/zone/contents.h"
@@ -340,7 +342,10 @@ int catalog_copy(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
 	}
 	int ret = knot_lmdb_open(from);
 	if (ret == KNOT_EOK) {
-		ret = knot_lmdb_open(to);
+		ret = make_path(to->path, S_IRWXU | S_IRWXG);
+		if (ret == KNOT_EOK) {
+			ret = knot_lmdb_open(to);
+		}
 	}
 	if (ret != KNOT_EOK) {
 		return ret;
