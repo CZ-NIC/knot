@@ -952,13 +952,18 @@ their list::
 
     $ knotc zone-backup +backupdir /path/to/backup zone1.com. zone2.com. ...
 
-The backup directory should be empty (or non-existing) or contain a previous
-backup that will be overwritten.
+The backup directory should be empty or non-existing.
 The backup procedure will begin soon and will happen zone-by-zone
 (partially in parallel if more :ref:`server_background-workers` are configured).
 **The user shall check the logs for the outcome of each zone's backup attempt.**
 The knotc's ``-b`` parameter might be used if the user desires to wait until
 the backup work is done.
+
+.. TIP::
+   There is a plain ASCII text file in the backup directory,
+   ``knot_backup_label.txt``, that contains some useful information about the
+   backup, such as the backup creation date & time, the hostname, etc. Care must
+   always be taken **not to remove this file** from the backup.
 
 Offline restore
 ---------------
