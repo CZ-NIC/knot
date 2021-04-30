@@ -9,6 +9,8 @@ Build-Depends-Indep:
  python3-setuptools,
  python3-sphinx,
 Build-Depends:
+ autoconf,
+ automake,
  debhelper (>= 9),
  dh-python,
  libcap-ng-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386],
@@ -25,6 +27,7 @@ Build-Depends:
  libsofthsm2 <!nocheck>,
  libsystemd-dev [linux-any] | libsystemd-daemon-dev [linux-any],
  libsystemd-dev [linux-any] | libsystemd-journal-dev [linux-any],
+ libtool,
  liburcu-dev (>= 0.4),
  pkg-config,
  protobuf-c-compiler,
