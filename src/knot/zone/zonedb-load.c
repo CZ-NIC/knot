@@ -310,10 +310,11 @@ typedef struct {
 } reuse_cold_zone_ctx_t;
 
 static int reuse_cold_zone_cb(const knot_dname_t *member, const knot_dname_t *owner,
-                              const knot_dname_t *catz, void *ctx)
+                              const knot_dname_t *catz, const char *group, void *ctx)
 {
 	UNUSED(owner);
 	UNUSED(catz);
+	UNUSED(group);
 	reuse_cold_zone_ctx_t *rcz = ctx;
 
 	zone_t *zone = reuse_cold_zone(member, rcz->server, rcz->conf);
@@ -404,6 +405,12 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		knot_zonedb_insert(db_new, zone);
 	}
 
+	int ret = catalog_update_commit(&server->catalog_upd, &server->catalog);
+	if (ret != KNOT_EOK) {
+		log_error("catalog, failed to apply changes (%s)", knot_strerror(ret));
+		return db_new;
+	}
+
 	if (db_old != NULL) {
 		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
 		while (!knot_zonedb_iter_finished(it)) {
@@ -417,29 +424,22 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		knot_zonedb_iter_free(it);
 	} else if (check_open_catalog(&server->catalog)) {
 		reuse_cold_zone_ctx_t rcz = { db_new, server, conf };
-		int ret = catalog_apply(&server->catalog, NULL, reuse_cold_zone_cb, &rcz, false);
+		ret = catalog_apply(&server->catalog, NULL, reuse_cold_zone_cb, &rcz, false);
 		if (ret != KNOT_EOK) {
 			log_error("catalog, failed to reload member zones (%s)", knot_strerror(ret));
 		}
 	}
 
-	catalog_commit_cleanup(&server->catalog);
-
-	int ret = catalog_update_commit(&server->catalog_upd, &server->catalog);
-	if (ret == KNOT_EOK) {
-		catalog_it_t *it = catalog_it_begin(&server->catalog_upd);
-		while (!catalog_it_finished(it)) {
-			catalog_upd_val_t *val = catalog_it_val(it);
-			zone_t *zone = add_member_zone(val, db_new, server, conf);
-			if (zone != NULL) {
-				knot_zonedb_insert(db_new, zone);
-			}
-			catalog_it_next(it);
+	catalog_it_t *it = catalog_it_begin(&server->catalog_upd);
+	while (!catalog_it_finished(it)) {
+		catalog_upd_val_t *val = catalog_it_val(it);
+		zone_t *zone = add_member_zone(val, db_new, server, conf);
+		if (zone != NULL) {
+			knot_zonedb_insert(db_new, zone);
 		}
-		catalog_it_free(it);
-	} else {
-		log_error("catalog, failed to apply changes (%s)", knot_strerror(ret));
+		catalog_it_next(it);
 	}
+	catalog_it_free(it);
 
 	return db_new;
 }

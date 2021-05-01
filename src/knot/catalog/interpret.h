@@ -23,14 +23,16 @@ struct zone_contents;
 /*!
  * \brief Iterate over PTR records in given zone contents and add members to catalog update.
  *
- * \param u            Catalog update to be updated.
- * \param zone         Zone contents to be searched for member PTR records.
- * \param remove       Add removals of found member zones.
- * \param check_ver    Do check catalog zone version record first.
- * \param check        Optional: existing catalog database to be checked for existence
- *                     of such record (useful for removals).
+ * \param u                  Catalog update to be updated.
+ * \param zone               Zone contents to be searched for member PTR records.
+ * \param complete_contents  Complete zone contents (zone might be from a changeset).
+ * \param remove             Add removals of found member zones.
+ * \param check_ver          Do check catalog zone version record first.
+ * \param check              Optional: existing catalog database to be checked for existence
+ *                           of such record (useful for removals).
  *
  * \return KNOT_E*
  */
 int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
+                             const struct zone_contents *complete_contents,
                              bool remove, bool check_ver, catalog_t *check);

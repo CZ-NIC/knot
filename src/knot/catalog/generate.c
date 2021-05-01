@@ -83,7 +83,8 @@ void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
 						knot_zonedb_iter_next(it);
 						continue;
 					}
-					int ret = catalog_update_add(catz->cat_members, zone->name, owner, cg, true, NULL);
+					int ret = catalog_update_add(catz->cat_members, zone->name, owner,
+					                             cg, CAT_UPD_REM, NULL, 0, NULL);
 					free(owner);
 					if (ret != KNOT_EOK) {
 						catz->cat_members->error = ret;
@@ -112,7 +113,8 @@ void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
 				knot_zonedb_iter_next(it);
 				continue;
 			}
-			int ret = catalog_update_add(catz->cat_members, zone->name, owner, cg, false, NULL);
+			int ret = catalog_update_add(catz->cat_members, zone->name, owner,
+			                             cg, CAT_UPD_ADD, NULL, 0, NULL);
 			free(owner);
 			if (ret != KNOT_EOK) {
 				catz->cat_members->error = ret;

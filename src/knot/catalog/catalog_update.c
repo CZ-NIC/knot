@@ -50,6 +50,7 @@ static void catalog_upd_val_free(catalog_upd_val_t *val)
 {
 	free(val->add_owner);
 	free(val->rem_owner);
+	free(val->new_group);
 	free(val);
 }
 
@@ -85,7 +86,7 @@ void catalog_update_free(catalog_update_t *u)
 }
 
 static catalog_upd_val_t *upd_val_new(const knot_dname_t *member, int bail,
-                                      const knot_dname_t *owner, bool rem)
+                                      const knot_dname_t *owner, catalog_upd_type_t type)
 {
 	size_t member_size = knot_dname_size(member);
 	size_t owner_size = knot_dname_size(owner);
@@ -102,14 +103,14 @@ static catalog_upd_val_t *upd_val_new(const knot_dname_t *member, int bail,
 		free(val);
 		return NULL;
 	}
-	if (rem) {
-		val->type = CAT_UPD_REM;
+	val->type = type;
+	val->new_group = NULL;
+	if (type == CAT_UPD_REM) {
 		val->add_owner = NULL;
 		val->add_catz = NULL;
 		val->rem_owner = owner_cpy;
 		val->rem_catz = owner_cpy + bail;
 	} else {
-		val->type = CAT_UPD_ADD;
 		val->add_owner = owner_cpy;
 		val->add_catz = owner_cpy + bail;
 		val->rem_owner = NULL;
@@ -163,11 +164,30 @@ static int upd_val_update(catalog_upd_val_t *val, int bail,
 	return KNOT_EOK;
 }
 
+static int upd_val_set_prop(catalog_upd_val_t *val, const knot_dname_t *check_ow,
+                            const knot_dname_t *check_catz, const char *group,
+                            size_t group_len)
+{
+	if (check_catz != NULL) {
+		if (val->type == CAT_UPD_REM ||
+		    !knot_dname_is_equal(check_ow, val->add_owner) || // TODO consider removing those checks. Are they worth the performance?
+		    !knot_dname_is_equal(check_catz, val->add_catz)) {
+			return KNOT_EOK; // ignore invalid property set
+		}
+	}
+	if (val->new_group != NULL) {
+		free(val->new_group);
+	}
+	val->new_group = strndup(group, group_len);
+	return val->new_group == NULL ? KNOT_ENOMEM : KNOT_EOK;
+}
+
 int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
                        const knot_dname_t *owner, const knot_dname_t *catzone,
-                       bool remove, catalog_t *check_rem)
+                       catalog_upd_type_t type, const char *group,
+                       size_t group_len, catalog_t *check_rem)
 {
-	if (remove && check_rem != NULL &&
+	if ((type == CAT_UPD_REM || type == CAT_UPD_PROP) && check_rem != NULL &&
 	    !catalog_contains_exact(check_rem, member, owner, catzone)) {
 		return KNOT_EOK;
 		// we need to perform this check immediately because
@@ -187,12 +207,23 @@ int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
 	if (found != NULL) {
 		catalog_upd_val_t *val = *found;
 		assert(knot_dname_is_equal(val->member, member));
-		return upd_val_update(val, bail, owner, remove);
+		if (type == CAT_UPD_PROP) {
+			return upd_val_set_prop(val, owner, catzone, group, group_len);
+		} else {
+			return upd_val_update(val, bail, owner, type == CAT_UPD_REM);
+		}
 	}
 
-	catalog_upd_val_t *val = upd_val_new(member, bail, owner, remove);
+	catalog_upd_val_t *val = upd_val_new(member, bail, owner, type);
 	if (val == NULL) {
 		return KNOT_ENOMEM;
+	}
+	if (type == CAT_UPD_PROP) {
+		int ret = upd_val_set_prop(val, NULL, NULL, group, group_len);
+		if (ret != KNOT_EOK) {
+			catalog_upd_val_free(val);
+			return ret;
+		}
 	}
 	trie_val_t *added = trie_get_ins(u->upd, lf + 1, lf[0]);
 	if (added == NULL) {
@@ -215,7 +246,7 @@ catalog_upd_val_t *catalog_update_get(catalog_update_t *u, const knot_dname_t *m
 
 static bool check_member(catalog_upd_val_t *val, conf_t *conf, catalog_t *cat)
 {
-	if (val->type == CAT_UPD_REM || val->type == CAT_UPD_INVALID) {
+	if (val->type == CAT_UPD_REM || val->type == CAT_UPD_INVALID || val->type == CAT_UPD_PROP) {
 		return true;
 	}
 	if (!conf_rawid_exists(conf, C_ZONE, val->add_catz, knot_dname_size(val->add_catz))) {
@@ -236,12 +267,14 @@ static bool check_member(catalog_upd_val_t *val, conf_t *conf, catalog_t *cat)
 }
 
 static int rem_conf_conflict(const knot_dname_t *mem, const knot_dname_t *ow,
-                             const knot_dname_t *cz, void *ctx)
+                             const knot_dname_t *cz, const char *gr, void *ctx)
 {
+	UNUSED(gr);
+
 	conf_t *conf = ctx;
 
 	if (conf_rawid_exists(conf, C_ZONE, mem, knot_dname_size(mem))) {
-		return catalog_update_add(ctx, mem, ow, cz, true, NULL);
+		return catalog_update_add(ctx, mem, ow, cz, CAT_UPD_REM, NULL, 0, NULL);
 	}
 	return KNOT_EOK;
 }
@@ -279,7 +312,9 @@ int catalog_update_commit(catalog_update_t *u, catalog_t *cat)
 		case CAT_UPD_ADD:
 		case CAT_UPD_MINOR: // catalog_add will simply update/overwrite existing data
 		case CAT_UPD_UNIQ:
-			ret = catalog_add(cat, val->member, val->add_owner, val->add_catz);
+		case CAT_UPD_PROP:
+			ret = catalog_add(cat, val->member, val->add_owner, val->add_catz,
+			                  val->new_group == NULL ? "" : val->new_group);
 			break;
 		case CAT_UPD_REM:
 			ret = catalog_del(cat, val->member);
@@ -307,12 +342,14 @@ typedef struct {
 } del_all_ctx_t;
 
 static int del_all_cb(const knot_dname_t *member, const knot_dname_t *owner,
-                      const knot_dname_t *catz, void *dactx)
+                      const knot_dname_t *catz, const char *group, void *dactx)
 {
+	UNUSED(group);
+
 	del_all_ctx_t *ctx = dactx;
 	if (knot_dname_is_equal(catz, ctx->zone)) {
 		// TODO possible speedup by indexing which member zones belong to a catalog zone
-		return catalog_update_add(ctx->u, member, owner, catz, true, NULL);
+		return catalog_update_add(ctx->u, member, owner, catz, CAT_UPD_REM, NULL, 0, NULL);
 	} else {
 		return KNOT_EOK;
 	}

@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <urcu.h>
 
@@ -165,7 +166,8 @@ int catalog_deinit(catalog_t *cat)
 }
 
 int catalog_add(catalog_t *cat, const knot_dname_t *member,
-                const knot_dname_t *owner, const knot_dname_t *catzone)
+                const knot_dname_t *owner, const knot_dname_t *catzone,
+                const char *group)
 {
 	if (cat->rw_txn == NULL) {
 		return KNOT_EINVAL;
@@ -176,7 +178,7 @@ int catalog_add(catalog_t *cat, const knot_dname_t *member,
 	}
 	assert(bail >= 0 && bail < 256);
 	MDB_val key = knot_lmdb_make_key("BN", 0, member); // 0 for future purposes
-	MDB_val val = knot_lmdb_make_key("BBN", 0, bail, owner);
+	MDB_val val = knot_lmdb_make_key("BBNS", 0, bail, owner, group);
 
 	knot_lmdb_insert(cat->rw_txn, &key, &val);
 	free(key.mv_data);
@@ -195,16 +197,19 @@ int catalog_del(catalog_t *cat, const knot_dname_t *member)
 	return cat->rw_txn->ret;
 }
 
-static void unmake_val(MDB_val *val, const knot_dname_t **owner, const knot_dname_t **catz)
+static void unmake_val(MDB_val *val, const knot_dname_t **owner,
+                       const knot_dname_t **catz, const char **group)
 {
 	uint8_t zero, shift;
-	knot_lmdb_unmake_key(val->mv_data, val->mv_size, "BBN", &zero, &shift, owner);
+	*group = ""; // backward compatibility with Knot 3.0
+	knot_lmdb_unmake_key(val->mv_data, val->mv_size, "BBNS", &zero, &shift,
+	                     owner, group);
 	*catz = *owner + shift;
 }
 
 static int find_threadsafe(catalog_t *cat, const knot_dname_t *member,
                            const knot_dname_t **owner, const knot_dname_t **catz,
-                           void **tofree)
+                           const char **group, void **tofree)
 {
 	*tofree = NULL;
 	if (cat->ro_txn == NULL) {
@@ -215,7 +220,7 @@ static int find_threadsafe(catalog_t *cat, const knot_dname_t *member,
 
 	int ret = knot_lmdb_find_threadsafe(cat->ro_txn, &key, &val, KNOT_LMDB_EXACT);
 	if (ret == KNOT_EOK) {
-		unmake_val(&val, owner, catz);
+		unmake_val(&val, owner, catz, group);
 		*tofree = val.mv_data;
 	}
 	free(key.mv_data);
@@ -223,17 +228,18 @@ static int find_threadsafe(catalog_t *cat, const knot_dname_t *member,
 }
 
 int catalog_get_catz(catalog_t *cat, const knot_dname_t *member,
-                     const knot_dname_t **catz, void **tofree)
+                     const knot_dname_t **catz, const char **group, void **tofree)
 {
 	const knot_dname_t *unused;
-	return find_threadsafe(cat, member, &unused, catz, tofree);
+	return find_threadsafe(cat, member, &unused, catz, group, tofree);
 }
 
 bool catalog_has_member(catalog_t *cat, const knot_dname_t *member)
 {
 	const knot_dname_t *catz;
+	const char *group;
 	void *tofree = NULL;
-	int ret = catalog_get_catz(cat, member, &catz, &tofree);
+	int ret = catalog_get_catz(cat, member, &catz, &group, &tofree);
 	free(tofree);
 	return (ret == KNOT_EOK);
 }
@@ -242,8 +248,9 @@ bool catalog_contains_exact(catalog_t *cat, const knot_dname_t *member,
                             const knot_dname_t *owner, const knot_dname_t *catz)
 {
 	const knot_dname_t *found_owner, *found_catz;
+	const char *found_group;
 	void *tofree = NULL;
-	int ret = find_threadsafe(cat, member, &found_owner, &found_catz, &tofree);
+	int ret = find_threadsafe(cat, member, &found_owner, &found_catz, &found_group, &tofree);
 	if (ret == KNOT_EOK && (!knot_dname_is_equal(owner, found_owner) ||
 	    !knot_dname_is_equal(catz, found_catz))) {
 		ret = KNOT_ENOENT;
@@ -262,12 +269,13 @@ static int catalog_apply_cb(MDB_val *key, MDB_val *val, void *ctx)
 	catalog_apply_ctx_t *iter_ctx = ctx;
 	uint8_t zero;
 	const knot_dname_t *mem = NULL, *ow = NULL, *cz = NULL;
+	const char *gr = NULL;
 	knot_lmdb_unmake_key(key->mv_data, key->mv_size, "BN", &zero, &mem);
-	unmake_val(val, &ow, &cz);
+	unmake_val(val, &ow, &cz, &gr);
 	if (mem == NULL || ow == NULL || cz == NULL) {
 		return KNOT_EMALF;
 	}
-	return iter_ctx->cb(mem, ow, cz, iter_ctx->ctx);
+	return iter_ctx->cb(mem, ow, cz, gr, iter_ctx->ctx);
 }
 
 int catalog_apply(catalog_t *cat, const knot_dname_t *for_member,
@@ -287,7 +295,8 @@ static bool same_catalog(knot_lmdb_txn_t *txn, const knot_dname_t *catalog)
 		return true;
 	}
 	const knot_dname_t *txn_cat = NULL, *unused;
-	unmake_val(&txn->cur_val, &unused, &txn_cat);
+	const char *grunused;
+	unmake_val(&txn->cur_val, &unused, &txn_cat, &grunused);
 	return knot_dname_is_equal(txn_cat, catalog);
 }
 

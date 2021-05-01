@@ -1509,7 +1509,7 @@ zone:
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
     catalog\-role: none | interpret
-    catalog\-template: template_id
+    catalog\-template: template_id ...
     catalog\-zone: DNAME
     module: STR/STR ...
 .ft P
@@ -1832,7 +1832,10 @@ assigned member zones.
 \fIDefault:\fP none
 .SS catalog\-template
 .sp
-For the catalog\-member zones, the specified configuration template will be applied.
+For the catalog member zones, the specified configuration template will be applied.
+.sp
+Multiple catalog templates may be defined. The first one is used unless the member zone
+has the \fIgroup\fP property defined, matching another catalog template.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0

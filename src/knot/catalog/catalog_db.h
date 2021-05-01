@@ -22,6 +22,7 @@
 #define CATALOG_VERSION		"1.0"
 #define CATALOG_ZONE_VERSION	"2" // must be just one char long
 #define CATALOG_ZONES_LABEL	"\x05""zones"
+#define CATALOG_GROUP_LABEL	"\x05""group"
 
 typedef struct catalog {
 	knot_lmdb_db_t db;
@@ -112,11 +113,13 @@ int catalog_deinit(catalog_t *cat);
  * \param member    Member zone name.
  * \param owner     Owner of the PTR record in catalog zone, respective to the member zone.
  * \param catzone   Name of the catalog zone whose it's the member.
+ * \param group     Configuration group of the member.
  *
  * \return KNOT_E*
  */
 int catalog_add(catalog_t *cat, const knot_dname_t *member,
-                const knot_dname_t *owner, const knot_dname_t *catzone);
+                const knot_dname_t *owner, const knot_dname_t *catzone,
+                const char *group);
 
 /*!
  * \brief Delete a member zone from the catalog database.
@@ -136,12 +139,13 @@ int catalog_del(catalog_t *cat, const knot_dname_t *member);
  * \param cat       Catalog datatase.
  * \param member    Member to search for.
  * \param catz      Out: name of catalog zone it resides in.
+ * \param group     Out: configuration group the member resides in.
  * \param tofree    Out: a pointer that has to be freed later.
  *
  * \return KNOT_E*
  */
 int catalog_get_catz(catalog_t *cat, const knot_dname_t *member,
-                     const knot_dname_t **catz, void **tofree);
+                     const knot_dname_t **catz, const char **group, void **tofree);
 
 /*!
  * \brief Check if this member exists in any catalog zone.
@@ -155,7 +159,7 @@ bool catalog_contains_exact(catalog_t *cat, const knot_dname_t *member,
                             const knot_dname_t *owner, const knot_dname_t *catz);
 
 typedef int (*catalog_apply_cb_t)(const knot_dname_t *member, const knot_dname_t *owner,
-                                  const knot_dname_t *catz, void *ctx);
+                                  const knot_dname_t *catz, const char *group, void *ctx);
 /*!
  * \brief Iterate through catalog database, applying callback.
  *

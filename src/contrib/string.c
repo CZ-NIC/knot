@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,15 @@ uint8_t *memdup(const uint8_t *data, size_t data_size)
 	}
 
 	return memcpy(result, data, data_size);
+}
+
+int strmemcmp(const char *str, const uint8_t *mem, size_t mem_size)
+{
+	if (mem_size == 0) {
+		return 1;
+	}
+	size_t cmp_len = strnlen(str, mem_size - 1) + 1;
+	return memcmp(str, mem, cmp_len);
 }
 
 char *sprintf_alloc(const char *fmt, ...)

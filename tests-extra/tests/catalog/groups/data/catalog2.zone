@@ -1,0 +1,13 @@
+$ORIGIN catalog2.
+$TTL 0
+
+@ SOA ns admin 1 25 25 80 600
+  NS ns
+ns AAAA ::0
+version TXT "2"
+foo.zones PTR cataloged1.
+group.foo.zones TXT catalog-signed
+bar.zones PTR cataloged2.
+group.bar.zones TXT catalog-unsigned
+baz.zones PTR cataloged3.
+;left w/o group to see default

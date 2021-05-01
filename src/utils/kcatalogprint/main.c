@@ -41,12 +41,12 @@ static void print_dname(const knot_dname_t *d)
 }
 
 static int catalog_print_cb(const knot_dname_t *mem, const knot_dname_t *ow,
-                            const knot_dname_t *cz, void *ctx)
+                            const knot_dname_t *cz, const char *group, void *ctx)
 {
 	print_dname(mem);
 	print_dname(ow);
 	print_dname(cz);
-	printf("\n");
+	printf("%s\n", group);
 	(*(ssize_t *)ctx)++;
 	return KNOT_EOK;
 }
@@ -55,7 +55,7 @@ static void catalog_print(catalog_t *cat)
 {
 	ssize_t total = 0;
 
-	printf(";; <catalog zone> <record owner> <record zone>\n");
+	printf(";; <member zone> <record owner> <catalog zone> <group>\n");
 
 	if (cat != NULL) {
 		int ret = catalog_open(cat);
