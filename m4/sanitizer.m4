@@ -41,13 +41,6 @@ AC_DEFUN([AX_SANITIZER], [
     [with_oss_fuzz=no]
   )
 
-  # Using -fsanitize=fuzzer requires clang >= 6.0
-  AS_IF([test "$with_fuzzer" != "no"],[
-    # Get clang version if empty
-    AS_IF([test -z "$CC_CLANG_VERSION"],[AX_CC_CLANG])
-    AX_COMPARE_VERSION([$CC_CLANG_VERSION],ge,[6.0],[],[
-      AC_MSG_ERROR([clang >= 6.0 required for fuzzer])])])
-
   # Default values
   AS_IF([test "$with_sanitizer" = "yes"], [ with_sanitizer=address,undefined ])
   AS_IF([test "$with_fuzzer" = "yes"], [ with_fuzzer=fuzzer ])
