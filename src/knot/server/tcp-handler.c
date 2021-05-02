@@ -92,7 +92,7 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int fd, void *data)
 	assert(set && fd >= 0);
 
 	/* Best-effort, name and shame. */
-	struct sockaddr_storage ss;
+	struct sockaddr_storage ss = { 0 };
 	socklen_t len = sizeof(struct sockaddr_storage);
 	if (getpeername(fd, (struct sockaddr *)&ss, &len) == 0) {
 		char addr_str[SOCKADDR_STRLEN];
