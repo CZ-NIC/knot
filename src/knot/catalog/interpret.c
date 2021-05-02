@@ -66,9 +66,9 @@ static const knot_dname_t *property_get_member(const zone_node_t *prop_node,
 			*owner = memb_node->owner;
 		}
 	} else {
-		*owner = knot_wire_next_label(prop_node->owner, NULL);
+		*owner = prop_node->parent->owner;
 	}
-	if (ptr == NULL || ptr->count != 1) {
+	if (*owner == NULL || ptr == NULL || ptr->count != 1) {
 		return NULL;
 	}
 	return knot_ptr_name(ptr->rdata);
@@ -128,7 +128,8 @@ static int cat_update_add_node(zone_node_t *node, void *data)
 	if (labels_diff == 1 && txt != NULL && txt->count == 1 &&
 	    node->owner[0] == CATALOG_GROUP_LABEL[0] &&
 	    memcmp(node->owner, CATALOG_GROUP_LABEL, CATALOG_GROUP_LABEL[0] + 1) == 0) {
-		const knot_dname_t *own, *memb = property_get_member(node, ctx->complete_conts, &own);
+		const knot_dname_t *own = NULL;
+		const knot_dname_t  *memb = property_get_member(node, ctx->complete_conts, &own);
 		return cat_update_add_grp(memb, own, txt, ctx);
 	}
 	return KNOT_EOK;
