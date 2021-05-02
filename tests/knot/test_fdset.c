@@ -134,7 +134,9 @@ int main(int argc, char *argv[])
 
 
 	close(fds2[1]);
-	close(fd2_dup);
+	if (fd2_dup >= 0) {
+		close(fd2_dup);
+	}
 	fdset_clear(&fdset);
 
 	return 0;
