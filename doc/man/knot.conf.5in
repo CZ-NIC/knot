@@ -200,6 +200,7 @@ server:
     xdp\-route\-check: BOOL
     listen: ADDR[@INT] ...
     listen\-xdp: STR[@INT] | ADDR[@INT] ...
+    xdp\-tcp: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -474,6 +475,17 @@ Since XDP workers only process regular DNS traffic over UDP, it is strongly
 recommended to also \fI\%listen\fP on the addresses which are
 intended to offer the DNS service, at least to fulfil the DNS requirement for
 working TCP.
+.UNINDENT
+.UNINDENT
+.SS xdp\-tcp
+.sp
+Also answer TCP traffic (queries) with XDP workers.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+This feature is highly experimental and it may eat your hamster as well as any
+other hamsters connected to the network.
 .UNINDENT
 .UNINDENT
 .SH CONTROL SECTION

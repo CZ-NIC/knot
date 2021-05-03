@@ -221,14 +221,14 @@ static int disable_pmtudisc(int sock, int family)
 }
 
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
-                                      unsigned *thread_id_start)
+                                      unsigned *thread_id_start, bool tcp)
 {
 #ifndef ENABLE_XDP
 	assert(0);
 	return NULL;
 #else
 	conf_xdp_iface_t iface;
-	int ret = conf_xdp_iface(addr, &iface);
+	int ret = conf_xdp_iface(addr, tcp, &iface);
 	if (ret != KNOT_EOK) {
 		log_error("failed to initialize XDP interface (%s)",
 		          knot_strerror(ret));
@@ -559,12 +559,15 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
+		conf_val_t xdp_tcp_val = conf_get(conf, C_SRV, C_XDP_TCP);
+		bool xdp_tcp = conf_bool(&xdp_tcp_val);
+
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
-		log_info("binding to XDP interface %s", addr_str);
+		log_info("binding to XDP interface %s%s", addr_str, xdp_tcp ? " with TCP" : "");
 
-		iface_t *new_if = server_init_xdp_iface(&addr, route_check, &thread_id);
+		iface_t *new_if = server_init_xdp_iface(&addr, route_check, &thread_id, xdp_tcp);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;

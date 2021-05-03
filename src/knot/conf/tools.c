@@ -256,7 +256,7 @@ int check_xdp(
 	bool no_port;
 	struct sockaddr_storage ss = yp_addr(args->data, &no_port);
 	conf_xdp_iface_t if_new;
-	int ret = conf_xdp_iface(&ss, &if_new);
+	int ret = conf_xdp_iface(&ss, false, &if_new);
 	if (ret != KNOT_EOK) {
 		args->err_str = "invalid XDP interface specification";
 		return ret;
@@ -268,7 +268,7 @@ int check_xdp(
 	while (xdp.code == KNOT_EOK && count-- > 1) {
 		struct sockaddr_storage addr = conf_addr(&xdp, NULL);
 		conf_xdp_iface_t if_prev;
-		ret = conf_xdp_iface(&addr, &if_prev);
+		ret = conf_xdp_iface(&addr, false, &if_prev);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -382,7 +382,7 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp)
 	while (xdp->code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(xdp, NULL);
 		conf_xdp_iface_t iface;
-		int ret = conf_xdp_iface(&addr, &iface);
+		int ret = conf_xdp_iface(&addr, false, &iface);
 		if (ret != KNOT_EOK) {
 			CONF_LOG(LOG_WARNING, "failed to check XDP interface MTU");
 			return;
