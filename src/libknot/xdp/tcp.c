@@ -65,14 +65,13 @@ static uint64_t hash_four_tuple(const struct sockaddr_in6 *rem, const struct soc
 _public_
 knot_tcp_table_t *knot_tcp_table_new(size_t size)
 {
-	knot_tcp_table_t *t = malloc(sizeof(*t) + size * sizeof(t->conns[0]));
+	knot_tcp_table_t *t = calloc(1, sizeof(*t) + size * sizeof(t->conns[0]));
 	if (t == NULL) {
 		return t;
 	}
 
 	t->size = size;
 	init_list(&t->timeout);
-	memset(t->conns, 0, size * sizeof(t->conns[0]));
 
 	for (size_t i = 0; i < sizeof(t->hash_secret) / sizeof(*t->hash_secret); i++) {
 		t->hash_secret[i] = dnssec_random_uint32_t();
@@ -234,6 +233,9 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 				tcp_relay_dynarray_add(relays, &relay);
 				relay.conn->state = XDP_TCP_ESTABLISHING;
 				relay.conn->seqno++;
+				if (!synack) {
+					relay.conn->ackno = acks[n_acks - 1].seqno + 1;
+				}
 			} else {
 				resp_ack(msg, KNOT_XDP_MSG_RST); // TODO consider resetting the OLD conn and accepting new one
 			}
@@ -264,7 +266,7 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 				       paylen >= sizeof(dns_len) + (dns_len = be16toh(*(uint16_t *)payl))) {
 
 					relay.data.iov_base = payl + sizeof(dns_len);
-					relay.data.iov_len = dns_len - sizeof(dns_len);
+					relay.data.iov_len = dns_len;
 					tcp_relay_dynarray_add(relays, &relay);
 
 					payl += sizeof(dns_len) + dns_len;
@@ -297,6 +299,7 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 					relay.action = XDP_TCP_CLOSE;
 					tcp_relay_dynarray_add(relays, &relay);
 					(*conn)->state = XDP_TCP_CLOSING;
+					(*conn)->ackno++;
 				}
 			}
 			break;
@@ -432,11 +435,11 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 
 	WALK_LIST_DELSAFE(conn, next, tcp_table->timeout) {
 		if (i++ < reset_at_least ||
-		    conn->last_active - now >= reset_timeout) {
+		    now - conn->last_active >= reset_timeout) {
 			rl.answer = XDP_TCP_RESET;
 			assert(relays.size == n_reset);
 			n_reset++;
-		} else if (conn->last_active - now >= close_timeout) {
+		} else if (now - conn->last_active >= close_timeout) {
 			rl.answer = XDP_TCP_CLOSE;
 		} else {
 			break;
@@ -466,7 +469,7 @@ void knot_xdp_tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
 	uint32_t now = get_timestamp(), i = 0;
 	knot_tcp_conn_t *conn, *next;
 	WALK_LIST_DELSAFE(conn, next, tcp_table->timeout) {
-		if (i++ < at_least || conn->last_active - now >= timeout) {
+		if (i++ < at_least || now - conn->last_active >= timeout) {
 			tcp_table_del3(conn, tcp_table);
 			if (cleaned != NULL) {
 				(*cleaned)++;
