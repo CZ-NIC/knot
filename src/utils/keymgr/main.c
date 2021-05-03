@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ static void print_help(void)
 	       "  %s -h | -V\n"
 	       "  %s -t <tsig_name> [<algorithm>] [<bits>]\n"
 	       "  %s [-c | -C | -d <path>] <zone> <command> [<argument>...]\n"
+	       "  %s -l\n"
 	       "\n"
 	       "Parameters:\n"
 	       "  -c, --config <file>      Use a textual configuration file.\n"
@@ -46,6 +47,7 @@ static void print_help(void)
 	       "                            (default %s)\n"
 	       "  -d, --dir <path>         Use specified KASP database path and default configuration.\n"
 	       "  -t, --tsig <name> [alg]  Generate a TSIG key.\n"
+	       "  -l, --list               List all zones that have at least one key in KASP database.\n"
 	       "  -h, --help               Print the program help.\n"
 	       "  -V, --version            Print the program version.\n"
 	       "\n"
@@ -105,10 +107,10 @@ static void print_help(void)
 	       "  ksk        Whether the generated/imported key shall be Key Signing Key.\n"
 	       "  created/publish/ready/active/retire/remove  The timestamp of the key\n"
 	       "             lifetime event (e.g. published=+1d active=1499770874)\n",
-	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
+	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
-static int key_command(int argc, char *argv[], int opt_ind)
+static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kaspdb)
 {
 	if (argc < opt_ind + 2) {
 		ERROR("zone name and/or command not specified\n");
@@ -124,15 +126,9 @@ static int key_command(int argc, char *argv[], int opt_ind)
 	}
 	knot_dname_to_lower(zone_name);
 
-	knot_lmdb_db_t kaspdb = { 0 };
 	kdnssec_ctx_t kctx = { 0 };
 
-	conf_val_t mapsize = conf_db_param(conf(), C_KASP_DB_MAX_SIZE);
-	char *kasp_dir = conf_db(conf(), C_KASP_DB);
-	knot_lmdb_init(&kaspdb, kasp_dir, conf_int(&mapsize), 0, "keys_db");
-	free(kasp_dir);
-
-	int ret = kdnssec_ctx_init(conf(), &kctx, zone_name, &kaspdb, NULL);
+	int ret = kdnssec_ctx_init(conf(), &kctx, zone_name, kaspdb, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR("failed to initialize KASP (%s)\n", knot_strerror(ret));
 		goto main_end;
@@ -228,7 +224,7 @@ static int key_command(int argc, char *argv[], int opt_ind)
 		CHECK_MISSING_ARG2("Zone to be shared from not specified");
 		knot_dname_t *other_zone = NULL;
 		char *key_to_share = NULL;
-		ret = keymgr_foreign_key_id(argv, &kaspdb, &other_zone, &key_to_share);
+		ret = keymgr_foreign_key_id(argv, kaspdb, &other_zone, &key_to_share);
 		if (ret == KNOT_EOK) {
 			ret = kasp_db_share_key(kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
 		}
@@ -281,7 +277,6 @@ static int key_command(int argc, char *argv[], int opt_ind)
 
 main_end:
 	kdnssec_ctx_deinit(&kctx);
-	knot_lmdb_deinit(&kaspdb);
 	free(zone_name);
 
 	return ret;
@@ -360,13 +355,14 @@ static bool conf_initialized = false; // This is a singleton as well as conf() i
 
 int main(int argc, char *argv[])
 {
-	int ret;
+	int ret, just_list = 0;
 
 	struct option opts[] = {
 		{ "config",  required_argument, NULL, 'c' },
 		{ "confdb",  required_argument, NULL, 'C' },
 		{ "dir",     required_argument, NULL, 'd' },
 		{ "tsig",    required_argument, NULL, 't' },
+		{ "list",    no_argument,       NULL, 'l' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ "version", no_argument,       NULL, 'V' },
 		{ NULL }
@@ -375,7 +371,7 @@ int main(int argc, char *argv[])
 	tzset();
 
 	int opt = 0, parm = 0;
-	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:l", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -410,6 +406,9 @@ int main(int argc, char *argv[])
 				ERROR("failed to generate TSIG (%s)\n", knot_strerror(ret));
 			}
 			return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
+		case 'l':
+			just_list = 1;
+			break;
 		default:
 			print_help();
 			return EXIT_FAILURE;
@@ -431,8 +430,19 @@ int main(int argc, char *argv[])
 
 	update_privileges();
 
-	ret = key_command(argc, argv, optind);
+	knot_lmdb_db_t kaspdb = { 0 };
+	conf_val_t mapsize = conf_db_param(conf(), C_KASP_DB_MAX_SIZE);
+	char *kasp_dir = conf_db(conf(), C_KASP_DB);
+	knot_lmdb_init(&kaspdb, kasp_dir, conf_int(&mapsize), 0, "keys_db");
+	free(kasp_dir);
 
+	if (just_list) {
+		ret = keymgr_list_zones(&kaspdb);
+	} else {
+		ret = key_command(argc, argv, optind, &kaspdb);
+	}
+
+	knot_lmdb_deinit(&kaspdb);
 	conf_free(conf());
 
 	return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
