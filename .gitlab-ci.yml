@@ -397,11 +397,11 @@ obs:debian10:x86_64:
     DISTROTEST_NAME: debian10
     DISTROTEST_REPO: Debian_10
 
-obs:fedora32:x86_64:
+obs:fedora34:x86_64:
   <<: *distrotest
   variables:
-    DISTROTEST_NAME: fedora32
-    DISTROTEST_REPO: Fedora_32
+    DISTROTEST_NAME: fedora34
+    DISTROTEST_REPO: Fedora_34
 
 obs:fedora33:x86_64:
   <<: *distrotest
@@ -415,12 +415,6 @@ obs:leap15:x86_64:
     DISTROTEST_NAME: leap15
     DISTROTEST_REPO: openSUSE_Leap_15.2
 
-obs:ubuntu1604:x86_64:
-  <<: *distrotest
-  variables:
-    DISTROTEST_NAME: ubuntu1604
-    DISTROTEST_REPO: xUbuntu_16.04
-
 obs:ubuntu1804:x86_64:
   <<: *distrotest
   variables:
@@ -433,8 +427,8 @@ obs:ubuntu2004:x86_64:
     DISTROTEST_NAME: ubuntu2004
     DISTROTEST_REPO: xUbuntu_20.04
 
-obs:ubuntu2010:x86_64:
+obs:ubuntu2104:x86_64:
   <<: *distrotest
   variables:
-    DISTROTEST_NAME: ubuntu2010
-    DISTROTEST_REPO: xUbuntu_20.10
+    DISTROTEST_NAME: ubuntu2104
+    DISTROTEST_REPO: xUbuntu_21.04
