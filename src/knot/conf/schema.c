@@ -183,6 +183,7 @@ static const yp_item_t desc_server[] = {
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
 	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
+	{ C_BLOCK_NOTIFY_START,   YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
 	{ C_MAX_TCP_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },

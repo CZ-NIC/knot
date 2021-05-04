@@ -301,8 +301,11 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	replan_from_timers(conf, zone);
-
-	if (!old_contents_exist || old_serial != new_serial) {
+	
+	val = conf_get(conf, C_SRV, C_BLOCK_NOTIFY_START);
+	if ((old_contents_exist && old_serial != new_serial) ||
+	    (!old_contents_exist && !conf_bool(&val)))
+	{
 		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 	}
 
