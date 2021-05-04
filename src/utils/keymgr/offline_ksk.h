@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 #include "knot/dnssec/context.h"
 
-int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg);
+int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to);
 
 int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to);
 

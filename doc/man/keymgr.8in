@@ -146,8 +146,8 @@ owned by both zones equally.
 .SS Commands related to Offline KSK feature
 .INDENT 0.0
 .TP
-\fBpregenerate\fP \fItimestamp\fP
-Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now.
+\fBpregenerate\fP [\fItimestamp\-from\fP] \fItimestamp\-to\fP
+Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now or specified time.
 .TP
 \fBshow\-offline\fP \fItimestamp\-from\fP [\fItimestamp\-to\fP]
 Print pre\-generated offline key\-related records for specified time interval. If \fItimestamp_to\fP

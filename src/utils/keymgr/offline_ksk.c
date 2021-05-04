@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -79,15 +79,21 @@ static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_ke
 	return KNOT_EOK;
 }
 
-int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg)
+int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 {
-	knot_time_t upto;
-	int ret = parse_timestamp(arg, &upto);
+	knot_time_t from = 0, to;
+	int ret = parse_timestamp(arg_to, &to);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	if (arg_from != NULL) {
+		ret = parse_timestamp(arg_from, &from);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
 
-	knot_time_t next = ctx->now;
+	knot_time_t next = (from == 0 ? ctx->now : from);
 	ret = KNOT_EOK;
 
 	ctx->keep_deleted_keys = true;
@@ -99,7 +105,7 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg)
 		return KNOT_ESEMCHECK;
 	}
 
-	while (ret == KNOT_EOK && knot_time_cmp(next, upto) <= 0) {
+	while (ret == KNOT_EOK && knot_time_cmp(next, to) <= 0) {
 		ctx->now = next;
 		ret = pregenerate_once(ctx, &next);
 	}
