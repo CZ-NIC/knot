@@ -30,6 +30,7 @@
 #define C_ASYNC_START		"\x0B""async-start"
 #define C_BACKEND		"\x07""backend"
 #define C_BG_WORKERS		"\x12""background-workers"
+#define C_BLOCK_NOTIFY_START	"\x18""block-notify-after-start"
 #define C_BLOCK_NOTIFY_XFR	"\x1B""block-notify-after-transfer"
 #define C_CATALOG_DB            "\x0A""catalog-db"
 #define C_CATALOG_DB_MAX_SIZE   "\x13""catalog-db-max-size"
