@@ -81,7 +81,7 @@ static void print_help(void)
 	       "\n"
 	       "Commands related to Offline KSK feature:\n"
 	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
-	       "                 (syntax: pregenerate <timestamp>)\n"
+	       "                 (syntax: pregenerate [<from>] <to>)\n"
 	       "  show-offline  Print pre-generated offline key-related records for specified time interval (possibly to infinity).\n"
 	       "                 (syntax: show-offline <from> [<to>])\n"
 	       "  del-offline   Delete pre-generated offline key-related records in specified time interval.\n"
@@ -238,10 +238,11 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 			ret = kdnssec_delete_key(&kctx, key2del);
 		}
 	} else if (strcmp(argv[1], "pregenerate") == 0) {
-		CHECK_MISSING_ARG("Period not specified");
-		ret = keymgr_pregenerate_zsks(&kctx, argv[2]);
+		CHECK_MISSING_ARG("Timestamp to not specified");
+		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,
+		                                     argc > 3 ? argv[3] : argv[2]);
 	} else if (strcmp(argv[1], "show-offline") == 0) {
-		CHECK_MISSING_ARG("Timestamp not specified");
+		CHECK_MISSING_ARG("Timestamp from not specified");
 		ret = keymgr_print_offline_records(&kctx, argv[2], argc > 3 ? argv[3] : NULL);
 	} else if (strcmp(argv[1], "del-offline") == 0) {
 		CHECK_MISSING_ARG2("Timestamps from-to not specified");
