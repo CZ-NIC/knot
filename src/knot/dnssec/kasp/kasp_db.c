@@ -218,8 +218,12 @@ int kasp_db_get_key_algorithm(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	int ret = txn.ret == KNOT_EOK ? KNOT_ENOENT : txn.ret;
 	if (knot_lmdb_find(&txn, &search, KNOT_LMDB_EXACT)) {
 		key_params_t p = { 0 };
-		ret = params_deserialize(&txn.cur_val, &p) ? p.algorithm : KNOT_EMALF;
-		free(p.public_key.data);
+		if (params_deserialize(&txn.cur_val, &p)) {
+			ret = p.algorithm;
+			free(p.public_key.data);
+		} else {
+			ret = KNOT_EMALF;
+		}
 	}
 	knot_lmdb_abort(&txn);
 	free(search.mv_data);
