@@ -15,24 +15,38 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 
 #include "knot/conf/schema.h"
 #include "knot/include/module.h"
 #include "contrib/string.h"
+#include "contrib/time.h"
 #include "libknot/libknot.h"
+
+#ifdef HAVE_ATOMIC
+#define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
+#define ATOMIC_GET(src)      __atomic_load_n(&(src), __ATOMIC_RELAXED)
+#else
+#define ATOMIC_SET(dst, val) ((dst) = (val))
+#define ATOMIC_GET(src)      (src)
+#endif
 
 #define MOD_PATH       "\x04""path"
 #define MOD_CHANNELS   "\x08""channels"
+#define MOD_MAX_RATE   "\x08""max-rate"
 
 const yp_item_t probe_conf[] = {
 	{ MOD_PATH,     YP_TSTR, YP_VNONE },
 	{ MOD_CHANNELS, YP_TINT, YP_VINT = { 1, UINT16_MAX, 1 } },
+	{ MOD_MAX_RATE, YP_TINT, YP_VINT = { 0, UINT32_MAX, 1000 } },
 	{ NULL }
 };
 
 typedef struct {
 	knot_probe_t **probes;
 	size_t probe_count;
+	uint64_t *last_times;
+	uint64_t min_diff_ns;
 	char *path;
 } probe_ctx_t;
 
@@ -42,6 +56,7 @@ static void free_probe_ctx(probe_ctx_t *ctx)
 		knot_probe_free(ctx->probes[i]);
 	}
 	free(ctx->probes);
+	free(ctx->last_times);
 	free(ctx->path);
 	free(ctx);
 }
@@ -52,14 +67,24 @@ static knotd_state_t export(knotd_state_t state, knot_pkt_t *pkt,
 	assert(pkt && qdata);
 
 	probe_ctx_t *ctx = knotd_mod_ctx(mod);
-	knot_probe_t *probe = ctx->probes[qdata->params->thread_id % ctx->probe_count];
-	bool tcp = !(qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE);
+	uint16_t idx = qdata->params->thread_id % ctx->probe_count;
+	knot_probe_t *probe = ctx->probes[idx];
+
+	// Check the rate limit.
+	struct timespec now = time_now();
+	uint64_t now_ns = 1000000000 * now.tv_sec + now.tv_nsec;
+	uint64_t last_ns = ATOMIC_GET(ctx->last_times[idx]);
+	if (now_ns - last_ns < ctx->min_diff_ns) {
+		return state;
+	}
+	ATOMIC_SET(ctx->last_times[idx], now_ns);
 
 	// Prepare data sources.
 	struct sockaddr_storage buff;
 	const struct sockaddr_storage *local = knotd_qdata_local_addr(qdata, &buff);
 	const struct sockaddr_storage *remote = knotd_qdata_remote_addr(qdata);
 
+	bool tcp = !(qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE);
 	knot_probe_proto_t proto = (tcp ? KNOT_PROBE_PROTO_TCP : KNOT_PROBE_PROTO_UDP);
 	const knot_pkt_t *reply = (state != KNOTD_STATE_NOOP ? pkt : NULL);
 
@@ -111,6 +136,18 @@ int probe_load(knotd_mod_t *mod)
 	if (ctx->probes == NULL) {
 		free_probe_ctx(ctx);
 		return KNOT_ENOMEM;
+	}
+
+	ctx->last_times = calloc(ctx->probe_count, sizeof(uint64_t));
+	if (ctx->last_times == NULL) {
+		free_probe_ctx(ctx);
+		return KNOT_ENOMEM;
+	}
+
+	ctx->min_diff_ns = 0;
+	conf = knotd_conf_mod(mod, MOD_MAX_RATE);
+	if (conf.single.integer > 0) {
+		ctx->min_diff_ns = ctx->probe_count * 1000000000 / conf.single.integer;
 	}
 
 	for (int i = 0; i < ctx->probe_count; i++) {
