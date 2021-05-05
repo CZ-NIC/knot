@@ -188,6 +188,14 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 	return KNOT_EOK;
 }
 
+uint32_t overweight(uint32_t weight, uint32_t max_weight)
+{
+	int64_t w = weight;
+	w -= max_weight;
+	w = MAX(w, 0);
+	return w;
+}
+
 int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 {
 	uint32_t unused = 0;
@@ -207,6 +215,10 @@ int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 		}
 	}
 	tcp_relay_dynarray_free(&ctx->tcp_relays);
+
+	if (ret == KNOT_EOK) {
+		ret = knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 2000000, 4000000, overweight(ctx->tcp_table->usage, 1000), NULL); // FIXME configurable parameters
+	}
 
 	return ret;
 }
