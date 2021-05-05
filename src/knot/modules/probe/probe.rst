@@ -19,6 +19,19 @@ Default module configuration::
      - id: default
        global-module: mod-probe
 
+Per zone probe with 8 channels and maximum 1M logs per second limit::
+
+   mod-probe:
+     - id: custom
+       prefix: /tmp/knot-probe
+       channels: 8
+       max-rate: 1000000
+
+   zone:
+     - domain: example.com.
+       module: mod-stats/custom
+
+
 Module reference
 ----------------
 
@@ -28,6 +41,7 @@ Module reference
      - id: STR
        path: STR
        channels: INT
+       max-rate: INT
 
 .. _mod-probe_id:
 
@@ -59,3 +73,14 @@ high DNS traffic which is beeing processed by many UDP/XDP/TCP workers,
 using more channels reduced the module overhead.
 
 *Default:* 1
+
+.. _mod-probe_max-rate:
+
+max-rate
+........
+
+Maximum number of queries/replies per second the probe is allowed to transfer.
+If the limit is exceeded, the over-limit traffic is ignored. Zero value means
+no limit.
+
+*Default:* 1000
