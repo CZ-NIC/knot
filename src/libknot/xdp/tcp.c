@@ -437,10 +437,12 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 		if (i++ < reset_at_least ||
 		    now - conn->last_active >= reset_timeout) {
 			rl.answer = XDP_TCP_RESET;
+			printf("reset %hu%s%s\n", be16toh(conn->ip_rem.sin6_port), i - 1 < reset_at_least ? " table full" : "", now - conn->last_active >= reset_timeout ? " too old" : "");
 			assert(relays.size == n_reset);
 			n_reset++;
 		} else if (now - conn->last_active >= close_timeout) {
 			rl.answer = XDP_TCP_CLOSE;
+			printf("close %hu timeout\n", be16toh(conn->ip_rem.sin6_port));
 		} else {
 			break;
 		}
