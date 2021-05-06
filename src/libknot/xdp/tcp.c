@@ -425,6 +425,7 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 
 _public_
 int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
+                         uint32_t max_at_once,
                          uint32_t close_timeout, uint32_t reset_timeout,
                          uint32_t reset_at_least, uint32_t *reset_count)
 {
@@ -450,6 +451,9 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 
 		rl.conn = conn;
 		tcp_relay_dynarray_add(&relays, &rl);
+		if (relays.size >= max_at_once) {
+			break;
+		}
 	}
 
 	if (ret == KNOT_EOK) {
