@@ -459,8 +459,10 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 			rem_node((node_t *)conn);
 			add_tail(&to_remove, (node_t *)conn);
 		} else if (now - conn->last_active >= close_timeout) {
-			rl.answer = XDP_TCP_CLOSE;
-			printf("close %hu timeout\n", be16toh(conn->ip_rem.sin6_port));
+			if (conn->state != XDP_TCP_CLOSING) {
+				rl.answer = XDP_TCP_CLOSE;
+				printf("close %hu timeout\n", be16toh(conn->ip_rem.sin6_port));
+			}
 		} else {
 			break;
 		}
