@@ -55,6 +55,7 @@ typedef struct knot_xdp_tcp_conn {
 	uint8_t last_eth_loc[ETH_ALEN];
 	uint32_t seqno;
 	uint32_t ackno;
+	uint32_t acked;
 	uint32_t last_active;
 	knot_tcp_state_t state;
 	struct knot_xdp_tcp_conn *next;
