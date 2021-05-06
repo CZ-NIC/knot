@@ -431,17 +431,21 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 {
 	knot_tcp_relay_t rl = { 0 };
 	tcp_relay_dynarray_t relays = { 0 };
-	uint32_t now = get_timestamp(), i = 0, n_reset = 0;
+	uint32_t now = get_timestamp(), i = 0;
 	knot_tcp_conn_t *conn, *next;
 	int ret = KNOT_EOK;
+	list_t to_remove;
+	init_list(&to_remove);
 
 	WALK_LIST_DELSAFE(conn, next, tcp_table->timeout) {
 		if (i++ < reset_at_least ||
 		    now - conn->last_active >= reset_timeout) {
 			rl.answer = XDP_TCP_RESET;
 			printf("reset %hu%s%s\n", be16toh(conn->ip_rem.sin6_port), i - 1 < reset_at_least ? " table full" : "", now - conn->last_active >= reset_timeout ? " too old" : "");
-			assert(relays.size == n_reset);
-			n_reset++;
+
+			// move this conn into to-remove list
+			rem_node((node_t *)conn);
+			add_tail(&to_remove, (node_t *)conn);
 		} else if (now - conn->last_active >= close_timeout) {
 			rl.answer = XDP_TCP_CLOSE;
 			printf("close %hu timeout\n", be16toh(conn->ip_rem.sin6_port));
@@ -462,7 +466,12 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 
 	// immediately remove resetted connections
 	if (ret == KNOT_EOK) {
-		knot_xdp_tcp_cleanup(tcp_table, UINT32_MAX, n_reset, reset_count);
+		if (reset_count != NULL) {
+			*reset_count = list_size(&to_remove);
+		}
+		WALK_LIST_DELSAFE(conn, next, to_remove) {
+			tcp_table_del3(conn, tcp_table);
+		}
 	}
 
 	tcp_relay_dynarray_free(&relays);
