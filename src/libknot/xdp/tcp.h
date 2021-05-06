@@ -141,6 +141,7 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
  *
  * \param tcp_table        TCP connection table to clean up.
  * \param socket           XDP socket for close messages.
+ * \param max_at_once      Don't close more connections at once.
  * \param close_timeout    Gracefully close connections older than this (usecs).
  * \param reset_timeout    Reset connections older than this (usecs).
  * \param reset_at_least   Reset at least this number of oldest conecction, even when not yet timeouted.
@@ -149,6 +150,7 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
  * \return  KNOT_E*
  */
 int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
+                         uint32_t max_at_once,
                          uint32_t close_timeout, uint32_t reset_timeout,
                          uint32_t reset_at_least, uint32_t *reset_count);
 
