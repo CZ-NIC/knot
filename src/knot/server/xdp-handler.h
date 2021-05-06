@@ -57,4 +57,9 @@ int xdp_handle_msgs(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *sock,
  */
 int xdp_handle_send(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *xdp_sock);
 
+/*!
+ * \brief Check for old TCP connections and close/reset them.
+ */
+int xdp_handle_timeout(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *xdp_sock);
+
 #endif // ENABLE_XDP

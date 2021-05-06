@@ -113,7 +113,14 @@ typedef struct {
 	int (*udp_recv)(int, void *, void *);
 	int (*udp_handle)(udp_context_t *, void *, void *);
 	int (*udp_send)(void *, void *);
+	int (*udp_tick)(void *, void *);
 } udp_api_t;
+
+static int udp_noop(void *unused1, void *unused2) {
+	UNUSED(unused1);
+	UNUSED(unused2);
+	return KNOT_EOK;
+}
 
 /*! \brief Control message to fit IP_PKTINFO or IPv6_RECVPKTINFO. */
 typedef union {
@@ -245,7 +252,8 @@ static udp_api_t udp_recvfrom_api = {
 	udp_recvfrom_deinit,
 	udp_recvfrom_recv,
 	udp_recvfrom_handle,
-	udp_recvfrom_send
+	udp_recvfrom_send,
+	udp_noop
 };
 
 #ifdef ENABLE_RECVMMSG
@@ -362,7 +370,8 @@ static udp_api_t udp_recvmmsg_api = {
 	udp_recvmmsg_deinit,
 	udp_recvmmsg_recv,
 	udp_recvmmsg_handle,
-	udp_recvmmsg_send
+	udp_recvmmsg_send,
+	udp_noop
 };
 #endif /* ENABLE_RECVMMSG */
 
@@ -394,12 +403,18 @@ static int xdp_recvmmsg_send(void *d, void *xdp_sock)
 	return xdp_handle_send(d, xdp_sock);
 }
 
+static int xdp_recvmmsg_tick(void *d, void *xdp_sock)
+{
+	return xdp_handle_timeout(d, xdp_sock);
+}
+
 static udp_api_t xdp_recvmmsg_api = {
 	xdp_recvmmsg_init,
 	xdp_recvmmsg_deinit,
 	xdp_recvmmsg_recv,
 	xdp_recvmmsg_handle,
-	xdp_recvmmsg_send
+	xdp_recvmmsg_send,
+	xdp_recvmmsg_tick
 };
 #endif /* ENABLE_XDP */
 
@@ -535,7 +550,7 @@ int udp_master(dthread_t *thread)
 
 		/* Wait for events. */
 		fdset_it_t it;
-		(void)fdset_poll(&fds, &it, 0, -1);
+		(void)fdset_poll(&fds, &it, 0, 1000);
 
 		/* Process the events. */
 		for (; !fdset_it_is_done(&it); fdset_it_next(&it)) {
@@ -547,6 +562,9 @@ int udp_master(dthread_t *thread)
 				api->udp_send(rq, xdp_socket);
 			}
 		}
+
+		/* Regular maintenance (XDP-TCP only). */
+		api->udp_tick(rq, xdp_socket);
 	}
 
 finish:
