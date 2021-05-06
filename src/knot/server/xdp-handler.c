@@ -217,10 +217,15 @@ int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 	tcp_relay_dynarray_free(&ctx->tcp_relays);
 
 	if (ret == KNOT_EOK) {
-		ret = knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 20, 2000000, 4000000, overweight(ctx->tcp_table->usage, 1000), NULL); // FIXME configurable parameters
+		ret = xdp_handle_timeout(ctx, xdp_sock);
 	}
 
 	return ret;
+}
+
+int xdp_handle_timeout(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
+{
+	return knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 20, 2000000, 4000000, overweight(ctx->tcp_table->usage, 1000), NULL); // FIXME configurable parameters
 }
 
 #endif // ENABLE_XDP
