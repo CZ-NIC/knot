@@ -251,9 +251,10 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 					relay.action = XDP_TCP_ESTABLISH;
 					ret = tcp_table_add(msg, conn_hash, tcp_table, &relay.conn);
 					tcp_relay_dynarray_add(relays, &relay);
-				} else {
-					resp_ack(msg, KNOT_XDP_MSG_RST);
 				}
+				// unmatching ACK is ignored, this includes:
+				// - incomming out-of-order data
+				// - ACK of some previous part of outgoing data
 			} else if (msg->payload.iov_len > 0) {
 				resp_ack(msg, KNOT_XDP_MSG_ACK);
 				relay.action = XDP_TCP_DATA;
