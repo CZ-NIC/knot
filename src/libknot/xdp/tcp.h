@@ -47,6 +47,12 @@ typedef enum {
 	XDP_TCP_CLOSING,
 } knot_tcp_state_t;
 
+typedef enum {
+	XDP_TCP_FREE_NONE,
+	XDP_TCP_FREE_DATA,
+	XDP_TCP_FREE_PREFIX,
+} knot_tcp_relay_free_t;
+
 typedef struct knot_xdp_tcp_conn {
 	node_t n;
 	struct sockaddr_in6 ip_rem;
@@ -58,6 +64,7 @@ typedef struct knot_xdp_tcp_conn {
 	uint32_t acked;
 	uint32_t last_active;
 	knot_tcp_state_t state;
+	struct iovec inbuf;
 	struct knot_xdp_tcp_conn *next;
 } knot_tcp_conn_t;
 
@@ -74,6 +81,7 @@ typedef struct {
 	knot_tcp_action_t action;
 	knot_tcp_action_t answer;
 	struct iovec data;
+	knot_tcp_relay_free_t free_data;
 	knot_tcp_conn_t *conn;
 } knot_tcp_relay_t;
 
@@ -126,6 +134,11 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
                        tcp_relay_dynarray_t *relays, knot_mm_t *mm);
 
 /*!
+ * \brief Free resources in 'relays'.
+ */
+void knot_xdp_tcp_relay_free(tcp_relay_dynarray_t *relays);
+
+/*!
  * \brief Send TCP packets.
  *
  * \param socket       XDP socket to send through.
@@ -146,6 +159,7 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
  * \param close_timeout    Gracefully close connections older than this (usecs).
  * \param reset_timeout    Reset connections older than this (usecs).
  * \param reset_at_least   Reset at least this number of oldest conecction, even when not yet timeouted.
+ * \param reset_inbufs     Reset oldest connection with buffered partial DNS messages to free up this amount of space.
  * \param reset_count      Optional: Out: number of resetted connections.
  *
  * \return  KNOT_E*
@@ -153,7 +167,8 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
                          uint32_t max_at_once,
                          uint32_t close_timeout, uint32_t reset_timeout,
-                         uint32_t reset_at_least, uint32_t *reset_count);
+                         uint32_t reset_at_least, size_t reset_inbufs,
+                         uint32_t *reset_count);
 
 /*!
  * \brief Cleanp old TCP connection w/o sending RST or FIN.

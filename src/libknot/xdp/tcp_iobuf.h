@@ -1,0 +1,46 @@
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/*!
+ * \file
+ *
+ * \brief TCP over XDP buffer helpers.
+ *
+ * \addtogroup xdp
+ * @{
+ */
+
+#pragma once
+
+#include <sys/uio.h>
+
+/*!
+ * \brief Return the required length for payload buffer.
+ */
+size_t knot_tcp_pay_len(const struct iovec *payload);
+
+/*!
+ * \brief Handle DNS-over-TCP payloads in buffer and message.
+ *
+ * \param buffer         In/out: persistent buffer to store incomplete DNS payloads between receiving packets.
+ * \param data           In/out: momental DNS payloads in incomming packet.
+ * \param data_tofree    Out: once more DNS payload defragmented from multiple packets.
+ *
+ * \return KNOT_EOK, KNOT_ENOMEM
+ */
+int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data, struct iovec *data_tofree);
+
+/*! @} */
