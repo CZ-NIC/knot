@@ -157,6 +157,7 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 		if (future > 0) {
 			if (future < sizeof(params->timing.revoke)) {
 				free(params->public_key.data);
+				params->public_key.data = NULL;
 				return false;
 			}
 			// 'revoked' timer is part of 'future' section since it was added later
