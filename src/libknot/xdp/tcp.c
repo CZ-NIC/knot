@@ -24,6 +24,8 @@
 #include "libdnssec/random.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
+#include "libknot/xdp/tcp_iobuf.h"
+#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/siphash.h"
 
@@ -116,6 +118,7 @@ static void tcp_table_del(knot_tcp_conn_t **todel)
 	if (conn != NULL) {
 		*todel = conn->next; // remove from conn-table linked list
 		rem_node(&conn->n); // remove from timeout double-linked list
+		free(conn->inbuf.iov_base);
 		free(conn);
 	}
 }
@@ -154,9 +157,13 @@ static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *t
 
 	c->seqno = msg->seqno;
 	c->ackno = msg->ackno;
+	c->acked = msg->ackno;
 
 	c->last_active = get_timestamp();
 	add_tail(&table->timeout, &c->n);
+
+	c->state = XDP_TCP_NORMAL;
+	memset(&c->inbuf, 0, sizeof(c->inbuf));
 
 	c->next = *addto;
 	*addto = c;
@@ -271,19 +278,29 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 				resp_ack(msg, KNOT_XDP_MSG_ACK);
 				relay.action = XDP_TCP_DATA;
 
-				uint16_t dns_len;
-				uint8_t *payl = msg->payload.iov_base;
-				size_t paylen = msg->payload.iov_len;
+				struct iovec msg_payload = msg->payload, tofree;
+				ret = knot_tcp_input_buffers(&(*conn)->inbuf, &msg_payload, &tofree);
 
-				while (ret == KNOT_EOK && paylen >= sizeof(dns_len) &&
-				       paylen >= sizeof(dns_len) + (dns_len = be16toh(*(uint16_t *)payl))) {
+				if (tofree.iov_len > 0 && ret == KNOT_EOK) {
+					FILE *f = fopen("/tmp/ddns.bin", "w");
+					fwrite(tofree.iov_base, tofree.iov_len, 1, f);
+					fclose(f);
 
-					relay.data.iov_base = payl + sizeof(dns_len);
-					relay.data.iov_len = dns_len;
+					relay.data.iov_base = tofree.iov_base + sizeof(uint16_t);
+					relay.data.iov_len = tofree.iov_len - sizeof(uint16_t);
+					relay.free_data = XDP_TCP_FREE_PREFIX;
+					tcp_relay_dynarray_add(relays, &relay);
+					relay.free_data = XDP_TCP_FREE_NONE;
+				}
+				while (msg_payload.iov_len > 0 && ret == KNOT_EOK) {
+					size_t dns_len = knot_tcp_pay_len(&msg_payload);
+					assert(dns_len >= msg_payload.iov_len);
+					relay.data.iov_base = msg_payload.iov_base + sizeof(uint16_t);
+					relay.data.iov_len = dns_len - sizeof(uint16_t);
 					tcp_relay_dynarray_add(relays, &relay);
 
-					payl += sizeof(dns_len) + dns_len;
-					paylen -= sizeof(dns_len) + dns_len;
+					msg_payload.iov_base += dns_len;
+					msg_payload.iov_len -= dns_len;
 				}
 			} else {
 				switch ((*conn)->state) {
@@ -337,6 +354,17 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 	}
 
 	return ret;
+}
+
+_public_
+void knot_xdp_tcp_relay_free(tcp_relay_dynarray_t *relays)
+{
+	dynarray_foreach(tcp_relay, knot_tcp_relay_t, i, *relays) {
+		if (i->free_data != XDP_TCP_FREE_NONE) {
+			free(i->data.iov_base - (i->free_data == XDP_TCP_FREE_PREFIX ? sizeof(uint16_t) : 0));
+		}
+	}
+	tcp_relay_dynarray_free(relays);
 }
 
 _public_
@@ -439,7 +467,8 @@ _public_
 int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
                          uint32_t max_at_once,
                          uint32_t close_timeout, uint32_t reset_timeout,
-                         uint32_t reset_at_least, uint32_t *reset_count)
+                         uint32_t reset_at_least, size_t reset_inbufs,
+                         uint32_t *reset_count)
 {
 	knot_tcp_relay_t rl = { 0 };
 	tcp_relay_dynarray_t relays = { 0 };
@@ -451,19 +480,22 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 
 	WALK_LIST_DELSAFE(conn, next, tcp_table->timeout) {
 		if (i++ < reset_at_least ||
-		    now - conn->last_active >= reset_timeout) {
+		    now - conn->last_active >= reset_timeout ||
+		    (reset_inbufs > 0 && conn->inbuf.iov_len > 0)) {
 			rl.answer = XDP_TCP_RESET;
-			printf("reset %hu%s%s\n", be16toh(conn->ip_rem.sin6_port), i - 1 < reset_at_least ? " table full" : "", now - conn->last_active >= reset_timeout ? " too old" : "");
+			printf("reset %hu%s%s%s\n", be16toh(conn->ip_rem.sin6_port), i - 1 < reset_at_least ? " table full" : "", now - conn->last_active >= reset_timeout ? " too old" : "", (reset_inbufs > 0 && conn->inbuf.iov_len > 0) ? " inbuf usage" : "");
 
 			// move this conn into to-remove list
 			rem_node((node_t *)conn);
 			add_tail(&to_remove, (node_t *)conn);
+
+			reset_inbufs -= MIN(reset_inbufs, conn->inbuf.iov_len);
 		} else if (now - conn->last_active >= close_timeout) {
 			if (conn->state != XDP_TCP_CLOSING) {
 				rl.answer = XDP_TCP_CLOSE;
 				printf("close %hu timeout\n", be16toh(conn->ip_rem.sin6_port));
 			}
-		} else {
+		} else if (reset_inbufs == 0) {
 			break;
 		}
 
@@ -488,7 +520,7 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 		}
 	}
 
-	tcp_relay_dynarray_free(&relays);
+	knot_xdp_tcp_relay_free(&relays);
 	return ret;
 }
 

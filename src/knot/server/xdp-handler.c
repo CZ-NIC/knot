@@ -177,6 +177,7 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 						clone->data.iov_len = ans->size;
 						memcpy(clone->data.iov_base, ans->wire, ans->size);
 						clone->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
+						clone->free_data = XDP_TCP_FREE_DATA;
 					}
 				}
 				handle_finish(layer);
@@ -209,12 +210,7 @@ int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 		}
 	}
 
-	dynarray_foreach(tcp_relay, knot_tcp_relay_t, rl, ctx->tcp_relays) {
-		if (rl->answer == (XDP_TCP_ANSWER | XDP_TCP_DATA)) {
-			free(rl->data.iov_base);
-		}
-	}
-	tcp_relay_dynarray_free(&ctx->tcp_relays);
+	knot_xdp_tcp_relay_free(&ctx->tcp_relays);
 
 	if (ret == KNOT_EOK) {
 		ret = xdp_handle_timeout(ctx, xdp_sock);
@@ -225,7 +221,7 @@ int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 
 int xdp_handle_timeout(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 {
-	return knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 20, 2000000, 4000000, overweight(ctx->tcp_table->usage, 1000), NULL); // FIXME configurable parameters
+	return knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 20, 2000000, 4000000, overweight(ctx->tcp_table->usage, 1000), 0, NULL); // FIXME configurable parameters
 }
 
 #endif // ENABLE_XDP

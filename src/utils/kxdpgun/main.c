@@ -464,7 +464,7 @@ void *xdp_gun_thread(void *_ctx)
 						errors++;
 					}
 
-					tcp_relay_dynarray_free(&relays);
+					knot_xdp_tcp_relay_free(&relays);
 					mp_flush(mm.ctx);
 				} else {
 					for (int i = 0; i < recvd; i++) {

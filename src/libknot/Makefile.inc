@@ -95,6 +95,7 @@ nobase_include_libknot_HEADERS += \
 	libknot/xdp/eth.h			\
 	libknot/xdp/msg.h			\
 	libknot/xdp/tcp.h			\
+	libknot/xdp/tcp_iobuf.h			\
 	libknot/xdp/xdp.h
 
 libknot_la_SOURCES  += \
@@ -106,6 +107,7 @@ libknot_la_SOURCES  += \
 	libknot/xdp/msg_init.h			\
 	libknot/xdp/protocols.h			\
 	libknot/xdp/tcp.c			\
+	libknot/xdp/tcp_iobuf.c			\
 	libknot/xdp/xdp.c
 endif ENABLE_XDP
 
