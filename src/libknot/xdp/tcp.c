@@ -170,7 +170,15 @@ dynarray_define(tcp_relay, knot_tcp_relay_t, DYNARRAY_VISIBILITY_PUBLIC)
 
 static bool check_seq_ack(const knot_xdp_msg_t *msg, const knot_tcp_conn_t *conn)
 {
-	return (conn != NULL && conn->seqno == msg->seqno && conn->ackno == msg->ackno);
+	if (conn == NULL || conn->seqno != msg->seqno) {
+		return false;
+	}
+
+	if (conn->acked <= conn->ackno) { // ackno does not wrap around uint32
+		return (msg->ackno >= conn->acked && msg->ackno <= conn->ackno);
+	} else { // this is more tricky
+		return (msg->ackno >= conn->acked || msg->ackno <= conn->ackno);
+	}
 }
 
 _public_
@@ -217,6 +225,9 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 			memcpy((*conn)->last_eth_rem, msg->eth_from, sizeof((*conn)->last_eth_rem));
 			memcpy((*conn)->last_eth_loc, msg->eth_to, sizeof((*conn)->last_eth_loc));
 			(*conn)->last_active = get_timestamp();
+			if (msg->flags & KNOT_XDP_MSG_ACK) {
+				(*conn)->acked = msg->ackno;
+			}
 		}
 
 		knot_tcp_relay_t relay = { .msg = msg, .conn = *conn };
@@ -234,7 +245,8 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 				relay.conn->state = XDP_TCP_ESTABLISHING;
 				relay.conn->seqno++;
 				if (!synack) {
-					relay.conn->ackno = acks[n_acks - 1].seqno + 1;
+					relay.conn->acked = acks[n_acks - 1].seqno;
+					relay.conn->ackno = relay.conn->acked + 1;
 				}
 			} else {
 				resp_ack(msg, KNOT_XDP_MSG_RST); // TODO consider resetting the OLD conn and accepting new one
