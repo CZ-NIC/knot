@@ -101,7 +101,6 @@ static knot_tcp_conn_t **tcp_table_lookup(const struct sockaddr_in6 *rem, const 
 	while (*res != NULL) {
 		if (memcmp(&(*res)->ip_rem, rem, sdl) == 0 &&
 		    memcmp(&(*res)->ip_loc, loc, sdl) == 0) {
-			(*res)->last_active = get_timestamp();
 			rem_node(&(*res)->n);
 			add_tail(&table->timeout, &(*res)->n);
 			break;
@@ -217,6 +216,7 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 			(*conn)->seqno = knot_tcp_next_seqno(msg);
 			memcpy((*conn)->last_eth_rem, msg->eth_from, sizeof((*conn)->last_eth_rem));
 			memcpy((*conn)->last_eth_loc, msg->eth_to, sizeof((*conn)->last_eth_loc));
+			(*conn)->last_active = get_timestamp();
 		}
 
 		knot_tcp_relay_t relay = { .msg = msg, .conn = *conn };
