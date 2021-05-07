@@ -426,8 +426,8 @@ DNSSEC key states
 =================
 
 During its lifetime, a DNSSEC key finds itself in different states. Most of the time it
-is used for signing the zone and published in the zone. In order to change
-this state, one type of a key rollover is necessary, and during this rollover,
+is used for signing the zone and published in the zone. In order to exchange
+the key, one type of a key rollover is necessary, and during this rollover,
 the key goes through various states with respect to the rollover type and also the
 state of the other key being rolled-over.
 
@@ -436,7 +436,8 @@ First, let's list the states of the key being rolled-in.
 Standard states:
 
 - ``active`` — The key is used for signing.
-- ``published`` — The key is published in the zone, but not used for signing.
+- ``published`` — The key is published in the zone, but not used for signing. If the key is
+  a KSK or CSK, it is used for signing the DNSKEY RRSet.
 - ``ready`` (only for KSK) — The key is published in the zone and used for signing. The
   old key is still active, since we are waiting for the DS records in the parent zone to be
   updated (i.e. "KSK submission").
@@ -454,7 +455,8 @@ Standard states:
 - ``retire-active`` — The key is still used for signing, and is published in the zone, waiting for
   the updated DS records in parent zone to be acked by resolvers (KSK case) or synchronizing
   with KSK during algorithm rollover (ZSK case).
-- ``retired`` — The key is no longer used for signing, but still published in the zone.
+- ``retired`` — The key is no longer used for signing, but still published in the zone. If the key is
+  a KSK or CSK, it is still used for signing the DNSKEY RRSet.
 - ``removed`` — The key is not used in any way (in most cases such keys are deleted immediately).
 
 Special states for algorithm rollover:
@@ -548,7 +550,7 @@ lines of :rfc:`6781#section-4.1.2`::
 
   2019-07-15T20:58:00 info: [example.com.] DNSSEC, signing zone
   2019-07-15T20:58:00 info: [example.com.] DNSSEC, KSK rollover started
-  2019-07-15T20:58:00 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public
+  2019-07-15T20:58:00 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active+
   2019-07-15T20:58:00 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public, active
   2019-07-15T20:58:00 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
   2019-07-15T20:58:00 info: [example.com.] DNSSEC, signing started
@@ -586,7 +588,7 @@ operator must confirm it manually (using ``knotc zone-ksk-submitted``)::
   ... (parent's DS TTL is 7 seconds) ...
 
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, signing zone
-  2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public
+  2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public, active+
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, signing started
@@ -656,7 +658,7 @@ Further rollovers::
 
   2019-07-15T21:03:00 info: [example.com.] DNSSEC, signing zone
   2019-07-15T21:03:00 info: [example.com.] DNSSEC, KSK rollover started
-  2019-07-15T21:03:00 info: [example.com.] DNSSEC, key, tag 27452, algorithm ECDSAP256SHA256, KSK, public
+  2019-07-15T21:03:00 info: [example.com.] DNSSEC, key, tag 27452, algorithm ECDSAP256SHA256, KSK, public, active+
   2019-07-15T21:03:00 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
   2019-07-15T21:03:00 info: [example.com.] DNSSEC, key, tag 32841, algorithm ECDSAP256SHA256, public, active
   2019-07-15T21:03:00 info: [example.com.] DNSSEC, signing started
