@@ -466,8 +466,7 @@ Standard states:
 - ``retire-active`` — The key is still used for signing, and is published in the zone, waiting for
   the updated DS records in parent zone to be acked by resolvers (KSK case) or synchronizing
   with KSK during algorithm rollover (ZSK case).
-- ``retired`` — The key is no longer used for signing, but still published in the zone. If the key is
-  a KSK or CSK, it is still used for signing the DNSKEY RRSet.
+- ``retired`` — The key is no longer used for signing. If ZSK, the key is still published in the zone.
 - ``removed`` — The key is not used in any way (in most cases such keys are deleted immediately).
 
 Special states for algorithm rollover:
@@ -599,21 +598,11 @@ operator must confirm it manually (using ``knotc zone-ksk-submitted``)::
   ... (parent's DS TTL is 7 seconds) ...
 
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, signing zone
-  2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 58209, algorithm ECDSAP256SHA256, KSK, public, active+
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, signing started
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, successfully signed
   2019-07-15T20:58:23 info: [example.com.] DNSSEC, next signing at 2019-07-15T20:58:35
-
-  ... (propagation-delay + dnskey-ttl) ...
-
-  2019-07-15T20:58:35 info: [example.com.] DNSSEC, signing zone
-  2019-07-15T20:58:35 info: [example.com.] DNSSEC, key, tag 32925, algorithm ECDSAP256SHA256, KSK, public, active
-  2019-07-15T20:58:35 info: [example.com.] DNSSEC, key, tag 34273, algorithm ECDSAP256SHA256, public, active
-  2019-07-15T20:58:35 info: [example.com.] DNSSEC, signing started
-  2019-07-15T20:58:35 info: [example.com.] DNSSEC, successfully signed
-  2019-07-15T20:58:35 info: [example.com.] DNSSEC, next signing at 2019-07-15T20:59:54
 
 Upon the zone's ZSK lifetime expiration, the rollover continues along the
 lines of :rfc:`6781#section-4.1.1`::
