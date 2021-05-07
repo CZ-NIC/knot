@@ -406,12 +406,12 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				restype = REMOVE;
 				break;
 			case DNSSEC_KEY_STATE_RETIRED:
-			case DNSSEC_KEY_STATE_REMOVED:
-				// ad REMOVED state: normally this wouldn't happen
-				// (key in removed state is instantly deleted)
-				// but if imported keys, they can be in this state
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
 				keytime = ksk_remove_time(keytime, key->is_zsk, ctx);
+				restype = REMOVE;
+				break;
+			case DNSSEC_KEY_STATE_REMOVED:
+				keytime = ctx->now;
 				restype = REMOVE;
 				break;
 			default:
