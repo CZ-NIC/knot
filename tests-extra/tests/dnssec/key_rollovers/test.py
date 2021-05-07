@@ -199,8 +199,14 @@ def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_ke
         check_zone(server, zone, slave, total_keys, 2, 1, 1, msg)
     # else skip the test as we have no control on KSK and ZSK retiring asynchronously
 
+    t.sleep(5) # cca DS TTL
+    wait_for_count(t, server, "SOA", 1, 0, 1, "NOOP")
+
     msg = desc + ": old key removed"
-    wait_for_count(t, server, "DNSKEY", after_keys, 14, 20, msg)
+    if before_keys > 1:
+        wait_for_count(t, server, "DNSKEY", after_keys, 0, 10, msg)
+    else:
+        wait_for_count(t, server, "DNSKEY", after_keys, 14, 20, msg)
     check_zone(server, zone, slave, after_keys, 1, 1, 1, msg)
 
 t = Test()
