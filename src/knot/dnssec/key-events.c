@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -509,7 +509,11 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint
 			if (keyalg != dnssec_key_get_algorithm(newkey->key)) {
 				key->timing.post_active = ctx->now + active_retire_delay;
 			} else if (key->is_ksk) {
-				key->timing.retire = ctx->now + active_retire_delay;
+				if (key->is_zsk) { // CSK
+					key->timing.retire = ctx->now + active_retire_delay;
+				} else {
+					key->timing.remove = ctx->now + active_retire_delay;
+				}
 			}
 		}
 	}
