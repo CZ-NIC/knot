@@ -100,6 +100,15 @@ libknot.so.11 libknot11 #MINVER#
  knot_pkt_put_rotate@Base 3.0.0
  knot_pkt_reclaim@Base 3.0.0
  knot_pkt_reserve@Base 3.0.0
+ knot_probe_alloc@Base 3.0.6
+ knot_probe_consume@Base 3.0.6
+ knot_probe_data_set@Base 3.0.6
+ knot_probe_fd@Base 3.0.6
+ knot_probe_free@Base 3.0.6
+ knot_probe_produce@Base 3.0.6
+ knot_probe_set_consumer@Base 3.0.6
+ knot_probe_set_producer@Base 3.0.6
+ knot_probe_tcp_rtt@Base 3.0.6
  knot_rcode_names@Base 3.0.0
  knot_rdataset_add@Base 3.0.0
  knot_rdataset_at@Base 3.0.0
