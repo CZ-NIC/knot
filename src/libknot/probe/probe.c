@@ -177,10 +177,11 @@ _public_
 int knot_probe_consume(knot_probe_t *probe, knot_probe_data_t *data, uint8_t count,
                        int timeout_ms)
 {
-	if (probe == NULL || data == NULL) {
+	if (probe == NULL || data == NULL || count == 0) {
 		return KNOT_EINVAL;
 	}
 
+#ifdef ENABLE_RECVMMSG
 	struct mmsghdr msgs[count];
 	struct iovec iovecs[count];
 
@@ -191,6 +192,16 @@ int knot_probe_consume(knot_probe_t *probe, knot_probe_data_t *data, uint8_t cou
 		msgs[i].msg_hdr.msg_iov    = &iovecs[i];
 		msgs[i].msg_hdr.msg_iovlen = 1;
 	}
+#else
+	struct iovec iov = {
+		.iov_base = data,
+		.iov_len  = sizeof(*data)
+	};
+	struct msghdr msg = {
+		.msg_iov    = &iov,
+		.msg_iovlen = 1
+	};
+#endif
 
 	struct pollfd pfd = { .fd = probe->fd, .events = POLLIN };
 	int ret = poll(&pfd, 1, timeout_ms);
@@ -200,10 +211,18 @@ int knot_probe_consume(knot_probe_t *probe, knot_probe_data_t *data, uint8_t cou
 		return KNOT_ENOENT;
 	}
 
+#ifdef ENABLE_RECVMMSG
 	ret = recvmmsg(probe->fd, msgs, count, 0, NULL);
+#else
+	ret = recvmsg(probe->fd, &msg, 0);
+#endif
 	if (ret == -1) {
 		return knot_map_errno();
 	}
 
+#ifdef ENABLE_RECVMMSG
 	return ret;
+#else
+	return (ret > 0 ? 1 : 0);
+#endif
 }
