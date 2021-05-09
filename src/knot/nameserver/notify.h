@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,8 +18,6 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/nameserver/process_query.h"
-
-#define NOTIFY_TIMEOUT 3 /*!< Interval between NOTIFY retries. */
 
 /*!
  * \brief Answer IN class zone NOTIFY message (RFC1996).
