@@ -70,7 +70,7 @@ channels
 
 Number of channels (UNIX sockets) the traffic is distributed to. In case of
 high DNS traffic which is beeing processed by many UDP/XDP/TCP workers,
-using more channels reduced the module overhead.
+using more channels reduces the module overhead.
 
 *Default:* 1
 
