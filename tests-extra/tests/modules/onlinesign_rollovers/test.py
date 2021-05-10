@@ -86,6 +86,18 @@ def wait_for_dnskey_count(t, server, dnskey_count, timeout):
         if rtime > timeout:
             break
 
+def wait_for_cds_change(t, server, timeout):
+    rtime = 0
+    CDS1 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
+    while True:
+        CDS2 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
+        if CDS1 != CDS2:
+            break
+        rtime = rtime + 1
+        t.sleep(1)
+        if rtime > timeout:
+            break
+
 def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, key_len, submission_cb):
     check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
 
@@ -131,13 +143,13 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     wait_for_dnskey_count(t, server, total_keys, 20)
 
     t.sleep(3)
-    check_zone(server, zone, total_keys, 1, 1, 1, desc + ": published new")
+    check_zone(server, zone, total_keys, 2, 1, 1, desc + ": published new")
 
     z.get_module("onlinesign").ksk_life = orig_ksk_lifetime
     server.gen_confile()
     server.reload()
 
-    wait_for_rrsig_count(t, server, "DNSKEY", 2, 20)
+    wait_for_cds_change(t, server, 20)
     expect_zone_rrsigs = (2 if before_keys == 1 and after_keys > 1 else 1) # there is an exception for CSK->KZSK rollover that we have double signatures for the zone. Sorry, we don't care...
     check_zone(server, zone, total_keys, 2, 1, expect_zone_rrsigs, desc + ": new KSK ready")
 
@@ -147,12 +159,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
         check_zone(server, zone, total_keys, 2, 1, 1, desc + ": both still active")
     # else skip the test as we have no control on KSK and ZSK retiring asynchronously
 
-    wait_for_rrsig_count(t, server, "DNSKEY", 1, 20)
-    if before_keys < 2 or after_keys > 1:
-        check_zone(server, zone, total_keys, 1, 1, 1, desc + ": old key retired")
-    # else skip the test as we have no control on KSK and ZSK retiring asynchronously
-
-    wait_for_dnskey_count(t, server, after_keys, 20)
+    wait_for_dnskey_count(t, server, after_keys, 28)
     check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old key removed")
 
 t = Test(stress=False)

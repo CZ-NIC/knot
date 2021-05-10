@@ -93,17 +93,9 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     server.ctl("zone-key-rollover %s ksk" % zone[0].name)
 
     wait_for_dnskey_count(t, server, total_keys, 20)
-    check_zone(server, zone, total_keys, 1, 1, 1, desc + ": published new")
-
-    t.sleep(3)
-
-    wait_for_rrsig_count(t, server, "DNSKEY", 2, 20)
     check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both keys active")
 
     wait_for_rrsig_count(t, server, "DNSKEY", 1, 20)
-    check_zone(server, zone, total_keys, 1, 1, 1, desc + ": old key retired")
-
-    wait_for_dnskey_count(t, server, after_keys, 20)
     check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old key removed")
 
 t = Test(tsig=False)

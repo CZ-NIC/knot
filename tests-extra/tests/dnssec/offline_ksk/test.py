@@ -120,9 +120,9 @@ knot.dnssec(zone).manual = True
 knot.dnssec(zone).alg = "ECDSAP384SHA384"
 knot.dnssec(zone).dnskey_ttl = 2
 knot.dnssec(zone).zone_max_ttl = 3
-knot.dnssec(zone).zsk_lifetime = STARTUP + 6*TICK # see ksk1 lifetime
+knot.dnssec(zone).zsk_lifetime = STARTUP + 6 * TICK # see ksk1 lifetime
 knot.dnssec(zone).ksk_lifetime = 300 # this can be possibly left also infinity
-knot.dnssec(zone).propagation_delay = TICK-2
+knot.dnssec(zone).propagation_delay = TICK - 2
 knot.dnssec(zone).offline_ksk = "on"
 knot.dnssec(zone).cds_publish = "rollover"
 knot.dnssec(zone).rrsig_lifetime = 15
@@ -174,21 +174,15 @@ knot.zone_wait(zone)
 check_zone(knot, zone, 2, 1, 1, "init")
 
 wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE)
-check_zone(knot, zone, 3, 1, 1, "KSK rollover: publish")
+check_zone(knot, zone, 3, 2, 1, "KSK rollover: publish")
 
-wait_for_rrsig_count(t, knot, "DNSKEY", 2, TICK_SAFE)
-check_zone(knot, zone, 3, 2, 1, "KSK rollover: submission")
-
-wait_for_rrsig_count(t, knot, "DNSKEY", 1, TICK_SAFE)
-check_zone(knot, zone, 3, 1, 1, "KSK rollover: retired")
-
-wait_for_dnskey_count(t, knot, 2, TICK_SAFE)
+wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 3)
 check_zone(knot, zone, 2, 1, 1, "KSK rollover: finished")
 
-wait_for_dnskey_count(t, knot, 3, TICK_SAFE)
+wait_for_dnskey_count(t, knot, 3, TICK_SAFE * 2)
 check_zone(knot, zone, 3, 1, 1, "ZSK rollover: running")
 
-wait_for_dnskey_count(t, knot, 2, TICK_SAFE*2)
+wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 2)
 check_zone(knot, zone, 2, 1, 1, "ZSK rollover: done")
 
 # re-generate keys, re-eschange KSR and SKR and re-import it over previous
@@ -197,7 +191,7 @@ STARTUP = 1
 signer.key_set(ZONE, key_ksk2, retire=tickf(3), remove=tickf(4))
 key_ksk3 = signer.key_gen(ZONE, ksk="true", created="+0", publish=tickf(1), ready=tickf(2), active=tickf(3), retire="+4h", remove="+5h")
 
-knot.dnssec(zone).zsk_lifetime = 8*TICK
+knot.dnssec(zone).zsk_lifetime = 8 * TICK
 knot.gen_confile()
 
 KSR = KSR + "2"
@@ -214,21 +208,15 @@ knot.ctl("zone-sign")
 check_zone(knot, zone, 2, 1, 1, "init2")
 
 wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE)
-check_zone(knot, zone, 3, 1, 1, "KSK rollover2: publish")
+check_zone(knot, zone, 3, 2, 1, "KSK rollover2: publish")
 
-wait_for_rrsig_count(t, knot, "DNSKEY", 2, TICK_SAFE)
-check_zone(knot, zone, 3, 2, 1, "KSK rollover2: submission")
-
-wait_for_rrsig_count(t, knot, "DNSKEY", 1, TICK_SAFE)
-check_zone(knot, zone, 3, 1, 1, "KSK rollover2: retired")
-
-wait_for_dnskey_count(t, knot, 2, TICK_SAFE)
+wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 3)
 check_zone(knot, zone, 2, 1, 1, "KSK rollover2: finished")
 
-wait_for_dnskey_count(t, knot, 3, TICK_SAFE*2)
+wait_for_dnskey_count(t, knot, 3, TICK_SAFE * 3)
 check_zone(knot, zone, 3, 1, 1, "ZSK rollover2: running")
 
-wait_for_dnskey_count(t, knot, 2, TICK_SAFE*2)
+wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 2)
 check_zone(knot, zone, 2, 1, 1, "ZSK rollover2: done")
 
 t.end()
