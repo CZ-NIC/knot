@@ -109,6 +109,19 @@ def wait_for_count(t, server, rrtype, count, min_time, timeout, msg):
             break
     check_min_time(min_time, msg)
 
+def wait_for_cds_change(t, server, min_time, timeout, msg):
+    rtime = 0
+    CDS1 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
+    while True:
+        CDS2 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
+        if CDS1 != CDS2:
+            break
+        rtime = rtime + 1
+        t.sleep(1)
+        if rtime > timeout:
+            break
+    check_min_time(min_time, msg)
+
 def wait_after_submission(t, server):
     if DOUBLE_DS:
         wait_for_count(t, server, "CDNSKEY", 1, 0, 10, "after submission")
@@ -170,10 +183,10 @@ def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_ke
 
     msg = desc + ": published new"
     wait_for_count(t, server, "DNSKEY", total_keys, 0, 20, msg)
-    check_zone(server, zone, slave, total_keys, 1, 1, 1, msg)
+    check_zone(server, zone, slave, total_keys, 2, 1, 1, msg)
 
     msg = desc + ": new KSK ready"
-    wait_for_rrsig_count(t, server, "DNSKEY", 2, 10, 20, msg)
+    wait_for_cds_change(t, server, 10, 20, msg)
     cdnskeys = 2 if DOUBLE_DS else 1
     expect_zone_rrsigs = (2 if before_keys == 1 and after_keys > 1 else 1) # there is an exception for CSK->KZSK rollover that we have double signatures for the zone. Sorry, we don't care...
     check_zone(server, zone, slave, total_keys, 2, cdnskeys, expect_zone_rrsigs, msg)
@@ -186,14 +199,14 @@ def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_ke
         check_zone(server, zone, slave, total_keys, 2, 1, 1, msg)
     # else skip the test as we have no control on KSK and ZSK retiring asynchronously
 
-    msg = desc + ": old key retired"
-    wait_for_rrsig_count(t, server, "DNSKEY", 1, 5, 20, msg)
-    if before_keys < 2 or after_keys > 1:
-        check_zone(server, zone, slave, total_keys, 1, 1, 1, msg)
-    # else skip the test as we have no control on KSK and ZSK retiring asynchronously
+    t.sleep(5) # cca DS TTL
+    wait_for_count(t, server, "SOA", 1, 0, 1, "NOOP")
 
     msg = desc + ": old key removed"
-    wait_for_count(t, server, "DNSKEY", after_keys, 14 if before_keys < 2 else 12, 20, msg)
+    if before_keys > 1:
+        wait_for_count(t, server, "DNSKEY", after_keys, 0, 10, msg)
+    else:
+        wait_for_count(t, server, "DNSKEY", after_keys, 14, 20, msg)
     check_zone(server, zone, slave, after_keys, 1, 1, 1, msg)
 
 t = Test()

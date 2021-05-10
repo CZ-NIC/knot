@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -406,12 +406,12 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				restype = REMOVE;
 				break;
 			case DNSSEC_KEY_STATE_RETIRED:
-			case DNSSEC_KEY_STATE_REMOVED:
-				// ad REMOVED state: normally this wouldn't happen
-				// (key in removed state is instantly deleted)
-				// but if imported keys, they can be in this state
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
 				keytime = ksk_remove_time(keytime, key->is_zsk, ctx);
+				restype = REMOVE;
+				break;
+			case DNSSEC_KEY_STATE_REMOVED:
+				keytime = ctx->now;
 				restype = REMOVE;
 				break;
 			default:
@@ -509,7 +509,11 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint
 			if (keyalg != dnssec_key_get_algorithm(newkey->key)) {
 				key->timing.post_active = ctx->now + active_retire_delay;
 			} else if (key->is_ksk) {
-				key->timing.retire = ctx->now + active_retire_delay;
+				if (key->is_zsk) { // CSK
+					key->timing.retire = ctx->now + active_retire_delay;
+				} else {
+					key->timing.remove = ctx->now + active_retire_delay;
+				}
 			}
 		}
 	}
