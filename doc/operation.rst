@@ -997,6 +997,11 @@ the user triggers a one-by-one zone restore from the backup on a running
 server. Again, a subset of zones might be specified. It must be specified
 if the backup was created for only a subset of zones.
 
+.. NOTE::
+   For restore of backups that have been created by Knot DNS releases prior
+   to 3.1, it's necessary to use the ``-f`` option. Since this option also
+   turns off some verification checks, it shouldn't be used in other cases.
+
 Limitations
 -----------
 

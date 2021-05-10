@@ -104,7 +104,7 @@ static int make_label_file(zone_backup_ctx_t *ctx, char *full_path)
 	return ret;
 }
 
-int zone_backup_init(bool restore_mode, const char *backup_dir,
+int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx)
 {
@@ -144,7 +144,7 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	struct stat sb;
 	ret = stat(full_path, &sb);
 	if (restore_mode) {
-		if (ret == -1 || !S_ISREG(sb.st_mode)) {
+		if ((ret == -1 || !S_ISREG(sb.st_mode)) && !forced) {
 			free(ctx);
 			return KNOT_ENOENT;
 		}
