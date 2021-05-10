@@ -466,9 +466,26 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 
 	return ret;
 }
-
 static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 {
+	char *c = (char *)args->data[KNOT_CTL_IDX_ZONE];
+	if (c != NULL) {
+		c = realpath(c, NULL);
+		if (c[0] != '/') {
+			char *cwd = realpath("./", NULL);
+			char *c_tmp = c;
+			c = sprintf_alloc("%s/%s", cwd, c_tmp);
+			free(cwd);
+			free(c_tmp);
+		}
+		conf_val_t val = conf_get(conf(), C_DB, C_STORAGE);
+		const char *val_str = conf_str(&val);
+		if (strncmp(c, val_str, strlen(val_str)) == 0) {
+			free(c);
+			return KNOT_EINVAL;
+		}
+		free(c);
+	}
 	int ret = init_backup(args, restore_mode);
 	if (ret != KNOT_EOK) {
 		char *msg = sprintf_alloc("%s init failed (%s)",
