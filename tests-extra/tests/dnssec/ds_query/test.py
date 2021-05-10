@@ -111,7 +111,7 @@ child.gen_confile()
 child.reload()
 
 wait_for_count(t, child, "DNSKEY", 3, 20) # initiation of KSK rollover means the initial submission was successful
-check_zone(child, child_zone, 3, 1, 0, 1, "KSK rollover start")
+check_zone(child, child_zone, 3, 2, 0, 1, "KSK rollover start")
 
 child.dnssec(child_zone).ksk_sbm_check = [ ]
 child.dnssec(child_zone).ksk_lifetime = 150

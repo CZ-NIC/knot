@@ -56,8 +56,8 @@ KSK = knot.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+10s", a
 t.start()
 knot.zone_wait(zone)
 
-wait_for_rrsig_count(t, knot, "DNSKEY", 2, 8)
-wait_for_rrsig_count(t, knot, "DNSKEY", 1, 2)
+wait_for_rrsig_count(t, knot, "DNSKEY", 2, 2)
+wait_for_rrsig_count(t, knot, "DNSKEY", 1, 10)
 wait_for_rrsig_count(t, knot, "DNSKEY", 2, 3)
 check_revoked_key(knot)
 
