@@ -46,7 +46,7 @@ typedef struct {
 	pthread_mutex_t mutex;
 } zone_backup_ctxs_t;
 
-int zone_backup_init(bool restore_mode, const char *backup_dir,
+int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx);
 
