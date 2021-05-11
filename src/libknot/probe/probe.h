@@ -61,6 +61,8 @@ int knot_probe_set_producer(knot_probe_t *probe, const char *dir, uint16_t idx);
 /*!
  * \brief Initializes one probe consumer.
  *
+ * \note The socket permissions are set to 777 on Linux!
+ *
  * \param probe  Probe context.
  * \param dir    Unix socket directory.
  * \param idx    Probe ID (counted from 1).
