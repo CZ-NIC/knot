@@ -70,8 +70,8 @@ Commands
   is 0.
 
 **zone** *name*
-  Specifies that all updates are done within a zone *name*. If not used,
-  the default zone is the root zone.
+  Specifies that all updates are done within a zone *name*. If not specified,
+  the root zone (**.**) is considered.
 
 **origin** *name*
   Specifies fully qualified domain name suffix which is appended to non-fqd
