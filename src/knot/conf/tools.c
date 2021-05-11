@@ -469,6 +469,8 @@ int check_policy(
 						   C_DNSKEY_TTL, args->id, args->id_len);
 	conf_val_t zone_max_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 						     C_ZONE_MAX_TLL, args->id, args->id_len);
+	conf_val_t nsec3_iters = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                            C_NSEC3_ITER, args->id, args->id_len);
 
 	unsigned algorithm = conf_opt(&alg);
 	if (algorithm == 3 || algorithm == 6) {
@@ -544,6 +546,12 @@ int check_policy(
 		CONF_LOG(LOG_WARNING, "reproducible signing not available, signing normally");
 	}
 #endif
+
+	uint16_t iters = conf_int(&nsec3_iters);
+	if (iters > 20) {
+		CONF_LOG(LOG_NOTICE, "policy[%s].nsec3-iterations=%u is too high, "
+		                     "recommended value is 0-10", args->id, iters);
+	}
 
 	return KNOT_EOK;
 }
