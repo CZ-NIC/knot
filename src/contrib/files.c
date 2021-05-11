@@ -74,9 +74,15 @@ bool same_path(const char *path1, const char *path2)
 
 	if (err != 0) {
 		// Can't compare real absolute paths, as stat() failed already. Try the best.
-		if (strcmp(abs_path(path1, NULL), abs_path(path2, NULL)) == 0) {
+		char *full_path1 = abs_path(path1, NULL);
+		char *full_path2 = abs_path(path2, NULL);
+
+		if (strcmp(full_path1, full_path2) == 0) {
 			equal = true;
 		}
+
+		free(full_path1);
+		free(full_path2);
 	}
 
 	return equal;
