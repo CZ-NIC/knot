@@ -142,6 +142,7 @@ check_PROGRAMS += \
 	libknot/test_endian			\
 	libknot/test_lookup			\
 	libknot/test_pkt			\
+	libknot/test_probe			\
 	libknot/test_rdata			\
 	libknot/test_rdataset			\
 	libknot/test_rrset			\

@@ -591,6 +591,7 @@ tests/libknot/test_edns_ecs.c
 tests/libknot/test_endian.c
 tests/libknot/test_lookup.c
 tests/libknot/test_pkt.c
+tests/libknot/test_probe.c
 tests/libknot/test_rdata.c
 tests/libknot/test_rdataset.c
 tests/libknot/test_rrset-wire.c
