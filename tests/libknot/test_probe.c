@@ -52,20 +52,22 @@ int main(int argc, char *argv[])
 	fd = knot_probe_fd(probe_out);
 	ok(fd >= 0, "probe: get output probe fd");
 
-	struct sockaddr_in addr;
+	struct sockaddr_storage addr;
 	ret = sockaddr_set(&addr, AF_INET, "192.168.0.1", 53);
 	ok(ret == KNOT_EOK, "probe: set address");
 
-	const knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	ok(query != NULL, "probe: create query");
-	const knot_pkt_t *reply = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	knot_pkt_t *reply = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	ok(reply != NULL, "probe: create reply");
+
+	ret = knot_pkt_put_question(query, (const uint8_t *)"\x04test\x00",
+	                            KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
+	ok(ret == KNOT_EOK, "probe: put query");
 
 	knot_probe_data_t data_out;
 	ret = knot_probe_data_set(&data_out, KNOT_PROBE_PROTO_UDP,
-	                          (struct sockaddr_storage *)&addr,
-	                          (struct sockaddr_storage *)&addr,
-	                          query, reply, KNOT_RCODE_NXDOMAIN);
+	                          &addr, &addr, query, reply, KNOT_RCODE_NXDOMAIN);
 	ok(ret == KNOT_EOK, "probe: connect producer");
 
 	knot_pkt_free(query);
@@ -74,12 +76,15 @@ int main(int argc, char *argv[])
 	ret = knot_probe_produce(probe_out, &data_out, 1);
 	ok(ret == KNOT_EOK, "probe: produce datagram");
 
-	knot_probe_data_t data_in = { 0 };
+	knot_probe_data_t data_in;
 	ret = knot_probe_consume(probe_in, &data_in, 1, 20);
 	ok(ret == 1, "probe: consume datagram");
 
-	ret = memcmp(&data_in, &data_out, sizeof(data_in));
+	ret = memcmp(&data_in, &data_out, offsetof(knot_probe_data_t, query.qname));
 	ok(ret == 0, "probe: data comparsion");
+
+	ret = knot_dname_cmp(data_in.query.qname, data_out.query.qname);
+	ok(ret == 0, "probe: qname comparison");
 
 	knot_probe_free(probe_in);
 	knot_probe_free(probe_out);
