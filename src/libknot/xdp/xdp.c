@@ -29,6 +29,7 @@
 #include "libknot/endian.h"
 #include "libknot/errcode.h"
 #include "libknot/xdp/bpf-user.h"
+#include "libknot/xdp/eth.h"
 #include "libknot/xdp/msg_init.h"
 #include "libknot/xdp/protocols.h"
 #include "libknot/xdp/xdp.h"
@@ -177,6 +178,12 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 		deconfigure_xsk_umem(umem);
 		kxsk_iface_free(iface);
 		return ret;
+	}
+
+	(*socket)->frame_limit = FRAME_SIZE;
+	ret = knot_eth_mtu(if_name);
+	if (ret > 0) {
+		(*socket)->frame_limit = MIN((unsigned)ret, (*socket)->frame_limit);
 	}
 
 	ret = kxsk_socket_start(iface, listen_port, (*socket)->xsk);
@@ -339,7 +346,8 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 			size_t hdr_len = prot_write_hdrs_len(msg);
 			size_t tot_len = hdr_len + msg->payload.iov_len;
 			uint8_t *msg_beg = msg->payload.iov_base - hdr_len;
-			prot_write_eth(msg_beg, msg, msg_beg + tot_len);
+			prot_write_eth(msg_beg, msg, msg_beg + tot_len,
+			               socket->frame_limit - hdr_len);
 
 			*xsk_ring_prod__tx_desc(&socket->tx, idx++) = (struct xdp_desc) {
 				.addr = msg_beg - socket->umem->frames->bytes,

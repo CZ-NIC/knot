@@ -77,6 +77,9 @@ struct knot_xdp_socket {
 
 	/*! The kernel has to be woken up by a syscall indication. */
 	bool kernel_needs_wakeup;
+
+	/*! The limit of frame size. */
+	unsigned frame_limit;
 };
 
 /*!
