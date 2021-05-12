@@ -94,7 +94,8 @@ inline static void *prot_read_tcp(void *data, knot_xdp_msg_t *msg, uint16_t *src
 
 		if (opts[0] == PROT_TCP_OPT_MSS && opts[1] == PROT_TCP_OPT_LEN_MSS) {
 			msg->flags |= KNOT_XDP_MSG_MSS;
-			// TODO read MSS value
+			memcpy(&msg->mss, &opts[2], sizeof(msg->mss));
+			msg->mss = be16toh(msg->mss);
 		}
 
 		opts += opts[1];

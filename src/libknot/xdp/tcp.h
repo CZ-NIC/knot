@@ -59,6 +59,7 @@ typedef struct knot_xdp_tcp_conn {
 	struct sockaddr_in6 ip_loc;
 	uint8_t last_eth_rem[ETH_ALEN];
 	uint8_t last_eth_loc[ETH_ALEN];
+	uint16_t mss;
 	uint32_t seqno;
 	uint32_t ackno;
 	uint32_t acked;
@@ -82,6 +83,7 @@ typedef struct {
 	knot_tcp_action_t answer;
 	struct iovec data;
 	knot_tcp_relay_free_t free_data;
+	bool send_psh;
 	knot_tcp_conn_t *conn;
 } knot_tcp_relay_t;
 
@@ -132,6 +134,19 @@ void knot_tcp_table_free(knot_tcp_table_t *t);
 int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
                        knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
                        tcp_relay_dynarray_t *relays, knot_mm_t *mm);
+
+/*!
+ * \brief Answer one relay with one or more relays with data payload.
+ *
+ * \param relays    Relays.
+ * \param rl        The relay to answer to.
+ * \param data      Data payload, possibly > MSS.
+ * \param len       Payload length.
+ *
+ * \return KNOT_EOK, KNOT_ENOMEM
+ */
+int knot_xdp_tcp_send_data(tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *rl, void *data, size_t len);
+
 
 /*!
  * \brief Free resources in 'relays'.

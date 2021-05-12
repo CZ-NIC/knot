@@ -228,6 +228,7 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 		knot_tcp_conn_t **conn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, tcp_table);
 		bool seq_ack_match = check_seq_ack(msg, *conn);
 		if (seq_ack_match) {
+			assert((*conn)->mss != 0);
 			(*conn)->seqno = knot_tcp_next_seqno(msg);
 			memcpy((*conn)->last_eth_rem, msg->eth_from, sizeof((*conn)->last_eth_rem));
 			memcpy((*conn)->last_eth_loc, msg->eth_to, sizeof((*conn)->last_eth_loc));
@@ -279,6 +280,7 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 				tcp_relay_dynarray_add(relays, &relay);
 				relay.conn->state = XDP_TCP_ESTABLISHING;
 				relay.conn->seqno++;
+				relay.conn->mss = MAX(msg->mss, 536); // minimal MSS, most importantly not zero!
 				if (!synack) {
 					relay.conn->acked = acks[n_acks - 1].seqno;
 					relay.conn->ackno = relay.conn->acked + 1;
@@ -357,6 +359,42 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 }
 
 _public_
+int knot_xdp_tcp_send_data(tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *rl, void *data, size_t len)
+{
+	assert(len <= UINT16_MAX);
+	uint16_t prefix = htobe16(len);
+#define PREFIX_LEN (prefix == 0 ? 0 : sizeof(prefix))
+
+	while (len > 0) {
+		knot_tcp_relay_t *clone = tcp_relay_dynarray_add(relays, rl);
+		if (clone == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		size_t chunk = MIN(len + PREFIX_LEN, rl->conn->mss);
+		assert(chunk >= PREFIX_LEN);
+
+		clone->data.iov_base = malloc(chunk);
+		if (clone->data.iov_base == NULL) {
+			return KNOT_ENOMEM;
+		}
+		clone->data.iov_len = chunk;
+
+		memcpy(clone->data.iov_base, &prefix, PREFIX_LEN);
+		chunk -= PREFIX_LEN;
+
+		memcpy(clone->data.iov_base + PREFIX_LEN, data, chunk);
+		clone->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
+		clone->free_data = XDP_TCP_FREE_DATA;
+
+		data += chunk;
+		len -= chunk;
+		prefix = 0;
+	}
+	return KNOT_EOK;
+}
+
+_public_
 void knot_xdp_tcp_relay_free(tcp_relay_dynarray_t *relays)
 {
 	dynarray_foreach(tcp_relay, knot_tcp_relay_t, i, *relays) {
@@ -389,28 +427,21 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 			continue;
 		}
 
-		if (rl->answer & XDP_TCP_ANSWER) {
-			ret = knot_xdp_reply_alloc(socket, rl->msg, msg);
-			if (ret != KNOT_EOK) {
-				break;
-			}
-		} else {
-			ret = knot_xdp_send_alloc(socket, KNOT_XDP_MSG_TCP, msg);
-			if (ret != KNOT_EOK) {
-				break;
-			}
-
-			memcpy( msg->eth_from, rl->conn->last_eth_loc, sizeof(msg->eth_from));
-			memcpy( msg->eth_to,   rl->conn->last_eth_rem, sizeof(msg->eth_to));
-			memcpy(&msg->ip_from, &rl->conn->ip_loc,  sizeof(msg->ip_from));
-			memcpy(&msg->ip_to,   &rl->conn->ip_rem,  sizeof(msg->ip_to));
-
-			if (rl->conn->ip_loc.sin6_family == AF_INET6) {
-				msg->flags |= KNOT_XDP_MSG_IPV6;
-			}
-			msg->ackno = rl->conn->seqno;
-			msg->seqno = rl->conn->ackno;
+		ret = knot_xdp_send_alloc(socket, KNOT_XDP_MSG_TCP, msg);
+		if (ret != KNOT_EOK) {
+			break;
 		}
+
+		memcpy( msg->eth_from, rl->conn->last_eth_loc, sizeof(msg->eth_from));
+		memcpy( msg->eth_to,   rl->conn->last_eth_rem, sizeof(msg->eth_to));
+		memcpy(&msg->ip_from, &rl->conn->ip_loc,  sizeof(msg->ip_from));
+		memcpy(&msg->ip_to,   &rl->conn->ip_rem,  sizeof(msg->ip_to));
+
+		if (rl->conn->ip_loc.sin6_family == AF_INET6) {
+			msg->flags |= KNOT_XDP_MSG_IPV6;
+		}
+		msg->ackno = rl->conn->seqno;
+		msg->seqno = rl->conn->ackno;
 
 		switch (rl->answer & 0x0f) {
 		case XDP_TCP_ESTABLISH:
@@ -420,12 +451,12 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 		case XDP_TCP_DATA:
 			msg->flags |= KNOT_XDP_MSG_ACK;
 			if (rl->data.iov_len > UINT16_MAX ||
-			    rl->data.iov_len > msg->payload.iov_len - sizeof(uint16_t)) {
+			    rl->data.iov_len > msg->payload.iov_len) {
 				ret = KNOT_ESPACE;
 			} else {
-				*(uint16_t *)msg->payload.iov_base = htobe16(rl->data.iov_len);
-				memcpy(msg->payload.iov_base + sizeof(uint16_t), rl->data.iov_base, rl->data.iov_len);
-				msg->payload.iov_len = rl->data.iov_len + sizeof(uint16_t);
+				// FIXME align kxdpgun with new behaviour
+				memcpy(msg->payload.iov_base, rl->data.iov_base, rl->data.iov_len);
+				msg->payload.iov_len = rl->data.iov_len;
 			}
 			assert(rl->conn != NULL);
 			rl->conn->ackno += msg->payload.iov_len;
