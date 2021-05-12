@@ -49,8 +49,10 @@ enum {
 	PROT_TCP_OPT_ENDOP = 0,
 	PROT_TCP_OPT_NOOP  = 1,
 	PROT_TCP_OPT_MSS   = 2,
+	PROT_TCP_OPT_WSC   = 3, // window scale
 
 	PROT_TCP_OPT_LEN_MSS = 4,
+	PROT_TCP_OPT_LEN_WSC = 3,
 };
 
 inline static void *prot_read_tcp(void *data, knot_xdp_msg_t *msg, uint16_t *src_port, uint16_t *dst_port)
@@ -185,7 +187,7 @@ inline static size_t prot_write_hdrs_len(const knot_xdp_msg_t *msg)
 	}
 
 	if (msg->flags & KNOT_XDP_MSG_TCP) {
-		res += sizeof(struct tcphdr) - sizeof(struct udphdr);
+		res += sizeof(struct tcphdr) - sizeof(struct udphdr) + 4; // 4 == PROT_TCP_OPT_LEN_WSC + align
 
 		if (msg->flags & KNOT_XDP_MSG_MSS) {
 			res += PROT_TCP_OPT_LEN_MSS;
@@ -268,7 +270,7 @@ inline static void prot_write_tcp(void *data, const knot_xdp_msg_t *msg, void *d
 	tcp->dest    = dst_port;
 	tcp->seq     = htobe32(msg->seqno);
 	tcp->ack_seq = htobe32(msg->ackno);
-	tcp->window  = htobe16(0x8000); // TODO proper window size handling in TCP streams
+	tcp->window  = htobe16(0xffff); // Practically infinite window (see also WSC option below)
 	tcp->check   = 0; // Temporarily initialize before checksum calculation.
 
 	tcp->syn = ((msg->flags & KNOT_XDP_MSG_SYN) ? 1 : 0);
@@ -277,6 +279,11 @@ inline static void prot_write_tcp(void *data, const knot_xdp_msg_t *msg, void *d
 	tcp->rst = ((msg->flags & KNOT_XDP_MSG_RST) ? 1 : 0);
 
 	uint8_t *hdr_end = data + sizeof(*tcp);
+	hdr_end[0] = PROT_TCP_OPT_WSC;
+	hdr_end[1] = PROT_TCP_OPT_LEN_WSC;
+	hdr_end[2] = 14; // Maximum possible.
+	hdr_end += PROT_TCP_OPT_LEN_WSC;
+	*hdr_end++ = PROT_TCP_OPT_NOOP;
 	if (msg->flags & KNOT_XDP_MSG_MSS) {
 		uint16_t mss = htobe16(1460); // TODO: set proper MSS value
 		hdr_end[0] = PROT_TCP_OPT_MSS;
