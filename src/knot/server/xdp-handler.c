@@ -159,7 +159,7 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 	int ret = knot_xdp_tcp_relay(sock, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, NULL, &ctx->tcp_relays,
 				     NULL); // TODO NULL
 	if (ret == KNOT_EOK && ctx->tcp_relays.size > 0) {
-		uint8_t ans_buf[1024]; // TODO 1024
+		uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
 		for (size_t n_tcp_relays = ctx->tcp_relays.size, rli = 0; rli < n_tcp_relays; rli++) { // dynaaray_foreach can't be used because we insert into the dynarray inside the loop
 			knot_tcp_relay_t *rl = tcp_relay_dynarray_arr(&ctx->tcp_relays) + rli;
@@ -169,15 +169,13 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 
 				while (tcp_active_state(layer->state)) {
 					knot_layer_produce(layer, ans);
+					if (!tcp_send_state(layer->state)) {
+						continue;
+					}
 
-					knot_tcp_relay_t *clone;
-					if (ans->size > 0 && tcp_send_state(layer->state) &&
-					    (clone = tcp_relay_dynarray_add(&ctx->tcp_relays, rl)) != NULL &&
-					    (clone->data.iov_base = malloc(ans->size)) != NULL) {
-						clone->data.iov_len = ans->size;
-						memcpy(clone->data.iov_base, ans->wire, ans->size);
-						clone->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
-						clone->free_data = XDP_TCP_FREE_DATA;
+					ret = knot_xdp_tcp_send_data(&ctx->tcp_relays, rl, ans->wire, ans->size);
+					if (ret != KNOT_EOK) {
+						layer->state = KNOT_STATE_FAIL;
 					}
 				}
 				handle_finish(layer);

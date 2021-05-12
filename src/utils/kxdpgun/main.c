@@ -436,12 +436,16 @@ void *xdp_gun_thread(void *_ctx)
 						break;
 					}
 
-					dynarray_foreach(tcp_relay, knot_tcp_relay_t, rl, relays) {
+					size_t relays_answer = relays.size;
+					for (size_t i = 0; i < relays_answer; i++) {
+						knot_tcp_relay_t *rl = &tcp_relay_dynarray_arr(&relays)[i];
+						struct iovec payl;
 						switch (rl->action) {
 						case XDP_TCP_ESTABLISH:
 							local_stats.synack_recv++;
 							rl->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
-							put_dns_payload(&rl->data, true, ctx, &payload_ptr);
+							put_dns_payload(&payl, true, ctx, &payload_ptr);
+							(void)knot_xdp_tcp_send_data(&relays, rl, payl.iov_base, payl.iov_len);
 							break;
 						case XDP_TCP_DATA:
 							if (check_dns_payload(&rl->data, ctx, &local_stats)) {
