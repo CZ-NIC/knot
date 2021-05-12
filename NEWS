@@ -1,3 +1,33 @@
+Knot DNS 3.0.6 (2021-05-12)
+===========================
+
+Features:
+---------
+ - mod-probe: new module for simple traffic logging (Python API not yet included)
+
+Improvements:
+-------------
+ - keymgr: new mode for listing zones with at least one key stored
+ - keymgr: the pregenerate command accepts optional timestamp-from parameter
+ - kzonecheck: accept '-' as substitution for standard input #727
+ - knotd: print an error when unable to change owner of a logging file
+ - knotd: new warning log if no interface is configured
+ - knotd: new signing policy check for NSEC3 iterations higher than 20
+ - knotd: don't allow backup to/restore from the DB storage directory
+ - Various code (mostly zone backup/restore), tests, and documentation improvements
+
+Bugfixes:
+---------
+ - knotd: secondary fails to load zone file if HTTPS or SVCB record is present #725
+ - knotd: (KSK roll-over) new KSK is not signing DNSKEY long enough before DS submission
+ - knotd: (KSK roll-over) old KSK uselessly published after roll-over finished
+ - knotd: malformed address in TCP-related logs when listening on a UNIX socket
+ - knotd: server responds FORMERR instead of BADTIME if TSIG signed time is zero #730
+ - modules: incorrect local and remote addresses in the XDP mode
+ - modules: failed to read configuration from a section without identifiers
+ - mod-synthrecord: queries on synthesized empty-non-terminals not answered with NODATA
+ - keymgr: confusing error if del-all-old command fails
+
 Knot DNS 3.0.5 (2021-03-25)
 ===========================
 
