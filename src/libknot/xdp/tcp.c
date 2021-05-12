@@ -239,6 +239,34 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 
 		knot_tcp_relay_t relay = { .msg = msg, .conn = *conn };
 
+		// process incomming data
+		if (seq_ack_match && (msg->flags & KNOT_XDP_MSG_ACK) && msg->payload.iov_len > 0) {
+			resp_ack(msg, KNOT_XDP_MSG_ACK);
+			relay.action = XDP_TCP_DATA;
+
+			struct iovec msg_payload = msg->payload, tofree;
+			ret = knot_tcp_input_buffers(&(*conn)->inbuf, &msg_payload, &tofree);
+
+			if (tofree.iov_len > 0 && ret == KNOT_EOK) {
+				relay.data.iov_base = tofree.iov_base + sizeof(uint16_t);
+				relay.data.iov_len = tofree.iov_len - sizeof(uint16_t);
+				relay.free_data = XDP_TCP_FREE_PREFIX;
+				tcp_relay_dynarray_add(relays, &relay);
+				relay.free_data = XDP_TCP_FREE_NONE;
+			}
+			while (msg_payload.iov_len > 0 && ret == KNOT_EOK) {
+				size_t dns_len = knot_tcp_pay_len(&msg_payload);
+				assert(dns_len >= msg_payload.iov_len);
+				relay.data.iov_base = msg_payload.iov_base + sizeof(uint16_t);
+				relay.data.iov_len = dns_len - sizeof(uint16_t);
+				tcp_relay_dynarray_add(relays, &relay);
+
+				msg_payload.iov_base += dns_len;
+				msg_payload.iov_len -= dns_len;
+			}
+		}
+
+		// process TCP connection state
 		switch (msg->flags & (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK |
 		                      KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_RST)) {
 		case KNOT_XDP_MSG_SYN:
@@ -274,34 +302,6 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 				// unmatching ACK is ignored, this includes:
 				// - incomming out-of-order data
 				// - ACK of some previous part of outgoing data
-			} else if (msg->payload.iov_len > 0) {
-				resp_ack(msg, KNOT_XDP_MSG_ACK);
-				relay.action = XDP_TCP_DATA;
-
-				struct iovec msg_payload = msg->payload, tofree;
-				ret = knot_tcp_input_buffers(&(*conn)->inbuf, &msg_payload, &tofree);
-
-				if (tofree.iov_len > 0 && ret == KNOT_EOK) {
-					FILE *f = fopen("/tmp/ddns.bin", "w");
-					fwrite(tofree.iov_base, tofree.iov_len, 1, f);
-					fclose(f);
-
-					relay.data.iov_base = tofree.iov_base + sizeof(uint16_t);
-					relay.data.iov_len = tofree.iov_len - sizeof(uint16_t);
-					relay.free_data = XDP_TCP_FREE_PREFIX;
-					tcp_relay_dynarray_add(relays, &relay);
-					relay.free_data = XDP_TCP_FREE_NONE;
-				}
-				while (msg_payload.iov_len > 0 && ret == KNOT_EOK) {
-					size_t dns_len = knot_tcp_pay_len(&msg_payload);
-					assert(dns_len >= msg_payload.iov_len);
-					relay.data.iov_base = msg_payload.iov_base + sizeof(uint16_t);
-					relay.data.iov_len = dns_len - sizeof(uint16_t);
-					tcp_relay_dynarray_add(relays, &relay);
-
-					msg_payload.iov_base += dns_len;
-					msg_payload.iov_len -= dns_len;
-				}
 			} else {
 				switch ((*conn)->state) {
 				case XDP_TCP_NORMAL:
@@ -324,7 +324,7 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 					relay.action = XDP_TCP_CLOSE;
 					tcp_relay_dynarray_add(relays, &relay);
 					tcp_table_del2(conn, tcp_table);
-				} else {
+				} else if (msg->payload.iov_len == 0) { // otherwise ignore FIN
 					resp_ack(msg, KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK);
 					relay.action = XDP_TCP_CLOSE;
 					tcp_relay_dynarray_add(relays, &relay);
