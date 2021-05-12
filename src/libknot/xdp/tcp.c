@@ -459,6 +459,9 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 	}
 	if (ret == KNOT_EOK) {
 		ret = knot_xdp_send_finish(socket);
+		if (ret == KNOT_EAGAIN) {
+			ret = KNOT_EOK;
+		}
 	}
 	return ret;
 }
