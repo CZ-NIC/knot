@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -762,6 +762,7 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 {
 	keyptr_dynarray_t r = { 0 };
 	unsigned crp = ctx->policy->cds_cdnskey_publish;
+	unsigned cds_published = 0;
 
 	if (crp == CDS_CDNSKEY_ROLLOVER || crp == CDS_CDNSKEY_ALWAYS ||
 	    crp == CDS_CDNSKEY_DOUBLE_DS) {
@@ -771,11 +772,14 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 			if (key->is_ready) {
 				assert(key->is_ksk);
 				keyptr_dynarray_add(&r, &key);
+				if (!key->is_pub_only) {
+					cds_published++;
+				}
 			}
 		}
 
 		// second, add active keys
-		if ((crp == CDS_CDNSKEY_ALWAYS && r.size == 0) ||
+		if ((crp == CDS_CDNSKEY_ALWAYS && cds_published == 0) ||
 		    (crp == CDS_CDNSKEY_DOUBLE_DS)) {
 			for (int i = 0; i < zone_keys->count; i++) {
 				zone_key_t *key = &zone_keys->keys[i];
@@ -785,9 +789,9 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 			}
 		}
 
-		if ((crp != CDS_CDNSKEY_DOUBLE_DS && r.size > 1) ||
-		    (r.size > 2)) {
-			log_zone_warning(ctx->zone->dname, "DNSSEC, published CDS/CDNSKEY records for too many (%zu) keys", r.size);
+		if ((crp != CDS_CDNSKEY_DOUBLE_DS && cds_published > 1) ||
+		    (cds_published > 2)) {
+			log_zone_warning(ctx->zone->dname, "DNSSEC, published CDS/CDNSKEY records for too many (%u) keys", cds_published);
 		}
 	}
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,18 @@ static bool match_key_ds(zone_key_t *key, knot_rdata_t *ds)
 	}
 
 	return (dnssec_binary_cmp(&cds_rdata, &ds_rdata) == 0);
+}
+
+static bool match_key_ds_rrset(zone_key_t *key, const knot_rrset_t *rr)
+{
+	knot_rdata_t *rd = rr->rrs.rdata;
+	for (int i = 0; i < rr->rrs.count; i++) {
+		if (match_key_ds(key, rd)) {
+			return true;
+		}
+		rd = knot_rdataset_next(rd);
+	}
+	return false;
 }
 
 struct ds_query_data {
@@ -109,7 +121,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		const knot_rrset_t *rr = knot_pkt_rr(answer, j);
 		switch ((rr && rr->rrs.count > 0) ? rr->type : 0) {
 		case KNOT_RRTYPE_DS:
-			if (match_key_ds(data->key, rr->rrs.rdata)) {
+			if (match_key_ds_rrset(data->key, rr)) {
 				match = true;
 				if (data->ttl == 0) { // fallback: if there is no RRSIG
 					data->ttl = rr->ttl;
@@ -232,7 +244,7 @@ int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t time
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
-		if (key->is_ready) {
+		if (key->is_ready && !key->is_pub_only) {
 			assert(key->is_ksk);
 			if (parents_have_ds(kctx, key, timeout, &max_ds_ttl)) {
 				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl);
