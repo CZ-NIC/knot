@@ -3270,6 +3270,7 @@ tr27:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -3280,6 +3281,7 @@ tr28:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -3297,6 +3299,7 @@ tr29:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -3314,6 +3317,7 @@ tr36:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -3353,6 +3357,7 @@ tr777:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -3371,6 +3376,7 @@ tr778:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -3396,6 +3402,7 @@ tr779:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -3421,6 +3428,7 @@ tr781:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -15972,6 +15980,7 @@ tr146:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -15986,6 +15995,7 @@ tr147:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -16007,6 +16017,7 @@ tr148:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -21671,6 +21682,7 @@ tr704:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -21681,6 +21693,7 @@ tr705:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -21698,6 +21711,7 @@ tr706:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -21715,6 +21729,7 @@ tr713:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -21791,6 +21806,7 @@ tr722:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -21809,6 +21825,7 @@ tr723:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -21834,6 +21851,7 @@ tr724:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -21859,6 +21877,7 @@ tr726:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -23796,6 +23815,7 @@ tr714:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -23832,6 +23852,7 @@ tr727:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -23914,6 +23935,7 @@ tr149:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -24843,6 +24865,7 @@ tr858:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -25855,6 +25878,7 @@ tr758:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -25875,6 +25899,7 @@ tr759:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -25895,6 +25920,7 @@ tr760:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -25911,6 +25937,7 @@ tr761:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -26000,6 +26027,7 @@ tr762:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -26255,6 +26283,7 @@ tr37:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -26283,6 +26312,7 @@ tr782:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -31459,6 +31489,7 @@ tr855:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -31483,6 +31514,7 @@ tr856:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -31507,6 +31539,7 @@ tr857:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -31602,6 +31635,7 @@ tr859:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
@@ -39033,6 +39067,7 @@ tr150:
 	{
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
+			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			p--; {goto st299;}
