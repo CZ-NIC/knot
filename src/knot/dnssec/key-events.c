@@ -38,16 +38,8 @@ static bool key_present(const kdnssec_ctx_t *ctx, bool ksk, bool zsk)
 
 static bool key_id_present(const kdnssec_ctx_t *ctx, const char *keyid, bool want_ksk)
 {
-	assert(ctx);
-	assert(ctx->zone);
-	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		const knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (strcmp(keyid, key->id) == 0 &&
-		    key->is_ksk == want_ksk) {
-			return true;
-		}
-	}
-	return false;
+	knot_kasp_key_t *key = kasp_zone_find(ctx->zone, keyid);
+	return (key != NULL && key->is_ksk == want_ksk);
 }
 
 static unsigned algorithm_present(const kdnssec_ctx_t *ctx, uint8_t alg)
@@ -73,19 +65,6 @@ static bool signing_scheme_present(const kdnssec_ctx_t *ctx)
 	} else {
 		return (key_present(ctx, true, false) && key_present(ctx, false, true));
 	}
-}
-
-static knot_kasp_key_t *key_get_by_id(kdnssec_ctx_t *ctx, const char *keyid)
-{
-	assert(ctx);
-	assert(ctx->zone);
-	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (strcmp(keyid, key->id) == 0) {
-			return key;
-		}
-	}
-	return NULL;
 }
 
 static int generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
@@ -174,7 +153,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 	if (ret == KNOT_EOK) {
 		ret = kdnssec_share_key(ctx, borrow_zone, borrow_key);
 		if (ret == KNOT_EOK) {
-			knot_kasp_key_t *newkey = key_get_by_id(ctx, borrow_key);
+			knot_kasp_key_t *newkey = kasp_zone_find(ctx->zone, borrow_key);
 			assert(newkey != NULL);
 			newkey->timing.remove = 0;
 			newkey->timing.retire = 0;

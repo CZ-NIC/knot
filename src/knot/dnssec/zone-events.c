@@ -364,3 +364,50 @@ int knot_dnssec_validate_zone(zone_update_t *update, bool incremental)
 	kdnssec_ctx_deinit(&ctx);
 	return ret;
 }
+
+int knot_dnssec_keys_from_ddns(zone_update_t *update, knot_pkt_t *query)
+{
+	kdnssec_ctx_t ctx = { 0 };
+	int ret = kdnssec_ctx_init(conf(), &ctx, update->zone->name, update->zone->kaspdb, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	bool change = false;
+	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
+	const knot_rrset_t *authority_rr = knot_pkt_rr(authority, 0);
+	for (uint16_t i = 0; i < authority->count && ret == KNOT_EOK; ++i) {
+		const knot_rrset_t *rr = &authority_rr[i];
+		assert(knot_dname_is_case_equal(rr->owner, update->zone->name));
+		bool removal = (rr->rclass == KNOT_CLASS_NONE || rr->rclass == KNOT_CLASS_ANY);
+
+		knot_rdata_t *rd = rr->rrs.rdata;
+		for (int j = 0; j < rr->rrs.count && ret == KNOT_EOK; j++) {
+			switch (rr->type) {
+			case KNOT_RRTYPE_DNSKEY:
+				ret = kdnssec_ddns_dnskey(&ctx, rd, removal, &change);
+				break;
+			case KNOT_RRTYPE_CDNSKEY:
+				ret = kdnssec_ddns_cdnskey(&ctx, rd, removal, &change);
+				break;
+			case KNOT_RRTYPE_CDS:
+				ret = kdnssec_ddns_cds(&ctx, rd, removal, &change);
+				break;
+			default:
+				assert(0);
+				break;
+			}
+			rd = knot_rdataset_next(rd);
+		}
+	}
+
+	if (change && ret == KNOT_EOK) {
+		ret = kdnssec_ctx_commit(&ctx);
+		if (ret == KNOT_EOK) {
+			ret = zone_update_remove_rrset(update, update->zone->name, KNOT_RRTYPE_DNSKEY); // force re-sign and SOA serial BUMP
+		}
+	}
+	kdnssec_ctx_deinit(&ctx);
+
+	return ret;
+}

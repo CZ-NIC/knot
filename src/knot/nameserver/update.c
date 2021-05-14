@@ -90,7 +90,11 @@ int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
 	/* Need valid transaction security. */
-	NS_NEED_AUTH(qdata, ACL_ACTION_UPDATE);
+	if (ddns_is_key_update(qdata->query)) {
+		NS_NEED_AUTH(qdata, ACL_ACTION_KEYUPD);
+	} else {
+		NS_NEED_AUTH(qdata, ACL_ACTION_UPDATE);
+	}
 	/* Check expiration. */
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 	/* Check frozen zone. */

@@ -146,6 +146,7 @@ class Server(object):
         self.ctlkeyfile = None
         self.tsig = None
         self.tsig_test = None
+        self.key_ddns = None
         self.no_xfr_edns = None
 
         self.zones = dict()
@@ -1259,17 +1260,18 @@ class Knot(Server):
             s.end()
 
         s.begin("acl")
+        update = "dnskey-update" if self.key_ddns else "update"
         s.id_item("id", "acl_local")
         s.item_str("address", Context().test.addr)
         if self.tsig:
             s.item_str("key", self.tsig.name)
-        s.item("action", "[transfer, notify, update]")
+        s.item("action", "[transfer, notify, %s]" % update)
 
         s.id_item("id", "acl_test")
         s.item_str("address", Context().test.addr)
         if self.tsig_test:
             s.item_str("key", self.tsig_test.name)
-        s.item("action", "[transfer, notify, update]")
+        s.item("action", "[transfer, notify, %s]" % update)
 
         servers = set() # Duplicity check.
         for zone in sorted(self.zones):

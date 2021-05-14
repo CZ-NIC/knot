@@ -85,6 +85,7 @@ const knot_lookup_t acl_actions[] = {
 	{ ACL_ACTION_NOTIFY,   "notify" },
 	{ ACL_ACTION_TRANSFER, "transfer" },
 	{ ACL_ACTION_UPDATE,   "update" },
+	{ ACL_ACTION_KEYUPD,   "dnskey-update" },
 	{ 0, NULL }
 };
 

@@ -274,6 +274,17 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 	                               zone->nsec3_salt_created);
 }
 
+knot_kasp_key_t *kasp_zone_find(knot_kasp_zone_t *zone, const char *keyid)
+{
+	for (size_t i = 0; i < zone->num_keys; i++) {
+		knot_kasp_key_t *key = &zone->keys[i];
+		if (strcmp(key->id, keyid) == 0) {
+			return key;
+		}
+	}
+	return NULL;
+}
+
 static void kasp_zone_clear_keys(knot_kasp_zone_t *zone)
 {
 	for (size_t i = 0; i < zone->num_keys; i++) {
@@ -363,25 +374,14 @@ int kasp_zone_keys_from_rr(knot_kasp_zone_t *zone,
 
 	knot_rdata_t *zkey = zone_dnskey->rdata;
 	for (int i = 0; i < zone->num_keys; i++) {
-		int ret = dnssec_key_from_rdata(&zone->keys[i].key, zone->dname,
-		                                zkey->data, zkey->len);
-		if (ret == KNOT_EOK) {
-			ret = dnssec_key_get_keyid(zone->keys[i].key, &zone->keys[i].id);
-		}
+		int ret = kasp_key_from_rdata(&zone->keys[i], zkey, zone->dname,
+		                              policy_single_type_signing);
 		if (ret != KNOT_EOK) {
 			free(zone->keys);
 			zone->keys = NULL;
 			zone->num_keys = 0;
 			return ret;
 		}
-		zone->keys[i].is_pub_only = true;
-
-		zone->keys[i].is_ksk = (knot_dnskey_flags(zkey) == DNSKEY_FLAGS_KSK);
-		zone->keys[i].is_zsk = policy_single_type_signing || !zone->keys[i].is_ksk;
-
-		zone->keys[i].timing.publish = 1;
-		zone->keys[i].timing.active = 1;
-
 		zkey = knot_rdataset_next(zkey);
 	}
 

@@ -39,6 +39,8 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 		   const knot_dname_t *zone_name,
 		   knot_lmdb_db_t *kdb);
 
+knot_kasp_key_t *kasp_zone_find(knot_kasp_zone_t *zone, const char *keyid);
+
 int kasp_zone_append(knot_kasp_zone_t *zone,
 		     const knot_kasp_key_t *appkey);
 

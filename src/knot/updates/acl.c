@@ -17,6 +17,24 @@
 #include "knot/updates/acl.h"
 #include "contrib/wire_ctx.h"
 
+static bool is_key_type(uint16_t rrtype)
+{
+	switch (rrtype) {
+	case KNOT_RRTYPE_DNSKEY:
+	case KNOT_RRTYPE_CDNSKEY:
+	case KNOT_RRTYPE_CDS:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool ddns_is_key_update(const knot_pkt_t *query)
+{
+	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
+	return (authority->count > 0 && is_key_type(knot_pkt_rr(authority, 0)->type));
+}
+
 static bool match_type(uint16_t type, conf_val_t *types)
 {
 	if (types == NULL) {
@@ -154,6 +172,26 @@ static bool update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
 	return true;
 }
 
+static bool key_update_match(const knot_dname_t *zone_name, knot_pkt_t *query)
+{
+	if (query == NULL) {
+		return true;
+	}
+
+	uint16_t pos = query->sections[KNOT_AUTHORITY].pos;
+	uint16_t count = query->sections[KNOT_AUTHORITY].count;
+
+	for (int i = pos; i < pos + count; i++) {
+		knot_rrset_t *rr = &query->rr[i];
+		// key update may contain only apex key records and nothing else
+		if (!is_key_type(rr->type) || !knot_dname_is_case_equal(rr->owner, zone_name)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_val,
                            bool remote, const struct sockaddr_storage *addr,
                            const knot_tsig_key_t *tsig)
@@ -268,6 +306,10 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		/* If the action is update, check for update rule match. */
 		if (action == ACL_ACTION_UPDATE &&
 		    !update_match(conf, acl, tsig->name, zone_name, query)) {
+			goto next_acl;
+		}
+		if (action == ACL_ACTION_KEYUPD &&
+		    !key_update_match(zone_name, query)) {
 			goto next_acl;
 		}
 

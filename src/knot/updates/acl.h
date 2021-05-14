@@ -27,7 +27,8 @@ typedef enum {
 	ACL_ACTION_NONE     = 0,
 	ACL_ACTION_NOTIFY   = 1,
 	ACL_ACTION_TRANSFER = 2,
-	ACL_ACTION_UPDATE   = 3
+	ACL_ACTION_UPDATE   = 3,
+	ACL_ACTION_KEYUPD   = 4,
 } acl_action_t;
 
 /*! \brief ACL update owner matching options. */
@@ -44,6 +45,11 @@ typedef enum {
 	ACL_UPDATE_MATCH_EQ    = 1,
 	ACL_UPDATE_MATCH_SUB   = 2,
 } acl_update_owner_match_t;
+
+/*!
+ * \brief Return if given DDNS query is an update of public-only DNSKEYs.
+ */
+bool ddns_is_key_update(const knot_pkt_t *query);
 
 /*!
  * \brief Checks if the address and/or tsig key matches given ACL list.

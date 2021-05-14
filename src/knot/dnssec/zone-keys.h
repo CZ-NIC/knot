@@ -199,3 +199,55 @@ void zone_sign_ctx_free(zone_sign_ctx_t *ctx);
  */
 int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
                           const uint8_t *rdata, size_t rdlen);
+
+/*!
+ * \brief Create public-only KASP key from DNSKEY zone record.
+ *
+ * \param key           KASP key to be initiaized.
+ * \param rd            DNSKEY rdata.
+ * \param zone          Zone name.
+ * \param policy_sts    Sngle-type-signing enabled in DNSSEC policy.
+ *
+ * \return KNOT_E*
+ */
+int kasp_key_from_rdata(knot_kasp_key_t *key, const knot_rdata_t *rd,
+                        const knot_dname_t *zone, bool policy_sts);
+
+/*!
+ * \brief Process public-only DNSKEY manipulation from DDNS.
+ *
+ * \param ctx       KASP context.
+ * \param dnskey    RData with DNSKEY to be added/removed.
+ * \param remove    Remove (otherwise add) public-only key.
+ * \param change    Out: did any change occur.
+ *
+ * \return KNOT_E*
+ */
+int kdnssec_ddns_dnskey(kdnssec_ctx_t *ctx, const knot_rdata_t *dnskey,
+                        bool remove, bool *change);
+
+/*!
+ * \brief Set `ready` flag for public-only DNSKEY according to DDNS.
+ *
+ * \param ctx       KASP context.
+ * \param cdnskey   RData with CDNSKEY pointing at the key.
+ * \param remove    Remove (otherwise set) the `ready` flag.
+ * \param change    Out: did any change occur.
+ *
+ * \return KNOT_E*
+ */
+int kdnssec_ddns_cdnskey(kdnssec_ctx_t *ctx, const knot_rdata_t *cdnskey,
+                         bool remove, bool *change);
+
+/*!
+ * \brief Set `ready` flag for public-only DNSKEY according to DDNS.
+ *
+ * \param ctx       KASP context.
+ * \param cdnskey   RData with CDS pointing at the key.
+ * \param remove    Remove (otherwise set) the `ready` flag.
+ * \param change    Out: did any change occur.
+ *
+ * \return KNOT_E*
+ */
+int kdnssec_ddns_cds(kdnssec_ctx_t *ctx, const knot_rdata_t *cds,
+                     bool remove, bool *change);

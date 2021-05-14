@@ -126,3 +126,13 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx);
  * \return KNOT_E*
  */
 int knot_dnssec_validate_zone(zone_update_t *update, bool incremental);
+
+/*!
+ * \brief Update zone's public-only DNSKEYs according to DDNS.
+ *
+ * \param update    Zone update.
+ * \param query     DDNS query packet.
+ *
+ * \return KNOT_E*
+ */
+int knot_dnssec_keys_from_ddns(zone_update_t *update, knot_pkt_t *query);

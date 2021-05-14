@@ -1058,6 +1058,7 @@ Possible values:
 - ``notify`` – Allow incoming notify.
 - ``transfer`` – Allow zone transfer.
 - ``update`` – Allow zone updates.
+- ``dnskey-update`` - Special feature allowing public-only key maniputlation through DDNS.
 
 *Default:* not set
 

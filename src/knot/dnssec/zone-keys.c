@@ -700,3 +700,107 @@ int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
 	*key = new_key;
 	return KNOT_EOK;
 }
+
+int kasp_key_from_rdata(knot_kasp_key_t *key, const knot_rdata_t *rd,
+                        const knot_dname_t *zone, bool policy_sts)
+{
+	int ret = dnssec_key_from_rdata(&key->key, zone, rd->data, rd->len);
+	if (ret == KNOT_EOK) {
+		ret = dnssec_key_get_keyid(key->key, &key->id);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	key->is_pub_only = true;
+
+	key->is_ksk = (knot_dnskey_flags(rd) == DNSKEY_FLAGS_KSK);
+	key->is_zsk = policy_sts || !key->is_ksk;
+
+	key->timing.publish = 1;
+
+	return KNOT_EOK;
+}
+
+int kdnssec_ddns_dnskey(kdnssec_ctx_t *ctx, const knot_rdata_t *dnskey,
+                        bool remove, bool *change)
+{
+	knot_kasp_key_t kaspkey = { 0 };
+	int ret = kasp_key_from_rdata(&kaspkey, dnskey, ctx->zone->dname,
+	                              ctx->policy->single_type_signing);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_kasp_key_t *present = kasp_zone_find(ctx->zone, kaspkey.id);
+
+	if (remove) {
+		if (present == NULL) {
+			return KNOT_ENOENT;
+		}
+		if (!present->is_pub_only) {
+			return KNOT_EDENIED;
+		}
+		ret = kdnssec_delete_key(ctx, present);
+	} else {
+		if (present != NULL) {
+			return KNOT_EEXIST;
+		}
+		ret = kasp_zone_append(ctx->zone, &kaspkey);
+
+	}
+	if (ret == KNOT_EOK) {
+		*change = true;
+	}
+	if (remove || !*change) {
+		dnssec_key_free(kaspkey.key);
+		free(kaspkey.id);
+	}
+	return ret;
+}
+
+int kdnssec_ddns_cdnskey(kdnssec_ctx_t *ctx, const knot_rdata_t *cdnskey,
+                         bool remove, bool *change)
+{
+	knot_kasp_key_t kaspkey = { 0 };
+	int ret = kasp_key_from_rdata(&kaspkey, cdnskey, ctx->zone->dname,
+	                              ctx->policy->single_type_signing);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_kasp_key_t *present = kasp_zone_find(ctx->zone, kaspkey.id);
+	if (present != NULL) {
+		present->timing.ready = remove ? 0 : 1;
+		*change = true;
+	} else {
+		ret = KNOT_ENOENT;
+	}
+	dnssec_key_free(kaspkey.key);
+	free(kaspkey.id);
+	return ret;
+}
+
+int kdnssec_ddns_cds(kdnssec_ctx_t *ctx, const knot_rdata_t *cds,
+                     bool remove, bool *change)
+{
+	knot_kasp_key_t *present = NULL;
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		dnssec_binary_t key_hash = { 0 };
+		if (dnssec_key_get_keytag(key->key) == knot_ds_key_tag(cds) &&
+		    dnssec_key_create_ds(key->key, knot_ds_digest_type(cds), &key_hash) == DNSSEC_EOK &&
+		    key_hash.size - 4 == knot_ds_digest_len(cds) && // 4 == offset of hash in DS rdata
+		    memcmp(key_hash.data + 4, knot_ds_digest(cds), key_hash.size - 4) == 0) {
+			present = key;
+		}
+		dnssec_binary_free(&key_hash);
+	}
+
+	if (present != NULL) {
+		present->timing.ready = remove ? 0 : 1;
+		*change = true;
+		return KNOT_EOK;
+	} else {
+		return KNOT_ENOENT;
+	}
+}

@@ -981,6 +981,8 @@ Possible values:
 \fBtransfer\fP – Allow zone transfer.
 .IP \(bu 2
 \fBupdate\fP – Allow zone updates.
+.IP \(bu 2
+\fBdnskey\-update\fP \- Special feature allowing public\-only key maniputlation through DDNS.
 .UNINDENT
 .sp
 \fIDefault:\fP not set

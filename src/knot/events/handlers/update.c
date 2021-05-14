@@ -16,6 +16,7 @@
 
 #include <assert.h>
 
+#include "knot/dnssec/zone-events.h"
 #include "knot/events/handlers.h"
 #include "knot/nameserver/log.h"
 #include "knot/nameserver/process_query.h"
@@ -120,7 +121,11 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 			continue;
 		}
 
-		ret = process_single_update(req, zone, up, &qdata);
+		if (ddns_is_key_update(req->query)) {
+			ret = knot_dnssec_keys_from_ddns(up, req->query);
+		} else {
+			ret = process_single_update(req, zone, up, &qdata);
+		}
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
