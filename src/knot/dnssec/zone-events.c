@@ -214,7 +214,10 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	if (zone_update_no_change(update) &&
 	    !knot_zone_sign_soa_expired(update->new_cont, &keyset, &ctx)) {
 		log_zone_info(zone_name, "DNSSEC, zone is up-to-date");
+		update->zone->zonefile.resigned = false;
 		goto done;
+	} else {
+		update->zone->zonefile.resigned = true;
 	}
 
 	if (!(flags & ZONE_SIGN_KEEP_SERIAL) && zone_update_to(update) == NULL) {
@@ -297,7 +300,10 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 	if (zone_update_no_change(update) && !soa_changed &&
 	    !knot_zone_sign_soa_expired(update->new_cont, &keyset, &ctx)) {
 		log_zone_info(zone_name, "DNSSEC, zone is up-to-date");
+		update->zone->zonefile.resigned = false;
 		goto done;
+	} else {
+		update->zone->zonefile.resigned = true;
 	}
 
 	if (!soa_changed) {

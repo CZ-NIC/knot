@@ -66,5 +66,15 @@ if m_mtime2 == m_mtime1:
 if s_mtime2 == s_mtime1:
     set_err("Not flushed after IXFR")
 
+master.stop()
+master.start()
+master.zones_wait(zone)
+t.sleep(1)
+m_mtime3 = os.stat(m_zfpath).st_mtime
+
+# check zonefile not re-flushed after restart
+if m_mtime3 != m_mtime2:
+    set_err("Up-to-date re-flushed after restart")
+
 t.end()
 
