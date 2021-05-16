@@ -857,18 +857,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	int ret = KNOT_EOK;
 
-	if (update->flags & UPDATE_INCREMENTAL) {
-		if (changeset_empty(&update->change) &&
-		    update->zone->contents != NULL) {
-			changeset_clear(&update->change);
-			changeset_clear(&update->extra_ch);
-			zone_update_clear(update);
-			return KNOT_EOK;
-		}
+	if ((update->flags & UPDATE_INCREMENTAL) && changeset_empty(&update->change)) {
+		zone_update_clear(update);
+		return KNOT_EOK;
 	}
-	if (update->flags & UPDATE_INCREMENTAL) {
-		ret = commit_incremental(conf, update);
-	} else if ((update->flags & UPDATE_HYBRID)) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		ret = commit_incremental(conf, update);
 	} else {
 		ret = commit_full(conf, update);
