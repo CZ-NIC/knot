@@ -982,8 +982,10 @@ bool zone_update_no_change(zone_update_t *update)
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		return changeset_empty(&update->change);
 	} else {
-		/* This branch does not make much sense and FULL update will most likely
-		 * be a change every time anyway, just return false. */
-		return false;
+		/* A FULL update will most likely be a change every time with
+		 * the exception of the first load of the zone, which should be
+		 * handled like a no-change update.
+		 */
+		return update->init_cont == NULL;
 	}
 }
