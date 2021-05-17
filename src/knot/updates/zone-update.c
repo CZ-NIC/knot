@@ -857,18 +857,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	int ret = KNOT_EOK;
 
-	if (update->flags & UPDATE_INCREMENTAL) {
-		if (changeset_empty(&update->change) &&
-		    update->zone->contents != NULL) {
-			changeset_clear(&update->change);
-			changeset_clear(&update->extra_ch);
-			zone_update_clear(update);
-			return KNOT_EOK;
-		}
+	if ((update->flags & UPDATE_INCREMENTAL) && changeset_empty(&update->change)) {
+		zone_update_clear(update);
+		return KNOT_EOK;
 	}
-	if (update->flags & UPDATE_INCREMENTAL) {
-		ret = commit_incremental(conf, update);
-	} else if ((update->flags & UPDATE_HYBRID)) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		ret = commit_incremental(conf, update);
 	} else {
 		ret = commit_full(conf, update);
@@ -925,22 +918,14 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return ret;
 	}
 
-	/* Check if the zone was re-signed upon zone load to ensure proper flush
-	 * even if the SOA serial wasn't incremented by re-signing. */
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
-	bool dnssec = conf_bool(&val);
-
-	if (dnssec) {
-		update->zone->zonefile.resigned = true;
-
-		if (zone_is_slave(conf, update->zone)) {
-			ret = zone_set_lastsigned_serial(update->zone,
-			                                 zone_contents_serial(update->new_cont));
-			if (ret != KNOT_EOK) {
-				log_zone_warning(update->zone->name,
-				                 "unable to save lastsigned serial, "
-				                 "future transfers might be broken");
-			}
+	if (conf_bool(&val) && zone_is_slave(conf, update->zone)) {
+		ret = zone_set_lastsigned_serial(update->zone,
+		                                 zone_contents_serial(update->new_cont));
+		if (ret != KNOT_EOK) {
+			log_zone_warning(update->zone->name,
+			                 "unable to save lastsigned serial, "
+			                 "future transfers might be broken");
 		}
 	}
 
