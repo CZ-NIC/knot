@@ -304,6 +304,16 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 		goto done;
 	}
 
+	knot_time_t next_resign = 0;
+	if (zone_update_changes_dnskey(update)) {
+		result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &next_resign);
+		if (result != KNOT_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
+				       knot_strerror(result));
+			goto done;
+		}
+	}
+
 	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL,
 	                              false, false, 1, update->a_ctx->node_ptrs);
 	if (result != KNOT_EOK) {
@@ -367,7 +377,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 
 done:
 	if (result == KNOT_EOK) {
-		reschedule->next_sign = schedule_next(&ctx, &keyset, 0, expire_at);
+		reschedule->next_sign = schedule_next(&ctx, &keyset, next_resign, expire_at);
 	}
 
 	free_zone_keys(&keyset);
