@@ -275,3 +275,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update);
  * \param update  Zone update.
  */
 bool zone_update_no_change(zone_update_t *update);
+
+/*!
+ * \brief Return wheather apex DNSKEY, CDNSKEY or CDS is updated.
+ */
+bool zone_update_changes_dnskey(zone_update_t *update);

@@ -1002,3 +1002,24 @@ bool zone_update_no_change(zone_update_t *update)
 		return false;
 	}
 }
+
+static bool contents_have_dnskey(const zone_contents_t *c)
+{
+	if (c == NULL) {
+		return false;
+	}
+	assert(c->apex != NULL);
+	return (node_rrtype_exists(c->apex, KNOT_RRTYPE_DNSKEY) ||
+	        node_rrtype_exists(c->apex, KNOT_RRTYPE_CDNSKEY) ||
+		node_rrtype_exists(c->apex, KNOT_RRTYPE_CDS));
+}
+
+bool zone_update_changes_dnskey(zone_update_t *update)
+{
+	if (update->flags & UPDATE_FULL) {
+		return contents_have_dnskey(update->new_cont);
+	} else {
+		return (contents_have_dnskey(update->change.remove) ||
+		        contents_have_dnskey(update->change.add));
+	}
+}
