@@ -386,6 +386,9 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 
 	for (size_t i = 0; i < keyset->count; i++) {
 		zone_key_t *key = &keyset->keys[i];
+		if (key->is_pub_only) {
+			continue;
+		}
 		uint8_t alg = dnssec_key_get_algorithm(key->key);
 
 		if (ctx->policy->nsec3_enabled && !is_nsec3_allowed(alg)) {
