@@ -241,8 +241,6 @@ void zone_reset(conf_t *conf, zone_t *zone)
 		return;
 	}
 
-	zone->is_being_started = true;
-
 	zone_contents_t *old_contents = zone_switch_contents(zone, NULL);
 	conf_reset_modules(conf, &zone->query_modules, &zone->query_plan); // includes synchronize_rcu()
 	zone_contents_deep_free(old_contents);

@@ -450,7 +450,7 @@ class Server(object):
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
             tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
-            log_no_sep=False, tsig=None, addr=None, source=None, xfr_override=False):
+            log_no_sep=False, tsig=None, addr=None, source=None):
 
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
@@ -461,10 +461,10 @@ class Server(object):
         rtype_str = rtype.upper()
 
         # Set port type.
-        if rtype.upper() == "AXFR" and not xfr_override:
+        if rtype.upper() == "AXFR":
             # Always use TCP.
             udp = False
-        elif rtype.upper() == "IXFR" and not xfr_override:
+        elif rtype.upper() == "IXFR":
             # Use TCP if not specified.
             udp = udp if udp != None else False
             rtype_str += "=%i" % int(serial)
@@ -593,11 +593,11 @@ class Server(object):
 
         for t in range(tries):
             try:
-                if rtype.upper() == "AXFR" and not xfr_override:
+                if rtype.upper() == "AXFR":
                     resp = dns.query.xfr(addr, rname, rtype, rclass,
                                          port=self.port, lifetime=timeout,
                                          use_udp=udp, **key_params)
-                elif rtype.upper() == "IXFR" and not xfr_override:
+                elif rtype.upper() == "IXFR":
                     resp = dns.query.xfr(addr, rname, rtype, rclass,
                                          port=self.port, lifetime=timeout,
                                          use_udp=udp, serial=int(serial),

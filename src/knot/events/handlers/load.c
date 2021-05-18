@@ -330,7 +330,6 @@ int event_load(conf_t *conf, zone_t *zone)
 	if (!old_contents_exist || old_serial != new_serial) {
 		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 	}
-	zone->is_being_started = false;
 
 	return KNOT_EOK;
 
@@ -342,10 +341,5 @@ cleanup:
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
 
-	if (dontcare_load_error(conf, zone)) {
-		return KNOT_EOK;
-	} else {
-		zone->is_being_started = false;
-		return ret;
-	}
+	return (dontcare_load_error(conf, zone) ? KNOT_EOK : ret);
 }
