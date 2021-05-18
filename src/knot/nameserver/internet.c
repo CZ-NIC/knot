@@ -41,6 +41,10 @@ static int wildcard_visit(knotd_qdata_t *qdata, const zone_node_t *node,
 	assert(qdata);
 	assert(node);
 
+	if (node->flags & NODE_FLAGS_NONAUTH) {
+		return KNOT_EOK;
+	}
+
 	/* Already in the list. */
 	if (wildcard_has_visited(qdata, node)) {
 		return KNOT_EOK;
