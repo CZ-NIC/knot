@@ -111,7 +111,7 @@ static int axfr_query_check(knotd_qdata_t *qdata)
 {
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	NS_NEED_AUTH(qdata, ACL_ACTION_TRANSFER);
-	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
+	NS_NEED_ZONE_CONTENTS(qdata);
 
 	return KNOT_STATE_DONE;
 }
@@ -168,7 +168,6 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* If AXFR is disabled, respond with NOTIMPL. */
 	if (qdata->params->flags & KNOTD_QUERY_FLAG_NO_AXFR) {
 		qdata->rcode = KNOT_RCODE_NOTIMPL;
-		qdata->rcode_ede = KNOT_EDNS_EDE_BLOCKED;
 		return KNOT_STATE_FAIL;
 	}
 

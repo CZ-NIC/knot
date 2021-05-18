@@ -661,7 +661,7 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		}
 	}
 
-	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
+	NS_NEED_ZONE_CONTENTS(qdata); /* Expired */
 
 	/* Get answer to QNAME. */
 	qdata->name = knot_pkt_qname(qdata->query);

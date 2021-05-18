@@ -156,7 +156,6 @@ static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 	default:
 		/* Nothing else is supported. */
 		data->rcode = KNOT_RCODE_NOTIMPL;
-		data->rcode_ede = KNOT_EDNS_EDE_NOTSUP;
 		return KNOT_STATE_FAIL;
 	}
 }
@@ -171,7 +170,6 @@ static int query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 	/* Nothing except normal queries is supported. */
 	if (data->type != KNOTD_QUERY_TYPE_NORMAL) {
 		data->rcode = KNOT_RCODE_NOTIMPL;
-		data->rcode_ede = KNOT_EDNS_EDE_NOTSUP;
 		return KNOT_STATE_FAIL;
 	}
 
@@ -261,7 +259,6 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	/* Check supported version. */
 	if (knot_edns_get_version(query->opt_rr) != KNOT_EDNS_VERSION) {
 		qdata->rcode = KNOT_RCODE_BADVERS;
-		qdata->rcode_ede = KNOT_EDNS_EDE_NOTSUP;
 	}
 
 	/* Set DO bit if set (DNSSEC requested). */
@@ -358,7 +355,8 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 		assert((int)ede_code == qdata->rcode_ede);
 		ede_code = htobe16(ede_code);
 
-		ret = knot_edns_add_option(&qdata->opt_rr, KNOT_EDNS_OPTION_EDE, sizeof(ede_code), (uint8_t *)&ede_code, qdata->mm);
+		ret = knot_edns_add_option(&qdata->opt_rr, KNOT_EDNS_OPTION_EDE,
+		                           sizeof(ede_code), (uint8_t *)&ede_code, qdata->mm);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -437,7 +435,6 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 			break;
 		default:
 			qdata->rcode = KNOT_RCODE_NOTIMPL;
-			qdata->rcode_ede = KNOT_EDNS_EDE_NOTSUP;
 		}
 		return KNOT_ENOTSUP;
 	}
@@ -597,7 +594,6 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 			break;
 		default:
 			qdata->rcode = KNOT_RCODE_REFUSED;
-			qdata->rcode_ede = KNOT_EDNS_EDE_NOTSUP;
 			next_state = KNOT_STATE_FAIL;
 			break;
 		}
@@ -697,7 +693,6 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	/* Check if authorized. */
 	if (!allowed) {
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_ede = KNOT_EDNS_EDE_PROHIBITED;
 		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
 		return false;
 	}
@@ -760,8 +755,6 @@ int process_query_verify(knotd_qdata_t *qdata)
 		log_zone_error(qdata->extra->zone->name,
 		               "TSIG, verification failed (%s)", knot_strerror(ret));
 	} else if (qdata->rcode != KNOT_RCODE_NOERROR) {
-		qdata->rcode_ede = KNOT_EDNS_EDE_PROHIBITED;
-
 		const knot_lookup_t *item = NULL;
 		if (qdata->rcode_tsig != KNOT_RCODE_NOERROR) {
 			item = knot_lookup_by_id(knot_tsig_rcode_names, qdata->rcode_tsig);

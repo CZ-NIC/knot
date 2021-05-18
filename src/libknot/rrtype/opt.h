@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ enum {
 
 	/*! \brief EDNS Extended error code. */
 	KNOT_EDNS_OPTION_EDE           = 15,
-	/*! \brief The only used length for EDE option. */
+	/*! \brief The minimal length for EDE option including option header. */
 	KNOT_EDNS_EDE_MIN_LENGTH       = 6,
 
 	/*! \brief Maximal currently known option code. */

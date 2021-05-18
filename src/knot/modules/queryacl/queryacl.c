@@ -47,7 +47,6 @@ static knotd_state_t queryacl_process(knotd_state_t state, knot_pkt_t *pkt,
 		const struct sockaddr_storage *addr = knotd_qdata_remote_addr(qdata);
 		if (!knotd_conf_addr_range_match(&ctx->allow_addr, addr)) {
 			qdata->rcode = KNOT_RCODE_NOTAUTH;
-			qdata->rcode_ede = KNOT_EDNS_EDE_PROHIBITED;
 			return KNOTD_STATE_FAIL;
 		}
 	}
@@ -57,7 +56,6 @@ static knotd_state_t queryacl_process(knotd_state_t state, knot_pkt_t *pkt,
 		const struct sockaddr_storage *addr = knotd_qdata_local_addr(qdata, &buff);
 		if (!knotd_conf_addr_range_match(&ctx->allow_iface, addr)) {
 			qdata->rcode = KNOT_RCODE_NOTAUTH;
-			qdata->rcode_ede = KNOT_EDNS_EDE_PROHIBITED;
 			return KNOTD_STATE_FAIL;
 		}
 	}
