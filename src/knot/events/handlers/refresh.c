@@ -1274,7 +1274,6 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	if (trctx.send_notify) {
 		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
 	}
-	zone->is_being_started = false;
 
 	return ret;
 }

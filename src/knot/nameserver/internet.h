@@ -59,11 +59,7 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 #define NS_NEED_ZONE_CONTENTS(qdata) \
 	if ((qdata)->extra->contents == NULL) { \
 		qdata->rcode = KNOT_RCODE_SERVFAIL; \
-		if (qdata->extra->zone != NULL && qdata->extra->zone->is_being_started) { \
-			qdata->rcode_ede = KNOT_EDNS_EDE_NOT_READY; \
-		} else { \
-			qdata->rcode_ede = KNOT_EDNS_EDE_INV_DATA; \
-		} \
+		qdata->rcode_ede = KNOT_EDNS_EDE_INV_DATA; \
 		return KNOT_STATE_FAIL; \
 	}
 
