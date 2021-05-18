@@ -45,11 +45,6 @@ static int wildcard_visit(knotd_qdata_t *qdata, const zone_node_t *node,
 		return KNOT_EOK;
 	}
 
-	/* Already in the list. */
-	if (wildcard_has_visited(qdata, node)) {
-		return KNOT_EOK;
-	}
-
 	knot_mm_t *mm = qdata->mm;
 	struct wildcard_hit *item = mm_alloc(mm, sizeof(struct wildcard_hit));
 	item->node = node;
@@ -309,6 +304,10 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 		/* Check if is not in wildcard nodes (loop). */
 		if (wildcard_has_visited(qdata, cname_node)) {
 			qdata->extra->node = NULL; /* Act as if the name leads to nowhere. */
+
+			if (wildcard_visit(qdata, cname_node, qdata->extra->previous, qdata->name) != KNOT_EOK) { // in case of loop, re-add this cname_node because it might have different qdata->name
+				return KNOTD_IN_STATE_ERROR;
+			}
 			return KNOTD_IN_STATE_HIT;
 		}
 
@@ -377,6 +376,9 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		int next_state = name_found(pkt, qdata);
 
 		/* Put to wildcard node list. */
+		if (wildcard_has_visited(qdata, wildcard_node)) {
+			return next_state;
+		}
 		if (wildcard_visit(qdata, wildcard_node, qdata->extra->previous, qdata->name) != KNOT_EOK) {
 			next_state = KNOTD_IN_STATE_ERROR;
 		}
