@@ -294,11 +294,15 @@ def query_test(knot, bind, dnssec):
 
     # Wildcard chain to A (NODATA)
     resp = knot.dig("a.wildcard-cname.flags", "TXT", udp=True, dnssec=dnssec)
-    resp.cmp(bind)
+    resp.cmp(bind, additional=True)
 
     # Wildcard chain to NS
     resp = knot.dig("a.wildcard-deleg.flags", "NS", udp=True, dnssec=dnssec)
-    resp.cmp(bind, additional=True)
+    if resp.count(rtype="NSEC", section="authority") > 0:
+        # Bind does this one wrong, but working on it.
+        resp.check_count(2, rtype="NSEC", section="authority")
+    else:
+        resp.cmp(bind, additional=True)
 
     # Wildcard leading out
     resp = knot.dig("a.wildcard-out.flags", "A", udp=True, dnssec=dnssec)
