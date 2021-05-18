@@ -62,6 +62,7 @@ static void query_data_init(knot_layer_t *ctx, knotd_qdata_params_t *params,
 	data->mm = ctx->mm;
 	data->params = params;
 	data->extra = extra;
+	data->rcode_ede = KNOT_EDNS_EDE_NONE;
 
 	/* Initialize lists. */
 	memset(extra, 0, sizeof(*extra));
@@ -342,8 +343,27 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 		}
 	}
 
+	size_t opt_wire_size = knot_edns_wire_size(&qdata->opt_rr);
+
+	/* Add EDE. Pragmatic: only if space in pkt. */
+	if (qdata->rcode_ede != KNOT_EDNS_EDE_NONE &&
+	    knot_pkt_reserve(resp, KNOT_EDNS_EDE_MIN_LENGTH) == KNOT_EOK) {
+		ret = knot_pkt_reclaim(resp, KNOT_EDNS_EDE_MIN_LENGTH);
+		assert(ret == KNOT_EOK);
+
+		uint16_t ede_code = (uint16_t)qdata->rcode_ede;
+		assert((int)ede_code == qdata->rcode_ede);
+		ede_code = htobe16(ede_code);
+
+		ret = knot_edns_add_option(&qdata->opt_rr, KNOT_EDNS_OPTION_EDE,
+		                           sizeof(ede_code), (uint8_t *)&ede_code, qdata->mm);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	/* Reclaim reserved size. */
-	ret = knot_pkt_reclaim(resp, knot_edns_wire_size(&qdata->opt_rr));
+	ret = knot_pkt_reclaim(resp, opt_wire_size);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

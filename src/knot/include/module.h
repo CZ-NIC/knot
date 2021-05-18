@@ -413,6 +413,7 @@ typedef struct {
 	const knot_dname_t *name;       /*!< Currently processed name. */
 	uint16_t rcode;                 /*!< Resulting RCODE (Whole extended RCODE). */
 	uint16_t rcode_tsig;            /*!< Resulting TSIG RCODE. */
+	int rcode_ede;                  /*!< Resulting Extended (EDE) RCODE. */
 	knot_rrset_t opt_rr;            /*!< OPT record. */
 	knot_sign_context_t sign;       /*!< Signing context. */
 	knot_edns_client_subnet_t *ecs; /*!< EDNS Client Subnet option. */

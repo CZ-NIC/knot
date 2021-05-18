@@ -92,9 +92,9 @@ int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Need valid transaction security. */
 	NS_NEED_AUTH(qdata, ACL_ACTION_UPDATE);
 	/* Check expiration. */
-	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
+	NS_NEED_ZONE_CONTENTS(qdata);
 	/* Check frozen zone. */
-	NS_NEED_NOT_FROZEN(qdata, KNOT_RCODE_REFUSED);
+	NS_NEED_NOT_FROZEN(qdata);
 
 	/* Restore original QNAME for DDNS ACL checks. */
 	process_query_qname_case_restore(qdata->query, qdata);
