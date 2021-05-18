@@ -114,7 +114,6 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 	/* Check result. */
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
-		qdata->rcode_ede = KNOT_EDNS_EDE_NETWORK;
 		return KNOTD_STATE_FAIL; /* Forwarding failed, SERVFAIL. */
 	} else {
 		qdata->rcode = knot_pkt_ext_rcode(pkt);

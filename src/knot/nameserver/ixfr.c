@@ -132,7 +132,7 @@ static int ixfr_query_check(knotd_qdata_t *qdata)
 {
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	NS_NEED_AUTH(qdata, ACL_ACTION_TRANSFER);
-	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
+	NS_NEED_ZONE_CONTENTS(qdata);
 
 	/* Need SOA authority record. */
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
