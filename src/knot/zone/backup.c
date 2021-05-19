@@ -121,6 +121,7 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 	ctx->restore_mode = restore_mode;
 	ctx->backup_global = false;
 	ctx->readers = 1;
+	ctx->failed = false;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 
@@ -206,21 +207,27 @@ int zone_backup_deinit(zone_backup_ctx_t *ctx)
 		size_t backup_dir_len = strlen((ctx)->backup_dir) + 1;
 		char full_path[backup_dir_len + FNAME_MAX];
 
-		// Create the label file first.
-		if (!ctx->restore_mode) {
-			sprintf(full_path, "%s/%s", (ctx)->backup_dir, label_file_name);
-			ret = make_label_file(ctx, full_path);
-			if (ret != KNOT_EOK) {
-				log_error("failed to create a backup label in %s", (ctx)->backup_dir);
-			}
-		}
-
-		// Close and remove the lock file.
 		close(ctx->lock_file);
-		// If the label is missing, keep at least the lock file.
-		if (ret == KNOT_EOK) {
-			sprintf(full_path, "%s/%s", (ctx)->backup_dir, lock_file_name);
-			unlink(full_path);
+
+		if (!ctx->failed) {
+			// Create the label file first.
+			if (!ctx->restore_mode) {
+				sprintf(full_path, "%s/%s", (ctx)->backup_dir, label_file_name);
+				ret = make_label_file(ctx, full_path);
+				if (ret != KNOT_EOK) {
+					log_error("failed to create a backup label in %s", (ctx)->backup_dir);
+				}
+			}
+
+			// Remove the lock file.
+			//   If the label is missing, keep at least the lock file.
+			//   In case of forced (emergency) deinit, keep the lockfile in order to
+			//   avoid any next backup to the same directory already containing
+			//   partial/broken/obsolete data.
+			if (ret == KNOT_EOK) {
+				sprintf(full_path, "%s/%s", (ctx)->backup_dir, lock_file_name);
+				unlink(full_path);
+			}
 		}
 
 		zone_backups_rem(ctx);
@@ -244,6 +251,7 @@ void zone_backups_deinit(zone_backup_ctxs_t *ctxs)
 		log_warning("backup to '%s' in progress, terminating, will be incomplete",
 		            ctx->backup_dir);
 		ctx->readers = 1; // ensure full deinit
+		ctx->failed = true;
 		(void)zone_backup_deinit(ctx);
 	}
 	pthread_mutex_destroy(&ctxs->mutex);
@@ -437,6 +445,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			ret = KNOT_EOK;
 		} else if (ret != KNOT_EOK) {
 			LOG_FAIL("zone file");
+			ctx->failed = true;
 			goto done;
 		}
 	}
@@ -449,11 +458,13 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
 			if (ret != KNOT_EOK) {
 				LOG_FAIL("KASP database");
+				ctx->failed = true;
 				goto done;
 			}
 
 			ret = backup_keystore(conf, zone, ctx);
 			if (ret != KNOT_EOK) {
+				ctx->failed = true;
 				goto done;
 			}
 		}
@@ -469,6 +480,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("journal");
+		ctx->failed = true;
 		goto done;
 	}
 
@@ -476,6 +488,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		ret = knot_lmdb_open(&ctx->bck_timer_db);
 		if (ret != KNOT_EOK) {
 			LOG_FAIL("timers open");
+			ctx->failed = true;
 			goto done;
 		}
 		if (ctx->restore_mode) {
@@ -486,13 +499,14 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		}
 		if (ret != KNOT_EOK) {
 			LOG_FAIL("timers");
+			ctx->failed = true;
 		}
 	}
 
 done:
 	ret_deinit = zone_backup_deinit(ctx);
 	zone->backup_ctx = NULL;
-	return ret != KNOT_EOK ? ret : ret_deinit;
+	return (ret != KNOT_EOK) ? ret : ret_deinit;
 }
 
 int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
@@ -504,5 +518,9 @@ int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
 
 	knot_lmdb_db_t *cat_from = &catalog->db, *cat_to = &ctx->bck_catalog;
 	BACKUP_SWAP(ctx, cat_from, cat_to);
-	return catalog_copy(cat_from, cat_to, zone_only, !ctx->restore_mode);
+	int ret = catalog_copy(cat_from, cat_to, zone_only, !ctx->restore_mode);
+	if (ret != KNOT_EOK) {
+		ctx->failed = true;
+	}
+	return ret;
 }
