@@ -183,10 +183,10 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 	return KNOT_EOK;
 }
 
-void zone_backup_deinit(zone_backup_ctx_t *ctx)
+int zone_backup_deinit(zone_backup_ctx_t *ctx)
 {
 	if (ctx == NULL) {
-		return;
+		return KNOT_ENOENT;
 	}
 
 	int ret = KNOT_EOK;
@@ -227,6 +227,8 @@ void zone_backup_deinit(zone_backup_ctx_t *ctx)
 
 		free(ctx);
 	}
+
+	return ret;
 }
 
 void zone_backups_init(zone_backup_ctxs_t *ctxs)
@@ -242,7 +244,7 @@ void zone_backups_deinit(zone_backup_ctxs_t *ctxs)
 		log_warning("backup to '%s' in progress, terminating, will be incomplete",
 		            ctx->backup_dir);
 		ctx->readers = 1; // ensure full deinit
-		zone_backup_deinit(ctx);
+		(void)zone_backup_deinit(ctx);
 	}
 	pthread_mutex_destroy(&ctxs->mutex);
 }
@@ -390,6 +392,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 	int ret = KNOT_EOK;
+	int ret_deinit;
 
 	if (ctx->backup_zonefile) {
 		char *local_zf = conf_zonefile(conf, zone->name);
@@ -487,9 +490,9 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 done:
-	zone_backup_deinit(ctx);
+	ret_deinit = zone_backup_deinit(ctx);
 	zone->backup_ctx = NULL;
-	return ret;
+	return ret != KNOT_EOK ? ret : ret_deinit;
 }
 
 int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,

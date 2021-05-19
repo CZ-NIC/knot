@@ -506,9 +506,9 @@ static zone_backup_ctx_t *latest_backup_ctx(ctl_args_t *args)
 	return (zone_backup_ctx_t *)TAIL(args->server->backup_ctxs.ctxs);
 }
 
-static void deinit_backup(ctl_args_t *args)
+static int deinit_backup(ctl_args_t *args)
 {
-	zone_backup_deinit(latest_backup_ctx(args));
+	return zone_backup_deinit(latest_backup_ctx(args));
 }
 
 static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
@@ -534,7 +534,9 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 
 static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 {
+	int ret_deinit;
 	int ret = init_backup(args, restore_mode);
+
 	if (ret != KNOT_EOK) {
 		char *msg = sprintf_alloc("%s init failed (%s)",
 		                          restore_mode ? "restore" : "backup",
@@ -567,8 +569,8 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 	ret = zones_apply(args, zone_backup_cmd);
 
 done:
-	deinit_backup(args);
-	return ret;
+	ret_deinit = deinit_backup(args);
+	return ret != KNOT_EOK ? ret : ret_deinit;
 }
 
 static int zone_sign(zone_t *zone, ctl_args_t *args)
