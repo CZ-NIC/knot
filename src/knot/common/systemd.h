@@ -38,6 +38,11 @@ void systemd_tasks_status_notify(int tasks);
 void systemd_ready_notify(void);
 
 /*!
+ * \brief Notify systemd about service is reloading.
+ */
+void systemd_reloading_notify(void);
+
+/*!
  * \brief Notify systemd about service is stopping.
  */
 void systemd_stopping_notify(void);

@@ -952,9 +952,12 @@ int server_reload(server_t *server)
 		return KNOT_EINVAL;
 	}
 
+	systemd_reloading_notify();
+
 	/* Check for no edit mode. */
 	if (conf()->io.txn != NULL) {
 		log_warning("reload aborted due to active configuration transaction");
+		systemd_ready_notify();
 		return KNOT_TXN_EEXISTS;
 	}
 
@@ -963,6 +966,7 @@ int server_reload(server_t *server)
 	if (ret != KNOT_EOK) {
 		log_error("failed to initialize configuration (%s)",
 		          knot_strerror(ret));
+		systemd_ready_notify();
 		return ret;
 	}
 
@@ -975,6 +979,7 @@ int server_reload(server_t *server)
 		ret = reload_conf(new_conf);
 		if (ret != KNOT_EOK) {
 			conf_free(new_conf);
+			systemd_ready_notify();
 			return ret;
 		}
 
@@ -1018,6 +1023,8 @@ int server_reload(server_t *server)
 			trie_clear(conf()->io.zones);
 		}
 	}
+
+	systemd_ready_notify();
 
 	return KNOT_EOK;
 }

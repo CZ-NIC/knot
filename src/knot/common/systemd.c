@@ -85,6 +85,14 @@ void systemd_ready_notify(void)
 #endif
 }
 
+void systemd_reloading_notify(void)
+{
+#ifdef ENABLE_SYSTEMD
+	sd_notify(0, "RELOADING=1");
+	sd_notify(0, "STATUS=Reloading...");
+#endif
+}
+
 void systemd_stopping_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
