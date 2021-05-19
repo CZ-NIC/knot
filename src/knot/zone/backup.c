@@ -336,6 +336,8 @@ static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)
 }
 
 #define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)", ctx->restore_mode ? "restore" : "backup", (action), knot_strerror(ret))
+#define LOG_MARK_FAIL(action) LOG_FAIL(action); \
+                              ctx->failed = true
 
 static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 {
@@ -444,8 +446,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			                ctx->restore_mode ? "restore" : "backup");
 			ret = KNOT_EOK;
 		} else if (ret != KNOT_EOK) {
-			LOG_FAIL("zone file");
-			ctx->failed = true;
+			LOG_MARK_FAIL("zone file");
 			goto done;
 		}
 	}
@@ -457,8 +458,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		if (knot_lmdb_exists(kasp_from)) {
 			ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
 			if (ret != KNOT_EOK) {
-				LOG_FAIL("KASP database");
-				ctx->failed = true;
+				LOG_MARK_FAIL("KASP database");
 				goto done;
 			}
 
@@ -479,16 +479,14 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		ret = journal_scrape_with_md(zone_journal(zone), true);
 	}
 	if (ret != KNOT_EOK) {
-		LOG_FAIL("journal");
-		ctx->failed = true;
+		LOG_MARK_FAIL("journal");
 		goto done;
 	}
 
 	if (ctx->backup_timers) {
 		ret = knot_lmdb_open(&ctx->bck_timer_db);
 		if (ret != KNOT_EOK) {
-			LOG_FAIL("timers open");
-			ctx->failed = true;
+			LOG_MARK_FAIL("timers open");
 			goto done;
 		}
 		if (ctx->restore_mode) {
@@ -498,8 +496,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			ret = zone_timers_write(&ctx->bck_timer_db, zone->name, &zone->timers);
 		}
 		if (ret != KNOT_EOK) {
-			LOG_FAIL("timers");
-			ctx->failed = true;
+			LOG_MARK_FAIL("timers");
 		}
 	}
 
