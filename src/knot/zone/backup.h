@@ -39,6 +39,7 @@ typedef struct zone_backup_ctx {
 	knot_lmdb_db_t bck_journal;         // backup journal DB
 	knot_lmdb_db_t bck_catalog;         // backup catalog DB
 	int lock_file;                      // lock file preventing simultaneous backups to same directory
+	bool failed;                        // true if an error occurred in processing of any zone
 } zone_backup_ctx_t;
 
 typedef struct {
