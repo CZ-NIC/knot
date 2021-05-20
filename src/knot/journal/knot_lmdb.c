@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "contrib/files.h"
 #include "contrib/wire_ctx.h"
 #include "libknot/dname.h"
 #include "libknot/endian.h"
@@ -140,9 +141,9 @@ static int lmdb_open(knot_lmdb_db_t *db)
 		return ret;
 	}
 
-	ret = mkdir(db->path, LMDB_DIR_MODE);
-	if (ret < 0 && errno != EEXIST) {
-		return -errno;
+	ret = make_dir(db->path, LMDB_DIR_MODE, true);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	long page_size = sysconf(_SC_PAGESIZE);

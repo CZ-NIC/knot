@@ -76,6 +76,28 @@ static struct {
 	            sizeof(((send_ctx_t *)0)->rdata)];
 } ctl_globals;
 
+/*!
+ * Evaluates a filter pair and checks for conflicting filters.
+ *
+ * \param[in]  args        Command arguments.
+ * \param[out] param       The filter to be set.
+ * \param[in]  dflt        Default filter value.
+ * \param[in]  filter      Name of the filter.
+ * \param[in]  neg_filter  Name of the negative filter.
+ *
+ * \return false if there is a filter conflict, true otherwise.
+ */
+
+static bool eval_opposite_filters(ctl_args_t *args, bool *param, bool dflt,
+                                  int filter, int neg_filter)
+{
+	bool set = MATCH_AND_FILTER(args, filter);
+	bool unset = MATCH_AND_FILTER(args, neg_filter);
+
+	*param = dflt ? (set || !unset) : (set && !unset);
+	return !(set && unset);
+}
+
 static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t event,
                             bool user)
 {
@@ -408,7 +430,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 
 static int init_backup(ctl_args_t *args, bool restore_mode)
 {
-	if (!MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
+	if (!MATCH_AND_FILTER(args, CTL_FILTER_BACKUP_OUTDIR)) {
 		return KNOT_ENOPARAM;
 	}
 
@@ -431,6 +453,23 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 		return KNOT_EINVAL;
 	}
 
+	// Evaluate filters (and possibly fail) before writing to the filesystem.
+	bool filter_zonefile, filter_journal, filter_timers, filter_kaspdb, filter_catalog;
+
+	// The default filter values are set just in this paragraph.
+	if (!(eval_opposite_filters(args, &filter_zonefile, true,
+	                            CTL_FILTER_BACKUP_ZONEFILE, CTL_FILTER_BACKUP_NOZONEFILE) &&
+	    eval_opposite_filters(args, &filter_journal, false,
+	                          CTL_FILTER_BACKUP_JOURNAL, CTL_FILTER_BACKUP_NOJOURNAL) &&
+	    eval_opposite_filters(args, &filter_timers, true,
+	                          CTL_FILTER_BACKUP_TIMERS, CTL_FILTER_BACKUP_NOTIMERS) &&
+	    eval_opposite_filters(args, &filter_kaspdb, true,
+	                          CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB) &&
+	    eval_opposite_filters(args, &filter_catalog, true,
+	                          CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG))) {
+		return KNOT_EXPARAM;
+	}
+
 	zone_backup_ctx_t *ctx;
 
 	// The present timer db size is not up-to-date, use the maximum one.
@@ -448,8 +487,12 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	assert(ctx != NULL);
-	ctx->backup_journal = MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL);
-	ctx->backup_zonefile = !MATCH_AND_FILTER(args, CTL_FILTER_PURGE_ZONEFILE);
+	ctx->backup_zonefile = filter_zonefile;
+	ctx->backup_journal = filter_journal;
+	ctx->backup_timers = filter_timers;
+	ctx->backup_kaspdb = filter_kaspdb;
+	ctx->backup_catalog = filter_catalog;
+
 	zone_backups_add(&args->server->backup_ctxs, ctx);
 
 	return ret;
