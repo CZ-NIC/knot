@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -740,27 +740,26 @@ uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t storage)
 		return NULL;
 	}
 
-	const knot_dname_t *rdp = src, *nxtrdlab = src;
-	uint8_t *wrp, *prevwrlab = storage + KNOT_DNAME_MAXLEN - 1;
+	uint8_t *dst = storage + KNOT_DNAME_MAXLEN - 1;
 
-	while (1) {
-		if (rdp == nxtrdlab) {
-			if (*rdp == 0) {
-				break;
-			}
-			*prevwrlab = '\0';
-			wrp = prevwrlab - *rdp;
-			prevwrlab = wrp - 1;
-			assert(prevwrlab >= storage);
+	while (*src != 0) {
+		uint8_t len = *src++;
+		*dst = '\0';
+		dst -= len;
+		assert(dst >= storage);
 
-			rdp++;
-			nxtrdlab = rdp + *nxtrdlab;
+		if (len == 1) {
+			*dst-- = *src++;
+		} else {
+			memcpy(dst--, src, len);
+			src += len;
 		}
-		*wrp++ = *rdp++;
 	}
 
-	*prevwrlab = storage + KNOT_DNAME_MAXLEN - 1 - prevwrlab;
-	return prevwrlab;
+	*dst = storage + KNOT_DNAME_MAXLEN - 1 - dst;
+	assert(dst >= storage);
+
+	return dst;
 }
 
 _public_
