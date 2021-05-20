@@ -611,6 +611,7 @@ tests/libknot/test_rrset-wire.c
 tests/libknot/test_rrset.c
 tests/libknot/test_tsig.c
 tests/libknot/test_wire.c
+tests/libknot/test_xdp_tcp.c
 tests/libknot/test_yparser.c
 tests/libknot/test_ypschema.c
 tests/libknot/test_yptrafo.c

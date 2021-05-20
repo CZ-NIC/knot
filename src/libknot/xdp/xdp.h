@@ -56,9 +56,17 @@ typedef enum {
 typedef struct knot_xdp_socket knot_xdp_socket_t;
 
 /*!
+ * \brief A mocked XDP send function.
+ *
+ * \note This must correspond to the prototype of knot_xdp_send().
+ */
+typedef int (*knot_xdp_send_mock_f)(knot_xdp_socket_t *, const knot_xdp_msg_t[],
+                                    uint32_t, uint32_t *);
+
+/*!
  * \brief Initialize XDP socket.
  *
- * \param socket       Socket ctx.
+ * \param socket       XDP socket.
  * \param if_name      Name of the net iface (e.g. eth0).
  * \param if_queue     Network card queue to be used (normally 1 socket per each queue).
  * \param listen_port  Port to listen on, or KNOT_XDP_LISTEN_PORT_* flag.
@@ -68,6 +76,16 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
  */
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   uint32_t listen_port, knot_xdp_load_bpf_t load_bpf);
+
+/*!
+ * \brief Initialize mocked XDP socket.
+ *
+ * \param socket       XDP socket.
+ * \param send_mock    Mocked send function.
+ *
+ * \return KNOT_E*
+ */
+int knot_xdp_init_mock(knot_xdp_socket_t **socket, knot_xdp_send_mock_f send_mock);
 
 /*!
  * \brief De-init XDP socket.

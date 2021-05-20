@@ -119,6 +119,11 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size);
 void knot_tcp_table_free(knot_tcp_table_t *t);
 
 /*!
+ * \brief Find connection related to incomming message.
+ */
+knot_tcp_conn_t *knot_tcp_table_find(knot_tcp_table_t *table, knot_xdp_msg_t *msg_recv);
+
+/*!
  * \brief Process received packets, send ACKs, pick incoming data.
  *
  * \param socket       XDP socket to answer through.
