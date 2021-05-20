@@ -600,7 +600,8 @@ static void tm2_add_all(zone_contents_t *toadd)
 	assert(toadd != NULL);
 	for (int i = 1; i < TM_RRS_INT_MAX; i++) {
 		zone_node_t *unused = NULL;
-		int ret = zone_contents_add_rr(toadd, tm_rrs_int(toadd->apex->owner, i), &unused);
+		int ret __attribute__((unused));
+		ret = zone_contents_add_rr(toadd, tm_rrs_int(toadd->apex->owner, i), &unused);
 		assert(ret == KNOT_EOK);
 	}
 }
@@ -612,7 +613,8 @@ static zone_contents_t *tm2_zone(const knot_dname_t *apex)
 		knot_rrset_t soa;
 		zone_node_t *unused = NULL;
 		init_soa(&soa, 1, apex);
-		int ret = zone_contents_add_rr(z, &soa, &unused);
+		int ret __attribute__((unused));
+		ret = zone_contents_add_rr(z, &soa, &unused);
 		knot_rrset_clear(&soa, NULL);
 		assert(ret == KNOT_EOK);
 		tm2_add_all(z);
@@ -626,7 +628,8 @@ static changeset_t *tm2_chs_unzone(const knot_dname_t *apex)
 	if (ch != NULL) {
 		changeset_set_soa_serials(ch, 1, 2, apex);
 		tm2_add_all(ch->remove);
-		int ret = changeset_add_addition(ch, tm_rrs_int(apex, 0), 0);
+		int ret __attribute__((unused));
+		ret = changeset_add_addition(ch, tm_rrs_int(apex, 0), 0);
 		assert(ret == KNOT_EOK);
 	}
 	return ch;

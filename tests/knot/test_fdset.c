@@ -27,14 +27,16 @@
 void *thr_action1(void *arg)
 {
 	usleep(10000);
-	(void)write(*((int *)arg), &PATTERN1, 1);
+	int ret __attribute__((unused));
+	ret = write(*((int *)arg), &PATTERN1, 1);
 	return NULL;
 }
 
 void *thr_action2(void *arg)
 {
 	usleep(20000);
-	(void)write(*((int *)arg), &PATTERN2, 1);
+	int ret __attribute__((unused));
+	ret = write(*((int *)arg), &PATTERN2, 1);
 	return NULL;
 }
 
@@ -128,7 +130,7 @@ int main(int argc, char *argv[])
 	close(fds0[1]);
 	ok(fdset_get_length(&fdset) == 0, "fdset size 0");
 
-	write(fds2[1], &PATTERN2, 1);
+	ret = write(fds2[1], &PATTERN2, 1);
 	ret = fdset_poll(&fdset, &it, 0, 100);
 	ok(ret == 0, "fdset_poll return 3");
 
