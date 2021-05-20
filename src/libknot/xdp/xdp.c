@@ -436,6 +436,7 @@ int knot_xdp_recv(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
 
 		msg->payload.iov_base = payl_start;
 		msg->payload.iov_len = payl_end - payl_start;
+		msg->mss = MIN(msg->mss, FRAME_SIZE - (payl_start - (void *)uframe_p));
 
 		if (wire_size != NULL) {
 			(*wire_size) += desc->len;
