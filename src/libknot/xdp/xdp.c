@@ -200,9 +200,30 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 }
 
 _public_
+int knot_xdp_init_mock(knot_xdp_socket_t **socket, knot_xdp_send_mock_f send_mock)
+{
+	if (socket == NULL || send_mock == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	*socket = calloc(1, sizeof(**socket));
+	if (*socket == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	(*socket)->send_mock = send_mock;
+
+	return KNOT_EOK;
+}
+
+_public_
 void knot_xdp_deinit(knot_xdp_socket_t *socket)
 {
 	if (socket == NULL) {
+		return;
+	}
+	if (unlikely(socket->send_mock != NULL)) {
+		free(socket);
 		return;
 	}
 
@@ -235,7 +256,7 @@ static void tx_free_relative(struct kxsk_umem *umem, uint64_t addr_relative)
 _public_
 void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 {
-	if (socket == NULL) {
+	if (socket == NULL || unlikely(socket->send_mock != NULL)) {
 		return;
 	}
 
@@ -257,8 +278,11 @@ void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 	xsk_ring_cons__release(cq, completed);
 }
 
-static struct umem_frame *alloc_tx_frame(struct kxsk_umem *umem)
+static struct umem_frame *alloc_tx_frame(struct kxsk_umem *umem, void *send_mock)
 {
+	if (unlikely(send_mock != NULL)) {
+		return malloc(sizeof(struct umem_frame));
+	}
 	if (unlikely(umem->tx_free_count == 0)) {
 		return NULL;
 	}
@@ -282,7 +306,7 @@ int knot_xdp_send_alloc(knot_xdp_socket_t *socket, knot_xdp_msg_flag_t flags,
 		return KNOT_EINVAL;
 	}
 
-	struct umem_frame *uframe = alloc_tx_frame(socket->umem);
+	struct umem_frame *uframe = alloc_tx_frame(socket->umem, socket->send_mock);
 	if (uframe == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -301,7 +325,7 @@ int knot_xdp_reply_alloc(knot_xdp_socket_t *socket, const knot_xdp_msg_t *query,
 		return KNOT_EINVAL;
 	}
 
-	struct umem_frame *uframe = alloc_tx_frame(socket->umem);
+	struct umem_frame *uframe = alloc_tx_frame(socket->umem, socket->send_mock);
 	if (uframe == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -314,6 +338,10 @@ int knot_xdp_reply_alloc(knot_xdp_socket_t *socket, const knot_xdp_msg_t *query,
 
 static void free_unsent(knot_xdp_socket_t *socket, const knot_xdp_msg_t *msg)
 {
+	if (unlikely(socket->send_mock != NULL)) {
+		free(msg->payload.iov_base - prot_write_hdrs_len(msg));
+		return;
+	}
 	uint64_t addr_relative = (uint8_t *)msg->payload.iov_base
 	                         - socket->umem->frames->bytes;
 	tx_free_relative(socket->umem, addr_relative);
@@ -325,6 +353,14 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 {
 	if (socket == NULL || msgs == NULL || sent == NULL) {
 		return KNOT_EINVAL;
+	}
+	if (unlikely(socket->send_mock != NULL)) {
+		knot_xdp_send_mock_f send_mock = socket->send_mock;
+		int ret = send_mock(socket, msgs, count, sent);
+		for (uint32_t i = 0; i < count; ++i) {
+			free_unsent(socket, &msgs[i]);
+		}
+		return ret;
 	}
 
 	/* Now we want to do something close to

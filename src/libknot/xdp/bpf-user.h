@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,6 +74,9 @@ struct knot_xdp_socket {
 
 	/*! Interface context. */
 	const struct kxsk_iface *iface;
+
+	/*! If non-NULL, it's a mocked socket with this send function. */
+	void *send_mock;
 
 	/*! The kernel has to be woken up by a syscall indication. */
 	bool kernel_needs_wakeup;

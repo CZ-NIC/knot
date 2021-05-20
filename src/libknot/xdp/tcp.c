@@ -112,6 +112,13 @@ static knot_tcp_conn_t **tcp_table_lookup(const struct sockaddr_in6 *rem, const 
 	return res;
 }
 
+_public_
+knot_tcp_conn_t *knot_tcp_table_find(knot_tcp_table_t *table, knot_xdp_msg_t *msg_recv)
+{
+	uint64_t unused;
+	return *tcp_table_lookup(&msg_recv->ip_from, &msg_recv->ip_to, &unused, table);
+}
+
 static void tcp_table_del(knot_tcp_conn_t **todel)
 {
 	knot_tcp_conn_t *conn = *todel;
