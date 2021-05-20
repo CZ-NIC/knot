@@ -479,13 +479,11 @@ static int put_nxdomain(const zone_contents_t *zone,
  *
  * Then NSEC matching the QNAME must be added into the response and the bitmap
  * will indicate that the QTYPE doesn't exist. As NSECs for empty non-terminals
- * don't exist, the proof for NODATA match on non-terminal is proved as for
- * NXDOMAIN.
+ * don't exist, the proof for NODATA match on non-terminal is proved like
+ * non-existence of the queried name.
  *
  * \see https://tools.ietf.org/html/rfc4035#section-3.1.3.1
- * \see https://tools.ietf.org/html/rfc4035#section-3.1.3.2 (empty non-terminal)
  *
- * \param zone      Source zone.
  * \param match     Node matching QNAME.
  * \param previous  Previous node to QNAME in the zone.
  * \param qdata     Query procssing data.
@@ -493,15 +491,13 @@ static int put_nxdomain(const zone_contents_t *zone,
  *
  * \return KNOT_E*
  */
-static int put_nsec_nodata(const zone_contents_t *zone,
-                           const zone_node_t *match,
-                           const zone_node_t *closest,
+static int put_nsec_nodata(const zone_node_t *match,
                            const zone_node_t *previous,
                            knotd_qdata_t *qdata,
                            knot_pkt_t *resp)
 {
 	if (empty_nonterminal(match)) {
-		return put_nsec_nxdomain(zone, previous, closest, qdata, resp);
+		return put_nsec_from_node(nsec_previous(previous), qdata, resp);
 	} else {
 		return put_nsec_from_node(match, qdata, resp);
 	}
@@ -566,7 +562,7 @@ static int put_nodata(const zone_node_t *node,
 	if (knot_is_nsec3_enabled(zone)) {
 		return put_nsec3_nodata(qname, zone, node, closest, qdata, resp);
 	} else {
-		return put_nsec_nodata(zone, node, closest, previous, qdata, resp);
+		return put_nsec_nodata(node, previous, qdata, resp);
 	}
 }
 

@@ -41,8 +41,7 @@ static int wildcard_visit(knotd_qdata_t *qdata, const zone_node_t *node,
 	assert(qdata);
 	assert(node);
 
-	/* Already in the list. */
-	if (wildcard_has_visited(qdata, node)) {
+	if (node->flags & NODE_FLAGS_NONAUTH) {
 		return KNOT_EOK;
 	}
 
@@ -305,6 +304,10 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 		/* Check if is not in wildcard nodes (loop). */
 		if (wildcard_has_visited(qdata, cname_node)) {
 			qdata->extra->node = NULL; /* Act as if the name leads to nowhere. */
+
+			if (wildcard_visit(qdata, cname_node, qdata->extra->previous, qdata->name) != KNOT_EOK) { // in case of loop, re-add this cname_node because it might have different qdata->name
+				return KNOTD_IN_STATE_ERROR;
+			}
 			return KNOTD_IN_STATE_HIT;
 		}
 
@@ -373,6 +376,9 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		int next_state = name_found(pkt, qdata);
 
 		/* Put to wildcard node list. */
+		if (wildcard_has_visited(qdata, wildcard_node)) {
+			return next_state;
+		}
 		if (wildcard_visit(qdata, wildcard_node, qdata->extra->previous, qdata->name) != KNOT_EOK) {
 			next_state = KNOTD_IN_STATE_ERROR;
 		}
@@ -514,9 +520,8 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qda
 
 	/* RFC4035 3.1.3 Prove visited wildcards.
 	 * Wildcard expansion applies for Name Error, Wildcard Answer and
-	 * No Data proofs if at one point the search expanded a wildcard node.
-	 * \note Do not attempt to prove non-authoritative data. */
-	if (ret == KNOT_EOK && state != KNOTD_IN_STATE_DELEG) {
+	 * No Data proofs if at one point the search expanded a wildcard node. */
+	if (ret == KNOT_EOK) {
 		ret = nsec_prove_wildcards(pkt, qdata);
 	}
 
