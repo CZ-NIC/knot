@@ -104,6 +104,10 @@ sub.*.wildcard	A	6.7.8.9
 ; Wildcard to CNAME
 *.wildcard-cname CNAME	cname
 
+; CNAME to asterix-leading expansion
+wild-cname	CNAME	*.expanded.wildcard-cname2
+*.wildcard-cname2 CNAME	*.expanded.wildcard-cname
+
 ; Wildcard to delegation
 *.wildcard-deleg CNAME	cname-ns
 

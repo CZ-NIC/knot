@@ -304,6 +304,14 @@ def query_test(knot, bind, dnssec):
     else:
         resp.cmp(bind, additional=True)
 
+    # Wildcard CNAME with asterisk query
+    resp = knot.dig("*.a.wildcard-cname.flags", "A", udp=True)
+    resp.cmp(bind)
+
+    # Double wildcard expansion
+    resp = knot.dig("wild-cname.flags", "TXT", udp=True)
+    resp.cmp(bind)
+
     # Wildcard leading out
     resp = knot.dig("a.wildcard-out.flags", "A", udp=True, dnssec=dnssec)
     resp.cmp(bind)
