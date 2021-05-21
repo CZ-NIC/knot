@@ -281,10 +281,8 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 				relay.conn->state = XDP_TCP_ESTABLISHING;
 				relay.conn->seqno++;
 				relay.conn->mss = MAX(msg->mss, 536); // minimal MSS, most importantly not zero!
-				if (!synack) {
-					relay.conn->acked = acks[n_acks - 1].seqno;
-					relay.conn->ackno = relay.conn->acked + 1;
-				}
+				relay.conn->acked = acks[n_acks - 1].seqno;
+				relay.conn->ackno = relay.conn->acked + (synack ? 0 : 1);
 			} else {
 				resp_ack(msg, KNOT_XDP_MSG_RST); // TODO consider resetting the OLD conn and accepting new one
 			}
