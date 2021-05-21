@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -191,7 +191,7 @@ void worker_pool_join(worker_pool_t *pool)
 	dt_join(pool->threads);
 }
 
-void worker_pool_wait(worker_pool_t *pool)
+void worker_pool_wait_cb(worker_pool_t *pool, wait_callback_t cb)
 {
 	if (!pool) {
 		return;
@@ -199,9 +199,17 @@ void worker_pool_wait(worker_pool_t *pool)
 
 	pthread_mutex_lock(&pool->lock);
 	while (!EMPTY_LIST(pool->tasks.list) || pool->running > 0) {
+		if (cb != NULL) {
+			cb(pool);
+		}
 		pthread_cond_wait(&pool->wake, &pool->lock);
 	}
 	pthread_mutex_unlock(&pool->lock);
+}
+
+void worker_pool_wait(worker_pool_t *pool)
+{
+	worker_pool_wait_cb(pool, NULL);
 }
 
 void worker_pool_assign(worker_pool_t *pool, struct task *task)
@@ -228,15 +236,19 @@ void worker_pool_clear(worker_pool_t *pool)
 	pthread_mutex_unlock(&pool->lock);
 }
 
-void worker_pool_status(worker_pool_t *pool, int *running, int *queued)
+void worker_pool_status(worker_pool_t *pool, bool locked, int *running, int *queued)
 {
 	if (!pool) {
 		*running = *queued = 0;
 		return;
 	}
 
-	pthread_mutex_lock(&pool->lock);
+	if (!locked) {
+		pthread_mutex_lock(&pool->lock);
+	}
 	*running = pool->running;
 	*queued = worker_queue_length(&pool->tasks);
-	pthread_mutex_unlock(&pool->lock);
+	if (!locked) {
+		pthread_mutex_unlock(&pool->lock);
+	}
 }
