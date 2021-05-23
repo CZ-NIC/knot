@@ -88,9 +88,8 @@ void catalog_update_free(catalog_update_t *u)
 static catalog_upd_val_t *upd_val_new(const knot_dname_t *member, int bail,
                                       const knot_dname_t *owner, catalog_upd_type_t type)
 {
+	assert(bail <= (int)knot_dname_size(owner));
 	size_t member_size = knot_dname_size(member);
-	size_t owner_size = knot_dname_size(owner);
-	assert(bail <= (int)owner_size);
 
 	catalog_upd_val_t *val = malloc(sizeof(*val) + member_size);
 	if (val == NULL) {
