@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,11 +32,13 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "libknot/attribute.h"
+
 #pragma once
 
 #define DYNARRAY_VISIBILITY_STATIC static
 #define DYNARRAY_VISIBILITY_PUBLIC
-#define DYNARRAY_VISIBILITY_LIBRARY __attribute__((visibility("default")))
+#define DYNARRAY_VISIBILITY_LIBRARY _public_
 
 #define dynarray_declare(prefix, ntype, visibility, initial_capacity) \
 	typedef struct prefix ## _dynarray { \
@@ -65,7 +67,7 @@
 		} \
 	} \
 	\
-	__attribute__((unused)) \
+	_unused_ \
 	visibility ntype *prefix ## _dynarray_arr(struct prefix ## _dynarray *dynarray) \
 	{ \
 		assert(dynarray->size <= dynarray->capacity); \
@@ -85,7 +87,7 @@
 		return dynarray->_arr; \
 	} \
 	\
-	__attribute__((unused)) \
+	_unused_ \
 	visibility void prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
 	                                        ntype const *to_add) \
 	{ \
@@ -116,7 +118,7 @@
 		prefix ## _dynarray_arr(dynarray)[dynarray->size++] = *to_add; \
 	} \
 	\
-	__attribute__((unused)) \
+	_unused_ \
 	visibility void prefix ## _dynarray_remove(struct prefix ## _dynarray *dynarray, \
 	                                           ntype const *to_remove) \
 	{ \
@@ -130,19 +132,19 @@
 		} /* TODO enable lowering capacity, take care of capacity going back to initial! */ \
 	} \
 	\
-	__attribute__((unused)) \
+	_unused_ \
 	static int prefix ## _dynarray_memb_cmp(const void *a, const void *b) { \
 		return memcmp(a, b, sizeof(ntype)); \
 	} \
 	\
-	__attribute__((unused)) \
+	_unused_ \
 	visibility void prefix ## _dynarray_sort(struct prefix ## _dynarray *dynarray) \
 	{ \
 		ntype *arr = prefix ## _dynarray_arr(dynarray); \
 		qsort(arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
 	} \
 	\
-	__attribute__((unused)) \
+	_unused_ \
 	visibility void prefix ## _dynarray_sort_dedup(struct prefix ## _dynarray *dynarray) \
 	{ \
 		if (dynarray->size > 1) { \
@@ -163,7 +165,7 @@
 			dynarray->size = wr - arr; \
 		} \
 	} \
-	__attribute__((unused)) \
+	_unused_ \
 	visibility void prefix ## _dynarray_free(struct prefix ## _dynarray *dynarray) \
 	{ \
 		prefix ## _dynarray_free__(dynarray); \
