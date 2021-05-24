@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,11 +29,7 @@
 #include <gnutls/x509.h>
 
 #include "libdnssec/binary.h"
-
-#define _public_ __attribute__((visibility("default")))
-#define _hidden_ __attribute__((visibility("hidden")))
-
-#define _unused_ __attribute__((unused))
+#include "libknot/attribute.h"
 
 /*!
  * Macro to clear a structure of known size.
@@ -42,11 +38,7 @@
  */
 #define clear_struct(pointer) memset((pointer), '\0', sizeof(*(pointer)))
 
-#define streq(one, two) (strcmp((one), (two)) == 0)
-
 /* -- cleanup macros ------------------------------------------------------- */
-
-#define _cleanup_(var) __attribute__((cleanup(var)))
 
 static inline void free_ptr(void *ptr)
 {

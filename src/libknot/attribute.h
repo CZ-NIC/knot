@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 /*!
  * \file
  *
- * \brief Function attributes.
+ * \brief Function and variable attributes.
  *
  * \addtogroup libknot
  * @{
@@ -28,6 +28,10 @@
 /*! \brief Library visibility macros. */
 #define _public_ __attribute__((visibility("default")))
 #define _hidden_ __attribute__((visibility("hidden")))
+
+#define _unused_ __attribute__((unused))
+
+#define _cleanup_(var) __attribute__((cleanup(var)))
 
 /*! \brief GNU C function attributes. */
 #if __GNUC__ >= 3
