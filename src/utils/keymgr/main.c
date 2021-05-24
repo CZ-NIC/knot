@@ -25,6 +25,7 @@
 #include "contrib/strtonum.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-keys.h"
+#include "libknot/attribute.h"
 #include "libknot/libknot.h"
 #include "utils/common/params.h"
 #include "utils/keymgr/functions.h"
@@ -337,7 +338,7 @@ static void update_privileges(void)
 	}
 
 	// Just try to alter process privileges if different from configured.
-	int unused __attribute__((unused));
+	_unused_ int unused;
 	if ((gid_t)gid != getgid()) {
 		unused = setregid(gid, gid);
 	}
