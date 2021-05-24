@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 #include "contrib/strtonum.h"
 #include "libdnssec/error.h"
+#include "libknot/attribute.h"
 
 static void test_u8(const char *in, uint8_t expected, int errcode)
 {
@@ -78,9 +79,8 @@ static void test_size(const char *in, size_t expected, size_t min, size_t max,
 	   (errcode == KNOT_EOK ? "succeeds" : "fails"), in);
 }
 
-// mute warn_unused_result
 #define asprintf(args, ...) do { \
-	int r = (asprintf)(args, ##__VA_ARGS__); assert(r >= 0); (void)r; \
+	_unused_ int r = (asprintf)(args, ##__VA_ARGS__); assert(r >= 0); \
 } while (0);
 
 int main(int argc, char *argv[])

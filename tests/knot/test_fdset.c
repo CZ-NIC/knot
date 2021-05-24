@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include "knot/common/fdset.h"
+#include "libknot/attribute.h"
 #include "contrib/time.h"
 
 #define PATTERN1		"0x45"
@@ -27,16 +28,14 @@
 void *thr_action1(void *arg)
 {
 	usleep(10000);
-	int ret = write(*((int *)arg), &PATTERN1, 1);
-	ok(ret == 1, "write thread 1");
+	_unused_ int ret = write(*((int *)arg), &PATTERN1, 1);
 	return NULL;
 }
 
 void *thr_action2(void *arg)
 {
 	usleep(20000);
-	int ret = write(*((int *)arg), &PATTERN2, 1);
-	ok(ret == 1, "write thread 2");
+	_unused_ int ret = write(*((int *)arg), &PATTERN2, 1);
 	return NULL;
 }
 
