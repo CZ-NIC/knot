@@ -36,9 +36,9 @@
 
 #pragma once
 
+#define DYNARRAY_VISIBILITY_NORMAL
 #define DYNARRAY_VISIBILITY_STATIC static
-#define DYNARRAY_VISIBILITY_PUBLIC
-#define DYNARRAY_VISIBILITY_LIBRARY _public_
+#define DYNARRAY_VISIBILITY_PUBLIC _public_
 
 #define dynarray_declare(prefix, ntype, visibility, initial_capacity) \
 	typedef struct prefix ## _dynarray { \

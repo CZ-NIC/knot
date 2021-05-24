@@ -32,8 +32,8 @@
 
 #define LIB_EXTENSION ".so"
 
-dynarray_define(mod, module_t *, DYNARRAY_VISIBILITY_PUBLIC)
-dynarray_define(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_PUBLIC)
+dynarray_define(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL)
+dynarray_define(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_NORMAL)
 
 static module_t STATIC_MODULES[] = {
 	STATIC_MODULES_INIT

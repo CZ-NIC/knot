@@ -22,7 +22,7 @@
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/kasp/keystore.h"
 
-dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_PUBLIC)
+dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_NORMAL)
 
 static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 {

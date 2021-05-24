@@ -45,7 +45,7 @@ typedef struct {
 	bool is_revoked;
 } zone_key_t;
 
-dynarray_declare(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_PUBLIC, 1)
+dynarray_declare(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_NORMAL, 1)
 
 typedef struct {
 	size_t count;

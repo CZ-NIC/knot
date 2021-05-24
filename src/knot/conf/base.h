@@ -70,8 +70,8 @@ typedef struct {
 	bool temporary;
 } module_t;
 
-dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_PUBLIC, 16)
-dynarray_declare(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_PUBLIC, 16)
+dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
+dynarray_declare(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
 
 struct knot_catalog;
 

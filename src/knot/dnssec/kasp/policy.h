@@ -72,7 +72,7 @@ typedef struct {
 	size_t addrs;
 } knot_kasp_parent_t;
 
-dynarray_declare(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_PUBLIC, 3)
+dynarray_declare(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_NORMAL, 3)
 
 /*!
  * Set of DNSSEC key related records.
