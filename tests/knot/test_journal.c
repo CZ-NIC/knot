@@ -27,6 +27,7 @@
 #include "knot/journal/journal_read.h"
 #include "knot/journal/journal_write.h"
 
+#include "libknot/attribute.h"
 #include "libknot/libknot.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-diff.h"
@@ -55,8 +56,7 @@ static void set_conf(int zonefile_sync, size_t journal_usage, const knot_dname_t
 	         "   journal-max-usage: %zu\n"
 	         "   journal-max-depth: 1000\n",
 	         zonefile_sync, journal_usage);
-	int ret = test_conf(conf_str, NULL);
-	(void)ret;
+	_unused_ int ret = test_conf(conf_str, NULL);
 	assert(ret == KNOT_EOK);
 }
 
@@ -82,9 +82,8 @@ static void init_soa(knot_rrset_t *rr, const uint32_t serial, const knot_dname_t
 	knot_rrset_init(rr, knot_dname_copy(apex, NULL), KNOT_RRTYPE_SOA, KNOT_CLASS_IN, 3600);
 
 	uint8_t soa_data[MIN_SOA_SIZE] = { 0 };
-	int ret = knot_rrset_add_rdata(rr, soa_data, sizeof(soa_data), NULL);
+	_unused_ int ret = knot_rrset_add_rdata(rr, soa_data, sizeof(soa_data), NULL);
 	knot_soa_serial_set(rr->rrs.rdata, serial);
-	(void)ret;
 	assert(ret == KNOT_EOK);
 }
 
@@ -106,8 +105,7 @@ static void init_random_rr(knot_rrset_t *rr , const knot_dname_t *apex)
 	txt[0] = RAND_RR_PAYLOAD - 1;
 	randstr((char *)(txt + 1), RAND_RR_PAYLOAD);
 
-	int ret = knot_rrset_add_rdata(rr, txt, RAND_RR_PAYLOAD, NULL);
-	(void)ret;
+	_unused_ int ret = knot_rrset_add_rdata(rr, txt, RAND_RR_PAYLOAD, NULL);
 	assert(ret == KNOT_EOK);
 }
 
@@ -138,8 +136,7 @@ static void init_random_changeset(changeset_t *ch, const uint32_t from, const ui
 	for (size_t i = 0; i < size / 2; ++i) {
 		knot_rrset_t rr;
 		init_random_rr(&rr, apex);
-		int ret = changeset_add_addition(ch, &rr, 0);
-		(void)ret;
+		_unused_ int ret = changeset_add_addition(ch, &rr, 0);
 		assert(ret == KNOT_EOK);
 		knot_rrset_clear(&rr, NULL);
 	}
@@ -148,8 +145,7 @@ static void init_random_changeset(changeset_t *ch, const uint32_t from, const ui
 	for (size_t i = 0; i < size / 2 && !is_bootstrap; ++i) {
 		knot_rrset_t rr;
 		init_random_rr(&rr, apex);
-		int ret = changeset_add_removal(ch, &rr, 0);
-		(void)ret;
+		_unused_ int ret = changeset_add_removal(ch, &rr, 0);
 		assert(ret == KNOT_EOK);
 		knot_rrset_clear(&rr, NULL);
 	}
@@ -668,7 +664,7 @@ static void tm2_add_all(zone_contents_t *toadd)
 	assert(toadd != NULL);
 	for (int i = 1; i < TM_RRS_INT_MAX; i++) {
 		zone_node_t *unused = NULL;
-		int ret = zone_contents_add_rr(toadd, tm_rrs_int(toadd->apex->owner, i), &unused);
+		_unused_ int ret = zone_contents_add_rr(toadd, tm_rrs_int(toadd->apex->owner, i), &unused);
 		assert(ret == KNOT_EOK);
 	}
 }
@@ -680,7 +676,7 @@ static zone_contents_t *tm2_zone(const knot_dname_t *apex)
 		knot_rrset_t soa;
 		zone_node_t *unused = NULL;
 		init_soa(&soa, 1, apex);
-		int ret = zone_contents_add_rr(z, &soa, &unused);
+		_unused_ int ret = zone_contents_add_rr(z, &soa, &unused);
 		knot_rrset_clear(&soa, NULL);
 		assert(ret == KNOT_EOK);
 		tm2_add_all(z);
@@ -694,7 +690,7 @@ static changeset_t *tm2_chs_unzone(const knot_dname_t *apex)
 	if (ch != NULL) {
 		changeset_set_soa_serials(ch, 1, 2, apex);
 		tm2_add_all(ch->remove);
-		int ret = changeset_add_addition(ch, tm_rrs_int(apex, 0), 0);
+		_unused_ int ret = changeset_add_addition(ch, tm_rrs_int(apex, 0), 0);
 		assert(ret == KNOT_EOK);
 	}
 	return ch;
@@ -795,11 +791,9 @@ static void test_merge(const knot_dname_t *apex)
 static void test_stress_base(const knot_dname_t *apex,
                              size_t update_size, size_t file_size)
 {
-	int ret;
 	uint32_t serial = 0;
 
-
-	ret = knot_lmdb_reconfigure(&jdb, test_dir_name, file_size, journal_env_flags(JOURNAL_MODE_ASYNC, false));
+	int ret = knot_lmdb_reconfigure(&jdb, test_dir_name, file_size, journal_env_flags(JOURNAL_MODE_ASYNC, false));
 	is_int(KNOT_EOK, ret, "journal: recofigure to mapsize %zu (%s)", file_size, knot_strerror(ret));
 
 	set_conf(1000, file_size / 2, apex);
