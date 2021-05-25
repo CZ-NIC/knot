@@ -211,6 +211,12 @@ void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_meta
 
 int journal_insert_zone(zone_journal_t j, const zone_contents_t *z)
 {
+	changeset_t fake_ch = { .add = (zone_contents_t *)z };
+	size_t ch_size = changeset_serialized_size(&fake_ch);
+	size_t max_usage = journal_conf_max_usage(j);
+	if (ch_size >= max_usage) {
+		return KNOT_ESPACE;
+	}
 	int ret = knot_lmdb_open(j.db);
 	if (ret != KNOT_EOK) {
 		return ret;
