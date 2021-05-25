@@ -46,14 +46,15 @@ unsigned env_flag;
 
 static void set_conf(int zonefile_sync, size_t journal_usage, const knot_dname_t *apex)
 {
+	(void)apex;
 	char conf_str[512];
 	snprintf(conf_str, sizeof(conf_str),
-	         "zone:\n"
-	         " - domain: %s\n"
+	         "template:\n"
+	         " - id: default\n"
 	         "   zonefile-sync: %d\n"
-	         "   max-journal-usage: %zu\n"
-	         "   max-journal-depth: 1000\n",
-	         (const char *)(apex + 1), zonefile_sync, journal_usage);
+	         "   journal-max-usage: %zu\n"
+	         "   journal-max-depth: 1000\n",
+	         zonefile_sync, journal_usage);
 	int ret = test_conf(conf_str, NULL);
 	(void)ret;
 	assert(ret == KNOT_EOK);
@@ -456,6 +457,66 @@ static void test_store_load(const knot_dname_t *apex)
 	unset_conf();
 }
 
+static void test_size_control(const knot_dname_t *zone1, const knot_dname_t *zone2)
+{
+	set_conf(-1, 100 * 1024, zone1);
+
+	zone_journal_t jj2 = { &jdb, zone2 };
+	changeset_t *small_ch2 = changeset_new(zone2);
+	init_random_changeset(small_ch2, 1, 2, 100, zone2, false);
+	int ret = journal_insert(jj2, small_ch2, NULL);
+	is_int(KNOT_EOK, ret, "journal: storing small changeset must be ok");
+
+	changeset_t *big_zij = changeset_new(zone1);
+	init_random_changeset(big_zij, 0, 1, 1200, zone1, true);
+	zone_node_t *n = NULL;
+	zone_contents_add_rr(big_zij->add, big_zij->soa_to, &n);
+	ret = journal_insert_zone(jj, big_zij->add);
+	is_int(KNOT_EOK, ret, "journal: store big zone-in-journal");
+
+	changeset_t *big_ch2 = changeset_new(zone2);
+	init_random_changeset(big_ch2, 2, 3, 750, zone2, false);
+	ret = journal_insert(jj2, big_ch2, NULL);
+	is_int(KNOT_EOK, ret, "journal: second zone is not affected by storing big zij of other zone");
+
+	journal_read_t *read = NULL;
+	list_t l;
+	init_list(&l);
+	changeset_t *medium_ch1 = changeset_new(zone1);
+	init_random_changeset(medium_ch1, 1, 2, 300, zone1, false);
+	ret = journal_insert(jj, medium_ch1, NULL);
+	is_int(KNOT_EOK, ret, "journal: storing medium changeset must be ok");
+	ret = load_j_list(&jj, true, 0, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: load zone-in-journal (%s)", knot_strerror(ret));
+	is_int(2, list_size(&l), "journal: read two changesets from journal");
+	changesets_free(&l);
+	journal_read_end(read);
+
+	changeset_t *small_ch1 = changeset_new(zone1);
+	init_random_changeset(small_ch1, 2, 3, 100, zone1, false);
+	ret = journal_insert(jj, small_ch1, NULL);
+	is_int(KNOT_EOK, ret, "journal: storing small changeset must be ok");
+	ret = load_j_list(&jj, true, 0, &read, &l);
+	is_int(KNOT_EOK, ret, "journal: load zone-in-journal (%s)", knot_strerror(ret));
+	is_int(2, list_size(&l), "journal: previous chs merged into zone-in-journal due to size limits");
+	changesets_free(&l);
+	journal_read_end(read);
+
+	changeset_t *medium_ch1b = changeset_new(zone1);
+	init_random_changeset(medium_ch1b, 3, 4, 300, zone1, false);
+	ret = journal_insert(jj, medium_ch1b, NULL);
+	is_int(KNOT_ESPACE, ret, "journal: not able to free space for changeset by merging");
+
+	changeset_free(big_ch2);
+	changeset_free(big_zij);
+	changeset_free(small_ch2);
+	changeset_free(small_ch1);
+	changeset_free(medium_ch1);
+	changeset_free(medium_ch1b);
+
+	unset_conf();
+}
+
 const uint8_t *rdA = (const uint8_t *) "\x01\x02\x03\x04";
 const uint8_t *rdB = (const uint8_t *) "\x01\x02\x03\x05";
 const uint8_t *rdC = (const uint8_t *) "\x01\x02\x03\x06";
@@ -783,12 +844,15 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	const knot_dname_t *apex = (const uint8_t *)"\4test";
+	const knot_dname_t *apex2 = (const uint8_t *)"\4ufoo";
 
 	test_dir_name = test_mkdtemp();
 
 	test_journal_db();
 
 	test_store_load(apex);
+
+	test_size_control(apex, apex2);
 
 	test_merge(apex);
 

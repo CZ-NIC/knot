@@ -198,6 +198,7 @@ void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_meta
 			if (md->flushed_upto != md->serial_to) {
 				journal_try_flush(j, txn, md);
 			} else {
+				txn->ret = KNOT_ESPACE;
 				break;
 			}
 		} else {
