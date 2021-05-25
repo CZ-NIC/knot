@@ -1,117 +1,49 @@
 """Libknot server control interface wrapper.
 
-Example:
-    import json
-    from libknot.control import *
+## Example ##
 
-    #load_lib("/usr/lib/libknot.so")
+import json
+import libknot.control
 
-    ctl = KnotCtl()
-    ctl.connect("/var/run/knot/knot.sock")
+#import libknot
+#libknot.Knot("/usr/lib/libknot.so")
 
-    try:
-        ctl.send_block(cmd="conf-begin")
-        resp = ctl.receive_block()
+ctl = libknot.control.KnotCtl()
+ctl.connect("/var/run/knot/knot.sock")
 
-        ctl.send_block(cmd="conf-set", section="zone", item="domain", data="test")
-        resp = ctl.receive_block()
+try:
+    ctl.send_block(cmd="conf-begin")
+    resp = ctl.receive_block()
 
-        ctl.send_block(cmd="conf-commit")
-        resp = ctl.receive_block()
+    ctl.send_block(cmd="conf-set", section="zone", item="domain", data="test")
+    resp = ctl.receive_block()
 
-        ctl.send_block(cmd="conf-read", section="zone", item="domain")
-        resp = ctl.receive_block()
-        print(json.dumps(resp, indent=4))
-    finally:
-        ctl.send(KnotCtlType.END)
-        ctl.close()
+    ctl.send_block(cmd="conf-commit")
+    resp = ctl.receive_block()
+
+    ctl.send_block(cmd="conf-read", section="zone", item="domain")
+    resp = ctl.receive_block()
+    print(json.dumps(resp, indent=4))
+finally:
+    ctl.send(libknot.control.KnotCtlType.END)
+    ctl.close()
 """
 
-from ctypes import cdll, c_void_p, c_int, c_char_p, c_uint, byref
-from enum import IntEnum
-import sys
-
-CTL_ALLOC = None
-CTL_FREE = None
-CTL_SET_TIMEOUT = None
-CTL_CONNECT = None
-CTL_CLOSE = None
-CTL_SEND = None
-CTL_RECEIVE = None
-CTL_ERROR = None
+import ctypes
+import enum
+import warnings
+import libknot
 
 
-def load_lib(path=None):
-    """Loads the libknot library."""
+def load_lib(path: str = None) -> None:
+    """Compatibility wrapper."""
 
-    if path is None:
-        version = ""
-        try:
-            from libknot import LIBKNOT_VERSION
-            version = ".%u" % int(LIBKNOT_VERSION)
-        except:
-            pass
-
-        if sys.platform == "darwin":
-            path = "libknot%s.dylib" % version
-        else:
-            path = "libknot.so%s" % version
-    LIB = cdll.LoadLibrary(path)
-
-    global CTL_ALLOC
-    CTL_ALLOC = LIB.knot_ctl_alloc
-    CTL_ALLOC.restype = c_void_p
-
-    global CTL_FREE
-    CTL_FREE = LIB.knot_ctl_free
-    CTL_FREE.argtypes = [c_void_p]
-
-    global CTL_SET_TIMEOUT
-    CTL_SET_TIMEOUT = LIB.knot_ctl_set_timeout
-    CTL_SET_TIMEOUT.argtypes = [c_void_p, c_int]
-
-    global CTL_CONNECT
-    CTL_CONNECT = LIB.knot_ctl_connect
-    CTL_CONNECT.restype = c_int
-    CTL_CONNECT.argtypes = [c_void_p, c_char_p]
-
-    global CTL_CLOSE
-    CTL_CLOSE = LIB.knot_ctl_close
-    CTL_CLOSE.argtypes = [c_void_p]
-
-    global CTL_SEND
-    CTL_SEND = LIB.knot_ctl_send
-    CTL_SEND.restype = c_int
-    CTL_SEND.argtypes = [c_void_p, c_uint, c_void_p]
-
-    global CTL_RECEIVE
-    CTL_RECEIVE = LIB.knot_ctl_receive
-    CTL_RECEIVE.restype = c_int
-    CTL_RECEIVE.argtypes = [c_void_p, c_void_p, c_void_p]
-
-    global CTL_ERROR
-    CTL_ERROR = LIB.knot_strerror
-    CTL_ERROR.restype = c_char_p
-    CTL_ERROR.argtypes = [c_int]
+    libknot.Knot(path)
+    warnings.warn("libknot.control.load_lib() is deprecated, use libknot.Knot() instead", \
+                  category=Warning, stacklevel=2)
 
 
-class KnotCtlError(Exception):
-    """Libknot server control error."""
-
-    def __init__(self, message, data=None):
-        """
-        @type message: str
-        @type data: KnotCtlData
-        """
-
-        self.message = message
-        self.data = data
-
-    def __str__(self):
-        return "%s (data: %s)" % (self.message, self.data)
-
-
-class KnotCtlType(IntEnum):
+class KnotCtlType(enum.IntEnum):
     """Libknot server control data unit types."""
 
     END = 0
@@ -120,7 +52,7 @@ class KnotCtlType(IntEnum):
     BLOCK = 3
 
 
-class KnotCtlDataIdx(IntEnum):
+class KnotCtlDataIdx(enum.IntEnum):
     """Libknot server control data unit indices."""
 
     COMMAND = 0
@@ -140,12 +72,14 @@ class KnotCtlDataIdx(IntEnum):
 class KnotCtlData(object):
     """Libknot server control data unit."""
 
-    DataArray = c_char_p * len(KnotCtlDataIdx)
+    DataArray = ctypes.c_char_p * len(KnotCtlDataIdx)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.data = self.DataArray()
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Returns data unit in text form."""
+
         string = str()
 
         for idx in KnotCtlDataIdx:
@@ -156,106 +90,123 @@ class KnotCtlData(object):
 
         return string
 
-    def __getitem__(self, index):
-        """Data unit item getter.
-
-        @type index: KnotCtlDataIdx
-        @rtype: str
-        """
+    def __getitem__(self, index: KnotCtlDataIdx) -> str:
+        """Data unit item getter."""
 
         value = self.data[index]
         if not value:
             value = str()
         return value if isinstance(value, str) else value.decode()
 
-    def __setitem__(self, index, value):
-        """Data unit item setter.
+    def __setitem__(self, index: KnotCtlDataIdx, value: str) -> None:
+        """Data unit item setter."""
 
-        @type index: KnotCtlDataIdx
-        @type value: str
-        """
+        self.data[index] = ctypes.c_char_p(value.encode()) if value else ctypes.c_char_p()
 
-        self.data[index] = c_char_p(value.encode()) if value else c_char_p()
+
+class KnotCtlError(Exception):
+    """Libknot server control error."""
+
+    def __init__(self, message: str, data: KnotCtlData = None) -> None:
+        super().__init__()
+        self.message = message
+        self.data = data
+
+    def __str__(self) -> str:
+        return "%s (data: %s)" % (self.message, self.data)
+
 
 class KnotCtl(object):
     """Libknot server control interface."""
 
-    def __init__(self):
-        if not CTL_ALLOC:
-            load_lib()
-        self.obj = CTL_ALLOC()
+    ALLOC = None
+    FREE = None
+    SET_TIMEOUT = None
+    CONNECT = None
+    CLOSE = None
+    SEND = None
+    RECEIVE = None
 
-    def __del__(self):
-        CTL_FREE(self.obj)
+    def __init__(self) -> None:
+        """Initializes a control interface instance."""
 
-    def set_timeout(self, timeout):
-        """Sets control socket operations timeout in seconds.
+        if not KnotCtl.ALLOC:
+            libknot.Knot()
 
-        @type timeout: int
-        """
+            KnotCtl.ALLOC = libknot.Knot.LIBKNOT.knot_ctl_alloc
+            KnotCtl.ALLOC.restype = ctypes.c_void_p
 
-        CTL_SET_TIMEOUT(self.obj, timeout * 1000)
+            KnotCtl.FREE = libknot.Knot.LIBKNOT.knot_ctl_free
+            KnotCtl.FREE.argtypes = [ctypes.c_void_p]
 
-    def connect(self, path):
-        """Connect to a specified control UNIX socket.
+            KnotCtl.SET_TIMEOUT = libknot.Knot.LIBKNOT.knot_ctl_set_timeout
+            KnotCtl.SET_TIMEOUT.argtypes = [ctypes.c_void_p, ctypes.c_int]
 
-        @type path: str
-        """
+            KnotCtl.CONNECT = libknot.Knot.LIBKNOT.knot_ctl_connect
+            KnotCtl.CONNECT.restype = ctypes.c_int
+            KnotCtl.CONNECT.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
 
-        ret = CTL_CONNECT(self.obj, path.encode())
+            KnotCtl.CLOSE = libknot.Knot.LIBKNOT.knot_ctl_close
+            KnotCtl.CLOSE.argtypes = [ctypes.c_void_p]
+
+            KnotCtl.SEND = libknot.Knot.LIBKNOT.knot_ctl_send
+            KnotCtl.SEND.restype = ctypes.c_int
+            KnotCtl.SEND.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p]
+
+            KnotCtl.RECEIVE = libknot.Knot.LIBKNOT.knot_ctl_receive
+            KnotCtl.RECEIVE.restype = ctypes.c_int
+            KnotCtl.RECEIVE.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+
+        self.obj = KnotCtl.ALLOC()
+
+    def __del__(self) -> None:
+        """Deallocates control interface instance."""
+
+        KnotCtl.FREE(self.obj)
+
+    def set_timeout(self, timeout: int) -> None:
+        """Sets control socket operations timeout in seconds."""
+
+        KnotCtl.SET_TIMEOUT(self.obj, timeout * 1000)
+
+    def connect(self, path: str) -> None:
+        """Connect to a specified control UNIX socket."""
+
+        ret = KnotCtl.CONNECT(self.obj, path.encode())
         if ret != 0:
-            err = CTL_ERROR(ret)
+            err = libknot.Knot.STRERROR(ret)
             raise KnotCtlError(err if isinstance(err, str) else err.decode())
 
-    def close(self):
+    def close(self) -> None:
         """Disconnects from the current control socket."""
 
-        CTL_CLOSE(self.obj)
+        KnotCtl.CLOSE(self.obj)
 
-    def send(self, data_type, data=None):
-        """Sends a data unit to the connected control socket.
+    def send(self, data_type: KnotCtlType, data: KnotCtlData = None) -> None:
+        """Sends a data unit to the connected control socket."""
 
-        @type data_type: KnotCtlType
-        @type data: KnotCtlData
-        """
-
-        ret = CTL_SEND(self.obj, data_type,
-                       data.data if data else c_char_p())
+        ret = KnotCtl.SEND(self.obj, data_type,
+                           data.data if data else ctypes.c_char_p())
         if ret != 0:
-            err = CTL_ERROR(ret)
+            err = libknot.Knot.STRERROR(ret)
             raise KnotCtlError(err if isinstance(err, str) else err.decode())
 
-    def receive(self, data=None):
-        """Receives a data unit from the connected control socket.
+    def receive(self, data: KnotCtlData = None) -> KnotCtlType:
+        """Receives a data unit from the connected control socket."""
 
-        @type data: KnotCtlData
-        @rtype: KnotCtlType
-        """
-
-        data_type = c_uint()
-        ret = CTL_RECEIVE(self.obj, byref(data_type),
-                          data.data if data else c_char_p())
+        data_type = ctypes.c_uint()
+        ret = KnotCtl.RECEIVE(self.obj, ctypes.byref(data_type),
+                              data.data if data else ctypes.c_char_p())
         if ret != 0:
-            err = CTL_ERROR(ret)
+            err = libknot.Knot.STRERROR(ret)
             raise KnotCtlError(err if isinstance(err, str) else err.decode())
         return KnotCtlType(data_type.value)
 
-    def send_block(self, cmd, section=None, item=None, identifier=None, zone=None,
-                   owner=None, ttl=None, rtype=None, data=None, flags=None,
-                   filter=None):
-        """Sends a control query block.
-
-        @type cmd: str
-        @type section: str
-        @type item: str
-        @type identifier: str
-        @type zone: str
-        @type owner: str
-        @type ttl: str
-        @type rtype: str
-        @type data: str
-        @type filter: str
-        """
+    def send_block(self, cmd: str, section: str = None, item: str = None,
+                   identifier: str = None, zone: str = None, owner: str = None,
+                   ttl: str = None, rtype: str = None, data: str = None,
+                   flags: str = None, filters: str = None) -> None:
+        """Sends a control query block."""
 
         query = KnotCtlData()
         query[KnotCtlDataIdx.COMMAND] = cmd
@@ -268,7 +219,7 @@ class KnotCtl(object):
         query[KnotCtlDataIdx.TYPE] = rtype
         query[KnotCtlDataIdx.DATA] = data
         query[KnotCtlDataIdx.FLAGS] = flags
-        query[KnotCtlDataIdx.FILTER] = filter
+        query[KnotCtlDataIdx.FILTER] = filters
 
         self.send(KnotCtlType.DATA, query)
         self.send(KnotCtlType.BLOCK)
@@ -372,11 +323,8 @@ class KnotCtl(object):
         else:
             section_level[section][item] = data
 
-    def receive_stats(self):
-        """Receives statistics answer and returns it as a structured dictionary.
-
-        @rtype: dict
-        """
+    def receive_stats(self) -> dict:
+        """Receives statistics answer and returns it as a structured dictionary."""
 
         out = dict()
         err_reply = None
@@ -401,11 +349,8 @@ class KnotCtl(object):
 
         return out
 
-    def receive_block(self):
-        """Receives a control answer and returns it as a structured dictionary.
-
-        @rtype: dict
-        """
+    def receive_block(self) -> dict:
+        """Receives a control answer and returns it as a structured dictionary."""
 
         out = dict()
         err_reply = None
