@@ -131,22 +131,24 @@ void set_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const char *me
 	free(key.mv_data);
 }
 
+static int64_t last_occupied_diff(knot_lmdb_txn_t *txn)
+{
+	uint64_t occupied_now = knot_lmdb_usage(txn), occupied_last = 0;
+	(void)get_metadata64(txn, NULL, "last_total_occupied", &occupied_last);
+	return (int64_t)occupied_now - (int64_t)occupied_last;
+}
+
 void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter)
 {
-	uint64_t occupied_now = knot_lmdb_usage(txn), occupied_last = 0, lis_occupied = 0;
-	(void)get_metadata64(txn, NULL, "last_total_occupied", &occupied_last);
+	uint64_t occupied_now = knot_lmdb_usage(txn), lis_occupied = 0;
+	int64_t occupied_diff = last_occupied_diff(txn);
 	knot_dname_t *last_inserter = get_metadata(txn, NULL, "last_inserter_zone") ?
 	                              knot_dname_copy(txn->cur_val.mv_data, NULL) : NULL;
-	if (occupied_now == occupied_last || last_inserter == NULL) {
+	if (occupied_diff == 0 || last_inserter == NULL) {
 		goto update_inserter;
 	}
 	(void)get_metadata64(txn, last_inserter, "occupied", &lis_occupied);
-	if (lis_occupied + occupied_now > occupied_last) {
-		lis_occupied += occupied_now;
-		lis_occupied -= occupied_last;
-	} else {
-		lis_occupied = 0;
-	}
+	lis_occupied = MAX(0, (int64_t)lis_occupied + occupied_diff);
 	set_metadata(txn, last_inserter, "occupied", &lis_occupied, sizeof(lis_occupied), true);
 
 update_inserter:
@@ -368,6 +370,11 @@ int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial, bool *h
 	if (occupied != NULL) {
 		*occupied = 0;
 		get_metadata64(&txn, j.zone, "occupied", occupied);
+
+		if (get_metadata(&txn, NULL, "last_inserter_zone") &&
+		    knot_dname_is_equal(j.zone, txn.cur_val.mv_data)) {
+			*occupied = MAX(0, (int64_t)*occupied + last_occupied_diff(&txn));
+		}
 	}
 	if (occupied_total != NULL) {
 		*occupied_total = knot_lmdb_usage(&txn);
