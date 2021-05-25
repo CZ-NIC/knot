@@ -601,7 +601,7 @@ static void tm2_add_all(zone_contents_t *toadd)
 	for (int i = 1; i < TM_RRS_INT_MAX; i++) {
 		zone_node_t *unused = NULL;
 		int ret = zone_contents_add_rr(toadd, tm_rrs_int(toadd->apex->owner, i), &unused);
-		ok(ret == KNOT_EOK, "assert check");
+		assert(ret == KNOT_EOK);
 	}
 }
 
@@ -614,7 +614,7 @@ static zone_contents_t *tm2_zone(const knot_dname_t *apex)
 		init_soa(&soa, 1, apex);
 		int ret = zone_contents_add_rr(z, &soa, &unused);
 		knot_rrset_clear(&soa, NULL);
-		ok(ret == KNOT_EOK, "assert check");
+		assert(ret == KNOT_EOK);
 		tm2_add_all(z);
 	}
 	return z;
@@ -627,7 +627,7 @@ static changeset_t *tm2_chs_unzone(const knot_dname_t *apex)
 		changeset_set_soa_serials(ch, 1, 2, apex);
 		tm2_add_all(ch->remove);
 		int ret = changeset_add_addition(ch, tm_rrs_int(apex, 0), 0);
-		ok(ret == KNOT_EOK, "assert check");
+		assert(ret == KNOT_EOK);
 	}
 	return ch;
 }
@@ -653,7 +653,7 @@ static void test_merge(const knot_dname_t *apex)
 	// insert stuff and check the merge
 	for (i = 0; !merged_present() && i < 40000; i++) {
 		ret = journal_insert(jj, tm_chs(apex, i), NULL);
-		is_int(KNOT_EOK, ret, "journal: journal_store_changeset must be ok");
+		assert(ret == KNOT_EOK);
 	}
 	ret = journal_sem_check(jj);
 	is_int(KNOT_EOK, ret, "journal: sem check (%s)", knot_strerror(ret));
