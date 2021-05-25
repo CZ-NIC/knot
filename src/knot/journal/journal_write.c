@@ -198,6 +198,7 @@ void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_meta
 			if (md->flushed_upto != md->serial_to) {
 				journal_try_flush(j, txn, md);
 			} else {
+				txn->ret = KNOT_ESPACE;
 				break;
 			}
 		} else {
@@ -210,6 +211,12 @@ void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_meta
 
 int journal_insert_zone(zone_journal_t j, const zone_contents_t *z)
 {
+	changeset_t fake_ch = { .add = (zone_contents_t *)z };
+	size_t ch_size = changeset_serialized_size(&fake_ch);
+	size_t max_usage = journal_conf_max_usage(j);
+	if (ch_size >= max_usage) {
+		return KNOT_ESPACE;
+	}
 	int ret = knot_lmdb_open(j.db);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -267,7 +274,8 @@ int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *e
 		md.flags |= JOURNAL_LAST_FLUSHED_VALID;
 	}
 
-	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, journal_conf_max_changesets(j) - 1);
+	size_t chs_limit = journal_conf_max_changesets(j);
+	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, chs_limit - 1);
 
 	// avoid discontinuity
 	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && md.serial_to != changeset_from(ch)) {
