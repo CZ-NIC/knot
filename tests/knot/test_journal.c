@@ -507,8 +507,15 @@ static void test_size_control(const knot_dname_t *zone1, const knot_dname_t *zon
 	ret = journal_insert(jj, medium_ch1b, NULL);
 	is_int(KNOT_ESPACE, ret, "journal: not able to free space for changeset by merging");
 
+	changeset_t *too_big_zij = changeset_new(zone1);
+	init_random_changeset(too_big_zij, 0, 1, 2200, zone1, true);
+	zone_contents_add_rr(too_big_zij->add, too_big_zij->soa_to, &n);
+	ret = journal_insert_zone(jj, too_big_zij->add);
+	is_int(KNOT_ESPACE, ret, "journal: store too big zone-in-journal");
+
 	changeset_free(big_ch2);
 	changeset_free(big_zij);
+	changeset_free(too_big_zij);
 	changeset_free(small_ch2);
 	changeset_free(small_ch1);
 	changeset_free(medium_ch1);
