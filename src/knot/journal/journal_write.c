@@ -267,7 +267,8 @@ int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *e
 		md.flags |= JOURNAL_LAST_FLUSHED_VALID;
 	}
 
-	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, journal_conf_max_changesets(j) - 1);
+	size_t chs_limit = journal_conf_max_changesets(j);
+	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, chs_limit - 1);
 
 	// avoid discontinuity
 	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && md.serial_to != changeset_from(ch)) {
