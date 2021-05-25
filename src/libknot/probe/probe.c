@@ -210,7 +210,7 @@ int knot_probe_consume(knot_probe_t *probe, knot_probe_data_t *data, uint8_t cou
 	if (ret == -1) {
 		return knot_map_errno();
 	} else if ((pfd.revents & POLLIN) == 0) {
-		return KNOT_ENOENT;
+		return 0;
 	}
 
 #ifdef ENABLE_RECVMMSG
