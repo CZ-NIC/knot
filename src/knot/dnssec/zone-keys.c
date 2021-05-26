@@ -528,17 +528,19 @@ knot_time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset)
 /*!
  * \brief Compute DS record rdata from key + cache it.
  */
-int zone_key_calculate_ds(zone_key_t *for_key, dnssec_binary_t *out_donotfree)
+int zone_key_calculate_ds(zone_key_t *for_key, dnssec_key_digest_t digesttype,
+                          dnssec_binary_t *out_donotfree)
 {
 	assert(for_key);
 	assert(out_donotfree);
 
 	int ret = KNOT_EOK;
 
-	if (for_key->precomputed_ds.data == NULL) {
-		dnssec_key_digest_t digesttype = DNSSEC_KEY_DIGEST_SHA256; // TODO !
+	if (for_key->precomputed_ds.data == NULL || for_key->precomputed_digesttype != digesttype) {
+		dnssec_binary_free(&for_key->precomputed_ds);
 		ret = dnssec_key_create_ds(for_key->key, digesttype, &for_key->precomputed_ds);
 		ret = knot_error_from_libdnssec(ret);
+		for_key->precomputed_digesttype = digesttype;
 	}
 
 	*out_donotfree = for_key->precomputed_ds;

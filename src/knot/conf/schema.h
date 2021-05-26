@@ -37,6 +37,7 @@
 #define C_CATALOG_ROLE		"\x0C""catalog-role"
 #define C_CATALOG_TPL		"\x10""catalog-template"
 #define C_CDS_CDNSKEY		"\x13""cds-cdnskey-publish"
+#define C_CDS_DIGESTTYPE	"\x0F""cds-digest-type"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
 #define C_COMMENT		"\x07""comment"
 #define C_CONFIG		"\x06""config"

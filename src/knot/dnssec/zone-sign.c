@@ -708,13 +708,13 @@ int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
 	return knot_rrset_add_rdata(rrset, dnskey_rdata.data, dnskey_rdata.size, NULL);
 }
 
-static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key)
+static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key, dnssec_key_digest_t dt)
 {
 	assert(rrset);
 	assert(zone_key);
 
 	dnssec_binary_t cds_rdata = { 0 };
-	zone_key_calculate_ds(zone_key, &cds_rdata);
+	zone_key_calculate_ds(zone_key, dt, &cds_rdata);
 
 	return knot_rrset_add_rdata(rrset, cds_rdata.data, cds_rdata.size, NULL);
 }
@@ -814,7 +814,7 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
 	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
 		ret = rrset_add_zone_key(&add_r->cdnskey, *ksk_for_cds);
 		if (ret == KNOT_EOK) {
-			ret = rrset_add_zone_ds(&add_r->cds, *ksk_for_cds);
+			ret = rrset_add_zone_ds(&add_r->cds, *ksk_for_cds, dnssec_ctx->policy->cds_dt);
 		}
 	}
 

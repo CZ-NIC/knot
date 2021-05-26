@@ -20,6 +20,8 @@ DOUBLE_DS = random.choice([True, False])
 if DOUBLE_DS:
     check_log("DOUBLE DS ENABLED")
 
+CDS_DT = random.choice(["sha256", "sha384"])
+
 def pregenerate_key(server, zone, alg):
     class a_class_with_name:
         def __init__(self, name):
@@ -250,6 +252,7 @@ child.dnssec(child_zone).ksk_shared = True
 child.dnssec(child_zone).cds_publish = "always"
 if DOUBLE_DS:
     child.dnssec(child_zone).cds_publish = "double-ds"
+child.dnssec(child_zone).cds_digesttype = CDS_DT
 
 # parameters
 ZONE = "example.com."
