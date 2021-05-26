@@ -128,8 +128,9 @@ docker:knot-dns:fedora:
 .pkg_symbols: &pkg_symbols
   stage: test
   script:
-    - ln -s distro/deb debian
-    - sed -i "s/__VERSION__/99/g" distro/deb/changelog
+    - ln -s distro/pkg/deb debian
+    - sed -i "s/{{ version }}/99/g" distro/pkg/deb/changelog
+    - sed -i "s/{{ release }}/1/g" distro/pkg/deb/changelog
     - dpkg-gensymbols -c4 -esrc/.libs/$LIB_NAME.so.$LIB_ABI -P. -p$LIB_NAME$LIB_ABI
   allow_failure: true
   except:
