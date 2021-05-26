@@ -268,7 +268,7 @@ build:archive:
     - autoreconf -fi
     - mkdir _build
     - cd _build
-    - ../configure
+    - ../configure --disable-fastparser
     - make distcheck V=1
   only:
     - master
