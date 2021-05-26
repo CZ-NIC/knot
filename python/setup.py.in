@@ -1,19 +1,25 @@
+import os
+import pathlib
 import setuptools
 
-from os import path
-here = path.dirname (path.realpath (__file__))
+here = os.path.dirname(os.path.realpath (__file__))
+
+p = pathlib.Path("README.md")
+if p.exists():
+    long_description = p.read_text()
 
 setuptools.setup(
     name='libknot',
     version='@PACKAGE_VERSION@',
     description='Python bindings for libknot',
+    long_description=long_description,
     author='Daniel Salzman',
     author_email='daniel.salzman@nic.cz',
     url='https://gitlab.nic.cz/knot/knot-dns',
     license='GPL-3.0',
     packages=['libknot'],
     package_dir = {
-        'libknot': path.join (here, 'libknot'),
+        'libknot': os.path.join(here, 'libknot'),
     },
     classifiers=[ # See https://pypi.org/classifiers
         'Development Status :: 5 - Production/Stable',

@@ -1,20 +1,4 @@
-"""Libknot probe interface wrapper.
-
-## Example ##
-
-import libknot.probe
-
-#import libknot
-#libknot.Knot("/usr/lib/libknot.so")
-
-probe = libknot.probe.KnotProbe("/run/knot")
-
-data = libknot.probe.KnotProbeDataArray(8)
-while (True):
-    if probe.consume(data) > 0:
-        for item in data:
-            print(item)
-"""
+"""Libknot probe interface wrapper."""
 
 import ctypes
 import enum
