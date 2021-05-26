@@ -7,8 +7,6 @@ libknot.so.11 libknot11 #MINVER#
  KNOT_DB_LMDB_RDONLY@Base 3.0.0
  KNOT_DB_LMDB_WRITEMAP@Base 3.0.0
  KNOT_DUMP_STYLE_DEFAULT@Base 3.0.0
- KNOT_XDP_PAYLOAD_OFFSET4@Base 3.0.0
- KNOT_XDP_PAYLOAD_OFFSET6@Base 3.0.0
  knot_ctl_accept@Base 3.0.0
  knot_ctl_alloc@Base 3.0.0
  knot_ctl_bind@Base 3.0.0
@@ -78,6 +76,7 @@ libknot.so.11 libknot11 #MINVER#
  knot_edns_set_ext_rcode@Base 3.0.0
  knot_edns_set_version@Base 3.0.0
  knot_error_from_libdnssec@Base 3.0.0
+ knot_eth_mtu@Base 3.1.0
  knot_eth_name_from_addr@Base 3.0.0
  knot_eth_queues@Base 3.0.0
  knot_eth_xdp_mode@Base 3.0.2
@@ -181,11 +180,15 @@ libknot.so.11 libknot11 #MINVER#
  knot_xdp_init@Base 3.0.0
  knot_xdp_recv@Base 3.0.0
  knot_xdp_recv_finish@Base 3.0.0
+ knot_xdp_reply_alloc@Base 3.1.0
  knot_xdp_send@Base 3.0.0
  knot_xdp_send_alloc@Base 3.0.0
  knot_xdp_send_finish@Base 3.0.0
+ knot_xdp_send_free@Base 3.1.0
  knot_xdp_send_prepare@Base 3.0.0
  knot_xdp_socket_fd@Base 3.0.0
+ knot_xdp_tcp_relay@Base 3.1.0
+ knot_xdp_tcp_send@Base 3.1.0
  yp_addr@Base 3.0.0
  yp_addr_noport@Base 3.0.0
  yp_addr_noport_to_bin@Base 3.0.0

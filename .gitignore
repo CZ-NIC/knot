@@ -81,6 +81,9 @@ src/libknot/libknot.h
 # Generated tarballs
 /knot-*.tar.xz
 
+# Packaging output
+/pkg
+
 # Code coverage
 *.gcda
 *.gcno
