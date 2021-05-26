@@ -81,6 +81,12 @@ static const knot_lookup_t cds_cdnskey[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t cds_digesttype[] = {
+	{ DNSSEC_KEY_DIGEST_SHA256,   "sha256" },
+	{ DNSSEC_KEY_DIGEST_SHA384,   "sha384" },
+	{ 0, NULL }
+};
+
 const knot_lookup_t acl_actions[] = {
 	{ ACL_ACTION_NOTIFY,   "notify" },
 	{ ACL_ACTION_TRANSFER, "transfer" },
@@ -347,6 +353,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
 	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ROLLOVER } },
+	{ C_CDS_DIGESTTYPE,      YP_TOPT,  YP_VOPT = { cds_digesttype, DNSSEC_KEY_DIGEST_SHA256 } },
 	{ C_OFFLINE_KSK,         YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }

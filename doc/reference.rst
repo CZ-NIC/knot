@@ -1227,6 +1227,7 @@ DNSSEC policy configuration.
      ksk-submission: submission_id
      ds-push: remote_id
      cds-cdnskey-publish: none | delete-dnssec | rollover | always | double-ds
+     cds-digest-type: sha256 | sha384
      offline-ksk: BOOL
 
 .. _policy_id:
@@ -1566,6 +1567,15 @@ Possible values:
    more records depending on the keys available.
 
 *Default:* rollover
+
+.. _policy_cds-digest-type:
+
+cds-digest-type
+---------------
+
+Specify digest type for published CDS records.
+
+*Default:* sha256
 
 .. _policy_offline-ksk:
 

@@ -37,7 +37,7 @@ static bool match_key_ds(zone_key_t *key, knot_rdata_t *ds)
 
 	dnssec_binary_t cds_rdata = { 0 };
 
-	int ret = zone_key_calculate_ds(key, &cds_rdata);
+	int ret = zone_key_calculate_ds(key, knot_ds_digest_type(ds), &cds_rdata);
 	if (ret != KNOT_EOK) {
 		return false;
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -121,6 +121,7 @@ typedef struct {
 	uint32_t ksk_sbm_timeout;           // like knot_time_t
 	uint32_t ksk_sbm_check_interval;    // like knot_time_t
 	unsigned cds_cdnskey_publish;
+	dnssec_key_digest_t cds_dt;         // digest type for CDS
 	parent_dynarray_t parents;
 	uint16_t signing_threads;
 	bool offline_ksk;
