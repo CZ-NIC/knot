@@ -1127,6 +1127,7 @@ policy:
     ksk\-submission: submission_id
     ds\-push: remote_id
     cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always | double\-ds
+    cds\-digest\-type: sha256 | sha384
     offline\-ksk: BOOL
 .ft P
 .fi
@@ -1437,6 +1438,11 @@ more records depending on the keys available.
 .UNINDENT
 .sp
 \fIDefault:\fP rollover
+.SS cds\-digest\-type
+.sp
+Specify digest type for published CDS records.
+.sp
+\fIDefault:\fP sha256
 .SS offline\-ksk
 .sp
 Specifies if Offline KSK feature is enabled.

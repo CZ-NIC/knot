@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -451,7 +451,7 @@ static knot_rrset_t *synth_cds(knotd_qdata_t *qdata, knotd_mod_t *mod,
 	pthread_rwlock_rdlock(&ctx->signing_mutex);
 	keyptr_dynarray_t kcdnskeys = knot_zone_sign_get_cdnskeys(mod->dnssec, mod->keyset);
 	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
-		zone_key_calculate_ds(*ksk_for_cds, &rdata);
+		zone_key_calculate_ds(*ksk_for_cds, mod->dnssec->policy->cds_dt, &rdata);
 		assert(rdata.size > 0 && rdata.data);
 		(void)knot_rrset_add_rdata(ds, rdata.data, rdata.size, mm);
 	}

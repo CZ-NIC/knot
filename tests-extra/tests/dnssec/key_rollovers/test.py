@@ -22,8 +22,9 @@ PUB_ONLY_CDS = 1 if PUB_ONLY_SCENARIO > 1 else 0
 PUB_ONLY_KEYID = ""
 
 DOUBLE_DS = random.choice([True, False])
-check_log("DOUBLE DS %s, PUB_ONLY_KEYS %d, PUB_ONLY_CDS %d" % \
-          (str(DOUBLE_DS), PUB_ONLY_KEYS, PUB_ONLY_CDS))
+CDS_DT = random.choice(["sha256", "sha384"])
+check_log("DOUBLE DS %s, cds dt %s, PUB_ONLY_KEYS %d, PUB_ONLY_CDS %d" % \
+          (str(DOUBLE_DS), CDS_DT, PUB_ONLY_KEYS, PUB_ONLY_CDS))
 
 def generate_public_only(server, zone, alg):
     global PUB_ONLY_KEYID
@@ -276,6 +277,7 @@ child.dnssec(child_zone).ksk_shared = True
 child.dnssec(child_zone).cds_publish = "always"
 if DOUBLE_DS:
     child.dnssec(child_zone).cds_publish = "double-ds"
+child.dnssec(child_zone).cds_digesttype = CDS_DT
 
 # parameters
 ZONE = "example.com."

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -101,6 +101,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 
 	val = conf_id_get(conf(), C_POLICY, C_CDS_CDNSKEY, id);
 	policy->cds_cdnskey_publish = conf_opt(&val);
+
+	val = conf_id_get(conf(), C_POLICY, C_CDS_DIGESTTYPE, id);
+	policy->cds_dt = conf_opt(&val);
 
 	conf_val_t ksk_sbm = conf_id_get(conf(), C_POLICY, C_KSK_SBM, id);
 	if (ksk_sbm.code == KNOT_EOK) {
