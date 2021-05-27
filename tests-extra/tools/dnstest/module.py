@@ -398,3 +398,30 @@ class ModNoudp(KnotModule):
         conf.end()
 
         return conf
+
+class ModProbe(KnotModule):
+    '''Probe module'''
+
+    mod_name = "probe"
+
+    def __init__(self, path=None, channels=1, max_rate=1000):
+        super().__init__()
+        self.path = path
+        self.channels = channels
+        self.max_rate = max_rate
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        if self.path:
+            conf.item_str("path", self.path)
+        if self.channels:
+            conf.item("channels", self.channels)
+        if self.max_rate:
+            conf.item("max-rate", self.max_rate)
+        conf.end()
+
+        return conf
