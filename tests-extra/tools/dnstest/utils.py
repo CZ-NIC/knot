@@ -77,7 +77,7 @@ def compare(value, expected, name):
     if value != expected:
         set_err("COMPARE \'%s\'" % name)
         check_log("ERROR: COMPARE \'%s\'" % name)
-        detail_log("  (%s) != (%s)" % (value, expected))
+        detail_log("  (%s) != expected (%s)" % (value, expected))
         detail_log(SEP)
         return True
     return False
