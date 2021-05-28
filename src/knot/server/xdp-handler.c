@@ -22,6 +22,7 @@
 #include "libknot/xdp/tcp.h"
 
 #include <stdlib.h>
+#include <urcu.h>
 
 #define XDP_BATCHLEN      32 // TODO move/dedup
 
@@ -34,6 +35,11 @@ typedef struct xdp_handle_ctx {
 	uint32_t msg_recv_count;
 	uint32_t msg_udp_count;
 	knot_tcp_table_t *tcp_table;
+
+	uint32_t tcp_max_conns;
+	size_t tcp_inbufs_size;
+	uint32_t tcp_idle_close;
+	uint32_t tcp_idle_reset;
 } xdp_handle_ctx_t;
 
 static bool udp_state_active(int state)
@@ -49,6 +55,17 @@ static bool tcp_active_state(int state)
 static bool tcp_send_state(int state)
 {
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
+}
+
+void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
+{
+	rcu_read_lock();
+	conf_t *pconf = conf();
+	ctx->tcp_max_conns   = pconf->cache.xdp_tcp_max_conns / pconf->cache.srv_xdp_threads;
+	ctx->tcp_inbufs_size = pconf->cache.xdp_tcp_inbufs_size / pconf->cache.srv_xdp_threads;
+	ctx->tcp_idle_close  = pconf->cache.xdp_tcp_idle_close * 1000000; // conf:secs -> tcp:usecs
+	ctx->tcp_idle_reset  = pconf->cache.xdp_tcp_idle_reset * 1000000;
+	rcu_read_unlock();
 }
 
 void xdp_handle_cleanup(xdp_handle_ctx_t *ctx)
@@ -72,8 +89,9 @@ xdp_handle_ctx_t *xdp_handle_init(void)
 	}
 
 	xdp_handle_cleanup(ctx);
+	xdp_handle_reconfigure(ctx);
 
-	ctx->tcp_table = knot_tcp_table_new(1000); // TODO better parametrize
+	ctx->tcp_table = knot_tcp_table_new(ctx->tcp_max_conns); // NOTE: it's not necessary that the table size is equal to its max usage!
 	if (ctx->tcp_table == NULL) {
 		xdp_handle_free(ctx);
 		return NULL;
@@ -187,7 +205,7 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 	return KNOT_EOK;
 }
 
-uint32_t overweight(uint32_t weight, uint32_t max_weight)
+size_t overweight(size_t weight, size_t max_weight)
 {
 	int64_t w = weight;
 	w -= max_weight;
@@ -222,8 +240,9 @@ int xdp_handle_timeout(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 	uint32_t last_reset = 0;
 	int ret = KNOT_EOK;
 	do {
-		ret = knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 20, 2000000, 4000000, // FIXME configurable parameters
-		                           overweight(ctx->tcp_table->usage, 1000), 0, &last_reset);
+		ret = knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 20, ctx->tcp_idle_close, ctx->tcp_idle_reset,
+		                           overweight(ctx->tcp_table->usage, ctx->tcp_max_conns),
+		                           overweight(ctx->tcp_table->inbufs_total, ctx->tcp_inbufs_size), &last_reset);
 	} while (last_reset > 0 && ret == KNOT_EOK);
 	return ret;
 }

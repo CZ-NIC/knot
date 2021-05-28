@@ -183,6 +183,18 @@ static void init_cache(
 
 	conf->cache.srv_tcp_max_clients = conf_tcp_max_clients(conf);
 
+	val = conf_get(conf, C_XDP, C_TCP_MAX_CLIENTS);
+	conf->cache.xdp_tcp_max_conns = conf_int(&val);
+
+	val = conf_get(conf, C_XDP, C_TCP_MAX_INBUFS);
+	conf->cache.xdp_tcp_inbufs_size = conf_int(&val);
+
+	val = conf_get(conf, C_XDP, C_TCP_IDLE_CLOSE);
+	conf->cache.xdp_tcp_idle_close = conf_int(&val);
+
+	val = conf_get(conf, C_XDP, C_TCP_IDLE_RESET);
+	conf->cache.xdp_tcp_idle_reset = conf_int(&val);
+
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
 	/* infinite_adjust() call isn't needed, 0 is adjusted later anyway. */

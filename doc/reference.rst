@@ -151,7 +151,6 @@ General options related to the server.
      xdp-route-check: BOOL
      listen: ADDR[@INT] ...
      listen-xdp: STR[@INT] | ADDR[@INT] ...
-     xdp-tcp: BOOL
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -494,7 +493,28 @@ Change of this parameter requires restart of the Knot server to take effect.
    intended to offer the DNS service, at least to fulfil the DNS requirement for
    working TCP.
 
-.. _server_xdp-tcp:
+.. _XDP section:
+
+XDP section
+===========
+
+Various options related to XDP listening, especially TCP.
+
+::
+
+ xdp:
+     xdp-tcp: BOOL
+     tcp-max-clients: INT
+     tcp-max-inbufs: SIZE
+     tcp-idle-close: TIME
+     tcp-idle-reset: TIME
+
+.. CAUTION::
+   When you change configuration parameters dynamically or via configuration file
+   reload, some parameters in the XDP section require restarting the Knot server
+   so that the changes take effect.
+
+.. _xdp_xdp-tcp:
 
 xdp-tcp
 -------
@@ -503,7 +523,51 @@ Also answer TCP traffic (queries) with XDP workers.
 
 .. WARNING::
    This feature is highly experimental and it may eat your hamster as well as any
-   other hamsters connected to the network.
+   other hamsters connected to the network. It is especially discouraged to serve
+   large zone transfers through XDP.
+
+.. _xdp_tcp-max-clients:
+
+tcp-max-clients
+---------------
+
+A maximum number of TCP clients connected in parallel.
+
+*Default:* 1000000 (one million)
+
+.. _xdp_tcp-max-inbufs:
+
+tcp-max-inbufs
+--------------
+
+Maximum cumulative size of RAM used for buffers of incomplete
+received messages.
+
+*Minimum:* 1 Megabyte
+
+*Default:* 100 Megabytes
+
+.. _xdp_tcp-idle-close:
+
+tcp-idle-close
+--------------
+
+Time in seconds, after which any idle connection is gracefully closed.
+
+*Minimum:* 1 s
+
+*Default:* 10 s
+
+.. _xdp_tcp-idle-reset:
+
+tcp-idle-reset
+--------------
+
+Time in seconds, after which any idle connection is forcibly closed.
+
+*Minimum:* 1 s
+
+*Default:* 20 s
 
 .. _Control section:
 

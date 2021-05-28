@@ -559,7 +559,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
-		conf_val_t xdp_tcp_val = conf_get(conf, C_SRV, C_XDP_TCP);
+		conf_val_t xdp_tcp_val = conf_get(conf, C_XDP, C_XDP_TCP);
 		bool xdp_tcp = conf_bool(&xdp_tcp_val);
 
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);

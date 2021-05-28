@@ -890,6 +890,7 @@ static void test_conf_io_list(void)
 	ok(conf_io_list(NULL, &io) ==
 	   KNOT_EOK, "list schema");
 	ref = "server\n"
+	      "xdp\n"
 	      "control\n"
 	      "remote\n"
 	      "template\n"
@@ -945,6 +946,14 @@ static const yp_item_t desc_server[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_xdp[] = {
+	{ C_TCP_MAX_CLIENTS,  YP_TINT, YP_VNONE },
+	{ C_TCP_MAX_INBUFS,   YP_TINT, YP_VNONE },
+	{ C_TCP_IDLE_CLOSE,   YP_TINT, YP_VNONE },
+	{ C_TCP_IDLE_RESET,   YP_TINT, YP_VNONE },
+	{ NULL }
+};
+
 static const yp_item_t desc_control[] = {
 	{ C_TIMEOUT, YP_TINT, YP_VNONE },
 	{ NULL }
@@ -985,6 +994,7 @@ static const yp_item_t desc_zone[] = {
 
 const yp_item_t test_schema[] = {
 	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
+	{ C_XDP,  YP_TGRP, YP_VGRP = { desc_xdp } },
 	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
