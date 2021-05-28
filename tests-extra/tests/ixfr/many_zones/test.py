@@ -24,10 +24,6 @@ for zone in zones:
 
 master.reload()
 
-# Provide some more time for master to get ready.
-if master.valgrind:
-    t.sleep(15)
-
 # Wait for IXFR to slave.
 master.zones_wait(zones, serials_init)
 slave.zones_wait(zones, serials_init)
