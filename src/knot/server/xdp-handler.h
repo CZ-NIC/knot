@@ -62,4 +62,9 @@ int xdp_handle_send(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *xdp_sock);
  */
 int xdp_handle_timeout(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *xdp_sock);
 
+/*!
+ * \brief Update configuration parameters of running ctx.
+ */
+void xdp_handle_reconfigure(struct xdp_handle_ctx *ctx);
+
 #endif // ENABLE_XDP

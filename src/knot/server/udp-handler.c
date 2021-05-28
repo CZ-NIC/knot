@@ -405,6 +405,7 @@ static int xdp_recvmmsg_send(void *d, void *xdp_sock)
 
 static int xdp_recvmmsg_tick(void *d, void *xdp_sock)
 {
+	xdp_handle_reconfigure(d);
 	return xdp_handle_timeout(d, xdp_sock);
 }
 
