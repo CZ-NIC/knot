@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-'''Test for IXFR of many zones from Bind to Knot'''
+'''Test for IXFR of many zones from one Knot to another'''
 
 from dnstest.test import Test
 
 t = Test()
 
-master = t.server("bind")
+master = t.server("knot")
 slave = t.server("knot")
 zones = t.zone_rnd(400, records=10, dnssec=False)
 
@@ -23,6 +23,10 @@ for zone in zones:
     master.update_zonefile(zone, random=True)
 
 master.reload()
+
+# Provide some more time for master to get ready.
+if master.valgrind:
+    t.sleep(15)
 
 # Wait for IXFR to slave.
 master.zones_wait(zones, serials_init)
