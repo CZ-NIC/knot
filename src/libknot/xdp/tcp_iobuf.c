@@ -36,7 +36,8 @@ size_t knot_tcp_pay_len(const struct iovec *payload)
 	return req_len(payload->iov_base);
 }
 
-int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data, struct iovec *data_tofree)
+int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data,
+                           struct iovec *data_tofree, size_t *buffers_total)
 {
 	memset(data_tofree, 0, sizeof(*data_tofree));
 	if (data->iov_len < 1) {
@@ -62,6 +63,7 @@ int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data, struct iove
 				return KNOT_ENOMEM;
 			}
 			memcpy(data_tofree->iov_base + buffer->iov_len, data->iov_base, data_use);
+			*buffers_total -= buffer->iov_len;
 			buffer->iov_base = NULL;
 			buffer->iov_len = 0;
 			data->iov_base += data_use;
@@ -73,6 +75,7 @@ int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data, struct iove
 			}
 			buffer->iov_base = bufnew;
 			memcpy(buffer->iov_base + buffer->iov_len, data->iov_base, data->iov_len);
+			*buffers_total += data->iov_len;
 			buffer->iov_len += data->iov_len;
 			data->iov_base += data->iov_len;
 			data->iov_len = 0;
@@ -96,6 +99,7 @@ int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data, struct iove
 			memset(data_tofree, 0, sizeof(*data_tofree));
 			return KNOT_ENOMEM;
 		}
+		*buffers_total += MAX(data_end.iov_len, 2);
 		buffer->iov_len = data_end.iov_len;
 		memcpy(buffer->iov_base, data_end.iov_base, data_end.iov_len);
 		data->iov_len -= data_end.iov_len;
