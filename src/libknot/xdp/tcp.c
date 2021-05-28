@@ -133,6 +133,7 @@ static void tcp_table_del(knot_tcp_conn_t **todel)
 static void tcp_table_del2(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
 {
 	assert(table->usage > 0);
+	table->inbufs_total -= (*todel)->inbuf.iov_len;
 	tcp_table_del(todel);
 	table->usage--;
 }
@@ -253,7 +254,7 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 			relay.action = XDP_TCP_DATA;
 
 			struct iovec msg_payload = msg->payload, tofree;
-			ret = knot_tcp_input_buffers(&(*conn)->inbuf, &msg_payload, &tofree);
+			ret = knot_tcp_input_buffers(&(*conn)->inbuf, &msg_payload, &tofree, &tcp_table->inbufs_total);
 
 			if (tofree.iov_len > 0 && ret == KNOT_EOK) {
 				relay.data.iov_base = tofree.iov_base + sizeof(uint16_t);

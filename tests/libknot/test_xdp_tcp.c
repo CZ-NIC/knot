@@ -136,6 +136,21 @@ static void prepare_data(knot_xdp_msg_t *msg, const char *bytes, size_t n)
 	msg->payload.iov_base = (void *)bytes;
 }
 
+static void fix_seqack(knot_xdp_msg_t *msg)
+{
+	knot_tcp_conn_t *conn = knot_tcp_table_find(test_table, msg);
+	assert(conn != NULL);
+	msg->seqno = conn->seqno;
+	msg->ackno = conn->ackno;
+}
+
+static void fix_seqacks(knot_xdp_msg_t *msgs, size_t count)
+{
+	for (size_t i = 0; i < count; i++) {
+		fix_seqack(&msgs[i]);
+	}
+}
+
 void test_syn(void)
 {
 	knot_xdp_msg_t msg;
@@ -308,8 +323,7 @@ void test_many(void)
 	knot_xdp_msg_t *survive = &msgs[i_survive];
 	survive->flags = (KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_ACK);
 	knot_tcp_conn_t *surv_conn = knot_tcp_table_find(test_table, survive);
-	survive->seqno = surv_conn->seqno;
-	survive->ackno = surv_conn->ackno;
+	fix_seqack(survive);
 	prepare_data(survive, "\x00\x00", 2);
 	(void)knot_xdp_tcp_relay(test_sock, survive, 1, test_table, NULL, &relays, NULL);
 	is_int(1, relays.size, "many/survivor: one relay");
@@ -334,6 +348,63 @@ void test_many(void)
 	free(msgs);
 }
 
+void test_ibufs_size(void)
+{
+	int CONNS = 4;
+	knot_xdp_msg_t msgs[CONNS];
+	tcp_relay_dynarray_t relays = { 0 };
+
+	// just open connections
+	for (int i = 0; i < CONNS; i++) {
+		prepare_msg(&msgs[i], KNOT_XDP_MSG_SYN, i + 2000, 1);
+	}
+	int ret = knot_xdp_tcp_relay(test_sock, msgs, CONNS, test_table, NULL, &relays, NULL);
+	is_int(KNOT_EOK, ret, "ibufs: open OK");
+	check_sent(0, 0, CONNS, 0);
+	for (int i = 0; i < CONNS; i++) {
+		msgs[i].flags = KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_ACK;
+	}
+
+	is_int(0, test_table->inbufs_total, "inbufs: initial total zero");
+
+	// first connection will start a fragment buf then finish it
+	fix_seqack(&msgs[0]);
+	prepare_data(&msgs[0], "\x00\x0a""lorem", 7);
+	ret = knot_xdp_tcp_relay(test_sock, &msgs[0], 1, test_table, NULL, &relays, NULL);
+	is_int(KNOT_EOK, ret, "ibufs: must be OK");
+	check_sent(1, 0, 0, 0);
+	is_int(7, test_table->inbufs_total, "inbufs: first inbuf");
+	knot_xdp_tcp_relay_free(&relays);
+
+	// other connection will just store fragments
+	fix_seqacks(msgs, CONNS);
+	prepare_data(&msgs[0], "ipsum", 5);
+	prepare_data(&msgs[1], "\x00\xff""12345", 7);
+	prepare_data(&msgs[2], "\xff\xff""abcde", 7);
+	prepare_data(&msgs[3], "\xff\xff""abcde", 7);
+	ret = knot_xdp_tcp_relay(test_sock, msgs, CONNS, test_table, NULL, &relays, NULL);
+	is_int(KNOT_EOK, ret, "inbufs: relay OK");
+	check_sent(CONNS, 0, 0, 0);
+	is_int(21, test_table->inbufs_total, "inbufs: after change");
+	is_int(1, relays.size, "inbufs: one relay");
+	is_int(10, tcp_relay_dynarray_arr(&relays)[0].data.iov_len, "inbufs: data length");
+	knot_xdp_tcp_relay_free(&relays);
+
+	// now free some
+	uint32_t reset_count = 0;
+	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, UINT32_MAX, UINT32_MAX, 0, 8, &reset_count);
+	is_int(KNOT_EOK, ret, "inbufs: timeout OK");
+	check_sent(0, 2, 0, 0);
+	is_int(2, reset_count, "inbufs: reset count");
+	is_int(7, test_table->inbufs_total, "inbufs: final state");
+	ok(NULL != knot_tcp_table_find(test_table, &msgs[0]), "inbufs: first conn survived");
+	ok(NULL == knot_tcp_table_find(test_table, &msgs[1]), "inbufs: second conn not survived");
+	ok(NULL == knot_tcp_table_find(test_table, &msgs[2]), "inbufs: third conn not survived");
+	ok(NULL != knot_tcp_table_find(test_table, &msgs[3]), "inbufs: fourth conn survived");
+
+	clean_table();
+}
+
 int main(int argc, char *argv[])
 {
 	UNUSED(argc);
@@ -352,6 +423,8 @@ int main(int argc, char *argv[])
 	test_syn_ack();
 	test_data_fragments();
 	test_close();
+
+	test_ibufs_size();
 
 	knot_xdp_deinit(test_sock);
 	ret = knot_xdp_init_mock(&test_sock, mock_send_nocheck);

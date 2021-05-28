@@ -38,9 +38,11 @@ size_t knot_tcp_pay_len(const struct iovec *payload);
  * \param buffer         In/out: persistent buffer to store incomplete DNS payloads between receiving packets.
  * \param data           In/out: momental DNS payloads in incomming packet.
  * \param data_tofree    Out: once more DNS payload defragmented from multiple packets.
+ * \param buffers_total  In/Out: total size of buffers (will be increased or decreased).
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data, struct iovec *data_tofree);
+int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data,
+                           struct iovec *data_tofree, size_t *buffers_total);
 
 /*! @} */
