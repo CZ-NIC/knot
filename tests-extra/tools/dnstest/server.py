@@ -669,7 +669,8 @@ class Server(object):
 
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
-        for t in range(60):
+        attempts = 60 if not self.valgrind else 68
+        for t in range(attempts):
             try:
                 resp = self.dig(zone.name, "SOA", udp=udp, tries=1,
                                 timeout=2, log_no_sep=True, tsig=tsig)

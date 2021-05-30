@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-'''Test for IXFR of many zones from Bind to Knot'''
+'''Test for IXFR of many zones from one Knot to another'''
 
 from dnstest.test import Test
 
 t = Test()
 
-master = t.server("bind")
+master = t.server("knot")
 slave = t.server("knot")
 zones = t.zone_rnd(400, records=10, dnssec=False)
 
