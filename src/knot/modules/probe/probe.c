@@ -100,6 +100,9 @@ static knotd_state_t export(knotd_state_t state, knot_pkt_t *pkt,
 		if (tcp) {
 			d.tcp_rtt = knot_probe_tcp_rtt(qdata->params->socket);
 		}
+		if (qdata->query->opt_rr != NULL) {
+			d.reply.ede = qdata->rcode_ede;
+		}
 		(void)knot_probe_produce(probe, &d, 1);
 	}
 
