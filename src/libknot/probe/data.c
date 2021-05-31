@@ -23,6 +23,7 @@
 #include "libknot/endian.h"
 #include "libknot/errcode.h"
 #include "libknot/probe/probe.h"
+#include "contrib/macros.h"
 
 _public_
 int knot_probe_data_set(knot_probe_data_t *data, knot_probe_proto_t proto,
@@ -42,10 +43,14 @@ int knot_probe_data_set(knot_probe_data_t *data, knot_probe_proto_t proto,
 		const struct sockaddr_in *da = (struct sockaddr_in *)local_addr;
 
 		memcpy(data->remote.addr, &sa->sin_addr, sizeof(sa->sin_addr));
+		memset(data->remote.addr + sizeof(sa->sin_addr), 0,
+		       sizeof(data->remote.addr) - sizeof(sa->sin_addr));
 		data->remote.port = be16toh(sa->sin_port);
 
 		if (da != NULL) {
 			memcpy(data->local.addr, &da->sin_addr, sizeof(da->sin_addr));
+			memset(data->local.addr + sizeof(da->sin_addr), 0,
+			       sizeof(data->local.addr) - sizeof(da->sin_addr));
 			data->local.port = be16toh(da->sin_port);
 		} else {
 			memset(&data->local, 0, sizeof(data->local));
@@ -95,6 +100,7 @@ int knot_probe_data_set(knot_probe_data_t *data, knot_probe_proto_t proto,
 				}
 			}
 		}
+		data->query_edns.reserved = 0;
 	} else {
 		memset(&data->query_edns, 0, sizeof(data->query_edns));
 	}
@@ -105,6 +111,8 @@ int knot_probe_data_set(knot_probe_data_t *data, knot_probe_proto_t proto,
 	data->query.qtype = knot_pkt_qtype(query);
 	data->query.qname_len = knot_dname_size(knot_pkt_qname(query));
 	memcpy(data->query.qname, knot_pkt_qname(query), data->query.qname_len);
+	memset(data->query.qname + data->query.qname_len, 0,
+	       MIN(8, sizeof(data->query.qname) - data->query.qname_len));
 
 	return KNOT_EOK;
 }
