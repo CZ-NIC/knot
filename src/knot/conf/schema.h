@@ -45,7 +45,6 @@
 #define C_DB			"\x08""database"
 #define C_DDNS_MASTER		"\x0B""ddns-master"
 #define C_DENY			"\x04""deny"
-#define C_DIGEST		"\x06""digest"
 #define C_DNSKEY_TTL		"\x0A""dnskey-ttl"
 #define C_DNSSEC_POLICY		"\x0D""dnssec-policy"
 #define C_DNSSEC_SIGNING	"\x0E""dnssec-signing"
@@ -138,6 +137,8 @@
 #define C_ZONE			"\x04""zone"
 #define C_ZONEFILE_LOAD		"\x0D""zonefile-load"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
+#define C_ZONEMD_GENERATE	"\x0F""zonemd-generate"
+#define C_ZONEMD_VERIFY		"\x0D""zonemd-verify"
 #define C_ZONE_MAX_SIZE		"\x0D""zone-max-size"
 #define C_ZONE_MAX_TLL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
@@ -180,10 +181,9 @@ enum {
 };
 
 enum {
-	ZONE_DIGEST_NONE             = 0,
-	ZONE_DIGEST_SHA384           = 1,
-	ZONE_DIGEST_SHA512           = 2,
-	ZONE_DIGEST_ZONEMD_VERIFY    = 255,
+	ZONE_DIGEST_NONE   = 0,
+	ZONE_DIGEST_SHA384 = 1,
+	ZONE_DIGEST_SHA512 = 2,
 };
 
 enum {

@@ -262,11 +262,10 @@ int zone_update_add_digest(struct zone_update *update, int algorithm, bool place
 
 int conf_zonemd_algorithm(const knot_dname_t *zone)
 {
-	conf_val_t val = conf_zone_get(conf(), C_DIGEST, zone);
+	conf_val_t val = conf_zone_get(conf(), C_ZONEMD_GENERATE, zone);
 	int opt = conf_opt(&val);
 	switch (opt) {
 	case ZONE_DIGEST_NONE:
-	case ZONE_DIGEST_ZONEMD_VERIFY:
 		return 0;
 	case ZONE_DIGEST_SHA384:
 	case ZONE_DIGEST_SHA512:

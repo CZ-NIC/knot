@@ -853,6 +853,24 @@ int zone_update_semcheck(zone_update_t *update)
 	return KNOT_EOK;
 }
 
+int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
+{
+	conf_val_t val = conf_zone_get(conf, C_ZONEMD_VERIFY, update->zone->name);
+	if (!conf_bool(&val)) {
+		return KNOT_EOK;
+	}
+
+	int ret = zone_contents_digest_verify(update->new_cont);
+	if (ret != KNOT_EOK) {
+		log_zone_error(update->zone->name, "ZONEMD, verification failed (%s)",
+		               knot_strerror(ret));
+	} else {
+		log_zone_info(update->zone->name, "ZONEMD, verification successful");
+	}
+
+	return ret;
+}
+
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (conf == NULL || update == NULL) {
@@ -925,17 +943,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			return ret;
 		} else {
 			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful", msg_valid);
-		}
-	}
-
-	val = conf_zone_get(conf, C_DIGEST, update->zone->name);
-	if (conf_opt(&val) == ZONE_DIGEST_ZONEMD_VERIFY) {
-		ret = zone_contents_digest_verify(update->new_cont);
-		if (ret != KNOT_EOK) {
-			log_zone_error(update->zone->name, "ZONEMD verification failed (%s)", knot_strerror(ret));
-			return ret;
-		} else {
-			log_zone_info(update->zone->name, "ZONEMD verified OK");
 		}
 	}
 

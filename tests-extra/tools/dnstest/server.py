@@ -161,6 +161,8 @@ class Server(object):
         self.semantic_check = True
         self.zonefile_sync = "1d"
         self.zonefile_load = None
+        self.zonemd_verify = None
+        self.zonemd_generate = None
         self.journal_db_size = 20 * 1024 * 1024
         self.journal_max_usage = 5 * 1024 * 1024
         self.timer_db_size = 1 * 1024 * 1024
@@ -1387,6 +1389,10 @@ class Knot(Server):
         s.id_item("id", "default")
         s.item_str("storage", self.dir)
         s.item_str("zonefile-sync", self.zonefile_sync)
+        if self.zonemd_verify:
+            s.item_str("zonemd-verify", "on")
+        if self.zonemd_generate is not None:
+            s.item_str("zonemd-generate", self.zonemd_generate)
         s.item_str("journal-max-usage", self.journal_max_usage)
         s.item_str("adjust-threads", str(random.randint(1,4)))
         s.item_str("semantic-checks", "on" if self.semantic_check else "off")

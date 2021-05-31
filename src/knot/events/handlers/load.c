@@ -248,6 +248,11 @@ int event_load(conf_t *conf, zone_t *zone)
 		goto cleanup;
 	}
 
+	ret = zone_update_verify_digest(conf, &up);
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
+
 	uint32_t middle_serial = zone_contents_serial(up.new_cont);
 
 	if (do_diff && old_contents_exist && dnssec_enable && zf_conts != NULL &&

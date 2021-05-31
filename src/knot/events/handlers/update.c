@@ -145,6 +145,9 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 
 	// Process all updates.
 	ret = process_bulk(zone, requests, &up);
+	if (ret == KNOT_EOK) {
+		ret = zone_update_verify_digest(conf, &up);
+	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		set_rcodes(requests, KNOT_RCODE_SERVFAIL);

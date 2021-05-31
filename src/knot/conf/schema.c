@@ -116,10 +116,9 @@ static const knot_lookup_t serial_policies[] = {
 };
 
 static const knot_lookup_t zone_digest[] = {
-	{ ZONE_DIGEST_NONE,             "none" },
-	{ ZONE_DIGEST_SHA384,           "zonemd-sha384" },
-	{ ZONE_DIGEST_SHA512,           "zonemd-sha512" },
-	{ ZONE_DIGEST_ZONEMD_VERIFY,    "zonemd-verify" },
+	{ ZONE_DIGEST_NONE,   "none" },
+	{ ZONE_DIGEST_SHA384, "zonemd-sha384" },
+	{ ZONE_DIGEST_SHA512, "zonemd-sha512" },
 	{ 0, NULL }
 };
 
@@ -386,7 +385,8 @@ static const yp_item_t desc_policy[] = {
 	{ C_DNSSEC_VALIDATION,   YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, FLAGS, { check_ref_dflt } }, \
 	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
-	{ C_DIGEST,              YP_TOPT,  YP_VOPT = { zone_digest, ZONE_DIGEST_NONE } }, \
+	{ C_ZONEMD_GENERATE,     YP_TOPT,  YP_VOPT = { zone_digest, ZONE_DIGEST_NONE } }, \
+	{ C_ZONEMD_VERIFY,       YP_TBOOL, YP_VNONE }, \
 	{ C_REFRESH_MIN_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, 2, YP_STIME } }, \
 	{ C_REFRESH_MAX_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_CATALOG_ROLE,        YP_TOPT,  YP_VOPT = { catalog_roles, CATALOG_ROLE_NONE }, FLAGS }, \
