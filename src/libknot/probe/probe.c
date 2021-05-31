@@ -158,14 +158,14 @@ int knot_probe_produce(knot_probe_t *probe, const knot_probe_data_t *data, uint8
 		return KNOT_EINVAL;
 	}
 
-	uint8_t diff = KNOT_DNAME_MAXLEN - data->query.qname_len;
-	if (send(probe->fd, data, sizeof(*data) - diff, 0) == -1) {
+	size_t used_len = sizeof(*data) - KNOT_DNAME_MAXLEN + data->query.qname_len;
+	if (send(probe->fd, data, used_len, 0) == -1) {
 		struct timespec now = time_now();
 		if (now.tv_sec - probe->last_unconn_time > 2) {
 			probe->last_unconn_time = now.tv_sec;
 			if ((errno == ENOTCONN || errno == ECONNREFUSED) &&
 			    probe_connect(probe) == 0 &&
-			    send(probe->fd, data, sizeof(*data), 0) > 0) {
+			    send(probe->fd, data, used_len, 0) > 0) {
 				return KNOT_EOK;
 			}
 		}
