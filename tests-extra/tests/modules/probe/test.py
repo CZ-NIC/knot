@@ -30,7 +30,7 @@ class TestItem(object):
         compare(data.local_port, server.port, "local port")
 
         compare(data.qname_str(), str(dns.name.from_text(self.qname)), "qname")
-        compare(data.query_type, dns.rdatatype.from_text(self.qtype).value, "qtype")
+        compare(data.query_type, dns.rdatatype.from_text(self.qtype), "qtype")
         compare(data.query_class, 1, "qclass")
 
         ref_edns = self.dnssec or self.nsid
