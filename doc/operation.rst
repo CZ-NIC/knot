@@ -960,6 +960,12 @@ The backup procedure will begin soon and will happen zone-by-zone
 The knotc's ``-b`` parameter might be used if the user desires to wait until
 the backup work is done.
 
+.. TIP::
+   There is a plain ASCII text file in the backup directory,
+   ``knot_backup_label.txt``, that contains some useful information about the
+   backup, such as the backup creation date & time, the hostname, etc. Care must
+   always be taken **not to remove this file** from the backup.
+
 Offline restore
 ---------------
 
