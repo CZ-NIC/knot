@@ -122,7 +122,9 @@ Actions
 
 **zone-restore** [*zone*...] **+backupdir** *directory* [*filter*...]
   Trigger a zone data and metadata restore from a specified backup directory.
-  Optional filters are equivalent to the same filters of **zone-backup**. (#)
+  Optional filters are equivalent to the same filters of **zone-backup**.
+  Restore from backups created by Knot DNS releases prior to 3.1 is possible
+  with the force option. (#)
 
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
