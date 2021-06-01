@@ -124,6 +124,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 	algnames[DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256] = "ecdsap256sha256";
 	algnames[DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384] = "ecdsap384sha384";
 	algnames[DNSSEC_KEY_ALGORITHM_ED25519] = "ed25519";
+	algnames[DNSSEC_KEY_ALGORITHM_ED448] = "ed448";
 
 	// parse args
 	for (int i = 0; i < argc; i++) {
@@ -215,12 +216,13 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 		gen_timing.ready = gen_timing.active;
 	}
 
-	if (keysize > 0) {
-		if ((flags & DNSKEY_GENERATE_KSK)) {
-			ctx->policy->ksk_size = keysize;
-		} else {
-			ctx->policy->zsk_size = keysize;
-		}
+	if (keysize == 0) {
+		keysize = dnssec_algorithm_key_size_default(ctx->policy->algorithm);
+	}
+	if ((flags & DNSKEY_GENERATE_KSK)) {
+		ctx->policy->ksk_size = keysize;
+	} else {
+		ctx->policy->zsk_size = keysize;
 	}
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
