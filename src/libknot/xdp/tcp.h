@@ -26,7 +26,6 @@
 #pragma once
 
 #include "contrib/dynarray.h"
-#include "contrib/ucw/lists.h"
 #include "libknot/mm_ctx.h"
 #include "libknot/xdp/msg.h"
 #include "libknot/xdp/xdp.h"
@@ -54,7 +53,10 @@ typedef enum {
 } knot_tcp_relay_free_t;
 
 typedef struct knot_xdp_tcp_conn {
-	node_t n;
+	struct {
+		void *list_node_placeholder1;
+		void *list_node_placeholder2;
+	} list_node_placeholder;
 	struct sockaddr_in6 ip_rem;
 	struct sockaddr_in6 ip_loc;
 	uint8_t last_eth_rem[ETH_ALEN];
@@ -71,7 +73,6 @@ typedef struct knot_xdp_tcp_conn {
 
 typedef struct {
 	size_t size;
-	list_t timeout;
 	size_t usage;
 	size_t inbufs_total;
 	uint32_t hash_secret[4];
@@ -190,6 +191,11 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
                          uint32_t close_timeout, uint32_t reset_timeout,
                          uint32_t reset_at_least, size_t reset_inbufs,
                          uint32_t *reset_count);
+
+/*!
+ * \brief Length of timeout-watching list.
+ */
+size_t knot_tcp_table_timeout_length(knot_tcp_table_t *table);
 
 /*!
  * \brief Cleanp old TCP connection w/o sending RST or FIN.
