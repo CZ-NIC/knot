@@ -46,8 +46,3 @@ void systemd_reloading_notify(void);
  * \brief Notify systemd about service is stopping.
  */
 void systemd_stopping_notify(void);
-
-/*!
- * \brief Notify systemd about service is stopped.
- */
-void systemd_stopped_notify(void);

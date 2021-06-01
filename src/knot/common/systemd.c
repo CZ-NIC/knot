@@ -72,7 +72,7 @@ void systemd_tasks_status_notify(int tasks)
 		}
 		sd_notify(0, state);
 	} else {
-		sd_notify(0, "STATUS=Starting...");
+		sd_notify(0, "STATUS=");
 	}
 #endif
 }
@@ -81,7 +81,7 @@ void systemd_ready_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
 	sd_notify(0, "READY=1");
-	sd_notify(0, "STATUS=Running");
+	sd_notify(0, "STATUS=");
 #endif
 }
 
@@ -89,7 +89,7 @@ void systemd_reloading_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
 	sd_notify(0, "RELOADING=1");
-	sd_notify(0, "STATUS=Reloading...");
+	sd_notify(0, "STATUS=");
 #endif
 }
 
@@ -97,13 +97,6 @@ void systemd_stopping_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
 	sd_notify(0, "STOPPING=1");
-	sd_notify(0, "STATUS=Stopping...");
-#endif
-}
-
-void systemd_stopped_notify(void)
-{
-#ifdef ENABLE_SYSTEMD
-	sd_notify(0, "STATUS=Stopped");
+	sd_notify(0, "STATUS=");
 #endif
 }

@@ -594,7 +594,5 @@ int main(int argc, char **argv)
 	log_info("shutting down");
 	log_close();
 
-	systemd_stopped_notify();
-
 	return EXIT_SUCCESS;
 }
