@@ -30,10 +30,6 @@
 #include <cap-ng.h>
 #endif
 
-#ifdef ENABLE_SYSTEMD
-#include <systemd/sd-daemon.h>
-#endif
-
 #include "libdnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "contrib/strtonum.h"
@@ -44,6 +40,7 @@
 #include "knot/common/log.h"
 #include "knot/common/process.h"
 #include "knot/common/stats.h"
+#include "knot/common/systemd.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 
@@ -53,14 +50,6 @@
 static volatile bool sig_req_stop = false;
 static volatile bool sig_req_reload = false;
 static volatile bool sig_req_zones_reload = false;
-
-/* \brief Signal started state to the init system. */
-static void init_signal_started(void)
-{
-#ifdef ENABLE_SYSTEMD
-	sd_notify(0, "READY=1");
-#endif
-}
 
 static int make_daemon(int nochdir, int noclose)
 {
@@ -259,19 +248,22 @@ static void event_loop(server_t *server, const char *socket)
 
 	enable_signals();
 
+	/* Notify systemd about successful start. */
+	systemd_ready_notify();
+
 	/* Run event loop. */
 	for (;;) {
 		/* Interrupts. */
-		if (sig_req_stop) {
-			break;
-		}
-		if (sig_req_reload) {
+		if (sig_req_reload && !sig_req_stop) {
 			sig_req_reload = false;
 			server_reload(server);
 		}
-		if (sig_req_zones_reload) {
+		if (sig_req_zones_reload && !sig_req_stop) {
 			sig_req_zones_reload = false;
 			server_update_zones(conf(), server);
+		}
+		if (sig_req_stop) {
+			break;
 		}
 
 		// Update control timeout.
@@ -579,7 +571,6 @@ int main(int argc, char **argv)
 		log_info("server started as a daemon, PID %lu", pid);
 	} else {
 		log_info("server started in the foreground, PID %lu", pid);
-		init_signal_started();
 	}
 
 	/* Start the event loop. */

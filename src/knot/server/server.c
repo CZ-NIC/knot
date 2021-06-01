@@ -25,6 +25,7 @@
 #include "libknot/yparser/ypschema.h"
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
+#include "knot/common/systemd.h"
 #include "knot/conf/confio.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/module.h"
@@ -733,6 +734,14 @@ static void server_free_handler(iohandler_t *h)
 	free(h->thread_id);
 }
 
+static void worker_wait_cb(worker_pool_t *pool)
+{
+	int running, queued;
+	systemd_zone_load_timeout_notify();
+	worker_pool_status(pool, true, &running, &queued);
+	systemd_tasks_status_notify(running + queued);
+}
+
 int server_start(server_t *server, bool async)
 {
 	if (server == NULL) {
@@ -744,7 +753,8 @@ int server_start(server_t *server, bool async)
 
 	/* Wait for enqueued events if not asynchronous. */
 	if (!async) {
-		worker_pool_wait(server->workers);
+		worker_pool_wait_cb(server->workers, worker_wait_cb);
+		systemd_tasks_status_notify(0);
 	}
 
 	/* Start evsched handler. */
@@ -942,9 +952,12 @@ int server_reload(server_t *server)
 		return KNOT_EINVAL;
 	}
 
+	systemd_reloading_notify();
+
 	/* Check for no edit mode. */
 	if (conf()->io.txn != NULL) {
 		log_warning("reload aborted due to active configuration transaction");
+		systemd_ready_notify();
 		return KNOT_TXN_EEXISTS;
 	}
 
@@ -953,6 +966,7 @@ int server_reload(server_t *server)
 	if (ret != KNOT_EOK) {
 		log_error("failed to initialize configuration (%s)",
 		          knot_strerror(ret));
+		systemd_ready_notify();
 		return ret;
 	}
 
@@ -965,6 +979,7 @@ int server_reload(server_t *server)
 		ret = reload_conf(new_conf);
 		if (ret != KNOT_EOK) {
 			conf_free(new_conf);
+			systemd_ready_notify();
 			return ret;
 		}
 
@@ -1009,12 +1024,15 @@ int server_reload(server_t *server)
 		}
 	}
 
+	systemd_ready_notify();
+
 	return KNOT_EOK;
 }
 
 void server_stop(server_t *server)
 {
 	log_info("stopping server");
+	systemd_stopping_notify();
 
 	/* Stop scheduler. */
 	evsched_stop(&server->sched);

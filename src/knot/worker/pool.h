@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,10 +16,14 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 #include "knot/worker/queue.h"
 
 struct worker_pool;
 typedef struct worker_pool worker_pool_t;
+
+typedef void(*wait_callback_t)(worker_pool_t *);
 
 /*!
  * \brief Initialize worker pool.
@@ -62,9 +66,14 @@ void worker_pool_join(worker_pool_t *pool);
 
 /*!
  * \brief Wait till the number of pending tasks is zero.
- *
  */
 void worker_pool_wait(worker_pool_t *pool);
+
+/*!
+ * \brief Wait till the number of pending tasks is zero. Callback emitted on
+ *  thread wakeup can be specified.
+ */
+void worker_pool_wait_cb(worker_pool_t *pool, wait_callback_t cb);
 
 /*!
  * \brief Assign a task to be performed by a worker in the pool.
@@ -78,5 +87,7 @@ void worker_pool_clear(worker_pool_t *pool);
 
 /*!
  * \brief Obtain info regarding how the pool is busy.
+ *
+ * \note Locked means if the mutex `pool->lock` is locked.
  */
-void worker_pool_status(worker_pool_t *pool, int *running, int *queued);
+void worker_pool_status(worker_pool_t *pool, bool locked, int *running, int *queued);

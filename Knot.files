@@ -118,6 +118,8 @@ src/knot/common/process.c
 src/knot/common/process.h
 src/knot/common/stats.c
 src/knot/common/stats.h
+src/knot/common/systemd.c
+src/knot/common/systemd.h
 src/knot/conf/base.c
 src/knot/conf/base.h
 src/knot/conf/conf.c

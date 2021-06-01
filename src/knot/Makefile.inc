@@ -130,6 +130,8 @@ libknotd_la_SOURCES = \
 	knot/common/process.h			\
 	knot/common/stats.c			\
 	knot/common/stats.h			\
+	knot/common/systemd.c			\
+	knot/common/systemd.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
 	knot/journal/journal_basic.c		\
