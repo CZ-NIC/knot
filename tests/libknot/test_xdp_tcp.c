@@ -296,7 +296,7 @@ void test_close(void)
 	is_int(KNOT_EOK, ret, "close: relay 2 OK");
 	check_sent(0, 0, 0, 0);
 	is_int(conns_pre - 1, test_table->usage, "close: connection removed");
-	is_int(conns_pre - 1, list_size(&test_table->timeout), "close: timeout list size");
+	is_int(conns_pre - 1, knot_tcp_table_timeout_length(test_table), "close: timeout list size");
 }
 
 void test_many(void)
@@ -341,7 +341,7 @@ void test_many(void)
 	is_int(CONNS - 1, reset_count, "may/timeout2: reset count");
 	check_sent(0, CONNS - 1, 0, 0);
 	is_int(1, test_table->usage, "many/timeout: one survivor");
-	is_int(1, list_size(&test_table->timeout), "many/timeout: one survivor in timeout list");
+	is_int(1, knot_tcp_table_timeout_length(test_table), "many/timeout: one survivor in timeout list");
 	ok(surv_conn != NULL, "many/timeout: survivor connection present");
 	ok(surv_conn == rl->conn, "many/timeout: same connection");
 

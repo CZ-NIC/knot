@@ -28,6 +28,7 @@
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/siphash.h"
+#include "contrib/ucw/lists.h"
 
 static uint32_t get_timestamp(void) {
 	struct timespec t;
@@ -64,16 +65,32 @@ static uint64_t hash_four_tuple(const struct sockaddr_in6 *rem, const struct soc
 	return SipHash24_End(&ctx);
 }
 
+static list_t *tcp_table_timeout(knot_tcp_table_t *table)
+{
+	return (list_t *)&table->conns[table->size];
+}
+
+_public_
+size_t knot_tcp_table_timeout_length(knot_tcp_table_t *table)
+{
+	return list_size(tcp_table_timeout(table));
+}
+
+static node_t *tcp_conn_node(knot_tcp_conn_t *conn)
+{
+	return (node_t *)&conn->list_node_placeholder;
+}
+
 _public_
 knot_tcp_table_t *knot_tcp_table_new(size_t size)
 {
-	knot_tcp_table_t *t = calloc(1, sizeof(*t) + size * sizeof(t->conns[0]));
+	knot_tcp_table_t *t = calloc(1, sizeof(*t) + size * sizeof(t->conns[0]) + sizeof(list_t));
 	if (t == NULL) {
 		return t;
 	}
 
 	t->size = size;
-	init_list(&t->timeout);
+	init_list(tcp_table_timeout(t));
 
 	for (size_t i = 0; i < sizeof(t->hash_secret) / sizeof(*t->hash_secret); i++) {
 		t->hash_secret[i] = dnssec_random_uint32_t();
@@ -87,7 +104,7 @@ void knot_tcp_table_free(knot_tcp_table_t *t)
 {
 	if (t != NULL) {
 		knot_tcp_conn_t *n, *next;
-		WALK_LIST_DELSAFE(n, next, t->timeout) {
+		WALK_LIST_DELSAFE(n, next, *tcp_table_timeout(t)) {
 			free(n);
 		}
 		free(t);
@@ -103,8 +120,8 @@ static knot_tcp_conn_t **tcp_table_lookup(const struct sockaddr_in6 *rem, const 
 	while (*res != NULL) {
 		if (memcmp(&(*res)->ip_rem, rem, sdl) == 0 &&
 		    memcmp(&(*res)->ip_loc, loc, sdl) == 0) {
-			rem_node(&(*res)->n);
-			add_tail(&table->timeout, &(*res)->n);
+			rem_node(tcp_conn_node(*res));
+			add_tail(tcp_table_timeout(table), tcp_conn_node(*res));
 			break;
 		}
 		res = &(*res)->next;
@@ -124,7 +141,7 @@ static void tcp_table_del(knot_tcp_conn_t **todel)
 	knot_tcp_conn_t *conn = *todel;
 	if (conn != NULL) {
 		*todel = conn->next; // remove from conn-table linked list
-		rem_node(&conn->n); // remove from timeout double-linked list
+		rem_node(tcp_conn_node(conn)); // remove from timeout double-linked list
 		free(conn->inbuf.iov_base);
 		free(conn);
 	}
@@ -168,7 +185,7 @@ static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *t
 	c->acked = msg->ackno;
 
 	c->last_active = get_timestamp();
-	add_tail(&table->timeout, &c->n);
+	add_tail(tcp_table_timeout(table), tcp_conn_node(c));
 
 	c->state = XDP_TCP_NORMAL;
 	memset(&c->inbuf, 0, sizeof(c->inbuf));
@@ -518,7 +535,7 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 	list_t to_remove;
 	init_list(&to_remove);
 
-	WALK_LIST_DELSAFE(conn, next, tcp_table->timeout) {
+	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
 		if (i++ < reset_at_least ||
 		    now - conn->last_active >= reset_timeout ||
 		    (reset_inbufs > 0 && conn->inbuf.iov_len > 0)) {
@@ -570,7 +587,7 @@ void knot_xdp_tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
 {
 	uint32_t now = get_timestamp(), i = 0;
 	knot_tcp_conn_t *conn, *next;
-	WALK_LIST_DELSAFE(conn, next, tcp_table->timeout) {
+	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
 		if (i++ < at_least || now - conn->last_active >= timeout) {
 			tcp_table_del3(conn, tcp_table);
 			if (cleaned != NULL) {
