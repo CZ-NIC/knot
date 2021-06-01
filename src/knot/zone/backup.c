@@ -44,11 +44,14 @@ static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 	}
 }
 
-#define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
+// Current backup format version for output.
+#define BACKUP_VERSION BACKUP_FORMAT_1
 
 #define LABEL_FILE "knot_backup_label.txt"
 #define LOCK_FILE  "knot.backup.lockfile"
+
 #define FNAME_MAX (MAX(sizeof(LABEL_FILE), sizeof(LOCK_FILE)))
+#define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
 #if defined(_POSIX_HOST_NAME_MAX)
 #  define HOSTNAME_MAX (_POSIX_HOST_NAME_MAX + 1)  // _POSIX_HOST_NAME_MAX doesn't include '\0'.
@@ -88,9 +91,11 @@ static int make_label_file(zone_backup_ctx_t *ctx, char *full_path)
 	              "Created on host:   %s\n"
 	              "Backup time:       %s\n"
 	              "Knot DNS version:  %s\n"
+	              "Backup format:     %s\n"
 	              "Parameters used:   +backupdir %s\n"
 	              "                   +%szonefile +%sjournal +%stimers +%skaspdb +%scatalog\n",
-	              hostname, date, PACKAGE_VERSION,
+	              label_file_head,
+	              hostname, date, PACKAGE_VERSION, BACKUP_VERSION,
 	              ctx->backup_dir,
 	              ctx->backup_zonefile ? "" : "no",
 	              ctx->backup_journal ? "" : "no",
@@ -119,6 +124,7 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 		return KNOT_ENOMEM;
 	}
 	ctx->restore_mode = restore_mode;
+	ctx->backup_format = BACKUP_VERSION;
 	ctx->backup_global = false;
 	ctx->readers = 1;
 	ctx->failed = false;
