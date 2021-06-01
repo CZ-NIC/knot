@@ -22,6 +22,13 @@
 #include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/zone/zone.h"
 
+/*! \bref Backup format versions. */
+typedef enum {
+	BACKUP_FORMAT_1 = 1,           // in Knot DNS 3.0.x, no label file
+	BACKUP_FORMAT_2 = 2,           // in Knot DNS 3.1.x
+	BACKUP_FORMAT_TERM,
+} knot_backup_format_t;
+
 typedef struct zone_backup_ctx {
 	node_t n;                           // ability to be put into list_t
 	bool restore_mode;                  // if true, this is not a backup, but restore
@@ -40,6 +47,7 @@ typedef struct zone_backup_ctx {
 	knot_lmdb_db_t bck_catalog;         // backup catalog DB
 	int lock_file;                      // lock file preventing simultaneous backups to same directory
 	bool failed;                        // true if an error occurred in processing of any zone
+	knot_backup_format_t backup_format; // the backup format version used
 } zone_backup_ctx_t;
 
 typedef struct {
