@@ -254,16 +254,16 @@ static void event_loop(server_t *server, const char *socket)
 	/* Run event loop. */
 	for (;;) {
 		/* Interrupts. */
-		if (sig_req_stop) {
-			break;
-		}
-		if (sig_req_reload) {
+		if (sig_req_reload && !sig_req_stop) {
 			sig_req_reload = false;
 			server_reload(server);
 		}
-		if (sig_req_zones_reload) {
+		if (sig_req_zones_reload && !sig_req_stop) {
 			sig_req_zones_reload = false;
 			server_update_zones(conf(), server);
+		}
+		if (sig_req_stop) {
+			break;
 		}
 
 		// Update control timeout.
