@@ -53,7 +53,7 @@ static struct sockaddr_storage addr_from_socket(int sock)
 	struct sockaddr_storage addr = { 0 };
 	socklen_t len = sizeof(addr);
 	int ret = getsockname(sock, (struct sockaddr *)&addr, &len);
-	ok(ret == 0, "check getsockname return");
+	is_int(0, ret, "check getsockname return");
 
 	return addr;
 }
@@ -222,7 +222,7 @@ static void test_connected_one(const struct sockaddr_storage *server_addr,
 	} else {
 		r = net_dgram_send(client, out, out_len, NULL);
 	}
-	ok(r == out_len, "%s, %s: client, send message", name, addr_name);
+	is_int(out_len, r, "%s, %s: client, send message", name, addr_name);
 
 	r = net_is_connected(client);
 	ok(r, "%s, %s: client, is connected", name, addr_name);
@@ -233,8 +233,8 @@ static void test_connected_one(const struct sockaddr_storage *server_addr,
 	} else {
 		r = net_dgram_recv(client, in, sizeof(in), TIMEOUT);
 	}
-	ok(r == out_len && memcmp(out, in, out_len) == 0,
-	   "%s, %s: client, receive message", name, addr_name);
+	is_int(out_len, r, "%s, %s: client, receive message length", name, addr_name);
+	ok(memcmp(out, in, out_len) == 0, "%s, %s: client, receive message", name, addr_name);
 
 	close(client);
 }
@@ -254,7 +254,7 @@ static void test_connected(int type)
 
 	if (socktype_is_stream(type)) {
 		r = listen(server, LISTEN_BACKLOG);
-		ok(r == 0, "%s: server, start listening", name);
+		is_int(0, r, "%s: server, start listening", name);
 	}
 
 	server_ctx_t server_ctx = { 0 };
@@ -305,14 +305,14 @@ static void test_unconnected(void)
 	ok(!net_is_connected(sock), "UDP, is not connected");
 
 	r = net_dgram_send(sock, buffer, buffer_len, NULL);
-	ok(r == KNOT_ECONN, "UDP, send failure on unconnected socket");
+	is_int(KNOT_ECONN, r, "UDP, send failure on unconnected socket");
 
 	r = net_dgram_recv(sock, buffer, buffer_len, TIMEOUT_SHORT);
-	ok(r == KNOT_ETIMEOUT, "UDP, receive timeout on unconnected socket");
+	is_int(KNOT_ETIMEOUT, r, "UDP, receive timeout on unconnected socket");
 
 	struct sockaddr_storage server_addr = addr_from_socket(server);
 	r = net_dgram_send(sock, buffer, buffer_len, &server_addr);
-	ok(r == buffer_len, "UDP, send on defined address");
+	is_int(buffer_len, r, "UDP, send on defined address");
 
 	close(sock);
 
@@ -334,10 +334,10 @@ static void test_unconnected(void)
 #endif
 
 	r = net_stream_send(sock, buffer, buffer_len, expected_timeout);
-	ok(r == expected, "TCP, send %s on unconnected socket", expected_msg);
+	is_int(expected, r, "TCP, send %s on unconnected socket", expected_msg);
 
 	r = net_stream_recv(sock, buffer, sizeof(buffer), expected_timeout);
-	ok(r == expected, "TCP, receive %s on unconnected socket", expected_msg);
+	is_int(expected, r, "TCP, receive %s on unconnected socket", expected_msg);
 
 	close(sock);
 
@@ -363,16 +363,16 @@ static void test_refused(void)
 	addr = addr_from_socket(server);
 
 	r = listen(server, LISTEN_BACKLOG);
-	ok(r == 0, "server, start listening");
+	is_int(0, r, "server, start listening");
 
 	client = net_connected_socket(SOCK_STREAM, &addr, NULL);
 	ok(client >= 0, "client, connect");
 
 	r = net_stream_send(client, (uint8_t *)"", 1, TIMEOUT);
-	ok(r == 1, "client, successful write");
+	is_int(1, r, "client, successful write");
 
 	r = net_stream_recv(client, buffer, sizeof(buffer), TIMEOUT_SHORT);
-	ok(r == KNOT_ETIMEOUT, "client, timeout on read");
+	is_int(KNOT_ETIMEOUT, r, "client, timeout on read");
 
 	close(client);
 
@@ -382,10 +382,10 @@ static void test_refused(void)
 	ok(client >= 0, "client, connect");
 
 	r = close(server);
-	ok(r == 0, "server, close socket");
+	is_int(0, r, "server, close socket");
 
 	r = net_stream_send(client, (uint8_t *)"", 1, TIMEOUT);
-	ok(r == KNOT_ECONN, "client, refused on write");
+	is_int(KNOT_ECONN, r, "client, refused on write");
 
 	close(client);
 }
@@ -502,7 +502,7 @@ static void test_dns_tcp(void)
 		ok(server >= 0, "%s, server, create socket", t->name);
 
 		int r = listen(server, LISTEN_BACKLOG);
-		ok(r == 0, "%s, server, start listening", t->name);
+		is_int(0, r, "%s, server, start listening", t->name);
 
 		server_ctx_t server_ctx = { 0 };
 		r = server_start(&server_ctx, server, SOCK_STREAM, handler_dns, &handler_ctx);
@@ -545,7 +545,7 @@ static void test_nonblocking_mode(int type)
 
 	if (socktype_is_stream(type)) {
 		int r = listen(server, LISTEN_BACKLOG);
-		ok(r == 0, "%s: bound, start listening", name);
+		is_int(0, r, "%s: bound, start listening", name);
 	}
 
 	struct sockaddr_storage server_addr = addr_from_socket(server);
@@ -569,7 +569,7 @@ static void test_nonblocking_accept(void)
 	ok(server >= 0, "server, create socket");
 
 	r = listen(server, LISTEN_BACKLOG);
-	ok(r == 0, "server, start listening");
+	is_int(0, r, "server, start listening");
 
 	addr_server = addr_from_socket(server);
 
@@ -583,7 +583,7 @@ static void test_nonblocking_accept(void)
 	// accept connection
 
 	r = poll_read(server);
-	ok(r == 1, "server, pending connection");
+	is_int(1, r, "server, pending connection");
 
 	struct sockaddr_storage addr_accepted = { 0 };
 	int accepted = net_accept(server, &addr_accepted);
@@ -603,7 +603,7 @@ static void test_nonblocking_accept(void)
 	ok(client >= 0, "client, reconnect");
 
 	r = poll_read(server);
-	ok(r == 1, "server, pending connection");
+	is_int(1, r, "server, pending connection");
 
 	accepted = net_accept(server, NULL);
 	ok(accepted >= 0, "server, accept connection (no remote address)");
