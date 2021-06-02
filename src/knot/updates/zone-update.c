@@ -895,8 +895,9 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
 	bool dnssec = conf_bool(&val);
-	int digest_alg = conf_zonemd_algorithm(update->zone->name);
-	if (digest_alg > 0 && !dnssec && // in case of DNSSEC, digest is part of signing routine
+	val = conf_zone_get(conf, C_ZONEMD_GENERATE, update->zone->name);
+	unsigned digest_alg = conf_opt(&val);
+	if (digest_alg != ZONE_DIGEST_NONE && !dnssec && // in case of DNSSEC, digest is part of signing routine
 	    ((update->flags & UPDATE_FULL) || zone_update_to(update) != NULL)) {
 		ret = zone_update_add_digest(update, digest_alg, false);
 	}

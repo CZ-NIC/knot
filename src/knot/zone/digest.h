@@ -56,13 +56,3 @@ struct zone_update;
  * \return KNOT_E*
  */
 int zone_update_add_digest(struct zone_update *update, int algorithm, bool placeholder);
-
-/*!
- * \brief Get conf() if zone shall be digested and which algorithm.
- *
- * \param zone   Zone in question.
- *
- * \retval 0   Do not digest the zone.
- * \return >0  Digest algorithm (e.g. 2 = SHA512).
- */
-int conf_zonemd_algorithm(const knot_dname_t *zone);

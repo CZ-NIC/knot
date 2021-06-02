@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,10 +30,8 @@
 #include "knot/zone/adjust.h"
 #include "knot/zone/digest.h"
 
-
-
 static int sign_init(zone_update_t *update, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
-                     knot_time_t adjust_now, knot_lmdb_db_t *kaspdb, kdnssec_ctx_t *ctx, int *zonemd,
+                     knot_time_t adjust_now, knot_lmdb_db_t *kaspdb, kdnssec_ctx_t *ctx, unsigned *zonemd_alg,
                      zone_sign_reschedule_t *reschedule)
 {
 	assert(update);
@@ -71,9 +69,10 @@ static int sign_init(zone_update_t *update, zone_sign_flags_t flags, zone_sign_r
 
 	ctx->rrsig_drop_existing = flags & ZONE_SIGN_DROP_SIGNATURES;
 
-	*zonemd = conf_zonemd_algorithm(zone_name);
-	if (*zonemd) {
-		r = zone_update_add_digest(update, *zonemd, true);
+	conf_val_t val = conf_zone_get(conf(), C_ZONEMD_GENERATE, zone_name);
+	*zonemd_alg = conf_opt(&val);
+	if (*zonemd_alg != ZONE_DIGEST_NONE) {
+		r = zone_update_add_digest(update, *zonemd_alg, true);
 		if (r != KNOT_EOK) {
 			return r;
 		}
@@ -170,7 +169,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
-	int zonemd_alg;
+	unsigned zonemd_alg;
 
 	// signing pipeline
 
@@ -244,7 +243,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		}
 	}
 
-	if (zonemd_alg) {
+	if (zonemd_alg != ZONE_DIGEST_NONE) {
 		result = zone_update_add_digest(update, zonemd_alg, false);
 		if (result == KNOT_EOK) {
 			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_ZONEMD, &keyset, &ctx);
@@ -281,7 +280,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
-	int zonemd_alg;
+	unsigned zonemd_alg;
 
 	result = sign_init(update, 0, 0, 0, update->zone->kaspdb, &ctx, &zonemd_alg, reschedule);
 	if (result != KNOT_EOK) {
@@ -344,7 +343,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		goto done;
 	}
 
-	if (zonemd_alg) {
+	if (zonemd_alg != ZONE_DIGEST_NONE) {
 		result = zone_update_add_digest(update, zonemd_alg, false);
 		if (result == KNOT_EOK) {
 			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_ZONEMD, &keyset, &ctx);
