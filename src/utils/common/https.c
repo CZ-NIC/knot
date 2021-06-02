@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "contrib/base64url.h"
+#include "contrib/macros.h"
 #include "contrib/url-parser/url_parser.h"
 #include "libknot/errcode.h"
 #include "utils/common/https.h"
@@ -164,10 +165,11 @@ static int https_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t f
 
 	https_ctx_t *ctx = (https_ctx_t *)user_data;
 	if (ctx->stream == stream_id) {
-		memcpy(ctx->recv_buf, data, len);
-		ctx->recv_buflen = len;
+		int cpy_len = MIN(len, ctx->recv_buflen);
+		memcpy(ctx->recv_buf, data, cpy_len);
+		ctx->recv_buf += cpy_len;
+		ctx->recv_buflen -= cpy_len;
 		ctx->read = false;
-		ctx->stream = -1;
 	}
 	return KNOT_EOK;
 }
@@ -472,7 +474,7 @@ int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len
 		pthread_mutex_unlock(&ctx->recv_mx);
 		return KNOT_NET_ERECV;
 	}
-
+	ctx->stream = -1;
 	ctx->recv_buf = NULL;
 
 	pthread_mutex_unlock(&ctx->recv_mx);
@@ -482,7 +484,8 @@ int https_recv_dns_response(https_ctx_t *ctx, uint8_t *buf, const size_t buf_len
 		return KNOT_NET_ERECV;
 	}
 
-	return ctx->recv_buflen;
+	assert(buf_len >= ctx->recv_buflen);
+	return buf_len - ctx->recv_buflen;
 }
 
 void https_ctx_deinit(https_ctx_t *ctx)
