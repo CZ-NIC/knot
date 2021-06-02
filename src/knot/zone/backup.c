@@ -23,17 +23,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "knot/zone/backup.h"
+
 #include "contrib/files.h"
 #include "contrib/macros.h"
-#include "knot/zone/backup.h"
+#include "contrib/string.h"
 #include "knot/catalog/catalog_db.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
 #include "libdnssec/error.h"
-#include "contrib/files.h"
-#include "contrib/string.h"
 
 static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 {
@@ -335,7 +335,8 @@ static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)
 	return policy;
 }
 
-#define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)", ctx->restore_mode ? "restore" : "backup", (action), knot_strerror(ret))
+#define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)", ctx->restore_mode ? \
+                         "restore" : "backup", (action), knot_strerror(ret))
 #define LOG_MARK_FAIL(action) LOG_FAIL(action); \
                               ctx->failed = true
 
