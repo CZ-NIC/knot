@@ -36,9 +36,9 @@ int keymgr_nsec3_salt_print(kdnssec_ctx_t *ctx);
 
 int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt);
 
-int keymgr_serial_print(kdnssec_ctx_t *ctx);
+int keymgr_serial_print(kdnssec_ctx_t *ctx, kaspdb_serial_t type);
 
-int keymgr_serial_set(kdnssec_ctx_t *ctx, uint32_t new_serial);
+int keymgr_serial_set(kdnssec_ctx_t *ctx, kaspdb_serial_t type, uint32_t new_serial);
 
 int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits);
 

@@ -625,11 +625,11 @@ int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt)
 	return ret;
 }
 
-int keymgr_serial_print(kdnssec_ctx_t *ctx)
+int keymgr_serial_print(kdnssec_ctx_t *ctx, kaspdb_serial_t type)
 {
 	uint32_t serial = 0;
 	int ret = kasp_db_load_serial(ctx->kasp_db, ctx->zone->dname,
-	                              KASPDB_SERIAL_LASTSIGNED, &serial);
+	                              type, &serial);
 	switch (ret) {
 	case KNOT_EOK:
 		printf("Current serial: %u\n", serial);
@@ -642,10 +642,10 @@ int keymgr_serial_print(kdnssec_ctx_t *ctx)
 	return ret;
 }
 
-int keymgr_serial_set(kdnssec_ctx_t *ctx, uint32_t new_serial)
+int keymgr_serial_set(kdnssec_ctx_t *ctx, kaspdb_serial_t type, uint32_t new_serial)
 {
 	return kasp_db_store_serial(ctx->kasp_db, ctx->zone->dname,
-	                            KASPDB_SERIAL_LASTSIGNED, new_serial);
+	                            type, new_serial);
 }
 
 static void print_tsig(dnssec_tsig_algorithm_t mac, const char *name,
