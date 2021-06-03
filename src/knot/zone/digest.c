@@ -236,26 +236,25 @@ int zone_update_add_digest(struct zone_update *update, int algorithm, bool place
 	}
 
 	knot_rrset_t zonemd, soa = node_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
-	knot_rrset_init(&zonemd, update->new_cont->apex->owner, KNOT_RRTYPE_ZONEMD,
-	                KNOT_CLASS_IN, soa.ttl);
 
-	uint8_t rd[sizeof(zonemd.rrs.rdata->len) + zonemd_hash_offs() + dsize + 1];
-	wire_ctx_t wire = wire_ctx_init(rd, sizeof(rd));
-	wire_ctx_write_u16(&wire, 0); // placeholder for rdata len
+	uint8_t rdata[zonemd_hash_offs() + dsize];
+	wire_ctx_t wire = wire_ctx_init(rdata, sizeof(rdata));
 	wire_ctx_write_u32(&wire, knot_soa_serial(soa.rrs.rdata));
 	wire_ctx_write_u8(&wire, KNOT_ZONEMD_SCHEME_SIMPLE);
 	wire_ctx_write_u8(&wire, algorithm);
 	wire_ctx_write(&wire, digest, dsize);
-	if (wire_ctx_offset(&wire) & 1) {
-		wire_ctx_write_u8(&wire, 0);
-	}
-
-	zonemd.rrs.count = 1;
-	zonemd.rrs.rdata = (knot_rdata_t *)rd;
-	zonemd.rrs.size = wire_ctx_offset(&wire);
-	zonemd.rrs.rdata->len = zonemd.rrs.size - sizeof(zonemd.rrs.rdata->len);
+	assert(wire.error == KNOT_EOK && wire_ctx_available(&wire) == 0);
 
 	free(digest);
 
-	return zone_update_add(update, &zonemd);
+	knot_rrset_init(&zonemd, update->new_cont->apex->owner, KNOT_RRTYPE_ZONEMD,
+	                KNOT_CLASS_IN, soa.ttl);
+	int ret = knot_rrset_add_rdata(&zonemd, rdata, sizeof(rdata), NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = zone_update_add(update, &zonemd);
+	knot_rdataset_clear(&zonemd.rrs, NULL);
+	return ret;
 }
