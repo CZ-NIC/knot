@@ -121,9 +121,23 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
 		return knot_error_from_libdnssec(ret);
 	}
 
-	ret = zone_contents_apply((zone_contents_t *)contents, digest_node, &ctx);
+	zone_tree_t *conts = contents->nodes;
+	if (!zone_tree_is_empty(contents->nsec3_nodes)) {
+		conts = zone_tree_shallow_copy(conts);
+		if (conts == NULL) {
+			ret = KNOT_ENOMEM;;
+		}
+		if (ret == KNOT_EOK) {
+			ret = zone_tree_merge(conts, contents->nsec3_nodes);
+		}
+	}
+
 	if (ret == KNOT_EOK) {
-		ret = zone_contents_nsec3_apply((zone_contents_t *)contents, digest_node, &ctx);
+		ret = zone_tree_apply(conts, digest_node, &ctx);
+	}
+
+	if (conts != contents->nodes) {
+		zone_tree_free(&conts);
 	}
 
 	dnssec_binary_t res = { 0 };

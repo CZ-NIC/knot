@@ -70,6 +70,27 @@ zone_tree_t *zone_tree_cow(zone_tree_t *from)
 	return to;
 }
 
+static trie_val_t nocopy(const trie_val_t val, knot_mm_t *mm)
+{
+	UNUSED(mm);
+	return val;
+}
+
+zone_tree_t *zone_tree_shallow_copy(zone_tree_t *from)
+{
+	zone_tree_t *to = calloc(1, sizeof(*to));
+	if (to == NULL) {
+		return to;
+	}
+	to->flags = from->flags;
+	to->trie = trie_dup(from->trie, nocopy, NULL);
+	if (to->trie == NULL) {
+		free(to);
+		to = NULL;
+	}
+	return to;
+}
+
 int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 {
 	if (tree == NULL || node == NULL || *node == NULL) {
