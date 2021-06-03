@@ -65,10 +65,13 @@ static void print_help(void)
 	       "  import-pkcs11 Import key stored in PKCS11 storage. Specify its parameters manually.\n"
 	       "                 (syntax: import-pkcs11 <key_id> <attribute_name>=<value>...)\n"
 	       "  nsec3-salt    Print current NSEC3 salt. If a parameter is specified, set new salt.\n"
-	       "                 (syntax: nsec3salt [<new_salt>])\n"
+	       "                 (syntax: nsec3-salt [<new_salt>])\n"
 	       "  local-serial  Print SOA serial stored in KASP database when using on-slave signing.\n"
 	       "                 If a parameter is specified, set new serial.\n"
-	       "                 (syntax: serial <new_serial>)\n"
+	       "                 (syntax: local-serial <new_serial>)\n"
+	       "  master-serial Print SOA serial of the remote master stored in KASP database when using on-slave signing.\n"
+	       "                 If a parameter is specified, set new master serial.\n"
+	       "                 (syntax: master-serial <new_serial>)\n"
 	       "  ds            Generate DS record(s) for specified key.\n"
 	       "                 (syntax: ds <key_spec>)\n"
 	       "  dnskey        Generate DNSKEY record for specified key.\n"
@@ -172,14 +175,15 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 			ret = keymgr_nsec3_salt_print(&kctx);
 			print_ok_on_succes = false;
 		}
-	} else if (strcmp(argv[1], "local-serial") == 0) {
+	} else if (strcmp(argv[1], "local-serial") == 0 || strcmp(argv[1], "master-serial") == 0 ) {
+		kaspdb_serial_t type = (argv[1][0] == 'm' ? KASPDB_SERIAL_MASTER : KASPDB_SERIAL_LASTSIGNED);
 		if (argc > 2) {
 			uint32_t new_serial = 0;
 			if ((ret = str_to_u32(argv[2], &new_serial)) == KNOT_EOK) {
-				ret = keymgr_serial_set(&kctx, new_serial);
+				ret = keymgr_serial_set(&kctx, type, new_serial);
 			}
 		} else {
-			ret = keymgr_serial_print(&kctx);
+			ret = keymgr_serial_print(&kctx, type);
 			print_ok_on_succes = false;
 		}
 	} else if (strcmp(argv[1], "set") == 0) {

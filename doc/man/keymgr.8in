@@ -123,6 +123,10 @@ If \fInew_serial\fP is specified, the serial is overwritten. After updating the 
 (\fBzone\-purge +expire +zonefile +journal\fP) if the server is running, or remove corresponding zone file
 and journal contents if the server is stopped.
 .TP
+\fBmaster\-serial\fP [\fInew_serial\fP]
+Print SOA serial of the remote master stored in KASP database when using on\-secondary DNSSEC signing.
+If \fInew_serial\fP is specified, the serial is overwritten (not recommended).
+.TP
 \fBset\fP \fIkey_spec\fP [\fIarguments\fP\&...]
 Changes a timing argument (or ksk/zsk) of an existing key to a new value. \fIKey_spec\fP is either the
 key tag or a prefix of the key ID, with an optional \fI[id=|keytag=]\fP prefix; \fIarguments\fP

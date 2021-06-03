@@ -96,6 +96,10 @@ Commands
   (**zone-purge +expire +zonefile +journal**) if the server is running, or remove corresponding zone file
   and journal contents if the server is stopped.
 
+**master-serial** [*new_serial*]
+  Print SOA serial of the remote master stored in KASP database when using on-secondary DNSSEC signing.
+  If *new_serial* is specified, the serial is overwritten (not recommended).
+
 **set** *key_spec* [*arguments*...]
   Changes a timing argument (or ksk/zsk) of an existing key to a new value. *Key_spec* is either the
   key tag or a prefix of the key ID, with an optional *[id=|keytag=]* prefix; *arguments* 
