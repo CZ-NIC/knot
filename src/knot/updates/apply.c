@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -172,32 +172,6 @@ int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags)
 	ctx->adjust_ptrs->flags = contents->nodes->flags;
 
 	ctx->flags = flags;
-
-	return KNOT_EOK;
-}
-
-int apply_prepare_zone_copy(zone_contents_t *old_contents,
-                            zone_contents_t **new_contents)
-{
-	if (old_contents == NULL || new_contents == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/*
-	 * Create a shallow copy of the zone, so that the structures may be
-	 * updated.
-	 *
-	 * This will create new zone contents structures (normal nodes' tree,
-	 * NSEC3 tree), and copy all nodes.
-	 * The data in the nodes (RRSets) remain the same though.
-	 */
-	zone_contents_t *contents_copy = NULL;
-	int ret = zone_contents_shallow_copy(old_contents, &contents_copy);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	*new_contents = contents_copy;
 
 	return KNOT_EOK;
 }

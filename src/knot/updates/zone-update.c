@@ -48,7 +48,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 	if (update->flags & UPDATE_HYBRID) {
 		update->new_cont = old_contents;
 	} else {
-		ret = apply_prepare_zone_copy(old_contents, &update->new_cont);
+		ret = zone_contents_cow(old_contents, &update->new_cont);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&update->change);
 			return ret;
