@@ -74,7 +74,6 @@ typedef struct {
 
 	// Recv locks
 	pthread_mutex_t recv_mx;
-	bool read;
 	int32_t stream;
 } https_ctx_t;
 
