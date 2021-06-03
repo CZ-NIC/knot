@@ -169,6 +169,16 @@ static int https_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t f
 		memcpy(ctx->recv_buf, data, cpy_len);
 		ctx->recv_buf += cpy_len;
 		ctx->recv_buflen -= cpy_len;
+	}
+	return KNOT_EOK;
+}
+
+static int https_on_stream_close_callback(nghttp2_session *session, int32_t stream_id, uint32_t error_code, void *user_data)
+{
+	assert(user_data);
+
+	https_ctx_t *ctx = (https_ctx_t *)user_data;
+	if (ctx->stream == stream_id) {
 		ctx->read = false;
 	}
 	return KNOT_EOK;
@@ -238,6 +248,7 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
 	nghttp2_session_callbacks_set_recv_callback(callbacks, https_recv_callback);
 	nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, https_on_data_chunk_recv_callback);
 	nghttp2_session_callbacks_set_on_header_callback(callbacks, https_on_header_callback);
+	nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, https_on_stream_close_callback);
 
 	int ret = nghttp2_session_client_new(&(ctx->session), callbacks, ctx);
 	if (ret != 0) {
