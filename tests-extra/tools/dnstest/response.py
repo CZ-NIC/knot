@@ -374,6 +374,12 @@ class Response(object):
         soa = str(sect[0].to_rdataset())
         return int(soa.split()[5])
 
+    def check_soa_serial(self, expect, section="answer"):
+        found = self.soa_serial(section)
+        if found != expect:
+            set_err("CHECK SOA SERIAL")
+            detail_log("SOA serial different than expected: %d != %d" % (found, expect))
+
     def check_auth_soa_ttl(self, dnssec=False):
         if self.count("SOA", "authority") != 1:
             set_err("CHECK SOA PRESENCE")

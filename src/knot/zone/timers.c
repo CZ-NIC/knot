@@ -57,6 +57,7 @@ enum timer_id {
 	TIMER_NEXT_DS_CHECK,
 	TIMER_NEXT_DS_PUSH,
 	TIMER_CATALOG_MEMBER,
+	TIMER_LAST_NOTIFIED,
 };
 
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
@@ -84,6 +85,7 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		case TIMER_LAST_FLUSH:    timers.last_flush = value; break;
 		case TIMER_LAST_REFRESH:  timers.last_refresh = value; break;
 		case TIMER_NEXT_REFRESH:  timers.next_refresh = value; break;
+		case TIMER_LAST_NOTIFIED: timers.last_notified_serial = value; break;
 		case TIMER_LAST_RESALT:   timers.last_resalt = value; break;
 		case TIMER_NEXT_DS_CHECK: timers.next_ds_check = value; break;
 		case TIMER_NEXT_DS_PUSH:  timers.next_ds_push = value; break;
@@ -106,11 +108,12 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
                              const zone_timers_t *timers)
 {
 	MDB_val k = { knot_dname_size(zone), (void *)zone };
-	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBL",
+	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBLBL",
 		TIMER_SOA_EXPIRE,    (uint64_t)timers->soa_expire,
 		TIMER_LAST_FLUSH,    (uint64_t)timers->last_flush,
 		TIMER_LAST_REFRESH,  (uint64_t)timers->last_refresh,
 		TIMER_NEXT_REFRESH,  (uint64_t)timers->next_refresh,
+		TIMER_LAST_NOTIFIED, timers->last_notified_serial,
 		TIMER_LAST_RESALT,   (uint64_t)timers->last_resalt,
 		TIMER_NEXT_DS_CHECK, (uint64_t)timers->next_ds_check,
 		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push,
@@ -208,4 +211,10 @@ int zone_timers_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	}
 	knot_lmdb_commit(&txn);
 	return txn.ret;
+}
+
+bool zone_timers_serial_notified(const zone_timers_t *timers, uint32_t serial)
+{
+	return (timers->last_notified_serial & LAST_NOTIFIED_SERIAL_VALID) &&
+	       ((uint32_t)timers->last_notified_serial == serial);
 }
