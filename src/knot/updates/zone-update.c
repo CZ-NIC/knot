@@ -20,6 +20,7 @@
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
+#include "knot/zone/digest.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zonefile.h"
@@ -47,7 +48,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 	if (update->flags & UPDATE_HYBRID) {
 		update->new_cont = old_contents;
 	} else {
-		ret = apply_prepare_zone_copy(old_contents, &update->new_cont);
+		ret = zone_contents_cow(old_contents, &update->new_cont);
 		if (ret != KNOT_EOK) {
 			changeset_clear(&update->change);
 			return ret;
@@ -526,6 +527,9 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 	if (update == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
+	if (knot_rrset_empty(rrset)) {
+		return KNOT_EOK;
+	}
 
 	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && rrset->type != KNOT_RRTYPE_SOA) {
 		int ret = changeset_add_removal(&update->change, rrset, CHANGESET_CHECK);
@@ -849,6 +853,24 @@ int zone_update_semcheck(zone_update_t *update)
 	return KNOT_EOK;
 }
 
+int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
+{
+	conf_val_t val = conf_zone_get(conf, C_ZONEMD_VERIFY, update->zone->name);
+	if (!conf_bool(&val)) {
+		return KNOT_EOK;
+	}
+
+	int ret = zone_contents_digest_verify(update->new_cont);
+	if (ret != KNOT_EOK) {
+		log_zone_error(update->zone->name, "ZONEMD, verification failed (%s)",
+		               knot_strerror(ret));
+	} else {
+		log_zone_info(update->zone->name, "ZONEMD, verification successful");
+	}
+
+	return ret;
+}
+
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (conf == NULL || update == NULL) {
@@ -861,10 +883,23 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		zone_update_clear(update);
 		return KNOT_EOK;
 	}
+
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		ret = commit_incremental(conf, update);
 	} else {
 		ret = commit_full(conf, update);
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
+	bool dnssec = conf_bool(&val);
+	val = conf_zone_get(conf, C_ZONEMD_GENERATE, update->zone->name);
+	unsigned digest_alg = conf_opt(&val);
+	if (digest_alg != ZONE_DIGEST_NONE && !dnssec && // in case of DNSSEC, digest is part of signing routine
+	    ((update->flags & UPDATE_FULL) || zone_update_to(update) != NULL)) {
+		ret = zone_update_add_digest(update, digest_alg, false);
 	}
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -882,7 +917,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	/* Check the zone size. */
-	conf_val_t val = conf_zone_get(conf, C_ZONE_MAX_SIZE, update->zone->name);
+	val = conf_zone_get(conf, C_ZONE_MAX_SIZE, update->zone->name);
 	size_t size_limit = conf_int(&val);
 
 	if (update->new_cont->size > size_limit) {
@@ -918,8 +953,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return ret;
 	}
 
-	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
-	if (conf_bool(&val) && zone_is_slave(conf, update->zone)) {
+	if (dnssec && zone_is_slave(conf, update->zone)) {
 		ret = zone_set_lastsigned_serial(update->zone,
 		                                 zone_contents_serial(update->new_cont));
 		if (ret != KNOT_EOK) {

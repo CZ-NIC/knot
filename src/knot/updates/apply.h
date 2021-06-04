@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,17 +47,6 @@ typedef struct apply_ctx apply_ctx_t;
  * \return KNOT_E*
  */
 int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags);
-
-/*!
- * \brief Creates a shallow zone contents copy.
- *
- * \param old_contents  Source.
- * \param new_contents  Target.
- *
- * \return KNOT_E*
- */
-int apply_prepare_zone_copy(zone_contents_t *old_contents,
-                            zone_contents_t **new_contents);
 
 /*!
  * \brief Adds a single RR into zone contents.

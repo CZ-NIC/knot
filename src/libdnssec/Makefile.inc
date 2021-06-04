@@ -12,6 +12,7 @@ include_libdnssecdir = $(includedir)/libdnssec
 include_libdnssec_HEADERS = \
 	libdnssec/binary.h			\
 	libdnssec/crypto.h			\
+	libdnssec/digest.h			\
 	libdnssec/dnssec.h			\
 	libdnssec/error.h			\
 	libdnssec/key.h				\
@@ -28,6 +29,7 @@ include_libdnssec_HEADERS = \
 libdnssec_la_SOURCES = \
 	libdnssec/binary.c			\
 	libdnssec/crypto.c			\
+	libdnssec/digest.c			\
 	libdnssec/error.c			\
 	libdnssec/key/algorithm.c		\
 	libdnssec/key/algorithm.h		\

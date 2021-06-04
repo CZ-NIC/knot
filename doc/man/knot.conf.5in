@@ -1511,6 +1511,8 @@ zone:
     dnssec\-signing: BOOL
     dnssec\-validation: BOOL
     dnssec\-policy: STR
+    zonemd\-verify: BOOL
+    zonemd\-generate: none | zonemd\-sha384 | zonemd\-sha512
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
@@ -1778,6 +1780,44 @@ A \fI\%reference\fP to DNSSEC signing policy.
 A configured policy called "default" won\(aqt be used unless explicitly referenced.
 .UNINDENT
 .UNINDENT
+.SS zonemd\-verify
+.sp
+On each zone load/update, verify that ZONEMD is present in the zone and valid.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Zone digest calculation may take much time and CPU on large zones.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS zonemd\-generate
+.sp
+On each zone update, calculate ZONEMD and put it into the zone.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBnone\fP – No ZONEMD is generated.
+.IP \(bu 2
+\fBzonemd\-sha384\fP – Generate ZONEMD using SHA384 algorithm.
+.IP \(bu 2
+\fBzonemd\-sha512\fP – Generate ZONEMD using SHA512 algorithm.
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+After this configuration is changed, it\(aqs possible that new ZONEMD
+won\(aqt be generated until some other update/change to the zone appears.
+If DNSSEC is enabled, it\(aqs recommended to force re\-sign the zone
+after setting this option to generating ZONEMD, or after changing
+the algorithm.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP none
 .SS serial\-policy
 .sp
 Specifies how the zone serial is updated after a dynamic update or

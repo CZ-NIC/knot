@@ -91,6 +91,7 @@ check_PROGRAMS += \
 	knot/test_conf_tools			\
 	knot/test_confdb			\
 	knot/test_confio			\
+	knot/test_digest			\
 	knot/test_dthreads			\
 	knot/test_fdset				\
 	knot/test_journal			\

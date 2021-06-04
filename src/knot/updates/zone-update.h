@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -258,6 +258,16 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf);
  * \return KNOT_E*
  */
 int zone_update_semcheck(zone_update_t *update);
+
+/*!
+ * \brief If configured, verify ZONEMD and log the result.
+ *
+ * \param conf       Configuration.
+ * \param update     Zone update.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_verify_digest(conf_t *conf, zone_update_t *update);
 
 /*!
  * \brief Commits all changes to the zone, signs it, saves changes to journal.

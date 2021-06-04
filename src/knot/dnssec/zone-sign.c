@@ -1073,12 +1073,12 @@ int knot_zone_sign_update(zone_update_t *update,
 	return ret;
 }
 
-int knot_zone_sign_soa(zone_update_t *update,
-		       const zone_keyset_t *zone_keys,
-		       const kdnssec_ctx_t *dnssec_ctx)
+int knot_zone_sign_apex_rr(zone_update_t *update, uint16_t rrtype,
+                           const zone_keyset_t *zone_keys,
+                           const kdnssec_ctx_t *dnssec_ctx)
 {
-	knot_rrset_t soa_to = node_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
-	knot_rrset_t soa_rrsig = node_rrset(update->new_cont->apex, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t rr = node_rrset(update->new_cont->apex, rrtype);
+	knot_rrset_t rrsig = node_rrset(update->new_cont->apex, KNOT_RRTYPE_RRSIG);
 	changeset_t ch;
 	int ret = changeset_init(&ch, update->zone->name);
 	if (ret == KNOT_EOK) {
@@ -1087,7 +1087,7 @@ int knot_zone_sign_soa(zone_update_t *update,
 			changeset_clear(&ch);
 			return KNOT_ENOMEM;
 		}
-		ret = force_resign_rrset(&soa_to, &soa_rrsig, sign_ctx, &ch);
+		ret = force_resign_rrset(&rr, &rrsig, sign_ctx, &ch);
 		if (ret == KNOT_EOK) {
 			ret = zone_update_apply_changeset(update, &ch);
 		}

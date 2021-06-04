@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ zone_tree_t *zone_tree_create(bool use_binodes)
 	return t;
 }
 
-zone_tree_t *zone_tree_dup(zone_tree_t *from)
+zone_tree_t *zone_tree_cow(zone_tree_t *from)
 {
 	zone_tree_t *to = calloc(1, sizeof(*to));
 	if (to == NULL) {
@@ -63,6 +63,27 @@ zone_tree_t *zone_tree_dup(zone_tree_t *from)
 	from->cow = trie_cow(from->trie, NULL, NULL);
 	to->cow = from->cow;
 	to->trie = trie_cow_new(to->cow);
+	if (to->trie == NULL) {
+		free(to);
+		to = NULL;
+	}
+	return to;
+}
+
+static trie_val_t nocopy(const trie_val_t val, knot_mm_t *mm)
+{
+	UNUSED(mm);
+	return val;
+}
+
+zone_tree_t *zone_tree_shallow_copy(zone_tree_t *from)
+{
+	zone_tree_t *to = calloc(1, sizeof(*to));
+	if (to == NULL) {
+		return to;
+	}
+	to->flags = from->flags;
+	to->trie = trie_dup(from->trie, nocopy, NULL);
 	if (to->trie == NULL) {
 		free(to);
 		to = NULL;

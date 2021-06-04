@@ -78,7 +78,15 @@ static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset,
 		return KNOT_ENOMEM;
 	}
 	node->rrs = p;
-	int ret = rr_data_from(rrset, node->rrs + node->rrset_count, mm);
+
+	// ensure rrsets are sorted by rrtype
+	struct rr_data *insert_pos = node->rrs, *end = node->rrs + node->rrset_count;
+	while (insert_pos != end && insert_pos->type < rrset->type) {
+		insert_pos++;
+	}
+	memmove(insert_pos + 1, insert_pos, (uint8_t *)end - (uint8_t *)insert_pos);
+
+	int ret = rr_data_from(rrset, insert_pos, mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

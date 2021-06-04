@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,15 +28,16 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/adjust.h"
+#include "knot/zone/digest.h"
 
-static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
-                     knot_time_t adjust_now, knot_lmdb_db_t *kaspdb, kdnssec_ctx_t *ctx,
+static int sign_init(zone_update_t *update, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
+                     knot_time_t adjust_now, knot_lmdb_db_t *kaspdb, kdnssec_ctx_t *ctx, unsigned *zonemd_alg,
                      zone_sign_reschedule_t *reschedule)
 {
-	assert(zone);
+	assert(update);
 	assert(ctx);
 
-	const knot_dname_t *zone_name = zone->apex->owner;
+	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 
 	int r = kdnssec_ctx_init(conf(), ctx, zone_name, kaspdb, NULL);
 	if (r != KNOT_EOK) {
@@ -56,7 +57,7 @@ static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_r
 	}
 
 	// update policy based on the zone content
-	update_policy_from_zone(ctx->policy, zone);
+	update_policy_from_zone(ctx->policy, update->new_cont);
 
 	// perform key rollover if needed
 	r = knot_dnssec_key_rollover(ctx, roll_flags, reschedule);
@@ -67,6 +68,15 @@ static int sign_init(zone_contents_t *zone, zone_sign_flags_t flags, zone_sign_r
 	// RRSIG handling
 
 	ctx->rrsig_drop_existing = flags & ZONE_SIGN_DROP_SIGNATURES;
+
+	conf_val_t val = conf_zone_get(conf(), C_ZONEMD_GENERATE, zone_name);
+	*zonemd_alg = conf_opt(&val);
+	if (*zonemd_alg != ZONE_DIGEST_NONE) {
+		r = zone_update_add_digest(update, *zonemd_alg, true);
+		if (r != KNOT_EOK) {
+			return r;
+		}
+	}
 
 	return KNOT_EOK;
 }
@@ -159,11 +169,12 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
+	unsigned zonemd_alg;
 
 	// signing pipeline
 
-	result = sign_init(update->new_cont, flags, roll_flags, adjust_now,
-	                   update->zone->kaspdb, &ctx, reschedule);
+	result = sign_init(update, flags, roll_flags, adjust_now,
+	                   update->zone->kaspdb, &ctx, &zonemd_alg, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -223,11 +234,23 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	if (!(flags & ZONE_SIGN_KEEP_SERIAL) && zone_update_to(update) == NULL) {
 		result = zone_update_increment_soa(update, conf());
 		if (result == KNOT_EOK) {
-			result = knot_zone_sign_soa(update, &keyset, &ctx);
+			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_SOA, &keyset, &ctx);
 		}
 		if (result != KNOT_EOK) {
 			log_zone_error(zone_name, "DNSSEC, failed to update SOA record (%s)",
 				       knot_strerror(result));
+			goto done;
+		}
+	}
+
+	if (zonemd_alg != ZONE_DIGEST_NONE) {
+		result = zone_update_add_digest(update, zonemd_alg, false);
+		if (result == KNOT_EOK) {
+			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_ZONEMD, &keyset, &ctx);
+		}
+		if (result != KNOT_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to update ZONEMD record (%s)",
+			               knot_strerror(result));
 			goto done;
 		}
 	}
@@ -257,8 +280,9 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
+	unsigned zonemd_alg;
 
-	result = sign_init(update->new_cont, 0, 0, 0, update->zone->kaspdb, &ctx, reschedule);
+	result = sign_init(update, 0, 0, 0, update->zone->kaspdb, &ctx, &zonemd_alg, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -311,12 +335,24 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 		result = zone_update_increment_soa(update, conf());
 	}
 	if (result == KNOT_EOK) {
-		result = knot_zone_sign_soa(update, &keyset, &ctx);
+		result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_SOA, &keyset, &ctx);
 	}
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to update SOA record (%s)",
 		               knot_strerror(result));
 		goto done;
+	}
+
+	if (zonemd_alg != ZONE_DIGEST_NONE) {
+		result = zone_update_add_digest(update, zonemd_alg, false);
+		if (result == KNOT_EOK) {
+			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_ZONEMD, &keyset, &ctx);
+		}
+		if (result != KNOT_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to update ZONEMD record (%s)",
+			               knot_strerror(result));
+			goto done;
+		}
 	}
 
 	log_zone_info(zone_name, "DNSSEC, successfully signed");

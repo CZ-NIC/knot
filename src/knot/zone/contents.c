@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -158,25 +158,6 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 	}
 
 	*n = node;
-	return KNOT_EOK;
-}
-
-static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
-{
-	out->nodes = zone_tree_dup(z->nodes);
-	if (out->nodes == NULL) {
-		return KNOT_ENOMEM;
-	}
-	out->apex = zone_tree_fix_get(z->apex, out->nodes);
-	return KNOT_EOK;
-}
-
-static int recreate_nsec3_tree(const zone_contents_t *z, zone_contents_t *out)
-{
-	out->nsec3_nodes = zone_tree_dup(z->nsec3_nodes);
-	if (out->nsec3_nodes == NULL) {
-		return KNOT_ENOMEM;
-	}
 	return KNOT_EOK;
 }
 
@@ -463,7 +444,7 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
 	return zone_tree_apply(contents->nsec3_nodes, function, data);
 }
 
-int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to)
+int zone_contents_cow(const zone_contents_t *from, zone_contents_t **to)
 {
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
@@ -479,23 +460,21 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 		return KNOT_ENOMEM;
 	}
 
-	int ret = recreate_normal_tree(from, contents);
-	if (ret != KNOT_EOK) {
-		zone_tree_free(&contents->nodes);
+	contents->nodes = zone_tree_cow(from->nodes);
+	if (contents->nodes == NULL) {
 		free(contents);
-		return ret;
+		return KNOT_ENOMEM;
 	}
+	contents->apex = zone_tree_fix_get(from->apex, contents->nodes);
 
 	if (from->nsec3_nodes) {
-		ret = recreate_nsec3_tree(from, contents);
-		if (ret != KNOT_EOK) {
-			zone_tree_free(&contents->nodes);
-			zone_tree_free(&contents->nsec3_nodes);
+		contents->nsec3_nodes = zone_tree_cow(from->nsec3_nodes);
+		if (contents->nsec3_nodes == NULL) {
+			trie_cow_rollback(contents->nodes->cow, NULL, NULL);
+			free(contents->nodes);
 			free(contents);
-			return ret;
+			return KNOT_ENOMEM;
 		}
-	} else {
-		contents->nsec3_nodes = NULL;
 	}
 	contents->adds_tree = from->adds_tree;
 	contents->size = from->size;

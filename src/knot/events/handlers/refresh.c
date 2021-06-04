@@ -247,6 +247,9 @@ static int axfr_finalize(struct refresh_data *data)
 	data->axfr.zone = NULL;
 
 	ret = zone_update_semcheck(&up);
+	if (ret == KNOT_EOK) {
+		ret = zone_update_verify_digest(data->conf, &up);
+	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		return ret;
@@ -504,6 +507,9 @@ static int ixfr_finalize(struct refresh_data *data)
 	}
 
 	ret = zone_update_semcheck(&up);
+	if (ret == KNOT_EOK) {
+		ret = zone_update_verify_digest(data->conf, &up);
+	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		return ret;

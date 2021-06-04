@@ -137,6 +137,8 @@
 #define C_ZONE			"\x04""zone"
 #define C_ZONEFILE_LOAD		"\x0D""zonefile-load"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
+#define C_ZONEMD_GENERATE	"\x0F""zonemd-generate"
+#define C_ZONEMD_VERIFY		"\x0D""zonemd-verify"
 #define C_ZONE_MAX_SIZE		"\x0D""zone-max-size"
 #define C_ZONE_MAX_TLL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
@@ -176,6 +178,12 @@ enum {
 	SERIAL_POLICY_INCREMENT  = 1,
 	SERIAL_POLICY_UNIXTIME   = 2,
 	SERIAL_POLICY_DATESERIAL = 3,
+};
+
+enum {
+	ZONE_DIGEST_NONE   = 0,
+	ZONE_DIGEST_SHA384 = 1,
+	ZONE_DIGEST_SHA512 = 2,
 };
 
 enum {

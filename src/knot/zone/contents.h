@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -233,13 +233,7 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
                               zone_tree_apply_cb_t function, void *data);
 
 /*!
- * \brief Creates a shallow copy of the zone (no stored data are copied).
- *
- * This function creates a new zone structure in \a to, creates new trees for
- * regular nodes and for NSEC3 nodes, creates new hash table and a new domain
- * table. It also fills these structures with the exact same data as the
- * original zone is - no copying of stored data is done, just pointers are
- * copied.
+ * \brief Create new zone_contents by COW copy of zone trees.
  *
  * \param from Original zone.
  * \param to Copy of the zone.
@@ -248,7 +242,7 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
-int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to);
+int zone_contents_cow(const zone_contents_t *from, zone_contents_t **to);
 
 /*!
  * \brief Deallocate directly owned data of zone contents.

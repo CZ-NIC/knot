@@ -1,0 +1,58 @@
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
+#include "knot/zone/contents.h"
+
+/*!
+ * \brief Compute hash over whole zone by concatenating RRSets in wire format.
+ *
+ * \param contents     Zone contents to digest.
+ * \param algorithm    Algorithm to use.
+ * \param out_digest   Output: buffer with computed hash (to be freed).
+ * \param out_size     Output: size of the resulting hash.
+ *
+ * \return KNOT_E*
+ */
+int zone_contents_digest(const zone_contents_t *contents, int algorithm,
+                         uint8_t **out_digest, size_t *out_size);
+
+/*!
+ * \brief Verify zone dgest in ZONEMD record.
+ *
+ * \param contents   Zone contents ot be verified.
+ *
+ * \retval KNOT_ENOENT      There is no ZONEMD in contents' apex.
+ * \retval KNOT_ENOTSUP     None of present ZONEMD is supported (scheme+algrithm+SOAserial).
+ * \retval KNOT_ESEMCHECK   Duplicate ZONEMD with identical scheme+algorithm pair.
+ * \retval KNOT_EFEWDATA    Error in hash length.
+ * \retval KNOT_EMALF       The computed hash differs from ZONEMD.
+ * \return KNOT_E*
+ */
+int zone_contents_digest_verify(const zone_contents_t *contents);
+
+struct zone_update;
+/*!
+ * \brief Add ZONEMD record to zone_update.
+ *
+ * \param update        Update with contents to be digested.
+ * \param algorithm     ZONEMD algorithm.
+ * \param placeholder   Don't calculate, just put placeholder (if ZONEMD not yet present).
+ *
+ * \return KNOT_E*
+ */
+int zone_update_add_digest(struct zone_update *update, int algorithm, bool placeholder);

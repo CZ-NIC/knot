@@ -52,6 +52,7 @@
 \section libdnssec-content Sections
  - \ref binary   — Universal binary data container
  - \ref crypto   — Cryptographic backend
+ - \ref digest   — Data hashing operations
  - \ref error    — Error codes and error reporting
  - \ref key      — DNSSEC key manipulation
  - \ref keyid    — DNSSEC key ID manipulation
@@ -65,6 +66,7 @@
 
 \defgroup binary   binary
 \defgroup crypto   crypto
+\defgroup digest   digest
 \defgroup error    error
 \defgroup key      key
 \defgroup keyid    keyid
