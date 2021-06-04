@@ -34,6 +34,7 @@
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
+#include "knot/zone/zonefile.h"
 #include "libdnssec/error.h"
 
 static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
@@ -46,7 +47,7 @@ static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 }
 
 // Current backup format version for output.
-#define BACKUP_VERSION BACKUP_FORMAT_1
+#define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.
 
 #define LABEL_FILE "knot_backup_label.txt"
 #define LOCK_FILE  "knot.backup.lockfile"
@@ -464,6 +465,11 @@ done:
 	return ret;
 }
 
+#define ABORT_IF_ENOMEM(param)	if (param == NULL) { \
+					ret = KNOT_ENOMEM; \
+					goto done_zfile; \
+				}
+
 int zone_backup(conf_t *conf, zone_t *zone)
 {
 	zone_backup_ctx_t *ctx = zone->backup_ctx;
@@ -476,7 +482,23 @@ int zone_backup(conf_t *conf, zone_t *zone)
 
 	if (ctx->backup_zonefile) {
 		char *local_zf = conf_zonefile(conf, zone->name);
-		char *backup_zf = dir_file(ctx->backup_dir, local_zf);
+		char *backup_zfiles_dir = NULL, *backup_zf = NULL, *zone_name_str;
+
+		switch (ctx->backup_format) {
+		case BACKUP_FORMAT_1:
+			backup_zf = dir_file(ctx->backup_dir, local_zf);
+			ABORT_IF_ENOMEM(backup_zf);
+			break;
+		case BACKUP_FORMAT_2:
+		default:
+			backup_zfiles_dir = dir_file(ctx->backup_dir, "zonefiles");
+			ABORT_IF_ENOMEM(backup_zfiles_dir);
+			zone_name_str = knot_dname_to_str_alloc(zone->name);
+			ABORT_IF_ENOMEM(zone_name_str);
+			backup_zf = sprintf_alloc("%s/%szone", backup_zfiles_dir, zone_name_str);
+			free(zone_name_str);
+			ABORT_IF_ENOMEM(backup_zf);
+		}
 
 		if (ctx->restore_mode) {
 			struct stat st;
@@ -498,18 +520,24 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 			bool can_flush = (conf_int(&val) > -1);
 
-			if (can_flush) {
-				if (zone->contents != NULL) {
-					ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
+			ret = make_dir(backup_zfiles_dir, S_IRWXU | S_IRWXG, true);
+			if (ret == KNOT_EOK) {
+				if (can_flush) {
+					if (zone->contents != NULL) {
+						ret = zonefile_write(backup_zf, zone->contents);
+					} else {
+						log_zone_notice(zone->name,
+						                "empty zone, skipping a zone file backup");
+					}
 				} else {
-					log_zone_notice(zone->name, "empty zone, skipping a zone file backup");
+					ret = copy_file(backup_zf, local_zf);
 				}
-			} else {
-				ret = copy_file(backup_zf, local_zf);
 			}
 		}
 
+done_zfile:
 		free(backup_zf);
+		free(backup_zfiles_dir);
 		free(local_zf);
 		if (ret == KNOT_EFILE) {
 			log_zone_notice(zone->name, "no zone file, skipping a zone file %s",

@@ -980,11 +980,13 @@ This method is recommended in the case of complete data loss, for example
 physical server failure.
 
 .. NOTE::
-   The online backup procedure stores all zone files in a single directory.
-   If the original directory layout was different, then the required directory
-   structure must be created manually for offline restore and zone files
-   must be placed individually to their respective directories. This
-   limitation doesn't apply to the online restore procedure.
+   The online backup procedure stores all zone files in a single directory
+   using their default file names. If the original directory layout was
+   different, then the required directory structure must be created manually
+   for offline restore and zone files must be placed individually to their
+   respective directories. If the zone file names don't follow the default
+   pattern, they must be renamed manually to match the configuration. These
+   limitations don't apply to the online restore procedure.
 
 Online restore
 --------------
