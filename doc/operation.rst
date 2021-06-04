@@ -963,7 +963,7 @@ the backup work is done.
    There is a plain ASCII text file in the backup directory,
    ``knot_backup_label.txt``, that contains some useful information about the
    backup, such as the backup creation date & time, the hostname, etc. Care must
-   always be taken **not to remove this file** from the backup.
+   always be taken **not to remove this file** from the backup nor to damage it.
 
 Offline restore
 ---------------
