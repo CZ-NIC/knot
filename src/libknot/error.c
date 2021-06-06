@@ -57,6 +57,7 @@ static const struct error errors[] = {
 	{ KNOT_EEXIST,        "already exists" },
 	{ KNOT_ERANGE,        "value is out of range" },
 	{ KNOT_EADDRNOTAVAIL, "address is not available" },
+	{ KNOT_ENOTDIR,       "not a directory" },
 
 	{ KNOT_ERRNO_ERROR,   "unknown system error" },
 
