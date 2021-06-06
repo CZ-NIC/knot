@@ -522,6 +522,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	pthread_mutex_lock(&ctx->readers_mutex);
 	ctx->readers++;
 	pthread_mutex_unlock(&ctx->readers_mutex);
+	ctx->zone_count++;
 
 	int ret = schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 
