@@ -99,14 +99,16 @@ static int make_label_file(zone_backup_ctx_t *ctx, char *full_path)
 	              "Knot DNS version:  %s\n"
 	              LABEL_FILE_FORMAT
 	              "Parameters used:   +backupdir %s\n"
-	              "                   +%szonefile +%sjournal +%stimers +%skaspdb +%scatalog\n",
+	              "                   +%szonefile +%sjournal +%stimers +%skaspdb +%scatalog\n"
+	              "Zone count:        %d\n",
 	              label_file_head, hostname, date, PACKAGE_VERSION, BACKUP_VERSION,
 	              ctx->backup_dir,
 	              ctx->backup_zonefile ? "" : "no",
 	              ctx->backup_journal ? "" : "no",
 	              ctx->backup_timers ? "" : "no",
 	              ctx->backup_kaspdb ? "" : "no",
-	              ctx->backup_catalog ? "" : "no");
+	              ctx->backup_catalog ? "" : "no",
+	              ctx->zone_count);
 
 	ret = (ret < 0) ? knot_map_errno() : KNOT_EOK;
 
@@ -191,6 +193,7 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 	ctx->backup_global = false;
 	ctx->readers = 1;
 	ctx->failed = false;
+	ctx->zone_count = 0;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 
@@ -603,6 +606,7 @@ done_zfile:
 		}
 		if (ret != KNOT_EOK) {
 			LOG_MARK_FAIL("timers");
+			goto done;
 		}
 	}
 

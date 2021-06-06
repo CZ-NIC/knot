@@ -48,6 +48,7 @@ typedef struct zone_backup_ctx {
 	int lock_file;                      // lock file preventing simultaneous backups to same directory
 	bool failed;                        // true if an error occurred in processing of any zone
 	knot_backup_format_t backup_format; // the backup format version used
+	int zone_count;                     // count of backed up zones
 } zone_backup_ctx_t;
 
 typedef struct {
