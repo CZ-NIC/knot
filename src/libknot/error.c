@@ -99,7 +99,7 @@ static const struct error errors[] = {
 	{ KNOT_EPROGRAM,     "program not loaded" },
 	{ KNOT_EFD,          "file descriptor error" },
 	{ KNOT_ENOPARAM,     "missing parameter" },
-	{ KNOT_EXPARAM,      "conflicting parameters" },
+	{ KNOT_EXPARAM,      "parameter conflict" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 
