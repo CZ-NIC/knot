@@ -195,9 +195,19 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 
 	int ret;
+	struct stat sb;
 
-	// Make sure the target backup directory exists.
-	if (!restore_mode) {
+	// Make sure the source/target backup directory exists.
+	if (restore_mode) {
+		if (stat(backup_dir, &sb) != 0) {
+			free(ctx);
+			return knot_map_errno();
+		}
+		if (!S_ISDIR(sb.st_mode)) {
+			free(ctx);
+			return KNOT_ENOTDIR;
+		}
+	} else {
 		ret = make_dir(backup_dir, S_IRWXU|S_IRWXG, true);
 		if (ret != KNOT_EOK) {
 			free(ctx);
@@ -213,13 +223,11 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 	sprintf(full_path, "%s/%s", (ctx)->backup_dir, label_file_name);
 	if (restore_mode) {
 		ret = get_backup_format(full_path, forced, &ctx->backup_format);
-		// Existence of backup_dir is verified later by the lock file.
 		if (ret != KNOT_EOK) {
 			free(ctx);
 			return ret;
 		}
 	} else {
-		struct stat sb;
 		if (stat(full_path, &sb) == 0) {
 			free(ctx);
 			return KNOT_EEXIST;
