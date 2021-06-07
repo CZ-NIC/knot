@@ -15,6 +15,9 @@ libdnssec.so.8 libdnssec8 #MINVER#
  dnssec_crypto_cleanup@Base 3.0.0
  dnssec_crypto_init@Base 3.0.0
  dnssec_crypto_reinit@Base 3.0.0
+ dnssec_digest@Base 3.1.0
+ dnssec_digest_finish@Base 3.1.0
+ dnssec_digest_init@Base 3.1.0
  dnssec_key_can_sign@Base 3.0.0
  dnssec_key_can_verify@Base 3.0.0
  dnssec_key_clear@Base 3.0.0
