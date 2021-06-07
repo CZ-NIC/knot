@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,16 +81,16 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		uint8_t id = wire_ctx_read_u8(&wire);
 		uint64_t value = wire_ctx_read_u64(&wire);
 		switch (id) {
-		case TIMER_SOA_EXPIRE:    timers.soa_expire = value; break;
-		case TIMER_LAST_FLUSH:    timers.last_flush = value; break;
-		case TIMER_LAST_REFRESH:  timers.last_refresh = value; break;
-		case TIMER_NEXT_REFRESH:  timers.next_refresh = value; break;
-		case TIMER_LAST_NOTIFIED: timers.last_notified_serial = value; break;
-		case TIMER_LAST_RESALT:   timers.last_resalt = value; break;
-		case TIMER_NEXT_DS_CHECK: timers.next_ds_check = value; break;
-		case TIMER_NEXT_DS_PUSH:  timers.next_ds_push = value; break;
-		case TIMER_CATALOG_MEMBER:timers.catalog_member = value; break;
-		default:                 break; // ignore
+		case TIMER_SOA_EXPIRE:     timers.soa_expire = value; break;
+		case TIMER_LAST_FLUSH:     timers.last_flush = value; break;
+		case TIMER_LAST_REFRESH:   timers.last_refresh = value; break;
+		case TIMER_NEXT_REFRESH:   timers.next_refresh = value; break;
+		case TIMER_LAST_NOTIFIED:  timers.last_notified_serial = value; break;
+		case TIMER_LAST_RESALT:    timers.last_resalt = value; break;
+		case TIMER_NEXT_DS_CHECK:  timers.next_ds_check = value; break;
+		case TIMER_NEXT_DS_PUSH:   timers.next_ds_push = value; break;
+		case TIMER_CATALOG_MEMBER: timers.catalog_member = value; break;
+		default:                   break; // ignore
 		}
 	}
 
