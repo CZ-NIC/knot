@@ -7,6 +7,15 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 export DPKG_GENSYMBOLS_CHECK_LEVEL := 4
 export KNOT_SOFTHSM2_DSO = /usr/lib/softhsm/libsofthsm2.so
 
+DISTRO := $(shell dpkg-parsechangelog -Sdistribution)
+ifneq (,$(filter $(DISTRO), stretch xenial))
+  SUBSTVARS = -Vdist:Depends=""
+else ifneq (,$(filter $(DISTRO), buster bionic focal))
+  SUBSTVARS = -Vdist:Depends="libelf-dev"
+else
+  SUBSTVARS = -Vdist:Depends="libbpf-dev (>= 0.0.6), libelf-dev"
+endif
+
 include /usr/share/dpkg/default.mk
 
 ifeq (maint,$(filter $(DEB_BUILD_OPTIONS),maint))
@@ -38,6 +47,9 @@ PYBUILD = pybuild --dir python --dest-dir debian/python3-libknot
 	dh $@ \
 	 --exclude=.la --exclude=example.com.zone \
 	 --with python3
+
+override_dh_gencontrol:
+	dh_gencontrol -- $(SUBSTVARS)
 
 override_dh_auto_configure:
 	dh_auto_configure -- \

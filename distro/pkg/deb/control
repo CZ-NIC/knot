@@ -15,7 +15,6 @@ Build-Depends:
  dh-python,
  libcap-ng-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386],
  libedit-dev,
- libelf-dev,
  libfstrm-dev,
  libgnutls28-dev,
  libidn2-0-dev,
@@ -32,6 +31,7 @@ Build-Depends:
  pkg-config,
  protobuf-c-compiler,
  python3-all,
+ ${dist:Depends}
 Standards-Version: 4.5.0
 Homepage: https://www.knot-dns.cz/
 Vcs-Browser: https://gitlab.nic.cz/knot/knot-dns
