@@ -31,12 +31,17 @@ int event_backup(conf_t *conf, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
+	bool restore = ctx->restore_mode;
+
+	if (!restore && ctx->failed) {
+		// No need to proceed with already faulty backup.
+		return KNOT_EOK;
+	}
+
 	char *back_dir = strdup(ctx->backup_dir);
 	if (back_dir == NULL) {
 		 return KNOT_ENOMEM;
 	}
-
-	bool restore = ctx->restore_mode;
 
 	if (restore) {
 		// expire zone
