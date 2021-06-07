@@ -514,10 +514,16 @@ static int deinit_backup(ctl_args_t *args)
 static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = latest_backup_ctx(args);
+	if (!ctx->restore_mode && ctx->failed) {
+		// No need to proceed with already faulty backup.
+		return KNOT_EOK;
+	}
+
 	if (zone->backup_ctx != NULL) {
 		log_zone_warning(zone->name, "backup already in progress, skipping zone");
 		return KNOT_EOK;
 	}
+
 	zone->backup_ctx = ctx;
 	pthread_mutex_lock(&ctx->readers_mutex);
 	ctx->readers++;
@@ -526,7 +532,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 
 	int ret = schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 
-	if (ret == KNOT_EOK && !ctx->backup_global) {
+	if (ret == KNOT_EOK && !ctx->backup_global && (ctx->restore_mode || !ctx->failed)) {
 		ret = global_backup(ctx, zone->catalog, zone->name);
 	}
 
