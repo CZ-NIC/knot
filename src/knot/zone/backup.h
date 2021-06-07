@@ -45,7 +45,6 @@ typedef struct zone_backup_ctx {
 	knot_lmdb_db_t bck_timer_db;        // backup timer DB
 	knot_lmdb_db_t bck_journal;         // backup journal DB
 	knot_lmdb_db_t bck_catalog;         // backup catalog DB
-	int lock_file;                      // lock file preventing simultaneous backups to same directory
 	bool failed;                        // true if an error occurred in processing of any zone
 	knot_backup_format_t backup_format; // the backup format version used
 	int zone_count;                     // count of backed up zones

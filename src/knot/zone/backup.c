@@ -237,13 +237,23 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 		}
 	}
 
-	// Make the lock file.
+	// Make (or check for existence of) a lock file.
 	sprintf(full_path, "%s/%s", (ctx)->backup_dir, lock_file_name);
-	ctx->lock_file = open(full_path, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
-	if (ctx->lock_file < 0) {
-		free(ctx);
-		// Make the reported error better understandable than KNOT_EEXIST.
-		return errno == EEXIST ? KNOT_EBUSY : knot_map_errno();
+	if (restore_mode) {
+		// Just check.
+		if (stat(full_path, &sb) == 0) {
+			free(ctx);
+			return KNOT_EBUSY;
+		}
+	} else {
+		// Create it (which also checks for its existence).
+		int lock_file = open(full_path, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
+		if (lock_file < 0) {
+			free(ctx);
+			// Make the reported error better understandable than KNOT_EEXIST.
+			return errno == EEXIST ? KNOT_EBUSY : knot_map_errno();
+		}
+		close(lock_file);
 	}
 
 	pthread_mutex_init(&ctx->readers_mutex, NULL);
@@ -288,26 +298,16 @@ int zone_backup_deinit(zone_backup_ctx_t *ctx)
 		size_t backup_dir_len = strlen((ctx)->backup_dir) + 1;
 		char full_path[backup_dir_len + FNAME_MAX];
 
-		close(ctx->lock_file);
-
-		if (!ctx->failed) {
+		if (!ctx->restore_mode && !ctx->failed) {
 			// Create the label file first.
-			if (!ctx->restore_mode) {
-				sprintf(full_path, "%s/%s", (ctx)->backup_dir, label_file_name);
-				ret = make_label_file(ctx, full_path);
-				if (ret != KNOT_EOK) {
-					log_error("failed to create a backup label in %s", (ctx)->backup_dir);
-				}
-			}
-
-			// Remove the lock file.
-			//   If the label is missing, keep at least the lock file.
-			//   In case of forced (emergency) deinit, keep the lockfile in order to
-			//   avoid any next backup to the same directory already containing
-			//   partial/broken/obsolete data.
+			sprintf(full_path, "%s/%s", (ctx)->backup_dir, label_file_name);
+			ret = make_label_file(ctx, full_path);
 			if (ret == KNOT_EOK) {
+				// Remove the lock file only when the label file has been created.
 				sprintf(full_path, "%s/%s", (ctx)->backup_dir, lock_file_name);
 				unlink(full_path);
+			} else {
+				log_error("failed to create a backup label in %s", (ctx)->backup_dir);
 			}
 		}
 
