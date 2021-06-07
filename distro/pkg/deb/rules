@@ -82,7 +82,7 @@ override_dh_auto_install-arch:
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
 	# Some workarounds for Debian Stretch and Ubuntu Xenial
 	@if [ -f "$(CURDIR)/debian/tmp/usr/sbin/kxdpgun" ]; then \
-	  echo "Embedded XDP enabled"; \
+	  echo "XDP enabled"; \
 	elif [ -f "$(LIBKNOT_SYMBOLS)" ]; then \
 	  echo "No XDP"; \
 	  touch $(CURDIR)/debian/tmp/usr/share/man/man8/kxdpgun.8; \
