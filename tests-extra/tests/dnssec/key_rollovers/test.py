@@ -198,7 +198,7 @@ def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, se
     check_zone(server, zone, slave, after_keys, 1, 1, 2, msg)
 
     msg = desc + ": old alg removed"
-    wait_for_rrsig_count(t, server, "SOA", 1, 14, 20, msg)
+    wait_for_rrsig_count(t, server, "SOA", 1, 11, 17, msg)
     check_zone(server, zone, slave, after_keys, 1, 1, 1, msg)
 
 def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_keys, desc, set_stss, set_ksk_lifetime, submission_cb):
