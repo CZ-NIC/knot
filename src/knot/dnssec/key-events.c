@@ -352,7 +352,7 @@ static knot_time_t alg_publish_time(knot_time_t pre_active_time, const kdnssec_c
 
 static knot_time_t alg_remove_time(knot_time_t post_active_time, const kdnssec_ctx_t *ctx)
 {
-	return MAX(ksk_remove_time(post_active_time, false, ctx), zsk_remove_time(post_active_time, ctx));
+	return knot_time_add(post_active_time, ctx->policy->propagation_delay + ctx->policy->saved_key_ttl);
 }
 
 static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags)
