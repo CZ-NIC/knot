@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,18 +22,20 @@
 #include "libknot/dname.h"
 #include "knot/journal/knot_lmdb.h"
 
+#define LAST_NOTIFIED_SERIAL_VALID (1LLU << 32)
 /*!
  * \brief Persistent zone timers.
  */
 struct zone_timers {
-	uint32_t soa_expire;     //!< SOA expire value.
-	time_t last_flush;       //!< Last zone file synchronization.
-	time_t last_refresh;     //!< Last successful zone refresh attempt.
-	time_t next_refresh;     //!< Next zone refresh attempt.
-	time_t last_resalt;      //!< Last NSEC3 resalt.
-	time_t next_ds_check;    //!< Next parent DS check.
-	time_t next_ds_push;     //!< Next DDNS to parent zone with updated DS record.
-	time_t catalog_member;   //!< This catalog member zone created.
+	uint32_t soa_expire;           //!< SOA expire value.
+	time_t last_flush;             //!< Last zone file synchronization.
+	time_t last_refresh;           //!< Last successful zone refresh attempt.
+	time_t next_refresh;           //!< Next zone refresh attempt.
+	uint64_t last_notified_serial; //!< SOA serial of last successful NOTIFY; (1<<32) if none.
+	time_t last_resalt;            //!< Last NSEC3 resalt.
+	time_t next_ds_check;          //!< Next parent DS check.
+	time_t next_ds_push;           //!< Next DDNS to parent zone with updated DS record.
+	time_t catalog_member;         //!< This catalog member zone created.
 };
 
 typedef struct zone_timers zone_timers_t;
@@ -88,3 +90,8 @@ int zone_timers_write_all(knot_lmdb_db_t *db, knot_zonedb_t *zonedb);
  * \return KNOT_E*
  */
 int zone_timers_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
+
+/*!
+ * \brief Tell if the specified serial has already been notified according to timers.
+ */
+bool zone_timers_serial_notified(const zone_timers_t *timers, uint32_t serial);

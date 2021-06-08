@@ -332,7 +332,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	replan_from_timers(conf, zone);
 
-	if (!old_contents_exist || old_serial != new_serial) {
+	if (!zone_timers_serial_notified(&zone->timers, new_serial)) {
 		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
 	}
 

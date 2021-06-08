@@ -25,6 +25,13 @@ class TimerDBInfo:
         return "%d" % value
 
     @classmethod
+    def format_notify_serial(cls, value):
+        if (value & (1 << 32)) == 0:
+            return "none"
+        else:
+            return "%d" % (value & 0xffffffff)
+
+    @classmethod
     def format_value(cls, id, value):
         timers = {
                 # knot >= 1.6
@@ -43,6 +50,7 @@ class TimerDBInfo:
                 0x86: ("next_ds_push",   cls.format_timestamp),
                 # knot >= 3.1
                 0x87: ("catalog_member", cls.format_timestamp),
+                0x88: ("notify_serial",  cls.format_notify_serial),
         }
         if id in timers:
             return (timers[id][0], timers[id][1](value))
