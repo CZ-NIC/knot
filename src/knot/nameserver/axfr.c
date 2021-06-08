@@ -191,6 +191,9 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 			            knot_strerror(ret));
 			return KNOT_STATE_FAIL;
 		}
+	} else if (qdata->params->xdp_msg != NULL) {
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
+		return KNOT_STATE_FAIL;
 	}
 
 	/* Reserve space for TSIG. */
