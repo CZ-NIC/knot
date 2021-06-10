@@ -570,6 +570,9 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		ctx->backup_global = true;
 		ret = global_backup(ctx, &args->server->catalog, NULL);
 		if (ret != KNOT_EOK) {
+			log_ctl_error("control, error (%s)", knot_strerror(ret));
+			send_error(args, knot_strerror(ret));
+			ret = KNOT_EOK;
 			goto done;
 		}
 	}
