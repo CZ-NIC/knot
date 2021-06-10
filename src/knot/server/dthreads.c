@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -687,18 +687,28 @@ int dt_compact(dt_unit_t *unit)
 int dt_online_cpus(void)
 {
 	int ret = -1;
-/* Linux, Solaris, OS X 10.4+ */
+/* Linux, Solaris, macOS/OS X 10.4+ */
 #ifdef _SC_NPROCESSORS_ONLN
 	ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
 #else
 /* FreeBSD, NetBSD, OpenBSD, OS X < 10.4 */
 #if HAVE_SYSCTLBYNAME
 	size_t rlen = sizeof(int);
+#if defined(__OpenBSD__) || defined(__NetBSD__)
+	if (sysctlbyname("hw.ncpuonline", &ret, &rlen, NULL, 0) < 0) {
+		ret = -1;
+	}
+#elif defined(__FreeBSD__)
+	if (sysctlbyname("kern.smp.cpus", &ret, &rlen, NULL, 0) < 0) {
+		ret = -1;
+	}
+#else
 	if (sysctlbyname("hw.ncpu", &ret, &rlen, NULL, 0) < 0) {
 		ret = -1;
 	}
-#endif
-#endif
+#endif /* __OpenBSD__, __NetBSD__, __FreeBSD__, etc. */
+#endif /* HAVE_SYSCTLBYNAME */
+#endif /* _SC_NPROCESSORS_ONLN */
 	return ret;
 }
 
