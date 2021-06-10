@@ -106,6 +106,8 @@ enum knot_rr_type {
 	KNOT_RRTYPE_OPENPGPKEY =  61, /*!< OpenPGP Key. */
 	KNOT_RRTYPE_CSYNC      =  62, /*!< Child-To-Parent synchronization. */
 	KNOT_RRTYPE_ZONEMD     =  63, /*!< Message digest for DNS zone. */
+	KNOT_RRTYPE_SVCB       =  64, /*!< Service Binding. */
+	KNOT_RRTYPE_HTTPS      =  65, /*!< HTTPS Binding. */
 
 	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
 
