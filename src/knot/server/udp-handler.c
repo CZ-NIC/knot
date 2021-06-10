@@ -451,21 +451,10 @@ static udp_api_t xdp_recvmmsg_api = {
 };
 #endif /* ENABLE_XDP */
 
-static bool is_xdp_iface(const iface_t *iface)
+static bool is_xdp_thread(const server_t *server, int thread_id)
 {
-	bool is_xdp1 = (iface->fd_xdp_count > 0);
-	bool is_xdp2 = (iface->fd_udp_count == 0 && iface->fd_tcp_count == 0);
-	assert(is_xdp1 == is_xdp2);
-	return is_xdp1 || is_xdp2;
-}
-
-static bool is_xdp_thread(const iface_t *iface_zero, int thread_id)
-{
-	if (is_xdp_iface(iface_zero)) { // Only XDP interfaces.
-		return (thread_id >= iface_zero->xdp_first_thread_id);
-	} else {
-		return (thread_id >= iface_zero->fd_udp_count + iface_zero->fd_tcp_count);
-	}
+	return server->handlers[IO_XDP].size > 0 &&
+	       server->handlers[IO_XDP].handler.thread_id[0] <= thread_id;
 }
 
 static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
@@ -499,14 +488,15 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 	}
 }
 
-static unsigned udp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *fds,
+static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t *fds,
                                int thread_id, void **xdp_socket)
 {
 	if (n_ifaces == 0) {
 		return 0;
 	}
 
-	bool xdp_thread = is_xdp_thread(ifaces, thread_id);
+	bool xdp_thread = is_xdp_thread(server, thread_id);
+	const iface_t *ifaces = server->ifaces;
 
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
 		int fd = iface_udp_fd(i, thread_id, xdp_thread, xdp_socket);
@@ -545,7 +535,7 @@ int udp_master(dthread_t *thread)
 
 	/* Choose processing API. */
 	udp_api_t *api = NULL;
-	if (is_xdp_thread(handler->server->ifaces, thread_id)) {
+	if (is_xdp_thread(handler->server, thread_id)) {
 #ifdef ENABLE_XDP
 		api = &xdp_recvmmsg_api;
 #else
@@ -578,7 +568,7 @@ int udp_master(dthread_t *thread)
 	if (fdset_init(&fds, nifs) != KNOT_EOK) {
 		goto finish;
 	}
-	unsigned nfds = udp_set_ifaces(handler->server->ifaces, nifs, &fds,
+	unsigned nfds = udp_set_ifaces(handler->server, nifs, &fds,
 	                               thread_id, &xdp_socket);
 	if (nfds == 0) {
 		goto finish;
