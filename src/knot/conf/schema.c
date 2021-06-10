@@ -72,6 +72,15 @@ static const knot_lookup_t dnssec_key_algs[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t unsafe_operation[] = {
+	{ UNSAFE_NONE,       "none" },
+	{ UNSAFE_KEYSET,     "no-check-keyset" },
+	{ UNSAFE_DNSKEY,     "no-update-dnskey" },
+	{ UNSAFE_NSEC,       "no-update-nsec" },
+	{ UNSAFE_EXPIRED,    "no-update-expired" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t cds_cdnskey[] = {
 	{ CDS_CDNSKEY_NONE,      "none" },
 	{ CDS_CDNSKEY_EMPTY,     "delete-dnssec" },
@@ -352,6 +361,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ROLLOVER } },
 	{ C_CDS_DIGESTTYPE,      YP_TOPT,  YP_VOPT = { cds_digesttype, DNSSEC_KEY_DIGEST_SHA256 } },
 	{ C_OFFLINE_KSK,         YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
+	{ C_UNSAFE_OPERATION,    YP_TOPT,  YP_VOPT = { unsafe_operation, UNSAFE_NONE }, YP_FMULTI },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };

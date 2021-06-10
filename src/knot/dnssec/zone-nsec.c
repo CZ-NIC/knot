@@ -318,6 +318,10 @@ int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 		return KNOT_EINVAL;
 	}
 
+	if (ctx->policy->unsafe & UNSAFE_NSEC) {
+		return KNOT_EOK;
+	}
+
 	const knot_rdataset_t *soa = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
 	if (soa == NULL) {
 		return KNOT_EINVAL;
@@ -349,6 +353,10 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 {
 	if (update == NULL || ctx == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (ctx->policy->unsafe & UNSAFE_NSEC) {
+		return KNOT_EOK;
 	}
 
 	const knot_rdataset_t *soa_old = node_rdataset(update->zone->contents->apex, KNOT_RRTYPE_SOA);

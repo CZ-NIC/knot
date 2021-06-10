@@ -840,6 +840,10 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		return KNOT_EINVAL;
 	}
 
+	if (dnssec_ctx->policy->unsafe & UNSAFE_DNSKEY) {
+		return KNOT_EOK;
+	}
+
 	const zone_node_t *apex = update->new_cont->apex;
 	knot_rrset_t dnskeys = node_rrset(apex, KNOT_RRTYPE_DNSKEY);
 	knot_rrset_t cdnskeys = node_rrset(apex, KNOT_RRTYPE_CDNSKEY);

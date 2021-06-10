@@ -126,6 +126,7 @@
 #define C_UDP_MAX_PAYLOAD_IPV4	"\x14""udp-max-payload-ipv4"
 #define C_UDP_MAX_PAYLOAD_IPV6	"\x14""udp-max-payload-ipv6"
 #define C_UDP_WORKERS		"\x0B""udp-workers"
+#define C_UNSAFE_OPERATION	"\x10""unsafe-operation"
 #define C_UPDATE_OWNER		"\x0C""update-owner"
 #define C_UPDATE_OWNER_MATCH	"\x12""update-owner-match"
 #define C_UPDATE_OWNER_NAME	"\x11""update-owner-name"
@@ -160,6 +161,14 @@
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,
 	KEYSTORE_BACKEND_PKCS11 = 2,
+};
+
+enum {
+	UNSAFE_NONE       =  0,
+	UNSAFE_KEYSET     = (1 << 0),
+	UNSAFE_DNSKEY     = (1 << 1),
+	UNSAFE_NSEC       = (1 << 2),
+	UNSAFE_EXPIRED    = (1 << 3),
 };
 
 enum {
