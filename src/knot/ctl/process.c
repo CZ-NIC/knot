@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,7 +20,16 @@
 #include "libknot/error.h"
 #include "contrib/string.h"
 
-int ctl_process(knot_ctl_t *ctl, server_t *server)
+static int ctl_process_enqueue(server_t *server, ctl_args_queue_t *args_queue, ctl_args_t *args)
+{
+	assert(server != NULL || args != NULL);
+	ctl_args_t *bg_args = ctl_args_queue_enqueue(args_queue, args);
+	assert(bg_args != NULL);
+	pthread_cond_signal(&server->bg_cv);
+	return KNOT_CTL_ASYNC;
+}
+
+int ctl_process(knot_ctl_t *ctl, server_t *server, ctl_args_queue_t *args_queue)
 {
 	if (ctl == NULL || server == NULL) {
 		return KNOT_EINVAL;
@@ -29,48 +38,84 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 	ctl_args_t args = {
 		.ctl = ctl,
 		.type = KNOT_CTL_TYPE_END,
-		.server = server
+		.server = server,
+		.strip = false, // Strip redundant/unprocessed data units in the current block.
+		.init_recv = false
 	};
 
-	// Strip redundant/unprocessed data units in the current block.
-	bool strip = false;
+	knot_ctl_receive(args.ctl, &args.type, &args.data);
+	switch (args.type) {
+	case KNOT_CTL_TYPE_DATA:
+		// Leading data unit with a command name.
+		if (!args.strip) {
+			// Set to strip unprocessed data unit.
+			args.strip = true;
+			break;
+		}
+		// FALLTHROUGH
+	case KNOT_CTL_TYPE_EXTRA:
+		// All non-first data units should be parsed in a callback.
+		// Ignore if probable previous error.
+		args.init_recv = true;
+	case KNOT_CTL_TYPE_BLOCK:
+		args.strip = false;
+		args.init_recv = true;
+	case KNOT_CTL_TYPE_END:
+		return KNOT_EOF;
+	default:
+		assert(0);
+	}
 
+	const char *cmd_name = args.data[KNOT_CTL_IDX_CMD];
+	ctl_cmd_t cmd = ctl_str_to_cmd(cmd_name);
+	if (ctl_cmd_is_background(cmd)) {
+		return ctl_process_enqueue(server, args_queue, &args);
+	} else {
+		return ctl_process_args(&args);
+	}
+}
+
+int ctl_process_args(ctl_args_t *args)
+{
 	while (true) {
 		// Receive data unit.
-		int ret = knot_ctl_receive(args.ctl, &args.type, &args.data);
-		if (ret != KNOT_EOK) {
-			log_ctl_debug("control, failed to receive (%s)",
-			              knot_strerror(ret));
-			return ret;
-		}
-
-		// Decide what to do.
-		switch (args.type) {
-		case KNOT_CTL_TYPE_DATA:
-			// Leading data unit with a command name.
-			if (!strip) {
-				// Set to strip unprocessed data unit.
-				strip = true;
-				break;
+		if (args->init_recv) {
+			int ret = knot_ctl_receive(args->ctl, &args->type, &args->data);
+			if (ret != KNOT_EOK) {
+				log_ctl_debug("control, failed to receive (%s)",
+				              knot_strerror(ret));
+				return ret;
 			}
-			// FALLTHROUGH
-		case KNOT_CTL_TYPE_EXTRA:
-			// All non-first data units should be parsed in a callback.
-			// Ignore if probable previous error.
-			continue;
-		case KNOT_CTL_TYPE_BLOCK:
-			strip = false;
-			continue;
-		case KNOT_CTL_TYPE_END:
-			return KNOT_EOF;
-		default:
-			assert(0);
+
+			// Decide what to do.
+			switch (args->type) {
+			case KNOT_CTL_TYPE_DATA:
+				// Leading data unit with a command name.
+				if (!args->strip) {
+					// Set to strip unprocessed data unit.
+					args->strip = true;
+					break;
+				}
+				// FALLTHROUGH
+			case KNOT_CTL_TYPE_EXTRA:
+				// All non-first data units should be parsed in a callback.
+				// Ignore if probable previous error.
+				continue;
+			case KNOT_CTL_TYPE_BLOCK:
+				args->strip = false;
+				continue;
+			case KNOT_CTL_TYPE_END:
+				return KNOT_EOF;
+			default:
+				assert(0);
+			}
 		}
+		args->init_recv = true;
 
-		strtolower((char *)args.data[KNOT_CTL_IDX_ZONE]);
+		strtolower((char *)args->data[KNOT_CTL_IDX_ZONE]);
 
-		const char *cmd_name = args.data[KNOT_CTL_IDX_CMD];
-		const char *zone_name = args.data[KNOT_CTL_IDX_ZONE];
+		const char *cmd_name = args->data[KNOT_CTL_IDX_CMD];
+		const char *zone_name = args->data[KNOT_CTL_IDX_ZONE];
 
 		ctl_cmd_t cmd = ctl_str_to_cmd(cmd_name);
 		if (cmd != CTL_NONE) {
@@ -80,7 +125,7 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 			} else {
 				log_ctl_info("control, received command '%s'", cmd_name);
 			}
-			ctl_log_data(&args.data);
+			ctl_log_data(&args->data);
 		} else if (cmd_name != NULL){
 			log_ctl_debug("control, invalid command '%s'", cmd_name);
 			continue;
@@ -90,10 +135,10 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		}
 
 		// Execute the command.
-		int cmd_ret = ctl_exec(cmd, &args);
+		int cmd_ret = ctl_exec(cmd, args);
 		switch (cmd_ret) {
 		case KNOT_EOK:
-			strip = false;
+			args->strip = false;
 		case KNOT_CTL_ESTOP:
 		case KNOT_CTL_EZONE:
 			// KNOT_CTL_EZONE - don't change strip, but don't be reported
@@ -106,7 +151,7 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		}
 
 		// Finalize the answer block.
-		ret = knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL);
+		int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_BLOCK, NULL);
 		if (ret != KNOT_EOK) {
 			log_ctl_debug("control, failed to reply (%s)",
 			              knot_strerror(ret));
@@ -115,7 +160,7 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		// Stop if required.
 		if (cmd_ret == KNOT_CTL_ESTOP) {
 			// Finalize the answer message.
-			ret = knot_ctl_send(ctl, KNOT_CTL_TYPE_END, NULL);
+			ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_END, NULL);
 			if (ret != KNOT_EOK) {
 				log_ctl_debug("control, failed to reply (%s)",
 				              knot_strerror(ret));

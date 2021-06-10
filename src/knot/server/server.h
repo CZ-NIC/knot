@@ -107,6 +107,10 @@ typedef struct server {
 
 	/*! \brief Context of pending zones' backup. */
 	zone_backup_ctxs_t backup_ctxs;
+
+	/*! \brief Background ctl events. */
+	pthread_mutex_t bg_mx;
+	pthread_cond_t bg_cv;
 } server_t;
 
 /*!

@@ -98,14 +98,20 @@ typedef enum {
 } ctl_cmd_t;
 
 /*! Control command parameters. */
-typedef struct {
+typedef struct ctl_args {
 	knot_ctl_t *ctl;
 	knot_ctl_type_t type;
 	knot_ctl_data_t data;
 	server_t *server;
-	bool suppress;	// Suppress error reporting in the "all zones" ctl commands.
+	bool suppress : 1;	// Suppress error reporting in the "all zones" ctl commands.
+	bool strip : 1;
+	bool init_recv : 1;
 } ctl_args_t;
 
+typedef struct ctl_args_queue {
+	size_t begin, stored, size;
+	ctl_args_t *array;
+} ctl_args_queue_t;
 /*!
  * Returns a string equivalent of the command.
  *
@@ -150,3 +156,20 @@ void ctl_log_data(knot_ctl_data_t *data);
  * \return True if presented.
  */
 bool ctl_has_flag(const char *flags, const char *flag);
+
+/*!
+ * Tells whether the command should run in the background.
+ *
+ * \param[in] cmd  Control command.
+ *
+ * \return True if should run in background.
+ */
+bool ctl_cmd_is_background(ctl_cmd_t cmd);
+
+int ctl_args_queue_init(ctl_args_queue_t *ctx, const size_t size);
+bool ctl_args_queue_is_full(const ctl_args_queue_t *ctx);
+bool ctl_args_queue_is_empty(const ctl_args_queue_t *ctx);
+ctl_args_t *ctl_args_queue_top(const ctl_args_queue_t *ctx);
+ctl_args_t *ctl_args_queue_enqueue(ctl_args_queue_t *ctx, const ctl_args_t *el);
+ctl_args_t *ctl_args_queue_dequeue(ctl_args_queue_t *ctx);
+void ctl_args_queue_deinit(ctl_args_queue_t *ctx);

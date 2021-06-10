@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,6 +113,18 @@ void knot_ctl_unbind(knot_ctl_t *ctx);
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_ctl_connect(knot_ctl_t *ctx, const char *path);
+
+/*!
+ * Duplicate file descriptors of control context into other.
+ *
+ * \note Does not copy memory of mempool. Just filedescriptors and settings.
+ *
+ * \param[in]  oldctl Source control context.
+ * \param[out] newctl Dest control context.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_ctl_dup(knot_ctl_t *oldctl, knot_ctl_t *newctl);
 
 /*!
  * Waits for an incoming connection.

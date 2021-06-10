@@ -1951,51 +1951,52 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 typedef struct {
 	const char *name;
 	int (*fcn)(ctl_args_t *, ctl_cmd_t);
+	bool background; // Run command in background event loop.
 } desc_t;
 
 static const desc_t cmd_table[] = {
 	[CTL_NONE]            = { "" },
 
-	[CTL_STATUS]          = { "status",          ctl_server },
-	[CTL_STOP]            = { "stop",            ctl_server },
-	[CTL_RELOAD]          = { "reload",          ctl_server },
-	[CTL_STATS]           = { "stats",           ctl_stats },
+	[CTL_STATUS]          = { "status",             ctl_server },
+	[CTL_STOP]            = { "stop",               ctl_server },
+	[CTL_RELOAD]          = { "reload",             ctl_server,      true },
+	[CTL_STATS]           = { "stats",              ctl_stats },
 
-	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone },
-	[CTL_ZONE_RELOAD]     = { "zone-reload",        ctl_zone },
-	[CTL_ZONE_REFRESH]    = { "zone-refresh",       ctl_zone },
-	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone },
-	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone },
-	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone },
-	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone },
-	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone },
-	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone },
-	[CTL_ZONE_KEYS_LOAD]  = { "zone-keys-load",     ctl_zone },
-	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone },
-	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
-	[CTL_ZONE_FREEZE]     = { "zone-freeze",        ctl_zone },
-	[CTL_ZONE_THAW]       = { "zone-thaw",          ctl_zone },
+	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone,        true },
+	[CTL_ZONE_RELOAD]     = { "zone-reload",        ctl_zone,        true },
+	[CTL_ZONE_REFRESH]    = { "zone-refresh",       ctl_zone,        true },
+	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone,        true },
+	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone,        true },
+	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone,        true },
+	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone,        true },
+	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone,        true },
+	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone,        true },
+	[CTL_ZONE_KEYS_LOAD]  = { "zone-keys-load",     ctl_zone,        true },
+	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone,        true },
+	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone,        true },
+	[CTL_ZONE_FREEZE]     = { "zone-freeze",        ctl_zone,        true },
+	[CTL_ZONE_THAW]       = { "zone-thaw",          ctl_zone,        true },
 
-	[CTL_ZONE_READ]       = { "zone-read",       ctl_zone },
-	[CTL_ZONE_BEGIN]      = { "zone-begin",      ctl_zone },
-	[CTL_ZONE_COMMIT]     = { "zone-commit",     ctl_zone },
-	[CTL_ZONE_ABORT]      = { "zone-abort",      ctl_zone },
-	[CTL_ZONE_DIFF]       = { "zone-diff",       ctl_zone },
-	[CTL_ZONE_GET]        = { "zone-get",        ctl_zone },
-	[CTL_ZONE_SET]        = { "zone-set",        ctl_zone },
-	[CTL_ZONE_UNSET]      = { "zone-unset",      ctl_zone },
-	[CTL_ZONE_PURGE]      = { "zone-purge",      ctl_zone },
-	[CTL_ZONE_STATS]      = { "zone-stats",	     ctl_zone },
+	[CTL_ZONE_READ]       = { "zone-read",          ctl_zone,        true },
+	[CTL_ZONE_BEGIN]      = { "zone-begin",         ctl_zone,        true },
+	[CTL_ZONE_COMMIT]     = { "zone-commit",        ctl_zone,        true },
+	[CTL_ZONE_ABORT]      = { "zone-abort",         ctl_zone,        true },
+	[CTL_ZONE_DIFF]       = { "zone-diff",          ctl_zone,        true },
+	[CTL_ZONE_GET]        = { "zone-get",           ctl_zone,        true },
+	[CTL_ZONE_SET]        = { "zone-set",           ctl_zone,        true },
+	[CTL_ZONE_UNSET]      = { "zone-unset",         ctl_zone,        true },
+	[CTL_ZONE_PURGE]      = { "zone-purge",         ctl_zone,        true },
+	[CTL_ZONE_STATS]      = { "zone-stats",	        ctl_zone },
 
-	[CTL_CONF_LIST]       = { "conf-list",       ctl_conf_read },
-	[CTL_CONF_READ]       = { "conf-read",       ctl_conf_read },
-	[CTL_CONF_BEGIN]      = { "conf-begin",      ctl_conf_txn },
-	[CTL_CONF_COMMIT]     = { "conf-commit",     ctl_conf_txn },
-	[CTL_CONF_ABORT]      = { "conf-abort",      ctl_conf_txn },
-	[CTL_CONF_DIFF]       = { "conf-diff",       ctl_conf_read },
-	[CTL_CONF_GET]        = { "conf-get",        ctl_conf_read },
-	[CTL_CONF_SET]        = { "conf-set",        ctl_conf_modify },
-	[CTL_CONF_UNSET]      = { "conf-unset",      ctl_conf_modify },
+	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_read },
+	[CTL_CONF_READ]       = { "conf-read",          ctl_conf_read,   true },
+	[CTL_CONF_BEGIN]      = { "conf-begin",         ctl_conf_txn,    true },
+	[CTL_CONF_COMMIT]     = { "conf-commit",        ctl_conf_txn,    true },
+	[CTL_CONF_ABORT]      = { "conf-abort",         ctl_conf_txn,    true },
+	[CTL_CONF_DIFF]       = { "conf-diff",          ctl_conf_read,   true },
+	[CTL_CONF_GET]        = { "conf-get",           ctl_conf_read,   true },
+	[CTL_CONF_SET]        = { "conf-set",           ctl_conf_modify, true },
+	[CTL_CONF_UNSET]      = { "conf-unset",         ctl_conf_modify, true },
 };
 
 #define MAX_CTL_CODE (sizeof(cmd_table) / sizeof(desc_t) - 1)
@@ -2040,4 +2041,79 @@ bool ctl_has_flag(const char *flags, const char *flag)
 	}
 
 	return strstr(flags, flag) != NULL;
+}
+
+bool ctl_cmd_is_background(const ctl_cmd_t cmd)
+{
+	return cmd_table[cmd].background;
+}
+
+int ctl_args_queue_init(ctl_args_queue_t *ctx, const size_t size)
+{
+	if (ctx == NULL || size == 0) {
+		return KNOT_EINVAL;
+	}
+
+	ctx->array = (ctl_args_t *)calloc(size, sizeof(ctl_args_t));
+	if (ctx->array == NULL) {
+		return KNOT_ENOMEM;
+	}
+	ctx->begin = ctx->stored = 0;
+	ctx->size = size;
+
+	return KNOT_EOK;
+}
+
+
+bool ctl_args_queue_is_full(const ctl_args_queue_t *ctx)
+{
+	assert(ctx != NULL);
+	return ctx->stored == ctx->size;
+}
+
+bool ctl_args_queue_is_empty(const ctl_args_queue_t *ctx)
+{
+	assert(ctx != NULL);
+	return ctx->stored == 0;
+}
+
+ctl_args_t *ctl_args_queue_top(const ctl_args_queue_t *ctx)
+{
+	assert(ctx != NULL);
+	if (ctl_args_queue_is_empty(ctx)) {
+		return NULL;
+	}
+	return &ctx->array[ctx->begin];
+}
+
+ctl_args_t *ctl_args_queue_enqueue(ctl_args_queue_t *ctx, const ctl_args_t *el)
+{
+	assert(ctx != NULL || el != NULL);
+	if (ctl_args_queue_is_full(ctx)) {
+		return NULL;
+	}
+
+	size_t end = (ctx->begin + ctx->stored) % ctx->size;
+	ctx->stored++;
+	return memcpy(&ctx->array[end], el, sizeof(ctl_args_t));
+}
+
+ctl_args_t *ctl_args_queue_dequeue(ctl_args_queue_t *ctx)
+{
+	assert(ctx != NULL);
+	if (ctl_args_queue_is_empty(ctx)) {
+		return NULL;
+	}
+	ctl_args_t *el = &ctx->array[ctx->begin];
+	ctx->begin = (ctx->begin + 1) % ctx->size;
+	ctx->stored--;
+	return el;
+}
+
+void ctl_args_queue_deinit(ctl_args_queue_t *ctx)
+{
+	if (ctx == NULL) {
+		return;
+	}
+	free(ctx->array);
 }

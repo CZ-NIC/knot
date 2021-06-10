@@ -294,6 +294,28 @@ int knot_ctl_connect(knot_ctl_t *ctx, const char *path)
 }
 
 _public_
+int knot_ctl_dup(knot_ctl_t *oldctl, knot_ctl_t *newctl)
+{
+	if (oldctl == NULL || newctl == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	newctl->timeout = oldctl->timeout;
+	newctl->listen_sock = dup(oldctl->listen_sock);
+	if (newctl->listen_sock == -1) {
+		return knot_map_errno();
+	}
+	if (oldctl->sock >= 0) {
+		newctl->sock = dup(oldctl->sock);
+		if (newctl->sock == -1) {
+			close(newctl->listen_sock);
+			return knot_map_errno();
+		}
+	}
+	return KNOT_EOK;
+}
+
+_public_
 void knot_ctl_close(knot_ctl_t *ctx)
 {
 	if (ctx == NULL) {

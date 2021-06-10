@@ -203,17 +203,192 @@ static void drop_capabilities(void)
 #endif /* ENABLE_CAP_NG */
 }
 
+#define CTL_ARRAY_SIZE 8
+
+/*! Pool of knot_ctl_t pointers */
+typedef struct {
+	pthread_cond_t cv;
+	pthread_mutex_t mx;
+	void **array;
+	size_t size;
+	size_t stored;
+} knot_ctl_pool_t;
+
+/*!
+ * Initializes pool of knot_ctl_t pointers.
+ *
+ * \param[in] pool Pool context.
+ * \param[in] array Array on background of pool.
+ * \param[in] array_len Length of array.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+static int knot_ctl_pool_init(knot_ctl_pool_t *pool, void **array, size_t array_len)
+{
+	if (pool == NULL || array == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = pthread_mutex_init(&pool->mx, NULL);
+	if (ret != 0) {
+		return knot_map_errno_code(ret);
+	}
+	ret = pthread_cond_init(&pool->cv, NULL);
+	if (ret != 0) {
+		pthread_mutex_destroy(&pool->mx);
+		return knot_map_errno_code(ret);
+	}
+	pool->array = array;
+	pool->size = array_len;
+	pool->stored = 0;
+	return KNOT_EOK;
+}
+
+/*!
+ * Deinitialize pool.
+ *
+ * \param[in] pool Pool context.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+static int knot_ctl_pool_deinit(knot_ctl_pool_t *pool)
+{
+	if (pool == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	pthread_mutex_destroy(&pool->mx);
+	pthread_cond_destroy(&pool->cv);
+	pool->array = NULL;
+	return KNOT_EOK;
+}
+
+/*!
+ * Return pointer on ungained pointer. Block when none is available.
+ *
+ * \note Thread-safe
+ *
+ * \param[in] pool Pool context.
+ *
+ * \return NULL on error or pointer.
+ */
+static void *knot_ctl_pool_gain(knot_ctl_pool_t *pool)
+{
+	if (pool == NULL || pool->array == NULL) {
+		return NULL;
+	}
+	assert(pool->stored <= pool->size);
+
+	pthread_mutex_lock(&pool->mx);
+	while (pool->stored == pool->size) {
+		pthread_cond_wait(&pool->cv, &pool->mx);
+	}
+	assert(pool->stored < pool->size);
+	size_t idx = pool->stored++ % pool->size;
+	void *out = pool->array[idx];
+	pthread_mutex_unlock(&pool->mx);
+	return out;
+}
+
+/*!
+ * Release pointer (make it available for others).
+ *
+ * \note Thread-safe
+ *
+ * \param[in] pool Pool context.
+ * \param[in] elem Element to release.
+ */
+static void knot_ctl_pool_release(knot_ctl_pool_t *pool, void *elem)
+{
+	if (pool == NULL || pool->array == NULL ||
+	    pool->stored == 0 || elem == NULL) {
+		return;
+	}
+
+	pthread_mutex_lock(&pool->mx);
+	for (size_t idx = 0; idx < pool->stored; ++idx)	{
+		void *it = pool->array[idx];
+		if (it == elem) {
+			pool->stored--;
+			pool->array[idx] = pool->array[pool->stored];
+			pool->array[pool->stored] = it;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&pool->mx);
+	pthread_cond_signal(&pool->cv);
+}
+
+static volatile bool bg_running = true;
+static knot_ctl_pool_t ctl_pool;
+static ctl_args_queue_t args_queue;
+
+static void *bg_event_loop(void *ctx)
+{
+	assert(ctx != NULL);
+	server_t *server = (server_t *)ctx;
+
+	pthread_mutex_lock(&server->bg_mx);
+	while (bg_running || !ctl_args_queue_is_empty(&args_queue)) {
+		// Accept task
+		while (ctl_args_queue_is_empty(&args_queue) && bg_running) {
+			pthread_cond_wait(&server->bg_cv, &server->bg_mx);
+		}
+		ctl_args_t *args = ctl_args_queue_top(&args_queue);
+		if (args == NULL) {
+			continue;
+		}
+		pthread_mutex_unlock(&server->bg_mx);
+
+		// Process
+		ctl_process_args(args);
+
+		// Cleanup
+		ctl_args_queue_dequeue(&args_queue);
+		knot_ctl_close(args->ctl);
+		knot_ctl_pool_release(&ctl_pool, args->ctl);
+
+		pthread_mutex_lock(&server->bg_mx);
+	}
+	pthread_mutex_unlock(&server->bg_mx);
+
+	return KNOT_EOK;
+}
+
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server, const char *socket)
 {
-	knot_ctl_t *ctl = knot_ctl_alloc();
-	if (ctl == NULL) {
-		log_fatal("control, failed to initialize (%s)",
-		          knot_strerror(KNOT_ENOMEM));
+	knot_ctl_t *pool_array[CTL_ARRAY_SIZE];
+	int ret = knot_ctl_pool_init(&ctl_pool, (void **)pool_array, CTL_ARRAY_SIZE);
+	if (ret != KNOT_EOK) {
+		return;
+	}
+	ret = ctl_args_queue_init(&args_queue, CTL_ARRAY_SIZE);
+	if (ret != KNOT_EOK) {
+		knot_ctl_pool_deinit(&ctl_pool);
+		return;
+	}
+
+	int idx = 0;
+	for (; idx < CTL_ARRAY_SIZE; ++idx) {
+		pool_array[idx] = knot_ctl_alloc();
+		if (pool_array[idx] == NULL) {
+			log_fatal("control, failed to initialize (%s)",
+			          knot_strerror(KNOT_ENOMEM));
+			break;
+		}
+	}
+	if (idx != CTL_ARRAY_SIZE) {
+		for (; idx >= 0; --idx) {
+			knot_ctl_free(pool_array[idx]);
+		}
+		knot_ctl_pool_deinit(&ctl_pool);
+		ctl_args_queue_deinit(&args_queue);
 		return;
 	}
 
 	// Set control timeout.
+	knot_ctl_t *ctl = pool_array[0];
 	knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
 
 	/* Get control socket configuration. */
@@ -228,25 +403,40 @@ static void event_loop(server_t *server, const char *socket)
 		listen = strdup(socket);
 	}
 	if (listen == NULL) {
-		knot_ctl_free(ctl);
+		for (idx = 0; idx < CTL_ARRAY_SIZE; ++idx) {
+			knot_ctl_free(pool_array[idx]);
+		}
 		log_fatal("control, empty socket path");
+		knot_ctl_pool_deinit(&ctl_pool);
+		ctl_args_queue_deinit(&args_queue);
 		return;
 	}
 
 	log_info("control, binding to '%s'", listen);
 
 	/* Bind the control socket. */
-	int ret = knot_ctl_bind(ctl, listen);
+	ret = knot_ctl_bind(ctl, listen);
 	if (ret != KNOT_EOK) {
-		knot_ctl_free(ctl);
+		for (idx = 0; idx < CTL_ARRAY_SIZE; ++idx) {
+			knot_ctl_free(pool_array[idx]);
+		}
 		log_fatal("control, failed to bind socket '%s' (%s)",
 		          listen, knot_strerror(ret));
 		free(listen);
+		knot_ctl_pool_deinit(&ctl_pool);
+		ctl_args_queue_deinit(&args_queue);
 		return;
 	}
 	free(listen);
 
+	for (idx = 1; idx < CTL_ARRAY_SIZE; ++idx) {
+		knot_ctl_dup(ctl, pool_array[idx]);
+	}
+
 	enable_signals();
+
+	pthread_t background_loop;
+	pthread_create(&background_loop, NULL, bg_event_loop, (void *)server);
 
 	/* Notify systemd about successful start. */
 	systemd_ready_notify();
@@ -267,23 +457,38 @@ static void event_loop(server_t *server, const char *socket)
 		}
 
 		// Update control timeout.
+		ctl = knot_ctl_pool_gain(&ctl_pool);
 		knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
 
 		ret = knot_ctl_accept(ctl);
 		if (ret != KNOT_EOK) {
+			knot_ctl_pool_release(&ctl_pool, ctl);
 			continue;
 		}
 
-		ret = ctl_process(ctl, server);
+		ret = ctl_process(ctl, server, &args_queue);
+		if (ret == KNOT_CTL_ASYNC) {
+			pthread_cond_signal(&server->bg_cv);
+			continue;
+		}
 		knot_ctl_close(ctl);
+		knot_ctl_pool_release(&ctl_pool, ctl);
 		if (ret == KNOT_CTL_ESTOP) {
 			break;
 		}
 	}
+	bg_running = false;
+	pthread_cond_signal(&server->bg_cv);
+	pthread_join(background_loop, NULL);
+
+	knot_ctl_pool_deinit(&ctl_pool);
+	ctl_args_queue_deinit(&args_queue);
 
 	/* Unbind the control socket. */
-	knot_ctl_unbind(ctl);
-	knot_ctl_free(ctl);
+	for (idx = 0; idx < CTL_ARRAY_SIZE; ++idx) {
+		knot_ctl_unbind(pool_array[idx]);
+		knot_ctl_free(pool_array[idx]);
+	}
 }
 
 static void print_help(void)

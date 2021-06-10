@@ -641,6 +641,9 @@ int server_init(server_t *server, int bg_workers)
 	knot_lmdb_init(&server->timerdb, timer_dir, conf_int(&timer_size), 0, NULL);
 	free(timer_dir);
 
+	pthread_mutex_init(&server->bg_mx, NULL);
+	pthread_cond_init(&server->bg_cv, NULL);
+
 	return KNOT_EOK;
 }
 
@@ -686,6 +689,9 @@ void server_deinit(server_t *server)
 
 	/* Close journal database if open. */
 	knot_lmdb_deinit(&server->journaldb);
+
+	pthread_mutex_destroy(&server->bg_mx);
+	pthread_cond_destroy(&server->bg_cv);
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
