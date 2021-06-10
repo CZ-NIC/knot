@@ -1129,6 +1129,7 @@ policy:
     cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always | double\-ds
     cds\-digest\-type: sha256 | sha384
     offline\-ksk: BOOL
+    unsafe\-operation: none | no\-check\-keyset | no\-update\-dnskey | no\-update\-nsec | no\-update\-expired ...
 .ft P
 .fi
 .UNINDENT
@@ -1448,6 +1449,37 @@ Specify digest type for published CDS records.
 Specifies if Offline KSK feature is enabled.
 .sp
 \fIDefault:\fP off
+.SS unsafe\-operation
+.sp
+Turn off some DNSSEC safety features.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBnone\fP – Nothing disabled.
+.IP \(bu 2
+\fBno\-check\-keyset\fP – Don\(aqt check active keys in present algorithms. This may
+lead to violation of \fI\%RFC 4035#section\-2.2\fP\&.
+.IP \(bu 2
+\fBno\-update\-dnskey\fP – Don\(aqt maintain/update DNSKEY, CDNSKEY, and CDS records
+in the zone apex according to KASP database. Juste leave them as they are in the zone.
+.IP \(bu 2
+\fBno\-update\-nsec\fP – Don\(aqt maintain/update NSEC/NSEC3 chain. Leave all the records
+as they are in the zone.
+.IP \(bu 2
+\fBno\-update\-expired\fP – Don\(aqt update expired RRSIGs.
+.UNINDENT
+.sp
+Multiple values may be specified.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+This mode is intended for DNSSEC experts who understand the corresponding consequences.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP none
 .SH TEMPLATE SECTION
 .sp
 A template is shareable zone settings, which can simplify configuration by

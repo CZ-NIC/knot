@@ -1229,6 +1229,7 @@ DNSSEC policy configuration.
      cds-cdnskey-publish: none | delete-dnssec | rollover | always | double-ds
      cds-digest-type: sha256 | sha384
      offline-ksk: BOOL
+     unsafe-operation: none | no-check-keyset | no-update-dnskey | no-update-nsec | no-update-expired ...
 
 .. _policy_id:
 
@@ -1585,6 +1586,31 @@ offline-ksk
 Specifies if :ref:`Offline KSK <DNSSEC Offline KSK>` feature is enabled.
 
 *Default:* off
+
+.. _policy_unsafe-operation:
+
+unsafe-operation
+----------------
+
+Turn off some DNSSEC safety features.
+
+Possible values:
+
+- ``none`` – Nothing disabled.
+- ``no-check-keyset`` – Don't check active keys in present algorithms. This may
+  lead to violation of :rfc:`4035#section-2.2`.
+- ``no-update-dnskey`` – Don't maintain/update DNSKEY, CDNSKEY, and CDS records
+  in the zone apex according to KASP database. Juste leave them as they are in the zone.
+- ``no-update-nsec`` – Don't maintain/update NSEC/NSEC3 chain. Leave all the records
+  as they are in the zone.
+- ``no-update-expired`` – Don't update expired RRSIGs.
+
+Multiple values may be specified.
+
+.. WARNING::
+   This mode is intended for DNSSEC experts who understand the corresponding consequences.
+
+*Default:* none
 
 .. _Template section:
 

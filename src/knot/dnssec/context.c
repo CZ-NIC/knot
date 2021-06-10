@@ -134,7 +134,12 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	val = conf_id_get(conf, C_POLICY, C_OFFLINE_KSK, id);
 	policy->offline_ksk = conf_bool(&val);
 
-	// intentional conflict with dnssec-unsafe branch
+	policy->unsafe = 0;
+	val = conf_id_get(conf, C_POLICY, C_UNSAFE_OPERATION, id);
+	while (val.code == KNOT_EOK) {
+		policy->unsafe |= conf_opt(&val);
+		conf_val_next(&val);
+	}
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
