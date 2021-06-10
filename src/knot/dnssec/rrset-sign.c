@@ -377,7 +377,8 @@ int knot_check_signature(const knot_rrset_t *covered,
 	// consider signature invalid even if validity ends in refresh - in order to refresh it soon enough
 	knot_timediff_t refresh = dnssec_ctx->policy->rrsig_refresh_before +
 	                          dnssec_ctx->policy->rrsig_prerefresh;
-	if (is_expired_signature(rrsig, dnssec_ctx->now, refresh)) {
+	if (!(dnssec_ctx->policy->unsafe & UNSAFE_EXPIRED) &&
+	    is_expired_signature(rrsig, dnssec_ctx->now, refresh)) {
 		return DNSSEC_INVALID_SIGNATURE;
 	}
 
