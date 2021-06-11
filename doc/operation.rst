@@ -957,7 +957,7 @@ The backup procedure will begin soon and will happen zone-by-zone
 (partially in parallel if more :ref:`server_background-workers` are configured).
 **The user shall check the logs for the outcome of each zone's backup attempt.**
 The knotc's ``-b`` parameter might be used if the user desires to wait until
-the backup work is done.
+the backup work is done and a simple result status is printed out.
 
 .. TIP::
    There is a plain ASCII text file in the backup directory,
