@@ -194,7 +194,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
-			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
+			ret = zone_update_from_differences(&up, conf, zone, NULL, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
 		}
 	} else {
 		if (journal_conts != NULL && (zf_from != ZONEFILE_LOAD_WHOLE || zone->cat_members != NULL)) {
@@ -203,7 +203,7 @@ int event_load(conf_t *conf, zone_t *zone)
 				ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
 			} else {
 				// load zone-in-journal, compute ZF diff and if success, apply it
-				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts,
+				ret = zone_update_from_differences(&up, conf, zone, journal_conts, zf_conts,
 				                                   UPDATE_HYBRID, ignore_dnssec);
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name,
@@ -258,7 +258,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	if (do_diff && old_contents_exist && dnssec_enable && zf_conts != NULL &&
 	    zone_contents_serial(zf_conts) != zone_contents_serial(zone->contents) &&
 	    !zone_in_journal_exists) {
-		ret = zone_update_start_extra(&up);
+		ret = zone_update_start_extra(&up, conf);
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}

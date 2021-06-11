@@ -161,7 +161,7 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 	return init_base(update, zone, NULL, flags);
 }
 
-int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_contents_t *old_cont,
+int zone_update_from_differences(zone_update_t *update, conf_t *conf, zone_t *zone, zone_contents_t *old_cont,
 				 zone_contents_t *new_cont, zone_update_flags_t flags, bool ignore_dnssec)
 {
 	if (update == NULL || zone == NULL || new_cont == NULL ||
@@ -269,7 +269,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	return KNOT_EOK;
 }
 
-int zone_update_start_extra(zone_update_t *update)
+int zone_update_start_extra(zone_update_t *update, conf_t *conf)
 {
 	assert((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)));
 
@@ -279,7 +279,7 @@ int zone_update_start_extra(zone_update_t *update)
 	}
 
 	if (update->init_cont != NULL) {
-		ret = zone_update_increment_soa(update, conf());
+		ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -294,7 +294,7 @@ int zone_update_start_extra(zone_update_t *update)
 			return KNOT_ENOMEM;
 		}
 
-		ret = zone_update_increment_soa(update, conf());
+		ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
