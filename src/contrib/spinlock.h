@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,10 @@
 #  endif	/* MAC_OS_X_VERSION_10_12 ... */
 #endif	/* __APPLE__ */
 
-#if defined(HAVE_STDATOMIC)
+#if defined(HAVE_SYNC_ATOMIC) || defined(HAVE_ATOMIC)
+#  include <stdbool.h>
+#elif defined(HAVE_STDATOMIC)
+#  include <stdbool.h>
 #  include <stdatomic.h>
 #elif defined(APPLE_SPIN_NEW)
 #  include <os/lock.h>
