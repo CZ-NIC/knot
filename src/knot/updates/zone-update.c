@@ -917,7 +917,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		bool incr_valid = update->flags & UPDATE_INCREMENTAL;
 		const char *msg_valid = incr_valid ? "incremental " : "";
 
-		ret = knot_dnssec_validate_zone(update, incr_valid);
+		ret = knot_dnssec_validate_zone(update, conf, incr_valid);
 		if (ret != KNOT_EOK) {
 			log_zone_error(update->zone->name, "DNSSEC, %svalidation failed (%s)",
 			               msg_valid, knot_strerror(ret));

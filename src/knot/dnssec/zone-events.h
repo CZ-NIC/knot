@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@ int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
  *        and NSEC(3) records will not be changed.
  *
  * \param update       Zone Update structure with current zone contents to be updated by signing.
+ * \param conf         Knot configuration.
  * \param flags        Zone signing flags.
  * \param roll_flags   Key rollover flags.
  * \param adjust_now   If not zero: adjust "now" to this timestamp.
@@ -75,6 +76,7 @@ int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_dnssec_zone_sign(zone_update_t *update,
+                          conf_t *conf,
                           zone_sign_flags_t flags,
                           zone_sign_roll_flags_t roll_flags,
                           knot_time_t adjust_now,
@@ -84,11 +86,12 @@ int knot_dnssec_zone_sign(zone_update_t *update,
  * \brief Sign changeset (inside incremental Zone Update) created by DDNS or so...
  *
  * \param update      Zone Update structure with current zone contents, changes to be signed and to be updated with signatures.
+ * \param conf        Knot configuration.
  * \param reschedule  Signature refresh time of the new signatures.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *reschedule);
+int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_reschedule_t *reschedule);
 
 /*!
  * \brief Create new NCES3 salt if the old one is too old, and plan next resalt.
@@ -121,8 +124,9 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx);
  * \brief Validate zone DNSSEC based on its contents.
  *
  * \param update         Zone update with contents.
+ * \param conf           Knot configuration.
  * \param incremental    Try to validate incrementally.
  *
  * \return KNOT_E*
  */
-int knot_dnssec_validate_zone(zone_update_t *update, bool incremental);
+int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf, bool incremental);

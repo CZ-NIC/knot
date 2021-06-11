@@ -24,7 +24,7 @@
 
 dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_NORMAL)
 
-static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
+static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id)
 {
 	if (conf_str(id) == NULL) {
 		policy->string = strdup("default");
@@ -32,95 +32,95 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 		policy->string = strdup(conf_str(id));
 	}
 
-	conf_val_t val = conf_id_get(conf(), C_POLICY, C_MANUAL, id);
+	conf_val_t val = conf_id_get(conf, C_POLICY, C_MANUAL, id);
 	policy->manual = conf_bool(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_SINGLE_TYPE_SIGNING, id);
+	val = conf_id_get(conf, C_POLICY, C_SINGLE_TYPE_SIGNING, id);
 	policy->single_type_signing = conf_bool(&val);
 	policy->sts_default = (val.code != KNOT_EOK);
 
-	val = conf_id_get(conf(), C_POLICY, C_ALG, id);
+	val = conf_id_get(conf, C_POLICY, C_ALG, id);
 	policy->algorithm = conf_opt(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_KSK_SHARED, id);
+	val = conf_id_get(conf, C_POLICY, C_KSK_SHARED, id);
 	policy->ksk_shared = conf_bool(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_KSK_SIZE, id);
+	val = conf_id_get(conf, C_POLICY, C_KSK_SIZE, id);
 	int64_t num = conf_int(&val);
 	policy->ksk_size = (num != YP_NIL) ? num :
 	                   dnssec_algorithm_key_size_default(policy->algorithm);
 
-	val = conf_id_get(conf(), C_POLICY, C_ZSK_SIZE, id);
+	val = conf_id_get(conf, C_POLICY, C_ZSK_SIZE, id);
 	num = conf_int(&val);
 	policy->zsk_size = (num != YP_NIL) ? num :
 	                   dnssec_algorithm_key_size_default(policy->algorithm);
 
-	val = conf_id_get(conf(), C_POLICY, C_DNSKEY_TTL, id);
+	val = conf_id_get(conf, C_POLICY, C_DNSKEY_TTL, id);
 	int64_t ttl = conf_int(&val);
 	policy->dnskey_ttl = (ttl != YP_NIL) ? ttl : UINT32_MAX;
 
-	val = conf_id_get(conf(), C_POLICY, C_ZONE_MAX_TLL, id);
+	val = conf_id_get(conf, C_POLICY, C_ZONE_MAX_TLL, id);
 	ttl = conf_int(&val);
 	policy->zone_maximal_ttl = (ttl != YP_NIL) ? ttl : UINT32_MAX;
 
-	val = conf_id_get(conf(), C_POLICY, C_ZSK_LIFETIME, id);
+	val = conf_id_get(conf, C_POLICY, C_ZSK_LIFETIME, id);
 	policy->zsk_lifetime = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_KSK_LIFETIME, id);
+	val = conf_id_get(conf, C_POLICY, C_KSK_LIFETIME, id);
 	policy->ksk_lifetime = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_PROPAG_DELAY, id);
+	val = conf_id_get(conf, C_POLICY, C_PROPAG_DELAY, id);
 	policy->propagation_delay = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_RRSIG_LIFETIME, id);
+	val = conf_id_get(conf, C_POLICY, C_RRSIG_LIFETIME, id);
 	policy->rrsig_lifetime = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_RRSIG_REFRESH, id);
+	val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, id);
 	policy->rrsig_refresh_before = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_RRSIG_PREREFRESH, id);
+	val = conf_id_get(conf, C_POLICY, C_RRSIG_PREREFRESH, id);
 	policy->rrsig_prerefresh = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_REPRO_SIGNING, id);
+	val = conf_id_get(conf, C_POLICY, C_REPRO_SIGNING, id);
 	policy->reproducible_sign = conf_bool(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_NSEC3, id);
+	val = conf_id_get(conf, C_POLICY, C_NSEC3, id);
 	policy->nsec3_enabled = conf_bool(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_NSEC3_OPT_OUT, id);
+	val = conf_id_get(conf, C_POLICY, C_NSEC3_OPT_OUT, id);
 	policy->nsec3_opt_out = conf_bool(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_NSEC3_ITER, id);
+	val = conf_id_get(conf, C_POLICY, C_NSEC3_ITER, id);
 	policy->nsec3_iterations = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_NSEC3_SALT_LEN, id);
+	val = conf_id_get(conf, C_POLICY, C_NSEC3_SALT_LEN, id);
 	policy->nsec3_salt_length = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_NSEC3_SALT_LIFETIME, id);
+	val = conf_id_get(conf, C_POLICY, C_NSEC3_SALT_LIFETIME, id);
 	policy->nsec3_salt_lifetime = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_CDS_CDNSKEY, id);
+	val = conf_id_get(conf, C_POLICY, C_CDS_CDNSKEY, id);
 	policy->cds_cdnskey_publish = conf_opt(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_CDS_DIGESTTYPE, id);
+	val = conf_id_get(conf, C_POLICY, C_CDS_DIGESTTYPE, id);
 	policy->cds_dt = conf_opt(&val);
 
-	conf_val_t ksk_sbm = conf_id_get(conf(), C_POLICY, C_KSK_SBM, id);
+	conf_val_t ksk_sbm = conf_id_get(conf, C_POLICY, C_KSK_SBM, id);
 	if (ksk_sbm.code == KNOT_EOK) {
-		val = conf_id_get(conf(), C_SBM, C_CHK_INTERVAL, &ksk_sbm);
+		val = conf_id_get(conf, C_SBM, C_CHK_INTERVAL, &ksk_sbm);
 		policy->ksk_sbm_check_interval = conf_int(&val);
 
-		val = conf_id_get(conf(), C_SBM, C_TIMEOUT, &ksk_sbm);
+		val = conf_id_get(conf, C_SBM, C_TIMEOUT, &ksk_sbm);
 		policy->ksk_sbm_timeout = conf_int(&val);
 
-		val = conf_id_get(conf(), C_SBM, C_PARENT, &ksk_sbm);
+		val = conf_id_get(conf, C_SBM, C_PARENT, &ksk_sbm);
 		while (val.code == KNOT_EOK) {
-			conf_val_t addr = conf_id_get(conf(), C_RMT, C_ADDR, &val);
+			conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &val);
 			knot_kasp_parent_t p = { .addrs = conf_val_count(&addr) };
 			p.addr = p.addrs ? malloc(p.addrs * sizeof(*p.addr)) : NULL;
 			if (p.addr != NULL) {
 				for (size_t i = 0; i < p.addrs; i++) {
-					p.addr[i] = conf_remote(conf(), &val, i);
+					p.addr[i] = conf_remote(conf, &val, i);
 				}
 				parent_dynarray_add(&policy->parents, &p);
 			}
@@ -128,11 +128,13 @@ static void policy_load(knot_kasp_policy_t *policy, conf_val_t *id)
 		}
 	}
 
-	val = conf_id_get(conf(), C_POLICY, C_SIGNING_THREADS, id);
+	val = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, id);
 	policy->signing_threads = conf_int(&val);
 
-	val = conf_id_get(conf(), C_POLICY, C_OFFLINE_KSK, id);
+	val = conf_id_get(conf, C_POLICY, C_OFFLINE_KSK, id);
 	policy->offline_ksk = conf_bool(&val);
+
+	// intentional conflict with dnssec-unsafe branch
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
@@ -190,7 +192,7 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		policy_id = conf_mod_get(conf, C_POLICY, from_module);
 	}
 	conf_id_fix_default(&policy_id);
-	policy_load(ctx->policy, &policy_id);
+	policy_load(ctx->policy, conf, &policy_id);
 
 	ret = zone_init_keystore(conf, &policy_id, &ctx->keystore, NULL);
 	if (ret != KNOT_EOK) {

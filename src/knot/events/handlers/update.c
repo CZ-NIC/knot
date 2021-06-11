@@ -159,7 +159,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 	bool dnssec_enable = (up.flags & UPDATE_SIGN) && conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
-		ret = knot_dnssec_sign_update(&up, &resch);
+		ret = knot_dnssec_sign_update(&up, conf, &resch);
 		if (ret != KNOT_EOK) {
 			zone_update_clear(&up);
 			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
