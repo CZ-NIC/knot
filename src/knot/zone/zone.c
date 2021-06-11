@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -257,14 +257,16 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset
 		return KNOT_EINVAL;
 	}
 
-	int ret = journal_insert(zone_journal(zone), change, extra);
+	zone_journal_t j = { zone->journaldb, zone->name, conf };
+
+	int ret = journal_insert(j, change, extra);
 	if (ret == KNOT_EBUSY) {
 		log_zone_notice(zone->name, "journal is full, flushing");
 
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = flush_journal(conf, zone, true, false);
 		if (ret == KNOT_EOK) {
-			ret = journal_insert(zone_journal(zone), change, extra);
+			ret = journal_insert(j, change, extra);
 		}
 	}
 
@@ -286,7 +288,9 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 		return KNOT_EINVAL;
 	}
 
-	int ret = journal_insert_zone(zone_journal(zone), new_contents);
+	zone_journal_t j = { zone->journaldb, zone->name, conf };
+
+	int ret = journal_insert_zone(j, new_contents);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone stored to journal, serial %u",
 		              zone_contents_serial(new_contents));

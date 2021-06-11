@@ -141,9 +141,12 @@ void zone_reset(conf_t *conf, zone_t *zone);
  */
 void zone_control_clear(zone_t *zone);
 
+/*!
+ * \brief Only for RO journal operations.
+ */
 inline static zone_journal_t zone_journal(zone_t *zone)
 {
-	zone_journal_t j = { zone->journaldb, zone->name };
+	zone_journal_t j = { zone->journaldb, zone->name, NULL };
 	return j;
 }
 

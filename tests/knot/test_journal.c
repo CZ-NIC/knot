@@ -31,7 +31,6 @@
 #include "libknot/libknot.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-diff.h"
-#include "libknot/rrtype/soa.h"
 #include "test_conf.h"
 
 #define RAND_RR_LABEL 16
@@ -58,6 +57,7 @@ static void set_conf(int zonefile_sync, size_t journal_usage, const knot_dname_t
 	         zonefile_sync, journal_usage);
 	_unused_ int ret = test_conf(conf_str, NULL);
 	assert(ret == KNOT_EOK);
+	jj.conf = conf();
 }
 
 static void unset_conf(void)
@@ -457,7 +457,7 @@ static void test_size_control(const knot_dname_t *zone1, const knot_dname_t *zon
 {
 	set_conf(-1, 100 * 1024, zone1);
 
-	zone_journal_t jj2 = { &jdb, zone2 };
+	zone_journal_t jj2 = { &jdb, zone2, conf() };
 	changeset_t *small_ch2 = changeset_new(zone2);
 	init_random_changeset(small_ch2, 1, 2, 100, zone2, false);
 	int ret = journal_insert(jj2, small_ch2, NULL);
