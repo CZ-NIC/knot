@@ -578,7 +578,8 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 	}
 }
 
-static void wire_text_to_str(rrset_dump_params_t *p, bool quote, unsigned with_header_len)
+static void wire_text_to_str(rrset_dump_params_t *p, bool quote,
+                             unsigned with_header_len, bool alpn_mode)
 {
 	CHECK_PRET
 
@@ -626,6 +627,10 @@ static void wire_text_to_str(rrset_dump_params_t *p, bool quote, unsigned with_h
 			// For special character print leading slash.
 			if (ch == '\\' || ch == '"') {
 				dump_string(p, "\\");
+				CHECK_PRET
+			}
+			if (alpn_mode && (ch == ',' || ch == '\\')) {
+				dump_string(p, "\\\\");
 				CHECK_PRET
 			}
 
@@ -1245,7 +1250,7 @@ static void wire_value_list_to_str(rrset_dump_params_t *p,
 
 static void wire_text_to_str1(rrset_dump_params_t *p)
 {
-	wire_text_to_str(p, false, 1);
+	wire_text_to_str(p, false, 1, true);
 }
 
 static void wire_ech_to_base64(rrset_dump_params_t *p, unsigned ech_len)
@@ -1314,7 +1319,7 @@ static void wire_svcparam_to_str(rrset_dump_params_t *p)
 		default:
 			p->in -= sizeof(val_len); // Rollback to where the string length resides.
 			p->in_max += sizeof(val_len);
-			wire_text_to_str(p, true, sizeof(val_len));
+			wire_text_to_str(p, true, sizeof(val_len), false);
 		}
 	}
 }
@@ -1500,9 +1505,9 @@ static void dnskey_info(const uint8_t *rdata,
 				2, true, ""); CHECK_RET(p);
 #define DUMP_OMIT	wire_data_omit(p); CHECK_RET(p);
 #define DUMP_KEY_OMIT	wire_dnskey_to_tag(p); CHECK_RET(p);
-#define DUMP_TEXT	wire_text_to_str(p, true, 1); CHECK_RET(p);
-#define DUMP_LONG_TEXT	wire_text_to_str(p, true, false); CHECK_RET(p);
-#define DUMP_UNQUOTED	wire_text_to_str(p, false, 1); CHECK_RET(p);
+#define DUMP_TEXT	wire_text_to_str(p, true,  1, false); CHECK_RET(p);
+#define DUMP_LONG_TEXT	wire_text_to_str(p, true,  0, false); CHECK_RET(p);
+#define DUMP_UNQUOTED	wire_text_to_str(p, false, 1, false); CHECK_RET(p);
 #define DUMP_BITMAP	wire_bitmap_to_str(p); CHECK_RET(p);
 #define DUMP_APL	wire_apl_to_str(p); CHECK_RET(p);
 #define DUMP_LOC	wire_loc_to_str(p); CHECK_RET(p);
