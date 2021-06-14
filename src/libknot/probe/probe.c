@@ -123,13 +123,6 @@ int knot_probe_set_consumer(knot_probe_t *probe, const char *dir, uint16_t idx)
 
 	probe->consumer = true;
 
-#if defined(__linux__)
-	if (fchmod(probe->fd, S_IRWXU | S_IRWXG | S_IRWXO) != 0) {
-		close(probe->fd);
-		return knot_map_errno();
-	}
-#endif
-
 	(void)unlink(probe->path.sun_path);
 
 	ret = bind(probe->fd, (const struct sockaddr *)(&probe->path),
@@ -137,6 +130,13 @@ int knot_probe_set_consumer(knot_probe_t *probe, const char *dir, uint16_t idx)
 	if (ret != 0) {
 		return knot_map_errno();
 	}
+
+#if defined(__linux__)
+	if (chmod(probe->path.sun_path, S_IRWXU | S_IRWXG | S_IRWXO) != 0) {
+		close(probe->fd);
+		return knot_map_errno();
+	}
+#endif
 
 	return KNOT_EOK;
 }
