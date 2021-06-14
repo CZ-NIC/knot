@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,7 +71,10 @@ static void interrupt_handle(int s)
 /*! API: run tests. */
 int main(int argc, char *argv[])
 {
-	plan(8);
+	plan_lazy();
+
+	int cpus = dt_online_cpus();
+	ok(cpus > 0, "dthread: online cpus is positive value");
 
 	// Register service and signal handler
 	struct sigaction sa;
