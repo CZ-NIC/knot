@@ -687,28 +687,19 @@ int dt_compact(dt_unit_t *unit)
 int dt_online_cpus(void)
 {
 	int ret = -1;
-/* Linux, Solaris, macOS/OS X 10.4+ */
+/* Linux, FreeBSD, NetBSD, OpenBSD, macOS/OS X 10.4+, Solaris */
 #ifdef _SC_NPROCESSORS_ONLN
 	ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
 #else
-/* FreeBSD, NetBSD, OpenBSD, OS X < 10.4 */
+/* OS X < 10.4 and some other OS's (if not handled by sysconf() above) */
+/* hw.ncpu won't work on FreeBSD, OpenBSD, NetBSD, DragonFlyBSD, and recent macOS/OS X. */
 #if HAVE_SYSCTLBYNAME
 	size_t rlen = sizeof(int);
-#if defined(__OpenBSD__) || defined(__NetBSD__)
-	if (sysctlbyname("hw.ncpuonline", &ret, &rlen, NULL, 0) < 0) {
-		ret = -1;
-	}
-#elif defined(__FreeBSD__)
-	if (sysctlbyname("kern.smp.cpus", &ret, &rlen, NULL, 0) < 0) {
-		ret = -1;
-	}
-#else
 	if (sysctlbyname("hw.ncpu", &ret, &rlen, NULL, 0) < 0) {
 		ret = -1;
 	}
-#endif /* __OpenBSD__, __NetBSD__, __FreeBSD__, etc. */
-#endif /* HAVE_SYSCTLBYNAME */
-#endif /* _SC_NPROCESSORS_ONLN */
+#endif
+#endif
 	return ret;
 }
 
