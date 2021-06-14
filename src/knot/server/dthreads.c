@@ -26,6 +26,11 @@
 #include <pthread_np.h>
 #endif /* HAVE_PTHREAD_NP_H */
 
+#if !HAVE_SYSCTLBYNAME && defined(__OpenBSD__)
+#include <sys/param.h>
+#include <sys/sysctl.h>
+#endif
+
 #include "knot/server/dthreads.h"
 #include "libknot/libknot.h"
 
@@ -691,10 +696,10 @@ int dt_online_cpus(void)
 #ifdef _SC_NPROCESSORS_ONLN
 	ret = (int) sysconf(_SC_NPROCESSORS_ONLN);
 #else
-/* FreeBSD, NetBSD, OpenBSD, OS X < 10.4 */
+/* OS X < 10.4 and a fallback for FreeBSD, NetBSD, OpenBSD, macOS */
 #if HAVE_SYSCTLBYNAME
 	size_t rlen = sizeof(int);
-#if defined(__OpenBSD__) || defined(__NetBSD__)
+#if defined(__NetBSD__)
 	if (sysctlbyname("hw.ncpuonline", &ret, &rlen, NULL, 0) < 0) {
 		ret = -1;
 	}
@@ -702,11 +707,24 @@ int dt_online_cpus(void)
 	if (sysctlbyname("kern.smp.cpus", &ret, &rlen, NULL, 0) < 0) {
 		ret = -1;
 	}
+#elif defined(__APPLE__) /* No clear documentation available about older versions. */
+	if (sysctlbyname("hw.activecpu", &ret, &rlen, NULL, 0) < 0 ||
+	    sysctlbyname("hw.availcpu", &ret, &rlen, NULL, 0) < 0 ||
+	    sysctlbyname("hw.ncpu", &ret, &rlen, NULL, 0) < 0) {
+		ret = -1;
+	}
 #else
 	if (sysctlbyname("hw.ncpu", &ret, &rlen, NULL, 0) < 0) {
 		ret = -1;
 	}
-#endif /* __OpenBSD__, __NetBSD__, __FreeBSD__, etc. */
+#endif /* __NetBSD__, __FreeBSD__, __APPLE__, etc. */
+#elif defined(__OpenBSD__) /* !HAVE_SYSCTLBYNAME */
+	int mib[2];
+	mib[0] = CTL_HW;
+	mib[1] = HW_NCPUONLINE
+	if (sysctl(mib, 2, &ret, &rlen, NULL, 0) < 0) {
+		ret = -1;
+	}
 #endif /* HAVE_SYSCTLBYNAME */
 #endif /* _SC_NPROCESSORS_ONLN */
 	return ret;
