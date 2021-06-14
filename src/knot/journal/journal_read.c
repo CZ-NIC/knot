@@ -52,7 +52,7 @@ static bool go_next_changeset(journal_read_t *ctx, bool go_zone, const knot_dnam
 	if (!knot_lmdb_find_prefix(&ctx->txn, &ctx->key_prefix)) {
 		return false;
 	}
-	if (ctx->next == journal_next_serial(&ctx->txn.cur_val)) {
+	if (!go_zone && ctx->next == journal_next_serial(&ctx->txn.cur_val)) {
 		ctx->txn.ret = KNOT_ELOOP;
 		return false;
 	}
