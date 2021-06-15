@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -86,10 +86,15 @@ enum err_codes {
 	ZS_BAD_ALGORITHM,
 	ZS_BAD_CERT_TYPE,
 	ZS_BAD_EUI_LENGTH,
-	ZS_BAD_SVC_PARAM,
 	ZS_BAD_L64_LENGTH,
 	ZS_BAD_CHAR_COLON,
-	ZS_BAD_CHAR_DASH
+	ZS_BAD_CHAR_DASH,
+	ZS_DUPLICATE_SVCB_KEY,
+	ZS_BAD_SVCB_PARAM,
+	ZS_BAD_SVCB_MANDATORY,
+	ZS_DUPLICATE_SVCB_MANDATORY,
+	ZS_MISSING_SVCB_MANDATORY,
+	ZS_EMPTY_LIST_ITEM,
 };
 
 /*!

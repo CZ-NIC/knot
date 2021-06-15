@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -147,14 +147,24 @@ static const err_table_t err_msgs[] = {
 	          "invalid certificate type" ),
 	ERR_ITEM( ZS_BAD_EUI_LENGTH,
 	          "invalid EUI length" ),
-	ERR_ITEM( ZS_BAD_SVC_PARAM,
-	          "invalid SvcParam" ),
 	ERR_ITEM( ZS_BAD_L64_LENGTH,
 	          "invalid 64-bit locator" ),
 	ERR_ITEM( ZS_BAD_CHAR_COLON,
 	          "missing colon character" ),
 	ERR_ITEM( ZS_BAD_CHAR_DASH,
 	          "missing dash character" ),
+	ERR_ITEM( ZS_DUPLICATE_SVCB_KEY,
+	          "duplicate parameter name" ),
+	ERR_ITEM( ZS_BAD_SVCB_PARAM,
+	          "invalid parameter" ),
+	ERR_ITEM( ZS_BAD_SVCB_MANDATORY,
+	          "invalid mandatory value" ),
+	ERR_ITEM( ZS_DUPLICATE_SVCB_MANDATORY,
+	          "duplicate mandatory value" ),
+	ERR_ITEM( ZS_MISSING_SVCB_MANDATORY,
+	          "missing mandatory parameter" ),
+	ERR_ITEM( ZS_EMPTY_LIST_ITEM,
+	          "empty comma-separated list item" ),
 
 	ERR_ITEM( 0, NULL ) // Terminator
 };
