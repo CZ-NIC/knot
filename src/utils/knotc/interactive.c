@@ -392,6 +392,8 @@ int interactive_loop(params_t *process_params)
 	el_set(el, EL_SIGNAL, 1);
 	el_source(el, NULL);
 
+	// Warning: these two el_sets()'s always leak -- in libedit2 library!
+	// For more details see this commit's message.
 	el_set(el, EL_ADDFN, PROGRAM_NAME"-complete",
 	       "Perform "PROGRAM_NAME" completion.", complete);
 	el_set(el, EL_BIND, "^I",  PROGRAM_NAME"-complete", NULL);
