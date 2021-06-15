@@ -49,11 +49,12 @@ static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 // Current backup format version for output.
 #define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.
 
-#define LABEL_FILE "knot_backup_label.txt"
-#define LOCK_FILE  "knot.backup.lockfile"
+#define LABEL_FILE "knot_backup.label"
+#define LOCK_FILE  "lock.knot_backup"
 
-#define LABEL_FILE_HEAD    "Knot DNS backup\n"
-#define LABEL_FILE_FORMAT  "Backup format:     %d\n"
+#define LABEL_FILE_HEAD         "label: Knot DNS Backup\n"
+#define LABEL_FILE_FORMAT       "backup_format: %d\n"
+#define LABEL_FILE_TIME_FORMAT  "%Y-%m-%d %H:%M:%S %Z"
 
 #define FNAME_MAX (MAX(sizeof(LABEL_FILE), sizeof(LOCK_FILE)))
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
@@ -83,31 +84,36 @@ static int make_label_file(zone_backup_ctx_t *ctx, char *full_path)
 	// When the name doesn't fit, the \0 terminator isn't always guaranteed.
 	hostname[HOSTNAME_MAX - 1] = '\0';
 
-	// Prepare the timestamp.
-	time_t now = time(NULL);
+	// Prepare the timestamps.
+	char started_time[64], finished_time[64];
 	struct tm tm;
+
+	localtime_r(&ctx->init_time, &tm);
+	strftime(started_time, sizeof(started_time), LABEL_FILE_TIME_FORMAT, &tm);
+
+	time_t now = time(NULL);
 	localtime_r(&now, &tm);
-	char date[64];
-	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
+	strftime(finished_time, sizeof(finished_time), LABEL_FILE_TIME_FORMAT, &tm);
 
 	// Print the label contents.
 	ret = fprintf(file,
 	              "%s"
-	              "---------------\n"
-	              "Created on host:   %s\n"
-	              "Backup time:       %s\n"
-	              "Knot DNS version:  %s\n"
 	              LABEL_FILE_FORMAT
-	              "Parameters used:   +backupdir %s\n"
-	              "                   +%szonefile +%sjournal +%stimers +%skaspdb +%scatalog\n"
-	              "Zone count:        %d\n",
-	              label_file_head, hostname, date, PACKAGE_VERSION, BACKUP_VERSION,
-	              ctx->backup_dir,
+	              "host: %s\n"
+	              "started_time: %s\n"
+	              "finished_time: %s\n"
+	              "knot_version: %s\n"
+	              "parameters: +%szonefile +%sjournal +%stimers +%skaspdb +%scatalog "
+	                  "+backupdir %s\n"
+	              "zone_count: %d\n",
+	              label_file_head,
+	              BACKUP_VERSION, hostname, started_time, finished_time, PACKAGE_VERSION,
 	              ctx->backup_zonefile ? "" : "no",
 	              ctx->backup_journal ? "" : "no",
 	              ctx->backup_timers ? "" : "no",
 	              ctx->backup_kaspdb ? "" : "no",
 	              ctx->backup_catalog ? "" : "no",
+	              ctx->backup_dir,
 	              ctx->zone_count);
 
 	ret = (ret < 0) ? knot_map_errno() : KNOT_EOK;
@@ -193,6 +199,7 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 	ctx->backup_global = false;
 	ctx->readers = 1;
 	ctx->failed = false;
+	ctx->init_time = time(NULL);
 	ctx->zone_count = 0;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
