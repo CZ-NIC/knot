@@ -217,6 +217,9 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 			return ret;
 		}
 		log_zone_info(zone->name, "automatic SOA serial increment");
+		log_zone_notice(zone->name, "automatic SOA increment is deprecated and will "
+		                            "result in error in newer versions, configure "
+		                            "'zonefile-load: difference-no-serial' instead");
 	}
 
 	update->init_cont = new_cont;
