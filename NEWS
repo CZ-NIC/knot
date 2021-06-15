@@ -1,3 +1,31 @@
+Knot DNS 3.0.7 (2021-06-16)
+===========================
+
+Features:
+---------
+ - knotd: new configuration policy option for CDS digest algorithm setting #738
+ - keymgr: new command for primary SOA serial manipulation in on-secondary signing mode
+
+Improvements:
+-------------
+ - knotd: improved algorithm rollover to shorten the last step of old RRSIG publication
+
+Bugfixes:
+---------
+ - knotd: zone is flushed upon server start, despite DNSSEC signing is up-to-date
+ - knotd: wildcard nonexistence is proved on empty-non-terminal query
+ - knotd: redundant wildcard proof for non-authoritative data in a reply
+ - knotd: missing wildcard proofs in a wildcard-cname loop reply
+ - knotd: incorrectly synthesized CNAME owner from a wildcard record #715
+ - knotd: zone-in-journal changeset ignores journal-max-usage limit #736
+ - knotd: incorrect processing of zone-in-journal changeset with SOA serial 0
+ - knotd: broken initialization of processing workers if SO_REUSEPORT(_LB) not available
+ - kjournalprint: reported journal usage is incorrect #736
+ - keymgr: cannot parse algorithm name ed448 #739
+ - keymgr: default key size not set properly
+ - kdig: failed to process huge DoH responses
+ - libknot/probe: some corner-case bugs
+
 Knot DNS 3.0.6 (2021-05-12)
 ===========================
 
