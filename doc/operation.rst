@@ -779,9 +779,9 @@ Generating and signing future ZSKs
 
      $ keymgr -c /path/to/ZSK/side.conf example.com. import-skr /path/to/skr/file
 
-5. Use the ``knotc zone-sign`` command to trigger a zone re-sign on the ZSK-side and set up the future re-signing events correctly.::
+5. Use the ``knotc zone-keys-load`` command to trigger a zone re-sign on the ZSK-side and set up the future re-signing events correctly.::
 
-    $ knotc -c /path/to/ZSK/side.conf zone-sign example.com.
+    $ knotc -c /path/to/ZSK/side.conf zone-keys-load example.com.
 
 6. Now the future ZSKs and DNSKEY records with signatures are ready in KASP DB for later usage.
    Knot automatically uses them at the correct time intervals.
@@ -794,14 +794,14 @@ Offline KSK and manual ZSK management
 
 If the automatically preplanned ZSK roll-overs (first step) are not desired, just set the :ref:`policy_zsk-lifetime`
 to zero, and manually pregenerate ZSK keys and set their timers. Then follow the steps
-``generate-ksr — sign-ksr — import-skr — zone-sign`` and repeat the ceremony when necessary.
+``generate-ksr — sign-ksr — import-skr — zone-keys-load`` and repeat the ceremony when necessary.
 
 Offline KSK roll-over
 ---------------------
 
 The KSKs (on the KSK side) must be managed manually, but manual KSK roll-over is possible. Just plan the steps
 of the KSK roll-over in advance, and whenever the KSK set or timers are changed, re-perform the relevant rest of the ceremony
-``sign-ksr — import-skr — zone-sign``.
+``sign-ksr — import-skr — zone-keys-load``.
 
 Emergency SKR
 -------------

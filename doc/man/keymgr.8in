@@ -60,7 +60,8 @@ TSIG key is only displayed on \fIstdout\fP: the command does not create a file, 
 key in a keystore.
 .TP
 \fB\-l\fP, \fB\-\-list\fP
-Print the list of zones that have at least one key stored in the configured KASP db.
+Print the list of zones that have at least one key stored in the configured KASP
+database.
 .UNINDENT
 .SS Config options
 .INDENT 0.0
@@ -82,7 +83,8 @@ Use specified KASP database path and default configuration.
 .INDENT 3.5
 Keymgr runs with the same user privileges as configured for knotd\&.
 For example, if keymgr is run as \fBroot\fP, but the configured user
-is \fBknot\fP, it won\(aqt be able to read files (PEM files, KASP db, ...) readable only by \fBroot\fP\&.
+is \fBknot\fP, it won\(aqt be able to read files (PEM files, KASP database, ...) readable
+only by \fBroot\fP\&.
 .UNINDENT
 .UNINDENT
 .SS Commands

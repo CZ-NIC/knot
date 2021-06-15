@@ -32,12 +32,13 @@ Basic options
 
 **-t**, **--tsig** *tsig_name* [*tsig_algorithm*] [*tsig_bits*]
   Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
-  bit length of the key by number (default: optimal length given by algorithm). The generated 
+  bit length of the key by number (default: optimal length given by algorithm). The generated
   TSIG key is only displayed on `stdout`: the command does not create a file, nor include the
   key in a keystore.
 
 **-l**, **--list**
-  Print the list of zones that have at least one key stored in the configured KASP db.
+  Print the list of zones that have at least one key stored in the configured KASP
+  database.
 
 Config options
 ..............
@@ -56,7 +57,8 @@ Config options
 .. NOTE::
    Keymgr runs with the same user privileges as configured for :doc:`knotd<man_knotd>`.
    For example, if keymgr is run as ``root``, but the configured :ref:`user<server_user>`
-   is ``knot``, it won't be able to read files (PEM files, KASP db, ...) readable only by ``root``.
+   is ``knot``, it won't be able to read files (PEM files, KASP database, ...) readable
+   only by ``root``.
 
 Commands
 ........

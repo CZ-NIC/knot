@@ -142,6 +142,11 @@ Optional flags are equivalent to \fBzone\-backup\fP\&. (#)
 Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.
 This command is valid for zones with DNSSEC signing enabled. (#)
 .TP
+\fBzone\-keys\-load\fP [\fIzone\fP\&...]
+Trigger a load of DNSSEC keys and other signing material from KASP database
+(which might have been altered manually). If suitable, re\-sign the zone
+afterwards (keeping valid signatures intact). (#)
+.TP
 \fBzone\-key\-rollover\fP \fIzone\fP \fIkey_type\fP
 Trigger immediate key rollover. Publish new key and start a key rollover,
 even when the key has a lifetime to go. Key type can be \fBksk\fP (also for CSK)
