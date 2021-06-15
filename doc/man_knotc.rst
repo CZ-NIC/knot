@@ -128,6 +128,11 @@ Actions
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
   This command is valid for zones with DNSSEC signing enabled. (#)
 
+**zone-keys-load** [*zone*...]
+  Trigger a load of DNSSEC keys and other signing material from KASP database
+  (which might have been altered manually). If suitable, re-sign the zone
+  afterwards (keeping valid signatures intact). (#)
+
 **zone-key-rollover** *zone* *key_type*
   Trigger immediate key rollover. Publish new key and start a key rollover,
   even when the key has a lifetime to go. Key type can be **ksk** (also for CSK)

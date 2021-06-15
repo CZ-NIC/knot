@@ -203,7 +203,7 @@ _, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
 writef(SKR, out)
 Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 
-knot.ctl("zone-sign")
+knot.ctl("zone-keys-load")
 
 check_zone(knot, zone, 2, 1, 1, "init2")
 
