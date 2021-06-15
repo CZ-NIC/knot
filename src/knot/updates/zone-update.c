@@ -201,27 +201,11 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 		return ret;
 	}
 
-	// True if nonempty changes were made but the serial
-	// remained the same and has to be incremented.
-	bool diff_semcheck = (ret == KNOT_ESEMCHECK);
-
 	ret = zone_update_apply_changeset(update, &diff);
 	changeset_clear(&diff);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(update);
 		return ret;
-	}
-
-	if (diff_semcheck) {
-		ret = zone_update_increment_soa(update, conf());
-		if (ret != KNOT_EOK) {
-			zone_update_clear(update);
-			return ret;
-		}
-		log_zone_info(zone->name, "automatic SOA serial increment");
-		log_zone_notice(zone->name, "automatic SOA increment is deprecated and will "
-		                            "result in error in newer versions, configure "
-		                            "'zonefile-load: difference-no-serial' instead");
 	}
 
 	update->init_cont = new_cont;
