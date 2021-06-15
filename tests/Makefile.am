@@ -59,6 +59,7 @@ check_PROGRAMS = \
 	contrib/test_qp-cow			\
 	contrib/test_siphash			\
 	contrib/test_sockaddr			\
+	contrib/test_spinlock			\
 	contrib/test_string			\
 	contrib/test_strtonum			\
 	contrib/test_time			\

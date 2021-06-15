@@ -541,6 +541,7 @@ tests/contrib/test_qp-cow.c
 tests/contrib/test_qp-trie.c
 tests/contrib/test_siphash.c
 tests/contrib/test_sockaddr.c
+tests/contrib/test_spinlock.c
 tests/contrib/test_string.c
 tests/contrib/test_strtonum.c
 tests/contrib/test_time.c
