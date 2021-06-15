@@ -47,6 +47,7 @@ typedef struct zone_backup_ctx {
 	knot_lmdb_db_t bck_catalog;         // backup catalog DB
 	bool failed;                        // true if an error occurred in processing of any zone
 	knot_backup_format_t backup_format; // the backup format version used
+	time_t init_time;                   // time when the current backup operation has started
 	int zone_count;                     // count of backed up zones
 } zone_backup_ctx_t;
 
