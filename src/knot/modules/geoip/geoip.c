@@ -876,9 +876,10 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 
 		return KNOTD_IN_STATE_HIT;
+	} else {
+		// view was found, but no suitable rrtype
+		return KNOTD_IN_STATE_NODATA;
 	}
-
-	return state;
 }
 
 int geoip_load(knotd_mod_t *mod)

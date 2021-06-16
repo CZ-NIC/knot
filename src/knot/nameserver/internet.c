@@ -432,7 +432,7 @@ static int solve_name(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata)
 static int solve_answer(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
 {
 	/* Do not solve if already solved, e.g. in a module. */
-	if (state == KNOTD_IN_STATE_HIT) {
+	if (state == KNOTD_IN_STATE_HIT || state == KNOTD_IN_STATE_NODATA) {
 		return state;
 	}
 
