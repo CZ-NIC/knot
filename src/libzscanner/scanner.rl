@@ -339,7 +339,7 @@ int zs_set_input_file(
 	// Set the scanner input limits.
 	s->input.start   = start;
 	s->input.current = start;
-	s->input.end     = start + size;
+	s->input.end     = (start != NULL) ? start + size : start;
 
 	// Get absolute path of the zone file if possible.
 	char *full_name = realpath(file_name, NULL);
