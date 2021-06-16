@@ -86,6 +86,11 @@ for i in range(1, 1000):
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
 
+    # check NODATA response when querying different type
+    resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "AAAA", source=random_client)
+    resp.check(rcode="NOERROR")
+    resp.check_count(1, "SOA", section="authority")
+
 # Restart with subnet module.
 knot.clear_modules(zone)
 knot.add_module(zone, mod_subnet);
@@ -104,6 +109,10 @@ for i in range(1, 1000):
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
 
+    resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "AAAA", source=random_client)
+    resp.check(rcode="NOERROR")
+    resp.check_count(1, "SOA", section="authority")
+
 # Switch subnet file.
 shutil.move(subnet2_filename, subnet_filename)
 knot.ctl("-f zone-reload example.com.", wait=True)
@@ -115,3 +124,7 @@ for i in range(1, 1000):
     expected_rdata = "126.255." + middle + ".0"
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=expected_rdata, nordata=random_client)
+
+    resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "AAAA", source=random_client)
+    resp.check(rcode="NOERROR")
+    resp.check_count(1, "SOA", section="authority")
