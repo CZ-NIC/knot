@@ -392,6 +392,8 @@ int interactive_loop(params_t *process_params)
 	el_set(el, EL_SIGNAL, 1);
 	el_source(el, NULL);
 
+	// Warning: these two el_sets()'s always leak -- in libedit2 library!
+	// For more details see this commit's message.
 	el_set(el, EL_ADDFN, PROGRAM_NAME"-complete",
 	       "Perform "PROGRAM_NAME" completion.", complete);
 	el_set(el, EL_BIND, "^I",  PROGRAM_NAME"-complete", NULL);
@@ -406,15 +408,13 @@ int interactive_loop(params_t *process_params)
 		const char **argv;
 		const LineInfo *li = el_line(el);
 		int ret = tok_line(tok, li, &argc, &argv, NULL, NULL);
-		if (ret != 0 || argc == 0) {
-			continue;
+		if (ret == 0 && argc != 0) {
+			history(hist, &hev, H_ENTER, line);
+			history(hist, &hev, H_SAVE, hist_file);
+
+			// Process the command.
+			ret = process_cmd(argc, argv, process_params);
 		}
-
-		history(hist, &hev, H_ENTER, line);
-		history(hist, &hev, H_SAVE, hist_file);
-
-		// Process the command.
-		ret = process_cmd(argc, argv, process_params);
 
 		tok_reset(tok);
 		tok_end(tok);
