@@ -59,30 +59,23 @@ static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 #define FNAME_MAX (MAX(sizeof(LABEL_FILE), sizeof(LOCK_FILE)))
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
-#if defined(_POSIX_HOST_NAME_MAX)
-#  define HOSTNAME_MAX (_POSIX_HOST_NAME_MAX + 1)  // _POSIX_HOST_NAME_MAX doesn't include '\0'.
-#else
-#  define HOSTNAME_MAX 256
-#endif
-
 static const char *label_file_name = LABEL_FILE;
 static const char *lock_file_name =  LOCK_FILE;
 static const char *label_file_head = LABEL_FILE_HEAD;
 
 static int make_label_file(zone_backup_ctx_t *ctx, char *full_path)
 {
-	int ret;
-
 	FILE *file = fopen(full_path, "w");
 	if (file == NULL) {
 		return knot_map_errno();
 	}
 
-	// Prepare the hostname.
-	char hostname[HOSTNAME_MAX];
-	gethostname(hostname, HOSTNAME_MAX);
-	// When the name doesn't fit, the \0 terminator isn't always guaranteed.
-	hostname[HOSTNAME_MAX - 1] = '\0';
+	// Prepare the server identity.
+	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
+	const char *ident = conf_str(&val);
+	if (ident == NULL || ident[0] == '\0') {
+		ident = conf()->hostname;
+	}
 
 	// Prepare the timestamps.
 	char started_time[64], finished_time[64];
@@ -96,10 +89,10 @@ static int make_label_file(zone_backup_ctx_t *ctx, char *full_path)
 	strftime(finished_time, sizeof(finished_time), LABEL_FILE_TIME_FORMAT, &tm);
 
 	// Print the label contents.
-	ret = fprintf(file,
+	int ret = fprintf(file,
 	              "%s"
 	              LABEL_FILE_FORMAT
-	              "host: %s\n"
+	              "identity: %s\n"
 	              "started_time: %s\n"
 	              "finished_time: %s\n"
 	              "knot_version: %s\n"
@@ -107,7 +100,7 @@ static int make_label_file(zone_backup_ctx_t *ctx, char *full_path)
 	                  "+backupdir %s\n"
 	              "zone_count: %d\n",
 	              label_file_head,
-	              BACKUP_VERSION, hostname, started_time, finished_time, PACKAGE_VERSION,
+	              BACKUP_VERSION, ident, started_time, finished_time, PACKAGE_VERSION,
 	              ctx->backup_zonefile ? "" : "no",
 	              ctx->backup_journal ? "" : "no",
 	              ctx->backup_timers ? "" : "no",
