@@ -239,6 +239,7 @@ done:
 		reschedule->next_sign = schedule_next(&ctx, &keyset, next_resign, zone_expire);
 	} else {
 		reschedule->next_sign = knot_dnssec_failover_delay(&ctx);
+		reschedule->next_rollover = 0;
 	}
 
 	free_zone_keys(&keyset);
