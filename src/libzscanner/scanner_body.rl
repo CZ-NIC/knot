@@ -114,7 +114,6 @@
 		top = 0;
 
 		// Reset per-record contexts.
-		s->multiline = false;
 		s->long_string = false;
 		s->comma_list = false;
 
