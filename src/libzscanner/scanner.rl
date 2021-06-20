@@ -437,6 +437,7 @@ static void parse(
 	} else if (s->input.eof && s->multiline) {
 		ERR(ZS_UNCLOSED_MULTILINE);
 		extra_error = true;
+		s->line_counter--;
 	}
 
 	// Treat the extra error.

@@ -121,6 +121,7 @@
 
 		// Execute the error callback.
 		if (s->process.automatic) {
+			fhold;
 			if (s->process.error != NULL) {
 				s->process.error(s);
 
