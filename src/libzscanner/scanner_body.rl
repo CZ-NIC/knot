@@ -135,12 +135,18 @@
 			if (s->error.fatal) {
 				fbreak;
 			}
-			fgoto main;
+			fgoto err_rest;
 		} else {
 			// Return if external processing.
-			fhold; fnext main; fbreak;
+			fhold; fnext err_rest; fbreak;
 		}
 	}
+
+	# Consume rest lines of defective multiline record.
+	err_rest := ( (any - newline - ')')
+	            | newline when { s->multiline }
+	            | ')'     when { s->multiline } $_check_multiline_end
+	            )* %{ fhold; fcall main; } <: newline;
 
 	# Fill rest of the line to buffer and skip to main loop.
 	err_line := (^newline $_err_line)* >_err_line_init
