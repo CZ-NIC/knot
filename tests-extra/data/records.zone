@@ -2,9 +2,9 @@ $ORIGIN records.
 $TTL 3600
 
 @	SOA	dns1 HOSTmaster 2010111201 10800 3600 1209600 1800
-   100  NS	dns1
-   100  NS	dns2
-   300  MX	10 mail
+	NS	dns1
+	NS	dns2
+	MX	10 mail
 
 dns1	A	192.0.2.1
 	AAAA	2001:DB8::1
@@ -25,10 +25,10 @@ naptr	IN NAPTR 100  10 ""  ""                 "/urn:cid:.+@([^\\.]+\.)(.*)$/\\2/
 	IN NAPTR 100 100 "s" "ftp+I2R"          ""                                   _ftp._tcp.foo.com.
 	IN NAPTR 100  10 "u" "sip+E2U"          "!^.*$!sip:information@tele2.se!"    .
 	IN NAPTR 102  10 "u" "mailto+E2U"       "!^.*$!mailto:information@tele2.se!" .
-ipseckey	7200 IN IPSECKEY 10 1 2 192.0.2.38 AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ==
-		7200 IN IPSECKEY 10 0 2 .          AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ==
-		7200 IN IPSECKEY 10 3 2 mygateway.example.com.   AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ==
-		7200 IN IPSECKEY 10 2 2 2001:0DB8:0:8002::2000:1 AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ==
+ipseckey	 IN IPSECKEY 10 1 2 192.0.2.38 AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ==
+		 IN IPSECKEY 10 0 2 .          AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ==
+		 IN IPSECKEY 10 3 2 mygateway.example.com.   AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ==
+		 IN IPSECKEY 10 2 2 2001:0DB8:0:8002::2000:1 AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ==
 loc	LOC 42 21 54 N 71 06 18 W -24m 30m
 	LOC 42 21 43.952 N 71 5 6.344 W -24m 1m 200m
 	LOC 52 14 05 N 00 08 50 E 10m
@@ -128,4 +128,4 @@ origin-case.rEcoRDs.	A	1.2.3.4
 *.loop2 CNAME a.loop1
 
 ; Reported bugs
-3.1.1.1.1.1.1.1.1.2.7.9.9 172800 NAPTR 1 1 "u" "E2U+sip" "!^.*$!sip:123@freeswitch.org!" .
+3.1.1.1.1.1.1.1.1.2.7.9.9 NAPTR 1 1 "u" "E2U+sip" "!^.*$!sip:123@freeswitch.org!" .
