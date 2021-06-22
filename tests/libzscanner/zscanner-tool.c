@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@ static void help(void)
 	       "     0        Empty output.\n"
 	       "     1        Debug output (DEFAULT).\n"
 	       "     2        Test output.\n"
+	       " -b <num>     Divide hex string to blocks of length <num>.\n"
 	       " -s           State parsing mode.\n"
 	       " -t           Launch unit tests.\n"
 	       " -h           Print this help.\n");
@@ -139,11 +140,12 @@ static int include(zs_scanner_t *s)
 
 int main(int argc, char *argv[])
 {
-	int mode = DEFAULT_MODE, state = 0, test = 0;
+	int mode = DEFAULT_MODE, block = 0, state = 0, test = 0;
 
 	// Command line long options.
 	struct option opts[] = {
 		{ "mode",  required_argument, NULL, 'm' },
+		{ "block", required_argument, NULL, 'b' },
 		{ "state", no_argument,       NULL, 's' },
 		{ "test",  no_argument,       NULL, 't' },
 		{ "help",  no_argument,       NULL, 'h' },
@@ -152,10 +154,13 @@ int main(int argc, char *argv[])
 
 	// Parsed command line arguments.
 	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "m:sth", opts, &li)) != -1) {
+	while ((opt = getopt_long(argc, argv, "m:b:sth", opts, &li)) != -1) {
 		switch (opt) {
 		case 'm':
 			mode = atoi(optarg);
+			break;
+		case 'b':
+			block = atoi(optarg);
 			break;
 		case 's':
 			state = 1;
@@ -210,7 +215,7 @@ int main(int argc, char *argv[])
 		ret = 0;
 		break;
 	case 1:
-		ret = zs_set_processing(s, debug_process_record, debug_process_error, NULL);
+		ret = zs_set_processing(s, debug_process_record, debug_process_error, &block);
 		ret += zs_set_processing_comment(s, debug_process_comment);
 		break;
 	case 2:
