@@ -1,0 +1,86 @@
+$ORIGIN svcb.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 1 100 100 1000 600
+	NS	dns1
+dns1	A	192.0.2.1
+
+example1   TYPE65   \# 19 (
+00 00                                              ; priority
+03 66 6f 6f 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 ; target
+)
+
+example2   TYPE64   \# 3 (
+00 01      ; priority
+00         ; target (root label)
+)
+
+example3   TYPE64   \# 25 (
+00 10                                              ; priority
+03 66 6f 6f 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 ; target
+00 03                                              ; key 3
+00 02                                              ; length 2
+00 35                                              ; value
+)
+
+example4   TYPE64   \# 28 (
+00 01                                              ; priority
+03 66 6f 6f 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 ; target
+02 9b                                              ; key 667
+00 05                                              ; length 5
+68 65 6c 6c 6f                                     ; value
+)
+
+example5   TYPE64   \# 32 (
+00 01                                              ; priority
+03 66 6f 6f 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 ; target
+02 9b                                              ; key 667
+00 09                                              ; length 9
+68 65 6c 6c 6f d2 71 6f 6f                         ; value
+)
+
+example6   TYPE64   \# 55 (
+00 01                                              ; priority
+03 66 6f 6f 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 ; target
+00 06                                              ; key 6
+00 20                                              ; length 32
+20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 01    ; first address
+20 01 0d b8 00 00 00 00 00 00 00 00 00 53 00 01    ; second address
+)
+
+example7   TYPE64   \# 35 (
+00 01                                              ; priority
+07 65 78 61 6d 70 6c 65 03 63 6f 6d 00             ; target
+00 06                                              ; key 6
+00 10                                              ; length 16
+00 00 00 00 00 00 00 00 00 00 ff ff c6 33 64 64    ; address
+)
+
+example8   TYPE64   \# 48 (
+00 10                                              ; priority
+03 66 6f 6f 07 65 78 61 6d 70 6c 65 03 6f 72 67 00 ; target
+00 00                                              ; key 0
+00 04                                              ; param length 4
+00 01                                              ; value: key 1
+00 04                                              ; value: key 4
+00 01                                              ; key 1
+00 09                                              ; param length 9
+02                                                 ; alpn length 2
+68 32                                              ; alpn value
+05                                                 ; alpn length 5
+68 33 2d 31 39                                     ; alpn value
+00 04                                              ; key 4
+00 04                                              ; param length 4
+c0 00 02 01                                        ; param value
+)
+
+example9   TYPE64   \# 35 (
+00 10                                              ; priority
+03 66 6f 6f 07 65 78 61 6d 70 6c 65 03 6f 72 67 00 ; target
+00 01                                              ; key 1
+00 0c                                              ; param length 12
+08                                                 ; alpn length 8
+66 5c 6f 6f 2c 62 61 72                            ; alpn value
+02                                                 ; alpn length 2
+68 32                                              ; alpn value
+)
