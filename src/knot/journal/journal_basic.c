@@ -15,8 +15,6 @@
  */
 
 #include "knot/journal/journal_basic.h"
-
-#include "knot/conf/conf.h"
 #include "knot/journal/journal_metadata.h"
 #include "libknot/error.h"
 
@@ -64,18 +62,18 @@ bool journal_serial_to(knot_lmdb_txn_t *txn, bool zij, uint32_t serial,
 
 bool journal_allow_flush(zone_journal_t j)
 {
-	conf_val_t val = conf_zone_get(conf(), C_ZONEFILE_SYNC, j.zone);
+	conf_val_t val = conf_zone_get(j.conf, C_ZONEFILE_SYNC, j.zone);
 	return conf_int(&val) >= 0;
 }
 
 size_t journal_conf_max_usage(zone_journal_t j)
 {
-	conf_val_t val = conf_zone_get(conf(), C_JOURNAL_MAX_USAGE, j.zone);
+	conf_val_t val = conf_zone_get(j.conf, C_JOURNAL_MAX_USAGE, j.zone);
 	return conf_int(&val);
 }
 
 size_t journal_conf_max_changesets(zone_journal_t j)
 {
-	conf_val_t val = conf_zone_get(conf(), C_JOURNAL_MAX_DEPTH, j.zone);
+	conf_val_t val = conf_zone_get(j.conf, C_JOURNAL_MAX_DEPTH, j.zone);
 	return conf_int(&val);
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -175,10 +175,10 @@ int main(int argc, char *argv[])
 	kasp_db_ensure_init(&kasp_db, conf());
 	zone_struct->kaspdb = &kasp_db;
 
-	ret = knot_dnssec_zone_sign(&up, 0, rollover, timestamp, &next_sign);
+	ret = knot_dnssec_zone_sign(&up, conf(), 0, rollover, timestamp, &next_sign);
 	if (ret == KNOT_DNSSEC_ENOKEY) { // exception: allow generating initial keys
 		rollover = KEY_ROLL_ALLOW_ALL;
-		ret = knot_dnssec_zone_sign(&up, 0, rollover, timestamp, &next_sign);
+		ret = knot_dnssec_zone_sign(&up, conf(), 0, rollover, timestamp, &next_sign);
 	}
 	if (ret != KNOT_EOK) {
 		printf("Failed to sign the zone (%s)\n", knot_strerror(ret));

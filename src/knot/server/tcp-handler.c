@@ -69,10 +69,11 @@ static void update_sweep_timer(struct timespec *timer)
 static void update_tcp_conf(tcp_context_t *tcp)
 {
 	rcu_read_lock();
+	conf_t *pconf = conf();
 	tcp->max_worker_fds = tcp->client_threshold + \
-		MAX(conf()->cache.srv_tcp_max_clients / conf()->cache.srv_tcp_threads, 1);
-	tcp->idle_timeout = conf()->cache.srv_tcp_idle_timeout;
-	tcp->io_timeout = conf()->cache.srv_tcp_io_timeout;
+		MAX(pconf->cache.srv_tcp_max_clients / pconf->cache.srv_tcp_threads, 1);
+	tcp->idle_timeout = pconf->cache.srv_tcp_idle_timeout;
+	tcp->io_timeout = pconf->cache.srv_tcp_io_timeout;
 	rcu_read_unlock();
 }
 

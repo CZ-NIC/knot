@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -195,13 +195,14 @@ static void dump_to_file(FILE *fd, server_t *server)
 
 static void dump_stats(server_t *server)
 {
-	conf_val_t val = conf_get(conf(), C_SRV, C_RUNDIR);
+	conf_t *pconf = conf();
+	conf_val_t val = conf_get(pconf, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&val, NULL);
-	val = conf_get(conf(), C_STATS, C_FILE);
+	val = conf_get(pconf, C_STATS, C_FILE);
 	char *file_name = conf_abs_path(&val, rundir);
 	free(rundir);
 
-	val = conf_get(conf(), C_STATS, C_APPEND);
+	val = conf_get(pconf, C_STATS, C_APPEND);
 	bool append = conf_bool(&val);
 
 	// Open or create output file.

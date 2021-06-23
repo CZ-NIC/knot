@@ -30,7 +30,7 @@
 #include "knot/zone/adjust.h"
 #include "knot/zone/digest.h"
 
-static int sign_init(zone_update_t *update, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
+static int sign_init(zone_update_t *update, conf_t *conf, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
                      knot_time_t adjust_now, knot_lmdb_db_t *kaspdb, kdnssec_ctx_t *ctx, unsigned *zonemd_alg,
                      zone_sign_reschedule_t *reschedule)
 {
@@ -39,7 +39,7 @@ static int sign_init(zone_update_t *update, zone_sign_flags_t flags, zone_sign_r
 
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 
-	int r = kdnssec_ctx_init(conf(), ctx, zone_name, kaspdb, NULL);
+	int r = kdnssec_ctx_init(conf, ctx, zone_name, kaspdb, NULL);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -69,7 +69,7 @@ static int sign_init(zone_update_t *update, zone_sign_flags_t flags, zone_sign_r
 
 	ctx->rrsig_drop_existing = flags & ZONE_SIGN_DROP_SIGNATURES;
 
-	conf_val_t val = conf_zone_get(conf(), C_ZONEMD_GENERATE, zone_name);
+	conf_val_t val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone_name);
 	*zonemd_alg = conf_opt(&val);
 	if (*zonemd_alg != ZONE_DIGEST_NONE) {
 		r = zone_update_add_digest(update, *zonemd_alg, true);
@@ -156,6 +156,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 }
 
 int knot_dnssec_zone_sign(zone_update_t *update,
+                          conf_t *conf,
                           zone_sign_flags_t flags,
                           zone_sign_roll_flags_t roll_flags,
                           knot_time_t adjust_now,
@@ -173,7 +174,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	// signing pipeline
 
-	result = sign_init(update, flags, roll_flags, adjust_now,
+	result = sign_init(update, conf, flags, roll_flags, adjust_now,
 	                   update->zone->kaspdb, &ctx, &zonemd_alg, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
@@ -232,7 +233,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	}
 
 	if (!(flags & ZONE_SIGN_KEEP_SERIAL) && zone_update_to(update) == NULL) {
-		result = zone_update_increment_soa(update, conf());
+		result = zone_update_increment_soa(update, conf);
 		if (result == KNOT_EOK) {
 			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_SOA, &keyset, &ctx);
 		}
@@ -271,7 +272,7 @@ done:
 	return result;
 }
 
-int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *reschedule)
+int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_reschedule_t *reschedule)
 {
 	if (update == NULL || reschedule == NULL) {
 		return KNOT_EINVAL;
@@ -283,7 +284,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 	zone_keyset_t keyset = { 0 };
 	unsigned zonemd_alg;
 
-	result = sign_init(update, 0, 0, 0, update->zone->kaspdb, &ctx, &zonemd_alg, reschedule);
+	result = sign_init(update, conf, 0, 0, 0, update->zone->kaspdb, &ctx, &zonemd_alg, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -333,7 +334,7 @@ int knot_dnssec_sign_update(zone_update_t *update, zone_sign_reschedule_t *resch
 
 	if (!soa_changed) {
 		// incrementing SOA just of it has not been modified by the update
-		result = zone_update_increment_soa(update, conf());
+		result = zone_update_increment_soa(update, conf);
 	}
 	if (result == KNOT_EOK) {
 		result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_SOA, &keyset, &ctx);
@@ -378,10 +379,10 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx)
 	}
 }
 
-int knot_dnssec_validate_zone(zone_update_t *update, bool incremental)
+int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf, bool incremental)
 {
 	kdnssec_ctx_t ctx = { 0 };
-	int ret = kdnssec_validation_ctx(conf(), &ctx, update->new_cont);
+	int ret = kdnssec_validation_ctx(conf, &ctx, update->new_cont);
 	if (ret == KNOT_EOK) {
 		ret = knot_zone_check_nsec_chain(update, &ctx, incremental);
 	}

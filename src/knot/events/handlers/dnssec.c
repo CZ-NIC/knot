@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,7 +97,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	ret = knot_dnssec_zone_sign(&up, sign_flags, r_flags, 0, &resch);
+	ret = knot_dnssec_zone_sign(&up, conf, sign_flags, r_flags, 0, &resch);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}

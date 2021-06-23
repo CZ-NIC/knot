@@ -273,10 +273,11 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 		const uint8_t *nsid_data = conf_bin(nsid, &nsid_len);
 
 		if (nsid->code != KNOT_EOK) {
+			const char *hostname = conf()->hostname;
 			ret = knot_edns_add_option(&qdata->opt_rr,
 			                           KNOT_EDNS_OPTION_NSID,
-			                           strlen(conf()->hostname),
-			                           (uint8_t *)conf()->hostname,
+			                           strlen(hostname),
+			                           (const uint8_t *)hostname,
 			                           qdata->mm);
 			if (ret != KNOT_EOK) {
 				return ret;
