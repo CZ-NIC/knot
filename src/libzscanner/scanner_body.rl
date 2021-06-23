@@ -113,13 +113,15 @@
 		// Initialize the fcall stack.
 		top = 0;
 
-		// Reset the multiline context.
-		s->multiline = false;
+		// Reset per-record contexts.
+		s->long_string = false;
+		s->comma_list = false;
 
 		s->state = ZS_STATE_ERROR;
 
 		// Execute the error callback.
 		if (s->process.automatic) {
+			fhold;
 			if (s->process.error != NULL) {
 				s->process.error(s);
 
@@ -133,12 +135,18 @@
 			if (s->error.fatal) {
 				fbreak;
 			}
-			fgoto main;
+			fgoto err_rest;
 		} else {
 			// Return if external processing.
-			fhold; fnext main; fbreak;
+			fhold; fnext err_rest; fbreak;
 		}
 	}
+
+	# Consume rest lines of defective multiline record.
+	err_rest := ( (any - newline - ')')
+	            | newline when { s->multiline }
+	            | ')'     when { s->multiline } $_check_multiline_end
+	            )* %{ fhold; fcall main; } <: newline;
 
 	# Fill rest of the line to buffer and skip to main loop.
 	err_line := (^newline $_err_line)* >_err_line_init
@@ -263,9 +271,32 @@
 	}
 	action _item_length_exit {
 		s->item_length = rdata_tail - s->item_length_location - 1;
-
+		if (s->comma_list && s->item_length == 0) {
+			WARN(ZS_EMPTY_LIST_ITEM);
+			fhold; fgoto err_line;
+		}
 		if (s->item_length <= MAX_ITEM_LENGTH) {
 			*(s->item_length_location) = (uint8_t)(s->item_length);
+		} else {
+			WARN(ZS_ITEM_OVERFLOW);
+			fhold; fgoto err_line;
+		}
+	}
+	action _item_length2_init {
+		if (rdata_tail < rdata_stop) {
+			s->item_length2_location = rdata_tail;
+			rdata_tail += 2;
+		} else {
+			WARN(ZS_RDATA_OVERFLOW);
+			fhold; fgoto err_line;
+		}
+	}
+	action _item_length2_exit {
+		s->item_length = rdata_tail - s->item_length2_location - 2;
+
+		if (s->item_length <= MAX_ITEM_LENGTH2) {
+			uint16_t val = htons((uint16_t)(s->item_length));
+			memcpy(s->item_length2_location, &val, 2);
 		} else {
 			WARN(ZS_ITEM_OVERFLOW);
 			fhold; fgoto err_line;
@@ -624,6 +655,30 @@
 		fhold; fgoto err_line;
 	}
 
+	action _comma_list {
+		uint8_t *last_two = rdata_tail - 2;
+		uint16_t current_len = rdata_tail - s->item_length_location - 2;
+		if (s->comma_list) {
+			if (last_two[1] == ',') {
+				if (current_len <= 1) {
+					WARN(ZS_EMPTY_LIST_ITEM);
+					fhold; fgoto err_line;
+				} else if (last_two[0] != '\\') { // Start a new item.
+					*(s->item_length_location) = current_len;
+					s->item_length_location = rdata_tail - 1;
+				} else { // Remove backslash.
+					last_two[0] = ',';
+					rdata_tail--;
+				}
+			} else if (last_two[1] == '\\' && current_len > 1) {
+				if (last_two[0] == '\\') { // Remove backslash.
+					last_two[0] = '\\';
+					rdata_tail--;
+				}
+			}
+		}
+	}
+
 	text_char =
 		( (33..126 - [\\;\"])        $_text_char       # One printable char.
 		| ('\\' . (32..126 - digit)) @_text_char       # One "\x" char.
@@ -631,7 +686,7 @@
 		   . digit {3}               $_text_dec %_text_dec_exit # "DDD" rest.
 		                             $!_text_dec_error
 		  )
-		) $!_text_char_error;
+		) %_comma_list $!_text_char_error;
 
 	quoted_text_char =
 		( text_char
@@ -1229,44 +1284,59 @@
 		*(rdata_tail++) = 254;
 	}
 
+	action _write16_0 {
+		uint16_t val = htons(0);
+		memcpy(rdata_tail, &val, 2);
+		rdata_tail += 2;
+	}
 	action _write16_1 {
-		*((uint16_t *)rdata_tail) = htons(1);
+		uint16_t val = htons(1);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	action _write16_2 {
-		*((uint16_t *)rdata_tail) = htons(2);
+		uint16_t val = htons(2);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	action _write16_3 {
-		*((uint16_t *)rdata_tail) = htons(3);
+		uint16_t val = htons(3);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	action _write16_4 {
-		*((uint16_t *)rdata_tail) = htons(4);
+		uint16_t val = htons(4);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	action _write16_5 {
-		*((uint16_t *)rdata_tail) = htons(5);
+		uint16_t val = htons(5);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	action _write16_6 {
-		*((uint16_t *)rdata_tail) = htons(6);
+		uint16_t val = htons(6);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	action _write16_7 {
-		*((uint16_t *)rdata_tail) = htons(7);
+		uint16_t val = htons(7);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	action _write16_8 {
-		*((uint16_t *)rdata_tail) = htons(8);
+		uint16_t val = htons(8);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	action _write16_253 {
-		*((uint16_t *)rdata_tail) = htons(253);
+		uint16_t val = htons(253);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	action _write16_254 {
-		*((uint16_t *)rdata_tail) = htons(254);
+		uint16_t val = htons(254);
+		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
 	}
 	# END
@@ -1346,6 +1416,8 @@
 	    | "EUI64"i      %{ type_num(KNOT_RRTYPE_EUI64, &rdata_tail); }
 	    | "URI"i        %{ type_num(KNOT_RRTYPE_URI, &rdata_tail); }
 	    | "CAA"i        %{ type_num(KNOT_RRTYPE_CAA, &rdata_tail); }
+	    | "SVCB"i       %{ type_num(KNOT_RRTYPE_SVCB, &rdata_tail); }
+	    | "HTTPS"i      %{ type_num(KNOT_RRTYPE_HTTPS, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
 	    ) $!_type_error;
 	# END
@@ -1410,6 +1482,8 @@
 	    | "EUI64"i      %{ window_add_bit(KNOT_RRTYPE_EUI64, s); }
 	    | "URI"i        %{ window_add_bit(KNOT_RRTYPE_URI, s); }
 	    | "CAA"i        %{ window_add_bit(KNOT_RRTYPE_CAA, s); }
+	    | "SVCB"i       %{ window_add_bit(KNOT_RRTYPE_SVCB, s); }
+	    | "HTTPS"i      %{ window_add_bit(KNOT_RRTYPE_HTTPS, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
 
@@ -1681,6 +1755,99 @@
 	l32 = ipv4_addr %_ipv4_addr_write;
 	# END
 
+	# BEGIN - SvcParams processing (SVCB/HTTPS records)
+	action _svcb_params_init {
+		s->svcb.params_position = rdata_tail;
+		s->svcb.last_key = -1;
+	}
+	action _svcb_params_exit {
+		int ret = svcb_check(s, rdata_tail);
+		if (ret != ZS_OK) {
+			WARN(ret);
+			fhold; fgoto err_line;
+		}
+	}
+	action _svcb_params_error {
+		WARN(ZS_BAD_SVCB_PARAM);
+		fhold; fgoto err_line;
+	}
+
+	action _mandat_value_error {
+		WARN(ZS_BAD_SVCB_MANDATORY);
+		fhold; fgoto err_line;
+	}
+
+	action _svcb_param_init {
+		s->svcb.param_position = rdata_tail;
+	}
+	action _svcb_param_exit {
+		int ret = svcb_sort(s, rdata_tail);
+		if (ret != ZS_OK) {
+			WARN(ret);
+			fhold; fgoto err_line;
+		}
+	}
+
+	action _alpnl_init {
+		s->comma_list = true;
+	}
+	action _alpnl_exit {
+		s->comma_list = false;
+	}
+
+	action _mandatory_init {
+		s->svcb.mandatory_position = rdata_tail + 2; // Skip 2-B prefix.
+	}
+	action _mandatory_exit {
+		svcb_mandatory_sort(s->svcb.mandatory_position, rdata_tail);
+	}
+
+	svcb_key_generic   = ("key"             . num16);
+	svcb_key_mandatory = ("mandatory"       %_write16_0);
+	svcb_key_alpn      = ("alpn"            %_write16_1);
+	svcb_key_ndalpn    = ("no-default-alpn" %_write16_2);
+	svcb_key_port      = ("port"            %_write16_3);
+	svcb_key_ipv4hint  = ("ipv4hint"        %_write16_4);
+	svcb_key_ech       = ("ech"             %_write16_5);
+	svcb_key_ipv6hint  = ("ipv6hint"        %_write16_6);
+
+	mandat_value_ :=
+		(svcb_key_generic | svcb_key_alpn | svcb_key_ndalpn | svcb_key_port |
+		 svcb_key_ipv4hint | svcb_key_ech | svcb_key_ipv6hint
+		) $!_mandat_value_error %_ret . ([,\"] | all_wchar);
+	mandat_value = alpha ${ fhold; fcall mandat_value_; };
+
+	svcb_empty    = zlen %_write16_0;
+	svcb_generic_ = (text                                         >_item_length2_init %_item_length2_exit);
+	svcb_generic  = ("=" .  svcb_generic_) | svcb_empty;
+	svcb_mandat_  = ((mandat_value    . ("," . mandat_value)*)    >_item_length2_init %_item_length2_exit);
+	svcb_mandat   = svcb_mandat_ >_mandatory_init %_mandatory_exit;
+	svcb_alpn     = (text_string >_alpnl_init %_alpnl_exit        >_item_length2_init %_item_length2_exit);
+	svcb_port     = num16 >_write16_2;
+	svcb_ipv4     = ((ipv4_addr_write . ("," . ipv4_addr_write)*) >_item_length2_init %_item_length2_exit);
+	svcb_ech      = (base64_quartet+                              >_item_length2_init %_item_length2_exit);
+	svcb_ipv6     = ((ipv6_addr_write . ("," . ipv6_addr_write)*) >_item_length2_init %_item_length2_exit);
+
+	svcb_param_generic   = (svcb_key_generic   . svcb_generic);
+	svcb_param_mandatory = (svcb_key_mandatory . "=" . (svcb_mandat | ('\"' . svcb_mandat . '\"')));
+	svcb_param_alpn      = (svcb_key_alpn      . "=" . (svcb_alpn   | ('\"' . svcb_alpn   . '\"')));
+	svcb_param_ndalpn    = (svcb_key_ndalpn    . svcb_empty);
+	svcb_param_port      = (svcb_key_port      . "=" . (svcb_port   | ('\"' . svcb_port   . '\"')));
+	svcb_param_ipv4hint  = (svcb_key_ipv4hint  . "=" . (svcb_ipv4   | ('\"' . svcb_ipv4   . '\"')));
+	svcb_param_ech       = (svcb_key_ech       . "=" . (svcb_ech    | ('\"' . svcb_ech    . '\"')));
+	svcb_param_ipv6hint  = (svcb_key_ipv6hint  . "=" . (svcb_ipv6   | ('\"' . svcb_ipv6   . '\"')));
+
+	svcb_param_any =
+		(svcb_param_generic | svcb_param_mandatory | svcb_param_alpn |
+		 svcb_param_ndalpn | svcb_param_port | svcb_param_ipv4hint |
+		 svcb_param_ech | svcb_param_ipv6hint
+		) >_svcb_param_init %_svcb_param_exit;
+	svcb_params_ :=
+		((sep . svcb_param_any)* . sep?) >_svcb_params_init
+		%_svcb_params_exit $!_svcb_params_error %_ret . end_wchar;
+	svcb_params = all_wchar ${ fhold; fcall svcb_params_; };
+	# END
+
 	# BEGIN - Mnemomic names processing
 	action _dns_alg_error {
 		WARN(ZS_BAD_ALGORITHM);
@@ -1866,6 +2033,10 @@
 		(num8 . sep . text_string . sep . text)
 		$!_r_data_error %_ret . all_wchar;
 
+	r_data_svcb :=
+		(num16 . sep . r_dname . svcb_params)
+		$!_r_data_error %_ret . all_wchar;
+
 	action _text_r_data {
 		fhold;
 		switch (s->r_type) {
@@ -1946,6 +2117,9 @@
 			fcall r_data_uri;
 		case KNOT_RRTYPE_CAA:
 			fcall r_data_caa;
+		case KNOT_RRTYPE_SVCB:
+		case KNOT_RRTYPE_HTTPS:
+			fcall r_data_svcb;
 		default:
 			WARN(ZS_CANNOT_TEXT_DATA);
 			fgoto err_line;
@@ -1999,6 +2173,8 @@
 		case KNOT_RRTYPE_EUI64:
 		case KNOT_RRTYPE_URI:
 		case KNOT_RRTYPE_CAA:
+		case KNOT_RRTYPE_SVCB:
+		case KNOT_RRTYPE_HTTPS:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
@@ -2081,6 +2257,8 @@
 		| "EUI64"i      %{ s->r_type = KNOT_RRTYPE_EUI64; }
 		| "URI"i        %{ s->r_type = KNOT_RRTYPE_URI; }
 		| "CAA"i        %{ s->r_type = KNOT_RRTYPE_CAA; }
+		| "SVCB"i       %{ s->r_type = KNOT_RRTYPE_SVCB; }
+		| "HTTPS"i      %{ s->r_type = KNOT_RRTYPE_HTTPS; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
 	# END

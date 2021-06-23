@@ -2,7 +2,8 @@
                    KX, TXT, SPF, RP, AAAA, LOC, SRV, NAPTR, CERT, DS, SSHFP,
                    IPSECKEY, RRSIG, NSEC, KEY, DNSKEY, DHCID, NSEC3, NSEC3PARAM,
                    TLSA, CDS, CDNSKEY, APL, EUI48, EUI64, NID, L32, L64, LP,
-                   URI, CAA, TYPE12345
+                   URI, CAA, SMIMEA, OPENPGPKEY, CSYNC, ZONEMD, SVCB, HTTPS,
+                   TYPE12345
 - the class IN is supported only (CLASS12345 notation is not supported too)
 - domain names can contain alphanumeric, '-', '_' and '/' characters
 - \x and \DDD notations are allowed in domain names and in text strings
@@ -17,3 +18,10 @@
 - date version of timestamp in RRSIG is limited to the end of the year 2105
   (for better checking of 32bit integer)
 - zscanner doesn't make semantic control of parser rdata
+- the following zone is considered ok with two records
+"""
+.       a       (
+        1.1.1.1
+.       ns .
+)
+"""

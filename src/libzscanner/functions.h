@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 #pragma once
 
 #include <stdint.h>
+
+#include "libzscanner/scanner.h"
 
 /*! \brief Transforms digit char to number. */
 extern const uint8_t digit_to_num[];
@@ -107,5 +109,33 @@ void wire_dname_to_str(const uint8_t  *data,
  * \retval number	encoded number.
  */
 uint8_t loc64to8(uint64_t number);
+
+/*!
+ * \brief Sorts mandatory parameter values of the SVCB record.
+ *
+ * \param list_begin	Start of the parameter list.
+ * \param list_end	End of the parameter list.
+ */
+void svcb_mandatory_sort(uint8_t *list_begin, uint8_t *list_end);
+
+/*!
+ * \brief Sorts parameters of the SVCB record.
+ *
+ * \param scanner	Scanner context.
+ * \param rdata_end	Current end of the output data.
+ *
+ * \return ZS_*.
+ */
+int svcb_sort(zs_scanner_t *scanner, uint8_t *rdata_end);
+
+/*!
+ * \brief Final check of a sorted SVCB record.
+ *
+ * \param scanner	Scanner context.
+ * \param rdata_end	Current end of the output data.
+ *
+ * \return ZS_*.
+ */
+int svcb_check(zs_scanner_t *scanner, uint8_t *rdata_end);
 
 /*! @} */

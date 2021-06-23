@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,6 +72,14 @@ typedef struct {
 	int8_t   lat_sign, long_sign, alt_sign;
 } zs_loc_t;
 
+/*! \brief Auxiliary structure for storing SVCB information. */
+typedef struct {
+	uint8_t *params_position;
+	uint8_t *mandatory_position;
+	uint8_t *param_position;
+	int32_t last_key;
+} zs_svcb_t;
+
 /*! \brief Scanner states describing the result. */
 typedef enum {
 	ZS_STATE_NONE,     /*!< Initial state (no data). */
@@ -122,6 +130,8 @@ struct zs_scanner {
 	uint32_t item_length_position;
 	/*! Auxiliary pointer to item length. */
 	uint8_t *item_length_location;
+	/*! Auxiliary 2-byte length locator. */
+	uint8_t *item_length2_location;
 	/*! Auxiliary buffer length. Is zero if no comment after a valid record. */
 	uint32_t buffer_length;
 	/*! Auxiliary buffer. Contains a comment after a valid record. */
@@ -139,10 +149,14 @@ struct zs_scanner {
 	zs_apl_t apl;
 	/*! Auxiliary loc structure. */
 	zs_loc_t loc;
+	/*! Auxiliary svcb structure. */
+	zs_svcb_t svcb;
 	/*! Auxiliary IP address storage. */
 	uint8_t  addr[ZS_INET6_ADDR_LENGTH];
 	/*! Allow text strings longer than 255 characters. */
 	bool     long_string;
+	/*! Comma separated string list indication (svcb parsing). */
+	bool     comma_list;
 
 	/*! Pointer to the actual dname storage (origin/owner/rdata). */
 	uint8_t  *dname;

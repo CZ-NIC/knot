@@ -1,0 +1,102 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	SVCB	0	.
+@	SVCB	0	@	; Comment
+@	SVCB	65535	.	mandatory=alpn alpn=h2
+@	SVCB	1	.	mandatory="alpn" alpn=h2
+@	SVCB	1	.	alpn=h2
+@	SVCB	1	.	alpn="abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\053"    ; Text string of maximal length (255 chars)
+@	SVCB	1	.	alpn="part1,part2,part3\\,part4\\\\"
+@	SVCB	1	.	alpn=part1\,\p\a\r\t2\044part3\092,part4\092\\
+@	SVCB	1	.	no-default-alpn
+@	SVCB	1	.	port=0
+@	SVCB	1	.	port="65535"
+@	SVCB	1	.	ipv4hint=0.0.0.0
+@	SVCB	1	.	ipv4hint="255.255.255.255"
+@	SVCB	1	.	ech=AA==
+@	SVCB	1	.	ech="Zm9vYg=="
+@	SVCB	1	.	ipv6hint=::1
+@	SVCB	1	.	ipv6hint="::1"
+@	SVCB	1	.	key7
+@	SVCB	1	.	key65535
+@	SVCB	1	.	key65535=a
+@	SVCB	1	.	key65535="a"
+@	SVCB	1	.	key65535="a" key1000=b port=4 key7 mandatory=key7,port
+@	TYPE64	\# 3 000000
+@	TYPE64	0	.
+@	svcb	0	.
+
+; RFC OK examples
+example.com.	HTTPS	0 foo.example.com.
+example.com.	SVCB	1 .
+example.com.	SVCB	16 foo.example.com. port=53
+example.com.	SVCB	1 foo.example.com. key667=hello
+example.com.	SVCB	1 foo.example.com. key667="hello\210qoo"
+example.com.	SVCB	1 foo.example.com. (
+                        ipv6hint="2001:db8::1,2001:db8::53:1"
+                        )
+example.com.	SVCB	1 example.com. ipv6hint="::ffff:198.51.100.100"
+example.com.	SVCB	16 foo.example.org. (
+                        alpn=h2,h3-19 mandatory=ipv4hint,alpn
+                        ipv4hint=192.0.2.1
+                        )
+example.com.	SVCB	16 foo.example.org. alpn="f\\\\oo\\,bar,h2"
+example.com.	SVCB	16 foo.example.org. alpn=f\\\092oo\092,bar,h2
+
+; KO
+@	SVCB
+@	SVCB						; Empty rdata
+@	SVCB	\# 0					; Hex empty rdata
+@	SVCB	65536	.				; Priority overflow
+@	SVCB	0					; Missing item
+@	SVCB	1	.	bogus			; Unknown parameter
+@	SVCB	1	.	PORT=0			; Capital letter in parameter name
+@	SVCB	1	.	mandatory
+@	SVCB	1	.	mandatory=
+@	SVCB	1	.	mandatory=a,
+@	SVCB	1	.	mandatory=a,,b
+@	SVCB	1	.	mandatory=mandatory
+@	SVCB	1	.	mandatory=bogus
+@	SVCB	1	.	alpn
+@	SVCB	1	.	alpn=
+@	SVCB	1	.	alpn=a,
+@	SVCB	1	.	alpn=a,,b
+@	SVCB	1	.	alpn="abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\0536"    ; Text string overflow (256 chars)
+@	SVCB	1	.	no-default-alpn=
+@	SVCB	1	.	no-default-alpn=h1
+@	SVCB	1	.	no-default-alpn="h1"
+@	SVCB	1	.	port
+@	SVCB	1	.	port=
+@	SVCB	1	.	port=65536
+@	SVCB	1	.	port=1,2
+@	SVCB	1	.	ipv4hint
+@	SVCB	1	.	ipv4hint=
+@	SVCB	1	.	ipv4hint=1.2.3
+@	SVCB	1	.	ipv4hint=1.2.3.4,
+@	SVCB	1	.	ipv4hint=1.2.3.4,,2.3.4.5
+@	SVCB	1	.	ech
+@	SVCB	1	.	ech=
+@	SVCB	1	.	ech=AA==,AA==
+@	SVCB	1	.	ech=W
+@	SVCB	1	.	ipv6hint
+@	SVCB	1	.	ipv6hint=
+@	SVCB	1	.	ipv6hint=::1,,::2
+@	SVCB	1	.	ipv6hint=::W
+
+; RFC KO examples
+example.com.	SVCB	1 foo.example.com. (
+                        key123=abc key123=def
+                        )
+example.com.	SVCB	1 foo.example.com. mandatory
+example.com.	SVCB	1 foo.example.com. alpn
+example.com.	SVCB	1 foo.example.com. port
+example.com.	SVCB	1 foo.example.com. ipv4hint
+example.com.	SVCB	1 foo.example.com. ipv6hint
+example.com.	SVCB	1 foo.example.com. no-default-alpn=abc
+example.com.	SVCB	1 foo.example.com. mandatory=key123
+example.com.	SVCB	1 foo.example.com. mandatory=mandatory
+example.com.	SVCB	1 foo.example.com. (
+                        mandatory=key123,key123 key123=abc
+                        )

@@ -1,0 +1,19 @@
+$ORIGIN	.
+$TTL	1
+
+; HTTPS is the same as SVCB, so there are the differences and basics only.
+
+; OK
+@	HTTPS	0	.
+@	HTTPS	65535	@	; Comment
+@       HTTPS	1	.       key65535="a" key1000=b port=4 key7 mandatory=key7,port
+@       TYPE65	\# 3 000000
+@       TYPE65	0	.
+@       https	0	.
+
+; KO
+@	HTTPS
+@	HTTPS						; Empty rdata
+@	HTTPS	\# 0					; Hex empty rdata
+@	HTTPS	65536	.				; Priority overflow
+@	HTTPS	0					; Missing item

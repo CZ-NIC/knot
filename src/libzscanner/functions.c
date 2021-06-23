@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,9 +16,11 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "libzscanner/error.h"
 #include "libzscanner/functions.h"
+#include "libknot/endian.h"
 
 const uint8_t digit_to_num[] = {
     ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,
@@ -818,4 +820,113 @@ uint8_t loc64to8(uint64_t number)
 	}
 	// First 4 bits are mantisa, second 4 bits are exponent.
 	return ((uint8_t)number << 4) + (exponent & 15);
+}
+
+static int mandatory_cmp(const void *p1, const void *p2)
+{
+	uint16_t val1, val2;
+	memcpy(&val1, p1, sizeof(val1));
+	memcpy(&val2, p2, sizeof(val2));
+
+	if (be16toh(val1) < be16toh(val2)) {
+		return -1;
+	} else if (val1 == val2) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+void svcb_mandatory_sort(uint8_t *list_begin, uint8_t *list_end)
+{
+	uint32_t count = (list_end - list_begin) / sizeof(uint16_t);
+	qsort(list_begin, count, sizeof(uint16_t), mandatory_cmp);
+}
+
+int svcb_sort(zs_scanner_t *scanner, uint8_t *rdata_end)
+{
+	zs_svcb_t *svcb = &(scanner->svcb);
+
+	uint8_t *curr_pos = svcb->param_position;
+
+	uint16_t curr_key;
+	memcpy(&curr_key, curr_pos, sizeof(uint16_t));
+	curr_key = be16toh(curr_key);
+
+	if (curr_key > svcb->last_key) {
+		// Already sorted.
+		svcb->last_key = curr_key;
+		return ZS_OK;
+	}
+
+	uint8_t *param_pos = svcb->params_position;
+	while (param_pos < curr_pos) {
+		uint16_t param_key, param_len;
+		memcpy(&param_key, param_pos, 2);
+		param_key = be16toh(param_key);
+		memcpy(&param_len, param_pos + sizeof(uint16_t), 2);
+		param_len = be16toh(param_len);
+
+		uint32_t param_full_len = 2 * sizeof(uint16_t) + param_len;
+
+		if (curr_key < param_key) {
+			uint32_t curr_full_len = rdata_end - curr_pos;
+			memcpy(scanner->buffer, curr_pos, curr_full_len);
+			memmove(param_pos + curr_full_len, param_pos,
+			        curr_pos - param_pos);
+			memcpy(param_pos, scanner->buffer, curr_full_len);
+			break;
+		} else if (curr_key == param_key) {
+			return ZS_DUPLICATE_SVCB_KEY;
+		}
+
+		param_pos += param_full_len;
+	}
+
+	return ZS_OK;
+}
+
+int svcb_check(zs_scanner_t *scanner, uint8_t *rdata_end)
+{
+	zs_svcb_t *svcb = &(scanner->svcb);
+
+	if (svcb->params_position == rdata_end ||
+	    svcb->params_position[0] != 0 || svcb->params_position[1] != 0) {
+		return ZS_OK; // No parameters or no mandatory parameter available.
+	}
+
+	uint16_t mandat_size;
+	memcpy(&mandat_size, svcb->params_position + sizeof(uint16_t), sizeof(uint16_t));
+	mandat_size = be16toh(mandat_size);
+
+	uint16_t mandat_count = mandat_size / sizeof(uint16_t);
+
+	uint8_t *param_pos = svcb->params_position + 2 * sizeof(uint16_t) + mandat_size;
+	const uint8_t *mandats = svcb->params_position + 2 * sizeof(uint16_t);
+	for (int i = 0; i < mandat_count; i++) {
+		// Check for duplicates.
+		if (i > 0 && memcmp(mandats + (i - 1) * sizeof(uint16_t),
+		                    mandats + i * sizeof(uint16_t), 2) == 0) {
+			return ZS_DUPLICATE_SVCB_MANDATORY;
+		}
+
+		bool found = false;
+		while (param_pos < rdata_end && !found) {
+			uint16_t param_key, param_len;
+			memcpy(&param_key, param_pos, 2);
+			memcpy(&param_len, param_pos + sizeof(uint16_t), 2);
+			param_len = be16toh(param_len);
+
+			// Compare keys in big endian.
+			if (memcmp(mandats + i * sizeof(uint16_t), param_pos, 2) == 0) {
+				found = true;
+			}
+			param_pos += 2 * sizeof(uint16_t) + param_len;
+		}
+		if (!found) {
+			return ZS_MISSING_SVCB_MANDATORY;
+		}
+	}
+
+	return ZS_OK;
 }

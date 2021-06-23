@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -79,7 +79,11 @@ void debug_process_record(zs_scanner_t *s)
 
 	printf(" \\# %u ", s->r_data_length);
 
+	int block = *((int *)(s->process.data));
 	for (i = 0; i < s->r_data_length; i++) {
+		if (block > 0 && i > 0 && (i % block) == 0) {
+			printf(" ");
+		}
 		printf("%02X", (s->r_data)[i]);
 	}
 	printf("\n");

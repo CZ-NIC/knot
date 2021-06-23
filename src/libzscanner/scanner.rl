@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 
 /*! \brief Maximal length of rdata item. */
 #define MAX_ITEM_LENGTH		255
+#define MAX_ITEM_LENGTH2	65535
 
 /*! \brief Latitude value for equator (2^31). */
 #define LOC_LAT_ZERO	(uint32_t)2147483648
@@ -338,7 +339,7 @@ int zs_set_input_file(
 	// Set the scanner input limits.
 	s->input.start   = start;
 	s->input.current = start;
-	s->input.end     = start + size;
+	s->input.end     = (start != NULL) ? start + size : start;
 
 	// Get absolute path of the zone file if possible.
 	char *full_name = realpath(file_name, NULL);
@@ -436,6 +437,7 @@ static void parse(
 	} else if (s->input.eof && s->multiline) {
 		ERR(ZS_UNCLOSED_MULTILINE);
 		extra_error = true;
+		s->line_counter--;
 	}
 
 	// Treat the extra error.
