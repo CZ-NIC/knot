@@ -144,7 +144,7 @@ See the following examples and :ref:`ACL section`.
 
 ::
 
-    acl
+    acl:
         - id: owner_type_rule
           action: update
           update-type: [A, AAAA, MX] # Updates are only allowed to update records of the specified types
