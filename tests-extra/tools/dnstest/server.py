@@ -270,18 +270,16 @@ class Server(object):
 
     def start(self, clean=False):
         '''Start the server with all bindings successfull'''
-        attempts = Server.START_MAX_ATTEMPTS
 
         errors = 0 if clean else self.binding_errors
-        while attempts > 0:
+        for attempt in range(Server.START_MAX_ATTEMPTS):
             self.binding_errors = errors
             self.start_server(clean)
-            attempts -= 1
             errors = self.log_search_count(self.binding_fail)
             if errors == self.binding_errors:
                 break
             self.stop()
-            if attempts > 0:
+            if attempt < (Server.START_MAX_ATTEMPTS - 1):
                 time.sleep(Server.START_WAIT_ATTEMPTS)
                 check_log("STARTING %s AGAIN" % self.name)
 
