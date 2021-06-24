@@ -21,6 +21,8 @@
 #include "knot/query/layer.h"
 #include "libknot/xdp/xdp.h"
 
+#define XDP_BATCHLEN  32 /*!< XDP receive batch size. */
+
 struct xdp_handle_ctx;
 struct server;
 

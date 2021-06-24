@@ -14,20 +14,17 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "knot/server/xdp-handler.h"
-
-#include "contrib/ucw/mempool.h"
-#include "knot/common/log.h"
-#include "knot/server/server.h"
-#include "libknot/error.h"
-#include "libknot/xdp/tcp.h"
+#ifdef ENABLE_XDP
 
 #include <stdlib.h>
 #include <urcu.h>
 
-#define XDP_BATCHLEN      32 // TODO move/dedup
-
-#ifdef ENABLE_XDP
+#include "knot/server/xdp-handler.h"
+#include "knot/common/log.h"
+#include "knot/server/server.h"
+#include "contrib/ucw/mempool.h"
+#include "libknot/error.h"
+#include "libknot/xdp/tcp.h"
 
 typedef struct xdp_handle_ctx {
 	knot_xdp_msg_t msg_recv[XDP_BATCHLEN];
