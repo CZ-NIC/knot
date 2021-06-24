@@ -583,6 +583,19 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 }
 
+static int zone_keys_load(zone_t *zone, ctl_args_t *args)
+{
+	UNUSED(args);
+
+	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+	if (!conf_bool(&val)) {
+		args->suppress = true;
+		return KNOT_ENOTSUP;
+	}
+
+	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
+}
+
 static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 {
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
@@ -1512,6 +1525,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply_backup(args, true);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
+	case CTL_ZONE_KEYS_LOAD:
+		return zones_apply(args, zone_keys_load);
 	case CTL_ZONE_KEY_ROLL:
 		return zones_apply(args, zone_key_roll);
 	case CTL_ZONE_KSK_SBM:
@@ -1955,6 +1970,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone },
 	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone },
+	[CTL_ZONE_KEYS_LOAD]  = { "zone-keys-load",     ctl_zone },
 	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone },
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
 	[CTL_ZONE_FREEZE]     = { "zone-freeze",        ctl_zone },

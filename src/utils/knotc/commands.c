@@ -48,6 +48,7 @@
 #define CMD_ZONE_BACKUP		"zone-backup"
 #define CMD_ZONE_RESTORE	"zone-restore"
 #define CMD_ZONE_SIGN		"zone-sign"
+#define CMD_ZONE_KEYS_LOAD	"zone-keys-load"
 #define CMD_ZONE_KEY_ROLL	"zone-key-rollover"
 #define CMD_ZONE_KSK_SBM	"zone-ksk-submitted"
 #define CMD_ZONE_FREEZE		"zone-freeze"
@@ -246,6 +247,7 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_ZONE_BACKUP:
 	case CTL_ZONE_RESTORE:
 	case CTL_ZONE_SIGN:
+	case CTL_ZONE_KEYS_LOAD:
 	case CTL_ZONE_KEY_ROLL:
 	case CTL_ZONE_KSK_SBM:
 	case CTL_ZONE_FREEZE:
@@ -372,6 +374,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_BACKUP:
 	case CTL_ZONE_RESTORE:
 	case CTL_ZONE_SIGN:
+	case CTL_ZONE_KEYS_LOAD:
 	case CTL_ZONE_KEY_ROLL:
 	case CTL_ZONE_KSK_SBM:
 	case CTL_ZONE_FREEZE:
@@ -1045,6 +1048,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_BACKUP,     cmd_zone_filter_ctl,   CTL_ZONE_BACKUP,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_RESTORE,    cmd_zone_filter_ctl,   CTL_ZONE_RESTORE,    CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,          CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
+	{ CMD_ZONE_KEYS_LOAD,  cmd_zone_ctl,          CTL_ZONE_KEYS_LOAD,  CMD_FOPT_ZONE },
 	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE },
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,          CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,          CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
@@ -1094,6 +1098,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_BACKUP,     "[<zone>...] [<filter>...] +backupdir <dir>", "Backup zone data and metadata. (#)" },
 	{ CMD_ZONE_RESTORE,    "[<zone>...] [<filter>...] +backupdir <dir>", "Restore zone data and metadata. (#)" },
 	{ CMD_ZONE_SIGN,       "[<zone>...]",                                "Re-sign the automatically signed zone. (#)" },
+	{ CMD_ZONE_KEYS_LOAD,  "[<zone>...]",                                "Re-load keys from KASP database, sign the zone. (#)" },
 	{ CMD_ZONE_KEY_ROLL,   " <zone> ksk|zsk",                            "Trigger immediate key rollover. (#)" },
 	{ CMD_ZONE_KSK_SBM,    " <zone>...",                                 "When KSK submission, confirm parent's DS presence. (#)" },
 	{ CMD_ZONE_FREEZE,     "[<zone>...]",                                "Temporarily postpone automatic zone-changing events. (#)" },
