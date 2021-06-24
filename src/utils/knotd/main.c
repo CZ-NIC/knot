@@ -210,8 +210,7 @@ typedef struct {
 	pthread_cond_t cv;
 	pthread_mutex_t mx;
 	void **array;
-	size_t size;
-	size_t stored;
+	size_t stored, size;
 } knot_ctl_pool_t;
 
 /*!

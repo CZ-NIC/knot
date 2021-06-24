@@ -2098,16 +2098,14 @@ ctl_args_t *ctl_args_queue_enqueue(ctl_args_queue_t *ctx, const ctl_args_t *el)
 	return memcpy(&ctx->array[end], el, sizeof(ctl_args_t));
 }
 
-ctl_args_t *ctl_args_queue_dequeue(ctl_args_queue_t *ctx)
+void ctl_args_queue_dequeue(ctl_args_queue_t *ctx)
 {
 	assert(ctx != NULL);
 	if (ctl_args_queue_is_empty(ctx)) {
-		return NULL;
+		return;
 	}
-	ctl_args_t *el = &ctx->array[ctx->begin];
 	ctx->begin = (ctx->begin + 1) % ctx->size;
 	ctx->stored--;
-	return el;
 }
 
 void ctl_args_queue_deinit(ctl_args_queue_t *ctx)

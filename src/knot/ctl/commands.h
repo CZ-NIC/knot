@@ -98,7 +98,7 @@ typedef enum {
 } ctl_cmd_t;
 
 /*! Control command parameters. */
-typedef struct ctl_args {
+typedef struct {
 	knot_ctl_t *ctl;
 	knot_ctl_type_t type;
 	knot_ctl_data_t data;
@@ -166,10 +166,63 @@ bool ctl_has_flag(const char *flags, const char *flag);
  */
 bool ctl_cmd_is_background(ctl_cmd_t cmd);
 
+/*!
+ * Create new queue for `ctl_args_t` of desired max size.
+ *
+ * \param[in] ctx  Queue context.
+ * \param[in] size Maximal size of queue.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int ctl_args_queue_init(ctl_args_queue_t *ctx, const size_t size);
+
+/*!
+ * Tells whether queue is full.
+ *
+ * \param[in] ctx Queue context.
+ *
+ * \return True if queue is full.
+ */
 bool ctl_args_queue_is_full(const ctl_args_queue_t *ctx);
+
+/*!
+ * Tells whether queue is empty.
+ *
+ * \param[in] ctx Queue context.
+ *
+ * \return True if queue is empty.
+ */
 bool ctl_args_queue_is_empty(const ctl_args_queue_t *ctx);
+
+/*!
+ * Return pointer on the first `ctl_args_t` in queue.
+ *
+ * \param[in] ctx Queue context.
+ *
+ * \return NULL if empty, pointer on first if success.
+ */
 ctl_args_t *ctl_args_queue_top(const ctl_args_queue_t *ctx);
+
+/*!
+ * Store copy of `ctl_args_t` on the end of queue.
+ *
+ * \param[in] ctx Queue context.
+ * \param[in] el  Arguments to store.
+ *
+ * \return NULL on error, pointer on stored if success.
+ */
 ctl_args_t *ctl_args_queue_enqueue(ctl_args_queue_t *ctx, const ctl_args_t *el);
-ctl_args_t *ctl_args_queue_dequeue(ctl_args_queue_t *ctx);
+
+/*!
+ * Remove first `ctl_args_t` from queue.
+ *
+ * \param[in] ctx Queue context.
+ */
+void ctl_args_queue_dequeue(ctl_args_queue_t *ctx);
+
+/*!
+ * Deinitialize queue.
+ *
+ * \param[in] ctx Queue context.
+ */
 void ctl_args_queue_deinit(ctl_args_queue_t *ctx);
