@@ -243,6 +243,15 @@ class Server(object):
         except:
             raise Failed("Can't compile server='%s'" %self.name)
 
+    def wait_for_pidfile(self, attempts=8):
+        '''Wait for a PID file to disappear, with a timeout'''
+
+        pidf = os.path.join(self.dir, self.pidfile)
+        for i in range(attempts):
+            if not os.path.isfile(pidf):
+                break
+            time.sleep(0.5)
+
     def start_server(self, clean=False):
         '''Start the server'''
         mode = "w" if clean else "a"
@@ -274,6 +283,7 @@ class Server(object):
         errors = 0 if clean else self.binding_errors
         for attempt in range(Server.START_MAX_ATTEMPTS):
             self.binding_errors = errors
+            self.wait_for_pidfile()
             self.start_server(clean)
             errors = self.log_search_count(self.binding_fail)
             if errors == self.binding_errors:
@@ -868,6 +878,7 @@ class Bind(Server):
         self.control_wait = []
         self.ctlkey = dnstest.keys.Tsig(alg="hmac-md5")
         self.binding_fail = "address in use"
+        self.pidfile = "bind.pid"
 
     def listening(self):
         tcp = super()._check_socket("tcp", self.port)
@@ -896,7 +907,7 @@ class Bind(Server):
         s.item_str("key-directory", self.dir)
         s.item_str("managed-keys-directory", self.dir)
         s.item_str("session-keyfile", self.dir + "/session.key")
-        s.item_str("pid-file", "bind.pid")
+        s.item_str("pid-file", os.path.join(self.dir, self.pidfile))
         if ipaddress.ip_address(self.addr).version == 4:
             s.item("listen-on port", "%i { %s; }" % (self.port, self.addr))
             s.item("listen-on-v6", "{ }")
@@ -1092,6 +1103,7 @@ class Knot(Server):
         self.inquirer = dnstest.inquirer.Inquirer()
         self.includes = set()
         self.binding_fail = "cannot bind address"
+        self.pidfile = "knot.pid"
 
     def listening(self):
         tcp = super()._check_socket("tcp", self.port)
@@ -1183,6 +1195,7 @@ class Knot(Server):
         self._on_str_hex(s, "version", self.version)
         self._on_str_hex(s, "nsid", self.nsid)
         s.item_str("rundir", self.dir)
+        s.item_str("pidfile", os.path.join(self.dir, self.pidfile))
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
         if self.udp_workers:
             s.item_str("udp-workers", self.udp_workers)
@@ -1553,6 +1566,7 @@ class Dummy(Server):
         self.control_bin = None
         self.control_wait = []
         self.binding_fail = "There won't be such a message"
+        self.pidfile = None
 
     def get_config(self):
         return ''
