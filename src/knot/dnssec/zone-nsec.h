@@ -119,11 +119,13 @@ bool knot_nsec3param_uptodate(const zone_contents_t *zone,
  *
  * \param update  Zone to be updated.
  * \param params  NSEC3 params.
+ * \param ttl     Desired TTL for NSEC3PARAM.
  *
  * \return KNOT_E*
  */
 int knot_nsec3param_update(zone_update_t *update,
-                           const dnssec_nsec3_params_t *params);
+                           const dnssec_nsec3_params_t *params,
+                           uint32_t ttl);
 
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
