@@ -216,7 +216,7 @@ static bool parents_have_ds(kdnssec_ctx_t *kctx, zone_key_t *key, size_t timeout
                             uint32_t *max_ds_ttl)
 {
 	bool success = false;
-	dynarray_foreach(parent, knot_kasp_parent_t, i, kctx->policy->parents) {
+	knot_dynarray_foreach(parent, knot_kasp_parent_t, i, kctx->policy->parents) {
 		success = false;
 		for (size_t j = 0; j < i->addrs; j++) {
 			uint32_t ds_ttl = 0;

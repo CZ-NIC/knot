@@ -20,7 +20,7 @@
 #include "libknot/yparser/ypschema.h"
 #include "contrib/qp-trie/trie.h"
 #include "contrib/ucw/lists.h"
-#include "contrib/dynarray.h"
+#include "libknot/dynarray.h"
 #include "knot/include/module.h"
 
 /*! Default template identifier. */
@@ -70,8 +70,8 @@ typedef struct {
 	bool temporary;
 } module_t;
 
-dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
-dynarray_declare(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
+knot_dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
+knot_dynarray_declare(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
 
 struct knot_catalog;
 

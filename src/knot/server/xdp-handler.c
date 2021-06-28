@@ -31,7 +31,7 @@
 typedef struct xdp_handle_ctx {
 	knot_xdp_msg_t msg_recv[XDP_BATCHLEN];
 	knot_xdp_msg_t msg_send_udp[XDP_BATCHLEN];
-	tcp_relay_dynarray_t tcp_relays;
+	knot_tcp_relay_dynarray_t tcp_relays;
 	uint32_t msg_recv_count;
 	uint32_t msg_udp_count;
 	knot_tcp_table_t *tcp_table;
@@ -180,7 +180,7 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 		uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
 		for (size_t n_tcp_relays = ctx->tcp_relays.size, rli = 0; rli < n_tcp_relays; rli++) { // dynaaray_foreach can't be used because we insert into the dynarray inside the loop
-			knot_tcp_relay_t *rl = tcp_relay_dynarray_arr(&ctx->tcp_relays) + rli;
+			knot_tcp_relay_t *rl = knot_tcp_relay_dynarray_arr(&ctx->tcp_relays) + rli;
 			if ((rl->action & XDP_TCP_DATA) && (rl->answer == 0)) {
 				knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);
 				handle_init(&params, layer, rl->msg, &rl->data);
@@ -220,7 +220,7 @@ int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 	int ret = knot_xdp_send(xdp_sock, ctx->msg_send_udp, ctx->msg_udp_count, &unused);
 	if (ret == KNOT_EOK) {
 		if (ctx->tcp_relays.size > 0) {
-			ret = knot_xdp_tcp_send(xdp_sock, tcp_relay_dynarray_arr(&ctx->tcp_relays), ctx->tcp_relays.size);
+			ret = knot_xdp_tcp_send(xdp_sock, knot_tcp_relay_dynarray_arr(&ctx->tcp_relays), ctx->tcp_relays.size);
 		} else {
 			ret = knot_xdp_send_finish(xdp_sock);
 		}

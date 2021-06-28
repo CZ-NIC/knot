@@ -154,14 +154,14 @@ static void fix_seqacks(knot_xdp_msg_t *msgs, size_t count)
 void test_syn(void)
 {
 	knot_xdp_msg_t msg;
-	tcp_relay_dynarray_t relays = { 0 };
+	knot_tcp_relay_dynarray_t relays = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_SYN, 1, 2);
 	int ret = knot_xdp_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays, NULL);
 	is_int(KNOT_EOK, ret, "SYN: relay OK");
 	is_int(msg.seqno + 1, sent_ackno, "SYN: ackno");
 	check_sent(0, 0, 1, 0);
 	is_int(1, relays.size, "SYN: one relay");
-	knot_tcp_relay_t *rl = &tcp_relay_dynarray_arr(&relays)[0];
+	knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[0];
 	is_int(XDP_TCP_SYN, rl->action, "SYN: relay action");
 	is_int(XDP_TCP_NOOP, rl->answer, "SYN: relay answer");
 	is_int(0, rl->data.iov_len, "SYN: no payload");
@@ -180,14 +180,14 @@ void test_syn(void)
 void test_establish(void)
 {
 	knot_xdp_msg_t msg;
-	tcp_relay_dynarray_t relays = { 0 };
+	knot_tcp_relay_dynarray_t relays = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_ACK, 1, 2);
 	prepare_seqack(&msg, 0, 1);
 	int ret = knot_xdp_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays, NULL);
 	is_int(KNOT_EOK, ret, "establish: relay OK");
 	check_sent(0, 0, 0, 0);
 	is_int(0, relays.size, "establish: no relay");
-	/*knot_tcp_relay_t *rl = &tcp_relay_dynarray_arr(&relays)[0];
+	/*knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[0];
 	is_int(XDP_TCP_ESTABLISH, rl->action, "establish: relay action");
 	ok(rl->conn != NULL, "establish: connection present");
 	ok(rl->conn == test_conn, "establish: same connection");
@@ -200,14 +200,14 @@ void test_establish(void)
 void test_syn_ack(void)
 {
 	knot_xdp_msg_t msg;
-	tcp_relay_dynarray_t relays = { 0 };
+	knot_tcp_relay_dynarray_t relays = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK, 1000, 2000);
 	int ret = knot_xdp_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays, NULL);
 	is_int(KNOT_EOK, ret, "SYN+ACK: relay OK");
 	is_int(msg.seqno + 1, sent_ackno, "SYN+ACK: ackno");
 	check_sent(1, 0, 0, 0);
 	is_int(1, relays.size, "SYN+ACK: one relay");
-	knot_tcp_relay_t *rl = &tcp_relay_dynarray_arr(&relays)[0];
+	knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[0];
 	is_int(XDP_TCP_ESTABLISH, rl->action, "SYN+ACK: relay action");
 	ok(rl->conn != NULL, "SYN+ACK: connection present");
 
@@ -218,7 +218,7 @@ void test_syn_ack(void)
 void test_data_fragments(void)
 {
 	knot_xdp_msg_t msgs[4];
-	tcp_relay_dynarray_t relays = { 0 };
+	knot_tcp_relay_dynarray_t relays = { 0 };
 
 	// first msg contains one whole payload and one fragment
 	prepare_msg(&msgs[0], KNOT_XDP_MSG_ACK, 1000, 2000);
@@ -245,7 +245,7 @@ void test_data_fragments(void)
 	is_int(msgs[3].ackno, sent_seqno, "fragments: seqno");
 	is_int(msgs[3].seqno + msgs[3].payload.iov_len, sent_ackno, "fragments: ackno");
 	check_sent(4, 0, 0, 0);
-	knot_tcp_relay_t *rls = tcp_relay_dynarray_arr(&relays);
+	knot_tcp_relay_t *rls = knot_tcp_relay_dynarray_arr(&relays);
 
 	is_int(XDP_TCP_DATA, rls[0].action, "fragments0: action");
 	is_int(XDP_TCP_NOOP, rls[0].answer, "fragments0: answer");
@@ -277,14 +277,14 @@ void test_close(void)
 	size_t conns_pre = test_table->usage;
 
 	knot_xdp_msg_t msg;
-	tcp_relay_dynarray_t relays = { 0 };
+	knot_tcp_relay_dynarray_t relays = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK, be16toh(test_conn->ip_rem.sin6_port), be16toh(test_conn->ip_loc.sin6_port));
 	prepare_seqack(&msg, 0, 0);
 	int ret = knot_xdp_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays, NULL);
 	is_int(KNOT_EOK, ret, "close: relay 1 OK");
 	check_sent(0, 0, 0, 1);
 	is_int(1, relays.size, "close: one relay");
-	knot_tcp_relay_t *rl = &tcp_relay_dynarray_arr(&relays)[0];
+	knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[0];
 	is_int(XDP_TCP_CLOSE, rl->action, "close: relay action");
 	ok(rl->conn == test_conn, "close: same connection");
 	is_int(XDP_TCP_CLOSING, rl->conn->state, "close: conn state");
@@ -311,7 +311,7 @@ void test_many(void)
 		prepare_msg(&msgs[i], KNOT_XDP_MSG_SYN, i + 2, 1);
 	}
 
-	tcp_relay_dynarray_t relays = { 0 };
+	knot_tcp_relay_dynarray_t relays = { 0 };
 	int ret = knot_xdp_tcp_relay(test_sock, msgs, CONNS, test_table, NULL, &relays, NULL);
 	is_int(KNOT_EOK, ret, "many: relay OK");
 	check_sent(0, 0, CONNS, 0);
@@ -327,7 +327,7 @@ void test_many(void)
 	prepare_data(survive, "\x00\x00", 2);
 	(void)knot_xdp_tcp_relay(test_sock, survive, 1, test_table, NULL, &relays, NULL);
 	is_int(1, relays.size, "many/survivor: one relay");
-	knot_tcp_relay_t *rl = &tcp_relay_dynarray_arr(&relays)[0];
+	knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[0];
 	clean_sent();
 
 	uint32_t reset_count = 0;
@@ -352,7 +352,7 @@ void test_ibufs_size(void)
 {
 	int CONNS = 4;
 	knot_xdp_msg_t msgs[CONNS];
-	tcp_relay_dynarray_t relays = { 0 };
+	knot_tcp_relay_dynarray_t relays = { 0 };
 
 	// just open connections
 	for (int i = 0; i < CONNS; i++) {
@@ -387,7 +387,7 @@ void test_ibufs_size(void)
 	check_sent(CONNS, 0, 0, 0);
 	is_int(21, test_table->inbufs_total, "inbufs: after change");
 	is_int(1, relays.size, "inbufs: one relay");
-	is_int(10, tcp_relay_dynarray_arr(&relays)[0].data.iov_len, "inbufs: data length");
+	is_int(10, knot_tcp_relay_dynarray_arr(&relays)[0].data.iov_len, "inbufs: data length");
 	knot_xdp_tcp_relay_free(&relays);
 
 	// now free some

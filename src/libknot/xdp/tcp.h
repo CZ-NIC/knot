@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "contrib/dynarray.h"
+#include "libknot/dynarray.h"
 #include "libknot/mm_ctx.h"
 #include "libknot/xdp/msg.h"
 #include "libknot/xdp/xdp.h"
@@ -91,7 +91,8 @@ typedef struct {
 
 #define TCP_RELAY_DEFAULT_COUNT 10
 
-dynarray_declare(tcp_relay, knot_tcp_relay_t, DYNARRAY_VISIBILITY_PUBLIC, TCP_RELAY_DEFAULT_COUNT)
+knot_dynarray_declare(knot_tcp_relay, knot_tcp_relay_t, DYNARRAY_VISIBILITY_PUBLIC,
+                      TCP_RELAY_DEFAULT_COUNT)
 
 inline static uint32_t knot_tcp_next_seqno(const knot_xdp_msg_t *msg)
 {
@@ -140,7 +141,7 @@ knot_tcp_conn_t *knot_tcp_table_find(knot_tcp_table_t *table, knot_xdp_msg_t *ms
  */
 int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
                        knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
-                       tcp_relay_dynarray_t *relays, knot_mm_t *mm);
+                       knot_tcp_relay_dynarray_t *relays, knot_mm_t *mm);
 
 /*!
  * \brief Answer one relay with one or more relays with data payload.
@@ -152,13 +153,13 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int knot_xdp_tcp_send_data(tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *rl, void *data, size_t len);
+int knot_xdp_tcp_send_data(knot_tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *rl, void *data, size_t len);
 
 
 /*!
  * \brief Free resources in 'relays'.
  */
-void knot_xdp_tcp_relay_free(tcp_relay_dynarray_t *relays);
+void knot_xdp_tcp_relay_free(knot_tcp_relay_dynarray_t *relays);
 
 /*!
  * \brief Send TCP packets.

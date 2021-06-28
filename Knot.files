@@ -16,7 +16,6 @@ src/contrib/dnstap/reader.c
 src/contrib/dnstap/reader.h
 src/contrib/dnstap/writer.c
 src/contrib/dnstap/writer.h
-src/contrib/dynarray.h
 src/contrib/files.c
 src/contrib/files.h
 src/contrib/getline.c
@@ -383,6 +382,7 @@ src/libknot/descriptor.c
 src/libknot/descriptor.h
 src/libknot/dname.c
 src/libknot/dname.h
+src/libknot/dynarray.h
 src/libknot/endian.h
 src/libknot/errcode.h
 src/libknot/error.c

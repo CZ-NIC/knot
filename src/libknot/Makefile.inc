@@ -16,6 +16,7 @@ nobase_include_libknot_HEADERS = \
 	libknot/cookies.h			\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
+	libknot/dynarray.h			\
 	libknot/endian.h			\
 	libknot/errcode.h			\
 	libknot/error.h				\

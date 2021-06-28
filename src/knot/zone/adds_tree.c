@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,12 +19,12 @@
 
 #include "knot/zone/adds_tree.h"
 
-#include "contrib/dynarray.h"
+#include "libknot/dynarray.h"
 #include "libknot/error.h"
 #include "libknot/rrtype/rdname.h"
 
-dynarray_declare(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_STATIC, 2)
-dynarray_define(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_STATIC)
+knot_dynarray_declare(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_STATIC, 2)
+knot_dynarray_define(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_STATIC)
 
 typedef struct {
 	nodeptr_dynarray_t array;
@@ -238,7 +238,7 @@ int additionals_reverse_apply(additionals_tree_t *a_t, const knot_dname_t *name,
 		nodes->deduplicated = true;
 	}
 
-	dynarray_foreach(nodeptr, zone_node_t *, node_in_arr, nodes->array) {
+	knot_dynarray_foreach(nodeptr, zone_node_t *, node_in_arr, nodes->array) {
 		int ret = cb(*node_in_arr, ctx);
 		if (ret != KNOT_EOK) {
 			return ret;
