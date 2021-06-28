@@ -236,14 +236,15 @@ static int set_nsec3param(knot_rrset_t *rrset, const dnssec_nsec3_params_t *para
 }
 
 static int add_nsec3param(zone_update_t *update,
-                          const dnssec_nsec3_params_t *params)
+                          const dnssec_nsec3_params_t *params,
+                          uint32_t ttl)
 {
 	assert(update);
 	assert(params);
 
 	knot_rrset_t *rrset = NULL;
 	rrset = knot_rrset_new(update->new_cont->apex->owner, KNOT_RRTYPE_NSEC3PARAM,
-	                       KNOT_CLASS_IN, 0, NULL);
+	                       KNOT_CLASS_IN, ttl, NULL);
 	if (rrset == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -268,7 +269,8 @@ bool knot_nsec3param_uptodate(const zone_contents_t *zone,
 }
 
 int knot_nsec3param_update(zone_update_t *update,
-                           const dnssec_nsec3_params_t *params)
+                           const dnssec_nsec3_params_t *params,
+                           uint32_t ttl)
 {
 	assert(update);
 	assert(params);
@@ -284,7 +286,7 @@ int knot_nsec3param_update(zone_update_t *update,
 	}
 
 	if (params->algorithm != 0 && !valid) {
-		return add_nsec3param(update, params);
+		return add_nsec3param(update, params, ttl);
 	}
 
 	return KNOT_EOK;
@@ -336,7 +338,7 @@ int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 
 	dnssec_nsec3_params_t params = nsec3param_init(ctx->policy, ctx->zone);
 
-	int ret = knot_nsec3param_update(update, &params);
+	int ret = knot_nsec3param_update(update, &params, nsec_ttl);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
