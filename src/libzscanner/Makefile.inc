@@ -1,8 +1,9 @@
 lib_LTLIBRARIES += libzscanner.la
 pkgconfig_DATA  += libzscanner.pc
 
-libzscanner_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
-libzscanner_la_LDFLAGS  = $(AM_LDFLAGS) $(libzscanner_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS)
+libzscanner_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) ${fuzzer_CFLAGS}
+libzscanner_la_LDFLAGS  = $(AM_LDFLAGS) $(libzscanner_VERSION_INFO) \
+                          $(LDFLAG_EXCLUDE_LIBS) ${fuzzer_LDFLAGS}
 libzscanner_la_LIBADD   = $(math_LIBS)
 
 EXTRA_DIST += \
