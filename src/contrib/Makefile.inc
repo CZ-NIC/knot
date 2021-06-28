@@ -30,7 +30,6 @@ libcontrib_la_SOURCES = \
 	contrib/base64url.c			\
 	contrib/base64url.h			\
 	contrib/ctype.h				\
-	contrib/dynarray.h			\
 	contrib/files.c				\
 	contrib/files.h				\
 	contrib/getline.c			\

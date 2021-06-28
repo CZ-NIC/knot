@@ -25,7 +25,7 @@
 #include "knot/journal/serialization.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/params.h"
-#include "contrib/dynarray.h"
+#include "libknot/dynarray.h"
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
 
@@ -78,8 +78,8 @@ static void print_changeset(const changeset_t *chs, print_params_t *params)
 	changeset_print(chs, stdout, params->color);
 }
 
-dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC, 100)
-dynarray_define(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC)
+knot_dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC, 100)
+knot_dynarray_define(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC)
 
 typedef struct {
 	rrtype_dynarray_t *arr;
@@ -89,7 +89,7 @@ typedef struct {
 static void rrtypelist_add(rrtype_dynarray_t *arr, uint16_t add_type)
 {
 	bool already_present = false;
-	dynarray_foreach(rrtype, uint16_t, i, *arr) {
+	knot_dynarray_foreach(rrtype, uint16_t, i, *arr) {
 		if (*i == add_type) {
 			already_present = true;
 			break;
@@ -131,7 +131,7 @@ static void print_changeset_debugmode(const changeset_t *chs)
 	}
 
 	char temp[100];
-	dynarray_foreach(rrtype, uint16_t, i, types) {
+	knot_dynarray_foreach(rrtype, uint16_t, i, types) {
 		(void)knot_rrtype_to_string(*i, temp, sizeof(temp));
 		printf(" %s", temp);
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,8 +32,8 @@
 
 #define LIB_EXTENSION ".so"
 
-dynarray_define(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL)
-dynarray_define(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_NORMAL)
+knot_dynarray_define(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL)
+knot_dynarray_define(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_NORMAL)
 
 static module_t STATIC_MODULES[] = {
 	STATIC_MODULES_INIT
@@ -58,7 +58,7 @@ module_t *conf_mod_find(
 	}
 
 	// Second, search in dynamic modules.
-	dynarray_foreach(mod, module_t *, module, conf->modules) {
+	knot_dynarray_foreach(mod, module_t *, module, conf->modules) {
 		if ((*module) != NULL && (*module)->temporary == temporary &&
 		    strncmp(name, (*module)->api->name, len) == 0) {
 			return (*module);
@@ -307,12 +307,12 @@ void conf_mod_load_purge(
 		*initial = old_schema;
 	}
 
-	dynarray_foreach(old_schema, yp_item_t *, schema, conf->old_schemas) {
+	knot_dynarray_foreach(old_schema, yp_item_t *, schema, conf->old_schemas) {
 		yp_schema_free(*schema);
 	}
 	old_schema_dynarray_free(&conf->old_schemas);
 
-	dynarray_foreach(mod, module_t *, module, conf->modules) {
+	knot_dynarray_foreach(mod, module_t *, module, conf->modules) {
 		if ((*module) != NULL && (*module)->temporary) {
 			unload_shared((*module));
 			*module = NULL; // Cannot remove from dynarray.
@@ -327,7 +327,7 @@ void conf_mod_unload_shared(
 		return;
 	}
 
-	dynarray_foreach(mod, module_t *, module, conf->modules) {
+	knot_dynarray_foreach(mod, module_t *, module, conf->modules) {
 		unload_shared((*module));
 	}
 	mod_dynarray_free(&conf->modules);

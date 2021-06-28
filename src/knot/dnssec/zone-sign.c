@@ -28,7 +28,7 @@
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
 #include "libknot/libknot.h"
-#include "contrib/dynarray.h"
+#include "libknot/dynarray.h"
 #include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
 
@@ -815,7 +815,7 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
 		}
 	}
 	keyptr_dynarray_t kcdnskeys = knot_zone_sign_get_cdnskeys(dnssec_ctx, zone_keys);
-	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
+	knot_dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
 		ret = rrset_add_zone_key(&add_r->cdnskey, *ksk_for_cds);
 		if (ret == KNOT_EOK) {
 			ret = rrset_add_zone_ds(&add_r->cds, *ksk_for_cds, dnssec_ctx->policy->cds_dt);

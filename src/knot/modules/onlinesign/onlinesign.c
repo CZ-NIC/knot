@@ -426,7 +426,7 @@ static knot_rrset_t *synth_cdnskey(knotd_qdata_t *qdata, knotd_mod_t *mod,
 	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
 	pthread_rwlock_rdlock(&ctx->signing_mutex);
 	keyptr_dynarray_t kcdnskeys = knot_zone_sign_get_cdnskeys(mod->dnssec, mod->keyset);
-	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cdnskey, kcdnskeys) {
+	knot_dynarray_foreach(keyptr, zone_key_t *, ksk_for_cdnskey, kcdnskeys) {
 		dnssec_key_get_rdata((*ksk_for_cdnskey)->key, &rdata);
 		assert(rdata.size > 0 && rdata.data);
 		(void)knot_rrset_add_rdata(dnskey, rdata.data, rdata.size, mm);
@@ -450,7 +450,7 @@ static knot_rrset_t *synth_cds(knotd_qdata_t *qdata, knotd_mod_t *mod,
 	online_sign_ctx_t *ctx = knotd_mod_ctx(mod);
 	pthread_rwlock_rdlock(&ctx->signing_mutex);
 	keyptr_dynarray_t kcdnskeys = knot_zone_sign_get_cdnskeys(mod->dnssec, mod->keyset);
-	dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
+	knot_dynarray_foreach(keyptr, zone_key_t *, ksk_for_cds, kcdnskeys) {
 		zone_key_calculate_ds(*ksk_for_cds, mod->dnssec->policy->cds_dt, &rdata);
 		assert(rdata.size > 0 && rdata.data);
 		(void)knot_rrset_add_rdata(ds, rdata.data, rdata.size, mm);

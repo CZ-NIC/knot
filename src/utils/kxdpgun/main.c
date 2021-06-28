@@ -429,7 +429,7 @@ void *xdp_gun_thread(void *_ctx)
 					break;
 				}
 				if (ctx->tcp) {
-					tcp_relay_dynarray_t relays = { 0 };
+					knot_tcp_relay_dynarray_t relays = { 0 };
 					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, tcp_table, NULL, &relays, &mm);
 					if (ret != KNOT_EOK) {
 						errors++;
@@ -438,7 +438,7 @@ void *xdp_gun_thread(void *_ctx)
 
 					size_t relays_answer = relays.size;
 					for (size_t i = 0; i < relays_answer; i++) {
-						knot_tcp_relay_t *rl = &tcp_relay_dynarray_arr(&relays)[i];
+						knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[i];
 						struct iovec payl;
 						switch (rl->action) {
 						case XDP_TCP_ESTABLISH:
@@ -463,7 +463,7 @@ void *xdp_gun_thread(void *_ctx)
 						}
 					}
 
-					ret = knot_xdp_tcp_send(xsk, tcp_relay_dynarray_arr(&relays), relays.size);
+					ret = knot_xdp_tcp_send(xsk, knot_tcp_relay_dynarray_arr(&relays), relays.size);
 					if (ret != KNOT_EOK) {
 						errors++;
 					}

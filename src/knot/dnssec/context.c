@@ -22,7 +22,7 @@
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/kasp/keystore.h"
 
-dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_NORMAL)
+knot_dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_NORMAL)
 
 static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id)
 {
@@ -239,7 +239,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 
 	if (ctx->policy != NULL) {
 		free(ctx->policy->string);
-		dynarray_foreach(parent, knot_kasp_parent_t, i, ctx->policy->parents) {
+		knot_dynarray_foreach(parent, knot_kasp_parent_t, i, ctx->policy->parents) {
 			free(i->addr);
 		}
 		free(ctx->policy);

@@ -25,7 +25,7 @@
 
 #define MAX_KEY_INFO 128
 
-dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_NORMAL)
+knot_dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_NORMAL)
 
 void normalize_generate_flags(kdnssec_generate_flags_t *flags)
 {
