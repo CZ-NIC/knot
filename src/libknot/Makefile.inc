@@ -1,8 +1,10 @@
 lib_LTLIBRARIES += libknot.la
 pkgconfig_DATA  += libknot.pc
 
-libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS)
-libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS)
+libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS) \
+                      ${fuzzer_CFLAGS}
+libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS) \
+                      ${fuzzer_LDFLAGS}
 libknot_la_LIBADD   = libdnssec.la $(libcontrib_LIBS) $(lmdb_LIBS) $(math_LIBS)
 
 include_libknotdir = $(includedir)
