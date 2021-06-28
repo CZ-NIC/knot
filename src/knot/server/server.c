@@ -675,6 +675,7 @@ void server_deinit(server_t *server)
 	evsched_deinit(&server->sched);
 
 	/* Free catalog zone context. */
+	catalog_update_clear(&server->catalog_upd);
 	catalog_update_deinit(&server->catalog_upd);
 	catalog_deinit(&server->catalog);
 
