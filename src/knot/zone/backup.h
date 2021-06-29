@@ -32,6 +32,7 @@ typedef enum {
 typedef struct zone_backup_ctx {
 	node_t n;                           // ability to be put into list_t
 	bool restore_mode;                  // if true, this is not a backup, but restore
+	bool forced;                        // if true, the force flag has been set
 	bool backup_zonefile;               // if true, also backup zone contents to a zonefile (default on)
 	bool backup_journal;                // if true, also backup journal (default off)
 	bool backup_timers;                 // if true, also backup timers (default on)

@@ -34,8 +34,12 @@
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
+#include "knot/zone/backup_label.h"
 #include "knot/zone/zonefile.h"
 #include "libdnssec/error.h"
+
+// Current backup format version for output.
+#define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.
 
 static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 {
@@ -46,132 +50,7 @@ static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 	}
 }
 
-// Current backup format version for output.
-#define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.
-
-#define LABEL_FILE "knot_backup.label"
-#define LOCK_FILE  "lock.knot_backup"
-
-#define LABEL_FILE_HEAD         "label: Knot DNS Backup\n"
-#define LABEL_FILE_FORMAT       "backup_format: %d\n"
-#define LABEL_FILE_TIME_FORMAT  "%Y-%m-%d %H:%M:%S %Z"
-
-#define FNAME_MAX (MAX(sizeof(LABEL_FILE), sizeof(LOCK_FILE)))
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
-
-static const char *label_file_name = LABEL_FILE;
-static const char *lock_file_name =  LOCK_FILE;
-static const char *label_file_head = LABEL_FILE_HEAD;
-
-static int make_label_file(zone_backup_ctx_t *ctx, char *full_path)
-{
-	FILE *file = fopen(full_path, "w");
-	if (file == NULL) {
-		return knot_map_errno();
-	}
-
-	// Prepare the server identity.
-	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
-	const char *ident = conf_str(&val);
-	if (ident == NULL || ident[0] == '\0') {
-		ident = conf()->hostname;
-	}
-
-	// Prepare the timestamps.
-	char started_time[64], finished_time[64];
-	struct tm tm;
-
-	localtime_r(&ctx->init_time, &tm);
-	strftime(started_time, sizeof(started_time), LABEL_FILE_TIME_FORMAT, &tm);
-
-	time_t now = time(NULL);
-	localtime_r(&now, &tm);
-	strftime(finished_time, sizeof(finished_time), LABEL_FILE_TIME_FORMAT, &tm);
-
-	// Print the label contents.
-	int ret = fprintf(file,
-	              "%s"
-	              LABEL_FILE_FORMAT
-	              "identity: %s\n"
-	              "started_time: %s\n"
-	              "finished_time: %s\n"
-	              "knot_version: %s\n"
-	              "parameters: +%szonefile +%sjournal +%stimers +%skaspdb +%scatalog "
-	                  "+backupdir %s\n"
-	              "zone_count: %d\n",
-	              label_file_head,
-	              BACKUP_VERSION, ident, started_time, finished_time, PACKAGE_VERSION,
-	              ctx->backup_zonefile ? "" : "no",
-	              ctx->backup_journal ? "" : "no",
-	              ctx->backup_timers ? "" : "no",
-	              ctx->backup_kaspdb ? "" : "no",
-	              ctx->backup_catalog ? "" : "no",
-	              ctx->backup_dir,
-	              ctx->zone_count);
-
-	ret = (ret < 0) ? knot_map_errno() : KNOT_EOK;
-
-	fclose(file);
-	return ret;
-}
-
-static int get_backup_format(const char *full_path, bool forced, knot_backup_format_t *format)
-{
-	int ret = KNOT_EMALF;
-
-	struct stat sb;
-	if (stat(full_path, &sb) != 0) {
-		ret = knot_map_errno();
-		if (ret == KNOT_ENOENT) {
-			if (forced) {
-				*format = BACKUP_FORMAT_1;
-				ret = KNOT_EOK;
-			} else {
-				ret = KNOT_EMALF;
-			}
-		}
-		return ret;
-	}
-
-	// getline() from an empty file results in EAGAIN, therefore avoid doing so.
-	if (!S_ISREG(sb.st_mode) || sb.st_size == 0) {
-		return ret;
-	}
-
-	FILE *file = fopen(full_path, "r");
-	if (file == NULL) {
-		return knot_map_errno();
-	}
-
-	char *line = NULL;
-	size_t line_size = 0;
-
-	// Check for the header line first.
-	if (knot_getline(&line, &line_size, file) == -1) {
-		ret = knot_map_errno();
-		goto done;
-	}
-
-	if (strcmp(line, label_file_head) != 0) {
-		goto done;
-	}
-
-	int value;
-	while (knot_getline(&line, &line_size, file) != -1) {
-		if (sscanf(line, LABEL_FILE_FORMAT, &value) != 0) {
-			if ((BACKUP_FORMAT_1 < value) && (value < BACKUP_FORMAT_TERM)) {
-				*format = value;
-				ret = KNOT_EOK;
-			}
-			break;
-		}
-	}
-
-done:
-	free(line);
-	fclose(file);
-	return ret;
-}
 
 int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
@@ -188,6 +67,7 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 		return KNOT_ENOMEM;
 	}
 	ctx->restore_mode = restore_mode;
+	ctx->forced = forced;
 	ctx->backup_format = BACKUP_VERSION;
 	ctx->backup_global = false;
 	ctx->readers = 1;
@@ -218,42 +98,13 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 		}
 	}
 
-	// The \0 terminator is already included in the sizeof() value, thus the sum
-	// covers one additional char for '/'.
-	char full_path[backup_dir_len + FNAME_MAX];
-
-	// Check for existence of a label file and the backup format used.
-	sprintf(full_path, "%s/%s", (ctx)->backup_dir, label_file_name);
-	if (restore_mode) {
-		ret = get_backup_format(full_path, forced, &ctx->backup_format);
-		if (ret != KNOT_EOK) {
-			free(ctx);
-			return ret;
-		}
-	} else {
-		if (stat(full_path, &sb) == 0) {
-			free(ctx);
-			return KNOT_EEXIST;
-		}
-	}
-
-	// Make (or check for existence of) a lock file.
-	sprintf(full_path, "%s/%s", (ctx)->backup_dir, lock_file_name);
-	if (restore_mode) {
-		// Just check.
-		if (stat(full_path, &sb) == 0) {
-			free(ctx);
-			return KNOT_EBUSY;
-		}
-	} else {
-		// Create it (which also checks for its existence).
-		int lock_file = open(full_path, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
-		if (lock_file < 0) {
-			free(ctx);
-			// Make the reported error better understandable than KNOT_EEXIST.
-			return errno == EEXIST ? KNOT_EBUSY : knot_map_errno();
-		}
-		close(lock_file);
+	// Depending on the restore mode, create (or check for existence of) the label file
+	// and the lock file. If the label file exists, the backup version is identified and
+	// stored in ctx.
+	ret = init_backup_label_lock(ctx);
+	if (ret != KNOT_EOK) {
+		free(ctx);
+		return ret;
 	}
 
 	pthread_mutex_init(&ctx->readers_mutex, NULL);
@@ -295,24 +146,8 @@ int zone_backup_deinit(zone_backup_ctx_t *ctx)
 		knot_lmdb_deinit(&ctx->bck_kasp_db);
 		pthread_mutex_destroy(&ctx->readers_mutex);
 
-		size_t backup_dir_len = strlen((ctx)->backup_dir) + 1;
-		char full_path[backup_dir_len + FNAME_MAX];
-
-		if (!ctx->restore_mode && !ctx->failed) {
-			// Create the label file first.
-			sprintf(full_path, "%s/%s", (ctx)->backup_dir, label_file_name);
-			ret = make_label_file(ctx, full_path);
-			if (ret == KNOT_EOK) {
-				// Remove the lock file only when the label file has been created.
-				sprintf(full_path, "%s/%s", (ctx)->backup_dir, lock_file_name);
-				unlink(full_path);
-			} else {
-				log_error("failed to create a backup label in %s", (ctx)->backup_dir);
-			}
-		}
-
+		ret = deinit_backup_label_lock(ctx);
 		zone_backups_rem(ctx);
-
 		free(ctx);
 	}
 
