@@ -6,4 +6,4 @@ dns1.example.com.   	3600	AAAA	2001:db8::1
 foo.example.com.    	3600	A	192.0.2.4
 mail.example.com.   	3600	A	192.0.2.3
 mail.example.com.   	3600	AAAA	2001:db8::3
-
+d1.example.com.		3600	AAAA	1::4
