@@ -87,9 +87,13 @@ for i in range(1, 1000):
     resp.check(rcode="NOERROR", rdata=random_client)
 
     # check NODATA response when querying different type
-    resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "AAAA", source=random_client)
+    resp = knot.dig("d" + str(random.randint(2, dname_count)) + ".example.com", "AAAA", source=random_client)
     resp.check(rcode="NOERROR")
     resp.check_count(1, "SOA", section="authority")
+
+    # check that NODATA behaviour does not shadow existing RR in the zone
+    resp = knot.dig("d1.example.com", "AAAA", source=random_client)
+    resp.check(rcode="NOERROR", rdata="1::4")
 
 # Restart with subnet module.
 knot.clear_modules(zone)
@@ -109,9 +113,12 @@ for i in range(1, 1000):
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
 
-    resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "AAAA", source=random_client)
+    resp = knot.dig("d" + str(random.randint(2, dname_count)) + ".example.com", "AAAA", source=random_client)
     resp.check(rcode="NOERROR")
     resp.check_count(1, "SOA", section="authority")
+
+    resp = knot.dig("d1.example.com", "AAAA", source=random_client)
+    resp.check(rcode="NOERROR", rdata="1::4")
 
 # Switch subnet file.
 shutil.move(subnet2_filename, subnet_filename)
@@ -125,6 +132,9 @@ for i in range(1, 1000):
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=expected_rdata, nordata=random_client)
 
-    resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "AAAA", source=random_client)
+    resp = knot.dig("d" + str(random.randint(2, dname_count)) + ".example.com", "AAAA", source=random_client)
     resp.check(rcode="NOERROR")
     resp.check_count(1, "SOA", section="authority")
+
+    resp = knot.dig("d1.example.com", "AAAA", source=random_client)
+    resp.check(rcode="NOERROR", rdata="1::4")
