@@ -34,6 +34,8 @@
 #define MOD_CONFIG_FILE	"\x0B""config-file"
 #define MOD_TTL		"\x03""ttl"
 #define MOD_MODE	"\x04""mode"
+#define MOD_DNSSEC	"\x06""dnssec"
+#define MOD_POLICY	"\x06""policy"
 #define MOD_GEODB_FILE	"\x0A""geodb-file"
 #define MOD_GEODB_KEY	"\x09""geodb-key"
 
@@ -57,11 +59,13 @@ static const char* mode_key[] = {
 };
 
 const yp_item_t geoip_conf[] = {
-	{ MOD_CONFIG_FILE, YP_TSTR, YP_VNONE },
-	{ MOD_TTL,         YP_TINT, YP_VINT = { 0, UINT32_MAX, 60, YP_STIME } },
-	{ MOD_MODE,        YP_TOPT, YP_VOPT = { modes, MODE_SUBNET} },
-	{ MOD_GEODB_FILE,  YP_TSTR, YP_VNONE },
-	{ MOD_GEODB_KEY,   YP_TSTR, YP_VSTR = { "country/iso_code" }, YP_FMULTI },
+	{ MOD_CONFIG_FILE, YP_TSTR,  YP_VNONE },
+	{ MOD_TTL,         YP_TINT,  YP_VINT = { 0, UINT32_MAX, 60, YP_STIME } },
+	{ MOD_MODE,        YP_TOPT,  YP_VOPT = { modes, MODE_SUBNET} },
+	{ MOD_DNSSEC,      YP_TBOOL, YP_VNONE },
+	{ MOD_POLICY,      YP_TREF,  YP_VREF = { C_POLICY }, YP_FNONE, { knotd_conf_check_ref } },
+	{ MOD_GEODB_FILE,  YP_TSTR,  YP_VNONE },
+	{ MOD_GEODB_KEY,   YP_TSTR,  YP_VSTR = { "country/iso_code" }, YP_FMULTI },
 	{ NULL }
 };
 
@@ -933,7 +937,10 @@ int geoip_load(knotd_mod_t *mod)
 	}
 
 	// Is DNSSEC used on this zone?
-	conf = knotd_conf_zone(mod, C_DNSSEC_SIGNING, knotd_mod_zone(mod));
+	conf = knotd_conf_mod(mod, MOD_DNSSEC);
+	if (conf.count == 0) {
+		conf = knotd_conf_zone(mod, C_DNSSEC_SIGNING, knotd_mod_zone(mod));
+	}
 	ctx->dnssec = conf.single.boolean;
 	if (ctx->dnssec) {
 		int ret = knotd_mod_dnssec_init(mod);
