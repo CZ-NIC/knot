@@ -18,8 +18,15 @@ The module can be enabled only per zone.
 DNSSEC support
 --------------
 
-There are two ways to enable DNSSEC signing of tailored responses.
-If automatic DNSSEC signing is enabled, record signatures are precomputed when the module is loaded. 
+There are several ways to enable DNSSEC signing of tailored responses.
+
+Full zone signing
+.................
+
+If :ref:`automatic DNSSEC signing <zone_dnssec-signing>` is enabled,
+the whole zone is signed by the server and all alternative RRsets, which are responded
+by the module, are pre-signed when the module is loaded.
+
 This has a speed benefit, however note that every RRset configured in the module should
 have a **default** RRset of the same type contained in the zone, so that the NSEC(3)
 chain can be built correctly. Also, it is STRONGLY RECOMMENDED to use
@@ -28,9 +35,40 @@ as the corresponding zone has to be reloaded when the signing key changes and to
 have better control over key synchronization to all instances of the server.
 
 .. NOTE::
-   If the GeoIP module is used with automatic DNSSEC signing, the keys for computing record signatures
-   MUST exist or be generated before the server is launched, otherwise the module fails to
+   DNSSEC keys for computing record signatures MUST exist in the KASP database
+   or be generated before the module is launched, otherwise the module fails to
    compute the signatures and does not load.
+
+Module signing
+..............
+
+If :ref:`automatic DNSSEC signing <zone_dnssec-signing>` is disabled,
+it's possible to combine externally pre-signed zone with module pre-signing
+of the alternative RRsets when the module is loaded. In this mode, only ZSK
+has to be present in the KASP database. Also in this mode every RRset configured
+in the module should have a **default** RRset of the same type contained in the zone.
+
+Example:
+
+::
+
+   policy:
+     - id: presigned_zone
+       manual: on
+       unsafe-operation: no-check-keyset
+
+   mod-geoip:
+     - id: geo_dnssec
+       ...
+       dnssec: on
+       policy: presigned_zone
+
+   zone:
+     - domain: example.com.
+       module: mod-geoip/geo_dnssec
+
+Online signing
+..............
 
 Alternatively, the :ref:`geoip<mod-geoip>` module may be combined with the
 :ref:`onlinesign<mod-onlinesign>` module and the tailored responses can be signed
@@ -42,7 +80,10 @@ on the fly. This approach is much more computationally demanding for the server.
 
 Example
 -------
-* An example configuration.::
+
+An example configuration:
+
+::
 
    mod-geoip:
      - id: default
@@ -167,6 +208,8 @@ Module reference
      config-file: STR
      ttl: TIME
      mode: geodb | subnet | weighted
+     dnssec: BOOL
+     policy: policy_id
      geodb-file: STR
      geodb-key: STR ...
 
@@ -210,6 +253,34 @@ Possible values:
 - ``weighted`` – Responses are tailored according to a statistical weight.
 
 *Default:* subnet
+
+.. _mod-geoip_dnssec:
+
+dnssec
+......
+
+If explicitly enabled, the module signs positive responses based on the module policy
+(:ref:`mod-geoip_policy`). If explicitly disabled, positive responses from the
+module are not signed even if the zone is pre-signed or signed by the server
+(:ref:`zone_dnssec-signing`).
+
+.. WARNING::
+   This configuration must be used carefully. Otherwise the zone responses
+   can be bogus.
+   DNSKEY rotation isn't supported. So :ref:`policy_manual` mode is highly
+   recommended.
+
+*Default:* current value of :ref:`zone_dnssec-signing` with :ref:`zone_dnssec-policy`
+
+.. _mod-geoip_policy:
+
+policy
+......
+
+A :ref:`reference<policy_id>` to DNSSEC signing policy which is used if
+:ref:`mod-geoip_dnssec` is enabled.
+
+*Default:* an imaginary policy with all default values
 
 .. _mod-geoip_geodb-file:
 
