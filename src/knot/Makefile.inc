@@ -174,8 +174,8 @@ libknotd_la_SOURCES = \
 	knot/zone/adjust.h			\
 	knot/zone/backup.c			\
 	knot/zone/backup.h			\
-	knot/zone/backup_label.c		\
-	knot/zone/backup_label.h		\
+	knot/zone/backup_dir.c			\
+	knot/zone/backup_dir.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
 	knot/zone/digest.c			\

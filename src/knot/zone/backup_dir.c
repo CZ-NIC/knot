@@ -21,7 +21,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "knot/zone/backup_label.h"
+#include "knot/zone/backup_dir.h"
 
 #include "contrib/files.h"
 #include "contrib/getline.h"
