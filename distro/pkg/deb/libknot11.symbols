@@ -141,6 +141,7 @@ libknot.so.11 libknot11 #MINVER#
  knot_rrtype_should_be_lowercased@Base 3.0.0
  knot_rrtype_to_string@Base 3.0.0
  knot_strerror@Base 3.0.0
+ knot_svcb_param_names@Base 3.1.0
  knot_tsig_add@Base 3.0.0
  knot_tsig_append@Base 3.0.0
  knot_tsig_client_check@Base 3.0.0
