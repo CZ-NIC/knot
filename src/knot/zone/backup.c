@@ -34,7 +34,7 @@
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
-#include "knot/zone/backup_label.h"
+#include "knot/zone/backup_dir.h"
 #include "knot/zone/zonefile.h"
 #include "libdnssec/error.h"
 
