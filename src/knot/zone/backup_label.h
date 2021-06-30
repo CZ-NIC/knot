@@ -18,21 +18,22 @@
 #include "knot/zone/backup.h"
 
 /*!
- * Verifies existence/non-existence of a lock file and a label file, in the
- * backup mode it creates them, in the restore mode it sets ctx->backup_format.
+ * Prepares the backup directory - verifies it exists and creates it for backup
+ * if it's needed. Verifies existence/non-existence of a lock file and a label file,
+ * in the backup mode it creates them, in the restore mode it sets ctx->backup_format.
  *
  * \param[in/out] ctx   Backup context.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int init_backup_label_lock(zone_backup_ctx_t *ctx);
+int backupdir_init(zone_backup_ctx_t *ctx);
 
 /*!
  * If the backup has been successful, it creates the label file
- * and removes the lock file. Nothing for the restore mode.
+ * and removes the lock file. Do nothing in the restore mode.
  *
  * \param[in] ctx   Backup context.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int deinit_backup_label_lock(zone_backup_ctx_t *ctx);
+int backupdir_deinit(zone_backup_ctx_t *ctx);

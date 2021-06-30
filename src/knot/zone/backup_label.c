@@ -23,6 +23,7 @@
 
 #include "knot/zone/backup_label.h"
 
+#include "contrib/files.h"
 #include "contrib/getline.h"
 #include "knot/common/log.h"
 
@@ -168,14 +169,31 @@ done:
 	return ret;
 }
 
-int init_backup_label_lock(zone_backup_ctx_t *ctx)
+int backupdir_init(zone_backup_ctx_t *ctx)
 {
-	char full_path[path_size(ctx)];
+	int ret;
 	struct stat sb;
+
+	// Make sure the source/target backup directory exists.
+	if (ctx->restore_mode) {
+		if (stat(ctx->backup_dir, &sb) != 0) {
+			return knot_map_errno();
+		}
+		if (!S_ISDIR(sb.st_mode)) {
+			return KNOT_ENOTDIR;
+		}
+	} else {
+		ret = make_dir(ctx->backup_dir, S_IRWXU|S_IRWXG, true);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	char full_path[path_size(ctx)];
 
 	// Check for existence of a label file and the backup format used.
 	if (ctx->restore_mode) {
-		int ret = get_backup_format(ctx);
+		ret = get_backup_format(ctx);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -206,7 +224,7 @@ int init_backup_label_lock(zone_backup_ctx_t *ctx)
 	return KNOT_EOK;
 }
 
-int deinit_backup_label_lock(zone_backup_ctx_t *ctx)
+int backupdir_deinit(zone_backup_ctx_t *ctx)
 {
 	int ret = KNOT_EOK;
 

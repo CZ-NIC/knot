@@ -77,31 +77,9 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 
-	int ret;
-	struct stat sb;
-
-	// Make sure the source/target backup directory exists.
-	if (restore_mode) {
-		if (stat(backup_dir, &sb) != 0) {
-			free(ctx);
-			return knot_map_errno();
-		}
-		if (!S_ISDIR(sb.st_mode)) {
-			free(ctx);
-			return KNOT_ENOTDIR;
-		}
-	} else {
-		ret = make_dir(backup_dir, S_IRWXU|S_IRWXG, true);
-		if (ret != KNOT_EOK) {
-			free(ctx);
-			return ret;
-		}
-	}
-
-	// Depending on the restore mode, create (or check for existence of) the label file
-	// and the lock file. If the label file exists, the backup version is identified and
-	// stored in ctx.
-	ret = init_backup_label_lock(ctx);
+	// Backup directory, lock file, label file.
+	// In restore, set the backup format.
+	int ret = backupdir_init(ctx);
 	if (ret != KNOT_EOK) {
 		free(ctx);
 		return ret;
@@ -146,7 +124,7 @@ int zone_backup_deinit(zone_backup_ctx_t *ctx)
 		knot_lmdb_deinit(&ctx->bck_kasp_db);
 		pthread_mutex_destroy(&ctx->readers_mutex);
 
-		ret = deinit_backup_label_lock(ctx);
+		ret = backupdir_deinit(ctx);
 		zone_backups_rem(ctx);
 		free(ctx);
 	}
