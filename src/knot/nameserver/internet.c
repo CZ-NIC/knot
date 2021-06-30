@@ -431,6 +431,8 @@ static int solve_name(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 static int solve_answer(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
 {
+	int old_state = state;
+
 	/* Do not solve if already solved, e.g. in a module. */
 	if (state == KNOTD_IN_STATE_HIT) {
 		return state;
@@ -438,6 +440,11 @@ static int solve_answer(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *
 
 	/* Get answer to QNAME. */
 	state = solve_name(state, pkt, qdata);
+
+	/* Promote NODATA from a module if nothing found in zone. */
+	if (state == KNOTD_IN_STATE_MISS && old_state == KNOTD_IN_STATE_NODATA) {
+		state = old_state;
+	}
 
 	/* Is authoritative answer unless referral.
 	 * Must check before we chase the CNAME chain. */
