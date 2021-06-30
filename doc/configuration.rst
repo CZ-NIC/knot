@@ -670,6 +670,96 @@ to non-default values.
    * Add the member zone to the other catalog.
    * Restore the backed up metadata (on each server separately).
 
+Catalog zones configuration examples
+------------------------------------
+
+Below are configuration snippets (e.g. `server` and `log` sections missing)
+of very simple catalog zone setups, in order to illustrate the relations
+between catalog-related configuration options.
+
+First setup represents a very simple scenario where the master is
+the catalog zone generator and the slave is the consumer.
+
+Master config::
+
+  acl:
+    - id: slave_xfr
+      address: ...
+      action: transfer
+
+  template:
+    - id: mmemb
+      catalog-role: member
+      catalog-zone: catz.
+      acl: slave_xfr
+
+  zone:
+    - domain: catz.
+      catalog-role: generate
+      acl: slave_xfr
+
+    - domain: foo.com.
+      template: mmemb
+
+    - domain: bar.com.
+      template: mmemb
+
+Slave config::
+
+  acl:
+    - id: master_notify
+      address: ...
+      action: notify
+
+  template:
+    - id: smemb
+      master: master
+      acl: master_notify
+
+  zone:
+    - domain: catz.
+      master: master
+      acl: master_notify
+      catalog-role: interpret
+      catalog-template: smemb
+
+When new zones are added (or removed) to master configuration with assigned
+`mmemb` template, they will automatically propagate to the slave
+and have the `smemb` template assigned there.
+
+Second example is with a hand-written (or script-generated) catalog zone,
+while employing configuration groups::
+
+  catz.                   0       SOA     invalid. invalid. 1625079950 3600 600 2147483646 0
+  catz.                   0       NS      invalid.
+  version.catz.           0       TXT     "2"
+  nj2xg5bnmz2w4ltd.zones.catz.       0       PTR     just-fun.com.
+  group.nj2xg5bnmz2w4ltd.zones.catz. 0       TXT     unsigned
+  nvxxezjnmz2w4ltd.zones.catz.       0       PTR     more-fun.com.
+  group.nvxxezjnmz2w4ltd.zones.catz. 0       TXT     unsigned
+  nfwxa33sorqw45bo.zones.catz.       0       PTR     important.com.
+  group.nfwxa33sorqw45bo.zones.catz. 0       TXT     signed
+  mjqw42zomnxw2lq0.zones.catz.       0       PTR     bank.com.
+  group.mjqw42zomnxw2lq0.zones.catz. 0       TXT     signed
+
+And the server in this case is configured to distinguish the groups by applying
+different templates::
+
+  template:
+    - id: unsigned
+      ...
+
+    - id: signed
+      dnssec-signing: on
+      dnssec-policy: ...
+      ...
+
+  zone:
+    - domain: catz.
+      file: ...
+      catalog-role: interpret
+      catalog-template: [ unsigned, signed ]
+
 .. _query-modules:
 
 Query modules
