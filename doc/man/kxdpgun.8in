@@ -53,10 +53,13 @@ Duration of traffic generation, specified as a decimal number in seconds
 .TP
 \fB\-Q\fP, \fB\-\-qps\fP \fIqueries\fP
 Number of queries\-per\-second (approximately) to be sent (default is 1000).
+The program is not optimized for low speeds at which it may lose
+communication packets. The recommended minimum speed is 2 packets per thread
+(Rx/Tx queue).
 .TP
 \fB\-b\fP, \fB\-\-batch\fP \fIsize\fP
 Send more queries in a batch. Improves QPS but may affect the counterpart\(aqs
-packet loss (default is 10).
+packet loss (default is 10 for UDP and 1 for TCP).
 .TP
 \fB\-r\fP, \fB\-\-drop\fP
 Drop incoming responses. Improves QPS, but disables response statistics.
