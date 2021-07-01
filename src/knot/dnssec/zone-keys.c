@@ -375,6 +375,10 @@ static bool is_nsec3_allowed(uint8_t algorithm)
 
 static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 {
+	if (ctx->policy->unsafe & UNSAFE_KEYSET) {
+		return KNOT_EOK;
+	}
+
 	uint8_t alg_usage[256] = { 0 };
 	bool have_active_alg = false;
 

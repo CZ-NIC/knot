@@ -331,6 +331,10 @@ int knot_zone_create_nsec_chain(zone_update_t *update, const kdnssec_ctx_t *ctx)
 		return KNOT_EINVAL;
 	}
 
+	if (ctx->policy->unsafe & UNSAFE_NSEC) {
+		return KNOT_EOK;
+	}
+
 	int nsec_ttl = zone_nsec_ttl(update->new_cont);
 	if (nsec_ttl < 0) {
 		return nsec_ttl;
@@ -361,6 +365,10 @@ int knot_zone_fix_nsec_chain(zone_update_t *update,
 {
 	if (update == NULL || ctx == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (ctx->policy->unsafe & UNSAFE_NSEC) {
+		return KNOT_EOK;
 	}
 
 	int nsec_ttl_old = zone_nsec_ttl(update->zone->contents);
