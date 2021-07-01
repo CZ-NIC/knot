@@ -15,3 +15,17 @@ dns2	A	192.0.2.2
 mail	A	192.0.2.3
 	AAAA	2001:DB8::3
 
+www	A	192.0.2.4
+	AAAA	2001:DB8::4
+
+ftp	A	192.0.2.5
+	AAAA	2001:DB8::5
+
+ntp	A	192.0.2.6
+	AAAA	2001:DB8::6
+
+nntp	A	192.0.2.7
+	AAAA	2001:DB8::7
+
+gopher A	192.0.2.8
+	AAAA	2001:DB8::8
