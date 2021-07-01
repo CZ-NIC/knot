@@ -30,10 +30,13 @@ Options
 
 **-Q**, **--qps** *queries*
   Number of queries-per-second (approximately) to be sent (default is 1000).
+  The program is not optimized for low speeds at which it may lose
+  communication packets. The recommended minimum speed is 2 packets per thread
+  (Rx/Tx queue).
 
 **-b**, **--batch** *size*
   Send more queries in a batch. Improves QPS but may affect the counterpart's
-  packet loss (default is 10).
+  packet loss (default is 10 for UDP and 1 for TCP).
 
 **-r**, **--drop**
   Drop incoming responses. Improves QPS, but disables response statistics.

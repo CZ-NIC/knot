@@ -644,6 +644,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	};
 
 	int opt = 0, arg;
+	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;
 	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:TF:I:l:i:", opts, NULL)) != -1) {
@@ -676,6 +677,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		case 'b':
 			arg = atoi(optarg);
 			if (arg > 0) {
+				default_at_once = false;
 				ctx->at_once = arg;
 			} else {
 				return false;
@@ -695,6 +697,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		case 'T':
 			ctx->tcp = true;
 			ctx->listen_port |= KNOT_XDP_LISTEN_PORT_TCP;
+			if (default_at_once) {
+				ctx->at_once = 1;
+			}
 			break;
 		case 'F':
 			if ((arg = atoi(optarg)) > 0) {
