@@ -525,7 +525,7 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
                          uint32_t max_at_once,
                          uint32_t close_timeout, uint32_t reset_timeout,
                          uint32_t reset_at_least, size_t reset_inbufs,
-                         uint32_t *reset_count)
+                         uint32_t *close_count, uint32_t *reset_count)
 {
 	knot_tcp_relay_t rl = { 0 };
 	knot_tcp_relay_dynarray_t relays = { 0 };
@@ -540,7 +540,6 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 		    now - conn->last_active >= reset_timeout ||
 		    (reset_inbufs > 0 && conn->inbuf.iov_len > 0)) {
 			rl.answer = XDP_TCP_RESET;
-			printf("reset %hu%s%s%s\n", be16toh(conn->ip_rem.sin6_port), i - 1 < reset_at_least ? " table full" : "", now - conn->last_active >= reset_timeout ? " too old" : "", (reset_inbufs > 0 && conn->inbuf.iov_len > 0) ? " inbuf usage" : "");
 
 			// move this conn into to-remove list
 			rem_node((node_t *)conn);
@@ -550,7 +549,9 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 		} else if (now - conn->last_active >= close_timeout) {
 			if (conn->state != XDP_TCP_CLOSING) {
 				rl.answer = XDP_TCP_CLOSE;
-				printf("close %hu timeout\n", be16toh(conn->ip_rem.sin6_port));
+				if (close_count != NULL) {
+					(*close_count)++;
+				}
 			}
 		} else if (reset_inbufs == 0) {
 			break;

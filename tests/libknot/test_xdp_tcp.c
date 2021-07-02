@@ -330,14 +330,17 @@ void test_many(void)
 	knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[0];
 	clean_sent();
 
-	uint32_t reset_count = 0;
-	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, timeout_time, UINT32_MAX, 0, 0, &reset_count);
+	uint32_t reset_count = 0, close_count = 0;
+	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, timeout_time, UINT32_MAX, 0, 0, &close_count, &reset_count);
 	is_int(KNOT_EOK, ret, "many/timeout1: OK");
+	is_int(CONNS - 1, close_count, "many/timeout1: close count");
 	is_int(0, reset_count, "may/timeout1: reset count");
 	check_sent(0, 0, 0, CONNS - 1);
 
-	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, UINT32_MAX, timeout_time, 0, 0, &reset_count);
+	close_count = 0;
+	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, UINT32_MAX, timeout_time, 0, 0, &close_count, &reset_count);
 	is_int(KNOT_EOK, ret, "many/timeout2: OK");
+	is_int(0, close_count, "many/timeout2: close count");
 	is_int(CONNS - 1, reset_count, "may/timeout2: reset count");
 	check_sent(0, CONNS - 1, 0, 0);
 	is_int(1, test_table->usage, "many/timeout: one survivor");
@@ -391,10 +394,11 @@ void test_ibufs_size(void)
 	knot_xdp_tcp_relay_free(&relays);
 
 	// now free some
-	uint32_t reset_count = 0;
-	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, UINT32_MAX, UINT32_MAX, 0, 8, &reset_count);
+	uint32_t reset_count = 0, close_count = 0;
+	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, UINT32_MAX, UINT32_MAX, 0, 8, &close_count, &reset_count);
 	is_int(KNOT_EOK, ret, "inbufs: timeout OK");
 	check_sent(0, 2, 0, 0);
+	is_int(0, close_count, "inbufs: close count");
 	is_int(2, reset_count, "inbufs: reset count");
 	is_int(7, test_table->inbufs_total, "inbufs: final state");
 	ok(NULL != knot_tcp_table_find(test_table, &msgs[0]), "inbufs: first conn survived");
