@@ -198,7 +198,6 @@ server:
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
     listen: ADDR[@INT] ...
-    listen\-xdp: STR[@INT] | ADDR[@INT] ...
 .ft P
 .fi
 .UNINDENT
@@ -423,27 +422,6 @@ is automatically enabled if supported by the operating system.
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fIDefault:\fP not set
-.SS listen\-xdp
-.sp
-One or more network device names (e.g. \fBens786f0\fP) on which the Mode XDP
-is enabled. Alternatively, an IP address can be used instead of a device name,
-but the server will still listen on all addresses belonging to the same interface!
-Optional port specification (default is 53) can be appended to each device name
-or address using \fB@\fP separator.
-.sp
-Change of this parameter requires restart of the Knot server to take effect.
-.sp
-\fIDefault:\fP not set
-.sp
-\fBCAUTION:\fP
-.INDENT 0.0
-.INDENT 3.5
-Since XDP workers only process regular DNS traffic over UDP, it is strongly
-recommended to also \fI\%listen\fP on the addresses which are
-intended to offer the DNS service, at least to fulfil the DNS requirement for
-working TCP.
-.UNINDENT
-.UNINDENT
 .SH XDP SECTION
 .sp
 Various options related to XDP listening, especially TCP.
@@ -453,6 +431,7 @@ Various options related to XDP listening, especially TCP.
 .nf
 .ft C
 xdp:
+    listen: STR[@INT] | ADDR[@INT] ...
     xdp\-tcp: BOOL
     tcp\-max\-clients: INT
     tcp\-max\-inbufs: SIZE
@@ -472,6 +451,27 @@ reload, some parameters in the XDP section require restarting the Knot server
 so that the changes take effect.
 .UNINDENT
 .UNINDENT
+.SS listen
+.sp
+One or more network device names (e.g. \fBens786f0\fP) on which the Mode XDP
+is enabled. Alternatively, an IP address can be used instead of a device name,
+but the server will still listen on all addresses belonging to the same interface!
+Optional port specification (default is 53) can be appended to each device name
+or address using \fB@\fP separator.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fBCAUTION:\fP
+.INDENT 0.0
+.INDENT 3.5
+If XDP workers only process regular DNS traffic over UDP, it is strongly
+recommended to also \fI\%listen\fP on the addresses which are
+intended to offer the DNS service, at least to fulfil the DNS requirement for
+working TCP.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP not set
 .SS xdp\-tcp
 .sp
 Also answer TCP traffic (queries) with XDP workers.

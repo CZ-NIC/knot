@@ -149,7 +149,6 @@ General options related to the server.
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      listen: ADDR[@INT] ...
-     listen-xdp: STR[@INT] | ADDR[@INT] ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -444,27 +443,6 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
-.. _server_listen-xdp:
-
-listen-xdp
-----------
-
-One or more network device names (e.g. ``ens786f0``) on which the :ref:`Mode XDP`
-is enabled. Alternatively, an IP address can be used instead of a device name,
-but the server will still listen on all addresses belonging to the same interface!
-Optional port specification (default is 53) can be appended to each device name
-or address using ``@`` separator.
-
-Change of this parameter requires restart of the Knot server to take effect.
-
-*Default:* not set
-
-.. CAUTION::
-   Since XDP workers only process regular DNS traffic over UDP, it is strongly
-   recommended to also :ref:`listen <server_listen>` on the addresses which are
-   intended to offer the DNS service, at least to fulfil the DNS requirement for
-   working TCP.
-
 .. _XDP section:
 
 XDP section
@@ -475,6 +453,7 @@ Various options related to XDP listening, especially TCP.
 ::
 
  xdp:
+     listen: STR[@INT] | ADDR[@INT] ...
      xdp-tcp: BOOL
      tcp-max-clients: INT
      tcp-max-inbufs: SIZE
@@ -486,6 +465,27 @@ Various options related to XDP listening, especially TCP.
    When you change configuration parameters dynamically or via configuration file
    reload, some parameters in the XDP section require restarting the Knot server
    so that the changes take effect.
+
+.. _xdp_listen:
+
+listen
+------
+
+One or more network device names (e.g. ``ens786f0``) on which the :ref:`Mode XDP`
+is enabled. Alternatively, an IP address can be used instead of a device name,
+but the server will still listen on all addresses belonging to the same interface!
+Optional port specification (default is 53) can be appended to each device name
+or address using ``@`` separator.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+.. CAUTION::
+   If XDP workers only process regular DNS traffic over UDP, it is strongly
+   recommended to also :ref:`listen <server_listen>` on the addresses which are
+   intended to offer the DNS service, at least to fulfil the DNS requirement for
+   working TCP.
+
+*Default:* not set
 
 .. _xdp_xdp-tcp:
 

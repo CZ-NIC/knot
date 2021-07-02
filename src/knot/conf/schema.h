@@ -72,7 +72,6 @@
 #define C_KSK_SHARED		"\x0a""ksk-shared"
 #define C_KSK_SIZE		"\x08""ksk-size"
 #define C_LISTEN		"\x06""listen"
-#define C_LISTEN_XDP		"\x0A""listen-xdp"
 #define C_LOG			"\x03""log"
 #define C_MANUAL		"\x06""manual"
 #define C_MASTER		"\x06""master"
@@ -152,6 +151,7 @@
 
 // Legacy items.
 #define C_DISABLE_ANY		"\x0B""disable-any"
+#define C_LISTEN_XDP		"\x0A""listen-xdp"
 #define C_MAX_TIMER_DB_SIZE	"\x11""max-timer-db-size"
 #define C_MAX_JOURNAL_DB_SIZE	"\x13""max-journal-db-size"
 #define C_MAX_KASP_DB_SIZE	"\x10""max-kasp-db-size"

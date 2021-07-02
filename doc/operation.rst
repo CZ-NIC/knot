@@ -1060,7 +1060,7 @@ effectively forward them to the nameserver without touching the network stack
 of the operating system. Other messages (including DNS over TCP) are processed
 as usual.
 
-If :ref:`listen-xdp <server_listen-xdp>` is configured, the server creates
+If :ref:`xdp_listen` is configured, the server creates
 additional XDP workers, listening on specified interface(s) and port(s) for DNS
 over UDP queries. Each XDP worker handles one RX and TX network queue pair.
 
