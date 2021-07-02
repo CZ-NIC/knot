@@ -1135,14 +1135,6 @@ char* conf_db_txn(
 	return dbdir;
 }
 
-conf_val_t conf_db_param_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn,
-	const yp_name_t *param)
-{
-	return conf_get_txn(conf, txn, C_DB, param);
-}
-
 size_t conf_udp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
