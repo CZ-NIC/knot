@@ -206,7 +206,6 @@ static const yp_item_t desc_server[] = {
 	                                                1232, YP_SSIZE } },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
-	{ C_XDP_ROUTE_CHECK,      YP_TBOOL, YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
 	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
@@ -232,6 +231,7 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP_MAX_INBUFS,       YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
 	{ C_TCP_IDLE_CLOSE,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },
 	{ C_TCP_IDLE_RESET,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 20, YP_STIME } },
+	{ C_ROUTE_CHECK,          YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 

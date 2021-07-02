@@ -132,9 +132,9 @@ static void init_cache(
 	static size_t running_bg_threads;
 
 	if (first_init || reinit_cache) {
-		running_tcp_reuseport = conf_srv_bool(conf, C_TCP_REUSEPORT);
-		running_socket_affinity = conf_srv_bool(conf, C_SOCKET_AFFINITY);
-		running_route_check = conf_srv_bool(conf, C_XDP_ROUTE_CHECK);
+		running_tcp_reuseport = conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT);
+		running_socket_affinity = conf_get_bool(conf, C_SRV, C_SOCKET_AFFINITY);
+		running_route_check = conf_get_bool(conf, C_XDP, C_ROUTE_CHECK);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
@@ -171,8 +171,6 @@ static void init_cache(
 
 	conf->cache.srv_socket_affinity = running_socket_affinity;
 
-	conf->cache.srv_xdp_route_check = running_route_check;
-
 	conf->cache.srv_udp_threads = running_udp_threads;
 
 	conf->cache.srv_tcp_threads = running_tcp_threads;
@@ -194,6 +192,8 @@ static void init_cache(
 
 	val = conf_get(conf, C_XDP, C_TCP_IDLE_RESET);
 	conf->cache.xdp_tcp_idle_reset = conf_int(&val);
+
+	conf->cache.xdp_route_check = running_route_check;
 
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;

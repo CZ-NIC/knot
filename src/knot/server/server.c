@@ -555,7 +555,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	free(rundir);
 
 	/* XDP sockets. */
-	bool route_check = conf->cache.srv_xdp_route_check;
+	bool route_check = conf->cache.xdp_route_check;
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
@@ -914,12 +914,12 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_listen = true;
 	static bool warn_route_check = true;
 
-	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_srv_bool(conf, C_TCP_REUSEPORT)) {
+	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT)) {
 		log_warning(msg, &C_TCP_REUSEPORT[1]);
 		warn_tcp_reuseport = false;
 	}
 
-	if (warn_socket_affinity && conf->cache.srv_socket_affinity != conf_srv_bool(conf, C_SOCKET_AFFINITY)) {
+	if (warn_socket_affinity && conf->cache.srv_socket_affinity != conf_get_bool(conf, C_SRV, C_SOCKET_AFFINITY)) {
 		log_warning(msg, &C_SOCKET_AFFINITY[1]);
 		warn_socket_affinity = false;
 	}
@@ -944,8 +944,8 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 		warn_listen = false;
 	}
 
-	if (warn_route_check && conf->cache.srv_xdp_route_check != conf_srv_bool(conf, C_XDP_ROUTE_CHECK)) {
-		log_warning(msg, &C_XDP_ROUTE_CHECK[1]);
+	if (warn_route_check && conf->cache.xdp_route_check != conf_get_bool(conf, C_XDP, C_ROUTE_CHECK)) {
+		log_warning(msg, &C_ROUTE_CHECK[1]);
 		warn_route_check = false;
 	}
 }
