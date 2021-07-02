@@ -37,8 +37,8 @@ typedef struct xdp_handle_ctx {
 	uint32_t msg_udp_count;
 	knot_tcp_table_t *tcp_table;
 
-	uint32_t tcp_max_conns;
-	size_t tcp_inbufs_size;
+	size_t tcp_max_conns;
+	size_t tcp_max_inbufs;
 	uint32_t tcp_idle_close;
 	uint32_t tcp_idle_reset;
 } xdp_handle_ctx_t;
@@ -62,10 +62,10 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 {
 	rcu_read_lock();
 	conf_t *pconf = conf();
-	ctx->tcp_max_conns   = pconf->cache.xdp_tcp_max_conns / pconf->cache.srv_xdp_threads;
-	ctx->tcp_inbufs_size = pconf->cache.xdp_tcp_inbufs_size / pconf->cache.srv_xdp_threads;
-	ctx->tcp_idle_close  = pconf->cache.xdp_tcp_idle_close * 1000000; // conf:secs -> tcp:usecs
-	ctx->tcp_idle_reset  = pconf->cache.xdp_tcp_idle_reset * 1000000;
+	ctx->tcp_max_conns  = pconf->cache.xdp_tcp_max_clients    / pconf->cache.srv_xdp_threads;
+	ctx->tcp_max_inbufs = pconf->cache.xdp_tcp_inbuf_max_size / pconf->cache.srv_xdp_threads;
+	ctx->tcp_idle_close = pconf->cache.xdp_tcp_idle_close * 1000000; // conf:secs -> tcp:usecs
+	ctx->tcp_idle_reset = pconf->cache.xdp_tcp_idle_reset * 1000000;
 	rcu_read_unlock();
 }
 
@@ -242,7 +242,7 @@ int xdp_handle_timeout(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 	do {
 		ret = knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 20, ctx->tcp_idle_close, ctx->tcp_idle_reset,
 		                           overweight(ctx->tcp_table->usage, ctx->tcp_max_conns),
-		                           overweight(ctx->tcp_table->inbufs_total, ctx->tcp_inbufs_size),
+		                           overweight(ctx->tcp_table->inbufs_total, ctx->tcp_max_inbufs),
 		                           &last_close, &last_reset);
 	} while (last_reset > 0 && ret == KNOT_EOK);
 

@@ -454,9 +454,9 @@ Various options related to XDP listening, especially TCP.
 
  xdp:
      listen: STR[@INT] | ADDR[@INT] ...
-     xdp-tcp: BOOL
+     tcp: BOOL
      tcp-max-clients: INT
-     tcp-max-inbufs: SIZE
+     tcp-inbuf-max-size: SIZE
      tcp-idle-close: TIME
      tcp-idle-reset: TIME
      route-check: BOOL
@@ -487,17 +487,21 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
-.. _xdp_xdp-tcp:
+.. _xdp_tcp:
 
-xdp-tcp
--------
+tcp
+---
 
-Also answer TCP traffic (queries) with XDP workers.
+Also process DNS over TCP traffic with XDP workers.
+
+Change of this parameter requires restart of the Knot server to take effect.
 
 .. WARNING::
    This feature is highly experimental and it may eat your hamster as well as any
-   other hamsters connected to the network. It is especially discouraged to serve
-   large zone transfers through XDP.
+   other hamsters connected to the network. Multi-message zone transfer isn't
+   supported through XDP.
+
+*Default:* off
 
 .. _xdp_tcp-max-clients:
 
@@ -508,17 +512,17 @@ A maximum number of TCP clients connected in parallel.
 
 *Default:* 1000000 (one million)
 
-.. _xdp_tcp-max-inbufs:
+.. _xdp_tcp-inbuf-max-size:
 
-tcp-max-inbufs
---------------
+tcp-inbuf-max-size
+------------------
 
-Maximum cumulative size of RAM used for buffers of incomplete
+Maximum cumulative size of memory used for buffers of incompletely
 received messages.
 
-*Minimum:* 1 Megabyte
+*Minimum:* 1 MiB
 
-*Default:* 100 Megabytes
+*Default:* 100 MiB
 
 .. _xdp_tcp-idle-close:
 
