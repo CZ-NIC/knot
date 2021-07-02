@@ -559,17 +559,15 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	free(rundir);
 
 	/* XDP sockets. */
+	bool xdp_tcp = conf->cache.xdp_tcp;
 	bool route_check = conf->cache.xdp_route_check;
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
-		conf_val_t xdp_tcp_val = conf_get(conf, C_XDP, C_XDP_TCP);
-		bool xdp_tcp = conf_bool(&xdp_tcp_val);
-
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
-		log_info("binding to XDP interface %s%s", addr_str, xdp_tcp ? " with TCP" : "");
+		log_info("binding to XDP interface %s for UDP%s", addr_str, xdp_tcp ? " and TCP" : "");
 
 		iface_t *new_if = server_init_xdp_iface(&addr, route_check, &thread_id, xdp_tcp);
 		if (new_if == NULL) {
@@ -919,6 +917,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_tcp = true;
 	static bool warn_bg = true;
 	static bool warn_listen = true;
+	static bool warn_xdp_tcp = true;
 	static bool warn_route_check = true;
 
 	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT)) {
@@ -949,6 +948,11 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_listen && listen_changed(conf, server)) {
 		log_warning(msg, "listen(-xdp)");
 		warn_listen = false;
+	}
+
+	if (warn_xdp_tcp && conf->cache.xdp_tcp != conf_get_bool(conf, C_XDP, C_TCP)) {
+		log_warning(msg, &C_TCP[1]);
+		warn_xdp_tcp = false;
 	}
 
 	if (warn_route_check && conf->cache.xdp_route_check != conf_get_bool(conf, C_XDP, C_ROUTE_CHECK)) {

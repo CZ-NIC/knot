@@ -418,11 +418,13 @@ int check_server(
 {
 	conf_val_t listen = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
 	                                 C_LISTEN);
-	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
-	                              C_LISTEN_XDP);
+	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
+	                              C_LISTEN);
+	conf_val_t tcp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
+	                              C_TCP);
 	if (xdp.code == KNOT_EOK) {
-		if (listen.code != KNOT_EOK) {
-			CONF_LOG(LOG_WARNING, "unable to process TCP queries due to XDP-only interfaces");
+		if (listen.code != KNOT_EOK && tcp.code != KNOT_EOK) {
+			CONF_LOG(LOG_WARNING, "unavailable TCP processing");
 		}
 		check_mtu(args, &xdp);
 	}

@@ -432,9 +432,9 @@ Various options related to XDP listening, especially TCP.
 .ft C
 xdp:
     listen: STR[@INT] | ADDR[@INT] ...
-    xdp\-tcp: BOOL
+    tcp: BOOL
     tcp\-max\-clients: INT
-    tcp\-max\-inbufs: SIZE
+    tcp\-inbuf\-max\-size: SIZE
     tcp\-idle\-close: TIME
     tcp\-idle\-reset: TIME
     route\-check: BOOL
@@ -472,31 +472,35 @@ working TCP.
 .UNINDENT
 .sp
 \fIDefault:\fP not set
-.SS xdp\-tcp
+.SS tcp
 .sp
-Also answer TCP traffic (queries) with XDP workers.
+Also process DNS over TCP traffic with XDP workers.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
 .INDENT 3.5
 This feature is highly experimental and it may eat your hamster as well as any
-other hamsters connected to the network. It is especially discouraged to serve
-large zone transfers through XDP.
+other hamsters connected to the network. Multi\-message zone transfer isn\(aqt
+supported through XDP.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP off
 .SS tcp\-max\-clients
 .sp
 A maximum number of TCP clients connected in parallel.
 .sp
 \fIDefault:\fP 1000000 (one million)
-.SS tcp\-max\-inbufs
+.SS tcp\-inbuf\-max\-size
 .sp
-Maximum cumulative size of RAM used for buffers of incomplete
+Maximum cumulative size of memory used for buffers of incompletely
 received messages.
 .sp
-\fIMinimum:\fP 1 Megabyte
+\fIMinimum:\fP 1 MiB
 .sp
-\fIDefault:\fP 100 Megabytes
+\fIDefault:\fP 100 MiB
 .SS tcp\-idle\-close
 .sp
 Time in seconds, after which any idle connection is gracefully closed.
