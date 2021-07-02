@@ -246,6 +246,15 @@ int check_listen(
 	return KNOT_EOK;
 }
 
+int check_xdp_old(
+	knotd_conf_check_args_t *args)
+{
+	CONF_LOG(LOG_NOTICE, "option 'server.listen-xdp' is obsolete, "
+	                     "use option 'xdp.listen' instead");
+
+	return KNOT_EOK;
+}
+
 int check_xdp(
 	knotd_conf_check_args_t *args)
 {
@@ -262,8 +271,8 @@ int check_xdp(
 		return ret;
 	}
 
-	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
-	                              C_LISTEN_XDP);
+	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
+	                              C_LISTEN);
 	size_t count = conf_val_count(&xdp);
 	while (xdp.code == KNOT_EOK && count-- > 1) {
 		struct sockaddr_storage addr = conf_addr(&xdp, NULL);

@@ -70,6 +70,10 @@ int check_listen(
 	knotd_conf_check_args_t *args
 );
 
+int check_xdp_old(
+	knotd_conf_check_args_t *args
+);
+
 int check_xdp(
 	knotd_conf_check_args_t *args
 );

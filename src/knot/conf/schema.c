@@ -207,9 +207,9 @@ static const yp_item_t desc_server[] = {
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
-	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
+	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp_old } },
 	{ C_MAX_TCP_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
 	{ C_TCP_HSHAKE_TIMEOUT,   YP_TINT,  YP_VINT = { 0, INT32_MAX, 5, YP_STIME } },
 	{ C_TCP_REPLY_TIMEOUT,    YP_TINT,  YP_VINT = { 0, INT32_MAX, 10, YP_STIME } },
@@ -226,6 +226,7 @@ static const yp_item_t desc_server[] = {
 };
 
 static const yp_item_t desc_xdp[] = {
+	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
 	{ C_XDP_TCP,              YP_TBOOL, YP_VNONE },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 1000000 } },
 	{ C_TCP_MAX_INBUFS,       YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
