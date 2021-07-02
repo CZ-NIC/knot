@@ -217,7 +217,7 @@ int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
 	if (val == NULL) {
 		return KNOT_ENOMEM;
 	}
-	if (type == CAT_UPD_PROP) {
+	if (group_len > 0) {
 		int ret = upd_val_set_prop(val, NULL, NULL, group, group_len);
 		if (ret != KNOT_EOK) {
 			catalog_upd_val_free(val);

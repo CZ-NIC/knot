@@ -64,6 +64,15 @@ static knot_dname_t *catalog_member_owner(const knot_dname_t *member,
 	return out;
 }
 
+static bool same_group(zone_t *old_z, zone_t *new_z)
+{
+	if (old_z->catalog_group == NULL || new_z->catalog_group == NULL) {
+		return (old_z->catalog_group == new_z->catalog_group);
+	} else {
+		return (strcmp(old_z->catalog_group, new_z->catalog_group) == 0);
+	}
+}
+
 void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
 {
 	// general comment: catz->contents!=NULL means incremental update of catalog
@@ -100,26 +109,38 @@ void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
 	while (!knot_zonedb_iter_finished(it)) {
 		zone_t *zone = knot_zonedb_iter_val(it);
 		knot_dname_t *cg = zone->catalog_gen;
-		zone_t *catz = cg != NULL ? knot_zonedb_find(db_new, cg) : NULL;
-		if (cg != NULL && catz == NULL) {
-			log_zone_warning(zone->name, "member zone belongs to non-existing catalog zone");
+		if (cg == NULL) {
+			knot_zonedb_iter_next(it);
 			continue;
 		}
-		if (cg != NULL && (catz->contents == NULL || knot_zonedb_find(db_old, zone->name) == NULL)) {
+		zone_t *catz = knot_zonedb_find(db_new, cg);
+		zone_t *old = knot_zonedb_find(db_old, zone->name);
+		knot_dname_t *owner = catalog_member_owner(zone->name, cg, zone->timers.catalog_member);
+		size_t cgroup_size = zone->catalog_group == NULL ? 0 : strlen(zone->catalog_group);
+		if (catz == NULL) {
+			log_zone_warning(zone->name, "member zone belongs to non-existing catalog zone");
+		} else if (catz->contents == NULL || old == NULL) {
 			assert(catz->cat_members != NULL);
-			knot_dname_t *owner = catalog_member_owner(zone->name, cg, zone->timers.catalog_member);
 			if (owner == NULL) {
 				catz->cat_members->error = KNOT_ENOENT;
 				knot_zonedb_iter_next(it);
 				continue;
 			}
 			int ret = catalog_update_add(catz->cat_members, zone->name, owner,
-			                             cg, CAT_UPD_ADD, NULL, 0, NULL);
-			free(owner);
+			                             cg, CAT_UPD_ADD, zone->catalog_group,
+			                             cgroup_size, NULL);
+			if (ret != KNOT_EOK) {
+				catz->cat_members->error = ret;
+			}
+		} else if (!same_group(zone, old)) {
+			int ret = catalog_update_add(catz->cat_members, zone->name, owner,
+			                             cg, CAT_UPD_PROP, zone->catalog_group,
+			                             cgroup_size, NULL);
 			if (ret != KNOT_EOK) {
 				catz->cat_members->error = ret;
 			}
 		}
+		free(owner);
 		knot_zonedb_iter_next(it);
 	}
 	knot_zonedb_iter_free(it);
@@ -129,6 +150,60 @@ static void set_rdata(knot_rrset_t *rrset, uint8_t *data, uint16_t len)
 {
 	knot_rdata_init(rrset->rrs.rdata, len, data);
 	rrset->rrs.size = knot_rdata_size(len);
+}
+
+#define def_txt_owner(ptr_owner) \
+	knot_dname_storage_t txt_owner = "\x05""group"; \
+	size_t _ptr_ow_len = knot_dname_size(ptr_owner); \
+	size_t _ptr_ow_ind = strlen((const char *)txt_owner); \
+	if (_ptr_ow_ind + _ptr_ow_len > sizeof(txt_owner)) { \
+		return KNOT_ERANGE; \
+	} \
+	memcpy(txt_owner + _ptr_ow_ind, (ptr_owner), _ptr_ow_len);
+
+static int add_group_txt(const knot_dname_t *ptr_owner, const char *group,
+                         zone_contents_t *conts, zone_update_t *up)
+{
+	assert((conts == NULL) != (up == NULL));
+	size_t group_len;
+	if (group == NULL || (group_len = strlen(group)) < 1) {
+		return KNOT_EOK;
+	}
+	assert(group_len <= 255);
+
+	def_txt_owner(ptr_owner);
+
+	uint8_t data[256] = { group_len };
+	memcpy(data + 1, group, group_len);
+
+	knot_rrset_t txt;
+	knot_rrset_init(&txt, txt_owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 0);
+	uint8_t txt_rd[256] = { 0 };
+	txt.rrs.rdata = (knot_rdata_t *)txt_rd;
+	txt.rrs.count = 1;
+	set_rdata(&txt, data, 1 + group_len );
+
+	int ret;
+	if (conts != NULL) {
+		zone_node_t *unused = NULL;
+		ret = zone_contents_add_rr(conts, &txt, &unused);
+	} else {
+		ret = zone_update_add(up, &txt);
+	}
+
+	return ret;
+}
+
+static int rem_group_txt(const knot_dname_t *ptr_owner, zone_update_t *up)
+{
+	def_txt_owner(ptr_owner);
+
+	int ret = zone_update_remove_rrset(up, txt_owner, KNOT_RRTYPE_TXT);
+	if (ret == KNOT_ENOENT || ret == KNOT_ENONODE) {
+		ret = KNOT_EOK;
+	}
+
+	return ret;
 }
 
 struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dname_t *catzone,
@@ -202,7 +277,8 @@ struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dna
 		rrset.owner = val->add_owner;
 		set_rdata(&rrset, val->member, knot_dname_size(val->member));
 		unused = NULL;
-		if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+		if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK ||
+		    add_group_txt(val->add_owner, val->new_group, c, NULL) != KNOT_EOK) {
 			catalog_it_free(it);
 			goto fail;
 		}
@@ -229,16 +305,33 @@ int catalog_update_to_update(catalog_update_t *u, struct zone_update *zu)
 	while (!catalog_it_finished(it) && ret == KNOT_EOK) {
 		catalog_upd_val_t *val = catalog_it_val(it);
 		if (val->type == CAT_UPD_INVALID) {
+			catalog_it_next(it);
 			continue;
 		}
+
+		if (val->type == CAT_UPD_PROP && knot_dname_is_equal(zu->zone->name, val->add_catz)) {
+			ret = rem_group_txt(val->add_owner, zu);
+			if (ret == KNOT_EOK) {
+				ret = add_group_txt(val->add_owner, val->new_group, NULL, zu);
+			}
+			catalog_it_next(it);
+			continue;
+		}
+
 		set_rdata(&ptr, val->member, knot_dname_size(val->member));
-		if (val->type != CAT_UPD_ADD && knot_dname_is_equal(zu->zone->name, val->rem_catz)) {
+		if (val->type == CAT_UPD_REM && knot_dname_is_equal(zu->zone->name, val->rem_catz)) {
 			ptr.owner = val->rem_owner;
 			ret = zone_update_remove(zu, &ptr);
+			if (ret == KNOT_EOK) {
+				ret = rem_group_txt(val->rem_owner, zu);
+			}
 		}
-		if (val->type != CAT_UPD_REM && knot_dname_is_equal(zu->zone->name, val->add_catz)) {
+		if (val->type == CAT_UPD_ADD && knot_dname_is_equal(zu->zone->name, val->add_catz)) {
 			ptr.owner = val->add_owner;
 			ret = zone_update_add(zu, &ptr);
+			if (ret == KNOT_EOK) {
+				ret = add_group_txt(val->add_owner, val->new_group, NULL, zu);
+			}
 		}
 		catalog_it_next(it);
 	}

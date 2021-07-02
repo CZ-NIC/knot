@@ -1621,6 +1621,7 @@ zone:
     catalog\-role: none | interpret
     catalog\-template: template_id ...
     catalog\-zone: DNAME
+    catalog\-group: STR
     module: STR/STR ...
 .ft P
 .fi
@@ -2003,6 +2004,18 @@ Assign this member zone to specified generated catalog zone.
 This option must be set if and only if \fI\%catalog\-role\fP is \fImember\fP\&.
 .sp
 The referenced catalog zone must exist and have \fI\%catalog\-role\fP set to \fIgenerate\fP\&.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS catalog\-group
+.sp
+Assign this member zone to specified catalog group (configuration template).
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This option has effect if and only if \fI\%catalog\-role\fP is \fImember\fP\&.
 .UNINDENT
 .UNINDENT
 .sp

@@ -33,6 +33,7 @@
 #define C_BLOCK_NOTIFY_XFR	"\x1B""block-notify-after-transfer"
 #define C_CATALOG_DB		"\x0A""catalog-db"
 #define C_CATALOG_DB_MAX_SIZE	"\x13""catalog-db-max-size"
+#define C_CATALOG_GROUP		"\x0D""catalog-group"
 #define C_CATALOG_ROLE		"\x0C""catalog-role"
 #define C_CATALOG_TPL		"\x10""catalog-template"
 #define C_CATALOG_ZONE		"\x0C""catalog-zone"

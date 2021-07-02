@@ -97,6 +97,7 @@ typedef struct zone
 	/*! \brief Catalog-generate feature. */
 	knot_dname_t *catalog_gen;
 	catalog_update_t *cat_members;
+	const char *catalog_group;
 
 	/*! \brief Preferred master lock. Also used for flags access. */
 	pthread_mutex_t preferred_lock;
