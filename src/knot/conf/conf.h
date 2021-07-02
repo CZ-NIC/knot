@@ -666,24 +666,21 @@ static inline conf_val_t conf_db_param(
 }
 
 /*!
- * Gets the configured setting of the bool option in server section.
+ * Gets the configured setting of the bool option in the specified section.
  *
- * \param[in] conf   Configuration.
- * \param[in] txn    Configuration DB transaction.
- * \param[in] param  Parameter name.
+ * \param[in] conf     Configuration.
+ * \param[in] section  Section name.
+ * \param[in] param    Parameter name.
  *
  * \return True if enabled, false otherwise.
  */
-bool conf_srv_bool_txn(
+static inline bool conf_get_bool(
 	conf_t *conf,
-	knot_db_txn_t *txn,
-	const yp_name_t *param
-);
-static inline bool conf_srv_bool(
-	conf_t *conf,
+	const yp_name_t *section,
 	const yp_name_t *param)
 {
-	return conf_srv_bool_txn(conf, &conf->read_txn, param);
+	conf_val_t val = conf_get_txn(conf, &conf->read_txn, section, param);
+	return conf_bool(&val);
 }
 
 /*!

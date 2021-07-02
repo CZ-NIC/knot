@@ -1143,15 +1143,6 @@ conf_val_t conf_db_param_txn(
 	return conf_get_txn(conf, txn, C_DB, param);
 }
 
-bool conf_srv_bool_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn,
-	const yp_name_t *param)
-{
-	conf_val_t val = conf_get_txn(conf, txn, C_SRV, param);
-	return conf_bool(&val);
-}
-
 size_t conf_udp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
