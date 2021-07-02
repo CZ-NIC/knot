@@ -17,6 +17,7 @@
 #include "knot/server/xdp-handler.h"
 
 #include "contrib/ucw/mempool.h"
+#include "knot/common/log.h"
 #include "knot/server/server.h"
 #include "libknot/error.h"
 #include "libknot/xdp/tcp.h"
@@ -237,13 +238,18 @@ int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 
 int xdp_handle_timeout(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 {
-	uint32_t last_reset = 0;
+	uint32_t last_reset = 0, last_close = 0;
 	int ret = KNOT_EOK;
 	do {
 		ret = knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 20, ctx->tcp_idle_close, ctx->tcp_idle_reset,
 		                           overweight(ctx->tcp_table->usage, ctx->tcp_max_conns),
-		                           overweight(ctx->tcp_table->inbufs_total, ctx->tcp_inbufs_size), &last_reset);
+		                           overweight(ctx->tcp_table->inbufs_total, ctx->tcp_inbufs_size),
+		                           &last_close, &last_reset);
 	} while (last_reset > 0 && ret == KNOT_EOK);
+
+	if (last_close > 0 || last_reset > 0) {
+		log_debug("timeouted XDP-TCP connections: %u closed, %u reset", last_close, last_reset);
+	}
 	return ret;
 }
 

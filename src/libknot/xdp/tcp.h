@@ -183,6 +183,7 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
  * \param reset_timeout    Reset connections older than this (usecs).
  * \param reset_at_least   Reset at least this number of oldest conecction, even when not yet timeouted.
  * \param reset_inbufs     Reset oldest connection with buffered partial DNS messages to free up this amount of space.
+ * \param close_count      Optional: Out: number of closed connections.
  * \param reset_count      Optional: Out: number of resetted connections.
  *
  * \return  KNOT_E*
@@ -191,7 +192,7 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
                          uint32_t max_at_once,
                          uint32_t close_timeout, uint32_t reset_timeout,
                          uint32_t reset_at_least, size_t reset_inbufs,
-                         uint32_t *reset_count);
+                         uint32_t *close_count, uint32_t *reset_count);
 
 /*!
  * \brief Length of timeout-watching list.
