@@ -1202,7 +1202,7 @@ DNSSEC policy configuration.
 
  policy:
    - id: STR
-     keystore: STR
+     keystore: keystore_id
      manual: BOOL
      single-type-signing: BOOL
      algorithm: rsasha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519 | ed448
@@ -1677,7 +1677,7 @@ Definition of zones served by the server.
      adjust-threads: INT
      dnssec-signing: BOOL
      dnssec-validation: BOOL
-     dnssec-policy: STR
+     dnssec-policy: policy_id
      zonemd-verify: BOOL
      zonemd-generate: none | zonemd-sha384 | zonemd-sha512
      serial-policy: increment | unixtime | dateserial
