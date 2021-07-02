@@ -1044,7 +1044,7 @@ DNSSEC policy configuration.
 .ft C
 policy:
   \- id: STR
-    keystore: STR
+    keystore: keystore_id
     manual: BOOL
     single\-type\-signing: BOOL
     algorithm: rsasha1 | rsasha1\-nsec3\-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519 | ed448
@@ -1484,7 +1484,7 @@ zone:
     adjust\-threads: INT
     dnssec\-signing: BOOL
     dnssec\-validation: BOOL
-    dnssec\-policy: STR
+    dnssec\-policy: policy_id
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
