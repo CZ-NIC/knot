@@ -61,7 +61,7 @@ Module reference
       - id: STR
         secret-lifetime: TIME
         badcookie-slip: INT
-        secret: STR|HEXSTR
+        secret: STR | HEXSTR
 
 .. _mod-cookies_id:
 

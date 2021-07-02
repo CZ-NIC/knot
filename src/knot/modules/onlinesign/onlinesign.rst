@@ -124,8 +124,8 @@ Module reference
 
  mod-onlinesign:
    - id: STR
-     policy: STR
-     nsec-bitmap: STR ... 
+     policy: policy_id
+     nsec-bitmap: STR ...
 
 .. _mod-onlinesign_id:
 
