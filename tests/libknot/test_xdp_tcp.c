@@ -20,8 +20,9 @@
 #include "contrib/macros.h"
 #include "libknot/error.h"
 #include "libknot/xdp/msg_init.h"
-
 #include "libknot/xdp/tcp.c"
+#include "libknot/xdp/tcp_iobuf.c"
+#include "libknot/xdp/bpf-user.h"
 
 knot_tcp_table_t *test_table = NULL;
 #define TEST_TABLE_SIZE 100
@@ -449,6 +450,14 @@ void test_ibufs_size(void)
 	clean_table();
 }
 
+static void init_mock(knot_xdp_socket_t **socket, void *send_mock)
+{
+	*socket = calloc(1, sizeof(**socket));
+	if (*socket != NULL) {
+		(*socket)->send_mock = send_mock;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	UNUSED(argc);
@@ -458,8 +467,7 @@ int main(int argc, char *argv[])
 	test_table = knot_tcp_table_new(TEST_TABLE_SIZE);
 	assert(test_table != NULL);
 
-	int ret = knot_xdp_init_mock(&test_sock, mock_send);
-	assert(ret == KNOT_EOK);
+	init_mock(&test_sock, mock_send);
 
 	test_syn();
 	test_establish();
@@ -471,8 +479,7 @@ int main(int argc, char *argv[])
 	test_ibufs_size();
 
 	knot_xdp_deinit(test_sock);
-	ret = knot_xdp_init_mock(&test_sock, mock_send_nocheck);
-	assert(ret == KNOT_EOK);
+	init_mock(&test_sock, mock_send_nocheck);
 	test_many();
 
 	knot_xdp_deinit(test_sock);
