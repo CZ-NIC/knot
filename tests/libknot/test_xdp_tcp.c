@@ -63,7 +63,7 @@ static void tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
 	knot_tcp_conn_t *conn, *next;
 	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
 		if (i++ < at_least || now - conn->last_active >= timeout) {
-			tcp_table_del3(conn, tcp_table);
+			tcp_table_del_lookup(conn, tcp_table);
 			if (cleaned != NULL) {
 				(*cleaned)++;
 			}
@@ -460,8 +460,6 @@ static void init_mock(knot_xdp_socket_t **socket, void *send_mock)
 
 int main(int argc, char *argv[])
 {
-	UNUSED(argc);
-	UNUSED(argv);
 	plan_lazy();
 
 	test_table = knot_tcp_table_new(TEST_TABLE_SIZE);
