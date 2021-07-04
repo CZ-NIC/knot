@@ -62,8 +62,6 @@ version.h
 # xdp
 /src/libknot/xdp/bpf-kernel.ll
 
-src/libknot/libknot.h
-
 # Binaries
 /src/kcatalogprint
 /src/kdig

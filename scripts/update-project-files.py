@@ -11,7 +11,6 @@ SOURCES = [
 ]
 
 SOURCES_EXTRA = [
-    "src/libknot/libknot.h"
 ]
 
 OUTPUT_FILE = "Knot.files"

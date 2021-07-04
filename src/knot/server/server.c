@@ -23,6 +23,7 @@
 
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
+#include "libknot/xdp.h"
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
