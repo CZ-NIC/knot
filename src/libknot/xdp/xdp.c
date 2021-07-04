@@ -200,23 +200,6 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 }
 
 _public_
-int knot_xdp_init_mock(knot_xdp_socket_t **socket, knot_xdp_send_mock_f send_mock)
-{
-	if (socket == NULL || send_mock == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	*socket = calloc(1, sizeof(**socket));
-	if (*socket == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	(*socket)->send_mock = send_mock;
-
-	return KNOT_EOK;
-}
-
-_public_
 void knot_xdp_deinit(knot_xdp_socket_t *socket)
 {
 	if (socket == NULL) {
@@ -355,8 +338,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 		return KNOT_EINVAL;
 	}
 	if (unlikely(socket->send_mock != NULL)) {
-		knot_xdp_send_mock_f send_mock = socket->send_mock;
-		int ret = send_mock(socket, msgs, count, sent);
+		int ret = socket->send_mock(socket, msgs, count, sent);
 		for (uint32_t i = 0; i < count; ++i) {
 			free_unsent(socket, &msgs[i]);
 		}

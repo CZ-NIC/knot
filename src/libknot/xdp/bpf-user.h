@@ -76,7 +76,7 @@ struct knot_xdp_socket {
 	const struct kxsk_iface *iface;
 
 	/*! If non-NULL, it's a mocked socket with this send function. */
-	void *send_mock;
+	int (*send_mock)(struct knot_xdp_socket *, const knot_xdp_msg_t[], uint32_t, uint32_t *);
 
 	/*! The kernel has to be woken up by a syscall indication. */
 	bool kernel_needs_wakeup;

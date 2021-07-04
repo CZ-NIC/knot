@@ -156,6 +156,7 @@ check_PROGRAMS += \
 	libknot/test_wire
 
 if ENABLE_XDP
+AM_CPPFLAGS += $(libbpf_CFLAGS)
 check_PROGRAMS += \
 	libknot/test_xdp_tcp
 endif ENABLE_XDP
