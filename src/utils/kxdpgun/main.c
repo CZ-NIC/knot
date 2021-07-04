@@ -329,11 +329,6 @@ void *xdp_gun_thread(void *_ctx)
 	kxdpgun_stats_t local_stats = { 0 };
 	unsigned stats_triggered = 0;
 
-	knot_mm_t mm;
-	if (ctx->tcp) {
-		mm_ctx_mempool(&mm, ctx->at_once * 16 * MM_DEFAULT_BLKSIZE);
-	}
-
 	knot_tcp_table_t *tcp_table = knot_tcp_table_new(ctx->qps); // FIXME: qps is not the best choice?
 	if (tcp_table == NULL) {
 		printf("failed to allocate TCP connection table\n");
@@ -430,7 +425,7 @@ void *xdp_gun_thread(void *_ctx)
 				}
 				if (ctx->tcp) {
 					knot_tcp_relay_dynarray_t relays = { 0 };
-					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, tcp_table, NULL, &relays, &mm);
+					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, tcp_table, NULL, &relays);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
@@ -469,7 +464,6 @@ void *xdp_gun_thread(void *_ctx)
 					}
 
 					knot_xdp_tcp_relay_free(&relays);
-					mp_flush(mm.ctx);
 				} else {
 					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx, &local_stats);
@@ -511,10 +505,6 @@ void *xdp_gun_thread(void *_ctx)
 	knot_xdp_deinit(xsk);
 
 	knot_tcp_table_free(tcp_table);
-
-	if (ctx->tcp) {
-		mp_delete(mm.ctx);
-	}
 
 	printf("thread#%02u: sent %lu, received %lu, errors %lu\n",
 	       ctx->thread_id, local_stats.qry_sent, local_stats.ans_recv, errors);

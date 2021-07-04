@@ -175,8 +175,7 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 	}
 
 	// handle TCP messages
-	int ret = knot_xdp_tcp_relay(sock, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, NULL, &ctx->tcp_relays,
-				     NULL); // TODO NULL
+	int ret = knot_xdp_tcp_relay(sock, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, NULL, &ctx->tcp_relays);
 	if (ret == KNOT_EOK && ctx->tcp_relays.size > 0) {
 		uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 

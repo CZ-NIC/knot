@@ -26,7 +26,6 @@
 #pragma once
 
 #include "libknot/dynarray.h"
-#include "libknot/mm_ctx.h"
 #include "libknot/xdp/msg.h"
 #include "libknot/xdp/xdp.h"
 
@@ -130,13 +129,12 @@ void knot_tcp_table_free(knot_tcp_table_t *t);
  * \param tcp_table    Table of TCP connections.
  * \param syn_table    Optional: extra table for handling partially established connections.
  * \param relays       Out: connection changes and data.
- * \param mm           Memory context.
  *
  * \return KNOT_E*
  */
 int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
                        knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
-                       knot_tcp_relay_dynarray_t *relays, knot_mm_t *mm);
+                       knot_tcp_relay_dynarray_t *relays);
 
 /*!
  * \brief Answer one relay with one or more relays with data payload.
