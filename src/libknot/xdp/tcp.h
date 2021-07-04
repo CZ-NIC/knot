@@ -84,7 +84,6 @@ typedef struct {
 	knot_tcp_action_t answer;
 	struct iovec data;
 	knot_tcp_relay_free_t free_data;
-	bool send_psh;
 	knot_tcp_conn_t *conn;
 } knot_tcp_relay_t;
 
@@ -93,6 +92,9 @@ typedef struct {
 knot_dynarray_declare(knot_tcp_relay, knot_tcp_relay_t, DYNARRAY_VISIBILITY_PUBLIC,
                       TCP_RELAY_DEFAULT_COUNT)
 
+/*!
+ * \brief Return next TCP sequence number.
+ */
 inline static uint32_t knot_tcp_next_seqno(const knot_xdp_msg_t *msg)
 {
 	uint32_t res = msg->seqno + msg->payload.iov_len;
@@ -116,9 +118,9 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size);
 /*!
  * \brief Free TCP connection hash table including all connection records.
  *
- * \note The freed connections are not closed nor resetted.
+ * \note The freed connections are not closed nor reset.
  */
-void knot_tcp_table_free(knot_tcp_table_t *t);
+void knot_tcp_table_free(knot_tcp_table_t *table);
 
 /*!
  * \brief Process received packets, send ACKs, pick incoming data.
@@ -140,14 +142,14 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
  * \brief Answer one relay with one or more relays with data payload.
  *
  * \param relays    Relays.
- * \param rl        The relay to answer to.
+ * \param relay     The relay to answer to.
  * \param data      Data payload, possibly > MSS.
- * \param len       Payload length.
+ * \param data_len  Payload length.
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int knot_xdp_tcp_send_data(knot_tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *rl, void *data, size_t len);
-
+int knot_xdp_tcp_send_data(knot_tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *relay,
+                           void *data, size_t data_len);
 
 /*!
  * \brief Free resources in 'relays'.
@@ -174,10 +176,12 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
  * \param max_at_once      Don't close more connections at once.
  * \param close_timeout    Gracefully close connections older than this (usecs).
  * \param reset_timeout    Reset connections older than this (usecs).
- * \param reset_at_least   Reset at least this number of oldest conecction, even when not yet timeouted.
- * \param reset_inbufs     Reset oldest connection with buffered partial DNS messages to free up this amount of space.
+ * \param reset_at_least   Reset at least this number of oldest conecctions, even
+ *                         when not yet timeouted.
+ * \param reset_inbufs     Reset oldest connection with buffered partial DNS messages
+ *                         to free up this amount of space.
  * \param close_count      Optional: Out: number of closed connections.
- * \param reset_count      Optional: Out: number of resetted connections.
+ * \param reset_count      Optional: Out: number of reset connections.
  *
  * \return  KNOT_E*
  */
