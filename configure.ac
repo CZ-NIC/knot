@@ -803,7 +803,6 @@ AC_CONFIG_FILES([Makefile
                  python/setup.py
                  python/libknot/__init__.py
                  src/Makefile
-                 src/libknot/libknot.h
                  src/libknot/xdp/Makefile
                  src/knot/modules/static_modules.h
                  ])

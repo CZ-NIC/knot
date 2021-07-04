@@ -55,7 +55,8 @@ nobase_include_libknot_HEADERS = \
 	libknot/yparser/ypformat.h		\
 	libknot/yparser/ypschema.h		\
 	libknot/yparser/yptrafo.h		\
-	libknot/version.h
+	libknot/version.h			\
+	libknot/xdp.h
 
 libknot_la_SOURCES = \
 	libknot/codes.c				\

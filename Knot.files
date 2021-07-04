@@ -427,6 +427,7 @@ src/libknot/tsig-op.h
 src/libknot/tsig.c
 src/libknot/tsig.h
 src/libknot/wire.h
+src/libknot/xdp.h
 src/libknot/xdp/bpf-consts.h
 src/libknot/xdp/bpf-kernel-obj.c
 src/libknot/xdp/bpf-kernel-obj.h

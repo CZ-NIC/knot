@@ -28,6 +28,7 @@
 #include "knot/server/dthreads.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
+#include "libknot/xdp.h"
 #include "contrib/files.h"
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"

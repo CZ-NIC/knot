@@ -38,6 +38,7 @@
 #include "knot/common/log.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
+#include "libknot/xdp.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/wire_ctx.h"

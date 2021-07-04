@@ -65,10 +65,5 @@
 #include "libknot/rrtype/tsig.h"
 #include "libknot/rrtype/zonemd.h"
 #include "libknot/wire.h"
-#if @XDP_VISIBLE_HEADERS@
-#include "libknot/xdp/xdp.h"
-#include "libknot/xdp/bpf-consts.h"
-#include "libknot/xdp/eth.h"
-#endif
 
 /*! @} */

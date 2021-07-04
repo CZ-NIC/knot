@@ -22,6 +22,7 @@
 
 #include "contrib/sockaddr.h"
 #include "libknot/attribute.h"
+#include "libknot/xdp.h"
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/conf/tools.h"

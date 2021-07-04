@@ -33,10 +33,6 @@
 #include "libknot/xdp/bpf-consts.h"
 #include "libknot/xdp/msg.h"
 
-#ifdef ENABLE_XDP
-#define KNOT_XDP_AVAILABLE	1
-#endif
-
 /*!
  * \brief Styles of loading BPF program.
  *

@@ -37,7 +37,7 @@
 #include <sys/resource.h>
 
 #include "libknot/libknot.h"
-#include "libknot/xdp/tcp.h"
+#include "libknot/xdp.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcpy.h"
