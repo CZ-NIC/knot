@@ -70,12 +70,6 @@ static list_t *tcp_table_timeout(knot_tcp_table_t *table)
 	return (list_t *)&table->conns[table->size];
 }
 
-_public_
-size_t knot_tcp_table_timeout_length(knot_tcp_table_t *table)
-{
-	return list_size(tcp_table_timeout(table));
-}
-
 static node_t *tcp_conn_node(knot_tcp_conn_t *conn)
 {
 	return (node_t *)&conn->list_node_placeholder;
@@ -127,13 +121,6 @@ static knot_tcp_conn_t **tcp_table_lookup(const struct sockaddr_in6 *rem, const 
 		res = &(*res)->next;
 	}
 	return res;
-}
-
-_public_
-knot_tcp_conn_t *knot_tcp_table_find(knot_tcp_table_t *table, knot_xdp_msg_t *msg_recv)
-{
-	uint64_t unused;
-	return *tcp_table_lookup(&msg_recv->ip_from, &msg_recv->ip_to, &unused, table);
 }
 
 static void tcp_table_del(knot_tcp_conn_t **todel)
@@ -580,20 +567,4 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 
 	knot_xdp_tcp_relay_free(&relays);
 	return ret;
-}
-
-_public_
-void knot_xdp_tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
-                          uint32_t at_least, uint32_t *cleaned)
-{
-	uint32_t now = get_timestamp(), i = 0;
-	knot_tcp_conn_t *conn, *next;
-	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
-		if (i++ < at_least || now - conn->last_active >= timeout) {
-			tcp_table_del3(conn, tcp_table);
-			if (cleaned != NULL) {
-				(*cleaned)++;
-			}
-		}
-	}
 }

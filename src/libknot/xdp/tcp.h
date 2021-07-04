@@ -122,11 +122,6 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size);
 void knot_tcp_table_free(knot_tcp_table_t *t);
 
 /*!
- * \brief Find connection related to incomming message.
- */
-knot_tcp_conn_t *knot_tcp_table_find(knot_tcp_table_t *table, knot_xdp_msg_t *msg_recv);
-
-/*!
  * \brief Process received packets, send ACKs, pick incoming data.
  *
  * \param socket       XDP socket to answer through.
@@ -193,21 +188,5 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
                          uint32_t close_timeout, uint32_t reset_timeout,
                          uint32_t reset_at_least, size_t reset_inbufs,
                          uint32_t *close_count, uint32_t *reset_count);
-
-/*!
- * \brief Length of timeout-watching list.
- */
-size_t knot_tcp_table_timeout_length(knot_tcp_table_t *table);
-
-/*!
- * \brief Cleanp old TCP connection w/o sending RST or FIN.
- *
- * \param tcp_table     TCP connection table tzo clean up.
- * \param timeout       Remove connections older than this (usecs).
- * \param at_least      Remove at least this number of connections.
- * \param cleaned       Optional: Out: number of removed connections.
- */
-void knot_xdp_tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
-                          uint32_t at_least, uint32_t *cleaned);
 
 /*! @} */

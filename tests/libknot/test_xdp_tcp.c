@@ -21,7 +21,7 @@
 #include "libknot/error.h"
 #include "libknot/xdp/msg_init.h"
 
-#include "libknot/xdp/tcp.h"
+#include "libknot/xdp/tcp.c"
 
 knot_tcp_table_t *test_table = NULL;
 #define TEST_TABLE_SIZE 100
@@ -38,6 +38,46 @@ knot_xdp_socket_t *test_sock = NULL;
 struct sockaddr_in test_addr = { AF_INET, 0, { 127 + (1 << 24) }, { 0 } };
 
 knot_tcp_conn_t *test_conn = NULL;
+
+/*!
+ * \brief Length of timeout-watching list.
+ */
+static size_t tcp_table_timeout_length(knot_tcp_table_t *table)
+{
+	return list_size(tcp_table_timeout(table));
+}
+
+/*!
+ * \brief Clean up old TCP connection w/o sending RST or FIN.
+ *
+ * \param tcp_table     TCP connection table to clean up.
+ * \param timeout       Remove connections older than this (usecs).
+ * \param at_least      Remove at least this number of connections.
+ * \param cleaned       Optional: Out: number of removed connections.
+ */
+static void tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
+                        uint32_t at_least, uint32_t *cleaned)
+{
+	uint32_t now = get_timestamp(), i = 0;
+	knot_tcp_conn_t *conn, *next;
+	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
+		if (i++ < at_least || now - conn->last_active >= timeout) {
+			tcp_table_del3(conn, tcp_table);
+			if (cleaned != NULL) {
+				(*cleaned)++;
+			}
+		}
+	}
+}
+
+/*!
+ * \brief Find connection related to incomming message.
+ */
+static knot_tcp_conn_t *tcp_table_find(knot_tcp_table_t *table, knot_xdp_msg_t *msg_recv)
+{
+	uint64_t unused;
+	return *tcp_table_lookup(&msg_recv->ip_from, &msg_recv->ip_to, &unused, table);
+}
 
 static int mock_send(knot_xdp_socket_t *sock, const knot_xdp_msg_t msgs[],
                      uint32_t n_msgs, uint32_t *sent)
@@ -95,7 +135,7 @@ static int mock_send_nocheck(knot_xdp_socket_t *sock, const knot_xdp_msg_t msgs[
 
 static void clean_table(void)
 {
-	(void)knot_xdp_tcp_cleanup(test_table, 0, UINT32_MAX, NULL);
+	(void)tcp_cleanup(test_table, 0, UINT32_MAX, NULL);
 }
 
 static void clean_sent(void)
@@ -138,7 +178,7 @@ static void prepare_data(knot_xdp_msg_t *msg, const char *bytes, size_t n)
 
 static void fix_seqack(knot_xdp_msg_t *msg)
 {
-	knot_tcp_conn_t *conn = knot_tcp_table_find(test_table, msg);
+	knot_tcp_conn_t *conn = tcp_table_find(test_table, msg);
 	assert(conn != NULL);
 	msg->seqno = conn->seqno;
 	msg->ackno = conn->ackno;
@@ -166,7 +206,7 @@ void test_syn(void)
 	is_int(XDP_TCP_NOOP, rl->answer, "SYN: relay answer");
 	is_int(0, rl->data.iov_len, "SYN: no payload");
 	is_int(1, test_table->usage, "SYN: one connection in table");
-	knot_tcp_conn_t *conn = knot_tcp_table_find(test_table, &msg);
+	knot_tcp_conn_t *conn = tcp_table_find(test_table, &msg);
 	ok(conn != NULL, "SYN: connection present");
 	ok(conn == rl->conn, "SYN: relay points to connection");
 	is_int(XDP_TCP_ESTABLISHING, conn->state, "SYN: connection state");
@@ -296,7 +336,7 @@ void test_close(void)
 	is_int(KNOT_EOK, ret, "close: relay 2 OK");
 	check_sent(0, 0, 0, 0);
 	is_int(conns_pre - 1, test_table->usage, "close: connection removed");
-	is_int(conns_pre - 1, knot_tcp_table_timeout_length(test_table), "close: timeout list size");
+	is_int(conns_pre - 1, tcp_table_timeout_length(test_table), "close: timeout list size");
 }
 
 void test_many(void)
@@ -322,7 +362,7 @@ void test_many(void)
 	usleep(timeout_time);
 	knot_xdp_msg_t *survive = &msgs[i_survive];
 	survive->flags = (KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_ACK);
-	knot_tcp_conn_t *surv_conn = knot_tcp_table_find(test_table, survive);
+	knot_tcp_conn_t *surv_conn = tcp_table_find(test_table, survive);
 	fix_seqack(survive);
 	prepare_data(survive, "\x00\x00", 2);
 	(void)knot_xdp_tcp_relay(test_sock, survive, 1, test_table, NULL, &relays, NULL);
@@ -344,7 +384,7 @@ void test_many(void)
 	is_int(CONNS - 1, reset_count, "may/timeout2: reset count");
 	check_sent(0, CONNS - 1, 0, 0);
 	is_int(1, test_table->usage, "many/timeout: one survivor");
-	is_int(1, knot_tcp_table_timeout_length(test_table), "many/timeout: one survivor in timeout list");
+	is_int(1, tcp_table_timeout_length(test_table), "many/timeout: one survivor in timeout list");
 	ok(surv_conn != NULL, "many/timeout: survivor connection present");
 	ok(surv_conn == rl->conn, "many/timeout: same connection");
 
@@ -401,10 +441,10 @@ void test_ibufs_size(void)
 	is_int(0, close_count, "inbufs: close count");
 	is_int(2, reset_count, "inbufs: reset count");
 	is_int(7, test_table->inbufs_total, "inbufs: final state");
-	ok(NULL != knot_tcp_table_find(test_table, &msgs[0]), "inbufs: first conn survived");
-	ok(NULL == knot_tcp_table_find(test_table, &msgs[1]), "inbufs: second conn not survived");
-	ok(NULL == knot_tcp_table_find(test_table, &msgs[2]), "inbufs: third conn not survived");
-	ok(NULL != knot_tcp_table_find(test_table, &msgs[3]), "inbufs: fourth conn survived");
+	ok(NULL != tcp_table_find(test_table, &msgs[0]), "inbufs: first conn survived");
+	ok(NULL == tcp_table_find(test_table, &msgs[1]), "inbufs: second conn not survived");
+	ok(NULL == tcp_table_find(test_table, &msgs[2]), "inbufs: third conn not survived");
+	ok(NULL != tcp_table_find(test_table, &msgs[3]), "inbufs: fourth conn survived");
 
 	clean_table();
 }
