@@ -26,7 +26,6 @@
 #include "libknot/error.h"
 #include "libknot/xdp/tcp_iobuf.h"
 #include "contrib/macros.h"
-#include "contrib/mempattern.h"
 #include "contrib/openbsd/siphash.h"
 #include "contrib/ucw/lists.h"
 
@@ -203,7 +202,7 @@ static bool check_seq_ack(const knot_xdp_msg_t *msg, const knot_tcp_conn_t *conn
 _public_
 int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
                        knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
-                       knot_tcp_relay_dynarray_t *relays, knot_mm_t *mm)
+                       knot_tcp_relay_dynarray_t *relays)
 {
 	if (msg_count == 0) {
 		return KNOT_EOK;
