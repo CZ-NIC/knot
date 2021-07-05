@@ -256,8 +256,8 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 			relay.action = XDP_TCP_DATA;
 
 			struct iovec msg_payload = msg->payload, tofree;
-			ret = knot_tcp_input_buffers(&(*conn)->inbuf, &msg_payload,
-			                             &tofree, &tcp_table->inbufs_total);
+			ret = tcp_inbuf_update(&(*conn)->inbuf, &msg_payload,
+			                       &tofree, &tcp_table->inbufs_total);
 
 			if (tofree.iov_len > 0 && ret == KNOT_EOK) {
 				relay.data.iov_base = tofree.iov_base + sizeof(uint16_t);
@@ -267,7 +267,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 				relay.free_data = XDP_TCP_FREE_NONE;
 			}
 			while (msg_payload.iov_len > 0 && ret == KNOT_EOK) {
-				size_t dns_len = knot_tcp_pay_len(&msg_payload);
+				size_t dns_len = tcp_payload_len(&msg_payload);
 				assert(dns_len >= msg_payload.iov_len);
 				relay.data.iov_base = msg_payload.iov_base + sizeof(uint16_t);
 				relay.data.iov_len = dns_len - sizeof(uint16_t);

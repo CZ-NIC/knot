@@ -14,30 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "libknot/xdp/tcp_iobuf.h"
-
-#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
-#include "contrib/macros.h"
+#include "libknot/xdp/tcp_iobuf.h"
 #include "libknot/error.h"
+#include "contrib/macros.h"
 
-static size_t req_len(void *p)
-{
-	uint16_t *p16 = p;
-	return be16toh(*p16) + sizeof(*p16);
-}
-
-size_t knot_tcp_pay_len(const struct iovec *payload)
-{
-	assert(payload->iov_len >= 2);
-	return req_len(payload->iov_base);
-}
-
-int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data,
-                           struct iovec *data_tofree, size_t *buffers_total)
+int tcp_inbuf_update(struct iovec *buffer, struct iovec *data,
+                     struct iovec *data_tofree, size_t *buffers_total)
 {
 	memset(data_tofree, 0, sizeof(*data_tofree));
 	if (data->iov_len < 1) {
@@ -53,7 +38,7 @@ int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data,
 		}
 	}
 	if (buffer->iov_len > 0) {
-		size_t buffer_req = knot_tcp_pay_len(buffer);
+		size_t buffer_req = tcp_payload_len(buffer);
 		assert(buffer_req > buffer->iov_len);
 		size_t data_use = buffer_req - buffer->iov_len;
 		if (data_use <= data->iov_len) { // usable payload combined from buffer and data ---> data_tofree
@@ -85,7 +70,7 @@ int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data,
 	// skip whole usable payloads in data
 	struct iovec data_end = *data;
 	size_t data_req;
-	while (data_end.iov_len > 1 && (data_req = knot_tcp_pay_len(&data_end)) <= data_end.iov_len) {
+	while (data_end.iov_len > 1 && (data_req = tcp_payload_len(&data_end)) <= data_end.iov_len) {
 		data_end.iov_base += data_req;
 		data_end.iov_len -= data_req;
 	}
