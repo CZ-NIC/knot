@@ -1175,7 +1175,7 @@ size_t conf_xdp_threads_txn(
 	while (val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&val, NULL);
 		conf_xdp_iface_t iface;
-		int ret = conf_xdp_iface(&addr, false, &iface);
+		int ret = conf_xdp_iface(&addr, &iface);
 		if (ret == KNOT_EOK) {
 			workers += iface.queues;
 		}
@@ -1338,7 +1338,6 @@ conf_remote_t conf_remote_txn(
 
 int conf_xdp_iface(
 	struct sockaddr_storage *addr,
-	bool tcp,
 	conf_xdp_iface_t *iface)
 {
 #ifndef ENABLE_XDP
@@ -1355,14 +1354,12 @@ int conf_xdp_iface(
 		const char *port = strchr(addr_str, '@');
 		if (port != NULL) {
 			iface->name[port - addr_str] = '\0';
-			uint16_t res = 0;
-			int ret = str_to_u16(port + 1, &res);
+			int ret = str_to_u16(port + 1, &iface->port);
 			if (ret != KNOT_EOK) {
 				return ret;
-			} else if (res == 0) {
+			} else if (iface->port == 0) {
 				return KNOT_EINVAL;
 			}
-			iface->port = res;
 		} else {
 			iface->port = 53;
 		}
@@ -1384,10 +1381,6 @@ int conf_xdp_iface(
 		return queues;
 	}
 	iface->queues = queues;
-
-	if (tcp) {
-		iface->port |= KNOT_XDP_LISTEN_PORT_TCP;
-	}
 
 	return KNOT_EOK;
 #endif

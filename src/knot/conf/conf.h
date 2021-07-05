@@ -819,8 +819,8 @@ static inline conf_remote_t conf_remote(
 typedef struct {
 	/*! Interface name. */
 	char name[32];
-	/*! UDP port to listen on, including XDP flags. */
-	uint32_t port;
+	/*! UDP port to listen on. */
+	uint16_t port;
 	/*! Number of active IO queues. */
 	uint16_t queues;
 } conf_xdp_iface_t;
@@ -829,13 +829,11 @@ typedef struct {
  * Gets the XDP interface parameters for a given configuration value.
  *
  * \param[in] addr    XDP interface name stored in the configuration.
- * \param[in] tcp     Allow TCP listening on this XDP iface.
  * \param[out] iface  Interface parameters.
  *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_xdp_iface(
 	struct sockaddr_storage *addr,
-	bool tcp,
 	conf_xdp_iface_t *iface
 );
