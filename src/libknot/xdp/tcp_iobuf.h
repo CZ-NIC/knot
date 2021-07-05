@@ -25,12 +25,22 @@
 
 #pragma once
 
+#include <assert.h>
+#include <string.h>
 #include <sys/uio.h>
+
+#include "libknot/endian.h"
 
 /*!
  * \brief Return the required length for payload buffer.
  */
-size_t knot_tcp_pay_len(const struct iovec *payload);
+inline static size_t tcp_payload_len(const struct iovec *payload)
+{
+	assert(payload->iov_len >= 2);
+	uint16_t val;
+	memcpy(&val, payload->iov_base, sizeof(val));
+	return be16toh(val) + sizeof(val);
+}
 
 /*!
  * \brief Handle DNS-over-TCP payloads in buffer and message.
@@ -42,7 +52,7 @@ size_t knot_tcp_pay_len(const struct iovec *payload);
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int knot_tcp_input_buffers(struct iovec *buffer, struct iovec *data,
-                           struct iovec *data_tofree, size_t *buffers_total);
+int tcp_inbuf_update(struct iovec *buffer, struct iovec *data,
+                     struct iovec *data_tofree, size_t *buffers_total);
 
 /*! @} */
