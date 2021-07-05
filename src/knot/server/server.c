@@ -222,14 +222,14 @@ static int disable_pmtudisc(int sock, int family)
 }
 
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
-                                      unsigned *thread_id_start, bool tcp)
+                                      bool tcp, unsigned *thread_id_start)
 {
 #ifndef ENABLE_XDP
 	assert(0);
 	return NULL;
 #else
 	conf_xdp_iface_t iface;
-	int ret = conf_xdp_iface(addr, tcp, &iface);
+	int ret = conf_xdp_iface(addr, &iface);
 	if (ret != KNOT_EOK) {
 		log_error("failed to initialize XDP interface (%s)",
 		          knot_strerror(ret));
@@ -254,6 +254,9 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 	*thread_id_start += iface.queues;
 
 	uint32_t xdp_flags = route_check ? KNOT_XDP_LISTEN_PORT_ROUTE : 0;
+	if (tcp) {
+		xdp_flags |= KNOT_XDP_LISTEN_PORT_TCP;
+	}
 
 	for (int i = 0; i < iface.queues; i++) {
 		knot_xdp_load_bpf_t mode =
@@ -279,8 +282,8 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 
 	if (ret == KNOT_EOK) {
 		knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(iface.name));
-		log_debug("initialized XDP interface %s@%u, queues %d, %s mode%s",
-		          iface.name, iface.port, iface.queues,
+		log_debug("initialized XDP interface %s@%u UDP%s, queues %d, %s mode%s",
+		          iface.name, iface.port, (tcp ? "/TCP" : ""), iface.queues,
 		          (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"),
 		          route_check ? ", route check" : "");
 	}
@@ -567,9 +570,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
-		log_info("binding to XDP interface %s for UDP%s", addr_str, xdp_tcp ? " and TCP" : "");
+		log_info("binding to XDP interface %s", addr_str);
 
-		iface_t *new_if = server_init_xdp_iface(&addr, route_check, &thread_id, xdp_tcp);
+		iface_t *new_if = server_init_xdp_iface(&addr, route_check, xdp_tcp, &thread_id);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
