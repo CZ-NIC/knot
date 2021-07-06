@@ -51,7 +51,7 @@ typedef enum {
 	XDP_TCP_FREE_PREFIX,
 } knot_tcp_relay_free_t;
 
-typedef struct knot_xdp_tcp_conn {
+typedef struct knot_tcp_conn {
 	struct {
 		void *list_node_placeholder1;
 		void *list_node_placeholder2;
@@ -67,7 +67,7 @@ typedef struct knot_xdp_tcp_conn {
 	uint32_t last_active;
 	knot_tcp_state_t state;
 	struct iovec inbuf;
-	struct knot_xdp_tcp_conn *next;
+	struct knot_tcp_conn *next;
 } knot_tcp_conn_t;
 
 typedef struct {
@@ -134,9 +134,9 @@ void knot_tcp_table_free(knot_tcp_table_t *table);
  *
  * \return KNOT_E*
  */
-int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
-                       knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
-                       knot_tcp_relay_dynarray_t *relays);
+int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
+                   knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
+                   knot_tcp_relay_dynarray_t *relays);
 
 /*!
  * \brief Answer one relay with one or more relays with data payload.
@@ -148,13 +148,13 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int knot_xdp_tcp_send_data(knot_tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *relay,
-                           void *data, size_t data_len);
+int knot_tcp_send_data(knot_tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *relay,
+                       void *data, size_t data_len);
 
 /*!
  * \brief Free resources in 'relays'.
  */
-void knot_xdp_tcp_relay_free(knot_tcp_relay_dynarray_t *relays);
+void knot_tcp_relay_free(knot_tcp_relay_dynarray_t *relays);
 
 /*!
  * \brief Send TCP packets.
@@ -165,8 +165,7 @@ void knot_xdp_tcp_relay_free(knot_tcp_relay_dynarray_t *relays);
  *
  * \return KNOT_E*
  */
-int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
-                      uint32_t relay_count);
+int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t relay_count);
 
 /*!
  * \brief Cleanup old TCP connections, perform timeout checks.
@@ -178,17 +177,16 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
  * \param reset_timeout    Reset connections older than this (usecs).
  * \param reset_at_least   Reset at least this number of oldest conecctions, even
  *                         when not yet timeouted.
- * \param reset_inbufs     Reset oldest connection with buffered partial DNS messages
+ * \param reset_buf_size   Reset oldest connection with buffered partial DNS messages
  *                         to free up this amount of space.
  * \param close_count      Optional: Out: number of closed connections.
  * \param reset_count      Optional: Out: number of reset connections.
  *
  * \return  KNOT_E*
  */
-int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
-                         uint32_t max_at_once,
-                         uint32_t close_timeout, uint32_t reset_timeout,
-                         uint32_t reset_at_least, size_t reset_inbufs,
-                         uint32_t *close_count, uint32_t *reset_count);
+int knot_tcp_sweep(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
+                   uint32_t max_at_once, uint32_t close_timeout, uint32_t reset_timeout,
+                   uint32_t reset_at_least, size_t reset_buf_size,
+                   uint32_t *close_count, uint32_t *reset_count);
 
 /*! @} */

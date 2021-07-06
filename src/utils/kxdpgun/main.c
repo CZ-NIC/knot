@@ -425,7 +425,7 @@ void *xdp_gun_thread(void *_ctx)
 				}
 				if (ctx->tcp) {
 					knot_tcp_relay_dynarray_t relays = { 0 };
-					ret = knot_xdp_tcp_relay(xsk, pkts, recvd, tcp_table, NULL, &relays);
+					ret = knot_tcp_relay(xsk, pkts, recvd, tcp_table, NULL, &relays);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
@@ -440,7 +440,7 @@ void *xdp_gun_thread(void *_ctx)
 							local_stats.synack_recv++;
 							rl->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
 							put_dns_payload(&payl, true, ctx, &payload_ptr);
-							(void)knot_xdp_tcp_send_data(&relays, rl, payl.iov_base, payl.iov_len);
+							(void)knot_tcp_send_data(&relays, rl, payl.iov_base, payl.iov_len);
 							break;
 						case XDP_TCP_DATA:
 							if (check_dns_payload(&rl->data, ctx, &local_stats)) {
@@ -458,12 +458,12 @@ void *xdp_gun_thread(void *_ctx)
 						}
 					}
 
-					ret = knot_xdp_tcp_send(xsk, knot_tcp_relay_dynarray_arr(&relays), relays.size);
+					ret = knot_tcp_send(xsk, knot_tcp_relay_dynarray_arr(&relays), relays.size);
 					if (ret != KNOT_EOK) {
 						errors++;
 					}
 
-					knot_xdp_tcp_relay_free(&relays);
+					knot_tcp_relay_free(&relays);
 				} else {
 					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx, &local_stats);

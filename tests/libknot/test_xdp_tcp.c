@@ -197,7 +197,7 @@ void test_syn(void)
 	knot_xdp_msg_t msg;
 	knot_tcp_relay_dynarray_t relays = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_SYN, 1, 2);
-	int ret = knot_xdp_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
+	int ret = knot_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "SYN: relay OK");
 	is_int(msg.seqno + 1, sent_ackno, "SYN: ackno");
 	check_sent(0, 0, 1, 0);
@@ -214,7 +214,7 @@ void test_syn(void)
 	ok(memcmp(&conn->ip_rem, &msg.ip_from, sizeof(msg.ip_from)) == 0, "SYN: conn IP from");
 	ok(memcmp(&conn->ip_loc, &msg.ip_to, sizeof(msg.ip_to)) == 0, "SYN: conn IP to");
 
-	knot_xdp_tcp_relay_free(&relays);
+	knot_tcp_relay_free(&relays);
 	test_conn = conn;
 }
 
@@ -224,7 +224,7 @@ void test_establish(void)
 	knot_tcp_relay_dynarray_t relays = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_ACK, 1, 2);
 	prepare_seqack(&msg, 0, 1);
-	int ret = knot_xdp_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
+	int ret = knot_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "establish: relay OK");
 	check_sent(0, 0, 0, 0);
 	is_int(0, relays.size, "establish: no relay");
@@ -234,7 +234,7 @@ void test_establish(void)
 	ok(rl->conn == test_conn, "establish: same connection");
 	is_int(XDP_TCP_NORMAL, rl->conn->state, "establish: connection state");*/
 
-	knot_xdp_tcp_relay_free(&relays);
+	knot_tcp_relay_free(&relays);
 	clean_table();
 }
 
@@ -243,7 +243,7 @@ void test_syn_ack(void)
 	knot_xdp_msg_t msg;
 	knot_tcp_relay_dynarray_t relays = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK, 1000, 2000);
-	int ret = knot_xdp_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
+	int ret = knot_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "SYN+ACK: relay OK");
 	is_int(msg.seqno + 1, sent_ackno, "SYN+ACK: ackno");
 	check_sent(1, 0, 0, 0);
@@ -253,7 +253,7 @@ void test_syn_ack(void)
 	ok(rl->conn != NULL, "SYN+ACK: connection present");
 
 	test_conn = rl->conn;
-	knot_xdp_tcp_relay_free(&relays);
+	knot_tcp_relay_free(&relays);
 }
 
 void test_data_fragments(void)
@@ -281,7 +281,7 @@ void test_data_fragments(void)
 	prepare_seqack(&msgs[3], 15, 0);
 	prepare_data(&msgs[3], "\x02""AB""\xff\xff""abcdefghijklmnopqrstuvwxyz...", 34);
 
-	int ret = knot_xdp_tcp_relay(test_sock, msgs, sizeof(msgs) / sizeof(msgs[0]), test_table, NULL, &relays);
+	int ret = knot_tcp_relay(test_sock, msgs, sizeof(msgs) / sizeof(msgs[0]), test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "fragments: relay OK");
 	is_int(msgs[3].ackno, sent_seqno, "fragments: seqno");
 	is_int(msgs[3].seqno + msgs[3].payload.iov_len, sent_ackno, "fragments: ackno");
@@ -310,7 +310,7 @@ void test_data_fragments(void)
 	ok(memcmp("AB", rls[3].data.iov_base, rls[3].data.iov_len) == 0, "fragments3: data");
 	ok(rls[3].conn == test_conn, "fragments3: same connection");
 
-	knot_xdp_tcp_relay_free(&relays);
+	knot_tcp_relay_free(&relays);
 }
 
 void test_close(void)
@@ -321,7 +321,7 @@ void test_close(void)
 	knot_tcp_relay_dynarray_t relays = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK, be16toh(test_conn->ip_rem.sin6_port), be16toh(test_conn->ip_loc.sin6_port));
 	prepare_seqack(&msg, 0, 0);
-	int ret = knot_xdp_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
+	int ret = knot_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "close: relay 1 OK");
 	check_sent(0, 0, 0, 1);
 	is_int(1, relays.size, "close: one relay");
@@ -329,11 +329,11 @@ void test_close(void)
 	is_int(XDP_TCP_CLOSE, rl->action, "close: relay action");
 	ok(rl->conn == test_conn, "close: same connection");
 	is_int(XDP_TCP_CLOSING, rl->conn->state, "close: conn state");
-	knot_xdp_tcp_relay_free(&relays);
+	knot_tcp_relay_free(&relays);
 
 	msg.flags &= ~KNOT_XDP_MSG_FIN;
 	prepare_seqack(&msg, 0, 0);
-	ret = knot_xdp_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
+	ret = knot_tcp_relay(test_sock, &msg, 1, test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "close: relay 2 OK");
 	check_sent(0, 0, 0, 0);
 	is_int(conns_pre - 1, test_table->usage, "close: connection removed");
@@ -353,33 +353,33 @@ void test_many(void)
 	}
 
 	knot_tcp_relay_dynarray_t relays = { 0 };
-	int ret = knot_xdp_tcp_relay(test_sock, msgs, CONNS, test_table, NULL, &relays);
+	int ret = knot_tcp_relay(test_sock, msgs, CONNS, test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "many: relay OK");
 	check_sent(0, 0, CONNS, 0);
 	is_int(CONNS, relays.size, "many: relays count");
 	is_int(CONNS, test_table->usage, "many: table usage");
 
-	knot_xdp_tcp_relay_free(&relays);
+	knot_tcp_relay_free(&relays);
 	usleep(timeout_time);
 	knot_xdp_msg_t *survive = &msgs[i_survive];
 	survive->flags = (KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_ACK);
 	knot_tcp_conn_t *surv_conn = tcp_table_find(test_table, survive);
 	fix_seqack(survive);
 	prepare_data(survive, "\x00\x00", 2);
-	(void)knot_xdp_tcp_relay(test_sock, survive, 1, test_table, NULL, &relays);
+	(void)knot_tcp_relay(test_sock, survive, 1, test_table, NULL, &relays);
 	is_int(1, relays.size, "many/survivor: one relay");
 	knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[0];
 	clean_sent();
 
 	uint32_t reset_count = 0, close_count = 0;
-	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, timeout_time, UINT32_MAX, 0, 0, &close_count, &reset_count);
+	ret = knot_tcp_sweep(test_table, test_sock, UINT32_MAX, timeout_time, UINT32_MAX, 0, 0, &close_count, &reset_count);
 	is_int(KNOT_EOK, ret, "many/timeout1: OK");
 	is_int(CONNS - 1, close_count, "many/timeout1: close count");
 	is_int(0, reset_count, "may/timeout1: reset count");
 	check_sent(0, 0, 0, CONNS - 1);
 
 	close_count = 0;
-	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, UINT32_MAX, timeout_time, 0, 0, &close_count, &reset_count);
+	ret = knot_tcp_sweep(test_table, test_sock, UINT32_MAX, UINT32_MAX, timeout_time, 0, 0, &close_count, &reset_count);
 	is_int(KNOT_EOK, ret, "many/timeout2: OK");
 	is_int(0, close_count, "many/timeout2: close count");
 	is_int(CONNS - 1, reset_count, "may/timeout2: reset count");
@@ -402,7 +402,7 @@ void test_ibufs_size(void)
 	for (int i = 0; i < CONNS; i++) {
 		prepare_msg(&msgs[i], KNOT_XDP_MSG_SYN, i + 2000, 1);
 	}
-	int ret = knot_xdp_tcp_relay(test_sock, msgs, CONNS, test_table, NULL, &relays);
+	int ret = knot_tcp_relay(test_sock, msgs, CONNS, test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "ibufs: open OK");
 	check_sent(0, 0, CONNS, 0);
 	for (int i = 0; i < CONNS; i++) {
@@ -414,11 +414,11 @@ void test_ibufs_size(void)
 	// first connection will start a fragment buf then finish it
 	fix_seqack(&msgs[0]);
 	prepare_data(&msgs[0], "\x00\x0a""lorem", 7);
-	ret = knot_xdp_tcp_relay(test_sock, &msgs[0], 1, test_table, NULL, &relays);
+	ret = knot_tcp_relay(test_sock, &msgs[0], 1, test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "ibufs: must be OK");
 	check_sent(1, 0, 0, 0);
 	is_int(7, test_table->inbufs_total, "inbufs: first inbuf");
-	knot_xdp_tcp_relay_free(&relays);
+	knot_tcp_relay_free(&relays);
 
 	// other connection will just store fragments
 	fix_seqacks(msgs, CONNS);
@@ -426,17 +426,17 @@ void test_ibufs_size(void)
 	prepare_data(&msgs[1], "\x00\xff""12345", 7);
 	prepare_data(&msgs[2], "\xff\xff""abcde", 7);
 	prepare_data(&msgs[3], "\xff\xff""abcde", 7);
-	ret = knot_xdp_tcp_relay(test_sock, msgs, CONNS, test_table, NULL, &relays);
+	ret = knot_tcp_relay(test_sock, msgs, CONNS, test_table, NULL, &relays);
 	is_int(KNOT_EOK, ret, "inbufs: relay OK");
 	check_sent(CONNS, 0, 0, 0);
 	is_int(21, test_table->inbufs_total, "inbufs: after change");
 	is_int(1, relays.size, "inbufs: one relay");
 	is_int(10, knot_tcp_relay_dynarray_arr(&relays)[0].data.iov_len, "inbufs: data length");
-	knot_xdp_tcp_relay_free(&relays);
+	knot_tcp_relay_free(&relays);
 
 	// now free some
 	uint32_t reset_count = 0, close_count = 0;
-	ret = knot_xdp_tcp_timeout(test_table, test_sock, UINT32_MAX, UINT32_MAX, UINT32_MAX, 0, 8, &close_count, &reset_count);
+	ret = knot_tcp_sweep(test_table, test_sock, UINT32_MAX, UINT32_MAX, UINT32_MAX, 0, 8, &close_count, &reset_count);
 	is_int(KNOT_EOK, ret, "inbufs: timeout OK");
 	check_sent(0, 2, 0, 0);
 	is_int(0, close_count, "inbufs: close count");

@@ -175,7 +175,7 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 	}
 
 	// handle TCP messages
-	int ret = knot_xdp_tcp_relay(sock, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, NULL, &ctx->tcp_relays);
+	int ret = knot_tcp_relay(sock, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, NULL, &ctx->tcp_relays);
 	if (ret == KNOT_EOK && ctx->tcp_relays.size > 0) {
 		uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
@@ -191,7 +191,7 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 						continue;
 					}
 
-					ret = knot_xdp_tcp_send_data(&ctx->tcp_relays, rl, ans->wire, ans->size);
+					ret = knot_tcp_send_data(&ctx->tcp_relays, rl, ans->wire, ans->size);
 					if (ret != KNOT_EOK) {
 						layer->state = KNOT_STATE_FAIL;
 					}
@@ -220,13 +220,13 @@ int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 	int ret = knot_xdp_send(xdp_sock, ctx->msg_send_udp, ctx->msg_udp_count, &unused);
 	if (ret == KNOT_EOK) {
 		if (ctx->tcp_relays.size > 0) {
-			ret = knot_xdp_tcp_send(xdp_sock, knot_tcp_relay_dynarray_arr(&ctx->tcp_relays), ctx->tcp_relays.size);
+			ret = knot_tcp_send(xdp_sock, knot_tcp_relay_dynarray_arr(&ctx->tcp_relays), ctx->tcp_relays.size);
 		} else {
 			ret = knot_xdp_send_finish(xdp_sock);
 		}
 	}
 
-	knot_xdp_tcp_relay_free(&ctx->tcp_relays);
+	knot_tcp_relay_free(&ctx->tcp_relays);
 
 	if (ret == KNOT_EOK) {
 		ret = xdp_handle_timeout(ctx, xdp_sock);
@@ -240,10 +240,10 @@ int xdp_handle_timeout(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 	uint32_t last_reset = 0, last_close = 0;
 	int ret = KNOT_EOK;
 	do {
-		ret = knot_xdp_tcp_timeout(ctx->tcp_table, xdp_sock, 20, ctx->tcp_idle_close, ctx->tcp_idle_reset,
-		                           overweight(ctx->tcp_table->usage, ctx->tcp_max_conns),
-		                           overweight(ctx->tcp_table->inbufs_total, ctx->tcp_max_inbufs),
-		                           &last_close, &last_reset);
+		ret = knot_tcp_sweep(ctx->tcp_table, xdp_sock, 20, ctx->tcp_idle_close, ctx->tcp_idle_reset,
+		                     overweight(ctx->tcp_table->usage, ctx->tcp_max_conns),
+		                     overweight(ctx->tcp_table->inbufs_total, ctx->tcp_max_inbufs),
+		                     &last_close, &last_reset);
 	} while (last_reset > 0 && ret == KNOT_EOK);
 
 	if (last_close > 0 || last_reset > 0) {
