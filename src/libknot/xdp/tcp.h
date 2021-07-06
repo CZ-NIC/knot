@@ -74,7 +74,7 @@ typedef struct {
 	size_t size;
 	size_t usage;
 	size_t inbufs_total;
-	uint32_t hash_secret[4];
+	uint64_t hash_secret[2];
 	knot_tcp_conn_t *conns[];
 } knot_tcp_table_t;
 

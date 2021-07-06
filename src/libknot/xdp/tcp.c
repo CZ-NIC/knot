@@ -49,14 +49,11 @@ static size_t sockaddr_data_len(const struct sockaddr_in6 *rem, const struct soc
 }
 
 static uint64_t hash_four_tuple(const struct sockaddr_in6 *rem, const struct sockaddr_in6 *loc,
-                                uint32_t hash_secret[4])
+                                knot_tcp_table_t *table)
 {
 	size_t socka_data_len = sockaddr_data_len(rem, loc);
-	SIPHASH_KEY key;
-	//assert(sizeof(key) == sizeof(hash_secret)); // beware, sizeof(hash_secret) == sizeof(uint32_t*)
-	memcpy(&key, hash_secret, sizeof(key));
 	SIPHASH_CTX ctx;
-	SipHash24_Init(&ctx, &key);
+	SipHash24_Init(&ctx, (const SIPHASH_KEY *)(table->hash_secret));
 	SipHash24_Update(&ctx, rem, socka_data_len);
 	SipHash24_Update(&ctx, loc, socka_data_len);
 	return SipHash24_End(&ctx);
@@ -84,9 +81,9 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size)
 	table->size = size;
 	init_list(tcp_table_timeout(table));
 
-	for (size_t i = 0; i < sizeof(table->hash_secret) / sizeof(*table->hash_secret); i++) {
-		table->hash_secret[i] = dnssec_random_uint32_t();
-	}
+	assert(sizeof(table->hash_secret) == sizeof(SIPHASH_KEY));
+	table->hash_secret[0] = dnssec_random_uint64_t();
+	table->hash_secret[1] = dnssec_random_uint64_t();
 
 	return table;
 }
@@ -107,7 +104,7 @@ static knot_tcp_conn_t **tcp_table_lookup(const struct sockaddr_in6 *rem,
                                           const struct sockaddr_in6 *loc,
                                           uint64_t *hash, knot_tcp_table_t *table)
 {
-	*hash = hash_four_tuple(rem, loc, table->hash_secret);
+	*hash = hash_four_tuple(rem, loc, table);
 	size_t sdl = sockaddr_data_len(rem, loc);
 	knot_tcp_conn_t **res = table->conns + (*hash % table->size);
 	while (*res != NULL) {
