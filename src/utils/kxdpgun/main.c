@@ -440,7 +440,7 @@ void *xdp_gun_thread(void *_ctx)
 							local_stats.synack_recv++;
 							rl->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
 							put_dns_payload(&payl, true, ctx, &payload_ptr);
-							(void)knot_tcp_send_data(&relays, rl, payl.iov_base, payl.iov_len);
+							(void)knot_tcp_relay_answer(&relays, rl, payl.iov_base, payl.iov_len);
 							break;
 						case XDP_TCP_DATA:
 							if (check_dns_payload(&rl->data, ctx, &local_stats)) {

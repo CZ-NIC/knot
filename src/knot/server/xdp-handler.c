@@ -191,7 +191,7 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 						continue;
 					}
 
-					ret = knot_tcp_send_data(&ctx->tcp_relays, rl, ans->wire, ans->size);
+					ret = knot_tcp_relay_answer(&ctx->tcp_relays, rl, ans->wire, ans->size);
 					if (ret != KNOT_EOK) {
 						layer->state = KNOT_STATE_FAIL;
 					}
