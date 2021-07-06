@@ -139,7 +139,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
                    knot_tcp_relay_dynarray_t *relays);
 
 /*!
- * \brief Answer one relay with one or more relays with data payload.
+ * \brief Fetch answer to one relay with one or more relays with data payload.
  *
  * \param relays    Relays.
  * \param relay     The relay to answer to.
@@ -148,8 +148,8 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int knot_tcp_send_data(knot_tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *relay,
-                       void *data, size_t data_len);
+int knot_tcp_relay_answer(knot_tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *relay,
+                          void *data, size_t data_len);
 
 /*!
  * \brief Free resources in 'relays'.
