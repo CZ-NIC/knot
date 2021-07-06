@@ -198,9 +198,9 @@ static bool check_seq_ack(const knot_xdp_msg_t *msg, const knot_tcp_conn_t *conn
 }
 
 _public_
-int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
-                       knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
-                       knot_tcp_relay_dynarray_t *relays)
+int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
+                   knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
+                   knot_tcp_relay_dynarray_t *relays)
 {
 	if (msg_count == 0) {
 		return KNOT_EOK;
@@ -371,8 +371,8 @@ int knot_xdp_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_
 }
 
 _public_
-int knot_xdp_tcp_send_data(knot_tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *relay,
-                           void *data, size_t data_len)
+int knot_tcp_send_data(knot_tcp_relay_dynarray_t *relays, const knot_tcp_relay_t *relay,
+                       void *data, size_t data_len)
 {
 	if (relays == NULL || relay == NULL || data == NULL) {
 		return KNOT_EINVAL;
@@ -412,7 +412,7 @@ int knot_xdp_tcp_send_data(knot_tcp_relay_dynarray_t *relays, const knot_tcp_rel
 }
 
 _public_
-void knot_xdp_tcp_relay_free(knot_tcp_relay_dynarray_t *relays)
+void knot_tcp_relay_free(knot_tcp_relay_dynarray_t *relays)
 {
 	if (relays == NULL) {
 		return;
@@ -428,8 +428,7 @@ void knot_xdp_tcp_relay_free(knot_tcp_relay_dynarray_t *relays)
 }
 
 _public_
-int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
-                      uint32_t relay_count)
+int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t relay_count)
 {
 	if (relay_count == 0) {
 		return KNOT_EOK;
@@ -520,11 +519,10 @@ int knot_xdp_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 }
 
 _public_
-int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
-                         uint32_t max_at_once,
-                         uint32_t close_timeout, uint32_t reset_timeout,
-                         uint32_t reset_at_least, size_t reset_inbufs,
-                         uint32_t *close_count, uint32_t *reset_count)
+int knot_tcp_sweep(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
+                   uint32_t max_at_once, uint32_t close_timeout, uint32_t reset_timeout,
+                   uint32_t reset_at_least, size_t reset_buf_size,
+                   uint32_t *close_count, uint32_t *reset_count)
 {
 	if (tcp_table == NULL) {
 		return KNOT_EINVAL;
@@ -541,14 +539,14 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
 		if (i++ < reset_at_least ||
 		    now - conn->last_active >= reset_timeout ||
-		    (reset_inbufs > 0 && conn->inbuf.iov_len > 0)) {
+		    (reset_buf_size > 0 && conn->inbuf.iov_len > 0)) {
 			rl.answer = XDP_TCP_RESET;
 
 			// move this conn into to-remove list
 			rem_node((node_t *)conn);
 			add_tail(&to_remove, (node_t *)conn);
 
-			reset_inbufs -= MIN(reset_inbufs, conn->inbuf.iov_len);
+			reset_buf_size -= MIN(reset_buf_size, conn->inbuf.iov_len);
 		} else if (now - conn->last_active >= close_timeout) {
 			if (conn->state != XDP_TCP_CLOSING) {
 				rl.answer = XDP_TCP_CLOSE;
@@ -556,7 +554,7 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 					(*close_count)++;
 				}
 			}
-		} else if (reset_inbufs == 0) {
+		} else if (reset_buf_size == 0) {
 			break;
 		}
 
@@ -568,7 +566,7 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 	}
 
 	if (ret == KNOT_EOK) {
-		ret = knot_xdp_tcp_send(socket, knot_tcp_relay_dynarray_arr(&relays), relays.size);
+		ret = knot_tcp_send(socket, knot_tcp_relay_dynarray_arr(&relays), relays.size);
 	}
 
 	// immediately remove resetted connections
@@ -581,6 +579,6 @@ int knot_xdp_tcp_timeout(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 		}
 	}
 
-	knot_xdp_tcp_relay_free(&relays);
+	knot_tcp_relay_free(&relays);
 	return ret;
 }

@@ -188,8 +188,8 @@ libknot.so.11 libknot11 #MINVER#
  knot_xdp_send_free@Base 3.1.0
  knot_xdp_send_prepare@Base 3.0.0
  knot_xdp_socket_fd@Base 3.0.0
- knot_xdp_tcp_relay@Base 3.1.0
- knot_xdp_tcp_send@Base 3.1.0
+ knot_tcp_relay@Base 3.1.0
+ knot_tcp_send@Base 3.1.0
  yp_addr@Base 3.0.0
  yp_addr_noport@Base 3.0.0
  yp_addr_noport_to_bin@Base 3.0.0
