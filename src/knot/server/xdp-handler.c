@@ -16,13 +16,13 @@
 
 #ifdef ENABLE_XDP
 
+#include <assert.h>
 #include <stdlib.h>
 #include <urcu.h>
 
 #include "knot/server/xdp-handler.h"
 #include "knot/common/log.h"
 #include "knot/server/server.h"
-#include "contrib/ucw/mempool.h"
 #include "libknot/error.h"
 #include "libknot/xdp/tcp.h"
 
@@ -34,10 +34,11 @@ typedef struct xdp_handle_ctx {
 	uint32_t msg_udp_count;
 	knot_tcp_table_t *tcp_table;
 
+	bool tcp;
 	size_t tcp_max_conns;
 	size_t tcp_max_inbufs;
-	uint32_t tcp_idle_close;
-	uint32_t tcp_idle_reset;
+	uint32_t tcp_idle_close; // In microseconds.
+	uint32_t tcp_idle_reset; // In microseconds.
 } xdp_handle_ctx_t;
 
 static bool udp_state_active(int state)
@@ -59,22 +60,16 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 {
 	rcu_read_lock();
 	conf_t *pconf = conf();
+	ctx->tcp            = pconf->cache.xdp_tcp;
 	ctx->tcp_max_conns  = pconf->cache.xdp_tcp_max_clients    / pconf->cache.srv_xdp_threads;
 	ctx->tcp_max_inbufs = pconf->cache.xdp_tcp_inbuf_max_size / pconf->cache.srv_xdp_threads;
-	ctx->tcp_idle_close = pconf->cache.xdp_tcp_idle_close * 1000000; // conf:secs -> tcp:usecs
+	ctx->tcp_idle_close = pconf->cache.xdp_tcp_idle_close * 1000000;
 	ctx->tcp_idle_reset = pconf->cache.xdp_tcp_idle_reset * 1000000;
 	rcu_read_unlock();
 }
 
-void xdp_handle_cleanup(xdp_handle_ctx_t *ctx)
-{
-	ctx->msg_recv_count = 0;
-	ctx->msg_udp_count = 0;
-}
-
 void xdp_handle_free(xdp_handle_ctx_t *ctx)
 {
-	xdp_handle_cleanup(ctx);
 	knot_tcp_table_free(ctx->tcp_table);
 	free(ctx);
 }
@@ -86,13 +81,15 @@ xdp_handle_ctx_t *xdp_handle_init(void)
 		return NULL;
 	}
 
-	xdp_handle_cleanup(ctx);
 	xdp_handle_reconfigure(ctx);
 
-	ctx->tcp_table = knot_tcp_table_new(ctx->tcp_max_conns); // NOTE: it's not necessary that the table size is equal to its max usage!
-	if (ctx->tcp_table == NULL) {
-		xdp_handle_free(ctx);
-		return NULL;
+	if (ctx->tcp) {
+		// NOTE: the table size don't have to equal its max usage!
+		ctx->tcp_table = knot_tcp_table_new(ctx->tcp_max_conns);
+		if (ctx->tcp_table == NULL) {
+			xdp_handle_free(ctx);
+			return NULL;
+		}
 	}
 
 	return ctx;
@@ -100,8 +97,7 @@ xdp_handle_ctx_t *xdp_handle_init(void)
 
 int xdp_handle_recv(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 {
-	xdp_handle_cleanup(ctx);
-	int ret = knot_xdp_recv(xdp_sock, ctx->msg_recv, sizeof(ctx->msg_recv) / sizeof(ctx->msg_recv[0]),
+	int ret = knot_xdp_recv(xdp_sock, ctx->msg_recv, XDP_BATCHLEN,
 	                        &ctx->msg_recv_count, NULL);
 	return ret == KNOT_EOK ? ctx->msg_recv_count : ret;
 }
@@ -131,15 +127,17 @@ static void handle_finish(knot_layer_t *layer)
 int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
                     knot_layer_t *layer, server_t *server, unsigned thread_id)
 {
+	assert(ctx->msg_recv_count > 0);
+
 	knotd_qdata_params_t params = {
 		.socket = knot_xdp_socket_fd(sock),
 		.server = server,
 		.thread_id = thread_id,
 	};
 
-	if (ctx->msg_recv_count > 0) {
-		knot_xdp_send_prepare(sock);
-	}
+	knot_xdp_send_prepare(sock);
+
+	ctx->msg_udp_count = 0;
 
 	// handle UDP messages
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
@@ -202,34 +200,33 @@ int xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *sock,
 	return KNOT_EOK;
 }
 
-size_t overweight(size_t weight, size_t max_weight)
-{
-	int64_t w = weight;
-	w -= max_weight;
-	w = MAX(w, 0);
-	return w;
-}
-
 int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 {
 	uint32_t unused = 0;
 
 	int ret = knot_xdp_send(xdp_sock, ctx->msg_send_udp, ctx->msg_udp_count, &unused);
 	if (ret == KNOT_EOK) {
-		if (ctx->tcp_relays.size > 0) {
-			ret = knot_tcp_send(xdp_sock, knot_tcp_relay_dynarray_arr(&ctx->tcp_relays), ctx->tcp_relays.size);
+		if (ctx->tcp) {
+			ret = knot_tcp_send(xdp_sock, knot_tcp_relay_dynarray_arr(&ctx->tcp_relays),
+			                    ctx->tcp_relays.size);
 		} else {
 			ret = knot_xdp_send_finish(xdp_sock);
 		}
 	}
 
-	knot_tcp_relay_free(&ctx->tcp_relays);
-
-	if (ret == KNOT_EOK) {
-		ret = xdp_handle_sweep(ctx, xdp_sock);
+	if (ctx->tcp) {
+		knot_tcp_relay_free(&ctx->tcp_relays);
 	}
 
 	return ret;
+}
+
+static size_t overweight(size_t weight, size_t max_weight)
+{
+	int64_t w = weight;
+	w -= max_weight;
+	w = MAX(w, 0);
+	return w;
 }
 
 int xdp_handle_sweep(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
