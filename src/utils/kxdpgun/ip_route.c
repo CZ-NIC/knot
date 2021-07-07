@@ -72,7 +72,8 @@ static int send_dummy_pkt(const struct sockaddr_storage *ip)
 	return ret;
 }
 
-static int netlink_query(int family, uint16_t type, mnl_cb_t cb, void *data)
+static int netlink_query(int family, uint16_t type, mnl_cb_t cb, void *data,
+                         void *qextra, size_t qextra_len, uint16_t qextra_type)
 {
 	// open and bind NETLINK socket
 	struct mnl_socket *nl = mnl_socket_open(NETLINK_ROUTE);
@@ -103,6 +104,12 @@ static int netlink_query(int family, uint16_t type, mnl_cb_t cb, void *data)
 		goto end;
 	}
 
+	if (qextra_len > 0) {
+		nlh->nlmsg_flags = NLM_F_REQUEST;
+		rtm->rtm_dst_len = qextra_len * 8; // 8 bits per byte
+		mnl_attr_put(nlh, qextra_type, qextra_len, qextra);
+	}
+
 	// send request
 	rtm->rtm_family = family;
 	ret = mnl_socket_sendto(nl, nlh, nlh->nlmsg_len);
@@ -115,6 +122,9 @@ static int netlink_query(int family, uint16_t type, mnl_cb_t cb, void *data)
 	while ((ret = mnl_socket_recvfrom(nl, buf, sizeof(buf))) > 0) {
 		ret = mnl_cb_run(buf, ret, seq, portid, cb, data);
 		if (ret <= MNL_CB_STOP) {
+			break;
+		}
+		if (qextra_len > 0) {
 			break;
 		}
 	}
@@ -249,7 +259,10 @@ int ip_route_get(const struct sockaddr_storage *ip,
 	do {
 		ctx.priority = UINT64_MAX;
 
-		int ret = netlink_query(ip->ss_family, RTM_GETROUTE, ip_route_get_cb, &ctx);
+		size_t qextra_len;
+		void *qextra = sockaddr_raw(ip, &qextra_len);
+		int ret = netlink_query(ip->ss_family, RTM_GETROUTE, ip_route_get_cb, &ctx,
+		                        qextra, qextra_len, IFA_ADDRESS);
 		if (ret != 0) {
 			return ret;
 		}
@@ -336,7 +349,8 @@ int ip_neigh_get(const struct sockaddr_storage *ip,
 		usleep(10000);
 	}
 	ip_neigh_ctx_t ctx = { ip, mac, 0 };
-	int ret = netlink_query(ip->ss_family, RTM_GETNEIGH, ip_neigh_cb, &ctx);
+	int ret = netlink_query(ip->ss_family, RTM_GETNEIGH, ip_neigh_cb, &ctx,
+	                        NULL, 0, 0);
 	if (ret == 0 && ctx.match == 0) {
 		return -ENOENT;
 	}
