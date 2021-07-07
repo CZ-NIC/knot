@@ -37,11 +37,6 @@ struct xdp_handle_ctx *xdp_handle_init(void);
 void xdp_handle_free(struct xdp_handle_ctx *ctx);
 
 /*!
- * \brief Reset XDP packet handling context.
- */
-void xdp_handle_cleanup(struct xdp_handle_ctx *ctx);
-
-/*!
  * \brief Receive packets thru XDP socket.
  */
 int xdp_handle_recv(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *xdp_sock);
