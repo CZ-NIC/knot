@@ -157,6 +157,7 @@ typedef struct {
 	time_t time;
 } semchecks_data_t;
 
+static int check_soa(const zone_node_t *node, semchecks_data_t *data);
 static int check_cname(const zone_node_t *node, semchecks_data_t *data);
 static int check_dname(const zone_node_t *node, semchecks_data_t *data);
 static int check_delegation(const zone_node_t *node, semchecks_data_t *data);
@@ -177,6 +178,7 @@ struct check_function {
 
 /* List of function callbacks for defined check_level */
 static const struct check_function CHECK_FUNCTIONS[] = {
+	{ check_soa,            MANDATORY },
 	{ check_cname,          MANDATORY },
 	{ check_dname,          MANDATORY },
 	{ check_delegation,     MANDATORY }, // mandatory for apex, optional for others
@@ -1028,6 +1030,28 @@ nsec3_cleanup:
 	dnssec_nsec3_params_free(&params_apex);
 
 	return ret;
+}
+
+/*!
+ * \brief Check if apex node contains SOA record
+ *
+ * \param node Node to check
+ * \param data Semantic checks context data
+ */
+static int check_soa(const zone_node_t *node, semchecks_data_t *data)
+{
+	if (data->zone->apex != node) {
+		return KNOT_EOK;
+	}
+
+	const knot_rdataset_t *soa_rrs = node_rdataset(node, KNOT_RRTYPE_SOA);
+	if (soa_rrs == NULL) {
+		data->handler->error = true;
+		data->handler->cb(data->handler, data->zone, node,
+		                  SEM_ERR_SOA_NONE, NULL);
+	}
+
+	return KNOT_EOK;
 }
 
 /*!
