@@ -1,0 +1,8 @@
+label: Knot DNS Backup
+backup_version: 2
+identity: tester.knot-dns.cz
+started_time: 2021-07-07 14:39:48 CEST
+finished_time: 2021-07-07 14:39:48 CEST
+knot_version: 3.1.dev.1625122029.e48145931
+parameters: +zonefile +nojournal +timers +kaspdb +catalog +backupdir backup_for_tests
+zone_count: 3

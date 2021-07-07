@@ -1,0 +1,32 @@
+;; Zone dump (Knot DNS 3.1.dev.1625122029.e48145931)
+example1.           	10	SOA	a.ns.example1. admin.example1. 1 10 10 120 10
+example1.           	10	NS	a.ns.example1.
+example1.           	10	NS	b.ns.example1.
+example1.           	10	NS	ns.out.
+deleg.example1.     	10	NS	a.ns.deleg.example1.
+deleg.example1.     	10	NS	ns.out.
+a.ns.deleg.example1.	10	A	10.0.1.1
+a.ns.deleg.example1.	10	AAAA	fd00::1:1
+a.mail.example1.    	10	A	10.0.1.1
+b.mail.example1.    	10	AAAA	fd00::1:1
+cname.mail.example1.	10	CNAME	a.mail.example1.
+mx.example1.        	10	MX	10 a.mail.example1.
+mx.example1.        	10	MX	20 b.mail.example1.
+mx.example1.        	10	MX	30 mail.out.
+mx-cname.example1.  	10	MX	10 cname.mail.example1.
+a.ns.example1.      	10	A	10.0.0.1
+a.ns.example1.      	10	AAAA	fd00::a1
+b.ns.example1.      	10	AAAA	fd00::b1
+b.ns.example1.      	10	AAAA	fd00::b2
+ptr.example1.       	10	PTR	target.example1.
+a.service.example1. 	10	TXT	"no address"
+b.service.example1. 	10	AAAA	fd00::2:1
+b.service.example1. 	10	AAAA	fd00::2:2
+b.service.example1. 	10	AAAA	fd00::2:3
+srv.example1.       	10	SRV	10 0 1000 a.service.example1.
+srv.example1.       	10	SRV	10 0 1000 b.service.example1.
+srv.example1.       	10	SRV	10 0 1000 service.out.
+target.example1.    	10	A	10.0.3.1
+target.example1.    	10	AAAA	fd00::3:1
+;; Written 29 records
+;; Time 2021-07-07 14:39:48 CEST
