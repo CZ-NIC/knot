@@ -226,13 +226,13 @@ int xdp_handle_send(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 	knot_tcp_relay_free(&ctx->tcp_relays);
 
 	if (ret == KNOT_EOK) {
-		ret = xdp_handle_timeout(ctx, xdp_sock);
+		ret = xdp_handle_sweep(ctx, xdp_sock);
 	}
 
 	return ret;
 }
 
-int xdp_handle_timeout(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
+int xdp_handle_sweep(xdp_handle_ctx_t *ctx, knot_xdp_socket_t *xdp_sock)
 {
 	uint32_t last_reset = 0, last_close = 0;
 	int ret = KNOT_EOK;
