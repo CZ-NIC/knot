@@ -29,7 +29,7 @@ struct server;
 /*!
  * \brief Initialize XDP packet handling context.
  */
-struct xdp_handle_ctx *xdp_handle_init(void);
+struct xdp_handle_ctx *xdp_handle_init(knot_xdp_socket_t *sock);
 
 /*!
  * \brief Deinitialize XDP packet handling context.
@@ -39,25 +39,25 @@ void xdp_handle_free(struct xdp_handle_ctx *ctx);
 /*!
  * \brief Receive packets thru XDP socket.
  */
-int xdp_handle_recv(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *xdp_sock);
+int xdp_handle_recv(struct xdp_handle_ctx *ctx);
 
 /*!
  * \brief Answer packets including DNS layers.
  *
  * \warning In case of TCP, this also sends some packets, e.g. ACK.
  */
-int xdp_handle_msgs(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *sock,
-                    knot_layer_t *layer, struct server *server, unsigned thread_id);
+void xdp_handle_msgs(struct xdp_handle_ctx *ctx, knot_layer_t *layer,
+                     struct server *server, unsigned thread_id);
 
 /*!
  * \brief Send packets thru XDP socket.
  */
-int xdp_handle_send(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *xdp_sock);
+void xdp_handle_send(struct xdp_handle_ctx *ctx);
 
 /*!
  * \brief Check for old TCP connections and close/reset them.
  */
-int xdp_handle_sweep(struct xdp_handle_ctx *ctx, knot_xdp_socket_t *xdp_sock);
+void xdp_handle_sweep(struct xdp_handle_ctx *ctx);
 
 /*!
  * \brief Update configuration parameters of running ctx.
