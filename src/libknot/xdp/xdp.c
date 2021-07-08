@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "libknot/attribute.h"
@@ -41,6 +42,9 @@
 #define UMEM_RING_LEN_RX (UMEM_FRAME_COUNT_RX * 2)
 #define UMEM_RING_LEN_TX (UMEM_FRAME_COUNT_TX * 2)
 #define UMEM_FRAME_COUNT (UMEM_FRAME_COUNT_RX + UMEM_FRAME_COUNT_TX)
+
+#define ALLOC_RETRY_NUM   15
+#define ALLOC_RETRY_DELAY 20 // In nanoseconds.
 
 /* With recent compilers we statically check #defines for settings that
  * get refused by AF_XDP drivers (in current versions, at least). */
@@ -261,13 +265,21 @@ void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 	xsk_ring_cons__release(cq, completed);
 }
 
-static struct umem_frame *alloc_tx_frame(struct kxsk_umem *umem, void *send_mock)
+static struct umem_frame *alloc_tx_frame(knot_xdp_socket_t *socket)
 {
-	if (unlikely(send_mock != NULL)) {
+	if (unlikely(socket->send_mock != NULL)) {
 		return malloc(sizeof(struct umem_frame));
 	}
-	if (unlikely(umem->tx_free_count == 0)) {
-		return NULL;
+
+	const struct timespec delay = { .tv_nsec = ALLOC_RETRY_DELAY };
+	struct kxsk_umem *umem = socket->umem;
+
+	for (int i = 0; unlikely(umem->tx_free_count == 0); i++) {
+		if (i == ALLOC_RETRY_NUM) {
+			return NULL;
+		}
+		nanosleep(&delay, NULL);
+		knot_xdp_send_prepare(socket);
 	}
 
 	uint32_t index = umem->tx_free_indices[--umem->tx_free_count];
@@ -289,7 +301,7 @@ int knot_xdp_send_alloc(knot_xdp_socket_t *socket, knot_xdp_msg_flag_t flags,
 		return KNOT_EINVAL;
 	}
 
-	struct umem_frame *uframe = alloc_tx_frame(socket->umem, socket->send_mock);
+	struct umem_frame *uframe = alloc_tx_frame(socket);
 	if (uframe == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -308,7 +320,7 @@ int knot_xdp_reply_alloc(knot_xdp_socket_t *socket, const knot_xdp_msg_t *query,
 		return KNOT_EINVAL;
 	}
 
-	struct umem_frame *uframe = alloc_tx_frame(socket->umem, socket->send_mock);
+	struct umem_frame *uframe = alloc_tx_frame(socket);
 	if (uframe == NULL) {
 		return KNOT_ENOMEM;
 	}

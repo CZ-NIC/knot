@@ -23,6 +23,7 @@
 #include "knot/server/xdp-handler.h"
 #include "knot/common/log.h"
 #include "knot/server/server.h"
+#include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 #include "libknot/error.h"
 #include "libknot/xdp/tcp.h"
@@ -105,14 +106,19 @@ int xdp_handle_recv(xdp_handle_ctx_t *ctx)
 	return ret == KNOT_EOK ? ctx->msg_recv_count : ret;
 }
 
-static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer, const knot_xdp_msg_t *msg, const struct iovec *payload)
+static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer,
+                        const knot_xdp_msg_t *msg, const struct iovec *payload)
 {
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
 	params->xdp_msg = msg;
 	if (!(msg->flags & KNOT_XDP_MSG_TCP)) {
-		params->flags = KNOTD_QUERY_FLAG_NO_AXFR | KNOTD_QUERY_FLAG_NO_IXFR | KNOTD_QUERY_FLAG_LIMIT_SIZE;
+		params->flags = KNOTD_QUERY_FLAG_NO_AXFR |
+		                KNOTD_QUERY_FLAG_NO_IXFR |
+		                KNOTD_QUERY_FLAG_LIMIT_SIZE;
 	}
+
 	knot_layer_begin(layer, params);
+
 	knot_pkt_t *query = knot_pkt_new(payload->iov_base, payload->iov_len, layer->mm);
 	int ret = knot_pkt_parse(query, 0);
 	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
@@ -124,7 +130,102 @@ static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer, const
 static void handle_finish(knot_layer_t *layer)
 {
 	knot_layer_finish(layer);
+
+	// Flush per-query memory (including query and answer packets).
 	mp_flush(layer->mm->ctx);
+}
+
+static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
+                       knotd_qdata_params_t *params)
+{
+	ctx->msg_udp_count = 0;
+
+	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
+		knot_xdp_msg_t *msg_recv = &ctx->msg_recv[i];
+		knot_xdp_msg_t *msg_send = &ctx->msg_send_udp[ctx->msg_udp_count];
+
+		// Skip TCP or marked (zero length) message.
+		if ((msg_recv->flags & KNOT_XDP_MSG_TCP) ||
+		    msg_recv->payload.iov_len == 0) {
+			continue;
+		}
+
+		// Try to allocate a buffer for a reply.
+		if (knot_xdp_reply_alloc(ctx->sock, msg_recv, msg_send) != KNOT_EOK) {
+			log_notice("UDP, failed to send some packets");
+			break; // Drop the rest of the messages.
+		}
+		ctx->msg_udp_count++;
+
+		// Consume the query.
+		handle_init(params, layer, msg_recv, &msg_recv->payload);
+
+		// Process the reply.
+		knot_pkt_t *ans = knot_pkt_new(msg_send->payload.iov_base,
+		                               msg_send->payload.iov_len, layer->mm);
+		while (udp_state_active(layer->state)) {
+			knot_layer_produce(layer, ans);
+		}
+		if (layer->state == KNOT_STATE_DONE) {
+			msg_send->payload.iov_len = ans->size;
+		} else {
+			// If not success, don't send any reply.
+			msg_send->payload.iov_len = 0;
+		}
+
+		// Reset the processing.
+		handle_finish(layer);
+	}
+}
+
+static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
+                       knotd_qdata_params_t *params)
+{
+	uint32_t ack_errors = 0;
+	int ret = knot_tcp_relay(ctx->sock, ctx->msg_recv, ctx->msg_recv_count,
+	                         ctx->tcp_table, NULL, &ctx->tcp_relays, &ack_errors);
+	if (ret != KNOT_EOK) {
+		log_notice("TCP, failed to process some packets (%s)", knot_strerror(ret));
+		return;
+	} else if (ctx->tcp_relays.size == 0) {
+		return;
+	} else if (ack_errors > 0) {
+		log_notice("TCP, failed to send some ACK packets");
+	}
+
+	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
+
+	// Note dynaray_foreach can't be used as we insert into the dynarray inside the loop.
+	for (int n_tcp_relays = ctx->tcp_relays.size, rli = 0; rli < n_tcp_relays; rli++) {
+		knot_tcp_relay_t *rl = knot_tcp_relay_dynarray_arr(&ctx->tcp_relays) + rli;
+		if ((rl->action & XDP_TCP_DATA) == 0 || rl->answer != XDP_TCP_NOOP) {
+			continue;
+		}
+
+		// Consume the query.
+		handle_init(params, layer, rl->msg, &rl->data);
+
+		// Process the reply.
+		knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);
+		while (tcp_active_state(layer->state)) {
+			knot_layer_produce(layer, ans);
+			if (!tcp_send_state(layer->state)) {
+				continue;
+			}
+
+			ret = knot_tcp_relay_answer(&ctx->tcp_relays, rl,
+			                            ans->wire, ans->size);
+			if (ret != KNOT_EOK) {
+				char addr[SOCKADDR_STRLEN];
+				sockaddr_tostr(addr, sizeof(addr), params->remote);
+				log_notice("TCP, failed to reply, address %s (%s)",
+				           addr, knot_strerror(ret));
+				layer->state = KNOT_STATE_FAIL;
+			}
+		}
+
+		handle_finish(layer);
+	}
 }
 
 void xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
@@ -140,80 +241,26 @@ void xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 	knot_xdp_send_prepare(ctx->sock);
 
-	ctx->msg_udp_count = 0;
-
-	// handle UDP messages
-	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
-		knot_xdp_msg_t *msg_recv = &ctx->msg_recv[i];
-		knot_xdp_msg_t *msg_send = &ctx->msg_send_udp[ctx->msg_udp_count];
-
-		if ((msg_recv->flags & KNOT_XDP_MSG_TCP) ||
-		    msg_recv->payload.iov_len == 0) {
-			continue;
-		}
-
-		if (knot_xdp_reply_alloc(ctx->sock, msg_recv, msg_send) != KNOT_EOK) {
-			continue; // no point in returning error, where handled?
-		}
-		ctx->msg_udp_count++;
-
-		handle_init(&params, layer, msg_recv, &msg_recv->payload);
-
-		knot_pkt_t *ans = knot_pkt_new(msg_send->payload.iov_base, msg_send->payload.iov_len, layer->mm);
-		while (udp_state_active(layer->state)) {
-			knot_layer_produce(layer, ans);
-		}
-		if (layer->state == KNOT_STATE_DONE) {
-			msg_send->payload.iov_len = ans->size;
-		} else {
-			msg_send->payload.iov_len = 0;
-		}
-
-		handle_finish(layer);
+	handle_udp(ctx, layer, &params);
+	if (ctx->tcp) {
+		handle_tcp(ctx, layer, &params);
 	}
 
-	// handle TCP messages
-	int ret = knot_tcp_relay(ctx->sock, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, NULL, &ctx->tcp_relays);
-	if (ret == KNOT_EOK && ctx->tcp_relays.size > 0) {
-		uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
-
-		for (size_t n_tcp_relays = ctx->tcp_relays.size, rli = 0; rli < n_tcp_relays; rli++) { // dynaaray_foreach can't be used because we insert into the dynarray inside the loop
-			knot_tcp_relay_t *rl = knot_tcp_relay_dynarray_arr(&ctx->tcp_relays) + rli;
-			if ((rl->action & XDP_TCP_DATA) && (rl->answer == 0)) {
-				knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);
-				handle_init(&params, layer, rl->msg, &rl->data);
-
-				while (tcp_active_state(layer->state)) {
-					knot_layer_produce(layer, ans);
-					if (!tcp_send_state(layer->state)) {
-						continue;
-					}
-
-					ret = knot_tcp_relay_answer(&ctx->tcp_relays, rl, ans->wire, ans->size);
-					if (ret != KNOT_EOK) {
-						layer->state = KNOT_STATE_FAIL;
-					}
-				}
-				handle_finish(layer);
-			}
-		}
-	}
 	knot_xdp_recv_finish(ctx->sock, ctx->msg_recv, ctx->msg_recv_count);
 }
 
 void xdp_handle_send(xdp_handle_ctx_t *ctx)
 {
-	uint32_t unused = 0;
-
-	int ret = knot_xdp_send(ctx->sock, ctx->msg_send_udp, ctx->msg_udp_count, &unused);
-	if (ret == KNOT_EOK) {
-		if (ctx->tcp) {
-			ret = knot_tcp_send(ctx->sock, knot_tcp_relay_dynarray_arr(&ctx->tcp_relays),
-			                    ctx->tcp_relays.size);
-		} else {
-			ret = knot_xdp_send_finish(ctx->sock);
+	uint32_t unused;
+	(void)knot_xdp_send(ctx->sock, ctx->msg_send_udp, ctx->msg_udp_count, &unused);
+	if (ctx->tcp) {
+		int ret = knot_tcp_send(ctx->sock, knot_tcp_relay_dynarray_arr(&ctx->tcp_relays),
+		                        ctx->tcp_relays.size);
+		if (ret != KNOT_EOK) {
+			log_notice("TCP, failed to send some packets");
 		}
 	}
+	(void)knot_xdp_send_finish(ctx->sock);
 
 	if (ctx->tcp) {
 		knot_tcp_relay_free(&ctx->tcp_relays);
@@ -230,17 +277,25 @@ static size_t overweight(size_t weight, size_t max_weight)
 
 void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 {
-	uint32_t last_reset = 0, last_close = 0;
+	if (!ctx->tcp) {
+		return;
+	}
+
+	uint32_t prev_reset;
+	uint32_t total_reset = 0, total_close = 0;
 	int ret = KNOT_EOK;
 	do {
-		ret = knot_tcp_sweep(ctx->tcp_table, ctx->sock, 20, ctx->tcp_idle_close, ctx->tcp_idle_reset,
+		prev_reset = total_reset;
+		ret = knot_tcp_sweep(ctx->tcp_table, ctx->sock, 20,
+		                     ctx->tcp_idle_close, ctx->tcp_idle_reset,
 		                     overweight(ctx->tcp_table->usage, ctx->tcp_max_conns),
 		                     overweight(ctx->tcp_table->inbufs_total, ctx->tcp_max_inbufs),
-		                     &last_close, &last_reset);
-	} while (last_reset > 0 && ret == KNOT_EOK);
+		                     &total_close, &total_reset);
+	} while (ret == KNOT_EOK && prev_reset < total_reset);
 
-	if (last_close > 0 || last_reset > 0) {
-		log_debug("timeouted XDP-TCP connections: %u closed, %u reset", last_close, last_reset);
+	if (total_close > 0 || total_reset > 0) {
+		log_notice("TCP, connection timeout, %u closed, %u reset",
+		           total_close, total_reset);
 	}
 }
 

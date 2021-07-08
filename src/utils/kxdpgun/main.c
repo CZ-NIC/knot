@@ -328,11 +328,14 @@ void *xdp_gun_thread(void *_ctx)
 	uint64_t errors = 0, duration = 0;
 	kxdpgun_stats_t local_stats = { 0 };
 	unsigned stats_triggered = 0;
+	knot_tcp_table_t *tcp_table = NULL;
 
-	knot_tcp_table_t *tcp_table = knot_tcp_table_new(ctx->qps); // FIXME: qps is not the best choice?
-	if (tcp_table == NULL) {
-		printf("failed to allocate TCP connection table\n");
-		return NULL;
+	if (ctx->tcp) {
+		tcp_table = knot_tcp_table_new(ctx->qps);
+		if (tcp_table == NULL) {
+			printf("failed to allocate TCP connection table\n");
+			return NULL;
+		}
 	}
 
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
@@ -462,6 +465,7 @@ void *xdp_gun_thread(void *_ctx)
 					if (ret != KNOT_EOK) {
 						errors++;
 					}
+					(void)knot_xdp_send_finish(xsk);
 
 					knot_tcp_relay_free(&relays);
 				} else {
