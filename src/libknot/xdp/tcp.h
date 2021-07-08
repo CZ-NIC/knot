@@ -131,12 +131,13 @@ void knot_tcp_table_free(knot_tcp_table_t *table);
  * \param tcp_table    Table of TCP connections.
  * \param syn_table    Optional: extra table for handling partially established connections.
  * \param relays       Out: connection changes and data.
+ * \param ack_errors   Out: incremented with number of unsent ACKs due to a buffer allocation error.
  *
  * \return KNOT_E*
  */
 int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t msg_count,
                    knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
-                   knot_tcp_relay_dynarray_t *relays);
+                   knot_tcp_relay_dynarray_t *relays, uint32_t *ack_errors);
 
 /*!
  * \brief Fetch answer to one relay with one or more relays with data payload.
@@ -179,8 +180,8 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
  *                         when not yet timeouted.
  * \param reset_buf_size   Reset oldest connection with buffered partial DNS messages
  *                         to free up this amount of space.
- * \param close_count      Optional: Out: number of closed connections.
- * \param reset_count      Optional: Out: number of reset connections.
+ * \param close_count      Optional: Out: incremented with number of closed connections.
+ * \param reset_count      Optional: Out: incremented with number of reset connections.
  *
  * \return  KNOT_E*
  */
