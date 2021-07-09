@@ -40,6 +40,7 @@
 #include "libknot/xdp.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
+#include "contrib/openbsd/strlcat.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
@@ -325,7 +326,7 @@ void *xdp_gun_thread(void *_ctx)
 	struct knot_xdp_socket *xsk;
 	struct timespec timer;
 	knot_xdp_msg_t pkts[ctx->at_once];
-	uint64_t errors = 0, duration = 0;
+	uint64_t errors = 0, lost = 0, duration = 0;
 	kxdpgun_stats_t local_stats = { 0 };
 	unsigned stats_triggered = 0;
 	knot_tcp_table_t *tcp_table = NULL;
@@ -368,7 +369,7 @@ void *xdp_gun_thread(void *_ctx)
 				knot_xdp_send_prepare(xsk);
 				int alloced = alloc_pkts(pkts, xsk, ctx, tick);
 				if (alloced < ctx->at_once) {
-					errors++;
+					lost++;
 					if (alloced == 0) {
 						break;
 					}
@@ -386,19 +387,10 @@ void *xdp_gun_thread(void *_ctx)
 				}
 
 				uint32_t really_sent = 0;
-				ret = knot_xdp_send(xsk, pkts, alloced, &really_sent);
-				if (ret != KNOT_EOK) {
-					errors++;
-					break;
-				}
+				(void)knot_xdp_send(xsk, pkts, alloced, &really_sent);
 				assert(really_sent == alloced);
 				local_stats.qry_sent += really_sent;
-
-				ret = knot_xdp_send_finish(xsk);
-				if (ret != KNOT_EOK) {
-					errors++;
-					break;
-				}
+				(void)knot_xdp_send_finish(xsk);
 
 				break;
 			}
@@ -418,17 +410,16 @@ void *xdp_gun_thread(void *_ctx)
 
 				uint32_t recvd = 0;
 				size_t wire = 0;
-				ret = knot_xdp_recv(xsk, pkts, ctx->at_once, &recvd, &wire);
-				if (ret != KNOT_EOK) {
-					errors++;
-					break;
-				}
+				(void)knot_xdp_recv(xsk, pkts, ctx->at_once, &recvd, &wire);
 				if (recvd == 0) {
 					break;
 				}
 				if (ctx->tcp) {
+					uint32_t ack_errors = 0;
 					knot_tcp_relay_dynarray_t relays = { 0 };
-					ret = knot_tcp_relay(xsk, pkts, recvd, tcp_table, NULL, &relays);
+					ret = knot_tcp_relay(xsk, pkts, recvd, tcp_table, NULL,
+					                     &relays, &ack_errors);
+					lost += ack_errors;
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
@@ -443,7 +434,11 @@ void *xdp_gun_thread(void *_ctx)
 							local_stats.synack_recv++;
 							rl->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
 							put_dns_payload(&payl, true, ctx, &payload_ptr);
-							(void)knot_tcp_relay_answer(&relays, rl, payl.iov_base, payl.iov_len);
+							ret = knot_tcp_relay_answer(&relays, rl, payl.iov_base,
+							                            payl.iov_len);
+							if (ret != KNOT_EOK) {
+								errors++;
+							}
 							break;
 						case XDP_TCP_DATA:
 							if (check_dns_payload(&rl->data, ctx, &local_stats)) {
@@ -461,7 +456,8 @@ void *xdp_gun_thread(void *_ctx)
 						}
 					}
 
-					ret = knot_tcp_send(xsk, knot_tcp_relay_dynarray_arr(&relays), relays.size);
+					ret = knot_tcp_send(xsk, knot_tcp_relay_dynarray_arr(&relays),
+					                    relays.size);
 					if (ret != KNOT_EOK) {
 						errors++;
 					}
@@ -470,7 +466,8 @@ void *xdp_gun_thread(void *_ctx)
 					knot_tcp_relay_free(&relays);
 				} else {
 					for (int i = 0; i < recvd; i++) {
-						(void)check_dns_payload(&pkts[i].payload, ctx, &local_stats);
+						(void)check_dns_payload(&pkts[i].payload, ctx,
+						                        &local_stats);
 					}
 				}
 				local_stats.wire_recv += wire;
@@ -493,7 +490,8 @@ void *xdp_gun_thread(void *_ctx)
 			size_t collected = collect_stats(&global_stats, &local_stats);
 			assert(collected <= ctx->n_threads);
 			if (collected == ctx->n_threads) {
-				print_stats(&global_stats, ctx->tcp, !(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP));
+				print_stats(&global_stats, ctx->tcp,
+				            !(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP));
 				clear_stats(&global_stats);
 			}
 		}
@@ -510,8 +508,16 @@ void *xdp_gun_thread(void *_ctx)
 
 	knot_tcp_table_free(tcp_table);
 
-	printf("thread#%02u: sent %lu, received %lu, errors %lu\n",
-	       ctx->thread_id, local_stats.qry_sent, local_stats.ans_recv, errors);
+	char errors_str[16] = "", lost_str[16] = "";
+	if (errors > 0) {
+		(void)snprintf(errors_str, sizeof(errors_str), ", errors %lu", errors);
+	}
+	if (lost > 0) {
+		(void)snprintf(lost_str, sizeof(lost_str), ", lost %lu", lost);
+	}
+	printf("thread#%02u: sent %lu, received %lu%s%s\n",
+	       ctx->thread_id, local_stats.qry_sent, local_stats.ans_recv,
+	       lost_str, errors_str);
 	local_stats.duration = ctx->duration;
 	collect_stats(&global_stats, &local_stats);
 
