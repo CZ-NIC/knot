@@ -461,7 +461,12 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
 			continue;
 		}
 
-		ret = knot_xdp_send_alloc(socket, KNOT_XDP_MSG_TCP, msg);
+		knot_xdp_msg_flag_t fl = KNOT_XDP_MSG_TCP;
+		if (rl->conn->ip_loc.sin6_family == AF_INET6) {
+			fl |= KNOT_XDP_MSG_IPV6;
+		}
+
+		ret = knot_xdp_send_alloc(socket, fl, msg);
 		if (ret != KNOT_EOK) {
 			break;
 		}
@@ -471,9 +476,6 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
 		memcpy(&msg->ip_from, &rl->conn->ip_loc,  sizeof(msg->ip_from));
 		memcpy(&msg->ip_to,   &rl->conn->ip_rem,  sizeof(msg->ip_to));
 
-		if (rl->conn->ip_loc.sin6_family == AF_INET6) {
-			msg->flags |= KNOT_XDP_MSG_IPV6;
-		}
 		msg->ackno = rl->conn->seqno;
 		msg->seqno = rl->conn->ackno;
 
