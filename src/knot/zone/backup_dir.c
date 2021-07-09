@@ -86,7 +86,7 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	int ret = fprintf(file,
 	              "%s"
 	              LABEL_FILE_FORMAT
-	              "identity: %s\n"
+	              "server_identity: %s\n"
 	              "started_time: %s\n"
 	              "finished_time: %s\n"
 	              "knot_version: %s\n"
