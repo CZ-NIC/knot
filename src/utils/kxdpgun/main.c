@@ -508,16 +508,18 @@ void *xdp_gun_thread(void *_ctx)
 
 	knot_tcp_table_free(tcp_table);
 
-	char errors_str[16] = "", lost_str[16] = "";
-	if (errors > 0) {
-		(void)snprintf(errors_str, sizeof(errors_str), ", errors %lu", errors);
+	char recv_str[16] = "", lost_str[16] = "", err_str[16] = "";
+	if (!(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP)) {
+		(void)snprintf(recv_str, sizeof(recv_str), ", received %lu", local_stats.ans_recv);
 	}
 	if (lost > 0) {
 		(void)snprintf(lost_str, sizeof(lost_str), ", lost %lu", lost);
 	}
-	printf("thread#%02u: sent %lu, received %lu%s%s\n",
-	       ctx->thread_id, local_stats.qry_sent, local_stats.ans_recv,
-	       lost_str, errors_str);
+	if (errors > 0) {
+		(void)snprintf(err_str, sizeof(err_str), ", errors %lu", errors);
+	}
+	printf("thread#%02u: sent %lu%s%s%s\n",
+	       ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
 	local_stats.duration = ctx->duration;
 	collect_stats(&global_stats, &local_stats);
 
