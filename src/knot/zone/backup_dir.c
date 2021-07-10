@@ -155,7 +155,9 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 	while (knot_getline(&line, &line_size, file) != -1) {
 		int value;
 		if (sscanf(line, LABEL_FILE_FORMAT, &value) != 0) {
-			if ((BACKUP_FORMAT_1 < value) && (value < BACKUP_FORMAT_TERM)) {
+			if (value >= BACKUP_FORMAT_TERM) {
+				ret = KNOT_ENOTSUP;
+			} else if (value > BACKUP_FORMAT_1) {
 				ctx->backup_format = value;
 				ret = KNOT_EOK;
 			}

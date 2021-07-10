@@ -31,7 +31,7 @@ zones2 = t.zone("example1.", file_name="example1.file", storage=".")  \
          + t.zone("example2.", file_name="example2.file", storage=".") \
          + t.zone("example3.", file_name="example3.file", storage=".")
 t.link(zones2, master2)
-for i in range(2, 7):
+for i in range(2, 8):
     dir_from = os.path.join(t.data_dir, "backup%d" % i)
     dir_to = os.path.join(master2.dir, "backup%d" % i)
     shutil.copytree(dir_from, dir_to)
@@ -151,10 +151,17 @@ try:
 except:
     pass
 
-# Attempt to restore from unsupported backup format number, expected (malformed data).
+# Attempt to restore from unsupported backup format number, expected (operation not supported).
 try:
     master2.ctl("-f zone-restore +backupdir %s" % backup6_dir, wait=True)
     set_err("RESTORE FROM UNSUPPORTED BACKUP FORMAT VERSION ALLOWED")
+except:
+    pass
+
+# Attempt to restore from non-existant backup format number, expected (malformed data).
+try:
+    master2.ctl("-f zone-restore +backupdir %s" % backup7_dir, wait=True)
+    set_err("RESTORE FROM NON-EXISTANT BACKUP FORMAT VERSION ALLOWED")
 except:
     pass
 
