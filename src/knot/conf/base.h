@@ -20,7 +20,7 @@
 #include "libknot/yparser/ypschema.h"
 #include "contrib/qp-trie/trie.h"
 #include "contrib/ucw/lists.h"
-#include "contrib/dynarray.h"
+#include "libknot/dynarray.h"
 #include "knot/include/module.h"
 
 /*! Default template identifier. */
@@ -70,8 +70,8 @@ typedef struct {
 	bool temporary;
 } module_t;
 
-dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
-dynarray_declare(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
+knot_dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
+knot_dynarray_declare(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
 
 struct knot_catalog;
 
@@ -116,12 +116,17 @@ typedef struct {
 		bool srv_tcp_reuseport;
 		bool srv_tcp_fastopen;
 		bool srv_socket_affinity;
-		bool srv_xdp_route_check;
 		size_t srv_udp_threads;
 		size_t srv_tcp_threads;
 		size_t srv_xdp_threads;
 		size_t srv_bg_threads;
 		size_t srv_tcp_max_clients;
+		size_t xdp_tcp_max_clients;
+		size_t xdp_tcp_inbuf_max_size;
+		uint32_t xdp_tcp_idle_close;
+		uint32_t xdp_tcp_idle_reset;
+		bool xdp_tcp;
+		bool xdp_route_check;
 		int ctl_timeout;
 		conf_val_t srv_nsid;
 		bool srv_ecs;

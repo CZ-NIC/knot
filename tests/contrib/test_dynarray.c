@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "contrib/dynarray.h"
+#include "libknot/dynarray.h"
 
 #define test_capacity 5
 // minimum 3
@@ -27,8 +27,8 @@ typedef struct {
 	int x2;
 } quadrate_t;
 
-dynarray_declare(q, quadrate_t, DYNARRAY_VISIBILITY_STATIC, test_capacity);
-dynarray_define(q, quadrate_t, DYNARRAY_VISIBILITY_STATIC);
+knot_dynarray_declare(q, quadrate_t, DYNARRAY_VISIBILITY_STATIC, test_capacity);
+knot_dynarray_define(q, quadrate_t, DYNARRAY_VISIBILITY_STATIC);
 
 static q_dynarray_t q_fill(size_t howmany)
 {
@@ -50,7 +50,7 @@ static void check_arr(q_dynarray_t *q, size_t count, size_t index, const char *m
 	   "%s check: index %zu", msg, index);
 
 	size_t i = 0;
-	dynarray_foreach(q, quadrate_t, p, *q) {
+	knot_dynarray_foreach(q, quadrate_t, p, *q) {
 		ok(p->x == i && p->x2 == i * i, "%s foreach: index %zu", msg, i);
 		i++;
 	}

@@ -67,7 +67,7 @@ the following symbols:
 .UNINDENT
 .sp
 The configuration consists of several fixed sections and optional module
-sections. There are 14 fixed sections (\fBmodule\fP, \fBserver\fP, \fBcontrol\fP,
+sections. There are 15 fixed sections (\fBmodule\fP, \fBserver\fP, \fBxdp\fP, \fBcontrol\fP,
 \fBlog\fP, \fBstatistics\fP, \fBdatabase\fP, \fBkeystore\fP, \fBkey\fP, \fBremote\fP,
 \fBacl\fP, \fBsubmission\fP, \fBpolicy\fP, \fBtemplate\fP, \fBzone\fP).
 Module sections are prefixed with the \fBmod\-\fP prefix (e.g. \fBmod\-stats\fP).
@@ -197,9 +197,7 @@ server:
     udp\-max\-payload\-ipv6: SIZE
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
-    xdp\-route\-check: BOOL
     listen: ADDR[@INT] ...
-    listen\-xdp: STR[@INT] | ADDR[@INT] ...
 .ft P
 .fi
 .UNINDENT
@@ -412,14 +410,119 @@ Enable or disable sorted\-rrset rotation in the answer section of normal replies
 The rotation shift is simply determined by a query ID.
 .sp
 \fIDefault:\fP off
-.SS xdp\-route\-check
+.SS listen
+.sp
+One or more IP addresses where the server listens for incoming queries.
+Optional port specification (default is 53) can be appended to each address
+using \fB@\fP separator. Use \fB0.0.0.0\fP for all configured IPv4 addresses or
+\fB::\fP for all configured IPv6 addresses. Filesystem path can be specified
+for listening on local unix SOCK_STREAM socket. Non\-local address binding
+is automatically enabled if supported by the operating system.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP not set
+.SH XDP SECTION
+.sp
+Various options related to XDP listening, especially TCP.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+xdp:
+    listen: STR[@INT] | ADDR[@INT] ...
+    tcp: BOOL
+    tcp\-max\-clients: INT
+    tcp\-inbuf\-max\-size: SIZE
+    tcp\-idle\-close: TIME
+    tcp\-idle\-reset: TIME
+    route\-check: BOOL
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+\fBCAUTION:\fP
+.INDENT 0.0
+.INDENT 3.5
+When you change configuration parameters dynamically or via configuration file
+reload, some parameters in the XDP section require restarting the Knot server
+so that the changes take effect.
+.UNINDENT
+.UNINDENT
+.SS listen
+.sp
+One or more network device names (e.g. \fBens786f0\fP) on which the Mode XDP
+is enabled. Alternatively, an IP address can be used instead of a device name,
+but the server will still listen on all addresses belonging to the same interface!
+Optional port specification (default is 53) can be appended to each device name
+or address using \fB@\fP separator.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fBCAUTION:\fP
+.INDENT 0.0
+.INDENT 3.5
+If XDP workers only process regular DNS traffic over UDP, it is strongly
+recommended to also \fI\%listen\fP on the addresses which are
+intended to offer the DNS service, at least to fulfil the DNS requirement for
+working TCP.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS tcp
+.sp
+Also process DNS over TCP traffic with XDP workers.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+This feature is highly experimental and it may eat your hamster as well as any
+other hamsters connected to the network. Multi\-message zone transfer isn\(aqt
+supported through XDP.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP off
+.SS tcp\-max\-clients
+.sp
+A maximum number of TCP clients connected in parallel.
+.sp
+\fIDefault:\fP 1000000 (one million)
+.SS tcp\-inbuf\-max\-size
+.sp
+Maximum cumulative size of memory used for buffers of incompletely
+received messages.
+.sp
+\fIMinimum:\fP 1 MiB
+.sp
+\fIDefault:\fP 100 MiB
+.SS tcp\-idle\-close
+.sp
+Time in seconds, after which any idle connection is gracefully closed.
+.sp
+\fIMinimum:\fP 1 s
+.sp
+\fIDefault:\fP 10 s
+.SS tcp\-idle\-reset
+.sp
+Time in seconds, after which any idle connection is forcibly closed.
+.sp
+\fIMinimum:\fP 1 s
+.sp
+\fIDefault:\fP 20 s
+.SS route\-check
 .sp
 If enabled, routing information from the operating system is considered
 when processing every incoming DNS packet received over the XDP interface:
 .INDENT 0.0
 .IP \(bu 2
 If the outgoing interface of the corresponding DNS response differs from
-the incoming one, the packet is processed normally by UDP workers
+the incoming one, the packet is processed normally by UDP/TCP workers
 (XDP isn\(aqt used).
 .IP \(bu 2
 If the destination address is blackholed, unreachable, or prohibited,
@@ -443,39 +546,6 @@ If forwarding is disabled, all incoming DNS packets are dropped!
 .UNINDENT
 .sp
 \fIDefault:\fP off
-.SS listen
-.sp
-One or more IP addresses where the server listens for incoming queries.
-Optional port specification (default is 53) can be appended to each address
-using \fB@\fP separator. Use \fB0.0.0.0\fP for all configured IPv4 addresses or
-\fB::\fP for all configured IPv6 addresses. Filesystem path can be specified
-for listening on local unix SOCK_STREAM socket. Non\-local address binding
-is automatically enabled if supported by the operating system.
-.sp
-Change of this parameter requires restart of the Knot server to take effect.
-.sp
-\fIDefault:\fP not set
-.SS listen\-xdp
-.sp
-One or more network device names (e.g. \fBens786f0\fP) on which the Mode XDP
-is enabled. Alternatively, an IP address can be used instead of a device name,
-but the server will still listen on all addresses belonging to the same interface!
-Optional port specification (default is 53) can be appended to each device name
-or address using \fB@\fP separator.
-.sp
-Change of this parameter requires restart of the Knot server to take effect.
-.sp
-\fIDefault:\fP not set
-.sp
-\fBCAUTION:\fP
-.INDENT 0.0
-.INDENT 3.5
-Since XDP workers only process regular DNS traffic over UDP, it is strongly
-recommended to also \fI\%listen\fP on the addresses which are
-intended to offer the DNS service, at least to fulfil the DNS requirement for
-working TCP.
-.UNINDENT
-.UNINDENT
 .SH CONTROL SECTION
 .sp
 Configuration of the server control interface.

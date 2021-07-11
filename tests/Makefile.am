@@ -155,6 +155,12 @@ check_PROGRAMS += \
 	libknot/test_yptrafo			\
 	libknot/test_wire
 
+if ENABLE_XDP
+AM_CPPFLAGS += $(libbpf_CFLAGS)
+check_PROGRAMS += \
+	libknot/test_xdp_tcp
+endif ENABLE_XDP
+
 if HAVE_LIBUTILS
 check_PROGRAMS += \
 	utils/test_cert				\

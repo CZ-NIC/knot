@@ -24,6 +24,7 @@
 #include <netinet/in.h>
 #include <string.h>
 
+#include "libknot/endian.h"
 #include "libknot/xdp/msg.h"
 
 /* Don't fragment flag. */
@@ -48,8 +49,10 @@ enum {
 	PROT_TCP_OPT_ENDOP = 0,
 	PROT_TCP_OPT_NOOP  = 1,
 	PROT_TCP_OPT_MSS   = 2,
+	PROT_TCP_OPT_WSC   = 3, // window scale
 
 	PROT_TCP_OPT_LEN_MSS = 4,
+	PROT_TCP_OPT_LEN_WSC = 3,
 };
 
 inline static void *prot_read_tcp(void *data, knot_xdp_msg_t *msg, uint16_t *src_port, uint16_t *dst_port)
@@ -91,7 +94,8 @@ inline static void *prot_read_tcp(void *data, knot_xdp_msg_t *msg, uint16_t *src
 
 		if (opts[0] == PROT_TCP_OPT_MSS && opts[1] == PROT_TCP_OPT_LEN_MSS) {
 			msg->flags |= KNOT_XDP_MSG_MSS;
-			// TODO read MSS value
+			memcpy(&msg->mss, &opts[2], sizeof(msg->mss));
+			msg->mss = be16toh(msg->mss);
 		}
 
 		opts += opts[1];
@@ -142,7 +146,9 @@ inline static void *prot_read_ipv6(void *data, knot_xdp_msg_t *msg, void **data_
 	memcpy(&dst->sin6_addr, &ip6->daddr, sizeof(dst->sin6_addr));
 	src->sin6_family = AF_INET6;
 	dst->sin6_family = AF_INET6;
-	// Flow label is ignored.
+	src->sin6_flowinfo = 0;
+	dst->sin6_flowinfo = 0;
+	// Scope ID is ignored.
 
 	data += sizeof(*ip6);
 	*data_end = data + be16toh(ip6->payload_len);
@@ -182,7 +188,7 @@ inline static size_t prot_write_hdrs_len(const knot_xdp_msg_t *msg)
 	}
 
 	if (msg->flags & KNOT_XDP_MSG_TCP) {
-		res += sizeof(struct tcphdr) - sizeof(struct udphdr);
+		res += sizeof(struct tcphdr) - sizeof(struct udphdr) + 4; // 4 == PROT_TCP_OPT_LEN_WSC + align
 
 		if (msg->flags & KNOT_XDP_MSG_MSS) {
 			res += PROT_TCP_OPT_LEN_MSS;
@@ -257,7 +263,8 @@ inline static void prot_write_udp(void *data, const knot_xdp_msg_t *msg, void *d
 }
 
 inline static void prot_write_tcp(void *data, const knot_xdp_msg_t *msg, void *data_end,
-                                  uint16_t src_port, uint16_t dst_port, uint32_t chksum)
+                                  uint16_t src_port, uint16_t dst_port, uint32_t chksum,
+                                  uint16_t mss)
 {
 	struct tcphdr *tcp = data;
 
@@ -265,7 +272,7 @@ inline static void prot_write_tcp(void *data, const knot_xdp_msg_t *msg, void *d
 	tcp->dest    = dst_port;
 	tcp->seq     = htobe32(msg->seqno);
 	tcp->ack_seq = htobe32(msg->ackno);
-	tcp->window  = htobe16(0x8000); // TODO proper window size handling in TCP streams
+	tcp->window  = htobe16(0xffff); // Practically infinite window (see also WSC option below)
 	tcp->check   = 0; // Temporarily initialize before checksum calculation.
 
 	tcp->syn = ((msg->flags & KNOT_XDP_MSG_SYN) ? 1 : 0);
@@ -274,8 +281,13 @@ inline static void prot_write_tcp(void *data, const knot_xdp_msg_t *msg, void *d
 	tcp->rst = ((msg->flags & KNOT_XDP_MSG_RST) ? 1 : 0);
 
 	uint8_t *hdr_end = data + sizeof(*tcp);
+	hdr_end[0] = PROT_TCP_OPT_WSC;
+	hdr_end[1] = PROT_TCP_OPT_LEN_WSC;
+	hdr_end[2] = 14; // Maximum possible.
+	hdr_end += PROT_TCP_OPT_LEN_WSC;
+	*hdr_end++ = PROT_TCP_OPT_NOOP;
 	if (msg->flags & KNOT_XDP_MSG_MSS) {
-		uint16_t mss = htobe16(1460); // TODO: set proper MSS value
+		mss = htobe16(mss);
 		hdr_end[0] = PROT_TCP_OPT_MSS;
 		hdr_end[1] = PROT_TCP_OPT_LEN_MSS;
 		memcpy(&hdr_end[2], &mss, sizeof(mss));
@@ -312,7 +324,8 @@ inline static uint16_t ipv4_checksum(const uint16_t *ipv4_hdr)
 	return ~from32to16(sum32);
 }
 
-inline static void prot_write_ipv4(void *data, const knot_xdp_msg_t *msg, void *data_end)
+inline static void prot_write_ipv4(void *data, const knot_xdp_msg_t *msg,
+                                   void *data_end, uint16_t tcp_mss)
 {
 	struct iphdr *ip4 = data;
 
@@ -339,13 +352,14 @@ inline static void prot_write_ipv4(void *data, const knot_xdp_msg_t *msg, void *
 		checksum(&chk, &src->sin_addr, sizeof(src->sin_addr));
 		checksum(&chk, &dst->sin_addr, sizeof(dst->sin_addr));
 
-		prot_write_tcp(data, msg, data_end, src->sin_port, dst->sin_port, chk);
+		prot_write_tcp(data, msg, data_end, src->sin_port, dst->sin_port, chk, tcp_mss);
 	} else {
 		prot_write_udp(data, msg, data_end, src->sin_port, dst->sin_port, 0); // IPv4/UDP requires no checksum
 	}
 }
 
-inline static void prot_write_ipv6(void *data, const knot_xdp_msg_t *msg, void *data_end)
+inline static void prot_write_ipv6(void *data, const knot_xdp_msg_t *msg,
+                                   void *data_end, uint16_t tcp_mss)
 {
 	struct ipv6hdr *ip6 = data;
 
@@ -369,13 +383,14 @@ inline static void prot_write_ipv6(void *data, const knot_xdp_msg_t *msg, void *
 	checksum(&chk, &dst->sin6_addr, sizeof(dst->sin6_addr));
 
 	if (msg->flags & KNOT_XDP_MSG_TCP) {
-		prot_write_tcp(data, msg, data_end, src->sin6_port, dst->sin6_port, chk);
+		prot_write_tcp(data, msg, data_end, src->sin6_port, dst->sin6_port, chk, tcp_mss);
 	} else {
 		prot_write_udp(data, msg, data_end, src->sin6_port, dst->sin6_port, chk);
 	}
 }
 
-inline static void prot_write_eth(void *data, const knot_xdp_msg_t *msg, void *data_end)
+inline static void prot_write_eth(void *data, const knot_xdp_msg_t *msg,
+                                  void *data_end, uint16_t tcp_mss)
 {
 	struct ethhdr *eth = data;
 
@@ -386,9 +401,9 @@ inline static void prot_write_eth(void *data, const knot_xdp_msg_t *msg, void *d
 
 	if (msg->flags & KNOT_XDP_MSG_IPV6) {
 		eth->h_proto = __constant_htons(ETH_P_IPV6);
-		prot_write_ipv6(data, msg, data_end);
+		prot_write_ipv6(data, msg, data_end, tcp_mss);
 	} else {
 		eth->h_proto = __constant_htons(ETH_P_IP);
-		prot_write_ipv4(data, msg, data_end);
+		prot_write_ipv4(data, msg, data_end, tcp_mss);
 	}
 }

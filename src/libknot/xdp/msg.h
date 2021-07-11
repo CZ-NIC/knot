@@ -48,9 +48,10 @@ typedef struct knot_xdp_msg {
 	uint8_t eth_from[ETH_ALEN];
 	uint8_t eth_to[ETH_ALEN];
 	knot_xdp_msg_flag_t flags;
+	struct iovec payload;
 	uint32_t seqno;
 	uint32_t ackno;
-	struct iovec payload;
+	uint16_t mss;
 } knot_xdp_msg_t;
 
 /*! @} */

@@ -16,7 +16,6 @@ src/contrib/dnstap/reader.c
 src/contrib/dnstap/reader.h
 src/contrib/dnstap/writer.c
 src/contrib/dnstap/writer.h
-src/contrib/dynarray.h
 src/contrib/files.c
 src/contrib/files.h
 src/contrib/getline.c
@@ -259,6 +258,8 @@ src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
 src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
+src/knot/server/xdp-handler.c
+src/knot/server/xdp-handler.h
 src/knot/updates/acl.c
 src/knot/updates/acl.h
 src/knot/updates/apply.c
@@ -381,6 +382,7 @@ src/libknot/descriptor.c
 src/libknot/descriptor.h
 src/libknot/dname.c
 src/libknot/dname.h
+src/libknot/dynarray.h
 src/libknot/endian.h
 src/libknot/errcode.h
 src/libknot/error.c
@@ -425,6 +427,7 @@ src/libknot/tsig-op.h
 src/libknot/tsig.c
 src/libknot/tsig.h
 src/libknot/wire.h
+src/libknot/xdp.h
 src/libknot/xdp/bpf-consts.h
 src/libknot/xdp/bpf-kernel-obj.c
 src/libknot/xdp/bpf-kernel-obj.h
@@ -438,6 +441,8 @@ src/libknot/xdp/msg_init.h
 src/libknot/xdp/protocols.h
 src/libknot/xdp/tcp.c
 src/libknot/xdp/tcp.h
+src/libknot/xdp/tcp_iobuf.c
+src/libknot/xdp/tcp_iobuf.h
 src/libknot/xdp/xdp.c
 src/libknot/xdp/xdp.h
 src/libknot/yparser/yparser.c
@@ -607,6 +612,7 @@ tests/libknot/test_rrset-wire.c
 tests/libknot/test_rrset.c
 tests/libknot/test_tsig.c
 tests/libknot/test_wire.c
+tests/libknot/test_xdp_tcp.c
 tests/libknot/test_yparser.c
 tests/libknot/test_ypschema.c
 tests/libknot/test_yptrafo.c

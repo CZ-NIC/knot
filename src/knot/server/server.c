@@ -23,6 +23,7 @@
 
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
+#include "libknot/xdp.h"
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
@@ -221,7 +222,7 @@ static int disable_pmtudisc(int sock, int family)
 }
 
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
-                                      unsigned *thread_id_start)
+                                      bool tcp, unsigned *thread_id_start)
 {
 #ifndef ENABLE_XDP
 	assert(0);
@@ -253,6 +254,9 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 	*thread_id_start += iface.queues;
 
 	uint32_t xdp_flags = route_check ? KNOT_XDP_LISTEN_PORT_ROUTE : 0;
+	if (tcp) {
+		xdp_flags |= KNOT_XDP_LISTEN_PORT_TCP;
+	}
 
 	for (int i = 0; i < iface.queues; i++) {
 		knot_xdp_load_bpf_t mode =
@@ -278,8 +282,8 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 
 	if (ret == KNOT_EOK) {
 		knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(iface.name));
-		log_debug("initialized XDP interface %s@%u, queues %d, %s mode%s",
-		          iface.name, iface.port, iface.queues,
+		log_debug("initialized XDP interface %s@%u UDP%s, queues %d, %s mode%s",
+		          iface.name, iface.port, (tcp ? "/TCP" : ""), iface.queues,
 		          (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"),
 		          route_check ? ", route check" : "");
 	}
@@ -493,7 +497,10 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
-	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
+	if (lisxdp_val.code != KNOT_EOK) {
+		lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	}
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 
 	if (listen_val.code == KNOT_EOK) {
@@ -555,7 +562,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	free(rundir);
 
 	/* XDP sockets. */
-	bool route_check = conf->cache.srv_xdp_route_check;
+	bool xdp_tcp = conf->cache.xdp_tcp;
+	bool route_check = conf->cache.xdp_route_check;
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
@@ -564,7 +572,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 		log_info("binding to XDP interface %s", addr_str);
 
-		iface_t *new_if = server_init_xdp_iface(&addr, route_check, &thread_id);
+		iface_t *new_if = server_init_xdp_iface(&addr, route_check, xdp_tcp, &thread_id);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
@@ -850,7 +858,10 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	assert(server->ifaces);
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
-	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
+	if (lisxdp_val.code != KNOT_EOK) {
+		lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	}
 	size_t new_count = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
 	size_t old_count = server->n_ifaces;
 	if (new_count != old_count) {
@@ -909,14 +920,15 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_tcp = true;
 	static bool warn_bg = true;
 	static bool warn_listen = true;
+	static bool warn_xdp_tcp = true;
 	static bool warn_route_check = true;
 
-	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_srv_bool(conf, C_TCP_REUSEPORT)) {
+	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT)) {
 		log_warning(msg, &C_TCP_REUSEPORT[1]);
 		warn_tcp_reuseport = false;
 	}
 
-	if (warn_socket_affinity && conf->cache.srv_socket_affinity != conf_srv_bool(conf, C_SOCKET_AFFINITY)) {
+	if (warn_socket_affinity && conf->cache.srv_socket_affinity != conf_get_bool(conf, C_SRV, C_SOCKET_AFFINITY)) {
 		log_warning(msg, &C_SOCKET_AFFINITY[1]);
 		warn_socket_affinity = false;
 	}
@@ -941,8 +953,13 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 		warn_listen = false;
 	}
 
-	if (warn_route_check && conf->cache.srv_xdp_route_check != conf_srv_bool(conf, C_XDP_ROUTE_CHECK)) {
-		log_warning(msg, &C_XDP_ROUTE_CHECK[1]);
+	if (warn_xdp_tcp && conf->cache.xdp_tcp != conf_get_bool(conf, C_XDP, C_TCP)) {
+		log_warning(msg, &C_TCP[1]);
+		warn_xdp_tcp = false;
+	}
+
+	if (warn_route_check && conf->cache.xdp_route_check != conf_get_bool(conf, C_XDP, C_ROUTE_CHECK)) {
+		log_warning(msg, &C_ROUTE_CHECK[1]);
 		warn_route_check = false;
 	}
 }

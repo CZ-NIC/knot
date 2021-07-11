@@ -28,6 +28,7 @@
 #include "knot/server/dthreads.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
+#include "libknot/xdp.h"
 #include "contrib/files.h"
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
@@ -1135,23 +1136,6 @@ char* conf_db_txn(
 	return dbdir;
 }
 
-conf_val_t conf_db_param_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn,
-	const yp_name_t *param)
-{
-	return conf_get_txn(conf, txn, C_DB, param);
-}
-
-bool conf_srv_bool_txn(
-	conf_t *conf,
-	knot_db_txn_t *txn,
-	const yp_name_t *param)
-{
-	conf_val_t val = conf_get_txn(conf, txn, C_SRV, param);
-	return conf_bool(&val);
-}
-
 size_t conf_udp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
@@ -1184,7 +1168,10 @@ size_t conf_xdp_threads_txn(
 {
 	size_t workers = 0;
 
-	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_LISTEN_XDP);
+	conf_val_t val = conf_get_txn(conf, txn, C_XDP, C_LISTEN);
+	if (val.code != KNOT_EOK) {
+		val = conf_get_txn(conf, txn, C_SRV, C_LISTEN_XDP);
+	}
 	while (val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&val, NULL);
 		conf_xdp_iface_t iface;

@@ -23,12 +23,14 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "libknot/attribute.h"
 #include "libknot/endian.h"
 #include "libknot/errcode.h"
 #include "libknot/xdp/bpf-user.h"
+#include "libknot/xdp/eth.h"
 #include "libknot/xdp/msg_init.h"
 #include "libknot/xdp/protocols.h"
 #include "libknot/xdp/xdp.h"
@@ -40,6 +42,9 @@
 #define UMEM_RING_LEN_RX (UMEM_FRAME_COUNT_RX * 2)
 #define UMEM_RING_LEN_TX (UMEM_FRAME_COUNT_TX * 2)
 #define UMEM_FRAME_COUNT (UMEM_FRAME_COUNT_RX + UMEM_FRAME_COUNT_TX)
+
+#define ALLOC_RETRY_NUM   15
+#define ALLOC_RETRY_DELAY 20 // In nanoseconds.
 
 /* With recent compilers we statically check #defines for settings that
  * get refused by AF_XDP drivers (in current versions, at least). */
@@ -179,6 +184,12 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 		return ret;
 	}
 
+	(*socket)->frame_limit = FRAME_SIZE;
+	ret = knot_eth_mtu(if_name);
+	if (ret > 0) {
+		(*socket)->frame_limit = MIN((unsigned)ret, (*socket)->frame_limit);
+	}
+
 	ret = kxsk_socket_start(iface, listen_port, (*socket)->xsk);
 	if (ret != KNOT_EOK) {
 		xsk_socket__delete((*socket)->xsk);
@@ -196,6 +207,10 @@ _public_
 void knot_xdp_deinit(knot_xdp_socket_t *socket)
 {
 	if (socket == NULL) {
+		return;
+	}
+	if (unlikely(socket->send_mock != NULL)) {
+		free(socket);
 		return;
 	}
 
@@ -228,7 +243,7 @@ static void tx_free_relative(struct kxsk_umem *umem, uint64_t addr_relative)
 _public_
 void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 {
-	if (socket == NULL) {
+	if (socket == NULL || unlikely(socket->send_mock != NULL)) {
 		return;
 	}
 
@@ -250,10 +265,21 @@ void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 	xsk_ring_cons__release(cq, completed);
 }
 
-static struct umem_frame *alloc_tx_frame(struct kxsk_umem *umem)
+static struct umem_frame *alloc_tx_frame(knot_xdp_socket_t *socket)
 {
-	if (unlikely(umem->tx_free_count == 0)) {
-		return NULL;
+	if (unlikely(socket->send_mock != NULL)) {
+		return malloc(sizeof(struct umem_frame));
+	}
+
+	const struct timespec delay = { .tv_nsec = ALLOC_RETRY_DELAY };
+	struct kxsk_umem *umem = socket->umem;
+
+	for (int i = 0; unlikely(umem->tx_free_count == 0); i++) {
+		if (i == ALLOC_RETRY_NUM) {
+			return NULL;
+		}
+		nanosleep(&delay, NULL);
+		knot_xdp_send_prepare(socket);
 	}
 
 	uint32_t index = umem->tx_free_indices[--umem->tx_free_count];
@@ -275,7 +301,7 @@ int knot_xdp_send_alloc(knot_xdp_socket_t *socket, knot_xdp_msg_flag_t flags,
 		return KNOT_EINVAL;
 	}
 
-	struct umem_frame *uframe = alloc_tx_frame(socket->umem);
+	struct umem_frame *uframe = alloc_tx_frame(socket);
 	if (uframe == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -294,7 +320,7 @@ int knot_xdp_reply_alloc(knot_xdp_socket_t *socket, const knot_xdp_msg_t *query,
 		return KNOT_EINVAL;
 	}
 
-	struct umem_frame *uframe = alloc_tx_frame(socket->umem);
+	struct umem_frame *uframe = alloc_tx_frame(socket);
 	if (uframe == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -307,6 +333,10 @@ int knot_xdp_reply_alloc(knot_xdp_socket_t *socket, const knot_xdp_msg_t *query,
 
 static void free_unsent(knot_xdp_socket_t *socket, const knot_xdp_msg_t *msg)
 {
+	if (unlikely(socket->send_mock != NULL)) {
+		free(msg->payload.iov_base - prot_write_hdrs_len(msg));
+		return;
+	}
 	uint64_t addr_relative = (uint8_t *)msg->payload.iov_base
 	                         - socket->umem->frames->bytes;
 	tx_free_relative(socket->umem, addr_relative);
@@ -318,6 +348,13 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 {
 	if (socket == NULL || msgs == NULL || sent == NULL) {
 		return KNOT_EINVAL;
+	}
+	if (unlikely(socket->send_mock != NULL)) {
+		int ret = socket->send_mock(socket, msgs, count, sent);
+		for (uint32_t i = 0; i < count; ++i) {
+			free_unsent(socket, &msgs[i]);
+		}
+		return ret;
 	}
 
 	/* Now we want to do something close to
@@ -339,7 +376,8 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 			size_t hdr_len = prot_write_hdrs_len(msg);
 			size_t tot_len = hdr_len + msg->payload.iov_len;
 			uint8_t *msg_beg = msg->payload.iov_base - hdr_len;
-			prot_write_eth(msg_beg, msg, msg_beg + tot_len);
+			prot_write_eth(msg_beg, msg, msg_beg + tot_len,
+			               socket->frame_limit - hdr_len);
 
 			*xsk_ring_prod__tx_desc(&socket->tx, idx++) = (struct xdp_desc) {
 				.addr = msg_beg - socket->umem->frames->bytes,
@@ -428,6 +466,7 @@ int knot_xdp_recv(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
 
 		msg->payload.iov_base = payl_start;
 		msg->payload.iov_len = payl_end - payl_start;
+		msg->mss = MIN(msg->mss, FRAME_SIZE - (payl_start - (void *)uframe_p));
 
 		if (wire_size != NULL) {
 			(*wire_size) += desc->len;

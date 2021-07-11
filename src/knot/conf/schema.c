@@ -206,11 +206,10 @@ static const yp_item_t desc_server[] = {
 	                                                1232, YP_SSIZE } },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
-	{ C_XDP_ROUTE_CHECK,      YP_TBOOL, YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
-	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
+	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp_old } },
 	{ C_MAX_TCP_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
 	{ C_TCP_HSHAKE_TIMEOUT,   YP_TINT,  YP_VINT = { 0, INT32_MAX, 5, YP_STIME } },
 	{ C_TCP_REPLY_TIMEOUT,    YP_TINT,  YP_VINT = { 0, INT32_MAX, 10, YP_STIME } },
@@ -223,6 +222,17 @@ static const yp_item_t desc_server[] = {
 	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                                1232, YP_SSIZE } },
+	{ NULL }
+};
+
+static const yp_item_t desc_xdp[] = {
+	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp } },
+	{ C_TCP,                  YP_TBOOL, YP_VNONE },
+	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 1000000 } },
+	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
+	{ C_TCP_IDLE_CLOSE,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },
+	{ C_TCP_IDLE_RESET,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 20, YP_STIME } },
+	{ C_ROUTE_CHECK,          YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 
@@ -445,6 +455,7 @@ const yp_item_t conf_schema[] = {
 	{ C_MODULE,   YP_TGRP, YP_VGRP = { desc_module }, YP_FMULTI | CONF_IO_FRLD_ALL |
 	                                                  CONF_IO_FCHECK_ZONES, { load_module } },
 	{ C_SRV,      YP_TGRP, YP_VGRP = { desc_server }, CONF_IO_FRLD_SRV, { check_server } },
+	{ C_XDP,      YP_TGRP, YP_VGRP = { desc_xdp } },
 	{ C_CTL,      YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_LOG,      YP_TGRP, YP_VGRP = { desc_log }, YP_FMULTI | CONF_IO_FRLD_LOG },
 	{ C_STATS,    YP_TGRP, YP_VGRP = { desc_stats }, CONF_IO_FRLD_SRV },

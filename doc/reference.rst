@@ -32,7 +32,7 @@ the following symbols:
 - \| – Choice
 
 The configuration consists of several fixed sections and optional module
-sections. There are 14 fixed sections (``module``, ``server``, ``control``,
+sections. There are 15 fixed sections (``module``, ``server``, ``xdp``, ``control``,
 ``log``, ``statistics``, ``database``, ``keystore``, ``key``, ``remote``,
 ``acl``, ``submission``, ``policy``, ``template``, ``zone``).
 Module sections are prefixed with the ``mod-`` prefix (e.g. ``mod-stats``).
@@ -148,9 +148,7 @@ General options related to the server.
      udp-max-payload-ipv6: SIZE
      edns-client-subnet: BOOL
      answer-rotation: BOOL
-     xdp-route-check: BOOL
      listen: ADDR[@INT] ...
-     listen-xdp: STR[@INT] | ADDR[@INT] ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -429,33 +427,6 @@ The rotation shift is simply determined by a query ID.
 
 *Default:* off
 
-.. _server_xdp-route-check:
-
-xdp-route-check
----------------
-
-If enabled, routing information from the operating system is considered
-when processing every incoming DNS packet received over the XDP interface:
-
-- If the outgoing interface of the corresponding DNS response differs from
-  the incoming one, the packet is processed normally by UDP workers
-  (XDP isn't used).
-- If the destination address is blackholed, unreachable, or prohibited,
-  the DNS packet is dropped without any response.
-- The destination MAC address for the response is taken from the routing system.
-
-If disabled, symmetrical routing is applied. It means that the query source
-MAC address is used as a response destination MAC address.
-
-Change of this parameter requires restart of the Knot server to take effect.
-
-.. NOTE::
-   This mode requires forwarding enabled on the loopback interface
-   (``sysctl -w net.ipv4.conf.lo.forwarding=1`` and ``sysctl -w net.ipv6.conf.lo.forwarding=1``).
-   If forwarding is disabled, all incoming DNS packets are dropped!
-
-*Default:* off
-
 .. _server_listen:
 
 listen
@@ -472,10 +443,33 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
-.. _server_listen-xdp:
+.. _XDP section:
 
-listen-xdp
-----------
+XDP section
+===========
+
+Various options related to XDP listening, especially TCP.
+
+::
+
+ xdp:
+     listen: STR[@INT] | ADDR[@INT] ...
+     tcp: BOOL
+     tcp-max-clients: INT
+     tcp-inbuf-max-size: SIZE
+     tcp-idle-close: TIME
+     tcp-idle-reset: TIME
+     route-check: BOOL
+
+.. CAUTION::
+   When you change configuration parameters dynamically or via configuration file
+   reload, some parameters in the XDP section require restarting the Knot server
+   so that the changes take effect.
+
+.. _xdp_listen:
+
+listen
+------
 
 One or more network device names (e.g. ``ens786f0``) on which the :ref:`Mode XDP`
 is enabled. Alternatively, an IP address can be used instead of a device name,
@@ -485,13 +479,99 @@ or address using ``@`` separator.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
-*Default:* not set
-
 .. CAUTION::
-   Since XDP workers only process regular DNS traffic over UDP, it is strongly
+   If XDP workers only process regular DNS traffic over UDP, it is strongly
    recommended to also :ref:`listen <server_listen>` on the addresses which are
    intended to offer the DNS service, at least to fulfil the DNS requirement for
    working TCP.
+
+*Default:* not set
+
+.. _xdp_tcp:
+
+tcp
+---
+
+Also process DNS over TCP traffic with XDP workers.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+.. WARNING::
+   This feature is highly experimental and it may eat your hamster as well as any
+   other hamsters connected to the network. Multi-message zone transfer isn't
+   supported through XDP.
+
+*Default:* off
+
+.. _xdp_tcp-max-clients:
+
+tcp-max-clients
+---------------
+
+A maximum number of TCP clients connected in parallel.
+
+*Default:* 1000000 (one million)
+
+.. _xdp_tcp-inbuf-max-size:
+
+tcp-inbuf-max-size
+------------------
+
+Maximum cumulative size of memory used for buffers of incompletely
+received messages.
+
+*Minimum:* 1 MiB
+
+*Default:* 100 MiB
+
+.. _xdp_tcp-idle-close:
+
+tcp-idle-close
+--------------
+
+Time in seconds, after which any idle connection is gracefully closed.
+
+*Minimum:* 1 s
+
+*Default:* 10 s
+
+.. _xdp_tcp-idle-reset:
+
+tcp-idle-reset
+--------------
+
+Time in seconds, after which any idle connection is forcibly closed.
+
+*Minimum:* 1 s
+
+*Default:* 20 s
+
+.. _xdp_route-check:
+
+route-check
+-----------
+
+If enabled, routing information from the operating system is considered
+when processing every incoming DNS packet received over the XDP interface:
+
+- If the outgoing interface of the corresponding DNS response differs from
+  the incoming one, the packet is processed normally by UDP/TCP workers
+  (XDP isn't used).
+- If the destination address is blackholed, unreachable, or prohibited,
+  the DNS packet is dropped without any response.
+- The destination MAC address for the response is taken from the routing system.
+
+If disabled, symmetrical routing is applied. It means that the query source
+MAC address is used as a response destination MAC address.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+.. NOTE::
+   This mode requires forwarding enabled on the loopback interface
+   (``sysctl -w net.ipv4.conf.lo.forwarding=1`` and ``sysctl -w net.ipv6.conf.lo.forwarding=1``).
+   If forwarding is disabled, all incoming DNS packets are dropped!
+
+*Default:* off
 
 .. _Control section:
 

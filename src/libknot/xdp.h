@@ -15,29 +15,21 @@
  */
 
 /*!
- * \brief UDP sockets threading model.
+ * \file
  *
- * The master socket locks one worker thread at a time
- * and saves events in it's own backing store for asynchronous processing.
- * The worker threads work asynchronously in thread pool.
+ * \brief Convenience header for including XDP-related stuff.
+ *
+ * \addtogroup libknot
+ * @{
  */
 
 #pragma once
 
-#include "knot/server/dthreads.h"
+#if ENABLE_XDP
+#include "libknot/xdp/xdp.h"
+#include "libknot/xdp/bpf-consts.h"
+#include "libknot/xdp/eth.h"
+#include "libknot/xdp/tcp.h"
+#endif
 
-#define RECVMMSG_BATCHLEN 10 /*!< Default recvmmsg() batch size. */
-
-/*!
- * \brief UDP handler thread runnable.
- *
- * Listen to DNS datagrams in a loop on a UDP socket and
- * reply to them. This runnable is designed to be used as coherent
- * and implements cancellation point.
- *
- * \param thread Associated thread from DThreads unit.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
- */
-int udp_master(dthread_t *thread);
+/*! @} */

@@ -81,6 +81,7 @@
 /libknot/test_rrset
 /libknot/test_rrset-wire
 /libknot/test_tsig
+/libknot/test_xdp_tcp
 /libknot/test_yparser
 /libknot/test_ypschema
 /libknot/test_yptrafo

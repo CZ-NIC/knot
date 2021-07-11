@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "contrib/dynarray.h"
+#include "libknot/dynarray.h"
 #include "libdnssec/keystore.h"
 #include "libdnssec/sign.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
@@ -46,7 +46,7 @@ typedef struct {
 	bool is_revoked;
 } zone_key_t;
 
-dynarray_declare(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_NORMAL, 1)
+knot_dynarray_declare(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_NORMAL, 1)
 
 typedef struct {
 	size_t count;

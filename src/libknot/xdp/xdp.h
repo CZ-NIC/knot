@@ -33,10 +33,6 @@
 #include "libknot/xdp/bpf-consts.h"
 #include "libknot/xdp/msg.h"
 
-#ifdef ENABLE_XDP
-#define KNOT_XDP_AVAILABLE	1
-#endif
-
 /*!
  * \brief Styles of loading BPF program.
  *
@@ -58,7 +54,7 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
 /*!
  * \brief Initialize XDP socket.
  *
- * \param socket       Socket ctx.
+ * \param socket       XDP socket.
  * \param if_name      Name of the net iface (e.g. eth0).
  * \param if_queue     Network card queue to be used (normally 1 socket per each queue).
  * \param listen_port  Port to listen on, or KNOT_XDP_LISTEN_PORT_* flag.

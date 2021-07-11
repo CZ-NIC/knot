@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "libknot/xdp/msg.h"
+#include "libknot/xdp/tcp.h"
 #include "libdnssec/random.h"
 
 inline static bool empty_msg(const knot_xdp_msg_t *msg)
@@ -44,12 +45,15 @@ inline static void msg_init(knot_xdp_msg_t *msg, knot_xdp_msg_flag_t flags)
 	if (flags & KNOT_XDP_MSG_TCP) {
 		msg->ackno = 0;
 		msg->seqno = dnssec_random_uint32_t();
+		if (flags & KNOT_XDP_MSG_SYN) {
+			msg->flags |= KNOT_XDP_MSG_MSS;
+		}
 	}
 }
 
 inline static void msg_init_reply(knot_xdp_msg_t *msg, const knot_xdp_msg_t *query)
 {
-	msg_init_base(msg, query->flags & (KNOT_XDP_MSG_IPV6 | KNOT_XDP_MSG_TCP));
+	msg_init_base(msg, query->flags & (KNOT_XDP_MSG_IPV6 | KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_MSS));
 
 	memcpy(msg->eth_from, query->eth_to,   ETH_ALEN);
 	memcpy(msg->eth_to,   query->eth_from, ETH_ALEN);
@@ -58,11 +62,7 @@ inline static void msg_init_reply(knot_xdp_msg_t *msg, const knot_xdp_msg_t *que
 	memcpy(&msg->ip_to,   &query->ip_from, sizeof(msg->ip_to));
 
 	if (msg->flags & KNOT_XDP_MSG_TCP) {
-		msg->ackno = query->seqno;
-		msg->ackno += query->payload.iov_len;
-		if (query->flags & (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_FIN)) {
-			msg->ackno++;
-		}
+		msg->ackno = knot_tcp_next_seqno(query);
 		msg->seqno = query->ackno;
 		if (msg->seqno == 0) {
 			msg->seqno = dnssec_random_uint32_t();

@@ -16,6 +16,7 @@ nobase_include_libknot_HEADERS = \
 	libknot/cookies.h			\
 	libknot/descriptor.h			\
 	libknot/dname.h				\
+	libknot/dynarray.h			\
 	libknot/endian.h			\
 	libknot/errcode.h			\
 	libknot/error.h				\
@@ -54,7 +55,8 @@ nobase_include_libknot_HEADERS = \
 	libknot/yparser/ypformat.h		\
 	libknot/yparser/ypschema.h		\
 	libknot/yparser/yptrafo.h		\
-	libknot/version.h
+	libknot/version.h			\
+	libknot/xdp.h
 
 libknot_la_SOURCES = \
 	libknot/codes.c				\
@@ -95,6 +97,7 @@ nobase_include_libknot_HEADERS += \
 	libknot/xdp/eth.h			\
 	libknot/xdp/msg.h			\
 	libknot/xdp/tcp.h			\
+	libknot/xdp/tcp_iobuf.h			\
 	libknot/xdp/xdp.h
 
 libknot_la_SOURCES  += \
@@ -106,6 +109,7 @@ libknot_la_SOURCES  += \
 	libknot/xdp/msg_init.h			\
 	libknot/xdp/protocols.h			\
 	libknot/xdp/tcp.c			\
+	libknot/xdp/tcp_iobuf.c			\
 	libknot/xdp/xdp.c
 endif ENABLE_XDP
 

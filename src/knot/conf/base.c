@@ -125,6 +125,7 @@ static void init_cache(
 	static bool   first_init = true;
 	static bool   running_tcp_reuseport;
 	static bool   running_socket_affinity;
+	static bool   running_xdp_tcp;
 	static bool   running_route_check;
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
@@ -132,9 +133,10 @@ static void init_cache(
 	static size_t running_bg_threads;
 
 	if (first_init || reinit_cache) {
-		running_tcp_reuseport = conf_srv_bool(conf, C_TCP_REUSEPORT);
-		running_socket_affinity = conf_srv_bool(conf, C_SOCKET_AFFINITY);
-		running_route_check = conf_srv_bool(conf, C_XDP_ROUTE_CHECK);
+		running_tcp_reuseport = conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT);
+		running_socket_affinity = conf_get_bool(conf, C_SRV, C_SOCKET_AFFINITY);
+		running_xdp_tcp = conf_get_bool(conf, C_XDP, C_TCP);
+		running_route_check = conf_get_bool(conf, C_XDP, C_ROUTE_CHECK);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
@@ -171,8 +173,6 @@ static void init_cache(
 
 	conf->cache.srv_socket_affinity = running_socket_affinity;
 
-	conf->cache.srv_xdp_route_check = running_route_check;
-
 	conf->cache.srv_udp_threads = running_udp_threads;
 
 	conf->cache.srv_tcp_threads = running_tcp_threads;
@@ -182,6 +182,22 @@ static void init_cache(
 	conf->cache.srv_bg_threads = running_bg_threads;
 
 	conf->cache.srv_tcp_max_clients = conf_tcp_max_clients(conf);
+
+	val = conf_get(conf, C_XDP, C_TCP_MAX_CLIENTS);
+	conf->cache.xdp_tcp_max_clients = conf_int(&val);
+
+	val = conf_get(conf, C_XDP, C_TCP_INBUF_MAX_SIZE);
+	conf->cache.xdp_tcp_inbuf_max_size = conf_int(&val);
+
+	val = conf_get(conf, C_XDP, C_TCP_IDLE_CLOSE);
+	conf->cache.xdp_tcp_idle_close = conf_int(&val);
+
+	val = conf_get(conf, C_XDP, C_TCP_IDLE_RESET);
+	conf->cache.xdp_tcp_idle_reset = conf_int(&val);
+
+	conf->cache.xdp_tcp = running_xdp_tcp;
+
+	conf->cache.xdp_route_check = running_route_check;
 
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;

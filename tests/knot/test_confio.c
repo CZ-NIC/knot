@@ -890,6 +890,7 @@ static void test_conf_io_list(void)
 	ok(conf_io_list(NULL, &io) ==
 	   KNOT_EOK, "list schema");
 	ref = "server\n"
+	      "xdp\n"
 	      "control\n"
 	      "remote\n"
 	      "template\n"
@@ -909,7 +910,6 @@ static void test_conf_io_list(void)
 	      "server.tcp-max-clients\n"
 	      "server.tcp-reuseport\n"
 	      "server.tcp-fastopen\n"
-	      "server.xdp-route-check\n"
 	      "server.socket-affinity\n"
 	      "server.udp-workers\n"
 	      "server.tcp-workers\n"
@@ -932,7 +932,6 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_MAX_CLIENTS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_REUSEPORT,	  YP_TBOOL, YP_VNONE },
 	{ C_TCP_FASTOPEN,	  YP_TBOOL, YP_VNONE },
-	{ C_XDP_ROUTE_CHECK,	  YP_TBOOL, YP_VNONE },
 	{ C_SOCKET_AFFINITY,	  YP_TBOOL, YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
@@ -942,6 +941,16 @@ static const yp_item_t desc_server[] = {
 	{ C_UDP_MAX_PAYLOAD_IPV6, YP_TINT,  YP_VNONE },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
+	{ NULL }
+};
+
+static const yp_item_t desc_xdp[] = {
+	{ C_TCP,                YP_TBOOL, YP_VNONE },
+	{ C_TCP_MAX_CLIENTS,    YP_TINT,  YP_VNONE },
+	{ C_TCP_INBUF_MAX_SIZE, YP_TINT,  YP_VNONE },
+	{ C_TCP_IDLE_CLOSE,     YP_TINT,  YP_VNONE },
+	{ C_TCP_IDLE_RESET,     YP_TINT,  YP_VNONE },
+	{ C_ROUTE_CHECK,        YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 
@@ -985,6 +994,7 @@ static const yp_item_t desc_zone[] = {
 
 const yp_item_t test_schema[] = {
 	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
+	{ C_XDP,  YP_TGRP, YP_VGRP = { desc_xdp } },
 	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },

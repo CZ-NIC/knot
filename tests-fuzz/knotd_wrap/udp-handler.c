@@ -35,7 +35,7 @@ static inline void next(udp_stdin_t *rq)
 	}
 }
 
-static void *udp_stdin_init(void)
+static void *udp_stdin_init(_unused_ void *xdp_sock)
 {
 	udp_stdin_t *rq = calloc(1, sizeof(udp_stdin_t));
 	if (rq == NULL) {
@@ -62,9 +62,8 @@ static void udp_stdin_deinit(void *d)
 	free(d);
 }
 
-static int udp_stdin_recv(int fd, void *d, void *unused)
+static int udp_stdin_recv(_unused_ int fd, void *d)
 {
-	UNUSED(unused);
 	udp_stdin_t *rq = (udp_stdin_t *)d;
 	rq->iov[RX].iov_len = fread(rq->iov[RX].iov_base, 1,
 	                            KNOT_WIRE_MAX_PKTSIZE, stdin);
@@ -75,20 +74,16 @@ static int udp_stdin_recv(int fd, void *d, void *unused)
 	return rq->iov[RX].iov_len;
 }
 
-static int udp_stdin_handle(udp_context_t *ctx, void *d, void *unused)
+static void udp_stdin_handle(udp_context_t *ctx, void *d)
 {
-	UNUSED(unused);
 	udp_stdin_t *rq = (udp_stdin_t *)d;
 	udp_handle(ctx, STDIN_FILENO, &rq->addr, &rq->iov[RX], &rq->iov[TX], false);
-	return 0;
 }
 
-static int udp_stdin_send(void *d, void *unused)
+static void udp_stdin_send(void *d)
 {
-	UNUSED(unused);
 	udp_stdin_t *rq = (udp_stdin_t *)d;
 	next(rq);
-	return 0;
 }
 
 static udp_api_t stdin_api = {
