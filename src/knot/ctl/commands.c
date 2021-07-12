@@ -681,6 +681,7 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (zone->control_update == NULL) {
+		args->suppress = true;
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
@@ -733,6 +734,7 @@ static int zone_txn_abort(zone_t *zone, ctl_args_t *args)
 	UNUSED(args);
 
 	if (zone->control_update == NULL) {
+		args->suppress = true;
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
@@ -917,6 +919,7 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 {
 	if (zone->control_update == NULL) {
+		args->suppress = true;
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
@@ -1025,6 +1028,7 @@ static int send_changeset(changeset_t *ch, send_ctx_t *ctx)
 static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
 {
 	if (zone->control_update == NULL) {
+		args->suppress = true;
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
@@ -1133,6 +1137,7 @@ parser_failed:
 static int zone_txn_set(zone_t *zone, ctl_args_t *args)
 {
 	if (zone->control_update == NULL) {
+		args->suppress = true;
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
@@ -1156,6 +1161,7 @@ static int zone_txn_set(zone_t *zone, ctl_args_t *args)
 static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 {
 	if (zone->control_update == NULL) {
+		args->suppress = true;
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
