@@ -23,16 +23,23 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "contrib/files.h"
 #include "knot/zone/backup.h"
+
+#include "contrib/files.h"
+#include "contrib/getline.h"
+#include "contrib/macros.h"
+#include "contrib/string.h"
 #include "knot/catalog/catalog_db.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
+#include "knot/zone/backup_dir.h"
+#include "knot/zone/zonefile.h"
 #include "libdnssec/error.h"
-#include "contrib/files.h"
-#include "contrib/string.h"
+
+// Current backup format version for output.
+#define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.
 
 static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 {
@@ -45,12 +52,7 @@ static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
-#define BACKUP_LOCKFILE(ctx, lockfile_name) \
-	size_t _backup_dir_len = strlen((ctx)->backup_dir); \
-	char lockfile_name[_backup_dir_len + 22]; \
-	sprintf(lockfile_name, "%s/knot.backup.lockfile", (ctx)->backup_dir);
-
-int zone_backup_init(bool restore_mode, const char *backup_dir,
+int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx)
 {
@@ -65,25 +67,22 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 		return KNOT_ENOMEM;
 	}
 	ctx->restore_mode = restore_mode;
+	ctx->forced = forced;
+	ctx->backup_format = BACKUP_VERSION;
 	ctx->backup_global = false;
 	ctx->readers = 1;
+	ctx->failed = false;
+	ctx->init_time = time(NULL);
+	ctx->zone_count = 0;
 	ctx->backup_dir = (char *)(ctx + 1);
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 
-	BACKUP_LOCKFILE(ctx, lockfile);
-	if (!restore_mode) {
-		int ret = make_dir(backup_dir, S_IRWXU|S_IRWXG, true);
-		if (ret != KNOT_EOK) {
-			free(ctx);
-			return ret;
-		}
-	}
-
-	ctx->lock_file = open(lockfile, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
-	if (ctx->lock_file < 0) {
+	// Backup directory, lock file, label file.
+	// In restore, set the backup format.
+	int ret = backupdir_init(ctx);
+	if (ret != KNOT_EOK) {
 		free(ctx);
-		// Make the reported error better understandable than KNOT_EEXIST.
-		return errno == EEXIST ? KNOT_EBUSY : knot_map_errno();
+		return ret;
 	}
 
 	pthread_mutex_init(&ctx->readers_mutex, NULL);
@@ -105,11 +104,13 @@ int zone_backup_init(bool restore_mode, const char *backup_dir,
 	return KNOT_EOK;
 }
 
-void zone_backup_deinit(zone_backup_ctx_t *ctx)
+int zone_backup_deinit(zone_backup_ctx_t *ctx)
 {
 	if (ctx == NULL) {
-		return;
+		return KNOT_ENOENT;
 	}
+
+	int ret = KNOT_EOK;
 
 	pthread_mutex_lock(&ctx->readers_mutex);
 	assert(ctx->readers > 0);
@@ -123,14 +124,12 @@ void zone_backup_deinit(zone_backup_ctx_t *ctx)
 		knot_lmdb_deinit(&ctx->bck_kasp_db);
 		pthread_mutex_destroy(&ctx->readers_mutex);
 
-		close(ctx->lock_file);
-		BACKUP_LOCKFILE(ctx, lockfile);
-		unlink(lockfile);
-
+		ret = backupdir_deinit(ctx);
 		zone_backups_rem(ctx);
-
 		free(ctx);
 	}
+
+	return ret;
 }
 
 void zone_backups_init(zone_backup_ctxs_t *ctxs)
@@ -146,7 +145,8 @@ void zone_backups_deinit(zone_backup_ctxs_t *ctxs)
 		log_warning("backup to '%s' in progress, terminating, will be incomplete",
 		            ctx->backup_dir);
 		ctx->readers = 1; // ensure full deinit
-		zone_backup_deinit(ctx);
+		ctx->failed = true;
+		(void)zone_backup_deinit(ctx);
 	}
 	pthread_mutex_destroy(&ctxs->mutex);
 }
@@ -229,7 +229,86 @@ static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)
 	return policy;
 }
 
-#define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)", ctx->restore_mode ? "restore" : "backup", (action), knot_strerror(ret))
+#define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)", ctx->restore_mode ? \
+                         "restore" : "backup", (action), knot_strerror(ret))
+#define LOG_MARK_FAIL(action) LOG_FAIL(action); \
+                              ctx->failed = true
+
+#define ABORT_IF_ENOMEM(param)	if (param == NULL) { \
+					ret = KNOT_ENOMEM; \
+					goto done; \
+				}
+
+static int backup_zonefile(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
+{
+	int ret = KNOT_EOK;
+
+	char *local_zf = conf_zonefile(conf, zone->name);
+	char *backup_zfiles_dir = NULL, *backup_zf = NULL, *zone_name_str;
+
+	switch (ctx->backup_format) {
+	case BACKUP_FORMAT_1:
+		backup_zf = dir_file(ctx->backup_dir, local_zf);
+		ABORT_IF_ENOMEM(backup_zf);
+		break;
+	case BACKUP_FORMAT_2:
+	default:
+		backup_zfiles_dir = dir_file(ctx->backup_dir, "zonefiles");
+		ABORT_IF_ENOMEM(backup_zfiles_dir);
+		zone_name_str = knot_dname_to_str_alloc(zone->name);
+		ABORT_IF_ENOMEM(zone_name_str);
+		backup_zf = sprintf_alloc("%s/%szone", backup_zfiles_dir, zone_name_str);
+		free(zone_name_str);
+		ABORT_IF_ENOMEM(backup_zf);
+	}
+
+	if (ctx->restore_mode) {
+		struct stat st;
+		if (stat(backup_zf, &st) == 0) {
+			ret = make_path(local_zf, S_IRWXU | S_IRWXG);
+			if (ret == KNOT_EOK) {
+				ret = copy_file(local_zf, backup_zf);
+			}
+		} else {
+			ret = errno == ENOENT ? KNOT_EFILE : knot_map_errno();
+			/* If there's no zone file in the backup, remove any old zone file
+			 * from the repository.
+			 */
+			if (ret == KNOT_EFILE) {
+				unlink(local_zf);
+			}
+		}
+	} else {
+		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+		bool can_flush = (conf_int(&val) > -1);
+
+		ret = make_dir(backup_zfiles_dir, S_IRWXU | S_IRWXG, true);
+		if (ret == KNOT_EOK) {
+			if (can_flush) {
+				if (zone->contents != NULL) {
+					ret = zonefile_write(backup_zf, zone->contents);
+				} else {
+					log_zone_notice(zone->name,
+					                "empty zone, skipping a zone file backup");
+				}
+			} else {
+				ret = copy_file(backup_zf, local_zf);
+			}
+		}
+	}
+
+done:
+	free(backup_zf);
+	free(backup_zfiles_dir);
+	free(local_zf);
+	if (ret == KNOT_EFILE) {
+		log_zone_notice(zone->name, "no zone file, skipping a zone file %s",
+		                ctx->restore_mode ? "restore" : "backup");
+		ret = KNOT_EOK;
+	}
+
+	return ret;
+}
 
 static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 {
@@ -294,50 +373,12 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 	int ret = KNOT_EOK;
+	int ret_deinit;
 
 	if (ctx->backup_zonefile) {
-		char *local_zf = conf_zonefile(conf, zone->name);
-		char *backup_zf = dir_file(ctx->backup_dir, local_zf);
-
-		if (ctx->restore_mode) {
-			struct stat st;
-			if (stat(backup_zf, &st) == 0) {
-				ret = make_path(local_zf, S_IRWXU | S_IRWXG);
-				if (ret == KNOT_EOK) {
-					ret = copy_file(local_zf, backup_zf);
-				}
-			} else {
-				ret = errno == ENOENT ? KNOT_EFILE : knot_map_errno();
-				/* If there's no zone file in the backup, remove any old zone file
-				 * from the repository.
-				 */
-				if (ret == KNOT_EFILE) {
-					unlink(local_zf);
-				}
-			}
-		} else {
-			conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-			bool can_flush = (conf_int(&val) > -1);
-
-			if (can_flush) {
-				if (zone->contents != NULL) {
-					ret = zone_dump_to_dir(conf, zone, ctx->backup_dir);
-				} else {
-					log_zone_notice(zone->name, "empty zone, skipping a zone file backup");
-				}
-			} else {
-				ret = copy_file(backup_zf, local_zf);
-			}
-		}
-
-		free(backup_zf);
-		free(local_zf);
-		if (ret == KNOT_EFILE) {
-			log_zone_notice(zone->name, "no zone file, skipping a zone file %s",
-			                ctx->restore_mode ? "restore" : "backup");
-			ret = KNOT_EOK;
-		} else if (ret != KNOT_EOK) {
-			LOG_FAIL("zone file");
+		ret = backup_zonefile(conf, zone, ctx);
+		if (ret != KNOT_EOK) {
+			LOG_MARK_FAIL("zone file");
 			goto done;
 		}
 	}
@@ -349,12 +390,13 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		if (knot_lmdb_exists(kasp_from)) {
 			ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
 			if (ret != KNOT_EOK) {
-				LOG_FAIL("KASP database");
+				LOG_MARK_FAIL("KASP database");
 				goto done;
 			}
 
 			ret = backup_keystore(conf, zone, ctx);
 			if (ret != KNOT_EOK) {
+				ctx->failed = true;
 				goto done;
 			}
 		}
@@ -369,14 +411,14 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		ret = journal_scrape_with_md(zone_journal(zone), true);
 	}
 	if (ret != KNOT_EOK) {
-		LOG_FAIL("journal");
+		LOG_MARK_FAIL("journal");
 		goto done;
 	}
 
 	if (ctx->backup_timers) {
 		ret = knot_lmdb_open(&ctx->bck_timer_db);
 		if (ret != KNOT_EOK) {
-			LOG_FAIL("timers open");
+			LOG_MARK_FAIL("timers open");
 			goto done;
 		}
 		if (ctx->restore_mode) {
@@ -386,14 +428,15 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			ret = zone_timers_write(&ctx->bck_timer_db, zone->name, &zone->timers);
 		}
 		if (ret != KNOT_EOK) {
-			LOG_FAIL("timers");
+			LOG_MARK_FAIL("timers");
+			goto done;
 		}
 	}
 
 done:
-	zone_backup_deinit(ctx);
+	ret_deinit = zone_backup_deinit(ctx);
 	zone->backup_ctx = NULL;
-	return ret;
+	return (ret != KNOT_EOK) ? ret : ret_deinit;
 }
 
 int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
@@ -405,5 +448,9 @@ int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
 
 	knot_lmdb_db_t *cat_from = &catalog->db, *cat_to = &ctx->bck_catalog;
 	BACKUP_SWAP(ctx, cat_from, cat_to);
-	return catalog_copy(cat_from, cat_to, zone_only, !ctx->restore_mode);
+	int ret = catalog_copy(cat_from, cat_to, zone_only, !ctx->restore_mode);
+	if (ret != KNOT_EOK) {
+		ctx->failed = true;
+	}
+	return ret;
 }

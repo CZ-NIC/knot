@@ -1,0 +1,6 @@
+;; Zone dump (Knot DNS 3.1.dev.1625122029.e48145931)
+example2.           	3600	SOA	dns1.example2. hostmaster.example2. 1 1 1 10 600
+example2.           	3600	NS	dns1.example2.
+dns1.example2.      	3600	A	192.0.2.1
+;; Written 3 records
+;; Time 2021-07-07 14:39:48 CEST

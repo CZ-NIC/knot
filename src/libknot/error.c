@@ -57,6 +57,7 @@ static const struct error errors[] = {
 	{ KNOT_EEXIST,        "already exists" },
 	{ KNOT_ERANGE,        "value is out of range" },
 	{ KNOT_EADDRNOTAVAIL, "address is not available" },
+	{ KNOT_ENOTDIR,       "not a directory" },
 
 	{ KNOT_ERRNO_ERROR,   "unknown system error" },
 
@@ -98,7 +99,7 @@ static const struct error errors[] = {
 	{ KNOT_EPROGRAM,     "program not loaded" },
 	{ KNOT_EFD,          "file descriptor error" },
 	{ KNOT_ENOPARAM,     "missing parameter" },
-	{ KNOT_EXPARAM,      "conflicting parameters" },
+	{ KNOT_EXPARAM,      "parameter conflict" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 

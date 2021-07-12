@@ -470,12 +470,14 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 		return KNOT_EXPARAM;
 	}
 
+	bool forced = ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE);
+
 	zone_backup_ctx_t *ctx;
 
 	// The present timer db size is not up-to-date, use the maximum one.
 	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE);
 
-	int ret = zone_backup_init(restore_mode,
+	int ret = zone_backup_init(restore_mode, forced,
 	                           args->data[KNOT_CTL_IDX_DATA],
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           conf_int(&timer_db_size),
@@ -504,26 +506,34 @@ static zone_backup_ctx_t *latest_backup_ctx(ctl_args_t *args)
 	return (zone_backup_ctx_t *)TAIL(args->server->backup_ctxs.ctxs);
 }
 
-static void deinit_backup(ctl_args_t *args)
+static int deinit_backup(ctl_args_t *args)
 {
-	zone_backup_deinit(latest_backup_ctx(args));
+	return zone_backup_deinit(latest_backup_ctx(args));
 }
 
 static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 {
 	zone_backup_ctx_t *ctx = latest_backup_ctx(args);
-	if (zone->backup_ctx != NULL) {
-		log_zone_warning(zone->name, "backup already in progress, skipping zone");
+	if (!ctx->restore_mode && ctx->failed) {
+		// No need to proceed with already faulty backup.
 		return KNOT_EOK;
 	}
+
+	if (zone->backup_ctx != NULL) {
+		log_zone_warning(zone->name, "backup or restore already in progress, skipping zone");
+		ctx->failed = true;
+		return KNOT_EPROGRESS;
+	}
+
 	zone->backup_ctx = ctx;
 	pthread_mutex_lock(&ctx->readers_mutex);
 	ctx->readers++;
 	pthread_mutex_unlock(&ctx->readers_mutex);
+	ctx->zone_count++;
 
 	int ret = schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 
-	if (ret == KNOT_EOK && !ctx->backup_global) {
+	if (ret == KNOT_EOK && !ctx->backup_global && (ctx->restore_mode || !ctx->failed)) {
 		ret = global_backup(ctx, zone->catalog, zone->name);
 	}
 
@@ -532,7 +542,9 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 
 static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 {
+	int ret_deinit;
 	int ret = init_backup(args, restore_mode);
+
 	if (ret != KNOT_EOK) {
 		char *msg = sprintf_alloc("%s init failed (%s)",
 		                          restore_mode ? "restore" : "backup",
@@ -558,6 +570,9 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		ctx->backup_global = true;
 		ret = global_backup(ctx, &args->server->catalog, NULL);
 		if (ret != KNOT_EOK) {
+			log_ctl_error("control, error (%s)", knot_strerror(ret));
+			send_error(args, knot_strerror(ret));
+			ret = KNOT_EOK;
 			goto done;
 		}
 	}
@@ -565,8 +580,8 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 	ret = zones_apply(args, zone_backup_cmd);
 
 done:
-	deinit_backup(args);
-	return ret;
+	ret_deinit = deinit_backup(args);
+	return ret != KNOT_EOK ? ret : ret_deinit;
 }
 
 static int zone_sign(zone_t *zone, ctl_args_t *args)

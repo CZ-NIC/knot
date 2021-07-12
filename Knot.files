@@ -280,6 +280,8 @@ src/knot/zone/adjust.c
 src/knot/zone/adjust.h
 src/knot/zone/backup.c
 src/knot/zone/backup.h
+src/knot/zone/backup_dir.c
+src/knot/zone/backup_dir.h
 src/knot/zone/contents.c
 src/knot/zone/contents.h
 src/knot/zone/digest.c

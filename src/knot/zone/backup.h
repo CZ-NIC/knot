@@ -22,9 +22,17 @@
 #include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/zone/zone.h"
 
+/*! \bref Backup format versions. */
+typedef enum {
+	BACKUP_FORMAT_1 = 1,           // in Knot DNS 3.0.x, no label file
+	BACKUP_FORMAT_2 = 2,           // in Knot DNS 3.1.x
+	BACKUP_FORMAT_TERM,
+} knot_backup_format_t;
+
 typedef struct zone_backup_ctx {
 	node_t n;                           // ability to be put into list_t
 	bool restore_mode;                  // if true, this is not a backup, but restore
+	bool forced;                        // if true, the force flag has been set
 	bool backup_zonefile;               // if true, also backup zone contents to a zonefile (default on)
 	bool backup_journal;                // if true, also backup journal (default off)
 	bool backup_timers;                 // if true, also backup timers (default on)
@@ -38,7 +46,10 @@ typedef struct zone_backup_ctx {
 	knot_lmdb_db_t bck_timer_db;        // backup timer DB
 	knot_lmdb_db_t bck_journal;         // backup journal DB
 	knot_lmdb_db_t bck_catalog;         // backup catalog DB
-	int lock_file;                      // lock file preventing simultaneous backups to same directory
+	bool failed;                        // true if an error occurred in processing of any zone
+	knot_backup_format_t backup_format; // the backup format version used
+	time_t init_time;                   // time when the current backup operation has started
+	int zone_count;                     // count of backed up zones
 } zone_backup_ctx_t;
 
 typedef struct {
@@ -46,11 +57,11 @@ typedef struct {
 	pthread_mutex_t mutex;
 } zone_backup_ctxs_t;
 
-int zone_backup_init(bool restore_mode, const char *backup_dir,
+int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx);
 
-void zone_backup_deinit(zone_backup_ctx_t *ctx);
+int zone_backup_deinit(zone_backup_ctx_t *ctx);
 
 int zone_backup(conf_t *conf, zone_t *zone);
 

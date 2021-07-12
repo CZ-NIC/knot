@@ -952,13 +952,19 @@ their list::
 
     $ knotc zone-backup +backupdir /path/to/backup zone1.com. zone2.com. ...
 
-The backup directory should be empty (or non-existing) or contain a previous
-backup that will be overwritten.
+The backup directory should be empty or non-existing.
 The backup procedure will begin soon and will happen zone-by-zone
 (partially in parallel if more :ref:`server_background-workers` are configured).
 **The user shall check the logs for the outcome of each zone's backup attempt.**
 The knotc's ``-b`` parameter might be used if the user desires to wait until
-the backup work is done.
+the backup work is done and a simple result status is printed out.
+
+.. TIP::
+   There is a plain ASCII text file in the backup directory,
+   ``knot_backup.label``, that contains some useful information about the
+   backup, such as the backup creation date & time, the server identity, etc.
+   Care must always be taken **not to remove this file** from the backup nor to
+   damage it.
 
 Offline restore
 ---------------
@@ -975,11 +981,13 @@ This method is recommended in the case of complete data loss, for example
 physical server failure.
 
 .. NOTE::
-   The online backup procedure stores all zone files in a single directory.
-   If the original directory layout was different, then the required directory
-   structure must be created manually for offline restore and zone files
-   must be placed individually to their respective directories. This
-   limitation doesn't apply to the online restore procedure.
+   The online backup procedure stores all zone files in a single directory
+   using their default file names. If the original directory layout was
+   different, then the required directory structure must be created manually
+   for offline restore and zone files must be placed individually to their
+   respective directories. If the zone file names don't follow the default
+   pattern, they must be renamed manually to match the configuration. These
+   limitations don't apply to the online restore procedure.
 
 Online restore
 --------------
@@ -991,6 +999,11 @@ This procedure is symmetrical to Online backup. By calling::
 the user triggers a one-by-one zone restore from the backup on a running
 server. Again, a subset of zones might be specified. It must be specified
 if the backup was created for only a subset of zones.
+
+.. NOTE::
+   For restore of backups that have been created by Knot DNS releases prior
+   to 3.1, it's necessary to use the ``-f`` option. Since this option also
+   turns off some verification checks, it shouldn't be used in other cases.
 
 Limitations
 -----------
