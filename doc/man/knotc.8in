@@ -261,7 +261,8 @@ Unset the item data in the transaction.
 .UNINDENT
 .SS Note
 .sp
-Empty or \fB\-\-\fP \fIzone\fP parameter means all zones or all zones with a transaction.
+Empty or \fB\-\-\fP (two dashes) \fIzone\fP parameter means all zones or all zones with a
+transaction.
 .sp
 Use \fB@\fP \fIowner\fP to denote the zone name.
 .sp
