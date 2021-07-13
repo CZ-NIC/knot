@@ -173,7 +173,7 @@ install -d -m 0770 -D %{buildroot}%{_sharedstatedir}/knot
 find %{buildroot} -type f -name "*.la" -delete -print
 
 %check
-make check
+V=1 make check
 
 %pre
 getent group knot >/dev/null || groupadd -r knot
