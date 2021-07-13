@@ -299,11 +299,13 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 				if (knot_tcp_relay_dynarray_add(relays, &relay) == NULL) {
 					ret = KNOT_ENOMEM;
 				}
-				relay.conn->state = XDP_TCP_ESTABLISHING;
-				relay.conn->seqno++;
-				relay.conn->mss = MAX(msg->mss, 536); // minimal MSS, most importantly not zero!
-				relay.conn->acked = acks[n_acks - 1].seqno;
-				relay.conn->ackno = relay.conn->acked + (synack ? 0 : 1);
+				if (ret == KNOT_EOK) {
+					relay.conn->state = XDP_TCP_ESTABLISHING;
+					relay.conn->seqno++;
+					relay.conn->mss = MAX(msg->mss, 536); // minimal MSS, most importantly not zero!
+					relay.conn->acked = acks[n_acks - 1].seqno;
+					relay.conn->ackno = relay.conn->acked + (synack ? 0 : 1);
+				}
 			} else {
 				resp_ack(msg, KNOT_XDP_MSG_RST); // TODO consider resetting the OLD conn and accepting new one
 			}
@@ -318,7 +320,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 					*conn = NULL;
 					relay.action = XDP_TCP_ESTABLISH;
 					ret = tcp_table_add(msg, conn_hash, tcp_table, &relay.conn);
-					if (knot_tcp_relay_dynarray_add(relays, &relay) == NULL) {
+					if (ret == KNOT_EOK && knot_tcp_relay_dynarray_add(relays, &relay) == NULL) {
 						ret = KNOT_ENOMEM;
 					}
 				}
