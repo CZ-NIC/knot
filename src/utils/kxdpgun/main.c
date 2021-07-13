@@ -508,7 +508,7 @@ void *xdp_gun_thread(void *_ctx)
 
 	knot_tcp_table_free(tcp_table);
 
-	char recv_str[16] = "", lost_str[16] = "", err_str[16] = "";
+	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
 	if (!(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP)) {
 		(void)snprintf(recv_str, sizeof(recv_str), ", received %lu", local_stats.ans_recv);
 	}
