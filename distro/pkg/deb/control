@@ -43,8 +43,8 @@ Architecture: any
 Depends:
  adduser,
  libdnssec8 (= ${binary:Version}),
- libknot11 (= ${binary:Version}),
- libzscanner3 (= ${binary:Version}),
+ libknot12 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
  lsb-base (>= 3.0-6),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -60,7 +60,7 @@ Description: Authoritative domain name server
  registry and hence is well suited to run anything from the root
  zone, the top-level domain, to many smaller standard domain names.
 
-Package: libknot11
+Package: libknot12
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -78,7 +78,7 @@ Description: DNS shared library from Knot DNS
  This package provides a DNS shared library used by Knot DNS and
  Knot Resolver.
 
-Package: libzscanner3
+Package: libzscanner4
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -120,8 +120,8 @@ Multi-Arch: same
 Depends:
  libdnssec8 (= ${binary:Version}),
  libgnutls28-dev,
- libknot11 (= ${binary:Version}),
- libzscanner3 (= ${binary:Version}),
+ libknot12 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libdevel
@@ -139,8 +139,8 @@ Package: knot-dnsutils
 Architecture: any
 Depends:
  libdnssec8 (= ${binary:Version}),
- libknot11 (= ${binary:Version}),
- libzscanner3 (= ${binary:Version}),
+ libknot12 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Description: DNS clients provided with Knot DNS (kdig, knsupdate)
@@ -166,8 +166,8 @@ Package: knot-host
 Architecture: any
 Depends:
  libdnssec8 (= ${binary:Version}),
- libknot11 (= ${binary:Version}),
- libzscanner3 (= ${binary:Version}),
+ libknot12 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Description: Version of 'host' bundled with Knot DNS

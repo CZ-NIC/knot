@@ -185,7 +185,7 @@ test:debian:amd64:
 pkg:debian:symbols:libknot:
   variables:
     LIB_NAME: libknot
-    LIB_ABI: 11
+    LIB_ABI: 12
   <<: *debian_stable
   <<: *pkg_symbols
 
@@ -199,7 +199,7 @@ pkg:debian:symbols:libdnssec:
 pkg:debian:symbols:libzscanner:
   variables:
     LIB_NAME: libzscanner
-    LIB_ABI: 3
+    LIB_ABI: 4
   <<: *debian_stable
   <<: *pkg_symbols
 
