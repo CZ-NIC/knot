@@ -253,7 +253,7 @@ Get the item difference in the transaction.
 \fBconf\-get\fP [\fIitem\fP]
 Get the item data from the transaction.
 .TP
-\fBconf\-set\fP \fIitem\fP [\fIdata\fP\&...]
+\fBconf\-set\fP \fIitem\fP [[\fB=\fP] \fIdata\fP\&...]
 Set the item data in the transaction.
 .TP
 \fBconf\-unset\fP [\fIitem\fP] [\fIdata\fP\&...]

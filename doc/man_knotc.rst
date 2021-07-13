@@ -230,7 +230,7 @@ Actions
 **conf-get** [*item*]
   Get the item data from the transaction.
 
-**conf-set** *item* [*data*...]
+**conf-set** *item* [[**=**] *data*...]
   Set the item data in the transaction.
 
 **conf-unset** [*item*] [*data*...]

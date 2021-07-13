@@ -32,6 +32,7 @@ typedef enum {
 	CMD_FREQ_TXN   = 1 << 7, /*!< Required open confdb transaction. */
 	CMD_FOPT_MOD   = 1 << 8, /*!< Optional configured modules dependency. */
 	CMD_FREQ_MOD   = 1 << 9, /*!< Required configured modules dependency. */
+	CMD_FOPT_EQUAL = 1 << 10, /*!< Optional '=' operator. */
 } cmd_flag_t;
 
 struct cmd_desc;

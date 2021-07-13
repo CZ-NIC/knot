@@ -995,6 +995,8 @@ static int cmd_conf_ctl(cmd_args_t *args)
 		[KNOT_CTL_IDX_FLAGS] = args->flags,
 	};
 
+	int data_index = 1;
+
 	// Send the command without parameters.
 	if (args->argc == 0) {
 		CTL_SEND_DATA
@@ -1005,6 +1007,13 @@ static int cmd_conf_ctl(cmd_args_t *args)
 			return ret;
 		}
 
+		// Skip optional asignment operator.
+		if (args->argc > 1 && (args->desc->flags & CMD_FOPT_EQUAL) &&
+		    strcmp(args->argv[1], "=") == 0) {
+			args->argc--;
+			data_index++;
+		}
+
 		// Send if only one argument or item without values.
 		if (args->argc == 1 || !(args->desc->flags & CMD_FOPT_DATA)) {
 			CTL_SEND_DATA
@@ -1012,7 +1021,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 	}
 
 	// Send the item values or the other items.
-	for (int i = 1; i < args->argc; i++) {
+	for (int i = data_index; i < args->argc; i++) {
 		if (args->desc->flags & CMD_FOPT_DATA) {
 			data[KNOT_CTL_IDX_DATA] = args->argv[i];
 		} else {
@@ -1076,7 +1085,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_CONF_ABORT,      cmd_conf_ctl,      CTL_CONF_ABORT },
 	{ CMD_CONF_DIFF,       cmd_conf_ctl,      CTL_CONF_DIFF,       CMD_FOPT_ITEM | CMD_FREQ_TXN },
 	{ CMD_CONF_GET,        cmd_conf_ctl,      CTL_CONF_GET,        CMD_FOPT_ITEM | CMD_FREQ_TXN },
-	{ CMD_CONF_SET,        cmd_conf_ctl,      CTL_CONF_SET,        CMD_FREQ_ITEM | CMD_FOPT_DATA | CMD_FREQ_TXN },
+	{ CMD_CONF_SET,        cmd_conf_ctl,      CTL_CONF_SET,        CMD_FREQ_ITEM | CMD_FOPT_DATA | CMD_FREQ_TXN | CMD_FOPT_EQUAL },
 	{ CMD_CONF_UNSET,      cmd_conf_ctl,      CTL_CONF_UNSET,      CMD_FOPT_ITEM | CMD_FOPT_DATA | CMD_FREQ_TXN },
 	{ NULL }
 };
