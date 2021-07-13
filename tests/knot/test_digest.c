@@ -79,18 +79,10 @@ static zone_contents_t *str2contents(const char *zone_str)
 	zcreator_t zc = { cont, true, KNOT_EOK };
 
 	zs_scanner_t sc;
-	int ret = zs_init(&sc, origin_str, KNOT_CLASS_IN, 3600);
-	assert(ret == 0);
-
-	ret = zs_set_input_string(&sc, zone_str, strlen(zone_str));
-	assert(ret == 0);
-
-	ret = zs_set_processing(&sc, process_data, process_error, &zc);
-	assert(ret == 0);
-
-	ret = zs_parse_all(&sc);
-	assert(ret == 0);
-
+	ok(zs_init(&sc, origin_str, KNOT_CLASS_IN, 3600) == 0 &&
+	   zs_set_input_string(&sc, zone_str, strlen(zone_str)) == 0 &&
+	   zs_set_processing(&sc, process_data, process_error, &zc) == 0 &&
+	   zs_parse_all(&sc) == 0, "zscanner initialization");
 	zs_deinit(&sc);
 
 	return cont;
