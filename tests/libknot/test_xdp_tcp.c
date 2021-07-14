@@ -489,5 +489,7 @@ int main(int argc, char *argv[])
 	knot_xdp_deinit(test_sock);
 	knot_tcp_table_free(test_table);
 
+	ok(0, "this fails");
+
 	return 0;
 }
