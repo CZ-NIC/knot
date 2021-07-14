@@ -13,8 +13,6 @@ zone = t.zone("notify.", storage=".")
 
 t.link(zone, master, slave)
 
-master.dnssec(zone).enable = True # just slow down zone updates
-
 BACKUP_DIR = slave.dir + "/backup"
 
 t.start()
@@ -24,14 +22,23 @@ slave.zone_wait(zone)
 
 slave.ctl("zone-backup +backupdir " + BACKUP_DIR, wait=True)
 
+# temporarily disable notify
+slave.disable_notify = True
+master.gen_confile()
+master.reload()
+
 master.update_zonefile(zone, version=1)
-master.ctl("zone-reload")
-master.stop() # stop shall appear sooner than notify
+master.ctl("zone-reload", wait=True)
+master.stop()
 
 resp = slave.dig("notify.", "SOA")
 resp.check_soa_serial(serial)
 
+# enable notify again
+slave.disable_notify = False
+master.gen_confile()
 master.start()
+
 slave.zone_wait(zone, serial) # started master notifies slave with new serial
 
 slave.ctl("zone-restore +backupdir " + BACKUP_DIR, wait=True)
