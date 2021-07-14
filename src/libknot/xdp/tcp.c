@@ -135,6 +135,7 @@ static void tcp_table_del(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
 	assert(table->usage > 0);
 	table->inbufs_total -= (*todel)->inbuf.iov_len;
 	tcp_table_del_conn(todel);
+	printf("ttd to %zu\n", list_size(tcp_table_timeout(table)));
 	table->usage--;
 }
 
@@ -153,6 +154,7 @@ static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *t
                          knot_tcp_conn_t **res)
 {
 	knot_tcp_conn_t *c = malloc(sizeof(*c));
+	printf("tta %p from %zu\n", c, list_size(tcp_table_timeout(table)));
 	if (c == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -179,6 +181,8 @@ static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *t
 
 	table->usage++;
 	*res = c;
+	printf("tta to %zu\n", list_size(tcp_table_timeout(table)));
+
 	return KNOT_EOK;
 }
 
@@ -208,6 +212,8 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 	if (socket == NULL || msgs == NULL || tcp_table == NULL || relays == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	printf("relay start %zu conns, %zu timeout\n", tcp_table->usage, list_size(tcp_table_timeout(tcp_table)));
 
 	knot_xdp_send_prepare(socket);
 
@@ -381,6 +387,8 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 		(void)knot_xdp_send(socket, acks, n_acks, &sent_unused);
 		(void)knot_xdp_send_finish(socket);
 	}
+
+	printf("relay end %zu conns, %zu timeout\n", tcp_table->usage, list_size(tcp_table_timeout(tcp_table)));
 
 #undef resp_ack
 
@@ -572,8 +580,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 			break;
 		}
 	}
-	printf("relays %zd mao %u mao_cond %d to_rem %zu\n", relays.size, max_at_once, (relays.size >= max_at_once), list_size(&to_remove));
-
+	printf("relays %zd mao %u mao_cond %d to_rem %zu timeout_size %zu list %p\n", relays.size, max_at_once, (relays.size >= max_at_once), list_size(&to_remove),  list_size(tcp_table_timeout(tcp_table)), tcp_table_timeout(tcp_table));
 	knot_xdp_send_prepare(socket);
 	(void)knot_tcp_send(socket, knot_tcp_relay_dynarray_arr(&relays), relays.size);
 	(void)knot_xdp_send_finish(socket);
