@@ -75,7 +75,7 @@ override_dh_auto_install-arch:
 	  echo "No XDP"; \
 	  touch $(CURDIR)/debian/tmp/usr/share/man/man8/kxdpgun.8; \
 	  printf '#!/bin/sh\n\necho "kxdpgun not available"\n' > $(CURDIR)/debian/tmp/usr/sbin/kxdpgun; \
-	  sed -i -E '/knot_xdp_|knot_eth_|KNOT_XDP_/d' $(LIBKNOT_SYMBOLS); \
+	  sed -i -E '/knot_xdp_|knot_eth_|knot_tcp_|KNOT_XDP_/d' $(LIBKNOT_SYMBOLS); \
 	else \
 	  echo "No XDP, no libknot symbols"; \
 	  touch $(CURDIR)/debian/tmp/usr/share/man/man8/kxdpgun.8; \
