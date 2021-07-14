@@ -544,6 +544,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 	init_list(&to_remove);
 
 	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
+		printf("ral_cond %d rst_cond %d rbs_cond %d fin_cond %d rbs %zu mao_cond %d\n", i++ < reset_at_least, now - conn->last_active >= reset_timeout, (reset_buf_size > 0 && conn->inbuf.iov_len > 0), (now - conn->last_active >= close_timeout), reset_buf_size, relays.size >= max_at_once);
 		if (i++ < reset_at_least ||
 		    now - conn->last_active >= reset_timeout ||
 		    (reset_buf_size > 0 && conn->inbuf.iov_len > 0)) {
@@ -571,6 +572,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 			break;
 		}
 	}
+	printf("relays %zd mao %u mao_cond %d to_rem %zu\n", relays.size, max_at_once, (relays.size >= max_at_once), list_size(&to_remove));
 
 	knot_xdp_send_prepare(socket);
 	(void)knot_tcp_send(socket, knot_tcp_relay_dynarray_arr(&relays), relays.size);
