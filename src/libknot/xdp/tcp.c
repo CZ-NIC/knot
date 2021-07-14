@@ -100,6 +100,12 @@ void knot_tcp_table_free(knot_tcp_table_t *table)
 	}
 }
 
+static void dump_timeout(knot_tcp_table_t *table)
+{
+	list_t *l = tcp_table_timeout(table);
+	printf("list %p head %p null %p tail %p\n", l, l->head, l->null, l->tail);
+}
+
 static knot_tcp_conn_t **tcp_table_lookup(const struct sockaddr_in6 *rem,
                                           const struct sockaddr_in6 *loc,
                                           uint64_t *hash, knot_tcp_table_t *table)
@@ -110,8 +116,12 @@ static knot_tcp_conn_t **tcp_table_lookup(const struct sockaddr_in6 *rem,
 	while (*res != NULL) {
 		if (memcmp(&(*res)->ip_rem, rem, sdl) == 0 &&
 		    memcmp(&(*res)->ip_loc, loc, sdl) == 0) {
+			printf("re-add node %p\n", tcp_conn_node(*res));
+			dump_timeout(table);
 			rem_node(tcp_conn_node(*res));
+			dump_timeout(table);
 			add_tail(tcp_table_timeout(table), tcp_conn_node(*res));
+			dump_timeout(table);
 			break;
 		}
 		res = &(*res)->next;
@@ -128,12 +138,6 @@ static void tcp_table_del_conn(knot_tcp_conn_t **todel)
 		free(conn->inbuf.iov_base);
 		free(conn);
 	}
-}
-
-static void dump_timeout(knot_tcp_table_t *table)
-{
-	list_t *l = tcp_table_timeout(table);
-	printf("list %p head %p null %p tail %p\n", l, l->head, l->null, l->tail);
 }
 
 static void tcp_table_del(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
