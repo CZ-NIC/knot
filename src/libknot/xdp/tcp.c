@@ -140,9 +140,11 @@ static void tcp_table_del(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
 {
 	assert(table->usage > 0);
 	table->inbufs_total -= (*todel)->inbuf.iov_len;
+	void *n = tcp_conn_node(*todel);
 	tcp_table_del_conn(todel);
-	//printf("ttd to %zu\n", list_size(tcp_table_timeout(table)));
 	table->usage--;
+	printf("ttd %p to %zu usage %zu\n", n, list_size(tcp_table_timeout(table)), table->usage);
+	dump_timeout(table);
 }
 
 static void tcp_table_del_lookup(knot_tcp_conn_t *todel, knot_tcp_table_t *table)
@@ -188,7 +190,7 @@ static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *t
 
 	table->usage++;
 	*res = c;
-	printf("tta to %zu\n", list_size(tcp_table_timeout(table)));
+	printf("tta allocated %p to %zu\n", c, list_size(tcp_table_timeout(table)));
 	dump_timeout(table);
 
 	return KNOT_EOK;
