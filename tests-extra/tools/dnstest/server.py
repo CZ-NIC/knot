@@ -83,7 +83,8 @@ class Zone(object):
         self.modules = []
         self.dnssec = ZoneDnssec()
         self.catalog = None
-        self.catz = None
+        self.catalog_zone = None
+        self.catalog_group = None
 
     @property
     def name(self):
@@ -100,9 +101,9 @@ class Zone(object):
     def clear_modules(self):
         self.modules.clear()
 
-    def catalog_gen_link(self, catz):
-        self.catz = catz
-        catz.catz = catz
+    def catalog_gen_link(self, catalog_zone):
+        self.catalog_zone = catalog_zone
+        catalog_zone.catalog_zone = catalog_zone
 
     def disable_master(self, new_zone_file):
         self.zfile.remove()
@@ -1184,6 +1185,34 @@ class Knot(Server):
             dst_file = self.data_add(file_name, storage)
             self.includes.add(dst_file)
 
+    def config_xfr(self, zone, knotconf):
+        acl = ""
+        if zone.masters:
+            masters = ""
+            for master in zone.masters:
+                if masters:
+                    masters += ", "
+                masters += master.name
+                if not master.disable_notify:
+                    if acl:
+                        acl += ", "
+                    acl += "acl_%s" % master.name
+            knotconf.item("master", "[%s]" % masters)
+        if zone.slaves:
+            slaves = ""
+            for slave in zone.slaves:
+                if slave.disable_notify:
+                    continue
+                if slaves:
+                    slaves += ", "
+                slaves += slave.name
+            if slaves:
+                knotconf.item("notify", "[%s]" % slaves)
+        if acl:
+            acl += ", "
+        acl += "acl_local, acl_test"
+        knotconf.item("acl", "[%s]" % acl)
+
     def get_config(self):
         s = dnstest.config.KnotConf()
 
@@ -1436,43 +1465,18 @@ class Knot(Server):
                 if module.conf_name == "mod-onlinesign":
                     s.item("module", "[%s]" % module.get_conf_ref())
 
-            acl = ""
-            if z.masters:
-                masters = ""
-                for master in z.masters:
-                    if masters:
-                        masters += ", "
-                    masters += master.name
-                    if not master.disable_notify:
-                        if acl:
-                            acl += ", "
-                        acl += "acl_%s" % master.name
-                s.item("master", "[%s]" % masters)
-            if z.slaves:
-                slaves = ""
-                for slave in z.slaves:
-                    if slave.disable_notify:
-                        continue
-                    if slaves:
-                        slaves += ", "
-                    slaves += slave.name
-                if slaves:
-                    s.item("notify", "[%s]" % slaves)
-            if acl:
-                acl += ", "
-            acl += "acl_local, acl_test"
-            s.item("acl", "[%s]" % acl)
+            self.config_xfr(z, s)
 
             s.id_item("id", "catalog-signed")
             s.item_str("file", self.dir + "/master/%s.zone")
             s.item_str("journal-content", z.journal_content)
             s.item_str("dnssec-signing", "on")
-            s.item("acl", "[%s]" % acl)
+            self.config_xfr(z, s)
 
             s.id_item("id", "catalog-unsigned")
             s.item_str("file", self.dir + "/master/%s.zone")
             s.item_str("journal-content", z.journal_content)
-            s.item("acl", "[%s]" % acl)
+            self.config_xfr(z, s)
 
         s.end()
 
@@ -1482,32 +1486,7 @@ class Knot(Server):
             s.id_item("domain", z.name)
             s.item_str("file", z.zfile.path)
 
-            acl = ""
-            if z.masters:
-                masters = ""
-                for master in z.masters:
-                    if masters:
-                        masters += ", "
-                    masters += master.name
-                    if not master.disable_notify:
-                        if acl:
-                            acl += ", "
-                        acl += "acl_%s" % master.name
-                s.item("master", "[%s]" % masters)
-            if z.slaves:
-                slaves = ""
-                for slave in z.slaves:
-                    if slave.disable_notify:
-                        continue
-                    if slaves:
-                        slaves += ", "
-                    slaves += slave.name
-                if slaves:
-                    s.item("notify", "[%s]" % slaves)
-            if acl:
-                acl += ", "
-            acl += "acl_local, acl_test"
-            s.item("acl", "[%s]" % acl)
+            self.config_xfr(z, s)
 
             if self.serial_policy is not None:
                 s.item_str("serial-policy", self.serial_policy)
@@ -1519,11 +1498,11 @@ class Knot(Server):
             elif z.ixfr:
                 s.item_str("zonefile-load", "difference")
 
-            if z.catz == z:
+            if z.catalog_zone == z:
                 s.item_str("catalog-role", "generate")
-            elif z.catz is not None:
+            elif z.catalog_zone is not None:
                 s.item_str("catalog-role", "member")
-                s.item_str("catalog-zone", z.catz.name)
+                s.item_str("catalog-zone", z.catalog_zone.name)
 
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "off" if z.dnssec.disable else "on")
@@ -1532,6 +1511,9 @@ class Knot(Server):
             if z.catalog:
                 s.item_str("catalog-role", "interpret")
                 s.item("catalog-template", "[ catalog-default, catalog-signed, catalog-unsigned ]")
+
+            if z.catalog_group is not None:
+                s.item_str("catalog-group", z.catalog_group)
 
             if z.dnssec.validate:
                 s.item_str("dnssec-validation", "on")

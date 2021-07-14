@@ -168,6 +168,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments)
 	// Dump standard zone records without RRSIGS.
 	int ret = zone_contents_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
+		free(params.buf);
 		return ret;
 	}
 
@@ -177,6 +178,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments)
 	params.first_comment = comments ? ";; DNSSEC signatures\n" : NULL;
 	ret = zone_contents_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
+		free(params.buf);
 		return ret;
 	}
 
@@ -186,6 +188,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments)
 	params.first_comment = comments ? ";; DNSSEC NSEC chain\n" : NULL;
 	ret = zone_contents_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
+		free(params.buf);
 		return ret;
 	}
 
@@ -195,6 +198,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments)
 	params.first_comment = comments ? ";; DNSSEC NSEC3 chain\n" : NULL;
 	ret = zone_contents_nsec3_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
+		free(params.buf);
 		return ret;
 	}
 
@@ -203,6 +207,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments)
 	params.first_comment = comments ? ";; DNSSEC NSEC3 signatures\n" : NULL;
 	ret = zone_contents_nsec3_apply(zone, node_dump_text, &params);
 	if (ret != KNOT_EOK) {
+		free(params.buf);
 		return ret;
 	}
 

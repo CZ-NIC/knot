@@ -1766,6 +1766,7 @@ Definition of zones served by the server.
      catalog-role: none | interpret
      catalog-template: template_id ...
      catalog-zone: DNAME
+     catalog-group: STR
      module: STR/STR ...
 
 .. _zone_domain:
@@ -2170,6 +2171,18 @@ Assign this member zone to specified generated catalog zone.
    This option must be set if and only if :ref:`zone_catalog-role` is *member*.
 
    The referenced catalog zone must exist and have :ref:`zone_catalog-role` set to *generate*.
+
+*Default:* not set
+
+.. _zone_catalog-group:
+
+catalog-group
+-------------
+
+Assign this member zone to specified catalog group (configuration template).
+
+.. NOTE::
+   This option has effect if and only if :ref:`zone_catalog-role` is *member*.
 
 *Default:* not set
 

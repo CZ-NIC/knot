@@ -647,6 +647,18 @@ int check_remote(
 	} \
 }
 
+int check_catalog_group(
+	knotd_conf_check_args_t *args)
+{
+	assert(args->data_len > 0);
+	if (args->data_len - 1 > 255) {
+		args->err_str = "group name longer than 255 characters";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 int check_template(
 	knotd_conf_check_args_t *args)
 {
