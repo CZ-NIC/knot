@@ -613,9 +613,10 @@ AS_IF([test "$enable_cap_ng" != "no"],[
     AC_CHECK_HEADER([cap-ng.h], [
       save_LIBS="$LIBS"
       AC_SEARCH_LIBS([capng_apply], [cap-ng], [
-        enable_cap_ng=yes
-        cap_ng_LIBS="$ac_cv_search_capng_apply"
+        AS_IF([test "$ac_cv_search_capng_apply" != "none required"],
+          [cap_ng_LIBS="$ac_cv_search_capng_apply"], [cap_ng_LIBS=])
         AC_SUBST([cap_ng_LIBS])
+        enable_cap_ng=yes
       ])
       LIBS="$save_LIBS"
     ])
@@ -631,7 +632,8 @@ AS_IF([test "$enable_cap_ng" = yes],
 
 save_LIBS="$LIBS"
 AC_SEARCH_LIBS([pthread_create], [pthread], [
-  pthread_LIBS="$ac_cv_search_pthread_create"
+  AS_IF([test "$ac_cv_search_pthread_create" != "none required"],
+    [pthread_LIBS="$ac_cv_search_pthread_create"], [pthread_LIBS=])
   AC_SUBST([pthread_LIBS])
 ],[
   AC_MSG_ERROR([pthreads not found])
@@ -640,7 +642,8 @@ LIBS="$save_LIBS"
 
 save_LIBS="$LIBS"
 AC_SEARCH_LIBS([dlopen], [dl], [
-  dlopen_LIBS="$ac_cv_search_dlopen"
+  AS_IF([test "$ac_cv_search_dlopen" != "none required"],
+    [dlopen_LIBS="$ac_cv_search_dlopen"], [dlopen_LIBS=])
   AC_SUBST([dlopen_LIBS])
 ],[
   AC_MSG_ERROR([dlopen not found])
@@ -649,7 +652,8 @@ LIBS="$save_LIBS"
 
 save_LIBS="$LIBS"
 AC_SEARCH_LIBS([pow], [m], [
-  math_LIBS="$ac_cv_search_pow"
+  AS_IF([test "$ac_cv_search_pow" != "none required"],
+    [math_LIBS="$ac_cv_search_pow"], [math_LIBS=])
   AC_SUBST([math_LIBS])
 ],[
   AC_MSG_ERROR([math not found])
