@@ -695,6 +695,10 @@ but the resulting new KSK will be shared again among all of them.
 If we have zones which already have their keys, turning on the shared KSK feature triggers no action.
 But when a KSK rollover takes place, they will use the same new key afterwards.
 
+.. WARNING::
+   It is discouraged to modify policy :ref:`id<policy_id>` when :ref:`shared KSK<policy_ksk-shared>`
+   is enabled.
+
 .. _DNSSEC Delete algorithm:
 
 DNSSEC delete algorithm
