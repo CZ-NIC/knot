@@ -186,6 +186,8 @@ int kasp_db_load_serial(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
  * \param lp_zone       out: the zone owning the last generated key
  * \param lp_keyid      out: the ID of the last generated key
  *
+ * \note lp_zone and lp_keyid must be freed even when an error is returned
+ *
  * \return KNOT_E*
  */
 int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
