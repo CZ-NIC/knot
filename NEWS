@@ -1,3 +1,20 @@
+Knot DNS 3.0.8 (2021-07-16)
+===========================
+
+Features:
+---------
+ - knotc: new command for loading DNSSEC keys without dropping all RRSIGs when re-signing
+ - knotd: new policy configuration option for disabling some DNSSEC safety features #741
+ - mod-geoip: new dnssec and policy configuration options
+
+Bugfixes:
+---------
+ - knotd: early KSK removal during a KSK rollover if automatic KSK submission check
+          is enabled and DNSKEY TTL is lower than the corresponding DS TTL
+ - knotd: failed to generate a new DNSKEY if previously generated shared key not available
+ - knotd: periodical error logging when a PKCS #11 keystore failed to initialize #742
+ - knotd: zone commit doesn't check for missing SOA record
+
 Knot DNS 3.0.7 (2021-06-16)
 ===========================
 
