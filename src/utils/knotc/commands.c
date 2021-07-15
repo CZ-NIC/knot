@@ -1002,20 +1002,22 @@ static int cmd_conf_ctl(cmd_args_t *args)
 		CTL_SEND_DATA
 	// Set the first item argument.
 	} else {
+		int argcnt = args->argc;
+
 		ret = get_conf_key(args->argv[0], &data);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
-		// Skip optional asignment operator.
+		// Skip optional assignment operator.
 		if (args->argc > 1 && (args->desc->flags & CMD_FOPT_EQUAL) &&
 		    strcmp(args->argv[1], "=") == 0) {
-			args->argc--;
 			data_index++;
+			argcnt--;
 		}
 
 		// Send if only one argument or item without values.
-		if (args->argc == 1 || !(args->desc->flags & CMD_FOPT_DATA)) {
+		if (argcnt == 1 || !(args->desc->flags & CMD_FOPT_DATA)) {
 			CTL_SEND_DATA
 		}
 	}
