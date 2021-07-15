@@ -32,9 +32,6 @@
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 
-// 1280 (IPv6 minimum link MTU) - 40 (IPv6 fixed header) - 20 (TCP fixed header)
-#define KNOT_TCP_MSS	1220
-
 /*!
  * \brief Enable socket option.
  */

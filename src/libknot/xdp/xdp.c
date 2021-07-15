@@ -35,6 +35,7 @@
 #include "libknot/xdp/protocols.h"
 #include "libknot/xdp/xdp.h"
 #include "contrib/macros.h"
+#include "contrib/net.h"
 
 #define FRAME_SIZE 2048
 #define UMEM_FRAME_COUNT_RX 4096
@@ -376,8 +377,8 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 			size_t hdr_len = prot_write_hdrs_len(msg);
 			size_t tot_len = hdr_len + msg->payload.iov_len;
 			uint8_t *msg_beg = msg->payload.iov_base - hdr_len;
-			prot_write_eth(msg_beg, msg, msg_beg + tot_len,
-			               socket->frame_limit - hdr_len);
+			uint16_t mss = MIN(socket->frame_limit - hdr_len, KNOT_TCP_MSS);
+			prot_write_eth(msg_beg, msg, msg_beg + tot_len, mss);
 
 			*xsk_ring_prod__tx_desc(&socket->tx, idx++) = (struct xdp_desc) {
 				.addr = msg_beg - socket->umem->frames->bytes,
