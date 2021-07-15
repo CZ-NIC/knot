@@ -1402,6 +1402,9 @@ ksk-shared
 
 If enabled, all zones with this policy assigned will share one KSK.
 
+.. WARNING::
+   It is discouraged to modify policy :ref:`id<policy_id>` when shared KSK is enabled.
+
 *Default:* off
 
 .. _policy_dnskey-ttl:
