@@ -124,6 +124,8 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 	int ret = kasp_db_get_policy_last(ctx->kasp_db, ctx->policy->string,
 	                                  &borrow_zone, &borrow_key);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		free(borrow_zone);
+		free(borrow_key);
 		return ret;
 	}
 

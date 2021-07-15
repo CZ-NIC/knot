@@ -1281,6 +1281,13 @@ A length of newly generated ZSK keys.
 .sp
 If enabled, all zones with this policy assigned will share one KSK.
 .sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+It is discouraged to modify policy \fI\%id\fP when shared KSK is enabled.
+.UNINDENT
+.UNINDENT
+.sp
 \fIDefault:\fP off
 .SS dnskey\-ttl
 .sp
