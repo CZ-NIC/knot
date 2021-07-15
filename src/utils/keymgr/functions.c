@@ -251,6 +251,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 		                              &last_policy_last);
 		knot_dname_free(unused, NULL);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			free(last_policy_last);
 			return ret;
 		}
 

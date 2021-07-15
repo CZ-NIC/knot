@@ -457,12 +457,7 @@ int kasp_db_get_policy_last(knot_lmdb_db_t *db, const char *policy_string,
 	}
 	knot_lmdb_abort(&txn);
 	free(k.mv_data);
-	if (txn.ret != KNOT_EOK) {
-		free(*lp_zone);
-		*lp_zone = NULL;
-		free(*lp_keyid);
-		*lp_keyid = NULL;
-	}
+
 	return txn.ret;
 }
 
