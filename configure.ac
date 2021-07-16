@@ -1,11 +1,11 @@
-AC_PREREQ([2.60])
+AC_PREREQ([2.69])
 
 m4_define([knot_VERSION_MAJOR], 3)dnl
 m4_define([knot_VERSION_MINOR], 1)dnl
 m4_define([knot_VERSION_PATCH], )dnl Leave empty if the master branch!
 m4_include([m4/knot-version.m4])
 
-AC_INIT([knot], knot_PKG_VERSION, [knot-dns@labs.nic.cz])
+AC_INIT([knot], [knot_PKG_VERSION], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([foreign std-options subdir-objects no-dist-gzip dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot])
@@ -38,8 +38,8 @@ release_date=$($SED -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
 AC_SUBST([RELEASE_DATE], $release_date)
 
 # Set compiler compatibility flags
-AC_PROG_CC_C99
-AM_PROG_CC_C_O
+AC_PROG_CC_C99 # AC_PROG_CC not supported by CentOS 7
+AM_PROG_CC_C_O # Needed by CentOS 7
 AC_PROG_CPP_WERROR
 
 # Set default CFLAGS
@@ -77,26 +77,26 @@ AS_IF([test "$prefix" != NONE], [knot_prefix=$prefix])
 
 run_dir="${localstatedir}/run/knot"
 AC_ARG_WITH([rundir],
-        AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=LOCALSTATEDIR/run/knot]]),
+        AS_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=LOCALSTATEDIR/run/knot]]),
         [run_dir=$withval])
 AC_SUBST(run_dir)
 
 storage_dir="${localstatedir}/lib/knot"
 AC_ARG_WITH([storage],
-        AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=LOCALSTATEDIR/lib/knot]]),
+        AS_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=LOCALSTATEDIR/lib/knot]]),
         [storage_dir=$withval])
 AC_SUBST(storage_dir)
 
 config_dir="${sysconfdir}/knot"
 AC_ARG_WITH([configdir],
-        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=SYSCONFDIR/knot]]),
+        AS_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=SYSCONFDIR/knot]]),
         [config_dir=$withval])
 AC_SUBST(config_dir)
 
 module_dir=
 module_instdir="${libdir}/knot/modules-${KNOT_VERSION_MAJOR}.${KNOT_VERSION_MINOR}"
 AC_ARG_WITH([moduledir],
-        AC_HELP_STRING([--with-moduledir=path], [Path to auto-loaded dynamic modules. [default not set]]),
+        AS_HELP_STRING([--with-moduledir=path], [Path to auto-loaded dynamic modules. [default not set]]),
         [module_dir=$withval module_instdir=$module_dir])
 AC_SUBST(module_instdir)
 AC_SUBST(module_dir)
@@ -467,7 +467,7 @@ AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Defin
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
 AC_ARG_WITH([lmdb],
-  [AC_HELP_STRING([--with-lmdb=DIR], [explicit location where to find LMDB])]
+  [AS_HELP_STRING([--with-lmdb=DIR], [explicit location where to find LMDB])]
 )
 PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
   save_CPPFLAGS=$CPPFLAGS
@@ -510,14 +510,14 @@ PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
 # LMDB mapping sizes
 conf_mapsize_default=500
 AC_ARG_WITH([conf_mapsize],
-    AC_HELP_STRING([--with-conf-mapsize=NUM], [Configuration DB mapsize in MiB [default=$conf_mapsize_default]]),
+    AS_HELP_STRING([--with-conf-mapsize=NUM], [Configuration DB mapsize in MiB [default=$conf_mapsize_default]]),
     [conf_mapsize=$withval],[conf_mapsize=$conf_mapsize_default])
 
 AS_CASE([$conf_mapsize],
     [yes],[conf_mapsize=$conf_mapsize_default],
     [no], [AC_MSG_ERROR([conf_mapsize must be a number])],
     [*],  [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
-                 [AC_ERROR([conf_mapsize must be an integer number])])])
+                 [AC_MSG_ERROR(conf_mapsize must be an integer number)])])
 AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
 AC_SUBST(conf_mapsize)
 
@@ -554,14 +554,14 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
 
 dnl Check for libidn.
 AC_ARG_WITH(libidn,
-  AC_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU libidn2 or libidn)]),
+  AS_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU libidn2 or libidn)]),
   with_libidn=$withval,
   with_libidn=yes
 )
 
 dnl Check for libnghttp2.
 AC_ARG_WITH(libnghttp2,
-  AC_HELP_STRING([--with-libnghttp2=[DIR]], [Support DoH (needs libnghttp2)]),
+  AS_HELP_STRING([--with-libnghttp2=[DIR]], [Support DoH (needs libnghttp2)]),
   with_libnghttp2=$withval,
   with_libnghttp2=yes
 )
