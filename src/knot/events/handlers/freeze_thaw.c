@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,15 +14,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "contrib/macros.h"
-#include "knot/events/events.h"
-#include "knot/conf/conf.h"
-#include "knot/zone/zone.h"
 #include "knot/common/log.h"
+#include "knot/conf/conf.h"
+#include "knot/events/events.h"
+#include "knot/zone/zone.h"
 
 int event_ufreeze(conf_t *conf, zone_t *zone)
 {
-	UNUSED(conf);
 	assert(zone);
 
 	pthread_mutex_lock(&zone->events.mx);
@@ -36,7 +34,6 @@ int event_ufreeze(conf_t *conf, zone_t *zone)
 
 int event_uthaw(conf_t *conf, zone_t *zone)
 {
-	UNUSED(conf);
 	assert(zone);
 
 	pthread_mutex_lock(&zone->events.mx);

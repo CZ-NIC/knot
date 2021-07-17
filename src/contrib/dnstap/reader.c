@@ -19,9 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "libknot/attribute.h"
 #include "libknot/errcode.h"
 
-#include "contrib/macros.h"
 #include "contrib/dnstap/dnstap.h"
 #include "contrib/dnstap/reader.h"
 
@@ -92,13 +92,11 @@ int dt_reader_read(dt_reader_t *reader, Dnstap__Dnstap **d)
 	return KNOT_EOK;
 }
 
-void dt_reader_free_frame(dt_reader_t *reader, Dnstap__Dnstap **frame_ptr)
+void dt_reader_free_frame(_unused_ dt_reader_t *reader, Dnstap__Dnstap **frame_ptr)
 {
 	if (!*frame_ptr) {
 		return;
 	}
-
-	UNUSED(reader);
 
 	dnstap__dnstap__free_unpacked(*frame_ptr, NULL);
 	*frame_ptr = NULL;

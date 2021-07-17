@@ -26,11 +26,13 @@
 #pragma once
 
 #include "libknot/version.h"
+#include "libknot/attribute.h"
 #include "libknot/cookies.h"
 #include "libknot/codes.h"
 #include "libknot/consts.h"
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
+#include "libknot/dynarray.h"
 #include "libknot/endian.h"
 #include "libknot/errcode.h"
 #include "libknot/error.h"

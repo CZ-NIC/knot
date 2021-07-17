@@ -29,7 +29,6 @@
 #include "knot/dnssec/zone-sign.h"
 #include "libknot/libknot.h"
 #include "libknot/dynarray.h"
-#include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
 
 typedef struct {
@@ -573,9 +572,8 @@ static void *tree_sign_thread(void *_arg)
 	return NULL;
 }
 
-static int set_signed(zone_node_t *node, void *data)
+static int set_signed(zone_node_t *node, _unused_ void *data)
 {
-	UNUSED(data);
 	node->flags |= NODE_FLAGS_RRSIGS_VALID;
 	return KNOT_EOK;
 }

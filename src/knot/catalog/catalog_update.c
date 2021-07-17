@@ -20,7 +20,6 @@
 #include "knot/catalog/catalog_update.h"
 #include "knot/common/log.h"
 #include "knot/conf/base.h"
-#include "contrib/macros.h"
 
 int catalog_update_init(catalog_update_t *u)
 {
@@ -54,9 +53,8 @@ static void catalog_upd_val_free(catalog_upd_val_t *val)
 	free(val);
 }
 
-static int freecb(trie_val_t *tval, void *unused)
+static int freecb(trie_val_t *tval, _unused_ void *unused)
 {
-	UNUSED(unused);
 	catalog_upd_val_t *val = *tval;
 	if (val != NULL) {
 		catalog_upd_val_free(val);
@@ -266,10 +264,8 @@ static bool check_member(catalog_upd_val_t *val, conf_t *conf, catalog_t *cat)
 }
 
 static int rem_conf_conflict(const knot_dname_t *mem, const knot_dname_t *ow,
-                             const knot_dname_t *cz, const char *gr, void *ctx)
+                             const knot_dname_t *cz, _unused_ const char *gr, void *ctx)
 {
-	UNUSED(gr);
-
 	conf_t *conf = ctx;
 
 	if (conf_rawid_exists(conf, C_ZONE, mem, knot_dname_size(mem))) {
@@ -341,10 +337,8 @@ typedef struct {
 } del_all_ctx_t;
 
 static int del_all_cb(const knot_dname_t *member, const knot_dname_t *owner,
-                      const knot_dname_t *catz, const char *group, void *dactx)
+                      const knot_dname_t *catz, _unused_ const char *group, void *dactx)
 {
-	UNUSED(group);
-
 	del_all_ctx_t *ctx = dactx;
 	if (knot_dname_is_equal(catz, ctx->zone)) {
 		// TODO possible speedup by indexing which member zones belong to a catalog zone

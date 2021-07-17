@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@
 #include "libknot/libknot.h"
 #include "contrib/ctype.h"
 #include "contrib/getline.h"
-#include "contrib/macros.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "contrib/openbsd/strlcpy.h"
@@ -688,9 +687,8 @@ int cmd_ttl(const char* lp, knsupdate_params_t *params)
 	return knsupdate_set_ttl(params, ttl);
 }
 
-int cmd_debug(const char* lp, knsupdate_params_t *params)
+int cmd_debug(const char* lp, _unused_ knsupdate_params_t *params)
 {
-	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	msg_enable_debug(1);
@@ -1034,25 +1032,22 @@ int cmd_origin(const char* lp, knsupdate_params_t *params)
  *   Not implemented.
  */
 
-int cmd_gsstsig(const char* lp, knsupdate_params_t *params)
+int cmd_gsstsig(const char* lp, _unused_ knsupdate_params_t *params)
 {
-	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	return KNOT_ENOTSUP;
 }
 
-int cmd_oldgsstsig(const char* lp, knsupdate_params_t *params)
+int cmd_oldgsstsig(const char* lp, _unused_ knsupdate_params_t *params)
 {
-	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	return KNOT_ENOTSUP;
 }
 
-int cmd_realm(const char* lp, knsupdate_params_t *params)
+int cmd_realm(const char* lp, _unused_ knsupdate_params_t *params)
 {
-	UNUSED(params);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	return KNOT_ENOTSUP;

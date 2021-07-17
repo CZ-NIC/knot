@@ -87,9 +87,8 @@ static void client_addr(const struct sockaddr_storage *ss, char *out, size_t out
 }
 
 /*! \brief Sweep TCP connection. */
-static fdset_sweep_state_t tcp_sweep(fdset_t *set, int fd, void *data)
+static fdset_sweep_state_t tcp_sweep(fdset_t *set, int fd, _unused_ void *data)
 {
-	UNUSED(data);
 	assert(set && fd >= 0);
 
 	/* Best-effort, name and shame. */

@@ -1231,9 +1231,8 @@ static void check_dnskey(zone_contents_t *zone, sem_handler_t *handler)
 	}
 }
 
-static int mark_nsec3_optout(zone_node_t *node, void *ctx)
+static int mark_nsec3_optout(zone_node_t *node, _unused_ void *ctx)
 {
-	UNUSED(ctx);
 	if (nsec3_optout_allow(node) && node_nsec3_get(node) == NULL) {
 		do {
 			assert(!(node->flags & NODE_FLAGS_APEX));
@@ -1245,9 +1244,8 @@ static int mark_nsec3_optout(zone_node_t *node, void *ctx)
 	return KNOT_EOK;
 }
 
-static int unmark_nsec3_optout(zone_node_t *node, void *ctx)
+static int unmark_nsec3_optout(zone_node_t *node, _unused_ void *ctx)
 {
-	UNUSED(ctx);
 	if (node->flags & NODE_FLAGS_EMPTY) {
 		node->flags &= ~NODE_FLAGS_EMPTY;
 		node_parent(node)->children++;

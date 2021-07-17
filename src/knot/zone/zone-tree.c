@@ -21,7 +21,6 @@
 #include "libknot/consts.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/wire.h"
-#include "contrib/macros.h"
 
 typedef struct {
 	zone_tree_apply_cb_t func;
@@ -70,9 +69,8 @@ zone_tree_t *zone_tree_cow(zone_tree_t *from)
 	return to;
 }
 
-static trie_val_t nocopy(const trie_val_t val, knot_mm_t *mm)
+static trie_val_t nocopy(const trie_val_t val, _unused_ knot_mm_t *mm)
 {
-	UNUSED(mm);
 	return val;
 }
 

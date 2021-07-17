@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,13 +15,11 @@
  */
 
 #include "knot/zone/adjust.h"
-
-#include "libdnssec/error.h"
-#include "contrib/macros.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/measure.h"
+#include "libdnssec/error.h"
 
 int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 {
@@ -290,10 +288,8 @@ int adjust_cb_nsec3_and_wildcard(zone_node_t *node, adjust_ctx_t *ctx)
 	return ret;
 }
 
-int adjust_cb_void(zone_node_t *node, adjust_ctx_t *ctx)
+int adjust_cb_void(_unused_ zone_node_t *node, _unused_ adjust_ctx_t *ctx)
 {
-	UNUSED(node);
-	UNUSED(ctx);
 	return KNOT_EOK;
 }
 

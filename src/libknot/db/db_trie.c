@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 #include "libknot/errcode.h"
 #include "libknot/db/db_trie.h"
 #include "contrib/qp-trie/trie.h"
-#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 
 static int init(knot_db_t **db, knot_mm_t *mm, void *arg)
@@ -29,8 +28,7 @@ static int init(knot_db_t **db, knot_mm_t *mm, void *arg)
 		return KNOT_EINVAL;
 	}
 
-	struct knot_db_trie_opts *opts = arg;
-	UNUSED(opts);
+	_unused_ struct knot_db_trie_opts *opts = arg;
 	trie_t *trie = trie_create(mm);
 	if (!trie) {
 		return KNOT_ENOMEM;
