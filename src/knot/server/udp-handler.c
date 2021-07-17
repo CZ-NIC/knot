@@ -227,7 +227,7 @@ static void udp_recvfrom_send(void *d)
 	}
 }
 
-__attribute__ ((unused))
+_unused_
 static udp_api_t udp_recvfrom_api = {
 	udp_recvfrom_init,
 	udp_recvfrom_deinit,

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include "knot/zone/adjust.h"
 #include "knot/zone/zone-diff.h"
 #include "contrib/base32hex.h"
-#include "contrib/macros.h"
 #include "contrib/wire_ctx.h"
 
 static bool nsec3_opt_out(const zone_node_t *node)
@@ -320,12 +319,10 @@ static int connect_nsec3_base(knot_rdataset_t *a_rrs, const knot_dname_t *b_name
  * \return Error code, KNOT_EOK if successful.
  */
 static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
-                               nsec_chain_iterate_data_t *data)
+                               _unused_ nsec_chain_iterate_data_t *data)
 {
 	assert(a);
 	assert(b);
-	UNUSED(data);
-
 	assert(a->rrset_count == 1);
 
 	return connect_nsec3_base(node_rdataset(a, KNOT_RRTYPE_NSEC3), b->owner);
@@ -643,9 +640,8 @@ static int nsec3_mark_empty(zone_node_t *node, void *data)
  * The children count of node's parent is increased if this node was marked as
  * empty, as it was previously decreased in the \a nsec3_mark_empty() function.
  */
-static int nsec3_reset(zone_node_t *node, void *data)
+static int nsec3_reset(zone_node_t *node, _unused_ void *data)
 {
-	UNUSED(data);
 	if (node->flags & NODE_FLAGS_EMPTY) {
 		/* If node was marked as empty, increase its parent's children
 		 * count.

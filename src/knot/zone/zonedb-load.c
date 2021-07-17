@@ -322,12 +322,10 @@ typedef struct {
 	conf_t *conf;
 } reuse_cold_zone_ctx_t;
 
-static int reuse_cold_zone_cb(const knot_dname_t *member, const knot_dname_t *owner,
-                              const knot_dname_t *catz, const char *group, void *ctx)
+static int reuse_cold_zone_cb(const knot_dname_t *member, _unused_ const knot_dname_t *owner,
+                              _unused_ const knot_dname_t *catz, _unused_ const char *group,
+                              void *ctx)
 {
-	UNUSED(owner);
-	UNUSED(catz);
-	UNUSED(group);
 	reuse_cold_zone_ctx_t *rcz = ctx;
 
 	zone_t *zone = reuse_cold_zone(member, rcz->server, rcz->conf);

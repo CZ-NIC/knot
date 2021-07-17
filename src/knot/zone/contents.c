@@ -24,7 +24,6 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/libknot.h"
 #include "contrib/qp-trie/trie.h"
-#include "contrib/macros.h"
 
 /*!
  * \brief Destroys all RRSets in a node.
@@ -32,10 +31,8 @@
  * \param node Node to destroy RRSets from.
  * \param data Unused parameter.
  */
-static int destroy_node_rrsets_from_tree(zone_node_t *node, void *data)
+static int destroy_node_rrsets_from_tree(zone_node_t *node, _unused_ void *data)
 {
-	UNUSED(data);
-
 	if (node != NULL) {
 		binode_unify(node, false, NULL);
 		node_free_rrsets(node, NULL);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,10 +20,8 @@
 
 #include "knot/updates/changesets.h"
 #include "knot/updates/apply.h"
-#include "libknot/libknot.h"
 #include "knot/zone/zone-dump.h"
-#include "contrib/macros.h"
-#include "contrib/mempattern.h"
+#include "libknot/libknot.h"
 
 static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset)
 {
@@ -45,9 +43,8 @@ static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset)
 /*! \brief Adds RRSet to given zone. */
 static int add_rr_to_contents(zone_contents_t *z, const knot_rrset_t *rrset)
 {
-	zone_node_t *n = NULL;
+	_unused_ zone_node_t *n = NULL;
 	int ret = zone_contents_add_rr(z, rrset, &n);
-	UNUSED(n);
 
 	// We don't care of TTLs.
 	return ret == KNOT_ETTL ? KNOT_EOK : ret;

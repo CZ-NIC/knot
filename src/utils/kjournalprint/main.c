@@ -25,7 +25,6 @@
 #include "knot/journal/serialization.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/params.h"
-#include "libknot/dynarray.h"
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
 
@@ -138,10 +137,8 @@ static void print_changeset_debugmode(const changeset_t *chs)
 	printf("\n");
 }
 
-static int count_changeset_cb(bool special, const changeset_t *ch, void *ctx)
+static int count_changeset_cb(_unused_ bool special, const changeset_t *ch, void *ctx)
 {
-	UNUSED(special);
-
 	print_params_t *params = ctx;
 	if (ch != NULL) {
 		params->counter++;

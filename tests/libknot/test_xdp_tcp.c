@@ -17,7 +17,6 @@
 #include <unistd.h>
 
 #include "tap/basic.h"
-#include "contrib/macros.h"
 #include "libknot/error.h"
 #include "libknot/xdp/msg_init.h"
 #include "libknot/xdp/tcp.c"
@@ -80,11 +79,9 @@ static knot_tcp_conn_t *tcp_table_find(knot_tcp_table_t *table, knot_xdp_msg_t *
 	return *tcp_table_lookup(&msg_recv->ip_from, &msg_recv->ip_to, &unused, table);
 }
 
-static int mock_send(knot_xdp_socket_t *sock, const knot_xdp_msg_t msgs[],
-                     uint32_t n_msgs, uint32_t *sent)
+static int mock_send(_unused_ knot_xdp_socket_t *sock, const knot_xdp_msg_t msgs[],
+                     uint32_t n_msgs, _unused_ uint32_t *sent)
 {
-	UNUSED(sock);
-	UNUSED(sent);
 	ok(n_msgs <= 20, "send: not too many at once");
 	for (uint32_t i = 0; i < n_msgs; i++) {
 		const knot_xdp_msg_t *msg = msgs + i;
@@ -112,11 +109,9 @@ static int mock_send(knot_xdp_socket_t *sock, const knot_xdp_msg_t msgs[],
 	return KNOT_EOK;
 }
 
-static int mock_send_nocheck(knot_xdp_socket_t *sock, const knot_xdp_msg_t msgs[],
-                             uint32_t n_msgs, uint32_t *sent)
+static int mock_send_nocheck(_unused_ knot_xdp_socket_t *sock, const knot_xdp_msg_t msgs[],
+                             uint32_t n_msgs, _unused_ uint32_t *sent)
 {
-	UNUSED(sock);
-	UNUSED(sent);
 	for (uint32_t i = 0; i < n_msgs; i++) {
 		const knot_xdp_msg_t *msg = msgs + i;
 		if (msg->flags & KNOT_XDP_MSG_RST) {

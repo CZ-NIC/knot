@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
     Copyright (C) 2018 Tony Finch <dot@dotat.at>
 
     This program is free software: you can redistribute it and/or modify
@@ -20,13 +20,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
 #include <err.h>
 #include <unistd.h>
 
 #include "contrib/qp-trie/trie.h"
-#include "contrib/macros.h"
 #include "contrib/string.h"
+#include "libknot/attribute.h"
 #include "libknot/errcode.h"
 #include "tap/basic.h"
 
@@ -134,8 +133,7 @@ commit_rollback(trie_val_t val, const uint8_t *key, size_t len, void *d)
 static void
 del_cow(trie_cow_t *x, struct cowleaf *leaf)
 {
-	trie_val_t val;
-	UNUSED(val);
+	_unused_ trie_val_t val;
 	assert(KNOT_EOK == trie_del_cow(x,
 					(uint8_t *)leaf->key,
 					(uint32_t)leaf->len,

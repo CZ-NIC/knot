@@ -36,7 +36,6 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/files.h"
-#include "contrib/macros.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "contrib/ucw/lists.h"
@@ -360,10 +359,8 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-static int zone_reload(zone_t *zone, ctl_args_t *args)
+static int zone_reload(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	if (zone_expired(zone)) {
 		args->suppress = true;
 		return KNOT_ENOTSUP;
@@ -376,10 +373,8 @@ static int zone_reload(zone_t *zone, ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_LOAD, true);
 }
 
-static int zone_refresh(zone_t *zone, ctl_args_t *args)
+static int zone_refresh(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	if (!zone_is_slave(conf(), zone)) {
 		args->suppress = true;
 		return KNOT_ENOTSUP;
@@ -388,10 +383,8 @@ static int zone_refresh(zone_t *zone, ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 }
 
-static int zone_retransfer(zone_t *zone, ctl_args_t *args)
+static int zone_retransfer(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	if (!zone_is_slave(conf(), zone)) {
 		args->suppress = true;
 		return KNOT_ENOTSUP;
@@ -401,10 +394,8 @@ static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 }
 
-static int zone_notify(zone_t *zone, ctl_args_t *args)
+static int zone_notify(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	return schedule_trigger(zone, args, ZONE_EVENT_NOTIFY, true);
 }
 
@@ -584,10 +575,8 @@ done:
 	return ret != KNOT_EOK ? ret : ret_deinit;
 }
 
-static int zone_sign(zone_t *zone, ctl_args_t *args)
+static int zone_sign(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (!conf_bool(&val)) {
 		args->suppress = true;
@@ -598,10 +587,8 @@ static int zone_sign(zone_t *zone, ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 }
 
-static int zone_keys_load(zone_t *zone, ctl_args_t *args)
+static int zone_keys_load(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (!conf_bool(&val)) {
 		args->suppress = true;
@@ -631,10 +618,8 @@ static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 }
 
-static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
+static int zone_ksk_sbm_confirm(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	kdnssec_ctx_t ctx = { 0 };
 
 	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, zone->kaspdb, NULL);
@@ -654,24 +639,18 @@ static int zone_ksk_sbm_confirm(zone_t *zone, ctl_args_t *args)
 	return ret;
 }
 
-static int zone_freeze(zone_t *zone, ctl_args_t *args)
+static int zone_freeze(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	return schedule_trigger(zone, args, ZONE_EVENT_UFREEZE, false);
 }
 
-static int zone_thaw(zone_t *zone, ctl_args_t *args)
+static int zone_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	return schedule_trigger(zone, args, ZONE_EVENT_UTHAW, false);
 }
 
-static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
+static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	if (zone->control_update != NULL) {
 		return KNOT_TXN_EEXISTS;
 	}
@@ -691,10 +670,8 @@ static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
 	return ret;
 }
 
-static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
+static int zone_txn_commit(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	if (zone->control_update == NULL) {
 		args->suppress = true;
 		return KNOT_TXN_ENOTEXISTS;
@@ -744,10 +721,8 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-static int zone_txn_abort(zone_t *zone, ctl_args_t *args)
+static int zone_txn_abort(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	UNUSED(args);
-
 	if (zone->control_update == NULL) {
 		args->suppress = true;
 		return KNOT_TXN_ENOTEXISTS;

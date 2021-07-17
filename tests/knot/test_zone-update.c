@@ -21,13 +21,12 @@
 #include <unistd.h>
 
 #include "test_conf.h"
-#include "contrib/macros.h"
 #include "contrib/getline.h"
+#include "knot/server/server.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/node.h"
 #include "libzscanner/scanner.h"
-#include "knot/server/server.h"
 
 static const char *zone_str1 = "test. 600 IN SOA ns.test. m.test. 1 900 300 4800 900 \n";
 static const char *zone_str2 = "test. 600 IN TXT \"test\"\n";
@@ -88,9 +87,8 @@ static int rr_data_cmp(struct rr_data *a, struct rr_data *b)
 	return 0;
 }
 
-static int test_node_unified(zone_node_t *n1, void *v)
+static int test_node_unified(zone_node_t *n1, _unused_ void *v)
 {
-	UNUSED(v);
 	zone_node_t *n2 = binode_node(n1, false);
 	if (n2 == n1) {
 		n2 = binode_node(n1, true);
