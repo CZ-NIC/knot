@@ -33,7 +33,7 @@ support.
      - RSA 1024-bit
      - RSA 2048-bit
      - RSA 4096-bit
-   * - `Feitian ePass 2003 <https://www.ftsafe.com/product/epass/epass2003>`_
+   * - `Feitian ePass 2003 <https://www.ftsafe.com/Products/PKI/Standard>`_
      - |yes|
      - |no|
      - |no|
@@ -60,7 +60,7 @@ support.
      - |yes|
      - |yes|
      - |yes|
-   * - `Trustway Proteccio NetHSM <http://www.bull.com/fr/cybers%C3%A9curit%C3%A9-trustway-proteccio-nethsm>`_
+   * - `Trustway Proteccio NetHSM <https://atos.net/en/solutions/cyber-security/data-protection-and-governance/hardware-security-module-trustway-proteccio-nethsm>`_
      - |yes|
      - ECDSA only
      - |no|
