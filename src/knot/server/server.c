@@ -264,7 +264,7 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 		ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
 		                    iface.port | xdp_flags, mode);
 		if (ret == -EBUSY && i == 0) {
-			log_notice("XDP interface %s@%u is busy, retrying initializaion",
+			log_notice("XDP interface %s@%u is busy, retrying initialization",
 			           iface.name, iface.port);
 			ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
 			                    iface.port | xdp_flags, KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD);
