@@ -247,7 +247,7 @@ int check_listen(
 	return KNOT_EOK;
 }
 
-int check_xdp_old(
+int check_xdp_listen_old(
 	knotd_conf_check_args_t *args)
 {
 	CONF_LOG(LOG_NOTICE, "option 'server.listen-xdp' is obsolete, "
@@ -256,7 +256,7 @@ int check_xdp_old(
 	return KNOT_EOK;
 }
 
-int check_xdp(
+int check_xdp_listen(
 	knotd_conf_check_args_t *args)
 {
 #ifndef ENABLE_XDP
@@ -363,7 +363,7 @@ int check_module_id(
 	} \
 }
 
-static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp)
+static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 {
 #ifdef ENABLE_XDP
 	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
@@ -389,8 +389,8 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp)
 		         KNOT_XDP_MAX_MTU);
 	}
 
-	while (xdp->code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(xdp, NULL);
+	while (xdp_listen->code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(xdp_listen, NULL);
 		conf_xdp_iface_t iface;
 		int ret = conf_xdp_iface(&addr, &iface);
 		if (ret != KNOT_EOK) {
@@ -408,7 +408,7 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp)
 			CONF_LOG(LOG_WARNING, "maximum UDP payload not compatible "
 			                      "with MTU of interface %s", iface.name);
 		}
-		conf_val_next(xdp);
+		conf_val_next(xdp_listen);
 	}
 #endif
 }
@@ -416,24 +416,30 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp)
 int check_server(
 	knotd_conf_check_args_t *args)
 {
-	conf_val_t listen = conf_get_txn(args->extra->conf, args->extra->txn, C_SRV,
-	                                 C_LISTEN);
-	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
-	                              C_LISTEN);
-	conf_val_t tcp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
-	                              C_TCP);
-	if (xdp.code == KNOT_EOK) {
-		if (listen.code != KNOT_EOK && tcp.code != KNOT_EOK) {
-			CONF_LOG(LOG_WARNING, "unavailable TCP processing");
-		}
-		check_mtu(args, &xdp);
-	}
-
 	CHECK_LEGACY_NAME(C_SRV, C_TCP_REPLY_TIMEOUT, C_TCP_RMT_IO_TIMEOUT);
 	CHECK_LEGACY_NAME(C_SRV, C_MAX_TCP_CLIENTS, C_TCP_MAX_CLIENTS);
 	CHECK_LEGACY_NAME(C_SRV, C_MAX_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD);
 	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV4_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV4);
 	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV6_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV6);
+
+	return KNOT_EOK;
+}
+
+int check_xdp(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t xdp_listen = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                     C_XDP, C_LISTEN);
+	conf_val_t srv_listen = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                     C_SRV, C_LISTEN);
+	conf_val_t tcp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
+	                              C_TCP);
+	if (xdp_listen.code == KNOT_EOK) {
+		if (srv_listen.code != KNOT_EOK && tcp.code != KNOT_EOK) {
+			CONF_LOG(LOG_WARNING, "TCP processing not available");
+		}
+		check_mtu(args, &xdp_listen);
+	}
 
 	return KNOT_EOK;
 }

@@ -70,11 +70,11 @@ int check_listen(
 	knotd_conf_check_args_t *args
 );
 
-int check_xdp_old(
+int check_xdp_listen_old(
 	knotd_conf_check_args_t *args
 );
 
-int check_xdp(
+int check_xdp_listen(
 	knotd_conf_check_args_t *args
 );
 
@@ -87,6 +87,10 @@ int check_module_id(
 );
 
 int check_server(
+	knotd_conf_check_args_t *args
+);
+
+int check_xdp(
 	knotd_conf_check_args_t *args
 );
 
