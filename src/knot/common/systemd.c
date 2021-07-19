@@ -18,45 +18,36 @@
 #include <stdlib.h>
 
 #include "knot/common/systemd.h"
-#include "contrib/ctype.h"
+#include "contrib/strtonum.h"
 
 #ifdef ENABLE_SYSTEMD
 #include <systemd/sd-daemon.h>
 
-#define ZONE_LOAD_TIMEOUT_DEFAULT "60"
+#define ZONE_LOAD_TIMEOUT_DEFAULT 60
 
-static char zone_load_timeout[40];
+static int zone_load_timeout_s;
 
-static const char *systemd_zone_load_timeout(void)
+static int systemd_zone_load_timeout(void)
 {
 	const char *timeout = getenv("ZONE_LOAD_TIMEOUT_SEC");
-	if (timeout == NULL || timeout[0] == '\0') {
-		goto error;
+
+	int out;
+	if (timeout != NULL && timeout[0] != '\0' &&
+	    str_to_int(timeout, &out, 0, 24 * 3600) == KNOT_EOK) {
+		return out;
+	} else {
+		return ZONE_LOAD_TIMEOUT_DEFAULT;
 	}
-	for (const char *it = timeout; *it != '\0'; ++it) {
-		if (!is_digit(*it)) {
-			goto error;
-		}
-	}
-	return timeout;
-error:
-	return ZONE_LOAD_TIMEOUT_DEFAULT;
 }
 #endif
 
 void systemd_zone_load_timeout_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
-	if (zone_load_timeout[0] == '\0') {
-		int ret = snprintf(zone_load_timeout,
-		                   sizeof(zone_load_timeout),
-		                   "EXTEND_TIMEOUT_USEC=%s000000",
-		                   systemd_zone_load_timeout());
-		if (ret < 0 || ret >= sizeof(zone_load_timeout)) {
-			zone_load_timeout[0] = '\0';
-		}
+	if (zone_load_timeout_s == 0) {
+		zone_load_timeout_s = systemd_zone_load_timeout();
 	}
-	sd_notify(0, zone_load_timeout);
+	sd_notifyf(0, "EXTEND_TIMEOUT_USEC=%d000000", zone_load_timeout_s);
 #endif
 }
 
@@ -64,13 +55,7 @@ void systemd_tasks_status_notify(int tasks)
 {
 #ifdef ENABLE_SYSTEMD
 	if (tasks > 0) {
-		char state[64];
-		int ret = snprintf(state, sizeof(state),
-		                   "STATUS=Waiting for %d tasks to finish...", tasks);
-		if (ret < 0 || ret >= sizeof(state)) {
-			state[0] = '\0';
-		}
-		sd_notify(0, state);
+		sd_notifyf(0, "STATUS=Waiting for %d tasks to finish...", tasks);
 	} else {
 		sd_notify(0, "STATUS=");
 	}
@@ -80,23 +65,20 @@ void systemd_tasks_status_notify(int tasks)
 void systemd_ready_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
-	sd_notify(0, "READY=1");
-	sd_notify(0, "STATUS=");
+	sd_notify(0, "READY=1\nSTATUS=");
 #endif
 }
 
 void systemd_reloading_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
-	sd_notify(0, "RELOADING=1");
-	sd_notify(0, "STATUS=");
+	sd_notify(0, "RELOADING=1\nSTATUS=");
 #endif
 }
 
 void systemd_stopping_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
-	sd_notify(0, "STOPPING=1");
-	sd_notify(0, "STATUS=");
+	sd_notify(0, "STOPPING=1\nSTATUS=");
 #endif
 }
