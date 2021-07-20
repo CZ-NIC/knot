@@ -1,3 +1,213 @@
+Knot DNS 3.0.8 (2021-07-16)
+===========================
+
+Features:
+---------
+ - knotc: new command for loading DNSSEC keys without dropping all RRSIGs when re-signing
+ - knotd: new policy configuration option for disabling some DNSSEC safety features #741
+ - mod-geoip: new dnssec and policy configuration options
+
+Bugfixes:
+---------
+ - knotd: early KSK removal during a KSK rollover if automatic KSK submission check
+          is enabled and DNSKEY TTL is lower than the corresponding DS TTL
+ - knotd: failed to generate a new DNSKEY if previously generated shared key not available
+ - knotd: periodical error logging when a PKCS #11 keystore failed to initialize #742
+ - knotd: zone commit doesn't check for missing SOA record
+
+Knot DNS 3.0.7 (2021-06-16)
+===========================
+
+Features:
+---------
+ - knotd: new configuration policy option for CDS digest algorithm setting #738
+ - keymgr: new command for primary SOA serial manipulation in on-secondary signing mode
+
+Improvements:
+-------------
+ - knotd: improved algorithm rollover to shorten the last step of old RRSIG publication
+
+Bugfixes:
+---------
+ - knotd: zone is flushed upon server start, despite DNSSEC signing is up-to-date
+ - knotd: wildcard nonexistence is proved on empty-non-terminal query
+ - knotd: redundant wildcard proof for non-authoritative data in a reply
+ - knotd: missing wildcard proofs in a wildcard-cname loop reply
+ - knotd: incorrectly synthesized CNAME owner from a wildcard record #715
+ - knotd: zone-in-journal changeset ignores journal-max-usage limit #736
+ - knotd: incorrect processing of zone-in-journal changeset with SOA serial 0
+ - knotd: broken initialization of processing workers if SO_REUSEPORT(_LB) not available
+ - kjournalprint: reported journal usage is incorrect #736
+ - keymgr: cannot parse algorithm name ed448 #739
+ - keymgr: default key size not set properly
+ - kdig: failed to process huge DoH responses
+ - libknot/probe: some corner-case bugs
+
+Knot DNS 3.0.6 (2021-05-12)
+===========================
+
+Features:
+---------
+ - mod-probe: new module for simple traffic logging (Python API not yet included)
+
+Improvements:
+-------------
+ - keymgr: new mode for listing zones with at least one key stored
+ - keymgr: the pregenerate command accepts optional timestamp-from parameter
+ - kzonecheck: accept '-' as substitution for standard input #727
+ - knotd: print an error when unable to change owner of a logging file
+ - knotd: new warning log if no interface is configured
+ - knotd: new signing policy check for NSEC3 iterations higher than 20
+ - knotd: don't allow backup to/restore from the DB storage directory
+ - Various code (mostly zone backup/restore), tests, and documentation improvements
+
+Bugfixes:
+---------
+ - knotd: secondary fails to load zone file if HTTPS or SVCB record is present #725
+ - knotd: (KSK roll-over) new KSK is not signing DNSKEY long enough before DS submission
+ - knotd: (KSK roll-over) old KSK uselessly published after roll-over finished
+ - knotd: malformed address in TCP-related logs when listening on a UNIX socket
+ - knotd: server responds FORMERR instead of BADTIME if TSIG signed time is zero #730
+ - modules: incorrect local and remote addresses in the XDP mode
+ - modules: failed to read configuration from a section without identifiers
+ - mod-synthrecord: queries on synthesized empty-non-terminals not answered with NODATA
+ - keymgr: confusing error if del-all-old command fails
+
+Knot DNS 3.0.5 (2021-03-25)
+===========================
+
+Improvements:
+-------------
+ - kdig: added support for TCP Fast Open on FreeBSD
+ - keymgr: the SEP flag can be changed on already generated keys
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - knotd: journal contents can be considered malformed after changeset merge
+ - knotd: broken detection of TCP Fast Open availability
+ - knotd: zone restore can stuck in an infinite loop if zone configuration changed
+ - knotd: failed zone backup makes control socket unavailable
+ - knotd: zone not stored to journal after reload if difference-no-serial is enabled
+ - knotd: old key is being used after an algorithm rollover with a shared policy #721
+ - keymgr: keytag not recomputed upon key flag change
+ - kdig: TCP not used if +fastopen is set
+ - mod-dnstap: the local address is empty
+ - kzonecheck: missing letter lower-casing of the origin parameter
+ - XDP mode wrongly detected on NetBSD
+ - Failed to build knotd_stdio fuzzing utility
+
+Knot DNS 3.0.4 (2021-01-20)
+===========================
+
+Improvements:
+-------------
+ - Sockets to CPUs binding is no longer enabled by default but can be enabled
+   via new configuration option 'server.socket-affinity'
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - DNS queries without EDNS to the root zone apex are dropped in the XDP mode
+ - Deterministic ECDSA signing leaks memory
+ - Zone not stored to journal if zonefile-load isn't ZONEFILE_LOAD_WHOLE
+ - Server crashes if the catalog zone isn't configured for registered member zones
+ - Server crashes when loading conflicting catalog member zones
+ - CNAME and DNAME records below delegation are not ignored #713
+ - Not all udp/tcp workers are used if the number of NIC queues is lower than
+   the number of udp/tcp workers
+ - Failed to load statistics and geoip modules if built as shared
+
+Knot DNS 3.0.3 (2020-12-15)
+===========================
+
+Features:
+---------
+ - Kjournalprint can display changesets starting from specific SOA serial
+
+Improvements:
+-------------
+ - New configuration check on ambiguous 'storage' specification #706
+ - New configuration check on problematic 'zonefile-load' with 'journal-contents' combination
+ - Server logs positive ACL check in debug severity level (Thanks to Andreas Schrägle)
+ - More verbose logging of failed zone backup
+ - Extended documentation for catalog zones
+
+Bugfixes:
+---------
+ - On-slave signing produces broken NSEC(3) chain if glue node becomes (un-)orphaned #705
+ - Server responds CNAME query with NXDOMAIN for CNAME synthesized from DNAME
+ - Kdig crashes if source address and dnstap logging are specified together #702
+ - Knotc fails to display error returned from zone freeze or zone thaw
+ - Dynamically reconfigured zone isn't loaded upon configuration commit
+ - Keymgr is unable to import BIND-style private key if it contains empty lines
+ - Zone backup fails to backup keys if any of them is public-only
+ - Failed to build with XDP support on Debian testing
+
+Knot DNS 3.0.2 (2020-11-11)
+===========================
+
+Features:
+---------
+ - kdig prints Extended DNS Error (Gift for Marek Vavruša)
+ - kxdpgun allows source IP address/subnet specification
+
+Improvements:
+-------------
+ - Server doesn't start if any of listen addresses fails to bind
+ - knotc no longer stores empty and adjacent identical commands to interactive history
+ - Depth of interactive history of knotc was increased to 1000 commands
+ - keymgr prints error messages to stderr instead of stdout
+ - keymgr checks for proper offline-ksk configuration before processing KSR or SKR
+ - keymgr imports Revoked timer from BIND keys
+ - Additional XDP support detection in server
+ - Lots of spelling and grammar fixes in documentation (Thanks to Paul Dee)
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - If more masters configured, zone retransfer triggers AXFR from all masters
+ - Server can fail to bind address during restart due to missing SO_REUSEADDR
+ - KSK imported from BIND doesn't roll over automatically
+ - libdnssec respects local GnuTLS policy — affects DNSSEC operations and Knot Resolver
+ - kdig can stuck in infinite loop when solving BADCOOKIE responses
+ - Zone names received over control interface are not lower-cased
+ - Zone attributes not secured with multi-threaded changes
+ - kzonecheck ignores forced dnssec checks if zone not signed
+ - kzonecheck fails on case-sensitivity of owner names in NSEC records #699
+ - kdig fails to establish TLS connection #700
+ - Server responds NOTIMPL to queries with QDCOUNT 0 and known OPCODE
+
+Knot DNS 3.0.1 (2020-10-10)
+===========================
+
+Features:
+---------
+ - New command in keymgr for validation of RRSIGs in SKR
+ - Keymgr validates RRSIGs in SKR during import
+ - New option in kzonecheck to skip DNSSEC-related checks
+
+Improvements:
+-------------
+ - Module noudp has new configuration option for UDP truncation rate
+ - Better detection of reproducible signing availability
+ - Kxdpgun allows setting of network interface
+ - Default control timeout in knotc was increased to 60 seconds
+ - DNSSEC validation searches for invalid redundant RRSIGs
+ - Configuration source detection no longer considers empty confdb directory as active configuration
+ - Zone backup preserves original zone file if zone file synchronization is disabled
+
+Bugfixes:
+---------
+ - NSEC3 re-salt can cause server crash due to possible zone inconsistencies
+ - Zone reload logs 'invalid parameter' if zone file not changed
+ - Outgoing multi-message transfer can contain invalid compression pointers under specific conditions
+ - Improper handling of file descriptors in libdnssec
+ - Server crashes if no policy is configured with DNSSEC validation
+ - Server crashes if DNSSEC validation is enabled for unsigned zone
+ - Failed to build with libnghttp2 (Thanks to Robert Edmonds)
+ - Various bugs in zone data backup/restore
+
 Knot DNS 3.0.0 (2020-09-09)
 ===========================
 
@@ -35,6 +245,49 @@ Bugfixes:
 ---------
  - Module onlinesign responds NXDOMAIN insted of NOERROR (NODATA) if DNSSEC not requested
  - Outgoing multi-message transfer can contain invalid compression pointers under specific conditions
+
+Knot DNS 2.9.9 (2021-04-01)
+===========================
+
+Improvements:
+-------------
+ - keymgr: the SEP flag can be changed on already generated keys
+ - Some documentation improvements
+
+Bugfixes:
+---------
+ - knotd: journal contents can be considered malformed after changeset merge
+ - knotd: old key is being used after an algorithm rollover with a shared policy #721
+ - keymgr: keytag not recomputed upon key flag change
+ - kzonecheck: missing letter lower-casing of the origin parameter
+
+Knot DNS 2.9.8 (2020-12-15)
+===========================
+
+Bugfixes:
+---------
+ - On-slave signing produces broken NSEC(3) chain if glue node becomes (un-)orphaned #705
+ - If more masters configured, zone retransfer triggers AXFR from all masters
+ - KSK imported from BIND doesn't roll over automatically
+ - kzonecheck fails on case-sensitivity of owner names in NSEC records #699
+ - Server responds NOTIMPL to queries with QDCOUNT 0 and known OPCODE
+ - Kdig crashes if source address and dnstap logging are specified together #702
+ - Keymgr is unable to import BIND-style private key if it contains empty lines
+ - Knotc fails to display error returned from zone freeze or zone thaw
+
+Knot DNS 2.9.7 (2020-10-09)
+===========================
+
+Bugfixes:
+---------
+ - NSEC3 re-salt can cause server crash due to possible zone inconsistencies
+ - Zone reload logs 'invalid parameter' if zone file not changed
+ - Outgoing multi-message transfer can contain invalid compression pointers under specific conditions
+ - Improper handling of file descriptors in libdnssec
+
+Improvements:
+-------------
+ - Module noudp has new configuration option for UDP truncation rate
 
 Knot DNS 2.9.6 (2020-08-31)
 ===========================
