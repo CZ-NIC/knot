@@ -750,6 +750,28 @@ static inline size_t conf_bg_threads(
 }
 
 /*!
+ * Gets the required LMDB readers limit based on the current configuration.
+ *
+ * \note The resulting value is a common limit to journal, kasp, timers,
+ *       and catalog databases. So it's over-estimated for simpicity reasons.
+ *
+ * \note This function cannot be used for the configuration database setting :-/
+ *
+ * \param[in] conf  Configuration.
+ *
+ * \return Number of readers.
+ */
+static inline size_t conf_lmdb_readers(
+	conf_t *conf)
+{
+	if (conf == NULL) { // Return default in tests.
+		return 126;
+	}
+	return conf_udp_threads(conf) + conf_tcp_threads(conf) +
+	       conf_bg_threads(conf) + conf_xdp_threads(conf);
+}
+
+/*!
  * Gets the configured maximum number of TCP clients.
  *
  * \param[in] conf  Configuration.

@@ -31,8 +31,16 @@
 #define CONF_DEFAULT_DBDIR	(STORAGE_DIR "/confdb")
 /*! Maximum depth of nested transactions. */
 #define CONF_MAX_TXN_DEPTH	5
+
+/*! Maximum number of UDP workers. */
+#define CONF_MAX_UDP_WORKERS	256
+/*! Maximum number of TCP workers. */
+#define CONF_MAX_TCP_WORKERS	256
+/*! Maximum number of background workers. */
+#define CONF_MAX_BG_WORKERS	512
 /*! Maximum number of concurrent DB readers. */
-#define CONF_MAX_DB_READERS	630
+#define CONF_MAX_DB_READERS	(CONF_MAX_UDP_WORKERS + CONF_MAX_TCP_WORKERS + \
+				 CONF_MAX_BG_WORKERS + 128 /* XDP workers */)
 
 /*! Configuration specific logging. */
 #define CONF_LOG(severity, msg, ...) do { \

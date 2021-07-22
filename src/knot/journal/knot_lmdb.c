@@ -14,14 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "knot/journal/knot_lmdb.h"
-
 #include <stdarg.h>
 #include <stdio.h> // snprintf
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "knot/journal/knot_lmdb.h"
+
+#include "knot/conf/conf.h"
 #include "contrib/files.h"
 #include "contrib/wire_ctx.h"
 #include "libknot/dname.h"
@@ -79,7 +80,7 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
 	db->dbname = dbname;
 	pthread_mutex_init(&db->opening_mutex, NULL);
 	db->maxdbs = 2;
-	db->maxreaders = 1278;
+	db->maxreaders = conf_lmdb_readers(conf());
 }
 
 static bool lmdb_stat(const char *lmdb_path, struct stat *st)

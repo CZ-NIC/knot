@@ -1167,6 +1167,10 @@ int server_reconfigure(conf_t *conf, server_t *server)
 		if ((ret = configure_sockets(conf, server)) != KNOT_EOK) {
 			return ret;
 		}
+
+		if (conf_lmdb_readers(conf) > CONF_MAX_DB_READERS) {
+			log_warning("config, exceeded number of database readers");
+		}
 	}
 
 	/* Reconfigure journal DB. */

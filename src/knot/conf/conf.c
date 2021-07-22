@@ -40,8 +40,8 @@
 
 #define DBG_LOG(err) CONF_LOG(LOG_DEBUG, "%s (%s)", __func__, knot_strerror((err)));
 
-#define DFLT_TCP_WORKERS_MIN		10
-#define DFLT_BG_WORKERS_MAX		10
+#define DFLT_MIN_TCP_WORKERS		10
+#define DFLT_MAX_BG_WORKERS		10
 #define FALLBACK_MAX_TCP_CLIENTS	100
 
 bool conf_db_exists(
@@ -1142,8 +1142,9 @@ size_t conf_udp_threads_txn(
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_UDP_WORKERS);
 	int64_t workers = conf_int(&val);
+	assert(workers <= CONF_MAX_UDP_WORKERS);
 	if (workers == YP_NIL) {
-		return dt_optimal_size();
+		return MIN(dt_optimal_size(), CONF_MAX_UDP_WORKERS);
 	}
 
 	return workers;
@@ -1155,8 +1156,10 @@ size_t conf_tcp_threads_txn(
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_WORKERS);
 	int64_t workers = conf_int(&val);
+	assert(workers <= CONF_MAX_TCP_WORKERS);
 	if (workers == YP_NIL) {
-		return MAX(dt_optimal_size(), DFLT_TCP_WORKERS_MIN);
+		size_t optimal = MAX(dt_optimal_size(), DFLT_MIN_TCP_WORKERS);
+		return MIN(optimal, CONF_MAX_TCP_WORKERS);
 	}
 
 	return workers;
@@ -1191,8 +1194,10 @@ size_t conf_bg_threads_txn(
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_BG_WORKERS);
 	int64_t workers = conf_int(&val);
+	assert(workers <= CONF_MAX_BG_WORKERS);
 	if (workers == YP_NIL) {
-		return MIN(dt_optimal_size(), DFLT_BG_WORKERS_MAX);
+		assert(DFLT_MAX_BG_WORKERS <= CONF_MAX_BG_WORKERS);
+		return MIN(dt_optimal_size(), DFLT_MAX_BG_WORKERS);
 	}
 
 	return workers;
