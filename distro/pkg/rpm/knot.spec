@@ -63,12 +63,22 @@ BuildRequires:	lmdb-devel
 BuildRequires:	python3-sphinx
 BuildRequires:	pkgconfig(lmdb)
 %endif
+
+%ifarch aarch64 %{arm}
+# disable XDP on ARM until issues are resolved
+%define configure_xdp --enable-xdp=no
+%else
+%if 0%{?fedora} >= 31
+# XDP is auto-enabled when libbpf is present
+%define use_xdp 1
+BuildRequires:  pkgconfig(libbpf) >= 0.0.6
+%endif
 %if 0%{?rhel} >= 8 || 0%{?suse_version}
+# enable XDP on EL using embedded libbpf
+%define use_xdp 1
 %define configure_xdp --enable-xdp=yes
 BuildRequires:	pkgconfig(libelf)
 %endif
-%if 0%{?fedora} >= 31
-BuildRequires: pkgconfig(libbpf) >= 0.0.6
 %endif
 
 Requires(post):		systemd %{_sbindir}/runuser
@@ -271,7 +281,7 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %{_bindir}/khost
 %{_bindir}/knsec3hash
 %{_bindir}/knsupdate
-%if 0%{?rhel} >= 8 || 0%{?suse_version} || 0%{?fedora} >= 31
+%if 0%{?use_xdp}
 %{_sbindir}/kxdpgun
 %{_mandir}/man8/kxdpgun.*
 %endif
