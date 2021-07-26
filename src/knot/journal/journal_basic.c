@@ -36,6 +36,19 @@ MDB_val journal_changeset_to_chunk_key(const changeset_t *ch, uint32_t chunk_id)
 	}
 }
 
+MDB_val journal_zone_prefix(const knot_dname_t *zone)
+{
+	return knot_lmdb_make_key("NI", zone, (uint32_t)0);
+}
+
+void journal_del_zone(knot_lmdb_txn_t *txn, const knot_dname_t *zone)
+{
+	assert(txn->is_rw);
+	MDB_val prefix = journal_zone_prefix(zone);
+	knot_lmdb_del_prefix(txn, &prefix);
+	free(prefix.mv_data);
+}
+
 void journal_make_header(void *chunk, uint32_t ch_serial_to)
 {
 	knot_lmdb_make_key_part(chunk, JOURNAL_HEADER_SIZE, "IILLL", ch_serial_to,
