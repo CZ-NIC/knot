@@ -224,6 +224,84 @@ Building notes
 - XDP support on Linux requires optional library *libbpf >= 0.0.6*. If not available,
   an embedded library can be used via ``--enable-xdp=yes`` configure option.
 
+.. _Upgrade 3.0.x to 3.1.x:
+
+Upgrade 3.0.x to 3.1.x
+======================
+
+Knot DNS version 3.1.x is functionally compatible with 3.0.x with the following
+exceptions.
+
+Configuration changes
+---------------------
+
+- Automatic SOA serial incrementation (``zonefile-load: difference-no-serial``)
+  requires having full zone stored in the journal (``journal-content: all``).
+  This change is necessary for reliable operation.
+
+- Replaced options (with backward compatibility):
+
+   .. csv-table::
+      :header: Old section, Old item name, New section, New item name
+      :widths: 40, 60, 40, 60
+
+      :ref:`server<Server section>`, ``listen-xdp``, :ref:`xdp<XDP section>`, :ref:`xdp_listen`
+
+- Ignored obsolete options (with a notice log):
+
+  - ``server.max-zone-size``
+  - ``server.max-journal-depth``
+  - ``server.max-journal-usage``
+  - ``server.max-refresh-interval``
+  - ``server.min-refresh-interval``
+  - ``server.max-ipv4-udp-payload``
+  - ``server.max-ipv6-udp-payload``
+  - ``server.max-udp-payload``
+  - ``server.max-tcp-clients``
+  - ``server.tcp-reply-timeout``
+  - ``template.journal-db``
+  - ``template.kasp-db``
+  - ``template.timer-db``
+  - ``template.max-journal-db-size``
+  - ``template.max-timer-db-size``
+  - ``template.max-kasp-db-size``
+  - ``template.journal-db-mode``
+
+- Silently ignored obsolete options:
+
+  - ``server.tcp-handshake-timeout``
+  - ``zone.disable-any``
+
+Zone file processing
+--------------------
+
+If a resource record has ommited TTL in the zone file, its TTL value defaults
+to the last explicitly stated one. It can be a *$TTL* directive, the internal
+default value *3600*, **or an explicit TTL of a previous record**. This fixes
+a non-compliance with :rfc:`1035`.
+
+Zone backup and restore
+-----------------------
+
+The online backup format has changed slightly since 3.0 version. For zone-restore
+from backups in the previous format, it's necessary to set the *-f* option.
+Offline restore procedure of zone files from online backups is different than
+what it was before. The details are described in :ref:`Data and metadata backup`.
+
+Building notes
+--------------
+
+- The configure option ``--enable-xdp=yes`` has slightly changed its semantics.
+  It first tries to find an external library *libbpf*. If it's not detected,
+  the embedded one is used instead.
+- The kxdpgun tool also depends on library *libmnl*.
+
+Packaging
+---------
+
+Users who use module :ref:`geoip<mod-geoip>` or :ref:`dnstap<mod-dnstap>` might
+need installing an additional package with the module.
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users
