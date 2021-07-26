@@ -58,6 +58,16 @@ MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const
 MDB_val journal_changeset_to_chunk_key(const changeset_t *ch, uint32_t chunk_id);
 
 /*!
+ * \brief Return a key prefix to operate with all zone-related records.
+ */
+MDB_val journal_zone_prefix(const knot_dname_t *zone);
+
+/*!
+ * \brief Delete all zone-related records from journal with open read-write txn.
+ */
+void journal_del_zone(knot_lmdb_txn_t *txn, const knot_dname_t *zone);
+
+/*!
  * \brief Initialise chunk header.
  *
  * \param chunk   Pointer to the changeset chunk. It must be at least JOURNAL_HEADER_SIZE, perhaps more.
