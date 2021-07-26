@@ -1766,7 +1766,7 @@ Definition of zones served by the server.
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
-     catalog-role: none | interpret
+     catalog-role: none | interpret | generate | member
      catalog-template: template_id ...
      catalog-zone: DNAME
      catalog-group: STR
