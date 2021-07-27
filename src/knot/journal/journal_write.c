@@ -225,7 +225,7 @@ int journal_insert_zone(zone_journal_t j, const zone_contents_t *z)
 	knot_lmdb_begin(j.db, &txn, true);
 
 	update_last_inserter(&txn, j.zone);
-	journal_del_zone(&txn, j.zone);
+	journal_del_zone_txn(&txn, j.zone);
 
 	journal_write_zone(&txn, z);
 
@@ -281,7 +281,7 @@ int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *e
 		if (journal_contains(&txn, true, 0, j.zone)) {
 			txn.ret = KNOT_ESEMCHECK;
 		} else {
-			journal_del_zone(&txn, j.zone);
+			journal_del_zone_txn(&txn, j.zone);
 			memset(&md, 0, sizeof(md));
 		}
 	}
