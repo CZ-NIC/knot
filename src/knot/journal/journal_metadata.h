@@ -112,6 +112,14 @@ void journal_metadata_after_insert(journal_metadata_t *md, uint32_t serial, uint
 void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint32_t serial_to);
 
 /*!
+ * \brief Delete all zone records in a txn that will later write to the same zone.
+ *
+ * \note The difference against journal_del_zone(), which purges even metadata, incl "occupied".
+ * \note This preserves keeping track of space occupied/freed by this zone.
+ */
+void journal_del_zone_txn(knot_lmdb_txn_t *txn, const knot_dname_t *zone);
+
+/*!
  * \brief Completely delete all journal records belonging to this zone, including metadata.
  *
  * \param j   Journal to be scraped.

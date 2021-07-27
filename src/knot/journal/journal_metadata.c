@@ -286,6 +286,14 @@ void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint3
 	md->flags |= (JOURNAL_MERGED_SERIAL_VALID | JOURNAL_LAST_FLUSHED_VALID);
 }
 
+void journal_del_zone_txn(knot_lmdb_txn_t *txn, const knot_dname_t *zone)
+{
+	uint64_t md_occupied = 0;
+	(void)get_metadata64(txn, zone, "occupied", &md_occupied);
+	journal_del_zone(txn, zone);
+	set_metadata(txn, zone, "occupied", &md_occupied, sizeof(md_occupied), true);
+}
+
 int journal_scrape_with_md(zone_journal_t j, bool check_existence)
 {
 	if (check_existence && !journal_is_existing(j)) {
