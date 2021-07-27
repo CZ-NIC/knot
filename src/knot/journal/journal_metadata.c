@@ -286,6 +286,14 @@ void journal_metadata_after_extra(journal_metadata_t *md, uint32_t serial, uint3
 	md->flags |= (JOURNAL_MERGED_SERIAL_VALID | JOURNAL_LAST_FLUSHED_VALID);
 }
 
+void journal_del_zone_txn(knot_lmdb_txn_t *txn, const knot_dname_t *zone)
+{
+	uint64_t md_occupied = 0;
+	(void)get_metadata64(txn, zone, "occupied", &md_occupied);
+	journal_del_zone(txn, zone);
+	set_metadata(txn, zone, "occupied", &md_occupied, sizeof(md_occupied), true);
+}
+
 int journal_scrape_with_md(zone_journal_t j, bool check_existence)
 {
 	if (check_existence && !journal_is_existing(j)) {
@@ -295,8 +303,7 @@ int journal_scrape_with_md(zone_journal_t j, bool check_existence)
 	knot_lmdb_begin(j.db, &txn, true);
 
 	update_last_inserter(&txn, NULL);
-	MDB_val prefix = { knot_dname_size(j.zone), (void *)j.zone };
-	knot_lmdb_del_prefix(&txn, &prefix);
+	journal_del_zone(&txn, j.zone);
 
 	knot_lmdb_commit(&txn);
 	return txn.ret;
@@ -313,8 +320,9 @@ int journal_copy_with_md(knot_lmdb_db_t *from, knot_lmdb_db_t *to, const knot_dn
 	knot_lmdb_begin(from, &tr, true);
 	knot_lmdb_begin(to, &tw, true);
 	update_last_inserter(&tr, NULL);
-	MDB_val prefix = { knot_dname_size(zone), (void *)zone };
+	MDB_val prefix = journal_zone_prefix(zone);
 	knot_lmdb_copy_prefix(&tr, &tw, &prefix);
+	free(prefix.mv_data);
 	knot_lmdb_commit(&tw);
 	knot_lmdb_commit(&tr);
 done:
