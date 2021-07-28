@@ -16,6 +16,9 @@ Knot DNS benefits from its multi-threaded and mostly lock-free
 implementation which allows it to scale well on SMP systems and
 operate non-stop even when adding or removing zones.
 
+The server itself is accompanied by several utilities for general DNS
+operations or for maintaing the server.
+
 For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 
 Knot DNS features
@@ -25,12 +28,13 @@ DNS features:
 
 * Primary and secondary server operation
 * Internet class (IN)
-* DNS extension (EDNS0)
+* DNS extension (EDNS0, EDE)
 * TCP and UDP protocols
-* Zone catalogs
+* Zone catalog generation and interpretation
 * Minimal responses
 * Dynamic zone updates
 * DNSSEC with NSEC and NSEC3
+* ZONEMD generation and validation
 * Transaction signature using TSIG
 * Full and incremental zone transfers (AXFR, IXFR)
 * Name server identification using NSID or Chaos TXT records
@@ -61,14 +65,15 @@ Remarkable module extensions:
 * Response rate limiting
 * Forward and reverse records synthesis
 * DNS request traffic statistics
+* Efficient DNS traffic logging interface
 * Dnstap traffic logging
 * Online DNSSEC signing
 * GeoIP response tailoring supporting ECS and DNSSEC
 
 Remarkable supported networking features:
 
-* TCP Fast Open
-* AF_XDP (on Linux 4.18+)
+* TCP Fast Open (client and server)
+* High-performance UDP and TCP through AF_XDP processing (on Linux 4.18+)
 * SO_REUSEPORT (on Linux) or SO_REUSEPORT_LB (on FreeBSD 12.0+) on UDP and by choice on TCP
 * Binding to non-local addresses (IP_FREEBIND on Linux, IP_BINDANY/IPV6_BINDANY on FreeBSD)
 * Ignoring PMTU information for IPv4/UDP via IP_PMTUDISC_OMIT
