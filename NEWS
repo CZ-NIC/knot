@@ -1,3 +1,81 @@
+Knot DNS 3.1.0 (2021-08-02)
+===========================
+
+Features:
+---------
+ - knotd: automatic zone catalog generation based on actual configuration
+ - knotd: zone catalog supports configuration groups
+ - knotd: support for ZONEMD validation and generation
+ - knotd: basic support for TCP over XDP processing
+ - knotd: configuration option for enabling IP route check in the XDP mode
+ - knotd: support for epoll (Linux) and kqueue (*BSD, macOS) socket polling
+ - knotd: extended EDNS error (EDE) is added to the response if appropriate
+ - knotd: DNSSEC operation with extra ready public-only KSK is newly allowed
+ - knotd: new zone backup/restore filters for more variable component specification
+ - knotd: adaptive systemd service start timeout and new zone loading status #733
+ - knotd: configuration option for enabling TCP Fast Open on outbound communication
+ - knotd: when the server starts, zone NOTIFY is send only if not sent already
+ - knotc: zone reload with the force flag triggers reload of the zone and its modules
+ - libs: support for parsing and dumping SVCB and HTTPS resource records
+ - kdig: support for TCP Fast Open along with DoT/DoH #549
+ - kxdpgun: basic support for DNS over TCP processing
+ - kxdpgun: current traffic statistics can be printed using a USR1 signal
+ - python: new libknot/probe API wrapper
+
+Improvements:
+-------------
+ - knotd: PID file is created even in the foreground mode
+ - knotd: more robust and enhanced zone data backup and restore operations
+ - knotd: maximum length of an XFR message is limited to 16 KiB for better compression
+ - knotd: maximum CNAME/DNAME chain depth per reply was decreased from 20 to 5
+ - knotd: improved performance of processing domain names with many short labels
+ - knotd: adaptive limit on the number of LMDB readers to avoid problems with many workers
+ - knotd: TTL of generated NSEC(3) records is set to min(SOA TTL, SOA minimum)
+ - knotd: TTL of generated NSEC3PARAM is equal to TTL of NSEC3 records
+ - knotd: maximum TCP segment size is restricted to 1220 octets on Linux #468
+ - knotc: various improvements in error reporting
+ - knotc: default control timeout is infinity in the blocking mode
+ - dnssec: dnskey generator tries to return a key with a unique keytag
+ - kxdpgun: RLIMIT_MEMLOCK is increased only if not high enough
+ - kxdpgun: RTNETLINK is used for getting network information instead of the ip command
+
+Bugfixes:
+---------
+ - knotd: DNAME not applied more than once to resolve the query #714
+ - knotd: root zone not correctly purged from the journal
+ - kzonecheck: incorrect check for opt-outed empty non-terminal nodes
+ - libzscanner: wrong error line number
+ - libzscanner: broken multiline rdata processing if an error occurs
+ - mod-geoip: NXDOMAIN is responded instead of NODATA #745
+ - make: build fails with undefined references if building using slibtool #722
+
+Packaging:
+----------
+ - knotd: systemd service reload uses 'kill -HUP' instead of 'knotc reload'
+ - kxdpgun: new library dependency libmnl
+ - mod-dnstap: new package separate from the knot package
+ - mod-geoip: new package separate from the knot package
+
+Compatibility:
+--------------
+ - configure: option '--enable-xdp=yes' means use an external libbpf if available
+              or use the embedded one
+ - libzsanner: omitted TTL value is correctly set to the last explicitly stated value (RFC 1035)
+ - knotc: zone restore from an old backup (3.0.x) requires forced operation
+ - knotd: configuration option 'server.listen-xdp' is replaced with 'xdp.listen'
+ - knotd: zone file loading with automatic SOA serial incrementation newly
+          requires having full zone in the journal
+ - knotd: obsolete configuration options 'zone.disable-any', 'server.tcp-handshake-timeout'
+          are silently ignored
+ - knotd: obsolete configuration options 'zone.max-zone-size', 'zone.max-journal-depth',
+          'zone.max-journal-usage', 'zone.max-refresh-interval', 'zone.min-refresh-interval'
+          'server.max-ipv4-udp-payload', 'server.max-ipv6-udp-payload', 'server.max-udp-payload',
+          'server.tcp-reply-timeout', 'server.max-tcp-clients' are ignored
+ - knotd: obsolete default template options 'template.journal-db',
+          'template.kasp-db', 'template.timer-db', 'template.max-journal-db-size',
+          'template.journal-db-mode', 'template.max-timer-db-size',
+          'template.max-kasp-db-size' are ignored
+
 Knot DNS 3.0.8 (2021-07-16)
 ===========================
 
