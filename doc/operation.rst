@@ -696,8 +696,8 @@ If we have zones which already have their keys, turning on the shared KSK featur
 But when a KSK rollover takes place, they will use the same new key afterwards.
 
 .. WARNING::
-   It is discouraged to modify policy :ref:`id<policy_id>` when :ref:`shared KSK<policy_ksk-shared>`
-   is enabled.
+   Changing the policy :ref:`id<policy_id>` must be done carefully if shared
+   KSK is in use.
 
 .. _DNSSEC Delete algorithm:
 

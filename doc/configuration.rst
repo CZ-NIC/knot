@@ -433,9 +433,10 @@ convenience delay the submission is started. The server publishes CDS and CDNSKE
 and the user shall propagate them to the parent. The server periodically checks for
 DS at the parent zone and when positive, finishes the rollover.
 
-To share KSKs among zones, set the ksk-shared policy parameter. It is strongly discouraged to
-change the policy ``id`` afterwards! The shared key's creation timestamp will be equal for all
-zones, but other timers (e.g. activate, retire) may get out of sync. ::
+To share KSKs among zones, set the :ref:`policy_ksk-shared` policy parameter. Please note
+that changing the policy ``id`` afterwards can have unexpected conseqences!
+The shared key's creation timestamp will be equal for all zones, but other timers
+(e.g. activate, retire) may get out of sync. ::
 
   policy:
     - id: shared

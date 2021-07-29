@@ -1269,10 +1269,13 @@ A length of newly generated :abbr:`ZSK (Zone Signing Key)` keys.
 ksk-shared
 ----------
 
-If enabled, all zones with this policy assigned will share one KSK.
+If enabled, all zones with this policy assigned will share one or more KSKs.
+More KSKs can be shared during a KSK rollover.
 
 .. WARNING::
-   It is discouraged to modify policy :ref:`id<policy_id>` when shared KSK is enabled.
+   As the shared KSK set is bound to the policy :ref:`id<policy_id>`, renaming the
+   policy breaks this connection and new shared KSK set is initiated when
+   a new KSK is needed.
 
 *Default:* off
 
