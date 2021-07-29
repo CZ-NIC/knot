@@ -1228,28 +1228,52 @@ static int drop_journal_if_orphan(const knot_dname_t *for_zone, void *ctx)
 	return KNOT_EOK;
 }
 
+static void log_if_orphans_error(knot_dname_t *zone_name, int err, char *db_type)
+{
+	if (err == KNOT_EOK || err == KNOT_ENOENT || err == KNOT_EFILE) {
+		return;
+	}
+
+	char *msg = sprintf_alloc("failed to purge orphan from %s database (%s)",
+	                          db_type, knot_strerror(err));
+	if (msg == NULL) {
+		return;
+	}
+
+	if (zone_name == NULL) {
+		log_error("%s", msg);
+	} else {
+		log_zone_error(zone_name, "%s", msg);
+	}
+	free(msg);
+}
+
 static int orphans_purge(ctl_args_t *args)
 {
 	assert(args->data[KNOT_CTL_IDX_FILTER] != NULL);
 	bool only_orphan = (strlen(args->data[KNOT_CTL_IDX_FILTER]) == 1);
+	int ret;
 
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
 		// Purge KASP DB.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-			(void)kasp_db_sweep(&args->server->kaspdb,
+			ret = kasp_db_sweep(&args->server->kaspdb,
 			                    zone_exists, args->server->zone_db);
+			log_if_orphans_error(NULL, ret, "KASP");
 		}
 
 		// Purge zone journals of unconfigured zones.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
-			(void)journals_walk(&args->server->journaldb,
+			ret = journals_walk(&args->server->journaldb,
 			                    drop_journal_if_orphan, args->server);
+			log_if_orphans_error(NULL, ret, "journal");
 		}
 
 		// Purge timers of unconfigured zones.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
-			(void)zone_timers_sweep(&args->server->timerdb,
+			ret = zone_timers_sweep(&args->server->timerdb,
 			                        zone_exists, args->server->zone_db);
+			log_if_orphans_error(NULL, ret, "timer");
 		}
 	} else {
 		knot_dname_storage_t buff;
@@ -1270,25 +1294,28 @@ static int orphans_purge(ctl_args_t *args)
 				// Purge KASP DB.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
 					if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK) {
-						(void)kasp_db_delete_all(&args->server->kaspdb, zone_name);
+						ret = kasp_db_delete_all(&args->server->kaspdb, zone_name);
+						log_if_orphans_error(zone_name, ret, "KASP");
 					}
 				}
 
 				// Purge zone journal.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
 					zone_journal_t j = { &args->server->journaldb, zone_name };
-					(void)journal_scrape_with_md(j, true);
+					ret = journal_scrape_with_md(j, true);
+					log_if_orphans_error(zone_name, ret, "journal");
 				}
 
 				// Purge zone timers.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
-					(void)zone_timers_sweep(&args->server->timerdb,
+					ret = zone_timers_sweep(&args->server->timerdb,
 					                        zone_names_distinct, zone_name);
+					log_if_orphans_error(zone_name, ret, "timer");
 				}
 			}
 
 			// Get next zone name.
-			int ret = knot_ctl_receive(args->ctl, &args->type, &args->data);
+			ret = knot_ctl_receive(args->ctl, &args->type, &args->data);
 			if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
 				break;
 			}
