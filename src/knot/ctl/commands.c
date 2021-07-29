@@ -434,6 +434,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	if (same_path(backup_dir, db_storage)) {
 		char *msg = sprintf_alloc("%s the database storage directory not allowed",
 		                          restore_mode ? "restore from" : "backup to");
+		if (msg == NULL) {
+			return KNOT_ENOMEM;
+		}
 
 		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
 			log_error("%s", msg);
@@ -540,6 +543,9 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		char *msg = sprintf_alloc("%s init failed (%s)",
 		                          restore_mode ? "restore" : "backup",
 		                          knot_strerror(ret));
+		if (msg == NULL) {
+			return KNOT_ENOMEM;
+		}
 
 		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
 			log_error("%s", msg);
