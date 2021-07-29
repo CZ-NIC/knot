@@ -1316,12 +1316,15 @@ A length of newly generated ZSK keys.
 \fIDefault:\fP see default for \fI\%ksk\-size\fP
 .SS ksk\-shared
 .sp
-If enabled, all zones with this policy assigned will share one KSK.
+If enabled, all zones with this policy assigned will share one or more KSKs.
+More KSKs can be shared during a KSK rollover.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
 .INDENT 3.5
-It is discouraged to modify policy \fI\%id\fP when shared KSK is enabled.
+As the shared KSK set is bound to the policy \fI\%id\fP, renaming the
+policy breaks this connection and new shared KSK set is initiated when
+a new KSK is needed.
 .UNINDENT
 .UNINDENT
 .sp
