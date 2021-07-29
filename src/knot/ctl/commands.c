@@ -436,9 +436,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 		                          restore_mode ? "restore from" : "backup to");
 
 		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-			log_ctl_error("%s", msg);
+			log_error("%s", msg);
 		} else {
-			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE], "%s", msg);
+			log_zone_str_error(args->data[KNOT_CTL_IDX_ZONE], "%s", msg);
 		}
 		free(msg);
 		return KNOT_EINVAL;
@@ -542,12 +542,12 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		                          knot_strerror(ret));
 
 		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-			log_ctl_error("%s", msg);
+			log_error("%s", msg);
 		} else {
-			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
+			log_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
 			                       "%s", msg);
 		}
-		free (msg);
+		free(msg);
 
 		/* Warning: zone name in the control command params discarded here. */
 		args->data[KNOT_CTL_IDX_ZONE] = NULL;
