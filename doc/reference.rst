@@ -492,14 +492,35 @@ Change of this parameter requires restart of the Knot server to take effect.
 tcp
 ---
 
-Also process DNS over TCP traffic with XDP workers.
+If enabled, DNS over TCP traffic is also processed with XDP workers.
+
+The TCP stack features:
+
+- Basic connection handling, sending/receiving data
+- Close inactive connections
+- Reset inactive connections which aren't able to close
+- Reset invalid connections
+- Ignore invalid resets and ACKs
+- Receive fragmented data – one DNS message in multiple packets
+- Limit total size of incomming buffers, reset most inactive connections
+  with buffered data
+- Send fragmented data – DNS message larger than allowed by MSS
+- Send MSS option calculated from configured MSS and device MTU
+- Receive and honor MSS option, limit the size of outgoing packet
+- Send window size option (set to infinity)
+
+Missing features:
+
+- Receive and honor window size option, send only such amount of data at once,
+  cache outgoing data
+- Allow multi-message DNS responses (depends on above)
+- Resend lost outgoing packets (not ACKed in time), including data
 
 Change of this parameter requires restart of the Knot server to take effect.
 
 .. WARNING::
-   This feature is highly experimental and it may eat your hamster as well as any
-   other hamsters connected to the network. Multi-message zone transfer isn't
-   supported through XDP.
+   This feature is experimental and it may eat your hamster as well as any
+   other hamsters connected to the network.
 
 *Default:* off
 

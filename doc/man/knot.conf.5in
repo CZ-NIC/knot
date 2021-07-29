@@ -474,16 +474,53 @@ working TCP.
 \fIDefault:\fP not set
 .SS tcp
 .sp
-Also process DNS over TCP traffic with XDP workers.
+If enabled, DNS over TCP traffic is also processed with XDP workers.
+.sp
+The TCP stack features:
+.INDENT 0.0
+.IP \(bu 2
+Basic connection handling, sending/receiving data
+.IP \(bu 2
+Close inactive connections
+.IP \(bu 2
+Reset inactive connections which aren\(aqt able to close
+.IP \(bu 2
+Reset invalid connections
+.IP \(bu 2
+Ignore invalid resets and ACKs
+.IP \(bu 2
+Receive fragmented data – one DNS message in multiple packets
+.IP \(bu 2
+Limit total size of incomming buffers, reset most inactive connections
+with buffered data
+.IP \(bu 2
+Send fragmented data – DNS message larger than allowed by MSS
+.IP \(bu 2
+Send MSS option calculated from configured MSS and device MTU
+.IP \(bu 2
+Receive and honor MSS option, limit the size of outgoing packet
+.IP \(bu 2
+Send window size option (set to infinity)
+.UNINDENT
+.sp
+Missing features:
+.INDENT 0.0
+.IP \(bu 2
+Receive and honor window size option, send only such amount of data at once,
+cache outgoing data
+.IP \(bu 2
+Allow multi\-message DNS responses (depends on above)
+.IP \(bu 2
+Resend lost outgoing packets (not ACKed in time), including data
+.UNINDENT
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
 .INDENT 3.5
-This feature is highly experimental and it may eat your hamster as well as any
-other hamsters connected to the network. Multi\-message zone transfer isn\(aqt
-supported through XDP.
+This feature is experimental and it may eat your hamster as well as any
+other hamsters connected to the network.
 .UNINDENT
 .UNINDENT
 .sp
@@ -1625,7 +1662,7 @@ zone:
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
-    catalog\-role: none | interpret
+    catalog\-role: none | interpret | generate | member
     catalog\-template: template_id ...
     catalog\-zone: DNAME
     catalog\-group: STR
