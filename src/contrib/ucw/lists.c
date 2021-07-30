@@ -2,7 +2,7 @@
  *	BIRD Library -- Linked Lists
  *
  *	(c) 1998 Martin Mares <mj@ucw.cz>
- *	(c) 2015, 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+ *	(c) 2015, 2020-2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
  *	Can be freely distributed and used under the terms of the GNU GPL.
  */
@@ -25,8 +25,10 @@
  * similar to that used in the &fib structure.
  */
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "contrib/ucw/lists.h"
 #include "contrib/mempattern.h"
 
@@ -40,12 +42,13 @@
 void
 add_tail(list_t *l, node_t *n)
 {
-  node_t *z = l->tail;
+  node_t *z = &l->tail;
 
-  n->next = (node_t *) &l->null;
-  n->prev = z;
-  z->next = n;
-  l->tail = n;
+  n->next = z;
+  n->prev = z->prev;
+  z->prev->next = n;
+  z->prev = n;
+  assert(z->next == NULL);
 }
 
 /**
@@ -58,12 +61,13 @@ add_tail(list_t *l, node_t *n)
 void
 add_head(list_t *l, node_t *n)
 {
-  node_t *z = l->head;
+  node_t *z = &l->head;
 
-  n->next = z;
-  n->prev = (node_t *) &l->head;
-  z->prev = n;
-  l->head = n;
+  n->next = z->next;
+  n->prev = z;
+  z->next->prev = n;
+  z->next = n;
+  assert(z->prev == NULL);
 }
 
 /**
@@ -113,9 +117,10 @@ rem_node(node_t *n)
 void
 init_list(list_t *l)
 {
-  l->head = (node_t *) &l->null;
-  l->null = NULL;
-  l->tail = (node_t *) &l->head;
+  l->head.next = &l->tail;
+  l->head.prev = NULL;
+  l->tail.next = NULL;
+  l->tail.prev = &l->head;
 }
 
 /**
@@ -129,14 +134,12 @@ init_list(list_t *l)
 void
 add_tail_list(list_t *to, list_t *l)
 {
-  node_t *p = to->tail;
-  node_t *q = l->head;
+  node_t *p = to->tail.prev;
+  node_t *q = l->head.next;
 
   p->next = q;
   q->prev = p;
-  q = l->tail;
-  q->next = (node_t *) &to->null;
-  to->tail = q;
+  to->tail.prev = l->tail.prev;
 }
 
 /**

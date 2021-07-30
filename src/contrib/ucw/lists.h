@@ -2,25 +2,12 @@
  *	BIRD Library -- Linked Lists
  *
  *	(c) 1998 Martin Mares <mj@ucw.cz>
- *	(c) 2015, 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+ *	(c) 2015, 2020-2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
  *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
 #pragma once
-
-/*
- * I admit the list structure is very tricky and also somewhat awkward,
- * but it's both efficient and easy to manipulate once one understands the
- * basic trick: The list head always contains two synthetic nodes which are
- * always present in the list: the head and the tail. But as the `next'
- * entry of the tail and the `prev' entry of the head are both NULL, the
- * nodes can overlap each other:
- *
- *     head    head_node.next
- *     null    head_node.prev  tail_node.next
- *     tail                    tail_node.prev
- */
 
 #include <string.h>
 #include "libknot/mm_ctx.h"
@@ -29,13 +16,13 @@ typedef struct node {
   struct node *next, *prev;
 } node_t;
 
-typedef struct list {			/* In fact two overlayed nodes */
-  struct node *head, *null, *tail;
+typedef struct list {
+  node_t head, tail;
 } list_t;
 
 #define NODE (node_t *)
-#define HEAD(list) ((void *)((list).head))
-#define TAIL(list) ((void *)((list).tail))
+#define HEAD(list) ((void *)((list).head.next))
+#define TAIL(list) ((void *)((list).tail.prev))
 #define WALK_LIST(n,list) for(n=HEAD(list);(NODE (n))->next; \
 				n=(void *)((NODE (n))->next))
 #define WALK_LIST_DELSAFE(n,nxt,list) \
@@ -48,7 +35,7 @@ typedef struct list {			/* In fact two overlayed nodes */
 #define WALK_LIST_BACKWARDS_DELSAFE(n,prv,list) \
      for(n=TAIL(list); prv=(void *)((NODE (n))->prev); n=(void *) prv)
 
-#define EMPTY_LIST(list) (!(list).head->next)
+#define EMPTY_LIST(list) (!(NODE HEAD(list))->next)
 
 /*! \brief Free every node in the list. */
 #define WALK_LIST_FREE(list) \
