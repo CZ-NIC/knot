@@ -1,7 +1,7 @@
 AC_PREREQ([2.69])
 
 m4_define([knot_VERSION_MAJOR], 3)dnl
-m4_define([knot_VERSION_MINOR], 1)dnl
+m4_define([knot_VERSION_MINOR], 2)dnl
 m4_define([knot_VERSION_PATCH], )dnl Leave empty if the master branch!
 m4_include([m4/knot-version.m4])
 
