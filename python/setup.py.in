@@ -13,6 +13,7 @@ setuptools.setup(
     version='@PACKAGE_VERSION@',
     description='Python bindings for libknot',
     long_description=long_description,
+    long_description_content_type="text/markdown",
     author='Daniel Salzman',
     author_email='daniel.salzman@nic.cz',
     url='https://gitlab.nic.cz/knot/knot-dns',
