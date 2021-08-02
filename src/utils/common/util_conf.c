@@ -101,7 +101,7 @@ int util_conf_init_default(void)
 	} else if (stat(CONF_DEFAULT_FILE, &st) == 0) {
 		return util_conf_init_file(CONF_DEFAULT_FILE);
 	} else {
-		ERR("couldn't initialize configuration, please provide -c, -C, or -d option\n");
+		ERR("couldn't initialize configuration, please provide -c, -C, or -D option\n");
 		return KNOT_EINVAL;
 	}
 }

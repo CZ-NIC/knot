@@ -42,7 +42,7 @@ static void print_help(void)
 	       "                            (default %s)\n"
 	       "  -C, --confdb <dir>       Use a binary configuration database directory.\n"
 	       "                            (default %s)\n"
-	       "  -d, --dir <path>         Use specified KASP database path and default configuration.\n"
+	       "  -D, --dir <path>         Use specified KASP database path and default configuration.\n"
 	       "  -t, --tsig <name> [alg]  Generate a TSIG key.\n"
 	       "  -l, --list               List all zones that have at least one key in KASP database.\n"
 	       "  -x, --mono               Don't color the output.\n"
@@ -293,7 +293,7 @@ int main(int argc, char *argv[])
 	struct option opts[] = {
 		{ "config",  required_argument, NULL, 'c' },
 		{ "confdb",  required_argument, NULL, 'C' },
-		{ "dir",     required_argument, NULL, 'd' },
+		{ "dir",     required_argument, NULL, 'D' },
 		{ "tsig",    required_argument, NULL, 't' },
 		{ "brief",   no_argument,       NULL, 'b' },
 		{ "list",    no_argument,       NULL, 'l' },
@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
 	list_params.color = isatty(STDOUT_FILENO);
 
 	int opt = 0, parm = 0;
-	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:lbxX", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVD:c:C:t:lbxX", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
 		case 'V':
 			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
-		case 'd':
+		case 'D':
 			if (util_conf_init_justdb("kasp-db", optarg) != KNOT_EOK) {
 				return EXIT_FAILURE;
 			}
