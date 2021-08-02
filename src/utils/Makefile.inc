@@ -162,7 +162,7 @@ kzonesign_LDADD        = $(libknotd_LIBS)
 keymgr_CPPFLAGS        = $(libknotus_la_CPPFLAGS)
 keymgr_LDADD           = $(libknotd_LIBS) $(libknotus_LIBS)
 kjournalprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
-kjournalprint_LDADD    = $(libknotd_LIBS)
+kjournalprint_LDADD    = $(libknotd_LIBS) $(libknotus_LIBS)
 kcatalogprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
 kcatalogprint_LDADD    = $(libknotd_LIBS)
 endif HAVE_UTILS

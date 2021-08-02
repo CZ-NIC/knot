@@ -6,7 +6,7 @@ kjournalprint – Knot DNS journal print utility
 Synopsis
 --------
 
-:program:`kjournalprint` [*options*] *journal_dir* *zone_name*
+:program:`kjournalprint` [*options*] *zone_name*
 
 Description
 -----------
@@ -16,6 +16,15 @@ changes are colored for terminal.
 
 Options
 .......
+
+**-c** *configfile*
+  Path to Knot configuration file.
+
+**-C** *confdb*
+  Path to Knot configuration database.
+
+**-D** *journal*
+  Path to journal database.
 
 **-l**, **--limit** *limit*
   Limits the number of displayed changes.
@@ -50,9 +59,6 @@ Options
 
 Parameters
 ..........
-
-*journal_dir*
-  A path to the journal database directory.
 
 *zone_name*
   A name of the zone to print the history for.

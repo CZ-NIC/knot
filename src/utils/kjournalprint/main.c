@@ -27,6 +27,7 @@
 #include "knot/zone/zone-dump.h"
 #include "utils/common/params.h"
 #include "contrib/color.h"
+#include "utils/common/util_conf.h"
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
 
@@ -34,9 +35,12 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] <journal_dir> <zone_name>\n"
+	printf("Usage: %s [-c|-C|-D <conf|journal path>] [parameters] <zone_name>\n"
 	       "\n"
 	       "Parameters:\n"
+	       " -c                 Path to Knot configuration file.\n"
+	       " -C                 Path to Knot configuration database.\n"
+	       " -D                 Path to Knot journal.\n"
 	       " -l, --limit <num>  Read only <num> newest changes.\n"
 	       " -s, --serial <soa> Start with a specific SOA serial.\n"
 	       " -z, --zone-list    Instead of reading the journal, display the list\n"
@@ -321,8 +325,23 @@ int main(int argc, char *argv[])
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "l:s:zHdxnXhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:D:l:s:nxXzHdhV", opts, NULL)) != -1) {
 		switch (opt) {
+		case 'c':
+			if (util_conf_init_file(optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'C':
+			if (util_conf_init_confdb(optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'D':
+			if (util_conf_init_justdb("journal-db", optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
 		case 'l':
 			if (str_to_int(optarg, &params.limit, 0, INT_MAX) != KNOT_EOK) {
 				print_help();
@@ -364,29 +383,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	char *db = NULL;
+	if (util_conf_init_default() != KNOT_EOK) {
+		return EXIT_FAILURE;
+	}
+
+	char *db = conf_db(conf(), C_JOURNAL_DB);
 	knot_dname_t *name = NULL;
-
-	switch (argc - optind) {
-	case 2:
-		name = knot_dname_from_str_alloc(argv[optind + 1]);
-		knot_dname_to_lower(name);
-		// FALLTHROUGH
-	case 1:
-		db = argv[optind];
-		break;
-	default:
-		print_help();
-		return EXIT_FAILURE;
-	}
-
-	if (db == NULL) {
-		fprintf(stderr, "Journal DB path not specified\n");
-		return EXIT_FAILURE;
-	}
 
 	if (justlist) {
 		int ret = list_zones(db, params.debug);
+		free(db);
 		switch (ret) {
 		case KNOT_ENOENT:
 			printf("No zones in journal DB\n");
@@ -405,13 +411,19 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (name == NULL) {
-		fprintf(stderr, "Zone not specified\n");
+	switch (argc - optind) {
+	case 1:
+		name = knot_dname_from_str_alloc(argv[optind]);
+		knot_dname_to_lower(name);
+		break;
+	default:
+		print_help();
 		return EXIT_FAILURE;
 	}
 
 	int ret = print_journal(db, name, &params);
 	free(name);
+	free(db);
 
 	switch (ret) {
 	case KNOT_ENOENT:

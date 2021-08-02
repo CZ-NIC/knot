@@ -14,7 +14,7 @@ def journal_changesets(server, zone):
     zij = 0
     chs = 0
 
-    pipe = Popen([dnstest.params.kjournalprint_bin, "-d", server.dir + "/journal", zone.name], stdout=PIPE, stderr=PIPE, universal_newlines=True)
+    pipe = Popen([dnstest.params.kjournalprint_bin, "-d", "-c", server.confile, zone.name], stdout=PIPE, stderr=PIPE, universal_newlines=True)
     (stdout, stderr) = pipe.communicate()
     for line in stdout.splitlines():
         tokens = line.split()

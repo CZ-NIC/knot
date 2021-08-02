@@ -32,13 +32,22 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkjournalprint\fP [\fIoptions\fP] \fIjournal_dir\fP \fIzone_name\fP
+\fBkjournalprint\fP [\fIoptions\fP] \fIzone_name\fP
 .SH DESCRIPTION
 .sp
 The program prints zone history stored in a journal database. As default,
 changes are colored for terminal.
 .SS Options
 .INDENT 0.0
+.TP
+\fB\-c\fP \fIconfigfile\fP
+Path to Knot configuration file.
+.TP
+\fB\-C\fP \fIconfdb\fP
+Path to Knot configuration database.
+.TP
+\fB\-D\fP \fIjournal\fP
+Path to journal database.
 .TP
 \fB\-l\fP, \fB\-\-limit\fP \fIlimit\fP
 Limits the number of displayed changes.
@@ -73,9 +82,6 @@ Print the program version.
 .UNINDENT
 .SS Parameters
 .INDENT 0.0
-.TP
-\fIjournal_dir\fP
-A path to the journal database directory.
 .TP
 \fIzone_name\fP
 A name of the zone to print the history for.
