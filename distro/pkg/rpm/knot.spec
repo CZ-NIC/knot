@@ -64,20 +64,19 @@ BuildRequires:	python3-sphinx
 BuildRequires:	pkgconfig(lmdb)
 %endif
 
-%ifarch aarch64 %{arm}
-# disable XDP on ARM until issues are resolved
+%if 0%{?centos} == 7 || 0%{?rhel} == 7
+# disable XDP on old EL
 %define configure_xdp --enable-xdp=no
 %else
-%if 0%{?fedora} >= 31
-# XDP is auto-enabled when libbpf is present
 %define use_xdp 1
-BuildRequires:  pkgconfig(libbpf) >= 0.0.6
-%endif
 %if 0%{?rhel} >= 8 || 0%{?suse_version}
-# enable XDP on EL using embedded libbpf
+# enable XDP on recent EL using embedded libbpf
 %define use_xdp 1
 %define configure_xdp --enable-xdp=yes
 BuildRequires:	pkgconfig(libelf)
+%else
+# XDP is auto-enabled when libbpf is present
+BuildRequires:  pkgconfig(libbpf) >= 0.0.6
 %endif
 %endif
 
