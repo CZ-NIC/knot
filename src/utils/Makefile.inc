@@ -36,7 +36,9 @@ libknotus_la_SOURCES = \
 	utils/common/tls.c			\
 	utils/common/tls.h			\
 	utils/common/token.c			\
-	utils/common/token.h
+	utils/common/token.h			\
+	utils/common/util_conf.c		\
+	utils/common/util_conf.h
 endif HAVE_LIBUTILS
 
 if HAVE_UTILS
