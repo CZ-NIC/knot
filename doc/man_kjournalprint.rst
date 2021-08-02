@@ -30,7 +30,7 @@ Options
   Instead of reading the journal, display the list of zones in the DB.
   (*zone_name* not needed)
 
-**-c**, **--check**
+**-H**, **--check**
   Enable additional journal semantic checks during printing.
 
 **-x**, **--mono**

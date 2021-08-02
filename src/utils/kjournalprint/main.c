@@ -41,7 +41,7 @@ static void print_help(void)
 	       " -s, --serial <soa> Start with a specific SOA serial.\n"
 	       " -z, --zone-list    Instead of reading the journal, display the list\n"
 	       "                    of zones in the DB (<zone_name> not needed).\n"
-	       " -c, --check        Additional journal semantic checks.\n"
+	       " -H, --check        Additional journal semantic checks.\n"
 	       " -d, --debug        Debug mode output.\n"
 	       " -x, --mono         Get output without coloring.\n"
 	       " -n, --no-color     An alias for -x, deprecated.\n"
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 		{ "limit",     required_argument, NULL, 'l' },
 		{ "serial",    required_argument, NULL, 's' },
 		{ "zone-list", no_argument,       NULL, 'z' },
-		{ "check",     no_argument,       NULL, 'c' },
+		{ "check",     no_argument,       NULL, 'H' },
 		{ "debug",     no_argument,       NULL, 'd' },
 		{ "mono",      no_argument,       NULL, 'x' },
 		{ "no-color",  no_argument,       NULL, 'n' },
@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "l:s:zcdxnXhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "l:s:zHdxnXhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
 			if (str_to_int(optarg, &params.limit, 0, INT_MAX) != KNOT_EOK) {
@@ -339,7 +339,7 @@ int main(int argc, char *argv[])
 		case 'z':
 			justlist = true;
 			break;
-		case 'c':
+		case 'H':
 			params.check = true;
 			break;
 		case 'd':

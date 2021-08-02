@@ -53,7 +53,7 @@ Debug mode brief output.
 Instead of reading the journal, display the list of zones in the DB.
 (\fIzone_name\fP not needed)
 .TP
-\fB\-c\fP, \fB\-\-check\fP
+\fB\-H\fP, \fB\-\-check\fP
 Enable additional journal semantic checks during printing.
 .TP
 \fB\-x\fP, \fB\-\-mono\fP
