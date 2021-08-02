@@ -60,7 +60,7 @@ Config options
   The default configuration database, if exists, has a preference to the default
   configuration file.
 
-**-d**, **--dir** *path*
+**-D**, **--dir** *path*
   Use specified KASP database path and default configuration.
 
 .. NOTE::
