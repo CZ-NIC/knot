@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <ifaddrs.h>
+#include <inttypes.h>
 #include <poll.h>
 #include <pthread.h>
 #include <signal.h>
@@ -166,24 +167,24 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool recv)
 #define ps(counter)  ((counter) * 1000 / (st->duration / 1000))
 #define pct(counter) ((counter) * 100 / st->qry_sent)
 
-	printf("total %s     %lu (%lu pps)\n",
+	printf("total %s     %"PRIu64" (%"PRIu64" pps)\n",
 	       tcp ? "SYN:    " : "queries:", st->qry_sent, ps(st->qry_sent));
 	if (st->qry_sent > 0 && recv) {
 		if (tcp) {
-		printf("total established: %lu (%lu pps) (%lu%%)\n",
+		printf("total established: %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
 		       st->synack_recv, ps(st->synack_recv), pct(st->synack_recv));
 		}
-		printf("total replies:     %lu (%lu pps) (%lu%%)\n",
+		printf("total replies:     %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
 		       st->ans_recv, ps(st->ans_recv), pct(st->ans_recv));
 		if (tcp) {
-		printf("total closed:      %lu (%lu pps) (%lu%%)\n",
+		printf("total closed:      %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
 		       st->finack_recv, ps(st->finack_recv), pct(st->finack_recv));
-		printf("total reset:       %lu (%lu pps) (%lu%%)\n",
+		printf("total reset:       %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
 		       st->rst_recv, ps(st->rst_recv), pct(st->rst_recv));
 		}
-		printf("average DNS reply size: %lu B\n",
+		printf("average DNS reply size: %"PRIu64" B\n",
 		       st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
-		printf("average Ethernet reply rate: %lu bps (%.2f Mbps)\n",
+		printf("average Ethernet reply rate: %"PRIu64" bps (%.2f Mbps)\n",
 		       ps(st->wire_recv * 8), ps((float)st->wire_recv * 8 / (1000 * 1000)));
 
 		for (int i = 0; i < RCODE_MAX; i++) {
@@ -191,12 +192,12 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool recv)
 				const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, i);
 				const char *rcname = rcode == NULL ? "unknown" : rcode->name;
 				int space = MAX(9 - strlen(rcname), 0);
-				printf("responded %s: %.*s%lu\n",
+				printf("responded %s: %.*s%"PRIu64"\n",
 				       rcname, space, "         ", st->rcodes_recv[i]);
 			}
 		}
 	}
-	printf("duration: %lu s\n", (st->duration / (1000 * 1000)));
+	printf("duration: %"PRIu64" s\n", (st->duration / (1000 * 1000)));
 
 	pthread_mutex_unlock(&st->mutex);
 }
@@ -510,15 +511,15 @@ void *xdp_gun_thread(void *_ctx)
 
 	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
 	if (!(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP)) {
-		(void)snprintf(recv_str, sizeof(recv_str), ", received %lu", local_stats.ans_recv);
+		(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, local_stats.ans_recv);
 	}
 	if (lost > 0) {
-		(void)snprintf(lost_str, sizeof(lost_str), ", lost %lu", lost);
+		(void)snprintf(lost_str, sizeof(lost_str), ", lost %"PRIu64, lost);
 	}
 	if (errors > 0) {
-		(void)snprintf(err_str, sizeof(err_str), ", errors %lu", errors);
+		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
 	}
-	printf("thread#%02u: sent %lu%s%s%s\n",
+	printf("thread#%02u: sent %"PRIu64"%s%s%s\n",
 	       ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
 	local_stats.duration = ctx->duration;
 	collect_stats(&global_stats, &local_stats);
@@ -737,7 +738,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		return false;
 	}
 	ctx->qps /= ctx->n_threads;
-	printf("using interface %s, XDP threads %d\n", ctx->dev, ctx->n_threads);
+	printf("using interface %s, XDP threads %u\n", ctx->dev, ctx->n_threads);
 
 	return true;
 }
