@@ -212,7 +212,7 @@ int bind_privkey_parse(const char *filename, bind_privkey_t *params_ptr)
 		return DNSSEC_NOT_FOUND;
 	}
 
-	bind_privkey_t params = { 0 };
+	bind_privkey_t params = *params_ptr;
 
 	_cleanup_free_ char *line = NULL;
 	size_t size = 0;
