@@ -373,7 +373,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 	}
 
 	if (!pub_only) {
-		bind_privkey_t bpriv = { 0 };
+		bind_privkey_t bpriv = { .time_publish = ctx->now, .time_activate = ctx->now };
 
 		char *privname = gen_keyfilename(import_file, ".private", ".key");
 		if (privname == NULL) {
