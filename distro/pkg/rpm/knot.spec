@@ -145,8 +145,7 @@ mkdir --mode=700 ${GNUPGHOME}
 gpg2 --import %{SOURCE100}
 gpg2 --verify %{SOURCE1} %{SOURCE0}
 %endif
-%setup -q
-%patch1 -p1
+%autosetup -p1
 
 %build
 # disable debug code (causes unused warnings)
