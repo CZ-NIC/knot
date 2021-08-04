@@ -293,6 +293,7 @@ static int opt_all(const char *arg, void *query)
 	query_t *q = query;
 
 	q->style.show_header = true;
+	q->style.show_section = true;
 	q->style.show_edns = true;
 	q->style.show_question = true;
 	q->style.show_answer = true;
@@ -309,6 +310,7 @@ static int opt_noall(const char *arg, void *query)
 	query_t *q = query;
 
 	q->style.show_header = false;
+	q->style.show_section = false;
 	q->style.show_edns = false;
 	q->style.show_query = false;
 	q->style.show_question = false;
