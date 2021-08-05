@@ -975,6 +975,20 @@ bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
 	return !exist;
 }
 
+static int sign_in_changeset(zone_node_t *node, uint16_t rrtype, knot_rrset_t *rrsigs,
+                             zone_sign_ctx_t *sign_ctx, int ret_prev,
+                             bool skip_crypto, zone_update_t *up)
+{
+	if (ret_prev != KNOT_EOK) {
+		return ret_prev;
+	}
+	knot_rrset_t rr = node_rrset(node, rrtype);
+	if (knot_rrset_empty(&rr)) {
+		return KNOT_EOK;
+	}
+	return add_missing_rrsigs(&rr, rrsigs, sign_ctx, skip_crypto, NULL, up, NULL);
+}
+
 int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
                                       const kdnssec_ctx_t *dnssec_ctx,
                                       zone_update_t *update)
@@ -996,14 +1010,9 @@ int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
 		bool skip_crypto = (n->flags & NODE_FLAGS_RRSIGS_VALID) && !dnssec_ctx->keytag_conflict;
 
 		knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
-		for (int i = 0; i < n->rrset_count; i++) {
-			knot_rrset_t rr = node_rrset_at(n, i);
-			if (rr.type == KNOT_RRTYPE_NSEC ||
-			    rr.type == KNOT_RRTYPE_NSEC3 ||
-			    rr.type == KNOT_RRTYPE_NSEC3PARAM) {
-				ret =  add_missing_rrsigs(&rr, &rrsigs, sign_ctx, skip_crypto, NULL, update, NULL);
-			}
-		}
+		ret = sign_in_changeset(n, KNOT_RRTYPE_NSEC, &rrsigs, sign_ctx, ret, skip_crypto, update);
+		ret = sign_in_changeset(n, KNOT_RRTYPE_NSEC3, &rrsigs, sign_ctx, ret, skip_crypto, update);
+		ret = sign_in_changeset(n, KNOT_RRTYPE_NSEC3PARAM, &rrsigs, sign_ctx, ret, skip_crypto, update);
 
 		if (ret == KNOT_EOK) {
 			n->flags |= NODE_FLAGS_RRSIGS_VALID; // non-NSEC RRSIGs had been validated in knot_dnssec_sign_update()
