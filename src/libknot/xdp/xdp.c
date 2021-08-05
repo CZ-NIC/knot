@@ -107,6 +107,7 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 	/* Designate the rest of buffers for RX, and pass them to the driver. */
 	uint32_t idx = 0;
 	ret = xsk_ring_prod__reserve(&umem->fq, UMEM_FRAME_COUNT_RX, &idx);
+	//TODO maybe needs busypoll handling, but I dont know where is socket stored right now..
 	if (ret != UMEM_FRAME_COUNT - UMEM_FRAME_COUNT_TX) {
 		assert(0);
 		return KNOT_ERROR;
@@ -191,6 +192,12 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 		(*socket)->frame_limit = MIN((unsigned)ret, (*socket)->frame_limit);
 	}
 
+	int sock_opt = 1;
+	if (setsockopt(xsk_socket__fd((*socket)->xsk), SOL_SOCKET,
+	    SO_PREFER_BUSY_POLL, (void *)&sock_opt, sizeof(sock_opt)) < 0) {
+		return knot_map_errno();
+	}
+
 	ret = kxsk_socket_start(iface, listen_port, (*socket)->xsk);
 	if (ret != KNOT_EOK) {
 		xsk_socket__delete((*socket)->xsk);
@@ -254,6 +261,9 @@ void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 	uint32_t idx = 0;
 	const uint32_t completed = xsk_ring_cons__peek(cq, UINT32_MAX, &idx);
 	if (completed == 0) {
+		if (true) { //TODO `true` means busy_poll ON
+			recvfrom(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, NULL);
+		}
 		return;
 	}
 	assert(umem->tx_free_count + completed <= UMEM_FRAME_COUNT_TX);
@@ -367,6 +377,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 */
 	assert(UMEM_RING_LEN_TX > UMEM_FRAME_COUNT_TX);
 	uint32_t idx = socket->tx.cached_prod;
+	//TODO maybe needs busypoll handling, but I dont know where is socket stored right now..
 
 	for (uint32_t i = 0; i < count; ++i) {
 		const knot_xdp_msg_t *msg = &msgs[i];
@@ -454,6 +465,9 @@ int knot_xdp_recv(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
 	const uint32_t available = xsk_ring_cons__peek(&socket->rx, max_count, &idx);
 	if (available == 0) {
 		*count = 0;
+		if (true) { //TODO `true` means busy_poll ON
+			recvfrom(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, NULL);
+		}
 		return KNOT_EOK;
 	}
 	assert(available <= max_count);
@@ -497,7 +511,16 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	struct xsk_ring_prod *const fq = &umem->fq;
 
 	uint32_t idx = 0;
-	const uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
+	uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
+	while (true && reserved != count) { //TODO 'true' means busy poll ON
+		if(reserved < 0) {
+			assert(0);
+			return;
+		}
+		recvfrom(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL,
+		         NULL);
+		reserved = xsk_ring_prod__reserve(fq, count, &idx);
+	}
 	assert(reserved == count);
 
 	for (uint32_t i = 0; i < reserved; ++i) {
