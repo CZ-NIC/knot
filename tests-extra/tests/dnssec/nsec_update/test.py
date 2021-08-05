@@ -6,6 +6,40 @@ from dnstest.utils import *
 from dnstest.test import Test
 from dnstest.keys import Keymgr
 import random
+import dns
+
+def check_nsec(server, zone, msg, name="dwidjwoij"):
+
+    q = server.dig(name + "." + zone.name, "AAAA", dnssec=True, udp=False)
+    found_soas = q.count("SOA", section="authority")
+    found_nsecs = q.count("NSEC", section="authority")
+    if found_nsecs == 0:
+        found_nsecs = q.count("NSEC3", section="authority")
+    found_rrsigs = q.count("RRSIG", section="authority")
+
+    check_log("Authority %s: %s" % (zone.name, msg))
+    check_log("SOAs: %d" % found_soas)
+    check_log("NSECs: %d" % found_nsecs)
+    check_log("RRSIGs: %d" % found_rrsigs)
+
+    if found_soas != 1:
+        set_err("No SOA authority (%d): %s" % (found_soas, msg))
+
+    if found_nsecs < 1:
+        set_err("No NSEC(3) authority: %s" % msg)
+
+    if found_nsecs > 3:
+        set_err("Too many NSEC(3)s authority (%d): %s" % (found_nsecs, msg))
+
+    if found_rrsigs != found_soas + found_nsecs:
+        set_err("Unmatching RRSIGs (%d != %d + %d): %s" % (found_rrsigs, found_soas, found_nsecs, msg))
+        detail_log("Unmatching RRSIGs [%s] (%d != %d + %d): %s" % (zone.name, found_rrsigs, found_soas, found_nsecs, msg))
+        for data in q.resp.authority:
+            rrset = data.to_rdataset()
+            if rrset.rdtype == dns.rdatatype.NSEC or rrset.rdtype == dns.rdatatype.NSEC3 or rrset.rdtype == dns.rdatatype.RRSIG:
+                detail_log(str(data))
+
+    detail_log(SEP)
 
 t = Test()
 
@@ -44,6 +78,8 @@ if master.valgrind:
 
 t.start()
 master.zones_wait(zones)
+for z in zones:
+    check_nsec(master, z, "Initial")
 master.ctl("zone-flush")
 slave.ctl("zone-refresh")
 slave.zones_wait(zones)
@@ -67,6 +103,8 @@ t.sleep(1)
 master.ctl("zone-refresh", wait=True)
 
 after_update = master.zones_wait(zones)
+for z in zones:
+    check_nsec(master, z, "After DDNS")
 
 # sync slave with current master's state
 slave.ctl("zone-refresh")
@@ -78,6 +116,8 @@ slave.flush(wait=True)
 # re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
 after_update15 = master.zones_wait(zones, after_update, equal=False, greater=True)
+for z in zones:
+    check_nsec(master, z, "After re-sign")
 
 t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
 for zone in zones:
@@ -114,6 +154,8 @@ t.sleep(1)
 master.ctl("zone-refresh", wait=True)
 
 after_update2 = master.zones_wait(zones, after_update15, equal=False, greater=True)
+for z in zones:
+    check_nsec(master, z, "After delegation update")
 
 # sync slave with current master's state
 slave.ctl("zone-refresh")
@@ -125,6 +167,8 @@ slave.flush(wait=True)
 # re-sign master and check that the re-sign made nothing
 master.ctl("zone-sign")
 after_update25 = master.zones_wait(zones, after_update2, equal=False, greater=True)
+for z in zones:
+    check_nsec(master, z, "After second re-sign")
 
 t.xfr_diff(master, slave, zones, no_rrsig_rdata=True)
 for zone in zones:
@@ -147,5 +191,8 @@ slave.flush(wait=True)
 for z in zones1:
     slave.zone_wait(z, after_update25[z.name], equal=False, greater=True)
     slave.zone_verify(z)
+
+for z in zones:
+    check_nsec(master, z, "After re-salt")
 
 t.end()
