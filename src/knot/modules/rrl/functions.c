@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -283,7 +283,7 @@ static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage
 }
 
 static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
-                          uint16_t flags, uint8_t cls)
+                          uint16_t flags, uint8_t cls, const knot_dname_t *qname)
 {
 	if (mod == NULL || ss == NULL) {
 		return;
@@ -297,8 +297,14 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 		what = "enters";
 	}
 
-	knotd_mod_log(mod, LOG_NOTICE, "address/subnet %s, class %s, %s limiting",
-	              addr_str, rrl_clsstr(cls), what);
+	knot_dname_txt_storage_t buf;
+	char *qname_str = knot_dname_to_str(buf, qname, sizeof(buf));
+	if (qname_str == NULL) {
+		qname_str = "?";
+	}
+
+	knotd_mod_log(mod, LOG_NOTICE, "address/subnet %s, class %s, name %s, %s limiting",
+	              addr_str, rrl_clsstr(cls), qname_str, what);
 }
 
 static void rrl_lock(rrl_table_t *tbl, int lk_id)
@@ -377,13 +383,17 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 	return tbl;
 }
 
+static knot_dname_t *buf_qname(uint8_t *buf)
+{
+	return buf + sizeof(uint8_t) + sizeof(uint64_t);
+}
+
 /*! \brief Get bucket for current combination of parameters. */
 static rrl_item_t *rrl_hash(rrl_table_t *tbl, const struct sockaddr_storage *remote,
                             rrl_req_t *req, const knot_dname_t *zone, uint32_t stamp,
-                            int *lock)
+                            int *lock, uint8_t *buf, size_t buf_len)
 {
-	uint8_t buf[RRL_CLSBLK_MAXLEN];
-	int len = rrl_classify(buf, sizeof(buf), remote, req, zone);
+	int len = rrl_classify(buf, buf_len, remote, req, zone);
 	if (len < 0) {
 		return NULL;
 	}
@@ -394,7 +404,7 @@ static rrl_item_t *rrl_hash(rrl_table_t *tbl, const struct sockaddr_storage *rem
 	pthread_mutex_lock(&tbl->ll);
 
 	/* Find an exact match in <id, id + HOP_LEN). */
-	knot_dname_t *qname = buf + sizeof(uint8_t) + sizeof(uint64_t);
+	knot_dname_t *qname = buf_qname(buf);
 	uint64_t netblk;
 	memcpy(&netblk, buf + sizeof(uint8_t), sizeof(netblk));
 	rrl_item_t match = {
@@ -454,11 +464,13 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 		return KNOT_EINVAL;
 	}
 
+	uint8_t buf[RRL_CLSBLK_MAXLEN];
+
 	/* Calculate hash and fetch */
 	int ret = KNOT_EOK;
 	int lock = -1;
 	uint32_t now = time_now().tv_sec;
-	rrl_item_t *bucket = rrl_hash(rrl, remote, req, zone, now, &lock);
+	rrl_item_t *bucket = rrl_hash(rrl, remote, req, zone, now, &lock, buf, sizeof(buf));
 	if (!bucket) {
 		if (lock > -1) {
 			rrl_unlock(rrl, lock);
@@ -478,7 +490,7 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 		/* Check state change. */
 		if ((bucket->ntok > 0 || dt > 1) && (bucket->flags & RRL_BF_ELIMIT)) {
 			bucket->flags &= ~RRL_BF_ELIMIT;
-			rrl_log_state(mod, remote, bucket->flags, bucket->cls);
+			rrl_log_state(mod, remote, bucket->flags, bucket->cls, buf_qname(buf));
 		}
 
 		/* Add new tokens. */
@@ -495,7 +507,7 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 	/* Last item taken. */
 	if (bucket->ntok == 1 && !(bucket->flags & RRL_BF_ELIMIT)) {
 		bucket->flags |= RRL_BF_ELIMIT;
-		rrl_log_state(mod, remote, bucket->flags, bucket->cls);
+		rrl_log_state(mod, remote, bucket->flags, bucket->cls, buf_qname(buf));
 	}
 
 	/* Decay current bucket. */
