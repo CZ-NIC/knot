@@ -93,6 +93,8 @@ typedef struct {
 	yp_item_t *schema;
 	/*! Configuration database. */
 	knot_db_t *db;
+	/*! LMDB mapsize. */
+	size_t mapsize;
 
 	/*! Read-only transaction for config access. */
 	knot_db_txn_t read_txn;

@@ -244,9 +244,10 @@ int conf_new(
 	init_list(out->query_modules);
 
 	// Set the DB api.
+	out->mapsize = max_conf_size;
 	out->api = knot_db_lmdb_api();
 	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
-	lmdb_opts.mapsize = max_conf_size;
+	lmdb_opts.mapsize = out->mapsize;
 	lmdb_opts.maxreaders = CONF_MAX_DB_READERS;
 	lmdb_opts.flags.env = KNOT_DB_LMDB_NOTLS;
 

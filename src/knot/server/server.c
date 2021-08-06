@@ -1148,12 +1148,13 @@ int server_reconfigure(conf_t *conf, server_t *server)
 	if (!(server->state & ServerRunning)) {
 		log_info("Knot DNS %s starting", PACKAGE_VERSION);
 
+		size_t mapsize = conf->mapsize / (1024 * 1024);
 		if (conf->filename != NULL) {
-			log_info("loaded configuration file '%s'",
-			         conf->filename);
+			log_info("loaded configuration file '%s', mapsize %zu MiB",
+			         conf->filename, mapsize);
 		} else {
-			log_info("loaded configuration database '%s'",
-			         knot_db_lmdb_get_path(conf->db));
+			log_info("loaded configuration database '%s', mapsize %zu MiB",
+			         knot_db_lmdb_get_path(conf->db), mapsize);
 		}
 
 		/* Configure server threads. */
