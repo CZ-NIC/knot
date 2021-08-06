@@ -16,7 +16,7 @@ ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-abort
 LimitNOFILE=1048576
 TimeoutStopSec=300
-Environment="ZONE_LOAD_TIMEOUT_SEC=180"
+Environment="KNOT_ZONE_LOAD_TIMEOUT_SEC=180"
 
 [Install]
 WantedBy=multi-user.target
