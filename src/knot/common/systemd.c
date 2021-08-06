@@ -29,7 +29,7 @@ static int zone_load_timeout_s;
 
 static int systemd_zone_load_timeout(void)
 {
-	const char *timeout = getenv("ZONE_LOAD_TIMEOUT_SEC");
+	const char *timeout = getenv("KNOT_ZONE_LOAD_TIMEOUT_SEC");
 
 	int out;
 	if (timeout != NULL && timeout[0] != '\0' &&
