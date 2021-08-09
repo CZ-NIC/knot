@@ -161,6 +161,11 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 			zone_free(&zone);
 			return NULL;
 		}
+	} else if (conf_opt(&role) == CATALOG_ROLE_INTERPRET) {
+		ret = catalog_open(&server->catalog);
+		if (ret != KNOT_EOK) {
+			log_error("failed to open catalog database (%s)", knot_strerror(ret));
+		}
 	}
 
 	if (zone_expired(zone)) {
