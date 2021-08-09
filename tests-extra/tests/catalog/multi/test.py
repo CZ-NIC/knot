@@ -58,14 +58,14 @@ master.ctl("zone-reload %s" % zone[1].name)
 t.sleep(5)
 
 check_exists(master, "member1.example.", True, "First")
-check_exists(master, "member2.example.", False, "First")
-check_exists(master, "member3.example.", False, "First")
+check_exists(master, "member2.example.", True, "First")
+check_exists(master, "member3.example.", True, "First")
 
 master.ctl("zone-reload %s" % zone[2].name)
 t.sleep(5)
 
 check_exists(master, "member1.example.", True, "Second")
 check_exists(master, "member2.example.", True, "Second")
-check_exists(master, "member3.example.", False, "Second")
+check_exists(master, "member3.example.", True, "Second")
 
 t.end()

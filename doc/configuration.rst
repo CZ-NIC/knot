@@ -656,6 +656,14 @@ When setting up catalog zones, it might be useful to set
 :ref:`database_catalog-db` and :ref:`database_catalog-db-max-size`
 to non-default values.
 
+.. NOTE::
+
+   Whenever a catalog zone is updated, the server reloads itself with
+   all configured zones, including possibly existing other catalog zones.
+   It's similar to calling `knotc zone-reload` (for all zones).
+   The consequence is that new zone files might be discovered and reloaded,
+   even for zones that do not relate to updated catalog zone.
+
 .. WARNING::
 
    The server does not work well if one member zone appears in two catalog zones
