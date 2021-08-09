@@ -686,10 +686,10 @@ Below are configuration snippets (e.g. `server` and `log` sections missing)
 of very simple catalog zone setups, in order to illustrate the relations
 between catalog-related configuration options.
 
-First setup represents a very simple scenario where the master is
-the catalog zone generator and the slave is the consumer.
+First setup represents a very simple scenario where the primary is
+the catalog zone generator and the secondary is the catalog zone consumer.
 
-Master config::
+Primary configuration::
 
   acl:
     - id: slave_xfr
@@ -713,7 +713,7 @@ Master config::
     - domain: bar.com.
       template: mmemb
 
-Slave config::
+Secondary configuration::
 
   acl:
     - id: master_notify
@@ -732,8 +732,8 @@ Slave config::
       catalog-role: interpret
       catalog-template: smemb
 
-When new zones are added (or removed) to master configuration with assigned
-`mmemb` template, they will automatically propagate to the slave
+When new zones are added (or removed) to the primary configuration with assigned
+`mmemb` template, they will automatically propagate to the secondary
 and have the `smemb` template assigned there.
 
 Second example is with a hand-written (or script-generated) catalog zone,
