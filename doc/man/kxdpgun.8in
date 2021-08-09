@@ -51,6 +51,9 @@ configured for the network interface.
 Duration of traffic generation, specified as a decimal number in seconds
 (default is 5.0).
 .TP
+\fB\-T\fP, \fB\-\-tcp\fP
+Send queries over TCP.
+.TP
 \fB\-Q\fP, \fB\-\-qps\fP \fIqueries\fP
 Number of queries\-per\-second (approximately) to be sent (default is 1000).
 The program is not optimized for low speeds at which it may lose
@@ -151,23 +154,37 @@ cat ZONE_FILE | awk "{print \e$1,\e$3}" | grep \-E "(NS|DS|A|AAAA|PTR|MX|SOA)$" 
 .UNINDENT
 .UNINDENT
 .sp
-Program usage:
+Basic usage:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-# kxdpgun \-i ~/queries.txt 2001:1489:fffe:10::16
+# kxdpgun \-i ~/queries.txt 2001:DB8::1
 .ft P
 .fi
 .UNINDENT
 .UNINDENT
+.sp
+\fIUsing UDP with increased batch size\fP:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-# kxdpgun \-t 120 \-Q 6000000 \-i ~/queries.txt \-b 5 \-r \-p 8853 192.168.101.2
+# kxdpgun \-t 20 \-Q 1000000 \-i ~/queries.txt \-b 20 \-p 8853 192.0.2.1
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+\fIUsing TCP\fP:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# kxdpgun \-t 20 \-Q 100000 \-i ~/queries.txt \-T \-p 8853 192.0.2.1
 .ft P
 .fi
 .UNINDENT

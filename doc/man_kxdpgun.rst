@@ -28,6 +28,9 @@ Options
   Duration of traffic generation, specified as a decimal number in seconds
   (default is 5.0).
 
+**-T**, **--tcp**
+  Send queries over TCP.
+
 **-Q**, **--qps** *queries*
   Number of queries-per-second (approximately) to be sent (default is 1000).
   The program is not optimized for low speeds at which it may lose
@@ -119,13 +122,17 @@ Queries file generated from a zone file (Knot DNS format)::
 
   cat ZONE_FILE | awk "{print \$1,\$3}" | grep -E "(NS|DS|A|AAAA|PTR|MX|SOA)$" | sort -u -R > queries.txt
 
-Program usage::
+Basic usage::
 
-  # kxdpgun -i ~/queries.txt 2001:1489:fffe:10::16
+  # kxdpgun -i ~/queries.txt 2001:DB8::1
 
-::
+*Using UDP with increased batch size*::
 
-  # kxdpgun -t 120 -Q 6000000 -i ~/queries.txt -b 5 -r -p 8853 192.168.101.2
+  # kxdpgun -t 20 -Q 1000000 -i ~/queries.txt -b 20 -p 8853 192.0.2.1
+
+*Using TCP*::
+
+  # kxdpgun -t 20 -Q 100000 -i ~/queries.txt -T -p 8853 192.0.2.1
 
 See Also
 --------
