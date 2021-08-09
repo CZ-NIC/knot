@@ -350,14 +350,9 @@ static int del_all_cb(const knot_dname_t *member, const knot_dname_t *owner,
 
 int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname_t *zone)
 {
-	int ret = catalog_open(cat);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	pthread_mutex_lock(&u->mutex);
 	del_all_ctx_t ctx = { zone, u };
-	ret = catalog_apply(cat, NULL, del_all_cb, &ctx, false);
+	int ret = catalog_apply(cat, NULL, del_all_cb, &ctx, false);
 	pthread_mutex_unlock(&u->mutex);
 	return ret;
 }

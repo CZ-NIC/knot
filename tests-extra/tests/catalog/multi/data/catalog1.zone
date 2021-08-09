@@ -1,0 +1,7 @@
+$ORIGIN catalog1.
+$TTL 0
+
+@ SOA ns admin 1 25 25 80 600
+  NS ns
+ns AAAA ::0
+version TXT "2"
