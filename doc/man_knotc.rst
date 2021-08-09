@@ -239,8 +239,7 @@ Actions
 Note
 ....
 
-Empty or ``--`` (two dashes) *zone* parameter means all zones or all zones with a
-transaction.
+Empty or **--** *zone* parameter means all zones or all zones with a transaction.
 
 Use **@** *owner* to denote the zone name.
 
