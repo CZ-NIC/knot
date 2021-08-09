@@ -890,7 +890,6 @@
 	action _r_ttl_exit {
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
-			s->default_ttl = s->r_ttl;
 		} else {
 			WARN(ZS_NUMBER32_OVERFLOW);
 			fhold; fgoto err_line;
