@@ -348,11 +348,13 @@ static int del_all_cb(const knot_dname_t *member, const knot_dname_t *owner,
 	}
 }
 
-int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname_t *zone)
+int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname_t *zone, ssize_t *upd_count)
 {
 	pthread_mutex_lock(&u->mutex);
 	del_all_ctx_t ctx = { zone, u };
+	*upd_count -= trie_weight(u->upd);
 	int ret = catalog_apply(cat, NULL, del_all_cb, &ctx, false);
+	*upd_count += trie_weight(u->upd);
 	pthread_mutex_unlock(&u->mutex);
 	return ret;
 }
