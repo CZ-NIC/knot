@@ -720,29 +720,29 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 	zone_set_flag(update->zone, ZONE_IS_CATALOG);
 
 	int ret = KNOT_EOK;
+	ssize_t upd_count = 0;
 	if ((update->flags & UPDATE_INCREMENTAL)) {
 		ret = catalog_update_from_zone(update->zone->catalog_upd,
 		                               update->change.remove, update->new_cont,
-		                               true, false, update->zone->catalog);
+		                               true, false, update->zone->catalog, &upd_count);
 		if (ret == KNOT_EOK) {
 			ret = catalog_update_from_zone(update->zone->catalog_upd,
 			                               update->change.add, update->new_cont,
-			                               false, false, NULL);
+			                               false, false, NULL, &upd_count);
 		}
 	} else {
 		ret = catalog_update_del_all(update->zone->catalog_upd,
 		                             update->zone->catalog,
-		                             update->zone->name);
+		                             update->zone->name, &upd_count);
 		if (ret == KNOT_EOK) {
 			ret = catalog_update_from_zone(update->zone->catalog_upd,
 			                               update->new_cont, update->new_cont,
-			                               false, true, NULL);
+			                               false, true, NULL, &upd_count);
 		}
 	}
 
 	if (ret == KNOT_EOK) {
-		log_zone_info(update->zone->name, "catalog reloaded, %zu updates",
-		              trie_weight(update->zone->catalog_upd->upd));
+		log_zone_info(update->zone->name, "catalog reloaded, %zd updates", upd_count);
 		if (kill(getpid(), SIGUSR1) != 0) {
 			ret = knot_map_errno();
 		}

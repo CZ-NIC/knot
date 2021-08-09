@@ -137,7 +137,8 @@ static int cat_update_add_node(zone_node_t *node, void *data)
 
 int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
                              const struct zone_contents *complete_contents,
-                             bool remove, bool check_ver, catalog_t *check)
+                             bool remove, bool check_ver, catalog_t *check,
+                             ssize_t *upd_count)
 {
 	if (check_ver && !check_zone_version(zone)) {
 		return KNOT_EZONEINVAL;
@@ -156,7 +157,9 @@ int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
 	cat_upd_ctx_t ctx = { u, complete_contents, knot_dname_labels(zone->apex->owner, NULL),
 	                      remove, check };
 	pthread_mutex_lock(&u->mutex);
+	*upd_count -= trie_weight(u->upd);
 	int ret = zone_tree_sub_apply(zone->nodes, sub, true, cat_update_add_node, &ctx);
+	*upd_count += trie_weight(u->upd);
 	pthread_mutex_unlock(&u->mutex);
 	return ret;
 }

@@ -151,7 +151,8 @@ int catalog_update_commit(catalog_update_t *u, catalog_t *cat);
  * \param u      Catalog update to be updated.
  * \param cat    Catalog database to be iterated.
  * \param zone   Name of catalog zone whose members gonna be removed.
+ * \param upd_count          Output: number of resulting updates to catalog database.
  *
  * \return KNOT_E*
  */
-int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname_t *zone);
+int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname_t *zone, ssize_t *upd_count);
