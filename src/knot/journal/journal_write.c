@@ -190,10 +190,12 @@ void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_meta
 
 	while ((need_tofree > 0 || need_todel > 0) && txn->ret == KNOT_EOK) {
 		uint32_t del_from = md->first_serial; // don't move this line outside of the loop
+		uint32_t del_upto = md->flushed_upto;
+		(void)journal_serial_to(txn, true, 0, j.zone, &del_upto); // in case zij present and wrong flushed_upto, avoid discontinuity
 		freed = 0;
 		removed = 0;
 		journal_delete(txn, del_from, j.zone, need_tofree, need_todel,
-		               md->flushed_upto, &freed, &removed, &del_from);
+		               del_upto, &freed, &removed, &del_from);
 		if (freed == 0) {
 			if (md->flushed_upto != md->serial_to) {
 				journal_try_flush(j, txn, md);
