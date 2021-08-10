@@ -303,7 +303,7 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 		qname_str = "?";
 	}
 
-	knotd_mod_log(mod, LOG_NOTICE, "address/subnet %s, class %s, name %s, %s limiting",
+	knotd_mod_log(mod, LOG_NOTICE, "address/subnet %s, class %s, qname %s, %s limiting",
 	              addr_str, rrl_clsstr(cls), qname_str, what);
 }
 
@@ -490,7 +490,8 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 		/* Check state change. */
 		if ((bucket->ntok > 0 || dt > 1) && (bucket->flags & RRL_BF_ELIMIT)) {
 			bucket->flags &= ~RRL_BF_ELIMIT;
-			rrl_log_state(mod, remote, bucket->flags, bucket->cls, buf_qname(buf));
+			rrl_log_state(mod, remote, bucket->flags, bucket->cls,
+			              knot_pkt_qname(req->query));
 		}
 
 		/* Add new tokens. */
@@ -507,7 +508,8 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 	/* Last item taken. */
 	if (bucket->ntok == 1 && !(bucket->flags & RRL_BF_ELIMIT)) {
 		bucket->flags |= RRL_BF_ELIMIT;
-		rrl_log_state(mod, remote, bucket->flags, bucket->cls, buf_qname(buf));
+		rrl_log_state(mod, remote, bucket->flags, bucket->cls,
+		              knot_pkt_qname(req->query));
 	}
 
 	/* Decay current bucket. */
