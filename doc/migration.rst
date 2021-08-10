@@ -272,14 +272,6 @@ Configuration changes
   - ``server.tcp-handshake-timeout``
   - ``zone.disable-any``
 
-Zone file processing
---------------------
-
-If a resource record has ommited TTL in the zone file, its TTL value defaults
-to the last explicitly stated one. It can be a *$TTL* directive, the internal
-default value *3600*, **or an explicit TTL of a previous record**. This fixes
-a non-compliance with :rfc:`1035`.
-
 Zone backup and restore
 -----------------------
 
