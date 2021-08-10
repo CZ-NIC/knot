@@ -1127,9 +1127,13 @@ char* conf_db_txn(
 	const yp_name_t *db_type)
 {
 	conf_val_t storage_val = conf_get_txn(conf, txn, C_DB, C_STORAGE);
-	conf_val_t db_val = conf_get_txn(conf, txn, C_DB, db_type);
-
 	char *storage = conf_abs_path(&storage_val, NULL);
+
+	if (db_type == NULL) {
+		return storage;
+	}
+
+	conf_val_t db_val = conf_get_txn(conf, txn, C_DB, db_type);
 	char *dbdir = conf_abs_path(&db_val, storage);
 	free(storage);
 
