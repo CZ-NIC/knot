@@ -293,6 +293,64 @@ int check_xdp_listen(
 #endif
 }
 
+static int dir_exists(const char *dir)
+{
+	struct stat st;
+	if (stat(dir, &st) != 0) {
+		return knot_map_errno();
+	} else if (!S_ISDIR(st.st_mode)) {
+		return KNOT_ENOTDIR;
+	} else if (access(dir, W_OK) != 0) {
+		return knot_map_errno();
+	} else {
+		return KNOT_EOK;
+	}
+}
+
+static int dir_can_create(const char *dir)
+{
+	int ret = dir_exists(dir);
+	if (ret == KNOT_ENOENT) {
+		return KNOT_EOK;
+	} else {
+		return ret;
+	}
+}
+
+static int check_db(
+	knotd_conf_check_args_t *args,
+	const yp_name_t *db_type,
+	int (*check_fun)(const char *),
+	const char *desc,
+	int ret)
+{
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	char *db = conf_db_txn(args->extra->conf, args->extra->txn, db_type);
+	ret = check_fun(db);
+	if (ret != KNOT_EOK) {
+		CONF_LOG(LOG_ERR, "%s '%s' not usable", desc, db);
+	}
+	free(db);
+	return ret;
+}
+
+int check_database(
+	knotd_conf_check_args_t *args)
+{
+	int ret = KNOT_EOK;
+
+	ret = check_db(args, NULL,         dir_exists,     "database storage", ret);
+	ret = check_db(args, C_TIMER_DB,   dir_can_create, "timer database",   ret);
+	ret = check_db(args, C_JOURNAL_DB, dir_can_create, "journal database", ret);
+	ret = check_db(args, C_KASP_DB,    dir_can_create, "KASP database",    ret);
+	ret = check_db(args, C_CATALOG_DB, dir_can_create, "catalog database", ret);
+
+	return ret;
+}
+
 int check_modref(
 	knotd_conf_check_args_t *args)
 {
