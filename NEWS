@@ -1,3 +1,26 @@
+Knot DNS 3.1.1 (2021-08-10)
+===========================
+
+Improvements:
+-------------
+ - keymgr: import-bind sets publish and active timers to now if missing timers #747
+ - mod-rrl: added QNAME, which triggered an action, to log messages #757
+ - systemd: added environment variable for setting maximum configuration DB size
+
+Bugfixes:
+---------
+ - knotd: adding RRSIGs to a signed zone can lead to redundant RRSIGs for some NSEC(3)s
+ - knotd: code not compiled correctly for ARM on Fedora >= 33
+ - knotd: server can crash when opening catalog DB on startup
+ - knotd: incorrect catalog update counts in logs
+ - knotd: journal discontinuity and zone-in-journal result in incorrectly calculated journal occupation
+ - kdig: +noall does not filter out AUTHORITY comment #749
+ - tests: journal unit test not passing if memory page size is different from 4096
+
+Reverts:
+--------
+ - libzscanner: reverted "omitted TTL value is correctly set to the last explicitly stated value (RFC 1035)" #751
+
 Knot DNS 3.1.0 (2021-08-02)
 ===========================
 
