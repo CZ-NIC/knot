@@ -956,7 +956,8 @@ their list::
 
     $ knotc zone-backup +backupdir /path/to/backup zone1.com. zone2.com. ...
 
-The backup directory should be empty or non-existing.
+The backup directory should be empty or non-existing and it must be accessible
+and writable for the :ref:`server_user` account under which knotd is running.
 The backup procedure will begin soon and will happen zone-by-zone
 (partially in parallel if more :ref:`server_background-workers` are configured).
 **The user shall check the logs for the outcome of each zone's backup attempt.**
