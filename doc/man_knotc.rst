@@ -105,7 +105,8 @@ Actions
 **zone-flush** [*zone*...] [**+outdir** *directory*]
   Trigger a zone journal flush to the configured zone file. If an output
   directory is specified, the current zone is immediately dumped (in the
-  blocking mode) to a zone file in the specified directory. (#)
+  blocking mode) to a zone file in the specified directory. See
+  :ref:`Notes<notes>` below about the directory permissions. (#)
 
 **zone-backup** [*zone*...] **+backupdir** *directory* [*filter*...]
   Trigger a zone data and metadata backup to a specified directory.
@@ -118,13 +119,15 @@ Actions
   **+kaspdb**, **+catalog**, and **+nojournal** are set. Setting a filter
   for an item doesn't change default settings for other items. If zone flushing
   is disabled, original zone file is backed up instead of writing out zone
-  contents to a file. (#)
+  contents to a file. See :ref:`Notes<notes>` below about the directory
+  permissions. (#)
 
 **zone-restore** [*zone*...] **+backupdir** *directory* [*filter*...]
   Trigger a zone data and metadata restore from a specified backup directory.
   Optional filters are equivalent to the same filters of **zone-backup**.
   Restore from backups created by Knot DNS releases prior to 3.1 is possible
-  with the force option. (#)
+  with the force option. See :ref:`Notes<notes>` below about the directory
+  permissions. (#)
 
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
@@ -236,8 +239,10 @@ Actions
 **conf-unset** [*item*] [*data*...]
   Unset the item data in the transaction.
 
-Note
-....
+.. _notes:
+
+Notes
+.....
 
 Empty or **--** *zone* parameter means all zones or all zones with a transaction.
 
@@ -261,6 +266,11 @@ Responses returned by *knotc* commands depend on the mode:
   The *OK* response to triggering commands means that the command has been successfully
   sent to the server. To verify if the operation succeeded, it's necessary to
   check the server log.
+
+Actions **zone-flush**, **zone-backup**, and **zone-restore** are carried out by
+the `knotd` process. The directory specified must be accessible to the user account
+that `knotd` runs under and if the directory already exists, its permissions must be
+appropriate for that user account.
 
 Interactive mode
 ................
