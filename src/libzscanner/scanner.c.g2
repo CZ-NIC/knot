@@ -41380,9 +41380,8 @@ tr1037:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -41430,9 +41429,8 @@ tr1045:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -41499,9 +41497,8 @@ tr1036:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -41530,9 +41527,8 @@ tr1044:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -41568,9 +41564,8 @@ tr1038:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -41621,9 +41616,8 @@ tr1046:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -41693,9 +41687,8 @@ tr1039:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -41721,9 +41714,8 @@ tr1047:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -41887,9 +41879,8 @@ tr1052:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -41937,9 +41928,8 @@ tr1061:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -42029,9 +42019,8 @@ tr1053:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -42079,9 +42068,8 @@ tr1062:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -42147,9 +42135,8 @@ tr1054:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -42175,9 +42162,8 @@ tr1063:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -42214,9 +42200,8 @@ tr1055:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -42242,9 +42227,8 @@ tr1064:
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -56391,14 +56375,22 @@ st559:
 		goto _test_eof559;
 case 559:
 	switch( (*p) ) {
-		case 97: goto st560;
-		case 101: goto st564;
-		case 105: goto st567;
-		case 107: goto st580;
-		case 110: goto st584;
-		case 112: goto st599;
+		case 97: goto tr1869;
+		case 101: goto tr1870;
+		case 105: goto tr1871;
+		case 107: goto tr1872;
+		case 110: goto tr1873;
+		case 112: goto tr1874;
 	}
 	goto tr1868;
+tr1869:
+	{
+		if (rdata_tail + 2 > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
+	}
+	goto st560;
 st560:
 	if ( ++p == pe )
 		goto _test_eof560;
@@ -56516,6 +56508,14 @@ st1429:
 		goto _test_eof1429;
 case 1429:
 	goto st0;
+tr1870:
+	{
+		if (rdata_tail + 2 > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
+	}
+	goto st564;
 st564:
 	if ( ++p == pe )
 		goto _test_eof564;
@@ -56546,6 +56546,14 @@ case 566:
 	} else if ( (*p) >= 9 )
 		goto tr1881;
 	goto tr1868;
+tr1871:
+	{
+		if (rdata_tail + 2 > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
+	}
+	goto st567;
 st567:
 	if ( ++p == pe )
 		goto _test_eof567;
@@ -56657,6 +56665,14 @@ case 579:
 	} else if ( (*p) >= 9 )
 		goto tr1895;
 	goto tr1868;
+tr1872:
+	{
+		if (rdata_tail + 2 > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
+	}
+	goto st580;
 st580:
 	if ( ++p == pe )
 		goto _test_eof580;
@@ -56732,6 +56748,14 @@ case 583:
 	} else
 		goto tr1900;
 	goto tr1898;
+tr1873:
+	{
+		if (rdata_tail + 2 > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
+	}
+	goto st584;
 st584:
 	if ( ++p == pe )
 		goto _test_eof584;
@@ -56846,6 +56870,14 @@ case 598:
 	} else if ( (*p) >= 9 )
 		goto tr1916;
 	goto tr1868;
+tr1874:
+	{
+		if (rdata_tail + 2 > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
+	}
+	goto st599;
 st599:
 	if ( ++p == pe )
 		goto _test_eof599;
@@ -57319,6 +57351,10 @@ tr2013:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -57351,6 +57387,10 @@ tr2014:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -57390,6 +57430,10 @@ tr2015:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -57429,6 +57473,10 @@ tr2018:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -57464,6 +57512,10 @@ tr2036:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -57496,6 +57548,10 @@ tr2037:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -57535,6 +57591,10 @@ tr2038:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -57574,6 +57634,10 @@ tr2041:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -58049,6 +58113,10 @@ case 604:
 	goto tr1921;
 tr1933:
 	{
+		if (rdata_tail + 4 > rdata_stop + 1) { // key_len + val_len
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		s->svcb.param_position = rdata_tail;
 	}
 	goto st605;
@@ -58263,6 +58331,10 @@ tr2019:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -58298,6 +58370,10 @@ tr2042:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -58580,6 +58656,10 @@ tr2020:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -58622,6 +58702,10 @@ tr2043:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -58932,6 +59016,10 @@ tr2021:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -58977,6 +59065,10 @@ tr2044:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -59191,6 +59283,10 @@ case 1431:
 	goto tr1921;
 tr1934:
 	{
+		if (rdata_tail + 4 > rdata_stop + 1) { // key_len + val_len
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		s->svcb.param_position = rdata_tail;
 	}
 	goto st612;
@@ -59401,6 +59497,10 @@ tr2009:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -59426,6 +59526,10 @@ tr2032:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -59679,6 +59783,10 @@ tr2022:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -59724,6 +59832,10 @@ tr2045:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -60088,6 +60200,10 @@ case 627:
 	goto tr1921;
 tr1935:
 	{
+		if (rdata_tail + 4 > rdata_stop + 1) { // key_len + val_len
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		s->svcb.param_position = rdata_tail;
 	}
 	goto st628;
@@ -60243,6 +60359,10 @@ tr2010:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -60348,6 +60468,10 @@ tr2016:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -60508,6 +60632,10 @@ tr2033:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -60625,6 +60753,10 @@ tr2039:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -60646,6 +60778,10 @@ case 652:
 	goto tr2005;
 tr1936:
 	{
+		if (rdata_tail + 4 > rdata_stop + 1) { // key_len + val_len
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		s->svcb.param_position = rdata_tail;
 	}
 	goto st653;
@@ -60814,6 +60950,10 @@ case 658:
 	goto tr1921;
 tr1937:
 	{
+		if (rdata_tail + 4 > rdata_stop + 1) { // key_len + val_len
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		s->svcb.param_position = rdata_tail;
 	}
 	goto st659;
@@ -61010,6 +61150,10 @@ case 673:
 	goto tr1921;
 tr1938:
 	{
+		if (rdata_tail + 4 > rdata_stop + 1) { // key_len + val_len
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		s->svcb.param_position = rdata_tail;
 	}
 	goto st674;
@@ -61146,6 +61290,10 @@ case 688:
 	goto tr1921;
 tr1939:
 	{
+		if (rdata_tail + 4 > rdata_stop + 1) { // key_len + val_len
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		s->svcb.param_position = rdata_tail;
 	}
 	goto st689;
@@ -61223,6 +61371,12 @@ tr2115:
 		rdata_tail += 2;
 	}
 	{
+		if (rdata_tail + 2 > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
+	}
+	{
 		s->number64 = 0;
 	}
 	{
@@ -61270,6 +61424,12 @@ tr2114:
 		uint16_t val = htons(2);
 		memcpy(rdata_tail, &val, 2);
 		rdata_tail += 2;
+	}
+	{
+		if (rdata_tail + 2 > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->number64 = 0;
@@ -63253,6 +63413,10 @@ tr2306:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -67411,6 +67575,10 @@ tr2533:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -77143,7 +77311,7 @@ tr2958:
 			len--;
 		}
 		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop) {
+		if (rdata_tail + 4 + len > rdata_stop + 1) {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st307;}
 		}
@@ -77196,7 +77364,7 @@ tr2959:
 			len--;
 		}
 		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop) {
+		if (rdata_tail + 4 + len > rdata_stop + 1) {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st307;}
 		}
@@ -77256,7 +77424,7 @@ tr2960:
 			len--;
 		}
 		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop) {
+		if (rdata_tail + 4 + len > rdata_stop + 1) {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st307;}
 		}
@@ -77316,7 +77484,7 @@ tr2962:
 			len--;
 		}
 		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop) {
+		if (rdata_tail + 4 + len > rdata_stop + 1) {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st307;}
 		}
@@ -77595,7 +77763,7 @@ tr2963:
 			len--;
 		}
 		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop) {
+		if (rdata_tail + 4 + len > rdata_stop + 1) {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st307;}
 		}
@@ -77683,7 +77851,7 @@ tr2964:
 			len--;
 		}
 		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop) {
+		if (rdata_tail + 4 + len > rdata_stop + 1) {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st307;}
 		}
@@ -77752,7 +77920,7 @@ tr2965:
 			len--;
 		}
 		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop) {
+		if (rdata_tail + 4 + len > rdata_stop + 1) {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st307;}
 		}
@@ -77928,7 +78096,7 @@ tr2966:
 			len--;
 		}
 		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop) {
+		if (rdata_tail + 4 + len > rdata_stop + 1) {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {goto st307;}
 		}
@@ -80252,6 +80420,10 @@ tr3154:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80266,6 +80438,10 @@ tr3199:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80317,6 +80493,10 @@ tr3155:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80338,6 +80518,10 @@ tr3156:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80359,6 +80543,10 @@ tr3164:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80376,6 +80564,10 @@ tr3200:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80397,6 +80589,10 @@ tr3201:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80418,6 +80614,10 @@ tr3209:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80556,6 +80756,10 @@ tr3163:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80581,6 +80785,10 @@ tr3208:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80623,6 +80831,10 @@ tr3165:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80640,6 +80852,10 @@ tr3210:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80731,6 +80947,10 @@ tr3157:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80745,6 +80965,10 @@ tr3202:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80796,6 +81020,10 @@ tr3158:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80817,6 +81045,10 @@ tr3159:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80838,6 +81070,10 @@ tr3168:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -80855,6 +81091,10 @@ tr3203:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80876,6 +81116,10 @@ tr3204:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80897,6 +81141,10 @@ tr3213:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -80999,6 +81247,10 @@ tr3169:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81016,6 +81268,10 @@ tr3214:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81074,6 +81330,10 @@ tr3170:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81094,6 +81354,10 @@ tr3215:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81198,6 +81462,10 @@ tr3171:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81218,6 +81486,10 @@ tr3216:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81323,6 +81595,10 @@ tr3160:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81337,6 +81613,10 @@ tr3205:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81388,6 +81668,10 @@ tr3161:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81409,6 +81693,10 @@ tr3162:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81430,6 +81718,10 @@ tr3172:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81447,6 +81739,10 @@ tr3206:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81468,6 +81764,10 @@ tr3207:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81489,6 +81789,10 @@ tr3217:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81650,6 +81954,10 @@ tr3166:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81670,6 +81978,10 @@ tr3211:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81801,6 +82113,10 @@ tr3167:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81821,6 +82137,10 @@ tr3212:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81905,6 +82225,10 @@ tr3173:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -81922,6 +82246,10 @@ tr3218:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -81995,6 +82323,10 @@ tr3174:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -82015,6 +82347,10 @@ tr3219:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -82190,6 +82526,10 @@ tr3175:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -82210,6 +82550,10 @@ tr3220:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -95627,6 +95971,10 @@ tr4086:
 		}
 	}
 	{
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st307;}
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
