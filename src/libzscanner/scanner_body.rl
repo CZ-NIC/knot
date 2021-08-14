@@ -670,9 +670,8 @@
 					last_two[0] = ',';
 					rdata_tail--;
 				}
-			} else if (last_two[1] == '\\' && current_len > 1) {
+			} else if (current_len > 1 && last_two[1] == '\\') {
 				if (last_two[0] == '\\') { // Remove backslash.
-					last_two[0] = '\\';
 					rdata_tail--;
 				}
 			}
@@ -927,6 +926,10 @@
 		}
 	}
 	action _ipv4_addr_write {
+		if (rdata_tail + ZS_INET4_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			fhold; fgoto err_line;
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET4_ADDR_LENGTH);
 		rdata_tail += ZS_INET4_ADDR_LENGTH;
 	}
@@ -940,6 +943,10 @@
 		}
 	}
 	action _ipv6_addr_write {
+		if (rdata_tail + ZS_INET6_ADDR_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			fhold; fgoto err_line;
+		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
@@ -1001,7 +1008,7 @@
 			len--;
 		}
 		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop) {
+		if (rdata_tail + 4 + len > rdata_stop + 1) {
 			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
@@ -1777,6 +1784,10 @@
 	}
 
 	action _svcb_param_init {
+		if (rdata_tail + 4 > rdata_stop + 1) { // key_len + val_len
+			WARN(ZS_RDATA_OVERFLOW);
+			fhold; fgoto err_line;
+		}
 		s->svcb.param_position = rdata_tail;
 	}
 	action _svcb_param_exit {
@@ -1801,6 +1812,13 @@
 		svcb_mandatory_sort(s->svcb.mandatory_position, rdata_tail);
 	}
 
+	action _rdata_2B_check {
+		if (rdata_tail + 2 > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			fhold; fgoto err_line;
+		}
+	}
+
 	svcb_key_generic   = ("key"             . num16);
 	svcb_key_mandatory = ("mandatory"       %_write16_0);
 	svcb_key_alpn      = ("alpn"            %_write16_1);
@@ -1813,7 +1831,7 @@
 	mandat_value_ :=
 		(svcb_key_generic | svcb_key_alpn | svcb_key_ndalpn | svcb_key_port |
 		 svcb_key_ipv4hint | svcb_key_ech | svcb_key_ipv6hint
-		) $!_mandat_value_error %_ret . ([,\"] | all_wchar);
+		) >_rdata_2B_check $!_mandat_value_error %_ret . ([,\"] | all_wchar);
 	mandat_value = alpha ${ fhold; fcall mandat_value_; };
 
 	svcb_empty    = zlen %_write16_0;
@@ -1822,7 +1840,7 @@
 	svcb_mandat_  = ((mandat_value    . ("," . mandat_value)*)    >_item_length2_init %_item_length2_exit);
 	svcb_mandat   = svcb_mandat_ >_mandatory_init %_mandatory_exit;
 	svcb_alpn     = (text_string >_alpnl_init %_alpnl_exit        >_item_length2_init %_item_length2_exit);
-	svcb_port     = num16 >_write16_2;
+	svcb_port     = num16 >_write16_2 >_rdata_2B_check;
 	svcb_ipv4     = ((ipv4_addr_write . ("," . ipv4_addr_write)*) >_item_length2_init %_item_length2_exit);
 	svcb_ech      = (base64_quartet+                              >_item_length2_init %_item_length2_exit);
 	svcb_ipv6     = ((ipv6_addr_write . ("," . ipv6_addr_write)*) >_item_length2_init %_item_length2_exit);
