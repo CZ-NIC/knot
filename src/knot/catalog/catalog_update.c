@@ -263,13 +263,18 @@ static bool check_member(catalog_upd_val_t *val, conf_t *conf, catalog_t *cat)
 	return true;
 }
 
+typedef struct {
+	conf_t *conf;
+	catalog_update_t *cup;
+} rem_conflict_ctx_t;
+
 static int rem_conf_conflict(const knot_dname_t *mem, const knot_dname_t *ow,
                              const knot_dname_t *cz, _unused_ const char *gr, void *ctx)
 {
-	conf_t *conf = ctx;
+	rem_conflict_ctx_t *rcctx = ctx;
 
-	if (conf_rawid_exists(conf, C_ZONE, mem, knot_dname_size(mem))) {
-		return catalog_update_add(ctx, mem, ow, cz, CAT_UPD_REM, NULL, 0, NULL);
+	if (conf_rawid_exists(rcctx->conf, C_ZONE, mem, knot_dname_size(mem))) {
+		return catalog_update_add(rcctx->cup, mem, ow, cz, CAT_UPD_REM, NULL, 0, NULL);
 	}
 	return KNOT_EOK;
 }
@@ -289,7 +294,8 @@ void catalog_update_finalize(catalog_update_t *u, catalog_t *cat, conf_t *conf)
 	// This checks if the configuration file has not changed in the way
 	// it conflicts with existing member zone and let config take precendence.
 	if (cat->ro_txn != NULL) {
-		(void)catalog_apply(cat, NULL, rem_conf_conflict, conf, false);
+		rem_conflict_ctx_t rcctx = { conf, u };
+		(void)catalog_apply(cat, NULL, rem_conf_conflict, &rcctx, false);
 	}
 }
 
