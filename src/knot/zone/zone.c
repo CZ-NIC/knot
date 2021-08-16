@@ -188,6 +188,8 @@ zone_t* zone_new(const knot_dname_t *name)
 	// Initialize query modules list.
 	init_list(&zone->query_modules);
 
+	init_list(&zone->internal_notify);
+
 	return zone;
 }
 
@@ -233,6 +235,8 @@ void zone_free(zone_t **zone_ptr)
 	zone_contents_deep_free(zone->contents);
 
 	conf_deactivate_modules(&zone->query_modules, &zone->query_plan);
+
+	ptrlist_free(&zone->internal_notify, NULL);
 
 	free(zone);
 	*zone_ptr = NULL;
@@ -754,6 +758,19 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
 	free(zonefile);
 
 	return zonefile_write(target, zone->contents);
+}
+
+void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe)
+{
+	ptrlist_add(&zone->internal_notify, subscribe, NULL);
+}
+
+void zone_local_notify(zone_t *zone)
+{
+	ptrnode_t *n;
+	WALK_LIST(n, zone->internal_notify) {
+		zone_events_schedule_now(n->d, ZONE_EVENT_LOAD);
+	}
 }
 
 int zone_set_master_serial(zone_t *zone, uint32_t serial)

@@ -113,6 +113,7 @@
 #define C_REPRO_SIGNING		"\x14""reproducible-signing"
 #define C_RETRY_MAX_INTERVAL	"\x12""retry-max-interval"
 #define C_RETRY_MIN_INTERVAL	"\x12""retry-min-interval"
+#define C_REVERSE_GEN		"\x10""reverse-generate"
 #define C_RMT			"\x06""remote"
 #define C_RMTS			"\x07""remotes"
 #define C_RMT_POOL_LIMIT	"\x11""remote-pool-limit"

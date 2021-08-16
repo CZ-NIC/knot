@@ -1022,6 +1022,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		log_zone_error(update->zone->name, "failed to deallocate unused memory");
 	}
 
+	zone_local_notify(update->zone);
+
 	/* Sync zonefile immediately if configured. */
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, update->zone->name);
 	if (conf_int(&val) == 0) {
