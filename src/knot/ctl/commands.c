@@ -525,7 +525,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	int ret = schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 
 	if (ret == KNOT_EOK && !ctx->backup_global && (ctx->restore_mode || !ctx->failed)) {
-		ret = global_backup(ctx, zone->catalog, zone->name);
+		ret = global_backup(ctx, zone_catalog(zone), zone->name);
 	}
 
 	return ret;
@@ -622,7 +622,7 @@ static int zone_ksk_sbm_confirm(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	kdnssec_ctx_t ctx = { 0 };
 
-	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, zone->kaspdb, NULL);
+	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, zone_kaspdb(zone), NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -1368,9 +1368,9 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 
 	// Purge KASP DB.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-		ret = knot_lmdb_open(zone->kaspdb);
+		ret = knot_lmdb_open(zone_kaspdb(zone));
 		if (ret == KNOT_EOK) {
-			ret = kasp_db_delete_all(zone->kaspdb, zone->name);
+			ret = kasp_db_delete_all(zone_kaspdb(zone), zone->name);
 		}
 		RETURN_IF_FAILED(KNOT_ENOENT);
 	}

@@ -344,7 +344,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 
 	list_t key_params;
 	init_list(&key_params);
-	ret = kasp_db_list_keys(zone->kaspdb, zone->name, &key_params);
+	ret = kasp_db_list_keys(zone_kaspdb(zone), zone->name, &key_params);
 	ret = (ret == KNOT_ENOENT ? KNOT_EOK : ret);
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("keystore list");
@@ -388,7 +388,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 	if (ctx->backup_kaspdb) {
-		knot_lmdb_db_t *kasp_from = zone->kaspdb, *kasp_to = &ctx->bck_kasp_db;
+		knot_lmdb_db_t *kasp_from = zone_kaspdb(zone), *kasp_to = &ctx->bck_kasp_db;
 		BACKUP_SWAP(ctx, kasp_from, kasp_to);
 
 		if (knot_lmdb_exists(kasp_from)) {
@@ -407,7 +407,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 	if (ctx->backup_journal) {
-		knot_lmdb_db_t *j_from = zone->journaldb, *j_to = &ctx->bck_journal;
+		knot_lmdb_db_t *j_from = zone_journaldb(zone), *j_to = &ctx->bck_journal;
 		BACKUP_SWAP(ctx, j_from, j_to);
 
 		ret = journal_copy_with_md(j_from, j_to, zone->name);

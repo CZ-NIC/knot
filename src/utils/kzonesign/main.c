@@ -20,6 +20,7 @@
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
+#include "knot/server/server.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
 #include "utils/common/params.h"
@@ -71,7 +72,7 @@ int main(int argc, char *argv[])
 	zone_contents_t *unsigned_conts = NULL;
 	zone_t *zone_struct = NULL;
 	zone_update_t up = { 0 };
-	knot_lmdb_db_t kasp_db = { 0 };
+	server_t fake_server = { 0 };
 	zone_sign_roll_flags_t rollover = 0;
 	int64_t timestamp = 0;
 	zone_sign_reschedule_t next_sign = { 0 };
@@ -173,8 +174,8 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	kasp_db_ensure_init(&kasp_db, conf());
-	zone_struct->kaspdb = &kasp_db;
+	kasp_db_ensure_init(&fake_server.kaspdb, conf());
+	zone_struct->server = &fake_server;
 
 	ret = knot_dnssec_zone_sign(&up, conf(), 0, rollover, timestamp, &next_sign);
 	if (ret == KNOT_DNSSEC_ENOKEY) { // exception: allow generating initial keys
@@ -215,8 +216,8 @@ int main(int argc, char *argv[])
 	}
 
 fail:
-	if (kasp_db.path != NULL) {
-		knot_lmdb_deinit(&kasp_db);
+	if (fake_server.kaspdb.path != NULL) {
+		knot_lmdb_deinit(&fake_server.kaspdb);
 	}
 	zone_free(&zone_struct);
 	conf_free(conf());
