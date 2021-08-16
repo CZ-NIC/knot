@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -107,6 +107,9 @@ const char *quotes_ok =
 	"g: \"\\\"\\\"\"\n"
 	"g: \" a \\\" b \\\" \\\"c\\\" \"\n"
 	"g: \"\\@ \\[ \\# \\, \\]\"\n";
+
+const char *utf8_ok =
+	"key: příšera\n";
 
 static void test_syntax_ok(yp_parser_t *yp)
 {
@@ -306,6 +309,18 @@ static void test_wildcard(yp_parser_t *yp)
 	CHECK_NOT_WILDCARD("*example.com.");
 }
 
+static void test_utf8(yp_parser_t *yp)
+{
+	int ret = yp_set_input_string(yp, utf8_ok, strlen(utf8_ok));
+	is_int(KNOT_EOK, ret, "set input string");
+
+	ret = yp_parse(yp);
+	is_int(KNOT_EOK, ret, "parse key with a value in UTF-8");
+	ok(yp->key_len == 3 && strcmp(yp->key, "key") == 0 &&
+	   yp->data_len == 10 && strcmp(yp->data, "p""\xC5\x99\xC3\xAD\xC5\xA1""era") == 0,
+	   "compare UTF-8 value");
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -323,6 +338,7 @@ int main(int argc, char *argv[])
 	test_dname(&yp);
 	test_quotes(&yp);
 	test_wildcard(&yp);
+	test_utf8(&yp);
 
 	yp_deinit(&yp);
 
