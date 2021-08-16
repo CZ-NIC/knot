@@ -248,6 +248,12 @@ int event_load(conf_t *conf, zone_t *zone)
 		goto cleanup;
 	}
 
+	bool zf_serial_updated = (zf_conts != NULL && zone_contents_serial(zf_conts) != zone_contents_serial(zone->contents));
+
+	// The contents are already part of zone_update.
+	zf_conts = NULL;
+	journal_conts = NULL;
+
 	ret = zone_update_verify_digest(conf, &up);
 	if (ret != KNOT_EOK) {
 		goto cleanup;
@@ -255,18 +261,13 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	uint32_t middle_serial = zone_contents_serial(up.new_cont);
 
-	if (do_diff && old_contents_exist && dnssec_enable && zf_conts != NULL &&
-	    zone_contents_serial(zf_conts) != zone_contents_serial(zone->contents) &&
+	if (do_diff && old_contents_exist && dnssec_enable && zf_serial_updated &&
 	    !zone_in_journal_exists) {
 		ret = zone_update_start_extra(&up, conf);
 		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}
 	}
-
-	// The contents are already part of zone_update.
-	zf_conts = NULL;
-	journal_conts = NULL;
 
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { 0 };
