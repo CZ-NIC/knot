@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@
 	quote_char = '\"';
 	list_char = [\[,\]];
 	data_char =
-		( (ascii - space - cntrl - quote_char - sep_char -
+		( (extend - space - cntrl - quote_char - sep_char -
 		   comment_char - list_char - backslash_char)
 		| (backslash_char . (quote_char) >_item_unbackslash)
 		| (backslash_char . (32..126 - quote_char))
