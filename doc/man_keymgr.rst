@@ -37,7 +37,7 @@ Basic options
   key in a keystore.
 
 **-b**, **--brief**
-   List keys briefly.
+  List keys briefly. Output to a terminal is colorized.
 
 **-l**, **--list**
   Print the list of zones that have at least one key stored in the configured KASP

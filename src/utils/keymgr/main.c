@@ -423,7 +423,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'b':
 			list_params.brief = true;
-			list_params.color = true; // TODO: disable if not stdout
+			list_params.color = isatty(STDOUT_FILENO);
 			break;
 		default:
 			print_help();

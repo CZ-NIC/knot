@@ -60,7 +60,7 @@ TSIG key is only displayed on \fIstdout\fP: the command does not create a file, 
 key in a keystore.
 .TP
 \fB\-b\fP, \fB\-\-brief\fP
-List keys briefly.
+List keys briefly. Output to a terminal is colorized.
 .TP
 \fB\-l\fP, \fB\-\-list\fP
 Print the list of zones that have at least one key stored in the configured KASP
