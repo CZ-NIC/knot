@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,6 +81,8 @@ struct query {
 	protocol_t	protocol;
 	/*!< Use TCP Fast Open. */
 	bool		fastopen;
+	/*!< Keep TCP connection open. */
+	bool		keepopen;
 	/*!< Port/service to connect to. */
 	char		*port;
 	/*!< UDP buffer size (16unsigned + -1 uninitialized). */

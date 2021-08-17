@@ -219,6 +219,11 @@ Options
 **+**\ [\ **no**\ ]\ **ignore**
   Don't use TCP automatically if a truncated reply is received.
 
+**+**\ [\ **no**\ ]\ **keepopen**
+  Keep TCP connection open for the following query if it has the same connection
+  configuration. This applies to +tcp, +tls, and +https operations. The connection
+  is considered in the context of a single kdig call only.
+
 **+**\ [\ **no**\ ]\ **tls**
   Use TLS with the Opportunistic privacy profile (:rfc:`7858#section-4.1`).
 
@@ -354,6 +359,10 @@ Examples
      $ kdig @193.17.47.1 +https=/doh example.com.
      $ kdig @8.8.4.4 +https +https-get example.com.
      $ kdig @8.8.8.8 +https +tls-hostname=dns.google +fastopen example.com.
+
+6. More queries share one DoT connection::
+
+     $ kdig @1.1.1.1 +tls +keepopen abc.example.com A mail.example.com AAAA
 
 Files
 -----

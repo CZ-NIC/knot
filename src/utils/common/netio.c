@@ -207,6 +207,7 @@ int net_init(const srv_info_t     *local,
 	}
 
 	// Store network parameters.
+	net->sockfd = -1;
 	net->iptype = iptype;
 	net->socktype = socktype;
 	net->wait = wait;
