@@ -240,6 +240,11 @@ Use TCP Fast Open.
 \fB+\fP[\fBno\fP]\fBignore\fP
 Don\(aqt use TCP automatically if a truncated reply is received.
 .TP
+\fB+\fP[\fBno\fP]\fBkeepopen\fP
+Keep TCP connection open for the following query if it has the same connection
+configuration. This applies to +tcp, +tls, and +https operations. The connection
+is considered in the context of a single kdig call only.
+.TP
 \fB+\fP[\fBno\fP]\fBtls\fP
 Use TLS with the Opportunistic privacy profile (\fI\%RFC 7858#section\-4.1\fP).
 .TP
@@ -407,6 +412,18 @@ $ kdig @1.1.1.1 +https example.com.
 $ kdig @193.17.47.1 +https=/doh example.com.
 $ kdig @8.8.4.4 +https +https\-get example.com.
 $ kdig @8.8.8.8 +https +tls\-hostname=dns.google +fastopen example.com.
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.IP 6. 3
+More queries share one DoT connection:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ kdig @1.1.1.1 +tls +keepopen abc.example.com A mail.example.com AAAA
 .ft P
 .fi
 .UNINDENT

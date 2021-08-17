@@ -24,6 +24,7 @@
 #include "utils/common/cert.h"
 #include "utils/common/hex.h"
 #include "utils/common/msg.h"
+#include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
 #include "libknot/descriptor.h"
@@ -626,6 +627,24 @@ static int opt_nofastopen(const char *arg, void *query)
 	query_t *q = query;
 
 	q->fastopen = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_keepopen(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->keepopen = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nokeepopen(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->keepopen = false;
 
 	return KNOT_EOK;
 }
@@ -1377,6 +1396,9 @@ static const param_t kdig_opts2[] = {
 	{ "ignore",         ARG_NONE,     opt_ignore },
 	{ "noignore",       ARG_NONE,     opt_noignore },
 
+	{ "keepopen",       ARG_NONE,     opt_keepopen },
+	{ "nokeepopen",     ARG_NONE,     opt_nokeepopen },
+
 	{ "tls",            ARG_NONE,     opt_tls },
 	{ "notls",          ARG_NONE,     opt_notls },
 
@@ -2013,6 +2035,25 @@ static void complete_servers(query_t *query, const query_t *conf)
 	}
 }
 
+static bool compare_servers(list_t *s1, list_t *s2)
+{
+	if (list_size(s1) != list_size(s2)) {
+		return false;
+	}
+
+	node_t *n1, *n2 = HEAD(*s2);
+	WALK_LIST(n1, *s1) {
+		srv_info_t *i1 = (srv_info_t *)n1, *i2 = (srv_info_t *)n2;
+		if (strcmp(i1->service, i2->service) != 0 ||
+		    strcmp(i1->name, i2->name) != 0)
+		{
+			return false;
+		}
+		n2 = n2->next;
+	}
+	return true;
+}
+
 void complete_queries(list_t *queries, const query_t *conf)
 {
 	node_t  *n;
@@ -2036,6 +2077,7 @@ void complete_queries(list_t *queries, const query_t *conf)
 
 	WALK_LIST(n, *queries) {
 		query_t *q = (query_t *)n;
+		query_t *q_prev = (HEAD(*queries) != n) ? (query_t *)n->prev : NULL;
 
 		// Fill class number if missing.
 		if (q->class_num < 0) {
@@ -2069,6 +2111,20 @@ void complete_queries(list_t *queries, const query_t *conf)
 
 		// Complete nameservers list.
 		complete_servers(q, conf);
+
+		// Check if using previous connection makes sense.
+		if (q_prev != NULL && q_prev->keepopen &&
+		    (get_socktype(q->protocol, q->type_num) !=
+		     get_socktype(q_prev->protocol, q_prev->type_num) ||
+		     q->https.enable != q_prev->https.enable ||
+		     q->tls.enable != q_prev->tls.enable ||
+		     strcmp(q->port, q_prev->port) != 0 ||
+		     !compare_servers(&q->servers, &q_prev->servers)))
+		{
+			WARN("connection parameters mismatch for query (%s), "
+			     "ignoring keepopen\n", q->owner);
+			q_prev->keepopen = false;
+		}
 	}
 }
 

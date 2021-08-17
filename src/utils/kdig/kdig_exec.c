@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -597,6 +597,13 @@ static int sign_query(knot_pkt_t *pkt, const query_t *query, sign_context_t *ctx
 	return KNOT_EOK;
 }
 
+static void net_close_keepopen(net_t *net, const query_t *query)
+{
+	if (!query->keepopen) {
+		net_close(net);
+	}
+}
+
 static int process_query_packet(const knot_pkt_t      *query,
                                 net_t                 *net,
                                 const query_t         *query_ctx,
@@ -615,10 +622,12 @@ static int process_query_packet(const knot_pkt_t      *query,
 	timestamp = time(NULL);
 	t_start = time_now();
 
-	// Connect to the server.
-	ret = net_connect(net);
-	if (ret != KNOT_EOK) {
-		return -1;
+	// Connect to the server if not already connected.
+	if (net->sockfd < 0) {
+		ret = net_connect(net);
+		if (ret != KNOT_EOK) {
+			return -1;
+		}
 	}
 
 	// Send query packet.
@@ -715,7 +724,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		WARN("truncated reply from %s, retrying over TCP\n\n",
 		     net->remote_str);
 		knot_pkt_free(reply);
-		net_close(net);
+		net_close_keepopen(net, query_ctx);
 
 		net->socktype = SOCK_STREAM;
 
@@ -747,7 +756,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		printf("\n");
 		WARN("bad cookie from %s, retrying with the received one\n",
 		     net->remote_str);
-		net_close(net);
+		net_close_keepopen(net, query_ctx);
 
 		// Prepare new query context.
 		query_t new_ctx = *query_ctx;
@@ -783,16 +792,15 @@ static int process_query_packet(const knot_pkt_t      *query,
 	}
 
 	knot_pkt_free(reply);
-	net_close(net);
+	net_close_keepopen(net, query_ctx);
 
 	return 0;
 }
 
-static int process_query(const query_t *query)
+static int process_query(const query_t *query, net_t *net)
 {
 	node_t     *server;
 	knot_pkt_t *out_packet;
-	net_t      net;
 	int        ret;
 
 	// Create query packet.
@@ -808,6 +816,16 @@ static int process_query(const query_t *query)
 	if (ret != KNOT_EOK) {
 		ERR("can't sign the packet (%s)\n", knot_strerror(ret));
 		return -1;
+	}
+
+	// Reuse previous connection if available.
+	if (net->sockfd >= 0) {
+		DBG("Querying for owner(%s), class(%u), type(%u), reused connection\n",
+		    query->owner, query->class_num, query->type_num);
+
+		ret = process_query_packet(out_packet, net, query, query->ignore_tc,
+		                           &sign_ctx, &query->style);
+		goto finish;
 	}
 
 	// Get connection parameters.
@@ -828,7 +846,7 @@ static int process_query(const query_t *query)
 		for (size_t i = 0; i <= query->retries; i++) {
 			// Initialize network structure for current server.
 			ret = net_init(query->local, remote, iptype, socktype,
-				       query->wait, flags, &query->tls, &query->https, &net);
+				       query->wait, flags, &query->tls, &query->https, net);
 			if (ret != KNOT_EOK) {
 				if (ret == KNOT_NET_EADDR) {
 					// Requested address family not available.
@@ -838,16 +856,16 @@ static int process_query(const query_t *query)
 			}
 
 			// Loop over all resolved addresses for remote.
-			while (net.srv != NULL) {
-				ret = process_query_packet(out_packet, &net,
+			while (net->srv != NULL) {
+				ret = process_query_packet(out_packet, net,
 				                           query,
 				                           query->ignore_tc,
 				                           &sign_ctx,
 				                           &query->style);
 				// If error try next resolved address.
 				if (ret != 0) {
-					net.srv = (net.srv)->ai_next;
-					if (net.srv != NULL && query->style.show_query) {
+					net->srv = net->srv->ai_next;
+					if (net->srv != NULL && query->style.show_query) {
 						printf("\n");
 					}
 
@@ -859,10 +877,7 @@ static int process_query(const query_t *query)
 
 			// Success.
 			if (ret == 0) {
-				net_clean(&net);
-				sign_context_deinit(&sign_ctx);
-				knot_pkt_free(out_packet);
-				return 0;
+				goto finish;
 			}
 
 			if (i < query->retries) {
@@ -875,7 +890,7 @@ static int process_query(const query_t *query)
 				}
 			}
 
-			net_clean(&net);
+			net_clean(net);
 		}
 
 		ERR("failed to query server %s@%s(%s)\n",
@@ -888,14 +903,18 @@ static int process_query(const query_t *query)
 next_server:
 		continue;
 	}
-
-	if (ret == KNOT_NET_EADDR) {
-		WARN("no servers to query\n");
+finish:
+	if (!query->keepopen || net->sockfd < 0) {
+		net_clean(net);
 	}
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
 
-	return -1;
+	if (ret == KNOT_NET_EADDR) {
+		WARN("no servers to query\n");
+	}
+
+	return ret;
 }
 
 static int process_xfr_packet(const knot_pkt_t      *query,
@@ -919,10 +938,12 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	timestamp = time(NULL);
 	t_start = time_now();
 
-	// Connect to the server.
-	ret = net_connect(net);
-	if (ret != KNOT_EOK) {
-		return -1;
+	// Connect to the server if not already connected.
+	if (net->sockfd < 0) {
+		ret = net_connect(net);
+		if (ret != KNOT_EOK) {
+			return -1;
+		}
 	}
 
 	// Send query packet.
@@ -1083,15 +1104,14 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	print_footer_xfr(total_len, msg_count, rr_count, net,
 	                 time_diff_ms(&t_query, &t_end), timestamp, style);
 
-	net_close(net);
+	net_close_keepopen(net, query_ctx);
 
 	return 0;
 }
 
-static int process_xfr(const query_t *query)
+static int process_xfr(const query_t *query, net_t *net)
 {
 	knot_pkt_t *out_packet;
-	net_t      net;
 	int        ret;
 
 	// Create query packet.
@@ -1109,6 +1129,16 @@ static int process_xfr(const query_t *query)
 		return -1;
 	}
 
+	// Reuse previous connection if available.
+	if (net->sockfd >= 0) {
+		DBG("Querying for owner(%s), class(%u), type(%u), reused connection\n",
+		    query->owner, query->class_num, query->type_num);
+
+		ret = process_xfr_packet(out_packet, net, query,
+		                         &sign_ctx, &query->style);
+		goto finish;
+	}
+
 	// Get connection parameters.
 	int iptype = get_iptype(query->ip);
 	int socktype = get_socktype(query->protocol, query->type_num);
@@ -1124,7 +1154,7 @@ static int process_xfr(const query_t *query)
 
 	// Initialize network structure.
 	ret = net_init(query->local, remote, iptype, socktype, query->wait,
-	               flags, &query->tls, &query->https, &net);
+	               flags, &query->tls, &query->https, net);
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(out_packet);
@@ -1132,14 +1162,14 @@ static int process_xfr(const query_t *query)
 	}
 
 	// Loop over all resolved addresses for remote.
-	while (net.srv != NULL) {
-		ret = process_xfr_packet(out_packet, &net,
+	while (net->srv != NULL) {
+		ret = process_xfr_packet(out_packet, net,
 		                         query,
 		                         &sign_ctx,
 		                         &query->style);
 		// If error try next resolved address.
 		if (ret != 0) {
-			net.srv = (net.srv)->ai_next;
+			net->srv = (net->srv)->ai_next;
 			continue;
 		}
 
@@ -1150,8 +1180,10 @@ static int process_xfr(const query_t *query)
 		ERR("failed to query server %s@%s(%s)\n",
 		    remote->name, remote->service, get_sockname(socktype));
 	}
-
-	net_clean(&net);
+finish:
+	if (!query->keepopen || net->sockfd < 0) {
+		net_clean(net);
+	}
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
 
@@ -1161,6 +1193,7 @@ static int process_xfr(const query_t *query)
 int kdig_exec(const kdig_params_t *params)
 {
 	node_t *n;
+	net_t net = { .sockfd = -1 };
 
 	if (params == NULL) {
 		DBG_NULL;
@@ -1176,10 +1209,10 @@ int kdig_exec(const kdig_params_t *params)
 		int ret = -1;
 		switch (query->operation) {
 		case OPERATION_QUERY:
-			ret = process_query(query);
+			ret = process_query(query, &net);
 			break;
 		case OPERATION_XFR:
-			ret = process_xfr(query);
+			ret = process_xfr(query, &net);
 			break;
 #if USE_DNSTAP
 		case OPERATION_LIST_DNSTAP:
@@ -1200,6 +1233,11 @@ int kdig_exec(const kdig_params_t *params)
 		if (n->next->next && params->config->style.format == FORMAT_FULL) {
 			printf("\n");
 		}
+	}
+
+	if (net.sockfd >= 0) {
+		net_close(&net);
+		net_clean(&net);
 	}
 
 	return success ? KNOT_EOK : KNOT_ERROR;
