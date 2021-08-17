@@ -5,6 +5,7 @@ src/contrib/base64.c
 src/contrib/base64.h
 src/contrib/base64url.c
 src/contrib/base64url.h
+src/contrib/color.h
 src/contrib/ctype.h
 src/contrib/dnstap/convert.c
 src/contrib/dnstap/convert.h
