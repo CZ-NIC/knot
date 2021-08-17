@@ -1316,6 +1316,7 @@ static int check_section(
 
 	bool non_empty = false;
 
+	conf_val_t bin; // Must be in the scope of the error processing.
 	for (yp_item_t *item = group->sub_items; item->name != NULL; item++) {
 		args.item = item;
 
@@ -1330,7 +1331,6 @@ static int check_section(
 		}
 
 		// Get the item value.
-		conf_val_t bin;
 		conf_db_get(conf(), conf()->io.txn, group->name, item->name, id,
 		            id_len, &bin);
 		if (bin.code == KNOT_ENOENT) {
