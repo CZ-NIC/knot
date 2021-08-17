@@ -50,6 +50,8 @@ static void print_help(void)
 	       "  -d, --dir <path>         Use specified KASP database path and default configuration.\n"
 	       "  -t, --tsig <name> [alg]  Generate a TSIG key.\n"
 	       "  -l, --list               List all zones that have at least one key in KASP database.\n"
+	       "  -x, --mono               Don't color the output.\n"
+	       "  -X, --color              Force output colorization in the --brief mode.\n"
 	       "  -h, --help               Print the program help.\n"
 	       "  -V, --version            Print the program version.\n"
 	       "\n"
@@ -371,6 +373,8 @@ int main(int argc, char *argv[])
 		{ "tsig",    required_argument, NULL, 't' },
 		{ "brief",   no_argument,       NULL, 'b' },
 		{ "list",    no_argument,       NULL, 'l' },
+		{ "mono",    no_argument,       NULL, 'x' },
+		{ "color",   no_argument,       NULL, 'X' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ "version", no_argument,       NULL, 'V' },
 		{ NULL }
@@ -382,8 +386,10 @@ int main(int argc, char *argv[])
 	bool just_list = false;
 	keymgr_list_params_t list_params = { 0 };
 
+	list_params.color = isatty(STDOUT_FILENO);
+
 	int opt = 0, parm = 0;
-	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:lb", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:lbxX", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -423,7 +429,12 @@ int main(int argc, char *argv[])
 			break;
 		case 'b':
 			list_params.brief = true;
-			list_params.color = isatty(STDOUT_FILENO);
+			break;
+		case 'x':
+			list_params.color = false;
+			break;
+		case 'X':
+			list_params.color = true;
 			break;
 		default:
 			print_help();
