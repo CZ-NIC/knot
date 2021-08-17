@@ -249,6 +249,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	} else if (strcmp(argv[1], "show-offline") == 0) {
 		CHECK_MISSING_ARG("Timestamp from not specified");
 		ret = keymgr_print_offline_records(&kctx, argv[2], argc > 3 ? argv[3] : NULL);
+		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "del-offline") == 0) {
 		CHECK_MISSING_ARG2("Timestamps from-to not specified");
 		ret = keymgr_delete_offline_records(&kctx, argv[2], argv[3]);
