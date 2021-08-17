@@ -22,6 +22,12 @@
 
 #define ERROR(msg, ...)	{ fprintf(stderr, "Error: " msg, ##__VA_ARGS__); fflush(stderr); }
 
+typedef struct {
+	knot_time_print_t format;
+	bool brief;
+	bool color;
+} keymgr_list_params_t;
+
 int parse_timestamp(char *arg, knot_time_t *stamp);
 
 int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]);
@@ -48,7 +54,7 @@ int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **k
 
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[]);
 
-int keymgr_list_keys(kdnssec_ctx_t *ctx, knot_time_print_t format);
+int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params);
 
 int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key);
 

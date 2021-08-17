@@ -42,6 +42,7 @@ static void print_help(void)
 	       "  %s -l\n"
 	       "\n"
 	       "Parameters:\n"
+	       "  -b, --brief              List keys briefly.\n"
 	       "  -c, --config <file>      Use a textual configuration file.\n"
 	       "                            (default %s)\n"
 	       "  -C, --confdb <dir>       Use a binary configuration database directory.\n"
@@ -114,7 +115,8 @@ static void print_help(void)
 	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
-static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kaspdb)
+static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kaspdb,
+                       keymgr_list_params_t *list_params)
 {
 	if (argc < opt_ind + 2) {
 		ERROR("zone name and/or command not specified\n");
@@ -197,13 +199,13 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 			}
 		}
 	} else if (strcmp(argv[1], "list") == 0) {
-		knot_time_print_t format = TIME_PRINT_UNIX;
+		list_params->format = TIME_PRINT_UNIX;
 		if (argc > 2 && strcmp(argv[2], "human") == 0) {
-			format = TIME_PRINT_HUMAN_MIXED;
+			list_params->format = TIME_PRINT_HUMAN_MIXED;
 		} else if (argc > 2 && strcmp(argv[2], "iso") == 0) {
-			format = TIME_PRINT_ISO8601;
+			list_params->format = TIME_PRINT_ISO8601;
 		}
-		ret = keymgr_list_keys(&kctx, format);
+		ret = keymgr_list_keys(&kctx, list_params);
 		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "ds") == 0 || strcmp(argv[1], "dnskey") == 0) {
 		int (*generate_rr)(const knot_dname_t *, const knot_kasp_key_t *) = keymgr_generate_dnskey;
@@ -362,13 +364,12 @@ static bool conf_initialized = false; // This is a singleton as well as conf() i
 
 int main(int argc, char *argv[])
 {
-	int ret, just_list = 0;
-
 	struct option opts[] = {
 		{ "config",  required_argument, NULL, 'c' },
 		{ "confdb",  required_argument, NULL, 'C' },
 		{ "dir",     required_argument, NULL, 'd' },
 		{ "tsig",    required_argument, NULL, 't' },
+		{ "brief",   no_argument,       NULL, 'b' },
 		{ "list",    no_argument,       NULL, 'l' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ "version", no_argument,       NULL, 'V' },
@@ -377,8 +378,12 @@ int main(int argc, char *argv[])
 
 	tzset();
 
+	int ret;
+	bool just_list = false;
+	keymgr_list_params_t list_params = { 0 };
+
 	int opt = 0, parm = 0;
-	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:l", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVd:c:C:t:lb", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -414,7 +419,11 @@ int main(int argc, char *argv[])
 			}
 			return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
 		case 'l':
-			just_list = 1;
+			just_list = true;
+			break;
+		case 'b':
+			list_params.brief = true;
+			list_params.color = true; // TODO: disable if not stdout
 			break;
 		default:
 			print_help();
@@ -446,7 +455,7 @@ int main(int argc, char *argv[])
 	if (just_list) {
 		ret = keymgr_list_zones(&kaspdb);
 	} else {
-		ret = key_command(argc, argv, optind, &kaspdb);
+		ret = key_command(argc, argv, optind, &kaspdb, &list_params);
 	}
 
 	knot_lmdb_deinit(&kaspdb);
