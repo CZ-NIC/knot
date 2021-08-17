@@ -25,6 +25,7 @@
 #include "knot/journal/serialization.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/params.h"
+#include "contrib/color.h"
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
 
@@ -61,8 +62,7 @@ typedef struct {
 static void print_changeset(const changeset_t *chs, print_params_t *params)
 {
 	static size_t count = 1;
-	const char *YLW = "\x1B[93m";
-	printf("%s", params->color ? YLW : "");
+	printf("%s", COL_YELW(params->color));
 
 	if (chs->soa_from == NULL) {
 		printf(";; Zone-in-journal, serial: %u, changeset: %zu\n",
