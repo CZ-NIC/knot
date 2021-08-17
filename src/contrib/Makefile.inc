@@ -29,6 +29,7 @@ libcontrib_la_SOURCES = \
 	contrib/base64.h			\
 	contrib/base64url.c			\
 	contrib/base64url.h			\
+	contrib/color.h				\
 	contrib/ctype.h				\
 	contrib/files.c				\
 	contrib/files.h				\
