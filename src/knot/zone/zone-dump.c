@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,12 +39,11 @@ typedef struct {
 static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 {
 	knot_rrset_t soa = node_rrset(node, KNOT_RRTYPE_SOA);
-	knot_dump_style_t soa_style = *params->style;
 
 	// Dump SOA record as a first.
 	if (!params->dump_nsec) {
 		int ret = knot_rrset_txt_dump(&soa, &params->buf, &params->buflen,
-		                              &soa_style);
+		                              params->style);
 		if (ret < 0) {
 			return ret;
 		}
@@ -136,7 +135,7 @@ static int node_dump_text(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments)
+int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments, const char *color)
 {
 	if (zone == NULL || file == NULL) {
 		return KNOT_EINVAL;
@@ -153,14 +152,15 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments)
 	}
 
 	// Set structure with parameters.
-	zone_node_t *apex = zone->apex;
+	knot_dump_style_t style = KNOT_DUMP_STYLE_DEFAULT;
+	style.color = color;
 	dump_params_t params = {
 		.file = file,
 		.buf = buf,
 		.buflen = DUMP_BUF_LEN,
 		.rr_count = 0,
-		.origin = apex->owner,
-		.style = &KNOT_DUMP_STYLE_DEFAULT,
+		.origin = zone->apex->owner,
+		.style = &style,
 		.dump_rrsig = false,
 		.dump_nsec = false
 	};
@@ -222,7 +222,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments)
 		// Dump trailing statistics.
 		fprintf(file, ";; Written %"PRIu64" records\n"
 		              ";; Time %s\n",
-	        	params.rr_count, date);
+		        params.rr_count, date);
 	}
 
 	free(params.buf); // params.buf may be != buf because of knot_rrset_txt_dump_dynamic()

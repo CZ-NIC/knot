@@ -38,6 +38,7 @@
 #include "libknot/wire.h"
 #include "contrib/base32hex.h"
 #include "contrib/base64.h"
+#include "contrib/color.h"
 #include "contrib/ctype.h"
 #include "contrib/wire_ctx.h"
 
@@ -83,7 +84,8 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.human_ttl = false,
 	.human_tmstamp = true,
 	.hide_crypto = false,
-	.ascii_to_idn = NULL
+	.ascii_to_idn = NULL,
+	.color = NULL,
 };
 
 static void dump_string(rrset_dump_params_t *p, const char *str)
@@ -2188,6 +2190,8 @@ static int rrset_txt_dump(const knot_rrset_t      *rrset,
 	}
 
 	size_t len = 0;
+	size_t color_len = (style->color != NULL ? strlen(style->color) : 0);
+	size_t reset_len = (style->color != NULL ? strlen(COL_RST(true)) : 0);
 
 	dst[0] = '\0';
 
@@ -2195,6 +2199,15 @@ static int rrset_txt_dump(const knot_rrset_t      *rrset,
 	uint16_t rr_count = rrset->rrs.count;
 	knot_rdata_t *rr = rrset->rrs.rdata;
 	for (uint16_t i = 0; i < rr_count; i++) {
+		// Put color prefix before every record.
+		if (color_len > 0) {
+			if (len >= maxlen - color_len) {
+				return KNOT_ESPACE;
+			}
+			memcpy(dst + len, style->color, color_len);
+			len += color_len;
+		}
+
 		// Dump rdata owner, class, ttl and type.
 		uint32_t ttl = ((style->original_ttl && rrset->type == KNOT_RRTYPE_RRSIG) ?
 		                knot_rrsig_original_ttl(rr) : rrset->ttl);
@@ -2213,6 +2226,15 @@ static int rrset_txt_dump(const knot_rrset_t      *rrset,
 			return KNOT_ESPACE;
 		}
 		len += ret;
+
+		// Reset the color.
+		if (reset_len > 0) {
+			if (len >= maxlen - reset_len) {
+				return KNOT_ESPACE;
+			}
+			memcpy(dst + len, COL_RST(true), reset_len);
+			len += reset_len;
+		}
 
 		// Terminate line.
 		if (len >= maxlen - 1) {

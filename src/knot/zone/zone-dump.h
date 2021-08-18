@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,8 +24,9 @@
  * \param zone      Zone to be saved.
  * \param file      File to write to.
  * \param comments  Add separating comments indicator.
+ * \param color     Optional color control sequence.
  *
  * \retval KNOT_EOK on success.
  * \retval < 0 if error.
  */
-int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments);
+int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments, const char *color);

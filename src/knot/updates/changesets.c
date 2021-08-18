@@ -589,24 +589,27 @@ void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 	size_t buflen = 1024;
 	char *buff = malloc(buflen);
 
+	knot_dump_style_t style = KNOT_DUMP_STYLE_DEFAULT;
+
+	style.color = COL_RED(color);
 	if (changeset->soa_from != NULL || !zone_contents_is_empty(changeset->remove)) {
-		fprintf(outfile, "%s;; Removed\n", COL_RED(color));
+		fprintf(outfile, "%s;; Removed%s\n", style.color, COL_RST(color));
 	}
 	if (changeset->soa_from != NULL && buff != NULL) {
-		(void)knot_rrset_txt_dump(changeset->soa_from, &buff, &buflen, &KNOT_DUMP_STYLE_DEFAULT);
-		fprintf(outfile, "%s", buff);
+		(void)knot_rrset_txt_dump(changeset->soa_from, &buff, &buflen, &style);
+		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
 	}
-	(void)zone_dump_text(changeset->remove, outfile, false);
+	(void)zone_dump_text(changeset->remove, outfile, false, style.color);
 
+	style.color = COL_GRN(color);
 	if (changeset->soa_to != NULL || !zone_contents_is_empty(changeset->add)) {
-		fprintf(outfile, "%s;; Added\n", COL_GRN(color));
+		fprintf(outfile, "%s;; Added%s\n", style.color, COL_RST(color));
 	}
 	if (changeset->soa_to != NULL && buff != NULL) {
-		(void)knot_rrset_txt_dump(changeset->soa_to, &buff, &buflen, &KNOT_DUMP_STYLE_DEFAULT);
-		fprintf(outfile, "%s", buff);
+		(void)knot_rrset_txt_dump(changeset->soa_to, &buff, &buflen, &style);
+		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
 	}
-	(void)zone_dump_text(changeset->add, outfile, false);
+	(void)zone_dump_text(changeset->add, outfile, false, style.color);
 
-	printf("%s", COL_RST(color));
 	free(buff);
 }

@@ -62,17 +62,19 @@ typedef struct {
 static void print_changeset(const changeset_t *chs, print_params_t *params)
 {
 	static size_t count = 1;
-	printf("%s", COL_YELW(params->color));
-
 	if (chs->soa_from == NULL) {
-		printf(";; Zone-in-journal, serial: %u, changeset: %zu\n",
+		printf("%s;; Zone-in-journal, serial: %u, changeset: %zu%s\n",
+		       COL_YELW(params->color),
 		       knot_soa_serial(chs->soa_to->rrs.rdata),
-		       count++);
+		       count++,
+		       COL_RST(params->color));
 	} else {
-		printf(";; Changes between zone versions: %u -> %u, changeset: %zu\n",
+		printf("%s;; Changes between zone versions: %u -> %u, changeset: %zu%s\n",
+		       COL_YELW(params->color),
 		       knot_soa_serial(chs->soa_from->rrs.rdata),
 		       knot_soa_serial(chs->soa_to->rrs.rdata),
-		       count++);
+		       count++,
+		       COL_RST(params->color));
 	}
 	changeset_print(chs, stdout, params->color);
 }
