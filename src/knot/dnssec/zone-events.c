@@ -39,6 +39,12 @@ static int sign_init(zone_update_t *update, conf_t *conf, zone_sign_flags_t flag
 
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 
+	uint32_t ms;
+	if (zone_is_slave(conf, update->zone) && zone_get_master_serial(update->zone, &ms) == KNOT_ENOENT) {
+		// zone had been XFRed before on-slave-signing turned on
+		zone_set_master_serial(update->zone, zone_contents_serial(update->new_cont));
+	}
+
 	int r = kdnssec_ctx_init(conf, ctx, zone_name, kaspdb, NULL);
 	if (r != KNOT_EOK) {
 		return r;
