@@ -128,7 +128,8 @@ offline. (#)
 \fBzone\-flush\fP [\fIzone\fP\&...] [\fB+outdir\fP \fIdirectory\fP]
 Trigger a zone journal flush to the configured zone file. If an output
 directory is specified, the current zone is immediately dumped (in the
-blocking mode) to a zone file in the specified directory. (#)
+blocking mode) to a zone file in the specified directory. See
+\fI\%Notes\fP below about the directory permissions. (#)
 .TP
 \fBzone\-backup\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fIfilter\fP\&...]
 Trigger a zone data and metadata backup to a specified directory.
@@ -141,13 +142,15 @@ or omitted from the backup. By default, filters \fB+zonefile\fP, \fB+timers\fP,
 \fB+kaspdb\fP, \fB+catalog\fP, and \fB+nojournal\fP are set. Setting a filter
 for an item doesn\(aqt change default settings for other items. If zone flushing
 is disabled, original zone file is backed up instead of writing out zone
-contents to a file. (#)
+contents to a file. See \fI\%Notes\fP below about the directory
+permissions. (#)
 .TP
 \fBzone\-restore\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fIfilter\fP\&...]
 Trigger a zone data and metadata restore from a specified backup directory.
 Optional filters are equivalent to the same filters of \fBzone\-backup\fP\&.
 Restore from backups created by Knot DNS releases prior to 3.1 is possible
-with the force option. (#)
+with the force option. See \fI\%Notes\fP below about the directory
+permissions. (#)
 .TP
 \fBzone\-sign\fP [\fIzone\fP\&...]
 Trigger a DNSSEC re\-sign of the zone. Existing signatures will be dropped.
@@ -259,7 +262,7 @@ Set the item data in the transaction.
 \fBconf\-unset\fP [\fIitem\fP] [\fIdata\fP\&...]
 Unset the item data in the transaction.
 .UNINDENT
-.SS Note
+.SS Notes
 .sp
 Empty or \fB\-\-\fP \fIzone\fP parameter means all zones or all zones with a transaction.
 .sp
@@ -271,7 +274,7 @@ Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\
 .sp
 (#) indicates an optionally blocking operation.
 .sp
-The \fI\-b\fP and \fI\-f\fP options can be placed right after the command name.
+The \fB\-b\fP and \fB\-f\fP options can be placed right after the command name.
 .sp
 Responses returned by \fIknotc\fP commands depend on the mode:
 .INDENT 0.0
@@ -285,6 +288,11 @@ The \fIOK\fP response to triggering commands means that the command has been suc
 sent to the server. To verify if the operation succeeded, it\(aqs necessary to
 check the server log.
 .UNINDENT
+.sp
+Actions \fBzone\-flush\fP, \fBzone\-backup\fP, and \fBzone\-restore\fP are carried out by
+the \fIknotd\fP process. The directory specified must be accessible to the user account
+that \fIknotd\fP runs under and if the directory already exists, its permissions must be
+appropriate for that user account.
 .SS Interactive mode
 .sp
 The utility provides interactive mode with basic line editing functionality,
