@@ -274,7 +274,7 @@ Type \fIitem\fP parameter in the form of \fIsection\fP[\fB[\fP\fIid\fP\fB]\fP][\
 .sp
 (#) indicates an optionally blocking operation.
 .sp
-The \fI\-b\fP and \fI\-f\fP options can be placed right after the command name.
+The \fB\-b\fP and \fB\-f\fP options can be placed right after the command name.
 .sp
 Responses returned by \fIknotc\fP commands depend on the mode:
 .INDENT 0.0
