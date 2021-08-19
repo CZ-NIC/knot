@@ -393,6 +393,12 @@ obs:debian10:x86_64:
     DISTROTEST_NAME: debian10
     DISTROTEST_REPO: Debian_10
 
+obs:debian11:x86_64:
+  <<: *distrotest
+  variables:
+    DISTROTEST_NAME: debian11
+    DISTROTEST_REPO: Debian_11
+
 obs:fedora34:x86_64:
   <<: *distrotest
   variables:
