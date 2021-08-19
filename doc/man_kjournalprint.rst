@@ -26,15 +26,21 @@ Options
 **-d**, **--debug**
   Debug mode brief output.
 
-**-n**, **--no-color**
-  Removes changes coloring.
-
 **-z**, **--zone-list**
   Instead of reading the journal, display the list of zones in the DB.
   (*zone_name* not needed)
 
 **-c**, **--check**
   Enable additional journal semantic checks during printing.
+
+**-x**, **--mono**
+  Don't generate colorized output.
+
+**-n**, **--no-color**
+  An alias for **-x**. Use of this option is deprecated, it will be removed in the future.
+
+**-X**, **--color**
+  Force colorized output.
 
 **-h**, **--help**
   Print the program help.

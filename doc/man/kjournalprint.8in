@@ -49,15 +49,21 @@ Start at a specific SOA serial.
 \fB\-d\fP, \fB\-\-debug\fP
 Debug mode brief output.
 .TP
-\fB\-n\fP, \fB\-\-no\-color\fP
-Removes changes coloring.
-.TP
 \fB\-z\fP, \fB\-\-zone\-list\fP
 Instead of reading the journal, display the list of zones in the DB.
 (\fIzone_name\fP not needed)
 .TP
 \fB\-c\fP, \fB\-\-check\fP
 Enable additional journal semantic checks during printing.
+.TP
+\fB\-x\fP, \fB\-\-mono\fP
+Don\(aqt generate colorized output.
+.TP
+\fB\-n\fP, \fB\-\-no\-color\fP
+An alias for \fB\-x\fP\&. Use of this option is deprecated, it will be removed in the future.
+.TP
+\fB\-X\fP, \fB\-\-color\fP
+Force colorized output.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
