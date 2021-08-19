@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -75,6 +75,10 @@ int check_xdp_listen_old(
 );
 
 int check_xdp_listen(
+	knotd_conf_check_args_t *args
+);
+
+int check_database(
 	knotd_conf_check_args_t *args
 );
 

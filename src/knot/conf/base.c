@@ -544,8 +544,11 @@ static void log_prev_err(
 		}
 	}
 
-	CONF_LOG_LINE(args->extra->file_name, args->extra->line,
-	              ", %s '%s' (%s)", args->item->name + 1, buff,
+	CONF_LOG_LINE(args->extra->file_name, args->extra->line - 1,
+	              ", section '%s%s%s%s' (%s)", args->item->name + 1,
+	              (buff[0] != '\0') ? "[" : "",
+	              buff,
+	              (buff[0] != '\0') ? "]" : "",
 	              args->err_str != NULL ? args->err_str : knot_strerror(ret));
 }
 
