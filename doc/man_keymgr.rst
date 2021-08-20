@@ -36,9 +36,18 @@ Basic options
   TSIG key is only displayed on `stdout`: the command does not create a file, nor include the
   key in a keystore.
 
+**-b**, **--brief**
+  List keys briefly. Output to a terminal is colorized by default.
+
 **-l**, **--list**
   Print the list of zones that have at least one key stored in the configured KASP
   database.
+
+**-x**, **--mono**
+  Don't generate colorized output.
+
+**-X**, **--color**
+  Force colorized output in the **--brief** mode.
 
 Config options
 ..............

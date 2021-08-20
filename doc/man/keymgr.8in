@@ -59,9 +59,18 @@ bit length of the key by number (default: optimal length given by algorithm). Th
 TSIG key is only displayed on \fIstdout\fP: the command does not create a file, nor include the
 key in a keystore.
 .TP
+\fB\-b\fP, \fB\-\-brief\fP
+List keys briefly. Output to a terminal is colorized by default.
+.TP
 \fB\-l\fP, \fB\-\-list\fP
 Print the list of zones that have at least one key stored in the configured KASP
 database.
+.TP
+\fB\-x\fP, \fB\-\-mono\fP
+Don\(aqt generate colorized output.
+.TP
+\fB\-X\fP, \fB\-\-color\fP
+Force colorized output in the \fB\-\-brief\fP mode.
 .UNINDENT
 .SS Config options
 .INDENT 0.0

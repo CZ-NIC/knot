@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,6 +53,9 @@ typedef struct {
 	bool	hide_crypto;
 	/*!< ASCII string to IDN string transformation callback. */
 	void (*ascii_to_idn)(char **name);
+	/*!< Optional color control sequence which is put before every output line.
+	 *   Not compatible with wrap. */
+	const char *color;
 } knot_dump_style_t;
 
 /*! \brief Default dump style. */

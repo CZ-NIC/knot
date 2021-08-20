@@ -17,6 +17,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "libknot/libknot.h"
 #include "knot/journal/journal_basic.h"
@@ -25,6 +26,7 @@
 #include "knot/journal/serialization.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/params.h"
+#include "contrib/color.h"
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
 
@@ -37,11 +39,13 @@ static void print_help(void)
 	       "Parameters:\n"
 	       " -l, --limit <num>  Read only <num> newest changes.\n"
 	       " -s, --serial <soa> Start with a specific SOA serial.\n"
-	       " -n, --no-color     Get output without terminal coloring.\n"
 	       " -z, --zone-list    Instead of reading the journal, display the list\n"
 	       "                    of zones in the DB (<zone_name> not needed).\n"
 	       " -c, --check        Additional journal semantic checks.\n"
 	       " -d, --debug        Debug mode output.\n"
+	       " -x, --mono         Get output without coloring.\n"
+	       " -n, --no-color     An alias for -x, deprecated.\n"
+	       " -X, --color        Force output coloring.\n"
 	       " -h, --help         Print the program help.\n"
 	       " -V, --version      Print the program version.\n",
 	       PROGRAM_NAME);
@@ -61,18 +65,19 @@ typedef struct {
 static void print_changeset(const changeset_t *chs, print_params_t *params)
 {
 	static size_t count = 1;
-	const char *YLW = "\x1B[93m";
-	printf("%s", params->color ? YLW : "");
-
 	if (chs->soa_from == NULL) {
-		printf(";; Zone-in-journal, serial: %u, changeset: %zu\n",
+		printf("%s;; Zone-in-journal, serial: %u, changeset: %zu%s\n",
+		       COL_YELW(params->color),
 		       knot_soa_serial(chs->soa_to->rrs.rdata),
-		       count++);
+		       count++,
+		       COL_RST(params->color));
 	} else {
-		printf(";; Changes between zone versions: %u -> %u, changeset: %zu\n",
+		printf("%s;; Changes between zone versions: %u -> %u, changeset: %zu%s\n",
+		       COL_YELW(params->color),
 		       knot_soa_serial(chs->soa_from->rrs.rdata),
 		       knot_soa_serial(chs->soa_to->rrs.rdata),
-		       count++);
+		       count++,
+		       COL_RST(params->color));
 	}
 	changeset_print(chs, stdout, params->color);
 }
@@ -295,7 +300,7 @@ int main(int argc, char *argv[])
 
 	print_params_t params = {
 		.debug = false,
-		.color = true,
+		.color = isatty(STDOUT_FILENO),
 		.check = false,
 		.limit = -1,
 		.from_serial = false,
@@ -304,17 +309,19 @@ int main(int argc, char *argv[])
 	struct option opts[] = {
 		{ "limit",     required_argument, NULL, 'l' },
 		{ "serial",    required_argument, NULL, 's' },
-		{ "no-color",  no_argument,       NULL, 'n' },
 		{ "zone-list", no_argument,       NULL, 'z' },
 		{ "check",     no_argument,       NULL, 'c' },
 		{ "debug",     no_argument,       NULL, 'd' },
+		{ "mono",      no_argument,       NULL, 'x' },
+		{ "no-color",  no_argument,       NULL, 'n' },
+		{ "color",     no_argument,       NULL, 'X' },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "l:s:nzcdhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "l:s:zcdxnXhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
 			if (str_to_int(optarg, &params.limit, 0, INT_MAX) != KNOT_EOK) {
@@ -329,9 +336,6 @@ int main(int argc, char *argv[])
 			}
 			params.from_serial = true;
 			break;
-		case 'n':
-			params.color = false;
-			break;
 		case 'z':
 			justlist = true;
 			break;
@@ -340,6 +344,13 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			params.debug = true;
+			break;
+		case 'n':
+		case 'x':
+			params.color = false;
+			break;
+		case 'X':
+			params.color = true;
 			break;
 		case 'h':
 			print_help();
