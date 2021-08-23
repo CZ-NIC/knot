@@ -22,6 +22,8 @@
 
 #include "contrib/base64url.h"
 #include "contrib/macros.h"
+#include "contrib/openbsd/strlcat.h"
+#include "contrib/openbsd/strlcpy.h"
 #include "contrib/url-parser/url_parser.h"
 #include "libknot/errcode.h"
 #include "utils/common/https.h"
@@ -381,8 +383,8 @@ static int https_send_dns_query_get(https_ctx_t *ctx)
 	                             sizeof(default_query) +
 	                             (ctx->send_buflen * 4) / 3 + 3;
 	char dns_query[dns_query_len];
-	strncpy(dns_query, ctx->path, dns_query_len);
-	strncat(dns_query, default_query, dns_query_len);
+	strlcpy(dns_query, ctx->path, dns_query_len);
+	strlcat(dns_query, default_query, dns_query_len);
 
 	size_t tmp_strlen = strlen(dns_query);
 	int32_t ret = knot_base64url_encode(ctx->send_buf, ctx->send_buflen,
