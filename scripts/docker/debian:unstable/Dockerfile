@@ -10,13 +10,16 @@ RUN apt-get -y install \
 	automake \
 	autotools-dev \
 	build-essential \
-	clang-9 \
+	clang \
+	libbpf-dev \
 	libedit-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
 	libidn2-0-dev \
 	liblmdb-dev \
 	libmaxminddb-dev \
+	libmnl-dev \
+	libnghttp2-dev \
 	libprotobuf-c-dev \
 	libsystemd-dev \
 	libtool \

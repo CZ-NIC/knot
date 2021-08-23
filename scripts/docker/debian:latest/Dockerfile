@@ -15,14 +15,15 @@ RUN apt-get -y install \
 	ghostscript \
 	git \
 	latexmk \
+	libbpf-dev \
 	libedit-dev \
-	libelf-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
 	libidn2-0-dev \
 	liblmdb-dev \
 	libmaxminddb-dev \
 	libmnl-dev \
+	libnghttp2-dev \
 	libprotobuf-c-dev \
 	libsystemd-dev \
 	libtool \
@@ -32,11 +33,10 @@ RUN apt-get -y install \
 	osc \
 	pkg-config \
 	protobuf-c-compiler \
-	python-sphinx \
+	python3-sphinx \
 	texinfo \
 	texlive \
 	texlive-font-utils \
-	texlive-generic-extra \
 	texlive-latex-extra \
 	unzip \
 	xxd
