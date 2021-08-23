@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -175,8 +175,8 @@ static int diff_rrsets(const knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 	 * to add all RRs that had no match, but those from second RRSet. */
 
 	/* Get RRs to add to zone and to remove from zone. */
-	knot_rrset_t to_remove;
-	knot_rrset_t to_add;
+	knot_rrset_t to_remove = { 0 };
+	knot_rrset_t to_add = { 0 };
 	if (rrset1 != NULL && rrset2 != NULL) {
 		int ret = rdata_return_changes(rrset1, rrset2, &to_remove);
 		if (ret != KNOT_EOK) {
