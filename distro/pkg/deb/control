@@ -116,7 +116,6 @@ Description: DNSSEC shared library from Knot DNS
 
 Package: libknot-dev
 Architecture: any
-Multi-Arch: same
 Depends:
  libdnssec8 (= ${binary:Version}),
  libgnutls28-dev,
@@ -183,6 +182,7 @@ Description: Version of 'host' bundled with Knot DNS
 
 Package: knot-module-dnstap
 Architecture: any
+Multi-Arch: same
 Depends:
  knot (= ${binary:Version}),
  ${misc:Depends},
@@ -199,6 +199,7 @@ Description: dnstap module for Knot DNS
 
 Package: knot-module-geoip
 Architecture: any
+Multi-Arch: same
 Depends:
  knot (= ${binary:Version}),
  ${misc:Depends},
