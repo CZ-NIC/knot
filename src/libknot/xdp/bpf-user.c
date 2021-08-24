@@ -102,6 +102,17 @@ static int ensure_prog(struct kxsk_iface *iface, bool overwrite)
 	}
 }
 
+static void unget_bpf_maps(struct kxsk_iface *iface)
+{
+	if (iface->qidconf_map_fd >= 0) {
+		close(iface->qidconf_map_fd);
+	}
+	if (iface->xsks_map_fd >= 0) {
+		close(iface->xsks_map_fd);
+	}
+	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
+}
+
 /*!
  * /brief Get FDs for the two maps and assign them into xsk_info-> fields.
  *
@@ -154,22 +165,13 @@ static int get_bpf_maps(int prog_fd, struct kxsk_iface *iface)
 	}
 
 	if (iface->qidconf_map_fd < 0 || iface->xsks_map_fd < 0) {
-		close(iface->qidconf_map_fd);
-		close(iface->xsks_map_fd);
-		iface->qidconf_map_fd = iface->xsks_map_fd = -1;
+		unget_bpf_maps(iface);
 		free(map_ids);
 		return KNOT_ENOENT;
 	}
 
 	free(map_ids);
 	return KNOT_EOK;
-}
-
-static void unget_bpf_maps(struct kxsk_iface *iface)
-{
-	close(iface->qidconf_map_fd);
-	close(iface->xsks_map_fd);
-	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
 }
 
 int kxsk_socket_start(const struct kxsk_iface *iface, uint32_t listen_port,
