@@ -69,7 +69,7 @@ static inline int create_fake_server(server_t *server, knot_mm_t *mm, const char
 	/* Create test configuration. */
 	/* String `db_storage' obtained from test_mkdtemp() may be up to 4096 bytes. */
 	char conf_str[4096 + 512];
-	snprintf(conf_str, sizeof(conf_str),
+	(void)snprintf(conf_str, sizeof(conf_str),
 		"server:\n"
 		"    identity: bogus.ns\n"
 		"    version: 0.11\n"
