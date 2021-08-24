@@ -38,7 +38,7 @@
 #include "knot/zone/zonefile.h"
 #include "libdnssec/error.h"
 
-// Current backup format version for output.
+// Current backup format version for output. Don't decrease it.
 #define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.
 
 static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
@@ -281,6 +281,10 @@ static int backup_zonefile(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	} else {
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		bool can_flush = (conf_int(&val) > -1);
+
+		// The value of ctx->backup_format is always at least BACKUP_FORMAT_2 for
+		// the backup mode, therefore backup_zfiles_dir is always filled at this point.
+		assert(backup_zfiles_dir != NULL);
 
 		ret = make_dir(backup_zfiles_dir, S_IRWXU | S_IRWXG, true);
 		if (ret == KNOT_EOK) {
