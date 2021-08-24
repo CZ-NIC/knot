@@ -214,10 +214,9 @@ test:debian:unstable:amd64:
 
 build:debian:unstable:amd64:asan:
   variables:
-    CC: clang-9
+    CC: clang
     CFLAGS: "-fsanitize=address -g -O2 -fno-omit-frame-pointer"
     LDFLAGS: "-fsanitize=address"
-    ASAN_SYMBOLIZER_PATH: /usr/lib/llvm-9/bin/llvm-symbolizer
     LSAN_OPTIONS: verbosity=1:log_threads=1
   allow_failure: true
   <<: *debian_unstable
@@ -225,10 +224,9 @@ build:debian:unstable:amd64:asan:
 
 test:debian:unstable:amd64:asan:
   variables:
-    CC: clang-9
+    CC: clang
     CFLAGS: "-fsanitize=address -g -O2"
     LDFLAGS: "-fsanitize=address"
-    ASAN_SYMBOLIZER_PATH: /usr/lib/llvm-9/bin/llvm-symbolizer
     LSAN_OPTIONS: verbosity=1:log_threads=1
   allow_failure: true
   <<: *debian_unstable
@@ -238,10 +236,9 @@ test:debian:unstable:amd64:asan:
 
 build:debian:unstable:amd64:ubsan:
   variables:
-    CC: clang-9
+    CC: clang
     CFLAGS: "-fsanitize=undefined -fno-sanitize=nonnull-attribute -g -O2"
     LDFLAGS: "-fsanitize=undefined"
-    UBSAN_SYMBOLIZER_PATH: /usr/lib/llvm-9/bin/llvm-symbolizer
     UBSAN_OPTIONS: print_stacktrace=1
   allow_failure: true
   <<: *debian_unstable
@@ -249,10 +246,9 @@ build:debian:unstable:amd64:ubsan:
 
 test:debian:unstable:amd64:ubsan:
   variables:
-    CC: clang-9
+    CC: clang
     CFLAGS: "-fsanitize=undefined -fno-sanitize=nonnull-attribute -g -O2"
     LDFLAGS: "-fsanitize=undefined"
-    UBSAN_SYMBOLIZER_PATH: /usr/lib/llvm-9/bin/llvm-symbolizer
     UBSAN_OPTIONS: print_stacktrace=1
   allow_failure: true
   <<: *debian_unstable
