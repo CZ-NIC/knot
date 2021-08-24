@@ -435,8 +435,8 @@ xdp:
     tcp: BOOL
     tcp\-max\-clients: INT
     tcp\-inbuf\-max\-size: SIZE
-    tcp\-idle\-close: TIME
-    tcp\-idle\-reset: TIME
+    tcp\-idle\-close\-timeout: TIME
+    tcp\-idle\-reset\-timeout: TIME
     route\-check: BOOL
 .ft P
 .fi
@@ -538,14 +538,14 @@ received messages.
 \fIMinimum:\fP 1 MiB
 .sp
 \fIDefault:\fP 100 MiB
-.SS tcp\-idle\-close
+.SS tcp\-idle\-close\-timeout
 .sp
 Time in seconds, after which any idle connection is gracefully closed.
 .sp
 \fIMinimum:\fP 1 s
 .sp
 \fIDefault:\fP 10 s
-.SS tcp\-idle\-reset
+.SS tcp\-idle\-reset\-timeout
 .sp
 Time in seconds, after which any idle connection is forcibly closed.
 .sp

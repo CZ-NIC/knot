@@ -457,8 +457,8 @@ Various options related to XDP listening, especially TCP.
      tcp: BOOL
      tcp-max-clients: INT
      tcp-inbuf-max-size: SIZE
-     tcp-idle-close: TIME
-     tcp-idle-reset: TIME
+     tcp-idle-close-timeout: TIME
+     tcp-idle-reset-timeout: TIME
      route-check: BOOL
 
 .. CAUTION::
@@ -545,10 +545,10 @@ received messages.
 
 *Default:* 100 MiB
 
-.. _xdp_tcp-idle-close:
+.. _xdp_tcp-idle-close-timeout:
 
-tcp-idle-close
---------------
+tcp-idle-close-timeout
+----------------------
 
 Time in seconds, after which any idle connection is gracefully closed.
 
@@ -556,10 +556,10 @@ Time in seconds, after which any idle connection is gracefully closed.
 
 *Default:* 10 s
 
-.. _xdp_tcp-idle-reset:
+.. _xdp_tcp-idle-reset-timeout:
 
-tcp-idle-reset
---------------
+tcp-idle-reset-timeout
+----------------------
 
 Time in seconds, after which any idle connection is forcibly closed.
 
