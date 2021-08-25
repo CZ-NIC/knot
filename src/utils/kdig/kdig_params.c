@@ -2165,6 +2165,7 @@ static void print_help(void)
 	       "       +[no]tcp                   Use TCP protocol.\n"
 	       "       +[no]fastopen              Use TCP Fast Open.\n"
 	       "       +[no]ignore                Don't use TCP automatically if truncated.\n"
+	       "       +[no]keepopen              Don't close the TCP connection to be reused.\n"
 	       "       +[no]tls                   Use TLS with Opportunistic privacy profile.\n"
 	       "       +[no]tls-ca[=FILE]         Use TLS with Out-Of-Band privacy profile.\n"
 	       "       +[no]tls-pin=BASE64        Use TLS with pinned certificate.\n"
