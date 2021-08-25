@@ -50,6 +50,7 @@
 #include "utils/kxdpgun/load_queries.h"
 
 #define PROGRAM_NAME "kxdpgun"
+#define SPACE        "  "
 
 enum {
 	KXDPGUN_WAIT,
@@ -64,8 +65,9 @@ volatile unsigned stats_trigger = 0;
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
 
-#define LOCAL_PORT_MIN  2000
-#define LOCAL_PORT_MAX 65535
+#define LOCAL_PORT_DEFAULT 53
+#define LOCAL_PORT_MIN   2000
+#define LOCAL_PORT_MAX  65535
 
 #define RCODE_MAX (0x0F + 1)
 
@@ -107,7 +109,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.qps = 1000,
 	.duration = 5000000UL, // usecs
 	.at_once = 10,
-	.target_port = 53,
+	.target_port = LOCAL_PORT_DEFAULT,
 	.listen_port = KNOT_XDP_LISTEN_PORT_PASS | LOCAL_PORT_MIN,
 };
 
@@ -622,10 +624,33 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	return true;
 }
 
-static void print_help(void) {
-	printf("Usage: %s [-t duration] [-Q qps] [-b batch_size] [-r] [-p port] [-T] "
-	       "[-F cpu_affinity] [-I interface] [-l local_ip] -i queries_file dest_ip\n",
-	       PROGRAM_NAME);
+static void print_help(void)
+{
+	printf("Usage: %s [parameters] -i <queries_file> <dest_ip>\n"
+	       "\n"
+	       "Parameters:\n"
+	       " -t, --duration <sec>     "SPACE"Duration of traffic generation.\n"
+	       "                          "SPACE" (default is %"PRIu64" seconds)\n"
+	       " -T, --tcp                "SPACE"Send queries over TCP.\n"
+	       " -Q, --qps <qps>          "SPACE"Number of queries-per-second (approximately) to be sent.\n"
+	       "                          "SPACE" (default is %"PRIu64" qps)\n"
+	       " -b, --batch <size>       "SPACE"Send queries in a batch of defined size.\n"
+	       "                          "SPACE" (default is %d for UDP, %d for TCP)\n"
+	       " -r, --drop               "SPACE"Drop incoming responses (disables response statistics).\n"
+	       " -p, --port <port>        "SPACE"Remote destination port.\n"
+	       "                          "SPACE" (default is %d)\n"
+	       " -F, --affinity <spec>    "SPACE"CPU affinity in the format [<cpu_start>][s<cpu_step>].\n"
+	       "                          "SPACE" (default is %s)\n"
+	       " -i, --infile <file>      "SPACE"Path to a file with query templates.\n"
+	       " -I, --interface <ifname> "SPACE"Override auto-detected interface for outgoing communication.\n"
+	       " -l, --local <ip[/prefix]>"SPACE"Override auto-detected source IP address or subnet.\n"
+	       " -h, --help               "SPACE"Print the program help.\n"
+	       " -V, --version            "SPACE"Print the program version.\n"
+	       "\n"
+	       "Arguments:\n"
+	       " <dest_ip>                "SPACE"IPv4 or IPv6 address of the remote destination.\n",
+	       PROGRAM_NAME, ctx_defaults.duration / 1000000, ctx_defaults.qps,
+	       ctx_defaults.at_once, 1, LOCAL_PORT_DEFAULT, "0s1");
 }
 
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
