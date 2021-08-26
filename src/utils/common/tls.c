@@ -666,6 +666,7 @@ void tls_ctx_deinit(tls_ctx_t *ctx)
 
 	if (ctx->credentials != NULL) {
 		gnutls_certificate_free_credentials(ctx->credentials);
+		ctx->credentials = NULL;
 	}
 }
 

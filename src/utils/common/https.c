@@ -563,6 +563,7 @@ void https_ctx_deinit(https_ctx_t *ctx)
 	}
 
 	nghttp2_session_del(ctx->session);
+	ctx->session = NULL;
 	pthread_mutex_destroy(&ctx->recv_mx);
 	free(ctx->path);
 	ctx->path = NULL;
