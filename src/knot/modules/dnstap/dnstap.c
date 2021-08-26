@@ -29,6 +29,7 @@
 #define MOD_VERSION	"\x07""version"
 #define MOD_QUERIES	"\x0B""log-queries"
 #define MOD_RESPONSES	"\x0D""log-responses"
+#define MOD_RESPONSES_WITH_QUERIES	"\x16""responses-with-queries"
 
 const yp_item_t dnstap_conf[] = {
 	{ MOD_SINK,      YP_TSTR,  YP_VNONE },
@@ -36,6 +37,7 @@ const yp_item_t dnstap_conf[] = {
 	{ MOD_VERSION,   YP_TSTR,  YP_VNONE },
 	{ MOD_QUERIES,   YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_RESPONSES, YP_TBOOL, YP_VBOOL = { true } },
+	{ MOD_RESPONSES_WITH_QUERIES, YP_TBOOL, YP_VBOOL = { false } },
 	{ NULL }
 };
 
@@ -56,6 +58,7 @@ typedef struct {
 	size_t identity_len;
 	char *version;
 	size_t version_len;
+	bool responses_with_queries;
 } dnstap_ctx_t;
 
 static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
@@ -114,6 +117,16 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 		dnstap.version.data = (uint8_t *)ctx->version;
 		dnstap.version.len = ctx->version_len;
 		dnstap.has_version = 1;
+	}
+
+	/* Also add query message if 'responses-with-queries' is enabled and this is a response. */
+	if (ctx->responses_with_queries &&
+	    msgtype == DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE &&
+	    qdata->query != NULL)
+	{
+		msg.query_message.len = qdata->query->size;
+		msg.query_message.data = qdata->query->wire;
+		msg.has_query_message = 1;
 	}
 
 	/* Pack the message. */
@@ -248,6 +261,10 @@ int dnstap_load(knotd_mod_t *mod)
 		ctx->version = strdup(version.single.string);
 	}
 	ctx->version_len = (ctx->version != NULL) ? strlen(ctx->version) : 0;
+
+	/* Set responses-with-queries. */
+	conf = knotd_conf_mod(mod, MOD_RESPONSES_WITH_QUERIES);
+	ctx->responses_with_queries = conf.single.boolean;
 
 	/* Set sink. */
 	conf = knotd_conf_mod(mod, MOD_SINK);

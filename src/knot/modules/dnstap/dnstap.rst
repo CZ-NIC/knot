@@ -29,7 +29,7 @@ which can be either a file or a UNIX socket::
 .. NOTE::
    Dnstap log files can also be created or read using :doc:`kdig<man_kdig>`.
 
-.. _dnstap: http://dnstap.info/
+.. _dnstap: https://dnstap.info/
 
 Module reference
 ----------------
@@ -46,6 +46,7 @@ zone-specific logging, use this module in the proper zone configuration.
      version: STR
      log-queries: BOOL
      log-responses: BOOL
+     responses-with-queries: BOOL
 
 .. _mod-dnstap_id:
 
@@ -102,3 +103,11 @@ log-responses
 If enabled, response messages will be logged.
 
 *Default:* on
+
+responses-with-queries
+......................
+
+If enabled, dnstap ``AUTH_RESPONSE`` messages will also include the original
+query message as well as the response message sent by the server.
+
+*Default:* off
