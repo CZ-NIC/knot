@@ -37,6 +37,7 @@
 #include "knot/common/fdset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
+#include "knot/query/proxyv2.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/xdp-handler.h"
@@ -73,6 +74,7 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		.xdp_msg = xdp_msg,
 		.thread_id = udp->thread_id
 	};
+	struct sockaddr_storage proxied_remote;
 
 	/* Start query processing. */
 	knot_layer_begin(&udp->layer, &params);
@@ -84,7 +86,19 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	/* Input packet. */
 	int ret = knot_pkt_parse(query, 0);
 	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
-		query->parsed--; // artificially decreasing "parsed" leads to FORMERR
+		/*
+		 * DNS parsing failed, try re-parsing with a PROXY v2 header.
+		 * XXX: This behavior should probably be controlled by a config
+		 * option.
+		 */
+		ret = proxyv2_decapsulate(rx->iov_base, rx->iov_len,
+					  &query, &params, &proxied_remote,
+					  udp->layer.mm);
+
+		if (ret != KNOT_EOK && query->parsed > 0) {
+			// artificially decreasing "parsed" leads to FORMERR
+			query->parsed--;
+		}
 	}
 	knot_layer_consume(&udp->layer, query);
 

@@ -400,6 +400,7 @@ typedef enum {
 typedef struct {
 	knotd_query_flag_t flags;              /*!< Current query flags. */
 	const struct sockaddr_storage *remote; /*!< Current remote address. */
+	const struct sockaddr_storage *proxy;  /*!< Current proxy address. */
 	int socket;                            /*!< Current network socket. */
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
