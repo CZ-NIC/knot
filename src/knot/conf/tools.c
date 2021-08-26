@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -614,7 +614,7 @@ int check_template(
 		if (db_storage.code != KNOT_EOK && tpl_storage.code == KNOT_EOK &&
 		    strcmp(conf_str(&tpl_storage), STORAGE_DIR) != 0) {
 			CONF_LOG(LOG_NOTICE, "non-default 'template[default].storage' detected, "
-			                     "please configure also 'db.storage' to avoid compatibility "
+			                     "please configure also 'database.storage' to avoid compatibility "
 			                     "issues with future versions");
 		}
 	} else {
