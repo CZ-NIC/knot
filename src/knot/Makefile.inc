@@ -115,6 +115,8 @@ libknotd_la_SOURCES = \
 	knot/query/capture.c			\
 	knot/query/capture.h			\
 	knot/query/layer.h			\
+	knot/query/proxyv2.c			\
+	knot/query/proxyv2.h			\
 	knot/query/query.c			\
 	knot/query/query.h			\
 	knot/query/requestor.c			\
