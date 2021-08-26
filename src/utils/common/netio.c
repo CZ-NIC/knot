@@ -659,6 +659,8 @@ void net_clean(net_t *net)
 
 	free(net->local_str);
 	free(net->remote_str);
+	net->local_str = NULL;
+	net->remote_str = NULL;
 
 	if (net->local_info != NULL) {
 		if (net->local == NULL) {
@@ -666,10 +668,12 @@ void net_clean(net_t *net)
 		} else {
 			freeaddrinfo(net->local_info);
 		}
+		net->local_info = NULL;
 	}
 
 	if (net->remote_info != NULL) {
 		freeaddrinfo(net->remote_info);
+		net->remote_info = NULL;
 	}
 
 #ifdef LIBNGHTTP2
