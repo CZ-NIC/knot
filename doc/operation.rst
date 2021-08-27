@@ -1109,6 +1109,8 @@ Pre-requisites
     CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
     AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
 
+  The `CAP_SYS_RESOURCE` is needed on Linux < 5.11.
+
 Optimizations
 -------------
 

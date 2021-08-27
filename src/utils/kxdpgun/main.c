@@ -43,6 +43,7 @@
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/openbsd/strlcpy.h"
+#include "contrib/os.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 #include "utils/common/params.h"
@@ -794,14 +795,19 @@ int main(int argc, char *argv[])
 		thread_ctxs[i].thread_id = i;
 	}
 
-	struct rlimit min_limit = { RLIM_INFINITY, RLIM_INFINITY }, cur_limit = { 0 };
-	if (getrlimit(RLIMIT_MEMLOCK, &cur_limit) != 0 ||
-	    cur_limit.rlim_cur != min_limit.rlim_cur || cur_limit.rlim_max != min_limit.rlim_max) {
-		int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
-		if (ret != 0) {
-			printf("warning: unable to increase RLIMIT_MEMLOCK: %s\n", strerror(errno));
+	if (!linux_at_least(5, 11)) {
+		struct rlimit min_limit = { RLIM_INFINITY, RLIM_INFINITY }, cur_limit = { 0 };
+		if (getrlimit(RLIMIT_MEMLOCK, &cur_limit) != 0 ||
+		    cur_limit.rlim_cur != min_limit.rlim_cur ||
+		    cur_limit.rlim_max != min_limit.rlim_max) {
+			int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
+			if (ret != 0) {
+				printf("warning: unable to increase RLIMIT_MEMLOCK: %s\n",
+				       strerror(errno));
+			}
 		}
 	}
+
 	pthread_mutex_init(&global_stats.mutex, NULL);
 
 	struct sigaction stop_action = { .sa_handler = sigterm_handler };
