@@ -775,7 +775,6 @@ int main(int argc, char *argv[])
 	pthread_t *threads = NULL;
 
 	if (!get_opts(argc, argv, &ctx)) {
-		print_help();
 		free_global_payloads();
 		return EXIT_FAILURE;
 	}
