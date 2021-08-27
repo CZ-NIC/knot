@@ -598,11 +598,12 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		}
 	}
 
-	ret = ip_neigh_get(via.ss_family == AF_UNSPEC ? &ctx->target_ip : &via, true, ctx->target_mac);
+	const struct sockaddr_storage *neigh = via.ss_family == AF_UNSPEC ? &ctx->target_ip : &via;
+	ret = ip_neigh_get(neigh, true, ctx->target_mac);
 	if (ret < 0) {
-		char via_str[256] = { 0 };
-		(void)sockaddr_tostr(via_str, sizeof(via_str), &via);
-		printf("failed to get remote MAC of target/gateway `%s`: %s\n", via_str, strerror(-ret));
+		char neigh_str[256] = { 0 };
+		(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), neigh);
+		printf("failed to get remote MAC of target/gateway `%s`: %s\n", neigh_str, strerror(-ret));
 		return false;
 	}
 
