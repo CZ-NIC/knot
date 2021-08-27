@@ -40,6 +40,7 @@
 #include "knot/worker/pool.h"
 #include "contrib/net.h"
 #include "contrib/openbsd/strlcat.h"
+#include "contrib/os.h"
 #include "contrib/sockaddr.h"
 #include "contrib/trim.h"
 
@@ -511,7 +512,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 #ifdef ENABLE_XDP
-	if (lisxdp_val.code == KNOT_EOK) {
+	if (lisxdp_val.code == KNOT_EOK && !linux_at_least(5, 11)) {
 		struct rlimit min_limit = { RLIM_INFINITY, RLIM_INFINITY };
 		struct rlimit cur_limit = { 0 };
 		if (getrlimit(RLIMIT_MEMLOCK, &cur_limit) != 0 ||
