@@ -21,19 +21,47 @@
 #include "knot/zone/measure.h"
 #include "libdnssec/error.h"
 
+static bool node_non_dnssec_exists(const zone_node_t *node)
+{
+	assert(node);
+
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		switch (node->rrs[i].type) {
+		case KNOT_RRTYPE_NSEC:
+		case KNOT_RRTYPE_NSEC3:
+		case KNOT_RRTYPE_RRSIG:
+			continue;
+		default:
+			return true;
+		}
+	}
+
+	return false;
+}
+
 int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	zone_node_t *parent = node_parent(node);
 	uint16_t flags_orig = node->flags;
+	bool set_subt_auth = false;
 
 	assert(!(node->flags & NODE_FLAGS_DELETED));
 
-	node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH);
+	node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_SUBTREE_AUTH);
 
 	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
 		node->flags |= NODE_FLAGS_NONAUTH;
 	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != ctx->zone->apex) {
 		node->flags |= NODE_FLAGS_DELEG;
+		if (node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
+			set_subt_auth = true;
+		}
+	} else if (node_non_dnssec_exists(node)) {
+		set_subt_auth = true;
+	}
+
+	if (set_subt_auth) {
+		node_set_flag_hierarch(node, NODE_FLAGS_SUBTREE_AUTH);
 	}
 
 	if (node->flags != flags_orig && ctx->changed_nodes != NULL) {
