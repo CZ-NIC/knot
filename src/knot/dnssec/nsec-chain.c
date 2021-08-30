@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -401,8 +401,6 @@ int nsec_check_new_connects(zone_tree_t *tree, nsec_chain_iterate_data_t *data)
 	return zone_tree_apply(tree, nsec_check_prev_next, data);
 }
 
-extern bool nsec3_is_empty(zone_node_t *node, bool opt_out); // from nsec3-chain.c
-
 static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 {
 	nsec_chain_iterate_data_t *data = ctx;
@@ -414,7 +412,7 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 		shall_no_nsec = (node->flags & NODE_FLAGS_DELETED) ||
 		                (node->flags & NODE_FLAGS_NONAUTH);
 	}
-	bool may_no_nsec = (data->nsec3_params != NULL && nsec3_is_empty(node, true));
+	bool may_no_nsec = (data->nsec3_params != NULL && !(node->flags & NODE_FLAGS_SUBTREE_AUTH));
 	knot_rdataset_t *nsec = node_rdataset(nsec_node, data->nsec_type);
 	if ((nsec == NULL || nsec->count != 1) && !shall_no_nsec && !may_no_nsec) {
 		data->update->validation_hint.node = (nsec_node == NULL ? node->owner : nsec_node->owner);
