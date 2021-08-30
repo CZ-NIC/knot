@@ -44,10 +44,11 @@ int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 	zone_node_t *parent = node_parent(node);
 	uint16_t flags_orig = node->flags;
 	bool set_subt_auth = false;
+	bool has_data = node_non_dnssec_exists(node);
 
 	assert(!(node->flags & NODE_FLAGS_DELETED));
 
-	node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_SUBTREE_AUTH);
+	node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_SUBTREE_AUTH | NODE_FLAGS_SUBTREE_DATA);
 
 	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
 		node->flags |= NODE_FLAGS_NONAUTH;
@@ -56,12 +57,15 @@ int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 		if (node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
 			set_subt_auth = true;
 		}
-	} else if (node_non_dnssec_exists(node)) {
+	} else if (has_data) {
 		set_subt_auth = true;
 	}
 
 	if (set_subt_auth) {
 		node_set_flag_hierarch(node, NODE_FLAGS_SUBTREE_AUTH);
+	}
+	if (has_data) {
+		node_set_flag_hierarch(node, NODE_FLAGS_SUBTREE_DATA);
 	}
 
 	if (node->flags != flags_orig && ctx->changed_nodes != NULL) {

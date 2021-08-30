@@ -102,6 +102,8 @@ enum node_flags {
 	NODE_FLAGS_DELETED =         1 << 10,
 	/*! \brief The node or some node in subtree has some authoritative data in it (possibly also DS at deleg). */
 	NODE_FLAGS_SUBTREE_AUTH =    1 << 11,
+	/*! \brief The node or some node in subtree has any data in it, possibly just insec deleg. */
+	NODE_FLAGS_SUBTREE_DATA =    1 << 12,
 };
 
 typedef void (*node_addrem_cb)(zone_node_t *, void *);
