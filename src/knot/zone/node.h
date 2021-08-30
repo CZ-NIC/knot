@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -100,6 +100,8 @@ enum node_flags {
 	NODE_FLAGS_SECOND =          1 << 9, // this value shall be fixed
 	/*! \brief The node shall be deleted. It's just not because it's a bi-node and the counterpart still exists. */
 	NODE_FLAGS_DELETED =         1 << 10,
+	/*! \brief The node or some node in subtree has some authoritative data in it (possibly also DS at deleg). */
+	NODE_FLAGS_SUBTREE_AUTH =    1 << 11,
 };
 
 typedef void (*node_addrem_cb)(zone_node_t *, void *);
@@ -294,6 +296,16 @@ inline static zone_node_t *node_prev(const zone_node_t *node)
 inline static const zone_node_t *glue_node(const glue_t *glue, const zone_node_t *another_zone_node)
 {
 	return binode_node_as((zone_node_t *)glue->node, another_zone_node);
+}
+
+/*!
+ * \brief Add a flag to this node and all (grand-)parents until the flag is present.
+ */
+inline static void node_set_flag_hierarch(zone_node_t *node, uint16_t fl)
+{
+	for (zone_node_t *i = node; i != NULL && (i->flags & fl) != fl; i = node_parent(i)) {
+		i->flags |= fl;
+	}
 }
 
 /*!
