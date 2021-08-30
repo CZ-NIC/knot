@@ -23,6 +23,9 @@ sub	NS	sub
 sub	A	192.0.0.1
 ns.sub	A	192.0.2.4
 
+; Opt-outable delegation below empty-non-terminal
+deleg.ent	NS	sub
+
 ; CNAME to A record
 cname	CNAME	dns1
 

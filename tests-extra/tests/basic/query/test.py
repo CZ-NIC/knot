@@ -69,6 +69,11 @@ def query_test(knot, bind, dnssec):
     resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
     resp.cmp(bind, additional=True)
 
+    # Positive (NODATA, at delegation, DS type, below empty-non-terminal)
+    resp = knot.dig("deleg.ent.flags", "DS", udp=True, dnssec=dnssec)
+    resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
+    resp.cmp(bind, additional=True)
+
     # Positive (REFERRAL, below delegation, DS type)
     resp = knot.dig("net.ds-sub.flags", "DS", udp=True, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
@@ -324,6 +329,7 @@ query_test(knot, bind, False)
 
 knot.dnssec(zone[0]).enable = True
 knot.dnssec(zone[0]).nsec3 = False
+knot.dnssec(zone[0]).nsec3_opt_out = False
 knot.gen_confile()
 knot.reload()
 
@@ -331,6 +337,15 @@ serial = bind.zone_wait(zone, serial)
 query_test(knot, bind, True)
 
 knot.dnssec(zone[0]).nsec3 = True
+knot.dnssec(zone[0]).nsec3_opt_out = False
+knot.gen_confile()
+knot.reload()
+
+serial = bind.zone_wait(zone, serial)
+query_test(knot, bind, True)
+
+knot.dnssec(zone[0]).nsec3 = True
+knot.dnssec(zone[0]).nsec3_opt_out = True
 knot.gen_confile()
 knot.reload()
 
