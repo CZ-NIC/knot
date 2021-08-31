@@ -1256,8 +1256,12 @@ static int unmark_nsec3_optout(zone_node_t *node, _unused_ void *ctx)
 int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_handler_t *handler,
                        time_t time)
 {
-	if (zone == NULL || handler == NULL) {
+	if (handler == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	semchecks_data_t data = {

@@ -213,8 +213,12 @@ zone_tree_t *zone_contents_tree_for_rr(zone_contents_t *contents, const knot_rrs
 
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
 {
-	if (z == NULL || rr == NULL || n == NULL) {
+	if (rr == NULL || n == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (z == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	return insert_rr(z, rr, n);
@@ -222,8 +226,12 @@ int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t
 
 int zone_contents_remove_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
 {
-	if (z == NULL || rr == NULL || n == NULL) {
+	if (rr == NULL || n == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (z == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	return remove_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
@@ -268,8 +276,12 @@ int zone_contents_find_dname(const zone_contents_t *zone,
                              const zone_node_t **closest,
                              const zone_node_t **previous)
 {
-	if (!zone || !name || !match || !closest) {
+	if (name == NULL || match == NULL || closest == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	if (knot_dname_in_bailiwick(name, zone->apex->owner) < 0) {
@@ -338,9 +350,12 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
                                       const zone_node_t **nsec3_node,
                                       const zone_node_t **nsec3_previous)
 {
-	if (zone == NULL || name == NULL || nsec3_node == NULL ||
-	    nsec3_previous == NULL) {
+	if (name == NULL || nsec3_node == NULL || nsec3_previous == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	// check if the NSEC3 tree is not empty
@@ -427,7 +442,7 @@ int zone_contents_apply(zone_contents_t *contents,
                         zone_tree_apply_cb_t function, void *data)
 {
 	if (contents == NULL) {
-		return KNOT_EINVAL;
+		return KNOT_EEMPTYZONE;
 	}
 	return zone_tree_apply(contents->nodes, function, data);
 }
@@ -436,15 +451,19 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
                               zone_tree_apply_cb_t function, void *data)
 {
 	if (contents == NULL) {
-		return KNOT_EINVAL;
+		return KNOT_EEMPTYZONE;
 	}
 	return zone_tree_apply(contents->nsec3_nodes, function, data);
 }
 
 int zone_contents_cow(const zone_contents_t *from, zone_contents_t **to)
 {
-	if (from == NULL || to == NULL) {
+	if (to == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (from == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	/* Copy to same destination as source. */
@@ -540,7 +559,11 @@ void zone_contents_set_soa_serial(zone_contents_t *zone, uint32_t new_serial)
 
 int zone_contents_load_nsec3param(zone_contents_t *contents)
 {
-	if (contents == NULL || contents->apex == NULL) {
+	if (contents == NULL) {
+		return KNOT_EEMPTYZONE;
+	}
+
+	if (contents->apex == NULL) {
 		return KNOT_EINVAL;
 	}
 

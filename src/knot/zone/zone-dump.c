@@ -137,8 +137,12 @@ static int node_dump_text(zone_node_t *node, void *data)
 
 int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments, const char *color)
 {
-	if (zone == NULL || file == NULL) {
+	if (file == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	// Allocate auxiliary buffer for dumping operations.

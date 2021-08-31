@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,9 +126,10 @@ struct sem_handler {
  * \param handler   Semantic error handler.
  * \param time      Check zone at given time (rrsig expiration).
  *
- * \retval KNOT_EOK no error found
- * \retval KNOT_ESEMCHECK found semantic error
- * \retval KNOT_EINVAL or other error
+ * \retval KNOT_EOK         no error found
+ * \retval KNOT_ESEMCHECK   found semantic error
+ * \retval KNOT_EEMPTYZONE  the zone is empty
+ * \retval KNOT_EINVAL      another error
  */
 int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_handler_t *handler,
                        time_t time);

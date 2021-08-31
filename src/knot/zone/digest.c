@@ -102,8 +102,12 @@ static int digest_node(zone_node_t *node, void *ctx)
 int zone_contents_digest(const zone_contents_t *contents, int algorithm,
                          uint8_t **out_digest, size_t *out_size)
 {
-	if (contents == NULL || out_digest == NULL || out_size == NULL) {
+	if (out_digest == NULL || out_size == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (contents == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	contents_digest_ctx_t ctx = {
@@ -187,7 +191,7 @@ static bool check_duplicate_schalg(const knot_rdataset_t *zonemd, int check_upto
 int zone_contents_digest_verify(const zone_contents_t *contents)
 {
 	if (contents == NULL) {
-		return KNOT_EINVAL;
+		return KNOT_EEMPTYZONE;
 	}
 
 	knot_rdataset_t *zonemd = node_rdataset(contents->apex, KNOT_RRTYPE_ZONEMD);

@@ -349,8 +349,12 @@ static int load_trees(zone_tree_t *nodes1, zone_tree_t *nodes2,
 int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone2,
 		       changeset_t *changeset, bool ignore_dnssec)
 {
-	if (zone1 == NULL || zone2 == NULL || changeset == NULL) {
+	if (changeset == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (zone1 == NULL || zone2 == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	int ret_soa = load_soas(zone1, zone2, changeset);
