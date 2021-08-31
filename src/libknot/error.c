@@ -100,6 +100,7 @@ static const struct error errors[] = {
 	{ KNOT_EFD,          "file descriptor error" },
 	{ KNOT_ENOPARAM,     "missing parameter" },
 	{ KNOT_EXPARAM,      "parameter conflict" },
+	{ KNOT_EEMPTYZONE,   "zone is empty" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 
