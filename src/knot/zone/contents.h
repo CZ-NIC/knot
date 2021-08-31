@@ -123,6 +123,7 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const kno
  *
  * \retval ZONE_NAME_FOUND if node with owner \a name was found.
  * \retval ZONE_NAME_NOT_FOUND if it was not found.
+ * \retval KNOT_EEMPTYZONE
  * \retval KNOT_EINVAL
  * \retval KNOT_EOUTOFZONE
  */
@@ -160,6 +161,7 @@ const zone_node_t *zone_contents_find_nsec3_node(const zone_contents_t *contents
  *
  * \retval ZONE_NAME_FOUND if the corresponding NSEC3 node was found.
  * \retval ZONE_NAME_NOT_FOUND if it was not found.
+ * \retval KNOT_EEMPTYZONE
  * \retval KNOT_EINVAL
  * \retval KNOT_ENSEC3PAR
  * \retval KNOT_ECRYPTO
@@ -239,6 +241,7 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
  * \param to Copy of the zone.
  *
  * \retval KNOT_EOK
+ * \retval KNOT_EEMPTYZONE
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */

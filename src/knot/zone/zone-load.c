@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,8 +80,12 @@ static int apply_one_cb(bool remove, const knot_rrset_t *rr, void *ctx)
 
 int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 {
-	if (conf == NULL || zone == NULL || contents == NULL) {
+	if (conf == NULL || zone == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (contents == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	// Check if journal is used (later in zone_changes_load() and zone is not empty.

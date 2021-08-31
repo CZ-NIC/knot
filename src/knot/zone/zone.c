@@ -74,7 +74,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		if (allow_empty_zone && journal_is_existing(j)) {
 			ret = journal_set_flushed(j);
 		} else {
-			ret = KNOT_EINVAL;
+			ret = KNOT_EEMPTYZONE;
 		}
 		goto flush_journal_replan;
 	}
@@ -284,8 +284,12 @@ int zone_changes_clear(conf_t *conf, zone_t *zone)
 
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents)
 {
-	if (conf == NULL || zone == NULL || new_contents == NULL) {
+	if (conf == NULL || zone == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (new_contents == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	zone_journal_t j = { zone->journaldb, zone->name, conf };

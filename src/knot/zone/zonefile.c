@@ -280,8 +280,12 @@ int zonefile_exists(const char *path, struct timespec *mtime)
 
 int zonefile_write(const char *path, zone_contents_t *zone)
 {
-	if (!zone || !path) {
+	if (path == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
 	}
 
 	int ret = make_path(path, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP);

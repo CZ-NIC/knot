@@ -36,6 +36,7 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
  *
  * \param contents   Zone contents ot be verified.
  *
+ * \retval KNOT_EEMPTYZONE  The zone is empty.
  * \retval KNOT_ENOENT      There is no ZONEMD in contents' apex.
  * \retval KNOT_ENOTSUP     None of present ZONEMD is supported (scheme+algrithm+SOAserial).
  * \retval KNOT_ESEMCHECK   Duplicate ZONEMD with identical scheme+algorithm pair.
