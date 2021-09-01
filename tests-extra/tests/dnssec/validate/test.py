@@ -16,7 +16,8 @@ zones_nok = t.zone("missing.nsec.", storage=".") + t.zone("bitmap.nsec.", storag
             t.zone("chain.nsec.", storage=".") + t.zone("rrsig.a.", storage=".") + \
             t.zone("rrsig.nsec.", storage=".") + t.zone("redundant.invalid.rrsig.", storage=".")
 zones_nok3 = t.zone("missing.nsec3", storage=".") + t.zone("bitmap.nsec3.", storage=".") + \
-             t.zone("chain.nsec3.", storage=".") + t.zone("rrsig.nsec3", storage=".")
+             t.zone("chain.nsec3.", storage=".") + t.zone("rrsig.nsec3", storage=".") + \
+             t.zone("optout.ent.", storage=".")
 zones_unsigned = t.zone("example.com.")
 
 zones = zones_ok + zones_ok3 + zones_nok + zones_nok3

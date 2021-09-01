@@ -401,6 +401,19 @@ int nsec_check_new_connects(zone_tree_t *tree, nsec_chain_iterate_data_t *data)
 	return zone_tree_apply(tree, nsec_check_prev_next, data);
 }
 
+static int check_subtree_optout(zone_node_t *node, void *ctx)
+{
+	bool *res = ctx;
+	if ((node->flags & NODE_FLAGS_NONAUTH) || !*res) {
+		return KNOT_EOK;
+	}
+	if (node_nsec3_get(node) != NULL &&
+	    node_rdataset(node_nsec3_get(node), KNOT_RRTYPE_NSEC3) != NULL) {
+		*res = false;
+	}
+	return KNOT_EOK;
+}
+
 static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 {
 	nsec_chain_iterate_data_t *data = ctx;
@@ -419,6 +432,13 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 	}
 	bool may_no_nsec = (data->nsec3_params != NULL && !(node->flags & NODE_FLAGS_SUBTREE_AUTH));
 	knot_rdataset_t *nsec = node_rdataset(nsec_node, data->nsec_type);
+	if (may_no_nsec && nsec == NULL) {
+		int ret = zone_tree_sub_apply(data->update->new_cont->nodes, node->owner,
+		                              true, check_subtree_optout, &may_no_nsec);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
 	if ((nsec == NULL || nsec->count != 1) && !shall_no_nsec && !may_no_nsec) {
 		data->update->validation_hint.node = (nsec_node == NULL ? node->owner : nsec_node->owner);
 		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
