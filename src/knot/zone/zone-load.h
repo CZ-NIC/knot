@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #include "knot/conf/conf.h"
 #include "knot/zone/zone.h"
-#include "knot/dnssec/zone-events.h" // zone_sign_reschedule_t
 
 /*!
  * \brief Load zone contents according to the configuration.
@@ -55,8 +54,7 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents);
  * \param contents
  * \return KNOT_EOK or an error
  */
-int zone_load_from_journal(conf_t *conf, zone_t *zone,
-                           zone_contents_t **contents);
+int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **contents);
 
 /*!
  * \brief Check if zone can be bootstrapped.

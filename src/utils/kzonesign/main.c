@@ -18,6 +18,7 @@
 #include <stdlib.h>
 
 #include "knot/conf/conf.h"
+#include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
