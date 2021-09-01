@@ -724,5 +724,10 @@ int knot_nsec3_check_chain_fix(zone_update_t *update, const dnssec_nsec3_params_
 		return ret;
 	}
 
+	ret = nsec_check_bitmaps(update->a_ctx->adjust_ptrs, &data); // adjust_ptrs contain also NSEC3-nodes. See check_nsec_bitmap() how this is handled.
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	return nsec_check_new_connects(update->a_ctx->nsec3_ptrs, &data);
 }

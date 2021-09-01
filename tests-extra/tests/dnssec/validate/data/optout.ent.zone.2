@@ -1,0 +1,73 @@
+; File written on Tue Aug 31 18:50:37 2021
+; dnssec_signzone version 9.16.8-Ubuntu
+optout.ent.		3600	IN SOA	a.optout.ent. a.optout.ent. (
+					1000000003 ; serial
+					10800      ; refresh (3 hours)
+					10         ; retry (10 seconds)
+					1209600    ; expire (2 weeks)
+					7200       ; minimum (2 hours)
+					)
+			3600	RRSIG	SOA 13 2 3600 (
+					20601231235959 20210831155037 6971 optout.ent.
+					cJM4ESx60urM2UquyD+2CnFqBmW/pffMbfUt
+					BPrjNByacG/Tgeoi5PhF/Piv6Ce5Hnni4GBj
+					IoyY5TnGXEceRQ== )
+			3600	NS	a.optout.ent.
+			3600	RRSIG	NS 13 2 3600 (
+					20601231235959 20210831155037 6971 optout.ent.
+					lnElW2h0idPtUIFmPVTi5D1biG9SuEwGd08R
+					ANEVC1JF0Cz7nBkqw7s1S3QNRVVFXw1eqi5w
+					aHoprR/YHbwr4g== )
+			3600	MX	10 a.optout.ent.
+			3600	RRSIG	MX 13 2 3600 (
+					20601231235959 20210831155037 6971 optout.ent.
+					k/kNDfVFcrP9/3/CWoI0VK938i0GoWXsxnOc
+					dzWjp1seFKVRJqsj3xRRqdlyV6Zikh9/Y01t
+					Vl4ihxxzs5jj5A== )
+			3600	DNSKEY	257 3 13 (
+					JxNLxVlreytQBDK6mG44UQ1//gB5uW1pgEk3
+					hC1mUHaa9qdXUOuoEx2tjyqmC7Rw/G+8IVpH
+					C7Zp6GC6xvdhJw==
+					) ; KSK; alg = ECDSAP256SHA256 ; key id = 6971
+			3600	RRSIG	DNSKEY 13 2 3600 (
+					20601231235959 20210831155037 6971 optout.ent.
+					n/Oz/yb6x24pAxgdrUfSu5AtJdVqRPnzsN39
+					2WbWsASaMPGvFqVuwalN69+qoKVVI72zxKKI
+					lfOs98fN5vFRWw== )
+			0	NSEC3PARAM 1 0 10 484E7FFF154B5357
+			0	RRSIG	NSEC3PARAM 13 2 0 (
+					20601231235959 20210831155037 6971 optout.ent.
+					mfS0OsUnl8WTKJAcNzDYXxmMKjrVhwQLhSak
+					TgJxDxKpnuVIWYq6+8aX4xWLp/b5cN/b99Ws
+					Ji0zdZ+amZwMaA== )
+deleg.ent.optout.ent.	3600	IN NS	out-of-bailiwick.example.
+a.optout.ent.		3600	IN A	1.2.3.4
+			3600	RRSIG	A 13 3 3600 (
+					20601231235959 20210831155037 6971 optout.ent.
+					lVnzQ/IBtihiTWZZy62+9usJe6J475lU2Bbr
+					EctWkqotdGCks1XZT5g8R97YX6Ku2rpnsfKh
+					Ong6tdbBhKDMoA== )
+8DOAQD6MB2N59P3MCI8POSR8RMI2BSH2.optout.ent. 7200 IN NSEC3 1 1 10 484E7FFF154B5357 (
+					CEP7K90BHDB9DJ525KIG0325P07HAK7R
+					NS SOA MX RRSIG DNSKEY NSEC3PARAM )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20210831155037 6971 optout.ent.
+					siQxUHoSdNgxZ8FLpvR801dRP+fP2lDriEkq
+					4+V2R9r+3SV48dOCfYySMXgxepoG8dlZhGSA
+					G4oCLO5OxETeRg== )
+CEP7K90BHDB9DJ525KIG0325P07HAK7R.optout.ent. 7200 IN NSEC3 1 0 10 484E7FFF154B5357 (
+					KU64EQGJN5I9HO9GRU9QMA4A333C6MJ3
+					A RRSIG )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20210831155037 6971 optout.ent.
+					NVXZDgzlq9Mp/bBAZ5uJYvgGOb8liEpIeGYn
+					hNF+ocC4Mg+IDauCreqPdwL3uX2fJTD7TO2t
+					JISmliby/QJmIQ== )
+KU64EQGJN5I9HO9GRU9QMA4A333C6MJ3.optout.ent. 7200 IN NSEC3 1 0 10 484E7FFF154B5357 (
+					8DOAQD6MB2N59P3MCI8POSR8RMI2BSH2
+					NS )
+			7200	RRSIG	NSEC3 13 3 7200 (
+					20601231235959 20210831155037 6971 optout.ent.
+					bpSSNo7+Bz6f3UMM/756LVSYKGIf6FlfBK5E
+					V98AbR8Mg29IXOt9Fq5vgegm2FVvlgtgppl2
+					ewViHCEBZAuHSg== )
