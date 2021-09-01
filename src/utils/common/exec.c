@@ -873,7 +873,7 @@ static void json_print_section(jsonw_t *w, const char *name,
 		jsonw_str(w, "ttl");
 		jsonw_int(w, rr->ttl);
 		jsonw_str(w, "rdata");
-		jsonw_rdata(w, rr, i);
+		jsonw_rdata(w, rr, 0);
 		jsonw_end(w); // object
 	}
 
