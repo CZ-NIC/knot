@@ -408,6 +408,11 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 	const zone_node_t *nsec_node = node;
 	bool shall_no_nsec = node_no_nsec(node);
 	if (data->nsec3_params != NULL) {
+		if ((node->flags & NODE_FLAGS_DELETED) ||
+		    node_rrtype_exists(node, KNOT_RRTYPE_NSEC3)) {
+			// this can happen when checking nodes from adjust_ptrs
+			return KNOT_EOK;
+		}
 		nsec_node = node_nsec3_get(node);
 		shall_no_nsec = (node->flags & NODE_FLAGS_DELETED) ||
 		                (node->flags & NODE_FLAGS_NONAUTH);
