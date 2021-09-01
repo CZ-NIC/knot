@@ -84,10 +84,6 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 		return KNOT_EINVAL;
 	}
 
-	if (contents == NULL) {
-		return KNOT_EEMPTYZONE;
-	}
-
 	// Check if journal is used (later in zone_changes_load() and zone is not empty.
 	if (zone_contents_is_empty(contents)) {
 		return KNOT_EOK;
