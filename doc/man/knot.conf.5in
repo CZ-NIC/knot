@@ -1949,22 +1949,11 @@ On each zone update, calculate ZONEMD and put it into the zone.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBnone\fP – No ZONEMD is generated.
+\fBnone\fP – No action regarding ZONEMD.
 .IP \(bu 2
 \fBzonemd\-sha384\fP – Generate ZONEMD using SHA384 algorithm.
 .IP \(bu 2
 \fBzonemd\-sha512\fP – Generate ZONEMD using SHA512 algorithm.
-.UNINDENT
-.sp
-\fBWARNING:\fP
-.INDENT 0.0
-.INDENT 3.5
-After this configuration is changed, it\(aqs possible that new ZONEMD
-won\(aqt be generated until some other update/change to the zone appears.
-If DNSSEC is enabled, it\(aqs recommended to force re\-sign the zone
-after setting this option to generating ZONEMD, or after changing
-the algorithm.
-.UNINDENT
 .UNINDENT
 .sp
 \fIDefault:\fP none
