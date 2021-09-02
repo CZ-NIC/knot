@@ -2098,16 +2098,9 @@ On each zone update, calculate ZONEMD and put it into the zone.
 
 Possible values:
 
-- ``none`` – No ZONEMD is generated.
+- ``none`` – No action regarding ZONEMD.
 - ``zonemd-sha384`` – Generate ZONEMD using SHA384 algorithm.
 - ``zonemd-sha512`` – Generate ZONEMD using SHA512 algorithm.
-
-.. WARNING::
-   After this configuration is changed, it's possible that new ZONEMD
-   won't be generated until some other update/change to the zone appears.
-   If DNSSEC is enabled, it's recommended to force re-sign the zone
-   after setting this option to generating ZONEMD, or after changing
-   the algorithm.
 
 *Default:* none
 
