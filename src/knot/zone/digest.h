@@ -36,8 +36,9 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
  *
  * \param contents   Zone contents to be verified.
  * \param alg        Required algorithm of the ZONEMD.
+ * \param no_verify  Don't verify the validness of the digest in ZONEMD.
  */
-bool zone_contents_digest_exists(const zone_contents_t *contents, uint8_t alg);
+bool zone_contents_digest_exists(const zone_contents_t *contents, uint8_t alg, bool no_verify);
 
 /*!
  * \brief Verify zone dgest in ZONEMD record.

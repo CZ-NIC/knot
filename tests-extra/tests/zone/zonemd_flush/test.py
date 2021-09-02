@@ -31,8 +31,15 @@ master.zonemd_generate = "zonemd-sha384"
 
 t.start()
 
-master.zones_wait(zone)
+serial = master.zones_wait(zone)
 t.sleep(4)
 check_zonemd(master, zone, "1")
+
+master.zonemd_generate = "zonemd-sha512"
+master.gen_confile()
+master.reload()
+master.zones_wait(zone, serial)
+t.sleep(4)
+check_zonemd(master, zone, "2")
 
 t.end()
