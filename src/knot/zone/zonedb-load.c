@@ -23,6 +23,7 @@
 #include "knot/conf/module.h"
 #include "knot/events/replan.h"
 #include "knot/journal/journal_metadata.h"
+#include "knot/zone/digest.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zone.h"
@@ -99,6 +100,11 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone_timers_sanitize(conf, zone);
 
 	bool conf_updated = (old_zone->change_type & CONF_IO_TRELOAD);
+
+	conf_val_t digest = conf_zone_get(conf, C_ZONEMD_GENERATE, name);
+	if (zone->contents != NULL && !zone_contents_digest_exists(zone->contents, conf_opt(&digest), true)) {
+		conf_updated = true;
+	}
 
 	if ((zone_file_updated(conf, old_zone, name) || conf_updated) && !zone_expired(zone)) {
 		replan_load_updated(zone, old_zone);

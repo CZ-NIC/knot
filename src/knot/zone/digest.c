@@ -173,11 +173,19 @@ static int verify_zonemd(const knot_rdata_t *zonemd, const zone_contents_t *cont
 	return ret;
 }
 
-bool zone_contents_digest_exists(const zone_contents_t *contents, uint8_t alg)
+bool zone_contents_digest_exists(const zone_contents_t *contents, uint8_t alg, bool no_verify)
 {
+	if (alg == 0) {
+		return true;
+	}
+
 	knot_rdataset_t *zonemd = node_rdataset(contents->apex, KNOT_RRTYPE_ZONEMD);
 	if (zonemd == NULL || zonemd->count != 1 || knot_zonemd_algorithm(zonemd->rdata) != alg) {
 		return false;
+	}
+
+	if (no_verify) {
+		return true;
 	}
 
 	return verify_zonemd(zonemd->rdata, contents) == KNOT_EOK;
