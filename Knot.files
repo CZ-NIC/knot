@@ -559,6 +559,8 @@ src/utils/common/netio.c
 src/utils/common/netio.h
 src/utils/common/params.c
 src/utils/common/params.h
+src/utils/common/quic.c
+src/utils/common/quic.h
 src/utils/common/resolv.c
 src/utils/common/resolv.h
 src/utils/common/sign.c

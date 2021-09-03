@@ -392,11 +392,14 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 
 	// Set ID = 0 for packet send over HTTPS
 	// Due HTTP cache it is convenient to set the query ID to 0 - GET messages has same header then
+	if (
 #ifdef LIBNGHTTP2
-	if (query->https.enable) {
+		query->https.enable ||
+#endif
+		query->quic.enable
+	) {
 		knot_wire_set_id(packet->wire, 0);
 	}
-#endif
 
 	// Set flags to wireformat.
 	if (query->flags.aa_flag) {
@@ -862,7 +865,7 @@ static int process_query(const query_t *query, net_t *net)
 		for (size_t i = 0; i <= query->retries; i++) {
 			// Initialize network structure for current server.
 			ret = net_init(query->local, remote, iptype, socktype,
-				       query->wait, flags, &query->tls, &query->https, net);
+				       query->wait, flags, &query->tls, &query->https, &query->quic, net);
 			if (ret != KNOT_EOK) {
 				if (ret == KNOT_NET_EADDR) {
 					// Requested address family not available.
@@ -1171,7 +1174,7 @@ static int process_xfr(const query_t *query, net_t *net)
 
 	// Initialize network structure.
 	ret = net_init(query->local, remote, iptype, socktype, query->wait,
-	               flags, &query->tls, &query->https, net);
+	               flags, &query->tls, &query->https, &query->quic, net);
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(out_packet);

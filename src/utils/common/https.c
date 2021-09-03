@@ -76,10 +76,6 @@ void https_params_clean(https_params_t *params)
 static const char default_path[] = "/dns-query";
 static const char default_query[] = "?dns=";
 
-static const gnutls_datum_t https_protocols[] = {
-	{ (unsigned char *)"h2", 2 }
-};
-
 static const nghttp2_settings_entry settings[] = {
 	{ NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, HTTPS_MAX_STREAMS }
 };
@@ -326,7 +322,7 @@ int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
 	}
 
 	// Create TLS connection
-	int ret = tls_ctx_connect(ctx->tls, sockfd, remote, fastopen, addr, https_protocols);
+	int ret = tls_ctx_connect(ctx->tls, sockfd, remote, fastopen, addr);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
