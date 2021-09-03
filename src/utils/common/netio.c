@@ -179,6 +179,7 @@ int net_init(const srv_info_t     *local,
              const net_flags_t    flags,
              const tls_params_t   *tls_params,
              const https_params_t *https_params,
+             const quic_params_t  *quic_params,
              net_t                *net)
 {
 	if (remote == NULL || net == NULL) {
@@ -215,9 +216,10 @@ int net_init(const srv_info_t     *local,
 	net->remote = remote;
 	net->flags = flags;
 
+	int ret = KNOT_EOK;
 	// Prepare for TLS.
 	if (tls_params != NULL && tls_params->enable) {
-		int ret = tls_ctx_init(&net->tls, tls_params, net->wait);
+		ret = tls_ctx_init(&net->tls, tls_params, net->wait);
 		if (ret != KNOT_EOK) {
 			net_clean(net);
 			return ret;
@@ -233,6 +235,15 @@ int net_init(const srv_info_t     *local,
 			}
 		}
 #endif //LIBNGHTTP2
+//#ifdef LIBNGTCP2
+		if (quic_params != NULL && quic_params->enable) {
+			ret = quic_ctx_init(&net->quic, &net->tls, quic_params);
+			if (ret != KNOT_EOK) {
+				net_clean(net);
+				return ret;
+			}
+		}
+//#endif //LIBNGTCP2
 	}
 
 	return KNOT_EOK;
@@ -335,8 +346,9 @@ int net_connect(net_t *net)
 		(void)bind(sockfd, (struct sockaddr *)&local, sockaddr_len(&local));
 	}
 
+	int ret = 0;
 	if (net->socktype == SOCK_STREAM) {
-		int  cs, err, ret = 0;
+		int  cs, err;
 		socklen_t err_len = sizeof(err);
 		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
 
@@ -391,10 +403,32 @@ int net_connect(net_t *net)
 #endif //LIBNGHTTP2
 				// Establish TLS connection.
 				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni, fastopen,
-				                      (struct sockaddr_storage *)net->srv->ai_addr, NULL);
+				                      (struct sockaddr_storage *)net->srv->ai_addr, NULL, NULL, true);
 #ifdef LIBNGHTTP2
 			}
 #endif //LIBNGHTTP2
+			if (ret != KNOT_EOK) {
+				close(sockfd);
+				return ret;
+			}
+		}
+	} else if (net->socktype == SOCK_DGRAM) {
+		if (net->quic.params != NULL && net->quic.params->enable) {
+			// Establish QUIC connection.
+			char *remote = NULL;
+			if (net->tls.params->sni != NULL) {
+				remote = net->tls.params->sni;
+			} else if (net->tls.params->hostname != NULL) {
+				remote = net->tls.params->hostname;
+			} else if (strchr(net->remote_str, ':') == NULL) {
+				char *at = strchr(net->remote_str, '@');
+				if (at != NULL && strncmp(net->remote->name, net->remote_str,
+				                          at - net->remote_str)) {
+					remote = net->remote->name;
+				}
+			}
+			ret = quic_ctx_connect(&net->quic, sockfd, remote,
+				                   (struct sockaddr_storage *)net->srv->ai_addr);
 			if (ret != KNOT_EOK) {
 				close(sockfd);
 				return ret;
@@ -459,10 +493,18 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 
 	// Send data over UDP.
 	if (net->socktype == SOCK_DGRAM) {
-		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
-		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
-			WARN("can't send query to %s\n", net->remote_str);
-			return KNOT_NET_ESEND;
+		if (net->quic.params && net->quic.params->enable) {
+			int ret = quic_send_dns_query(&net->quic, net->sockfd, net->srv, buf, buf_len);
+			if (ret != KNOT_EOK) {
+				WARN("can't send query to %s\n", net->remote_str);
+				return KNOT_NET_ESEND;
+			}
+		} else {
+			if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
+			           net->srv->ai_addrlen) != (ssize_t)buf_len) {
+				WARN("can't send query to %s\n", net->remote_str);
+				return KNOT_NET_ESEND;
+			}
 		}
 #ifdef LIBNGHTTP2
 	// Send data over HTTPS
@@ -517,7 +559,17 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	return KNOT_EOK;
 }
 
-int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
+static uint64_t timestamp(void)
+{
+	struct timespec tp;
+	if (clock_gettime(CLOCK_MONOTONIC, &tp) != 0) {
+		assert(0);
+	}
+
+	return (uint64_t)tp.tv_sec * NGTCP2_SECONDS + (uint64_t)tp.tv_nsec;
+}
+
+int net_receive(net_t *net, uint8_t *buf, const size_t buf_len)
 {
 	if (net == NULL || buf == NULL) {
 		DBG_NULL;
@@ -535,6 +587,10 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 	if (net->socktype == SOCK_DGRAM) {
 		struct sockaddr_storage from;
 		memset(&from, '\0', sizeof(from));
+
+		net->quic.stream.data = buf;
+		net->quic.stream.datalen = buf_len;
+		net->quic.stream.nwrite = 0;
 
 		// Receive replies unless correct reply or timeout.
 		while (true) {
@@ -563,6 +619,25 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 				get_addr_str(&from, net->socktype, &src);
 				WARN("unexpected reply source %s\n", src);
 				free(src);
+				continue;
+			}
+
+			if (net->quic.params && net->quic.params->enable) {
+				ngtcp2_pkt_info pi = { 0 };
+				ret = ngtcp2_conn_read_pkt(net->quic.conn, &net->quic.path, &pi, buf, ret, timestamp());
+				if (net->quic.stream.nwrite > 0) {
+					return net->quic.stream.nwrite;
+				}
+
+				uint8_t enc_buf[65535];
+				ngtcp2_ssize wdatalen = 0;
+				uint32_t flags = 0;
+				ngtcp2_ssize nwrite = ngtcp2_conn_writev_stream(net->quic.conn,
+						&net->quic.path, &pi, enc_buf, sizeof(enc_buf),
+						&wdatalen, flags, -1, NULL, 0, timestamp());
+				if (net->quic.stream.nwrite > 0) {
+					return net->quic.stream.nwrite;
+				}
 				continue;
 			}
 

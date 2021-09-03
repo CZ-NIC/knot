@@ -21,6 +21,7 @@
 #include "utils/common/params.h"
 #include "utils/common/exec.h"
 #include "utils/common/https.h"
+#include "utils/common/quic.h"
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
@@ -125,6 +126,8 @@ struct query {
 	tls_params_t	tls;
 	/*!< HTTPS parameters. */
 	https_params_t	https;
+	/*!< QUIC parameters. */
+	quic_params_t	quic;
 	/*!< Transaction signature. */
 	knot_tsig_key_t	tsig_key;
 	/*!< EDNS client subnet. */
