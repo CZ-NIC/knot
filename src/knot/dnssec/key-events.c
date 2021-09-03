@@ -437,6 +437,9 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				break;
 			case DNSSEC_KEY_STATE_REMOVED:
 				keytime = ksk_really_remove_time(key->timing.remove, ctx);
+				if (knot_time_cmp(keytime, ctx->now) > 0) {
+					keytime = 0;
+				}
 				restype = REALLY_REMOVE;
 				break;
 			default:
@@ -473,6 +476,9 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				break;
 			case DNSSEC_KEY_STATE_REMOVED:
 				keytime = zsk_really_remove_time(key->timing.remove, ctx);
+				if (knot_time_cmp(keytime, ctx->now) > 0) {
+					keytime = 0;
+				}
 				restype = REALLY_REMOVE;
 				break;
 			case DNSSEC_KEY_STATE_READY:
