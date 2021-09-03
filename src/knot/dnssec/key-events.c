@@ -354,7 +354,7 @@ static knot_time_t ksk_really_remove_time(knot_time_t remove_time, const kdnssec
 	if (ctx->keep_deleted_keys) {
 		return 0;
 	}
-	return knot_time_add(remove_time, ctx->policy->ksk_lifetime);
+	return knot_time_add(remove_time, ctx->policy->delete_delay);
 }
 
 static knot_time_t zsk_really_remove_time(knot_time_t remove_time, const kdnssec_ctx_t *ctx)
@@ -362,7 +362,7 @@ static knot_time_t zsk_really_remove_time(knot_time_t remove_time, const kdnssec
 	if (ctx->keep_deleted_keys) {
 		return 0;
 	}
-	return knot_time_add(remove_time, ctx->policy->zsk_lifetime);
+	return knot_time_add(remove_time, ctx->policy->delete_delay);
 }
 
 // algorithm rollover related timers must be the same for KSK and ZSK
