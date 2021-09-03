@@ -816,6 +816,7 @@ result_msg_base="  Knot DNS $VERSION
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
     Utilities with DoH:     ${with_libnghttp2}
+    Utilities with DoQ:     ${with_libngtcp2}
     Utilities with Dnstap:  ${enable_dnstap}
     MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}

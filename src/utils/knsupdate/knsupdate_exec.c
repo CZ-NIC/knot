@@ -438,6 +438,7 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	               NET_FLAGS_NONE,
 	               NULL,
 	               NULL,
+	               NULL,
 	               &net);
 	if (ret != KNOT_EOK) {
 		return -1;
