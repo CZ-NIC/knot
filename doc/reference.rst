@@ -1314,6 +1314,7 @@ DNSSEC policy configuration.
      zone-max-ttl: TIME
      ksk-lifetime: TIME
      zsk-lifetime: TIME
+     delete-delay: TIME
      propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
@@ -1496,6 +1497,18 @@ A period between ZSK activation and the next rollover initiation.
    Zero (aka infinity) value causes no ZSK rollover as a result.
 
 *Default:* 30 days
+
+.. _policy_delete-delay:
+
+delete-delay
+------------
+
+Once a key (KSK or ZSK) is rolled-over and removed from the zone,
+keep it in the KASP database for at least this period before deleting it completely.
+This might be useful in some troubleshooting cases when resurrection
+is needed.
+
+*Default:* 0
 
 .. _policy_propagation-delay:
 

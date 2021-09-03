@@ -66,6 +66,7 @@
 #define C_JOURNAL_MAX_USAGE	"\x11""journal-max-usage"
 #define C_KASP_DB		"\x07""kasp-db"
 #define C_KASP_DB_MAX_SIZE	"\x10""kasp-db-max-size"
+#define C_DELETE_DELAY		"\x0C""delete-delay"
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
 #define C_KSK_LIFETIME		"\x0C""ksk-lifetime"
