@@ -61,7 +61,7 @@ typedef struct zone_events {
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
 
-	task_t task;			//!< Event execution context.
+	worker_task_t task;		//!< Event execution context.
 	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
 	bool forced[ZONE_EVENT_COUNT];  //!< Flag that the event was invoked by user ctl.
 	pthread_cond_t *blocking[ZONE_EVENT_COUNT];       //!< For blocking events: dispatching cond.

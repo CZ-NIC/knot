@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ static unsigned executed_reset(task_log_t *log)
 /*!
  * Simple task, just increases the counter in the log.
  */
-static void task_counting(task_t *task)
+static void task_counting(worker_task_t *task)
 {
 	task_log_t *log = task->ctx;
 
@@ -89,7 +89,7 @@ int main(void)
 
 	// schedule jobs while pool is stopped
 
-	task_t task = { .run = task_counting, .ctx = &log };
+	worker_task_t task = { .run = task_counting, .ctx = &log };
 	for (int i = 0; i < TASKS_BATCH; i++) {
 		worker_pool_assign(pool, &task);
 	}

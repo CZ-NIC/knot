@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ void worker_queue_deinit(worker_queue_t *queue)
 	ptrlist_free(&queue->list, &queue->mm_ctx);
 }
 
-void worker_queue_enqueue(worker_queue_t *queue, task_t *task)
+void worker_queue_enqueue(worker_queue_t *queue, worker_task_t *task)
 {
 	if (!queue || !task) {
 		return;
@@ -43,13 +43,13 @@ void worker_queue_enqueue(worker_queue_t *queue, task_t *task)
 	ptrlist_add(&queue->list, task, &queue->mm_ctx);
 }
 
-task_t *worker_queue_dequeue(worker_queue_t *queue)
+worker_task_t *worker_queue_dequeue(worker_queue_t *queue)
 {
 	if (!queue) {
 		return NULL;
 	}
 
-	task_t *task = NULL;
+	worker_task_t *task = NULL;
 
 	if (!EMPTY_LIST(queue->list)) {
 		ptrnode_t *node = HEAD(queue->list);
