@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,9 +22,9 @@ int main(void)
 {
 	plan_lazy();
 
-	task_t task_one = { 0 };
-	task_t task_two = { 0 };
-	task_t task_three = { 0 };
+	worker_task_t task_one = { 0 };
+	worker_task_t task_two = { 0 };
+	worker_task_t task_three = { 0 };
 
 	// init
 
