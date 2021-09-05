@@ -20,7 +20,8 @@
 
 #include "knot/dnssec/context.h"
 
-#define ERROR(msg, ...)	{ fprintf(stderr, "Error: " msg, ##__VA_ARGS__); fflush(stderr); }
+#define ERROR(msg, ...)   { fprintf(stderr, "Error: " msg, ##__VA_ARGS__); fflush(stderr); }
+#define WARNING(msg, ...) { fprintf(stderr, "Warning: " msg, ##__VA_ARGS__); fflush(stderr); }
 
 typedef struct {
 	knot_time_print_t format;
