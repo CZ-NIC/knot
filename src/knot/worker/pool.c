@@ -61,7 +61,7 @@ static int worker_main(dthread_t *thread)
 			break;
 		}
 
-		task_t *task = NULL;
+		worker_task_t *task = NULL;
 		if (!pool->suspended) {
 			task = worker_queue_dequeue(&pool->tasks);
 		}

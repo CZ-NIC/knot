@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ typedef void (*task_cb)(struct task *);
 typedef struct task {
 	void *ctx;
 	task_cb run;
-} task_t;
+} worker_task_t;
 
 /*!
  * \brief Worker queue.
@@ -50,14 +50,14 @@ void worker_queue_deinit(worker_queue_t *queue);
 /*!
  * \brief Insert new item into the queue.
  */
-void worker_queue_enqueue(worker_queue_t *queue, task_t *task);
+void worker_queue_enqueue(worker_queue_t *queue, worker_task_t *task);
 
 /*!
  * \brief Remove item from the queue.
  *
  * \return Task or NULL if the queue is empty.
  */
-task_t *worker_queue_dequeue(worker_queue_t *queue);
+worker_task_t *worker_queue_dequeue(worker_queue_t *queue);
 
 /*!
  * \brief Return number of tasks in worker queue.

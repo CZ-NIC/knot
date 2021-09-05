@@ -199,7 +199,7 @@ static void reschedule(zone_events_t *events)
  * 3. Perform the event's callback.
  * 4. Schedule next event planned event.
  */
-static void event_wrap(task_t *task)
+static void event_wrap(worker_task_t *task)
 {
 	assert(task);
 	assert(task->ctx);
