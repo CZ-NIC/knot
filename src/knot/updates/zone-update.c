@@ -884,8 +884,17 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	bool dnssec = conf_bool(&val);
 	val = conf_zone_get(conf, C_ZONEMD_GENERATE, update->zone->name);
 	unsigned digest_alg = conf_opt(&val);
-	if (digest_alg != ZONE_DIGEST_NONE && !dnssec && // in case of DNSSEC, digest is part of signing routine
-	    ((update->flags & UPDATE_FULL) || zone_update_to(update) != NULL)) {
+	bool do_digest = (digest_alg != ZONE_DIGEST_NONE && !dnssec); // in case of DNSSEC, digest is part of signing routine
+	if (do_digest && !(update->flags & UPDATE_FULL) && zone_update_to(update) == NULL) {
+		// cold start, decide if (digest & bump SOA) or NOOP
+		// yes, computing hash twice, but in rare situation: cold start & exists & invalid
+		if (zone_contents_digest_exists(update->new_cont, digest_alg, false)) {
+			do_digest = false;
+		} else {
+			ret = zone_update_increment_soa(update, conf);
+		}
+	}
+	if (do_digest && ret == KNOT_EOK) {
 		ret = zone_update_add_digest(update, digest_alg, false);
 	}
 	if (ret != KNOT_EOK) {

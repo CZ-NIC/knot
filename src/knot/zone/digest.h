@@ -32,6 +32,15 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
                          uint8_t **out_digest, size_t *out_size);
 
 /*!
+ * \brief Check whether exactly one ZONEMD exists in the zone, is valid and matches given algorithm.
+ *
+ * \param contents   Zone contents to be verified.
+ * \param alg        Required algorithm of the ZONEMD.
+ * \param no_verify  Don't verify the validness of the digest in ZONEMD.
+ */
+bool zone_contents_digest_exists(const zone_contents_t *contents, uint8_t alg, bool no_verify);
+
+/*!
  * \brief Verify zone dgest in ZONEMD record.
  *
  * \param contents   Zone contents ot be verified.
