@@ -143,7 +143,8 @@ static knot_rrset_t get_next_rrset(serialize_ctx_t *ctx)
 	}
 }
 
-void serialize_prepare(serialize_ctx_t *ctx, size_t max_size, size_t *realsize)
+void serialize_prepare(serialize_ctx_t *ctx, size_t thresh_size,
+                       size_t max_size, size_t *realsize)
 {
 	*realsize = 0;
 
@@ -185,6 +186,9 @@ void serialize_prepare(serialize_ctx_t *ctx, size_t max_size, size_t *realsize)
 			return;
 		}
 		*realsize = candidate;
+		if (candidate >= thresh_size) {
+			return;
+		}
 		tmp_phase++;
 	}
 }

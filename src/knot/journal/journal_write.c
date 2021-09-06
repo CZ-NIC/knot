@@ -27,7 +27,8 @@ static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser, 
 	MDB_val chunk;
 	uint32_t i = 0;
 	while (serialize_unfinished(ser) && txn->ret == KNOT_EOK) {
-		serialize_prepare(ser, JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.mv_size);
+		serialize_prepare(ser, JOURNAL_CHUNK_THRESH - JOURNAL_HEADER_SIZE,
+		                  JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.mv_size);
 		if (chunk.mv_size == 0) {
 			break; // beware! If this is ommited, it creates empty chunk => EMALF when reading.
 		}
