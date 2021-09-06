@@ -27,7 +27,8 @@ typedef struct {
 	void *conf; // needed only for journal write operations
 } zone_journal_t;
 
-#define JOURNAL_CHUNK_MAX (70 * 1024)
+#define JOURNAL_CHUNK_MAX (70 * 1024) // must be at least 64k + 6B
+#define JOURNAL_CHUNK_THRESH (15 * 1024)
 #define JOURNAL_HEADER_SIZE (32)
 
 /*! \brief Convert journal_mode to LMDB environment flags. */

@@ -46,11 +46,13 @@ serialize_ctx_t *serialize_zone_init(const zone_contents_t *z);
  *
  * \note This MUST be called before each serialize_chunk() !
  *
- * \param ctx      Serializing context.
- * \param max_size Maximum size of next chunk.
- * \param realsize Output: real exact size of next chunk.
+ * \param ctx           Serializing context.
+ * \param thresh_size   Optimal size of next chunk.
+ * \param max_size      Maximum size of next chunk.
+ * \param realsize      Output: real exact size of next chunk.
  */
-void serialize_prepare(serialize_ctx_t *ctx, size_t max_size, size_t *realsize);
+void serialize_prepare(serialize_ctx_t *ctx, size_t thresh_size,
+                       size_t max_size, size_t *realsize);
 
 /*!
  * \brief Perform one step of serializiation: fill one chunk.
