@@ -83,7 +83,7 @@ Use a binary configuration database directory (default is \fB@storage_dir@/confd
 The default configuration database, if exists, has a preference to the default
 configuration file.
 .TP
-\fB\-D\fP, \fB\-\-dir\fP \fIpath\fP
+\fB\-d\fP, \fB\-\-dir\fP \fIpath\fP
 Use specified KASP database path and default configuration.
 .UNINDENT
 .sp
