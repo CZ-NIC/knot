@@ -502,7 +502,7 @@ The TCP stack features:
 - Reset invalid connections
 - Ignore invalid resets and ACKs
 - Receive fragmented data – one DNS message in multiple packets
-- Limit total size of incomming buffers, reset most inactive connections
+- Limit total size of incoming buffers, reset most inactive connections
   with buffered data
 - Send fragmented data – DNS message larger than allowed by MSS
 - Send MSS option calculated from configured MSS and device MTU
