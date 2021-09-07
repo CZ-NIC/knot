@@ -323,7 +323,8 @@ static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now,
 	zone_key->is_zsk_active_plus = zone_key->is_ready && !same_alg_act_zsk;
 	if (knot_time_cmp(timing->pre_active, now) <= 0 &&
 	    knot_time_cmp(timing->ready, now) > 0 &&
-	    knot_time_cmp(timing->active, now) > 0) {
+	    knot_time_cmp(timing->active, now) > 0 &&
+	    knot_time_cmp(timing->remove, now) > 0) {
 		zone_key->is_zsk_active_plus = zone_key->is_zsk;
 		// zone_key->is_ksk_active_plus = (knot_time_cmp(timing->publish, now) <= 0 && zone_key->is_ksk); // redundant, but helps understand
 	}
@@ -333,7 +334,8 @@ static void set_key(knot_kasp_key_t *kasp_key, knot_time_t now,
 		zone_key->is_public = zone_key->is_zsk;
 	}
 	if (knot_time_cmp(timing->retire_active, now) <= 0 &&
-	    knot_time_cmp(timing->retire, now) > 0) {
+	    knot_time_cmp(timing->retire, now) > 0 &&
+	    knot_time_cmp(timing->remove, now) > 0) {
 		zone_key->is_ksk_active_plus = zone_key->is_ksk;
 		zone_key->is_zsk_active_plus = !same_alg_act_zsk;
 	} // not "else" !

@@ -20,11 +20,12 @@ PUB_ONLY_SCENARIO = random.choice([0, 1, 2])
 PUB_ONLY_KEYS = 1 if PUB_ONLY_SCENARIO > 0 else 0
 PUB_ONLY_CDS = 1 if PUB_ONLY_SCENARIO > 1 else 0
 PUB_ONLY_KEYID = ""
+DELETE_DELAY = random.choice([0, 2, 7, 17, 117])
 
 DOUBLE_DS = random.choice([True, False])
 CDS_DT = random.choice(["sha256", "sha384"])
-check_log("DOUBLE DS %s, cds dt %s, PUB_ONLY_KEYS %d, PUB_ONLY_CDS %d" % \
-          (str(DOUBLE_DS), CDS_DT, PUB_ONLY_KEYS, PUB_ONLY_CDS))
+check_log("DOUBLE DS %s, cds dt %s, PUB_ONLY_KEYS %d, PUB_ONLY_CDS %d DELETE_DELAY %d" % \
+          (str(DOUBLE_DS), CDS_DT, PUB_ONLY_KEYS, PUB_ONLY_CDS, DELETE_DELAY))
 
 def generate_public_only(server, zone, alg):
     global PUB_ONLY_KEYID
@@ -270,6 +271,7 @@ child.dnssec(child_zone).alg = "ECDSAP384SHA384"
 child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
+child.dnssec(child_zone).delete_delay = DELETE_DELAY
 child.dnssec(child_zone).propagation_delay = 11
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 2

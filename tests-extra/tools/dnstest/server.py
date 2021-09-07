@@ -50,6 +50,7 @@ class ZoneDnssec(object):
         self.zone_max_ttl = None
         self.ksk_lifetime = None
         self.zsk_lifetime = None
+        self.delete_delay = None
         self.propagation_delay = None
         self.rrsig_lifetime = None
         self.rrsig_refresh = None
@@ -1393,6 +1394,7 @@ class Knot(Server):
             self._str(s, "zone-max-ttl", z.dnssec.zone_max_ttl)
             self._str(s, "ksk-lifetime", z.dnssec.ksk_lifetime)
             self._str(s, "zsk-lifetime", z.dnssec.zsk_lifetime)
+            self._str(s, "delete-delay", z.dnssec.delete_delay)
             self._str(s, "propagation-delay", z.dnssec.propagation_delay)
             self._str(s, "rrsig-lifetime", z.dnssec.rrsig_lifetime)
             self._str(s, "rrsig-refresh", z.dnssec.rrsig_refresh)

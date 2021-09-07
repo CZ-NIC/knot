@@ -29,7 +29,8 @@ static bool key_present(const kdnssec_ctx_t *ctx, bool ksk, bool zsk)
 	assert(ctx->zone);
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		const knot_kasp_key_t *key = &ctx->zone->keys[i];
-		if (key->is_ksk == ksk && key->is_zsk == zsk && !key->is_pub_only) {
+		if (key->is_ksk == ksk && key->is_zsk == zsk && !key->is_pub_only &&
+		    get_key_state(key, ctx->now) != DNSSEC_KEY_STATE_REMOVED) {
 			return true;
 		}
 	}
@@ -43,7 +44,8 @@ static bool key_id_present(const kdnssec_ctx_t *ctx, const char *keyid, bool wan
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		const knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (strcmp(keyid, key->id) == 0 &&
-		    key->is_ksk == want_ksk) {
+		    key->is_ksk == want_ksk &&
+		    get_key_state(key, ctx->now) != DNSSEC_KEY_STATE_REMOVED) {
 			return true;
 		}
 	}
@@ -59,6 +61,7 @@ static unsigned algorithm_present(const kdnssec_ctx_t *ctx, uint8_t alg)
 		const knot_kasp_key_t *key = &ctx->zone->keys[i];
 		knot_time_t activated = knot_time_min(key->timing.pre_active, key->timing.ready);
 		if (knot_time_cmp(knot_time_min(activated, key->timing.active), ctx->now) <= 0 &&
+		    get_key_state(key, ctx->now) != DNSSEC_KEY_STATE_REMOVED &&
 		    dnssec_key_get_algorithm(key->key) == alg && !key->is_pub_only) {
 			ret++;
 		}
@@ -251,6 +254,7 @@ typedef enum {
 	REPLACE,
 	RETIRE,
 	REMOVE,
+	REALLY_REMOVE,
 } roll_action_type_t;
 
 typedef struct {
@@ -345,6 +349,22 @@ static knot_time_t ksk_remove_time(knot_time_t retire_time, bool is_csk, const k
 	return knot_time_add(retire_time, ctx->policy->propagation_delay + use_ttl);
 }
 
+static knot_time_t ksk_really_remove_time(knot_time_t remove_time, const kdnssec_ctx_t *ctx)
+{
+	if (ctx->keep_deleted_keys) {
+		return 0;
+	}
+	return knot_time_add(remove_time, ctx->policy->delete_delay);
+}
+
+static knot_time_t zsk_really_remove_time(knot_time_t remove_time, const kdnssec_ctx_t *ctx)
+{
+	if (ctx->keep_deleted_keys) {
+		return 0;
+	}
+	return knot_time_add(remove_time, ctx->policy->delete_delay);
+}
+
 // algorithm rollover related timers must be the same for KSK and ZSK
 
 static knot_time_t alg_publish_time(knot_time_t pre_active_time, const kdnssec_ctx_t *ctx)
@@ -416,8 +436,11 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				restype = REMOVE;
 				break;
 			case DNSSEC_KEY_STATE_REMOVED:
-				keytime = ctx->now;
-				restype = REMOVE;
+				keytime = ksk_really_remove_time(key->timing.remove, ctx);
+				if (knot_time_cmp(keytime, ctx->now) > 0) {
+					keytime = 0;
+				}
+				restype = REALLY_REMOVE;
 				break;
 			default:
 				continue;
@@ -446,17 +469,17 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 				keytime = alg_remove_time(key->timing.post_active, ctx);
 				restype = REMOVE;
 				break;
-			case DNSSEC_KEY_STATE_REMOVED:
-				// ad REMOVED state: normally this wouldn't happen
-				// (key in removed state is instantly deleted)
-				// but if imported keys, they can be in this state
-				if (ctx->keep_deleted_keys) {
-					break;
-				} // else FALLTHROUGH
 			case DNSSEC_KEY_STATE_RETIRED:
 				keytime = knot_time_min(key->timing.retire, key->timing.remove);
 				keytime = zsk_remove_time(keytime, ctx);
 				restype = REMOVE;
+				break;
+			case DNSSEC_KEY_STATE_REMOVED:
+				keytime = zsk_really_remove_time(key->timing.remove, ctx);
+				if (knot_time_cmp(keytime, ctx->now) > 0) {
+					keytime = 0;
+				}
+				restype = REALLY_REMOVE;
 				break;
 			case DNSSEC_KEY_STATE_READY:
 			default:
@@ -575,12 +598,14 @@ static int exec_remove_old_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_POST_ACTIVE ||
 	       get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
 	key->timing.remove = ctx->now;
+	return KNOT_EOK;
+}
 
-	if (ctx->keep_deleted_keys) {
-		return KNOT_EOK;
-	} else {
-		return kdnssec_delete_key(ctx, key);
-	}
+static int exec_really_remove(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
+{
+	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
+	assert(!ctx->keep_deleted_keys);
+	return kdnssec_delete_key(ctx, key);
 }
 
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
@@ -713,6 +738,9 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			break;
 		case REMOVE:
 			ret = exec_remove_old_key(ctx, next.key);
+			break;
+		case REALLY_REMOVE:
+			ret = exec_really_remove(ctx, next.key);
 			break;
 		default:
 			log_keytag = false;
