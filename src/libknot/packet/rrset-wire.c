@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -502,7 +502,7 @@ int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
 	size_t capacity = max_size;
 
 	uint16_t count = rrset->rrs.count;
-	for (uint16_t i = rotate; i < count + rotate; i++) {
+	for (int i = rotate; i < count + rotate; i++) {
 		uint16_t pos = (i < count) ? i : (i - count);
 		int ret = write_rr(rrset, pos, &write, &capacity, compr, flags);
 		if (ret != KNOT_EOK) {
