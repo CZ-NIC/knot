@@ -36,14 +36,18 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 	ret = knot_parent_ds_query(&ctx, &keyset, conf->cache.srv_tcp_remote_io_timeout);
 
 	zone->timers.next_ds_check = 0;
-	if (ret != KNOT_EOK) {
+	switch (ret) {
+	case KNOT_NO_READY_KEY:
+		break;
+	case KNOT_EOK:
+		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
+		break;
+	default:
 		if (ctx.policy->ksk_sbm_check_interval > 0) {
 			time_t next_check = time(NULL) + ctx.policy->ksk_sbm_check_interval;
 			zone->timers.next_ds_check = next_check;
 			zone_events_schedule_at(zone, ZONE_EVENT_DS_CHECK, next_check);
 		}
-	} else {
-		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	}
 
 	free_zone_keys(&keyset);
