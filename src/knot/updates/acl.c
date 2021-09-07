@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -156,7 +156,7 @@ static bool update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
 
 static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_val,
                            bool remote, const struct sockaddr_storage *addr,
-                           const knot_tsig_key_t *tsig)
+                           const knot_tsig_key_t *tsig, bool deny)
 {
 	/* Check if the address matches the acl address list or remote addresses. */
 	if (addr_val->code != KNOT_ENOENT) {
@@ -201,9 +201,17 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
 			conf_val_next(key_val);
 		}
 	}
-	/* Check for key match or empty list without key provided. */
-	if (key_val->code != KNOT_EOK &&
-	    !(key_val->code == KNOT_ENOENT && tsig->name == NULL)) {
+	switch (key_val->code) {
+	case KNOT_EOK:
+		// Key match.
+		break;
+	case KNOT_ENOENT:
+		// Empty list without key provided or denied.
+		if (tsig->name == NULL || deny) {
+			break;
+		}
+		// FALLTHROUGH
+	default:
 		return false;
 	}
 
@@ -221,13 +229,15 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 	while (acl->code == KNOT_EOK) {
 		conf_val_t rmt_val = conf_id_get(conf, C_ACL, C_RMT, acl);
 		bool remote = (rmt_val.code == KNOT_EOK);
+		conf_val_t deny_val = conf_id_get(conf, C_ACL, C_DENY, acl);
+		bool deny = conf_bool(&deny_val);
 
 		/* Check if a remote matches given address and key. */
 		conf_val_t addr_val, key_val;
 		while (rmt_val.code == KNOT_EOK) {
 			addr_val = conf_id_get(conf, C_RMT, C_ADDR, &rmt_val);
 			key_val = conf_id_get(conf, C_RMT, C_KEY, &rmt_val);
-			if (check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig)) {
+			if (check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig, deny)) {
 				break;
 			}
 			conf_val_next(&rmt_val);
@@ -239,7 +249,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		if (!remote) {
 			addr_val = conf_id_get(conf, C_ACL, C_ADDR, acl);
 			key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
-			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig)) {
+			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig, deny)) {
 				goto next_acl;
 			}
 		}
@@ -272,14 +282,13 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		}
 
 		/* Check if denied. */
-		conf_val_t val = conf_id_get(conf, C_ACL, C_DENY, acl);
-		if (conf_bool(&val)) {
+		if (deny) {
 			return false;
 		}
 
 		/* Fill the output with tsig secret if provided. */
 		if (tsig->name != NULL) {
-			val = conf_id_get(conf, C_KEY, C_SECRET, &key_val);
+			conf_val_t val = conf_id_get(conf, C_KEY, C_SECRET, &key_val);
 			tsig->secret.data = (uint8_t *)conf_bin(&val, &tsig->secret.size);
 		}
 

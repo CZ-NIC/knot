@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "contrib/sockaddr.h"
 
 #define ZONE	"example.zone"
+#define ZONE2	"example2.zone"
 #define KEY1	"key1_md5"
 #define KEY2	"key2_md5"
 #define KEY3	"key3_sha256"
@@ -69,6 +70,8 @@ static void test_acl_allowed(void)
 
 	knot_dname_t *zone_name = knot_dname_from_str_alloc(ZONE);
 	ok(zone_name != NULL, "create zone dname");
+	knot_dname_t *zone2_name = knot_dname_from_str_alloc(ZONE2);
+	ok(zone2_name != NULL, "create zone2 dname");
 	knot_dname_t *key1_name = knot_dname_from_str_alloc(KEY1);
 	ok(key1_name != NULL, "create "KEY1);
 	knot_dname_t *key2_name = knot_dname_from_str_alloc(KEY2);
@@ -121,6 +124,13 @@ static void test_acl_allowed(void)
 		"  - id: acl_range_addr\n"
 		"    address: [ 100.0.0.0-100.0.0.5, ::0-::5 ]\n"
 		"    action: [ transfer ]\n"
+		"  - id: acl_deny_no_action_no_key\n"
+		"    address: [ 240.0.0.4 ]\n"
+		"    deny: on\n"
+		"  - id: acl_notify_key\n"
+		"    address: [ 240.0.0.0/24 ]\n"
+		"    key: "KEY1"\n"
+		"    action: [ notify ]\n"
 		"  - id: acl_update_key\n"
 		"    key: "KEY1"\n"
 		"    update-owner: key\n"
@@ -138,6 +148,8 @@ static void test_acl_allowed(void)
 		"    acl: [ acl_key_addr, acl_deny, acl_no_action_deny ]\n"
 		"    acl: [ acl_multi_addr, acl_multi_key ]\n"
 		"    acl: [ acl_range_addr ]\n"
+		"  - domain: "ZONE2"\n"
+		"    acl: [ acl_deny_no_action_no_key, acl_notify_key ]\n"
 		"  - domain: "KEY1"\n"
 		"    acl: acl_update_key\n"
 		"  - domain: "KEY2"\n"
@@ -230,6 +242,18 @@ static void test_acl_allowed(void)
 	ret = acl_allowed(conf(), &acl, ACL_ACTION_TRANSFER, &addr, &key0, zone_name, NULL);
 	ok(ret == true, "IPv6 address from range, no key, action match");
 
+	acl = conf_zone_get(conf(), C_ACL, zone2_name);
+	ok(acl.code == KNOT_EOK, "Get zone2 ACL");
+	check_sockaddr_set(&addr, AF_INET, "240.0.0.4", 0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key1, zone2_name, NULL);
+	ok(ret == false, "Address, key, action, denied");
+
+	acl = conf_zone_get(conf(), C_ACL, zone2_name);
+	ok(acl.code == KNOT_EOK, "Get zone2 ACL");
+	check_sockaddr_set(&addr, AF_INET, "240.0.0.1", 0);
+	ret = acl_allowed(conf(), &acl, ACL_ACTION_NOTIFY, &addr, &key1, zone2_name, NULL);
+	ok(ret == true, "Address, key, action, match");
+
 	knot_rrset_t A;
 	knot_rrset_init(&A, key1_name, KNOT_RRTYPE_A, KNOT_CLASS_IN, 3600);
 	knot_rrset_add_rdata(&A, (uint8_t *)"\x00\x00\x00\x00", 4, NULL);
@@ -273,6 +297,7 @@ static void test_acl_allowed(void)
 
 	conf_free(conf());
 	knot_dname_free(zone_name, NULL);
+	knot_dname_free(zone2_name, NULL);
 	knot_dname_free(key1_name, NULL);
 	knot_dname_free(key2_name, NULL);
 	knot_dname_free(key3_name, NULL);
