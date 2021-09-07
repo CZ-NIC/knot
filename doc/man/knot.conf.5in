@@ -491,7 +491,7 @@ Ignore invalid resets and ACKs
 .IP \(bu 2
 Receive fragmented data – one DNS message in multiple packets
 .IP \(bu 2
-Limit total size of incomming buffers, reset most inactive connections
+Limit total size of incoming buffers, reset most inactive connections
 with buffered data
 .IP \(bu 2
 Send fragmented data – DNS message larger than allowed by MSS
