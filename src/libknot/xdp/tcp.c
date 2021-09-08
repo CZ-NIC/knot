@@ -330,11 +330,12 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 			} else {
 				switch ((*conn)->state) {
 				case XDP_TCP_NORMAL:
+				case XDP_TCP_CLOSING1: // just a mess, ignore
 					break;
 				case XDP_TCP_ESTABLISHING:
 					(*conn)->state = XDP_TCP_NORMAL;
 					break;
-				case XDP_TCP_CLOSING:
+				case XDP_TCP_CLOSING2:
 					tcp_table_del(conn, tcp_table);
 					break;
 				}
@@ -344,7 +345,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 			if (!seq_ack_match) {
 				resp_ack(msg, KNOT_XDP_MSG_RST);
 			} else {
-				if ((*conn)->state == XDP_TCP_CLOSING) {
+				if ((*conn)->state == XDP_TCP_CLOSING1) {
 					resp_ack(msg, KNOT_XDP_MSG_ACK);
 					relay.action = XDP_TCP_CLOSE;
 					if (knot_tcp_relay_dynarray_add(relays, &relay) == NULL) {
@@ -357,7 +358,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 					if (knot_tcp_relay_dynarray_add(relays, &relay) == NULL) {
 						ret = KNOT_ENOMEM;
 					}
-					(*conn)->state = XDP_TCP_CLOSING;
+					(*conn)->state = XDP_TCP_CLOSING2;
 					(*conn)->ackno++;
 				}
 			}
@@ -504,7 +505,7 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
 			msg->payload.iov_len = 0;
 			assert(rl->conn != NULL);
 			rl->conn->ackno++;
-			rl->conn->state = XDP_TCP_CLOSING;
+			rl->conn->state = XDP_TCP_CLOSING1;
 			break;
 		case XDP_TCP_RESET:
 		default:
@@ -555,7 +556,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 
 			reset_buf_size -= MIN(reset_buf_size, conn->inbuf.iov_len);
 		} else if (now - conn->last_active >= close_timeout) {
-			if (conn->state != XDP_TCP_CLOSING) {
+			if (conn->state != XDP_TCP_CLOSING1) {
 				rl.answer = XDP_TCP_CLOSE;
 				if (close_count != NULL) {
 					(*close_count)++;
@@ -566,7 +567,10 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 		}
 
 		rl.conn = conn;
-		(void)knot_tcp_relay_dynarray_add(&relays, &rl);
+		if (rl.answer != XDP_TCP_NOOP) {
+			(void)knot_tcp_relay_dynarray_add(&relays, &rl);
+			rl.answer = XDP_TCP_NOOP;
+		}
 		if (relays.size >= max_at_once) {
 			break;
 		}
