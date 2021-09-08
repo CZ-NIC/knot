@@ -317,38 +317,38 @@ static int dir_can_create(const char *dir)
 	}
 }
 
-static int check_db(
+static void check_db(
 	knotd_conf_check_args_t *args,
 	const yp_name_t *db_type,
 	int (*check_fun)(const char *),
-	const char *desc,
-	int ret)
+	const char *desc)
 {
-	if (ret != KNOT_EOK) {
-		return ret;
+	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                              C_DB, db_type);
+	if (db_type != NULL && val.code != KNOT_EOK) {
+		// Don't check implicit database values.
+		return;
 	}
 
 	char *db = conf_db_txn(args->extra->conf, args->extra->txn, db_type);
-	ret = check_fun(db);
+	int ret = check_fun(db);
 	if (ret != KNOT_EOK) {
-		CONF_LOG(LOG_ERR, "%s '%s' not usable", desc, db);
+		CONF_LOG(LOG_WARNING, "%s '%s' %s", desc, db,
+		         (ret == KNOT_EACCES ? "not writable" : knot_strerror(ret)));
 	}
 	free(db);
-	return ret;
 }
 
 int check_database(
 	knotd_conf_check_args_t *args)
 {
-	int ret = KNOT_EOK;
+	check_db(args, NULL,         dir_exists,     "database storage");
+	check_db(args, C_TIMER_DB,   dir_can_create, "timer database");
+	check_db(args, C_JOURNAL_DB, dir_can_create, "journal database");
+	check_db(args, C_KASP_DB,    dir_can_create, "KASP database");
+	check_db(args, C_CATALOG_DB, dir_can_create, "catalog database");
 
-	ret = check_db(args, NULL,         dir_exists,     "database storage", ret);
-	ret = check_db(args, C_TIMER_DB,   dir_can_create, "timer database",   ret);
-	ret = check_db(args, C_JOURNAL_DB, dir_can_create, "journal database", ret);
-	ret = check_db(args, C_KASP_DB,    dir_can_create, "KASP database",    ret);
-	ret = check_db(args, C_CATALOG_DB, dir_can_create, "catalog database", ret);
-
-	return ret;
+	return KNOT_EOK;
 }
 
 int check_modref(
