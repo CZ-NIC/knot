@@ -42,7 +42,8 @@ typedef enum {
 typedef enum {
 	XDP_TCP_NORMAL,
 	XDP_TCP_ESTABLISHING,
-	XDP_TCP_CLOSING,
+	XDP_TCP_CLOSING1, // FIN+ACK sent
+	XDP_TCP_CLOSING2, // FIND+ACK received and sent
 } knot_tcp_state_t;
 
 typedef enum {

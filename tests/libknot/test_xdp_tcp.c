@@ -326,7 +326,7 @@ void test_close(void)
 	knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[0];
 	is_int(XDP_TCP_CLOSE, rl->action, "close: relay action");
 	ok(rl->conn == test_conn, "close: same connection");
-	is_int(XDP_TCP_CLOSING, rl->conn->state, "close: conn state");
+	is_int(XDP_TCP_CLOSING2, rl->conn->state, "close: conn state");
 	knot_tcp_relay_free(&relays);
 
 	msg.flags &= ~KNOT_XDP_MSG_FIN;
