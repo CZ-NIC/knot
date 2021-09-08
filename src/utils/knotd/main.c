@@ -24,6 +24,7 @@
 #include <getopt.h>
 #include <sys/stat.h>
 #include <urcu.h>
+#include <malloc.h>
 
 #ifdef ENABLE_CAP_NG
 #include <cap-ng.h>
@@ -394,6 +395,11 @@ int main(int argc, char **argv)
 		{ "version",       no_argument,       NULL, 'V' },
 		{ NULL }
 	};
+
+	/* For memory fragmentation testing - temporary!!! */
+	if (mallopt(M_MXFAST, 0) == 0) {
+		return EXIT_FAILURE;
+	}
 
 	/* Set the time zone. */
 	tzset();
