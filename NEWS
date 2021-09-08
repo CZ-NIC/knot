@@ -1,3 +1,40 @@
+Knot DNS 3.1.2 (2021-09-08)
+===========================
+
+Features:
+---------
+ - knotd: new policy configuration for postponing complete deletion of previous keys
+ - keymgr: new optional pretty mode (-b) of listing keys
+ - kdig: added support for TCP keepopen #503
+
+Improvements:
+-------------
+ - knotd: configuration item values can contain UTF-8 characters
+ - knotd: added configuration check for database storage writability
+ - knotd: better error reporting if zone is empty
+ - knotd: smaller journal database chunks in order to mitigate LMDB fragmentation
+ - knotd/kxdpgun: CAP_SYS_RESOURCE capability no longer needed for XDP on Linux >= 5.11
+
+Bugfixes:
+---------
+ - knotd: incomplete NSEC3 proof in response to opt-outed empty non-terminal
+ - knotd: wrong SOA serial handling when enabling signing on already existing secondary zone
+ - knotd: defective ZONEMD verification error reporting when loading zone #759
+ - knotd: server can crash when reloading catalog zone #761
+ - knotd: DNSSEC validation doesn't work when only NSEC3 chain changes
+ - knotd: DNSSEC validation doesn't check if empty non-terminal over non-opt-outed
+          delegation isn't opt-outed too
+ - knotd: ZONEMD generation doesn't cause flushing zone to disk #758
+ - knotd: incorrect evaluation of ACL deny rule in combination with TSIG
+ - knotd: failed DS-check is replaned even if no key is ready
+ - kdig: abort when query times out #763
+ - libzscanner: missing output overflow check in the SVCB parsing
+
+Compatibility:
+--------------
+ - keymgr: parameter -d is marked deprecated in favor of new parameter -D
+ - kjournalprint: parameter -n is marked deprecated in favor of new parameter -x
+
 Knot DNS 3.1.1 (2021-08-10)
 ===========================
 
