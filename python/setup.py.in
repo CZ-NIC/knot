@@ -1,8 +1,5 @@
-import os
 import pathlib
 import setuptools
-
-here = os.path.dirname(os.path.realpath (__file__))
 
 p = pathlib.Path("README.md")
 if p.exists():
@@ -19,9 +16,6 @@ setuptools.setup(
     url='https://gitlab.nic.cz/knot/knot-dns',
     license='GPL-3.0',
     packages=['libknot'],
-    package_dir = {
-        'libknot': os.path.join(here, 'libknot'),
-    },
     classifiers=[ # See https://pypi.org/classifiers
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
