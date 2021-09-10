@@ -201,6 +201,9 @@ static void init_cache(
 	val = conf_get(conf, C_XDP, C_TCP_IDLE_RESET);
 	conf->cache.xdp_tcp_idle_reset = conf_int(&val);
 
+	val = conf_get(conf, C_XDP, C_TCP_RESEND);
+	conf->cache.xdp_tcp_idle_resend = conf_int(&val);
+
 	conf->cache.xdp_tcp = running_xdp_tcp;
 
 	conf->cache.xdp_route_check = running_route_check;

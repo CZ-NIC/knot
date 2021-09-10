@@ -246,6 +246,7 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
 	{ C_TCP_IDLE_CLOSE,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },
 	{ C_TCP_IDLE_RESET,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 20, YP_STIME } },
+	{ C_TCP_RESEND,           YP_TINT,  YP_VINT = { 1, INT32_MAX, 5, YP_STIME } },
 	{ C_ROUTE_CHECK,          YP_TBOOL, YP_VNONE },
 	{ NULL }
 };

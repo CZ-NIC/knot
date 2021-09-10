@@ -524,6 +524,7 @@ Various options related to XDP listening, especially TCP.
      tcp-inbuf-max-size: SIZE
      tcp-idle-close-timeout: TIME
      tcp-idle-reset-timeout: TIME
+     tcp-resend-timeout: TIME
      route-check: BOOL
 
 .. CAUTION::
@@ -631,6 +632,18 @@ Time in seconds, after which any idle connection is forcibly closed.
 *Minimum:* 1 s
 
 *Default:* 20 s
+
+.. _xdp_tcp-resend-timeout:
+
+tcp-resend-timeout
+------------------
+
+Resend outgoing data packets (with DNS response payload) if not ACKed
+before this timeout.
+
+*Minimum:* 1 s
+
+*Default:* 5 s
 
 .. _xdp_route-check:
 

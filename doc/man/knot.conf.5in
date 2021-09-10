@@ -496,6 +496,7 @@ xdp:
     tcp\-inbuf\-max\-size: SIZE
     tcp\-idle\-close\-timeout: TIME
     tcp\-idle\-reset\-timeout: TIME
+    tcp\-resend\-timeout: TIME
     route\-check: BOOL
 .ft P
 .fi
@@ -611,6 +612,14 @@ Time in seconds, after which any idle connection is forcibly closed.
 \fIMinimum:\fP 1 s
 .sp
 \fIDefault:\fP 20 s
+.SS tcp\-resend\-timeout
+.sp
+Resend outgoing data packets (with DNS response payload) if not ACKed
+before this timeout.
+.sp
+\fIMinimum:\fP 1 s
+.sp
+\fIDefault:\fP 5 s
 .SS route\-check
 .sp
 If enabled, routing information from the operating system is considered
