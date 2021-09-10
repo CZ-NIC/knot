@@ -135,6 +135,7 @@ typedef struct {
 		size_t xdp_tcp_inbuf_max_size;
 		uint32_t xdp_tcp_idle_close;
 		uint32_t xdp_tcp_idle_reset;
+		uint32_t xdp_tcp_idle_resend;
 		bool xdp_tcp;
 		bool xdp_route_check;
 		int ctl_timeout;

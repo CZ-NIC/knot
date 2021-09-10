@@ -419,34 +419,23 @@ void *xdp_gun_thread(void *_ctx)
 					break;
 				}
 				if (ctx->tcp) {
-					uint32_t ack_errors = 0;
-					knot_tcp_relay_dynarray_t relays = { 0 };
-					ret = knot_tcp_relay(xsk, pkts, recvd, tcp_table, NULL,
-					                     &relays, &ack_errors);
-					lost += ack_errors;
+					knot_tcp_relay_t relays[recvd];
+					ret = knot_tcp_recv(relays, pkts, recvd, tcp_table, NULL);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
 					}
 
-					size_t relays_answer = relays.size;
-					for (size_t i = 0; i < relays_answer; i++) {
-						knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[i];
+					for (size_t i = 0; i < recvd; i++) {
+						knot_tcp_relay_t *rl = &relays[i];
 						struct iovec payl;
 						switch (rl->action) {
 						case XDP_TCP_ESTABLISH:
 							local_stats.synack_recv++;
-							rl->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
 							put_dns_payload(&payl, true, ctx, &payload_ptr);
-							ret = knot_tcp_relay_answer(&relays, rl, payl.iov_base,
-							                            payl.iov_len);
+							ret = knot_tcp_reply_data(rl, tcp_table, payl.iov_base, payl.iov_len);
 							if (ret != KNOT_EOK) {
 								errors++;
-							}
-							break;
-						case XDP_TCP_DATA:
-							if (check_dns_payload(&rl->data, ctx, &local_stats)) {
-								rl->answer = XDP_TCP_ANSWER | XDP_TCP_CLOSE;
 							}
 							break;
 						case XDP_TCP_CLOSE:
@@ -458,16 +447,20 @@ void *xdp_gun_thread(void *_ctx)
 						default:
 							break;
 						}
+						for (size_t j = 0; j < rl->inbufs_count; j++) {
+							if (check_dns_payload(&rl->inbufs[j], ctx, &local_stats)) {
+								rl->answer = XDP_TCP_CLOSE;
+							}
+						}
 					}
 
-					ret = knot_tcp_send(xsk, knot_tcp_relay_dynarray_arr(&relays),
-					                    relays.size);
+					ret = knot_tcp_send(xsk, relays, recvd, ctx->at_once);
 					if (ret != KNOT_EOK) {
 						errors++;
 					}
 					(void)knot_xdp_send_finish(xsk);
 
-					knot_tcp_relay_free(&relays);
+					knot_tcp_cleanup(tcp_table, relays, recvd);
 				} else {
 					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx,
