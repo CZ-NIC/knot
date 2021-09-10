@@ -32,7 +32,7 @@ typedef struct xdp_handle_ctx {
 	knot_xdp_socket_t *sock;
 	knot_xdp_msg_t msg_recv[XDP_BATCHLEN];
 	knot_xdp_msg_t msg_send_udp[XDP_BATCHLEN];
-	knot_tcp_relay_dynarray_t tcp_relays;
+	knot_tcp_relay_t relays[XDP_BATCHLEN];
 	uint32_t msg_recv_count;
 	uint32_t msg_udp_count;
 	knot_tcp_table_t *tcp_table;
@@ -40,8 +40,10 @@ typedef struct xdp_handle_ctx {
 	bool tcp;
 	size_t tcp_max_conns;
 	size_t tcp_max_inbufs;
+	size_t tcp_max_obufs;
 	uint32_t tcp_idle_close; // In microseconds.
 	uint32_t tcp_idle_reset; // In microseconds.
+	uint32_t tcp_idle_resend;
 } xdp_handle_ctx_t;
 
 static bool udp_state_active(int state)
@@ -66,8 +68,10 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 	ctx->tcp            = pconf->cache.xdp_tcp;
 	ctx->tcp_max_conns  = pconf->cache.xdp_tcp_max_clients    / pconf->cache.srv_xdp_threads;
 	ctx->tcp_max_inbufs = pconf->cache.xdp_tcp_inbuf_max_size / pconf->cache.srv_xdp_threads;
+	ctx->tcp_max_obufs  = pconf->cache.xdp_tcp_inbuf_max_size / pconf->cache.srv_xdp_threads; // FIXME another setting for outbuf!!
 	ctx->tcp_idle_close = pconf->cache.xdp_tcp_idle_close * 1000000;
 	ctx->tcp_idle_reset = pconf->cache.xdp_tcp_idle_reset * 1000000;
+	ctx->tcp_idle_resend= pconf->cache.xdp_tcp_idle_resend * 1000000;
 	rcu_read_unlock();
 }
 
@@ -181,50 +185,37 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                        knotd_qdata_params_t *params)
 {
-	uint32_t ack_errors = 0;
-	int ret = knot_tcp_relay(ctx->sock, ctx->msg_recv, ctx->msg_recv_count,
-	                         ctx->tcp_table, NULL, &ctx->tcp_relays, &ack_errors);
+	int ret = knot_tcp_recv(ctx->relays, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, NULL);
 	if (ret != KNOT_EOK) {
 		log_notice("TCP, failed to process some packets (%s)", knot_strerror(ret));
 		return;
-	} else if (ctx->tcp_relays.size == 0) {
+	} else if (knot_tcp_relay_empty(&ctx->relays[0])) { // no TCP traffic
 		return;
-	} else if (ack_errors > 0) {
-		log_notice("TCP, failed to send some ACK packets");
 	}
 
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
-	// Note dynaray_foreach can't be used as we insert into the dynarray inside the loop.
-	for (int n_tcp_relays = ctx->tcp_relays.size, rli = 0; rli < n_tcp_relays; rli++) {
-		knot_tcp_relay_t *rl = knot_tcp_relay_dynarray_arr(&ctx->tcp_relays) + rli;
-		if ((rl->action & XDP_TCP_DATA) == 0 || rl->answer != XDP_TCP_NOOP) {
-			continue;
-		}
+	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
+		knot_tcp_relay_t *rl = &ctx->relays[i];
 
-		// Consume the query.
-		handle_init(params, layer, rl->msg, &rl->data);
+		for (size_t j = 0; j < rl->inbufs_count; j++) {
+			// Consume the query.
+			handle_init(params, layer, rl->msg, &rl->inbufs[j]);
 
-		// Process the reply.
-		knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);
-		while (tcp_active_state(layer->state)) {
-			knot_layer_produce(layer, ans);
-			if (!tcp_send_state(layer->state)) {
-				continue;
+			// Process the reply.
+			knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);
+			while (tcp_active_state(layer->state)) {
+				knot_layer_produce(layer, ans);
+				if (!tcp_send_state(layer->state)) {
+					continue;
+				}
+
+				(void)knot_tcp_reply_data(rl, ctx->tcp_table, ans->wire, ans->size);
+				// ignore unprobable ENOMEM here
 			}
 
-			ret = knot_tcp_relay_answer(&ctx->tcp_relays, rl,
-			                            ans->wire, ans->size);
-			if (ret != KNOT_EOK) {
-				char addr[SOCKADDR_STRLEN];
-				sockaddr_tostr(addr, sizeof(addr), params->remote);
-				log_notice("TCP, failed to reply, address %s (%s)",
-				           addr, knot_strerror(ret));
-				layer->state = KNOT_STATE_FAIL;
-			}
+			handle_finish(layer);
 		}
-
-		handle_finish(layer);
 	}
 }
 
@@ -254,8 +245,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 	uint32_t unused;
 	(void)knot_xdp_send(ctx->sock, ctx->msg_send_udp, ctx->msg_udp_count, &unused);
 	if (ctx->tcp) {
-		int ret = knot_tcp_send(ctx->sock, knot_tcp_relay_dynarray_arr(&ctx->tcp_relays),
-		                        ctx->tcp_relays.size);
+		int ret = knot_tcp_send(ctx->sock, ctx->relays, ctx->msg_recv_count, XDP_BATCHLEN);
 		if (ret != KNOT_EOK) {
 			log_notice("TCP, failed to send some packets");
 		}
@@ -263,16 +253,8 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 	(void)knot_xdp_send_finish(ctx->sock);
 
 	if (ctx->tcp) {
-		knot_tcp_relay_free(&ctx->tcp_relays);
+		knot_tcp_cleanup(ctx->tcp_table, ctx->relays, ctx->msg_recv_count);
 	}
-}
-
-static size_t overweight(size_t weight, size_t max_weight)
-{
-	int64_t w = weight;
-	w -= max_weight;
-	w = MAX(w, 0);
-	return w;
 }
 
 void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
@@ -284,13 +266,17 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 	uint32_t prev_reset;
 	uint32_t total_reset = 0, total_close = 0;
 	int ret = KNOT_EOK;
+	knot_tcp_relay_t sweep_relays[XDP_BATCHLEN];
 	do {
 		prev_reset = total_reset;
-		ret = knot_tcp_sweep(ctx->tcp_table, ctx->sock, 20,
-		                     ctx->tcp_idle_close, ctx->tcp_idle_reset,
-		                     overweight(ctx->tcp_table->usage, ctx->tcp_max_conns),
-		                     overweight(ctx->tcp_table->inbufs_total, ctx->tcp_max_inbufs),
-		                     &total_close, &total_reset);
+		ret = knot_tcp_sweep(ctx->tcp_table, ctx->tcp_idle_close, ctx->tcp_idle_reset,
+		                     ctx->tcp_idle_resend,
+		                     ctx->tcp_max_conns, ctx->tcp_max_inbufs, ctx->tcp_max_obufs,
+		                     sweep_relays, XDP_BATCHLEN, &total_close, &total_reset);
+		if (ret == KNOT_EOK) {
+			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
+		}
+		knot_tcp_cleanup(ctx->tcp_table, sweep_relays, XDP_BATCHLEN);
 	} while (ret == KNOT_EOK && prev_reset < total_reset);
 
 	if (total_close > 0 || total_reset > 0) {
