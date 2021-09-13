@@ -71,9 +71,9 @@ Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 License: GPL-3+
 
 Files: src/contrib/url-parser/*
-Copyright: Igor Sysoev
-Copyright: Nginx, Inc.
-Copyright: Joyent, Inc.
+Copyright: 2020 Igor Sysoev
+           2020 Nginx, Inc.
+           2020 Joyent, Inc.
 License: MIT
 
 Files: src/contrib/vpool/*
