@@ -60,7 +60,7 @@ static void ensure_cat_version(knot_lmdb_txn_t *ro_txn, knot_lmdb_txn_t *rw_txn)
 	if (knot_lmdb_find(ro_txn, &key, KNOT_LMDB_EXACT)) {
 		if (strncmp(CATALOG_VERSION, ro_txn->cur_val.mv_data,
 		            ro_txn->cur_val.mv_size) != 0) {
-			log_warning("unmatching catalog version");
+			log_warning("catalog version mismatch");
 		}
 	} else if (rw_txn != NULL) {
 		MDB_val val = { strlen(CATALOG_VERSION), CATALOG_VERSION };
