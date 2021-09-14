@@ -54,20 +54,25 @@ void catalog_init(catalog_t *cat, const char *path, size_t mapsize)
 	knot_lmdb_init(&cat->db, path, mapsize, MDB_NOTLS, NULL);
 }
 
+static void ensure_cat_version(knot_lmdb_txn_t *ro_txn, knot_lmdb_txn_t *rw_txn)
+{
+	MDB_val key = { 8, "\x01version" };
+	if (knot_lmdb_find(ro_txn, &key, KNOT_LMDB_EXACT)) {
+		if (strncmp(CATALOG_VERSION, ro_txn->cur_val.mv_data,
+		            ro_txn->cur_val.mv_size) != 0) {
+			log_warning("unmatching catalog version");
+		}
+	} else if (rw_txn != NULL) {
+		MDB_val val = { strlen(CATALOG_VERSION), CATALOG_VERSION };
+		knot_lmdb_insert(rw_txn, &key, &val);
+	}
+}
+
 // does NOT check for catalog zone version by RFC, this is Knot-specific in the cat LMDB !
 static void check_cat_version(catalog_t *cat)
 {
 	if (cat->ro_txn->ret == KNOT_EOK) {
-		MDB_val key = { 8, "\x01version" };
-		if (knot_lmdb_find(cat->ro_txn, &key, KNOT_LMDB_EXACT)) {
-			if (strncmp(CATALOG_VERSION, cat->ro_txn->cur_val.mv_data,
-			            cat->ro_txn->cur_val.mv_size) != 0) {
-				log_warning("unmatching catalog version");
-			}
-		} else if (cat->rw_txn != NULL) {
-			MDB_val val = { strlen(CATALOG_VERSION), CATALOG_VERSION };
-			knot_lmdb_insert(cat->rw_txn, &key, &val);
-		}
+		ensure_cat_version(cat->ro_txn, cat->rw_txn);
 	}
 }
 
@@ -331,6 +336,7 @@ int catalog_copy(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
 			knot_lmdb_insert(&txn_w, &txn_r.cur_key, &txn_r.cur_val);
 		}
 	}
+	ensure_cat_version(&txn_w, &txn_w);
 	if (txn_r.ret != KNOT_EOK) {
 		knot_lmdb_abort(&txn_r);
 		knot_lmdb_abort(&txn_w);
