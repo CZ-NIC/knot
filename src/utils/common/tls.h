@@ -66,8 +66,7 @@ void tls_params_clean(tls_params_t *params);
 int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait);
 int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote,
                     bool fastopen, struct sockaddr_storage *addr,
-                    const gnutls_datum_t *protocol, const char *priority,
-                    bool handshake);
+                    const gnutls_datum_t *protocol, const char *priority);
 int tls_ctx_send(tls_ctx_t *ctx, const uint8_t *buf, const size_t buf_len);
 int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len);
 void tls_ctx_close(tls_ctx_t *ctx);

@@ -566,6 +566,13 @@ AC_ARG_WITH(libnghttp2,
   with_libnghttp2=yes
 )
 
+dnl Check for libngtcp2.
+AC_ARG_WITH(libngtcp2,
+  AS_HELP_STRING([--with-libngtcp2=[DIR]], [Support DoQ (needs libngtcp2)]),
+  with_libngtcp2=$withval,
+  with_libngtcp2=yes
+)
+
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
@@ -591,6 +598,16 @@ AS_IF([test "$enable_utilities" = "yes"], [
     ], [
       with_libnghttp2=no
       AC_MSG_WARN([libnghttp2 not found])
+    ])
+  ])
+
+  AS_IF([test "$with_libngtcp2" != "no"], [
+    PKG_CHECK_MODULES([libngtcp2], [libngtcp2 libngtcp2_crypto_gnutls], [
+      with_libngtcp2=libngtcp2
+      AC_DEFINE([LIBNGTCP2], [1], [Define to 1 to enable DoQ support])
+    ], [
+      with_libngtcp2=no
+      AC_MSG_WARN([libngtcp2 not found])
     ])
   ])
 
@@ -779,6 +796,7 @@ result_msg_base="  Knot DNS $VERSION
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
     Utilities with DoH:     ${with_libnghttp2}
+    Utilities with DoQ:     ${with_libngtcp2}
     Utilities with Dnstap:  ${enable_dnstap}
     MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}

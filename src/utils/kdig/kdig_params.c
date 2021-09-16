@@ -919,6 +919,7 @@ static int opt_nohttps_get(const char *arg, void *query)
 
 static int opt_quic(const char *arg, void *query)
 {
+#ifdef LIBNGTCP2
 	query_t *q = query;
 
 	opt_tls(arg, query);
@@ -926,15 +927,22 @@ static int opt_quic(const char *arg, void *query)
 	q->quic.enable = true;
 
 	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGTCP2
 }
 
 static int opt_noquic(const char *arg, void *query)
 {
+#ifdef LIBNGTCP2
 	query_t *q = query;
 
-	q->quic.enable = false;
+	quic_params_clean(&q->quic);
 
 	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGTCP2
 }
 
 
@@ -1557,6 +1565,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->port = strdup(conf->port);
 		tls_params_copy(&query->tls, &conf->tls);
 		https_params_copy(&query->https, &conf->https);
+		quic_params_copy(&query->quic, &conf->quic);
 		if (conf->tsig_key.name != NULL) {
 			int ret = knot_tsig_key_copy(&query->tsig_key,
 			                             &conf->tsig_key);
@@ -1619,6 +1628,7 @@ void query_free(query_t *query)
 
 	tls_params_clean(&query->tls);
 	https_params_clean(&query->https);
+	quic_params_clean(&query->quic);
 
 	// Cleanup signing key.
 	knot_tsig_key_deinit(&query->tsig_key);
@@ -2205,6 +2215,9 @@ static void print_help(void)
 	       "       +[no]https[=URL]           Use HTTPS protocol. It's also possible to specify\n"
 	       "                                  URL where query will be sent.\n"
 	       "       +[no]https-get             Use HTTPS protocol with GET method instead of POST.\n"
+#endif
+#ifdef LIBNGTCP2
+	       "       +[no]quic                  Use QUIC protocol.\n"
 #endif
 	       "       +[no]nsid                  Request NSID.\n"
 	       "       +[no]bufsize=B             Set EDNS buffer size.\n"

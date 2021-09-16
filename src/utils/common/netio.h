@@ -81,7 +81,10 @@ typedef struct {
 	/*! HTTPS context. */
 	https_ctx_t https;
 #endif
+#ifdef LIBNGTCP2
+	/*! QUIC context. */
 	quic_ctx_t quic;
+#endif
 } net_t;
 
 /*!
@@ -212,7 +215,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len);
  * \retval >=0		length of successfully received data.
  * \retval errcode	if error.
  */
-int net_receive(net_t *net, uint8_t *buf, const size_t buf_len);
+int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len);
 
 /*!
  * \brief Closes current network connection.

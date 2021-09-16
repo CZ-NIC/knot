@@ -326,7 +326,7 @@ int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
 	}
 
 	// Create TLS connection
-	int ret = tls_ctx_connect(ctx->tls, sockfd, remote, fastopen, addr, https_protocols, NULL, true);
+	int ret = tls_ctx_connect(ctx->tls, sockfd, remote, fastopen, addr, https_protocols, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

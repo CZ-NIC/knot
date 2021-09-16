@@ -18,9 +18,6 @@
 #pragma once
 
 #include <stdbool.h>
-#include <ngtcp2/ngtcp2.h>
-
-#include "utils/common/tls.h"
 
 /*! \brief QUIC parameters. */
 typedef struct {
@@ -28,29 +25,53 @@ typedef struct {
 	bool enable;
 } quic_params_t;
 
+int quic_params_copy(quic_params_t *dst, const quic_params_t *src);
+
+void quic_params_clean(quic_params_t *params);
+
+#ifdef LIBNGTCP2
+
+#include <ngtcp2/ngtcp2.h>
+
+#include "utils/common/tls.h"
+
 typedef struct {
+	// Parameters
+	quic_params_t params;
+
+	// Context
 	tls_ctx_t *tls;
 	/*! ngtcp2 (QUIC) setting. */
 	ngtcp2_settings settings;
 	ngtcp2_path path;
-	/*! client secret */
-	uint8_t static_secret[32];
 	/*! Stream context */
 	struct {
 		int64_t stream_id;
-		uint8_t *data;
-		size_t datalen;
+		uint8_t *tx_data;
+		size_t tx_datalen;
 		size_t nwrite;
+		uint8_t *rx_data;
+		size_t rx_datalen;
+		size_t nread;
 	} stream;
 	uint64_t last_error;
-	/*! QUIC parameters. */
-	const quic_params_t *params;
-	/*! QUIC state. */
 	ngtcp2_conn *conn;
 } quic_ctx_t;
 
-int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx, const quic_params_t *params);
+int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx,
+        const quic_params_t *params);
 
-int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote, struct sockaddr_storage *dst_addr);
+int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
+        struct sockaddr_storage *dst_addr);
 
-int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
+int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
+        const uint8_t *buf, const size_t buf_len);
+
+int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
+        struct addrinfo *srv, int timeout_ms);
+
+void quic_ctx_close(quic_ctx_t *ctx);
+
+void quic_ctx_deinit(quic_ctx_t *ctx);
+
+#endif

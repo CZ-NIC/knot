@@ -433,6 +433,14 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 		return KNOT_ENOMEM;
 	}
 
+	ret = gnutls_init(&ctx->session, GNUTLS_CLIENT | GNUTLS_NONBLOCK);
+	if (ret != GNUTLS_E_SUCCESS) {
+		//TODO there is net_clean called when init is not sucessful, its
+		//     confusing, i would free here
+		//gnutls_certificate_free_credentials(&ctx->credentials);
+		return KNOT_ENOMEM;
+	}
+
 	// Import system certificates.
 	if (ctx->params->system_ca ||
 	    (ctx->params->hostname != NULL && EMPTY_LIST(ctx->params->ca_files))) {
@@ -461,9 +469,6 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 		}
 	}
 
-	//TODO remove just for QUIC, resolve problem later
-	//gnutls_certificate_set_verify_function(ctx->credentials, verify_certificate);
-
 	// Setup client keypair if specified. Both key and cert files must be provided.
 	if (params->keyfile != NULL && params->certfile != NULL) {
 		// First, try PEM.
@@ -491,37 +496,33 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 		return KNOT_ERROR;
 	}
 
+	ret = gnutls_credentials_set(ctx->session, GNUTLS_CRD_CERTIFICATE,
+	                             ctx->credentials);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(ctx->session);
+		return KNOT_ERROR;
+	}
+
 	return KNOT_EOK;
 }
 
 int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote,
                     bool fastopen, struct sockaddr_storage *addr,
-                    const gnutls_datum_t *protocol, const char *priority,
-                    bool handshake)
+                    const gnutls_datum_t *protocol, const char *priority)
 {
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int ret = gnutls_init(&ctx->session, GNUTLS_CLIENT | GNUTLS_NONBLOCK);
-	if (ret != GNUTLS_E_SUCCESS) {
-		return KNOT_NET_ECONNECT;
-	}
+	gnutls_certificate_set_verify_function(ctx->credentials, verify_certificate);
 
+	int ret = 0;
 	if (priority != NULL) {
 		ret = gnutls_priority_set_direct(ctx->session, priority, NULL);
 	} else {
 		ret = gnutls_set_default_priority(ctx->session);
 	}
 	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_deinit(ctx->session);
-		return KNOT_NET_ECONNECT;
-	}
-
-	ret = gnutls_credentials_set(ctx->session, GNUTLS_CRD_CERTIFICATE,
-	                             ctx->credentials);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_deinit(ctx->session);
 		return KNOT_NET_ECONNECT;
 	}
 
@@ -564,12 +565,6 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote,
 		.events = POLLIN,
 		.revents = 0,
 	};
-
-	// Perform the TLS handshake
-	if (!handshake) {
-		ctx->sockfd = sockfd;
-		return KNOT_EOK;
-	}
 
 	do {
 		ret = gnutls_handshake(ctx->session);
