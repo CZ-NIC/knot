@@ -26,6 +26,7 @@
 #include "knot/zone/zonefile.h"
 #include "contrib/trim.h"
 #include "contrib/ucw/lists.h"
+#include <malloc.h>
 
 #include <signal.h>
 #include <unistd.h>
@@ -794,8 +795,14 @@ static void update_clear(struct rcu_head *param)
 	apply_cleanup(ctx->cleanup_apply);
 	free(ctx->cleanup_apply);
 
+	fprintf(stderr, "--- before trim ---\n");
+	malloc_stats();
+
 	if (counter_reach(&counter, ctx->new_cont_size, UPDATE_MEMTRIM_AT)) {
 		mem_trim();
+		sleep(5);
+	fprintf(stderr, "--- after trim ---\n");
+	malloc_stats();
 	}
 
 	free(ctx);

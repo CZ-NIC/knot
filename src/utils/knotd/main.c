@@ -25,6 +25,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <urcu.h>
+#include <malloc.h>
 
 #ifdef ENABLE_CAP_NG
 #include <cap-ng.h>
@@ -365,6 +366,23 @@ static int set_config(const char *confdb, const char *config, size_t max_conf_si
 	return KNOT_EOK;
 }
 
+void static malloc_dbg()
+{
+	struct mallinfo mi = mallinfo();
+	printf("arena %i\n"
+	       "ordblks %i\n"
+	       "smblks %i\n"
+	       "hblks %i\n"
+	       "hblkhd %i\n"
+	       "usmblks %i\n"
+	       "fsmblks %i\n"
+	       "uordblks %i\n"
+	       "fordblks %i\n"
+	       "keepcost %i\n",
+	       mi.arena, mi.ordblks, mi.smblks, mi.hblks, mi.hblkhd, mi.usmblks,
+	       mi.fsmblks, mi.uordblks, mi.fordblks, mi.keepcost);
+}
+
 int main(int argc, char **argv)
 {
 	bool daemonize = false;
@@ -593,6 +611,9 @@ int main(int argc, char **argv)
 
 	log_info("shutting down");
 	log_close();
+
+	fprintf(stderr, "---------------------------\n");
+	malloc_stats();
 
 	return EXIT_SUCCESS;
 }
