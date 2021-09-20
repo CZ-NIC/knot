@@ -76,6 +76,7 @@ inline static void *prot_read_tcp(void *data, knot_xdp_msg_t *msg, uint16_t *src
 
 	msg->seqno = be32toh(tcp->seq);
 	msg->ackno = be32toh(tcp->ack_seq);
+	msg->win = be16toh(tcp->window);
 
 	*src_port = tcp->source;
 	*dst_port = tcp->dest;
@@ -96,6 +97,10 @@ inline static void *prot_read_tcp(void *data, knot_xdp_msg_t *msg, uint16_t *src
 			msg->flags |= KNOT_XDP_MSG_MSS;
 			memcpy(&msg->mss, &opts[2], sizeof(msg->mss));
 			msg->mss = be16toh(msg->mss);
+		}
+
+		if (opts[0] == PROT_TCP_OPT_WSC && opts[1] == PROT_TCP_OPT_LEN_WSC) {
+			msg->win_scale = opts[2];
 		}
 
 		opts += opts[1];
