@@ -52,6 +52,8 @@ typedef struct knot_xdp_msg {
 	uint32_t seqno;
 	uint32_t ackno;
 	uint16_t mss;
+	uint16_t win;
+	uint8_t win_scale;
 } knot_xdp_msg_t;
 
 /*! @} */
