@@ -78,7 +78,6 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
  * the diff is calculated, so that this update is INCREMENTAL.
  *
  * \param update   Zone update structure to init.
- * \param conf     Configuration.
  * \param zone     Init with this zone.
  * \param old_cont The current zone contents the diff will be against. Probably zone->contents.
  * \param new_cont New zone contents. Will be taken over (and later freed) by zone update.
@@ -86,7 +85,7 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
  *
  * \return KNOT_E*
  */
-int zone_update_from_differences(zone_update_t *update, conf_t *conf, zone_t *zone, zone_contents_t *old_cont,
+int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_contents_t *old_cont,
                                  zone_contents_t *new_cont, zone_update_flags_t flags, bool ignore_dnssec);
 
 /*!

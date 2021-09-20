@@ -161,7 +161,7 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 	return init_base(update, zone, NULL, flags);
 }
 
-int zone_update_from_differences(zone_update_t *update, conf_t *conf, zone_t *zone, zone_contents_t *old_cont,
+int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_contents_t *old_cont,
 				 zone_contents_t *new_cont, zone_update_flags_t flags, bool ignore_dnssec)
 {
 	if (update == NULL || zone == NULL || new_cont == NULL ||
