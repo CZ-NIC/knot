@@ -167,8 +167,6 @@ static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *t
 	c->ackno = msg->ackno;
 	c->acked = msg->ackno;
 
-	c->window_size = 65536; // FIXME
-
 	c->last_active = get_timestamp();
 	add_tail(tcp_table_timeout(table), tcp_conn_node(c));
 
@@ -227,6 +225,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			conn->seqno = knot_tcp_next_seqno(msg);
 			memcpy(conn->last_eth_rem, msg->eth_from, sizeof(conn->last_eth_rem));
 			memcpy(conn->last_eth_loc, msg->eth_to, sizeof(conn->last_eth_loc));
+			conn->window_size = (uint32_t)msg->win * (1LU << conn->window_scale);
 
 			conn->last_active = get_timestamp();
 			rem_node(tcp_conn_node(conn));
@@ -270,6 +269,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 					conn->state = XDP_TCP_ESTABLISHING;
 					conn->seqno++;
 					conn->mss = MAX(msg->mss, 536); // minimal MSS, most importantly not zero!
+					conn->window_scale = msg->win_scale;
 					if (!synack) {
 						conn->acked = dnssec_random_uint32_t();
 						conn->ackno = conn->acked;

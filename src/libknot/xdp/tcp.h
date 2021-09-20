@@ -65,6 +65,7 @@ typedef struct knot_tcp_conn {
 	uint8_t last_eth_rem[ETH_ALEN];
 	uint8_t last_eth_loc[ETH_ALEN];
 	uint16_t mss;
+	uint8_t window_scale;
 	uint32_t seqno;
 	uint32_t ackno;
 	uint32_t acked;

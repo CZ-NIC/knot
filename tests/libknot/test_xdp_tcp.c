@@ -507,6 +507,7 @@ void test_obufs(void)
 	size_t DATA_LEN = 65535; // with 2-byte len prefix, this is > 64k == window_size
 	uint8_t *data = calloc(DATA_LEN, 1);
 	rl.conn->mss = TEST_MSS;
+	rl.conn->window_size = 65536;
 	send2_mss = TEST_MSS;
 
 	int ret = knot_tcp_reply_data(&rl, test_table, data, DATA_LEN), i = 0;
@@ -538,6 +539,7 @@ void test_obufs(void)
 	prepare_seqack(&msg, 0, TEST_MSS);
 	ret = knot_tcp_recv(&rl, &msg, 1, test_table, NULL);
 	is_int(KNOT_EOK, ret, "obufs: ACKed data");
+	rl.conn->window_size = 65536;
 	struct tcp_outbuf *surv_ob = rl.conn->outbufs.bufs;
 	ok(surv_ob != NULL, "obufs: unACKed survived");
 	ok(surv_ob->next == NULL, "obufs: just one survived");
