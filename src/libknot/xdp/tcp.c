@@ -364,7 +364,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 			}
 			break;
 		case KNOT_XDP_MSG_RST:
-			if (seq_ack_match) {
+			if (conn != NULL && msg->seqno == conn->seqno) {
 				relay.action = XDP_TCP_RESET;
 				if (knot_tcp_relay_dynarray_add(relays, &relay) == NULL) {
 					ret = KNOT_ENOMEM;
