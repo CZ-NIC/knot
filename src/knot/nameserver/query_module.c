@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 
 #include "contrib/sockaddr.h"
 #include "libknot/attribute.h"
+#include "libknot/probe/data.h"
 #include "libknot/xdp.h"
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
@@ -658,6 +659,26 @@ const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata)
 #endif
 	} else {
 		return qdata->params->remote;
+	}
+}
+
+_public_
+uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata)
+{
+	if (qdata == NULL ||
+	    (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE)) { // not TCP
+		return 0;
+	}
+
+	if (qdata->params->xdp_msg != NULL) {
+#ifdef ENABLE_XDP
+		return qdata->params->xdp_conn->establish_rtt;
+#else
+		assert(0);
+		return 0;
+#endif
+	} else {
+		return knot_probe_tcp_rtt(qdata->params->socket);
 	}
 }
 

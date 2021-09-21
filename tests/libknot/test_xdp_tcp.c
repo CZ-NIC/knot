@@ -440,6 +440,8 @@ void test_ibufs_size(void)
 	for (int i = 0; i < CONNS; i++) {
 		msgs[i].flags = KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_ACK;
 	}
+	fix_seqacks(msgs, CONNS);
+	(void)knot_tcp_recv(rls, msgs, CONNS, test_table, NULL);
 
 	is_int(0, test_table->inbufs_total, "inbufs: initial total zero");
 

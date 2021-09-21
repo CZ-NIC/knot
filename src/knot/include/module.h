@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -404,6 +404,7 @@ typedef struct {
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
 	const struct knot_xdp_msg *xdp_msg;    /*!< Possible XDP message context. */
+	const struct knot_tcp_conn *xdp_conn;  /*!< Possible XDP TCP connection context. */
 } knotd_qdata_params_t;
 
 /*! Query processing data context. */
@@ -445,6 +446,15 @@ const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata,
  * \return Remote address or NULL if error.
  */
 const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata);
+
+/*!
+ * Gets the measured TCP round-trip-time.
+ *
+ * \param[in] qdata  Query data.
+ *
+ * \return RTT in microseconds or 0 if error or not available.
+ */
+uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata);
 
 /*!
  * Gets the current zone name.
