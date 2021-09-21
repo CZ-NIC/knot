@@ -32,22 +32,32 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkjournalprint\fP [\fIoptions\fP] \fIzone_name\fP
+\fBkjournalprint\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoption\fP\&...] \fIzone_name\fP
+.sp
+\fBkjournalprint\fP [\fIconfig_option\fP \fIconfig_argument\fP] \fB\-z\fP
 .SH DESCRIPTION
 .sp
 The program prints zone history stored in a journal database. As default,
 changes are colored for terminal.
+.SS Config options
+.INDENT 0.0
+.TP
+\fB\-c\fP, \fB\-\-config\fP \fIfile\fP
+Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
+.TP
+\fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
+Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
+The default configuration database, if exists, has a preference to the default
+configuration file.
+.TP
+\fB\-D\fP, \fB\-\-dir\fP \fIpath\fP
+Use specified journal database path and default configuration.
+.UNINDENT
 .SS Options
 .INDENT 0.0
 .TP
-\fB\-c\fP \fIconfigfile\fP
-Path to Knot configuration file.
-.TP
-\fB\-C\fP \fIconfdb\fP
-Path to Knot configuration database.
-.TP
-\fB\-D\fP \fIjournal\fP
-Path to journal database.
+\fB\-z\fP, \fB\-\-zone\-list\fP
+Instead of reading the journal, display the list of zones in the DB.
 .TP
 \fB\-l\fP, \fB\-\-limit\fP \fIlimit\fP
 Limits the number of displayed changes.
@@ -55,15 +65,11 @@ Limits the number of displayed changes.
 \fB\-s\fP, \fB\-\-serial\fP \fIsoa\fP
 Start at a specific SOA serial.
 .TP
-\fB\-d\fP, \fB\-\-debug\fP
-Debug mode brief output.
-.TP
-\fB\-z\fP, \fB\-\-zone\-list\fP
-Instead of reading the journal, display the list of zones in the DB.
-(\fIzone_name\fP not needed)
-.TP
 \fB\-H\fP, \fB\-\-check\fP
 Enable additional journal semantic checks during printing.
+.TP
+\fB\-d\fP, \fB\-\-debug\fP
+Debug mode brief output.
 .TP
 \fB\-x\fP, \fB\-\-mono\fP
 Don\(aqt generate colorized output.
