@@ -233,7 +233,12 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			memcpy(conn->last_eth_loc, msg->eth_to, sizeof(conn->last_eth_loc));
 			conn->window_size = (uint32_t)msg->win * (1LU << conn->window_scale);
 
-			conn->last_active = get_timestamp();
+			uint32_t now = get_timestamp();
+			if (conn->establish_rtt == 0 && conn->last_active != 0) {
+				conn->establish_rtt = now - conn->last_active;
+			}
+			conn->last_active = now;
+
 			rem_node(tcp_conn_node(conn));
 			add_tail(tcp_table_timeout(tcp_table), tcp_conn_node(conn));
 
@@ -304,6 +309,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 					break;
 				case XDP_TCP_ESTABLISHING:
 					conn->state = XDP_TCP_NORMAL;
+					relay->action = XDP_TCP_ESTABLISH;
 					break;
 				case XDP_TCP_CLOSING2:
 					tcp_table_del(pconn, tcp_table);
