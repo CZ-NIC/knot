@@ -71,6 +71,7 @@ typedef struct knot_tcp_conn {
 	uint32_t acked;
 	uint32_t window_size;
 	uint32_t last_active;
+	uint32_t establish_rtt;
 	knot_tcp_state_t state;
 	struct iovec inbuf;
 	tcp_outbufs_t outbufs;

@@ -97,9 +97,7 @@ static knotd_state_t export(knotd_state_t state, knot_pkt_t *pkt,
 	knot_probe_data_t d;
 	int ret = knot_probe_data_set(&d, proto, local, remote, qdata->query, reply, rcode);
 	if (ret == KNOT_EOK) {
-		if (tcp && qdata->params->xdp_msg == NULL) {
-			d.tcp_rtt = knot_probe_tcp_rtt(qdata->params->socket);
-		}
+		d.tcp_rtt = knotd_qdata_rtt(qdata);
 		if (qdata->query->opt_rr != NULL) {
 			d.reply.ede = qdata->rcode_ede;
 		}

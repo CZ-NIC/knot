@@ -201,6 +201,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		for (size_t j = 0; j < rl->inbufs_count; j++) {
 			// Consume the query.
 			handle_init(params, layer, rl->msg, &rl->inbufs[j]);
+			params->xdp_conn = rl->conn;
 
 			// Process the reply.
 			knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);
