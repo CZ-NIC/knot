@@ -46,14 +46,14 @@ inline static void msg_init(knot_xdp_msg_t *msg, knot_xdp_msg_flag_t flags)
 		msg->ackno = 0;
 		msg->seqno = dnssec_random_uint32_t();
 		if (flags & KNOT_XDP_MSG_SYN) {
-			msg->flags |= KNOT_XDP_MSG_MSS;
+			msg->flags |= KNOT_XDP_MSG_MSS | KNOT_XDP_MSG_WSC;
 		}
 	}
 }
 
 inline static void msg_init_reply(knot_xdp_msg_t *msg, const knot_xdp_msg_t *query)
 {
-	msg_init_base(msg, query->flags & (KNOT_XDP_MSG_IPV6 | KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_MSS));
+	msg_init_base(msg, query->flags & (KNOT_XDP_MSG_IPV6 | KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_MSS | KNOT_XDP_MSG_WSC));
 
 	memcpy(msg->eth_from, query->eth_to,   ETH_ALEN);
 	memcpy(msg->eth_to,   query->eth_from, ETH_ALEN);
