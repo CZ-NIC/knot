@@ -31,20 +31,19 @@
 static void print_help(void)
 {
 	printf("Usage:\n"
-	       "  %s -h | -V\n"
-	       "  %s -t <tsig_name> [<algorithm>] [<bits>]\n"
-	       "  %s [-c | -C | -d <path>] <zone> <command> [<argument>...]\n"
-	       "  %s -l\n"
+	       "  %s [-c | -C | -D <path>] <zone> <command> [<argument>...]\n"
+	       "  %s [-c | -C | -D <path>] -l\n"
+	       "  %s -t <tsig_name> [<algorithm> [<bits>]]\n"
 	       "\n"
 	       "Parameters:\n"
-	       "  -b, --brief              List keys briefly.\n"
-	       "  -c, --config <file>      Use a textual configuration file.\n"
+	       "  -c, --config <file>      Path to a textual configuration file.\n"
 	       "                            (default %s)\n"
-	       "  -C, --confdb <dir>       Use a binary configuration database directory.\n"
+	       "  -C, --confdb <dir>       Path to a configuration database directory.\n"
 	       "                            (default %s)\n"
-	       "  -D, --dir <path>         Use specified KASP database path and default configuration.\n"
+	       "  -D, --dir <path>         Path to a KASP database directory, use default configuration.\n"
 	       "  -t, --tsig <name> [alg]  Generate a TSIG key.\n"
 	       "  -l, --list               List all zones that have at least one key in KASP database.\n"
+	       "  -b, --brief              List keys briefly.\n"
 	       "  -x, --mono               Don't color the output.\n"
 	       "  -X, --color              Force output colorization in the --brief mode.\n"
 	       "  -h, --help               Print the program help.\n"
@@ -109,7 +108,7 @@ static void print_help(void)
 	       "  ksk        Whether the generated/imported key shall be Key Signing Key.\n"
 	       "  created/publish/ready/active/retire/remove  The timestamp of the key\n"
 	       "             lifetime event (e.g. published=+1d active=1499770874)\n",
-	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
+	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
 static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kaspdb,
@@ -295,8 +294,8 @@ int main(int argc, char *argv[])
 		{ "confdb",  required_argument, NULL, 'C' },
 		{ "dir",     required_argument, NULL, 'D' },
 		{ "tsig",    required_argument, NULL, 't' },
-		{ "brief",   no_argument,       NULL, 'b' },
 		{ "list",    no_argument,       NULL, 'l' },
+		{ "brief",   no_argument,       NULL, 'b' },
 		{ "mono",    no_argument,       NULL, 'x' },
 		{ "color",   no_argument,       NULL, 'X' },
 		{ "help",    no_argument,       NULL, 'h' },
@@ -313,19 +312,8 @@ int main(int argc, char *argv[])
 	list_params.color = isatty(STDOUT_FILENO);
 
 	int opt = 0, parm = 0;
-	while ((opt = getopt_long(argc, argv, "hVD:c:C:t:lbxX", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:D:t:lbxXhV", opts, NULL)) != -1) {
 		switch (opt) {
-		case 'h':
-			print_help();
-			return EXIT_SUCCESS;
-		case 'V':
-			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
-		case 'D':
-			if (util_conf_init_justdb("kasp-db", optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
-			}
-			break;
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
 				return EXIT_FAILURE;
@@ -333,6 +321,11 @@ int main(int argc, char *argv[])
 			break;
 		case 'C':
 			if (util_conf_init_confdb(optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'D':
+			if (util_conf_init_justdb("kasp-db", optarg) != KNOT_EOK) {
 				return EXIT_FAILURE;
 			}
 			break;
@@ -357,6 +350,12 @@ int main(int argc, char *argv[])
 		case 'X':
 			list_params.color = true;
 			break;
+		case 'h':
+			print_help();
+			return EXIT_SUCCESS;
+		case 'V':
+			print_version(PROGRAM_NAME);
+			return EXIT_SUCCESS;
 		default:
 			print_help();
 			return EXIT_FAILURE;
