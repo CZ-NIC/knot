@@ -29,7 +29,7 @@ Per zone probe with 8 channels and maximum 1M logs per second limit::
 
    zone:
      - domain: example.com.
-       module: mod-stats/custom
+       module: mod-probe/custom
 
 
 Module reference
