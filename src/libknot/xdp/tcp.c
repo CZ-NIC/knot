@@ -147,6 +147,25 @@ static void tcp_table_del(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
 	table->usage--;
 }
 
+static void conn_init_from_msg(knot_tcp_conn_t *conn, knot_xdp_msg_t *msg)
+{
+	memcpy(&conn->ip_rem, &msg->ip_from, sizeof(conn->ip_rem));
+	memcpy(&conn->ip_loc, &msg->ip_to,   sizeof(conn->ip_loc));
+
+	memcpy(&conn->last_eth_rem, &msg->eth_from, sizeof(conn->last_eth_rem));
+	memcpy(&conn->last_eth_loc, &msg->eth_to,   sizeof(conn->last_eth_loc));
+
+	conn->seqno = msg->seqno;
+	conn->ackno = msg->ackno;
+	conn->acked = msg->ackno;
+
+	conn->last_active = get_timestamp();
+	conn->state = XDP_TCP_NORMAL;
+
+	memset(&conn->inbuf, 0, sizeof(conn->inbuf));
+	memset(&conn->outbufs, 0, sizeof(conn->outbufs));
+}
+
 // WARNING you shall ensure that it's not in the table already!
 static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *table,
                          knot_tcp_conn_t **res)
@@ -157,22 +176,9 @@ static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *t
 	}
 	knot_tcp_conn_t **addto = table->conns + (hash % table->size);
 
-	memcpy(&c->ip_rem, &msg->ip_from, sizeof(c->ip_rem));
-	memcpy(&c->ip_loc, &msg->ip_to,   sizeof(c->ip_loc));
+	conn_init_from_msg(c, msg);
 
-	memcpy(&c->last_eth_rem, &msg->eth_from, sizeof(c->last_eth_rem));
-	memcpy(&c->last_eth_loc, &msg->eth_to,   sizeof(c->last_eth_loc));
-
-	c->seqno = msg->seqno;
-	c->ackno = msg->ackno;
-	c->acked = msg->ackno;
-
-	c->last_active = get_timestamp();
 	add_tail(tcp_table_timeout(table), tcp_conn_node(c));
-
-	c->state = XDP_TCP_NORMAL;
-	memset(&c->inbuf, 0, sizeof(c->inbuf));
-	memset(&c->outbufs, 0, sizeof(c->outbufs));
 
 	c->next = *addto;
 	*addto = c;
@@ -374,6 +380,19 @@ static int send_msgs(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_socket_t *s
 	return KNOT_EOK; // ignore errcode from send
 }
 
+static void msg_init_from_conn(knot_xdp_msg_t *msg, knot_tcp_conn_t *conn)
+{
+	memcpy( msg->eth_from, conn->last_eth_loc, sizeof(msg->eth_from));
+	memcpy( msg->eth_to,   conn->last_eth_rem, sizeof(msg->eth_to));
+	memcpy(&msg->ip_from, &conn->ip_loc,  sizeof(msg->ip_from));
+	memcpy(&msg->ip_to,   &conn->ip_rem,  sizeof(msg->ip_to));
+
+	msg->ackno = conn->seqno;
+	msg->seqno = conn->ackno;
+
+	msg->payload.iov_len = 0;
+}
+
 static int next_msg(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_msg_t **cur,
                      knot_xdp_socket_t *socket, knot_tcp_relay_t *rl)
 {
@@ -396,15 +415,7 @@ static int next_msg(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_msg_t **cur,
 		return ret;
 	}
 
-	memcpy( msg->eth_from, rl->conn->last_eth_loc, sizeof(msg->eth_from));
-	memcpy( msg->eth_to,   rl->conn->last_eth_rem, sizeof(msg->eth_to));
-	memcpy(&msg->ip_from, &rl->conn->ip_loc,  sizeof(msg->ip_from));
-	memcpy(&msg->ip_to,   &rl->conn->ip_rem,  sizeof(msg->ip_to));
-
-	msg->ackno = rl->conn->seqno;
-	msg->seqno = rl->conn->ackno;
-
-	msg->payload.iov_len = 0;
+	msg_init_from_conn(msg, rl->conn);
 
 	return ret;
 }
