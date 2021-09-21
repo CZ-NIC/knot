@@ -391,6 +391,9 @@ static void msg_init_from_conn(knot_xdp_msg_t *msg, knot_tcp_conn_t *conn)
 	msg->seqno = conn->ackno;
 
 	msg->payload.iov_len = 0;
+
+	msg->win_scale = 14; // maximum possible
+	msg->win = 0xffff;
 }
 
 static int next_msg(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_msg_t **cur,
@@ -408,6 +411,9 @@ static int next_msg(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_msg_t **cur,
 	knot_xdp_msg_flag_t fl = KNOT_XDP_MSG_TCP;
 	if (rl->conn->ip_loc.sin6_family == AF_INET6) {
 		fl |= KNOT_XDP_MSG_IPV6;
+	}
+	if (rl->conn->state == XDP_TCP_ESTABLISHING) {
+		fl |= KNOT_XDP_MSG_MSS | KNOT_XDP_MSG_WSC;
 	}
 
 	int ret = knot_xdp_send_alloc(socket, fl, msg);
