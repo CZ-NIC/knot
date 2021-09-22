@@ -31,6 +31,7 @@ struct zone_timers {
 	time_t last_flush;             //!< Last zone file synchronization.
 	time_t last_refresh;           //!< Last successful zone refresh attempt.
 	time_t next_refresh;           //!< Next zone refresh attempt.
+	bool last_refresh_ok;          //!< Last zone refresh attempt was successful.
 	uint64_t last_notified_serial; //!< SOA serial of last successful NOTIFY; (1<<32) if none.
 	time_t last_resalt;            //!< Last NSEC3 resalt.
 	time_t next_ds_check;          //!< Next parent DS check.
