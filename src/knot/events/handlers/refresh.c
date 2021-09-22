@@ -1255,6 +1255,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone->timers.soa_expire = knot_soa_expire(soa->rdata);
 		zone->timers.last_refresh = now;
 		zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
+		zone->timers.last_refresh_ok = true;
 	} else {
 		time_t next = 0;
 		if (soa) {
@@ -1263,6 +1264,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 			next = bootstrap_next(&zone->timers);
 		}
 		zone->timers.next_refresh = now + next;
+		zone->timers.last_refresh_ok = false;
 	}
 
 	/* Check for allowed refresh interval limits. */
