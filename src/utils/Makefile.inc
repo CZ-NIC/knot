@@ -36,7 +36,9 @@ libknotus_la_SOURCES = \
 	utils/common/tls.c			\
 	utils/common/tls.h			\
 	utils/common/token.c			\
-	utils/common/token.h
+	utils/common/token.h			\
+	utils/common/util_conf.c		\
+	utils/common/util_conf.h
 endif HAVE_LIBUTILS
 
 if HAVE_UTILS
@@ -160,8 +162,8 @@ kzonesign_LDADD        = $(libknotd_LIBS)
 keymgr_CPPFLAGS        = $(libknotus_la_CPPFLAGS)
 keymgr_LDADD           = $(libknotd_LIBS) $(libknotus_LIBS)
 kjournalprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
-kjournalprint_LDADD    = $(libknotd_LIBS)
+kjournalprint_LDADD    = $(libknotd_LIBS) $(libknotus_LIBS)
 kcatalogprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
-kcatalogprint_LDADD    = $(libknotd_LIBS)
+kcatalogprint_LDADD    = $(libknotd_LIBS) $(libknotus_LIBS)
 endif HAVE_UTILS
 endif HAVE_DAEMON

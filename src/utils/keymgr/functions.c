@@ -678,15 +678,15 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
 
 	int optimal_bits = dnssec_tsig_optimal_key_size(alg);
 	if (bits == 0) {
-		bits = optimal_bits; // TODO review
+		bits = optimal_bits;
 	}
 
 	// round up bits to bytes
 	bits = (bits + CHAR_BIT - 1) / CHAR_BIT * CHAR_BIT;
 
-	if (bits != optimal_bits) {
-		printf("Notice: Optimal key size for %s is %d bits.",
-		       dnssec_tsig_algorithm_to_name(alg), optimal_bits);
+	if (bits < optimal_bits) {
+		WARN("optimal key size for %s is at least %d bits\n",
+		     dnssec_tsig_algorithm_to_name(alg), optimal_bits);
 	}
 	assert(bits % CHAR_BIT == 0);
 

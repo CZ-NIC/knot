@@ -6,12 +6,26 @@ kcatalogprint – Knot DNS catalog print utility
 Synopsis
 --------
 
-:program:`kcatalogprint` [*options*] *catalog_dir*
+:program:`kcatalogprint` [*config_option* *config_argument*] [*option*]
 
 Description
 -----------
 
 The program prints zone catalog stored in a catalog database.
+
+Config options
+..............
+
+**-c**, **--config** *file*
+  Use a textual configuration file (default is :file:`@config_dir@/knot.conf`).
+
+**-C**, **--confdb** *directory*
+  Use a binary configuration database directory (default is :file:`@storage_dir@/confdb`).
+  The default configuration database, if exists, has a preference to the default
+  configuration file.
+
+**-D**, **--dir** *path*
+  Use specified catalog database path and default configuration.
 
 Options
 .......
@@ -21,12 +35,6 @@ Options
 
 **-V**, **--version**
   Print the program version.
-
-Parameters
-..........
-
-*catalog_dir*
-  A path to the catalog database directory (not data.mdb file).
 
 Exit values
 -----------

@@ -6,9 +6,11 @@ keymgr – Key management utility
 Synopsis
 --------
 
-:program:`keymgr` *basic_option* [*parameters*...]
+:program:`keymgr` [*config_option* *config_argument*] [*option*...] *zone* *command* *argument*...
 
-:program:`keymgr` [*config_option* *config_storage*] *zone* *command* *argument*...
+:program:`keymgr` [*config_option* *config_argument*] **-l**
+
+:program:`keymgr` **-t** *parameter*...
 
 Description
 -----------
@@ -20,34 +22,6 @@ management are provided.
 
 The DNSSEC and KASP configuration is stored in a so called KASP database.
 The database is backed by LMDB.
-
-Basic options
-.............
-
-**-h**, **--help**
-  Print the program help.
-
-**-V**, **--version**
-  Print the program version.
-
-**-t**, **--tsig** *tsig_name* [*tsig_algorithm*] [*tsig_bits*]
-  Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
-  bit length of the key by number (default: optimal length given by algorithm). The generated
-  TSIG key is only displayed on `stdout`: the command does not create a file, nor include the
-  key in a keystore.
-
-**-b**, **--brief**
-  List keys briefly. Output to a terminal is colorized by default.
-
-**-l**, **--list**
-  Print the list of zones that have at least one key stored in the configured KASP
-  database.
-
-**-x**, **--mono**
-  Don't generate colorized output.
-
-**-X**, **--color**
-  Force colorized output in the **--brief** mode.
 
 Config options
 ..............
@@ -62,6 +36,34 @@ Config options
 
 **-D**, **--dir** *path*
   Use specified KASP database path and default configuration.
+
+Options
+.......
+
+**-t**, **--tsig** *tsig_name* [*tsig_algorithm* [*tsig_bits*]]
+  Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
+  bit length of the key by number (default: optimal length given by algorithm). The generated
+  TSIG key is only displayed on `stdout`: the command does not create a file, nor include the
+  key in a keystore.
+
+**-l**, **--list**
+  Print the list of zones that have at least one key stored in the configured KASP
+  database.
+
+**-b**, **--brief**
+  List keys briefly. Output to a terminal is colorized by default.
+
+**-x**, **--mono**
+  Don't generate colorized output.
+
+**-X**, **--color**
+  Force colorized output in the **--brief** mode.
+
+**-h**, **--help**
+  Print the program help.
+
+**-V**, **--version**
+  Print the program version.
 
 .. NOTE::
    Keymgr runs with the same user privileges as configured for :doc:`knotd<man_knotd>`.

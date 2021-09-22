@@ -26,6 +26,7 @@
 #include "knot/journal/serialization.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/params.h"
+#include "utils/common/util_conf.h"
 #include "contrib/color.h"
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
@@ -34,21 +35,28 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] <journal_dir> <zone_name>\n"
+	printf("Usage:\n"
+	       " %s [-c | -C | -D <path>] [parameters] <zone_name>\n"
+	       " %s [-c | -C | -D <path>] -z\n"
 	       "\n"
 	       "Parameters:\n"
-	       " -l, --limit <num>  Read only <num> newest changes.\n"
-	       " -s, --serial <soa> Start with a specific SOA serial.\n"
-	       " -z, --zone-list    Instead of reading the journal, display the list\n"
-	       "                    of zones in the DB (<zone_name> not needed).\n"
-	       " -c, --check        Additional journal semantic checks.\n"
-	       " -d, --debug        Debug mode output.\n"
-	       " -x, --mono         Get output without coloring.\n"
-	       " -n, --no-color     An alias for -x, deprecated.\n"
-	       " -X, --color        Force output coloring.\n"
-	       " -h, --help         Print the program help.\n"
-	       " -V, --version      Print the program version.\n",
-	       PROGRAM_NAME);
+	       " -c, --config <file>  Path to a textual configuration file.\n"
+	       "                       (default %s)\n"
+	       " -C, --confdb <dir>   Path to a configuration database directory.\n"
+	       "                       (default %s)\n"
+	       " -D, --dir <path>     Path to a journal database directory, use default configuration.\n"
+	       " -z, --zone-list      Instead of reading the journal, display the list\n"
+	       "                      of zones in the DB.\n"
+	       " -l, --limit <num>    Read only <num> newest changes.\n"
+	       " -s, --serial <soa>   Start with a specific SOA serial.\n"
+	       " -H, --check          Additional journal semantic checks.\n"
+	       " -d, --debug          Debug mode output.\n"
+	       " -x, --mono           Get output without coloring.\n"
+	       " -n, --no-color       An alias for -x, deprecated.\n"
+	       " -X, --color          Force output coloring.\n"
+	       " -h, --help           Print the program help.\n"
+	       " -V, --version        Print the program version.\n",
+	       PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
 typedef struct {
@@ -307,13 +315,16 @@ int main(int argc, char *argv[])
 	};
 
 	struct option opts[] = {
+		{ "config",    required_argument, NULL, 'c' },
+		{ "confdb",    required_argument, NULL, 'C' },
+		{ "dir",       required_argument, NULL, 'D' },
 		{ "limit",     required_argument, NULL, 'l' },
 		{ "serial",    required_argument, NULL, 's' },
 		{ "zone-list", no_argument,       NULL, 'z' },
-		{ "check",     no_argument,       NULL, 'c' },
+		{ "check",     no_argument,       NULL, 'H' },
 		{ "debug",     no_argument,       NULL, 'd' },
-		{ "mono",      no_argument,       NULL, 'x' },
 		{ "no-color",  no_argument,       NULL, 'n' },
+		{ "mono",      no_argument,       NULL, 'x' },
 		{ "color",     no_argument,       NULL, 'X' },
 		{ "help",      no_argument,       NULL, 'h' },
 		{ "version",   no_argument,       NULL, 'V' },
@@ -321,8 +332,23 @@ int main(int argc, char *argv[])
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "l:s:zcdxnXhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:D:l:s:zHdnxXhV", opts, NULL)) != -1) {
 		switch (opt) {
+		case 'c':
+			if (util_conf_init_file(optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'C':
+			if (util_conf_init_confdb(optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'D':
+			if (util_conf_init_justdb("journal-db", optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
 		case 'l':
 			if (str_to_int(optarg, &params.limit, 0, INT_MAX) != KNOT_EOK) {
 				print_help();
@@ -339,7 +365,7 @@ int main(int argc, char *argv[])
 		case 'z':
 			justlist = true;
 			break;
-		case 'c':
+		case 'H':
 			params.check = true;
 			break;
 		case 'd':
@@ -364,29 +390,24 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	char *db = NULL;
-	knot_dname_t *name = NULL;
+	// Backward compatibility.
+	if ((justlist && (argc - optind > 0)) || (!justlist && (argc - optind > 1))) {
+		fprintf(stderr, "Warning: obsolete parameter specified\n");
+		if (util_conf_init_justdb("journal-db", argv[optind]) != KNOT_EOK) {
+			return EXIT_FAILURE;
+		}
+		optind++;
+	}
 
-	switch (argc - optind) {
-	case 2:
-		name = knot_dname_from_str_alloc(argv[optind + 1]);
-		knot_dname_to_lower(name);
-		// FALLTHROUGH
-	case 1:
-		db = argv[optind];
-		break;
-	default:
-		print_help();
+	if (util_conf_init_default() != KNOT_EOK) {
 		return EXIT_FAILURE;
 	}
 
-	if (db == NULL) {
-		fprintf(stderr, "Journal DB path not specified\n");
-		return EXIT_FAILURE;
-	}
+	char *db = conf_db(conf(), C_JOURNAL_DB);
 
 	if (justlist) {
 		int ret = list_zones(db, params.debug);
+		free(db);
 		switch (ret) {
 		case KNOT_ENOENT:
 			printf("No zones in journal DB\n");
@@ -403,35 +424,37 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Failed to load zone list (%s)\n", knot_strerror(ret));
 			return EXIT_FAILURE;
 		}
-	}
-
-	if (name == NULL) {
-		fprintf(stderr, "Zone not specified\n");
-		return EXIT_FAILURE;
-	}
-
-	int ret = print_journal(db, name, &params);
-	free(name);
-
-	switch (ret) {
-	case KNOT_ENOENT:
-		if (params.from_serial) {
-			printf("The journal is empty or the serial not present\n");
-		} else {
-			printf("The journal is empty\n");
+	} else {
+		if (argc - optind != 1) {
+			print_help();
+			return EXIT_FAILURE;
 		}
-		break;
-	case KNOT_EFILE:
-		fprintf(stderr, "The specified journal DB is invalid\n");
-		return EXIT_FAILURE;
-	case KNOT_EOUTOFZONE:
-		fprintf(stderr, "The specified journal DB does not contain the specified zone\n");
-		return EXIT_FAILURE;
-	case KNOT_EOK:
-		break;
-	default:
-		fprintf(stderr, "Failed to load changesets (%s)\n", knot_strerror(ret));
-		return EXIT_FAILURE;
+		knot_dname_t *name = knot_dname_from_str_alloc(argv[optind]);
+		knot_dname_to_lower(name);
+
+		int ret = print_journal(db, name, &params);
+		free(name);
+		free(db);
+		switch (ret) {
+		case KNOT_ENOENT:
+			if (params.from_serial) {
+				printf("The journal is empty or the serial not present\n");
+			} else {
+				printf("The journal is empty\n");
+			}
+			break;
+		case KNOT_EFILE:
+			fprintf(stderr, "The specified journal DB is invalid\n");
+			return EXIT_FAILURE;
+		case KNOT_EOUTOFZONE:
+			fprintf(stderr, "The specified journal DB does not contain the specified zone\n");
+			return EXIT_FAILURE;
+		case KNOT_EOK:
+			break;
+		default:
+			fprintf(stderr, "Failed to load changesets (%s)\n", knot_strerror(ret));
+			return EXIT_FAILURE;
+		}
 	}
 
 	return EXIT_SUCCESS;

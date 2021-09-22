@@ -32,9 +32,11 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkeymgr\fP \fIbasic_option\fP [\fIparameters\fP\&...]
+\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoption\fP\&...] \fIzone\fP \fIcommand\fP \fIargument\fP\&...
 .sp
-\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_storage\fP] \fIzone\fP \fIcommand\fP \fIargument\fP\&...
+\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_argument\fP] \fB\-l\fP
+.sp
+\fBkeymgr\fP \fB\-t\fP \fIparameter\fP\&...
 .SH DESCRIPTION
 .sp
 The \fBkeymgr\fP utility serves for manual key management in Knot DNS server.
@@ -44,34 +46,6 @@ management are provided.
 .sp
 The DNSSEC and KASP configuration is stored in a so called KASP database.
 The database is backed by LMDB.
-.SS Basic options
-.INDENT 0.0
-.TP
-\fB\-h\fP, \fB\-\-help\fP
-Print the program help.
-.TP
-\fB\-V\fP, \fB\-\-version\fP
-Print the program version.
-.TP
-\fB\-t\fP, \fB\-\-tsig\fP \fItsig_name\fP [\fItsig_algorithm\fP] [\fItsig_bits\fP]
-Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
-bit length of the key by number (default: optimal length given by algorithm). The generated
-TSIG key is only displayed on \fIstdout\fP: the command does not create a file, nor include the
-key in a keystore.
-.TP
-\fB\-b\fP, \fB\-\-brief\fP
-List keys briefly. Output to a terminal is colorized by default.
-.TP
-\fB\-l\fP, \fB\-\-list\fP
-Print the list of zones that have at least one key stored in the configured KASP
-database.
-.TP
-\fB\-x\fP, \fB\-\-mono\fP
-Don\(aqt generate colorized output.
-.TP
-\fB\-X\fP, \fB\-\-color\fP
-Force colorized output in the \fB\-\-brief\fP mode.
-.UNINDENT
 .SS Config options
 .INDENT 0.0
 .TP
@@ -85,6 +59,34 @@ configuration file.
 .TP
 \fB\-D\fP, \fB\-\-dir\fP \fIpath\fP
 Use specified KASP database path and default configuration.
+.UNINDENT
+.SS Options
+.INDENT 0.0
+.TP
+\fB\-t\fP, \fB\-\-tsig\fP \fItsig_name\fP [\fItsig_algorithm\fP [\fItsig_bits\fP]]
+Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
+bit length of the key by number (default: optimal length given by algorithm). The generated
+TSIG key is only displayed on \fIstdout\fP: the command does not create a file, nor include the
+key in a keystore.
+.TP
+\fB\-l\fP, \fB\-\-list\fP
+Print the list of zones that have at least one key stored in the configured KASP
+database.
+.TP
+\fB\-b\fP, \fB\-\-brief\fP
+List keys briefly. Output to a terminal is colorized by default.
+.TP
+\fB\-x\fP, \fB\-\-mono\fP
+Don\(aqt generate colorized output.
+.TP
+\fB\-X\fP, \fB\-\-color\fP
+Force colorized output in the \fB\-\-brief\fP mode.
+.TP
+\fB\-h\fP, \fB\-\-help\fP
+Print the program help.
+.TP
+\fB\-V\fP, \fB\-\-version\fP
+Print the program version.
 .UNINDENT
 .sp
 \fBNOTE:\fP
