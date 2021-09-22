@@ -18,6 +18,8 @@
 
 #include <stdbool.h>
 
+#include "knot/conf/conf.h"
+
 /*!
  * General note:
  *

@@ -164,6 +164,6 @@ keymgr_LDADD           = $(libknotd_LIBS) $(libknotus_LIBS)
 kjournalprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
 kjournalprint_LDADD    = $(libknotd_LIBS) $(libknotus_LIBS)
 kcatalogprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
-kcatalogprint_LDADD    = $(libknotd_LIBS)
+kcatalogprint_LDADD    = $(libknotd_LIBS) $(libknotus_LIBS)
 endif HAVE_UTILS
 endif HAVE_DAEMON

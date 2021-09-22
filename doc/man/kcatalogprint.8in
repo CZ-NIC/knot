@@ -32,10 +32,24 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkcatalogprint\fP [\fIoptions\fP] \fIcatalog_dir\fP
+\fBkcatalogprint\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoption\fP]
 .SH DESCRIPTION
 .sp
 The program prints zone catalog stored in a catalog database.
+.SS Config options
+.INDENT 0.0
+.TP
+\fB\-c\fP, \fB\-\-config\fP \fIfile\fP
+Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
+.TP
+\fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
+Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
+The default configuration database, if exists, has a preference to the default
+configuration file.
+.TP
+\fB\-D\fP, \fB\-\-dir\fP \fIpath\fP
+Use specified catalog database path and default configuration.
+.UNINDENT
 .SS Options
 .INDENT 0.0
 .TP
@@ -44,12 +58,6 @@ Print the program help.
 .TP
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
-.UNINDENT
-.SS Parameters
-.INDENT 0.0
-.TP
-\fIcatalog_dir\fP
-A path to the catalog database directory (not data.mdb file).
 .UNINDENT
 .SH EXIT VALUES
 .sp

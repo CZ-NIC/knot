@@ -20,17 +20,23 @@
 
 #include "knot/catalog/catalog_db.h"
 #include "utils/common/params.h"
+#include "utils/common/util_conf.h"
 
 #define PROGRAM_NAME	"kcatalogprint"
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] <catalog_dir>\n"
+	printf("Usage: %s [-c | -C | -D <path>] [parameters]\n"
 	       "\n"
 	       "Parameters:\n"
-	       " -h, --help         Print the program help.\n"
-	       " -V, --version      Print the program version.\n",
-	       PROGRAM_NAME);
+	       " -c, --config <file> Path to a textual configuration file.\n"
+	       "                      (default %s)\n"
+	       " -C, --confdb <dir>  Path to a configuration database directory.\n"
+	       "                      (default %s)\n"
+	       " -D, --dir <path>    Path to a catalog database directory, use default configuration.\n"
+	       " -h, --help          Print the program help.\n"
+	       " -V, --version       Print the program version.\n",
+	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
 static void print_dname(const knot_dname_t *d)
@@ -73,15 +79,33 @@ static void catalog_print(catalog_t *cat)
 
 int main(int argc, char *argv[])
 {
-	struct option options[] = {
-		{ "help",    no_argument, NULL, 'h' },
-		{ "version", no_argument, NULL, 'V' },
+	struct option opts[] = {
+		{ "config",  required_argument, NULL, 'c' },
+		{ "confdb",  required_argument, NULL, 'C' },
+		{ "dir",     required_argument, NULL, 'D' },
+		{ "help",    no_argument,       NULL, 'h' },
+		{ "version", no_argument,       NULL, 'V' },
 		{ NULL }
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "hV", options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:D:hV", opts, NULL)) != -1) {
 		switch (opt) {
+		case 'c':
+			if (util_conf_init_file(optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'C':
+			if (util_conf_init_confdb(optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
+		case 'D':
+			if (util_conf_init_justdb("catalog-db", optarg) != KNOT_EOK) {
+				return EXIT_FAILURE;
+			}
+			break;
 		case 'h':
 			print_help();
 			return EXIT_SUCCESS;
@@ -94,14 +118,24 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc != 2) {
-		print_help();
+	// Backward compatibility.
+	if (argc - optind > 0) {
+		fprintf(stderr, "Warning: obsolete parameter specified\n");
+		if (util_conf_init_justdb("catalog-db", argv[optind]) != KNOT_EOK) {
+			return EXIT_FAILURE;
+		}
+		optind++;
+	}
+
+	if (util_conf_init_default() != KNOT_EOK) {
 		return EXIT_FAILURE;
 	}
 
 	catalog_t c = { { 0 } };
 
-	catalog_init(&c, argv[1], 0); // mapsize grows automatically
+	char *db = conf_db(conf(), C_CATALOG_DB);
+	catalog_init(&c, db, 0); // mapsize grows automatically
+	free(db);
 	catalog_print(&c);
 	if (catalog_deinit(&c) != KNOT_EOK) {
 		return EXIT_FAILURE;
