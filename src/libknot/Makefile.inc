@@ -46,6 +46,7 @@ nobase_include_libknot_HEADERS = \
 	libknot/rrtype/rdname.h			\
 	libknot/rrtype/rrsig.h			\
 	libknot/rrtype/soa.h			\
+	libknot/rrtype/svcb.h			\
 	libknot/rrtype/tsig.h			\
 	libknot/rrtype/zonemd.h			\
 	libknot/tsig-op.h			\

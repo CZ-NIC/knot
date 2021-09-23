@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "libknot/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/rdata.h"
+#include "libknot/rrtype/svcb.h"
 
 static inline
 const knot_dname_t *knot_cname_name(const knot_rdata_t *rdata)
@@ -86,6 +87,9 @@ const knot_dname_t *knot_rdata_name(const knot_rdata_t *rdata, uint16_t type)
 			return knot_cname_name(rdata);
 		case KNOT_RRTYPE_DNAME:
 			return knot_dname_target(rdata);
+		case KNOT_RRTYPE_SVCB:
+		case KNOT_RRTYPE_HTTPS:
+			return knot_svcb_target(rdata);
 	}
 
 	return NULL;

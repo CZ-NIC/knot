@@ -202,6 +202,43 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check_record(section="additional", rtype="A", rdata="10.20.30.40")
     verify(master, zone, dnssec)
 
+    # add SVCB w/o glue
+    check_log("glueless SVCB")
+    up = master.update(zone)
+    try:
+        up.add("svcb.ddns.", 3600, "SVCB", "0 target.svcb.ddns.")
+    except:
+        up.add("svcb.ddns.", 3600, "TYPE64", "\# 20 00000674617267657404737663620464646E7300")
+
+    up.send("NOERROR")
+    resp = master.dig("svcb.ddns.", "TYPE64", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_count(0, rtype="AAAA", section="additional")
+
+    # add glue to SVCB
+    check_log("Add glue to SVCB")
+    up = master.update(zone)
+    up.add("target.svcb.ddns.", 3600, "AAAA", "1::2")
+    up.send("NOERROR")
+    resp = master.dig("svcb.ddns.", "TYPE64", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_count(1, rtype="AAAA", section="additional")
+    if dnssec:
+        resp.check_count(1, rtype="RRSIG", section="additional")
+
+    # remove glue from SVCB
+    check_log("Remove glue from SVCB")
+    up = master.update(zone)
+    up.delete("target.svcb.ddns.", "AAAA")
+    up.send("NOERROR")
+    resp = master.dig("svcb.ddns.", "TYPE64", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_count(0, rtype="AAAA", section="additional")
+    # now remove SVCB in order to make ldns-verify work
+    up = master.update(zone)
+    up.delete("svcb.ddns.", "TYPE64")
+    up.send()
+
     # add CNAME to node with A records, should be ignored
     check_log("Add CNAME to A node")
     up = master.update(zone)
