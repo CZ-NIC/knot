@@ -211,6 +211,7 @@ int event_load(conf_t *conf, zone_t *zone)
 					                 "ignoring zone file and loading from journal",
 					                 (ret == KNOT_ESEMCHECK ? "unupdated" : "decreased"));
 					zone_contents_deep_free(zf_conts);
+					zf_conts = NULL;
 					ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
 				}
 			}
