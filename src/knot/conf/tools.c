@@ -323,11 +323,13 @@ static void check_db(
 	int (*check_fun)(const char *),
 	const char *desc)
 {
-	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
-	                              C_DB, db_type);
-	if (db_type != NULL && val.code != KNOT_EOK) {
-		// Don't check implicit database values.
-		return;
+	if (db_type != NULL) {
+		conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
+		                              C_DB, db_type);
+		if (val.code != KNOT_EOK) {
+			// Don't check implicit database values.
+			return;
+		}
 	}
 
 	char *db = conf_db_txn(args->extra->conf, args->extra->txn, db_type);
