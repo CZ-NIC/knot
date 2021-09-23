@@ -102,12 +102,13 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		goto done;
 	}
 
+	zone_changed = !zone_update_no_change(&up);
+
 	ret = zone_update_commit(conf, &up);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
-	zone_changed = !zone_update_no_change(&up);
 done:
 	// Schedule dependent events
 	event_dnssec_reschedule(conf, zone, &resch, zone_changed);
