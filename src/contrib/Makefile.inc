@@ -162,3 +162,83 @@ nodist_libdnstap_la_SOURCES = \
 BUILT_SOURCES += $(nodist_libdnstap_la_SOURCES)
 CLEANFILES    += $(nodist_libdnstap_la_SOURCES)
 endif HAVE_LIBDNSTAP
+
+if EMBEDDED_LIBNGTCP2
+noinst_LTLIBRARIES += libembngtcp2.la
+
+libembngtcp2_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) \
+                           $(embedded_libngtcp2_CFLAGS) $(gnutls_CFLAGS)
+libembngtcp2_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
+libembngtcp2_LIBS        = libembngtcp2.la $(embedded_libngtcp2_LIBS) $(gnutls_LIBS)
+
+libembngtcp2_la_SOURCES = \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr2.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr2.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_buf.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_buf.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cc.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cc.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cid.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cid.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_gaptr.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_gaptr.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_idtr.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_idtr.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ksl.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ksl.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_log.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_log.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_macro.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_map.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_map.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_mem.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_mem.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_path.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_path.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ppe.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ppe.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pq.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pq.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pv.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pv.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_qlog.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_qlog.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_range.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_range.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rcvry.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ringbuf.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ringbuf.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rob.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rob.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rst.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rst.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rtb.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rtb.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.h \
+	contrib/libngtcp2/ngtcp2/crypto/gnutls.c \
+	contrib/libngtcp2/ngtcp2/crypto/shared.c \
+	contrib/libngtcp2/ngtcp2/crypto/shared.h
+endif EMBEDDED_LIBNGTCP2
