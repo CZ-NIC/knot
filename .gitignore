@@ -45,7 +45,7 @@
 /test-driver
 Makefile
 Makefile.in
-version.h
+/src/lib*/version.h
 
 /samples/knot.sample.conf
 /src/knot/modules/static_modules.h
