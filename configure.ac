@@ -172,6 +172,8 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
         [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset available])
          gnutls_memset=yes], [gnutls_memset=no])
 
+    AC_CHECK_FUNC([gnutls_early_cipher_get], [gnutls_quic=yes], [gnutls_quic=no])
+
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
 ])
@@ -565,6 +567,13 @@ AC_ARG_WITH(libnghttp2,
   with_libnghttp2=yes
 )
 
+dnl Check for libngtcp2.
+AC_ARG_WITH(libngtcp2,
+  AS_HELP_STRING([--with-libngtcp2=[DIR|embedded]], [Support DoQ (needs libngtcp2, gnutls >= 3.7.2)]),
+  with_libngtcp2=$withval,
+  with_libngtcp2=yes
+)
+
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
@@ -592,6 +601,28 @@ AS_IF([test "$enable_utilities" = "yes"], [
       AC_MSG_WARN([libnghttp2 not found])
     ])
   ])
+
+  AS_IF([test "$with_libngtcp2" != "no"], [
+    AS_IF([test "$with_libngtcp2" = "embedded"], [
+      AS_IF([test "$gnutls_quic" = "yes"],
+        [embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
+         embedded_libngtcp2_LIBS=$libelf_LIBS
+         libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
+        [with_libngtcp2=no
+         AC_MSG_ERROR([gnutls >= 3.7.2 is required])])], [
+      PKG_CHECK_MODULES([libngtcp2], [libngtcp2 libngtcp2_crypto_gnutls],
+        [with_libngtcp2=libngtcp2],
+        [with_libngtcp2=no
+         AC_MSG_WARN([libngtcp2 not found])])])
+  ])
+  AM_CONDITIONAL([EMBEDDED_LIBNGTCP2], [test "$with_libngtcp2" = "embedded"])
+  AC_SUBST([embedded_libngtcp2_CFLAGS])
+  AC_SUBST([embedded_libngtcp2_LIBS])
+  AC_SUBST([libngtcp2_CFLAGS])
+  AC_SUBST([libngtcp2_LIBS])
+
+  AS_IF([test "$with_libngtcp2" != "no"], [
+    AC_DEFINE([LIBNGTCP2], [1], [Define to 1 to enable DoQ support based on GnuTLS])])
 
   AS_IF([test "$enable_xdp" != "no"], [
     PKG_CHECK_MODULES([libmnl], [libmnl], [], [
@@ -781,6 +812,7 @@ result_msg_base="  Knot DNS $VERSION
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
     Utilities with DoH:     ${with_libnghttp2}
+    Utilities with DoQ:     ${with_libngtcp2}
     Utilities with Dnstap:  ${enable_dnstap}
     MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}
