@@ -219,17 +219,23 @@ def do_normal_tests(master, zone, dnssec=False):
     check_log("Add glue to SVCB")
     up = master.update(zone)
     up.add("target.svcb.ddns.", 3600, "AAAA", "1::2")
+    try:
+        up.add("target.svcb.ddns.", 3600, "SVCB", "2 . alpn=h2")
+    except:
+        up.add("target.svcb.ddns.", 3600, "TYPE64", "\# 10 00020000010003026832")
     up.send("NOERROR")
     resp = master.dig("svcb.ddns.", "TYPE64", dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.check_count(1, rtype="AAAA", section="additional")
+    resp.check_count(1, rtype="TYPE64", section="additional")
     if dnssec:
-        resp.check_count(1, rtype="RRSIG", section="additional")
+        resp.check_count(2, rtype="RRSIG", section="additional")
 
     # remove glue from SVCB
     check_log("Remove glue from SVCB")
     up = master.update(zone)
     up.delete("target.svcb.ddns.", "AAAA")
+    up.delete("target.svcb.ddns.", "TYPE64")
     up.send("NOERROR")
     resp = master.dig("svcb.ddns.", "TYPE64", dnssec=dnssec)
     resp.check(rcode="NOERROR")

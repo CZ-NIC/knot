@@ -203,8 +203,8 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 	/* Valid types for ADDITIONALS insertion. */
 	/* \note Not resolving CNAMEs as MX/NS name must not be an alias. (RFC2181/10.3) */
-	static const uint16_t ar_type_list[] = { KNOT_RRTYPE_A, KNOT_RRTYPE_AAAA };
-	static const int ar_type_count = 2;
+	static uint16_t ar_type_list[] = { KNOT_RRTYPE_A, KNOT_RRTYPE_AAAA, KNOT_RRTYPE_SVCB };
+	static const int ar_type_count_default = 2;
 
 	int ret = KNOT_EOK;
 
@@ -218,6 +218,11 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		/* Optional glue doesn't cause truncation. (RFC 1034/4.3.2 step 3b). */
 		if (state != KNOTD_IN_STATE_DELEG || glue->optional) {
 			flags |= KNOT_PF_NOTRUNC;
+		}
+
+		int ar_type_count = ar_type_count_default;
+		if (rr->type == KNOT_RRTYPE_SVCB || rr->type == KNOT_RRTYPE_HTTPS) {
+			ar_type_list[ar_type_count++] = rr->type;
 		}
 
 		uint16_t hint = knot_compr_hint(info, KNOT_COMPR_HINT_RDATA +
