@@ -13,6 +13,10 @@ libknotus_la_LIBADD   = $(libidn2_LIBS) $(libidn_LIBS) $(libnghttp2_LIBS) $(libn
 libknotus_LIBS        = libknotus.la libknot.la libdnssec.la $(libcontrib_LIBS) \
                         $(gnutls_LIBS) $(libedit_LIBS)
 
+if EMBEDDED_LIBNGTCP2
+libknotus_la_LIBADD += $(libembngtcp2_LIBS)
+endif EMBEDDED_LIBNGTCP2
+
 libknotus_la_SOURCES = \
 	utils/common/cert.c			\
 	utils/common/cert.h			\
