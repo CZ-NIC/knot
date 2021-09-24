@@ -229,7 +229,7 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check_count(1, rtype="AAAA", section="additional")
     resp.check_count(1, rtype="TYPE64", section="additional")
     if dnssec:
-        resp.check_count(2, rtype="RRSIG", section="additional")
+        resp.check_count(3, rtype="RRSIG", section="additional")
 
     # remove glue from SVCB
     check_log("Remove glue from SVCB")
@@ -240,6 +240,7 @@ def do_normal_tests(master, zone, dnssec=False):
     resp = master.dig("svcb.ddns.", "TYPE64", dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.check_count(0, rtype="AAAA", section="additional")
+    resp.check_count(0, rtype="RRSIG", section="additional")
     # now remove SVCB in order to make ldns-verify work
     up = master.update(zone)
     up.delete("svcb.ddns.", "TYPE64")
