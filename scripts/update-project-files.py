@@ -1,4 +1,4 @@
-#!/usr/bin/python -Es
+#!/usr/bin/env python3
 # vim: et:sw=4:ts=4:sts=4
 #
 # Script regenerates project file list from the list of files tracked by Git.
@@ -28,13 +28,13 @@ def run(command):
         raise Exception("Command %s failed.", command)
     return out
 
-print >>sys.stderr, "Updating %s." % OUTPUT_FILE
+print("Updating %s." % OUTPUT_FILE, file=sys.stderr)
 
 git_root = run(["git", "rev-parse", "--show-toplevel"]).strip()
 os.chdir(git_root)
 
 command = ["git", "ls-files"] + SOURCES
-files = run(command).splitlines() + SOURCES_EXTRA
+files = run(command).decode("utf-8").splitlines() + SOURCES_EXTRA
 
 with open(OUTPUT_FILE, "w") as output:
     output.write("\n".join(sorted(files)))
