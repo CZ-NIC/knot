@@ -21,6 +21,10 @@ class TimerDBInfo:
             return datetime.datetime.fromtimestamp(timestamp).isoformat()
 
     @classmethod
+    def format_bool(cls, value):
+        return "yes" if value != 0 else "no"
+
+    @classmethod
     def format_seconds(cls, value):
         return "%d" % value
 
@@ -51,6 +55,8 @@ class TimerDBInfo:
                 # knot >= 3.1
                 0x87: ("catalog_member", cls.format_timestamp),
                 0x88: ("notify_serial",  cls.format_notify_serial),
+                # knot >= 3.2
+                0x89: ("last_refresh_ok", cls.format_bool),
         }
         if id in timers:
             return (timers[id][0], timers[id][1](value))
