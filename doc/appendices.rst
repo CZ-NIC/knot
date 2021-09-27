@@ -51,10 +51,10 @@ support.
      - |yes|
      - |yes|
      - |yes|
-   * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_
+   * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_ [#fn-softhsm]_
      - |yes|
      - |yes|
-     - |no|
+     - |yes|
      - |yes|
      - |yes|
      - |yes|
@@ -99,6 +99,9 @@ support.
      - |yes|
      - |no|
 
+.. [#fn-softhsm] Algorithms supported depend on support in OpenSSL on which SoftHSM relies.
+   A command similar to the following may be used to verify what algorithms are supported:
+   ``$ pkcs11-tool --modul /usr/lib64/pkcs11/libsofthsm2.so -M``.
 .. [#fn-utimaco] Requires setting the number of background workers to 1!
 
 The following table summarizes supported DNSSEC algorithm numbers and minimal
