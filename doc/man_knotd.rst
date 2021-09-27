@@ -11,6 +11,9 @@ Synopsis
 Description
 -----------
 
+Knot DNS is a high-performance authoritative DNS server. The `knotd` program is
+the DNS server daemon.
+
 Parameters
 ..........
 

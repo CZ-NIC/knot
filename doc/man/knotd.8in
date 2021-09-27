@@ -34,6 +34,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .sp
 \fBknotd\fP [\fIparameters\fP]
 .SH DESCRIPTION
+.sp
+Knot DNS is a high\-performance authoritative DNS server. The \fIknotd\fP program is
+the DNS server daemon.
 .SS Parameters
 .INDENT 0.0
 .TP
