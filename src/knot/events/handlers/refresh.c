@@ -816,6 +816,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "malformed response SOA");
 			data->ret = KNOT_EMALF;
+			data->xfr_type = XFR_TYPE_IXFR; // unrecognisable IXFR type is the same as failed IXFR
 			return KNOT_STATE_FAIL;
 		case XFR_TYPE_UNDETERMINED:
 			// Store the SOA and check with next packet
