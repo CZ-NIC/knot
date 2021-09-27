@@ -84,6 +84,7 @@ enum state {
 };
 
 enum xfr_type {
+	XFR_TYPE_NOTIMP = -2,
 	XFR_TYPE_ERROR = -1,
 	XFR_TYPE_UNDETERMINED = 0,
 	XFR_TYPE_UPTODATE,
@@ -737,7 +738,7 @@ static enum xfr_type determine_xfr_type(const knot_pktsection_t *answer,
                                         uint32_t zone_serial, const knot_rrset_t *initial_soa)
 {
 	if (answer->count < 1) {
-		return XFR_TYPE_ERROR;
+		return XFR_TYPE_NOTIMP;
 	}
 
 	const knot_rrset_t *rr_one = knot_pkt_rr(answer, 0);
@@ -799,6 +800,12 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			           "malformed response SOA");
 			data->ret = KNOT_EMALF;
 			data->xfr_type = XFR_TYPE_IXFR; // unrecognisable IXFR type is the same as failed IXFR
+			return KNOT_STATE_FAIL;
+		case XFR_TYPE_NOTIMP:
+			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
+			           "not supported by remote");
+			data->ret = KNOT_ENOTSUP;
+			data->xfr_type = XFR_TYPE_IXFR;
 			return KNOT_STATE_FAIL;
 		case XFR_TYPE_UNDETERMINED:
 			// Store the SOA and check with next packet
