@@ -11,7 +11,10 @@ Synopsis
 Description
 -----------
 
-If no *action* is specified, the program is executed in interactive mode.
+This program controls a running `knotd` process using a socket.
+
+If an *action* is specified, it is performed and `knotc` exits, otherwise the program
+is executed in the interactive mode.
 
 Parameters
 ..........

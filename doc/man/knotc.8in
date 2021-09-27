@@ -35,7 +35,10 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 \fBknotc\fP [\fIparameters\fP] \fIaction\fP [\fIaction_args\fP]
 .SH DESCRIPTION
 .sp
-If no \fIaction\fP is specified, the program is executed in interactive mode.
+This program controls a running \fIknotd\fP process using a socket.
+.sp
+If an \fIaction\fP is specified, it is performed and \fIknotc\fP exits, otherwise the program
+is executed in the interactive mode.
 .SS Parameters
 .INDENT 0.0
 .TP
