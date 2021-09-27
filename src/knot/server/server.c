@@ -665,7 +665,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 	/* Assign thread identifiers unique per all handlers. */
 	unsigned thread_count = 0;
-	for (unsigned proto = IO_UDP; proto <= IO_HANDLERS_SIZE; ++proto) {
+	for (unsigned proto = IO_UDP; proto < IO_HANDLERS_SIZE; ++proto) {
 		dt_unit_t *tu = s->handlers[proto].handler.unit;
 		for (unsigned i = 0; tu != NULL && i < tu->size; ++i) {
 			s->handlers[proto].handler.thread_id[i] = thread_count++;

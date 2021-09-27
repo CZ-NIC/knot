@@ -1248,10 +1248,6 @@ size_t conf_tls_max_clients_txn(
 	knot_db_txn_t *txn)
 {
 	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TLS_MAX_CLIENTS);
-	if (val.code != KNOT_EOK) {
-		val = conf_get_txn(conf, txn, C_SRV, C_MAX_TLS_CLIENTS);
-	}
-
 	int64_t clients = conf_int(&val);
 	if (clients == YP_NIL) {
 		static size_t permval = 0;

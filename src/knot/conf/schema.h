@@ -169,7 +169,6 @@
 #define C_TCP_HSHAKE_TIMEOUT	"\x15""tcp-handshake-timeout"
 #define C_TCP_REPLY_TIMEOUT	"\x11""tcp-reply-timeout"
 #define C_MAX_TCP_CLIENTS	"\x0F""max-tcp-clients"
-#define C_MAX_TLS_CLIENTS	"\x0F""max-tls-clients"
 #define C_MAX_UDP_PAYLOAD	"\x0F""max-udp-payload"
 #define C_MAX_IPV4_UDP_PAYLOAD	"\x14""max-ipv4-udp-payload"
 #define C_MAX_IPV6_UDP_PAYLOAD	"\x14""max-ipv6-udp-payload"
