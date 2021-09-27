@@ -48,8 +48,9 @@ Options
 Signals
 .......
 
-If the `knotd` process receives a SIGHUP signal, it reloads its configuration.
-Upon receiving a SIGINT signal, `knotd` exits.
+If the `knotd` process receives a SIGHUP signal, it reloads its configuration and
+reopens the log files, if they are configured. Upon receiving a SIGINT signal,
+`knotd` exits.
 
 Exit values
 -----------

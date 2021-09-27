@@ -70,8 +70,9 @@ Print the program version.
 .UNINDENT
 .SS Signals
 .sp
-If the \fIknotd\fP process receives a SIGHUP signal, it reloads its configuration.
-Upon receiving a SIGINT signal, \fIknotd\fP exits.
+If the \fIknotd\fP process receives a SIGHUP signal, it reloads its configuration and
+reopens the log files, if they are configured. Upon receiving a SIGINT signal,
+\fIknotd\fP exits.
 .SH EXIT VALUES
 .sp
 Exit status of 0 means successful operation. Any other exit status indicates
