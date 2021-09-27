@@ -16,8 +16,8 @@ This program controls a running `knotd` process using a socket.
 If an *action* is specified, it is performed and `knotc` exits, otherwise the program
 is executed in the interactive mode.
 
-Parameters
-..........
+Options
+.......
 
 **-c**, **--config** *file*
   Use a textual configuration file (default is :file:`@config_dir@/knot.conf`).

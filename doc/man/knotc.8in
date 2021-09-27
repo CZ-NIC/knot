@@ -39,7 +39,7 @@ This program controls a running \fIknotd\fP process using a socket.
 .sp
 If an \fIaction\fP is specified, it is performed and \fIknotc\fP exits, otherwise the program
 is executed in the interactive mode.
-.SS Parameters
+.SS Options
 .INDENT 0.0
 .TP
 \fB\-c\fP, \fB\-\-config\fP \fIfile\fP
