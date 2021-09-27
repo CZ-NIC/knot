@@ -65,6 +65,10 @@ Print the program help.
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
 .UNINDENT
+.SS Signals
+.sp
+If the \fIknotd\fP process receives a SIGHUP signal, it reloads its configuration.
+Upon receiving a SIGINT signal, \fIknotd\fP exits.
 .SH EXIT VALUES
 .sp
 Exit status of 0 means successful operation. Any other exit status indicates

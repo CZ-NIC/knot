@@ -42,6 +42,12 @@ Parameters
 **-V**, **--version**
   Print the program version.
 
+Signals
+.......
+
+If the `knotd` process receives a SIGHUP signal, it reloads its configuration.
+Upon receiving a SIGINT signal, `knotd` exits.
+
 Exit values
 -----------
 
