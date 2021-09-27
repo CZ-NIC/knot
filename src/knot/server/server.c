@@ -521,7 +521,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 
 		/* TCP Fast Open. */
-		ret = enable_fastopen(sock, TLS_BACKLOG_SIZE);
+		ret = net_bound_tfo(sock, TCP_BACKLOG_SIZE);
 		if (ret < 0 && warn_flag_misc) {
 			log_warning("failed to enable TCP Fast Open on %s (%s)",
 			            addr_str, knot_strerror(ret));

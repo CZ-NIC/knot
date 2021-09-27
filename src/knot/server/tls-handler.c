@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include "knot/server/server.h"
 #include "knot/server/tls-handler.h"
 #include "knot/common/log.h"
+#include "knot/common/fdset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "contrib/macros.h"
@@ -79,12 +80,9 @@ static void update_tls_conf(tls_context_t *tls)
 }
 
 /*! \brief Sweep TLS connection. */
-static enum fdset_sweep_state tls_sweep(fdset_t *set, int i, void *data)
+static fdset_sweep_state_t tls_sweep(fdset_t *set, int fd, _unused_ void *data)
 {
-	//TODO take a look for free 'set->pfd[i].ctx'
-	UNUSED(data);
-	assert(set && i < set->n && i >= 0);
-	int fd = set->pfd[i].fd;
+	assert(set && fd >= 0);
 
 	/* Best-effort, name and shame. */
 	struct sockaddr_storage ss;
@@ -94,8 +92,6 @@ static enum fdset_sweep_state tls_sweep(fdset_t *set, int i, void *data)
 		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
 		log_notice("TLS, terminated inactive client, address %s", addr_str);
 	}
-
-	close(fd);
 
 	return FDSET_SWEEP;
 }
@@ -135,8 +131,12 @@ static unsigned tls_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *
 		return 0;
 	}
 
-	fdset_clear(fds);
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
+		if (i->fd_tcp_count == 0) { // Ignore XDP interface.
+			assert(i->fd_xdp_count > 0);
+			continue;
+		}
+
 		int tls_id = 0;
 #ifdef ENABLE_REUSEPORT
 		if (conf()->cache.srv_tcp_reuseport) {
@@ -148,10 +148,13 @@ static unsigned tls_set_ifaces(const iface_t *ifaces, size_t n_ifaces, fdset_t *
 			tls_id = thread_id - (i->fd_udp_count + i->fd_tcp_count + i->fd_xdp_count);
 		}
 #endif
-		fdset_add(fds, i->fd_tls[tls_id], POLLIN, NULL);
+		int ret = fdset_add(fds, i->fd_tls[tls_id], FDSET_POLLIN, NULL);
+		if (ret < 0) {
+			return 0;
+		}
 	}
 
-	return fds->n;
+	return fdset_get_length(fds);
 }
 
 static int tls_handle(tls_context_t *tls, int i, struct iovec *rx, struct iovec *tx)
@@ -239,7 +242,7 @@ static int tls_handle(tls_context_t *tls, int i, struct iovec *rx, struct iovec 
 static void tls_event_accept(tls_context_t *tls, unsigned i)
 {
 	/* Accept client. */
-	int fd = tls->set.pfd[i].fd;
+	int fd = fdset_get_fd(&tls->set, i);
 	int client = net_accept(fd, NULL);
 	gnutls_session_t *session = (gnutls_session_t *)calloc(1, sizeof(gnutls_session_t));
 	/* Setup GnuTLS */
@@ -252,7 +255,7 @@ static void tls_event_accept(tls_context_t *tls, unsigned i)
 
 	if (client >= 0) {
 		/* Assign to fdset. */ //TODO is nesessary for TLS?! We will see
-		int next_id = fdset_add(&tls->set, client, POLLIN, session);
+		int next_id = fdset_add(&tls->set, client, FDSET_POLLIN, session);
 		//int next_id = fdset_add(&tls->set, client, POLLIN, NULL);
 		if (next_id < 0) {
 			close(client);
@@ -296,50 +299,48 @@ static void tls_wait_for_events(tls_context_t *tls)
 	tls->is_throttled = set->n == tls->max_worker_fds;
 
 	/* If throttled, temporarily ignore new TCP connections. */
-	unsigned i = tls->is_throttled ? tls->client_threshold : 0;
+	unsigned offset = tls->is_throttled ? tls->client_threshold : 0;
 
 	/* Wait for events. */
-	int nfds = poll(&(set->pfd[i]), set->n - i, TLS_SWEEP_INTERVAL * 1000);
+	fdset_it_t it;
+	(void)fdset_poll(set, &it, offset, TLS_SWEEP_INTERVAL * 1000);
 
 	/* Mark the time of last poll call. */
 	tls->last_poll_time = time_now();
 
 	/* Process events. */
-	while (nfds > 0 && i < set->n) {
+	for (; !fdset_it_is_done(&it); fdset_it_next(&it)) {
 		bool should_close = false;
-		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
-			should_close = (i >= tls->client_threshold);
-			--nfds;
-		} else if (set->pfd[i].revents & (POLLIN)) {
+		unsigned int idx = fdset_it_get_idx(&it);
+		if (fdset_it_is_error(&it)) {
+			should_close = (idx >= tls->client_threshold);
+		} else if (fdset_it_is_pollin(&it)) {
 			/* Master sockets - new connection to accept. */
-			if (i < tls->client_threshold) {
+			if (idx < tls->client_threshold) {
 				/* Don't accept more clients than configured. */
-				if (set->n < tls->max_worker_fds) {
-					tls_event_accept(tls, i);
+				if (fdset_get_length(set) < tls->max_worker_fds) {
+					tls_event_accept(tls, idx);
 				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
-			} else if (tls_event_serve(tls, i) != KNOT_EOK) {
+			} else if (tls_event_serve(tls, idx) != KNOT_EOK) {
 				should_close = true;
 			}
-			--nfds;
 		}
 
 		/* Evaluate. */
 		if (should_close) {
-			gnutls_session_t *session = set->ctx[i];
+			gnutls_session_t *session = set->ctx[idx];
 			int ret = 0;
 			do {
 				ret = gnutls_bye(*session, GNUTLS_SHUT_RDWR);
 			} while(ret == GNUTLS_E_AGAIN || ret == GNUTLS_E_INTERRUPTED);
 			free(session);
 
-			close(set->pfd[i].fd);
-			fdset_remove(set, i);
-		} else {
-			++i;
+			fdset_it_remove(&it);
 		}
 	}
+	fdset_it_commit(&it);
 }
 
 int tls_master(dthread_t *thread)
@@ -402,7 +403,9 @@ int tls_master(dthread_t *thread)
 	knot_layer_init(&tls.layer, &mm, process_query_layer());
 
 	/* Prepare initial buffer for listening and bound sockets. */
-	fdset_init(&tls.set, FDSET_INIT_SIZE);
+	if (fdset_init(&tls.set, FDSET_RESIZE_STEP) != KNOT_EOK) {
+		goto finish;
+	}
 
 	/* Create iovec abstraction. */
 	for (unsigned i = 0; i < 2; ++i) {
