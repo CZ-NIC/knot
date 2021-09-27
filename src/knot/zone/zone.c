@@ -453,6 +453,7 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 		// invalidate if we don't have a master
 		zone->timers.last_refresh = 0;
 		zone->timers.next_refresh = 0;
+		zone->timers.last_refresh_ok = false;
 	}
 }
 

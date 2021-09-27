@@ -106,7 +106,7 @@ int event_load(conf_t *conf, zone_t *zone)
 				log_zone_error(zone->name, "failed to parse zone file (%s)",
 					       knot_strerror(ret));
 			}
-			goto cleanup;
+			goto load_end;
 		}
 
 		// Save zonefile information.
@@ -230,6 +230,8 @@ int event_load(conf_t *conf, zone_t *zone)
 			}
 		}
 	}
+
+load_end:
 	if (ret != KNOT_EOK) {
 		switch (ret) {
 		case KNOT_ENOENT:

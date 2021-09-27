@@ -95,6 +95,9 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	time_t refresh = TIME_CANCEL;
 	if (zone_is_slave(conf, zone)) {
 		refresh = zone->timers.next_refresh;
+		if (zone->contents == NULL && zone->timers.last_refresh_ok) { // zone disappeared w/o expiry
+			refresh = now;
+		}
 		assert(refresh > 0);
 	}
 
