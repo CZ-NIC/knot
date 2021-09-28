@@ -18,14 +18,20 @@
 
 #include "contrib/wire_ctx.h"
 #include "knot/dnssec/zone-keys.h"
+#include "knot/updates/changesets.h"
 
 void key_records_init(const kdnssec_ctx_t *ctx, key_records_t *r);
+
+void key_records_from_apex(const zone_node_t *apex, key_records_t *r);
 
 int key_records_add_rdata(key_records_t *r, uint16_t rrtype, uint8_t *rdata, uint16_t rdlen, uint32_t ttl);
 
 void key_records_clear(key_records_t *r);
 
 void key_records_clear_rdatasets(key_records_t *r);
+
+int key_records_to_changeset(const key_records_t *r, changeset_t *ch,
+                             bool rem, changeset_flag_t chfl);
 
 int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool verbose);
 
