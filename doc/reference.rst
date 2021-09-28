@@ -1463,6 +1463,7 @@ DNSSEC policy configuration.
      ds-push: remote_id | remotes_id ...
      cds-cdnskey-publish: none | delete-dnssec | rollover | always | double-ds
      cds-digest-type: sha256 | sha384
+     dnskey-management: full | incremental
      offline-ksk: BOOL
      unsafe-operation: none | no-check-keyset | no-update-dnskey | no-update-nsec | no-update-expired ...
 
@@ -1834,6 +1835,34 @@ cds-digest-type
 Specify digest type for published CDS records.
 
 *Default:* sha256
+
+.. _policy_dnskey-management:
+
+dnskey-management
+-----------------
+
+Specify how the DNSKEY, CDNSKEY, and CDS RRSets at the zone apex are handled
+when (re-)signing the zone.
+
+Possible values:
+
+- ``full`` – Upon every zone (re-)sign, delete all unknown DNSKEY, CDNSKEY, and CDS
+  records and keep just those that are related to the zone keys stored in the KASP database.
+- ``incremental`` – Keep unknown DNSKEY, CDNSKEY, and CDS records in the zone, and
+  modify server-managed records incrementally by employing changes in the KASP database.
+
+.. NOTE::
+   Prerequisites for *incremental*:
+
+   - The :ref:`Offline KSK <DNSSEC Offline KSK>` isn't supported.
+   - The :ref:`policy_delete-delay` is long enough to cover possible daemon
+     shutdown (e.g. due to server maintenance).
+   - Avoided manual deletion of keys with :doc:`keymgr<man_keymgr>`.
+
+   Otherwise there might remain some DNSKEY records in the zone, belonging to
+   deleted keys.
+
+*Default:* full
 
 .. _policy_offline-ksk:
 

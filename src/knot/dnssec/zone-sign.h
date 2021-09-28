@@ -32,11 +32,13 @@ bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type);
  * \param zone_keys     Zone keyset.
  * \param dnssec_ctx    KASP context.
  * \param add_r         RRSets to be added.
+ * \param rem_r         RRSets to be removed (only for incremental policy).
+ * \param orig_r        RRSets that was originally in zone (only for incremental policy).
  *
  * \return KNOT_E*
  */
 int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dnssec_ctx,
-			       key_records_t *add_r);
+                               key_records_t *add_r, key_records_t *rem_r, key_records_t *orig_r);
 
 /*!
  * \brief Adds/removes DNSKEY (and CDNSKEY, CDS) records to zone according to zone keyset.

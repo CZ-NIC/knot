@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -164,6 +164,28 @@ int main(int argc, char *argv[])
 	intersect_ok = ret == KNOT_EOK && knot_rdataset_eq(&intersection, &rdataset_lo);
 	ok(intersect_ok, "rdataset: intersect normal.");
 	knot_rdataset_clear(&intersection, NULL);
+
+	// Test intersect2
+	ok(knot_rdataset_intersect2(NULL, NULL, NULL) == KNOT_EINVAL,
+	   "rdataset: intersect2 NULL.");
+
+	ret = knot_rdataset_intersect2(&rdataset, &rdataset, NULL);
+	intersect_ok = ret == KNOT_EOK && knot_rdataset_eq(&rdataset, &rdataset);
+	ok(intersect_ok, "rdataset: intersect2 self.");
+	knot_rdataset_clear(&intersection, NULL);
+
+	RDATASET_INIT_WITH(rdataset_lo, rdata_lo);
+	RDATASET_INIT_WITH(rdataset_gt, rdata_gt);
+	ret = knot_rdataset_intersect2(&rdataset_lo, &rdataset_gt, NULL);
+	intersect_ok = ret == KNOT_EOK && rdataset_lo.count == 0;
+	ok(intersect_ok, "rdataset: intersect2 no common.");
+
+	ret = knot_rdataset_copy(&copy, &rdataset, NULL);
+	assert(ret == KNOT_EOK);
+	ret = knot_rdataset_intersect2(&copy, &rdataset_lo, NULL);
+	intersect_ok = ret == KNOT_EOK && knot_rdataset_eq(&copy, &rdataset_lo);
+	ok(intersect_ok, "rdataset: intersect2 normal.");
+	knot_rdataset_clear(&copy, NULL);
 
 	// Test subtract
 	ok(knot_rdataset_subtract(NULL, NULL, NULL) == KNOT_EINVAL,

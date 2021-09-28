@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -105,6 +105,34 @@ int key_records_to_changeset(const key_records_t *r, changeset_t *ch,
 	ret = add_one(&r->dnskey,  ch, rem, chfl, ret);
 	ret = add_one(&r->cdnskey, ch, rem, chfl, ret);
 	ret = add_one(&r->cds,     ch, rem, chfl, ret);
+	return ret;
+}
+
+static int subtract_one(knot_rrset_t *from, const knot_rrset_t *what,
+                        int (*fcn)(knot_rdataset_t *, const knot_rdataset_t *, knot_mm_t *),
+                        int ret)
+{
+	if (ret == KNOT_EOK && !knot_rrset_empty(from)) {
+		ret = fcn(&from->rrs, &what->rrs, NULL);
+	}
+	return ret;
+}
+
+int key_records_subtract(key_records_t *r, const key_records_t *against)
+{
+	int ret = KNOT_EOK;
+	ret = subtract_one(&r->dnskey,  &against->dnskey,  knot_rdataset_subtract, ret);
+	ret = subtract_one(&r->cdnskey, &against->cdnskey, knot_rdataset_subtract, ret);
+	ret = subtract_one(&r->cds,     &against->cds,     knot_rdataset_subtract, ret);
+	return ret;
+}
+
+int key_records_intersect(key_records_t *r, const key_records_t *against)
+{
+	int ret = KNOT_EOK;
+	ret = subtract_one(&r->dnskey,  &against->dnskey,  knot_rdataset_intersect2, ret);
+	ret = subtract_one(&r->cdnskey, &against->cdnskey, knot_rdataset_intersect2, ret);
+	ret = subtract_one(&r->cds,     &against->cds,     knot_rdataset_intersect2, ret);
 	return ret;
 }
 

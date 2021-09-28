@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -128,6 +128,7 @@ typedef struct {
 	uint16_t signing_threads;
 	bool ds_push;
 	bool offline_ksk;
+	bool incremental;
 	unsigned unsafe;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??

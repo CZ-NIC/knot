@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,6 +32,10 @@ void key_records_clear_rdatasets(key_records_t *r);
 
 int key_records_to_changeset(const key_records_t *r, changeset_t *ch,
                              bool rem, changeset_flag_t chfl);
+
+int key_records_subtract(key_records_t *r, const key_records_t *against);
+
+int key_records_intersect(key_records_t *r, const key_records_t *against);
 
 int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool verbose);
 
