@@ -16,16 +16,17 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
-PUB_ONLY_SCENARIO = random.choice([0, 1, 2])
+PUB_ONLY_SCENARIO = random.choice([0, 0, 0, 1, 2]) # bigger probability of zero to give INCREMENTAL a chance
 PUB_ONLY_KEYS = 1 if PUB_ONLY_SCENARIO > 0 else 0
 PUB_ONLY_CDS = 1 if PUB_ONLY_SCENARIO > 1 else 0
 PUB_ONLY_KEYID = ""
 DELETE_DELAY = random.choice([0, 2, 7, 17, 117])
+INCREMENTAL = random.choice([True, False]) if DELETE_DELAY > 0 and PUB_ONLY_KEYS == 0 else False
 
 DOUBLE_DS = random.choice([True, False])
 CDS_DT = random.choice(["sha256", "sha384"])
-check_log("DOUBLE DS %s, cds dt %s, PUB_ONLY_KEYS %d, PUB_ONLY_CDS %d DELETE_DELAY %d" % \
-          (str(DOUBLE_DS), CDS_DT, PUB_ONLY_KEYS, PUB_ONLY_CDS, DELETE_DELAY))
+check_log("DOUBLE DS %s, cds dt %s, PUB_ONLY_KEYS %d, PUB_ONLY_CDS %d DELETE_DELAY %d INCREMENTAL %s" % \
+          (str(DOUBLE_DS), CDS_DT, PUB_ONLY_KEYS, PUB_ONLY_CDS, DELETE_DELAY, str(INCREMENTAL)))
 
 def generate_public_only(server, zone, alg):
     global PUB_ONLY_KEYID
@@ -274,6 +275,7 @@ child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
 child.dnssec(child_zone).delete_delay = DELETE_DELAY
+child.dnssec(child_zone).dnskey_mgmt = "incremental" if INCREMENTAL else "full"
 child.dnssec(child_zone).propagation_delay = 11
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 2

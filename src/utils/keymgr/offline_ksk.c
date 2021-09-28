@@ -297,7 +297,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	key_records_t r;
 	key_records_init(ctx, &r);
 
-	ret = knot_zone_sign_add_dnskeys(&keyset, ctx, &r);
+	ret = knot_zone_sign_add_dnskeys(&keyset, ctx, &r, NULL, NULL);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}

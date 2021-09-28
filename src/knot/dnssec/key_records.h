@@ -33,6 +33,10 @@ void key_records_clear_rdatasets(key_records_t *r);
 int key_records_to_changeset(const key_records_t *r, changeset_t *ch,
                              bool rem, changeset_flag_t chfl);
 
+int key_records_subtract(key_records_t *r, const key_records_t *against);
+
+int key_records_intersect(key_records_t *r, const key_records_t *against);
+
 int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool verbose);
 
 int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx, knot_time_t *expires);

@@ -90,6 +90,12 @@ static const knot_lookup_t cds_cdnskey[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t dnskey_mgmt[] = {
+	{ DNSKEY_MGMT_FULL,            "full" },
+	{ DNSKEY_MGMT_INCREMENTAL,     "incremental" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t cds_digesttype[] = {
 	{ DNSSEC_KEY_DIGEST_SHA256,   "sha256" },
 	{ DNSSEC_KEY_DIGEST_SHA384,   "sha384" },
@@ -402,6 +408,8 @@ static const yp_item_t desc_policy[] = {
 	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ROLLOVER },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_CDS_DIGESTTYPE,      YP_TOPT,  YP_VOPT = { cds_digesttype, DNSSEC_KEY_DIGEST_SHA256 },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_DNSKEY_MGMT,         YP_TOPT,  YP_VOPT = { dnskey_mgmt, DNSKEY_MGMT_FULL },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_OFFLINE_KSK,         YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_UNSAFE_OPERATION,    YP_TOPT,  YP_VOPT = { unsafe_operation, UNSAFE_NONE }, YP_FMULTI },

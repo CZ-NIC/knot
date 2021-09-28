@@ -47,6 +47,7 @@
 #define C_DBUS_EVENT		"\x0A""dbus-event"
 #define C_DDNS_MASTER		"\x0B""ddns-master"
 #define C_DENY			"\x04""deny"
+#define C_DNSKEY_MGMT		"\x11""dnskey-management"
 #define C_DNSKEY_TTL		"\x0A""dnskey-ttl"
 #define C_DNSSEC_POLICY		"\x0D""dnssec-policy"
 #define C_DNSSEC_SIGNING	"\x0E""dnssec-signing"
@@ -198,6 +199,11 @@ enum {
 	CDS_CDNSKEY_ROLLOVER  = 2,
 	CDS_CDNSKEY_ALWAYS    = 3,
 	CDS_CDNSKEY_DOUBLE_DS = 4,
+};
+
+enum {
+	DNSKEY_MGMT_FULL           = 0,
+	DNSKEY_MGMT_INCREMENTAL    = 1,
 };
 
 enum {
