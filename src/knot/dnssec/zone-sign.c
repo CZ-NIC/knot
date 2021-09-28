@@ -825,11 +825,9 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	}
 
 	const zone_node_t *apex = update->new_cont->apex;
-	knot_rrset_t dnskeys = node_rrset(apex, KNOT_RRTYPE_DNSKEY);
-	knot_rrset_t cdnskeys = node_rrset(apex, KNOT_RRTYPE_CDNSKEY);
-	knot_rrset_t cdss = node_rrset(apex, KNOT_RRTYPE_CDS);
-	key_records_t add_r;
+	key_records_t add_r, orig_r;
 	memset(&add_r, 0, sizeof(add_r));
+	key_records_from_apex(apex, &orig_r);
 	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa)) {
 		return KNOT_EINVAL;
@@ -844,11 +842,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 #define CHECK_RET if (ret != KNOT_EOK) goto cleanup
 
 	// remove all. This will cancel out with additions later
-	ret = changeset_add_removal(&ch, &dnskeys, 0);
-	CHECK_RET;
-	ret = changeset_add_removal(&ch, &cdnskeys, 0);
-	CHECK_RET;
-	ret = changeset_add_removal(&ch, &cdss, 0);
+	ret = key_records_to_changeset(&orig_r, &ch, true, 0);
 	CHECK_RET;
 
 	// add DNSKEYs, CDNSKEYs and CDSs
@@ -869,24 +863,12 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	}
 	CHECK_RET;
 
-	if (!knot_rrset_empty(&add_r.cdnskey)) {
-		ret = changeset_add_addition(&ch, &add_r.cdnskey, CHANGESET_CHECK);
-		CHECK_RET;
-	}
-
-	if (!knot_rrset_empty(&add_r.cds)) {
-		ret = changeset_add_addition(&ch, &add_r.cds, CHANGESET_CHECK);
-		if (dnssec_ctx->policy->ds_push && node_rrtype_exists(ch.add->apex, KNOT_RRTYPE_CDS)) {
-			// there is indeed a change to CDS
-			update->zone->timers.next_ds_push = time(NULL) + dnssec_ctx->policy->propagation_delay;
-			zone_events_schedule_at(update->zone, ZONE_EVENT_DS_PUSH, update->zone->timers.next_ds_push);
-		}
-		CHECK_RET;
-	}
-
-	if (!knot_rrset_empty(&add_r.dnskey)) {
-		ret = changeset_add_addition(&ch, &add_r.dnskey, CHANGESET_CHECK);
-		CHECK_RET;
+	ret = key_records_to_changeset(&add_r, &ch, false, CHANGESET_CHECK);
+	CHECK_RET;
+	if (dnssec_ctx->policy->ds_push && node_rrtype_exists(ch.add->apex, KNOT_RRTYPE_CDS)) {
+		// there is indeed a change to CDS
+		update->zone->timers.next_ds_push = time(NULL) + dnssec_ctx->policy->propagation_delay;
+		zone_events_schedule_at(update->zone, ZONE_EVENT_DS_PUSH, update->zone->timers.next_ds_push);
 	}
 
 	if (!knot_rrset_empty(&add_r.rrsig)) {

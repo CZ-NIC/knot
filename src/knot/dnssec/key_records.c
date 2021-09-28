@@ -34,6 +34,14 @@ void key_records_init(const kdnssec_ctx_t *ctx, key_records_t *r)
 	                KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
 }
 
+void key_records_from_apex(const zone_node_t *apex, key_records_t *r)
+{
+	r->dnskey = node_rrset(apex, KNOT_RRTYPE_DNSKEY);
+	r->cdnskey = node_rrset(apex, KNOT_RRTYPE_CDNSKEY);
+	r->cds = node_rrset(apex, KNOT_RRTYPE_CDS);
+	knot_rrset_init_empty(&r->rrsig);
+}
+
 int key_records_add_rdata(key_records_t *r, uint16_t rrtype, uint8_t *rdata, uint16_t rdlen, uint32_t ttl)
 {
 	knot_rrset_t *to_add;
@@ -75,6 +83,29 @@ void key_records_clear_rdatasets(key_records_t *r)
 	knot_rdataset_clear(&r->cdnskey.rrs, NULL);
 	knot_rdataset_clear(&r->cds.rrs, NULL);
 	knot_rdataset_clear(&r->rrsig.rrs, NULL);
+}
+
+static int add_one(const knot_rrset_t *rr, changeset_t *ch,
+                   bool rem, changeset_flag_t fl, int ret)
+{
+	if (ret == KNOT_EOK && !knot_rrset_empty(rr)) {
+		if (rem) {
+			ret = changeset_add_removal(ch, rr, fl);
+		} else {
+			ret = changeset_add_addition(ch, rr, fl);
+		}
+	}
+	return ret;
+}
+
+int key_records_to_changeset(const key_records_t *r, changeset_t *ch,
+                             bool rem, changeset_flag_t chfl)
+{
+	int ret = KNOT_EOK;
+	ret = add_one(&r->dnskey,  ch, rem, chfl, ret);
+	ret = add_one(&r->cdnskey, ch, rem, chfl, ret);
+	ret = add_one(&r->cds,     ch, rem, chfl, ret);
+	return ret;
 }
 
 int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool verbose)
