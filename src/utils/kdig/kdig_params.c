@@ -2176,8 +2176,8 @@ static void print_help(void)
 	       "       +[no]tls-ocsp-stapling[=H] Use TLS with a valid stapled OCSP response for the\n"
 	       "                                  server certificate (%u or specify hours).\n"
 #ifdef LIBNGHTTP2
-	       "       +[no]https[=URL]           Use HTTPS protocol. It's also possible to specify\n"
-	       "                                  URL where query will be sent.\n"
+	       "       +[no]https[=STR]           Use HTTPS protocol. It's also possible to specify\n"
+	       "                                  a resource where query will be sent to.\n"
 	       "       +[no]https-get             Use HTTPS protocol with GET method instead of POST.\n"
 #endif
 	       "       +[no]nsid                  Request NSID.\n"

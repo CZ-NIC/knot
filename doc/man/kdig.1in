@@ -277,10 +277,12 @@ Use TLS with a valid stapled OCSP response for the server certificate
 (%u or specify hours). OCSP responses older than the specified period are
 considered invalid.
 .TP
-\fB+\fP[\fBno\fP]\fBhttps\fP[=\fIURL\fP]
+\fB+\fP[\fBno\fP]\fBhttps\fP[=\fISTR\fP]
 Use HTTPS (DNS\-over\-HTTPS) in wire format (\fI\%RFC 1035#section\-4.2.1\fP).
-It is also possible to specify URL=[authority][/path] where request
-will be send. Authority might also be specified as server name (parameter \fI@\fP).
+It is also possible to specify a resource STR where request will be sent to,
+STR being a non\-empty string in the form \fI[authority][/path]\fP,
+where either string component is optional.
+Authority might also be specified as server name (parameter \fI@\fP).
 Library \fIlibnghttp2\fP is required.
 .TP
 \fB+\fP[\fBno\fP]\fBhttps\-get\fP

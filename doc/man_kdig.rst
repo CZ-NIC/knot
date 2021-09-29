@@ -256,10 +256,12 @@ Options
   (%u or specify hours). OCSP responses older than the specified period are
   considered invalid.
 
-**+**\ [\ **no**\ ]\ **https**\[\ =\ *URL*\]
+**+**\ [\ **no**\ ]\ **https**\[\ =\ *STR*\]
   Use HTTPS (DNS-over-HTTPS) in wire format (:rfc:`1035#section-4.2.1`).
-  It is also possible to specify URL=\[authority\]\[/path\] where request
-  will be send. Authority might also be specified as server name (parameter `@`).
+  It is also possible to specify a resource STR where request will be sent to,
+  STR being a non-empty string in the form *\[authority\]\[/path\]*,
+  where either string component is optional.
+  Authority might also be specified as server name (parameter `@`).
   Library *libnghttp2* is required.
 
 **+**\ [\ **no**\ ]\ **https-get**
