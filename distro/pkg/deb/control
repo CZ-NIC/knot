@@ -11,7 +11,7 @@ Build-Depends-Indep:
 Build-Depends:
  autoconf,
  automake,
- debhelper (>= 9),
+ debhelper (>= {% if distro.match('ubuntu <= 16.04') %}9{% else %}11{% endif %}),
  dh-python,
  libcap-ng-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386],
  libedit-dev,
