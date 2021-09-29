@@ -96,6 +96,16 @@ static void server_deinit_iface(iface_t *iface, bool dealloc)
 		free(iface->fd_tcp);
 	}
 
+	/* Free QUIC handler. */
+	if (iface->fd_quic != NULL) {
+		for (int i = 0; i < iface->fd_quic_count; i++) {
+			if (iface->fd_quic[i] > -1) {
+				close(iface->fd_quic[i]);
+			}
+		}
+		free(iface->fd_quic);
+	}
+
 	/* Free TLS handler. */
 	if (iface->fd_tls != NULL) {
 		for (int i = 0; i < iface->fd_tls_count; i++) {
@@ -206,6 +216,32 @@ static bool enable_pktinfo(int sock, int family)
 
 	const int on = 1;
 	return setsockopt(sock, level, option, &on, sizeof(on)) == 0;
+}
+
+
+/*!
+ * \brief Enable source packet information retrieval.
+ */
+static bool enable_recv_ecn(int sock, int family)
+{
+	unsigned int tos = 1;
+	switch (family) {
+	case AF_INET:
+		if (setsockopt(sock, IPPROTO_IP, IP_RECVTOS, &tos,
+		               (socklen_t)sizeof(tos)) == -1) {
+			return false;
+		}
+		break;
+	case AF_INET6:
+		if (setsockopt(sock, IPPROTO_IPV6, IPV6_RECVTCLASS, &tos,
+		               (socklen_t)sizeof(tos)) == -1) {
+			return false;
+		}
+		break;
+	default:
+		return false;
+	}
+	return true;
 }
 
 /*!
@@ -321,8 +357,9 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
  */
 static iface_t *server_init_iface(struct sockaddr_storage *addr,
                                   int udp_thread_count, int tcp_thread_count,
-                                  int tls_thread_count, bool tcp_reuseport,
-                                  bool socket_affinity)
+                                  int quic_thread_count, int tls_thread_count,
+                                  bool tcp_reuseport, bool socket_affinity,
+                                  unsigned thread_id_start)
 {
 	iface_t *new_if = calloc(1, sizeof(*new_if));
 	if (new_if == NULL) {
@@ -339,12 +376,17 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	int udp_bind_flags = 0;
 	int tcp_socket_count = 1;
 	int tcp_bind_flags = 0;
+	int quic_socket_count = 1;
+	int quic_bind_flags = 0;
 	int tls_socket_count = 1;
 	int tls_bind_flags = 0;
 
 #ifdef ENABLE_REUSEPORT
 	udp_socket_count = udp_thread_count;
 	udp_bind_flags |= NET_BIND_MULTIPLE;
+
+	quic_socket_count = quic_thread_count;
+	quic_bind_flags |= NET_BIND_MULTIPLE;
 
 	if (tcp_reuseport) {
 		tcp_socket_count = tcp_thread_count;
@@ -355,10 +397,12 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	}
 #endif
 
-	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
-	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
-	new_if->fd_tls = malloc(tls_socket_count * sizeof(int));
-	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL || new_if->fd_tls == NULL) {
+	new_if->fd_udp = calloc(udp_socket_count, sizeof(int));
+	new_if->fd_tcp = calloc(tcp_socket_count, sizeof(int));
+	new_if->fd_quic = calloc(quic_socket_count, sizeof(int));
+	new_if->fd_tls = calloc(tls_socket_count, sizeof(int));
+	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL ||
+	    new_if->fd_quic == NULL || new_if->fd_tls == NULL) {
 		log_error("failed to initialize interface");
 		server_deinit_iface(new_if, true);
 		return NULL;
@@ -478,12 +522,81 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 	}
 
+	/* Create bound QUIC sockets. */
+	warn_bind = true;
+	warn_cbpf = true;
+	warn_bufsize = true;
+	warn_flag_misc = true;
+
+	new_if->quic_first_thread_id = thread_id_start;
+
+	conf_val_t quic_port_val = conf_get(conf(), C_SRV, C_QUIC_PORT);
+	uint16_t quic_port = conf_int(&quic_port_val);
+	sockaddr_port_set(addr, quic_port);
+	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
+	if (quic_socket_count > 0) {
+		log_info("binding to QUIC interface %s", addr_str);
+	}
+	for (int i = 0; i < quic_socket_count; i++) {
+		int sock = net_bound_socket(SOCK_DGRAM, addr, quic_bind_flags);
+		if (sock == KNOT_EADDRNOTAVAIL) {
+			quic_bind_flags |= NET_BIND_NONLOCAL;
+			sock = net_bound_socket(SOCK_DGRAM, addr, quic_bind_flags);
+			if (sock >= 0 && warn_bind) {
+				log_warning("address %s QUIC bound, but required nonlocal bind", addr_str);
+				warn_bind = false;
+			}
+		}
+
+		if (sock < 0) {
+			log_error("cannot bind address %s QUIC (%s)", addr_str,
+			          knot_strerror(sock));
+			server_deinit_iface(new_if, true);
+			return NULL;
+		}
+
+		if ((quic_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
+			if (!server_attach_reuseport_bpf(sock, quic_socket_count) &&
+			    warn_cbpf) {
+				log_warning("cannot ensure optimal CPU locality for QUIC");
+				warn_cbpf = false;
+			}
+		}
+
+		if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE) &&
+		    warn_bufsize) {
+			log_warning("failed to set network buffer sizes for QUIC");
+			warn_bufsize = false;
+		}
+
+		if (!enable_pktinfo(sock, addr->ss_family) && warn_pktinfo) {
+			log_warning("failed to enable received packet information retrieval");
+			warn_pktinfo = false;
+		}
+
+		int ret = disable_pmtudisc(sock, addr->ss_family);
+		if (ret != KNOT_EOK && warn_flag_misc) {
+			log_warning("failed to disable Path MTU discovery for IPv4/QUIC (%s)",
+			            knot_strerror(ret));
+			warn_flag_misc = false;
+		}
+
+		if (!enable_recv_ecn(sock, addr->ss_family)) {
+			log_warning("failed to enable received packet TOS");
+			warn_pktinfo = false;
+		}
+
+		new_if->fd_quic[new_if->fd_quic_count] = sock;
+		new_if->fd_quic_count += 1;
+	}
+
+
 	/* Create bound TLS sockets. */
 	warn_bind = true;
 	warn_bufsize = true;
 	warn_flag_misc = true;
 
-	sockaddr_port_set(addr, 50853);
+	sockaddr_port_set(addr, 50853); //TODO configurable
 	sockaddr_tostr(addr_str, sizeof(addr_str), addr);
 	for (int i = 0; i < tls_socket_count; i++) {
 		int sock = net_bound_socket(SOCK_STREAM, addr, tls_bind_flags);
@@ -611,10 +724,14 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	/* Normal UDP and TCP sockets. */
 	unsigned size_udp = s->handlers[IO_UDP].handler.unit->size;
 	unsigned size_tcp = s->handlers[IO_TCP].handler.unit->size;
-	unsigned size_tls = s->handlers[IO_TLS].handler.unit->size;
+	unsigned size_quic = s->handlers[IO_QUIC].handler.unit->size;
+	unsigned size_tls = (s->handlers[IO_TLS].handler.unit) ? s->handlers[IO_TLS].handler.unit->size : 0;
 	bool tcp_reuseport = conf->cache.srv_tcp_reuseport;
 	bool socket_affinity = conf->cache.srv_socket_affinity;
 	char *rundir = conf_abs_path(&rundir_val, NULL);
+
+	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
+	                     s->handlers[IO_TCP].handler.unit->size;
 	while (listen_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
@@ -622,7 +739,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		log_info("binding to interface %s", addr_str);
 
 		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp,
-		                                    size_tls, tcp_reuseport, socket_affinity);
+		                                    size_quic, size_tls, tcp_reuseport,
+		                                    socket_affinity, thread_id);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			free(rundir);
@@ -638,8 +756,11 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	/* XDP sockets. */
 	bool xdp_tcp = conf->cache.xdp_tcp;
 	bool route_check = conf->cache.xdp_route_check;
-	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
-	                     s->handlers[IO_TCP].handler.unit->size;
+
+	thread_id = s->handlers[IO_UDP].handler.unit->size +
+	            s->handlers[IO_TCP].handler.unit->size +
+				s->handlers[IO_QUIC].handler.unit->size +
+	            size_tls;
 	while (lisxdp_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
@@ -1169,6 +1290,25 @@ static int configure_threads(conf_t *conf, server_t *server)
 		return ret;
 	}
 
+	ret = set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (conf->cache.srv_quic_threads > 0) {
+		ret = set_handler(server, IO_QUIC, conf->cache.srv_quic_threads, udp_master);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	if (conf->cache.srv_tls_threads > 0) {
+		ret = set_handler(server, IO_TLS, conf->cache.srv_tls_threads, tls_master);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	if (conf->cache.srv_xdp_threads > 0) {
 		ret = set_handler(server, IO_XDP, conf->cache.srv_xdp_threads, udp_master);
 		if (ret != KNOT_EOK) {
@@ -1176,12 +1316,7 @@ static int configure_threads(conf_t *conf, server_t *server)
 		}
 	}
 
-	ret = set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return set_handler(server, IO_TLS, conf->cache.srv_tls_threads, tls_master);
+	return KNOT_EOK;
 }
 
 static int reconfigure_journal_db(conf_t *conf, server_t *server)

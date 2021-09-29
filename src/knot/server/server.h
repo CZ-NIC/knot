@@ -55,10 +55,13 @@ typedef struct {
 	unsigned fd_udp_count;
 	int *fd_tcp;
 	unsigned fd_tcp_count;
-	int *fd_xdp;
-	unsigned fd_xdp_count;
+	int *fd_quic;
+	unsigned fd_quic_count;
+	unsigned quic_first_thread_id;
 	int *fd_tls; // TODO init
 	unsigned fd_tls_count; // TODO setup
+	int *fd_xdp;
+	unsigned fd_xdp_count;
 	unsigned xdp_first_thread_id;
 	struct knot_xdp_socket **xdp_sockets;
 	struct sockaddr_storage addr;
@@ -70,8 +73,9 @@ typedef struct {
 enum {
 	IO_UDP = 0,
 	IO_TCP = 1,
-	IO_XDP = 2,
+	IO_QUIC = 2,
 	IO_TLS = 3, // WIP TLS before XDP?
+	IO_XDP = 4,
 	IO_HANDLERS_SIZE
 };
 

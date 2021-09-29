@@ -28,6 +28,20 @@
 
 #define RECVMMSG_BATCHLEN 10 /*!< Default recvmmsg() batch size. */
 
+/* Buffer identifiers. */
+enum {
+	RX = 0,
+	TX = 1,
+	NBUFS = 2
+};
+
+/*! \brief Control message to fit IP_PKTINFO or IPv6_RECVPKTINFO, and TOS/ECN. */
+typedef union {
+	struct cmsghdr cmsg;
+	uint8_t buf[CMSG_SPACE(sizeof(uint8_t)) + // TOS/ECN
+                CMSG_SPACE(sizeof(struct in6_pktinfo))]; // Local addr            
+} cmsg_pktinfo_t;
+
 /*!
  * \brief UDP handler thread runnable.
  *

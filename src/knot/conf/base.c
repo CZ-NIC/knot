@@ -26,9 +26,11 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/base64url.h"
 #include "contrib/files.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
+
 
 // The active configuration.
 conf_t *s_conf;
@@ -131,6 +133,7 @@ static void init_cache(
 	static size_t running_tcp_threads;
 	static size_t running_xdp_threads;
 	static size_t running_tls_threads;
+	static size_t running_quic_threads;
 	static size_t running_bg_threads;
 
 	if (first_init || reinit_cache) {
@@ -142,6 +145,7 @@ static void init_cache(
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
 		running_tls_threads = conf_tls_threads(conf);
+		running_quic_threads = conf_quic_threads(conf);
 		running_bg_threads = conf_bg_threads(conf);
 
 		first_init = false;
@@ -189,10 +193,17 @@ static void init_cache(
 
 	conf->cache.srv_tls_threads = running_tls_threads;
 
+	conf->cache.srv_quic_threads = running_quic_threads;
+
 	conf->cache.srv_bg_threads = running_bg_threads;
 
 	conf->cache.srv_tcp_max_clients = conf_tcp_max_clients(conf);
 
+	if (conf->cache.srv_quic_secret != NULL) {
+		free(conf->cache.srv_quic_secret);
+	}
+	conf->cache.srv_quic_secret = conf_quic_secret(conf);
+	
 	val = conf_get(conf, C_XDP, C_TCP_MAX_CLIENTS);
 	conf->cache.xdp_tcp_max_clients = conf_int(&val);
 

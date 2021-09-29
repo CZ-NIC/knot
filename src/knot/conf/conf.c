@@ -18,6 +18,8 @@
 #include <grp.h>
 #include <pwd.h>
 #include <stdio.h>
+#include <gnutls/crypto.h>
+#include <gnutls/gnutls.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 
@@ -26,9 +28,12 @@
 #include "knot/catalog/catalog_db.h"
 #include "knot/common/log.h"
 #include "knot/server/dthreads.h"
+#include "libdnssec/error.h"
+#include "libdnssec/random.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/xdp.h"
+#include "contrib/base64.h"
 #include "contrib/files.h"
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
@@ -1206,6 +1211,20 @@ size_t conf_tls_threads_txn(
 	return workers;
 }
 
+size_t conf_quic_threads_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_QUIC_WORKERS);
+	int64_t workers = conf_int(&val);
+	assert(workers <= CONF_MAX_UDP_WORKERS);
+	if (workers == YP_NIL) {
+		return MIN(dt_optimal_size(), CONF_MAX_UDP_WORKERS);
+	}
+
+	return workers;
+}
+
 size_t conf_bg_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
@@ -1241,6 +1260,42 @@ size_t conf_tcp_max_clients_txn(
 	}
 
 	return clients;
+}
+
+//TODO move this constant 
+#define QUIC_RAND_SECRET_LEN 16
+
+uint8_t *conf_quic_secret_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_QUIC_SECRET);
+	size_t secret_len = 0;
+	uint8_t *secret = NULL;
+	uint8_t *output = NULL;
+
+	if (val.code == KNOT_EOK) {
+		const char *encoded = conf_str(&val);
+		if ((secret_len = knot_base64_decode_alloc((const uint8_t *)encoded, strlen(encoded), &secret)) <= 0) {
+			return NULL;
+		}
+	}
+	if (secret == NULL) {
+		secret = malloc(QUIC_RAND_SECRET_LEN);
+		if (dnssec_random_buffer(secret, QUIC_RAND_SECRET_LEN) != DNSSEC_EOK) {
+			free(secret);
+			return NULL;
+		}
+		secret_len = QUIC_RAND_SECRET_LEN;
+	}
+
+	output = malloc(32);
+	if (gnutls_hash_fast(GNUTLS_DIG_SHA256, secret, secret_len, output) != GNUTLS_E_SUCCESS) {
+		free(secret);
+		return NULL;
+	}
+	free(secret);
+	return output;
 }
 
 size_t conf_tls_max_clients_txn(
