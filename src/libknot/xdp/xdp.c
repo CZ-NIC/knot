@@ -131,8 +131,40 @@ static void deconfigure_xsk_umem(struct kxsk_umem *umem)
 	free(umem);
 }
 
+static int enable_busypoll(int socket, unsigned timeout_us, unsigned budget)
+{
+	if (timeout_us == 0) {
+		return KNOT_EOK;
+	}
+
+#if defined(SO_PREFER_BUSY_POLL) && defined(SO_BUSY_POLL_BUDGET)
+	int opt_val = 1;
+	if (setsockopt(socket, SOL_SOCKET, SO_PREFER_BUSY_POLL,
+	               &opt_val, sizeof(opt_val)) != 0) {
+		return knot_map_errno();
+	}
+
+	opt_val = timeout_us;
+	if (setsockopt(socket, SOL_SOCKET, SO_BUSY_POLL,
+	               &opt_val, sizeof(opt_val)) != 0) {
+		return knot_map_errno();
+	}
+
+	opt_val = budget;
+	if (setsockopt(socket, SOL_SOCKET, SO_BUSY_POLL_BUDGET,
+	               &opt_val, sizeof(opt_val)) != 0) {
+		return knot_map_errno();
+	}
+
+	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif
+}
+
 static int configure_xsk_socket(struct kxsk_umem *umem,
                                 const struct kxsk_iface *iface,
+                                const knot_xdp_conf_t *config,
                                 knot_xdp_socket_t **out_sock)
 {
 	knot_xdp_socket_t *xsk_info = calloc(1, sizeof(*xsk_info));
@@ -141,11 +173,16 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	}
 	xsk_info->iface = iface;
 	xsk_info->umem = umem;
+	if (config != NULL) {
+		xsk_info->config =  *config;
+	}
 
 	const struct xsk_socket_config sock_conf = {
 		.tx_size = RING_LEN_TX,
 		.rx_size = RING_LEN_RX,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
+		.bind_flags = (xsk_info->config.force_copy ? XDP_COPY : 0) |
+		              (xsk_info->config.need_wakeup ? XDP_USE_NEED_WAKEUP : 0),
 	};
 
 	int ret = xsk_socket__create(&xsk_info->xsk, iface->if_name,
@@ -154,6 +191,17 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	if (ret != 0) {
 		free(xsk_info);
 		return ret;
+	}
+
+	if (xsk_info->config.busy_poll) {
+		ret = enable_busypoll(xsk_socket__fd(xsk_info->xsk),
+		                      xsk_info->config.timeout,
+		                      xsk_info->config.budget);
+		if (ret != KNOT_EOK) {
+			xsk_socket__delete(xsk_info->xsk);
+			free(xsk_info);
+			return ret;
+		}
 	}
 
 	*out_sock = xsk_info;
@@ -185,7 +233,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 		return ret;
 	}
 
-	ret = configure_xsk_socket(umem, iface, socket);
+	ret = configure_xsk_socket(umem, iface, xdp_config, socket);
 	if (ret != KNOT_EOK) {
 		deconfigure_xsk_umem(umem);
 		kxsk_iface_free(iface);
@@ -359,9 +407,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	}
 	if (unlikely(socket->send_mock != NULL)) {
 		int ret = socket->send_mock(socket, msgs, count, sent);
-		for (uint32_t i = 0; i < count; ++i) {
-			free_unsent(socket, &msgs[i]);
-		}
+		knot_xdp_send_free(socket, msgs, count);
 		return ret;
 	}
 
@@ -372,9 +418,10 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 * Therefore we handle `socket->tx.cached_prod` by hand.
 	 */
 	if (xsk_prod_nb_free(&socket->tx, count) < count) {
-		/* This situation was sometimes observed in the emulated XDP mode. */
-		for (uint32_t i = 0; i < count; ++i) {
-			free_unsent(socket, &msgs[i]);
+		/* This situation can be observed in emulated or copy XDP mode at high rates. */
+		knot_xdp_send_free(socket, msgs, count);
+		if (socket->config.busy_poll || xsk_ring_prod__needs_wakeup(&socket->tx)) {
+			(void)sendmsg(xsk_socket__fd(socket->xsk), NULL, MSG_DONTWAIT);
 		}
 		return KNOT_ENOBUFS;
 	}
@@ -403,7 +450,6 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	assert(*sent <= count);
 	socket->tx.cached_prod = idx;
 	xsk_ring_prod__submit(&socket->tx, *sent);
-	socket->kernel_needs_wakeup = true;
 
 	return KNOT_EOK;
 }
@@ -424,34 +470,19 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 		return KNOT_EINVAL;
 	}
 
-	/* Trigger sending queued packets. */
-	if (!socket->kernel_needs_wakeup) {
+	if (socket->config.busy_poll || !xsk_ring_prod__needs_wakeup(&socket->tx)) {
 		return KNOT_EOK;
 	}
 
-	int ret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
-	const bool is_ok = (ret >= 0);
-	// List of "safe" errors taken from
-	// https://github.com/torvalds/linux/blame/master/samples/bpf/xdpsock_user.c
-	const bool is_again = !is_ok && (errno == ENOBUFS || errno == EAGAIN
-	                                || errno == EBUSY || errno == ENETDOWN);
-	// Some of the !is_ok cases are a little unclear - what to do about the syscall,
-	// including how caller of _sendmsg_finish() should react.
-	if (is_ok || !is_again) {
-		socket->kernel_needs_wakeup = false;
-	}
-	if (is_again) {
-		return KNOT_EAGAIN;
-	} else if (is_ok) {
+	int ret = sendmsg(xsk_socket__fd(socket->xsk), NULL, MSG_DONTWAIT);
+	if (ret >= 0) {
 		return KNOT_EOK;
+	} else if (errno == ENOBUFS || errno == EAGAIN || errno == EBUSY ||
+	           errno == ENETDOWN) {
+		return KNOT_EAGAIN;
 	} else {
 		return -errno;
 	}
-	/* This syscall might be avoided with a newer kernel feature (>= 5.4):
-	   https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-use-need-wakeup-bind-flag
-	   Unfortunately it's not easy to continue supporting older kernels
-	   when using this feature on newer ones.
-	 */
 }
 
 _public_
@@ -509,8 +540,13 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	struct xsk_ring_prod *const fq = &umem->fq;
 
 	uint32_t idx = 0;
-	const uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
-	assert(reserved == count);
+	uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
+	while (reserved < count) {
+		if (socket->config.busy_poll || xsk_ring_prod__needs_wakeup(&socket->umem->fq)) {
+			(void)recvmsg(xsk_socket__fd(socket->xsk), NULL, MSG_DONTWAIT);
+		}
+		reserved = xsk_ring_prod__reserve(fq, count, &idx);
+	}
 
 	for (uint32_t i = 0; i < reserved; ++i) {
 		uint8_t *uframe_p = msg_uframe_ptr(&msgs[i]);
@@ -519,6 +555,10 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	}
 
 	xsk_ring_prod__submit(fq, reserved);
+
+	if (socket->config.busy_poll || xsk_ring_prod__needs_wakeup(&socket->umem->fq)) {
+		(void)recvmsg(xsk_socket__fd(socket->xsk), NULL, MSG_DONTWAIT);
+	}
 }
 
 _public_

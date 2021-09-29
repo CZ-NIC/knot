@@ -82,11 +82,11 @@ struct knot_xdp_socket {
 	/*! If non-NULL, it's a mocked socket with this send function. */
 	int (*send_mock)(struct knot_xdp_socket *, const knot_xdp_msg_t[], uint32_t, uint32_t *);
 
-	/*! The kernel has to be woken up by a syscall indication. */
-	bool kernel_needs_wakeup;
-
 	/*! The limit of frame size. */
 	unsigned frame_limit;
+
+	/*! XDP socket configuration. */
+	knot_xdp_conf_t config;
 };
 
 /*!

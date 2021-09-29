@@ -51,6 +51,16 @@ typedef enum {
 /*! \brief Context structure for one XDP socket. */
 typedef struct knot_xdp_socket knot_xdp_socket_t;
 
+typedef struct {
+	bool force_copy;
+	bool need_wakeup;
+	struct {
+		bool busy_poll;
+		unsigned timeout; // microseconds
+		unsigned budget;
+	};
+} knot_xdp_conf_t;
+
 /*!
  * \brief Initialize XDP socket.
  *
