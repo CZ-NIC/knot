@@ -64,6 +64,7 @@
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/rrsig.h"
 #include "libknot/rrtype/soa.h"
+#include "libknot/rrtype/svcb.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/rrtype/zonemd.h"
 #include "libknot/wire.h"

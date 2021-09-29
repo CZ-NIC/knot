@@ -16,6 +16,7 @@
 
 #include "libknot/libknot.h"
 #include "knot/dnssec/rrset-sign.h"
+#include "knot/dnssec/zone-nsec.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/query_module.h"
@@ -193,6 +194,24 @@ static int put_delegation(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	                            KNOT_COMPR_HINT_NONE, 0);
 }
 
+static int put_nsec3_bitmap(const zone_node_t *for_node, knot_pkt_t *pkt,
+                            knotd_qdata_t *qdata, uint32_t flags)
+{
+	const zone_node_t *node = node_nsec3_get(for_node);
+	if (node == NULL) {
+		return KNOT_EOK;
+	}
+
+	knot_rrset_t nsec3 = node_rrset(node, KNOT_RRTYPE_NSEC3);
+	if (knot_rrset_empty(&nsec3)) {
+		return KNOT_EOK;
+	}
+
+	knot_rrset_t rrsig = node_rrset(node, KNOT_RRTYPE_RRSIG);
+	return process_query_put_rr(pkt, qdata, &nsec3, &rrsig,
+	                            KNOT_COMPR_HINT_NONE, flags);
+}
+
 /*! \brief Put additional records for given RR. */
 static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
                           knotd_qdata_t *qdata, knot_rrinfo_t *info, int state)
@@ -203,8 +222,8 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 
 	/* Valid types for ADDITIONALS insertion. */
 	/* \note Not resolving CNAMEs as MX/NS name must not be an alias. (RFC2181/10.3) */
-	static const uint16_t ar_type_list[] = { KNOT_RRTYPE_A, KNOT_RRTYPE_AAAA };
-	static const int ar_type_count = 2;
+	static uint16_t ar_type_list[] = { KNOT_RRTYPE_A, KNOT_RRTYPE_AAAA, KNOT_RRTYPE_SVCB };
+	static const int ar_type_count_default = 2;
 
 	int ret = KNOT_EOK;
 
@@ -220,6 +239,11 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			flags |= KNOT_PF_NOTRUNC;
 		}
 
+		int ar_type_count = ar_type_count_default, ar_present = 0;
+		if (rr->type == KNOT_RRTYPE_SVCB || rr->type == KNOT_RRTYPE_HTTPS) {
+			ar_type_list[ar_type_count++] = rr->type;
+		}
+
 		uint16_t hint = knot_compr_hint(info, KNOT_COMPR_HINT_RDATA +
 		                                glue->ns_pos);
 		const zone_node_t *gluenode = glue_node(glue, qdata->extra->node);
@@ -231,6 +255,28 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			}
 			ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
 			                           hint, flags);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+			ar_present++;
+		}
+
+		if ((rr->type == KNOT_RRTYPE_SVCB || rr->type == KNOT_RRTYPE_HTTPS) &&
+		    ar_present < ar_type_count && have_dnssec(qdata)) {
+			// it would be nicer to have this in solve_additional_dnssec, but
+			// it seems infeasible to transfer all the context there
+
+			// adding an NSEC(3) record proving non-existence of some of the
+			// glue with its bitmap
+			if (knot_is_nsec3_enabled(qdata->extra->contents)) {
+				ret = put_nsec3_bitmap(gluenode, pkt, qdata, flags);
+			} else {
+				knot_rrset_t nsec = node_rrset(gluenode, KNOT_RRTYPE_NSEC);
+				if (!knot_rrset_empty(&nsec)) {
+					ret = process_query_put_rr(pkt, qdata, &nsec, &rrsigs,
+					                           KNOT_COMPR_HINT_NONE, flags);
+				}
+			}
 			if (ret != KNOT_EOK) {
 				break;
 			}

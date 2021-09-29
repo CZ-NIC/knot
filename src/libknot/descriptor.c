@@ -352,7 +352,9 @@ int knot_rrtype_additional_needed(const uint16_t type)
 {
 	return type == KNOT_RRTYPE_NS ||
 	       type == KNOT_RRTYPE_MX ||
-	       type == KNOT_RRTYPE_SRV;
+	       type == KNOT_RRTYPE_SRV ||
+	       type == KNOT_RRTYPE_SVCB ||
+	       type == KNOT_RRTYPE_HTTPS;
 }
 
 _public_

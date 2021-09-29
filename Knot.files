@@ -423,6 +423,7 @@ src/libknot/rrtype/opt.h
 src/libknot/rrtype/rdname.h
 src/libknot/rrtype/rrsig.h
 src/libknot/rrtype/soa.h
+src/libknot/rrtype/svcb.h
 src/libknot/rrtype/tsig.c
 src/libknot/rrtype/tsig.h
 src/libknot/rrtype/zonemd.h
