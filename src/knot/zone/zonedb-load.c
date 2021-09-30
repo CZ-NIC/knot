@@ -71,10 +71,7 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 		return NULL;
 	}
 
-	zone->journaldb = &server->journaldb;
-	zone->kaspdb = &server->kaspdb;
-	zone->catalog = &server->catalog;
-	zone->catalog_upd = &server->catalog_upd;
+	zone->server = server;
 
 	int result = zone_events_setup(zone, server->workers, &server->sched);
 	if (result != KNOT_EOK) {
@@ -248,8 +245,8 @@ static void zone_purge(conf_t *conf, zone_t *zone, server_t *server)
 	}
 
 	(void)journal_scrape_with_md(zone_journal(zone), true);
-	if (knot_lmdb_open(zone->kaspdb) == KNOT_EOK) {
-		(void)kasp_db_delete_all(zone->kaspdb, zone->name);
+	if (knot_lmdb_open(zone_kaspdb(zone)) == KNOT_EOK) {
+		(void)kasp_db_delete_all(zone_kaspdb(zone), zone->name);
 	}
 
 	log_zone_notice(zone->name, "zone purged");

@@ -81,18 +81,11 @@ typedef struct zone
 	/*! \brief Ensue one COW transaction on zone's trees at a time. */
 	knot_sem_t cow_lock;
 
-	/*! \brief Ptr to journal DB (in struct server) */
-	knot_lmdb_db_t *journaldb;
-
-	/*! \brief Ptr to journal DB (in struct server) */
-	knot_lmdb_db_t *kaspdb;
+	/*! \brief Pointer on running server with e.g. KASP db, journal DB, catalog... */
+	struct server *server;
 
 	/*! \brief Zone backup context (NULL unless backup pending). */
 	struct zone_backup_ctx *backup_ctx;
-
-	/*! \brief Ptr to catalog and ist changeset changes (in struct server) */
-	catalog_t *catalog;
-	catalog_update_t *catalog_upd;
 
 	/*! \brief Catalog-generate feature. */
 	knot_dname_t *catalog_gen;
@@ -143,11 +136,19 @@ void zone_reset(conf_t *conf, zone_t *zone);
 void zone_control_clear(zone_t *zone);
 
 /*!
+ * \brief Common database getters.
+ */
+knot_lmdb_db_t *zone_journaldb(const zone_t *zone);
+knot_lmdb_db_t *zone_kaspdb(const zone_t *zone);
+catalog_t *zone_catalog(const zone_t *zone);
+catalog_update_t *zone_catalog_upd(const zone_t *zone);
+
+/*!
  * \brief Only for RO journal operations.
  */
 inline static zone_journal_t zone_journal(zone_t *zone)
 {
-	zone_journal_t j = { zone->journaldb, zone->name, NULL };
+	zone_journal_t j = { zone_journaldb(zone), zone->name, NULL };
 	return j;
 }
 

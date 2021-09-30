@@ -181,7 +181,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	// signing pipeline
 
 	result = sign_init(update, conf, flags, roll_flags, adjust_now,
-	                   update->zone->kaspdb, &ctx, &zonemd_alg, reschedule);
+	                   zone_kaspdb(update->zone), &ctx, &zonemd_alg, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));
@@ -290,7 +290,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 	zone_keyset_t keyset = { 0 };
 	unsigned zonemd_alg;
 
-	result = sign_init(update, conf, 0, 0, 0, update->zone->kaspdb, &ctx, &zonemd_alg, reschedule);
+	result = sign_init(update, conf, 0, 0, 0, zone_kaspdb(update->zone), &ctx, &zonemd_alg, reschedule);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
 		               knot_strerror(result));

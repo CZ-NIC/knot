@@ -28,6 +28,7 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/query/requestor.h"
 #include "knot/updates/zone-update.h"
+#include "knot/server/server.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
@@ -251,13 +252,33 @@ void zone_reset(conf_t *conf, zone_t *zone)
 	}
 }
 
+knot_lmdb_db_t *zone_journaldb(const zone_t *zone)
+{
+	return &zone->server->journaldb;
+}
+
+knot_lmdb_db_t *zone_kaspdb(const zone_t *zone)
+{
+	return &zone->server->kaspdb;
+}
+
+catalog_t *zone_catalog(const zone_t *zone)
+{
+	return &zone->server->catalog;
+}
+
+catalog_update_t *zone_catalog_upd(const zone_t *zone)
+{
+	return &zone->server->catalog_upd;
+}
+
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset_t *extra)
 {
 	if (conf == NULL || zone == NULL || change == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	zone_journal_t j = { zone->journaldb, zone->name, conf };
+	zone_journal_t j = { zone_journaldb(zone), zone->name, conf };
 
 	int ret = journal_insert(j, change, extra);
 	if (ret == KNOT_EBUSY) {
@@ -292,7 +313,7 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 		return KNOT_EEMPTYZONE;
 	}
 
-	zone_journal_t j = { zone->journaldb, zone->name, conf };
+	zone_journal_t j = { zone_journaldb(zone), zone->name, conf };
 
 	int ret = journal_insert_zone(j, new_contents);
 	if (ret == KNOT_EOK) {
@@ -598,22 +619,22 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
 
 int zone_set_master_serial(zone_t *zone, uint32_t serial)
 {
-	return kasp_db_store_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
+	return kasp_db_store_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
 int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 {
-	return kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_MASTER, serial);
+	return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
 int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 {
-	return kasp_db_store_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	return kasp_db_store_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
 }
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 {
-	return kasp_db_load_serial(zone->kaspdb, zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
 }
 
 int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial)
