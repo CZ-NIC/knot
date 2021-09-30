@@ -119,7 +119,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     check_zone(server, zone, server, total_keys, 2, 0, 1, msg)
 
     msg = desc + ": new KSK ready"
-    wait_for_cds_change(t, server, 16, 26, msg) # propagation-delay + dnskey_ttl
+    wait_for_cds_change(t, server, 15, 26, msg) # propagation-delay + dnskey_ttl
     check_zone(server, zone, server, total_keys, 2, 1, 1, msg)
 
     submission_cb()
