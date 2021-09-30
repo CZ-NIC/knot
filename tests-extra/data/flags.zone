@@ -82,6 +82,11 @@ dname-out	DNAME	outside.zone.
 dname-dangl	DNAME	dangling
 dname.below.sub	DNAME	dname-tree
 
+; SVCB loop
+svcb-loop	SVCB	0 svcb-loop1
+svcb-loop1	SVCB	0 svcb-loop2
+svcb-loop2	SVCB	0 svcb-loop
+
 ; DS tests
 ds-sub		NS	dns.net.ds-sub
 dns.net.ds-sub	A	1.1.1.1
