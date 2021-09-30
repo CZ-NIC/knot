@@ -594,10 +594,10 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qda
 static int solve_additional(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
                             void *ctx)
 {
-	int ret = KNOT_EOK;
+	int ret = KNOT_EOK, rrset_count = pkt->rrset_count;
 
 	/* Scan all RRs in ANSWER/AUTHORITY. */
-	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
+	for (int i = 0; i < rrset_count; ++i) {
 		knot_rrset_t *rr = &pkt->rr[i];
 		knot_rrinfo_t *info = &pkt->rr_info[i];
 

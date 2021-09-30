@@ -79,6 +79,15 @@ def query_test(knot, bind, dnssec):
     resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
     resp.cmp(bind, additional=True)
 
+    # SVCB in additionals
+    resp = knot.dig("svcb-loop.flags.", "SVCB", udp=False, dnssec=dnssec)
+    resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
+    resp.check_count(1, "SVCB", section="answer")
+    resp.check_count(1 if dnssec else 0, "RRSIG", section="answer")
+    resp.check_count(0, "NSEC", section="authority")
+    resp.check_count(1, "SVCB", section="additional")
+    resp.check_count(2 if dnssec else 0, "RRSIG", section="additional") # one more RRSIG for NSEC(3)
+
     ''' ANY query type. '''
     # Not comparable with BIND
 
