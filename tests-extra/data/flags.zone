@@ -83,9 +83,9 @@ dname-dangl	DNAME	dangling
 dname.below.sub	DNAME	dname-tree
 
 ; SVCB loop
-svcb-loop	SVCB	0 svcb-loop1
-svcb-loop1	SVCB	0 svcb-loop2
-svcb-loop2	SVCB	0 svcb-loop
+svcb-loop	TYPE64	\# 20 00000A737663622D6C6F6F703105666C61677300
+svcb-loop1	TYPE64	\# 20 00000A737663622D6C6F6F703205666C61677300
+svcb-loop2	TYPE64	\# 19 000009737663622D6C6F6F7005666C61677300
 
 ; DS tests
 ds-sub		NS	dns.net.ds-sub
