@@ -218,7 +218,7 @@ Remove zone data within the transaction.
 \fBzone\-purge\fP \fIzone\fP\&... [\fIfilter\fP\&...]
 Purge zone data, zone file, journal, timers, and/or KASP data of specified zones.
 Available filters are \fB+expire\fP, \fB+zonefile\fP, \fB+journal\fP, \fB+timers\fP,
-and \fB+kaspdb\fP\&. If no filter is specified, all filters are enabled.
+\fB+kaspdb\fP, and \fB+catalog\fP\&. If no filter is specified, all filters are enabled.
 If the zone is no longer configured, add \fB+orphan\fP filter (zone file cannot
 be purged in this case). This command always requires the force option. (#)
 .TP

@@ -195,7 +195,7 @@ Actions
 **zone-purge** *zone*... [*filter*...]
   Purge zone data, zone file, journal, timers, and/or KASP data of specified zones.
   Available filters are **+expire**, **+zonefile**, **+journal**, **+timers**,
-  and **+kaspdb**. If no filter is specified, all filters are enabled.
+  **+kaspdb**, and **+catalog**. If no filter is specified, all filters are enabled.
   If the zone is no longer configured, add **+orphan** filter (zone file cannot
   be purged in this case). This command always requires the force option. (#)
 

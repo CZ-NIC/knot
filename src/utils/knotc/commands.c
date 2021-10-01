@@ -682,6 +682,7 @@ const filter_desc_t zone_purge_filters[MAX_FILTERS] = {
 	{ "+journal",  CTL_FILTER_PURGE_JOURNAL },
 	{ "+timers",   CTL_FILTER_PURGE_TIMERS },
 	{ "+kaspdb",   CTL_FILTER_PURGE_KASPDB },
+	{ "+catalog",  CTL_FILTER_PURGE_CATALOG },
 	{ "+orphan",   CTL_FILTER_PURGE_ORPHAN },
 };
 

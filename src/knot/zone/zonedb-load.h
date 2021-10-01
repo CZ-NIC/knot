@@ -20,6 +20,17 @@
 #include "knot/server/server.h"
 
 /*!
+ * \brief Destroy all members of specified catalog zone.
+ *
+ * \param server   Server with catalog DB.
+ * \param conf     Optional: check conf to skip if zone not catalog.
+ * \param zone     Catalog zone name.
+ *
+ * \return KNOT_E*
+ */
+int catalog_zone_purge(server_t *server, conf_t *conf, const knot_dname_t *zone);
+
+/*!
  * \brief Update zone database according to configuration.
  *
  * \param[in] conf Configuration.

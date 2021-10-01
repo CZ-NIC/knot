@@ -1392,6 +1392,12 @@ static int orphans_purge(ctl_args_t *args)
 					                        zone_names_distinct, zone_name);
 					log_if_orphans_error(zone_name, ret, "timer");
 				}
+
+				// Purge Catalog.
+				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_CATALOG)) {
+					ret = catalog_zone_purge(args->server, NULL, zone_name);
+					log_if_orphans_error(zone_name, ret, "catalog");
+				}
 			}
 
 			// Get next zone name.
@@ -1465,6 +1471,11 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 			ret = kasp_db_delete_all(zone_kaspdb(zone), zone->name);
 		}
 		RETURN_IF_FAILED("purge KASP DB", KNOT_ENOENT);
+	}
+
+	// Purge Catalog.
+	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_CATALOG)) {
+		ret = catalog_zone_purge(args->server, conf(), zone->name);
 	}
 
 	return KNOT_EOK;
