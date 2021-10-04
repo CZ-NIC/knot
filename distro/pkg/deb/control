@@ -219,6 +219,7 @@ Architecture: all
 Multi-Arch: foreign
 Depends:
  libjs-jquery,
+ libjs-sphinxdoc,
  libjs-underscore,
  ${misc:Depends},
 Section: doc
