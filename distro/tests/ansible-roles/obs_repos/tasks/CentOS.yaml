@@ -1,4 +1,9 @@
 ---
+- name: update CA certificates
+  yum:
+    name: ca-certificates
+    state: latest
+
 - name: Install EPEL
   yum:
     name: epel-release
