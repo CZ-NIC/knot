@@ -1,2 +1,5 @@
 usr/share/javascript/jquery/jquery.min.js usr/share/doc/knot-doc/_static/jquery.js
+usr/share/javascript/sphinxdoc/1.0/doctools.js usr/share/doc/knot-doc/_static/doctools.js
+usr/share/javascript/sphinxdoc/1.0/language_data.js usr/share/doc/knot-doc/_static/language_data.js
+usr/share/javascript/sphinxdoc/1.0/searchtools.js usr/share/doc/knot-doc/_static/searchtools.js
 usr/share/javascript/underscore/underscore.min.js usr/share/doc/knot-doc/_static/underscore.js
