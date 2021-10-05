@@ -98,6 +98,7 @@ static bool apex_dnssec_changed(zone_update_t *update)
  * \param ctx             Signing context.
  * \param policy          DNSSEC policy.
  * \param skip_crypto     All RRSIGs in this node have been verified, just check validity.
+ * \param refresh         Consider RRSIG expired when gonna expire this soon.
  * \param found_invalid   Out: some matching but expired%invalid RRSIG found.
  * \param at              Out: RRSIG position.
  *
@@ -108,6 +109,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   const dnssec_key_t *key,
 				   dnssec_sign_ctx_t *ctx,
 				   const kdnssec_ctx_t *dnssec_ctx,
+				   knot_timediff_t refresh,
 				   bool skip_crypto,
 				   int *found_invalid,
 				   uint16_t *at)
@@ -134,7 +136,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 		}
 
 		int ret = knot_check_signature(covered, rrsigs, i, key, ctx,
-					       dnssec_ctx, skip_crypto);
+					       dnssec_ctx, refresh, skip_crypto);
 		if (ret == KNOT_EOK) {
 			if (at != NULL) {
 				*at = i;
@@ -173,9 +175,12 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 			continue;
 		}
 
+		knot_timediff_t refresh = sign_ctx->dnssec_ctx->policy->rrsig_refresh_before +
+		                          sign_ctx->dnssec_ctx->policy->rrsig_prerefresh;
 		if (!valid_signature_exists(covered, rrsigs, key->key,
 		                            sign_ctx->sign_ctxs[i],
-		                            sign_ctx->dnssec_ctx, false, NULL, NULL)) {
+		                            sign_ctx->dnssec_ctx, refresh,
+		                            false, NULL, NULL)) {
 			return false;
 		}
 	}
@@ -271,8 +276,10 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		}
 
 		uint16_t valid_at;
+		knot_timediff_t refresh = sign_ctx->dnssec_ctx->policy->rrsig_refresh_before +
+		                          sign_ctx->dnssec_ctx->policy->rrsig_prerefresh;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
-		                           sign_ctx->dnssec_ctx, skip_crypto, NULL, &valid_at)) {
+		                           sign_ctx->dnssec_ctx, refresh, skip_crypto, NULL, &valid_at)) {
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
 			result = knot_rdataset_remove(&to_remove.rrs, valid_rr, NULL);
 			note_earliest_expiration(valid_rr, expires_at);
@@ -341,7 +348,7 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 
 		uint16_t valid_at;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
-		                           sign_ctx->dnssec_ctx, skip_crypto, &ret, &valid_at)) {
+		                           sign_ctx->dnssec_ctx, 0, skip_crypto, &ret, &valid_at)) {
 			valid_exists = true;
 		}
 	}

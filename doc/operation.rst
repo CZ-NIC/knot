@@ -757,9 +757,10 @@ For the ZSK side (i.e. the operator of the DNS server), the pre-requisites are:
 
 For the KSK side (i.e. the operator of the KSK signer), the pre-requisites are:
 
-- Knot configuration equal to the ZSK side (at least relevant parts of corresponding
-  :ref:`policy <Policy section>`, :ref:`zone <Zone section>`, and :ref:`template <Template section>`
-  sections must be identical)
+- a properly configured :ref:`DNSSEC policy <Policy section>`
+- :ref:`manual <policy_manual>` set to `on`
+- :ref:`offline-ksk <policy_offline-ksk>` set to `on`
+- :ref:`dnskey-ttl <policy_dnskey-ttl>` equal to ZSK side
 - a KASP DB with the KSK(s)
 
 Generating and signing future ZSKs
