@@ -747,20 +747,27 @@ of the :doc:`keymgr<man_keymgr>` utility.
 Pre-requisites
 --------------
 
-For the ZSK side (i.e. the operator of the DNS server), the pre-requisites are:
+For the ZSK side (i.e. the operator of the DNS server), the zone has to be configured with:
 
-- a properly configured :ref:`DNSSEC policy <Policy section>` (e.g. :ref:`zsk-lifetime <policy_zsk-lifetime>`),
-- :ref:`manual <policy_manual>` set to `on`
-- :ref:`offline-ksk <policy_offline-ksk>` set to `on`
-- :ref:`dnskey-ttl <policy_dnskey-ttl>` and :ref:`zone-max-ttl <policy_zone-max-ttl>` set up explicitly
-- a complete KASP DB with just ZSK(s)
+- Enabled :ref:`DNSSEC signing <zone_dnssec-signing>`
+- Properly configured and assigned :ref:`DNSSEC policy <Policy section>`:
 
-For the KSK side (i.e. the operator of the KSK signer), the pre-requisites are:
+  - Enabled :ref:`policy_manual`
+  - Enabled :ref:`policy_offline-ksk`
+  - Explicit :ref:`policy_dnskey-ttl`
+  - Explicit :ref:`policy_zone-max-ttl`
+  - Other options are optional
+- KASP DB may contain a ZSK (the present or some previous ones)
 
-- a properly configured :ref:`DNSSEC policy <Policy section>`
-- :ref:`manual <policy_manual>` set to `on`
-- :ref:`offline-ksk <policy_offline-ksk>` set to `on`
-- a KASP DB with the KSK(s)
+For the KSK side (i.e. the operator of the KSK signer), the zone has to be configured with:
+
+- Properly configured and assigned :ref:`DNSSEC policy <Policy section>`:
+
+  - Enabled :ref:`policy_manual`
+  - Enabled :ref:`policy_offline-ksk`
+  - Optional :ref:`policy_algorithm`, :ref:`policy_reproducible-signing`
+  - Other options are ignored
+- KASP DB contains a KSK (the present or a newly generated one)
 
 Generating and signing future ZSKs
 ----------------------------------
