@@ -106,19 +106,6 @@ int knot_zone_sign(zone_update_t *update,
                    knot_time_t *expire_at);
 
 /*!
- * \brief Check if zone SOA signatures are expired.
- *
- * \param zone       Zone to be signed.
- * \param zone_keys  Zone keys.
- * \param dnssec_ctx DNSSEC context.
- *
- * \return True if zone SOA signatures need update, false othewise.
- */
-bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
-                                const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *dnssec_ctx);
-
-/*!
  * \brief Sign NSEC/NSEC3 nodes in changeset and update the changeset.
  *
  * \param zone_keys  Zone keys.

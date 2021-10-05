@@ -155,40 +155,6 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 }
 
 /*!
- * \brief Check if valid signature exists for all keys for a given RR set.
- *
- * \param covered    RR set with covered records.
- * \param rrsigs     RR set with RRSIGs.
- * \param sign_ctx   Local zone signing context.
- *
- * \return Valid signature exists for every key.
- */
-static bool all_signatures_exist(const knot_rrset_t *covered,
-                                 const knot_rrset_t *rrsigs,
-                                 zone_sign_ctx_t *sign_ctx)
-{
-	assert(sign_ctx);
-
-	for (int i = 0; i < sign_ctx->count; i++) {
-		zone_key_t *key = &sign_ctx->keys[i];
-		if (!knot_zone_sign_use_key(key, covered)) {
-			continue;
-		}
-
-		knot_timediff_t refresh = sign_ctx->dnssec_ctx->policy->rrsig_refresh_before +
-		                          sign_ctx->dnssec_ctx->policy->rrsig_prerefresh;
-		if (!valid_signature_exists(covered, rrsigs, key->key,
-		                            sign_ctx->sign_ctxs[i],
-		                            sign_ctx->dnssec_ctx, refresh,
-		                            false, NULL, NULL)) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-/*!
  * \brief Note earliest expiration of a signature.
  *
  * \param rrsig       RRSIG rdata.
@@ -960,26 +926,6 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 	default:
 		return active_zsk;
 	}
-}
-
-bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
-                                const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *dnssec_ctx)
-{
-	if (zone == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
-		return false;
-	}
-
-	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	assert(!knot_rrset_empty(&soa));
-	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
-	zone_sign_ctx_t *sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
-	if (sign_ctx == NULL) {
-		return false;
-	}
-	bool exist = all_signatures_exist(&soa, &rrsigs, sign_ctx);
-	zone_sign_ctx_free(sign_ctx);
-	return !exist;
 }
 
 static int sign_in_changeset(zone_node_t *node, uint16_t rrtype, knot_rrset_t *rrsigs,
