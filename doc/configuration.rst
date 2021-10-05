@@ -172,6 +172,7 @@ server. If the zone file doesn't exist it will be bootstrapped over AXFR::
     remote:
       - id: master
         address: 192.168.1.1@53
+        # via: 10.0.0.1            # Specify local source address if needed
 
     acl:
       - id: notify_from_master

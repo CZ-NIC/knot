@@ -904,8 +904,10 @@ via
 ---
 
 An ordered list of source IP addresses. The first address with the same family
-as the destination address is used. Optional source port (default is random)
-can be appended to the address using ``@`` separator.
+as the destination address is used as a source address for communication with
+the remote. This option can help if the server listens on more addresses.
+Optional source port (default is random) can be appended
+to the address using ``@`` separator.
 
 *Default:* not set
 
