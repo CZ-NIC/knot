@@ -286,6 +286,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	knot_time_t rrsigs_expire = 0;
 
 	ctx->now = now;
+	ctx->policy->dnskey_ttl = zsk->ttl;
 
 	int ret = load_zone_keys(ctx, &keyset, false);
 	if (ret != KNOT_EOK) {
