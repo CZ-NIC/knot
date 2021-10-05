@@ -47,14 +47,24 @@ A module identifier.
 address
 .......
 
-A list of allowed ranges and/or subnets for query's source address. If the query's address does not fall into any
+An optional list of allowed ranges and/or subnets for query's source address.
+If the query's address does not fall into any
 of the configured ranges, NOTAUTH rcode is returned.
+
+*Default:* not set
 
 .. _mod-queryacl_interface:
 
 interface
 .........
 
-A list of allowed ranges and/or subnets for query's target interface. If the interface does not fall into any
-of the configured ranges, NOTAUTH rcode is returned. Note that every interface used has to be configured in :ref:`listen<server_listen>`.
+An optional list of allowed ranges and/or subnets for query's target interface.
+If the interface does not fall into any
+of the configured ranges, NOTAUTH rcode is returned. Note that every interface
+used has to be configured in :ref:`listen<server_listen>`.
 
+.. NOTE::
+   Don't use values *0.0.0.0* and *::0*. These values are redundant and don't
+   work as expected.
+
+*Default:* not set
