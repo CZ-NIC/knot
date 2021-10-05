@@ -1004,8 +1004,10 @@ no more addresses will be tried for this remote.
 .SS via
 .sp
 An ordered list of source IP addresses. The first address with the same family
-as the destination address is used. Optional source port (default is random)
-can be appended to the address using \fB@\fP separator.
+as the destination address is used as a source address for communication with
+the remote. This option can help if the server listens on more addresses.
+Optional source port (default is random) can be appended
+to the address using \fB@\fP separator.
 .sp
 \fIDefault:\fP not set
 .SS key
