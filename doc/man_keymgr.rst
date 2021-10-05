@@ -192,7 +192,7 @@ The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key sta
   Key published.
 
 **ready**
-  Key used for signing and submitted to the parent zone (only for KSK).
+  Key is waiting for submission (only for KSK).
 
 **active**
   Key used for signing.
