@@ -535,12 +535,12 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 
 	conf_remote_t preferred = { { AF_UNSPEC } };
 	if (preferred_master(conf, zone, &preferred) == KNOT_EOK) {
-		int ret = callback(conf, zone, &preferred, callback_data);
-		if (ret == KNOT_EOK) {
+		int ret = KNOT_EOK, net_ret = callback(conf, zone, &preferred, callback_data, &ret);
+		if (ret != KNOT_EOK || net_ret == KNOT_EOK) {
 			return ret;
 		}
 
-		log_try_addr_error(zone, NULL, &preferred.addr, err_str, ret);
+		log_try_addr_error(zone, NULL, &preferred.addr, err_str, net_ret);
 
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), &preferred.addr);
@@ -567,14 +567,16 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 			}
 
 			tried = true;
-			int ret = callback(conf, zone, &master, callback_data);
-			if (ret == KNOT_EOK) {
+			int ret = KNOT_EOK, net_ret = callback(conf, zone, &master, callback_data, &ret);
+			if (ret != KNOT_EOK) {
+				return ret;
+			} else if (net_ret == KNOT_EOK) {
 				success = true;
 				break;
 			}
 
 			log_try_addr_error(zone, conf_str(&masters), &master.addr,
-			                   err_str, ret);
+			                   err_str, net_ret);
 		}
 
 		if (!success && tried) {

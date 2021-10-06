@@ -1149,7 +1149,7 @@ static bool ixfr_error_failover(int ret)
 	}
 }
 
-static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx)
+static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx, int *processing_ret)
 {
 	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
 
@@ -1196,12 +1196,13 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 
-	int ret;
+	int ret, net_ret;
 
 	// while loop runs 0x or 1x; IXFR to AXFR failover
-	while (ret = knot_requestor_exec(&requestor, req, timeout),
-	       ret = (data.ret == KNOT_EOK ? ret : data.ret),
-	       ixfr_error_failover(ret) && data.xfr_type == XFR_TYPE_IXFR &&
+	while (net_ret = knot_requestor_exec(&requestor, req, timeout),
+	       ret = (data.ret == KNOT_EOK ? net_ret : data.ret), // TODO decline from using combined errcode whatsoever
+	       ixfr_error_failover(ret) &&
+	       data.xfr_type == XFR_TYPE_IXFR &&
 	       data.state != STATE_SOA_QUERY) {
 		REFRESH_LOG(LOG_WARNING, data.zone->name, data.remote,
 		            "fallback to AXFR (%s)", knot_strerror(ret));
@@ -1219,7 +1220,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		trctx->force_axfr = false;
 	}
 
-	return ret;
+	*processing_ret = data.ret;
+	return net_ret;
 }
 
 static int64_t min_refresh_interval(conf_t *conf, const knot_dname_t *zone)

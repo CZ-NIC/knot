@@ -1186,6 +1186,22 @@ class Knot(Server):
             dst_file = self.data_add(file_name, storage)
             self.includes.add(dst_file)
 
+    def first_master(self, zone_name):
+        z = self.zones[zone_name]
+        hit = False
+        master_name = None
+        for confline in open(self.confile, "r"):
+            if "domain:" in confline:
+                hit = True if confline.split('"')[1] == zone_name else False
+            if hit and "master:" in confline:
+                master_name = confline.split('[')[1].split(',')[0]
+        if master_name is None:
+            raise("Master for %s not found" % zone_name)
+        for m in z.masters:
+            if m.name == master_name:
+                return m
+        raise("Master %s not found" % master_name)
+
     def config_xfr(self, zone, knotconf):
         acl = ""
         if zone.masters:
