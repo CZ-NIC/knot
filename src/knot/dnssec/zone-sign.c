@@ -98,6 +98,7 @@ static bool apex_dnssec_changed(zone_update_t *update)
  * \param ctx             Signing context.
  * \param policy          DNSSEC policy.
  * \param skip_crypto     All RRSIGs in this node have been verified, just check validity.
+ * \param refresh         Consider RRSIG expired when gonna expire this soon.
  * \param found_invalid   Out: some matching but expired%invalid RRSIG found.
  * \param at              Out: RRSIG position.
  *
@@ -108,6 +109,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   const dnssec_key_t *key,
 				   dnssec_sign_ctx_t *ctx,
 				   const kdnssec_ctx_t *dnssec_ctx,
+				   knot_timediff_t refresh,
 				   bool skip_crypto,
 				   int *found_invalid,
 				   uint16_t *at)
@@ -134,7 +136,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 		}
 
 		int ret = knot_check_signature(covered, rrsigs, i, key, ctx,
-					       dnssec_ctx, skip_crypto);
+					       dnssec_ctx, refresh, skip_crypto);
 		if (ret == KNOT_EOK) {
 			if (at != NULL) {
 				*at = i;
@@ -150,37 +152,6 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 	}
 
 	return found_valid;
-}
-
-/*!
- * \brief Check if valid signature exists for all keys for a given RR set.
- *
- * \param covered    RR set with covered records.
- * \param rrsigs     RR set with RRSIGs.
- * \param sign_ctx   Local zone signing context.
- *
- * \return Valid signature exists for every key.
- */
-static bool all_signatures_exist(const knot_rrset_t *covered,
-                                 const knot_rrset_t *rrsigs,
-                                 zone_sign_ctx_t *sign_ctx)
-{
-	assert(sign_ctx);
-
-	for (int i = 0; i < sign_ctx->count; i++) {
-		zone_key_t *key = &sign_ctx->keys[i];
-		if (!knot_zone_sign_use_key(key, covered)) {
-			continue;
-		}
-
-		if (!valid_signature_exists(covered, rrsigs, key->key,
-		                            sign_ctx->sign_ctxs[i],
-		                            sign_ctx->dnssec_ctx, false, NULL, NULL)) {
-			return false;
-		}
-	}
-
-	return true;
 }
 
 /*!
@@ -271,8 +242,10 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		}
 
 		uint16_t valid_at;
+		knot_timediff_t refresh = sign_ctx->dnssec_ctx->policy->rrsig_refresh_before +
+		                          sign_ctx->dnssec_ctx->policy->rrsig_prerefresh;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
-		                           sign_ctx->dnssec_ctx, skip_crypto, NULL, &valid_at)) {
+		                           sign_ctx->dnssec_ctx, refresh, skip_crypto, NULL, &valid_at)) {
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
 			result = knot_rdataset_remove(&to_remove.rrs, valid_rr, NULL);
 			note_earliest_expiration(valid_rr, expires_at);
@@ -341,7 +314,7 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 
 		uint16_t valid_at;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
-		                           sign_ctx->dnssec_ctx, skip_crypto, &ret, &valid_at)) {
+		                           sign_ctx->dnssec_ctx, 0, skip_crypto, &ret, &valid_at)) {
 			valid_exists = true;
 		}
 	}
@@ -953,26 +926,6 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 	default:
 		return active_zsk;
 	}
-}
-
-bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
-                                const zone_keyset_t *zone_keys,
-                                const kdnssec_ctx_t *dnssec_ctx)
-{
-	if (zone == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
-		return false;
-	}
-
-	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	assert(!knot_rrset_empty(&soa));
-	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
-	zone_sign_ctx_t *sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
-	if (sign_ctx == NULL) {
-		return false;
-	}
-	bool exist = all_signatures_exist(&soa, &rrsigs, sign_ctx);
-	zone_sign_ctx_free(sign_ctx);
-	return !exist;
 }
 
 static int sign_in_changeset(zone_node_t *node, uint16_t rrtype, knot_rrset_t *rrsigs,

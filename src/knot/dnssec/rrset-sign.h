@@ -103,6 +103,7 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
  * \param key         Signing key.
  * \param sign_ctx    Signing context.
  * \param dnssec_ctx  DNSSEC context.
+ * \param refresh     Consider RRSIG expired when gonna expire this soon.
  * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  *
  * \return Error code, KNOT_EOK if successful and the signature is valid.
@@ -113,4 +114,5 @@ int knot_check_signature(const knot_rrset_t *covered,
                          const dnssec_key_t *key,
                          dnssec_sign_ctx_t *sign_ctx,
                          const kdnssec_ctx_t *dnssec_ctx,
+                         knot_timediff_t refresh,
                          bool skip_crypto);

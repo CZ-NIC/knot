@@ -229,8 +229,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	// SOA finishing
 
-	if (zone_update_no_change(update) &&
-	    !knot_zone_sign_soa_expired(update->new_cont, &keyset, &ctx)) {
+	if (zone_update_no_change(update)) {
 		log_zone_info(zone_name, "DNSSEC, zone is up-to-date");
 		update->zone->zonefile.resigned = false;
 		goto done;
@@ -339,8 +338,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 	bool soa_changed = (knot_soa_serial(node_rdataset(update->zone->contents->apex, KNOT_RRTYPE_SOA)->rdata) !=
 			    knot_soa_serial(node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA)->rdata));
 
-	if (zone_update_no_change(update) && !soa_changed &&
-	    !knot_zone_sign_soa_expired(update->new_cont, &keyset, &ctx)) {
+	if (zone_update_no_change(update) && !soa_changed) {
 		log_zone_info(zone_name, "DNSSEC, zone is up-to-date");
 		update->zone->zonefile.resigned = false;
 		goto done;
