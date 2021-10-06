@@ -212,7 +212,7 @@ Key started to be used for signing, not published (only for algorithm rollover).
 Key published.
 .TP
 \fBready\fP
-Key used for signing and submitted to the parent zone (only for KSK).
+Key is waiting for submission (only for KSK).
 .TP
 \fBactive\fP
 Key used for signing.
