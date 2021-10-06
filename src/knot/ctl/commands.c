@@ -1353,9 +1353,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	// Purge the zone file.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_ZONEFILE)) {
 		char *zonefile = conf_zonefile(conf(), zone->name);
-		if (unlink(zonefile) == -1) {
-			ret = knot_map_errno();
-		}
+		ret = (unlink(zonefile) == -1 ? knot_map_errno() : KNOT_EOK);
 		free(zonefile);
 		RETURN_IF_FAILED(KNOT_ENOENT);
 	}
