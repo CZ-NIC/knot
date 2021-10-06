@@ -70,9 +70,10 @@ int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		const knot_rrset_t *soa = knot_pkt_rr(answer, 0);
 		if (soa->type == KNOT_RRTYPE_SOA) {
 			uint32_t zone_serial, serial = knot_soa_serial(soa->rrs.rdata);
-			(void)slave_zone_serial(zone, conf(), &zone_serial);
 			NOTIFY_IN_LOG(LOG_INFO, qdata, "serial %u", serial);
-			if (serial_equal(serial, zone_serial)) {
+			if (zone->contents != NULL &&
+			    slave_zone_serial(zone, conf(), &zone_serial) == KNOT_EOK &&
+			    serial_equal(serial, zone_serial)) {
 				// NOTIFY serial == zone serial => ignore, keep timers
 				return KNOT_STATE_DONE;
 			}

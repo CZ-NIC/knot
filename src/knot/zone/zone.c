@@ -640,6 +640,7 @@ int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial)
 {
 	int ret = KNOT_EOK;
+	assert(zone->contents != NULL);
 	*serial = zone_contents_serial(zone->contents);
 
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
