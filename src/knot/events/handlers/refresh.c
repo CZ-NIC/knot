@@ -1110,39 +1110,11 @@ static bool ixfr_error_failover(int ret)
 	switch (ret) {
 	case KNOT_EOK:		// Don't failover if IXFR is OK.
 		return false;
-	case KNOT_ENOMEM:	// Don't failover for networking issues (the following list).
-	case KNOT_EINVAL:
-	case KNOT_ENOBUFS:
-	case KNOT_EMFILE:
-	case KNOT_ENFILE:
-	case KNOT_EISCONN:
-	case KNOT_ECONNREFUSED:
-	case KNOT_EALREADY:
-	case KNOT_ECONNRESET:
-	case KNOT_ECONNABORTED:
-	case KNOT_ENETRESET:
-	case KNOT_EHOSTUNREACH:
-	case KNOT_ENETUNREACH:
-	case KNOT_EHOSTDOWN:
-	case KNOT_ENETDOWN:
-	case KNOT_EADDRINUSE:
-	case KNOT_EADDRNOTAVAIL:
-
-	case KNOT_ECONN:
-	case KNOT_ETIMEOUT:
-
-	case KNOT_NET_EADDR:
-	case KNOT_NET_ESOCKET:
-	case KNOT_NET_ECONNECT:
-	case KNOT_NET_ESEND:
-	case KNOT_NET_ERECV:
-	case KNOT_NET_ETIMEOUT:
-		return false;
 	case KNOT_DNSSEC_EMISSINGKEYTYPE:
 	case KNOT_DNSSEC_ENOKEY:
 	case KNOT_DNSSEC_ENOSIG:
 	case KNOT_DNSSEC_ENSEC_BITMAP:
-	case KNOT_DNSSEC_ENSEC_CHAIN: // DNSSEC validation errors
+	case KNOT_DNSSEC_ENSEC_CHAIN: // Don't failover on DNSSEC validation errors
 		return false;
 	default:		// The rest are supposed to be DNS logic errors, do a failover.
 		return true;
@@ -1196,16 +1168,15 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 
-	int ret, net_ret;
+	int net_ret;
 
 	// while loop runs 0x or 1x; IXFR to AXFR failover
 	while (net_ret = knot_requestor_exec(&requestor, req, timeout),
-	       ret = (data.ret == KNOT_EOK ? net_ret : data.ret), // TODO decline from using combined errcode whatsoever
-	       ixfr_error_failover(ret) &&
+	       ixfr_error_failover(data.ret) &&
 	       data.xfr_type == XFR_TYPE_IXFR &&
 	       data.state != STATE_SOA_QUERY) {
 		REFRESH_LOG(LOG_WARNING, data.zone->name, data.remote,
-		            "fallback to AXFR (%s)", knot_strerror(ret));
+		            "fallback to AXFR (%s)", knot_strerror(data.ret));
 		ixfr_cleanup(&data);
 		data.ret = KNOT_EOK;
 		data.xfr_type = XFR_TYPE_AXFR;
@@ -1215,7 +1186,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
 
-	if (ret == KNOT_EOK) {
+	if (data.ret == KNOT_EOK && net_ret == KNOT_EOK) {
 		trctx->send_notify = data.updated && !master->block_notify_after_xfr;
 		trctx->force_axfr = false;
 	}
