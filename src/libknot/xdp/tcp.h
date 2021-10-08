@@ -91,6 +91,7 @@ typedef struct {
 	const knot_xdp_msg_t *msg;
 	knot_tcp_action_t action;
 	knot_xdp_msg_flag_t auto_answer;
+	uint32_t auto_seqno;
 	knot_tcp_action_t answer;
 	struct iovec *inbufs;
 	size_t inbufs_count;
