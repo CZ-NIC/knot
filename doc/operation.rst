@@ -765,7 +765,8 @@ For the KSK side (i.e. the operator of the KSK signer), the zone has to be confi
 
   - Enabled :ref:`policy_manual`
   - Enabled :ref:`policy_offline-ksk`
-  - Optional :ref:`policy_algorithm`, :ref:`policy_reproducible-signing`
+  - Optional :ref:`policy_rrsig-lifetime`, :ref:`policy_rrsig-refresh`,
+    :ref:`policy_algorithm`, and :ref:`policy_reproducible-signing`
   - Other options are ignored
 - KASP DB contains a KSK (the present or a newly generated one)
 
