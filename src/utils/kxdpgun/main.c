@@ -336,7 +336,7 @@ void *xdp_gun_thread(void *_ctx)
 	knot_tcp_table_t *tcp_table = NULL;
 
 	if (ctx->tcp) {
-		tcp_table = knot_tcp_table_new(ctx->qps);
+		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
 		if (tcp_table == NULL) {
 			printf("failed to allocate TCP connection table\n");
 			return NULL;

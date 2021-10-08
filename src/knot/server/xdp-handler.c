@@ -93,7 +93,7 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 
 	if (ctx->tcp) {
 		// NOTE: the table size don't have to equal its max usage!
-		ctx->tcp_table = knot_tcp_table_new(ctx->tcp_max_conns);
+		ctx->tcp_table = knot_tcp_table_new(ctx->tcp_max_conns, NULL);
 		if (ctx->tcp_table == NULL) {
 			xdp_handle_free(ctx);
 			return NULL;

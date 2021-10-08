@@ -70,7 +70,7 @@ static node_t *tcp_conn_node(knot_tcp_conn_t *conn)
 }
 
 _public_
-knot_tcp_table_t *knot_tcp_table_new(size_t size)
+knot_tcp_table_t *knot_tcp_table_new(size_t size, knot_tcp_table_t *secret_share)
 {
 	knot_tcp_table_t *table = calloc(1, sizeof(*table) + sizeof(list_t) +
 	                                    size * sizeof(table->conns[0]));
@@ -82,8 +82,13 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size)
 	init_list(tcp_table_timeout(table));
 
 	assert(sizeof(table->hash_secret) == sizeof(SIPHASH_KEY));
-	table->hash_secret[0] = dnssec_random_uint64_t();
-	table->hash_secret[1] = dnssec_random_uint64_t();
+	if (secret_share == NULL) {
+		table->hash_secret[0] = dnssec_random_uint64_t();
+		table->hash_secret[1] = dnssec_random_uint64_t();
+	} else {
+		table->hash_secret[0] = secret_share->hash_secret[0];
+		table->hash_secret[1] = secret_share->hash_secret[1];
+	}
 
 	return table;
 }
@@ -161,6 +166,7 @@ static void conn_init_from_msg(knot_tcp_conn_t *conn, knot_xdp_msg_t *msg)
 
 	conn->last_active = get_timestamp();
 	conn->state = XDP_TCP_NORMAL;
+	conn->establish_rtt = 0;
 
 	memset(&conn->inbuf, 0, sizeof(conn->inbuf));
 	memset(&conn->outbufs, 0, sizeof(conn->outbufs));
@@ -297,11 +303,16 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 				uint64_t syn_hash;
 				if (syn_table != NULL && msg->payload.iov_len == 0 &&
 				    *(pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &syn_hash, syn_table)) != NULL &&
-				    check_seq_ack(msg, (conn = *pconn))) {
-					tcp_table_del(pconn, syn_table);
-					*pconn = NULL;
-					relay->action = XDP_TCP_ESTABLISH;
+				    check_seq_ack(msg, *pconn)) {
 					ret = tcp_table_add(msg, conn_hash, tcp_table, &relay->conn);
+					if (ret == KNOT_EOK) { // move conn from syn_table to tcp_table
+						conn = relay->conn;
+						conn->mss = (*pconn)->mss;
+						conn->window_scale = (*pconn)->window_scale;
+						tcp_table_del(pconn, syn_table);
+						*pconn = NULL;
+						relay->action = XDP_TCP_ESTABLISH;
+					}
 				}
 			} else {
 				switch (conn->state) {
