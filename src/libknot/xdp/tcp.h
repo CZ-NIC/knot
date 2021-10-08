@@ -119,13 +119,14 @@ inline static bool knot_tcp_relay_empty(const knot_tcp_relay_t *r)
 /*!
  * \brief Allocate TCP connection-handling hash table.
  *
- * \param size   Number of records for the hash table.
+ * \param size           Number of records for the hash table.
+ * \param secret_share   Optional: share the hashing secret with another table.
  *
  * \note Hashing conflicts are solved by single-linked-lists in each record.
  *
  * \return The table, or NULL.
  */
-knot_tcp_table_t *knot_tcp_table_new(size_t size);
+knot_tcp_table_t *knot_tcp_table_new(size_t size, knot_tcp_table_t *secret_share);
 
 /*!
  * \brief Free TCP connection hash table including all connection records.
