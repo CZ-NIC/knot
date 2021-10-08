@@ -186,6 +186,9 @@ static void init_cache(
 	val = conf_get(conf, C_XDP, C_TCP_MAX_CLIENTS);
 	conf->cache.xdp_tcp_max_clients = conf_int(&val);
 
+	val = conf_get(conf, C_XDP, C_TCP_SYN_CLIENTS);
+	conf->cache.xdp_tcp_syn_clients = conf_int(&val);
+
 	val = conf_get(conf, C_XDP, C_TCP_INBUF_MAX_SIZE);
 	conf->cache.xdp_tcp_inbuf_max_size = conf_int(&val);
 

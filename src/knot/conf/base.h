@@ -132,6 +132,7 @@ typedef struct {
 		size_t srv_bg_threads;
 		size_t srv_tcp_max_clients;
 		size_t xdp_tcp_max_clients;
+		size_t xdp_tcp_syn_clients;
 		size_t xdp_tcp_inbuf_max_size;
 		uint32_t xdp_tcp_idle_close;
 		uint32_t xdp_tcp_idle_reset;
