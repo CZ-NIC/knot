@@ -340,7 +340,21 @@ void test_close(void)
 	            be16toh(test_conn->ip_rem.sin6_port),
 	            be16toh(test_conn->ip_loc.sin6_port));
 	prepare_seqack(&msg, 0, 0);
-	int ret = knot_tcp_recv(&rl, &msg, 1, test_table, NULL);
+
+	// test wrong ackno synack, shall reply with RST with same
+	knot_xdp_msg_t wrong = msg;
+	wrong.seqno += INT32_MAX;
+	wrong.ackno += INT32_MAX;
+	int ret = knot_tcp_recv(&rl, &wrong, 1, test_table, NULL);
+	is_int(KNOT_EOK, ret, "close: relay 0 OK");
+	is_int(KNOT_XDP_MSG_RST, rl.auto_answer, "close: reset wrong ackno");
+	is_int(rl.auto_seqno, wrong.ackno, "close: reset seqno");
+	ret = knot_tcp_send(test_sock, &rl, 1, 1);
+	is_int(KNOT_EOK, ret, "close: send 0 OK");
+	check_sent(0, 1, 0, 0);
+	is_int(sent_seqno, wrong.ackno, "close: reset seqno sent");
+
+	ret = knot_tcp_recv(&rl, &msg, 1, test_table, NULL);
 	is_int(KNOT_EOK, ret, "close: relay 1 OK");
 	ret = knot_tcp_send(test_sock, &rl, 1, 1);
 	is_int(KNOT_EOK, ret, "close: send OK");

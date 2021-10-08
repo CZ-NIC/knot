@@ -288,6 +288,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 				}
 			} else {
 				relay->auto_answer = KNOT_XDP_MSG_RST; // TODO consider resetting the OLD conn and accepting new one
+				relay->auto_seqno = msg->ackno;
 				relay->del_from = pconn;
 			}
 			break;
@@ -322,6 +323,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			if (!seq_ack_match) {
 				if (conn != NULL) {
 					relay->auto_answer = KNOT_XDP_MSG_RST;
+					relay->auto_seqno = msg->ackno;
 					relay->del_from = pconn;
 				} // else ignore. It would be better and possible, but no big value for the price of CPU.
 			} else {
@@ -458,6 +460,9 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
 			msg->flags |= rl->auto_answer;
 			if (msg->flags & (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_FIN)) {
 				rl->conn->ackno++;
+			}
+			if (rl->auto_answer == KNOT_XDP_MSG_RST) {
+				msg->seqno = rl->auto_seqno;
 			}
 		}
 
