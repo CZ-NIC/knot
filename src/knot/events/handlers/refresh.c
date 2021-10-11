@@ -106,6 +106,7 @@ struct refresh_data {
 	// internal state, initialize with zeroes:
 
 	int ret;                          //!< Error code.
+	bool ret_remote;                  //!< Is the error caused by the master?
 	enum state state;                 //!< Event processing state.
 	enum xfr_type xfr_type;           //!< Transer type (mostly IXFR versus AXFR).
 	knot_rrset_t *initial_soa_copy;   //!< Copy of the received initial SOA.
@@ -309,6 +310,7 @@ static int axfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 
 	data->ret = zcreator_step(&zc, rr);
 	if (data->ret != KNOT_EOK) {
+		data->ret_remote = true;
 		return KNOT_STATE_FAIL;
 	}
 
@@ -347,6 +349,7 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		           "server responded with error '%s'",
 		           knot_pkt_ext_rcode_name(pkt));
 		data->ret = KNOT_EDENIED;
+		data->ret_remote = true;
 		return KNOT_STATE_FAIL;
 	}
 
@@ -695,6 +698,7 @@ static int ixfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 
 	data->ret = ixfr_step(rr, data);
 	if (data->ret != KNOT_EOK) {
+		data->ret_remote = true;
 		IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed (%s)", knot_strerror(data->ret));
 		return KNOT_STATE_FAIL;
@@ -779,6 +783,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		           "server responded with error '%s'",
 		           knot_pkt_ext_rcode_name(pkt));
 		data->ret = KNOT_EDENIED;
+		data->ret_remote = true;
 		return KNOT_STATE_FAIL;
 	}
 
@@ -799,12 +804,14 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "malformed response SOA");
 			data->ret = KNOT_EMALF;
+			data->ret_remote = true;
 			data->xfr_type = XFR_TYPE_IXFR; // unrecognisable IXFR type is the same as failed IXFR
 			return KNOT_STATE_FAIL;
 		case XFR_TYPE_NOTIMP:
 			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "not supported by remote");
 			data->ret = KNOT_ENOTSUP;
+			data->ret_remote = true;
 			data->xfr_type = XFR_TYPE_IXFR;
 			return KNOT_STATE_FAIL;
 		case XFR_TYPE_UNDETERMINED:
@@ -832,6 +839,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		default:
 			assert(0);
 			data->ret = KNOT_EPROCESSING;
+			data->ret_remote = true;
 			return KNOT_STATE_FAIL;
 		}
 
@@ -901,6 +909,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		            "server responded with error '%s'",
 		            knot_pkt_ext_rcode_name(pkt));
 		data->ret = KNOT_EDENIED;
+		data->ret_remote = true;
 		return KNOT_STATE_FAIL;
 	}
 
@@ -910,6 +919,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		REFRESH_LOG(LOG_WARNING, data->zone->name, data->remote,
 		            "malformed message");
 		data->ret = KNOT_EMALF;
+		data->ret_remote = true;
 		return KNOT_STATE_FAIL;
 	}
 
@@ -1001,6 +1011,7 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		 */
 		if (tsig_unsigned_count(layer->tsig) != 0) {
 			data->ret = KNOT_EMALF;
+			data->ret_remote = true;
 			return KNOT_STATE_FAIL;
 		}
 
@@ -1179,6 +1190,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		            "fallback to AXFR (%s)", knot_strerror(data.ret));
 		ixfr_cleanup(&data);
 		data.ret = KNOT_EOK;
+		data.ret_remote = false;
 		data.xfr_type = XFR_TYPE_AXFR;
 		requestor.layer.state = KNOT_STATE_RESET;
 		requestor.layer.flags |= KNOT_REQUESTOR_CLOSE;
@@ -1191,6 +1203,9 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		trctx->force_axfr = false;
 	}
 
+	if (data.ret_remote) {
+		return data.ret;
+	}
 	*processing_ret = data.ret;
 	return net_ret;
 }
