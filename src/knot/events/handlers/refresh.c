@@ -310,7 +310,6 @@ static int axfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 
 	data->ret = zcreator_step(&zc, rr);
 	if (data->ret != KNOT_EOK) {
-		data->ret_remote = true;
 		return KNOT_STATE_FAIL;
 	}
 
