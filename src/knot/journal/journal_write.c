@@ -197,7 +197,7 @@ void journal_fix_occupation(zone_journal_t j, knot_lmdb_txn_t *txn, journal_meta
 		journal_delete(txn, del_from, j.zone, need_tofree, need_todel,
 		               del_upto, &freed, &removed, &del_from);
 		if (freed == 0) {
-			if (md->flushed_upto != md->serial_to) {
+			if (del_upto != md->serial_to) {
 				journal_try_flush(j, txn, md);
 			} else {
 				txn->ret = KNOT_ESPACE;
