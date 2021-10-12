@@ -59,6 +59,8 @@ typedef struct {
 	gnutls_certificate_credentials_t credentials;
 } tls_ctx_t;
 
+extern const gnutls_datum_t dot_alpn;
+
 void tls_params_init(tls_params_t *params);
 int tls_params_copy(tls_params_t *dst, const tls_params_t *src);
 void tls_params_clean(tls_params_t *params);
