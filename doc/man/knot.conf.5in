@@ -1647,8 +1647,7 @@ Possible values:
 .IP \(bu 2
 \fBdifference\fP – If the zone contents are already available during server start or reload,
 the difference is computed between them and the contents of the zone file. This difference
-is then checked for semantic errors and
-applied to the current zone contents.
+is then checked for semantic errors and applied to the current zone contents.
 .IP \(bu 2
 \fBdifference\-no\-serial\fP – Same as \fBdifference\fP, but the SOA serial in the zone file is
 ignored, the server takes care of incrementing the serial automatically.
@@ -1656,8 +1655,8 @@ ignored, the server takes care of incrementing the serial automatically.
 \fBwhole\fP – Zone contents are loaded from the zone file.
 .UNINDENT
 .sp
-When \fBdifference\fP is configured and there are no zone contents yet (cold start of Knot
-and no zone contents in journal), it behaves the same way like \fBwhole\fP\&.
+When \fBdifference\fP is configured and there are no zone contents yet (cold start
+and no zone contents in the journal), it behaves the same way as \fBwhole\fP\&.
 .sp
 \fIDefault:\fP whole
 .SS journal\-content
@@ -1690,7 +1689,14 @@ all zones, because of DB free space fragmentation.
 \fIDefault:\fP 100 MiB
 .SS journal\-max\-depth
 .sp
-Maximum history length of journal.
+Maximum history length of the journal.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Zone\-in\-journal changeset isn\(aqt counted to the limit.
+.UNINDENT
+.UNINDENT
 .sp
 \fIMinimum:\fP 2
 .sp
