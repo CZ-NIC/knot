@@ -33,6 +33,13 @@
 #include "contrib/base64.h"
 #include "libknot/errcode.h"
 
+#define DOT_ALPN "\x03""dot"
+
+const gnutls_datum_t dot_alpn = {
+	.data = (unsigned char *)&(DOT_ALPN[1]),
+	.size = DOT_ALPN[0]
+};
+
 void tls_params_init(tls_params_t *params)
 {
 	if (params == NULL) {

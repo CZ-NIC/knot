@@ -391,7 +391,7 @@ int net_connect(net_t *net)
 #endif //LIBNGHTTP2
 				// Establish TLS connection.
 				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni, fastopen,
-				                      (struct sockaddr_storage *)net->srv->ai_addr, NULL);
+				                      (struct sockaddr_storage *)net->srv->ai_addr, &dot_alpn);
 #ifdef LIBNGHTTP2
 			}
 #endif //LIBNGHTTP2
