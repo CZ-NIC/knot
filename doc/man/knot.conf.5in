@@ -1872,7 +1872,7 @@ Maximum history length of journal.
 .sp
 \fIMinimum:\fP 2
 .sp
-\fIDefault:\fP 2^64
+\fIDefault:\fP 20
 .SS zone\-max\-size
 .sp
 Maximum size of the zone. The size is measured as size of the zone records
