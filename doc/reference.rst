@@ -2014,7 +2014,7 @@ Maximum history length of journal.
 
 *Minimum:* 2
 
-*Default:* 2^64
+*Default:* 20
 
 .. _zone_zone-max-size:
 
