@@ -1966,14 +1966,13 @@ Possible values:
 - ``none`` – The zone file is not used at all.
 - ``difference`` – If the zone contents are already available during server start or reload,
   the difference is computed between them and the contents of the zone file. This difference
-  is then checked for semantic errors and
-  applied to the current zone contents.
+  is then checked for semantic errors and applied to the current zone contents.
 - ``difference-no-serial`` – Same as ``difference``, but the SOA serial in the zone file is
   ignored, the server takes care of incrementing the serial automatically.
 - ``whole`` – Zone contents are loaded from the zone file.
 
-When ``difference`` is configured and there are no zone contents yet (cold start of Knot
-and no zone contents in journal), it behaves the same way like ``whole``.
+When ``difference`` is configured and there are no zone contents yet (cold start
+and no zone contents in the journal), it behaves the same way as ``whole``.
 
 *Default:* whole
 
@@ -2010,7 +2009,10 @@ Policy how much space in journal DB will the zone's journal occupy.
 journal-max-depth
 -----------------
 
-Maximum history length of journal.
+Maximum history length of the journal.
+
+.. NOTE::
+   Zone-in-journal changeset isn't counted to the limit.
 
 *Minimum:* 2
 
