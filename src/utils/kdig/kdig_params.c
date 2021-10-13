@@ -2177,7 +2177,7 @@ static void print_help(void)
 	       "                                  server certificate (%u or specify hours).\n"
 #ifdef LIBNGHTTP2
 	       "       +[no]https[=URL]           Use HTTPS protocol. It's also possible to specify\n"
-	       "                                  URL where query will be sent.\n"
+	       "                                  URL as [authority][/path] where query will be sent.\n"
 	       "       +[no]https-get             Use HTTPS protocol with GET method instead of POST.\n"
 #endif
 	       "       +[no]nsid                  Request NSID.\n"
