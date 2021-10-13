@@ -8,6 +8,7 @@ import os
 import shutil
 import os.path
 import random
+import time
 
 from dnstest.test import Test
 from dnstest.keys import Keymgr
@@ -71,6 +72,10 @@ ZFILE_ = ZFILE + "_"
 os.rename(ZFILE, ZFILE_)
 
 t.start()
+
+# ensure the test starts at the beginning of a second
+while round((time.time()%1) * 100) > 1:
+    time.sleep(0.01)
 
 # now un-hide zonefile, invoke load and NOTIFY, and let both slaves sign in same second!
 os.rename(ZFILE_, ZFILE)
