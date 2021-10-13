@@ -280,7 +280,10 @@ considered invalid.
 \fB+\fP[\fBno\fP]\fBhttps\fP[=\fIURL\fP]
 Use HTTPS (DNS\-over\-HTTPS) in wire format (\fI\%RFC 1035#section\-4.2.1\fP).
 It is also possible to specify URL=[authority][/path] where request
-will be send. Authority might also be specified as server name (parameter \fI@\fP).
+will be sent to. Any leading scheme and authority indicator (i.e. //) are ignored.
+Authority might also be specified as the \fIserver\fP (using the parameter \fI@\fP).
+If \fIpath\fP is specified and \fIauthority\fP is missing, then the \fIserver\fP
+is used as authority together with the specified \fIpath\fP\&.
 Library \fIlibnghttp2\fP is required.
 .TP
 \fB+\fP[\fBno\fP]\fBhttps\-get\fP
