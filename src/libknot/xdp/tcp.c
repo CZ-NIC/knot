@@ -293,9 +293,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 					}
 				}
 			} else {
-				relay->auto_answer = KNOT_XDP_MSG_RST; // TODO consider resetting the OLD conn and accepting new one
-				relay->auto_seqno = msg->ackno;
-				relay->del_from = pconn;
+				relay->auto_answer = KNOT_XDP_MSG_ACK;
 			}
 			break;
 		case KNOT_XDP_MSG_ACK:
@@ -354,6 +352,8 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 				relay->action = XDP_TCP_RESET;
 				tcp_table_del(pconn, tcp_table);
 				relay->conn = NULL;
+			} else if (conn != NULL) {
+				relay->auto_answer = KNOT_XDP_MSG_ACK;
 			}
 			break;
 		default:
