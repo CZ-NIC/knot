@@ -91,7 +91,7 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
  * \param db   The DB in question.
  *
  * \retval KNOT_EOK     The database exists (and is accessible for stat() ).
- * \retval KNOT_ENOENT  The database doesn't exist.
+ * \retval KNOT_ENODB   The database doesn't exist.
  * \return KNOT_E* explaining why stat() failed.
  */
 int knot_lmdb_exists(knot_lmdb_db_t *db);

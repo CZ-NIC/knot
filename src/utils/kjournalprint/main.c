@@ -412,8 +412,8 @@ int main(int argc, char *argv[])
 			// FALLTHROUGH
 		case KNOT_EOK:
 			return EXIT_SUCCESS;
-		case KNOT_EFILE:
-			fprintf(stderr, "The specified journal DB is invalid\n");
+		case KNOT_ENODB:
+			fprintf(stderr, "The journal DB does not exist\n");
 			return EXIT_FAILURE;
 		case KNOT_EMALF:
 			fprintf(stderr, "The journal DB is broken\n");
@@ -441,8 +441,8 @@ int main(int argc, char *argv[])
 				printf("The journal is empty\n");
 			}
 			break;
-		case KNOT_EFILE:
-			fprintf(stderr, "The specified journal DB is invalid\n");
+		case KNOT_ENODB:
+			fprintf(stderr, "The journal DB does not exist\n");
 			return EXIT_FAILURE;
 		case KNOT_EOUTOFZONE:
 			fprintf(stderr, "The specified journal DB does not contain the specified zone\n");

@@ -347,7 +347,7 @@ int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial, bool *h
                  uint32_t *serial_to, bool *has_merged, uint32_t *merged_serial,
                  uint64_t *occupied, uint64_t *occupied_total)
 {
-	if (knot_lmdb_exists(j.db) == KNOT_ENOENT) {
+	if (knot_lmdb_exists(j.db) == KNOT_ENODB) {
 		*exists = false;
 		return KNOT_EOK;
 	}

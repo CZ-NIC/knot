@@ -292,7 +292,7 @@ int journal_walk_from(zone_journal_t j, uint32_t from,
 int journal_walk(zone_journal_t j, journal_walk_cb_t cb, void *ctx)
 {
 	int ret = knot_lmdb_exists(j.db);
-	if (ret == KNOT_ENOENT) {
+	if (ret == KNOT_ENODB) {
 		ret = cb(true, NULL, ctx);
 		if (ret == KNOT_EOK) {
 			ret = cb(false, NULL, ctx);

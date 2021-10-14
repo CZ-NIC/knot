@@ -88,7 +88,9 @@ static int lmdb_stat(const char *lmdb_path, struct stat *st)
 	char data_mdb[strlen(lmdb_path) + 10];
 	(void)snprintf(data_mdb, sizeof(data_mdb), "%s/data.mdb", lmdb_path);
 	if (stat(data_mdb, st) == 0) {
-		return st->st_size > 0 ? KNOT_EOK : KNOT_ENOENT;
+		return st->st_size > 0 ? KNOT_EOK : KNOT_ENODB;
+	} else if (errno == ENOENT) {
+		return KNOT_ENODB;
 	} else {
 		return knot_map_errno();
 	}
@@ -100,7 +102,7 @@ int knot_lmdb_exists(knot_lmdb_db_t *db)
 		return KNOT_EOK;
 	}
 	if (db->path == NULL) {
-		return KNOT_ENOENT;
+		return KNOT_ENODB;
 	}
 	struct stat unused;
 	return lmdb_stat(db->path, &unused);

@@ -133,7 +133,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 	}
 
 	int ret = zone_timers_read(&server->timerdb, name, &zone->timers);
-	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+	if (ret != KNOT_EOK && ret != KNOT_ENODB && ret != KNOT_ENOENT) {
 		log_zone_error(zone->name, "failed to load persistent timers (%s)",
 		               knot_strerror(ret));
 		zone_free(&zone);
@@ -262,7 +262,7 @@ static bool check_open_catalog(catalog_t *cat)
 {
 	int ret = knot_lmdb_exists(&cat->db);
 	switch (ret) {
-	case KNOT_ENOENT:
+	case KNOT_ENODB:
 		return false;
 	case KNOT_EOK:
 		ret = catalog_open(cat);
