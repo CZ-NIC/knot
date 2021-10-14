@@ -855,14 +855,25 @@ static int opt_https(const char *arg, void *query)
 	q->https.enable = true;
 
 	if (arg != NULL) {
-		char *tmp_path = strchr(arg, '/');
+		char *resource = strstr(arg, "://");
+		if (resource == NULL) {
+			resource = (char *)arg;
+		} else {
+			resource += 3;  // strlen("://")
+			if (*resource == '\0') {
+				ERR("invalid +https=%s\n", arg);
+				return KNOT_EINVAL;
+			}
+		}
+
+		char *tmp_path = strchr(resource, '/');
 		if (tmp_path) {
 			free(q->https.path);
 			q->https.path = strdup(tmp_path);
 
-			if (tmp_path != arg) {
+			if (tmp_path != resource) {
 				free(q->tls.hostname);
-				q->tls.hostname = strndup(arg, (size_t)(tmp_path - arg));
+				q->tls.hostname = strndup(resource, (size_t)(tmp_path - resource));
 			}
 			return opt_tls(arg, query);
 		} else {
@@ -2177,7 +2188,7 @@ static void print_help(void)
 	       "                                  server certificate (%u or specify hours).\n"
 #ifdef LIBNGHTTP2
 	       "       +[no]https[=URL]           Use HTTPS protocol. It's also possible to specify\n"
-	       "                                  URL where query will be sent.\n"
+	       "                                  URL as [authority][/path] where query will be sent.\n"
 	       "       +[no]https-get             Use HTTPS protocol with GET method instead of POST.\n"
 #endif
 	       "       +[no]nsid                  Request NSID.\n"

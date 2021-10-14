@@ -259,7 +259,10 @@ Options
 **+**\ [\ **no**\ ]\ **https**\[\ =\ *URL*\]
   Use HTTPS (DNS-over-HTTPS) in wire format (:rfc:`1035#section-4.2.1`).
   It is also possible to specify URL=\[authority\]\[/path\] where request
-  will be send. Authority might also be specified as server name (parameter `@`).
+  will be sent to. Any leading scheme and authority indicator (i.e. //) are ignored.
+  Authority might also be specified as the *server* (using the parameter `@`).
+  If *path* is specified and *authority* is missing, then the *server*
+  is used as authority together with the specified *path*.
   Library *libnghttp2* is required.
 
 **+**\ [\ **no**\ ]\ **https-get**
