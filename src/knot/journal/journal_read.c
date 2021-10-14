@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -291,15 +291,16 @@ int journal_walk_from(zone_journal_t j, uint32_t from,
 // beware, this function does not operate in single txn!
 int journal_walk(zone_journal_t j, journal_walk_cb_t cb, void *ctx)
 {
-	int ret;
-	if (!knot_lmdb_exists(j.db)) {
+	int ret = knot_lmdb_exists(j.db);
+	if (ret == KNOT_ENOENT) {
 		ret = cb(true, NULL, ctx);
 		if (ret == KNOT_EOK) {
 			ret = cb(false, NULL, ctx);
 		}
 		return ret;
+	} else if (ret == KNOT_EOK) {
+		ret = knot_lmdb_open(j.db);
 	}
-	ret = knot_lmdb_open(j.db);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

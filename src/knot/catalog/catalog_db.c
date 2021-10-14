@@ -310,7 +310,7 @@ static bool same_catalog(knot_lmdb_txn_t *txn, const knot_dname_t *catalog)
 int catalog_copy(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
                  const knot_dname_t *cat_only, bool read_rw_txn)
 {
-	if (!knot_lmdb_exists(from)) {
+	if (knot_lmdb_exists(from) == KNOT_ENOENT) {
 		return KNOT_EOK;
 	}
 	int ret = knot_lmdb_open(from);

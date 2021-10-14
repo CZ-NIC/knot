@@ -184,12 +184,10 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 	uint64_t occupied, occupied_all;
 
 	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST, true), NULL);
-	if (!knot_lmdb_exists(&jdb)) {
-		knot_lmdb_deinit(&jdb);
-		return KNOT_EFILE;
+	int ret = knot_lmdb_exists(&jdb);
+	if (ret == KNOT_EOK) {
+		ret = knot_lmdb_open(&jdb);
 	}
-
-	int ret = knot_lmdb_open(&jdb);
 	if (ret != KNOT_EOK) {
 		knot_lmdb_deinit(&jdb);
 		return ret;

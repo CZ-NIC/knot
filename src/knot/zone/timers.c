@@ -151,7 +151,7 @@ void zone_timers_close(knot_db_t *db)
 int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
                      zone_timers_t *timers)
 {
-	if (!knot_lmdb_exists(db)) {
+	if (knot_lmdb_exists(db) == KNOT_ENOENT) {
 		return KNOT_ENOENT;
 	}
 	int ret = knot_lmdb_open(db);
@@ -198,7 +198,7 @@ int zone_timers_write_all(knot_lmdb_db_t *db, knot_zonedb_t *zonedb)
 
 int zone_timers_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 {
-	if (!knot_lmdb_exists(db)) {
+	if (knot_lmdb_exists(db) == KNOT_ENOENT) {
 		return KNOT_EOK;
 	}
 	int ret = knot_lmdb_open(db);
