@@ -184,12 +184,10 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 	uint64_t occupied, occupied_all;
 
 	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST, true), NULL);
-	if (!knot_lmdb_exists(&jdb)) {
-		knot_lmdb_deinit(&jdb);
-		return KNOT_EFILE;
+	int ret = knot_lmdb_exists(&jdb);
+	if (ret == KNOT_EOK) {
+		ret = knot_lmdb_open(&jdb);
 	}
-
-	int ret = knot_lmdb_open(&jdb);
 	if (ret != KNOT_EOK) {
 		knot_lmdb_deinit(&jdb);
 		return ret;
@@ -414,8 +412,8 @@ int main(int argc, char *argv[])
 			// FALLTHROUGH
 		case KNOT_EOK:
 			return EXIT_SUCCESS;
-		case KNOT_EFILE:
-			fprintf(stderr, "The specified journal DB is invalid\n");
+		case KNOT_ENODB:
+			fprintf(stderr, "The journal DB does not exist\n");
 			return EXIT_FAILURE;
 		case KNOT_EMALF:
 			fprintf(stderr, "The journal DB is broken\n");
@@ -443,8 +441,8 @@ int main(int argc, char *argv[])
 				printf("The journal is empty\n");
 			}
 			break;
-		case KNOT_EFILE:
-			fprintf(stderr, "The specified journal DB is invalid\n");
+		case KNOT_ENODB:
+			fprintf(stderr, "The journal DB does not exist\n");
 			return EXIT_FAILURE;
 		case KNOT_EOUTOFZONE:
 			fprintf(stderr, "The specified journal DB does not contain the specified zone\n");

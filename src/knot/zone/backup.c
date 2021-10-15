@@ -391,7 +391,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		knot_lmdb_db_t *kasp_from = zone_kaspdb(zone), *kasp_to = &ctx->bck_kasp_db;
 		BACKUP_SWAP(ctx, kasp_from, kasp_to);
 
-		if (knot_lmdb_exists(kasp_from)) {
+		if (knot_lmdb_exists(kasp_from) != KNOT_ENODB) {
 			ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
 			if (ret != KNOT_EOK) {
 				LOG_MARK_FAIL("KASP database");

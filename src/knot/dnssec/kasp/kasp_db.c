@@ -278,7 +278,7 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 
 int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 {
-	if (!knot_lmdb_exists(db)) {
+	if (knot_lmdb_exists(db) == KNOT_ENODB) {
 		return KNOT_EOK;
 	}
 	int ret = knot_lmdb_open(db);
@@ -299,7 +299,7 @@ int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 
 int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *zones)
 {
-	if (!knot_lmdb_exists(db)) {
+	if (knot_lmdb_exists(db) == KNOT_ENODB) {
 		return KNOT_EOK;
 	}
 	int ret = knot_lmdb_open(db);
@@ -414,7 +414,7 @@ int kasp_db_store_serial(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 int kasp_db_load_serial(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 			kaspdb_serial_t serial_type, uint32_t *serial)
 {
-	if (!knot_lmdb_exists(db)) {
+	if (knot_lmdb_exists(db) == KNOT_ENODB) {
 		return KNOT_ENOENT;
 	}
 	int ret = knot_lmdb_open(db);

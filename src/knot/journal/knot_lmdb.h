@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,9 +90,11 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
  *
  * \param db   The DB in question.
  *
- * \return True if it already exists.
+ * \retval KNOT_EOK     The database exists (and is accessible for stat() ).
+ * \retval KNOT_ENODB   The database doesn't exist.
+ * \return KNOT_E* explaining why stat() failed.
  */
-bool knot_lmdb_exists(knot_lmdb_db_t *db);
+int knot_lmdb_exists(knot_lmdb_db_t *db);
 
 /*!
  * \brief Big enough mapsize for new database to hold a copy of to_copy.

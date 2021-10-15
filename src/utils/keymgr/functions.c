@@ -1054,6 +1054,7 @@ int keymgr_list_zones(knot_lmdb_db_t *kaspdb)
 	init_list(&zones);
 	int ret = kasp_db_list_zones(kaspdb, &zones);
 	if (ret != KNOT_EOK) {
+		ERROR("failed to initialize KASP (%s)\n", knot_strerror(ret));
 		return ret;
 	}
 

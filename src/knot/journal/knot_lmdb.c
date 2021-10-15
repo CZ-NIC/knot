@@ -83,20 +83,26 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
 	db->maxreaders = conf_lmdb_readers(conf());
 }
 
-static bool lmdb_stat(const char *lmdb_path, struct stat *st)
+static int lmdb_stat(const char *lmdb_path, struct stat *st)
 {
 	char data_mdb[strlen(lmdb_path) + 10];
 	(void)snprintf(data_mdb, sizeof(data_mdb), "%s/data.mdb", lmdb_path);
-	return (stat(data_mdb, st) == 0 && st->st_size > 0);
+	if (stat(data_mdb, st) == 0) {
+		return st->st_size > 0 ? KNOT_EOK : KNOT_ENODB;
+	} else if (errno == ENOENT) {
+		return KNOT_ENODB;
+	} else {
+		return knot_map_errno();
+	}
 }
 
-bool knot_lmdb_exists(knot_lmdb_db_t *db)
+int knot_lmdb_exists(knot_lmdb_db_t *db)
 {
 	if (db->env != NULL) {
-		return true;
+		return KNOT_EOK;
 	}
 	if (db->path == NULL) {
-		return false;
+		return KNOT_ENODB;
 	}
 	struct stat unused;
 	return lmdb_stat(db->path, &unused);
@@ -106,8 +112,9 @@ static int fix_mapsize(knot_lmdb_db_t *db)
 {
 	if (db->mapsize == 0) {
 		struct stat st;
-		if (!lmdb_stat(db->path, &st)) {
-			return KNOT_ENOENT;
+		int ret = lmdb_stat(db->path, &st);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 		db->mapsize = st.st_size * 2; // twice the size as DB might grow while we read it
 		db->env_flags |= MDB_RDONLY;
@@ -119,7 +126,7 @@ size_t knot_lmdb_copy_size(knot_lmdb_db_t *to_copy)
 {
 	size_t copy_size = 1048576;
 	struct stat st;
-	if (lmdb_stat(to_copy->path, &st)) {
+	if (lmdb_stat(to_copy->path, &st) == KNOT_EOK) {
 		copy_size += st.st_size * 2;
 	}
 	return copy_size;
