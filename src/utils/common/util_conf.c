@@ -33,6 +33,7 @@ int util_conf_init_confdb(const char *confdb)
 {
 	if (util_conf_initialized()) {
 		ERR("Configuration already initialized.\n");
+		util_conf_deinit();
 		return KNOT_ESEMCHECK;
 	}
 
@@ -125,5 +126,5 @@ void util_update_privileges(void)
 
 void util_conf_deinit(void)
 {
-	conf_free(conf());
+	conf_update(NULL, CONF_UPD_FNONE);
 }

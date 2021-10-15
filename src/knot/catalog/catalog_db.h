@@ -101,10 +101,8 @@ void catalog_commit_cleanup(catalog_t *cat);
  * \brief Close the catalog and de-init the structure.
  *
  * \param cat   Catalog to be closed.
- *
- * \return KNOT_E*
  */
-int catalog_deinit(catalog_t *cat);
+void catalog_deinit(catalog_t *cat);
 
 /*!
  * \brief Add a member zone to the catalog database.

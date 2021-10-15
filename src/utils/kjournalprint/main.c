@@ -334,29 +334,29 @@ int main(int argc, char *argv[])
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 'C':
 			if (util_conf_init_confdb(optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 'D':
 			if (util_conf_init_justdb("journal-db", optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 'l':
 			if (str_to_int(optarg, &params.limit, 0, INT_MAX) != KNOT_EOK) {
 				print_help();
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 's':
 			if (str_to_u32(optarg, &params.serial) != KNOT_EOK) {
 				print_help();
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			params.from_serial = true;
 			break;
@@ -378,13 +378,13 @@ int main(int argc, char *argv[])
 			break;
 		case 'h':
 			print_help();
-			return EXIT_SUCCESS;
+			goto success;
 		case 'V':
 			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
+			goto success;
 		default:
 			print_help();
-			return EXIT_FAILURE;
+			goto failure;
 		}
 	}
 
@@ -392,13 +392,13 @@ int main(int argc, char *argv[])
 	if ((justlist && (argc - optind > 0)) || (!justlist && (argc - optind > 1))) {
 		fprintf(stderr, "Warning: obsolete parameter specified\n");
 		if (util_conf_init_justdb("journal-db", argv[optind]) != KNOT_EOK) {
-			return EXIT_FAILURE;
+			goto failure;
 		}
 		optind++;
 	}
 
 	if (util_conf_init_default() != KNOT_EOK) {
-		return EXIT_FAILURE;
+		goto failure;
 	}
 
 	char *db = conf_db(conf(), C_JOURNAL_DB);
@@ -411,22 +411,22 @@ int main(int argc, char *argv[])
 			printf("No zones in journal DB\n");
 			// FALLTHROUGH
 		case KNOT_EOK:
-			return EXIT_SUCCESS;
+			goto success;
 		case KNOT_ENODB:
 			fprintf(stderr, "The journal DB does not exist\n");
-			return EXIT_FAILURE;
+			goto failure;
 		case KNOT_EMALF:
 			fprintf(stderr, "The journal DB is broken\n");
-			return EXIT_FAILURE;
+			goto failure;
 		default:
 			fprintf(stderr, "Failed to load zone list (%s)\n", knot_strerror(ret));
-			return EXIT_FAILURE;
+			goto failure;
 		}
 	} else {
 		if (argc - optind != 1) {
 			print_help();
 			free(db);
-			return EXIT_FAILURE;
+			goto failure;
 		}
 		knot_dname_t *name = knot_dname_from_str_alloc(argv[optind]);
 		knot_dname_to_lower(name);
@@ -444,17 +444,22 @@ int main(int argc, char *argv[])
 			break;
 		case KNOT_ENODB:
 			fprintf(stderr, "The journal DB does not exist\n");
-			return EXIT_FAILURE;
+			goto failure;
 		case KNOT_EOUTOFZONE:
 			fprintf(stderr, "The specified journal DB does not contain the specified zone\n");
-			return EXIT_FAILURE;
+			goto failure;
 		case KNOT_EOK:
 			break;
 		default:
 			fprintf(stderr, "Failed to load changesets (%s)\n", knot_strerror(ret));
-			return EXIT_FAILURE;
+			goto failure;
 		}
 	}
 
+success:
+	util_conf_deinit();
 	return EXIT_SUCCESS;
+failure:
+	util_conf_deinit();
+	return EXIT_FAILURE;
 }

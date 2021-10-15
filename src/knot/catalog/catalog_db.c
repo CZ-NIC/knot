@@ -157,7 +157,7 @@ void catalog_commit_cleanup(catalog_t *cat)
 	}
 }
 
-int catalog_deinit(catalog_t *cat)
+void catalog_deinit(catalog_t *cat)
 {
 	assert(cat->rw_txn == NULL);
 	if (cat->ro_txn != NULL) {
@@ -169,7 +169,6 @@ int catalog_deinit(catalog_t *cat)
 		free(cat->old_ro_txn);
 	}
 	knot_lmdb_deinit(&cat->db);
-	return KNOT_EOK;
 }
 
 int catalog_add(catalog_t *cat, const knot_dname_t *member,

@@ -93,28 +93,28 @@ int main(int argc, char *argv[])
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 'C':
 			if (util_conf_init_confdb(optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 'D':
 			if (util_conf_init_justdb("catalog-db", optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 'h':
 			print_help();
-			return EXIT_SUCCESS;
+			goto success;
 		case 'V':
 			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
+			goto success;
 		default:
 			print_help();
-			return EXIT_FAILURE;
+			goto failure;
 		}
 	}
 
@@ -122,13 +122,13 @@ int main(int argc, char *argv[])
 	if (argc - optind > 0) {
 		fprintf(stderr, "Warning: obsolete parameter specified\n");
 		if (util_conf_init_justdb("catalog-db", argv[optind]) != KNOT_EOK) {
-			return EXIT_FAILURE;
+			goto failure;
 		}
 		optind++;
 	}
 
 	if (util_conf_init_default() != KNOT_EOK) {
-		return EXIT_FAILURE;
+		goto failure;
 	}
 
 	catalog_t c = { { 0 } };
@@ -137,9 +137,12 @@ int main(int argc, char *argv[])
 	catalog_init(&c, db, 0); // mapsize grows automatically
 	free(db);
 	catalog_print(&c);
-	if (catalog_deinit(&c) != KNOT_EOK) {
-		return EXIT_FAILURE;
-	}
+	catalog_deinit(&c);
 
+success:
+	util_conf_deinit();
 	return EXIT_SUCCESS;
+failure:
+	util_conf_deinit();
+	return EXIT_FAILURE;
 }

@@ -316,17 +316,17 @@ int main(int argc, char *argv[])
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 'C':
 			if (util_conf_init_confdb(optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 'D':
 			if (util_conf_init_justdb("kasp-db", optarg) != KNOT_EOK) {
-				return EXIT_FAILURE;
+				goto failure;
 			}
 			break;
 		case 't':
@@ -336,8 +336,9 @@ int main(int argc, char *argv[])
 			ret = keymgr_generate_tsig(optarg, (argc > optind ? argv[optind] : "hmac-sha256"), parm);
 			if (ret != KNOT_EOK) {
 				ERROR("failed to generate TSIG (%s)\n", knot_strerror(ret));
+				goto failure;
 			}
-			return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
+			goto success;
 		case 'l':
 			just_list = true;
 			break;
@@ -352,18 +353,18 @@ int main(int argc, char *argv[])
 			break;
 		case 'h':
 			print_help();
-			return EXIT_SUCCESS;
+			goto success;
 		case 'V':
 			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
+			goto success;
 		default:
 			print_help();
-			return EXIT_FAILURE;
+			goto failure;
 		}
 	}
 
 	if (util_conf_init_default() != KNOT_EOK) {
-		return EXIT_FAILURE;
+		goto failure;
 	}
 
 	util_update_privileges();
@@ -379,9 +380,15 @@ int main(int argc, char *argv[])
 	} else {
 		ret = key_command(argc, argv, optind, &kaspdb, &list_params);
 	}
-
 	knot_lmdb_deinit(&kaspdb);
-	util_conf_deinit();
+	if (ret != KNOT_EOK) {
+		goto failure;
+	}
 
-	return (ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE);
+success:
+	util_conf_deinit();
+	return EXIT_SUCCESS;
+failure:
+	util_conf_deinit();
+	return EXIT_FAILURE;
 }
