@@ -425,6 +425,7 @@ int main(int argc, char *argv[])
 	} else {
 		if (argc - optind != 1) {
 			print_help();
+			free(db);
 			return EXIT_FAILURE;
 		}
 		knot_dname_t *name = knot_dname_from_str_alloc(argv[optind]);
