@@ -211,7 +211,10 @@ static zone_t *create_zone(conf_t *conf, const knot_dname_t *name, server_t *ser
 		z = create_zone_new(conf, name, server);
 	}
 
-	zone_get_catalog_group(conf, z);
+	if (z != NULL) {
+		zone_get_catalog_group(conf, z);
+	}
+
 	return z;
 }
 
