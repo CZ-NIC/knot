@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -120,7 +120,9 @@ enum {
 	PROTOCOL_UDP6,
 	PROTOCOL_TCP6,
 	PROTOCOL_UDP4_XDP,
+	PROTOCOL_TCP4_XDP,
 	PROTOCOL_UDP6_XDP,
+	PROTOCOL_TCP6_XDP,
 	PROTOCOL__COUNT
 };
 
@@ -132,7 +134,9 @@ static char *protocol_to_str(uint32_t idx, uint32_t count)
 	case PROTOCOL_UDP6:     return strdup("udp6");
 	case PROTOCOL_TCP6:     return strdup("tcp6");
 	case PROTOCOL_UDP4_XDP: return strdup("udp4-xdp");
+	case PROTOCOL_TCP4_XDP: return strdup("tcp4-xdp");
 	case PROTOCOL_UDP6_XDP: return strdup("udp6-xdp");
+	case PROTOCOL_TCP6_XDP: return strdup("tcp6-xdp");
 	default:                assert(0); return NULL;
 	}
 }
@@ -502,8 +506,13 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 					                     PROTOCOL_UDP4, 1);
 				}
 			} else {
-				knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
-				                     PROTOCOL_TCP4, 1);
+				if (xdp) {
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+					                     PROTOCOL_TCP4_XDP, 1);
+				} else {
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+					                     PROTOCOL_TCP4, 1);
+				}
 			}
 		} else {
 			if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) {
@@ -515,8 +524,13 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 					                     PROTOCOL_UDP6, 1);
 				}
 			} else {
-				knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
-				                     PROTOCOL_TCP6, 1);
+				if (xdp) {
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+					                     PROTOCOL_TCP6_XDP, 1);
+				} else {
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+					                     PROTOCOL_TCP6, 1);
+				}
 			}
 		}
 	}
