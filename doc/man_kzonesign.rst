@@ -6,7 +6,7 @@ kzonesign – DNSSEC signing utility
 Synopsis
 --------
 
-:program:`kzonesign` [*options*] **-c** *conf_file* *zone_name*
+:program:`kzonesign` [*config_option* *config_argument*] [*options*] *zone_name*
 
 Description
 -----------
@@ -14,11 +14,19 @@ Description
 This utility reads the zone's zone file, signs the zone according to given
 configuration, and writes the signed zone file back.
 
+Config options
+..............
+
+**-c**, **--config** *file*
+  Use a textual configuration file (default is :file:`@config_dir@/knot.conf`).
+
+**-C**, **--confdb** *directory*
+  Use a binary configuration database directory (default is :file:`@storage_dir@/confdb`).
+  The default configuration database, if exists, has a preference to the default
+  configuration file.
+
 Options
 .......
-
-**-c**, **--config** *conf_file*
-  Knot DNS configuration file (same as for knotd).
 
 **-o**, **--outdir** *dir_name*
   Write the output zone file to the specified directory insted of the configured one.

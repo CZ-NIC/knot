@@ -67,9 +67,11 @@ int util_conf_init_justdb(const char *db_type, const char *db_path);
  * \brief Initialize conf() for utilities based on existence of confDB or config
  *        file on default locations.
  *
+ * \param allow_db   Direct path to a database is allowed.
+ *
  * \return KNOT_E*
  */
-int util_conf_init_default(void);
+int util_conf_init_default(bool allow_db);
 
 /*!
  * \brief Set UID and GID of running utility process to what is configured...

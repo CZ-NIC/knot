@@ -32,16 +32,24 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkzonesign\fP [\fIoptions\fP] \fB\-c\fP \fIconf_file\fP \fIzone_name\fP
+\fBkzonesign\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoptions\fP] \fIzone_name\fP
 .SH DESCRIPTION
 .sp
 This utility reads the zone\(aqs zone file, signs the zone according to given
 configuration, and writes the signed zone file back.
-.SS Options
+.SS Config options
 .INDENT 0.0
 .TP
-\fB\-c\fP, \fB\-\-config\fP \fIconf_file\fP
-Knot DNS configuration file (same as for knotd).
+\fB\-c\fP, \fB\-\-config\fP \fIfile\fP
+Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
+.TP
+\fB\-C\fP, \fB\-\-confdb\fP \fIdirectory\fP
+Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
+The default configuration database, if exists, has a preference to the default
+configuration file.
+.UNINDENT
+.SS Options
+.INDENT 0.0
 .TP
 \fB\-o\fP, \fB\-\-outdir\fP \fIdir_name\fP
 Write the output zone file to the specified directory insted of the configured one.

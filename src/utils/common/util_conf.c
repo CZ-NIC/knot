@@ -92,7 +92,7 @@ int util_conf_init_justdb(const char *db_type, const char *db_path)
 	return ret;
 }
 
-int util_conf_init_default(void)
+int util_conf_init_default(bool allow_db)
 {
 	struct stat st;
 	if (util_conf_initialized()) {
@@ -102,7 +102,8 @@ int util_conf_init_default(void)
 	} else if (stat(CONF_DEFAULT_FILE, &st) == 0) {
 		return util_conf_init_file(CONF_DEFAULT_FILE);
 	} else {
-		ERR2("couldn't initialize configuration, please provide -c, -C, or -D option\n");
+		ERR2("couldn't initialize configuration, please provide %s option\n",
+		     (allow_db ? "-c, -C, or -D" : "-c or -C"));
 		return KNOT_EINVAL;
 	}
 }

@@ -6,7 +6,7 @@ keymgr – Key management utility
 Synopsis
 --------
 
-:program:`keymgr` [*config_option* *config_argument*] [*option*...] *zone* *command* *argument*...
+:program:`keymgr` [*config_option* *config_argument*] [*option*...] *zone_name* *command* *argument*...
 
 :program:`keymgr` [*config_option* *config_argument*] **-l**
 

@@ -398,7 +398,7 @@ int main(int argc, char *argv[])
 		optind++;
 	}
 
-	if (util_conf_init_default() != KNOT_EOK) {
+	if (util_conf_init_default(true) != KNOT_EOK) {
 		goto failure;
 	}
 

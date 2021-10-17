@@ -17,7 +17,6 @@
 #include <getopt.h>
 #include <stdlib.h>
 
-#include "knot/conf/conf.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
 #include "knot/server/server.h"
@@ -26,145 +25,67 @@
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/util_conf.h"
+#include "contrib/strtonum.h"
 
 #define PROGRAM_NAME "kzonesign"
 
-static const char *global_outdir = NULL;
-
-// copy-pasted from keymgr
-static bool init_conf(const char *confdb)
-{
-	size_t max_conf_size = (size_t)CONF_MAPSIZE * 1024 * 1024;
-
-	conf_flag_t flags = CONF_FNOHOSTNAME | CONF_FOPTMODULES;
-	if (confdb != NULL) {
-		flags |= CONF_FREADONLY;
-	}
-
-	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, flags);
-	if (ret != KNOT_EOK) {
-		ERR2("failed opening configuration database %s (%s)\n",
-		     (confdb == NULL ? "" : confdb), knot_strerror(ret));
-		return false;
-	}
-	conf_update(new_conf, CONF_UPD_FNONE);
-	return true;
-}
-
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] -c <conf_file> <zone_name>\n"
+	printf("Usage: %s [-c | -C <path>] [parameters] <zone_name>\n"
 	       "\n"
 	       "Parameters:\n"
+	       " -c, --config <file>      Path to a textual configuration file.\n"
+	       "                           (default %s)\n"
+	       " -C, --confdb <dir>       Path to a configuration database directory.\n"
+	       "                           (default %s)\n"
 	       " -o, --outdir <dir_name>  Output directory.\n"
 	       " -r, --rollover           Allow key rollovers and NSEC3 re-salt.\n"
 	       " -t, --time <timestamp>   Current time specification.\n"
-	       "                            (default current UNIX time)\n"
+	       "                           (default current UNIX time)\n"
 	       " -h, --help               Print the program help.\n"
 	       " -V, --version            Print the program version.\n"
 	       "\n",
-	       PROGRAM_NAME);
+	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
-int main(int argc, char *argv[])
+typedef struct {
+	const char *zone_name_str;
+	knot_dname_storage_t zone_name;
+	const char *outdir;
+	zone_sign_roll_flags_t rollover;
+	int64_t timestamp;
+} sign_params_t;
+
+static int zonesign(sign_params_t *params)
 {
-	const char *confile = NULL, *zone_str = NULL;
-	knot_dname_t *zone_name = NULL;
+	char *zonefile = NULL;
 	zone_contents_t *unsigned_conts = NULL;
 	zone_t *zone_struct = NULL;
 	zone_update_t up = { 0 };
 	server_t fake_server = { 0 };
-	zone_sign_roll_flags_t rollover = 0;
-	int64_t timestamp = 0;
 	zone_sign_reschedule_t next_sign = { 0 };
+	int ret = KNOT_ERROR;
 
-	struct option opts[] = {
-		{ "config",    required_argument, NULL, 'c' },
-		{ "outdir",    required_argument, NULL, 'o' },
-		{ "rollover",  no_argument,       NULL, 'r' },
-		{ "time",      required_argument, NULL, 't' },
-		{ "help",      no_argument,       NULL, 'h' },
-		{ "version",   no_argument,       NULL, 'V' },
-		{ NULL }
-	};
-
-	tzset();
-
-	int opt;
-	while ((opt = getopt_long(argc, argv, "c:o:rt:hV", opts, NULL)) != -1) {
-		switch (opt) {
-		case 'c':
-			confile = optarg;
-			break;
-		case 'o':
-			global_outdir = optarg;
-			break;
-		case 'r':
-			rollover = KEY_ROLL_ALLOW_ALL;
-			break;
-		case 't':
-			timestamp = atol(optarg);
-			if (timestamp <= 0) {
-				print_help();
-				return EXIT_FAILURE;
-			}
-			break;
-		case 'h':
-			print_help();
-			return EXIT_SUCCESS;
-		case 'V':
-			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
-		default:
-			print_help();
-			return EXIT_FAILURE;
-		}
-	}
-	if (confile == NULL || argc - optind != 1) {
-		print_help();
-		return EXIT_FAILURE;
-	}
-
-	zone_str = argv[optind];
-	zone_name = knot_dname_from_str_alloc(zone_str);
-	if (zone_name == NULL) {
-		ERR2("invalid zone name '%s'\n", zone_str);
-		return EXIT_FAILURE;
-	}
-	knot_dname_to_lower(zone_name);
-
-	if (!init_conf(NULL)) {
-		free(zone_name);
-		return EXIT_FAILURE;
-	}
-
-	int ret = conf_import(conf(), confile, true, false);
-	if (ret != KNOT_EOK) {
-		ERR2("failed opening configuration file '%s' (%s)\n",
-		     confile, knot_strerror(ret));
+	conf_val_t val = conf_zone_get(conf(), C_DOMAIN, params->zone_name);
+	if (val.code != KNOT_EOK) {
+		ERR2("zone '%s' not configured\n", params->zone_name_str);
+		ret = KNOT_ENOENT;
 		goto fail;
 	}
-
-	conf_val_t val = conf_zone_get(conf(), C_DOMAIN, zone_name);
+	val = conf_zone_get(conf(), C_DNSSEC_POLICY, params->zone_name);
 	if (val.code != KNOT_EOK) {
-		ERR2("zone '%s' not configured\n", zone_str);
-		ret = val.code;
-		goto fail;
-	}
-	val = conf_zone_get(conf(), C_DNSSEC_POLICY, zone_name);
-	if (val.code != KNOT_EOK) {
-		WARN2("DNSSEC policy not configured for zone '%s', taking defaults\n", zone_str);
+		WARN2("DNSSEC policy not configured for zone '%s', taking defaults\n",
+		      params->zone_name_str);
 	}
 
-	zone_struct = zone_new(zone_name);
+	zone_struct = zone_new(params->zone_name);
 	if (zone_struct == NULL) {
 		ERR2("out of memory\n");
 		ret = KNOT_ENOMEM;
 		goto fail;
 	}
 
-	ret = zone_load_contents(conf(), zone_name, &unsigned_conts, false);
+	ret = zone_load_contents(conf(), params->zone_name, &unsigned_conts, false);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to load zone contents (%s)\n", knot_strerror(ret));
 		goto fail;
@@ -180,10 +101,12 @@ int main(int argc, char *argv[])
 	kasp_db_ensure_init(&fake_server.kaspdb, conf());
 	zone_struct->server = &fake_server;
 
-	ret = knot_dnssec_zone_sign(&up, conf(), 0, rollover, timestamp, &next_sign);
+	ret = knot_dnssec_zone_sign(&up, conf(), 0, params->rollover,
+	                            params->timestamp, &next_sign);
 	if (ret == KNOT_DNSSEC_ENOKEY) { // exception: allow generating initial keys
-		rollover = KEY_ROLL_ALLOW_ALL;
-		ret = knot_dnssec_zone_sign(&up, conf(), 0, rollover, timestamp, &next_sign);
+		params->rollover = KEY_ROLL_ALLOW_ALL;
+		ret = knot_dnssec_zone_sign(&up, conf(), 0, params->rollover,
+		                            params->timestamp, &next_sign);
 	}
 	if (ret != KNOT_EOK) {
 		ERR2("failed to sign the zone (%s)\n", knot_strerror(ret));
@@ -191,24 +114,30 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	if (global_outdir == NULL) {
-		char *zonefile = conf_zonefile(conf(), zone_name);
+	if (params->outdir == NULL) {
+		zonefile = conf_zonefile(conf(), params->zone_name);
 		ret = zonefile_write(zonefile, up.new_cont);
-		free(zonefile);
 	} else {
 		zone_contents_t *temp = zone_struct->contents;
 		zone_struct->contents = up.new_cont;
-		ret = zone_dump_to_dir(conf(), zone_struct, global_outdir);
+		ret = zone_dump_to_dir(conf(), zone_struct, params->outdir);
 		zone_struct->contents = temp;
 	}
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
-		ERR2("failed to flush signed zone to file (%s)\n", knot_strerror(ret));
+		if (params->outdir == NULL) {
+			ERR2("failed to update zone file '%s' (%s)\n",
+			     zonefile, knot_strerror(ret));
+		} else {
+			ERR2("failed to flush signed zone to '%s' file (%s)\n",
+			     params->outdir, knot_strerror(ret));
+
+		}
 		goto fail;
 	}
 
 	printf("Next signing: %"KNOT_TIME_PRINTF"\n", next_sign.next_sign);
-	if (rollover) {
+	if (params->rollover) {
 		printf("Next roll-over: %"KNOT_TIME_PRINTF"\n", next_sign.next_rollover);
 		if (next_sign.next_nsec3resalt) {
 			printf("Next NSEC3 re-salt: %"KNOT_TIME_PRINTF"\n", next_sign.next_nsec3resalt);
@@ -223,7 +152,92 @@ fail:
 		knot_lmdb_deinit(&fake_server.kaspdb);
 	}
 	zone_free(&zone_struct);
-	conf_free(conf());
-	free(zone_name);
-	return ret == KNOT_EOK ? EXIT_SUCCESS : EXIT_FAILURE;
+	free(zonefile);
+
+	return ret;
+}
+
+int main(int argc, char *argv[])
+{
+	sign_params_t params = { 0 };
+
+	struct option opts[] = {
+		{ "config",    required_argument, NULL, 'c' },
+		{ "confdb",    required_argument, NULL, 'C' },
+		{ "outdir",    required_argument, NULL, 'o' },
+		{ "rollover",  no_argument,       NULL, 'r' },
+		{ "time",      required_argument, NULL, 't' },
+		{ "help",      no_argument,       NULL, 'h' },
+		{ "version",   no_argument,       NULL, 'V' },
+		{ NULL }
+	};
+
+	tzset();
+
+	int opt = 0;
+	while ((opt = getopt_long(argc, argv, "c:C:o:rt:hV", opts, NULL)) != -1) {
+		switch (opt) {
+		case 'c':
+			if (util_conf_init_file(optarg) != KNOT_EOK) {
+				goto failure;
+			}
+			break;
+		case 'C':
+			if (util_conf_init_confdb(optarg) != KNOT_EOK) {
+				goto failure;
+			}
+			break;
+		case 'o':
+			params.outdir = optarg;
+			break;
+		case 'r':
+			params.rollover = KEY_ROLL_ALLOW_ALL;
+			break;
+		case 't':
+			; uint32_t num = 0;
+			if (str_to_u32(optarg, &num) != KNOT_EOK || num == 0) {
+				print_help();
+				goto failure;
+			}
+			params.timestamp = num;
+			break;
+		case 'h':
+			print_help();
+			goto success;
+		case 'V':
+			print_version(PROGRAM_NAME);
+			goto success;
+		default:
+			print_help();
+			goto failure;
+		}
+	}
+	if (argc - optind != 1) {
+		ERR2("missing zone name\n");
+		print_help();
+		goto failure;
+	}
+	params.zone_name_str = argv[optind];
+	if (knot_dname_from_str(params.zone_name, params.zone_name_str,
+	                        sizeof(params.zone_name)) == NULL) {
+		ERR2("invalid zone name '%s'\n", params.zone_name_str);
+		print_help();
+		goto failure;
+	}
+	knot_dname_to_lower(params.zone_name);
+
+	if (util_conf_init_default(false) != KNOT_EOK) {
+		goto failure;
+	}
+
+	if (zonesign(&params) != KNOT_EOK) {
+		goto failure;
+	}
+
+success:
+	util_conf_deinit();
+	return EXIT_SUCCESS;
+failure:
+	util_conf_deinit();
+	return EXIT_FAILURE;
 }

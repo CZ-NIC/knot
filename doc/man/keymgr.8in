@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoption\fP\&...] \fIzone\fP \fIcommand\fP \fIargument\fP\&...
+\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoption\fP\&...] \fIzone_name\fP \fIcommand\fP \fIargument\fP\&...
 .sp
 \fBkeymgr\fP [\fIconfig_option\fP \fIconfig_argument\fP] \fB\-l\fP
 .sp

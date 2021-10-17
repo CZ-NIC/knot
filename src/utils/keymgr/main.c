@@ -32,7 +32,7 @@
 static void print_help(void)
 {
 	printf("Usage:\n"
-	       "  %s [-c | -C | -D <path>] <zone> <command> [<argument>...]\n"
+	       "  %s [-c | -C | -D <path>] <zone_name> <command> [<argument>...]\n"
 	       "  %s [-c | -C | -D <path>] -l\n"
 	       "  %s -t <tsig_name> [<algorithm> [<bits>]]\n"
 	       "\n"
@@ -364,7 +364,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (util_conf_init_default() != KNOT_EOK) {
+	if (util_conf_init_default(true) != KNOT_EOK) {
 		goto failure;
 	}
 
