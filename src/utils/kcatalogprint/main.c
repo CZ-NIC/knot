@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "knot/catalog/catalog_db.h"
+#include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/util_conf.h"
 
@@ -69,7 +70,7 @@ static void catalog_print(catalog_t *cat)
 			ret = catalog_apply(cat, NULL, catalog_print_cb, &total, false);
 		}
 		if (ret != KNOT_EOK) {
-			printf("Catalog print failed (%s)\n", knot_strerror(ret));
+			ERR2("failed to print catalog (%s)\n", knot_strerror(ret));
 			return;
 		}
 	}
@@ -120,7 +121,7 @@ int main(int argc, char *argv[])
 
 	// Backward compatibility.
 	if (argc - optind > 0) {
-		fprintf(stderr, "Warning: obsolete parameter specified\n");
+		WARN2("obsolete parameter specified\n");
 		if (util_conf_init_justdb("catalog-db", argv[optind]) != KNOT_EOK) {
 			goto failure;
 		}

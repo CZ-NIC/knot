@@ -25,6 +25,7 @@
 #include "knot/journal/journal_read.h"
 #include "knot/journal/serialization.h"
 #include "knot/zone/zone-dump.h"
+#include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/util_conf.h"
 #include "contrib/color.h"
@@ -195,7 +196,7 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 
 	ret = journal_info(j, &exists, NULL, NULL, NULL, NULL, NULL, &occupied, &occupied_all);
 	if (ret != KNOT_EOK || !exists) {
-		fprintf(stderr, "This zone does not exist in DB %s\n", path);
+		ERR2("zone not exists in the journal DB %s\n", path);
 		knot_lmdb_deinit(&jdb);
 		return ret == KNOT_EOK ? KNOT_ENOENT : ret;
 	}
@@ -203,9 +204,9 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 	if (params->check) {
 		ret = journal_sem_check(j);
 		if (ret > 0) {
-			fprintf(stderr, "Journal semantic check error: %d\n", ret);
+			ERR2("semantic check failed with code %d\n", ret);
 		} else if (ret != KNOT_EOK) {
-			fprintf(stderr, "Journal semantic check failed (%s).\n", knot_strerror(ret));
+			ERR2("semantic check failed (%s)\n", knot_strerror(ret));
 		}
 	}
 
@@ -390,7 +391,7 @@ int main(int argc, char *argv[])
 
 	// Backward compatibility.
 	if ((justlist && (argc - optind > 0)) || (!justlist && (argc - optind > 1))) {
-		fprintf(stderr, "Warning: obsolete parameter specified\n");
+		WARN2("obsolete parameter specified\n");
 		if (util_conf_init_justdb("journal-db", argv[optind]) != KNOT_EOK) {
 			goto failure;
 		}
@@ -413,13 +414,13 @@ int main(int argc, char *argv[])
 		case KNOT_EOK:
 			goto success;
 		case KNOT_ENODB:
-			fprintf(stderr, "The journal DB does not exist\n");
+			ERR2("the journal DB does not exist\n");
 			goto failure;
 		case KNOT_EMALF:
-			fprintf(stderr, "The journal DB is broken\n");
+			ERR2("the journal DB is broken\n");
 			goto failure;
 		default:
-			fprintf(stderr, "Failed to load zone list (%s)\n", knot_strerror(ret));
+			ERR2("failed to load zone list (%s)\n", knot_strerror(ret));
 			goto failure;
 		}
 	} else {
@@ -443,15 +444,15 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case KNOT_ENODB:
-			fprintf(stderr, "The journal DB does not exist\n");
+			ERR2("the journal DB does not exist\n");
 			goto failure;
 		case KNOT_EOUTOFZONE:
-			fprintf(stderr, "The specified journal DB does not contain the specified zone\n");
+			ERR2("the journal DB does not contain the specified zone\n");
 			goto failure;
 		case KNOT_EOK:
 			break;
 		default:
-			fprintf(stderr, "Failed to load changesets (%s)\n", knot_strerror(ret));
+			ERR2("failed to load changesets (%s)\n", knot_strerror(ret));
 			goto failure;
 		}
 	}

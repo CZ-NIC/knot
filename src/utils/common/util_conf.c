@@ -32,7 +32,7 @@ bool util_conf_initialized(void)
 int util_conf_init_confdb(const char *confdb)
 {
 	if (util_conf_initialized()) {
-		ERR("Configuration already initialized.\n");
+		ERR2("configuration already initialized\n");
 		util_conf_deinit();
 		return KNOT_ESEMCHECK;
 	}
@@ -47,8 +47,8 @@ int util_conf_init_confdb(const char *confdb)
 	conf_t *new_conf = NULL;
 	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, flags);
 	if (ret != KNOT_EOK) {
-		ERR("failed opening configuration database %s (%s)\n",
-		    (confdb == NULL ? "" : confdb), knot_strerror(ret));
+		ERR2("failed opening configuration database %s (%s)\n",
+		     (confdb == NULL ? "" : confdb), knot_strerror(ret));
 	} else {
 		conf_update(new_conf, CONF_UPD_FNONE);
 	}
@@ -64,8 +64,8 @@ int util_conf_init_file(const char *conffile)
 
 	ret = conf_import(conf(), conffile, true, false);
 	if (ret != KNOT_EOK) {
-		ERR("failed opening configuration file %s (%s)\n",
-		    conffile, knot_strerror(ret));
+		ERR2("failed opening configuration file %s (%s)\n",
+		     conffile, knot_strerror(ret));
 	}
 	return ret;
 }
@@ -87,7 +87,7 @@ int util_conf_init_justdb(const char *db_type, const char *db_path)
 	ret = conf_import(conf(), conf_str, false, false);
 	free(conf_str);
 	if (ret != KNOT_EOK) {
-		ERR("failed creating temporary configuration (%s)\n", knot_strerror(ret));
+		ERR2("failed creating temporary configuration (%s)\n", knot_strerror(ret));
 	}
 	return ret;
 }
@@ -102,7 +102,7 @@ int util_conf_init_default(void)
 	} else if (stat(CONF_DEFAULT_FILE, &st) == 0) {
 		return util_conf_init_file(CONF_DEFAULT_FILE);
 	} else {
-		ERR("couldn't initialize configuration, please provide -c, -C, or -D option\n");
+		ERR2("couldn't initialize configuration, please provide -c, -C, or -D option\n");
 		return KNOT_EINVAL;
 	}
 }

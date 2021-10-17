@@ -21,6 +21,7 @@
 #include "contrib/strtonum.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
+#include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/util_conf.h"
 #include "utils/keymgr/functions.h"
@@ -115,7 +116,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
                        keymgr_list_params_t *list_params)
 {
 	if (argc < opt_ind + 2) {
-		ERROR("zone name and/or command not specified\n");
+		ERR2("zone name or command not specified\n");
 		print_help();
 		return KNOT_EINVAL;
 	}
@@ -132,20 +133,20 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 
 	int ret = kdnssec_ctx_init(conf(), &kctx, zone_name, kaspdb, NULL);
 	if (ret != KNOT_EOK) {
-		ERROR("failed to initialize KASP (%s)\n", knot_strerror(ret));
+		ERR2("failed to initialize KASP (%s)\n", knot_strerror(ret));
 		goto main_end;
 	}
 
 #define CHECK_MISSING_ARG(msg) \
 	if (argc < 3) { \
-		ERROR("%s\n", (msg)); \
+		ERR2("%s\n", (msg)); \
 		ret = KNOT_EINVAL; \
 		goto main_end; \
 	}
 
 #define CHECK_MISSING_ARG2(msg) \
 	if (argc < 4) { \
-		ERROR("%s\n", (msg)); \
+		ERR2("%s\n", (msg)); \
 		ret = KNOT_EINVAL; \
 		goto main_end; \
 	}
@@ -268,7 +269,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_import_skr(&kctx, argv[2]);
 	} else {
-		ERROR("wrong zone-key command: %s\n", argv[1]);
+		ERR2("invalid command '%s'\n", argv[1]);
 		goto main_end;
 	}
 
@@ -277,7 +278,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	if (ret == KNOT_EOK) {
 		printf("%s", print_ok_on_succes ? "OK\n" : "");
 	} else {
-		ERROR("%s\n", knot_strerror(ret));
+		ERR2("%s\n", knot_strerror(ret));
 	}
 
 main_end:
@@ -335,7 +336,7 @@ int main(int argc, char *argv[])
 			}
 			ret = keymgr_generate_tsig(optarg, (argc > optind ? argv[optind] : "hmac-sha256"), parm);
 			if (ret != KNOT_EOK) {
-				ERROR("failed to generate TSIG (%s)\n", knot_strerror(ret));
+				ERR2("failed to generate TSIG (%s)\n", knot_strerror(ret));
 				goto failure;
 			}
 			goto success;

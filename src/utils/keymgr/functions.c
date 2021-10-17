@@ -21,6 +21,8 @@
 #include <fcntl.h>
 
 #include "utils/keymgr/functions.h"
+
+#include "utils/common/msg.h"
 #include "utils/keymgr/bind_privkey.h"
 #include "contrib/base64.h"
 #include "contrib/color.h"
@@ -45,7 +47,7 @@ int parse_timestamp(char *arg, knot_time_t *stamp)
 	int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
 	                          arg, stamp);
 	if (ret < 0) {
-		ERROR("invalid timestamp: %s\n", arg);
+		ERR2("invalid timestamp: %s\n", arg);
 		return KNOT_EINVAL;
 	}
 	return KNOT_EOK;
@@ -139,7 +141,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				}
 			}
 			if (alg > 255) {
-				ERROR("unknown algorithm: %s\n", argv[i] + 10);
+				ERR2("unknown algorithm: %s\n", argv[i] + 10);
 				return false;
 			}
 			*algorithm = alg;
@@ -152,13 +154,13 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, str2bool(argv[i] + 4));
 		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
 			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
-				ERROR("invalid size: '%s'\n", argv[i] + 5);
+				ERR2("invalid size: '%s'\n", argv[i] + 5);
 				return false;
 			}
 		} else if (!just_timing && strncasecmp(argv[i], "addtopolicy=", 12) == 0) {
 			*addtopolicy = argv[i] + 12;
 		} else if (!init_timestamps(argv[i], timing)) {
-			ERROR("invalid parameter: %s\n", argv[i]);
+			ERR2("invalid parameter: %s\n", argv[i]);
 			return false;
 		}
 	}
@@ -170,7 +172,7 @@ static bool _check_lower(knot_time_t a, knot_time_t b,
 			 const char *a_name, const char *b_name)
 {
 	if (knot_time_cmp(a, b) > 0) {
-		ERROR("semantic error: expected '%s' before '%s'\n", a_name, b_name);
+		ERR2("timestamp '%s' must be before '%s'\n", a_name, b_name);
 		return false;
 	}
 	return true;
@@ -685,28 +687,28 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
 	bits = (bits + CHAR_BIT - 1) / CHAR_BIT * CHAR_BIT;
 
 	if (bits < optimal_bits) {
-		WARN("optimal key size for %s is at least %d bits\n",
-		     dnssec_tsig_algorithm_to_name(alg), optimal_bits);
+		WARN2("optimal key size for %s is at least %d bits\n",
+		       dnssec_tsig_algorithm_to_name(alg), optimal_bits);
 	}
 	assert(bits % CHAR_BIT == 0);
 
 	_cleanup_binary_ dnssec_binary_t key = { 0 };
 	int r = dnssec_binary_alloc(&key, bits / CHAR_BIT);
 	if (r != DNSSEC_EOK) {
-		ERROR("failed to allocate memory\n");
+		ERR2("failed to allocate memory\n");
 		return knot_error_from_libdnssec(r);
 	}
 
 	r = gnutls_rnd(GNUTLS_RND_KEY, key.data, key.size);
 	if (r != 0) {
-		ERROR("failed to generate secret the key\n");
+		ERR2("failed to generate secret the key\n");
 		return knot_error_from_libdnssec(r);
 	}
 
 	_cleanup_binary_ dnssec_binary_t key_b64 = { 0 };
 	r = dnssec_binary_to_base64(&key, &key_b64);
 	if (r != DNSSEC_EOK) {
-		ERROR("failed to convert the key to Base64\n");
+		ERR2("failed to convert the key to Base64\n");
 		return knot_error_from_libdnssec(r);
 	}
 
@@ -745,7 +747,7 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 	if ((is_keytag && !can_be_keytag) ||
 	    (is_id && !is_hex(key_spec)) ||
 	    (!can_be_keytag && !is_hex(key_spec))) {
-		ERROR("invalid key specification\n");
+		ERR2("invalid key specification\n");
 		return KNOT_EINVAL;
 	}
 
@@ -769,13 +771,13 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 			if (*key == NULL) {
 				*key = candidate;
 			} else {
-				ERROR("key is not specified uniquely. Please use id=Full_Key_ID\n");
+				ERR2("key not specified uniquely, please use id=Full_Key_ID\n");
 				return KNOT_EINVAL;
 			}
 		}
 	}
 	if (*key == NULL) {
-		ERROR("key not found\n");
+		ERR2("key not found\n");
 		return KNOT_ENOENT;
 	}
 	return KNOT_EOK;
@@ -792,7 +794,7 @@ int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **k
 	kdnssec_ctx_t kctx = { 0 };
 	int ret = kdnssec_ctx_init(conf(), &kctx, *key_zone, kaspdb, NULL);
 	if (ret != KNOT_EOK) {
-		ERROR("failed to initialize zone %s (%s)\n", argv[0], knot_strerror(ret));
+		ERR2("failed to initialize zone %s (%s)\n", argv[0], knot_strerror(ret));
 		free(*key_zone);
 		*key_zone = NULL;
 		return KNOT_ENOZONE;
@@ -1054,7 +1056,7 @@ int keymgr_list_zones(knot_lmdb_db_t *kaspdb)
 	init_list(&zones);
 	int ret = kasp_db_list_zones(kaspdb, &zones);
 	if (ret != KNOT_EOK) {
-		ERROR("failed to initialize KASP (%s)\n", knot_strerror(ret));
+		ERR2("failed to initialize KASP (%s)\n", knot_strerror(ret));
 		return ret;
 	}
 

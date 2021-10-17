@@ -23,7 +23,9 @@
 #include "knot/server/server.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
+#include "utils/common/msg.h"
 #include "utils/common/params.h"
+#include "utils/common/util_conf.h"
 
 #define PROGRAM_NAME "kzonesign"
 
@@ -42,8 +44,8 @@ static bool init_conf(const char *confdb)
 	conf_t *new_conf = NULL;
 	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, flags);
 	if (ret != KNOT_EOK) {
-		printf("Failed opening configuration database %s (%s)\n",
-		       (confdb == NULL ? "" : confdb), knot_strerror(ret));
+		ERR2("failed opening configuration database %s (%s)\n",
+		     (confdb == NULL ? "" : confdb), knot_strerror(ret));
 		return false;
 	}
 	conf_update(new_conf, CONF_UPD_FNONE);
@@ -127,7 +129,7 @@ int main(int argc, char *argv[])
 	zone_str = argv[optind];
 	zone_name = knot_dname_from_str_alloc(zone_str);
 	if (zone_name == NULL) {
-		printf("Invalid zone name '%s'\n", zone_str);
+		ERR2("invalid zone name '%s'\n", zone_str);
 		return EXIT_FAILURE;
 	}
 	knot_dname_to_lower(zone_name);
@@ -139,38 +141,38 @@ int main(int argc, char *argv[])
 
 	int ret = conf_import(conf(), confile, true, false);
 	if (ret != KNOT_EOK) {
-		printf("Failed opening configuration file '%s' (%s)\n",
-		       confile, knot_strerror(ret));
+		ERR2("failed opening configuration file '%s' (%s)\n",
+		     confile, knot_strerror(ret));
 		goto fail;
 	}
 
 	conf_val_t val = conf_zone_get(conf(), C_DOMAIN, zone_name);
 	if (val.code != KNOT_EOK) {
-		printf("Zone '%s' not configured\n", zone_str);
+		ERR2("zone '%s' not configured\n", zone_str);
 		ret = val.code;
 		goto fail;
 	}
 	val = conf_zone_get(conf(), C_DNSSEC_POLICY, zone_name);
 	if (val.code != KNOT_EOK) {
-		printf("Waring: DNSSEC policy not configured for zone '%s', taking defaults\n", zone_str);
+		WARN2("DNSSEC policy not configured for zone '%s', taking defaults\n", zone_str);
 	}
 
 	zone_struct = zone_new(zone_name);
 	if (zone_struct == NULL) {
-		printf("out of memory\n");
+		ERR2("out of memory\n");
 		ret = KNOT_ENOMEM;
 		goto fail;
 	}
 
 	ret = zone_load_contents(conf(), zone_name, &unsigned_conts, false);
 	if (ret != KNOT_EOK) {
-		printf("Failed to load zone contents (%s)\n", knot_strerror(ret));
+		ERR2("failed to load zone contents (%s)\n", knot_strerror(ret));
 		goto fail;
 	}
 
 	ret = zone_update_from_contents(&up, zone_struct, unsigned_conts, UPDATE_FULL);
 	if (ret != KNOT_EOK) {
-		printf("Failed to initialize zone update (%s)\n", knot_strerror(ret));
+		ERR2("failed to initialize zone update (%s)\n", knot_strerror(ret));
 		zone_contents_deep_free(unsigned_conts);
 		goto fail;
 	}
@@ -184,7 +186,7 @@ int main(int argc, char *argv[])
 		ret = knot_dnssec_zone_sign(&up, conf(), 0, rollover, timestamp, &next_sign);
 	}
 	if (ret != KNOT_EOK) {
-		printf("Failed to sign the zone (%s)\n", knot_strerror(ret));
+		ERR2("failed to sign the zone (%s)\n", knot_strerror(ret));
 		zone_update_clear(&up);
 		goto fail;
 	}
@@ -201,7 +203,7 @@ int main(int argc, char *argv[])
 	}
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
-		printf("Failed to flush signed zone file (%s)\n", knot_strerror(ret));
+		ERR2("failed to flush signed zone to file (%s)\n", knot_strerror(ret));
 		goto fail;
 	}
 
