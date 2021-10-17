@@ -129,6 +129,7 @@ int main(int argc, char *argv[])
 		printf("Invalid zone name '%s'\n", zone_str);
 		return EXIT_FAILURE;
 	}
+	knot_dname_to_lower(zone_name);
 
 	if (!init_conf(NULL)) {
 		free(zone_name);
