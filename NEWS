@@ -1,3 +1,24 @@
+Knot DNS 3.1.3 (2021-10-18)
+===========================
+
+Improvements:
+-------------
+ - knotd: added simple error logging to orphaned zone purge
+ - knotd: allow manual public-only keys for unused algorithm
+ - kdig: send ALPN when using DoT or XoT #769
+ - doc: various fixes and improvements #767
+
+Bugfixes:
+---------
+ - knotd: catalog backup doesn't preserve version of the catalog implementation
+ - knotd: NOTIFY is scheduled even when DNSSEC signing is up-to-date
+ - knotd: server can crash when zone difference is inconsistent upon cold start
+ - knotd: zone not bootstrapped when zone file load failed due to an error
+ - knotd: broken AXFR with knot as slave and dnsmasq as master (Thanks to Daniel Gröber)
+ - knotd: journal not able to free up space when zone-in-journal present and zonefile written
+ - mod-stats: missing protocol counters for TCP over XDP
+ - kzonesign: input zone name not lower-cased
+
 Knot DNS 3.1.2 (2021-09-08)
 ===========================
 
