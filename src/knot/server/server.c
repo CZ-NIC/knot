@@ -958,7 +958,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	}
 
 	if (warn_listen && server->ifaces != NULL && listen_changed(conf, server)) {
-		log_warning(msg, "listen(-xdp)");
+		log_warning(msg, &C_LISTEN[1]);
 		warn_listen = false;
 	}
 
