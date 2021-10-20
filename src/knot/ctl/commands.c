@@ -30,6 +30,7 @@
 #include "knot/nameserver/query_module.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/backup.h"
+#include "knot/zone/digest.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/zone/zonefile.h"
@@ -694,17 +695,26 @@ static int zone_txn_commit(zone_t *zone, _unused_ ctl_args_t *args)
 	// Sign update.
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = conf_bool(&val);
+	val = conf_zone_get(conf(), C_ZONEMD_GENERATE, zone->name);
+	unsigned digest_alg = conf_opt(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		bool full = (zone->control_update->flags & UPDATE_FULL);
 		zone_sign_roll_flags_t rflags = KEY_ROLL_ALLOW_ALL;
 		ret = (full ? knot_dnssec_zone_sign(zone->control_update, conf(), 0, rflags, 0, &resch) :
 		              knot_dnssec_sign_update(zone->control_update, conf(), &resch));
-		if (ret != KNOT_EOK) {
-			zone_control_clear(zone);
-			return ret;
-		}
 		event_dnssec_reschedule(conf(), zone, &resch, false);
+	} else if (digest_alg != ZONE_DIGEST_NONE) {
+		if (zone_update_to(zone->control_update) == NULL) {
+			ret = zone_update_increment_soa(zone->control_update, conf());
+		}
+		if (ret == KNOT_EOK) {
+			ret = zone_update_add_digest(zone->control_update, digest_alg, false);
+		}
+	}
+	if (ret != KNOT_EOK) {
+		zone_control_clear(zone);
+		return ret;
 	}
 
 	ret = zone_update_commit(conf(), zone->control_update);

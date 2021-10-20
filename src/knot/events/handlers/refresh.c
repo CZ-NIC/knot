@@ -30,6 +30,7 @@
 #include "knot/query/requestor.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/adjust.h"
+#include "knot/zone/digest.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -256,14 +257,20 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
+	val = conf_zone_get(data->conf, C_ZONEMD_GENERATE, data->zone->name);
+	unsigned digest_alg = conf_opt(&val);
+
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_zone_sign(&up, data->conf, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_ALL, 0, &resch);
-		if (ret != KNOT_EOK) {
-			zone_update_clear(&up);
-			return ret;
-		}
 		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
+	} else if (digest_alg != ZONE_DIGEST_NONE) {
+		assert(zone_update_to(&up) != NULL);
+		ret = zone_update_add_digest(&up, digest_alg, false);
+	}
+	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
+		return ret;
 	}
 
 	ret = zone_update_commit(data->conf, &up);
@@ -516,14 +523,20 @@ static int ixfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
+	val = conf_zone_get(data->conf, C_ZONEMD_GENERATE, data->zone->name);
+	unsigned digest_alg = conf_opt(&val);
+
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_sign_update(&up, data->conf, &resch);
-		if (ret != KNOT_EOK) {
-			zone_update_clear(&up);
-			return ret;
-		}
 		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
+	} else if (digest_alg != ZONE_DIGEST_NONE) {
+		assert(zone_update_to(&up) != NULL);
+		ret = zone_update_add_digest(&up, digest_alg, false);
+	}
+	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
+		return ret;
 	}
 
 	ret = zone_update_commit(data->conf, &up);
