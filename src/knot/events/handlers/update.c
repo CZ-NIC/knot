@@ -137,7 +137,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 
 	// Init zone update structure
 	zone_update_t up;
-	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_SIGN);
+	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
 	if (ret != KNOT_EOK) {
 		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		return ret;
@@ -156,7 +156,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 
 	// Sign update.
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	bool dnssec_enable = (up.flags & UPDATE_SIGN) && conf_bool(&val);
+	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_sign_update(&up, conf, &resch);
