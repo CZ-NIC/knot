@@ -661,7 +661,7 @@ static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
 	}
 
 	zone_update_flags_t type = (zone->contents == NULL) ? UPDATE_FULL : UPDATE_INCREMENTAL;
-	int ret = zone_update_init(zone->control_update, zone, type | UPDATE_SIGN | UPDATE_STRICT);
+	int ret = zone_update_init(zone->control_update, zone, type | UPDATE_STRICT);
 	if (ret != KNOT_EOK) {
 		free(zone->control_update);
 		zone->control_update = NULL;
@@ -693,7 +693,7 @@ static int zone_txn_commit(zone_t *zone, _unused_ ctl_args_t *args)
 
 	// Sign update.
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
-	bool dnssec_enable = (zone->control_update->flags & UPDATE_SIGN) && conf_bool(&val);
+	bool dnssec_enable = conf_bool(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		bool full = (zone->control_update->flags & UPDATE_FULL);

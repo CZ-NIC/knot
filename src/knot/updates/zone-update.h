@@ -53,7 +53,6 @@ typedef enum {
 	UPDATE_HYBRID         = 1 << 1, /*!< Changeset like for incremental, adjusting like full. */
 	UPDATE_INCREMENTAL    = 1 << 2, /*!< Apply changes to the old zone. */
 	// Additional flags
-	UPDATE_SIGN           = 1 << 3, /*!< Sign the resulting zone. */
 	UPDATE_STRICT         = 1 << 4, /*!< Apply changes strictly, i.e. fail when removing nonexistent RR. */
 	UPDATE_EXTRA_CHSET    = 1 << 6, /*!< Extra changeset in use, to store diff btwn zonefile and final contents. */
 	UPDATE_CHANGED_NSEC   = 1 << 7, /*!< This incremental update affects NSEC or NSEC3 nodes in zone. */
