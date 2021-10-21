@@ -23,6 +23,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/events/handlers.h"
 #include "knot/events/replan.h"
+#include "knot/zone/digest.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone-load.h"
@@ -272,6 +273,9 @@ load_end:
 		}
 	}
 
+	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
+	unsigned digest_alg = conf_opt(&val);
+
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { 0 };
 	if (dnssec_enable) {
@@ -284,6 +288,16 @@ load_end:
 			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
 			                 "'zonefile-load: difference' should be set to avoid malformed "
 			                 "IXFR after manual zone file update");
+		}
+	} else if (digest_alg != ZONE_DIGEST_NONE) {
+		if (zone_update_to(&up) == NULL || middle_serial == zone->zonefile.serial) {
+			ret = zone_update_increment_soa(&up, conf);
+		}
+		if (ret == KNOT_EOK) {
+			ret = zone_update_add_digest(&up, digest_alg, false);
+		}
+		if (ret != KNOT_EOK) {
+			goto cleanup;
 		}
 	}
 

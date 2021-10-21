@@ -22,6 +22,7 @@
 #include "knot/query/capture.h"
 #include "knot/query/requestor.h"
 #include "knot/updates/ddns.h"
+#include "knot/zone/digest.h"
 #include "knot/zone/zone.h"
 #include "libdnssec/random.h"
 #include "libknot/libknot.h"
@@ -137,7 +138,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 
 	// Init zone update structure
 	zone_update_t up;
-	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_SIGN);
+	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
 	if (ret != KNOT_EOK) {
 		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		return ret;
@@ -156,16 +157,25 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 
 	// Sign update.
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	bool dnssec_enable = (up.flags & UPDATE_SIGN) && conf_bool(&val);
+	bool dnssec_enable = conf_bool(&val);
+	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
+	unsigned digest_alg = conf_opt(&val);
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_sign_update(&up, conf, &resch);
-		if (ret != KNOT_EOK) {
-			zone_update_clear(&up);
-			set_rcodes(requests, KNOT_RCODE_SERVFAIL);
-			return ret;
-		}
 		event_dnssec_reschedule(conf, zone, &resch, false); // false since we handle NOTIFY after processing ddns queue
+	} else if (digest_alg != ZONE_DIGEST_NONE) {
+		if (zone_update_to(&up) == NULL) {
+			ret = zone_update_increment_soa(&up, conf);
+		}
+		if (ret == KNOT_EOK) {
+			ret = zone_update_add_digest(&up, digest_alg, false);
+		}
+	}
+	if (ret != KNOT_EOK) {
+		zone_update_clear(&up);
+		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
+		return ret;
 	}
 
 	// Apply changes.
