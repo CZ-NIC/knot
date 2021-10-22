@@ -195,6 +195,7 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 		if (ATOMIC_GET(ctx->badcookie_ctr) > BADCOOKIE_CTR_INIT) {
 			// Silently drop the response.
 			update_ctr(ctx);
+			knotd_mod_stats_incr(mod, qdata->params->thread_id, 1, 0, 1);
 			return KNOTD_STATE_NOOP;
 		} else {
 			if (ctx->badcookie_slip > 1) {
@@ -245,6 +246,12 @@ int cookies_load(knotd_mod_t *mod)
 
 	// Set up statistics counters.
 	int ret = knotd_mod_stats_add(mod, "presence", 1, NULL);
+	if (ret != KNOT_EOK) {
+		free(ctx);
+		return ret;
+	}
+
+	ret = knotd_mod_stats_add(mod, "dropped", 1, NULL);
 	if (ret != KNOT_EOK) {
 		free(ctx);
 		return ret;
