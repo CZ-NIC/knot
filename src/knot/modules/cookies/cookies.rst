@@ -11,8 +11,10 @@ by the presence of a correct cookie. Both the server and the client have to
 support DNS Cookies, otherwise they are not used.
 
 .. NOTE::
-   This module introduces a statistics counter: the number of queries
-   containing the COOKIE option.
+   This module introduces two statistics counters:
+
+   - ``presence`` – The number of queries containing the COOKIE option.
+   - ``dropped`` – The number of dropped queries due to the slip limit.
 
 .. WARNING::
    For effective module operation the :ref:`RRL<mod-rrl>` module must also
