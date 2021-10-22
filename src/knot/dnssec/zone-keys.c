@@ -25,6 +25,11 @@
 
 #define MAX_KEY_INFO 128
 
+typedef struct {
+	char msg[MAX_KEY_INFO];
+	knot_time_t key_time;
+} key_info_t;
+
 knot_dynarray_define(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_NORMAL)
 
 void normalize_generate_flags(kdnssec_generate_flags_t *flags)
@@ -488,13 +493,10 @@ static void log_key_info(const zone_key_t *key, char *out, size_t out_len)
 	               (key->is_ksk_active_plus || key->is_zsk_active_plus ? ", active+" : ""));
 }
 
-int log_key_sort(const void *a, const void *b)
+static int log_key_sort(const void *a, const void *b)
 {
-	const char *alg_a = strstr(a, "alg");
-	const char *alg_b = strstr(b, "alg");
-	assert(alg_a != NULL && alg_b != NULL);
-
-	return strcmp(alg_a, alg_b);
+	const key_info_t *x = a, *y = b;
+	return knot_time_cmp(x->key_time, y->key_time);
 }
 
 /*!
@@ -520,22 +522,27 @@ int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
 		return KNOT_ENOMEM;
 	}
 
-	char key_info[ctx->zone->num_keys][MAX_KEY_INFO];
+	key_info_t key_info[ctx->zone->num_keys];
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
 		uint8_t kk_alg = dnssec_key_get_algorithm(kasp_key->key);
 		bool same_alg_zsk = alg_has_active_zsk(ctx, kk_alg);
 		set_key(kasp_key, ctx->now, &keyset.keys[i], same_alg_zsk);
 		if (verbose) {
-			log_key_info(&keyset.keys[i], key_info[i], MAX_KEY_INFO);
+			log_key_info(&keyset.keys[i], key_info[i].msg, MAX_KEY_INFO);
+			if (knot_time_cmp(kasp_key->timing.pre_active, kasp_key->timing.publish) < 0) {
+				key_info[i].key_time = kasp_key->timing.pre_active;
+			} else {
+				key_info[i].key_time = kasp_key->timing.publish;
+			}
 		}
 	}
 
-	// Sort the keys by algorithm name.
+	// Sort the keys by publish/pre_active timestamps.
 	if (verbose) {
-		qsort(key_info, ctx->zone->num_keys, MAX_KEY_INFO, log_key_sort);
+		qsort(key_info, ctx->zone->num_keys, sizeof(key_info[0]), log_key_sort);
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-			log_zone_info(ctx->zone->dname, "%s", key_info[i]);
+			log_zone_info(ctx->zone->dname, "%s", key_info[i].msg);
 		}
 	}
 
