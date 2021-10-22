@@ -1238,6 +1238,7 @@ class Knot(Server):
         self._str(s, "udp-max-payload", self.udp_max_payload)
         self._str(s, "udp-max-payload-ipv4", self.udp_max_payload_ipv4)
         self._str(s, "udp-max-payload-ipv6", self.udp_max_payload_ipv6)
+        self._str(s, "remote-pool-limit", str(random.randint(0,6)))
         s.end()
 
         s.begin("control")
