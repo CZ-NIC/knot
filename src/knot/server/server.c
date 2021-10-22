@@ -38,6 +38,7 @@
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
+#include "contrib/conn_pool.h"
 #include "contrib/net.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/os.h"
@@ -696,6 +697,10 @@ void server_deinit(server_t *server)
 
 	/* Close journal database if open. */
 	knot_lmdb_deinit(&server->journaldb);
+
+	/* Close and deinit connection pool. */
+	conn_pool_deinit(global_conn_pool);
+	global_conn_pool = NULL;
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
@@ -1188,6 +1193,18 @@ int server_reconfigure(conf_t *conf, server_t *server)
 	if ((ret = reconfigure_timer_db(conf, server)) != KNOT_EOK) {
 		log_error("failed to reconfigure Timer DB (%s)",
 		          knot_strerror(ret));
+	}
+
+	/* Reconfigure connection pool. */
+	conf_val_t val = conf_get(conf, C_SRV, C_RMT_POOL_LIMIT);
+	size_t cp_size = conf_int(&val);
+	val = conf_get(conf, C_SRV, C_RMT_POOL_TIMEOUT);
+	knot_timediff_t cp_timeout = conf_int(&val);
+	if (global_conn_pool == NULL && cp_size > 0) {
+		conn_pool_t *new_pool = conn_pool_init(cp_size, cp_timeout);
+		global_conn_pool = new_pool;
+	} else {
+		conn_pool_timeout(global_conn_pool, cp_timeout);
 	}
 
 	return KNOT_EOK;

@@ -191,6 +191,8 @@ server:
     tcp\-max\-clients: INT
     tcp\-reuseport: BOOL
     tcp\-fastopen: BOOL
+    remote\-pool\-limit: INT
+    remote\-pool\-timeout: TIME
     socket\-affinity: BOOL
     udp\-max\-payload: SIZE
     udp\-max\-payload\-ipv4: SIZE
@@ -358,6 +360,21 @@ is \fB1\fP for server side, and \fBnet.inet.tcp.fastopen.client_enable\fP is
 .UNINDENT
 .sp
 \fIDefault:\fP off
+.SS remote\-pool\-limit
+.sp
+If nonzero, the server will keep up to this number of outgoing TCP connections
+open for later use. This is an optimization to avoid frequent opening of
+TCP connections to the same remote.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP 0
+.SS remote\-pool\-timeout
+.sp
+The timeout in seconds after which the unused kept\-open outgoing TCP connections
+to remote servers are closed.
+.sp
+\fIDefault:\fP 5
 .SS socket\-affinity
 .sp
 If enabled and if SO_REUSEPORT is available on Linux, all configured network
