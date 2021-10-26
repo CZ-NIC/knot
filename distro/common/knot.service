@@ -16,7 +16,9 @@ ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-abort
 LimitNOFILE=1048576
 TimeoutStopSec=300
+# Extend the systemd startup timeout by this value (seconds) for each zone
 Environment="KNOT_ZONE_LOAD_TIMEOUT_SEC=180"
+# Maximum size (MiB) of a configuration database
 Environment="KNOT_CONF_MAX_SIZE=512"
 
 [Install]
