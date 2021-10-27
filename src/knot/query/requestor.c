@@ -167,7 +167,8 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 		return;
 	}
 
-	if (request->fd >= 0 && use_tcp(request)) {
+	if (request->fd >= 0 && use_tcp(request) &&
+	    (request->flags & KNOT_REQUEST_KEEP)) {
 		request->fd = conn_pool_put_force(global_conn_pool,
 		                                  &request->source,
 		                                  &request->remote,
@@ -330,6 +331,8 @@ int knot_requestor_exec(knot_requestor_t *requestor, knot_request_t *request,
 	/* Expect complete request. */
 	if (requestor->layer.state != KNOT_STATE_DONE) {
 		ret = KNOT_EPROCESSING;
+	} else {
+		request->flags |= KNOT_REQUEST_KEEP;
 	}
 
 	/* Verify last TSIG */

@@ -28,6 +28,7 @@ typedef enum {
 	KNOT_REQUEST_NONE = 0,       /*!< Empty flag. */
 	KNOT_REQUEST_UDP  = 1 << 0,  /*!< Use UDP for requests. */
 	KNOT_REQUEST_TFO  = 1 << 1,  /*!< Enable TCP Fast Open for requests. */
+	KNOT_REQUEST_KEEP = 1 << 2,  /*!< Keep upstream TCP connection in pool for later reuse. */
 } knot_request_flag_t;
 
 typedef enum {
