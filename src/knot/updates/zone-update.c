@@ -719,16 +719,20 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 
 	zone_set_flag(update->zone, ZONE_IS_CATALOG);
 
-	int ret = KNOT_EOK;
+	int ret = catalog_zone_verify(update->new_cont);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	ssize_t upd_count = 0;
 	if ((update->flags & UPDATE_INCREMENTAL)) {
 		ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
 		                               update->change.remove, update->new_cont,
-		                               true, false, zone_catalog(update->zone), &upd_count);
+		                               true, zone_catalog(update->zone), &upd_count);
 		if (ret == KNOT_EOK) {
 			ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
 			                               update->change.add, update->new_cont,
-			                               false, false, NULL, &upd_count);
+			                               false, NULL, &upd_count);
 		}
 	} else {
 		ret = catalog_update_del_all(zone_catalog_upd(update->zone),
@@ -737,7 +741,7 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 		if (ret == KNOT_EOK) {
 			ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
 			                               update->new_cont, update->new_cont,
-			                               false, true, NULL, &upd_count);
+			                               false, NULL, &upd_count);
 		}
 	}
 
@@ -746,6 +750,11 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 		if (kill(getpid(), SIGUSR1) != 0) {
 			ret = knot_map_errno();
 		}
+	} else {
+		// this cant normally happen, just some ENOMEM or so
+		(void)catalog_update_del_all(zone_catalog_upd(update->zone),
+		                             zone_catalog(update->zone),
+		                             update->zone->name, &upd_count);
 	}
 
 	return ret;

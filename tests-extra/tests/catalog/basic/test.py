@@ -156,6 +156,15 @@ resp = slave.dig("cataloged2.", "SOA", dnssec=True)
 resp.check(rcode="NOERROR")
 check_keys(slave, "cataloged2", 2)
 
+# Check adding two-RR member PTR
+up = master.update(zone[1])
+up.add("bar2.zones.catalog1.", 0, "PTR", "catalogedx.")
+up.add("bar4.zones.catalog1.", 0, "PTR", "catalogedy.")
+up.send("SERVFAIL")
+t.sleep(6)
+resp = master.dig("catalogedy.", "SOA")
+resp.check(rcode="REFUSED")
+
 master.ctl("zone-backup +journal +backupdir %s/backup %s" % (master.dir, zone[1].name))
 # Check removing cataloged zone
 up = master.update(zone[1])
