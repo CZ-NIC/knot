@@ -146,8 +146,8 @@ int conn_pool_get(conn_pool_t *pool,
 
 	if (fd >= 0) {
 		uint8_t unused;
-		int peek = recv(fd, &unused, 1, MSG_PEEK | MSG_DONTWAIT); // returns 0 if fd closed by other side; -1 if still open
-		if (peek == 0) {
+		int peek = recv(fd, &unused, 1, MSG_PEEK | MSG_DONTWAIT);
+		if (peek >= 0) { // closed or pending data
 			close(fd);
 			fd = -1;
 		}
