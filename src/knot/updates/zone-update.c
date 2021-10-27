@@ -925,6 +925,13 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		}
 	}
 
+	ret = update_catalog(conf, update);
+	if (ret != KNOT_EOK) {
+		log_zone_error(update->zone->name, "failed to process catalog zone (%s)", knot_strerror(ret));
+		discard_adds_tree(update);
+		return ret;
+	}
+
 	ret = commit_journal(conf, update);
 	if (ret != KNOT_EOK) {
 		discard_adds_tree(update);
@@ -944,14 +951,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	/* Switch zone contents. */
 	zone_contents_t *old_contents;
 	old_contents = zone_switch_contents(update->zone, update->new_cont);
-
-	ret = update_catalog(conf, update);
-	if (ret == KNOT_EZONEINVAL) {
-		log_zone_warning(update->zone->name, "invalid catalog zone version");
-	} else if (ret != KNOT_EOK) {
-		log_zone_warning(update->zone->name, "catalog zone not fully populated (%s)",
-		                 knot_strerror(ret));
-	}
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);
