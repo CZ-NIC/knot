@@ -20,12 +20,17 @@
 #include "knot/catalog/interpret.h"
 #include "knot/zone/contents.h"
 
-typedef struct {
+struct cat_upd_ctx;
+typedef int (*cat_interpret_cb_t)(zone_node_t *node, struct cat_upd_ctx *ctx);
+
+typedef struct cat_upd_ctx {
 	catalog_update_t *u;
 	const zone_contents_t *complete_conts;
 	int apex_labels;
 	bool remove;
 	catalog_t *check;
+	cat_interpret_cb_t member_cb;
+	cat_interpret_cb_t property_cb;
 } cat_upd_ctx_t;
 
 static bool label_eq(const knot_dname_t *a, const char *_b)
@@ -57,6 +62,39 @@ static bool check_zone_version(const zone_contents_t *zone)
 	return false;
 }
 
+static int interpret_node(zone_node_t *node, void * _ctx)
+{
+	cat_upd_ctx_t *ctx = _ctx;
+
+	int labels_diff = knot_dname_labels(node->owner, NULL) - ctx->apex_labels
+	                  - 1 /* "zones" label */ - 1 /* unique-N label */;
+	assert(labels_diff >= 0);
+
+	switch (labels_diff) {
+	case 0:
+		return ctx->member_cb(node, ctx);
+	case 1:
+		return ctx->property_cb(node, ctx);
+	default:
+		return KNOT_EOK;
+	}
+}
+
+static int interpret_zone(const zone_contents_t *zone, cat_upd_ctx_t *ctx)
+{
+	knot_dname_storage_t sub;
+	if (knot_dname_store(sub, (uint8_t *)CATALOG_ZONES_LABEL) == 0 ||
+	    catalog_dname_append(sub, zone->apex->owner) == 0) {
+		return KNOT_EINVAL;
+	}
+
+	if (zone_contents_find_node(zone, sub) == NULL) {
+		return KNOT_EOK;
+	}
+
+	return zone_tree_sub_apply(zone->nodes, sub, true, interpret_node, ctx);
+}
+
 static const knot_dname_t *property_get_member(const zone_node_t *prop_node,
                                                const zone_contents_t *complete_conts,
                                                const knot_dname_t **owner)
@@ -80,14 +118,20 @@ static const knot_dname_t *property_get_member(const zone_node_t *prop_node,
 	return knot_ptr_name(ptr->rdata);
 }
 
-static int cat_update_add_memb(const knot_dname_t *owner, const knot_rdataset_t *ptr,
-                               cat_upd_ctx_t *ctx)
+static int cat_update_add_memb(zone_node_t *node, cat_upd_ctx_t *ctx)
 {
+	const knot_rdataset_t *ptr = node_rdataset(node, KNOT_RRTYPE_PTR);
+	if (ptr == NULL) {
+		return KNOT_EOK;
+	} else if (ptr->count != 1) {
+		return KNOT_ERROR;
+	}
+
 	knot_rdata_t *rdata = ptr->rdata;
 	int ret = KNOT_EOK;
 	for (int i = 0; ret == KNOT_EOK && i < ptr->count; i++) {
 		const knot_dname_t *member = knot_ptr_name(rdata);
-		ret = catalog_update_add(ctx->u, member, owner, ctx->complete_conts->apex->owner,
+		ret = catalog_update_add(ctx->u, member, node->owner, ctx->complete_conts->apex->owner,
 		                         ctx->remove ? CAT_UPD_REM : CAT_UPD_ADD,
 		                         NULL, 0, ctx->check);
 		rdata = knot_rdataset_next(rdata);
@@ -95,11 +139,23 @@ static int cat_update_add_memb(const knot_dname_t *owner, const knot_rdataset_t 
 	return ret;
 }
 
-static int cat_update_add_grp(const knot_dname_t *member, const knot_dname_t *owner,
-                              const knot_rdataset_t *txt, cat_upd_ctx_t *ctx)
+static int cat_update_add_grp(zone_node_t *node, cat_upd_ctx_t *ctx)
 {
+	if (!label_eq(node->owner, CATALOG_GROUP_LABEL)) {
+		return KNOT_EOK;
+	}
+
+	const knot_dname_t *owner = NULL;
+	const knot_dname_t *member = property_get_member(node, ctx->complete_conts, &owner);
 	if (member == NULL) {
 		return KNOT_EOK; // just ignore property w/o member
+	}
+
+	const knot_rdataset_t *txt = node_rdataset(node, KNOT_RRTYPE_TXT);
+	if (txt == NULL) {
+		return KNOT_EOK;
+	} else if (txt->count != 1) {
+		return KNOT_ERROR;
 	}
 
 	const char *newgr = "";
@@ -118,47 +174,16 @@ static int cat_update_add_grp(const knot_dname_t *member, const knot_dname_t *ow
 	                          CAT_UPD_PROP, newgr, grlen, ctx->check);
 }
 
-static int cat_update_add_node(zone_node_t *node, void *data)
-{
-	cat_upd_ctx_t *ctx = data;
-	int labels_diff = knot_dname_labels(node->owner, NULL) - ctx->apex_labels
-	                  - 1 /* "zones" label */ - 1 /* unique-N label */;
-	assert(labels_diff >= 0);
-
-	const knot_rdataset_t *ptr = node_rdataset(node, KNOT_RRTYPE_PTR);
-	const knot_rdataset_t *txt = node_rdataset(node, KNOT_RRTYPE_TXT);
-
-	if (labels_diff == 0 && ptr != NULL && ptr->count > 0) {
-		return cat_update_add_memb(node->owner, ptr, ctx);
-	}
-	if (labels_diff == 1 && txt != NULL && txt->count == 1 &&
-	    label_eq(node->owner, CATALOG_GROUP_LABEL)) {
-		const knot_dname_t *own = NULL;
-		const knot_dname_t  *memb = property_get_member(node, ctx->complete_conts, &own);
-		return cat_update_add_grp(memb, own, txt, ctx);
-	}
-	return KNOT_EOK;
-}
-
 int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
                              const struct zone_contents *complete_contents,
                              bool remove, catalog_t *check, ssize_t *upd_count)
 {
-	knot_dname_storage_t sub;
-	if (knot_dname_store(sub, (uint8_t *)CATALOG_ZONES_LABEL) == 0 ||
-	    catalog_dname_append(sub, zone->apex->owner) == 0) {
-		return KNOT_EINVAL;
-	}
-
-	if (zone_contents_find_node(zone, sub) == NULL) {
-		return KNOT_EOK;
-	}
-
 	cat_upd_ctx_t ctx = { u, complete_contents, knot_dname_labels(zone->apex->owner, NULL),
-	                      remove, check };
+	                      remove, check, cat_update_add_memb, cat_update_add_grp };
+
 	pthread_mutex_lock(&u->mutex);
 	*upd_count -= trie_weight(u->upd);
-	int ret = zone_tree_sub_apply(zone->nodes, sub, true, cat_update_add_node, &ctx);
+	int ret = interpret_zone(zone, &ctx);
 	*upd_count += trie_weight(u->upd);
 	pthread_mutex_unlock(&u->mutex);
 	return ret;
@@ -170,16 +195,14 @@ static int rr_count(const zone_node_t *node, uint16_t type)
 	return rd == NULL ? 0 : rd->count;
 }
 
-static int cat_node_verify(zone_node_t *node, void *data)
+static int member_verify(zone_node_t *node, cat_upd_ctx_t *ctx)
 {
-	cat_upd_ctx_t *ctx = data;
-	int labels_diff = knot_dname_labels(node->owner, NULL) - ctx->apex_labels - 2;
+	return rr_count(node, KNOT_RRTYPE_PTR) > 1 ? KNOT_EISRECORD : KNOT_EOK;
+}
 
-	if (labels_diff == 0 && rr_count(node, KNOT_RRTYPE_PTR) > 1) {
-		return KNOT_EISRECORD;
-	}
-
-	if (labels_diff == 1 && label_eq(node->owner, CATALOG_GROUP_LABEL) &&
+static int prop_verify(zone_node_t *node, cat_upd_ctx_t *ctx)
+{
+	if (label_eq(node->owner, CATALOG_GROUP_LABEL) &&
 	    rr_count(node, KNOT_RRTYPE_TXT) > 1) {
 		return KNOT_EISRECORD;
 	}
@@ -189,20 +212,12 @@ static int cat_node_verify(zone_node_t *node, void *data)
 
 int catalog_zone_verify(const struct zone_contents *zone)
 {
+	cat_upd_ctx_t ctx = { NULL, zone, knot_dname_labels(zone->apex->owner, NULL),
+	                      false, NULL, member_verify, prop_verify };
+
 	if (!check_zone_version(zone)) {
 		return KNOT_EZONEINVAL;
 	}
 
-	knot_dname_storage_t sub;
-	if (knot_dname_store(sub, (uint8_t *)CATALOG_ZONES_LABEL) == 0 ||
-	    catalog_dname_append(sub, zone->apex->owner) == 0) {
-		return KNOT_EINVAL;
-	}
-
-	if (zone_contents_find_node(zone, sub) == NULL) {
-		return KNOT_EOK;
-	}
-
-	cat_upd_ctx_t ctx = { NULL, zone, knot_dname_labels(zone->apex->owner, NULL), false, NULL };
-	return zone_tree_sub_apply(zone->nodes, sub, true, cat_node_verify, &ctx);
+	return interpret_zone(zone, &ctx);
 }
