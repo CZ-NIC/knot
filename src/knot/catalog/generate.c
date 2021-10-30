@@ -97,6 +97,8 @@ void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
 					free(owner);
 					if (ret != KNOT_EOK) {
 						catz->cat_members->error = ret;
+					} else {
+						zone_events_schedule_now(catz, ZONE_EVENT_LOAD);
 					}
 				}
 			}
@@ -131,6 +133,8 @@ void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
 			                             cgroup_size, NULL);
 			if (ret != KNOT_EOK) {
 				catz->cat_members->error = ret;
+			} else {
+				zone_events_schedule_now(catz, ZONE_EVENT_LOAD);
 			}
 		} else if (!same_group(zone, old)) {
 			int ret = catalog_update_add(catz->cat_members, zone->name, owner,
@@ -138,6 +142,8 @@ void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
 			                             cgroup_size, NULL);
 			if (ret != KNOT_EOK) {
 				catz->cat_members->error = ret;
+			} else {
+				zone_events_schedule_now(catz, ZONE_EVENT_LOAD);
 			}
 		}
 		free(owner);
