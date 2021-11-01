@@ -741,8 +741,11 @@ AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 
-filtered_cflags=$(echo -n "$CFLAGS" | sed 's/\W-f\S*-prefix-map=\S*\W/ /g')
-filtered_cppflags=$(echo -n "$CPPFLAGS" | sed 's/\W-f\S*-prefix-map=\S*\W/ /g')
+# Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
+filtered_cflags=$(echo -n "$CFLAGS" | \
+                  sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*[[^[:alnum:]]]/ /g')
+filtered_cppflags=$(echo -n "$CPPFLAGS" | \
+                    sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*[[^[:alnum:]]]/ /g')
 
 result_msg_base="  Knot DNS $VERSION
 
