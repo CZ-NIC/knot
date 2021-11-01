@@ -743,9 +743,9 @@ AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
-                  sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*[[^[:alnum:]]]/ /g')
+                  sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
 filtered_cppflags=$(echo -n "$CPPFLAGS" | \
-                    sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*[[^[:alnum:]]]/ /g')
+                    sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
 
 result_msg_base="  Knot DNS $VERSION
 
