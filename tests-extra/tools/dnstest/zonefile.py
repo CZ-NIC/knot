@@ -4,6 +4,7 @@ import os
 import random
 import re
 import shutil
+import string
 import zone_generate
 import glob
 import distutils.dir_util
@@ -268,6 +269,17 @@ class ZoneFile(object):
         with open(self.path, "a") as file:
             file.write("%s IN AAAA dead:beef:dead:beef:dead:beef:%04x:%04x\n" %
                        (owner, rnd1, rnd2))
+
+    def append_rndTXT(self, owner, rdata=None, rdlen=None):
+        '''Append random or specified TXT record'''
+
+        if rdata is None:
+            if rdlen is None:
+                rdlen = random.randint(1, 255)
+            rdata = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(rdlen))
+
+        with open(self.path, "a") as file:
+            file.write("%s IN TXT %s\n" % (owner, rdata))
 
     def gen_rnd_ddns(self, ddns):
         '''Walk zonefile, randomly mark some records to be removed by ddns and some added'''

@@ -531,11 +531,13 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		return KNOT_EINVAL;
 	}
 
+	zone_master_fallback_t fallback = { true, true };
+
 	/* Try the preferred server. */
 
 	conf_remote_t preferred = { { AF_UNSPEC } };
 	if (preferred_master(conf, zone, &preferred) == KNOT_EOK) {
-		int ret = callback(conf, zone, &preferred, callback_data);
+		int ret = callback(conf, zone, &preferred, callback_data, &fallback);
 		if (ret == KNOT_EOK) {
 			return ret;
 		}
@@ -553,12 +555,13 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 	bool success = false;
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
-	while (masters.code == KNOT_EOK) {
+	while (masters.code == KNOT_EOK && fallback.remote) {
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &masters);
 		size_t addr_count = conf_val_count(&addr);
 
 		bool tried = false;
-		for (size_t i = 0; i < addr_count; i++) {
+		fallback.address = true;
+		for (size_t i = 0; i < addr_count && fallback.address; i++) {
 			conf_remote_t master = conf_remote(conf, &masters, i);
 			if (preferred.addr.ss_family != AF_UNSPEC &&
 			    sockaddr_net_match(&master.addr, &preferred.addr, -1)) {
@@ -567,7 +570,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 			}
 
 			tried = true;
-			int ret = callback(conf, zone, &master, callback_data);
+			int ret = callback(conf, zone, &master, callback_data, &fallback);
 			if (ret == KNOT_EOK) {
 				success = true;
 				break;

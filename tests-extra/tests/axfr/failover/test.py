@@ -21,7 +21,7 @@ zone.update_soa(serial=1, refresh=600, retry=600, expire=3600)
 #          +---------+   
 
 master1 = t.server("knot")
-master2 = t.server("bind")
+master2 = t.server("knot")
 slave = t.server("knot")
 
 # flush zones immediately
@@ -31,6 +31,9 @@ for server in [master1, master2, slave]:
 t.link([zone], master1, master2)
 t.link([zone], master1, slave)
 t.link([zone], master2, slave)
+
+slave.journal_db_size = 1024 * 1024
+slave.zones[zone.name].journal_content = "all"
 
 t.start()
 
@@ -72,5 +75,22 @@ slave.start()
 slave.zone_wait(zone, serial=20, equal=True, greater=False)
 master2.start()
 slave.zone_wait(zone, serial=30, equal=True, greater=False)
+
+# don't failover on local error
+# the local error will be journal DB size
+master2.stop()
+first_master = slave.first_master(zone.name)
+for i in range(5000):
+    first_master.zones[zone.name].zfile.append_rndTXT("txt%d." % i + zone.name, rdlen=255) # this will exceed the size on preferred master
+master1.zones[zone.name].zfile.update_soa(serial=40)
+master2.zones[zone.name].zfile.update_soa(serial=40) # equal serial, different contents
+slave.stop()
+master1.start()
+master2.start()
+t.sleep(4)
+slave.start()
+slave.ctl("zone-refresh")
+t.sleep(8)
+slave.zone_wait(zone, serial=30, equal=True, greater=False) # serial 40 from first_master failed on EZONESIZE, and serial 40 from the other master was not attempted
 
 t.end()

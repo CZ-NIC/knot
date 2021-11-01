@@ -103,6 +103,8 @@ struct refresh_data {
 	const size_t max_zone_size;       //!< Maximal zone size.
 	bool use_edns;                    //!< Allow EDNS in SOA/AXFR/IXFR queries.
 	struct query_edns_data edns;      //!< EDNS data to be used in queries.
+	zone_master_fallback_t *fallback; //!< Flags allowing zone_master_try() fallbacks.
+	bool fallback_axfr;               //!< Flag allowing fallback to AXFR,
 
 	// internal state, initialize with zeroes:
 
@@ -243,6 +245,7 @@ static int axfr_finalize(struct refresh_data *data)
 	zone_update_t up = { 0 };
 	int ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
 	if (ret != KNOT_EOK) {
+		data->fallback->remote = false;
 		return ret;
 	}
 	// Seized by zone_update. Don't free the contents again in axfr_cleanup.
@@ -270,6 +273,7 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
+		data->fallback->remote = false;
 		return ret;
 	}
 
@@ -278,6 +282,7 @@ static int axfr_finalize(struct refresh_data *data)
 		zone_update_clear(&up);
 		AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 		           "failed to store changes (%s)", knot_strerror(ret));
+		data->fallback->remote = false;
 		return ret;
 	}
 
@@ -364,6 +369,7 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			AXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "failed to initialize (%s)",
 			           knot_strerror(data->ret));
+			data->fallback->remote = false;
 			return KNOT_STATE_FAIL;
 		}
 
@@ -490,6 +496,8 @@ static int ixfr_finalize(struct refresh_data *data)
 			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "failed to adjust SOA serials from unsigned master (%s)",
 			           knot_strerror(ret));
+			data->fallback_axfr = false;
+			data->fallback->remote = false;
 			return ret;
 		}
 	}
@@ -497,6 +505,8 @@ static int ixfr_finalize(struct refresh_data *data)
 	zone_update_t up = { 0 };
 	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
 	if (ret != KNOT_EOK) {
+		data->fallback_axfr = false;
+		data->fallback->remote = false;
 		return ret;
 	}
 
@@ -520,6 +530,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
+		data->fallback_axfr = false;
 		return ret;
 	}
 
@@ -536,6 +547,8 @@ static int ixfr_finalize(struct refresh_data *data)
 	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
+		data->fallback_axfr = false;
+		data->fallback->remote = false;
 		return ret;
 	}
 
@@ -803,6 +816,8 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		data->ret = slave_zone_serial(data->zone, data->conf, &master_serial);
 		if (data->ret != KNOT_EOK) {
 			xfr_log_read_ms(data->zone->name, data->ret);
+			data->fallback_axfr = false;
+			data->fallback->remote = false;
 			return KNOT_STATE_FAIL;
 		}
 		data->xfr_type = determine_xfr_type(answer, master_serial,
@@ -852,6 +867,8 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		if (data->ret != KNOT_EOK) {
 			IXFRIN_LOG(LOG_WARNING, data->zone->name, data->remote,
 			           "failed to initialize (%s)", knot_strerror(data->ret));
+			data->fallback_axfr = false;
+			data->fallback->remote = false;
 			return KNOT_STATE_FAIL;
 		}
 
@@ -930,6 +947,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	data->ret = slave_zone_serial(data->zone, data->conf, &local_serial);
 	if (data->ret != KNOT_EOK) {
 		xfr_log_read_ms(data->zone->name, data->ret);
+		data->fallback->remote = false;
 		return KNOT_STATE_FAIL;
 	}
 	uint32_t remote_serial = knot_soa_serial(rr->rrs.rdata);
@@ -969,6 +987,7 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		uint32_t master_serial;
 		data->ret = slave_zone_serial(data->zone, data->conf, &master_serial);
 		if (data->ret != KNOT_EOK) {
+			data->fallback->remote = false;
 			xfr_log_read_ms(data->zone->name, data->ret);
 		}
 		if (sending_soa == NULL || data->ret != KNOT_EOK) {
@@ -994,6 +1013,8 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
+
+	data->fallback_axfr = (data->xfr_type == XFR_TYPE_IXFR);
 
 	int next = (data->xfr_type == XFR_TYPE_AXFR) ? axfr_consume(pkt, data) :
 	                                               ixfr_consume(pkt, data);
@@ -1074,6 +1095,8 @@ static int refresh_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
 
+	data->fallback->address = false; // received something, other address not needed
+
 	switch (data->state) {
 	case STATE_SOA_QUERY: return soa_query_consume(layer, pkt);
 	case STATE_TRANSFER:  return transfer_consume(layer, pkt);
@@ -1117,58 +1140,15 @@ typedef struct {
 	bool send_notify;
 } try_refresh_ctx_t;
 
-/*! \brief Which errors from IXFR are relevant reason to try AXFR. */
-static bool ixfr_error_failover(int ret)
-{
-	switch (ret) {
-	case KNOT_EOK:		// Don't failover if IXFR is OK.
-		return false;
-	case KNOT_ENOMEM:	// Don't failover for networking issues (the following list).
-	case KNOT_EINVAL:
-	case KNOT_ENOBUFS:
-	case KNOT_EMFILE:
-	case KNOT_ENFILE:
-	case KNOT_EISCONN:
-	case KNOT_ECONNREFUSED:
-	case KNOT_EALREADY:
-	case KNOT_ECONNRESET:
-	case KNOT_ECONNABORTED:
-	case KNOT_ENETRESET:
-	case KNOT_EHOSTUNREACH:
-	case KNOT_ENETUNREACH:
-	case KNOT_EHOSTDOWN:
-	case KNOT_ENETDOWN:
-	case KNOT_EADDRINUSE:
-	case KNOT_EADDRNOTAVAIL:
-
-	case KNOT_ECONN:
-	case KNOT_ETIMEOUT:
-
-	case KNOT_NET_EADDR:
-	case KNOT_NET_ESOCKET:
-	case KNOT_NET_ECONNECT:
-	case KNOT_NET_ESEND:
-	case KNOT_NET_ERECV:
-	case KNOT_NET_ETIMEOUT:
-		return false;
-	case KNOT_DNSSEC_EMISSINGKEYTYPE:
-	case KNOT_DNSSEC_ENOKEY:
-	case KNOT_DNSSEC_ENOSIG:
-	case KNOT_DNSSEC_ENSEC_BITMAP:
-	case KNOT_DNSSEC_ENSEC_CHAIN: // DNSSEC validation errors
-		return false;
-	default:		// The rest are supposed to be DNS logic errors, do a failover.
-		return true;
-	}
-}
-
-static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, void *ctx)
+static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
+                       void *ctx, zone_master_fallback_t *fallback)
 {
 	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
 
 	assert(zone);
 	assert(master);
 	assert(ctx);
+	assert(fallback);
 
 	try_refresh_ctx_t *trctx = ctx;
 
@@ -1184,6 +1164,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 		.use_edns = !master->no_edns,
+		.fallback = fallback,
+		.fallback_axfr = false, // will be set upon IXFR consume
 	};
 
 	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
@@ -1214,13 +1196,13 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master, 
 	// while loop runs 0x or 1x; IXFR to AXFR failover
 	while (ret = knot_requestor_exec(&requestor, req, timeout),
 	       ret = (data.ret == KNOT_EOK ? ret : data.ret),
-	       ixfr_error_failover(ret) && data.xfr_type == XFR_TYPE_IXFR &&
-	       data.state != STATE_SOA_QUERY) {
+	       data.fallback_axfr && ret != KNOT_EOK) {
 		REFRESH_LOG(LOG_WARNING, data.zone->name, data.remote,
 		            "fallback to AXFR (%s)", knot_strerror(ret));
 		ixfr_cleanup(&data);
 		data.ret = KNOT_EOK;
 		data.xfr_type = XFR_TYPE_AXFR;
+		data.fallback_axfr = false,
 		requestor.layer.state = KNOT_STATE_RESET;
 		requestor.layer.flags |= KNOT_REQUESTOR_CLOSE;
 	}
