@@ -138,7 +138,8 @@ typedef struct {
 		bool xdp_tcp;
 		bool xdp_route_check;
 		int ctl_timeout;
-		conf_val_t srv_nsid;
+		const uint8_t *srv_nsid_data;
+		size_t srv_nsid_len;
 		bool srv_ecs;
 		bool srv_ans_rotate;
 	} cache;
