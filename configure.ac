@@ -814,9 +814,9 @@ AC_CONFIG_FILES([Makefile
                  ])
 
 AC_CONFIG_FILES([doc/modules.rst],
-                [cp doc/modules.rst "${srcdir}"/doc/modules.rst 2>/dev/null;
-                 real_srcdir=$(readlink "${srcdir}") || real_srcdir=$(cd "${srcdir}" && pwd)
-                 ln -s -f "${real_srcdir}"/src/knot/modules "${srcdir}"/doc 2>/dev/null])
+                [cp doc/modules.rst "${srcdir}"/doc/modules.rst 2>/dev/null
+                 abs_srcdir=$(cd "${srcdir}" && pwd)
+                 ln -s -f "${abs_srcdir}"/src/knot/modules "${srcdir}"/doc 2>/dev/null])
 
 AC_OUTPUT
 AC_MSG_RESULT([
