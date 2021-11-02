@@ -456,7 +456,7 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
 	return zone_tree_apply(contents->nsec3_nodes, function, data);
 }
 
-int zone_contents_cow(const zone_contents_t *from, zone_contents_t **to)
+int zone_contents_cow(zone_contents_t *from, zone_contents_t **to)
 {
 	if (to == NULL) {
 		return KNOT_EINVAL;
@@ -493,6 +493,7 @@ int zone_contents_cow(const zone_contents_t *from, zone_contents_t **to)
 		}
 	}
 	contents->adds_tree = from->adds_tree;
+	from->adds_tree = NULL;
 	contents->size = from->size;
 	contents->max_ttl = from->max_ttl;
 

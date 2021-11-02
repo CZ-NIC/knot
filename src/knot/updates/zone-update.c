@@ -192,6 +192,8 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 	case KNOT_EOK:
 		break;
 	case KNOT_ERANGE:
+		additionals_tree_free(update->new_cont->adds_tree);
+		update->new_cont->adds_tree = NULL;
 		update->new_cont = NULL; // Prevent deep_free as old_cont will be used later.
 		update->a_ctx->flags &= ~APPLY_UNIFY_FULL; // Prevent Unify of old_cont that will be used later.
 		// FALLTHROUGH
@@ -376,6 +378,11 @@ void zone_update_clear(zone_update_t *update)
 {
 	if (update == NULL || update->zone == NULL) {
 		return;
+	}
+
+	if (update->new_cont != NULL) {
+		additionals_tree_free(update->new_cont->adds_tree);
+		update->new_cont->adds_tree = NULL;
 	}
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
@@ -813,9 +820,6 @@ static void update_clear(struct rcu_head *param)
 static void discard_adds_tree(zone_update_t *update)
 {
 	additionals_tree_free(update->new_cont->adds_tree);
-	if (update->zone->contents != NULL) {
-		update->zone->contents->adds_tree = NULL;
-	}
 	update->new_cont->adds_tree = NULL;
 }
 
