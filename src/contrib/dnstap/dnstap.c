@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "contrib/dnstap/dnstap.h"
 #include "contrib/dnstap/dnstap.pb-c.h"
 
 #define DNSTAP_INITIAL_BUF_SIZE         256
