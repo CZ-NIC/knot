@@ -61,6 +61,30 @@ typedef struct {
 	bool with_queries;
 } dnstap_ctx_t;
 
+static void msg_query_qname_restore(Dnstap__Message *msg, knotd_qdata_t *qdata)
+{
+	if (msg->query_message.data == NULL) {
+		return;
+	}
+
+	const knot_dname_t *orig_qname = knotd_qdata_orig_qname(qdata);
+	if (orig_qname == NULL) {
+		return;
+	}
+
+	memcpy(msg->query_message.data + KNOT_WIRE_HEADER_SIZE,
+	       orig_qname, qdata->query->qname_size);
+}
+
+static void msg_query_qname_case_lower(Dnstap__Message *msg)
+{
+	if (msg->query_message.data == NULL) {
+		return;
+	}
+
+	knot_dname_to_lower(msg->query_message.data + KNOT_WIRE_HEADER_SIZE);
+}
+
 static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
                                  knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
@@ -132,7 +156,9 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	/* Pack the message. */
 	uint8_t *frame = NULL;
 	size_t size = 0;
+	msg_query_qname_restore(&msg, qdata);
 	dt_pack(&dnstap, &frame, &size);
+	msg_query_qname_case_lower(&msg);
 	if (frame == NULL) {
 		return state;
 	}

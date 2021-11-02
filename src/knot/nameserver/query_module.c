@@ -682,6 +682,16 @@ knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type)
 }
 
 _public_
+const knot_dname_t *knotd_qdata_orig_qname(knotd_qdata_t *qdata)
+{
+	if (qdata == NULL) {
+		return NULL;
+	}
+
+	return qdata->extra->orig_qname;
+}
+
+_public_
 int knotd_mod_dnssec_init(knotd_mod_t *mod)
 {
 	if (mod == NULL || mod->dnssec != NULL) {
