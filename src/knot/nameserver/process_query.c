@@ -268,21 +268,10 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 
 	/* Append NSID if requested and available. */
 	if (knot_pkt_edns_option(query, KNOT_EDNS_OPTION_NSID) != NULL) {
-		conf_val_t *nsid = &conf()->cache.srv_nsid;
-		size_t nsid_len;
-		const uint8_t *nsid_data = conf_bin(nsid, &nsid_len);
+		size_t nsid_len = conf()->cache.srv_nsid_len;
+		const uint8_t *nsid_data = conf()->cache.srv_nsid_data;
 
-		if (nsid->code != KNOT_EOK) {
-			const char *hostname = conf()->hostname;
-			ret = knot_edns_add_option(&qdata->opt_rr,
-			                           KNOT_EDNS_OPTION_NSID,
-			                           strlen(hostname),
-			                           (const uint8_t *)hostname,
-			                           qdata->mm);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		} else if (nsid_len > 0) {
+		if (nsid_len > 0) {
 			ret = knot_edns_add_option(&qdata->opt_rr,
 			                           KNOT_EDNS_OPTION_NSID,
 			                           nsid_len, nsid_data,
