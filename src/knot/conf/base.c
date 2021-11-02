@@ -201,7 +201,18 @@ static void init_cache(
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
 	/* infinite_adjust() call isn't needed, 0 is adjusted later anyway. */
 
-	conf->cache.srv_nsid = conf_get(conf, C_SRV, C_NSID);
+	val = conf_get(conf, C_SRV, C_NSID);
+	if (val.code != KNOT_EOK) {
+		if (conf->hostname == NULL) {
+			conf->cache.srv_nsid_data = (const uint8_t *)"";
+			conf->cache.srv_nsid_len = 0;
+		} else {
+			conf->cache.srv_nsid_data = (const uint8_t *)conf->hostname;
+			conf->cache.srv_nsid_len = strlen(conf->hostname);
+		}
+	} else {
+		conf->cache.srv_nsid_data = conf_bin(&val, &conf->cache.srv_nsid_len);
+	}
 
 	val = conf_get(conf, C_SRV, C_ECS);
 	conf->cache.srv_ecs = conf_bool(&val);

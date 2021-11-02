@@ -121,7 +121,8 @@ typedef struct {
 		size_t srv_bg_threads;
 		size_t srv_tcp_max_clients;
 		int ctl_timeout;
-		conf_val_t srv_nsid;
+		const uint8_t *srv_nsid_data;
+		size_t srv_nsid_len;
 		bool srv_ecs;
 		bool srv_ans_rotate;
 	} cache;
