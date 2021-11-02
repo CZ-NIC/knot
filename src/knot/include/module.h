@@ -465,6 +465,15 @@ const knot_dname_t *knotd_qdata_zone_name(knotd_qdata_t *qdata);
  */
 knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type);
 
+/*!
+ * Gets the original QNAME of the query, before downcasing.
+ *
+ * \param[in] qdata  Query data.
+ *
+ * \return Original QNAME or NULL if error.
+ */
+const knot_dname_t *knotd_qdata_orig_qname(knotd_qdata_t *qdata);
+
 /*! General query processing states. */
 typedef enum {
 	KNOTD_STATE_NOOP  = 0, /*!< No response. */
