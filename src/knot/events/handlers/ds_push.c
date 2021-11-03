@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 
 struct ds_push_data {
 	const knot_dname_t *zone;
+	const knot_dname_t *parent_query;
 	knot_dname_t *parent_soa;
 	knot_rrset_t del_old_ds;
 	knot_rrset_t new_ds;
@@ -49,9 +50,10 @@ static int ds_push_begin(knot_layer_t *layer, void *params)
 
 static int parent_soa_produce(struct ds_push_data *data, knot_pkt_t *pkt)
 {
-	const knot_dname_t *query_name = knot_wire_next_label(data->zone, NULL);
+	assert(data->parent_query[0] != '\0');
+	data->parent_query = knot_wire_next_label(data->parent_query, NULL);
 
-	int ret = knot_pkt_put_question(pkt, query_name, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
+	int ret = knot_pkt_put_question(pkt, data->parent_query, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
@@ -123,18 +125,20 @@ static int ds_push_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	}
 
 	const knot_rrset_t *parent_soa = sect_soa(pkt, KNOT_ANSWER);
-	if (parent_soa == NULL) {
-		parent_soa = sect_soa(pkt, KNOT_AUTHORITY);
+	if (parent_soa != NULL) {
+		// parent SOA obtained, continue with DS push
+		data->parent_soa = knot_dname_copy(parent_soa->owner, NULL);
+		return KNOT_STATE_RESET;
 	}
-	if (parent_soa == NULL) {
+
+	if (data->parent_query[0] == '\0') {
+		// query for parent SOA systematicly fails
 		DS_PUSH_LOG(LOG_WARNING, data->zone, data->remote,
-		            "malformed message");
+		            "unable to query parent SOA");
 		return KNOT_STATE_FAIL;
 	}
 
-	data->parent_soa = knot_dname_copy(parent_soa->owner, NULL);
-
-	return KNOT_STATE_RESET;
+	return KNOT_STATE_RESET; // cut off one more label and re-query
 }
 
 static int ds_push_reset(knot_layer_t *layer)
@@ -170,6 +174,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 
 	struct ds_push_data data = {
 		.zone = zone->name,
+		.parent_query = zone->name,
 		.new_ds = zone_cds,
 		.remote = (struct sockaddr *)&parent->addr,
 	};
