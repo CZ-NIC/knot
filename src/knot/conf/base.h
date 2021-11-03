@@ -177,15 +177,6 @@ int conf_refresh_txn(
 );
 
 /*!
- * Refreshes cached hostname.
- *
- * \param[in] conf  Configuration.
- */
-void conf_refresh_hostname(
-	conf_t *conf
-);
-
-/*!
  * Creates new or opens old configuration database.
  *
  * \param[out] conf          Configuration.

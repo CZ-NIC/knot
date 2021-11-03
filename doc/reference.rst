@@ -184,7 +184,7 @@ nsid
 
 A DNS name server identifier (:rfc:`5001`). Set to an empty value to disable.
 
-*Default:* FQDN hostname
+*Default:* FQDN hostname at the moment of the daemon start
 
 .. _server_rundir:
 
