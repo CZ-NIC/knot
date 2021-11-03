@@ -855,9 +855,6 @@ static int reload_conf(conf_t *new_conf)
 		log_error("failed to migrate configuration (%s)", knot_strerror(ret));
 	}
 
-	/* Refresh hostname. */
-	conf_refresh_hostname(new_conf);
-
 	return KNOT_EOK;
 }
 
