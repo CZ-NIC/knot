@@ -4,3 +4,4 @@ $TTL 1200
 @ SOA ns admin 20110100 7 7 16 600
 ns AAAA ::0
 
+example.com. CNAME intentionally.disruptive.cname.

@@ -15,6 +15,8 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
+ZONE = "sub.example.com."
+
 def pregenerate_key(server, zone, alg):
     class a_class_with_name:
         def __init__(self, name):
@@ -25,16 +27,16 @@ def pregenerate_key(server, zone, alg):
 
 # check zone if keys are present and used for signing
 def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
-    qdnskeys = server.dig("example.com", "DNSKEY", bufsize=4096)
+    qdnskeys = server.dig(ZONE, "DNSKEY", bufsize=4096)
     found_dnskeys = qdnskeys.count("DNSKEY")
 
-    qdnskeyrrsig = server.dig("example.com", "DNSKEY", dnssec=True, bufsize=4096)
+    qdnskeyrrsig = server.dig(ZONE, "DNSKEY", dnssec=True, bufsize=4096)
     found_rrsigs = qdnskeyrrsig.count("RRSIG")
 
-    qcdnskey = server.dig("example.com", "CDNSKEY", bufsize=4096)
+    qcdnskey = server.dig(ZONE, "CDNSKEY", bufsize=4096)
     found_cdnskeys = qcdnskey.count("CDNSKEY")
 
-    qsoa = server.dig("example.com", "SOA", dnssec=True, bufsize=4096)
+    qsoa = server.dig(ZONE, "SOA", dnssec=True, bufsize=4096)
     found_soa_rrsigs = qsoa.count("RRSIG")
 
     check_log("DNSKEYs: %d (expected %d)" % (found_dnskeys, dnskeys));
@@ -66,7 +68,7 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
 def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
     rtime = 0.0
     while True:
-        qdnskeyrrsig = server.dig("example.com", rrtype, dnssec=True, bufsize=4096)
+        qdnskeyrrsig = server.dig(ZONE, rrtype, dnssec=True, bufsize=4096)
         found_rrsigs = qdnskeyrrsig.count("RRSIG")
         if found_rrsigs == rrsig_count:
             break
@@ -78,7 +80,7 @@ def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
 def wait_for_dnskey_count(t, server, dnskey_count, timeout):
     rtime = 0.0
     while True:
-        qdnskeyrrsig = server.dig("example.com", "DNSKEY", dnssec=True, bufsize=4096)
+        qdnskeyrrsig = server.dig(ZONE, "DNSKEY", dnssec=True, bufsize=4096)
         found_dnskeys = qdnskeyrrsig.count("DNSKEY")
         if found_dnskeys == dnskey_count:
             break
@@ -107,7 +109,7 @@ t.link(parent_zone, parent, ddns=True)
 parent.dnssec(parent_zone).enable = True
 
 child = t.server("knot")
-child_zone = t.zone("example.com.", storage=".")
+child_zone = t.zone(ZONE, storage=".")
 t.link(child_zone, child)
 
 child.zonefile_sync = 24 * 60 * 60
@@ -125,9 +127,6 @@ child.dnssec(child_zone).ds_push = parent
 child.dnssec(child_zone).ksk_shared = True
 child.dnssec(child_zone).cds_publish = "always"
 
-# parameters
-ZONE = "example.com."
-
 #t.start()
 t.generate_conf()
 parent.start()
@@ -140,7 +139,7 @@ t.sleep(5)
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover")
 
-resp = parent.dig("example.com.", "DS")
+resp = parent.dig(ZONE, "DS")
 resp.check_count(1, rtype="DS")
 
 t.end()
