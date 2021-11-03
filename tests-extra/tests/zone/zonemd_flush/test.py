@@ -14,9 +14,11 @@ def has_zonemd(server, zone, alg):
     with open(zfn) as zf:
         for line in zf:
             rr = line.split()
+            if rr[0].lower() == zone.name.lower() and rr[2] == "ZONEMD" and str(alg) == "255":
+                return False
             if rr[0].lower() == zone.name.lower() and rr[2] == "ZONEMD" and rr[5] == alg:
                 return True
-    return False
+    return (str(alg) == "255")
 
 def check_zonemd(server, zone, alg):
     t.sleep(2)
@@ -96,5 +98,20 @@ for z in zone:
 master.ctl("zone-reload")
 check_serial_incr(slave, zone, serial, 2, "ZF reload")
 check_zonemd(master, zone, "2")
+
+slave.zonemd_verify = False
+slave.gen_confile()
+slave.reload()
+
+master.zonemd_generate = "none"
+master.gen_confile()
+master.reload()
+check_zonemd(master, zone, "2")
+
+master.zonemd_generate = "remove"
+master.gen_confile()
+master.reload()
+check_serial_incr(slave, zone, serial, 1, "ZONEMD remove")
+check_zonemd(master, zone, "255")
 
 t.end()

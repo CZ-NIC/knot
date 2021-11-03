@@ -1672,7 +1672,7 @@ zone:
     dnssec\-validation: BOOL
     dnssec\-policy: policy_id
     zonemd\-verify: BOOL
-    zonemd\-generate: none | zonemd\-sha384 | zonemd\-sha512
+    zonemd\-generate: none | zonemd\-sha384 | zonemd\-sha512 | remove
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
@@ -1971,6 +1971,8 @@ Possible values:
 \fBzonemd\-sha384\fP – Generate ZONEMD using SHA384 algorithm.
 .IP \(bu 2
 \fBzonemd\-sha512\fP – Generate ZONEMD using SHA512 algorithm.
+.IP \(bu 2
+\fBremove\fP – Remove any ZONEMD from the zone apex.
 .UNINDENT
 .sp
 \fIDefault:\fP none
