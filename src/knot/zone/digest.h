@@ -34,11 +34,13 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
 /*!
  * \brief Check whether exactly one ZONEMD exists in the zone, is valid and matches given algorithm.
  *
+ * \note Special value 255 of algorithm means that ZONEMD shall not exist.
+ *
  * \param contents   Zone contents to be verified.
  * \param alg        Required algorithm of the ZONEMD.
  * \param no_verify  Don't verify the validness of the digest in ZONEMD.
  */
-bool zone_contents_digest_exists(const zone_contents_t *contents, uint8_t alg, bool no_verify);
+bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool no_verify);
 
 /*!
  * \brief Verify zone dgest in ZONEMD record.
@@ -62,6 +64,8 @@ struct zone_update;
  * \param update        Update with contents to be digested.
  * \param algorithm     ZONEMD algorithm.
  * \param placeholder   Don't calculate, just put placeholder (if ZONEMD not yet present).
+ *
+ * \note Special value 255 of algorithm means to remove ZONEMD.
  *
  * \return KNOT_E*
  */

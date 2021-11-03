@@ -1801,7 +1801,7 @@ Definition of zones served by the server.
      dnssec-validation: BOOL
      dnssec-policy: policy_id
      zonemd-verify: BOOL
-     zonemd-generate: none | zonemd-sha384 | zonemd-sha512
+     zonemd-generate: none | zonemd-sha384 | zonemd-sha512 | remove
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
@@ -2118,6 +2118,7 @@ Possible values:
 - ``none`` – No action regarding ZONEMD.
 - ``zonemd-sha384`` – Generate ZONEMD using SHA384 algorithm.
 - ``zonemd-sha512`` – Generate ZONEMD using SHA512 algorithm.
+- ``remove`` – Remove any ZONEMD from the zone apex.
 
 *Default:* none
 

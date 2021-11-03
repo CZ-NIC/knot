@@ -128,6 +128,7 @@ static const knot_lookup_t zone_digest[] = {
 	{ ZONE_DIGEST_NONE,   "none" },
 	{ ZONE_DIGEST_SHA384, "zonemd-sha384" },
 	{ ZONE_DIGEST_SHA512, "zonemd-sha512" },
+	{ ZONE_DIGEST_REMOVE, "remove" },
 	{ 0, NULL }
 };
 

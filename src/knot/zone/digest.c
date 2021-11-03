@@ -173,13 +173,18 @@ static int verify_zonemd(const knot_rdata_t *zonemd, const zone_contents_t *cont
 	return ret;
 }
 
-bool zone_contents_digest_exists(const zone_contents_t *contents, uint8_t alg, bool no_verify)
+bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool no_verify)
 {
 	if (alg == 0) {
 		return true;
 	}
 
 	knot_rdataset_t *zonemd = node_rdataset(contents->apex, KNOT_RRTYPE_ZONEMD);
+
+	if (alg == ZONE_DIGEST_REMOVE) {
+		return (zonemd == NULL || zonemd->count == 0);
+	}
+
 	if (zonemd == NULL || zonemd->count != 1 || knot_zonemd_algorithm(zonemd->rdata) != alg) {
 		return false;
 	}
@@ -252,6 +257,9 @@ int zone_update_add_digest(struct zone_update *update, int algorithm, bool place
 	size_t dsize = 0;
 
 	knot_rrset_t exists = node_rrset(update->new_cont->apex, KNOT_RRTYPE_ZONEMD);
+	if (algorithm == ZONE_DIGEST_REMOVE) {
+		return zone_update_remove(update, &exists);
+	}
 	if (placeholder) {
 		if (!knot_rrset_empty(&exists) &&
 		    !check_duplicate_schalg(&exists.rrs, exists.rrs.count,
