@@ -229,7 +229,7 @@ class (\fI\%RFC 4892\fP). Set to an empty value to disable.
 .sp
 A DNS name server identifier (\fI\%RFC 5001\fP). Set to an empty value to disable.
 .sp
-\fIDefault:\fP FQDN hostname
+\fIDefault:\fP FQDN hostname at the moment of the daemon start
 .SS rundir
 .sp
 A path for storing run\-time data (PID file, unix sockets, etc.).

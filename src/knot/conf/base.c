@@ -91,7 +91,7 @@ int conf_refresh_txn(
 	return conf->api->txn_begin(conf->db, &conf->read_txn, KNOT_DB_RDONLY);
 }
 
-void conf_refresh_hostname(
+static void refresh_hostname(
 	conf_t *conf)
 {
 	if (conf == NULL) {
@@ -299,7 +299,7 @@ int conf_new(
 
 	// Cache the current hostname.
 	if (!(flags & CONF_FNOHOSTNAME)) {
-		conf_refresh_hostname(out);
+		refresh_hostname(out);
 	}
 
 	// Initialize cached values.
