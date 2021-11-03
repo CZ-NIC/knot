@@ -1,0 +1,9 @@
+sub.example.com.        	3	SOA	dns1 hostmaster 2010111227 21600 3600 604800 3
+sub.example.com.        	0	NS	dns1
+sub.example.com.        	2	MX	10 mail
+dns1   	4	A	192.0.2.1
+dns1   	3	AAAA	2001:db8::1
+foo    	5	A	192.0.2.4
+mail   	3	A	192.0.2.3
+mail   	1	AAAA	2001:db8::3
+
