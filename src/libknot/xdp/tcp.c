@@ -147,26 +147,11 @@ static void tcp_table_remove_conn(knot_tcp_conn_t **todel)
 	*todel = (*todel)->next; // remove from conn-table linked list
 }
 
-static void tcp_table_del_conn(knot_tcp_conn_t **todel)
-{
-	knot_tcp_conn_t *conn = *todel;
-	tcp_table_remove_conn(todel);
-	del_conn(conn);
-}
-
 static void tcp_table_remove(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
 {
 	assert(table->usage > 0);
 	table->inbufs_total -= (*todel)->inbuf.iov_len;
 	tcp_table_remove_conn(todel);
-	table->usage--;
-}
-
-static void tcp_table_del(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
-{
-	assert(table->usage > 0);
-	table->inbufs_total -= (*todel)->inbuf.iov_len;
-	tcp_table_del_conn(todel);
 	table->usage--;
 }
 
@@ -339,7 +324,8 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 					relay->action = XDP_TCP_ESTABLISH;
 					break;
 				case XDP_TCP_CLOSING2:
-					tcp_table_del(pconn, tcp_table);
+					tcp_table_remove(pconn, tcp_table);
+					del_conn(conn);
 					relay->conn = NULL;
 					break;
 				}
@@ -367,7 +353,8 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 		case KNOT_XDP_MSG_RST:
 			if (conn != NULL && msg->seqno == conn->seqno) {
 				relay->action = XDP_TCP_RESET;
-				tcp_table_del(pconn, tcp_table);
+				tcp_table_remove(pconn, tcp_table);
+				del_conn(conn);
 				relay->conn = NULL;
 			} else if (conn != NULL) {
 				relay->auto_answer = KNOT_XDP_MSG_ACK;
