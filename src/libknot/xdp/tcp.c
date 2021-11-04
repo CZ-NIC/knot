@@ -190,6 +190,16 @@ static void conn_init_from_msg(knot_tcp_conn_t *conn, knot_xdp_msg_t *msg)
 	memset(&conn->outbufs, 0, sizeof(conn->outbufs));
 }
 
+static void tcp_table_insert(knot_tcp_conn_t *conn, uint64_t hash,
+                             knot_tcp_table_t *table)
+{
+	knot_tcp_conn_t **addto = table->conns + (hash % table->size);
+	add_tail(tcp_table_timeout(table), tcp_conn_node(conn));
+	conn->next = *addto;
+	*addto = conn;
+	table->usage++;
+}
+
 // WARNING you shall ensure that it's not in the table already!
 static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *table,
                          knot_tcp_conn_t **res)
@@ -198,16 +208,8 @@ static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *t
 	if (c == NULL) {
 		return KNOT_ENOMEM;
 	}
-	knot_tcp_conn_t **addto = table->conns + (hash % table->size);
-
 	conn_init_from_msg(c, msg);
-
-	add_tail(tcp_table_timeout(table), tcp_conn_node(c));
-
-	c->next = *addto;
-	*addto = c;
-
-	table->usage++;
+	tcp_table_insert(c, hash, table);
 	*res = c;
 	return KNOT_EOK;
 }
@@ -318,17 +320,14 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			if (!seq_ack_match) {
 				uint64_t syn_hash;
 				if (syn_table != NULL && msg->payload.iov_len == 0 &&
-				    *(pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &syn_hash, syn_table)) != NULL &&
-				    check_seq_ack(msg, *pconn)) {
-					ret = tcp_table_add(msg, conn_hash, tcp_table, &relay->conn);
-					if (ret == KNOT_EOK) { // move conn from syn_table to tcp_table
-						conn = relay->conn;
-						conn->mss = (*pconn)->mss;
-						conn->window_scale = (*pconn)->window_scale;
-						tcp_table_del(pconn, syn_table);
-						*pconn = NULL;
-						relay->action = XDP_TCP_ESTABLISH;
-					}
+				    (pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &syn_hash, syn_table)) != NULL &&
+				    (conn = *pconn) != NULL && check_seq_ack(msg, conn)) {
+					// move conn from syn_table to tcp_table
+					tcp_table_remove(pconn, syn_table);
+					tcp_table_insert(conn, conn_hash, tcp_table);
+					relay->conn = conn;
+					relay->action = XDP_TCP_ESTABLISH;
+					conn->state = XDP_TCP_NORMAL;
 				}
 			} else {
 				switch (conn->state) {
