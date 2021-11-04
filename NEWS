@@ -1,3 +1,27 @@
+Knot DNS 3.1.4 (2021-11-04)
+===========================
+
+Features:
+---------
+ - mod-dnstap: added 'responses-with-queries' configuration option (Thanks to Robert Edmonds)
+
+Improvements:
+-------------
+ - knotd: DNSSEC keys are logged in sorted order by timestamp
+ - mod-cookies: added statistics counter for dropped queries due to the slip limit
+ - mod-dnstap: restored the original query QNAME case #773 (Thanks to Robert Edmonds)
+ - configure: improved compatibility of some scripts on macOS and BSDs
+ - doc: updates on DNSSEC signing
+
+Bugfixes:
+---------
+ - knotd: server can crash when receiving queries with NSID EDNS flag #774 (Thanks to Romain Labolle)
+ - knotd: server crashes on reload when no interfaces configured #770
+ - knotd: ZONEMD without DNSSEC not handled correctly
+ - knotd: generated catalog zone not updated on config reload #772
+ - knotd: zone catalog not verified before its interpretation
+ - knotd: ds-push fails to update the parent zone if a CNAME exists for a non-terminal node
+
 Knot DNS 3.1.3 (2021-10-18)
 ===========================
 
