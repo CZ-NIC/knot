@@ -351,8 +351,6 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 				if (conn != NULL) {
 					relay->auto_answer = KNOT_XDP_MSG_RST;
 					relay->auto_seqno = msg->ackno;
-					relay->del_from = pconn;
-					tcp_table_remove(pconn, tcp_table);
 				} // else ignore. It would be better and possible, but no big value for the price of CPU.
 			} else {
 				if (conn->state == XDP_TCP_CLOSING1) {
