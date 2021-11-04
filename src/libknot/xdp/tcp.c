@@ -132,16 +132,34 @@ static knot_tcp_conn_t **tcp_table_re_lookup(knot_tcp_conn_t *conn,
 	return res;
 }
 
-static void tcp_table_del_conn(knot_tcp_conn_t **todel)
+static void del_conn(knot_tcp_conn_t *conn)
 {
-	knot_tcp_conn_t *conn = *todel;
 	if (conn != NULL) {
-		*todel = conn->next; // remove from conn-table linked list
-		rem_node(tcp_conn_node(conn)); // remove from timeout double-linked list
 		free(conn->inbuf.iov_base);
 		free(conn->outbufs.bufs);
 		free(conn);
 	}
+}
+
+static void tcp_table_remove_conn(knot_tcp_conn_t **todel)
+{
+	rem_node(tcp_conn_node(*todel)); // remove from timeout double-linked list
+	*todel = (*todel)->next; // remove from conn-table linked list
+}
+
+static void tcp_table_del_conn(knot_tcp_conn_t **todel)
+{
+	knot_tcp_conn_t *conn = *todel;
+	tcp_table_remove_conn(todel);
+	del_conn(conn);
+}
+
+static void tcp_table_remove(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
+{
+	assert(table->usage > 0);
+	table->inbufs_total -= (*todel)->inbuf.iov_len;
+	tcp_table_remove_conn(todel);
+	table->usage--;
 }
 
 static void tcp_table_del(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
@@ -334,12 +352,14 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 					relay->auto_answer = KNOT_XDP_MSG_RST;
 					relay->auto_seqno = msg->ackno;
 					relay->del_from = pconn;
+					tcp_table_remove(pconn, tcp_table);
 				} // else ignore. It would be better and possible, but no big value for the price of CPU.
 			} else {
 				if (conn->state == XDP_TCP_CLOSING1) {
 					relay->action = XDP_TCP_CLOSE;
 					relay->auto_answer = KNOT_XDP_MSG_ACK;
 					relay->del_from = pconn;
+					tcp_table_remove(pconn, tcp_table);
 				} else if (msg->payload.iov_len == 0) { // otherwise ignore FIN
 					relay->action = XDP_TCP_CLOSE;
 					relay->auto_answer = KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK;
@@ -563,6 +583,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 		    (free_outbuf > 0 && tcp_outbufs_usage(&conn->outbufs) > 0)) {
 			rl->answer = XDP_TCP_RESET;
 			rl->del_from = tcp_table_re_lookup(conn, tcp_table);
+			tcp_table_remove(rl->del_from, tcp_table);
 
 			free_inbuf -= conn->inbuf.iov_len;
 			free_outbuf -= tcp_outbufs_usage(&conn->outbufs);
@@ -594,9 +615,10 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 _public_
 void knot_tcp_cleanup(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *relays, size_t n_relays)
 {
+	(void)tcp_table;
 	for (uint32_t i = 0; i < n_relays; i++) {
 		if (relays[i].del_from != NULL) {
-			tcp_table_del(relays[i].del_from, tcp_table);
+			del_conn(relays[i].conn);
 		}
 		free(relays[i].inbufs);
 	}
