@@ -36,6 +36,8 @@ typedef enum {
 	XDP_TCP_CLOSE     = 3,
 	XDP_TCP_RESET     = 4,
 	XDP_TCP_RESEND    = 5,
+
+	XDP_TCP_FREE      = 0x10,
 } knot_tcp_action_t;
 
 typedef enum {
@@ -96,7 +98,6 @@ typedef struct {
 	struct iovec *inbufs;
 	size_t inbufs_count;
 	knot_tcp_conn_t *conn;
-	knot_tcp_conn_t **del_from;
 } knot_tcp_relay_t;
 
 /*!

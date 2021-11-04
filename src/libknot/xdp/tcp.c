@@ -356,7 +356,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 				if (conn->state == XDP_TCP_CLOSING1) {
 					relay->action = XDP_TCP_CLOSE;
 					relay->auto_answer = KNOT_XDP_MSG_ACK;
-					relay->del_from = pconn;
+					relay->answer = XDP_TCP_FREE;
 					tcp_table_remove(pconn, tcp_table);
 				} else if (msg->payload.iov_len == 0) { // otherwise ignore FIN
 					relay->action = XDP_TCP_CLOSE;
@@ -579,9 +579,8 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 		    now - conn->last_active >= reset_timeout ||
 		    (free_inbuf > 0 && conn->inbuf.iov_len > 0) ||
 		    (free_outbuf > 0 && tcp_outbufs_usage(&conn->outbufs) > 0)) {
-			rl->answer = XDP_TCP_RESET;
-			rl->del_from = tcp_table_re_lookup(conn, tcp_table);
-			tcp_table_remove(rl->del_from, tcp_table);
+			rl->answer = XDP_TCP_RESET | XDP_TCP_FREE;
+			tcp_table_remove(tcp_table_re_lookup(conn, tcp_table), tcp_table);
 
 			free_inbuf -= conn->inbuf.iov_len;
 			free_outbuf -= tcp_outbufs_usage(&conn->outbufs);
@@ -615,7 +614,7 @@ void knot_tcp_cleanup(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *relays, siz
 {
 	(void)tcp_table;
 	for (uint32_t i = 0; i < n_relays; i++) {
-		if (relays[i].del_from != NULL) {
+		if (relays[i].answer & XDP_TCP_FREE) {
 			del_conn(relays[i].conn);
 		}
 		free(relays[i].inbufs);
