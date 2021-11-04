@@ -1017,17 +1017,6 @@ static inline void knot_wire_put_pointer(uint8_t *pos, uint16_t ptr)
 	pos[0] |= KNOT_WIRE_PTR;		// Add pointer mark.
 }
 
-/*! \brief Put pointer, but avoid pointing at other pointer. */
-static inline void knot_wire_put_pointer_check(uint8_t *pos, uint16_t ptr, const uint8_t *wire)
-{
-	if (knot_wire_is_pointer(wire + ptr)) {
-		// copy the referenced pointer instead
-		memcpy(pos, wire + ptr, sizeof(ptr));
-	} else {
-		knot_wire_put_pointer(pos, ptr);
-	}
-}
-
 static inline uint16_t knot_wire_get_pointer(const uint8_t *pos)
 {
 	assert(knot_wire_is_pointer(pos));			// Check pointer.
