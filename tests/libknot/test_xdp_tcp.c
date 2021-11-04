@@ -64,7 +64,8 @@ static void tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
 	knot_tcp_conn_t *conn, *next;
 	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
 		if (i++ < at_least || now - conn->last_active >= timeout) {
-			tcp_table_del(tcp_table_re_lookup(conn, tcp_table), tcp_table);
+			tcp_table_remove(tcp_table_re_lookup(conn, tcp_table), tcp_table);
+			del_conn(conn);
 		}
 	}
 }
