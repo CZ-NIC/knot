@@ -294,8 +294,8 @@ Options
 
 **+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
-  applies to each query attempt. An attempt to set T to less than 1 will result
-  in a query timeout of 1 second being applied.
+  applies to each query attempt. Zero value or *notimeout* is intepreted as
+  infinity.
 
 **+**\ [\ **no**\ ]\ **retry**\ =\ *N*
   Set the number (>=0) of UDP retries (default is 2). This doesn't apply to
