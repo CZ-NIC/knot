@@ -107,6 +107,10 @@ static void compr_set_ptr(knot_compr_t *compr, uint16_t hint,
 
 	uint16_t offset = written_at - compr->wire;
 
+	if (knot_wire_is_pointer(written_at)) {
+		offset = knot_wire_get_pointer(written_at);
+	}
+
 	knot_compr_hint_set(compr->rrinfo, hint, offset, written_size);
 }
 
