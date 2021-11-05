@@ -1240,7 +1240,7 @@ static int opt_noretry(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	q->retries = DEFAULT_RETRIES_DIG;
+	q->retries = 0;
 
 	return KNOT_EOK;
 }
