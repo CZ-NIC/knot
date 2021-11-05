@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -194,6 +194,9 @@ int main(void)
 		{ "ECDSA",   &SAMPLE_ECDSA_KEY },
 #ifdef HAVE_ED25519
 		{ "ED25519", &SAMPLE_ED25519_KEY },
+#endif
+#ifdef HAVE_ED448
+		{ "ED448",   &SAMPLE_ED448_KEY },
 #endif
 		{ NULL }
 	};

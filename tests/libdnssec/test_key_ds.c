@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -104,10 +104,16 @@ int main(int argc, char *argv[])
 #ifdef HAVE_ED25519
 	test_key("ED25519", &SAMPLE_ED25519_KEY);
 #endif
+#ifdef HAVE_ED448
+	test_key("ED448",   &SAMPLE_ED448_KEY);
+#endif
 
 	test_errors(&SAMPLE_ECDSA_KEY);
 #ifdef HAVE_ED25519
 	test_errors(&SAMPLE_ED25519_KEY);
+#endif
+#ifdef HAVE_ED448
+	test_errors(&SAMPLE_ED448_KEY);
 #endif
 
 	dnssec_crypto_cleanup();

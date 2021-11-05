@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,6 +62,9 @@ static void check_defaults(void)
 #ifdef HAVE_ED25519
 	is_int(256, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ED25519),           "ed25519 default");
 #endif
+#ifdef HAVE_ED448
+	is_int(456, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ED448),             "ed448 default");
+#endif
 }
 
 int main(void)
@@ -73,6 +76,9 @@ int main(void)
 	ok_range(DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, 384, 384, "ECDSA/SHA384");
 #ifdef HAVE_ED25519
 	ok_range(DNSSEC_KEY_ALGORITHM_ED25519, 256, 256, "ED25519");
+#endif
+#ifdef HAVE_ED448
+	ok_range(DNSSEC_KEY_ALGORITHM_ED448, 456, 456, "ED448");
 #endif
 	null_range();
 
