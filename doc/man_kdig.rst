@@ -265,7 +265,7 @@ Options
   Request the nameserver identifier (NSID).
 
 **+**\ [\ **no**\ ]\ **bufsize**\ =\ *B*
-  Set EDNS buffer size in bytes (default is 512 bytes).
+  Set EDNS buffer size in bytes (default is 4096 bytes).
 
 **+**\ [\ **no**\ ]\ **padding**\[\ =\ *B*\]
   Use EDNS(0) padding option to pad queries, optionally to a specific
