@@ -128,7 +128,7 @@
 		knot_dynarray_foreach(prefix, ntype, removable, *dynarray) { \
 			if (memcmp(removable, to_remove, sizeof(*to_remove)) == 0) { \
 				if (removable != orig_arr + --dynarray->size) { \
-					*removable = orig_arr[dynarray->size]; \
+					*(removable--) = orig_arr[dynarray->size]; \
 				} \
 			} \
 		} /* TODO enable lowering capacity, take care of capacity going back to initial! */ \
