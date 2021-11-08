@@ -406,11 +406,11 @@ obs:fedora34:x86_64:
     DISTROTEST_NAME: fedora34
     DISTROTEST_REPO: Fedora_34
 
-obs:fedora33:x86_64:
+obs:fedora35:x86_64:
   <<: *distrotest
   variables:
-    DISTROTEST_NAME: fedora33
-    DISTROTEST_REPO: Fedora_33
+    DISTROTEST_NAME: fedora35
+    DISTROTEST_REPO: Fedora_35
 
 obs:leap15:x86_64:
   <<: *distrotest
@@ -430,8 +430,8 @@ obs:ubuntu2004:x86_64:
     DISTROTEST_NAME: ubuntu2004
     DISTROTEST_REPO: xUbuntu_20.04
 
-obs:ubuntu2104:x86_64:
+obs:ubuntu2110:x86_64:
   <<: *distrotest
   variables:
-    DISTROTEST_NAME: ubuntu2104
-    DISTROTEST_REPO: xUbuntu_21.04
+    DISTROTEST_NAME: ubuntu2110
+    DISTROTEST_REPO: xUbuntu_21.10
