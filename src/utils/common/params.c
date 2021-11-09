@@ -333,11 +333,7 @@ int params_parse_wait(const char *value, int32_t *dst)
 		return ret;
 	}
 
-	// Check for minimal value.
-	if (num < 1) {
-		num = 1;
-	// Reduce maximal value. Poll takes signed int in milliseconds.
-	} else if (num > INT32_MAX / 1000) {
+	if (num < 1 || num > INT32_MAX / 1000) {
 		num = INT32_MAX / 1000;
 	}
 
