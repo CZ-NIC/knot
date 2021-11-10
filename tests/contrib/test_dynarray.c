@@ -58,6 +58,33 @@ static void check_arr(q_dynarray_t *q, size_t count, size_t index, const char *m
 	ok(i == count, "%s foreach: whole array", msg);
 }
 
+static size_t q_set_dups(q_dynarray_t *q, double dup_percentage, const quadrate_t *dupval)
+{
+	size_t dup_cnt = 0;
+	int threshold = (int)(dup_percentage / 100 * ((double)RAND_MAX + 1.0));
+
+	knot_dynarray_foreach(q, quadrate_t, item, *q) {
+		if (rand() < threshold && q_dynarray_memb_cmp(item, dupval) != 0) {
+			*item = *dupval;
+			dup_cnt++;
+		}
+	}
+
+	return dup_cnt;
+}
+
+static void check_dups(q_dynarray_t *q, const quadrate_t *dupval,
+                       const size_t expected, const char *msg)
+{
+	size_t cnt = 0;
+	knot_dynarray_foreach(q, quadrate_t, item, *q) {
+		if (q_dynarray_memb_cmp(item, dupval) == 0) {
+			cnt++;
+		}
+	}
+	ok(cnt == expected, "duplicate items: %s", msg);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -75,6 +102,19 @@ int main(int argc, char *argv[])
 	// third fill
 	q = q_fill(test_capacity * 5);
 	check_arr(&q, test_capacity * 5, test_capacity * 4, "third");
+	q_dynarray_free(&q);
+
+	// duplicate items removal test
+	q = q_fill(test_capacity * 10);
+	quadrate_t dup_item = { .x = 0, .x2 = 0 };  // matches the first item
+	size_t dups = q_set_dups(&q, 50, &dup_item);
+	ok(q.size == test_capacity * 10, "duplicate items: created");
+	check_dups(&q, &dup_item, dups + 1, "created all");
+
+	q_dynarray_remove(&q, &dup_item);
+	ok(q.size == test_capacity * 10 - dups - 1, "duplicate items: removed");
+	check_dups(&q, &dup_item, 0, "removed all");
+
 	q_dynarray_free(&q);
 
 	return 0;
