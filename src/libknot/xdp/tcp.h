@@ -59,8 +59,8 @@ typedef struct tcp_outbufs {
 
 typedef struct knot_tcp_conn {
 	struct {
-		void *list_node_placeholder1;
-		void *list_node_placeholder2;
+		struct knot_tcp_conn *list_node_next;
+		struct knot_tcp_conn *list_node_prev;
 	} list_node_placeholder;
 	struct sockaddr_in6 ip_rem;
 	struct sockaddr_in6 ip_loc;
@@ -86,6 +86,10 @@ typedef struct {
 	size_t inbufs_total;
 	size_t outbufs_total;
 	uint64_t hash_secret[2];
+	knot_tcp_conn_t *next_close;
+	knot_tcp_conn_t *next_ibuf;
+	knot_tcp_conn_t *next_obuf;
+	knot_tcp_conn_t *next_resend;
 	knot_tcp_conn_t *conns[];
 } knot_tcp_table_t;
 

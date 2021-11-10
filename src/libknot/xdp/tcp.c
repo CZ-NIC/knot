@@ -69,6 +69,31 @@ static node_t *tcp_conn_node(knot_tcp_conn_t *conn)
 	return (node_t *)&conn->list_node_placeholder;
 }
 
+static void next_node_ptr(knot_tcp_conn_t **ptr)
+{
+	if (*ptr != NULL) {
+		knot_tcp_conn_t *conn = *ptr;
+		*ptr = conn->list_node_placeholder.list_node_next;
+		if ((*ptr)->list_node_placeholder.list_node_next == NULL) { // detected tail of list
+			*ptr = NULL;
+		}
+	}
+}
+
+static void next_ptr_ibuf(knot_tcp_conn_t **ptr)
+{
+	do {
+		next_node_ptr(ptr);
+	} while (*ptr != NULL && (*ptr)->inbuf.iov_len == 0);
+}
+
+static void next_ptr_obuf(knot_tcp_conn_t **ptr)
+{
+	do {
+		next_node_ptr(ptr);
+	} while (*ptr != NULL && tcp_outbufs_usage(&(*ptr)->outbufs) == 0);
+}
+
 _public_
 knot_tcp_table_t *knot_tcp_table_new(size_t size, knot_tcp_table_t *secret_share)
 {
@@ -150,7 +175,20 @@ static void tcp_table_remove_conn(knot_tcp_conn_t **todel)
 static void tcp_table_remove(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
 {
 	assert(table->usage > 0);
+	if (*todel == table->next_close) {
+		next_node_ptr(&table->next_close);
+	}
+	if (*todel == table->next_ibuf) {
+		next_ptr_ibuf(&table->next_ibuf);
+	}
+	if (*todel == table->next_obuf) {
+		next_ptr_obuf(&table->next_obuf);
+	}
+	if (*todel == table->next_resend) {
+		next_ptr_obuf(&table->next_resend);
+	}
 	table->inbufs_total -= (*todel)->inbuf.iov_len;
+	table->outbufs_total -= tcp_outbufs_usage(&(*todel)->outbufs);
 	tcp_table_remove_conn(todel);
 	table->usage--;
 }
@@ -180,6 +218,9 @@ static void tcp_table_insert(knot_tcp_conn_t *conn, uint64_t hash,
 {
 	knot_tcp_conn_t **addto = table->conns + (hash % table->size);
 	add_tail(tcp_table_timeout(table), tcp_conn_node(conn));
+	if (table->next_close == NULL) {
+		table->next_close = conn;
+	}
 	conn->next = *addto;
 	*addto = conn;
 	table->usage++;
@@ -269,6 +310,9 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			                       &relay->inbufs_count, &tcp_table->inbufs_total);
 			if (ret != KNOT_EOK) {
 				break;
+			}
+			if (conn->inbuf.iov_len > 0 && tcp_table->next_ibuf == NULL) {
+				tcp_table->next_ibuf = conn;
 			}
 		}
 
@@ -379,8 +423,16 @@ int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
 	if (relay == NULL || tcp_table == NULL || relay->conn == NULL) {
 		return KNOT_EINVAL;
 	}
-	return tcp_outbufs_add(&relay->conn->outbufs, data, len,
-	                       relay->conn->mss, &tcp_table->outbufs_total);
+	int ret = tcp_outbufs_add(&relay->conn->outbufs, data, len,
+	                          relay->conn->mss, &tcp_table->outbufs_total);
+
+	if (tcp_table->next_obuf == NULL && tcp_outbufs_usage(&relay->conn->outbufs) > 0) {
+		tcp_table->next_obuf = relay->conn;
+	}
+	if (tcp_table->next_resend == NULL && tcp_outbufs_usage(&relay->conn->outbufs) > 0) {
+		tcp_table->next_resend = relay->conn;
+	}
+	return ret;
 }
 
 static knot_xdp_msg_t *first_msg(knot_xdp_msg_t *msgs, uint32_t n_msgs)
@@ -537,6 +589,22 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
 	return ret;
 }
 
+void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
+                 ssize_t *free_conns, ssize_t *free_inbuf, ssize_t *free_outbuf,
+                 uint32_t *reset_count)
+{
+	rl->answer = XDP_TCP_RESET | XDP_TCP_FREE;
+	tcp_table_remove(tcp_table_re_lookup(rl->conn, tcp_table), tcp_table); // also updates tcp_table->next_*
+
+	*free_conns -= 1;
+	*free_inbuf -= rl->conn->inbuf.iov_len;
+	*free_outbuf -= tcp_outbufs_usage(&rl->conn->outbufs);
+
+	if (reset_count != NULL) {
+		(*reset_count)++;
+	}
+}
+
 _public_
 int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
                    uint32_t close_timeout, uint32_t reset_timeout,
@@ -549,49 +617,73 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t now = get_timestamp(), i = 0;
+	uint32_t now = get_timestamp();
 	memset(relays, 0, max_relays * sizeof(*relays));
-	knot_tcp_relay_t *rl = relays;
+	knot_tcp_relay_t *rl = relays, *rl_max = rl + max_relays;
 
 	ssize_t free_conns =  (ssize_t)tcp_table->usage - limit_n_conn;
 	ssize_t free_inbuf =  (ssize_t)tcp_table->inbufs_total - limit_ibuf_size;
 	ssize_t free_outbuf = (ssize_t)tcp_table->outbufs_total - limit_obuf_size;
 
+	// reset connections to free ibufs
+	while (free_inbuf > 0 && rl != rl_max) {
+		if (tcp_table->next_ibuf->inbuf.iov_len == 0) { // this conn might have get rid of ibuf in the meantime
+			next_ptr_ibuf(&tcp_table->next_ibuf);
+		}
+		assert(tcp_table->next_ibuf != NULL);
+		rl->conn = tcp_table->next_ibuf;
+		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf, reset_count);
+		rl++;
+	}
+
+	// reset connections to free obufs
+	while (free_outbuf > 0 && rl != rl_max) {
+		if (tcp_outbufs_usage(&tcp_table->next_obuf->outbufs) == 0) {
+			next_ptr_obuf(&tcp_table->next_obuf);
+		}
+		assert(tcp_table->next_obuf != NULL);
+		rl->conn = tcp_table->next_obuf;
+		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf, reset_count);
+		rl++;
+	}
+
+	// reset connections to free their count, and old ones
 	knot_tcp_conn_t *conn, *next;
 	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
+		if ((free_conns <= 0 && now - conn->last_active < reset_timeout) || rl == rl_max) {
+			break;
+		}
+
 		rl->conn = conn;
-
-		if (i++ < free_conns ||
-		    now - conn->last_active >= reset_timeout ||
-		    (free_inbuf > 0 && conn->inbuf.iov_len > 0) ||
-		    (free_outbuf > 0 && tcp_outbufs_usage(&conn->outbufs) > 0)) {
-			rl->answer = XDP_TCP_RESET | XDP_TCP_FREE;
-			tcp_table_remove(tcp_table_re_lookup(conn, tcp_table), tcp_table);
-
-			free_inbuf -= conn->inbuf.iov_len;
-			free_outbuf -= tcp_outbufs_usage(&conn->outbufs);
-
-			if (reset_count != NULL) {
-				(*reset_count)++;
-			}
-		} else if (now - conn->last_active >= close_timeout) {
-			if (conn->state != XDP_TCP_CLOSING1) {
-				rl->answer = XDP_TCP_CLOSE;
-				if (close_count != NULL) {
-					(*close_count)++;
-				}
-			}
-		} else if (now - conn->last_active >= resend_timeout &&
-		           conn->outbufs.bufs != NULL && conn->outbufs.bufs->sent) {
-			rl->answer = XDP_TCP_RESEND;
-		}
-
-		if (rl->answer != XDP_TCP_NOOP) {
-			if (++rl == relays + max_relays) {
-				break;
-			}
-		}
+		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf, reset_count);
+		rl++;
 	}
+
+	// close old connections
+	while (tcp_table->next_close != NULL &&
+	       now - tcp_table->next_close->last_active >= close_timeout &&
+	       rl != rl_max) {
+		if (tcp_table->next_close->state != XDP_TCP_CLOSING1) {
+			rl->conn = tcp_table->next_close;
+			rl->answer = XDP_TCP_CLOSE;
+			if (close_count != NULL) {
+				(*close_count)++;
+			}
+			rl++;
+		}
+		next_node_ptr(&tcp_table->next_close);
+	}
+
+	// resend unACKed data
+	while (tcp_table->next_resend != NULL &&
+	       now - tcp_table->next_resend->last_active >= resend_timeout &&
+	       rl != rl_max) {
+		rl->conn = tcp_table->next_resend;
+		rl->answer = XDP_TCP_RESEND;
+		rl++;
+		next_ptr_obuf(&tcp_table->next_resend);
+	}
+
 	return KNOT_EOK;
 }
 
