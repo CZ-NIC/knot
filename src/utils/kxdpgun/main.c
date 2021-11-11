@@ -88,6 +88,13 @@ typedef struct {
 
 static kxdpgun_stats_t global_stats = { 0 };
 
+typedef enum {
+	KXDPGUN_IGNORE_NONE     = 0,
+	KXDPGUN_IGNORE_QUERY    = (1 << 0),
+	KXDPGUN_IGNORE_LASTBYTE = (1 << 1),
+	KXDPGUN_IGNORE_CLOSE    = (1 << 2),
+} xdp_gun_ignore_t;
+
 typedef struct {
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
@@ -99,6 +106,8 @@ typedef struct {
 	uint8_t		local_ip_range;
 	bool		ipv6;
 	bool		tcp;
+	xdp_gun_ignore_t  ignore1;
+	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
 	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_*
 	unsigned	n_threads, thread_id;
@@ -420,7 +429,7 @@ void *xdp_gun_thread(void *_ctx)
 				}
 				if (ctx->tcp) {
 					knot_tcp_relay_t relays[recvd];
-					ret = knot_tcp_recv(relays, pkts, recvd, tcp_table, NULL);
+					ret = knot_tcp_recv(relays, pkts, recvd, tcp_table, NULL, ctx->ignore2);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
@@ -432,7 +441,13 @@ void *xdp_gun_thread(void *_ctx)
 						switch (rl->action) {
 						case XDP_TCP_ESTABLISH:
 							local_stats.synack_recv++;
+							if (ctx->ignore1 & KXDPGUN_IGNORE_QUERY) {
+								break;
+							}
 							put_dns_payload(&payl, true, ctx, &payload_ptr);
+							if (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE) {
+								payl.iov_len--;
+							}
 							ret = knot_tcp_reply_data(rl, tcp_table, payl.iov_base, payl.iov_len);
 							if (ret != KNOT_EOK) {
 								errors++;
@@ -449,7 +464,9 @@ void *xdp_gun_thread(void *_ctx)
 						}
 						for (size_t j = 0; j < rl->inbufs_count; j++) {
 							if (check_dns_payload(&rl->inbufs[j], ctx, &local_stats)) {
-								rl->answer = XDP_TCP_CLOSE;
+								if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
+									rl->answer = XDP_TCP_CLOSE;
+								}
 							}
 						}
 					}
@@ -658,7 +675,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "batch",     required_argument, NULL, 'b' },
 		{ "drop",      no_argument,       NULL, 'r' },
 		{ "port",      required_argument, NULL, 'p' },
-		{ "tcp",       no_argument,       NULL, 'T' },
+		{ "tcp",       optional_argument, NULL, 'T' },
 		{ "affinity",  required_argument, NULL, 'F' },
 		{ "interface", required_argument, NULL, 'I' },
 		{ "local",     required_argument, NULL, 'l' },
@@ -670,7 +687,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:TF:I:l:i:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::F:I:l:i:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -722,6 +739,35 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			ctx->listen_port |= KNOT_XDP_LISTEN_PORT_TCP;
 			if (default_at_once) {
 				ctx->at_once = 1;
+			}
+			switch (optarg == NULL ? '0' : optarg[0]) {
+			case '1':
+				ctx->listen_port |= KNOT_XDP_LISTEN_PORT_DROP;
+				break;
+			case '2':
+				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
+				break;
+			case '3':
+				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
+				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+				break;
+			case '5':
+				ctx->ignore1 = KXDPGUN_IGNORE_LASTBYTE;
+				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+				break;
+			case '7':
+				ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
+				ctx->ignore2 = XDP_TCP_IGNORE_DATA_ACK | XDP_TCP_IGNORE_FIN;
+				break;
+			case '8':
+				ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
+				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+				break;
+			case '9':
+				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+				break;
+			default:
+				break;
 			}
 			break;
 		case 'F':

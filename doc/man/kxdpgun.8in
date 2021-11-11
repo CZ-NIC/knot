@@ -51,8 +51,8 @@ configured for the network interface.
 Duration of traffic generation, specified as a decimal number in seconds
 (default is 5.0).
 .TP
-\fB\-T\fP, \fB\-\-tcp\fP
-Send queries over TCP.
+\fB\-T\fP, \fB\-\-tcp\fP[=\fIDEBUG_MODE\fP]
+Send queries over TCP. Optional debug mode see below.
 .TP
 \fB\-Q\fP, \fB\-\-qps\fP \fIqueries\fP
 Number of queries\-per\-second (approximately) to be sent (default is 1000).
@@ -111,6 +111,30 @@ name, and \fIflags\fP is a single character:
 .sp
 Sending USR1 signal to a running process triggers current statistics dump
 to the standard output.
+.SS TCP Debug Modes
+.INDENT 0.0
+.TP
+\fB1\fP
+Just send SYN and don\(aqt react to any incomming packets (alias to \fB\-d\fP).
+.TP
+\fB2\fP
+Perform TCP handshake and don\(aqt send anything, allow close initiated by counterpart.
+.TP
+\fB3\fP
+Perform TCP handshake and don\(aqt react further.
+.TP
+\fB5\fP
+Send incomplete query (N\-1 bytes) and don\(aqt react further.
+.TP
+\fB7\fP
+Send query and don\(aqt ACK the response or anthing further.
+.TP
+\fB8\fP
+Don\(aqt close the connection and ignore close by counterpart.
+.TP
+\fB9\fP
+Operate normally except of not ACKing the final FIN+ACK.
+.UNINDENT
 .SH NOTES
 .sp
 Linux kernel 4.18+ is required.
