@@ -332,7 +332,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 					relay->auto_answer = synack ? KNOT_XDP_MSG_ACK : (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK);
 
 					conn = relay->conn;
-					conn->state = XDP_TCP_ESTABLISHING;
+					conn->state = synack ? XDP_TCP_NORMAL: XDP_TCP_ESTABLISHING;
 					conn->seqno++;
 					conn->mss = MAX(msg->mss, 536); // minimal MSS, most importantly not zero!
 					conn->window_scale = msg->win_scale;
