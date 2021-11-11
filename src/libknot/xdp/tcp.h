@@ -53,6 +53,12 @@ typedef enum {
 	XDP_TCP_FREE_PREFIX,
 } knot_tcp_relay_free_t;
 
+typedef enum {
+	XDP_TCP_IGNORE_NONE        = 0,
+	XDP_TCP_IGNORE_DATA_ACK    = (1 << 0),
+	XDP_TCP_IGNORE_FIN         = (1 << 1),
+} knot_tcp_ignore_t;
+
 typedef struct tcp_outbufs {
 	struct tcp_outbuf *bufs;
 } tcp_outbufs_t; // this typedef belongs to tcp_iobuf.h, but is here to avoid issues with symbols
@@ -152,7 +158,8 @@ void knot_tcp_table_free(knot_tcp_table_t *table);
  * \return KNOT_E*
  */
 int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count,
-                  knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table);
+                  knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
+                  knot_tcp_ignore_t ignore);
 
 /*!
  * \brief Prepare data (payload) to be sent as a response on specific relay.

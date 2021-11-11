@@ -269,7 +269,8 @@ static void conn_update(knot_tcp_conn_t *conn, const knot_xdp_msg_t *msg)
 
 _public_
 int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count,
-                  knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table)
+                  knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
+                  knot_tcp_ignore_t ignore)
 {
 	if (count == 0) {
 		return KNOT_EOK;
@@ -310,7 +311,9 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 
 		// process incoming data
 		if (seq_ack_match && (msg->flags & KNOT_XDP_MSG_ACK) && msg->payload.iov_len > 0) {
-			relay->auto_answer = KNOT_XDP_MSG_ACK;
+			if (!(ignore & XDP_TCP_IGNORE_DATA_ACK)) {
+				relay->auto_answer = KNOT_XDP_MSG_ACK;
+			}
 			ret = tcp_inbuf_update(&conn->inbuf, msg->payload, &relay->inbufs,
 			                       &relay->inbufs_count, &tcp_table->inbufs_total);
 			if (ret != KNOT_EOK) {
@@ -384,6 +387,9 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			}
 			break;
 		case (KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK):
+			if (ignore & XDP_TCP_IGNORE_FIN) {
+				break;
+			}
 			if (!seq_ack_match) {
 				if (conn != NULL) {
 					relay->auto_answer = KNOT_XDP_MSG_RST;

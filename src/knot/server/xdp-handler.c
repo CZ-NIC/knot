@@ -196,7 +196,7 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                        knotd_qdata_params_t *params)
 {
-	int ret = knot_tcp_recv(ctx->relays, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, ctx->syn_table);
+	int ret = knot_tcp_recv(ctx->relays, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, ctx->syn_table, XDP_TCP_IGNORE_NONE);
 	if (ret != KNOT_EOK) {
 		log_notice("TCP, failed to process some packets (%s)", knot_strerror(ret));
 		return;
