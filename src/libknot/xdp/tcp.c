@@ -253,6 +253,20 @@ static bool check_seq_ack(const knot_xdp_msg_t *msg, const knot_tcp_conn_t *conn
 	}
 }
 
+static void conn_update(knot_tcp_conn_t *conn, const knot_xdp_msg_t *msg)
+{
+	conn->seqno = knot_tcp_next_seqno(msg);
+	memcpy(conn->last_eth_rem, msg->eth_from, sizeof(conn->last_eth_rem));
+	memcpy(conn->last_eth_loc, msg->eth_to, sizeof(conn->last_eth_loc));
+	conn->window_size = (uint32_t)msg->win * (1LU << conn->window_scale);
+
+	uint32_t now = get_timestamp();
+	if (conn->establish_rtt == 0 && conn->last_active != 0) {
+		conn->establish_rtt = now - conn->last_active;
+	}
+	conn->last_active = now;
+}
+
 _public_
 int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count,
                   knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table)
@@ -280,16 +294,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 		bool seq_ack_match = check_seq_ack(msg, conn);
 		if (seq_ack_match) {
 			assert(conn->mss != 0);
-			conn->seqno = knot_tcp_next_seqno(msg);
-			memcpy(conn->last_eth_rem, msg->eth_from, sizeof(conn->last_eth_rem));
-			memcpy(conn->last_eth_loc, msg->eth_to, sizeof(conn->last_eth_loc));
-			conn->window_size = (uint32_t)msg->win * (1LU << conn->window_scale);
-
-			uint32_t now = get_timestamp();
-			if (conn->establish_rtt == 0 && conn->last_active != 0) {
-				conn->establish_rtt = now - conn->last_active;
-			}
-			conn->last_active = now;
+			conn_update(conn, msg);
 
 			rem_node(tcp_conn_node(conn));
 			add_tail(tcp_table_timeout(tcp_table), tcp_conn_node(conn));
@@ -333,9 +338,9 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 
 					conn = relay->conn;
 					conn->state = synack ? XDP_TCP_NORMAL: XDP_TCP_ESTABLISHING;
-					conn->seqno++;
 					conn->mss = MAX(msg->mss, 536); // minimal MSS, most importantly not zero!
 					conn->window_scale = msg->win_scale;
+					conn_update(conn, msg);
 					if (!synack) {
 						conn->acked = dnssec_random_uint32_t();
 						conn->ackno = conn->acked;
@@ -357,6 +362,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 					relay->conn = conn;
 					relay->action = XDP_TCP_ESTABLISH;
 					conn->state = XDP_TCP_NORMAL;
+					conn_update(conn, msg);
 				}
 			} else {
 				switch (conn->state) {
