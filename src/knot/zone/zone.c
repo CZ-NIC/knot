@@ -540,6 +540,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		int ret = callback(conf, zone, &preferred, callback_data, &fallback);
 		if (ret == KNOT_EOK) {
 			return ret;
+		} else if (!fallback.remote) {
+			return ret; // Local error.
 		}
 
 		log_try_addr_error(zone, NULL, &preferred.addr, err_str, ret);
@@ -574,6 +576,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 			if (ret == KNOT_EOK) {
 				success = true;
 				break;
+			} else if (!fallback.remote) {
+				return ret; // Local error.
 			}
 
 			log_try_addr_error(zone, conf_str(&masters), &master.addr,
