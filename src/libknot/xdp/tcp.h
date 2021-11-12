@@ -55,8 +55,9 @@ typedef enum {
 
 typedef enum {
 	XDP_TCP_IGNORE_NONE        = 0,
-	XDP_TCP_IGNORE_DATA_ACK    = (1 << 0),
-	XDP_TCP_IGNORE_FIN         = (1 << 1),
+	XDP_TCP_IGNORE_ESTABLISH   = (1 << 0),
+	XDP_TCP_IGNORE_DATA_ACK    = (1 << 1),
+	XDP_TCP_IGNORE_FIN         = (1 << 2),
 } knot_tcp_ignore_t;
 
 typedef struct tcp_outbufs {

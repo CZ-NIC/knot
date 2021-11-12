@@ -96,7 +96,7 @@ TCP Debug Modes
 ...............
 
 **1**
-  Just send SYN and don't react to any incomming packets (alias to **-d**).
+  Just send SYN and receive SYN-ACK.
 
 **2**
   Perform TCP handshake and don't send anything, allow close initiated by counterpart.
