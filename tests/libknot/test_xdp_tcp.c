@@ -534,7 +534,7 @@ void test_obufs(void)
 	rl.conn->window_size = 65536;
 	send2_mss = TEST_MSS;
 
-	int ret = knot_tcp_reply_data(&rl, test_table, data, DATA_LEN), i = 0;
+	int ret = knot_tcp_reply_data(&rl, test_table, false, data, DATA_LEN), i = 0;
 	is_int(KNOT_EOK, ret, "obufs: fill with data");
 	for (struct tcp_outbuf *ob = rl.conn->outbufs.bufs; ob != NULL; ob = ob->next, i++) {
 		if (ob->next == NULL) {
