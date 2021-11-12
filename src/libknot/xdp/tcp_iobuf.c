@@ -177,7 +177,7 @@ int tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 }
 
 int tcp_outbufs_add(struct tcp_outbufs *ob, uint8_t *data, size_t len,
-                    uint32_t mss, size_t *outbufs_total)
+                    bool ignore_lastbyte, uint32_t mss, size_t *outbufs_total)
 {
 	if (len > UINT16_MAX) {
 		return KNOT_ELIMIT;
@@ -195,6 +195,9 @@ int tcp_outbufs_add(struct tcp_outbufs *ob, uint8_t *data, size_t len,
 		}
 		*outbufs_total += sizeof(*newob) + newlen;
 		newob->len = newlen;
+		if (ignore_lastbyte) {
+			newob->len--;
+		}
 		memcpy(newob->bytes, &prefix, prefix_len);
 		memcpy(newob->bytes + prefix_len, data, newlen - prefix_len);
 

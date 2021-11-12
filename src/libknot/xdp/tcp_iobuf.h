@@ -62,13 +62,14 @@ int tcp_inbuf_update(struct iovec *buffer, struct iovec data,
  * \param ob               Output buffers to be updated.
  * \param data             Payload to be sent.
  * \param len              Payload length.
+ * \param ignore_lastbyte  Evil mode: drop last byte of the payload.
  * \param mss              Connection outgoing MSS.
  * \param outbufs_total    In/out: total outbuf statistic to be updated.
  *
  * \return KNOT_E*
  */
 int tcp_outbufs_add(struct tcp_outbufs *ob, uint8_t *data, size_t len,
-                    uint32_t mss, size_t *outbufs_total);
+                    bool ignore_lastbyte, uint32_t mss, size_t *outbufs_total);
 
 /*!
  * \brief Remove+free acked data from output buffers.

@@ -167,13 +167,14 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
  *
  * \param relay       Relay with active connection.
  * \param tcp_table   TCP table.
+ * \param ignore_lastbyte  Evil mode: drop last byte of the payload.
  * \param data        Data payload, possibly > MSS and > window.
  * \param len         Payload length, < 64k.
  *
  * \return KNOT_E*
  */
 int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
-                        uint8_t *data, size_t len);
+                        bool ignore_lastbyte, uint8_t *data, size_t len);
 
 /*!
  * \brief Send TCP packets.

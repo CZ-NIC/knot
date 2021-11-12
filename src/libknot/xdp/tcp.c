@@ -434,12 +434,12 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 
 _public_
 int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
-                        uint8_t *data, size_t len)
+                        bool ignore_lastbyte, uint8_t *data, size_t len)
 {
 	if (relay == NULL || tcp_table == NULL || relay->conn == NULL) {
 		return KNOT_EINVAL;
 	}
-	int ret = tcp_outbufs_add(&relay->conn->outbufs, data, len,
+	int ret = tcp_outbufs_add(&relay->conn->outbufs, data, len, ignore_lastbyte,
 	                          relay->conn->mss, &tcp_table->outbufs_total);
 
 	if (tcp_table->next_obuf == NULL && tcp_outbufs_usage(&relay->conn->outbufs) > 0) {
