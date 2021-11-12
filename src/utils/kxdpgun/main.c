@@ -445,10 +445,9 @@ void *xdp_gun_thread(void *_ctx)
 								break;
 							}
 							put_dns_payload(&payl, true, ctx, &payload_ptr);
-							if (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE) {
-								payl.iov_len--;
-							}
-							ret = knot_tcp_reply_data(rl, tcp_table, payl.iov_base, payl.iov_len);
+							ret = knot_tcp_reply_data(rl, tcp_table,
+							                          (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE),
+							                          payl.iov_base, payl.iov_len);
 							if (ret != KNOT_EOK) {
 								errors++;
 							}

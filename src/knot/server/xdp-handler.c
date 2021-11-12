@@ -222,7 +222,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 					continue;
 				}
 
-				(void)knot_tcp_reply_data(rl, ctx->tcp_table, ans->wire, ans->size);
+				(void)knot_tcp_reply_data(rl, ctx->tcp_table, false, ans->wire, ans->size);
 				// ignore unprobable ENOMEM here
 			}
 
