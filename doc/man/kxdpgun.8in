@@ -115,7 +115,7 @@ to the standard output.
 .INDENT 0.0
 .TP
 \fB1\fP
-Just send SYN and don\(aqt react to any incomming packets (alias to \fB\-d\fP).
+Just send SYN and receive SYN\-ACK.
 .TP
 \fB2\fP
 Perform TCP handshake and don\(aqt send anything, allow close initiated by counterpart.

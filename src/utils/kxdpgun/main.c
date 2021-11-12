@@ -742,7 +742,8 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			switch (optarg == NULL ? '0' : optarg[0]) {
 			case '1':
-				ctx->listen_port |= KNOT_XDP_LISTEN_PORT_DROP;
+				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
+				ctx->ignore2 = XDP_TCP_IGNORE_ESTABLISH | XDP_TCP_IGNORE_FIN;
 				break;
 			case '2':
 				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
