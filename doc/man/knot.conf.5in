@@ -492,6 +492,7 @@ xdp:
     tcp\-max\-clients: INT
     tcp\-max\-syn\-clients: INT
     tcp\-inbuf\-max\-size: SIZE
+    tcp\-outbuf\-max\-size: SIZE
     tcp\-idle\-close\-timeout: TIME
     tcp\-idle\-reset\-timeout: TIME
     tcp\-resend\-timeout: TIME
@@ -598,6 +599,14 @@ this is the limit of their number in parallel.
 .sp
 Maximum cumulative size of memory used for buffers of incompletely
 received messages.
+.sp
+\fIMinimum:\fP 1 MiB
+.sp
+\fIDefault:\fP 100 MiB
+.SS tcp\-outbuf\-max\-size
+.sp
+Maximum cumulative size of memory used for buffers of unACKed
+sent messages.
 .sp
 \fIMinimum:\fP 1 MiB
 .sp
