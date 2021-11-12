@@ -493,6 +493,7 @@ xdp:
     listen: STR[@INT] | ADDR[@INT] ...
     tcp: BOOL
     tcp\-max\-clients: INT
+    tcp\-max\-syn\-clients: INT
     tcp\-inbuf\-max\-size: SIZE
     tcp\-idle\-close\-timeout: TIME
     tcp\-idle\-reset\-timeout: TIME
@@ -590,6 +591,12 @@ other hamsters connected to the network.
 A maximum number of TCP clients connected in parallel.
 .sp
 \fIDefault:\fP 1000000 (one million)
+.SS tcp\-max\-syn\-clients
+.sp
+If set to non\-zero, clients in SYN state are handled separately and
+this is the limit of their number in parallel.
+.sp
+\fIDefault:\fP 0
 .SS tcp\-inbuf\-max\-size
 .sp
 Maximum cumulative size of memory used for buffers of incompletely
