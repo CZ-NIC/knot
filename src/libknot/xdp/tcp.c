@@ -337,7 +337,9 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 				                    &relay->conn);
 				if (ret == KNOT_EOK) {
 					relay->action = synack ? XDP_TCP_ESTABLISH : XDP_TCP_SYN;
-					relay->auto_answer = synack ? KNOT_XDP_MSG_ACK : (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK);
+					if (!(ignore & XDP_TCP_IGNORE_ESTABLISH)) {
+						relay->auto_answer = synack ? KNOT_XDP_MSG_ACK : (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK);
+					}
 
 					conn = relay->conn;
 					conn->state = synack ? XDP_TCP_NORMAL: XDP_TCP_ESTABLISHING;
