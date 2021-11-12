@@ -1186,11 +1186,14 @@ class Knot(Server):
             dst_file = self.data_add(file_name, storage)
             self.includes.add(dst_file)
 
+    def first_master(self, zone_name):
+        return sorted(self.zones[zone_name].masters, key=lambda srv: srv.name)[0]
+
     def config_xfr(self, zone, knotconf):
         acl = ""
         if zone.masters:
             masters = ""
-            for master in zone.masters:
+            for master in sorted(zone.masters, key=lambda srv: srv.name):
                 if masters:
                     masters += ", "
                 masters += master.name

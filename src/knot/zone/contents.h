@@ -245,7 +245,7 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
-int zone_contents_cow(const zone_contents_t *from, zone_contents_t **to);
+int zone_contents_cow(zone_contents_t *from, zone_contents_t **to);
 
 /*!
  * \brief Deallocate directly owned data of zone contents.

@@ -192,8 +192,13 @@ bool zone_expired(const zone_t *zone);
  */
 void zone_timers_sanitize(conf_t *conf, zone_t *zone);
 
+typedef struct {
+	bool address; //!< Fallback to next remote address is required.
+	bool remote;  //!< Fallback to next remote server is required.
+} zone_master_fallback_t;
+
 typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *remote,
-                              void *data);
+                              void *data, zone_master_fallback_t *fallback);
 
 /*!
  * \brief Perform an action with a first working master server.
