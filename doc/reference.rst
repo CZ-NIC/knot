@@ -495,6 +495,7 @@ Various options related to XDP listening, especially TCP.
      tcp-max-clients: INT
      tcp-max-syn-clients: INT
      tcp-inbuf-max-size: SIZE
+     tcp-outbuf-max-size: SIZE
      tcp-idle-close-timeout: TIME
      tcp-idle-reset-timeout: TIME
      tcp-resend-timeout: TIME
@@ -589,6 +590,18 @@ tcp-inbuf-max-size
 
 Maximum cumulative size of memory used for buffers of incompletely
 received messages.
+
+*Minimum:* 1 MiB
+
+*Default:* 100 MiB
+
+.. _xdp_tcp-outbuf-max-size:
+
+tcp-outbuf-max-size
+-------------------
+
+Maximum cumulative size of memory used for buffers of unACKed
+sent messages.
 
 *Minimum:* 1 MiB
 

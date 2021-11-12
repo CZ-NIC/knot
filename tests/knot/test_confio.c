@@ -949,6 +949,7 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP_MAX_CLIENTS,    YP_TINT,  YP_VNONE },
 	{ C_TCP_SYN_CLIENTS,    YP_TINT,  YP_VNONE },
 	{ C_TCP_INBUF_MAX_SIZE, YP_TINT,  YP_VNONE },
+	{ C_TCP_OUTBUF_MAX_SIZE,YP_TINT,  YP_VNONE },
 	{ C_TCP_IDLE_CLOSE,     YP_TINT,  YP_VNONE },
 	{ C_TCP_IDLE_RESET,     YP_TINT,  YP_VNONE },
 	{ C_TCP_RESEND,         YP_TINT,  YP_VNONE },

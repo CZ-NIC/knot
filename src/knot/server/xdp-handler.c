@@ -71,7 +71,7 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 	ctx->tcp_max_conns  = pconf->cache.xdp_tcp_max_clients    / pconf->cache.srv_xdp_threads;
 	ctx->tcp_syn_conns  = pconf->cache.xdp_tcp_syn_clients    / pconf->cache.srv_xdp_threads;
 	ctx->tcp_max_inbufs = pconf->cache.xdp_tcp_inbuf_max_size / pconf->cache.srv_xdp_threads;
-	ctx->tcp_max_obufs  = pconf->cache.xdp_tcp_inbuf_max_size / pconf->cache.srv_xdp_threads; // FIXME another setting for outbuf!!
+	ctx->tcp_max_obufs  = pconf->cache.xdp_tcp_outbuf_max_size / pconf->cache.srv_xdp_threads;
 	ctx->tcp_idle_close = pconf->cache.xdp_tcp_idle_close * 1000000;
 	ctx->tcp_idle_reset = pconf->cache.xdp_tcp_idle_reset * 1000000;
 	ctx->tcp_idle_resend= pconf->cache.xdp_tcp_idle_resend * 1000000;
