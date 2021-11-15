@@ -119,8 +119,8 @@ static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, in
 	if (ret == KNOT_ETIMEOUT) {
 		char addr_str[SOCKADDR_STRLEN];
 		client_addr(ss, addr_str, sizeof(addr_str));
-		log_debug("TCP, %s, address %s (%s)", operation, addr_str,
-		          knot_strerror(ret));
+		log_debug("TCP, failed to %s due to IO timeout, closing connection, address %s",
+		          operation, addr_str);
 	}
 }
 
