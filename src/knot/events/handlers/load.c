@@ -94,21 +94,22 @@ int event_load(conf_t *conf, zone_t *zone)
 		bool zonefile_unchanged = (zone->zonefile.exists &&
 					   zone->zonefile.mtime.tv_sec == mtime.tv_sec &&
 					   zone->zonefile.mtime.tv_nsec == mtime.tv_nsec);
-		free(filename);
 		if (ret == KNOT_EOK) {
 			ret = zone_load_contents(conf, zone->name, &zf_conts, false);
 		}
 		if (ret != KNOT_EOK) {
 			zf_conts = NULL;
 			if (dontcare_load_error(conf, zone)) {
-				log_zone_info(zone->name, "failed to parse zone file (%s)",
-					      knot_strerror(ret));
+				log_zone_info(zone->name, "failed to parse zone file '%s' (%s)",
+				              filename, knot_strerror(ret));
 			} else {
-				log_zone_error(zone->name, "failed to parse zone file (%s)",
-					       knot_strerror(ret));
+				log_zone_error(zone->name, "failed to parse zone file '%s' (%s)",
+				               filename, knot_strerror(ret));
 			}
+			free(filename);
 			goto load_end;
 		}
+		free(filename);
 
 		// Save zonefile information.
 		zone->zonefile.serial = zone_contents_serial(zf_conts);
