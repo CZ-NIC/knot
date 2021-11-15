@@ -296,7 +296,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 		if (ctx->syn_table == NULL) {
 			continue;
 		}
-		ret = knot_tcp_sweep(ctx->syn_table, ctx->tcp_idle_close, ctx->tcp_idle_reset,
+		ret = knot_tcp_sweep(ctx->syn_table, UINT32_MAX, ctx->tcp_idle_reset,
 		                     UINT32_MAX, ctx->tcp_syn_conns, SIZE_MAX, SIZE_MAX,
 		                     sweep_relays, XDP_BATCHLEN, &total_close, &total_reset);
 		if (ret == KNOT_EOK) {
