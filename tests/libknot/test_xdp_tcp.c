@@ -75,7 +75,7 @@ static void tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
  */
 static knot_tcp_conn_t *tcp_table_find(knot_tcp_table_t *table, knot_xdp_msg_t *msg_recv)
 {
-	uint64_t unused;
+	uint64_t unused = 0;
 	return *tcp_table_lookup(&msg_recv->ip_from, &msg_recv->ip_to, &unused, table);
 }
 

@@ -134,7 +134,9 @@ static knot_tcp_conn_t **tcp_table_lookup(const struct sockaddr_in6 *rem,
                                           const struct sockaddr_in6 *loc,
                                           uint64_t *hash, knot_tcp_table_t *table)
 {
-	*hash = hash_four_tuple(rem, loc, table);
+	if (*hash == 0) {
+		*hash = hash_four_tuple(rem, loc, table);
+	}
 	size_t sdl = sockaddr_data_len(rem, loc);
 	knot_tcp_conn_t **res = table->conns + (*hash % table->size);
 	while (*res != NULL) {
@@ -150,7 +152,7 @@ static knot_tcp_conn_t **tcp_table_lookup(const struct sockaddr_in6 *rem,
 static knot_tcp_conn_t **tcp_table_re_lookup(knot_tcp_conn_t *conn,
                                              knot_tcp_table_t *table)
 {
-	uint64_t unused_hash;
+	uint64_t unused_hash = 0;
 	knot_tcp_conn_t **res = tcp_table_lookup(&conn->ip_rem, &conn->ip_loc,
 	                                         &unused_hash, table);
 	assert(*res == conn);
@@ -288,7 +290,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			continue;
 		}
 
-		uint64_t conn_hash;
+		uint64_t conn_hash = 0;
 		knot_tcp_conn_t **pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to,
 		                                           &conn_hash, tcp_table);
 		knot_tcp_conn_t *conn = *pconn;
@@ -332,9 +334,15 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			if (conn == NULL) {
 				bool synack = (msg->flags & KNOT_XDP_MSG_ACK);
 
-				ret = tcp_table_add(msg, conn_hash,
-				                    (syn_table == NULL || synack) ? tcp_table : syn_table,
-				                    &relay->conn);
+				knot_tcp_table_t *add_table = tcp_table;
+				if (syn_table != NULL && !synack) {
+					add_table = syn_table;
+					if (*tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table) != NULL) {
+						break;
+					}
+				}
+
+				ret = tcp_table_add(msg, conn_hash, add_table, &relay->conn);
 				if (ret == KNOT_EOK) {
 					relay->action = synack ? XDP_TCP_ESTABLISH : XDP_TCP_SYN;
 					if (!(ignore & XDP_TCP_IGNORE_ESTABLISH)) {
@@ -357,9 +365,8 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			break;
 		case KNOT_XDP_MSG_ACK:
 			if (!seq_ack_match) {
-				uint64_t syn_hash;
 				if (syn_table != NULL && msg->payload.iov_len == 0 &&
-				    (pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &syn_hash, syn_table)) != NULL &&
+				    (pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table)) != NULL &&
 				    (conn = *pconn) != NULL && check_seq_ack(msg, conn)) {
 					// move conn from syn_table to tcp_table
 					tcp_table_remove(pconn, syn_table);
