@@ -125,7 +125,7 @@ inline static uint32_t knot_tcp_next_seqno(const knot_xdp_msg_t *msg)
 
 inline static bool knot_tcp_relay_empty(const knot_tcp_relay_t *r)
 {
-	return r->action == XDP_TCP_NOOP && r->auto_answer == 0 && r->inbufs_count == 0;
+	return r->action == XDP_TCP_NOOP && r->answer == XDP_TCP_NOOP && r->auto_answer == 0 && r->inbufs_count == 0;
 }
 
 /*!
