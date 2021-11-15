@@ -381,8 +381,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 				case XDP_TCP_CLOSING2:
 					if (msg->payload.iov_len == 0) { // otherwise ignore close
 						tcp_table_remove(pconn, tcp_table);
-						del_conn(conn);
-						relay->conn = NULL;
+						relay->answer = XDP_TCP_FREE;
 					}
 					break;
 				}
@@ -414,8 +413,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 			if (conn != NULL && msg->seqno == conn->seqno) {
 				relay->action = XDP_TCP_RESET;
 				tcp_table_remove(pconn, tcp_table);
-				del_conn(conn);
-				relay->conn = NULL;
+				relay->answer = XDP_TCP_FREE;
 			} else if (conn != NULL) {
 				relay->auto_answer = KNOT_XDP_MSG_ACK;
 			}
