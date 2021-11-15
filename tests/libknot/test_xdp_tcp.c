@@ -380,6 +380,7 @@ void test_close(void)
 	check_sent(0, 0, 0, 0);
 	is_int(conns_pre - 1, test_table->usage, "close: connection removed");
 	is_int(conns_pre - 1, tcp_table_timeout_length(test_table), "close: timeout list size");
+	knot_tcp_cleanup(test_table, &rl, 1);
 }
 
 void test_many(void)
