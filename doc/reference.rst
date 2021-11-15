@@ -288,7 +288,7 @@ tcp-io-timeout
 
 Maximum time (in milliseconds) to receive or send one DNS message over an inbound
 TCP connection. It means this limit applies to normal DNS queries and replies,
-incoming DDNS, and outgoing zone transfers. The timeout is measured since some
+incoming DDNS, and **outgoing zone transfers**. The timeout is measured since some
 data is already available for processing.
 Set to 0 for infinity.
 
