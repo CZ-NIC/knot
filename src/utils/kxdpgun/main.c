@@ -307,8 +307,9 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
 			return i;
 		}
 
-		uint16_t local_port = LOCAL_PORT_MIN + unique % (LOCAL_PORT_MAX + 1 - LOCAL_PORT_MIN);
-		uint64_t ip_incr = unique % (1 << (addr_bits(ctx->ipv6) - ctx->local_ip_range));
+		uint16_t port_range = LOCAL_PORT_MAX - LOCAL_PORT_MIN + 1;
+		uint16_t local_port = LOCAL_PORT_MIN + unique % port_range;
+		uint64_t ip_incr = (unique / port_range) % (1 << (addr_bits(ctx->ipv6) - ctx->local_ip_range));
 		shuffle_sockaddr(&pkts[i].ip_from, &ctx->local_ip,  local_port, ip_incr);
 		shuffle_sockaddr(&pkts[i].ip_to,   &ctx->target_ip, ctx->target_port, 0);
 
