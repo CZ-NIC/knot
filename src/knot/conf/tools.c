@@ -293,6 +293,32 @@ int check_xdp_listen(
 #endif
 }
 
+
+int check_quic_cert(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t workers = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                  C_SERVER, C_QUIC_WORKERS);
+	int workers_count = conf_int(&workers);
+	if (workers_count > 0) {
+		conf_val_t file = conf_get_txn(args->extra->conf,
+		                               args->extra->txn,
+		                               C_SERVER, C_QUIC_CERT_FILE);
+		const char *str = conf_str(&file);
+		if (str == NULL) {
+			return KNOT_EINVAL;
+		}
+		file = conf_get_txn(args->extra->conf, args->extra->txn,
+		                    C_SERVER, C_QUIC_KEY_FILE);
+		str = conf_str(&file);
+		if (str == NULL) {
+			return KNOT_EINVAL;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 static int dir_exists(const char *dir)
 {
 	struct stat st;
@@ -482,7 +508,7 @@ int check_server(
 	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV4_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV4);
 	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV6_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV6);
 
-	return KNOT_EOK;
+	return check_quic_cert(args);
 }
 
 int check_xdp(

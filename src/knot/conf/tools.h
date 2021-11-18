@@ -78,6 +78,10 @@ int check_xdp_listen(
 	knotd_conf_check_args_t *args
 );
 
+int check_quic_cert(
+	knotd_conf_check_args_t *args
+);
+
 int check_database(
 	knotd_conf_check_args_t *args
 );

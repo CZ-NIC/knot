@@ -27,6 +27,20 @@
 
 #define QUIC_SV_SCIDLEN 18
 
+enum knoq_quic_stream_state {
+	INIT = 0,
+	RECV,
+	SEND,
+	CLOSED
+};
+
+typedef struct {
+	uint32_t stream_id;
+	uint8_t buf[65535];
+	uint16_t length;
+	enum knoq_quic_stream_state state;
+} knot_quic_stream_t;
+
 typedef struct knot_quic_conn {
 	ngtcp2_cid scid;
 	ngtcp2_cid dcid;
@@ -77,9 +91,11 @@ uint64_t knot_quic_cid_hash(const ngtcp2_cid *dcid);
 knot_quic_conn_t *knot_quic_conn_alloc(void);
 int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_creds_t *creds, const ngtcp2_path *local_addr, const ngtcp2_cid *scid, const ngtcp2_cid *dcid, const ngtcp2_cid *ocid, const uint32_t version);
 knot_quic_conn_t *knot_quic_conn_new(const knot_quic_creds_t *creds, const ngtcp2_path *path, const ngtcp2_cid *scid, const ngtcp2_cid *dcid, const ngtcp2_cid *ocid, const uint32_t version);
-int knot_quic_conn_on_read(struct quic_recvfrom *rq, knot_quic_conn_t *conn,
-                           ngtcp2_pkt_info *pi, uint8_t *data, size_t datalen);
-int knot_quic_conn_on_write(knot_quic_conn_t *conn);
+// int knot_quic_conn_on_read(struct quic_recvfrom *rq, knot_quic_conn_t *conn,
+//                            ngtcp2_pkt_info *pi, uint8_t *data, size_t datalen);
+int knot_quic_conn_on_read(knot_quic_conn_t *conn, ngtcp2_pkt_info *pi,
+                           uint8_t *data, size_t datalen);
+int knot_quic_conn_on_write(knot_quic_conn_t *conn, struct iovec *out);
 
 knot_quic_table_t *knot_quic_table_new(size_t size);
 int knot_quic_table_store(knot_quic_table_t *table, const ngtcp2_cid *dcid, knot_quic_conn_t *el);

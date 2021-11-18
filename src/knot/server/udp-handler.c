@@ -113,7 +113,7 @@ typedef struct {
 	void* (*udp_init)(void *);
 	void (*udp_deinit)(void *);
 	int (*udp_recv)(int, void *);
-	void (*udp_handle)(udp_context_t *, void *);
+	int (*udp_handle)(udp_context_t *, void *);
 	void (*udp_send)(void *);
 	void (*udp_sweep)(void *); // Optional
 } udp_api_t;
@@ -129,19 +129,18 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 	}
 
 #if defined(__linux__) || defined(__APPLE__)
-	struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx);
-	if (cmsg == NULL) {
-		return;
-	}
-
 	/* Unset the ifindex to not bypass the routing tables. */
-	if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
-		struct in_pktinfo *info = (struct in_pktinfo *)CMSG_DATA(cmsg);
-		info->ipi_spec_dst = info->ipi_addr;
-		info->ipi_ifindex = 0;
-	} else if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
-		struct in6_pktinfo *info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
-		info->ipi6_ifindex = 0;
+	for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx); cmsg; cmsg = CMSG_NXTHDR(tx, cmsg)) {
+		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
+			struct in_pktinfo *info = (struct in_pktinfo *)CMSG_DATA(cmsg);
+			info->ipi_spec_dst = info->ipi_addr;
+			info->ipi_ifindex = 0;
+			return;
+		} else if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
+			struct in6_pktinfo *info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
+			info->ipi6_ifindex = 0;
+			return;
+		}
 	}
 #endif
 }
@@ -195,12 +194,13 @@ static int udp_recvfrom_recv(int fd, void *d)
 	if (ret > 0) {
 		rq->fd = fd;
 		rq->iov[RX].iov_len = ret;
+		return 1;
 	}
 
 	return 0;
 }
 
-static void udp_recvfrom_handle(udp_context_t *ctx, void *d)
+static int udp_recvfrom_handle(udp_context_t *ctx, void *d)
 {
 	struct udp_recvfrom *rq = d;
 
@@ -212,6 +212,7 @@ static void udp_recvfrom_handle(udp_context_t *ctx, void *d)
 
 	/* Process received pkt. */
 	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX], NULL);
+	return KNOT_EOK;
 }
 
 static void udp_recvfrom_send(void *d)
@@ -294,7 +295,7 @@ static int udp_recvmmsg_recv(int fd, void *d)
 	return n;
 }
 
-static void udp_recvmmsg_handle(udp_context_t *ctx, void *d)
+static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 {
 	struct udp_recvmmsg *rq = d;
 
@@ -314,6 +315,7 @@ static void udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 			rq->msgs[TX][i].msg_hdr.msg_namelen = rq->msgs[RX][i].msg_hdr.msg_namelen;
 		}
 	}
+	return KNOT_EOK;
 }
 
 static void udp_recvmmsg_send(void *d)
@@ -360,9 +362,10 @@ static int xdp_recvmmsg_recv(_unused_ int fd, void *d)
 	return xdp_handle_recv(d);
 }
 
-static void xdp_recvmmsg_handle(udp_context_t *ctx, void *d)
+static int xdp_recvmmsg_handle(udp_context_t *ctx, void *d)
 {
 	xdp_handle_msgs(d, &ctx->layer, ctx->server, ctx->thread_id);
+	return KNOT_EOK;
 }
 
 static void xdp_recvmmsg_send(void *d)
@@ -474,7 +477,7 @@ static void *quic_recvfrom_init(_unused_ void *xdp_sock)
 			return NULL;
 		}
 	} else {
-		assert(0);
+		assert(0); //TODO better log something instead
 		gnutls_certificate_free_credentials(rq->tls_creds.tls_cert);
 		free(rq);
 		return NULL;
@@ -509,57 +512,31 @@ static void *quic_recvfrom_init(_unused_ void *xdp_sock)
 
 	//conf()->cache.srv_quic_secret;
 
-	// TLS session
-	// ret = gnutls_init(&rq->tls_ctx, GNUTLS_SERVER | 
-	//         GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET |
-	//         GNUTLS_NO_END_OF_EARLY_DATA);
-	// if (ret != 0) {
-	// 	gnutls_anti_replay_deinit(rq->tls_anti_replay);
-	// 	session_ticket_key_free(&rq->tls_ticket_key);
-	// 	gnutls_certificate_free_credentials(rq->tls_creds);
-	// 	free(rq);
-	// 	return NULL;
-	// }
-
-	// ret = gnutls_priority_set_direct(rq->tls_ctx, QUIC_PRIORITIES, NULL);
-	// if (ret != 0) {
-	// 	gnutls_deinit(rq->tls_ctx);
-	// 	gnutls_anti_replay_deinit(rq->tls_anti_replay);
-	// 	session_ticket_key_free(&rq->tls_ticket_key);
-	// 	gnutls_certificate_free_credentials(rq->tls_creds);
-	// 	free(rq);
-	// 	return NULL;
-	// }
-
-	// gnutls_datum_t ticket_key;	
-	// ret = gnutls_session_ticket_key_generate(&ticket_key);
-	// if (ret != 0) {
-	// 	gnutls_deinit(rq->tls_ctx);
-	// 	gnutls_certificate_free_credentials(rq->tls_creds);
-	// 	free(rq);
-	// 	return NULL;
-	// }
-
-	// ret = gnutls_session_ticket_enable_server(rq->tls_ctx, &ticket_key);
-	// if (ret != 0) {
-	// 	gnutls_memset(ticket_key.data, 0, ticket_key.size);
-	// 	gnutls_free(ticket_key.data);
-	// 	gnutls_deinit(rq->tls_ctx);
-	// 	gnutls_certificate_free_credentials(rq->tls_creds);
-	// 	free(rq);
-	// 	return NULL;
-	// }
-
-	// gnutls_handshake_set_secret_function(rq->tls_ctx, secret_func);
-	// // gnutls_handshake_set_read_function(rq->tls_ctx, read_func);
-	// // gnutls_alert_set_read_function(rq->tls_ctx, alert_read_func);
-	// // gnutls_handshake_set_hook_function(rq->tls_ctx, GNUTLS_HANDSHAKE_CLIENT_HELLO,
-	// //                              GNUTLS_HOOK_POST, client_hello_cb);
-
 	return rq;
 }
 
 static int quic_recvfrom_recv(int fd, void *d)
+{
+	/* Reset max lengths. */
+	struct quic_recvfrom *rq = (struct quic_recvfrom *)d;
+	rq->iov[RX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+	rq->msg[RX].msg_namelen = sizeof(struct sockaddr_storage);
+	rq->msg[RX].msg_controllen = sizeof(rq->pktinfo);
+
+	int ret = recvmsg(fd, &rq->msg[RX], MSG_DONTWAIT);
+	if (ret > 0) {
+		rq->fd = fd;
+		rq->iov[RX].iov_len = ret;
+		return 1;
+	}
+
+	return 0;
+}
+
+static int quic_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
+                       struct msghdr *rx, struct msghdr *tx,
+                       knot_quic_table_t *conns, knot_quic_creds_t *tls_creds,
+                       struct knot_xdp_msg *xdp_msg)
 {
 	//ngtcp2_cid dcid, scid;
 	const uint8_t *dcid, *scid;
@@ -568,159 +545,149 @@ static int quic_recvfrom_recv(int fd, void *d)
 	ngtcp2_pkt_info pi;
 	uint32_t version;
 
-	/* Reset max lengths. */
-	struct quic_recvfrom *rq = (struct quic_recvfrom *)d;
-	rq->iov[RX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
-	rq->msg[RX].msg_namelen = sizeof(struct sockaddr_storage);
-	rq->msg[RX].msg_controllen = sizeof(rq->pktinfo);
+	pi.ecn = knot_quic_msghdr_ecn(rx, ss->ss_family);
 
+	// TODO it should be already set at *ss addr
+	// struct sockaddr_storage locaddr;
+	// size_t locaddr_len = sizeof(locaddr);
+	// if (knot_quic_msghdr_local_addr(rx, ss->ss_family, &locaddr, &locaddr_len) != KNOT_EOK) {
+	// 	//std::cerr << "Unable to obtain local address" << std::endl;
+	// 	return KNOT_NET_ERECV;
+	// }
+	// TODO set server port
+	// switch (ss->ss_family) {
+	// case AF_INET: {
+	// 	struct sockaddr_in *addr = (struct sockaddr_in *)ss;
+	// 	addr->sin_port = htons(50784);
+	// 	break;
+	// }
+	// case AF_INET6: {
+	// 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)ss;
+	// 	addr->sin6_port = htons(50784);
+	// 	break;
+	// }
+	// default:
+	// 	return KNOT_NET_ERECV;
+	// }
 
-	size_t pktcnt = 0;
-	for (; pktcnt < 10;) {
+	switch (ngtcp2_pkt_decode_version_cid(&version, &dcid, &dcidlen, &scid,
+	                                      &scidlen, rx->msg_iov->iov_base,
+	                                      rx->msg_iov->iov_len,
+	                                      QUIC_SV_SCIDLEN)) {
+	case 0:
+		break;
+	case NGTCP2_ERR_VERSION_NEGOTIATION:
+		// knot_quic_send_version_negotiation(rq);
+		// knot_conn_send_version_negotiation(rq, version, scid, scidlen, dcid,
+		//                 dcidlen, ep, *local_addr, &su.sa, msg.msg_namelen);
+		// return 0;
+	default:
+		return KNOT_NET_ECONNECT; //TODO maybe change return val
+	}
+	assert(dcidlen <= NGTCP2_MAX_CIDLEN && scidlen <= NGTCP2_MAX_CIDLEN);
 
-		ssize_t nread = recvmsg(fd, &rq->msg[RX], MSG_DONTWAIT);
-		if (nread < 0) {
-			return KNOT_NET_ERECV;
-		} else if (nread == 0) {
-			return 0;
-		}
-
-		++pktcnt;
-
-		//for (int iov_i = 0; iov_i < rq->msg->msg_iovlen; ++iov_i) {}
-		rq->fd = fd;
-		rq->iov[RX].iov_len = nread;
-
-		pi.ecn = knot_quic_msghdr_ecn(&rq->msg[RX], rq->addr.ss_family);
-		struct sockaddr_storage locaddr;
-		size_t locaddr_len = sizeof(locaddr);
-		if (knot_quic_msghdr_local_addr(&rq->msg[RX], rq->addr.ss_family, &locaddr, &locaddr_len) != KNOT_EOK) {
-			//std::cerr << "Unable to obtain local address" << std::endl;
-			return KNOT_NET_ERECV;
-		}
-		
-		switch (rq->addr.ss_family) {
-		case AF_INET: {
-			struct sockaddr_in *addr = (struct sockaddr_in *)&locaddr;
-			addr->sin_port = htons(50784);
-			break;
-		}
-		case AF_INET6: {
-			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)&locaddr;
-			addr->sin6_port = htons(50784);
-			break;
-		}
-		default:
-			return KNOT_NET_ERECV;
-		}
-
-		if (nread == 0) {
-			continue;
-		}
-
-		int ret = 0;
-		switch (ret = ngtcp2_pkt_decode_version_cid(&version, &dcid,
-						&dcidlen, &scid, &scidlen,
-						rq->msg[RX].msg_iov->iov_base,
-						rq->msg[RX].msg_iov->iov_len, QUIC_SV_SCIDLEN)) {
+	knot_quic_conn_t *conn = knot_quic_table_find_dcid(conns, dcid, dcidlen);
+	if (conn == NULL) {
+		// int ret = ngtcp2_accept(&hd, rx->msg_iov->iov_base, rx->msg_iov->iov_len);
+		// switch (ret) {
+		switch (ngtcp2_accept(&hd, rx->msg_iov->iov_base, rx->msg_iov->iov_len)) {
 		case 0:
 			break;
-		case NGTCP2_ERR_VERSION_NEGOTIATION:
-			knot_quic_send_version_negotiation(rq);
-			// knot_conn_send_version_negotiation(rq, version, scid, scidlen, dcid,
-			//                 dcidlen, ep, *local_addr, &su.sa, msg.msg_namelen);
-			return 0;
+	// 	case NGTCP2_ERR_RETRY:
+	// 		// TODO send_retry
+	// 	case NGTCP2_ERR_VERSION_NEGOTIATION:
+	// 		// TODO	send_version_negotiation
 		default:
-			return KNOT_NET_ECONNECT; //TODO maybe change return val
+	// 		// TODO
+	// 		// continue;
+	// 		break;
+			return KNOT_NET_ERECV;
 		}
 
-		assert(dcidlen <= NGTCP2_MAX_CIDLEN && scidlen <= NGTCP2_MAX_CIDLEN);
-		
-		knot_quic_conn_t *conn = knot_quic_table_find_dcid(rq->conns, dcid, dcidlen);
-		if (conn == NULL) {
-			ret = ngtcp2_accept(&hd, rq->iov[RX].iov_base, rq->iov[RX].iov_len);
-			switch (ret) {
-			case 0:
-				break;
-			case NGTCP2_ERR_RETRY:
-				// TODO send_retry
-			case NGTCP2_ERR_VERSION_NEGOTIATION:
-				// TODO	send_version_negotiation
-			default:
-				// TODO
-				continue;
-			}
+	// 	// ngtcp2_cid ocid;
+		ngtcp2_cid *pocid = NULL;
 
-			// ngtcp2_cid ocid;
-			ngtcp2_cid *pocid = NULL;
-
-			assert(hd.type == NGTCP2_PKT_INITIAL);
+		assert(hd.type == NGTCP2_PKT_INITIAL);
 			
-			// TODO validate addr
+		// TODO validate addr
 
-			const ngtcp2_path path = {
-				.local = {
-					.addr = (struct sockaddr *)&locaddr,
-					.addrlen = locaddr_len
-				},
-				.remote = {
-					.addr = (struct sockaddr *)rq->msg[RX].msg_name,
-					.addrlen = rq->msg[RX].msg_namelen
-				},
-				.user_data = NULL
-			};
-			conn = knot_quic_conn_new(&rq->tls_creds, &path, &hd.scid, &hd.dcid, pocid, hd.version);
+		const ngtcp2_path path = {
+			.local = {
+				// TODO wrong port
+				.addr = (struct sockaddr *)ss,
+				.addrlen = sizeof(*ss)
+			},
+			.remote = {
+				.addr = (struct sockaddr *)rx->msg_name,
+				.addrlen = rx->msg_namelen
+			},
+			.user_data = NULL
+		};
 
-			switch (knot_quic_conn_on_read(rq, conn, &pi, rq->iov[RX].iov_base, rq->iov[RX].iov_len)) {
-			case 0:
-				break;
-			//case NETWORK_ERR_RETRY:
-				//send_retry(&hd, ep, *local_addr, &su.sa, msg.msg_namelen);
-				//continue;
-			default:
-				continue;
-			}
-
-			switch (knot_quic_conn_on_write(conn)) {
-			case 0:
-				break;
-			default:
-				return KNOT_NET_ESEND;
-			}
-
-			size_t scid_num = ngtcp2_conn_get_num_scid(conn->conn);
-			assert(scid_num <= 2);
-			ngtcp2_cid scids[scid_num];
-			scid_num = ngtcp2_conn_get_scid(conn->conn, scids);
-			for (size_t i = 0; i < scid_num; ++i) {
-				knot_quic_table_store(rq->conns, &scids[i], conn);
-			}
-			ngtcp2_cid_init(&conn->dcid, dcid, dcidlen);
-			knot_quic_table_store(rq->conns, &conn->dcid, conn);
-
-			continue;
+		conn = knot_quic_conn_new(tls_creds, &path, &hd.scid, &hd.dcid, pocid, hd.version);
+		// switch (knot_quic_conn_on_read(rq, conn, &pi, rq->iov[RX].iov_base, rq->iov[RX].iov_len)) {
+		switch (knot_quic_conn_on_read(conn, &pi, rx->msg_iov->iov_base, rx->msg_iov->iov_len)) {
+		case 0:
+			break;
+	// 	case NETWORK_ERR_RETRY:
+	// 		//send_retry(&hd, ep, *local_addr, &su.sa, msg.msg_namelen);
+	// 		//continue;
+		default:
+	// 		// continue;
+			return KNOT_NET_ERECV;
 		}
 
-		if (ngtcp2_conn_is_in_closing_period(conn->conn)) {
-			continue;
+		switch (knot_quic_conn_on_write(conn, tx->msg_iov)) {
+		case 0:
+			break;
+		default:
+			return KNOT_NET_ESEND;
 		}
 
-		// if (h->draining()) {
-		// 	continue;
-		// }
-
-		// if (auto rv = h->on_read(ep, *local_addr, &su.sa, msg.msg_namelen, &pi, buf.data(), nread); rv != 0) {
-		// 	if (rv != NETWORK_ERR_CLOSE_WAIT) {
-		// 		remove(h);
-		// 	}
-		// 	continue;
-		// }
-
-		// h->signal_write();
-
+		size_t scid_num = ngtcp2_conn_get_num_scid(conn->conn);
+		assert(scid_num <= 2);
+		ngtcp2_cid scids[scid_num];
+		scid_num = ngtcp2_conn_get_scid(conn->conn, scids);
+		for (size_t i = 0; i < scid_num; ++i) {
+			knot_quic_table_store(conns, &scids[i], conn);
+		}
+		ngtcp2_cid_init(&conn->dcid, dcid, dcidlen);
+		knot_quic_table_store(conns, &conn->dcid, conn);
+		// return KNOT_EOK;
 	}
 
-	return 0;
+	if (ngtcp2_conn_is_in_closing_period(conn->conn)) {
+		// continue;
+	}
+
+	// // if (h->draining()) {
+	// // 	continue;
+	// // }
+
+	// // if (auto rv = h->on_read(ep, *local_addr, &su.sa, msg.msg_namelen, &pi, buf.data(), nread); rv != 0) {
+	// // 	if (rv != NETWORK_ERR_CLOSE_WAIT) {
+	// // 		remove(h);
+	// // 	}
+	// // 	continue;
+	// // }
+
+	// // h->signal_write();
+	return KNOT_EOK;
+}
+
+
+static int quic_recvfrom_handle(udp_context_t *ctx, void *d)
+{
+	struct quic_recvfrom *rq = d;
+
+	/* Prepare TX address. */
+	rq->msg[TX].msg_namelen = rq->msg[RX].msg_namelen;
+	rq->iov[TX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+
+	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
+
+	/* Process received pkt. */
+	return quic_handle(ctx, rq->fd, &rq->addr, &rq->msg[RX], &rq->msg[TX], rq->conns, &rq->tls_creds, NULL);
 }
 
 
@@ -728,7 +695,7 @@ static udp_api_t quic_recvfrom_api = {
 	quic_recvfrom_init,
 	udp_recvfrom_deinit,
 	quic_recvfrom_recv,
-	udp_recvfrom_handle,
+	quic_recvfrom_handle,
 	udp_recvfrom_send,
 };
 #endif /* LIBNGTCP2 */
@@ -842,7 +809,12 @@ int udp_master(dthread_t *thread)
 #endif
 	} else if (is_quic_thread(handler->server, thread_id)) {
 #ifdef LIBNGTCP2
+#ifdef ENABLE_RECVMMSG
+		//api = &quic_recvmmsg_api;
+		api = &quic_recvfrom_api; //TODO change to recvmmsg
+#else
 		api = &quic_recvfrom_api;
+#endif
 #else
 		assert(0);
 #endif
@@ -901,8 +873,8 @@ int udp_master(dthread_t *thread)
 			if (!fdset_it_is_pollin(&it)) {
 				continue;
 			}
-			if (api->udp_recv(fdset_it_get_fd(&it), api_ctx) > 0) {
-				api->udp_handle(&udp, api_ctx);
+			if (api->udp_recv(fdset_it_get_fd(&it), api_ctx) > 0 &&
+			    api->udp_handle(&udp, api_ctx) == KNOT_EOK) {
 				api->udp_send(api_ctx);
 			}
 		}

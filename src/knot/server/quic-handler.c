@@ -527,7 +527,9 @@ knot_quic_conn_t *knot_quic_conn_new(const knot_quic_creds_t *creds, const ngtcp
 	return conn;
 }
 
-int knot_quic_conn_on_read(struct quic_recvfrom *rq, knot_quic_conn_t *conn, ngtcp2_pkt_info *pi, uint8_t *data, size_t datalen)
+//int knot_quic_conn_on_read(struct quic_recvfrom *rq, knot_quic_conn_t *conn, ngtcp2_pkt_info *pi, uint8_t *data, size_t datalen)
+int knot_quic_conn_on_read(knot_quic_conn_t *conn, ngtcp2_pkt_info *pi,
+                           uint8_t *data, size_t datalen)
 {
 	int ret = ngtcp2_conn_read_pkt(conn->conn, ngtcp2_conn_get_path(conn->conn), pi, data, datalen, quic_timestamp());
 	if (ret != 0) {
@@ -563,8 +565,29 @@ int knot_quic_conn_on_read(struct quic_recvfrom *rq, knot_quic_conn_t *conn, ngt
 	return KNOT_EOK;
 }
 
-int knot_quic_conn_on_write(knot_quic_conn_t *conn)
+int knot_quic_conn_on_write(knot_quic_conn_t *conn, struct iovec *out)
 {
+	if (ngtcp2_conn_is_in_closing_period(conn->conn) ||
+	    ngtcp2_conn_is_in_draining_period(conn->conn)) {
+		return KNOT_EOK;
+	}
+
+	ngtcp2_pkt_info pi;
+	size_t max_udp_payload_size =
+	                ngtcp2_conn_get_path_max_udp_payload_size(conn->conn);
+	uint64_t left = ngtcp2_conn_get_max_data_left(conn->conn);
+	// size_t nwrite = ngtcp2_conn_writev_stream(conn->conn,
+	//                 ngtcp2_conn_get_path(conn->conn), &pi, out->iov_base,
+	//                 max_udp_payload_size, &(out->iov_len),
+	//                 NGTCP2_WRITE_STREAM_FLAG_FIN, -1, NULL, 0,
+	//                 quic_timestamp());
+	out->iov_len = ngtcp2_conn_write_pkt(conn->conn,
+	                ngtcp2_conn_get_path(conn->conn), &pi, out->iov_base,
+	                out->iov_len, quic_timestamp());
+	// if (nwrite <= 0) {
+
+	// }
+	// out->iov_len = nwrite;
 	return KNOT_EOK;
 }
 
