@@ -61,6 +61,21 @@ class Knot(object):
         cls.RDATA_DESC.argtypes = [ctypes.c_ushort]
 
     @classmethod
+    def rclass_str(cls, rclass: int) -> str:
+        """Returns RRCLASS in text form."""
+
+        if (rclass == 1):
+            return "IN"
+        elif (rclass == 3):
+            return "CH"
+        elif (rclass == 254):
+            return "NONE"
+        elif (rclass == 255):
+            return "ANY"
+        else:
+            return "CLASS%i" % rclass
+
+    @classmethod
     def rtype_str(cls, rtype: int) -> str:
         """Returns RRTYPE in text form."""
 

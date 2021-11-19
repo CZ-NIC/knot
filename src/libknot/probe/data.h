@@ -125,7 +125,7 @@ int knot_probe_data_set(knot_probe_data_t *data, knot_probe_proto_t proto,
  *
  * \param sockfd  Socket descriptor of a TCP connection.
  *
- * \return Average TCP RTT.
+ * \return Average TCP RTT in microseconds.
  */
 uint32_t knot_probe_tcp_rtt(int sockfd);
 

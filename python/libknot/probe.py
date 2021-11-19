@@ -1,6 +1,7 @@
 """Libknot probe interface wrapper."""
 
 import ctypes
+import datetime
 import enum
 import socket
 import libknot
@@ -98,16 +99,74 @@ class KnotProbeData(ctypes.Structure):
         return string
 
     def __str__(self) -> str:
-        """Returns data unit in pre-formatted simple text form."""
+        """Returns the data unit in a pre-formatted text form."""
+
+        return self.str()
+
+    def str(self, timestamp: bool = True, color: bool = True) -> str:
+        """Returns the data unit in a pre-formatted text form with customization."""
+
+        RST = "\x1B[0m"
+        BOLD = "\x1B[1m"
+        UNDR = "\x1B[4m"
+        RED = "\x1B[31m"
+        GRN = "\x1B[32m"
+        YELW = "\x1B[93m"
+        MGNT = "\x1B[35m"
+        CYAN = "\x1B[36m"
+
+        def COL(string, color_str, active=color):
+            return str(string) if not active else color_str + str(string) + RST
 
         string = str()
-        string += "%s@%u > " % (self.addr_str(self.remote_addr), self.remote_port)
-        string += "%s@%u "   % (self.addr_str(self.local_addr), self.local_port)
-        string += "%s, " % ("UDP" if self.proto == 0 else "TCP")
-        string += "%s %s" % (self.qname_str(), libknot.Knot.rtype_str(self.query_type))
-        if self.edns_present == 1 and self.edns_flag_do == 1:
-            string += " DO"
-        string += ", %s" % libknot.Knot.rcode_str(self.reply_rcode)
+        if timestamp:
+            string += "%s " % COL(datetime.datetime.now().time(), YELW)
+        string += "%s -> %s, " % (COL(self.addr_str(self.remote_addr), UNDR),
+                                  COL(self.addr_str(self.local_addr), UNDR))
+        string += "port %u -> %u " % (self.remote_port, self.local_port)
+        string += (COL("UDP", GRN) if self.proto == 0 else COL("TCP", RED))
+        if self.tcp_rtt > 0:
+            string += ", RTT %.2f ms" % (self.tcp_rtt / 1000)
+        string += "\n ID %u, " % self.query_hdr.id
+        if self.query_hdr.opcode == 0:
+            string += "QUERY"
+        elif self.query_hdr.opcode == 4:
+            string += COL("NOTIFY", MGNT)
+        elif self.query_hdr.opcode == 5:
+            string += COL("UPDATE", MGNT)
+        else:
+            string += COL("OPCODE%i" % self.query_hdr.opcode, MGNT)
+        string += ", "
+        string += COL("%s %s %s" % (self.qname_str(),
+                                    libknot.Knot.rclass_str(self.query_class),
+                                    libknot.Knot.rtype_str(self.query_type)), BOLD)
+        if self.edns_present == 1:
+            string += ", EDNS %i B" % self.edns_payload
+            if self.edns_flag_do == 1:
+                string += ", " + COL("DO", BOLD)
+            if (self.edns_options & (1 << 3)) != 0:
+                string += ", NSID"
+            if (self.edns_options & (1 << 8)) != 0:
+                string += ", ECS"
+            if (self.edns_options & (1 << 10)) != 0:
+                string += ", COOKIE"
+        string += ", " + COL("%u B" % self.query_size, CYAN)
+        if self.reply_size == 0:
+            return string
+        string += " -> %s" % COL(libknot.Knot.rcode_str(self.reply_rcode), BOLD)
+        if (self.reply_ede != libknot.probe.KnotProbeData.EDE_NONE):
+            string += ", EDE %u" % self.reply_ede
+        if self.reply_hdr.flag_aa != 0:
+            string += ", " + COL("AA", BOLD)
+        if self.reply_hdr.flag_tc != 0:
+            string += ", " + COL("TC", BOLD)
+        if self.reply_hdr.answers > 0:
+            string += ", %u ANS" % self.reply_hdr.answers
+        if self.reply_hdr.authorities > 0:
+            string += ", %u AUT" % self.reply_hdr.authorities
+        if self.reply_hdr.additionals > 0:
+            string += ", %u ADD" % self.reply_hdr.additionals
+        string += ", " + COL("%u B" % self.reply_size, CYAN)
         return string
 
 
