@@ -1383,7 +1383,7 @@ Bugfixes:
  - Timers for expired zones are reset on reload
  - Zone doesn't expire when the server is down
  - Failed to handle keys with duplicate keytags
- - Per zone module and global module insconsistency
+ - Per zone module and global module inconsistency
  - Obsolete online signing module configuration
  - Malformed output from kjournalprint
  - Redundant SO_REUSEPORT activation on the TCP socket
