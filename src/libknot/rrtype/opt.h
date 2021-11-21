@@ -58,7 +58,7 @@ enum {
 	KNOT_EDNS_CLIENT_SUBNET_ADDRESS_MAXLEN = 16,
 
 	/*! \brief Default EDNS alignment size for a query. */
-	KNOT_EDNS_ALIGNMENT_QUERY_DEFALT     = 128,
+	KNOT_EDNS_ALIGNMENT_QUERY_DEFAULT    = 128,
 	/*! \brief Default EDNS alignment size for a response. */
 	KNOT_EDNS_ALIGNMENT_RESPONSE_DEFAULT = 468,
 
