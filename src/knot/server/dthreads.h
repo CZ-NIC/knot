@@ -138,7 +138,7 @@ int dt_start(dt_unit_t *unit);
  *
  * \note This is useful to interrupt some blocking I/O as well, for example
  *       with SIGALRM, which is handled by default.
- * \note Signal handler may be overriden in runnable.
+ * \note Signal handler may be overridden in runnable.
  *
  * \param thread Target thread instance.
  * \param signum Signal code.
