@@ -7,7 +7,7 @@
 # This script collects selected system and Knot DNS configuration
 # data and prints them out to the standard output. If the output
 # is sent through a secure channel to the Knot DNS development team,
-# the data can serve as a basis for the Knot DNS performace troubleshooting.
+# the data can serve as a basis for the Knot DNS performance troubleshooting.
 #
 # Usage:  ./kinquire.sh <Knot DNS configuration file>
 #         ./kinquire.sh <Knot DNS configuration DB directory>
