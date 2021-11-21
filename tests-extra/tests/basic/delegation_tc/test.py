@@ -36,7 +36,7 @@ class DelegationTest:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_vaue, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):
         return False
 
 # Authoritative answer with glue of foreign name server
