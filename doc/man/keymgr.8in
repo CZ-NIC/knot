@@ -180,7 +180,7 @@ Delete old keys that are in state \(aqremoved\(aq.
 Print to stdout KeySigningRequest based on pre\-generated ZSKs for specified period.
 .TP
 \fBsign\-ksr\fP \fIksr_file\fP
-Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
+Read KeySigningRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
 .TP
 \fBvalidate\-skr\fP \fIskr_file\fP
 Read SignedKeyResponse from a text file and validate the RRSIGs in it if not corrupt.

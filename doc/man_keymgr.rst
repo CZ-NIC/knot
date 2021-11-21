@@ -153,7 +153,7 @@ Commands related to Offline KSK feature
   Print to stdout KeySigningRequest based on pre-generated ZSKs for specified period.
 
 **sign-ksr** *ksr_file*
-  Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
+  Read KeySigningRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
 
 **validate-skr** *skr_file*
   Read SignedKeyResponse from a text file and validate the RRSIGs in it if not corrupt.
