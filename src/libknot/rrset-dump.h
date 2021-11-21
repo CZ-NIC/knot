@@ -46,7 +46,7 @@ typedef struct {
 	/*!< Format TTL as DHMS. */
 	bool	human_ttl;
 	/*!< Format timestamp as YYYYMMDDHHmmSS. */
-	bool	human_tmstamp;
+	bool	human_timestamp;
 	/*!< Force generic data representation. */
 	bool	generic;
 	/*!< Hide binary parts of RRSIGs and DNSKEYs. */
