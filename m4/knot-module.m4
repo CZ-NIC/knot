@@ -20,7 +20,7 @@ AC_DEFUN([KNOT_MODULE],
   AS_CASE([$module],
    [yes],    [STATIC_MODULE_$1=yes
               static_modules="${static_modules}$1 "
-              static_modules_declars="${static_modules_declars}extern const knotd_mod_api_t knotd_mod_api_$1;\n"
+              static_modules_declares="${static_modules_declares}extern const knotd_mod_api_t knotd_mod_api_$1;\n"
               static_modules_init="${static_modules_init}\\\\\n\t{ &knotd_mod_api_$1 },"],
    [shared], [SHARED_MODULE_$1=yes
               shared_modules="${shared_modules}$1 "
