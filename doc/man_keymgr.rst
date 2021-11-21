@@ -87,7 +87,7 @@ Commands
   Takes one argument: path to BIND key file (private or public, but both MUST exist).
 
 **import-pub** *BIND_pubkey_file*
-  Imports a public key into KASP database. This key won't be rollovered nor used for signing.
+  Imports a public key into KASP database. This key won't be rolled over nor used for signing.
   Takes one argument: path to BIND public key file.
 
 **import-pem** *PEM_file* [*arguments*...]
