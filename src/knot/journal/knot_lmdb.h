@@ -182,7 +182,7 @@ void knot_lmdb_abort(knot_lmdb_txn_t *txn);
 /*!
  * \brief Commit a transaction, or abort it if id had failured.
  *
- * \param txn   Transaction to be commited.
+ * \param txn   Transaction to be committed.
  *
  * \note If txn->ret equals KNOT_EOK afterwards, whole DB transaction was successful.
  */
