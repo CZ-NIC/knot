@@ -38,7 +38,7 @@ typedef struct {
 
 	/*! Iteration context. */
 	struct {
-		/*! Total number of possibilies. */
+		/*! Total number of possibilities. */
 		size_t count;
 		/*! The first possibility. */
 		char *first_key;
