@@ -176,7 +176,7 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
  * \param max_at_once      Don't close more connections at once.
  * \param close_timeout    Gracefully close connections older than this (usecs).
  * \param reset_timeout    Reset connections older than this (usecs).
- * \param reset_at_least   Reset at least this number of oldest conecctions, even
+ * \param reset_at_least   Reset at least this number of oldest connections, even
  *                         when not yet timeouted.
  * \param reset_buf_size   Reset oldest connection with buffered partial DNS messages
  *                         to free up this amount of space.
