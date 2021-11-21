@@ -304,7 +304,7 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
  * \param tcp_reuseport     Indication if reuseport on TCP is enabled.
  * \param socket_affinity   Indication if CBPF should be attached.
  *
- * \retval Pointer to a new initialized inteface.
+ * \retval Pointer to a new initialized interface.
  * \retval NULL if error.
  */
 static iface_t *server_init_iface(struct sockaddr_storage *addr,

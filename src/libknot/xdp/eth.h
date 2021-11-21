@@ -53,7 +53,7 @@ int knot_eth_mtu(const char *devname);
 /*!
  * \brief Get the corresponding network interface name for the address.
  *
- * \param addr     Address of the inteface.
+ * \param addr     Address of the interface.
  * \param out      Output buffer for the interface name.
  * \param out_len  Size of the output buffer.
  *
@@ -69,7 +69,7 @@ typedef enum {
 } knot_xdp_mode_t;
 
 /*!
- * \brief Return the current XDP mode of a network inteface.
+ * \brief Return the current XDP mode of a network interface.
  *
  * \param if_index  Index of the interface, output from if_nametoindex().
  *
