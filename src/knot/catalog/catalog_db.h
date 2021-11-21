@@ -91,7 +91,7 @@ void catalog_abort(catalog_t *cat);
 /*!
  * \brief Free up old txns.
  *
- * \note This must be called after catalog_commit() with a delay of synchronnize_rcu().
+ * \note This must be called after catalog_commit() with a delay of synchronize_rcu().
  *
  * \param cat   Catalog.
  */
