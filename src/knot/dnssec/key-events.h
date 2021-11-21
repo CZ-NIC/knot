@@ -50,7 +50,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay);
 
 /*!
- * \brief Is there a key in sumbmission phase?
+ * \brief Is there a key in submission phase?
  *
  * \param ctx zone signing context
  *

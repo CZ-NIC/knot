@@ -3,7 +3,7 @@
 if [ -z "$1" -o "${1:0:1}" == "-" ]; then
   echo "Usage: $0 <zone name> [<resolver IP:port>]" >&2
   echo "" >&2
-  echo "This script generates part of Knot DNS configuration regarding KSK submittion" >&2
+  echo "This script generates part of Knot DNS configuration regarding KSK submission" >&2
   echo "for automatic KSK rollover. It gathers IP addresses of all parent zone's NS servers." >&2
   echo "You shall specify your zone as the first parameter and facultatively your resolver's" >&2
   echo "address and port." >&2
@@ -68,7 +68,7 @@ for NS in $ALL_NS; do
 done
 
 echo "# add this to policy section"
-echo -n "    ksk-submittion-check: [ "
+echo -n "    ksk-submission-check: [ "
 for NS in $ALL_NS; do
   NSID="${NS//./_}"
   echo -n "$NSID "
