@@ -25,7 +25,7 @@ master.reload()
 
 master.zone_wait(zone)
 
-slave.start() # slave starts with older version of zone and doesn't attempt refersh since it's in timers
+slave.start() # slave starts with older version of zone and doesn't attempt refresh since it's in timers
 
 slave.zone_wait(zone)
 
