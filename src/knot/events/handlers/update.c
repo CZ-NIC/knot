@@ -416,7 +416,7 @@ int event_update(conf_t *conf, zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	/* Init updates respones. */
+	/* Init updates responses. */
 	int ret = init_update_responses(&updates);
 	if (ret != KNOT_EOK) {
 		/* Send what responses we can. */
