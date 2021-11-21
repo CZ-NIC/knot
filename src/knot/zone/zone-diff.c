@@ -312,7 +312,7 @@ static int add_new_nodes(zone_node_t *node, void *data)
 
 	/*
 	* If a node is not present in the second zone, it is a new node
-	* and has to be added to changeset. Differencies on the RRSet level are
+	* and has to be added to changeset. Differences on the RRSet level are
 	* already handled.
 	*/
 	zone_node_t *new_node = zone_tree_get(param->nodes, node->owner);
