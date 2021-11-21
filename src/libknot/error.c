@@ -78,7 +78,7 @@ static const struct error errors[] = {
 	{ KNOT_ENORECORD,    "no such record in zone found" },
 	{ KNOT_EISRECORD,    "such record already exists in zone" },
 	{ KNOT_ENOMASTER,    "no usable master" },
-	{ KNOT_EPREREQ,      "UPDATE prerequisity not met" },
+	{ KNOT_EPREREQ,      "UPDATE prerequisites not met" },
 	{ KNOT_ETTL,         "TTL mismatch" },
 	{ KNOT_ENOXFR,       "transfer was not sent" },
 	{ KNOT_EDENIED,      "not allowed" },
