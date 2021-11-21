@@ -86,7 +86,7 @@ typedef bool (*knot_lmdb_copy_cb)(MDB_val *cur_key, MDB_val *cur_val);
 void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags, const char *dbname);
 
 /*!
- * \brief Check if the databse exists on the filesystem.
+ * \brief Check if the database exists on the filesystem.
  *
  * \param db   The DB in question.
  *

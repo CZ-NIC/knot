@@ -74,7 +74,7 @@ int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
 /*!
  * \brief Write timers for all zones.
  *
- * \param db      Timer databse.
+ * \param db      Timer database.
  * \param zonedb  Zones database.
  *
  * \return KNOT_E*
@@ -84,7 +84,7 @@ int zone_timers_write_all(knot_lmdb_db_t *db, knot_zonedb_t *zonedb);
 /*!
  * \brief Selectively delete zones from the database.
  *
- * \param db         Timer dababase.
+ * \param db         Timer database.
  * \param keep_zone  Filtering callback.
  * \param cb_data    Data passed to callback function.
  *
