@@ -25,7 +25,7 @@ struct zone_contents;
  *
  * \param zone   Catalog zone in question.
  *
- * \retval KNOT_EZONEINVAL   Invalid varsion record.
+ * \retval KNOT_EZONEINVAL   Invalid version record.
  * \retval KNOT_EISRECORD    Some of single-record RRSets has multiple RRs.
  * \return KNOT_EOK          All OK.
  */
