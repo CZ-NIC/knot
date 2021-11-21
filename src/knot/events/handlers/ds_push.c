@@ -132,7 +132,7 @@ static int ds_push_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	}
 
 	if (data->parent_query[0] == '\0') {
-		// query for parent SOA systematicly fails
+		// query for parent SOA systematically fails
 		DS_PUSH_LOG(LOG_WARNING, data->zone, data->remote,
 		            "unable to query parent SOA");
 		return KNOT_STATE_FAIL;
