@@ -17,7 +17,7 @@ implementation which allows it to scale well on SMP systems and
 operate non-stop even when adding or removing zones.
 
 The server itself is accompanied by several utilities for general DNS
-operations or for maintaing the server.
+operations or for maintaining the server.
 
 For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 
