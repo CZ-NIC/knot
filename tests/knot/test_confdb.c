@@ -420,7 +420,7 @@ static void test_conf_db_iter(conf_t *conf, knot_db_txn_t *txn)
 	while (ret == KNOT_EOK) {
 		const uint8_t *id;
 		size_t id_len;
-		id = NULL, id_len = 0; // prevents Wuinitialized
+		id = NULL, id_len = 0; // prevents Wuninitialized
 		ret = conf_db_iter_id(conf, &iter, &id, &id_len);
 		is_int(KNOT_EOK, ret, "Get iteration id");
 		ok(id_len == strlen(names[count]), "Compare iteration id length");
