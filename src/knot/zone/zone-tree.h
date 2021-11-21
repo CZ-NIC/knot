@@ -199,7 +199,7 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
                        zone_tree_new_node_cb_t new_cb, void *new_cb_ctx, zone_node_t **new_node);
 
 /*!
- * \brief Remove a node in zone tree, removin also empty parents.
+ * \brief Remove a node in zone tree, removing also empty parents.
  *
  * \param tree          Zone tree to remove from.
  * \param node          Node to be removed.
