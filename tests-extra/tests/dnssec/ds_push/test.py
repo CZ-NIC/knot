@@ -22,7 +22,7 @@ def pregenerate_key(server, zone, alg):
         def __init__(self, name):
             self.name = name
 
-    server.gen_key(a_class_with_name("notexisting.zone."), ksk=True, alg=alg,
+    server.gen_key(a_class_with_name("nonexistent.zone."), ksk=True, alg=alg,
                    addtopolicy=zone[0].name)
 
 # check zone if keys are present and used for signing
