@@ -251,7 +251,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 
 		knot_tcp_relay_t relay = { .msg = msg, .conn = *conn };
 
-		// process incomming data
+		// process incoming data
 		if (seq_ack_match && (msg->flags & KNOT_XDP_MSG_ACK) && msg->payload.iov_len > 0) {
 			resp_ack(msg, KNOT_XDP_MSG_ACK);
 			relay.action = XDP_TCP_DATA;
@@ -325,7 +325,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 					}
 				}
 				// unmatching ACK is ignored, this includes:
-				// - incomming out-of-order data
+				// - incoming out-of-order data
 				// - ACK of some previous part of outgoing data
 			} else {
 				switch ((*conn)->state) {

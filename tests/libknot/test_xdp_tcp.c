@@ -71,7 +71,7 @@ static void tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
 }
 
 /*!
- * \brief Find connection related to incomming message.
+ * \brief Find connection related to incoming message.
  */
 static knot_tcp_conn_t *tcp_table_find(knot_tcp_table_t *table, knot_xdp_msg_t *msg_recv)
 {
