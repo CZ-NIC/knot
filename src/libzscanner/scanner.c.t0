@@ -3822,7 +3822,7 @@ static const short _zone_scanner_index_offsets[] = {
 	9935, 9936, 9937, 9938, 9939
 };
 
-static const short _zone_scanner_indicies[] = {
+static const short _zone_scanner_indices[] = {
 	1, 1, 2, 3, 5, 6, 7, 8,
 	9, 10, 11, 12, 13, 14, 15, 16,
 	17, 18, 19, 20, 21, 5, 6, 7,
@@ -6873,7 +6873,7 @@ _resume:
 	}
 
 _match:
-	_trans = _zone_scanner_indicies[_trans];
+	_trans = _zone_scanner_indices[_trans];
 	cs = _zone_scanner_trans_targs[_trans];
 
 	if ( _zone_scanner_trans_actions[_trans] == 0 )
