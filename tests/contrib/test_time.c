@@ -84,10 +84,10 @@ static void test_knot_time(void)
 	ok(ret == 0, "compare two infinities");
 
 	ret = knot_time_cmp(a, inf);
-	ok(ret == -1, "compare time and infty");
+	ok(ret == -1, "compare time and infinity");
 
 	ret = knot_time_cmp(inf, a);
-	ok(ret == 1, "compare infty and time");
+	ok(ret == 1, "compare infinity and time");
 
 	c = knot_time_min(a, a);
 	ok(c == a, "take same time");
@@ -99,7 +99,7 @@ static void test_knot_time(void)
 	ok(c == a, "take second smaller");
 
 	c = knot_time_min(inf, inf);
-	ok(c == inf, "take same infty");
+	ok(c == inf, "take same infinity");
 
 	c = knot_time_min(a, inf);
 	ok(c == a, "take first finite");
@@ -114,13 +114,13 @@ static void test_knot_time(void)
 	ok(d == -1, "negative diff");
 
 	d = knot_time_diff(inf, inf);
-	ok(d == KNOT_TIMEDIFF_MAX, "positive double infty diff");
+	ok(d == KNOT_TIMEDIFF_MAX, "positive double infinity diff");
 
 	d = knot_time_diff(inf, a);
-	ok(d == KNOT_TIMEDIFF_MAX, "positive infty diff");
+	ok(d == KNOT_TIMEDIFF_MAX, "positive infinity diff");
 
 	d = knot_time_diff(a, inf);
-	ok(d == KNOT_TIMEDIFF_MIN, "negative infty diff");
+	ok(d == KNOT_TIMEDIFF_MIN, "negative infinity diff");
 }
 
 static void test_time_parse_expect(int ret, knot_time_t res,
