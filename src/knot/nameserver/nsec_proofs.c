@@ -486,7 +486,7 @@ static int put_nxdomain(const zone_contents_t *zone,
  *
  * \param match     Node matching QNAME.
  * \param previous  Previous node to QNAME in the zone.
- * \param qdata     Query procssing data.
+ * \param qdata     Query processing data.
  * \param resp      Response packet.
  *
  * \return KNOT_E*
