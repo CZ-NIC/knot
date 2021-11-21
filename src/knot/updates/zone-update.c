@@ -31,7 +31,7 @@
 #include <unistd.h>
 #include <urcu.h>
 
-// Call mem_trim() whenever accumuled size of updated zones reaches this size.
+// Call mem_trim() whenever accumulated size of updated zones reaches this size.
 #define UPDATE_MEMTRIM_AT (10 * 1024 * 1024)
 
 static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t *old_contents)
