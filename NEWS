@@ -427,7 +427,7 @@ Bugfixes:
  - Shared KSK doesn't work with an initial key
  - Self-created RRSIGs are still cryptographically verified in some unnecessary cases
  - Changed NSEC3PARAM not correctly detected during zone update
- - NSEC(3) chain not fixed if affected by zone udpate
+ - NSEC(3) chain not fixed if affected by zone update
  - knotc orphan purge doesn't work on journal
  - Online signing configured along with DNSSEC signing can cause MDB_BAD_RSLOT
    error during server reload
