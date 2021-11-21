@@ -1734,7 +1734,7 @@ Bugfixes:
 ---------
  - Journal file would sometimes outgrow its limit (ixfr-fslimit in configuration)
  - Fixed incompatibility with OpenSSL 0.9.8
- - Proper handling when hostname cannot be retreived (for NSID and CH)
+ - Proper handling when hostname cannot be retrieved (for NSID and CH)
 
 Features:
 ---------
