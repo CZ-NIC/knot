@@ -505,7 +505,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 			goto fail;
 		}
 
-		// put pem to kesytore
+		// put pem to keystore
 		ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
 		if (ret != DNSSEC_EOK) {
