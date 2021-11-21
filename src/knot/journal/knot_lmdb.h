@@ -330,7 +330,7 @@ int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool pr
 bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val);
 
 /*!
- * \brief Open a transaction, insert a record, commmit and free key's and val's mv_data.
+ * \brief Open a transaction, insert a record, commit and free key's and val's mv_data.
  *
  * \param db    DB to be inserted into.
  * \param key   Inserted key.
