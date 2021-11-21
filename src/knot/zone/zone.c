@@ -59,7 +59,7 @@ static void free_ddns_queue(zone_t *zone)
  */
 static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool verbose)
 {
-	/*! @note Function expects nobody will change zone contents meanwile. */
+	/*! @note Function expects nobody will change zone contents meanwhile. */
 
 	assert(zone);
 
