@@ -156,7 +156,7 @@ int test_date_to_timestamp(void)
 		test_timestamp = 0U; // prevents Wunitialized
 		date_to_timestamp(buffer, &test_timestamp);
 
-		// Some continuous loging.
+		// Some continuous logging.
 		if (ref_timestamp % 10000000 == 0) {
 			val1 = ref_timestamp;
 			printf("%s = %"PRIu64"\n", buffer, val1);
