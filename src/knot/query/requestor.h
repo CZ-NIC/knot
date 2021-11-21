@@ -108,7 +108,7 @@ void knot_requestor_clear(knot_requestor_t *requestor);
  *
  * \param requestor  Requestor instance.
  * \param request    Request instance.
- * \param timeout_ms Timeout of each operation in miliseconds (-1 for infinity).
+ * \param timeout_ms Timeout of each operation in milliseconds (-1 for infinity).
  *
  * \return KNOT_EOK or error
  */

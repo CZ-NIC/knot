@@ -124,7 +124,7 @@ int net_accept(int sock, struct sockaddr_storage *addr);
  * \param[in] buffer      Message buffer.
  * \param[in] size        Size of the message.
  * \param[in] addr        Remote address (ignored for SOCK_STREAM).
- * \param[in] timeout_ms  Write timeout in miliseconds (-1 for infinity,
+ * \param[in] timeout_ms  Write timeout in milliseconds (-1 for infinity,
  *                        not valid for SOCK_DGRAM).
  *
  * \return Number of bytes sent or negative error code.
@@ -139,7 +139,7 @@ ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
  * \param[out] buffer      Receiving buffer.
  * \param[in]  size        Capacity of the receiving buffer.
  * \param[out] addr        Remote address (can be NULL).
- * \param[in]  timeout_ms  Read timeout in miliseconds (-1 for infinity).
+ * \param[in]  timeout_ms  Read timeout in milliseconds (-1 for infinity).
  *
  * \return Number of bytes read or negative error code.
  */
