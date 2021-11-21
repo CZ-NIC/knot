@@ -565,7 +565,7 @@ class Server(object):
             query.want_dnssec()
             dig_flags += " +dnssec +bufsize=%i" % query.payload
 
-        # Store function arguments for possible comparation.
+        # Store function arguments for possible comparison.
         args = dict()
         params = inspect.getargvalues(inspect.currentframe())
         for param in params.args:
