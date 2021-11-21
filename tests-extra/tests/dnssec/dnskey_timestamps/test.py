@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Check if DNSKEY lifetime timestamps are proccessed correctly by Knot.
+Check if DNSKEY lifetime timestamps are processed correctly by Knot.
 """
 
 import collections
