@@ -77,7 +77,7 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item,
 
 	struct axfr_proc *axfr = (struct axfr_proc*)state;
 
-	int ret = zone_tree_it_begin((zone_tree_t *)item, &axfr->it); // does nothing if already itearating
+	int ret = zone_tree_it_begin((zone_tree_t *)item, &axfr->it); // does nothing if already iterating
 
 	/* Put responses. */
 	while (ret == KNOT_EOK && !zone_tree_it_finished(&axfr->it)) {
