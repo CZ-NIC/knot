@@ -89,7 +89,7 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp);
 /*!
  * \brief Converts wire-format dname to text dname.
  *
- * \param data		Buffer containg wire-format dname.
+ * \param data		Buffer containing wire-format dname.
  * \param data_len	Length of the buffer.
  * \param text		Text output.
  */
