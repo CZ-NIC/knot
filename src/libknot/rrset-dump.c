@@ -1034,7 +1034,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	// Altitude calculation.
 	double alt = 0.01 * alt_w - 100000.0;
 
-	// Compute mantisa and exponent for each size.
+	// Compute mantissa and exponent for each size.
 	uint8_t size_m = size_w >> 4;
 	uint8_t size_e = size_w & 0xF;
 	uint8_t hpre_m = hpre_w >> 4;
