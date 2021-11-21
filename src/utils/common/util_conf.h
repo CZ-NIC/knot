@@ -79,6 +79,6 @@ int util_conf_init_default(void);
 void util_update_privileges(void);
 
 /*!
- * \brief Deinitialize utlity conf() from util_conf_init_*().
+ * \brief Deinitialize utility conf() from util_conf_init_*().
  */
 void util_conf_deinit(void);
