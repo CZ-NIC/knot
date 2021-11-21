@@ -1145,7 +1145,7 @@ Improvements:
  - NSEC(3) chain is no longer recomputed whole on every update
  - Remove inconsistent and unnecessary quoting in log files
  - Avoiding of overlapping key rollovers at a time
- - More DNSSSEC-related semantic checks
+ - More DNSSEC-related semantic checks
  - Extended timestamp format in keymgr
 
 Bugfixes:
