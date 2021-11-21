@@ -98,9 +98,9 @@ void wire_dname_to_str(const uint8_t  *data,
                        char *text);
 
 /*!
- * \brief Converts unsigned integer to mantisa*10^(exponent).
+ * \brief Converts unsigned integer to mantissa*10^(exponent).
  *
- * Given number is encoded as two 4-bit numbers. First part is mantisa [0-9],
+ * Given number is encoded as two 4-bit numbers. First part is mantissa [0-9],
  * second part is decimal exponent [0-15]. Result is concatenation of these
  * two blocks.
  *
