@@ -975,7 +975,7 @@ Improvements:
 
 Bugfixes:
 ---------
- - Creeping memory consuption upon server reload #584
+ - Creeping memory consumption upon server reload #584
  - Kdig incorrectly detects QNAME if 'notify' is a prefix
  - Server crashes when zone sign fails #587
  - CSK->KZSK rollover retires CSK early #588
@@ -1012,7 +1012,7 @@ Features:
 
 Improvements:
 -------------
- - Reduced memory consuption of disabled statistics metrics
+ - Reduced memory consumption of disabled statistics metrics
  - Some spelling fixes (Thanks to Daniel Kahn Gillmor)
  - Server no longer fails to start if MODULE_DIR doesn't exist
  - Configuration include doesn't fail if empty wildcard match
@@ -2247,7 +2247,7 @@ Features:
 ---------
  - Support for subnets in ACL.
  - Debug messages enabling in configure.
- - Optimized memory consuption of zone structures.
+ - Optimized memory consumption of zone structures.
  - NSID support (RFC5001).
  - Root zone support.
  - Automatic zone compiling on server start.
