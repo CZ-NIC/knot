@@ -66,7 +66,7 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered);
  * \brief Return those keys for whose the CDNSKEY/CDS records shall be created.
  *
  * \param ctx        DNSSEC context.
- * \param zone_keys  Zone keyset, includeing ZSKs.
+ * \param zone_keys  Zone keyset, including ZSKs.
  *
  * \return Dynarray containing pointers on some KSKs in keyset.
  */
