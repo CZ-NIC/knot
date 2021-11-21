@@ -73,7 +73,7 @@ bool journal_delete(knot_lmdb_txn_t *txn, uint32_t from, const knot_dname_t *zon
  *
  * \param j     Zone journal.
  * \param txn   Journal DB transaction.
- * \param md    Jounral metadata.
+ * \param md    Journal metadata.
  *
  * \note It might set txn->ret to KNOT_EBUSY to fail out from this operation and let the zone flush itself.
  */
