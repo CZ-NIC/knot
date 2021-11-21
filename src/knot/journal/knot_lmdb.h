@@ -122,7 +122,7 @@ void knot_lmdb_close(knot_lmdb_db_t *db);
 /*!
  * \brief Re-initialise existing DB with modified parameters.
  *
- * \note If the paramateres differ and DB is open, it will be refused.
+ * \note If the parameters differ and DB is open, it will be refused.
  *
  * \param db          The DB to be modified.
  * \param path        New path to the DB.
