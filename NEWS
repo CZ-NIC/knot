@@ -321,7 +321,7 @@ Improvements:
 
 Bugfixes:
 ---------
- - Module onlinesign responds NXDOMAIN insted of NOERROR (NODATA) if DNSSEC not requested
+ - Module onlinesign responds NXDOMAIN instead of NOERROR (NODATA) if DNSSEC not requested
  - Outgoing multi-message transfer can contain invalid compression pointers under specific conditions
 
 Knot DNS 2.9.9 (2021-04-01)
