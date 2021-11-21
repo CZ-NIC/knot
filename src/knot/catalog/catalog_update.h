@@ -44,7 +44,7 @@ typedef struct catalog_upd_val {
 
 typedef struct {
 	trie_t *upd;             // tree of catalog_upd_val_t, that gonna be changed in catalog
-	int error;               // error occured during generating of upd
+	int error;               // error occurred during generating of upd
 	pthread_mutex_t mutex;   // lock for accessing this struct
 } catalog_update_t;
 
