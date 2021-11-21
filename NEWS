@@ -1033,7 +1033,7 @@ Knot DNS 2.6.5 (2018-02-12)
 Features:
 ---------
  - New 'zone-notify' command in knotc
- - Kdig uses '@server' as a hostname for TLS authenticaion if '+tls-ca' is set
+ - Kdig uses '@server' as a hostname for TLS authentication if '+tls-ca' is set
 
 Improvements:
 -------------
