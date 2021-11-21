@@ -136,7 +136,7 @@ int catalog_del(catalog_t *cat, const knot_dname_t *member);
  *
  * \note This function may be called in multithreaded operation.
  *
- * \param cat       Catalog datatase.
+ * \param cat       Catalog database.
  * \param member    Member to search for.
  * \param catz      Out: name of catalog zone it resides in.
  * \param group     Out: configuration group the member resides in.
