@@ -49,7 +49,7 @@ bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool 
  *
  * \retval KNOT_EEMPTYZONE  The zone is empty.
  * \retval KNOT_ENOENT      There is no ZONEMD in contents' apex.
- * \retval KNOT_ENOTSUP     None of present ZONEMD is supported (scheme+algrithm+SOAserial).
+ * \retval KNOT_ENOTSUP     None of present ZONEMD is supported (scheme+algorithm+SOAserial).
  * \retval KNOT_ESEMCHECK   Duplicate ZONEMD with identical scheme+algorithm pair.
  * \retval KNOT_EFEWDATA    Error in hash length.
  * \retval KNOT_EMALF       The computed hash differs from ZONEMD.

@@ -27,8 +27,8 @@
 #include "libknot/wire.h"
 
 #define KNOT_ZONEMD_SCHEME_SIMPLE	1
-#define KNOT_ZONEMD_ALORITHM_SHA384	1
-#define KNOT_ZONEMD_ALORITHM_SHA512	2
+#define KNOT_ZONEMD_ALGORITHM_SHA384	1
+#define KNOT_ZONEMD_ALGORITHM_SHA512	2
 
 static inline
 uint32_t knot_zonemd_soa_serial(const knot_rdata_t *rdata)
@@ -55,8 +55,8 @@ static inline
 size_t knot_zonemd_digest_size(const knot_rdata_t *rdata)
 {
 	switch (knot_zonemd_algorithm(rdata)) {
-	case KNOT_ZONEMD_ALORITHM_SHA384: return 48;
-	case KNOT_ZONEMD_ALORITHM_SHA512: return 64;
+	case KNOT_ZONEMD_ALGORITHM_SHA384: return 48;
+	case KNOT_ZONEMD_ALGORITHM_SHA512: return 64;
 	default: return 0;
 	}
 }
