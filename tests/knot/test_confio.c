@@ -362,7 +362,7 @@ static void test_conf_io_set(void)
 	   KNOT_EINVAL, "set NULL key0");
 	ok(conf_io_set("", NULL, NULL, NULL) ==
 	   KNOT_YP_EINVAL_ITEM, "set empty key0");
-	ok(conf_io_set("uknown", NULL, NULL, NULL) ==
+	ok(conf_io_set("unknown", NULL, NULL, NULL) ==
 	   KNOT_YP_EINVAL_ITEM, "set unknown key0");
 	ok(conf_io_set("server", "unknown", NULL, NULL) ==
 	   KNOT_YP_EINVAL_ITEM, "set unknown key1");
@@ -470,7 +470,7 @@ static void test_conf_io_unset(void)
 	// ERR.
 	ok(conf_io_unset("", NULL, NULL, NULL) ==
 	   KNOT_YP_EINVAL_ITEM, "unset unknown key0");
-	ok(conf_io_unset("uknown", NULL, NULL, NULL) ==
+	ok(conf_io_unset("unknown", NULL, NULL, NULL) ==
 	   KNOT_YP_EINVAL_ITEM, "unset unknown key0");
 	ok(conf_io_unset("server", "unknown", NULL, NULL) ==
 	   KNOT_YP_EINVAL_ITEM, "unset unknown key1");
@@ -668,7 +668,7 @@ static void test_conf_io_get(void)
 	// ERR.
 	ok(conf_io_get("", NULL, NULL, true, &io) ==
 	   KNOT_YP_EINVAL_ITEM, "get empty key0");
-	ok(conf_io_get("uknown", NULL, NULL, true, &io) ==
+	ok(conf_io_get("unknown", NULL, NULL, true, &io) ==
 	   KNOT_YP_EINVAL_ITEM, "get unknown key0");
 	ok(conf_io_get("server", "unknown", NULL, true, &io) ==
 	   KNOT_YP_EINVAL_ITEM, "get unknown key1");
@@ -789,7 +789,7 @@ static void test_conf_io_diff(void)
 	// ERR.
 	ok(conf_io_diff("", NULL, NULL, &io) ==
 	   KNOT_YP_EINVAL_ITEM, "diff empty key0");
-	ok(conf_io_diff("uknown", NULL, NULL, &io) ==
+	ok(conf_io_diff("unknown", NULL, NULL, &io) ==
 	   KNOT_YP_EINVAL_ITEM, "diff unknown key0");
 	ok(conf_io_diff("server", "unknown", NULL, &io) ==
 	   KNOT_YP_EINVAL_ITEM, "diff unknown key1");
@@ -880,7 +880,7 @@ static void test_conf_io_list(void)
 	// ERR.
 	ok(conf_io_list("", &io) ==
 	   KNOT_YP_EINVAL_ITEM, "list empty key0");
-	ok(conf_io_list("uknown", &io) ==
+	ok(conf_io_list("unknown", &io) ==
 	   KNOT_YP_EINVAL_ITEM, "list unknown key0");
 	ok(conf_io_list("include", &io) ==
 	   KNOT_ENOTSUP, "list non-group item");
