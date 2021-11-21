@@ -306,7 +306,7 @@ Improvements:
 -------------
  - Processing depth of CNAME and DNAME chains is limited to 20
  - Non-FQDN is allowed as 'update-owner-name' configuration option value
- - Kdig prints detailed algorithm idendifier for PRIVATEDNS and PRIVATEOID
+ - Kdig prints detailed algorithm identifier for PRIVATEDNS and PRIVATEOID
    in multiline mode #334
  - Queries with QTYPE ANY or RRSIG are always responded with at most one random RRSet
  - The statistics module has negligible performance overhead on modern CPUs
