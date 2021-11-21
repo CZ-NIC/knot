@@ -88,7 +88,7 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
  *
  * \note Fixing PREV pointers and zone measurement does not make sense since we are not
  *       iterating over whole zone. The same applies for callback that reference other
- *       (unchanged, but indirecty affected) zone nodes.
+ *       (unchanged, but indirectly affected) zone nodes.
  *
  * \param update     Zone update being finalized.
  * \param nodes_cb   Callback for NORMAL nodes.
