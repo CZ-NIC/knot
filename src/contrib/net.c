@@ -512,7 +512,7 @@ static ssize_t io_exec(const struct io *io, int fd, struct msghdr *msg,
 					/* Interrupted or transient error, continue waiting. */
 					continue;
 				} else if (ret == 0) {
-					/* Timeouted, exit. */
+					/* Timed out, exit. */
 					return KNOT_ETIMEOUT;
 				} else {
 					/* In specific circumstances with Valgrind,
