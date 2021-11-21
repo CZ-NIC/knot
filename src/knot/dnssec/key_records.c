@@ -94,7 +94,7 @@ int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool 
 		.show_ttl = true,
 		.verbose = true,
 		.original_ttl = true,
-		.human_tmstamp = true
+		.human_timestamp = true
 	};
 	const knot_dump_style_t *style = verbose ? &verb_style : &KNOT_DUMP_STYLE_DEFAULT;
 

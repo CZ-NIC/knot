@@ -44,7 +44,7 @@ static const style_t DEFAULT_STYLE_HOST = {
 		.original_ttl = false,
 		.empty_ttl = false,
 		.human_ttl = false,
-		.human_tmstamp = true,
+		.human_timestamp = true,
 		.generic = false,
 		.ascii_to_idn = name_to_idn
 	},

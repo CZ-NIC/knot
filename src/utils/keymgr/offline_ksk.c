@@ -127,7 +127,7 @@ static int dump_rrset_to_buf(const knot_rrset_t *rrset, char **buf, size_t *buf_
 		.show_ttl = true,
 		.verbose = true,
 		.original_ttl = true,
-		.human_tmstamp = true
+		.human_timestamp = true
 	};
 	return knot_rrset_txt_dump(rrset, buf, buf_size, &style);
 }
