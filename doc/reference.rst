@@ -318,7 +318,7 @@ tcp-reuseport
 -------------
 
 If enabled, each TCP worker listens on its own socket and the OS kernel
-socket load balancing is emloyed using SO_REUSEPORT (or SO_REUSEPORT_LB
+socket load balancing is employed using SO_REUSEPORT (or SO_REUSEPORT_LB
 on FreeBSD). Due to the lack of one shared socket, the server can offer
 higher response rate processing over TCP. However, in the case of
 time-consuming requests (e.g. zone transfers of a TLD zone), enabled reuseport
