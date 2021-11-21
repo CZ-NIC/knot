@@ -341,7 +341,7 @@ load_end:
 		catalog_update_clear(zone->cat_members);
 	}
 
-	// Schedule depedent events.
+	// Schedule dependent events.
 	const knot_rdataset_t *soa = zone_soa(zone);
 	zone->timers.soa_expire = knot_soa_expire(soa->rdata);
 
