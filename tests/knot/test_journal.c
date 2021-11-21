@@ -804,7 +804,7 @@ static void test_stress_base(const knot_dname_t *apex,
 	uint32_t serial = 0;
 
 	int ret = knot_lmdb_reconfigure(&jdb, test_dir_name, file_size, journal_env_flags(JOURNAL_MODE_ASYNC, false));
-	is_int(KNOT_EOK, ret, "journal: recofigure to mapsize %zu (%s)", file_size, knot_strerror(ret));
+	is_int(KNOT_EOK, ret, "journal: reconfigure to mapsize %zu (%s)", file_size, knot_strerror(ret));
 
 	set_conf(1000, file_size / 2, apex);
 

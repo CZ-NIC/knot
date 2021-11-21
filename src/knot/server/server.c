@@ -1184,7 +1184,7 @@ int server_reconfigure(conf_t *conf, server_t *server)
 		          knot_strerror(ret));
 	}
 
-	/* Reconfiure Timer DB. */
+	/* Reconfigure Timer DB. */
 	if ((ret = reconfigure_timer_db(conf, server)) != KNOT_EOK) {
 		log_error("failed to reconfigure Timer DB (%s)",
 		          knot_strerror(ret));
