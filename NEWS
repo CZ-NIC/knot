@@ -1779,7 +1779,7 @@ Knot DNS 1.5.3 (2014-09-15)
 Bugfixes:
 ---------
  - Some specific incoming IXFRs were causing server to crash
- - Rare sychronization error during reload caused read-after-free
+ - Rare synchronization error during reload caused read-after-free
  - Response synthetization module did not work properly with DNSSEC-enabled zones
  - When Knot sent AXFR when IXFR was requested, message ID and opcode were wrong
  - Knot failed to send large messages to remote control (present since 1.5.1)

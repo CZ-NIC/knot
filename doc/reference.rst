@@ -806,7 +806,7 @@ and durability.
 
 Possible values:
 
-- ``robust`` – The journal database disk sychronization ensures database
+- ``robust`` – The journal database disk synchronization ensures database
   durability but is generally slower.
 - ``asynchronous`` – The journal database disk synchronization is optimized for
   better performance at the expense of lower database durability in the case of
