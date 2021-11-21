@@ -39,11 +39,11 @@ def expire_tests(t, zone, master, slave):
     t.sleep(EXPIRE_SLEEP)
     test_expired(zone, slave)
 
-    # Reload shoudn't affect.
+    # Reload shouldn't affect.
     slave.reload()
     test_expired(zone, slave)
 
-    # Restart shoudn't affect.
+    # Restart shouldn't affect.
     restart_server(slave)
     test_expired(zone, slave)
 
@@ -65,11 +65,11 @@ def expire_tests(t, zone, master, slave):
     slave.start()
     test_expired(zone, slave)
 
-    # Reload shoudn't affect.
+    # Reload shouldn't affect.
     slave.reload()
     test_expired(zone, slave)
 
-    # Restart shoudn't affect.
+    # Restart shouldn't affect.
     restart_server(slave)
     test_expired(zone, slave)
 
@@ -87,7 +87,7 @@ def refresh_tests(t, zone, master, slave):
     master.zones[zone.name].zfile.update_soa(serial=3, refresh=1, retry=1, expire=15)
     master.reload()
 
-    # Restart and reload shoudn't cause refresh
+    # Restart and reload shouldn't cause refresh
     restart_server(slave)
     slave.reload()
     slave.ctl("zone-reload %s" % zone.name)
