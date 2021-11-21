@@ -35,7 +35,7 @@ char* abs_path(const char *path, const char *base_dir);
 /*!
  * Try to compare two paths whether they are identical.
  *
- * \note If any of the two paths doesn't physically exist, their indentity can't
+ * \note If any of the two paths doesn't physically exist, their identity can't
  *       be detected in some special corner cases.
  *
  * \param[in] path1     Absolute or a relative path (a file, a directory, etc.)
