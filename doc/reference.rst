@@ -1442,7 +1442,7 @@ dnskey-ttl
 A TTL value for DNSKEY records added into zone apex.
 
 .. NOTE::
-   Has infuence over ZSK key lifetime.
+   Has influence over ZSK key lifetime.
 
 .. WARNING::
    Ensure all DNSKEYs with updated TTL are propagated before any subsequent
@@ -1473,7 +1473,7 @@ ksk-lifetime
 A period between KSK activation and the next rollover initiation.
 
 .. NOTE::
-   KSK key lifetime is also infuenced by propagation-delay, dnskey-ttl,
+   KSK key lifetime is also influenced by propagation-delay, dnskey-ttl,
    and KSK submission delay.
 
    Zero (aka infinity) value causes no KSK rollover as a result.
@@ -1494,7 +1494,7 @@ A period between ZSK activation and the next rollover initiation.
    and after this, a new ZSK is generated to replace it within
    following roll-over.
 
-   ZSK key lifetime is also infuenced by propagation-delay and dnskey-ttl
+   ZSK key lifetime is also influenced by propagation-delay and dnskey-ttl
 
    Zero (aka infinity) value causes no ZSK rollover as a result.
 
@@ -1522,7 +1522,7 @@ enough to cover propagation of data from the primary server to all
 secondary servers.
 
 .. NOTE::
-   Has infuence over ZSK key lifetime.
+   Has influence over ZSK key lifetime.
 
 *Default:* 1 hour
 

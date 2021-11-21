@@ -1339,7 +1339,7 @@ A TTL value for DNSKEY records added into zone apex.
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-Has infuence over ZSK key lifetime.
+Has influence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
 .sp
@@ -1374,7 +1374,7 @@ A period between KSK activation and the next rollover initiation.
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-KSK key lifetime is also infuenced by propagation\-delay, dnskey\-ttl,
+KSK key lifetime is also influenced by propagation\-delay, dnskey\-ttl,
 and KSK submission delay.
 .sp
 Zero (aka infinity) value causes no KSK rollover as a result.
@@ -1395,7 +1395,7 @@ More exactly, this period is measured since a ZSK is activated,
 and after this, a new ZSK is generated to replace it within
 following roll\-over.
 .sp
-ZSK key lifetime is also infuenced by propagation\-delay and dnskey\-ttl
+ZSK key lifetime is also influenced by propagation\-delay and dnskey\-ttl
 .sp
 Zero (aka infinity) value causes no ZSK rollover as a result.
 .UNINDENT
@@ -1419,7 +1419,7 @@ secondary servers.
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-Has infuence over ZSK key lifetime.
+Has influence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
 .sp
