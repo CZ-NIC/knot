@@ -30,7 +30,7 @@ static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser, 
 		serialize_prepare(ser, JOURNAL_CHUNK_THRESH - JOURNAL_HEADER_SIZE,
 		                  JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.mv_size);
 		if (chunk.mv_size == 0) {
-			break; // beware! If this is ommited, it creates empty chunk => EMALF when reading.
+			break; // beware! If this is omitted, it creates empty chunk => EMALF when reading.
 		}
 		chunk.mv_size += JOURNAL_HEADER_SIZE;
 		chunk.mv_data = NULL;
