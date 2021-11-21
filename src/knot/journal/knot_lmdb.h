@@ -152,7 +152,7 @@ int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, 
 /*!
  * \brief Close and de-initialise DB.
  *
- * \param db   DB to be deinitialised.
+ * \param db   DB to be deinitialized.
  */
 void knot_lmdb_deinit(knot_lmdb_db_t *db);
 
