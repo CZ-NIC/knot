@@ -28,7 +28,7 @@ typedef struct {
 typedef int (*adjust_cb_t)(zone_node_t *, adjust_ctx_t *);
 
 /*
- * \brief Varoius callbacks for adjusting zone node's params and pointers.
+ * \brief Various callbacks for adjusting zone node's params and pointers.
  *
  * \param node   Node to be adjusted. Must be already inside the zone contents!
  * \param zone   Zone being adjusted.
