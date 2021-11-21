@@ -2213,7 +2213,7 @@ Bugfixes:
 ---------
  - Fixed leak when querying non-existing name and zone SOA TTL >
    minimal.
- - Fixed some minor bugs in tansfers.
+ - Fixed some minor bugs in transfers.
 
 Improvements:
 -------------
