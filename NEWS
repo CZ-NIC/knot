@@ -1634,7 +1634,7 @@ Bugfixes:
  - Fix TC flag setting in RRL slipped answers
  - Disable domain name compression for root label
  - Log via journald only when running under systemd
- - Fix CNAME following when quering for NSEC RR type
+ - Fix CNAME following when querying for NSEC RR type
  - Fix refreshing of DNSSEC signatures for zone keys
  - Fix binding an unavailable IPv6 address on Linux (IP_FREEBIND)
  - Fix infinite loop in knotc zonestatus and memstats
