@@ -241,7 +241,7 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t *changes);
 
 /*!
- * \brief Increment SOA serial (according to cofigured policy) in the update.
+ * \brief Increment SOA serial (according to configured policy) in the update.
  *
  * \param update  Update to be modified.
  * \param conf    Configuration.
