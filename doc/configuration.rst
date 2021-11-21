@@ -120,7 +120,7 @@ See the following examples and :ref:`ACL section`.
 
     zone:
       - domain: acl1.example.com.
-        acl: [deny_rule, address_rule] # deny_rule first here to take precendence
+        acl: [deny_rule, address_rule] # deny_rule first here to take precedence
 
 ::
 

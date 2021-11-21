@@ -292,7 +292,7 @@ void catalog_update_finalize(catalog_update_t *u, catalog_t *cat, conf_t *conf)
 	catalog_it_free(it);
 
 	// This checks if the configuration file has not changed in the way
-	// it conflicts with existing member zone and let config take precendence.
+	// it conflicts with existing member zone and let config take precedence.
 	if (cat->ro_txn != NULL) {
 		rem_conflict_ctx_t rcctx = { conf, u };
 		(void)catalog_apply(cat, NULL, rem_conf_conflict, &rcctx, false);
