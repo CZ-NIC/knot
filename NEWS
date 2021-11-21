@@ -2335,7 +2335,7 @@ Known issues:
  - Root zone support
  - NSID support
  - Other DNS classes than IN
- - RRSet rotation not implmented
+ - RRSet rotation not implemented
  - Dynamic update support
  - IXFR code might be flaky sometimes
  - IXFR may be slow when too much (10 000+) RRSets are transferred at
