@@ -424,7 +424,7 @@ bool knot_lmdb_make_key_part(void *key_data, size_t key_len, const char *format,
  * \param format     Specifies the number and type of parameters.
  * \param ...        For each character in 'format', pointer to where the values will be stored.
  *
- * \note For B, H, I, L; provide simply pointers to variables of correspodning type.
+ * \note For B, H, I, L; provide simply pointers to variables of corresponding type.
  * \note For S, N; provide pointer to pointer - it will be set to pointing inside the buffer, so no allocation here.
  * \note For D, provide void* and size_t, the data will be copied.
  *
