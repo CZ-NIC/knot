@@ -753,7 +753,7 @@ static inline size_t conf_bg_threads(
  * Gets the required LMDB readers limit based on the current configuration.
  *
  * \note The resulting value is a common limit to journal, kasp, timers,
- *       and catalog databases. So it's over-estimated for simpicity reasons.
+ *       and catalog databases. So it's over-estimated for simplicity reasons.
  *
  * \note This function cannot be used for the configuration database setting :-/
  *
