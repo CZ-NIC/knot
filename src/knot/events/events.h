@@ -115,7 +115,7 @@ void zone_events_enqueue(struct zone *zone, zone_event_type_t type);
  *
  * The function allows to set multiple events at once.
  *
- * The function intreprets time values (t) as follows:
+ * The function interprets time values (t) as follows:
  *
  *   t > 0: schedule timer for a given time
  *   t = 0: cancel the timer
