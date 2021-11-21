@@ -60,7 +60,7 @@ Compatibility:
 --------------
  - configure: option '--enable-xdp=yes' means use an external libbpf if available
               or use the embedded one
- - libzsanner: omitted TTL value is correctly set to the last explicitly stated value (RFC 1035)
+ - libzscanner: omitted TTL value is correctly set to the last explicitly stated value (RFC 1035)
  - knotc: zone restore from an old backup (3.0.x) requires forced operation
  - knotd: configuration option 'server.listen-xdp' is replaced with 'xdp.listen'
  - knotd: zone file loading with automatic SOA serial incrementation newly
