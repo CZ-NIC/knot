@@ -385,7 +385,7 @@ static void test_store_load(const knot_dname_t *apex)
 	ret = load_j_list(&jj, false, serial, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: load after store after flush after overfill (%s)", knot_strerror(ret));
 	is_int(1, list_size(&l), "journal: single changeset in list");
-	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset unmalformed after overfill");
+	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset corrected/not malformed (?) after overfill");
 	changesets_free(&l);
 	journal_read_end(read);
 
@@ -430,7 +430,7 @@ static void test_store_load(const knot_dname_t *apex)
 	ret = load_j_list(&jj, false, 4294967294, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: read after cycle (%s)", knot_strerror(ret));
 	ok(3 >= list_size(&l), "journal: cycle caused journal to partly drop");
-	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset unmalformed after cycle");
+	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset corrected/not malformed (?) after cycle");
 	changesets_free(&l);
 	journal_read_end(read);
 	changeset_clear(&ch);
@@ -450,8 +450,8 @@ static void test_store_load(const knot_dname_t *apex)
 	ret = load_j_list(&jj, true, 0, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: load zone-in-journal (%s)", knot_strerror(ret));
 	is_int(2, list_size(&l), "journal: read two changesets from zone-in-journal");
-	ok(changesets_eq(&e_ch, HEAD(l)), "journal: zone-in-journal unmalformed");
-	ok(changesets_eq(&r_ch, TAIL(l)), "journal: after zone-in-journal unmalformed");
+	ok(changesets_eq(&e_ch, HEAD(l)), "journal: zone-in-journal corrected/not malformed (?)");
+	ok(changesets_eq(&r_ch, TAIL(l)), "journal: after zone-in-journal corrected/not malformed (?)");
 	changesets_free(&l);
 	journal_read_end(read);
 	changeset_clear(&e_ch);
