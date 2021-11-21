@@ -276,7 +276,7 @@ typedef enum dnssec_key_digest {
 bool dnssec_algorithm_digest_support(dnssec_key_digest_t algorithm);
 
 /*!
- * Create DS (Delgation Signer) RDATA from DNSSEC key.
+ * Create DS (Delegation Signer) RDATA from DNSSEC key.
  *
  * \param[in]  key     DNSSEC key.
  * \param[in]  digest  Digest algorithm to be used.

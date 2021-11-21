@@ -135,7 +135,7 @@ expect_error "cdnskey.delete.invalid.cds" 0 1 "$CDNSKEY_DELETE"
 expect_error "cdnskey.delete.invalid.cdnskey" 0 1 "$CDNSKEY_DELETE"
 
 test_correct "rrsig_ttl.signed"
-test_correct "no_error_delegaton_bitmap.signed"
+test_correct "no_error_delegation_bitmap.signed"
 test_correct "no_error_nsec3_delegation.signed"
 test_correct "no_error_nsec3_optout.signed"
 test_correct "glue_wildcard.valid"
