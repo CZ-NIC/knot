@@ -765,7 +765,7 @@ and durability.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBrobust\fP – The journal database disk sychronization ensures database
+\fBrobust\fP – The journal database disk synchronization ensures database
 durability but is generally slower.
 .IP \(bu 2
 \fBasynchronous\fP – The journal database disk synchronization is optimized for
