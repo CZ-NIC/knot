@@ -399,7 +399,7 @@ static void test_store_load(const knot_dname_t *apex)
 	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
 	ret = load_j_list(&jj, false, 2, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: read after discontinuity (%s)", knot_strerror(ret));
-	is_int(1, list_size(&l), "journal: dicontinuity caused journal to drop");
+	is_int(1, list_size(&l), "journal: discontinuity caused journal to drop");
 	changesets_free(&l);
 	journal_read_end(read);
 
