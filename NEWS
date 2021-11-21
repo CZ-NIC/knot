@@ -433,7 +433,7 @@ Bugfixes:
    error during server reload
  - Zone journal access can stuck if mismanaged zone serial
  - Concurrently added and removed same records in a DDNS message are not properly handled
- - Zone check logs error instead of warning after a first error occured
+ - Zone check logs error instead of warning after a first error occurred
 
 Knot DNS 2.9.3 (2020-03-03)
 ===========================
