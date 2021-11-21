@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Check of automatic ZSK rollvoer with changing zone TTLs.
+Check of automatic ZSK rollover with changing zone TTLs.
 """
 
 from dnstest.utils import *
