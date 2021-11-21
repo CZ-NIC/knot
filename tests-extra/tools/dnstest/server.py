@@ -280,7 +280,7 @@ class Server(object):
             self.inquirer.start(self)
 
     def start(self, clean=False):
-        '''Start the server with all bindings successfull'''
+        '''Start the server with all bindings successful'''
 
         errors = 0 if clean else self.binding_errors
         for attempt in range(Server.START_MAX_ATTEMPTS):
