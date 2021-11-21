@@ -41,7 +41,7 @@ slave.dnssec(catz[0]).single_type_signing = True
 
 t.start()
 
-# testcatse 1: initial catalog zone with 1 member
+# testcase 1: initial catalog zone with 1 member
 slave.zones_wait(zone)
 
 # testcase 2: adding member zones online/offline
