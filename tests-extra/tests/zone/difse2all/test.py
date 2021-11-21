@@ -10,7 +10,7 @@ import random
 
 t = Test()
 
-# radnomized different test scenarios
+# randomized different test scenarios
 purge_beforehand = random.choice([True, False])
 cold_reload = random.choice([True, False])
 zone_reload_afterwards = random.choice([True, False])
