@@ -1979,7 +1979,7 @@ Features:
  - Defaults for CH TXT id.server,version.server (see doc)
  - Much faster bootstrap of many zones
  - --with-configdir option for default config path
- - Reintroducted 'pidfile' config option
+ - Reintroduced 'pidfile' config option
  - Utility to estimate memory consumption (see 'knotc memstats')
  - PID file is not created when running on foreground
  - UNIX sockets support for knotc
