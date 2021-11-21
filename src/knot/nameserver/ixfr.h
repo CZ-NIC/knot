@@ -42,7 +42,7 @@ struct ixfr_proc {
 	/* Changes to be sent. */
 	journal_read_t *journal_ctx;
 
-	/* Currenty processed RRSet. */
+	/* Currently processed RRSet. */
 	knot_rrset_t cur_rr;
 
 	/* Processing context. */
