@@ -157,7 +157,7 @@ knot_time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
  *
  * \param for_key         The key to compute DS for.
  * \param digesttype      DS digest algorithm.
- * \param out_donotfree   Output: the DS record rdata. Do not call dnssec_binry_free() on this ever.
+ * \param out_donotfree   Output: the DS record rdata. Do not call dnssec_binary_free() on this ever.
  *
  * \return Error code, KNOT_EOK if successful.
  */
