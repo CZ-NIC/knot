@@ -153,7 +153,7 @@ knot_time_t knot_get_next_zone_key_event(const zone_keyset_t *keyset);
 /*!
  * \brief Returns DS record rdata for given key.
  *
- * This function caches the results, so caaling again with the same key returns immediately.
+ * This function caches the results, so calling again with the same key returns immediately.
  *
  * \param for_key         The key to compute DS for.
  * \param digesttype      DS digest algorithm.
