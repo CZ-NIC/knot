@@ -34,12 +34,12 @@ resp.check(flags="TC")
 
 # Set IP family specific limit.
 server4.udp_max_payload_ipv4 = 1220
-server4.udp_max_payload_ipv6 = 1221 # Shoud not affect IPv4
-server4.udp_max_payload      = 1221 # Shoud not override IPv4 specific
+server4.udp_max_payload_ipv6 = 1221 # Should not affect IPv4
+server4.udp_max_payload      = 1221 # Should not override IPv4 specific
 
 server6.udp_max_payload_ipv6 = 1220
-server6.udp_max_payload_ipv4 = 1221 # Shoul not affect IPv6
-server6.udp_max_payload      = 1221 # Shoud not override IPv6 specific
+server6.udp_max_payload_ipv4 = 1221 # Should not affect IPv6
+server6.udp_max_payload      = 1221 # Should not override IPv6 specific
 
 server4.gen_confile()
 server4.reload()
