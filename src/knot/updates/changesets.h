@@ -135,7 +135,7 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
  *
  * \param ch1  Merge into this changeset.
  * \param ch2  Merge this changeset.
- * \param flags  Flags how to handle rendundancies.
+ * \param flags  Flags how to handle redundancies.
  *
  * \return KNOT_E*
  */
