@@ -131,7 +131,7 @@ typedef union {
 		/*! Possible unit type. */
 		yp_style_t unit;
 	} i;
-	/*! Boolen variables. */
+	/*! Boolean variables. */
 	struct {
 		/*! Default value. */
 		bool dflt;
