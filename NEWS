@@ -2108,7 +2108,7 @@ Features:
  - Support for '/' in zone names.
  - Generating journal from reloaded zone (EXPERIMENTAL).
  - Outgoing-only interfaces in configuration file.
- - Following DNAME if the synthetized name is in the same zone.
+ - Following DNAME if the synthesized name is in the same zone.
 
 Bugfixes:
 ---------
