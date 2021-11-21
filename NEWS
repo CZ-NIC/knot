@@ -1225,7 +1225,7 @@ Features:
 
 Improvements:
 -------------
- - Allowed binding to non-local adresses for TCP (Thanks to Julian Brost!)
+ - Allowed binding to non-local addresses for TCP (Thanks to Julian Brost!)
  - New documentation section for manual DNSSEC key algorithm rollover
  - Initial KSK also generated in the submission state
  - The 'ds' keymgr command with no parameter uses all KSK keys
