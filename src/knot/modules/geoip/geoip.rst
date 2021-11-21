@@ -185,7 +185,7 @@ Using weighted records
        CNAME: prod2.foo.example.com.
    ...
 
-Each response is generated through a random pick where each defined record has a likelyhood
+Each response is generated through a random pick where each defined record has a likelihood
 of its weight over the sum of all weights for the requested name to. Records defined in the
 zone itself (if any) will never be served.
 
