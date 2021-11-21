@@ -203,7 +203,7 @@ inline static size_t prot_write_hdrs_len(const knot_xdp_msg_t *msg)
  * The basis for checksum is addition on big-endian 16-bit words, with bit 16 carrying
  * over to bit 0.  That can be viewed as first byte carrying to the second and the
  * second one carrying back to the first one, i.e. a symmetrical situation.
- * Therefore the result is the same even when arithmetics is done on litte-endian (!)
+ * Therefore the result is the same even when arithmetics is done on little-endian (!)
  */
 
 inline static void checksum(uint32_t *result, const void *_data, uint32_t _data_len)
