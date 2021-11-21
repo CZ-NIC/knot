@@ -98,12 +98,12 @@ class IxfrTopology():
 
         check_log("====================================")
 
-patern = re.compile("^([0-9][0-9]_)")
+pattern = re.compile("^([0-9][0-9]_)")
 
 t = dnstest.test.Test()
 
 for dirname in sorted(os.listdir(Context().test_dir)):
-    if patern.match(dirname):
+    if pattern.match(dirname):
         mod_name = Context().module_name + "_" + dirname
         mod_path = os.path.join(Context().module_path, dirname, "step.py")
         spec = importlib.util.spec_from_file_location(mod_name, mod_path)
