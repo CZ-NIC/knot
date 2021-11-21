@@ -33,7 +33,7 @@ resp.check("text")
 
 # NAME not in zone
 update = srv.update(zone)
-update.prereq_yx("notexisting.ddns.")
+update.prereq_yx("nonexistent.ddns.")
 update.add("3.ddns.", 1, "TXT", "text")
 update.send("NXDOMAIN")
 resp = srv.dig("3.ddns.", "TXT")
@@ -41,7 +41,7 @@ resp.check(rcode="NXDOMAIN")
 
 # NAME out of zone
 update = srv.update(zone)
-update.prereq_yx("notexisting.")
+update.prereq_yx("nonexistent.")
 update.add("4.ddns.", 1, "TXT", "text")
 update.send("NOTZONE")
 resp = srv.dig("4.ddns.", "TXT")
@@ -51,7 +51,7 @@ resp.check(rcode="NXDOMAIN")
 # ===============
 # OK
 update = srv.update(zone)
-update.prereq_nx("notexisting.ddns.")
+update.prereq_nx("nonexistent.ddns.")
 update.add("4.ddns.", 1, "TXT", "text")
 update.send("NOERROR")
 resp = srv.dig("4.ddns.", "TXT")
@@ -67,7 +67,7 @@ resp.check(rcode="NXDOMAIN")
 
 # NAME out of zone
 update = srv.update(zone)
-update.prereq_nx("notexisting.")
+update.prereq_nx("nonexistent.")
 update.add("6.ddns.", 1, "TXT", "text")
 update.send("NOTZONE")
 resp = srv.dig("6.ddns.", "TXT")
@@ -77,7 +77,7 @@ resp.check(rcode="NXDOMAIN")
 # ==============
 # OK - neither NAME nor TYPE in zone
 update = srv.update(zone)
-update.prereq_nx("notexisting.ddns.", "TYPE65535")
+update.prereq_nx("nonexistent.ddns.", "TYPE65535")
 update.add("7.ddns.", 1, "TXT", "text")
 update.send("NOERROR")
 resp = srv.dig("7.ddns.", "TXT")
@@ -101,7 +101,7 @@ resp.check(rcode="NXDOMAIN")
 
 # NAME out of zone
 update = srv.update(zone)
-update.prereq_nx("notexisting.", "TYPE65535")
+update.prereq_nx("nonexistent.", "TYPE65535")
 update.add("10.ddns.", 1, "TXT", "text")
 update.send("NOTZONE")
 resp = srv.dig("10.ddns.", "TXT")
@@ -135,7 +135,7 @@ resp.check(rcode="NXDOMAIN")
 # ==============
 # Neither NAME nor TYPE in zone
 update = srv.update(zone)
-update.prereq_yx("notexisting.ddns.", "TYPE65535")
+update.prereq_yx("nonexistent.ddns.", "TYPE65535")
 update.add("13.ddns.", 1, "TXT", "text")
 update.send("NXRRSET")
 resp = srv.dig("13.ddns.", "TXT")
@@ -175,7 +175,7 @@ resp.check(rcode="NXDOMAIN")
 
 # NAME out of zone
 update = srv.update(zone)
-update.prereq_yx("notexisting.", "TYPE65535")
+update.prereq_yx("nonexistent.", "TYPE65535")
 update.add("18.ddns.", 1, "TXT", "text")
 update.send("NOTZONE")
 resp = srv.dig("18.ddns.", "TXT")
