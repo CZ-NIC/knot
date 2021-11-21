@@ -117,7 +117,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 			if (name_len + lblen > KNOT_DNAME_MAXLEN) {
 				return KNOT_EMALF;
 			}
-			/* Update wire size only for noncompressed part. */
+			/* Update wire size only for uncompressed part. */
 			name_len += lblen;
 			if (!is_compressed) {
 				wire_len += lblen;
