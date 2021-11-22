@@ -6,19 +6,24 @@ REGISTRY	= cznic
 BASETAG		= ${REGISTRY}/knot
 PLATFORMS	= linux/amd64,linux/arm/v7,linux/arm64/v8
 
+ARGS		= --build-arg FASTPARSER=enable --build-arg CHECK=disable
+
 GITHASH		= $(shell git rev-parse --short HEAD)
 GITBRANCH	= $(shell git rev-parse --abbrev-ref HEAD)
+RELEASE		= $(shell git describe --abbrev=0 --exact-match)
 BRANCHTAG	= $(shell [ -n "${GITBRANCH}" ] && echo "-t ${BASETAG}:${GITBRANCH}" || echo "")
+RELTAG		= $(shell [ -n "${RELEASE}" ] && echo "-t ${BASETAG}:${RELEASE}" || echo "")
 EXTRATAG	= $(shell [ -n "${TAG}" ] && echo "-t ${BASETAG}:${TAG}" || echo "")
 LABEL		= $(shell [ -n "${GITHASH}" ] && echo "--label knot.git.hash=${GITHASH}" || echo "")
+
 
 BUILDXDETECT	= ${HOME}/.docker/cli-plugins/docker-buildx
 QEMUDETECT	= /proc/sys/fs/binfmt_misc/qemu-m68k
 
 docker-multiarch: qemu buildx docker-multiarch-builder
-#	docker login
+	docker login
 	docker buildx build --builder docker-multiarch --pull --push ${LABEL} \
-	                    --platform ${PLATFORMS} ${BRANCHTAG} ${EXTRATAG} ..
+	                    --platform ${PLATFORMS} ${ARGS} ${BRANCHTAG} ${RELTAG} ${EXTRATAG} ..
 
 qemu: ${QEMUDETECT}
 ${QEMUDETECT}:
