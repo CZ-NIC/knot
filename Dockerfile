@@ -30,16 +30,23 @@ RUN apt-get update && \
 # Build the project
 COPY . /knot-src
 WORKDIR /knot-src
+ARG FASTPARSER=disable
 RUN autoreconf -if && \
+    CFLAGS="-g -O2 -DNDEBUG -D_FORTIFY_SOURCE=2 -fstack-protector-strong" \
     ./configure --prefix=/ \
                 --with-rundir=/rundir \
                 --with-storage=/storage \
                 --with-configdir=/config \
                 --with-module-dnstap=yes \
-                --disable-fastparser \
+                --${FASTPARSER}-fastparser \
+                --enable-dnstap \
                 --disable-static \
                 --disable-documentation && \
-    make -j$(grep -c ^processor /proc/cpuinfo) && \
+    make -j$(grep -c ^processor /proc/cpuinfo)
+
+# Run unittests if requested and install the project
+ARG CHECK=disable
+RUN if [ "$CHECK" = "enable" ]; then make -j$(grep -c ^processor /proc/cpuinfo) check; fi && \
     make install DESTDIR=/tmp/knot-install
 
 ## Final stage ##
