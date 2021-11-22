@@ -876,6 +876,14 @@ class Bind(Server):
         zone_name = (" " + zone.name) if zone else ""
         self.ctl("sync%s" % zone_name, wait=wait)
 
+    def check_option(self, option):
+        proc = Popen([self.daemon_bin + "-checkconf", "/dev/fd/0"],
+                     stdout=PIPE, stderr=PIPE, stdin=PIPE,
+                     universal_newlines=True)
+        conff = "options {\n    %s;\n};" % option
+        (out, err) = proc.communicate(input=conff)
+        return proc.wait() == 0
+
     def _str(self, conf, name, value):
         if value and value != True:
             conf.item_str(name, value)
@@ -907,6 +915,8 @@ class Bind(Server):
         s.item("notify-delay", "0")
         s.item("notify-rate", "1000")
         s.item("max-journal-size", "unlimited")
+        if self.check_option("max-ixfr-ratio unlimited"):
+            s.item("max-ixfr-ratio", "unlimited")
         s.item("startup-notify-rate", "1000")
         s.item("serial-query-rate", "1000")
         s.end()
