@@ -47,7 +47,7 @@ def pregenerate_key(server, zone, alg):
         def __init__(self, name):
             self.name = name
 
-    server.gen_key(a_class_with_name("notexisting.zone."), ksk=True, alg=alg,
+    server.gen_key(a_class_with_name("nonexistent.zone."), ksk=True, alg=alg,
                    addtopolicy=zone[0].name)
 
 # check zone if keys are present and used for signing
@@ -224,7 +224,7 @@ def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_ke
     expect_zone_rrsigs = (2 if before_keys == 1 and after_keys > 1 else 1) # there is an exception for CSK->KZSK rollover that we have double signatures for the zone. Sorry, we don't care...
     check_zone(server, zone, slave, total_keys, 2, cdnskeys, expect_zone_rrsigs, msg)
 
-    t.sleep(server.dnssec(zone).propagation_delay + 1) # check that Knot does wait for the submittion to succeed
+    t.sleep(server.dnssec(zone).propagation_delay + 1) # check that Knot does wait for the submission to succeed
     submission_cb()
     msg = desc + ": both still active"
     wait_after_submission(t, server)

@@ -385,7 +385,7 @@ static void test_store_load(const knot_dname_t *apex)
 	ret = load_j_list(&jj, false, serial, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: load after store after flush after overfill (%s)", knot_strerror(ret));
 	is_int(1, list_size(&l), "journal: single changeset in list");
-	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset unmalformed after overfill");
+	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset not malformed after overfill");
 	changesets_free(&l);
 	journal_read_end(read);
 
@@ -399,7 +399,7 @@ static void test_store_load(const knot_dname_t *apex)
 	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
 	ret = load_j_list(&jj, false, 2, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: read after discontinuity (%s)", knot_strerror(ret));
-	is_int(1, list_size(&l), "journal: dicontinuity caused journal to drop");
+	is_int(1, list_size(&l), "journal: discontinuity caused journal to drop");
 	changesets_free(&l);
 	journal_read_end(read);
 
@@ -430,7 +430,7 @@ static void test_store_load(const knot_dname_t *apex)
 	ret = load_j_list(&jj, false, 4294967294, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: read after cycle (%s)", knot_strerror(ret));
 	ok(3 >= list_size(&l), "journal: cycle caused journal to partly drop");
-	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset unmalformed after cycle");
+	ok(changesets_eq(&ch, HEAD(l)), "journal: changeset not malformed after cycle");
 	changesets_free(&l);
 	journal_read_end(read);
 	changeset_clear(&ch);
@@ -450,8 +450,8 @@ static void test_store_load(const knot_dname_t *apex)
 	ret = load_j_list(&jj, true, 0, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: load zone-in-journal (%s)", knot_strerror(ret));
 	is_int(2, list_size(&l), "journal: read two changesets from zone-in-journal");
-	ok(changesets_eq(&e_ch, HEAD(l)), "journal: zone-in-journal unmalformed");
-	ok(changesets_eq(&r_ch, TAIL(l)), "journal: after zone-in-journal unmalformed");
+	ok(changesets_eq(&e_ch, HEAD(l)), "journal: zone-in-journal not malformed");
+	ok(changesets_eq(&r_ch, TAIL(l)), "journal: after zone-in-journal not malformed");
 	changesets_free(&l);
 	journal_read_end(read);
 	changeset_clear(&e_ch);
@@ -804,7 +804,7 @@ static void test_stress_base(const knot_dname_t *apex,
 	uint32_t serial = 0;
 
 	int ret = knot_lmdb_reconfigure(&jdb, test_dir_name, file_size, journal_env_flags(JOURNAL_MODE_ASYNC, false));
-	is_int(KNOT_EOK, ret, "journal: recofigure to mapsize %zu (%s)", file_size, knot_strerror(ret));
+	is_int(KNOT_EOK, ret, "journal: reconfigure to mapsize %zu (%s)", file_size, knot_strerror(ret));
 
 	set_conf(1000, file_size / 2, apex);
 

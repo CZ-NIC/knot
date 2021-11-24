@@ -200,8 +200,8 @@ static int check_timers(const knot_kasp_key_timing_t *t)
 // modifies ctx->policy options, so don't do anything afterwards !
 int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 {
-	knot_time_t now = knot_time(), infty = 0;
-	knot_kasp_key_timing_t gen_timing = { now, infty, now, infty, now, infty, infty, infty, infty };
+	knot_time_t now = knot_time(), infinity = 0;
+	knot_kasp_key_timing_t gen_timing = { now, infinity, now, infinity, now, infinity, infinity, infinity, infinity };
 	kdnssec_generate_flags_t flags = 0;
 	uint16_t keysize = 0;
 	const char *addtopolicy = NULL;
@@ -215,7 +215,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 		return ret;
 	}
 
-	if ((flags & DNSKEY_GENERATE_KSK) && gen_timing.ready == infty) {
+	if ((flags & DNSKEY_GENERATE_KSK) && gen_timing.ready == infinity) {
 		gen_timing.ready = gen_timing.active;
 	}
 
@@ -507,7 +507,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 			goto fail;
 		}
 
-		// put pem to kesytore
+		// put pem to keystore
 		ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
 		if (ret != DNSSEC_EOK) {

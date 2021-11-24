@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	ok(ret == 1, "probe: consume datagram");
 
 	ret = memcmp(&data_in, &data_out, offsetof(knot_probe_data_t, query.qname));
-	ok(ret == 0, "probe: data comparsion");
+	ok(ret == 0, "probe: data comparison");
 
 	ret = knot_dname_cmp(data_in.query.qname, data_out.query.qname);
 	ok(ret == 0, "probe: qname comparison");

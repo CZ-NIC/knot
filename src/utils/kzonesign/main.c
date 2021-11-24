@@ -143,7 +143,7 @@ static int zonesign(sign_params_t *params)
 			printf("Next NSEC3 re-salt: %"KNOT_TIME_PRINTF"\n", next_sign.next_nsec3resalt);
 		}
 		if (next_sign.plan_ds_check) {
-			printf("KSK submittion to parent zone needed\n");
+			printf("KSK submission to parent zone needed\n");
 		}
 	}
 

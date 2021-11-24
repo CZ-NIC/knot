@@ -86,7 +86,7 @@ typedef bool (*knot_lmdb_copy_cb)(MDB_val *cur_key, MDB_val *cur_val);
 void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsigned env_flags, const char *dbname);
 
 /*!
- * \brief Check if the databse exists on the filesystem.
+ * \brief Check if the database exists on the filesystem.
  *
  * \param db   The DB in question.
  *
@@ -122,7 +122,7 @@ void knot_lmdb_close(knot_lmdb_db_t *db);
 /*!
  * \brief Re-initialise existing DB with modified parameters.
  *
- * \note If the paramateres differ and DB is open, it will be refused.
+ * \note If the parameters differ and DB is open, it will be refused.
  *
  * \param db          The DB to be modified.
  * \param path        New path to the DB.
@@ -152,7 +152,7 @@ int knot_lmdb_reconfigure(knot_lmdb_db_t *db, const char *path, size_t mapsize, 
 /*!
  * \brief Close and de-initialise DB.
  *
- * \param db   DB to be deinitialised.
+ * \param db   DB to be deinitialized.
  */
 void knot_lmdb_deinit(knot_lmdb_db_t *db);
 
@@ -182,7 +182,7 @@ void knot_lmdb_abort(knot_lmdb_txn_t *txn);
 /*!
  * \brief Commit a transaction, or abort it if id had failured.
  *
- * \param txn   Transaction to be commited.
+ * \param txn   Transaction to be committed.
  *
  * \note If txn->ret equals KNOT_EOK afterwards, whole DB transaction was successful.
  */
@@ -330,7 +330,7 @@ int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool pr
 bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val);
 
 /*!
- * \brief Open a transaction, insert a record, commmit and free key's and val's mv_data.
+ * \brief Open a transaction, insert a record, commit and free key's and val's mv_data.
  *
  * \param db    DB to be inserted into.
  * \param key   Inserted key.
@@ -424,7 +424,7 @@ bool knot_lmdb_make_key_part(void *key_data, size_t key_len, const char *format,
  * \param format     Specifies the number and type of parameters.
  * \param ...        For each character in 'format', pointer to where the values will be stored.
  *
- * \note For B, H, I, L; provide simply pointers to variables of correspodning type.
+ * \note For B, H, I, L; provide simply pointers to variables of corresponding type.
  * \note For S, N; provide pointer to pointer - it will be set to pointing inside the buffer, so no allocation here.
  * \note For D, provide void* and size_t, the data will be copied.
  *

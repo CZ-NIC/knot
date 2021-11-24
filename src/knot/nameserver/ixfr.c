@@ -124,7 +124,7 @@ static int ixfr_load_chsets(journal_read_t **journal_read, zone_t *zone,
 	}
 
 	// please note that the journal serial_to might differ from zone SOA serial
-	// it is beacuse RCU lock is made at different moment than LMDB txn begin
+	// it is because RCU lock is made at different moment than LMDB txn begin
 	return journal_read_begin(zone_journal(zone), false, serial_from, journal_read);
 }
 

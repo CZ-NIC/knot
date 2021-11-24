@@ -43,7 +43,7 @@ typedef struct {
 int set_config(const cmd_desc_t *desc, params_t *params);
 
 /*!
- * Estabilishes a control interface if necessary.
+ * Establishes a control interface if necessary.
  *
  * \param[in] ctl      Control context.
  * \param[in] socket   Control socket path.

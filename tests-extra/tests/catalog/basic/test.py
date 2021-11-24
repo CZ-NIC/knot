@@ -58,7 +58,7 @@ resp.check(rcode="REFUSED")
 resp = master.dig("not-cataloged3.", "SOA")
 resp.check(rcode="REFUSED")
 
-# Udating a cataloged zone
+# Updating a cataloged zone
 subprocess.run(["sed", "-i", "s/10001/10002/;$s/$/\\nxyz A 1.2.3.4/", master.dir + "/master/cataloged1.zone"])
 master.ctl("zone-reload cataloged1.")
 t.sleep(4)
@@ -80,7 +80,7 @@ resp.check(rcode="NOERROR")
 resp.check_count(2, "DNSKEY")
 resp.check_count(1, "RRSIG")
 
-# Check that addition didn't delete prvious
+# Check that addition didn't delete previous
 resp = master.dig("cataloged1.", "SOA")
 resp.check(rcode="NOERROR")
 resp = slave.dig("cataloged1.", "SOA", dnssec=True)

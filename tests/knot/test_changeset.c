@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	}
 	ok(changeset_empty(ch), "changeset: empty");
 	ch->soa_to = (knot_rrset_t *)0xdeadbeef;
-	ok(!changeset_empty(ch), "changseset: empty SOA");
+	ok(!changeset_empty(ch), "changeset: empty SOA");
 	ch->soa_to = NULL;
 	ok(changeset_size(ch) == 0, "changeset: empty size");
 
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 
 	// Test all traversal - just count.
 	ret = changeset_iter_all(&it, ch);
-	is_int(KNOT_EOK, ret, "changest: create iter all");
+	is_int(KNOT_EOK, ret, "changeset: create iter all");
 	size_t size = 0;
 	iter = changeset_iter_next(&it);
 	while (!knot_rrset_empty(&iter)) {

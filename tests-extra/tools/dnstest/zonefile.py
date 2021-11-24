@@ -54,7 +54,7 @@ class ZoneFile(object):
         '''Make a copy of an existing zone file. If no file name is specified,
            the file name is constructed from the zone name (zname.zone).
            If version is specified, file_name.version is used.
-           The storage is a directory containg the zone file.'''
+           The storage is a directory containing the zone file.'''
 
         if not file_name:
             file_name = self.name + "zone"

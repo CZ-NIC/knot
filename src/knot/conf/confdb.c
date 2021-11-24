@@ -56,7 +56,7 @@
  * # Template section items codes.
  * [03][00]master:   [03]
  * [03][00]storage:  [02]
- * # Template identificators.
+ * # Template identifiers.
  * [03][01]tpl1\0
  * [03][01]tpl2\0
  * # Template items values.

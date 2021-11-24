@@ -81,7 +81,7 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
 /*!
  * \brief Selectively delete zones from the database.
  *
- * \param db         KASP dababase.
+ * \param db         KASP database.
  * \param keep_zone  Filtering callback.
  * \param cb_data    Data passed to callback function.
  *

@@ -488,7 +488,7 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
-	// Count the server opearation.
+	// Count the server operation.
 	if (stats->operation) {
 		knotd_mod_stats_incr(mod, tid, CTR_OPERATION, operation, 1);
 	}

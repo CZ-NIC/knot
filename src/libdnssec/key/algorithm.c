@@ -119,7 +119,7 @@ bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algorithm, bool enable
 		return true; // those are always reproducible
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
-#ifdef HAVE_GLNUTLS_REPRODUCIBLE
+#ifdef HAVE_GNUTLS_REPRODUCIBLE
 		return enabled; // Reproducible only if GnuTLS supports && enabled
 #else
 		return false;

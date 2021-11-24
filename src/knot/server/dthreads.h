@@ -138,7 +138,7 @@ int dt_start(dt_unit_t *unit);
  *
  * \note This is useful to interrupt some blocking I/O as well, for example
  *       with SIGALRM, which is handled by default.
- * \note Signal handler may be overriden in runnable.
+ * \note Signal handler may be overridden in runnable.
  *
  * \param thread Target thread instance.
  * \param signum Signal code.
@@ -201,7 +201,7 @@ int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count);
 int dt_activate(dthread_t *thread);
 
 /*!
- * \brief Put thread to idle state, cancells current runnable function.
+ * \brief Put thread to idle state, cancels current runnable function.
  *
  * Thread is flagged with Cancel flag and returns from runnable at the nearest
  * cancellation point, which requires complying runnable function.

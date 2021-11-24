@@ -232,7 +232,7 @@ static int create_sign_wire(const uint8_t *msg, size_t msg_len,
 
 	/*
 	 * Create tmp wire, it should contain message
-	 * plus request mac plus tsig varibles.
+	 * plus request mac plus tsig variables.
 	 */
 	size_t wire_len = msg_len + request_mac_len + (request_mac_len > 0 ? 2 : 0) +
 	                  knot_tsig_rdata_tsig_variables_length(tmp_tsig);
@@ -290,7 +290,7 @@ static int create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 
 	/*
 	 * Create tmp wire, it should contain message
-	 * plus request mac plus tsig varibles.
+	 * plus request mac plus tsig variables.
 	 */
 	size_t wire_len = msg_len + prev_mac_len + knot_tsig_rdata_tsig_timers_length() + 2;
 	uint8_t *wire = malloc(wire_len);

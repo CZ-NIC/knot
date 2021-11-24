@@ -10,7 +10,7 @@ import dns.edns
 
 KNOT_EDNS_OPTION_EDE = 15
 
-# this will work with future dnsython...
+# this will work with future dnspython...
 #class EdeOption(dns.edns.Option):
 #   def __init__(self, rcode):
 #      super().__init__(KNOT_EDNS_OPTION_EDE)

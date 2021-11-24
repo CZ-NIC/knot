@@ -33,7 +33,7 @@ struct dnssec_tsig_ctx {
 };
 
 /*!
- * TSIG algorithm indentifiers.
+ * TSIG algorithm identifiers.
  */
 typedef struct {
 	dnssec_tsig_algorithm_t id;

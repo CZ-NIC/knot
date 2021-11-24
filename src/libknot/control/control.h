@@ -32,7 +32,7 @@ typedef enum {
 	KNOT_CTL_IDX_ERROR,   /*!< Error message. */
 	KNOT_CTL_IDX_SECTION, /*!< Configuration section name. */
 	KNOT_CTL_IDX_ITEM,    /*!< Configuration item name. */
-	KNOT_CTL_IDX_ID,      /*!< Congiguration item identifier. */
+	KNOT_CTL_IDX_ID,      /*!< Configuration item identifier. */
 	KNOT_CTL_IDX_ZONE,    /*!< Zone name. */
 	KNOT_CTL_IDX_OWNER,   /*!< Zone record owner */
 	KNOT_CTL_IDX_TTL,     /*!< Zone record TTL. */

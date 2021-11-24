@@ -44,7 +44,7 @@ typedef struct catalog_upd_val {
 
 typedef struct {
 	trie_t *upd;             // tree of catalog_upd_val_t, that gonna be changed in catalog
-	int error;               // error occured during generating of upd
+	int error;               // error occurred during generating of upd
 	pthread_mutex_t mutex;   // lock for accessing this struct
 } catalog_update_t;
 
@@ -138,7 +138,7 @@ void catalog_update_finalize(catalog_update_t *u, catalog_t *cat, conf_t *conf);
 /*!
  * \brief Put changes from Catalog Update into persistent Catalog database.
  *
- * \param u      Catalog update to be commited.
+ * \param u      Catalog update to be committed.
  * \param cat    Catalog to be updated.
  *
  * \return KNOT_E*

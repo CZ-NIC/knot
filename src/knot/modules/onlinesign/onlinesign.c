@@ -154,7 +154,7 @@ static void bitmap_add_forced(dnssec_nsec_bitmap_t *map, uint16_t qtype,
  *
  * - The bitmap will contain types synthesized by this module.
  * - The bitmap will contain types from zone and forced
- *   types which can be potentionally synthesized by other query modules.
+ *   types which can be potentially synthesized by other query modules.
  */
 static dnssec_nsec_bitmap_t *synth_bitmap(const knotd_qdata_t *qdata,
                                           const uint16_t *force_types)

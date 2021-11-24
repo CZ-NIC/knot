@@ -53,7 +53,7 @@ void journal_merge(zone_journal_t j, knot_lmdb_txn_t *txn, bool merge_zij,
  * \brief Delete some journal changesets in attempt to fulfill usage quotas.
  *
  * \param txn              Journal DB transaction.
- * \param from             Serial-from of the first cangeset to be deleted.
+ * \param from             Serial-from of the first changeset to be deleted.
  * \param zone             Zone name.
  * \param tofree_size      Amount of data (in bytes) to be at least deleted.
  * \param tofree_count     Number of changesets to be at least deleted.
@@ -73,7 +73,7 @@ bool journal_delete(knot_lmdb_txn_t *txn, uint32_t from, const knot_dname_t *zon
  *
  * \param j     Zone journal.
  * \param txn   Journal DB transaction.
- * \param md    Jounral metadata.
+ * \param md    Journal metadata.
  *
  * \note It might set txn->ret to KNOT_EBUSY to fail out from this operation and let the zone flush itself.
  */

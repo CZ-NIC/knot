@@ -3,7 +3,7 @@
 """
 More precise check of simple KSK rollover.
 
-The key_rollvoers test is too over-complicated already, unable to add test cases.
+The key_rollovers test is too over-complicated already, unable to add test cases.
 """
 
 import collections

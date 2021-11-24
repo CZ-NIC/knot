@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for unsiccessful creation of NSEC3 tree'''
+'''Test for unsuccessful creation of NSEC3 tree'''
 
 from dnstest.test import Test
 

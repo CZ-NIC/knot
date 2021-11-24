@@ -25,7 +25,7 @@
 #define HOPE "Knot DNS developers hope you "
 
 static const char *wishes[] = {
-	HOPE "have all your important life questions aswered without SERVFAIL.",
+	HOPE "have all your important life questions answered without SERVFAIL.",
 	WISH "many wonderful people in your domain.",
 	WISH "non-empty lymph nodes.",
 	HOPE "resolve the . of your problems.",

@@ -78,7 +78,7 @@ int additionals_tree_update_nsec3(additionals_tree_t *a_t, const zone_contents_t
 int additionals_tree_from_zone(additionals_tree_t **a_t, const zone_contents_t *zone);
 
 /*!
- * \brief Update attionals tree according to changed RRsets in all nodes in a zone tree.
+ * \brief Update additionals tree according to changed RRsets in all nodes in a zone tree.
  *
  * \param a_t          Additionals tree to be updated.
  * \param tree         Zone tree containing updated nodes as bi-nodes.

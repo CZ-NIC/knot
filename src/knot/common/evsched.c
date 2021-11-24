@@ -37,7 +37,7 @@ static int compare_event_heap_nodes(void *e1, void *e2)
 }
 
 /*!
- * \brief Get time T (now) + dt miliseconds.
+ * \brief Get time T (now) + dt milliseconds.
  */
 static struct timeval timeval_in(uint32_t dt)
 {

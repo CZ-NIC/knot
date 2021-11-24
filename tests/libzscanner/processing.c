@@ -153,10 +153,10 @@ int test_date_to_timestamp(void)
 			 gmtime_r(&ref_timestamp, &result));
 
 		// Get testing timestamp.
-		test_timestamp = 0U; // prevents Wunitialized
+		test_timestamp = 0U; // prevents Wuninitialized
 		date_to_timestamp(buffer, &test_timestamp);
 
-		// Some continuous loging.
+		// Some continuous logging.
 		if (ref_timestamp % 10000000 == 0) {
 			val1 = ref_timestamp;
 			printf("%s = %"PRIu64"\n", buffer, val1);

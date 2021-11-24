@@ -398,7 +398,7 @@ typedef enum {
 
 /*! Query processing data context parameters. */
 typedef struct {
-	knotd_query_flag_t flags;              /*!< Current query flgas. */
+	knotd_query_flag_t flags;              /*!< Current query flags. */
 	const struct sockaddr_storage *remote; /*!< Current remote address. */
 	int socket;                            /*!< Current network socket. */
 	unsigned thread_id;                    /*!< Current thread id. */

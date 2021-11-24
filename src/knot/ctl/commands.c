@@ -753,7 +753,7 @@ static int init_send_ctx(send_ctx_t *ctx, const knot_dname_t *zone_name,
 	// Set the dump style.
 	ctx->style.show_ttl = true;
 	ctx->style.original_ttl = true;
-	ctx->style.human_tmstamp = true;
+	ctx->style.human_timestamp = true;
 
 	// Set the output data buffers.
 	ctx->data[KNOT_CTL_IDX_ZONE]  = ctx->zone;

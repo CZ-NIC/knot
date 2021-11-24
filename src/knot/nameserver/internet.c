@@ -55,7 +55,7 @@ static int wildcard_visit(knotd_qdata_t *qdata, const zone_node_t *node,
 	return KNOT_EOK;
 }
 
-/*! \brief Synthetizes a CNAME RR from a DNAME. */
+/*! \brief Synthesizes a CNAME RR from a DNAME. */
 static int dname_cname_synth(const knot_rrset_t *dname_rr,
                              const knot_dname_t *qname,
                              knot_rrset_t *cname_rrset,

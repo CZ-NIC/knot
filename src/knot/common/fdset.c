@@ -238,7 +238,7 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 	/*
 	 *  NOTE: Can't skip offset without bunch of syscalls!
 	 *  Because of that it waits for `ctx->n` (every socket). Offset is set when TCP
-	 *  trotlling is ON. Sometimes it can return with sockets where none of them is
+	 *  throttling is ON. Sometimes it can return with sockets where none of them is
 	 *  connected socket, but it should not be common.
 	 */
 	while (it->unprocessed > 0 && fdset_it_get_idx(it) < it->idx) {

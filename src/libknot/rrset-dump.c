@@ -82,7 +82,7 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.original_ttl = true,
 	.empty_ttl = false,
 	.human_ttl = false,
-	.human_tmstamp = true,
+	.human_timestamp = true,
 	.hide_crypto = false,
 	.ascii_to_idn = NULL,
 	.color = NULL,
@@ -685,7 +685,7 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 
 	time_t timestamp = ntohl(data);
 
-	if (p->style->human_tmstamp) {
+	if (p->style->human_timestamp) {
 		struct tm result;
 		// Write timestamp in YYYYMMDDhhmmss format.
 		ret = strftime(p->out, p->out_max, "%Y%m%d%H%M%S",
@@ -1034,7 +1034,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	// Altitude calculation.
 	double alt = 0.01 * alt_w - 100000.0;
 
-	// Compute mantisa and exponent for each size.
+	// Compute mantissa and exponent for each size.
 	uint8_t size_m = size_w >> 4;
 	uint8_t size_e = size_w & 0xF;
 	uint8_t hpre_m = hpre_w >> 4;

@@ -87,7 +87,7 @@ Commands
   Takes one argument: path to BIND key file (private or public, but both MUST exist).
 
 **import-pub** *BIND_pubkey_file*
-  Imports a public key into KASP database. This key won't be rollovered nor used for signing.
+  Imports a public key into KASP database. This key won't be rolled over nor used for signing.
   Takes one argument: path to BIND public key file.
 
 **import-pem** *PEM_file* [*arguments*...]
@@ -153,7 +153,7 @@ Commands related to Offline KSK feature
   Print to stdout KeySigningRequest based on pre-generated ZSKs for specified period.
 
 **sign-ksr** *ksr_file*
-  Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
+  Read KeySigningRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
 
 **validate-skr** *skr_file*
   Read SignedKeyResponse from a text file and validate the RRSIGs in it if not corrupt.

@@ -122,7 +122,7 @@ def knotc_single(*args):
         raise Exception("error: knotc %s failed: '%s'" % (str(args), stderr))
 
 def zone_template(zone):
-    # this function is intended to be patched by user's bussiness logic
+    # this function is intended to be patched by user's business logic
     return None
 
 # param type:

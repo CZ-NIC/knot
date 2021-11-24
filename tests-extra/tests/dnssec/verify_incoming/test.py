@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Check that Knot validates RRSIGs incomming thru IXFR'''
+'''Check that Knot validates RRSIGs incoming through IXFR'''
 
 from dnstest.utils import *
 from dnstest.test import Test

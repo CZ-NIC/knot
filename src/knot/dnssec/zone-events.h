@@ -105,7 +105,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
  *
  * \param ctx           zone signing context
  * \param salt_changed  output if KNOT_EOK: when was the salt last changed? (either ctx->now or 0)
- * \param when_resalt   output: tmestamp when next resalt takes place
+ * \param when_resalt   output: timestamp when next resalt takes place
  *
  * \return KNOT_E*
  */

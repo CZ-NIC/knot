@@ -19,7 +19,7 @@ t.link([zone], master, slave)
 
 t.start()
 
-# verify zone boostrap
+# verify zone bootstrap
 for server in [master, slave]:
     server.zone_wait(zone)
 
@@ -33,7 +33,7 @@ for server in [master, slave]:
 master.stop()
 slave.stop()
 
-# verify zone persistence after boostrap
+# verify zone persistence after bootstrap
 slave.start()
 slave.zone_wait(zone, serial=10, equal=True, greater=False)
 

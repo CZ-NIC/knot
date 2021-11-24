@@ -42,7 +42,7 @@ typedef struct {
 /*! \brief Changeset iteration structure. */
 typedef struct {
 	list_t iters;             /*!< List of pending zone iterators. */
-	zone_tree_t *trees[4];    /*!< Poiters to zone trees to iterate over. */
+	zone_tree_t *trees[4];    /*!< Pointers to zone trees to iterate over. */
 	size_t n_trees;           /*!< Their count. */
 	zone_tree_it_t it;        /*!< Zone tree iterator. */
 	const zone_node_t *node;  /*!< Current zone node. */
@@ -135,7 +135,7 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset);
  *
  * \param ch1  Merge into this changeset.
  * \param ch2  Merge this changeset.
- * \param flags  Flags how to handle rendundancies.
+ * \param flags  Flags how to handle redundancies.
  *
  * \return KNOT_E*
  */

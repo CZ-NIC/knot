@@ -344,7 +344,7 @@ conf_val_t conf_iter_id(
  * Deletes the section iterator.
  *
  * This function should be called when the iterating is early interrupted,
- * otherwise this is done automaticaly at KNOT_EOF.
+ * otherwise this is done automatically at KNOT_EOF.
  *
  * \param[in] conf  Configuration.
  * \param[in] iter  Configuration iterator.
@@ -753,7 +753,7 @@ static inline size_t conf_bg_threads(
  * Gets the required LMDB readers limit based on the current configuration.
  *
  * \note The resulting value is a common limit to journal, kasp, timers,
- *       and catalog databases. So it's over-estimated for simpicity reasons.
+ *       and catalog databases. So it's over-estimated for simplicity reasons.
  *
  * \note This function cannot be used for the configuration database setting :-/
  *

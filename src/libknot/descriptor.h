@@ -282,7 +282,7 @@ int knot_rrtype_additional_needed(const uint16_t type);
  * \brief Checks whether the RDATA domain names should be lowercased in
  *        canonical format of RRSet of the given type.
  *
- * Types that should be lowercased are accorrding to RFC 4034, Section 6.2,
+ * Types that should be lowercased are according to RFC 4034, Section 6.2,
  * except for NSEC (updated by RFC 6840, Section 5.1) and A6 (not supported).
  *
  * \param type RRSet type to check.

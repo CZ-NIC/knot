@@ -1865,7 +1865,7 @@
 	svcb_params = all_wchar ${ fhold; fcall svcb_params_; };
 	# END
 
-	# BEGIN - Mnemomic names processing
+	# BEGIN - Mnemonic names processing
 	action _dns_alg_error {
 		WARN(ZS_BAD_ALGORITHM);
 		fhold; fgoto err_line;

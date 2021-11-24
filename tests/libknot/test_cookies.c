@@ -140,8 +140,8 @@ int main(int argc, char *argv[])
 
 	cc = client_generate(&s4_sa, c_secret2, "IPv4", KNOT_EOK,
 	                     "\xFC\x93\xFC\x62\x80\x7D\xDB\x86");
-	char *sc_reserverd = "\x01\xAB\xCD\xEF\x5C\xF7\x8F\x71\xA3\x14\x22\x7B\x66\x79\xEB\xF5";
-	memcpy(sc.data, sc_reserverd, strlen(sc_reserverd));
+	char *sc_reserved = "\x01\xAB\xCD\xEF\x5C\xF7\x8F\x71\xA3\x14\x22\x7B\x66\x79\xEB\xF5";
+	memcpy(sc.data, sc_reserved, strlen(sc_reserved));
 	server_check(&c4_sa2, s_secret1, &sc, &cc, 1559727985, "IPv4", KNOT_EOK);
 
 	// Version check

@@ -34,7 +34,7 @@ int p11_reinit(void);
 int p11_load_module(const char *name);
 
 /*!
- * Clenaup PKCS11 global context.
+ * Cleanup PKCS11 global context.
  *
  * Should be called when the library is deinitialized to prevent memory leaks.
  */

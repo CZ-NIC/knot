@@ -73,7 +73,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 void knot_xdp_deinit(knot_xdp_socket_t *socket);
 
 /*!
- * \brief Return a file descriptor to be polled on for incomming packets.
+ * \brief Return a file descriptor to be polled on for incoming packets.
  *
  * \param socket  XDP socket.
  *
@@ -154,7 +154,7 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket);
  * \brief Receive multiple packets thru XDP.
  *
  * \param socket     XDP socket.
- * \param msgs       Out: buffers to be filled in with incomming packets.
+ * \param msgs       Out: buffers to be filled in with incoming packets.
  * \param max_count  Limit for number of packets received at once.
  * \param count      Out: real number of received packets.
  * \param wire_size  Out: (optional) total wire size of received packets.

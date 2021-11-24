@@ -5,7 +5,7 @@
 
 The module forwards all queries, or all specific zone queries if configured
 per zone, to the indicated server for resolution. If configured in the fallback
-mode, only localy unsatisfied queries are forwarded. I.e. a tiny DNS proxy.
+mode, only locally unsatisfied queries are forwarded. I.e. a tiny DNS proxy.
 There are several uses of this feature:
 
 * A substitute public-facing server in front of the real one
@@ -87,7 +87,7 @@ A remote response timeout in milliseconds.
 fallback
 ........
 
-If enabled, localy unsatisfied queries leading to REFUSED (no zone) are forwarded.
+If enabled, locally unsatisfied queries leading to REFUSED (no zone) are forwarded.
 If disabled, all queries are directly forwarded without any local attempts
 to resolve them.
 
@@ -107,7 +107,7 @@ If enabled, TCP Fast Open is used when forwarding TCP queries.
 catch-nxdomain
 ..............
 
-If enabled, localy unsatisfied queries leading to NXDOMAIN are forwarded.
+If enabled, locally unsatisfied queries leading to NXDOMAIN are forwarded.
 This option is only relevant in the fallback mode.
 
 *Default:* off

@@ -114,7 +114,7 @@ Imports a BIND\-style key into KASP database (converting it to PEM format).
 Takes one argument: path to BIND key file (private or public, but both MUST exist).
 .TP
 \fBimport\-pub\fP \fIBIND_pubkey_file\fP
-Imports a public key into KASP database. This key won\(aqt be rollovered nor used for signing.
+Imports a public key into KASP database. This key won\(aqt be rolled over nor used for signing.
 Takes one argument: path to BIND public key file.
 .TP
 \fBimport\-pem\fP \fIPEM_file\fP [\fIarguments\fP\&...]
@@ -180,7 +180,7 @@ Delete old keys that are in state \(aqremoved\(aq.
 Print to stdout KeySigningRequest based on pre\-generated ZSKs for specified period.
 .TP
 \fBsign\-ksr\fP \fIksr_file\fP
-Read KeySigingRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
+Read KeySigningRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.
 .TP
 \fBvalidate\-skr\fP \fIskr_file\fP
 Read SignedKeyResponse from a text file and validate the RRSIGs in it if not corrupt.

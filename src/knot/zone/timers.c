@@ -22,7 +22,7 @@
 /*
  * # Timer database
  *
- * Timer database stores timestaps of events which need to be retained
+ * Timer database stores timestamps of events which need to be retained
  * across server restarts. The key in the database is the zone name in
  * wire format. The value contains serialized timers.
  *

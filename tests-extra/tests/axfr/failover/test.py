@@ -37,7 +37,7 @@ slave.zones[zone.name].journal_content = "all"
 
 t.start()
 
-# zone boostrap
+# zone bootstrap
 for server in [master1, master2, slave]:
     server.zone_wait(zone)
 

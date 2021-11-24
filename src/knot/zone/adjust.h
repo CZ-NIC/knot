@@ -28,7 +28,7 @@ typedef struct {
 typedef int (*adjust_cb_t)(zone_node_t *, adjust_ctx_t *);
 
 /*
- * \brief Varoius callbacks for adjusting zone node's params and pointers.
+ * \brief Various callbacks for adjusting zone node's params and pointers.
  *
  * \param node   Node to be adjusted. Must be already inside the zone contents!
  * \param zone   Zone being adjusted.
@@ -88,7 +88,7 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
  *
  * \note Fixing PREV pointers and zone measurement does not make sense since we are not
  *       iterating over whole zone. The same applies for callback that reference other
- *       (unchanged, but indirecty affected) zone nodes.
+ *       (unchanged, but indirectly affected) zone nodes.
  *
  * \param update     Zone update being finalized.
  * \param nodes_cb   Callback for NORMAL nodes.

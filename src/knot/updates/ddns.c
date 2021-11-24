@@ -349,7 +349,7 @@ static bool singleton_replaced(changeset_t *changeset,
 }
 
 /*!< \brief Adds RR into add section of changeset if it is deemed worthy. */
-static int add_rr_to_chgset(const knot_rrset_t *rr,
+static int add_rr_to_changeset(const knot_rrset_t *rr,
                             zone_update_t *update)
 {
 	if (singleton_replaced(&update->change, rr)) {
@@ -380,13 +380,13 @@ static int process_add_cname(const zone_node_t *node,
 			return ret;
 		}
 
-		return add_rr_to_chgset(rr, update);
+		return add_rr_to_changeset(rr, update);
 	} else if (!node_empty(node)) {
 		// Other occupied node => ignore.
 		return KNOT_EOK;
 	} else {
 		// Can add.
-		return add_rr_to_chgset(rr, update);
+		return add_rr_to_changeset(rr, update);
 	}
 }
 
@@ -405,7 +405,7 @@ static int process_add_nsec3param(const zone_node_t *node,
 	}
 	knot_rrset_t param = node_rrset(node, KNOT_RRTYPE_NSEC3PARAM);
 	if (knot_rrset_empty(&param)) {
-		return add_rr_to_chgset(rr, update);
+		return add_rr_to_changeset(rr, update);
 	}
 
 	char *owner = knot_dname_to_str_alloc(rr->owner);
@@ -435,7 +435,7 @@ static int process_add_soa(const zone_node_t *node,
 		return KNOT_EOK;
 	}
 
-	return add_rr_to_chgset(rr, update);
+	return add_rr_to_changeset(rr, update);
 }
 
 /*!< \brief Adds normal RR, ignores when CNAME exists in node. */
@@ -453,7 +453,7 @@ static int process_add_normal(const zone_node_t *node,
 		return KNOT_EOK;
 	}
 
-	return add_rr_to_chgset(rr, update);
+	return add_rr_to_changeset(rr, update);
 }
 
 /*!< \brief Decides what to do with RR addition. */

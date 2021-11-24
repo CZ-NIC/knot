@@ -103,7 +103,7 @@ typedef struct zone
 } zone_t;
 
 /*!
- * \brief Creates new zone with emtpy zone content.
+ * \brief Creates new zone with empty zone content.
  *
  * \param name  Zone name.
  *

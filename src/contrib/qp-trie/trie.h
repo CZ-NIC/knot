@@ -166,7 +166,7 @@ void trie_it_prev_loop(trie_it_t *it);
 /*! \brief Advance iterator to the next element while ignoring the subtree.
  *
  * \note Another formulation: skip keys that are prefixed by the current key.
- * \TODO: name, maybe _noprefixed?  The thing is that in the "subtree" meaning
+ * \TODO: name, maybe _unprefixed?  The thing is that in the "subtree" meaning
  * doesn't correspond to how the pointers go in the implementation,
  * but we may not care much for implementation in the API...
  */
@@ -174,7 +174,7 @@ void trie_it_next_nosub(trie_it_t *it);
 
 /*! \brief Advance iterator to the longest prefix of the current key.
  *
- * \TODO: name, maybe _prefix?  Arguments similar to _nosub vs. _noprefixed.
+ * \TODO: name, maybe _prefix?  Arguments similar to _nosub vs. _unprefixed.
  */
 void trie_it_parent(trie_it_t *it);
 
