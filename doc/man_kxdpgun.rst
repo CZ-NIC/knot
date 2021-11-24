@@ -18,7 +18,7 @@ in a loop until a configured duration elapses. The order of queries is not
 guaranteed. Responses are received (unless disabled) and counted, but not
 checked against queries.
 
-The number of parallel threads is autodected according to the number of queues
+The number of parallel threads is autodetected according to the number of queues
 configured for the network interface.
 
 Options

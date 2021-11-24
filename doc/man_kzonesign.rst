@@ -21,7 +21,7 @@ Options
   Knot DNS configuration file (same as for knotd).
 
 **-o**, **--outdir** *dir_name*
-  Write the output zone file to the specified directory insted of the configured one.
+  Write the output zone file to the specified directory instead of the configured one.
 
 **-r**, **--rollover**
   Allow key roll-overs and NSEC3 re-salt. In order to finish possible KSK submission,

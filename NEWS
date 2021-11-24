@@ -165,7 +165,7 @@ Compatibility:
 --------------
  - configure: option '--enable-xdp=yes' means use an external libbpf if available
               or use the embedded one
- - libzsanner: omitted TTL value is correctly set to the last explicitly stated value (RFC 1035)
+ - libzscanner: omitted TTL value is correctly set to the last explicitly stated value (RFC 1035)
  - knotc: zone restore from an old backup (3.0.x) requires forced operation
  - knotd: configuration option 'server.listen-xdp' is replaced with 'xdp.listen'
  - knotd: zone file loading with automatic SOA serial incrementation newly
@@ -411,7 +411,7 @@ Improvements:
 -------------
  - Processing depth of CNAME and DNAME chains is limited to 20
  - Non-FQDN is allowed as 'update-owner-name' configuration option value
- - Kdig prints detailed algorithm idendifier for PRIVATEDNS and PRIVATEOID
+ - Kdig prints detailed algorithm identifier for PRIVATEDNS and PRIVATEOID
    in multiline mode #334
  - Queries with QTYPE ANY or RRSIG are always responded with at most one random RRSet
  - The statistics module has negligible performance overhead on modern CPUs
@@ -426,7 +426,7 @@ Improvements:
 
 Bugfixes:
 ---------
- - Module onlinesign responds NXDOMAIN insted of NOERROR (NODATA) if DNSSEC not requested
+ - Module onlinesign responds NXDOMAIN instead of NOERROR (NODATA) if DNSSEC not requested
  - Outgoing multi-message transfer can contain invalid compression pointers under specific conditions
 
 Knot DNS 2.9.9 (2021-04-01)
@@ -532,13 +532,13 @@ Bugfixes:
  - Shared KSK doesn't work with an initial key
  - Self-created RRSIGs are still cryptographically verified in some unnecessary cases
  - Changed NSEC3PARAM not correctly detected during zone update
- - NSEC(3) chain not fixed if affected by zone udpate
+ - NSEC(3) chain not fixed if affected by zone update
  - knotc orphan purge doesn't work on journal
  - Online signing configured along with DNSSEC signing can cause MDB_BAD_RSLOT
    error during server reload
  - Zone journal access can stuck if mismanaged zone serial
  - Concurrently added and removed same records in a DDNS message are not properly handled
- - Zone check logs error instead of warning after a first error occured
+ - Zone check logs error instead of warning after a first error occurred
 
 Knot DNS 2.9.3 (2020-03-03)
 ===========================
@@ -1080,7 +1080,7 @@ Improvements:
 
 Bugfixes:
 ---------
- - Creeping memory consuption upon server reload #584
+ - Creeping memory consumption upon server reload #584
  - Kdig incorrectly detects QNAME if 'notify' is a prefix
  - Server crashes when zone sign fails #587
  - CSK->KZSK rollover retires CSK early #588
@@ -1117,7 +1117,7 @@ Features:
 
 Improvements:
 -------------
- - Reduced memory consuption of disabled statistics metrics
+ - Reduced memory consumption of disabled statistics metrics
  - Some spelling fixes (Thanks to Daniel Kahn Gillmor)
  - Server no longer fails to start if MODULE_DIR doesn't exist
  - Configuration include doesn't fail if empty wildcard match
@@ -1138,7 +1138,7 @@ Knot DNS 2.6.5 (2018-02-12)
 Features:
 ---------
  - New 'zone-notify' command in knotc
- - Kdig uses '@server' as a hostname for TLS authenticaion if '+tls-ca' is set
+ - Kdig uses '@server' as a hostname for TLS authentication if '+tls-ca' is set
 
 Improvements:
 -------------
@@ -1250,7 +1250,7 @@ Improvements:
  - NSEC(3) chain is no longer recomputed whole on every update
  - Remove inconsistent and unnecessary quoting in log files
  - Avoiding of overlapping key rollovers at a time
- - More DNSSSEC-related semantic checks
+ - More DNSSEC-related semantic checks
  - Extended timestamp format in keymgr
 
 Bugfixes:
@@ -1330,7 +1330,7 @@ Features:
 
 Improvements:
 -------------
- - Allowed binding to non-local adresses for TCP (Thanks to Julian Brost!)
+ - Allowed binding to non-local addresses for TCP (Thanks to Julian Brost!)
  - New documentation section for manual DNSSEC key algorithm rollover
  - Initial KSK also generated in the submission state
  - The 'ds' keymgr command with no parameter uses all KSK keys
@@ -1488,7 +1488,7 @@ Bugfixes:
  - Timers for expired zones are reset on reload
  - Zone doesn't expire when the server is down
  - Failed to handle keys with duplicate keytags
- - Per zone module and global module insconsistency
+ - Per zone module and global module inconsistency
  - Obsolete online signing module configuration
  - Malformed output from kjournalprint
  - Redundant SO_REUSEPORT activation on the TCP socket
@@ -1739,7 +1739,7 @@ Bugfixes:
  - Fix TC flag setting in RRL slipped answers
  - Disable domain name compression for root label
  - Log via journald only when running under systemd
- - Fix CNAME following when quering for NSEC RR type
+ - Fix CNAME following when querying for NSEC RR type
  - Fix refreshing of DNSSEC signatures for zone keys
  - Fix binding an unavailable IPv6 address on Linux (IP_FREEBIND)
  - Fix infinite loop in knotc zonestatus and memstats
@@ -1839,7 +1839,7 @@ Bugfixes:
 ---------
  - Journal file would sometimes outgrow its limit (ixfr-fslimit in configuration)
  - Fixed incompatibility with OpenSSL 0.9.8
- - Proper handling when hostname cannot be retreived (for NSID and CH)
+ - Proper handling when hostname cannot be retrieved (for NSID and CH)
 
 Features:
 ---------
@@ -1884,7 +1884,7 @@ Knot DNS 1.5.3 (2014-09-15)
 Bugfixes:
 ---------
  - Some specific incoming IXFRs were causing server to crash
- - Rare sychronization error during reload caused read-after-free
+ - Rare synchronization error during reload caused read-after-free
  - Response synthetization module did not work properly with DNSSEC-enabled zones
  - When Knot sent AXFR when IXFR was requested, message ID and opcode were wrong
  - Knot failed to send large messages to remote control (present since 1.5.1)
@@ -1936,7 +1936,7 @@ Bugfixes:
 ---------
  - Zone flush planning after bootstrap
  - Incorrect incoming AXFR message sizes
- - DDNS signing changes were freed too soon, posibility of stale data
+ - DDNS signing changes were freed too soon, possibility of stale data
  - knotc remote control key handling
 
 Knot DNS 1.5.0-rc2 (2014-06-18)
@@ -2084,7 +2084,7 @@ Features:
  - Defaults for CH TXT id.server,version.server (see doc)
  - Much faster bootstrap of many zones
  - --with-configdir option for default config path
- - Reintroducted 'pidfile' config option
+ - Reintroduced 'pidfile' config option
  - Utility to estimate memory consumption (see 'knotc memstats')
  - PID file is not created when running on foreground
  - UNIX sockets support for knotc
@@ -2213,7 +2213,7 @@ Features:
  - Support for '/' in zone names.
  - Generating journal from reloaded zone (EXPERIMENTAL).
  - Outgoing-only interfaces in configuration file.
- - Following DNAME if the synthetized name is in the same zone.
+ - Following DNAME if the synthesized name is in the same zone.
 
 Bugfixes:
 ---------
@@ -2318,7 +2318,7 @@ Bugfixes:
 ---------
  - Fixed leak when querying non-existing name and zone SOA TTL >
    minimal.
- - Fixed some minor bugs in tansfers.
+ - Fixed some minor bugs in transfers.
 
 Improvements:
 -------------
@@ -2352,7 +2352,7 @@ Features:
 ---------
  - Support for subnets in ACL.
  - Debug messages enabling in configure.
- - Optimized memory consuption of zone structures.
+ - Optimized memory consumption of zone structures.
  - NSID support (RFC5001).
  - Root zone support.
  - Automatic zone compiling on server start.
@@ -2440,7 +2440,7 @@ Known issues:
  - Root zone support
  - NSID support
  - Other DNS classes than IN
- - RRSet rotation not implmented
+ - RRSet rotation not implemented
  - Dynamic update support
  - IXFR code might be flaky sometimes
  - IXFR may be slow when too much (10 000+) RRSets are transferred at

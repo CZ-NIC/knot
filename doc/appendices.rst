@@ -1,5 +1,5 @@
 .. highlight:: none
-.. _Appendicies:
+.. _Appendices:
 
 **********
 Appendices

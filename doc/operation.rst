@@ -56,7 +56,7 @@ Also the configuration database can be exported into a textual file::
 .. WARNING::
    The import and export commands access the configuration database
    directly, without any interaction with the server. Therefore, any data
-   not yet commited to the database won't be exported. And the server won't
+   not yet committed to the database won't be exported. And the server won't
    reflect imported configuration correctly. So it is strictly recommended to
    import new configuration when the server is not running.
 

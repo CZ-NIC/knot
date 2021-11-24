@@ -58,7 +58,7 @@ path
 A directory path the UNIX sockets are located.
 
 .. NOTE::
-   It's recommended to use a directory with the execute permission resctricted
+   It's recommended to use a directory with the execute permission restricted
    to the intended probe consumer process owner only.
 
 *Default:* :ref:`rundir<server_rundir>`

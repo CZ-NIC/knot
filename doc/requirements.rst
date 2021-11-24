@@ -98,7 +98,7 @@ DNS-over-HTTPS (DoH) support in :doc:`kdig<man_kdig>`:
 
 * libnghttp2
 
-The :ref:`XDP funcionality <Mode XDP>` and :doc:`kxdpgun <man_kxdpgun>`
+The :ref:`XDP functionality <Mode XDP>` and :doc:`kxdpgun <man_kxdpgun>`
 tool. These are only supported on Linux operating systems. See the chapter
 :ref:`Mode XDP <Mode XDP_pre-requisites>` for software and hardware
 recommendations.
