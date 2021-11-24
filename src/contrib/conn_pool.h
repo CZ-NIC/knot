@@ -98,21 +98,6 @@ int conn_pool_get_old(conn_pool_t *pool,
                       knot_time_t *next_oldest);
 
 /*!
- * \brief Put an open connection to the pool.
- *
- * \param pool   Pool to insert into.
- * \param src    Connestion source address.
- * \param dst    Connection destination adress.
- * \param fd     Connection file descriptor.
- *
- * \return True if connection stored, false if not.
- */
-bool conn_pool_put(conn_pool_t *pool,
-                   struct sockaddr_storage *src,
-                   struct sockaddr_storage *dst,
-                   int fd);
-
-/*!
  * \brief Put an open connection to the pool, possibly displacing the oldest one there.
  *
  * \param pool   Pool to insert into.
@@ -124,7 +109,7 @@ bool conn_pool_put(conn_pool_t *pool,
  * \retval fd    If not able to store connection.
  * \return >= 0  File descriptor of the displaced old connection.
  */
-int conn_pool_put_force(conn_pool_t *pool,
-                        struct sockaddr_storage *src,
-                        struct sockaddr_storage *dst,
-                        int fd);
+int conn_pool_put(conn_pool_t *pool,
+                  struct sockaddr_storage *src,
+                  struct sockaddr_storage *dst,
+                  int fd);

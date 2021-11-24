@@ -169,10 +169,10 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 
 	if (request->fd >= 0 && use_tcp(request) &&
 	    (request->flags & KNOT_REQUEST_KEEP)) {
-		request->fd = conn_pool_put_force(global_conn_pool,
-		                                  &request->source,
-		                                  &request->remote,
-		                                  request->fd);
+		request->fd = conn_pool_put(global_conn_pool,
+		                            &request->source,
+		                            &request->remote,
+		                            request->fd);
 	}
 	if (request->fd >= 0) {
 		close(request->fd);
