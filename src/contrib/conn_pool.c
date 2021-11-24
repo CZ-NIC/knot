@@ -196,33 +196,10 @@ static void pool_push(conn_pool_t *pool, size_t i,
 	pool->usage++;
 }
 
-bool conn_pool_put(conn_pool_t *pool,
-                   struct sockaddr_storage *src,
-                   struct sockaddr_storage *dst,
-                   int fd)
-{
-	if (pool == NULL) {
-		return false;
-	}
-
-	pthread_mutex_lock(&pool->mutex);
-
-	for (size_t i = 0; i < pool->capacity; i++) {
-		if (pool->conns[i].last_active == 0) {
-			pool_push(pool, i, src, dst, fd);
-			pthread_mutex_unlock(&pool->mutex);
-			return true;
-		}
-	}
-
-	pthread_mutex_unlock(&pool->mutex);
-	return false;
-}
-
-int conn_pool_put_force(conn_pool_t *pool,
-                        struct sockaddr_storage *src,
-                        struct sockaddr_storage *dst,
-                        int fd)
+int conn_pool_put(conn_pool_t *pool,
+                  struct sockaddr_storage *src,
+                  struct sockaddr_storage *dst,
+                  int fd)
 {
 	if (pool == NULL || pool->capacity == 0) {
 		return fd;
