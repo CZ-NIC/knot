@@ -26,6 +26,43 @@
 
 conn_pool_t *global_conn_pool = NULL;
 
+static int pool_pop(conn_pool_t *pool, size_t i);
+
+/*!
+ * \brief Try to get an open connection older than specified timestamp.
+ *
+ * \param pool           Pool to search in.
+ * \param older_than     Timestamp that the connection must be older than.
+ * \param next_oldest    Out: the timestamp of the oldest connection (other than the returned).
+ *
+ * \return -1 if error (no such connection), >= 0 connection file descriptor.
+ *
+ * \warning The returned connection is not necessarily the oldest one.
+ */
+static int get_old(conn_pool_t *pool,
+                   knot_time_t older_than,
+                   knot_time_t *next_oldest)
+{
+	assert(pool);
+
+	*next_oldest = 0;
+
+	int fd = -1;
+	pthread_mutex_lock(&pool->mutex);
+
+	for (size_t i = 0; i < pool->capacity; i++) {
+		knot_time_t la = pool->conns[i].last_active;
+		if (fd == -1 && knot_time_cmp(la, older_than) < 0) {
+			fd = pool_pop(pool, i);
+		} else if (knot_time_cmp(la, *next_oldest) < 0) {
+			*next_oldest = la;
+		}
+	}
+
+	pthread_mutex_unlock(&pool->mutex);
+	return fd;
+}
+
 static void *closing_thread(void *_arg)
 {
 	conn_pool_t *pool = _arg;
@@ -36,7 +73,7 @@ static void *closing_thread(void *_arg)
 		assert(timeout != 0);
 
 		while (true) {
-			int old_fd = conn_pool_get_old(pool, now - timeout + 1, &next);
+			int old_fd = get_old(pool, now - timeout + 1, &next);
 			if (old_fd >= 0) {
 				close(old_fd);
 			} else {
@@ -84,7 +121,7 @@ void conn_pool_deinit(conn_pool_t *pool)
 
 		int fd;
 		knot_time_t unused;
-		while ((fd = conn_pool_get_old(pool, 0, &unused)) >= 0) {
+		while ((fd = get_old(pool, 0, &unused)) >= 0) {
 			close(fd);
 		}
 
@@ -153,31 +190,6 @@ int conn_pool_get(conn_pool_t *pool,
 		}
 	}
 
-	return fd;
-}
-
-int conn_pool_get_old(conn_pool_t *pool,
-                      knot_time_t older_than,
-                      knot_time_t *next_oldest)
-{
-	*next_oldest = 0;
-	if (pool == NULL) {
-		return -1;
-	}
-
-	int fd = -1;
-	pthread_mutex_lock(&pool->mutex);
-
-	for (size_t i = 0; i < pool->capacity; i++) {
-		knot_time_t la = pool->conns[i].last_active;
-		if (fd == -1 && knot_time_cmp(la, older_than) < 0) {
-			fd = pool_pop(pool, i);
-		} else if (knot_time_cmp(la, *next_oldest) < 0) {
-			*next_oldest = la;
-		}
-	}
-
-	pthread_mutex_unlock(&pool->mutex);
 	return fd;
 }
 
