@@ -1,11 +1,1 @@
 src
-src/contrib
-src/libdnssec
-src/libdnssec/shared
-src/libzscanner
-tests
-tests-fuzz
-tests-fuzz/knotd_wrap
-src/knot/zone
-src/libknot/rrtype
-tests/knot
