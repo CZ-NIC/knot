@@ -83,21 +83,6 @@ int conn_pool_get(conn_pool_t *pool,
                   struct sockaddr_storage *dst);
 
 /*!
- * \brief Try to get an open connection older than specified timestamp.
- *
- * \param pool           Pool to search in.
- * \param older_than     Timestamp that the connection must be older than.
- * \param next_oldest    Out: the timestamp of the oldest connection (other than the returned).
- *
- * \return -1 if error (no such connection), >= 0 connection file descriptor.
- *
- * \warning The returned connection is not necessarily the oldest one.
- */
-int conn_pool_get_old(conn_pool_t *pool,
-                      knot_time_t older_than,
-                      knot_time_t *next_oldest);
-
-/*!
  * \brief Put an open connection to the pool, possibly displacing the oldest one there.
  *
  * \param pool   Pool to insert into.
