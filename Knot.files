@@ -123,6 +123,8 @@ src/knot/common/stats.c
 src/knot/common/stats.h
 src/knot/common/systemd.c
 src/knot/common/systemd.h
+src/knot/common/unreachable.c
+src/knot/common/unreachable.h
 src/knot/conf/base.c
 src/knot/conf/base.h
 src/knot/conf/conf.c
@@ -578,6 +580,7 @@ tests/knot/test_query_module.c
 tests/knot/test_requestor.c
 tests/knot/test_server.c
 tests/knot/test_server.h
+tests/knot/test_unreachable.c
 tests/knot/test_worker_pool.c
 tests/knot/test_worker_queue.c
 tests/knot/test_zone-tree.c

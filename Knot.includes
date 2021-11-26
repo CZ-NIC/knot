@@ -1,1 +1,3 @@
 src
+src/knot/common
+tests/knot

@@ -132,6 +132,8 @@ libknotd_la_SOURCES = \
 	knot/common/stats.h			\
 	knot/common/systemd.c			\
 	knot/common/systemd.h			\
+	knot/common/unreachable.c		\
+	knot/common/unreachable.h		\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
 	knot/journal/journal_basic.c		\

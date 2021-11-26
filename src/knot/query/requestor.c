@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "libknot/attribute.h"
+#include "knot/common/unreachable.h"
 #include "knot/query/requestor.h"
 #include "libknot/errcode.h"
 #include "contrib/conn_pool.h"
@@ -50,6 +51,10 @@ static int request_ensure_connected(knot_request_t *request)
 		if (request->fd >= 0) {
 			return KNOT_EOK;
 		}
+
+		if (knot_unreachable_is(global_unreachables, &request->remote)) {
+			return KNOT_EUNREACH;
+		}
 	}
 
 	request->fd = net_connected_socket(sock_type,
@@ -57,6 +62,9 @@ static int request_ensure_connected(knot_request_t *request)
 	                                   &request->source,
 	                                   request->flags & KNOT_REQUEST_TFO);
 	if (request->fd < 0) {
+		if (request->fd == KNOT_ETIMEOUT) { // this never happens when I try
+			knot_unreachable_add(global_unreachables, &request->remote);
+		}
 		return request->fd;
 	}
 
@@ -82,6 +90,9 @@ static int request_send(knot_request_t *request, int timeout_ms)
 	if (use_tcp(request)) {
 		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms,
 		                       tfo_addr);
+		if (ret == KNOT_ETIMEOUT) { // this includes the case when establishing the conn times out
+			knot_unreachable_add(global_unreachables, &request->remote);
+		}
 	} else {
 		ret = net_dgram_send(request->fd, wire, wire_len, NULL);
 	}
