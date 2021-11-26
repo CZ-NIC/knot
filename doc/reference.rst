@@ -144,6 +144,7 @@ General options related to the server.
      tcp-fastopen: BOOL
      remote-pool-limit: INT
      remote-pool-timeout: TIME
+     remote-retry-delay: TIME
      socket-affinity: BOOL
      udp-max-payload: SIZE
      udp-max-payload-ipv4: SIZE
@@ -375,6 +376,17 @@ The timeout in seconds after which the unused kept-open outgoing TCP connections
 to remote servers are closed.
 
 *Default:* 5
+
+.. _server_remote-retry-delay:
+
+remote-retry-delay
+------------------
+
+When a connection attempt times out to some remote address, this information will be
+kept for this specified time in seconds and other connections to the same address won't
+be attempted. This prevents repetitive waiting for timeout on an unreachable remote.
+
+*Default:* 0
 
 .. _server_socket-affinity:
 

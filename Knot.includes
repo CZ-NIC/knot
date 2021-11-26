@@ -9,3 +9,4 @@ tests-fuzz/knotd_wrap
 src/knot/zone
 src/libknot/rrtype
 tests/knot
+src/knot/common
