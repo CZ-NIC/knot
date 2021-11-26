@@ -19,6 +19,7 @@
 #include "libknot/attribute.h"
 #include "knot/query/requestor.h"
 #include "libknot/errcode.h"
+#include "contrib/conn_pool.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
@@ -41,6 +42,16 @@ static int request_ensure_connected(knot_request_t *request)
 	}
 
 	int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
+
+	if (sock_type == SOCK_STREAM) {
+		request->fd = conn_pool_get(global_conn_pool,
+		                            &request->source,
+		                            &request->remote);
+		if (request->fd >= 0) {
+			return KNOT_EOK;
+		}
+	}
+
 	request->fd = net_connected_socket(sock_type,
 	                                   &request->remote,
 	                                   &request->source,
@@ -156,6 +167,13 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 		return;
 	}
 
+	if (request->fd >= 0 && use_tcp(request) &&
+	    (request->flags & KNOT_REQUEST_KEEP)) {
+		request->fd = conn_pool_put(global_conn_pool,
+		                            &request->source,
+		                            &request->remote,
+		                            request->fd);
+	}
 	if (request->fd >= 0) {
 		close(request->fd);
 	}
@@ -313,6 +331,8 @@ int knot_requestor_exec(knot_requestor_t *requestor, knot_request_t *request,
 	/* Expect complete request. */
 	if (requestor->layer.state != KNOT_STATE_DONE) {
 		ret = KNOT_EPROCESSING;
+	} else {
+		request->flags |= KNOT_REQUEST_KEEP;
 	}
 
 	/* Verify last TSIG */

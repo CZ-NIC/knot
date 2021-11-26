@@ -38,6 +38,7 @@
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
+#include "contrib/conn_pool.h"
 #include "contrib/net.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/os.h"
@@ -696,6 +697,10 @@ void server_deinit(server_t *server)
 
 	/* Close journal database if open. */
 	knot_lmdb_deinit(&server->journaldb);
+
+	/* Close and deinit connection pool. */
+	conn_pool_deinit(global_conn_pool);
+	global_conn_pool = NULL;
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
@@ -928,6 +933,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_listen = true;
 	static bool warn_xdp_tcp = true;
 	static bool warn_route_check = true;
+	static bool warn_rmt_pool_limit = true;
 
 	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT)) {
 		log_warning(msg, &C_TCP_REUSEPORT[1]);
@@ -967,6 +973,12 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_route_check && conf->cache.xdp_route_check != conf_get_bool(conf, C_XDP, C_ROUTE_CHECK)) {
 		log_warning(msg, &C_ROUTE_CHECK[1]);
 		warn_route_check = false;
+	}
+
+	if (warn_rmt_pool_limit && global_conn_pool != NULL &&
+	    global_conn_pool->capacity != conf_get_int(conf, C_SRV, C_RMT_POOL_LIMIT)) {
+		log_warning(msg, &C_RMT_POOL_LIMIT[1]);
+		warn_rmt_pool_limit = false;
 	}
 }
 
@@ -1134,6 +1146,25 @@ static int reconfigure_timer_db(conf_t *conf, server_t *server)
 	return ret;
 }
 
+static int reconfigure_remote_pool(conf_t *conf)
+{
+	conf_val_t val = conf_get(conf, C_SRV, C_RMT_POOL_LIMIT);
+	size_t limit = conf_int(&val);
+	val = conf_get(conf, C_SRV, C_RMT_POOL_TIMEOUT);
+	knot_timediff_t timeout = conf_int(&val);
+	if (global_conn_pool == NULL && limit > 0) {
+		conn_pool_t *new_pool = conn_pool_init(limit, timeout);
+		if (new_pool == NULL) {
+			return KNOT_ENOMEM;
+		}
+		global_conn_pool = new_pool;
+	} else {
+		(void)conn_pool_timeout(global_conn_pool, timeout);
+	}
+
+	return KNOT_EOK;
+}
+
 int server_reconfigure(conf_t *conf, server_t *server)
 {
 	if (conf == NULL || server == NULL) {
@@ -1187,6 +1218,12 @@ int server_reconfigure(conf_t *conf, server_t *server)
 	/* Reconfigure Timer DB. */
 	if ((ret = reconfigure_timer_db(conf, server)) != KNOT_EOK) {
 		log_error("failed to reconfigure Timer DB (%s)",
+		          knot_strerror(ret));
+	}
+
+	/* Reconfigure connection pool. */
+	if ((ret = reconfigure_remote_pool(conf)) != KNOT_EOK) {
+		log_error("failed to reconfigure remote pool (%s)",
 		          knot_strerror(ret));
 	}
 

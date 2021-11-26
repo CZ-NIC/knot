@@ -142,6 +142,8 @@ General options related to the server.
      tcp-max-clients: INT
      tcp-reuseport: BOOL
      tcp-fastopen: BOOL
+     remote-pool-limit: INT
+     remote-pool-timeout: TIME
      socket-affinity: BOOL
      udp-max-payload: SIZE
      udp-max-payload-ipv4: SIZE
@@ -350,6 +352,29 @@ configuration as it's enabled automatically if supported by OS.
      ``1`` for client side.
 
 *Default:* off
+
+.. _server_remote-pool-limit:
+
+remote-pool-limit
+-----------------
+
+If nonzero, the server will keep up to this number of outgoing TCP connections
+open for later use. This is an optimization to avoid frequent opening of
+TCP connections to the same remote.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* 0
+
+.. _server_remote-pool-timeout:
+
+remote-pool-timeout
+-------------------
+
+The timeout in seconds after which the unused kept-open outgoing TCP connections
+to remote servers are closed.
+
+*Default:* 5
 
 .. _server_socket-affinity:
 
