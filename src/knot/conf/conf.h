@@ -678,6 +678,24 @@ static inline bool conf_get_bool(
 }
 
 /*!
+ * Gets the configured setting of the int option in the specified section.
+ *
+ * \param[in] conf     Configuration.
+ * \param[in] section  Section name.
+ * \param[in] param    Parameter name.
+ *
+ * \return True if enabled, false otherwise.
+ */
+static inline int conf_get_int(
+	conf_t *conf,
+	const yp_name_t *section,
+	const yp_name_t *param)
+{
+	conf_val_t val = conf_get_txn(conf, &conf->read_txn, section, param);
+	return conf_int(&val);
+}
+
+/*!
  * Gets the configured number of UDP threads.
  *
  * \param[in] conf  Configuration.
