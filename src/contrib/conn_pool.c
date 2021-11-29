@@ -118,6 +118,7 @@ void conn_pool_deinit(conn_pool_t *pool)
 {
 	if (pool != NULL) {
 		pthread_cancel(pool->closing_thread);
+		pthread_join(pool->closing_thread, NULL);
 
 		int fd;
 		knot_time_t unused;
