@@ -109,7 +109,7 @@ typedef struct {
 	// NSEC3
 	bool nsec3_enabled;
 	bool nsec3_opt_out;
-	uint32_t nsec3_salt_lifetime;       // like knot_time_t
+	int64_t nsec3_salt_lifetime;       // like knot_time_t
 	uint16_t nsec3_iterations;
 	uint8_t nsec3_salt_length;
 	// zone

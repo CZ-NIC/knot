@@ -103,12 +103,14 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf);
  * proper DNSSEC chain.
  *
  * \param ctx           zone signing context
+ * \param soa_rrsigs_ok Zone is signed by current active ZSKs.
  * \param salt_changed  output if KNOT_EOK: when was the salt last changed? (either ctx->now or 0)
  * \param when_resalt   output: timestamp when next resalt takes place
  *
  * \return KNOT_E*
  */
-int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_time_t *when_resalt);
+int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool soa_rrsigs_ok,
+                            knot_time_t *salt_changed, knot_time_t *when_resalt);
 
 /*!
  * \brief When DNSSEC signing failed, re-plan on this time.

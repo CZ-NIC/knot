@@ -715,3 +715,41 @@ int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
 	*key = new_key;
 	return KNOT_EOK;
 }
+
+static bool soa_signed_by_key(const zone_key_t *key, const knot_rdataset_t *apex_rrsig)
+{
+	assert(key != NULL);
+	if (apex_rrsig == NULL) {
+		return false;
+	}
+	uint16_t keytag = dnssec_key_get_keytag(key->key);
+
+	knot_rdata_t *rr = apex_rrsig->rdata;
+	for (int i = 0; i < apex_rrsig->count; i++) {
+		if (knot_rrsig_type_covered(rr) == KNOT_RRTYPE_SOA &&
+		    knot_rrsig_key_tag(rr) == keytag) {
+			return true;
+		}
+		rr = knot_rdataset_next(rr);
+	}
+
+	return false;
+}
+
+int is_soa_signed_by_all_zsks(const zone_keyset_t *keyset,
+                              const knot_rdataset_t *apex_rrsig)
+{
+	if (keyset == NULL || keyset->count == 0) {
+		return false;
+	}
+
+	for (size_t i = 0; i < keyset->count; i++) {
+		const zone_key_t *key = &keyset->keys[i];
+		if (key->is_zsk && key->is_active &&
+		    !soa_signed_by_key(key, apex_rrsig)) {
+			return false;
+		}
+	}
+
+	return true;
+}

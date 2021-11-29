@@ -130,7 +130,9 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 				resalt = now;
 			} else {
 				val = conf_id_get(conf, C_POLICY, C_NSEC3_SALT_LIFETIME, &policy);
-				resalt = zone->timers.last_resalt + conf_int(&val);
+				if (conf_int(&val) > 0) {
+					resalt = zone->timers.last_resalt + conf_int(&val);
+				}
 			}
 		}
 
