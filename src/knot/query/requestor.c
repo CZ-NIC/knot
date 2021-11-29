@@ -96,7 +96,9 @@ static int request_send(knot_request_t *request, int timeout_ms)
 	} else {
 		ret = net_dgram_send(request->fd, wire, wire_len, NULL);
 	}
-	if (ret != wire_len) {
+	if (ret < 0) {
+		return ret;
+	} else if (ret != wire_len) {
 		return KNOT_ECONN;
 	}
 
