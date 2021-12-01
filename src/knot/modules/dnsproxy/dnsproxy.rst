@@ -52,6 +52,7 @@ Module reference
    - id: STR
      remote: remote_id
      timeout: INT
+     address: ADDR[/INT] | ADDR-ADDR ...
      fallback: BOOL
      tcp-fastopen: BOOL
      catch-nxdomain: BOOL
@@ -81,6 +82,17 @@ timeout
 A remote response timeout in milliseconds.
 
 *Default:* 500
+
+.. _mod-dnsproxy_address:
+
+address
+.......
+
+An optional list of allowed ranges and/or subnets for query's source address.
+If the query's address does not fall into any of the configured ranges, the
+query isn't forwarded.
+
+*Default:* not set
 
 .. _mod-dnsproxy_fallback:
 
