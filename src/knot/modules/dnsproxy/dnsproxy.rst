@@ -55,6 +55,7 @@ Module reference
      fallback: BOOL
      tcp-fastopen: BOOL
      catch-nxdomain: BOOL
+     address: ADDR[/INT] | ADDR-ADDR ...
 
 .. _mod-dnsproxy_id:
 
@@ -111,3 +112,14 @@ If enabled, locally unsatisfied queries leading to NXDOMAIN are forwarded.
 This option is only relevant in the fallback mode.
 
 *Default:* off
+
+.. _mod-dnsproxy_address:
+
+address
+.......
+
+An optional list of allowed ranges and/or subnets for query's source address.
+If the query's address does not fall into any of the configured ranges, the
+query isn't forwarded.
+
+*Default:* not set

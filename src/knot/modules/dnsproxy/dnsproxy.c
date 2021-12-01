@@ -22,6 +22,7 @@
 #include "knot/nameserver/process_query.h" // Forces static module!
 
 #define MOD_REMOTE		"\x06""remote"
+#define MOD_ADDRESS		"\x07""address"
 #define MOD_TCP_FASTOPEN	"\x0C""tcp-fastopen"
 #define MOD_TIMEOUT		"\x07""timeout"
 #define MOD_FALLBACK		"\x08""fallback"
@@ -30,6 +31,7 @@
 const yp_item_t dnsproxy_conf[] = {
 	{ MOD_REMOTE,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE,
 	                                { knotd_conf_check_ref } },
+	{ MOD_ADDRESS,        YP_TNET,  YP_VNONE, YP_FMULTI },
 	{ MOD_TIMEOUT,        YP_TINT,  YP_VINT = { 0, INT32_MAX, 500 } },
 	{ MOD_FALLBACK,       YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_TCP_FASTOPEN,   YP_TBOOL, YP_VNONE },
@@ -51,6 +53,7 @@ int dnsproxy_conf_check(knotd_conf_check_args_t *args)
 typedef struct {
 	struct sockaddr_storage remote;
 	struct sockaddr_storage via;
+	knotd_conf_t addr;
 	bool fallback;
 	bool tfo;
 	bool catch_nxdomain;
@@ -68,6 +71,14 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 	if (proxy->fallback && !(qdata->rcode == KNOT_RCODE_REFUSED ||
 	     (qdata->rcode == KNOT_RCODE_NXDOMAIN && proxy->catch_nxdomain))) {
 		return state;
+	}
+
+	/* Forward from specified addresses if configured. */
+	if (proxy->addr.count > 0) {
+		const struct sockaddr_storage *addr = knotd_qdata_remote_addr(qdata);
+		if (!knotd_conf_addr_range_match(&proxy->addr, addr)) {
+			return state;
+		}
 	}
 
 	/* Forward also original TSIG. */
@@ -146,6 +157,8 @@ int dnsproxy_load(knotd_mod_t *mod)
 		knotd_conf_free(&conf);
 	}
 
+	proxy->addr = knotd_conf_mod(mod, MOD_ADDRESS);
+
 	conf = knotd_conf_mod(mod, MOD_TIMEOUT);
 	proxy->timeout = conf.single.integer;
 
@@ -169,7 +182,11 @@ int dnsproxy_load(knotd_mod_t *mod)
 
 void dnsproxy_unload(knotd_mod_t *mod)
 {
-	free(knotd_mod_ctx(mod));
+	dnsproxy_t *ctx = knotd_mod_ctx(mod);
+	if (ctx != NULL) {
+		knotd_conf_free(&ctx->addr);
+	}
+	free(ctx);
 }
 
 KNOTD_MOD_API(dnsproxy, KNOTD_MOD_FLAG_SCOPE_ANY,
