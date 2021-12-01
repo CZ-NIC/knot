@@ -87,11 +87,10 @@ int knot_dnssec_zone_sign(zone_update_t *update,
  *
  * \param update      Zone Update structure with current zone contents, changes to be signed and to be updated with signatures.
  * \param conf        Knot configuration.
- * \param reschedule  Signature refresh time of the new signatures.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_reschedule_t *reschedule);
+int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf);
 
 /*!
  * \brief Create new NCES3 salt if the old one is too old, and plan next resalt.

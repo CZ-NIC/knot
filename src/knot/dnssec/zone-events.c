@@ -258,15 +258,16 @@ done:
 	return result;
 }
 
-int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_reschedule_t *reschedule)
+int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 {
-	if (update == NULL || reschedule == NULL) {
+	if (update == NULL || conf == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
+	knot_time_t expire_at = 0;
 
 	int result = kdnssec_ctx_init(conf, &ctx, zone_name, zone_kaspdb(update->zone), NULL);
 	if (result != KNOT_EOK) {
@@ -295,9 +296,8 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 		goto done;
 	}
 
-	knot_time_t next_resign = 0;
 	if (zone_update_changes_dnskey(update)) {
-		result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &next_resign);
+		result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &expire_at);
 		if (result != KNOT_EOK) {
 			log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
 				       knot_strerror(result));
@@ -311,7 +311,6 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 		goto done;
 	}
 
-	knot_time_t expire_at = 0;
 	result = knot_zone_sign_update(update, &keyset, &ctx, &expire_at);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign changeset (%s)",
@@ -363,11 +362,11 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 		}
 	}
 
-	log_zone_info(zone_name, "DNSSEC, successfully signed");
+	log_zone_info(zone_name, "DNSSEC, incrementally signed");
 
 done:
-	if (result == KNOT_EOK) {
-		reschedule->next_sign = schedule_next(&ctx, &keyset, next_resign, expire_at);
+	if (result == KNOT_EOK && expire_at != 0) {
+		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, (time_t)expire_at); // this is usually NOOP since signing planned earlier
 	}
 
 	free_zone_keys(&keyset);
