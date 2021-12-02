@@ -44,9 +44,10 @@ static void print_help(void)
 	       "  -D, --dir <path>         Path to a KASP database directory, use default configuration.\n"
 	       "  -t, --tsig <name> [alg]  Generate a TSIG key.\n"
 	       "  -l, --list               List all zones that have at least one key in KASP database.\n"
-	       "  -b, --brief              List keys briefly.\n"
+	       "  -b, --brief              List keys briefly. (deprecated)\n"
 	       "  -x, --mono               Don't color the output.\n"
-	       "  -X, --color              Force output colorization in the --brief mode.\n"
+	       "  -X, --color              Force output colorization in the --verbose mode.\n"
+	       "  -v, --verbose            Listing of keys with full description.\n"
 	       "  -h, --help               Print the program help.\n"
 	       "  -V, --version            Print the program version.\n"
 	       "\n"
@@ -299,6 +300,7 @@ int main(int argc, char *argv[])
 		{ "brief",   no_argument,       NULL, 'b' },
 		{ "mono",    no_argument,       NULL, 'x' },
 		{ "color",   no_argument,       NULL, 'X' },
+		{ "verbose", no_argument,       NULL, 'v' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ "version", no_argument,       NULL, 'V' },
 		{ NULL }
@@ -313,7 +315,7 @@ int main(int argc, char *argv[])
 	list_params.color = isatty(STDOUT_FILENO);
 
 	int opt = 0, parm = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:D:t:lbxXhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:D:t:lbxXvhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
@@ -344,13 +346,16 @@ int main(int argc, char *argv[])
 			just_list = true;
 			break;
 		case 'b':
-			list_params.brief = true;
+			WARN2("option '--brief' is deprecated and enabled by default\n");
 			break;
 		case 'x':
 			list_params.color = false;
 			break;
 		case 'X':
 			list_params.color = true;
+			break;
+		case 'v':
+			list_params.verbose = true;
 			break;
 		case 'h':
 			print_help();

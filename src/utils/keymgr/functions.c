@@ -937,7 +937,12 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 	if (ctx->zone->num_keys == 0) {
 		return KNOT_EOK;
 	}
-	if (params->brief) {
+	if (params->verbose) {
+		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+			knot_kasp_key_t *key = &ctx->zone->keys[i];
+			print_key_full(key, params->format);
+		}
+	} else {
 		key_sort_item_t items[ctx->zone->num_keys];
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 			knot_kasp_key_t *key = &ctx->zone->keys[i];
@@ -951,11 +956,6 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 		qsort(&items, ctx->zone->num_keys, sizeof(items[0]), key_sort);
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 			print_key_brief(items[i].key, params);
-		}
-	} else {
-		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-			knot_kasp_key_t *key = &ctx->zone->keys[i];
-			print_key_full(key, params->format);
 		}
 	}
 	return KNOT_EOK;
