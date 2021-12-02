@@ -51,13 +51,16 @@ Options
   database.
 
 **-b**, **--brief**
-  List keys briefly. Output to a terminal is colorized by default.
+  List keys briefly. (deprecated)
 
 **-x**, **--mono**
   Don't generate colorized output.
 
 **-X**, **--color**
-  Force colorized output in the **--brief** mode.
+  Force colorized output in the **--verbose** mode.
+
+**-v**, **--version**
+  Listing of keys with full description.
 
 **-h**, **--help**
   Print the program help.
