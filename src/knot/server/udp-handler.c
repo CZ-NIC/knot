@@ -223,6 +223,20 @@ static void udp_recvfrom_send(void *d)
 	}
 }
 
+static void quic_recvfrom_send(void *d)
+{
+	struct quic_recvfrom *rq = d;
+	for (int i = 1; i <= RECVMMSG_BATCHLEN; ++i) {
+		if (rq->iov[i].iov_len == 65535) {
+			rq->msg[TX].msg_iovlen = i - 1;
+			break;
+		}
+	}
+	if (rq->msg[TX].msg_iovlen > 0) {
+		(void)sendmsg(rq->fd, &rq->msg[TX], 0);
+	}
+}
+
 _unused_
 static udp_api_t udp_recvfrom_api = {
 	udp_recvfrom_init,
@@ -430,35 +444,44 @@ static int quic_generate_secret(uint8_t *buf, size_t buflen) {
 	return KNOT_EOK;
 }
 
+
 static void *quic_recvfrom_init(_unused_ void *xdp_sock)
 {
-	struct quic_recvfrom *rq = malloc(sizeof(struct quic_recvfrom));
+	knot_mm_t mm;
+	mm_ctx_mempool(&mm, sizeof(struct quic_recvfrom));
+
+	struct quic_recvfrom *rq = mm_alloc(&mm, sizeof(struct quic_recvfrom));
 	if (rq == NULL) {
 		return NULL;
 	}
-	memset(rq, 0, sizeof(struct quic_recvfrom));
+	memset(rq, 0, sizeof(*rq));
+	memcpy(&rq->mm, &mm, sizeof(knot_mm_t));
 
+	size_t sz = 1;
 	for (unsigned i = 0; i < NBUFS; ++i) {
-		rq->iov[i].iov_base = rq->buf + i;
-		rq->iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+		for (unsigned j = 0; j < sz; ++j) {
+			rq->iov[i + j].iov_base = rq->buf + (i+j);
+			rq->iov[i + j].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+		}
 		rq->msg[i].msg_name = &rq->addr;
 		rq->msg[i].msg_namelen = sizeof(rq->addr);
 		rq->msg[i].msg_iov = &rq->iov[i];
-		rq->msg[i].msg_iovlen = 1;
+		rq->msg[i].msg_iovlen = sz;
 		rq->msg[i].msg_control = &rq->pktinfo.cmsg;
 		rq->msg[i].msg_controllen = sizeof(rq->pktinfo);
+		sz *= RECVMMSG_BATCHLEN;
 	}
 
 	// TLS certificates
-	int ret = gnutls_certificate_allocate_credentials(&rq->tls_creds.tls_cert);
+	int ret = gnutls_certificate_allocate_credentials(&rq->handle.tls_creds.tls_cert);
 	if (ret != GNUTLS_E_SUCCESS) {
 		free(rq);
 		return NULL;
 	}
 
-	ret = gnutls_certificate_set_x509_system_trust(rq->tls_creds.tls_cert);
+	ret = gnutls_certificate_set_x509_system_trust(rq->handle.tls_creds.tls_cert);
 	if (ret < 0) {
-		gnutls_certificate_free_credentials(rq->tls_creds.tls_cert);
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
 		free(rq);
 		return NULL;
 	}
@@ -468,47 +491,139 @@ static void *quic_recvfrom_init(_unused_ void *xdp_sock)
 	crt_val = conf_get(conf(), C_SRV, C_QUIC_KEY_FILE);
 	const char *key_file = conf_str(&crt_val);
 	if (cert_file != NULL && key_file != NULL) {
-		ret = gnutls_certificate_set_x509_key_file(rq->tls_creds.tls_cert,
+		ret = gnutls_certificate_set_x509_key_file(rq->handle.tls_creds.tls_cert,
 		        cert_file, key_file, GNUTLS_X509_FMT_PEM);
 		if (ret != GNUTLS_E_SUCCESS) {
 			assert(0);
-			gnutls_certificate_free_credentials(rq->tls_creds.tls_cert);
+			gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
 			free(rq);
 			return NULL;
 		}
 	} else {
 		assert(0); //TODO better log something instead
-		gnutls_certificate_free_credentials(rq->tls_creds.tls_cert);
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
 		free(rq);
 		return NULL;
 	}
 
-	ret = gnutls_session_ticket_key_generate(&rq->tls_creds.tls_ticket_key);
+	ret = gnutls_session_ticket_key_generate(&rq->handle.tls_creds.tls_ticket_key);
 	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_certificate_free_credentials(rq->tls_creds.tls_cert);
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
 		free(rq);
 		return NULL;
 	}
 
-	ret = gnutls_anti_replay_init(&rq->tls_creds.tls_anti_replay);
+	ret = gnutls_anti_replay_init(&rq->handle.tls_creds.tls_anti_replay);
 	if (ret != GNUTLS_E_SUCCESS) {
-		session_ticket_key_free(&rq->tls_creds.tls_ticket_key);
-		gnutls_certificate_free_credentials(rq->tls_creds.tls_cert);
+		session_ticket_key_free(&rq->handle.tls_creds.tls_ticket_key);
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
 		free(rq);
 		return NULL;
 	}
-	gnutls_anti_replay_set_add_function(rq->tls_creds.tls_anti_replay,
+	gnutls_anti_replay_set_add_function(rq->handle.tls_creds.tls_anti_replay,
 	                                    anti_replay_db_add_func);
-	gnutls_anti_replay_set_ptr(rq->tls_creds.tls_anti_replay, NULL);
+	gnutls_anti_replay_set_ptr(rq->handle.tls_creds.tls_anti_replay, NULL);
 
-	if (quic_generate_secret(rq->tls_creds.static_secret, sizeof(rq->tls_creds.static_secret)) != KNOT_EOK) {
-		session_ticket_key_free(&rq->tls_creds.tls_ticket_key);
-		gnutls_certificate_free_credentials(rq->tls_creds.tls_cert);
+	if (quic_generate_secret(rq->handle.tls_creds.static_secret, sizeof(rq->handle.tls_creds.static_secret)) != KNOT_EOK) {
+		session_ticket_key_free(&rq->handle.tls_creds.tls_ticket_key);
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
 		free(rq);
 		return NULL;
 	}
 
-	rq->conns = knot_quic_table_new(100); //TODO configurable
+	rq->handle.conns = knot_quic_table_new(100); //TODO configurable
+
+	//conf()->cache.srv_quic_secret;
+
+	return rq;
+}
+
+static void *quic_recvmmsg_init(_unused_ void *xdp_sock)
+{
+	knot_mm_t mm;
+	mm_ctx_mempool(&mm, sizeof(struct quic_recvmmsg));
+
+	struct quic_recvmmsg *rq = mm_alloc(&mm, sizeof(struct quic_recvmmsg));
+	memset(rq, 0, sizeof(*rq));
+	memcpy(&rq->mm, &mm, sizeof(knot_mm_t));
+
+	for (unsigned i = 0; i < NBUFS; ++i) {
+		rq->iobuf[i] = mm_alloc(&mm, KNOT_WIRE_MAX_PKTSIZE * RECVMMSG_BATCHLEN);
+		rq->iov[i] = mm_alloc(&mm, sizeof(struct iovec) * RECVMMSG_BATCHLEN);
+		rq->msgs[i] = mm_alloc(&mm, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
+		memset(rq->msgs[i], 0, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
+		for (unsigned k = 0; k < RECVMMSG_BATCHLEN; ++k) {
+			rq->iov[i][k].iov_base = rq->iobuf[i] + k * KNOT_WIRE_MAX_PKTSIZE;
+			rq->iov[i][k].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+			rq->msgs[i][k].msg_hdr.msg_iov = rq->iov[i] + k;
+			rq->msgs[i][k].msg_hdr.msg_iovlen = 1;
+			rq->msgs[i][k].msg_hdr.msg_name = rq->addrs + k;
+			rq->msgs[i][k].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+			rq->msgs[i][k].msg_hdr.msg_control = &rq->pktinfo[k].cmsg;
+			rq->msgs[i][k].msg_hdr.msg_controllen = sizeof(cmsg_pktinfo_t);
+		}
+	}
+
+	// TLS certificates
+	int ret = gnutls_certificate_allocate_credentials(&rq->handle.tls_creds.tls_cert);
+	if (ret != GNUTLS_E_SUCCESS) {
+		free(rq);
+		return NULL;
+	}
+
+	ret = gnutls_certificate_set_x509_system_trust(rq->handle.tls_creds.tls_cert);
+	if (ret < 0) {
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
+		free(rq);
+		return NULL;
+	}
+
+	conf_val_t crt_val = conf_get(conf(), C_SRV, C_QUIC_CERT_FILE);
+	const char *cert_file = conf_str(&crt_val);
+	crt_val = conf_get(conf(), C_SRV, C_QUIC_KEY_FILE);
+	const char *key_file = conf_str(&crt_val);
+	if (cert_file != NULL && key_file != NULL) {
+		ret = gnutls_certificate_set_x509_key_file(rq->handle.tls_creds.tls_cert,
+		        cert_file, key_file, GNUTLS_X509_FMT_PEM);
+		if (ret != GNUTLS_E_SUCCESS) {
+			assert(0);
+			gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
+			free(rq);
+			return NULL;
+		}
+	} else {
+		assert(0); //TODO better log something instead
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
+		free(rq);
+		return NULL;
+	}
+
+	ret = gnutls_session_ticket_key_generate(&rq->handle.tls_creds.tls_ticket_key);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
+		free(rq);
+		return NULL;
+	}
+
+	ret = gnutls_anti_replay_init(&rq->handle.tls_creds.tls_anti_replay);
+	if (ret != GNUTLS_E_SUCCESS) {
+		session_ticket_key_free(&rq->handle.tls_creds.tls_ticket_key);
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
+		free(rq);
+		return NULL;
+	}
+	gnutls_anti_replay_set_add_function(rq->handle.tls_creds.tls_anti_replay,
+	                                    anti_replay_db_add_func);
+	gnutls_anti_replay_set_ptr(rq->handle.tls_creds.tls_anti_replay, NULL);
+
+	if (quic_generate_secret(rq->handle.tls_creds.static_secret, sizeof(rq->handle.tls_creds.static_secret)) != KNOT_EOK) {
+		session_ticket_key_free(&rq->handle.tls_creds.tls_ticket_key);
+		gnutls_certificate_free_credentials(rq->handle.tls_creds.tls_cert);
+		free(rq);
+		return NULL;
+	}
+
+	rq->handle.conns = knot_quic_table_new(100); //TODO configurable
 
 	//conf()->cache.srv_quic_secret;
 
@@ -533,7 +648,36 @@ static int quic_recvfrom_recv(int fd, void *d)
 	return 0;
 }
 
-static int quic_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
+static int quic_recvmmsg_recv(int fd, void *d)
+{
+	struct quic_recvmmsg *rq = d;
+
+	int n = recvmmsg(fd, rq->msgs[RX], 1, MSG_DONTWAIT, NULL);
+	if (n > 0) {
+		rq->fd = fd;
+		rq->rcvd = n;
+	}
+	return n;
+}
+
+#define LOWER_XDIGITS "0123456789abcdef"
+
+static uint8_t *ngtcp2_encode_hex(uint8_t *dest, const uint8_t *data, size_t len) {
+  size_t i;
+  uint8_t *p = dest;
+
+  for (i = 0; i < len; ++i) {
+    *p++ = (uint8_t)LOWER_XDIGITS[data[i] >> 4];
+    *p++ = (uint8_t)LOWER_XDIGITS[data[i] & 0xf];
+  }
+
+  *p = '\0';
+
+  return dest;
+}
+
+
+static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle, int fd, struct sockaddr_storage *ss,
                        struct msghdr *rx, struct msghdr *tx,
                        knot_quic_table_t *conns, knot_quic_creds_t *tls_creds,
                        struct knot_xdp_msg *xdp_msg)
@@ -577,6 +721,7 @@ static int quic_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	case 0:
 		break;
 	case NGTCP2_ERR_VERSION_NEGOTIATION:
+		assert(0);
 		// knot_quic_send_version_negotiation(rq);
 		// knot_conn_send_version_negotiation(rq, version, scid, scidlen, dcid,
 		//                 dcidlen, ep, *local_addr, &su.sa, msg.msg_namelen);
@@ -585,6 +730,10 @@ static int quic_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		return KNOT_NET_ECONNECT; //TODO maybe change return val
 	}
 	assert(dcidlen <= NGTCP2_MAX_CIDLEN && scidlen <= NGTCP2_MAX_CIDLEN);
+
+	uint8_t dcid_[sizeof(hd.dcid.data) * 2 + 1];
+	ngtcp2_encode_hex(dcid_, dcid, dcidlen);
+	printf("%s\n", dcid_);
 
 	knot_quic_conn_t *conn = knot_quic_table_find_dcid(conns, dcid, dcidlen);
 	if (conn == NULL) {
@@ -624,10 +773,10 @@ static int quic_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 			.user_data = NULL
 		};
 
-		conn = knot_quic_conn_new(tls_creds, &path, &hd.scid, &hd.dcid, pocid, hd.version);
+		conn = knot_quic_conn_new(handle, tls_creds, &path, &hd.scid, &hd.dcid, pocid, hd.version);
 		// switch (knot_quic_conn_on_read(rq, conn, &pi, rq->iov[RX].iov_base, rq->iov[RX].iov_len)) {
 		switch (knot_quic_conn_on_read(conn, &pi, rx->msg_iov->iov_base, rx->msg_iov->iov_len)) {
-		case 0:
+		case KNOT_EOK:
 			break;
 	// 	case NETWORK_ERR_RETRY:
 	// 		//send_retry(&hd, ep, *local_addr, &su.sa, msg.msg_namelen);
@@ -637,7 +786,7 @@ static int quic_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 			return KNOT_NET_ERECV;
 		}
 
-		switch (knot_quic_conn_on_write(conn, tx->msg_iov)) {
+		switch (knot_quic_conn_on_write(conn, &(tx->msg_iov[0]))) {
 		case 0:
 			break;
 		default:
@@ -649,29 +798,39 @@ static int quic_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 		ngtcp2_cid scids[scid_num];
 		scid_num = ngtcp2_conn_get_scid(conn->conn, scids);
 		for (size_t i = 0; i < scid_num; ++i) {
-			knot_quic_table_store(conns, &scids[i], conn);
+			knot_quic_table_store(conns, &(scids[i]), conn);
+			uint8_t scid_[sizeof(hd.dcid.data) * 2 + 1];
+			ngtcp2_encode_hex(scid_, scids[i].data, scids[i].datalen);
+			printf("+ %s [%ld]\n", scid_, knot_quic_cid_hash(&scids[i]) % conns->size);
 		}
-		ngtcp2_cid_init(&conn->dcid, dcid, dcidlen);
-		knot_quic_table_store(conns, &conn->dcid, conn);
+		ngtcp2_cid dcid_key = { 0 };
+		ngtcp2_cid_init(&dcid_key, dcid, dcidlen);
+		knot_quic_table_store(conns, &dcid_key, conn);
+		ngtcp2_encode_hex(dcid_, dcid, dcidlen);
+		printf("+ %s [%ld]\n", dcid_, knot_quic_cid_hash(&dcid_key) % conns->size);
 		// return KNOT_EOK;
 	}
 
 	if (ngtcp2_conn_is_in_closing_period(conn->conn)) {
-		// continue;
+		//switch send_conn_close
 	}
 
 	// // if (h->draining()) {
 	// // 	continue;
 	// // }
 
-	// // if (auto rv = h->on_read(ep, *local_addr, &su.sa, msg.msg_namelen, &pi, buf.data(), nread); rv != 0) {
-	// // 	if (rv != NETWORK_ERR_CLOSE_WAIT) {
-	// // 		remove(h);
-	// // 	}
-	// // 	continue;
-	// // }
+	int ret = knot_quic_conn_on_read(conn, &pi, rx->msg_iov->iov_base, rx->msg_iov->iov_len);
+	if (ret != KNOT_EOK) {
+		if (ret != -12 /* NETWORK_ERR_CLOSE_WAIT */) {
+			// remove(h);
+			assert(0);
+		}
+		// continue;
+		return KNOT_NET_ERECV;
+	}
 
-	// // h->signal_write();
+	// signal_write();
+	knot_quic_conn_on_write(conn, &(tx->msg_iov[1]));
 	return KNOT_EOK;
 }
 
@@ -687,17 +846,46 @@ static int quic_recvfrom_handle(udp_context_t *ctx, void *d)
 	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
 
 	/* Process received pkt. */
-	return quic_handle(ctx, rq->fd, &rq->addr, &rq->msg[RX], &rq->msg[TX], rq->conns, &rq->tls_creds, NULL);
+	return quic_handle(ctx, &rq->handle, rq->fd, &rq->addr, &rq->msg[RX], &rq->msg[TX], rq->handle.conns, &rq->handle.tls_creds, NULL);
 }
 
+static int quic_recvmmsg_handle(udp_context_t *ctx, void *d)
+{
+	struct quic_recvmmsg *rq = d;
+
+	/* Handle each received msg. */
+	struct msghdr *rx = &rq->msgs[RX][0].msg_hdr;
+	struct msghdr *tx = &rq->msgs[TX][0].msg_hdr;
+	rx->msg_iov->iov_len = rq->msgs[RX][0].msg_len; /* Received bytes. */
+
+	udp_pktinfo_handle(rx, tx);
+
+	quic_handle(ctx, &rq->handle, rq->fd, rq->addrs, rx, tx, rq->handle.conns, &rq->handle.tls_creds, NULL);
+	rq->msgs[TX][0].msg_len = tx->msg_iov->iov_len;
+	rq->msgs[TX][0].msg_hdr.msg_namelen = 0;
+	if (tx->msg_iov->iov_len > 0) {
+		/* @note sendmmsg() workaround to prevent sending the packet */
+		rq->msgs[TX][0].msg_hdr.msg_namelen = rq->msgs[RX][0].msg_hdr.msg_namelen;
+	}
+	return KNOT_EOK;
+}
 
 static udp_api_t quic_recvfrom_api = {
 	quic_recvfrom_init,
 	udp_recvfrom_deinit,
 	quic_recvfrom_recv,
 	quic_recvfrom_handle,
-	udp_recvfrom_send,
+	quic_recvfrom_send,
 };
+
+static udp_api_t quic_recvmmsg_api = {
+	quic_recvmmsg_init,
+	udp_recvmmsg_deinit,
+	quic_recvmmsg_recv,
+	quic_recvmmsg_handle,
+	udp_recvmmsg_send,
+};
+
 #endif /* LIBNGTCP2 */
 
 static bool is_quic_thread(const server_t *server, int thread_id)
@@ -808,13 +996,9 @@ int udp_master(dthread_t *thread)
 		assert(0);
 #endif
 	} else if (is_quic_thread(handler->server, thread_id)) {
-#ifdef LIBNGTCP2
-#ifdef ENABLE_RECVMMSG
+#if defined(LIBNGTCP2) && defined(ENABLE_RECVMMSG)
 		//api = &quic_recvmmsg_api;
-		api = &quic_recvfrom_api; //TODO change to recvmmsg
-#else
 		api = &quic_recvfrom_api;
-#endif
 #else
 		assert(0);
 #endif

@@ -47,6 +47,7 @@ typedef struct knot_quic_conn {
 	ngtcp2_conn *conn;
 	struct knot_quic_conn *next;
 	gnutls_session_t tls_session;
+	struct knot_quic_handle_ctx *handle;
 } knot_quic_conn_t;
 
 typedef struct knot_quic_table_pair {
@@ -70,27 +71,48 @@ typedef struct {
 	uint8_t static_secret[32];
 } knot_quic_creds_t;
 
+typedef struct knot_quic_handle_ctx {
+	knot_quic_creds_t tls_creds;
+	knot_quic_table_t *conns;
+} knot_quic_handle_ctx_t;
+
 struct quic_recvfrom {
+	knot_quic_handle_ctx_t handle;
 	int fd;
 	struct sockaddr_storage addr;
 	struct msghdr msg[NBUFS];
-	struct iovec iov[NBUFS];
-	uint8_t buf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
+	struct iovec iov[1 + RECVMMSG_BATCHLEN];
+	uint8_t buf[1 + RECVMMSG_BATCHLEN][KNOT_WIRE_MAX_PKTSIZE];
+	knot_mm_t mm;
 	cmsg_pktinfo_t pktinfo;
-	knot_quic_creds_t tls_creds;
-	knot_quic_table_t *conns;
+	// knot_quic_creds_t tls_creds;
+	// knot_quic_table_t *conns;
+};
+
+struct quic_recvmmsg {
+	knot_quic_handle_ctx_t handle;
+	int fd;
+	struct sockaddr_storage addrs[RECVMMSG_BATCHLEN];
+	char *iobuf[NBUFS];
+	struct iovec *iov[NBUFS];
+	struct mmsghdr *msgs[NBUFS];
+	unsigned rcvd;
+	knot_mm_t mm;
+	cmsg_pktinfo_t pktinfo[RECVMMSG_BATCHLEN];
+	// knot_quic_creds_t tls_creds;
+	// knot_quic_table_t *conns;
 };
 
 unsigned int knot_quic_msghdr_ecn(struct msghdr *msg, const int family);
-int knot_quic_msghdr_local_addr(const struct msghdr *msg, const int family, struct sockaddr_storage *local_addr, size_t *addr_len);
+int knot_quic_msghdr_local_addr(struct msghdr *msg, const int family, struct sockaddr_storage *local_addr, size_t *addr_len);
 
 int knot_quic_send_version_negotiation(struct quic_recvfrom *rq);
 
 uint64_t knot_quic_cid_hash(const ngtcp2_cid *dcid);
 
 knot_quic_conn_t *knot_quic_conn_alloc(void);
-int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_creds_t *creds, const ngtcp2_path *local_addr, const ngtcp2_cid *scid, const ngtcp2_cid *dcid, const ngtcp2_cid *ocid, const uint32_t version);
-knot_quic_conn_t *knot_quic_conn_new(const knot_quic_creds_t *creds, const ngtcp2_path *path, const ngtcp2_cid *scid, const ngtcp2_cid *dcid, const ngtcp2_cid *ocid, const uint32_t version);
+int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *handle, const knot_quic_creds_t *creds, const ngtcp2_path *local_addr, const ngtcp2_cid *scid, const ngtcp2_cid *dcid, const ngtcp2_cid *ocid, const uint32_t version);
+knot_quic_conn_t *knot_quic_conn_new(const knot_quic_handle_ctx_t *handle, const knot_quic_creds_t *creds, const ngtcp2_path *path, const ngtcp2_cid *scid, const ngtcp2_cid *dcid, const ngtcp2_cid *ocid, const uint32_t version);
 // int knot_quic_conn_on_read(struct quic_recvfrom *rq, knot_quic_conn_t *conn,
 //                            ngtcp2_pkt_info *pi, uint8_t *data, size_t datalen);
 int knot_quic_conn_on_read(knot_quic_conn_t *conn, ngtcp2_pkt_info *pi,

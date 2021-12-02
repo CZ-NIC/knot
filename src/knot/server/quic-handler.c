@@ -64,7 +64,7 @@ unsigned int knot_quic_msghdr_ecn(struct msghdr *msg, const int family)
 	return 0;
 }
 
-int knot_quic_msghdr_local_addr(const struct msghdr *msg, const int family, struct sockaddr_storage *local_addr, size_t *addr_len)
+int knot_quic_msghdr_local_addr(struct msghdr *msg, const int family, struct sockaddr_storage *local_addr, size_t *addr_len)
 {
 	switch (family) {
 	case AF_INET:
@@ -95,8 +95,10 @@ int knot_quic_msghdr_local_addr(const struct msghdr *msg, const int family, stru
 	return KNOT_ENOTSUP;
 }
 
-
-
+static int stream_opened(ngtcp2_conn *conn, int64_t stream_id, void *user_data)
+{
+	return 0;
+}
 
 static uint64_t knot_quic_cid_hash_raw(const uint8_t *cid, const size_t cidlen)
 {
@@ -177,18 +179,20 @@ static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
                                  uint8_t *token, size_t cidlen,
                                  void *user_data)
 {
+	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
+
 	if (dnssec_random_buffer(cid->data, cidlen) != DNSSEC_EOK) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	cid->datalen = cidlen;
-	// if (ngtcp2_crypto_generate_stateless_reset_token(token, config.static_secret.data(), config.static_secret.size(), cid) != 0) {
-	// 	return NGTCP2_ERR_CALLBACK_FAILURE;
-	// }
 
-	//knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
-	//TODO emplace handlers
-	//knot_quic_table_store(table, cid, conn);
+	if (ngtcp2_crypto_generate_stateless_reset_token(token, ctx->handle->tls_creds.static_secret, sizeof(ctx->handle->tls_creds.static_secret), cid) != 0) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+
+	
+	knot_quic_table_store(ctx->handle->conns, cid, conn);
 
 	return 0;
 }
@@ -209,9 +213,10 @@ static int secret_func(gnutls_session_t session,
 			return -1;
 		}
 		// TODO uncomment when `call_application_tx_key_cb != NULL` or remove
-		// if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION && call_application_tx_key_cb(ctx) != 0) {
+		if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION) {
+		// && call_application_tx_key_cb(ctx) != 0) {
 		// 	return -1;
-		// }
+		}
 	}
 	return 0;
 }
@@ -327,8 +332,10 @@ int keylog_callback(gnutls_session_t session, const char *label,
 	return 0;
 }
 
-int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_creds_t *creds, const ngtcp2_path *path, const ngtcp2_cid *dcid, const ngtcp2_cid *scid, const ngtcp2_cid *ocid, const uint32_t version)
+int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *handle, const knot_quic_creds_t *creds, const ngtcp2_path *path, const ngtcp2_cid *dcid, const ngtcp2_cid *scid, const ngtcp2_cid *ocid, const uint32_t version)
 {
+	conn->handle = handle;
+
 	const ngtcp2_callbacks callbacks = {
 		NULL, // client_initial
 		ngtcp2_crypto_recv_client_initial_cb,
@@ -340,7 +347,7 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_creds_t *creds, 
 		ngtcp2_crypto_hp_mask_cb,
 		NULL, // TODO ::recv_stream_data,
 		NULL, // TODO ::acked_stream_data_offset,
-		NULL, // TODO stream_open,
+		stream_opened,
 		NULL, // TODO stream_close,
 		NULL, // recv_stateless_reset
 		NULL, // recv_retry
@@ -349,7 +356,7 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_creds_t *creds, 
 		knot_quic_rand_cb,
 		get_new_connection_id,
 		NULL, // TODO remove_connection_id,
-		NULL, // TODO ::update_key,
+		ngtcp2_crypto_update_key_cb,
 		NULL, // TODO path_validation,
 		NULL, // select_preferred_addr
 		NULL, // TODO ::stream_reset,
@@ -512,14 +519,14 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_creds_t *creds, 
 	return KNOT_EOK;
 }
 
-knot_quic_conn_t *knot_quic_conn_new(const knot_quic_creds_t *creds, const ngtcp2_path *path, const ngtcp2_cid *dcid, const ngtcp2_cid *scid, const ngtcp2_cid *ocid, const uint32_t version)
+knot_quic_conn_t *knot_quic_conn_new(const knot_quic_handle_ctx_t *handle, const knot_quic_creds_t *creds, const ngtcp2_path *path, const ngtcp2_cid *dcid, const ngtcp2_cid *scid, const ngtcp2_cid *ocid, const uint32_t version)
 {
 	knot_quic_conn_t *conn = knot_quic_conn_alloc();
 	if (conn == NULL) {
 		return NULL;
 	}
 
-	if (knot_quic_conn_init(conn, creds, path, dcid, scid, ocid, version) != KNOT_EOK) {
+	if (knot_quic_conn_init(conn, handle, creds, path, dcid, scid, ocid, version) != KNOT_EOK) {
 		free(conn);
 		return NULL;
 	}
@@ -696,10 +703,10 @@ static inline int knot_quic_cid_eq(const uint8_t *lhs, const size_t lhs_len,
 
 knot_quic_conn_t *knot_quic_table_find_dcid(knot_quic_table_t *table, const uint8_t *cid, const size_t cidlen)
 {
-	uint64_t hash = knot_quic_cid_hash(cid) % table->size;
+	uint64_t hash = knot_quic_cid_hash_raw(cid, cidlen) % table->size;
 	knot_quic_table_pair_t *el = table->conns[hash];
 	while (el != NULL) {
-		if (knot_quic_cid_eq(&el->key.data, &el->key.datalen, cid, cidlen) != 0) {
+		if (knot_quic_cid_eq(&el->key.data, el->key.datalen, cid, cidlen) != 0) {
 			return el->value;
 		}
 		el = el->next;
