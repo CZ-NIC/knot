@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,6 +83,8 @@ static int cmp_unix(const struct sockaddr_un *a, const struct sockaddr_un *b)
 int sockaddr_cmp(const struct sockaddr_storage *a, const struct sockaddr_storage *b,
                  bool ignore_port)
 {
+	assert(a);
+	assert(b);
 	if (a->ss_family != b->ss_family) {
 		return (int)a->ss_family - (int)b->ss_family;
 	}

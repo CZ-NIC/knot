@@ -33,32 +33,40 @@ static uint32_t get_timestamp(void)
 
 knot_unreachables_t *knot_unreachables_init(uint32_t ttl)
 {
-	knot_unreachables_t *res = calloc(1, sizeof(*res) + KNOT_UNREACHABLE_COUNT * sizeof(res->urs[0]));
+	knot_unreachables_t *res = calloc(1, sizeof(*res));
 	if (res != NULL) {
 		pthread_mutex_init(&res->mutex, NULL);
 		res->ttl = ttl;
+		init_list(&res->urs);
 	}
 	return res;
 }
 
 void knot_unreachables_deinit(knot_unreachables_t **urs)
 {
-	if (*urs != NULL) {
+	if (urs != NULL && *urs != NULL) {
+		knot_unreachable_t *ur, *nxt;
+		WALK_LIST_DELSAFE(ur, nxt, (*urs)->urs) {
+			rem_node((node_t *)ur);
+			free(ur);
+		}
 		pthread_mutex_destroy(&(*urs)->mutex);
 		free(*urs);
 		*urs = NULL;
 	}
 }
 
-static void clear_old(knot_unreachable_t *ur, uint32_t now, uint32_t ttl)
+static bool clear_old(knot_unreachable_t *ur, uint32_t now, uint32_t ttl)
 {
 	if (ur->time != 0 && now - ur->time > ttl) {
-		memset(ur, 0, sizeof(*ur));
+		rem_node((node_t *)ur);
+		free(ur);
+		return true;
 	}
+	return false;
 }
 
 // also clears up (some) expired unreachables
-// returns either match or free space
 static knot_unreachable_t *get_ur(knot_unreachables_t *urs,
                                   const struct sockaddr_storage *addr,
                                   const struct sockaddr_storage *via)
@@ -66,29 +74,19 @@ static knot_unreachable_t *get_ur(knot_unreachables_t *urs,
 	assert(urs != NULL);
 
 	uint32_t now = get_timestamp();
-	knot_unreachable_t *oldest = NULL, *clear = NULL;
+	knot_unreachable_t *ur, *nxt;
+	WALK_LIST_DELSAFE(ur, nxt, urs->urs) {
+		if (clear_old(ur, now, urs->ttl)) {
+			continue;
+		}
 
-	for (int i = 0; i < KNOT_UNREACHABLE_COUNT; i++) {
-		knot_unreachable_t *ur = &urs->urs[i];
-		clear_old(ur, now, urs->ttl);
-
-		if (ur->time == 0) {
-			if (clear == NULL) {
-				clear = ur;
-			}
-		} else if (sockaddr_cmp_two(&ur->addr, &ur->via, addr, via) == 0) {
+		if (sockaddr_cmp(&ur->addr, addr, false) == 0 &&
+		    sockaddr_cmp(&ur->via, via, true) == 0) {
 			return ur;
-		} else if (oldest == NULL || ur->time < oldest->time) {
-			oldest = ur;
 		}
 	}
 
-	if (clear == NULL) {
-		assert(oldest != NULL);
-		memset(oldest, 0, sizeof(*oldest));
-		clear = oldest;
-	}
-	return clear;
+	return NULL;
 }
 
 bool knot_unreachable_is(knot_unreachables_t *urs,
@@ -98,10 +96,12 @@ bool knot_unreachable_is(knot_unreachables_t *urs,
 	if (urs == NULL) {
 		return false;
 	}
+	assert(addr);
+	assert(via);
 
 	pthread_mutex_lock(&urs->mutex);
 
-	bool res = (get_ur(urs, addr, via)->time != 0);
+	bool res = (get_ur(urs, addr, via) != NULL);
 
 	pthread_mutex_unlock(&urs->mutex);
 
@@ -112,19 +112,21 @@ void knot_unreachable_add(knot_unreachables_t *urs,
                           const struct sockaddr_storage *addr,
                           const struct sockaddr_storage *via)
 {
-
 	if (urs == NULL) {
 		return;
 	}
+	assert(addr);
+	assert(via);
 
 	pthread_mutex_lock(&urs->mutex);
 
-	knot_unreachable_t *ur = get_ur(urs, addr, via);
-	if (ur->time == 0) {
+	knot_unreachable_t *ur = malloc(sizeof(*ur));
+	if (ur != NULL) {
 		memcpy(&ur->addr, addr, sizeof(ur->addr));
 		memcpy(&ur->via, via, sizeof(ur->via));
+		ur->time = get_timestamp();
+		add_head(&urs->urs, (node_t *)ur);
 	}
-	ur->time = get_timestamp();
 
 	pthread_mutex_unlock(&urs->mutex);
 }

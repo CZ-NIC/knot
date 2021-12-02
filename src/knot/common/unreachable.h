@@ -21,10 +21,10 @@
 #include <stdint.h>
 
 #include "contrib/sockaddr.h"
-
-#define KNOT_UNREACHABLE_COUNT 16
+#include "contrib/ucw/lists.h"
 
 typedef struct {
+	node_t n;
 	struct sockaddr_storage addr;
 	struct sockaddr_storage via;
 	uint32_t time;
@@ -33,7 +33,7 @@ typedef struct {
 typedef struct {
 	pthread_mutex_t mutex;
 	uint32_t ttl;
-	knot_unreachable_t urs[];
+	list_t urs;
 } knot_unreachables_t;
 
 extern knot_unreachables_t *global_unreachables;
