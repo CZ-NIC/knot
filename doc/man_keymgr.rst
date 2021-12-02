@@ -50,14 +50,14 @@ Options
   Print the list of zones that have at least one key stored in the configured KASP
   database.
 
-**-b**, **--brief**
-  List keys briefly. Output to a terminal is colorized by default.
-
 **-x**, **--mono**
   Don't generate colorized output.
 
 **-X**, **--color**
-  Force colorized output in the **--brief** mode.
+  Force colorized output in the normal mode.
+
+**-v**, **--version**
+  Listing of keys with full description.
 
 **-h**, **--help**
   Print the program help.

@@ -22,7 +22,7 @@
 
 typedef struct {
 	knot_time_print_t format;
-	bool brief;
+	bool verbose;
 	bool color;
 } keymgr_list_params_t;
 

@@ -14,7 +14,8 @@ import subprocess
 import random
 
 def check_keys(server, zone_name, expect_keys):
-    cmd = Popen([dnstest.params.keymgr_bin, "-D", server.dir + "/keys", zone_name, "list"], stdout=PIPE, stderr=PIPE, universal_newlines=True)
+    cmd = Popen([dnstest.params.keymgr_bin, "-D", server.dir + "/keys", zone_name, "list", "-v"], \
+                stdout=PIPE, stderr=PIPE, universal_newlines=True)
     (stdout, stderr) = cmd.communicate()
     lines = len(stdout.splitlines())
     if lines != expect_keys:
