@@ -52,7 +52,8 @@ static int request_ensure_connected(knot_request_t *request)
 			return KNOT_EOK;
 		}
 
-		if (knot_unreachable_is(global_unreachables, &request->remote)) {
+		if (knot_unreachable_is(global_unreachables, &request->remote,
+		                        &request->source)) {
 			return KNOT_EUNREACH;
 		}
 	}
@@ -62,8 +63,9 @@ static int request_ensure_connected(knot_request_t *request)
 	                                   &request->source,
 	                                   request->flags & KNOT_REQUEST_TFO);
 	if (request->fd < 0) {
-		if (request->fd == KNOT_ETIMEOUT) { // this never happens when I try
-			knot_unreachable_add(global_unreachables, &request->remote);
+		if (request->fd == KNOT_ETIMEOUT) {
+			knot_unreachable_add(global_unreachables, &request->remote,
+			                     &request->source);
 		}
 		return request->fd;
 	}
@@ -90,8 +92,9 @@ static int request_send(knot_request_t *request, int timeout_ms)
 	if (use_tcp(request)) {
 		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms,
 		                       tfo_addr);
-		if (ret == KNOT_ETIMEOUT) { // this includes the case when establishing the conn times out
-			knot_unreachable_add(global_unreachables, &request->remote);
+		if (ret == KNOT_ETIMEOUT) { // Includes establishing conn which times out.
+			knot_unreachable_add(global_unreachables, &request->remote,
+			                     &request->source);
 		}
 	} else {
 		ret = net_dgram_send(request->fd, wire, wire_len, NULL);

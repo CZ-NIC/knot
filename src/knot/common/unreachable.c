@@ -14,11 +14,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "unreachable.h"
-
 #include <assert.h>
 #include <stdlib.h>
 #include <time.h>
+
+#include "unreachable.h"
 
 knot_unreachables_t *global_unreachables = NULL;
 
@@ -60,7 +60,8 @@ static void clear_old(knot_unreachable_t *ur, uint32_t now, uint32_t ttl)
 // also clears up (some) expired unreachables
 // returns either match or free space
 static knot_unreachable_t *get_ur(knot_unreachables_t *urs,
-                                  const struct sockaddr_storage *addr)
+                                  const struct sockaddr_storage *addr,
+                                  const struct sockaddr_storage *via)
 {
 	assert(urs != NULL);
 
@@ -75,7 +76,7 @@ static knot_unreachable_t *get_ur(knot_unreachables_t *urs,
 			if (clear == NULL) {
 				clear = ur;
 			}
-		} else if (sockaddr_cmp(&ur->addr, addr, false) == 0) {
+		} else if (sockaddr_cmp_two(&ur->addr, &ur->via, addr, via) == 0) {
 			return ur;
 		} else if (oldest == NULL || ur->time < oldest->time) {
 			oldest = ur;
@@ -91,7 +92,8 @@ static knot_unreachable_t *get_ur(knot_unreachables_t *urs,
 }
 
 bool knot_unreachable_is(knot_unreachables_t *urs,
-                         const struct sockaddr_storage *addr)
+                         const struct sockaddr_storage *addr,
+                         const struct sockaddr_storage *via)
 {
 	if (urs == NULL) {
 		return false;
@@ -99,7 +101,7 @@ bool knot_unreachable_is(knot_unreachables_t *urs,
 
 	pthread_mutex_lock(&urs->mutex);
 
-	bool res = (get_ur(urs, addr)->time != 0);
+	bool res = (get_ur(urs, addr, via)->time != 0);
 
 	pthread_mutex_unlock(&urs->mutex);
 
@@ -107,7 +109,8 @@ bool knot_unreachable_is(knot_unreachables_t *urs,
 }
 
 void knot_unreachable_add(knot_unreachables_t *urs,
-                          const struct sockaddr_storage *addr)
+                          const struct sockaddr_storage *addr,
+                          const struct sockaddr_storage *via)
 {
 
 	if (urs == NULL) {
@@ -116,9 +119,10 @@ void knot_unreachable_add(knot_unreachables_t *urs,
 
 	pthread_mutex_lock(&urs->mutex);
 
-	knot_unreachable_t *ur = get_ur(urs, addr);
+	knot_unreachable_t *ur = get_ur(urs, addr, via);
 	if (ur->time == 0) {
 		memcpy(&ur->addr, addr, sizeof(ur->addr));
+		memcpy(&ur->via, via, sizeof(ur->via));
 	}
 	ur->time = get_timestamp();
 

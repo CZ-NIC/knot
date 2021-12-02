@@ -26,6 +26,7 @@
 
 typedef struct {
 	struct sockaddr_storage addr;
+	struct sockaddr_storage via;
 	uint32_t time;
 } knot_unreachable_t;
 
@@ -56,17 +57,21 @@ void knot_unreachables_deinit(knot_unreachables_t **urs);
  *
  * \param urs     Unreachables structure.
  * \param addr    Address and port in question.
+ * \param via     Local outgoing address.
  *
  * \return True iff unreachable within TTL.
  */
 bool knot_unreachable_is(knot_unreachables_t *urs,
-                         const struct sockaddr_storage *addr);
+                         const struct sockaddr_storage *addr,
+                         const struct sockaddr_storage *via);
 
 /*!
  * \brief Add an unreachable into Unreachables structure.
  *
  * \param urs     Unreachables structure.
  * \param addr    Address and port being unreachable.
+ * \param via     Local outgoing address.
  */
 void knot_unreachable_add(knot_unreachables_t *urs,
-                          const struct sockaddr_storage *addr);
+                          const struct sockaddr_storage *addr,
+                          const struct sockaddr_storage *via);
