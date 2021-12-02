@@ -56,7 +56,8 @@ nobase_include_libknot_HEADERS = \
 	libknot/yparser/ypschema.h		\
 	libknot/yparser/yptrafo.h		\
 	libknot/version.h			\
-	libknot/xdp.h
+	libknot/xdp.h				\
+	libknot/quic/shared.h
 
 libknot_la_SOURCES = \
 	libknot/codes.c				\
@@ -83,7 +84,8 @@ libknot_la_SOURCES = \
 	libknot/yparser/ypbody.c		\
 	libknot/yparser/ypformat.c		\
 	libknot/yparser/ypschema.c		\
-	libknot/yparser/yptrafo.c
+	libknot/yparser/yptrafo.c		\
+	libknot/quic/shared.c
 
 if EMBEDDED_LIBBPF
 libknot_la_LIBADD   += $(libembbpf_LIBS)

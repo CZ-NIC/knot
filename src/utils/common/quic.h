@@ -19,6 +19,8 @@
 
 #include <stdbool.h>
 
+#define KNOT_QUIC_ALPN "\03doq\02dq"
+
 /*! \brief QUIC parameters. */
 typedef struct {
 	/*! Use QUIC indicator. */
