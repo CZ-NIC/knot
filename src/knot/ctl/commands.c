@@ -698,12 +698,14 @@ static int zone_txn_commit(zone_t *zone, _unused_ ctl_args_t *args)
 	val = conf_zone_get(conf(), C_ZONEMD_GENERATE, zone->name);
 	unsigned digest_alg = conf_opt(&val);
 	if (dnssec_enable) {
-		zone_sign_reschedule_t resch = { 0 };
-		bool full = (zone->control_update->flags & UPDATE_FULL);
-		zone_sign_roll_flags_t rflags = KEY_ROLL_ALLOW_ALL;
-		ret = (full ? knot_dnssec_zone_sign(zone->control_update, conf(), 0, rflags, 0, &resch) :
-		              knot_dnssec_sign_update(zone->control_update, conf(), &resch));
-		event_dnssec_reschedule(conf(), zone, &resch, false);
+		if (zone->control_update->flags & UPDATE_FULL) {
+			zone_sign_reschedule_t resch = { 0 };
+			zone_sign_roll_flags_t rflags = KEY_ROLL_ALLOW_ALL;
+			ret = knot_dnssec_zone_sign(zone->control_update, conf(), 0, rflags, 0, &resch);
+			event_dnssec_reschedule(conf(), zone, &resch, false);
+		} else {
+			ret = knot_dnssec_sign_update(zone->control_update, conf());
+		}
 	} else if (digest_alg != ZONE_DIGEST_NONE) {
 		if (zone_update_to(zone->control_update) == NULL) {
 			ret = zone_update_increment_soa(zone->control_update, conf());

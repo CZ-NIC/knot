@@ -538,9 +538,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	unsigned digest_alg = conf_opt(&val);
 
 	if (dnssec_enable) {
-		zone_sign_reschedule_t resch = { 0 };
-		ret = knot_dnssec_sign_update(&up, data->conf, &resch);
-		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
+		ret = knot_dnssec_sign_update(&up, data->conf);
 	} else if (digest_alg != ZONE_DIGEST_NONE) {
 		assert(zone_update_to(&up) != NULL);
 		ret = zone_update_add_digest(&up, digest_alg, false);

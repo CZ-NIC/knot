@@ -30,63 +30,6 @@
 #include "knot/zone/adjust.h"
 #include "knot/zone/digest.h"
 
-static int sign_init(zone_update_t *update, conf_t *conf, zone_sign_flags_t flags, zone_sign_roll_flags_t roll_flags,
-                     knot_time_t adjust_now, knot_lmdb_db_t *kaspdb, kdnssec_ctx_t *ctx, unsigned *zonemd_alg,
-                     zone_sign_reschedule_t *reschedule)
-{
-	assert(update);
-	assert(ctx);
-
-	const knot_dname_t *zone_name = update->new_cont->apex->owner;
-
-	uint32_t ms;
-	if (zone_is_slave(conf, update->zone) && zone_get_master_serial(update->zone, &ms) == KNOT_ENOENT) {
-		// zone had been XFRed before on-slave-signing turned on
-		zone_set_master_serial(update->zone, zone_contents_serial(update->new_cont));
-	}
-
-	int r = kdnssec_ctx_init(conf, ctx, zone_name, kaspdb, NULL);
-	if (r != KNOT_EOK) {
-		return r;
-	}
-	if (adjust_now) {
-		ctx->now = adjust_now;
-	}
-
-	// perform nsec3resalt if pending
-
-	if (roll_flags & KEY_ROLL_ALLOW_NSEC3RESALT) {
-		r = knot_dnssec_nsec3resalt(ctx, &reschedule->last_nsec3resalt, &reschedule->next_nsec3resalt);
-		if (r != KNOT_EOK) {
-			return r;
-		}
-	}
-
-	// update policy based on the zone content
-	update_policy_from_zone(ctx->policy, update->new_cont);
-
-	// perform key rollover if needed
-	r = knot_dnssec_key_rollover(ctx, roll_flags, reschedule);
-	if (r != KNOT_EOK) {
-		return r;
-	}
-
-	// RRSIG handling
-
-	ctx->rrsig_drop_existing = flags & ZONE_SIGN_DROP_SIGNATURES;
-
-	conf_val_t val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone_name);
-	*zonemd_alg = conf_opt(&val);
-	if (*zonemd_alg != ZONE_DIGEST_NONE) {
-		r = zone_update_add_digest(update, *zonemd_alg, true);
-		if (r != KNOT_EOK) {
-			return r;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
 static knot_time_t schedule_next(kdnssec_ctx_t *kctx, const zone_keyset_t *keyset,
 				 knot_time_t keys_expire, knot_time_t rrsigs_expire)
 {
@@ -123,7 +66,8 @@ static int generate_salt(dnssec_binary_t *salt, uint16_t length)
 	return KNOT_EOK;
 }
 
-int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_time_t *when_resalt)
+int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool soa_rrsigs_ok,
+                            knot_time_t *salt_changed, knot_time_t *when_resalt)
 {
 	int ret = KNOT_EOK;
 
@@ -131,11 +75,13 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 		return KNOT_EOK;
 	}
 
-	if (ctx->zone->nsec3_salt.size != ctx->policy->nsec3_salt_length || ctx->zone->nsec3_salt_created == 0) {
+	if (ctx->policy->nsec3_salt_lifetime < 0 && !soa_rrsigs_ok) {
+		*when_resalt = ctx->now;
+	} else if (ctx->zone->nsec3_salt.size != ctx->policy->nsec3_salt_length || ctx->zone->nsec3_salt_created == 0) {
 		*when_resalt = ctx->now;
 	} else if (knot_time_cmp(ctx->now, ctx->zone->nsec3_salt_created) < 0) {
 		return KNOT_EINVAL;
-	} else {
+	} else if (ctx->policy->nsec3_salt_lifetime > 0) {
 		*when_resalt = knot_time_plus(ctx->zone->nsec3_salt_created, ctx->policy->nsec3_salt_lifetime);
 	}
 
@@ -155,7 +101,9 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, knot_time_t *salt_changed, knot_
 			*salt_changed = ctx->now;
 		}
 		// continue to planning next resalt even if NOK
-		*when_resalt = knot_time_plus(ctx->now, ctx->policy->nsec3_salt_lifetime);
+		if (ctx->policy->nsec3_salt_lifetime > 0) {
+			*when_resalt = knot_time_plus(ctx->now, ctx->policy->nsec3_salt_lifetime);
+		}
 	}
 
 	return ret;
@@ -172,20 +120,48 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		return KNOT_EINVAL;
 	}
 
-	int result = KNOT_ERROR;
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
-	unsigned zonemd_alg;
 
-	// signing pipeline
-
-	result = sign_init(update, conf, flags, roll_flags, adjust_now,
-	                   zone_kaspdb(update->zone), &ctx, &zonemd_alg, reschedule);
+	int result = kdnssec_ctx_init(conf, &ctx, zone_name, zone_kaspdb(update->zone), NULL);
 	if (result != KNOT_EOK) {
-		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
+		log_zone_error(zone_name, "DNSSEC, failed to initialize signing context (%s)",
+		               knot_strerror(result));
+		return result;
+	}
+	if (adjust_now) {
+		ctx.now = adjust_now;
+	}
+
+	// update policy based on the zone content
+	update_policy_from_zone(ctx.policy, update->new_cont);
+
+	// perform key rollover if needed
+	result = knot_dnssec_key_rollover(&ctx, roll_flags, reschedule);
+	if (result != KNOT_EOK) {
+		log_zone_error(zone_name, "DNSSEC, failed to update key set (%s)",
 		               knot_strerror(result));
 		goto done;
+	}
+
+	ctx.rrsig_drop_existing = flags & ZONE_SIGN_DROP_SIGNATURES;
+
+	conf_val_t val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone_name);
+	unsigned zonemd_alg = conf_opt(&val);
+	if (zonemd_alg != ZONE_DIGEST_NONE) {
+		result = zone_update_add_digest(update, zonemd_alg, true);
+		if (result != KNOT_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to reserve dummy ZONEMD (%s)",
+			               knot_strerror(result));
+			goto done;
+		}
+	}
+
+	uint32_t ms;
+	if (zone_is_slave(conf, update->zone) && zone_get_master_serial(update->zone, &ms) == KNOT_ENOENT) {
+		// zone had been XFRed before on-slave-signing turned on
+		zone_set_master_serial(update->zone, zone_contents_serial(update->new_cont));
 	}
 
 	result = load_zone_keys(&ctx, &keyset, true);
@@ -193,6 +169,18 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		log_zone_error(zone_name, "DNSSEC, failed to load keys (%s)",
 		               knot_strerror(result));
 		goto done;
+	}
+
+	// perform nsec3resalt if pending
+	if (roll_flags & KEY_ROLL_ALLOW_NSEC3RESALT) {
+		knot_rdataset_t *rrsig = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_RRSIG);
+		bool issbaz = is_soa_signed_by_all_zsks(&keyset, rrsig);
+		result = knot_dnssec_nsec3resalt(&ctx, issbaz, &reschedule->last_nsec3resalt, &reschedule->next_nsec3resalt);
+		if (result != KNOT_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to update NSEC3 salt (%s)",
+			               knot_strerror(result));
+			goto done;
+		}
 	}
 
 	log_zone_info(zone_name, "DNSSEC, signing started");
@@ -277,23 +265,35 @@ done:
 	return result;
 }
 
-int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_reschedule_t *reschedule)
+int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 {
-	if (update == NULL || reschedule == NULL) {
+	if (update == NULL || conf == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int result = KNOT_ERROR;
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
-	unsigned zonemd_alg;
+	knot_time_t expire_at = 0;
 
-	result = sign_init(update, conf, 0, 0, 0, zone_kaspdb(update->zone), &ctx, &zonemd_alg, reschedule);
+	int result = kdnssec_ctx_init(conf, &ctx, zone_name, zone_kaspdb(update->zone), NULL);
 	if (result != KNOT_EOK) {
-		log_zone_error(zone_name, "DNSSEC, failed to initialize (%s)",
+		log_zone_error(zone_name, "DNSSEC, failed to initialize signing context (%s)",
 		               knot_strerror(result));
-		goto done;
+		return result;
+	}
+
+	update_policy_from_zone(ctx.policy, update->new_cont);
+
+	conf_val_t val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone_name);
+	unsigned zonemd_alg = conf_opt(&val);
+	if (zonemd_alg != ZONE_DIGEST_NONE) {
+		result = zone_update_add_digest(update, zonemd_alg, true);
+		if (result != KNOT_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to reserve dummy ZONEMD (%s)",
+			               knot_strerror(result));
+			goto done;
+		}
 	}
 
 	result = load_zone_keys(&ctx, &keyset, false);
@@ -303,9 +303,8 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 		goto done;
 	}
 
-	knot_time_t next_resign = 0;
 	if (zone_update_changes_dnskey(update)) {
-		result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &next_resign);
+		result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &expire_at);
 		if (result != KNOT_EOK) {
 			log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
 				       knot_strerror(result));
@@ -319,7 +318,6 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 		goto done;
 	}
 
-	knot_time_t expire_at = 0;
 	result = knot_zone_sign_update(update, &keyset, &ctx, &expire_at);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign changeset (%s)",
@@ -371,11 +369,11 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 		}
 	}
 
-	log_zone_info(zone_name, "DNSSEC, successfully signed");
+	log_zone_info(zone_name, "DNSSEC, incrementally signed");
 
 done:
-	if (result == KNOT_EOK) {
-		reschedule->next_sign = schedule_next(&ctx, &keyset, next_resign, expire_at);
+	if (result == KNOT_EOK && expire_at != 0) {
+		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, (time_t)expire_at); // this is usually NOOP since signing planned earlier
 	}
 
 	free_zone_keys(&keyset);

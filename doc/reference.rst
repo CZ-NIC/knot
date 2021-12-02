@@ -1648,6 +1648,9 @@ A validity period of newly issued salt field.
 
 Zero value means infinity.
 
+Special value *-1* triggers re-salt every time when active ZSK changes.
+This optimizes the number of big changes to the zone.
+
 *Default:* 30 days
 
 .. _policy_signing-threads:

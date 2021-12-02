@@ -1511,6 +1511,9 @@ A validity period of newly issued salt field.
 .sp
 Zero value means infinity.
 .sp
+Special value \fI\-1\fP triggers re\-salt every time when active ZSK changes.
+This optimizes the number of big changes to the zone.
+.sp
 \fIDefault:\fP 30 days
 .SS signing\-threads
 .sp

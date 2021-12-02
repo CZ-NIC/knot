@@ -202,3 +202,12 @@ void zone_sign_ctx_free(zone_sign_ctx_t *ctx);
  */
 int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
                           const uint8_t *rdata, size_t rdlen);
+
+/*!
+ * \brief Tell if apex SOA is signed by all active ZSKs.
+ *
+ * \param keyset        Zone key set.
+ * \param apex_rrsig    Apex RRSIG RRSet.
+ */
+int is_soa_signed_by_all_zsks(const zone_keyset_t *keyset,
+                              const knot_rdataset_t *apex_rrsig);

@@ -161,9 +161,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
 	unsigned digest_alg = conf_opt(&val);
 	if (dnssec_enable) {
-		zone_sign_reschedule_t resch = { 0 };
-		ret = knot_dnssec_sign_update(&up, conf, &resch);
-		event_dnssec_reschedule(conf, zone, &resch, false); // false since we handle NOTIFY after processing ddns queue
+		ret = knot_dnssec_sign_update(&up, conf);
 	} else if (digest_alg != ZONE_DIGEST_NONE) {
 		if (zone_update_to(&up) == NULL) {
 			ret = zone_update_increment_soa(&up, conf);
