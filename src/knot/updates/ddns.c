@@ -171,24 +171,6 @@ static bool rrset_empty(const knot_rrset_t *rrset)
 	}
 }
 
-/*!< \brief Returns true if DDNS should deny updating DNSSEC-related record. */
-static bool is_dnssec_protected(uint16_t type, bool is_apex)
-{
-	switch (type) {
-	case KNOT_RRTYPE_RRSIG:
-	case KNOT_RRTYPE_NSEC:
-	case KNOT_RRTYPE_NSEC3:
-	case KNOT_RRTYPE_CDNSKEY:
-	case KNOT_RRTYPE_CDS:
-		return true;
-	case KNOT_RRTYPE_DNSKEY:
-	case KNOT_RRTYPE_NSEC3PARAM:
-		return is_apex;
-	default:
-		return false;
-	}
-}
-
 /*!< \brief Checks prereq for given packet RR. */
 static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
                           zone_update_t *update, uint16_t *rcode,
@@ -494,11 +476,6 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 {
 	bool is_apex = node_rrtype_exists(node, KNOT_RRTYPE_SOA);
 
-	if (rrset->type == KNOT_RRTYPE_SOA || is_dnssec_protected(rrset->type, is_apex)) {
-		// Ignore SOA and DNSSEC removals.
-		return KNOT_EOK;
-	}
-
 	if (is_apex && rrset->type == KNOT_RRTYPE_NS) {
 		// Ignore NS apex RRSet removals.
 		return KNOT_EOK;
@@ -596,13 +573,6 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 	if (in_bailiwick < 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
-	}
-	const bool is_apex = in_bailiwick == 0;
-
-	if (is_dnssec_protected(rrset->type, is_apex)) {
-		*rcode = KNOT_RCODE_REFUSED;
-		log_warning("DDNS, refusing to update DNSSEC-related record");
-		return KNOT_EDENIED;
 	}
 
 	if (rrset->rclass == knot_pkt_qclass(query)) {
