@@ -80,7 +80,6 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 			} else {
 				log_ctl_info("control, received command '%s'", cmd_name);
 			}
-			ctl_log_data(&args.data);
 		} else if (cmd_name != NULL){
 			log_ctl_debug("control, invalid command '%s'", cmd_name);
 			continue;
