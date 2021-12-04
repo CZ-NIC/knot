@@ -114,31 +114,18 @@ static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t ev
 	return ret;
 }
 
-void ctl_log_data(knot_ctl_data_t *data)
+static void ctl_log_conf_data(knot_ctl_data_t *data)
 {
 	if (data == NULL) {
 		return;
 	}
 
-	const char *zone = (*data)[KNOT_CTL_IDX_ZONE];
 	const char *section = (*data)[KNOT_CTL_IDX_SECTION];
 	const char *item = (*data)[KNOT_CTL_IDX_ITEM];
 	const char *id = (*data)[KNOT_CTL_IDX_ID];
 
-	if (section == NULL) {
-		return;
-	}
-
-	if (zone != NULL) {
-		log_ctl_zone_str_debug(zone,
-		              "control, item '%s%s%s%s%s%s'", section,
-		              (id   != NULL ? "["  : ""),
-		              (id   != NULL ? id   : ""),
-		              (id   != NULL ? "]"  : ""),
-		              (item != NULL ? "."  : ""),
-		              (item != NULL ? item : ""));
-	} else {
-		log_ctl_debug("control, item '%s%s%s%s%s%s'", section,
+	if (section != NULL) {
+		log_ctl_debug("control, config item '%s%s%s%s%s%s'", section,
 		              (id   != NULL ? "["  : ""),
 		              (id   != NULL ? id   : ""),
 		              (id   != NULL ? "]"  : ""),
@@ -224,7 +211,12 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
 			break;
 		}
-		ctl_log_data(&args->data);
+		strtolower((char *)args->data[KNOT_CTL_IDX_ZONE]);
+
+		// Log the other zones the same way as the first one from process.c.
+		log_ctl_zone_str_info(args->data[KNOT_CTL_IDX_ZONE],
+		                      "control, received command '%s'",
+		                      args->data[KNOT_CTL_IDX_CMD]);
 	}
 
 	return ret;
@@ -1331,7 +1323,12 @@ static int orphans_purge(ctl_args_t *args)
 			if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
 				break;
 			}
-			ctl_log_data(&args->data);
+			strtolower((char *)args->data[KNOT_CTL_IDX_ZONE]);
+
+			// Log the other zones the same way as the first one from process.c.
+			log_ctl_zone_str_info(args->data[KNOT_CTL_IDX_ZONE],
+			                      "control, received command '%s'",
+			                      args->data[KNOT_CTL_IDX_CMD]);
 		}
 	}
 
@@ -1896,6 +1893,8 @@ static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 		const char *key1 = args->data[KNOT_CTL_IDX_ITEM];
 		const char *id   = args->data[KNOT_CTL_IDX_ID];
 
+		ctl_log_conf_data(&args->data);
+
 		switch (cmd) {
 		case CTL_CONF_LIST:
 			ret = conf_io_list(key0, &io);
@@ -1923,7 +1922,6 @@ static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
 			break;
 		}
-		ctl_log_data(&args->data);
 	}
 
 	return ret;
@@ -1943,6 +1941,8 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 		const char *key1 = args->data[KNOT_CTL_IDX_ITEM];
 		const char *id   = args->data[KNOT_CTL_IDX_ID];
 		const char *data = args->data[KNOT_CTL_IDX_DATA];
+
+		ctl_log_conf_data(&args->data);
 
 		switch (cmd) {
 		case CTL_CONF_SET:
@@ -1965,7 +1965,6 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
 			break;
 		}
-		ctl_log_data(&args->data);
 	}
 
 	// Finish child transaction.
