@@ -61,24 +61,28 @@ typedef struct {
 	bool with_queries;
 } dnstap_ctx_t;
 
-static void msg_query_qname_restore(Dnstap__Message *msg, knotd_qdata_t *qdata)
+static void msg_query_qname_restore(Dnstap__Message *msg,
+				    const knot_dname_t *orig_qname,
+				    const uint16_t qname_size)
 {
-	if (msg->query_message.data == NULL) {
-		return;
-	}
-
-	const knot_dname_t *orig_qname = knotd_qdata_orig_qname(qdata);
-	if (orig_qname == NULL) {
+	if (msg->query_message.data == NULL ||
+	    orig_qname == NULL ||
+	    orig_qname[0] == '\x00')
+	{
 		return;
 	}
 
 	memcpy(msg->query_message.data + KNOT_WIRE_HEADER_SIZE,
-	       orig_qname, qdata->query->qname_size);
+	       orig_qname, qname_size);
 }
 
-static void msg_query_qname_case_lower(Dnstap__Message *msg)
+static void msg_query_qname_case_lower(Dnstap__Message *msg,
+				       const knot_dname_t *orig_qname)
 {
-	if (msg->query_message.data == NULL) {
+	if (msg->query_message.data == NULL ||
+	    orig_qname == NULL ||
+	    orig_qname[0] == '\x00')
+	{
 		return;
 	}
 
@@ -153,12 +157,18 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 		msg.has_query_message = 1;
 	}
 
+	/*
+	 * Get the original QNAME (if present) in order to write the original
+	 * cased QNAME into the dnstap message.
+	 */
+	const knot_dname_t *orig_qname = knotd_qdata_orig_qname(qdata);
+
 	/* Pack the message. */
 	uint8_t *frame = NULL;
 	size_t size = 0;
-	msg_query_qname_restore(&msg, qdata);
+	msg_query_qname_restore(&msg, orig_qname, qdata->query->qname_size);
 	dt_pack(&dnstap, &frame, &size);
-	msg_query_qname_case_lower(&msg);
+	msg_query_qname_case_lower(&msg, orig_qname);
 	if (frame == NULL) {
 		return state;
 	}
