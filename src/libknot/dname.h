@@ -311,7 +311,7 @@ size_t knot_dname_labels(const uint8_t *name, const uint8_t *pkt);
  * Formats names from rightmost label to the leftmost, separated by the lowest
  * possible character (\\x00). Sorting such formatted names also gives
  * correct canonical order (for NSEC/NSEC3). The first byte of the output
- * contains length of the output.
+ * contains length of the remaining output.
  *
  * Examples:
  * Name:   lake.example.com.
