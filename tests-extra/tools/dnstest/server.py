@@ -1091,7 +1091,7 @@ class Bind(Server):
                             outf.write(line)
                 #if z.dnssec.nsec3:
                     #n3flag =  1 if z.dnssec.nsec3_opt_out else 0
-                    #n3iters = z.dnssec.nsec3_iters or 10
+                    #n3iters = z.dnssec.nsec3_iters or 0
                     #outf.write("%s NSEC3PARAM 1 %d %d -\n" % (z.name, n3flag, n3iters)) # this does not work!
 
         super().start(clean)
@@ -1100,7 +1100,7 @@ class Bind(Server):
             z = self.zones[zname]
             if z.dnssec.nsec3:
                 n3flag =  1 if z.dnssec.nsec3_opt_out else 0
-                n3iters = z.dnssec.nsec3_iters or 10
+                n3iters = z.dnssec.nsec3_iters or 0
                 self.ctl("signing -nsec3param 1 %d %d - %s" % (n3flag, n3iters, z.name))
 
 class Knot(Server):
