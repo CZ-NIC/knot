@@ -70,30 +70,40 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, soa_rrsigs, msg):
 
 def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
     endtime = time.monotonic() + timeout - 0.5
+    first = True
     while True:
         qdnskeyrrsig = server.dig("example.com", rrtype, dnssec=True, bufsize=4096)
         found_rrsigs = qdnskeyrrsig.count("RRSIG")
         if found_rrsigs == rrsig_count:
             break
 
-        # Verify the zone instead of a dumb sleep
-        server.zone_backup(zone, flush=True)
-        server.zone_verify(zone)
+        if first:
+            first = False
+            # Verify the zone instead of a dumb sleep
+            server.zone_backup(zone, flush=True)
+            server.zone_verify(zone)
+        else:
+            t.sleep(0.5)
 
         if time.monotonic() > endtime:
             break
 
 def wait_for_dnskey_count(t, server, dnskey_count, timeout):
     endtime = time.monotonic() + timeout - 0.5
+    first = True
     while True:
         qdnskeyrrsig = server.dig("example.com", "DNSKEY", dnssec=True, bufsize=4096)
         found_dnskeys = qdnskeyrrsig.count("DNSKEY")
         if found_dnskeys == dnskey_count:
             break
 
-        # Verify the zone instead of a dumb sleep
-        server.zone_backup(zone, flush=True)
-        server.zone_verify(zone)
+        if first:
+            first = False
+            # Verify the zone instead of a dumb sleep
+            server.zone_backup(zone, flush=True)
+            server.zone_verify(zone)
+        else:
+            t.sleep(0.5)
 
         if time.monotonic() > endtime:
             break
@@ -234,5 +244,45 @@ check_zone(knot, zone, 3, 1, 1, "ZSK rollover2: running")
 
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 2)
 check_zone(knot, zone, 2, 1, 1, "ZSK rollover2: done")
+
+# prepare algorithm roll-over: delete pre-generated ZSKs, arrange all the timestamps
+
+_, out, _ = Keymgr.run_check(knot.confile, ZONE, "list")
+for line in out.split('\n'):
+    if len(line) > 0 and line.split()[-1] == "remove=0": # only one key with this property
+        last_zsk = line.split()[0]
+
+algtick = 5
+now = int(time.time())
+preactive = now + algtick
+publish = preactive + algtick
+postactive = publish + algtick
+remove = postactive + algtick
+
+key_ksk4 = signer.key_gen(ZONE, ksk="true", algorithm="ECDSAP256SHA256", created="+0", pre_active=str(preactive), publish=str(publish), ready=str(publish), active=str(postactive))
+key_zsk2 = knot.key_gen(ZONE, ksk="false", algorithm="ECDSAP256SHA256", created="+0", pre_active=str(preactive), publish=str(publish), active=str(postactive))
+signer.key_set(ZONE, key_ksk3, post_active=str(postactive), remove=str(remove))
+knot.key_set(ZONE, last_zsk, post_active=str(postactive), remove=str(remove))
+
+KSR = KSR + "3"
+SKR = SKR + "3"
+_, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", str(remove + 1))
+writef(KSR, out)
+_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+writef(SKR, out)
+Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
+knot.ctl("zone-keys-load")
+
+wait_for_rrsig_count(t, knot, "SOA", 2, algtick + 2)
+check_zone(knot, zone, 2, 1, 2, "alg roll: pre-active")
+
+wait_for_dnskey_count(t, knot, 4, algtick + 2)
+check_zone(knot, zone, 4, 2, 2, "alg roll: published")
+
+wait_for_dnskey_count(t, knot, 2, algtick + 2)
+check_zone(knot, zone, 2, 2, 2, "alg roll: post-active")
+
+wait_for_rrsig_count(t, knot, "SOA", 1, algtick + 2)
+check_zone(knot, zone, 2, 1, 1, "alg roll: finished")
 
 t.end()
