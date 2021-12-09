@@ -339,7 +339,7 @@ static int handshake_completed(ngtcp2_conn *conn, void *user_data)
 		// if (setup_httpconn() != 0) {
 		// 	return -1;
 		// }
-  }
+	}
 
 //   if (!config.quiet) {
 //     std::cerr << "Negotiated cipher suite is " << tls_session_.get_cipher_name()
@@ -347,7 +347,10 @@ static int handshake_completed(ngtcp2_conn *conn, void *user_data)
 //     std::cerr << "Negotiated ALPN is " << tls_session_.get_selected_alpn()
 //               << std::endl;
 //   }
-	extend_max_local_streams_bidi(conn, 1, user_data);
+	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+	if(ctx->stream.stream_id < 0) {
+		extend_max_local_streams_bidi(conn, 1, user_data);
+	}
 
 	return 0;
 }
@@ -627,7 +630,7 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const
 	ngtcp2_pkt_info pi = { 0 };
 	uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_MORE;
 	int datacnt = 0;
-	uint16_t query_length = htons(ctx->stream.tx_datalen);
+	uint16_t query_length = htons(buf_len);
 	ngtcp2_ssize sent = 0;
 
 	if (ctx->stream.stream_id >= 0) {
@@ -640,17 +643,16 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const
 		sent = data[0].len + data[1].len;
 	} else {
 		datacnt = 0;
-		//flags = 0;
-		// assert(0); //TODO because sent == 0
+		assert(0);
 	}
 
-	struct sockaddr_in6 src_addr;
-	socklen_t src_addr_len = sizeof(src_addr);
-	getsockname(sockfd, (struct sockaddr *)&src_addr, &src_addr_len);
-	ctx->path.local.addr = (struct  sockaddr *)&src_addr;
-	ctx->path.local.addrlen = src_addr_len;
-	ctx->path.remote.addr = srv->ai_addr;
-	ctx->path.remote.addrlen = srv->ai_addrlen;
+	// struct sockaddr_in6 src_addr;
+	// socklen_t src_addr_len = sizeof(src_addr);
+	// getsockname(sockfd, (struct sockaddr *)&src_addr, &src_addr_len);
+	// ctx->path.local.addr = (struct  sockaddr *)&src_addr;
+	// ctx->path.local.addrlen = src_addr_len;
+	// ctx->path.remote.addr = srv->ai_addr;
+	// ctx->path.remote.addrlen = srv->ai_addrlen;
 
 	struct pollfd pfd = {
 		.fd = sockfd,
@@ -725,8 +727,8 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const
 			assert(0);
 		}
 
-		ctx->path.remote.addr = (struct sockaddr *)&from;
-		ctx->path.remote.addrlen = from_len;
+		// ctx->path.remote.addr = (struct sockaddr *)&from;
+		// ctx->path.remote.addrlen = from_len;
 
 		nwrite = ngtcp2_conn_read_pkt(ctx->conn, &ctx->path, &pi, enc_buf,
 		                              nwrite, quic_timestamp());
@@ -820,9 +822,22 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len, 
 		                                   encrypted, sizeof(encrypted),
 		                                   &wdatalen, 0, -1, NULL, 0,
 		                                   quic_timestamp());
-		if (nwrite <= 0) {
-			// TODO Do better treat
-			continue;
+		if (nwrite != 0) {
+			// fprintf(stderr, "ngtcp2_conn_read_pkt: %s\n", ngtcp2_strerror(rv));
+			switch (nwrite) {
+			case NGTCP2_ERR_REQUIRED_TRANSPORT_PARAM:
+			case NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM:
+			case NGTCP2_ERR_TRANSPORT_PARAM:
+			case NGTCP2_ERR_PROTO:
+				ctx->last_error = ngtcp2_err_infer_quic_transport_error_code(nwrite);
+				break;
+			default:
+				if (!ctx->last_error) {
+					ctx->last_error = ngtcp2_err_infer_quic_transport_error_code(nwrite);
+				}
+				break;
+			}
+			return KNOT_NET_ECONNECT;
 		}
 
 		do {
@@ -855,7 +870,7 @@ void quic_ctx_deinit(quic_ctx_t *ctx)
 		return;
 	}
 
-	ngtcp2_conn_del(ctx->conn);
+	//ngtcp2_conn_del(ctx->conn);
 }
 
 #endif
