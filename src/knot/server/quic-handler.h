@@ -81,10 +81,9 @@ struct quic_recvfrom {
 	int fd;
 	struct sockaddr_storage addr;
 	struct msghdr msg[NBUFS];
-	struct iovec iov[1 + RECVMMSG_BATCHLEN];
-	uint8_t buf[1 + RECVMMSG_BATCHLEN][KNOT_WIRE_MAX_PKTSIZE];
-	knot_mm_t mm;
+	struct iovec iov[NBUFS][RECVMMSG_BATCHLEN];
 	cmsg_pktinfo_t pktinfo;
+	//knot_mm_t mm;
 	// knot_quic_creds_t tls_creds;
 	// knot_quic_table_t *conns;
 };

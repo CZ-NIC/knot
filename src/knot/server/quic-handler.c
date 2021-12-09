@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <stdio.h>
 #include <time.h>
 #include <netinet/in.h>
 #include <sys/param.h>
@@ -133,39 +134,65 @@ knot_quic_conn_t *knot_quic_conn_alloc(void)
 
 static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
-	// std::cerr << "Negotiated cipher suite is " << tls_session_.get_cipher_name() << std::endl;
-    // std::cerr << "Negotiated ALPN is " << tls_session_.get_selected_alpn() << std::endl;
+	printf("Negotiated cipher suite is %s\n", gnutls_cipher_get_name(gnutls_cipher_get(ctx->tls_session)));
+	gnutls_datum_t alpn;
+	if (gnutls_alpn_get_selected_protocol(ctx->tls_session, &alpn) != 0) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+	char alpn_str[alpn.size + 1];
+	alpn_str[alpn.size] = '\0';
+	memcpy(alpn_str, alpn.data, alpn.size);
+	printf("Negotiated ALPN is %s\n", alpn_str);
 
-//   if (tls_session_.send_session_ticket() != 0) {
-//     std::cerr << "Unable to send session ticket" << std::endl;
-//   }
+	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {
+		printf("Unable to send session ticket\n");
+	}
 
-//   std::array<uint8_t, NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN> token;
+	uint8_t token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN];
+	ngtcp2_path *path = ngtcp2_conn_get_path(ctx->conn);
+	uint64_t ts = quic_timestamp();
+	ngtcp2_ssize tokenlen = ngtcp2_crypto_generate_regular_token(token,
+			ctx->handle->tls_creds.static_secret,
+			sizeof(ctx->handle->tls_creds.static_secret),
+			path->remote.addr, path->remote.addrlen, ts);
+	if (tokenlen < 0) {
+		// 	if (!config.quiet) {
+		//   std::cerr << "Unable to generate token" << std::endl;
+		// }
+		assert(0);
+		return 0;
+	}
 
-//   auto path = ngtcp2_conn_get_path(conn_);
-//   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
-//                std::chrono::system_clock::now().time_since_epoch())
-//                .count();
-
-//   auto tokenlen = ngtcp2_crypto_generate_regular_token(
-//       token.data(), config.static_secret.data(), config.static_secret.size(),
-//       path->remote.addr, path->remote.addrlen, t);
-//   if (tokenlen < 0) {
-//     if (!config.quiet) {
-//       std::cerr << "Unable to generate token" << std::endl;
-//     }
-//     return 0;
-//   }
-
-//   if (auto rv = ngtcp2_conn_submit_new_token(conn_, token.data(), tokenlen);
-//       rv != 0) {
+	if (ngtcp2_conn_submit_new_token(ctx->conn, token, tokenlen) != 0) {
 //     if (!config.quiet) {
 //       std::cerr << "ngtcp2_conn_submit_new_token: " << ngtcp2_strerror(rv)
 //                 << std::endl;
 //     }
-//     return -1;
-//   }
+		assert(0);
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
 
+	return 0;
+}
+
+static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
+                            int64_t stream_id, uint64_t offset,
+                            const uint8_t *data, size_t datalen,
+                            void *user_data, void *stream_user_data)
+{
+	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
+
+	//TODO not implemented/tested
+	ngtcp2_conn_extend_max_stream_offset(ctx->conn, stream_id, datalen);
+	ngtcp2_conn_extend_max_offset(ctx->conn, datalen);
+	return 0;
+}
+
+static int acked_stream_data_offset_cb(ngtcp2_conn *conn, int64_t stream_id,
+                                    uint64_t offset, uint64_t datalen,
+                                    void *user_data, void *stream_user_data)
+{
+	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
 	return 0;
 }
 
@@ -192,7 +219,7 @@ static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	}
 
 	
-	knot_quic_table_store(ctx->handle->conns, cid, conn);
+	knot_quic_table_store(ctx->handle->conns, cid, ctx);
 
 	return 0;
 }
@@ -247,7 +274,7 @@ static int alert_read_func(gnutls_session_t session,
 	return 0;
 }
 
-#define ALPN "\02""dq"
+#define ALPN "\03""doq"
 
 static int client_hello_cb(gnutls_session_t session, unsigned int htype,
                            unsigned when, unsigned int incoming,
@@ -332,9 +359,11 @@ int keylog_callback(gnutls_session_t session, const char *label,
 	return 0;
 }
 
+
+
 int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *handle, const knot_quic_creds_t *creds, const ngtcp2_path *path, const ngtcp2_cid *dcid, const ngtcp2_cid *scid, const ngtcp2_cid *ocid, const uint32_t version)
 {
-	conn->handle = handle;
+	conn->handle = (knot_quic_handle_ctx_t *)handle;
 
 	const ngtcp2_callbacks callbacks = {
 		NULL, // client_initial
@@ -345,8 +374,8 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *ha
 		ngtcp2_crypto_encrypt_cb,
 		ngtcp2_crypto_decrypt_cb,
 		ngtcp2_crypto_hp_mask_cb,
-		NULL, // TODO ::recv_stream_data,
-		NULL, // TODO ::acked_stream_data_offset,
+		recv_stream_data,
+		acked_stream_data_offset_cb,
 		stream_opened,
 		NULL, // TODO stream_close,
 		NULL, // recv_stateless_reset
@@ -383,7 +412,7 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *ha
 	ngtcp2_settings settings;
 	ngtcp2_settings_default(&settings);
 	settings.initial_ts = quic_timestamp();
-	settings.max_udp_payload_size = 1472;
+	//settings.max_udp_payload_size = 1472;
 
 	ngtcp2_transport_params params;
 	ngtcp2_transport_params_default(&params);
@@ -396,22 +425,15 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *ha
 	// params.max_idle_timeout = config.timeout;
 	// params.stateless_reset_token_present = 1;
 	// params.active_connection_id_limit = 7;
-	// if (ocid) {
-	// 	params.original_dcid = *ocid;
-	// 	params.retry_scid = *scid;
-	// 	params.retry_scid_present = 1;
-	// } else {
-	// 	params.original_dcid = *scid;
-	// }
 	if (ocid) {
-		// params.original_dcid = *ocid;
-		// params.retry_scid = *scid;
-		// params.retry_scid_present = 1;
+		params.original_dcid = *ocid;
+		params.retry_scid = *scid;
+		params.retry_scid_present = 1;
 	} else {
 		params.original_dcid = *scid;
 	}
 
-	if (dnssec_random_buffer(params.stateless_reset_token, sizeof(params.stateless_reset_token)) != DNSSEC_EOK) {
+	if (dnssec_random_buffer(params.stateless_reset_token, NGTCP2_STATELESS_RESET_TOKENLEN) != DNSSEC_EOK) {
 		// TODO std::cerr << "Could not generate stateless reset token" << std::endl;
 		return KNOT_ERROR;
 	}
@@ -455,12 +477,13 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *ha
 	                           &callbacks, &settings, &params, NULL, conn) != 0) {
 		// 	//std::cerr << "ngtcp2_conn_server_new: " << ngtcp2_strerror(rv) << std::endl;
 		// 	return -1;
+		assert(0);
 		return KNOT_ERROR;
 	}
 
 	if (gnutls_init(&conn->tls_session, GNUTLS_SERVER |
 	                GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET |
-			GNUTLS_NO_END_OF_EARLY_DATA) != GNUTLS_E_SUCCESS) {
+	                GNUTLS_NO_END_OF_EARLY_DATA) != GNUTLS_E_SUCCESS) {
 		return KNOT_ERROR;
 	}
 
@@ -490,6 +513,7 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *ha
 			) != 0) {
 //     std::cerr << "gnutls_session_ext_register failed: " << gnutls_strerror(rv)
 //               << std::endl;
+		assert(0);
 		return -1;
 	}
 
@@ -513,8 +537,6 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *ha
 
 	gnutls_session_set_keylog_function(conn->tls_session, keylog_callback);
 	ngtcp2_conn_set_tls_native_handle(conn->conn, conn->tls_session);
-
-	//ev_io_set(&wev_, ep.fd, EV_WRITE);
 
 	return KNOT_EOK;
 }
@@ -545,9 +567,11 @@ int knot_quic_conn_on_read(knot_quic_conn_t *conn, ngtcp2_pkt_info *pi,
 			case NGTCP2_ERR_DRAINING:
 			// start_draining_period();
 			// return NETWORK_ERR_CLOSE_WAIT;
+			assert(0);
 			return -1;
 		case NGTCP2_ERR_RETRY:
 			// return NETWORK_ERR_RETRY;
+			assert(0);
 			return -2;
 		case NGTCP2_ERR_REQUIRED_TRANSPORT_PARAM:
 		case NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM:
@@ -556,15 +580,17 @@ int knot_quic_conn_on_read(knot_quic_conn_t *conn, ngtcp2_pkt_info *pi,
 			// send TRANSPORT_PARAMETER_ERROR even if last_error_.code is
 			// already set.  This is because OpenSSL might set Alert.
 			//last_error_ = quic_err_transport(rv);
+			assert(0);
 			break;
 		case NGTCP2_ERR_DROP_CONN:
 			// return NETWORK_ERR_DROP_CONN;
+			assert(0);
 			return -3;
 		default:
 			// if (!last_error_.code) {
 			// 	last_error_ = quic_err_transport(rv);
 			// }
-			;
+			assert(0);
 		}
 		// return handle_error();
 		return -4;
@@ -588,9 +614,10 @@ int knot_quic_conn_on_write(knot_quic_conn_t *conn, struct iovec *out)
 	//                 max_udp_payload_size, &(out->iov_len),
 	//                 NGTCP2_WRITE_STREAM_FLAG_FIN, -1, NULL, 0,
 	//                 quic_timestamp());
+	assert(max_udp_payload_size <= out->iov_len);
 	out->iov_len = ngtcp2_conn_write_pkt(conn->conn,
 	                ngtcp2_conn_get_path(conn->conn), &pi, out->iov_base,
-	                out->iov_len, quic_timestamp());
+	                max_udp_payload_size, quic_timestamp());
 	// if (nwrite <= 0) {
 
 	// }
@@ -706,7 +733,7 @@ knot_quic_conn_t *knot_quic_table_find_dcid(knot_quic_table_t *table, const uint
 	uint64_t hash = knot_quic_cid_hash_raw(cid, cidlen) % table->size;
 	knot_quic_table_pair_t *el = table->conns[hash];
 	while (el != NULL) {
-		if (knot_quic_cid_eq(&el->key.data, el->key.datalen, cid, cidlen) != 0) {
+		if (knot_quic_cid_eq(el->key.data, el->key.datalen, cid, cidlen) != 0) {
 			return el->value;
 		}
 		el = el->next;
