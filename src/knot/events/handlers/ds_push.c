@@ -171,6 +171,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		return KNOT_EOK; // No CDS, do nothing.
 	}
 	zone_cds.type = KNOT_RRTYPE_DS;
+	zone_cds.ttl = node_rrset(zone->contents->apex, KNOT_RRTYPE_DNSKEY).ttl;
 
 	struct ds_push_data data = {
 		.zone = zone->name,
