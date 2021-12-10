@@ -141,5 +141,7 @@ watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover")
 
 resp = parent.dig(ZONE, "DS")
 resp.check_count(1, rtype="DS")
+if resp.resp.answer[0].ttl != child.dnssec(child_zone).dnskey_ttl:
+    set_err("DS TTL")
 
 t.end()
