@@ -188,6 +188,10 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
+	if (ctx.policy->rrsig_refresh_before < ctx.policy->zone_maximal_ttl + ctx.policy->propagation_delay) {
+		log_zone_warning(zone_name, "DNSSEC, rrsig-refresh too low to prevent expired RRSIGs in resolver caches");
+	}
+
 	result = load_zone_keys(&ctx, &keyset, true);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to load keys (%s)",
