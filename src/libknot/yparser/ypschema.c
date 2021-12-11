@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,14 +43,23 @@ static int set_ref_item(
 		return KNOT_EINVAL;
 	}
 
-	// Get reference category.
+	// Get referenced section.
 	const yp_name_t *ref_name = dst->var.r.ref_name;
 	const yp_item_t *ref = yp_schema_find(ref_name, NULL, schema);
 	if (ref == NULL) {
 		return KNOT_YP_EINVAL_ITEM;
 	}
-
 	dst->var.r.ref = ref;
+
+	// Get referenced group if supported.
+	const yp_name_t *grp_ref_name = dst->var.r.grp_ref_name;
+	if (grp_ref_name != NULL) {
+		const yp_item_t *grp_ref = yp_schema_find(grp_ref_name, NULL, schema);
+		if (grp_ref == NULL) {
+			return KNOT_YP_EINVAL_ITEM;
+		}
+		dst->var.r.grp_ref = grp_ref;
+	}
 
 	return KNOT_EOK;
 }

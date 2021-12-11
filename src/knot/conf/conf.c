@@ -539,6 +539,70 @@ bool conf_val_equal(
 	return false;
 }
 
+conf_mix_iter_t conf_mix_iter(
+	conf_t *conf,
+	conf_val_t *mix_id)
+{
+	assert(mix_id != NULL && mix_id->item != NULL);
+	assert(mix_id->item->type == YP_TREF &&
+	       mix_id->item->var.r.ref != NULL &&
+	       mix_id->item->var.r.grp_ref != NULL &&
+	       mix_id->item->var.r.ref->var.g.id->type == YP_TSTR &&
+	       mix_id->item->var.r.grp_ref->var.g.id->type == YP_TSTR);
+
+	conf_mix_iter_t iter = {
+		.conf = conf,
+		.mix_id = mix_id,
+		.id = mix_id
+	};
+
+	if (mix_id->code != KNOT_EOK) {
+		return iter;
+	}
+
+	iter.sub_id = conf_id_get_txn(conf, &conf->read_txn,
+	                              mix_id->item->var.r.grp_ref_name,
+	                              mix_id->item->var.r.ref_name,
+	                              mix_id);
+	if (iter.sub_id.code == KNOT_EOK) {
+		conf_val(&iter.sub_id);
+		iter.id = &iter.sub_id;
+		iter.nested = true;
+	}
+
+	return iter;
+}
+
+void conf_mix_iter_next(
+	conf_mix_iter_t *iter)
+{
+	conf_val_next(iter->id);
+	if (iter->nested) {
+		if (iter->id->code == KNOT_EOK) {
+			return;
+		}
+		conf_val_next(iter->mix_id);
+		if (iter->mix_id->code != KNOT_EOK) {
+			return;
+		}
+	} else if (iter->id->code != KNOT_EOK){
+		return;
+	}
+
+	iter->sub_id = conf_id_get_txn(iter->conf, &iter->conf->read_txn,
+	                               iter->mix_id->item->var.r.grp_ref_name,
+	                               iter->mix_id->item->var.r.ref_name,
+	                               iter->mix_id);
+	if (iter->sub_id.code == KNOT_EOK) {
+		conf_val(&iter->sub_id);
+		iter->id = &iter->sub_id;
+		iter->nested = true;
+	} else {
+		iter->id = iter->mix_id;
+		iter->nested = false;
+	}
+}
+
 int64_t conf_int(
 	conf_val_t *val)
 {
