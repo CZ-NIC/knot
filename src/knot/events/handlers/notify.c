@@ -143,14 +143,15 @@ int event_notify(conf_t *conf, zone_t *zone)
 
 	// send NOTIFY to each remote, use working address
 	conf_val_t notify = conf_zone_get(conf, C_NOTIFY, zone->name);
-	while (notify.code == KNOT_EOK) {
-		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &notify);
+	conf_mix_iter_t iter = conf_mix_iter(conf, &notify);
+	while (iter.id->code == KNOT_EOK) {
+		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);
 
 		int ret = KNOT_EOK;
 
 		for (int i = 0; i < addr_count; i++) {
-			conf_remote_t slave = conf_remote(conf, &notify, i);
+			conf_remote_t slave = conf_remote(conf, iter.id, i);
 			ret = send_notify(conf, zone, &soa, &slave, timeout);
 			if (ret == KNOT_EOK) {
 				break;
@@ -161,7 +162,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 			failed = true;
 		}
 
-		conf_val_next(&notify);
+		conf_mix_iter_next(&iter);
 	}
 
 	return failed ? KNOT_ERROR : KNOT_EOK;

@@ -310,11 +310,18 @@ static const yp_item_t desc_remote[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_remotes[] = {
+	{ C_ID,               YP_TSTR,  YP_VNONE, CONF_IO_FREF },
+	{ C_RMT,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } },
+	{ C_COMMENT,          YP_TSTR,  YP_VNONE },
+	{ NULL }
+};
+
 static const yp_item_t desc_acl[] = {
 	{ C_ID,                 YP_TSTR,   YP_VNONE, CONF_IO_FREF },
 	{ C_ADDR,               YP_TNET,   YP_VNONE, YP_FMULTI },
 	{ C_KEY,                YP_TREF,   YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
-	{ C_RMT,                YP_TREF,   YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } },
+	{ C_RMT,                YP_TREF,   YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } },
 	{ C_ACTION,             YP_TOPT,   YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
 	{ C_DENY,               YP_TBOOL,  YP_VNONE },
 	{ C_UPDATE_TYPE,        YP_TDATA,  YP_VDATA = { 0, NULL, rrtype_to_bin, rrtype_to_txt },
@@ -329,7 +336,7 @@ static const yp_item_t desc_acl[] = {
 
 static const yp_item_t desc_submission[] = {
 	{ C_ID,           YP_TSTR, YP_VNONE },
-	{ C_PARENT,       YP_TREF, YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES,
+	{ C_PARENT,       YP_TREF, YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FRLD_ZONES,
 	                           { check_ref } },
 	{ C_CHK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME },
 	                           CONF_IO_FRLD_ZONES },
@@ -380,7 +387,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_SIGNING_THREADS,     YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } },
 	{ C_KSK_SBM,             YP_TREF,  YP_VREF = { C_SBM }, CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
-	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI | CONF_IO_FRLD_ZONES,
+	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
 	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ROLLOVER } },
 	{ C_CDS_DIGESTTYPE,      YP_TOPT,  YP_VOPT = { cds_digesttype, DNSSEC_KEY_DIGEST_SHA256 } },
@@ -393,9 +400,9 @@ static const yp_item_t desc_policy[] = {
 #define ZONE_ITEMS(FLAGS) \
 	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR }, FLAGS }, \
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
-	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
+	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } }, \
 	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } }, \
-	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT }, YP_FMULTI, { check_ref } }, \
+	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } }, \
 	{ C_ACL,                 YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
 	{ C_SEM_CHECKS,          YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
@@ -429,7 +436,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_MIN_REFRESH_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, 2, YP_STIME } }, \
 
 static const yp_item_t desc_template[] = {
-	{ C_ID, YP_TSTR, YP_VNONE, CONF_IO_FREF },
+	{ C_ID,                  YP_TSTR,  YP_VNONE, CONF_IO_FREF },
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
 	ZONE_ITEMS(CONF_IO_FRLD_ZONES)
@@ -468,6 +475,7 @@ const yp_item_t conf_schema[] = {
 	{ C_KEYSTORE, YP_TGRP, YP_VGRP = { desc_keystore }, YP_FMULTI, { check_keystore } },
 	{ C_KEY,      YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
 	{ C_RMT,      YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
+        { C_RMTS,     YP_TGRP, YP_VGRP = { desc_remotes }, YP_FMULTI, { check_remotes } },
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_SBM,      YP_TGRP, YP_VGRP = { desc_submission }, YP_FMULTI },
 	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },

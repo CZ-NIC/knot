@@ -717,6 +717,19 @@ int check_remote(
 	return KNOT_EOK;
 }
 
+int check_remotes(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t remote = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMTS,
+	                                       C_RMT, args->id, args->id_len);
+	if (remote.code != KNOT_EOK) {
+		args->err_str = "no remote defined";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 #define CHECK_LEGACY_MOVED(old_item, new_item) { \
 	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
 	                                    C_TPL, old_item, args->id, args->id_len); \

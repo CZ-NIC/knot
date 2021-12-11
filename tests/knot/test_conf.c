@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -203,6 +203,56 @@ static void test_conf_zonefile(void)
 	knot_dname_free(zone_unknown, NULL);
 }
 
+static void test_mix_ref(void)
+{
+	const char *conf_string =
+		"remote:\n"
+		"  - id: r1\n"
+		"    address: ::1\n"
+		"  - id: r2\n"
+		"    address: ::2\n"
+		"  - id: r3\n"
+		"    address: ::3\n"
+		"  - id: r4\n"
+		"    address: ::4\n"
+		"  - id: r5\n"
+		"    address: ::5\n"
+		"remotes:\n"
+		"  - id: rs2\n"
+		"    remote: [r2]\n"
+		"  - id: rs45\n"
+		"    remote: [r4, r5]\n"
+		"\n"
+		"submission:\n"
+		"  - id: t1\n"
+		"    parent: [r1, rs2, r3, rs45]\n"
+		"  - id: t2\n"
+		"    parent: [rs45, r2, r1]\n";
+
+	int ret = test_conf(conf_string, NULL);
+	is_int(KNOT_EOK, ret, "Prepare configuration");
+
+	size_t cnt1 = 0;
+	conf_val_t test1 = conf_rawid_get(conf(), C_SBM, C_PARENT, (const uint8_t *)"t1", 3);
+	conf_mix_iter_t iter1 = conf_mix_iter(conf(), &test1);
+	while (iter1.id->code == KNOT_EOK) {
+		cnt1++;
+		conf_mix_iter_next(&iter1);
+	}
+	is_int(5, cnt1, "number of mixed references 1");
+
+	size_t cnt2 = 0;
+	conf_val_t test2 = conf_rawid_get(conf(), C_SBM, C_PARENT, (const uint8_t *)"t2", 3);
+	conf_mix_iter_t iter2 = conf_mix_iter(conf(), &test2);
+	while (iter2.id->code == KNOT_EOK) {
+		cnt2++;
+		conf_mix_iter_next(&iter2);
+	}
+	is_int(4, cnt2, "number of mixed references 2");
+
+	test_conf_free();
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -212,6 +262,9 @@ int main(int argc, char *argv[])
 
 	diag("conf_zonefile");
 	test_conf_zonefile();
+
+	diag("mixed references");
+	test_mix_ref();
 
 	return 0;
 }

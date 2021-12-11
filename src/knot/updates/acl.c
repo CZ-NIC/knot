@@ -234,15 +234,16 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 
 		/* Check if a remote matches given address and key. */
 		conf_val_t addr_val, key_val;
-		while (rmt_val.code == KNOT_EOK) {
-			addr_val = conf_id_get(conf, C_RMT, C_ADDR, &rmt_val);
-			key_val = conf_id_get(conf, C_RMT, C_KEY, &rmt_val);
+		conf_mix_iter_t iter = conf_mix_iter(conf, &rmt_val);
+		while (iter.id->code == KNOT_EOK) {
+			addr_val = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
+			key_val = conf_id_get(conf, C_RMT, C_KEY, iter.id);
 			if (check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig, deny)) {
 				break;
 			}
-			conf_val_next(&rmt_val);
+			conf_mix_iter_next(&iter);
 		}
-		if (rmt_val.code == KNOT_EOF) {
+		if (iter.id->code == KNOT_EOF) {
 			goto next_acl;
 		}
 		/* Or check if acl address/key matches given address and key. */

@@ -117,17 +117,18 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 		policy->ksk_sbm_timeout = conf_int(&val);
 
 		val = conf_id_get(conf, C_SBM, C_PARENT, &ksk_sbm);
-		while (val.code == KNOT_EOK) {
-			conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &val);
+		conf_mix_iter_t iter = conf_mix_iter(conf, &val);
+		while (iter.id->code == KNOT_EOK) {
+			conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 			knot_kasp_parent_t p = { .addrs = conf_val_count(&addr) };
 			p.addr = p.addrs ? malloc(p.addrs * sizeof(*p.addr)) : NULL;
 			if (p.addr != NULL) {
 				for (size_t i = 0; i < p.addrs; i++) {
-					p.addr[i] = conf_remote(conf, &val, i);
+					p.addr[i] = conf_remote(conf, iter.id, i);
 				}
 				parent_dynarray_add(&policy->parents, &p);
 			}
-			conf_val_next(&val);
+			conf_mix_iter_next(&iter);
 		}
 	}
 
