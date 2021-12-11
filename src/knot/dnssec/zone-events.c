@@ -137,6 +137,10 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	// update policy based on the zone content
 	update_policy_from_zone(ctx.policy, update->new_cont);
 
+	if (ctx.policy->rrsig_refresh_before < ctx.policy->zone_maximal_ttl + ctx.policy->propagation_delay) {
+		log_zone_warning(zone_name, "DNSSEC, rrsig-refresh too low to prevent expired RRSIGs in resolver caches");
+	}
+
 	// perform key rollover if needed
 	result = knot_dnssec_key_rollover(&ctx, roll_flags, reschedule);
 	if (result != KNOT_EOK) {
