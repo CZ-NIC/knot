@@ -174,7 +174,7 @@ int conn_pool_get(conn_pool_t *pool,
 	for (size_t i = 0; i < pool->capacity; i++) {
 		if (pool->conns[i].last_active != 0 &&
 		    sockaddr_cmp(&pool->conns[i].dst, dst, false) == 0 &&
-		    sockaddr_cmp(&pool->conns[i].src, src, false) == 0) {
+		    sockaddr_cmp(&pool->conns[i].src, src, true) == 0) {
 			fd = pool_pop(pool, i);
 			break;
 		}
