@@ -234,13 +234,11 @@ static int get_new_connection_id_cb(ngtcp2_conn *conn, ngtcp2_cid *cid,
 static int extend_max_local_streams_bidi(ngtcp2_conn *conn,
         uint64_t max_streams, void *user_data)
 {
-	if (max_streams < 1) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
+	assert(max_streams >= 1);
 
 	quic_ctx_t *ctx = user_data;
 	if (ctx->stream.stream_id != -1) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+		return 0;
 	}
 
 	int64_t stream_id;
@@ -248,7 +246,6 @@ static int extend_max_local_streams_bidi(ngtcp2_conn *conn,
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 	ctx->stream.stream_id = stream_id;
-
 	return 0;
 }
 
@@ -347,10 +344,10 @@ static int handshake_completed(ngtcp2_conn *conn, void *user_data)
 //     std::cerr << "Negotiated ALPN is " << tls_session_.get_selected_alpn()
 //               << std::endl;
 //   }
-	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
-	if(ctx->stream.stream_id < 0) {
-		extend_max_local_streams_bidi(conn, 1, user_data);
-	}
+	// quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+	// if(ctx->stream.stream_id < 0) {
+	// 	extend_max_local_streams_bidi(conn, 1, user_data);
+	// }
 
 	return 0;
 }
@@ -410,7 +407,7 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 		stream_close,
 		NULL, /* recv_stateless_reset */
 		ngtcp2_crypto_recv_retry_cb,
-		NULL, /* extend_max_local_streams_bidi */
+		extend_max_local_streams_bidi,
 		NULL, /* extend_max_local_streams_uni */
 		rand_cb,
 		get_new_connection_id_cb,
@@ -643,7 +640,7 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const
 		sent = data[0].len + data[1].len;
 	} else {
 		datacnt = 0;
-		assert(0);
+		//assert(0);
 	}
 
 	// struct sockaddr_in6 src_addr;
@@ -714,7 +711,7 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const
 			}
 		}		
 
-		if (poll(&pfd, 1, -1) < 1) {	// TODO configurable timeout
+		if (poll(&pfd, 1, 200) < 1) {	// TODO configurable timeout
 			continue; // Resend
 		}
 
