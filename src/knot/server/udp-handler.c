@@ -719,8 +719,8 @@ static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle,
 	// }
 
 	switch (ngtcp2_pkt_decode_version_cid(&version, &dcid, &dcidlen, &scid,
-	                                      &scidlen, rx->msg_iov->iov_base,
-	                                      rx->msg_iov->iov_len,
+	                                      &scidlen, rx->msg_iov[0].iov_base,
+	                                      rx->msg_iov[0].iov_len,
 	                                      QUIC_SV_SCIDLEN)) {
 	case 0:
 		break;
@@ -734,11 +734,8 @@ static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle,
 		assert(0);
 		return KNOT_NET_ECONNECT; //TODO maybe change return val
 	}
-	assert(dcidlen <= NGTCP2_MAX_CIDLEN && scidlen <= NGTCP2_MAX_CIDLEN);
-
-	// uint8_t dcid_[sizeof(hd.dcid.data) * 2 + 1];
-	// ngtcp2_encode_hex(dcid_, dcid, dcidlen);
-	// printf("%s\n", dcid_);
+	assert(dcidlen >= NGTCP2_MIN_CIDLEN && dcidlen <= NGTCP2_MAX_CIDLEN &&
+	        scidlen >= NGTCP2_MIN_CIDLEN && scidlen <= NGTCP2_MAX_CIDLEN);
 
 	knot_quic_conn_t *conn = knot_quic_table_find_dcid(conns, dcid, dcidlen);
 	if (conn == NULL) {
@@ -824,16 +821,15 @@ static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle,
 			.user_data = NULL
 		};
 
-		if (ss->ss_family == AF_INET) {
-			struct sockaddr_in *addr = path.local.addr;
-			addr->sin_port = htons(50784);
-			path.local.addrlen = sizeof(struct sockaddr_in);
-		} else if (ss->ss_family == AF_INET6) {
-			struct sockaddr_in6 *addr = path.local.addr;
-			addr->sin6_port = htons(50784);
-			path.local.addrlen = sizeof(struct sockaddr_in6);
-		}
-
+		// if (ss->ss_family == AF_INET) {
+		// 	struct sockaddr_in *addr = (struct sockaddr_in *)path.local.addr;
+		// 	addr->sin_port = htons(50784);
+		// 	path.local.addrlen = sizeof(struct sockaddr_in);
+		// } else if (ss->ss_family == AF_INET6) {
+		// 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)path.local.addr;
+		// 	addr->sin6_port = htons(50784);
+		// 	path.local.addrlen = sizeof(struct sockaddr_in6);
+		// }
 
 		conn = knot_quic_conn_new(handle, tls_creds, &path, &hd.scid, &hd.dcid, pocid, hd.version);
 		switch (knot_quic_conn_on_read(conn, &pi, rx->msg_iov->iov_base, rx->msg_iov->iov_len)) {
@@ -866,6 +862,8 @@ static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle,
 		ngtcp2_cid dcid_key = { 0 };
 		ngtcp2_cid_init(&dcid_key, dcid, dcidlen);
 		knot_quic_table_store(conns, &dcid_key, conn);
+
+		return KNOT_EOK;
 	}
 
 	if (ngtcp2_conn_is_in_closing_period(conn->conn)) {

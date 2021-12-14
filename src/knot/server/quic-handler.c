@@ -98,6 +98,7 @@ int knot_quic_msghdr_local_addr(struct msghdr *msg, const int family, struct soc
 
 static int stream_opened(ngtcp2_conn *conn, int64_t stream_id, void *user_data)
 {
+	printf("stream %ld opened...", stream_id);
 	return 0;
 }
 
@@ -134,15 +135,15 @@ knot_quic_conn_t *knot_quic_conn_alloc(void)
 
 static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
-	printf("Negotiated cipher suite is %s\n", gnutls_cipher_get_name(gnutls_cipher_get(ctx->tls_session)));
-	gnutls_datum_t alpn;
-	if (gnutls_alpn_get_selected_protocol(ctx->tls_session, &alpn) != 0) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-	char alpn_str[alpn.size + 1];
-	alpn_str[alpn.size] = '\0';
-	memcpy(alpn_str, alpn.data, alpn.size);
-	printf("Negotiated ALPN is %s\n", alpn_str);
+	// printf("Negotiated cipher suite is %s\n", gnutls_cipher_get_name(gnutls_cipher_get(ctx->tls_session)));
+	// gnutls_datum_t alpn;
+	// if (gnutls_alpn_get_selected_protocol(ctx->tls_session, &alpn) != 0) {
+	// 	return NGTCP2_ERR_CALLBACK_FAILURE;
+	// }
+	// char alpn_str[alpn.size + 1];
+	// alpn_str[alpn.size] = '\0';
+	// memcpy(alpn_str, alpn.data, alpn.size);
+	// printf("Negotiated ALPN is %s\n", alpn_str);
 
 	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {
 		printf("Unable to send session ticket\n");
@@ -583,7 +584,6 @@ int knot_quic_conn_on_read(knot_quic_conn_t *conn, ngtcp2_pkt_info *pi,
 			assert(0);
 			break;
 		case NGTCP2_ERR_DROP_CONN:
-			// return NETWORK_ERR_DROP_CONN;
 			assert(0);
 			return -3;
 		default:
@@ -701,8 +701,28 @@ int knot_quic_send_version_negotiation(struct quic_recvfrom *rq)//uint32_t versi
 	return 0;
 }
 
+#define LOWER_XDIGITS "0123456789abcdef"
+
+static uint8_t *ngtcp2_encode_hex(uint8_t *dest, const uint8_t *data, size_t len) {
+  size_t i;
+  uint8_t *p = dest;
+
+  for (i = 0; i < len; ++i) {
+    *p++ = (uint8_t)LOWER_XDIGITS[data[i] >> 4];
+    *p++ = (uint8_t)LOWER_XDIGITS[data[i] & 0xf];
+  }
+
+  *p = '\0';
+
+  return dest;
+}
+
 int knot_quic_table_store(knot_quic_table_t *table, const ngtcp2_cid *cid, knot_quic_conn_t *el)
 {
+    uint8_t dcid_[NGTCP2_MAX_CIDLEN * 2 + 1];
+    ngtcp2_encode_hex(dcid_, cid->data, cid->datalen);
+    printf("[+] %s\n", dcid_);
+
 	uint64_t hash = knot_quic_cid_hash(cid) % table->size;
 	knot_quic_table_pair_t *find = malloc(sizeof(knot_quic_table_pair_t));
 	if (find == NULL) {
@@ -730,6 +750,10 @@ static inline int knot_quic_cid_eq(const uint8_t *lhs, const size_t lhs_len,
 
 knot_quic_conn_t *knot_quic_table_find_dcid(knot_quic_table_t *table, const uint8_t *cid, const size_t cidlen)
 {
+	uint8_t dcid_[NGTCP2_MAX_CIDLEN * 2 + 1];
+    ngtcp2_encode_hex(dcid_, cid, cidlen);
+    printf("[?] %s\n", dcid_);
+
 	uint64_t hash = knot_quic_cid_hash_raw(cid, cidlen) % table->size;
 	knot_quic_table_pair_t *el = table->conns[hash];
 	while (el != NULL) {
