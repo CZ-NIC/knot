@@ -188,6 +188,7 @@ int net_init(const srv_info_t     *local,
 
 	// Clean network structure.
 	memset(net, 0, sizeof(*net));
+	net->sockfd = -1;
 
 	// Get remote address list.
 	if (get_addr(remote, iptype, socktype, &net->remote_info) != 0) {
