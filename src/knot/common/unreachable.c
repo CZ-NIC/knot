@@ -26,20 +26,36 @@ static uint32_t get_timestamp(void)
 {
 	struct timespec t;
 	clock_gettime(CLOCK_MONOTONIC, &t);
-	uint64_t res = (uint64_t)t.tv_sec * 1000000;
-	res += (uint64_t)t.tv_nsec / 1000;
+	uint64_t res = (uint64_t)t.tv_sec * 1000;
+	res += (uint64_t)t.tv_nsec / 1000000;
 	return res & 0xffffffff; // overflow does not matter since we are working with differences
 }
 
-knot_unreachables_t *knot_unreachables_init(uint32_t ttl)
+knot_unreachables_t *knot_unreachables_init(uint32_t ttl_ms)
 {
 	knot_unreachables_t *res = calloc(1, sizeof(*res));
 	if (res != NULL) {
 		pthread_mutex_init(&res->mutex, NULL);
-		res->ttl = ttl;
+		res->ttl_ms = ttl_ms;
 		init_list(&res->urs);
 	}
 	return res;
+}
+
+uint32_t knot_unreachables_ttl(knot_unreachables_t *urs, uint32_t new_ttl_ms)
+{
+	if (urs == NULL) {
+		return 0;
+	}
+
+	pthread_mutex_lock(&urs->mutex);
+
+	uint32_t prev = urs->ttl_ms;
+	urs->ttl_ms = new_ttl_ms;
+
+	pthread_mutex_unlock(&urs->mutex);
+
+	return prev;
 }
 
 void knot_unreachables_deinit(knot_unreachables_t **urs)
@@ -56,9 +72,9 @@ void knot_unreachables_deinit(knot_unreachables_t **urs)
 	}
 }
 
-static bool clear_old(knot_unreachable_t *ur, uint32_t now, uint32_t ttl)
+static bool clear_old(knot_unreachable_t *ur, uint32_t now, uint32_t ttl_ms)
 {
-	if (ur->time != 0 && now - ur->time > ttl) {
+	if (ur->time_ms != 0 && now - ur->time_ms > ttl_ms) {
 		rem_node((node_t *)ur);
 		free(ur);
 		return true;
@@ -76,7 +92,7 @@ static knot_unreachable_t *get_ur(knot_unreachables_t *urs,
 	uint32_t now = get_timestamp();
 	knot_unreachable_t *ur, *nxt;
 	WALK_LIST_DELSAFE(ur, nxt, urs->urs) {
-		if (clear_old(ur, now, urs->ttl)) {
+		if (clear_old(ur, now, urs->ttl_ms)) {
 			continue;
 		}
 
@@ -124,7 +140,7 @@ void knot_unreachable_add(knot_unreachables_t *urs,
 	if (ur != NULL) {
 		memcpy(&ur->addr, addr, sizeof(ur->addr));
 		memcpy(&ur->via, via, sizeof(ur->via));
-		ur->time = get_timestamp();
+		ur->time_ms = get_timestamp();
 		add_head(&urs->urs, (node_t *)ur);
 	}
 
