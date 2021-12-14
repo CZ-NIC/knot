@@ -137,7 +137,7 @@ knot.dnssec(zone).ksk_lifetime = NONSENSE
 knot.dnssec(zone).propagation_delay = TICK - 2
 knot.dnssec(zone).cds_publish = "rollover"
 knot.dnssec(zone).rrsig_lifetime = 15
-knot.dnssec(zone).rrsig_refresh = 5
+knot.dnssec(zone).rrsig_refresh = 6
 knot.dnssec(zone).rrsig_prerefresh = 1
 
 # needed for keymgr

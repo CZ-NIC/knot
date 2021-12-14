@@ -17,12 +17,14 @@ from dnstest.test import Test
 
 t = Test()
 
+ZONE = "example.com."
+
 # check zone if keys are present and used for signing
 def check_zone4(server, min_dnskeys, min_rrsigs, msg):
-    dnskeys = server.dig("example.com", "DNSKEY")
+    dnskeys = server.dig(ZONE, "DNSKEY")
     found_dnskeys = dnskeys.count("DNSKEY")
 
-    soa = server.dig("mail.example.com", "A", dnssec=True)
+    soa = server.dig("mail." + ZONE, "A", dnssec=True)
     found_rrsigs = soa.count("RRSIG")
 
     check_log("RRSIGs: %d (expected min %d)" % (found_rrsigs, min_rrsigs));
@@ -37,18 +39,20 @@ def check_zone4(server, min_dnskeys, min_rrsigs, msg):
         detail_log("!DNSKEYs not published and activated as expected: " + msg)
 
     server.flush(wait=True)
-    server.zone_verify(server.zones["example.com."])
+    server.zone_verify(server.zones[ZONE])
 
     detail_log(SEP)
 
 knot = t.server("knot")
-zone = t.zone("example.com.")
+zone = t.zone(ZONE, storage=".")
 t.link(zone, knot)
 knot.dnssec(zone).enable = True
 knot.dnssec(zone).manual = True
 knot.dnssec(zone).rrsig_lifetime = 50
 knot.dnssec(zone).rrsig_refresh = 2
 knot.dnssec(zone).rrsig_prerefresh = 1
+knot.dnssec(zone).dnskey_ttl = 1
+knot.dnssec(zone).propagation_delay = 1
 knot.zonefile_sync = "0"
 
 # install KASP db (one always enabled, one for testing)
@@ -60,7 +64,6 @@ shutil.copytree(os.path.join(t.data_dir, "keys"), keydir)
 knot.gen_confile()
 
 # parameters
-ZONE = "example.com."
 KSK = "7a3500c7feac3fd99f09a208a83b97f7455fa3e0"
 ZSK1 = "712d0d0d57fa0aa006b5e20cd84e23941e5f3ab2"
 ZSK2 = "301d3fc5392e83ea02312dc5bdc1a9f0b7937ddf"
