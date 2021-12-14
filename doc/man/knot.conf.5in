@@ -379,7 +379,7 @@ to remote servers are closed.
 .SS remote\-retry\-delay
 .sp
 When a connection attempt times out to some remote address, this information will be
-kept for this specified time in seconds and other connections to the same address won\(aqt
+kept for this specified time (in milliseconds) and other connections to the same address won\(aqt
 be attempted. This prevents repetitive waiting for timeout on an unreachable remote.
 .sp
 \fIDefault:\fP 0
