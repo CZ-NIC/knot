@@ -1165,9 +1165,11 @@ static int reconfigure_remote_pool(conf_t *conf)
 	}
 
 	val = conf_get(conf, C_SRV, C_RMT_RETRY_DELAY);
-	int delay = conf_int(&val);
-	if (global_unreachables == NULL && delay > 0) {
-		global_unreachables = knot_unreachables_init(delay * 1000000); // secs -> usecs
+	int delay_ms = conf_int(&val);
+	if (global_unreachables == NULL && delay_ms > 0) {
+		global_unreachables = knot_unreachables_init(delay_ms);
+	} else {
+		(void)knot_unreachables_ttl(global_unreachables, delay_ms);
 	}
 
 	return KNOT_EOK;

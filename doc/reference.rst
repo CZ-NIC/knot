@@ -383,7 +383,7 @@ remote-retry-delay
 ------------------
 
 When a connection attempt times out to some remote address, this information will be
-kept for this specified time in seconds and other connections to the same address won't
+kept for this specified time (in milliseconds) and other connections to the same address won't
 be attempted. This prevents repetitive waiting for timeout on an unreachable remote.
 
 *Default:* 0

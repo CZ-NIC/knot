@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
-	global_unreachables = knot_unreachables_init(1000);
+	global_unreachables = knot_unreachables_init(10);
 	ok(global_unreachables != NULL, "unreachables: init");
 
 	// ur_test_via[0] left empty - AF_UNSPEC
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 		ok(knot_unreachable_is(global_unreachables, s, via), "unreachables: post[%d]", i);
 		ok(!knot_unreachable_is(global_unreachables, s, not_via), "unreachables: via[%d]", i);
 
-		usleep(100);
+		usleep(1000);
 		if (i >= 10) {
 			ok(!knot_unreachable_is(global_unreachables, &ur_test_addrs[i - 10], via),
 			   "unreachables: expired[%d]", i - 10);
