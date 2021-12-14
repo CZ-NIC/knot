@@ -67,9 +67,9 @@ the following symbols:
 .UNINDENT
 .sp
 The configuration consists of several fixed sections and optional module
-sections. There are 15 fixed sections (\fBmodule\fP, \fBserver\fP, \fBxdp\fP, \fBcontrol\fP,
+sections. There are 16 fixed sections (\fBmodule\fP, \fBserver\fP, \fBxdp\fP, \fBcontrol\fP,
 \fBlog\fP, \fBstatistics\fP, \fBdatabase\fP, \fBkeystore\fP, \fBkey\fP, \fBremote\fP,
-\fBacl\fP, \fBsubmission\fP, \fBpolicy\fP, \fBtemplate\fP, \fBzone\fP).
+\fBremotes\fP, \fBacl\fP, \fBsubmission\fP, \fBpolicy\fP, \fBtemplate\fP, \fBzone\fP).
 Module sections are prefixed with the \fBmod\-\fP prefix (e.g. \fBmod\-stats\fP).
 .sp
 Most of the sections (e.g. \fBzone\fP) are sequences of settings blocks. Each
@@ -1039,6 +1039,30 @@ When incoming AXFR/IXFR from this remote (as a primary server), suppress
 sending NOTIFY messages to all configured secondary servers.
 .sp
 \fIDefault:\fP off
+.SH REMOTES SECTION
+.sp
+Definitions of groups of remote servers. Remote grouping can simplify the
+configuration.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+remotes:
+  \- id: STR
+    remote: remote_id ...
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A remote group identifier.
+.SS remote
+.sp
+An ordered list of \fI\%references\fP to remote server definitions.
+.sp
+\fIDefault:\fP not set
 .SH ACL SECTION
 .sp
 Access control list rule definitions. The ACLs are used to match incoming
@@ -1053,7 +1077,7 @@ acl:
   \- id: STR
     address: ADDR[/INT] | ADDR\-ADDR ...
     key: key_id ...
-    remote: remote_id ...
+    remote: remote_id | remotes_id ...
     action: notify | transfer | update ...
     deny: BOOL
     update\-type: STR ...
@@ -1082,7 +1106,8 @@ match one of them. Empty value means that transaction authentication is not used
 \fIDefault:\fP not set
 .SS remote
 .sp
-An ordered list of \fI\%references\fP to remotes. The query must
+An ordered list of references \fI\%remote\fP and
+\fI\%remotes\fP\&. The query must
 match one of the remotes. Specifically, one of the remote\(aqs addresses and remote\(aqs
 TSIG key if configured must match.
 .sp
@@ -1180,7 +1205,7 @@ Parameters of KSK submission checks.
 .ft C
 submission:
   \- id: STR
-    parent: remote_id ...
+    parent: remote_id | remotes_id ...
     check\-interval: TIME
     timeout: TIME
 .ft P
@@ -1192,7 +1217,8 @@ submission:
 A submission identifier.
 .SS parent
 .sp
-A list of \fI\%references\fP to parent\(aqs DNS servers to be checked for
+A list of references \fI\%remote\fP and \fI\%remotes\fP
+to parent\(aqs DNS servers to be checked for
 presence of corresponding DS records in the case of KSK submission. All of them must
 have a corresponding DS for the rollover to continue. If none is specified, the
 rollover must be pushed forward manually.
@@ -1252,7 +1278,7 @@ policy:
     nsec3\-salt\-lifetime: TIME
     signing\-threads: INT
     ksk\-submission: submission_id
-    ds\-push: remote_id
+    ds\-push: remote_id | remotes_id ...
     cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always | double\-ds
     cds\-digest\-type: sha256 | sha384
     offline\-ksk: BOOL
@@ -1537,7 +1563,8 @@ KSK submission checks.
 \fIDefault:\fP not set
 .SS ds\-push
 .sp
-An optional \fI\%reference\fP to authoritative DNS server of the
+Optional references \fI\%remote\fP and \fI\%remotes\fP
+to authoritative DNS server of the
 parent\(aqs zone. The remote server must be configured to accept DS record
 updates via DDNS. Whenever a CDS record in the local zone is changed, the
 corresponding DS record is sent as a dynamic update (DDNS) to the parent
@@ -1676,9 +1703,9 @@ zone:
     template: template_id
     storage: STR
     file: STR
-    master: remote_id ...
+    master: remote_id | remotes_id ...
     ddns\-master: remote_id
-    notify: remote_id ...
+    notify: remote_id | remotes_id ...
     acl: acl_id ...
     semantic\-checks: BOOL
     zonefile\-sync: TIME
@@ -1753,7 +1780,8 @@ where DDD is corresponding decimal ASCII code.
 \fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.zone
 .SS master
 .sp
-An ordered list of \fI\%references\fP to zone primary servers
+An ordered list of references \fI\%remote\fP and
+\fI\%remotes\fP to zone primary servers
 (formerly known as master servers).
 .sp
 \fIDefault:\fP not set
@@ -1765,7 +1793,8 @@ the first \fI\%master\fP server is used.
 \fIDefault:\fP not set
 .SS notify
 .sp
-An ordered list of \fI\%references\fP to remotes to which notify
+An ordered list of references \fI\%remote\fP and
+\fI\%remotes\fP to secondary servers to which notify
 message is sent if the zone changes.
 .sp
 \fIDefault:\fP not set

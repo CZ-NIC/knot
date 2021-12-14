@@ -48,6 +48,20 @@ typedef struct {
 	int code;
 } conf_iter_t;
 
+/*! Configuration iterator over mixed references (e.g. remote and remotes). */
+typedef struct {
+	/*! Configuration context. */
+	conf_t *conf;
+	/*! Mixed references. */
+	conf_val_t *mix_id;
+	/*! Temporary nested references. */
+	conf_val_t sub_id;
+	/*! Current (possibly expanded) reference to use. */
+	conf_val_t *id;
+	/*! Nested references in use indication. */
+	bool nested;
+} conf_mix_iter_t;
+
 /*! Configuration module getter output. */
 typedef struct {
 	/*! Module name. */
@@ -405,6 +419,30 @@ size_t conf_val_count(
 bool conf_val_equal(
 	conf_val_t *val1,
 	conf_val_t *val2
+);
+
+/*!
+ * Prepares a mixed reference iterator.
+ *
+ * The following access is through val->id.
+ *
+ * \param[in] conf    Configuration.
+ * \param[in] mix_id  First mixed reference.
+ *
+ * \return Mixed reference iterator.
+ */
+conf_mix_iter_t conf_mix_iter(
+	conf_t *conf,
+	conf_val_t *mix_id
+);
+
+/*!
+ * Increments the mixed iterator.
+ *
+ * \param[in] iter  Mixed reference iterator.
+ */
+void conf_mix_iter_next(
+	conf_mix_iter_t *iter
 );
 
 /*!

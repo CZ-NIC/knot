@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -168,10 +168,14 @@ typedef union {
 	} d;
 	/*! Reference variables. */
 	struct {
-		/*! Referenced group name. */
+		/*! Referenced section name. */
 		yp_name_t const *ref_name;
-		/*! Referenced item (dynamic value). */
+		/*! Referenced group section name (optional). */
+		yp_name_t const *grp_ref_name;
+		/*! Referenced section item (dynamic value). */
 		yp_item_t const *ref;
+		/*! Referenced group section item (dynamic value). */
+		yp_item_t const *grp_ref;
 	} r;
 	/*! Group variables. */
 	struct {

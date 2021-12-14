@@ -32,9 +32,9 @@ the following symbols:
 - \| – Choice
 
 The configuration consists of several fixed sections and optional module
-sections. There are 15 fixed sections (``module``, ``server``, ``xdp``, ``control``,
+sections. There are 16 fixed sections (``module``, ``server``, ``xdp``, ``control``,
 ``log``, ``statistics``, ``database``, ``keystore``, ``key``, ``remote``,
-``acl``, ``submission``, ``policy``, ``template``, ``zone``).
+``remotes``, ``acl``, ``submission``, ``policy``, ``template``, ``zone``).
 Module sections are prefixed with the ``mod-`` prefix (e.g. ``mod-stats``).
 
 Most of the sections (e.g. ``zone``) are sequences of settings blocks. Each
@@ -1108,6 +1108,34 @@ sending NOTIFY messages to all configured secondary servers.
 
 *Default:* off
 
+Remotes section
+===============
+
+Definitions of groups of remote servers. Remote grouping can simplify the
+configuration.
+
+::
+
+ remotes:
+   - id: STR
+     remote: remote_id ...
+
+.. _remotes_id:
+
+id
+--
+
+A remote group identifier.
+
+.. _remotes_remote:
+
+remote
+------
+
+An ordered list of :ref:`references<remote_id>` to remote server definitions.
+
+*Default:* not set
+
 .. _ACL section:
 
 ACL section
@@ -1123,7 +1151,7 @@ update, etc.).
    - id: STR
      address: ADDR[/INT] | ADDR-ADDR ...
      key: key_id ...
-     remote: remote_id ...
+     remote: remote_id | remotes_id ...
      action: notify | transfer | update ...
      deny: BOOL
      update-type: STR ...
@@ -1164,7 +1192,8 @@ match one of them. Empty value means that transaction authentication is not used
 remote
 ------
 
-An ordered list of :ref:`references<remote_id>` to remotes. The query must
+An ordered list of references :ref:`remote<remote_id>` and
+:ref:`remotes<remotes_id>`. The query must
 match one of the remotes. Specifically, one of the remote's addresses and remote's
 TSIG key if configured must match.
 
@@ -1272,7 +1301,7 @@ Parameters of KSK submission checks.
 
  submission:
    - id: STR
-     parent: remote_id ...
+     parent: remote_id | remotes_id ...
      check-interval: TIME
      timeout: TIME
 
@@ -1288,7 +1317,8 @@ A submission identifier.
 parent
 ------
 
-A list of :ref:`references<remote_id>` to parent's DNS servers to be checked for
+A list of references :ref:`remote<remote_id>` and :ref:`remotes<remotes_id>`
+to parent's DNS servers to be checked for
 presence of corresponding DS records in the case of KSK submission. All of them must
 have a corresponding DS for the rollover to continue. If none is specified, the
 rollover must be pushed forward manually.
@@ -1354,7 +1384,7 @@ DNSSEC policy configuration.
      nsec3-salt-lifetime: TIME
      signing-threads: INT
      ksk-submission: submission_id
-     ds-push: remote_id
+     ds-push: remote_id | remotes_id ...
      cds-cdnskey-publish: none | delete-dnssec | rollover | always | double-ds
      cds-digest-type: sha256 | sha384
      offline-ksk: BOOL
@@ -1682,7 +1712,8 @@ KSK submission checks.
 ds-push
 -------
 
-An optional :ref:`reference<remote_id>` to authoritative DNS server of the
+Optional references :ref:`remote<remote_id>` and :ref:`remotes<remotes_id>`
+to authoritative DNS server of the
 parent's zone. The remote server must be configured to accept DS record
 updates via DDNS. Whenever a CDS record in the local zone is changed, the
 corresponding DS record is sent as a dynamic update (DDNS) to the parent
@@ -1813,9 +1844,9 @@ Definition of zones served by the server.
      template: template_id
      storage: STR
      file: STR
-     master: remote_id ...
+     master: remote_id | remotes_id ...
      ddns-master: remote_id
-     notify: remote_id ...
+     notify: remote_id | remotes_id ...
      acl: acl_id ...
      semantic-checks: BOOL
      zonefile-sync: TIME
@@ -1897,7 +1928,8 @@ It is also possible to use the following formatters:
 master
 ------
 
-An ordered list of :ref:`references<remote_id>` to zone primary servers
+An ordered list of references :ref:`remote<remote_id>` and
+:ref:`remotes<remotes_id>` to zone primary servers
 (formerly known as master servers).
 
 *Default:* not set
@@ -1917,7 +1949,8 @@ the first :ref:`master<zone_master>` server is used.
 notify
 ------
 
-An ordered list of :ref:`references<remote_id>` to remotes to which notify
+An ordered list of references :ref:`remote<remote_id>` and
+:ref:`remotes<remotes_id>` to secondary servers to which notify
 message is sent if the zone changes.
 
 *Default:* not set

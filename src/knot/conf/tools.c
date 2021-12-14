@@ -212,12 +212,27 @@ int check_ref(
 	knotd_conf_check_args_t *args)
 {
 	const yp_item_t *ref = args->item->var.r.ref;
+	const yp_item_t *ref2 = args->item->var.r.grp_ref;
 
-	// Try to find a referenced block with the id.
-	if (!conf_rawid_exists_txn(args->extra->conf, args->extra->txn, ref->name,
-	                           args->data, args->data_len)) {
-		args->err_str = "invalid reference";
-		return KNOT_ENOENT;
+	bool found1 = false, found2 = false;
+
+	// Try to find the id in the first section.
+	found1 = conf_rawid_exists_txn(args->extra->conf, args->extra->txn,
+	                               ref->name, args->data, args->data_len);
+	if (ref2 != NULL) {
+		// Try to find the id in the second section if supported.
+		found2 = conf_rawid_exists_txn(args->extra->conf, args->extra->txn,
+		                               ref2->name, args->data, args->data_len);
+	}
+
+	if (found1 == found2) {
+		if (found1) {
+			args->err_str = "ambiguous reference";
+			return KNOT_ENOENT;
+		} else {
+			args->err_str = "invalid reference";
+			return KNOT_ENOENT;
+		}
 	}
 
 	return KNOT_EOK;
@@ -696,6 +711,19 @@ int check_remote(
 	                                     C_ADDR, args->id, args->id_len);
 	if (conf_val_count(&addr) == 0) {
 		args->err_str = "no remote address defined";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_remotes(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t remote = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMTS,
+	                                       C_RMT, args->id, args->id_len);
+	if (remote.code != KNOT_EOK) {
+		args->err_str = "no remote defined";
 		return KNOT_EINVAL;
 	}
 

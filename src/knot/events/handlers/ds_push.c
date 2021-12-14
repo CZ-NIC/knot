@@ -240,13 +240,14 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
 	conf_id_fix_default(&policy_id);
 	conf_val_t ds_push = conf_id_get(conf, C_POLICY, C_DS_PUSH, &policy_id);
-	while (ds_push.code == KNOT_EOK) {
-		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &ds_push);
+	conf_mix_iter_t iter = conf_mix_iter(conf, &ds_push);
+	while (iter.id->code == KNOT_EOK) {
+		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);
 
 		int ret = KNOT_EOK;
 		for (int i = 0; i < addr_count; i++) {
-			conf_remote_t parent = conf_remote(conf, &ds_push, i);
+			conf_remote_t parent = conf_remote(conf, iter.id, i);
 			ret = send_ds_push(conf, zone, &parent, timeout);
 			if (ret == KNOT_EOK) {
 				zone->timers.next_ds_push = 0;
@@ -260,7 +261,7 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 			zone->timers.next_ds_push = next_push;
 		}
 
-		conf_val_next(&ds_push);
+		conf_mix_iter_next(&iter);
 	}
 
 	return KNOT_EOK;

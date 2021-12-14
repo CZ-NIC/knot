@@ -491,12 +491,13 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 	}
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
-	while (masters.code == KNOT_EOK) {
-		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &masters);
+	conf_mix_iter_t iter = conf_mix_iter(conf, &masters);
+	while (iter.id->code == KNOT_EOK) {
+		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);
 
 		for (size_t i = 0; i < addr_count; i++) {
-			conf_remote_t remote = conf_remote(conf, &masters, i);
+			conf_remote_t remote = conf_remote(conf, iter.id, i);
 			if (sockaddr_net_match(&remote.addr, zone->preferred_master, -1)) {
 				*master = remote;
 				pthread_mutex_unlock(&zone->preferred_lock);
@@ -504,7 +505,7 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 			}
 		}
 
-		conf_val_next(&masters);
+		conf_mix_iter_next(&iter);
 	}
 
 	pthread_mutex_unlock(&zone->preferred_lock);
@@ -557,14 +558,15 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 	bool success = false;
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
-	while (masters.code == KNOT_EOK && fallback.remote) {
-		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &masters);
+	conf_mix_iter_t iter = conf_mix_iter(conf, &masters);
+	while (iter.id->code == KNOT_EOK && fallback.remote) {
+		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);
 
 		bool tried = false;
 		fallback.address = true;
 		for (size_t i = 0; i < addr_count && fallback.address; i++) {
-			conf_remote_t master = conf_remote(conf, &masters, i);
+			conf_remote_t master = conf_remote(conf, iter.id, i);
 			if (preferred.addr.ss_family != AF_UNSPEC &&
 			    sockaddr_net_match(&master.addr, &preferred.addr, -1)) {
 				preferred.addr.ss_family = AF_UNSPEC;
@@ -580,16 +582,16 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 				return ret; // Local error.
 			}
 
-			log_try_addr_error(zone, conf_str(&masters), &master.addr,
+			log_try_addr_error(zone, conf_str(iter.id), &master.addr,
 			                   err_str, ret);
 		}
 
 		if (!success && tried) {
 			log_zone_warning(zone->name, "%s, remote %s not usable",
-			                 err_str, conf_str(&masters));
+			                 err_str, conf_str(iter.id));
 		}
 
-		conf_val_next(&masters);
+		conf_mix_iter_next(&iter);
 	}
 
 	return success ? KNOT_EOK : KNOT_ENOMASTER;
