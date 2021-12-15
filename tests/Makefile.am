@@ -102,6 +102,7 @@ check_PROGRAMS += \
 	knot/test_query_module			\
 	knot/test_requestor			\
 	knot/test_server			\
+	knot/test_unreachable			\
 	knot/test_worker_pool			\
 	knot/test_worker_queue			\
 	knot/test_zone-tree			\

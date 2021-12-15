@@ -193,6 +193,7 @@ server:
     tcp\-fastopen: BOOL
     remote\-pool\-limit: INT
     remote\-pool\-timeout: TIME
+    remote\-retry\-delay: TIME
     socket\-affinity: BOOL
     udp\-max\-payload: SIZE
     udp\-max\-payload\-ipv4: SIZE
@@ -375,6 +376,13 @@ The timeout in seconds after which the unused kept\-open outgoing TCP connection
 to remote servers are closed.
 .sp
 \fIDefault:\fP 5
+.SS remote\-retry\-delay
+.sp
+When a connection attempt times out to some remote address, this information will be
+kept for this specified time (in milliseconds) and other connections to the same address won\(aqt
+be attempted. This prevents repetitive waiting for timeout on an unreachable remote.
+.sp
+\fIDefault:\fP 0
 .SS socket\-affinity
 .sp
 If enabled and if SO_REUSEPORT is available on Linux, all configured network

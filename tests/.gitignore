@@ -36,6 +36,7 @@
 /knot/test_requestor
 /knot/test_semantic_check
 /knot/test_server
+/knot/test_unreachable
 /knot/test_worker_pool
 /knot/test_worker_queue
 /knot/test_zone-tree

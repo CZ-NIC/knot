@@ -27,6 +27,7 @@
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
+#include "knot/common/unreachable.h"
 #include "knot/conf/confio.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/module.h"
@@ -701,6 +702,7 @@ void server_deinit(server_t *server)
 	/* Close and deinit connection pool. */
 	conn_pool_deinit(global_conn_pool);
 	global_conn_pool = NULL;
+	knot_unreachables_deinit(&global_unreachables);
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
@@ -1160,6 +1162,14 @@ static int reconfigure_remote_pool(conf_t *conf)
 		global_conn_pool = new_pool;
 	} else {
 		(void)conn_pool_timeout(global_conn_pool, timeout);
+	}
+
+	val = conf_get(conf, C_SRV, C_RMT_RETRY_DELAY);
+	int delay_ms = conf_int(&val);
+	if (global_unreachables == NULL && delay_ms > 0) {
+		global_unreachables = knot_unreachables_init(delay_ms);
+	} else {
+		(void)knot_unreachables_ttl(global_unreachables, delay_ms);
 	}
 
 	return KNOT_EOK;

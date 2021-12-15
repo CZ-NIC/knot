@@ -102,6 +102,7 @@ static const struct error errors[] = {
 	{ KNOT_EXPARAM,      "parameter conflict" },
 	{ KNOT_EEMPTYZONE,   "zone is empty" },
 	{ KNOT_ENODB,        "database does not exist" },
+	{ KNOT_EUNREACH,     "remote known to be unreachable" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 
