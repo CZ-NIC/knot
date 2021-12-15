@@ -240,7 +240,8 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
 	conf_id_fix_default(&policy_id);
 	conf_val_t ds_push = conf_id_get(conf, C_POLICY, C_DS_PUSH, &policy_id);
-	conf_mix_iter_t iter = conf_mix_iter(conf, &ds_push);
+	conf_mix_iter_t iter;
+	conf_mix_iter_init(conf, &ds_push, &iter);
 	while (iter.id->code == KNOT_EOK) {
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);

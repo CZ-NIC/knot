@@ -143,7 +143,8 @@ int event_notify(conf_t *conf, zone_t *zone)
 
 	// send NOTIFY to each remote, use working address
 	conf_val_t notify = conf_zone_get(conf, C_NOTIFY, zone->name);
-	conf_mix_iter_t iter = conf_mix_iter(conf, &notify);
+	conf_mix_iter_t iter;
+	conf_mix_iter_init(conf, &notify, &iter);
 	while (iter.id->code == KNOT_EOK) {
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);

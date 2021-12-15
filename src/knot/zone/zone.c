@@ -491,7 +491,8 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 	}
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
-	conf_mix_iter_t iter = conf_mix_iter(conf, &masters);
+	conf_mix_iter_t iter;
+	conf_mix_iter_init(conf, &masters, &iter);
 	while (iter.id->code == KNOT_EOK) {
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);
@@ -558,7 +559,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 	bool success = false;
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
-	conf_mix_iter_t iter = conf_mix_iter(conf, &masters);
+	conf_mix_iter_t iter;
+	conf_mix_iter_init(conf, &masters, &iter);
 	while (iter.id->code == KNOT_EOK && fallback.remote) {
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);
