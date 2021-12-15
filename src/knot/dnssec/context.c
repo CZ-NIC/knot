@@ -117,7 +117,8 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 		policy->ksk_sbm_timeout = conf_int(&val);
 
 		val = conf_id_get(conf, C_SBM, C_PARENT, &ksk_sbm);
-		conf_mix_iter_t iter = conf_mix_iter(conf, &val);
+		conf_mix_iter_t iter;
+		conf_mix_iter_init(conf, &val, &iter);
 		while (iter.id->code == KNOT_EOK) {
 			conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 			knot_kasp_parent_t p = { .addrs = conf_val_count(&addr) };

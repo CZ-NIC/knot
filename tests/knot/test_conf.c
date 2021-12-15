@@ -234,7 +234,8 @@ static void test_mix_ref(void)
 
 	size_t cnt1 = 0;
 	conf_val_t test1 = conf_rawid_get(conf(), C_SBM, C_PARENT, (const uint8_t *)"t1", 3);
-	conf_mix_iter_t iter1 = conf_mix_iter(conf(), &test1);
+	conf_mix_iter_t iter1;
+	conf_mix_iter_init(conf(), &test1, &iter1);
 	while (iter1.id->code == KNOT_EOK) {
 		cnt1++;
 		conf_mix_iter_next(&iter1);
@@ -243,7 +244,8 @@ static void test_mix_ref(void)
 
 	size_t cnt2 = 0;
 	conf_val_t test2 = conf_rawid_get(conf(), C_SBM, C_PARENT, (const uint8_t *)"t2", 3);
-	conf_mix_iter_t iter2 = conf_mix_iter(conf(), &test2);
+	conf_mix_iter_t iter2;
+	conf_mix_iter_init(conf(), &test2, &iter2);
 	while (iter2.id->code == KNOT_EOK) {
 		cnt2++;
 		conf_mix_iter_next(&iter2);

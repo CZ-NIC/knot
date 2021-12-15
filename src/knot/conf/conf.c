@@ -539,9 +539,10 @@ bool conf_val_equal(
 	return false;
 }
 
-conf_mix_iter_t conf_mix_iter(
+void conf_mix_iter_init(
 	conf_t *conf,
-	conf_val_t *mix_id)
+	conf_val_t *mix_id,
+	conf_mix_iter_t *iter)
 {
 	assert(mix_id != NULL && mix_id->item != NULL);
 	assert(mix_id->item->type == YP_TREF &&
@@ -550,27 +551,24 @@ conf_mix_iter_t conf_mix_iter(
 	       mix_id->item->var.r.ref->var.g.id->type == YP_TSTR &&
 	       mix_id->item->var.r.grp_ref->var.g.id->type == YP_TSTR);
 
-	conf_mix_iter_t iter = {
-		.conf = conf,
-		.mix_id = mix_id,
-		.id = mix_id
-	};
+	iter->conf = conf;
+	iter->mix_id = mix_id;
+	iter->id = mix_id;
+	iter->nested = false;
 
 	if (mix_id->code != KNOT_EOK) {
-		return iter;
+		return;
 	}
 
-	iter.sub_id = conf_id_get_txn(conf, &conf->read_txn,
-	                              mix_id->item->var.r.grp_ref_name,
-	                              mix_id->item->var.r.ref_name,
-	                              mix_id);
-	if (iter.sub_id.code == KNOT_EOK) {
-		conf_val(&iter.sub_id);
-		iter.id = &iter.sub_id;
-		iter.nested = true;
+	iter->sub_id = conf_id_get_txn(conf, &conf->read_txn,
+	                               mix_id->item->var.r.grp_ref_name,
+	                               mix_id->item->var.r.ref_name,
+	                               mix_id);
+	if (iter->sub_id.code == KNOT_EOK) {
+		conf_val(&iter->sub_id);
+		iter->id = &iter->sub_id;
+		iter->nested = true;
 	}
-
-	return iter;
 }
 
 void conf_mix_iter_next(
@@ -581,6 +579,7 @@ void conf_mix_iter_next(
 		if (iter->id->code == KNOT_EOK) {
 			return;
 		}
+		assert(iter->id->code == KNOT_EOF);
 		conf_val_next(iter->mix_id);
 		if (iter->mix_id->code != KNOT_EOK) {
 			return;

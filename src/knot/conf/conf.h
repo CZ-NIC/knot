@@ -422,18 +422,18 @@ bool conf_val_equal(
 );
 
 /*!
- * Prepares a mixed reference iterator.
+ * Initializes a mixed reference iterator.
  *
- * The following access is through val->id.
+ * The following access is through iter->id.
  *
  * \param[in] conf    Configuration.
  * \param[in] mix_id  First mixed reference.
- *
- * \return Mixed reference iterator.
+ * \param[out] iter   Iterator to be initialized.
  */
-conf_mix_iter_t conf_mix_iter(
+void conf_mix_iter_init(
 	conf_t *conf,
-	conf_val_t *mix_id
+	conf_val_t *mix_id,
+	conf_mix_iter_t *iter
 );
 
 /*!
