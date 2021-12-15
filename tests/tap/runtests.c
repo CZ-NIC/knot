@@ -161,6 +161,7 @@ struct testset {
     unsigned long allocated;    /* The size of the results table. */
     enum test_status *results;  /* Table of results by test number. */
     unsigned int aborted;       /* Whether the set was aborted. */
+    unsigned int killed;        /* Whether the set was killed. */
     int reported;               /* Whether the results were reported. */
     int status;                 /* The exit status of the test. */
     unsigned int all_skipped;   /* Whether all tests were skipped. */
@@ -490,6 +491,7 @@ test_plan(const char *line, struct testset *ts)
                 ts->passed = 0;
                 ts->skipped = 0;
                 ts->failed = 0;
+                ts->killed = 0;
                 return 0;
             }
         }
@@ -831,6 +833,7 @@ test_analyze(struct testset *ts)
         return 0;
     } else if (WIFSIGNALED(ts->status)) {
         test_summarize(ts, -WTERMSIG(ts->status));
+        ts->killed = 1;
         return 0;
     } else if (ts->plan != PLAN_FIRST && ts->plan != PLAN_FINAL) {
         puts("ABORTED (no valid test plan)");
@@ -935,10 +938,13 @@ test_fail_summary(const struct testlist *fails)
         printf("%-26.26s %4lu/%-4lu %3.0f%% %4lu ", ts->file, ts->failed,
                total, total ? (ts->failed * 100.0) / total : 0,
                ts->skipped);
-        if (WIFEXITED(ts->status))
+        if (WIFEXITED(ts->status)) {
             printf("%4d  ", WEXITSTATUS(ts->status));
-        else
+        } else if (ts->killed) {
+            printf("KILL ");
+        } else {
             printf("  --  ");
+        }
         if (ts->aborted) {
             puts("aborted");
             continue;
@@ -1160,6 +1166,7 @@ test_batch(struct testlist *tests, const char *source, const char *build,
     unsigned long skipped = 0;
     unsigned long failed = 0;
     unsigned long aborted = 0;
+    unsigned long killed = 0;
 
     /* Walk the list of tests to find the longest name. */
     for (current = tests; current != NULL; current = current->next) {
@@ -1209,6 +1216,7 @@ test_batch(struct testlist *tests, const char *source, const char *build,
         passed += ts->passed;
         skipped += ts->skipped + ts->all_skipped;
         failed += ts->failed;
+        killed += ts->killed;
         count++;
 
         /* If the test fails, we shuffle it over to the fail list. */
@@ -1255,7 +1263,10 @@ test_batch(struct testlist *tests, const char *source, const char *build,
 
     /* Print out the final test summary. */
     putchar('\n');
-    if (aborted != 0) {
+    if (killed != 0) {
+        printf("Killed %lu test set%s, passed %lu/%lu tests",
+               killed, killed == 1 ? "" : "s", passed, total);
+    } else if (aborted != 0) {
         if (aborted == 1)
             printf("Aborted %lu test set", aborted);
         else
@@ -1279,7 +1290,7 @@ test_batch(struct testlist *tests, const char *source, const char *build,
     printf(" (%.2f usr + %.2f sys = %.2f CPU)\n",
            tv_seconds(&stats.ru_utime), tv_seconds(&stats.ru_stime),
            tv_sum(&stats.ru_utime, &stats.ru_stime));
-    return (failed == 0 && aborted == 0);
+    return (failed == 0 && aborted == 0 && killed == 0);
 }
 
 /*
