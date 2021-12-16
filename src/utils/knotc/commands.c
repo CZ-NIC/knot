@@ -23,6 +23,7 @@
 #include "knot/ctl/commands.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/confdb.h"
+#include "knot/conf/tools.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
 #include "contrib/macros.h"
@@ -914,16 +915,148 @@ static int cmd_conf_init(cmd_args_t *args)
 	return ret;
 }
 
-static int cmd_conf_check(cmd_args_t *args)
+static int conf_check_group(const yp_item_t *group, const uint8_t *id, size_t id_len)
+{
+	knotd_conf_check_extra_t extra = {
+		.conf = conf(),
+		.txn = &conf()->read_txn,
+		.check = true
+	};
+	knotd_conf_check_args_t args = {
+		.id = id,
+		.id_len = id_len,
+		.extra = &extra
+	};
+
+	bool non_empty = false;
+	bool error = false;
+
+	// Check the group sub-items.
+	for (yp_item_t *item = group->sub_items; item->name != NULL; item++) {
+		args.item = item;
+
+		conf_val_t bin;
+		conf_db_get(conf(), &conf()->read_txn, group->name, item->name,
+		            id, id_len, &bin);
+		if (bin.code == KNOT_ENOENT) {
+			continue;
+		} else if (bin.code != KNOT_EOK) {
+			log_error("failed to read the configuration DB (%s)",
+			          knot_strerror(bin.code));
+			return bin.code;
+		}
+
+		non_empty = true;
+
+		// Check the item value(s).
+		size_t values = conf_val_count(&bin);
+		for (size_t i = 1; i <= values; i++) {
+			conf_val(&bin);
+			args.data = bin.data;
+			args.data_len = bin.len;
+
+			int ret = conf_exec_callbacks(&args);
+			if (ret != KNOT_EOK) {
+				log_error("config, item '%s%s%s%s.%s' (%s)",
+				          group->name + 1,
+				          (id != NULL ? "[" : ""),
+				          (id != NULL ? (const char *)id  : ""),
+				          (id != NULL ? "]" : ""),
+				          item->name + 1,
+				          args.err_str);
+				error = true;
+			}
+			if (values > 1) {
+				conf_val_next(&bin);
+			}
+		}
+	}
+
+	// Check the group item itself.
+	if (id != NULL || non_empty) {
+		args.item = group;
+		args.data = NULL;
+		args.data_len = 0;
+
+		int ret = conf_exec_callbacks(&args);
+		if (ret != KNOT_EOK) {
+			log_error("config, section '%s%s%s%s' (%s)",
+			          group->name + 1,
+			          (id != NULL ? "[" : ""),
+			          (id != NULL ? (const char *)id  : ""),
+			          (id != NULL ? "]" : ""),
+			          args.err_str);
+			error = true;
+		}
+	}
+
+	return error ? KNOT_ESEMCHECK : KNOT_EOK;
+}
+
+static int cmd_conf_check(cmd_args_t *args) // Similar to conf_io_check().
 {
 	int ret = check_args(args, 0, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
+	if (conf()->filename == NULL) { // Config file already checked.
+		for (yp_item_t *item = conf()->schema; item->name != NULL; item++) {
+			// Skip include item.
+			if (item->type != YP_TGRP) {
+				continue;
+			}
+
+			// Group without identifiers.
+			if (!(item->flags & YP_FMULTI)) {
+				ret = conf_check_group(item, NULL, 0);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
+				continue;
+			}
+
+			conf_iter_t iter;
+			ret = conf_db_iter_begin(conf(), &conf()->read_txn, item->name, &iter);
+			if (ret == KNOT_ENOENT) {
+				continue;
+			} else if (ret != KNOT_EOK) {
+				log_error("failed to read the configuration DB (%s)",
+				          knot_strerror(ret));
+				return ret;
+			}
+
+			while (ret == KNOT_EOK) {
+				const uint8_t *id;
+				size_t id_len;
+				ret = conf_db_iter_id(conf(), &iter, &id, &id_len);
+				if (ret != KNOT_EOK) {
+					conf_db_iter_finish(conf(), &iter);
+					log_error("failed to read the configuration DB (%s)",
+					          knot_strerror(ret));
+					return ret;
+				}
+
+				// Check the group with this identifier.
+				ret = conf_check_group(item, id, id_len);
+				if (ret != KNOT_EOK) {
+					conf_db_iter_finish(conf(), &iter);
+					return ret;
+				}
+
+				ret = conf_db_iter_next(conf(), &iter);
+			}
+			if (ret != KNOT_EOF) {
+				log_error("failed to read the configuration DB (%s)",
+				          knot_strerror(ret));
+				return ret;
+			}
+		}
+	}
+
 	log_info("Configuration is valid");
 
-	return 0;
+	return KNOT_EOK;
 }
 
 static int cmd_conf_import(cmd_args_t *args)
