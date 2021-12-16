@@ -48,13 +48,6 @@
 #define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] != NULL && \
                                       strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
 
-#define RETURN_IF_FAILED(exception) \
-{ \
-	if (ret != KNOT_EOK && ret != (exception)) { \
-		return ret; \
-	} \
-}
-
 typedef struct {
 	ctl_args_t *args;
 	int type_filter; // -1: no specific type, [0, 2^16]: specific type.
@@ -1333,6 +1326,15 @@ static int orphans_purge(ctl_args_t *args)
 	return KNOT_EOK;
 }
 
+#define RETURN_IF_FAILED(str, exception) \
+{ \
+	if (ret != KNOT_EOK && ret != (exception)) { \
+		log_zone_error(zone->name, \
+		               "failed to %s (%s)", (str), knot_strerror(ret)); \
+		return ret; \
+	} \
+}
+
 static int zone_purge(zone_t *zone, ctl_args_t *args)
 {
 	int ret = KNOT_EOK;
@@ -1340,7 +1342,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	// Abort possible editing transaction.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
 		ret = zone_txn_abort(zone, args);
-		RETURN_IF_FAILED(KNOT_TXN_ENOTEXISTS);
+		RETURN_IF_FAILED("abort pending transaction", KNOT_TXN_ENOTEXISTS);
 	}
 
 	// Purge the zone timers.
@@ -1348,7 +1350,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		memset(&zone->timers, 0, sizeof(zone->timers));
 		ret = zone_timers_sweep(&args->server->timerdb,
 		                        zone_names_distinct, zone->name);
-		RETURN_IF_FAILED(KNOT_ENOENT);
+		RETURN_IF_FAILED("purge timers", KNOT_ENOENT);
 	}
 
 	// Expire the zone.
@@ -1362,13 +1364,13 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		char *zonefile = conf_zonefile(conf(), zone->name);
 		ret = (unlink(zonefile) == -1 ? knot_map_errno() : KNOT_EOK);
 		free(zonefile);
-		RETURN_IF_FAILED(KNOT_ENOENT);
+		RETURN_IF_FAILED("purge zone file", KNOT_ENOENT);
 	}
 
 	// Purge the zone journal.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
 		ret = journal_scrape_with_md(zone_journal(zone), true);
-		RETURN_IF_FAILED(KNOT_ENOENT);
+		RETURN_IF_FAILED("purge journal", KNOT_ENOENT);
 	}
 
 	// Purge KASP DB.
@@ -1377,7 +1379,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		if (ret == KNOT_EOK) {
 			ret = kasp_db_delete_all(zone->kaspdb, zone->name);
 		}
-		RETURN_IF_FAILED(KNOT_ENOENT);
+		RETURN_IF_FAILED("purge KASP DB", KNOT_ENOENT);
 	}
 
 	return KNOT_EOK;
