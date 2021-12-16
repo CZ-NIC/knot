@@ -82,11 +82,26 @@ int geoip_conf_check(knotd_conf_check_args_t *args)
 			args->err_str = "geodb mode not available";
 			return KNOT_EINVAL;
 		}
+
 		conf = knotd_conf_check_item(args, MOD_GEODB_FILE);
 		if (conf.count == 0) {
 			args->err_str = "no geodb file specified while in geodb mode";
 			return KNOT_EINVAL;
 		}
+
+		conf = knotd_conf_check_item(args, MOD_GEODB_KEY);
+		if (conf.count > GEODB_MAX_DEPTH) {
+			args->err_str = "maximal number of geodb-key items exceeded";
+			return KNOT_EINVAL;
+		}
+		for (size_t i = 0; i < conf.count; i++) {
+			geodb_path_t path;
+			if (parse_geodb_path(&path, (char *)conf.multi[i].string) != 0) {
+				args->err_str = "unrecognized geodb-key format";
+				return KNOT_EINVAL;
+			}
+		}
+		knotd_conf_free(&conf);
 	}
 	return KNOT_EOK;
 }
@@ -918,21 +933,10 @@ int geoip_load(knotd_mod_t *mod)
 
 		// Load configured geodb keys.
 		conf = knotd_conf_mod(mod, MOD_GEODB_KEY);
-		if (conf.count > GEODB_MAX_DEPTH) {
-			knotd_mod_log(mod, LOG_ERR, "maximal number of geodb-key items (%d) exceeded",
-			              GEODB_MAX_DEPTH);
-			knotd_conf_free(&conf);
-			free_geoip_ctx(ctx);
-			return KNOT_EINVAL;
-		}
+		assert(conf.count <= GEODB_MAX_DEPTH);
 		ctx->path_count = conf.count;
 		for (size_t i = 0; i < conf.count; i++) {
-			if (parse_geodb_path(&ctx->paths[i], (char *)conf.multi[i].string) != 0) {
-				knotd_mod_log(mod, LOG_ERR, "unrecognized geodb-key format");
-				knotd_conf_free(&conf);
-				free_geoip_ctx(ctx);
-				return KNOT_EINVAL;
-			}
+			(void)parse_geodb_path(&ctx->paths[i], (char *)conf.multi[i].string);
 		}
 		knotd_conf_free(&conf);
 	}
