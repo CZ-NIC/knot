@@ -261,6 +261,18 @@ static void print_ede(const uint8_t *data, uint16_t len)
 	}
 }
 
+static void print_expire(const uint8_t *data, uint16_t len)
+{
+	if (len == 0) {
+		printf("(empty)");
+	} else if (len != sizeof(uint32_t)) {
+		printf("(malformed)");
+	} else {
+		uint32_t timer = be32toh(*(uint32_t *)data);
+		printf("%u", timer);
+	}
+}
+
 static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 {
 	char unknown_ercode[64] = "";
@@ -319,6 +331,10 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 		case KNOT_EDNS_OPTION_EDE:
 			printf(";; EDE: ");
 			print_ede(opt_data, opt_len);
+			break;
+		case KNOT_EDNS_OPTION_EXPIRE:
+			printf(";; EXPIRE: ");
+			print_expire(opt_data, opt_len);
 			break;
 		default:
 			printf(";; Option (%u): ", opt_code);

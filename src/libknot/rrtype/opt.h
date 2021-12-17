@@ -75,6 +75,8 @@ enum {
 	KNOT_EDNS_OPTION_NSID          = 3,
 	/*! \brief EDNS Client subnet option code. */
 	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8,
+	/*! \brief EDNS Expire option code. */
+	KNOT_EDNS_OPTION_EXPIRE        = 9,
 	/*! \brief EDNS DNS Cookie option code. */
 	KNOT_EDNS_OPTION_COOKIE        = 10,
 	/*! \brief EDNS TCP Keepalive option code. */

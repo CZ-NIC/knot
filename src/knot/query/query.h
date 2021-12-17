@@ -25,6 +25,7 @@
 struct query_edns_data {
 	uint16_t max_payload;
 	bool do_flag;
+	bool expire_option;
 };
 
 /*!

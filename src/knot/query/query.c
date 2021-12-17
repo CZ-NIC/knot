@@ -78,6 +78,14 @@ int query_put_edns(knot_pkt_t *pkt, const struct query_edns_data *edns)
 		knot_edns_set_do(&opt_rr);
 	}
 
+	if (edns->expire_option) {
+		ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_EXPIRE, 0, NULL, &pkt->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &pkt->mm);
+			return ret;
+		}
+	}
+
 	// Add result into the packet
 
 	knot_pkt_begin(pkt, KNOT_ADDITIONAL);
