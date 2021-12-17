@@ -228,13 +228,15 @@ static void udp_recvfrom_send(void *d)
 static void quic_recvfrom_send(void *d)
 {
 	struct quic_recvfrom *rq = d;
-	if (rq->msg[TX].msg_iovlen > 0) {
+	if (rq->msg[TX].msg_iov->iov_len > 0) {
 		ssize_t sent = sendmsg(rq->fd, &rq->msg[TX], 0);
 		for (int i = 0; i < KNOT_QUIC_MAX_PACKET_COUNT; ++i) {
 			rq->msg[TX].msg_iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 		}
-		rq->msg[TX].msg_iovlen = 0;
+		// rq->msg[TX].msg_iovlen = 0;
 	}
+	assert(rq->handle.actual_conn);
+	ngtcp2_conn_update_pkt_tx_time(rq->handle.actual_conn->conn, quic_timestamp());
 }
 
 _unused_
@@ -446,25 +448,19 @@ static int quic_generate_secret(uint8_t *buf, size_t buflen) {
 
 static void *quic_recvfrom_init(_unused_ void *xdp_sock)
 {
-	// knot_mm_t mm;
-	// mm_ctx_mempool(&mm, sizeof(struct quic_recvfrom));
-
 	struct quic_recvfrom *rq = malloc(sizeof(struct quic_recvfrom));
 	if (rq == NULL) {
 		return NULL;
 	}
 	memset(rq, 0, sizeof(*rq));
-	//memcpy(&rq->mm, &mm, sizeof(knot_mm_t));
 
 	for (unsigned i = 0; i < NBUFS; ++i) {
-		for (unsigned j = 0; j < KNOT_QUIC_MAX_PACKET_COUNT; ++j) {
-			rq->iov[i][j].iov_base = malloc(KNOT_WIRE_MAX_PKTSIZE);
-			rq->iov[i][j].iov_len = KNOT_WIRE_MAX_PKTSIZE;
-		}
+		rq->iov[i].iov_base = rq->buf[i];
+		rq->iov[i].iov_len = 0;
 		rq->msg[i].msg_name = &rq->addr;
 		rq->msg[i].msg_namelen = sizeof(rq->addr);
-		rq->msg[i].msg_iov = rq->iov[i];
-		rq->msg[i].msg_iovlen = KNOT_QUIC_MAX_PACKET_COUNT;
+		rq->msg[i].msg_iov = &rq->iov[i];
+		rq->msg[i].msg_iovlen = 1;
 		rq->msg[i].msg_control = &rq->pktinfo.cmsg;
 		rq->msg[i].msg_controllen = sizeof(rq->pktinfo);
 	}
@@ -633,23 +629,20 @@ static int quic_recvfrom_recv(int fd, void *d)
 	struct quic_recvfrom *rq = (struct quic_recvfrom *)d;
 
 	rq->msg[RX].msg_controllen = sizeof(rq->pktinfo);
-	rq->msg[RX].msg_iovlen = KNOT_QUIC_MAX_PACKET_COUNT;
-	for (int i = 0; i < KNOT_QUIC_MAX_PACKET_COUNT; ++i) {
-		rq->msg[RX].msg_iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
-	}
+	rq->msg[RX].msg_iovlen = 1;
+	rq->msg[RX].msg_iov->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	rq->msg[RX].msg_namelen = sizeof(struct sockaddr_storage);
 
 	int ret = recvmsg(fd, &rq->msg[RX], MSG_DONTWAIT);
 	if (ret > 0) {
 		rq->fd = fd;
+		rq->msg[RX].msg_iov->iov_len = ret;
 		rq->msg[RX].msg_iovlen = 1;
-		rq->msg[RX].msg_iov[0].iov_len = ret;
-//		return 1;
 	} else if (ret == 0) {
 		rq->msg[RX].msg_iovlen = 0;
 	}
 
-	return rq->msg[RX].msg_iovlen;
+	return ret;
 }
 
 static int quic_recvmmsg_recv(int fd, void *d)
@@ -681,7 +674,7 @@ static int quic_recvmmsg_recv(int fd, void *d)
 // }
 
 
-static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle, int fd, struct sockaddr_storage *ss,
+static int quic_handle(udp_context_t *udp, knot_quic_handle_ctx_t *handle, int fd, struct sockaddr_storage *ss,
                        struct msghdr *rx, struct msghdr *tx,
                        knot_quic_table_t *conns, knot_quic_creds_t *tls_creds,
                        struct knot_xdp_msg *xdp_msg)
@@ -719,8 +712,8 @@ static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle,
 	// }
 
 	switch (ngtcp2_pkt_decode_version_cid(&version, &dcid, &dcidlen, &scid,
-	                                      &scidlen, rx->msg_iov[0].iov_base,
-	                                      rx->msg_iov[0].iov_len,
+	                                      &scidlen, rx->msg_iov->iov_base,
+	                                      rx->msg_iov->iov_len,
 	                                      QUIC_SV_SCIDLEN)) {
 	case 0:
 		break;
@@ -734,14 +727,12 @@ static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle,
 		assert(0);
 		return KNOT_NET_ECONNECT; //TODO maybe change return val
 	}
-	assert(dcidlen >= NGTCP2_MIN_CIDLEN && dcidlen <= NGTCP2_MAX_CIDLEN &&
-	        scidlen >= NGTCP2_MIN_CIDLEN && scidlen <= NGTCP2_MAX_CIDLEN);
+	assert(dcidlen <= NGTCP2_MAX_CIDLEN &&
+	       scidlen <= NGTCP2_MAX_CIDLEN);
 
-	knot_quic_conn_t *conn = knot_quic_table_find_dcid(conns, dcid, dcidlen);
-	if (conn == NULL) {
-		// int ret = ngtcp2_accept(&hd, rx->msg_iov->iov_base, rx->msg_iov->iov_len);
-		// switch (ret) {
-		switch (ngtcp2_accept(&hd, rx->msg_iov[0].iov_base, rx->msg_iov[0].iov_len)) {
+	handle->actual_conn = knot_quic_table_find_dcid(conns, dcid, dcidlen);
+	if (handle->actual_conn == NULL) {
+		switch (ngtcp2_accept(&hd, rx->msg_iov->iov_base, rx->msg_iov->iov_len)) {
 		case 0:
 			break;
 		case NGTCP2_ERR_RETRY:
@@ -831,8 +822,8 @@ static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle,
 		// 	path.local.addrlen = sizeof(struct sockaddr_in6);
 		// }
 
-		conn = knot_quic_conn_new(handle, tls_creds, &path, &hd.scid, &hd.dcid, pocid, hd.version);
-		switch (knot_quic_conn_on_read(conn, &pi, rx->msg_iov->iov_base, rx->msg_iov->iov_len)) {
+		handle->actual_conn = knot_quic_conn_new(handle, tls_creds, &path, &hd.scid, &hd.dcid, pocid, hd.version);
+		switch (knot_quic_conn_on_read(handle->actual_conn, &pi, rx->msg_iov->iov_base, rx->msg_iov->iov_len)) {
 		case KNOT_EOK:
 			break;
 		case -13 /* NETWORK_ERR_RETRY */:
@@ -845,28 +836,28 @@ static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle,
 			return KNOT_NET_ERECV;
 		}
 
-		switch (knot_quic_conn_on_write(conn, &(tx->msg_iov[tx->msg_iovlen++]))) {
+		switch (knot_quic_conn_on_write(handle->actual_conn, tx->msg_iov)) {
 		case 0:
 			break;
 		default:
 			return KNOT_NET_ESEND;
 		}
 
-		size_t scid_num = ngtcp2_conn_get_num_scid(conn->conn);
+		size_t scid_num = ngtcp2_conn_get_num_scid(handle->actual_conn->conn);
 		assert(scid_num <= 2);
 		ngtcp2_cid scids[scid_num];
-		scid_num = ngtcp2_conn_get_scid(conn->conn, scids);
+		scid_num = ngtcp2_conn_get_scid(handle->actual_conn->conn, scids);
 		for (size_t i = 0; i < scid_num; ++i) {
-			knot_quic_table_store(conns, &(scids[i]), conn);
+			knot_quic_table_store(conns, &(scids[i]), handle->actual_conn);
 		}
 		ngtcp2_cid dcid_key = { 0 };
 		ngtcp2_cid_init(&dcid_key, dcid, dcidlen);
-		knot_quic_table_store(conns, &dcid_key, conn);
+		knot_quic_table_store(conns, &dcid_key, handle->actual_conn);
 
 		return KNOT_EOK;
 	}
 
-	if (ngtcp2_conn_is_in_closing_period(conn->conn)) {
+	if (ngtcp2_conn_is_in_closing_period(handle->actual_conn->conn)) {
 		assert(0);
 		//switch send_conn_close
 	}
@@ -875,18 +866,19 @@ static int quic_handle(udp_context_t *udp, const knot_quic_handle_ctx_t *handle,
 	// // 	continue;
 	// // }
 
-	int ret = knot_quic_conn_on_read(conn, &pi, rx->msg_iov->iov_base, rx->msg_iov->iov_len);
+	int ret = knot_quic_conn_on_read(handle->actual_conn, &pi, rx->msg_iov->iov_base, rx->msg_iov->iov_len);
 	if (ret != KNOT_EOK) {
 		if (ret != -12 /* NETWORK_ERR_CLOSE_WAIT */) {
 			// remove(h);
 			assert(0);
 		}
 		// continue;
+		assert(0);
 		return KNOT_NET_ERECV;
 	}
 
 	// signal_write();
-	knot_quic_conn_on_write(conn, &(tx->msg_iov[tx->msg_iovlen++]));
+	knot_quic_conn_on_write(handle->actual_conn, tx->msg_iov);
 	return KNOT_EOK;
 }
 
@@ -898,9 +890,9 @@ static int quic_recvfrom_handle(udp_context_t *ctx, void *d)
 	/* Prepare TX address. */
 	rq->msg[TX].msg_namelen = rq->msg[RX].msg_namelen;
 	for (int i = 0; i < KNOT_QUIC_MAX_PACKET_COUNT; ++i) {
-		rq->iov[TX][i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+		rq->iov[TX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	}
-	rq->msg[TX].msg_iovlen = 0;
+	rq->msg[TX].msg_iovlen = 1;
 
 	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
 

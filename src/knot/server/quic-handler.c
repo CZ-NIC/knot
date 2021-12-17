@@ -33,7 +33,7 @@
 #define QUIC_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_CIPHERS":"QUIC_DEFAULT_GROUPS
 
 
-static uint64_t quic_timestamp(void)
+uint64_t quic_timestamp(void)
 {
 	struct timespec tp;
 	if (clock_gettime(CLOCK_MONOTONIC, &tp) != 0) {
@@ -150,12 +150,12 @@ static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	}
 
 	uint8_t token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN];
-	ngtcp2_path *path = ngtcp2_conn_get_path(ctx->conn);
+	ngtcp2_path path = *ngtcp2_conn_get_path(ctx->conn);
 	uint64_t ts = quic_timestamp();
 	ngtcp2_ssize tokenlen = ngtcp2_crypto_generate_regular_token(token,
 			ctx->handle->tls_creds.static_secret,
 			sizeof(ctx->handle->tls_creds.static_secret),
-			path->remote.addr, path->remote.addrlen, ts);
+			path.remote.addr, path.remote.addrlen, ts);
 	if (tokenlen < 0) {
 		// 	if (!config.quiet) {
 		//   std::cerr << "Unable to generate token" << std::endl;
@@ -194,6 +194,7 @@ static int acked_stream_data_offset_cb(ngtcp2_conn *conn, int64_t stream_id,
                                     void *user_data, void *stream_user_data)
 {
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
+	(void)ctx;
 	return 0;
 }
 
@@ -271,6 +272,7 @@ static int alert_read_func(gnutls_session_t session,
                            gnutls_alert_description_t alert_desc)
 {
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)gnutls_session_get_ptr(session);
+	(void)ctx;
 	// ctx->error = NGTCP2_CRYPTO_ERROR | alert_desc;
 	return 0;
 }
@@ -413,7 +415,17 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *ha
 	ngtcp2_settings settings;
 	ngtcp2_settings_default(&settings);
 	settings.initial_ts = quic_timestamp();
-	//settings.max_udp_payload_size = 1472;
+	//TODO pass token
+	settings.token.base = NULL;
+	settings.token.len = 0;
+	//TODO UDP payload configuration
+	if (0 /*configured max UDP payload*/) {
+		//settings.max_udp_payload_size = 0; //TODO from configuration
+		settings.no_udp_payload_size_shaping = 1;
+	} else {
+		settings.max_udp_payload_size = 1472;
+		settings.assume_symmetric_path = 1;
+	}
 
 	ngtcp2_transport_params params;
 	ngtcp2_transport_params_default(&params);
@@ -504,7 +516,6 @@ int knot_quic_conn_init(knot_quic_conn_t *conn, const knot_quic_handle_ctx_t *ha
 	gnutls_handshake_set_hook_function(conn->tls_session,
 	                                   GNUTLS_HANDSHAKE_CLIENT_HELLO,
 	                                   GNUTLS_HOOK_POST, client_hello_cb);
-
 	if (gnutls_session_ext_register(conn->tls_session,
 	                "QUIC Transport Parameters",
 	                NGTCP2_TLSEXT_QUIC_TRANSPORT_PARAMETERS_V1,
@@ -608,20 +619,43 @@ int knot_quic_conn_on_write(knot_quic_conn_t *conn, struct iovec *out)
 	ngtcp2_pkt_info pi;
 	size_t max_udp_payload_size =
 	                ngtcp2_conn_get_path_max_udp_payload_size(conn->conn);
-	uint64_t left = ngtcp2_conn_get_max_data_left(conn->conn);
-	// size_t nwrite = ngtcp2_conn_writev_stream(conn->conn,
-	//                 ngtcp2_conn_get_path(conn->conn), &pi, out->iov_base,
-	//                 max_udp_payload_size, &(out->iov_len),
-	//                 NGTCP2_WRITE_STREAM_FLAG_FIN, -1, NULL, 0,
-	//                 quic_timestamp());
-	assert(max_udp_payload_size <= out->iov_len);
-	out->iov_len = ngtcp2_conn_write_pkt(conn->conn,
-	                ngtcp2_conn_get_path(conn->conn), &pi, out->iov_base,
-	                max_udp_payload_size, quic_timestamp());
+	uint64_t left = ngtcp2_conn_get_max_data_left(conn->conn); (void)left;
+	uint64_t ts = quic_timestamp();
+	uint8_t *bufpos = out->iov_base;
+
+	for(;;)  {
+		// size_t nwrite = ngtcp2_conn_writev_stream(conn->conn,
+		//                 ngtcp2_conn_get_path(conn->conn), &pi, out->iov_base,
+		//                 max_udp_payload_size, &(out->iov_len),
+		//                 NGTCP2_WRITE_STREAM_FLAG_FIN, -1, NULL, 0,
+		//                 quic_timestamp());
+		ngtcp2_path path = *ngtcp2_conn_get_path(conn->conn);
+		ngtcp2_ssize nwrite = ngtcp2_conn_write_pkt(conn->conn,
+		                &path, &pi, bufpos, max_udp_payload_size, ts);
+		if (nwrite < 0) {
+			assert(0);
+		}
+		if (nwrite == 0) {
+			size_t pktlen = bufpos - (uint8_t *)out->iov_base;
+			assert(pktlen < KNOT_WIRE_MAX_PKTSIZE);
+			out->iov_len = pktlen;
+			if (pktlen > 0) {
+				// server_->send_packet(*static_cast<Endpoint *>(prev_path.path.user_data),
+                //              prev_path.path.local, prev_path.path.remote,
+                //              prev_ecn, buf.data(), bufpos - buf.data(),
+                //              max_udp_payload_size);
+				return KNOT_EOK;
+			}
+			// We are congestion limited.
+			ngtcp2_conn_update_pkt_tx_time(conn->conn, ts);
+			return KNOT_NET_ESEND;
+		}
+		bufpos += nwrite;
 	// if (nwrite <= 0) {
 
 	// }
 	// out->iov_len = nwrite;
+	}
 	return KNOT_EOK;
 }
 

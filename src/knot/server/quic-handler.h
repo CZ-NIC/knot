@@ -74,6 +74,7 @@ typedef struct {
 typedef struct knot_quic_handle_ctx {
 	knot_quic_creds_t tls_creds;
 	knot_quic_table_t *conns;
+	knot_quic_conn_t *actual_conn;
 } knot_quic_handle_ctx_t;
 
 struct quic_recvfrom {
@@ -81,7 +82,8 @@ struct quic_recvfrom {
 	int fd;
 	struct sockaddr_storage addr;
 	struct msghdr msg[NBUFS];
-	struct iovec iov[NBUFS][RECVMMSG_BATCHLEN];
+	struct iovec iov[NBUFS];
+	uint8_t buf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
 	cmsg_pktinfo_t pktinfo;
 	//knot_mm_t mm;
 	// knot_quic_creds_t tls_creds;
@@ -102,6 +104,7 @@ struct quic_recvmmsg {
 	// knot_quic_table_t *conns;
 };
 
+uint64_t quic_timestamp(void);
 unsigned int knot_quic_msghdr_ecn(struct msghdr *msg, const int family);
 int knot_quic_msghdr_local_addr(struct msghdr *msg, const int family, struct sockaddr_storage *local_addr, size_t *addr_len);
 
