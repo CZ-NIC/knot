@@ -142,7 +142,7 @@ static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 
 static time_t bootstrap_next(const zone_timers_t *timers)
 {
-	time_t expired_at = timers->last_refresh + timers->soa_expire;
+	time_t expired_at = timers->next_expire;
 
 	// Time since the zone expiration.
 	// The new interval is double of the previous one (an exponential backoff).
@@ -1263,8 +1263,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	const knot_rdataset_t *soa = zone_soa(zone);
 
 	if (ret == KNOT_EOK) {
-		zone->timers.soa_expire = knot_soa_expire(soa->rdata);
-		zone->timers.last_refresh = now;
+		zone->timers.next_expire = now + knot_soa_expire(soa->rdata);
 		zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
 		zone->timers.last_refresh_ok = true;
 	} else {

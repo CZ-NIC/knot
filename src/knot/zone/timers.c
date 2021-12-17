@@ -49,15 +49,16 @@
  */
 enum timer_id {
 	TIMER_INVALID        = 0,
-	TIMER_SOA_EXPIRE     = 0x80,
+	TIMER_SOA_EXPIRE     = 0x80, // DEPRECATED
 	TIMER_LAST_FLUSH     = 0x81,
-	TIMER_LAST_REFRESH   = 0x82,
+	TIMER_LAST_REFRESH   = 0x82, // DEPRECATED
 	TIMER_NEXT_REFRESH   = 0x83,
 	TIMER_NEXT_DS_CHECK  = 0x85,
 	TIMER_NEXT_DS_PUSH   = 0x86,
 	TIMER_CATALOG_MEMBER = 0x87,
 	TIMER_LAST_NOTIFIED  = 0x88,
 	TIMER_LAST_REFR_OK   = 0x89,
+	TIMER_NEXT_EXPIRE    = 0x8a,
 };
 
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
@@ -90,6 +91,7 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		case TIMER_NEXT_DS_CHECK:  timers.next_ds_check = value; break;
 		case TIMER_NEXT_DS_PUSH:   timers.next_ds_push = value; break;
 		case TIMER_CATALOG_MEMBER: timers.catalog_member = value; break;
+		case TIMER_NEXT_EXPIRE:    timers.next_expire = value; break;
 		default:                   break; // ignore
 		}
 	}
@@ -108,16 +110,15 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
                              const zone_timers_t *timers)
 {
 	MDB_val k = { knot_dname_size(zone), (void *)zone };
-	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBLBL",
-		TIMER_SOA_EXPIRE,    (uint64_t)timers->soa_expire,
+	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBL",
 		TIMER_LAST_FLUSH,    (uint64_t)timers->last_flush,
-		TIMER_LAST_REFRESH,  (uint64_t)timers->last_refresh,
 		TIMER_NEXT_REFRESH,  (uint64_t)timers->next_refresh,
 		TIMER_LAST_REFR_OK,  (uint64_t)timers->last_refresh_ok,
 		TIMER_LAST_NOTIFIED, timers->last_notified_serial,
 		TIMER_NEXT_DS_CHECK, (uint64_t)timers->next_ds_check,
 		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push,
-		TIMER_CATALOG_MEMBER,(uint64_t)timers->catalog_member);
+		TIMER_CATALOG_MEMBER,(uint64_t)timers->catalog_member,
+		TIMER_NEXT_EXPIRE,   (uint64_t)timers->next_expire);
 	knot_lmdb_insert(txn, &k, &v);
 	free(v.mv_data);
 }
@@ -162,6 +163,12 @@ int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
 		deserialize_timers(timers, txn.cur_val.mv_data, txn.cur_val.mv_size);
 	}
 	knot_lmdb_abort(&txn);
+
+	// backward compatibility
+	if (timers->next_expire == 0 && timers->last_refresh > 0) {
+		timers->next_expire = timers->last_refresh + timers->soa_expire;
+	}
+
 	return txn.ret;
 }
 
