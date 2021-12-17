@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,6 +76,14 @@ int query_put_edns(knot_pkt_t *pkt, const struct query_edns_data *edns)
 
 	if (edns->do_flag) {
 		knot_edns_set_do(&opt_rr);
+	}
+
+	if (edns->expire_option) {
+		ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_EXPIRE, 0, NULL, &pkt->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &pkt->mm);
+			return ret;
+		}
 	}
 
 	// Add result into the packet

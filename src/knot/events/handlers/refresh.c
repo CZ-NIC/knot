@@ -110,6 +110,7 @@ struct refresh_data {
 	struct query_edns_data edns;      //!< EDNS data to be used in queries.
 	zone_master_fallback_t *fallback; //!< Flags allowing zone_master_try() fallbacks.
 	bool fallback_axfr;               //!< Flag allowing fallback to AXFR,
+	uint32_t expire_timer;            //!< Result: expire timer from answer EDNS.
 
 	// internal state, initialize with zeroes:
 
@@ -134,6 +135,8 @@ struct refresh_data {
 	bool updated;  // TODO: Can we fid a better way to check if zone was updated?
 	knot_mm_t *mm; // TODO: This used to be used in IXFR. Remove or reuse.
 };
+
+static const uint32_t EXPIRE_TIMER_INVALID = ~0U;
 
 static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 {
@@ -161,6 +164,19 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
+static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt)
+{
+	uint8_t *expire_opt = knot_pkt_edns_option(pkt, KNOT_EDNS_OPTION_EXPIRE);
+	if (expire_opt != NULL && knot_edns_opt_get_length(expire_opt) == sizeof(uint32_t)) {
+		data->expire_timer = knot_wire_read_u32(knot_edns_opt_get_data(expire_opt));
+	}
+}
+
+static void finalize_edns_expire(struct refresh_data *data)
+{
+	data->expire_timer = MIN(data->expire_timer, zone_soa_expire(data->zone));
+}
+
 static void xfr_log_publish(const struct refresh_data *data,
                             const uint32_t old_serial,
                             const uint32_t new_serial,
@@ -183,8 +199,8 @@ static void xfr_log_publish(const struct refresh_data *data,
 	}
 
 	REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
-	            "zone updated, %0.2f seconds, serial %s -> %u%s",
-	            duration, old_info, new_serial, master_info);
+	            "zone updated, %0.2f seconds, serial %s -> %u%s, expires in %u seconds",
+	            duration, old_info, new_serial, master_info, data->expire_timer);
 }
 
 static void xfr_log_read_ms(const knot_dname_t *zone, int ret)
@@ -298,6 +314,7 @@ static int axfr_finalize(struct refresh_data *data)
 		}
 	}
 
+	finalize_edns_expire(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
 	                master_serial, dnssec_enable, bootstrap);
 
@@ -570,6 +587,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
+	finalize_edns_expire(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
 	                master_serial, dnssec_enable, false);
 
@@ -956,16 +974,22 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	bool current = serial_is_current(local_serial, remote_serial);
 	bool master_uptodate = serial_is_current(remote_serial, local_serial);
 
-	REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
-	            "remote serial %u, %s", remote_serial,
-	            current ? (master_uptodate ? "zone is up-to-date" :
-	            "master is outdated") : "zone is outdated");
-
-	if (current) {
-		return master_uptodate ? KNOT_STATE_DONE : KNOT_STATE_FAIL;
-	} else {
+	if (!current) {
+		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+		            "remote serial %u, zone is outdated", remote_serial);
 		data->state = STATE_TRANSFER;
-		return KNOT_STATE_RESET;
+		return KNOT_STATE_RESET; // continue with transfer
+	} else if (master_uptodate) {
+		consume_edns_expire(data, pkt);
+		finalize_edns_expire(data);
+		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+		            "remote serial %u, zone is up-to-date, expires in %u seconds",
+		            remote_serial, data->expire_timer);
+		return KNOT_STATE_DONE;
+	} else {
+		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+		            "remote serial %u, master is outdated", remote_serial);
+		return KNOT_STATE_FAIL;
 	}
 }
 
@@ -1015,6 +1039,13 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
+
+	consume_edns_expire(data, pkt);
+	if (data->expire_timer < 2) {
+		REFRESH_LOG(LOG_WARNING, data, LOG_DIRECTION_NONE,
+		            "remote is expired, ignoring");
+		return KNOT_STATE_FAIL;
+	}
 
 	data->fallback_axfr = (data->xfr_type == XFR_TYPE_IXFR);
 
@@ -1146,6 +1177,7 @@ static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 typedef struct {
 	bool force_axfr;
 	bool send_notify;
+	uint32_t expire_timer;
 } try_refresh_ctx_t;
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
@@ -1172,11 +1204,13 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 		.use_edns = !master->no_edns,
+		.expire_timer = EXPIRE_TIMER_INVALID,
 		.fallback = fallback,
 		.fallback_axfr = false, // will be set upon IXFR consume
 	};
 
 	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
+	data.edns.expire_option = true;
 
 	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &REFRESH_API, &data, NULL);
@@ -1220,6 +1254,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	if (ret == KNOT_EOK) {
 		trctx->send_notify = data.updated && !master->block_notify_after_xfr;
 		trctx->force_axfr = false;
+		trctx->expire_timer = data.expire_timer;
 	}
 
 	return ret;
@@ -1245,7 +1280,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		return KNOT_ENOTSUP;
 	}
 
-	try_refresh_ctx_t trctx = { 0 };
+	try_refresh_ctx_t trctx = { .expire_timer = EXPIRE_TIMER_INVALID };
 
 	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
 	if (zone_get_flag(zone, ZONE_FORCE_AXFR, true)) {
@@ -1263,7 +1298,8 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	const knot_rdataset_t *soa = zone_soa(zone);
 
 	if (ret == KNOT_EOK) {
-		zone->timers.next_expire = now + knot_soa_expire(soa->rdata);
+		assert(trctx.expire_timer != EXPIRE_TIMER_INVALID);
+		zone->timers.next_expire = now + trctx.expire_timer;
 		zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
 		zone->timers.last_refresh_ok = true;
 	} else {
