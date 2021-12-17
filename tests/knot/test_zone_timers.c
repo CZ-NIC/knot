@@ -26,8 +26,6 @@
 #include "libknot/error.h"
 
 static const zone_timers_t MOCK_TIMERS = {
-	.soa_expire = 3600,
-	.last_refresh = 1474559950,
 	.next_refresh = 1474559960,
 	.last_notified_serial = 0,
 	.last_flush = 1,
@@ -35,12 +33,12 @@ static const zone_timers_t MOCK_TIMERS = {
 	.next_ds_check = 1474559961,
 	.next_ds_push = 1474559962,
 	.catalog_member = 1474559963,
+	.next_expire = 1639727731,
 };
 
 static bool timers_eq(const zone_timers_t *a, const zone_timers_t *b)
 {
-	return a->soa_expire == b->soa_expire &&
-	       a->last_refresh == b->last_refresh &&
+	return a->next_expire == b->next_expire &&
 	       a->next_refresh == b->next_refresh &&
 	       a->last_notified_serial == b->last_notified_serial &&
 	       a->last_flush == b->last_flush &&

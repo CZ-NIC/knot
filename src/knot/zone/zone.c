@@ -429,6 +429,12 @@ const knot_rdataset_t *zone_soa(const zone_t *zone)
 	return node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
 }
 
+uint32_t zone_soa_expire(const zone_t *zone)
+{
+	const knot_rdataset_t *soa = zone_soa(zone);
+	return soa == NULL ? 0 : knot_soa_expire(soa->rdata);
+}
+
 bool zone_expired(const zone_t *zone)
 {
 	if (!zone) {
@@ -437,8 +443,7 @@ bool zone_expired(const zone_t *zone)
 
 	const zone_timers_t *timers = &zone->timers;
 
-	return timers->last_refresh > 0 && timers->soa_expire > 0 &&
-	       timers->last_refresh + timers->soa_expire <= time(NULL);
+	return timers->next_expire > 0 && timers->next_expire <= time(NULL);
 }
 
 static void time_set_default(time_t *time, time_t value)
@@ -457,21 +462,15 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 
 	time_t now = time(NULL);
 
-	// replace SOA expire if we have better knowledge
-	if (!zone_contents_is_empty(zone->contents)) {
-		const knot_rdataset_t *soa = zone_soa(zone);
-		zone->timers.soa_expire = knot_soa_expire(soa->rdata);
-	}
-
 	// assume now if we don't know when we flushed
 	time_set_default(&zone->timers.last_flush, now);
 
 	if (zone_is_slave(conf, zone)) {
 		// assume now if we don't know
-		time_set_default(&zone->timers.last_refresh, now);
 		time_set_default(&zone->timers.next_refresh, now);
 	} else {
 		// invalidate if we don't have a master
+		zone->timers.next_expire = 0;
 		zone->timers.last_refresh = 0;
 		zone->timers.next_refresh = 0;
 		zone->timers.last_refresh_ok = false;

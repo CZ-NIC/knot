@@ -79,7 +79,7 @@ static void replan_dnssec(conf_t *conf, zone_t *zone)
 
 static bool can_expire(const zone_t *zone)
 {
-	return zone->timers.soa_expire > 0 && !zone_expired(zone);
+	return !zone_expired(zone) && zone_soa_expire(zone) > 0;
 }
 
 /*!
@@ -105,7 +105,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	time_t expire = TIME_IGNORE;
 	if (zone_is_slave(conf, zone) && can_expire(zone)) {
 		expire_pre = TIME_CANCEL;
-		expire = zone->timers.last_refresh + zone->timers.soa_expire;
+		expire = zone->timers.next_expire;
 	}
 
 	time_t flush = TIME_IGNORE;
