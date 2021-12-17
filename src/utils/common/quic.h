@@ -20,7 +20,6 @@
 #include <stdbool.h>
 
 #define KNOT_QUIC_ALPN "\03doq\02dq"
-#define KNOT_QUIC_MAX_PACKET_COUNT 10
 
 /*! \brief QUIC parameters. */
 typedef struct {
