@@ -181,6 +181,40 @@ Compatibility:
           'template.journal-db-mode', 'template.max-timer-db-size',
           'template.max-kasp-db-size' are ignored
 
+Knot DNS 3.0.10 (2021-11-04)
+============================
+
+Improvements:
+-------------
+ - doc: various fixes and improvements
+
+Bugfixes:
+---------
+ - knotd: server can crash when receiving queries with NSID EDNS flag #774 (Thanks to Romain Labolle)
+ - knotd: ds-push fails to update the parent zone if a CNAME exists for a non-terminal node
+ - knotd: server crashes on reload when no interfaces configured #770
+ - knotd: journal not able to free up space when zone-in-journal present and zonefile written
+ - knotd: broken AXFR with knot as slave and dnsmasq as master (Thanks to Daniel Gröber)
+ - knotd: server can crash when zone difference is inconsistent upon cold start
+ - mod-stats: missing protocol counters for TCP over XDP
+ - kzonesign: input zone name not lower-cased
+
+Knot DNS 3.0.9 (2021-09-09)
+===========================
+
+Improvements:
+-------------
+ - keymgr: import-bind sets publish and active timers to now if missing timers #747
+
+Bugfixes:
+---------
+ - knotd: incomplete NSEC3 proof in response to opt-outed empty non-terminal
+ - knotd: journal discontinuity and zone-in-journal result in incorrectly calculated journal occupation
+ - knotd: incorrect evaluation of ACL deny rule in combination with TSIG
+ - knotd: failed DS-check is replanned even if no key is ready
+ - knotd: root zone not correctly purged from the journal
+ - kdig: +noall does not filter out AUTHORITY comment #749
+
 Knot DNS 3.0.8 (2021-07-16)
 ===========================
 
