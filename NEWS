@@ -1,9 +1,47 @@
+Knot DNS 3.1.5 (2021-12-20)
+===========================
+
+Features:
+---------
+ - knotd: optional outgoing TCP connection pool for faster communication with remotes
+          (see 'server.remote-pool-limit' and 'server.remote-pool-timeout')
+ - knotd: optional unreachable remote tracking to avoid zone events clogging
+          (see 'server.remote-retry-delay')
+ - knotd: new ZONEMD generation mode for the record removal from the zone apex #760
+          (see 'zone.zonemd-generate: remove')
+ - mod-dnsproxy: new source address match option (see 'mod-dnsproxy.address')
+ - scripts/probe_dump: simple mod-probe client
+
+Improvements:
+-------------
+ - knotd: DS push sets DS TTL equal to DNSKEY TTL
+ - knotd: extended zone purge error logging
+ - knotd: zone file parsing error message was extended by the file name
+ - knotd: improved debug log message when TCP timeout is reached
+ - knotd: new configuration check for using the default number of NSEC3 iterations
+ - knotd: new configuration check for insufficient RRSIG refresh time
+ - mod-geoip: configuration check newly verifies the module configuration file #778
+ - kdig: option +notimeout or +timeout=0 is interpreted as infinity
+ - kdig: option +noretry is interpreted as zero retries
+ - python/probe: more detailed default output format
+ - doc: many spelling fixes (Thanks to Josh Soref)
+ - doc: various fixes and improvements
+
+Bugfixes:
+---------
+ - knotd: imperfect TCP connection closing in the XDP mode
+ - knotd: TCP reset packets are wrongly checked for ackno in the XDP mode
+ - knotd: only first zone name is logged for multi-zone control operations #776
+ - knotd: minor memory leak when full zone update fails to write to journal
+ - knotc: configuration check doesn't check a configuration database
+ - mod-dnstap: incorrect QNAME case restore in some corner cases (Thanks to Robert Edmonds) #777
+
 Knot DNS 3.1.4 (2021-11-04)
 ===========================
 
 Features:
 ---------
- - mod-dnstap: added 'responses-with-queries' configuration option (Thanks to Robert Edmonds)
+ - mod-dnstap: added 'responses-with-queries' configuration option (Thanks to Robert Edmonds) #764
 
 Improvements:
 -------------
