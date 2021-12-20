@@ -243,7 +243,7 @@ resp = ctl.receive_block()
 isset("letter." + ZONE_NAME not in resp[ZONE_NAME], "lower-cased and removed node lETter")
 
 # Purge the zone data.
-ctl.send_block(cmd="zone-purge")
+ctl.send_block(cmd="zone-purge", flags="B")
 resp = ctl.receive_block()
 
 ctl.send_block(cmd="zone-read", section="test-zone")
