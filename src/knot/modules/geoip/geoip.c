@@ -69,6 +69,15 @@ const yp_item_t geoip_conf[] = {
 	{ NULL }
 };
 
+char geoip_check_str[1024];
+
+typedef struct {
+	knotd_conf_check_args_t	*args; // Set for a dry run.
+	knotd_mod_t *mod;              // Set for a real module load.
+} check_ctx_t;
+
+static int load_module(check_ctx_t *ctx);
+
 int geoip_conf_check(knotd_conf_check_args_t *args)
 {
 	knotd_conf_t conf = knotd_conf_check_item(args, MOD_CONFIG_FILE);
@@ -82,13 +91,30 @@ int geoip_conf_check(knotd_conf_check_args_t *args)
 			args->err_str = "geodb mode not available";
 			return KNOT_EINVAL;
 		}
+
 		conf = knotd_conf_check_item(args, MOD_GEODB_FILE);
 		if (conf.count == 0) {
 			args->err_str = "no geodb file specified while in geodb mode";
 			return KNOT_EINVAL;
 		}
+
+		conf = knotd_conf_check_item(args, MOD_GEODB_KEY);
+		if (conf.count > GEODB_MAX_DEPTH) {
+			args->err_str = "maximal number of geodb-key items exceeded";
+			return KNOT_EINVAL;
+		}
+		for (size_t i = 0; i < conf.count; i++) {
+			geodb_path_t path;
+			if (parse_geodb_path(&path, (char *)conf.multi[i].string) != 0) {
+				args->err_str = "unrecognized geodb-key format";
+				return KNOT_EINVAL;
+			}
+		}
+		knotd_conf_free(&conf);
 	}
-	return KNOT_EOK;
+
+	check_ctx_t check = { .args = args };
+	return load_module(&check);
 }
 
 typedef struct {
@@ -254,7 +280,33 @@ static int add_view_to_trie(knot_dname_t *owner, geo_view_t *view, geoip_ctx_t *
 	return ret;
 }
 
-static int finalize_geo_view(knotd_mod_t *mod, geo_view_t *view, knot_dname_t *owner,
+static void geo_log(check_ctx_t *check, int priority, const char *fmt, ...)
+{
+	va_list vargs;
+	va_start(vargs, fmt);
+
+	if (check->args != NULL) {
+		if (vsnprintf(geoip_check_str, sizeof(geoip_check_str), fmt, vargs) < 0) {
+			geoip_check_str[0] = '\0';
+		}
+		check->args->err_str = geoip_check_str;
+	} else {
+		knotd_mod_vlog(check->mod, priority, fmt, vargs);
+	}
+
+	va_end(vargs);
+}
+
+static knotd_conf_t geo_conf(check_ctx_t *check, const yp_name_t *item_name)
+{
+	if (check->args != NULL) {
+		return knotd_conf_check_item(check->args, item_name);
+	} else {
+		return knotd_conf_mod(check->mod, item_name);
+	}
+}
+
+static int finalize_geo_view(check_ctx_t *check, geo_view_t *view, knot_dname_t *owner,
                              geoip_ctx_t *ctx)
 {
 	if (view == NULL || view->count == 0) {
@@ -263,6 +315,7 @@ static int finalize_geo_view(knotd_mod_t *mod, geo_view_t *view, knot_dname_t *o
 
 	int ret = KNOT_EOK;
 	if (ctx->dnssec) {
+		assert(check->mod != NULL);
 		view->rrsigs = malloc(sizeof(knot_rrset_t) * view->count);
 		if (view->rrsigs == NULL) {
 			return KNOT_ENOMEM;
@@ -274,7 +327,7 @@ static int finalize_geo_view(knotd_mod_t *mod, geo_view_t *view, knot_dname_t *o
 			}
 			knot_rrset_init(&view->rrsigs[i], owner_cpy, KNOT_RRTYPE_RRSIG,
 			                KNOT_CLASS_IN, ctx->ttl);
-			ret = knotd_mod_dnssec_sign_rrset(mod, &view->rrsigs[i],
+			ret = knotd_mod_dnssec_sign_rrset(check->mod, &view->rrsigs[i],
 			                                  &view->rrsets[i], NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -349,7 +402,7 @@ static int parse_origin(yp_parser_t *yp, zs_scanner_t *scanner)
 	return KNOT_EOK;
 }
 
-static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_view_t *view)
+static int parse_view(check_ctx_t *check, geoip_ctx_t *ctx, yp_parser_t *yp, geo_view_t *view)
 {
 	// Initialize new geo view.
 	memset(view, 0, sizeof(*view));
@@ -361,8 +414,8 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 	// Check view type syntax.
 	int key_len = strlen(mode_key[ctx->mode]);
 	if (yp->key_len != key_len || memcmp(yp->key, mode_key[ctx->mode], key_len) != 0) {
-		knotd_mod_log(mod, LOG_ERR, "invalid key type (%s) on line %zu",
-		              yp->key, yp->line_count);
+		geo_log(check, LOG_ERR, "invalid key type '%s' on line %zu",
+		        yp->key, yp->line_count);
 		return KNOT_EINVAL;
 	}
 
@@ -370,8 +423,8 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 	if (ctx->mode == MODE_GEODB) {
 		if (parse_geodb_data((char *)yp->data, view->geodata, view->geodata_len,
 			&view->geodepth, ctx->paths, ctx->path_count) != 0) {
-			knotd_mod_log(mod, LOG_ERR, "invalid geo format (%s) on line %zu",
-			              yp->data, yp->line_count);
+			geo_log(check, LOG_ERR, "invalid geo format '%s' on line %zu",
+			        yp->data, yp->line_count);
 			return KNOT_EINVAL;
 		}
 	} else if (ctx->mode == MODE_SUBNET) {
@@ -396,8 +449,8 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 			view->subnet_prefix = 128;
 		}
 		if (ret != KNOT_EOK) {
-			knotd_mod_log(mod, LOG_ERR, "invalid address format (%s) on line %zu",
-			              yp->data, yp->line_count);
+			geo_log(check, LOG_ERR, "invalid address format '%s' on line %zu",
+			        yp->data, yp->line_count);
 			return KNOT_EINVAL;
 		}
 
@@ -405,27 +458,27 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 		if (slash < yp->data + yp->data_len - 1) {
 			ret = str_to_u8(slash + 1, &view->subnet_prefix);
 			if (ret != KNOT_EOK) {
-				knotd_mod_log(mod, LOG_ERR, "invalid prefix (%s) on line %zu",
-				              slash + 1, yp->line_count);
+				geo_log(check, LOG_ERR, "invalid prefix '%s' on line %zu",
+				        slash + 1, yp->line_count);
 				return ret;
 			}
 			if (view->subnet->ss_family == AF_INET && view->subnet_prefix > 32) {
 				view->subnet_prefix = 32;
-				knotd_mod_log(mod, LOG_WARNING, "IPv4 prefix too large on line %zu, set to 32",
-				              yp->line_count);
+				geo_log(check, LOG_WARNING, "IPv4 prefix too large on line %zu, set to 32",
+				        yp->line_count);
 			}
 			if (view->subnet->ss_family == AF_INET6 && view->subnet_prefix > 128) {
 				view->subnet_prefix = 128;
-				knotd_mod_log(mod, LOG_WARNING, "IPv6 prefix too large on line %zu, set to 128",
-				              yp->line_count);
+				geo_log(check, LOG_WARNING, "IPv6 prefix too large on line %zu, set to 128",
+				        yp->line_count);
 			}
 		}
 	} else if (ctx->mode == MODE_WEIGHTED) {
 		uint8_t weight;
 		ret = str_to_u8(yp->data, &weight);
 		if (ret != KNOT_EOK) {
-			knotd_mod_log(mod, LOG_ERR, "invalid weight (%s) on line %zu",
-			              yp->data, yp->line_count);
+			geo_log(check, LOG_ERR, "invalid weight '%s' on line %zu",
+			        yp->data, yp->line_count);
 			return ret;
 		}
 		view->weight = weight;
@@ -434,31 +487,31 @@ static int parse_view(knotd_mod_t *mod, geoip_ctx_t *ctx, yp_parser_t *yp, geo_v
 	return KNOT_EOK;
 }
 
-static int parse_rr(knotd_mod_t *mod, yp_parser_t *yp, zs_scanner_t *scanner,
+static int parse_rr(check_ctx_t *check, yp_parser_t *yp, zs_scanner_t *scanner,
                     knot_dname_t *owner, geo_view_t *view, uint32_t ttl)
 {
 	uint16_t rr_type = KNOT_RRTYPE_A;
 	if (knot_rrtype_from_string(yp->key, &rr_type) != 0) {
-		knotd_mod_log(mod, LOG_ERR, "invalid RR type (%s) on line %zu",
-		              yp->key, yp->line_count);
+		geo_log(check, LOG_ERR, "invalid RR type '%s' on line %zu",
+		        yp->key, yp->line_count);
 		return KNOT_EINVAL;
 	}
 
 	if (rr_type == KNOT_RRTYPE_CNAME && view->count > 0) {
-		knotd_mod_log(mod, LOG_ERR, "cannot add CNAME to view with other RRs on line %zu",
-		              yp->line_count);
+		geo_log(check, LOG_ERR, "cannot add CNAME to view with other RRs on line %zu",
+		        yp->line_count);
 		return KNOT_EINVAL;
 	}
 
 	if (view->cname != NULL) {
-		knotd_mod_log(mod, LOG_ERR, "cannot add RR to view with CNAME on line %zu",
-		              yp->line_count);
+		geo_log(check, LOG_ERR, "cannot add RR to view with CNAME on line %zu",
+		        yp->line_count);
 		return KNOT_EINVAL;
 	}
 
 	if (knot_rrtype_is_dnssec(rr_type)) {
-		knotd_mod_log(mod, LOG_ERR, "DNSSEC record (%s) not allowed on line %zu",
-		              yp->key, yp->line_count);
+		geo_log(check, LOG_ERR, "DNSSEC record '%s' not allowed on line %zu",
+		        yp->key, yp->line_count);
 		return KNOT_EINVAL;
 	}
 
@@ -510,7 +563,7 @@ static int parse_rr(knotd_mod_t *mod, yp_parser_t *yp, zs_scanner_t *scanner,
 	return knot_rrset_add_rdata(add_rr, scanner->r_data, scanner->r_data_length, NULL);
 }
 
-static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
+static int geo_conf_yparse(check_ctx_t *check, geoip_ctx_t *ctx)
 {
 	int ret = KNOT_EOK;
 	yp_parser_t *yp = NULL;
@@ -529,10 +582,11 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		goto cleanup;
 	}
 	yp_init(yp);
-	knotd_conf_t conf = knotd_conf_mod(mod, MOD_CONFIG_FILE);
+	knotd_conf_t conf = geo_conf(check, MOD_CONFIG_FILE);
 	ret = yp_set_input_file(yp, conf.single.string);
 	if (ret != KNOT_EOK) {
-		knotd_mod_log(mod, LOG_ERR, "failed to load configuration file");
+		geo_log(check, LOG_ERR, "failed to load module config file '%s' (%s)",
+		        conf.single.string, knot_strerror(ret));
 		goto cleanup;
 	}
 
@@ -552,18 +606,19 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		// Get the next item in config.
 		ret = yp_parse(yp);
 		if (ret == KNOT_EOF) {
-			ret = finalize_geo_view(mod, view, owner, ctx);
+			ret = finalize_geo_view(check, view, owner, ctx);
 			goto cleanup;
 		}
 		if (ret != KNOT_EOK) {
-			knotd_mod_log(mod, LOG_ERR, "failed to parse configuration file (%s)",
-			              knot_strerror(ret));
+			geo_log(check, LOG_ERR,
+			        "failed to parse module config file on line %zu (%s)",
+			        yp->line_count, knot_strerror(ret));
 			goto cleanup;
 		}
 
 		// If the next item is not a rrset, the current view is finished.
 		if (yp->event != YP_EKEY1) {
-			ret = finalize_geo_view(mod, view, owner, ctx);
+			ret = finalize_geo_view(check, view, owner, ctx);
 			if (ret != KNOT_EOK) {
 				goto cleanup;
 			}
@@ -573,8 +628,9 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 		if (yp->event == YP_EKEY0) {
 			owner = knot_dname_from_str(owner_buff, yp->key, sizeof(owner_buff));
 			if (owner == NULL) {
-				knotd_mod_log(mod, LOG_ERR, "invalid domain name in config on line %zu",
-				              yp->line_count);
+				geo_log(check, LOG_ERR,
+				        "invalid domain name in module config file on line %zu",
+				        yp->line_count);
 				ret = KNOT_EINVAL;
 				goto cleanup;
 			}
@@ -586,7 +642,7 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 
 		// Next view.
 		if (yp->event == YP_EID) {
-			ret = parse_view(mod, ctx, yp, view);
+			ret = parse_view(check, ctx, yp, view);
 			if (ret != KNOT_EOK) {
 				goto cleanup;
 			}
@@ -601,12 +657,13 @@ static int geo_conf_yparse(knotd_mod_t *mod, geoip_ctx_t *ctx)
 					[MODE_GEODB]    = "- geo: LOCATION",
 					[MODE_WEIGHTED] = "- weight: WEIGHT"
 				};
-				knotd_mod_log(mod, LOG_ERR, "missing '%s' in config before line %zu",
-				              err_str[ctx->mode], yp->line_count);
+				geo_log(check, LOG_ERR,
+				        "missing '%s' in module config file before line %zu",
+				        err_str[ctx->mode], yp->line_count);
 				ret = KNOT_EINVAL;
 				goto cleanup;
 			}
-			ret = parse_rr(mod, yp, scanner, owner, view, ctx->ttl);
+			ret = parse_rr(check, yp, scanner, owner, view, ctx->ttl);
 			if (ret != KNOT_EOK) {
 				goto cleanup;
 			}
@@ -886,17 +943,20 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	}
 }
 
-int geoip_load(knotd_mod_t *mod)
+static int load_module(check_ctx_t *check)
 {
+	assert((check->args != NULL) != (check->mod != NULL));
+	knotd_mod_t *mod = check->mod;
+
 	// Create module context.
 	geoip_ctx_t *ctx = calloc(1, sizeof(geoip_ctx_t));
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	knotd_conf_t conf = knotd_conf_mod(mod, MOD_TTL);
+	knotd_conf_t conf = geo_conf(check, MOD_TTL);
 	ctx->ttl = conf.single.integer;
-	conf = knotd_conf_mod(mod, MOD_MODE);
+	conf = geo_conf(check, MOD_MODE);
 	ctx->mode = conf.single.option;
 
 	// Initialize the dname trie.
@@ -908,68 +968,73 @@ int geoip_load(knotd_mod_t *mod)
 
 	if (ctx->mode == MODE_GEODB) {
 		// Initialize geodb.
-		conf = knotd_conf_mod(mod, MOD_GEODB_FILE);
+		conf = geo_conf(check, MOD_GEODB_FILE);
 		ctx->geodb = geodb_open(conf.single.string);
 		if (ctx->geodb == NULL) {
-			knotd_mod_log(mod, LOG_ERR, "failed to open geo DB");
+			geo_log(check, LOG_ERR, "failed to open geo DB");
 			free_geoip_ctx(ctx);
 			return KNOT_EINVAL;
 		}
 
 		// Load configured geodb keys.
-		conf = knotd_conf_mod(mod, MOD_GEODB_KEY);
-		if (conf.count > GEODB_MAX_DEPTH) {
-			knotd_mod_log(mod, LOG_ERR, "maximal number of geodb-key items (%d) exceeded",
-			              GEODB_MAX_DEPTH);
-			knotd_conf_free(&conf);
-			free_geoip_ctx(ctx);
-			return KNOT_EINVAL;
-		}
+		conf = geo_conf(check, MOD_GEODB_KEY);
+		assert(conf.count <= GEODB_MAX_DEPTH);
 		ctx->path_count = conf.count;
 		for (size_t i = 0; i < conf.count; i++) {
-			if (parse_geodb_path(&ctx->paths[i], (char *)conf.multi[i].string) != 0) {
-				knotd_mod_log(mod, LOG_ERR, "unrecognized geodb-key format");
-				knotd_conf_free(&conf);
-				free_geoip_ctx(ctx);
-				return KNOT_EINVAL;
-			}
+			(void)parse_geodb_path(&ctx->paths[i], (char *)conf.multi[i].string);
 		}
 		knotd_conf_free(&conf);
 	}
 
-	// Is DNSSEC used on this zone?
-	conf = knotd_conf_mod(mod, MOD_DNSSEC);
-	if (conf.count == 0) {
-		conf = knotd_conf_zone(mod, C_DNSSEC_SIGNING, knotd_mod_zone(mod));
-	}
-	ctx->dnssec = conf.single.boolean;
-	if (ctx->dnssec) {
-		int ret = knotd_mod_dnssec_init(mod);
-		if (ret != KNOT_EOK) {
-			knotd_mod_log(mod, LOG_ERR, "failed to initialize DNSSEC");
-			free_geoip_ctx(ctx);
-			return ret;
+	if (mod != NULL) {
+		// Is DNSSEC used on this zone?
+		conf = knotd_conf_mod(mod, MOD_DNSSEC);
+		if (conf.count == 0) {
+			conf = knotd_conf_zone(mod, C_DNSSEC_SIGNING, knotd_mod_zone(mod));
 		}
-		ret = knotd_mod_dnssec_load_keyset(mod, false);
-		if (ret != KNOT_EOK) {
-			knotd_mod_log(mod, LOG_ERR, "failed to load DNSSEC keys");
-			free_geoip_ctx(ctx);
-			return ret;
+		ctx->dnssec = conf.single.boolean;
+		if (ctx->dnssec) {
+			int ret = knotd_mod_dnssec_init(mod);
+			if (ret != KNOT_EOK) {
+				knotd_mod_log(mod, LOG_ERR, "failed to initialize DNSSEC");
+				free_geoip_ctx(ctx);
+				return ret;
+			}
+			ret = knotd_mod_dnssec_load_keyset(mod, false);
+			if (ret != KNOT_EOK) {
+				knotd_mod_log(mod, LOG_ERR, "failed to load DNSSEC keys");
+				free_geoip_ctx(ctx);
+				return ret;
+			}
 		}
 	}
 
 	// Parse geo configuration file.
-	int ret = geo_conf_yparse(mod, ctx);
+	int ret = geo_conf_yparse(check, ctx);
 	if (ret != KNOT_EOK) {
-		knotd_mod_log(mod, LOG_ERR, "failed to load geo configuration");
 		free_geoip_ctx(ctx);
 		return ret;
 	}
 
-	// Prepare geo views for faster search.
-	geo_sort_and_link(ctx);
+	if (mod != NULL) {
+		// Prepare geo views for faster search.
+		geo_sort_and_link(ctx);
 
-	knotd_mod_ctx_set(mod, ctx);
+		knotd_mod_ctx_set(mod, ctx);
+	} else {
+		free_geoip_ctx(ctx);
+	}
+
+	return ret;
+}
+
+int geoip_load(knotd_mod_t *mod)
+{
+	check_ctx_t check = { .mod = mod };
+	int ret = load_module(&check);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	return knotd_mod_in_hook(mod, KNOTD_STAGE_PREANSWER, geoip_process);
 }
