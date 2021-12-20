@@ -266,6 +266,12 @@ class Server(object):
             if os.path.isfile(self.valgrind_log):
                 copyfile(self.valgrind_log, self.valgrind_log + str(int(time.time())))
 
+            if os.path.isfile(self.fout):
+                copyfile(self.fout, self.fout + str(int(time.time())))
+
+            if os.path.isfile(self.ferr):
+                copyfile(self.ferr, self.ferr + str(int(time.time())))
+
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
                                   self.start_params,
