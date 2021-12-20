@@ -41,15 +41,18 @@ t.link(zone, knot)
 geodb_filename = knot.dir + "geo.conf"
 subnet_filename = knot.dir + "net.conf"
 subnet2_filename = knot.dir + "net2.conf"
+subnet3_filename = knot.dir + "net3.conf"
 geo_conf = open(geodb_filename, "w")
 net_conf = open(subnet_filename, "w")
 net2_conf = open(subnet2_filename, "w")
+net3_conf = open(subnet3_filename, "w")
 dname_count = 10
 iso_count = len(iso_codes)
 for i in range(1, dname_count + 1):
     print("d" + str(i) + ".example.com:", file=geo_conf)
     print("d" + str(i) + ".example.com:", file=net_conf)
     print("d" + str(i) + ".example.com:", file=net2_conf)
+    print("d" + str(i) + ".example.com:", file=net3_conf)
     geo_id = 1
     for iso_code in iso_codes:
         print("  - geo: \"" + iso_code + ";" + str(geo_id) + "\"", file=geo_conf)
@@ -58,10 +61,13 @@ for i in range(1, dname_count + 1):
         print("    A: 127.255." + str(geo_id) + ".0", file=net_conf)
         print("  - net: 127.255." + str(geo_id) + ".0/24", file=net2_conf)
         print("    A: 126.255." + str(geo_id) + ".0", file=net2_conf)
+        print("  - net: 127.255." + str(geo_id) + ".0/24", file=net3_conf)
+        print("    A: 126.257." + str(geo_id) + ".0", file=net3_conf)
         geo_id += 1
 geo_conf.close()
 net_conf.close()
 net2_conf.close()
+net3_conf.close()
 
 ModGeoip.check()
 
@@ -121,8 +127,12 @@ for i in range(1, 1000):
     resp.check(rcode="NOERROR", rdata="1::4")
 
 # Switch subnet file.
-shutil.move(subnet2_filename, subnet_filename)
-knot.ctl("-f zone-reload example.com.", wait=True)
+#shutil.move(subnet2_filename, subnet_filename)
+#knot.ctl("-f zone-reload example.com.", wait=True)
+mod_subnet.config_file = subnet2_filename
+knot.gen_confile()
+knot.reload()
+t.sleep(2)
 
 # Test that dependent answers differ
 for i in range(1, 1000):
@@ -138,3 +148,22 @@ for i in range(1, 1000):
 
     resp = knot.dig("d1.example.com", "AAAA", source=random_client)
     resp.check(rcode="NOERROR", rdata="1::4")
+
+# Attempt invalid subnet file.
+
+mod_subnet.config_file = subnet3_filename
+knot.gen_confile()
+reload_failed = False
+try:
+    knot.reload()
+except:
+    reload_failed = True
+if not reload_failed:
+    set_err("Reload not failed")
+t.sleep(2)
+
+middle = str(random.randint(1, iso_count))
+random_client = "127.255." + middle + ".0"
+expected_rdata = "126.255." + middle + ".0"
+resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
+resp.check(rcode="NOERROR", rdata=expected_rdata, nordata=random_client)
