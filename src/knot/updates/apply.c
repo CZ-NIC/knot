@@ -266,7 +266,7 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	}
 
 	if (node->rrset_count == 0 && node->children == 0 && node != contents->apex) {
-		zone_tree_del_node(tree, node, false);
+		zone_tree_del_node(tree, node, false, NULL);
 	}
 
 	return KNOT_EOK;

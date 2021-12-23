@@ -43,7 +43,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 
 	mm_ctx_mempool(&update->mm, 64 * MM_DEFAULT_BLKSIZE);
 
-	int ret = changeset_init(&update->change, zone->name, &update->mm);
+	int ret = changeset_init(&update->change, zone->name, (update->flags & UPDATE_HYBRID) ? NULL : &update->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

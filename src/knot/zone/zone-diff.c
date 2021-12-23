@@ -75,13 +75,13 @@ static int load_soas(const zone_contents_t *zone1, const zone_contents_t *zone2,
 		return KNOT_ERANGE;
 	}
 
-	changeset->soa_from = knot_rrset_copy(&soa_rrset1, NULL);
+	changeset->soa_from = knot_rrset_copy(&soa_rrset1, changeset->remove->mm);
 	if (changeset->soa_from == NULL) {
 		return KNOT_ENOMEM;
 	}
-	changeset->soa_to = knot_rrset_copy(&soa_rrset2, NULL);
+	changeset->soa_to = knot_rrset_copy(&soa_rrset2, changeset->add->mm);
 	if (changeset->soa_to == NULL) {
-		knot_rrset_free(changeset->soa_from, NULL);
+		knot_rrset_free(changeset->soa_from, changeset->remove->mm);
 		return KNOT_ENOMEM;
 	}
 

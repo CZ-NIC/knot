@@ -153,7 +153,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 	}
 
 	if (node->rrset_count == 0 && node->children == 0 && node != z->apex) {
-		zone_tree_del_node(nsec3 ? z->nsec3_nodes : z->nodes, node, true);
+		zone_tree_del_node(nsec3 ? z->nsec3_nodes : z->nodes, node, true, z->mm);
 	}
 
 	*n = node;

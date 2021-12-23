@@ -113,8 +113,7 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 	if (node->rrset_count == 0 && node->children == 0 && node != counterpart->apex) {
 		zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
 				 counterpart->nsec3_nodes : counterpart->nodes;
-		node_free_rrsets(node, counterpart->mm);
-		zone_tree_del_node(t, node, true);
+		zone_tree_del_node(t, node, true, counterpart->mm);
 	}
 
 	return;

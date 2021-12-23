@@ -204,10 +204,11 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
  * \param tree          Zone tree to remove from.
  * \param node          Node to be removed.
  * \param free_deleted  Indication to free node.
+ * \param mm            Memory context.
  *
  * \return KNOT_E*
  */
-int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool free_deleted);
+int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool free_deleted, knot_mm_t *mm);
 
 /*!
  * \brief Applies the given function to each node in the zone in order.
