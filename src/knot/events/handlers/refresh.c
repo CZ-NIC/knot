@@ -190,7 +190,7 @@ static void xfr_log_read_ms(const knot_dname_t *zone, int ret)
 
 static int axfr_init(struct refresh_data *data)
 {
-	zone_contents_t *new_zone = zone_contents_new(data->zone->name, true);
+	zone_contents_t *new_zone = zone_contents_new(data->zone->name, true, NULL);
 	if (new_zone == NULL) {
 		return KNOT_ENOMEM;
 	}

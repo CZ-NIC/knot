@@ -32,6 +32,8 @@ typedef struct zone_contents {
 	zone_tree_t *nodes;
 	zone_tree_t *nsec3_nodes;
 
+	knot_mm_t *mm;
+
 	trie_t *adds_tree; // "additionals tree" for reverse lookup of nodes affected by additionals
 
 	dnssec_nsec3_params_t nsec3_params;
@@ -45,10 +47,11 @@ typedef struct zone_contents {
  *
  * \param apex_name     Name of the root node.
  * \param use_binodes   Zone trees shall consist of bi-nodes to enable zone updates.
+ * \param mm            Memory context.
  *
  * \return New contents or NULL on error.
  */
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes);
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes, knot_mm_t *mm);
 
 /*!
  * \brief Returns zone tree for inserting given RR.

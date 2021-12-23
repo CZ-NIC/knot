@@ -24,16 +24,16 @@
 #include "contrib/color.h"
 #include "libknot/libknot.h"
 
-static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset)
+static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset, knot_mm_t *mm)
 {
 	assert(soa);
 	assert(rrset);
 
 	if (*soa != NULL) {
-		knot_rrset_free(*soa, NULL);
+		knot_rrset_free(*soa, mm);
 	}
 
-	*soa = knot_rrset_copy(rrset, NULL);
+	*soa = knot_rrset_copy(rrset, mm);
 	if (*soa == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -80,7 +80,7 @@ static int changeset_iter_init(changeset_iter_t *ch_it, size_t tries, ...)
 static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *rr, knot_rrset_t **fixed_rr)
 {
 	if (fixed_rr != NULL) {
-		*fixed_rr = knot_rrset_copy(rr, NULL);
+		*fixed_rr = knot_rrset_copy(rr, counterpart->mm);
 	}
 
 	zone_node_t *node = zone_contents_find_node_for_rr(counterpart, rr);
@@ -96,7 +96,7 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 
 	if (fixed_rr != NULL && *fixed_rr != NULL &&
 	    ((*fixed_rr)->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG)) {
-		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, node_rdataset(node, rr->type), NULL);
+		int ret = knot_rdataset_subtract(&(*fixed_rr)->rrs, node_rdataset(node, rr->type), counterpart->mm);
 		if (ret != KNOT_EOK) {
 			return;
 		}
@@ -104,7 +104,7 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 
 	// TTL of RRSIGs is better determined by original_ttl field, which is compared as part of rdata anyway
 	if (rr->ttl == rrs_ttl || rr->type == KNOT_RRTYPE_RRSIG) {
-		int ret = node_remove_rrset(node, rr, NULL);
+		int ret = node_remove_rrset(node, rr, counterpart->mm);
 		if (ret != KNOT_EOK) {
 			return;
 		}
@@ -113,22 +113,23 @@ static void check_redundancy(zone_contents_t *counterpart, const knot_rrset_t *r
 	if (node->rrset_count == 0 && node->children == 0 && node != counterpart->apex) {
 		zone_tree_t *t = knot_rrset_is_nsec3rel(rr) ?
 				 counterpart->nsec3_nodes : counterpart->nodes;
+		node_free_rrsets(node, counterpart->mm);
 		zone_tree_del_node(t, node, true);
 	}
 
 	return;
 }
 
-int changeset_init(changeset_t *ch, const knot_dname_t *apex)
+int changeset_init(changeset_t *ch, const knot_dname_t *apex, knot_mm_t *mm)
 {
 	memset(ch, 0, sizeof(changeset_t));
 
 	// Init local changes
-	ch->add = zone_contents_new(apex, false);
+	ch->add = zone_contents_new(apex, false, mm);
 	if (ch->add == NULL) {
 		return KNOT_ENOMEM;
 	}
-	ch->remove = zone_contents_new(apex, false);
+	ch->remove = zone_contents_new(apex, false, mm);
 	if (ch->remove == NULL) {
 		zone_contents_free(ch->add);
 		return KNOT_ENOMEM;
@@ -144,7 +145,7 @@ changeset_t *changeset_new(const knot_dname_t *apex)
 		return NULL;
 	}
 
-	if (changeset_init(ret, apex) == KNOT_EOK) {
+	if (changeset_init(ret, apex, NULL) == KNOT_EOK) {
 		return ret;
 	} else {
 		free(ret);
@@ -204,10 +205,11 @@ int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset
 	if (!ch || !rrset) {
 		return KNOT_EINVAL;
 	}
+	assert(ch->remove == NULL || ch->remove->mm == ch->add->mm);
 
 	if (rrset->type == KNOT_RRTYPE_SOA) {
 		/* Do not add SOAs into actual contents. */
-		return handle_soa(&ch->soa_to, rrset);
+		return handle_soa(&ch->soa_to, rrset, ch->add->mm);
 	}
 
 	knot_rrset_t *rrset_cancelout = NULL;
@@ -216,21 +218,25 @@ int changeset_add_addition(changeset_t *ch, const knot_rrset_t *rrset, changeset
 	 * addition anyway. Required to change TTLs. */
 	if (flags & CHANGESET_CHECK) {
 		/* If we delete the rrset, we need to hold a copy to add it later */
-		rrset = knot_rrset_copy(rrset, NULL);
+		rrset = knot_rrset_copy(rrset, ch->add->mm);
 		if (rrset == NULL) {
 			return KNOT_ENOMEM;
 		}
 
-		check_redundancy(ch->remove, rrset, &rrset_cancelout);
+		if (ch->remove == NULL) {
+			rrset_cancelout = knot_rrset_copy(rrset, ch->add->mm);
+		} else {
+			check_redundancy(ch->remove, rrset, &rrset_cancelout);
+		}
 	}
 
 	const knot_rrset_t *to_add = (rrset_cancelout == NULL ? rrset : rrset_cancelout);
 	int ret = knot_rrset_empty(to_add) ? KNOT_EOK : add_rr_to_contents(ch->add, to_add);
 
 	if (flags & CHANGESET_CHECK) {
-		knot_rrset_free((knot_rrset_t *)rrset, NULL);
+		knot_rrset_free((knot_rrset_t *)rrset, ch->add->mm);
 	}
-	knot_rrset_free(rrset_cancelout, NULL);
+	knot_rrset_free(rrset_cancelout, ch->add->mm);
 
 	return ret;
 }
@@ -240,10 +246,11 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 	if (!ch || !rrset) {
 		return KNOT_EINVAL;
 	}
+	assert(ch->remove == NULL || ch->remove->mm == ch->add->mm);
 
 	if (rrset->type == KNOT_RRTYPE_SOA) {
 		/* Do not add SOAs into actual contents. */
-		return handle_soa(&ch->soa_from, rrset);
+		return handle_soa(&ch->soa_from, rrset, ch->add->mm);
 	}
 
 	knot_rrset_t *rrset_cancelout = NULL;
@@ -252,7 +259,7 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 	 * removal anyway. */
 	if (flags & CHANGESET_CHECK) {
 		/* If we delete the rrset, we need to hold a copy to add it later */
-		rrset = knot_rrset_copy(rrset, NULL);
+		rrset = knot_rrset_copy(rrset, ch->add->mm);
 		if (rrset == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -264,9 +271,9 @@ int changeset_add_removal(changeset_t *ch, const knot_rrset_t *rrset, changeset_
 	int ret = (knot_rrset_empty(to_remove) || ch->remove == NULL) ? KNOT_EOK : add_rr_to_contents(ch->remove, to_remove);
 
 	if (flags & CHANGESET_CHECK) {
-		knot_rrset_free((knot_rrset_t *)rrset, NULL);
+		knot_rrset_free((knot_rrset_t *)rrset, ch->add->mm);
 	}
-	knot_rrset_free(rrset_cancelout, NULL);
+	knot_rrset_free(rrset_cancelout, ch->add->mm);
 
 	return ret;
 }
@@ -276,7 +283,7 @@ int changeset_remove_addition(changeset_t *ch, const knot_rrset_t *rrset)
 	if (rrset->type == KNOT_RRTYPE_SOA) {
 		/* Do not add SOAs into actual contents. */
 		if (ch->soa_to != NULL) {
-			knot_rrset_free(ch->soa_to, NULL);
+			knot_rrset_free(ch->soa_to, ch->add->mm);
 			ch->soa_to = NULL;
 		}
 		return KNOT_EOK;
@@ -291,7 +298,7 @@ int changeset_remove_removal(changeset_t *ch, const knot_rrset_t *rrset)
 	if (rrset->type == KNOT_RRTYPE_SOA) {
 		/* Do not add SOAs into actual contents. */
 		if (ch->soa_from != NULL) {
-			knot_rrset_free(ch->soa_from, NULL);
+			knot_rrset_free(ch->soa_from, ch->remove->mm);
 			ch->soa_from = NULL;
 		}
 		return KNOT_EOK;
@@ -336,11 +343,11 @@ int changeset_merge(changeset_t *ch1, const changeset_t *ch2, int flags)
 		// but not if ch2 has no soa change
 		return KNOT_EOK;
 	}
-	knot_rrset_t *soa_copy = knot_rrset_copy(ch2->soa_to, NULL);
+	knot_rrset_t *soa_copy = knot_rrset_copy(ch2->soa_to, ch1->add->mm);
 	if (soa_copy == NULL && ch2->soa_to) {
 		return KNOT_ENOMEM;
 	}
-	knot_rrset_free(ch1->soa_to, NULL);
+	knot_rrset_free(ch1->soa_to, ch1->add->mm);
 	ch1->soa_to = soa_copy;
 
 	return KNOT_EOK;
@@ -414,16 +421,20 @@ void changeset_clear(changeset_t *ch)
 		return;
 	}
 
+	if (ch->remove != NULL) {
+		knot_rrset_free(ch->soa_from, ch->remove->mm);
+	}
+	if (ch->add != NULL) {
+		knot_rrset_free(ch->soa_to, ch->add->mm);
+	}
+	ch->soa_from = NULL;
+	ch->soa_to = NULL;
+
 	// Delete RRSets in lists, in case there are any left
 	zone_contents_deep_free(ch->add);
 	zone_contents_deep_free(ch->remove);
 	ch->add = NULL;
 	ch->remove = NULL;
-
-	knot_rrset_free(ch->soa_from, NULL);
-	knot_rrset_free(ch->soa_to, NULL);
-	ch->soa_from = NULL;
-	ch->soa_to = NULL;
 
 	// Delete binary data
 	free(ch->data);
@@ -440,8 +451,8 @@ changeset_t *changeset_clone(const changeset_t *ch)
 		return NULL;
 	}
 
-	res->soa_from = knot_rrset_copy(ch->soa_from, NULL);
-	res->soa_to = knot_rrset_copy(ch->soa_to, NULL);
+	res->soa_from = knot_rrset_copy(ch->soa_from, res->remove->mm);
+	res->soa_to = knot_rrset_copy(ch->soa_to, res->add->mm);
 
 	int ret = KNOT_EOK;
 	changeset_iter_t itt;

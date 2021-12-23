@@ -44,7 +44,7 @@ static inline void create_root_zone(server_t *server, knot_mm_t *mm)
 	/* Insert root zone. */
 	zone_t *root = zone_new(ROOT_DNAME);
 	root->server = server;
-	root->contents = zone_contents_new(root->name, true);
+	root->contents = zone_contents_new(root->name, true, NULL);
 
 	knot_rrset_t *soa = knot_rrset_new(root->name, KNOT_RRTYPE_SOA, KNOT_CLASS_IN,
 	                                   7200, mm);

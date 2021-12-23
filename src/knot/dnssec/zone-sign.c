@@ -589,7 +589,7 @@ static int zone_tree_sign(zone_tree_t *tree,
 			ret = KNOT_ENOMEM;
 			break;
 		}
-		ret = changeset_init(&args[i].changeset, dnssec_ctx->zone->dname);
+		ret = changeset_init(&args[i].changeset, dnssec_ctx->zone->dname, NULL);
 		if (ret != KNOT_EOK) {
 			break;
 		}
@@ -831,7 +831,7 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	}
 
 	changeset_t ch;
-	int ret = changeset_init(&ch, apex->owner);
+	int ret = changeset_init(&ch, apex->owner, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -1044,7 +1044,7 @@ int knot_zone_sign_apex_rr(zone_update_t *update, uint16_t rrtype,
 	knot_rrset_t rr = node_rrset(update->new_cont->apex, rrtype);
 	knot_rrset_t rrsig = node_rrset(update->new_cont->apex, KNOT_RRTYPE_RRSIG);
 	changeset_t ch;
-	int ret = changeset_init(&ch, update->zone->name);
+	int ret = changeset_init(&ch, update->zone->name, NULL);
 	if (ret == KNOT_EOK) {
 		zone_sign_ctx_t *sign_ctx = zone_sign_ctx(zone_keys, dnssec_ctx);
 		if (sign_ctx == NULL) {

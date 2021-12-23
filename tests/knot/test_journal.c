@@ -375,7 +375,7 @@ static void test_store_load(const knot_dname_t *apex)
 	changesets_free(&k);
 
 	changeset_t ch;
-	ret = changeset_init(&ch, apex);
+	ret = changeset_init(&ch, apex, NULL);
 	ok(ret == KNOT_EOK, "journal: changeset init (%d)", ret);
 	init_random_changeset(&ch, serial, serial + 1, 555, apex, false);
 	ret = journal_insert(jj, &ch, NULL);
@@ -391,7 +391,7 @@ static void test_store_load(const knot_dname_t *apex)
 
 	changeset_clear(&ch);
 
-	changeset_init(&ch, apex);
+	changeset_init(&ch, apex, NULL);
 	init_random_changeset(&ch, 2, 3, 100, apex, false);
 	ret = journal_insert(jj, &ch, NULL);
 	is_int(KNOT_EOK, ret, "journal: insert discontinuous changeset (%s)", knot_strerror(ret));
@@ -410,7 +410,7 @@ static void test_store_load(const knot_dname_t *apex)
 	uint32_t serials[6] = { 0, 1, 2, 2147483647, 4294967294, 1 };
 	for (int i = 0; i < 5; i++) {
 		changeset_clear(&ch);
-		changeset_init(&ch, apex);
+		changeset_init(&ch, apex, NULL);
 		init_random_changeset(&ch, serials[i], serials[i + 1], 100, apex, false);
 		ret = journal_insert(jj, &ch, NULL);
 		is_int(i == 4 ? KNOT_EBUSY : KNOT_EOK, ret, "journal: inserting cycle (%s)", knot_strerror(ret));
@@ -436,14 +436,14 @@ static void test_store_load(const knot_dname_t *apex)
 	changeset_clear(&ch);
 	changeset_free(m_ch);
 
-	changeset_init(&e_ch, apex);
+	changeset_init(&e_ch, apex, NULL);
 	init_random_changeset(&e_ch, 0, 1, 200, apex, true);
 	zone_node_t *n = NULL;
 	zone_contents_add_rr(e_ch.add, e_ch.soa_to, &n);
 	ret = journal_insert_zone(jj, e_ch.add);
 	zone_contents_remove_rr(e_ch.add, e_ch.soa_to, &n);
 	is_int(KNOT_EOK, ret, "journal: insert zone-in-journal (%s)", knot_strerror(ret));
-	changeset_init(&r_ch, apex);
+	changeset_init(&r_ch, apex, NULL);
 	init_random_changeset(&r_ch, 1, 2, 200, apex, false);
 	ret = journal_insert(jj, &r_ch, NULL);
 	is_int(KNOT_EOK, ret, "journal: insert after zone-in-journal (%s)", knot_strerror(ret));
@@ -681,7 +681,7 @@ static void tm2_add_all(zone_contents_t *toadd)
 
 static zone_contents_t *tm2_zone(const knot_dname_t *apex)
 {
-	zone_contents_t *z = zone_contents_new(apex, false);
+	zone_contents_t *z = zone_contents_new(apex, false, NULL);
 	if (z != NULL) {
 		knot_rrset_t soa;
 		zone_node_t *unused = NULL;
@@ -809,7 +809,7 @@ static void test_stress_base(const knot_dname_t *apex,
 	set_conf(1000, file_size / 2, apex);
 
 	changeset_t ch;
-	ret = changeset_init(&ch, apex);
+	ret = changeset_init(&ch, apex, NULL);
 	ok(ret == KNOT_EOK, "journal: changeset init (%d)", ret);
 	init_random_changeset(&ch, serial, serial + 1, update_size, apex, false);
 

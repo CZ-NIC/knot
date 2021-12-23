@@ -157,7 +157,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 	}
 	memset(zc, 0, sizeof(zcreator_t));
 
-	zc->z = zone_contents_new(origin, true);
+	zc->z = zone_contents_new(origin, true, NULL);
 	if (zc->z == NULL) {
 		free(zc);
 		return KNOT_ENOMEM;

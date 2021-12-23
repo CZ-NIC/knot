@@ -31,11 +31,13 @@
  * \param node Node to destroy RRSets from.
  * \param data Unused parameter.
  */
-static int destroy_node_rrsets_from_tree(zone_node_t *node, _unused_ void *data)
+static int destroy_node_rrsets_from_tree(zone_node_t *node, void *data)
 {
+	zone_contents_t *contents = data;
+
 	if (node != NULL) {
-		binode_unify(node, false, NULL);
-		node_free_rrsets(node, NULL);
+		binode_unify(node, false, contents->mm);
+		node_free_rrsets(node, contents->mm);
 		node_free(node, NULL);
 	}
 
@@ -120,7 +122,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n
 		}
 	}
 
-	return node_add_rrset(*n, rr, NULL);
+	return node_add_rrset(*n, rr, z->mm);
 }
 
 static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
@@ -145,7 +147,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 		node = *n;
 	}
 
-	int ret = node_remove_rrset(node, rr, NULL);
+	int ret = node_remove_rrset(node, rr, z->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -160,7 +162,7 @@ static int remove_rr(zone_contents_t *z, const knot_rrset_t *rr,
 
 // Public API
 
-zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes)
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binodes, knot_mm_t *mm)
 {
 	if (apex_name == NULL) {
 		return NULL;
@@ -186,6 +188,7 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binod
 	}
 	contents->apex->flags |= NODE_FLAGS_APEX;
 	contents->max_ttl = UINT32_MAX;
+	contents->mm = mm;
 
 	return contents;
 
@@ -526,11 +529,11 @@ void zone_contents_deep_free(zone_contents_t *contents)
 	if (contents != NULL) {
 		// Delete NSEC3 tree.
 		(void)zone_tree_apply(contents->nsec3_nodes,
-		                      destroy_node_rrsets_from_tree, NULL);
+		                      destroy_node_rrsets_from_tree, contents);
 
 		// Delete the normal tree.
 		(void)zone_tree_apply(contents->nodes,
-		                      destroy_node_rrsets_from_tree, NULL);
+		                      destroy_node_rrsets_from_tree, contents);
 	}
 
 	zone_contents_free(contents);

@@ -35,6 +35,7 @@ typedef struct zone_update {
 	changeset_t change;          /*!< Changes we want to apply. */
 	zone_contents_t *init_cont;  /*!< Exact contents of the zonefile. */
 	changeset_t extra_ch;        /*!< Extra changeset to store just diff btwn zonefile and result. */
+	knot_mm_t mm;                /*!< Memory pool for changesets. */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
 	dnssec_validation_hint_t validation_hint;

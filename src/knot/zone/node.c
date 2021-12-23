@@ -384,7 +384,7 @@ int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *m
 	return KNOT_EOK;
 }
 
-knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type)
+knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type, knot_mm_t *mm)
 {
 	if (node == NULL) {
 		return NULL;
@@ -393,7 +393,7 @@ knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type)
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
 			knot_rrset_t rrset = node_rrset_at(node, i);
-			return knot_rrset_copy(&rrset, NULL);
+			return knot_rrset_copy(&rrset, mm);
 		}
 	}
 

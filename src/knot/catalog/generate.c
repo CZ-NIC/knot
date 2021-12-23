@@ -218,7 +218,7 @@ struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dna
 	if (u->error != KNOT_EOK) {
 		return NULL;
 	}
-	zone_contents_t *c = zone_contents_new(catzone, true);
+	zone_contents_t *c = zone_contents_new(catzone, true, NULL);
 	if (c == NULL) {
 		return c;
 	}

@@ -63,13 +63,13 @@ int main(int argc, char *argv[])
 	   knot_rdataset_eq(&dummy_rrset->rrs, &node->rrs[0].rrs), "Node: add RRSet.");
 
 	// Test RRSet getters
-	knot_rrset_t *n_rrset = node_create_rrset(node, KNOT_RRTYPE_TXT);
+	knot_rrset_t *n_rrset = node_create_rrset(node, KNOT_RRTYPE_TXT, NULL);
 	ok(n_rrset && knot_rrset_equal(n_rrset, dummy_rrset, true),
 	   "Node: create existing RRSet.");
 
 	knot_rrset_free(n_rrset, NULL);
 
-	n_rrset = node_create_rrset(node, KNOT_RRTYPE_SOA);
+	n_rrset = node_create_rrset(node, KNOT_RRTYPE_SOA, NULL);
 	ok(n_rrset == NULL, "Node: create non-existing RRSet.");
 
 	knot_rrset_t stack_rrset = node_rrset(node, KNOT_RRTYPE_TXT);

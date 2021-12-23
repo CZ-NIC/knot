@@ -72,7 +72,7 @@ static zone_contents_t *str2contents(const char *zone_str)
 	knot_dname_t *origin = knot_dname_from_str_alloc(origin_str);
 	assert(origin != NULL);
 
-	zone_contents_t *cont = zone_contents_new(origin, false);
+	zone_contents_t *cont = zone_contents_new(origin, false, NULL);
 	assert(cont != NULL);
 	knot_dname_free(origin, NULL);
 

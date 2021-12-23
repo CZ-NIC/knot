@@ -120,7 +120,7 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 		return KNOT_EINVAL;
 	}
 
-	*contents = zone_contents_new(zone->name, true);
+	*contents = zone_contents_new(zone->name, true, NULL);
 	if (*contents == NULL) {
 		return KNOT_ENOMEM;
 	}

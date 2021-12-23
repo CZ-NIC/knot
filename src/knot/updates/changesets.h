@@ -54,10 +54,11 @@ typedef struct {
  *
  * \param ch    Changeset to init.
  * \param apex  Zone apex DNAME.
+ * \param mm    Memory context.
  *
  * \return KNOT_E*
  */
-int changeset_init(changeset_t *ch, const knot_dname_t *apex);
+int changeset_init(changeset_t *ch, const knot_dname_t *apex, knot_mm_t *mm);
 
 /*!
  * \brief Creates new changeset structure and inits it.

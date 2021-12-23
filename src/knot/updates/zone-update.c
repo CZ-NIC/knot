@@ -26,6 +26,7 @@
 #include "knot/zone/zonefile.h"
 #include "contrib/trim.h"
 #include "contrib/ucw/lists.h"
+#include "contrib/ucw/mempool.h"
 
 #include <signal.h>
 #include <unistd.h>
@@ -40,7 +41,9 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 		return KNOT_EINVAL;
 	}
 
-	int ret = changeset_init(&update->change, zone->name);
+	mm_ctx_mempool(&update->mm, 64 * MM_DEFAULT_BLKSIZE);
+
+	int ret = changeset_init(&update->change, zone->name, &update->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -65,7 +68,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 
 	/* Copy base SOA RR. */
 	update->change.soa_from =
-		node_create_rrset(old_contents->apex, KNOT_RRTYPE_SOA);
+		node_create_rrset(old_contents->apex, KNOT_RRTYPE_SOA, update->change.remove->mm);
 	if (update->change.soa_from == NULL) {
 		zone_contents_free(update->new_cont);
 		changeset_clear(&update->change);
@@ -77,7 +80,7 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 
 static int init_full(zone_update_t *update, zone_t *zone)
 {
-	update->new_cont = zone_contents_new(zone->name, true);
+	update->new_cont = zone_contents_new(zone->name, true, NULL);
 	if (update->new_cont == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -170,7 +173,7 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 	}
 
 	changeset_t diff;
-	int ret = changeset_init(&diff, zone->name);
+	int ret = changeset_init(&diff, zone->name, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -240,7 +243,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	update->a_ctx->cow_mutex = &update->zone->cow_lock;
 
 	if (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
-		int ret = changeset_init(&update->change, zone_without_contents->name);
+		int ret = changeset_init(&update->change, zone_without_contents->name, NULL);
 		if (ret != KNOT_EOK) {
 			free(update->a_ctx);
 			update->a_ctx = NULL;
@@ -248,7 +251,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 			return ret;
 		}
 
-		update->change.soa_from = node_create_rrset(new_cont->apex, KNOT_RRTYPE_SOA);
+		update->change.soa_from = node_create_rrset(new_cont->apex, KNOT_RRTYPE_SOA, NULL);
 		if (update->change.soa_from == NULL) {
 			changeset_clear(&update->change);
 			free(update->a_ctx);
@@ -275,7 +278,7 @@ int zone_update_start_extra(zone_update_t *update, conf_t *conf)
 {
 	assert((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)));
 
-	int ret = changeset_init(&update->extra_ch, update->new_cont->apex->owner);
+	int ret = changeset_init(&update->extra_ch, update->new_cont->apex->owner, update->change.add->mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -291,7 +294,7 @@ int zone_update_start_extra(zone_update_t *update, conf_t *conf)
 			return ret;
 		}
 	} else {
-		update->extra_ch.soa_from = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+		update->extra_ch.soa_from = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA, update->change.add->mm);
 		if (update->extra_ch.soa_from == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -301,7 +304,7 @@ int zone_update_start_extra(zone_update_t *update, conf_t *conf)
 			return ret;
 		}
 
-		update->extra_ch.soa_to = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+		update->extra_ch.soa_to = node_create_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA, update->change.add->mm);
 		if (update->extra_ch.soa_to == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -629,7 +632,7 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 	assert(update);
 
 	knot_rrset_t *soa_cpy = node_create_rrset(update->new_cont->apex,
-	                                          KNOT_RRTYPE_SOA);
+	                                          KNOT_RRTYPE_SOA, NULL);
 	if (soa_cpy == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -968,6 +971,9 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		changeset_clear(&update->change);
 		changeset_clear(&update->extra_ch);
+	}
+	if (update->mm.ctx != NULL) {
+		mp_flush(update->mm.ctx);
 	}
 	zone_contents_deep_free(update->init_cont);
 

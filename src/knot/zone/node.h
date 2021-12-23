@@ -255,11 +255,12 @@ int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *m
  *
  * \param node  Node to get the RRSet from.
  * \param type  RR type of the RRSet to retrieve.
+ * \param mm    Memory context.
  *
  * \return RRSet from node \a node having type \a type, or NULL if no such
  *         RRSet exists in this node.
  */
-knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type);
+knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type, knot_mm_t *mm);
 
 /*!
  * \brief Gets rdata set structure of given type from node.
