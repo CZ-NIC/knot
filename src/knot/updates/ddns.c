@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
 #include "knot/zone/serial.h"
 #include "libknot/libknot.h"
 #include "contrib/ucw/lists.h"
-
-/* ----------------------------- prereq check ------------------------------- */
 
 /*!< \brief Clears prereq RRSet list. */
 static void rrset_list_clear(list_t *l)
@@ -173,7 +171,7 @@ static bool rrset_empty(const knot_rrset_t *rrset)
 	}
 }
 
-/*< \brief Returns true if DDNS should deny updating DNSSEC-related record. */
+/*!< \brief Returns true if DDNS should deny updating DNSSEC-related record. */
 static bool is_dnssec_protected(uint16_t type, bool is_apex)
 {
 	switch (type) {
@@ -238,10 +236,6 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 		return KNOT_EMALF;
 	}
 }
-
-/* --------------------------- DDNS processing ------------------------------ */
-
-/* --------------------- true/false helper functions ------------------------ */
 
 static inline bool is_addition(const knot_rrset_t *rr)
 {
@@ -320,48 +314,25 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 	return false;
 }
 
-/* ---------------------- changeset manipulation ---------------------------- */
-
 /*!< \brief Replaces possible singleton RR type in changeset. */
-static bool singleton_replaced(changeset_t *changeset,
-                               const knot_rrset_t *rr)
+static bool singleton_replaced(zone_update_t *update, const knot_rrset_t *rr)
 {
 	if (!should_replace(rr)) {
 		return false;
 	}
 
-	zone_node_t *n = zone_contents_find_node_for_rr(changeset->add, rr);
-	if (n == NULL) {
-		return false;
-	}
-
-	knot_rdataset_t *rrs = node_rdataset(n, rr->type);
-	if (rrs == NULL) {
-		return false;
-	}
-
-	// Replace singleton RR.
-	knot_rdataset_clear(rrs, NULL);
-	node_remove_rdataset(n, rr->type);
-	node_add_rrset(n, rr, NULL);
-
-	return true;
+	return zone_update_remove_rrset(update, rr->owner, rr->type) == KNOT_EOK;
 }
 
 /*!< \brief Adds RR into add section of changeset if it is deemed worthy. */
-static int add_rr_to_changeset(const knot_rrset_t *rr,
-                            zone_update_t *update)
+static int add_rr_to_changeset(const knot_rrset_t *rr, zone_update_t *update)
 {
-	if (singleton_replaced(&update->change, rr)) {
+	if (singleton_replaced(update, rr)) {
 		return KNOT_EOK;
 	}
 
 	return zone_update_add(update, rr);
 }
-
-/* ------------------------ RR processing logic ----------------------------- */
-
-/* --------------------------- RR additions --------------------------------- */
 
 /*!< \brief Processes CNAME addition (replace or ignore) */
 static int process_add_cname(const zone_node_t *node,
@@ -472,8 +443,6 @@ static int process_add(const knot_rrset_t *rr,
 		return process_add_normal(node, rr, update);
 	}
 }
-
-/* --------------------------- RR deletions --------------------------------- */
 
 /*!< \brief Removes single RR from zone. */
 static int process_rem_rr(const knot_rrset_t *rr,
@@ -586,8 +555,6 @@ static int process_remove(const knot_rrset_t *rr,
 	}
 }
 
-/* --------------------------- validity checks ------------------------------ */
-
 /*!< \brief Checks whether addition has not violated DNAME rules. */
 static bool sem_check(const knot_rrset_t *rr, const zone_node_t *zone_node,
                       zone_update_t *update)
@@ -694,8 +661,6 @@ static uint16_t ret_to_rcode(int ret)
 		return KNOT_RCODE_SERVFAIL;
 	}
 }
-
-/* ---------------------------------- API ----------------------------------- */
 
 int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
                          uint16_t *rcode)
