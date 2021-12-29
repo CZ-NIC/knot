@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -351,9 +351,16 @@ int zone_tree_it_double_begin(zone_tree_t *first, zone_tree_t *second, zone_tree
 		if (it->it == NULL) {
 			return KNOT_ENOMEM;
 		}
-		it->tree = first;
-		it->binode_second = ((first->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0);
-		it->next_tree = second;
+		if (trie_it_finished(it->it) && second != NULL) { // first tree is empty
+			trie_it_free(it->it);
+			it->it = trie_it_begin(second->trie);
+			it->tree = second;
+			it->next_tree = NULL;
+		} else {
+			it->tree = first;
+			it->next_tree = second;
+		}
+		it->binode_second = ((it->tree->flags & ZONE_TREE_BINO_SECOND) ? 1 : 0);
 	}
 	return KNOT_EOK;
 }
