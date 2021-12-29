@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "knot/journal/journal_basic.h"
 #include "knot/journal/journal_metadata.h"
+#include "knot/journal/serialization.h"
 
 /*!
  * \brief Serialize a changeset into chunks and write it into DB with no checks and metadata update.
@@ -107,6 +108,7 @@ int journal_insert_zone(zone_journal_t j, const zone_contents_t *z);
  * \param j    Zone journal.
  * \param ch   Changeset to be stored.
  * \param extra   Extra changeset to be stored in the role of merged changeset.
+ * \param zdiff   Zone diff to be stored instead of changeset.
  *
  * \note The extra changesetis being stored on zone load, it is basically the diff
  *       between zonefile and loaded zone contents. Afterwards, it will be treated
@@ -115,4 +117,5 @@ int journal_insert_zone(zone_journal_t j, const zone_contents_t *z);
  *
  * \return KNOT_E*
  */
-int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *extra);
+int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *extra,
+                   const zone_diff_t *zdiff);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,12 +52,14 @@ MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const
 /*!
  * \brief Create a database key for changeset chunk.
  *
- * \param ch         Corresponding changeset (perhaps to be stored).
+ * \param apex       Zone apex owner name.
+ * \param ch_from    Serial "from" of the stored changeset.
+ * \param zij        Zone-in-journal is stored.
  * \param chunk_id   Ordinal number of this changeset's chunk.
  *
  * \return DB key. 'mv_data' shall be freed later. 'mv_data' is NULL on failure.
  */
-MDB_val journal_changeset_to_chunk_key(const changeset_t *ch, uint32_t chunk_id);
+MDB_val journal_make_chunk_key(const knot_dname_t *apex, uint32_t ch_from, bool zij, uint32_t chunk_id);
 
 /*!
  * \brief Return a key prefix to operate with all zone-related records.

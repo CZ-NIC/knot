@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -361,7 +361,11 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 		return NULL;
 	}
 
-	if (update->flags & UPDATE_FULL) {
+	if (update->flags & UPDATE_NO_CHSET) {
+		zone_diff_t diff = { .apex = update->new_cont->apex };
+		return zone_diff_to(&diff) == zone_diff_from(&diff) ?
+		       NULL : node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+	} else if (update->flags & UPDATE_FULL) {
 		const zone_node_t *apex = update->new_cont->apex;
 		return node_rdataset(apex, KNOT_RRTYPE_SOA);
 	} else {
@@ -672,10 +676,16 @@ static int commit_journal(conf_t *conf, zone_update_t *update)
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
 	unsigned content = conf_opt(&val);
 	int ret = KNOT_EOK;
-	if ((update->flags & UPDATE_INCREMENTAL) ||
-	    (update->flags & UPDATE_HYBRID)) {
+	if (update->flags & UPDATE_NO_CHSET) {
+		zone_diff_t diff;
+		diff.nodes = *update->a_ctx->node_ptrs;
+		diff.nsec3s = *update->a_ctx->nsec3_ptrs;
+		diff.apex = update->new_cont->apex;
+		return zone_diff_store(conf, update->zone, &diff);
+	} else if ((update->flags & UPDATE_INCREMENTAL) ||
+	           (update->flags & UPDATE_HYBRID)) {
 		changeset_t *extra = (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL;
-		if (content != JOURNAL_CONTENT_NONE && !changeset_empty(&update->change)) {
+		if (content != JOURNAL_CONTENT_NONE && !zone_update_no_change(update)) {
 			ret = zone_change_store(conf, update->zone, &update->change, extra);
 		}
 	} else {
@@ -692,7 +702,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
 
-	if (zone_update_to(update) == NULL && !changeset_empty(&update->change)) {
+	if (zone_update_to(update) == NULL && !zone_update_no_change(update)) {
 		/* No SOA in the update, create one according to the current policy */
 		int ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
@@ -879,7 +889,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	int ret = KNOT_EOK;
 
-	if ((update->flags & UPDATE_INCREMENTAL) && changeset_empty(&update->change)) {
+	if ((update->flags & UPDATE_INCREMENTAL) && zone_update_no_change(update)) {
 		zone_update_clear(update);
 		return KNOT_EOK;
 	}
@@ -1003,12 +1013,29 @@ bool zone_update_no_change(zone_update_t *update)
 		return true;
 	}
 
-	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+	if (update->flags & UPDATE_NO_CHSET) {
+		zone_diff_t diff;
+		diff.nodes = *update->a_ctx->node_ptrs;
+		diff.nsec3s = *update->a_ctx->nsec3_ptrs;
+		diff.apex = update->new_cont->apex;
+		return (zone_diff_serialized_size(diff) == 0);
+	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		return changeset_empty(&update->change);
 	} else {
 		/* This branch does not make much sense and FULL update will most likely
 		 * be a change every time anyway, just return false. */
 		return false;
+	}
+}
+
+static bool zone_diff_rdataset(const zone_contents_t *c, uint16_t rrtype)
+{
+	const knot_rdataset_t *a = node_rdataset(binode_counterpart(c->apex), rrtype);
+	const knot_rdataset_t *b = node_rdataset(c->apex, rrtype);
+	if (a == NULL && b == NULL) {
+		return false;
+	} else {
+		return !knot_rdataset_eq(a, b);
 	}
 }
 
@@ -1025,7 +1052,11 @@ static bool contents_have_dnskey(const zone_contents_t *contents)
 
 bool zone_update_changes_dnskey(zone_update_t *update)
 {
-	if (update->flags & UPDATE_FULL) {
+	if (update->flags & UPDATE_NO_CHSET) {
+		return (zone_diff_rdataset(update->new_cont, KNOT_RRTYPE_DNSKEY) ||
+		        zone_diff_rdataset(update->new_cont, KNOT_RRTYPE_CDNSKEY) ||
+		        zone_diff_rdataset(update->new_cont, KNOT_RRTYPE_CDS));
+	} else if (update->flags & UPDATE_FULL) {
 		return contents_have_dnskey(update->new_cont);
 	} else {
 		return (contents_have_dnskey(update->change.remove) ||

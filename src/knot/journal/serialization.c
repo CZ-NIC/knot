@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #include "knot/journal/serialization.h"
 #include "knot/zone/zone-tree.h"
-#include "libknot/libknot.h"
 
 #define SERIALIZE_RRSET_INIT (-1)
 #define SERIALIZE_RRSET_DONE ((1L<<16)+1)
@@ -37,10 +36,13 @@ typedef enum {
 #define RRSET_BUF_MAXSIZE 256
 
 struct serialize_ctx {
-	const zone_contents_t *z;
+	zone_diff_t zdiff;
 	zone_tree_it_t zit;
 	zone_node_t *n;
 	uint16_t node_pos;
+	bool zone_diff;
+	bool zone_diff_add;
+	int ret;
 
 	const changeset_t *ch;
 	changeset_iter_t it;
@@ -48,6 +50,7 @@ struct serialize_ctx {
 	long rrset_phase;
 	knot_rrset_t rrset_buf[RRSET_BUF_MAXSIZE];
 	size_t rrset_buf_size;
+	list_t free_rdatasets;
 };
 
 serialize_ctx_t *serialize_init(const changeset_t *ch)
@@ -61,6 +64,7 @@ serialize_ctx_t *serialize_init(const changeset_t *ch)
 	ctx->changeset_phase = ch->soa_from != NULL ? PHASE_SOA_1 : PHASE_SOA_2;
 	ctx->rrset_phase = SERIALIZE_RRSET_INIT;
 	ctx->rrset_buf_size = 0;
+	init_list(&ctx->free_rdatasets);
 
 	return ctx;
 }
@@ -72,10 +76,30 @@ serialize_ctx_t *serialize_zone_init(const zone_contents_t *z)
 		return NULL;
 	}
 
-	ctx->z = z;
+	zone_diff_from_zone(&ctx->zdiff, z);
 	ctx->changeset_phase = PHASE_ZONE_SOA;
 	ctx->rrset_phase = SERIALIZE_RRSET_INIT;
 	ctx->rrset_buf_size = 0;
+	init_list(&ctx->free_rdatasets);
+
+	return ctx;
+}
+
+serialize_ctx_t *serialize_zone_diff_init(const zone_diff_t *z)
+{
+	serialize_ctx_t *ctx = calloc(1, sizeof(*ctx));
+	if (ctx == NULL) {
+		return NULL;
+	}
+
+	ctx->zone_diff = true;
+	ctx->zdiff = *z;
+	zone_diff_reverse(&ctx->zdiff); // start with removals of counterparts
+
+	ctx->changeset_phase = PHASE_ZONE_SOA;
+	ctx->rrset_phase = SERIALIZE_RRSET_INIT;
+	ctx->rrset_buf_size = 0;
+	init_list(&ctx->free_rdatasets);
 
 	return ctx;
 }
@@ -86,19 +110,28 @@ static knot_rrset_t get_next_rrset(serialize_ctx_t *ctx)
 	knot_rrset_init_empty(&res);
 	switch (ctx->changeset_phase) {
 	case PHASE_ZONE_SOA:
-		zone_tree_it_begin(ctx->z->nodes, &ctx->zit);
+		zone_tree_it_begin(&ctx->zdiff.nodes, &ctx->zit);
 		ctx->changeset_phase = PHASE_ZONE_NODES;
-		return node_rrset(ctx->z->apex, KNOT_RRTYPE_SOA);
+		return node_rrset(ctx->zdiff.apex, KNOT_RRTYPE_SOA);
 	case PHASE_ZONE_NODES:
 	case PHASE_ZONE_NSEC3:
 		while (ctx->n == NULL || ctx->node_pos >= ctx->n->rrset_count) {
 			if (zone_tree_it_finished(&ctx->zit)) {
 				zone_tree_it_free(&ctx->zit);
-				if (ctx->changeset_phase == PHASE_ZONE_NSEC3 || zone_tree_is_empty(ctx->z->nsec3_nodes)) {
-					ctx->changeset_phase = PHASE_END;
-					return res;
+				if (ctx->changeset_phase == PHASE_ZONE_NSEC3 ||
+				    zone_tree_is_empty(&ctx->zdiff.nsec3s)) {
+					if (ctx->zone_diff && !ctx->zone_diff_add) {
+						ctx->zone_diff_add = true;
+						zone_diff_reverse(&ctx->zdiff);
+						zone_tree_it_begin(&ctx->zdiff.nodes, &ctx->zit);
+						ctx->changeset_phase = PHASE_ZONE_NODES;
+						return node_rrset(ctx->zdiff.apex, KNOT_RRTYPE_SOA);
+					} else {
+						ctx->changeset_phase = PHASE_END;
+						return res;
+					}
 				} else {
-					zone_tree_it_begin(ctx->z->nsec3_nodes, &ctx->zit);
+					zone_tree_it_begin(&ctx->zdiff.nsec3s, &ctx->zit);
 					ctx->changeset_phase = PHASE_ZONE_NSEC3;
 				}
 			}
@@ -107,8 +140,26 @@ static knot_rrset_t get_next_rrset(serialize_ctx_t *ctx)
 			ctx->node_pos = 0;
 		}
 		res = node_rrset_at(ctx->n, ctx->node_pos++);
-		if (ctx->n == ctx->z->apex && res.type == KNOT_RRTYPE_SOA) {
+		if (ctx->n == ctx->zdiff.apex && res.type == KNOT_RRTYPE_SOA) {
 			return get_next_rrset(ctx);
+		}
+		if (ctx->zone_diff) {
+			knot_rrset_t counter_rr = node_rrset(binode_counterpart(ctx->n), res.type);
+			if (counter_rr.ttl == res.ttl && !knot_rrset_empty(&counter_rr)) {
+				if (knot_rdataset_subset(&res.rrs, &counter_rr.rrs)) {
+					return get_next_rrset(ctx);
+				}
+				knot_rdataset_t rd_copy;
+				ctx->ret = knot_rdataset_copy(&rd_copy, &res.rrs, NULL);
+				if (ctx->ret == KNOT_EOK) {
+					knot_rdataset_subtract(&rd_copy, &counter_rr.rrs, NULL);
+					ptrlist_add(&ctx->free_rdatasets, rd_copy.rdata, NULL);
+					res.rrs = rd_copy;
+					assert(!knot_rrset_empty(&res));
+				} else {
+					ctx->changeset_phase = PHASE_END;
+				}
+			}
 		}
 		return res;
 	case PHASE_SOA_1:
@@ -152,6 +203,16 @@ void serialize_prepare(serialize_ctx_t *ctx, size_t thresh_size,
 	if (ctx->rrset_buf_size > 0) {
 		ctx->rrset_buf[0] = ctx->rrset_buf[ctx->rrset_buf_size - 1];
 		ctx->rrset_buf_size = 1;
+
+		// memory optimization: free all buffered rrsets except last one
+		ptrnode_t *n, *next;
+		WALK_LIST_DELSAFE(n, next, ctx->free_rdatasets) {
+			if (n != TAIL(ctx->free_rdatasets)) {
+				free(n->d);
+				rem_node(&n->n);
+				free(n);
+			}
+		}
 	} else {
 		ctx->rrset_buf[0] = get_next_rrset(ctx);
 		if (ctx->changeset_phase == PHASE_END) {
@@ -237,7 +298,7 @@ bool serialize_unfinished(serialize_ctx_t *ctx)
 	return ctx->changeset_phase < PHASE_END;
 }
 
-void serialize_deinit(serialize_ctx_t *ctx)
+int serialize_deinit(serialize_ctx_t *ctx)
 {
 	if (ctx->it.node != NULL) {
 		changeset_iter_clear(&ctx->it);
@@ -245,7 +306,15 @@ void serialize_deinit(serialize_ctx_t *ctx)
 	if (ctx->zit.tree != NULL) {
 		zone_tree_it_free(&ctx->zit);
 	}
+	ptrnode_t *n, *next;
+	WALK_LIST_DELSAFE(n, next, ctx->free_rdatasets) {
+		free(n->d);
+		rem_node(&n->n);
+		free(n);
+	}
+	int ret = ctx->ret;
 	free(ctx);
+	return ret;
 }
 
 static uint64_t rrset_binary_size(const knot_rrset_t *rrset)
@@ -266,6 +335,40 @@ static uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 	}
 
 	return size;
+}
+
+static size_t node_diff_size(zone_node_t *node)
+{
+	size_t res = 0;
+	knot_rrset_t rr, counter_rr;
+	for (int i = 0; i < node->rrset_count; i++) {
+		rr = node_rrset_at(node, i);
+		counter_rr = node_rrset(binode_counterpart(node), rr.type);
+		if (!knot_rrset_equal(&rr, &counter_rr, true)) {
+			res += rrset_binary_size(&rr);
+		}
+	}
+	return res;
+}
+
+size_t zone_diff_serialized_size(zone_diff_t diff)
+{
+	size_t res = 0;
+	for (int i = 0; i < 2; i++) {
+		zone_diff_reverse(&diff);
+		zone_tree_it_t it = { 0 };
+		int ret = zone_tree_it_double_begin(&diff.nodes, diff.nsec3s.trie != NULL ?
+		                                                 &diff.nsec3s : NULL, &it);
+		if (ret != KNOT_EOK) {
+			return 0;
+		}
+		while (!zone_tree_it_finished(&it)) {
+			res += node_diff_size(zone_tree_it_val(&it));
+			zone_tree_it_next(&it);
+		}
+		zone_tree_it_free(&it);
+	}
+	return res;
 }
 
 size_t changeset_serialized_size(const changeset_t *ch)

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -133,6 +133,17 @@ bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2);
  * \retval false if \a rr is not present in \a rrs.
  */
 bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr);
+
+/*!
+ * \brief Returns true if \a subset is a sub-set of \a of, false otherwise.
+ *
+ * \param subset  RRS to check.
+ * \param of      RRS to search in.
+ *
+ * \retval true if \a subset is a sub-set of \a of.
+ * \retval false if \a subset is not a sub-set of \a of.
+ */
+bool knot_rdataset_subset(const knot_rdataset_t *subset, const knot_rdataset_t *of);
 
 /*!
  * \brief Merges two RRS into the first one. Second RRS is left intact.

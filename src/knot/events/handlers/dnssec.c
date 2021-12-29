@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,7 +92,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	}
 
 	zone_update_t up;
-	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
+	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

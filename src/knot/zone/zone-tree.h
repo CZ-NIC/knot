@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ zone_tree_t *zone_tree_shallow_copy(zone_tree_t *from);
  */
 inline static size_t zone_tree_count(const zone_tree_t *tree)
 {
-	if (tree == NULL) {
+	if (tree == NULL || tree->trie == NULL) {
 		return 0;
 	}
 

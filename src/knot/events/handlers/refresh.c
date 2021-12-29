@@ -502,7 +502,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	}
 
 	zone_update_t up = { 0 };
-	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT);
+	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_STRICT | UPDATE_NO_CHSET);
 	if (ret != KNOT_EOK) {
 		data->fallback_axfr = false;
 		data->fallback->remote = false;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -244,6 +244,24 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr)
 	}
 
 	return false;
+}
+
+_public_
+bool knot_rdataset_subset(const knot_rdataset_t *subset, const knot_rdataset_t *of)
+{
+	if (subset == NULL) {
+		return true;
+	}
+
+	knot_rdata_t *rd = subset->rdata;
+	for (uint16_t i = 0; i < subset->count; ++i) {
+		if (!knot_rdataset_member(of, rd)) {
+			return false;
+		}
+		rd = knot_rdataset_next(rd);
+	}
+
+	return true;
 }
 
 _public_

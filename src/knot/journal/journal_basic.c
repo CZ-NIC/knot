@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,12 +27,12 @@ MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const
 	}
 }
 
-MDB_val journal_changeset_to_chunk_key(const changeset_t *ch, uint32_t chunk_id)
+MDB_val journal_make_chunk_key(const knot_dname_t *apex, uint32_t ch_from, bool zij, uint32_t chunk_id)
 {
-	if (ch->soa_from == NULL) {
-		return knot_lmdb_make_key("NISI", ch->add->apex->owner, (uint32_t)0, "bootstrap", chunk_id);
+	if (zij) {
+		return knot_lmdb_make_key("NISI", apex, (uint32_t)0, "bootstrap", chunk_id);
 	} else {
-		return knot_lmdb_make_key("NIII", ch->add->apex->owner, (uint32_t)0, changeset_from(ch), chunk_id);
+		return knot_lmdb_make_key("NIII", apex, (uint32_t)0, ch_from, chunk_id);
 	}
 }
 
