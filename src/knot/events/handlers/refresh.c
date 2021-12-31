@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -139,14 +139,13 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 {
 	time_t expired_at = timers->last_refresh + timers->soa_expire;
 
-	// previous interval
+	// Time since the zone expiration.
+	// The new interval is double of the previous one (an exponential backoff).
 	time_t interval = timers->next_refresh - expired_at;
 	if (interval < 0) {
 		interval = 0;
 	}
 
-	// exponential backoff
-	interval *= 2;
 	if (interval > BOOTSTRAP_MAXTIME) {
 		interval = BOOTSTRAP_MAXTIME;
 	}
