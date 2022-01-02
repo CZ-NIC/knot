@@ -545,7 +545,7 @@ static void check_reply_question(const knot_pkt_t *reply,
 	}
 }
 
-static int64_t first_serial_check(const knot_pkt_t *reply)
+static int64_t first_serial_check(const knot_pkt_t *reply, const knot_pkt_t *query)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(reply, KNOT_ANSWER);
 
@@ -558,12 +558,16 @@ static int64_t first_serial_check(const knot_pkt_t *reply)
 	if (first->type != KNOT_RRTYPE_SOA) {
 		return -1;
 	} else {
+		if (!knot_dname_is_case_equal(first->owner, knot_pkt_qname(query))) {
+			WARN("leading SOA owner not matching the requested zone name\n");
+		}
+
 		return knot_soa_serial(first->rrs.rdata);
 	}
 }
 
 static bool finished_xfr(const uint32_t serial, const knot_pkt_t *reply,
-                         const size_t msg_count, bool is_ixfr)
+                         const knot_pkt_t *query, const size_t msg_count, bool is_ixfr)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(reply, KNOT_ANSWER);
 
@@ -578,6 +582,10 @@ static bool finished_xfr(const uint32_t serial, const knot_pkt_t *reply,
 	} else if (answer->count == 1 && msg_count == 1) {
 		return is_ixfr;
 	} else {
+		if (!knot_dname_is_case_equal(last->owner, knot_pkt_qname(query))) {
+			WARN("final SOA owner not matching the requested zone name\n");
+		}
+
 		return knot_soa_serial(last->rrs.rdata) == serial;
 	}
 }
@@ -1075,7 +1083,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			}
 
 			// Read first SOA serial.
-			serial = first_serial_check(reply);
+			serial = first_serial_check(reply, query);
 
 			if (serial < 0) {
 				ERR("first answer record from %s isn't SOA\n",
@@ -1100,7 +1108,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		print_data_xfr(reply, style);
 
 		// Check for finished transfer.
-		if (finished_xfr(serial, reply, msg_count, query_ctx->serial != -1)) {
+		if (finished_xfr(serial, reply, query, msg_count, query_ctx->serial != -1)) {
 			knot_pkt_free(reply);
 			break;
 		}
