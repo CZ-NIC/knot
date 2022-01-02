@@ -204,10 +204,15 @@ static int process_dnstap(const query_t *query)
 		}
 
 		// Parse packet and reconstruct required data.
-		if (knot_pkt_parse(pkt, KNOT_PF_NOCANON) == KNOT_EOK) {
+		ret = knot_pkt_parse(pkt, KNOT_PF_NOCANON);
+		if (ret == KNOT_EOK || ret == KNOT_ETRAIL) {
 			time_t timestamp = 0;
 			float  query_time = 0.0;
 			net_t  net_ctx = { 0 };
+
+			if (ret == KNOT_ETRAIL) {
+				WARN("malformed message (%s)\n", knot_strerror(ret));
+			}
 
 			if (is_query) {
 				if (message->has_query_time_sec) {
@@ -697,7 +702,10 @@ static int process_query_packet(const knot_pkt_t      *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, KNOT_PF_NOCANON) != KNOT_EOK) {
+		ret = knot_pkt_parse(reply, KNOT_PF_NOCANON);
+		if (ret == KNOT_ETRAIL) {
+			WARN("malformed reply packet (%s)\n", knot_strerror(ret));
+		} else if (ret != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
@@ -1013,7 +1021,10 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, KNOT_PF_NOCANON) != KNOT_EOK) {
+		ret = knot_pkt_parse(reply, KNOT_PF_NOCANON);
+		if (ret == KNOT_ETRAIL) {
+			WARN("malformed reply packet (%s)\n", knot_strerror(ret));
+		} else if (ret != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
