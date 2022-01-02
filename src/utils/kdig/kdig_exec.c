@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -204,7 +204,7 @@ static int process_dnstap(const query_t *query)
 		}
 
 		// Parse packet and reconstruct required data.
-		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
+		if (knot_pkt_parse(pkt, KNOT_PF_NOCANON) == KNOT_EOK) {
 			time_t timestamp = 0;
 			float  query_time = 0.0;
 			net_t  net_ctx = { 0 };
@@ -653,7 +653,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		// Create copy of query packet for parsing.
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
 		if (q != NULL) {
-			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
+			if (knot_pkt_parse(q, KNOT_PF_NOCANON) == KNOT_EOK) {
 				print_packet(q, net, query->size,
 				             time_diff_ms(&t_start, &t_query),
 				             timestamp, false, style);
@@ -969,7 +969,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		// Create copy of query packet for parsing.
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
 		if (q != NULL) {
-			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
+			if (knot_pkt_parse(q, KNOT_PF_NOCANON) == KNOT_EOK) {
 				print_packet(q, net, query->size,
 				             time_diff_ms(&t_start, &t_query),
 					     timestamp, false, style);
@@ -1013,7 +1013,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, 0) != KNOT_EOK) {
+		if (knot_pkt_parse(reply, KNOT_PF_NOCANON) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
