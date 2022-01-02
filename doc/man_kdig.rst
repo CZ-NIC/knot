@@ -301,7 +301,7 @@ Options
   Set the number (>=0) of UDP retries (default is 2). This doesn't apply to
   AXFR/IXFR.
 
-**+**\ [\ **no**\ ]\ **cookie**\ =\ *HEX*
+**+**\ [\ **no**\ ]\ **cookie**\[\ =\ *HEX*\]
    Attach EDNS(0) cookie to the query.
 
 **+**\ [\ **no**\ ]\ **badcookie**
