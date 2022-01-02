@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -868,7 +868,7 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 	}
 
 	/* Parse response. */
-	ret = knot_pkt_parse(params->answer, 0);
+	ret = knot_pkt_parse(params->answer, KNOT_PF_NOCANON);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response (%s)\n", knot_strerror(ret));
 		sign_context_deinit(&sign_ctx);
