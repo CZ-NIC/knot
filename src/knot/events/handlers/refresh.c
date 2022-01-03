@@ -1257,7 +1257,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
 		zone->timers.last_refresh_ok = true;
 	} else {
-		time_t next = 0;
+		time_t next;
 		if (soa) {
 			next = knot_soa_retry(soa->rdata);
 		} else {
