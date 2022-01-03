@@ -463,10 +463,11 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		int ret = solve_add_different_ttl(update, rrset);
-		if (ret == KNOT_EOK) {
+		if (ret == KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
 			ret = changeset_add_addition(&update->change, rrset, CHANGESET_CHECK);
 		}
 		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+			assert(!(update->flags & UPDATE_NO_CHSET));
 			ret = changeset_add_addition(&update->extra_ch, rrset, CHANGESET_CHECK);
 		}
 		if (ret != KNOT_EOK) {
@@ -478,7 +479,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			// replace previous SOA
 			int ret = apply_replace_soa(update->a_ctx, rrset);
-			if (ret != KNOT_EOK) {
+			if (ret != KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
 				changeset_remove_addition(&update->change, rrset);
 			}
 			return ret;
@@ -486,7 +487,9 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 		int ret = apply_add_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
-			changeset_remove_addition(&update->change, rrset);
+			if (!(update->flags & UPDATE_NO_CHSET)) {
+				changeset_remove_addition(&update->change, rrset);
+			}
 			return ret;
 		}
 
@@ -529,9 +532,11 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EOK;
 	}
 
-	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && rrset->type != KNOT_RRTYPE_SOA) {
+	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
+	    rrset->type != KNOT_RRTYPE_SOA && !(update->flags & UPDATE_NO_CHSET)) {
 		int ret = changeset_add_removal(&update->change, rrset, CHANGESET_CHECK);
 		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+			assert(!(update->flags & UPDATE_NO_CHSET));
 			ret = changeset_add_removal(&update->extra_ch, rrset, CHANGESET_CHECK);
 		}
 		if (ret != KNOT_EOK) {
@@ -547,7 +552,9 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 
 		int ret = apply_remove_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
-			changeset_remove_removal(&update->change, rrset);
+			if (!(update->flags & UPDATE_NO_CHSET)) {
+				changeset_remove_removal(&update->change, rrset);
+			}
 			return ret;
 		}
 
