@@ -149,11 +149,6 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 
 	cookies_ctx_t *ctx = knotd_mod_ctx(mod);
 
-	// DNS cookies are ignored in the case of the TCP connection.
-	if (!(qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE)) {
-		return state;
-	}
-
 	// Check if the cookie option is present.
 	uint8_t *cookie_opt = knot_pkt_edns_option(qdata->query,
 	                                           KNOT_EDNS_OPTION_COOKIE);
@@ -192,7 +187,18 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 	// Compare server cookie.
 	ret = knot_edns_cookie_server_check(&sc, &cc, &params);
 	if (ret != KNOT_EOK) {
-		if (ATOMIC_GET(ctx->badcookie_ctr) > BADCOOKIE_CTR_INIT) {
+		// TCP server should take the authentication provided by the use
+		// of TCP into account and SHOULD process the request and provide
+		// a normal response.
+		if (!(qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE)) {
+			if (knot_edns_cookie_server_generate(&sc, &cc, &params) != KNOT_EOK ||
+			    put_cookie(qdata, pkt, &cc, &sc) != KNOT_EOK)
+			{
+				return KNOTD_STATE_FAIL;
+			}
+
+			return state;
+		} else if (ATOMIC_GET(ctx->badcookie_ctr) > BADCOOKIE_CTR_INIT) {
 			// Silently drop the response.
 			update_ctr(ctx);
 			knotd_mod_stats_incr(mod, qdata->params->thread_id, 1, 0, 1);
@@ -202,13 +208,9 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 				update_ctr(ctx);
 			}
 
-			ret = knot_edns_cookie_server_generate(&sc, &cc, &params);
-			if (ret != KNOT_EOK) {
-				return KNOTD_STATE_FAIL;
-			}
-
-			ret = put_cookie(qdata, pkt, &cc, &sc);
-			if (ret != KNOT_EOK) {
+			if (knot_edns_cookie_server_generate(&sc, &cc, &params) != KNOT_EOK ||
+			    put_cookie(qdata, pkt, &cc, &sc) != KNOT_EOK)
+			{
 				return KNOTD_STATE_FAIL;
 			}
 
