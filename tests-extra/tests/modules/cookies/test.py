@@ -40,6 +40,16 @@ def check_rcode(server, query, rcode, msg):
     compare(response.rcode(), rcode, msg)
     return response
 
+def check_rcode_tcp(server, query, rcode, msg):
+    try:
+        response = dns.query.tcp(query, server.addr, port=server.port, timeout=1)
+    except dns.exception.Timeout:
+        response = None
+    if response is None:
+        return None
+    compare(response.rcode(), rcode, msg)
+    return response
+
 t = Test(stress=False)
 
 ModCookies.check()
@@ -60,6 +70,11 @@ check_rcode(knot, query, rcodeNoerror, "NO EDNS")
 # Try a query without a cookie option
 query = dns.message.make_query("dns1.example.com", "A", use_edns=True)
 check_rcode(knot, query, rcodeNoerror, "NO COOKIE OPT")
+
+# Try a query without a server cookie over TCP
+cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+response = check_rcode_tcp(knot, query, rcodeNoerror, "ONLY CLIENT COOKIE [TCP]")
 
 # Try a query without a server cookie
 cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
