@@ -671,6 +671,13 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
 	return set_new_soa(update, conf_opt(&val));
 }
 
+static void get_zone_diff(zone_diff_t *zdiff, zone_update_t *up)
+{
+	zdiff->nodes = *up->a_ctx->node_ptrs;
+	zdiff->nsec3s = *up->a_ctx->nsec3_ptrs;
+	zdiff->apex = up->new_cont->apex;
+}
+
 static int commit_journal(conf_t *conf, zone_update_t *update)
 {
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
@@ -678,9 +685,7 @@ static int commit_journal(conf_t *conf, zone_update_t *update)
 	int ret = KNOT_EOK;
 	if (update->flags & UPDATE_NO_CHSET) {
 		zone_diff_t diff;
-		diff.nodes = *update->a_ctx->node_ptrs;
-		diff.nsec3s = *update->a_ctx->nsec3_ptrs;
-		diff.apex = update->new_cont->apex;
+		get_zone_diff(&diff, update);
 		return zone_diff_store(conf, update->zone, &diff);
 	} else if ((update->flags & UPDATE_INCREMENTAL) ||
 	           (update->flags & UPDATE_HYBRID)) {
@@ -742,13 +747,19 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 	}
 
 	ssize_t upd_count = 0;
-	if ((update->flags & UPDATE_INCREMENTAL)) {
+	if ((update->flags & UPDATE_NO_CHSET)) {
+		zone_diff_t diff;
+		get_zone_diff(&diff, update);
 		ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
-		                               update->change.remove, update->new_cont,
+		                               NULL, &diff, update->new_cont,
+		                               false, zone_catalog(update->zone), &upd_count);
+	} else if ((update->flags & UPDATE_INCREMENTAL)) {
+		ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
+		                               update->change.remove, NULL, update->new_cont,
 		                               true, zone_catalog(update->zone), &upd_count);
 		if (ret == KNOT_EOK) {
 			ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
-			                               update->change.add, update->new_cont,
+			                               update->change.add, NULL, update->new_cont,
 			                               false, NULL, &upd_count);
 		}
 	} else {
@@ -757,7 +768,7 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 		                             update->zone->name, &upd_count);
 		if (ret == KNOT_EOK) {
 			ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
-			                               update->new_cont, update->new_cont,
+			                               update->new_cont, NULL, update->new_cont,
 			                               false, NULL, &upd_count);
 		}
 	}
@@ -1015,9 +1026,7 @@ bool zone_update_no_change(zone_update_t *update)
 
 	if (update->flags & UPDATE_NO_CHSET) {
 		zone_diff_t diff;
-		diff.nodes = *update->a_ctx->node_ptrs;
-		diff.nsec3s = *update->a_ctx->nsec3_ptrs;
-		diff.apex = update->new_cont->apex;
+		get_zone_diff(&diff, update);
 		return (zone_diff_serialized_size(diff) == 0);
 	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		return changeset_empty(&update->change);

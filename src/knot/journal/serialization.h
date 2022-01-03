@@ -23,7 +23,7 @@
 #include "knot/updates/changesets.h"
 #include "contrib/wire_ctx.h"
 
-typedef struct {
+typedef struct zone_diff {
 	zone_tree_t nodes;
 	zone_tree_t nsec3s;
 	zone_node_t *apex;
