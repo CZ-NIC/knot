@@ -1048,7 +1048,7 @@ static bool zone_diff_rdataset(const zone_contents_t *c, uint16_t rrtype)
 {
 	const knot_rdataset_t *a = node_rdataset(binode_counterpart(c->apex), rrtype);
 	const knot_rdataset_t *b = node_rdataset(c->apex, rrtype);
-	if (a == NULL && b == NULL) {
+	if ((a == NULL && b == NULL) || (a != NULL && b != NULL && a->rdata == b->rdata)) {
 		return false;
 	} else {
 		return !knot_rdataset_eq(a, b);

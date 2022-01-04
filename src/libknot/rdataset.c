@@ -249,7 +249,7 @@ bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr)
 _public_
 bool knot_rdataset_subset(const knot_rdataset_t *subset, const knot_rdataset_t *of)
 {
-	if (subset == NULL) {
+	if (subset == NULL || (of != NULL && subset->rdata == of->rdata)) {
 		return true;
 	}
 
