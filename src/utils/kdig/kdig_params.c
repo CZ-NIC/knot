@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -2199,7 +2199,7 @@ static void print_help(void)
 	       "       +[no]edns[=N]              Use EDNS(=version).\n"
 	       "       +[no]timeout=T             Set wait for reply interval in seconds.\n"
 	       "       +[no]retry=N               Set number of retries.\n"
-	       "       +[no]cookie=HEX            Attach EDNS(0) cookie to the query.\n"
+	       "       +[no]cookie[=HEX]          Attach EDNS(0) cookie to the query.\n"
 	       "       +[no]badcookie             Repeat a query with the correct cookie.\n"
 	       "       +[no]ednsopt=CODE[:HEX]    Set custom EDNS option.\n"
 	       "       +noidn                     Disable IDN transformation.\n"

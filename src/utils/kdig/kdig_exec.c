@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -204,10 +204,15 @@ static int process_dnstap(const query_t *query)
 		}
 
 		// Parse packet and reconstruct required data.
-		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
+		ret = knot_pkt_parse(pkt, KNOT_PF_NOCANON);
+		if (ret == KNOT_EOK || ret == KNOT_ETRAIL) {
 			time_t timestamp = 0;
 			float  query_time = 0.0;
 			net_t  net_ctx = { 0 };
+
+			if (ret == KNOT_ETRAIL) {
+				WARN("malformed message (%s)\n", knot_strerror(ret));
+			}
 
 			if (is_query) {
 				if (message->has_query_time_sec) {
@@ -540,7 +545,7 @@ static void check_reply_question(const knot_pkt_t *reply,
 	}
 }
 
-static int64_t first_serial_check(const knot_pkt_t *reply)
+static int64_t first_serial_check(const knot_pkt_t *reply, const knot_pkt_t *query)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(reply, KNOT_ANSWER);
 
@@ -553,12 +558,16 @@ static int64_t first_serial_check(const knot_pkt_t *reply)
 	if (first->type != KNOT_RRTYPE_SOA) {
 		return -1;
 	} else {
+		if (!knot_dname_is_case_equal(first->owner, knot_pkt_qname(query))) {
+			WARN("leading SOA owner not matching the requested zone name\n");
+		}
+
 		return knot_soa_serial(first->rrs.rdata);
 	}
 }
 
 static bool finished_xfr(const uint32_t serial, const knot_pkt_t *reply,
-                         const size_t msg_count, bool is_ixfr)
+                         const knot_pkt_t *query, const size_t msg_count, bool is_ixfr)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(reply, KNOT_ANSWER);
 
@@ -573,6 +582,10 @@ static bool finished_xfr(const uint32_t serial, const knot_pkt_t *reply,
 	} else if (answer->count == 1 && msg_count == 1) {
 		return is_ixfr;
 	} else {
+		if (!knot_dname_is_case_equal(last->owner, knot_pkt_qname(query))) {
+			WARN("final SOA owner not matching the requested zone name\n");
+		}
+
 		return knot_soa_serial(last->rrs.rdata) == serial;
 	}
 }
@@ -653,7 +666,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		// Create copy of query packet for parsing.
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
 		if (q != NULL) {
-			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
+			if (knot_pkt_parse(q, KNOT_PF_NOCANON) == KNOT_EOK) {
 				print_packet(q, net, query->size,
 				             time_diff_ms(&t_start, &t_query),
 				             timestamp, false, style);
@@ -697,7 +710,10 @@ static int process_query_packet(const knot_pkt_t      *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, KNOT_PF_NOCANON) != KNOT_EOK) {
+		ret = knot_pkt_parse(reply, KNOT_PF_NOCANON);
+		if (ret == KNOT_ETRAIL) {
+			WARN("malformed reply packet (%s)\n", knot_strerror(ret));
+		} else if (ret != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
@@ -969,7 +985,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		// Create copy of query packet for parsing.
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
 		if (q != NULL) {
-			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
+			if (knot_pkt_parse(q, KNOT_PF_NOCANON) == KNOT_EOK) {
 				print_packet(q, net, query->size,
 				             time_diff_ms(&t_start, &t_query),
 					     timestamp, false, style);
@@ -1013,7 +1029,10 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, 0) != KNOT_EOK) {
+		ret = knot_pkt_parse(reply, KNOT_PF_NOCANON);
+		if (ret == KNOT_ETRAIL) {
+			WARN("malformed reply packet (%s)\n", knot_strerror(ret));
+		} else if (ret != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(reply);
 			net_close(net);
@@ -1064,7 +1083,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			}
 
 			// Read first SOA serial.
-			serial = first_serial_check(reply);
+			serial = first_serial_check(reply, query);
 
 			if (serial < 0) {
 				ERR("first answer record from %s isn't SOA\n",
@@ -1089,7 +1108,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		print_data_xfr(reply, style);
 
 		// Check for finished transfer.
-		if (finished_xfr(serial, reply, msg_count, query_ctx->serial != -1)) {
+		if (finished_xfr(serial, reply, query, msg_count, query_ctx->serial != -1)) {
 			knot_pkt_free(reply);
 			break;
 		}
