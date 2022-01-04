@@ -693,7 +693,9 @@ static int commit_journal(conf_t *conf, zone_update_t *update)
 	if (update->flags & UPDATE_NO_CHSET) {
 		zone_diff_t diff;
 		get_zone_diff(&diff, update);
-		return zone_diff_store(conf, update->zone, &diff);
+		if (content != JOURNAL_CONTENT_NONE && !zone_update_no_change(update)) {
+			ret = zone_diff_store(conf, update->zone, &diff);
+		}
 	} else if ((update->flags & UPDATE_INCREMENTAL) ||
 	           (update->flags & UPDATE_HYBRID)) {
 		changeset_t *extra = (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL;
