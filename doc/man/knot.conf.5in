@@ -1003,6 +1003,7 @@ remote:
     via: ADDR[@INT] ...
     key: key_id
     block\-notify\-after\-transfer: BOOL
+    no\-edns: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -1045,6 +1046,13 @@ the communication with the remote server.
 .sp
 When incoming AXFR/IXFR from this remote (as a primary server), suppress
 sending NOTIFY messages to all configured secondary servers.
+.sp
+\fIDefault:\fP off
+.SS no\-edns
+.sp
+If enabled, no OPT record (EDNS) is inserted to outgoing requests to this
+remote server. This mode is necessary for communication with some broken
+implementations (e.g. Windows Server 2016).
 .sp
 \fIDefault:\fP off
 .SH REMOTES SECTION
