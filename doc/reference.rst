@@ -1063,6 +1063,7 @@ transfer, target for a notification, etc.).
      via: ADDR[@INT] ...
      key: key_id
      block-notify-after-transfer: BOOL
+     no-edns: BOOL
 
 .. _remote_id:
 
@@ -1117,6 +1118,17 @@ block-notify-after-transfer
 
 When incoming AXFR/IXFR from this remote (as a primary server), suppress
 sending NOTIFY messages to all configured secondary servers.
+
+*Default:* off
+
+.. _remote_no-edns:
+
+no-edns
+-------
+
+If enabled, no OPT record (EDNS) is inserted to outgoing requests to this
+remote server. This mode is necessary for communication with some broken
+implementations (e.g. Windows Server 2016).
 
 *Default:* off
 
