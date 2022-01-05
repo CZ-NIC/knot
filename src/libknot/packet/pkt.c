@@ -315,6 +315,10 @@ static void payload_clear(knot_pkt_t *pkt)
 	/* Reset TSIG wire reference. */
 	pkt->tsig_wire.pos = NULL;
 	pkt->tsig_wire.len = 0;
+
+	/* Free lowercased QNAME. */
+	mm_free(&pkt->mm, pkt->lower_qname);
+	pkt->lower_qname = NULL;
 }
 
 _public_
