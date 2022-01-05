@@ -19,7 +19,6 @@
 #include "knot/conf/schema.h"
 #include "knot/query/capture.h" // Forces static module!
 #include "knot/query/requestor.h" // Forces static module!
-#include "knot/nameserver/process_query.h" // Forces static module!
 
 #define MOD_REMOTE		"\x06""remote"
 #define MOD_ADDRESS		"\x07""address"
@@ -90,8 +89,7 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 	/* Capture layer context. */
 	const knot_layer_api_t *capture = query_capture_api();
 	struct capture_param capture_param = {
-		.sink = pkt,
-		.orig_qname = qdata->extra->orig_qname
+		.sink = pkt
 	};
 
 	/* Create a forwarding request. */
