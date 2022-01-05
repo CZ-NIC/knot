@@ -96,8 +96,6 @@ int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Check frozen zone. */
 	NS_NEED_NOT_FROZEN(qdata);
 
-	/* Restore original QNAME for DDNS ACL checks. */
-	process_query_qname_case_restore(qdata->query, qdata);
 	/* Store update into DDNS queue. */
 	int ret = update_enqueue((zone_t *)qdata->extra->zone, qdata);
 	if (ret != KNOT_EOK) {

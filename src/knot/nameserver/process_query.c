@@ -429,12 +429,6 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 		return KNOT_ENOTSUP;
 	}
 
-	/* Convert query QNAME to lowercase, but keep original QNAME case.
-	 * Already checked for absence of compression and length.
-	 */
-	memcpy(qdata->extra->orig_qname, qname, query->qname_size);
-	process_query_qname_case_lower(query);
-
 	/* Find zone for QNAME. */
 	qdata->extra->zone = answer_zone_find(query, server->zone_db);
 	if (qdata->extra->zone != NULL && qdata->extra->contents == NULL) {
@@ -487,9 +481,6 @@ static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 		knot_wire_set_aa(pkt->wire);
 		knot_wire_set_tc(pkt->wire);
 	}
-
-	/* Restore original QNAME. */
-	process_query_qname_case_restore(pkt, qdata);
 
 	/* Move to Additionals to add OPT and TSIG. */
 	if (pkt->current != KNOT_ADDITIONAL) {
@@ -591,9 +582,6 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 	/* Postprocessing. */
 	if (next_state == KNOT_STATE_DONE || next_state == KNOT_STATE_PRODUCE) {
-		/* Restore original QNAME. */
-		process_query_qname_case_restore(pkt, qdata);
-
 		/* Move to Additionals to add OPT and TSIG. */
 		if (pkt->current != KNOT_ADDITIONAL) {
 			(void)knot_pkt_begin(pkt, KNOT_ADDITIONAL);
@@ -709,10 +697,8 @@ int process_query_verify(knotd_qdata_t *qdata)
 	ctx->tsig_digestlen = knot_tsig_rdata_mac_length(query->tsig_rr);
 
 	/* Checking query. */
-	process_query_qname_case_restore(query, qdata);
 	int ret = knot_tsig_server_check(query->tsig_rr, query->wire,
 	                                 query->size, &ctx->tsig_key);
-	process_query_qname_case_lower(query);
 
 	/* Evaluate TSIG check results. */
 	switch(ret) {

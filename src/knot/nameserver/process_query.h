@@ -93,31 +93,6 @@ int process_query_verify(knotd_qdata_t *qdata);
 int process_query_sign_response(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 
 /*!
- * \brief Restore QNAME letter case.
- *
- * \param pkt    Incoming message.
- * \param qdata  Query data.
- */
-static inline void process_query_qname_case_restore(knot_pkt_t *pkt, knotd_qdata_t *qdata)
-{
-	// If original QNAME is empty, query is either unparsed or for root domain.
-	if (qdata->extra->orig_qname[0] != '\0') {
-		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
-		       qdata->extra->orig_qname, qdata->query->qname_size);
-	}
-}
-
-/*!
- * \brief Convert QNAME to lowercase format for processing.
- *
- * \param pkt    Incoming message.
- */
-static inline void process_query_qname_case_lower(knot_pkt_t *pkt)
-{
-	knot_dname_to_lower(knot_pkt_qname(pkt));
-}
-
-/*!
  * \brief Puts RRSet to packet, will store its RRSIG for later use.
  *
  * \param pkt         Packet to store RRSet into.

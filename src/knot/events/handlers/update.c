@@ -113,7 +113,6 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 		init_qdata_from_request(&qdata, zone, req, &params, &extra);
 
 		store_original_qname(&qdata, req->query);
-		process_query_qname_case_lower(req->query);
 
 		int ret = check_prereqs(req, zone, up, &qdata);
 		if (ret != KNOT_EOK) {
@@ -125,8 +124,6 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-
-		process_query_qname_case_restore(req->query, &qdata);
 	}
 
 	return KNOT_EOK;
