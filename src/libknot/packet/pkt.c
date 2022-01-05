@@ -475,7 +475,7 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	assert(pkt->size == KNOT_WIRE_HEADER_SIZE);
 	assert(pkt->rrset_count == 0);
 
-	/* Copy name wireformat. */
+	/* Copy name into wire format buffer. */
 	wire_ctx_t wire = wire_ctx_init(pkt->wire, pkt->max_size);
 	wire_ctx_set_offset(&wire, KNOT_WIRE_HEADER_SIZE);
 
@@ -485,6 +485,16 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 		return qname_len;
 	}
 	wire_ctx_skip(&wire, qname_len);
+
+	/* Allocate lower_qname field. */
+	pkt->lower_qname = mm_alloc(&pkt->mm, qname_len);
+	if (pkt->lower_qname == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Copy QNAME and canonicalize to lowercase. */
+	memcpy(pkt->lower_qname, qname, qname_len);
+	knot_dname_to_lower(pkt->lower_qname);
 
 	/* Copy QTYPE & QCLASS */
 	wire_ctx_write_u16(&wire, qtype);
