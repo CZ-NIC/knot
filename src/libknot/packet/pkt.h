@@ -83,6 +83,9 @@ struct knot_pkt {
 	knot_rrset_t *opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 
+	/*! Lowercased QNAME. */
+	knot_dname_t *lower_qname;
+
 	/*! EDNS option positions in the wire (if parsed from wire). */
 	knot_edns_options_t *edns_opts;
 
