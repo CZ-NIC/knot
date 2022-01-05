@@ -358,6 +358,18 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	/* Clear payload. */
 	payload_clear(pkt);
 
+	/* Allocate lower_qname field. */
+	pkt->lower_qname = mm_alloc(&pkt->mm, pkt->qname_size);
+	if (pkt->lower_qname == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Copy QNAME and canonicalize to lowercase. */
+	memcpy(pkt->lower_qname,
+	       pkt->wire + KNOT_WIRE_HEADER_SIZE,
+	       pkt->qname_size);
+	knot_dname_to_lower(pkt->lower_qname);
+
 	/* Clear compression context. */
 	compr_clear(&pkt->compr);
 
