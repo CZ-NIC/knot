@@ -188,6 +188,15 @@ static inline const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
 	return pkt->lower_qname;
 }
 
+static inline const knot_dname_t *knot_pkt_wire_qname(const knot_pkt_t *pkt)
+{
+	if (pkt == NULL || pkt->qname_size == 0) {
+		return NULL;
+	}
+
+	return pkt->wire + KNOT_WIRE_HEADER_SIZE;
+}
+
 static inline uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 {
 	if (pkt == NULL || pkt->qname_size == 0) {
