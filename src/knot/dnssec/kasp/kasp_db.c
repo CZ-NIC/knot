@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -376,24 +376,26 @@ int kasp_db_load_nsec3salt(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 {
 	MDB_val key = make_key_str(KASPDBKEY_NSEC3SALT, zone_name, NULL);
 	knot_lmdb_txn_t txn = { 0 };
-	memset(nsec3salt, 0, sizeof(*nsec3salt));
 	knot_lmdb_begin(db, &txn, false);
-	if (knot_lmdb_find(&txn, &key, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
-		nsec3salt->size = txn.cur_val.mv_size;
-		nsec3salt->data = malloc(txn.cur_val.mv_size + 1); // +1 because it can be zero
-		if (nsec3salt->data == NULL) {
-			txn.ret = KNOT_ENOMEM;
-		} else {
-			memcpy(nsec3salt->data, txn.cur_val.mv_data, txn.cur_val.mv_size);
+	if (nsec3salt != NULL) {
+		memset(nsec3salt, 0, sizeof(*nsec3salt));
+		if (knot_lmdb_find(&txn, &key, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
+			nsec3salt->size = txn.cur_val.mv_size;
+			nsec3salt->data = malloc(txn.cur_val.mv_size + 1); // +1 because it can be zero
+			if (nsec3salt->data == NULL) {
+				txn.ret = KNOT_ENOMEM;
+			} else {
+				memcpy(nsec3salt->data, txn.cur_val.mv_data, txn.cur_val.mv_size);
+			}
 		}
-		*(uint8_t *)key.mv_data = KASPDBKEY_NSEC3TIME;
 	}
+	*(uint8_t *)key.mv_data = KASPDBKEY_NSEC3TIME;
 	if (knot_lmdb_find(&txn, &key, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
 		knot_lmdb_unmake_curval(&txn, "L", salt_created);
 	}
 	knot_lmdb_abort(&txn);
 	free(key.mv_data);
-	if (txn.ret != KNOT_EOK) {
+	if (txn.ret != KNOT_EOK && nsec3salt != NULL) {
 		free(nsec3salt->data);
 	}
 	return txn.ret;

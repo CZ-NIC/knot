@@ -16,6 +16,7 @@
 
 #include <assert.h>
 
+#include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/events/replan.h"
 
 #define TIME_CANCEL 0
@@ -126,12 +127,16 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		conf_id_fix_default(&policy);
 		val = conf_id_get(conf, C_POLICY, C_NSEC3, &policy);
 		if (conf_bool(&val)) {
-			if (zone->timers.last_resalt == 0) {
+			knot_time_t last_resalt = 0;
+			if (knot_lmdb_open(zone_kaspdb(zone)) == KNOT_EOK) {
+				(void)kasp_db_load_nsec3salt(zone_kaspdb(zone), zone->name, NULL, &last_resalt);
+			}
+			if (last_resalt == 0) {
 				resalt = now;
 			} else {
 				val = conf_id_get(conf, C_POLICY, C_NSEC3_SALT_LIFETIME, &policy);
 				if (conf_int(&val) > 0) {
-					resalt = zone->timers.last_resalt + conf_int(&val);
+					resalt = last_resalt + conf_int(&val);
 				}
 			}
 		}

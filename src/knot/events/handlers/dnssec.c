@@ -54,10 +54,6 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 		zone->timers.next_ds_check = now;
 	}
 
-	if (refresh->last_nsec3resalt) {
-		zone->timers.last_resalt = refresh->last_nsec3resalt;
-	}
-
 	zone_events_schedule_at(zone,
 		ZONE_EVENT_DNSSEC, refresh_at ? (time_t)refresh_at : ignore,
 		ZONE_EVENT_DS_CHECK, refresh->plan_ds_check ? now : ignore,

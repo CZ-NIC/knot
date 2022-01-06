@@ -32,7 +32,6 @@ int event_nsec3resalt(conf_t *conf, zone_t *zone)
 	ret = knot_dnssec_nsec3resalt(&kctx, true, &salt_changed, &next_resalt);
 	if (ret == KNOT_EOK && salt_changed != 0) {
 		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
-		zone->timers.last_resalt = kctx.now;
 	}
 
 	kdnssec_ctx_deinit(&kctx);
