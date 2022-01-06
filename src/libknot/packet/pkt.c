@@ -183,7 +183,8 @@ static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 {
 	assert(pkt);
 
-	memset(pkt, 0, sizeof(knot_pkt_t));
+	memset(pkt, 0, offsetof(knot_pkt_t, lower_qname));
+	pkt->lower_qname[0] = '\0';
 
 	/* No data to free, set memory context. */
 	memcpy(&pkt->mm, mm, sizeof(knot_mm_t));
@@ -315,10 +316,6 @@ static void payload_clear(knot_pkt_t *pkt)
 	/* Reset TSIG wire reference. */
 	pkt->tsig_wire.pos = NULL;
 	pkt->tsig_wire.len = 0;
-
-	/* Free lowercased QNAME. */
-	mm_free(&pkt->mm, pkt->lower_qname);
-	pkt->lower_qname = NULL;
 }
 
 _public_
@@ -358,12 +355,6 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	/* Clear payload. */
 	payload_clear(pkt);
 
-	/* Allocate lower_qname field. */
-	pkt->lower_qname = mm_alloc(&pkt->mm, pkt->qname_size);
-	if (pkt->lower_qname == NULL) {
-		return KNOT_ENOMEM;
-	}
-
 	/* Copy QNAME and canonicalize to lowercase. */
 	memcpy(pkt->lower_qname,
 	       pkt->wire + KNOT_WIRE_HEADER_SIZE,
@@ -392,6 +383,9 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 
 	/* Clear compression context. */
 	compr_clear(&pkt->compr);
+
+	/* Initialize lowercased QNAME. */
+	pkt->lower_qname[0] = '\0';
 }
 
 _public_
@@ -485,12 +479,6 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 		return qname_len;
 	}
 	wire_ctx_skip(&wire, qname_len);
-
-	/* Allocate lower_qname field. */
-	pkt->lower_qname = mm_alloc(&pkt->mm, qname_len);
-	if (pkt->lower_qname == NULL) {
-		return KNOT_ENOMEM;
-	}
 
 	/* Copy QNAME and canonicalize to lowercase. */
 	memcpy(pkt->lower_qname, qname, qname_len);
@@ -629,12 +617,6 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 
 	pkt->parsed += question_size;
 	pkt->qname_size = len;
-
-	/* Allocate lower_qname field. */
-	pkt->lower_qname = mm_alloc(&pkt->mm, pkt->qname_size);
-	if (pkt->lower_qname == NULL) {
-		return KNOT_ENOMEM;
-	}
 
 	/* Copy QNAME and canonicalize to lowercase. */
 	memcpy(pkt->lower_qname, pkt->wire + KNOT_WIRE_HEADER_SIZE, pkt->qname_size);
