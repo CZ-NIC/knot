@@ -43,9 +43,7 @@ class TimerDBInfo:
                 0x02: ("legacy_expire",  cls.format_timestamp),
                 0x03: ("legacy_flush",   cls.format_timestamp),
                 # knot >= 2.4
-                0x80: ("soa_expire",     cls.format_seconds),
                 0x81: ("last_flush",     cls.format_timestamp),
-                0x82: ("last_refresh",   cls.format_timestamp),
                 0x83: ("next_refresh",   cls.format_timestamp),
                 # knot >= 2.6
                 0x84: ("last_resalt",    cls.format_timestamp),
@@ -57,6 +55,7 @@ class TimerDBInfo:
                 0x88: ("notify_serial",  cls.format_notify_serial),
                 # knot >= 3.2
                 0x89: ("last_refresh_ok", cls.format_bool),
+                0x8a: ("next_refresh",    cls.format_timestamp),
         }
         if id in timers:
             return (timers[id][0], timers[id][1](value))
