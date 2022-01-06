@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -118,7 +118,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	time_t resalt = TIME_CANCEL;
+	time_t resalt = TIME_IGNORE;
 	time_t ds_check = TIME_CANCEL;
 	time_t ds_push = TIME_CANCEL;
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
@@ -156,7 +156,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	                        ZONE_EVENT_EXPIRE, expire_pre,
 	                        ZONE_EVENT_EXPIRE, expire,
 	                        ZONE_EVENT_FLUSH, flush,
-	                        ZONE_EVENT_NSEC3RESALT, resalt,
+	                        ZONE_EVENT_DNSSEC, resalt,
 	                        ZONE_EVENT_DS_CHECK, ds_check,
 	                        ZONE_EVENT_DS_PUSH, ds_push);
 }
