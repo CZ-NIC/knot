@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -361,7 +361,11 @@ const knot_rdataset_t *zone_update_to(zone_update_t *update)
 		return NULL;
 	}
 
-	if (update->flags & UPDATE_FULL) {
+	if (update->flags & UPDATE_NO_CHSET) {
+		zone_diff_t diff = { .apex = update->new_cont->apex };
+		return zone_diff_to(&diff) == zone_diff_from(&diff) ?
+		       NULL : node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+	} else if (update->flags & UPDATE_FULL) {
 		const zone_node_t *apex = update->new_cont->apex;
 		return node_rdataset(apex, KNOT_RRTYPE_SOA);
 	} else {
@@ -459,10 +463,11 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		int ret = solve_add_different_ttl(update, rrset);
-		if (ret == KNOT_EOK) {
+		if (ret == KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
 			ret = changeset_add_addition(&update->change, rrset, CHANGESET_CHECK);
 		}
 		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+			assert(!(update->flags & UPDATE_NO_CHSET));
 			ret = changeset_add_addition(&update->extra_ch, rrset, CHANGESET_CHECK);
 		}
 		if (ret != KNOT_EOK) {
@@ -474,7 +479,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			// replace previous SOA
 			int ret = apply_replace_soa(update->a_ctx, rrset);
-			if (ret != KNOT_EOK) {
+			if (ret != KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
 				changeset_remove_addition(&update->change, rrset);
 			}
 			return ret;
@@ -482,7 +487,9 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 		int ret = apply_add_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
-			changeset_remove_addition(&update->change, rrset);
+			if (!(update->flags & UPDATE_NO_CHSET)) {
+				changeset_remove_addition(&update->change, rrset);
+			}
 			return ret;
 		}
 
@@ -525,9 +532,11 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EOK;
 	}
 
-	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && rrset->type != KNOT_RRTYPE_SOA) {
+	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
+	    rrset->type != KNOT_RRTYPE_SOA && !(update->flags & UPDATE_NO_CHSET)) {
 		int ret = changeset_add_removal(&update->change, rrset, CHANGESET_CHECK);
 		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+			assert(!(update->flags & UPDATE_NO_CHSET));
 			ret = changeset_add_removal(&update->extra_ch, rrset, CHANGESET_CHECK);
 		}
 		if (ret != KNOT_EOK) {
@@ -543,7 +552,9 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 
 		int ret = apply_remove_rr(update->a_ctx, rrset);
 		if (ret != KNOT_EOK) {
-			changeset_remove_removal(&update->change, rrset);
+			if (!(update->flags & UPDATE_NO_CHSET)) {
+				changeset_remove_removal(&update->change, rrset);
+			}
 			return ret;
 		}
 
@@ -667,15 +678,28 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
 	return set_new_soa(update, conf_opt(&val));
 }
 
+static void get_zone_diff(zone_diff_t *zdiff, zone_update_t *up)
+{
+	zdiff->nodes = *up->a_ctx->node_ptrs;
+	zdiff->nsec3s = *up->a_ctx->nsec3_ptrs;
+	zdiff->apex = up->new_cont->apex;
+}
+
 static int commit_journal(conf_t *conf, zone_update_t *update)
 {
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
 	unsigned content = conf_opt(&val);
 	int ret = KNOT_EOK;
-	if ((update->flags & UPDATE_INCREMENTAL) ||
-	    (update->flags & UPDATE_HYBRID)) {
+	if (update->flags & UPDATE_NO_CHSET) {
+		zone_diff_t diff;
+		get_zone_diff(&diff, update);
+		if (content != JOURNAL_CONTENT_NONE && !zone_update_no_change(update)) {
+			ret = zone_diff_store(conf, update->zone, &diff);
+		}
+	} else if ((update->flags & UPDATE_INCREMENTAL) ||
+	           (update->flags & UPDATE_HYBRID)) {
 		changeset_t *extra = (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL;
-		if (content != JOURNAL_CONTENT_NONE && !changeset_empty(&update->change)) {
+		if (content != JOURNAL_CONTENT_NONE && !zone_update_no_change(update)) {
 			ret = zone_change_store(conf, update->zone, &update->change, extra);
 		}
 	} else {
@@ -692,7 +716,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
 
-	if (zone_update_to(update) == NULL && !changeset_empty(&update->change)) {
+	if (zone_update_to(update) == NULL && !zone_update_no_change(update)) {
 		/* No SOA in the update, create one according to the current policy */
 		int ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
@@ -732,13 +756,19 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 	}
 
 	ssize_t upd_count = 0;
-	if ((update->flags & UPDATE_INCREMENTAL)) {
+	if ((update->flags & UPDATE_NO_CHSET)) {
+		zone_diff_t diff;
+		get_zone_diff(&diff, update);
 		ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
-		                               update->change.remove, update->new_cont,
+		                               NULL, &diff, update->new_cont,
+		                               false, zone_catalog(update->zone), &upd_count);
+	} else if ((update->flags & UPDATE_INCREMENTAL)) {
+		ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
+		                               update->change.remove, NULL, update->new_cont,
 		                               true, zone_catalog(update->zone), &upd_count);
 		if (ret == KNOT_EOK) {
 			ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
-			                               update->change.add, update->new_cont,
+			                               update->change.add, NULL, update->new_cont,
 			                               false, NULL, &upd_count);
 		}
 	} else {
@@ -747,7 +777,7 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 		                             update->zone->name, &upd_count);
 		if (ret == KNOT_EOK) {
 			ret = catalog_update_from_zone(zone_catalog_upd(update->zone),
-			                               update->new_cont, update->new_cont,
+			                               update->new_cont, NULL, update->new_cont,
 			                               false, NULL, &upd_count);
 		}
 	}
@@ -879,7 +909,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	int ret = KNOT_EOK;
 
-	if ((update->flags & UPDATE_INCREMENTAL) && changeset_empty(&update->change)) {
+	if ((update->flags & UPDATE_INCREMENTAL) && zone_update_no_change(update)) {
 		zone_update_clear(update);
 		return KNOT_EOK;
 	}
@@ -1003,12 +1033,27 @@ bool zone_update_no_change(zone_update_t *update)
 		return true;
 	}
 
-	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+	if (update->flags & UPDATE_NO_CHSET) {
+		zone_diff_t diff;
+		get_zone_diff(&diff, update);
+		return (zone_diff_serialized_size(diff) == 0);
+	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		return changeset_empty(&update->change);
 	} else {
 		/* This branch does not make much sense and FULL update will most likely
 		 * be a change every time anyway, just return false. */
 		return false;
+	}
+}
+
+static bool zone_diff_rdataset(const zone_contents_t *c, uint16_t rrtype)
+{
+	const knot_rdataset_t *a = node_rdataset(binode_counterpart(c->apex), rrtype);
+	const knot_rdataset_t *b = node_rdataset(c->apex, rrtype);
+	if ((a == NULL && b == NULL) || (a != NULL && b != NULL && a->rdata == b->rdata)) {
+		return false;
+	} else {
+		return !knot_rdataset_eq(a, b);
 	}
 }
 
@@ -1025,7 +1070,11 @@ static bool contents_have_dnskey(const zone_contents_t *contents)
 
 bool zone_update_changes_dnskey(zone_update_t *update)
 {
-	if (update->flags & UPDATE_FULL) {
+	if (update->flags & UPDATE_NO_CHSET) {
+		return (zone_diff_rdataset(update->new_cont, KNOT_RRTYPE_DNSKEY) ||
+		        zone_diff_rdataset(update->new_cont, KNOT_RRTYPE_CDNSKEY) ||
+		        zone_diff_rdataset(update->new_cont, KNOT_RRTYPE_CDS));
+	} else if (update->flags & UPDATE_FULL) {
 		return contents_have_dnskey(update->new_cont);
 	} else {
 		return (contents_have_dnskey(update->change.remove) ||

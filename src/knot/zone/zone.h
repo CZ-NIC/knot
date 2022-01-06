@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
 #include "knot/journal/journal_basic.h"
+#include "knot/journal/serialization.h"
 #include "knot/events/events.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
@@ -153,6 +154,7 @@ inline static zone_journal_t zone_journal(zone_t *zone)
 }
 
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset_t *extra);
+int zone_diff_store(conf_t *conf, zone_t *zone, const zone_diff_t *diff);
 int zone_changes_clear(conf_t *conf, zone_t *zone);
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents);
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,8 @@
 #include "knot/journal/serialization.h"
 #include "libknot/error.h"
 
-static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser, const changeset_t *ch, uint32_t ch_serial_to)
+static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser,
+                                    const knot_dname_t *apex, bool zij, uint32_t ch_from, uint32_t ch_to)
 {
 	MDB_val chunk;
 	uint32_t i = 0;
@@ -34,16 +35,18 @@ static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser, 
 		}
 		chunk.mv_size += JOURNAL_HEADER_SIZE;
 		chunk.mv_data = NULL;
-		MDB_val key = journal_changeset_to_chunk_key(ch, i);
+		MDB_val key = journal_make_chunk_key(apex, ch_from, zij, i);
 		if (knot_lmdb_insert(txn, &key, &chunk)) {
-			journal_make_header(chunk.mv_data, ch_serial_to);
+			journal_make_header(chunk.mv_data, ch_to);
 			serialize_chunk(ser, chunk.mv_data + JOURNAL_HEADER_SIZE, chunk.mv_size - JOURNAL_HEADER_SIZE);
 		}
 		free(key.mv_data);
 		i++;
 	}
-	serialize_deinit(ser);
-	// return value is in the txn
+	int ret = serialize_deinit(ser);
+	if (txn->ret == KNOT_EOK) {
+		txn->ret = ret;
+	}
 }
 
 void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
@@ -53,7 +56,11 @@ void journal_write_changeset(knot_lmdb_txn_t *txn, const changeset_t *ch)
 		txn->ret = KNOT_ENOMEM;
 		return;
 	}
-	journal_write_serialize(txn, ser, ch, changeset_to(ch));
+	if (ch->remove == NULL) {
+		journal_write_serialize(txn, ser, ch->soa_to->owner, true, 0, changeset_to(ch));
+	} else {
+		journal_write_serialize(txn, ser, ch->soa_to->owner, false, changeset_from(ch), changeset_to(ch));
+	}
 }
 
 void journal_write_zone(knot_lmdb_txn_t *txn, const zone_contents_t *z)
@@ -63,10 +70,17 @@ void journal_write_zone(knot_lmdb_txn_t *txn, const zone_contents_t *z)
 		txn->ret = KNOT_ENOMEM;
 		return;
 	}
-	changeset_t fake_ch;
-	fake_ch.soa_from = NULL;
-	fake_ch.add = (zone_contents_t *)z;
-	journal_write_serialize(txn, ser, &fake_ch, zone_contents_serial(z));
+	journal_write_serialize(txn, ser, z->apex->owner, true, 0, zone_contents_serial(z));
+}
+
+void journal_write_zone_diff(knot_lmdb_txn_t *txn, const zone_diff_t *z)
+{
+	serialize_ctx_t *ser = serialize_zone_diff_init(z);
+	if (ser == NULL) {
+		txn->ret = KNOT_ENOMEM;
+		return;
+	}
+	journal_write_serialize(txn, ser, z->apex->owner, false, zone_diff_from(z), zone_diff_to(z));
 }
 
 static bool delete_one(knot_lmdb_txn_t *txn, bool del_zij, uint32_t del_serial,
@@ -242,15 +256,22 @@ int journal_insert_zone(zone_journal_t j, const zone_contents_t *z)
 	return txn.ret;
 }
 
-int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *extra)
+int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *extra,
+                   const zone_diff_t *zdiff)
 {
-	size_t ch_size = changeset_serialized_size(ch);
+	assert(zdiff == NULL || (ch == NULL && extra == NULL));
+
+	size_t ch_size = zdiff == NULL ? changeset_serialized_size(ch) :
+	                                 zone_diff_serialized_size(*zdiff);
 	size_t max_usage = journal_conf_max_usage(j);
 	if (ch_size >= max_usage) {
 		return KNOT_ESPACE;
 	}
-	if (extra != NULL && (changeset_to(extra) != changeset_to(ch) ||
-	     changeset_from(extra) == changeset_from(ch))) {
+
+	uint32_t ch_from = zdiff == NULL ? changeset_from(ch) : zone_diff_from(zdiff);
+	uint32_t ch_to = zdiff == NULL ? changeset_to(ch) : zone_diff_to(zdiff);
+	if (extra != NULL && (changeset_to(extra) != ch_to ||
+	     changeset_from(extra) == ch_from)) {
 		return KNOT_EINVAL;
 	}
 	int ret = knot_lmdb_open(j.db);
@@ -280,7 +301,7 @@ int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *e
 	journal_fix_occupation(j, &txn, &md, max_usage - ch_size, chs_limit - 1);
 
 	// avoid discontinuity
-	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && md.serial_to != changeset_from(ch)) {
+	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && md.serial_to != ch_from) {
 		if (journal_contains(&txn, true, 0, j.zone)) {
 			txn.ret = KNOT_ESEMCHECK;
 		} else {
@@ -290,12 +311,16 @@ int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *e
 	}
 
 	// avoid cycle
-	if (journal_contains(&txn, false, changeset_to(ch), j.zone)) {
+	if (journal_contains(&txn, false, ch_to, j.zone)) {
 		journal_fix_occupation(j, &txn, &md, INT64_MAX, 1);
 	}
 
-	journal_write_changeset(&txn, ch);
-	journal_metadata_after_insert(&md, changeset_from(ch), changeset_to(ch));
+	if (zdiff == NULL) {
+		journal_write_changeset(&txn, ch);
+	} else {
+		journal_write_zone_diff(&txn, zdiff);
+	}
+	journal_metadata_after_insert(&md, ch_from, ch_to);
 
 	if (extra != NULL) {
 		journal_write_changeset(&txn, extra);

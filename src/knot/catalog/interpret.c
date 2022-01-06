@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #include <stdio.h>
 
 #include "knot/catalog/interpret.h"
-#include "knot/zone/contents.h"
+#include "knot/journal/serialization.h"
 
 struct cat_upd_ctx;
 typedef int (*cat_interpret_cb_t)(zone_node_t *node, struct cat_upd_ctx *ctx);
@@ -28,6 +28,7 @@ typedef struct cat_upd_ctx {
 	const zone_contents_t *complete_conts;
 	int apex_labels;
 	bool remove;
+	bool zone_diff;
 	catalog_t *check;
 	cat_interpret_cb_t member_cb;
 	cat_interpret_cb_t property_cb;
@@ -80,19 +81,19 @@ static int interpret_node(zone_node_t *node, void * _ctx)
 	}
 }
 
-static int interpret_zone(const zone_contents_t *zone, cat_upd_ctx_t *ctx)
+static int interpret_zone(zone_diff_t *zdiff, cat_upd_ctx_t *ctx)
 {
 	knot_dname_storage_t sub;
 	if (knot_dname_store(sub, (uint8_t *)CATALOG_ZONES_LABEL) == 0 ||
-	    catalog_dname_append(sub, zone->apex->owner) == 0) {
+	    catalog_dname_append(sub, zdiff->apex->owner) == 0) {
 		return KNOT_EINVAL;
 	}
 
-	if (zone_contents_find_node(zone, sub) == NULL) {
+	if (zone_tree_get(&zdiff->nodes, sub) == NULL) {
 		return KNOT_EOK;
 	}
 
-	return zone_tree_sub_apply(zone->nodes, sub, true, interpret_node, ctx);
+	return zone_tree_sub_apply(&zdiff->nodes, sub, true, interpret_node, ctx);
 }
 
 static const knot_dname_t *property_get_member(const zone_node_t *prop_node,
@@ -127,6 +128,11 @@ static int cat_update_add_memb(zone_node_t *node, cat_upd_ctx_t *ctx)
 		return KNOT_ERROR;
 	}
 
+	const knot_rdataset_t *counter_ptr = node_rdataset(binode_counterpart(node), KNOT_RRTYPE_PTR);
+	if (knot_rdataset_subset(ptr, counter_ptr)) {
+		return KNOT_EOK;
+	}
+
 	knot_rdata_t *rdata = ptr->rdata;
 	int ret = KNOT_EOK;
 	for (int i = 0; ret == KNOT_EOK && i < ptr->count; i++) {
@@ -158,6 +164,11 @@ static int cat_update_add_grp(zone_node_t *node, cat_upd_ctx_t *ctx)
 		return KNOT_ERROR;
 	}
 
+	const knot_rdataset_t *counter_txt = node_rdataset(binode_counterpart(node), KNOT_RRTYPE_TXT);
+	if (knot_rdataset_subset(txt, counter_txt)) {
+		return KNOT_EOK;
+	}
+
 	const char *newgr = "";
 	size_t grlen = 0;
 	if (!ctx->remove) {
@@ -175,15 +186,34 @@ static int cat_update_add_grp(zone_node_t *node, cat_upd_ctx_t *ctx)
 }
 
 int catalog_update_from_zone(catalog_update_t *u, struct zone_contents *zone,
+                             const zone_diff_t *zone_diff,
                              const struct zone_contents *complete_contents,
                              bool remove, catalog_t *check, ssize_t *upd_count)
 {
-	cat_upd_ctx_t ctx = { u, complete_contents, knot_dname_labels(zone->apex->owner, NULL),
-	                      remove, check, cat_update_add_memb, cat_update_add_grp };
+	int ret = KNOT_EOK;
+	zone_diff_t zdiff;
+	assert(zone == NULL || zone_diff == NULL);
+	if (zone != NULL) {
+		zone_diff_from_zone(&zdiff, zone);
+	} else {
+		zdiff = *zone_diff;
+	}
+	cat_upd_ctx_t ctx = { u, complete_contents, knot_dname_labels(zdiff.apex->owner, NULL),
+	                      remove, zone_diff != NULL, check, cat_update_add_memb, cat_update_add_grp };
 
 	pthread_mutex_lock(&u->mutex);
 	*upd_count -= trie_weight(u->upd);
-	int ret = interpret_zone(zone, &ctx);
+	if (zone_diff != NULL) {
+		zone_diff_reverse(&zdiff);
+		ctx.remove = true;
+		ret = interpret_zone(&zdiff, &ctx);
+		zone_diff_reverse(&zdiff);
+		ctx.remove = false;
+		ctx.check = NULL;
+	}
+	if (ret == KNOT_EOK) {
+		ret = interpret_zone(&zdiff, &ctx);
+	}
 	*upd_count += trie_weight(u->upd);
 	pthread_mutex_unlock(&u->mutex);
 	return ret;
@@ -213,11 +243,14 @@ static int prop_verify(zone_node_t *node, cat_upd_ctx_t *ctx)
 int catalog_zone_verify(const struct zone_contents *zone)
 {
 	cat_upd_ctx_t ctx = { NULL, zone, knot_dname_labels(zone->apex->owner, NULL),
-	                      false, NULL, member_verify, prop_verify };
+	                      false, false, NULL, member_verify, prop_verify };
 
 	if (!check_zone_version(zone)) {
 		return KNOT_EZONEINVAL;
 	}
 
-	return interpret_zone(zone, &ctx);
+	zone_diff_t zdiff;
+	zone_diff_from_zone(&zdiff, zone);
+
+	return interpret_zone(&zdiff, &ctx);
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,6 +56,7 @@ typedef enum {
 	UPDATE_STRICT         = 1 << 4, /*!< Apply changes strictly, i.e. fail when removing nonexistent RR. */
 	UPDATE_EXTRA_CHSET    = 1 << 6, /*!< Extra changeset in use, to store diff btwn zonefile and final contents. */
 	UPDATE_CHANGED_NSEC   = 1 << 7, /*!< This incremental update affects NSEC or NSEC3 nodes in zone. */
+	UPDATE_NO_CHSET       = 1 << 8, /*!< Avoid using changeset and serialize to journal from diff of bi-nodes. */
 } zone_update_flags_t;
 
 /*!
@@ -153,6 +154,8 @@ const knot_rdataset_t *zone_update_from(zone_update_t *update);
  * \param update  Zone update.
  *
  * \return   NULL if no new SOA has been added, new SOA otherwise.
+ *
+ * \todo Refactor this function according to its use.
  */
 const knot_rdataset_t *zone_update_to(zone_update_t *update);
 
