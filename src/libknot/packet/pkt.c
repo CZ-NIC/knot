@@ -334,11 +334,13 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	pkt->size = base_size;
 	memcpy(pkt->wire, query->wire, base_size);
 
+	/* Copy lowercased QNAME. */
 	pkt->qname_size = query->qname_size;
 	if (query->qname_size == 0) {
 		/* Reset question count if malformed. */
 		knot_wire_set_qdcount(pkt->wire, 0);
 	}
+	memcpy(pkt->lower_qname, query->lower_qname, pkt->qname_size);
 
 	/* Update flags and section counters. */
 	knot_wire_set_ancount(pkt->wire, 0);
@@ -354,12 +356,6 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 
 	/* Clear payload. */
 	payload_clear(pkt);
-
-	/* Copy QNAME and canonicalize to lowercase. */
-	memcpy(pkt->lower_qname,
-	       pkt->wire + KNOT_WIRE_HEADER_SIZE,
-	       pkt->qname_size);
-	knot_dname_to_lower(pkt->lower_qname);
 
 	/* Clear compression context. */
 	compr_clear(&pkt->compr);
