@@ -466,9 +466,14 @@ int main(int argc, char **argv)
 		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_MASK(LOG_DEBUG));
 	}
 
+	if (systemd_dbus_open() != KNOT_EOK) {
+		log_warning("failed to open system dbus, check the permissions");
+	}
+
 	/* Set up the configuration */
 	int ret = set_config(confdb, config, max_conf_size);
 	if (ret != KNOT_EOK) {
+		systemd_dbus_close();
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -482,6 +487,7 @@ int main(int argc, char **argv)
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to initialize server (%s)", knot_strerror(ret));
 		conf_free(conf());
+		systemd_dbus_close();
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -494,6 +500,7 @@ int main(int argc, char **argv)
 		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf());
+		systemd_dbus_close();
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -507,6 +514,7 @@ int main(int argc, char **argv)
 		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf());
+		systemd_dbus_close();
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -524,6 +532,7 @@ int main(int argc, char **argv)
 		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf());
+		systemd_dbus_close();
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -562,6 +571,7 @@ int main(int argc, char **argv)
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup();
+		systemd_dbus_close();
 		log_close();
 		conf_free(conf());
 		return EXIT_FAILURE;
@@ -590,6 +600,8 @@ int main(int argc, char **argv)
 
 	/* Unhook from RCU. */
 	rcu_unregister_thread();
+
+	systemd_dbus_close();
 
 	log_info("shutting down");
 	log_close();
