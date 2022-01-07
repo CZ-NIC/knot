@@ -1,4 +1,4 @@
-; Zone without any semantic error
+; Delegation NS and glue signed despite mustn't.
 
 example.com.		3600	IN SOA	dns1.example.com. hostmaster.example.com. (
 					2010111220 ; serial
