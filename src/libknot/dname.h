@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -161,11 +161,21 @@ static inline knot_dname_t *knot_dname_from_str_alloc(const char *name)
 }
 
 /*!
- * \brief Convert name to lowercase.
+ * \brief Convert domain name to lowercase.
  *
  * \param name  Domain name to be converted.
  */
 void knot_dname_to_lower(knot_dname_t *name);
+
+/*!
+ * \brief Copy lowercased domain name.
+ *
+ * \note The output buffer isn't checked if it's big enough!
+ *
+ * \param dst   Destination buffer.
+ * \param name  Source domain name to be converted.
+ */
+void knot_dname_copy_lower(knot_dname_t *dst, const knot_dname_t *name);
 
 /*!
  * \brief Returns size of the given domain name.
