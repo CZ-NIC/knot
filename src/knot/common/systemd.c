@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -81,4 +82,59 @@ void systemd_stopping_notify(void)
 #ifdef ENABLE_SYSTEMD
 	sd_notify(0, "STOPPING=1\nSTATUS=");
 #endif
+}
+
+#define DBUS_NAME "cz.nic.knotd"
+
+static sd_bus *_dbus = NULL;
+
+int systemd_dbus_open(void)
+{
+#ifdef ENABLE_SYSTEMD
+	if (_dbus != NULL) {
+		return KNOT_EOK;
+	}
+
+	int ret = 0;
+	if ((ret = sd_bus_open_system(&_dbus)) < 0) {
+		return ret;
+	}
+
+	/* Take a well-known service name so that clients can find us */
+	if ((ret = sd_bus_request_name(_dbus, DBUS_NAME, 0)) < 0) {
+		systemd_dbus_close();
+		return ret;
+	}
+#endif
+	return KNOT_EOK;
+}
+
+void systemd_dbus_close(void)
+{
+#ifdef ENABLE_SYSTEMD
+	_dbus = sd_bus_unref(_dbus);
+#endif
+}
+
+static int emit_generic_event(const char * event, const char *types, ...) {
+	int ret;
+	if (_dbus == NULL) {
+		return KNOT_EOK;
+	}
+#ifdef ENABLE_SYSTEMD
+	va_list args;
+	va_start(args, types);
+	if ((ret = sd_bus_emit_signalv(_dbus, "/cz/nic/knotd", DBUS_NAME".events", event, types, args)) < 0) {
+		va_end(args);
+		return ret;
+	}
+	va_end(args);
+	return KNOT_EOK;
+#endif
+	return KNOT_ENOTSUP;
+}
+
+int systemd_dbus_emit_xfr_done(unsigned char *zone)
+{
+	return emit_generic_event("On_XFR_Done", "s", zone);
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,3 +46,29 @@ void systemd_reloading_notify(void);
  * \brief Notify systemd about service is stopping.
  */
 void systemd_stopping_notify(void);
+
+#ifdef ENABLE_SYSTEMD
+#include <systemd/sd-bus.h>
+#else
+#define sd_bus void
+#endif
+
+/*!
+ * \brief Creates unique D-Bus sender reference (common for whole process).
+ * \retval KNOT_EOK on successful create of reference.
+ * \retval Negative value on error.
+ */
+int systemd_dbus_open(void);
+
+/*!
+ * \brief Closes D-Bus.
+ */
+void systemd_dbus_close(void);
+
+/*!
+ * \brief Emit event signal in specific format.
+ * \param zone Zone name.
+ * \retval KNOT_EOK on successful send.
+ * \retval Negative value on error.
+ */
+int systemd_dbus_emit_xfr_done(unsigned char *zone);
