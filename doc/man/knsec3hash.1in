@@ -33,6 +33,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .SH SYNOPSIS
 .sp
 \fBknsec3hash\fP \fIsalt\fP \fIalgorithm\fP \fIiterations\fP \fIname\fP
+.sp
+\fBknsec3hash\fP \fIalgorithm\fP \fIflags\fP \fIiterations\fP \fIsalt\fP \fIname\fP
 .SH DESCRIPTION
 .sp
 This utility generates a NSEC3 hash for a given domain name and parameters of NSEC3 hash.
@@ -61,7 +63,7 @@ an error.
 .sp
 .nf
 .ft C
-$ knsec3hash c01dcafe 1 10 knot\-dns.cz
+$ knsec3hash 1 0 10 c01dcafe knot\-dns.cz
 7PTVGE7QV67EM61ROS9238P5RAKR2DM7 (salt=c01dcafe, hash=1, iterations=10)
 .ft P
 .fi
