@@ -697,18 +697,18 @@ int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
 	dnssec_key_t *new_key = NULL;
 	int ret = dnssec_key_new(&new_key);
 	if (ret != DNSSEC_EOK) {
-		return KNOT_ENOMEM;
+		return knot_error_from_libdnssec(ret);
 	}
 	ret = dnssec_key_set_rdata(new_key, &binary_key);
 	if (ret != DNSSEC_EOK) {
 		dnssec_key_free(new_key);
-		return KNOT_ENOMEM;
+		return knot_error_from_libdnssec(ret);
 	}
 	if (owner != NULL) {
 		ret = dnssec_key_set_dname(new_key, owner);
 		if (ret != DNSSEC_EOK) {
 			dnssec_key_free(new_key);
-			return KNOT_ENOMEM;
+			return knot_error_from_libdnssec(ret);
 		}
 	}
 
