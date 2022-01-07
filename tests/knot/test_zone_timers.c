@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@ static const zone_timers_t MOCK_TIMERS = {
 	.next_refresh = 1474559960,
 	.last_notified_serial = 0,
 	.last_flush = 1,
-	.last_resalt = 2,
 	.next_ds_check = 1474559961,
 	.next_ds_push = 1474559962,
 	.catalog_member = 1474559963,
@@ -44,7 +43,6 @@ static bool timers_eq(const zone_timers_t *a, const zone_timers_t *b)
 	       a->next_refresh == b->next_refresh &&
 	       a->last_notified_serial == b->last_notified_serial &&
 	       a->last_flush == b->last_flush &&
-	       a->last_resalt == b->last_resalt &&
 	       a->next_ds_check == b->next_ds_check &&
 	       a->next_ds_push == b->next_ds_push &&
 	       a->catalog_member == b->catalog_member;

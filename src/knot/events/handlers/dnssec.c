@@ -44,9 +44,8 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 	time_t ignore = -1;
 	knot_time_t refresh_at = refresh->next_sign;
 
-	if (knot_time_cmp(refresh->next_rollover, refresh_at) < 0) {
-		refresh_at = refresh->next_rollover;
-	}
+	refresh_at = knot_time_min(refresh_at, refresh->next_rollover);
+	refresh_at = knot_time_min(refresh_at, refresh->next_nsec3resalt);
 
 	log_dnssec_next(zone->name, (time_t)refresh_at);
 
@@ -54,14 +53,9 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 		zone->timers.next_ds_check = now;
 	}
 
-	if (refresh->last_nsec3resalt) {
-		zone->timers.last_resalt = refresh->last_nsec3resalt;
-	}
-
 	zone_events_schedule_at(zone,
 		ZONE_EVENT_DNSSEC, refresh_at ? (time_t)refresh_at : ignore,
 		ZONE_EVENT_DS_CHECK, refresh->plan_ds_check ? now : ignore,
-		ZONE_EVENT_NSEC3RESALT, refresh->next_nsec3resalt ? refresh->next_nsec3resalt : ignore,
 		ZONE_EVENT_NOTIFY, zone_changed ? now : ignore
 	);
 }

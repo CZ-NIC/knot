@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,17 +48,16 @@
  * Valid ID starts with '1' in MSB to avoid conflicts with "old timers".
  */
 enum timer_id {
-	TIMER_INVALID = 0,
-	TIMER_SOA_EXPIRE = 0x80,
-	TIMER_LAST_FLUSH,
-	TIMER_LAST_REFRESH,
-	TIMER_NEXT_REFRESH,
-	TIMER_LAST_RESALT,
-	TIMER_NEXT_DS_CHECK,
-	TIMER_NEXT_DS_PUSH,
-	TIMER_CATALOG_MEMBER,
-	TIMER_LAST_NOTIFIED,
-	TIMER_LAST_REFR_OK,
+	TIMER_INVALID        = 0,
+	TIMER_SOA_EXPIRE     = 0x80,
+	TIMER_LAST_FLUSH     = 0x81,
+	TIMER_LAST_REFRESH   = 0x82,
+	TIMER_NEXT_REFRESH   = 0x83,
+	TIMER_NEXT_DS_CHECK  = 0x85,
+	TIMER_NEXT_DS_PUSH   = 0x86,
+	TIMER_CATALOG_MEMBER = 0x87,
+	TIMER_LAST_NOTIFIED  = 0x88,
+	TIMER_LAST_REFR_OK   = 0x89,
 };
 
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
@@ -88,7 +87,6 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		case TIMER_NEXT_REFRESH:   timers.next_refresh = value; break;
 		case TIMER_LAST_REFR_OK:   timers.last_refresh_ok = value; break;
 		case TIMER_LAST_NOTIFIED:  timers.last_notified_serial = value; break;
-		case TIMER_LAST_RESALT:    timers.last_resalt = value; break;
 		case TIMER_NEXT_DS_CHECK:  timers.next_ds_check = value; break;
 		case TIMER_NEXT_DS_PUSH:   timers.next_ds_push = value; break;
 		case TIMER_CATALOG_MEMBER: timers.catalog_member = value; break;
@@ -110,14 +108,13 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
                              const zone_timers_t *timers)
 {
 	MDB_val k = { knot_dname_size(zone), (void *)zone };
-	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBLBLBL",
+	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBLBL",
 		TIMER_SOA_EXPIRE,    (uint64_t)timers->soa_expire,
 		TIMER_LAST_FLUSH,    (uint64_t)timers->last_flush,
 		TIMER_LAST_REFRESH,  (uint64_t)timers->last_refresh,
 		TIMER_NEXT_REFRESH,  (uint64_t)timers->next_refresh,
 		TIMER_LAST_REFR_OK,  (uint64_t)timers->last_refresh_ok,
 		TIMER_LAST_NOTIFIED, timers->last_notified_serial,
-		TIMER_LAST_RESALT,   (uint64_t)timers->last_resalt,
 		TIMER_NEXT_DS_CHECK, (uint64_t)timers->next_ds_check,
 		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push,
 		TIMER_CATALOG_MEMBER,(uint64_t)timers->catalog_member);

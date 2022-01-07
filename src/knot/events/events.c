@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +48,6 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_DNSSEC,       event_dnssec,      "DNSSEC re-sign" },
 	{ ZONE_EVENT_UFREEZE,      event_ufreeze,     "update freeze" },
 	{ ZONE_EVENT_UTHAW,        event_uthaw,       "update thaw" },
-	{ ZONE_EVENT_NSEC3RESALT,  event_nsec3resalt, "NSEC3 resalt" },
 	{ ZONE_EVENT_DS_CHECK,     event_ds_check,    "DS check" },
 	{ ZONE_EVENT_DS_PUSH,      event_ds_push,     "DS push" },
 	{ 0 }
@@ -80,7 +79,6 @@ bool ufreeze_applies(zone_event_type_t type)
 	case ZONE_EVENT_UPDATE:
 	case ZONE_EVENT_FLUSH:
 	case ZONE_EVENT_DNSSEC:
-	case ZONE_EVENT_NSEC3RESALT:
 	case ZONE_EVENT_DS_CHECK:
 		return true;
 	default:

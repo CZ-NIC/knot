@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,6 @@ struct zone_timers {
 	time_t next_refresh;           //!< Next zone refresh attempt.
 	bool last_refresh_ok;          //!< Last zone refresh attempt was successful.
 	uint64_t last_notified_serial; //!< SOA serial of last successful NOTIFY; (1<<32) if none.
-	time_t last_resalt;            //!< Last NSEC3 resalt.
 	time_t next_ds_check;          //!< Next parent DS check.
 	time_t next_ds_push;           //!< Next DDNS to parent zone with updated DS record.
 	time_t catalog_member;         //!< This catalog member zone created.

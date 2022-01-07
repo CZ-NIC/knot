@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 #include <assert.h>
 
+#include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/events/replan.h"
 
 #define TIME_CANCEL 0
@@ -117,7 +118,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	time_t resalt = TIME_CANCEL;
+	time_t resalt = TIME_IGNORE;
 	time_t ds_check = TIME_CANCEL;
 	time_t ds_push = TIME_CANCEL;
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
@@ -126,12 +127,16 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		conf_id_fix_default(&policy);
 		val = conf_id_get(conf, C_POLICY, C_NSEC3, &policy);
 		if (conf_bool(&val)) {
-			if (zone->timers.last_resalt == 0) {
+			knot_time_t last_resalt = 0;
+			if (knot_lmdb_open(zone_kaspdb(zone)) == KNOT_EOK) {
+				(void)kasp_db_load_nsec3salt(zone_kaspdb(zone), zone->name, NULL, &last_resalt);
+			}
+			if (last_resalt == 0) {
 				resalt = now;
 			} else {
 				val = conf_id_get(conf, C_POLICY, C_NSEC3_SALT_LIFETIME, &policy);
 				if (conf_int(&val) > 0) {
-					resalt = zone->timers.last_resalt + conf_int(&val);
+					resalt = last_resalt + conf_int(&val);
 				}
 			}
 		}
@@ -151,7 +156,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	                        ZONE_EVENT_EXPIRE, expire_pre,
 	                        ZONE_EVENT_EXPIRE, expire,
 	                        ZONE_EVENT_FLUSH, flush,
-	                        ZONE_EVENT_NSEC3RESALT, resalt,
+	                        ZONE_EVENT_DNSSEC, resalt,
 	                        ZONE_EVENT_DS_CHECK, ds_check,
 	                        ZONE_EVENT_DS_PUSH, ds_push);
 }
