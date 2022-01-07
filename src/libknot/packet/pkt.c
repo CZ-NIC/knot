@@ -477,8 +477,7 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	wire_ctx_skip(&wire, qname_len);
 
 	/* Copy QNAME and canonicalize to lowercase. */
-	memcpy(pkt->lower_qname, qname, qname_len);
-	knot_dname_to_lower(pkt->lower_qname);
+	knot_dname_copy_lower(pkt->lower_qname, qname);
 
 	/* Copy QTYPE & QCLASS */
 	wire_ctx_write_u16(&wire, qtype);
@@ -615,8 +614,7 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	pkt->qname_size = len;
 
 	/* Copy QNAME and canonicalize to lowercase. */
-	memcpy(pkt->lower_qname, pkt->wire + KNOT_WIRE_HEADER_SIZE, pkt->qname_size);
-	knot_dname_to_lower(pkt->lower_qname);
+	knot_dname_copy_lower(pkt->lower_qname, pkt->wire + KNOT_WIRE_HEADER_SIZE);
 
 	return KNOT_EOK;
 }
