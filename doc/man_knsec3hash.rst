@@ -8,6 +8,8 @@ Synopsis
 
 :program:`knsec3hash` *salt* *algorithm* *iterations* *name*
 
+:program:`knsec3hash` *algorithm* *flags* *iterations* *salt* *name*
+
 Description
 -----------
 
@@ -39,7 +41,7 @@ Examples
 
 ::
 
-  $ knsec3hash c01dcafe 1 10 knot-dns.cz
+  $ knsec3hash 1 0 10 c01dcafe knot-dns.cz
   7PTVGE7QV67EM61ROS9238P5RAKR2DM7 (salt=c01dcafe, hash=1, iterations=10)
 
 ::

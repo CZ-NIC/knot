@@ -39,6 +39,8 @@ static void print_help(void)
 {
 	printf("Usage:   " PROGRAM_NAME " <salt> <algorithm> <iterations> <domain-name>\n");
 	printf("Example: " PROGRAM_NAME " c01dcafe 1 10 knot-dns.cz\n");
+	printf("Alternative usage: "PROGRAM_NAME " <algorithm> <flags> <iterations> <salt> <domain-name>\n");
+	printf("Example: " PROGRAM_NAME " 1 0 10 c01dcafe knot-dns.cz\n");
 }
 
 /*!
@@ -122,8 +124,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// knsec3hash <salt> <algorithm> <iterations> <domain>
-	if (argc != 5) {
+	bool new_params = false;
+	if (argc == 6) {
+		// knsec3hash <algorithm> <flags> <iterations> <salt> <domain>
+		new_params = true;
+	} else if (argc != 5) {
+		// knsec3hash <salt> <algorithm> <iterations> <domain>
 		print_help();
 		return EXIT_FAILURE;
 	}
@@ -135,11 +141,17 @@ int main(int argc, char *argv[])
 	dnssec_binary_t digest = { 0 };
 	dnssec_binary_t digest_print = { 0 };
 
-	if (!parse_nsec3_params(&nsec3_params, argv[1], argv[2], argv[3])) {
-		goto fail;
+	if (new_params) {
+		if (!parse_nsec3_params(&nsec3_params, argv[4], argv[1], argv[3])) {
+			goto fail;
+		}
+	} else {
+		if (!parse_nsec3_params(&nsec3_params, argv[1], argv[2], argv[3])) {
+			goto fail;
+		}
 	}
 
-	dname.data = knot_dname_from_str_alloc(argv[4]);
+	dname.data = knot_dname_from_str_alloc(argv[new_params ? 5 : 4]);
 	if (dname.data == NULL) {
 		error("Cannot parse domain name.");
 		goto fail;
