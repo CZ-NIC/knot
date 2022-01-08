@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 
 #define AXFROUT_LOG(priority, qdata, fmt...) \
 	ns_log(priority, ZONE_NAME(qdata), LOG_OPERATION_AXFR, \
-	       LOG_DIRECTION_OUT, REMOTE(qdata), fmt)
+	       LOG_DIRECTION_OUT, REMOTE(qdata), false, fmt)
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
@@ -210,7 +210,7 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	case KNOT_EOK:    /* Last response. */
 		xfr_stats_end(&axfr->proc.stats);
 		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_AXFR, LOG_DIRECTION_OUT,
-		                 REMOTE(qdata), &axfr->proc.stats);
+		                 REMOTE(qdata), false, &axfr->proc.stats);
 		return KNOT_STATE_DONE;
 	default:          /* Generic error. */
 		AXFROUT_LOG(LOG_ERR, qdata, "failed (%s)", knot_strerror(ret));

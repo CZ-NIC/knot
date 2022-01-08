@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 
 #define IXFROUT_LOG(priority, qdata, fmt...) \
 	ns_log(priority, ZONE_NAME(qdata), LOG_OPERATION_IXFR, \
-	       LOG_DIRECTION_OUT, REMOTE(qdata), fmt)
+	       LOG_DIRECTION_OUT, REMOTE(qdata), false, fmt)
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
@@ -302,7 +302,7 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	case KNOT_EOK:    /* Last response. */
 		xfr_stats_end(&ixfr->proc.stats);
 		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_IXFR, LOG_DIRECTION_OUT,
-		                 REMOTE(qdata), &ixfr->proc.stats);
+		                 REMOTE(qdata), false, &ixfr->proc.stats);
 		return KNOT_STATE_DONE;
 	default:          /* Generic error. */
 		IXFROUT_LOG(LOG_ERR, qdata, "failed (%s)", knot_strerror(ret));

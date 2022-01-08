@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -109,7 +109,9 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	if (rcode != KNOT_RCODE_NOERROR) {
 		ns_log((rcode == KNOT_RCODE_NXDOMAIN ? LOG_NOTICE : LOG_WARNING),
 		       data->zone_name, LOG_OPERATION_DS_CHECK,
-		       LOG_DIRECTION_OUT, data->remote, "failed (%s)", knot_pkt_ext_rcode_name(pkt));
+		       LOG_DIRECTION_OUT, data->remote,
+		       layer->flags & KNOT_REQUESTOR_REUSED,
+		       "failed (%s)", knot_pkt_ext_rcode_name(pkt));
 		return KNOT_STATE_FAIL;
 	}
 
@@ -137,8 +139,8 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	}
 
 	ns_log(LOG_INFO, data->zone_name, LOG_OPERATION_DS_CHECK,
-	       LOG_DIRECTION_OUT, data->remote, "KSK submission check: %s",
-	       (match ? "positive" : "negative"));
+	       LOG_DIRECTION_OUT, data->remote, layer->flags & KNOT_REQUESTOR_REUSED,
+	       "KSK submission check: %s", (match ? "positive" : "negative"));
 
 	if (match) {
 		data->ds_ok = true;
@@ -204,7 +206,9 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 
 	if (ret != KNOT_EOK && !data.result_logged) {
 		ns_log(LOG_WARNING, zone_name, LOG_OPERATION_DS_CHECK,
-		       LOG_DIRECTION_OUT, data.remote, "failed (%s)", knot_strerror(ret));
+		       LOG_DIRECTION_OUT, data.remote,
+		       requestor.layer.flags & KNOT_REQUESTOR_REUSED,
+		       "failed (%s)", knot_strerror(ret));
 	}
 
 	*ds_ttl = data.ttl;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -78,11 +78,11 @@ static inline const char *log_direction_name(log_direction_t direction)
  *
  * [example.com] NOTIFY, outgoing, remote 2001:db8::1@53, serial 123
  */
-#define ns_log(priority, zone, op, dir, remote, fmt, ...) \
+#define ns_log(priority, zone, op, dir, remote, pool, fmt, ...) \
 	do { \
 		char address[SOCKADDR_STRLEN] = ""; \
 		sockaddr_tostr(address, sizeof(address), (const struct sockaddr_storage *)remote); \
-		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, NULL, "%s%s, remote %s, " fmt, \
+		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, NULL, "%s%s, remote %s%s, " fmt, \
 		             log_operation_name(op), log_direction_name(dir), address, \
-		             ## __VA_ARGS__); \
+		             (pool) ? " pool" : "", ## __VA_ARGS__); \
 	} while (0)

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,7 +32,8 @@ typedef enum {
 } knot_request_flag_t;
 
 typedef enum {
-	KNOT_REQUESTOR_CLOSE = 1 << 0
+	KNOT_REQUESTOR_CLOSE  = 1 << 0, /*!< Close the connection indication. */
+	KNOT_REQUESTOR_REUSED = 1 << 1, /*!< Reused FD indication. */
 } knot_requestor_flag_t;
 
 /*! \brief Requestor structure.
