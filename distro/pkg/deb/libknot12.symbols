@@ -117,6 +117,7 @@ libknot.so.12 libknot12 #MINVER#
  knot_rdataset_intersect@Base 3.1.0
  knot_rdataset_member@Base 3.1.0
  knot_rdataset_merge@Base 3.1.0
+ knot_rdataset_subset@Base 3.2.0
  knot_rdataset_subtract@Base 3.1.0
  knot_rrclass_from_string@Base 3.1.0
  knot_rrclass_to_string@Base 3.1.0
