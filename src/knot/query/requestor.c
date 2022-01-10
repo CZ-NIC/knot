@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer
 }
 
 /*! \brief Ensure a socket is connected. */
-static int request_ensure_connected(knot_request_t *request)
+static int request_ensure_connected(knot_request_t *request, bool *reused_fd)
 {
 	if (request->fd >= 0) {
 		return KNOT_EOK;
@@ -49,6 +49,9 @@ static int request_ensure_connected(knot_request_t *request)
 		                            &request->source,
 		                            &request->remote);
 		if (request->fd >= 0) {
+			if (reused_fd != NULL) {
+				*reused_fd = true;
+			}
 			return KNOT_EOK;
 		}
 
@@ -73,10 +76,11 @@ static int request_ensure_connected(knot_request_t *request)
 	return KNOT_EOK;
 }
 
-static int request_send(knot_request_t *request, int timeout_ms)
+static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd)
 {
 	/* Initiate non-blocking connect if not connected. */
-	int ret = request_ensure_connected(request);
+	*reused_fd = false;
+	int ret = request_ensure_connected(request, reused_fd);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -114,7 +118,7 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	knot_pkt_clear(resp);
 
 	/* Wait for readability */
-	int ret = request_ensure_connected(request);
+	int ret = request_ensure_connected(request, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -260,7 +264,13 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 
 	// TODO: verify condition
 	if (req->layer.state == KNOT_STATE_CONSUME) {
-		ret = request_send(last, timeout_ms);
+		bool reused_fd = false;
+		ret = request_send(last, timeout_ms, &reused_fd);
+		if (reused_fd) {
+			req->layer.flags |= KNOT_REQUESTOR_REUSED;
+		} else {
+			req->layer.flags &= ~KNOT_REQUESTOR_REUSED;
+		}
 	}
 
 	return ret;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,9 +35,9 @@ struct ds_push_data {
 
 #define DS_PUSH_RETRY	600
 
-#define DS_PUSH_LOG(priority, zone, remote, fmt, ...) \
+#define DS_PUSH_LOG(priority, zone, remote, reused, fmt, ...) \
 	ns_log(priority, zone, LOG_OPERATION_DS_PUSH, LOG_DIRECTION_OUT, remote, \
-	       fmt, ## __VA_ARGS__)
+	       reused, fmt, ## __VA_ARGS__)
 
 static const knot_rdata_t remove_cds = { 5, { 0, 0, 0, 0, 0 } };
 
@@ -134,6 +134,7 @@ static int ds_push_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	if (data->parent_query[0] == '\0') {
 		// query for parent SOA systematically fails
 		DS_PUSH_LOG(LOG_WARNING, data->zone, data->remote,
+		            layer->flags & KNOT_REQUESTOR_REUSED,
 		            "unable to query parent SOA");
 		return KNOT_STATE_FAIL;
 	}
@@ -210,12 +211,16 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	ret = knot_requestor_exec(&requestor, req, timeout);
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
-		DS_PUSH_LOG(LOG_INFO, zone->name, dst, "success");
+		DS_PUSH_LOG(LOG_INFO, zone->name, dst,
+		            requestor.layer.flags & KNOT_REQUESTOR_REUSED,
+		            "success");
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
 		DS_PUSH_LOG(LOG_WARNING, zone->name, dst,
+		            requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		            "failed (%s)", knot_strerror(ret));
 	} else {
 		DS_PUSH_LOG(LOG_WARNING, zone->name, dst,
+		            requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		            "server responded with error '%s'",
 		            knot_pkt_ext_rcode_name(req->resp));
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,9 +72,9 @@ static const knot_layer_api_t NOTIFY_API = {
 	.consume = notify_consume,
 };
 
-#define NOTIFY_OUT_LOG(priority, zone, remote, fmt, ...) \
+#define NOTIFY_OUT_LOG(priority, zone, remote, reused, fmt, ...) \
 	ns_log(priority, zone, LOG_OPERATION_NOTIFY, LOG_DIRECTION_OUT, remote, \
-	       fmt, ## __VA_ARGS__)
+	       (reused), fmt, ## __VA_ARGS__)
 
 static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
                        const conf_remote_t *slave, int timeout)
@@ -110,13 +110,16 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_OUT_LOG(LOG_INFO, zone->name, dst,
+		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		               "serial %u", knot_soa_serial(soa->rrs.rdata));
 		zone->timers.last_notified_serial = (knot_soa_serial(soa->rrs.rdata) | LAST_NOTIFIED_SERIAL_VALID);
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, dst,
+		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		               "failed (%s)", knot_strerror(ret));
 	} else {
 		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, dst,
+		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		               "server responded with error '%s'",
 		               knot_pkt_ext_rcode_name(req->resp));
 	}
