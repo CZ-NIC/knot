@@ -537,7 +537,7 @@ static void check_reply_question(const knot_pkt_t *reply,
 		return;
 	}
 
-	if (!knot_dname_is_equal(knot_pkt_qname(reply), knot_pkt_qname(query)) ||
+	if (!knot_dname_is_equal(knot_pkt_wire_qname(reply), knot_pkt_wire_qname(query)) ||
 	    knot_pkt_qclass(reply) != knot_pkt_qclass(query) ||
 	    knot_pkt_qtype(reply)  != knot_pkt_qtype(query)) {
 		WARN("query/response question sections are different\n");

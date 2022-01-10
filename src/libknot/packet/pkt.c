@@ -183,7 +183,8 @@ static int pkt_init(knot_pkt_t *pkt, void *wire, uint16_t len, knot_mm_t *mm)
 {
 	assert(pkt);
 
-	memset(pkt, 0, sizeof(knot_pkt_t));
+	memset(pkt, 0, offsetof(knot_pkt_t, lower_qname));
+	pkt->lower_qname[0] = '\0';
 
 	/* No data to free, set memory context. */
 	memcpy(&pkt->mm, mm, sizeof(knot_mm_t));
@@ -333,11 +334,13 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	pkt->size = base_size;
 	memcpy(pkt->wire, query->wire, base_size);
 
+	/* Copy lowercased QNAME. */
 	pkt->qname_size = query->qname_size;
 	if (query->qname_size == 0) {
 		/* Reset question count if malformed. */
 		knot_wire_set_qdcount(pkt->wire, 0);
 	}
+	memcpy(pkt->lower_qname, query->lower_qname, pkt->qname_size);
 
 	/* Update flags and section counters. */
 	knot_wire_set_ancount(pkt->wire, 0);
@@ -376,6 +379,9 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 
 	/* Clear compression context. */
 	compr_clear(&pkt->compr);
+
+	/* Initialize lowercased QNAME. */
+	pkt->lower_qname[0] = '\0';
 }
 
 _public_
@@ -459,7 +465,7 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	assert(pkt->size == KNOT_WIRE_HEADER_SIZE);
 	assert(pkt->rrset_count == 0);
 
-	/* Copy name wireformat. */
+	/* Copy name into wire format buffer. */
 	wire_ctx_t wire = wire_ctx_init(pkt->wire, pkt->max_size);
 	wire_ctx_set_offset(&wire, KNOT_WIRE_HEADER_SIZE);
 
@@ -469,6 +475,9 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 		return qname_len;
 	}
 	wire_ctx_skip(&wire, qname_len);
+
+	/* Copy QNAME and canonicalize to lowercase. */
+	knot_dname_copy_lower(pkt->lower_qname, qname);
 
 	/* Copy QTYPE & QCLASS */
 	wire_ctx_write_u16(&wire, qtype);
@@ -603,6 +612,9 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 
 	pkt->parsed += question_size;
 	pkt->qname_size = len;
+
+	/* Copy QNAME and canonicalize to lowercase. */
+	knot_dname_copy_lower(pkt->lower_qname, pkt->wire + KNOT_WIRE_HEADER_SIZE);
 
 	return KNOT_EOK;
 }

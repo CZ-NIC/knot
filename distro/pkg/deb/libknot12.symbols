@@ -27,6 +27,7 @@ libknot.so.12 libknot12 #MINVER#
  knot_db_trie_api@Base 3.1.0
  knot_dname_cmp@Base 3.1.0
  knot_dname_copy@Base 3.1.0
+ knot_dname_copy_lower@Base 3.2.0
  knot_dname_free@Base 3.1.0
  knot_dname_from_str@Base 3.1.0
  knot_dname_in_bailiwick@Base 3.1.0

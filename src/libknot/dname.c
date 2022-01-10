@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -485,6 +485,25 @@ void knot_dname_to_lower(knot_dname_t *name)
 		}
 		name += 1 + len;
 	}
+}
+
+_public_
+void knot_dname_copy_lower(knot_dname_t *dst, const knot_dname_t *name)
+{
+	if (dst == NULL || name == NULL) {
+		return;
+	}
+
+	while (*name != '\0') {
+		uint8_t len = *name;
+		*dst = len;
+		for (uint8_t i = 1; i <= len; ++i) {
+			dst[i] = knot_tolower(name[i]);
+		}
+		dst += 1 + len;
+		name += 1 + len;
+	}
+	*dst = '\0';
 }
 
 _public_

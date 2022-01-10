@@ -104,6 +104,9 @@ struct knot_pkt {
 	knot_mm_t mm; /*!< Memory allocation context. */
 
 	knot_compr_t compr; /*!< Compression context. */
+
+	/*! Lowercased QNAME. MUST BE LAST ITEM! */
+	knot_dname_storage_t lower_qname;
 };
 
 /*!
@@ -176,7 +179,16 @@ static inline uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 	return pkt->qname_size + 2 * sizeof(uint16_t);
 }
 
-static inline knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
+static inline const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
+{
+	if (pkt == NULL || pkt->qname_size == 0) {
+		return NULL;
+	}
+
+	return pkt->lower_qname;
+}
+
+static inline const knot_dname_t *knot_pkt_wire_qname(const knot_pkt_t *pkt)
 {
 	if (pkt == NULL || pkt->qname_size == 0) {
 		return NULL;

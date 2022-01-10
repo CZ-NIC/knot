@@ -93,11 +93,6 @@ static void set_rcodes(list_t *requests, const uint16_t rcode)
 	}
 }
 
-static void store_original_qname(knotd_qdata_t *qdata, const knot_pkt_t *pkt)
-{
-	memcpy(qdata->extra->orig_qname, knot_pkt_qname(pkt), pkt->qname_size);
-}
-
 static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 {
 	// Walk all the requests and process.
@@ -112,9 +107,6 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 		knotd_qdata_extra_t extra;
 		init_qdata_from_request(&qdata, zone, req, &params, &extra);
 
-		store_original_qname(&qdata, req->query);
-		process_query_qname_case_lower(req->query);
-
 		int ret = check_prereqs(req, zone, up, &qdata);
 		if (ret != KNOT_EOK) {
 			// Skip updates with failed prereqs.
@@ -125,8 +117,6 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-
-		process_query_qname_case_restore(req->query, &qdata);
 	}
 
 	return KNOT_EOK;

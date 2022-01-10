@@ -699,7 +699,7 @@ void print_packet(const knot_pkt_t *packet,
 	case FORMAT_FULL:
 		if (style->show_question && qdcount > 0) {
 			printf("%s", style->show_section ? "\n;; QUESTION SECTION:\n;; " : ";;");
-			print_section_question(knot_pkt_qname(packet),
+			print_section_question(knot_pkt_wire_qname(packet),
 			                       knot_pkt_qclass(packet),
 			                       knot_pkt_qtype(packet),
 			                       style);
