@@ -21,7 +21,6 @@
 #include <string.h>
 
 #include "libknot/xdp/tcp_iobuf.h"
-#include "libknot/xdp/tcp.h" // just tcp_outbufs_t
 #include "libknot/error.h"
 #include "contrib/macros.h"
 
@@ -176,20 +175,20 @@ int tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 	return KNOT_EOK;
 }
 
-int tcp_outbufs_add(struct tcp_outbufs *ob, uint8_t *data, size_t len,
+int tcp_outbufs_add(knot_tcp_outbuf_t **bufs, uint8_t *data, size_t len,
                     bool ignore_lastbyte, uint32_t mss, size_t *outbufs_total)
 {
 	if (len > UINT16_MAX) {
 		return KNOT_ELIMIT;
 	}
-	struct tcp_outbuf **end = &ob->bufs;
+	knot_tcp_outbuf_t **end = bufs;
 	while (*end != NULL) { // NOTE: this can be optimized by adding "end" pointer for the price of larger knot_tcp_conn_t struct
 		end = &(*end)->next;
 	}
 	uint16_t prefix = htobe16(len), prefix_len = sizeof(prefix);
 	while (len > 0) {
 		uint16_t newlen = MIN(len + prefix_len, mss);
-		struct tcp_outbuf *newob = calloc(1, sizeof(*newob) + newlen);
+		knot_tcp_outbuf_t *newob = calloc(1, sizeof(*newob) + newlen);
 		if (newob == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -221,28 +220,28 @@ static bool seqno_lower(uint32_t seqno, uint32_t ackno, uint32_t ackno_min)
 	}
 }
 
-void tcp_outbufs_ack(struct tcp_outbufs *ob, uint32_t ackno, size_t *outbufs_total)
+void tcp_outbufs_ack(knot_tcp_outbuf_t **bufs, uint32_t ackno, size_t *outbufs_total)
 {
 	uint32_t ackno_min = ackno - (UINT32_MAX / 2); // FIXME better?
-	while (ob->bufs != NULL && ob->bufs->sent && seqno_lower(ob->bufs->seqno + ob->bufs->len, ackno, ackno_min)) {
-		struct tcp_outbuf *tofree = ob->bufs;
-		ob->bufs = tofree->next;
+	while (*bufs != NULL && (*bufs)->sent && seqno_lower((*bufs)->seqno + (*bufs)->len, ackno, ackno_min)) {
+		knot_tcp_outbuf_t *tofree = *bufs;
+		*bufs = tofree->next;
 		*outbufs_total -= tofree->len + sizeof(*tofree);
 		free(tofree);
 	}
 }
 
-void tcp_outbufs_can_send(struct tcp_outbufs *ob, ssize_t window_size, bool resend,
-                          struct tcp_outbuf **send_start, size_t *send_count)
+void tcp_outbufs_can_send(knot_tcp_outbuf_t *bufs, ssize_t window_size, bool resend,
+                          knot_tcp_outbuf_t **send_start, size_t *send_count)
 {
 	*send_count = 0;
-	*send_start = ob->bufs;
+	*send_start = bufs;
 	while (*send_start != NULL && (*send_start)->sent && !resend) {
 		window_size -= (*send_start)->len;
 		*send_start = (*send_start)->next;
 	}
 
-	struct tcp_outbuf *can_send = *send_start;
+	knot_tcp_outbuf_t *can_send = *send_start;
 	while (can_send != NULL && window_size >= can_send->len) {
 		(*send_count)++;
 		window_size -= can_send->len;
@@ -250,10 +249,10 @@ void tcp_outbufs_can_send(struct tcp_outbufs *ob, ssize_t window_size, bool rese
 	}
 }
 
-size_t tcp_outbufs_usage(struct tcp_outbufs *ob)
+size_t tcp_outbufs_usage(knot_tcp_outbuf_t *bufs)
 {
 	size_t res = 0;
-	for (struct tcp_outbuf *i = ob->bufs; i != NULL; i = i->next) {
+	for (knot_tcp_outbuf_t *i = bufs; i != NULL; i = i->next) {
 		res += i->len + sizeof(*i);
 	}
 	return res;

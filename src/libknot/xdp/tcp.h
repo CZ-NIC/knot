@@ -59,10 +59,6 @@ typedef enum {
 	XDP_TCP_IGNORE_FIN         = (1 << 2),
 } knot_tcp_ignore_t;
 
-typedef struct tcp_outbufs {
-	struct tcp_outbuf *bufs;
-} tcp_outbufs_t; // this typedef belongs to tcp_iobuf.h, but is here to avoid issues with symbols
-
 typedef struct knot_tcp_conn {
 	struct {
 		struct knot_tcp_conn *list_node_next;
@@ -82,7 +78,7 @@ typedef struct knot_tcp_conn {
 	uint32_t establish_rtt;
 	knot_tcp_state_t state;
 	struct iovec inbuf;
-	tcp_outbufs_t outbufs;
+	struct knot_tcp_outbuf *outbufs;
 	struct knot_tcp_conn *next;
 } knot_tcp_conn_t;
 

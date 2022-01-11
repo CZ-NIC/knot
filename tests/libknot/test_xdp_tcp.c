@@ -537,7 +537,7 @@ void test_obufs(void)
 
 	int ret = knot_tcp_reply_data(&rl, test_table, false, data, DATA_LEN), i = 0;
 	is_int(KNOT_EOK, ret, "obufs: fill with data");
-	for (struct tcp_outbuf *ob = rl.conn->outbufs.bufs; ob != NULL; ob = ob->next, i++) {
+	for (knot_tcp_outbuf_t *ob = rl.conn->outbufs; ob != NULL; ob = ob->next, i++) {
 		if (ob->next == NULL) {
 			ok(ob->len > 0, "init last ob[%d]: non-trivial", i);
 			ok(ob->len <= TEST_MSS, "init last ob[%d]: fulfills MSS", i);
@@ -549,7 +549,7 @@ void test_obufs(void)
 	ret = knot_tcp_send(test_sock, &rl, 1, 20), i = 0;
 	is_int(KNOT_EOK, ret, "obufs: send OK");
 	is_int((DATA_LEN + 2) / TEST_MSS * TEST_MSS, sent2_data, "obufs: sent all but one MSS");
-	for (struct tcp_outbuf *ob = rl.conn->outbufs.bufs; ob != NULL; ob = ob->next, i++) {
+	for (knot_tcp_outbuf_t *ob = rl.conn->outbufs; ob != NULL; ob = ob->next, i++) {
 		if (ob->next == NULL) {
 			ok(!ob->sent, "last ob[%d]: not sent", i);
 		} else {
@@ -565,7 +565,7 @@ void test_obufs(void)
 	ret = knot_tcp_recv(&rl, &msg, 1, test_table, test_syn_table, XDP_TCP_IGNORE_NONE);
 	is_int(KNOT_EOK, ret, "obufs: ACKed data");
 	rl.conn->window_size = 65536;
-	struct tcp_outbuf *surv_ob = rl.conn->outbufs.bufs;
+	knot_tcp_outbuf_t *surv_ob = rl.conn->outbufs;
 	ok(surv_ob != NULL, "obufs: unACKed survived");
 	ok(surv_ob->next == NULL, "obufs: just one survived");
 	ok(!surv_ob->sent, "obufs: survivor not sent");
