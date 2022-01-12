@@ -1476,6 +1476,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	// Purge Catalog.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_CATALOG)) {
 		ret = catalog_zone_purge(args->server, conf(), zone->name);
+		RETURN_IF_FAILED("purge catalog", KNOT_EOK);
 	}
 
 	return KNOT_EOK;
