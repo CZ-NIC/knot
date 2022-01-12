@@ -81,7 +81,7 @@ static int ds_query_begin(knot_layer_t *layer, void *params)
 static int ds_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct ds_query_data *data = layer->data;
-	struct query_edns_data edns = { .max_payload = data->edns_max_payload, .do_flag = true, };
+	query_edns_data_t edns = { .max_payload = data->edns_max_payload, .do_flag = true };
 
 	query_init_pkt(pkt);
 

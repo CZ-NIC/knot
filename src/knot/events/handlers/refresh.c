@@ -107,7 +107,7 @@ struct refresh_data {
 	const knot_rrset_t *soa;          //!< Local SOA (NULL for AXFR).
 	const size_t max_zone_size;       //!< Maximal zone size.
 	bool use_edns;                    //!< Allow EDNS in SOA/AXFR/IXFR queries.
-	struct query_edns_data edns;      //!< EDNS data to be used in queries.
+	query_edns_data_t edns;           //!< EDNS data to be used in queries.
 	zone_master_fallback_t *fallback; //!< Flags allowing zone_master_try() fallbacks.
 	bool fallback_axfr;               //!< Flag allowing fallback to AXFR,
 	uint32_t expire_timer;            //!< Result: expire timer from answer EDNS.
@@ -1204,13 +1204,12 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 		.use_edns = !master->no_edns,
+		.edns = query_edns_data_init(conf, master->addr.ss_family),
+		.edns.expire_option = true,
 		.expire_timer = EXPIRE_TIMER_INVALID,
 		.fallback = fallback,
 		.fallback_axfr = false, // will be set upon IXFR consume
 	};
-
-	query_edns_data_init(&data.edns, conf, master->addr.ss_family);
-	data.edns.expire_option = true;
 
 	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &REFRESH_API, &data, NULL);

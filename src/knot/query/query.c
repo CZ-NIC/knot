@@ -16,13 +16,8 @@
 
 #include "knot/query/query.h"
 
-#include <stdint.h>
-
 #include "contrib/wire_ctx.h"
 #include "libdnssec/random.h"
-#include "knot/conf/conf.h"
-#include "libknot/yparser/yptrafo.h"
-#include "libknot/rrset.h"
 
 void query_init_pkt(knot_pkt_t *pkt)
 {
@@ -34,33 +29,20 @@ void query_init_pkt(knot_pkt_t *pkt)
 	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
 }
 
-int query_edns_data_init(struct query_edns_data *edns_ptr, conf_t *conf,
-                         int remote_family)
+query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family)
 {
-	if (!edns_ptr || !conf) {
-		return KNOT_EINVAL;
-	}
+	assert(conf);
 
-	struct query_edns_data edns = { 0 };
+	query_edns_data_t edns = {
+		.max_payload = remote_family == AF_INET ?
+		               conf->cache.srv_udp_max_payload_ipv4 :
+		               conf->cache.srv_udp_max_payload_ipv6
+	};
 
-	// Determine max payload
-
-	switch (remote_family) {
-	case AF_INET:
-		edns.max_payload = conf->cache.srv_udp_max_payload_ipv4;
-		break;
-	case AF_INET6:
-		edns.max_payload = conf->cache.srv_udp_max_payload_ipv6;
-		break;
-	default:
-		return KNOT_EINVAL;
-	}
-
-	*edns_ptr = edns;
-	return KNOT_EOK;
+	return edns;
 }
 
-int query_put_edns(knot_pkt_t *pkt, const struct query_edns_data *edns)
+int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns)
 {
 	if (!pkt || !edns) {
 		return KNOT_EINVAL;

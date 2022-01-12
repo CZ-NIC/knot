@@ -16,17 +16,18 @@
 
 #pragma once
 
+#include "knot/conf/conf.h"
 #include "knot/nameserver/log.h"
 #include "libknot/packet/pkt.h"
 
 /*!
  * \brief EDNS data.
  */
-struct query_edns_data {
+typedef struct {
 	uint16_t max_payload;
 	bool do_flag;
 	bool expire_option;
-};
+} query_edns_data_t;
 
 /*!
  * \brief Initialize new packet.
@@ -40,14 +41,12 @@ void query_init_pkt(knot_pkt_t *pkt);
 /*!
  * \brief Initialize EDNS parameters from server configuration.
  *
- * \param[out] edns           EDNS parameters to initialize.
  * \param[in]  conf           Server configuration.
  * \param[in]  remote_family  Address family for remote host.
  *
- * \return KNOT_E*
+ * \return EDNS parameters.
  */
-int query_edns_data_init(struct query_edns_data *edns, conf_t *conf,
-                         int remote_family);
+query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family);
 
 /*!
  * \brief Append EDNS into the packet.
@@ -57,4 +56,4 @@ int query_edns_data_init(struct query_edns_data *edns, conf_t *conf,
  *
  * \return KNOT_E*
  */
-int query_put_edns(knot_pkt_t *pkt, const struct query_edns_data *edns);
+int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns);
