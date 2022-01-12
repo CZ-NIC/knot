@@ -325,10 +325,14 @@ src/knot/query/requestor.c
 src/knot/query/requestor.h
 src/knot/server/dthreads.c
 src/knot/server/dthreads.h
+src/knot/server/quic-handler.c
+src/knot/server/quic-handler.h
 src/knot/server/server.c
 src/knot/server/server.h
 src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
+src/knot/server/tls-handler.c
+src/knot/server/tls-handler.h
 src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/xdp-handler.c
@@ -475,6 +479,8 @@ src/libknot/probe/data.c
 src/libknot/probe/data.h
 src/libknot/probe/probe.c
 src/libknot/probe/probe.h
+src/libknot/quic/shared.c
+src/libknot/quic/shared.h
 src/libknot/rdata.h
 src/libknot/rdataset.c
 src/libknot/rdataset.h
