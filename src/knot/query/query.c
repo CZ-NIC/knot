@@ -35,9 +35,9 @@ void query_init_pkt(knot_pkt_t *pkt)
 }
 
 int query_edns_data_init(struct query_edns_data *edns_ptr, conf_t *conf,
-                         const knot_dname_t *zone, int remote_family)
+                         int remote_family)
 {
-	if (!edns_ptr || !conf || !zone) {
+	if (!edns_ptr || !conf) {
 		return KNOT_EINVAL;
 	}
 

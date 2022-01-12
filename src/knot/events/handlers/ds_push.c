@@ -186,7 +186,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	query_edns_data_init(&data.edns, conf, zone->name, parent->addr.ss_family);
+	query_edns_data_init(&data.edns, conf, parent->addr.ss_family);
 
 	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &DS_PUSH_API, &data, NULL);

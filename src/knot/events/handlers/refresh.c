@@ -1209,7 +1209,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.fallback_axfr = false, // will be set upon IXFR consume
 	};
 
-	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
+	query_edns_data_init(&data.edns, conf, master->addr.ss_family);
 	data.edns.expire_option = true;
 
 	knot_requestor_t requestor;
