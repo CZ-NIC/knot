@@ -5,17 +5,29 @@
 from dnstest.test import Test
 import time
 
-def test_expire(zone, server):
+def test_status(zone, server, status):
     resp = server.dig(zone[0].name, "SOA")
-    resp.check(rcode="SERVFAIL")
+    resp.check(rcode=status)
 
-def break_xfrout(server):
+def test_expire(zone, server):
+    test_status(zone, server, "SERVFAIL")
+
+def test_not_expired(zone, server):
+    test_status(zone, server, "NOERROR")
+
+def replace_in_config(server, what, with_what):
     with open(server.confile, "r+") as f:
         config = f.read()
         f.seek(0)
         f.truncate()
-        config = config.replace(" acl:", " #acl:")
+        config = config.replace(what, with_what)
         f.write(config)
+
+def break_xfrout(server):
+    replace_in_config(server, " acl:", " #acl:")
+
+def fix_xfrout(server):
+    replace_in_config(server, " #acl:", " acl:")
 
 t = Test(tsig=False)
 
@@ -60,4 +72,50 @@ remain = max(0, EXPIRE_SLEEP - int(time.time() - timer))
 t.sleep(remain)
 test_expire(zone, slave)
 test_expire(zone, sub_slave) # both slaves expire at once despite sub_slave updated more recently. Thanks to EDNS Expire.
+
+# Test for expiration prolonging via EDNS (RFC 7314, section 4, second paragraph).
+# 1) Test expiration prolonging by EDNS Expire in SOA query responses.
+
+# bring back the servers once more and reset the expire timers
+fix_xfrout(master)
+master.reload()
+slave.zone_wait(zone)
+sub_slave.zone_wait(zone)
+
+# disallow actual updates from slave, SOA queries are still allowed
+break_xfrout(slave)
+slave.reload()
+
+# let the original expire timer (without EDNS) on sub_slave run out
+t.sleep(2 * EXPIRE_SLEEP)
+
+# the expire timer on sub_slave should be kept prolonged just by SOA queries
+test_not_expired(zone, slave)
+test_not_expired(zone, sub_slave)
+
+# 2) Test that the expire timer in sub_slave isn't directly set to
+# shorter EDNS Expire received in SOA query responses. Simulate an
+# expire timer difference (normally caused by multi-path propagation)
+# by lowering the expire value while keeping the serial.
+master.ctl("zone-begin example.")
+master.ctl("zone-set example. example. 1200 SOA ns admin 4242 2 2 5 600")
+master.ctl("zone-commit example.")
+fix_xfrout(slave)
+slave.reload()
+t.sleep(1)
+slave.ctl("zone-refresh", wait=True)     # SOA query only, same serial
+sub_slave.ctl("zone-refresh", wait=True) # SOA query only, same serial
+slave.stop()
+
+t.sleep(8)
+
+# the new expire (5 seconds) from slave would have run out on sub_slave,
+# but the original expire timer (started as 16 seconds) has been retained
+test_not_expired(zone, sub_slave)
+
+t.sleep(8)
+
+# the original expire time has finally run out
+test_expire(zone, sub_slave)
+
 t.stop()

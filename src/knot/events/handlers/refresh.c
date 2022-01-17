@@ -164,14 +164,28 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
-static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt)
+/*!
+ * \brief Modify the expire timer wrt the received EDNS EXPIRE (RFC 7314, section 4)
+ *
+ * \param data             The refresh data.
+ * \param pkt              A received packet to parse.
+ * \param strictly_follow  Strictly use EDNS EXPIRE as the expire timer value.
+ *                         (false == RFC 7314, section 4, second paragraph,
+ *                           true ==                      third paragraph)
+ */
+static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt, bool strictly_follow)
 {
 	uint8_t *expire_opt = knot_pkt_edns_option(pkt, KNOT_EDNS_OPTION_EXPIRE);
 	if (expire_opt != NULL && knot_edns_opt_get_length(expire_opt) == sizeof(uint32_t)) {
-		data->expire_timer = knot_wire_read_u32(knot_edns_opt_get_data(expire_opt));
+		uint32_t edns_expire = knot_wire_read_u32(knot_edns_opt_get_data(expire_opt));
+		data->expire_timer = strictly_follow ? edns_expire :
+				     MAX(edns_expire, data->zone->timers.next_expire - time(NULL));
 	}
 }
 
+/*!
+ * \brief RFC 7314, section 4, fourth paragraph
+ */
 static void finalize_edns_expire(struct refresh_data *data)
 {
 	data->expire_timer = MIN(data->expire_timer, zone_soa_expire(data->zone));
@@ -869,8 +883,10 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			           "receiving AXFR-style IXFR");
 			return axfr_consume(pkt, data);
 		case XFR_TYPE_UPTODATE:
+			consume_edns_expire(data, pkt, false);
+			finalize_edns_expire(data);
 			IXFRIN_LOG(LOG_INFO, data,
-			          "zone is up-to-date");
+			          "zone is up-to-date, expires in %u seconds", data->expire_timer);
 			xfr_stats_begin(&data->stats);
 			xfr_stats_add(&data->stats, pkt->size);
 			xfr_stats_end(&data->stats);
@@ -980,7 +996,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		data->state = STATE_TRANSFER;
 		return KNOT_STATE_RESET; // continue with transfer
 	} else if (master_uptodate) {
-		consume_edns_expire(data, pkt);
+		consume_edns_expire(data, pkt, false);
 		finalize_edns_expire(data);
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
 		            "remote serial %u, zone is up-to-date, expires in %u seconds",
@@ -1040,7 +1056,7 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
 
-	consume_edns_expire(data, pkt);
+	consume_edns_expire(data, pkt, true);
 	if (data->expire_timer < 2) {
 		REFRESH_LOG(LOG_WARNING, data, LOG_DIRECTION_NONE,
 		            "remote is expired, ignoring");
