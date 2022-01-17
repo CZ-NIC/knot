@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -918,7 +918,8 @@ static void test_conf_io_list(void)
 	      "server.udp-max-payload-ipv4\n"
 	      "server.udp-max-payload-ipv6\n"
 	      "server.edns-client-subnet\n"
-	      "server.answer-rotation";
+	      "server.answer-rotation\n"
+	      "server.dbus-event";
 	ok(strcmp(ref, out) == 0, "compare result");
 }
 
@@ -941,6 +942,7 @@ static const yp_item_t desc_server[] = {
 	{ C_UDP_MAX_PAYLOAD_IPV6, YP_TINT,  YP_VNONE },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
+	{ C_DBUS_EVENT,           YP_TOPT,  YP_VNONE },
 	{ NULL }
 };
 

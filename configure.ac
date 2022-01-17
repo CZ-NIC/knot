@@ -277,7 +277,11 @@ AS_IF([test "$enable_systemd" != "no"],[
     ])
 
 AS_IF([test "$enable_systemd" = "yes"],[
-  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
+  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])
+  AC_CHECK_HEADER([systemd/sd-bus.h],
+                  [AC_DEFINE([ENABLE_DBUS], [1], [systemd D-Bus available])],
+                  [enable_systemd="yes (without D-Bus)"])
+])
 
 ]) dnl enable_daemon
 

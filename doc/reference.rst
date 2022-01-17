@@ -151,6 +151,7 @@ General options related to the server.
      udp-max-payload-ipv6: SIZE
      edns-client-subnet: BOOL
      answer-rotation: BOOL
+     dbus-event: none | running | zone-updated | ksk-submission ...
      listen: ADDR[@INT] ...
 
 .. CAUTION::
@@ -463,6 +464,31 @@ Enable or disable sorted-rrset rotation in the answer section of normal replies.
 The rotation shift is simply determined by a query ID.
 
 *Default:* off
+
+.. _server_dbus-event:
+
+dbus-event
+----------
+
+Specification of server or zone states which emit a D-Bus signal on the system
+bus. The bus name is ``cz.nic.knotd``, the object path is ``/cz/nic/knotd``, and
+the interface name is ``cz.nic.knotd.events``.
+
+Possible values:
+
+- ``none`` – No signal is emitted.
+- ``running`` – The signal ``started`` is emitted when the server is fully operational
+  and the signal ``stopped`` is emitted at the beginning of the server shutdown.
+- ``zone-updated`` – The signal ``zone_updated`` is emitted when a zone has been updated;
+  the signal parameters are `zone name` and `zone SOA serial`.
+- ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if there is
+  a ready KSK present when the zone is signed; the signal parameters are
+  `zone name` and `KSK keytag`.
+
+.. NOTE::
+   This function requires systemd version at least 221.
+
+*Default:* none
 
 .. _server_listen:
 

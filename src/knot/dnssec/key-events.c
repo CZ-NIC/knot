@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "contrib/macros.h"
 #include "knot/common/log.h"
+#include "knot/common/systemd.h"
 #include "knot/dnssec/kasp/keystate.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/policy.h"
@@ -781,7 +782,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		char param[32];
 		(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu", plan_ds_keytag);
 		log_fmt_zone(LOG_NOTICE, LOG_SOURCE_ZONE, ctx->zone->dname, param,
-			     "DNSSEC, KSK submission, waiting for confirmation");
+		             "DNSSEC, KSK submission, waiting for confirmation");
+		if (ctx->dbus_event & DBUS_EVENT_ZONE_SUBMISSION) {
+			systemd_emit_zone_submission(ctx->zone->dname, plan_ds_keytag);
+		}
 	}
 
 	return ret;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -208,6 +208,8 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}
+
+	ctx->dbus_event = conf->cache.srv_dbus_event;
 
 	ctx->now = knot_time();
 

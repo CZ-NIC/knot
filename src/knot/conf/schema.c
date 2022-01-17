@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -171,6 +171,14 @@ static const knot_lookup_t catalog_roles[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t dbus_events[] = {
+	{ DBUS_EVENT_NONE,            "none" },
+	{ DBUS_EVENT_RUNNING,         "running" },
+	{ DBUS_EVENT_ZONE_UPDATED,    "zone-updated" },
+	{ DBUS_EVENT_ZONE_SUBMISSION, "ksk-submission" },
+	{ 0, NULL }
+};
+
 static const yp_item_t desc_module[] = {
 	{ C_ID,      YP_TSTR, YP_VNONE, YP_FNONE, { check_module_id } },
 	{ C_FILE,    YP_TSTR, YP_VNONE },
@@ -210,6 +218,7 @@ static const yp_item_t desc_server[] = {
 	                                                1232, YP_SSIZE } },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
+	{ C_DBUS_EVENT,           YP_TOPT,  YP_VOPT = { dbus_events, DBUS_EVENT_NONE }, YP_FMULTI },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
