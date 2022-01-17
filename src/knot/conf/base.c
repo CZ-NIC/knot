@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -172,6 +172,12 @@ static void init_cache(
 	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
 
 	conf->cache.srv_socket_affinity = running_socket_affinity;
+
+	val = conf_get(conf, C_SRV, C_DBUS_EVENT);
+	while (val.code == KNOT_EOK) {
+		conf->cache.srv_dbus_event |= conf_opt(&val);
+		conf_val_next(&val);
+	}
 
 	conf->cache.srv_udp_threads = running_udp_threads;
 

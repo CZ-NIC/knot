@@ -42,6 +42,12 @@ static int systemd_zone_load_timeout(void)
 }
 #endif
 
+#ifdef ENABLE_DBUS
+#include <systemd/sd-bus.h>
+
+static sd_bus *_dbus = NULL;
+#endif
+
 void systemd_zone_load_timeout_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
@@ -84,57 +90,67 @@ void systemd_stopping_notify(void)
 #endif
 }
 
-#define DBUS_NAME "cz.nic.knotd"
-
-static sd_bus *_dbus = NULL;
-
 int systemd_dbus_open(void)
 {
-#ifdef ENABLE_SYSTEMD
+#ifdef ENABLE_DBUS
 	if (_dbus != NULL) {
 		return KNOT_EOK;
 	}
 
-	int ret = 0;
-	if ((ret = sd_bus_open_system(&_dbus)) < 0) {
+	int ret = sd_bus_open_system(&_dbus);
+	if (ret < 0) {
 		return ret;
 	}
 
-	/* Take a well-known service name so that clients can find us */
-	if ((ret = sd_bus_request_name(_dbus, DBUS_NAME, 0)) < 0) {
+	/* Take a well-known service name so that clients can find us. */
+	ret = sd_bus_request_name(_dbus, KNOT_DBUS_NAME, 0);
+	if (ret < 0) {
 		systemd_dbus_close();
 		return ret;
 	}
-#endif
+
 	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif
 }
 
 void systemd_dbus_close(void)
 {
-#ifdef ENABLE_SYSTEMD
+#ifdef ENABLE_DBUS
 	_dbus = sd_bus_unref(_dbus);
 #endif
 }
 
-static int emit_generic_event(const char * event, const char *types, ...) {
-	int ret;
-	if (_dbus == NULL) {
-		return KNOT_EOK;
-	}
-#ifdef ENABLE_SYSTEMD
-	va_list args;
-	va_start(args, types);
-	if ((ret = sd_bus_emit_signalv(_dbus, "/cz/nic/knotd", DBUS_NAME".events", event, types, args)) < 0) {
-		va_end(args);
-		return ret;
-	}
-	va_end(args);
-	return KNOT_EOK;
+#define emit_event(event, ...) \
+	sd_bus_emit_signal(_dbus, KNOT_DBUS_PATH, KNOT_DBUS_NAME".events", \
+	                   event, __VA_ARGS__)
+
+void systemd_emit_running(bool up)
+{
+#ifdef ENABLE_DBUS
+	emit_event(up ? KNOT_BUS_EVENT_STARTED : KNOT_BUS_EVENT_STOPPED, "");
 #endif
-	return KNOT_ENOTSUP;
 }
 
-int systemd_dbus_emit_xfr_done(unsigned char *zone)
+void systemd_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial)
 {
-	return emit_generic_event("On_XFR_Done", "s", zone);
+#ifdef ENABLE_DBUS
+	knot_dname_txt_storage_t buff;
+	char *zone_str = knot_dname_to_str(buff, zone_name, sizeof(buff));
+	if (zone_str != NULL) {
+		emit_event(KNOT_BUS_EVENT_ZONE_UPD, "su", zone_str, serial);
+	}
+#endif
+}
+
+void systemd_emit_zone_submission(const knot_dname_t *zone_name, uint16_t keytag)
+{
+#ifdef ENABLE_DBUS
+	knot_dname_txt_storage_t buff;
+	char *zone_str = knot_dname_to_str(buff, zone_name, sizeof(buff));
+	if (zone_str != NULL) {
+		emit_event(KNOT_BUS_EVENT_ZONE_KSK_SUBM, "sq", zone_str, keytag);
+	}
+#endif
 }

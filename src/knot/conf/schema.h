@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@
 #define C_CONFIG		"\x06""config"
 #define C_CTL			"\x07""control"
 #define C_DB			"\x08""database"
+#define C_DBUS_EVENT		"\x0A""dbus-event"
 #define C_DDNS_MASTER		"\x0B""ddns-master"
 #define C_DENY			"\x04""deny"
 #define C_DNSKEY_TTL		"\x0A""dnskey-ttl"
@@ -229,6 +230,13 @@ enum {
 	CATALOG_ROLE_INTERPRET = 1,
 	CATALOG_ROLE_GENERATE  = 2,
 	CATALOG_ROLE_MEMBER    = 3,
+};
+
+enum {
+	DBUS_EVENT_NONE            = 0,
+	DBUS_EVENT_RUNNING         = (1 << 0),
+	DBUS_EVENT_ZONE_UPDATED    = (1 << 1),
+	DBUS_EVENT_ZONE_SUBMISSION = (1 << 2),
 };
 
 extern const knot_lookup_t acl_actions[];
