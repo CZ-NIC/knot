@@ -1,3 +1,4 @@
+debian/cz.nic.knotd.conf etc/dbus-1/system.d/
 debian/ufw/knot etc/ufw/applications.d/
 etc/knot/knot.conf
 usr/bin/knsec3hash

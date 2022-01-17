@@ -184,9 +184,10 @@ cp -av doc/_build/html %{buildroot}%{_pkgdocdir}
 [ -r %{buildroot}%{_pkgdocdir}/html/index.html ] || exit 1
 rm -f %{buildroot}%{_pkgdocdir}/html/.buildinfo
 
-# install configuration file
+# install daemon and dbus configuration files
 rm %{buildroot}%{_sysconfdir}/%{name}/*
 install -p -m 0644 -D %{repodir}/samples/%{name}.sample.conf %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
+install -p -m 0644 -D %{repodir}/samples/cz.nic.knotd.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/cz.nic.knotd.conf
 
 # install systemd files
 install -p -m 0644 -D %{repodir}/distro/common/%{name}.service %{buildroot}%{_unitdir}/%{name}.service
