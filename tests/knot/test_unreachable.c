@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,8 +21,8 @@
 #include "contrib/sockaddr.h"
 
 #define UR_TEST_ADDRS 32
-struct sockaddr_storage ur_test_addrs[UR_TEST_ADDRS] = { 0 };
-struct sockaddr_storage ur_test_via[2] = { 0 };
+struct sockaddr_storage ur_test_addrs[UR_TEST_ADDRS] = { { 0 } };
+struct sockaddr_storage ur_test_via[2] = { { 0 } };
 
 int main(int argc, char *argv[])
 {
