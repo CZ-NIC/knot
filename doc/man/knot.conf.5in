@@ -200,6 +200,7 @@ server:
     udp\-max\-payload\-ipv6: SIZE
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
+    dbus\-event: none | running | zone\-updated | ksk\-submission ...
     listen: ADDR[@INT] ...
 .ft P
 .fi
@@ -435,6 +436,36 @@ Enable or disable sorted\-rrset rotation in the answer section of normal replies
 The rotation shift is simply determined by a query ID.
 .sp
 \fIDefault:\fP off
+.SS dbus\-event
+.sp
+Specification of server or zone states which emit a D\-Bus signal on the system
+bus. The bus name is \fBcz.nic.knotd\fP, the object path is \fB/cz/nic/knotd\fP, and
+the interface name is \fBcz.nic.knotd.events\fP\&.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBnone\fP – No signal is emitted.
+.IP \(bu 2
+\fBrunning\fP – The signal \fBstarted\fP is emitted when the server is fully operational
+and the signal \fBstopped\fP is emitted at the beginning of the server shutdown.
+.IP \(bu 2
+\fBzone\-updated\fP – The signal \fBzone_updated\fP is emitted when a zone has been updated;
+the signal parameters are \fIzone name\fP and \fIzone SOA serial\fP\&.
+.IP \(bu 2
+\fBksk\-submission\fP – The signal \fBzone_ksk_submission\fP is emitted if there is
+a ready KSK present when the zone is signed; the signal parameters are
+\fIzone name\fP and \fIKSK keytag\fP\&.
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This function requires systemd version at least 221.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP none
 .SS listen
 .sp
 One or more IP addresses where the server listens for incoming queries.

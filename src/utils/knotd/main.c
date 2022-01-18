@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -250,6 +250,9 @@ static void event_loop(server_t *server, const char *socket)
 
 	/* Notify systemd about successful start. */
 	systemd_ready_notify();
+	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
+		systemd_emit_running(true);
+	}
 
 	/* Run event loop. */
 	for (;;) {
@@ -279,6 +282,10 @@ static void event_loop(server_t *server, const char *socket)
 		if (ret == KNOT_CTL_ESTOP) {
 			break;
 		}
+	}
+
+	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
+		systemd_emit_running(false);
 	}
 
 	/* Unbind the control socket. */
@@ -498,6 +505,13 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	if (conf()->cache.srv_dbus_event != DBUS_EVENT_NONE) {
+		ret = systemd_dbus_open();
+		if (ret != KNOT_EOK) {
+			log_error("failed to open system dbus (%s)", knot_strerror(ret));
+		}
+	}
+
 	/* Alter privileges. */
 	int uid, gid;
 	if (conf_user(conf(), &uid, &gid) != KNOT_EOK ||
@@ -507,6 +521,7 @@ int main(int argc, char **argv)
 		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf());
+		systemd_dbus_close();
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -524,6 +539,7 @@ int main(int argc, char **argv)
 		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf());
+		systemd_dbus_close();
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -562,6 +578,7 @@ int main(int argc, char **argv)
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup();
+		systemd_dbus_close();
 		log_close();
 		conf_free(conf());
 		return EXIT_FAILURE;
@@ -590,6 +607,8 @@ int main(int argc, char **argv)
 
 	/* Unhook from RCU. */
 	rcu_unregister_thread();
+
+	systemd_dbus_close();
 
 	log_info("shutting down");
 	log_close();

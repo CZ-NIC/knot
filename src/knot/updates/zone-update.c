@@ -16,6 +16,7 @@
 
 #include "knot/catalog/interpret.h"
 #include "knot/common/log.h"
+#include "knot/common/systemd.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adds_tree.h"
@@ -1020,6 +1021,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, update->zone->name);
 	if (conf_int(&val) == 0) {
 		zone_events_schedule_now(update->zone, ZONE_EVENT_FLUSH);
+	}
+
+	if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_UPDATED) {
+		systemd_emit_zone_updated(update->zone->name,
+		                          zone_contents_serial(update->zone->contents));
 	}
 
 	memset(update, 0, sizeof(*update));

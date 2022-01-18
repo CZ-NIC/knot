@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,6 +126,7 @@ typedef struct {
 		bool srv_tcp_reuseport;
 		bool srv_tcp_fastopen;
 		bool srv_socket_affinity;
+		unsigned srv_dbus_event;
 		size_t srv_udp_threads;
 		size_t srv_tcp_threads;
 		size_t srv_xdp_threads;

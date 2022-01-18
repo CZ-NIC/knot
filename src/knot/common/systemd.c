@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -39,6 +40,12 @@ static int systemd_zone_load_timeout(void)
 		return ZONE_LOAD_TIMEOUT_DEFAULT;
 	}
 }
+#endif
+
+#ifdef ENABLE_DBUS
+#include <systemd/sd-bus.h>
+
+static sd_bus *_dbus = NULL;
 #endif
 
 void systemd_zone_load_timeout_notify(void)
@@ -80,5 +87,70 @@ void systemd_stopping_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
 	sd_notify(0, "STOPPING=1\nSTATUS=");
+#endif
+}
+
+int systemd_dbus_open(void)
+{
+#ifdef ENABLE_DBUS
+	if (_dbus != NULL) {
+		return KNOT_EOK;
+	}
+
+	int ret = sd_bus_open_system(&_dbus);
+	if (ret < 0) {
+		return ret;
+	}
+
+	/* Take a well-known service name so that clients can find us. */
+	ret = sd_bus_request_name(_dbus, KNOT_DBUS_NAME, 0);
+	if (ret < 0) {
+		systemd_dbus_close();
+		return ret;
+	}
+
+	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif
+}
+
+void systemd_dbus_close(void)
+{
+#ifdef ENABLE_DBUS
+	_dbus = sd_bus_unref(_dbus);
+#endif
+}
+
+#define emit_event(event, ...) \
+	sd_bus_emit_signal(_dbus, KNOT_DBUS_PATH, KNOT_DBUS_NAME".events", \
+	                   event, __VA_ARGS__)
+
+void systemd_emit_running(bool up)
+{
+#ifdef ENABLE_DBUS
+	emit_event(up ? KNOT_BUS_EVENT_STARTED : KNOT_BUS_EVENT_STOPPED, "");
+#endif
+}
+
+void systemd_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial)
+{
+#ifdef ENABLE_DBUS
+	knot_dname_txt_storage_t buff;
+	char *zone_str = knot_dname_to_str(buff, zone_name, sizeof(buff));
+	if (zone_str != NULL) {
+		emit_event(KNOT_BUS_EVENT_ZONE_UPD, "su", zone_str, serial);
+	}
+#endif
+}
+
+void systemd_emit_zone_submission(const knot_dname_t *zone_name, uint16_t keytag)
+{
+#ifdef ENABLE_DBUS
+	knot_dname_txt_storage_t buff;
+	char *zone_str = knot_dname_to_str(buff, zone_name, sizeof(buff));
+	if (zone_str != NULL) {
+		emit_event(KNOT_BUS_EVENT_ZONE_KSK_SUBM, "sq", zone_str, keytag);
+	}
 #endif
 }

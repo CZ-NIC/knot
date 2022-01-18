@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,6 +41,8 @@ typedef struct {
 	bool keep_deleted_keys;
 	bool keytag_conflict;
 	bool validation_mode;
+
+	unsigned dbus_event;
 
 	knot_rrset_t *offline_rrsig;
 } kdnssec_ctx_t;
