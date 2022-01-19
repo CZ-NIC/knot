@@ -72,8 +72,7 @@ static node_t *tcp_conn_node(knot_tcp_conn_t *conn)
 static void next_node_ptr(knot_tcp_conn_t **ptr)
 {
 	if (*ptr != NULL) {
-		knot_tcp_conn_t *conn = *ptr;
-		*ptr = conn->list_node_placeholder.list_node_next;
+		*ptr = (*ptr)->list_node_placeholder.list_node_next;
 		if ((*ptr)->list_node_placeholder.list_node_next == NULL) { // detected tail of list
 			*ptr = NULL;
 		}
