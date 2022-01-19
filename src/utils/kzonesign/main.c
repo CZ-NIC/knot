@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,7 +113,8 @@ static int zonesign(sign_params_t *params)
 		ret = knot_dnssec_validate_zone(&up, conf(), params->timestamp, false);
 		if (ret != KNOT_EOK) {
 			ERR2("DNSSEC validation failed (%s)\n", knot_strerror(ret));
-			char name_str[KNOT_DNAME_TXT_MAXLEN], type_str[16];
+			char type_str[16];
+			knot_dname_txt_storage_t name_str;
 			if (knot_dname_to_str(name_str, up.validation_hint.node, sizeof(name_str)) != NULL &&
 			    knot_rrtype_to_string(up.validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
 				ERR2("affected node: '%s' type '%s'\n", name_str, type_str);

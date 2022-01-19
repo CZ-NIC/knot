@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -66,7 +66,7 @@ static void process_error(zs_scanner_t *s)
 
 static zone_contents_t *str2contents(const char *zone_str)
 {
-	char origin_str[KNOT_DNAME_TXT_MAXLEN];
+	knot_dname_txt_storage_t origin_str;
 	sscanf(zone_str, "%s", origin_str); // NOTE assuming that first token in zone_str is origin name!
 
 	knot_dname_t *origin = knot_dname_from_str_alloc(origin_str);
