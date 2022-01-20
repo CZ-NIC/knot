@@ -771,7 +771,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	}
 
 	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
-		ret = knot_dnssec_key_rollover(ctx, flags, reschedule);
+		return knot_dnssec_key_rollover(ctx, flags, reschedule);
 	}
 
 	if (ret == KNOT_EOK && reschedule->keys_changed) {
