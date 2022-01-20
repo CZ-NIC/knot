@@ -956,7 +956,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		if (ret != KNOT_EOK) {
 			log_zone_error(update->zone->name, "DNSSEC, %svalidation failed (%s)",
 			               msg_valid, knot_strerror(ret));
-			char name_str[KNOT_DNAME_TXT_MAXLEN], type_str[16];
+			char type_str[16];
+			knot_dname_txt_storage_t name_str;
 			if (knot_dname_to_str(name_str, update->validation_hint.node, sizeof(name_str)) != NULL &&
 			    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
 				log_zone_error(update->zone->name, "DNSSEC, validation hint: %s %s",

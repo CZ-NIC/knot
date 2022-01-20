@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,13 +35,14 @@
 /*!
  * \brief The longest textual dname representation.
  *
- * 3 x maximum_label + 1 x rest_label + 1 x zero_label
- * Each dname label byte takes 4 characters (\\DDD).
- * Each label takes 1 more byte for '.' character.
+ * Binary:  3 x (0x3F + maximum_label) + (0x3D + rest_label) + (0x00)
+ * Textual: 3 x (maximum_label + '.') + (rest_label + '.')
  *
- * KNOT_DNAME_TXT_MAXLEN = 3x(1 + 63x4) + 1x(1 + 61x4) + 1x(1 + 0)
+ * Each dname label byte takes 4 characters (\\DDD).
+ *
+ * KNOT_DNAME_TXT_MAXLEN = 3 x (63 x 4 + 1) + (61 x 4 + 1)
  */
-#define KNOT_DNAME_TXT_MAXLEN 1005
+#define KNOT_DNAME_TXT_MAXLEN 1004
 
 /*!
  * \brief Address family numbers.
