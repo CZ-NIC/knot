@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "KXDPGUN" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
-.SH NAME
-kxdpgun \- XDP-powered DNS benchmarking tool
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "KXDPGUN" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
+.SH NAME
+kxdpgun \- XDP-powered DNS benchmarking tool
 .SH SYNOPSIS
 .sp
 \fBkxdpgun\fP [\fIoptions\fP] \fB\-i\fP \fIfilename\fP \fItargetIP\fP
