@@ -184,6 +184,7 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
 		return 0; // TODO handle weirdly fragmented queries?
 	}
 
+	ctx->stream_id = stream_id;
 	ctx->rx_query.iov_base = (void *)data + sizeof(uint16_t);
 	ctx->rx_query.iov_len = datalen - sizeof(uint16_t);
 	return 0;
@@ -200,7 +201,7 @@ static int acked_stream_data_offset_cb(ngtcp2_conn *conn, int64_t stream_id,
 
 static int stream_opened(ngtcp2_conn *conn, int64_t stream_id, void *user_data)
 {
-	printf("stream %ld opened...", stream_id);
+	printf("stream %ld opened...\n", stream_id);
 	return 0;
 }
 
@@ -213,11 +214,23 @@ static void user_printf(void *user_data, const char *format, ...)
 	va_end(args);
 }
 
+static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t datalen)
+{
+	(void)user_data;
+	FILE *qlog = fopen("/tmp/qlog", "a");
+	if (qlog != NULL) {
+		fprintf(qlog, "\n%u: ", flags);
+		for (size_t i = 0; i < datalen; i++) {
+			fputc(*(uint8_t *)(data + i), qlog);
+		}
+		fclose(qlog);
+	}
+}
+
 static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
                            const ngtcp2_cid *dcid, const ngtcp2_cid *ocid, uint32_t version,
                            uint64_t now, void *user_data)
 {
-
 	// I. CALLBACKS
 	const ngtcp2_callbacks callbacks = {
 		NULL, // client_initial
@@ -274,6 +287,8 @@ static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const n
 		settings.max_udp_payload_size = 1472;
 		settings.assume_symmetric_path = 1;
 	}
+	settings.qlog.odcid = *ocid;
+	settings.qlog.write = user_qlog;
 
 	// III. PARAMS
 	ngtcp2_transport_params params;
@@ -359,6 +374,8 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 
 	if (ret == KNOT_EOK) {
 		*out_conn = xconn;
+		memcpy(xconn->last_eth_rem, msg->eth_from, sizeof(msg->eth_from));
+		memcpy(xconn->last_eth_loc, msg->eth_to, sizeof(msg->eth_to));
 	}
 
 	return ret;
@@ -386,6 +403,33 @@ int knot_xquic_recv(knot_xquic_conn_t **relays, knot_xdp_msg_t *msgs,
 
 int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay)
 {
+	if (relay == NULL) {
+		return KNOT_EOK;
+	}
 
-	return KNOT_EOK;
+	bool ipv6 = false; // FIXME
+
+	knot_xdp_msg_t msg = { 0 };
+	int ret = knot_xdp_send_alloc(sock, ipv6 ? KNOT_XDP_MSG_IPV6 : 0, &msg);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ngtcp2_path path = { 0 };
+
+	ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
+	                                NULL, NGTCP2_WRITE_STREAM_FLAG_FIN, relay->stream_id,
+	                                relay->tx_query.iov_base, relay->tx_query.iov_len, get_timestamp());
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	memcpy(&msg.ip_from, path.local.addr, sizeof(msg.ip_from));
+	memcpy(&msg.ip_to, path.remote.addr, sizeof(msg.ip_to));
+
+	memcpy(msg.eth_from, relay->last_eth_loc, sizeof(msg.eth_from));
+	memcpy(msg.eth_to, relay->last_eth_rem, sizeof(msg.eth_to));
+
+	uint32_t sent = 0;
+	return knot_xdp_send(sock, &msg, 1, &sent);
 }

@@ -25,12 +25,11 @@
 #include "libknot/xdp/xdp.h"
 
 typedef struct knot_xquic_conn {
-	struct {
+/*	struct {
 		struct knot_xquic_conn *list_node_next;
 		struct knot_xquic_conn *list_node_prev;
 	} list_node_placeholder;
-	struct sockaddr_in6 ip_rem;
-	struct sockaddr_in6 ip_loc;
+*/
 	uint8_t last_eth_rem[ETH_ALEN];
 	uint8_t last_eth_loc[ETH_ALEN];
 
@@ -39,6 +38,7 @@ typedef struct knot_xquic_conn {
 
 	struct iovec rx_query; // TODO ?
 	struct iovec tx_query; // TODO ?
+	int64_t stream_id; // TODO per-stream buffers.
 
 	struct knot_xquic_conn *next;
 

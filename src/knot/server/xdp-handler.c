@@ -250,6 +250,10 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		if (rl == NULL) {
 			continue;
 		}
+		if (rl->rx_query.iov_len == 0) {
+			rl->tx_query.iov_len = 0;
+			continue;
+		}
 
 		// Consume the query.
 		handle_init(params, layer, &ctx->msg_recv[i], &rl->rx_query);
@@ -288,6 +292,7 @@ void xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	if (ctx->tcp) {
 		handle_tcp(ctx, layer, &params);
 	}
+	handle_quic(ctx, layer, &params);
 
 	knot_xdp_recv_finish(ctx->sock, ctx->msg_recv, ctx->msg_recv_count);
 }
@@ -303,11 +308,9 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 		}
 	}
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
-		if (ctx->quic_relays[i] != NULL) {
-			int ret = knot_xquic_send(ctx->sock, ctx->quic_relays[i]);
-			if (ret != KNOT_EOK) {
-				log_notice("QUIC, failed to send some packets");
-			}
+		int ret = knot_xquic_send(ctx->sock, ctx->quic_relays[i]);
+		if (ret != KNOT_EOK) {
+			log_notice("QUIC, failed to send some packets");
 		}
 	}
 	(void)knot_xdp_send_finish(ctx->sock);
