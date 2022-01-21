@@ -2,10 +2,15 @@ lib_LTLIBRARIES += libknot.la
 pkgconfig_DATA  += libknot.pc
 
 libknot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS) \
-                      ${fuzzer_CFLAGS}
+                      ${fuzzer_CFLAGS} $(libngtcp2_CFLAGS)
 libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS) \
                       ${fuzzer_LDFLAGS}
-libknot_la_LIBADD   = libdnssec.la $(libcontrib_LIBS) $(lmdb_LIBS) $(math_LIBS)
+libknot_la_LIBADD   = libdnssec.la $(libcontrib_LIBS) $(lmdb_LIBS) $(math_LIBS) \
+                      $(libngtcp2_LIBS)
+
+if EMBEDDED_LIBNGTCP2
+libknot_la_LIBADD += $(libembngtcp2_LIBS)
+endif EMBEDDED_LIBNGTCP2
 
 include_libknotdir = $(includedir)
 nobase_include_libknot_HEADERS = \
@@ -97,6 +102,7 @@ nobase_include_libknot_HEADERS += \
 	libknot/xdp/bpf-consts.h		\
 	libknot/xdp/eth.h			\
 	libknot/xdp/msg.h			\
+	libknot/xdp/quic.h			\
 	libknot/xdp/tcp.h			\
 	libknot/xdp/tcp_iobuf.h			\
 	libknot/xdp/xdp.h
@@ -109,6 +115,7 @@ libknot_la_SOURCES  += \
 	libknot/xdp/eth.c			\
 	libknot/xdp/msg_init.h			\
 	libknot/xdp/protocols.h			\
+	libknot/xdp/quic.c			\
 	libknot/xdp/tcp.c			\
 	libknot/xdp/tcp_iobuf.c			\
 	libknot/xdp/xdp.c

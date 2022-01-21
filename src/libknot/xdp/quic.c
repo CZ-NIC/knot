@@ -23,6 +23,7 @@
 #include "contrib/sockaddr.h"
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
+#include "libknot/attribute.h"
 #include "libknot/error.h"
 #include "libknot/xdp/quic.h"
 
@@ -97,7 +98,7 @@ static void init_random_cid(ngtcp2_cid *cid, size_t len)
 		len = SERVER_DEFAULT_SCIDLEN;
 	}
 
-	if (dnssec_random_buffer(cid->data, cidlen) != DNSSEC_EOK) {
+	if (dnssec_random_buffer(cid->data, len) != DNSSEC_EOK) {
 		cid->datalen = 0;
 	} else {
 		cid->datalen = len;
@@ -137,7 +138,7 @@ static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	// memcpy(alpn_str, alpn.data, alpn.size);
 	// printf("Negotiated ALPN is %s\n", alpn_str);
 
-	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {
+/*	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {
 		printf("Unable to send session ticket\n");
 	}
 
@@ -163,7 +164,7 @@ static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 //     }
 		assert(0);
 		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
+	} */
 
 	return 0;
 }
@@ -381,6 +382,7 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 	return ret;
 }
 
+_public_
 int knot_xquic_recv(knot_xquic_conn_t **relays, knot_xdp_msg_t *msgs,
                     uint32_t count, knot_xquic_table_t *quic_table)
 {
@@ -401,6 +403,7 @@ int knot_xquic_recv(knot_xquic_conn_t **relays, knot_xdp_msg_t *msgs,
 	return KNOT_EOK;
 }
 
+_public_
 int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay)
 {
 	if (relay == NULL) {
