@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# Author: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+# 2018-11-02
+# License: GPLv3+
+
+# error on exit
+set -e
+# for handling jobspecs:
+set -m
+
+if [ -z "$AUTOPKGTEST_ARTIFACTS" ]; then
+    d="$(mktemp -d)"
+    remove="$d"
+else
+    d="$AUTOPKGTEST_ARTIFACTS"
+fi
+ip="${TESTIP:-127.$(( $RANDOM % 256 )).$(( $RANDOM % 256 )).$(( $RANDOM % 256 ))}"
+port="${PORT:-8123}"
+knotc="${KNOTC:-/usr/sbin/knotc}"
+knotd="${KNOTD:-/usr/sbin/knotd}"
+keymgr="${KEYMGR:-/usr/sbin/keymgr}"
+kdig="${KDIG:-$(command -v kdig)}"
+kzonecheck="${KZONECHECK:-$(command -v kzonecheck)}"
+test_address="${TEST_ADDRESS:-192.0.2.199}"
+
+declare -a knot_conf="--config=$d/knot.conf"
+declare -a knot_args=("$knot_conf" --verbose)
+
+printf "%s + %s roundtrip tests\n------------\n    workdir: %s\n    IP addr: %s\n  knot args: %s\n" "$knotd" "$kdig" "$d" "$ip" "${knot_args[*]}"
+
+section() {
+    printf "\n%s\n" "$1"
+    sed 's/./-/g' <<<"$1"
+}
+
+cleanup () {
+    section "cleaning up"
+    find "$d" -ls
+    "${knotc}" "${knot_args[@]}" stop
+    wait %1
+    tail -n +1 -v "$d"/*.err
+    if [ "$remove" ]; then
+        printf "\ncleaning up working directory %s\n" "$remove"
+        rm -rf "$remove"
+    fi
+}
+trap cleanup EXIT
+
+section "set up config file and zonefile"
+
+user=$(id -nu)
+group=$(id -ng)
+cat > "$d/knot.conf" <<EOF
+server:
+ rundir: "$d"
+ listen: $ip@$port
+ user: $user:$group
+database:
+ storage: "$d"
+template:
+ - id: default
+   storage: "$d"
+   file: "%s.zone"
+zone:
+ - domain: example.net
+   dnssec-signing: on
+EOF
+
+cat > "$d/example.net.zone" <<EOF
+@ 1D IN SOA a.ns hostmaster 2018103100 3h 15m 1w 1d
+@ 1D IN NS a.ns.example.net.
+@ 1D IN NS b.ns.example.net.
+a.ns 1D IN A 192.0.2.1
+b.ns 1D IN A 192.0.2.2
+test 1D IN A $test_address
+EOF
+
+find "$d" -maxdepth 1 -type f -print0 | xargs -0 tail -n +1 -v
+
+mkdir -p "${d}"
+
+section "kzonecheck'ing zonefile"
+"${kzonecheck}" -v "$d/example.net.zone"
+
+section "launching knot"
+"${knotd}" "${knot_args[@]}" 2> "$d/knotd.err" &
+
+# FIXME: this is an annoying poll -- would be better if we could be
+# alerted when the daemon is done setting up the socket, but i don't
+# want to "--daemonize" if i can avoid it because i want the shell to
+# remain in direct supervision of all its processes
+tried=0
+while [ $tried -lt 10 ] ; do
+    if "${knotc}" "${knot_args[@]}" status 2>&1; then
+        break;
+    fi
+    sleep 0.5
+    tried=$(( $tried + 1 ))
+done
+if [ $tried -ge 10 ]; then
+    printf "failed to use %s\n" "${knotc}" >&2
+    exit 1
+fi
+
+section "querying knot"
+"${kdig}" -p "${port}" @"${ip}" -t A test.example.net test2.example.net
+answer="$("${kdig}" +short -p "${port}" @"${ip}" -t A test.example.net)"
+if ! [ "$answer" = "$test_address" ]; then
+    printf "test.example.net mismatch!\nexpected: %s\n     got: %s\n" "$test_address" "$answer" >&2
+    exit 1
+fi
+answer2="$("${kdig}" +short -p "${port}" @"${ip}" -t A test2.example.net)"
+if ! [ "$answer2" = "" ]; then
+    printf "test2.example.net gave unexpected answer!\n  got: %s\n" "$answer2" >&2
+    exit 1
+fi
+
+section "modifying zone"
+printf "test2 1D IN A $test_address\n" >>"$d/example.net.zone"
+sed -i 's/^@ 1D IN SOA.*/@ 1D IN SOA a.ns hostmaster 2018110100 3h 15m 1w 1d/' "$d/example.net.zone"
+"${knotc}" "${knot_args[@]}" reload
+sleep 1
+
+section "querying again"
+"${kdig}" -p "${port}" @"${ip}" -t A test.example.net test2.example.net
+answer="$("${kdig}" +short -p "${port}" @"${ip}" -t A test.example.net)"
+if ! [ "$answer" = "$test_address" ]; then
+    printf "test.example.net mismatch!\nexpected: %s\n     got: %s\n" "$test_address" "$answer" >&2
+    exit 1
+fi
+answer2="$("${kdig}" +short -p "${port}" @"${ip}" -t A test2.example.net)"
+if ! [ "$answer2" = "$test_address" ]; then
+    printf "test2.example.net mismatch!\nexpected: %s\n     got: %s\n" "$test_address" "$answer2" >&2
+    exit 1
+fi
+
+section "querying DNSSEC"
+"${kdig}" -p "${port}" @"${ip}" -t DNSKEY example.net. +dnssec
+if ! "${kdig}" -p "${port}" @"${ip}" -t DNSKEY example.net. +dnssec 2>&1 | grep -q "RRSIG[[:space:]]*DNSKEY"; then
+    printf "DNSSEC query not successful" >&2
+    exit 1
+fi
+
+section "listing keys with keymgr"
+"${keymgr}" "$knot_conf" example.net. list
+if ! "${keymgr}" "$knot_conf" example.net. list 2>&1 | grep -q "ksk=yes"; then
+    printf "keymgr did not list KSK as expected" >&2
+    exit 1
+fi

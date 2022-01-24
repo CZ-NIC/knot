@@ -1,2 +1,10 @@
 Tests: kdig
-Depends: knot-dnsutils, ca-certificates
+Depends:
+ ca-certificates,
+ knot-dnsutils,
+
+Tests: authoritative-server
+Depends:
+ findutils,
+ knot,
+ knot-dnsutils,
