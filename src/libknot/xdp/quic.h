@@ -36,6 +36,8 @@ typedef struct knot_xquic_conn {
 	ngtcp2_conn *conn;
 	ngtcp2_cid cid;
 
+	gnutls_session_t tls_session;
+
 	struct iovec rx_query; // TODO ?
 	struct iovec tx_query; // TODO ?
 	int64_t stream_id; // TODO per-stream buffers.
@@ -45,12 +47,36 @@ typedef struct knot_xquic_conn {
 	struct knot_xquic_table *xquic_table; // TODO ?
 } knot_xquic_conn_t;
 
+typedef struct {
+	gnutls_certificate_credentials_t tls_cert;
+	gnutls_anti_replay_t tls_anti_replay;
+	gnutls_datum_t tls_ticket_key;
+	uint8_t static_secret[32];
+} knot_quic_creds_t;
+
 typedef struct knot_xquic_table {
 	size_t size;
 	size_t usage;
 	uint64_t hash_secret[4];
+	knot_quic_creds_t creds;
 	knot_xquic_conn_t *conns[];
 } knot_xquic_table_t;
+
+/*!
+ * \brief Allocate QUIC connections hash table.
+ *
+ * \param table_size    Number of hash buckets.
+ *
+ * \return Allocated table or NULL;
+ */
+knot_xquic_table_t *knot_xquic_table_new(size_t table_size);
+
+/*!
+ * \brief Free QUIC table including its contents.
+ *
+ * \param table    Table to be freed.
+ */
+void knot_xquic_table_free(knot_xquic_table_t *table);
 
 /*!
  * \brief Process received packets, pic incomming DNS data.

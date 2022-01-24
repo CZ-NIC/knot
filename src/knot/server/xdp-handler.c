@@ -85,6 +85,7 @@ void xdp_handle_free(xdp_handle_ctx_t *ctx)
 {
 	knot_tcp_table_free(ctx->tcp_table);
 	knot_tcp_table_free(ctx->syn_table);
+	knot_xquic_table_free(ctx->quic_table);
 	free(ctx);
 }
 
@@ -112,6 +113,12 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 				return NULL;
 			}
 		}
+	}
+
+	ctx->quic_table = knot_xquic_table_new(1000); // FIXME
+	if (ctx->quic_table == NULL) {
+		xdp_handle_free(ctx);
+		return NULL;
 	}
 
 	return ctx;
