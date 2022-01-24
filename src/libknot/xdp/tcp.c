@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -270,22 +270,22 @@ static void conn_update(knot_tcp_conn_t *conn, const knot_xdp_msg_t *msg)
 }
 
 _public_
-int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count,
+int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_count,
                   knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
                   knot_tcp_ignore_t ignore)
 {
-	if (count == 0) {
+	if (msg_count == 0) {
 		return KNOT_EOK;
 	}
 	if (relays == NULL || msgs == NULL || tcp_table == NULL) {
 		return KNOT_EINVAL;
 	}
-	memset(relays, 0, count * sizeof(*relays));
+	memset(relays, 0, msg_count * sizeof(*relays));
 
 	knot_tcp_relay_t *relay = relays;
 	int ret = KNOT_EOK;
 
-	for (knot_xdp_msg_t *msg = msgs; msg != msgs + count && ret == KNOT_EOK; msg++) {
+	for (knot_xdp_msg_t *msg = msgs; msg != msgs + msg_count && ret == KNOT_EOK; msg++) {
 		if (!(msg->flags & KNOT_XDP_MSG_TCP)) {
 			continue;
 		}
@@ -439,7 +439,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count
 
 _public_
 int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
-                        bool ignore_lastbyte, uint8_t *data, size_t len)
+                        bool ignore_lastbyte, uint8_t *data, uint32_t len)
 {
 	if (relay == NULL || tcp_table == NULL || relay->conn == NULL) {
 		return KNOT_EINVAL;
@@ -493,7 +493,7 @@ static void msg_init_from_conn(knot_xdp_msg_t *msg, knot_tcp_conn_t *conn)
 }
 
 static int next_msg(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_msg_t **cur,
-                     knot_xdp_socket_t *socket, knot_tcp_relay_t *rl)
+                    knot_xdp_socket_t *socket, knot_tcp_relay_t *rl)
 {
 	(*cur)++;
 	if (*cur - msgs >= n_msgs) {
@@ -523,8 +523,8 @@ static int next_msg(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_msg_t **cur,
 }
 
 _public_
-int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t relay_count,
-                  uint32_t max_at_once)
+int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
+                  uint32_t relay_count, uint32_t max_at_once)
 {
 	if (relay_count == 0) {
 		return KNOT_EOK;
@@ -610,9 +610,9 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
 	return ret;
 }
 
-void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
-                 ssize_t *free_conns, ssize_t *free_inbuf, ssize_t *free_outbuf,
-                 uint32_t *reset_count)
+static void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
+                        ssize_t *free_conns, ssize_t *free_inbuf, ssize_t *free_outbuf,
+                        uint32_t *reset_count)
 {
 	rl->answer = XDP_TCP_RESET | XDP_TCP_FREE;
 	tcp_table_remove(tcp_table_re_lookup(rl->conn, tcp_table), tcp_table); // also updates tcp_table->next_*
@@ -631,7 +631,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
                    uint32_t close_timeout, uint32_t reset_timeout,
                    uint32_t resend_timeout, uint32_t limit_n_conn,
                    size_t limit_ibuf_size, size_t limit_obuf_size,
-                   knot_tcp_relay_t *relays, size_t max_relays,
+                   knot_tcp_relay_t *relays, uint32_t max_relays,
                    uint32_t *close_count, uint32_t *reset_count)
 {
 	if (tcp_table == NULL || relays == NULL || max_relays < 1) {
@@ -709,10 +709,11 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 }
 
 _public_
-void knot_tcp_cleanup(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *relays, size_t n_relays)
+void knot_tcp_cleanup(knot_tcp_table_t *tcp_table, knot_tcp_relay_t relays[],
+                      uint32_t relay_count)
 {
 	(void)tcp_table;
-	for (uint32_t i = 0; i < n_relays; i++) {
+	for (uint32_t i = 0; i < relay_count; i++) {
 		if (relays[i].answer & XDP_TCP_FREE) {
 			del_conn(relays[i].conn);
 		}

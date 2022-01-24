@@ -120,7 +120,8 @@ inline static uint32_t knot_tcp_next_seqno(const knot_xdp_msg_t *msg)
 
 inline static bool knot_tcp_relay_empty(const knot_tcp_relay_t *r)
 {
-	return r->action == XDP_TCP_NOOP && r->answer == XDP_TCP_NOOP && r->auto_answer == 0 && r->inbufs_count == 0;
+	return r->action == XDP_TCP_NOOP && r->answer == XDP_TCP_NOOP &&
+	       r->auto_answer == 0 && r->inbufs_count == 0;
 }
 
 /*!
@@ -143,33 +144,34 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size, knot_tcp_table_t *secret_share
 void knot_tcp_table_free(knot_tcp_table_t *table);
 
 /*!
- * \brief Process received packets, prepare automatick responses (e.g. ACK), pick incoming data.
+ * \brief Process received packets, prepare automatic responses (e.g. ACK), pick incoming data.
  *
  * \param relays      Out: relays to be filled with message/connection details.
- * \param msgs        Packets received by knot_xdp_recv();
- * \param count       Number of received packets.
+ * \param msgs        Packets received by knot_xdp_recv().
+ * \param msg_count   Number of received packets.
  * \param tcp_table   Table of TCP connections.
  * \param syn_table   Optional: extra table for handling partially established connections.
+ * \param ignore      Ignore specific TCP packets indication.
  *
  * \return KNOT_E*
  */
-int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t *msgs, uint32_t count,
+int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_count,
                   knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
                   knot_tcp_ignore_t ignore);
 
 /*!
  * \brief Prepare data (payload) to be sent as a response on specific relay.
  *
- * \param relay       Relay with active connection.
- * \param tcp_table   TCP table.
+ * \param relay            Relay with active connection.
+ * \param tcp_table        TCP table.
  * \param ignore_lastbyte  Evil mode: drop last byte of the payload.
- * \param data        Data payload, possibly > MSS and > window.
- * \param len         Payload length, < 64k.
+ * \param data             Data payload, possibly > MSS and > window.
+ * \param len              Payload length, < 64k.
  *
  * \return KNOT_E*
  */
 int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
-                        bool ignore_lastbyte, uint8_t *data, size_t len);
+                        bool ignore_lastbyte, uint8_t *data, uint32_t len);
 
 /*!
  * \brief Send TCP packets.
@@ -181,8 +183,8 @@ int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
  *
  * \return KNOT_E*
  */
-int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t relay_count,
-                  uint32_t max_at_once);
+int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
+                  uint32_t relay_count, uint32_t max_at_once);
 
 /*!
  * \brief Cleanup old TCP connections, perform timeout checks.
@@ -195,8 +197,8 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[], uint32_t
  * \param limit_obuf_size  Limit of memory usage by output buffers, reset if exceeded.
  * \param relays           Out: relays to be filled with close/reset instructions for knot_tcp_send().
  * \param max_relays       Maximum relays to be used.
- * \param close_count      Out: number of connection closed.
- * \param reset_count      Out: number of connections reset.
+ * \param close_count      Out: number of connections closed (can be NULL).
+ * \param reset_count      Out: number of connections reset (can be NULL).
  *
  * \return KNOT_E*
  */
@@ -204,7 +206,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
                    uint32_t close_timeout, uint32_t reset_timeout,
                    uint32_t resend_timeout, uint32_t limit_n_conn,
                    size_t limit_ibuf_size, size_t limit_obuf_size,
-                   knot_tcp_relay_t *relays, size_t max_relays,
+                   knot_tcp_relay_t *relays, uint32_t max_relays,
                    uint32_t *close_count, uint32_t *reset_count);
 
 /*!
@@ -212,8 +214,9 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
  *
  * \param tcp_table    TCP table with connections.
  * \param relays       Relays with closed/resettted (or other, ignored) connections.
- * \param n_relays     Number of relays.
+ * \param relay_count  Number of relays.
  */
-void knot_tcp_cleanup(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *relays, size_t n_relays);
+void knot_tcp_cleanup(knot_tcp_table_t *tcp_table, knot_tcp_relay_t relays[],
+                      uint32_t relay_count);
 
 /*! @} */
