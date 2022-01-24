@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -196,7 +196,8 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                        knotd_qdata_params_t *params)
 {
-	int ret = knot_tcp_recv(ctx->relays, ctx->msg_recv, ctx->msg_recv_count, ctx->tcp_table, ctx->syn_table, XDP_TCP_IGNORE_NONE);
+	int ret = knot_tcp_recv(ctx->relays, ctx->msg_recv, ctx->msg_recv_count,
+	                        ctx->tcp_table, ctx->syn_table, XDP_TCP_IGNORE_NONE);
 	if (ret != KNOT_EOK) {
 		log_notice("TCP, failed to process some packets (%s)", knot_strerror(ret));
 		return;
@@ -209,6 +210,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
 		knot_tcp_relay_t *rl = &ctx->relays[i];
 
+		// Process all complete DNS queries in one TCP stream.
 		for (size_t j = 0; j < rl->inbufs_count; j++) {
 			// Consume the query.
 			handle_init(params, layer, rl->msg, &rl->inbufs[j]);
@@ -222,8 +224,8 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 					continue;
 				}
 
-				(void)knot_tcp_reply_data(rl, ctx->tcp_table, false, ans->wire, ans->size);
-				// ignore unprobable ENOMEM here
+				(void)knot_tcp_reply_data(rl, ctx->tcp_table, false,
+				                          ans->wire, ans->size);
 			}
 
 			handle_finish(layer);
@@ -257,11 +259,13 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 	uint32_t unused;
 	(void)knot_xdp_send(ctx->sock, ctx->msg_send_udp, ctx->msg_udp_count, &unused);
 	if (ctx->tcp) {
-		int ret = knot_tcp_send(ctx->sock, ctx->relays, ctx->msg_recv_count, XDP_BATCHLEN);
+		int ret = knot_tcp_send(ctx->sock, ctx->relays, ctx->msg_recv_count,
+		                        XDP_BATCHLEN);
 		if (ret != KNOT_EOK) {
 			log_notice("TCP, failed to send some packets");
 		}
 	}
+
 	(void)knot_xdp_send_finish(ctx->sock);
 
 	if (ctx->tcp) {

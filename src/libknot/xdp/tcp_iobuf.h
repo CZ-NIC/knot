@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include <assert.h>
 #include <string.h>
 #include <sys/uio.h>
 
@@ -57,7 +56,7 @@ int tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 /*!
  * \brief Add payload to be sent by TCP, to output buffers.
  *
- * \param ob               Output buffers to be updated.
+ * \param bufs             Output buffers to be updated.
  * \param data             Payload to be sent.
  * \param len              Payload length.
  * \param ignore_lastbyte  Evil mode: drop last byte of the payload.
@@ -72,7 +71,7 @@ int tcp_outbufs_add(knot_tcp_outbuf_t **bufs, uint8_t *data, size_t len,
 /*!
  * \brief Remove+free acked data from output buffers.
  *
- * \param ob               Output buffers to be updated.
+ * \param bufs             Output buffers to be updated.
  * \param ackno            Ackno of received ACK.
  * \param outbufs_total    In/out: total outbuf statistic to be updated.
  */
@@ -81,7 +80,7 @@ void tcp_outbufs_ack(knot_tcp_outbuf_t **bufs, uint32_t ackno, size_t *outbufs_t
 /*!
  * \brief Prepare output buffers to be sent now.
  *
- * \param ob            Output buffers to be updated.
+ * \param bufs          Output buffers to be updated.
  * \param window_size   Connection outgoing window size.
  * \param resend        Send also possibly already sent data.
  * \param send_start    Out: first output buffer to be sent.
