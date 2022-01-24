@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -625,10 +626,6 @@ void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
 	}
 }
 
-#ifndef SSIZE_MAX
-#define SSIZE_MAX ((SIZE_MAX - 2) / 2)
-#endif
-
 _public_
 int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
                    uint32_t close_timeout, uint32_t reset_timeout,
@@ -645,9 +642,9 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 	memset(relays, 0, max_relays * sizeof(*relays));
 	knot_tcp_relay_t *rl = relays, *rl_max = rl + max_relays;
 
-	ssize_t free_conns =  (ssize_t)tcp_table->usage - limit_n_conn;
-	ssize_t free_inbuf =  (ssize_t)tcp_table->inbufs_total - MIN(limit_ibuf_size, SSIZE_MAX);
-	ssize_t free_outbuf = (ssize_t)tcp_table->outbufs_total - MIN(limit_obuf_size, SSIZE_MAX);
+	ssize_t free_conns =  (ssize_t)(tcp_table->usage - limit_n_conn);
+	ssize_t free_inbuf =  (ssize_t)(tcp_table->inbufs_total - MIN(limit_ibuf_size, SSIZE_MAX));
+	ssize_t free_outbuf = (ssize_t)(tcp_table->outbufs_total - MIN(limit_obuf_size, SSIZE_MAX));
 
 	// reset connections to free ibufs
 	while (free_inbuf > 0 && rl != rl_max) {
