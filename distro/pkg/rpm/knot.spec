@@ -187,7 +187,9 @@ rm -f %{buildroot}%{_pkgdocdir}/html/.buildinfo
 # install daemon and dbus configuration files
 rm %{buildroot}%{_sysconfdir}/%{name}/*
 install -p -m 0644 -D %{repodir}/samples/%{name}.sample.conf %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
-install -p -m 0644 -D %{repodir}/samples/cz.nic.knotd.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/cz.nic.knotd.conf
+%if 0%{?fedora} || 0%{?rhel} > 7
+install -p -m 0644 -D %{repodir}/distro/common/cz.nic.knotd.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/cz.nic.knotd.conf
+%endif
 
 # install systemd files
 install -p -m 0644 -D %{repodir}/distro/common/%{name}.service %{buildroot}%{_unitdir}/%{name}.service
@@ -250,6 +252,9 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %exclude %{_pkgdocdir}/html
 %attr(770,root,knot) %dir %{_sysconfdir}/knot
 %config(noreplace) %attr(640,root,knot) %{_sysconfdir}/knot/knot.conf
+%if 0%{?fedora} || 0%{?rhel} > 7
+%config(noreplace) %attr(644,root,root) %{_sysconfdir}/dbus-1/system.d/cz.nic.knotd.conf
+%endif
 %attr(770,root,knot) %dir %{_sharedstatedir}/knot
 %dir %{_libdir}/knot
 %dir %{_libdir}/knot/modules-*
