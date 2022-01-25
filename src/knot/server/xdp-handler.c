@@ -257,6 +257,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		if (rl == NULL) {
 			continue;
 		}
+		printf("rl[%u] rx %zu conn %p\n", i, rl->rx_query.iov_len, rl->conn);
 		if (rl->rx_query.iov_len == 0) {
 			rl->tx_query.iov_len = 0;
 			continue;
