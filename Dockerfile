@@ -71,11 +71,14 @@ ENV RUNTIME_PKGS \
 # Copy artifacts
 COPY --from=0 /tmp/knot-install/ /
 
-# Install dependencies
+# Install dependencies and create knot user and group
+ARG UID=53
 RUN apt-get update && \
     apt-get install -yqq ${RUNTIME_PKGS} && \
     rm -rf /var/lib/apt/lists/* && \
-    ldconfig
+    ldconfig && \
+    adduser --quiet --system --group --no-create-home --home /storage --uid=${UID} knot && \
+    chown knot:knot /config /rundir /storage
 
 # Expose port
 EXPOSE 53/UDP
