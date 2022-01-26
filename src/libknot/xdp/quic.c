@@ -266,8 +266,6 @@ static int tls_keylog_callback(gnutls_session_t session, const char *label,
 
 static int tls_init_conn_session(knot_xquic_conn_t *conn)
 {
-
-
 	if (gnutls_init(&conn->tls_session, GNUTLS_SERVER |
 	                GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET |
 	                GNUTLS_NO_END_OF_EARLY_DATA) != GNUTLS_E_SUCCESS) {
@@ -742,8 +740,8 @@ int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay)
 		                                NULL, NGTCP2_WRITE_STREAM_FLAG_FIN, relay->stream_id,
 		                                relay->tx_query.iov_base, relay->tx_query.iov_len, get_timestamp());
 	} else {
-		ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, NULL, 0, NULL, NGTCP2_WRITE_STREAM_FLAG_NONE, -1,
-		                                relay->tx_query.iov_base, relay->tx_query.iov_len, get_timestamp());
+		ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
+		                                NULL, NGTCP2_WRITE_STREAM_FLAG_NONE, -1, NULL, 0, get_timestamp());
 	}
 	if (ret > 0) {
 		msg.payload.iov_len = ret;
