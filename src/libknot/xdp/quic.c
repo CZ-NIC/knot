@@ -116,6 +116,15 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 	}
 }
 
+static void print_cid(const ngtcp2_cid *cid, const char *name)
+{
+	if (cid->datalen == 0) {
+		printf("%s 0 [zero cid] ", name);
+	} else {
+		printf("%s %zu [ %02x %02x %02x %02x ... ] ", name, cid->datalen, cid->data[0], cid->data[1], cid->data[2], cid->data[3]);
+	}
+}
+
 static int tls_secret_func(gnutls_session_t session,
                            gnutls_record_encryption_level_t gtls_level,
                            const void *rx_secret, const void *tx_secret,
@@ -188,6 +197,9 @@ static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
 	gnutls_datum_t alpn;
 	int ret = gnutls_alpn_get_selected_protocol(session, &alpn);
 	printf("alpn set prot %d (%s)\n", ret, gnutls_strerror(ret));
+	if (ret == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) {
+		return 0; // FIXME: return this workaround
+	}
 	if (ret != 0) {
 		return ret;
 	}
@@ -220,12 +232,15 @@ static int tls_tp_recv_func(gnutls_session_t session, const uint8_t *data,
 
 	ret = ngtcp2_conn_set_remote_transport_params(conn, &params);
 	printf("set transport params %d (%s)\n", ret, ngtcp2_strerror(ret));
-	if (ret != 0) {
-		printf("conn id limit %lu default %d\n", params.active_connection_id_limit, NGTCP2_DEFAULT_ACTIVE_CONNECTION_ID_LIMIT);
-		const ngtcp2_cid *dcid = ngtcp2_conn_get_dcid(conn);
-		printf("current dcid %zu [ %02x %02x ... ] initial %zu [ %02x %02x ... ]\n", dcid->datalen, dcid->datalen > 0 ? dcid->data[0] : 0, dcid->datalen > 1 ? dcid->data[1] : 0, params.initial_scid.datalen, params.initial_scid.datalen > 0 ? params.initial_scid.data[0] : 0, params.initial_scid.datalen > 1 ? params.initial_scid.data[1] : 0);
-		printf("payload size %lu default %d\n", params.max_udp_payload_size, NGTCP2_MAX_UDP_PAYLOAD_SIZE);
 
+	printf("conn id limit %lu default %d\n", params.active_connection_id_limit, NGTCP2_DEFAULT_ACTIVE_CONNECTION_ID_LIMIT);
+	print_cid(ngtcp2_conn_get_dcid(conn), "conn_dcid:");
+	print_cid(ngtcp2_conn_get_client_initial_dcid(conn), "conn_init_client_dcid:");
+	print_cid(&params.initial_scid, "params_initial_scid:");
+	print_cid(&params.original_dcid, "params_original_dcid:");
+	print_cid(&params.retry_scid, "retry_scid:");
+	printf("\npayload size %lu default %d\n", params.max_udp_payload_size, NGTCP2_MAX_UDP_PAYLOAD_SIZE);
+	if (ret != 0) {
 
 		return -251;
 	}
@@ -350,6 +365,7 @@ static uint64_t cid2hash(const ngtcp2_cid *cid)
 {
 	uint64_t hash = 0;
 	memcpy(&hash, cid->data, MIN(sizeof(hash), cid->datalen));
+	hash &= 0xffLU; // FIXME remove !!
 	return hash;
 }
 
@@ -369,6 +385,7 @@ static knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *
 	knot_xquic_conn_t **addto = table->conns + (hash % table->size);
 	xconn->next = *addto;
 	*addto = xconn;
+	printf("TABLE addto %p conn %p\n", addto, xconn);
 	table->usage++;
 
 	return addto;
@@ -380,12 +397,12 @@ static knot_xquic_conn_t **xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_
 
 	knot_xquic_conn_t **res = table->conns + (hash % table->size);
 	while (*res != NULL) {
-		if (cid_eq(&(*res)->cid, cid)) {
+		if (cid_eq(&(*res)->cid, cid) || true /* FIXME !! */) {
 			break;
 		}
 		res = &(*res)->next;
 	}
-	printf("lookup hash %lu: %p\n", hash, *res);
+	printf("TABLE lookup hash %lu: %p at %p\n", hash, *res, res);
 	return res;
 }
 
@@ -624,11 +641,18 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 {
 	uint32_t pversion = 0;
 	ngtcp2_cid scid = { 0 }, dcid = { 0 };
+	const uint8_t *scid_data, *dcid_data;
 	uint64_t now = get_timestamp();
-	int ret = ngtcp2_pkt_decode_version_cid(&pversion, (const uint8_t **)&dcid.data, &dcid.datalen,
-	                                        (const uint8_t **)&scid.data, &scid.datalen,
-	                                        msg->payload.iov_base, msg->payload.iov_len, SERVER_DEFAULT_SCIDLEN);
-	printf("decode cid (%s) %zu -> %zu [ %02x %02x ... ]\n", ngtcp2_strerror(ret), scid.datalen, dcid.datalen, dcid.datalen > 0 ? dcid.data[0] : 0, dcid.datalen > 1 ? dcid.data[1] : 0);
+	int ret = ngtcp2_pkt_decode_version_cid(&pversion, &dcid_data, &dcid.datalen, &scid_data, &scid.datalen,
+	                                        msg->payload.iov_base, msg->payload.iov_len, 8 /* FIXME this is only suitable for AIOquic! SERVER_DEFAULT_SCIDLEN */);
+	if (ret == NGTCP2_NO_ERROR) {
+		memcpy(dcid.data, dcid_data, dcid.datalen);
+		memcpy(scid.data, scid_data, scid.datalen);
+	}
+	printf("dcid data %p scid data %p msg payload %p\n", dcid.data, scid.data, msg->payload.iov_base);
+	print_cid(&scid, "packet_scid:");
+	print_cid(&dcid, "packet_dcid:");
+	printf("(%s)\n", ngtcp2_strerror(ret));
 	if (ret == NGTCP2_ERR_VERSION_NEGOTIATION) {
 		// TODO
 		assert(0);
@@ -663,7 +687,7 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 		}
 		xconn->xquic_table = table; // FIXME ?
 
-		ret = conn_server_new(&xconn->conn, &path, &dcid, &scid, &dcid /* FIXME: ocid == dcid ? */, pversion, now, xconn);
+		ret = conn_server_new(&xconn->conn, &path, &dcid, &scid, &scid /* FIXME: ocid == dcid ? */, pversion, now, xconn);
 		printf("csn (%s)\n", knot_strerror(ret));
 
 		if (ret < 0) {
