@@ -211,7 +211,7 @@ V=1 make check
 %pre
 getent group knot >/dev/null || groupadd -r knot
 getent passwd knot >/dev/null || \
-  useradd -r -g knot -d %{_sysconfdir}/knot -s /sbin/nologin \
+  useradd -r -g knot -d %{_sharedstatedir}/knot -s /sbin/nologin \
   -c "Knot DNS server" knot
 %if 0%{?suse_version}
 %service_add_pre knot.service
