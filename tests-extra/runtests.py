@@ -57,8 +57,8 @@ def parse_args(cmd_args):
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--debug", dest="debug", action="store_true", \
                         help="enable exception traceback on stdout")
-    parser.add_argument("-n", "--repeat", dest="repeat", action="store", type=int, \
-                        help="repeat the test n times")
+    parser.add_argument("-n", "--repeat", dest="repeat", action="store", \
+                        default=1, type=int, help="run test set n times, endless when 0")
     parser.add_argument("-j", "--jobs", dest="jobs", action="store", type=int,\
                         help="number of concurrent jobs")
     parser.add_argument("-e", "--exit-on-error", dest="error_exit", \
@@ -68,7 +68,7 @@ def parse_args(cmd_args):
     args = parser.parse_args(cmd_args)
 
     params.debug = True if args.debug else False
-    params.repeat = int(args.repeat) if args.repeat else 1
+    params.repeat = max(int(args.repeat), 0)
     params.jobs = max(int(args.jobs), 1) if args.jobs else 1
     params.common_data_dir = os.path.join(current_dir, "data")
     params.exit_on_error = args.error_exit
@@ -144,6 +144,8 @@ def job(tasks, results, stop):
         if tasks.empty() or (params.exit_on_error and stop.value):
             break
         test, case, repeat = tasks.get()
+        if params.repeat == 0:
+            tasks.put((test, case, repeat + 1))
 
         test_dir = os.path.join(current_dir, TESTS_DIR, test)
         case_n = case if params.repeat == 1 else case + " #" + str(repeat)
@@ -256,7 +258,9 @@ def main(args):
     skip_cnt = 0
 
     included = parse_args(args)
-    for n in range(1, params.repeat + 1):
+
+    range_end = 2 if params.repeat == 0 else params.repeat + 1
+    for n in range(1, range_end):
         for test, cases in included.items():
             for case in cases:
                 tasks.put((test, case, n), block=False)
