@@ -132,12 +132,25 @@ inline static knot_time_t knot_time_plus(knot_time_t a, knot_time_t b)
  * In RRSIG rdata, there are inception and expiration timestamps in uint32_t format.
  * One shall use 'serial arithmetics' to decode them.
  *
- * \todo However it needs time(now) context which is slow to obtain, so we don't do it
- *       for now. Please fix this in next 100 years.
+ * The result of this function is a timestamp that equals to
+ * given 32-bit time in lower 32 bits, and does not differ from
+ * now by more than 2^31.
  */
-inline static knot_time_t knot_time_from_u32(uint32_t u32time)
+inline static knot_time_t knot_time_from_u32(uint32_t u32time, knot_time_t now)
 {
-	return (knot_time_t)u32time;
+	if (now == 0) {
+		now = knot_time();
+	}
+
+	uint32_t now_lower32 = (uint32_t)now;
+	uint64_t now_upper32 = now >> 32;
+	if (now_lower32 > u32time && now_lower32 - u32time > INT32_MAX) {
+		now_upper32++;
+	} else if (now_lower32 < u32time && u32time - now_lower32 > INT32_MAX) {
+		now_upper32--;
+	}
+
+	return (now_upper32 << 32) + u32time;
 }
 
 /*!
