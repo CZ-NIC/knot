@@ -158,6 +158,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments, const char 
 	// Set structure with parameters.
 	knot_dump_style_t style = KNOT_DUMP_STYLE_DEFAULT;
 	style.color = color;
+	style.now = knot_time();
 	dump_params_t params = {
 		.file = file,
 		.buf = buf,

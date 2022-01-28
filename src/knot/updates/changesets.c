@@ -22,6 +22,7 @@
 #include "knot/updates/apply.h"
 #include "knot/zone/zone-dump.h"
 #include "contrib/color.h"
+#include "contrib/time.h"
 #include "libknot/libknot.h"
 
 static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset)
@@ -590,6 +591,7 @@ void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 	char *buff = malloc(buflen);
 
 	knot_dump_style_t style = KNOT_DUMP_STYLE_DEFAULT;
+	style.now = knot_time();
 
 	style.color = COL_RED(color);
 	if (changeset->soa_from != NULL || !zone_contents_is_empty(changeset->remove)) {

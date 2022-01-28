@@ -56,6 +56,8 @@ typedef struct {
 	/*!< Optional color control sequence which is put before every output line.
 	 *   Not compatible with wrap. */
 	const char *color;
+	/*!< Time context for correct > 32 bit timestamp conversion. */
+	uint64_t now;
 } knot_dump_style_t;
 
 /*! \brief Default dump style. */

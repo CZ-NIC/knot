@@ -40,6 +40,7 @@
 #include "contrib/base64.h"
 #include "contrib/color.h"
 #include "contrib/ctype.h"
+#include "contrib/time.h"
 #include "contrib/wire_ctx.h"
 
 #define RRSET_DUMP_LIMIT (2 * 1024 * 1024)
@@ -86,6 +87,7 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.hide_crypto = false,
 	.ascii_to_idn = NULL,
 	.color = NULL,
+	.now = 0,
 };
 
 static void dump_string(rrset_dump_params_t *p, const char *str)
@@ -684,6 +686,9 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 	FILL_IN_INPUT(data)
 
 	time_t timestamp = ntohl(data);
+	if (sizeof(time_t) > 4) {
+		timestamp = knot_time_from_u32(timestamp, p->style->now);
+	}
 
 	if (p->style->human_timestamp) {
 		struct tm result;
