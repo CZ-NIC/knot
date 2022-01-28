@@ -33,6 +33,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
+#include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
@@ -1512,6 +1513,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->notify = false;
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
+		query->style.style.now = knot_time();
 		query->idn = true;
 		query->nsid = false;
 		query->edns = -1;

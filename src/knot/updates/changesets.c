@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "knot/updates/apply.h"
 #include "knot/zone/zone-dump.h"
 #include "contrib/color.h"
+#include "contrib/time.h"
 #include "libknot/libknot.h"
 
 static int handle_soa(knot_rrset_t **soa, const knot_rrset_t *rrset)
@@ -590,6 +591,7 @@ void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 	char *buff = malloc(buflen);
 
 	knot_dump_style_t style = KNOT_DUMP_STYLE_DEFAULT;
+	style.now = knot_time();
 
 	style.color = COL_RED(color);
 	if (changeset->soa_from != NULL || !zone_contents_is_empty(changeset->remove)) {
