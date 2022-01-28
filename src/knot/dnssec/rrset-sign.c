@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include "libdnssec/error.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
+#include "knot/zone/serial.h" // DNS uint32 arithmetics
 #include "libknot/libknot.h"
 
 #define RRSIG_RDATA_SIGNER_OFFSET 18
@@ -77,7 +78,7 @@ static int rrsig_write_rdata(uint8_t *rdata, size_t rdata_len,
                              uint32_t owner_ttl,  uint32_t sig_incepted,
                              uint32_t sig_expires)
 {
-	if (!rdata || !key || sig_incepted >= sig_expires) {
+	if (!rdata || !key || serial_compare(sig_incepted, sig_expires) != SERIAL_LOWER) {
 		return KNOT_EINVAL;
 	}
 
@@ -271,13 +272,12 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t sig_incept = dnssec_ctx->now - RRSIG_INCEPT_IN_PAST;
+	uint64_t sig_incept = dnssec_ctx->now - RRSIG_INCEPT_IN_PAST;
 	uint64_t sig_expire = dnssec_ctx->now + dnssec_ctx->policy->rrsig_lifetime;
-	sig_expire = MIN(sig_expire, UINT32_MAX);
 	dnssec_sign_flags_t sign_flags = dnssec_ctx->policy->reproducible_sign ?
 	                                 DNSSEC_SIGN_REPRODUCIBLE : DNSSEC_SIGN_NORMAL;
 
-	int ret = rrsigs_create_rdata(rrsigs, sign_ctx, covered, key, sig_incept,
+	int ret = rrsigs_create_rdata(rrsigs, sign_ctx, covered, key, (uint32_t)sig_incept,
 	                              (uint32_t)sig_expire, sign_flags, mm);
 	if (ret == KNOT_EOK && expires != NULL) {
 		*expires = knot_time_min(*expires, sig_expire);
