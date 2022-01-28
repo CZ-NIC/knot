@@ -348,15 +348,15 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
  *
  * \return Signature is expired or should be replaced soon.
  */
-static bool is_expired_signature(const knot_rdata_t *rrsig, uint32_t now,
+static bool is_expired_signature(const knot_rdata_t *rrsig, knot_time_t now,
                                  uint32_t refresh_before)
 {
 	assert(rrsig);
 
-	uint32_t expire_at = knot_rrsig_sig_expiration(rrsig);
-	uint32_t expire_in = expire_at > now ? expire_at - now : 0;
+	uint32_t expire32 = knot_rrsig_sig_expiration(rrsig);
+	knot_time_t expire64 = knot_time_from_u32(expire32, now);
 
-	return expire_in <= refresh_before;
+	return now >= expire64 - refresh_before;
 }
 
 int knot_check_signature(const knot_rrset_t *covered,
