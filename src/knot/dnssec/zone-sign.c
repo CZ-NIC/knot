@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -158,9 +158,11 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
  * \brief Note earliest expiration of a signature.
  *
  * \param rrsig       RRSIG rdata.
+ * \param now         Current 64-bit timestamp.
  * \param expires_at  Current earliest expiration, will be updated.
  */
-static void note_earliest_expiration(const knot_rdata_t *rrsig, knot_time_t *expires_at)
+static void note_earliest_expiration(const knot_rdata_t *rrsig, knot_time_t now,
+                                     knot_time_t *expires_at)
 {
 	assert(rrsig);
 	if (expires_at == NULL) {
@@ -168,7 +170,8 @@ static void note_earliest_expiration(const knot_rdata_t *rrsig, knot_time_t *exp
 	}
 
 	uint32_t curr_rdata = knot_rrsig_sig_expiration(rrsig);
-	knot_time_t current = knot_time_from_u32(curr_rdata);
+	knot_time_t current = knot_time_from_u32(curr_rdata, now);
+
 	*expires_at = knot_time_min(current, *expires_at);
 }
 
@@ -248,10 +251,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		                           sign_ctx->dnssec_ctx, refresh, skip_crypto, NULL, &valid_at)) {
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
 			result = knot_rdataset_remove(&to_remove.rrs, valid_rr, NULL);
-			note_earliest_expiration(valid_rr, expires_at);
+			note_earliest_expiration(valid_rr, sign_ctx->dnssec_ctx->now, expires_at);
 			continue;
 		}
-
 		result = knot_sign_rrset(&to_add, covered, key->key, sign_ctx->sign_ctxs[i],
 		                         sign_ctx->dnssec_ctx, NULL, expires_at);
 	}
