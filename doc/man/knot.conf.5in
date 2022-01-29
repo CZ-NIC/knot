@@ -455,7 +455,7 @@ the signal parameters are \fIzone name\fP and \fIzone SOA serial\fP\&.
 .IP \(bu 2
 \fBksk\-submission\fP – The signal \fBzone_ksk_submission\fP is emitted if there is
 a ready KSK present when the zone is signed; the signal parameters are
-\fIzone name\fP and \fIKSK keytag\fP\&.
+\fIzone name\fP, \fIKSK keytag\fP, and \fIKSK KASP id\fP\&.
 .UNINDENT
 .sp
 \fBNOTE:\fP
