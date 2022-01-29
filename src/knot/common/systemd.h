@@ -91,5 +91,7 @@ void systemd_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial);
  *
  * \param zone_name  Zone name.
  * \param keytag     Keytag of the ready key.
+ * \param keyid      KASP id of the ready key.
  */
-void systemd_emit_zone_submission(const knot_dname_t *zone_name, uint16_t keytag);
+void systemd_emit_zone_submission(const knot_dname_t *zone_name, uint16_t keytag,
+                                  const char *keyid);

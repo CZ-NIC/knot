@@ -263,7 +263,8 @@ typedef struct {
 	bool ksk;
 	knot_time_t time;
 	knot_kasp_key_t *key;
-	int ready_key;
+	uint16_t ready_keytag;
+	const char *ready_keyid;
 } roll_action_t;
 
 static const char *roll_action_name(roll_action_type_t type)
@@ -384,7 +385,6 @@ static knot_time_t alg_remove_time(knot_time_t post_active_time, const kdnssec_c
 static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags)
 {
 	roll_action_t res = { 0 };
-	res.ready_key = -1;
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
@@ -408,7 +408,8 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 			case DNSSEC_KEY_STATE_READY:
 				keytime = ksk_sbm_max_time(key->timing.ready, ctx);
 				restype = REPLACE;
-				res.ready_key = dnssec_key_get_keytag(key->key);
+				res.ready_keyid = key->id;
+				res.ready_keytag = dnssec_key_get_keytag(key->key);
 				break;
 			case DNSSEC_KEY_STATE_ACTIVE:
 				if (!running_rollover(ctx) &&
@@ -623,7 +624,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		return KNOT_EOK;
 	}
 	int ret = KNOT_EOK;
-	uint16_t plan_ds_keytag = 0;
+	uint16_t ready_keytag = 0;
+	const char *ready_keyid = NULL;
 	bool allowed_general_roll = ((flags & KEY_ROLL_ALLOW_KSK_ROLL) && (flags & KEY_ROLL_ALLOW_ZSK_ROLL));
 	// generate initial keys if missing
 	if (!key_present(ctx, true, false) && !key_present(ctx, true, true)) {
@@ -635,7 +637,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			}
 			if (ret == KNOT_EOK) {
 				reschedule->plan_ds_check = true;
-				plan_ds_keytag = dnssec_key_get_keytag(ctx->zone->keys[0].key);
+				ready_keyid = ctx->zone->keys[0].id;
+				ready_keytag = dnssec_key_get_keytag(ctx->zone->keys[0].key);
 			}
 		}
 		if (ret == KNOT_EOK && (flags & KEY_ROLL_ALLOW_ZSK_ROLL)) {
@@ -728,7 +731,8 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 			ret = submit_key(ctx, next.key);
 			if (ret == KNOT_EOK) {
 				reschedule->plan_ds_check = true;
-				plan_ds_keytag = dnssec_key_get_keytag(next.key->key);
+				ready_keyid = next.key->id;
+				ready_keytag = dnssec_key_get_keytag(next.key->key);
 			}
 			break;
 		case REPLACE:
@@ -764,10 +768,11 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		}
 	}
 
-	if (ret == KNOT_EOK && next.ready_key >= 0) {
+	if (ret == KNOT_EOK && next.ready_keyid != NULL) {
 		// just to make sure DS check is scheduled
 		reschedule->plan_ds_check = true;
-		plan_ds_keytag = next.ready_key;
+		ready_keyid = next.ready_keyid;
+		ready_keytag = next.ready_keytag;
 	}
 
 	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
@@ -780,11 +785,11 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 
 	if (ret == KNOT_EOK && reschedule->plan_ds_check) {
 		char param[32];
-		(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu", plan_ds_keytag);
+		(void)snprintf(param, sizeof(param), "KEY_SUBMISSION=%hu", ready_keytag);
 		log_fmt_zone(LOG_NOTICE, LOG_SOURCE_ZONE, ctx->zone->dname, param,
 		             "DNSSEC, KSK submission, waiting for confirmation");
 		if (ctx->dbus_event & DBUS_EVENT_ZONE_SUBMISSION) {
-			systemd_emit_zone_submission(ctx->zone->dname, plan_ds_keytag);
+			systemd_emit_zone_submission(ctx->zone->dname, ready_keytag, ready_keyid);
 		}
 	}
 
