@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 
 cb() {
-	p1=$1;
-	shift;
-	echo "$p1 [$@]"
+	case "$1" in
+	zone_ksk_submission)
+		echo "Ready KSK for zone=${2} keytag=${3} keyid=${4}"
+		;;
+	zone_updated)
+		echo "Updated zone=${2} to serial=${3}"
+		;;
+	started)
+		echo "Server started"
+		;;
+	stopped)
+		echo "Server stopped"
+		;;
+	esac
 }
 
 gdbus monitor --system --dest cz.nic.knotd --object-path /cz/nic/knotd \
@@ -13,7 +24,7 @@ gdbus monitor --system --dest cz.nic.knotd --object-path /cz/nic/knotd \
 		for(i=3;i<=NF;++i) {
 			if( $i ~ /[\),]$/ ) tmp=tmp$i;
 		}
-		gsub(/(^\()|(\)$)/, "", tmp);
+		gsub(/(^\()|(\)$)|\47/, "", tmp);
 		items=split(tmp, args, ",");
 		printf "%s ", $2;
 		for(i=1;i<=items;i++) printf "%s ", args[i];
