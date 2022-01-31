@@ -35,7 +35,7 @@
 	       false, fmt)
 
 static void init_qdata_from_request(knotd_qdata_t *qdata,
-                                    const zone_t *zone,
+                                    zone_t *zone,
                                     knot_request_t *req,
                                     knotd_qdata_params_t *params,
                                     knotd_qdata_extra_t *extra)
@@ -312,7 +312,7 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	}
 }
 
-static void send_update_response(conf_t *conf, const zone_t *zone, knot_request_t *req)
+static void send_update_response(conf_t *conf, zone_t *zone, knot_request_t *req)
 {
 	if (req->resp) {
 		if (!zone_is_slave(conf, zone)) {
@@ -343,7 +343,7 @@ static void free_request(knot_request_t *req)
 	free(req);
 }
 
-static void send_update_responses(conf_t *conf, const zone_t *zone, list_t *updates)
+static void send_update_responses(conf_t *conf, zone_t *zone, list_t *updates)
 {
 	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
