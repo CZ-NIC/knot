@@ -483,7 +483,7 @@ Possible values:
   the signal parameters are `zone name` and `zone SOA serial`.
 - ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if there is
   a ready KSK present when the zone is signed; the signal parameters are
-  `zone name` and `KSK keytag`.
+  `zone name`, `KSK keytag`, and `KSK KASP id`.
 
 .. NOTE::
    This function requires systemd version at least 221.
