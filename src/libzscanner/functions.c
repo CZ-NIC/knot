@@ -676,17 +676,16 @@ static const uint8_t leap_days_across_years_2000[] = {
     [ 26] = 6, [ 27] = 7, [ 28] = 7, [ 29] = 7, [ 30] = 7,
 };
 
-static uint32_t leap_days_across_years(uint32_t year)
+static uint32_t leap_days_across_years(uint32_t year, uint32_t century)
 {
 	if (year <= 30) {
 		return leap_days_across_years_2000[year];
 	}
 
-	uint32_t y = year - 31;
+	uint32_t y = year - 31, c = century - 20;
 	uint32_t y_div_4 = (y >> 2);
-	uint32_t y_div_100 = (y / 100);
-	uint32_t y_div_400 = (y_div_100 >> 2);
-	uint32_t leap = y_div_4 - y_div_100 + y_div_400;
+	uint32_t c_div_4 = (c >> 2);
+	uint32_t leap = y_div_4 - c + c_div_4;
 
 	return leap + 8; // 8 leap days 1970..2000
 }
@@ -698,16 +697,18 @@ static bool is_leap(uint32_t year)
 
 int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 {
-	uint32_t year, month, day, hour, minute, second;
+	uint32_t centur, year, month, day, hour, minute, second;
 	uint32_t leap_day = 0;
 
-	year   = 1000 * (buff[ 0] - '0') + 100 * (buff[ 1] - '0') +
-	           10 * (buff[ 2] - '0') +       (buff[ 3] - '0');
+	centur =   10 * (buff[ 0] - '0') +       (buff[ 1] - '0');
+	year   =   10 * (buff[ 2] - '0') +       (buff[ 3] - '0');
 	month  =   10 * (buff[ 4] - '0') +       (buff[ 5] - '0');
 	day    =   10 * (buff[ 6] - '0') +       (buff[ 7] - '0');
 	hour   =   10 * (buff[ 8] - '0') +       (buff[ 9] - '0');
 	minute =   10 * (buff[10] - '0') +       (buff[11] - '0');
 	second =   10 * (buff[12] - '0') +       (buff[13] - '0');
+
+	year += 100 * centur;
 
 	bool leap_year = is_leap(year);
 
@@ -717,7 +718,7 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 		year -= 1970;
 	}
 
-	uint32_t days_across_years = (year * 365) + leap_days_across_years(year);
+	uint32_t days_across_years = (year * 365) + leap_days_across_years(year, centur);
 
 	if (leap_year) {
 		if (month > 2) {
