@@ -1054,7 +1054,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_GET,        cmd_zone_node_ctl,   CTL_ZONE_GET,        CMD_FREQ_ZONE },
 	{ CMD_ZONE_SET,        cmd_zone_node_ctl,   CTL_ZONE_SET,        CMD_FREQ_ZONE },
 	{ CMD_ZONE_UNSET,      cmd_zone_node_ctl,   CTL_ZONE_UNSET,      CMD_FREQ_ZONE },
-	{ CMD_ZONE_PURGE,      cmd_zone_filter_ctl, CTL_ZONE_PURGE,      CMD_FREQ_ZONE },
+	{ CMD_ZONE_PURGE,      cmd_zone_filter_ctl, CTL_ZONE_PURGE,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_STATS,      cmd_stats_ctl,       CTL_ZONE_STATS,      CMD_FREQ_ZONE },
 
 	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_FWRITE },
