@@ -1255,7 +1255,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_UNSET,      "<zone>  <owner> [<type> [<rdata>]]",         "Remove zone data within the transaction." },
 	{ CMD_ZONE_PURGE,      "<zone>... [<filter>...]",                    "Purge zone data, zone file, journal, timers, and KASP data. (#)" },
 	{ CMD_ZONE_STATS,      "<zone> [<module>[.<counter>]]",              "Show zone statistics counter(s)."},
-	{ CMD_ZONE_STATUS,     "[<zone>] [<filter>...]",                     "Show the zone status." },
+	{ CMD_ZONE_STATUS,     "[<zone>...] [<filter>...]",                  "Show the zone status." },
 	{ "",                  "",                                           "" },
 	{ CMD_CONF_INIT,       "",                                           "Initialize the confdb. (*)" },
 	{ CMD_CONF_CHECK,      "",                                           "Check the server configuration. (*)" },
