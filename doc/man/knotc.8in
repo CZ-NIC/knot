@@ -97,7 +97,7 @@ transactions will be aborted!
 Show global statistics counter(s). To print also counters with value 0, use
 force option.
 .TP
-\fBzone\-status\fP \fIzone\fP [\fIfilter\fP]
+\fBzone\-status\fP [\fIzone\fP\&...] [\fIfilter\fP]
 Show the zone status. Filters are \fB+role\fP, \fB+serial\fP, \fB+transaction\fP,
 \fB+events\fP, and \fB+freeze\fP\&.
 .TP

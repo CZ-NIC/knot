@@ -74,7 +74,7 @@ Actions
   Show global statistics counter(s). To print also counters with value 0, use
   force option.
 
-**zone-status** *zone* [*filter*]
+**zone-status** [*zone*...] [*filter*]
   Show the zone status. Filters are **+role**, **+serial**, **+transaction**,
   **+events**, and **+freeze**.
 
