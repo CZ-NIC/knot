@@ -48,9 +48,10 @@ typedef enum {
 } knot_tcp_state_t;
 
 typedef enum {
-	XDP_TCP_FREE_NONE,
-	XDP_TCP_FREE_DATA,
-	XDP_TCP_FREE_PREFIX,
+	XDP_TCP_FREE_NONE   = 0,
+	XDP_TCP_FREE_DATA   = (1 << 0),
+	XDP_TCP_FREE_PREFIX = (1 << 1),
+	XDP_TCP_FREE_CONN   = (1 << 2),
 } knot_tcp_relay_free_t;
 
 typedef struct knot_tcp_conn {

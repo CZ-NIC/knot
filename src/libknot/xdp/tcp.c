@@ -126,7 +126,9 @@ static void tcp_table_del_conn(knot_tcp_conn_t **todel)
 		*todel = conn->next; // remove from conn-table linked list
 		rem_node(tcp_conn_node(conn)); // remove from timeout double-linked list
 		free(conn->inbuf.iov_base);
-		free(conn);
+		memset(tcp_conn_node(conn), 0, sizeof(node_t));
+		conn->next = NULL;
+		memset(&conn->inbuf, 0, sizeof(conn->inbuf));
 	}
 }
 
@@ -263,7 +265,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 			if (tofree.iov_len > 0 && ret == KNOT_EOK) {
 				relay.data.iov_base = tofree.iov_base + sizeof(uint16_t);
 				relay.data.iov_len = tofree.iov_len - sizeof(uint16_t);
-				relay.free_data = XDP_TCP_FREE_PREFIX;
+				relay.free_data |= XDP_TCP_FREE_PREFIX;
 				if (knot_tcp_relay_dynarray_add(relays, &relay) == NULL) {
 					ret = KNOT_ENOMEM;
 				}
@@ -317,6 +319,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 				    *(conn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &syn_hash, syn_table)) != NULL &&
 				     check_seq_ack(msg, *conn)) {
 					tcp_table_del(conn, syn_table);
+					free(conn);
 					*conn = NULL;
 					relay.action = XDP_TCP_ESTABLISH;
 					ret = tcp_table_add(msg, conn_hash, tcp_table, &relay.conn);
@@ -338,6 +341,8 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 					break;
 				case XDP_TCP_CLOSING2:
 					tcp_table_del(conn, tcp_table);
+					relay.free_data |= XDP_TCP_FREE_CONN;
+					(void)knot_tcp_relay_dynarray_add(relays, &relay);
 					break;
 				}
 			}
@@ -349,6 +354,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 				if ((*conn)->state == XDP_TCP_CLOSING1) {
 					resp_ack(msg, KNOT_XDP_MSG_ACK);
 					relay.action = XDP_TCP_CLOSE;
+					relay.free_data |= XDP_TCP_FREE_CONN;
 					if (knot_tcp_relay_dynarray_add(relays, &relay) == NULL) {
 						ret = KNOT_ENOMEM;
 					}
@@ -367,6 +373,7 @@ int knot_tcp_relay(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[], uint32_t ms
 		case KNOT_XDP_MSG_RST:
 			if (conn != NULL && msg->seqno == (*conn)->seqno) {
 				relay.action = XDP_TCP_RESET;
+				relay.free_data |= XDP_TCP_FREE_CONN;
 				if (knot_tcp_relay_dynarray_add(relays, &relay) == NULL) {
 					ret = KNOT_ENOMEM;
 				}
@@ -421,7 +428,7 @@ int knot_tcp_relay_answer(knot_tcp_relay_dynarray_t *relays, const knot_tcp_rela
 
 		memcpy(clone->data.iov_base + PREFIX_LEN, data, chunk);
 		clone->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
-		clone->free_data = XDP_TCP_FREE_DATA;
+		clone->free_data |= XDP_TCP_FREE_DATA;
 
 		data += chunk;
 		data_len -= chunk;
@@ -438,9 +445,12 @@ void knot_tcp_relay_free(knot_tcp_relay_dynarray_t *relays)
 	}
 
 	knot_dynarray_foreach(knot_tcp_relay, knot_tcp_relay_t, i, *relays) {
-		if (i->free_data != XDP_TCP_FREE_NONE) {
+		if (i->free_data & (XDP_TCP_FREE_DATA | XDP_TCP_FREE_PREFIX)) {
 			free(i->data.iov_base -
-			     (i->free_data == XDP_TCP_FREE_PREFIX ? sizeof(uint16_t) : 0));
+			     ((i->free_data & XDP_TCP_FREE_PREFIX) ? sizeof(uint16_t) : 0));
+		}
+		if (i->free_data & XDP_TCP_FREE_CONN) {
+			free(i->conn);
 		}
 	}
 	knot_tcp_relay_dynarray_free(relays);
@@ -587,6 +597,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table, knot_xdp_socket_t *socket,
 	}
 	WALK_LIST_DELSAFE(conn, next, to_remove) {
 		tcp_table_del_lookup(conn, tcp_table);
+		free(conn);
 	}
 
 	knot_tcp_relay_free(&relays);

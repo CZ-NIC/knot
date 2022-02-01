@@ -63,6 +63,7 @@ static void tcp_cleanup(knot_tcp_table_t *tcp_table, uint32_t timeout,
 	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
 		if (i++ < at_least || now - conn->last_active >= timeout) {
 			tcp_table_del_lookup(conn, tcp_table);
+			free(conn);
 			if (cleaned != NULL) {
 				(*cleaned)++;
 			}
@@ -336,6 +337,8 @@ void test_close(void)
 	check_sent(0, 0, 0, 0);
 	is_int(conns_pre - 1, test_table->usage, "close: connection removed");
 	is_int(conns_pre - 1, tcp_table_timeout_length(test_table), "close: timeout list size");
+
+	knot_tcp_relay_free(&relays);
 }
 
 void test_many(void)
