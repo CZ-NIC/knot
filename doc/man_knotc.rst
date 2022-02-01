@@ -74,14 +74,14 @@ Actions
   Show global statistics counter(s). To print also counters with value 0, use
   force option.
 
-**zone-status** *zone* [*filter*]
-  Show the zone status. Filters are **+role**, **+serial**, **+transaction**,
-  **+events**, and **+freeze**.
-
 **zone-check** [*zone*...]
   Test if the server can load the zone. Semantic checks are executed if enabled
   in the configuration. If invoked with the force option, an error is returned
   when semantic check warning appears. (*)
+
+**zone-status** [*zone*...] [*filter*]
+  Show the zone status. Filters are **+role**, **+serial**, **+transaction**,
+  **+events**, and **+freeze**.
 
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For
@@ -197,7 +197,7 @@ Actions
   Available filters are **+expire**, **+zonefile**, **+journal**, **+timers**,
   and **+kaspdb**. If no filter is specified, all filters are enabled.
   If the zone is no longer configured, add **+orphan** filter (zone file cannot
-  be purged in this case). (#)
+  be purged in this case). This command always requires the force option. (#)
 
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use
