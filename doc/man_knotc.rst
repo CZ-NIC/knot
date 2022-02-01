@@ -74,7 +74,7 @@ Actions
   Show global statistics counter(s). To print also counters with value 0, use
   force option.
 
-**zone-status** *zone* [*filter*]
+**zone-status** [*zone*] [*filter*]
   Show the zone status. Filters are **+role**, **+serial**, **+transaction**,
   **+events**, and **+freeze**.
 
@@ -197,7 +197,8 @@ Actions
   Available filters are **+expire**, **+zonefile**, **+journal**, **+timers**,
   and **+kaspdb**. If no filter is specified, all filters are enabled.
   If the zone is no longer configured, add **+orphan** filter (zone file cannot
-  be purged in this case). (#)
+  be purged in this case). For operating on all zones, use ``--`` as the zone
+  name. This command always requires the force option. (#)
 
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use

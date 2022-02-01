@@ -97,7 +97,7 @@ transactions will be aborted!
 Show global statistics counter(s). To print also counters with value 0, use
 force option.
 .TP
-\fBzone\-status\fP \fIzone\fP [\fIfilter\fP]
+\fBzone\-status\fP [\fIzone\fP] [\fIfilter\fP]
 Show the zone status. Filters are \fB+role\fP, \fB+serial\fP, \fB+transaction\fP,
 \fB+events\fP, and \fB+freeze\fP\&.
 .TP
@@ -220,7 +220,8 @@ Purge zone data, zone file, journal, timers, and/or KASP data of specified zones
 Available filters are \fB+expire\fP, \fB+zonefile\fP, \fB+journal\fP, \fB+timers\fP,
 and \fB+kaspdb\fP\&. If no filter is specified, all filters are enabled.
 If the zone is no longer configured, add \fB+orphan\fP filter (zone file cannot
-be purged in this case). (#)
+be purged in this case). For operating on all zones, use \fB\-\-\fP as the zone
+name. This command always requires the force option. (#)
 .TP
 \fBzone\-stats\fP \fIzone\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
 Show zone statistics counter(s). To print also counters with value 0, use
