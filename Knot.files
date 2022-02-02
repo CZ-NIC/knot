@@ -522,6 +522,8 @@ src/utils/knotd/main.c
 src/utils/knsec3hash/knsec3hash.c
 src/utils/knsupdate/knsupdate_exec.c
 src/utils/knsupdate/knsupdate_exec.h
+src/utils/knsupdate/knsupdate_interactive.c
+src/utils/knsupdate/knsupdate_interactive.h
 src/utils/knsupdate/knsupdate_main.c
 src/utils/knsupdate/knsupdate_params.c
 src/utils/knsupdate/knsupdate_params.h

@@ -25,6 +25,8 @@
 #include "libzscanner/scanner.h"
 #include "contrib/ucw/lists.h"
 
+#define PROGRAM_NAME "knsupdate"
+
 /*! \brief knsupdate-specific params data. */
 typedef struct {
 	/*!< Stop processing - just print help, version,... */
