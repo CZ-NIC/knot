@@ -18,8 +18,9 @@
 
 #include "utils/knsupdate/knsupdate_params.h"
 
-extern const char* knsupdate_cmd_array[];
-
-int knsupdate_exec(knsupdate_params_t *params);
-
-int knsupdate_process_line(const char *line, knsupdate_params_t *params);
+/*!
+ * Executes an interactive processing loop.
+ *
+ * \param[in] params  Utility parameters.
+ */
+int interactive_loop(knsupdate_params_t *params);

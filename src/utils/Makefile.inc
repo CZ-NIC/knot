@@ -64,10 +64,12 @@ knsec3hash_SOURCES = \
 	utils/knsec3hash/knsec3hash.c
 
 knsupdate_SOURCES = \
-	utils/knsupdate/knsupdate_exec.c	\
-	utils/knsupdate/knsupdate_exec.h	\
-	utils/knsupdate/knsupdate_main.c	\
-	utils/knsupdate/knsupdate_params.c	\
+	utils/knsupdate/knsupdate_exec.c		\
+	utils/knsupdate/knsupdate_exec.h		\
+	utils/knsupdate/knsupdate_interactive.c		\
+	utils/knsupdate/knsupdate_interactive.h		\
+	utils/knsupdate/knsupdate_main.c		\
+	utils/knsupdate/knsupdate_params.c		\
 	utils/knsupdate/knsupdate_params.h
 
 kdig_CPPFLAGS          = $(libknotus_la_CPPFLAGS)

@@ -30,8 +30,6 @@
 #include "contrib/strtonum.h"
 #include "contrib/ucw/mempool.h"
 
-#define PROGRAM_NAME "knsupdate"
-
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	12
 
