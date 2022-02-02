@@ -12,7 +12,10 @@ Description
 -----------
 
 This utility reads the zone's zone file, signs the zone according to given
-configuration, and writes the signed zone file back.
+configuration, and writes the signed zone file back. An alternative mode
+is DNSSEC validation of the given zone. The signing or validation
+can run in parallel if enabled in the configuration (see policy.signing-threads
+and zone.adjust-threads).
 
 Config options
 ..............
