@@ -26,7 +26,11 @@ remote = t.server("knot", tsig=key2)
 t.link(zone_common2, remote)
 t.link(zone_remote, remote)
 
-def fallback_checks(server, zone_local, zone_remote):
+def is_subzone(subzone, zone):
+    """Tests if the first zone is a subzone of the second one or equal, case insensitive."""
+    return subzone.name.lower().endswith(zone.name.lower())
+
+def fallback_checks(server, zone_local, zone_remote, nxdomain):
     # Local preferred OK, try with local TSIG.
     resp = server.dig("dns1.test", "A", tsig=key1)
     resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.1", nordata="192.0.2.2")
@@ -41,7 +45,10 @@ def fallback_checks(server, zone_local, zone_remote):
 
     # Remote OK, TSIG not forwarded if fallback.
     resp = server.dig(zone_remote.name, "SOA", tsig=key1)
-    resp.check(rcode="NOERROR", flags="AA")
+    if (is_subzone(zone_remote, zone_local) and not nxdomain):
+        resp.check(rcode="NXDOMAIN", flags="AA")
+    else:
+        resp.check(rcode="NOERROR", flags="AA")
 
     # Remote NOK, not existing zone.
     resp = server.dig("z-o-n-e.", "SOA")
@@ -105,7 +112,7 @@ local.add_module(None, ModDnsproxy(remote.addr, remote.port, fallback=True, nxdo
 local.gen_confile()
 local.reload()
 
-fallback_checks(local, zone_local[0], zone_remote[0])
+fallback_checks(local, zone_local[0], zone_remote[0], nxdomain=False)
 
 # Local NOK, not forwarded.
 resp = local.dig("remote.test", "A")
@@ -118,7 +125,7 @@ local.add_module(None, ModDnsproxy(remote.addr, remote.port, fallback=True, nxdo
 local.gen_confile()
 local.reload()
 
-fallback_checks(local, zone_local[0], zone_remote[0])
+fallback_checks(local, zone_local[0], zone_remote[0], nxdomain=True)
 
 # Local NOK, but forwarded OK.
 resp = local.dig("remote.test", "A")
@@ -137,6 +144,9 @@ resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.2", nordata="192.0.2.1")
 
 # Remote NOK, not forwarded.
 resp = local.dig(zone_remote[0].name, "SOA")
-resp.check(rcode="REFUSED", noflags="AA")
+if not is_subzone(zone_remote[0], zone_local[0]):
+    resp.check(rcode="REFUSED", noflags="AA")
+else:
+    resp.check(rcode="NXDOMAIN", flags="AA")
 
 t.end()
