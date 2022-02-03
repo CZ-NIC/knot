@@ -491,6 +491,7 @@ int knsupdate_process_line(const char *line, knsupdate_params_t *params)
 
 	const char *cmd = knsupdate_cmd_array[ret];
 	const char *val = tok_skipspace(line + TOK_L(cmd));
+	params->parser.error.counter = 0; /* Reset possible previous error. */
 	ret = cmd_handle[ret](val, params);
 	if (ret != KNOT_EOK) {
 		DBG("operation '%s' failed (%s) on line '%s'\n",
