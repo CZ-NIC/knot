@@ -161,6 +161,15 @@ Dnssec\-keygen keyfile format is not supported. Use \fBkeymgr(8)\fP instead.
 Zone name/server guessing is not supported if the zone name/server is not specified.
 .sp
 Empty line doesn\(aqt send the update.
+.SS Interactive mode
+.sp
+The utility provides interactive mode with basic line editing functionality,
+command completion, and command history.
+.sp
+Interactive mode behavior can be customized in \fI~/.editrc\fP\&. Refer to
+\fBeditrc(5)\fP for details.
+.sp
+Command history is saved in \fI~/.knsupdate_history\fP\&.
 .SH EXIT VALUES
 .sp
 Exit status of 0 means successful operation. Any other exit status indicates
@@ -193,7 +202,7 @@ $ knsupdate
 .UNINDENT
 .SH SEE ALSO
 .sp
-\fBkdig(1)\fP, \fBkhost(1)\fP, \fBkeymgr(8)\fP\&.
+\fBkdig(1)\fP, \fBkhost(1)\fP, \fBkeymgr(8)\fP, \fBeditrc(5)\fP\&.
 .SH AUTHOR
 CZ.NIC Labs <https://www.knot-dns.cz>
 .SH COPYRIGHT
