@@ -126,8 +126,8 @@ Commands
 **debug**
   Enable debugging. This command has the same meaning as the **-d** program option.
 
-**quit**
-  Quit the program.
+**exit**
+  End the program.
 
 Notes
 -----
@@ -162,7 +162,7 @@ Examples
      > show
      > send
      > answer
-     > quit
+     > exit
 
 See Also
 --------

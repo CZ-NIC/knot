@@ -52,7 +52,7 @@ int cmd_nxrrset(const char *lp, knsupdate_params_t *params);
 int cmd_oldgsstsig(const char* lp, knsupdate_params_t *params);
 int cmd_origin(const char* lp, knsupdate_params_t *params);
 int cmd_prereq(const char* lp, knsupdate_params_t *params);
-int cmd_quit(const char* lp, knsupdate_params_t *params);
+int cmd_exit(const char* lp, knsupdate_params_t *params);
 int cmd_realm(const char* lp, knsupdate_params_t *params);
 int cmd_send(const char* lp, knsupdate_params_t *params);
 int cmd_server(const char* lp, knsupdate_params_t *params);
@@ -74,6 +74,7 @@ const char* knsupdate_cmd_array[] = {
 	"\x5" "debug",
 	"\x3" "del",
 	"\x6" "delete",
+	"\x4" "exit",
 	"\x7" "gsstsig",
 	"\x3" "key",           /* {[alg:]name} {secret} */
 	"\x5" "local",         /* {address} [port] */
@@ -102,6 +103,7 @@ cmd_handle_f cmd_handle[] = {
 	cmd_debug,
 	cmd_del,
 	cmd_del,         /* delete/del synonyms */
+	cmd_exit,
 	cmd_gsstsig,
 	cmd_key,
 	cmd_local,
@@ -110,7 +112,7 @@ cmd_handle_f cmd_handle[] = {
 	cmd_oldgsstsig,
 	cmd_origin,
 	cmd_prereq,
-	cmd_quit,
+	cmd_exit,        /* exit/quit synonyms */
 	cmd_realm,
 	cmd_send,
 	cmd_server,
@@ -789,7 +791,7 @@ int cmd_prereq(const char* lp, knsupdate_params_t *params)
 	return ret;
 }
 
-int cmd_quit(const char* lp, knsupdate_params_t *params)
+int cmd_exit(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
