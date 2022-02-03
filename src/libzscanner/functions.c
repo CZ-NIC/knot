@@ -697,18 +697,18 @@ static bool is_leap(uint32_t year)
 
 int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 {
-	uint32_t centur, year, month, day, hour, minute, second;
+	uint32_t centur, oyear, year, month, day, hour, minute, second;
 	uint32_t leap_day = 0;
 
 	centur =   10 * (buff[ 0] - '0') +       (buff[ 1] - '0');
-	year   =   10 * (buff[ 2] - '0') +       (buff[ 3] - '0');
+	oyear   =  10 * (buff[ 2] - '0') +       (buff[ 3] - '0');
 	month  =   10 * (buff[ 4] - '0') +       (buff[ 5] - '0');
 	day    =   10 * (buff[ 6] - '0') +       (buff[ 7] - '0');
 	hour   =   10 * (buff[ 8] - '0') +       (buff[ 9] - '0');
 	minute =   10 * (buff[10] - '0') +       (buff[11] - '0');
 	second =   10 * (buff[12] - '0') +       (buff[13] - '0');
 
-	year += 100 * centur;
+	year = 100 * centur + oyear;
 
 	bool leap_year = is_leap(year);
 
@@ -718,7 +718,7 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 		year -= 1970;
 	}
 
-	uint32_t days_across_years = (year * 365) + leap_days_across_years(year, centur);
+	uint32_t days_across_years = (year * 365) + leap_days_across_years(year, centur - (oyear ? 0 : 1));
 
 	if (leap_year) {
 		if (month > 2) {
