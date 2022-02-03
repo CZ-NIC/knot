@@ -770,6 +770,10 @@ int cmd_prereq(const char* lp, knsupdate_params_t *params)
 	const char *tok = pq_array[prereq_type];
 	DBG("%s: type %s\n", __func__, TOK_S(tok));
 	lp = tok_skipspace(lp + TOK_L(tok));
+	if (strlen(lp) == 0) {
+		ERR("missing prerequisite owner name\n");
+		return KNOT_EINVAL;
+	}
 
 	int ret = KNOT_EOK;
 	switch(prereq_type) {
