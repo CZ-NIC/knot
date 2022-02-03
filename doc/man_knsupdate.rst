@@ -140,6 +140,17 @@ Zone name/server guessing is not supported if the zone name/server is not specif
 
 Empty line doesn't send the update.
 
+Interactive mode
+................
+
+The utility provides interactive mode with basic line editing functionality,
+command completion, and command history.
+
+Interactive mode behavior can be customized in `~/.editrc`. Refer to
+:manpage:`editrc(5)` for details.
+
+Command history is saved in `~/.knsupdate_history`.
+
 Exit values
 -----------
 
@@ -167,4 +178,4 @@ Examples
 See Also
 --------
 
-:manpage:`kdig(1)`, :manpage:`khost(1)`, :manpage:`keymgr(8)`.
+:manpage:`kdig(1)`, :manpage:`khost(1)`, :manpage:`keymgr(8)`, :manpage:`editrc(5)`.
