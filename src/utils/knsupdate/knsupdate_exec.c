@@ -1017,6 +1017,8 @@ int cmd_gsstsig(const char* lp, _unused_ knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
+	ERR("gsstsig not supported\n");
+
 	return KNOT_ENOTSUP;
 }
 
@@ -1024,12 +1026,16 @@ int cmd_oldgsstsig(const char* lp, _unused_ knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
+	ERR("oldgsstsig not supported\n");
+
 	return KNOT_ENOTSUP;
 }
 
 int cmd_realm(const char* lp, _unused_ knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
+
+	ERR("realm not supported\n");
 
 	return KNOT_ENOTSUP;
 }
