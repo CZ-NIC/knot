@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -870,7 +870,7 @@ static void print_key_brief(const knot_kasp_key_t *key, keymgr_list_params_t *pa
 	const knot_lookup_t *alg_info = knot_lookup_by_id(knot_dnssec_alg_names, alg);
 	if (alg_info != NULL) {
 		printf("%s", alg_info->name);
-		if (alg <= KNOT_DNSSEC_ALG_RSASHA512) {
+		if (alg <= DNSSEC_KEY_ALGORITHM_RSA_SHA512) {
 			printf("%s/%u%s", COL_DIM(c), dnssec_key_get_size(key->key), COL_RST(c));
 		}
 	} else {

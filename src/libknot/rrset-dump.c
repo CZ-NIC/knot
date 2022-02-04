@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 
 #include "libdnssec/binary.h"
+#include "libdnssec/key.h"
 #include "libdnssec/keytag.h"
 #include "libknot/attribute.h"
 #include "libknot/rrset-dump.h"
@@ -1338,15 +1339,15 @@ static size_t dnskey_len(const uint8_t *rdata,
 	const size_t  len = rdata_len - 4;
 
 	switch (rdata[3]) {
-	case KNOT_DNSSEC_ALG_DSA:
-	case KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1:
+	case DNSSEC_KEY_ALGORITHM_DSA:
+	case DNSSEC_KEY_ALGORITHM_DSA_NSEC3_SHA1:
 		// RFC 2536, key size ~ bit-length of 'modulus' P.
 		return (64 + 8 * key[0]) * 8;
-	case KNOT_DNSSEC_ALG_RSAMD5:
-	case KNOT_DNSSEC_ALG_RSASHA1:
-	case KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1:
-	case KNOT_DNSSEC_ALG_RSASHA256:
-	case KNOT_DNSSEC_ALG_RSASHA512:
+	case DNSSEC_KEY_ALGORITHM_RSA_MD5:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
 		// RFC 3110, key size ~ bit-length of 'modulus'.
 		if (key[0] == 0) {
 			if (len < 3) {
@@ -1358,19 +1359,19 @@ static size_t dnskey_len(const uint8_t *rdata,
 		} else {
 			return (len - 1 - key[0]) * 8;
 		}
-	case KNOT_DNSSEC_ALG_ECC_GOST:
+	case DNSSEC_KEY_ALGORITHM_ECC_GOST:
 		// RFC 5933, key size of GOST public keys MUST be 512 bits.
 		return 512;
-	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 		// RFC 6605.
 		return 256;
-	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		// RFC 6605.
 		return 384;
-	case KNOT_DNSSEC_ALG_ED25519:
+	case DNSSEC_KEY_ALGORITHM_ED25519:
 		// RFC 8080.
 		return 256;
-	case KNOT_DNSSEC_ALG_ED448:
+	case DNSSEC_KEY_ALGORITHM_ED448:
 		// RFC 8080.
 		return 456;
 	default:
@@ -1433,17 +1434,17 @@ static void dnskey_info(const uint8_t *rdata,
 	const knot_lookup_t *alg = knot_lookup_by_id(knot_dnssec_alg_names, alg_id);
 
 	switch (alg_id) {
-	case KNOT_DNSSEC_ALG_DELETE:
-	case KNOT_DNSSEC_ALG_INDIRECT:
+	case DNSSEC_KEY_ALGORITHM_DELETE:
+	case DNSSEC_KEY_ALGORITHM_INDIRECT:
 		break;
-	case KNOT_DNSSEC_ALG_PRIVATEOID:
+	case DNSSEC_KEY_ALGORITHM_PRIVATEOID:
 		; char oid_str[sizeof(alg_info) - 3];
 		if (ber_to_oid(oid_str, sizeof(oid_str), rdata + 4, rdata_len - 4) != KNOT_EOK ||
 		    snprintf(alg_info, sizeof(alg_info), " (%s)", oid_str) <= 0) {
 			alg_info[0] = '\0';
 		}
 		break;
-	case KNOT_DNSSEC_ALG_PRIVATEDNS:
+	case DNSSEC_KEY_ALGORITHM_PRIVATEDNS:
 		; knot_dname_txt_storage_t alg_str;
 		if (knot_dname_wire_check(rdata + 4, rdata + rdata_len, NULL) <= 0 ||
 		    knot_dname_to_str(alg_str, rdata + 4, sizeof(alg_str)) == NULL ||
