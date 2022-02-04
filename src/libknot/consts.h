@@ -105,59 +105,6 @@ typedef enum {
 } knot_section_t;
 
 /*!
- * \brief DS digest lengths.
- */
-enum knot_ds_algorithm_len
-{
-	KNOT_DS_DIGEST_LEN_SHA1   = 20, /*!< RFC 3658 */
-	KNOT_DS_DIGEST_LEN_SHA256 = 32, /*!< RFC 4509 */
-	KNOT_DS_DIGEST_LEN_GOST   = 32, /*!< RFC 5933 */
-	KNOT_DS_DIGEST_LEN_SHA384 = 48  /*!< RFC 6605 */
-};
-
-/*!
- * \brief Constants for DNSSEC algorithm types.
- *
- * Source: https://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
- */
-typedef enum {
-	KNOT_DS_ALG_SHA1   = 1,
-	KNOT_DS_ALG_SHA256 = 2,
-	KNOT_DS_ALG_GOST   = 3,
-	KNOT_DS_ALG_SHA384 = 4
-} knot_ds_algorithm_t;
-
-/*!
- * \brief DNSSEC algorithm numbers.
- *
- * https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
- */
-typedef enum {
-	KNOT_DNSSEC_ALG_DELETE             =   0,
-	KNOT_DNSSEC_ALG_RSAMD5             =   1,
-	KNOT_DNSSEC_ALG_DH                 =   2,
-	KNOT_DNSSEC_ALG_DSA                =   3,
-
-	KNOT_DNSSEC_ALG_RSASHA1            =   5,
-	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1     =   6,
-	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1 =   7,
-	KNOT_DNSSEC_ALG_RSASHA256          =   8,
-
-	KNOT_DNSSEC_ALG_RSASHA512          =  10,
-
-	KNOT_DNSSEC_ALG_ECC_GOST           =  12,
-	KNOT_DNSSEC_ALG_ECDSAP256SHA256    =  13,
-	KNOT_DNSSEC_ALG_ECDSAP384SHA384    =  14,
-
-	KNOT_DNSSEC_ALG_ED25519            =  15,
-	KNOT_DNSSEC_ALG_ED448              =  16,
-
-	KNOT_DNSSEC_ALG_INDIRECT           = 252,
-	KNOT_DNSSEC_ALG_PRIVATEDNS         = 253,
-	KNOT_DNSSEC_ALG_PRIVATEOID         = 254
-} knot_dnssec_algorithm_t;
-
-/*!
  * \brief Service Binding (SVCB) Parameter Registry
  *
  * https://tools.ietf.org/html/draft-ietf-dnsop-svcb-https-05 // FIXME

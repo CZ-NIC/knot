@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,16 +46,47 @@
  * \see https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml
  */
 typedef enum dnssec_key_algorithm {
-	DNSSEC_KEY_ALGORITHM_INVALID = 0,
-	DNSSEC_KEY_ALGORITHM_RSA_SHA1 = 5,
-	DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3 = 7,
-	DNSSEC_KEY_ALGORITHM_RSA_SHA256 = 8,
-	DNSSEC_KEY_ALGORITHM_RSA_SHA512 = 10,
-	DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 = 13,
-	DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384 = 14,
-	DNSSEC_KEY_ALGORITHM_ED25519 = 15,
-	DNSSEC_KEY_ALGORITHM_ED448 = 16,
+	DNSSEC_KEY_ALGORITHM_DELETE            =   0,
+	DNSSEC_KEY_ALGORITHM_RSA_MD5           =   1, /*!< Unsupported */
+	DNSSEC_KEY_ALGORITHM_DH                =   2, /*!< Unsupported */
+	DNSSEC_KEY_ALGORITHM_DSA               =   3, /*!< Unsupported */
+
+	DNSSEC_KEY_ALGORITHM_RSA_SHA1          =   5,
+	DNSSEC_KEY_ALGORITHM_DSA_NSEC3_SHA1    =   6, /*!< Unsupported */
+	DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3    =   7,
+	DNSSEC_KEY_ALGORITHM_RSA_SHA256        =   8,
+	DNSSEC_KEY_ALGORITHM_RSA_SHA512        =  10,
+	DNSSEC_KEY_ALGORITHM_ECC_GOST          =  12, /*!< Unsupported */
+	DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 =  13,
+	DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384 =  14,
+	DNSSEC_KEY_ALGORITHM_ED25519           =  15,
+	DNSSEC_KEY_ALGORITHM_ED448             =  16,
+
+	DNSSEC_KEY_ALGORITHM_INDIRECT          = 252,
+	DNSSEC_KEY_ALGORITHM_PRIVATEDNS        = 253,
+	DNSSEC_KEY_ALGORITHM_PRIVATEOID        = 254,
 } dnssec_key_algorithm_t;
+
+/*!
+ * DS algorithm numbers.
+ *
+ * \see https://www.iana.org/assignments/ds-rr-types/ds-rr-types.xhtml
+ */
+typedef enum dnssec_key_digest {
+	DNSSEC_KEY_DIGEST_INVALID = 0,
+	DNSSEC_KEY_DIGEST_SHA1    = 1,
+	DNSSEC_KEY_DIGEST_SHA256  = 2,
+	DNSSEC_KEY_DIGEST_SHA384  = 4,
+} dnssec_key_digest_t;
+
+/*!
+ * DS algorithm digest lengths in bytes.
+ */
+typedef enum dnssec_key_digest_len {
+	DNSSEC_KEY_DIGEST_LEN_SHA1   = 20, /*!< RFC 3658 */
+	DNSSEC_KEY_DIGEST_LEN_SHA256 = 32, /*!< RFC 4509 */
+	DNSSEC_KEY_DIGEST_LEN_SHA384 = 48, /*!< RFC 6605 */
+} dnssec_key_digest_len_t;
 
 struct dnssec_key;
 
@@ -255,18 +286,6 @@ bool dnssec_algorithm_key_size_check(dnssec_key_algorithm_t algorithm,
  * respect to use in DNS.
  */
 int dnssec_algorithm_key_size_default(dnssec_key_algorithm_t algorithm);
-
-/*!
- * DS algorithm numbers.
- *
- * \see https://www.iana.org/assignments/ds-rr-types/ds-rr-types.xhtml
- */
-typedef enum dnssec_key_digest {
-	DNSSEC_KEY_DIGEST_INVALID = 0,
-	DNSSEC_KEY_DIGEST_SHA1 = 1,
-	DNSSEC_KEY_DIGEST_SHA256 = 2,
-	DNSSEC_KEY_DIGEST_SHA384 = 4,
-} dnssec_key_digest_t;
 
 /*!
  * Check whether a DS algorithm is supported.
