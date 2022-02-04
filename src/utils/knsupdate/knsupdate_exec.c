@@ -23,6 +23,7 @@
 
 #include "libdnssec/random.h"
 #include "utils/knsupdate/knsupdate_exec.h"
+#include "utils/knsupdate/knsupdate_interactive.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
@@ -51,7 +52,7 @@ int cmd_nxrrset(const char *lp, knsupdate_params_t *params);
 int cmd_oldgsstsig(const char* lp, knsupdate_params_t *params);
 int cmd_origin(const char* lp, knsupdate_params_t *params);
 int cmd_prereq(const char* lp, knsupdate_params_t *params);
-int cmd_quit(const char* lp, knsupdate_params_t *params);
+int cmd_exit(const char* lp, knsupdate_params_t *params);
 int cmd_realm(const char* lp, knsupdate_params_t *params);
 int cmd_send(const char* lp, knsupdate_params_t *params);
 int cmd_server(const char* lp, knsupdate_params_t *params);
@@ -66,13 +67,14 @@ int cmd_zone(const char* lp, knsupdate_params_t *params);
  * This way we could identify command byte-per-byte and
  * cancel early if the next is lexicographically greater.
  */
-const char* cmd_array[] = {
+const char* knsupdate_cmd_array[] = {
 	"\x3" "add",
 	"\x6" "answer",
 	"\x5" "class",         /* {classname} */
 	"\x5" "debug",
 	"\x3" "del",
 	"\x6" "delete",
+	"\x4" "exit",
 	"\x7" "gsstsig",
 	"\x3" "key",           /* {[alg:]name} {secret} */
 	"\x5" "local",         /* {address} [port] */
@@ -101,6 +103,7 @@ cmd_handle_f cmd_handle[] = {
 	cmd_debug,
 	cmd_del,
 	cmd_del,         /* delete/del synonyms */
+	cmd_exit,
 	cmd_gsstsig,
 	cmd_key,
 	cmd_local,
@@ -109,7 +112,7 @@ cmd_handle_f cmd_handle[] = {
 	cmd_oldgsstsig,
 	cmd_origin,
 	cmd_prereq,
-	cmd_quit,
+	cmd_exit,        /* exit/quit synonyms */
 	cmd_realm,
 	cmd_send,
 	cmd_server,
@@ -474,26 +477,25 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	return rb;
 }
 
-static int process_line(char *lp, void *arg)
+int knsupdate_process_line(const char *line, knsupdate_params_t *params)
 {
-	knsupdate_params_t *params = (knsupdate_params_t *)arg;
-
 	/* Check for empty line or comment. */
-	if (lp[0] == '\0' || lp[0] == ';') {
+	if (line[0] == '\0' || line[0] == ';') {
 		return KNOT_EOK;
 	}
 
-	int ret = tok_find(lp, cmd_array);
+	int ret = tok_find(line, knsupdate_cmd_array);
 	if (ret < 0) {
 		return ret; /* Syntax error - do nothing. */
 	}
 
-	const char *cmd = cmd_array[ret];
-	const char *val = tok_skipspace(lp + TOK_L(cmd));
+	const char *cmd = knsupdate_cmd_array[ret];
+	const char *val = tok_skipspace(line + TOK_L(cmd));
+	params->parser.error.counter = 0; /* Reset possible previous error. */
 	ret = cmd_handle[ret](val, params);
 	if (ret != KNOT_EOK) {
 		DBG("operation '%s' failed (%s) on line '%s'\n",
-		    TOK_S(cmd), knot_strerror(ret), lp);
+		    TOK_S(cmd), knot_strerror(ret), line);
 	}
 
 	return ret;
@@ -510,42 +512,21 @@ static int process_lines(knsupdate_params_t *params, FILE *input)
 {
 	char *buf = NULL;
 	size_t buflen = 0;
-	bool interactive = is_terminal(input);
-	int ret = KNOT_EOK;
-
-	/* Print first program prompt if interactive. */
-	if (interactive) {
-		fprintf(stderr, "> ");
+	if(is_terminal(input)) {
+		return interactive_loop(params);
 	}
+	int ret = KNOT_EOK;
 
 	/* Process lines. */
 	while (!params->stop && knot_getline(&buf, &buflen, input) != -1) {
 		/* Remove leading and trailing white space. */
 		char *line = strstrip(buf);
-		int call_ret = process_line(line, params);
+		ret = knsupdate_process_line(line, params);
 		memset(line, 0, strlen(line));
 		free(line);
-		if (call_ret != KNOT_EOK) {
-			/* Return the first error. */
-			if (ret == KNOT_EOK) {
-				ret = call_ret;
-			}
-
-			/* Exit if error and not interactive. */
-			if (!interactive) {
-				break;
-			}
+		if (ret != KNOT_EOK) {
+			break;
 		}
-
-		/* Print program prompt if interactive. */
-		if (interactive && !params->stop) {
-			fprintf(stderr, "> ");
-		}
-	}
-
-	if (interactive && feof(input)) {
-		/* Terminate line after empty prompt. */
-		fprintf(stderr, "\n");
 	}
 
 	if (buf != NULL) {
@@ -564,9 +545,9 @@ int knsupdate_exec(knsupdate_params_t *params)
 
 	int ret = KNOT_EOK;
 
-	/* If no file specified, use stdin. */
+	/* If no file specified, enter the interactive mode. */
 	if (EMPTY_LIST(params->qfiles)) {
-		ret = process_lines(params, stdin);
+		ret = interactive_loop(params);
 	}
 
 	/* Read from each specified file. */
@@ -603,7 +584,7 @@ int cmd_update(const char* lp, knsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	/* update is optional token, next add|del|delete */
-	int bp = tok_find(lp, cmd_array);
+	int bp = tok_find(lp, knsupdate_cmd_array);
 	if (bp < 0) return bp; /* Syntax error. */
 
 	/* allow only specific tokens */
@@ -614,7 +595,7 @@ int cmd_update(const char* lp, knsupdate_params_t *params)
 		return KNOT_EPARSEFAIL;
 	}
 
-	return h[bp](tok_skipspace(lp + TOK_L(cmd_array[bp])), params);
+	return h[bp](tok_skipspace(lp + TOK_L(knsupdate_cmd_array[bp])), params);
 }
 
 int cmd_add(const char* lp, knsupdate_params_t *params)
@@ -789,6 +770,10 @@ int cmd_prereq(const char* lp, knsupdate_params_t *params)
 	const char *tok = pq_array[prereq_type];
 	DBG("%s: type %s\n", __func__, TOK_S(tok));
 	lp = tok_skipspace(lp + TOK_L(tok));
+	if (strlen(lp) == 0) {
+		ERR("missing prerequisite owner name\n");
+		return KNOT_EINVAL;
+	}
 
 	int ret = KNOT_EOK;
 	switch(prereq_type) {
@@ -811,7 +796,7 @@ int cmd_prereq(const char* lp, knsupdate_params_t *params)
 	return ret;
 }
 
-int cmd_quit(const char* lp, knsupdate_params_t *params)
+int cmd_exit(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
@@ -1036,6 +1021,8 @@ int cmd_gsstsig(const char* lp, _unused_ knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
+	ERR("gsstsig not supported\n");
+
 	return KNOT_ENOTSUP;
 }
 
@@ -1043,12 +1030,16 @@ int cmd_oldgsstsig(const char* lp, _unused_ knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
+	ERR("oldgsstsig not supported\n");
+
 	return KNOT_ENOTSUP;
 }
 
 int cmd_realm(const char* lp, _unused_ knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
+
+	ERR("realm not supported\n");
 
 	return KNOT_ENOTSUP;
 }

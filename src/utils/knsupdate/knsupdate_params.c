@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,8 +30,6 @@
 #include "contrib/strtonum.h"
 #include "contrib/ucw/mempool.h"
 
-#define PROGRAM_NAME "knsupdate"
-
 #define DEFAULT_RETRIES_NSUPDATE	3
 #define DEFAULT_TIMEOUT_NSUPDATE	12
 
@@ -60,10 +58,6 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.show_footer = false
 };
 
-static void parse_err(zs_scanner_t *s) {
-	ERR("failed to parse RR: %s\n", zs_strerror(s->error.code));
-}
-
 static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
 {
 	/* Format string. */
@@ -74,13 +68,13 @@ static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
 	va_end(ap);
 
 	if (n < 0 || (size_t)n >= sizeof(buf)) {
-		return KNOT_ESPACE;
+		return ZS_EINVAL;
 	}
 
 	/* Buffer must contain newline */
 	if (zs_set_input_string(s, buf, n) != 0 ||
 	    zs_parse_all(s) != 0) {
-		return KNOT_EPARSEFAIL;
+		return s->error.code;
 	}
 
 	return KNOT_EOK;
@@ -115,7 +109,7 @@ static int knsupdate_init(knsupdate_params_t *params)
 
 	/* Initialize RR parser. */
 	if (zs_init(&params->parser, ".", params->class_num, 0) != 0 ||
-	    zs_set_processing(&params->parser, NULL, parse_err, NULL) != 0) {
+	    zs_set_processing(&params->parser, NULL, NULL, NULL) != 0) {
 		zs_deinit(&params->parser);
 		return KNOT_ENOMEM;
 	}
@@ -294,7 +288,7 @@ int knsupdate_set_ttl(knsupdate_params_t *params, const uint32_t ttl)
 	if (ret == KNOT_EOK) {
 		params->ttl = ttl;
 	} else {
-		ERR("failed to set default TTL, %s\n", knot_strerror(ret));
+		ERR("failed to set default TTL, %s\n", zs_strerror(ret));
 	}
 	return ret;
 }
@@ -308,7 +302,7 @@ int knsupdate_set_origin(knsupdate_params_t *params, const char *origin)
 	free(fqdn);
 
 	if (ret != KNOT_EOK) {
-		ERR("failed to set default origin, %s\n", knot_strerror(ret));
+		ERR("failed to set default origin, %s\n", zs_strerror(ret));
 	}
 	return ret;
 }

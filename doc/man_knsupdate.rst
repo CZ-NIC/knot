@@ -126,8 +126,8 @@ Commands
 **debug**
   Enable debugging. This command has the same meaning as the **-d** program option.
 
-**quit**
-  Quit the program.
+**exit**
+  End the program.
 
 Notes
 -----
@@ -139,6 +139,17 @@ Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
 Zone name/server guessing is not supported if the zone name/server is not specified.
 
 Empty line doesn't send the update.
+
+Interactive mode
+................
+
+The utility provides interactive mode with basic line editing functionality,
+command completion, and command history.
+
+Interactive mode behavior can be customized in `~/.editrc`. Refer to
+:manpage:`editrc(5)` for details.
+
+Command history is saved in `~/.knsupdate_history`.
 
 Exit values
 -----------
@@ -162,9 +173,9 @@ Examples
      > show
      > send
      > answer
-     > quit
+     > exit
 
 See Also
 --------
 
-:manpage:`kdig(1)`, :manpage:`khost(1)`, :manpage:`keymgr(8)`.
+:manpage:`kdig(1)`, :manpage:`khost(1)`, :manpage:`keymgr(8)`, :manpage:`editrc(5)`.
