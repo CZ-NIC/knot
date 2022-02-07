@@ -151,7 +151,7 @@ General options related to the server.
      udp-max-payload-ipv6: SIZE
      edns-client-subnet: BOOL
      answer-rotation: BOOL
-     dbus-event: none | running | zone-updated | ksk-submission ...
+     dbus-event: none | running | zone-updated | ksk-submission | dnssec-invalid ...
      listen: ADDR[@INT] ...
 
 .. CAUTION::
@@ -484,6 +484,8 @@ Possible values:
 - ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if there is
   a ready KSK present when the zone is signed; the signal parameters are
   `zone name`, `KSK keytag`, and `KSK KASP id`.
+- ``dnssec-invalid`` – The signal ``zone_dnssec_invalid`` is emitted when DNSSEC
+  validation fails; the signal parameter is `zone name`.
 
 .. NOTE::
    This function requires systemd version at least 221.
