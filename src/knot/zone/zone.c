@@ -552,10 +552,10 @@ static void log_try_addr_error(const zone_t *zone, const char *remote_name,
 {
 	char addr_str[SOCKADDR_STRLEN] = { 0 };
 	sockaddr_tostr(addr_str, sizeof(addr_str), remote_addr);
-	log_zone_debug(zone->name, "%s%s%s, address %s, failed (%s)", err_str,
-	               (remote_name != NULL ? ", remote " : ""),
-	               (remote_name != NULL ? remote_name : ""),
-	               addr_str, knot_strerror(ret));
+	log_zone_info(zone->name, "%s%s%s, address %s, failed (%s)", err_str,
+	              (remote_name != NULL ? ", remote " : ""),
+	              (remote_name != NULL ? remote_name : ""),
+	              addr_str, knot_strerror(ret));
 }
 
 int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
