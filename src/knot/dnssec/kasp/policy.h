@@ -126,6 +126,7 @@ typedef struct {
 	dnssec_key_digest_t cds_dt;         // digest type for CDS
 	parent_dynarray_t parents;
 	uint16_t signing_threads;
+	bool ds_push;
 	bool offline_ksk;
 	unsigned unsafe;
 } knot_kasp_policy_t;
