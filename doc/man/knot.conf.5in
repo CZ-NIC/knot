@@ -1258,6 +1258,7 @@ submission:
     parent: remote_id | remotes_id ...
     check\-interval: TIME
     timeout: TIME
+    parent\-delay: TIME
 .ft P
 .fi
 .UNINDENT
@@ -1292,6 +1293,13 @@ case of the KSK submission.
 After this time period (in seconds) the KSK submission is automatically considered
 successful, even if all the checks were negative or no parents are configured.
 Set to 0 for infinity.
+.sp
+\fIDefault:\fP 0
+.SS parent\-delay
+.sp
+After successful parent DS check, wait for this period before continuing the next
+key roll\-over step. This delay shall cover the propagation delay of update in the
+parent zone.
 .sp
 \fIDefault:\fP 0
 .SH POLICY SECTION

@@ -353,6 +353,8 @@ static const yp_item_t desc_submission[] = {
 	                           CONF_IO_FRLD_ZONES },
 	{ C_TIMEOUT,      YP_TINT, YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
 	                           CONF_IO_FRLD_ZONES },
+	{ C_PARENT_DELAY, YP_TINT, YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
+	                           CONF_IO_FRLD_ZONES },
 	{ C_COMMENT,      YP_TSTR, YP_VNONE },
 	{ NULL }
 };

@@ -64,6 +64,7 @@ class ZoneDnssec(object):
         self.ksk_sbm_check = []
         self.ksk_sbm_check_interval = None
         self.ksk_sbm_timeout = None
+        self.ksk_sbm_delay = None
         self.ds_push = None
         self.ksk_shared = None
         self.shared_policy_with = None
@@ -1384,6 +1385,8 @@ class Knot(Server):
             self._str(s, "check-interval", z.dnssec.ksk_sbm_check_interval)
             if z.dnssec.ksk_sbm_timeout is not None:
                 self._str(s, "timeout", z.dnssec.ksk_sbm_timeout)
+            if z.dnssec.ksk_sbm_delay is not None:
+                self._str(s, "parent-delay", z.dnssec.ksk_sbm_delay)
         if have_sbm:
             s.end()
 

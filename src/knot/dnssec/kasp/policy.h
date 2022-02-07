@@ -121,6 +121,7 @@ typedef struct {
 	// various
 	uint32_t ksk_sbm_timeout;           // like knot_time_t
 	uint32_t ksk_sbm_check_interval;    // like knot_time_t
+	uint32_t ksk_sbm_delay;
 	unsigned cds_cdnskey_publish;
 	dnssec_key_digest_t cds_dt;         // digest type for CDS
 	parent_dynarray_t parents;
