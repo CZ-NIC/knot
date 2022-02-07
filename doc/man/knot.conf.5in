@@ -200,7 +200,7 @@ server:
     udp\-max\-payload\-ipv6: SIZE
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
-    dbus\-event: none | running | zone\-updated | ksk\-submission ...
+    dbus\-event: none | running | zone\-updated | ksk\-submission | dnssec\-invalid ...
     listen: ADDR[@INT] ...
 .ft P
 .fi
@@ -456,6 +456,9 @@ the signal parameters are \fIzone name\fP and \fIzone SOA serial\fP\&.
 \fBksk\-submission\fP – The signal \fBzone_ksk_submission\fP is emitted if there is
 a ready KSK present when the zone is signed; the signal parameters are
 \fIzone name\fP, \fIKSK keytag\fP, and \fIKSK KASP id\fP\&.
+.IP \(bu 2
+\fBdnssec\-invalid\fP – The signal \fBzone_dnssec_invalid\fP is emitted when DNSSEC
+validation fails; the signal parameter is \fIzone name\fP\&.
 .UNINDENT
 .sp
 \fBNOTE:\fP

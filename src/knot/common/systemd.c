@@ -155,3 +155,14 @@ void systemd_emit_zone_submission(const knot_dname_t *zone_name, uint16_t keytag
 	}
 #endif
 }
+
+void systemd_emit_zone_invalid(const knot_dname_t *zone_name)
+{
+#ifdef ENABLE_DBUS
+	knot_dname_txt_storage_t buff;
+	char *zone_str = knot_dname_to_str(buff, zone_name, sizeof(buff));
+	if (zone_str != NULL) {
+		emit_event(KNOT_BUS_EVENT_ZONE_INVALID, "s", zone_str);
+	}
+#endif
+}

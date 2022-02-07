@@ -29,6 +29,7 @@
 #define KNOT_BUS_EVENT_STOPPED       "stopped"
 #define KNOT_BUS_EVENT_ZONE_UPD      "zone_updated"
 #define KNOT_BUS_EVENT_ZONE_KSK_SUBM "zone_ksk_submission"
+#define KNOT_BUS_EVENT_ZONE_INVALID  "zone_dnssec_invalid"
 
 /*!
  * \brief Notify systemd about zone loading start.
@@ -95,3 +96,10 @@ void systemd_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial);
  */
 void systemd_emit_zone_submission(const knot_dname_t *zone_name, uint16_t keytag,
                                   const char *keyid);
+
+/*!
+ * \brief Emit event signal for failed DNSSEC validation.
+ *
+ * \param zone_name  Zone name.
+ */
+void systemd_emit_zone_invalid(const knot_dname_t *zone_name);

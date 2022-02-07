@@ -8,6 +8,9 @@ cb() {
 	zone_updated)
 		echo "Updated zone=${2} to serial=${3}"
 		;;
+	zone_dnssec_invalid)
+		echo "Invalid DNSSEC for zone=${2}"
+		;;
 	started)
 		echo "Server started"
 		;;
