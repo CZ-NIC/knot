@@ -97,7 +97,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     wait_for_dnskey_count(t, server, total_keys, 20)
     check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both keys active")
 
-    wait_for_rrsig_count(t, server, "DNSKEY", 1, 20)
+    wait_for_rrsig_count(t, server, "DNSKEY", 1, 24)
     check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old key removed")
 
 t = Test(tsig=False)
@@ -120,7 +120,7 @@ child.dnssec(child_zone).alg = "ECDSAP256SHA256"
 child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
-child.dnssec(child_zone).propagation_delay = 11
+child.dnssec(child_zone).propagation_delay = 4
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 2
 child.dnssec(child_zone).ds_push = parent
@@ -134,7 +134,7 @@ t.sleep(2)
 child.start()
 child.zone_wait(child_zone)
 
-t.sleep(5)
+t.sleep(9)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover")
