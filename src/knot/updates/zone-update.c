@@ -964,6 +964,9 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 				               name_str, type_str);
 			}
 			discard_adds_tree(update);
+			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
+				systemd_emit_zone_invalid(update->zone->name);
+			}
 			return ret;
 		} else {
 			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful", msg_valid);
