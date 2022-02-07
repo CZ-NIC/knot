@@ -247,7 +247,7 @@ int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t time
 		if (key->is_ready && !key->is_pub_only) {
 			assert(key->is_ksk);
 			if (parents_have_ds(kctx, key, timeout, &max_ds_ttl)) {
-				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl);
+				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl + kctx->policy->ksk_sbm_delay);
 			} else {
 				return KNOT_ENOENT;
 			}

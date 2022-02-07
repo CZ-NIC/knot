@@ -1327,6 +1327,7 @@ Parameters of KSK submission checks.
      parent: remote_id ...
      check-interval: TIME
      timeout: TIME
+     parent-delay: TIME
 
 .. _submission_id:
 
@@ -1368,6 +1369,17 @@ timeout
 After this time period (in seconds) the KSK submission is automatically considered
 successful, even if all the checks were negative or no parents are configured.
 Set to 0 for infinity.
+
+*Default:* 0
+
+.. _submission_parent-delay:
+
+parent-delay
+------------
+
+After successful parent DS check, wait for this period before continuing the next
+key roll-over step. This delay shall cover the propagation delay of update in the
+parent zone.
 
 *Default:* 0
 

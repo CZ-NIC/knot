@@ -89,6 +89,7 @@
 #define C_NSID			"\x04""nsid"
 #define C_OFFLINE_KSK		"\x0B""offline-ksk"
 #define C_PARENT		"\x06""parent"
+#define C_PARENT_DELAY		"\x0C""parent-delay"
 #define C_PIDFILE		"\x07""pidfile"
 #define C_POLICY		"\x06""policy"
 #define C_PROPAG_DELAY		"\x11""propagation-delay"
