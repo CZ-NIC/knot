@@ -131,10 +131,16 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 			}
 			conf_mix_iter_next(&iter);
 		}
+
+		val = conf_id_get(conf, C_SBM, C_PARENT_DELAY, &ksk_sbm);
+		policy->ksk_sbm_delay = conf_int(&val);
 	}
 
 	val = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, id);
 	policy->signing_threads = conf_int(&val);
+
+	val = conf_id_get(conf, C_POLICY, C_DS_PUSH, id);
+	policy->ds_push = conf_val_count(&val) > 0;
 
 	val = conf_id_get(conf, C_POLICY, C_OFFLINE_KSK, id);
 	policy->offline_ksk = conf_bool(&val);

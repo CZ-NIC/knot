@@ -347,12 +347,11 @@ static const yp_item_t desc_acl[] = {
 
 static const yp_item_t desc_submission[] = {
 	{ C_ID,           YP_TSTR, YP_VNONE },
-	{ C_PARENT,       YP_TREF, YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FRLD_ZONES,
-	                           { check_ref } },
-	{ C_CHK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME },
-	                           CONF_IO_FRLD_ZONES },
+	{ C_PARENT,       YP_TREF, YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } },
+	{ C_CHK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, HOURS(1), YP_STIME } },
 	{ C_TIMEOUT,      YP_TINT, YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
 	                           CONF_IO_FRLD_ZONES },
+	{ C_PARENT_DELAY, YP_TINT, YP_VINT = { 0, UINT32_MAX, 0, YP_STIME } },
 	{ C_COMMENT,      YP_TSTR, YP_VNONE },
 	{ NULL }
 };
@@ -400,8 +399,10 @@ static const yp_item_t desc_policy[] = {
 	                                   { check_ref } },
 	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
-	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ROLLOVER } },
-	{ C_CDS_DIGESTTYPE,      YP_TOPT,  YP_VOPT = { cds_digesttype, DNSSEC_KEY_DIGEST_SHA256 } },
+	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ROLLOVER },
+	                                   CONF_IO_FRLD_ZONES },
+	{ C_CDS_DIGESTTYPE,      YP_TOPT,  YP_VOPT = { cds_digesttype, DNSSEC_KEY_DIGEST_SHA256 },
+	                                   CONF_IO_FRLD_ZONES },
 	{ C_OFFLINE_KSK,         YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_UNSAFE_OPERATION,    YP_TOPT,  YP_VOPT = { unsafe_operation, UNSAFE_NONE }, YP_FMULTI },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },

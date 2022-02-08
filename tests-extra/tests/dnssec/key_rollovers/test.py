@@ -195,7 +195,7 @@ def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, se
     check_zone(server, zone, slave, before_keys + after_keys, 2, 1, 2, msg)
 
     msg = desc + ": post active"
-    wait_for_count(t, server, "DNSKEY", after_keys, 5, 20, msg)
+    wait_for_count(t, server, "DNSKEY", after_keys, 11, 26, msg)
     check_zone(server, zone, slave, after_keys, 1, 1, 2, msg)
 
     msg = desc + ": old alg removed"
@@ -232,7 +232,7 @@ def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_ke
         check_zone(server, zone, slave, total_keys, 2, 1, 1, msg)
     # else skip the test as we have no control on KSK and ZSK retiring asynchronously
 
-    t.sleep(5) # cca DS TTL
+    t.sleep(11) # cca DS TTL + parent-delay
     wait_for_count(t, server, "SOA", 1, 0, 1, "NOOP")
 
     msg = desc + ": old key removed"
@@ -275,6 +275,7 @@ child.dnssec(child_zone).delete_delay = DELETE_DELAY
 child.dnssec(child_zone).propagation_delay = 11
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 2
+child.dnssec(child_zone).ksk_sbm_delay = 6
 child.dnssec(child_zone).ksk_shared = True
 child.dnssec(child_zone).cds_publish = "always"
 if DOUBLE_DS:
