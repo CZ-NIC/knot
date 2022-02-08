@@ -1,3 +1,34 @@
+Knot DNS 3.1.6 (2022-02-08)
+===========================
+
+Features:
+---------
+ - knotd: optional D-Bus notifications for significant server and zone events
+          (see 'server.dbus-event')
+ - knotd: new submission configuration option for delayed KSK post-activation
+          (see 'submission.parent-delay')
+ - knotc: new commands for outgoing XFR freeze (see 'zone-xfr-freeze' and 'zone-xfr-thaw')
+ - kzonesign: added multithreaded DNSSEC validation mode (see '--verify')
+
+Improvements:
+-------------
+ - kdig: trailing data in reply packet is accepted with a warning
+ - kdig: XFR responses are checked if SOA owners match
+ - knotd: failed remote operations are logged as info instead of debug
+ - knsec3hash: added alternative and more natural parameter semantics
+ - knsupdate: interactive mode is newly based on library Editline
+ - Dockerfile: added UID argument to facilitate the use of unprivileged container #783
+ - doc: various fixes and improvements
+
+Bugfixes:
+---------
+ - libknot: inaccurate KNOT_DNAME_TXT_MAXLEN constant value #781
+ - knotd: propagation delay not considered before DS push
+ - knotd: excessive refresh retry delay when a few early attemps fail
+ - knotd: duplicate KSK submission log message during a KSK rollover
+ - kdig: dname letter case not preserved in XFR and Dnstap outputs
+ - mod-cookies: missing server cookie in responses over TCP
+
 Knot DNS 3.1.5 (2021-12-20)
 ===========================
 
