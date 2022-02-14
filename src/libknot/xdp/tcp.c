@@ -168,6 +168,22 @@ static void del_conn(knot_tcp_conn_t *conn)
 	}
 }
 
+static void rem_align_pointers(knot_tcp_conn_t *to_rem, knot_tcp_table_t *table)
+{
+	if (to_rem == table->next_close) {
+		next_node_ptr(&table->next_close);
+	}
+	if (to_rem == table->next_ibuf) {
+		next_ptr_ibuf(&table->next_ibuf);
+	}
+	if (to_rem == table->next_obuf) {
+		next_ptr_obuf(&table->next_obuf);
+	}
+	if (to_rem == table->next_resend) {
+		next_ptr_obuf(&table->next_resend);
+	}
+}
+
 static void tcp_table_remove_conn(knot_tcp_conn_t **todel)
 {
 	rem_node(tcp_conn_node(*todel)); // remove from timeout double-linked list
@@ -177,18 +193,7 @@ static void tcp_table_remove_conn(knot_tcp_conn_t **todel)
 static void tcp_table_remove(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
 {
 	assert(table->usage > 0);
-	if (*todel == table->next_close) {
-		next_node_ptr(&table->next_close);
-	}
-	if (*todel == table->next_ibuf) {
-		next_ptr_ibuf(&table->next_ibuf);
-	}
-	if (*todel == table->next_obuf) {
-		next_ptr_obuf(&table->next_obuf);
-	}
-	if (*todel == table->next_resend) {
-		next_ptr_obuf(&table->next_resend);
-	}
+	rem_align_pointers(*todel, table);
 	table->inbufs_total -= (*todel)->inbuf.iov_len;
 	table->outbufs_total -= tcp_outbufs_usage((*todel)->outbufs);
 	tcp_table_remove_conn(todel);
@@ -299,6 +304,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_
 			assert(conn->mss != 0);
 			conn_update(conn, msg);
 
+			rem_align_pointers(conn, tcp_table);
 			rem_node(tcp_conn_node(conn));
 			add_tail(tcp_table_timeout(tcp_table), tcp_conn_node(conn));
 
