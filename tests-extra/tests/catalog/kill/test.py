@@ -21,6 +21,7 @@ master.zones[catz[0].name].journal_content = "all"
 master.dnssec(stuckzone).enable = True
 master.dnssec(stuckzone).single_type_signing = True
 master.dnssec(stuckzone).ds_push = stuck_parent
+master.dnssec(stuckzone).propagation_delay = 1
 master.tcp_remote_io_timeout = 40000
 
 master.gen_confile()
