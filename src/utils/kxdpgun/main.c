@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@
 #include "contrib/os.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
+#include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/kxdpgun/ip_route.h"
 #include "utils/kxdpgun/load_queries.h"
@@ -106,6 +107,7 @@ typedef struct {
 	uint8_t		local_ip_range;
 	bool		ipv6;
 	bool		tcp;
+	char		tcp_mode;
 	xdp_gun_ignore_t  ignore1;
 	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
@@ -119,6 +121,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.qps = 1000,
 	.duration = 5000000UL, // usecs
 	.at_once = 10,
+	.tcp_mode = '0',
 	.target_port = LOCAL_PORT_DEFAULT,
 	.listen_port = KNOT_XDP_LISTEN_PORT_PASS | LOCAL_PORT_MIN,
 };
@@ -348,7 +351,7 @@ void *xdp_gun_thread(void *_ctx)
 	if (ctx->tcp) {
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
 		if (tcp_table == NULL) {
-			printf("failed to allocate TCP connection table\n");
+			ERR2("failed to allocate TCP connection table\n");
 			return NULL;
 		}
 	}
@@ -357,8 +360,8 @@ void *xdp_gun_thread(void *_ctx)
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->listen_port, mode);
 	if (ret != KNOT_EOK) {
-		printf("failed to initialize XDP socket#%u: %s\n",
-		       ctx->thread_id, knot_strerror(ret));
+		ERR2("failed to initialize XDP socket#%u (%s)\n",
+		     ctx->thread_id, knot_strerror(ret));
 		knot_tcp_table_free(tcp_table);
 		return NULL;
 	}
@@ -532,8 +535,8 @@ void *xdp_gun_thread(void *_ctx)
 	if (errors > 0) {
 		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
 	}
-	printf("thread#%02u: sent %"PRIu64"%s%s%s\n",
-	       ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
+	INFO2("thread#%02u: sent %"PRIu64"%s%s%s\n",
+	      ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
 	local_stats.duration = ctx->duration;
 	collect_stats(&global_stats, &local_stats);
 
@@ -574,7 +577,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		ctx->ipv6 = true;
 		ctx->target_ip.ss_family = AF_INET6;
 		if (inet_pton(AF_INET6, target_str, &((struct sockaddr_in6 *)&ctx->target_ip)->sin6_addr) <= 0) {
-			printf("invalid target IP\n");
+			ERR2("invalid target IP\n");
 			return false;
 		}
 	} else {
@@ -584,7 +587,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	struct sockaddr_storage via = { 0 };
 	int ret = ip_route_get(&ctx->target_ip, &via, &ctx->local_ip, ctx->dev);
 	if (ret < 0) {
-		printf("can't find route to `%s`: %s\n", target_str, strerror(-ret));
+		ERR2("can't find route to '%s' (%s)\n", target_str, strerror(-ret));
 		return false;
 	}
 
@@ -598,12 +601,12 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		if (ctx->ipv6) {
 			if (ctx->local_ip_range < 64 ||
 			    inet_pton(AF_INET6, local_ip, &((struct sockaddr_in6 *)&ctx->local_ip)->sin6_addr) <= 0) {
-				printf("invalid local IPv6 or unsupported prefix length\n");
+				ERR2("invalid local IPv6 or unsupported prefix length\n");
 				return false;
 			}
 		} else {
 			if (inet_pton(AF_INET, local_ip, &((struct sockaddr_in *)&ctx->local_ip)->sin_addr) <= 0) {
-				printf("invalid local IPv4\n");
+				ERR2("invalid local IPv4\n");
 				return false;
 			}
 		}
@@ -614,13 +617,14 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	if (ret < 0) {
 		char neigh_str[256] = { 0 };
 		(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), neigh);
-		printf("failed to get remote MAC of target/gateway `%s`: %s\n", neigh_str, strerror(-ret));
+		ERR2("failed to get remote MAC of target/gateway '%s' (%s)\n",
+		     neigh_str, strerror(-ret));
 		return false;
 	}
 
 	ret = dev2mac(ctx->dev, ctx->local_mac);
 	if (ret < 0) {
-		printf("failed to get MAC of device `%s`: %s\n", ctx->dev, strerror(-ret));
+		ERR2("failed to get MAC of device '%s' (%s)\n", ctx->dev, strerror(-ret));
 		return false;
 	}
 
@@ -628,8 +632,8 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	if (ret >= 0) {
 		ctx->n_threads = ret;
 	} else {
-		printf("unable to get number of queues for %s: %s\n", ctx->dev,
-		       knot_strerror(ret));
+		ERR2("unable to get number of queues for '%s' (%s)\n", ctx->dev,
+		     knot_strerror(ret));
 		return false;
 	}
 
@@ -692,17 +696,16 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		case 'h':
 			print_help();
 			exit(EXIT_SUCCESS);
-			break;
 		case 'V':
 			print_version(PROGRAM_NAME);
 			exit(EXIT_SUCCESS);
-			break;
 		case 't':
 			argf = atof(optarg);
 			if (argf > 0) {
 				ctx->duration = argf * 1000000.0;
 				assert(ctx->duration >= 1000);
 			} else {
+				ERR2("invalid duration '%s'\n", optarg);
 				return false;
 			}
 			break;
@@ -711,6 +714,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (arg > 0) {
 				ctx->qps = arg;
 			} else {
+				ERR2("invalid QPS '%s'\n", optarg);
 				return false;
 			}
 			break;
@@ -720,6 +724,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				default_at_once = false;
 				ctx->at_once = arg;
 			} else {
+				ERR2("invalid batch size '%s'\n", optarg);
 				return false;
 			}
 			break;
@@ -731,6 +736,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (arg > 0 && arg <= 0xffff) {
 				ctx->target_port = arg;
 			} else {
+				ERR2("invalid port '%s'\n", optarg);
 				return false;
 			}
 			break;
@@ -740,7 +746,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (default_at_once) {
 				ctx->at_once = 1;
 			}
-			switch (optarg == NULL ? '0' : optarg[0]) {
+			ctx->tcp_mode = (optarg == NULL ? '0' : optarg[0]);
+			switch (ctx->tcp_mode) {
+			case '0':
+				break;
 			case '1':
 				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
 				ctx->ignore2 = XDP_TCP_IGNORE_ESTABLISH | XDP_TCP_IGNORE_FIN;
@@ -768,7 +777,8 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
 				break;
 			default:
-				break;
+				ERR2("invalid TCP mode '%s'\n", optarg);
+				return false;
 			}
 			break;
 		case 'F':
@@ -792,20 +802,29 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		default:
+			print_help();
 			return false;
 		}
 	}
-	if (global_payloads == NULL || argc - optind != 1 ||
-	    !configure_target(argv[optind], local_ip, ctx)) {
+	if (global_payloads == NULL || argc - optind != 1) {
+		print_help();
+		return false;
+	}
+
+	if (!configure_target(argv[optind], local_ip, ctx)) {
 		return false;
 	}
 
 	if (ctx->qps < ctx->n_threads) {
-		printf("QPS must be at least the number of threads (%u)\n", ctx->n_threads);
-		return false;
+		WARN2("QPS increased to the number of threads/queues: %u\n", ctx->n_threads);
+		ctx->qps = ctx->n_threads;
 	}
 	ctx->qps /= ctx->n_threads;
-	printf("using interface %s, XDP threads %u\n", ctx->dev, ctx->n_threads);
+
+	INFO2("using interface %s, XDP threads %u, %s%s%c\n", ctx->dev, ctx->n_threads,
+	      ctx->tcp ? "TCP" : "UDP",
+	      (ctx->tcp && ctx->tcp_mode != '0') ? " mode " : "",
+	      (ctx->tcp && ctx->tcp_mode != '0') ? ctx->tcp_mode : ' ');
 
 	return true;
 }
@@ -824,7 +843,7 @@ int main(int argc, char *argv[])
 	thread_ctxs = calloc(ctx.n_threads, sizeof(*thread_ctxs));
 	threads = calloc(ctx.n_threads, sizeof(*threads));
 	if (thread_ctxs == NULL || threads == NULL) {
-		printf("out of memory\n");
+		ERR2("out of memory\n");
 		free(thread_ctxs);
 		free(threads);
 		free_global_payloads();
@@ -842,8 +861,8 @@ int main(int argc, char *argv[])
 		    cur_limit.rlim_max != min_limit.rlim_max) {
 			int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
 			if (ret != 0) {
-				printf("warning: unable to increase RLIMIT_MEMLOCK: %s\n",
-				       strerror(errno));
+				WARN2("unable to increase RLIMIT_MEMLOCK: %s\n",
+				      strerror(errno));
 			}
 		}
 	}
@@ -864,7 +883,7 @@ int main(int argc, char *argv[])
 		(void)pthread_create(&threads[i], NULL, xdp_gun_thread, &thread_ctxs[i]);
 		int ret = pthread_setaffinity_np(threads[i], sizeof(cpu_set_t), &set);
 		if (ret != 0) {
-			printf("failed to set affinity of thread#%zu to CPU#%u\n", i, affinity);
+			WARN2("failed to set affinity of thread#%zu to CPU#%u\n", i, affinity);
 		}
 		usleep(20000);
 	}
@@ -884,5 +903,6 @@ int main(int argc, char *argv[])
 	free(thread_ctxs);
 	free(threads);
 	free_global_payloads();
+
 	return EXIT_SUCCESS;
 }
