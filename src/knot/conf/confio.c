@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -159,6 +159,10 @@ static int list_section(
 
 int conf_io_list(
 	const char *key0,
+	const char *key1,
+	const char *id,
+	bool list_ids,
+	bool get_current,
 	conf_io_t *io)
 {
 	if (io == NULL) {
@@ -166,6 +170,10 @@ int conf_io_list(
 	}
 
 	assert(conf() != NULL);
+
+	if (conf()->io.txn == NULL && !get_current) {
+		return KNOT_TXN_ENOTEXISTS;
+	}
 
 	// List schema sections by default.
 	if (key0 == NULL) {
@@ -180,22 +188,94 @@ int conf_io_list(
 	}
 
 	// Check the input.
-	int ret = yp_schema_check_str(ctx, key0, NULL, NULL, NULL);
+	int ret = yp_schema_check_str(ctx, key0, key1, id, NULL);
 	if (ret != KNOT_EOK) {
 		goto list_error;
 	}
 
+	knot_db_txn_t *txn = get_current ? &conf()->read_txn : conf()->io.txn;
+
 	yp_node_t *node = &ctx->nodes[ctx->current];
+	yp_node_t *parent = node->parent;
 
-	// Check for non-group item.
-	if (node->item->type != YP_TGRP) {
-		ret = KNOT_ENOTSUP;
-		goto list_error;
+	// List group identifiers.
+	if (list_ids) {
+		// Check for redundant key1 or identifier specification.
+		if (parent != NULL || (node->item->flags & YP_FMULTI) == 0 ||
+		    node->id_len > 0) {
+			ret = KNOT_ENOTSUP;
+			goto list_error;
+		}
+		io_reset_val(io, node->item, NULL, NULL, 0, false, NULL);
+
+		conf_iter_t iter;
+		ret = conf_db_iter_begin(conf(), txn, io->key0->name, &iter);
+		switch (ret) {
+		case KNOT_EOK:
+			break;
+		case KNOT_ENOENT:
+			ret = KNOT_EOK;
+			goto list_error;
+		default:
+			goto list_error;
+		}
+
+		while (ret == KNOT_EOK) {
+			// Set the section identifier.
+			ret = conf_db_iter_id(conf(), &iter, &io->id, &io->id_len);
+			if (ret != KNOT_EOK) {
+				conf_db_iter_finish(conf(), &iter);
+				goto list_error;
+			}
+
+			ret = FCN(io);
+			if (ret != KNOT_EOK) {
+				conf_db_iter_finish(conf(), &iter);
+				goto list_error;
+			}
+
+			ret = conf_db_iter_next(conf(), &iter);
+		}
+
+		ret = KNOT_EOK;
+	// List item values.
+	} else if (parent != NULL) {
+		io_reset_val(io, parent->item, node->item, parent->id,
+		             parent->id_len, false, NULL);
+
+		// Get the item value.
+		conf_val_t data;
+		ret = conf_db_get(conf(), txn, io->key0->name, io->key1->name,
+		                  io->id, io->id_len, &data);
+		switch (ret) {
+		case KNOT_EOK:
+			break;
+		case KNOT_ENOENT:
+			ret = KNOT_EOK;
+			goto list_error;
+		default:
+			goto list_error;
+		}
+
+		io->data.val = &data;
+
+		// Process the callback.
+		ret = FCN(io);
+
+		// Reset the modified parameters.
+		io->data.val = NULL;
+	// List group items.
+	} else {
+		// Check for non-group item.
+		if (node->item->type != YP_TGRP) {
+			ret = KNOT_ENOTSUP;
+			goto list_error;
+		}
+
+		io_reset_val(io, node->item, NULL, NULL, 0, false, NULL);
+
+		ret = list_section(node->item->sub_items, &io->key1, io);
 	}
-
-	io_reset_val(io, node->item, NULL, NULL, 0, false, NULL);
-
-	ret = list_section(node->item->sub_items, &io->key1, io);
 list_error:
 	yp_schema_check_deinit(ctx);
 

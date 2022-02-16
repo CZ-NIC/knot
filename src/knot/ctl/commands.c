@@ -1903,6 +1903,66 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 	return ret;
 }
 
+static void list_zone(zone_t *zone, knot_ctl_t *ctl)
+{
+	knot_dname_txt_storage_t buff;
+	knot_dname_to_str(buff, zone->name, sizeof(buff));
+
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_ID] = buff
+	};
+
+	knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &data);
+}
+
+static int list_zones(knot_zonedb_t *zonedb, knot_ctl_t *ctl)
+{
+	assert(zonedb != NULL && ctl != NULL);
+
+	knot_zonedb_foreach(zonedb, list_zone, ctl);
+
+	return KNOT_EOK;
+}
+
+static int ctl_conf_list(ctl_args_t *args, ctl_cmd_t cmd)
+{
+	conf_io_t io = {
+		.fcn = send_block,
+		.misc = args->ctl
+	};
+
+	int ret = KNOT_EOK;
+
+	while (true) {
+		const char *key0  = args->data[KNOT_CTL_IDX_SECTION];
+		const char *key1  = args->data[KNOT_CTL_IDX_ITEM];
+		const char *id    = args->data[KNOT_CTL_IDX_ID];
+		const char *flags = args->data[KNOT_CTL_IDX_FLAGS];
+
+		bool list_ids = ctl_has_flag(flags, CTL_FLAG_LIST_IDS);
+		bool current = !ctl_has_flag(flags, CTL_FLAG_LIST_TXN);
+		bool zones = ctl_has_flag(flags, CTL_FLAG_LIST_ZONES);
+
+		if (list_ids && zones) {
+			ret = list_zones(args->server->zone_db, args->ctl);
+		} else {
+			ret = conf_io_list(key0, key1, id, list_ids, current, &io);
+		}
+		if (ret != KNOT_EOK) {
+			send_error(args, knot_strerror(ret));
+			break;
+		}
+
+		// Get next data unit.
+		ret = knot_ctl_receive(args->ctl, &args->type, &args->data);
+		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
+			break;
+		}
+	}
+
+	return ret;
+}
+
 static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 {
 	conf_io_t io = {
@@ -1920,9 +1980,6 @@ static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 		ctl_log_conf_data(&args->data);
 
 		switch (cmd) {
-		case CTL_CONF_LIST:
-			ret = conf_io_list(key0, &io);
-			break;
 		case CTL_CONF_READ:
 			ret = conf_io_get(key0, key1, id, true, &io);
 			break;
@@ -2045,7 +2102,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_PURGE]      = { "zone-purge",      ctl_zone },
 	[CTL_ZONE_STATS]      = { "zone-stats",	     ctl_zone },
 
-	[CTL_CONF_LIST]       = { "conf-list",       ctl_conf_read },
+	[CTL_CONF_LIST]       = { "conf-list",       ctl_conf_list },
 	[CTL_CONF_READ]       = { "conf-read",       ctl_conf_read },
 	[CTL_CONF_BEGIN]      = { "conf-begin",      ctl_conf_txn },
 	[CTL_CONF_COMMIT]     = { "conf-commit",     ctl_conf_txn },

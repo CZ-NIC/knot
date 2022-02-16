@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "utils/common/lookup.h"
 #include "utils/knotc/interactive.h"
 #include "utils/knotc/commands.h"
+#include "contrib/openbsd/strlcat.h"
 #include "contrib/string.h"
 
 #define PROGRAM_NAME	"knotc"
@@ -79,7 +80,9 @@ local_zones_lookup_finish:
 	lookup_deinit(&lookup);
 }
 
-static char *get_id_name(const char *section)
+static void id_lookup(EditLine *el, const char *str, size_t str_len,
+                      const cmd_desc_t *cmd_desc, const char *section, bool add_space,
+                      bool zones)
 {
 	const cmd_desc_t *desc = cmd_table;
 	while (desc->name != NULL && desc->cmd != CTL_CONF_LIST) {
@@ -87,54 +90,17 @@ static char *get_id_name(const char *section)
 	}
 	assert(desc->name != NULL);
 
-	knot_ctl_data_t query = {
-		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(desc->cmd),
-		[KNOT_CTL_IDX_SECTION] = section
-	};
-
-	knot_ctl_t *ctl = NULL;
-	knot_ctl_type_t type;
-	knot_ctl_data_t reply;
-
-	// Try to get the first group item (possible id).
-	if (set_ctl(&ctl, params.socket, DEFAULT_CTL_TIMEOUT_MS, desc) != KNOT_EOK ||
-	    knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &query) != KNOT_EOK ||
-	    knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL) != KNOT_EOK ||
-	    knot_ctl_receive(ctl, &type, &reply) != KNOT_EOK ||
-	    type != KNOT_CTL_TYPE_DATA || reply[KNOT_CTL_IDX_ERROR] != NULL) {
-		unset_ctl(ctl);
-		return NULL;
-	}
-
-	char *id_name = strdup(reply[KNOT_CTL_IDX_ITEM]);
-
-	unset_ctl(ctl);
-
-	return id_name;
-}
-
-static void id_lookup(EditLine *el, const char *str, size_t str_len,
-                      const cmd_desc_t *cmd_desc, const char *section, bool add_space)
-{
-	// Decide which confdb transaction to ask.
-	unsigned ctl_code = (cmd_desc->flags & CMD_FREQ_TXN) ?
-	                    CTL_CONF_GET : CTL_CONF_READ;
-
-	const cmd_desc_t *desc = cmd_table;
-	while (desc->name != NULL && desc->cmd != ctl_code) {
-		desc++;
-	}
-	assert(desc->name != NULL);
-
-	char *id_name = get_id_name(section);
-	if (id_name == NULL) {
-		return;
+	char flags[4] = CTL_FLAG_LIST_IDS;
+	if (zones) {
+		strlcat(flags, CTL_FLAG_LIST_ZONES, sizeof(flags));
+	} else if (cmd_desc->flags & CMD_FREQ_TXN) {
+		strlcat(flags, CTL_FLAG_LIST_TXN, sizeof(flags));
 	}
 
 	knot_ctl_data_t query = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(desc->cmd),
 		[KNOT_CTL_IDX_SECTION] = section,
-		[KNOT_CTL_IDX_ITEM] = id_name
+		[KNOT_CTL_IDX_FLAGS] = flags
 	};
 
 	lookup_t lookup;
@@ -145,11 +111,8 @@ static void id_lookup(EditLine *el, const char *str, size_t str_len,
 	    knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL) != KNOT_EOK ||
 	    lookup_init(&lookup) != KNOT_EOK) {
 		unset_ctl(ctl);
-		free(id_name);
 		return;
 	}
-
-	free(id_name);
 
 	while (true) {
 		knot_ctl_type_t type;
@@ -167,7 +130,7 @@ static void id_lookup(EditLine *el, const char *str, size_t str_len,
 
 		// Insert the id into the lookup.
 		if (reply[KNOT_CTL_IDX_ERROR] != NULL ||
-		    lookup_insert(&lookup, reply[KNOT_CTL_IDX_DATA], NULL) != KNOT_EOK) {
+		    lookup_insert(&lookup, reply[KNOT_CTL_IDX_ID], NULL) != KNOT_EOK) {
 			goto id_lookup_finish;
 		}
 	}
@@ -256,7 +219,8 @@ static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_des
 			}
 		} else {
 			// Complete the section id.
-			id_lookup(el, id + 1, strlen(id + 1), cmd_desc, section, false);
+			id_lookup(el, id + 1, strlen(id + 1), cmd_desc, section,
+			          false, false);
 		}
 
 		free(section);
@@ -330,7 +294,7 @@ static unsigned char complete(EditLine *el, int ch)
 		if (desc->flags & CMD_FREAD) {
 			local_zones_lookup(el, argv[token], pos);
 		} else {
-			id_lookup(el, argv[token], pos, desc, "zone", true);
+			id_lookup(el, argv[token], pos, desc, "zone", true, true);
 		}
 		goto complete_exit;
 	// Complete the section/id/item name.
