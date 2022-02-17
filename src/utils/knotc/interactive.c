@@ -81,8 +81,8 @@ local_zones_lookup_finish:
 }
 
 static void rmt_lookup(EditLine *el, const char *str, size_t str_len,
-                      const char *section, bool add_space,
-                      const char *flags, knot_ctl_idx_t idx)
+                      const char *section, const char *item, const char *id,
+                      bool add_space, const char *flags, knot_ctl_idx_t idx)
 {
 	const cmd_desc_t *desc = cmd_table;
 	while (desc->name != NULL && desc->cmd != CTL_CONF_LIST) {
@@ -93,6 +93,8 @@ static void rmt_lookup(EditLine *el, const char *str, size_t str_len,
 	knot_ctl_data_t query = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(desc->cmd),
 		[KNOT_CTL_IDX_SECTION] = section,
+		[KNOT_CTL_IDX_ITEM] = item,
+		[KNOT_CTL_IDX_ID] = id,
 		[KNOT_CTL_IDX_FLAGS] = flags
 	};
 
@@ -135,9 +137,9 @@ rmt_lookup_finish:
 	unset_ctl(ctl);
 }
 
-static void id_lookup(EditLine *el, const char *id, size_t id_len,
-                      const cmd_desc_t *cmd_desc, const char *section, bool add_space,
-                      bool zones)
+static void id_lookup(EditLine *el, const char *str, size_t str_len,
+                      const char *section, const cmd_desc_t *cmd_desc,
+                      bool add_space, bool zones)
 {
 	char flags[4] = CTL_FLAG_LIST_IDS;
 	if (zones) {
@@ -146,21 +148,27 @@ static void id_lookup(EditLine *el, const char *id, size_t id_len,
 		strlcat(flags, CTL_FLAG_LIST_TXN, sizeof(flags));
 	}
 
-	rmt_lookup(el, id, id_len, section, add_space, flags, KNOT_CTL_IDX_ID);
+	rmt_lookup(el, str, str_len, section, NULL, NULL, add_space, flags, KNOT_CTL_IDX_ID);
 }
 
-static void list_lookup(EditLine *el, const char *section, const char *item)
+static void val_lookup(EditLine *el, const char *str, size_t str_len,
+                       const char *section, const char *item, const char *id)
+{
+	rmt_lookup(el, str, str_len, section, item, id, true, NULL, KNOT_CTL_IDX_DATA);
+}
+
+static void list_lookup(EditLine *el, const char *str, const char *section)
 {
 	knot_ctl_idx_t idx = (section == NULL) ? KNOT_CTL_IDX_SECTION : KNOT_CTL_IDX_ITEM;
 
-	rmt_lookup(el, item, strlen(item), section, section != NULL, NULL, idx);
+	rmt_lookup(el, str, strlen(str), section, NULL, NULL, section != NULL, NULL, idx);
 }
 
 static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_desc)
 {
 	// List all sections.
 	if (str == NULL) {
-		list_lookup(el, NULL, "");
+		list_lookup(el, "", NULL);
 		return;
 	}
 
@@ -174,11 +182,11 @@ static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_des
 		if (id_stop != NULL) {
 			// Complete the item name.
 			if (*(id_stop + 1) == '.') {
-				list_lookup(el, section, id_stop + 2);
+				list_lookup(el, id_stop + 2, section);
 			}
 		} else {
 			// Complete the section id.
-			id_lookup(el, id + 1, strlen(id + 1), cmd_desc, section,
+			id_lookup(el, id + 1, strlen(id + 1), section, cmd_desc,
 			          false, false);
 		}
 
@@ -189,11 +197,11 @@ static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_des
 		if (dot != NULL) {
 			// Complete the item name.
 			char *section = strndup(str, dot - str);
-			list_lookup(el, section, dot + 1);
+			list_lookup(el, dot + 1, section);
 			free(section);
 		} else {
 			// Complete the section name.
-			list_lookup(el, NULL, str);
+			list_lookup(el, str, NULL);
 		}
 	}
 }
@@ -253,13 +261,24 @@ static unsigned char complete(EditLine *el, int ch)
 		if (desc->flags & CMD_FREAD) {
 			local_zones_lookup(el, argv[token], pos);
 		} else {
-			id_lookup(el, argv[token], pos, desc, "zone", true, true);
+			id_lookup(el, argv[token], pos, "zone", desc, true, true);
 		}
 		goto complete_exit;
-	// Complete the section/id/item name.
+	// Complete the section/id/item name or item value.
 	} else if (desc->flags & (CMD_FOPT_ITEM | CMD_FREQ_ITEM)) {
 		if (token == 1) {
 			item_lookup(el, argv[1], desc);
+		} else if (desc->flags & CMD_FOPT_DATA) {
+			char section[YP_MAX_TXT_KEY_LEN + 1] = "";
+			char item[YP_MAX_TXT_KEY_LEN + 1] = "";
+			char id[KNOT_DNAME_TXT_MAXLEN + 1] = "";
+
+			assert(YP_MAX_TXT_KEY_LEN == 127);
+			assert(KNOT_DNAME_TXT_MAXLEN == 1004);
+			if (sscanf(argv[1], "%127[^[][%1004[^]]].%127s", section, id, item) == 3 ||
+			    sscanf(argv[1], "%127[^.].%127s", section, item) == 2) {
+				val_lookup(el, argv[token], pos, section, item, id);
+			}
 		}
 		goto complete_exit;
 	}

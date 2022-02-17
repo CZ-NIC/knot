@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,9 +29,9 @@
 #include <stddef.h>
 
 /*! Maximal length of textual key value. */
-#define YP_MAX_TXT_KEY_LEN	128
+#define YP_MAX_TXT_KEY_LEN	127
 /*! Maximal length of textual data value. */
-#define YP_MAX_TXT_DATA_LEN	32768
+#define YP_MAX_TXT_DATA_LEN	32767
 
 /*! Parser events indicating type of lastly parsed item. */
 typedef enum {
@@ -77,11 +77,11 @@ typedef struct {
 	/*! [out] Current event. */
 	yp_event_t event;
 	/*! [out] Parsed key (zero terminated string). */
-	char key[YP_MAX_TXT_KEY_LEN];
+	char key[YP_MAX_TXT_KEY_LEN + 1];
 	/*! [out] Key length. */
 	size_t key_len;
 	/*! [out] Parsed data (zero terminated string). */
-	char data[YP_MAX_TXT_DATA_LEN];
+	char data[YP_MAX_TXT_DATA_LEN + 1];
 	/*! [out] Data length. */
 	size_t data_len;
 } yp_parser_t;
