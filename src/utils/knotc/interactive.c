@@ -80,22 +80,15 @@ local_zones_lookup_finish:
 	lookup_deinit(&lookup);
 }
 
-static void id_lookup(EditLine *el, const char *str, size_t str_len,
-                      const cmd_desc_t *cmd_desc, const char *section, bool add_space,
-                      bool zones)
+static void rmt_lookup(EditLine *el, const char *str, size_t str_len,
+                      const char *section, bool add_space,
+                      const char *flags, knot_ctl_idx_t idx)
 {
 	const cmd_desc_t *desc = cmd_table;
 	while (desc->name != NULL && desc->cmd != CTL_CONF_LIST) {
 		desc++;
 	}
 	assert(desc->name != NULL);
-
-	char flags[4] = CTL_FLAG_LIST_IDS;
-	if (zones) {
-		strlcat(flags, CTL_FLAG_LIST_ZONES, sizeof(flags));
-	} else if (cmd_desc->flags & CMD_FREQ_TXN) {
-		strlcat(flags, CTL_FLAG_LIST_TXN, sizeof(flags));
-	}
 
 	knot_ctl_data_t query = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(desc->cmd),
@@ -120,7 +113,7 @@ static void id_lookup(EditLine *el, const char *str, size_t str_len,
 
 		// Receive one section id.
 		if (knot_ctl_receive(ctl, &type, &reply) != KNOT_EOK) {
-			goto id_lookup_finish;
+			goto rmt_lookup_finish;
 		}
 
 		// Stop if finished transfer.
@@ -130,71 +123,37 @@ static void id_lookup(EditLine *el, const char *str, size_t str_len,
 
 		// Insert the id into the lookup.
 		if (reply[KNOT_CTL_IDX_ERROR] != NULL ||
-		    lookup_insert(&lookup, reply[KNOT_CTL_IDX_ID], NULL) != KNOT_EOK) {
-			goto id_lookup_finish;
+		    lookup_insert(&lookup, reply[idx], NULL) != KNOT_EOK) {
+			goto rmt_lookup_finish;
 		}
 	}
 
 	lookup_complete(&lookup, str, str_len, el, add_space);
 
-id_lookup_finish:
+rmt_lookup_finish:
 	lookup_deinit(&lookup);
 	unset_ctl(ctl);
 }
 
+static void id_lookup(EditLine *el, const char *id, size_t id_len,
+                      const cmd_desc_t *cmd_desc, const char *section, bool add_space,
+                      bool zones)
+{
+	char flags[4] = CTL_FLAG_LIST_IDS;
+	if (zones) {
+		strlcat(flags, CTL_FLAG_LIST_ZONES, sizeof(flags));
+	} else if (cmd_desc->flags & CMD_FREQ_TXN) {
+		strlcat(flags, CTL_FLAG_LIST_TXN, sizeof(flags));
+	}
+
+	rmt_lookup(el, id, id_len, section, add_space, flags, KNOT_CTL_IDX_ID);
+}
+
 static void list_lookup(EditLine *el, const char *section, const char *item)
 {
-	const cmd_desc_t *desc = cmd_table;
-	while (desc->name != NULL && desc->cmd != CTL_CONF_LIST) {
-		desc++;
-	}
-	assert(desc->name != NULL);
+	knot_ctl_idx_t idx = (section == NULL) ? KNOT_CTL_IDX_SECTION : KNOT_CTL_IDX_ITEM;
 
-	knot_ctl_data_t query = {
-		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(desc->cmd),
-		[KNOT_CTL_IDX_SECTION] = section
-	};
-
-	lookup_t lookup;
-	knot_ctl_t *ctl = NULL;
-
-	if (set_ctl(&ctl, params.socket, DEFAULT_CTL_TIMEOUT_MS, desc) != KNOT_EOK ||
-	    knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &query) != KNOT_EOK ||
-	    knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL) != KNOT_EOK ||
-	    lookup_init(&lookup) != KNOT_EOK) {
-		unset_ctl(ctl);
-		return;
-	}
-
-	while (true) {
-		knot_ctl_type_t type;
-		knot_ctl_data_t reply;
-
-		// Receive one section/item name.
-		if (knot_ctl_receive(ctl, &type, &reply) != KNOT_EOK) {
-			goto list_lookup_finish;
-		}
-
-		// Stop if finished transfer.
-		if (type != KNOT_CTL_TYPE_DATA) {
-			break;
-		}
-
-		const char *str = (section == NULL) ? reply[KNOT_CTL_IDX_SECTION] :
-		                                      reply[KNOT_CTL_IDX_ITEM];
-
-		// Insert the name into the lookup.
-		if (reply[KNOT_CTL_IDX_ERROR] != NULL ||
-		    lookup_insert(&lookup, str, NULL) != KNOT_EOK) {
-			goto list_lookup_finish;
-		}
-	}
-
-	lookup_complete(&lookup, item, strlen(item), el, section != NULL);
-
-list_lookup_finish:
-	lookup_deinit(&lookup);
-	unset_ctl(ctl);
+	rmt_lookup(el, item, strlen(item), section, section != NULL, NULL, idx);
 }
 
 static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_desc)
