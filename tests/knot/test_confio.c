@@ -883,11 +883,11 @@ static void test_conf_io_list(void)
 	ok(conf_io_list("unknown", NULL, NULL, false, true, &io) ==
 	   KNOT_YP_EINVAL_ITEM, "list unknown key0");
 	ok(conf_io_list("include", NULL, NULL, false, true, &io) ==
-	   KNOT_ENOTSUP, "list non-group item");
+	   KNOT_EOK, "list non-group item");
 
 	// Desc schema.
 	*out = '\0';
-	ok(conf_io_list(NULL, NULL, NULL, false, true, &io) ==
+	ok(conf_io_list(NULL, NULL, NULL, true, true, &io) ==
 	   KNOT_EOK, "list schema");
 	ref = "server\n"
 	      "xdp\n"
@@ -900,7 +900,7 @@ static void test_conf_io_list(void)
 
 	// Desc group.
 	*out = '\0';
-	ok(conf_io_list("server", NULL, NULL, false, true, &io) ==
+	ok(conf_io_list("server", NULL, NULL, true, true, &io) ==
 	   KNOT_EOK, "list group");
 	ref = "server.version\n"
 	      "server.listen\n"

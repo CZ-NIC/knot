@@ -1939,14 +1939,14 @@ static int ctl_conf_list(ctl_args_t *args, ctl_cmd_t cmd)
 		const char *id    = args->data[KNOT_CTL_IDX_ID];
 		const char *flags = args->data[KNOT_CTL_IDX_FLAGS];
 
-		bool list_ids = ctl_has_flag(flags, CTL_FLAG_LIST_IDS);
+		bool schema = ctl_has_flag(flags, CTL_FLAG_LIST_SCHEMA);
 		bool current = !ctl_has_flag(flags, CTL_FLAG_LIST_TXN);
 		bool zones = ctl_has_flag(flags, CTL_FLAG_LIST_ZONES);
 
-		if (list_ids && zones) {
+		if (zones) {
 			ret = list_zones(args->server->zone_db, args->ctl);
 		} else {
-			ret = conf_io_list(key0, key1, id, list_ids, current, &io);
+			ret = conf_io_list(key0, key1, id, schema, current, &io);
 		}
 		if (ret != KNOT_EOK) {
 			send_error(args, knot_strerror(ret));

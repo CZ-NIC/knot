@@ -24,7 +24,7 @@
 #define CTL_FLAG_ADD		"+"
 #define CTL_FLAG_REM		"-"
 
-#define CTL_FLAG_LIST_IDS	"i"
+#define CTL_FLAG_LIST_SCHEMA	"s"
 #define CTL_FLAG_LIST_TXN	"t"
 #define CTL_FLAG_LIST_ZONES	"z"
 

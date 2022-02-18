@@ -161,7 +161,7 @@ int conf_io_list(
 	const char *key0,
 	const char *key1,
 	const char *id,
-	bool list_ids,
+	bool list_schema,
 	bool get_current,
 	conf_io_t *io)
 {
@@ -198,15 +198,41 @@ int conf_io_list(
 	yp_node_t *node = &ctx->nodes[ctx->current];
 	yp_node_t *parent = node->parent;
 
-	// List group identifiers.
-	if (list_ids) {
-		// Check for redundant key1 or identifier specification.
-		if (parent != NULL || (node->item->flags & YP_FMULTI) == 0 ||
-		    node->id_len > 0) {
-			ret = KNOT_ENOTSUP;
+	// List group items.
+	if (list_schema && key1 == NULL) {
+		if (node->item->type != YP_TGRP) { // Ignore non-group section.
+			ret = KNOT_EOK;
 			goto list_error;
 		}
+
 		io_reset_val(io, node->item, NULL, NULL, 0, false, NULL);
+
+		ret = list_section(node->item->sub_items, &io->key1, io);
+	// List option item values.
+	} else if (list_schema) {
+		if (node->item->type != YP_TOPT) { // Ignore non-option item.
+			ret = KNOT_EOK;
+			goto list_error;
+		}
+
+		for (const knot_lookup_t *o = node->item->var.o.opts; o->name != NULL; o++) {
+			uint8_t val = o->id;
+			io_reset_bin(io, parent->item, node->item, parent->id,
+			             parent->id_len, &val, sizeof(val));
+			ret = FCN(io);
+			if (ret != KNOT_EOK) {
+				goto list_error;
+			}
+		}
+	// List group identifiers.
+	} else if (parent == NULL) {
+		if (node->item->type != YP_TGRP) { // Ignore non-group section.
+			ret = KNOT_EOK;
+			goto list_error;
+		}
+
+		// If key1 != NULL, it's used for a value completion (zone.domain).
+		io_reset_val(io, node->item, NULL, NULL, 0, key1 != NULL, NULL);
 
 		conf_iter_t iter;
 		ret = conf_db_iter_begin(conf(), txn, io->key0->name, &iter);
@@ -236,10 +262,9 @@ int conf_io_list(
 
 			ret = conf_db_iter_next(conf(), &iter);
 		}
-
 		ret = KNOT_EOK;
 	// List item values.
-	} else if (parent != NULL) {
+	} else {
 		io_reset_val(io, parent->item, node->item, parent->id,
 		             parent->id_len, false, NULL);
 
@@ -259,22 +284,10 @@ int conf_io_list(
 
 		io->data.val = &data;
 
-		// Process the callback.
 		ret = FCN(io);
-
-		// Reset the modified parameters.
-		io->data.val = NULL;
-	// List group items.
-	} else {
-		// Check for non-group item.
-		if (node->item->type != YP_TGRP) {
-			ret = KNOT_ENOTSUP;
+		if (ret != KNOT_EOK) {
 			goto list_error;
 		}
-
-		io_reset_val(io, node->item, NULL, NULL, 0, false, NULL);
-
-		ret = list_section(node->item->sub_items, &io->key1, io);
 	}
 list_error:
 	yp_schema_check_deinit(ctx);

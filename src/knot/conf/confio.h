@@ -133,7 +133,7 @@ void conf_io_abort(
  * \param[in] key0         Section name (NULL to get section list).
  * \param[in] key1         Item name (non-NULL to get value list).
  * \param[in] id           Section identifier name if needed for value list.
- * \param[in] list_ids     List identifiers instead of the section indication.
+ * \param[in] list_schema  List schema items or option values.
  * \param[in] get_current  The current configuration or the active transaction switch.
  * \param[out] io          Operation output.
  *
@@ -143,7 +143,7 @@ int conf_io_list(
 	const char *key0,
 	const char *key1,
 	const char *id,
-	bool list_ids,
+	bool list_schema,
 	bool get_current,
 	conf_io_t *io
 );
