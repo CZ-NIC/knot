@@ -193,7 +193,6 @@ install -p -m 0644 -D %{repodir}/distro/common/cz.nic.knotd.conf %{buildroot}%{_
 
 # install systemd files
 install -p -m 0644 -D %{repodir}/distro/common/%{name}.service %{buildroot}%{_unitdir}/%{name}.service
-install -p -m 0644 -D %{repodir}/distro/common/%{name}.tmpfiles %{buildroot}%{_tmpfilesdir}/%{name}.conf
 %if 0%{?suse_version}
 ln -s service %{buildroot}/%{_sbindir}/rcknot
 %endif
@@ -218,7 +217,6 @@ getent passwd knot >/dev/null || \
 %endif
 
 %post
-systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %if 0%{?suse_version}
 %service_add_post knot.service
 %else
@@ -259,7 +257,6 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %dir %{_libdir}/knot
 %dir %{_libdir}/knot/modules-*
 %{_unitdir}/knot.service
-%{_tmpfilesdir}/knot.conf
 %{_bindir}/kzonecheck
 %{_bindir}/kzonesign
 %{_sbindir}/kcatalogprint

@@ -196,7 +196,7 @@ install -p -m 0644 -D %{repodir}/distro/common/cz.nic.knotd.conf %{buildroot}%{_
 
 # install systemd files
 install -p -m 0644 -D %{repodir}/distro/pkg/el-7/%{name}.service %{buildroot}%{_unitdir}/%{name}.service
-install -p -m 0644 -D %{repodir}/distro/common/%{name}.tmpfiles %{buildroot}%{_tmpfilesdir}/%{name}.conf
+install -p -m 0644 -D %{repodir}/distro/pkg/el-7/%{name}.tmpfiles %{buildroot}%{_tmpfilesdir}/%{name}.conf
 %if 0%{?suse_version}
 ln -s service %{buildroot}/%{_sbindir}/rcknot
 %endif

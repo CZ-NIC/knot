@@ -58,13 +58,9 @@ package() {
 
     make DESTDIR="${pkgdir}" install
 
-    # Don’t keep those empty dir, manage them with systemd-tmpfiles instead
-    rmdir "${pkgdir}"/{var/{lib/{knot/,},},run/{knot/,}}
-
     rm "${pkgdir}"/etc/knot/example.com.zone
     mv "${pkgdir}"/etc/knot/{knot.sample.conf,knot.conf}
 
     install -Dm644 distro/common/${pkgname}.service -t "${pkgdir}"/usr/lib/systemd/system/
-    install -Dm644 distro/pkg/arch/${pkgname}.tmpfiles.arch "${pkgdir}"/usr/lib/tmpfiles.d/${pkgname}.conf
     install -Dm644 distro/pkg/arch/${pkgname}.sysusers "${pkgdir}"/usr/lib/sysusers.d/${pkgname}.conf
 }
