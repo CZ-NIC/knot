@@ -21,5 +21,12 @@ Environment="KNOT_ZONE_LOAD_TIMEOUT_SEC=180"
 # Maximum size (MiB) of a configuration database
 Environment="KNOT_CONF_MAX_SIZE=512"
 
+# Expected systemd >= v239
+TemporaryFileSystem=/run:ro /var:ro
+BindPaths=/run/systemd
+RuntimeDirectory=knot
+StateDirectory=knot
+NoNewPrivileges=yes
+
 [Install]
 WantedBy=multi-user.target
