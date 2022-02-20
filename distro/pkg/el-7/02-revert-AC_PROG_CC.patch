@@ -1,0 +1,18 @@
+From: Daniel Salzman <daniel.salzman@nic.cz>
+Date: Sun, 20 Feb 2022 20:38:35 +0100
+Subject: [PATCH] Revert "configure: upgrade from AC_PROG_CC_C99 to AC_PROG_CC"
+
+diff --git a/configure.ac b/configure.ac
+index 6506197ed..c7df7f815 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -38,7 +38,8 @@ release_date=$($SED -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
+ AC_SUBST([RELEASE_DATE], $release_date)
+ 
+ # Set compiler compatibility flags
+-AC_PROG_CC
++AC_PROG_CC_C99 # AC_PROG_CC not supported by CentOS 7
++AM_PROG_CC_C_O # Needed by CentOS 7
+ AC_PROG_CPP_WERROR
+ 
+ # Set default CFLAGS

@@ -9,4 +9,8 @@ archive_url = "https://secure.nic.cz/files/knot-dns/knot-{{ version }}.tar.xz"
 signature_url = "https://secure.nic.cz/files/knot-dns/knot-{{ version }}.tar.xz.asc"
 
 [apkg]
-compat = 1
+compat = 2
+
+[[distro.aliases]]
+name = "el-7"
+distro = ["centos == 7", "rhel == 7"]
