@@ -38,8 +38,7 @@ release_date=$($SED -n 's/^Knot DNS .* (\(.*\))/\1/p;q;' ${srcdir}/NEWS)
 AC_SUBST([RELEASE_DATE], $release_date)
 
 # Set compiler compatibility flags
-AC_PROG_CC_C99 # AC_PROG_CC not supported by CentOS 7
-AM_PROG_CC_C_O # Needed by CentOS 7
+AC_PROG_CC
 AC_PROG_CPP_WERROR
 
 # Set default CFLAGS
