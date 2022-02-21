@@ -182,8 +182,10 @@ def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, se
     # wait for any change in CDS records
     CDS1 = str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset())
     t.sleep(1)
-    while CDS1 == str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset()):
+    cds_limit = 100
+    while CDS1 == str(server.dig(ZONE, "CDS").resp.answer[0].to_rdataset()) and cds_limit > 0:
       t.sleep(1)
+      cds_limit = cds_limit - 1
 
     cdnskeys = 2 if DOUBLE_DS else 1
     msg = desc + ": new KSK ready"
