@@ -250,7 +250,9 @@ int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, size_t timeout)
 
 	for (size_t i = 0; i < kctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &kctx->zone->keys[i];
-		if (!key->is_pub_only && knot_time_cmp(key->timing.ready, kctx->now) <= 0 && knot_time_cmp(key->timing.active, kctx->now) > 0) {
+		if (!key->is_pub_only &&
+		    knot_time_cmp(key->timing.ready, kctx->now) <= 0 &&
+		    knot_time_cmp(key->timing.active, kctx->now) > 0) {
 			assert(key->is_ksk);
 			if (parents_have_ds(conf, kctx, key, timeout, &max_ds_ttl)) {
 				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl + kctx->policy->ksk_sbm_delay);
