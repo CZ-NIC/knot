@@ -26,14 +26,7 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	zone_keyset_t keyset = { 0 };
-	ret = load_zone_keys(&ctx, &keyset, false);
-	if (ret != KNOT_EOK) {
-		kdnssec_ctx_deinit(&ctx);
-		return ret;
-	}
-
-	ret = knot_parent_ds_query(conf, &ctx, &keyset, conf->cache.srv_tcp_remote_io_timeout);
+	ret = knot_parent_ds_query(conf, &ctx, conf->cache.srv_tcp_remote_io_timeout);
 
 	zone->timers.next_ds_check = 0;
 	switch (ret) {
@@ -50,7 +43,6 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	free_zone_keys(&keyset);
 	kdnssec_ctx_deinit(&ctx);
 
 	return KNOT_EOK; // allways ok, if failure it has been rescheduled
