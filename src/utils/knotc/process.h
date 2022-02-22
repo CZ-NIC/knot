@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 
 /*! Utility command line parameters. */
 typedef struct {
+	const char *orig_config;
+	const char *orig_confdb;
 	const char *config;
 	const char *confdb;
 	size_t max_conf_size;

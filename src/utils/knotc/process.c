@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,6 +59,10 @@ static bool get_cmd_blocking_flag(const char *arg)
 
 int set_config(const cmd_desc_t *desc, params_t *params)
 {
+	/* Reset the configuration paths (needed in the interactive mode). */
+	params->config = params->orig_config;
+	params->confdb = params->orig_confdb;
+
 	if (params->config != NULL && params->confdb != NULL) {
 		log_error("ambiguous configuration source");
 		return KNOT_EINVAL;
