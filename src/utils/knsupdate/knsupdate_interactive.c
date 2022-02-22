@@ -54,7 +54,7 @@ static void cmds_lookup(EditLine *el, const char *str, size_t str_len)
 		}
 	}
 
-	lookup_complete(&lookup, str, str_len, el, true);
+	(void)lookup_complete(&lookup, str, str_len, el, true);
 
 cmds_lookup_finish:
 	lookup_deinit(&lookup);

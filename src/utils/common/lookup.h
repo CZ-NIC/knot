@@ -117,6 +117,8 @@ void lookup_list(lookup_t *lookup);
  * \param[in] str_len    Textual key length.
  * \param[in] el         Editline context.
  * \param[in] add_space  Add one space after completed string flag.
+ *
+ * \return Error code, same as lookup_search().
  */
-void lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
-                     EditLine *el, bool add_space);
+int lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
+                    EditLine *el, bool add_space);

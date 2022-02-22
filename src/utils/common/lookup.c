@@ -262,11 +262,11 @@ static void print_options(lookup_t *lookup, EditLine *el)
 	fflush(stdout);
 }
 
-void lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
-                     EditLine *el, bool add_space)
+int lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
+                    EditLine *el, bool add_space)
 {
 	if (lookup == NULL || el == NULL) {
-		return;
+		return KNOT_EINVAL;
 	}
 
 	// Try to complete the command name.
@@ -290,4 +290,6 @@ void lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
 	default:
 		break;
 	}
+
+	return ret;
 }
