@@ -187,7 +187,7 @@ def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, se
       t.sleep(1)
       cds_limit = cds_limit - 1
 
-    cdnskeys = 2 if DOUBLE_DS else 1
+    cdnskeys = 1
     msg = desc + ": new KSK ready"
     check_zone(server, zone, slave, before_keys + after_keys, 2, cdnskeys, 2, msg)
 
