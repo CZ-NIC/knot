@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,6 +73,16 @@ void lookup_deinit(lookup_t *lookup);
  * \return Error code, KNOT_EOK if successful.
  */
 int lookup_insert(lookup_t *lookup, const char *str, void *data);
+
+/*!
+ * Removes given key from the lookup.
+ *
+ * \param[in] lookup  Lookup context.
+ * \param[in] str     Textual key.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int lookup_remove(lookup_t *lookup, const char *str);
 
 /*!
  * Searches the lookup container for the given key.

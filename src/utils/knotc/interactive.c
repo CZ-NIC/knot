@@ -29,6 +29,12 @@
 
 extern params_t params;
 
+typedef struct {
+	const char **args;
+	int count;
+	bool dname;
+} dup_check_ctx_t;
+
 static void cmds_lookup(EditLine *el, const char *str, size_t str_len)
 {
 	lookup_t lookup;
@@ -51,7 +57,27 @@ cmds_lookup_finish:
 	lookup_deinit(&lookup);
 }
 
-static void local_zones_lookup(EditLine *el, const char *str, size_t str_len)
+static void remove_duplicates(lookup_t *lookup, dup_check_ctx_t *check_ctx)
+{
+	if (check_ctx == NULL) {
+		return;
+	}
+
+	knot_dname_txt_storage_t dname = "";
+	for (int i = 0; i < check_ctx->count; i++) {
+		const char *arg = (check_ctx->args)[i];
+		size_t len = strlen(arg);
+		if (check_ctx->dname && len > 1 && arg[len - 1] != '.') {
+			strlcat(dname, arg, sizeof(dname));
+			strlcat(dname, ".", sizeof(dname));
+			arg = dname;
+		}
+		(void)lookup_remove(lookup, arg);
+	}
+}
+
+static void local_zones_lookup(EditLine *el, const char *str, size_t str_len,
+                               dup_check_ctx_t *check_ctx)
 {
 	lookup_t lookup;
 	int ret = lookup_init(&lookup);
@@ -74,6 +100,7 @@ static void local_zones_lookup(EditLine *el, const char *str, size_t str_len)
 		}
 	}
 
+	remove_duplicates(&lookup, check_ctx);
 	lookup_complete(&lookup, str, str_len, el, true);
 
 local_zones_lookup_finish:
@@ -82,7 +109,8 @@ local_zones_lookup_finish:
 
 static void rmt_lookup(EditLine *el, const char *str, size_t str_len,
                       const char *section, const char *item, const char *id,
-                      bool add_space, const char *flags, knot_ctl_idx_t idx)
+                      dup_check_ctx_t *check_ctx, bool add_space, const char *flags,
+                      knot_ctl_idx_t idx)
 {
 	const cmd_desc_t *desc = cmd_table;
 	while (desc->name != NULL && desc->cmd != CTL_CONF_LIST) {
@@ -133,6 +161,7 @@ static void rmt_lookup(EditLine *el, const char *str, size_t str_len,
 		}
 	}
 
+	remove_duplicates(&lookup, check_ctx);
 	lookup_complete(&lookup, str, str_len, el, add_space);
 
 rmt_lookup_finish:
@@ -142,7 +171,7 @@ rmt_lookup_finish:
 
 static void id_lookup(EditLine *el, const char *str, size_t str_len,
                       const char *section, const cmd_desc_t *cmd_desc,
-                      bool add_space, bool zones)
+                      dup_check_ctx_t *ctx, bool add_space, bool zones)
 {
 	char flags[4] = "";
 	if (zones) {
@@ -151,19 +180,21 @@ static void id_lookup(EditLine *el, const char *str, size_t str_len,
 		strlcat(flags, CTL_FLAG_LIST_TXN, sizeof(flags));
 	}
 
-	rmt_lookup(el, str, str_len, section, NULL, NULL, add_space, flags, KNOT_CTL_IDX_ID);
+	rmt_lookup(el, str, str_len, section, NULL, NULL, ctx, add_space,
+	           flags, KNOT_CTL_IDX_ID);
 }
 
 static void val_lookup(EditLine *el, const char *str, size_t str_len,
                        const char *section, const char *item, const char *id,
-                       bool list_schema)
+                       dup_check_ctx_t *ctx, bool list_schema)
 {
 	char flags[4] = CTL_FLAG_LIST_TXN;
 	if (list_schema) {
 		strlcat(flags, CTL_FLAG_LIST_SCHEMA, sizeof(flags));
 	}
 
-	rmt_lookup(el, str, str_len, section, item, id, true, flags, KNOT_CTL_IDX_DATA);
+	rmt_lookup(el, str, str_len, section, item, id, ctx, true,
+	           flags, KNOT_CTL_IDX_DATA);
 }
 
 static void list_lookup(EditLine *el, const char *str, const char *section)
@@ -171,7 +202,8 @@ static void list_lookup(EditLine *el, const char *str, const char *section)
 	const char *flags = CTL_FLAG_LIST_SCHEMA;
 	knot_ctl_idx_t idx = (section == NULL) ? KNOT_CTL_IDX_SECTION : KNOT_CTL_IDX_ITEM;
 
-	rmt_lookup(el, str, strlen(str), section, NULL, NULL, section != NULL, flags, idx);
+	rmt_lookup(el, str, strlen(str), section, NULL, NULL, NULL, section != NULL,
+	           flags, idx);
 }
 
 static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_desc)
@@ -197,7 +229,7 @@ static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_des
 		} else {
 			// Complete the section id.
 			id_lookup(el, id + 1, strlen(id + 1), section, cmd_desc,
-			          false, false);
+			          NULL, false, false);
 		}
 
 		free(section);
@@ -268,10 +300,11 @@ static unsigned char complete(EditLine *el, int ch)
 			goto complete_exit;
 		}
 
+		dup_check_ctx_t ctx = { &argv[1], token - 1, true };
 		if (desc->flags & CMD_FREAD) {
-			local_zones_lookup(el, argv[token], pos);
+			local_zones_lookup(el, argv[token], pos, &ctx);
 		} else {
-			id_lookup(el, argv[token], pos, "zone", desc, true, true);
+			id_lookup(el, argv[token], pos, "zone", desc, &ctx, true, true);
 		}
 		goto complete_exit;
 	// Complete the section/id/item name or item value.
@@ -287,8 +320,9 @@ static unsigned char complete(EditLine *el, int ch)
 			assert(KNOT_DNAME_TXT_MAXLEN == 1004);
 			if (sscanf(argv[1], "%127[^[][%1004[^]]].%127s", section, id, item) == 3 ||
 			    sscanf(argv[1], "%127[^.].%127s", section, item) == 2) {
+				dup_check_ctx_t ctx = { &argv[2], token - 2 };
 				val_lookup(el, argv[token], pos, section, item, id,
-				           desc->flags & CMD_FLIST_SCHEMA);
+				           &ctx, desc->flags & CMD_FLIST_SCHEMA);
 			}
 		}
 		goto complete_exit;
