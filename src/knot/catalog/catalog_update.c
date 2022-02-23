@@ -140,7 +140,8 @@ static int upd_val_update(catalog_upd_val_t *val, int bail,
 {
 	if ((rem  && val->type != CAT_UPD_ADD) ||
 	    (!rem && val->type != CAT_UPD_REM)) {
-		return KNOT_EEXIST;
+		log_zone_error(val->member, "duplicate addition/removal of the member node, ignoring");
+		return KNOT_EOK;
 	}
 	knot_dname_t *owner_cpy = knot_dname_copy(owner, NULL);
 	if (owner_cpy == NULL) {
