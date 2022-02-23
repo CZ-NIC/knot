@@ -179,7 +179,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		.parent_query = zone->name,
 		.new_ds = zone_cds,
 		.remote = (struct sockaddr *)&parent->addr,
-		.edns = query_edns_data_init(conf, parent->addr.ss_family)
+		.edns = query_edns_data_init(conf, parent->addr.ss_family, 0)
 	};
 
 	knot_rrset_init(&data.del_old_ds, zone->name, KNOT_RRTYPE_DS, KNOT_CLASS_ANY, 0);

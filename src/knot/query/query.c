@@ -29,14 +29,17 @@ void query_init_pkt(knot_pkt_t *pkt)
 	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
 }
 
-query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family)
+query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family,
+                                       query_edns_opt_t opts)
 {
 	assert(conf);
 
 	query_edns_data_t edns = {
 		.max_payload = remote_family == AF_INET ?
 		               conf->cache.srv_udp_max_payload_ipv4 :
-		               conf->cache.srv_udp_max_payload_ipv6
+		               conf->cache.srv_udp_max_payload_ipv6,
+		.do_flag = (opts & QUERY_EDNS_OPT_DO),
+		.expire_option = (opts & QUERY_EDNS_OPT_EXPIRE)
 	};
 
 	return edns;

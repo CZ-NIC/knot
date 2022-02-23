@@ -29,6 +29,11 @@ typedef struct {
 	bool expire_option;
 } query_edns_data_t;
 
+typedef enum {
+	QUERY_EDNS_OPT_DO     = 1 << 0,
+	QUERY_EDNS_OPT_EXPIRE = 1 << 1,
+} query_edns_opt_t;
+
 /*!
  * \brief Initialize new packet.
  *
@@ -43,10 +48,12 @@ void query_init_pkt(knot_pkt_t *pkt);
  *
  * \param[in]  conf           Server configuration.
  * \param[in]  remote_family  Address family for remote host.
+ * \param[in]  opts           EDNS options.
  *
  * \return EDNS parameters.
  */
-query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family);
+query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family,
+                                       query_edns_opt_t opts);
 
 /*!
  * \brief Append EDNS into the packet.

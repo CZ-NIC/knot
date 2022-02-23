@@ -83,7 +83,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 		.zone = zone->name,
 		.soa = soa,
 		.remote = (struct sockaddr *)&slave->addr,
-		.edns = query_edns_data_init(conf, slave->addr.ss_family)
+		.edns = query_edns_data_init(conf, slave->addr.ss_family, 0)
 	};
 
 	knot_requestor_t requestor;
