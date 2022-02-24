@@ -219,7 +219,7 @@ static void xfr_log_publish(const struct refresh_data *data,
 
 static void xfr_log_read_ms(const knot_dname_t *zone, int ret)
 {
-	log_zone_error(zone, "failed reading master's serial from KASP DB (%s)", knot_strerror(ret));
+	log_zone_error(zone, "failed reading master serial from KASP DB (%s)", knot_strerror(ret));
 }
 
 static int axfr_init(struct refresh_data *data)
@@ -257,7 +257,7 @@ static void axfr_slave_sign_serial(zone_contents_t *new_contents, zone_t *zone,
 		// Bootstrap - increment stored serial.
 		new_serial = serial_next(lastsigned_serial, serial_policy, 1);
 	} else {
-		// Bootstrap - try to reuse master's serial, considering policy.
+		// Bootstrap - try to reuse master serial, considering policy.
 		new_serial = serial_next(*master_serial, serial_policy, 0);
 	}
 	zone_contents_set_soa_serial(new_contents, new_serial);
@@ -529,7 +529,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		int ret = ixfr_slave_sign_serial(&data->ixfr.changesets, data->zone, data->conf, &master_serial);
 		if (ret != KNOT_EOK) {
 			IXFRIN_LOG(LOG_WARNING, data,
-			           "failed to adjust SOA serials from unsigned master (%s)",
+			           "failed to adjust SOA serials from unsigned remote (%s)",
 			           knot_strerror(ret));
 			data->fallback_axfr = false;
 			data->fallback->remote = false;
@@ -1004,7 +1004,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_DONE;
 	} else {
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
-		            "remote serial %u, master is outdated", remote_serial);
+		            "remote serial %u, remote is outdated", remote_serial);
 		return KNOT_STATE_FAIL;
 	}
 }
