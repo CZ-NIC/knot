@@ -878,16 +878,18 @@ static void test_conf_io_list(void)
 	};
 
 	// ERR.
-	ok(conf_io_list("", &io) ==
+	ok(conf_io_list("", NULL, NULL, false, true, &io) ==
 	   KNOT_YP_EINVAL_ITEM, "list empty key0");
-	ok(conf_io_list("unknown", &io) ==
+	ok(conf_io_list("unknown", NULL, NULL, false, true, &io) ==
 	   KNOT_YP_EINVAL_ITEM, "list unknown key0");
-	ok(conf_io_list("include", &io) ==
-	   KNOT_ENOTSUP, "list non-group item");
+	ok(conf_io_list("include", NULL, NULL, false, true, &io) ==
+	   KNOT_EOK, "list non-group item");
+	ok(conf_io_list("template", NULL, NULL, false, false, &io) ==
+	   KNOT_TXN_ENOTEXISTS, "no active txn");
 
 	// Desc schema.
 	*out = '\0';
-	ok(conf_io_list(NULL, &io) ==
+	ok(conf_io_list(NULL, NULL, NULL, true, true, &io) ==
 	   KNOT_EOK, "list schema");
 	ref = "server\n"
 	      "xdp\n"
@@ -900,7 +902,7 @@ static void test_conf_io_list(void)
 
 	// Desc group.
 	*out = '\0';
-	ok(conf_io_list("server", &io) ==
+	ok(conf_io_list("server", NULL, NULL, true, true, &io) ==
 	   KNOT_EOK, "list group");
 	ref = "server.version\n"
 	      "server.listen\n"
@@ -920,6 +922,46 @@ static void test_conf_io_list(void)
 	      "server.edns-client-subnet\n"
 	      "server.answer-rotation\n"
 	      "server.dbus-event";
+	ok(strcmp(ref, out) == 0, "compare result");
+
+	// List item options.
+	*out = '\0';
+	ok(conf_io_list("zone", "zonefile-load", NULL, true, true, &io) ==
+	   KNOT_EOK, "list item options");
+	ref = "zone.zonefile-load = \"opt1\"\n"
+	      "zone.zonefile-load = \"opt2\"";
+	ok(strcmp(ref, out) == 0, "compare result");
+
+	// List zone identifiers 1.
+	*out = '\0';
+	ok(conf_io_list("zone", NULL, NULL, false, true, &io) ==
+	   KNOT_EOK, "list zone identifiers 1");
+	ref = "zone[zone1.]\n"
+	      "zone[zone2.]\n"
+	      "zone[zone3.]";
+	ok(strcmp(ref, out) == 0, "compare result");
+
+	// List zone identifiers 2.
+	*out = '\0';
+	ok(conf_io_list("zone", "domain", NULL, false, true, &io) ==
+	   KNOT_EOK, "list zone identifiers 2");
+	ref = "zone = \"zone1.\"\n"
+	      "zone = \"zone2.\"\n"
+	      "zone = \"zone3.\"";
+	ok(strcmp(ref, out) == 0, "compare result");
+
+	// List item values.
+	*out = '\0';
+	ok(conf_io_list("server", "listen", NULL, false, true, &io) ==
+	   KNOT_EOK, "list item values");
+	ref = "server.listen = \"1.1.1.1\" \"1.1.1.2\"";
+	ok(strcmp(ref, out) == 0, "compare result");
+
+	// List multi-group item values.
+	*out = '\0';
+	ok(conf_io_list("zone", "file", "zone1", false, true, &io) ==
+	   KNOT_EOK, "list multi-group item values");
+	ref = "zone[zone1.].file = \"name\"";
 	ok(strcmp(ref, out) == 0, "compare result");
 }
 
@@ -968,6 +1010,8 @@ static const yp_item_t desc_remote[] = {
 };
 
 static const knot_lookup_t opts[] = {
+	{ 1, "opt1" },
+	{ 2, "opt2" },
 	{ 0, NULL }
 };
 

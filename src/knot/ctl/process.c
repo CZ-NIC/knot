@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,7 +73,9 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 		const char *zone_name = args.data[KNOT_CTL_IDX_ZONE];
 
 		ctl_cmd_t cmd = ctl_str_to_cmd(cmd_name);
-		if (cmd != CTL_NONE) {
+		if (cmd == CTL_CONF_LIST) {
+			log_ctl_debug("control, received command '%s'", cmd_name);
+		} else if (cmd != CTL_NONE) {
 			if (zone_name != NULL) {
 				log_ctl_zone_str_info(zone_name,
 				             "control, received command '%s'", cmd_name);

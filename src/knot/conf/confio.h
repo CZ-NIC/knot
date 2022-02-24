@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -130,13 +130,21 @@ void conf_io_abort(
 /*!
  * Gets the configuration sections list or section items list.
  *
- * \param[in] key0  Section name (NULL to get section list).
- * \param[out] io   Operation output.
+ * \param[in] key0         Section name (NULL to get section list).
+ * \param[in] key1         Item name (non-NULL to get value list).
+ * \param[in] id           Section identifier name if needed for value list.
+ * \param[in] list_schema  List schema items or option values.
+ * \param[in] get_current  The current configuration or the active transaction switch.
+ * \param[out] io          Operation output.
  *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_io_list(
 	const char *key0,
+	const char *key1,
+	const char *id,
+	bool list_schema,
+	bool get_current,
 	conf_io_t *io
 );
 

@@ -83,10 +83,10 @@ int main(int argc, char **argv)
 	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:bfvhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
-			params.config = optarg;
+			params.orig_config = optarg;
 			break;
 		case 'C':
-			params.confdb = optarg;
+			params.orig_confdb = optarg;
 			break;
 		case 'm':
 			if (str_to_size(optarg, &params.max_conf_size, 1, 10000) != KNOT_EOK) {

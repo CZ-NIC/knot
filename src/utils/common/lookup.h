@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -75,6 +75,16 @@ void lookup_deinit(lookup_t *lookup);
 int lookup_insert(lookup_t *lookup, const char *str, void *data);
 
 /*!
+ * Removes given key from the lookup.
+ *
+ * \param[in] lookup  Lookup context.
+ * \param[in] str     Textual key.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int lookup_remove(lookup_t *lookup, const char *str);
+
+/*!
  * Searches the lookup container for the given key.
  *
  * \note If one candidate, lookup.found contains the key/data,
@@ -107,6 +117,8 @@ void lookup_list(lookup_t *lookup);
  * \param[in] str_len    Textual key length.
  * \param[in] el         Editline context.
  * \param[in] add_space  Add one space after completed string flag.
+ *
+ * \return Error code, same as lookup_search().
  */
-void lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
-                     EditLine *el, bool add_space);
+int lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
+                    EditLine *el, bool add_space);

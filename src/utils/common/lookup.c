@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -85,6 +85,20 @@ int lookup_insert(lookup_t *lookup, const char *str, void *data)
 		return KNOT_ENOMEM;
 	}
 	*val = data;
+
+	return KNOT_EOK;
+}
+
+int lookup_remove(lookup_t *lookup, const char *str)
+{
+	if (lookup == NULL || str == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	size_t str_len = strlen(str);
+	if (str_len > 0) {
+		(void)trie_del(lookup->trie, (const trie_key_t *)str, str_len, NULL);
+	}
 
 	return KNOT_EOK;
 }
@@ -248,11 +262,11 @@ static void print_options(lookup_t *lookup, EditLine *el)
 	fflush(stdout);
 }
 
-void lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
-                     EditLine *el, bool add_space)
+int lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
+                    EditLine *el, bool add_space)
 {
 	if (lookup == NULL || el == NULL) {
-		return;
+		return KNOT_EINVAL;
 	}
 
 	// Try to complete the command name.
@@ -276,4 +290,6 @@ void lookup_complete(lookup_t *lookup, const char *str, size_t str_len,
 	default:
 		break;
 	}
+
+	return ret;
 }
