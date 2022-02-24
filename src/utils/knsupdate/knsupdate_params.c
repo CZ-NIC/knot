@@ -51,6 +51,7 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	},
 	.show_query = false,
 	.show_header = true,
+	.show_section = true,
 	.show_edns = false,
 	.show_question = true,
 	.show_answer = true,
