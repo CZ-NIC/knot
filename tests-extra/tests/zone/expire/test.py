@@ -15,19 +15,11 @@ def test_expire(zone, server):
 def test_not_expired(zone, server):
     test_status(zone, server, "NOERROR")
 
-def replace_in_config(server, what, with_what):
-    with open(server.confile, "r+") as f:
-        config = f.read()
-        f.seek(0)
-        f.truncate()
-        config = config.replace(what, with_what)
-        f.write(config)
+def break_xfrout(server, zone):
+    server.ctl("zone-xfr-freeze %s" % zone[0].name, wait=True)
 
-def break_xfrout(server):
-    replace_in_config(server, " acl:", " #acl:")
-
-def fix_xfrout(server):
-    replace_in_config(server, " #acl:", " acl:")
+def fix_xfrout(server, zone):
+    server.ctl("zone-xfr-thaw %s" % zone[0].name, wait=True)
 
 t = Test(tsig=False)
 
@@ -62,9 +54,9 @@ slave.zone_wait(zone)
 timer = time.time()
 
 # expire by breaking AXFR
-break_xfrout(master)
+break_xfrout(master, zone)
 master.update_zonefile(zone, version=1)
-master.reload()
+master.ctl("zone-reload example.")
 
 sub_slave.start()
 sub_slave.zone_wait(zone)
@@ -77,14 +69,12 @@ test_expire(zone, sub_slave) # both slaves expire at once despite sub_slave upda
 # 1) Test expiration prolonging by EDNS Expire in SOA query responses.
 
 # bring back the servers once more and reset the expire timers
-fix_xfrout(master)
-master.reload()
-slave.zone_wait(zone)
+fix_xfrout(master, zone)
+slave.ctl("zone-refresh", wait=True)
 sub_slave.zone_wait(zone)
 
 # disallow actual updates from slave, SOA queries are still allowed
-break_xfrout(slave)
-slave.reload()
+break_xfrout(slave, zone)
 
 # let the original expire timer (without EDNS) on sub_slave run out
 t.sleep(2 * EXPIRE_SLEEP)
@@ -100,8 +90,7 @@ test_not_expired(zone, sub_slave)
 master.ctl("zone-begin example.")
 master.ctl("zone-set example. example. 1200 SOA ns admin 4242 2 2 5 600")
 master.ctl("zone-commit example.")
-fix_xfrout(slave)
-slave.reload()
+fix_xfrout(slave, zone)
 t.sleep(1)
 slave.ctl("zone-refresh", wait=True)     # SOA query only, same serial
 sub_slave.ctl("zone-refresh", wait=True) # SOA query only, same serial
