@@ -30,7 +30,7 @@ struct ds_push_data {
 	knot_rrset_t del_old_ds;
 	knot_rrset_t new_ds;
 	const struct sockaddr *remote;
-	struct query_edns_data edns;
+	query_edns_data_t edns;
 };
 
 #define DS_PUSH_RETRY	600
@@ -179,6 +179,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		.parent_query = zone->name,
 		.new_ds = zone_cds,
 		.remote = (struct sockaddr *)&parent->addr,
+		.edns = query_edns_data_init(conf, parent->addr.ss_family, 0)
 	};
 
 	knot_rrset_init(&data.del_old_ds, zone->name, KNOT_RRTYPE_DS, KNOT_CLASS_ANY, 0);
@@ -186,7 +187,6 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	query_edns_data_init(&data.edns, conf, zone->name, parent->addr.ss_family);
 
 	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &DS_PUSH_API, &data, NULL);

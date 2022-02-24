@@ -107,9 +107,10 @@ struct refresh_data {
 	const knot_rrset_t *soa;          //!< Local SOA (NULL for AXFR).
 	const size_t max_zone_size;       //!< Maximal zone size.
 	bool use_edns;                    //!< Allow EDNS in SOA/AXFR/IXFR queries.
-	struct query_edns_data edns;      //!< EDNS data to be used in queries.
+	query_edns_data_t edns;           //!< EDNS data to be used in queries.
 	zone_master_fallback_t *fallback; //!< Flags allowing zone_master_try() fallbacks.
 	bool fallback_axfr;               //!< Flag allowing fallback to AXFR,
+	uint32_t expire_timer;            //!< Result: expire timer from answer EDNS.
 
 	// internal state, initialize with zeroes:
 
@@ -135,6 +136,8 @@ struct refresh_data {
 	knot_mm_t *mm; // TODO: This used to be used in IXFR. Remove or reuse.
 };
 
+static const uint32_t EXPIRE_TIMER_INVALID = ~0U;
+
 static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 {
 	return (serial_compare(local_serial, remote_serial) & SERIAL_MASK_GEQ);
@@ -142,7 +145,7 @@ static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 
 static time_t bootstrap_next(const zone_timers_t *timers)
 {
-	time_t expired_at = timers->last_refresh + timers->soa_expire;
+	time_t expired_at = timers->next_expire;
 
 	// Time since the zone expiration.
 	// The new interval is double of the previous one (an exponential backoff).
@@ -159,6 +162,33 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	interval += dnssec_random_uint16_t() % BOOTSTRAP_JITTER;
 
 	return interval;
+}
+
+/*!
+ * \brief Modify the expire timer wrt the received EDNS EXPIRE (RFC 7314, section 4)
+ *
+ * \param data             The refresh data.
+ * \param pkt              A received packet to parse.
+ * \param strictly_follow  Strictly use EDNS EXPIRE as the expire timer value.
+ *                         (false == RFC 7314, section 4, second paragraph,
+ *                           true ==                      third paragraph)
+ */
+static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt, bool strictly_follow)
+{
+	uint8_t *expire_opt = knot_pkt_edns_option(pkt, KNOT_EDNS_OPTION_EXPIRE);
+	if (expire_opt != NULL && knot_edns_opt_get_length(expire_opt) == sizeof(uint32_t)) {
+		uint32_t edns_expire = knot_wire_read_u32(knot_edns_opt_get_data(expire_opt));
+		data->expire_timer = strictly_follow ? edns_expire :
+				     MAX(edns_expire, data->zone->timers.next_expire - time(NULL));
+	}
+}
+
+/*!
+ * \brief RFC 7314, section 4, fourth paragraph
+ */
+static void finalize_edns_expire(struct refresh_data *data)
+{
+	data->expire_timer = MIN(data->expire_timer, zone_soa_expire(data->zone));
 }
 
 static void xfr_log_publish(const struct refresh_data *data,
@@ -183,13 +213,13 @@ static void xfr_log_publish(const struct refresh_data *data,
 	}
 
 	REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
-	            "zone updated, %0.2f seconds, serial %s -> %u%s",
-	            duration, old_info, new_serial, master_info);
+	            "zone updated, %0.2f seconds, serial %s -> %u%s, expires in %u seconds",
+	            duration, old_info, new_serial, master_info, data->expire_timer);
 }
 
 static void xfr_log_read_ms(const knot_dname_t *zone, int ret)
 {
-	log_zone_error(zone, "failed reading master's serial from KASP DB (%s)", knot_strerror(ret));
+	log_zone_error(zone, "failed reading master serial from KASP DB (%s)", knot_strerror(ret));
 }
 
 static int axfr_init(struct refresh_data *data)
@@ -227,7 +257,7 @@ static void axfr_slave_sign_serial(zone_contents_t *new_contents, zone_t *zone,
 		// Bootstrap - increment stored serial.
 		new_serial = serial_next(lastsigned_serial, serial_policy, 1);
 	} else {
-		// Bootstrap - try to reuse master's serial, considering policy.
+		// Bootstrap - try to reuse master serial, considering policy.
 		new_serial = serial_next(*master_serial, serial_policy, 0);
 	}
 	zone_contents_set_soa_serial(new_contents, new_serial);
@@ -298,6 +328,7 @@ static int axfr_finalize(struct refresh_data *data)
 		}
 	}
 
+	finalize_edns_expire(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
 	                master_serial, dnssec_enable, bootstrap);
 
@@ -498,7 +529,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		int ret = ixfr_slave_sign_serial(&data->ixfr.changesets, data->zone, data->conf, &master_serial);
 		if (ret != KNOT_EOK) {
 			IXFRIN_LOG(LOG_WARNING, data,
-			           "failed to adjust SOA serials from unsigned master (%s)",
+			           "failed to adjust SOA serials from unsigned remote (%s)",
 			           knot_strerror(ret));
 			data->fallback_axfr = false;
 			data->fallback->remote = false;
@@ -570,6 +601,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
+	finalize_edns_expire(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
 	                master_serial, dnssec_enable, false);
 
@@ -851,8 +883,10 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			           "receiving AXFR-style IXFR");
 			return axfr_consume(pkt, data);
 		case XFR_TYPE_UPTODATE:
+			consume_edns_expire(data, pkt, false);
+			finalize_edns_expire(data);
 			IXFRIN_LOG(LOG_INFO, data,
-			          "zone is up-to-date");
+			          "zone is up-to-date, expires in %u seconds", data->expire_timer);
 			xfr_stats_begin(&data->stats);
 			xfr_stats_add(&data->stats, pkt->size);
 			xfr_stats_end(&data->stats);
@@ -956,16 +990,22 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	bool current = serial_is_current(local_serial, remote_serial);
 	bool master_uptodate = serial_is_current(remote_serial, local_serial);
 
-	REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
-	            "remote serial %u, %s", remote_serial,
-	            current ? (master_uptodate ? "zone is up-to-date" :
-	            "master is outdated") : "zone is outdated");
-
-	if (current) {
-		return master_uptodate ? KNOT_STATE_DONE : KNOT_STATE_FAIL;
-	} else {
+	if (!current) {
+		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+		            "remote serial %u, zone is outdated", remote_serial);
 		data->state = STATE_TRANSFER;
-		return KNOT_STATE_RESET;
+		return KNOT_STATE_RESET; // continue with transfer
+	} else if (master_uptodate) {
+		consume_edns_expire(data, pkt, false);
+		finalize_edns_expire(data);
+		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+		            "remote serial %u, zone is up-to-date, expires in %u seconds",
+		            remote_serial, data->expire_timer);
+		return KNOT_STATE_DONE;
+	} else {
+		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+		            "remote serial %u, remote is outdated", remote_serial);
+		return KNOT_STATE_FAIL;
 	}
 }
 
@@ -1015,6 +1055,13 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
+
+	consume_edns_expire(data, pkt, true);
+	if (data->expire_timer < 2) {
+		REFRESH_LOG(LOG_WARNING, data, LOG_DIRECTION_NONE,
+		            "remote is expired, ignoring");
+		return KNOT_STATE_FAIL;
+	}
 
 	data->fallback_axfr = (data->xfr_type == XFR_TYPE_IXFR);
 
@@ -1146,6 +1193,7 @@ static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 typedef struct {
 	bool force_axfr;
 	bool send_notify;
+	uint32_t expire_timer;
 } try_refresh_ctx_t;
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
@@ -1172,11 +1220,12 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 		.use_edns = !master->no_edns,
+		.edns = query_edns_data_init(conf, master->addr.ss_family,
+		                             QUERY_EDNS_OPT_EXPIRE),
+		.expire_timer = EXPIRE_TIMER_INVALID,
 		.fallback = fallback,
 		.fallback_axfr = false, // will be set upon IXFR consume
 	};
-
-	query_edns_data_init(&data.edns, conf, zone->name, master->addr.ss_family);
 
 	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &REFRESH_API, &data, NULL);
@@ -1220,6 +1269,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	if (ret == KNOT_EOK) {
 		trctx->send_notify = data.updated && !master->block_notify_after_xfr;
 		trctx->force_axfr = false;
+		trctx->expire_timer = data.expire_timer;
 	}
 
 	return ret;
@@ -1245,7 +1295,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		return KNOT_ENOTSUP;
 	}
 
-	try_refresh_ctx_t trctx = { 0 };
+	try_refresh_ctx_t trctx = { .expire_timer = EXPIRE_TIMER_INVALID };
 
 	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
 	if (zone_get_flag(zone, ZONE_FORCE_AXFR, true)) {
@@ -1263,8 +1313,8 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	const knot_rdataset_t *soa = zone_soa(zone);
 
 	if (ret == KNOT_EOK) {
-		zone->timers.soa_expire = knot_soa_expire(soa->rdata);
-		zone->timers.last_refresh = now;
+		assert(trctx.expire_timer != EXPIRE_TIMER_INVALID);
+		zone->timers.next_expire = now + trctx.expire_timer;
 		zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
 		zone->timers.last_refresh_ok = true;
 	} else {

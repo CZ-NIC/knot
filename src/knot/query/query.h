@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,16 +16,23 @@
 
 #pragma once
 
+#include "knot/conf/conf.h"
 #include "knot/nameserver/log.h"
 #include "libknot/packet/pkt.h"
 
 /*!
  * \brief EDNS data.
  */
-struct query_edns_data {
+typedef struct {
 	uint16_t max_payload;
 	bool do_flag;
-};
+	bool expire_option;
+} query_edns_data_t;
+
+typedef enum {
+	QUERY_EDNS_OPT_DO     = 1 << 0,
+	QUERY_EDNS_OPT_EXPIRE = 1 << 1,
+} query_edns_opt_t;
 
 /*!
  * \brief Initialize new packet.
@@ -39,15 +46,14 @@ void query_init_pkt(knot_pkt_t *pkt);
 /*!
  * \brief Initialize EDNS parameters from server configuration.
  *
- * \param[out] edns           EDNS parameters to initialize.
  * \param[in]  conf           Server configuration.
- * \param[in]  zone           Zone name.
  * \param[in]  remote_family  Address family for remote host.
+ * \param[in]  opts           EDNS options.
  *
- * \return KNOT_E*
+ * \return EDNS parameters.
  */
-int query_edns_data_init(struct query_edns_data *edns, conf_t *conf,
-                         const knot_dname_t *zone, int remote_family);
+query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family,
+                                       query_edns_opt_t opts);
 
 /*!
  * \brief Append EDNS into the packet.
@@ -57,4 +63,4 @@ int query_edns_data_init(struct query_edns_data *edns, conf_t *conf,
  *
  * \return KNOT_E*
  */
-int query_put_edns(knot_pkt_t *pkt, const struct query_edns_data *edns);
+int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns);

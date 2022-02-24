@@ -30,7 +30,7 @@ struct notify_data {
 	const knot_dname_t *zone;
 	const knot_rrset_t *soa;
 	const struct sockaddr *remote;
-	struct query_edns_data edns;
+	query_edns_data_t edns;
 };
 
 static int notify_begin(knot_layer_t *layer, void *params)
@@ -83,9 +83,8 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 		.zone = zone->name,
 		.soa = soa,
 		.remote = (struct sockaddr *)&slave->addr,
+		.edns = query_edns_data_init(conf, slave->addr.ss_family, 0)
 	};
-
-	query_edns_data_init(&data.edns, conf, zone->name, slave->addr.ss_family);
 
 	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &NOTIFY_API, &data, NULL);

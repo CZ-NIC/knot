@@ -196,12 +196,16 @@ class Server(object):
             iface = "6%s@[%s]:%i" % (proto, self.addr, port)
 
         for i in range(5):
-            proc = Popen(["lsof", "-t", "-i", iface],
+            pids = []
+            proc = Popen(["lsof", "-i", iface],
                          stdout=PIPE, stderr=PIPE, universal_newlines=True)
             (out, err) = proc.communicate()
+            for line in out.split("\n"):
+                fields = line.split()
+                if len(fields) > 1 and fields[1] != "PID" and fields[-1] != "(ESTABLISHED)":
+                    pids.append(fields[1])
 
-            # Create list of pids excluding last empty line.
-            pids = list(filter(None, out.split("\n")))
+            pids = list(set(pids))
 
             # Check for successful bind.
             if len(pids) == 1 and str(self.proc.pid) in pids:
@@ -262,6 +266,12 @@ class Server(object):
         try:
             if os.path.isfile(self.valgrind_log):
                 copyfile(self.valgrind_log, self.valgrind_log + str(int(time.time())))
+
+            if os.path.isfile(self.fout):
+                copyfile(self.fout, self.fout + str(int(time.time())))
+
+            if os.path.isfile(self.ferr):
+                copyfile(self.ferr, self.ferr + str(int(time.time())))
 
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \

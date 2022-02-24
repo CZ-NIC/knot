@@ -58,12 +58,14 @@ static bool match_key_ds_rrset(zone_key_t *key, const knot_rrset_t *rr)
 }
 
 struct ds_query_data {
+	conf_t *conf;
+
 	const knot_dname_t *zone_name;
 	const struct sockaddr *remote;
 
 	zone_key_t *key;
 
-	uint16_t edns_max_payload;
+	query_edns_data_t edns;
 
 	bool ds_ok;
 	bool result_logged;
@@ -81,7 +83,6 @@ static int ds_query_begin(knot_layer_t *layer, void *params)
 static int ds_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct ds_query_data *data = layer->data;
-	struct query_edns_data edns = { .max_payload = data->edns_max_payload, .do_flag = true, };
 
 	query_init_pkt(pkt);
 
@@ -90,7 +91,7 @@ static int ds_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_FAIL;
 	}
 
-	r = query_put_edns(pkt, &edns);
+	r = query_put_edns(pkt, &data->edns);
 	if (r != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
@@ -156,8 +157,8 @@ static const knot_layer_api_t ds_query_api = {
 	.finish = NULL,
 };
 
-static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zone_key_t *key,
-                  size_t timeout, uint32_t *ds_ttl)
+static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote_t *parent,
+                  zone_key_t *key, size_t timeout, uint32_t *ds_ttl)
 {
 	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
 
@@ -168,6 +169,8 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		.zone_name = zone_name,
 		.remote = (struct sockaddr *)&parent->addr,
 		.key = key,
+		.edns = query_edns_data_init(conf, parent->addr.ss_family,
+		                             QUERY_EDNS_OPT_DO),
 		.ds_ok = false,
 		.result_logged = false,
 		.ttl = 0,
@@ -191,10 +194,6 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 		return KNOT_ENOMEM;
 	}
 
-	data.edns_max_payload = dst->ss_family == AF_INET6 ?
-	                        conf()->cache.srv_udp_max_payload_ipv6 :
-	                        conf()->cache.srv_udp_max_payload_ipv4;
-
 	int ret = knot_requestor_exec(&requestor, req, timeout);
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
@@ -216,15 +215,16 @@ static int try_ds(const knot_dname_t *zone_name, const conf_remote_t *parent, zo
 	return ret;
 }
 
-static bool parents_have_ds(kdnssec_ctx_t *kctx, zone_key_t *key, size_t timeout,
-                            uint32_t *max_ds_ttl)
+static bool parents_have_ds(conf_t *conf, kdnssec_ctx_t *kctx, zone_key_t *key,
+                            size_t timeout, uint32_t *max_ds_ttl)
 {
 	bool success = false;
 	knot_dynarray_foreach(parent, knot_kasp_parent_t, i, kctx->policy->parents) {
 		success = false;
 		for (size_t j = 0; j < i->addrs; j++) {
 			uint32_t ds_ttl = 0;
-			int ret = try_ds(kctx->zone->dname, &i->addr[j], key, timeout, &ds_ttl);
+			int ret = try_ds(conf, kctx->zone->dname, &i->addr[j], key,
+			                 timeout, &ds_ttl);
 			if (ret == KNOT_EOK) {
 				*max_ds_ttl = MAX(*max_ds_ttl, ds_ttl);
 				success = true;
@@ -242,7 +242,8 @@ static bool parents_have_ds(kdnssec_ctx_t *kctx, zone_key_t *key, size_t timeout
 	return success;
 }
 
-int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t timeout)
+int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, zone_keyset_t *keyset,
+                         size_t timeout)
 {
 	uint32_t max_ds_ttl = 0;
 
@@ -250,7 +251,7 @@ int knot_parent_ds_query(kdnssec_ctx_t *kctx, zone_keyset_t *keyset, size_t time
 		zone_key_t *key = &keyset->keys[i];
 		if (key->is_ready && !key->is_pub_only) {
 			assert(key->is_ksk);
-			if (parents_have_ds(kctx, key, timeout, &max_ds_ttl)) {
+			if (parents_have_ds(conf, kctx, key, timeout, &max_ds_ttl)) {
 				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl + kctx->policy->ksk_sbm_delay);
 			} else {
 				return KNOT_ENOENT;

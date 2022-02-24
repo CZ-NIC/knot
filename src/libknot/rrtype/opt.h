@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -75,6 +75,8 @@ enum {
 	KNOT_EDNS_OPTION_NSID          = 3,
 	/*! \brief EDNS Client subnet option code. */
 	KNOT_EDNS_OPTION_CLIENT_SUBNET = 8,
+	/*! \brief EDNS Expire option code. */
+	KNOT_EDNS_OPTION_EXPIRE        = 9,
 	/*! \brief EDNS DNS Cookie option code. */
 	KNOT_EDNS_OPTION_COOKIE        = 10,
 	/*! \brief EDNS TCP Keepalive option code. */

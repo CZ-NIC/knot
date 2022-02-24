@@ -57,6 +57,7 @@ class TimerDBInfo:
                 0x88: ("notify_serial",  cls.format_notify_serial),
                 # knot >= 3.2
                 0x89: ("last_refresh_ok", cls.format_bool),
+                0x8a: ("next_expire",     cls.format_timestamp),
         }
         if id in timers:
             return (timers[id][0], timers[id][1](value))

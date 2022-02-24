@@ -190,6 +190,9 @@ zone_flag_t zone_get_flag(zone_t *zone, zone_flag_t flag, bool clear);
 /*! \brief Get zone SOA RR. */
 const knot_rdataset_t *zone_soa(const zone_t *zone);
 
+/*! \brief Get zone SOA EXPIRE field, or 0 if empty zone. */
+uint32_t zone_soa_expire(const zone_t *zone);
+
 /*! \brief Check if zone is expired according to timers. */
 bool zone_expired(const zone_t *zone);
 

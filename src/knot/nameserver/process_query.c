@@ -352,6 +352,30 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 		}
 	}
 
+	/* Add EXPIRE if space. */
+	if (knot_pkt_edns_option(qdata->query, KNOT_EDNS_OPTION_EXPIRE) != NULL &&
+	    qdata->extra->contents != NULL) {
+		int64_t timer = qdata->extra->zone->timers.next_expire == 0
+		              ? zone_soa_expire(qdata->extra->zone)
+		              : qdata->extra->zone->timers.next_expire - time(NULL);
+		timer = MAX(timer, 0);
+		uint32_t timer_be;
+		knot_wire_write_u32((uint8_t *)&timer_be, (uint32_t)timer);
+
+		uint16_t expire_size = KNOT_EDNS_OPTION_HDRLEN + sizeof(timer_be);
+		if (knot_pkt_reserve(resp, expire_size) == KNOT_EOK) {
+			ret = knot_pkt_reclaim(resp, expire_size);
+			assert(ret == KNOT_EOK);
+
+			ret = knot_edns_add_option(&qdata->opt_rr, KNOT_EDNS_OPTION_EXPIRE,
+			                           sizeof(timer_be), (uint8_t *)&timer_be,
+			                           qdata->mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
 	/* Reclaim reserved size. */
 	ret = knot_pkt_reclaim(resp, opt_wire_size);
 	if (ret != KNOT_EOK) {
