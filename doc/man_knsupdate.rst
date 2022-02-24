@@ -164,16 +164,16 @@ Examples
    contains two new records::
 
      $ knsupdate
-     > server 192.168.1.1
-     > zone example.com.
-     > origin example.com.
-     > ttl 3600
-     > add test1.example.com. 7200 A 192.168.2.2
-     > add test2 TXT "hello"
-     > show
-     > send
-     > answer
-     > exit
+     knsupdate> server 192.168.1.1
+     knsupdate> zone example.com.
+     knsupdate> origin example.com.
+     knsupdate> ttl 3600
+     knsupdate> add test1.example.com. 7200 A 192.168.2.2
+     knsupdate> add test2 TXT "hello"
+     knsupdate> show
+     knsupdate> send
+     knsupdate> answer
+     knsupdate> exit
 
 See Also
 --------
