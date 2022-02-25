@@ -1323,9 +1323,11 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		limit_next(conf, zone->name, C_REFRESH_MIN_INTERVAL,
 		           C_REFRESH_MAX_INTERVAL, now,
 		           &zone->timers.next_refresh);
-		limit_next(conf, zone->name, C_EXPIRE_MIN_INTERVAL,
-		           C_EXPIRE_MAX_INTERVAL, now,
-		           &zone->timers.next_expire);
+		if (trctx.expire_timer == knot_soa_expire(soa->rdata)) {
+			limit_next(conf, zone->name, C_EXPIRE_MIN_INTERVAL,
+			           C_EXPIRE_MAX_INTERVAL, now,
+			           &zone->timers.next_expire);
+		}
 	} else {
 		time_t next;
 		if (soa) {
