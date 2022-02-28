@@ -35,6 +35,9 @@ slave.tcp_remote_io_timeout = "1000"
 t.link(zone, master, slave)
 t.link(zone, slave, sub_slave)
 
+slave.zones[zone[0].name].expire_min = 16
+sub_slave.zones[zone[0].name].expire_min = 16
+
 t.start()
 
 master.zone_wait(zone)

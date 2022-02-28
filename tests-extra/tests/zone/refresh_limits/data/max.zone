@@ -1,0 +1,8 @@
+$ORIGIN max.
+$TTL 4
+
+@	SOA	dns1 hostmaster 1000 3600 3600 7200 4
+	NS	dns1
+	MX	10 mail
+dns1	A	192.0.2.1
+mail	A	192.0.2.3

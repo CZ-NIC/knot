@@ -87,6 +87,12 @@ class Zone(object):
         self.catalog = None
         self.catalog_zone = None
         self.catalog_group = None
+        self.refresh_max = None
+        self.refresh_min = None
+        self.retry_max = None
+        self.retry_min = None
+        self.expire_max = None
+        self.expire_min = None
 
     @property
     def name(self):
@@ -1522,6 +1528,13 @@ class Knot(Server):
                 s.item_str("serial-policy", self.serial_policy)
 
             s.item_str("journal-content", z.journal_content)
+
+            self._str(s, "refresh-min-interval", z.refresh_min)
+            self._str(s, "refresh-max-interval", z.refresh_max)
+            self._str(s, "retry-min-interval", z.retry_min)
+            self._str(s, "retry-max-interval", z.retry_max)
+            self._str(s, "expire-min-interval", z.expire_min)
+            self._str(s, "expire-max-interval", z.expire_max)
 
             if self.zonefile_load is not None:
                 s.item_str("zonefile-load", self.zonefile_load)

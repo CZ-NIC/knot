@@ -1275,16 +1275,18 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	return ret;
 }
 
-static int64_t min_refresh_interval(conf_t *conf, const knot_dname_t *zone)
+static void limit_next(conf_t *conf, const knot_dname_t *zone, const yp_name_t *low,
+                       const yp_name_t *upp, time_t now, time_t *timer)
 {
-	conf_val_t val = conf_zone_get(conf, C_REFRESH_MIN_INTERVAL, zone);
-	return conf_int(&val);
-}
-
-static int64_t max_refresh_interval(conf_t *conf, const knot_dname_t *zone)
-{
-	conf_val_t val = conf_zone_get(conf, C_REFRESH_MAX_INTERVAL, zone);
-	return conf_int(&val);
+	conf_val_t val1 = conf_zone_get(conf, low, zone);
+	conf_val_t val2 = conf_zone_get(conf, upp, zone);
+	time_t tlow = now + conf_int(&val1);
+	time_t tupp = now + conf_int(&val2);
+	if (*timer < tlow) {
+		*timer = tlow;
+	} else if (*timer > tupp) {
+		*timer = tupp;
+	}
 }
 
 int event_refresh(conf_t *conf, zone_t *zone)
@@ -1317,6 +1319,15 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone->timers.next_expire = now + trctx.expire_timer;
 		zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
 		zone->timers.last_refresh_ok = true;
+
+		limit_next(conf, zone->name, C_REFRESH_MIN_INTERVAL,
+		           C_REFRESH_MAX_INTERVAL, now,
+		           &zone->timers.next_refresh);
+		if (trctx.expire_timer == knot_soa_expire(soa->rdata)) {
+			limit_next(conf, zone->name, C_EXPIRE_MIN_INTERVAL,
+			           C_EXPIRE_MAX_INTERVAL, now,
+			           &zone->timers.next_expire);
+		}
 	} else {
 		time_t next;
 		if (soa) {
@@ -1326,16 +1337,10 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		}
 		zone->timers.next_refresh = now + next;
 		zone->timers.last_refresh_ok = false;
-	}
 
-	/* Check for allowed refresh interval limits. */
-	int64_t min_refresh = min_refresh_interval(conf, zone->name);
-	if(zone->timers.next_refresh < now + min_refresh) {
-		zone->timers.next_refresh = now + min_refresh;
-	}
-	int64_t max_refresh = max_refresh_interval(conf, zone->name);
-	if(zone->timers.next_refresh > now + max_refresh) {
-		zone->timers.next_refresh = now + max_refresh;
+		limit_next(conf, zone->name, C_RETRY_MIN_INTERVAL,
+		           C_RETRY_MAX_INTERVAL, now,
+		           &zone->timers.next_refresh);
 	}
 
 	/* Reschedule events. */
