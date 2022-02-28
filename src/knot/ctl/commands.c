@@ -1912,7 +1912,7 @@ static void list_zone(zone_t *zone, knot_ctl_t *ctl)
 		[KNOT_CTL_IDX_ID] = buff
 	};
 
-	knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &data);
+	(void)knot_ctl_send(ctl, KNOT_CTL_TYPE_DATA, &data);
 }
 
 static int list_zones(knot_zonedb_t *zonedb, knot_ctl_t *ctl)
