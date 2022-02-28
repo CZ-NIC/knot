@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
  */
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -287,7 +288,7 @@ int zs_set_input_file(
 	// Try to open the file.
 	s->file.descriptor = open(file_name, O_RDONLY);
 	if (s->file.descriptor == -1) {
-		ERR(ZS_FILE_OPEN);
+		ERR(errno == EACCES ? ZS_FILE_ACCESS : ZS_FILE_OPEN);
 		return -1;
 	}
 
