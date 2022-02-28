@@ -461,7 +461,7 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
 	ret = zs_set_input_file(&sc, infile);
 	if (ret < 0) {
 		zs_deinit(&sc);
-		return KNOT_EFILE;
+		return (sc.error.code == ZS_FILE_ACCESS) ? KNOT_EACCES : KNOT_EFILE;
 	}
 
 	ksr_sign_ctx_t pctx = { 0 };

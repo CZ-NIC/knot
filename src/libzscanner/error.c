@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -165,6 +165,8 @@ static const err_table_t err_msgs[] = {
 	          "missing mandatory parameter" ),
 	ERR_ITEM( ZS_EMPTY_LIST_ITEM,
 	          "empty comma-separated list item" ),
+	ERR_ITEM( ZS_FILE_ACCESS,
+	          "permission denied" ),
 
 	ERR_ITEM( 0, NULL ) // Terminator
 };
