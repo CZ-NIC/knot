@@ -1751,6 +1751,10 @@ zone:
     serial\-policy: increment | unixtime | dateserial
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
+    retry\-min\-interval: TIME
+    retry\-max\-interval: TIME
+    expire\-min\-interval: TIME
+    expire\-max\-interval: TIME
     catalog\-role: none | interpret | generate | member
     catalog\-template: template_id ...
     catalog\-zone: DNAME
@@ -2084,12 +2088,32 @@ one update per second per zone.
 \fIDefault:\fP increment
 .SS refresh\-min\-interval
 .sp
-Forced minimum zone refresh interval to avoid flooding primary server.
+Forced minimum zone refresh interval (in seconds) to avoid flooding primary server.
 .sp
-\fIDefault:\fP 2
+\fIDefault:\fP 2 (minimum allowed)
 .SS refresh\-max\-interval
 .sp
-Forced maximum zone refresh interval.
+Forced maximum zone refresh interval (in seconds).
+.sp
+\fIDefault:\fP not set
+.SS retry\-min\-interval
+.sp
+Forced minimum zone retry interval (in seconds) to avoid flooding primary server.
+.sp
+\fIDefault:\fP 1 (minimum allowed)
+.SS retry\-max\-interval
+.sp
+Forced maximum zone retry interval (in seconds).
+.sp
+\fIDefault:\fP not set
+.SS expire\-min\-interval
+.sp
+Forced minimum zone expire interval (in seconds) to avoid flooding primary server.
+.sp
+\fIDefault:\fP 3 (minimum allowed)
+.SS expire\-max\-interval
+.sp
+Forced maximum zone expire interval (in seconds).
 .sp
 \fIDefault:\fP not set
 .SS catalog\-role
