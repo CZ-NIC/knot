@@ -1928,6 +1928,10 @@ Definition of zones served by the server.
      serial-policy: increment | unixtime | dateserial
      refresh-min-interval: TIME
      refresh-max-interval: TIME
+     retry-min-interval: TIME
+     retry-max-interval: TIME
+     expire-min-interval: TIME
+     expire-max-interval: TIME
      catalog-role: none | interpret | generate | member
      catalog-template: template_id ...
      catalog-zone: DNAME
@@ -2279,16 +2283,52 @@ Possible values:
 refresh-min-interval
 --------------------
 
-Forced minimum zone refresh interval to avoid flooding primary server.
+Forced minimum zone refresh interval (in seconds) to avoid flooding primary server.
 
-*Default:* 2
+*Default:* 2 (minimum allowed)
 
 .. _zone_refresh-max-interval:
 
 refresh-max-interval
 --------------------
 
-Forced maximum zone refresh interval.
+Forced maximum zone refresh interval (in seconds).
+
+*Default:* not set
+
+.. _zone_retry-min-interval:
+
+retry-min-interval
+------------------
+
+Forced minimum zone retry interval (in seconds) to avoid flooding primary server.
+
+*Default:* 1 (minimum allowed)
+
+.. _zone_retry-max-interval:
+
+retry-max-interval
+------------------
+
+Forced maximum zone retry interval (in seconds).
+
+*Default:* not set
+
+.. _zone_expire-min-interval:
+
+expire-min-interval
+-------------------
+
+Forced minimum zone expire interval (in seconds) to avoid flooding primary server.
+
+*Default:* 3 (minimum allowed)
+
+.. _zone_expire-max-interval:
+
+expire-max-interval
+-------------------
+
+Forced maximum zone expire interval (in seconds).
 
 *Default:* not set
 
