@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #endif
 
 #include "libdnssec/key.h"
+#include "knot/catalog/catalog_db.h"
 #include "knot/conf/tools.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/module.h"
@@ -725,7 +726,7 @@ int check_catalog_group(
 	knotd_conf_check_args_t *args)
 {
 	assert(args->data_len > 0);
-	if (args->data_len - 1 > 255) {
+	if (args->data_len - 1 > CATALOG_GROUP_MAXLEN) {
 		args->err_str = "group name longer than 255 characters";
 		return KNOT_EINVAL;
 	}

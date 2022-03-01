@@ -168,6 +168,7 @@ static int cat_update_add_grp(zone_node_t *node, cat_upd_ctx_t *ctx)
 		}
 		newgr = (const char *)txt->rdata->data + 1;
 		grlen = txt->rdata->data[0];
+		assert(grlen <= CATALOG_GROUP_MAXLEN);
 	}
 
 	return catalog_update_add(ctx->u, member, owner, ctx->complete_conts->apex->owner,
