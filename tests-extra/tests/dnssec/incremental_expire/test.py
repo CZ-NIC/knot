@@ -60,10 +60,10 @@ up.send()
 t.sleep(6) # prop-delay + dnskey-ttl
 slave.ctl("zone-thaw")
 
-serial = slave.zone_wait(zone, serial)
+slave.zone_wait(zone, serial)
 
 if not FAIL2ROLL:
-    serial = slave.zone_wait(zone, serial)
+    slave.zone_wait(zone, serial + 1)
 
 slave.ctl("-f zone-flush")
 
