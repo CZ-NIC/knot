@@ -78,11 +78,6 @@ static void replan_dnssec(conf_t *conf, zone_t *zone)
 	}
 }
 
-static bool can_expire(const zone_t *zone)
-{
-	return !zone_expired(zone) && zone_soa_expire(zone) > 0;
-}
-
 /*!
  * \brief Replan events that depend on zone timers (REFRESH, EXPIRE, FLUSH, RESALT, PARENT DS QUERY).
  */
@@ -104,13 +99,13 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 
 	time_t expire_pre = TIME_IGNORE;
 	time_t expire = TIME_IGNORE;
-	if (zone_is_slave(conf, zone) && can_expire(zone)) {
+	if (zone_is_slave(conf, zone) && !zone_expired(zone)) {
 		expire_pre = TIME_CANCEL;
 		expire = zone->timers.next_expire;
 	}
 
 	time_t flush = TIME_IGNORE;
-	if (!zone_is_slave(conf, zone) || can_expire(zone)) {
+	if (!zone_is_slave(conf, zone) || !zone_expired(zone)) {
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		int64_t sync_timeout = conf_int(&val);
 		if (sync_timeout > 0) {
