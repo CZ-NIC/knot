@@ -672,6 +672,7 @@ const filter_desc_t zone_status_filters[MAX_FILTERS] = {
 	{ "+serial",      CTL_FILTER_STATUS_SERIAL },
 	{ "+transaction", CTL_FILTER_STATUS_TRANSACTION },
 	{ "+freeze",      CTL_FILTER_STATUS_FREEZE },
+	{ "+catalog",     CTL_FILTER_STATUS_CATALOG },
 	{ "+events",      CTL_FILTER_STATUS_EVENTS },
 };
 

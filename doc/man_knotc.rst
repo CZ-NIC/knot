@@ -81,7 +81,7 @@ Actions
 
 **zone-status** [*zone*...] [*filter*]
   Show the zone status. Filters are **+role**, **+serial**, **+transaction**,
-  **+events**, and **+freeze**.
+  **+events**, **+freeze**, and **+catalog**.
 
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For
