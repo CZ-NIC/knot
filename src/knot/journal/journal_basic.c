@@ -18,7 +18,7 @@
 #include "knot/journal/journal_metadata.h"
 #include "libknot/error.h"
 
-MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const knot_dname_t *zone)
+MDBX_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const knot_dname_t *zone)
 {
 	if (zone_in_journal) {
 		return knot_lmdb_make_key("NIS", zone, (uint32_t)0, "bootstrap");
@@ -27,7 +27,7 @@ MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const
 	}
 }
 
-MDB_val journal_make_chunk_key(const knot_dname_t *apex, uint32_t ch_from, bool zij, uint32_t chunk_id)
+MDBX_val journal_make_chunk_key(const knot_dname_t *apex, uint32_t ch_from, bool zij, uint32_t chunk_id)
 {
 	if (zij) {
 		return knot_lmdb_make_key("NISI", apex, (uint32_t)0, "bootstrap", chunk_id);
@@ -36,7 +36,7 @@ MDB_val journal_make_chunk_key(const knot_dname_t *apex, uint32_t ch_from, bool 
 	}
 }
 
-MDB_val journal_zone_prefix(const knot_dname_t *zone)
+MDBX_val journal_zone_prefix(const knot_dname_t *zone)
 {
 	return knot_lmdb_make_key("NI", zone, (uint32_t)0);
 }
@@ -44,9 +44,9 @@ MDB_val journal_zone_prefix(const knot_dname_t *zone)
 void journal_del_zone(knot_lmdb_txn_t *txn, const knot_dname_t *zone)
 {
 	assert(txn->is_rw);
-	MDB_val prefix = journal_zone_prefix(zone);
+	MDBX_val prefix = journal_zone_prefix(zone);
 	knot_lmdb_del_prefix(txn, &prefix);
-	free(prefix.mv_data);
+	free(prefix.iov_base);
 }
 
 void journal_make_header(void *chunk, uint32_t ch_serial_to)
@@ -56,20 +56,20 @@ void journal_make_header(void *chunk, uint32_t ch_serial_to)
 	                        (uint64_t)0, (uint64_t)0, (uint64_t)0);
 }
 
-uint32_t journal_next_serial(const MDB_val *chunk)
+uint32_t journal_next_serial(const MDBX_val *chunk)
 {
-	return knot_wire_read_u32(chunk->mv_data);
+	return knot_wire_read_u32(chunk->iov_base);
 }
 
 bool journal_serial_to(knot_lmdb_txn_t *txn, bool zij, uint32_t serial,
                        const knot_dname_t *zone, uint32_t *serial_to)
 {
-	MDB_val key = journal_changeset_id_to_key(zij, serial, zone);
+	MDBX_val key = journal_changeset_id_to_key(zij, serial, zone);
 	bool found = knot_lmdb_find_prefix(txn, &key);
 	if (found && serial_to != NULL) {
 		*serial_to = journal_next_serial(&txn->cur_val);
 	}
-	free(key.mv_data);
+	free(key.iov_base);
 	return found;
 }
 

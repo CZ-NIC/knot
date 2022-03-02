@@ -107,8 +107,8 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
                              const zone_timers_t *timers)
 {
-	MDB_val k = { knot_dname_size(zone), (void *)zone };
-	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBLBL",
+	MDBX_val k = { (void *)zone, knot_dname_size(zone) };
+	MDBX_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBLBL",
 		TIMER_SOA_EXPIRE,    (uint64_t)timers->soa_expire,
 		TIMER_LAST_FLUSH,    (uint64_t)timers->last_flush,
 		TIMER_LAST_REFRESH,  (uint64_t)timers->last_refresh,
@@ -119,7 +119,7 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push,
 		TIMER_CATALOG_MEMBER,(uint64_t)timers->catalog_member);
 	knot_lmdb_insert(txn, &k, &v);
-	free(v.mv_data);
+	free(v.iov_base);
 }
 
 
@@ -157,9 +157,9 @@ int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
 	}
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, false);
-	MDB_val k = { knot_dname_size(zone), (void *)zone };
+	MDBX_val k = { (void *)zone, knot_dname_size(zone) };
 	if (knot_lmdb_find(&txn, &k, KNOT_LMDB_EXACT | KNOT_LMDB_FORCE)) {
-		deserialize_timers(timers, txn.cur_val.mv_data, txn.cur_val.mv_size);
+		deserialize_timers(timers, txn.cur_val.iov_base, txn.cur_val.iov_len);
 	}
 	knot_lmdb_abort(&txn);
 	return txn.ret;
@@ -205,7 +205,7 @@ int zone_timers_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_forwhole(&txn) {
-		if (!keep_zone((const knot_dname_t *)txn.cur_key.mv_data, cb_data)) {
+		if (!keep_zone((const knot_dname_t *)txn.cur_key.iov_base, cb_data)) {
 			knot_lmdb_del_cur(&txn);
 		}
 	}

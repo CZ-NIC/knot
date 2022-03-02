@@ -64,6 +64,8 @@ src/contrib/libbpf/include/uapi/linux/btf.h
 src/contrib/libbpf/include/uapi/linux/if_link.h
 src/contrib/libbpf/include/uapi/linux/if_xdp.h
 src/contrib/libbpf/include/uapi/linux/netlink.h
+src/contrib/lmdb/mdbx.c
+src/contrib/lmdb/mdbx.h
 src/contrib/macros.h
 src/contrib/mempattern.c
 src/contrib/mempattern.h

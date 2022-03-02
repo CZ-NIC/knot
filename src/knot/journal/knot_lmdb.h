@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <lmdb.h>
+#include "contrib/lmdb/mdbx.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -24,8 +24,8 @@
 #include <pthread.h>
 
 typedef struct knot_lmdb_db {
-	MDB_dbi dbi;
-	MDB_env *env;
+	MDBX_dbi dbi;
+	MDBX_env *env;
 	pthread_mutex_t opening_mutex;
 
 	// those are static options. Set them after knot_lmdb_init().
@@ -40,10 +40,10 @@ typedef struct knot_lmdb_db {
 } knot_lmdb_db_t;
 
 typedef struct {
-	MDB_txn *txn;
-	MDB_cursor *cursor;
-	MDB_val cur_key;
-	MDB_val cur_val;
+	MDBX_txn *txn;
+	MDBX_cursor *cursor;
+	MDBX_val cur_key;
+	MDBX_val cur_val;
 
 	bool opened;
 	bool is_rw;
@@ -72,7 +72,7 @@ typedef bool (*sweep_cb)(const uint8_t *zone, void *data);
  * \retval true  if the current record shall be copied
  * \retval false if the current record shall be skipped
  */
-typedef bool (*knot_lmdb_copy_cb)(MDB_val *cur_key, MDB_val *cur_val);
+typedef bool (*knot_lmdb_copy_cb)(MDBX_val *cur_key, MDBX_val *cur_val);
 
 /*!
  * \brief Initialise the DB handling structure.
@@ -199,7 +199,7 @@ void knot_lmdb_commit(knot_lmdb_txn_t *txn);
  *
  * \return True if a key found, false if none or failure.
  */
-bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how);
+bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDBX_val *what, knot_lmdb_find_t how);
 
 /*!
  * \brief Simple database lookup in case txn shared among threads.
@@ -214,7 +214,7 @@ bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how);
  * \retval KNOT_ENOENT   no such key in DB.
  * \return KNOT_E*
  */
-int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, knot_lmdb_find_t how);
+int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDBX_val *key, MDBX_val *val, knot_lmdb_find_t how);
 
 /*!
  * \brief Start iteration the whole DB from lexicographically first key.
@@ -244,7 +244,7 @@ bool knot_lmdb_next(knot_lmdb_txn_t *txn);
  *
  * \return True iff 'prefix' is a prefix of 'of'.
  */
-bool knot_lmdb_is_prefix_of(const MDB_val *prefix, const MDB_val *of);
+bool knot_lmdb_is_prefix_of(const MDBX_val *prefix, const MDBX_val *of);
 
 /*!
  * \brief Find leftmost key in DB matching given prefix.
@@ -254,7 +254,7 @@ bool knot_lmdb_is_prefix_of(const MDB_val *prefix, const MDB_val *of);
  *
  * \return True if found, false if none or failure.
  */
-inline static bool knot_lmdb_find_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix)
+inline static bool knot_lmdb_find_prefix(knot_lmdb_txn_t *txn, MDBX_val *prefix)
 {
 	return knot_lmdb_find(txn, prefix, KNOT_LMDB_GEQ) &&
 	       knot_lmdb_is_prefix_of(prefix, &txn->cur_key);
@@ -296,9 +296,9 @@ void knot_lmdb_del_cur(knot_lmdb_txn_t *txn);
  * \param txn      DB transaction.
  * \param prefix   Prefix to be deleted.
  */
-void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix);
+void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDBX_val *prefix);
 
-typedef int (*lmdb_apply_cb)(MDB_val *key, MDB_val *val, void *ctx);
+typedef int (*lmdb_apply_cb)(MDBX_val *key, MDBX_val *val, void *ctx);
 
 /*!
  * \brief Call a callback for any item matching given key.
@@ -314,7 +314,7 @@ typedef int (*lmdb_apply_cb)(MDB_val *key, MDB_val *val, void *ctx);
  *
  * \return KNOT_E*
  */
-int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool prefix, lmdb_apply_cb cb, void *ctx);
+int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDBX_val *key, bool prefix, lmdb_apply_cb cb, void *ctx);
 
 /*!
  * \brief Insert a new record into the DB.
@@ -327,7 +327,7 @@ int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool pr
  *
  * \return False if failure.
  */
-bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val);
+bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDBX_val *key, MDBX_val *val);
 
 /*!
  * \brief Open a transaction, insert a record, commit and free key's and val's mv_data.
@@ -338,7 +338,7 @@ bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val);
  *
  * \return KNOT_E*
  */
-int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val);
+int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDBX_val key, MDBX_val val);
 
 /*!
  * \brief Copy all records matching given key prefix.
@@ -353,7 +353,7 @@ int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val);
  *
  * \note KNOT_EOK even if none records matched the prefix (and were copied).
  */
-int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix);
+int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDBX_val *prefix);
 
 /*!
  * \brief Copy all records matching any of multiple prefixes.
@@ -368,7 +368,7 @@ int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *p
  * \return KNOT_E*
  */
 int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
-                            MDB_val *prefixes, size_t n_prefixes);
+                            MDBX_val *prefixes, size_t n_prefixes);
 
 /*!
  * \brief Amount of bytes used by the DB storage.
@@ -398,7 +398,7 @@ size_t knot_lmdb_usage(knot_lmdb_txn_t *txn);
  * - N for a domain name (in knot_dname_t* format)
  * - D for fixed-size data (takes two params: void* and size_t)
  */
-MDB_val knot_lmdb_make_key(const char *format, ...);
+MDBX_val knot_lmdb_make_key(const char *format, ...);
 
 /*!
  * \brief Serialize various parameters into prepared buffer.

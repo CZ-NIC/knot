@@ -77,13 +77,9 @@ libcontrib_la_SOURCES = \
 	contrib/vpool/vpool.c			\
 	contrib/vpool/vpool.h
 
-libcontrib_la_CPPFLAGS += -include contrib/lmdb/mute_warnings.h
 libcontrib_la_SOURCES += \
-	contrib/lmdb/lmdb.h			\
-	contrib/lmdb/mdb.c			\
-	contrib/lmdb/midl.c			\
-	contrib/lmdb/midl.h			\
-	contrib/lmdb/mute_warnings.h
+	contrib/lmdb/mdbx.h			\
+	contrib/lmdb/mdbx.c
 
 if EMBEDDED_LIBBPF
 noinst_LTLIBRARIES += libembbpf.la

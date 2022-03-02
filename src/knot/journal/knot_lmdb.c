@@ -35,16 +35,16 @@
 static void err_to_knot(int *err)
 {
 	switch (*err) {
-	case MDB_SUCCESS:
+	case MDBX_SUCCESS:
 		*err = KNOT_EOK;
 		break;
-	case MDB_NOTFOUND:
+	case MDBX_NOTFOUND:
 		*err = KNOT_ENOENT;
 		break;
-	case MDB_TXN_FULL:
+	case MDBX_TXN_FULL:
 		*err = KNOT_ELIMIT;
 		break;
-	case MDB_MAP_FULL:
+	case MDBX_MAP_FULL:
 	case ENOSPC:
 		*err = KNOT_ESPACE;
 		break;
@@ -117,7 +117,7 @@ static int fix_mapsize(knot_lmdb_db_t *db)
 			return ret;
 		}
 		db->mapsize = st.st_size * 2; // twice the size as DB might grow while we read it
-		db->env_flags |= MDB_RDONLY;
+		db->env_flags |= MDBX_RDONLY;
 	}
 	return KNOT_EOK;
 }
@@ -134,7 +134,7 @@ size_t knot_lmdb_copy_size(knot_lmdb_db_t *to_copy)
 
 static int lmdb_open(knot_lmdb_db_t *db)
 {
-	MDB_txn *init_txn = NULL;
+	MDBX_txn *init_txn = NULL;
 
 	if (db->env != NULL) {
 		return KNOT_EOK;
@@ -160,38 +160,38 @@ static int lmdb_open(knot_lmdb_db_t *db)
 	}
 	size_t mapsize = (db->mapsize / page_size + 1) * page_size;
 
-	ret = mdb_env_create(&db->env);
-	if (ret != MDB_SUCCESS) {
+	ret = mdbx_env_create(&db->env);
+	if (ret != MDBX_SUCCESS) {
 		err_to_knot(&ret);
 		return ret;
 	}
 
-	ret = mdb_env_set_mapsize(db->env, mapsize);
-	if (ret == MDB_SUCCESS) {
-		ret = mdb_env_set_maxdbs(db->env, db->maxdbs);
+	ret = ((void)mapsize, MDBX_SUCCESS);
+	if (ret == MDBX_SUCCESS) {
+		ret = mdbx_env_set_maxdbs(db->env, db->maxdbs);
 	}
-	if (ret == MDB_SUCCESS) {
-		ret = mdb_env_set_maxreaders(db->env, db->maxreaders);
+	if (ret == MDBX_SUCCESS) {
+		ret = mdbx_env_set_maxreaders(db->env, db->maxreaders);
 	}
-	if (ret == MDB_SUCCESS) {
-		ret = mdb_env_open(db->env, db->path, db->env_flags, LMDB_FILE_MODE);
+	if (ret == MDBX_SUCCESS) {
+		ret = mdbx_env_open(db->env, db->path, db->env_flags, LMDB_FILE_MODE);
 	}
-	if (ret == MDB_SUCCESS) {
-		unsigned init_txn_flags = (db->env_flags & MDB_RDONLY);
-		ret = mdb_txn_begin(db->env, NULL, init_txn_flags, &init_txn);
+	if (ret == MDBX_SUCCESS) {
+		unsigned init_txn_flags = (db->env_flags & MDBX_RDONLY);
+		ret = mdbx_txn_begin(db->env, NULL, init_txn_flags, &init_txn);
 	}
-	if (ret == MDB_SUCCESS) {
-		ret = mdb_dbi_open(init_txn, db->dbname, MDB_CREATE, &db->dbi);
+	if (ret == MDBX_SUCCESS) {
+		ret = mdbx_dbi_open(init_txn, db->dbname, MDBX_CREATE, &db->dbi);
 	}
-	if (ret == MDB_SUCCESS) {
-		ret = mdb_txn_commit(init_txn);
+	if (ret == MDBX_SUCCESS) {
+		ret = mdbx_txn_commit(init_txn);
 	}
 
-	if (ret != MDB_SUCCESS) {
+	if (ret != MDBX_SUCCESS) {
 		if (init_txn != NULL) {
-			mdb_txn_abort(init_txn);
+			mdbx_txn_abort(init_txn);
 		}
-		mdb_env_close(db->env);
+		mdbx_env_close(db->env);
 		db->env = NULL;
 	}
 	err_to_knot(&ret);
@@ -209,8 +209,8 @@ int knot_lmdb_open(knot_lmdb_db_t *db)
 static void lmdb_close(knot_lmdb_db_t *db)
 {
 	if (db->env != NULL) {
-		mdb_dbi_close(db->env, db->dbi);
-		mdb_env_close(db->env);
+		mdbx_dbi_close(db->env, db->dbi);
+		mdbx_env_close(db->env);
 		db->env = NULL;
 	}
 }
@@ -272,7 +272,7 @@ void knot_lmdb_deinit(knot_lmdb_db_t *db)
 
 void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn, bool rw)
 {
-	txn->ret = mdb_txn_begin(db->env, NULL, rw ? 0 : MDB_RDONLY, &txn->txn);
+	txn->ret = mdbx_txn_begin(db->env, NULL, rw ? 0 : MDBX_TXN_RDONLY, &txn->txn);
 	err_to_knot(&txn->ret);
 	if (txn->ret == KNOT_EOK) {
 		txn->opened = true;
@@ -285,10 +285,10 @@ void knot_lmdb_abort(knot_lmdb_txn_t *txn)
 {
 	if (txn->opened) {
 		if (txn->cursor != NULL) {
-			mdb_cursor_close(txn->cursor);
+			mdbx_cursor_close(txn->cursor);
 			txn->cursor = NULL;
 		}
-		mdb_txn_abort(txn->txn);
+		mdbx_txn_abort(txn->txn);
 		txn->opened = false;
 	}
 }
@@ -311,18 +311,18 @@ void knot_lmdb_commit(knot_lmdb_txn_t *txn)
 		return;
 	}
 	if (txn->cursor != NULL) {
-		mdb_cursor_close(txn->cursor);
+		mdbx_cursor_close(txn->cursor);
 		txn->cursor = NULL;
 	}
-	txn->ret = mdb_txn_commit(txn->txn);
+	txn->ret = mdbx_txn_commit(txn->txn);
 	err_to_knot(&txn->ret);
 	txn->opened = false;
 }
 
 // save the programmer's frequent checking for ENOMEM when creating search keys
-static bool txn_enomem(knot_lmdb_txn_t *txn, const MDB_val *tocheck)
+static bool txn_enomem(knot_lmdb_txn_t *txn, const MDBX_val *tocheck)
 {
-	if (tocheck->mv_data == NULL) {
+	if (tocheck->iov_base == NULL) {
 		txn->ret = KNOT_ENOMEM;
 		knot_lmdb_abort(txn);
 		return false;
@@ -333,7 +333,7 @@ static bool txn_enomem(knot_lmdb_txn_t *txn, const MDB_val *tocheck)
 static bool init_cursor(knot_lmdb_txn_t *txn)
 {
 	if (txn->cursor == NULL) {
-		txn->ret = mdb_cursor_open(txn->txn, txn->db->dbi, &txn->cursor);
+		txn->ret = mdbx_cursor_open(txn->txn, txn->db->dbi, &txn->cursor);
 		err_to_knot(&txn->ret);
 		if (txn->ret != KNOT_EOK) {
 			knot_lmdb_abort(txn);
@@ -343,9 +343,9 @@ static bool init_cursor(knot_lmdb_txn_t *txn)
 	return true;
 }
 
-static bool curget(knot_lmdb_txn_t *txn, MDB_cursor_op op)
+static bool curget(knot_lmdb_txn_t *txn, MDBX_cursor_op op)
 {
-	txn->ret = mdb_cursor_get(txn->cursor, &txn->cur_key, &txn->cur_val, op);
+	txn->ret = mdbx_cursor_get(txn->cursor, &txn->cur_key, &txn->cur_val, op);
 	err_to_knot(&txn->ret);
 	if (txn->ret == KNOT_ENOENT) {
 		txn->ret = KNOT_EOK;
@@ -354,37 +354,37 @@ static bool curget(knot_lmdb_txn_t *txn, MDB_cursor_op op)
 	return (txn->ret == KNOT_EOK);
 }
 
-static int mdb_val_clone(const MDB_val *orig, MDB_val *clone)
+static int mdb_val_clone(const MDBX_val *orig, MDBX_val *clone)
 {
-	clone->mv_data = malloc(orig->mv_size);
-	if (clone->mv_data == NULL) {
+	clone->iov_base = malloc(orig->iov_len);
+	if (clone->iov_base == NULL) {
 		return KNOT_ENOMEM;
 	}
-	clone->mv_size = orig->mv_size;
-	memcpy(clone->mv_data, orig->mv_data, clone->mv_size);
+	clone->iov_len = orig->iov_len;
+	memcpy(clone->iov_base, orig->iov_base, clone->iov_len);
 	return KNOT_EOK;
 }
 
-bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how)
+bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDBX_val *what, knot_lmdb_find_t how)
 {
 	if (!txn_semcheck(txn) || !init_cursor(txn) || !txn_enomem(txn, what)) {
 		return false;
 	}
-	txn->cur_key.mv_size = what->mv_size;
-	txn->cur_key.mv_data = what->mv_data;
-	txn->cur_val.mv_size = 0;
-	txn->cur_val.mv_data = NULL;
+	txn->cur_key.iov_len = what->iov_len;
+	txn->cur_key.iov_base = what->iov_base;
+	txn->cur_val.iov_len = 0;
+	txn->cur_val.iov_base = NULL;
 	knot_lmdb_find_t cmp = (how & 3);
-	bool succ = curget(txn, cmp == KNOT_LMDB_EXACT ? MDB_SET : MDB_SET_RANGE);
+	bool succ = curget(txn, cmp == KNOT_LMDB_EXACT ? MDBX_SET : MDBX_SET_RANGE);
 	if (cmp == KNOT_LMDB_LEQ && txn->ret == KNOT_EOK) {
 		// LEQ is not supported by LMDB, we use GEQ and go back
 		if (succ) {
-			if (txn->cur_key.mv_size != what->mv_size ||
-			    memcmp(txn->cur_key.mv_data, what->mv_data, what->mv_size) != 0) {
-				succ = curget(txn, MDB_PREV);
+			if (txn->cur_key.iov_len != what->iov_len ||
+			    memcmp(txn->cur_key.iov_base, what->iov_base, what->iov_len) != 0) {
+				succ = curget(txn, MDBX_PREV);
 			}
 		} else {
-			succ = curget(txn, MDB_LAST);
+			succ = curget(txn, MDBX_LAST);
 		}
 	}
 
@@ -396,10 +396,10 @@ bool knot_lmdb_find(knot_lmdb_txn_t *txn, MDB_val *what, knot_lmdb_find_t how)
 }
 
 // this is not bulletproof thread-safe (in case of LMDB fail-teardown, but mostly OK
-int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, knot_lmdb_find_t how)
+int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDBX_val *key, MDBX_val *val, knot_lmdb_find_t how)
 {
 	assert(how == KNOT_LMDB_EXACT);
-	if (key->mv_data == NULL) {
+	if (key->iov_base == NULL) {
 		return KNOT_ENOMEM;
 	}
 	if (!txn->opened) {
@@ -408,8 +408,8 @@ int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, 
 	if (txn->ret != KNOT_EOK) {
 		return txn->ret;
 	}
-	MDB_val tmp = { 0 };
-	int ret = mdb_get(txn->txn, txn->db->dbi, key, &tmp);
+	MDBX_val tmp = { 0 };
+	int ret = mdbx_get(txn->txn, txn->db->dbi, key, &tmp);
 	err_to_knot(&ret);
 	if (ret == KNOT_EOK) {
 		ret = mdb_val_clone(&tmp, val);
@@ -419,7 +419,7 @@ int knot_lmdb_find_threadsafe(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, 
 
 bool knot_lmdb_first(knot_lmdb_txn_t *txn)
 {
-	return txn_semcheck(txn) && init_cursor(txn) && curget(txn, MDB_FIRST);
+	return txn_semcheck(txn) && init_cursor(txn) && curget(txn, MDBX_FIRST);
 }
 
 bool knot_lmdb_next(knot_lmdb_txn_t *txn)
@@ -430,44 +430,44 @@ bool knot_lmdb_next(knot_lmdb_txn_t *txn)
 	if (!txn_semcheck(txn)) {
 		return false;
 	}
-	return curget(txn, MDB_NEXT);
+	return curget(txn, MDBX_NEXT);
 }
 
-bool knot_lmdb_is_prefix_of(const MDB_val *prefix, const MDB_val *of)
+bool knot_lmdb_is_prefix_of(const MDBX_val *prefix, const MDBX_val *of)
 {
-	return prefix->mv_size <= of->mv_size &&
-	       memcmp(prefix->mv_data, of->mv_data, prefix->mv_size) == 0;
+	return prefix->iov_len <= of->iov_len &&
+	       memcmp(prefix->iov_base, of->iov_base, prefix->iov_len) == 0;
 }
 
 void knot_lmdb_del_cur(knot_lmdb_txn_t *txn)
 {
 	if (txn_semcheck(txn)) {
-		txn->ret = mdb_cursor_del(txn->cursor, 0);
+		txn->ret = mdbx_cursor_del(txn->cursor, 0);
 		err_to_knot(&txn->ret);
 	}
 }
 
-void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix)
+void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDBX_val *prefix)
 {
 	knot_lmdb_foreach(txn, prefix) {
 		knot_lmdb_del_cur(txn);
 	}
 }
 
-int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool prefix, lmdb_apply_cb cb, void *ctx)
+int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDBX_val *key, bool prefix, lmdb_apply_cb cb, void *ctx)
 {
-	MDB_cursor *cursor;
-	int ret = mdb_cursor_open(txn->txn, txn->db->dbi, &cursor);
+	MDBX_cursor *cursor;
+	int ret = mdbx_cursor_open(txn->txn, txn->db->dbi, &cursor);
 	err_to_knot(&ret);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	MDB_val getkey = *key, getval = { 0 };
-	ret = mdb_cursor_get(cursor, &getkey, &getval, prefix ? MDB_SET_RANGE : MDB_SET);
+	MDBX_val getkey = *key, getval = { 0 };
+	ret = mdbx_cursor_get(cursor, &getkey, &getval, prefix ? MDBX_SET_RANGE : MDBX_SET);
 	err_to_knot(&ret);
 	if (ret != KNOT_EOK) {
-		mdb_cursor_close(cursor);
+		mdbx_cursor_close(cursor);
 		if (prefix && ret == KNOT_ENOENT) {
 			return KNOT_EOK;
 		}
@@ -478,7 +478,7 @@ int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool pr
 		while (knot_lmdb_is_prefix_of(key, &getkey) && ret == KNOT_EOK) {
 			ret = cb(&getkey, &getval, ctx);
 			if (ret == KNOT_EOK) {
-				ret = mdb_cursor_get(cursor, &getkey, &getval, MDB_NEXT);
+				ret = mdbx_cursor_get(cursor, &getkey, &getval, MDBX_NEXT);
 				err_to_knot(&ret);
 			}
 		}
@@ -488,36 +488,36 @@ int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool pr
 	} else {
 		ret = cb(&getkey, &getval, ctx);
 	}
-	mdb_cursor_close(cursor);
+	mdbx_cursor_close(cursor);
 	return ret;
 }
 
-bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val)
+bool knot_lmdb_insert(knot_lmdb_txn_t *txn, MDBX_val *key, MDBX_val *val)
 {
 	if (txn_semcheck(txn) && txn_enomem(txn, key)) {
-		unsigned flags = (val->mv_size > 0 && val->mv_data == NULL ? MDB_RESERVE : 0);
-		txn->ret = mdb_put(txn->txn, txn->db->dbi, key, val, flags);
+		unsigned flags = (val->iov_len > 0 && val->iov_base == NULL ? MDBX_RESERVE : 0);
+		txn->ret = mdbx_put(txn->txn, txn->db->dbi, key, val, flags);
 		err_to_knot(&txn->ret);
 	}
 	return (txn->ret == KNOT_EOK);
 }
 
-int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val)
+int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDBX_val key, MDBX_val val)
 {
-	if (val.mv_data == NULL) {
-		free(key.mv_data);
+	if (val.iov_base == NULL) {
+		free(key.iov_base);
 		return KNOT_ENOMEM;
 	}
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_insert(&txn, &key, &val);
-	free(key.mv_data);
-	free(val.mv_data);
+	free(key.iov_base);
+	free(val.iov_base);
 	knot_lmdb_commit(&txn);
 	return txn.ret;
 }
 
-int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix)
+int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDBX_val *prefix)
 {
 	knot_lmdb_foreach(to, prefix) {
 		knot_lmdb_del_cur(to);
@@ -532,7 +532,7 @@ int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *p
 }
 
 int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
-                            MDB_val *prefixes, size_t n_prefixes)
+                            MDBX_val *prefixes, size_t n_prefixes)
 {
 	if (n_prefixes < 1) {
 		return KNOT_EOK;
@@ -563,8 +563,8 @@ size_t knot_lmdb_usage(knot_lmdb_txn_t *txn)
 	if (!txn_semcheck(txn)) {
 		return 0;
 	}
-	MDB_stat st = { 0 };
-	txn->ret = mdb_stat(txn->txn, txn->db->dbi, &st);
+	MDBX_stat st = { 0 };
+	txn->ret = mdbx_dbi_stat(txn->txn, txn->db->dbi, &st, sizeof(st));
 	err_to_knot(&txn->ret);
 
 	size_t pgs_used = st.ms_branch_pages + st.ms_leaf_pages + st.ms_overflow_pages;
@@ -612,9 +612,9 @@ static bool make_key_part(void *key_data, size_t key_len, const char *format, va
 	return wire.error == KNOT_EOK && wire_ctx_available(&wire) == 0;
 }
 
-MDB_val knot_lmdb_make_key(const char *format, ...)
+MDBX_val knot_lmdb_make_key(const char *format, ...)
 {
-	MDB_val key = { 0 };
+	MDBX_val key = { 0 };
 	va_list arg;
 	const char *tmp_s;
 	const knot_dname_t *tmp_d;
@@ -624,46 +624,46 @@ MDB_val knot_lmdb_make_key(const char *format, ...)
 	for (const char *f = format; *f != '\0'; f++) {
 		switch (*f) {
 		case 'B':
-			key.mv_size += sizeof(uint8_t);
+			key.iov_len += sizeof(uint8_t);
 			(void)va_arg(arg, int); // uint8_t will be promoted to int
 			break;
 		case 'H':
-			key.mv_size += sizeof(uint16_t);
+			key.iov_len += sizeof(uint16_t);
 			(void)va_arg(arg, int); // uint16_t will be promoted to int
 			break;
 		case 'I':
-			key.mv_size += sizeof(uint32_t);
+			key.iov_len += sizeof(uint32_t);
 			(void)va_arg(arg, uint32_t);
 			break;
 		case 'L':
-			key.mv_size += sizeof(uint64_t);
+			key.iov_len += sizeof(uint64_t);
 			(void)va_arg(arg, uint64_t);
 			break;
 		case 'S':
 			tmp_s = va_arg(arg, const char *);
-			key.mv_size += strlen(tmp_s) + 1;
+			key.iov_len += strlen(tmp_s) + 1;
 			break;
 		case 'N':
 			tmp_d = va_arg(arg, const knot_dname_t *);
-			key.mv_size += knot_dname_size(tmp_d);
+			key.iov_len += knot_dname_size(tmp_d);
 			break;
 		case 'D':
 			(void)va_arg(arg, const void *);
-			key.mv_size += va_arg(arg, size_t);
+			key.iov_len += va_arg(arg, size_t);
 			break;
 		}
 	}
 	va_end(arg);
 
 	// second, alloc the key and fill it
-	if (key.mv_size > 0) {
-		key.mv_data = malloc(key.mv_size);
+	if (key.iov_len > 0) {
+		key.iov_base = malloc(key.iov_len);
 	}
-	if (key.mv_data == NULL) {
+	if (key.iov_base == NULL) {
 		return key;
 	}
 	va_start(arg, format);
-	bool succ = make_key_part(key.mv_data, key.mv_size, format, arg);
+	bool succ = make_key_part(key.iov_base, key.iov_len, format, arg);
 	assert(succ);
 	(void)succ;
 	va_end(arg);
@@ -754,7 +754,7 @@ bool knot_lmdb_unmake_curval(knot_lmdb_txn_t *txn, const char *format, ...)
 {
 	va_list arg;
 	va_start(arg, format);
-	bool succ = unmake_key_part(txn->cur_val.mv_data, txn->cur_val.mv_size, format, arg);
+	bool succ = unmake_key_part(txn->cur_val.iov_base, txn->cur_val.iov_len, format, arg);
 	va_end(arg);
 	if (!succ && txn->ret == KNOT_EOK) {
 		txn->ret = KNOT_EMALF;

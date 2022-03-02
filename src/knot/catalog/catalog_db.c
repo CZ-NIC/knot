@@ -23,7 +23,7 @@
 #include "knot/catalog/catalog_db.h"
 #include "knot/common/log.h"
 
-static const MDB_val catalog_iter_prefix = { 1, "" };
+static const MDBX_val catalog_iter_prefix = { "", 1 };
 
 size_t catalog_dname_append(knot_dname_storage_t storage, const knot_dname_t *name)
 {
@@ -51,19 +51,19 @@ int catalog_bailiwick_shift(const knot_dname_t *subname, const knot_dname_t *nam
 
 void catalog_init(catalog_t *cat, const char *path, size_t mapsize)
 {
-	knot_lmdb_init(&cat->db, path, mapsize, MDB_NOTLS, NULL);
+	knot_lmdb_init(&cat->db, path, mapsize, MDBX_NOTLS, NULL);
 }
 
 static void ensure_cat_version(knot_lmdb_txn_t *ro_txn, knot_lmdb_txn_t *rw_txn)
 {
-	MDB_val key = { 8, "\x01version" };
+	MDBX_val key = { "\x01version", 8 };
 	if (knot_lmdb_find(ro_txn, &key, KNOT_LMDB_EXACT)) {
-		if (strncmp(CATALOG_VERSION, ro_txn->cur_val.mv_data,
-		            ro_txn->cur_val.mv_size) != 0) {
+		if (strncmp(CATALOG_VERSION, ro_txn->cur_val.iov_base,
+		            ro_txn->cur_val.iov_len) != 0) {
 			log_warning("catalog version mismatch");
 		}
 	} else if (rw_txn != NULL) {
-		MDB_val val = { strlen(CATALOG_VERSION), CATALOG_VERSION };
+		MDBX_val val = { CATALOG_VERSION, strlen(CATALOG_VERSION) };
 		knot_lmdb_insert(rw_txn, &key, &val);
 	}
 }
@@ -183,12 +183,12 @@ int catalog_add(catalog_t *cat, const knot_dname_t *member,
 		return KNOT_EOUTOFZONE;
 	}
 	assert(bail >= 0 && bail < 256);
-	MDB_val key = knot_lmdb_make_key("BN", 0, member); // 0 for future purposes
-	MDB_val val = knot_lmdb_make_key("BBNS", 0, bail, owner, group);
+	MDBX_val key = knot_lmdb_make_key("BN", 0, member); // 0 for future purposes
+	MDBX_val val = knot_lmdb_make_key("BBNS", 0, bail, owner, group);
 
 	knot_lmdb_insert(cat->rw_txn, &key, &val);
-	free(key.mv_data);
-	free(val.mv_data);
+	free(key.iov_base);
+	free(val.iov_base);
 	return cat->rw_txn->ret;
 }
 
@@ -197,18 +197,18 @@ int catalog_del(catalog_t *cat, const knot_dname_t *member)
 	if (cat->rw_txn == NULL) {
 		return KNOT_EINVAL;
 	}
-	MDB_val key = knot_lmdb_make_key("BN", 0, member);
+	MDBX_val key = knot_lmdb_make_key("BN", 0, member);
 	knot_lmdb_del_prefix(cat->rw_txn, &key); // deletes one record
-	free(key.mv_data);
+	free(key.iov_base);
 	return cat->rw_txn->ret;
 }
 
-static void unmake_val(MDB_val *val, const knot_dname_t **owner,
+static void unmake_val(MDBX_val *val, const knot_dname_t **owner,
                        const knot_dname_t **catz, const char **group)
 {
 	uint8_t zero, shift;
 	*group = ""; // backward compatibility with Knot 3.0
-	knot_lmdb_unmake_key(val->mv_data, val->mv_size, "BBNS", &zero, &shift,
+	knot_lmdb_unmake_key(val->iov_base, val->iov_len, "BBNS", &zero, &shift,
 	                     owner, group);
 	*catz = *owner + shift;
 }
@@ -222,14 +222,14 @@ static int find_threadsafe(catalog_t *cat, const knot_dname_t *member,
 		return KNOT_ENOENT;
 	}
 
-	MDB_val key = knot_lmdb_make_key("BN", 0, member), val = { 0 };
+	MDBX_val key = knot_lmdb_make_key("BN", 0, member), val = { 0 };
 
 	int ret = knot_lmdb_find_threadsafe(cat->ro_txn, &key, &val, KNOT_LMDB_EXACT);
 	if (ret == KNOT_EOK) {
 		unmake_val(&val, owner, catz, group);
-		*tofree = val.mv_data;
+		*tofree = val.iov_base;
 	}
-	free(key.mv_data);
+	free(key.iov_base);
 	return ret;
 }
 
@@ -270,13 +270,13 @@ typedef struct {
 	void *ctx;
 } catalog_apply_ctx_t;
 
-static int catalog_apply_cb(MDB_val *key, MDB_val *val, void *ctx)
+static int catalog_apply_cb(MDBX_val *key, MDBX_val *val, void *ctx)
 {
 	catalog_apply_ctx_t *iter_ctx = ctx;
 	uint8_t zero;
 	const knot_dname_t *mem = NULL, *ow = NULL, *cz = NULL;
 	const char *gr = NULL;
-	knot_lmdb_unmake_key(key->mv_data, key->mv_size, "BN", &zero, &mem);
+	knot_lmdb_unmake_key(key->iov_base, key->iov_len, "BN", &zero, &mem);
 	unmake_val(val, &ow, &cz, &gr);
 	if (mem == NULL || ow == NULL || cz == NULL) {
 		return KNOT_EMALF;
@@ -287,11 +287,11 @@ static int catalog_apply_cb(MDB_val *key, MDB_val *val, void *ctx)
 int catalog_apply(catalog_t *cat, const knot_dname_t *for_member,
                   catalog_apply_cb_t cb, void *ctx, bool rw)
 {
-	MDB_val prefix = knot_lmdb_make_key(for_member == NULL ? "B" : "BN", 0, for_member);
+	MDBX_val prefix = knot_lmdb_make_key(for_member == NULL ? "B" : "BN", 0, for_member);
 	catalog_apply_ctx_t iter_ctx = { cb, ctx };
 	knot_lmdb_txn_t *use_txn = rw ? cat->rw_txn : cat->ro_txn;
 	int ret = knot_lmdb_apply_threadsafe(use_txn, &prefix, true, catalog_apply_cb, &iter_ctx);
-	free(prefix.mv_data);
+	free(prefix.iov_base);
 	return ret;
 }
 
@@ -325,12 +325,12 @@ int catalog_copy(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
 	knot_lmdb_txn_t txn_r = { 0 }, txn_w = { 0 };
 	knot_lmdb_begin(from, &txn_r, read_rw_txn); // using RW txn not to conflict with still-open RO txn
 	knot_lmdb_begin(to, &txn_w, true);
-	knot_lmdb_foreach(&txn_w, (MDB_val *)&catalog_iter_prefix) {
+	knot_lmdb_foreach(&txn_w, (MDBX_val *)&catalog_iter_prefix) {
 		if (same_catalog(&txn_w, cat_only)) {
 			knot_lmdb_del_cur(&txn_w);
 		}
 	}
-	knot_lmdb_foreach(&txn_r, (MDB_val *)&catalog_iter_prefix) {
+	knot_lmdb_foreach(&txn_r, (MDBX_val *)&catalog_iter_prefix) {
 		if (same_catalog(&txn_r, cat_only)) {
 			knot_lmdb_insert(&txn_w, &txn_r.cur_key, &txn_r.cur_val);
 		}

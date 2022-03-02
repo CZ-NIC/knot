@@ -48,8 +48,8 @@ static unsigned lmdb_page_size(knot_lmdb_db_t *db)
 {
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, false);
-	MDB_stat st = { 0 };
-	mdb_stat(txn.txn, txn.db->dbi, &st);
+	MDBX_stat st = { 0 };
+	mdbx_dbi_stat(txn.txn, txn.db->dbi, &st, sizeof(st));
 	knot_lmdb_abort(&txn);
 	return st.ms_psize;
 }
@@ -289,7 +289,7 @@ static int load_j_list(zone_journal_t *zj, bool zij, uint32_t serial,
 {
 	changeset_t *ch;
 	init_list(list);
-	int ret = journal_read_begin(*zj, zij, serial, read);
+	int ret = journal_read_begin(*zj, zij, serial, NULL, read);
 	if (ret == KNOT_EOK) {
 		while ((ch = calloc(1, sizeof(*ch))) != NULL &&
 		       journal_read_changeset(*read, ch)) {
@@ -423,9 +423,9 @@ static void test_store_load(const knot_dname_t *apex)
 	is_int(KNOT_EOK, ret, "journal: inserted cycle (%s)", knot_strerror(ret));
 	ret = journal_sem_check(jj);
 	is_int(KNOT_EOK, ret, "journal check (%s)", knot_strerror(ret));
-	ret = journal_read_begin(jj, false, 0, &read);
+	ret = journal_read_begin(jj, false, 0, NULL, &read);
 	is_int(KNOT_ENOENT, ret, "journal: cycle removed first changeset (%d should= %d)", ret, KNOT_ENOENT);
-	ret = journal_read_begin(jj, false, 1, &read);
+	ret = journal_read_begin(jj, false, 1, NULL, &read);
 	is_int(KNOT_ENOENT, ret, "journal: cycle removed second changeset (%d should= %d)", ret, KNOT_ENOENT);
 	ret = load_j_list(&jj, false, 4294967294, &read, &l);
 	is_int(KNOT_EOK, ret, "journal: read after cycle (%s)", knot_strerror(ret));

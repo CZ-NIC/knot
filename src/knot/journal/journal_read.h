@@ -34,7 +34,7 @@ typedef int (*journal_walk_cb_t)(bool special, const changeset_t *ch, void *ctx)
  *
  * \return KNOT_E*
  */
-int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, journal_read_t **ctx);
+int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, knot_lmdb_txn_t *txn, journal_read_t **ctx);
 
 /*!
  * \brief Read a single RRSet from a journal changeset.

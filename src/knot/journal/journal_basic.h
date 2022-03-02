@@ -34,8 +34,8 @@ typedef struct {
 /*! \brief Convert journal_mode to LMDB environment flags. */
 inline static unsigned journal_env_flags(int journal_mode, bool readonly)
 {
-	return (journal_mode == JOURNAL_MODE_ASYNC ? (MDB_WRITEMAP | MDB_MAPASYNC) : 0) |
-	       (readonly ? MDB_RDONLY : 0);
+	return (journal_mode == JOURNAL_MODE_ASYNC ? (MDBX_WRITEMAP | MDBX_MAPASYNC) : 0) |
+	       (readonly ? MDBX_RDONLY : 0);
 }
 
 /*!
@@ -47,7 +47,7 @@ inline static unsigned journal_env_flags(int journal_mode, bool readonly)
  *
  * \return DB key. 'mv_data' shall be freed later. 'mv_data' is NULL on failure.
  */
-MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const knot_dname_t *zone);
+MDBX_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const knot_dname_t *zone);
 
 /*!
  * \brief Create a database key for changeset chunk.
@@ -59,12 +59,12 @@ MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const
  *
  * \return DB key. 'mv_data' shall be freed later. 'mv_data' is NULL on failure.
  */
-MDB_val journal_make_chunk_key(const knot_dname_t *apex, uint32_t ch_from, bool zij, uint32_t chunk_id);
+MDBX_val journal_make_chunk_key(const knot_dname_t *apex, uint32_t ch_from, bool zij, uint32_t chunk_id);
 
 /*!
  * \brief Return a key prefix to operate with all zone-related records.
  */
-MDB_val journal_zone_prefix(const knot_dname_t *zone);
+MDBX_val journal_zone_prefix(const knot_dname_t *zone);
 
 /*!
  * \brief Delete all zone-related records from journal with open read-write txn.
@@ -86,7 +86,7 @@ void journal_make_header(void *chunk, uint32_t ch_serial_to);
  *
  * \return The changeset's serial-to.
  */
-uint32_t journal_next_serial(const MDB_val *chunk);
+uint32_t journal_next_serial(const MDBX_val *chunk);
 
 /*!
  * \brief Obtain serial-to of a changeset stored in journal.

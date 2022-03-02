@@ -28,7 +28,8 @@
 
 struct journal_read {
 	knot_lmdb_txn_t txn;
-	MDB_val key_prefix;
+	bool shared_txn;
+	MDBX_val key_prefix;
 	const knot_dname_t *zone;
 	wire_ctx_t wire;
 	uint32_t next;
@@ -41,13 +42,13 @@ int journal_read_get_error(const journal_read_t *ctx, int another_error)
 
 static void update_ctx_wire(journal_read_t *ctx)
 {
-	ctx->wire = wire_ctx_init_const(ctx->txn.cur_val.mv_data, ctx->txn.cur_val.mv_size);
+	ctx->wire = wire_ctx_init_const(ctx->txn.cur_val.iov_base, ctx->txn.cur_val.iov_len);
 	wire_ctx_skip(&ctx->wire, JOURNAL_HEADER_SIZE);
 }
 
 static bool go_next_changeset(journal_read_t *ctx, bool go_zone, const knot_dname_t *zone)
 {
-	free(ctx->key_prefix.mv_data);
+	free(ctx->key_prefix.iov_base);
 	ctx->key_prefix = journal_changeset_id_to_key(go_zone, ctx->next, zone);
 	if (!knot_lmdb_find_prefix(&ctx->txn, &ctx->key_prefix)) {
 		return false;
@@ -61,10 +62,10 @@ static bool go_next_changeset(journal_read_t *ctx, bool go_zone, const knot_dnam
 	return true;
 }
 
-int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, journal_read_t **ctx)
+int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, knot_lmdb_txn_t *txn, journal_read_t **ctx)
 {
 	*ctx = NULL;
-	if (!journal_is_existing(j)) { // this also opens the LMDB if not already
+	if (txn == NULL && !journal_is_existing(j)) { // this also opens the LMDB if not already
 		return KNOT_ENOENT;
 	}
 
@@ -76,7 +77,12 @@ int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, j
 	newctx->zone = j.zone;
 	newctx->next = serial_from;
 
-	knot_lmdb_begin(j.db, &newctx->txn, false);
+	if (txn == NULL) {
+		knot_lmdb_begin(j.db, &newctx->txn, false);
+	} else {
+		newctx->txn = *txn;
+		newctx->shared_txn = true;
+	}
 
 	if (go_next_changeset(newctx, read_zone, j.zone)) {
 		*ctx = newctx;
@@ -90,8 +96,10 @@ int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, j
 void journal_read_end(journal_read_t *ctx)
 {
 	if (ctx != NULL) {
-		free(ctx->key_prefix.mv_data);
-		knot_lmdb_abort(&ctx->txn);
+		free(ctx->key_prefix.iov_base);
+		if (!ctx->shared_txn) {
+			knot_lmdb_abort(&ctx->txn);
+		}
 		free(ctx);
 	}
 }
@@ -273,7 +281,7 @@ int journal_walk_from(zone_journal_t j, uint32_t from,
 
 	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && from != md.serial_to &&
 	    ret == KNOT_EOK) {
-		ret = journal_read_begin(j, false, from, &read);
+		ret = journal_read_begin(j, false, from, NULL, &read);
 		while (ret == KNOT_EOK && journal_read_changeset(read, &ch)) {
 			ret = cb(false, &ch, ctx);
 			at_least_one = true;
@@ -313,10 +321,10 @@ int journal_walk(zone_journal_t j, journal_walk_cb_t cb, void *ctx)
 		return ret;
 	}
 	if (zone_in_j) {
-		ret = journal_read_begin(j, true, 0, &read);
+		ret = journal_read_begin(j, true, 0, NULL, &read);
 		goto read_one_special;
 	} else if ((md.flags & JOURNAL_MERGED_SERIAL_VALID)) {
-		ret = journal_read_begin(j, false, md.merged_serial, &read);
+		ret = journal_read_begin(j, false, md.merged_serial, NULL, &read);
 read_one_special:
 		if (ret == KNOT_EOK && journal_read_changeset(read, &ch)) {
 			ret = cb(true, &ch, ctx);

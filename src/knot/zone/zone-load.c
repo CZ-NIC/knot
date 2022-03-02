@@ -91,7 +91,7 @@ int zone_load_journal(conf_t *conf, zone_t *zone, zone_contents_t *contents)
 	uint32_t serial = zone_contents_serial(contents);
 
 	journal_read_t *read = NULL;
-	int ret = journal_read_begin(zone_journal(zone), false, serial, &read);
+	int ret = journal_read_begin(zone_journal(zone), false, serial, NULL, &read);
 	switch (ret) {
 	case KNOT_EOK:
 		break;
@@ -126,7 +126,7 @@ int zone_load_from_journal(conf_t *conf, zone_t *zone, zone_contents_t **content
 	}
 
 	journal_read_t *read = NULL;
-	int ret = journal_read_begin(zone_journal(zone), true, 0, &read);
+	int ret = journal_read_begin(zone_journal(zone), true, 0, NULL, &read);
 	if (ret == KNOT_ENOENT) {
 		zone_contents_deep_free(*contents);
 		*contents = NULL;

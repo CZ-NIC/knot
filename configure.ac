@@ -509,10 +509,12 @@ PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
     AC_MSG_ERROR([lmdb library not found])
   ])
 ])
-lmdb_CFLAGS="-I\$(top_srcdir)/src/contrib/lmdb"
-lmdb_LIBS=""
+mdbx_CFLAGS="-I\$(top_srcdir)/src/contrib/lmdb"
+mdbx_LIBS=""
 AC_SUBST([lmdb_CFLAGS])
 AC_SUBST([lmdb_LIBS])
+AC_SUBST([mdbx_CFLAGS])
+AC_SUBST([mdbx_LIBS])
 
 # LMDB mapping sizes
 conf_mapsize_default=500

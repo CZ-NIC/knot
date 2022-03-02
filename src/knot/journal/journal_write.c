@@ -25,22 +25,22 @@
 static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser,
                                     const knot_dname_t *apex, bool zij, uint32_t ch_from, uint32_t ch_to)
 {
-	MDB_val chunk;
+	MDBX_val chunk;
 	uint32_t i = 0;
 	while (serialize_unfinished(ser) && txn->ret == KNOT_EOK) {
 		serialize_prepare(ser, JOURNAL_CHUNK_THRESH - JOURNAL_HEADER_SIZE,
-		                  JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.mv_size);
-		if (chunk.mv_size == 0) {
+		                  JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.iov_len);
+		if (chunk.iov_len == 0) {
 			break; // beware! If this is omitted, it creates empty chunk => EMALF when reading.
 		}
-		chunk.mv_size += JOURNAL_HEADER_SIZE;
-		chunk.mv_data = NULL;
-		MDB_val key = journal_make_chunk_key(apex, ch_from, zij, i);
+		chunk.iov_len += JOURNAL_HEADER_SIZE;
+		chunk.iov_base = NULL;
+		MDBX_val key = journal_make_chunk_key(apex, ch_from, zij, i);
 		if (knot_lmdb_insert(txn, &key, &chunk)) {
-			journal_make_header(chunk.mv_data, ch_to);
-			serialize_chunk(ser, chunk.mv_data + JOURNAL_HEADER_SIZE, chunk.mv_size - JOURNAL_HEADER_SIZE);
+			journal_make_header(chunk.iov_base, ch_to);
+			serialize_chunk(ser, chunk.iov_base + JOURNAL_HEADER_SIZE, chunk.iov_len - JOURNAL_HEADER_SIZE);
 		}
-		free(key.mv_data);
+		free(key.iov_base);
 		i++;
 	}
 	int ret = serialize_deinit(ser);
@@ -87,13 +87,13 @@ static bool delete_one(knot_lmdb_txn_t *txn, bool del_zij, uint32_t del_serial,
                        const knot_dname_t *zone, uint64_t *freed, uint32_t *next_serial)
 {
 	*freed = 0;
-	MDB_val prefix = journal_changeset_id_to_key(del_zij, del_serial, zone);
+	MDBX_val prefix = journal_changeset_id_to_key(del_zij, del_serial, zone);
 	knot_lmdb_foreach(txn, &prefix) {
-		*freed += txn->cur_val.mv_size;
+		*freed += txn->cur_val.iov_len;
 		*next_serial = journal_next_serial(&txn->cur_val);
 		knot_lmdb_del_cur(txn);
 	}
-	free(prefix.mv_data);
+	free(prefix.iov_base);
 	return (*freed > 0);
 }
 
@@ -111,7 +111,7 @@ void journal_merge(zone_journal_t j, knot_lmdb_txn_t *txn, bool merge_zij,
 	changeset_t merge;
 	memset(&merge, 0, sizeof(merge));
 	journal_read_t *read = NULL;
-	txn->ret = journal_read_begin(j, merge_zij, merge_serial, &read);
+	txn->ret = journal_read_begin(j, merge_zij, merge_serial, txn, &read);
 	if (txn->ret != KNOT_EOK) {
 		return;
 	}

@@ -47,7 +47,7 @@ static void fix_endian(void *data, size_t data_size, bool in)
 	memcpy(data, &after, data_size);
 }
 
-static MDB_val metadata_key(const knot_dname_t *zone, const char *metadata)
+static MDBX_val metadata_key(const knot_dname_t *zone, const char *metadata)
 {
 	if (zone == NULL) {
 		return knot_lmdb_make_key("IS", (uint32_t)0, metadata);
@@ -58,19 +58,19 @@ static MDB_val metadata_key(const knot_dname_t *zone, const char *metadata)
 
 static bool del_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const char *metadata)
 {
-	MDB_val key = metadata_key(zone, metadata);
-	if (key.mv_data != NULL) {
+	MDBX_val key = metadata_key(zone, metadata);
+	if (key.iov_base != NULL) {
 		knot_lmdb_del_prefix(txn, &key);
-		free(key.mv_data);
+		free(key.iov_base);
 	}
-	return (key.mv_data != NULL);
+	return (key.iov_base != NULL);
 }
 
 static bool get_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const char *metadata)
 {
-	MDB_val key = metadata_key(zone, metadata);
+	MDBX_val key = metadata_key(zone, metadata);
 	bool ret = knot_lmdb_find(txn, &key, KNOT_LMDB_EXACT); // not FORCE
-	free(key.mv_data);
+	free(key.iov_base);
 	return ret;
 }
 
@@ -78,8 +78,8 @@ static bool get_metadata_numeric(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
                                  const char *metadata, void *result, size_t result_size)
 {
 	if (get_metadata(txn, zone, metadata)) {
-		if (txn->cur_val.mv_size == result_size) {
-			memcpy(result, txn->cur_val.mv_data, result_size);
+		if (txn->cur_val.iov_len == result_size) {
+			memcpy(result, txn->cur_val.iov_base, result_size);
 			fix_endian(result, result_size, true);
 			return true;
 		} else {
@@ -120,15 +120,15 @@ bool get_metadata64or32(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 void set_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, const char *metadata,
                   const void *valp, size_t val_size, bool numeric)
 {
-	MDB_val key = metadata_key(zone, metadata);
-	MDB_val val = { val_size, NULL };
+	MDBX_val key = metadata_key(zone, metadata);
+	MDBX_val val = { NULL, val_size };
 	if (knot_lmdb_insert(txn, &key, &val)) {
-		memcpy(val.mv_data, valp, val_size);
+		memcpy(val.iov_base, valp, val_size);
 		if (numeric) {
-			fix_endian(val.mv_data, val_size, false);
+			fix_endian(val.iov_base, val_size, false);
 		}
 	}
-	free(key.mv_data);
+	free(key.iov_base);
 }
 
 static int64_t last_occupied_diff(knot_lmdb_txn_t *txn)
@@ -143,7 +143,7 @@ void update_last_inserter(knot_lmdb_txn_t *txn, const knot_dname_t *new_inserter
 	uint64_t occupied_now = knot_lmdb_usage(txn), lis_occupied = 0;
 	int64_t occupied_diff = last_occupied_diff(txn);
 	knot_dname_t *last_inserter = get_metadata(txn, NULL, "last_inserter_zone") ?
-	                              knot_dname_copy(txn->cur_val.mv_data, NULL) : NULL;
+	                              knot_dname_copy(txn->cur_val.iov_base, NULL) : NULL;
 	if (occupied_diff == 0 || last_inserter == NULL) {
 		goto update_inserter;
 	}
@@ -178,7 +178,7 @@ void journal_load_metadata(knot_lmdb_txn_t *txn, const knot_dname_t *zone, journ
 {
 	memset(md, 0, sizeof(*md));
 	if (get_metadata(txn, NULL, "version")) {
-		switch (first_digit(txn->cur_val.mv_data)) {
+		switch (first_digit(txn->cur_val.iov_base)) {
 		case 3:
 			// TODO warning about downgrade
 			// FALLTHROUGH
@@ -320,9 +320,9 @@ int journal_copy_with_md(knot_lmdb_db_t *from, knot_lmdb_db_t *to, const knot_dn
 	knot_lmdb_begin(from, &tr, true);
 	knot_lmdb_begin(to, &tw, true);
 	update_last_inserter(&tr, NULL);
-	MDB_val prefix = journal_zone_prefix(zone);
+	MDBX_val prefix = journal_zone_prefix(zone);
 	knot_lmdb_copy_prefix(&tr, &tw, &prefix);
-	free(prefix.mv_data);
+	free(prefix.iov_base);
 	knot_lmdb_commit(&tw);
 	knot_lmdb_commit(&tr);
 done:
@@ -380,7 +380,7 @@ int journal_info(zone_journal_t j, bool *exists, uint32_t *first_serial, bool *h
 		get_metadata64(&txn, j.zone, "occupied", occupied);
 
 		if (get_metadata(&txn, NULL, "last_inserter_zone") &&
-		    knot_dname_is_equal(j.zone, txn.cur_val.mv_data)) {
+		    knot_dname_is_equal(j.zone, txn.cur_val.iov_base)) {
 			*occupied = MAX(0, (int64_t)*occupied + last_occupied_diff(&txn));
 		}
 	}
@@ -403,9 +403,9 @@ int journals_walk(knot_lmdb_db_t *db, journals_walk_cb_t cb, void *ctx)
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, false);
 	knot_dname_storage_t search_data = { 0 };
-	MDB_val search = { 1, search_data };
+	MDBX_val search = { search_data, 1 };
 	while (knot_lmdb_find(&txn, &search, KNOT_LMDB_GEQ)) {
-		knot_dname_t *found = txn.cur_key.mv_data;
+		knot_dname_t *found = txn.cur_key.iov_base;
 		uint32_t unused_flags;
 		if (get_metadata32(&txn, found, "flags", &unused_flags)) {
 			// matched journal DB key appears to be a zone name
@@ -413,9 +413,9 @@ int journals_walk(knot_lmdb_db_t *db, journals_walk_cb_t cb, void *ctx)
 		}
 
 		// update searched key to next after found zone
-		search.mv_size = knot_dname_size(found);
-		memcpy(search.mv_data, found, search.mv_size);
-		((uint8_t *)search.mv_data)[search.mv_size - 1]++;
+		search.iov_len = knot_dname_size(found);
+		memcpy(search.iov_base, found, search.iov_len);
+		((uint8_t *)search.iov_base)[search.iov_len - 1]++;
 	}
 	knot_lmdb_abort(&txn);
 	return txn.ret;
