@@ -140,7 +140,7 @@ int test_date_to_timestamp(void)
 	tzset();
 
 	// Get maximal allowed timestamp.
-	strptime("21051231235959", "%Y%m%d%H%M%S", &tm);
+	strptime("22251231235959", "%Y%m%d%H%M%S", &tm);
 	max_timestamp = mktime(&tm);
 
 	// Testing loop over whole input interval.
@@ -159,11 +159,11 @@ int test_date_to_timestamp(void)
 		// Some continuous logging.
 		if (ref_timestamp % 10000000 == 0) {
 			val1 = ref_timestamp;
-			printf("%s = %"PRIu64"\n", buffer, val1);
+			printf("%s = %"PRIu32"\n", buffer, (uint32_t)val1);
 		}
 
 		// Comparing results.
-		if (ref_timestamp != test_timestamp) {
+		if ((uint32_t)ref_timestamp != test_timestamp) {
 			val1 = ref_timestamp;
 
 			if (ref_timestamp > test_timestamp) {
