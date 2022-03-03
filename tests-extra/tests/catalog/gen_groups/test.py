@@ -44,6 +44,8 @@ t.start()
 
 slave.zones_wait(zone)
 
+master.ctl("zone-status")
+slave.ctl("zone-status")
 resp = slave.dig(zone[0].name, "SOA", dnssec=True)
 resp.check(rcode="NOERROR")
 resp.check_count(1, "RRSIG")
@@ -58,6 +60,8 @@ master.reload()
 slave.flush()
 
 t.sleep(8)
+master.ctl("zone-status +catalog")
+slave.ctl("zone-status +catalog")
 resp = slave.dig(zone[1].name, "SOA", dnssec=True)
 resp.check(rcode="NOERROR")
 resp.check_count(1, "RRSIG")

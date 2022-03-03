@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #define CATALOG_ZONE_VERSION	"2" // must be just one char long
 #define CATALOG_ZONES_LABEL	"\x05""zones"
 #define CATALOG_GROUP_LABEL	"\x05""group"
+#define CATALOG_GROUP_MAXLEN	255
 
 typedef struct catalog {
 	knot_lmdb_db_t db;

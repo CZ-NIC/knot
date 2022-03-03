@@ -39,6 +39,7 @@
 #include "contrib/files.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
+#include "contrib/openbsd/strlcat.h"
 #include "contrib/ucw/lists.h"
 #include "libzscanner/scanner.h"
 
@@ -299,6 +300,59 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 			}
 		}
+		ret = knot_ctl_send(args->ctl, type, &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_CATALOG)) {
+		char buf[1 + KNOT_DNAME_TXT_MAXLEN + 1 + CATALOG_GROUP_MAXLEN + 1] = "";
+		data[KNOT_CTL_IDX_TYPE] = "catalog";
+		data[KNOT_CTL_IDX_DATA] = buf;
+
+		if (zone->flags & ZONE_IS_CAT_MEMBER) {
+			const knot_dname_t *catz;
+			const char *group;
+			void *to_free;
+			ret = catalog_get_catz(zone_catalog(zone), zone->name,
+			                       &catz, &group, &to_free);
+			if (ret == KNOT_EOK) {
+				if (knot_dname_to_str(buf, catz, sizeof(buf)) == NULL) {
+					buf[0] = '\0';
+				}
+				if (group[0] != '\0') {
+					size_t idx = strlcat(buf, "#", sizeof(buf));
+					(void)strlcat(buf + idx, group, sizeof(buf) - idx);
+				}
+				free(to_free);
+			}
+		} else {
+			conf_val_t val = conf_zone_get(conf(), C_CATALOG_ROLE, zone->name);
+			switch (conf_opt(&val)) {
+			case CATALOG_ROLE_INTERPRET:
+				data[KNOT_CTL_IDX_DATA] = "interpret";
+				break;
+			case CATALOG_ROLE_GENERATE:
+				data[KNOT_CTL_IDX_DATA] = "generate";
+				break;
+			case CATALOG_ROLE_MEMBER:
+				buf[0] = '@';
+				val = conf_zone_get(conf(), C_CATALOG_ZONE, zone->name);
+				if (knot_dname_to_str(buf + 1, conf_dname(&val), sizeof(buf) - 1) == NULL) {
+					buf[1] = '\0';
+				}
+				val = conf_zone_get(conf(), C_CATALOG_GROUP, zone->name);
+				if (val.code == KNOT_EOK) {
+					size_t idx = strlcat(buf, "#", sizeof(buf));
+					(void)strlcat(buf + idx, conf_str(&val), sizeof(buf) - idx);
+				}
+				break;
+			default:
+				data[KNOT_CTL_IDX_DATA] = "none";
+			}
+		}
+
 		ret = knot_ctl_send(args->ctl, type, &data);
 		if (ret != KNOT_EOK) {
 			return ret;
