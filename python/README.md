@@ -73,6 +73,14 @@ finally:
     ctl.close()
 ```
 
+```python3
+    # List configured zones (including catalog member ones)
+    ctl.send_block(cmd="conf-list", flags="z")
+    resp = ctl.receive_block()
+    for zone in resp['zone']:
+        print(zone)
+```
+
 ## Probe module
 
 Using this module it's possible to receive traffic data from a running daemon with

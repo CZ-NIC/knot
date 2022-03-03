@@ -1963,6 +1963,7 @@ static void list_zone(zone_t *zone, knot_ctl_t *ctl)
 	knot_dname_to_str(buff, zone->name, sizeof(buff));
 
 	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_SECTION] = "zone",
 		[KNOT_CTL_IDX_ID] = buff
 	};
 
