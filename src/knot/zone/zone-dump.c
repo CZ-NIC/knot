@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -158,6 +158,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments, const char 
 	// Set structure with parameters.
 	knot_dump_style_t style = KNOT_DUMP_STYLE_DEFAULT;
 	style.color = color;
+	style.now = knot_time();
 	dump_params_t params = {
 		.file = file,
 		.buf = buf,

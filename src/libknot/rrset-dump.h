@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,6 +56,8 @@ typedef struct {
 	/*!< Optional color control sequence which is put before every output line.
 	 *   Not compatible with wrap. */
 	const char *color;
+	/*!< Time context for correct > 32 bit timestamp conversion. */
+	uint64_t now;
 } knot_dump_style_t;
 
 /*! \brief Default dump style. */
