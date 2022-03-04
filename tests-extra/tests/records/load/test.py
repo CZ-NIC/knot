@@ -10,7 +10,8 @@ master = t.server("bind")
 slave = t.server("knot")
 reference = t.server("knot")
 
-zones = t.zone_rnd(2) + t.zone(".") + t.zone("records.") + t.zone("svcb", storage=".")
+zones = t.zone_rnd(2) + t.zone(".") + t.zone("records.") + t.zone("svcb", storage=".") + \
+        t.zone("future", storage=".")
 
 t.link(zones, master, slave)
 t.link(zones, reference)
