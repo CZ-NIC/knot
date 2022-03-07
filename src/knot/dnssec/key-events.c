@@ -517,34 +517,69 @@ static int submit_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
 	return KNOT_EOK;
 }
 
+knot_kasp_key_t *knot_dnssec_key2retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey)
+{
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		key_state_t keystate = get_key_state(key, ctx->now);
+		if (((newkey->is_ksk && key->is_ksk) || (!newkey->is_ksk && !key->is_ksk))
+		    && (keystate == DNSSEC_KEY_STATE_ACTIVE)) {
+			return key;
+		}
+	}
+	return NULL;
+}
+
+static knot_kasp_key_t *zsk2retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *newksk)
+{
+	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &ctx->zone->keys[i];
+		key_state_t keystate = get_key_state(key, ctx->now);
+		uint8_t keyalg = dnssec_key_get_algorithm(key->key);
+		bool algdiff = (keyalg != dnssec_key_get_algorithm(newksk->key));
+
+		if (key->is_zsk && !key->is_ksk &&
+		    (algdiff || newksk->is_zsk) &&
+		    (keystate == DNSSEC_KEY_STATE_ACTIVE ||
+		     keystate == DNSSEC_KEY_STATE_RETIRE_ACTIVE)) {
+			return key;
+		}
+	}
+	return NULL;
+}
+
 static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint32_t active_retire_delay)
 {
 	if (newkey->is_ksk) {
 		log_zone_notice(ctx->zone->dname, "DNSSEC, KSK submission, confirmed");
 	}
 
-	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		knot_kasp_key_t *key = &ctx->zone->keys[i];
-		key_state_t keystate = get_key_state(key, ctx->now);
-		uint8_t keyalg = dnssec_key_get_algorithm(key->key);
-		if (((newkey->is_ksk && key->is_ksk) || (newkey->is_zsk && key->is_zsk && !key->is_ksk))
-		    && keystate == DNSSEC_KEY_STATE_ACTIVE) {
-			if (key->is_ksk || keyalg != dnssec_key_get_algorithm(newkey->key)) {
-				key->timing.retire_active = ctx->now;
-			} else {
-				key->timing.retire = ctx->now;
+	knot_kasp_key_t *oldkey = knot_dnssec_key2retire(ctx, newkey), *oldzsk = NULL;
+	if (oldkey != NULL) {
+		uint8_t keyalg = dnssec_key_get_algorithm(oldkey->key);
+		bool algdiff = (keyalg != dnssec_key_get_algorithm(newkey->key));
+
+		if (algdiff) {
+			oldkey->timing.retire_active = ctx->now;
+			if (oldkey->is_ksk) {
+				oldkey->timing.post_active = ctx->now + active_retire_delay;
 			}
+		} else if (oldkey->is_ksk) {
+			oldkey->timing.retire_active = ctx->now;
+			if (oldkey->is_zsk) { // CSK
+				oldkey->timing.retire = ctx->now + active_retire_delay;
+			} else {
+				oldkey->timing.remove = ctx->now + active_retire_delay;
+			}
+		} else {
+			oldkey->timing.retire = ctx->now;
 		}
-		if (newkey->is_ksk && (keystate == DNSSEC_KEY_STATE_ACTIVE ||
-		                       keystate == DNSSEC_KEY_STATE_RETIRE_ACTIVE)) {
-			if (keyalg != dnssec_key_get_algorithm(newkey->key)) {
-				key->timing.post_active = ctx->now + active_retire_delay;
-			} else if (key->is_ksk) {
-				if (key->is_zsk) { // CSK
-					key->timing.retire = ctx->now + active_retire_delay;
-				} else {
-					key->timing.remove = ctx->now + active_retire_delay;
-				}
+
+		if (newkey->is_ksk && (oldzsk = zsk2retire(ctx, newkey)) != NULL) {
+			if (algdiff) {
+				oldzsk->timing.post_active = ctx->now + active_retire_delay;
+			} else {
+				oldzsk->timing.retire = ctx->now;
 			}
 		}
 	}

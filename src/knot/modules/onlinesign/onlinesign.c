@@ -488,7 +488,7 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 	int ret = KNOT_ESEMCHECK;
 	if (knot_time_cmp(ctx->event_parent_ds_q, mod->dnssec->now) <= 0) {
 		pthread_rwlock_rdlock(&ctx->signing_mutex);
-		ret = knot_parent_ds_query(conf(), mod->dnssec, mod->keyset, 1000);
+		ret = knot_parent_ds_query(conf(), mod->dnssec, 1000);
 		pthread_rwlock_unlock(&ctx->signing_mutex);
 		if (ret != KNOT_EOK && ret != KNOT_NO_READY_KEY && mod->dnssec->policy->ksk_sbm_check_interval > 0) {
 			ctx->event_parent_ds_q = mod->dnssec->now + mod->dnssec->policy->ksk_sbm_check_interval;

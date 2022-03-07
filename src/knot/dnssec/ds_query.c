@@ -25,7 +25,7 @@
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
 
-static bool match_key_ds(zone_key_t *key, knot_rdata_t *ds)
+static bool match_key_ds(knot_kasp_key_t *key, knot_rdata_t *ds)
 {
 	assert(key);
 	assert(ds);
@@ -37,16 +37,21 @@ static bool match_key_ds(zone_key_t *key, knot_rdata_t *ds)
 
 	dnssec_binary_t cds_rdata = { 0 };
 
-	int ret = zone_key_calculate_ds(key, knot_ds_digest_type(ds), &cds_rdata);
+	int ret = dnssec_key_create_ds(key->key, knot_ds_digest_type(ds), &cds_rdata);
 	if (ret != KNOT_EOK) {
 		return false;
 	}
 
-	return (dnssec_binary_cmp(&cds_rdata, &ds_rdata) == 0);
+	ret = (dnssec_binary_cmp(&cds_rdata, &ds_rdata) == 0);
+	dnssec_binary_free(&cds_rdata);
+	return ret;
 }
 
-static bool match_key_ds_rrset(zone_key_t *key, const knot_rrset_t *rr)
+static bool match_key_ds_rrset(knot_kasp_key_t *key, const knot_rrset_t *rr)
 {
+	if (key == NULL) {
+		return false;
+	}
 	knot_rdata_t *rd = rr->rrs.rdata;
 	for (int i = 0; i < rr->rrs.count; i++) {
 		if (match_key_ds(key, rd)) {
@@ -63,7 +68,8 @@ struct ds_query_data {
 	const knot_dname_t *zone_name;
 	const struct sockaddr *remote;
 
-	zone_key_t *key;
+	knot_kasp_key_t *key;
+	knot_kasp_key_t *not_key;
 
 	query_edns_data_t edns;
 
@@ -118,7 +124,7 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
-	bool match = false;
+	bool match = false, match_not = false;
 
 	for (size_t j = 0; j < answer->count; j++) {
 		const knot_rrset_t *rr = knot_pkt_rr(answer, j);
@@ -130,6 +136,9 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 					data->ttl = rr->ttl;
 				}
 			}
+			if (match_key_ds_rrset(data->not_key, rr)) {
+				match_not = true;
+			}
 			break;
 		case KNOT_RRTYPE_RRSIG:
 			data->ttl = knot_rrsig_original_ttl(rr->rrs.rdata);
@@ -137,6 +146,10 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		default:
 			break;
 		}
+	}
+
+	if (match_not) {
+		match = false;
 	}
 
 	ns_log(LOG_INFO, data->zone_name, LOG_OPERATION_DS_CHECK,
@@ -158,7 +171,7 @@ static const knot_layer_api_t ds_query_api = {
 };
 
 static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote_t *parent,
-                  zone_key_t *key, size_t timeout, uint32_t *ds_ttl)
+                  knot_kasp_key_t *key, knot_kasp_key_t *not_key, size_t timeout, uint32_t *ds_ttl)
 {
 	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
 
@@ -169,6 +182,7 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 		.zone_name = zone_name,
 		.remote = (struct sockaddr *)&parent->addr,
 		.key = key,
+		.not_key = not_key,
 		.edns = query_edns_data_init(conf, parent->addr.ss_family,
 		                             QUERY_EDNS_OPT_DO),
 		.ds_ok = false,
@@ -215,7 +229,18 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 	return ret;
 }
 
-static bool parents_have_ds(conf_t *conf, kdnssec_ctx_t *kctx, zone_key_t *key,
+static knot_kasp_key_t *get_not_key(kdnssec_ctx_t *kctx, knot_kasp_key_t *key)
+{
+	knot_kasp_key_t *not_key = knot_dnssec_key2retire(kctx, key);
+
+	if (not_key == NULL || dnssec_key_get_algorithm(not_key->key) == dnssec_key_get_algorithm(key->key)) {
+		return NULL;
+	}
+
+	return not_key;
+}
+
+static bool parents_have_ds(conf_t *conf, kdnssec_ctx_t *kctx, knot_kasp_key_t *key,
                             size_t timeout, uint32_t *max_ds_ttl)
 {
 	bool success = false;
@@ -224,7 +249,7 @@ static bool parents_have_ds(conf_t *conf, kdnssec_ctx_t *kctx, zone_key_t *key,
 		for (size_t j = 0; j < i->addrs; j++) {
 			uint32_t ds_ttl = 0;
 			int ret = try_ds(conf, kctx->zone->dname, &i->addr[j], key,
-			                 timeout, &ds_ttl);
+			                 get_not_key(kctx, key), timeout, &ds_ttl);
 			if (ret == KNOT_EOK) {
 				*max_ds_ttl = MAX(*max_ds_ttl, ds_ttl);
 				success = true;
@@ -242,14 +267,15 @@ static bool parents_have_ds(conf_t *conf, kdnssec_ctx_t *kctx, zone_key_t *key,
 	return success;
 }
 
-int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, zone_keyset_t *keyset,
-                         size_t timeout)
+int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, size_t timeout)
 {
 	uint32_t max_ds_ttl = 0;
 
-	for (size_t i = 0; i < keyset->count; i++) {
-		zone_key_t *key = &keyset->keys[i];
-		if (key->is_ready && !key->is_pub_only) {
+	for (size_t i = 0; i < kctx->zone->num_keys; i++) {
+		knot_kasp_key_t *key = &kctx->zone->keys[i];
+		if (!key->is_pub_only &&
+		    knot_time_cmp(key->timing.ready, kctx->now) <= 0 &&
+		    knot_time_cmp(key->timing.active, kctx->now) > 0) {
 			assert(key->is_ksk);
 			if (parents_have_ds(conf, kctx, key, timeout, &max_ds_ttl)) {
 				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl + kctx->policy->ksk_sbm_delay);

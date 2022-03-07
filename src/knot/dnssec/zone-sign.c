@@ -736,6 +736,7 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 	keyptr_dynarray_t r = { 0 };
 	unsigned crp = ctx->policy->cds_cdnskey_publish;
 	unsigned cds_published = 0;
+	uint8_t ready_alg = 0;
 
 	if (crp == CDS_CDNSKEY_ROLLOVER || crp == CDS_CDNSKEY_ALWAYS ||
 	    crp == CDS_CDNSKEY_DOUBLE_DS) {
@@ -744,6 +745,7 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 			zone_key_t *key = &zone_keys->keys[i];
 			if (key->is_ready) {
 				assert(key->is_ksk);
+				ready_alg = dnssec_key_get_algorithm(key->key);
 				keyptr_dynarray_add(&r, &key);
 				if (!key->is_pub_only) {
 					cds_published++;
@@ -756,7 +758,8 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
 		    (crp == CDS_CDNSKEY_DOUBLE_DS)) {
 			for (int i = 0; i < zone_keys->count; i++) {
 				zone_key_t *key = &zone_keys->keys[i];
-				if (key->is_ksk && key->is_active && !key->is_ready) {
+				if (key->is_ksk && key->is_active && !key->is_ready &&
+				    (cds_published == 0 || ready_alg == dnssec_key_get_algorithm(key->key))) {
 					keyptr_dynarray_add(&r, &key);
 				}
 			}

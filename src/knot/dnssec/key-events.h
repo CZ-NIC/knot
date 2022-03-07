@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,16 @@
  */
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
                              zone_sign_reschedule_t *reschedule);
+
+/*!
+ * \brief Get the key that ought to be retired by activating given new key.
+ *
+ * \param ctx       DNSSEC context.
+ * \param newkey    New key being rolled in.
+ *
+ * \return Old key being rolled out.
+ */
+knot_kasp_key_t *knot_dnssec_key2retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey);
 
 /*!
  * \brief Set the submitted KSK to active state and the active one to retired
