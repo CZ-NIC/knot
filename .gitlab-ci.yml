@@ -376,10 +376,10 @@ obs:centos7:x86_64:
     DISTROTEST_NAME: centos7
     DISTROTEST_REPO: CentOS_7_EPEL
 
-obs:centos8:x86_64:
+obs:rocky8:x86_64:
   <<: *distrotest
   variables:
-    DISTROTEST_NAME: centos8
+    DISTROTEST_NAME: rocky8
     DISTROTEST_REPO: CentOS_8_EPEL
 
 obs:debian10:x86_64:
