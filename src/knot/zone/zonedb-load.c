@@ -343,6 +343,20 @@ static int reuse_cold_zone_cb(const knot_dname_t *member, _unused_ const knot_dn
                               void *ctx)
 {
 	reuse_cold_zone_ctx_t *rcz = ctx;
+	conf_val_t role = conf_zone_get(conf(), C_CATALOG_ROLE, catz);
+	switch (role.code) {
+		case KNOT_EOK:;
+			int role_val = conf_opt(&role);
+			if (role_val == CATALOG_ROLE_INTERPRET ||
+			    role_val == CATALOG_ROLE_GENERATE)
+			{
+				break;
+			}
+		case KNOT_ENOENT:
+			return KNOT_EOK;
+		default:
+			return role.code;
+	}
 
 	zone_t *zone = reuse_cold_zone(member, rcz->server, rcz->conf);
 	if (zone == NULL) {
