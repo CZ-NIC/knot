@@ -227,25 +227,26 @@ conf_val_t conf_zone_get_txn(
 		if (ret == KNOT_EOK) {
 			conf_db_get(conf, txn, C_ZONE, C_CATALOG_TPL, catalog,
 			            knot_dname_size(catalog), &val);
-			if (val.code != KNOT_EOK) {
+			if (val.code == KNOT_EOK) {
+				conf_val(&val);
+				while (val.code == KNOT_EOK) {
+					if (strmemcmp(group, val.data, val.len) == 0) {
+						break;
+					}
+					conf_val_next(&val);
+				}
+				conf_val(&val); // Use first value if no match.
+				free(tofree);
+
+				conf_db_get(conf, txn, C_TPL, key1_name, val.data,
+				            val.len, &val);
+				goto got_template;
+			} else {
 				CONF_LOG_ZONE(LOG_ERR, catalog,
-				              "catalog zone has no catalog template (%s)",
+				              "stale catalog database record (%s)",
 				              knot_strerror(val.code));
 				free(tofree);
-				return val;
 			}
-			conf_val(&val);
-			while (val.code == KNOT_EOK) {
-				if (strmemcmp(group, val.data, val.len) == 0) {
-					break;
-				}
-				conf_val_next(&val);
-			}
-			conf_val(&val); // Use first value if no match.
-			free(tofree);
-
-			conf_db_get(conf, txn, C_TPL, key1_name, val.data, val.len, &val);
-			goto got_template;
 		}
 	}
 
