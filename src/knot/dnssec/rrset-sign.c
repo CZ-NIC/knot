@@ -340,23 +340,17 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
 
 /*- Verification of signatures -----------------------------------------------*/
 
-/*!
- * \brief Check if the signature is expired.
- *
- * \param rrsig   RRSIG rdata.
- * \param policy  DNSSEC policy.
- *
- * \return Signature is expired or should be replaced soon.
- */
 static bool is_expired_signature(const knot_rdata_t *rrsig, knot_time_t now,
                                  uint32_t refresh_before)
 {
 	assert(rrsig);
 
 	uint32_t expire32 = knot_rrsig_sig_expiration(rrsig);
+	uint32_t incept32 = knot_rrsig_sig_inception(rrsig);
 	knot_time_t expire64 = knot_time_from_u32(expire32, now);
+	knot_time_t incept64 = knot_time_from_u32(incept32, now);
 
-	return now >= expire64 - refresh_before;
+	return now >= expire64 - refresh_before || now < incept64;
 }
 
 int knot_check_signature(const knot_rrset_t *covered,
