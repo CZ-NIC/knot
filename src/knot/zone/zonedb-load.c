@@ -339,10 +339,16 @@ typedef struct {
 } reuse_cold_zone_ctx_t;
 
 static int reuse_cold_zone_cb(const knot_dname_t *member, _unused_ const knot_dname_t *owner,
-                              _unused_ const knot_dname_t *catz, _unused_ const char *group,
+                              const knot_dname_t *catz, _unused_ const char *group,
                               void *ctx)
 {
 	reuse_cold_zone_ctx_t *rcz = ctx;
+
+	zone_t *catz_z = knot_zonedb_find(rcz->zonedb, catz);
+	if (catz_z == NULL || !(catz_z->flags & ZONE_IS_CATALOG)) {
+		log_zone_error(member, "according to catalogDB, member configured from no longer existing catalog zone");
+		return KNOT_EOK; // warn and skip
+	}
 
 	zone_t *zone = reuse_cold_zone(member, rcz->server, rcz->conf);
 	if (zone == NULL) {
