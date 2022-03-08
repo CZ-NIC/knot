@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -337,10 +337,16 @@ typedef struct {
 } reuse_cold_zone_ctx_t;
 
 static int reuse_cold_zone_cb(const knot_dname_t *member, _unused_ const knot_dname_t *owner,
-                              _unused_ const knot_dname_t *catz, _unused_ const char *group,
+                              const knot_dname_t *catz, _unused_ const char *group,
                               void *ctx)
 {
 	reuse_cold_zone_ctx_t *rcz = ctx;
+
+	zone_t *catz_z = knot_zonedb_find(rcz->zonedb, catz);
+	if (catz_z == NULL || !(catz_z->flags & ZONE_IS_CATALOG)) {
+		log_zone_warning(member, "orphaned catalog member zone, ignoring");
+		return KNOT_EOK;
+	}
 
 	zone_t *zone = reuse_cold_zone(member, rcz->server, rcz->conf);
 	if (zone == NULL) {
