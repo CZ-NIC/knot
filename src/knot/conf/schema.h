@@ -131,7 +131,6 @@
 #define C_TCP_IO_TIMEOUT	"\x0E""tcp-io-timeout"
 #define C_TCP_MAX_CLIENTS	"\x0F""tcp-max-clients"
 #define C_TCP_OUTBUF_MAX_SIZE	"\x13""tcp-outbuf-max-size"
-#define C_TCP_SYN_CLIENTS	"\x13""tcp-max-syn-clients"
 #define C_TCP_RESEND		"\x12""tcp-resend-timeout"
 #define C_TCP_REUSEPORT		"\x0D""tcp-reuseport"
 #define C_TCP_RMT_IO_TIMEOUT	"\x15""tcp-remote-io-timeout"

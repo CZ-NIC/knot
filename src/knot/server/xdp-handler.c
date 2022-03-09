@@ -73,8 +73,8 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 	rcu_read_lock();
 	conf_t *pconf = conf();
 	ctx->tcp            = pconf->cache.xdp_tcp;
-	ctx->tcp_max_conns  = pconf->cache.xdp_tcp_max_clients    / pconf->cache.srv_xdp_threads;
-	ctx->tcp_syn_conns  = pconf->cache.xdp_tcp_syn_clients    / pconf->cache.srv_xdp_threads;
+	ctx->tcp_max_conns  = pconf->cache.xdp_tcp_max_clients / pconf->cache.srv_xdp_threads;
+	ctx->tcp_syn_conns  = 2 * ctx->tcp_max_conns;
 	ctx->tcp_max_inbufs = pconf->cache.xdp_tcp_inbuf_max_size / pconf->cache.srv_xdp_threads;
 	ctx->tcp_max_obufs  = pconf->cache.xdp_tcp_outbuf_max_size / pconf->cache.srv_xdp_threads;
 	ctx->tcp_idle_close = pconf->cache.xdp_tcp_idle_close * 1000000;
@@ -107,12 +107,10 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 			xdp_handle_free(ctx);
 			return NULL;
 		}
-		if (ctx->tcp_syn_conns > 0) {
-			ctx->syn_table = knot_tcp_table_new(ctx->tcp_syn_conns, ctx->tcp_table);
-			if (ctx->syn_table == NULL) {
-				xdp_handle_free(ctx);
-				return NULL;
-			}
+		ctx->syn_table = knot_tcp_table_new(ctx->tcp_syn_conns, ctx->tcp_table);
+		if (ctx->syn_table == NULL) {
+			xdp_handle_free(ctx);
+			return NULL;
 		}
 	}
 
@@ -304,9 +302,6 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 			break;
 		}
 
-		if (ctx->syn_table == NULL) {
-			continue;
-		}
 		ret = knot_tcp_sweep(ctx->syn_table, UINT32_MAX, ctx->tcp_idle_reset,
 		                     UINT32_MAX, ctx->tcp_syn_conns, SIZE_MAX, SIZE_MAX,
 		                     sweep_relays, XDP_BATCHLEN, &ctx->sweep_closed, &ctx->sweep_reset);

@@ -521,7 +521,6 @@ Various options related to XDP listening, especially TCP.
      listen: STR[@INT] | ADDR[@INT] ...
      tcp: BOOL
      tcp-max-clients: INT
-     tcp-max-syn-clients: INT
      tcp-inbuf-max-size: SIZE
      tcp-outbuf-max-size: SIZE
      tcp-idle-close-timeout: TIME
@@ -599,17 +598,9 @@ tcp-max-clients
 
 A maximum number of TCP clients connected in parallel.
 
+*Minimum:* 1024
+
 *Default:* 1000000 (one million)
-
-.. _xdp_tcp-max-syn-clients:
-
-tcp-max-syn-clients
--------------------
-
-If set to non-zero, clients in SYN state are handled separately and
-this is the limit of their number in parallel.
-
-*Default:* 0
 
 .. _xdp_tcp-inbuf-max-size:
 
