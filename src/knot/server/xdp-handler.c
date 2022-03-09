@@ -24,6 +24,7 @@
 #include "knot/common/log.h"
 #include "knot/server/server.h"
 #include "contrib/sockaddr.h"
+#include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
 #include "libknot/error.h"
 #include "libknot/xdp/tcp.h"
@@ -45,7 +46,11 @@ typedef struct xdp_handle_ctx {
 	size_t tcp_max_obufs;
 	uint32_t tcp_idle_close; // In microseconds.
 	uint32_t tcp_idle_reset; // In microseconds.
-	uint32_t tcp_idle_resend;
+	uint32_t tcp_idle_resend;// In microseconds.
+
+	uint64_t last_sweep;     // Second of the last sweep log.
+	uint32_t sweep_closed;   // Number of sweep-closed to log.
+	uint32_t sweep_reset;    // Number of sweep-reset to log.
 } xdp_handle_ctx_t;
 
 static bool udp_state_active(int state)
@@ -279,16 +284,16 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 		return;
 	}
 
-	uint32_t prev_reset;
-	uint32_t total_reset = 0, total_close = 0;
 	int ret = KNOT_EOK;
+	uint32_t prev_total;
 	knot_tcp_relay_t sweep_relays[XDP_BATCHLEN];
 	do {
-		prev_reset = total_reset;
+		prev_total = ctx->sweep_closed + ctx->sweep_reset;
+
 		ret = knot_tcp_sweep(ctx->tcp_table, ctx->tcp_idle_close, ctx->tcp_idle_reset,
 		                     ctx->tcp_idle_resend,
 		                     ctx->tcp_max_conns, ctx->tcp_max_inbufs, ctx->tcp_max_obufs,
-		                     sweep_relays, XDP_BATCHLEN, &total_close, &total_reset);
+		                     sweep_relays, XDP_BATCHLEN, &ctx->sweep_closed, &ctx->sweep_reset);
 		if (ret == KNOT_EOK) {
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
@@ -302,16 +307,21 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 		}
 		ret = knot_tcp_sweep(ctx->syn_table, UINT32_MAX, ctx->tcp_idle_reset,
 		                     UINT32_MAX, ctx->tcp_syn_conns, SIZE_MAX, SIZE_MAX,
-		                     sweep_relays, XDP_BATCHLEN, &total_close, &total_reset);
+		                     sweep_relays, XDP_BATCHLEN, &ctx->sweep_closed, &ctx->sweep_reset);
 		if (ret == KNOT_EOK) {
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
 		knot_tcp_cleanup(ctx->syn_table, sweep_relays, XDP_BATCHLEN);
-	} while (ret == KNOT_EOK && prev_reset < total_reset);
+	} while (ret == KNOT_EOK && prev_total < ctx->sweep_closed + ctx->sweep_reset);
 
-	if (total_close > 0 || total_reset > 0) {
+	struct timespec now = time_now();
+	uint64_t sec = now.tv_sec + now.tv_nsec / 1000000000;
+	if (sec - ctx->last_sweep > 9 && ctx->sweep_closed + ctx->sweep_reset > 0) {
 		log_notice("TCP, connection timeout, %u closed, %u reset",
-		           total_close, total_reset);
+		           ctx->sweep_closed, ctx->sweep_reset);
+		ctx->last_sweep = sec;
+		ctx->sweep_closed = 0;
+		ctx->sweep_reset = 0;
 	}
 }
 
