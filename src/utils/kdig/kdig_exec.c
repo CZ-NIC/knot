@@ -941,7 +941,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 {
 	struct timespec t_start, t_query, t_query_full, t_end, t_end_full;
 	time_t		timestamp;
-	knot_pkt_t      *reply;
+	knot_pkt_t      *reply = NULL;
 	uint8_t         in[MAX_PACKET_SIZE];
 	int             in_len;
 	int             ret;
@@ -1005,8 +1005,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		// Receive a reply message.
 		in_len = net_receive(net, in, sizeof(in));
 		if (in_len <= 0) {
-			net_close(net);
-			return -1;
+			goto fail;
 		}
 
 		// Get stop message time.
@@ -1024,8 +1023,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		reply = knot_pkt_new(in, in_len, NULL);
 		if (reply == NULL) {
 			ERR("internal error (%s)\n", knot_strerror(KNOT_ENOMEM));
-			net_close(net);
-			return -1;
+			goto fail;
 		}
 
 		// Parse reply to the packet structure.
@@ -1034,17 +1032,13 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			WARN("malformed reply packet (%s)\n", knot_strerror(ret));
 		} else if (ret != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
-			knot_pkt_free(reply);
-			net_close(net);
-			return -1;
+			goto fail;
 		}
 
 		// Compare reply header id.
 		if (check_reply_id(reply, query) == false) {
 			ERR("reply ID mismatch from %s\n", net->remote_str);
-			knot_pkt_free(reply);
-			net_close(net);
-			return -1;
+			goto fail;
 		}
 
 		// Print leading transfer information.
@@ -1056,9 +1050,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		if (knot_pkt_ext_rcode(reply) != KNOT_RCODE_NOERROR) {
 			ERR("server replied with error '%s'\n",
 			    knot_pkt_ext_rcode_name(reply));
-			knot_pkt_free(reply);
-			net_close(net);
-			return -1;
+			goto fail;
 		}
 
 		// The first message has a special treatment.
@@ -1076,9 +1068,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 					ERR("reply verification for %s (%s)\n",
 					    net->remote_str, knot_strerror(ret));
-					knot_pkt_free(reply);
-					net_close(net);
-					return -1;
+					goto fail;
 				}
 			}
 
@@ -1088,9 +1078,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			if (serial < 0) {
 				ERR("first answer record from %s isn't SOA\n",
 				    net->remote_str);
-				knot_pkt_free(reply);
-				net_close(net);
-				return -1;
+				goto fail;
 			}
 
 			// Check for question sections equality.
@@ -1114,18 +1102,28 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		}
 
 		knot_pkt_free(reply);
+		reply = NULL;
 	}
 
-	// Get stop reply time.
+	// Print full transfer information.
 	t_end = time_now();
-
-	// Print trailing transfer information.
 	print_footer_xfr(total_len, msg_count, rr_count, net,
 	                 time_diff_ms(&t_query, &t_end), timestamp, style);
 
 	net_close_keepopen(net, query_ctx);
 
 	return 0;
+
+fail:
+	// Print partial transfer information.
+	t_end = time_now();
+	print_footer_xfr(total_len, msg_count, rr_count, net,
+	                 time_diff_ms(&t_query, &t_end), timestamp, style);
+
+	knot_pkt_free(reply);
+	net_close(net);
+
+	return -1;
 }
 
 static int process_xfr(const query_t *query, net_t *net)
