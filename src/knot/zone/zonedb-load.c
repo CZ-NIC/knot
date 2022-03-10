@@ -172,6 +172,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		if (ret != KNOT_EOK) {
 			log_error("failed to open catalog database (%s)", knot_strerror(ret));
 		}
+		zone_set_flag(zone, ZONE_IS_CATALOG);
 	}
 
 	if (zone_expired(zone)) {
