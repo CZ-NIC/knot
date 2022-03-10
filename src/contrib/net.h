@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -112,6 +112,11 @@ bool net_is_stream(int sock);
  * \return socket or error code
  */
 int net_accept(int sock, struct sockaddr_storage *addr);
+
+/*!
+ * \brief Reset a TCP connection (with a RST packet).
+ */
+void net_reset(int sock);
 
 /*!
  * \brief Send a message on a socket.
