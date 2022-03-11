@@ -50,7 +50,7 @@ def log_environment(filename):
               re.match(r'^KNOT_TEST_', key)
 
     with open(filename, "w") as log:
-        lines = ["%s=%s\n" % (k, v) for (k, v) in os.environ.items() if want_log(k)]
+        lines = ["export %s=\"%s\"\n" % (k, v) for (k, v) in os.environ.items() if want_log(k)]
         log.writelines(lines)
 
 def parse_args(cmd_args):
