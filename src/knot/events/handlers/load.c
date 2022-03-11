@@ -91,9 +91,6 @@ int event_load(conf_t *conf, zone_t *zone)
 		struct timespec mtime;
 		char *filename = conf_zonefile(conf, zone->name);
 		ret = zonefile_exists(filename, &mtime);
-		bool zonefile_unchanged = (zone->zonefile.exists &&
-					   zone->zonefile.mtime.tv_sec == mtime.tv_sec &&
-					   zone->zonefile.mtime.tv_nsec == mtime.tv_nsec);
 		if (ret == KNOT_EOK) {
 			ret = zone_load_contents(conf, zone->name, &zf_conts, false);
 		}
@@ -132,11 +129,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 
 		// If configured and appliable to zonefile, load journal changes.
-		bool journal_load_configured1 = (load_from == JOURNAL_CONTENT_CHANGES);
-		bool journal_load_configured2 = (load_from == JOURNAL_CONTENT_ALL);
-
-		if ((journal_load_configured1 || journal_load_configured2) &&
-		    (!old_contents_exist || zonefile_unchanged)) {
+		if (load_from != JOURNAL_CONTENT_NONE) {
 			ret = zone_load_journal(conf, zone, zf_conts);
 			if (ret != KNOT_EOK) {
 				zone_contents_deep_free(zf_conts);
