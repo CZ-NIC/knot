@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -360,6 +360,12 @@ int net_accept(int sock, struct sockaddr_storage *addr)
 #endif
 
 	return remote;
+}
+
+void net_reset(int sock)
+{
+	struct sockaddr unspec = { .sa_family = AF_UNSPEC };
+	(void)connect(sock, &unspec, sizeof(unspec));
 }
 
 /* -- I/O interface handling partial  -------------------------------------- */
