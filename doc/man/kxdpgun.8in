@@ -51,8 +51,8 @@ configured for the network interface.
 Duration of traffic generation, specified as a decimal number in seconds
 (default is 5.0).
 .TP
-\fB\-T\fP, \fB\-\-tcp\fP[=\fIDEBUG_MODE\fP]
-Send queries over TCP. Optional debug mode see below.
+\fB\-T\fP, \fB\-\-tcp\fP[\fB=\fP\fIdebug_mode\fP]
+Send queries over TCP. See the list of optional debug modes below.
 .TP
 \fB\-Q\fP, \fB\-\-qps\fP \fIqueries\fP
 Number of queries\-per\-second (approximately) to be sent (default is 1000).
@@ -107,11 +107,7 @@ name, and \fIflags\fP is a single character:
 \fBE\fP Send query with EDNS.
 .sp
 \fBD\fP Request DNSSEC (EDNS + DO flag).
-.SS Signals
-.sp
-Sending USR1 signal to a running process triggers current statistics dump
-to the standard output.
-.SS TCP Debug Modes
+.SS TCP debug modes
 .INDENT 0.0
 .TP
 \fB1\fP
@@ -127,14 +123,18 @@ Perform TCP handshake and don\(aqt react further.
 Send incomplete query (N\-1 bytes) and don\(aqt react further.
 .TP
 \fB7\fP
-Send query and don\(aqt ACK the response or anthing further.
+Send query and don\(aqt ACK the response or anything further.
 .TP
 \fB8\fP
 Don\(aqt close the connection and ignore close by counterpart.
 .TP
 \fB9\fP
-Operate normally except of not ACKing the final FIN+ACK.
+Operate normally except for not ACKing the final FIN+ACK.
 .UNINDENT
+.SS Signals
+.sp
+Sending USR1 signal to a running process triggers current statistics dump
+to the standard output.
 .SH NOTES
 .sp
 Linux kernel 4.18+ is required.

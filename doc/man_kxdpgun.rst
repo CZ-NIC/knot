@@ -28,8 +28,8 @@ Options
   Duration of traffic generation, specified as a decimal number in seconds
   (default is 5.0).
 
-**-T**, **--tcp**\[\ =\ *DEBUG_MODE*\]
-  Send queries over TCP. Optional debug mode see below.
+**-T**, **--tcp**\[\ **=**\ *debug_mode*\]
+  Send queries over TCP. See the list of optional debug modes below.
 
 **-Q**, **--qps** *queries*
   Number of queries-per-second (approximately) to be sent (default is 1000).
@@ -86,13 +86,7 @@ name, and *flags* is a single character:
 
 **D** Request DNSSEC (EDNS + DO flag).
 
-Signals
-.......
-
-Sending USR1 signal to a running process triggers current statistics dump
-to the standard output.
-
-TCP Debug Modes
+TCP debug modes
 ...............
 
 **1**
@@ -108,13 +102,19 @@ TCP Debug Modes
   Send incomplete query (N-1 bytes) and don't react further.
 
 **7**
-  Send query and don't ACK the response or anthing further.
+  Send query and don't ACK the response or anything further.
 
 **8**
   Don't close the connection and ignore close by counterpart.
 
 **9**
-  Operate normally except of not ACKing the final FIN+ACK.
+  Operate normally except for not ACKing the final FIN+ACK.
+
+Signals
+.......
+
+Sending USR1 signal to a running process triggers current statistics dump
+to the standard output.
 
 Notes
 -----

@@ -647,7 +647,7 @@ static void print_help(void)
 	       "Parameters:\n"
 	       " -t, --duration <sec>     "SPACE"Duration of traffic generation.\n"
 	       "                          "SPACE" (default is %"PRIu64" seconds)\n"
-	       " -T, --tcp                "SPACE"Send queries over TCP.\n"
+	       " -T, --tcp[=debug_mode]   "SPACE"Send queries over TCP.\n"
 	       " -Q, --qps <qps>          "SPACE"Number of queries-per-second (approximately) to be sent.\n"
 	       "                          "SPACE" (default is %"PRIu64" qps)\n"
 	       " -b, --batch <size>       "SPACE"Send queries in a batch of defined size.\n"
