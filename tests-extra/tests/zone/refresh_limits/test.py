@@ -60,7 +60,10 @@ master.update_zonefile(zone_max, version=10)
 master.update_zonefile(zone_min, version=10)
 master.start()
 master.zones_wait(zones)
-t.sleep(10 - (time.time() - retry_start))
+try:
+    t.sleep(10 - (time.time() - retry_start))
+except: # negative sleep
+    pass
 
 resp = slave.dig(zone_max.name, "SOA")
 resp.check_soa_serial(serials_init[zone_max.name] + 10)
@@ -71,7 +74,7 @@ slave.ctl("zone-refresh")
 t.sleep(2)
 master.stop()
 
-t.sleep(20)
+t.sleep(18)
 
 resp = slave.dig(zone_max.name, "SOA")
 resp.check(rcode="SERVFAIL")
