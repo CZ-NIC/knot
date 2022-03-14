@@ -46,10 +46,10 @@ docker:knot-dns:ubuntu:
     IMAGE_NAME: ubuntu:latest
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
-docker:knot-dns:centos:
+docker:knot-dns:rocky:
   <<: *image
   variables:
-    IMAGE_NAME: centos:latest
+    IMAGE_NAME: rocky:latest
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
 
 docker:knot-dns:fedora:
@@ -68,8 +68,8 @@ docker:knot-dns:fedora:
     - schedules
 
 
-.centos_latest: &centos_latest
-  image: "$CI_REGISTRY/knot/knot-dns/centos:latest"
+.rocky_latest: &rocky_latest
+  image: "$CI_REGISTRY/knot/knot-dns/rocky:latest"
   tags:
     - docker
     - linux
@@ -149,15 +149,15 @@ test:fedora:amd64:
   dependencies:
     - build:fedora:amd64
 
-build:centos:amd64:
-  <<: *centos_latest
+build:rocky:amd64:
+  <<: *rocky_latest
   <<: *build_job
 
-test:centos:amd64:
-  <<: *centos_latest
+test:rocky:amd64:
+  <<: *rocky_latest
   <<: *test_job
   dependencies:
-    - build:centos:amd64
+    - build:rocky:amd64
 
 build:ubuntu:amd64:
   <<: *ubuntu_latest
