@@ -1,4 +1,4 @@
-FROM centos:latest
+FROM rockylinux:latest
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 ENV DEBIAN_FRONTEND noninteractive
 RUN dnf -y upgrade
