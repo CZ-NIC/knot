@@ -27,6 +27,7 @@
 #include "knot/zone/contents.h"
 #include "knot/zone/timers.h"
 #include "libknot/dname.h"
+#include "libknot/dynarray.h"
 #include "libknot/packet/pkt.h"
 
 struct zone_update;
@@ -47,6 +48,12 @@ typedef enum {
 	ZONE_IS_CAT_MEMBER  = 1 << 6, /*!< This zone exists according to a catalog. */
 	ZONE_XFR_FROZEN     = 1 << 7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
 } zone_flag_t;
+
+/*!
+ * \brief Track unsuccessful NOTIFY trgets.
+ */
+typedef uint64_t notifailed_rmt_hash;
+knot_dynarray_declare(notifailed_rmt, notifailed_rmt_hash, DYNARRAY_VISIBILITY_NORMAL, 4);
 
 /*!
  * \brief Structure for holding DNS zone.
@@ -73,6 +80,9 @@ typedef struct zone
 	/*! \brief Zone events. */
 	zone_timers_t timers;      //!< Persistent zone timers.
 	zone_events_t events;      //!< Zone events timers.
+
+	/*! \brief Track unsuccessful NOTIFY trgets. */
+	notifailed_rmt_dynarray_t notifailed;
 
 	/*! \brief DDNS queue and lock. */
 	pthread_mutex_t ddns_lock;
@@ -165,6 +175,12 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose);
 
 bool zone_journal_has_zij(zone_t *zone);
+
+/*!
+ * \brief Clear failed_notify list before planning new NOTIFY.
+ */
+void zone_notifailed_clear(zone_t *zone);
+void zone_schedule_notify(zone_t *zone, time_t delay);
 
 /*!
  * \brief Atomically switch the content of the zone.

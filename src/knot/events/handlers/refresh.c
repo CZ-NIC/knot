@@ -1353,7 +1353,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	/* Reschedule events. */
 	replan_from_timers(conf, zone);
 	if (trctx.send_notify) {
-		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 1);
+		zone_schedule_notify(zone, 1);
 	}
 
 	return ret;

@@ -16,12 +16,22 @@
 
 #include <assert.h>
 
+#include "contrib/openbsd/siphash.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
 #include "knot/zone/zone.h"
 #include "libknot/errcode.h"
+
+static notifailed_rmt_hash notifailed_hash(conf_val_t *rmt_id)
+{
+	SIPHASH_KEY zero_key = { 0, 0 };
+	SIPHASH_CTX ctx;
+	SipHash24_Init(&ctx, &zero_key);
+	SipHash24_Update(&ctx, rmt_id->data, rmt_id->len);
+	return SipHash24_End(&ctx);
+}
 
 /*!
  * \brief NOTIFY message processing data.
@@ -77,7 +87,7 @@ static const knot_layer_api_t NOTIFY_API = {
 	       (reused), fmt, ## __VA_ARGS__)
 
 static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
-                       const conf_remote_t *slave, int timeout)
+                       const conf_remote_t *slave, int timeout, bool retry)
 {
 	struct notify_data data = {
 		.zone = zone->name,
@@ -107,20 +117,22 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	int ret = knot_requestor_exec(&requestor, req, timeout);
 
+	const char *log_retry = retry ? "retry, " : "";
+
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_OUT_LOG(LOG_INFO, zone->name, dst,
 		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
-		               "serial %u", knot_soa_serial(soa->rrs.rdata));
+		               "%sserial %u", log_retry, knot_soa_serial(soa->rrs.rdata));
 		zone->timers.last_notified_serial = (knot_soa_serial(soa->rrs.rdata) | LAST_NOTIFIED_SERIAL_VALID);
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, dst,
 		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
-		               "failed (%s)", knot_strerror(ret));
+		               "%sfailed (%s)", log_retry, knot_strerror(ret));
 	} else {
 		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, dst,
 		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
-		               "server responded with error '%s'",
-		               knot_pkt_ext_rcode_name(req->resp));
+		               "%sserver responded with error '%s'",
+		               log_retry, knot_pkt_ext_rcode_name(req->resp));
 	}
 
 	knot_request_free(req, NULL);
@@ -143,11 +155,20 @@ int event_notify(conf_t *conf, zone_t *zone)
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 
+	// in case of re-try, NOTIFY only failed remotes
+	bool retry = (zone->notifailed.size > 0);
+
 	// send NOTIFY to each remote, use working address
 	conf_val_t notify = conf_zone_get(conf, C_NOTIFY, zone->name);
 	conf_mix_iter_t iter;
 	conf_mix_iter_init(conf, &notify, &iter);
 	while (iter.id->code == KNOT_EOK) {
+		notifailed_rmt_hash rmt_hash = notifailed_hash(iter.id);
+		if (retry && notifailed_rmt_dynarray_bsearch(&zone->notifailed, &rmt_hash) == NULL) {
+			conf_mix_iter_next(&iter);
+			continue;
+		}
+
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);
 
@@ -155,17 +176,27 @@ int event_notify(conf_t *conf, zone_t *zone)
 
 		for (int i = 0; i < addr_count; i++) {
 			conf_remote_t slave = conf_remote(conf, iter.id, i);
-			ret = send_notify(conf, zone, &soa, &slave, timeout);
+			ret = send_notify(conf, zone, &soa, &slave, timeout, retry);
 			if (ret == KNOT_EOK) {
 				break;
 			}
 		}
 
+
 		if (ret != KNOT_EOK) {
 			failed = true;
+
+			notifailed_rmt_dynarray_add(&zone->notifailed, &rmt_hash);
+		} else {
+			notifailed_rmt_dynarray_remove(&zone->notifailed, &rmt_hash);
 		}
 
 		conf_mix_iter_next(&iter);
+	}
+
+	if (failed) {
+		notifailed_rmt_dynarray_sort_dedup(&zone->notifailed);
+		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 10); // FIXME exponential backoff of NOTIFY retries
 	}
 
 	return failed ? KNOT_ERROR : KNOT_EOK;

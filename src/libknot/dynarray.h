@@ -52,6 +52,12 @@
 	visibility ntype *prefix ## _dynarray_arr(prefix ## _dynarray_t *dynarray); \
 	visibility ntype *prefix ## _dynarray_add(prefix ## _dynarray_t *dynarray, \
 	                                        ntype const *to_add); \
+	visibility void prefix ## _dynarray_remove(prefix ## _dynarray_t *dynarray, \
+	                                        ntype const *to_remove); \
+	visibility void prefix ## _dynarray_sort(prefix ## _dynarray_t *dynarray); \
+	visibility ntype *prefix ## _dynarray_bsearch(prefix ## _dynarray_t *dynarray, \
+	                                        const ntype *bskey); \
+	visibility void prefix ## _dynarray_sort_dedup(prefix ## _dynarray_t *dynarray); \
 	visibility void prefix ## _dynarray_free(prefix ## _dynarray_t *dynarray);
 
 #define knot_dynarray_foreach(prefix, ntype, ptr, array) \

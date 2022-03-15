@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <urcu.h>
 
 #include "knot/common/log.h"
@@ -42,6 +43,8 @@
 #define JOURNAL_LOCK_MUTEX (&zone->journal_lock)
 #define JOURNAL_LOCK_RW pthread_mutex_lock(JOURNAL_LOCK_MUTEX);
 #define JOURNAL_UNLOCK_RW pthread_mutex_unlock(JOURNAL_LOCK_MUTEX);
+
+knot_dynarray_define(notifailed_rmt, notifailed_rmt_hash, DYNARRAY_VISIBILITY_NORMAL);
 
 static void free_ddns_queue(zone_t *zone)
 {
@@ -357,6 +360,17 @@ bool zone_journal_has_zij(zone_t *zone)
 	bool exists = false, zij = false;
 	(void)journal_info(zone_journal(zone), &exists, NULL, &zij, NULL, NULL, NULL, NULL, NULL);
 	return exists && zij;
+}
+
+void zone_notifailed_clear(zone_t *zone)
+{
+	notifailed_rmt_dynarray_free(&zone->notifailed);
+}
+
+void zone_schedule_notify(zone_t *zone, time_t delay)
+{
+	zone_notifailed_clear(zone);
+	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + delay);
 }
 
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)

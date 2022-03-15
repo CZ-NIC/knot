@@ -346,7 +346,7 @@ load_end:
 	replan_from_timers(conf, zone);
 
 	if (!zone_timers_serial_notified(&zone->timers, new_serial)) {
-		zone_events_schedule_now(zone, ZONE_EVENT_NOTIFY);
+		zone_schedule_notify(zone, 0);
 	}
 
 	return KNOT_EOK;

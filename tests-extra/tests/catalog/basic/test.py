@@ -118,7 +118,9 @@ up.send("NOERROR")
 t.sleep(4)
 shutil.copy(t.data_dir + "/cataloged2.zone", master.dir + "/master") # because the purge deletes even zonefile
 master.ctl("zone-reload cataloged2.")
-t.sleep(6)
+t.sleep(2)
+master.ctl("zone-notify cataloged2.")
+t.sleep(4)
 resp2 = slave.dig("cataloged2.", "DNSKEY")
 resp2.check_count(2, "DNSKEY")
 if resp2.count("DNSKEY") > 0:
