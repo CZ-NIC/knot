@@ -147,6 +147,13 @@
 	} \
 	\
 	_unused_ \
+	visibility ntype *prefix ## _dynarray_bsearch(struct prefix ## _dynarray *dynarray, const ntype *bskey) \
+	{ \
+		ntype *arr = prefix ## _dynarray_arr(dynarray); \
+		return bsearch(bskey, arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
+	} \
+	\
+	_unused_ \
 	visibility void prefix ## _dynarray_sort_dedup(struct prefix ## _dynarray *dynarray) \
 	{ \
 		if (dynarray->size > 1) { \
