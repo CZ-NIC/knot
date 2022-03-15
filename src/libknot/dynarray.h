@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -144,6 +144,13 @@
 	{ \
 		ntype *arr = prefix ## _dynarray_arr(dynarray); \
 		qsort(arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
+	} \
+	\
+	_unused_ \
+	visibility ntype *prefix ## _dynarray_bsearch(struct prefix ## _dynarray *dynarray, const ntype *bskey) \
+	{ \
+		ntype *arr = prefix ## _dynarray_arr(dynarray); \
+		return bsearch(bskey, arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
 	} \
 	\
 	_unused_ \
