@@ -74,8 +74,8 @@ for i in range(1, 5):
 
     t.xfr_diff(master, slave, zones)
     t.xfr_diff(master, refer, zones)
-    if i < 4: # Dnspython fails for i = 4.
-        # Compare last IXFR changeset.
-        t.xfr_diff(master, slave, zones, serials=previous)
-        t.xfr_diff(master, refer, zones, serials=previous)
+
+    # Compare last IXFR changeset.
+    t.xfr_diff(master, slave, zones, serials=previous)
+    t.xfr_diff(master, refer, zones, serials=previous)
 t.end()
