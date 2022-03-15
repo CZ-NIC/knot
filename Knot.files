@@ -550,7 +550,6 @@ tests-fuzz/main.c
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
 tests/contrib/test_base64url.c
-tests/contrib/test_dynarray.c
 tests/contrib/test_heap.c
 tests/contrib/test_net.c
 tests/contrib/test_net_shortwrite.c
@@ -613,6 +612,7 @@ tests/libknot/test_cookies.c
 tests/libknot/test_db.c
 tests/libknot/test_descriptor.c
 tests/libknot/test_dname.c
+tests/libknot/test_dynarray.c
 tests/libknot/test_edns.c
 tests/libknot/test_edns_ecs.c
 tests/libknot/test_endian.c
