@@ -57,6 +57,7 @@ for i in range(1, 5):
     for zone in zones:
         master.update_zonefile(zone, version=i, storage=t.zones_dir)
         refer.update_zonefile(zone, version=i, storage=t.zones_dir)
+    master.ctl("zone-purge -f -- +journal")
     master.reload()
     refer.reload()
 
