@@ -411,7 +411,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		BACKUP_SWAP(ctx, j_from, j_to);
 
 		ret = journal_copy_with_md(j_from, j_to, zone->name);
-	} else if (ctx->restore_mode) {
+	} else if (ctx->restore_mode && ctx->backup_zonefile) {
 		ret = journal_scrape_with_md(zone_journal(zone), true);
 	}
 	if (ret != KNOT_EOK) {
