@@ -288,6 +288,8 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 	uint32_t prev_total;
 	knot_tcp_relay_t sweep_relays[XDP_BATCHLEN];
 	do {
+		knot_xdp_send_prepare(ctx->sock);
+
 		prev_total = ctx->sweep_closed + ctx->sweep_reset;
 
 		ret = knot_tcp_sweep(ctx->tcp_table, ctx->tcp_idle_close, ctx->tcp_idle_reset,
@@ -312,6 +314,8 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
 		knot_tcp_cleanup(ctx->syn_table, sweep_relays, XDP_BATCHLEN);
+
+		(void)knot_xdp_send_finish(ctx->sock);
 	} while (ret == KNOT_EOK && prev_total < ctx->sweep_closed + ctx->sweep_reset);
 
 	struct timespec now = time_now();

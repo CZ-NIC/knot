@@ -536,8 +536,6 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 		return KNOT_EINVAL;
 	}
 
-	knot_xdp_send_prepare(socket);
-
 	knot_xdp_msg_t msgs[max_at_once], *first = first_msg(msgs, max_at_once), *msg = first;
 
 	for (uint32_t i = 0; i < relay_count; i++) {
@@ -609,7 +607,6 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 	}
 
 	send_msgs(msgs, msg - first, socket);
-	(void)knot_xdp_send_finish(socket);
 
 	return KNOT_EOK;
 }
