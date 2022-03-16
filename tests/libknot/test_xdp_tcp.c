@@ -210,7 +210,7 @@ static void fix_seqacks(knot_xdp_msg_t *msgs, size_t count)
 void test_syn(void)
 {
 	knot_xdp_msg_t msg;
-	knot_tcp_relay_t rl;
+	knot_tcp_relay_t rl = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_SYN, 1, 2);
 	int ret = knot_tcp_recv(&rl, &msg, 1, test_table, test_syn_table, XDP_TCP_IGNORE_NONE);
 	is_int(KNOT_EOK, ret, "SYN: relay OK");
@@ -225,6 +225,7 @@ void test_syn(void)
 	is_int(1, test_syn_table->usage, "SYN: one connection in SYN table");
 	knot_tcp_conn_t *conn = tcp_table_find(test_syn_table, &msg);
 	ok(conn != NULL, "SYN: connection present");
+	assert(conn);
 	ok(conn == rl.conn, "SYN: relay points to connection");
 	is_int(XDP_TCP_ESTABLISHING, conn->state, "SYN: connection state");
 	ok(memcmp(&conn->ip_rem, &msg.ip_from, sizeof(msg.ip_from)) == 0, "SYN: conn IP from");
@@ -237,7 +238,7 @@ void test_syn(void)
 void test_establish(void)
 {
 	knot_xdp_msg_t msg;
-	knot_tcp_relay_t rl;
+	knot_tcp_relay_t rl = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_ACK, 1, 2);
 	prepare_seqack(&msg, 0, 1);
 	int ret = knot_tcp_recv(&rl, &msg, 1, test_table, test_syn_table, XDP_TCP_IGNORE_NONE);
@@ -256,7 +257,7 @@ void test_establish(void)
 void test_syn_ack(void)
 {
 	knot_xdp_msg_t msg;
-	knot_tcp_relay_t rl;
+	knot_tcp_relay_t rl = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK, 1000, 2000);
 	int ret = knot_tcp_recv(&rl, &msg, 1, test_table, test_syn_table, XDP_TCP_IGNORE_NONE);
 	is_int(KNOT_EOK, ret, "SYN+ACK: relay OK");
@@ -298,8 +299,10 @@ void test_data_fragments(void)
 	prepare_seqack(&msgs[3], 15, 0);
 	prepare_data(&msgs[3], "\x02""AB""\xff\xff""abcdefghijklmnopqrstuvwxyz...", 34);
 
+	assert(test_table);
 	int ret = knot_tcp_recv(rls, msgs, CONNS, test_table, test_syn_table, XDP_TCP_IGNORE_NONE);
 	is_int(KNOT_EOK, ret, "fragments: relay OK");
+	assert(test_sock);
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
 	is_int(KNOT_EOK, ret, "fragments: send OK");
 	is_int(msgs[3].ackno, sent_seqno, "fragments: seqno");
@@ -343,7 +346,7 @@ void test_close(void)
 	size_t conns_pre = test_table->usage;
 
 	knot_xdp_msg_t msg;
-	knot_tcp_relay_t rl;
+	knot_tcp_relay_t rl = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK,
 	            be16toh(test_conn->ip_rem.sin6_port),
 	            be16toh(test_conn->ip_loc.sin6_port));
@@ -406,11 +409,12 @@ void test_many(void)
 	knot_tcp_cleanup(test_table, rls, CONNS);
 	usleep(timeout_time);
 	knot_xdp_msg_t *survive = &msgs[i_survive];
-	knot_tcp_relay_t surv_rl;
+	knot_tcp_relay_t surv_rl = { 0 };
 	survive->flags = (KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_ACK);
 	knot_tcp_conn_t *surv_conn = tcp_table_find(test_table, survive);
 	fix_seqack(survive);
 	prepare_data(survive, "\x00\x00", 2);
+	assert(test_table);
 	ret = knot_tcp_recv(&surv_rl, survive, 1, test_table, NULL, XDP_TCP_IGNORE_NONE);
 	is_int(KNOT_EOK, ret, "many/survivor: OK");
 	clean_sent();
@@ -519,7 +523,7 @@ void test_ibufs_size(void)
 void test_obufs(void)
 {
 	knot_xdp_msg_t msg;
-	knot_tcp_relay_t rl;
+	knot_tcp_relay_t rl = { 0 };
 
 	prepare_msg(&msg, KNOT_XDP_MSG_SYN, 1, 2);
 	(void)knot_tcp_recv(&rl, &msg, 1, test_table, test_syn_table, XDP_TCP_IGNORE_NONE); // SYN
@@ -564,9 +568,11 @@ void test_obufs(void)
 	prepare_seqack(&msg, 0, TEST_MSS);
 	ret = knot_tcp_recv(&rl, &msg, 1, test_table, test_syn_table, XDP_TCP_IGNORE_NONE);
 	is_int(KNOT_EOK, ret, "obufs: ACKed data");
+	assert(rl.conn);
 	rl.conn->window_size = 65536;
 	knot_tcp_outbuf_t *surv_ob = rl.conn->outbufs;
 	ok(surv_ob != NULL, "obufs: unACKed survived");
+	assert(surv_ob);
 	ok(surv_ob->next == NULL, "obufs: just one survived");
 	ok(!surv_ob->sent, "obufs: survivor not sent");
 	ret = knot_tcp_send(test_sock, &rl, 1, 20);

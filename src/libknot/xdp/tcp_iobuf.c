@@ -148,6 +148,7 @@ int tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 		if (!iov_inc_pf(&data)) {
 			break;
 		}
+		assert(cur);
 		cur->iov_base = last;
 		cur->iov_len = data.iov_base - last;
 		iov_inc2(cur);

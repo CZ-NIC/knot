@@ -700,6 +700,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			print_version(PROGRAM_NAME);
 			exit(EXIT_SUCCESS);
 		case 't':
+			assert(optarg);
 			argf = atof(optarg);
 			if (argf > 0) {
 				ctx->duration = argf * 1000000.0;
@@ -710,6 +711,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		case 'Q':
+			assert(optarg);
 			arg = atoi(optarg);
 			if (arg > 0) {
 				ctx->qps = arg;
@@ -719,6 +721,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		case 'b':
+			assert(optarg);
 			arg = atoi(optarg);
 			if (arg > 0) {
 				default_at_once = false;
@@ -732,6 +735,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			ctx->listen_port |= KNOT_XDP_LISTEN_PORT_DROP;
 			break;
 		case 'p':
+			assert(optarg);
 			arg = atoi(optarg);
 			if (arg > 0 && arg <= 0xffff) {
 				ctx->target_port = arg;
@@ -782,6 +786,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		case 'F':
+			assert(optarg);
 			if ((arg = atoi(optarg)) > 0) {
 				global_cpu_aff_start = arg;
 			}
