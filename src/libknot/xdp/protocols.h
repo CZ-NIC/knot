@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,6 +76,7 @@ inline static void *prot_read_tcp(void *data, knot_xdp_msg_t *msg, uint16_t *src
 
 	msg->seqno = be32toh(tcp->seq);
 	msg->ackno = be32toh(tcp->ack_seq);
+	msg->win = be16toh(tcp->window);
 
 	*src_port = tcp->source;
 	*dst_port = tcp->dest;
@@ -96,6 +97,11 @@ inline static void *prot_read_tcp(void *data, knot_xdp_msg_t *msg, uint16_t *src
 			msg->flags |= KNOT_XDP_MSG_MSS;
 			memcpy(&msg->mss, &opts[2], sizeof(msg->mss));
 			msg->mss = be16toh(msg->mss);
+		}
+
+		if (opts[0] == PROT_TCP_OPT_WSC && opts[1] == PROT_TCP_OPT_LEN_WSC) {
+			msg->flags |= KNOT_XDP_MSG_WSC;
+			msg->win_scale = opts[2];
 		}
 
 		opts += opts[1];
@@ -188,10 +194,13 @@ inline static size_t prot_write_hdrs_len(const knot_xdp_msg_t *msg)
 	}
 
 	if (msg->flags & KNOT_XDP_MSG_TCP) {
-		res += sizeof(struct tcphdr) - sizeof(struct udphdr) + 4; // 4 == PROT_TCP_OPT_LEN_WSC + align
+		res += sizeof(struct tcphdr) - sizeof(struct udphdr);
 
 		if (msg->flags & KNOT_XDP_MSG_MSS) {
 			res += PROT_TCP_OPT_LEN_MSS;
+		}
+		if (msg->flags & KNOT_XDP_MSG_WSC) {
+			res += PROT_TCP_OPT_LEN_WSC + 1; // 1 == align
 		}
 	}
 
@@ -272,7 +281,7 @@ inline static void prot_write_tcp(void *data, const knot_xdp_msg_t *msg, void *d
 	tcp->dest    = dst_port;
 	tcp->seq     = htobe32(msg->seqno);
 	tcp->ack_seq = htobe32(msg->ackno);
-	tcp->window  = htobe16(0xffff); // Practically infinite window (see also WSC option below)
+	tcp->window  = htobe16(msg->win);
 	tcp->check   = 0; // Temporarily initialize before checksum calculation.
 
 	tcp->syn = ((msg->flags & KNOT_XDP_MSG_SYN) ? 1 : 0);
@@ -281,11 +290,13 @@ inline static void prot_write_tcp(void *data, const knot_xdp_msg_t *msg, void *d
 	tcp->rst = ((msg->flags & KNOT_XDP_MSG_RST) ? 1 : 0);
 
 	uint8_t *hdr_end = data + sizeof(*tcp);
-	hdr_end[0] = PROT_TCP_OPT_WSC;
-	hdr_end[1] = PROT_TCP_OPT_LEN_WSC;
-	hdr_end[2] = 14; // Maximum possible.
-	hdr_end += PROT_TCP_OPT_LEN_WSC;
-	*hdr_end++ = PROT_TCP_OPT_NOOP;
+	if (msg->flags & KNOT_XDP_MSG_WSC) {
+		hdr_end[0] = PROT_TCP_OPT_WSC;
+		hdr_end[1] = PROT_TCP_OPT_LEN_WSC;
+		hdr_end[2] = msg->win_scale;
+		hdr_end += PROT_TCP_OPT_LEN_WSC;
+		*hdr_end++ = PROT_TCP_OPT_NOOP; // align
+	}
 	if (msg->flags & KNOT_XDP_MSG_MSS) {
 		mss = htobe16(mss);
 		hdr_end[0] = PROT_TCP_OPT_MSS;

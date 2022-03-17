@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,34 +25,73 @@
 
 #pragma once
 
-#include <assert.h>
 #include <string.h>
 #include <sys/uio.h>
 
 #include "libknot/endian.h"
 
-/*!
- * \brief Return the required length for payload buffer.
- */
-inline static size_t tcp_payload_len(const struct iovec *payload)
-{
-	assert(payload->iov_len >= 2);
-	uint16_t val;
-	memcpy(&val, payload->iov_base, sizeof(val));
-	return be16toh(val) + sizeof(val);
-}
+typedef struct knot_tcp_outbuf {
+	struct knot_tcp_outbuf *next;
+	uint32_t len;
+	uint32_t seqno;
+	bool sent;
+	uint8_t bytes[];
+} knot_tcp_outbuf_t;
 
 /*!
  * \brief Handle DNS-over-TCP payloads in buffer and message.
  *
  * \param buffer         In/out: persistent buffer to store incomplete DNS payloads between receiving packets.
- * \param data           In/out: momental DNS payloads in incoming packet.
- * \param data_tofree    Out: once more DNS payload defragmented from multiple packets.
+ * \param data           In: momental DNS payloads in incoming packet.
+ * \param inbufs         Out: list of incoming DNS messages.
+ * \param inbufs_count   Out: number of inbufs.
  * \param buffers_total  In/Out: total size of buffers (will be increased or decreased).
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int tcp_inbuf_update(struct iovec *buffer, struct iovec *data,
-                     struct iovec *data_tofree, size_t *buffers_total);
+int tcp_inbuf_update(struct iovec *buffer, struct iovec data,
+                     struct iovec **inbufs, size_t *inbufs_count,
+                     size_t *buffers_total);
+
+/*!
+ * \brief Add payload to be sent by TCP, to output buffers.
+ *
+ * \param bufs             Output buffers to be updated.
+ * \param data             Payload to be sent.
+ * \param len              Payload length.
+ * \param ignore_lastbyte  Evil mode: drop last byte of the payload.
+ * \param mss              Connection outgoing MSS.
+ * \param outbufs_total    In/out: total outbuf statistic to be updated.
+ *
+ * \return KNOT_E*
+ */
+int tcp_outbufs_add(knot_tcp_outbuf_t **bufs, uint8_t *data, size_t len,
+                    bool ignore_lastbyte, uint32_t mss, size_t *outbufs_total);
+
+/*!
+ * \brief Remove+free acked data from output buffers.
+ *
+ * \param bufs             Output buffers to be updated.
+ * \param ackno            Ackno of received ACK.
+ * \param outbufs_total    In/out: total outbuf statistic to be updated.
+ */
+void tcp_outbufs_ack(knot_tcp_outbuf_t **bufs, uint32_t ackno, size_t *outbufs_total);
+
+/*!
+ * \brief Prepare output buffers to be sent now.
+ *
+ * \param bufs          Output buffers to be updated.
+ * \param window_size   Connection outgoing window size.
+ * \param resend        Send also possibly already sent data.
+ * \param send_start    Out: first output buffer to be sent.
+ * \param send_count    Out: number of output buffers to be sent.
+ */
+void tcp_outbufs_can_send(knot_tcp_outbuf_t *bufs, ssize_t window_size, bool resend,
+                          knot_tcp_outbuf_t **send_start, size_t *send_count);
+
+/*!
+ * \brief Compute allocated size of output buffers.
+ */
+size_t tcp_outbufs_usage(knot_tcp_outbuf_t *bufs);
 
 /*! @} */

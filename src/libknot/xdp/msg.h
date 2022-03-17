@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ typedef enum {
 	KNOT_XDP_MSG_FIN   = (1 << 4), /*!< FIN flag set (TCP only). */
 	KNOT_XDP_MSG_RST   = (1 << 5), /*!< RST flag set (TCP only). */
 	KNOT_XDP_MSG_MSS   = (1 << 6), /*!< MSS option in TCP header (TCP only). */
+	KNOT_XDP_MSG_WSC   = (1 << 7), /*!< Window Scale option in TCP header. */
 } knot_xdp_msg_flag_t;
 
 /*! \brief Packet description with src & dst MAC & IP addrs + DNS payload. */
@@ -52,6 +53,8 @@ typedef struct knot_xdp_msg {
 	uint32_t seqno;
 	uint32_t ackno;
 	uint16_t mss;
+	uint16_t win;
+	uint8_t win_scale;
 } knot_xdp_msg_t;
 
 /*! @} */

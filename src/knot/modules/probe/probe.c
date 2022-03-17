@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,9 +97,7 @@ static knotd_state_t export(knotd_state_t state, knot_pkt_t *pkt,
 	knot_probe_data_t d;
 	int ret = knot_probe_data_set(&d, proto, local, remote, qdata->query, reply, rcode);
 	if (ret == KNOT_EOK) {
-		if (tcp && qdata->params->xdp_msg == NULL) {
-			d.tcp_rtt = knot_probe_tcp_rtt(qdata->params->socket);
-		}
+		d.tcp_rtt = knotd_qdata_rtt(qdata);
 		if (qdata->query->opt_rr != NULL) {
 			d.reply.ede = qdata->rcode_ede;
 		}

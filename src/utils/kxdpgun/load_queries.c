@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,8 @@
 #include <string.h>
 
 #include "load_queries.h"
-#include <libknot/libknot.h>
+#include "libknot/libknot.h"
+#include "utils/common/msg.h"
 
 #define ERR_PREFIX "failed loading queries "
 
@@ -46,7 +47,7 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 {
 	FILE *f = fopen(filename, "r");
 	if (f == NULL) {
-		printf(ERR_PREFIX "file '%s' (%s)\n", filename, strerror(errno));
+		ERR2(ERR_PREFIX "file '%s' (%s)\n", filename, strerror(errno));
 		return false;
 	}
 	struct pkt_payload *g_payloads_top = NULL;
@@ -60,7 +61,7 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 	} *bufs;
 	bufs = malloc(sizeof(*bufs)); // avoiding too much stuff on stack
 	if (bufs == NULL) {
-		printf(ERR_PREFIX "(out of memory)\n");
+		ERR2(ERR_PREFIX "(out of memory)\n");
 		goto fail;
 	}
 
@@ -68,21 +69,22 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 		bufs->flags_txt[0] = '\0';
 		int ret = sscanf(bufs->line, "%s%s%s", bufs->dname_txt, bufs->type_txt, bufs->flags_txt);
 		if (ret < 2) {
-			printf(ERR_PREFIX "(faulty line): '%.*s'\n",
-			       (int)strcspn(bufs->line, "\n"), bufs->line);
+			ERR2(ERR_PREFIX "(faulty line): '%.*s'\n",
+			     (int)strcspn(bufs->line, "\n"), bufs->line);
 			goto fail;
 		}
 
 		void *pret = knot_dname_from_str(bufs->dname, bufs->dname_txt, sizeof(bufs->dname));
 		if (pret == NULL) {
-			printf(ERR_PREFIX "(faulty dname): '%s'\n", bufs->dname_txt);
+			ERR2(ERR_PREFIX "(faulty dname): '%s'\n", bufs->dname_txt);
 			goto fail;
 		}
 
 		uint16_t type;
 		ret = knot_rrtype_from_string(bufs->type_txt, &type);
 		if (ret < 0) {
-			printf(ERR_PREFIX "(faulty type): '%s'\n", bufs->type_txt);
+			ERR2(ERR_PREFIX "(faulty type): '%s'\n", bufs->type_txt);
+			goto fail;
 		}
 
 		enum qflags flags = 0;
@@ -98,7 +100,7 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 			flags |= QFLAG_EDNS | QFLAG_DO;
 			break;
 		default:
-			printf(ERR_PREFIX "(faulty flag): '%s'\n", bufs->flags_txt);
+			ERR2(ERR_PREFIX "(faulty flag): '%s'\n", bufs->flags_txt);
 			goto fail;
 		}
 
@@ -110,7 +112,7 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 
 		struct pkt_payload *pkt = calloc(1, sizeof(struct pkt_payload) + pkt_len);
 		if (pkt == NULL) {
-			printf(ERR_PREFIX "(out of memory)\n");
+			ERR2(ERR_PREFIX "(out of memory)\n");
 			goto fail;
 		}
 		pkt->len = pkt_len;
@@ -140,7 +142,7 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 	}
 
 	if (global_payloads == NULL) {
-		printf(ERR_PREFIX "(no queries in file)\n");
+		ERR2(ERR_PREFIX "(no queries in file)\n");
 		goto fail;
 	}
 

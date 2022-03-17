@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@
 #include "contrib/os.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
+#include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/kxdpgun/ip_route.h"
 #include "utils/kxdpgun/load_queries.h"
@@ -88,6 +89,13 @@ typedef struct {
 
 static kxdpgun_stats_t global_stats = { 0 };
 
+typedef enum {
+	KXDPGUN_IGNORE_NONE     = 0,
+	KXDPGUN_IGNORE_QUERY    = (1 << 0),
+	KXDPGUN_IGNORE_LASTBYTE = (1 << 1),
+	KXDPGUN_IGNORE_CLOSE    = (1 << 2),
+} xdp_gun_ignore_t;
+
 typedef struct {
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
@@ -99,6 +107,9 @@ typedef struct {
 	uint8_t		local_ip_range;
 	bool		ipv6;
 	bool		tcp;
+	char		tcp_mode;
+	xdp_gun_ignore_t  ignore1;
+	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
 	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_*
 	unsigned	n_threads, thread_id;
@@ -110,6 +121,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.qps = 1000,
 	.duration = 5000000UL, // usecs
 	.at_once = 10,
+	.tcp_mode = '0',
 	.target_port = LOCAL_PORT_DEFAULT,
 	.listen_port = KNOT_XDP_LISTEN_PORT_PASS | LOCAL_PORT_MIN,
 };
@@ -298,8 +310,9 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
 			return i;
 		}
 
-		uint16_t local_port = LOCAL_PORT_MIN + unique % (LOCAL_PORT_MAX + 1 - LOCAL_PORT_MIN);
-		uint64_t ip_incr = unique % (1 << (addr_bits(ctx->ipv6) - ctx->local_ip_range));
+		uint16_t port_range = LOCAL_PORT_MAX - LOCAL_PORT_MIN + 1;
+		uint16_t local_port = LOCAL_PORT_MIN + unique % port_range;
+		uint64_t ip_incr = (unique / port_range) % (1 << (addr_bits(ctx->ipv6) - ctx->local_ip_range));
 		shuffle_sockaddr(&pkts[i].ip_from, &ctx->local_ip,  local_port, ip_incr);
 		shuffle_sockaddr(&pkts[i].ip_to,   &ctx->target_ip, ctx->target_port, 0);
 
@@ -336,9 +349,9 @@ void *xdp_gun_thread(void *_ctx)
 	knot_tcp_table_t *tcp_table = NULL;
 
 	if (ctx->tcp) {
-		tcp_table = knot_tcp_table_new(ctx->qps);
+		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
 		if (tcp_table == NULL) {
-			printf("failed to allocate TCP connection table\n");
+			ERR2("failed to allocate TCP connection table\n");
 			return NULL;
 		}
 	}
@@ -347,8 +360,8 @@ void *xdp_gun_thread(void *_ctx)
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->listen_port, mode);
 	if (ret != KNOT_EOK) {
-		printf("failed to initialize XDP socket#%u: %s\n",
-		       ctx->thread_id, knot_strerror(ret));
+		ERR2("failed to initialize XDP socket#%u (%s)\n",
+		     ctx->thread_id, knot_strerror(ret));
 		knot_tcp_table_free(tcp_table);
 		return NULL;
 	}
@@ -419,34 +432,28 @@ void *xdp_gun_thread(void *_ctx)
 					break;
 				}
 				if (ctx->tcp) {
-					uint32_t ack_errors = 0;
-					knot_tcp_relay_dynarray_t relays = { 0 };
-					ret = knot_tcp_relay(xsk, pkts, recvd, tcp_table, NULL,
-					                     &relays, &ack_errors);
-					lost += ack_errors;
+					knot_tcp_relay_t relays[recvd];
+					ret = knot_tcp_recv(relays, pkts, recvd, tcp_table, NULL, ctx->ignore2);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
 					}
 
-					size_t relays_answer = relays.size;
-					for (size_t i = 0; i < relays_answer; i++) {
-						knot_tcp_relay_t *rl = &knot_tcp_relay_dynarray_arr(&relays)[i];
+					for (size_t i = 0; i < recvd; i++) {
+						knot_tcp_relay_t *rl = &relays[i];
 						struct iovec payl;
 						switch (rl->action) {
 						case XDP_TCP_ESTABLISH:
 							local_stats.synack_recv++;
-							rl->answer = XDP_TCP_ANSWER | XDP_TCP_DATA;
+							if (ctx->ignore1 & KXDPGUN_IGNORE_QUERY) {
+								break;
+							}
 							put_dns_payload(&payl, true, ctx, &payload_ptr);
-							ret = knot_tcp_relay_answer(&relays, rl, payl.iov_base,
-							                            payl.iov_len);
+							ret = knot_tcp_reply_data(rl, tcp_table,
+							                          (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE),
+							                          payl.iov_base, payl.iov_len);
 							if (ret != KNOT_EOK) {
 								errors++;
-							}
-							break;
-						case XDP_TCP_DATA:
-							if (check_dns_payload(&rl->data, ctx, &local_stats)) {
-								rl->answer = XDP_TCP_ANSWER | XDP_TCP_CLOSE;
 							}
 							break;
 						case XDP_TCP_CLOSE:
@@ -458,16 +465,22 @@ void *xdp_gun_thread(void *_ctx)
 						default:
 							break;
 						}
+						for (size_t j = 0; j < rl->inbufs_count; j++) {
+							if (check_dns_payload(&rl->inbufs[j], ctx, &local_stats)) {
+								if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
+									rl->answer = XDP_TCP_CLOSE;
+								}
+							}
+						}
 					}
 
-					ret = knot_tcp_send(xsk, knot_tcp_relay_dynarray_arr(&relays),
-					                    relays.size);
+					ret = knot_tcp_send(xsk, relays, recvd, ctx->at_once);
 					if (ret != KNOT_EOK) {
 						errors++;
 					}
 					(void)knot_xdp_send_finish(xsk);
 
-					knot_tcp_relay_free(&relays);
+					knot_tcp_cleanup(tcp_table, relays, recvd);
 				} else {
 					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx,
@@ -522,8 +535,8 @@ void *xdp_gun_thread(void *_ctx)
 	if (errors > 0) {
 		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
 	}
-	printf("thread#%02u: sent %"PRIu64"%s%s%s\n",
-	       ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
+	INFO2("thread#%02u: sent %"PRIu64"%s%s%s\n",
+	      ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
 	local_stats.duration = ctx->duration;
 	collect_stats(&global_stats, &local_stats);
 
@@ -564,7 +577,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		ctx->ipv6 = true;
 		ctx->target_ip.ss_family = AF_INET6;
 		if (inet_pton(AF_INET6, target_str, &((struct sockaddr_in6 *)&ctx->target_ip)->sin6_addr) <= 0) {
-			printf("invalid target IP\n");
+			ERR2("invalid target IP\n");
 			return false;
 		}
 	} else {
@@ -574,7 +587,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	struct sockaddr_storage via = { 0 };
 	int ret = ip_route_get(&ctx->target_ip, &via, &ctx->local_ip, ctx->dev);
 	if (ret < 0) {
-		printf("can't find route to `%s`: %s\n", target_str, strerror(-ret));
+		ERR2("can't find route to '%s' (%s)\n", target_str, strerror(-ret));
 		return false;
 	}
 
@@ -588,12 +601,12 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		if (ctx->ipv6) {
 			if (ctx->local_ip_range < 64 ||
 			    inet_pton(AF_INET6, local_ip, &((struct sockaddr_in6 *)&ctx->local_ip)->sin6_addr) <= 0) {
-				printf("invalid local IPv6 or unsupported prefix length\n");
+				ERR2("invalid local IPv6 or unsupported prefix length\n");
 				return false;
 			}
 		} else {
 			if (inet_pton(AF_INET, local_ip, &((struct sockaddr_in *)&ctx->local_ip)->sin_addr) <= 0) {
-				printf("invalid local IPv4\n");
+				ERR2("invalid local IPv4\n");
 				return false;
 			}
 		}
@@ -604,13 +617,14 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	if (ret < 0) {
 		char neigh_str[256] = { 0 };
 		(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), neigh);
-		printf("failed to get remote MAC of target/gateway `%s`: %s\n", neigh_str, strerror(-ret));
+		ERR2("failed to get remote MAC of target/gateway '%s' (%s)\n",
+		     neigh_str, strerror(-ret));
 		return false;
 	}
 
 	ret = dev2mac(ctx->dev, ctx->local_mac);
 	if (ret < 0) {
-		printf("failed to get MAC of device `%s`: %s\n", ctx->dev, strerror(-ret));
+		ERR2("failed to get MAC of device '%s' (%s)\n", ctx->dev, strerror(-ret));
 		return false;
 	}
 
@@ -618,8 +632,8 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	if (ret >= 0) {
 		ctx->n_threads = ret;
 	} else {
-		printf("unable to get number of queues for %s: %s\n", ctx->dev,
-		       knot_strerror(ret));
+		ERR2("unable to get number of queues for '%s' (%s)\n", ctx->dev,
+		     knot_strerror(ret));
 		return false;
 	}
 
@@ -633,7 +647,7 @@ static void print_help(void)
 	       "Parameters:\n"
 	       " -t, --duration <sec>     "SPACE"Duration of traffic generation.\n"
 	       "                          "SPACE" (default is %"PRIu64" seconds)\n"
-	       " -T, --tcp                "SPACE"Send queries over TCP.\n"
+	       " -T, --tcp[=debug_mode]   "SPACE"Send queries over TCP.\n"
 	       " -Q, --qps <qps>          "SPACE"Number of queries-per-second (approximately) to be sent.\n"
 	       "                          "SPACE" (default is %"PRIu64" qps)\n"
 	       " -b, --batch <size>       "SPACE"Send queries in a batch of defined size.\n"
@@ -665,7 +679,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "batch",     required_argument, NULL, 'b' },
 		{ "drop",      no_argument,       NULL, 'r' },
 		{ "port",      required_argument, NULL, 'p' },
-		{ "tcp",       no_argument,       NULL, 'T' },
+		{ "tcp",       optional_argument, NULL, 'T' },
 		{ "affinity",  required_argument, NULL, 'F' },
 		{ "interface", required_argument, NULL, 'I' },
 		{ "local",     required_argument, NULL, 'l' },
@@ -677,39 +691,43 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:TF:I:l:i:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::F:I:l:i:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
 			exit(EXIT_SUCCESS);
-			break;
 		case 'V':
 			print_version(PROGRAM_NAME);
 			exit(EXIT_SUCCESS);
-			break;
 		case 't':
+			assert(optarg);
 			argf = atof(optarg);
 			if (argf > 0) {
 				ctx->duration = argf * 1000000.0;
 				assert(ctx->duration >= 1000);
 			} else {
+				ERR2("invalid duration '%s'\n", optarg);
 				return false;
 			}
 			break;
 		case 'Q':
+			assert(optarg);
 			arg = atoi(optarg);
 			if (arg > 0) {
 				ctx->qps = arg;
 			} else {
+				ERR2("invalid QPS '%s'\n", optarg);
 				return false;
 			}
 			break;
 		case 'b':
+			assert(optarg);
 			arg = atoi(optarg);
 			if (arg > 0) {
 				default_at_once = false;
 				ctx->at_once = arg;
 			} else {
+				ERR2("invalid batch size '%s'\n", optarg);
 				return false;
 			}
 			break;
@@ -717,10 +735,12 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			ctx->listen_port |= KNOT_XDP_LISTEN_PORT_DROP;
 			break;
 		case 'p':
+			assert(optarg);
 			arg = atoi(optarg);
 			if (arg > 0 && arg <= 0xffff) {
 				ctx->target_port = arg;
 			} else {
+				ERR2("invalid port '%s'\n", optarg);
 				return false;
 			}
 			break;
@@ -730,8 +750,43 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (default_at_once) {
 				ctx->at_once = 1;
 			}
+			ctx->tcp_mode = (optarg == NULL ? '0' : optarg[0]);
+			switch (ctx->tcp_mode) {
+			case '0':
+				break;
+			case '1':
+				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
+				ctx->ignore2 = XDP_TCP_IGNORE_ESTABLISH | XDP_TCP_IGNORE_FIN;
+				break;
+			case '2':
+				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
+				break;
+			case '3':
+				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
+				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+				break;
+			case '5':
+				ctx->ignore1 = KXDPGUN_IGNORE_LASTBYTE;
+				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+				break;
+			case '7':
+				ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
+				ctx->ignore2 = XDP_TCP_IGNORE_DATA_ACK | XDP_TCP_IGNORE_FIN;
+				break;
+			case '8':
+				ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
+				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+				break;
+			case '9':
+				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+				break;
+			default:
+				ERR2("invalid TCP mode '%s'\n", optarg);
+				return false;
+			}
 			break;
 		case 'F':
+			assert(optarg);
 			if ((arg = atoi(optarg)) > 0) {
 				global_cpu_aff_start = arg;
 			}
@@ -752,20 +807,29 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		default:
+			print_help();
 			return false;
 		}
 	}
-	if (global_payloads == NULL || argc - optind != 1 ||
-	    !configure_target(argv[optind], local_ip, ctx)) {
+	if (global_payloads == NULL || argc - optind != 1) {
+		print_help();
+		return false;
+	}
+
+	if (!configure_target(argv[optind], local_ip, ctx)) {
 		return false;
 	}
 
 	if (ctx->qps < ctx->n_threads) {
-		printf("QPS must be at least the number of threads (%u)\n", ctx->n_threads);
-		return false;
+		WARN2("QPS increased to the number of threads/queues: %u\n", ctx->n_threads);
+		ctx->qps = ctx->n_threads;
 	}
 	ctx->qps /= ctx->n_threads;
-	printf("using interface %s, XDP threads %u\n", ctx->dev, ctx->n_threads);
+
+	INFO2("using interface %s, XDP threads %u, %s%s%c\n", ctx->dev, ctx->n_threads,
+	      ctx->tcp ? "TCP" : "UDP",
+	      (ctx->tcp && ctx->tcp_mode != '0') ? " mode " : "",
+	      (ctx->tcp && ctx->tcp_mode != '0') ? ctx->tcp_mode : ' ');
 
 	return true;
 }
@@ -784,7 +848,7 @@ int main(int argc, char *argv[])
 	thread_ctxs = calloc(ctx.n_threads, sizeof(*thread_ctxs));
 	threads = calloc(ctx.n_threads, sizeof(*threads));
 	if (thread_ctxs == NULL || threads == NULL) {
-		printf("out of memory\n");
+		ERR2("out of memory\n");
 		free(thread_ctxs);
 		free(threads);
 		free_global_payloads();
@@ -802,8 +866,8 @@ int main(int argc, char *argv[])
 		    cur_limit.rlim_max != min_limit.rlim_max) {
 			int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
 			if (ret != 0) {
-				printf("warning: unable to increase RLIMIT_MEMLOCK: %s\n",
-				       strerror(errno));
+				WARN2("unable to increase RLIMIT_MEMLOCK: %s\n",
+				      strerror(errno));
 			}
 		}
 	}
@@ -824,7 +888,7 @@ int main(int argc, char *argv[])
 		(void)pthread_create(&threads[i], NULL, xdp_gun_thread, &thread_ctxs[i]);
 		int ret = pthread_setaffinity_np(threads[i], sizeof(cpu_set_t), &set);
 		if (ret != 0) {
-			printf("failed to set affinity of thread#%zu to CPU#%u\n", i, affinity);
+			WARN2("failed to set affinity of thread#%zu to CPU#%u\n", i, affinity);
 		}
 		usleep(20000);
 	}
@@ -844,5 +908,6 @@ int main(int argc, char *argv[])
 	free(thread_ctxs);
 	free(threads);
 	free_global_payloads();
+
 	return EXIT_SUCCESS;
 }

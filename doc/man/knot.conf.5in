@@ -494,8 +494,10 @@ xdp:
     tcp: BOOL
     tcp\-max\-clients: INT
     tcp\-inbuf\-max\-size: SIZE
+    tcp\-outbuf\-max\-size: SIZE
     tcp\-idle\-close\-timeout: TIME
     tcp\-idle\-reset\-timeout: TIME
+    tcp\-resend\-timeout: TIME
     route\-check: BOOL
 .ft P
 .fi
@@ -535,42 +537,18 @@ working TCP.
 .sp
 If enabled, DNS over TCP traffic is also processed with XDP workers.
 .sp
-The TCP stack features:
+The TCP stack limitations:
+.INDENT 0.0
+.INDENT 3.5
 .INDENT 0.0
 .IP \(bu 2
-Basic connection handling, sending/receiving data
+Congestion control is not implemented.
 .IP \(bu 2
-Close inactive connections
+Lost packets that do not contain TCP payload may not be resend.
 .IP \(bu 2
-Reset inactive connections which aren\(aqt able to close
-.IP \(bu 2
-Reset invalid connections
-.IP \(bu 2
-Ignore invalid resets and ACKs
-.IP \(bu 2
-Receive fragmented data – one DNS message in multiple packets
-.IP \(bu 2
-Limit total size of incoming buffers, reset most inactive connections
-with buffered data
-.IP \(bu 2
-Send fragmented data – DNS message larger than allowed by MSS
-.IP \(bu 2
-Send MSS option calculated from configured MSS and device MTU
-.IP \(bu 2
-Receive and honor MSS option, limit the size of outgoing packet
-.IP \(bu 2
-Send window size option (set to infinity)
+Not optimized for transfers of non\-trivial zones.
 .UNINDENT
-.sp
-Missing features:
-.INDENT 0.0
-.IP \(bu 2
-Receive and honor window size option, send only such amount of data at once,
-cache outgoing data
-.IP \(bu 2
-Allow multi\-message DNS responses (depends on above)
-.IP \(bu 2
-Resend lost outgoing packets (not ACKed in time), including data
+.UNINDENT
 .UNINDENT
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
@@ -588,11 +566,21 @@ other hamsters connected to the network.
 .sp
 A maximum number of TCP clients connected in parallel.
 .sp
+\fIMinimum:\fP 1024
+.sp
 \fIDefault:\fP 1000000 (one million)
 .SS tcp\-inbuf\-max\-size
 .sp
 Maximum cumulative size of memory used for buffers of incompletely
 received messages.
+.sp
+\fIMinimum:\fP 1 MiB
+.sp
+\fIDefault:\fP 100 MiB
+.SS tcp\-outbuf\-max\-size
+.sp
+Maximum cumulative size of memory used for buffers of unACKed
+sent messages.
 .sp
 \fIMinimum:\fP 1 MiB
 .sp
@@ -611,6 +599,14 @@ Time in seconds, after which any idle connection is forcibly closed.
 \fIMinimum:\fP 1 s
 .sp
 \fIDefault:\fP 20 s
+.SS tcp\-resend\-timeout
+.sp
+Resend outgoing data packets (with DNS response payload) if not ACKed
+before this timeout.
+.sp
+\fIMinimum:\fP 1 s
+.sp
+\fIDefault:\fP 5 s
 .SS route\-check
 .sp
 If enabled, routing information from the operating system is considered

@@ -522,8 +522,10 @@ Various options related to XDP listening, especially TCP.
      tcp: BOOL
      tcp-max-clients: INT
      tcp-inbuf-max-size: SIZE
+     tcp-outbuf-max-size: SIZE
      tcp-idle-close-timeout: TIME
      tcp-idle-reset-timeout: TIME
+     tcp-resend-timeout: TIME
      route-check: BOOL
 
 .. CAUTION::
@@ -559,27 +561,11 @@ tcp
 
 If enabled, DNS over TCP traffic is also processed with XDP workers.
 
-The TCP stack features:
+The TCP stack limitations:
 
-- Basic connection handling, sending/receiving data
-- Close inactive connections
-- Reset inactive connections which aren't able to close
-- Reset invalid connections
-- Ignore invalid resets and ACKs
-- Receive fragmented data – one DNS message in multiple packets
-- Limit total size of incoming buffers, reset most inactive connections
-  with buffered data
-- Send fragmented data – DNS message larger than allowed by MSS
-- Send MSS option calculated from configured MSS and device MTU
-- Receive and honor MSS option, limit the size of outgoing packet
-- Send window size option (set to infinity)
-
-Missing features:
-
-- Receive and honor window size option, send only such amount of data at once,
-  cache outgoing data
-- Allow multi-message DNS responses (depends on above)
-- Resend lost outgoing packets (not ACKed in time), including data
+ - Congestion control is not implemented.
+ - Lost packets that do not contain TCP payload may not be resend.
+ - Not optimized for transfers of non-trivial zones.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -596,6 +582,8 @@ tcp-max-clients
 
 A maximum number of TCP clients connected in parallel.
 
+*Minimum:* 1024
+
 *Default:* 1000000 (one million)
 
 .. _xdp_tcp-inbuf-max-size:
@@ -605,6 +593,18 @@ tcp-inbuf-max-size
 
 Maximum cumulative size of memory used for buffers of incompletely
 received messages.
+
+*Minimum:* 1 MiB
+
+*Default:* 100 MiB
+
+.. _xdp_tcp-outbuf-max-size:
+
+tcp-outbuf-max-size
+-------------------
+
+Maximum cumulative size of memory used for buffers of unACKed
+sent messages.
 
 *Minimum:* 1 MiB
 
@@ -631,6 +631,18 @@ Time in seconds, after which any idle connection is forcibly closed.
 *Minimum:* 1 s
 
 *Default:* 20 s
+
+.. _xdp_tcp-resend-timeout:
+
+tcp-resend-timeout
+------------------
+
+Resend outgoing data packets (with DNS response payload) if not ACKed
+before this timeout.
+
+*Minimum:* 1 s
+
+*Default:* 5 s
 
 .. _xdp_route-check:
 
