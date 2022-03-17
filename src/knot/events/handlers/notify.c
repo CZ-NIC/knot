@@ -156,6 +156,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 
 	// in case of re-try, NOTIFY only failed remotes
+	pthread_mutex_lock(&zone->preferred_lock);
 	bool retry = (zone->notifailed.size > 0);
 
 	// send NOTIFY to each remote, use working address
@@ -168,6 +169,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 			conf_mix_iter_next(&iter);
 			continue;
 		}
+		pthread_mutex_unlock(&zone->preferred_lock);
 
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 		size_t addr_count = conf_val_count(&addr);
@@ -182,7 +184,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 			}
 		}
 
-
+		pthread_mutex_lock(&zone->preferred_lock);
 		if (ret != KNOT_EOK) {
 			failed = true;
 
@@ -205,6 +207,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 
 		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + retry_in);
 	}
+	pthread_mutex_unlock(&zone->preferred_lock);
 
 	return failed ? KNOT_ERROR : KNOT_EOK;
 }

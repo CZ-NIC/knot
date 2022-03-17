@@ -364,7 +364,9 @@ bool zone_journal_has_zij(zone_t *zone)
 
 void zone_notifailed_clear(zone_t *zone)
 {
+	pthread_mutex_lock(&zone->preferred_lock);
 	notifailed_rmt_dynarray_free(&zone->notifailed);
+	pthread_mutex_unlock(&zone->preferred_lock);
 }
 
 void zone_schedule_notify(zone_t *zone, time_t delay)
