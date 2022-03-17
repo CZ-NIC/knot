@@ -447,7 +447,7 @@ static int zone_retransfer(zone_t *zone, _unused_ ctl_args_t *args)
 
 static int zone_notify(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	zone_notifailed_clear(zone); // FIXME need mutex for zone->notifailed
+	zone_notifailed_clear(zone);
 	return schedule_trigger(zone, args, ZONE_EVENT_NOTIFY, true);
 }
 
@@ -797,7 +797,7 @@ static int zone_txn_commit(zone_t *zone, _unused_ ctl_args_t *args)
 	free(zone->control_update);
 	zone->control_update = NULL;
 
-	zone_schedule_notify(zone, 0); // FIXME need mutex ?
+	zone_schedule_notify(zone, 0);
 
 	return KNOT_EOK;
 }
