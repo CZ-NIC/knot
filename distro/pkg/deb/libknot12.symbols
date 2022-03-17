@@ -144,15 +144,9 @@ libknot.so.12 libknot12 #MINVER#
  knot_rrtype_to_string@Base 3.1.0
  knot_strerror@Base 3.1.0
  knot_svcb_param_names@Base 3.1.0
- knot_tcp_relay@Base 3.1.0
- knot_tcp_relay_answer@Base 3.1.0
- knot_tcp_relay_dynarray_add@Base 3.1.0
- knot_tcp_relay_dynarray_arr@Base 3.1.0
- knot_tcp_relay_dynarray_free@Base 3.1.0
- knot_tcp_relay_dynarray_remove@Base 3.1.0
- knot_tcp_relay_dynarray_sort@Base 3.1.0
- knot_tcp_relay_dynarray_sort_dedup@Base 3.1.0
- knot_tcp_relay_free@Base 3.1.0
+ knot_tcp_cleanup@Base 3.2.0
+ knot_tcp_recv@Base 3.2.0
+ knot_tcp_reply_data@Base 3.2.0
  knot_tcp_send@Base 3.1.0
  knot_tcp_sweep@Base 3.1.0
  knot_tcp_table_free@Base 3.1.0
