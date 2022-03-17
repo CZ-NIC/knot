@@ -196,7 +196,14 @@ int event_notify(conf_t *conf, zone_t *zone)
 
 	if (failed) {
 		notifailed_rmt_dynarray_sort_dedup(&zone->notifailed);
-		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + 10); // FIXME exponential backoff of NOTIFY retries
+
+		long retry_in = knot_soa_retry(soa.rrs.rdata);
+		conf_val_t val = conf_zone_get(conf, C_RETRY_MIN_INTERVAL, zone->name);
+		retry_in = MAX(retry_in, conf_int(&val));
+		val = conf_zone_get(conf, C_RETRY_MAX_INTERVAL, zone->name);
+		retry_in = MIN(retry_in, conf_int(&val));
+
+		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + retry_in);
 	}
 
 	return failed ? KNOT_ERROR : KNOT_EOK;

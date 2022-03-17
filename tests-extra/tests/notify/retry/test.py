@@ -17,6 +17,8 @@ t.link(zone, master, slave1)
 t.link(zone, master, slave2)
 t.link(zone, master, slave3)
 
+master.zones[zone[0].name].retry_max = 20
+
 t.start()
 
 serial = master.zone_wait(zone)
