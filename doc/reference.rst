@@ -561,27 +561,11 @@ tcp
 
 If enabled, DNS over TCP traffic is also processed with XDP workers.
 
-The TCP stack features:
+The TCP stack limitations:
 
-- Basic connection handling, sending/receiving data
-- Close inactive connections
-- Reset inactive connections which aren't able to close
-- Reset invalid connections
-- Ignore invalid resets and ACKs
-- Receive fragmented data – one DNS message in multiple packets
-- Limit total size of incoming buffers, reset most inactive connections
-  with buffered data
-- Send fragmented data – DNS message larger than allowed by MSS
-- Send MSS option calculated from configured MSS and device MTU
-- Receive and honor MSS option, limit the size of outgoing packet
-- Send window size option (set to infinity)
-
-Missing features:
-
-- Receive and honor window size option, send only such amount of data at once,
-  cache outgoing data
-- Allow multi-message DNS responses (depends on above)
-- Resend lost outgoing packets (not ACKed in time), including data
+ - Congestion control is not implemented.
+ - Lost packets that do not contain TCP payload may not be resend.
+ - Not optimized for transfers of non-trivial zones.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
