@@ -4,11 +4,11 @@ Upstream-Contact: knot-dns@labs.nic.cz
 Source: https://secure.nic.cz/files/knot-dns/
 
 Files: *
-Copyright: 2011-2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 License: GPL-3+
 
 Files: m4/*
-Copyright: 2011-2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
            1996-2001, 2003-2015 Free Software Foundation, Inc.
 License: GPL-3+
 
@@ -18,7 +18,7 @@ License: MIT
 
 Files: debian/* distro/pkg/deb/*
 Copyright: 2011 Ondřej Surý <ondrej@debian.org>
-           2011-2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+           2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 License: GPL-3+
 
 Files: tests/tap/*
@@ -32,7 +32,7 @@ License: GPL-3+
 
 Files: src/contrib/dnstap/*
 Copyright: 2014, Farsight Security, Inc. <software@farsightsecurity.com>
-           2011-2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+           2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 License: GPL-3+
 
 Files: src/contrib/libbpf/*
