@@ -240,7 +240,11 @@ load_end:
 			log_zone_warning(zone->name, "zone file changed without SOA serial update");
 			break;
 		case KNOT_ERANGE:
-			log_zone_warning(zone->name, "zone file changed, but SOA serial decreased");
+			if (serial_compare(zone->zonefile.serial, zone_contents_serial(zone->contents)) == SERIAL_INCOMPARABLE) {
+				log_zone_warning(zone->name, "zone file changed with incomparable SOA serial");
+			} else {
+				log_zone_warning(zone->name, "zone file changed with decreased SOA serial");
+			}
 			break;
 		}
 		goto cleanup;
