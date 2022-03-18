@@ -35,6 +35,7 @@ SERIALS = {
 t = Test()
 
 master = t.server("knot")
+slave = t.server("knot")
 refer = t.server("bind")
 zones = [t.zone(z, storage=t.zones_dir, exists=False)[0] for z in SERIALS]
 
@@ -45,13 +46,15 @@ for dname in SERIALS:
         with open(os.path.join(t.zones_dir, fn), "w") as f:
             f.write(TEMPL % (dname, serial, index))
 
-t.link(zones, master, ixfr=True)
+t.link(zones, master, slave, ixfr=True)
 t.link(zones, refer, ixfr=True)
 
 t.start()
 
 master.zones_wait(zones)
+slave.zones_wait(zones)
 refer.zones_wait(zones)
+t.xfr_diff(master, slave, zones)
 t.xfr_diff(master, refer, zones)
 
 for i in range(1, 6):
@@ -71,10 +74,13 @@ for i in range(1, 6):
 
     for zone in zones:
         master.zone_wait(zone, SERIALS[zone.name][i - fix], equal=True, greater=False)
+        slave.zone_wait(zone, SERIALS[zone.name][i - fix], equal=True, greater=False)
         refer.zone_wait(zone, SERIALS[zone.name][i - fix], equal=True, greater=False)
         previous[zone.name] = SERIALS[zone.name][i - 1 - fix]
 
+    t.xfr_diff(master, slave, zones)
     t.xfr_diff(master, refer, zones)
+    t.xfr_diff(master, slave, zones, serials=previous)
     t.xfr_diff(master, refer, zones, serials=previous)
 
 t.end()
