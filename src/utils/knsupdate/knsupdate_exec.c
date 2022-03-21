@@ -547,7 +547,7 @@ int knsupdate_exec(knsupdate_params_t *params)
 
 	/* If no file specified, enter the interactive mode. */
 	if (EMPTY_LIST(params->qfiles)) {
-		ret = interactive_loop(params);
+		return process_lines(params, stdin);
 	}
 
 	/* Read from each specified file. */
