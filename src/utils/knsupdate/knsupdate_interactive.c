@@ -109,7 +109,7 @@ int interactive_loop(knsupdate_params_t *params)
 	if (home != NULL) {
 		hist_file = sprintf_alloc("%s/%s", home, HISTORY_FILE);
 	}
-	if (hist_file == NULL) {
+	if (hist_file == NULL && isatty(STDOUT_FILENO)) {
 		INFO("failed to get home directory");
 	}
 
