@@ -292,6 +292,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
+	knot_time_t expire_at = 0;
 	unsigned zonemd_alg;
 
 	result = sign_init(update, conf, 0, 0, 0, update->zone->kaspdb, &ctx, &zonemd_alg, reschedule);
@@ -308,13 +309,21 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf, zone_sign_resch
 		goto done;
 	}
 
+	if (ctx.policy->offline_ksk) {
+		result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &expire_at);
+		if (result != KNOT_EOK) {
+			log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
+			               knot_strerror(result));
+			goto done;
+		}
+	}
+
 	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL,
 	                              false, false, 1, update->a_ctx->node_ptrs);
 	if (result != KNOT_EOK) {
 		goto done;
 	}
 
-	knot_time_t expire_at = 0;
 	result = knot_zone_sign_update(update, &keyset, &ctx, &expire_at);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign changeset (%s)",
