@@ -309,7 +309,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		goto done;
 	}
 
-	if (zone_update_changes_dnskey(update)) {
+	if (zone_update_changes_dnskey(update) || ctx.policy->offline_ksk) {
 		result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &expire_at);
 		if (result != KNOT_EOK) {
 			log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
