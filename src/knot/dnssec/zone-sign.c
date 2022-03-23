@@ -466,6 +466,9 @@ static int sign_node_rrsets(const zone_node_t *node,
 	for (int i = 0; result == KNOT_EOK && i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
 		assert(rrset.type != KNOT_RRTYPE_ANY);
+		if (rrset.type == KNOT_RRTYPE_RRSIG) {
+			continue;
+		}
 
 		if (!knot_zone_sign_rr_should_be_signed(node, &rrset)) {
 			if (!sign_ctx->dnssec_ctx->validation_mode) {
