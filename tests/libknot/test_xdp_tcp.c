@@ -371,6 +371,7 @@ void test_close(void)
 	is_int(KNOT_EOK, ret, "close: send OK");
 	check_sent(0, 0, 0, 1);
 	is_int(XDP_TCP_CLOSE, rl.action, "close: relay action");
+	assert(rl.conn);
 	ok(rl.conn == test_conn, "close: same connection");
 	is_int(XDP_TCP_CLOSING2, rl.conn->state, "close: conn state");
 
@@ -535,6 +536,7 @@ void test_obufs(void)
 	size_t TEST_MSS = 1111;
 	size_t DATA_LEN = 65535; // with 2-byte len prefix, this is > 64k == window_size
 	uint8_t *data = calloc(DATA_LEN, 1);
+	assert(rl.conn);
 	rl.conn->mss = TEST_MSS;
 	rl.conn->window_size = 65536;
 	send2_mss = TEST_MSS;
