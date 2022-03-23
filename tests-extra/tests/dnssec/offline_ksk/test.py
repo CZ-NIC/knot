@@ -108,9 +108,18 @@ def wait_for_dnskey_count(t, server, dnskey_count, timeout):
         if time.monotonic() > endtime:
             break
 
+def zone_update(master, slave, zone, upd_master):
+    server = master if upd_master else slave
+    server.random_ddns(zone[0], allow_empty=True)
+
 def writef(filename, contents):
     with open(filename, "w") as f:
         f.write(contents)
+
+ON_SLAVE = random.choice([True, False])
+IXFR = random.choice([True, False]) if ON_SLAVE else False
+
+check_log("On-slave signing %s, IXFR enabled %s" % (ON_SLAVE, IXFR))
 
 t = Test()
 
@@ -121,7 +130,14 @@ TICK = 5
 STARTUP = 10
 
 zone = t.zone(ZONE)
-t.link(zone, knot)
+if ON_SLAVE:
+    master = t.server("knot")
+    t.link(zone, master, knot)
+    if not IXFR:
+        master.zones[ZONE].journal_content = "none"
+else:
+    master = t.server("dummy")
+    t.link(zone, knot)
 
 knot.zonefile_sync = 24 * 60 * 60
 
@@ -183,15 +199,19 @@ t.start()
 knot.zone_wait(zone)
 check_zone(knot, zone, 2, 1, 1, "init")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE)
 check_zone(knot, zone, 3, 2, 1, "KSK rollover: publish")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 3)
 check_zone(knot, zone, 2, 1, 1, "KSK rollover: finished")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 3, TICK_SAFE * 2)
 check_zone(knot, zone, 3, 1, 1, "ZSK rollover: running")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 2)
 check_zone(knot, zone, 2, 1, 1, "ZSK rollover: done")
 
@@ -215,17 +235,22 @@ Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 
 knot.ctl("zone-keys-load")
 
+zone_update(master, knot, zone, ON_SLAVE)
 check_zone(knot, zone, 2, 1, 1, "init2")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE)
 check_zone(knot, zone, 3, 2, 1, "KSK rollover2: publish")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 3)
 check_zone(knot, zone, 2, 1, 1, "KSK rollover2: finished")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 3, TICK_SAFE * 3)
 check_zone(knot, zone, 3, 1, 1, "ZSK rollover2: running")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 2)
 check_zone(knot, zone, 2, 1, 1, "ZSK rollover2: done")
 
@@ -257,15 +282,19 @@ writef(SKR, out)
 Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 knot.ctl("zone-keys-load")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_rrsig_count(t, knot, "SOA", 2, algtick + 2)
 check_zone(knot, zone, 2, 1, 2, "alg roll: pre-active")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 4, algtick + 2)
 check_zone(knot, zone, 4, 2, 2, "alg roll: published")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 2, algtick + 2)
 check_zone(knot, zone, 2, 2, 2, "alg roll: post-active")
 
+zone_update(master, knot, zone, ON_SLAVE)
 wait_for_rrsig_count(t, knot, "SOA", 1, algtick + 2)
 check_zone(knot, zone, 2, 1, 1, "alg roll: finished")
 
