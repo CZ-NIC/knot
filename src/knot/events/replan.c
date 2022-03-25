@@ -30,9 +30,6 @@
  */
 static void replan_ddns(zone_t *zone, zone_t *old_zone)
 {
-	assert(zone);
-	assert(old_zone);
-
 	if (old_zone->ddns_queue_size == 0) {
 		return;
 	}
@@ -49,16 +46,29 @@ static void replan_ddns(zone_t *zone, zone_t *old_zone)
 }
 
 /*!
- * \brief Replan NOTIFY event if it was queued for the old zone.
+ * \brief Replan events that are already planned for the old zone.
  */
-static void replan_notify(zone_t *zone, const zone_t *old_zone)
+static void replan_from_zone(zone_t *zone, zone_t *old_zone)
 {
 	assert(zone);
 	assert(old_zone);
 
-	time_t notify = zone_events_get_time(old_zone, ZONE_EVENT_NOTIFY);
-	if (notify > 0) {
-		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, notify);
+	replan_ddns(zone, old_zone);
+
+	const zone_event_type_t types[] = {
+		ZONE_EVENT_FLUSH,
+		ZONE_EVENT_BACKUP,
+		ZONE_EVENT_NOTIFY,
+		ZONE_EVENT_UFREEZE,
+		ZONE_EVENT_UTHAW,
+		ZONE_EVENT_INVALID
+	};
+
+	for (const zone_event_type_t *type = types; *type != ZONE_EVENT_INVALID; type++) {
+		time_t when = zone_events_get_time(old_zone, *type);
+		if (when > 0) {
+			zone_events_schedule_at(zone, *type, when);
+		}
 	}
 }
 
@@ -170,8 +180,7 @@ void replan_load_bootstrap(conf_t *conf, zone_t *zone)
 
 void replan_load_current(conf_t *conf, zone_t *zone, zone_t *old_zone)
 {
-	replan_ddns(zone, old_zone);
-	replan_notify(zone, old_zone);
+	replan_from_zone(zone, old_zone);
 
 	if (zone->contents != NULL || zone_expired(zone)) {
 		replan_from_timers(conf, zone);
@@ -183,8 +192,7 @@ void replan_load_current(conf_t *conf, zone_t *zone, zone_t *old_zone)
 
 void replan_load_updated(zone_t *zone, zone_t *old_zone)
 {
-	replan_ddns(zone, old_zone);
-	replan_notify(zone, old_zone);
+	replan_from_zone(zone, old_zone);
 
 	// other events will cascade from load
 	zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
