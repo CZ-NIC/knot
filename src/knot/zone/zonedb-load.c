@@ -103,6 +103,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 		conf_updated = true;
 	}
 
+	zone->events.ufrozen = old_zone->events.ufrozen;
 	if ((zone_file_updated(conf, old_zone, name) || conf_updated) && !zone_expired(zone)) {
 		replan_load_updated(zone, old_zone);
 	} else {
