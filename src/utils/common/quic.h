@@ -25,6 +25,10 @@ typedef struct {
 	bool enable;
 } quic_params_t;
 
+uint64_t quic_timestamp(void);
+
+size_t quic_setup_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in);
+
 int quic_params_copy(quic_params_t *dst, const quic_params_t *src);
 
 void quic_params_clean(quic_params_t *params);
@@ -43,7 +47,6 @@ typedef struct {
 	tls_ctx_t *tls;
 	/*! ngtcp2 (QUIC) setting. */
 	ngtcp2_settings settings;
-	ngtcp2_path path;
 	/*! Stream context */
 	struct {
 		int64_t stream_id;
@@ -58,6 +61,7 @@ typedef struct {
 	uint64_t last_error;
 	ngtcp2_conn *conn;
 	uint8_t secret[32];
+	bool opened_stream;
 } quic_ctx_t;
 
 int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx,

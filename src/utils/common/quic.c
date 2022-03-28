@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <poll.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <gnutls/gnutls.h>
@@ -57,20 +58,55 @@ void quic_params_clean(quic_params_t *params)
 #define QUIC_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-SECP256R1:+GROUP-X25519:+GROUP-SECP384R1:+GROUP-SECP521R1"
 #define QUIC_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_CIPHERS":"QUIC_DEFAULT_GROUPS
 
-static uint64_t quic_timestamp(void)
+uint64_t quic_timestamp(void)
 {
-	struct timespec tp;
-	if (clock_gettime(CLOCK_MONOTONIC, &tp) != 0) {
-		assert(0);
+	struct timespec ts;
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+		return 0;
 	}
 
-	return (uint64_t)tp.tv_sec * NGTCP2_SECONDS + (uint64_t)tp.tv_nsec;
+	return (uint64_t)ts.tv_sec * NGTCP2_SECONDS + (uint64_t)ts.tv_nsec;
+}
+
+size_t quic_setup_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in)
+{
+	size_t str_len = strlen(in);
+	size_t idx = 0;
+	for (; idx < maxlen && str_len > 0; ++idx) {
+		const int len = *in;
+		dest[idx].data = in + 1;
+		dest[idx].size = len;
+		in += len + 1;
+		str_len -= len + 1;
+	}
+	return idx;
 }
 
 static int hook_func(gnutls_session_t session, unsigned int htype,
                      unsigned when, unsigned int incoming,
                      const gnutls_datum_t *msg)
 {
+	return 0;
+}
+
+static int extend_max_local_streams_bidi(ngtcp2_conn *conn,
+        uint64_t max_streams, void *user_data)
+{
+	if (max_streams < 1) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+
+	quic_ctx_t *ctx = user_data;
+	if (ctx->stream.stream_id != -1) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+
+	int64_t stream_id;
+	if (ngtcp2_conn_open_bidi_stream(conn, &stream_id, NULL) != 0) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+	//ctx->stream.stream_id = stream_id;
+
 	return 0;
 }
 
@@ -82,9 +118,16 @@ static int secret_func(gnutls_session_t session,
 	ngtcp2_crypto_level level =
 	    ngtcp2_crypto_gnutls_from_gnutls_record_encryption_level(gtls_level);
 
-	if (rx_secret && ngtcp2_crypto_derive_and_install_rx_key(ctx->conn, NULL,
+	if (rx_secret) {
+		if (ngtcp2_crypto_derive_and_install_rx_key(ctx->conn, NULL,
 	        NULL, NULL, level, rx_secret, secretlen) != 0) {
-		return -1;
+			return -1;
+		}
+		//TODO Aioquic dont like to open it in RTT-0
+		if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION && !ctx->opened_stream) {
+			extend_max_local_streams_bidi(ctx->conn, 1, ctx);
+			ctx->opened_stream = true;
+		}
 	}
 
 	if (tx_secret && ngtcp2_crypto_derive_and_install_tx_key(ctx->conn, NULL,
@@ -209,26 +252,6 @@ static int get_new_connection_id_cb(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	return 0;
 }
 
-static int extend_max_local_streams_bidi(ngtcp2_conn *conn,
-        uint64_t max_streams, void *user_data)
-{
-	if (max_streams < 1) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-
-	quic_ctx_t *ctx = user_data;
-	if (ctx->stream.stream_id != -1) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-
-	int64_t stream_id;
-	if (ngtcp2_conn_open_bidi_stream(conn, &stream_id, NULL) != 0) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-	ctx->stream.stream_id = stream_id;
-
-	return 0;
-}
 
 static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
         int64_t stream_id, uint64_t offset, const uint8_t *data,
@@ -236,37 +259,41 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
 {
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
 
-	if (ctx && ctx->stream.rx_data && (stream_id == ctx->stream.stream_id) &&
-	    (offset + datalen < ctx->stream.rx_datalen)) {
-		// TODO need to be tested
-		/*
-		 * Getting the message size from the first 2 octets with respect to the
-		 * message offset.
-		 */
-		uint16_t resp_size;
-		if (offset < sizeof(resp_size)) {
-			uint8_t *resp_size_b = (uint8_t *)&resp_size;
-			memcpy((void *)&resp_size_b[offset], data,
-			       MIN(datalen, sizeof(resp_size) - offset));
-		}
-		resp_size = ntohs(resp_size);
-		ctx->stream.resp_size |= resp_size;
-		const size_t offset_threshold = MIN(sizeof(resp_size), offset);
-		const size_t off = sizeof(resp_size) - offset_threshold;
-		if (datalen - off > 0) {
-			resp_size = ntohs(resp_size);
-			memcpy(ctx->stream.rx_data + offset - offset_threshold, data + off,
-			       datalen - off);
-			ctx->stream.nread += offset + datalen;
-		}
-	} else {
-		// TODO Improve problem solving
-		assert(0);
-	}
-	if ((flags & NGTCP2_STREAM_DATA_FLAG_FIN) ||
-	    ctx->stream.resp_size == ctx->stream.nread) {
-		ctx->stream.stream_id = -1;
-	}
+	// if (ctx && ctx->stream.rx_data && (stream_id == ctx->stream.stream_id) &&
+	//     (offset + datalen < ctx->stream.rx_datalen)) {
+	// 	// TODO need to be tested
+	// 	/*
+	// 	 * Getting the message size from the first 2 octets with respect to the
+	// 	 * message offset.
+	// 	 */
+	// 	uint16_t resp_size;
+	// 	if (offset < sizeof(resp_size)) {
+	// 		uint8_t *resp_size_b = (uint8_t *)&resp_size;
+	// 		memcpy((void *)&resp_size_b[offset], data,
+	// 		       MIN(datalen, sizeof(resp_size) - offset));
+	// 	}
+	// 	resp_size = ntohs(resp_size);
+	// 	ctx->stream.resp_size |= resp_size;
+	// 	const size_t offset_threshold = MIN(sizeof(resp_size), offset);
+	// 	const size_t off = sizeof(resp_size) - offset_threshold;
+	// 	if (datalen - off > 0) {
+	// 		resp_size = ntohs(resp_size);
+	// 		memcpy(ctx->stream.rx_data + offset - offset_threshold, data + off,
+	// 		       datalen - off);
+	// 		ctx->stream.nread += offset + datalen;
+	// 	}
+	// } else {
+	// 	// TODO Improve problem solving
+	// 	assert(0);
+	// }
+	// if ((flags & NGTCP2_STREAM_DATA_FLAG_FIN) ||
+	//     ctx->stream.resp_size == ctx->stream.nread) {
+	// 	ctx->stream.stream_id = -1;
+	// }
+
+	memcpy(ctx->stream.rx_data, data + 2, datalen - 2);
+	ctx->stream.rx_datalen = datalen - 2;
+	ctx->stream.nread = datalen - 2;
 
 	return 0;
 }
@@ -288,6 +315,8 @@ static int stream_close(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 	(void)flags;
 	(void)app_error_code;
 	(void)stream_user_data;
+
+	printf("Stream %ld closed\n", stream_id);
 
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
 	if (ctx && stream_id == ctx->stream.stream_id) {
@@ -327,7 +356,35 @@ int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx, const quic_params_t *para
 	return KNOT_EOK;
 }
 
-#define ALPN "\02dq"
+static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t datalen)
+{
+	(void)user_data;
+	FILE *qlog = fopen("/home/jhak/Work/knot-dns/knot.qlog", "a");
+	if (qlog != NULL) {
+		//fprintf(qlog, "\n%u: ", flags);
+		for (size_t i = 0; i < datalen; i++) {
+			fputc(*(uint8_t *)(data + i), qlog);
+		}
+		fclose(qlog);
+	}
+}
+
+static int stream_open(ngtcp2_conn *conn, int64_t stream_id, void *user_data)
+{
+	printf("Stream opened\n");
+	return 0;
+}
+
+static int handshake_confirmed(ngtcp2_conn *conn, void *user_data)
+{
+	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+	ctx->stream.stream_id = 0;
+	printf("HS complete\n");
+	return 0;
+}
+
+#define ALPN "\03doq\07doq-i03\07doq-i02"
+#define ALPN_SIZE 3
 
 int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
         struct addrinfo *dst_addr)
@@ -347,11 +404,11 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 		ngtcp2_crypto_hp_mask_cb,
 		recv_stream_data,
 		acked_stream_data_offset,
-		NULL, /* stream_open */
+		stream_open,
 		stream_close,
 		NULL, /* recv_stateless_reset */
 		ngtcp2_crypto_recv_retry_cb,
-		extend_max_local_streams_bidi,
+		NULL, /* extend_max_local_streams_bidi, */
 		NULL, /* extend_max_local_streams_uni */
 		rand_cb,
 		get_new_connection_id_cb,
@@ -364,7 +421,7 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 		NULL, /* extend_max_remote_streams_uni */
 		NULL, /* extend_max_stream_data */
 		NULL, /* dcid_status */
-		NULL, /* handshake_confirmed */
+		handshake_confirmed, /* handshake_confirmed */
 		NULL, /* recv_new_token */
 		ngtcp2_crypto_delete_crypto_aead_ctx_cb,
 		ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
@@ -393,6 +450,8 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 	settings.max_udp_payload_size = 1362;
 	settings.no_udp_payload_size_shaping = 1;
 
+	settings.qlog.write = user_qlog;
+
 	ngtcp2_transport_params params;
 	ngtcp2_transport_params_default(&params);
 	params.initial_max_stream_data_bidi_local = 256 * 1024;
@@ -417,7 +476,6 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 		},
 		.user_data = NULL
 	};
-	ctx->path = path;
 
 	if (ngtcp2_conn_client_new(&ctx->conn, &dcid, &scid, &path,
 	                           NGTCP2_PROTO_VER_V1, &callbacks, &settings,
@@ -445,15 +503,16 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 	}
 	gnutls_session_set_ptr(ctx->tls->session, ctx);
 
-	gnutls_datum_t alpn = {
-		.data = (uint8_t *)(&ALPN[1]),
-		.size = ALPN[0]
-	};
-	gnutls_alpn_set_protocols(ctx->tls->session, &alpn, 1, 0);
-	// ret = gnutls_alpn_set_protocols(ctx->tls->session, &alpn, 1, 0);
-	// if (ret != GNUTLS_E_SUCCESS) {
-	// 	return KNOT_NET_ECONNECT;
-	// }
+	gnutls_datum_t alpn[ALPN_SIZE];
+	size_t alpn_size = quic_setup_alpn(alpn, ALPN_SIZE, ALPN);
+	
+	if (alpn_size > 0) {
+		// gnutls_alpn_set_protocols(ctx->tls->session, &alpn, 1, 0);
+		ret = gnutls_alpn_set_protocols(ctx->tls->session, &alpn, alpn_size, 0);
+		if (ret != GNUTLS_E_SUCCESS) {
+			return KNOT_NET_ECONNECT;
+		}
+	}
 
 	if (remote != NULL) {
 		ret = gnutls_server_name_set(ctx->tls->session, GNUTLS_NAME_DNS, remote,
@@ -482,42 +541,52 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 	ngtcp2_pkt_info pi = { 0 };
 	ngtcp2_ssize wdatalen;
 	size_t max_udp_payload_size = ngtcp2_conn_get_path_max_udp_payload_size(ctx->conn);
-	uint64_t ts = quic_timestamp();
-	while(!ngtcp2_conn_get_handshake_completed(ctx->conn)) {
+	while((!ngtcp2_conn_get_handshake_completed(ctx->conn)) || ctx->stream.stream_id < 0) {
 		// TODO Make revision of this whole 'while'
-		ngtcp2_ssize nwrite = ngtcp2_conn_write_pkt(ctx->conn,
-		        ngtcp2_conn_get_path(ctx->conn), &pi, enc_buf,
-		        sizeof(enc_buf), ts);
-		if (nwrite <= 0) {
-			ctx->last_error = ngtcp2_err_infer_quic_transport_error_code((int)nwrite);
-		}
-
-		struct iovec msg_iov;
-		msg_iov.iov_base = enc_buf;
-		msg_iov.iov_len = nwrite;
-		struct msghdr msg = { 0 };
-		msg.msg_iov = &msg_iov;
-		msg.msg_iovlen = 1;
-		switch (dst_addr->ai_family) {
-		case AF_INET:
-			if (setsockopt(sockfd, IPPROTO_IP, IP_TOS, &pi.ecn, (socklen_t)sizeof(pi.ecn)) == -1) {
-				return KNOT_NET_ECONNECT;
+		uint64_t ts = quic_timestamp();
+		ngtcp2_ssize nwrite = 0;
+		while(1) {
+			nwrite = ngtcp2_conn_write_pkt(ctx->conn,
+			        ngtcp2_conn_get_path(ctx->conn), &pi, enc_buf,
+			        sizeof(enc_buf), ts);
+			if (nwrite < 0) {
+				assert(0);
+				ctx->last_error = ngtcp2_err_infer_quic_transport_error_code((int)nwrite);
+			} else if (nwrite == 0) {
+				ngtcp2_conn_update_pkt_tx_time(ctx->conn, ts);
+				break;
 			}
-			break;
-		case AF_INET6:
-			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_TCLASS, &pi.ecn, (socklen_t)sizeof(pi.ecn)) == -1) {
-				return KNOT_NET_ECONNECT;
-			}
-			break;
-		}
-		do {
-			// nwrite = sendto(sockfd, enc_buf, nwrite, MSG_DONTWAIT,
-			//                 (struct sockaddr *)ctx->path.remote.addr,
-			//                 ctx->path.remote.addrlen);
-			nwrite = sendmsg(sockfd, &msg, 0);
-		} while (nwrite == -1 && errno == EINTR);
 
-		if (poll(&pfd, 1, -1) != 1) {	// TODO configurable timeout
+			struct iovec msg_iov;
+			msg_iov.iov_base = enc_buf;
+			msg_iov.iov_len = nwrite;
+			struct msghdr msg = { 0 };
+			msg.msg_iov = &msg_iov;
+			msg.msg_iovlen = 1;
+
+			switch (dst_addr->ai_family) {
+			case AF_INET:
+				if (setsockopt(sockfd, IPPROTO_IP, IP_TOS, &pi.ecn, (socklen_t)sizeof(pi.ecn)) == -1) {
+					return KNOT_NET_ECONNECT;
+				}
+				break;
+			case AF_INET6:
+				if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_TCLASS, &pi.ecn, (socklen_t)sizeof(pi.ecn)) == -1) {
+					return KNOT_NET_ECONNECT;
+				}
+				break;
+			}
+
+			do {
+				// nwrite = sendto(sockfd, enc_buf, nwrite, MSG_DONTWAIT,
+				//                 (struct sockaddr *)ctx->path.remote.addr,
+				//                 ctx->path.remote.addrlen);
+				nwrite = sendmsg(sockfd, &msg, 0);
+			} while (nwrite == -1 && errno == EINTR);
+		}
+		//if (ctx->stream.stream_id >= 0) break;
+
+		if (poll(&pfd, 1, -1) < 1) {	// TODO configurable timeout
 			continue; // Resend
 		}
 
@@ -527,10 +596,8 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 		if (nwrite <= 0) {
 			return KNOT_NET_ECONNECT;
 		}
-		ctx->path.remote.addr = (struct sockaddr *)&from;
-		ctx->path.remote.addrlen = from_len;
 
-		nwrite = ngtcp2_conn_read_pkt(ctx->conn, &ctx->path, &pi, enc_buf,
+		nwrite = ngtcp2_conn_read_pkt(ctx->conn, ngtcp2_conn_get_path(ctx->conn), &pi, enc_buf,
 		                              nwrite, quic_timestamp());
 		if (nwrite != 0) {
 			// fprintf(stderr, "ngtcp2_conn_read_pkt: %s\n", ngtcp2_strerror(rv));
@@ -563,62 +630,103 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const
 	ctx->stream.tx_data = (uint8_t *)buf;
 	ctx->stream.tx_datalen = buf_len;
 
-	uint8_t enc_buf[65535];
-	ngtcp2_vec data[2];
-	ngtcp2_ssize wdatalen;
-	ngtcp2_pkt_info pi = { 0 };
-	uint32_t flags = 0;
-	int datacnt = 0;
-	bool final = false;
-	uint16_t query_length = htons(ctx->stream.tx_datalen);
+	struct pollfd pfd = {
+		.fd = sockfd,
+		.events = POLLIN,
+		.revents = 0,
+	};
 
-	if (ctx->stream.stream_id >= 0) {
-		//TODO take care of max. message size ??
-		/*this*/
-		// data[0].base = (uint8_t *)&query_length;
-		// data[0].len = sizeof(query_length);
-		// data[1].base = ctx->stream.tx_data;
-		// data[1].len = ctx->stream.tx_datalen;
-		// datacnt = 2;
-		/*or*/
-		data[0].base = ctx->stream.tx_data;
-		data[0].len = ctx->stream.tx_datalen;
-		datacnt = 1;
-		final = true;
-		/*end*/
-	} else {
-		datacnt = 0;
-	}
-
-	flags = final ? NGTCP2_WRITE_STREAM_FLAG_FIN
-	              : NGTCP2_WRITE_STREAM_FLAG_MORE;
-
-	struct sockaddr_in6 src_addr;
-	socklen_t src_addr_len = sizeof(src_addr);
-	getsockname(sockfd, (struct sockaddr *)&src_addr, &src_addr_len);
-	ctx->path.local.addr = (struct  sockaddr *)&src_addr;
-	ctx->path.local.addrlen = src_addr_len;
-	ctx->path.remote.addr = srv->ai_addr;
-	ctx->path.remote.addrlen = srv->ai_addrlen;
-
-	ngtcp2_ssize nwrite = ngtcp2_conn_writev_stream(ctx->conn, &ctx->path, &pi,
-	        enc_buf, sizeof(enc_buf), &wdatalen, flags, ctx->stream.stream_id, data,
-	        datacnt, quic_timestamp());
-	if (nwrite <= 0) {
-		switch (nwrite) {
-		case 0:
-			return 0;
-		default:
-			ctx->last_error = ngtcp2_err_infer_quic_transport_error_code((int)nwrite);
-			//return -1;
+	while(1) {
+		uint8_t enc_buf[65535];
+		ngtcp2_vec data[2];
+		ngtcp2_ssize wdatalen;
+		ngtcp2_pkt_info pi = { 0 };
+		uint32_t flags = 0;
+		int datacnt = 0;
+		bool final = false;
+		
+		// TODO AdGuard implements old draft (ietf-dprive-dnsoquic-02), maybe do fallback
+		if (ctx->stream.stream_id >= 0) {
+			uint16_t query_length = htons(ctx->stream.tx_datalen);
+			data[0].base = &query_length;
+			data[0].len = sizeof(query_length);
+			data[1].base = ctx->stream.tx_data;
+			data[1].len = ctx->stream.tx_datalen;
+			datacnt = 2;
+			final = true;
+		} else {
+			data[0].base = NULL;
+			data[0].len = 0;
+			datacnt = 0;
 		}
+
+		flags = final ? NGTCP2_WRITE_STREAM_FLAG_FIN
+					: NGTCP2_WRITE_STREAM_FLAG_MORE;
+
+		// struct sockaddr_in6 src_addr;
+		// socklen_t src_addr_len = sizeof(src_addr);
+		// getsockname(sockfd, (struct sockaddr *)&src_addr, &src_addr_len);
+		// ctx->path.local.addr = (struct  sockaddr *)&src_addr;
+		// ctx->path.local.addrlen = src_addr_len;
+		// ctx->path.remote.addr = srv->ai_addr;
+		// ctx->path.remote.addrlen = srv->ai_addrlen;
+
+		ngtcp2_ssize nwrite = ngtcp2_conn_writev_stream(ctx->conn, ngtcp2_conn_get_path(ctx->conn), &pi,
+				enc_buf, sizeof(enc_buf), &wdatalen, flags, ctx->stream.stream_id, &data,
+				datacnt, quic_timestamp());
+		if (nwrite <= 0) {
+			switch (nwrite) {
+			case 0:
+				continue;
+			default:
+				ctx->last_error = ngtcp2_err_infer_quic_transport_error_code((int)nwrite);
+				//return -1;
+			}
+		}
+
+		do {
+			nwrite = sendto(sockfd, enc_buf, nwrite, MSG_DONTWAIT, srv->ai_addr,
+							srv->ai_addrlen);
+		} while (nwrite == -1 && errno == EINTR);
+
+		if (wdatalen > 0) {
+			return 0;
+		}
+		
+		if (poll(&pfd, 1, -1) < 1) {	// TODO configurable timeout
+			continue; // Resend
+		}
+
+		struct sockaddr_storage from = { 0 };
+		socklen_t from_len = sizeof(from);
+		nwrite = recvfrom(sockfd, enc_buf, sizeof(enc_buf), 0, (struct sockaddr *)&from, &from_len);
+		if (nwrite <= 0) {
+			return KNOT_NET_ECONNECT;
+		}
+		//ctx->path.remote.addr = (struct sockaddr *)&from;
+		//ctx->path.remote.addrlen = from_len;
+
+		nwrite = ngtcp2_conn_read_pkt(ctx->conn, ngtcp2_conn_get_path(ctx->conn), &pi, enc_buf,
+		                              nwrite, quic_timestamp());
+		if (nwrite != 0) {
+			// fprintf(stderr, "ngtcp2_conn_read_pkt: %s\n", ngtcp2_strerror(rv));
+			switch (nwrite) {
+			case NGTCP2_ERR_REQUIRED_TRANSPORT_PARAM:
+			case NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM:
+			case NGTCP2_ERR_TRANSPORT_PARAM:
+			case NGTCP2_ERR_PROTO:
+				ctx->last_error = ngtcp2_err_infer_quic_transport_error_code(nwrite);
+				break;
+			default:
+				if (!ctx->last_error) {
+					ctx->last_error = ngtcp2_err_infer_quic_transport_error_code(nwrite);
+				}
+				break;
+			}
+			return KNOT_NET_ECONNECT;
+		}
+
 	}
-
-	do {
-		nwrite = sendto(sockfd, enc_buf, nwrite, MSG_DONTWAIT, srv->ai_addr,
-		                srv->ai_addrlen);
-	} while (nwrite == -1 && errno == EINTR);
-
 	return KNOT_EOK;
 }
 
@@ -677,7 +785,7 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len, 
 		// 	continue;
 		// }
 
-		ret = ngtcp2_conn_read_pkt(ctx->conn, &ctx->path, &pi, encrypted, ret,
+		ret = ngtcp2_conn_read_pkt(ctx->conn, ngtcp2_conn_get_path(ctx->conn), &pi, encrypted, ret,
 		                           quic_timestamp());
 		if (ctx->stream.stream_id < 0) {
 			return ctx->stream.nread;
@@ -685,7 +793,7 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len, 
 
 		tx:
 		wdatalen = 0;
-		nwrite = ngtcp2_conn_writev_stream(ctx->conn, &ctx->path, &pi,
+		nwrite = ngtcp2_conn_writev_stream(ctx->conn, ngtcp2_conn_get_path(ctx->conn), &pi,
 		                                   encrypted, sizeof(encrypted),
 		                                   &wdatalen, 0, -1, NULL, 0,
 		                                   quic_timestamp());
