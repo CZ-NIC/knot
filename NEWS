@@ -1,3 +1,31 @@
+Knot DNS 3.1.7 (2022-03-30)
+===========================
+
+Features:
+---------
+ - knotd: new configuration items for restricting minimum and maximum zone expire
+          and retry intervals (see 'zone.expire-min-interval', 'zone.expire-max-interval',
+          'zone.retry-min-interval', 'zone.retry-max-interval') #785
+ - knotc: added catalog information to zone status
+
+Improvements:
+-------------
+ - knotd: better warning message if SOA serial comparison failed when loading from zone file
+ - knotc: zone status shows all zone events when frozen
+ - keymgr: better error message is returned when importing SKR with insufficient permissions
+ - kdig: transfer status is also printed if failed
+
+Bugfixes:
+---------
+ - knotd: incomplete implementation of the Offline KSK mode in the IXFR and DDNS processing
+ - knotd: catalog zone accepts duplicate members via UPDATE #786
+ - knotd: server crashes if catalog database contains orphaned member zones
+ - knotd: old journal is scraped when restoring just the zone file
+ - knotd: some planned zone events can be lost during server reload
+ - knotd: frozen zone gets thawed during server reload
+ - knsupdate: missing section names in the show output
+ - knsupdate: inappropriate log message if called from a script
+
 Knot DNS 3.1.6 (2022-02-08)
 ===========================
 
