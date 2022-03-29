@@ -366,11 +366,6 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 				continue;
 			}
 
-			// Skip events affected by freeze.
-			if (ufrozen && ufreeze_applies(i)) {
-				continue;
-			}
-
 			data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
 			time_t ev_time = zone_events_get_time(zone, i);
 			if (zone->events.running && zone->events.type == i) {
@@ -378,7 +373,8 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			} else if (ev_time <= 0) {
 				ret = snprintf(buff, sizeof(buff), "not scheduled");
 			} else if (ev_time <= time(NULL)) {
-				ret = snprintf(buff, sizeof(buff), "pending");
+				bool frozen = ufrozen && ufreeze_applies(i);
+				ret = snprintf(buff, sizeof(buff), frozen ? "frozen" : "pending");
 			} else {
 				ret = knot_time_print(TIME_PRINT_HUMAN_MIXED,
 				                      ev_time, buff, sizeof(buff));
