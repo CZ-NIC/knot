@@ -59,6 +59,8 @@ a DNSSEC validating resolver.
   be predicted. This dissimilarity should not affect response validation,
   even with validators performing aggressive negative caching (:rfc:`8198`).
 
+* The module isn't compatible with the Offline KSK mode yet.
+
 .. rubric:: Recommendations:
 
 * Configure the module with an explicit signing policy which has the
