@@ -33,13 +33,16 @@ master.zone_verify(zone)
 slave.zone_verify(zone)
 
 # reload with re-sign (no additional serial increment)
-master.ctl("zone-freeze")
+master.ctl("zone-freeze", wait=True)
 master.zones[zone[0].name].zfile.update_soa()
-m_mtime0 = os.stat(m_zfpath).st_mtime
-t.sleep(1.5)
+m_mtime0a = os.stat(m_zfpath).st_mtime
+t.sleep(1)
 master.reload()
 t.sleep(10)
-master.ctl("zone-thaw")
+m_mtime0b = os.stat(m_zfpath).st_mtime
+master.ctl("zone-thaw", wait=True)
+
+t.sleep(2)
 
 # DDNS test
 m_mtime1 = os.stat(m_zfpath).st_mtime
@@ -54,8 +57,12 @@ t.sleep(4)
 m_mtime2 = os.stat(m_zfpath).st_mtime
 s_mtime2 = os.stat(s_zfpath).st_mtime
 
-# check zonefile flushed after reload with re-sign
-if m_mtime1 == m_mtime0:
+# check zonefile not flushed after reload with re-sign when frozen
+if m_mtime0a != m_mtime0b:
+    set_err("Flushed after reload with re-sign when frozen")
+
+# check zonefile flushed after reload with re-sign after thawed
+if m_mtime1 == m_mtime0a:
     set_err("Not flushed after reload with re-sign")
 
 # check zonefile flushed after DDNS
