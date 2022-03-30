@@ -2240,7 +2240,9 @@ Possible values:
    100 updates per day per zone and ``unixtime`` only if you expect at most
    one update per second per zone.
 
-*Default:* increment
+   Generated catalog zones use ``unixtime`` only.
+
+*Default:* increment (unixtime for generated catalog zones)
 
 .. _zone_refresh-min-interval:
 

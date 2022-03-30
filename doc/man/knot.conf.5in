@@ -2082,10 +2082,12 @@ frequent updates), the serial is incremented instead.
 To avoid user confusion, use \fBdateserial\fP only if you expect at most
 100 updates per day per zone and \fBunixtime\fP only if you expect at most
 one update per second per zone.
+.sp
+Generated catalog zones use \fBunixtime\fP only.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP increment
+\fIDefault:\fP increment (unixtime for generated catalog zones)
 .SS refresh\-min\-interval
 .sp
 Forced minimum zone refresh interval (in seconds) to avoid flooding primary server.
