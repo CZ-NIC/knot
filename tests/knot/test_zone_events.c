@@ -49,17 +49,22 @@ static void test_scheduling(zone_t *zone)
 	// queuing
 
 	timestamp = zone_events_get_next(zone, &event);
-	ok(timestamp >= now + (offset / 2) && event == ZONE_EVENT_FLUSH, "flush is next");
+	time_t ref = now + (offset / 2);
+	ok(timestamp >= ref, "flush is next %lld >= %lld", ref, timestamp);
+	is_int(event, ZONE_EVENT_FLUSH, "flush is next");
 
 	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, 0);
 
 	timestamp = zone_events_get_next(zone, &event);
-	ok(timestamp >= now + offset && event == ZONE_EVENT_EXPIRE, "expire is next");
+	ref = now + offset;
+	ok(timestamp >= ref, "expire is next %lld >= %lld", timestamp, ref);
+	is_int(event, ZONE_EVENT_EXPIRE, "expire is next");
 
 	zone_events_schedule_at(zone, ZONE_EVENT_EXPIRE, 0);
 
 	timestamp = zone_events_get_next(zone, &event);
-	ok(timestamp < 0 && event == ZONE_EVENT_INVALID, "nothing planned");
+	ok(timestamp < 0, "nothing planned %lld < 0", timestamp);
+	is_int(event, ZONE_EVENT_INVALID, "nothing planned");
 
 	// zone_events_enqueue
 
