@@ -285,7 +285,7 @@ static int axfr_finalize(struct refresh_data *data)
 	// Seized by zone_update. Don't free the contents again in axfr_cleanup.
 	data->axfr.zone = NULL;
 
-	ret = zone_update_semcheck(&up);
+	ret = zone_update_semcheck(data->conf, &up);
 	if (ret == KNOT_EOK) {
 		ret = zone_update_verify_digest(data->conf, &up);
 	}
@@ -559,7 +559,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	ret = zone_update_semcheck(&up);
+	ret = zone_update_semcheck(data->conf, &up);
 	if (ret == KNOT_EOK) {
 		ret = zone_update_verify_digest(data->conf, &up);
 	}

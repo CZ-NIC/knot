@@ -124,6 +124,15 @@ static const knot_lookup_t serial_policies[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t semantic_checks[] = {
+	{ SEMCHECKS_OFF,  "off" },
+	{ SEMCHECKS_OFF,  "false" },
+	{ SEMCHECKS_ON,   "on" },
+	{ SEMCHECKS_ON,   "true" },
+	{ SEMCHECKS_SOFT, "soft" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t zone_digest[] = {
 	{ ZONE_DIGEST_NONE,   "none" },
 	{ ZONE_DIGEST_SHA384, "zonemd-sha384" },
@@ -418,7 +427,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } }, \
 	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } }, \
 	{ C_ACL,                 YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
-	{ C_SEM_CHECKS,          YP_TBOOL, YP_VNONE, FLAGS }, \
+	{ C_SEM_CHECKS,          YP_TOPT,  YP_VOPT = { semantic_checks, SEMCHECKS_OFF }, FLAGS }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_ZONEFILE_LOAD,       YP_TOPT,  YP_VOPT = { zonefile_load, ZONEFILE_LOAD_WHOLE } }, \
 	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES }, FLAGS }, \

@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 {
 	const char *origin = NULL;
 	bool verbose = false;
-	semcheck_optional_t optional = SEMCHECK_AUTO_DNSSEC; // default value for --dnssec
+	semcheck_optional_t optional = SEMCHECK_DNSSEC_AUTO; // default value for --dnssec
 	knot_time_t check_time = (knot_time_t)time(NULL);
 
 	/* Long options. */
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 			print_version(PROGRAM_NAME);
 			return EXIT_SUCCESS;
 		case 'd':
-			optional = str2bool(optarg) ? SEMCHECK_DNSSEC : SEMCHECK_NO_DNSSEC;
+			optional = str2bool(optarg) ? SEMCHECK_DNSSEC_ON : SEMCHECK_DNSSEC_OFF;
 			break;
 		case 't':
 			if (knot_time_parse("YMDhms|#|+-#U|+-#",

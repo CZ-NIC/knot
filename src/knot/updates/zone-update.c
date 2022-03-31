@@ -852,7 +852,7 @@ static void discard_adds_tree(zone_update_t *update)
 	update->new_cont->adds_tree = NULL;
 }
 
-int zone_update_semcheck(zone_update_t *update)
+int zone_update_semcheck(conf_t *conf, zone_update_t *update)
 {
 	if (update == NULL) {
 		return KNOT_EINVAL;
@@ -872,8 +872,11 @@ int zone_update_semcheck(zone_update_t *update)
 		.cb = err_handler_logger
 	};
 
-	ret = sem_checks_process(update->new_cont, SEMCHECK_MANDATORY_ONLY,
-	                         &handler, time(NULL));
+	conf_val_t val = conf_zone_get(conf, C_SEM_CHECKS, update->zone->name);
+	semcheck_optional_t mode = (conf_opt(&val) == SEMCHECKS_SOFT) ?
+	                           SEMCHECK_MANDATORY_SOFT : SEMCHECK_MANDATORY_ONLY;
+
+	ret = sem_checks_process(update->new_cont, mode, &handler, time(NULL));
 	if (ret != KNOT_EOK) {
 		// error is logged by the error handler
 		return ret;
