@@ -1458,7 +1458,10 @@ class Knot(Server):
             s.item_str("zonemd-generate", self.zonemd_generate)
         s.item_str("journal-max-usage", self.journal_max_usage)
         s.item_str("adjust-threads", str(random.randint(1,4)))
-        s.item_str("semantic-checks", "on" if self.semantic_check else "off")
+        if self.semantic_check == "soft":
+            self._str(s, "semantic-checks", self.semantic_check)
+        else:
+            self._bool(s, "semantic-checks", self.semantic_check)
         if len(self.modules) > 0:
             modules = ""
             for module in self.modules:

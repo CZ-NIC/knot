@@ -206,6 +206,12 @@ enum {
 };
 
 enum {
+	SEMCHECKS_OFF  = 0,
+	SEMCHECKS_ON   = 1,
+	SEMCHECKS_SOFT = 2,
+};
+
+enum {
 	ZONE_DIGEST_NONE   = 0,
 	ZONE_DIGEST_SHA384 = 1,
 	ZONE_DIGEST_SHA512 = 2,
