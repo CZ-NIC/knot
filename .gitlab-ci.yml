@@ -39,8 +39,8 @@ docker:knot-dns:debian-arm64:
   tags:
     - arm64
   variables:
-    IMAGE_NAME: debian:latest-arm64
-    IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
+    IMAGE_NAME: debian:latest
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME-arm64
 
 docker:knot-dns:debian:unstable:
   <<: *image
