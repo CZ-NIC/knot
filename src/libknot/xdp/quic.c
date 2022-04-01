@@ -342,11 +342,12 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 
 static uint64_t get_timestamp(void)
 {
-	struct timespec t;
-	clock_gettime(CLOCK_MONOTONIC, &t);
-	uint64_t res = (uint64_t)t.tv_sec * 1000000;
-	res += (uint64_t)t.tv_nsec / 1000;
-	return res; // overflow does not matter since we are working with differences
+	struct timespec ts;
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+		assert(0);
+	}
+
+	return (uint64_t)ts.tv_sec * NGTCP2_SECONDS + (uint64_t)ts.tv_nsec;
 }
 
 static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx)
