@@ -50,6 +50,7 @@ static void test_scheduling(zone_t *zone)
 
 	timestamp = zone_events_get_next(zone, &event);
 	time_t ref = now + (offset / 2);
+	ok(sizeof(timestamp) == sizeof(ref), "sizeof timestam: %lld ref: %lld", sizeof(timestamp), sizeof(ref));
 	ok(timestamp >= ref, "flush is next %lld >= %lld", ref, timestamp);
 	is_int(event, ZONE_EVENT_FLUSH, "flush is next");
 
