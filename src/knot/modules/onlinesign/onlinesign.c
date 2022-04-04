@@ -699,8 +699,7 @@ int online_sign_load(knotd_mod_t *mod)
 	}
 
 	if (mod->dnssec->policy->offline_ksk) {
-		knotd_mod_log(mod, LOG_ERR, "incompatible with offline KSK mode",
-		              knot_strerror(ret));
+		knotd_mod_log(mod, LOG_ERR, "incompatible with offline KSK mode");
 		online_sign_ctx_free(ctx);
 		return KNOT_ENOTSUP;
 	}
