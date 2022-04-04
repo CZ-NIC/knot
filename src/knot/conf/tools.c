@@ -574,10 +574,6 @@ int check_policy(
 		return KNOT_EINVAL;
 	}
 
-	if (refresh.code == KNOT_EOK) {
-		CONF_LOG(LOG_WARNING, "rrsig-refresh option is deprecated and will be calculated from TTLs and propagation-delay");
-	}
-
 	int64_t ksk_size = conf_int(&ksk);
 	if (ksk_size != YP_NIL && !dnssec_algorithm_key_size_check(algorithm, ksk_size)) {
 		args->err_str = "KSK key size not compatible with the algorithm";
