@@ -78,6 +78,7 @@ else:
     master.start()
 
 slave.zone_wait(catz, serial_bef_rem, udp=False, tsig=True)
+t.sleep(2) # allow the member zone to actually be purged
 resp = slave.dig("example.com.", "SOA")
 resp.check(rcode="REFUSED")
 
