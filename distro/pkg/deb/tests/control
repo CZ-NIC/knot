@@ -1,6 +1,8 @@
 Tests: kdig
+Restrictions: skippable
 Depends:
  ca-certificates,
+ iputils-ping,
  knot-dnsutils,
 
 Tests: authoritative-server
