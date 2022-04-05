@@ -366,7 +366,6 @@ static uint64_t cid2hash(const ngtcp2_cid *cid)
 {
 	uint64_t hash = 0;
 	memcpy(&hash, cid->data, MIN(sizeof(hash), cid->datalen));
-	hash &= 0xffLU * 0; // FIXME remove !!
 	return hash;
 }
 
@@ -403,8 +402,17 @@ static knot_xquic_conn_t **xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_
 		}
 		res = &(*res)->next;
 	}
-	printf("TABLE lookup hash %lu: %p at %p\n", hash, *res, res);
+	printf("TABLE lookup hash 0x%lx: %p at %p\n", hash, *res, res);
 	return res;
+}
+
+static void xquic_table_rem(knot_xquic_conn_t **pconn, knot_xquic_table_t *table)
+{
+	knot_xquic_conn_t *conn = *pconn;
+	*pconn = conn->next;
+	free(conn);
+
+	table->usage--;
 }
 
 static void init_random_cid(ngtcp2_cid *cid, size_t len)
@@ -528,6 +536,26 @@ static int stream_opened(ngtcp2_conn *conn, int64_t stream_id, void *user_data)
 	return 0;
 }
 
+static int stream_closed(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
+			 uint64_t app_error_code, void *user_data, void *stream_user_data)
+{
+	printf("STREAM %ld closed %s\n", stream_id, (flags & NGTCP2_STREAM_CLOSE_FLAG_APP_ERROR_CODE_SET) ? "with errors" : "without errors");
+	return 0;
+}
+
+static int recv_stateless_rst(ngtcp2_conn *conn, const ngtcp2_pkt_stateless_reset *sr, void *user_data)
+{
+	printf("STATELESS RST\n");
+	return 0;
+}
+
+static int recv_stream_rst(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
+                           uint64_t app_error_code, void *user_data, void *stream_user_data)
+{
+	printf("STREAM RST %ld\n", stream_id);
+	return 0;
+}
+
 static void user_printf(void *user_data, const char *format, ...)
 {
 	printf("--- ");
@@ -569,8 +597,8 @@ static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const n
 		recv_stream_data,
 		acked_stream_data_offset_cb,
 		stream_opened,
-		NULL, // TODO stream_close,
-		NULL, // recv_stateless_reset
+		stream_closed,
+		recv_stateless_rst,
 		NULL, // recv_retry
 		NULL, // extend_max_streams_bidi
 		NULL, // extend_max_streams_uni
@@ -580,7 +608,7 @@ static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const n
 		ngtcp2_crypto_update_key_cb,
 		NULL, // TODO path_validation,
 		NULL, // select_preferred_addr
-		NULL, // TODO ::stream_reset,
+		recv_stream_rst, // TODO ::stream_reset,
 		NULL, // TODO ::extend_max_remote_streams_bidi,
 		NULL, // extend_max_remote_streams_uni
 		NULL, // TODO ::extend_max_stream_data,
@@ -672,7 +700,7 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 		return ret;
 	}
 
-	knot_xquic_conn_t *xconn = *xquic_table_lookup(&dcid, table);
+	knot_xquic_conn_t **pxconn = xquic_table_lookup(&dcid, table), *xconn = *pxconn;
 
 	if (pversion == 0 /* short header */ && xconn == NULL) {
 		// TODO
@@ -724,6 +752,14 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 		*out_conn = xconn;
 		memcpy(xconn->last_eth_rem, msg->eth_from, sizeof(msg->eth_from));
 		memcpy(xconn->last_eth_loc, msg->eth_to, sizeof(msg->eth_to));
+	} else if (ngtcp2_err_is_fatal(ret)) {
+		printf("ERR FATAL\n");
+		xquic_table_rem(pxconn, table);
+		// FIXME
+	} else if (ret == NGTCP2_ERR_DRAINING) { // received CONNECTION_CLOSE from the counterpart
+		printf("DRAINING\n");
+		xquic_table_rem(pxconn, table);
+		printf("remaining conns: %zu\n", table->usage);
 	}
 
 	return ret;
