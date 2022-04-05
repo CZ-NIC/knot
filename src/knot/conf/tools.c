@@ -523,6 +523,46 @@ int check_xdp(
 		}
 		check_mtu(args, &xdp_listen);
 	}
+	xdp_listen = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP, C_LISTEN);
+
+	conf_val_t quic = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
+	                               C_QUIC);
+	if (conf_int(&quic) > 0) {
+#ifdef ENABLE_XDP_QUIC
+		while (xdp_listen.code == KNOT_EOK) {
+			struct sockaddr_storage udp_addr = conf_addr(&xdp_listen, NULL);
+			int udp_port = sockaddr_port(&udp_addr);
+			if (udp_port < 0) {
+				const char *port_str = strchr(((struct sockaddr_un *)&udp_addr)->sun_path, '@');
+				udp_port = port_str == NULL ? 0 : atoi(port_str + 1);
+			}
+			if (udp_port == conf_int(&quic)) {
+				args->err_str = "QUIC has to listen on different port than UDP";
+				return KNOT_EINVAL;
+			}
+			conf_val_next(&xdp_listen);
+		}
+
+		struct stat st;
+		char *tls_cert = conf_tls_txn(args->extra->conf, args->extra->txn, C_TLS_CERT);
+		int stret = stat(tls_cert, &st);
+		free(tls_cert);
+		if (stret != 0 || (st.st_mode & S_IFDIR)) {
+			args->err_str = "QUIC requires that TLS server certificate is configured and exists";
+			return KNOT_EINVAL;
+		}
+		char *tls_key = conf_tls_txn(args->extra->conf, args->extra->txn, C_TLS_KEY);
+		stret = stat(tls_key, &st);
+		free(tls_key);
+		if (stret != 0 || (st.st_mode & S_IFDIR)) {
+			args->err_str = "QUIC requires that TLS private key is configured and exists";
+			return KNOT_EINVAL;
+		}
+#else
+		args->err_str = "not compiled with QUIC support";
+		return KNOT_EINVAL;
+#endif // ENABLE_XDP_QUIC
+	}
 
 	return KNOT_EOK;
 }
