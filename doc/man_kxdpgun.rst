@@ -31,6 +31,9 @@ Options
 **-T**, **--tcp**\[\ **=**\ *debug_mode*\]
   Send queries over TCP. See the list of optional debug modes below.
 
+**-U**, **--quic**\[\ **=**\ *debug_mode*\]
+  Send queries over QUIC. See the list of optional debug modes below.
+
 **-Q**, **--qps** *queries*
   Number of queries-per-second (approximately) to be sent (default is 1000).
   The program is not optimized for low speeds at which it may lose
