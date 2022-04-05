@@ -522,6 +522,8 @@ src/libknot/xdp/msg_init.h
 src/libknot/xdp/protocols.h
 src/libknot/xdp/quic.c
 src/libknot/xdp/quic.h
+src/libknot/xdp/quic_conn.c
+src/libknot/xdp/quic_conn.h
 src/libknot/xdp/tcp.c
 src/libknot/xdp/tcp.h
 src/libknot/xdp/tcp_iobuf.c

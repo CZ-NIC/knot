@@ -54,6 +54,9 @@ Duration of traffic generation, specified as a decimal number in seconds
 \fB\-T\fP, \fB\-\-tcp\fP[\fB=\fP\fIdebug_mode\fP]
 Send queries over TCP. See the list of optional debug modes below.
 .TP
+\fB\-U\fP, \fB\-\-quic\fP[\fB=\fP\fIdebug_mode\fP]
+Send queries over QUIC. See the list of optional debug modes below.
+.TP
 \fB\-Q\fP, \fB\-\-qps\fP \fIqueries\fP
 Number of queries\-per\-second (approximately) to be sent (default is 1000).
 The program is not optimized for low speeds at which it may lose

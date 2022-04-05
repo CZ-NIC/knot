@@ -572,6 +572,7 @@ AS_IF([test "$with_libngtcp2" != "no"], [
        AC_MSG_WARN([libngtcp2 >= 0.5.0 not found])])])
 ])
 AM_CONDITIONAL([EMBEDDED_LIBNGTCP2], [test "$with_libngtcp2" = "embedded"])
+AM_CONDITIONAL([ENABLE_XDP_QUIC], [test "$with_libngtcp2" != "no"])
 AC_SUBST([embedded_libngtcp2_CFLAGS])
 AC_SUBST([embedded_libngtcp2_LIBS])
 AC_SUBST([libngtcp2_CFLAGS])
@@ -579,6 +580,9 @@ AC_SUBST([libngtcp2_LIBS])
 
 AS_IF([test "$with_libngtcp2" != "no"], [
   AC_DEFINE([LIBNGTCP2], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
+  
+AS_IF([test "$with_libngtcp2" != "no"],[
+  AC_DEFINE([ENABLE_XDP_QUIC], [1], [Use DoQ with XDP.])])
 
 ############################################
 # Dependencies needed for Knot DNS utilities
