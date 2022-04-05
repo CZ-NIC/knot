@@ -357,7 +357,9 @@ static void *xdp_recvmmsg_init(void *xdp_sock)
 
 static void xdp_recvmmsg_deinit(void *d)
 {
-	xdp_handle_free(d);
+	if (d != NULL) {
+		xdp_handle_free(d);
+	}
 }
 
 static int xdp_recvmmsg_recv(_unused_ int fd, void *d)

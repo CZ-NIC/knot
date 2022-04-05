@@ -1204,6 +1204,21 @@ char* conf_db_txn(
 	return dbdir;
 }
 
+char *conf_tls_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *tls_item)
+{
+	conf_val_t rundir_val = conf_get_txn(conf, txn, C_SRV, C_RUNDIR);
+	char *rundir = conf_abs_path(&rundir_val, NULL);
+
+	conf_val_t tls_val = conf_get_txn(conf, txn, C_SRV, tls_item);
+	char *tls = conf_abs_path(&tls_val, rundir);
+	free(rundir);
+
+	return tls;
+}
+
 size_t conf_udp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)

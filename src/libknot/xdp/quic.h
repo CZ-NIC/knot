@@ -16,67 +16,33 @@
 
 #pragma once
 
-#include <stdint.h>
-
 #include "contrib/libngtcp2/ngtcp2/ngtcp2.h"
 #include "contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h"
 #include "contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h"
 
+#include "libknot/xdp/quic_conn.h"
 #include "libknot/xdp/xdp.h"
 
-typedef struct knot_xquic_conn {
-/*	struct {
-		struct knot_xquic_conn *list_node_next;
-		struct knot_xquic_conn *list_node_prev;
-	} list_node_placeholder;
-*/
-	uint8_t last_eth_rem[ETH_ALEN];
-	uint8_t last_eth_loc[ETH_ALEN];
+// special values for stream_id signalling a need for special treatment
+#define XQUIC_SEND_VERSION_NEGOTIATION    NGTCP2_ERR_VERSION_NEGOTIATION
+#define XQUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
+#define XQUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
 
-	ngtcp2_conn *conn;
-	ngtcp2_cid cid;
-
-	gnutls_session_t tls_session;
-
-	struct iovec rx_query; // TODO ?
-	struct iovec tx_query; // TODO ?
-	int64_t stream_id; // TODO per-stream buffers.
-
-	struct knot_xquic_conn *next;
-
-	struct knot_xquic_table *xquic_table; // TODO ?
-} knot_xquic_conn_t;
-
-typedef struct {
+typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
 	uint8_t static_secret[32];
-} knot_quic_creds_t;
+} knot_xquic_creds_t;
 
-typedef struct knot_xquic_table {
-	size_t size;
-	size_t usage;
-	uint64_t hash_secret[4];
-	knot_quic_creds_t creds;
-	knot_xquic_conn_t *conns[];
-} knot_xquic_table_t;
+int knot_xquic_init_creds(knot_xquic_creds_t *creds, const char *tls_cert, const char *tls_key);
 
-/*!
- * \brief Allocate QUIC connections hash table.
- *
- * \param table_size    Number of hash buckets.
- *
- * \return Allocated table or NULL;
- */
-knot_xquic_table_t *knot_xquic_table_new(size_t table_size);
+void knot_xquic_free_creds(knot_xquic_creds_t *creds);
 
-/*!
- * \brief Free QUIC table including its contents.
- *
- * \param table    Table to be freed.
- */
-void knot_xquic_table_free(knot_xquic_table_t *table);
+bool xquic_conn_timeout(knot_xquic_conn_t *conn);
+
+int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
+                      struct sockaddr_storage *via, knot_xquic_conn_t **out_conn);
 
 /*!
  * \brief Process received packets, pic incomming DNS data.
@@ -88,8 +54,8 @@ void knot_xquic_table_free(knot_xquic_table_t *table);
  *
  * \return KNOT_E*
  */
-int knot_xquic_recv(knot_xquic_conn_t **relays, knot_xdp_msg_t *msgs,
-                    uint32_t count, knot_xquic_table_t *quic_table);
+int knot_xquic_recv(knot_xquic_conn_t **relays,
+                    knot_xdp_msg_t *msgs, uint32_t count,
+                    knot_xquic_table_t *quic_table);
 
-
-int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay);
+int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, unsigned max_msgs);

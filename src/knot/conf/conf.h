@@ -683,6 +683,28 @@ static inline char* conf_db(
 }
 
 /*!
+ * Gets the absolute directory path for a TLS key/cert.
+ *
+ * \note The result must be explicitly deallocated.
+ *
+ * \param[in] conf     Configuration.
+ * \param[in] txn      Configuration DB transaction.
+ * \param[in] db_type  TLS configuration option.
+ *
+ * \return Absolute path string pointer.
+ */
+char *conf_tls_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *tls_item);
+static inline char* conf_tls(
+	conf_t *conf,
+	const yp_name_t *tls_item)
+{
+	return conf_tls_txn(conf, &conf->read_txn, tls_item);
+}
+
+/*!
  * Gets database-specific parameter.
  *
  * \param[in] conf   Configuration.
