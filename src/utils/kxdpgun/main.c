@@ -39,6 +39,9 @@
 
 #include "libknot/libknot.h"
 #include "libknot/xdp.h"
+#ifdef ENABLE_XDP_QUIC
+#include "libknot/xdp/quic.h"
+#endif // ENABLE_XDP_QUIC
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcat.h"
@@ -108,6 +111,7 @@ typedef struct {
 	bool		ipv6;
 	bool		tcp;
 	char		tcp_mode;
+	bool		quic;
 	xdp_gun_ignore_t  ignore1;
 	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
@@ -304,6 +308,8 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
 	knot_xdp_msg_flag_t flags = ctx->ipv6 ? KNOT_XDP_MSG_IPV6 : 0;
 	if (ctx->tcp) {
 		flags |= (KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_MSS);
+	} else if (ctx->quic) {
+		return ctx->at_once; // NOOP
 	}
 
 	for (int i = 0; i < ctx->at_once; i++) {
@@ -349,6 +355,9 @@ void *xdp_gun_thread(void *_ctx)
 	kxdpgun_stats_t local_stats = { 0 };
 	unsigned stats_triggered = 0;
 	knot_tcp_table_t *tcp_table = NULL;
+#ifdef ENABLE_XDP_QUIC
+	knot_xquic_table_t *quic_table = NULL;
+#endif // ENABLE_XDP_QUIC
 
 	if (ctx->tcp) {
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
@@ -356,6 +365,19 @@ void *xdp_gun_thread(void *_ctx)
 			ERR2("failed to allocate TCP connection table\n");
 			return NULL;
 		}
+	}
+	if (ctx->quic) {
+#ifdef ENABLE_XDP_QUIC
+		quic_table = knot_xquic_table_new(ctx->qps, NULL, NULL);
+		if (quic_table == NULL) {
+			ERR2("failed to allocate QUIC connection table\n");
+			return NULL;
+		}
+		((struct sockaddr_in6 *)&ctx->target_ip)->sin6_port = htobe16(ctx->target_port);
+		((struct sockaddr_in6 *)&ctx->local_ip)->sin6_port = htobe16(ctx->listen_port);
+#else
+		assert(0);
+#endif // ENABLE_XDP_QUIC
 	}
 
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
@@ -399,6 +421,26 @@ void *xdp_gun_thread(void *_ctx)
 					for (int i = 0; i < alloced; i++) {
 						pkts[i].payload.iov_len = 0;
 					}
+				} else if (ctx->quic) {
+#ifdef ENABLE_XDP_QUIC
+					for (unsigned i = 0; i < ctx->at_once; i++) {
+						knot_xquic_conn_t *newconn = NULL;
+						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
+						if (ret == KNOT_EOK) {
+							memcpy(newconn->last_eth_rem, ctx->target_mac, 6);
+							memcpy(newconn->last_eth_loc, ctx->local_mac, 6);
+
+							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
+							put_dns_payload(&tmp, false, ctx, &payload_ptr);
+							ret = knot_xquic_send(xsk, newconn, 1);
+						}
+						if (ret == KNOT_EOK) {
+							local_stats.qry_sent++;
+						}
+					}
+					(void)knot_xdp_send_finish(xsk);
+#endif // ENABLE_XDP_QUIC
+					break;
 				} else {
 					for (int i = 0; i < alloced; i++) {
 						put_dns_payload(&pkts[i].payload, false,
@@ -484,6 +526,32 @@ void *xdp_gun_thread(void *_ctx)
 					(void)knot_xdp_send_finish(xsk);
 
 					knot_tcp_cleanup(tcp_table, relays, recvd);
+				} else if (ctx->quic) {
+#ifdef ENABLE_XDP_QUIC
+					knot_xquic_conn_t *relays[recvd];
+					ret = knot_xquic_recv(relays, pkts, recvd, quic_table);
+					if (ret != KNOT_EOK) {
+						errors++;
+						break;
+					}
+
+					for (size_t i = 0; i < recvd; i++) {
+						knot_xquic_conn_t *rl = relays[i];
+						if (rl == NULL) {
+							errors++;
+							continue;
+						}
+						knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, 0, false);
+						if (stream != NULL) {
+							check_dns_payload(&stream->inbuf, ctx, &local_stats);
+						}
+						ret = knot_xquic_send(xsk, rl, 4);
+						if (ret != KNOT_EOK) {
+							errors++;
+						}
+					}
+					(void)knot_xdp_send_finish(xsk);
+#endif // ENABLE_XDP_QUIC
 				} else {
 					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx,
@@ -510,7 +578,7 @@ void *xdp_gun_thread(void *_ctx)
 			size_t collected = collect_stats(&global_stats, &local_stats);
 			assert(collected <= ctx->n_threads);
 			if (collected == ctx->n_threads) {
-				print_stats(&global_stats, ctx->tcp,
+				print_stats(&global_stats, ctx->tcp || ctx->quic,
 				            !(ctx->flags & KNOT_XDP_FILTER_DROP));
 				clear_stats(&global_stats);
 			}
@@ -651,6 +719,7 @@ static void print_help(void)
 	       " -t, --duration <sec>     "SPACE"Duration of traffic generation.\n"
 	       "                          "SPACE" (default is %"PRIu64" seconds)\n"
 	       " -T, --tcp[=debug_mode]   "SPACE"Send queries over TCP.\n"
+	       " -U, --quic[=debug_mode]  "SPACE"Send queries over QUIC.\n"
 	       " -Q, --qps <qps>          "SPACE"Number of queries-per-second (approximately) to be sent.\n"
 	       "                          "SPACE" (default is %"PRIu64" qps)\n"
 	       " -b, --batch <size>       "SPACE"Send queries in a batch of defined size.\n"
@@ -672,6 +741,45 @@ static void print_help(void)
 	       ctx_defaults.at_once, 1, LOCAL_PORT_DEFAULT, "0s1");
 }
 
+static bool tcp_mode(const char *arg, xdp_gun_ctx_t *ctx)
+{
+	ctx->tcp_mode = (arg == NULL ? '0' : arg[0]);
+	switch (ctx->tcp_mode) {
+	case '0':
+		break;
+	case '1':
+		ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
+		ctx->ignore2 = XDP_TCP_IGNORE_ESTABLISH | XDP_TCP_IGNORE_FIN;
+		break;
+	case '2':
+		ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
+		break;
+	case '3':
+		ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
+		ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+		break;
+	case '5':
+		ctx->ignore1 = KXDPGUN_IGNORE_LASTBYTE;
+		ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+		break;
+	case '7':
+		ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
+		ctx->ignore2 = XDP_TCP_IGNORE_DATA_ACK | XDP_TCP_IGNORE_FIN;
+		break;
+	case '8':
+		ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
+		ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+		break;
+	case '9':
+		ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+		break;
+	default:
+		ERR2("invalid TCP mode '%s'\n", optarg);
+		return false;
+	}
+	return true;
+}
+
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
 	struct option opts[] = {
@@ -683,6 +791,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "drop",      no_argument,       NULL, 'r' },
 		{ "port",      required_argument, NULL, 'p' },
 		{ "tcp",       optional_argument, NULL, 'T' },
+		{ "quic",      optional_argument, NULL, 'U' },
 		{ "affinity",  required_argument, NULL, 'F' },
 		{ "interface", required_argument, NULL, 'I' },
 		{ "local",     required_argument, NULL, 'l' },
@@ -694,7 +803,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::F:I:l:i:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T:U::F:I:l:i:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -755,40 +864,23 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (default_at_once) {
 				ctx->at_once = 1;
 			}
-			ctx->tcp_mode = (optarg == NULL ? '0' : optarg[0]);
-			switch (ctx->tcp_mode) {
-			case '0':
-				break;
-			case '1':
-				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
-				ctx->ignore2 = XDP_TCP_IGNORE_ESTABLISH | XDP_TCP_IGNORE_FIN;
-				break;
-			case '2':
-				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
-				break;
-			case '3':
-				ctx->ignore1 = KXDPGUN_IGNORE_QUERY;
-				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
-				break;
-			case '5':
-				ctx->ignore1 = KXDPGUN_IGNORE_LASTBYTE;
-				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
-				break;
-			case '7':
-				ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
-				ctx->ignore2 = XDP_TCP_IGNORE_DATA_ACK | XDP_TCP_IGNORE_FIN;
-				break;
-			case '8':
-				ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
-				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
-				break;
-			case '9':
-				ctx->ignore2 = XDP_TCP_IGNORE_FIN;
-				break;
-			default:
-				ERR2("invalid TCP mode '%s'\n", optarg);
+			if (!tcp_mode(optarg, ctx)) {
 				return false;
 			}
+			break;
+		case 'U':
+#ifdef ENABLE_XDP_QUIC
+			ctx->quic = true;
+			if (default_at_once) {
+				ctx->at_once = 1;
+			}
+			if (!tcp_mode(optarg, ctx)) {
+				return false;
+			}
+#else
+			ERR2("not compiled with QUIC support\n");
+			return false;
+#endif // ENABLE_XDP_QUIC
 			break;
 		case 'F':
 			assert(optarg);
@@ -832,7 +924,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	ctx->qps /= ctx->n_threads;
 
 	INFO2("using interface %s, XDP threads %u, %s%s%c\n", ctx->dev, ctx->n_threads,
-	      ctx->tcp ? "TCP" : "UDP",
+	      ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP",
 	      (ctx->tcp && ctx->tcp_mode != '0') ? " mode " : "",
 	      (ctx->tcp && ctx->tcp_mode != '0') ? ctx->tcp_mode : ' ');
 
@@ -906,7 +998,7 @@ int main(int argc, char *argv[])
 		pthread_join(threads[i], NULL);
 	}
 	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
-		print_stats(&global_stats, ctx.tcp, !(ctx.flags & KNOT_XDP_FILTER_DROP));
+		print_stats(&global_stats, ctx.tcp || ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP));
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 
