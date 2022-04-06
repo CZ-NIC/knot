@@ -94,7 +94,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	}
 
 	zone->contents = old_zone->contents;
-	zone_set_flag(zone, zone_get_flag(old_zone, ZONE_IS_CATALOG | ZONE_IS_CAT_MEMBER, false));
+	zone_set_flag(zone, zone_get_flag(old_zone, ~0, false));
 
 	zone->timers = old_zone->timers;
 	zone_timers_sanitize(conf, zone);

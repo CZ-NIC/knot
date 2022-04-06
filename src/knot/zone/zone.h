@@ -33,6 +33,8 @@ struct zone_backup_ctx;
 
 /*!
  * \brief Zone flags.
+ *
+ * When updating check create_zone_reload() if the flag mask is ok.
  */
 typedef enum {
 	ZONE_FORCE_AXFR     = 1 << 0, /*!< Force AXFR as next transfer. */
