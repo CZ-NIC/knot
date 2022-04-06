@@ -24,10 +24,11 @@ TESTS_DIR = "tests"
 log = None
 outs_dir = None
 
-def save_traceback(outdir):
+def save_traceback(outdir, exc):
     path = os.path.join(Context().out_dir, "traceback.log")
     with open(path, mode="a") as f:
-        traceback.print_exc(file=f)
+        tb = traceback.TracebackException.from_exception(exc, capture_locals=True)
+        print("".join(tb.format()), file=f)
 
 def create_log(logger, filename="", level=logging.NOTSET):
     if filename:
@@ -190,7 +191,7 @@ def job(tasks, results, stop):
             log.error(case_str_err + "SKIPPED (%s)" % format(exc))
             skip_cnt += 1
         except dnstest.utils.Failed as exc:
-            save_traceback(ctx.out_dir)
+            save_traceback(ctx.out_dir, exc)
 
             desc = format(exc)
             msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
@@ -205,7 +206,7 @@ def job(tasks, results, stop):
             fail_cnt += 1
             stop.value = True
         except Exception as exc:
-            save_traceback(ctx.out_dir)
+            save_traceback(ctx.out_dir, exc)
 
             desc = format(exc)
             msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
@@ -218,7 +219,7 @@ def job(tasks, results, stop):
             fail_cnt += 1
             stop.value = True
         except BaseException as exc:
-            save_traceback(ctx.out_dir)
+            save_traceback(ctx.out_dir, exc)
             if params.debug:
                 traceback.print_exc()
             else:
