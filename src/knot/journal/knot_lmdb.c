@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -172,6 +172,13 @@ static int lmdb_open(knot_lmdb_db_t *db)
 	if (ret == MDB_SUCCESS) {
 		unsigned init_txn_flags = (db->env_flags & MDB_RDONLY);
 		ret = mdb_txn_begin(db->env, NULL, init_txn_flags, &init_txn);
+		if (ret == MDB_READERS_FULL) {
+			int cleared = 0;
+			ret = mdb_reader_check(db->env, &cleared);
+			if (ret == MDB_SUCCESS) {
+				ret = mdb_txn_begin(db->env, NULL, init_txn_flags, &init_txn);
+			}
+		}
 	}
 	if (ret == MDB_SUCCESS) {
 		ret = mdb_dbi_open(init_txn, db->dbname, MDB_CREATE, &db->dbi);
