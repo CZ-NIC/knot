@@ -297,8 +297,20 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 				data[KNOT_CTL_IDX_DATA] = "no";
 			} else {
 				data[KNOT_CTL_IDX_DATA] = "freezing";
-
 			}
+		}
+		ret = knot_ctl_send(args->ctl, type, &data);
+		if (ret != KNOT_EOK) {
+			return ret;
+		} else {
+			type = KNOT_CTL_TYPE_EXTRA;
+		}
+
+		data[KNOT_CTL_IDX_TYPE] = "XFR freeze";
+		if (zone_get_flag(zone, ZONE_XFR_FROZEN, false)) {
+			data[KNOT_CTL_IDX_DATA] = "yes";
+		} else {
+			data[KNOT_CTL_IDX_DATA] = "no";
 		}
 		ret = knot_ctl_send(args->ctl, type, &data);
 		if (ret != KNOT_EOK) {
@@ -356,6 +368,8 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		ret = knot_ctl_send(args->ctl, type, &data);
 		if (ret != KNOT_EOK) {
 			return ret;
+		} else {
+			type = KNOT_CTL_TYPE_EXTRA;
 		}
 	}
 
@@ -387,8 +401,9 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			ret = knot_ctl_send(args->ctl, type, &data);
 			if (ret != KNOT_EOK) {
 				return ret;
+			} else {
+				type = KNOT_CTL_TYPE_EXTRA;
 			}
-			type = KNOT_CTL_TYPE_EXTRA;
 		}
 	}
 
