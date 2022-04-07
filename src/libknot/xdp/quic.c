@@ -185,6 +185,7 @@ static int tls_alert_read_func(gnutls_session_t session,
 }
 
 #define ALPN "\03""doq"
+#define ALPN_TMP "\07""doq-i03"
 
 static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
                                unsigned when, unsigned int incoming,
@@ -194,7 +195,6 @@ static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
 	assert(when == GNUTLS_HOOK_POST);
 	assert(incoming == 1);
 
-	// check if ALPN extension is present and properly selected h3
 	gnutls_datum_t alpn;
 	int ret = gnutls_alpn_get_selected_protocol(session, &alpn);
 	printf("alpn set prot %d (%s)\n", ret, gnutls_strerror(ret));
@@ -207,8 +207,10 @@ static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
 
 	const char *dq = (const char *)&ALPN[1];
 	printf("dq '%.*s' alpn '%.*s'\n", (int)ALPN[0], dq, alpn.size, alpn.data);
-	if ((unsigned int)ALPN[0] != alpn.size ||
-	    memcmp(dq, alpn.data, alpn.size) != 0) {
+	if (((unsigned int)ALPN[0] != alpn.size ||
+	     memcmp(dq, alpn.data, alpn.size) != 0) &&
+	   ((unsigned int)ALPN_TMP[0] != alpn.size ||
+	     memcmp((const char *)&ALPN_TMP[1], alpn.data, alpn.size) != 0)) {
 		return -5;
 	}
 
@@ -329,11 +331,17 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 		return -1;
 	}
 
-	gnutls_datum_t alpn = {
-		.data = (uint8_t *)(&ALPN[1]),
-		.size = ALPN[0],
+	gnutls_datum_t alpn[2] = {
+		{
+			.data = (uint8_t *)(&ALPN[1]),
+			.size = ALPN[0],
+		},
+		{
+			.data = (uint8_t *)(&ALPN_TMP[1]),
+			.size = ALPN_TMP[0],
+		}
 	};
-	gnutls_alpn_set_protocols(conn->tls_session, &alpn, 1, 0);
+	gnutls_alpn_set_protocols(conn->tls_session, alpn, 2, 0);
 
 	gnutls_session_set_keylog_function(conn->tls_session, tls_keylog_callback);
 	ngtcp2_conn_set_tls_native_handle(conn->conn, conn->tls_session);
