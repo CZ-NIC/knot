@@ -421,7 +421,7 @@ static void set_flag(zone_t *zone, zone_flag_t flag, bool remove)
 	pthread_mutex_unlock(&zone->preferred_lock);
 
 	if (flag & ZONE_IS_CATALOG) {
-		zone->is_catalog_flag = true;
+		zone->is_catalog_flag = !remove;
 	}
 }
 
