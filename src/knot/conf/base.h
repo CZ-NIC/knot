@@ -40,7 +40,7 @@
 #define CONF_MAX_BG_WORKERS	512
 /*! Maximum number of concurrent DB readers. */
 #define CONF_MAX_DB_READERS	(CONF_MAX_UDP_WORKERS + CONF_MAX_TCP_WORKERS + \
-				 CONF_MAX_BG_WORKERS + 128 /* XDP workers */)
+				 CONF_MAX_BG_WORKERS + 10 + 128 /* Utils, XDP workers */)
 
 /*! Configuration specific logging. */
 #define CONF_LOG(severity, msg, ...) do { \
