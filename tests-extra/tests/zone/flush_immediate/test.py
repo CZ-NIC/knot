@@ -42,7 +42,7 @@ t.sleep(10)
 m_mtime0b = os.stat(m_zfpath).st_mtime
 master.ctl("zone-thaw", wait=True)
 
-t.sleep(2)
+t.sleep(4)
 
 # DDNS test
 m_mtime1 = os.stat(m_zfpath).st_mtime
