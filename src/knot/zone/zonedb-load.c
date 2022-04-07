@@ -168,6 +168,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 			zone_free(&zone);
 			return NULL;
 		}
+		zone_set_flag(zone, ZONE_IS_CATALOG);
 	} else if (conf_opt(&role) == CATALOG_ROLE_INTERPRET) {
 		ret = catalog_open(&server->catalog);
 		if (ret != KNOT_EOK) {
