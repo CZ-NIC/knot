@@ -22,6 +22,9 @@ catz = t.zone("example.")
 
 t.link(catz, master, slave)
 
+master.disable_notify = True
+slave.disable_notify = True
+
 cz = master.zones[catz[0].name]
 cz.catalog_gen_link(cz) # empty catz with "generate" role
 
@@ -42,6 +45,8 @@ for i in range(UPDATES):
         master.zones[z.name].catalog_gen_link(master.zones[catz[0].name])
     master.gen_confile()
     master.reload()
+    t.sleep(1)
+    slave.ctl("zone-refresh %s" % catz[0].name, wait=True)
     slave.zones_wait(zone_add)
 
     zone_rem = []
@@ -54,6 +59,8 @@ for i in range(UPDATES):
         master.zones.pop(z)
     master.gen_confile()
     master.reload()
+    t.sleep(1)
+    slave.ctl("zone-refresh %s" % catz[0].name, wait=True)
     slave.zone_wait(catz, serial_bef_rem, udp=False, tsig=True)
     t.sleep(5)
     for z in zone_rem:
