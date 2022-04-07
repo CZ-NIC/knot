@@ -27,6 +27,7 @@
 #include "libdnssec/random.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
+#include "libknot/wire.h"
 #include "libknot/xdp/quic.h"
 
 #define SERVER_DEFAULT_SCIDLEN 18
@@ -516,8 +517,14 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
 	*/
 
 	ctx->stream_id = stream_id;
-	ctx->rx_query.iov_base = (uint8_t *)data;
-	ctx->rx_query.iov_len = datalen;
+	uint16_t len_prefix;
+	if (ctx->rx_query.iov_len >= sizeof(len_prefix) && (len_prefix = knot_wire_read_u16(ctx->rx_query.iov_base)) == ctx->rx_query.iov_len - sizeof(len_prefix)) { // FIXME remove this adaptive consumation of non/existing length prefix
+		ctx->rx_query.iov_base = (uint8_t *)data + sizeof(len_prefix);
+		ctx->rx_query.iov_len = datalen - sizeof(len_prefix);
+	} else {
+		ctx->rx_query.iov_base = (uint8_t *)data;
+		ctx->rx_query.iov_len = datalen;
+	}
 	return 0;
 }
 
@@ -569,8 +576,12 @@ static void user_printf(void *user_data, const char *format, ...)
 
 static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t datalen)
 {
-	(void)user_data;
-	FILE *qlog = fopen("/home/peltan/mnt/knot0.qlog", "a");
+	knot_xquic_conn_t *xconn = user_data;
+	char fqlog[39] = { 0 };
+	uint64_t cid_int = (xconn->cid.datalen >= sizeof(cid_int) ? knot_wire_read_u64(xconn->cid.data) : 0);
+	sprintf(fqlog, "/home/peltan/mnt/%016lx.qlog", cid_int);
+
+	FILE *qlog = fopen(fqlog, "a");
 	if (qlog != NULL) {
 		//fprintf(qlog, "\n%u: ", flags);
 		for (size_t i = 0; i < datalen; i++) {
