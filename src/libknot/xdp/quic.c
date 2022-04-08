@@ -378,6 +378,18 @@ static uint64_t cid2hash(const ngtcp2_cid *cid)
 	return hash;
 }
 
+static knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const ngtcp2_cid *cid,
+                                              knot_xquic_table_t *table)
+{
+	uint64_t hash = cid2hash(cid);
+
+	knot_xquic_conn_t **addto = table->conns + (hash % table->size);
+	xconn->next = *addto;
+	*addto = xconn;
+
+	return addto;
+}
+
 static knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, knot_xquic_table_t *table)
 {
 	knot_xquic_conn_t *xconn = calloc(1, sizeof(*xconn));
@@ -389,11 +401,7 @@ static knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *
 	xconn->cid.datalen = cid->datalen;
 	memcpy(xconn->cid.data, cid->data, cid->datalen);
 
-	uint64_t hash = cid2hash(cid);
-
-	knot_xquic_conn_t **addto = table->conns + (hash % table->size);
-	xconn->next = *addto;
-	*addto = xconn;
+	knot_xquic_conn_t **addto = xquic_table_insert(xconn, cid, table);
 	printf("TABLE addto %p conn %p\n", addto, xconn);
 	table->usage++;
 
@@ -415,11 +423,19 @@ static knot_xquic_conn_t **xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_
 	return res;
 }
 
+static void xquic_table_rem2(knot_xquic_conn_t **pconn)
+{
+	knot_xquic_conn_t *conn = *pconn;
+	*pconn = conn->next;
+}
+
 static void xquic_table_rem(knot_xquic_conn_t **pconn, knot_xquic_table_t *table)
 {
 	knot_xquic_conn_t *conn = *pconn;
 	*pconn = conn->next;
 	free(conn);
+
+	// FIXME walk all CIDs that the conn might still have and xquic_table_rem2() them all.
 
 	table->usage--;
 }
@@ -446,9 +462,30 @@ static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	if (init_random_cid(cid, cidlen), cid->datalen == 0) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
+	print_cid(cid, "..new cid");
+	knot_xquic_conn_t **addto = xquic_table_insert(ctx, cid, ctx->xquic_table);
+	printf("... added %p to %p\n", ctx, addto);
 
 	if (ngtcp2_crypto_generate_stateless_reset_token(token, (uint8_t *)ctx->xquic_table->hash_secret, sizeof(ctx->xquic_table->hash_secret), cid) != 0) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+
+	return 0;
+}
+
+static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
+                                void *user_data)
+{
+	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
+	assert(ctx->conn == conn);
+
+	print_cid(cid, "..remove cid");
+	printf("\n");
+
+	knot_xquic_conn_t **torem = xquic_table_lookup(cid, ctx->xquic_table);
+	if (torem != NULL) {
+		assert(*torem == ctx);
+		xquic_table_rem2(torem);
 	}
 
 	return 0;
@@ -526,12 +563,14 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
 
 	ctx->stream_id = stream_id;
 	uint16_t len_prefix;
-	if (ctx->rx_query.iov_len >= sizeof(len_prefix) && (len_prefix = knot_wire_read_u16(ctx->rx_query.iov_base)) == ctx->rx_query.iov_len - sizeof(len_prefix)) { // FIXME remove this adaptive consumation of non/existing length prefix
+	if (datalen >= sizeof(len_prefix) && (len_prefix = knot_wire_read_u16(data)) == datalen - sizeof(len_prefix)) { // FIXME remove this adaptive consumation of non/existing length prefix
 		ctx->rx_query.iov_base = (uint8_t *)data + sizeof(len_prefix);
 		ctx->rx_query.iov_len = datalen - sizeof(len_prefix);
+		ctx->use2byte_prefix = true;
 	} else {
 		ctx->rx_query.iov_base = (uint8_t *)data;
 		ctx->rx_query.iov_len = datalen;
+		ctx->use2byte_prefix = false;
 	}
 	return 0;
 }
@@ -623,7 +662,7 @@ static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const n
 		NULL, // extend_max_streams_uni
 		knot_quic_rand_cb,
 		get_new_connection_id,
-		NULL, // TODO remove_connection_id,
+		remove_connection_id,
 		ngtcp2_crypto_update_key_cb,
 		NULL, // TODO path_validation,
 		NULL, // select_preferred_addr

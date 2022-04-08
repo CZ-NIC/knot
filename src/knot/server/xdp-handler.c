@@ -262,7 +262,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		if (rl == NULL) {
 			continue;
 		}
-		printf("rl[%u] rx %zu conn %p\n", i, rl->rx_query.iov_len, rl->conn);
+		printf("rl[%u] rx %zu conn %p use2byte_prefix %d\n", i, rl->rx_query.iov_len, rl->conn, rl->use2byte_prefix);
 		if (rl->rx_query.iov_len == 0) {
 			rl->tx_query.iov_len = 0;
 			continue;
@@ -279,9 +279,17 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 				continue;
 			}
 
-			rl->tx_query.iov_len = ans->size;
-			rl->tx_query.iov_base = malloc(ans->size); // TODO...
-			memcpy(rl->tx_query.iov_base, ans->wire, ans->size);
+			if (rl->use2byte_prefix) {
+				uint16_t prefix = ans->size;
+				rl->tx_query.iov_len = ans->size + sizeof(prefix);
+				rl->tx_query.iov_base = malloc(rl->tx_query.iov_len);
+				knot_wire_write_u16(rl->tx_query.iov_base, prefix);
+				memcpy(rl->tx_query.iov_base + sizeof(prefix), ans->wire, ans->size);
+			} else {
+				rl->tx_query.iov_len = ans->size;
+				rl->tx_query.iov_base = malloc(ans->size); // TODO...
+				memcpy(rl->tx_query.iov_base, ans->wire, ans->size);
+			}
 		}
 
 		handle_finish(layer);

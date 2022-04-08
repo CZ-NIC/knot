@@ -40,6 +40,7 @@ typedef struct knot_xquic_conn {
 
 	struct iovec rx_query; // TODO ?
 	struct iovec tx_query; // TODO ?
+	bool use2byte_prefix; // FIXME set to always true once supported everywhere...
 	int64_t stream_id; // TODO per-stream buffers.
 
 	struct knot_xquic_conn *next;
