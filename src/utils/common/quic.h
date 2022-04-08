@@ -25,10 +25,6 @@ typedef struct {
 	bool enable;
 } quic_params_t;
 
-uint64_t quic_timestamp(void);
-
-size_t quic_setup_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in);
-
 int quic_params_copy(quic_params_t *dst, const quic_params_t *src);
 
 void quic_params_clean(quic_params_t *params);
@@ -63,6 +59,12 @@ typedef struct {
 	uint8_t secret[32];
 	bool opened_stream;
 } quic_ctx_t;
+
+uint64_t quic_timestamp(void);
+
+size_t quic_parse_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in);
+
+int quic_generate_secret(uint8_t *buf, size_t buflen);
 
 int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx,
         const quic_params_t *params);

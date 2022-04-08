@@ -68,7 +68,7 @@ uint64_t quic_timestamp(void)
 	return (uint64_t)ts.tv_sec * NGTCP2_SECONDS + (uint64_t)ts.tv_nsec;
 }
 
-size_t quic_setup_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in)
+size_t quic_parse_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in)
 {
 	size_t str_len = strlen(in);
 	size_t idx = 0;
@@ -89,7 +89,7 @@ static int hook_func(gnutls_session_t session, unsigned int htype,
 	return 0;
 }
 
-static int extend_max_local_streams_bidi(ngtcp2_conn *conn,
+static int quic_open_bidi_stream(ngtcp2_conn *conn,
         uint64_t max_streams, void *user_data)
 {
 	if (max_streams < 1) {
@@ -123,9 +123,9 @@ static int secret_func(gnutls_session_t session,
 	        NULL, NULL, level, rx_secret, secretlen) != 0) {
 			return -1;
 		}
-		//TODO Aioquic dont like to open it in RTT-0
+		//TODO Add lazy extend
 		if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION && !ctx->opened_stream) {
-			extend_max_local_streams_bidi(ctx->conn, 1, ctx);
+			quic_open_bidi_stream(ctx->conn, 1, ctx);
 			ctx->opened_stream = true;
 		}
 	}
@@ -325,7 +325,8 @@ static int stream_close(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 	return KNOT_EOK;
 }
 
-static int quic_generate_secret(uint8_t *buf, size_t buflen) {
+int quic_generate_secret(uint8_t *buf, size_t buflen)
+{
 	assert(buf != NULL && buflen > 0 && buflen <= 32);
 	uint8_t rand[16], hash[32];
 	int ret = dnssec_random_buffer(rand, sizeof(rand));
@@ -504,10 +505,8 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 	gnutls_session_set_ptr(ctx->tls->session, ctx);
 
 	gnutls_datum_t alpn[ALPN_SIZE];
-	size_t alpn_size = quic_setup_alpn(alpn, ALPN_SIZE, ALPN);
-	
+	size_t alpn_size = quic_parse_alpn(alpn, ALPN_SIZE, ALPN);
 	if (alpn_size > 0) {
-		// gnutls_alpn_set_protocols(ctx->tls->session, &alpn, 1, 0);
 		ret = gnutls_alpn_set_protocols(ctx->tls->session, &alpn, alpn_size, 0);
 		if (ret != GNUTLS_E_SUCCESS) {
 			return KNOT_NET_ECONNECT;
@@ -578,9 +577,6 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 			}
 
 			do {
-				// nwrite = sendto(sockfd, enc_buf, nwrite, MSG_DONTWAIT,
-				//                 (struct sockaddr *)ctx->path.remote.addr,
-				//                 ctx->path.remote.addrlen);
 				nwrite = sendmsg(sockfd, &msg, 0);
 			} while (nwrite == -1 && errno == EINTR);
 		}
@@ -646,10 +642,10 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const
 		bool final = false;
 		
 		// TODO AdGuard implements old draft (ietf-dprive-dnsoquic-02), maybe do fallback
+		uint16_t query_length = htons(ctx->stream.tx_datalen); //Keep outside becouse of var scope
 		if (ctx->stream.stream_id >= 0) {
-			uint16_t query_length = htons(ctx->stream.tx_datalen);
 			data[0].base = &query_length;
-			data[0].len = sizeof(query_length);
+			data[0].len = 2; //sizeof(query_length);
 			data[1].base = ctx->stream.tx_data;
 			data[1].len = ctx->stream.tx_datalen;
 			datacnt = 2;
@@ -666,10 +662,6 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const
 		// struct sockaddr_in6 src_addr;
 		// socklen_t src_addr_len = sizeof(src_addr);
 		// getsockname(sockfd, (struct sockaddr *)&src_addr, &src_addr_len);
-		// ctx->path.local.addr = (struct  sockaddr *)&src_addr;
-		// ctx->path.local.addrlen = src_addr_len;
-		// ctx->path.remote.addr = srv->ai_addr;
-		// ctx->path.remote.addrlen = srv->ai_addrlen;
 
 		ngtcp2_ssize nwrite = ngtcp2_conn_writev_stream(ctx->conn, ngtcp2_conn_get_path(ctx->conn), &pi,
 				enc_buf, sizeof(enc_buf), &wdatalen, flags, ctx->stream.stream_id, &data,
@@ -703,8 +695,6 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv, const
 		if (nwrite <= 0) {
 			return KNOT_NET_ECONNECT;
 		}
-		//ctx->path.remote.addr = (struct sockaddr *)&from;
-		//ctx->path.remote.addrlen = from_len;
 
 		nwrite = ngtcp2_conn_read_pkt(ctx->conn, ngtcp2_conn_get_path(ctx->conn), &pi, enc_buf,
 		                              nwrite, quic_timestamp());
@@ -739,8 +729,7 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len, 
 	const bool unlimited = timeout_ms < 0;
 	int sockfd = ctx->tls->sockfd;
 
-	uint8_t encrypted[65500];
-	// uint8_t encrypted[65535]; //TODO dont know why, but this fails (smaller array ^^^ helps)
+	uint8_t encrypted[65535];
 	ngtcp2_ssize nwrite, wdatalen;
 
 	ngtcp2_pkt_info pi = { 0 };
