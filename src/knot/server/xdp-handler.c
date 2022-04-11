@@ -264,7 +264,6 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		}
 		printf("rl[%u] rx %zu conn %p use2byte_prefix %d\n", i, rl->rx_query.iov_len, rl->conn, rl->use2byte_prefix);
 		if (rl->rx_query.iov_len == 0) {
-			rl->tx_query.iov_len = 0;
 			continue;
 		}
 
@@ -294,6 +293,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		}
 
 		handle_finish(layer);
+		rl->rx_query.iov_len = 0;
 	}
 }
 

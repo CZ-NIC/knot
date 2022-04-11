@@ -889,6 +889,7 @@ int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay)
 		                                (const ngtcp2_vec *)&relay->tx_query, 1, get_timestamp());
 		free(relay->tx_query.iov_base);
 		printf("-_- FREE txp_query %p %zu\n", relay->tx_query.iov_base, relay->tx_query.iov_len);
+		relay->tx_query.iov_len = 0;
 	} else {
 		ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
 		                                NULL, NGTCP2_WRITE_STREAM_FLAG_NONE, -1, NULL, 0, get_timestamp());
@@ -902,7 +903,6 @@ int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay)
 		msg.payload.iov_len = ret;
 		ret = KNOT_EOK;
 	}
-	printf("writev stream [%zu -> %zu] %d (%s)\n", relay->tx_query.iov_len, msg.payload.iov_len, ret, ngtcp2_strerror(ret));
 
 
 	memcpy(msg.eth_from, relay->last_eth_loc, sizeof(msg.eth_from));
