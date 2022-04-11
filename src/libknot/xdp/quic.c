@@ -112,6 +112,7 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 		if (table->creds.tls_ticket_key.data != NULL) {
 			tls_session_ticket_key_free(&table->creds.tls_ticket_key);
 		}
+		gnutls_anti_replay_deinit(table->creds.tls_anti_replay);
 
 		free(table);
 	}
@@ -447,6 +448,10 @@ static void xquic_table_rem(knot_xquic_conn_t **pconn, knot_xquic_table_t *table
 		xquic_table_rem2(pconn, table);
 	}
 
+	free(scids);
+
+	gnutls_deinit(conn->tls_session);
+	ngtcp2_conn_del(conn->conn);
 	free(conn);
 
 	table->usage--;
@@ -882,6 +887,8 @@ int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay)
 		ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
 		                                NULL, NGTCP2_WRITE_STREAM_FLAG_FIN, relay->stream_id,
 		                                (const ngtcp2_vec *)&relay->tx_query, 1, get_timestamp());
+		free(relay->tx_query.iov_base);
+		printf("-_- FREE txp_query %p %zu\n", relay->tx_query.iov_base, relay->tx_query.iov_len);
 	} else {
 		ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
 		                                NULL, NGTCP2_WRITE_STREAM_FLAG_NONE, -1, NULL, 0, get_timestamp());

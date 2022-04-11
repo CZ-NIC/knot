@@ -290,6 +290,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 				rl->tx_query.iov_base = malloc(ans->size); // TODO...
 				memcpy(rl->tx_query.iov_base, ans->wire, ans->size);
 			}
+			printf("-_- ALLOC tx_query %p %zu\n", rl->tx_query.iov_base, rl->tx_query.iov_len);
 		}
 
 		handle_finish(layer);
