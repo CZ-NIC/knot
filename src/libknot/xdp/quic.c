@@ -185,7 +185,7 @@ static int tls_alert_read_func(gnutls_session_t session,
 }
 
 #define ALPN "\03""doq"
-#define ALPN_TMP "\07""doq-i03"
+#define ALPN_TMP "\07""doq-i11"
 
 static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
                                unsigned when, unsigned int incoming,
@@ -386,6 +386,7 @@ static knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const ng
 	knot_xquic_conn_t **addto = table->conns + (hash % table->size);
 	xconn->next = *addto;
 	*addto = xconn;
+	table->pointers++;
 
 	return addto;
 }
@@ -423,19 +424,30 @@ static knot_xquic_conn_t **xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_
 	return res;
 }
 
-static void xquic_table_rem2(knot_xquic_conn_t **pconn)
+static void xquic_table_rem2(knot_xquic_conn_t **pconn, knot_xquic_table_t *table)
 {
 	knot_xquic_conn_t *conn = *pconn;
 	*pconn = conn->next;
+	table->pointers--;
 }
 
 static void xquic_table_rem(knot_xquic_conn_t **pconn, knot_xquic_table_t *table)
 {
 	knot_xquic_conn_t *conn = *pconn;
-	*pconn = conn->next;
-	free(conn);
 
-	// FIXME walk all CIDs that the conn might still have and xquic_table_rem2() them all.
+	size_t num_scid = ngtcp2_conn_get_num_scid(conn->conn);
+	ngtcp2_cid *scids = calloc(num_scid, sizeof(*scids));
+	ngtcp2_conn_get_scid(conn->conn, scids);
+	printf("rem conn num_scid: %zu, num_dcid: %zu\n", ngtcp2_conn_get_num_scid(conn->conn), ngtcp2_conn_get_num_active_dcid(conn->conn));
+
+	for (size_t i = 0; i < num_scid; i++) {
+		pconn = xquic_table_lookup(&scids[i], table);
+		assert(pconn != NULL);
+		assert(*pconn == conn);
+		xquic_table_rem2(pconn, table);
+	}
+
+	free(conn);
 
 	table->usage--;
 }
@@ -485,7 +497,7 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 	knot_xquic_conn_t **torem = xquic_table_lookup(cid, ctx->xquic_table);
 	if (torem != NULL) {
 		assert(*torem == ctx);
-		xquic_table_rem2(torem);
+		xquic_table_rem2(torem, ctx->xquic_table);
 	}
 
 	return 0;
@@ -817,7 +829,7 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 	} else if (ret == NGTCP2_ERR_DRAINING) { // received CONNECTION_CLOSE from the counterpart
 		printf("DRAINING\n");
 		xquic_table_rem(pxconn, table);
-		printf("remaining conns: %zu\n", table->usage);
+		printf("remaining conns: %zu pointers: %zu\n", table->usage, table->pointers);
 	}
 
 	return ret;

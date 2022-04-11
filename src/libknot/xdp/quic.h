@@ -58,6 +58,7 @@ typedef struct {
 typedef struct knot_xquic_table {
 	size_t size;
 	size_t usage;
+	size_t pointers;
 	uint64_t hash_secret[4];
 	knot_quic_creds_t creds;
 	knot_xquic_conn_t *conns[];
