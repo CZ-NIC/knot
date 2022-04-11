@@ -1,0 +1,23 @@
+$ORIGIN example.com.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 3 10800 3600 1209600 7200
+	NS	dns1
+dns1	A	192.0.2.1
+
+labs	A	0.0.0.0
+labs	DNAME	dname1.example.com.
+
+labs	DNAME	dname2.example.com.
+
+labs	NS	dns1.example.com.
+labs	MX	1 dns1.example.com.
+
+www.labs A	0.0.0.0
+
+cname	A	0.0.0.0
+cname	CNAME	example.net.
+cname	CNAME	example.org.
+
+@	CNAME	example.net.
+txt	TXT	loaded

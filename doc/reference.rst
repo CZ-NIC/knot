@@ -2081,6 +2081,10 @@ Extra checks:
 - Invalid NSEC(3) record
 - Broken or non-cyclic NSEC(3) chain
 
+.. NOTE::
+   The soft mode allows the refresh event to ignore a CNAME response to a SOA
+   query (malformed message) and triggers a zone bootstrap instead.
+
 *Default:* off
 
 .. _zone_zonefile-sync:
