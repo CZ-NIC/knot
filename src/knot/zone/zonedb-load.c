@@ -91,7 +91,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	}
 
 	zone->contents = old_zone->contents;
-	zone_set_flag(zone, zone_get_flag(old_zone, ZONE_IS_CATALOG | ZONE_IS_CAT_MEMBER, false));
+	zone_set_flag(zone, zone_get_flag(old_zone, ~0, false));
 
 	zone->timers = old_zone->timers;
 	zone_timers_sanitize(conf, zone);
@@ -165,6 +165,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 			zone_free(&zone);
 			return NULL;
 		}
+		zone_set_flag(zone, ZONE_IS_CATALOG);
 	} else if (conf_opt(&role) == CATALOG_ROLE_INTERPRET) {
 		ret = catalog_open(&server->catalog);
 		if (ret != KNOT_EOK) {
