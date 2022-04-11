@@ -35,6 +35,12 @@ void quic_params_clean(quic_params_t *params);
 
 #include "utils/common/tls.h"
 
+typedef enum {
+	OPENING,
+	CONNECTED,
+	CLOSING
+} quic_state_t;
+
 typedef struct {
 	// Parameters
 	quic_params_t params;
@@ -43,6 +49,8 @@ typedef struct {
 	tls_ctx_t *tls;
 	/*! ngtcp2 (QUIC) setting. */
 	ngtcp2_settings settings;
+	quic_state_t state;
+	ngtcp2_pkt_info pi;
 	/*! Stream context */
 	struct {
 		int64_t stream_id;
@@ -57,12 +65,13 @@ typedef struct {
 	uint64_t last_error;
 	ngtcp2_conn *conn;
 	uint8_t secret[32];
-	bool opened_stream;
 } quic_ctx_t;
 
 uint64_t quic_timestamp(void);
 
 size_t quic_parse_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in);
+
+unsigned int quic_get_ecn(struct msghdr *msg, const int family);
 
 int quic_generate_secret(uint8_t *buf, size_t buflen);
 
