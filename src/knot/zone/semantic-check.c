@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -144,9 +144,10 @@ const char *sem_error_msg(sem_error_t code)
 
 typedef enum {
 	MANDATORY = 1 << 0,
-	OPTIONAL =  1 << 1,
-	NSEC =      1 << 2,
-	NSEC3 =     1 << 3,
+	SOFT      = 1 << 1,
+	OPTIONAL  = 1 << 2,
+	NSEC      = 1 << 3,
+	NSEC3     = 1 << 4,
 } check_level_t;
 
 typedef struct {
@@ -179,9 +180,9 @@ struct check_function {
 /* List of function callbacks for defined check_level */
 static const struct check_function CHECK_FUNCTIONS[] = {
 	{ check_soa,            MANDATORY },
-	{ check_cname,          MANDATORY },
-	{ check_dname,          MANDATORY },
-	{ check_delegation,     MANDATORY }, // mandatory for apex, optional for others
+	{ check_cname,          MANDATORY | SOFT },
+	{ check_dname,          MANDATORY | SOFT },
+	{ check_delegation,     MANDATORY | SOFT }, // mandatory for apex, optional for others
 	{ check_ds,             OPTIONAL },
 	{ check_submission,     NSEC | NSEC3 },
 	{ check_rrsig,          NSEC | NSEC3 },
@@ -1172,9 +1173,13 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 	for (int i = 0; ret == KNOT_EOK && i < CHECK_FUNCTIONS_LEN; ++i) {
 		if (CHECK_FUNCTIONS[i].level & s_data->level) {
 			ret = CHECK_FUNCTIONS[i].function(node, s_data);
+			if (s_data->handler->fatal_error &&
+			    (CHECK_FUNCTIONS[i].level & SOFT) &&
+			    (s_data->level & SOFT)) {
+				s_data->handler->fatal_error = false;
+			}
 		}
 	}
-
 
 	return ret;
 }
@@ -1272,10 +1277,14 @@ int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_
 		.time = time,
 	};
 
+	if (optional == SEMCHECKS_SOFT) {
+		data.level |= SOFT;
+	}
+
 	if (optional != SEMCHECK_MANDATORY_ONLY) {
 		data.level |= OPTIONAL;
-		if (optional == SEMCHECK_DNSSEC ||
-		    (optional == SEMCHECK_AUTO_DNSSEC && zone->dnssec)) {
+		if (optional == SEMCHECK_DNSSEC_ON ||
+		    (optional == SEMCHECK_DNSSEC_AUTO && zone->dnssec)) {
 			knot_rdataset_t *nsec3param = node_rdataset(zone->apex,
 			                                            KNOT_RRTYPE_NSEC3PARAM);
 			if (nsec3param != NULL) {

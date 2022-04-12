@@ -746,7 +746,7 @@ static int zone_txn_commit(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	int ret = zone_update_semcheck(zone->control_update);
+	int ret = zone_update_semcheck(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
 		return ret; // Recoverable error.
 	}

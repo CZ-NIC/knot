@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,8 +35,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	conf_val_t val = conf_zone_get(conf, C_SEM_CHECKS, zone_name);
 
 	zloader_t zl;
-	int ret = zonefile_open(&zl, zonefile, zone_name,
-				conf_bool(&val) ? SEMCHECK_AUTO_DNSSEC : SEMCHECK_MANDATORY_ONLY, time(NULL));
+	int ret = zonefile_open(&zl, zonefile, zone_name, conf_opt(&val), time(NULL));
 	free(zonefile);
 	if (ret != KNOT_EOK) {
 		return ret;

@@ -1447,7 +1447,7 @@ class Knot(Server):
             self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
             if z.dnssec.cds_digesttype:
                 self._str(s, "cds-digest-type", z.dnssec.cds_digesttype)
-            self._str(s, "offline-ksk", z.dnssec.offline_ksk)
+            self._bool(s, "offline-ksk", z.dnssec.offline_ksk)
             self._str(s, "signing-threads", str(random.randint(1,4)))
         if have_policy:
             s.end()
@@ -1471,7 +1471,10 @@ class Knot(Server):
             s.item_str("zonemd-generate", self.zonemd_generate)
         s.item_str("journal-max-usage", self.journal_max_usage)
         s.item_str("adjust-threads", str(random.randint(1,4)))
-        s.item_str("semantic-checks", "on" if self.semantic_check else "off")
+        if self.semantic_check == "soft":
+            self._str(s, "semantic-checks", self.semantic_check)
+        else:
+            self._bool(s, "semantic-checks", self.semantic_check)
         if len(self.modules) > 0:
             modules = ""
             for module in self.modules:
@@ -1524,8 +1527,7 @@ class Knot(Server):
 
             self.config_xfr(z, s)
 
-            if self.serial_policy is not None:
-                s.item_str("serial-policy", self.serial_policy)
+            self._str(s, "serial-policy", self.serial_policy)
 
             s.item_str("journal-content", z.journal_content)
 
@@ -1555,11 +1557,9 @@ class Knot(Server):
                 s.item_str("catalog-role", "interpret")
                 s.item("catalog-template", "[ catalog-default, catalog-signed, catalog-unsigned ]")
 
-            if z.catalog_group is not None:
-                s.item_str("catalog-group", z.catalog_group)
+            self._str(s, "catalog-group", z.catalog_group)
 
-            if z.dnssec.validate:
-                s.item_str("dnssec-validation", "on")
+            self._bool(s, "dnssec-validation", z.dnssec.validate)
 
             if len(z.modules) > 0:
                 modules = ""

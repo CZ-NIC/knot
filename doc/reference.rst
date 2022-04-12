@@ -1924,7 +1924,7 @@ Definition of zones served by the server.
      ddns-master: remote_id
      notify: remote_id | remotes_id ...
      acl: acl_id ...
-     semantic-checks: BOOL
+     semantic-checks: BOOL | soft
      zonefile-sync: TIME
      zonefile-load: none | difference | difference-no-serial | whole
      journal-content: none | changes | all
@@ -2050,18 +2050,26 @@ or disallow zone transfers, updates or incoming notifies.
 semantic-checks
 ---------------
 
-If enabled, extra zone semantic checks are turned on.
+Selects if extra zone semantic checks are used or impacts of the mandatory checks.
 
-Several checks are enabled by default and cannot be turned off. An error in
-mandatory checks causes zone not to be loaded. An error in extra checks is
-logged only.
+There are several mandatory checks which are always enabled and cannot be turned
+off. An error in a mandatory check causes the zone not to be loaded. Some of
+the mandatory checks can be weakened by setting ``soft``, when the zone isn't
+prevented from loading.
+
+If enabled, extra checks are used. These checks don't prevent the zone from loading.
 
 Mandatory checks:
 
-- SOA record missing in the zone (:rfc:`1034`)
-- An extra record together with CNAME record except for RRSIG and DS (:rfc:`1034`)
-- Multiple CNAME record with the same owner
-- DNAME record having a record under it (:rfc:`2672`)
+- Missing SOA record at the zone apex (:rfc:`1034`)
+
+Mandatory checks affected by the soft mode:
+
+- An extra record exists together with a CNAME record except for RRSIG and DS (:rfc:`1034`)
+- Multiple CNAME records with the same owner exist (:rfc:`1034`)
+- DNAME record having a record under it (:rfc:`6672`)
+- Multiple DNAME records with the same owner exist (:rfc:`6672`)
+- NS record exists together with a DNAME record (:rfc:`6672`)
 
 Extra checks:
 
@@ -2072,6 +2080,10 @@ Extra checks:
 - Missing, invalid, or unverifiable RRSIG record
 - Invalid NSEC(3) record
 - Broken or non-cyclic NSEC(3) chain
+
+.. NOTE::
+   The soft mode allows the refresh event to ignore a CNAME response to a SOA
+   query (malformed message) and triggers a zone bootstrap instead.
 
 *Default:* off
 

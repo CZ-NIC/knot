@@ -1761,7 +1761,7 @@ zone:
     ddns\-master: remote_id
     notify: remote_id | remotes_id ...
     acl: acl_id ...
-    semantic\-checks: BOOL
+    semantic\-checks: BOOL | soft
     zonefile\-sync: TIME
     zonefile\-load: none | difference | difference\-no\-serial | whole
     journal\-content: none | changes | all
@@ -1864,22 +1864,33 @@ or disallow zone transfers, updates or incoming notifies.
 \fIDefault:\fP not set
 .SS semantic\-checks
 .sp
-If enabled, extra zone semantic checks are turned on.
+Selects if extra zone semantic checks are used or impacts of the mandatory checks.
 .sp
-Several checks are enabled by default and cannot be turned off. An error in
-mandatory checks causes zone not to be loaded. An error in extra checks is
-logged only.
+There are several mandatory checks which are always enabled and cannot be turned
+off. An error in a mandatory check causes the zone not to be loaded. Some of
+the mandatory checks can be weakened by setting \fBsoft\fP, when the zone isn\(aqt
+prevented from loading.
+.sp
+If enabled, extra checks are used. These checks don\(aqt prevent the zone from loading.
 .sp
 Mandatory checks:
 .INDENT 0.0
 .IP \(bu 2
-SOA record missing in the zone (\fI\%RFC 1034\fP)
+Missing SOA record at the zone apex (\fI\%RFC 1034\fP)
+.UNINDENT
+.sp
+Mandatory checks affected by the soft mode:
+.INDENT 0.0
 .IP \(bu 2
-An extra record together with CNAME record except for RRSIG and DS (\fI\%RFC 1034\fP)
+An extra record exists together with a CNAME record except for RRSIG and DS (\fI\%RFC 1034\fP)
 .IP \(bu 2
-Multiple CNAME record with the same owner
+Multiple CNAME records with the same owner exist (\fI\%RFC 1034\fP)
 .IP \(bu 2
-DNAME record having a record under it (\fI\%RFC 2672\fP)
+DNAME record having a record under it (\fI\%RFC 6672\fP)
+.IP \(bu 2
+Multiple DNAME records with the same owner exist (\fI\%RFC 6672\fP)
+.IP \(bu 2
+NS record exists together with a DNAME record (\fI\%RFC 6672\fP)
 .UNINDENT
 .sp
 Extra checks:
@@ -1898,6 +1909,14 @@ Missing, invalid, or unverifiable RRSIG record
 Invalid NSEC(3) record
 .IP \(bu 2
 Broken or non\-cyclic NSEC(3) chain
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+The soft mode allows the refresh event to ignore a CNAME response to a SOA
+query (malformed message) and triggers a zone bootstrap instead.
+.UNINDENT
 .UNINDENT
 .sp
 \fIDefault:\fP off

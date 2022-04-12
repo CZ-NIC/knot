@@ -285,7 +285,7 @@ static int axfr_finalize(struct refresh_data *data)
 	// Seized by zone_update. Don't free the contents again in axfr_cleanup.
 	data->axfr.zone = NULL;
 
-	ret = zone_update_semcheck(&up);
+	ret = zone_update_semcheck(data->conf, &up);
 	if (ret == KNOT_EOK) {
 		ret = zone_update_verify_digest(data->conf, &up);
 	}
@@ -559,7 +559,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	ret = zone_update_semcheck(&up);
+	ret = zone_update_semcheck(data->conf, &up);
 	if (ret == KNOT_EOK) {
 		ret = zone_update_verify_digest(data->conf, &up);
 	}
@@ -975,8 +975,15 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	if (!rr || rr->type != KNOT_RRTYPE_SOA || rr->rrs.count != 1) {
 		REFRESH_LOG(LOG_WARNING, data, LOG_DIRECTION_IN,
 		            "malformed message");
-		data->ret = KNOT_EMALF;
-		return KNOT_STATE_FAIL;
+		conf_val_t val = conf_zone_get(data->conf, C_SEM_CHECKS, data->zone->name);
+		if (conf_opt(&val) == SEMCHECKS_SOFT) {
+			data->xfr_type = XFR_TYPE_AXFR;
+			data->state = STATE_TRANSFER;
+			return KNOT_STATE_RESET;
+		} else {
+			data->ret = KNOT_EMALF;
+			return KNOT_STATE_FAIL;
+		}
 	}
 
 	uint32_t local_serial;

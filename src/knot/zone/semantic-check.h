@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,14 +16,16 @@
 
 #pragma once
 
+#include "knot/conf/schema.h"
 #include "knot/zone/node.h"
 #include "knot/zone/contents.h"
 
 typedef enum {
-	SEMCHECK_MANDATORY_ONLY,
-	SEMCHECK_NO_DNSSEC,
-	SEMCHECK_AUTO_DNSSEC,
-	SEMCHECK_DNSSEC,
+	SEMCHECK_MANDATORY_ONLY = SEMCHECKS_OFF,
+	SEMCHECK_MANDATORY_SOFT = SEMCHECKS_SOFT,
+	SEMCHECK_DNSSEC_AUTO    = SEMCHECKS_ON,
+	SEMCHECK_DNSSEC_OFF,
+	SEMCHECK_DNSSEC_ON,
 } semcheck_optional_t;
 
 /*!

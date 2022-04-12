@@ -256,11 +256,12 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf);
 /*!
  * \brief Executes mandatory semantic checks on the zone contents.
  *
+ * \param conf    Configuration.
  * \param update  Update to be checked.
  *
  * \return KNOT_E*
  */
-int zone_update_semcheck(zone_update_t *update);
+int zone_update_semcheck(conf_t *conf, zone_update_t *update);
 
 /*!
  * \brief If configured, verify ZONEMD and log the result.
