@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -63,3 +63,21 @@ typedef enum {
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query);
+
+/*!
+ * \brief Checks if the address and/or tsig key matches a remote from the list.
+ *
+ * Global (server.automatic-acl) and per remote automatic ACL functionality
+ * must be enabled in order to decide the remote is allowed.
+ *
+ * If a proper REMOTE is found and tsig.name is not empty, tsig.secret is filled.
+ *
+ * \param conf       Configuration.
+ * \param rmts       Pointer to REMOTE config multivalued identifier.
+ * \param addr       IP address.
+ * \param tsig       TSIG parameters.
+ *
+ * \retval True if authenticated.
+ */
+bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
+                 knot_tsig_key_t *tsig);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -297,6 +297,64 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		return true;
 next_acl:
 		conf_val_next(acl);
+	}
+
+	return false;
+}
+
+bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
+                 knot_tsig_key_t *tsig)
+{
+	if (!conf->cache.srv_auto_acl) {
+		return false;
+	}
+
+	conf_mix_iter_t iter;
+	conf_mix_iter_init(conf, rmts, &iter);
+	while (iter.id->code == KNOT_EOK) {
+		conf_val_t val = conf_id_get(conf, C_RMT, C_AUTO_ACL, iter.id);
+		if (!conf_bool(&val)) {
+			goto next_remote;
+		}
+
+		conf_val_t key_id = conf_id_get(conf, C_RMT, C_KEY, iter.id);
+		if (key_id.code == KNOT_EOK) {
+			/* No key provided, but required. */
+			if (tsig->name == NULL) {
+				goto next_remote;
+			}
+
+			/* Compare key names (both in lower-case). */
+			const knot_dname_t *key_name = conf_dname(&key_id);
+			if (!knot_dname_is_equal(key_name, tsig->name)) {
+				goto next_remote;
+			}
+
+			/* Compare key algorithms. */
+			val = conf_id_get(conf, C_KEY, C_ALG, &key_id);
+			if (conf_opt(&val) != tsig->algorithm) {
+				goto next_remote;
+			}
+		} else if (key_id.code == KNOT_ENOENT && tsig->name != NULL)  {
+			/* Key provided but no key configured. */
+			goto next_remote;
+		}
+
+		/* Check if the address matches. */
+		val = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
+		if (!conf_addr_match(&val, addr)) {
+			goto next_remote;
+		}
+
+		/* Fill out the output with tsig secret if provided. */
+		if (tsig->name != NULL) {
+			val = conf_id_get(conf, C_KEY, C_SECRET, &key_id);
+			tsig->secret.data = (uint8_t *)conf_bin(&val, &tsig->secret.size);
+		}
+
+		return true;
+next_remote:
+		conf_mix_iter_next(&iter);
 	}
 
 	return false;

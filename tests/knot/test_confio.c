@@ -921,6 +921,7 @@ static void test_conf_io_list(void)
 	      "server.udp-max-payload-ipv6\n"
 	      "server.edns-client-subnet\n"
 	      "server.answer-rotation\n"
+	      "server.automatic-acl\n"
 	      "server.dbus-event";
 	ok(strcmp(ref, out) == 0, "compare result");
 
@@ -984,6 +985,7 @@ static const yp_item_t desc_server[] = {
 	{ C_UDP_MAX_PAYLOAD_IPV6, YP_TINT,  YP_VNONE },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
+	{ C_AUTO_ACL,             YP_TBOOL, YP_VNONE },
 	{ C_DBUS_EVENT,           YP_TOPT,  YP_VNONE },
 	{ NULL }
 };

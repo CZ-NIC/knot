@@ -151,6 +151,7 @@ General options related to the server.
      udp-max-payload-ipv6: SIZE
      edns-client-subnet: BOOL
      answer-rotation: BOOL
+     automatic-acl: BOOL
      dbus-event: none | running | zone-updated | ksk-submission | dnssec-invalid ...
      listen: ADDR[@INT] ...
 
@@ -462,6 +463,16 @@ answer-rotation
 
 Enable or disable sorted-rrset rotation in the answer section of normal replies.
 The rotation shift is simply determined by a query ID.
+
+*Default:* off
+
+.. _server_automatic-acl:
+
+automatic-acl
+-------------
+
+If enabled, :ref:`automatic ACL<remote_automatic-acl>` setting of
+configured remotes is considered when evaluating autorized operations.
 
 *Default:* off
 
@@ -1104,6 +1115,7 @@ transfer, target for a notification, etc.).
      key: key_id
      block-notify-after-transfer: BOOL
      no-edns: BOOL
+     automatic-acl: BOOL
 
 .. _remote_id:
 
@@ -1171,6 +1183,27 @@ remote server. This mode is necessary for communication with some broken
 implementations (e.g. Windows Server 2016).
 
 *Default:* off
+
+.. _remote_automatic-acl:
+
+automatic-acl
+-------------
+
+If enabled, some authorized operations for the remote are automatically allowed
+based on the context:
+
+- Incoming NOTIFY is allowed from the remote if it's configured as a
+  :ref:`primary server <zone_master>` for the zone.
+- Outgoing zone transfer is allowed to the remote if it's configured as a
+  :ref:`NOTIFY target <zone_notify>` for the zone.
+
+Automatic ACL rules are evaluated before explicit :ref:`zone ACL <zone_acl>` configuration.
+
+.. NOTE::
+   This functionality requires global activation via
+   :ref:`server_automatic-acl` in the server section.
+
+*Default:* on
 
 Remotes section
 ===============
