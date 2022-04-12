@@ -1335,6 +1335,7 @@ policy:
     ds\-push: remote_id | remotes_id ...
     cds\-cdnskey\-publish: none | delete\-dnssec | rollover | always | double\-ds
     cds\-digest\-type: sha256 | sha384
+    dnskey\-management: full | incremental
     offline\-ksk: BOOL
     unsafe\-operation: none | no\-check\-keyset | no\-update\-dnskey | no\-update\-nsec | no\-update\-expired ...
 .ft P
@@ -1673,6 +1674,41 @@ more records depending on the keys available.
 Specify digest type for published CDS records.
 .sp
 \fIDefault:\fP sha256
+.SS dnskey\-management
+.sp
+Specify how the DNSKEY, CDNSKEY, and CDS RRSets at the zone apex are handled
+when (re\-)signing the zone.
+.sp
+Possible values:
+.INDENT 0.0
+.IP \(bu 2
+\fBfull\fP – Upon every zone (re\-)sign, delete all unknown DNSKEY, CDNSKEY, and CDS
+records and keep just those that are related to the zone keys stored in the KASP database.
+.IP \(bu 2
+\fBincremental\fP – Keep unknown DNSKEY, CDNSKEY, and CDS records in the zone, and
+modify server\-managed records incrementally by employing changes in the KASP database.
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Prerequisites for \fIincremental\fP:
+.INDENT 0.0
+.IP \(bu 2
+The Offline KSK isn\(aqt supported.
+.IP \(bu 2
+The \fI\%delete\-delay\fP is long enough to cover possible daemon
+shutdown (e.g. due to server maintenance).
+.IP \(bu 2
+Avoided manual deletion of keys with keymgr\&.
+.UNINDENT
+.sp
+Otherwise there might remain some DNSKEY records in the zone, belonging to
+deleted keys.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP full
 .SS offline\-ksk
 .sp
 Specifies if Offline KSK feature is enabled.

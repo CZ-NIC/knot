@@ -172,6 +172,18 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
                             knot_rdataset_t *out, knot_mm_t *mm);
 
 /*!
+ * \brief Does set-like RRS intersection. \a from RRS is changed.
+ *
+ * \param from  RRS to be modified by intersection.
+ * \param what  RRS to intersect.
+ * \param mm    Memory context use to reallocated \a from data.
+ *
+ * \return KNOT_E*
+ */
+int knot_rdataset_intersect2(knot_rdataset_t *from, const knot_rdataset_t *what,
+                             knot_mm_t *mm);
+
+/*!
  * \brief Does set-like RRS subtraction. \a from RRS is changed.
  *
  * \param from  RRS to subtract from.

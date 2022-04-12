@@ -310,6 +310,38 @@ int knot_rdataset_intersect(const knot_rdataset_t *rrs1, const knot_rdataset_t *
 }
 
 _public_
+int knot_rdataset_intersect2(knot_rdataset_t *from, const knot_rdataset_t *what,
+                             knot_mm_t *mm)
+{
+	if (from == NULL || what == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (from->rdata == what->rdata) {
+		return KNOT_EOK;
+	}
+
+	knot_rdata_t *rr1 = from->rdata;
+	for (uint16_t i = 0; i < from->count; ) {
+		if (!knot_rdataset_member(what, rr1)) {
+			int ret = remove_rr_at(from, i, mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			if (i < from->count) {
+				// Just to make sure rr1 remains valid if re-allocated.
+				rr1 = rr_seek(from, i);
+			}
+		} else {
+			i++;
+			rr1 = knot_rdataset_next(rr1);
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
                            knot_mm_t *mm)
 {

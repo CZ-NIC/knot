@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,6 +32,14 @@ void key_records_init(const kdnssec_ctx_t *ctx, key_records_t *r)
 	                KNOT_RRTYPE_CDS, KNOT_CLASS_IN, 0);
 	knot_rrset_init(&r->rrsig, knot_dname_copy(ctx->zone->dname, NULL),
 	                KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, ctx->policy->dnskey_ttl);
+}
+
+void key_records_from_apex(const zone_node_t *apex, key_records_t *r)
+{
+	r->dnskey = node_rrset(apex, KNOT_RRTYPE_DNSKEY);
+	r->cdnskey = node_rrset(apex, KNOT_RRTYPE_CDNSKEY);
+	r->cds = node_rrset(apex, KNOT_RRTYPE_CDS);
+	knot_rrset_init_empty(&r->rrsig);
 }
 
 int key_records_add_rdata(key_records_t *r, uint16_t rrtype, uint8_t *rdata, uint16_t rdlen, uint32_t ttl)
@@ -75,6 +83,57 @@ void key_records_clear_rdatasets(key_records_t *r)
 	knot_rdataset_clear(&r->cdnskey.rrs, NULL);
 	knot_rdataset_clear(&r->cds.rrs, NULL);
 	knot_rdataset_clear(&r->rrsig.rrs, NULL);
+}
+
+static int add_one(const knot_rrset_t *rr, changeset_t *ch,
+                   bool rem, changeset_flag_t fl, int ret)
+{
+	if (ret == KNOT_EOK && !knot_rrset_empty(rr)) {
+		if (rem) {
+			ret = changeset_add_removal(ch, rr, fl);
+		} else {
+			ret = changeset_add_addition(ch, rr, fl);
+		}
+	}
+	return ret;
+}
+
+int key_records_to_changeset(const key_records_t *r, changeset_t *ch,
+                             bool rem, changeset_flag_t chfl)
+{
+	int ret = KNOT_EOK;
+	ret = add_one(&r->dnskey,  ch, rem, chfl, ret);
+	ret = add_one(&r->cdnskey, ch, rem, chfl, ret);
+	ret = add_one(&r->cds,     ch, rem, chfl, ret);
+	return ret;
+}
+
+static int subtract_one(knot_rrset_t *from, const knot_rrset_t *what,
+                        int (*fcn)(knot_rdataset_t *, const knot_rdataset_t *, knot_mm_t *),
+                        int ret)
+{
+	if (ret == KNOT_EOK && !knot_rrset_empty(from)) {
+		ret = fcn(&from->rrs, &what->rrs, NULL);
+	}
+	return ret;
+}
+
+int key_records_subtract(key_records_t *r, const key_records_t *against)
+{
+	int ret = KNOT_EOK;
+	ret = subtract_one(&r->dnskey,  &against->dnskey,  knot_rdataset_subtract, ret);
+	ret = subtract_one(&r->cdnskey, &against->cdnskey, knot_rdataset_subtract, ret);
+	ret = subtract_one(&r->cds,     &against->cds,     knot_rdataset_subtract, ret);
+	return ret;
+}
+
+int key_records_intersect(key_records_t *r, const key_records_t *against)
+{
+	int ret = KNOT_EOK;
+	ret = subtract_one(&r->dnskey,  &against->dnskey,  knot_rdataset_intersect2, ret);
+	ret = subtract_one(&r->cdnskey, &against->cdnskey, knot_rdataset_intersect2, ret);
+	ret = subtract_one(&r->cds,     &against->cds,     knot_rdataset_intersect2, ret);
+	return ret;
 }
 
 int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool verbose)
