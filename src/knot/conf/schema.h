@@ -28,6 +28,7 @@
 #define C_ANY			"\x03""any"
 #define C_APPEND		"\x06""append"
 #define C_ASYNC_START		"\x0B""async-start"
+#define C_AUTO_ACL		"\x0D""automatic-acl"
 #define C_BACKEND		"\x07""backend"
 #define C_BG_WORKERS		"\x12""background-workers"
 #define C_BLOCK_NOTIFY_XFR	"\x1B""block-notify-after-transfer"

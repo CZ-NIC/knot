@@ -227,6 +227,9 @@ static void init_cache(
 
 	val = conf_get(conf, C_SRV, C_ANS_ROTATION);
 	conf->cache.srv_ans_rotate = conf_bool(&val);
+
+	val = conf_get(conf, C_SRV, C_AUTO_ACL);
+	conf->cache.srv_auto_acl = conf_bool(&val);
 }
 
 int conf_new(

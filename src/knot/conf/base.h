@@ -143,6 +143,7 @@ typedef struct {
 		size_t srv_nsid_len;
 		bool srv_ecs;
 		bool srv_ans_rotate;
+		bool srv_auto_acl;
 	} cache;
 
 	/*! List of dynamically loaded modules. */

@@ -668,17 +668,32 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	}
 	const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions, action);
 
-	conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
-	bool allowed = acl_allowed(conf, &acl, action, query_source, &tsig, zone_name, query);
+	bool automatic = false;
+	bool allowed = false;
+
+	if (action != ACL_ACTION_UPDATE) {
+		// ACL_ACTION_NONE is used for SOA/refresh query.
+		assert(action == ACL_ACTION_NONE || action == ACL_ACTION_NOTIFY ||
+		       action == ACL_ACTION_TRANSFER);
+		const yp_name_t *item = (action == ACL_ACTION_NOTIFY) ? C_MASTER : C_NOTIFY;
+		conf_val_t rmts = conf_zone_get(conf, item, zone_name);
+		allowed = rmt_allowed(conf, &rmts, query_source, &tsig);
+		automatic = allowed;
+	}
+	if (!allowed) {
+		conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
+		allowed = acl_allowed(conf, &acl, action, query_source, &tsig, zone_name, query);
+	}
 
 	log_zone_debug(zone_name,
-	               "ACL, %s, action %s, remote %s, key %s%s%s",
+	               "ACL, %s, action %s, remote %s, key %s%s%s%s",
 	               allowed ? "allowed" : "denied",
 	               (act != NULL) ? act->name : "query",
 	               addr_str,
 	               (key_name[0] != '\0') ? "'" : "",
 	               (key_name[0] != '\0') ? key_name : "none",
-	               (key_name[0] != '\0') ? "'" : "");
+	               (key_name[0] != '\0') ? "'" : "",
+	               automatic ? ", automatic" : "");
 
 	/* Check if authorized. */
 	if (!allowed) {
