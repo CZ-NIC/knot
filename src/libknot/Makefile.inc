@@ -103,6 +103,7 @@ nobase_include_libknot_HEADERS += \
 	libknot/xdp/eth.h			\
 	libknot/xdp/msg.h			\
 	libknot/xdp/quic.h			\
+	libknot/xdp/quic_conn.h			\
 	libknot/xdp/tcp.h			\
 	libknot/xdp/tcp_iobuf.h			\
 	libknot/xdp/xdp.h
@@ -116,6 +117,7 @@ libknot_la_SOURCES  += \
 	libknot/xdp/msg_init.h			\
 	libknot/xdp/protocols.h			\
 	libknot/xdp/quic.c			\
+	libknot/xdp/quic_conn.c			\
 	libknot/xdp/tcp.c			\
 	libknot/xdp/tcp_iobuf.c			\
 	libknot/xdp/xdp.c

@@ -36,6 +36,7 @@ typedef struct xdp_handle_ctx {
 	knot_xdp_msg_t msg_send_udp[XDP_BATCHLEN];
 	knot_tcp_relay_t relays[XDP_BATCHLEN];
 	knot_xquic_conn_t *quic_relays[XDP_BATCHLEN];
+	int64_t quic_streams[XDP_BATCHLEN];
 	uint32_t msg_recv_count;
 	uint32_t msg_udp_count;
 	knot_tcp_table_t *tcp_table;
@@ -249,7 +250,8 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                         knotd_qdata_params_t *params)
 {
-	int ret = knot_xquic_recv(ctx->quic_relays, ctx->msg_recv, ctx->msg_recv_count, ctx->quic_table);
+	int ret = knot_xquic_recv(ctx->quic_relays, ctx->quic_streams,
+	                          ctx->msg_recv, ctx->msg_recv_count, ctx->quic_table);
 	if (ret != KNOT_EOK) {
 		log_notice("QUIC, failed to process some packets (%s)", knot_strerror(ret));
 		return;
@@ -259,16 +261,23 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
 		knot_xquic_conn_t *rl = ctx->quic_relays[i];
-		if (rl == NULL) {
+		int64_t stream_id = ctx->quic_streams[i];
+		printf("**quic** rl %p stream %ld %p\n", rl, stream_id, rl == NULL ? NULL : knot_xquic_conn_get_stream(rl, stream_id, false));
+		if (rl == NULL || stream_id < 0) {
 			continue;
 		}
-		printf("rl[%u] rx %zu conn %p use2byte_prefix %d\n", i, rl->rx_query.iov_len, rl->conn, rl->use2byte_prefix);
-		if (rl->rx_query.iov_len == 0) {
+		knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, stream_id, false);
+		if (stream == NULL) {
+			continue;
+		}
+
+		printf("rl[%u] rx %zu conn %p stream %ld\n", i, stream->inbuf.iov_len, rl->conn, stream_id);
+		if (stream->inbuf.iov_len == 0) {
 			continue;
 		}
 
 		// Consume the query.
-		handle_init(params, layer, &ctx->msg_recv[i], &rl->rx_query);
+		handle_init(params, layer, &ctx->msg_recv[i], &stream->inbuf);
 
 		// Process the reply.
 		knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);
@@ -277,23 +286,13 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			if (!tcp_send_state(layer->state)) {
 				continue;
 			}
-
-			if (rl->use2byte_prefix) {
-				uint16_t prefix = ans->size;
-				rl->tx_query.iov_len = ans->size + sizeof(prefix);
-				rl->tx_query.iov_base = malloc(rl->tx_query.iov_len);
-				knot_wire_write_u16(rl->tx_query.iov_base, prefix);
-				memcpy(rl->tx_query.iov_base + sizeof(prefix), ans->wire, ans->size);
-			} else {
-				rl->tx_query.iov_len = ans->size;
-				rl->tx_query.iov_base = malloc(ans->size); // TODO...
-				memcpy(rl->tx_query.iov_base, ans->wire, ans->size);
+			if (knot_xquic_stream_add_data(rl, stream_id, ans->wire, ans->size) == NULL) {
+				break;
 			}
-			printf("-_- ALLOC tx_query %p %zu\n", rl->tx_query.iov_base, rl->tx_query.iov_len);
 		}
 
 		handle_finish(layer);
-		rl->rx_query.iov_len = 0;
+		stream->inbuf.iov_len = 0;
 	}
 }
 
@@ -331,7 +330,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 		}
 	}
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
-		int ret = knot_xquic_send(ctx->sock, ctx->quic_relays[i]);
+		int ret = knot_xquic_send(ctx->sock, ctx->quic_relays[i], ctx->quic_streams[i]);
 		if (ret != KNOT_EOK) {
 			log_notice("QUIC, failed to send some packets");
 		}

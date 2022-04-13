@@ -22,10 +22,12 @@
 
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
+#include "contrib/ucw/lists.h"
 #include "libknot/endian.h"
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
 #include "libknot/attribute.h"
+#include "libknot/endian.h"
 #include "libknot/error.h"
 #include "libknot/wire.h"
 #include "libknot/xdp/quic.h"
@@ -44,78 +46,63 @@ static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
 	return 0;
 }
 
-
 static void tls_session_ticket_key_free(gnutls_datum_t *ticket) {
 	gnutls_memset(ticket->data, 0, ticket->size);
 	gnutls_free(ticket->data);
 }
 
-_public_
-knot_xquic_table_t *knot_xquic_table_new(size_t table_size)
+int knot_xquic_init_creds(knot_xquic_creds_t *creds)
 {
-	knot_xquic_table_t *res = calloc(1, sizeof(*res) + table_size * sizeof(res->conns[0]));
-	if (res == NULL) {
-		return NULL;
+	int ret = dnssec_random_buffer(creds->static_secret, sizeof(creds->static_secret));
+	if (ret != DNSSEC_EOK) {
+		return knot_error_from_libdnssec(ret);
 	}
 
-	res->size = table_size;
-
-	if (dnssec_random_buffer(res->creds.static_secret, sizeof(res->creds.static_secret)) != DNSSEC_EOK) {
-		free(res);
-		return NULL;
-	}
-
-	int ret = gnutls_anti_replay_init(&res->creds.tls_anti_replay);
+	ret = gnutls_anti_replay_init(&creds->tls_anti_replay);
 	if (ret != GNUTLS_E_SUCCESS) {
-		free(res);
-		return NULL;
+		return KNOT_ERROR;
 	}
-	gnutls_anti_replay_set_add_function(res->creds.tls_anti_replay,
-	                                    tls_anti_replay_db_add_func);
-	gnutls_anti_replay_set_ptr(res->creds.tls_anti_replay, NULL);
+	gnutls_anti_replay_set_add_function(creds->tls_anti_replay, tls_anti_replay_db_add_func);
+	gnutls_anti_replay_set_ptr(creds->tls_anti_replay, NULL);
 
-	ret = gnutls_certificate_allocate_credentials(&res->creds.tls_cert);
+	ret = gnutls_certificate_allocate_credentials(&creds->tls_cert);
 	if (ret != GNUTLS_E_SUCCESS) {
-		free(res);
-		return NULL;
+		gnutls_anti_replay_deinit(creds->tls_anti_replay);
+		return KNOT_ENOMEM;
 	}
-	ret = gnutls_certificate_set_x509_system_trust(res->creds.tls_cert);
+
+	ret = gnutls_certificate_set_x509_system_trust(creds->tls_cert);
 	if (ret < 0) {
-		knot_xquic_table_free(res);
-		return NULL;
+		knot_xquic_free_creds(creds);
+		return KNOT_ERROR;
 	}
+
 	const char *cert_file = "/home/peltan/mnt/MyCertificate.crt";
 	const char *key_file = "/home/peltan/mnt/MyKey.key"; // FIXME :)
-	ret = gnutls_certificate_set_x509_key_file(res->creds.tls_cert,
-		cert_file, key_file, GNUTLS_X509_FMT_PEM);
+
+	ret = gnutls_certificate_set_x509_key_file(creds->tls_cert, cert_file, key_file, GNUTLS_X509_FMT_PEM);
 	if (ret != GNUTLS_E_SUCCESS) {
-		knot_xquic_table_free(res);
-		return NULL;
+		knot_xquic_free_creds(creds);
+		return KNOT_ERROR;
 	}
 
-	ret = gnutls_session_ticket_key_generate(&res->creds.tls_ticket_key);
+	ret = gnutls_session_ticket_key_generate(&creds->tls_ticket_key);
 	if (ret != GNUTLS_E_SUCCESS) {
-		knot_xquic_table_free(res);
-		return NULL;
+		knot_xquic_free_creds(creds);
+		return KNOT_ERROR;
 	}
 
-	return res;
+	return KNOT_EOK;
+
 }
 
-_public_
-void knot_xquic_table_free(knot_xquic_table_t *table)
+void knot_xquic_free_creds(knot_xquic_creds_t *creds)
 {
-	if (table != NULL) {
-		// FIXME free all connections
-
-		gnutls_certificate_free_credentials(table->creds.tls_cert);
-		if (table->creds.tls_ticket_key.data != NULL) {
-			tls_session_ticket_key_free(&table->creds.tls_ticket_key);
-		}
-		gnutls_anti_replay_deinit(table->creds.tls_anti_replay);
-
-		free(table);
+	gnutls_certificate_free_credentials(creds->tls_cert);
+	if (creds->tls_ticket_key.data != NULL) {
+		tls_session_ticket_key_free(&creds->tls_ticket_key);
 	}
+	gnutls_anti_replay_deinit(creds->tls_anti_replay);
 }
 
 static void print_cid(const ngtcp2_cid *cid, const char *name)
@@ -297,7 +284,7 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 	}
 
 	if (gnutls_session_ticket_enable_server(conn->tls_session,
-	                &conn->xquic_table->creds.tls_ticket_key) != GNUTLS_E_SUCCESS) {
+	                &conn->xquic_table->creds->tls_ticket_key) != GNUTLS_E_SUCCESS) {
 		return KNOT_ERROR;
 	}
 
@@ -320,13 +307,13 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 		return -1;
 	}
 
-	gnutls_anti_replay_enable(conn->tls_session, conn->xquic_table->creds.tls_anti_replay);
+	gnutls_anti_replay_enable(conn->tls_session, conn->xquic_table->creds->tls_anti_replay);
 	gnutls_record_set_max_early_data_size(conn->tls_session, 0xffffffffu);
 
 	gnutls_session_set_ptr(conn->tls_session, conn);
 
 	if (gnutls_credentials_set(conn->tls_session, GNUTLS_CRD_CERTIFICATE,
-	                           conn->xquic_table->creds.tls_cert) != GNUTLS_E_SUCCESS) {
+	                           conn->xquic_table->creds->tls_cert) != GNUTLS_E_SUCCESS) {
 		// std::cerr << "gnutls_credentials_set failed: " << gnutls_strerror(rv)
 		// << std::endl;
 		return -1;
@@ -366,96 +353,7 @@ static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_c
 	dnssec_random_buffer(dest, destlen);
 }
 
-static bool cid_eq(const ngtcp2_cid *a, const ngtcp2_cid *b) // TODO ngtcp2_cid_eq
-{
-	return a->datalen == b->datalen &&
-	       memcmp(a->data, b->data, a->datalen) == 0;
-}
 
-static uint64_t cid2hash(const ngtcp2_cid *cid)
-{
-	uint64_t hash = 0;
-	memcpy(&hash, cid->data, MIN(sizeof(hash), cid->datalen));
-	return hash;
-}
-
-static knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const ngtcp2_cid *cid,
-                                              knot_xquic_table_t *table)
-{
-	uint64_t hash = cid2hash(cid);
-
-	knot_xquic_conn_t **addto = table->conns + (hash % table->size);
-	xconn->next = *addto;
-	*addto = xconn;
-	table->pointers++;
-
-	return addto;
-}
-
-static knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, knot_xquic_table_t *table)
-{
-	knot_xquic_conn_t *xconn = calloc(1, sizeof(*xconn));
-	if (xconn == NULL) {
-		return NULL;
-	}
-
-	xconn->conn = conn;
-	xconn->cid.datalen = cid->datalen;
-	memcpy(xconn->cid.data, cid->data, cid->datalen);
-
-	knot_xquic_conn_t **addto = xquic_table_insert(xconn, cid, table);
-	printf("TABLE addto %p conn %p\n", addto, xconn);
-	table->usage++;
-
-	return addto;
-}
-
-static knot_xquic_conn_t **xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_table_t *table)
-{
-	uint64_t hash = cid2hash(cid);
-
-	knot_xquic_conn_t **res = table->conns + (hash % table->size);
-	while (*res != NULL) {
-		if (cid_eq(&(*res)->cid, cid) || true /* FIXME !! */) {
-			break;
-		}
-		res = &(*res)->next;
-	}
-	printf("TABLE lookup hash 0x%lx: %p at %p\n", hash, *res, res);
-	return res;
-}
-
-static void xquic_table_rem2(knot_xquic_conn_t **pconn, knot_xquic_table_t *table)
-{
-	knot_xquic_conn_t *conn = *pconn;
-	*pconn = conn->next;
-	table->pointers--;
-}
-
-static void xquic_table_rem(knot_xquic_conn_t **pconn, knot_xquic_table_t *table)
-{
-	knot_xquic_conn_t *conn = *pconn;
-
-	size_t num_scid = ngtcp2_conn_get_num_scid(conn->conn);
-	ngtcp2_cid *scids = calloc(num_scid, sizeof(*scids));
-	ngtcp2_conn_get_scid(conn->conn, scids);
-	printf("rem conn num_scid: %zu, num_dcid: %zu\n", ngtcp2_conn_get_num_scid(conn->conn), ngtcp2_conn_get_num_active_dcid(conn->conn));
-
-	for (size_t i = 0; i < num_scid; i++) {
-		pconn = xquic_table_lookup(&scids[i], table);
-		assert(pconn != NULL);
-		assert(*pconn == conn);
-		xquic_table_rem2(pconn, table);
-	}
-
-	free(scids);
-
-	gnutls_deinit(conn->tls_session);
-	ngtcp2_conn_del(conn->conn);
-	free(conn);
-
-	table->usage--;
-}
 
 static void init_random_cid(ngtcp2_cid *cid, size_t len)
 {
@@ -561,34 +459,28 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
 
 	printf("RECV stream data %zu [ %02x %02x ... ] (size %d) flags %u\n", datalen, datalen > 0 ? data[0] : 0, datalen > 1 ? data[1] : 0, (int)be16toh(*(uint16_t *)data), flags);
 
-	/*if (!(flags & NGTCP2_STREAM_DATA_FLAG_FIN)) {
-		ctx->rx_query.iov_len = 0;
-		return 0; // TODO handle fragmented DNS queries?
+	if (datalen < sizeof(uint16_t)) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
-	FIXME some clients don't send FIN
-	*/
+	uint16_t len_prefix = knot_wire_read_u16(data);
+	data += sizeof(len_prefix);
+	datalen -= sizeof(len_prefix);
 
-
-	/*
-	if (datalen < sizeof(uint16_t) || be16toh(*(uint16_t *)data) != datalen - sizeof(uint16_t)) {
-		ctx->rx_query.iov_len = 0;
-		return 0; // TODO handle weirdly fragmented queries?
+	if (!(flags & NGTCP2_STREAM_DATA_FLAG_FIN) || datalen != len_prefix) {
+		return NGTCP2_ERR_CALLBACK_FAILURE; // TODO check if this idea is correct: if we receive partial data, we "refuse" to process them so that ngtcp2 buffers them all until FIN received
 	}
-	ctx->rx_query.iov_base = (void *)data + sizeof(uint16_t);
-	ctx->rx_query.iov_len = datalen - sizeof(uint16_t);
-	*/
 
-	ctx->stream_id = stream_id;
-	uint16_t len_prefix;
-	if (datalen >= sizeof(len_prefix) && (len_prefix = knot_wire_read_u16(data)) == datalen - sizeof(len_prefix)) { // FIXME remove this adaptive consumation of non/existing length prefix
-		ctx->rx_query.iov_base = (uint8_t *)data + sizeof(len_prefix);
-		ctx->rx_query.iov_len = datalen - sizeof(len_prefix);
-		ctx->use2byte_prefix = true;
-	} else {
-		ctx->rx_query.iov_base = (uint8_t *)data;
-		ctx->rx_query.iov_len = datalen;
-		ctx->use2byte_prefix = false;
+	knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(ctx, stream_id, true);
+	if (stream == NULL || stream->state != XQUIC_STREAM_FREED) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
+
+	ctx->last_stream = stream_id;
+
+	stream->state = XQUIC_STREAM_RECVD;
+	stream->inbuf.iov_base = (uint8_t *)data;
+	stream->inbuf.iov_len = datalen;
+
 	return 0;
 }
 
@@ -597,7 +489,11 @@ static int acked_stream_data_offset_cb(ngtcp2_conn *conn, int64_t stream_id,
                                     void *user_data, void *stream_user_data)
 {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
-	(void)ctx;
+
+	printf("ACKED stream %ld offset %lu datalen %lu\n", stream_id, offset, datalen);
+
+	knot_xquic_stream_ack_data(ctx, stream_id, offset + datalen);
+
 	return 0;
 }
 
@@ -642,7 +538,7 @@ static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t 
 {
 	knot_xquic_conn_t *xconn = user_data;
 	char fqlog[39] = { 0 };
-	uint64_t cid_int = (xconn->cid.datalen >= sizeof(cid_int) ? knot_wire_read_u64(xconn->cid.data) : 0);
+	uint64_t cid_int = (xconn->ocid->datalen >= sizeof(cid_int) ? knot_wire_read_u64(xconn->ocid->data) : 0);
 	sprintf(fqlog, "/home/peltan/mnt/%016lx.qlog", cid_int);
 
 	FILE *qlog = fopen(fqlog, "a");
@@ -717,6 +613,7 @@ static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const n
 	}
 	settings.qlog.odcid = *odcid;
 	settings.qlog.write = user_qlog;
+	// TODO handshake_timeout ?
 
 	// III. PARAMS
 	ngtcp2_transport_params params;
@@ -733,7 +630,7 @@ static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const n
 	// params.initial_max_data = config.max_data;
 	params.initial_max_streams_bidi = 100;
 	params.initial_max_streams_uni = 3;
-	// params.max_idle_timeout = config.timeout;
+	params.max_idle_timeout = 5000000000L; // FIXME allow idle timeout configuration
 	// params.stateless_reset_token_present = 1;
 	// params.active_connection_id_limit = 7;
 	if (odcid) {
@@ -751,7 +648,7 @@ static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const n
 	return ngtcp2_conn_server_new(pconn, dcid, scid, path, version, &callbacks, &settings, &params, NULL, user_data);
 }
 
-static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xquic_conn_t **out_conn)
+static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xquic_conn_t **out_conn, int64_t *out_stream)
 {
 	uint32_t pversion = 0;
 	ngtcp2_cid scid = { 0 }, dcid = { 0 };
@@ -820,11 +717,14 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 
 	ngtcp2_pkt_info pi = { .ecn = NGTCP2_ECN_NOT_ECT, }; // TODO: explicit congestion notification
 
+	xconn->last_stream = -1;
+
 	ret = ngtcp2_conn_read_pkt(xconn->conn, &path, &pi, msg->payload.iov_base, msg->payload.iov_len, now);
 	printf("read pkt %p %p %p len %zu (%s)\n", xconn, xconn->conn, xconn->tls_session, msg->payload.iov_len, ngtcp2_strerror(ret));
 
 	if (ret == KNOT_EOK) {
 		*out_conn = xconn;
+		*out_stream = xconn->last_stream;
 		memcpy(xconn->last_eth_rem, msg->eth_from, sizeof(msg->eth_from));
 		memcpy(xconn->last_eth_loc, msg->eth_to, sizeof(msg->eth_to));
 	} else if (ngtcp2_err_is_fatal(ret)) {
@@ -841,8 +741,9 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 }
 
 _public_
-int knot_xquic_recv(knot_xquic_conn_t **relays, knot_xdp_msg_t *msgs,
-                    uint32_t count, knot_xquic_table_t *quic_table)
+int knot_xquic_recv(knot_xquic_conn_t **relays, int64_t *streams,
+                    knot_xdp_msg_t *msgs, uint32_t count,
+                    knot_xquic_table_t *quic_table)
 {
 	memset(relays, 0, count * sizeof(*relays));
 
@@ -855,15 +756,16 @@ int knot_xquic_recv(knot_xquic_conn_t **relays, knot_xdp_msg_t *msgs,
 			continue;
 		}
 
-		int ret = handle_packet(msg, quic_table, &relays[i]);
+		int ret = handle_packet(msg, quic_table, &relays[i], &streams[i]);
 		(void)ret;
 	}
 
 	return KNOT_EOK;
 }
 
+
 _public_
-int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay)
+int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_t stream)
 {
 	if (relay == NULL || relay->conn == NULL) {
 		return KNOT_EOK;
@@ -883,16 +785,21 @@ int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay)
 
 	msg.payload.iov_len = MAX(msg.payload.iov_len, 1400); // TODO do something
 
-	if (relay->tx_query.iov_len > 0) {
-		ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
-		                                NULL, NGTCP2_WRITE_STREAM_FLAG_FIN, relay->stream_id,
-		                                (const ngtcp2_vec *)&relay->tx_query, 1, get_timestamp());
-		free(relay->tx_query.iov_base);
-		printf("-_- FREE txp_query %p %zu\n", relay->tx_query.iov_base, relay->tx_query.iov_len);
-		relay->tx_query.iov_len = 0;
-	} else {
+	knot_xquic_stream_t *s;
+	if (stream < 0 || (s = knot_xquic_conn_get_stream(relay, stream, false)) == NULL || s->state != XQUIC_STREAM_RECVD) {
 		ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
 		                                NULL, NGTCP2_WRITE_STREAM_FLAG_NONE, -1, NULL, 0, get_timestamp());
+	} else {
+		knot_xquic_obuf_t *obuf;
+		WALK_LIST(obuf, *(list_t *)&s->outbufs) {
+			ngtcp2_vec vec = { .base = obuf->buf, .len = obuf->len };
+			ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
+			                                NULL, NGTCP2_WRITE_STREAM_FLAG_FIN, stream, &vec, 1, get_timestamp());
+			if (ret != 0) {
+				break;
+			}
+		}
+		s->state = XQUIC_STREAM_SENT;
 	}
 
 	if (ret <= 0) {
@@ -903,7 +810,6 @@ int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay)
 		msg.payload.iov_len = ret;
 		ret = KNOT_EOK;
 	}
-
 
 	memcpy(msg.eth_from, relay->last_eth_loc, sizeof(msg.eth_from));
 	memcpy(msg.eth_to, relay->last_eth_rem, sizeof(msg.eth_to));
