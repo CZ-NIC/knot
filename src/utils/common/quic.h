@@ -48,30 +48,32 @@ typedef struct {
 	// Context
 	tls_ctx_t *tls;
 	/*! ngtcp2 (QUIC) setting. */
+	ngtcp2_conn *conn;
 	ngtcp2_settings settings;
-	quic_state_t state;
 	ngtcp2_pkt_info pi;
+	uint8_t secret[32];
+	quic_state_t state;
 	/*! Stream context */
 	struct {
-		int64_t stream_id;
+		int64_t id;
 		uint8_t *tx_data;
 		size_t tx_datalen;
-		size_t nwrite;
+		//size_t nwrite;
 		uint8_t *rx_data;
 		size_t rx_datalen;
 		size_t nread;
 		uint16_t resp_size;
 	} stream;
 	uint64_t last_error;
-	ngtcp2_conn *conn;
-	uint8_t secret[32];
 } quic_ctx_t;
 
 uint64_t quic_timestamp(void);
 
 size_t quic_parse_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in);
 
-unsigned int quic_get_ecn(struct msghdr *msg, const int family);
+int quic_set_enc(int sockfd, uint32_t ecn, int family);
+
+uint32_t quic_get_ecn(struct msghdr *msg, const int family);
 
 int quic_generate_secret(uint8_t *buf, size_t buflen);
 
