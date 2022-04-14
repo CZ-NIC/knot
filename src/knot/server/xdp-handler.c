@@ -140,11 +140,12 @@ static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer,
 {
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
 	params->xdp_msg = msg;
-	if (!(msg->flags & KNOT_XDP_MSG_TCP)) {
+	/*if (!(msg->flags & KNOT_XDP_MSG_TCP)) {
 		params->flags = KNOTD_QUERY_FLAG_NO_AXFR |
 		                KNOTD_QUERY_FLAG_NO_IXFR |
 		                KNOTD_QUERY_FLAG_LIMIT_SIZE;
-	}
+	}*/
+	// FIXME make this distinguish QUIC!
 
 	knot_layer_begin(layer, params);
 
@@ -330,7 +331,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 		}
 	}
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
-		int ret = knot_xquic_send(ctx->sock, ctx->quic_relays[i], ctx->quic_streams[i]);
+		int ret = knot_xquic_send(ctx->sock, ctx->quic_relays[i], 4);
 		if (ret != KNOT_EOK) {
 			log_notice("QUIC, failed to send some packets");
 		}

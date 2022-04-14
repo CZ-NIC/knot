@@ -43,10 +43,14 @@ typedef struct {
 } knot_xquic_obuf_t;
 
 typedef struct {
-	knot_xquic_stream_state_t state;
+	knot_xquic_stream_state_t state; // TODO remove?
 	struct iovec inbuf;
 	knot_xquic_ucw_list_t outbufs;
 	size_t obufs_size;
+
+	knot_xquic_obuf_t *unsent_obuf;
+	size_t first_offset;
+	size_t unsent_offset;
 } knot_xquic_stream_t;
 
 typedef struct knot_xquic_conn {
@@ -110,3 +114,5 @@ knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn, int64_
 uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id, uint8_t *data, size_t len);
 
 void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, size_t end_acked);
+
+void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id, size_t amount_sent);

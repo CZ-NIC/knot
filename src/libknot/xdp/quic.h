@@ -50,4 +50,4 @@ int knot_xquic_recv(knot_xquic_conn_t **relays, int64_t *streams,
                     knot_xdp_msg_t *msgs, uint32_t count,
                     knot_xquic_table_t *quic_table);
 
-int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_t stream);
+int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, unsigned max_msgs);

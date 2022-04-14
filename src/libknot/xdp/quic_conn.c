@@ -193,8 +193,22 @@ static void xquic_stream_free(knot_xquic_conn_t *xconn, int64_t stream_id)
 	knot_xquic_stream_t *s = knot_xquic_conn_get_stream(xconn, stream_id, false);
 	if (s != NULL) {
 		// FIXME free all bufs
-		s->state = XQUIC_STREAM_FREED;
-		// TODO is it useful to free FREED stream structures?
+
+		if (s == xconn->streams) {
+			xconn->streams_count--;
+
+			if (xconn->streams_count == 0) {
+				free(xconn->streams);
+				xconn->streams = 0;
+				xconn->streams_first = 0;
+			} else {
+				xconn->streams_first++;
+				memmove(s, s + 1, sizeof(*s) * xconn->streams_count);
+				// possible realloc to shrink allocated space, but probably useless
+			}
+		} else {
+			memset(s, 0, sizeof(*s));
+		}
 	}
 }
 
@@ -218,6 +232,9 @@ uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 		memcpy(obuf->buf + prefix, data, len);
 	}
 
+	if (EMPTY_LIST(*(list_t *)&s->outbufs)) {
+		s->unsent_obuf = obuf;
+	}
 	add_tail((list_t *)&s->outbufs, (node_t *)obuf);
 	s->obufs_size += obuf->len;
 	xconn->obufs_size += obuf->len;
@@ -228,13 +245,41 @@ uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, size_t end_acked)
 {
 	knot_xquic_stream_t *s = knot_xquic_conn_get_stream(xconn, stream_id, false);
-	if (s == NULL || s->state != XQUIC_STREAM_SENT) {
+	if (s == NULL) {
 		return;
 	}
 
-	if (end_acked < s->obufs_size) {
+	list_t *obs = (list_t *)&s->outbufs;
+
+	knot_xquic_obuf_t *first;
+	while (!EMPTY_LIST(*obs) && end_acked >= (first = HEAD(*obs))->len + s->first_offset) {
+		assert(first != s->unsent_obuf);
+		rem_node((node_t *)first);
+		s->obufs_size -= first->len;
+		xconn->obufs_size -= first->len;
+		s->first_offset += first->len;
+		free(first);
+	}
+
+	if (EMPTY_LIST(*obs)) {
+		xquic_stream_free(xconn, stream_id);
+	}
+}
+
+void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id, size_t amount_sent)
+{
+	knot_xquic_stream_t *s = knot_xquic_conn_get_stream(xconn, stream_id, false);
+	if (s == NULL) {
 		return;
 	}
 
-	xquic_stream_free(xconn, stream_id);
+	s->unsent_offset += amount_sent;
+	assert(s->unsent_offset <= s->unsent_obuf->len);
+	if (s->unsent_offset == s->unsent_obuf->len) {
+		s->unsent_offset = 0;
+		s->unsent_obuf = (knot_xquic_obuf_t *)s->unsent_obuf->node.next;
+		if (s->unsent_obuf->node.next == NULL) { // already behind the tail of list
+			s->unsent_obuf = NULL;
+		}
+	}
 }

@@ -763,16 +763,14 @@ int knot_xquic_recv(knot_xquic_conn_t **relays, int64_t *streams,
 	return KNOT_EOK;
 }
 
-
-_public_
-int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_t stream)
+static int send_stream(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_t stream_id,
+		       uint8_t *data, size_t len, bool fin, ngtcp2_ssize *sent)
 {
-	if (relay == NULL || relay->conn == NULL) {
-		return KNOT_EOK;
-	}
+	assert(stream_id >= 0 || (data == NULL && len == 0));
 
 	bool ipv6 = false; // FIXME
 
+	uint32_t xdp_sent = 0;
 	knot_xdp_msg_t msg = { 0 };
 	int ret = knot_xdp_send_alloc(sock, ipv6 ? KNOT_XDP_MSG_IPV6 : 0, &msg);
 	if (ret != KNOT_EOK) {
@@ -783,37 +781,68 @@ int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_t s
 	path.local.addr = (struct sockaddr *)&msg.ip_from;
 	path.remote.addr = (struct sockaddr *)&msg.ip_to;
 
-	msg.payload.iov_len = MAX(msg.payload.iov_len, 1400); // TODO do something
+	uint32_t fl = ((stream_id >= 0 && fin) ? NGTCP2_WRITE_STREAM_FLAG_FIN : NGTCP2_WRITE_STREAM_FLAG_NONE);
+	ngtcp2_vec vec = { .base = data, .len = len };
 
-	knot_xquic_stream_t *s;
-	if (stream < 0 || (s = knot_xquic_conn_get_stream(relay, stream, false)) == NULL || s->state != XQUIC_STREAM_RECVD) {
-		ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
-		                                NULL, NGTCP2_WRITE_STREAM_FLAG_NONE, -1, NULL, 0, get_timestamp());
-	} else {
-		knot_xquic_obuf_t *obuf;
-		WALK_LIST(obuf, *(list_t *)&s->outbufs) {
-			ngtcp2_vec vec = { .base = obuf->buf, .len = obuf->len };
-			ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
-			                                NULL, NGTCP2_WRITE_STREAM_FLAG_FIN, stream, &vec, 1, get_timestamp());
-			if (ret != 0) {
-				break;
-			}
-		}
-		s->state = XQUIC_STREAM_SENT;
-	}
-
+	ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
+	                                sent, fl, stream_id, &vec, (stream_id >= 0 ? 1 : 0), get_timestamp());
 	if (ret <= 0) {
-		printf("writev stream %d (%s)\n", ret, ngtcp2_strerror(ret));
 		knot_xdp_send_free(sock, &msg, 1);
 		return ret;
-	} else {
-		msg.payload.iov_len = ret;
-		ret = KNOT_EOK;
 	}
 
+	msg.payload.iov_len = ret;
 	memcpy(msg.eth_from, relay->last_eth_loc, sizeof(msg.eth_from));
 	memcpy(msg.eth_to, relay->last_eth_rem, sizeof(msg.eth_to));
+	ret = knot_xdp_send(sock, &msg, 1, &xdp_sent);
+	if (ret == KNOT_EOK) {
+		assert(xdp_sent == 1);
+		return 1;
+	}
+	return ret;
+}
 
-	uint32_t sent = 0;
-	return knot_xdp_send(sock, &msg, 1, &sent);
+_public_
+int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, unsigned max_msgs) // FIXME this whole function is a mess
+{
+	if (relay == NULL || relay->conn == NULL) {
+		return KNOT_EOK;
+	}
+
+	unsigned sent_msgs = 0, stream_msgs = 0;
+	int ret = 1;
+	for (int64_t si = 0; si < relay->streams_count && sent_msgs < max_msgs; /* NO INCREMENT */) {
+		int64_t stream_id = 4 * (relay->streams_first + si);
+
+		ngtcp2_ssize sent = 0;
+		size_t uf = relay->streams[si].unsent_offset;
+		knot_xquic_obuf_t *uo = relay->streams[si].unsent_obuf;
+		if (uo == NULL) {
+			si++;
+			continue;
+		}
+
+		bool fin = (((node_t *)uo->node.next)->next == NULL);
+		ret = send_stream(sock, relay, stream_id, uo->buf + uf, uo->len - uf, fin, &sent);
+		printf("UO %p len %zu off %zu fin %d ret %d\n", uo, uo->len, uf, fin, ret);
+		if (ret < 0) {
+			return ret;
+		}
+
+		sent_msgs++;
+		stream_msgs++;
+		knot_xquic_stream_mark_sent(relay, stream_id, sent);
+
+		if (stream_msgs >= max_msgs / relay->streams_count) {
+			stream_msgs = 0;
+			si++; // if this stream is sending too much, give chance to other streams
+		}
+	}
+
+	while (ret == 1) {
+		ngtcp2_ssize unused = 0;
+		ret = send_stream(sock, relay, -1, NULL, 0, false, &unused);
+	}
+
+	return ret;
 }
