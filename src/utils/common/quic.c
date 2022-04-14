@@ -59,8 +59,18 @@ void quic_params_clean(quic_params_t *params)
 #define QUIC_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-SECP256R1:+GROUP-X25519:+GROUP-SECP384R1:+GROUP-SECP521R1"
 #define QUIC_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_CIPHERS":"QUIC_DEFAULT_GROUPS
 
-#define ALPN "\03doq\07doq-i03\07doq-i11"
-#define ALPN_SIZE 3
+static const gnutls_datum_t quic_alpn[] = {
+	{
+		.data = (unsigned char *)"doq",
+		.size = 3
+	},{
+		.data = (unsigned char *)"doq-i11",
+		.size = 7
+	},{
+		.data = (unsigned char *)"doq-i03",
+		.size = 7
+	}
+};
 
 uint64_t quic_timestamp(void)
 {
@@ -70,21 +80,6 @@ uint64_t quic_timestamp(void)
 	}
 
 	return (uint64_t)ts.tv_sec * NGTCP2_SECONDS + (uint64_t)ts.tv_nsec;
-}
-
-size_t quic_parse_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in)
-{
-	unsigned char *ptr = (unsigned char *)in;
-	size_t str_len = strlen(in);
-	size_t idx = 0;
-	for (; idx < maxlen && str_len > 0; ++idx) {
-		const int len = *ptr;
-		dest[idx].data = ptr + 1;
-		dest[idx].size = len;
-		ptr += len + 1;
-		str_len -= len + 1;
-	}
-	return idx;
 }
 
 static int hook_func(gnutls_session_t session, unsigned int htype,
@@ -666,14 +661,10 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 	}
 	gnutls_session_set_ptr(ctx->tls->session, ctx);
 
-	gnutls_datum_t alpn[ALPN_SIZE];
-	size_t alpn_size = quic_parse_alpn(alpn, sizeof(alpn)/sizeof(*alpn), ALPN);
-	if (alpn_size > 0) {
-		ret = gnutls_alpn_set_protocols(ctx->tls->session,
-		                (const gnutls_datum_t *)&alpn, alpn_size, 0);
-		if (ret != GNUTLS_E_SUCCESS) {
-			return KNOT_NET_ECONNECT;
-		}
+	ret = gnutls_alpn_set_protocols(ctx->tls->session, quic_alpn,
+	                sizeof(quic_alpn)/sizeof(*quic_alpn), 0);
+	if (ret != GNUTLS_E_SUCCESS) {
+		return KNOT_NET_ECONNECT;
 	}
 
 	if (remote != NULL) {

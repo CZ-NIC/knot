@@ -69,8 +69,6 @@ typedef struct {
 
 uint64_t quic_timestamp(void);
 
-size_t quic_parse_alpn(gnutls_datum_t *dest, size_t maxlen, const char *in);
-
 int quic_set_enc(int sockfd, uint32_t ecn, int family);
 
 uint32_t quic_get_ecn(struct msghdr *msg, const int family);
