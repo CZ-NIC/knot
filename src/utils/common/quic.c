@@ -26,6 +26,7 @@
 #include "libdnssec/random.h"
 #include "libdnssec/error.h"
 #include "libknot/errcode.h"
+#include "utils/common/params.h"
 #include "utils/common/quic.h"
 
 int quic_params_copy(quic_params_t *dst, const quic_params_t *src)
@@ -93,26 +94,28 @@ static int hook_func(gnutls_session_t session, unsigned int htype,
 	return 0;
 }
 
-static int quic_open_bidi_stream(ngtcp2_conn *conn, void *user_data)
+// TODO maybe change a bit 'quic_open_bidi_stream' and 'extend_max_bidi_streams' functions
+static int quic_open_bidi_stream(quic_ctx_t *ctx)
 {
-	//TODO settings - max streams to open > 1
-	// if (max_streams < 1) {
-	// 	return NGTCP2_ERR_CALLBACK_FAILURE;
-	// }
-
-	quic_ctx_t *ctx = user_data;
 	if (ctx->stream.id != -1) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+		return KNOT_EINVAL;
+	}
+
+	ngtcp2_transport_params params;
+	// TODO want local or remote *thinking*
+	ngtcp2_conn_get_remote_transport_params(ctx->conn, &params);
+	if (params.initial_max_streams_bidi < 1) {
+		return KNOT_EINVAL;
 	}
 
 	int64_t stream_id;
-	if (ngtcp2_conn_open_bidi_stream(conn, &stream_id, NULL) != 0) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+	if (ngtcp2_conn_open_bidi_stream(ctx->conn, &stream_id, NULL) != 0) {
+		return KNOT_EINVAL;
 	}
 
 	ctx->stream.id = stream_id;
 
-	return 0;
+	return KNOT_EOK;
 }
 
 static int secret_func(gnutls_session_t session,
@@ -130,9 +133,8 @@ static int secret_func(gnutls_session_t session,
 			return -1;
 		}
 
-		//TODO Add lazy extend when settings are not ideal now
 		if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION) {
-			quic_open_bidi_stream(ctx->conn, ctx);
+			quic_open_bidi_stream(ctx);
 		}
 	}
 
@@ -232,14 +234,6 @@ static int tp_send_func(gnutls_session_t session, gnutls_buffer_t extdata)
 	return GNUTLS_E_SUCCESS;
 }
 
-static void rand_cb(uint8_t *dest, size_t destlen,
-        const ngtcp2_rand_ctx *rand_ctx)
-{
-	(void)rand_ctx;
-
-	dnssec_random_buffer(dest, destlen);
-}
-
 static int get_new_connection_id_cb(ngtcp2_conn *conn, ngtcp2_cid *cid,
         uint8_t *token, size_t cidlen, void *user_data)
 {
@@ -260,24 +254,40 @@ static int get_new_connection_id_cb(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	return 0;
 }
 
-
 static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
         int64_t stream_id, uint64_t offset, const uint8_t *data,
         size_t datalen, void *user_data, void *stream_user_data)
 {
-	//TODO better dealing with offset
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
 	uint8_t *ptr = (uint8_t *)data;
-	//TODO what about datalen < 2
-	if (offset == 0 && datalen >= 2) {
-		ctx->stream.resp_size = ntohs(*(uint16_t*)data);
-		datalen -= 2;
-		ptr += 2;
+	uint8_t *response_size = (uint8_t *)&ctx->stream.resp_size;
+	// TODO test for *slow loris*
+	// TODO offset on XFR will be different (stream will not be closed)
+	switch(offset) {
+	case 0:
+		if (datalen == 0) {
+			break;
+		}
+		response_size[0] = *ptr;
+		ptr++;
+		datalen--;
+		/* [[fallthrough]] */
+	case 1:
+		if (datalen == 0) {
+			break;
+		}
+		response_size[1] = *ptr;
+		ptr++;
+		datalen--;
+		ctx->stream.resp_size = ntohs(ctx->stream.resp_size);
 	}
 	offset -= MIN(offset, 2);
 
+	// TODO better size control against malicious servers
+	if(ctx->stream.nread + datalen > ctx->stream.rx_datalen) {
+		datalen = ctx->stream.rx_datalen - ctx->stream.nread;
+	}
 	memcpy(ctx->stream.rx_data + offset, ptr, datalen);
-	ctx->stream.rx_datalen += datalen;
 	ctx->stream.nread += datalen;
 
 	return 0;
@@ -289,7 +299,7 @@ static int acked_stream_data_offset(ngtcp2_conn *conn, int64_t stream_id,
 {
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
 	if (ctx && stream_id == ctx->stream.id) {
-		//TODO stream data sent callback
+		// TODO stream data sent callback
 		//ctx->stream.nwrite += offset + datalen;
 	}
 	return KNOT_EOK;
@@ -302,13 +312,32 @@ static int stream_close(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 	(void)app_error_code;
 	(void)stream_user_data;
 
-	printf("Stream %ld closed\n", stream_id);
-
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
 	if (ctx && stream_id == ctx->stream.id) {
+		if (ctx->stream.nread == ctx->stream.resp_size) {
+			printf("response OK\n");
+		} else {
+			printf("response not-OK\n");
+		}
 		ctx->stream.id = -1;
 	}
 	return KNOT_EOK;
+}
+
+static int extend_max_bidi_streams(ngtcp2_conn *conn, uint64_t max_streams,
+        void *user_data)
+{
+	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+	quic_open_bidi_stream(ctx);
+	return 0;
+}
+
+static void rand_cb(uint8_t *dest, size_t destlen,
+        const ngtcp2_rand_ctx *rand_ctx)
+{
+	(void)rand_ctx;
+
+	dnssec_random_buffer(dest, destlen);
 }
 
 int quic_generate_secret(uint8_t *buf, size_t buflen)
@@ -388,7 +417,7 @@ int quic_set_enc(int sockfd, uint32_t ecn, int family)
 
 static int quic_send(quic_ctx_t *ctx, int sockfd, const struct addrinfo *dst)
 {
-	uint8_t enc_buf[65535];
+	uint8_t enc_buf[MAX_PACKET_SIZE];
 	ngtcp2_ssize nwrite = 0;
 	uint64_t ts = quic_timestamp();
 
@@ -425,8 +454,8 @@ static int quic_send(quic_ctx_t *ctx, int sockfd, const struct addrinfo *dst)
 			stream = -1;
 		}
 		nwrite = ngtcp2_conn_writev_stream(ctx->conn,
-		                ngtcp2_conn_get_path(ctx->conn), &ctx->pi,
-		                enc_buf, sizeof(enc_buf), &wdatalen,
+		                (ngtcp2_path *)ngtcp2_conn_get_path(ctx->conn),
+				&ctx->pi, enc_buf, sizeof(enc_buf), &wdatalen,
 		                flags, stream, datavct, datacnt, ts);
 		if (nwrite < 0) {
 			// TODO error handling
@@ -485,7 +514,7 @@ uint32_t quic_get_ecn(struct msghdr *msg, const int family)
 static ssize_t quic_recv(quic_ctx_t *ctx, int sockfd,
                          const struct addrinfo *dst)
 {
-	uint8_t enc_buf[65535];
+	uint8_t enc_buf[MAX_PACKET_SIZE];
 	uint8_t msg_ctrl[CMSG_SPACE(sizeof(uint8_t))];
 	struct sockaddr_storage from = { 0 };
 	struct iovec msg_iov = {
@@ -536,7 +565,7 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 		stream_close,
 		NULL, /* recv_stateless_reset */
 		ngtcp2_crypto_recv_retry_cb,
-		NULL, /* extend_max_local_streams_bidi, */
+		extend_max_bidi_streams,
 		NULL, /* extend_max_local_streams_uni */
 		rand_cb,
 		get_new_connection_id_cb,
@@ -574,11 +603,12 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 	ngtcp2_settings settings;
 	ngtcp2_settings_default(&settings);
 	settings.initial_ts = quic_timestamp();
+	/*
 	settings.max_window = 6 * 1024 * 1024;
 	settings.max_stream_window = 6 * 1024 * 1024;
 	settings.max_udp_payload_size = 1362;
 	settings.no_udp_payload_size_shaping = 1;
-
+	*/
 	// TODO maybe in "debug mode"
 	//settings.qlog.write = user_qlog;
 
@@ -738,7 +768,7 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 	while (/*unlimited || timeout_ms > 0*/1) {
 
 		// Wait for datagram data.
-		ssize_t ret = poll(&pfd, 1, -1); // TODO Make 200ms resend configurable
+		ssize_t ret = poll(&pfd, 1, -1); // TODO Make configurable
 		if (ret < 0) {
 			return KNOT_NET_ESOCKET;
 		}

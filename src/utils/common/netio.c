@@ -444,7 +444,6 @@ int net_connect(net_t *net)
 		if (net->quic.params.enable) {
 			// Establish QUIC connection.
 			char *remote = net_get_remote(net);
-			// TODO setsockopt SO_REUSEADDR 1
 			ret = fd_set_recv_ecn(sockfd, net->srv->ai_family);
 			if (ret != KNOT_EOK) {
 				close(sockfd);
