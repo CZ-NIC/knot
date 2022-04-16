@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*! \brief Some implementations of timercmp >= are broken, this is for compat.*/
 static inline int timercmp_ge(struct timeval *a, struct timeval *b) {
-	return timercmp(a, b, >) || timercmp(a, b, ==);
+	return !timercmp(a, b, <);
 }
 
 static int compare_event_heap_nodes(void *e1, void *e2)
@@ -163,7 +163,7 @@ event_t *evsched_event_create(evsched_t *sched, event_cb_t cb, void *data)
 	e->sched = sched;
 	e->cb = cb;
 	e->data = data;
-	e->hpos.pos=0;
+	e->hpos.pos = 0;
 
 	return e;
 }
