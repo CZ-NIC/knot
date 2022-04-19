@@ -4,6 +4,7 @@
 server:
     rundir: "@run_dir@"
     user: knot:knot
+    automatic-acl: on
 #    listen: [ 127.0.0.1@53, ::1@53 ]
 
 log:
@@ -20,15 +21,6 @@ remote:
 #  - id: primary
 #    address: 192.168.2.1@53
 
-acl:
-#  - id: acl_secondary
-#    address: 192.168.1.1
-#    action: transfer
-
-#  - id: acl_primary
-#    address: 192.168.2.1
-#    action: notify
-
 template:
   - id: default
     storage: "@storage_dir@"
@@ -38,9 +30,7 @@ zone:
 #    # Primary zone
 #  - domain: example.com
 #    notify: secondary
-#    acl: acl_secondary
 
 #    # Secondary zone
 #  - domain: example.net
 #    master: primary
-#    acl: acl_primary
