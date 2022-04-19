@@ -32,6 +32,7 @@ void quic_params_clean(quic_params_t *params);
 #ifdef LIBNGTCP2
 
 #include <ngtcp2/ngtcp2.h>
+#include <sys/uio.h>
 
 #include "utils/common/tls.h"
 
@@ -58,9 +59,9 @@ typedef struct {
 		int64_t id;
 		uint8_t *tx_data;
 		size_t tx_datalen;
-		//size_t nwrite;
 		uint8_t *rx_data;
 		size_t rx_datalen;
+		struct iovec in_storage;
 		size_t nread;
 		uint16_t resp_size;
 	} stream;

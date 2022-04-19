@@ -15,10 +15,10 @@
  */
 
 #include <assert.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "libknot/attribute.h"
 #include "libknot/xdp/tcp_iobuf.h"
 #include "libknot/error.h"
 #include "contrib/macros.h"
@@ -78,6 +78,7 @@ static void iov_append(struct iovec *what, const struct iovec *with)
 	what->iov_len += with->iov_len;
 }
 
+_public_
 int tcp_inbuf_update(struct iovec *buffer, struct iovec data,
                      struct iovec **inbufs, size_t *inbufs_count,
                      size_t *buffers_total)

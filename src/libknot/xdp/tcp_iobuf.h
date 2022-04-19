@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <string.h>
 #include <sys/uio.h>
 

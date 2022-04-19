@@ -26,6 +26,7 @@
 #include "libdnssec/random.h"
 #include "libdnssec/error.h"
 #include "libknot/errcode.h"
+#include "libknot/xdp/tcp_iobuf.h"
 #include "utils/common/params.h"
 #include "utils/common/quic.h"
 
@@ -254,36 +255,24 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
         size_t datalen, void *user_data, void *stream_user_data)
 {
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
-	uint8_t *ptr = (uint8_t *)data;
-	uint8_t *response_size = (uint8_t *)&ctx->stream.resp_size;
-	// TODO test for *slow loris*
-	// TODO offset on XFR will be different (stream will not be closed)
-	switch(offset) {
-	case 0:
-		if (datalen == 0) {
-			break;
-		}
-		response_size[0] = *ptr;
-		ptr++;
-		datalen--;
-		/* [[fallthrough]] */
-	case 1:
-		if (datalen == 0) {
-			break;
-		}
-		response_size[1] = *ptr;
-		ptr++;
-		datalen--;
-		ctx->stream.resp_size = ntohs(ctx->stream.resp_size);
-	}
-	offset -= MIN(offset, 2);
 
-	// TODO better size control against malicious servers
-	if(ctx->stream.nread + datalen > ctx->stream.rx_datalen) {
-		datalen = ctx->stream.rx_datalen - ctx->stream.nread;
+	struct iovec in = {
+		.iov_base = (uint8_t *)data,
+		.iov_len = datalen
+	};
+	size_t buffers = 0, total = 0;
+	struct iovec *out = NULL;
+	// TODO test for slow loris
+	int ret = tcp_inbuf_update(&ctx->stream.in_storage, in, &out, &buffers, &total);
+	if (ret != KNOT_EOK) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
-	memcpy(ctx->stream.rx_data + offset, ptr, datalen);
-	ctx->stream.nread += datalen;
+	if (out) {
+		assert(out->iov_len <= MAX_PACKET_SIZE);
+		memcpy(ctx->stream.rx_data, out->iov_base, out->iov_len);
+		ctx->stream.nread = out->iov_len;
+	}
+	free(out);
 
 	return 0;
 }
@@ -309,11 +298,6 @@ static int stream_close(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
 	if (ctx && stream_id == ctx->stream.id) {
-		if (ctx->stream.nread == ctx->stream.resp_size) {
-			printf("response OK\n");
-		} else {
-			printf("response not-OK\n");
-		}
 		ctx->stream.id = -1;
 	}
 	return KNOT_EOK;
@@ -450,7 +434,7 @@ static int quic_send(quic_ctx_t *ctx, int sockfd, const struct addrinfo *dst)
 		}
 		nwrite = ngtcp2_conn_writev_stream(ctx->conn,
 		                (ngtcp2_path *)ngtcp2_conn_get_path(ctx->conn),
-				&ctx->pi, enc_buf, sizeof(enc_buf), &wdatalen,
+		                &ctx->pi, enc_buf, sizeof(enc_buf), &wdatalen,
 		                flags, stream, datavct, datacnt, ts);
 		if (nwrite < 0) {
 			// TODO error handling
