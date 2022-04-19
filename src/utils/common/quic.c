@@ -260,20 +260,15 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
 		.iov_base = (uint8_t *)data,
 		.iov_len = datalen
 	};
-	size_t buffers = 0, total = 0;
-	struct iovec *out = NULL;
+	size_t total = 0;
 	// TODO test for slow loris
-	int ret = tcp_inbuf_update(&ctx->stream.in_storage, in, &out, &buffers, &total);
+	int ret = tcp_inbuf_update(&ctx->stream.in_storage, in,
+	                &ctx->stream.out_storage, &ctx->stream.out_storage_len,
+	                &total);
 	if (ret != KNOT_EOK) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
-	if (out) {
-		assert(out->iov_len <= MAX_PACKET_SIZE);
-		memcpy(ctx->stream.rx_data, out->iov_base, out->iov_len);
-		ctx->stream.nread = out->iov_len;
-	}
-	free(out);
-
+	ctx->stream.out_storage_it = 0;
 	return 0;
 }
 
@@ -389,7 +384,7 @@ int quic_set_enc(int sockfd, uint32_t ecn, int family)
 		}
 		break;
 	default:
-		return KNOT_EINVAL;	
+		return KNOT_EINVAL;
 	}
 	return KNOT_EOK;
 }
@@ -718,11 +713,35 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 	return KNOT_EOK;
 }
 
+static int quic_respcpy(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
+{
+	assert(ctx && buf && buf_len >= MAX_PACKET_SIZE);
+	if (ctx->stream.out_storage && ctx->stream.out_storage_it != ctx->stream.out_storage_len) {
+		assert(ctx->stream.out_storage && ctx->stream.out_storage_it < ctx->stream.out_storage_len);
+		size_t len = ctx->stream.out_storage[ctx->stream.out_storage_it].iov_len;
+		assert(len <= MAX_PACKET_SIZE);
+		memcpy(buf, ctx->stream.out_storage[ctx->stream.out_storage_it].iov_base, len);
+		ctx->stream.out_storage_it++;
+		if (ctx->stream.out_storage_it == ctx->stream.out_storage_len) {
+			free(ctx->stream.out_storage);
+			ctx->stream.out_storage = NULL;
+			ctx->stream.out_storage_len = 0;
+		}
+		return len;
+	}
+	return KNOT_EOK;
+}
+
 int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
         struct addrinfo *srv, int timeout_ms)
 {
 	if (ctx == NULL || ctx->tls == NULL || buf == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	int ret = quic_respcpy(ctx, buf, buf_len);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	//const bool unlimited = timeout_ms < 0;
@@ -735,22 +754,19 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 		.revents = 0,
 	};
 
-	ctx->stream.rx_data = buf;
-	ctx->stream.rx_datalen = buf_len;
-	ctx->stream.nread = 0;
-
 	// TODO Timeout
 	while (/*unlimited || timeout_ms > 0*/1) {
 
 		// Wait for datagram data.
-		ssize_t ret = poll(&pfd, 1, -1); // TODO Make configurable
+		ret = poll(&pfd, 1, -1); // TODO Make configurable
 		if (ret < 0) {
 			return KNOT_NET_ESOCKET;
 		}
 
 		ret = quic_recv(ctx, sockfd, srv);
-		if (ctx->stream.id < 0) {
-			return ctx->stream.nread;
+		ret = quic_respcpy(ctx, buf, buf_len);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 
 		nwrite = quic_send(ctx, sockfd, srv);

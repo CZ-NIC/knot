@@ -59,11 +59,10 @@ typedef struct {
 		int64_t id;
 		uint8_t *tx_data;
 		size_t tx_datalen;
-		uint8_t *rx_data;
-		size_t rx_datalen;
 		struct iovec in_storage;
-		size_t nread;
-		uint16_t resp_size;
+		struct iovec *out_storage;
+		size_t out_storage_it;
+		size_t out_storage_len;
 	} stream;
 	uint64_t last_error;
 } quic_ctx_t;
