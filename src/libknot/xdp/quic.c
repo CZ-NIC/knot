@@ -39,6 +39,8 @@
 #define QUIC_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-SECP256R1:+GROUP-X25519:+GROUP-SECP384R1:+GROUP-SECP521R1"
 #define QUIC_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_CIPHERS":"QUIC_DEFAULT_GROUPS
 
+#define TLS_CALLBACK_ERR     (-1)
+
 static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
                                        const gnutls_datum_t *key,
                                        const gnutls_datum_t *data)
@@ -123,22 +125,15 @@ static int tls_secret_func(gnutls_session_t session,
 	int level = ngtcp2_crypto_gnutls_from_gnutls_record_encryption_level(gtls_level);
 	if (rx_secret != NULL) {
 		int ret = ngtcp2_crypto_derive_and_install_rx_key(ctx->conn, NULL, NULL, NULL, level, rx_secret, secretlen);
-		printf("RX secret lev %d ret %d (%s)\n", level, ret, ngtcp2_strerror(ret));
 		if (ret != 0) {
-			return -2;
+			return TLS_CALLBACK_ERR;
 		}
 	}
 
 	if (tx_secret != NULL) {
 		int ret = ngtcp2_crypto_derive_and_install_tx_key(ctx->conn, NULL, NULL, NULL, level, tx_secret, secretlen);
-		printf("TX secret lev %d ret %d (%s)\n", level, ret, ngtcp2_strerror(ret));
 		if (ret != 0) {
-			return -4;
-		}
-		// TODO uncomment when `call_application_tx_key_cb != NULL` or remove
-		if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION) {
-		// && call_application_tx_key_cb(ctx) != 0) {
-		// 	return -1;
+			return TLS_CALLBACK_ERR;
 		}
 	}
 	return 0;
@@ -149,7 +144,7 @@ static int tls_read_func(gnutls_session_t session,
                          gnutls_handshake_description_t htype, const void *data,
                          size_t data_size)
 {
-	printf("TLS read htype %d\n", htype);
+	printf("TLS READ FUN %d\n", htype);
 	if (htype == GNUTLS_HANDSHAKE_CHANGE_CIPHER_SPEC) {
 		return 0;
 	}
@@ -167,7 +162,7 @@ static int tls_alert_read_func(gnutls_session_t session,
 {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)gnutls_session_get_ptr(session);
 	(void)ctx;
-	printf("TLS alert!\n");
+	printf("TLS alert! %d\n", alert_desc);
 	// ctx->error = NGTCP2_CRYPTO_ERROR | alert_desc;
 	return 0;
 }
@@ -185,21 +180,16 @@ static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
 
 	gnutls_datum_t alpn;
 	int ret = gnutls_alpn_get_selected_protocol(session, &alpn);
-	printf("alpn set prot %d (%s)\n", ret, gnutls_strerror(ret));
-	if (ret == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) {
-		return 0; // FIXME: return this workaround
-	}
 	if (ret != 0) {
 		return ret;
 	}
 
 	const char *dq = (const char *)&ALPN[1];
-	printf("dq '%.*s' alpn '%.*s'\n", (int)ALPN[0], dq, alpn.size, alpn.data);
 	if (((unsigned int)ALPN[0] != alpn.size ||
 	     memcmp(dq, alpn.data, alpn.size) != 0) &&
 	   ((unsigned int)ALPN_TMP[0] != alpn.size ||
 	     memcmp((const char *)&ALPN_TMP[1], alpn.data, alpn.size) != 0)) {
-		return -5;
+		return TLS_CALLBACK_ERR;
 	}
 
 	return 0;
@@ -215,25 +205,13 @@ static int tls_tp_recv_func(gnutls_session_t session, const uint8_t *data,
 	int ret = ngtcp2_decode_transport_params(&params,
 	                NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO, data,
 	                datalen);
-	printf("decode transport params %d (%s)\n", ret, ngtcp2_strerror(ret));
 	if (ret != 0) {
-
-		return -250;
+		return TLS_CALLBACK_ERR;
 	}
 
 	ret = ngtcp2_conn_set_remote_transport_params(conn, &params);
-	printf("set transport params %d (%s)\n", ret, ngtcp2_strerror(ret));
-
-	printf("conn id limit %lu default %d\n", params.active_connection_id_limit, NGTCP2_DEFAULT_ACTIVE_CONNECTION_ID_LIMIT);
-	print_cid(ngtcp2_conn_get_dcid(conn), "conn_dcid:");
-	print_cid(ngtcp2_conn_get_client_initial_dcid(conn), "conn_init_client_dcid:");
-	print_cid(&params.initial_scid, "params_initial_scid:");
-	print_cid(&params.original_dcid, "params_original_dcid:");
-	print_cid(&params.retry_scid, "retry_scid:");
-	printf("\npayload size %lu default %d\n", params.max_udp_payload_size, NGTCP2_MAX_UDP_PAYLOAD_SIZE);
 	if (ret != 0) {
-
-		return -251;
+		return TLS_CALLBACK_ERR;
 	}
 
 	return 0;
@@ -250,15 +228,13 @@ static int tls_tp_send_func(gnutls_session_t session, gnutls_buffer_t extdata)
 	ssize_t nwrite = ngtcp2_encode_transport_params(buf, sizeof(buf),
 	                NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS,
 	                &params);
-	printf("encode transport params %zd (%s)\n", nwrite, ngtcp2_strerror(nwrite));
 	if (nwrite < 0) {
-		return -252;
+		return TLS_CALLBACK_ERR;
 	}
 
 	int ret = gnutls_buffer_append_data(extdata, buf, nwrite);
-	printf("buffer append data %d (%s)\n", ret, ngtcp2_strerror(ret));
 	if (ret != 0) {
-		return -253;
+		return TLS_CALLBACK_ERR;
 	}
 
 	return 0;
@@ -275,17 +251,17 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 	if (gnutls_init(&conn->tls_session, GNUTLS_SERVER |
 	                GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET |
 	                GNUTLS_NO_END_OF_EARLY_DATA) != GNUTLS_E_SUCCESS) {
-		return KNOT_ERROR;
+		return TLS_CALLBACK_ERR;
 	}
 
 	if (gnutls_priority_set_direct(conn->tls_session, QUIC_PRIORITIES,
 	                               NULL) != GNUTLS_E_SUCCESS) {
-		return KNOT_ERROR;
+		return TLS_CALLBACK_ERR;
 	}
 
 	if (gnutls_session_ticket_enable_server(conn->tls_session,
 	                &conn->xquic_table->creds->tls_ticket_key) != GNUTLS_E_SUCCESS) {
-		return KNOT_ERROR;
+		return TLS_CALLBACK_ERR;
 	}
 
 	gnutls_handshake_set_secret_function(conn->tls_session, tls_secret_func);
@@ -304,7 +280,7 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 //     std::cerr << "gnutls_session_ext_register failed: " << gnutls_strerror(rv)
 //               << std::endl;
 		assert(0);
-		return -1;
+		return TLS_CALLBACK_ERR;
 	}
 
 	gnutls_anti_replay_enable(conn->tls_session, conn->xquic_table->creds->tls_anti_replay);
@@ -316,7 +292,7 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 	                           conn->xquic_table->creds->tls_cert) != GNUTLS_E_SUCCESS) {
 		// std::cerr << "gnutls_credentials_set failed: " << gnutls_strerror(rv)
 		// << std::endl;
-		return -1;
+		return TLS_CALLBACK_ERR;
 	}
 
 	gnutls_datum_t alpn[2] = {
@@ -353,8 +329,6 @@ static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_c
 	dnssec_random_buffer(dest, destlen);
 }
 
-
-
 static void init_random_cid(ngtcp2_cid *cid, size_t len)
 {
 	if (len == 0) {
@@ -377,9 +351,8 @@ static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	if (init_random_cid(cid, cidlen), cid->datalen == 0) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
-	print_cid(cid, "..new cid");
 	knot_xquic_conn_t **addto = xquic_table_insert(ctx, cid, ctx->xquic_table);
-	printf("... added %p to %p\n", ctx, addto);
+	(void)addto;
 
 	if (ngtcp2_crypto_generate_stateless_reset_token(token, (uint8_t *)ctx->xquic_table->hash_secret, sizeof(ctx->xquic_table->hash_secret), cid) != 0) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -394,9 +367,6 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 	assert(ctx->conn == conn);
 
-	print_cid(cid, "..remove cid");
-	printf("\n");
-
 	knot_xquic_conn_t **torem = xquic_table_lookup(cid, ctx->xquic_table);
 	if (torem != NULL) {
 		assert(*torem == ctx);
@@ -409,7 +379,6 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 	(void)ctx;
-	printf("Negotiated cipher suite is %s\n", gnutls_cipher_get_name(gnutls_cipher_get(ctx->tls_session)));
 	gnutls_datum_t alpn;
 	if (gnutls_alpn_get_selected_protocol(ctx->tls_session, &alpn) != 0) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -417,10 +386,10 @@ static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	char alpn_str[alpn.size + 1];
 	alpn_str[alpn.size] = '\0';
 	memcpy(alpn_str, alpn.data, alpn.size);
-	printf("Negotiated ALPN is %s\n", alpn_str);
 
 	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {
-		printf("Unable to send session ticket\n");
+		printf("Unable to send session ticket\n"); // FIXME
+		return TLS_CALLBACK_ERR;
 	}
 
 	uint8_t token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN];
@@ -489,8 +458,6 @@ static int acked_stream_data_offset_cb(ngtcp2_conn *conn, int64_t stream_id,
                                     void *user_data, void *stream_user_data)
 {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
-
-	printf("ACKED stream %ld offset %lu datalen %lu\n", stream_id, offset, datalen);
 
 	knot_xquic_stream_ack_data(ctx, stream_id, offset + datalen);
 
