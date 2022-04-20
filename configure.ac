@@ -619,6 +619,7 @@ AS_IF([test "$enable_utilities" = "yes"], [
          AC_MSG_WARN([libngtcp2 not found])])])
   ])
   AM_CONDITIONAL([EMBEDDED_LIBNGTCP2], [test "$with_libngtcp2" = "embedded"])
+  AM_CONDITIONAL([ENABLE_XDP_QUIC], [test "$with_libngtcp2" != "no"])
   AC_SUBST([embedded_libngtcp2_CFLAGS])
   AC_SUBST([embedded_libngtcp2_LIBS])
   AC_SUBST([libngtcp2_CFLAGS])
@@ -626,6 +627,9 @@ AS_IF([test "$enable_utilities" = "yes"], [
 
   AS_IF([test "$with_libngtcp2" != "no"], [
     AC_DEFINE([LIBNGTCP2], [1], [Define to 1 to enable DoQ support based on GnuTLS])])
+
+  AS_IF([test "$with_libngtcp2" != "no"],[
+    AC_DEFINE([ENABLE_XDP_QUIC], [1], [Use DoQ with XDP.])])
 
   AS_IF([test "$enable_xdp" != "no"], [
     PKG_CHECK_MODULES([libmnl], [libmnl], [], [

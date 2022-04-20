@@ -27,7 +27,9 @@
 #include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
 #include "libknot/error.h"
+#ifdef ENABLE_XDP_QUIC
 #include "libknot/xdp/quic.h"
+#endif // ENABLE_XDP_QUIC
 #include "libknot/xdp/tcp.h"
 
 typedef struct xdp_handle_ctx {
@@ -35,13 +37,18 @@ typedef struct xdp_handle_ctx {
 	knot_xdp_msg_t msg_recv[XDP_BATCHLEN];
 	knot_xdp_msg_t msg_send_udp[XDP_BATCHLEN];
 	knot_tcp_relay_t relays[XDP_BATCHLEN];
-	knot_xquic_conn_t *quic_relays[XDP_BATCHLEN];
 	int64_t quic_streams[XDP_BATCHLEN];
 	uint32_t msg_recv_count;
 	uint32_t msg_udp_count;
 	knot_tcp_table_t *tcp_table;
 	knot_tcp_table_t *syn_table;
+
+#ifdef ENABLE_XDP_QUIC
+
+	knot_xquic_conn_t *quic_relays[XDP_BATCHLEN];
 	knot_xquic_table_t *quic_table;
+
+#endif // ENABLE_XDP_QUIC
 
 	bool tcp;
 	size_t tcp_max_conns;
@@ -91,7 +98,9 @@ void xdp_handle_free(xdp_handle_ctx_t *ctx)
 {
 	knot_tcp_table_free(ctx->tcp_table);
 	knot_tcp_table_free(ctx->syn_table);
+#ifdef ENABLE_XDP_QUIC
 	knot_xquic_table_free(ctx->quic_table);
+#endif // ENABLE_XDP_QUIC
 	free(ctx);
 }
 
@@ -119,11 +128,13 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 		}
 	}
 
+#ifdef ENABLE_XDP_QUIC
 	ctx->quic_table = knot_xquic_table_new(1000); // FIXME
 	if (ctx->quic_table == NULL) {
 		xdp_handle_free(ctx);
 		return NULL;
 	}
+#endif // ENABLE_XDP_QUIC
 
 	return ctx;
 }
@@ -248,6 +259,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	}
 }
 
+#ifdef ENABLE_XDP_QUIC
 static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                         knotd_qdata_params_t *params)
 {
@@ -296,6 +308,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		stream->inbuf.iov_len = 0;
 	}
 }
+#endif // ENABLE_XDP_QUIC
 
 void xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                      server_t *server, unsigned thread_id)
@@ -314,7 +327,9 @@ void xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	if (ctx->tcp) {
 		handle_tcp(ctx, layer, &params);
 	}
+#ifdef ENABLE_XDP_QUIC
 	handle_quic(ctx, layer, &params);
+#endif // ENABLE_XDP_QUIC
 
 	knot_xdp_recv_finish(ctx->sock, ctx->msg_recv, ctx->msg_recv_count);
 }
@@ -330,12 +345,14 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 			log_notice("TCP, failed to send some packets");
 		}
 	}
+#ifdef ENABLE_XDP_QUIC
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
 		int ret = knot_xquic_send(ctx->sock, ctx->quic_relays[i], 4);
 		if (ret != KNOT_EOK) {
 			log_notice("QUIC, failed to send some packets");
 		}
 	}
+#endif // ENABLE_XDP_QUIC
 
 	(void)knot_xdp_send_finish(ctx->sock);
 
@@ -378,7 +395,9 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 		}
 		knot_tcp_cleanup(ctx->syn_table, sweep_relays, XDP_BATCHLEN);
 
+#ifdef ENABLE_XDP_QUIC
 		knot_xquic_table_sweep(ctx->quic_table, ctx->tcp_max_obufs);
+#endif // ENABLE_XDP_QUIC
 
 		(void)knot_xdp_send_finish(ctx->sock);
 	} while (ret == KNOT_EOK && prev_total < ctx->sweep_closed + ctx->sweep_reset);
