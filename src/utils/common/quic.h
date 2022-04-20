@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -63,6 +63,7 @@ typedef struct {
 		struct iovec *out_storage;
 		size_t out_storage_it;
 		size_t out_storage_len;
+		size_t out_storage_total;
 	} stream;
 	uint64_t last_error;
 } quic_ctx_t;

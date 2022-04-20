@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -430,7 +430,7 @@ int net_connect(net_t *net)
 #endif //LIBNGHTTP2
 				// Establish TLS connection.
 				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni, fastopen,
-				                      (struct sockaddr_storage *)net->srv->ai_addr, NULL, NULL);
+				                      (struct sockaddr_storage *)net->srv->ai_addr, &dot_alpn, NULL);
 #ifdef LIBNGHTTP2
 			}
 #endif //LIBNGHTTP2
@@ -514,26 +514,25 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
+#ifdef LIBNGTCP2
+	// Send data over QUIC.
+	if (net->quic.params.enable) {
+		int ret = quic_send_dns_query((quic_ctx_t *)&net->quic,
+		                              net->sockfd, net->srv, buf, buf_len);
+		if (ret != KNOT_EOK) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+	} else
+#endif
 	// Send data over UDP.
 	if (net->socktype == SOCK_DGRAM) {
-#ifdef LIBNGTCP2
-		if (net->quic.params.enable) {
-			int ret = quic_send_dns_query((quic_ctx_t *)&net->quic,
-			                              net->sockfd, net->srv, buf, buf_len);
-			if (ret != KNOT_EOK) {
-				WARN("can't send query to %s\n", net->remote_str);
-				return KNOT_NET_ESEND;
-			}
-		} else {
-#endif
-			if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
-			           net->srv->ai_addrlen) != (ssize_t)buf_len) {
-				WARN("can't send query to %s\n", net->remote_str);
-				return KNOT_NET_ESEND;
-			}
-#ifdef LIBNGTCP2
+
+		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
+		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
 		}
-#endif
 #ifdef LIBNGHTTP2
 	// Send data over HTTPS
 	} else if (net->https.params.enable) {
@@ -602,6 +601,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 	};
 
 #ifdef LIBNGTCP2
+	// Receive data over QUIC.
 	if (net->quic.params.enable) {
 		return quic_recv_dns_response((quic_ctx_t *)&net->quic, buf,
 			                              buf_len, net->srv, 1000 * net->wait);

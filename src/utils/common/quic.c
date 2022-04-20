@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,6 +73,149 @@ static const gnutls_datum_t quic_alpn[] = {
 	}
 };
 
+static int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
+        int64_t stream_id, uint64_t offset, const uint8_t *data,
+        size_t datalen, void *user_data, void *stream_user_data)
+{
+	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+
+	struct iovec in = {
+		.iov_base = (uint8_t *)data,
+		.iov_len = datalen
+	};
+
+	int ret = tcp_inbuf_update(&ctx->stream.in_storage, in,
+	                &ctx->stream.out_storage, &ctx->stream.out_storage_len,
+	                &ctx->stream.out_storage_total);
+	if (ret != KNOT_EOK) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+	ctx->stream.out_storage_it = 0;
+	return 0;
+}
+
+static int stream_close_cb(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
+        uint64_t app_error_code, void *user_data, void *stream_user_data)
+{
+	(void)flags;
+	(void)app_error_code;
+	(void)stream_user_data;
+
+	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+	if (ctx && stream_id == ctx->stream.id) {
+		ctx->stream.id = -1;
+	}
+	return KNOT_EOK;
+}
+
+static int quic_open_bidi_stream(quic_ctx_t *ctx)
+{
+	if (ctx->stream.id != -1) {
+		return KNOT_EISCONN;
+	}
+
+	int ret = ngtcp2_conn_open_bidi_stream(ctx->conn, &ctx->stream.id, NULL);
+	switch (ret) {
+		case 0:
+			return KNOT_EOK;
+		case NGTCP2_ERR_STREAM_ID_BLOCKED:
+			return KNOT_EBUSY;
+		case NGTCP2_ERR_NOMEM:
+			return KNOT_ENOMEM;
+		default:
+			return KNOT_ERROR;
+
+	}
+}
+
+static int extend_max_bidi_streams_cb(ngtcp2_conn *conn, uint64_t max_streams,
+        void *user_data)
+{
+	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+	if(max_streams > 0) {
+		int ret = quic_open_bidi_stream(ctx);
+		if (ret != KNOT_EOK && ret != KNOT_EISCONN) {
+			return NGTCP2_ERR_CALLBACK_FAILURE;
+		}
+	}
+	return 0;
+}
+
+static void rand_cb(uint8_t *dest, size_t destlen,
+        const ngtcp2_rand_ctx *rand_ctx)
+{
+	(void)rand_ctx;
+
+	dnssec_random_buffer(dest, destlen);
+}
+
+static int get_new_connection_id_cb(ngtcp2_conn *conn, ngtcp2_cid *cid,
+        uint8_t *token, size_t cidlen, void *user_data)
+{
+	(void)conn;
+	(void)user_data;
+	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+
+	if (dnssec_random_buffer(cid->data, cidlen) != DNSSEC_EOK) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+	cid->datalen = cidlen;
+
+	if (ngtcp2_crypto_generate_stateless_reset_token(token, ctx->secret,
+	                                      sizeof(ctx->secret), cid) != 0) {
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+
+	return 0;
+}
+
+static int handshake_confirmed_cb(ngtcp2_conn *conn, void *user_data)
+{
+	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+	ctx->state = CONNECTED;
+	return 0;
+}
+
+static const ngtcp2_callbacks quic_client_callbacks = {
+	ngtcp2_crypto_client_initial_cb,
+	NULL, /* recv_client_initial */
+	ngtcp2_crypto_recv_crypto_data_cb,
+	NULL, /* handshake_completed */
+	NULL, /* recv_version_negotiation */
+	ngtcp2_crypto_encrypt_cb,
+	ngtcp2_crypto_decrypt_cb,
+	ngtcp2_crypto_hp_mask_cb,
+	recv_stream_data_cb,
+	NULL, /* acked_stream_data_offset */
+	NULL, /* stream_open */
+	stream_close_cb,
+	NULL, /* recv_stateless_reset */
+	ngtcp2_crypto_recv_retry_cb,
+	extend_max_bidi_streams_cb,
+	NULL, /* extend_max_local_streams_uni */
+	rand_cb,
+	get_new_connection_id_cb,
+	NULL, /* remove_connection_id */
+	ngtcp2_crypto_update_key_cb,
+	NULL, /* path_validation */
+	NULL, /* select_preferred_address */
+	NULL, /* stream_reset */
+	NULL, /* extend_max_remote_streams_bidi */
+	NULL, /* extend_max_remote_streams_uni */
+	NULL, /* extend_max_stream_data */
+	NULL, /* dcid_status */
+	handshake_confirmed_cb,
+	NULL, /* recv_new_token */
+	ngtcp2_crypto_delete_crypto_aead_ctx_cb,
+	ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
+	NULL, /* recv_datagram */
+	NULL, /* ack_datagram */
+	NULL, /* lost_datagram */
+	ngtcp2_crypto_get_path_challenge_data_cb,
+	NULL, /* stream_stop_sending */
+};
+
+
 uint64_t quic_timestamp(void)
 {
 	struct timespec ts;
@@ -88,30 +231,6 @@ static int hook_func(gnutls_session_t session, unsigned int htype,
                      const gnutls_datum_t *msg)
 {
 	return 0;
-}
-
-// TODO maybe change a bit 'quic_open_bidi_stream' and 'extend_max_bidi_streams' functions
-static int quic_open_bidi_stream(quic_ctx_t *ctx)
-{
-	if (ctx->stream.id != -1) {
-		return KNOT_EINVAL;
-	}
-
-	ngtcp2_transport_params params;
-	// TODO want local or remote *thinking*
-	ngtcp2_conn_get_remote_transport_params(ctx->conn, &params);
-	if (params.initial_max_streams_bidi < 1) {
-		return KNOT_EINVAL;
-	}
-
-	int64_t stream_id;
-	if (ngtcp2_conn_open_bidi_stream(ctx->conn, &stream_id, NULL) != 0) {
-		return KNOT_EINVAL;
-	}
-
-	ctx->stream.id = stream_id;
-
-	return KNOT_EOK;
 }
 
 static int secret_func(gnutls_session_t session,
@@ -230,90 +349,6 @@ static int tp_send_func(gnutls_session_t session, gnutls_buffer_t extdata)
 	return GNUTLS_E_SUCCESS;
 }
 
-static int get_new_connection_id_cb(ngtcp2_conn *conn, ngtcp2_cid *cid,
-        uint8_t *token, size_t cidlen, void *user_data)
-{
-	(void)conn;
-	(void)user_data;
-	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
-
-	if (dnssec_random_buffer(cid->data, cidlen) != DNSSEC_EOK) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-	cid->datalen = cidlen;
-
-	if (ngtcp2_crypto_generate_stateless_reset_token(token, ctx->secret,
-	                                      sizeof(ctx->secret), cid) != 0) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-
-	return 0;
-}
-
-static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
-        int64_t stream_id, uint64_t offset, const uint8_t *data,
-        size_t datalen, void *user_data, void *stream_user_data)
-{
-	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
-
-	struct iovec in = {
-		.iov_base = (uint8_t *)data,
-		.iov_len = datalen
-	};
-	size_t total = 0;
-	// TODO test for slow loris
-	int ret = tcp_inbuf_update(&ctx->stream.in_storage, in,
-	                &ctx->stream.out_storage, &ctx->stream.out_storage_len,
-	                &total);
-	if (ret != KNOT_EOK) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-	ctx->stream.out_storage_it = 0;
-	return 0;
-}
-
-static int acked_stream_data_offset(ngtcp2_conn *conn, int64_t stream_id,
-        uint64_t offset, uint64_t datalen, void *user_data,
-        void *stream_user_data)
-{
-	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
-	if (ctx && stream_id == ctx->stream.id) {
-		// TODO stream data sent callback
-		//ctx->stream.nwrite += offset + datalen;
-	}
-	return KNOT_EOK;
-}
-
-static int stream_close(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
-        uint64_t app_error_code, void *user_data, void *stream_user_data)
-{
-	(void)flags;
-	(void)app_error_code;
-	(void)stream_user_data;
-
-	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
-	if (ctx && stream_id == ctx->stream.id) {
-		ctx->stream.id = -1;
-	}
-	return KNOT_EOK;
-}
-
-static int extend_max_bidi_streams(ngtcp2_conn *conn, uint64_t max_streams,
-        void *user_data)
-{
-	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
-	quic_open_bidi_stream(ctx);
-	return 0;
-}
-
-static void rand_cb(uint8_t *dest, size_t destlen,
-        const ngtcp2_rand_ctx *rand_ctx)
-{
-	(void)rand_ctx;
-
-	dnssec_random_buffer(dest, destlen);
-}
-
 int quic_generate_secret(uint8_t *buf, size_t buflen)
 {
 	assert(buf != NULL && buflen > 0 && buflen <= 32);
@@ -348,6 +383,7 @@ int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx,
 	return KNOT_EOK;
 }
 
+// TODO implement or delete
 // static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t datalen)
 // {
 // 	(void)user_data;
@@ -360,13 +396,6 @@ int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx,
 // 		fclose(qlog);
 // 	}
 // }
-
-static int handshake_confirmed(ngtcp2_conn *conn, void *user_data)
-{
-	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
-	ctx->state = CONNECTED;
-	return 0;
-}
 
 int quic_set_enc(int sockfd, uint32_t ecn, int family)
 {
@@ -521,89 +550,44 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 {
 	if (connect(sockfd, (const struct sockaddr *)(dst_addr->ai_addr),
 	            sizeof(struct sockaddr_storage)) != 0) {
-		return KNOT_NET_ECONNECT;
+		return knot_map_errno();
 	}
-
-	const ngtcp2_callbacks callbacks = {
-		ngtcp2_crypto_client_initial_cb,
-		NULL, /* recv_client_initial */
-		ngtcp2_crypto_recv_crypto_data_cb,
-		NULL, /* handshake_completed */
-		NULL, /* recv_version_negotiation */
-		ngtcp2_crypto_encrypt_cb,
-		ngtcp2_crypto_decrypt_cb,
-		ngtcp2_crypto_hp_mask_cb,
-		recv_stream_data,
-		acked_stream_data_offset,
-		NULL, /* stream_open */
-		stream_close,
-		NULL, /* recv_stateless_reset */
-		ngtcp2_crypto_recv_retry_cb,
-		extend_max_bidi_streams,
-		NULL, /* extend_max_local_streams_uni */
-		rand_cb,
-		get_new_connection_id_cb,
-		NULL, /* remove_connection_id */
-		ngtcp2_crypto_update_key_cb,
-		NULL, /* path_validation */
-		NULL, /* select_preferred_address */
-		NULL, /* stream_reset */
-		NULL, /* extend_max_remote_streams_bidi */
-		NULL, /* extend_max_remote_streams_uni */
-		NULL, /* extend_max_stream_data */
-		NULL, /* dcid_status */
-		handshake_confirmed,
-		NULL, /* recv_new_token */
-		ngtcp2_crypto_delete_crypto_aead_ctx_cb,
-		ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
-		NULL, /* recv_datagram */
-		NULL, /* ack_datagram */
-		NULL, /* lost_datagram */
-		ngtcp2_crypto_get_path_challenge_data_cb,
-		NULL, /* stream_stop_sending */
-	};
 
 	ngtcp2_cid dcid, scid;
 	scid.datalen = 17;
-	if (dnssec_random_buffer(scid.data, scid.datalen) != DNSSEC_EOK) {
-		return KNOT_ERROR;
+	int ret = dnssec_random_buffer(scid.data, scid.datalen);
+	if (ret != DNSSEC_EOK) {
+		return ret;
 	}
 	dcid.datalen = 18;
-	if (dnssec_random_buffer(dcid.data, dcid.datalen) != DNSSEC_EOK) {
-		return KNOT_ERROR;
+	ret = dnssec_random_buffer(dcid.data, dcid.datalen);
+	if (ret != DNSSEC_EOK) {
+		return ret;
 	}
 
-	// TODO revisit
 	ngtcp2_settings settings;
 	ngtcp2_settings_default(&settings);
 	settings.initial_ts = quic_timestamp();
-	/*
-	settings.max_window = 6 * 1024 * 1024;
-	settings.max_stream_window = 6 * 1024 * 1024;
-	settings.max_udp_payload_size = 1362;
-	settings.no_udp_payload_size_shaping = 1;
-	*/
-	// TODO maybe in "debug mode"
+
+	// TODO implement or delete
 	//settings.qlog.write = user_qlog;
 
-	// TODO revisit
 	ngtcp2_transport_params params;
 	ngtcp2_transport_params_default(&params);
-	params.initial_max_stream_data_bidi_local = 256 * 1024;
-	params.initial_max_stream_data_bidi_remote = 256 * 1024;
-	params.initial_max_stream_data_uni = 256 * 1024;
-	params.initial_max_data = 1024 * 1024;
-	params.initial_max_streams_bidi = 1;
-	params.initial_max_streams_uni = 3;
-	params.active_connection_id_limit = 7;
+	params.initial_max_streams_uni = 0;
+	params.initial_max_streams_bidi = 0;
+	params.initial_max_stream_data_bidi_local = MAX_PACKET_SIZE + sizeof(uint16_t);
+	params.initial_max_data = MAX_PACKET_SIZE;
 
-	// TODO revisit
 	struct sockaddr_in6 src_addr;
 	socklen_t src_addr_len = sizeof(src_addr);
-	getsockname(sockfd, (struct sockaddr *)&src_addr, &src_addr_len);
+	ret = getsockname(sockfd, (struct sockaddr *)&src_addr, &src_addr_len);
+	if (ret < 0) {
+		return knot_map_errno();
+	}
 	ngtcp2_path path = {
 		.local = {
-			.addrlen = sizeof(src_addr),
+			.addrlen = src_addr_len,
 			.addr = (struct sockaddr *)&src_addr
 		},
 		.remote = {
@@ -614,13 +598,13 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 	};
 
 	if (ngtcp2_conn_client_new(&ctx->conn, &dcid, &scid, &path,
-	                           NGTCP2_PROTO_VER_V1, &callbacks, &settings,
-	                           &params, NULL, ctx) != 0) {
+	                           NGTCP2_PROTO_VER_V1, &quic_client_callbacks,
+	                           &settings, &params, NULL, ctx) != 0) {
 		return KNOT_NET_ECONNECT;
 	}
 
-	int ret = gnutls_priority_set_direct(ctx->tls->session,
-	                                     QUIC_PRIORITIES, NULL);
+	ret = gnutls_priority_set_direct(ctx->tls->session, QUIC_PRIORITIES,
+	                                 NULL);
 	if (ret != GNUTLS_E_SUCCESS) {
 		return KNOT_NET_ECONNECT;
 	}
@@ -670,10 +654,14 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 	while(ctx->state != CONNECTED) {
 		ngtcp2_ssize nwrite = 0;
 		ret = quic_send(ctx, sockfd, dst_addr);
-
-		if (poll(&pfd, 1, -1) < 1) {	// TODO configurable timeout
+		ngtcp2_conn_get_local_transport_params(ctx->conn, &params);
+		ret = poll(&pfd, 1, params.max_ack_delay / NGTCP2_MILLISECONDS);
+		if (ret < 0) {
+			return knot_map_errno();
+		} else if (ret == 0) {
 			continue; // Resend
 		}
+
 		nwrite = quic_recv(ctx, sockfd, dst_addr);
 		if (nwrite != 0) {
 			// TODO errors
@@ -755,12 +743,15 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 	};
 
 	// TODO Timeout
-	while (/*unlimited || timeout_ms > 0*/1) {
-
+	while (1) {
 		// Wait for datagram data.
-		ret = poll(&pfd, 1, -1); // TODO Make configurable
+		ngtcp2_transport_params params;
+		ngtcp2_conn_get_local_transport_params(ctx->conn, &params);
+		ret = poll(&pfd, 1, params.max_ack_delay / NGTCP2_MILLISECONDS);
 		if (ret < 0) {
-			return KNOT_NET_ESOCKET;
+			return knot_map_errno();
+		} else if (ret == 0) {
+			goto send;
 		}
 
 		ret = quic_recv(ctx, sockfd, srv);
@@ -769,7 +760,7 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 			return ret;
 		}
 
-		nwrite = quic_send(ctx, sockfd, srv);
+		send: nwrite = quic_send(ctx, sockfd, srv);
 	}
 
 	return KNOT_NET_ETIMEOUT;
