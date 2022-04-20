@@ -4,14 +4,7 @@
 Test of offline signing using KSR and SKR with pre-planned KSK rollover and automatic ZSK rollover.
 """
 
-import collections
-import os
-import shutil
-import datetime
-import subprocess
-import time
 import random
-from subprocess import check_call
 
 from dnstest.utils import *
 from dnstest.keys import Keymgr

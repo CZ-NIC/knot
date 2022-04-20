@@ -6,14 +6,6 @@ More precise check of simple KSK rollover.
 The key_rollvoers test is too over-complicated already, unable to add test cases.
 """
 
-import collections
-import os
-import random
-import shutil
-import datetime
-import subprocess
-from subprocess import check_call
-
 from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
