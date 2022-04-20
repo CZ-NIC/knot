@@ -1277,7 +1277,7 @@ int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_
 		.time = time,
 	};
 
-	if (optional == SEMCHECKS_SOFT) {
+	if (optional == SEMCHECK_MANDATORY_SOFT) {
 		data.level |= SOFT;
 	}
 
