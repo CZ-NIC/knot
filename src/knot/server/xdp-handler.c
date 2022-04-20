@@ -378,6 +378,8 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 		}
 		knot_tcp_cleanup(ctx->syn_table, sweep_relays, XDP_BATCHLEN);
 
+		knot_xquic_table_sweep(ctx->quic_table, ctx->tcp_max_obufs);
+
 		(void)knot_xdp_send_finish(ctx->sock);
 	} while (ret == KNOT_EOK && prev_total < ctx->sweep_closed + ctx->sweep_reset);
 

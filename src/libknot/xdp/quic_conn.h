@@ -54,6 +54,8 @@ typedef struct {
 } knot_xquic_stream_t;
 
 typedef struct knot_xquic_conn {
+	knot_xquic_ucw_node_t timeout; // MUST be first field of the struct
+
 	uint8_t last_eth_rem[ETH_ALEN];
 	uint8_t last_eth_loc[ETH_ALEN];
 
@@ -77,8 +79,10 @@ typedef struct knot_xquic_table {
 	size_t size;
 	size_t usage;
 	size_t pointers;
+	size_t obufs_size;
 	uint64_t hash_secret[4];
 	struct knot_quic_creds *creds;
+	knot_xquic_ucw_list_t timeout;
 	knot_xquic_conn_t *conns[];
 } knot_xquic_table_t;
 
@@ -98,6 +102,8 @@ knot_xquic_table_t *knot_xquic_table_new(size_t table_size);
  */
 void knot_xquic_table_free(knot_xquic_table_t *table);
 
+int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_obufs);
+
 knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const struct ngtcp2_cid *cid,
                                        knot_xquic_table_t *table);
 
@@ -105,9 +111,11 @@ knot_xquic_conn_t **xquic_table_add(struct ngtcp2_conn *conn, const struct ngtcp
 
 knot_xquic_conn_t **xquic_table_lookup(const struct ngtcp2_cid *cid, knot_xquic_table_t *table);
 
+void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
+
 void xquic_table_rem2(knot_xquic_conn_t **pconn, knot_xquic_table_t *table);
 
-void xquic_table_rem(knot_xquic_conn_t **pconn, knot_xquic_table_t *table);
+void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
 
 knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn, int64_t stream_id, bool create);
 

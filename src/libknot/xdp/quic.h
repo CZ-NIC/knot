@@ -34,6 +34,7 @@ int knot_xquic_init_creds(knot_xquic_creds_t *creds);
 
 void knot_xquic_free_creds(knot_xquic_creds_t *creds);
 
+bool xquic_conn_timeout(knot_xquic_conn_t *conn);
 
 /*!
  * \brief Process received packets, pic incomming DNS data.

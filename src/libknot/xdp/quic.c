@@ -323,6 +323,11 @@ static uint64_t get_timestamp(void)
 	return (uint64_t)ts.tv_sec * NGTCP2_SECONDS + (uint64_t)ts.tv_nsec;
 }
 
+bool xquic_conn_timeout(knot_xquic_conn_t *conn)
+{
+	return get_timestamp() > ngtcp2_conn_get_idle_expiry(conn->conn);
+}
+
 static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx)
 {
 	(void)rand_ctx;
@@ -694,13 +699,14 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 		*out_stream = xconn->last_stream;
 		memcpy(xconn->last_eth_rem, msg->eth_from, sizeof(msg->eth_from));
 		memcpy(xconn->last_eth_loc, msg->eth_to, sizeof(msg->eth_to));
+		xquic_conn_mark_used(xconn, table);
 	} else if (ngtcp2_err_is_fatal(ret)) {
 		printf("ERR FATAL\n");
-		xquic_table_rem(pxconn, table);
+		xquic_table_rem(xconn, table);
 		// FIXME
 	} else if (ret == NGTCP2_ERR_DRAINING) { // received CONNECTION_CLOSE from the counterpart
 		printf("DRAINING\n");
-		xquic_table_rem(pxconn, table);
+		xquic_table_rem(xconn, table);
 		printf("remaining conns: %zu pointers: %zu\n", table->usage, table->pointers);
 	}
 
