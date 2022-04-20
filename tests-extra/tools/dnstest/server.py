@@ -915,7 +915,7 @@ class Bind(Server):
         self.ctl("sync%s" % zone_name, wait=wait)
 
     def check_option(self, option):
-        proc = Popen([self.daemon_bin + "-checkconf", "/dev/fd/0"],
+        proc = Popen([params.bind_checkconf_bin, "/dev/fd/0"],
                      stdout=PIPE, stderr=PIPE, stdin=PIPE,
                      universal_newlines=True)
         conff = "options {\n    %s;\n};" % option
