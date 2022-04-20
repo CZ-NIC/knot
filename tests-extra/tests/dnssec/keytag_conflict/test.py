@@ -4,12 +4,7 @@
 Check if keytag conflict is correctly handled by Knot.
 """
 
-import collections
-import os
 import shutil
-import datetime
-import subprocess
-from subprocess import check_call
 
 from dnstest.utils import *
 from dnstest.keys import Keymgr
