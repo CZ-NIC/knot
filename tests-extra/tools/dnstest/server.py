@@ -646,7 +646,8 @@ class Server(object):
                 return dnstest.response.Response(self, resp, query, args)
             except dns.exception.Timeout:
                 pass
-            except:
+            except Exception as e:
+                detail_log("DIG returned: %s" % e)
                 time.sleep(timeout)
 
         raise Failed("Can't query server='%s' for '%s %s %s'" % \
