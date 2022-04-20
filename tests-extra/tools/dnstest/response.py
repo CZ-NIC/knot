@@ -2,7 +2,7 @@
 
 import binascii
 import dns.name
-import collections
+import collections.abc
 import itertools
 from dnstest.utils import *
 
@@ -295,7 +295,7 @@ class Response(object):
             rtype = dns.rdatatype.from_text(rtype)
 
         cnt = 0
-        if isinstance(self.resp, collections.Iterable):
+        if isinstance(self.resp, collections.abc.Iterable):
             self.resp, iter_copy = itertools.tee(self.resp)
             for msg in iter_copy:
                 if not section or section == "answer":
