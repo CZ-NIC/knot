@@ -220,8 +220,24 @@ int net_init(const srv_info_t     *local,
 	int ret = KNOT_EOK;
 	// Prepare for TLS.
 	if (tls_params != NULL && tls_params->enable) {
-		unsigned int tls_flags = (quic_params != NULL && quic_params->enable) ? GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_END_OF_EARLY_DATA : GNUTLS_NONBLOCK;
-		ret = tls_ctx_init(&net->tls, tls_params, tls_flags, net->wait);
+		unsigned int tls_flags = GNUTLS_NONBLOCK;
+		const char *tls_priority = NULL;
+		const gnutls_datum_t *alpn = &dot_alpn;
+		size_t alpn_size = 1;
+		if (https_params != NULL && https_params->enable) {
+			alpn = &https_alpn;
+			alpn_size = 1;
+		}
+		else if (quic_params != NULL && quic_params->enable) {
+			tls_flags = GNUTLS_ENABLE_EARLY_DATA |
+			            GNUTLS_NO_END_OF_EARLY_DATA;
+			tls_priority = QUIC_PRIORITY;
+			alpn = quic_alpn;
+			alpn_size = sizeof(quic_alpn) / sizeof(*quic_alpn);
+		}
+
+		ret = tls_ctx_init(&net->tls, tls_params, tls_flags, net->wait,
+		                   alpn, alpn_size, tls_priority);
 		if (ret != KNOT_EOK) {
 			net_clean(net);
 			return ret;
@@ -430,7 +446,7 @@ int net_connect(net_t *net)
 #endif //LIBNGHTTP2
 				// Establish TLS connection.
 				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni, fastopen,
-				                      (struct sockaddr_storage *)net->srv->ai_addr, &dot_alpn, NULL);
+				                      (struct sockaddr_storage *)net->srv->ai_addr);
 #ifdef LIBNGHTTP2
 			}
 #endif //LIBNGHTTP2

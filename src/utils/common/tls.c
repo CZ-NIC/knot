@@ -421,7 +421,9 @@ static int verify_certificate(gnutls_session_t session)
 	return GNUTLS_E_SUCCESS;
 }
 
-int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, unsigned int flags, int wait)
+int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
+        unsigned int flags, int wait, const gnutls_datum_t *alpn,
+        size_t alpn_size, const char *priority)
 {
 	if (ctx == NULL || params == NULL || !params->enable) {
 		return KNOT_EINVAL;
@@ -500,6 +502,24 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, unsigned int flags,
 		return KNOT_ENOMEM;
 	}
 
+	if (alpn != NULL) {
+		ret = gnutls_alpn_set_protocols(ctx->session, alpn, alpn_size, 0);
+		if (ret != GNUTLS_E_SUCCESS) {
+			gnutls_deinit(ctx->session);
+			return KNOT_NET_ECONNECT;
+		}
+	}
+
+	if (priority != NULL) {
+		ret = gnutls_priority_set_direct(ctx->session, priority, NULL);
+	} else {
+		ret = gnutls_set_default_priority(ctx->session);
+	}
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(ctx->session);
+		return KNOT_EINVAL;
+	}
+
 	ret = gnutls_credentials_set(ctx->session, GNUTLS_CRD_CERTIFICATE,
 	                             ctx->credentials);
 	if (ret != GNUTLS_E_SUCCESS) {
@@ -511,23 +531,13 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, unsigned int flags,
 }
 
 int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote,
-                    bool fastopen, struct sockaddr_storage *addr,
-                    const gnutls_datum_t *protocol, const char *priority)
+                    bool fastopen, struct sockaddr_storage *addr)
 {
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = 0;
-	if (priority != NULL) {
-		ret = gnutls_priority_set_direct(ctx->session, priority, NULL);
-	} else {
-		ret = gnutls_set_default_priority(ctx->session);
-	}
-	if (ret != GNUTLS_E_SUCCESS) {
-		return KNOT_NET_ECONNECT;
-	}
-
 	if (remote != NULL) {
 		ret = gnutls_server_name_set(ctx->session, GNUTLS_NAME_DNS, remote,
 		                             strlen(remote));
@@ -552,14 +562,6 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote,
 	}
 
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
-
-	if (protocol != NULL) {
-		ret = gnutls_alpn_set_protocols(ctx->session, protocol, 1, 0);
-		if (ret != GNUTLS_E_SUCCESS) {
-			gnutls_deinit(ctx->session);
-			return KNOT_NET_ECONNECT;
-		}
-	}
 
 	// Initialize poll descriptor structure.
 	struct pollfd pfd = {

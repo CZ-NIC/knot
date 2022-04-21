@@ -19,6 +19,24 @@
 
 #include <stdbool.h>
 
+#define QUIC_DEFAULT_VERSION "-VERS-ALL:+VERS-TLS1.3"
+#define QUIC_DEFAULT_CIPHERS "-CIPHER-ALL:+AES-128-GCM:+AES-256-GCM:+CHACHA20-POLY1305:+AES-128-CCM"
+#define QUIC_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-SECP256R1:+GROUP-X25519:+GROUP-SECP384R1:+GROUP-SECP521R1"
+#define QUIC_PRIORITY        "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_CIPHERS":"QUIC_DEFAULT_GROUPS
+
+static const gnutls_datum_t quic_alpn[] = {
+	{
+		.data = (unsigned char *)"doq",
+		.size = 3
+	},{
+		.data = (unsigned char *)"doq-i11",
+		.size = 7
+	},{
+		.data = (unsigned char *)"doq-i03",
+		.size = 7
+	}
+};
+
 /*! \brief QUIC parameters. */
 typedef struct {
 	/*! Use QUIC indicator. */
@@ -57,8 +75,7 @@ typedef struct {
 	/*! Stream context */
 	struct {
 		int64_t id;
-		uint8_t *tx_data;
-		size_t tx_datalen;
+		uint64_t sent;
 		struct iovec in_storage;
 		struct iovec *out_storage;
 		size_t out_storage_it;

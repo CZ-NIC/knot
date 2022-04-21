@@ -46,6 +46,11 @@ void https_params_clean(https_params_t *params);
 
 #include "utils/common/tls.h"
 
+static const gnutls_datum_t https_alpn = {
+	.data = (unsigned char *)"h2",
+	.size = 2
+};
+
 /*! \brief Structure that stores data source for DATA frames. */
 typedef struct {
 	const uint8_t *buf;
