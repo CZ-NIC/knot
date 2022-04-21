@@ -22,6 +22,7 @@
 
 #include "contrib/libngtcp2/ngtcp2/ngtcp2.h"
 #include "contrib/macros.h"
+#include "contrib/openbsd/siphash.h"
 #include "contrib/ucw/lists.h"
 
 #include "libknot/attribute.h"
@@ -29,10 +30,13 @@
 #include "libknot/wire.h"
 
 #define STREAM_INCR 4 // DoQ only uses client-initiated bi-directional streams, so stream IDs increment by four
+#define BUCKETS_PER_CONNS 8 // Each connecion has several dCIDs, and each CID takes one hash table bucket.
 
 _public_
-knot_xquic_table_t *knot_xquic_table_new(size_t table_size)
+knot_xquic_table_t *knot_xquic_table_new(size_t max_conns)
 {
+	size_t table_size = max_conns * BUCKETS_PER_CONNS;
+
 	knot_xquic_table_t *res = calloc(1, sizeof(*res) + table_size * sizeof(res->conns[0]) + sizeof(knot_xquic_creds_t));
 	if (res == NULL) {
 		return NULL;
@@ -69,12 +73,14 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 }
 
 _public_
-int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_obufs)
+int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_conns, size_t max_obufs)
 {
 	knot_xquic_conn_t *c, *next;
 	WALK_LIST_DELSAFE(c, next, *(list_t *)&table->timeout) {
 		if (xquic_conn_timeout(c)) {
 			xquic_table_rem(c, table);
+		} else if (table->usage > max_conns) {
+			xquic_table_rem(c, table); // FIXME send some reset
 		} else if (table->obufs_size > max_obufs) {
 			if (c->obufs_size > 0) {
 				xquic_table_rem(c, table); // FIXME send some reset
@@ -92,17 +98,18 @@ static bool cid_eq(const ngtcp2_cid *a, const ngtcp2_cid *b) // FIXME ngtcp2_cid
 	       memcmp(a->data, b->data, a->datalen) == 0;
 }
 
-static uint64_t cid2hash(const ngtcp2_cid *cid)
+static uint64_t cid2hash(const ngtcp2_cid *cid, knot_xquic_table_t *table)
 {
-	uint64_t hash = 0;
-	memcpy(&hash, cid->data, MIN(sizeof(hash), cid->datalen));
-	return hash;
+	SIPHASH_CTX ctx;
+	SipHash24_Init(&ctx, (const SIPHASH_KEY *)(table->hash_secret));
+	SipHash24_Update(&ctx, cid->data, cid->datalen);
+	return SipHash24_End(&ctx);
 }
 
 knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const ngtcp2_cid *cid,
                                        knot_xquic_table_t *table)
 {
-	uint64_t hash = cid2hash(cid);
+	uint64_t hash = cid2hash(cid, table);
 
 	knot_xquic_conn_t **addto = table->conns + (hash % table->size);
 	xconn->next = *addto;
@@ -133,7 +140,7 @@ knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, kn
 
 knot_xquic_conn_t **xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_table_t *table)
 {
-	uint64_t hash = cid2hash(cid);
+	uint64_t hash = cid2hash(cid, table);
 
 	knot_xquic_conn_t **res = table->conns + (hash % table->size);
 	while (*res != NULL) {

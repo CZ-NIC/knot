@@ -89,11 +89,11 @@ typedef struct knot_xquic_table {
 /*!
  * \brief Allocate QUIC connections hash table.
  *
- * \param table_size    Number of hash buckets.
+ * \param max_conns    Maximum nuber of connections.
  *
  * \return Allocated table or NULL;
  */
-knot_xquic_table_t *knot_xquic_table_new(size_t table_size);
+knot_xquic_table_t *knot_xquic_table_new(size_t max_conns);
 
 /*!
  * \brief Free QUIC table including its contents.
@@ -102,7 +102,7 @@ knot_xquic_table_t *knot_xquic_table_new(size_t table_size);
  */
 void knot_xquic_table_free(knot_xquic_table_t *table);
 
-int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_obufs);
+int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_conns, size_t max_obufs);
 
 knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const struct ngtcp2_cid *cid,
                                        knot_xquic_table_t *table);

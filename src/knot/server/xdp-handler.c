@@ -129,7 +129,7 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 	}
 
 #ifdef ENABLE_XDP_QUIC
-	ctx->quic_table = knot_xquic_table_new(1000); // FIXME
+	ctx->quic_table = knot_xquic_table_new(ctx->tcp_max_conns);
 	if (ctx->quic_table == NULL) {
 		xdp_handle_free(ctx);
 		return NULL;
@@ -396,7 +396,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 		knot_tcp_cleanup(ctx->syn_table, sweep_relays, XDP_BATCHLEN);
 
 #ifdef ENABLE_XDP_QUIC
-		knot_xquic_table_sweep(ctx->quic_table, ctx->tcp_max_obufs);
+		knot_xquic_table_sweep(ctx->quic_table, ctx->tcp_max_conns, ctx->tcp_max_obufs);
 #endif // ENABLE_XDP_QUIC
 
 		(void)knot_xdp_send_finish(ctx->sock);
