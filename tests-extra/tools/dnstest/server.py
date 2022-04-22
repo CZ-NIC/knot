@@ -1280,11 +1280,14 @@ class Knot(Server):
         s.end()
 
         if self.tsig:
+            keys = set() # Duplicy check.
             s.begin("key")
             self._key(s, self.tsig)
-            self._key(s, self.tsig_test)
+            keys.add(self.tsig.name)
+            if self.tsig_test.name not in keys:
+                self._key(s, self.tsig_test)
+                keys.add(self.tsig_test.name)
 
-            keys = set() # Duplicy check.
             for zone in sorted(self.zones):
                 z = self.zones[zone]
                 for master in z.masters:
