@@ -29,6 +29,9 @@ static const gnutls_datum_t quic_alpn[] = {
 		.data = (unsigned char *)"doq",
 		.size = 3
 	},{
+		.data = (unsigned char *)"doq-i12",
+		.size = 7
+	},{
 		.data = (unsigned char *)"doq-i11",
 		.size = 7
 	},{
@@ -60,6 +63,29 @@ typedef enum {
 	CLOSING
 } quic_state_t;
 
+typedef enum {
+	/*! No error.  This is used when the connection or stream needs to be
+	    closed, but there is no error to signal. */
+	DOQ_NO_ERROR = 0x0,
+	/*! The DoQ implementation encountered an internal error and is
+	    incapable of pursuing the transaction or the connection. */
+	DOQ_INTERNAL_ERROR = 0x1,
+	/*! The DoQ implementation encountered a protocol error and is forcibly
+	    aborting the connection. */
+	DOQ_PROTOCOL_ERROR = 0x2,
+	/*! A DoQ client uses this to signal that it wants to cancel an
+	    outstanding transaction. */
+	DOQ_REQUEST_CANCELLED = 0x3,
+	/*! A DoQ implementation uses this to signal when closing a connection
+	    due to excessive load. */
+	DOQ_EXCESSIVE_LOAD = 0x4,
+	/*!  A DoQ implementation uses this in the absence of a more specific
+	     error code. */
+	DOQ_UNSPECIFIED_ERROR = 0x5,
+	/*! Alternative error code used for tests. */
+	DOQ_ERROR_RESERVED = 0xd098ea5e
+} quic_doq_error_t;
+
 typedef struct {
 	// Parameters
 	quic_params_t params;
@@ -82,7 +108,8 @@ typedef struct {
 		size_t out_storage_len;
 		size_t out_storage_total;
 	} stream;
-	uint64_t last_error;
+	uint64_t timestamp;
+	ngtcp2_connection_close_error last_err;
 } quic_ctx_t;
 
 uint64_t quic_timestamp(void);

@@ -18,6 +18,8 @@
 
 #include <stdbool.h>
 
+#include "utils/common/tls.h"
+
 /*! \brief HTTP method to transfer query. */
 typedef enum {
 	POST,
@@ -34,6 +36,11 @@ typedef struct {
 	char *path;
 } https_params_t;
 
+static const gnutls_datum_t doh_alpn = {
+	.data = (unsigned char *)"h2",
+	.size = 2
+};
+
 int https_params_copy(https_params_t *dst, const https_params_t *src);
 void https_params_clean(https_params_t *params);
 
@@ -43,13 +50,6 @@ void https_params_clean(https_params_t *params);
 #include <pthread.h>
 #include <sys/socket.h>
 #include <nghttp2/nghttp2.h>
-
-#include "utils/common/tls.h"
-
-static const gnutls_datum_t https_alpn = {
-	.data = (unsigned char *)"h2",
-	.size = 2
-};
 
 /*! \brief Structure that stores data source for DATA frames. */
 typedef struct {

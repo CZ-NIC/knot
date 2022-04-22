@@ -538,6 +538,7 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote,
 	}
 
 	int ret = 0;
+	// TODO mayble also move to `tls_ctx_init`
 	if (remote != NULL) {
 		ret = gnutls_server_name_set(ctx->session, GNUTLS_NAME_DNS, remote,
 		                             strlen(remote));

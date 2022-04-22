@@ -935,7 +935,6 @@ static int opt_quic(const char *arg, void *query)
 	query_t *q = query;
 
 	opt_tls(arg, query);
-	q->tls.system_ca = true;
 	opt_notcp(arg, query);
 	q->quic.enable = true;
 

@@ -225,7 +225,7 @@ int net_init(const srv_info_t     *local,
 		const gnutls_datum_t *alpn = &dot_alpn;
 		size_t alpn_size = 1;
 		if (https_params != NULL && https_params->enable) {
-			alpn = &https_alpn;
+			alpn = &doh_alpn;
 			alpn_size = 1;
 		}
 		else if (quic_params != NULL && quic_params->enable) {
@@ -338,6 +338,7 @@ static char *net_get_remote(const net_t *net)
 }
 #endif
 
+#ifdef LIBNGTCP2
 static int fd_set_recv_ecn(int fd, int family)
 {
 	unsigned int tos = 1;
@@ -355,6 +356,7 @@ static int fd_set_recv_ecn(int fd, int family)
 	}
 	return KNOT_EOK;
 }
+#endif
 
 int net_connect(net_t *net)
 {
@@ -543,7 +545,6 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 #endif
 	// Send data over UDP.
 	if (net->socktype == SOCK_DGRAM) {
-
 		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
 		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
 			WARN("can't send query to %s\n", net->remote_str);
@@ -739,6 +740,7 @@ void net_close(net_t *net)
 #ifdef LIBNGTCP2
 	quic_ctx_close(&net->quic);
 #endif
+	// TODO QUIC close TLS also
 	tls_ctx_close(&net->tls);
 	close(net->sockfd);
 	net->sockfd = -1;
