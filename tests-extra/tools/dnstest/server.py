@@ -180,6 +180,7 @@ class Server(object):
         self.catalog_db_size = 10 * 1024 * 1024
         self.zone_size_limit = None
         self.serial_policy = None
+        self.auto_acl = None
 
         self.inquirer = None
 
@@ -1244,7 +1245,8 @@ class Knot(Server):
         if acl:
             acl += ", "
         acl += "acl_local, acl_test"
-        knotconf.item("acl", "[%s]" % acl)
+        if not self.auto_acl:
+            knotconf.item("acl", "[%s]" % acl)
 
     def get_config(self):
         s = dnstest.config.KnotConf()
@@ -1272,6 +1274,7 @@ class Knot(Server):
         self._str(s, "udp-max-payload-ipv6", self.udp_max_payload_ipv6)
         self._str(s, "remote-pool-limit", str(random.randint(0,6)))
         self._str(s, "remote-retry-delay", str(random.choice([0, 1, 5])))
+        self._bool(s, "automatic-acl", self.auto_acl)
         s.end()
 
         s.begin("control")
@@ -1284,7 +1287,7 @@ class Knot(Server):
             s.begin("key")
             self._key(s, self.tsig)
             keys.add(self.tsig.name)
-            if self.tsig_test.name not in keys:
+            if self.tsig_test is not None and self.tsig_test.name not in keys:
                 self._key(s, self.tsig_test)
                 keys.add(self.tsig_test.name)
 
