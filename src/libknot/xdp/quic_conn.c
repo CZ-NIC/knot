@@ -24,6 +24,7 @@
 #include "contrib/macros.h"
 #include "contrib/openbsd/siphash.h"
 #include "contrib/ucw/lists.h"
+#include "libdnssec/random.h"
 
 #include "libknot/attribute.h"
 #include "libknot/error.h"
@@ -50,6 +51,11 @@ knot_xquic_table_t *knot_xquic_table_new(size_t max_conns)
 		free(res);
 		return NULL;
 	}
+
+	res->hash_secret[0] = dnssec_random_uint64_t();
+	res->hash_secret[1] = dnssec_random_uint64_t();
+	res->hash_secret[2] = dnssec_random_uint64_t();
+	res->hash_secret[3] = dnssec_random_uint64_t();
 
 	return res;
 }
@@ -102,8 +108,10 @@ static uint64_t cid2hash(const ngtcp2_cid *cid, knot_xquic_table_t *table)
 {
 	SIPHASH_CTX ctx;
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)(table->hash_secret));
-	SipHash24_Update(&ctx, cid->data, cid->datalen);
-	return SipHash24_End(&ctx);
+	SipHash24_Update(&ctx, cid->data, MIN(cid->datalen, 8));
+	uint64_t ret = SipHash24_End(&ctx);
+	printf("hash cid %lx secret %lx result %lx\n", *(uint64_t *)cid->data, *(uint64_t *)table->hash_secret, ret);
+	return ret;
 }
 
 knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const ngtcp2_cid *cid,
