@@ -1198,9 +1198,9 @@ Automatic ACL rules are evaluated before explicit :ref:`zone ACL <zone_acl>` con
 ACL section
 ===========
 
-Access control list rule definitions. The ACLs are used to match incoming
-connections to allow or deny requested operation (zone transfer request, DDNS
-update, etc.).
+Access control list rule definitions. An ACL rule is a description of one
+or more authorized operations (zone transfer request, zone change notification,
+and dynamic DNS update) which are allowed to be processed or denied.
 
 ::
 
@@ -1268,9 +1268,9 @@ An ordered list of allowed (or denied) actions.
 
 Possible values:
 
-- ``notify`` – Allow incoming notify.
-- ``transfer`` – Allow zone transfer.
-- ``update`` – Allow zone updates.
+- ``notify`` – Allow incoming notify (NOTIFY).
+- ``transfer`` – Allow zone transfer (AXFR, IXFR).
+- ``update`` – Allow zone updates (DDNS).
 
 *Default:* not set
 
