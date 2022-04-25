@@ -89,24 +89,20 @@ zones. There is no inheritance between templates; they are exclusive. The
 Access control list (ACL)
 =========================
 
-The Access control list is a list of rules specifying remotes which are allowed to
-send certain types of requests to the server.
-Remotes can be specified by a single IP address or a network subnet. A TSIG
-key can also be assigned (see :doc:`keymgr<man_keymgr>` on how to generate a TSIG key).
+Some types of incoming DNS requests must be authorized before they can be
+processed by the server. A zone can have configured :ref:`zone_acl` which is
+a sequence of :ref:`rules <ACL section>` describing what requests are authorized.
+By default if :ref:`automatic ACL <server_automatic-acl>` is not enabled, all requests,
+which require authorization, are denied.
 
-Without any ACL rules, all the actions are denied for the zone. Each ACL rule
-can allow one or more actions for a given address/subnet/TSIG, or deny them.
+Every ACL rule can allow or deny one or more request types based on the
+source IP address, network subnet, or address range and/or if the request is
+secured by a given TSIG key. See :doc:`keymgr -t<man_keymgr>` on how
+to generate a TSIG key.
 
-If there are multiple ACL rules for a single zone, they are applied in the order
-of appearance in the :ref:`zone_acl` configuration item of a zone or a template.
-The first one to match the given remote is applied, the rest is ignored.
-
-For dynamic updates, additional rules may be specified, which will allow or deny updates
-according to the type or owner of Resource Records in the update.
-
-See the following examples and :ref:`ACL section`.
-
-::
+If there are multiple ACL rules assigned to a zone, they are applied in the
+specified order of the :ref:`zone_acl` configuration. The first rule that matches
+the given request is applied and the remaining rules are ignored. Some examples::
 
     acl:
       - id: address_rule
@@ -119,38 +115,39 @@ See the following examples and :ref:`ACL section`.
         deny: on
 
     zone:
-      - domain: acl1.example.com.
-        acl: [deny_rule, address_rule] # deny_rule first here to take precedence
+      - domain: acl1.example.com
+        acl: [deny_rule, address_rule]     # Allow some addresses with an exception
 
 ::
 
     key:
-      - id: key1                  # The real TSIG key name
-        algorithm: hmac-md5
-        secret: Wg==
+      - id: key1                           # The real TSIG key name
+        algorithm: hmac-sha256
+        secret: 4Tc0K1QkcMCs7cOW2LuSWnxQY0qysdvsZlSb4yTN9pA=
 
     acl:
       - id: deny_all
         address: 192.168.3.0/24
-        deny: on # no action specified and deny on implies denial of all actions
+        deny: on                           # No action specified and deny on implies denial of all actions
 
       - id: key_rule
-        key: key1                 # Access based just on TSIG key
+        key: key1                          # Access based just on TSIG key
         action: [transfer, notify]
 
     zone:
       - domain: acl2.example.com
-        acl: [deny_all, key_rule]
+        acl: [deny_all, key_rule]          # Allow with the TSIG except for the subnet
 
-::
+For dynamic DNS updates, additional conditions may be specified for more granular
+filtering. Example::
 
     acl:
         - id: owner_type_rule
           action: update
-          update-type: [A, AAAA, MX] # Updates are only allowed to update records of the specified types
-          update-owner: name         # The allowed owners are specified by the list on the next line
-          update-owner-name: [a, b.example.com.] # Non-FQDN names are relative to the effective zone name
-          update-owner-match: equal  # The owners of records in an update must be exactly equal to the names in the list
+          update-type: [A, AAAA, MX]             # Updated records must match one of the specified types
+          update-owner: name                     # Updated record owners are restricted by the next conditions
+          update-owner-match: equal              # The record owner must exactly match one name from the next list
+          update-owner-name: [a, b.example.com.] # Note that non-FQDN names are relative to the effective zone name
 
 .. NOTE::
    If more conditions (address ranges and/or a key)
@@ -164,54 +161,63 @@ Secondary (slave) zone
 
 Knot DNS doesn't strictly differ between primary (formerly known as master)
 and secondary (formerly known as slave) zones. The only requirement for a secondary
-zone is to have a :ref:`zone_master` statement set. Also note that you need
-to explicitly allow incoming zone changed notifications via ``notify`` :ref:`acl_action`
-through a zone's :ref:`zone_acl` list, otherwise the update will be rejected by the
-server. If the zone file doesn't exist it will be bootstrapped over AXFR::
+zone is to have a :ref:`zone_master` statement set. For effective zone synchronization,
+incoming zone change notifications (NOTIFY), which require authorization, can be
+enabled using :ref:`automatic ACL <server_automatic-acl>` or :ref:`explicit ACL <zone_acl>`
+configuration. Optional transaction authentication (TSIG) is supported for both
+zone transfers and zone notifications::
+
+    server:
+        automatic-acl: on                     # Enabled automatic ACL
+
+    key:
+      - id: xfr_notify_key                    # Common TSIG key for XFR an NOTIFY
+        algorithm: hmac-sha256
+        secret: VFRejzw8h4M7mb0xZKRFiZAfhhd1eDGybjqHr2FV3vc=
 
     remote:
-      - id: master
-        address: 192.168.1.1@53
-        # via: 10.0.0.1            # Specify local source address if needed
+      - id: primary
+        address: [2001:DB8:1::1, 192.168.1.1] # Primary server IP addresses
+        # via: [2001:DB8:2::1, 10.0.0.1]      # Local source addresses (optional)
+        key: xfr_notify_key                   # TSIG key (optional)
+
+    zone:
+      - domain: example.com
+        master: primary                       # Primary remote(s)
+
+An example of explicit ACL with different TSIG keys for zone transfers
+and notifications::
+
+    key:
+      - id: notify_key                        # TSIG key for NOTIFY
+        algorithm: hmac-sha256
+        secret: uBbhV4aeSS4fPd+wF2ZIn5pxOMF35xEtdq2ibi2hHEQ=
+
+      - id: xfr_key                           # TSIG key for XFR
+        algorithm: hmac-sha256
+        secret: VFRejzw8h4M7mb0xZKRFiZAfhhd1eDGybjqHr2FV3vc=
+
+    remote:
+      - id: primary
+        address: [2001:DB8:1::1, 192.168.1.1] # Primary server IP addresses
+        # via: [2001:DB8:2::1, 10.0.0.1]      # Local source addresses if needed
+        key: xfr_key                          # Optional TSIG key
 
     acl:
-      - id: notify_from_master
-        address: 192.168.1.1
+      - id: notify_from_primary               # ACL rule for NOTIFY from primary
+        address: [2001:DB8:1::1, 192.168.1.1] # Primary addresses (optional)
+        key: notify_key                       # TSIG key (optional)
         action: notify
 
     zone:
       - domain: example.com
-        storage: /var/lib/knot/zones/
-        # file: example.com.zone   # Default value
-        master: master
-        acl: notify_from_master
+        master: primary                       # Primary remote(s)
+        acl: notify_from_primary              # Explicit ACL(s)
 
-Note that the :ref:`zone_master` option accepts a list of multiple remotes.
-The remotes should be listed according to their preference. The first remote
-has the highest preference, the other remotes are used for failover. When the
-server receives a zone update notification from a listed remote, that remote
-will be the most preferred one for the subsequent transfer.
-
-To use TSIG for transfers and notification messages authentication, configure
-a TSIG key and assign the key both to the remote and the ACL rule. Notice that
-the :ref:`remote <Remote section>` and :ref:`ACL <ACL section>` definitions are
-independent::
-
-    key:
-      - id: slave1_key
-        algorithm: hmac-md5
-        secret: Wg==
-
-    remote:
-      - id: master
-        address: 192.168.1.1@53
-        key: slave1_key
-
-    acl:
-      - id: notify_from_master
-        address: 192.168.1.1
-        key: slave1_key
-        action: notify
+Note that the :ref:`zone_master` option accepts a list of remotes, which are
+queried for a zone refresh sequentially in the specified order. When the server
+receives a zone change notification from a listed remote, only that remote is
+used for a subsequent zone transfer.
 
 .. NOTE::
    When transferring a lot of zones, the server may easily get into a state
@@ -226,79 +232,42 @@ independent::
 Primary (master) zone
 =====================
 
-An ACL with the ``transfer`` action must be configured to allow outgoing zone
-transfers. An ACL rule consists of a single address or a network subnet::
+A zone is considered primary if it doesn't have :ref:`zone_master` set. As
+outgoing zone transfers (XFR) require authorization, it must be enabled
+using :ref:`automatic ACL <server_automatic-acl>` or :ref:`explicit ACL <zone_acl>`
+configuration. Outgoing zone change notifications (NOTIFY) to remotes can be
+set by configuring :ref:`zone_notify`. Transaction authentication
+(TSIG) is supported for both zone transfers and zone notifications::
 
-    remote:
-      - id: slave1
-        address: 192.168.2.1@53
-
-    acl:
-      - id: slave1_acl
-        address: 192.168.2.1
-        action: transfer
-
-      - id: others_acl
-        address: 192.168.3.0/24
-        action: transfer
-
-    zone:
-      - domain: example.com
-        storage: /var/lib/knot/zones/
-        file: example.com.zone
-        notify: slave1
-        acl: [slave1_acl, others_acl]
-
-Optionally, a TSIG key can be specified::
+    server:
+        automatic-acl: on                     # Enabled automatic ACL
 
     key:
-      - id: slave1_key
-        algorithm: hmac-md5
-        secret: Wg==
+      - id: xfr_notify_key                    # Common TSIG key for XFR an NOTIFY
+        algorithm: hmac-sha256
+        secret: VFRejzw8h4M7mb0xZKRFiZAfhhd1eDGybjqHr2FV3vc=
 
     remote:
-      - id: slave1
-        address: 192.168.2.1@53
-        key: slave1_key
+      - id: secondary
+        address: [2001:DB8:1::1, 192.168.1.1] # Secondary server IP addresses
+        # via: [2001:DB8:2::1, 10.0.0.1]      # Local source addresses (optional)
+        key: xfr_notify_key                   # TSIG key (optional)
 
     acl:
-      - id: slave1_acl
-        address: 192.168.2.1
-        key: slave1_key
-        action: transfer
-
-      - id: others_acl
-        address: 192.168.3.0/24
-        action: transfer
-
-Note that a secondary zone may serve as a primary zone at the same time::
-
-    remote:
-      - id: master
-        address: 192.168.1.1@53
-      - id: slave1
-        address: 192.168.2.1@53
-
-    acl:
-      - id: notify_from_master
-        address: 192.168.1.1
-        action: notify
-
-      - id: slave1_acl
-        address: 192.168.2.1
-        action: transfer
-
-      - id: others_acl
-        address: 192.168.3.0/24
+      - id: local_xfr                         # Allow XFR to localhost without TSIG
+        address: [::1, 127.0.0.1]
         action: transfer
 
     zone:
       - domain: example.com
-        storage: /var/lib/knot/zones/
-        file: example.com.zone
-        master: master
-        notify: slave1
-        acl: [notify_from_master, slave1_acl, others_acl]
+        notify: secondary                     # Secondary remote(s)
+        acl: local_xfr                        # Explicit ACL for local XFR
+
+Note that the :ref:`zone_notify` option accepts a list of remotes, which are
+all notified sequentially in the specified order.
+
+A secondary zone may serve as a primary zone for a different set of remotes
+at the same time.
 
 Dynamic updates
 ===============
@@ -318,7 +287,6 @@ processed::
 
     zone:
       - domain: example.com
-        file: example.com.zone
         acl: update_acl
 
 .. _dnssec:

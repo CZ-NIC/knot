@@ -1143,9 +1143,9 @@ An ordered list of \fI\%references\fP to remote server definitions.
 \fIDefault:\fP not set
 .SH ACL SECTION
 .sp
-Access control list rule definitions. The ACLs are used to match incoming
-connections to allow or deny requested operation (zone transfer request, DDNS
-update, etc.).
+Access control list rule definitions. An ACL rule is a description of one
+or more authorized operations (zone transfer request, zone change notification,
+and dynamic DNS update) which are allowed to be processed or denied.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -1205,11 +1205,11 @@ An ordered list of allowed (or denied) actions.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBnotify\fP – Allow incoming notify.
+\fBnotify\fP – Allow incoming notify (NOTIFY).
 .IP \(bu 2
-\fBtransfer\fP – Allow zone transfer.
+\fBtransfer\fP – Allow zone transfer (AXFR, IXFR).
 .IP \(bu 2
-\fBupdate\fP – Allow zone updates.
+\fBupdate\fP – Allow zone updates (DDNS).
 .UNINDENT
 .sp
 \fIDefault:\fP not set
