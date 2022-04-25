@@ -433,29 +433,9 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
 
 	printf("RECV stream data %zu [ %02x %02x ... ] (size %d) flags %u\n", datalen, datalen > 0 ? data[0] : 0, datalen > 1 ? data[1] : 0, (int)be16toh(*(uint16_t *)data), flags);
 
-	if (datalen < sizeof(uint16_t)) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-	uint16_t len_prefix = knot_wire_read_u16(data);
-	data += sizeof(len_prefix);
-	datalen -= sizeof(len_prefix);
+	int ret = knot_xquic_stream_recv_data(ctx, stream_id, data, datalen, (flags & NGTCP2_STREAM_DATA_FLAG_FIN));
 
-	if (!(flags & NGTCP2_STREAM_DATA_FLAG_FIN) || datalen != len_prefix) {
-		return NGTCP2_ERR_CALLBACK_FAILURE; // TODO check if this idea is correct: if we receive partial data, we "refuse" to process them so that ngtcp2 buffers them all until FIN received
-	}
-
-	knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(ctx, stream_id, true);
-	if (stream == NULL || stream->state != XQUIC_STREAM_FREED) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-
-	ctx->last_stream = stream_id;
-
-	stream->state = XQUIC_STREAM_RECVD;
-	stream->inbuf.iov_base = (uint8_t *)data;
-	stream->inbuf.iov_len = datalen;
-
-	return 0;
+	return ret == KNOT_EOK ? 0 : NGTCP2_ERR_CALLBACK_FAILURE;
 }
 
 static int acked_stream_data_offset_cb(ngtcp2_conn *conn, int64_t stream_id,

@@ -28,6 +28,7 @@
 
 #include "libknot/attribute.h"
 #include "libknot/error.h"
+#include "libknot/xdp/tcp_iobuf.h"
 #include "libknot/wire.h"
 
 #define STREAM_INCR 4 // DoQ only uses client-initiated bi-directional streams, so stream IDs increment by four
@@ -248,6 +249,45 @@ knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn, int64_
 		return &xconn->streams[stream_id - xconn->streams_first];
 	}
 	return NULL;
+}
+
+int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, const uint8_t *data, size_t len, bool fin)
+{
+	if (len == 0) {
+		return KNOT_EINVAL;
+	}
+
+	knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(xconn, stream_id, true);
+	if (stream == NULL) {
+		return KNOT_ENOENT;
+	}
+
+	if (stream->state == XQUIC_STREAM_FREED) {
+		xconn->last_stream = stream_id;
+		stream->state = XQUIC_STREAM_RECVING;
+		if (stream->inbuf.iov_len != 0) {
+			return KNOT_ESEMCHECK;
+		}
+	}
+	if (stream->state != XQUIC_STREAM_RECVING) {
+		return KNOT_ESEMCHECK;
+	}
+
+	struct iovec in = { (void *)data, len }, *outs;
+	size_t outs_count;
+	int ret = tcp_inbuf_update(&stream->inbuf, in, &outs, &outs_count, &xconn->ibufs_size);
+	if (ret != KNOT_EOK || (outs_count == 0 && !fin)) {
+		return ret;
+	}
+	if (outs_count != 1 || !fin) {
+		free(outs);
+		return KNOT_ESEMCHECK;
+	}
+
+	stream->state = XQUIC_STREAM_RECVD;
+	stream->inbuf = outs[0];
+	free(outs);
+	return KNOT_EOK;
 }
 
 uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id, uint8_t *data, size_t len)

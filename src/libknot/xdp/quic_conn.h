@@ -31,6 +31,7 @@ typedef struct knot_xquic_ucw_list {
 
 typedef enum {
 	XQUIC_STREAM_FREED = 0,
+	XQUIC_STREAM_RECVING,
 	XQUIC_STREAM_RECVD,
 	XQUIC_STREAM_ANSWD,
 	XQUIC_STREAM_SENT,
@@ -67,6 +68,7 @@ typedef struct knot_xquic_conn {
 	knot_xquic_stream_t *streams;
 	int64_t streams_count; // number of allocated streams structures
 	int64_t streams_first; // stream_id/4 of first allocated stream
+	size_t ibufs_size; // FIXME also global statistics of this counter; sweeping conns based on this
 	size_t obufs_size;
 	int64_t last_stream; // just temporary for signalling last affected stream
 
@@ -118,6 +120,8 @@ void xquic_table_rem2(knot_xquic_conn_t **pconn, knot_xquic_table_t *table);
 void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
 
 knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn, int64_t stream_id, bool create);
+
+int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, const uint8_t *data, size_t len, bool fin);
 
 uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id, uint8_t *data, size_t len);
 
