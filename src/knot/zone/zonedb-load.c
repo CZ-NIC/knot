@@ -82,6 +82,24 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	return zone;
 }
 
+static void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone)
+{
+	bool conf_updated = (old_zone->change_type & CONF_IO_TRELOAD);
+
+	conf_val_t digest = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
+	if (zone->contents != NULL && !zone_contents_digest_exists(zone->contents, conf_opt(&digest), true)) {
+		conf_updated = true;
+	}
+
+	zone->events.ufrozen = old_zone->events.ufrozen;
+	if ((zone_file_updated(conf, old_zone, zone->name) || conf_updated) && !zone_expired(zone)) {
+		replan_load_updated(zone, old_zone);
+	} else {
+		zone->zonefile = old_zone->zonefile;
+		replan_load_current(conf, zone, old_zone);
+	}
+}
+
 static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
                                   server_t *server, zone_t *old_zone)
 {
@@ -95,21 +113,6 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 
 	zone->timers = old_zone->timers;
 	zone_timers_sanitize(conf, zone);
-
-	bool conf_updated = (old_zone->change_type & CONF_IO_TRELOAD);
-
-	conf_val_t digest = conf_zone_get(conf, C_ZONEMD_GENERATE, name);
-	if (zone->contents != NULL && !zone_contents_digest_exists(zone->contents, conf_opt(&digest), true)) {
-		conf_updated = true;
-	}
-
-	zone->events.ufrozen = old_zone->events.ufrozen;
-	if ((zone_file_updated(conf, old_zone, name) || conf_updated) && !zone_expired(zone)) {
-		replan_load_updated(zone, old_zone);
-	} else {
-		zone->zonefile = old_zone->zonefile;
-		replan_load_current(conf, zone, old_zone);
-	}
 
 	if (old_zone->control_update != NULL) {
 		log_zone_warning(old_zone->name, "control transaction aborted");
@@ -509,13 +512,19 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 		zone_t *zone = knot_zonedb_iter_val(it);
 		if (full) {
 			/* Check if reloaded (reused contents). */
-			if (knot_zonedb_find(db_new, zone->name)) {
+			zone_t *new_zone = knot_zonedb_find(db_new, zone->name);
+			if (new_zone != NULL) {
+				replan_events(conf, new_zone, zone);
 				zone->contents = NULL;
 			}
 			/* Completely new zone. */
 		} else {
 			/* Check if reloaded (reused contents). */
 			if (zone->change_type & CONF_IO_TRELOAD) {
+				zone_t *new_zone = knot_zonedb_find(db_new, zone->name);
+				assert(new_zone);
+				replan_events(conf, new_zone, zone);
+
 				zone->contents = NULL;
 				zone_free(&zone);
 			/* Check if removed (drop also contents). */
@@ -607,6 +616,8 @@ int zone_reload_modules(conf_t *conf, server_t *server, const knot_dname_t *zone
 
 	zone_t *oldzone = rcu_xchg_pointer(zone, newzone);
 	synchronize_rcu();
+
+	replan_events(conf, newzone, oldzone);
 
 	assert(newzone->contents == oldzone->contents);
 	oldzone->contents = NULL; // contents have been re-used by newzone
