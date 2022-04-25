@@ -221,10 +221,10 @@ int evsched_cancel(event_t *ev)
 	int found = heap_find(&sched->heap, (heap_val_t *)ev);
 	if (found > 0) {
 		heap_delete(&sched->heap, found);
+		pthread_cond_signal(&sched->notify);
 	}
 
 	/* Unlock calendar. */
-	pthread_cond_signal(&sched->notify);
 	pthread_mutex_unlock(&sched->heap_lock);
 
 	/* Reset event timer. */
