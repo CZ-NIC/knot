@@ -139,9 +139,6 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	/* Flush journal. */
 	if (journal_is_existing(j)) {
 		ret = journal_set_flushed(j);
-		if (ret != KNOT_EOK) {
-			goto flush_journal_replan;
-		}
 	}
 
 flush_journal_replan:
