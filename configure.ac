@@ -171,7 +171,9 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
         [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset available])
          gnutls_memset=yes], [gnutls_memset=no])
 
-    AC_CHECK_FUNC([gnutls_early_cipher_get], [gnutls_quic=yes], [gnutls_quic=no])
+    AC_CHECK_DECL([GNUTLS_NO_END_OF_EARLY_DATA],
+        [AC_CHECK_FUNC([gnutls_early_cipher_get], [gnutls_quic=yes], [gnutls_quic=no])],
+        [gnutls_quic=no])
 
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
