@@ -272,6 +272,10 @@ static void event_loop(server_t *server, const char *socket)
 		// Update control timeout.
 		knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
 
+		if (sig_req_reload || sig_req_zones_reload) {
+			continue;
+		}
+
 		ret = knot_ctl_accept(ctl);
 		if (ret != KNOT_EOK) {
 			continue;
