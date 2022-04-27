@@ -195,6 +195,7 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 	/* Make sure it's not already enqueued. */
 	int found = heap_find(&sched->heap, (heap_val_t *)ev);
 	if (found > 0) {
+		/* "Replacing" with itself -- just repositioning it. */
 		heap_replace(&sched->heap, found, (heap_val_t *)ev);
 	} else {
 		heap_insert(&sched->heap, (heap_val_t *)ev);

@@ -108,7 +108,7 @@ static void heap_decrease(struct heap *h, int pos, heap_val_t *e)
 
 void heap_replace(struct heap *h, int pos, heap_val_t *e)
 {
-	if (h->cmp(*HELEMENT(h, pos),e) < 0) {
+	if (pos == 1 || h->cmp(*HELEMENT(h, pos / 2), e) < 0) {
 		heap_increase(h, pos, e);
 	} else {
 		heap_decrease(h, pos, e);
