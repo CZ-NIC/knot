@@ -200,6 +200,7 @@ server:
     udp\-max\-payload\-ipv6: SIZE
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
+    automatic\-acl: BOOL
     dbus\-event: none | running | zone\-updated | ksk\-submission | dnssec\-invalid ...
     listen: ADDR[@INT] ...
 .ft P
@@ -434,6 +435,12 @@ always contain a valid EDNS Client Subnet option according to \fI\%RFC 7871\fP\&
 .sp
 Enable or disable sorted\-rrset rotation in the answer section of normal replies.
 The rotation shift is simply determined by a query ID.
+.sp
+\fIDefault:\fP off
+.SS automatic\-acl
+.sp
+If enabled, \fI\%automatic ACL\fP setting of
+configured remotes is considered when evaluating autorized operations.
 .sp
 \fIDefault:\fP off
 .SS dbus\-event
@@ -1034,6 +1041,7 @@ remote:
     key: key_id
     block\-notify\-after\-transfer: BOOL
     no\-edns: BOOL
+    automatic\-acl: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -1085,6 +1093,30 @@ remote server. This mode is necessary for communication with some broken
 implementations (e.g. Windows Server 2016).
 .sp
 \fIDefault:\fP off
+.SS automatic\-acl
+.sp
+If enabled, some authorized operations for the remote are automatically allowed
+based on the context:
+.INDENT 0.0
+.IP \(bu 2
+Incoming NOTIFY is allowed from the remote if it\(aqs configured as a
+\fI\%primary server\fP for the zone.
+.IP \(bu 2
+Outgoing zone transfer is allowed to the remote if it\(aqs configured as a
+\fI\%NOTIFY target\fP for the zone.
+.UNINDENT
+.sp
+Automatic ACL rules are evaluated before explicit \fI\%zone ACL\fP configuration.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This functionality requires global activation via
+\fI\%automatic\-acl\fP in the server section.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP on
 .SH REMOTES SECTION
 .sp
 Definitions of groups of remote servers. Remote grouping can simplify the
@@ -1111,9 +1143,9 @@ An ordered list of \fI\%references\fP to remote server definitions.
 \fIDefault:\fP not set
 .SH ACL SECTION
 .sp
-Access control list rule definitions. The ACLs are used to match incoming
-connections to allow or deny requested operation (zone transfer request, DDNS
-update, etc.).
+Access control list rule definitions. An ACL rule is a description of one
+or more authorized operations (zone transfer request, zone change notification,
+and dynamic DNS update) which are allowed to be processed or denied.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -1173,11 +1205,11 @@ An ordered list of allowed (or denied) actions.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBnotify\fP – Allow incoming notify.
+\fBnotify\fP – Allow incoming notify (NOTIFY).
 .IP \(bu 2
-\fBtransfer\fP – Allow zone transfer.
+\fBtransfer\fP – Allow zone transfer (AXFR, IXFR).
 .IP \(bu 2
-\fBupdate\fP – Allow zone updates.
+\fBupdate\fP – Allow zone updates (DDNS).
 .UNINDENT
 .sp
 \fIDefault:\fP not set
