@@ -68,13 +68,13 @@ void heap_deinit(struct heap *h)
 static inline void _heap_bubble_down(struct heap *h, int e)
 {
 	int e1;
-	for (;;)
-	{
-		e1 = 2*e;
-		if(e1 > h->num) break;
-		if((h->cmp(*HELEMENT(h, e),*HELEMENT(h,e1)) < 0) && (e1 == h->num || (h->cmp(*HELEMENT(h, e),*HELEMENT(h,e1+1)) < 0))) break;
-		if((e1 != h->num) && (h->cmp(*HELEMENT(h, e1+1), *HELEMENT(h,e1)) < 0)) e1++;
-		heap_swap(HELEMENT(h,e),HELEMENT(h,e1));
+	for (;;) {
+		e1 = 2 * e;
+		if (e1 > h->num) break;
+		if ((h->cmp(*HELEMENT(h, e), *HELEMENT(h, e1)) < 0) &&
+		    (e1 == h->num || (h->cmp(*HELEMENT(h, e), *HELEMENT(h, e1 + 1)) < 0))) break;
+		if ((e1 != h->num) && (h->cmp(*HELEMENT(h, e1 + 1), *HELEMENT(h, e1)) < 0)) e1++;
+		heap_swap(HELEMENT(h, e), HELEMENT(h, e1));
 		e = e1;
 	}
 }
@@ -82,14 +82,12 @@ static inline void _heap_bubble_down(struct heap *h, int e)
 static inline void _heap_bubble_up(struct heap *h, int e)
 {
 	int e1;
-	while (e > 1)
-	{
-		e1 = e/2;
-		if(h->cmp(*HELEMENT(h, e1),*HELEMENT(h,e)) < 0) break;
-		heap_swap(HELEMENT(h,e),HELEMENT(h,e1));
+	while (e > 1) {
+		e1 = e / 2;
+		if (h->cmp(*HELEMENT(h, e1), *HELEMENT(h, e)) < 0) break;
+		heap_swap(HELEMENT(h, e), HELEMENT(h, e1));
 		e = e1;
 	}
-
 }
 
 void heap_replace(struct heap *h, int pos, heap_val_t *e)
@@ -106,20 +104,18 @@ void heap_replace(struct heap *h, int pos, heap_val_t *e)
 
 void heap_delmin(struct heap *h)
 {
-	if(h->num == 0) return;
-	if(h->num > 1)
-	{
-		heap_swap(HHEAD(h),HELEMENT(h,h->num));
+	if (h->num == 0) return;
+	if (h->num > 1) {
+		heap_swap(HHEAD(h), HELEMENT(h, h->num));
 	}
 	(*HELEMENT(h, h->num))->pos = 0;
-	--h->num;
+	h->num--;
 	_heap_bubble_down(h, 1);
 }
 
 int heap_insert(struct heap *h, heap_val_t *e)
 {
-	if(h->num == h->max_size)
-	{
+	if (h->num == h->max_size) {
 		h->max_size = h->max_size * HEAP_INCREASE_STEP;
 		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t*));
 		if (!h->data) {
@@ -128,9 +124,9 @@ int heap_insert(struct heap *h, heap_val_t *e)
 	}
 
 	h->num++;
-	*HELEMENT(h,h->num) = e;
+	*HELEMENT(h, h->num) = e;
 	e->pos = h->num;
-	_heap_bubble_up(h,h->num);
+	_heap_bubble_up(h, h->num);
 	return 1;
 }
 
@@ -144,11 +140,13 @@ void heap_delete(struct heap *h, int e)
 	heap_swap(HELEMENT(h, e), HELEMENT(h, h->num));
 	(*HELEMENT(h, h->num))->pos = 0;
 	h->num--;
-	if(h->cmp(*HELEMENT(h, e), *HELEMENT(h, h->num + 1)) < 0) _heap_bubble_up(h, e);
-	else _heap_bubble_down(h, e);
+	if (h->cmp(*HELEMENT(h, e), *HELEMENT(h, h->num + 1)) < 0) {
+		_heap_bubble_up(h, e);
+	} else {
+		_heap_bubble_down(h, e);
+	}
 
-	if ((h->num > INITIAL_HEAP_SIZE) && (h->num < h->max_size / HEAP_DECREASE_THRESHOLD))
-	{
+	if ((h->num > INITIAL_HEAP_SIZE) && (h->num < h->max_size / HEAP_DECREASE_THRESHOLD)) {
 		h->max_size = h->max_size / HEAP_INCREASE_STEP;
 		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t*));
 	}
