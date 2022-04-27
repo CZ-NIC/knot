@@ -1,7 +1,7 @@
 /*
  * ngtcp2
  *
- * Copyright (c) 2016 ngtcp2 contributors
+ * Copyright (c) 2022 ngtcp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,30 +22,19 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef VERSION_H
-#define VERSION_H
+#include "ngtcp2_objalloc.h"
 
-/**
- * @macrosection
- *
- * Library version macros
- */
+void ngtcp2_objalloc_init(ngtcp2_objalloc *objalloc, size_t blklen,
+                          const ngtcp2_mem *mem) {
+  ngtcp2_balloc_init(&objalloc->balloc, blklen, mem);
+  ngtcp2_opl_init(&objalloc->opl);
+}
 
-/**
- * @macro
- *
- * Version number of the ngtcp2 library release.
- */
-#define NGTCP2_VERSION "0.4.0"
+void ngtcp2_objalloc_free(ngtcp2_objalloc *objalloc) {
+  ngtcp2_balloc_free(&objalloc->balloc);
+}
 
-/**
- * @macro
- *
- * Numerical representation of the version number of the ngtcp2
- * library release. This is a 24 bit number with 8 bits for major
- * number, 8 bits for minor and 8 bits for patch. Version 1.2.3
- * becomes 0x010203.
- */
-#define NGTCP2_VERSION_NUM 0x000400
-
-#endif /* VERSION_H */
+void ngtcp2_objalloc_clear(ngtcp2_objalloc *objalloc) {
+  ngtcp2_opl_clear(&objalloc->opl);
+  ngtcp2_balloc_clear(&objalloc->balloc);
+}

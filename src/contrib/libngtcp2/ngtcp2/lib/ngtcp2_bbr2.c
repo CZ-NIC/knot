@@ -336,6 +336,7 @@ static void bbr_on_init(ngtcp2_bbr2_cc *bbr, ngtcp2_conn_stat *cstat,
   bbr->max_inflight = 0;
 
   bbr->congestion_recovery_start_ts = UINT64_MAX;
+  bbr->congestion_recovery_next_round_delivered = 0;
 
   bbr->prior_inflight_lo = 0;
   bbr->prior_inflight_hi = 0;
@@ -672,7 +673,7 @@ static void bbr_start_probe_bw_down(ngtcp2_bbr2_cc *bbr, ngtcp2_tstamp ts) {
   bbr_start_round(bbr);
 
   bbr->state = NGTCP2_BBR2_STATE_PROBE_BW_DOWN;
-  bbr->pacing_gain = 0.75;
+  bbr->pacing_gain = 0.9;
   bbr->cwnd_gain = 2;
 }
 
@@ -770,6 +771,8 @@ static void bbr_update_probe_bw_cycle_phase(ngtcp2_bbr2_cc *bbr,
 
 static int bbr_check_time_to_cruise(ngtcp2_bbr2_cc *bbr,
                                     ngtcp2_conn_stat *cstat, ngtcp2_tstamp ts) {
+  (void)ts;
+
   if (cstat->bytes_in_flight > bbr_inflight_with_headroom(bbr, cstat)) {
     return 0;
   }
@@ -778,7 +781,7 @@ static int bbr_check_time_to_cruise(ngtcp2_bbr2_cc *bbr,
     return 1;
   }
 
-  return bbr_has_elapsed_in_phase(bbr, bbr->min_rtt, ts);
+  return 0;
 }
 
 static int bbr_has_elapsed_in_phase(ngtcp2_bbr2_cc *bbr,
@@ -1192,7 +1195,7 @@ static void bbr_modulate_cwnd_for_recovery(ngtcp2_bbr2_cc *bbr,
   if (ack->bytes_lost > 0) {
     if (cstat->cwnd > ack->bytes_lost) {
       cstat->cwnd -= ack->bytes_lost;
-      cstat->cwnd = ngtcp2_max(cstat->cwnd, cstat->max_udp_payload_size);
+      cstat->cwnd = ngtcp2_max(cstat->cwnd, 2 * cstat->max_udp_payload_size);
     } else {
       cstat->cwnd = cstat->max_udp_payload_size;
     }
@@ -1301,7 +1304,7 @@ static int in_congestion_recovery(const ngtcp2_conn_stat *cstat,
 static void bbr_handle_recovery(ngtcp2_bbr2_cc *bbr, ngtcp2_conn_stat *cstat,
                                 const ngtcp2_cc_ack *ack) {
   if (bbr->in_loss_recovery) {
-    if (bbr->round_start) {
+    if (ack->pkt_delivered >= bbr->congestion_recovery_next_round_delivered) {
       bbr->packet_conservation = 0;
     }
 
@@ -1323,6 +1326,7 @@ static void bbr_handle_recovery(ngtcp2_bbr2_cc *bbr, ngtcp2_conn_stat *cstat,
     cstat->congestion_recovery_start_ts = bbr->congestion_recovery_start_ts;
     bbr->congestion_recovery_start_ts = UINT64_MAX;
     bbr->packet_conservation = 1;
+    bbr->congestion_recovery_next_round_delivered = bbr->rst->delivered;
     bbr->prior_inflight_lo = bbr->inflight_lo;
     bbr->prior_bw_lo = bbr->bw_lo;
   }

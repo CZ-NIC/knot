@@ -71,6 +71,8 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr2.c
@@ -102,10 +104,17 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_map.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_map.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_mem.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_mem.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_net.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_objalloc.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_objalloc.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_opl.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_opl.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_path.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_path.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_pmtud.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_pmtud.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_ppe.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_ppe.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_pq.c
@@ -129,6 +138,7 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_version.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.c

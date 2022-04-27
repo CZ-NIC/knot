@@ -1,7 +1,7 @@
 /*
  * ngtcp2
  *
- * Copyright (c) 2016 ngtcp2 contributors
+ * Copyright (c) 2022 ngtcp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,30 +22,44 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef VERSION_H
-#define VERSION_H
+#ifndef NGTCP2_OPL_H
+#define NGTCP2_OPL_H
 
-/**
- * @macrosection
- *
- * Library version macros
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif /* HAVE_CONFIG_H */
+
+#include <ngtcp2/ngtcp2.h>
+
+typedef struct ngtcp2_opl_entry ngtcp2_opl_entry;
+
+struct ngtcp2_opl_entry {
+  ngtcp2_opl_entry *next;
+};
+
+/*
+ * ngtcp2_opl is an object memory pool.
  */
+typedef struct ngtcp2_opl {
+  ngtcp2_opl_entry *head;
+} ngtcp2_opl;
 
-/**
- * @macro
- *
- * Version number of the ngtcp2 library release.
+/*
+ * ngtcp2_opl_init initializes |opl|.
  */
-#define NGTCP2_VERSION "0.4.0"
+void ngtcp2_opl_init(ngtcp2_opl *opl);
 
-/**
- * @macro
- *
- * Numerical representation of the version number of the ngtcp2
- * library release. This is a 24 bit number with 8 bits for major
- * number, 8 bits for minor and 8 bits for patch. Version 1.2.3
- * becomes 0x010203.
+/*
+ * ngtcp2_opl_push inserts |ent| to |opl| head.
  */
-#define NGTCP2_VERSION_NUM 0x000400
+void ngtcp2_opl_push(ngtcp2_opl *opl, ngtcp2_opl_entry *ent);
 
-#endif /* VERSION_H */
+/*
+ * ngtcp2_opl_pop removes the first ngtcp2_opl_entry from |opl| and
+ * returns it.  If |opl| does not have any entry, it returns NULL.
+ */
+ngtcp2_opl_entry *ngtcp2_opl_pop(ngtcp2_opl *opl);
+
+void ngtcp2_opl_clear(ngtcp2_opl *opl);
+
+#endif /* NGTCP2_OPL_H */
