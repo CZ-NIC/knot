@@ -105,6 +105,21 @@ static int acked_stream_data_offset_cb(ngtcp2_conn *conn, int64_t stream_id,
 	return KNOT_EOK;
 }
 
+static int stream_open_cb(ngtcp2_conn *conn, int64_t stream_id,
+        void *user_data)
+{
+	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
+	// Error: is NOT client initialized bidirectional stream
+	if (stream_id % 4 != 0) {
+		const char message[] = "Server can't open streams.";
+		ngtcp2_connection_close_error_set_application_error(
+		        &ctx->last_err, DOQ_PROTOCOL_ERROR, message,
+		        sizeof(message) - 1);
+		return NGTCP2_ERR_CALLBACK_FAILURE;
+	}
+	return KNOT_EOK;
+}
+
 static int stream_close_cb(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
         uint64_t app_error_code, void *user_data, void *stream_user_data)
 {
@@ -198,7 +213,7 @@ static const ngtcp2_callbacks quic_client_callbacks = {
 	ngtcp2_crypto_hp_mask_cb,
 	recv_stream_data_cb,
 	acked_stream_data_offset_cb,
-	NULL, /* stream_open */
+	stream_open_cb,
 	stream_close_cb,
 	NULL, /* recv_stateless_reset */
 	ngtcp2_crypto_recv_retry_cb,
@@ -285,16 +300,8 @@ static int alert_read_func(gnutls_session_t session,
 	(void)alert_level;
 
 	quic_ctx_t *ctx = (quic_ctx_t *)gnutls_session_get_ptr(session);
-	// TODO new ngtcp2 version
-	// ngtcp2_connection_close_error_set_transport_error_tls_alert(
-	//         &ctx->last_err, alert, NULL, 0);
-	// Workaround
-	ctx->last_err = (ngtcp2_connection_close_error) {
-		.type = NGTCP2_CONNECTION_CLOSE_ERROR_CODE_TYPE_TRANSPORT,
-		.error_code = NGTCP2_CRYPTO_ERROR | alert,
-		.reason = NULL,
-		.reasonlen = 0
-	};
+	ngtcp2_connection_close_error_set_transport_error_tls_alert(
+	        &ctx->last_err, alert, NULL, 0);
 
 	return GNUTLS_E_SUCCESS;
 }
@@ -385,6 +392,8 @@ int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx,
 	ctx->state = OPENING;
 	ctx->stream.id = -1;
 	ctx->timestamp = quic_timestamp();
+	ngtcp2_connection_close_error_set_application_error(&ctx->last_err,
+	        DOQ_NO_ERROR, NULL, 0);
 	if (quic_generate_secret(ctx->secret, sizeof(ctx->secret)) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
@@ -453,17 +462,12 @@ static int quic_send_data(quic_ctx_t *ctx, int sockfd, const struct addrinfo *ds
 			case NGTCP2_ERR_PKT_NUM_EXHAUSTED:
 			case NGTCP2_ERR_CALLBACK_FAILURE:
 			case NGTCP2_ERR_INVALID_ARGUMENT:
-				printf("ngtcp2_conn_write_stream: %s\n", ngtcp2_strerror(nwrite));
-				// TODO newer version
-				// ngtcp2_connection_close_error_set_transport_error()
-				// Workaround
-				ctx->last_err = (ngtcp2_connection_close_error) {
-					.type = NGTCP2_CONNECTION_CLOSE_ERROR_CODE_TYPE_TRANSPORT,
-					.error_code = ngtcp2_err_infer_quic_transport_error_code(nwrite),
-					.reason = NULL,
-					.reasonlen = 0
-				};
-
+				printf("ngtcp2_conn_write_stream: %s\n",
+				        ngtcp2_strerror(nwrite));
+				ngtcp2_connection_close_error_set_transport_error(
+				        &ctx->last_err,
+				        ngtcp2_err_infer_quic_transport_error_code(nwrite),
+				        NULL, 0);
 				// TODO
 				// disconnect();
 				return KNOT_NET_ESEND;	
@@ -678,15 +682,8 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 			case NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM:
 			case NGTCP2_ERR_TRANSPORT_PARAM:
 			case NGTCP2_ERR_PROTO:
-				// TODO newer ngtcp2 (??)
-				// ngtcp2_connection_close_error_set_transport_error(&ctx->last_err, nwrite, NULL, 0);
-				// Workaround
-				ctx->last_err = (ngtcp2_connection_close_error) {
-					.type = NGTCP2_CONNECTION_CLOSE_ERROR_CODE_TYPE_TRANSPORT,
-					.error_code = nwrite,
-					.reason = NULL,
-					.reasonlen = 0
-				};
+				ngtcp2_connection_close_error_set_transport_error(
+				        &ctx->last_err, nwrite, NULL, 0);
 				break;
 			case NGTCP2_ERR_CRYPTO:
 				if (!ctx->last_err.error_code) {
@@ -695,16 +692,9 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, const char *remote,
 				// [[ fallthrough ]]
 			default:
 				if (!ctx->last_err.error_code) {
-					// TODO newer ngtcp2 (??)
-					// ngtcp2_connection_close_error_set_transport_error(&ctx->last_err, nwrite, NULL, 0);
-					// Workaround
-					ctx->last_err = (ngtcp2_connection_close_error) {
-						.type = NGTCP2_CONNECTION_CLOSE_ERROR_CODE_TYPE_TRANSPORT,
-						.error_code = nwrite,
-						.reason = NULL,
-						.reasonlen = 0
-					};
-
+					ngtcp2_connection_close_error_set_transport_error(
+					        &ctx->last_err, nwrite, NULL,
+					        0);
 				}
 			}
 			return KNOT_NET_ECONNECT;
@@ -857,8 +847,7 @@ void quic_ctx_close(quic_ctx_t *ctx)
 
 	ngtcp2_ssize nwrite = ngtcp2_conn_write_connection_close(ctx->conn,
 	        (ngtcp2_path *)ngtcp2_conn_get_path(ctx->conn),
-	        &ctx->pi, enc_buf, sizeof(enc_buf), ctx->last_err.error_code,
-	        ctx->last_err.reason, ctx->last_err.reasonlen,
+	        &ctx->pi, enc_buf, sizeof(enc_buf), &ctx->last_err,
 	        quic_timestamp());
 	if (nwrite <= 0) {
 		return;
