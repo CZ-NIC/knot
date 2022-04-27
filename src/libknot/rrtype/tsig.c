@@ -100,7 +100,12 @@ static uint8_t* rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 	case TSIG_OTHER_O:
 		wire_ctx_skip(&wire, alg_len + 4 * sizeof(uint16_t));
 		wire_ctx_skip(&wire, wire_ctx_read_u16(&wire));
-		wire_ctx_skip(&wire, 3 * sizeof(uint16_t));
+		wire_ctx_skip(&wire, 2 * sizeof(uint16_t));
+		assert(nb == 0);
+		nb = wire_ctx_read_u16(&wire);
+		if (wire_ctx_available(&wire) != nb) {
+			return NULL;
+		}
 		break;
 	}
 
@@ -395,7 +400,6 @@ size_t knot_tsig_wire_maxsize(const knot_tsig_key_t *key)
 _public_
 bool knot_tsig_rdata_is_ok(const knot_rrset_t *tsig)
 {
-	/*! \todo Check size, needs to check variable-length fields. */
 	return (tsig != NULL
 	        && knot_rdataset_at(&tsig->rrs, 0) != NULL
 	        && rdata_seek(tsig, TSIG_OTHER_O, 0) != NULL
