@@ -1,3 +1,22 @@
+Knot DNS 3.0.11 (2022-04-28)
+============================
+
+Improvements:
+-------------
+ - doc: various fixes and improvements
+
+Bugfixes:
+---------
+ - knotd/libknot: the server can crash when validating a malformed TSIG record
+ - knotd: public-only key makes DNSSEC signing fail
+ - knotd: frozen zone gets thawed during server reload
+ - knotd: zone refresh not started if planned during server reload
+ - knotd: some planned zone events can be lost during server reload
+ - knotd: propagation delay not considered before DS push
+ - knotd: duplicate KSK submission log message during a KSK rollover
+ - mod-cookies: missing server cookie in responses over TCP
+ - knsupdate: missing section names in the show output
+
 Knot DNS 3.0.10 (2021-11-04)
 ============================
 
