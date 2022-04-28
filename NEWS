@@ -1,3 +1,25 @@
+Knot DNS 3.1.8 (2022-04-28)
+===========================
+
+Features:
+---------
+ - knotd: optional automatic ACL for XFR and NOTIFY (see 'remote.automatic-acl')
+ - knotd: new soft zone semantic check mode for allowing defective zone loading
+ - knotc: added zone transfer freeze state to the zone status output
+
+Improvements:
+-------------
+ - knotd: added configuration check for serial policy of generated catalogs
+
+Bugfixes:
+---------
+ - knotd/libknot: the server can crash when validating a malformed TSIG record
+ - knotd: outgoing zone transfer freeze not preserved during server reload
+ - knotd: catalog UPDATE not processed if previous UPDATE processing not finished #790
+ - knotd: zone refresh not started if planned during server reload
+ - knotd: generated catalogs can be queried over UDP
+ - knotd/utils: failed to open LMDB database if too many stale slots occupy the lock table
+
 Knot DNS 3.1.7 (2022-03-30)
 ===========================
 
