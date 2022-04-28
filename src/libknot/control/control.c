@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,6 +41,9 @@
 
 /*! Default socket operations timeout in milliseconds. */
 #define DEFAULT_TIMEOUT		(5 * 1000)
+
+/*! Accept poll timeout in milliseconds. */
+#define ACCEPT_TIMEOUT		(5 * 1000)
 
 /*! The first data item code. */
 #define DATA_CODE_OFFSET	16
@@ -251,9 +254,9 @@ int knot_ctl_accept(knot_ctl_t *ctx)
 
 	// Control interface.
 	struct pollfd pfd = { .fd = ctx->listen_sock, .events = POLLIN };
-	int ret = poll(&pfd, 1, -1);
+	int ret = poll(&pfd, 1, ACCEPT_TIMEOUT);
 	if (ret <= 0) {
-		return knot_map_errno();
+		return (ret == 0) ? KNOT_ETIMEOUT : knot_map_errno();
 	}
 
 	int client = net_accept(ctx->listen_sock, NULL);
