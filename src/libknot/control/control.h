@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -121,7 +121,9 @@ int knot_ctl_connect(knot_ctl_t *ctx, const char *path);
  *
  * \param[in] ctx  Control context.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \retval KNOT_EOK       if successful.
+ * \retval KNOT_ETIMEOUT  if no connection accepted during ACCEPT_TIMEOUT interval.
+ * \retval KNOT_E*        if error.
  */
 int knot_ctl_accept(knot_ctl_t *ctx);
 

@@ -56,6 +56,7 @@ static void replan_from_zone(zone_t *zone, zone_t *old_zone)
 	replan_ddns(zone, old_zone);
 
 	const zone_event_type_t types[] = {
+		ZONE_EVENT_REFRESH,
 		ZONE_EVENT_FLUSH,
 		ZONE_EVENT_BACKUP,
 		ZONE_EVENT_NOTIFY,
