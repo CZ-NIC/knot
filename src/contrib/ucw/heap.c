@@ -92,26 +92,15 @@ static inline void _heap_bubble_up(struct heap *h, int e)
 
 }
 
-static void heap_increase(struct heap *h, int pos, heap_val_t *e)
-{
-	*HELEMENT(h, pos) = e;
-	e->pos = pos;
-	_heap_bubble_down(h, pos);
-}
-
-static void heap_decrease(struct heap *h, int pos, heap_val_t *e)
-{
-	*HELEMENT(h, pos) = e;
-	e->pos = pos;
-	_heap_bubble_up(h, pos);
-}
-
 void heap_replace(struct heap *h, int pos, heap_val_t *e)
 {
+	*HELEMENT(h, pos) = e;
+	e->pos = pos;
+
 	if (pos == 1 || h->cmp(*HELEMENT(h, pos / 2), e) < 0) {
-		heap_increase(h, pos, e);
+		_heap_bubble_down(h, pos);
 	} else {
-		heap_decrease(h, pos, e);
+		_heap_bubble_up(h, pos);
 	}
 }
 
