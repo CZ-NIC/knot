@@ -440,7 +440,7 @@ The rotation shift is simply determined by a query ID.
 .SS automatic\-acl
 .sp
 If enabled, \fI\%automatic ACL\fP setting of
-configured remotes is considered when evaluating autorized operations.
+configured remotes is considered when evaluating authorized operations.
 .sp
 \fIDefault:\fP off
 .SS dbus\-event
