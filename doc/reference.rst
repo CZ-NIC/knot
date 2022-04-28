@@ -472,7 +472,7 @@ automatic-acl
 -------------
 
 If enabled, :ref:`automatic ACL<remote_automatic-acl>` setting of
-configured remotes is considered when evaluating autorized operations.
+configured remotes is considered when evaluating authorized operations.
 
 *Default:* off
 
