@@ -148,7 +148,16 @@ void *memzero(void *s, size_t n)
 					/* In FreeBSD since 11.0. */
 					/* In glibc since 2.25. */
 					/* In DragonFly BSD since 5.5. */
+#  if defined(__has_feature)
+#    if __has_feature(memory_sanitizer)
+	#warning "Memory sanitizer detected. Using bzero() instead of explicit_bzero()."
+	bzero(s, n);
+#    else
 	explicit_bzero(s, n);
+#    endif
+#  else
+	explicit_bzero(s, n);
+#  endif
 	return s;
 #elif defined(HAVE_EXPLICIT_MEMSET)	/* In NetBSD since 7.0. */
 	return explicit_memset(s, 0, n);
