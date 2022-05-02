@@ -367,10 +367,9 @@ static bool do_verification(const tls_params_t *params)
 	       !EMPTY_LIST(params->ca_files) || params->ocsp_stapling > 0;
 }
 
-static int verify_certificate(gnutls_session_t session)
+int tls_certificate_verification(tls_ctx_t *ctx)
 {
-	tls_ctx_t *ctx = gnutls_session_get_ptr(session);
-
+	gnutls_session_t session = ctx->session;
 	// Check for pinned certificates and print certificate hierarchy.
 	int ret = check_certificates(session, &ctx->params->pins);
 	if (ret != GNUTLS_E_SUCCESS) {
@@ -421,6 +420,12 @@ static int verify_certificate(gnutls_session_t session)
 	return GNUTLS_E_SUCCESS;
 }
 
+static int verify_certificate(gnutls_session_t session)
+{
+	tls_ctx_t *ctx = gnutls_session_get_ptr(session);
+	return tls_certificate_verification(ctx);
+}
+
 int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
         unsigned int flags, int wait, const gnutls_datum_t *alpn,
         size_t alpn_size, const char *priority)
@@ -468,7 +473,7 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 		}
 	}
 
-	// gnutls_certificate_set_verify_function(ctx->credentials, verify_certificate);
+	gnutls_certificate_set_verify_function(ctx->credentials, verify_certificate);
 
 	// Setup client keypair if specified. Both key and cert files must be provided.
 	if (params->keyfile != NULL && params->certfile != NULL) {

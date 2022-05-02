@@ -179,6 +179,7 @@ int net_init(const srv_info_t     *local,
              const net_flags_t    flags,
              const tls_params_t   *tls_params,
              const https_params_t *https_params,
+             const quic_params_t  *quic_params,
              net_t                *net)
 {
 	if (remote == NULL || net == NULL) {
@@ -236,6 +237,23 @@ int net_init(const srv_info_t     *local,
 			}
 		} else
 #endif //LIBNGHTTP2
+#ifdef LIBNGTCP2
+		if (quic_params != NULL && quic_params->enable) {
+			ret = tls_ctx_init(&net->tls, tls_params,
+			        GNUTLS_NONBLOCK | GNUTLS_ENABLE_EARLY_DATA |
+			        GNUTLS_NO_END_OF_EARLY_DATA, net->wait,
+			        quic_alpn, 4, QUIC_PRIORITY); // TODO will be 1 on release
+			if (ret != KNOT_EOK) {
+				net_clean(net);
+				return ret;
+			}
+			ret = quic_ctx_init(&net->quic, &net->tls, quic_params);
+			if (ret != KNOT_EOK) {
+				net_clean(net);
+				return ret;
+			}
+		} else
+#endif //LIBNGTCP2
 		{
 			ret = tls_ctx_init(&net->tls, tls_params,
 			                   GNUTLS_NONBLOCK, net->wait,
