@@ -65,6 +65,8 @@ void tls_params_init(tls_params_t *params);
 int tls_params_copy(tls_params_t *dst, const tls_params_t *src);
 void tls_params_clean(tls_params_t *params);
 
+int tls_certificate_verification(tls_ctx_t *ctx);
+
 int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
         unsigned int flags, int wait, const gnutls_datum_t *alpn,
         size_t alpn_size, const char *priority);
