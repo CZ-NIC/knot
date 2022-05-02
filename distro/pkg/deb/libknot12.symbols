@@ -146,6 +146,11 @@ libknot.so.12 libknot12 #MINVER#
  knot_strerror@Base 3.1.0
  knot_svcb_param_names@Base 3.1.0
  knot_tcp_cleanup@Base 3.2.0
+ knot_tcp_inbuf_update@Base 3.2.0
+ knot_tcp_outbufs_ack@Base 3.2.0
+ knot_tcp_outbufs_add@Base 3.2.0
+ knot_tcp_outbufs_can_send@Base 3.2.0
+ knot_tcp_outbufs_usage@Base 3.2.0
  knot_tcp_recv@Base 3.2.0
  knot_tcp_reply_data@Base 3.2.0
  knot_tcp_send@Base 3.1.0

@@ -17,7 +17,7 @@
 /*!
  * \file
  *
- * \brief TCP over XDP buffer helpers.
+ * \brief TCP buffer helpers.
  *
  * \addtogroup xdp
  * @{
@@ -25,10 +25,10 @@
 
 #pragma once
 
-#include <string.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <sys/uio.h>
-
-#include "libknot/endian.h"
 
 typedef struct knot_tcp_outbuf {
 	struct knot_tcp_outbuf *next;
@@ -49,9 +49,9 @@ typedef struct knot_tcp_outbuf {
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int tcp_inbuf_update(struct iovec *buffer, struct iovec data,
-                     struct iovec **inbufs, size_t *inbufs_count,
-                     size_t *buffers_total);
+int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
+                          struct iovec **inbufs, size_t *inbufs_count,
+                          size_t *buffers_total);
 
 /*!
  * \brief Add payload to be sent by TCP, to output buffers.
@@ -65,8 +65,8 @@ int tcp_inbuf_update(struct iovec *buffer, struct iovec data,
  *
  * \return KNOT_E*
  */
-int tcp_outbufs_add(knot_tcp_outbuf_t **bufs, uint8_t *data, size_t len,
-                    bool ignore_lastbyte, uint32_t mss, size_t *outbufs_total);
+int knot_tcp_outbufs_add(knot_tcp_outbuf_t **bufs, uint8_t *data, size_t len,
+                         bool ignore_lastbyte, uint32_t mss, size_t *outbufs_total);
 
 /*!
  * \brief Remove+free acked data from output buffers.
@@ -75,7 +75,7 @@ int tcp_outbufs_add(knot_tcp_outbuf_t **bufs, uint8_t *data, size_t len,
  * \param ackno            Ackno of received ACK.
  * \param outbufs_total    In/out: total outbuf statistic to be updated.
  */
-void tcp_outbufs_ack(knot_tcp_outbuf_t **bufs, uint32_t ackno, size_t *outbufs_total);
+void knot_tcp_outbufs_ack(knot_tcp_outbuf_t **bufs, uint32_t ackno, size_t *outbufs_total);
 
 /*!
  * \brief Prepare output buffers to be sent now.
@@ -86,12 +86,12 @@ void tcp_outbufs_ack(knot_tcp_outbuf_t **bufs, uint32_t ackno, size_t *outbufs_t
  * \param send_start    Out: first output buffer to be sent.
  * \param send_count    Out: number of output buffers to be sent.
  */
-void tcp_outbufs_can_send(knot_tcp_outbuf_t *bufs, ssize_t window_size, bool resend,
-                          knot_tcp_outbuf_t **send_start, size_t *send_count);
+void knot_tcp_outbufs_can_send(knot_tcp_outbuf_t *bufs, ssize_t window_size, bool resend,
+                               knot_tcp_outbuf_t **send_start, size_t *send_count);
 
 /*!
  * \brief Compute allocated size of output buffers.
  */
-size_t tcp_outbufs_usage(knot_tcp_outbuf_t *bufs);
+size_t knot_tcp_outbufs_usage(knot_tcp_outbuf_t *bufs);
 
 /*! @} */
