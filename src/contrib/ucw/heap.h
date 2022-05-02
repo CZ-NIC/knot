@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ struct heap {
 #define HEAP_DECREASE_THRESHOLD	2 /* threshold for deflation, keep conservative */
 #define HELEMENT(h,num) 	((h)->data + (num))
 #define HHEAD(h) 		HELEMENT((h), 1)
-#define EMPTY_HEAP(h) 		((h)->num == 0) /* h->num == 0 */
+#define EMPTY_HEAP(h) 		((h)->num == 0)
 
 int heap_init(struct heap *, int (*cmp)(void *, void *), int);
 void heap_deinit(struct heap *);
@@ -43,4 +43,4 @@ void heap_delmin(struct heap *);
 int heap_insert(struct heap *, heap_val_t *);
 int heap_find(struct heap *, heap_val_t *);
 void heap_delete(struct heap *, int);
-void heap_replace(struct heap *h, int pos, heap_val_t *);
+void heap_replace(struct heap *, int, heap_val_t *);

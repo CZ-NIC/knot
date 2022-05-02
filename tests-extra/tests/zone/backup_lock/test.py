@@ -54,7 +54,7 @@ for i in range(2, 8):
     globals()["backup%d_dir" % i] = dir_to
 
 if master.valgrind:
-    master.ctl_params_append = ["-t", "30"]
+    master.ctl_params_append = ["-t", "40"]
 
 lockfile = os.path.join(backup_dir, "lock.knot_backup")
 labelfile = os.path.join(backup_dir, "knot_backup.label")

@@ -164,6 +164,7 @@ class Server(object):
         self.tcp_reuseport = None
         self.tcp_remote_io_timeout = None
         self.tcp_io_timeout = None
+        self.tcp_idle_timeout = None
         self.udp_max_payload = None
         self.udp_max_payload_ipv4 = None
         self.udp_max_payload_ipv6 = None
@@ -1268,6 +1269,7 @@ class Knot(Server):
             s.item_str("listen", "%s@%s" % (addr, self.port))
         self._str(s, "tcp-remote-io-timeout", self.tcp_remote_io_timeout)
         self._str(s, "tcp-io-timeout", self.tcp_io_timeout)
+        self._str(s, "tcp-idle-timeout", self.tcp_idle_timeout)
         self._bool(s, "tcp-reuseport", self.tcp_reuseport)
         self._str(s, "udp-max-payload", self.udp_max_payload)
         self._str(s, "udp-max-payload-ipv4", self.udp_max_payload_ipv4)

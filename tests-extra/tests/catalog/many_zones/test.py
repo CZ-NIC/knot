@@ -31,6 +31,9 @@ slave.dnssec(catz[0]).alg = "ECDSAP256SHA256"
 slave.zones[catz[0].name].journal_content = "all"
 slave.journal_db_size = 200 * 1024 * 1024
 
+if master.valgrind:
+    master.tcp_idle_timeout = 15000
+
 t.start()
 
 slave.zone_wait(catz, udp=False, tsig=True)
