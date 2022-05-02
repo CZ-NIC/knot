@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,6 +45,8 @@ void https_params_clean(https_params_t *params);
 #include <nghttp2/nghttp2.h>
 
 #include "utils/common/tls.h"
+
+extern const gnutls_datum_t doh_alpn;
 
 /*! \brief Structure that stores data source for DATA frames. */
 typedef struct {

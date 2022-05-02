@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,12 +76,13 @@ void https_params_clean(https_params_t *params)
 static const char default_path[] = "/dns-query";
 static const char default_query[] = "?dns=";
 
-static const gnutls_datum_t https_protocols[] = {
-	{ (unsigned char *)"h2", 2 }
-};
-
 static const nghttp2_settings_entry settings[] = {
 	{ NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, HTTPS_MAX_STREAMS }
+};
+
+const gnutls_datum_t doh_alpn = {
+	.data = (unsigned char *)"h2",
+	.size = 2
 };
 
 static bool https_status_is_redirect(unsigned long status)
@@ -326,7 +327,7 @@ int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
 	}
 
 	// Create TLS connection
-	int ret = tls_ctx_connect(ctx->tls, sockfd, remote, fastopen, addr, https_protocols);
+	int ret = tls_ctx_connect(ctx->tls, sockfd, remote, fastopen, addr);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
