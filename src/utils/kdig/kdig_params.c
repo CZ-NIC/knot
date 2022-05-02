@@ -1079,6 +1079,35 @@ static int opt_nopadding(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_quic(const char *arg, void *query)
+{
+#ifdef LIBNGTCP2
+	query_t *q = query;
+
+	opt_tls(arg, query);
+	opt_notcp(arg, query);
+	opt_padding(arg, query);
+	q->quic.enable = true;
+
+	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGTCP2
+}
+
+static int opt_noquic(const char *arg, void *query)
+{
+#ifdef LIBNGTCP2
+	query_t *q = query;
+
+	quic_params_clean(&q->quic);
+
+	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif //LIBNGTCP2
+}
+
 static int opt_alignment(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1441,6 +1470,9 @@ static const param_t kdig_opts2[] = {
 	{ "https-get",      ARG_NONE,     opt_https_get },
 	{ "nohttps-get",    ARG_NONE,     opt_nohttps_get },
 
+	{ "quic",           ARG_NONE,     opt_quic },
+	{ "noquic",         ARG_NONE,     opt_noquic },
+
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
 
@@ -1546,6 +1578,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->port = strdup(conf->port);
 		tls_params_copy(&query->tls, &conf->tls);
 		https_params_copy(&query->https, &conf->https);
+		quic_params_copy(&query->quic, &conf->quic);
 		if (conf->tsig_key.name != NULL) {
 			int ret = knot_tsig_key_copy(&query->tsig_key,
 			                             &conf->tsig_key);
@@ -1608,6 +1641,7 @@ void query_free(query_t *query)
 
 	tls_params_clean(&query->tls);
 	https_params_clean(&query->https);
+	quic_params_clean(&query->quic);
 
 	// Cleanup signing key.
 	knot_tsig_key_deinit(&query->tsig_key);
@@ -1990,6 +2024,8 @@ static void complete_servers(query_t *query, const query_t *conf)
 		def_port = conf->port;
 	} else if (query->https.enable) {
 		def_port = DEFAULT_DNS_HTTPS_PORT;
+	} else if (query->quic.enable) {
+		def_port = DEFAULT_DNS_QUIC_PORT;
 	} else if (query->tls.enable) {
 		def_port = DEFAULT_DNS_TLS_PORT;
 	} else {
@@ -2192,6 +2228,9 @@ static void print_help(void)
 	       "       +[no]https[=URL]           Use HTTPS protocol. It's also possible to specify\n"
 	       "                                  URL as [authority][/path] where query will be sent.\n"
 	       "       +[no]https-get             Use HTTPS protocol with GET method instead of POST.\n"
+#endif
+#ifdef LIBNGTCP2
+	       "       +[no]quic                  Use QUIC protocol.\n"
 #endif
 	       "       +[no]nsid                  Request NSID.\n"
 	       "       +[no]bufsize=B             Set EDNS buffer size.\n"

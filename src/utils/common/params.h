@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #define DEFAULT_IPV6_NAME	"::1"
 #define DEFAULT_DNS_PORT	"53"
 #define DEFAULT_DNS_HTTPS_PORT	"443"
+#define DEFAULT_DNS_QUIC_PORT	"853"
 #define DEFAULT_DNS_TLS_PORT	"853"
 #define DEFAULT_UDP_SIZE	512
 #define DEFAULT_EDNS_SIZE	4096
