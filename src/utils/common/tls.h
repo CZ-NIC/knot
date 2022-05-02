@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -65,9 +65,12 @@ void tls_params_init(tls_params_t *params);
 int tls_params_copy(tls_params_t *dst, const tls_params_t *src);
 void tls_params_clean(tls_params_t *params);
 
-int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait);
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, bool fastopen,
-                    struct sockaddr_storage *addr, const gnutls_datum_t *protocol);
+int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
+        unsigned int flags, int wait, const gnutls_datum_t *alpn,
+        size_t alpn_size, const char *priority);
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote,
+        bool fastopen, struct sockaddr_storage *addr);
+
 int tls_ctx_send(tls_ctx_t *ctx, const uint8_t *buf, const size_t buf_len);
 int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len);
 void tls_ctx_close(tls_ctx_t *ctx);
