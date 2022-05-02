@@ -34,6 +34,8 @@ libknotus_la_SOURCES = \
 	utils/common/netio.h			\
 	utils/common/params.c			\
 	utils/common/params.h			\
+	utils/common/quic.c			\
+	utils/common/quic.h			\
 	utils/common/resolv.c			\
 	utils/common/resolv.h			\
 	utils/common/sign.c			\
@@ -44,6 +46,7 @@ libknotus_la_SOURCES = \
 	utils/common/token.h			\
 	utils/common/util_conf.c		\
 	utils/common/util_conf.h
+
 endif HAVE_LIBUTILS
 
 if HAVE_UTILS
