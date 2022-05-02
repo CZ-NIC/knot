@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -218,22 +218,33 @@ int net_init(const srv_info_t     *local,
 
 	// Prepare for TLS.
 	if (tls_params != NULL && tls_params->enable) {
-		int ret = tls_ctx_init(&net->tls, tls_params, net->wait);
-		if (ret != KNOT_EOK) {
-			net_clean(net);
-			return ret;
-		}
-
+		int ret = 0;
 #ifdef LIBNGHTTP2
 		// Prepare for HTTPS.
 		if (https_params != NULL && https_params->enable) {
+			ret = tls_ctx_init(&net->tls, tls_params,
+			                   GNUTLS_NONBLOCK, net->wait,
+			                   &doh_alpn, 1, NULL);
+			if (ret != KNOT_EOK) {
+				net_clean(net);
+				return ret;
+			}
 			ret = https_ctx_init(&net->https, &net->tls, https_params);
 			if (ret != KNOT_EOK) {
 				net_clean(net);
 				return ret;
 			}
-		}
+		} else
 #endif //LIBNGHTTP2
+		{
+			ret = tls_ctx_init(&net->tls, tls_params,
+			                   GNUTLS_NONBLOCK, net->wait,
+			                   &dot_alpn, 1, NULL);
+			if (ret != KNOT_EOK) {
+				net_clean(net);
+				return ret;
+			}
+		}
 	}
 
 	return KNOT_EOK;
@@ -392,7 +403,7 @@ int net_connect(net_t *net)
 #endif //LIBNGHTTP2
 				// Establish TLS connection.
 				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni, fastopen,
-				                      (struct sockaddr_storage *)net->srv->ai_addr, &dot_alpn);
+				                      (struct sockaddr_storage *)net->srv->ai_addr);
 #ifdef LIBNGHTTP2
 			}
 #endif //LIBNGHTTP2
