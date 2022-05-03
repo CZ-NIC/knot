@@ -158,7 +158,7 @@ static int tls_read_func(gnutls_session_t session,
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)gnutls_session_get_ptr(session);
 	int level = ngtcp2_crypto_gnutls_from_gnutls_record_encryption_level(gtls_level);
 	ngtcp2_conn_submit_crypto_data(ctx->conn, level, (const uint8_t *)data, data_size);
-	return 1;
+	return GNUTLS_E_SUCCESS; // TODO: 1 instead ??!
 }
 
 static int tls_alert_read_func(gnutls_session_t session,
@@ -182,7 +182,10 @@ static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
 {
 	assert(htype == GNUTLS_HANDSHAKE_CLIENT_HELLO);
 	assert(when == GNUTLS_HOOK_POST);
-	assert(incoming == 1);
+
+	if (!incoming) {
+		return 0;
+	}
 
 	gnutls_datum_t alpn;
 	int ret = gnutls_alpn_get_selected_protocol(session, &alpn);
@@ -252,9 +255,9 @@ static int tls_keylog_callback(gnutls_session_t session, const char *label,
 	return 0;
 }
 
-static int tls_init_conn_session(knot_xquic_conn_t *conn)
+static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 {
-	if (gnutls_init(&conn->tls_session, GNUTLS_SERVER |
+	if (gnutls_init(&conn->tls_session, (server ? GNUTLS_SERVER : GNUTLS_CLIENT) |
 	                GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET |
 	                GNUTLS_NO_END_OF_EARLY_DATA) != GNUTLS_E_SUCCESS) {
 		return TLS_CALLBACK_ERR;
@@ -265,7 +268,7 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 		return TLS_CALLBACK_ERR;
 	}
 
-	if (gnutls_session_ticket_enable_server(conn->tls_session,
+	if (server && gnutls_session_ticket_enable_server(conn->tls_session,
 	                &conn->xquic_table->creds->tls_ticket_key) != GNUTLS_E_SUCCESS) {
 		return TLS_CALLBACK_ERR;
 	}
@@ -274,7 +277,8 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 	gnutls_handshake_set_read_function(conn->tls_session, tls_read_func);
 	gnutls_alert_set_read_function(conn->tls_session, tls_alert_read_func);
 	gnutls_handshake_set_hook_function(conn->tls_session,
-	                                   GNUTLS_HANDSHAKE_CLIENT_HELLO,
+	                                   //GNUTLS_HANDSHAKE_ANY,
+					   GNUTLS_HANDSHAKE_CLIENT_HELLO,
 	                                   GNUTLS_HOOK_POST, tls_client_hello_cb);
 	if (gnutls_session_ext_register(conn->tls_session,
 	                "QUIC Transport Parameters",
@@ -311,7 +315,7 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn)
 			.size = ALPN_TMP[0],
 		}
 	};
-	gnutls_alpn_set_protocols(conn->tls_session, alpn, 2, 0);
+	gnutls_alpn_set_protocols(conn->tls_session, alpn, 1, 0);
 
 	gnutls_session_set_keylog_function(conn->tls_session, tls_keylog_callback);
 	ngtcp2_conn_set_tls_native_handle(conn->conn, conn->tls_session);
@@ -530,7 +534,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		stream_opened,
 		stream_closed,
 		recv_stateless_rst,
-		NULL, // recv_retry
+		ngtcp2_crypto_recv_retry_cb,
 		NULL, // extend_max_streams_bidi
 		NULL, // extend_max_streams_uni
 		knot_quic_rand_cb,
@@ -633,9 +637,12 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
 	path.local.addr = (struct sockaddr *)via;
 	path.local.addrlen = sockaddr_len(via);
 
-	int ret = conn_new(&(*pxconn)->conn, &path, &dcid, &scid, &dcid /* ??? */, 1, now, *pxconn, false);
+	int ret = conn_new(&(*pxconn)->conn, &path, &dcid, &scid, &dcid /* ??? */, NGTCP2_PROTO_VER_V1, now, *pxconn, false);
 	if (ret == KNOT_EOK) {
-		ret = tls_init_conn_session(*pxconn);
+		ret = tls_init_conn_session(*pxconn, false);
+	}
+	if (ret == KNOT_EOK) {
+		ret = gnutls_server_name_set((*pxconn)->tls_session, GNUTLS_NAME_DNS, "tcpserver", strlen("tcpserver")); // FIXME
 	}
 	if (ret != KNOT_EOK) {
 		xquic_table_rem(*pxconn, table);
@@ -704,7 +711,7 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 			return KNOT_EOK;
 		}
 
-		ret = tls_init_conn_session(xconn);
+		ret = tls_init_conn_session(xconn, true);
 		printf("TLS (%s)\n", knot_strerror(ret));
 
 		if (ret != KNOT_EOK) {
@@ -775,7 +782,7 @@ static int send_stream(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_
 		return ret;
 	}
 
-	ngtcp2_path path = { 0 };
+	ngtcp2_path path = { 0 }; // FIXME path not needed here ??
 	path.local.addr = (struct sockaddr *)&msg.ip_from;
 	path.remote.addr = (struct sockaddr *)&msg.ip_to;
 
@@ -784,6 +791,7 @@ static int send_stream(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_
 
 	ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
 	                                sent, fl, stream_id, &vec, (stream_id >= 0 ? 1 : 0), get_timestamp());
+	printf("WRITEV %d ... %zu %p state %d\n", ret, msg.payload.iov_len, relay->conn, *(int *)relay->conn);
 	if (ret <= 0) {
 		knot_xdp_send_free(sock, &msg, 1);
 		return ret;
