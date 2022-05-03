@@ -114,4 +114,7 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr);
 int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
         const uint8_t *buf, const size_t buf_len);
 
+int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
+        struct addrinfo *srv);
+
 #endif //LIBNGTCP2
