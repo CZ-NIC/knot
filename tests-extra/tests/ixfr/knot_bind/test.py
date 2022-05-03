@@ -12,6 +12,8 @@ zones = t.zone_rnd(5, records=50) + t.zone("records.")
 
 t.link(zones, master, slave, ixfr=True)
 
+master.tcp_io_timeout = 3000
+
 t.start()
 
 # Wait for AXFR to slave server.
