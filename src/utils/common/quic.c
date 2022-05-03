@@ -896,4 +896,61 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 	return KNOT_NET_ETIMEOUT;
 }
 
+void quic_ctx_close(quic_ctx_t *ctx)
+{
+	if (ctx == NULL || ctx->state == CLOSED) {
+		return;
+	}
+
+	uint8_t enc_buf[MAX_PACKET_SIZE];
+	struct iovec msg_iov = {
+		.iov_base = enc_buf,
+		.iov_len = 0
+	};
+	struct msghdr msg = {
+		.msg_iov = &msg_iov,
+		.msg_iovlen = 1
+	};
+
+	ngtcp2_ssize nwrite = ngtcp2_conn_write_connection_close(ctx->conn,
+	        (ngtcp2_path *)ngtcp2_conn_get_path(ctx->conn),
+	        &ctx->pi, enc_buf, sizeof(enc_buf), ctx->last_err.error_code,
+	        ctx->last_err.reason, ctx->last_err.reasonlen,
+	        quic_timestamp());
+	if (nwrite <= 0) {
+		return;
+	}
+
+	msg_iov.iov_len = nwrite;
+
+	struct sockaddr_in6 si;
+	socklen_t si_len = sizeof(si);
+	if (getsockname(ctx->tls->sockfd, &si, &si_len) == 0) {
+		quic_set_enc(ctx->tls->sockfd, si.sin6_family, ctx->pi.ecn);
+	}
+
+	(void)sendmsg(ctx->tls->sockfd, &msg, 0);
+	ctx->state = CLOSED;
+}
+
+void quic_ctx_deinit(quic_ctx_t *ctx)
+{
+	if (ctx == NULL) {
+		return;
+	}
+
+	if (ctx->conn) {
+		ngtcp2_conn_del(ctx->conn);
+		ctx->conn = NULL;
+	}
+
+	if (ctx->stream.in_buffer.iov_base != NULL) {
+		free(ctx->stream.in_buffer.iov_base);
+	}
+
+	if (ctx->stream.in_parsed != NULL) {
+		free(ctx->stream.in_parsed);
+	}
+}
+
 #endif
