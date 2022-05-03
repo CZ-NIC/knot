@@ -36,6 +36,9 @@ void knot_xquic_free_creds(knot_xquic_creds_t *creds);
 
 bool xquic_conn_timeout(knot_xquic_conn_t *conn);
 
+int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
+                      struct sockaddr_storage *via, knot_xquic_conn_t **out_conn);
+
 /*!
  * \brief Process received packets, pic incomming DNS data.
  *

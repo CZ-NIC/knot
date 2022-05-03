@@ -41,6 +41,12 @@
 
 #define TLS_CALLBACK_ERR     (-1)
 
+// TODO it would be good if this is provided by libngtcp2
+#define NGTCP2_CS_POST_HANDSHAKE 6 // ngtcp2_conn.h
+int ngtcp2_conn_is_handshake_completed(ngtcp2_conn *conn) {
+	return *(int *)conn /* conn->state */ == NGTCP2_CS_POST_HANDSHAKE;
+}
+
 static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
                                        const gnutls_datum_t *key,
                                        const gnutls_datum_t *data)
@@ -352,6 +358,7 @@ static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
                                  void *user_data)
 {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
+	assert(ctx->conn == conn);
 
 	if (init_random_cid(cid, cidlen), cid->datalen == 0) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -383,7 +390,8 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 
 static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
-	(void)ctx;
+	assert(ctx->conn == conn);
+
 	gnutls_datum_t alpn;
 	if (gnutls_alpn_get_selected_protocol(ctx->tls_session, &alpn) != 0) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -503,17 +511,17 @@ static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t 
 	}
 }
 
-static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
-                           const ngtcp2_cid *dcid, const ngtcp2_cid *odcid, uint32_t version,
-                           uint64_t now, void *user_data)
+static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
+                    const ngtcp2_cid *dcid, const ngtcp2_cid *odcid, uint32_t version,
+                    uint64_t now, void *user_data, bool server)
 {
 	// I. CALLBACKS
 	const ngtcp2_callbacks callbacks = {
-		NULL, // client_initial
+		ngtcp2_crypto_client_initial_cb,
 		ngtcp2_crypto_recv_client_initial_cb,
 		ngtcp2_crypto_recv_crypto_data_cb,
 		knot_handshake_completed_cb,
-		NULL, // recv_version_negotiation
+		NULL, // recv_version_negotiation FIXME
 		ngtcp2_crypto_encrypt_cb,
 		ngtcp2_crypto_decrypt_cb,
 		ngtcp2_crypto_hp_mask_cb,
@@ -597,7 +605,45 @@ static int conn_server_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const n
 		return KNOT_ERROR;
 	}
 
-	return ngtcp2_conn_server_new(pconn, dcid, scid, path, version, &callbacks, &settings, &params, NULL, user_data);
+	if (server) {
+		return ngtcp2_conn_server_new(pconn, dcid, scid, path, version, &callbacks, &settings, &params, NULL, user_data);
+	} else {
+		return ngtcp2_conn_client_new(pconn, dcid, scid, path, version, &callbacks, &settings, &params, NULL, user_data);
+	}
+}
+
+_public_
+int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
+                      struct sockaddr_storage *via, knot_xquic_conn_t **out_conn)
+{
+	ngtcp2_cid scid = { 0 }, dcid = { 0 };
+	uint64_t now = get_timestamp();
+
+	init_random_cid(&scid, 0);
+	init_random_cid(&dcid, 0);
+
+	knot_xquic_conn_t **pxconn = xquic_table_add(NULL, &dcid, table); // TODO scid ??
+	if (pxconn == NULL) {
+		return ENOMEM;
+	}
+
+	ngtcp2_path path;
+	path.remote.addr = (struct sockaddr *)dest;
+	path.remote.addrlen = sockaddr_len(dest);
+	path.local.addr = (struct sockaddr *)via;
+	path.local.addrlen = sockaddr_len(via);
+
+	int ret = conn_new(&(*pxconn)->conn, &path, &dcid, &scid, &dcid /* ??? */, 1, now, *pxconn, false);
+	if (ret == KNOT_EOK) {
+		ret = tls_init_conn_session(*pxconn);
+	}
+	if (ret != KNOT_EOK) {
+		xquic_table_rem(*pxconn, table);
+		return ret;
+	}
+
+	*out_conn = *pxconn;
+	return KNOT_EOK;
 }
 
 static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xquic_conn_t **out_conn, int64_t *out_stream)
@@ -645,12 +691,11 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 		printf("accept (%s)\n", ngtcp2_strerror(ret));
 
 		xconn = *xquic_table_add(NULL, &dcid, table);
-		if (xconn == NULL) {
+		if (xconn == NULL) { // FIXME returned NULL is &xconn
 			return ENOMEM;
 		}
-		xconn->xquic_table = table; // FIXME ?
 
-		ret = conn_server_new(&xconn->conn, &path, &dcid, &scid, &dcid /* FIXME: ocid == dcid ? */, pversion, now, xconn);
+		ret = conn_new(&xconn->conn, &path, &dcid, &scid, &dcid, pversion, now, xconn, true);
 		printf("csn (%s)\n", knot_strerror(ret));
 
 		if (ret < 0) {
@@ -756,7 +801,7 @@ static int send_stream(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_
 }
 
 _public_
-int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, unsigned max_msgs) // FIXME this whole function is a mess
+int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, unsigned max_msgs)
 {
 	if (relay == NULL || relay->conn == NULL) {
 		return KNOT_EOK;
@@ -764,7 +809,8 @@ int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, unsigned 
 
 	unsigned sent_msgs = 0, stream_msgs = 0;
 	int ret = 1;
-	for (int64_t si = 0; si < relay->streams_count && sent_msgs < max_msgs; /* NO INCREMENT */) {
+	for (int64_t si = 0; si < relay->streams_count && sent_msgs < max_msgs &&
+	     ngtcp2_conn_is_handshake_completed(relay->conn); /* NO INCREMENT */) {
 		int64_t stream_id = 4 * (relay->streams_first + si);
 
 		ngtcp2_ssize sent = 0;

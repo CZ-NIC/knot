@@ -44,7 +44,6 @@ typedef struct {
 } knot_xquic_obuf_t;
 
 typedef struct {
-	knot_xquic_stream_state_t state; // TODO remove?
 	struct iovec inbuf;
 	knot_xquic_ucw_list_t outbufs;
 	size_t obufs_size;

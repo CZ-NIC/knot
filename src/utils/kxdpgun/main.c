@@ -39,6 +39,7 @@
 
 #include "libknot/libknot.h"
 #include "libknot/xdp.h"
+#include "libknot/xdp/quic.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcat.h"
@@ -108,6 +109,7 @@ typedef struct {
 	bool		ipv6;
 	bool		tcp;
 	char		tcp_mode;
+	bool		quic;
 	xdp_gun_ignore_t  ignore1;
 	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
@@ -302,6 +304,8 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
 	knot_xdp_msg_flag_t flags = ctx->ipv6 ? KNOT_XDP_MSG_IPV6 : 0;
 	if (ctx->tcp) {
 		flags |= (KNOT_XDP_MSG_TCP | KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_MSS);
+	} else if (ctx->quic) {
+		return ctx->at_once; // NOOP
 	}
 
 	for (int i = 0; i < ctx->at_once; i++) {
@@ -347,11 +351,19 @@ void *xdp_gun_thread(void *_ctx)
 	kxdpgun_stats_t local_stats = { 0 };
 	unsigned stats_triggered = 0;
 	knot_tcp_table_t *tcp_table = NULL;
+	knot_xquic_table_t *quic_table = NULL;
 
 	if (ctx->tcp) {
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
 		if (tcp_table == NULL) {
 			ERR2("failed to allocate TCP connection table\n");
+			return NULL;
+		}
+	}
+	if (ctx->quic) {
+		quic_table = knot_xquic_table_new(ctx->qps);
+		if (quic_table == NULL) {
+			ERR2("failed to allocate QUIC connection table\n");
 			return NULL;
 		}
 	}
@@ -396,6 +408,21 @@ void *xdp_gun_thread(void *_ctx)
 					for (int i = 0; i < alloced; i++) {
 						pkts[i].payload.iov_len = 0;
 					}
+				} else if (ctx->quic) {
+					for (unsigned i = 0; i < ctx->at_once; i++) {
+						knot_xquic_conn_t *newconn = NULL;
+						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
+						if (ret == KNOT_EOK) {
+							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
+							put_dns_payload(&tmp, false, ctx, &payload_ptr);
+							ret = knot_xquic_send(xsk, newconn, 1);
+						}
+						if (ret == KNOT_EOK) {
+							local_stats.qry_sent++;
+						}
+					}
+					(void)knot_xdp_send_finish(xsk);
+					break;
 				} else {
 					for (int i = 0; i < alloced; i++) {
 						put_dns_payload(&pkts[i].payload, false,
@@ -481,6 +508,31 @@ void *xdp_gun_thread(void *_ctx)
 					(void)knot_xdp_send_finish(xsk);
 
 					knot_tcp_cleanup(tcp_table, relays, recvd);
+				} else if (ctx->quic) {
+					knot_xquic_conn_t *relays[recvd];
+					int64_t streams[recvd];
+					ret = knot_xquic_recv(relays, streams, pkts, recvd, quic_table);
+					if (ret != KNOT_EOK) {
+						errors++;
+						break;
+					}
+
+					for (size_t i = 0; i < recvd; i++) {
+						knot_xquic_conn_t *rl = relays[i];
+						if (streams[recvd] >= 0) {
+							// FIXME check that == 0
+
+							knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, streams[recvd], false);
+							assert(stream != NULL);
+							check_dns_payload(&stream->inbuf, ctx, &local_stats);
+						}
+						ret = knot_xquic_send(xsk, rl, 4);
+						if (ret != KNOT_EOK) {
+							errors++;
+						}
+					}
+					(void)knot_xdp_send_finish(xsk);
+
 				} else {
 					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx,

@@ -137,6 +137,7 @@ knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, kn
 
 	xconn->ocid = (void *)xconn + sizeof(*xconn);
 	xconn->conn = conn;
+	xconn->xquic_table = table;
 	xconn->ocid->datalen = cid->datalen;
 	memcpy(xconn->ocid->data, cid->data, cid->datalen);
 
@@ -262,20 +263,10 @@ int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, con
 		return KNOT_ENOENT;
 	}
 
-	if (stream->state == XQUIC_STREAM_FREED) {
-		xconn->last_stream = stream_id;
-		stream->state = XQUIC_STREAM_RECVING;
-		if (stream->inbuf.iov_len != 0) {
-			return KNOT_ESEMCHECK;
-		}
-	}
-	if (stream->state != XQUIC_STREAM_RECVING) {
-		return KNOT_ESEMCHECK;
-	}
-
 	struct iovec in = { (void *)data, len }, *outs;
 	size_t outs_count;
 	int ret = tcp_inbuf_update(&stream->inbuf, in, &outs, &outs_count, &xconn->ibufs_size);
+	printf("TIU (%s) count %zu fin %d stream %zd\n", knot_strerror(ret), outs_count, fin, stream_id);
 	if (ret != KNOT_EOK || (outs_count == 0 && !fin)) {
 		return ret;
 	}
@@ -284,16 +275,16 @@ int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, con
 		return KNOT_ESEMCHECK;
 	}
 
-	stream->state = XQUIC_STREAM_RECVD;
 	stream->inbuf = outs[0];
+	xconn->last_stream = stream_id;
 	free(outs);
 	return KNOT_EOK;
 }
 
 uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id, uint8_t *data, size_t len)
 {
-	knot_xquic_stream_t *s = knot_xquic_conn_get_stream(xconn, stream_id, false);
-	if (s == NULL || s->state != XQUIC_STREAM_RECVD) {
+	knot_xquic_stream_t *s = knot_xquic_conn_get_stream(xconn, stream_id, true);
+	if (s == NULL) {
 		return NULL;
 	}
 
