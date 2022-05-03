@@ -96,7 +96,6 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
  *
  * \param ctx       HTTPS context.
  * \param sockfd    Socket descriptor.
- * \param remote    [optional] Remote name.
  * \param fastopen  Use TCP Fast Open indication.
  * \param addr      Socket address storage with address to server side.
  *
@@ -106,8 +105,8 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
  * \retval KNOT_NET_ETIMEOUT  When server respond takes too long.
  * \retval KNOT_NET_ECONNECT  When unnable to connect to the server.
  */
-int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
-                      bool fastopen, struct sockaddr_storage *addr);
+int https_ctx_connect(https_ctx_t *ctx, int sockfd, bool fastopen,
+                      struct sockaddr_storage *addr);
 
 /*!
  * \brief Send buffer as DNS message over HTTPS.

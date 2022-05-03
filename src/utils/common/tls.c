@@ -427,8 +427,7 @@ static int verify_certificate(gnutls_session_t session)
 }
 
 int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
-        unsigned int flags, int wait, const gnutls_datum_t *alpn,
-        size_t alpn_size, const char *priority)
+        unsigned int flags, int wait)
 
 {
 	if (ctx == NULL || params == NULL || !params->enable) {
@@ -507,6 +506,23 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 		return KNOT_ENOMEM;
 	}
 
+	ret = gnutls_credentials_set(ctx->session, GNUTLS_CRD_CERTIFICATE,
+	                             ctx->credentials);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(ctx->session);
+		return KNOT_ERROR;
+	}
+
+	return KNOT_EOK;
+}
+
+int tls_ctx_setup_remote_endpoint(tls_ctx_t *ctx, const gnutls_datum_t *alpn,
+        size_t alpn_size, const char *priority, const char *remote)
+{
+	if (ctx == NULL || ctx->session == NULL || ctx->credentials == NULL) {
+		return KNOT_EINVAL;
+	}
+	int ret = 0;
 	if (alpn != NULL) {
 		ret = gnutls_alpn_set_protocols(ctx->session, alpn, alpn_size, 0);
 		if (ret != GNUTLS_E_SUCCESS) {
@@ -525,34 +541,25 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 		return KNOT_EINVAL;
 	}
 
-	ret = gnutls_credentials_set(ctx->session, GNUTLS_CRD_CERTIFICATE,
-	                             ctx->credentials);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_deinit(ctx->session);
-		return KNOT_ERROR;
+	if (remote != NULL) {
+		ret = gnutls_server_name_set(ctx->session, GNUTLS_NAME_DNS, remote,
+		                             strlen(remote));
+		if (ret != GNUTLS_E_SUCCESS) {
+			gnutls_deinit(ctx->session);
+			return KNOT_EINVAL;
+		}
 	}
-
 	return KNOT_EOK;
 }
 
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, bool fastopen,
-                    struct sockaddr_storage *addr)
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, bool fastopen,
+        struct sockaddr_storage *addr)
 {
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = 0;
-	// TODO mayble also move to `tls_ctx_init`
-	if (remote != NULL) {
-		ret = gnutls_server_name_set(ctx->session, GNUTLS_NAME_DNS, remote,
-		                             strlen(remote));
-		if (ret != GNUTLS_E_SUCCESS) {
-			gnutls_deinit(ctx->session);
-			return KNOT_NET_ECONNECT;
-		}
-	}
-
 	gnutls_session_set_ptr(ctx->session, ctx);
 
 	if (fastopen) {

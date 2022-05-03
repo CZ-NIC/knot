@@ -224,8 +224,7 @@ int net_init(const srv_info_t     *local,
 		// Prepare for HTTPS.
 		if (https_params != NULL && https_params->enable) {
 			ret = tls_ctx_init(&net->tls, tls_params,
-			                   GNUTLS_NONBLOCK, net->wait,
-			                   &doh_alpn, 1, NULL);
+			                   GNUTLS_NONBLOCK, net->wait);
 			if (ret != KNOT_EOK) {
 				net_clean(net);
 				return ret;
@@ -241,8 +240,7 @@ int net_init(const srv_info_t     *local,
 		if (quic_params != NULL && quic_params->enable) {
 			ret = tls_ctx_init(&net->tls, tls_params,
 			        GNUTLS_NONBLOCK | GNUTLS_ENABLE_EARLY_DATA |
-			        GNUTLS_NO_END_OF_EARLY_DATA, net->wait,
-			        quic_alpn, 4, QUIC_PRIORITY); // TODO will be 1 on release
+			        GNUTLS_NO_END_OF_EARLY_DATA, net->wait);
 			if (ret != KNOT_EOK) {
 				net_clean(net);
 				return ret;
@@ -256,8 +254,7 @@ int net_init(const srv_info_t     *local,
 #endif //LIBNGTCP2
 		{
 			ret = tls_ctx_init(&net->tls, tls_params,
-			                   GNUTLS_NONBLOCK, net->wait,
-			                   &dot_alpn, 1, NULL);
+			                   GNUTLS_NONBLOCK, net->wait);
 			if (ret != KNOT_EOK) {
 				net_clean(net);
 				return ret;
@@ -321,6 +318,45 @@ static int fastopen_send(int sockfd, const struct msghdr *msg, int timeout)
 #endif
 }
 
+static char *net_get_remote(const net_t *net)
+{
+	if (net->tls.params->sni != NULL) {
+		return net->tls.params->sni;
+	} else if (net->tls.params->hostname != NULL) {
+		return net->tls.params->hostname;
+	} else if (strchr(net->remote_str, ':') == NULL) {
+		char *at = strchr(net->remote_str, '@');
+		if (at != NULL && strncmp(net->remote->name, net->remote_str,
+		                          at - net->remote_str)) {
+			return net->remote->name;
+		}
+	}
+	return NULL;
+}
+
+#ifdef LIBNGTCP2
+static int fd_set_recv_ecn(int fd, int family)
+{
+	unsigned int tos = 1;
+	switch (family) {
+	case AF_INET:
+		if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &tos, sizeof(tos)) == -1) {
+			return knot_map_errno();
+		}
+		break;
+	case AF_INET6:
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &tos, sizeof(tos)) == -1) {
+			return knot_map_errno();
+		}
+		break;
+	default:
+		return KNOT_EINVAL;
+	}
+	return KNOT_EOK;
+}
+#endif
+
+
 int net_connect(net_t *net)
 {
 	if (net == NULL || net->srv == NULL) {
@@ -365,8 +401,9 @@ int net_connect(net_t *net)
 		(void)bind(sockfd, (struct sockaddr *)&local, sockaddr_len(&local));
 	}
 
+	int ret = 0;
 	if (net->socktype == SOCK_STREAM) {
-		int  cs, err, ret = 0;
+		int  cs, err;
 		socklen_t err_len = sizeof(err);
 		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
 
@@ -403,34 +440,57 @@ int net_connect(net_t *net)
 #ifdef LIBNGHTTP2
 			if (net->https.params.enable) {
 				// Establish HTTPS connection.
-				char *remote = NULL;
-				if (net->tls.params->sni != NULL) {
-					remote = net->tls.params->sni;
-				} else if (net->tls.params->hostname != NULL) {
-					remote = net->tls.params->hostname;
-				} else if (strchr(net->remote_str, ':') == NULL) {
-					char *at = strchr(net->remote_str, '@');
-					if (at != NULL && strncmp(net->remote->name, net->remote_str,
-					                          at - net->remote_str)) {
-						remote = net->remote->name;
-					}
+				ret = tls_ctx_setup_remote_endpoint(&net->tls, &doh_alpn, 1, NULL,
+				        net_get_remote(net));
+				if (ret != 0) {
+					close(sockfd);
+					return ret;
 				}
-				ret = https_ctx_connect(&net->https, sockfd, remote, fastopen,
-				                        (struct sockaddr_storage *)net->srv->ai_addr);
-			} else {
+				ret = https_ctx_connect(&net->https, sockfd, fastopen,
+				        (struct sockaddr_storage *)net->srv->ai_addr);
+			} else
 #endif //LIBNGHTTP2
+			{
 				// Establish TLS connection.
-				ret = tls_ctx_connect(&net->tls, sockfd, net->tls.params->sni, fastopen,
-				                      (struct sockaddr_storage *)net->srv->ai_addr);
-#ifdef LIBNGHTTP2
+				ret = tls_ctx_setup_remote_endpoint(&net->tls, &dot_alpn, 1, NULL,
+				        net_get_remote(net));
+				if (ret != 0) {
+					close(sockfd);
+					return ret;
+				}
+				ret = tls_ctx_connect(&net->tls, sockfd, fastopen,
+				        (struct sockaddr_storage *)net->srv->ai_addr);
 			}
-#endif //LIBNGHTTP2
 			if (ret != KNOT_EOK) {
 				close(sockfd);
 				return ret;
 			}
 		}
 	}
+#ifdef LIBNGTCP2
+	else if (net->socktype == SOCK_DGRAM) {
+		if (net->quic.params.enable) {
+			// Establish QUIC connection.
+			ret = fd_set_recv_ecn(sockfd, net->srv->ai_family);
+			if (ret != KNOT_EOK) {
+				close(sockfd);
+				return ret;
+			}
+			ret = tls_ctx_setup_remote_endpoint(&net->tls,
+			        doq_alpn, 4, QUIC_PRIORITY, net_get_remote(net));
+			if (ret != 0) {
+				close(sockfd);
+				return ret;
+			}
+			ret = quic_ctx_connect(&net->quic, sockfd,
+			        (struct addrinfo *)net->srv);
+			if (ret != KNOT_EOK) {
+				close(sockfd);
+				return ret;
+			}
+		}
+	}
+#endif
 
 	// Store socket descriptor.
 	net->sockfd = sockfd;
