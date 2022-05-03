@@ -523,6 +523,29 @@ static int quic_recv(quic_ctx_t *ctx, int sockfd)
 	return KNOT_EOK;
 }
 
+static int quic_respcpy(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
+{
+	assert(ctx && buf && buf_len > 0);
+	if (ctx->stream.in_parsed &&
+	    ctx->stream.in_parsed_it < ctx->stream.in_parsed_size) {
+		struct iovec *it =
+		        &ctx->stream.in_parsed[ctx->stream.in_parsed_it];
+		if (buf_len < it->iov_len) {
+			return KNOT_ENOMEM;
+		}
+		ctx->stream.in_parsed_it++;
+		size_t len = it->iov_len;
+		memcpy(buf, it->iov_base, len);
+		if (ctx->stream.in_parsed_it == ctx->stream.in_parsed_size) {
+			free(ctx->stream.in_parsed);
+			ctx->stream.in_parsed = NULL;
+			ctx->stream.in_parsed_size = 0;
+		}
+		return len;
+	}
+	return 0;
+}
+
 uint64_t quic_timestamp(void)
 {
 	struct timespec ts;
@@ -803,6 +826,74 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 	}
 
 	return KNOT_EOK;
+}
+
+int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
+        struct addrinfo *srv)
+{
+	if (ctx == NULL || ctx->tls == NULL || buf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = quic_respcpy(ctx, buf, buf_len);
+	if (ret != 0) {
+		return ret;
+	} else if (ctx->stream.id < 0) {
+		return KNOT_NET_ERECV;
+	}
+
+	int sockfd = ctx->tls->sockfd;
+
+	struct pollfd pfd = {
+		.fd = sockfd,
+		.events = POLLIN,
+		.revents = 0,
+	};
+
+	ngtcp2_transport_params params;
+	while (!quic_timeout(ctx->idle_ts, ctx->tls->wait)) {
+		ngtcp2_conn_get_remote_transport_params(ctx->conn, &params);
+		int timeout = quic_ceil_duration_to_ms(params.max_ack_delay);
+		ret = poll(&pfd, 1, timeout);
+		if (ret < 0) {
+			WARN("QUIC, failed to receive reply (%s)\n",
+			     knot_strerror(errno));
+			return knot_map_errno();
+		} else if (ret == 0) {
+			goto send;
+		}
+
+		ret = quic_recv(ctx, sockfd);
+		if (ret != KNOT_EOK) {
+			WARN("QUIC, failed to receive reply (%s)\n",
+			     knot_strerror(ret));
+			return ret;
+		}
+		ret = quic_respcpy(ctx, buf, buf_len);
+		if (ret != 0) {
+			if (ret < 0) {
+				WARN("QUIC, failed to receive reply (%s)\n",
+				     knot_strerror(ret));
+			}
+			return ret;
+		} else if (ctx->stream.id < 0) {
+			return KNOT_NET_ERECV;
+		}
+
+
+		send: ret = quic_send(ctx, sockfd, srv->ai_family);
+		if (ret != KNOT_EOK) {
+			WARN("QUIC, failed to receive reply (%s)\n",
+			     knot_strerror(ret));
+			return ret;
+		}
+	}
+
+	WARN("QUIC, peer took too long to respond\n");
+	set_application_error(ctx, DOQ_REQUEST_CANCELLED,
+	                (uint8_t *)"Connection timeout",
+	                sizeof("Connection timeout") - 1);
+	return KNOT_NET_ETIMEOUT;
 }
 
 #endif
