@@ -547,6 +547,17 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
+#ifdef LIBNGTCP2
+	// Send data over QUIC.
+	if (net->quic.params.enable) {
+		int ret = quic_send_dns_query((quic_ctx_t *)&net->quic,
+		                              net->sockfd, net->srv, buf, buf_len);
+		if (ret != KNOT_EOK) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+	} else
+#endif
 	// Send data over UDP.
 	if (net->socktype == SOCK_DGRAM) {
 		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
