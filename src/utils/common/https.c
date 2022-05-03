@@ -26,6 +26,7 @@
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/url-parser/url_parser.h"
 #include "libknot/errcode.h"
+#include "libknot/dname.h"
 #include "utils/common/https.h"
 #include "utils/common/msg.h"
 
@@ -319,15 +320,15 @@ static int sockaddr_to_authority(char *buf, const size_t buf_len, const struct s
 	return KNOT_EOK;
 }
 
-int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
-                      bool fastopen, struct sockaddr_storage *addr)
+int https_ctx_connect(https_ctx_t *ctx, int sockfd, bool fastopen,
+                      struct sockaddr_storage *addr)
 {
 	if (ctx == NULL || addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	// Create TLS connection
-	int ret = tls_ctx_connect(ctx->tls, sockfd, remote, fastopen, addr);
+	int ret = tls_ctx_connect(ctx->tls, sockfd, fastopen, addr);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -345,11 +346,14 @@ int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
 
 	// Save authority server
 	if (ctx->authority == NULL) {
-		if (remote != NULL) {
-			ctx->authority = strdup(remote);
-		} else {
-			ctx->authority = (char*)calloc(HTTPS_AUTHORITY_LEN, sizeof(char));
-			ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, addr);
+		//TODO test
+		ctx->authority = (char*)calloc(KNOT_DNAME_TXT_MAXLEN + 1, sizeof(char));
+		unsigned int type = GNUTLS_NAME_DNS;
+		size_t len = KNOT_DNAME_TXT_MAXLEN + 1;
+		ret = gnutls_server_name_get(ctx->tls->session, ctx->authority, &len,
+		                             &type, 0);
+		if (ret == GNUTLS_E_SUCCESS && ctx->authority[0] == '\0') {
+			ret = sockaddr_to_authority(ctx->authority, KNOT_DNAME_TXT_MAXLEN + 1, addr);
 			if (ret != KNOT_EOK) {
 				free(ctx->authority);
 				ctx->authority = NULL;
