@@ -191,6 +191,14 @@ static void finalize_edns_expire(struct refresh_data *data)
 	data->expire_timer = MIN(data->expire_timer, zone_soa_expire(data->zone));
 }
 
+static void fill_expires_in(char *expires_in, size_t size, const struct refresh_data *data)
+{
+	if (!data->zone->is_catalog_flag) {
+		(void)snprintf(expires_in, size,
+		               ", expires in %u seconds", data->expire_timer);
+	}
+}
+
 static void xfr_log_publish(const struct refresh_data *data,
                             const uint32_t old_serial,
                             const uint32_t new_serial,
@@ -212,9 +220,12 @@ static void xfr_log_publish(const struct refresh_data *data,
 		               ", remote serial %u", master_serial);
 	}
 
+	char expires_in[32] = "";
+	fill_expires_in(expires_in, sizeof(expires_in), data);
+
 	REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
-	            "zone updated, %0.2f seconds, serial %s -> %u%s, expires in %u seconds",
-	            duration, old_info, new_serial, master_info, data->expire_timer);
+	            "zone updated, %0.2f seconds, serial %s -> %u%s%s",
+	            duration, old_info, new_serial, master_info, expires_in);
 }
 
 static void xfr_log_read_ms(const knot_dname_t *zone, int ret)
@@ -885,8 +896,10 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		case XFR_TYPE_UPTODATE:
 			consume_edns_expire(data, pkt, false);
 			finalize_edns_expire(data);
+			char expires_in[32] = "";
+			fill_expires_in(expires_in, sizeof(expires_in), data);
 			IXFRIN_LOG(LOG_INFO, data,
-			          "zone is up-to-date, expires in %u seconds", data->expire_timer);
+			          "zone is up-to-date%s", expires_in);
 			xfr_stats_begin(&data->stats);
 			xfr_stats_add(&data->stats, pkt->size);
 			xfr_stats_end(&data->stats);
@@ -1005,9 +1018,11 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	} else if (master_uptodate) {
 		consume_edns_expire(data, pkt, false);
 		finalize_edns_expire(data);
+		char expires_in[32] = "";
+		fill_expires_in(expires_in, sizeof(expires_in), data);
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
-		            "remote serial %u, zone is up-to-date, expires in %u seconds",
-		            remote_serial, data->expire_timer);
+		            "remote serial %u, zone is up-to-date%s",
+		            remote_serial, expires_in);
 		return KNOT_STATE_DONE;
 	} else {
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
