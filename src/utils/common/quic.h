@@ -117,4 +117,9 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
         struct addrinfo *srv);
 
+void quic_ctx_close(quic_ctx_t *ctx);
+
+void quic_ctx_deinit(quic_ctx_t *ctx);
+
+
 #endif //LIBNGTCP2
