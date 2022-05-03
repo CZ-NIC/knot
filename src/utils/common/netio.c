@@ -632,6 +632,18 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		.revents = 0,
 	};
 
+#ifdef LIBNGTCP2
+	// Receive data over QUIC.
+	if (net->quic.params.enable) {
+		int ret = quic_recv_dns_response((quic_ctx_t *)&net->quic, buf,
+		                                 buf_len, net->srv);
+		if (ret < 0) {
+			WARN("can't receive reply from %s\n", net->remote_str);
+			return KNOT_NET_ERECV;
+		}
+		return ret;
+	} else
+#endif
 	// Receive data over UDP.
 	if (net->socktype == SOCK_DGRAM) {
 		struct sockaddr_storage from;
@@ -672,7 +684,12 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 #ifdef LIBNGHTTP2
 	// Receive data over HTTPS.
 	} else if (net->https.params.enable) {
-		return https_recv_dns_response((https_ctx_t *)&net->https, buf, buf_len);
+		int ret = https_recv_dns_response((https_ctx_t *)&net->https, buf, buf_len);
+		if (ret < 0) {
+			WARN("can't receive reply from %s\n", net->remote_str);
+			return KNOT_NET_ERECV;
+		}
+		return ret;
 #endif //LIBNGHTTP2
 	// Receive data over TLS.
 	} else if (net->tls.params != NULL) {
@@ -681,7 +698,6 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 			WARN("can't receive reply from %s\n", net->remote_str);
 			return KNOT_NET_ERECV;
 		}
-
 		return ret;
 	// Receive data over TCP.
 	} else {
