@@ -17,6 +17,9 @@ class KnotConf(object):
     def end(self):
         self.conf += "\n"
 
+    def comment(self, value):
+        self.conf += "        # %s\n" % (value)
+
     def item(self, name, value):
         self.conf += "        %s: %s\n" % (name, value)
 
@@ -60,6 +63,9 @@ class BindConf(object):
         self.conf += "%s};\n" % (self.indent)
         if not self.indent:
             self.conf += "\n"
+
+    def comment(self, value):
+        self.conf += "%s# %s\n" % (self.indent, value)
 
     def item(self, name, value=None):
         if value:
