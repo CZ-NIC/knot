@@ -21,7 +21,7 @@ knot = t.server("knot")
 catz = t.zone("catalog1.", storage=".")
 
 t.link(catz, knot)
-knot.zones[catz[0].name].catalog = True
+knot.cat_interpret(catz)
 
 t.start()
 

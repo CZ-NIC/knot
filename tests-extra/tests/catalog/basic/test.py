@@ -31,8 +31,8 @@ zone = t.zone("example.com.") + t.zone("catalog1.", storage=".")
 
 t.link(zone, master, slave, ixfr=True)
 
-master.zones["catalog1."].catalog = True
-slave.zones["catalog1."].catalog = True
+master.cat_interpret(zone[1])
+slave.cat_interpret(zone[1])
 
 if random.choice([True, False]):
     slave.dnssec(zone[1]).enable = True

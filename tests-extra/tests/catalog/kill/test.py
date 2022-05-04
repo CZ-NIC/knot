@@ -15,7 +15,8 @@ stuckzone = t.zone("records.")
 
 t.link(catz + stuckzone, master)
 
-master.zones[catz[0].name].catalog = True
+master.cat_interpret(catz)
+
 master.zones[catz[0].name].journal_content = "all"
 
 master.dnssec(stuckzone).enable = True

@@ -30,15 +30,14 @@ catz = t.zone("example.")
 zone = t.zone_rnd(2, dnssec=False)
 
 t.link(catz, master, slave)
-t.link(zone, master)
+t.link(zone, master, slave)
 
-for z in zone:
-    master.zones[z.name].catalog_gen_link(master.zones[catz[0].name])
-
-master.zones[zone[0].name].catalog_group = "catalog-signed"
-master.zones[zone[1].name].catalog_group = "catalog-unsigned"
-
-slave.zones[catz[0].name].catalog = True
+master.cat_generate(catz)
+slave.cat_interpret(catz)
+master.cat_member(zone[0], catz, "catalog-signed")
+slave.cat_hidden(zone[0])
+master.cat_member(zone[1], catz, "catalog-unsigned")
+slave.cat_hidden(zone[1])
 
 t.start()
 
@@ -53,7 +52,7 @@ resp = slave.dig(zone[1].name, "SOA", dnssec=True)
 resp.check(rcode="NOERROR")
 resp.check_count(0, "RRSIG")
 
-master.zones[zone[1].name].catalog_group = "catalog-signed"
+master.cat_member(zone[1], catz, "catalog-signed")
 master.gen_confile()
 master.reload()
 

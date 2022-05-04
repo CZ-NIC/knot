@@ -43,9 +43,9 @@ zone = t.zone("example.com.") + t.zone("catalog1.", storage=".") + t.zone("catal
 
 t.link(zone, master)
 
-master.zones["catalog1."].catalog = True
-master.zones["catalog2."].catalog = True
-master.zones["catalog3."].catalog = True
+master.cat_interpret(zone[1])
+master.cat_interpret(zone[2])
+master.cat_interpret(zone[3])
 
 t.start()
 t.sleep(5)
