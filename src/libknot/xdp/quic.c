@@ -42,9 +42,8 @@
 #define TLS_CALLBACK_ERR     (-1)
 
 // TODO it would be good if this is provided by libngtcp2
-#define NGTCP2_CS_POST_HANDSHAKE 6 // ngtcp2_conn.h
 int ngtcp2_conn_is_handshake_completed(ngtcp2_conn *conn) {
-	return *(int *)conn /* conn->state */ == NGTCP2_CS_POST_HANDSHAKE;
+	return *(int *)conn /* conn->state */ == 6 /* NGTCP2_CS_POST_HANDSHAKE */;
 }
 
 static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
@@ -84,7 +83,7 @@ int knot_xquic_init_creds(knot_xquic_creds_t *creds)
 		knot_xquic_free_creds(creds);
 		return KNOT_ERROR;
 	}
-
+/*
 	const char *cert_file = "/home/peltan/mnt/MyCertificate.crt";
 	const char *key_file = "/home/peltan/mnt/MyKey.key"; // FIXME :)
 
@@ -93,7 +92,7 @@ int knot_xquic_init_creds(knot_xquic_creds_t *creds)
 		knot_xquic_free_creds(creds);
 		return KNOT_ERROR;
 	}
-
+*/
 	ret = gnutls_session_ticket_key_generate(&creds->tls_ticket_key);
 	if (ret != GNUTLS_E_SUCCESS) {
 		knot_xquic_free_creds(creds);
@@ -111,15 +110,6 @@ void knot_xquic_free_creds(knot_xquic_creds_t *creds)
 		tls_session_ticket_key_free(&creds->tls_ticket_key);
 	}
 	gnutls_anti_replay_deinit(creds->tls_anti_replay);
-}
-
-static void print_cid(const ngtcp2_cid *cid, const char *name)
-{
-	if (cid->datalen == 0) {
-		printf("%s 0 [zero cid] ", name);
-	} else {
-		printf("%s %zu [ %02x %02x %02x %02x ... ] ", name, cid->datalen, cid->data[0], cid->data[1], cid->data[2], cid->data[3]);
-	}
 }
 
 static int tls_secret_func(gnutls_session_t session,
@@ -150,7 +140,6 @@ static int tls_read_func(gnutls_session_t session,
                          gnutls_handshake_description_t htype, const void *data,
                          size_t data_size)
 {
-	printf("TLS READ FUN %d\n", htype);
 	if (htype == GNUTLS_HANDSHAKE_CHANGE_CIPHER_SPEC) {
 		return 0;
 	}
@@ -158,7 +147,7 @@ static int tls_read_func(gnutls_session_t session,
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)gnutls_session_get_ptr(session);
 	int level = ngtcp2_crypto_gnutls_from_gnutls_record_encryption_level(gtls_level);
 	ngtcp2_conn_submit_crypto_data(ctx->conn, level, (const uint8_t *)data, data_size);
-	return GNUTLS_E_SUCCESS; // TODO: 1 instead ??!
+	return 0;
 }
 
 static int tls_alert_read_func(gnutls_session_t session,
@@ -287,23 +276,23 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 	                NULL, GNUTLS_EXT_FLAG_TLS |
 	                GNUTLS_EXT_FLAG_CLIENT_HELLO | GNUTLS_EXT_FLAG_EE
 			) != 0) {
-//     std::cerr << "gnutls_session_ext_register failed: " << gnutls_strerror(rv)
-//               << std::endl;
 		assert(0);
 		return TLS_CALLBACK_ERR;
 	}
 
-	gnutls_anti_replay_enable(conn->tls_session, conn->xquic_table->creds->tls_anti_replay);
 	gnutls_record_set_max_early_data_size(conn->tls_session, 0xffffffffu);
 
 	gnutls_session_set_ptr(conn->tls_session, conn);
 
+	if (server) {
+		gnutls_anti_replay_enable(conn->tls_session, conn->xquic_table->creds->tls_anti_replay);
+
+	}
 	if (gnutls_credentials_set(conn->tls_session, GNUTLS_CRD_CERTIFICATE,
 	                           conn->xquic_table->creds->tls_cert) != GNUTLS_E_SUCCESS) {
-		// std::cerr << "gnutls_credentials_set failed: " << gnutls_strerror(rv)
-		// << std::endl;
 		return TLS_CALLBACK_ERR;
 	}
+
 
 	gnutls_datum_t alpn[2] = {
 		{
@@ -395,6 +384,9 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 	assert(ctx->conn == conn);
+	if (!ngtcp2_conn_is_server(conn)) {
+		return 0;
+	}
 
 	gnutls_datum_t alpn;
 	if (gnutls_alpn_get_selected_protocol(ctx->tls_session, &alpn) != 0) {
@@ -417,19 +409,10 @@ static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 			sizeof(ctx->xquic_table->hash_secret),
 			path.remote.addr, path.remote.addrlen, ts);
 	if (tokenlen < 0) {
-		// 	if (!config.quiet) {
-		//   std::cerr << "Unable to generate token" << std::endl;
-		// }
-		assert(0);
-		return 0;
+		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	if (ngtcp2_conn_submit_new_token(ctx->conn, token, tokenlen) != 0) {
-//     if (!config.quiet) {
-//       std::cerr << "ngtcp2_conn_submit_new_token: " << ngtcp2_strerror(rv)
-//                 << std::endl;
-//     }
-		assert(0);
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
@@ -440,10 +423,12 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
                             int64_t stream_id, uint64_t offset,
                             const uint8_t *data, size_t datalen,
                             void *user_data, void *stream_user_data)
-{	
-	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
+{
+	(void)(stream_user_data); // always NULL
+	(void)(offset); // QUIC shall ensure that data arrive in-order
 
-	printf("RECV stream data %zu [ %02x %02x ... ] (size %d) flags %u\n", datalen, datalen > 0 ? data[0] : 0, datalen > 1 ? data[1] : 0, (int)be16toh(*(uint16_t *)data), flags);
+	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
+	assert(ctx->conn == conn);
 
 	int ret = knot_xquic_stream_recv_data(ctx, stream_id, data, datalen, (flags & NGTCP2_STREAM_DATA_FLAG_FIN));
 
@@ -456,35 +441,47 @@ static int acked_stream_data_offset_cb(ngtcp2_conn *conn, int64_t stream_id,
 {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 
-	knot_xquic_stream_ack_data(ctx, stream_id, offset + datalen);
+	bool keep = !ngtcp2_conn_is_server(conn); // kxdpgun: await incomming reply after query sent&acked
 
-	return 0;
-}
+	knot_xquic_stream_ack_data(ctx, stream_id, offset + datalen, keep);
 
-static int stream_opened(ngtcp2_conn *conn, int64_t stream_id, void *user_data)
-{
-	printf("STREAM %ld opened...\n", stream_id);
 	return 0;
 }
 
 static int stream_closed(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 			 uint64_t app_error_code, void *user_data, void *stream_user_data)
 {
-	printf("STREAM %ld closed %s\n", stream_id, (flags & NGTCP2_STREAM_CLOSE_FLAG_APP_ERROR_CODE_SET) ? "with errors" : "without errors");
+	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
+	assert(ctx->conn == conn);
+
+	// NOTE possible error is stored in (flags & NGTCP2_STREAM_CLOSE_FLAG_APP_ERROR_CODE_SET)
+
+	bool keep = !ngtcp2_conn_is_server(conn); // kxdpgun: await incomming reply after query sent&acked
+	if (!keep) {
+		xquic_stream_free(ctx, stream_id);
+	}
 	return 0;
 }
 
 static int recv_stateless_rst(ngtcp2_conn *conn, const ngtcp2_pkt_stateless_reset *sr, void *user_data)
 {
-	printf("STATELESS RST\n");
+	// ngtcp2 verified stateless reset token already
+	(void)(sr);
+
+	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
+	assert(ctx->conn == conn);
+
+	xquic_table_rem(ctx, ctx->xquic_table);
+
 	return 0;
 }
 
 static int recv_stream_rst(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
                            uint64_t app_error_code, void *user_data, void *stream_user_data)
 {
-	printf("STREAM RST %ld\n", stream_id);
-	return 0;
+	(void)final_size;
+	return stream_closed(conn, NGTCP2_STREAM_CLOSE_FLAG_APP_ERROR_CODE_SET,
+	                     stream_id, app_error_code, user_data, stream_user_data);
 }
 
 static void user_printf(void *user_data, const char *format, ...)
@@ -496,23 +493,6 @@ static void user_printf(void *user_data, const char *format, ...)
 	vprintf(format, args);
 	va_end(args);
 	printf("\n");
-}
-
-static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t datalen)
-{
-	knot_xquic_conn_t *xconn = user_data;
-	char fqlog[39] = { 0 };
-	uint64_t cid_int = (xconn->ocid->datalen >= sizeof(cid_int) ? knot_wire_read_u64(xconn->ocid->data) : 0);
-	sprintf(fqlog, "/home/peltan/mnt/%016lx.qlog", cid_int);
-
-	FILE *qlog = fopen(fqlog, "a");
-	if (qlog != NULL) {
-		//fprintf(qlog, "\n%u: ", flags);
-		for (size_t i = 0; i < datalen; i++) {
-			fputc(*(uint8_t *)(data + i), qlog);
-		}
-		fclose(qlog);
-	}
 }
 
 static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
@@ -531,7 +511,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		ngtcp2_crypto_hp_mask_cb,
 		recv_stream_data,
 		acked_stream_data_offset_cb,
-		stream_opened,
+		NULL, // stream_opened
 		stream_closed,
 		recv_stateless_rst,
 		ngtcp2_crypto_recv_retry_cb,
@@ -576,7 +556,6 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		settings.assume_symmetric_path = 1;
 	}
 	settings.qlog.odcid = *odcid;
-	settings.qlog.write = user_qlog;
 	// TODO handshake_timeout ?
 
 	// III. PARAMS
@@ -605,7 +584,6 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		params.original_dcid = *scid;
 	}
 	if (dnssec_random_buffer(params.stateless_reset_token, NGTCP2_STATELESS_RESET_TOKENLEN) != DNSSEC_EOK) {
-		// TODO std::cerr << "Could not generate stateless reset token" << std::endl;
 		return KNOT_ERROR;
 	}
 
@@ -665,10 +643,6 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 		memcpy(dcid.data, dcid_data, dcid.datalen);
 		memcpy(scid.data, scid_data, scid.datalen);
 	}
-	printf("dcid data %p scid data %p msg payload %p\n", dcid.data, scid.data, msg->payload.iov_base);
-	print_cid(&scid, "packet_scid:");
-	print_cid(&dcid, "packet_dcid:");
-	printf("(%s)\n", ngtcp2_strerror(ret));
 	if (ret == NGTCP2_ERR_VERSION_NEGOTIATION) {
 		// TODO
 		assert(0);
@@ -768,10 +742,25 @@ int knot_xquic_recv(knot_xquic_conn_t **relays, int64_t *streams,
 	return KNOT_EOK;
 }
 
+static bool stream_exists(knot_xquic_conn_t *xconn, int64_t stream_id)
+{
+	// TRICK, we never use stream_user_data
+	return (ngtcp2_conn_set_stream_user_data(xconn->conn, stream_id, NULL) == NGTCP2_NO_ERROR);
+}
+
 static int send_stream(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_t stream_id,
 		       uint8_t *data, size_t len, bool fin, ngtcp2_ssize *sent)
 {
 	assert(stream_id >= 0 || (data == NULL && len == 0));
+
+	while (stream_id >= 0 && !stream_exists(relay, stream_id)) {
+		int64_t opened = 0;
+		int ret = ngtcp2_conn_open_bidi_stream(relay->conn, &opened, NULL);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		assert((bool)(opened == stream_id) == stream_exists(relay, stream_id));
+	}
 
 	bool ipv6 = false; // FIXME
 
@@ -791,7 +780,7 @@ static int send_stream(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, int64_
 
 	ret = ngtcp2_conn_writev_stream(relay->conn, &path, NULL, msg.payload.iov_base, msg.payload.iov_len,
 	                                sent, fl, stream_id, &vec, (stream_id >= 0 ? 1 : 0), get_timestamp());
-	printf("WRITEV %d ... %zu %p state %d\n", ret, msg.payload.iov_len, relay->conn, *(int *)relay->conn);
+	printf("WRITEV %d ... %zu %p state %d stream %ld\n", ret, msg.payload.iov_len, relay->conn, *(int *)relay->conn, stream_id);
 	if (ret <= 0) {
 		knot_xdp_send_free(sock, &msg, 1);
 		return ret;
@@ -817,6 +806,7 @@ int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, unsigned 
 
 	unsigned sent_msgs = 0, stream_msgs = 0;
 	int ret = 1;
+	printf("SEND hs_compl %d streams_cnt %zu\n", ngtcp2_conn_is_handshake_completed(relay->conn), relay->streams_count);
 	for (int64_t si = 0; si < relay->streams_count && sent_msgs < max_msgs &&
 	     ngtcp2_conn_is_handshake_completed(relay->conn); /* NO INCREMENT */) {
 		int64_t stream_id = 4 * (relay->streams_first + si);

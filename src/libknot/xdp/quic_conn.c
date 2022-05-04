@@ -180,9 +180,9 @@ void xquic_table_rem2(knot_xquic_conn_t **pconn, knot_xquic_table_t *table)
 	table->pointers--;
 }
 
-static void xquic_stream_free(knot_xquic_conn_t *xconn, int64_t stream_id)
+void xquic_stream_free(knot_xquic_conn_t *xconn, int64_t stream_id)
 {
-	knot_xquic_stream_ack_data(xconn, stream_id, SIZE_MAX);
+	knot_xquic_stream_ack_data(xconn, stream_id, SIZE_MAX, false);
 }
 
 void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
@@ -312,7 +312,7 @@ uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 	return obuf->buf + prefix;
 }
 
-void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, size_t end_acked)
+void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, size_t end_acked, bool keep_stream)
 {
 	knot_xquic_stream_t *s = knot_xquic_conn_get_stream(xconn, stream_id, false);
 	if (s == NULL) {
@@ -332,7 +332,7 @@ void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, siz
 		free(first);
 	}
 
-	if (EMPTY_LIST(*obs)) {
+	if (EMPTY_LIST(*obs) && !keep_stream) {
 		if (s == xconn->streams) {
 			xconn->streams_count--;
 

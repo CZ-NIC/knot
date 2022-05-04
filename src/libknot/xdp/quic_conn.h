@@ -116,6 +116,8 @@ void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
 
 void xquic_table_rem2(knot_xquic_conn_t **pconn, knot_xquic_table_t *table);
 
+void xquic_stream_free(knot_xquic_conn_t *xconn, int64_t stream_id);
+
 void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
 
 knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn, int64_t stream_id, bool create);
@@ -124,6 +126,6 @@ int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, con
 
 uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id, uint8_t *data, size_t len);
 
-void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, size_t end_acked);
+void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, size_t end_acked, bool keep_stream);
 
 void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id, size_t amount_sent);

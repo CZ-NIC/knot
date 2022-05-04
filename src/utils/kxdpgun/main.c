@@ -39,7 +39,9 @@
 
 #include "libknot/libknot.h"
 #include "libknot/xdp.h"
+#ifdef ENABLE_XDP_QUIC
 #include "libknot/xdp/quic.h"
+#endif // ENABLE_XDP_QUIC
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcat.h"
@@ -361,6 +363,7 @@ void *xdp_gun_thread(void *_ctx)
 		}
 	}
 	if (ctx->quic) {
+#ifdef ENABLE_XDP_QUIC
 		quic_table = knot_xquic_table_new(ctx->qps);
 		if (quic_table == NULL) {
 			ERR2("failed to allocate QUIC connection table\n");
@@ -368,6 +371,9 @@ void *xdp_gun_thread(void *_ctx)
 		}
 		((struct sockaddr_in6 *)&ctx->target_ip)->sin6_port = htobe16(ctx->target_port);
 		((struct sockaddr_in6 *)&ctx->local_ip)->sin6_port = htobe16(ctx->listen_port);
+#else
+		assert(0);
+#endif // ENABLE_XDP_QUIC
 	}
 
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
@@ -411,6 +417,7 @@ void *xdp_gun_thread(void *_ctx)
 						pkts[i].payload.iov_len = 0;
 					}
 				} else if (ctx->quic) {
+#ifdef ENABLE_XDP_QUIC
 					for (unsigned i = 0; i < ctx->at_once; i++) {
 						knot_xquic_conn_t *newconn = NULL;
 						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
@@ -427,6 +434,7 @@ void *xdp_gun_thread(void *_ctx)
 						}
 					}
 					(void)knot_xdp_send_finish(xsk);
+#endif // ENABLE_XDP_QUIC
 					break;
 				} else {
 					for (int i = 0; i < alloced; i++) {
@@ -514,6 +522,7 @@ void *xdp_gun_thread(void *_ctx)
 
 					knot_tcp_cleanup(tcp_table, relays, recvd);
 				} else if (ctx->quic) {
+#ifdef ENABLE_XDP_QUIC
 					knot_xquic_conn_t *relays[recvd];
 					int64_t streams[recvd];
 					ret = knot_xquic_recv(relays, streams, pkts, recvd, quic_table);
@@ -524,10 +533,12 @@ void *xdp_gun_thread(void *_ctx)
 
 					for (size_t i = 0; i < recvd; i++) {
 						knot_xquic_conn_t *rl = relays[i];
-						if (streams[recvd] >= 0) {
-							// FIXME check that == 0
-
-							knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, streams[recvd], false);
+						if (rl == NULL || streams[i] > 0) {
+							errors++;
+							continue;
+						}
+						if (streams[i] >= 0) {
+							knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, streams[i], false);
 							assert(stream != NULL);
 							check_dns_payload(&stream->inbuf, ctx, &local_stats);
 						}
@@ -537,7 +548,7 @@ void *xdp_gun_thread(void *_ctx)
 						}
 					}
 					(void)knot_xdp_send_finish(xsk);
-
+#endif // ENABLE_XDP_QUIC
 				} else {
 					for (int i = 0; i < recvd; i++) {
 						(void)check_dns_payload(&pkts[i].payload, ctx,
@@ -853,6 +864,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		case 'U':
+#ifdef ENABLE_XDP_QUIC
 			ctx->quic = true;
 			if (default_at_once) {
 				ctx->at_once = 1;
@@ -860,6 +872,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (!tcp_mode(optarg, ctx)) {
 				return false;
 			}
+#else
+			ERR2("not compiled with QUIC support\n");
+			return false;
+#endif // ENABLE_XDP_QUIC
 			break;
 		case 'F':
 			assert(optarg);
