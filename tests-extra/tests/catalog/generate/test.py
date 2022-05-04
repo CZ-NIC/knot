@@ -30,12 +30,13 @@ catz = t.zone("example.")
 zone = t.zone("example.com.")
 
 t.link(catz, master, slave)
-t.link(zone, master)
+t.link(zone, master, slave)
 
-for z in zone:
-    master.zones[z.name].catalog_gen_link(master.zones[catz[0].name])
+master.cat_generate(catz)
+slave.cat_interpret(catz)
+master.cat_member(zone, catz)
+slave.cat_hidden(zone)
 
-slave.zones[catz[0].name].catalog = True
 slave.dnssec(catz[0]).enable = True
 slave.dnssec(catz[0]).single_type_signing = True
 
@@ -48,9 +49,10 @@ slave.zones_wait(zone)
 add_online = random.choice([True, False])
 
 zone_add = t.zone("flags.") + t.zone("records.")
-t.link(zone_add, master)
+t.link(zone_add, master, slave)
 for z in zone_add:
-    master.zones[z.name].catalog_gen_link(master.zones[catz[0].name])
+    master.cat_member(z, catz)
+    slave.cat_hidden(z)
 
 master.gen_confile()
 

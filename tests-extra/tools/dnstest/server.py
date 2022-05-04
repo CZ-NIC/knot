@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
+import enum
 import glob
 import inspect
 import ipaddress
@@ -73,6 +74,15 @@ class ZoneDnssec(object):
         self.dnskey_mgmt = None
         self.offline_ksk = None
 
+class ZoneCatalogRole(enum.IntEnum):
+    """Zone catalog roles."""
+
+    NONE = 0
+    INTERPRET = 1
+    GENERATE = 2
+    MEMBER = 3
+    HIDDEN = 4 # Interpreted member zone
+
 class Zone(object):
     '''DNS zone description'''
 
@@ -85,8 +95,8 @@ class Zone(object):
         self.journal_content = journal_content # journal contents
         self.modules = []
         self.dnssec = ZoneDnssec()
-        self.catalog = None
-        self.catalog_zone = None
+        self.catalog_role = ZoneCatalogRole.NONE
+        self.catalog_gen_name = None # Generated catalog name for this member
         self.catalog_group = None
         self.refresh_max = None
         self.refresh_min = None
@@ -109,10 +119,6 @@ class Zone(object):
 
     def clear_modules(self):
         self.modules.clear()
-
-    def catalog_gen_link(self, catalog_zone):
-        self.catalog_zone = catalog_zone
-        catalog_zone.catalog_zone = catalog_zone
 
     def disable_master(self, new_zone_file):
         self.zfile.remove()
@@ -250,6 +256,25 @@ class Server(object):
             z.disable_master(slave_file)
 
         z.masters.add(master)
+
+    def cat_interpret(self, zone):
+        z = self.zones[zone_arg_check(zone).name]
+        z.catalog_role = ZoneCatalogRole.INTERPRET
+
+    def cat_generate(self, zone):
+        z = self.zones[zone_arg_check(zone).name]
+        z.catalog_role = ZoneCatalogRole.GENERATE
+
+    def cat_member(self, zone, catalog, group=None):
+        z = self.zones[zone_arg_check(zone).name]
+        c = self.zones[zone_arg_check(catalog).name]
+        z.catalog_role = ZoneCatalogRole.MEMBER
+        z.catalog_gen_name = c.name
+        z.catalog_group = group
+
+    def cat_hidden(self, zone):
+        z = self.zones[zone_arg_check(zone).name]
+        z.catalog_role = ZoneCatalogRole.HIDDEN
 
     def compile(self):
         try:
@@ -1470,8 +1495,9 @@ class Knot(Server):
         have_catalog = None
         for zone in self.zones:
             z = self.zones[zone]
-            if z.catalog:
+            if z.catalog_role in [ZoneCatalogRole.INTERPRET, ZoneCatalogRole.GENERATE]:
                 have_catalog = z
+                break
         if have_catalog is not None:
             s.id_item("id", "catalog-default")
             s.item_str("file", self.dir + "/master/%s.zone")
@@ -1504,6 +1530,9 @@ class Knot(Server):
         s.begin("zone")
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            if z.catalog_role == ZoneCatalogRole.HIDDEN:
+                continue
+
             s.id_item("domain", z.name)
             s.item_str("file", z.zfile.path)
 
@@ -1525,21 +1554,19 @@ class Knot(Server):
             elif z.ixfr:
                 s.item_str("zonefile-load", "difference")
 
-            if z.catalog_zone == z:
+            if z.catalog_role == ZoneCatalogRole.GENERATE:
                 s.item_str("catalog-role", "generate")
-            elif z.catalog_zone is not None:
+            elif z.catalog_role == ZoneCatalogRole.MEMBER:
                 s.item_str("catalog-role", "member")
-                s.item_str("catalog-zone", z.catalog_zone.name)
+                s.item_str("catalog-zone", z.catalog_gen_name)
+                self._str(s, "catalog-group", z.catalog_group)
+            elif z.catalog_role == ZoneCatalogRole.INTERPRET:
+                s.item_str("catalog-role", "interpret")
+                s.item("catalog-template", "[ catalog-default, catalog-signed, catalog-unsigned ]")
 
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "off" if z.dnssec.disable else "on")
                 s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
-
-            if z.catalog:
-                s.item_str("catalog-role", "interpret")
-                s.item("catalog-template", "[ catalog-default, catalog-signed, catalog-unsigned ]")
-
-            self._str(s, "catalog-group", z.catalog_group)
 
             self._bool(s, "dnssec-validation", z.dnssec.validate)
 

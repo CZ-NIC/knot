@@ -23,9 +23,10 @@ catz = t.zone("example.")
 t.link(catz, master, slave)
 
 cz = master.zones[catz[0].name]
-cz.catalog_gen_link(cz) # empty catz with "generate" role
 
-slave.zones[catz[0].name].catalog = True
+master.cat_generate(cz)
+slave.cat_interpret(cz)
+
 slave.dnssec(catz[0]).enable = DNSSEC
 slave.dnssec(catz[0]).alg = "ECDSAP256SHA256"
 slave.zones[catz[0].name].journal_content = "all"
@@ -40,9 +41,10 @@ slave.zone_wait(catz, udp=False, tsig=True)
 
 for i in range(UPDATES):
     zone_add = t.zone_rnd(ADD_ZONES, records=5, dnssec=False)
-    t.link(zone_add, master)
+    t.link(zone_add, master, slave)
     for z in zone_add:
-        master.zones[z.name].catalog_gen_link(master.zones[catz[0].name])
+        master.cat_member(z, catz)
+        slave.cat_hidden(z)
     master.gen_confile()
     master.reload()
     slave.zones_wait(zone_add)

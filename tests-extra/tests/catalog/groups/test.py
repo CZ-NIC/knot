@@ -30,7 +30,7 @@ zone = t.zone("catalog2.", storage=".")
 
 t.link(zone, master)
 
-master.zones["catalog2."].catalog = True
+master.cat_interpret(zone)
 
 for zf in glob.glob(t.data_dir + "/*.zone"):
     shutil.copy(zf, master.dir + "/master")
