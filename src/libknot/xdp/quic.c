@@ -210,10 +210,10 @@ static int tls_tp_recv_func(gnutls_session_t session, const uint8_t *data,
 	ngtcp2_transport_params params;
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)gnutls_session_get_ptr(session);
 	ngtcp2_conn *conn = ctx->conn;
+	bool server = ngtcp2_conn_is_server(conn);
+	ngtcp2_transport_params_type ptype = server ? NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO : NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS;
 
-	int ret = ngtcp2_decode_transport_params(&params,
-	                NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO, data,
-	                datalen);
+	int ret = ngtcp2_decode_transport_params(&params, ptype, data, datalen);
 	if (ret != 0) {
 		return TLS_CALLBACK_ERR;
 	}
@@ -232,11 +232,11 @@ static int tls_tp_send_func(gnutls_session_t session, gnutls_buffer_t extdata)
 	uint8_t buf[256];
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)gnutls_session_get_ptr(session);
 	ngtcp2_conn *conn = ctx->conn;
+	bool server = ngtcp2_conn_is_server(conn);
+	ngtcp2_transport_params_type ptype = server ? NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS : NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO;
 
 	ngtcp2_conn_get_local_transport_params(conn, &params);
-	ssize_t nwrite = ngtcp2_encode_transport_params(buf, sizeof(buf),
-	                NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS,
-	                &params);
+	ssize_t nwrite = ngtcp2_encode_transport_params(buf, sizeof(buf), ptype, &params);
 	if (nwrite < 0) {
 		return TLS_CALLBACK_ERR;
 	}
