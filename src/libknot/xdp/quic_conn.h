@@ -81,6 +81,7 @@ typedef struct knot_xquic_table {
 	size_t usage;
 	size_t pointers;
 	size_t obufs_size;
+	bool log;
 	uint64_t hash_secret[4];
 	struct knot_quic_creds *creds;
 	knot_xquic_ucw_list_t timeout;
@@ -91,10 +92,12 @@ typedef struct knot_xquic_table {
  * \brief Allocate QUIC connections hash table.
  *
  * \param max_conns    Maximum nuber of connections.
+ * \param tls_cert     Server TLS certificate.
+ * \param tls_key      TLS private key.
  *
  * \return Allocated table or NULL;
  */
-knot_xquic_table_t *knot_xquic_table_new(size_t max_conns);
+knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, const char *tls_cert, const char *tls_key);
 
 /*!
  * \brief Free QUIC table including its contents.

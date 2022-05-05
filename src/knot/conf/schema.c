@@ -217,6 +217,8 @@ static const yp_item_t desc_server[] = {
 	{ C_UDP_MAX_PAYLOAD_IPV6, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                                1232, YP_SSIZE } },
+	{ C_TLS_CERT,             YP_TSTR,  YP_VSTR = { "" } },
+	{ C_TLS_KEY,              YP_TSTR,  YP_VSTR = { "" } },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ C_DBUS_EVENT,           YP_TOPT,  YP_VOPT = { dbus_events, DBUS_EVENT_NONE }, YP_FMULTI },
@@ -242,6 +244,8 @@ static const yp_item_t desc_server[] = {
 static const yp_item_t desc_xdp[] = {
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp_listen } },
 	{ C_TCP,                  YP_TBOOL, YP_VNONE },
+	{ C_QUIC,                 YP_TINT,  YP_VINT = { 0, 65535, 0 } },
+	{ C_QUIC_LOG,             YP_TBOOL, YP_VNONE }, // FIXME remove or improve
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 1024, INT32_MAX, 1000000 } },
 	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
 	{ C_TCP_OUTBUF_MAX_SIZE,  YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },

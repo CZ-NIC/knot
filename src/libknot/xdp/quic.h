@@ -23,6 +23,11 @@
 #include "libknot/xdp/quic_conn.h"
 #include "libknot/xdp/xdp.h"
 
+// special values for stream_id signalling a need for special treatment
+#define XQUIC_SEND_VERSION_NEGOTIATION    NGTCP2_ERR_VERSION_NEGOTIATION
+#define XQUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
+#define XQUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
+
 typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
@@ -30,7 +35,7 @@ typedef struct knot_quic_creds {
 	uint8_t static_secret[32];
 } knot_xquic_creds_t;
 
-int knot_xquic_init_creds(knot_xquic_creds_t *creds);
+int knot_xquic_init_creds(knot_xquic_creds_t *creds, const char *tls_cert, const char *tls_key);
 
 void knot_xquic_free_creds(knot_xquic_creds_t *creds);
 

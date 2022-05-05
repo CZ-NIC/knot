@@ -35,7 +35,7 @@
 #define BUCKETS_PER_CONNS 8 // Each connecion has several dCIDs, and each CID takes one hash table bucket.
 
 _public_
-knot_xquic_table_t *knot_xquic_table_new(size_t max_conns)
+knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, const char *tls_cert, const char *tls_key)
 {
 	size_t table_size = max_conns * BUCKETS_PER_CONNS;
 
@@ -48,7 +48,7 @@ knot_xquic_table_t *knot_xquic_table_new(size_t max_conns)
 	init_list((list_t *)&res->timeout);
 	res->creds = (void *)res + sizeof(*res) + table_size * sizeof(res->conns[0]);
 
-	if (knot_xquic_init_creds(res->creds) != KNOT_EOK) {
+	if (knot_xquic_init_creds(res->creds, tls_cert, tls_key) != KNOT_EOK) {
 		free(res);
 		return NULL;
 	}
@@ -200,7 +200,7 @@ void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
 
 	for (size_t i = 0; i < num_scid; i++) {
 		knot_xquic_conn_t **pconn = xquic_table_lookup(&scids[i], table);
-		assert(pconn != NULL);
+		assert(pconn != NULL); // FIXME: harden against weird attacks by if(pconn==NULL)continue; once tested well
 		assert(*pconn == conn);
 		xquic_table_rem2(pconn, table);
 	}

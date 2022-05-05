@@ -59,6 +59,8 @@ typedef struct xdp_handle_ctx {
 	uint32_t tcp_idle_reset; // In microseconds.
 	uint32_t tcp_idle_resend;// In microseconds.
 
+	uint16_t quic_port;
+
 	uint64_t last_sweep;     // Second of the last sweep log.
 	uint32_t sweep_closed;   // Number of sweep-closed to log.
 	uint32_t sweep_reset;    // Number of sweep-reset to log.
@@ -128,13 +130,26 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 		}
 	}
 
+	conf_t *pconf = conf();
+	conf_val_t val = conf_get(pconf, C_XDP, C_QUIC);
+	ctx->quic_port = conf_int(&val);
+	if (ctx->quic_port > 0) {
 #ifdef ENABLE_XDP_QUIC
-	ctx->quic_table = knot_xquic_table_new(ctx->tcp_max_conns);
-	if (ctx->quic_table == NULL) {
-		xdp_handle_free(ctx);
-		return NULL;
-	}
+		char *tls_cert = conf_tls(pconf, C_TLS_CERT);
+		char *tls_key = conf_tls(pconf, C_TLS_KEY);
+		ctx->quic_table = knot_xquic_table_new(ctx->tcp_max_conns, tls_cert, tls_key);
+		free(tls_cert);
+		free(tls_key);
+		if (ctx->quic_table == NULL) {
+			xdp_handle_free(ctx);
+			return NULL;
+		}
+		val = conf_get(pconf, C_XDP, C_QUIC_LOG);
+		ctx->quic_table->log = conf_bool(&val);
+#else
+		assert(0); // verified in configuration checks
 #endif // ENABLE_XDP_QUIC
+	}
 
 	return ctx;
 }
@@ -259,10 +274,14 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	}
 }
 
-#ifdef ENABLE_XDP_QUIC
 static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                         knotd_qdata_params_t *params)
 {
+#ifdef ENABLE_XDP_QUIC
+	if (ctx->quic_table == NULL) {
+		return;
+	}
+
 	int ret = knot_xquic_recv(ctx->quic_relays, ctx->quic_streams,
 	                          ctx->msg_recv, ctx->msg_recv_count, ctx->quic_table);
 	if (ret != KNOT_EOK) {
@@ -307,8 +326,12 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		handle_finish(layer);
 		stream->inbuf.iov_len = 0;
 	}
-}
+#else
+	(void)(ctx);
+	(void)(layer);
+	(void)(params);
 #endif // ENABLE_XDP_QUIC
+}
 
 void xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                      server_t *server, unsigned thread_id)
@@ -327,9 +350,7 @@ void xdp_handle_msgs(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	if (ctx->tcp) {
 		handle_tcp(ctx, layer, &params);
 	}
-#ifdef ENABLE_XDP_QUIC
 	handle_quic(ctx, layer, &params);
-#endif // ENABLE_XDP_QUIC
 
 	knot_xdp_recv_finish(ctx->sock, ctx->msg_recv, ctx->msg_recv_count);
 }
@@ -396,7 +417,9 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 		knot_tcp_cleanup(ctx->syn_table, sweep_relays, XDP_BATCHLEN);
 
 #ifdef ENABLE_XDP_QUIC
-		knot_xquic_table_sweep(ctx->quic_table, ctx->tcp_max_conns, ctx->tcp_max_obufs);
+		if (ctx->quic_table) {
+			knot_xquic_table_sweep(ctx->quic_table, ctx->tcp_max_conns, ctx->tcp_max_obufs);
+		}
 #endif // ENABLE_XDP_QUIC
 
 		(void)knot_xdp_send_finish(ctx->sock);
