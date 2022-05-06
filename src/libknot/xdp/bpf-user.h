@@ -38,7 +38,7 @@ struct kxsk_iface {
 	unsigned if_queue;
 
 	/*! Configuration BPF map file descriptor. */
-	int qidconf_map_fd;
+	int opts_map_fd;
 	/*! XSK BPF map file descriptor. */
 	int xsks_map_fd;
 
@@ -111,13 +111,15 @@ void kxsk_iface_free(struct kxsk_iface *iface);
  * \brief Activate this AF_XDP socket through the BPF maps.
  *
  * \param iface        Interface context.
- * \param listen_port  Port to listen on, or KNOT_XDP_LISTEN_PORT_* flag.
+ * \param flags        XDP filter configuration flags.
+ * \param udp_port     UDP and/or TCP port to listen on if enabled via \a opts.
+ * \param quic_port    QUIC/UDP port to listen on if enabled via \a opts.
  * \param xsk          Socket ctx.
  *
  * \return KNOT_E* or -errno
  */
-int kxsk_socket_start(const struct kxsk_iface *iface, uint32_t listen_port,
-                      struct xsk_socket *xsk);
+int kxsk_socket_start(const struct kxsk_iface *iface, knot_xdp_filter_flag_t flags,
+                      uint16_t udp_port, uint16_t quic_port, struct xsk_socket *xsk);
 
 /*!
  * \brief Deactivate this AF_XDP socket through the BPF maps.

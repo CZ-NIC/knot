@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,13 +57,16 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
  * \param socket       XDP socket.
  * \param if_name      Name of the net iface (e.g. eth0).
  * \param if_queue     Network card queue to be used (normally 1 socket per each queue).
- * \param listen_port  Port to listen on, or KNOT_XDP_LISTEN_PORT_* flag.
+ * \param flags        XDP filter configuration flags.
+ * \param udp_port     UDP and/or TCP port to listen on if enabled via \a opts.
+ * \param quic_port    QUIC/UDP port to listen on if enabled via \a opts.
  * \param load_bpf     Insert BPF program into packet processing.
  *
  * \return KNOT_E* or -errno
  */
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
-                  uint32_t listen_port, knot_xdp_load_bpf_t load_bpf);
+                  knot_xdp_filter_flag_t flags, uint16_t udp_port, uint16_t quic_port,
+                  knot_xdp_load_bpf_t load_bpf);
 
 /*!
  * \brief De-init XDP socket.
