@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -206,7 +206,7 @@ void kxsk_socket_stop(const struct kxsk_iface *iface)
 	bpf_map_delete_elem(iface->xsks_map_fd, &iface->if_queue);
 }
 
-int kxsk_iface_new(const char *if_name, int if_queue, knot_xdp_load_bpf_t load_bpf,
+int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t load_bpf,
                    struct kxsk_iface **out_iface)
 {
 	if (if_name == NULL || out_iface == NULL) {
