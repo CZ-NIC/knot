@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -158,9 +158,12 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 
 _public_
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
-                  uint32_t listen_port, knot_xdp_load_bpf_t load_bpf)
+                  knot_xdp_filter_flag_t flags, uint16_t udp_port, uint16_t quic_port,
+                  knot_xdp_load_bpf_t load_bpf)
 {
-	if (socket == NULL || if_name == NULL) {
+	if (socket == NULL || if_name == NULL ||
+	    (udp_port == quic_port && (flags & KNOT_XDP_FILTER_QUIC)) ||
+	    (flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP | KNOT_XDP_FILTER_QUIC)) == 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -191,7 +194,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 		(*socket)->frame_limit = MIN((unsigned)ret, (*socket)->frame_limit);
 	}
 
-	ret = kxsk_socket_start(iface, listen_port, (*socket)->xsk);
+	ret = kxsk_socket_start(iface, flags, udp_port, quic_port, (*socket)->xsk);
 	if (ret != KNOT_EOK) {
 		xsk_socket__delete((*socket)->xsk);
 		deconfigure_xsk_umem(umem);

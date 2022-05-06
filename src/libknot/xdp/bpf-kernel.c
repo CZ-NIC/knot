@@ -37,10 +37,10 @@
 
 /* A map of configuration options. A non-empty array entry means that the
  * corresponding queue id has an active AF_XDP socket bound to it. */
-struct bpf_map_def SEC("maps") qidconf_map = {
+struct bpf_map_def SEC("maps") opts_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(__u32), /* Must be 4 bytes. */
-	.value_size = sizeof(int),
+	.value_size = sizeof(knot_xdp_opts_t),
 	.max_entries = QUEUE_MAX,
 };
 
@@ -58,6 +58,7 @@ struct ipv6_frag_hdr {
 } __attribute__((packed));
 
 struct pkt_desc {
+	knot_xdp_opts_t opts;
 	struct ethhdr *eth_hdr;
 	const void *ip_hdr;
 	const void *l4_hdr;
@@ -67,12 +68,12 @@ struct pkt_desc {
 };
 
 static __always_inline
-int check_route(struct xdp_md *ctx, const struct pkt_desc *desc, const __u32 port_info)
+int check_route(struct xdp_md *ctx, const struct pkt_desc *desc)
 {
 	__u32 index = ctx->rx_queue_index;
 
 	/* Take into account routing information. */
-	if (port_info & KNOT_XDP_LISTEN_PORT_ROUTE) {
+	if (desc->opts.flags & KNOT_XDP_FILTER_ROUTE) {
 		struct bpf_fib_lookup fib = {
 			.ifindex = 1 /* Loopback. */
 		};
@@ -115,10 +116,9 @@ int check_route(struct xdp_md *ctx, const struct pkt_desc *desc, const __u32 por
 }
 
 static __always_inline
-int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc, const __u32 port_info)
+int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc)
 {
 	const void *data_end = (void *)(long)ctx->data_end;
-	__u16 port_conf = port_info & ~KNOT_XDP_LISTEN_PORT_MASK;
 	__u16 port_dest;
 
 	if (desc->stream) {
@@ -147,25 +147,39 @@ int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc, const __u32 port
 	}
 
 	/* Treat specified destination ports. */
-	if (port_info & (KNOT_XDP_LISTEN_PORT_PASS | KNOT_XDP_LISTEN_PORT_DROP)) {
-		if (port_dest < port_conf) {
+	if (desc->opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) {
+		if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
+		     port_dest < desc->opts.udp_port) ||
+		    (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
+		     port_dest < desc->opts.quic_port)) {
 			return XDP_PASS;
 		}
-		if (port_info & KNOT_XDP_LISTEN_PORT_DROP) {
+		if (desc->opts.flags & KNOT_XDP_FILTER_DROP) {
 			return XDP_DROP;
 		}
+
+		/* Drop fragmented packet. */
+		if (desc->fragmented) {
+			return XDP_DROP;
+		}
+
+		return check_route(ctx, desc);
 	} else {
-		if (port_dest != port_conf) {
-			return XDP_PASS;
+		if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
+		     port_dest == desc->opts.udp_port) ||
+		    (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
+		     port_dest == desc->opts.quic_port)) {
+
+			/* Drop fragmented packet. */
+			if (desc->fragmented) {
+				return XDP_DROP;
+			}
+
+			return check_route(ctx, desc);
 		}
 	}
 
-	/* Drop fragmented packet. */
-	if (desc->fragmented) {
-		return XDP_DROP;
-	}
-
-	return check_route(ctx, desc, port_info);
+	return XDP_PASS;
 }
 
 SEC("xdp_redirect_dns")
@@ -249,26 +263,30 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 	/* Get the queue options. */
 	__u32 index = ctx->rx_queue_index;
-	int *qidconf = bpf_map_lookup_elem(&qidconf_map, &index);
-	if (!qidconf) {
+	struct knot_xdp_opts *opts = bpf_map_lookup_elem(&opts_map, &index);
+	if (!opts) {
 		return XDP_ABORTED;
 	}
-	__u32 port_info = *qidconf;
+	desc.opts = *opts;
 
 	/* Treat UDP or TCP transport protocol. */
 	switch (ip_proto) {
 	case IPPROTO_UDP:
-		break;
+		if (desc.opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_QUIC)) {
+			break;
+		}
+		return XDP_PASS;
 	case IPPROTO_TCP:
-		if (port_info & KNOT_XDP_LISTEN_PORT_TCP) {
+		if (desc.opts.flags & KNOT_XDP_FILTER_TCP) {
 			desc.stream = 1;
 			break;
 		}
-	default: /* FALLTHROUGH */
+		return XDP_PASS;
+	default:
 		return XDP_PASS;
 	}
 
-	return process_l4(ctx, &desc, port_info);
+	return process_l4(ctx, &desc);
 }
 
 char _license[] SEC("license") = "GPL";

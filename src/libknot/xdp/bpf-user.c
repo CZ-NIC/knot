@@ -104,13 +104,13 @@ static int ensure_prog(struct kxsk_iface *iface, bool overwrite)
 
 static void unget_bpf_maps(struct kxsk_iface *iface)
 {
-	if (iface->qidconf_map_fd >= 0) {
-		close(iface->qidconf_map_fd);
+	if (iface->opts_map_fd >= 0) {
+		close(iface->opts_map_fd);
 	}
 	if (iface->xsks_map_fd >= 0) {
 		close(iface->xsks_map_fd);
 	}
-	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
+	iface->opts_map_fd = iface->xsks_map_fd = -1;
 }
 
 /*!
@@ -151,8 +151,8 @@ static int get_bpf_maps(int prog_fd, struct kxsk_iface *iface)
 			continue;
 		}
 
-		if (strcmp(map_info.name, "qidconf_map") == 0) {
-			iface->qidconf_map_fd = fd;
+		if (strcmp(map_info.name, "opts_map") == 0) {
+			iface->opts_map_fd = fd;
 			continue;
 		}
 
@@ -164,7 +164,7 @@ static int get_bpf_maps(int prog_fd, struct kxsk_iface *iface)
 		close(fd);
 	}
 
-	if (iface->qidconf_map_fd < 0 || iface->xsks_map_fd < 0) {
+	if (iface->opts_map_fd < 0 || iface->xsks_map_fd < 0) {
 		unget_bpf_maps(iface);
 		free(map_ids);
 		return KNOT_ENOENT;
@@ -174,8 +174,8 @@ static int get_bpf_maps(int prog_fd, struct kxsk_iface *iface)
 	return KNOT_EOK;
 }
 
-int kxsk_socket_start(const struct kxsk_iface *iface, uint32_t listen_port,
-                      struct xsk_socket *xsk)
+int kxsk_socket_start(const struct kxsk_iface *iface, knot_xdp_filter_flag_t flags,
+                      uint16_t udp_port, uint16_t quic_port, struct xsk_socket *xsk)
 {
 	if (iface == NULL || xsk == NULL) {
 		return KNOT_EINVAL;
@@ -187,8 +187,13 @@ int kxsk_socket_start(const struct kxsk_iface *iface, uint32_t listen_port,
 		return ret;
 	}
 
-	int qid = (listen_port & KNOT_XDP_LISTEN_PORT_MASK) | (listen_port & 0xFFFF);
-	ret = bpf_map_update_elem(iface->qidconf_map_fd, &iface->if_queue, &qid, 0);
+	knot_xdp_opts_t opts = {
+		.flags = flags,
+		.udp_port = udp_port,
+		.quic_port = quic_port,
+	};
+
+	ret = bpf_map_update_elem(iface->opts_map_fd, &iface->if_queue, &opts, 0);
 	if (ret != 0) {
 		bpf_map_delete_elem(iface->xsks_map_fd, &iface->if_queue);
 	}
@@ -202,7 +207,7 @@ void kxsk_socket_stop(const struct kxsk_iface *iface)
 	}
 
 	int qid = 0;
-	(void)bpf_map_update_elem(iface->qidconf_map_fd, &iface->if_queue, &qid, 0);
+	(void)bpf_map_update_elem(iface->opts_map_fd, &iface->if_queue, &qid, 0);
 	bpf_map_delete_elem(iface->xsks_map_fd, &iface->if_queue);
 }
 
@@ -225,7 +230,7 @@ int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t l
 		return KNOT_EINVAL;
 	}
 	iface->if_queue = if_queue;
-	iface->qidconf_map_fd = iface->xsks_map_fd = -1;
+	iface->opts_map_fd = iface->xsks_map_fd = -1;
 
 	int ret;
 	switch (load_bpf) {
