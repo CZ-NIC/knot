@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,9 +55,17 @@ struct ipv6_frag_hdr {
 	unsigned char whatever[7];
 } __attribute__((packed));
 
+struct pkt_desc {
+	struct ethhdr *eth_hdr;
+	const void *ip_hdr;
+	const void *l4_hdr;
+	__u8 ipv4;
+	__u8 stream;
+	__u8 fragmented;
+};
+
 static __always_inline
-int check_route(struct xdp_md *ctx, struct ethhdr *eth, const void *iphdr,
-                const __u8 is_ipv4, const __u32 port_info)
+int check_route(struct xdp_md *ctx, const struct pkt_desc *desc, const __u32 port_info)
 {
 	int index = ctx->rx_queue_index;
 
@@ -66,13 +74,13 @@ int check_route(struct xdp_md *ctx, struct ethhdr *eth, const void *iphdr,
 		struct bpf_fib_lookup fib = {
 			.ifindex = 1 /* Loopback. */
 		};
-		if (is_ipv4) {
-			const struct iphdr *ip4 = iphdr;
+		if (desc->ipv4) {
+			const struct iphdr *ip4 = desc->ip_hdr;
 			fib.family   = AF_INET;
 			fib.ipv4_src = ip4->daddr;
 			fib.ipv4_dst = ip4->saddr;
 		} else {
-			const struct ipv6hdr *ip6 = iphdr;
+			const struct ipv6hdr *ip6 = desc->ip_hdr;
 			struct in6_addr *ipv6_src = (struct in6_addr *)fib.ipv6_src;
 			struct in6_addr *ipv6_dst = (struct in6_addr *)fib.ipv6_dst;
 			fib.family = AF_INET6;
@@ -89,7 +97,7 @@ int check_route(struct xdp_md *ctx, struct ethhdr *eth, const void *iphdr,
 			}
 
 			/* Update destination MAC for responding. */
-			__builtin_memcpy(eth->h_source, fib.dmac, ETH_ALEN);
+			__builtin_memcpy(desc->eth_hdr->h_source, fib.dmac, ETH_ALEN);
 			break;
 		case BPF_FIB_LKUP_RET_FWD_DISABLED: /* Disabled forwarding on loopback. */
 			return XDP_ABORTED;
@@ -105,28 +113,26 @@ int check_route(struct xdp_md *ctx, struct ethhdr *eth, const void *iphdr,
 }
 
 static __always_inline
-int process_l4(struct xdp_md *ctx, struct ethhdr *eth, const void *iphdr,
-               const void *l4hdr, const __u8 is_ipv4, const __u8 is_tcp,
-               const __u32 port_info, const __u8 fragmented)
+int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc, const __u32 port_info)
 {
 	const void *data_end = (void *)(long)ctx->data_end;
 	__u16 port_conf = port_info & ~KNOT_XDP_LISTEN_PORT_MASK;
 	__u16 port_dest;
 
-	if (is_tcp) {
-		const struct tcphdr *tcp = l4hdr;
+	if (desc->stream) {
+		const struct tcphdr *tcp = desc->l4_hdr;
 
 		/* Parse TCP header. */
-		if (l4hdr + sizeof(*tcp) > data_end) {
+		if (desc->l4_hdr + sizeof(*tcp) > data_end) {
 			return XDP_DROP;
 		}
 
 		port_dest = __bpf_ntohs(tcp->dest);
 	} else {
-		const struct udphdr *udp = l4hdr;
+		const struct udphdr *udp = desc->l4_hdr;
 
 		/* Parse UDP header. */
-		if (l4hdr + sizeof(*udp) > data_end) {
+		if (desc->l4_hdr + sizeof(*udp) > data_end) {
 			return XDP_DROP;
 		}
 
@@ -153,11 +159,11 @@ int process_l4(struct xdp_md *ctx, struct ethhdr *eth, const void *iphdr,
 	}
 
 	/* Drop fragmented packet. */
-	if (fragmented) {
+	if (desc->fragmented) {
 		return XDP_DROP;
 	}
 
-	return check_route(ctx, eth, iphdr, is_ipv4, port_info);
+	return check_route(ctx, desc, port_info);
 }
 
 SEC("xdp_redirect_dns")
@@ -166,27 +172,25 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	void *data = (void *)(long)ctx->data;
 	const void *data_end = (void *)(long)ctx->data_end;
 
-	struct ethhdr *eth = data;
 	const struct iphdr *ip4;
 	const struct ipv6hdr *ip6;
-	const void *iphdr;
-	const void *l4hdr;
-
 	__u8 ip_proto;
-	__u8 fragmented = 0;
-	__u8 is_ipv4 = 0;
+
+	struct pkt_desc desc = {
+		.eth_hdr = data
+	};
 
 	/* Parse Ethernet header. */
-	if ((void *)eth + sizeof(*eth) > data_end) {
+	if ((void *)desc.eth_hdr + sizeof(*desc.eth_hdr) > data_end) {
 		return XDP_DROP;
 	}
-	data += sizeof(*eth);
-	iphdr = data;
+	data += sizeof(*desc.eth_hdr);
+	desc.ip_hdr = data;
 
 	/* Parse IPv4 or IPv6 header. */
-	switch (eth->h_proto) {
+	switch (desc.eth_hdr->h_proto) {
 	case __constant_htons(ETH_P_IP):
-		ip4 = iphdr;
+		ip4 = desc.ip_hdr;
 		if ((void *)ip4 + sizeof(*ip4) > data_end) {
 			return XDP_DROP;
 		}
@@ -202,14 +206,14 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 		if (ip4->frag_off != 0 &&
 		    ip4->frag_off != __constant_htons(IP_DF)) {
-			fragmented = 1;
+			desc.fragmented = 1;
 		}
 		ip_proto = ip4->protocol;
-		l4hdr = data + ip4->ihl * 4;
-		is_ipv4 = 1;
+		desc.l4_hdr = data + ip4->ihl * 4;
+		desc.ipv4 = 1;
 		break;
 	case __constant_htons(ETH_P_IPV6):
-		ip6 = iphdr;
+		ip6 = desc.ip_hdr;
 		if ((void *)ip6 + sizeof(*ip6) > data_end) {
 			return XDP_DROP;
 		}
@@ -226,7 +230,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		ip_proto = ip6->nexthdr;
 		data += sizeof(*ip6);
 		if (ip_proto == IPPROTO_FRAGMENT) {
-			fragmented = 1;
+			desc.fragmented = 1;
 			const struct ipv6_frag_hdr *frag = data;
 			if ((void *)frag + sizeof(*frag) > data_end) {
 				return XDP_DROP;
@@ -234,7 +238,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			ip_proto = frag->nexthdr;
 			data += sizeof(*frag);
 		}
-		l4hdr = data;
+		desc.l4_hdr = data;
 		break;
 	default:
 		/* Also applies to VLAN. */
@@ -250,20 +254,19 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	__u32 port_info = *qidconf;
 
 	/* Treat UDP or TCP transport protocol. */
-	__u8 is_tcp = 0;
 	switch (ip_proto) {
 	case IPPROTO_UDP:
 		break;
 	case IPPROTO_TCP:
 		if (port_info & KNOT_XDP_LISTEN_PORT_TCP) {
-			is_tcp = 1;
+			desc.stream = 1;
 			break;
 		}
 	default: /* FALLTHROUGH */
 		return XDP_PASS;
 	}
 
-	return process_l4(ctx, eth, iphdr, l4hdr, is_ipv4, is_tcp, port_info, fragmented);
+	return process_l4(ctx, &desc, port_info);
 }
 
 char _license[] SEC("license") = "GPL";
