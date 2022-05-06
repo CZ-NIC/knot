@@ -48,14 +48,13 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
  * \brief Process received packets, pic incomming DNS data.
  *
  * \param relays        Out: affected QUIC connections.
- * \param streams       Out: affected streamID for every connection (or -1).
  * \param msgs          Incomming packets.
  * \param count         Number of incomming packets.
  * \param quic_table    Connection table.
  *
  * \return KNOT_E*
  */
-int knot_xquic_recv(knot_xquic_conn_t **relays, int64_t *streams,
+int knot_xquic_recv(knot_xquic_conn_t **relays,
                     knot_xdp_msg_t *msgs, uint32_t count,
                     knot_xquic_table_t *quic_table);
 

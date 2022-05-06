@@ -130,16 +130,13 @@ knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const ngtcp2_ci
 
 knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, knot_xquic_table_t *table)
 {
-	knot_xquic_conn_t *xconn = calloc(1, sizeof(*xconn) + sizeof(*xconn->ocid));
+	knot_xquic_conn_t *xconn = calloc(1, sizeof(*xconn));
 	if (xconn == NULL) {
 		return NULL;
 	}
 
-	xconn->ocid = (void *)xconn + sizeof(*xconn);
 	xconn->conn = conn;
 	xconn->xquic_table = table;
-	xconn->ocid->datalen = cid->datalen;
-	memcpy(xconn->ocid->data, cid->data, cid->datalen);
 
 	knot_xquic_conn_t **addto = xquic_table_insert(xconn, cid, table);
 	printf("TABLE addto %p conn %p\n", addto, xconn);
@@ -154,7 +151,8 @@ knot_xquic_conn_t **xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_table_t
 
 	knot_xquic_conn_t **res = table->conns + (hash % table->size);
 	while (*res != NULL) {
-		if (cid_eq((*res)->ocid, cid) || true /* FIXME !! */) {
+		const ngtcp2_cid *ocid = ngtcp2_conn_get_client_initial_dcid((*res)->conn);
+		if (cid_eq(ocid, cid) || true /* FIXME !! */) {
 			break;
 		}
 		res = &(*res)->next;

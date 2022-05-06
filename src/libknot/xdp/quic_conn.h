@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <sys/uio.h>
 
+struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
+
 // those are equivalent to contrib/ucw/lists.h , just must not be included.
 typedef struct knot_xquic_ucw_node {
 	struct knot_xquic_ucw_node *next, *prev;
@@ -60,12 +62,11 @@ typedef struct knot_xquic_conn {
 	uint8_t last_eth_loc[ETH_ALEN];
 
 	struct ngtcp2_conn *conn;
-	struct ngtcp2_cid *ocid;
 
 	struct gnutls_session_int *tls_session;
 
 	knot_xquic_stream_t *streams;
-	int64_t streams_count; // number of allocated streams structures
+	int64_t streams_count; // number of allocated streams structures. Special negative values denote fake knot_xquic_conn_t intended to send version negotiation, retry, or stateless reset.
 	int64_t streams_first; // stream_id/4 of first allocated stream
 	size_t ibufs_size; // FIXME also global statistics of this counter; sweeping conns based on this
 	size_t obufs_size;

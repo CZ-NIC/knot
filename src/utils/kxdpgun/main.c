@@ -526,8 +526,7 @@ void *xdp_gun_thread(void *_ctx)
 				} else if (ctx->quic) {
 #ifdef ENABLE_XDP_QUIC
 					knot_xquic_conn_t *relays[recvd];
-					int64_t streams[recvd];
-					ret = knot_xquic_recv(relays, streams, pkts, recvd, quic_table);
+					ret = knot_xquic_recv(relays, pkts, recvd, quic_table);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
@@ -535,13 +534,12 @@ void *xdp_gun_thread(void *_ctx)
 
 					for (size_t i = 0; i < recvd; i++) {
 						knot_xquic_conn_t *rl = relays[i];
-						if (rl == NULL || streams[i] > 0) {
+						if (rl == NULL) {
 							errors++;
 							continue;
 						}
-						if (streams[i] >= 0) {
-							knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, streams[i], false);
-							assert(stream != NULL);
+						knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, 0, false);
+						if (stream != NULL) {
 							check_dns_payload(&stream->inbuf, ctx, &local_stats);
 						}
 						ret = knot_xquic_send(xsk, rl, 4);

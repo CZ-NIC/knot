@@ -37,7 +37,6 @@ typedef struct xdp_handle_ctx {
 	knot_xdp_msg_t msg_recv[XDP_BATCHLEN];
 	knot_xdp_msg_t msg_send_udp[XDP_BATCHLEN];
 	knot_tcp_relay_t relays[XDP_BATCHLEN];
-	int64_t quic_streams[XDP_BATCHLEN];
 	uint32_t msg_recv_count;
 	uint32_t msg_udp_count;
 	knot_tcp_table_t *tcp_table;
@@ -274,6 +273,28 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	}
 }
 
+static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struct iovec *inbuf,
+                               knot_layer_t *layer, knotd_qdata_params_t *params, uint8_t *ans_buf,
+                               size_t ans_buf_size, const knot_xdp_msg_t *xdp_msg)
+{
+	// Consume the query.
+	handle_init(params, layer, xdp_msg, inbuf);
+
+	// Process the reply.
+	knot_pkt_t *ans = knot_pkt_new(ans_buf, ans_buf_size, layer->mm);
+	while (tcp_active_state(layer->state)) {
+		knot_layer_produce(layer, ans);
+		if (!tcp_send_state(layer->state)) {
+			continue;
+		}
+		if (knot_xquic_stream_add_data(conn, stream_id, ans->wire, ans->size) == NULL) {
+			break;
+		}
+	}
+
+	handle_finish(layer);
+}
+
 static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                         knotd_qdata_params_t *params)
 {
@@ -282,8 +303,8 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		return;
 	}
 
-	int ret = knot_xquic_recv(ctx->quic_relays, ctx->quic_streams,
-	                          ctx->msg_recv, ctx->msg_recv_count, ctx->quic_table);
+	int ret = knot_xquic_recv(ctx->quic_relays, ctx->msg_recv, ctx->msg_recv_count,
+	                          ctx->quic_table);
 	if (ret != KNOT_EOK) {
 		log_notice("QUIC, failed to process some packets (%s)", knot_strerror(ret));
 		return;
@@ -293,38 +314,15 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
 		knot_xquic_conn_t *rl = ctx->quic_relays[i];
-		int64_t stream_id = ctx->quic_streams[i];
-		printf("**quic** rl %p stream %ld %p\n", rl, stream_id, rl == NULL ? NULL : knot_xquic_conn_get_stream(rl, stream_id, false));
-		if (rl == NULL || stream_id < 0) {
-			continue;
-		}
-		knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, stream_id, false);
-		if (stream == NULL) {
-			continue;
-		}
-
-		printf("rl[%u] rx %zu conn %p stream %ld\n", i, stream->inbuf.iov_len, rl->conn, stream_id);
-		if (stream->inbuf.iov_len == 0) {
-			continue;
-		}
-
-		// Consume the query.
-		handle_init(params, layer, &ctx->msg_recv[i], &stream->inbuf);
-
-		// Process the reply.
-		knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);
-		while (tcp_active_state(layer->state)) {
-			knot_layer_produce(layer, ans);
-			if (!tcp_send_state(layer->state)) {
-				continue;
+		for (int64_t j = 0; rl != NULL && j < rl->streams_count; j++) {
+			int64_t stream_id = (rl->streams_first + j) * 4;
+			knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, stream_id, false);
+			if (stream->inbuf.iov_len > 0) {
+				handle_quic_stream(rl, stream_id, &stream->inbuf, layer, params,
+				                   ans_buf, sizeof(ans_buf), &ctx->msg_recv[i]);
 			}
-			if (knot_xquic_stream_add_data(rl, stream_id, ans->wire, ans->size) == NULL) {
-				break;
-			}
+			stream->inbuf.iov_len = 0;
 		}
-
-		handle_finish(layer);
-		stream->inbuf.iov_len = 0;
 	}
 #else
 	(void)(ctx);
