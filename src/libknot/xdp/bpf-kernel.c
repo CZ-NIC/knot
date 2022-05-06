@@ -32,20 +32,22 @@
 #define AF_INET		2
 #define AF_INET6	10
 
-/* Assume netdev has no more than 128 queues. */
-#define QUEUE_MAX	128
+/* Define maximum reasonable number of NIC queues supported. */
+#define QUEUE_MAX	256
 
-/* A set entry here means that the corresponding queue_id
- * has an active AF_XDP socket bound to it. */
+/* A map of configuration options. A non-empty array entry means that the
+ * corresponding queue id has an active AF_XDP socket bound to it. */
 struct bpf_map_def SEC("maps") qidconf_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
+	.key_size = sizeof(__u32), /* Must be 4 bytes. */
 	.value_size = sizeof(int),
 	.max_entries = QUEUE_MAX,
 };
+
+/* A map of AF_XDP sockets. */
 struct bpf_map_def SEC("maps") xsks_map = {
 	.type = BPF_MAP_TYPE_XSKMAP,
-	.key_size = sizeof(int),
+	.key_size = sizeof(__u32), /* Must be 4 bytes. */
 	.value_size = sizeof(int),
 	.max_entries = QUEUE_MAX,
 };
@@ -67,7 +69,7 @@ struct pkt_desc {
 static __always_inline
 int check_route(struct xdp_md *ctx, const struct pkt_desc *desc, const __u32 port_info)
 {
-	int index = ctx->rx_queue_index;
+	__u32 index = ctx->rx_queue_index;
 
 	/* Take into account routing information. */
 	if (port_info & KNOT_XDP_LISTEN_PORT_ROUTE) {
@@ -246,7 +248,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	}
 
 	/* Get the queue options. */
-	int index = ctx->rx_queue_index;
+	__u32 index = ctx->rx_queue_index;
 	int *qidconf = bpf_map_lookup_elem(&qidconf_map, &index);
 	if (!qidconf) {
 		return XDP_ABORTED;

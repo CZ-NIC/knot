@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ struct kxsk_iface {
 	/*! Interface name index (derived from ifname). */
 	int if_index;
 	/*! Network card queue id. */
-	int if_queue;
+	unsigned if_queue;
 
 	/*! Configuration BPF map file descriptor. */
 	int qidconf_map_fd;
@@ -95,7 +95,7 @@ struct knot_xdp_socket {
  *
  * \return KNOT_E* or -errno
  */
-int kxsk_iface_new(const char *if_name, int if_queue, knot_xdp_load_bpf_t load_bpf,
+int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t load_bpf,
                    struct kxsk_iface **out_iface);
 
 /*!
