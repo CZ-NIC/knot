@@ -138,6 +138,7 @@ typedef struct {
 		uint32_t xdp_tcp_idle_close;
 		uint32_t xdp_tcp_idle_reset;
 		uint32_t xdp_tcp_idle_resend;
+		bool xdp_udp;
 		bool xdp_tcp;
 		bool xdp_route_check;
 		int ctl_timeout;
