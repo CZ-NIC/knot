@@ -498,6 +498,7 @@ Various options related to XDP listening, especially TCP.
 .ft C
 xdp:
     listen: STR[@INT] | ADDR[@INT] ...
+    udp: BOOL
     tcp: BOOL
     tcp\-max\-clients: INT
     tcp\-inbuf\-max\-size: SIZE
@@ -540,9 +541,16 @@ working TCP.
 .UNINDENT
 .sp
 \fIDefault:\fP not set
+.SS udp
+.sp
+If enabled, DNS over UDP is processed with XDP workers.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP on
 .SS tcp
 .sp
-If enabled, DNS over TCP traffic is also processed with XDP workers.
+If enabled, DNS over TCP traffic is processed with XDP workers.
 .sp
 The TCP stack limitations:
 .INDENT 0.0
@@ -559,14 +567,6 @@ Not optimized for transfers of non\-trivial zones.
 .UNINDENT
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
-.sp
-\fBWARNING:\fP
-.INDENT 0.0
-.INDENT 3.5
-This feature is experimental and it may eat your hamster as well as any
-other hamsters connected to the network.
-.UNINDENT
-.UNINDENT
 .sp
 \fIDefault:\fP off
 .SS tcp\-max\-clients

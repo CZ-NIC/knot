@@ -111,7 +111,8 @@ typedef struct {
 	xdp_gun_ignore_t  ignore1;
 	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
-	uint32_t	listen_port; // KNOT_XDP_LISTEN_PORT_*
+	uint16_t	listen_port;
+	knot_xdp_filter_flag_t flags;
 	unsigned	n_threads, thread_id;
 } xdp_gun_ctx_t;
 
@@ -123,7 +124,8 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.at_once = 10,
 	.tcp_mode = '0',
 	.target_port = LOCAL_PORT_DEFAULT,
-	.listen_port = KNOT_XDP_LISTEN_PORT_PASS | LOCAL_PORT_MIN,
+	.listen_port = LOCAL_PORT_MIN,
+	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
 };
 
 static void sigterm_handler(int signo)
@@ -358,7 +360,8 @@ void *xdp_gun_thread(void *_ctx)
 
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
-	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->listen_port, mode);
+	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
+	                        ctx->listen_port, ctx->listen_port, mode);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u (%s)\n",
 		     ctx->thread_id, knot_strerror(ret));
@@ -414,7 +417,7 @@ void *xdp_gun_thread(void *_ctx)
 		}
 
 		// receiving part
-		if (!(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP)) {
+		if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
 			while (1) {
 				ret = poll(&pfd, 1, 0);
 				if (ret < 0) {
@@ -508,7 +511,7 @@ void *xdp_gun_thread(void *_ctx)
 			assert(collected <= ctx->n_threads);
 			if (collected == ctx->n_threads) {
 				print_stats(&global_stats, ctx->tcp,
-				            !(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP));
+				            !(ctx->flags & KNOT_XDP_FILTER_DROP));
 				clear_stats(&global_stats);
 			}
 		}
@@ -526,7 +529,7 @@ void *xdp_gun_thread(void *_ctx)
 	knot_tcp_table_free(tcp_table);
 
 	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
-	if (!(ctx->listen_port & KNOT_XDP_LISTEN_PORT_DROP)) {
+	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
 		(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, local_stats.ans_recv);
 	}
 	if (lost > 0) {
@@ -732,7 +735,8 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		case 'r':
-			ctx->listen_port |= KNOT_XDP_LISTEN_PORT_DROP;
+			ctx->flags &= ~KNOT_XDP_FILTER_PASS;
+			ctx->flags |= KNOT_XDP_FILTER_DROP;
 			break;
 		case 'p':
 			assert(optarg);
@@ -746,7 +750,8 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			break;
 		case 'T':
 			ctx->tcp = true;
-			ctx->listen_port |= KNOT_XDP_LISTEN_PORT_TCP;
+			ctx->flags &= ~(KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_QUIC);
+			ctx->flags |= KNOT_XDP_FILTER_TCP;
 			if (default_at_once) {
 				ctx->at_once = 1;
 			}
@@ -901,7 +906,7 @@ int main(int argc, char *argv[])
 		pthread_join(threads[i], NULL);
 	}
 	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
-		print_stats(&global_stats, ctx.tcp, !(ctx.listen_port & KNOT_XDP_LISTEN_PORT_DROP));
+		print_stats(&global_stats, ctx.tcp, !(ctx.flags & KNOT_XDP_FILTER_DROP));
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 

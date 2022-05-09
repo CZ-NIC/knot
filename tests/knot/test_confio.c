@@ -991,6 +991,7 @@ static const yp_item_t desc_server[] = {
 };
 
 static const yp_item_t desc_xdp[] = {
+	{ C_UDP,                YP_TBOOL, YP_VNONE },
 	{ C_TCP,                YP_TBOOL, YP_VNONE },
 	{ C_TCP_MAX_CLIENTS,    YP_TINT,  YP_VNONE },
 	{ C_TCP_INBUF_MAX_SIZE, YP_TINT,  YP_VNONE },
