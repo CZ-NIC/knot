@@ -273,6 +273,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	}
 }
 
+#ifdef ENABLE_XDP_QUIC
 static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struct iovec *inbuf,
                                knot_layer_t *layer, knotd_qdata_params_t *params, uint8_t *ans_buf,
                                size_t ans_buf_size, const knot_xdp_msg_t *xdp_msg)
@@ -294,6 +295,7 @@ static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struc
 
 	handle_finish(layer);
 }
+#endif // ENABLE_XDP_QUIC
 
 static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                         knotd_qdata_params_t *params)

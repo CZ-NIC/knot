@@ -274,7 +274,6 @@ int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, con
 	}
 
 	stream->inbuf = outs[0];
-	xconn->last_stream = stream_id;
 	free(outs);
 	return KNOT_EOK;
 }

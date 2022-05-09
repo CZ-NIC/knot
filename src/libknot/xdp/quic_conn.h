@@ -70,7 +70,6 @@ typedef struct knot_xquic_conn {
 	int64_t streams_first; // stream_id/4 of first allocated stream
 	size_t ibufs_size; // FIXME also global statistics of this counter; sweeping conns based on this
 	size_t obufs_size;
-	int64_t last_stream; // just temporary for signalling last affected stream
 
 	struct knot_xquic_table *xquic_table;
 
