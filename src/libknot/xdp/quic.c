@@ -725,16 +725,14 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 _public_
 int knot_xquic_recv(knot_xquic_conn_t **relays,
                     knot_xdp_msg_t *msgs, uint32_t count,
-                    knot_xquic_table_t *quic_table)
+                    uint16_t quic_port, knot_xquic_table_t *quic_table)
 {
 	memset(relays, 0, count * sizeof(*relays));
 
 	for (uint32_t i = 0; i < count; i++) {
 		knot_xdp_msg_t *msg = &msgs[i];
-		const uint8_t *payl = msg->payload.iov_base;
-		if ((msg->flags & KNOT_XDP_MSG_TCP) ||
-		    msg->payload.iov_len < 4 ||
-		    (payl[2] != 0 && payl[3] == 0)) { // not QUIC
+		if ((msg->flags & KNOT_XDP_MSG_TCP) || msg->payload.iov_len == 0 ||
+		    sockaddr_port((const struct sockaddr_storage *)&msg->ip_to) != quic_port) {
 			continue;
 		}
 

@@ -50,12 +50,13 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
  * \param relays        Out: affected QUIC connections.
  * \param msgs          Incomming packets.
  * \param count         Number of incomming packets.
+ * \param quic_port     Only UDP packets with this destionation port are considered.
  * \param quic_table    Connection table.
  *
  * \return KNOT_E*
  */
 int knot_xquic_recv(knot_xquic_conn_t **relays,
                     knot_xdp_msg_t *msgs, uint32_t count,
-                    knot_xquic_table_t *quic_table);
+                    uint16_t quic_port, knot_xquic_table_t *quic_table);
 
 int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, unsigned max_msgs);
