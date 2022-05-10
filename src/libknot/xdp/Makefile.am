@@ -3,6 +3,10 @@
 #   ip link show $eth
 #   sudo ip link set dev $eth xdp off
 #   sudo ip link set dev $eth xdp obj ./bpf-kernel.o
+#
+# Built using LLVM/CLANG 10. Newer versions produce bigger filter.
+# Since version 13 the resulting filter cannot be loaded due to "invalid access to packet"
+# when "*ipv6_src  = ip6->daddr". But IPv6 header check is in xdp_redirect_dns_func()!
 
 EXTRA_DIST = bpf-kernel-obj.c bpf-kernel.c
 

@@ -147,39 +147,30 @@ int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc)
 	}
 
 	/* Treat specified destination ports. */
-	if (desc->opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) {
-		if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
-		     port_dest < desc->opts.udp_port) ||
-		    (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
-		     port_dest < desc->opts.quic_port)) {
-			return XDP_PASS;
-		}
+	if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
+	     port_dest == desc->opts.udp_port) ||
+	    (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
+	     port_dest == desc->opts.quic_port)) {
 		if (desc->opts.flags & KNOT_XDP_FILTER_DROP) {
 			return XDP_DROP;
 		}
-
-		/* Drop fragmented packet. */
-		if (desc->fragmented) {
-			return XDP_DROP;
-		}
-
-		return check_route(ctx, desc);
-	} else {
-		if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
-		     port_dest == desc->opts.udp_port) ||
-		    (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
-		     port_dest == desc->opts.quic_port)) {
-
-			/* Drop fragmented packet. */
-			if (desc->fragmented) {
-				return XDP_DROP;
-			}
-
-			return check_route(ctx, desc);
-		}
+		/* Exact port match*/
+	} else if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
+	            port_dest < desc->opts.udp_port) ||
+	           (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
+	            port_dest < desc->opts.quic_port)) {
+		/* Unaffected port range.  */
+		return XDP_PASS;
+	} else if (!(desc->opts.flags & KNOT_XDP_FILTER_PASS)) {
+		return XDP_DROP;
 	}
 
-	return XDP_PASS;
+	/* Drop fragmented packet. */
+	if (desc->fragmented) {
+		return XDP_DROP;
+	}
+
+	return check_route(ctx, desc);
 }
 
 SEC("xdp_redirect_dns")
