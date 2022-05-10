@@ -127,6 +127,7 @@ static void init_cache(
 	static bool   running_socket_affinity;
 	static bool   running_xdp_udp;
 	static bool   running_xdp_tcp;
+	static uint16_t running_xdp_quic;
 	static bool   running_route_check;
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
@@ -138,6 +139,7 @@ static void init_cache(
 		running_socket_affinity = conf_get_bool(conf, C_SRV, C_SOCKET_AFFINITY);
 		running_xdp_udp = conf_get_bool(conf, C_XDP, C_UDP);
 		running_xdp_tcp = conf_get_bool(conf, C_XDP, C_TCP);
+		running_xdp_quic = conf_get_int(conf, C_XDP, C_QUIC);
 		running_route_check = conf_get_bool(conf, C_XDP, C_ROUTE_CHECK);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
@@ -212,6 +214,8 @@ static void init_cache(
 	conf->cache.xdp_udp = running_xdp_udp;
 
 	conf->cache.xdp_tcp = running_xdp_tcp;
+
+	conf->cache.xdp_quic = running_xdp_quic;
 
 	conf->cache.xdp_route_check = running_route_check;
 
