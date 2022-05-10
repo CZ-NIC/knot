@@ -87,6 +87,7 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 	conf_t *pconf = conf();
 	ctx->udp            = pconf->cache.xdp_udp;
 	ctx->tcp            = pconf->cache.xdp_tcp;
+	ctx->quic_port      = pconf->cache.xdp_quic;
 	ctx->tcp_max_conns  = pconf->cache.xdp_tcp_max_clients / pconf->cache.srv_xdp_threads;
 	ctx->tcp_syn_conns  = 2 * ctx->tcp_max_conns;
 	ctx->tcp_max_inbufs = pconf->cache.xdp_tcp_inbuf_max_size / pconf->cache.srv_xdp_threads;
@@ -132,8 +133,6 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 	}
 
 	conf_t *pconf = conf();
-	conf_val_t val = conf_get(pconf, C_XDP, C_QUIC);
-	ctx->quic_port = conf_int(&val);
 	if (ctx->quic_port > 0) {
 #ifdef ENABLE_XDP_QUIC
 		char *tls_cert = conf_tls(pconf, C_TLS_CERT);
@@ -145,8 +144,7 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 			xdp_handle_free(ctx);
 			return NULL;
 		}
-		val = conf_get(pconf, C_XDP, C_QUIC_LOG);
-		ctx->quic_table->log = conf_bool(&val);
+		ctx->quic_table->log = conf_get_bool(pconf, C_XDP, C_QUIC_LOG);
 #else
 		assert(0); // verified in configuration checks
 #endif // ENABLE_XDP_QUIC
@@ -201,8 +199,9 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		knot_xdp_msg_t *msg_recv = &ctx->msg_recv[i];
 		knot_xdp_msg_t *msg_send = &ctx->msg_send_udp[ctx->msg_udp_count];
 
-		// Skip TCP or marked (zero length) message.
+		// Skip TCP or QUIC or marked (zero length) message.
 		if ((msg_recv->flags & KNOT_XDP_MSG_TCP) ||
+		    sockaddr_port((const struct sockaddr_storage *)&msg_recv->ip_to) == ctx->quic_port ||
 		    msg_recv->payload.iov_len == 0) {
 			continue;
 		}
@@ -308,7 +307,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	}
 
 	int ret = knot_xquic_recv(ctx->quic_relays, ctx->msg_recv, ctx->msg_recv_count,
-	                          ctx->quic_table);
+	                          ctx->quic_port, ctx->quic_table);
 	if (ret != KNOT_EOK) {
 		log_notice("QUIC, failed to process some packets (%s)", knot_strerror(ret));
 		return;
