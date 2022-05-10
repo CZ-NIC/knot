@@ -140,6 +140,7 @@ typedef struct {
 		uint32_t xdp_tcp_idle_resend;
 		bool xdp_udp;
 		bool xdp_tcp;
+		uint16_t xdp_quic;
 		bool xdp_route_check;
 		int ctl_timeout;
 		const uint8_t *srv_nsid_data;
