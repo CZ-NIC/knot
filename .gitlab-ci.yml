@@ -33,6 +33,9 @@ docker:knot-dns:debian:
   variables:
     IMAGE_NAME: debian:latest
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
+  tags:
+    - dind
+    - amd64
 
 docker:knot-dns:debian-arm64:
   <<: *image
@@ -40,6 +43,7 @@ docker:knot-dns:debian-arm64:
     IMAGE_NAME: debian:latest
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME-arm64
   tags:
+    - dind
     - arm64
 
 docker:knot-dns:debian:unstable:
@@ -47,24 +51,36 @@ docker:knot-dns:debian:unstable:
   variables:
     IMAGE_NAME: debian:unstable
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
+  tags:
+    - dind
+    - amd64
 
 docker:knot-dns:ubuntu:
   <<: *image
   variables:
     IMAGE_NAME: ubuntu:latest
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
+  tags:
+    - dind
+    - amd64
 
 docker:knot-dns:rocky:
   <<: *image
   variables:
     IMAGE_NAME: rocky:latest
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
+  tags:
+    - dind
+    - amd64
 
 docker:knot-dns:fedora:
   <<: *image
   variables:
     IMAGE_NAME: fedora:latest
     IMAGE_TAG: $CI_REGISTRY_IMAGE/$IMAGE_NAME
+  tags:
+    - dind
+    - amd64
 
 .fedora_latest: &fedora_latest
   image: "$CI_REGISTRY/knot/knot-dns/fedora:latest"
