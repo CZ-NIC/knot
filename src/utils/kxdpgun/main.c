@@ -529,7 +529,7 @@ void *xdp_gun_thread(void *_ctx)
 				} else if (ctx->quic) {
 #ifdef ENABLE_XDP_QUIC
 					knot_xquic_conn_t *relays[recvd];
-					ret = knot_xquic_recv(relays, pkts, recvd, quic_table);
+					ret = knot_xquic_recv(relays, pkts, recvd, ctx->listen_port, quic_table);
 					if (ret != KNOT_EOK) {
 						errors++;
 						break;
@@ -871,6 +871,8 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		case 'U':
 #ifdef ENABLE_XDP_QUIC
 			ctx->quic = true;
+			ctx->flags &= ~(KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP);
+			ctx->flags |= KNOT_XDP_FILTER_QUIC;
 			if (default_at_once) {
 				ctx->at_once = 1;
 			}
