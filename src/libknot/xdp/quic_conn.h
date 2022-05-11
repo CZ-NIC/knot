@@ -63,7 +63,7 @@ typedef struct knot_xquic_conn {
 	struct gnutls_session_int *tls_session;
 
 	knot_xquic_stream_t *streams;
-	int64_t streams_count; // number of allocated streams structures. Special negative values denote fake knot_xquic_conn_t intended to send version negotiation, retry, or stateless reset.
+	int64_t streams_count; // number of allocated streams structures.
 	int64_t streams_first; // stream_id/4 of first allocated stream
 	size_t ibufs_size; // FIXME also global statistics of this counter; sweeping conns based on this
 	size_t obufs_size;
@@ -129,3 +129,5 @@ uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, size_t end_acked, bool keep_stream);
 
 void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id, size_t amount_sent);
+
+bool xquic_require_retry(knot_xquic_table_t *table);

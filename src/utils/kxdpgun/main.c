@@ -369,7 +369,7 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	if (ctx->quic) {
 #ifdef ENABLE_XDP_QUIC
-		quic_table = knot_xquic_table_new(ctx->qps, NULL, NULL);
+		quic_table = knot_xquic_table_new(ctx->qps * 100, NULL, NULL);
 		if (quic_table == NULL) {
 			ERR2("failed to allocate QUIC connection table\n");
 			return NULL;
@@ -410,7 +410,7 @@ void *xdp_gun_thread(void *_ctx)
 
 	timer_start(&timer);
 
-	while (duration < ctx->duration + 1000000) {
+	while (duration < ctx->duration + 4000000) {
 
 		// sending part
 		if (duration < ctx->duration) {
@@ -436,7 +436,7 @@ void *xdp_gun_thread(void *_ctx)
 						if (ret == KNOT_EOK) {
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
-							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1);
+							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, false);
 						}
 						if (ret == KNOT_EOK) {
 							local_stats.qry_sent++;
@@ -541,12 +541,42 @@ void *xdp_gun_thread(void *_ctx)
 						}
 
 						knot_xquic_conn_t *rl = relays[i];
-						assert(rl != NULL);
-						knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, 0, false);
-						if (stream != NULL) {
-							check_dns_payload(&stream->inbuf, ctx, &local_stats);
+						if (rl == NULL) {
+							continue;
 						}
-						ret = knot_xquic_send(quic_table, rl, xsk, &pkts[i], KNOT_EOK, 4);
+
+						knot_xquic_stream_t *stream0 = knot_xquic_conn_get_stream(rl, 0, false);
+						assert(stream0 != NULL);
+
+						if (ngtcp2_conn_is_handshake_completed(rl->conn) &&
+						    stream0->unsent_obuf != NULL) {
+							local_stats.synack_recv++;
+							if ((ctx->ignore1 & KXDPGUN_IGNORE_QUERY)) {
+								xquic_table_rem(relays[i], quic_table);
+								relays[i] = NULL;
+							}
+						}
+
+						if ((ctx->ignore2 & XDP_TCP_IGNORE_ESTABLISH)) {
+							xquic_table_rem(relays[i], quic_table);
+							relays[i] = NULL;
+							local_stats.synack_recv++;
+							continue;
+						}
+
+						stream0 = knot_xquic_conn_get_stream(rl, 0, false);
+						if (stream0 != NULL && stream0->inbuf.iov_len > 0) {
+							check_dns_payload(&stream0->inbuf, ctx, &local_stats);
+
+							if ((ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK)) {
+								xquic_table_rem(relays[i], quic_table);
+								relays[i] = NULL;
+								continue;
+							}
+
+							stream0->inbuf.iov_len = 0;
+						}
+						ret = knot_xquic_send(quic_table, rl, xsk, &pkts[i], KNOT_EOK, 4, (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
 						if (ret != KNOT_EOK) {
 							errors++;
 						}
