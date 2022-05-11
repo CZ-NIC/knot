@@ -58,9 +58,6 @@ typedef struct {
 typedef struct knot_xquic_conn {
 	knot_xquic_ucw_node_t timeout; // MUST be first field of the struct
 
-	uint8_t last_eth_rem[ETH_ALEN];
-	uint8_t last_eth_loc[ETH_ALEN];
-
 	struct ngtcp2_conn *conn;
 
 	struct gnutls_session_int *tls_session;
