@@ -111,7 +111,6 @@ static uint64_t cid2hash(const ngtcp2_cid *cid, knot_xquic_table_t *table)
 	SipHash24_Init(&ctx, (const SIPHASH_KEY *)(table->hash_secret));
 	SipHash24_Update(&ctx, cid->data, MIN(cid->datalen, 8));
 	uint64_t ret = SipHash24_End(&ctx);
-	printf("hash cid %lx secret %lx result %lx\n", *(uint64_t *)cid->data, *(uint64_t *)table->hash_secret, ret);
 	return ret;
 }
 
@@ -139,7 +138,6 @@ knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, kn
 	xconn->xquic_table = table;
 
 	knot_xquic_conn_t **addto = xquic_table_insert(xconn, cid, table);
-	printf("TABLE addto %p conn %p\n", addto, xconn);
 	table->usage++;
 
 	return addto;
@@ -151,13 +149,18 @@ knot_xquic_conn_t **xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_table_t
 
 	knot_xquic_conn_t **res = table->conns + (hash % table->size);
 	while (*res != NULL) {
-		const ngtcp2_cid *ocid = ngtcp2_conn_get_client_initial_dcid((*res)->conn);
-		if (cid_eq(ocid, cid) || true /* FIXME !! */) {
-			break;
+		size_t num_scid = ngtcp2_conn_get_num_scid((*res)->conn); // FIXME this is obvoiusly slow and even crshing when conn table is relatively small. Refactor it somehow
+		ngtcp2_cid *scids = calloc(num_scid, sizeof(*scids));
+		ngtcp2_conn_get_scid((*res)->conn, scids);
+		for (size_t i = 0; i < num_scid; i++) {
+			const ngtcp2_cid *ocid = &scids[i];
+			if (cid_eq(ocid, cid)) {
+				return res;
+			}
 		}
+		free(scids);
 		res = &(*res)->next;
 	}
-	printf("TABLE lookup hash 0x%lx: %p at %p\n", hash, *res, res);
 	return res;
 }
 
@@ -194,11 +197,11 @@ void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
 	size_t num_scid = ngtcp2_conn_get_num_scid(conn->conn);
 	ngtcp2_cid *scids = calloc(num_scid, sizeof(*scids));
 	ngtcp2_conn_get_scid(conn->conn, scids);
-	printf("rem conn num_scid: %zu, num_dcid: %zu\n", ngtcp2_conn_get_num_scid(conn->conn), ngtcp2_conn_get_num_active_dcid(conn->conn));
 
 	for (size_t i = 0; i < num_scid; i++) {
 		knot_xquic_conn_t **pconn = xquic_table_lookup(&scids[i], table);
-		assert(pconn != NULL); // FIXME: harden against weird attacks by if(pconn==NULL)continue; once tested well
+		assert(pconn != NULL);
+		assert(*pconn != NULL); // FIXME: harden against weird attacks by if(*pconn==NULL)continue; once tested well
 		assert(*pconn == conn);
 		xquic_table_rem2(pconn, table);
 	}
@@ -264,7 +267,6 @@ int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, con
 	struct iovec in = { (void *)data, len }, *outs;
 	size_t outs_count;
 	int ret = tcp_inbuf_update(&stream->inbuf, in, &outs, &outs_count, &xconn->ibufs_size);
-	printf("TIU (%s) count %zu fin %d stream %zd\n", knot_strerror(ret), outs_count, fin, stream_id);
 	if (ret != KNOT_EOK || (outs_count == 0 && !fin)) {
 		return ret;
 	}
@@ -316,6 +318,10 @@ void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, siz
 		return;
 	}
 
+	if (!keep_stream) {
+		s->unsent_obuf = NULL;
+	}
+
 	list_t *obs = (list_t *)&s->outbufs;
 
 	knot_xquic_obuf_t *first;
@@ -364,4 +370,10 @@ void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id, si
 			s->unsent_obuf = NULL;
 		}
 	}
+}
+
+bool xquic_require_retry(knot_xquic_table_t *table)
+{
+	(void)table;
+	return false;
 }
