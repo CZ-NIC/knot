@@ -37,26 +37,19 @@
 #include "contrib/macros.h"
 #include "contrib/net.h"
 
-#define FRAME_SIZE 2048
-#define UMEM_FRAME_COUNT_RX 4096
-#define UMEM_FRAME_COUNT_TX UMEM_FRAME_COUNT_RX // No reason to differ so far.
-#define UMEM_RING_LEN_RX (UMEM_FRAME_COUNT_RX * 2)
-#define UMEM_RING_LEN_TX (UMEM_FRAME_COUNT_TX * 2)
-#define UMEM_FRAME_COUNT (UMEM_FRAME_COUNT_RX + UMEM_FRAME_COUNT_TX)
-
-#define ALLOC_RETRY_NUM   15
-#define ALLOC_RETRY_DELAY 20 // In nanoseconds.
+#define FRAME_SIZE		2048
+#define UMEM_FRAME_COUNT_RX	4096
+#define UMEM_FRAME_COUNT_TX	4096
+#define UMEM_FRAME_COUNT	(UMEM_FRAME_COUNT_RX + UMEM_FRAME_COUNT_TX)
+#define ALLOC_RETRY_NUM		15
+#define ALLOC_RETRY_DELAY	20 // In nanoseconds.
 
 /* With recent compilers we statically check #defines for settings that
  * get refused by AF_XDP drivers (in current versions, at least). */
 #if (__STDC_VERSION__ >= 201112L)
 #define IS_POWER_OF_2(n) (((n) & (n - 1)) == 0)
 _Static_assert((FRAME_SIZE == 4096 || FRAME_SIZE == 2048)
-	&& IS_POWER_OF_2(UMEM_FRAME_COUNT)
-	/* The following two inequalities aren't required by drivers, but they allow
-	 * our implementation assume that the rings can never get filled. */
-	&& IS_POWER_OF_2(UMEM_RING_LEN_RX) && UMEM_RING_LEN_RX > UMEM_FRAME_COUNT_RX
-	&& IS_POWER_OF_2(UMEM_RING_LEN_TX) && UMEM_RING_LEN_TX > UMEM_FRAME_COUNT_TX
+	&& IS_POWER_OF_2(UMEM_FRAME_COUNT_RX) && IS_POWER_OF_2(UMEM_FRAME_COUNT_TX)
 	&& UMEM_FRAME_COUNT_TX <= (1 << 16) /* see tx_free_indices */
 	, "Incorrect #define combination for AF_XDP.");
 #endif
@@ -83,8 +76,8 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 	}
 
 	const struct xsk_umem_config config = {
-		.fill_size = UMEM_RING_LEN_RX,
-		.comp_size = UMEM_RING_LEN_TX,
+		.fill_size = UMEM_FRAME_COUNT_RX,
+		.comp_size = UMEM_FRAME_COUNT_TX,
 		.frame_size = FRAME_SIZE,
 		.frame_headroom = 0,
 	};
@@ -139,8 +132,8 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	xsk_info->umem = umem;
 
 	const struct xsk_socket_config sock_conf = {
-		.tx_size = UMEM_RING_LEN_TX,
-		.rx_size = UMEM_RING_LEN_RX,
+		.tx_size = UMEM_FRAME_COUNT_TX,
+		.rx_size = UMEM_FRAME_COUNT_RX,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
 	};
 
@@ -365,10 +358,8 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 *   xsk_ring_prod__reserve(&socket->tx, count, *idx)
 	 * but we don't know in advance if we utilize *whole* `count`,
 	 * and the API doesn't allow "cancelling reservations".
-	 * Therefore we handle `socket->tx.cached_prod` by hand;
-	 * that's simplified by the fact that there is always free space.
+	 * Therefore we handle `socket->tx.cached_prod` by hand.
 	 */
-	assert(UMEM_RING_LEN_TX > UMEM_FRAME_COUNT_TX);
 	uint32_t idx = socket->tx.cached_prod;
 
 	for (uint32_t i = 0; i < count; ++i) {
