@@ -32,6 +32,8 @@
 #endif // ENABLE_XDP_QUIC
 #include "libknot/xdp/tcp.h"
 
+#define XQUIC_MAX_SEND_PER_RECV 4
+
 typedef struct xdp_handle_ctx {
 	knot_xdp_socket_t *sock;
 	knot_xdp_msg_t msg_recv[XDP_BATCHLEN];
@@ -39,12 +41,14 @@ typedef struct xdp_handle_ctx {
 	knot_tcp_relay_t relays[XDP_BATCHLEN];
 	uint32_t msg_recv_count;
 	uint32_t msg_udp_count;
+	uint32_t msg_quic_count;
 	knot_tcp_table_t *tcp_table;
 	knot_tcp_table_t *syn_table;
 
 #ifdef ENABLE_XDP_QUIC
 
 	knot_xquic_conn_t *quic_relays[XDP_BATCHLEN];
+	int quic_rets[XDP_BATCHLEN];
 	knot_xquic_table_t *quic_table;
 
 #endif // ENABLE_XDP_QUIC
@@ -306,25 +310,28 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		return;
 	}
 
-	int ret = knot_xquic_recv(ctx->quic_relays, ctx->msg_recv, ctx->msg_recv_count,
-	                          ctx->quic_port, ctx->quic_table);
-	if (ret != KNOT_EOK) {
-		log_notice("QUIC, failed to process some packets (%s)", knot_strerror(ret));
-		return;
-	}
-
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
+		knot_xdp_msg_t *msg_recv = &ctx->msg_recv[i];
+
+
+		if ((msg_recv->flags & KNOT_XDP_MSG_TCP) || msg_recv->payload.iov_len == 0 ||
+		    sockaddr_port((const struct sockaddr_storage *)&msg_recv->ip_to) != ctx->quic_port) {
+			continue;
+		}
+
+		ctx->quic_rets[i] = knot_xquic_handle(ctx->quic_table, msg_recv, &ctx->quic_relays[i]);
 		knot_xquic_conn_t *rl = ctx->quic_relays[i];
-		for (int64_t j = 0; rl != NULL && j < rl->streams_count; j++) {
+
+		for (int64_t j = 0; rl != NULL && j < rl->streams_count && ctx->msg_quic_count < XQUIC_MAX_SEND_PER_RECV; j++) {
 			int64_t stream_id = (rl->streams_first + j) * 4;
 			knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, stream_id, false);
 			if (stream->inbuf.iov_len > 0) {
 				handle_quic_stream(rl, stream_id, &stream->inbuf, layer, params,
 				                   ans_buf, sizeof(ans_buf), &ctx->msg_recv[i]);
 			}
-			stream->inbuf.iov_len = 0;
+			stream->inbuf.iov_len = 0; // FIXME free mem ?
 		}
 	}
 #else
@@ -369,7 +376,8 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 	}
 #ifdef ENABLE_XDP_QUIC
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
-		int ret = knot_xquic_send(ctx->sock, ctx->quic_relays[i], 4);
+		int ret = knot_xquic_send(ctx->quic_table, ctx->quic_relays[i], ctx->sock,
+		                          &ctx->msg_recv[i], ctx->quic_rets[i], XQUIC_MAX_SEND_PER_RECV);
 		if (ret != KNOT_EOK) {
 			log_notice("QUIC, failed to send some packets");
 		}
