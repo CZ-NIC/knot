@@ -44,19 +44,9 @@ bool xquic_conn_timeout(knot_xquic_conn_t *conn);
 int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
                       struct sockaddr_storage *via, knot_xquic_conn_t **out_conn);
 
-/*!
- * \brief Process received packets, pic incomming DNS data.
- *
- * \param relays        Out: affected QUIC connections.
- * \param msgs          Incomming packets.
- * \param count         Number of incomming packets.
- * \param quic_port     Only UDP packets with this destionation port are considered.
- * \param quic_table    Connection table.
- *
- * \return KNOT_E*
- */
-int knot_xquic_recv(knot_xquic_conn_t **relays,
-                    knot_xdp_msg_t *msgs, uint32_t count,
-                    uint16_t quic_port, knot_xquic_table_t *quic_table);
+int knot_xquic_handle(knot_xquic_table_t *quic_table, knot_xdp_msg_t *in_msg,
+		      knot_xquic_conn_t **out_conn);
 
-int knot_xquic_send(knot_xdp_socket_t *sock, knot_xquic_conn_t *relay, unsigned max_msgs);
+int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
+		    knot_xdp_socket_t *sock, knot_xdp_msg_t *in_msg,
+                    int handle_ret, unsigned max_msgs);
