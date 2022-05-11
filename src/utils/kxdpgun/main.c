@@ -357,6 +357,7 @@ void *xdp_gun_thread(void *_ctx)
 	knot_tcp_table_t *tcp_table = NULL;
 #ifdef ENABLE_XDP_QUIC
 	knot_xquic_table_t *quic_table = NULL;
+	knot_xdp_msg_t quic_fake_req = { 0 };
 #endif // ENABLE_XDP_QUIC
 
 	if (ctx->tcp) {
@@ -375,6 +376,12 @@ void *xdp_gun_thread(void *_ctx)
 		}
 		((struct sockaddr_in6 *)&ctx->target_ip)->sin6_port = htobe16(ctx->target_port);
 		((struct sockaddr_in6 *)&ctx->local_ip)->sin6_port = htobe16(ctx->listen_port);
+
+		memcpy(quic_fake_req.eth_from, ctx->target_mac,  sizeof(ctx->target_mac));
+		memcpy(quic_fake_req.eth_to,   ctx->local_mac,   sizeof(ctx->local_mac));
+		memcpy(&quic_fake_req.ip_from, &ctx->target_ip,  sizeof(quic_fake_req.ip_from));
+		memcpy(&quic_fake_req.ip_to,   &ctx->local_ip,   sizeof(quic_fake_req.ip_to));
+		quic_fake_req.flags = ctx->ipv6 ? KNOT_XDP_MSG_IPV6 : 0;
 #else
 		assert(0);
 #endif // ENABLE_XDP_QUIC
@@ -427,12 +434,9 @@ void *xdp_gun_thread(void *_ctx)
 						knot_xquic_conn_t *newconn = NULL;
 						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
 						if (ret == KNOT_EOK) {
-							memcpy(newconn->last_eth_rem, ctx->target_mac, 6);
-							memcpy(newconn->last_eth_loc, ctx->local_mac, 6);
-
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
-							ret = knot_xquic_send(xsk, newconn, 1);
+							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1);
 						}
 						if (ret == KNOT_EOK) {
 							local_stats.qry_sent++;
@@ -529,23 +533,20 @@ void *xdp_gun_thread(void *_ctx)
 				} else if (ctx->quic) {
 #ifdef ENABLE_XDP_QUIC
 					knot_xquic_conn_t *relays[recvd];
-					ret = knot_xquic_recv(relays, pkts, recvd, ctx->listen_port, quic_table);
-					if (ret != KNOT_EOK) {
-						errors++;
-						break;
-					}
-
 					for (size_t i = 0; i < recvd; i++) {
-						knot_xquic_conn_t *rl = relays[i];
-						if (rl == NULL) {
+						ret = knot_xquic_handle(quic_table, &pkts[i], &relays[i]);
+						if (ret < 0 || ret > 0) {
 							errors++;
-							continue;
+							break;
 						}
+
+						knot_xquic_conn_t *rl = relays[i];
+						assert(rl != NULL);
 						knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, 0, false);
 						if (stream != NULL) {
 							check_dns_payload(&stream->inbuf, ctx, &local_stats);
 						}
-						ret = knot_xquic_send(xsk, rl, 4);
+						ret = knot_xquic_send(quic_table, rl, xsk, &pkts[i], KNOT_EOK, 4);
 						if (ret != KNOT_EOK) {
 							errors++;
 						}
