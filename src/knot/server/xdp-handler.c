@@ -136,9 +136,9 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 		}
 	}
 
-	conf_t *pconf = conf();
 	if (ctx->quic_port > 0) {
 #ifdef ENABLE_XDP_QUIC
+		conf_t *pconf = conf();
 		char *tls_cert = conf_tls(pconf, C_TLS_CERT);
 		char *tls_key = conf_tls(pconf, C_TLS_KEY);
 		ctx->quic_table = knot_xquic_table_new(ctx->tcp_max_conns, tls_cert, tls_key);
@@ -377,7 +377,8 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 #ifdef ENABLE_XDP_QUIC
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
 		int ret = knot_xquic_send(ctx->quic_table, ctx->quic_relays[i], ctx->sock,
-		                          &ctx->msg_recv[i], ctx->quic_rets[i], XQUIC_MAX_SEND_PER_RECV);
+		                          &ctx->msg_recv[i], ctx->quic_rets[i],
+		                          XQUIC_MAX_SEND_PER_RECV, false);
 		if (ret != KNOT_EOK) {
 			log_notice("QUIC, failed to send some packets");
 		}
