@@ -29,7 +29,7 @@ typedef enum {
 	CAT_UPD_MINOR,     // owner or catzone change, uniqID preserved
 	CAT_UPD_UNIQ,      // uniqID change
 	CAT_UPD_PROP,      // ONLY change of properties of existing member
-	CAT_UPD_MAX,       // number of options in ths enum
+	CAT_UPD_MAX,       // number of options in the enum
 } catalog_upd_type_t;
 
 typedef struct catalog_upd_val {
