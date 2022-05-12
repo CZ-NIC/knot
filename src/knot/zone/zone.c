@@ -33,7 +33,6 @@
 #include "knot/zone/contents.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/zonedb-load.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"

@@ -14,12 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "knot/catalog/catalog_update.h"
 #include "knot/common/log.h"
 #include "knot/conf/base.h"
+#include "knot/server/server.h"
 
 int catalog_update_init(catalog_update_t *u)
 {
@@ -363,5 +366,29 @@ int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname
 	int ret = catalog_apply(cat, NULL, del_all_cb, &ctx, false);
 	*upd_count += trie_weight(u->upd);
 	pthread_mutex_unlock(&u->mutex);
+	return ret;
+}
+
+int catalog_zone_purge(server_t *server, conf_t *conf, const knot_dname_t *zone)
+{
+	if (server->catalog.ro_txn == NULL) {
+		return KNOT_EOK; // no catalog at all
+	}
+
+	if (conf != NULL) {
+		conf_val_t role = conf_zone_get(conf, C_CATALOG_ROLE, zone);
+		if (conf_opt(&role) != CATALOG_ROLE_INTERPRET) {
+			return KNOT_EOK;
+		}
+	}
+
+	ssize_t members = 0;
+	int ret = catalog_update_del_all(&server->catalog_upd, &server->catalog, zone, &members);
+	if (ret == KNOT_EOK && members > 0) {
+		log_zone_info(zone, "catalog zone purged, %zd member zones deconfigured", members);
+		if (kill(getpid(), SIGUSR1) != 0) {
+			ret = knot_map_errno();
+		}
+	}
 	return ret;
 }
