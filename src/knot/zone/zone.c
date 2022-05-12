@@ -32,6 +32,7 @@
 #include "knot/zone/contents.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
+#include "knot/zone/zonedb-load.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "contrib/sockaddr.h"
@@ -247,6 +248,78 @@ void zone_reset(conf_t *conf, zone_t *zone)
 	} else {
 		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
 	}
+}
+
+#define RETURN_IF_FAILED(str, exception) \
+{ \
+	if (ret != KNOT_EOK && ret != (exception)) { \
+		errors = true; \
+		log_zone_error(zone->name, \
+		               "failed to %s (%s)", (str), knot_strerror(ret)); \
+		if (exit_immediately) { \
+			return ret; \
+		} \
+	} \
+}
+
+int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
+{
+	int ret;
+	bool errors = false;
+	bool exit_immediately = !(params & PURGE_ZONE_BEST);
+
+	// Purge the zone timers.
+	if (params & PURGE_ZONE_TIMERS) {
+		memset(&zone->timers, 0, sizeof(zone->timers));
+		ret = zone_timers_sweep(&zone->server->timerdb,
+		                        (sweep_cb)knot_dname_cmp, zone->name);
+		RETURN_IF_FAILED("purge timers", KNOT_ENOENT);
+	}
+
+	// Purge the zone file.
+	if (params & PURGE_ZONE_ZONEFILE) {
+		conf_val_t sync;
+		if ((params & PURGE_ZONE_NOSYNC) ||
+		    (sync = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name),
+		     conf_int(&sync) > -1)) {
+			char *zonefile = conf_zonefile(conf, zone->name);
+			ret = (unlink(zonefile) == -1 ? knot_map_errno() : KNOT_EOK);
+			free(zonefile);
+			RETURN_IF_FAILED("purge zone file", KNOT_ENOENT);
+		}
+	}
+
+	// Purge the zone journal.
+	if (params & PURGE_ZONE_JOURNAL) {
+		ret = journal_scrape_with_md(zone_journal(zone), true);
+		RETURN_IF_FAILED("purge journal", KNOT_ENOENT);
+	}
+
+	// Purge KASP DB.
+	if (params & PURGE_ZONE_KASPDB) {
+		ret = knot_lmdb_open(zone_kaspdb(zone));
+		if (ret == KNOT_EOK) {
+			ret = kasp_db_delete_all(zone_kaspdb(zone), zone->name);
+		}
+		RETURN_IF_FAILED("purge KASP DB", KNOT_ENOENT);
+	}
+
+	// Purge Catalog.
+	if (params & PURGE_ZONE_CATALOG) {
+		ret = catalog_zone_purge(zone->server, conf, zone->name);
+		RETURN_IF_FAILED("purge catalog", KNOT_EOK);
+	}
+
+	if (errors) {
+		return KNOT_ERROR;
+	}
+
+	if ((params & PURGE_ZONE_LOG) ||
+	    (params & PURGE_ZONE_DATA) == PURGE_ZONE_DATA) {
+		log_zone_notice(zone->name, "zone purged");
+	}
+
+	return KNOT_EOK;
 }
 
 knot_lmdb_db_t *zone_journaldb(const zone_t *zone)
