@@ -159,13 +159,17 @@ static time_t get_next_time(zone_events_t *events)
 
 /*!
  * \brief Cancel scheduled item, schedule first enqueued item.
+ *
+ * \param mx_handover   events->mx already locked. Take it over and unlock when done.
  */
-static void reschedule(zone_events_t *events)
+static void reschedule(zone_events_t *events, bool mx_handover)
 {
 	assert(events);
 
+	if (!mx_handover) {
+		pthread_mutex_lock(&events->mx);
+	}
 	pthread_mutex_lock(&events->reschedule_lock);
-	pthread_mutex_lock(&events->mx);
 
 	if (!events->event || events->running || events->frozen) {
 		pthread_mutex_unlock(&events->mx);
@@ -250,8 +254,7 @@ static void event_wrap(worker_task_t *task)
 		pthread_cond_broadcast(events->run_end);
 	}
 
-	pthread_mutex_unlock(&events->mx);
-	reschedule(events);
+	reschedule(events, true); // unlocks events->mx
 }
 
 /*!
@@ -314,10 +317,15 @@ void zone_events_deinit(zone_t *zone)
 		return;
 	}
 
+	pthread_mutex_lock(&zone->events.mx);
+	pthread_mutex_lock(&zone->events.reschedule_lock);
+
 	evsched_cancel(zone->events.event);
 	evsched_event_free(zone->events.event);
 
+	pthread_mutex_unlock(&zone->events.mx);
 	pthread_mutex_destroy(&zone->events.mx);
+	pthread_mutex_unlock(&zone->events.reschedule_lock);
 	pthread_mutex_destroy(&zone->events.reschedule_lock);
 
 	memset(&zone->events, 0, sizeof(zone->events));
@@ -348,9 +356,10 @@ void _zone_events_schedule_at(zone_t *zone, ...)
 
 	// reschedule if changed
 	time_t next = get_next_time(events);
-	pthread_mutex_unlock(&events->mx);
 	if (old_next != next) {
-		reschedule(events);
+		reschedule(events, true); // unlocks events->mx
+	} else {
+		pthread_mutex_unlock(&events->mx);
 	}
 
 	va_end(args);
@@ -370,7 +379,7 @@ void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 	zone_events_schedule_now(zone, type);
 
 	// reschedule because get_next_event result changed outside of _zone_events_schedule_at
-	reschedule(events);
+	reschedule(events, false);
 }
 
 int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool user)
@@ -445,10 +454,12 @@ void zone_events_freeze(zone_t *zone)
 	/* Prevent new events being enqueued. */
 	pthread_mutex_lock(&events->mx);
 	events->frozen = true;
+	pthread_mutex_lock(&events->reschedule_lock);
 	pthread_mutex_unlock(&events->mx);
 
 	/* Cancel current event. */
 	evsched_cancel(events->event);
+	pthread_mutex_unlock(&events->reschedule_lock);
 }
 
 void zone_events_freeze_blocking(zone_t *zone)
@@ -485,9 +496,8 @@ void zone_events_start(zone_t *zone)
 	/* Unlock the events queue. */
 	pthread_mutex_lock(&events->mx);
 	events->frozen = false;
-	pthread_mutex_unlock(&events->mx);
 
-	reschedule(events);
+	reschedule(events, true); //unlocks events->mx
 }
 
 time_t zone_events_get_time(const struct zone *zone, zone_event_type_t type)
