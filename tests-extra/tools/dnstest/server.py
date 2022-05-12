@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
+import enum
 import glob
 import inspect
 import ipaddress
@@ -73,6 +74,15 @@ class ZoneDnssec(object):
         self.dnskey_mgmt = None
         self.offline_ksk = None
 
+class ZoneCatalogRole(enum.IntEnum):
+    """Zone catalog roles."""
+
+    NONE = 0
+    INTERPRET = 1
+    GENERATE = 2
+    MEMBER = 3
+    HIDDEN = 4 # Interpreted member zone
+
 class Zone(object):
     '''DNS zone description'''
 
@@ -85,8 +95,8 @@ class Zone(object):
         self.journal_content = journal_content # journal contents
         self.modules = []
         self.dnssec = ZoneDnssec()
-        self.catalog = None
-        self.catalog_zone = None
+        self.catalog_role = ZoneCatalogRole.NONE
+        self.catalog_gen_name = None # Generated catalog name for this member
         self.catalog_group = None
         self.refresh_max = None
         self.refresh_min = None
@@ -109,10 +119,6 @@ class Zone(object):
 
     def clear_modules(self):
         self.modules.clear()
-
-    def catalog_gen_link(self, catalog_zone):
-        self.catalog_zone = catalog_zone
-        catalog_zone.catalog_zone = catalog_zone
 
     def disable_master(self, new_zone_file):
         self.zfile.remove()
@@ -250,6 +256,25 @@ class Server(object):
             z.disable_master(slave_file)
 
         z.masters.add(master)
+
+    def cat_interpret(self, zone):
+        z = self.zones[zone_arg_check(zone).name]
+        z.catalog_role = ZoneCatalogRole.INTERPRET
+
+    def cat_generate(self, zone):
+        z = self.zones[zone_arg_check(zone).name]
+        z.catalog_role = ZoneCatalogRole.GENERATE
+
+    def cat_member(self, zone, catalog, group=None):
+        z = self.zones[zone_arg_check(zone).name]
+        c = self.zones[zone_arg_check(catalog).name]
+        z.catalog_role = ZoneCatalogRole.MEMBER
+        z.catalog_gen_name = c.name
+        z.catalog_group = group
+
+    def cat_hidden(self, zone):
+        z = self.zones[zone_arg_check(zone).name]
+        z.catalog_role = ZoneCatalogRole.HIDDEN
 
     def compile(self):
         try:
@@ -925,6 +950,15 @@ class Bind(Server):
         (out, err) = proc.communicate(input=conff)
         return proc.wait() == 0
 
+    def _key(self, conf, keys, key, comment):
+        if key and key.name not in keys:
+            conf.begin("key", key.name)
+            conf.comment("%s" % comment)
+            conf.item("algorithm", key.alg)
+            conf.item_str("secret", key.key)
+            conf.end()
+            keys.add(key.name)
+
     def _str(self, conf, name, value):
         if value and value != True:
             conf.item_str(name, value)
@@ -973,38 +1007,16 @@ class Bind(Server):
         s.end()
 
         if self.tsig:
-            t = self.tsig
-            s.begin("key", t.name)
-            s.item("# Local key")
-            s.item("algorithm", t.alg)
-            s.item_str("secret", t.key)
-            s.end()
-            t = self.tsig_test
-            s.begin("key", t.name)
-            s.item("# Test key")
-            s.item("algorithm", t.alg)
-            s.item_str("secret", t.key)
-            s.end()
-
             keys = set() # Duplicy check.
+            self._key(s, keys, self.tsig_test, "test")
+            self._key(s, keys, self.tsig, "local")
+
             for zone in sorted(self.zones):
                 z = self.zones[zone]
                 for master in z.masters:
-                    if master.tsig.name not in keys:
-                        t = master.tsig
-                        s.begin("key", t.name)
-                        s.item("algorithm", t.alg)
-                        s.item_str("secret", t.key)
-                        s.end()
-                        keys.add(t.name)
+                    self._key(s, keys, master.tsig, master.name)
                 for slave in z.slaves:
-                    if slave.tsig and slave.tsig.name not in keys:
-                        t = slave.tsig
-                        s.begin("key", t.name)
-                        s.item("algorithm", t.alg)
-                        s.item_str("secret", t.key)
-                        s.end()
-                        keys.add(t.name)
+                    self._key(s, keys, slave.tsig, slave.name)
 
         for zone in sorted(self.zones):
             z = self.zones[zone]
@@ -1020,7 +1032,7 @@ class Bind(Server):
                 for master in z.masters:
                     if self.tsig:
                         masters += "%s port %i key %s; " \
-                                   % (master.addr, master.port, master.tsig.name)
+                                   % (master.addr, master.port, self.tsig.name)
                         if not master.disable_notify:
                             masters_notify += "key %s; " % master.tsig.name
                     else:
@@ -1063,12 +1075,14 @@ class Bind(Server):
                 else:
                     s.item("allow-update", "{ %s}" % upd)
 
+            slaves_xfr = ""
             if self.tsig or self.tsig_test:
-                s.item("allow-transfer", "{%s%s }" %
-                       ((" key %s;" % self.tsig.name) if self.tsig else "",
-                        (" key %s;" % self.tsig_test.name) if self.tsig_test else ""))
+                slaves_xfr = "key %s" % self.tsig_test.name
+                for slave in z.slaves:
+                    slaves_xfr += "; key %s" % slave.tsig.name
             else:
-                s.item("allow-transfer", "{ any; }")
+                slaves_xfr = "any"
+            s.item("allow-transfer", "{ %s; }" % slaves_xfr )
 
             if z.dnssec.enable:
                 s.item("inline-signing", "yes")
@@ -1182,11 +1196,13 @@ class Knot(Server):
         elif value:
             conf.item_str(name, value)
 
-    def _key(self, conf, key):
-        if key:
+    def _key(self, conf, keys, key, comment):
+        if key and key.name not in keys:
             conf.id_item("id", key.name)
+            conf.comment("%s" % comment)
             conf.item_str("algorithm", key.alg)
             conf.item_str("secret", key.key)
+            keys.add(key.name)
 
     def _bool(self, conf, name, value):
         if value != None:
@@ -1220,8 +1236,8 @@ class Knot(Server):
     def first_master(self, zone_name):
         return sorted(self.zones[zone_name].masters, key=lambda srv: srv.name)[0]
 
-    def config_xfr(self, zone, knotconf):
-        acl = ""
+    def config_xfr(self, zone, conf):
+        acl = "acl_test"
         if zone.masters:
             masters = ""
             for master in sorted(zone.masters, key=lambda srv: srv.name):
@@ -1229,25 +1245,20 @@ class Knot(Server):
                     masters += ", "
                 masters += master.name
                 if not master.disable_notify:
-                    if acl:
-                        acl += ", "
-                    acl += "acl_%s" % master.name
-            knotconf.item("master", "[%s]" % masters)
+                    acl += ", acl_%s" % master.name
+            conf.item("master", "[%s]" % masters)
         if zone.slaves:
             slaves = ""
-            for slave in zone.slaves:
-                if slave.disable_notify:
-                    continue
-                if slaves:
-                    slaves += ", "
-                slaves += slave.name
+            for slave in sorted(zone.slaves, key=lambda srv: srv.name):
+                if not slave.disable_notify:
+                    if slaves:
+                        slaves += ", "
+                    slaves += slave.name
+                acl += ", acl_%s" % slave.name
             if slaves:
-                knotconf.item("notify", "[%s]" % slaves)
-        if acl:
-            acl += ", "
-        acl += "acl_local, acl_test"
+                conf.item("notify", "[%s]" % slaves)
         if not self.auto_acl:
-            knotconf.item("acl", "[%s]" % acl)
+            conf.item("acl", "[%s]" % acl)
 
     def get_config(self):
         s = dnstest.config.KnotConf()
@@ -1287,24 +1298,15 @@ class Knot(Server):
         if self.tsig:
             keys = set() # Duplicy check.
             s.begin("key")
-            self._key(s, self.tsig)
-            keys.add(self.tsig.name)
-            if self.tsig_test is not None and self.tsig_test.name not in keys:
-                self._key(s, self.tsig_test)
-                keys.add(self.tsig_test.name)
+            self._key(s, keys, self.tsig_test, "test")
+            self._key(s, keys, self.tsig, "local")
 
             for zone in sorted(self.zones):
                 z = self.zones[zone]
                 for master in z.masters:
-                    if master.tsig.name not in keys:
-                        t = master.tsig
-                        self._key(s, t)
-                        keys.add(t.name)
+                    self._key(s, keys, master.tsig, master.name)
                 for slave in z.slaves:
-                    if slave.tsig.name not in keys:
-                        t = slave.tsig
-                        self._key(s, t)
-                        keys.add(t.name)
+                    self._key(s, keys, slave.tsig, slave.name)
             s.end()
 
         have_remote = False
@@ -1318,8 +1320,8 @@ class Knot(Server):
                         have_remote = True
                     s.id_item("id", master.name)
                     s.item_str("address", "%s@%s" % (master.addr, master.port))
-                    if master.tsig:
-                        s.item_str("key", master.tsig.name)
+                    if self.tsig:
+                        s.item_str("key", self.tsig.name)
                     if master.no_xfr_edns:
                         s.item_str("no-edns", "on")
                     servers.add(master.name)
@@ -1330,8 +1332,8 @@ class Knot(Server):
                         have_remote = True
                     s.id_item("id", slave.name)
                     s.item_str("address", "%s@%s" % (slave.addr, slave.port))
-                    if slave.tsig:
-                        s.item_str("key", slave.tsig.name)
+                    if self.tsig:
+                        s.item_str("key", self.tsig.name)
                     servers.add(slave.name)
             for parent in z.dnssec.ksk_sbm_check + [ z.dnssec.ds_push ] if z.dnssec.ds_push else z.dnssec.ksk_sbm_check:
                 if parent.name not in servers:
@@ -1346,12 +1348,6 @@ class Knot(Server):
             s.end()
 
         s.begin("acl")
-        s.id_item("id", "acl_local")
-        s.item_str("address", Context().test.addr)
-        if self.tsig:
-            s.item_str("key", self.tsig.name)
-        s.item("action", "[transfer, notify, update]")
-
         s.id_item("id", "acl_test")
         s.item_str("address", Context().test.addr)
         if self.tsig_test:
@@ -1499,8 +1495,9 @@ class Knot(Server):
         have_catalog = None
         for zone in self.zones:
             z = self.zones[zone]
-            if z.catalog:
+            if z.catalog_role in [ZoneCatalogRole.INTERPRET, ZoneCatalogRole.GENERATE]:
                 have_catalog = z
+                break
         if have_catalog is not None:
             s.id_item("id", "catalog-default")
             s.item_str("file", self.dir + "/master/%s.zone")
@@ -1533,6 +1530,9 @@ class Knot(Server):
         s.begin("zone")
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            if z.catalog_role == ZoneCatalogRole.HIDDEN:
+                continue
+
             s.id_item("domain", z.name)
             s.item_str("file", z.zfile.path)
 
@@ -1554,21 +1554,19 @@ class Knot(Server):
             elif z.ixfr:
                 s.item_str("zonefile-load", "difference")
 
-            if z.catalog_zone == z:
+            if z.catalog_role == ZoneCatalogRole.GENERATE:
                 s.item_str("catalog-role", "generate")
-            elif z.catalog_zone is not None:
+            elif z.catalog_role == ZoneCatalogRole.MEMBER:
                 s.item_str("catalog-role", "member")
-                s.item_str("catalog-zone", z.catalog_zone.name)
+                s.item_str("catalog-zone", z.catalog_gen_name)
+                self._str(s, "catalog-group", z.catalog_group)
+            elif z.catalog_role == ZoneCatalogRole.INTERPRET:
+                s.item_str("catalog-role", "interpret")
+                s.item("catalog-template", "[ catalog-default, catalog-signed, catalog-unsigned ]")
 
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "off" if z.dnssec.disable else "on")
                 s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
-
-            if z.catalog:
-                s.item_str("catalog-role", "interpret")
-                s.item("catalog-template", "[ catalog-default, catalog-signed, catalog-unsigned ]")
-
-            self._str(s, "catalog-group", z.catalog_group)
 
             self._bool(s, "dnssec-validation", z.dnssec.validate)
 
