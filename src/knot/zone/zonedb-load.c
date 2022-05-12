@@ -242,25 +242,9 @@ static void mark_changed_zones(knot_zonedb_t *zonedb, trie_t *changed)
 	trie_it_free(it);
 }
 
-static void zone_purge(conf_t *conf, zone_t *zone, server_t *server)
+static inline void zone_purge(conf_t *conf, zone_t *zone)
 {
-	(void)zone_timers_sweep(&server->timerdb, (sweep_cb)knot_dname_cmp, zone->name);
-
-	conf_val_t sync = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-	if (conf_int(&sync) > -1) {
-		char *zonefile = conf_zonefile(conf, zone->name);
-		(void)unlink(zonefile);
-		free(zonefile);
-	}
-
-	(void)journal_scrape_with_md(zone_journal(zone), true);
-	if (knot_lmdb_open(zone_kaspdb(zone)) == KNOT_EOK) {
-		(void)kasp_db_delete_all(zone_kaspdb(zone), zone->name);
-	}
-
-	(void)catalog_zone_purge(server, conf, zone->name);
-
-	log_zone_notice(zone->name, "zone purged");
+	(void)selective_zone_purge(conf, zone, PURGE_ZONE_ALL);
 }
 
 static zone_contents_t *zone_expire(zone_t *zone)
@@ -298,7 +282,7 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 	if (upd != NULL) {
 		switch (upd->type) {
 		case CAT_UPD_UNIQ:
-			zone_purge(conf, zone, server);
+			zone_purge(conf, zone);
 			knot_sem_wait(&zone->cow_lock);
 			ptrlist_add(expired_contents, zone_expire(zone), NULL);
 			knot_sem_post(&zone->cow_lock);
@@ -547,7 +531,7 @@ catalog_only:
 		if (upd->type == CAT_UPD_REM) {
 			zone_t *zone = knot_zonedb_find(db_old, upd->member);
 			if (zone != NULL) {
-				zone_purge(conf, zone, server);
+				zone_purge(conf, zone);
 			}
 		}
 		catalog_it_next(cat_it);
