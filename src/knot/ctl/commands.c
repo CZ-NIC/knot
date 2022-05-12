@@ -1308,6 +1308,90 @@ static int drop_journal_if_orphan(const knot_dname_t *for_zone, void *ctx)
 	return KNOT_EOK;
 }
 
+static int purge_stray_members_cb(const knot_dname_t *member, const knot_dname_t *owner,
+                                  const knot_dname_t *catz, const char *group, void *ctx)
+{
+	if (zone_exists(member, ((server_t *)ctx)->zone_db)) {
+		return KNOT_EOK;
+	}
+
+	const char *err_str = NULL;
+
+	rcu_read_lock();
+	zone_t *cat_z = knot_zonedb_find(((server_t *)ctx)->zone_db, catz);
+	if (cat_z == NULL) {
+		err_str = "existing";
+	} else if (!cat_z->is_catalog_flag) {
+		err_str = "catalog";
+	}
+	rcu_read_unlock();
+
+	if (err_str == NULL) {
+		return KNOT_EOK;
+	}
+
+	char *catz_str = knot_dname_to_str_alloc(catz);
+	log_zone_debug(member, "member of a non-%s zone %s",
+	              err_str, catz_str);
+	free(catz_str);
+
+	// Single-purpose fake zone_t containing only minimal data.
+	// malloc() should suffice here, but clean zone_t is more mishandling-proof.
+	zone_t *orphan = calloc(1, sizeof(zone_t));
+	if (orphan == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	orphan->name = (knot_dname_t *)member;
+	orphan->server = (server_t *)ctx;
+
+	purge_flag_t params;
+	params = PURGE_ZONE_TIMERS | PURGE_ZONE_JOURNAL | PURGE_ZONE_KASPDB | PURGE_ZONE_LOG;
+
+	int ret = selective_zone_purge(conf(), orphan, params);
+	free(orphan);
+	if (ret != KNOT_EOK) {
+		log_zone_error(member, "purge of an orphaned zone failed (%s)",
+		               knot_strerror(ret));
+		return ret;
+	}
+
+	ret = catalog_del(&((server_t *)ctx)->catalog, member);
+	if ( ret != KNOT_EOK) {
+		log_zone_error(member, "remove of an orphan from catalog failed (%s)",
+		               knot_strerror(ret));
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+static int catalog_orphans_sweep(server_t *server)
+{
+	catalog_t *cat = &server->catalog;
+	int ret2 = KNOT_EOK;
+	int ret = catalog_begin(cat);
+	if (ret == KNOT_EOK) {
+		ret = catalog_apply(cat, NULL,
+		                    purge_stray_members_cb,
+		                    server, false);
+		if (ret != KNOT_EOK) {
+			log_error("failed to purge orphan members data (%s)",
+			          knot_strerror(ret));
+		}
+		ret2 = catalog_commit(cat);
+		if (ret2 != KNOT_EOK) {
+			log_error("failed to update catalog (%s)",
+			          knot_strerror(ret));
+		}
+	} else {
+		log_error("can't open catalog for purging (%s)",
+		          knot_strerror(ret));
+	}
+
+	return (ret == KNOT_EOK) ? ret2 : ret;
+}
+
 static void log_if_orphans_error(knot_dname_t *zone_name, int err, char *db_type)
 {
 	if (err == KNOT_EOK || err == KNOT_ENOENT || err == KNOT_EFILE) {
@@ -1354,6 +1438,12 @@ static int orphans_purge(ctl_args_t *args)
 			ret = zone_timers_sweep(&args->server->timerdb,
 			                        zone_exists, args->server->zone_db);
 			log_if_orphans_error(NULL, ret, "timer");
+		}
+
+		// Purge and remove stray members of non-existing/non-catalog zones.
+		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_CATALOG)) {
+			ret = catalog_orphans_sweep(args->server);
+			log_if_orphans_error(NULL, ret, "catalog");
 		}
 	} else {
 		knot_dname_storage_t buff;
