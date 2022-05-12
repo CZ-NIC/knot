@@ -50,6 +50,7 @@ import libknot.control
 # Initialization
 ctl = libknot.control.KnotCtl()
 ctl.connect("/var/run/knot/knot.sock")
+ctl.set_timeout(60)
 
 try:
     # Operation without parameters
@@ -67,6 +68,9 @@ try:
     ctl.send_block(cmd="conf-read", section="zone", item="domain")
     resp = ctl.receive_block()
     print(json.dumps(resp, indent=4))
+except libknot.control.KnotCtlError as exc:
+    # Print libknot error
+    print(exc)
 finally:
     # Deinitialization
     ctl.send(libknot.control.KnotCtlType.END)
