@@ -57,6 +57,27 @@ typedef uint64_t notifailed_rmt_hash;
 knot_dynarray_declare(notifailed_rmt, notifailed_rmt_hash, DYNARRAY_VISIBILITY_NORMAL, 4);
 
 /*!
+ * \brief Zone purging parameter flags.
+ */
+typedef enum {
+	PURGE_ZONE_BEST     = 1 << 0, /*!< Best effort -- continue on failures. */
+	PURGE_ZONE_LOG      = 1 << 1, /*!< Log a purged zone even if requested less. */
+	PURGE_ZONE_NOSYNC   = 1 << 2, /*!< Remove even zone files with disabled syncing. */
+	PURGE_ZONE_TIMERS   = 1 << 3, /*!< Purge the zone timers. */
+	PURGE_ZONE_ZONEFILE = 1 << 4, /*!< Purge the zone file. */
+	PURGE_ZONE_JOURNAL  = 1 << 5, /*!< Purge the zone journal. */
+	PURGE_ZONE_KASPDB   = 1 << 6, /*!< Purge KASP DB. */
+	PURGE_ZONE_CATALOG  = 1 << 7, /*!< Purge the catalog. */
+} purge_flag_t;
+
+#define PURGE_ZONE_FULL       ~0U     /*!< Purge everything possible. */
+                                      /*!< Standard purge (respect C_ZONEFILE_SYNC param). */
+#define PURGE_ZONE_ALL        (PURGE_ZONE_FULL ^ PURGE_ZONE_NOSYNC)
+                                      /*!< All data. */
+#define PURGE_ZONE_DATA       (PURGE_ZONE_TIMERS | PURGE_ZONE_ZONEFILE | PURGE_ZONE_JOURNAL | \
+                               PURGE_ZONE_KASPDB | PURGE_ZONE_CATALOG)
+
+/*!
  * \brief Structure for holding DNS zone.
  */
 typedef struct zone
@@ -142,6 +163,19 @@ void zone_free(zone_t **zone_ptr);
  * \param zone   Zone to be re-set.
  */
 void zone_reset(conf_t *conf, zone_t *zone);
+
+/*!
+ * \brief Purges selected zone components.
+ *
+ * \param conf    Current configuration.
+ * \param zone    Zone to be purged.
+ * \param params  Zone components to be purged and the purging mode
+ *                (with PURGE_ZONE_BEST try to purge everything requested,
+ *                otherwise exit on the first failure).
+ *
+ * \return        KNOT_E*
+ */
+int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params);
 
 /*!
  * \brief Clears possible control update transaction.

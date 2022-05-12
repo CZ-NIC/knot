@@ -1423,69 +1423,35 @@ static int orphans_purge(ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-#define RETURN_IF_FAILED(str, exception) \
-{ \
-	if (ret != KNOT_EOK && ret != (exception)) { \
-		log_zone_error(zone->name, \
-		               "failed to %s (%s)", (str), knot_strerror(ret)); \
-		return ret; \
-	} \
-}
-
 static int zone_purge(zone_t *zone, ctl_args_t *args)
 {
 	int ret = KNOT_EOK;
 
-	// Abort possible editing transaction.
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
+		// Abort possible editing transaction.
 		ret = zone_txn_abort(zone, args);
-		RETURN_IF_FAILED("abort pending transaction", KNOT_TXN_ENOTEXISTS);
-	}
+		if (ret != KNOT_EOK && ret != KNOT_TXN_ENOTEXISTS) {
+			log_zone_error(zone->name,
+			               "failed to abort pending transaction (%s)",
+			               knot_strerror(ret));
+			return ret;
+		}
 
-	// Purge the zone timers.
-	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
-		memset(&zone->timers, 0, sizeof(zone->timers));
-		ret = zone_timers_sweep(&args->server->timerdb,
-		                        zone_names_distinct, zone->name);
-		RETURN_IF_FAILED("purge timers", KNOT_ENOENT);
-	}
-
-	// Expire the zone.
-	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
+		// Expire the zone.
 		// KNOT_EOK is the only return value from event_expire().
 		(void)schedule_trigger(zone, args, ZONE_EVENT_EXPIRE, true);
 	}
 
-	// Purge the zone file.
-	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_ZONEFILE)) {
-		char *zonefile = conf_zonefile(conf(), zone->name);
-		ret = (unlink(zonefile) == -1 ? knot_map_errno() : KNOT_EOK);
-		free(zonefile);
-		RETURN_IF_FAILED("purge zone file", KNOT_ENOENT);
-	}
+	purge_flag_t params =
+		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)   * PURGE_ZONE_TIMERS |
+		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_ZONEFILE) * PURGE_ZONE_ZONEFILE |
+		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)  * PURGE_ZONE_JOURNAL |
+		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)   * PURGE_ZONE_KASPDB |
+		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_CATALOG)  * PURGE_ZONE_CATALOG |
+		PURGE_ZONE_NOSYNC; // Purge even zonefiles with disabled syncing.
 
-	// Purge the zone journal.
-	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
-		ret = journal_scrape_with_md(zone_journal(zone), true);
-		RETURN_IF_FAILED("purge journal", KNOT_ENOENT);
-	}
-
-	// Purge KASP DB.
-	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
-		ret = knot_lmdb_open(zone_kaspdb(zone));
-		if (ret == KNOT_EOK) {
-			ret = kasp_db_delete_all(zone_kaspdb(zone), zone->name);
-		}
-		RETURN_IF_FAILED("purge KASP DB", KNOT_ENOENT);
-	}
-
-	// Purge Catalog.
-	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_CATALOG)) {
-		ret = catalog_zone_purge(args->server, conf(), zone->name);
-		RETURN_IF_FAILED("purge catalog", KNOT_EOK);
-	}
-
-	return KNOT_EOK;
+	// Purge the requested zone data.
+	return selective_zone_purge(conf(), zone, params);
 }
 
 static int send_stats_ctr(mod_ctr_t *ctr, uint64_t **stats_vals, unsigned threads,
