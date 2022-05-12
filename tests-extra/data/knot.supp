@@ -17,6 +17,15 @@
 }
 
 {
+   liburcu/call_rcu
+   Memcheck:Leak
+   match-leak-kinds: possible,reachable
+   fun:malloc
+   ...
+   fun:urcu_memb_call_rcu
+}
+
+{
    pthread/shared_stack
    Memcheck:Leak
    match-leak-kinds: possible,reachable
