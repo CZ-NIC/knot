@@ -15,7 +15,6 @@
  */
 
 #include <assert.h>
-#include <signal.h>
 #include <unistd.h>
 #include <urcu.h>
 
@@ -32,30 +31,6 @@
 #include "knot/zone/zonedb.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
-
-int catalog_zone_purge(server_t *server, conf_t *conf, const knot_dname_t *zone)
-{
-	if (server->catalog.ro_txn == NULL) {
-		return KNOT_EOK; // no catalog at all
-	}
-
-	if (conf != NULL) {
-		conf_val_t role = conf_zone_get(conf, C_CATALOG_ROLE, zone);
-		if (conf_opt(&role) != CATALOG_ROLE_INTERPRET) {
-			return KNOT_EOK;
-		}
-	}
-
-	ssize_t members = 0;
-	int ret = catalog_update_del_all(&server->catalog_upd, &server->catalog, zone, &members);
-	if (ret == KNOT_EOK && members > 0) {
-		log_zone_info(zone, "catalog zone purged, %zd member zones deconfigured", members);
-		if (kill(getpid(), SIGUSR1) != 0) {
-			ret = knot_map_errno();
-		}
-	}
-	return ret;
-}
 
 static bool zone_file_updated(conf_t *conf, const zone_t *old_zone,
                               const knot_dname_t *zone_name)

@@ -20,6 +20,8 @@
 #include "knot/catalog/catalog_db.h"
 #include "knot/conf/conf.h"
 
+struct server;  // "knot/server/server.h" causes preprocessor problems when included.
+
 typedef enum {
 	CAT_UPD_INVALID,   // invalid value
 	CAT_UPD_ADD,       // member addition
@@ -156,3 +158,14 @@ int catalog_update_commit(catalog_update_t *u, catalog_t *cat);
  * \return KNOT_E*
  */
 int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname_t *zone, ssize_t *upd_count);
+
+/*!
+ * \brief Destroy all members of specified catalog zone.
+ *
+ * \param server   Server with catalog DB.
+ * \param conf     Optional: check conf to skip if zone not catalog.
+ * \param zone     Catalog zone name.
+ *
+ * \return KNOT_E*
+ */
+int catalog_zone_purge(struct server *server, conf_t *conf, const knot_dname_t *zone);
