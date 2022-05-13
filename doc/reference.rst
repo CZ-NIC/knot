@@ -2121,13 +2121,16 @@ prevented from loading.
 
 If enabled, extra checks are used. These checks don't prevent the zone from loading.
 
+The mandatory checks are applied to zone files, zone transfers, and updates via
+control interface. The extra checks are applied to zone files only!
+
 Mandatory checks:
 
 - Missing SOA record at the zone apex (:rfc:`1034`)
 
 Mandatory checks affected by the soft mode:
 
-- An extra record exists together with a CNAME record except for RRSIG and DS (:rfc:`1034`)
+- An extra record exists together with a CNAME record except for RRSIG and NSEC (:rfc:`1034`)
 - Multiple CNAME records with the same owner exist (:rfc:`1034`)
 - DNAME record having a record under it (:rfc:`6672`)
 - Multiple DNAME records with the same owner exist (:rfc:`6672`)

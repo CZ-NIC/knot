@@ -1941,6 +1941,9 @@ prevented from loading.
 .sp
 If enabled, extra checks are used. These checks don\(aqt prevent the zone from loading.
 .sp
+The mandatory checks are applied to zone files, zone transfers, and updates via
+control interface. The extra checks are applied to zone files only!
+.sp
 Mandatory checks:
 .INDENT 0.0
 .IP \(bu 2
@@ -1950,7 +1953,7 @@ Missing SOA record at the zone apex (\fI\%RFC 1034\fP)
 Mandatory checks affected by the soft mode:
 .INDENT 0.0
 .IP \(bu 2
-An extra record exists together with a CNAME record except for RRSIG and DS (\fI\%RFC 1034\fP)
+An extra record exists together with a CNAME record except for RRSIG and NSEC (\fI\%RFC 1034\fP)
 .IP \(bu 2
 Multiple CNAME records with the same owner exist (\fI\%RFC 1034\fP)
 .IP \(bu 2
