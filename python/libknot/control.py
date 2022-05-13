@@ -84,7 +84,26 @@ class KnotCtlError(Exception):
         self.data = data
 
     def __str__(self) -> str:
-        return "%s (data: %s)" % (self.message, self.data)
+        out = "%s" % self.message
+        if self.data:
+            out += " (%s)" % self.data
+        return out
+
+
+class KnotCtlErrorConnect(KnotCtlError):
+    """Control connection error."""
+
+
+class KnotCtlErrorSend(KnotCtlError):
+    """Control data send error."""
+
+
+class KnotCtlErrorReceive(KnotCtlError):
+    """Control data receive error."""
+
+
+class KnotCtlErrorRemote(KnotCtlError):
+    """Control error on the remote (server) side."""
 
 
 class KnotCtl(object):
@@ -146,7 +165,7 @@ class KnotCtl(object):
         ret = KnotCtl.CONNECT(self.obj, path.encode())
         if ret != 0:
             err = libknot.Knot.STRERROR(ret)
-            raise KnotCtlError(err if isinstance(err, str) else err.decode())
+            raise KnotCtlErrorConnect(err if isinstance(err, str) else err.decode())
 
     def close(self) -> None:
         """Disconnects from the current control socket."""
@@ -160,7 +179,7 @@ class KnotCtl(object):
                            data.data if data else ctypes.c_char_p())
         if ret != 0:
             err = libknot.Knot.STRERROR(ret)
-            raise KnotCtlError(err if isinstance(err, str) else err.decode())
+            raise KnotCtlErrorSend(err if isinstance(err, str) else err.decode())
 
     def receive(self, data: KnotCtlData = None) -> KnotCtlType:
         """Receives a data unit from the connected control socket."""
@@ -170,7 +189,7 @@ class KnotCtl(object):
                               data.data if data else ctypes.c_char_p())
         if ret != 0:
             err = libknot.Knot.STRERROR(ret)
-            raise KnotCtlError(err if isinstance(err, str) else err.decode())
+            raise KnotCtlErrorReceive(err if isinstance(err, str) else err.decode())
         return KnotCtlType(data_type.value)
 
     def send_block(self, cmd: str, section: str = None, item: str = None,
@@ -316,7 +335,7 @@ class KnotCtl(object):
             self._receive_stats(out, reply)
 
         if err_reply:
-            raise KnotCtlError(err_reply[KnotCtlDataIdx.ERROR], err_reply)
+            raise KnotCtlErrorRemote(err_reply[KnotCtlDataIdx.ERROR], err_reply)
 
         return out
 
@@ -352,6 +371,6 @@ class KnotCtl(object):
                 continue
 
         if err_reply:
-            raise KnotCtlError(err_reply[KnotCtlDataIdx.ERROR], err_reply)
+            raise KnotCtlErrorRemote(err_reply[KnotCtlDataIdx.ERROR], err_reply)
 
         return out
