@@ -317,18 +317,20 @@ void zone_events_deinit(zone_t *zone)
 		return;
 	}
 
-	pthread_mutex_lock(&zone->events.mx);
-	pthread_mutex_lock(&zone->events.reschedule_lock);
+	zone_events_t *events = &zone->events;
 
-	evsched_cancel(zone->events.event);
-	evsched_event_free(zone->events.event);
+	pthread_mutex_lock(&events->mx);
+	pthread_mutex_lock(&events->reschedule_lock);
 
-	pthread_mutex_unlock(&zone->events.mx);
-	pthread_mutex_destroy(&zone->events.mx);
-	pthread_mutex_unlock(&zone->events.reschedule_lock);
-	pthread_mutex_destroy(&zone->events.reschedule_lock);
+	evsched_cancel(events->event);
+	evsched_event_free(events->event);
 
-	memset(&zone->events, 0, sizeof(zone->events));
+	pthread_mutex_unlock(&events->mx);
+	pthread_mutex_destroy(&events->mx);
+	pthread_mutex_unlock(&events->reschedule_lock);
+	pthread_mutex_destroy(&events->reschedule_lock);
+
+	memset(events, 0, sizeof(*events));
 }
 
 void _zone_events_schedule_at(zone_t *zone, ...)
