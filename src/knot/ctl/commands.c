@@ -1352,15 +1352,15 @@ static int purge_orphan_member_cb(const knot_dname_t *member, const knot_dname_t
 	orphan->name = (knot_dname_t *)member;
 	orphan->server = server;
 
-	purge_flag_t params;
-	params = PURGE_ZONE_TIMERS | PURGE_ZONE_JOURNAL | PURGE_ZONE_KASPDB | PURGE_ZONE_LOG;
+	purge_flag_t params =
+		PURGE_ZONE_TIMERS | PURGE_ZONE_JOURNAL | PURGE_ZONE_KASPDB |
+		PURGE_ZONE_BEST | PURGE_ZONE_LOG;
 
 	int ret = selective_zone_purge(conf(), orphan, params);
 	free(orphan);
 	if (ret != KNOT_EOK) {
 		log_zone_error(member, "purge of an orphaned zone failed (%s)",
 		               knot_strerror(ret));
-		return ret;
 	}
 
 	// this deleting inside catalog DB iteration is OK, since
@@ -1369,7 +1369,6 @@ static int purge_orphan_member_cb(const knot_dname_t *member, const knot_dname_t
 	if (ret != KNOT_EOK) {
 		log_zone_error(member, "remove of an orphan from catalog failed (%s)",
 		               knot_strerror(ret));
-		return ret;
 	}
 
 	return KNOT_EOK;
