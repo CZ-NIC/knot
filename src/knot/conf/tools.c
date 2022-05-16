@@ -508,9 +508,16 @@ int check_xdp(
 	                                     C_XDP, C_LISTEN);
 	conf_val_t srv_listen = conf_get_txn(args->extra->conf, args->extra->txn,
 	                                     C_SRV, C_LISTEN);
+	conf_val_t udp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
+	                              C_UDP);
 	conf_val_t tcp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
 	                              C_TCP);
 	if (xdp_listen.code == KNOT_EOK) {
+		if (!conf_bool(&udp) && !conf_bool(&tcp)) {
+			args->err_str = "XDP processing requires UDP or TCP enabled";
+			return KNOT_EINVAL;
+		}
+
 		if (srv_listen.code != KNOT_EOK && tcp.code != KNOT_EOK) {
 			CONF_LOG(LOG_WARNING, "TCP processing not available");
 		}

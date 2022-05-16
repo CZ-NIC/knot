@@ -530,6 +530,7 @@ Various options related to XDP listening, especially TCP.
 
  xdp:
      listen: STR[@INT] | ADDR[@INT] ...
+     udp: BOOL
      tcp: BOOL
      tcp-max-clients: INT
      tcp-inbuf-max-size: SIZE
@@ -565,12 +566,23 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
+.. _xdp_udp:
+
+udp
+---
+
+If enabled, DNS over UDP is processed with XDP workers.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* on
+
 .. _xdp_tcp:
 
 tcp
 ---
 
-If enabled, DNS over TCP traffic is also processed with XDP workers.
+If enabled, DNS over TCP traffic is processed with XDP workers.
 
 The TCP stack limitations:
 
@@ -579,10 +591,6 @@ The TCP stack limitations:
  - Not optimized for transfers of non-trivial zones.
 
 Change of this parameter requires restart of the Knot server to take effect.
-
-.. WARNING::
-   This feature is experimental and it may eat your hamster as well as any
-   other hamsters connected to the network.
 
 *Default:* off
 

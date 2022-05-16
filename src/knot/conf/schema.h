@@ -142,6 +142,7 @@
 #define C_TIMER_DB		"\x08""timer-db"
 #define C_TIMER_DB_MAX_SIZE	"\x11""timer-db-max-size"
 #define C_TPL			"\x08""template"
+#define C_UDP			"\x03""udp"
 #define C_UDP_MAX_PAYLOAD	"\x0F""udp-max-payload"
 #define C_UDP_MAX_PAYLOAD_IPV4	"\x14""udp-max-payload-ipv4"
 #define C_UDP_MAX_PAYLOAD_IPV6	"\x14""udp-max-payload-ipv6"

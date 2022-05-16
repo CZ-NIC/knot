@@ -257,6 +257,7 @@ static const yp_item_t desc_server[] = {
 
 static const yp_item_t desc_xdp[] = {
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp_listen } },
+	{ C_UDP,                  YP_TBOOL, YP_VBOOL = { true } },
 	{ C_TCP,                  YP_TBOOL, YP_VNONE },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 1024, INT32_MAX, 1000000 } },
 	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
