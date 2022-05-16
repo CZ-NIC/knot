@@ -269,6 +269,9 @@ Options
   Use HTTPS with HTTP/GET method instead of the default HTTP/POST method.
   Library *libnghttp2* is required.
 
+**+**\ [\ **no**\ ]\ **quic**
+  Use QUIC (DNS-over-QUIC).
+
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
