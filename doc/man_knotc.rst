@@ -197,7 +197,8 @@ Actions
   Available filters are **+expire**, **+zonefile**, **+journal**, **+timers**,
   **+kaspdb**, and **+catalog**. If no filter is specified, all filters are enabled.
   If the zone is no longer configured, add **+orphan** parameter (zone file cannot
-  be purged in this case). This command always requires the force option. (#)
+  be purged in this case). When purging orphans, always check the server log for
+  possible errors. This command always requires the force option. (#)
 
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use

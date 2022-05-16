@@ -220,7 +220,8 @@ Purge zone data, zone file, journal, timers, and/or KASP data of specified zones
 Available filters are \fB+expire\fP, \fB+zonefile\fP, \fB+journal\fP, \fB+timers\fP,
 \fB+kaspdb\fP, and \fB+catalog\fP\&. If no filter is specified, all filters are enabled.
 If the zone is no longer configured, add \fB+orphan\fP parameter (zone file cannot
-be purged in this case). This command always requires the force option. (#)
+be purged in this case). When purging orphans, always check the server log for
+possible errors. This command always requires the force option. (#)
 .TP
 \fBzone\-stats\fP \fIzone\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
 Show zone statistics counter(s). To print also counters with value 0, use
