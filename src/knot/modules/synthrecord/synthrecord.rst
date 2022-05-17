@@ -85,13 +85,6 @@ Result:
    ;; ANSWER SECTION:
    1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 400 IN PTR dynamic-2620-0-b61--1.test.
 
-Known bugs, limitations
------------------------
-
-The queries to the empty-non-terminals being parent to synthesized reverse records,
-e.g. `0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. IN PTR` with previous example,
-are answered wrongly NXDOMAIN instead of correct NODATA.
-
 Module reference
 ----------------
 
