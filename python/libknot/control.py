@@ -57,7 +57,7 @@ class KnotCtlData(object):
             if self.data[idx]:
                 if string:
                     string += ", "
-                string += "%s = %s" % (idx.name, self.data[idx])
+                string += "%s = '%s'" % (idx.name, self.data[idx].decode())
 
         return string
 
@@ -65,9 +65,7 @@ class KnotCtlData(object):
         """Data unit item getter."""
 
         value = self.data[index]
-        if not value:
-            value = str()
-        return value if isinstance(value, str) else value.decode()
+        return value.decode() if value else str()
 
     def __setitem__(self, index: KnotCtlDataIdx, value: str) -> None:
         """Data unit item setter."""
@@ -165,7 +163,7 @@ class KnotCtl(object):
         ret = KnotCtl.CONNECT(self.obj, path.encode())
         if ret != 0:
             err = libknot.Knot.STRERROR(ret)
-            raise KnotCtlErrorConnect(err if isinstance(err, str) else err.decode())
+            raise KnotCtlErrorConnect(err.decode())
 
     def close(self) -> None:
         """Disconnects from the current control socket."""
@@ -179,7 +177,7 @@ class KnotCtl(object):
                            data.data if data else ctypes.c_char_p())
         if ret != 0:
             err = libknot.Knot.STRERROR(ret)
-            raise KnotCtlErrorSend(err if isinstance(err, str) else err.decode())
+            raise KnotCtlErrorSend(err.decode())
 
     def receive(self, data: KnotCtlData = None) -> KnotCtlType:
         """Receives a data unit from the connected control socket."""
@@ -189,7 +187,7 @@ class KnotCtl(object):
                               data.data if data else ctypes.c_char_p())
         if ret != 0:
             err = libknot.Knot.STRERROR(ret)
-            raise KnotCtlErrorReceive(err if isinstance(err, str) else err.decode())
+            raise KnotCtlErrorReceive(err.decode())
         return KnotCtlType(data_type.value)
 
     def send_block(self, cmd: str, section: str = None, item: str = None,
