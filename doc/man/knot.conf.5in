@@ -2126,8 +2126,8 @@ Possible values:
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-If the resulting serial for \fBunixtime\fP or \fBdateserial\fP is lower or equal
-than the current serial (this happens e.g. when migrating from other policy or
+If the resulting serial for \fBunixtime\fP or \fBdateserial\fP is lower than or
+equal to the current serial (this happens e.g. when migrating from other policy or
 frequent updates), the serial is incremented instead.
 .sp
 To avoid user confusion, use \fBdateserial\fP only if you expect at most
