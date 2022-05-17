@@ -2365,8 +2365,8 @@ Possible values:
   8 digits match the current iso-date.
 
 .. NOTE::
-   If the resulting serial for ``unixtime`` or ``dateserial`` is lower or equal
-   than the current serial (this happens e.g. when migrating from other policy or
+   If the resulting serial for ``unixtime`` or ``dateserial`` is lower than or
+   equal to the current serial (this happens e.g. when migrating from other policy or
    frequent updates), the serial is incremented instead.
 
    To avoid user confusion, use ``dateserial`` only if you expect at most
