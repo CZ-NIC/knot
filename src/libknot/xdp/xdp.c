@@ -38,11 +38,16 @@
 #include "contrib/net.h"
 
 #define FRAME_SIZE		2048
-#define UMEM_FRAME_COUNT_RX	4096
-#define UMEM_FRAME_COUNT_TX	UMEM_FRAME_COUNT_RX // No reason to differ so far.
-#define UMEM_FRAME_COUNT	(UMEM_FRAME_COUNT_RX + UMEM_FRAME_COUNT_TX)
-#define UMEM_RING_LEN_RX	(UMEM_FRAME_COUNT_RX * 2)
-#define UMEM_RING_LEN_TX	(UMEM_FRAME_COUNT_TX * 2)
+
+#define FRAME_COUNT_TX		2048
+#define FRAME_COUNT_RX		2048
+#define FRAME_COUNT		(FRAME_COUNT_TX + FRAME_COUNT_RX)
+
+#define RING_LEN_TX		FRAME_COUNT_TX
+#define RING_LEN_CQ		FRAME_COUNT_TX
+#define RING_LEN_RX		FRAME_COUNT_RX
+/* It's recommended that the FQ ring size >= HW RX ring size + AF_XDP RX ring size. */
+#define RING_LEN_FQ		8192
 
 #define ALLOC_RETRY_NUM		15
 #define ALLOC_RETRY_DELAY	20 // In nanoseconds.
@@ -52,12 +57,9 @@
 #if (__STDC_VERSION__ >= 201112L)
 #define IS_POWER_OF_2(n) (((n) & (n - 1)) == 0)
 _Static_assert((FRAME_SIZE == 4096 || FRAME_SIZE == 2048)
-	&& IS_POWER_OF_2(UMEM_FRAME_COUNT)
-	/* The following two inequalities aren't required by drivers, but they allow
-	 * our implementation assume that the rings can never get filled. */
-	&& IS_POWER_OF_2(UMEM_RING_LEN_RX) && UMEM_RING_LEN_RX > UMEM_FRAME_COUNT_RX
-	&& IS_POWER_OF_2(UMEM_RING_LEN_TX) && UMEM_RING_LEN_TX > UMEM_FRAME_COUNT_TX
-	&& UMEM_FRAME_COUNT_TX <= (1 << 16) /* see tx_free_indices */
+	&& IS_POWER_OF_2(RING_LEN_TX) && IS_POWER_OF_2(RING_LEN_RX)
+	&& IS_POWER_OF_2(RING_LEN_CQ) && IS_POWER_OF_2(RING_LEN_FQ)
+	&& FRAME_COUNT_TX <= (1 << 16) /* see tx_free_indices */
 	, "Incorrect #define combination for AF_XDP.");
 #endif
 
@@ -70,26 +72,26 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 	/* Allocate memory and call driver to create the UMEM. */
 	struct kxsk_umem *umem = calloc(1,
 		offsetof(struct kxsk_umem, tx_free_indices)
-		+ sizeof(umem->tx_free_indices[0]) * UMEM_FRAME_COUNT_TX);
+		+ sizeof(umem->tx_free_indices[0]) * FRAME_COUNT_TX);
 	if (umem == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	int ret = posix_memalign((void **)&umem->frames, getpagesize(),
-	                         FRAME_SIZE * UMEM_FRAME_COUNT);
+	                         FRAME_SIZE * FRAME_COUNT);
 	if (ret != 0) {
 		free(umem);
 		return KNOT_ENOMEM;
 	}
 
 	const struct xsk_umem_config config = {
-		.fill_size = UMEM_RING_LEN_RX,
-		.comp_size = UMEM_RING_LEN_TX,
+		.fill_size = RING_LEN_FQ,
+		.comp_size = RING_LEN_CQ,
 		.frame_size = FRAME_SIZE,
 		.frame_headroom = 0,
 	};
 
-	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * UMEM_FRAME_COUNT,
+	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * FRAME_COUNT,
 	                       &umem->fq, &umem->cq, &config);
 	if (ret != KNOT_EOK) {
 		free(umem->frames);
@@ -99,23 +101,23 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 	*out_umem = umem;
 
 	/* Designate the starting chunk of buffers for TX, and put them onto the stack. */
-	umem->tx_free_count = UMEM_FRAME_COUNT_TX;
-	for (uint32_t i = 0; i < UMEM_FRAME_COUNT_TX; ++i) {
+	umem->tx_free_count = FRAME_COUNT_TX;
+	for (uint32_t i = 0; i < FRAME_COUNT_TX; ++i) {
 		umem->tx_free_indices[i] = i;
 	}
 
 	/* Designate the rest of buffers for RX, and pass them to the driver. */
 	uint32_t idx = 0;
-	ret = xsk_ring_prod__reserve(&umem->fq, UMEM_FRAME_COUNT_RX, &idx);
-	if (ret != UMEM_FRAME_COUNT - UMEM_FRAME_COUNT_TX) {
+	ret = xsk_ring_prod__reserve(&umem->fq, FRAME_COUNT_RX, &idx);
+	if (ret != FRAME_COUNT_RX) {
 		assert(0);
 		return KNOT_ERROR;
 	}
 	assert(idx == 0);
-	for (uint32_t i = UMEM_FRAME_COUNT_TX; i < UMEM_FRAME_COUNT; ++i) {
+	for (uint32_t i = FRAME_COUNT_TX; i < FRAME_COUNT; ++i) {
 		*xsk_ring_prod__fill_addr(&umem->fq, idx++) = i * FRAME_SIZE;
 	}
-	xsk_ring_prod__submit(&umem->fq, UMEM_FRAME_COUNT_RX);
+	xsk_ring_prod__submit(&umem->fq, FRAME_COUNT_RX);
 
 	return KNOT_EOK;
 }
@@ -139,8 +141,8 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	xsk_info->umem = umem;
 
 	const struct xsk_socket_config sock_conf = {
-		.tx_size = UMEM_RING_LEN_TX,
-		.rx_size = UMEM_RING_LEN_RX,
+		.tx_size = RING_LEN_TX,
+		.rx_size = RING_LEN_RX,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
 	};
 
@@ -240,7 +242,7 @@ static void tx_free_relative(struct kxsk_umem *umem, uint64_t addr_relative)
 {
 	/* The address may not point to *start* of buffer, but `/` solves that. */
 	uint64_t index = addr_relative / FRAME_SIZE;
-	assert(index < UMEM_FRAME_COUNT);
+	assert(index < FRAME_COUNT);
 	umem->tx_free_indices[umem->tx_free_count++] = index;
 }
 
@@ -259,7 +261,7 @@ void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 	if (completed == 0) {
 		return;
 	}
-	assert(umem->tx_free_count + completed <= UMEM_FRAME_COUNT_TX);
+	assert(umem->tx_free_count + completed <= FRAME_COUNT_TX);
 
 	for (uint32_t i = 0; i < completed; ++i) {
 		uint64_t addr_relative = *xsk_ring_cons__comp_addr(cq, idx++);
@@ -365,10 +367,8 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 *   xsk_ring_prod__reserve(&socket->tx, count, *idx)
 	 * but we don't know in advance if we utilize *whole* `count`,
 	 * and the API doesn't allow "cancelling reservations".
-	 * Therefore we handle `socket->tx.cached_prod` by hand;
-	 * that's simplified by the fact that there is always free space.
+	 * Therefore we handle `socket->tx.cached_prod` by hand.
 	 */
-	assert(UMEM_RING_LEN_TX > UMEM_FRAME_COUNT_TX);
 	uint32_t idx = socket->tx.cached_prod;
 
 	for (uint32_t i = 0; i < count; ++i) {
@@ -530,11 +530,11 @@ void knot_xdp_info(const knot_xdp_socket_t *socket, FILE *file)
 		        (unsigned)*(ring)->producer, (unsigned)*(ring)->consumer)
 
 	const int rx_busyf = RING_BUSY(&socket->umem->fq) + RING_BUSY(&socket->rx);
-	fprintf(file, "\nLOST RX frames: %4d", (int)(UMEM_FRAME_COUNT_RX - rx_busyf));
+	fprintf(file, "\nLOST RX frames: %4d", (int)(FRAME_COUNT_RX - rx_busyf));
 
 	const int tx_busyf = RING_BUSY(&socket->umem->cq) + RING_BUSY(&socket->tx);
 	const int tx_freef = socket->umem->tx_free_count;
-	fprintf(file, "\nLOST TX frames: %4d\n", (int)(UMEM_FRAME_COUNT_TX - tx_busyf - tx_freef));
+	fprintf(file, "\nLOST TX frames: %4d\n", (int)(FRAME_COUNT_TX - tx_busyf - tx_freef));
 
 	RING_PRINFO("FQ", &socket->umem->fq);
 	RING_PRINFO("RX", &socket->rx);
