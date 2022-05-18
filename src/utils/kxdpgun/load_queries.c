@@ -40,6 +40,7 @@ void free_global_payloads()
 		g_payloads_p = tmp->next;
 		free(tmp);
 	}
+	global_payloads = NULL;
 }
 
 bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
