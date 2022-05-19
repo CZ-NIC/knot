@@ -371,6 +371,9 @@ int catalog_update_del_all(catalog_update_t *u, catalog_t *cat, const knot_dname
 
 int catalog_zone_purge(server_t *server, conf_t *conf, const knot_dname_t *zone)
 {
+	assert(server);
+	assert(zone);
+
 	if (server->catalog.ro_txn == NULL) {
 		return KNOT_EOK; // no catalog at all
 	}
