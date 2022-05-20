@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <bpf/libbpf.h>
 #include <errno.h>
 #include <ifaddrs.h>
@@ -21,6 +22,7 @@
 #include <linux/if.h>
 #include <linux/if_link.h>
 #include <linux/sockios.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -65,6 +67,74 @@ int knot_eth_queues(const char *devname)
 		}
 	}
 
+	close(fd);
+	return ret;
+}
+
+_public_
+int knot_eth_rss(const char *devname, knot_eth_rss_conf_t **rss_conf)
+{
+	if (devname == NULL || rss_conf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	struct ethtool_rxfh *ctx = NULL;
+	knot_eth_rss_conf_t *out = NULL;
+	int ret = KNOT_ERROR;
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0) {
+		ret = knot_map_errno();
+		goto finish;
+	}
+
+	struct ethtool_rxfh sizes = {
+		.cmd = ETHTOOL_GRSSH
+	};
+	struct ifreq ifr = {
+		.ifr_data = &sizes
+	};
+	strlcpy(ifr.ifr_name, devname, IFNAMSIZ);
+
+	ret = ioctl(fd, SIOCETHTOOL, &ifr);
+	if (ret != 0) {
+		ret = knot_map_errno();
+		goto finish;
+	}
+
+	const unsigned data_size = sizes.indir_size * sizeof(sizes.rss_config[0]) +
+	                           sizes.key_size;
+
+	ctx = calloc(1, sizeof(*ctx) + data_size);
+	if (ctx == NULL) {
+		ret = KNOT_ENOMEM;
+		goto finish;
+	}
+	ctx->cmd = ETHTOOL_GRSSH;
+	ctx->indir_size = sizes.indir_size;
+	ctx->key_size = sizes.key_size;
+	ifr.ifr_data = ctx;
+
+	ret = ioctl(fd, SIOCETHTOOL, &ifr);
+	if (ret != 0) {
+		ret = knot_map_errno();
+		goto finish;
+	}
+
+	out = calloc(1, sizeof(*out) + data_size);
+	if (ctx == NULL) {
+		ret = KNOT_ENOMEM;
+		goto finish;
+	}
+
+	out->table_size = sizes.indir_size;
+	out->key_size = sizes.key_size;
+	memcpy(out->data, ctx->rss_config, data_size);
+	out->mask = out->table_size - 1;
+finish:
+	*rss_conf = out;
+
+	free(ctx);
 	close(fd);
 	return ret;
 }
