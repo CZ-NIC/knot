@@ -161,6 +161,7 @@ src/contrib/string.h
 src/contrib/strtonum.h
 src/contrib/time.c
 src/contrib/time.h
+src/contrib/toeplitz.h
 src/contrib/tolower.h
 src/contrib/trim.h
 src/contrib/ucw/array-sort.h
@@ -638,6 +639,7 @@ tests/contrib/test_spinlock.c
 tests/contrib/test_string.c
 tests/contrib/test_strtonum.c
 tests/contrib/test_time.c
+tests/contrib/test_toeplitz.c
 tests/contrib/test_wire_ctx.c
 tests/knot/test_acl.c
 tests/knot/test_changeset.c
