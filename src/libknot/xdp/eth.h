@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 
 #define KNOT_XDP_MAX_MTU 1792
 
@@ -39,6 +40,15 @@
  * \return > 0   Number of queues.
  */
 int knot_eth_queues(const char *devname);
+
+typedef struct {
+	size_t table_size; // Size of indirection table in four-bytes.
+	size_t key_size;   // Size in bytes.
+	uint32_t mask;
+	uint32_t data[];
+} knot_eth_rss_conf_t;
+
+int knot_eth_rss(const char *devname, knot_eth_rss_conf_t **rss_conf);
 
 /*!
  * \brief Get value of MTU setup on a network interface.
