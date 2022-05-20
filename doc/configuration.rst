@@ -525,14 +525,14 @@ frequently updated. Currently, catalog zones are described in this `Internet Dra
 Terminology first. *Catalog zone* is a meta-zone which shall not be a part
 of the DNS tree, but it contains information about the set of member zones and
 is transferable to secondary servers using common AXFR/IXFR techniques.
-*Catalog-member zone* (or just *member zone*) is a zone based on
+A *catalog-member zone* (or just *member zone*) is a zone based on
 information from the catalog zone and not from configuration file/database.
 *Member properties* are some additional information related to each member zone,
-also distributed by the catalog zone.
+also distributed with the catalog zone.
 
 A catalog zone is handled almost in the same way as a regular zone:
 It can be configured using all the standard options (but for example
-DNSSEC signing would be useless), including primary/secondary configuration
+DNSSEC signing is useless as the zone won't be queried by clients), including primary/secondary configuration
 and ACLs. A catalog zone is indicated by setting the option
 :ref:`zone_catalog-role`. The difference is that standard DNS
 queries to a catalog zone are answered with REFUSED as though the zone
@@ -571,8 +571,8 @@ are processed as a definition of the member's *group* property. The
 All other records and other member properties are ignored. They remain in the catalog
 zone, however, and might be for example transferred to a secondary server,
 which may interpret catalog zones differently. SOA still needs to be present in
-the catalog zone and its serial handled appropriately. An apex NS record should be
-present for the sake of interoperability. The version record ``version 0 IN TXT "2"``
+the catalog zone and its serial handled appropriately. An apex NS record must be
+present as for any other zone. The version record ``version 0 IN TXT "2"``
 is required at the catalog zone apex.
 
 A catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,
