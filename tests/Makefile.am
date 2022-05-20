@@ -62,6 +62,7 @@ check_PROGRAMS = \
 	contrib/test_string			\
 	contrib/test_strtonum			\
 	contrib/test_time			\
+	contrib/test_toeplitz			\
 	contrib/test_wire_ctx
 
 check_PROGRAMS += \
