@@ -48,6 +48,7 @@
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/os.h"
 #include "contrib/sockaddr.h"
+#include "contrib/toeplitz.h"
 #include "contrib/ucw/mempool.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
@@ -100,6 +101,11 @@ typedef enum {
 } xdp_gun_ignore_t;
 
 typedef struct {
+	uint8_t data[2 * sizeof(struct in6_addr) + 2 * sizeof(uint16_t)];
+	toeplitz_ctx_t toeplitz;
+} rss_ctx_t;
+
+typedef struct {
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
 	unsigned	at_once;
@@ -118,6 +124,8 @@ typedef struct {
 	uint16_t	listen_port;
 	knot_xdp_filter_flag_t flags;
 	unsigned	n_threads, thread_id;
+	knot_eth_rss_conf_t *rss_conf;
+	rss_ctx_t	rss;
 } xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
@@ -300,6 +308,64 @@ static void put_dns_payload(struct iovec *put_into, bool zero_copy, xdp_gun_ctx_
 	next_payload(payl, ctx->n_threads);
 }
 
+void rss_ctx_init(xdp_gun_ctx_t *ctx)
+{
+	if (ctx->rss_conf == NULL) {
+		return;
+	}
+
+	memset(&ctx->rss, 0, sizeof(ctx->rss));
+
+	const uint8_t *key = (const uint8_t *)&(ctx->rss_conf->data[ctx->rss_conf->table_size]);
+	const size_t key_len = ctx->rss_conf->key_size;
+	uint8_t *data = ctx->rss.data;
+
+	size_t addr_len;
+	if (ctx->ipv6) {
+		addr_len = sizeof(struct in6_addr);
+		struct sockaddr_in6 *src = (struct sockaddr_in6 *)(&ctx->target_ip);
+		struct sockaddr_in6 *dst = (struct sockaddr_in6 *)(&ctx->local_ip);
+		memcpy(ctx->rss.data, &src->sin6_addr, addr_len);
+		memcpy(ctx->rss.data + addr_len, &dst->sin6_addr, addr_len);
+	} else {
+		addr_len = sizeof(struct in_addr);
+		struct sockaddr_in *src = (struct sockaddr_in *)(&ctx->target_ip);
+		struct sockaddr_in *dst = (struct sockaddr_in *)(&ctx->local_ip);
+		memcpy(ctx->rss.data, &src->sin_addr, addr_len);
+		memcpy(ctx->rss.data + addr_len, &dst->sin_addr, addr_len);
+	}
+
+	uint16_t src_port = htobe16(ctx->target_port);
+	memcpy(ctx->rss.data + 2 * addr_len, &src_port, sizeof(src_port));
+
+	size_t data_len = 2 * addr_len + 2 * sizeof(uint16_t);
+	toeplitz_init(&ctx->rss.toeplitz, 2 * addr_len + sizeof(uint16_t),
+	              key, key_len, data, data_len);
+}
+
+static void adjust_port(xdp_gun_ctx_t *ctx, struct sockaddr_in6 *local_ip,
+                        uint16_t local_port)
+{
+	if (ctx->rss_conf == NULL) {
+		return;
+	}
+
+	size_t addr_len = ctx->ipv6 ? sizeof(struct in6_addr) : sizeof(struct in_addr);
+
+	for (int i = 0; i < UINT16_MAX; i++) {
+		uint16_t dst_port = htobe16(local_port);
+		memcpy(ctx->rss.data + 2 * addr_len + sizeof(uint16_t), &dst_port, sizeof(dst_port));
+		uint32_t hash = toeplitz_finish(&ctx->rss.toeplitz);
+		uint32_t id = ctx->rss_conf->data[hash & ctx->rss_conf->mask];
+		if (id == ctx->thread_id) {
+			break;
+		}
+		uint16_t port_range = LOCAL_PORT_MAX - LOCAL_PORT_MIN + 1;
+		local_port = LOCAL_PORT_MIN + (local_port + 1) % port_range;
+	}
+	local_ip->sin6_port = htobe16(local_port);
+}
+
 static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
                       xdp_gun_ctx_t *ctx, uint64_t tick)
 {
@@ -360,6 +426,8 @@ void *xdp_gun_thread(void *_ctx)
 	knot_xdp_msg_t quic_fake_req = { 0 };
 #endif // ENABLE_XDP_QUIC
 
+	rss_ctx_init(ctx);
+
 	if (ctx->tcp) {
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
 		if (tcp_table == NULL) {
@@ -376,6 +444,7 @@ void *xdp_gun_thread(void *_ctx)
 		}
 		((struct sockaddr_in6 *)&ctx->target_ip)->sin6_port = htobe16(ctx->target_port);
 		((struct sockaddr_in6 *)&ctx->local_ip)->sin6_port = htobe16(ctx->listen_port);
+		adjust_port(ctx, (struct sockaddr_in6 *)&ctx->local_ip, ctx->listen_port);
 
 		memcpy(quic_fake_req.eth_from, ctx->target_mac,  sizeof(ctx->target_mac));
 		memcpy(quic_fake_req.eth_to,   ctx->local_mac,   sizeof(ctx->local_mac));
@@ -742,6 +811,14 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		return false;
 	}
 
+	if (ctx->n_threads > 1 && ctx->quic) {
+		ret = knot_eth_rss(ctx->dev, &ctx->rss_conf);
+		if (ret != 0) {
+			WARN2("unable to read NIC RSS configuration for '%s' (%s)\n",
+			      ctx->dev, knot_strerror(ret));
+		}
+	}
+
 	return true;
 }
 
@@ -1038,6 +1115,7 @@ int main(int argc, char *argv[])
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 
+	free(ctx.rss_conf);
 	free(thread_ctxs);
 	free(threads);
 	free_global_payloads();
