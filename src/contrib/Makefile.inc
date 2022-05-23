@@ -176,6 +176,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr2.c \
@@ -207,10 +209,17 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_map.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_mem.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_mem.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_net.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_objalloc.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_objalloc.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_opl.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_opl.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_path.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_path.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pmtud.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pmtud.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ppe.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ppe.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pq.c \
@@ -236,6 +245,7 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_version.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.h \
 	contrib/libngtcp2/ngtcp2/crypto/gnutls.c \

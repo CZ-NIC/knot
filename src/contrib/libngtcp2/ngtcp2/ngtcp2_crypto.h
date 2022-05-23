@@ -62,15 +62,6 @@ extern "C" {
 /**
  * @function
  *
- * `ngtcp2_crypto_ctx_initial` initializes |ctx| for Initial packet
- * encryption and decryption.
- */
-NGTCP2_EXTERN ngtcp2_crypto_ctx *
-ngtcp2_crypto_ctx_initial(ngtcp2_crypto_ctx *ctx);
-
-/**
- * @function
- *
  * `ngtcp2_crypto_ctx_tls` initializes |ctx| by extracting negotiated
  * ciphers and message digests from native TLS session
  * |tls_native_handle|.  This is used for encrypting/decrypting
@@ -95,33 +86,6 @@ NGTCP2_EXTERN ngtcp2_crypto_ctx *ngtcp2_crypto_ctx_tls(ngtcp2_crypto_ctx *ctx,
  */
 NGTCP2_EXTERN ngtcp2_crypto_ctx *
 ngtcp2_crypto_ctx_tls_early(ngtcp2_crypto_ctx *ctx, void *tls_native_handle);
-
-/**
- * @function
- *
- * `ngtcp2_crypto_aead_init` initializes |aead| with the provided
- * |aead_native_handle| which is an underlying AEAD object.
- *
- * If libngtcp2_crypto_openssl is linked, |aead_native_handle| must be
- * a pointer to EVP_CIPHER.
- *
- * If libngtcp2_crypto_gnutls is linked, |aead_native_handle| must be
- * gnutls_cipher_algorithm_t casted to ``void *``.
- *
- * If libngtcp2_crypto_boringssl is linked, |aead_native_handle| must
- * be a pointer to EVP_AEAD.
- */
-NGTCP2_EXTERN ngtcp2_crypto_aead *
-ngtcp2_crypto_aead_init(ngtcp2_crypto_aead *aead, void *aead_native_handle);
-
-/**
- * @function
- *
- * `ngtcp2_crypto_aead_retry` initializes |aead| with the AEAD cipher
- * AEAD_AES_128_GCM for Retry packet integrity protection.
- */
-NGTCP2_EXTERN ngtcp2_crypto_aead *
-ngtcp2_crypto_aead_retry(ngtcp2_crypto_aead *aead);
 
 /**
  * @function
@@ -252,31 +216,6 @@ typedef enum ngtcp2_crypto_side {
  */
 NGTCP2_EXTERN size_t
 ngtcp2_crypto_packet_protection_ivlen(const ngtcp2_crypto_aead *aead);
-
-/**
- * @function
- *
- * `ngtcp2_crypto_derive_packet_protection_key` derives packet
- * protection key.  This function writes packet protection key into
- * the buffer pointed by |key|.  The length of derived key is
- * `ngtcp2_crypto_aead_keylen(aead) <ngtcp2_crypto_aead_keylen>`
- * bytes.  |key| must have enough capacity to store the key.  This
- * function writes packet protection IV into |iv|.  The length of
- * derived IV is `ngtcp2_crypto_packet_protection_ivlen(aead)
- * <ngtcp2_crypto_packet_protection_ivlen>` bytes.  |iv| must have
- * enough capacity to store the IV.
- *
- * If |hp| is not NULL, this function also derives packet header
- * protection key and writes the key into the buffer pointed by |hp|.
- * The length of derived key is `ngtcp2_crypto_aead_keylen(aead)
- * <ngtcp2_crypto_aead_keylen>` bytes.  |hp|, if not NULL, must have
- * enough capacity to store the key.
- *
- * This function returns 0 if it succeeds, or -1.
- */
-NGTCP2_EXTERN int ngtcp2_crypto_derive_packet_protection_key(
-    uint8_t *key, uint8_t *iv, uint8_t *hp, const ngtcp2_crypto_aead *aead,
-    const ngtcp2_crypto_md *md, const uint8_t *secret, size_t secretlen);
 
 /**
  * @function
@@ -703,18 +642,18 @@ NGTCP2_EXTERN int ngtcp2_crypto_generate_stateless_reset_token(
  * successfully generated token starts with
  * :macro:`NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY`.  |secret| of length
  * |secretlen| is an initial keying material to generate keys to
- * encrypt the token.  |remote_addr| of length |remote_addrlen| is an
- * address of client.  |retry_scid| is a Source Connection ID chosen
- * by server and set in Retry packet.  |odcid| is a Destination
- * Connection ID in Initial packet sent by client.  |ts| is the
- * timestamp when the token is generated.
+ * encrypt the token.  |version| is QUIC version.  |remote_addr| of
+ * length |remote_addrlen| is an address of client.  |retry_scid| is a
+ * Source Connection ID chosen by server and set in Retry packet.
+ * |odcid| is a Destination Connection ID in Initial packet sent by
+ * client.  |ts| is the timestamp when the token is generated.
  *
  * This function returns the length of generated token if it succeeds,
  * or -1.
  */
 NGTCP2_EXTERN ngtcp2_ssize ngtcp2_crypto_generate_retry_token(
-    uint8_t *token, const uint8_t *secret, size_t secretlen,
-    const struct sockaddr *remote_addr, size_t remote_addrlen,
+    uint8_t *token, const uint8_t *secret, size_t secretlen, uint32_t version,
+    const ngtcp2_sockaddr *remote_addr, ngtcp2_socklen remote_addrlen,
     const ngtcp2_cid *retry_scid, const ngtcp2_cid *odcid, ngtcp2_tstamp ts);
 
 /**
@@ -723,22 +662,23 @@ NGTCP2_EXTERN ngtcp2_ssize ngtcp2_crypto_generate_retry_token(
  * `ngtcp2_crypto_verify_retry_token` verifies Retry token stored in
  * the buffer pointed by |token| of length |tokenlen|.  |secret| of
  * length |secretlen| is an initial keying material to generate keys
- * to decrypt the token.  |remote_addr| of length |remote_addrlen| is
- * an address of client.  |dcid| is a Destination Connection ID in
- * Initial packet sent by client.  |timeout| is the period during
- * which the token is valid.  |ts| is the current timestamp.  When
- * validation succeeds, the extracted Destination Connection ID (which
- * is the Destination Connection ID in Initial packet sent by client
- * that triggered Retry packet) is stored to the buffer pointed by
- * |odcid|.
+ * to decrypt the token.  |version| is QUIC version of the Initial
+ * packet that contains this token.  |remote_addr| of length
+ * |remote_addrlen| is an address of client.  |dcid| is a Destination
+ * Connection ID in Initial packet sent by client.  |timeout| is the
+ * period during which the token is valid.  |ts| is the current
+ * timestamp.  When validation succeeds, the extracted Destination
+ * Connection ID (which is the Destination Connection ID in Initial
+ * packet sent by client that triggered Retry packet) is stored to the
+ * buffer pointed by |odcid|.
  *
  * This function returns 0 if it succeeds, or -1.
  */
 NGTCP2_EXTERN int ngtcp2_crypto_verify_retry_token(
     ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
-    const uint8_t *secret, size_t secretlen, const struct sockaddr *remote_addr,
-    socklen_t remote_addrlen, const ngtcp2_cid *dcid, ngtcp2_duration timeout,
-    ngtcp2_tstamp ts);
+    const uint8_t *secret, size_t secretlen, uint32_t version,
+    const ngtcp2_sockaddr *remote_addr, ngtcp2_socklen remote_addrlen,
+    const ngtcp2_cid *dcid, ngtcp2_duration timeout, ngtcp2_tstamp ts);
 
 /**
  * @function
@@ -759,7 +699,7 @@ NGTCP2_EXTERN int ngtcp2_crypto_verify_retry_token(
  */
 NGTCP2_EXTERN ngtcp2_ssize ngtcp2_crypto_generate_regular_token(
     uint8_t *token, const uint8_t *secret, size_t secretlen,
-    const struct sockaddr *remote_addr, size_t remote_addrlen,
+    const ngtcp2_sockaddr *remote_addr, ngtcp2_socklen remote_addrlen,
     ngtcp2_tstamp ts);
 
 /**
@@ -776,8 +716,8 @@ NGTCP2_EXTERN ngtcp2_ssize ngtcp2_crypto_generate_regular_token(
  */
 NGTCP2_EXTERN int ngtcp2_crypto_verify_regular_token(
     const uint8_t *token, size_t tokenlen, const uint8_t *secret,
-    size_t secretlen, const struct sockaddr *remote_addr,
-    socklen_t remote_addrlen, ngtcp2_duration timeout, ngtcp2_tstamp ts);
+    size_t secretlen, const ngtcp2_sockaddr *remote_addr,
+    ngtcp2_socklen remote_addrlen, ngtcp2_duration timeout, ngtcp2_tstamp ts);
 
 /**
  * @function
@@ -896,6 +836,21 @@ NGTCP2_EXTERN void ngtcp2_crypto_delete_crypto_cipher_ctx_cb(
 NGTCP2_EXTERN int ngtcp2_crypto_get_path_challenge_data_cb(ngtcp2_conn *conn,
                                                            uint8_t *data,
                                                            void *user_data);
+
+/**
+ * @function
+ *
+ * `ngtcp2_crypto_version_negotiation_cb` installs Initial keys for
+ * |version| which is negotiated or being negotiated.  |client_dcid|
+ * is the destination connection ID in first Initial packet of client.
+ *
+ * This function can be directly passed to
+ * :member:`ngtcp2_callbacks.version_negotiation` field.
+ */
+NGTCP2_EXTERN int
+ngtcp2_crypto_version_negotiation_cb(ngtcp2_conn *conn, uint32_t version,
+                                     const ngtcp2_cid *client_dcid,
+                                     void *user_data);
 
 #ifdef __cplusplus
 }
