@@ -104,6 +104,10 @@ const char *ngtcp2_strerror(int liberr) {
     return "ERR_VERSION_NEGOTIATION";
   case NGTCP2_ERR_HANDSHAKE_TIMEOUT:
     return "ERR_HANDSHAKE_TIMEOUT";
+  case NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE:
+    return "ERR_VERSION_NEGOTIATION_FAILURE";
+  case NGTCP2_ERR_IDLE_CLOSE:
+    return "ERR_IDLE_CLOSE";
   default:
     return "(unknown)";
   }
@@ -131,6 +135,8 @@ uint64_t ngtcp2_err_infer_quic_transport_error_code(int liberr) {
   case NGTCP2_ERR_TRANSPORT_PARAM:
     return NGTCP2_TRANSPORT_PARAMETER_ERROR;
   case NGTCP2_ERR_INVALID_ARGUMENT:
+  case NGTCP2_ERR_NOMEM:
+  case NGTCP2_ERR_CALLBACK_FAILURE:
     return NGTCP2_INTERNAL_ERROR;
   case NGTCP2_ERR_STREAM_STATE:
     return NGTCP2_STREAM_STATE_ERROR;
@@ -140,6 +146,8 @@ uint64_t ngtcp2_err_infer_quic_transport_error_code(int liberr) {
     return NGTCP2_AEAD_LIMIT_REACHED;
   case NGTCP2_ERR_NO_VIABLE_PATH:
     return NGTCP2_NO_VIABLE_PATH;
+  case NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE:
+    return NGTCP2_VERSION_NEGOTIATION_ERROR_DRAFT;
   default:
     return NGTCP2_PROTOCOL_VIOLATION;
   }

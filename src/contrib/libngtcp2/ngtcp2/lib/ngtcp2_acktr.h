@@ -35,6 +35,7 @@
 #include "ngtcp2_ringbuf.h"
 #include "ngtcp2_ksl.h"
 #include "ngtcp2_pkt.h"
+#include "ngtcp2_objalloc.h"
 
 /* NGTCP2_ACKTR_MAX_ENT is the maximum number of ngtcp2_acktr_entry
    which ngtcp2_acktr stores. */
@@ -46,22 +47,30 @@ typedef struct ngtcp2_log ngtcp2_log;
  * ngtcp2_acktr_entry is a range of packets which need to be acked.
  */
 typedef struct ngtcp2_acktr_entry {
-  /* pkt_num is the largest packet number to acknowledge in this
-     range. */
-  int64_t pkt_num;
-  /* len is the consecutive packets started from pkt_num which
-     includes pkt_num itself counting in decreasing order.  So pkt_num
-     = 987 and len = 2, this entry includes packet 987 and 986. */
-  size_t len;
-  /* tstamp is the timestamp when a packet denoted by pkt_num is
-     received. */
-  ngtcp2_tstamp tstamp;
+  union {
+    struct {
+      /* pkt_num is the largest packet number to acknowledge in this
+         range. */
+      int64_t pkt_num;
+      /* len is the consecutive packets started from pkt_num which
+         includes pkt_num itself counting in decreasing order.  So pkt_num
+         = 987 and len = 2, this entry includes packet 987 and 986. */
+      size_t len;
+      /* tstamp is the timestamp when a packet denoted by pkt_num is
+         received. */
+      ngtcp2_tstamp tstamp;
+    };
+
+    ngtcp2_opl_entry oplent;
+  };
 } ngtcp2_acktr_entry;
 
+ngtcp2_objalloc_def(acktr_entry, ngtcp2_acktr_entry, oplent);
+
 /*
- * ngtcp2_acktr_entry_new allocates memory for ent, and initializes it
- * with the given parameters.  The pointer to the allocated object is
- * stored to |*ent|.
+ * ngtcp2_acktr_entry_objalloc_new allocates memory for ent, and
+ * initializes it with the given parameters.  The pointer to the
+ * allocated object is stored to |*ent|.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -69,14 +78,16 @@ typedef struct ngtcp2_acktr_entry {
  * NGTCP2_ERR_NOMEM
  *     Out of memory.
  */
-int ngtcp2_acktr_entry_new(ngtcp2_acktr_entry **ent, int64_t pkt_num,
-                           ngtcp2_tstamp tstamp, const ngtcp2_mem *mem);
+int ngtcp2_acktr_entry_objalloc_new(ngtcp2_acktr_entry **ent, int64_t pkt_num,
+                                    ngtcp2_tstamp tstamp,
+                                    ngtcp2_objalloc *objalloc);
 
 /*
- * ngtcp2_acktr_entry_del deallocates memory allocated for |ent|.  It
- * deallocates memory pointed by |ent|.
+ * ngtcp2_acktr_entry_objalloc_del deallocates memory allocated for
+ * |ent|.
  */
-void ngtcp2_acktr_entry_del(ngtcp2_acktr_entry *ent, const ngtcp2_mem *mem);
+void ngtcp2_acktr_entry_objalloc_del(ngtcp2_acktr_entry *ent,
+                                     ngtcp2_objalloc *objalloc);
 
 typedef struct ngtcp2_acktr_ack_entry {
   /* largest_ack is the largest packet number in outgoing ACK frame */
@@ -101,6 +112,7 @@ typedef struct ngtcp2_acktr_ack_entry {
  * ngtcp2_acktr tracks received packets which we have to send ack.
  */
 typedef struct ngtcp2_acktr {
+  ngtcp2_objalloc objalloc;
   ngtcp2_ringbuf acks;
   /* ents includes ngtcp2_acktr_entry sorted by decreasing order of
      packet number. */
