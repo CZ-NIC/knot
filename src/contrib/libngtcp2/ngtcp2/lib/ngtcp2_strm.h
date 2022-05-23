@@ -75,86 +75,91 @@ typedef struct ngtcp2_frame_chain ngtcp2_frame_chain;
    In this case, without this flag, we are unable to distinguish
    assigned value from unassigned one.  */
 #define NGTCP2_STRM_FLAG_APP_ERROR_CODE_SET 0x100
+/* NGTCP2_STRM_FLAG_STREAM_STOP_SENDING_CALLED is set when
+   stream_stop_sending callback is called. */
+#define NGTCP2_STRM_FLAG_STREAM_STOP_SENDING_CALLED 0x200
 
 typedef struct ngtcp2_strm ngtcp2_strm;
 
 struct ngtcp2_strm {
-  ngtcp2_pq_entry pe;
-  uint64_t cycle;
+  union {
+    struct {
+      ngtcp2_pq_entry pe;
+      uint64_t cycle;
+      ngtcp2_objalloc *frc_objalloc;
 
-  struct {
-    /* acked_offset tracks acknowledged outgoing data. */
-    ngtcp2_gaptr *acked_offset;
-    /* cont_acked_offset is the offset that all data up to this offset
-       is acknowledged by a remote endpoint.  It is used until the
-       remote endpoint acknowledges data in out-of-order.  After that,
-       acked_offset is used instead. */
-    uint64_t cont_acked_offset;
-    /* streamfrq contains STREAM frame for retransmission.  The flow
-       control credits have been paid when they are transmitted first
-       time.  There are no restriction regarding flow control for
-       retransmission. */
-    ngtcp2_ksl *streamfrq;
-    /* offset is the next offset of outgoing data.  In other words, it
-       is the number of bytes sent in this stream without
-       duplication. */
-    uint64_t offset;
-    /* max_tx_offset is the maximum offset that local endpoint can
-       send for this stream. */
-    uint64_t max_offset;
-    /* last_max_stream_data_ts is the timestamp when last
-       MAX_STREAM_DATA frame is sent. */
-    ngtcp2_tstamp last_max_stream_data_ts;
-  } tx;
+      struct {
+        /* acked_offset tracks acknowledged outgoing data. */
+        ngtcp2_gaptr *acked_offset;
+        /* cont_acked_offset is the offset that all data up to this offset
+           is acknowledged by a remote endpoint.  It is used until the
+           remote endpoint acknowledges data in out-of-order.  After that,
+           acked_offset is used instead. */
+        uint64_t cont_acked_offset;
+        /* streamfrq contains STREAM frame for retransmission.  The flow
+           control credits have been paid when they are transmitted first
+           time.  There are no restriction regarding flow control for
+           retransmission. */
+        ngtcp2_ksl *streamfrq;
+        /* offset is the next offset of outgoing data.  In other words, it
+           is the number of bytes sent in this stream without
+           duplication. */
+        uint64_t offset;
+        /* max_tx_offset is the maximum offset that local endpoint can
+           send for this stream. */
+        uint64_t max_offset;
+        /* last_max_stream_data_ts is the timestamp when last
+           MAX_STREAM_DATA frame is sent. */
+        ngtcp2_tstamp last_max_stream_data_ts;
+      } tx;
 
-  struct {
-    /* rob is the reorder buffer for incoming stream data.  The data
-       received in out of order is buffered and sorted by its offset
-       in this object. */
-    ngtcp2_rob *rob;
-    /* cont_offset is the largest offset of consecutive data.  It is
-       used until the endpoint receives out-of-order data.  After
-       that, rob is used to track the offset and data. */
-    uint64_t cont_offset;
-    /* last_offset is the largest offset of stream data received for
-       this stream. */
-    uint64_t last_offset;
-    /* max_offset is the maximum offset that remote endpoint can send
-       to this stream. */
-    uint64_t max_offset;
-    /* unsent_max_offset is the maximum offset that remote endpoint
-       can send to this stream, and it is not notified to the remote
-       endpoint.  unsent_max_offset >= max_offset must be hold. */
-    uint64_t unsent_max_offset;
-    /* window is the stream-level flow control window size. */
-    uint64_t window;
-  } rx;
+      struct {
+        /* rob is the reorder buffer for incoming stream data.  The data
+           received in out of order is buffered and sorted by its offset
+           in this object. */
+        ngtcp2_rob *rob;
+        /* cont_offset is the largest offset of consecutive data.  It is
+           used until the endpoint receives out-of-order data.  After
+           that, rob is used to track the offset and data. */
+        uint64_t cont_offset;
+        /* last_offset is the largest offset of stream data received for
+           this stream. */
+        uint64_t last_offset;
+        /* max_offset is the maximum offset that remote endpoint can send
+           to this stream. */
+        uint64_t max_offset;
+        /* unsent_max_offset is the maximum offset that remote endpoint
+           can send to this stream, and it is not notified to the remote
+           endpoint.  unsent_max_offset >= max_offset must be hold. */
+        uint64_t unsent_max_offset;
+        /* window is the stream-level flow control window size. */
+        uint64_t window;
+      } rx;
 
-  const ngtcp2_mem *mem;
-  int64_t stream_id;
-  void *stream_user_data;
-  /* flags is bit-wise OR of zero or more of NGTCP2_STRM_FLAG_*. */
-  uint32_t flags;
-  /* app_error_code is an error code the local endpoint sent in
-     RESET_STREAM or STOP_SENDING, or received from a remote endpoint
-     in RESET_STREAM or STOP_SENDING.  First application error code is
-     chosen and when set, NGTCP2_STRM_FLAG_APP_ERROR_CODE_SET flag is
-     set in flags field. */
-  uint64_t app_error_code;
+      const ngtcp2_mem *mem;
+      int64_t stream_id;
+      void *stream_user_data;
+      /* flags is bit-wise OR of zero or more of NGTCP2_STRM_FLAG_*. */
+      uint32_t flags;
+      /* app_error_code is an error code the local endpoint sent in
+         RESET_STREAM or STOP_SENDING, or received from a remote endpoint
+         in RESET_STREAM or STOP_SENDING.  First application error code is
+         chosen and when set, NGTCP2_STRM_FLAG_APP_ERROR_CODE_SET flag is
+         set in flags field. */
+      uint64_t app_error_code;
+    };
+
+    ngtcp2_opl_entry oplent;
+  };
 };
 
 /*
  * ngtcp2_strm_init initializes |strm|.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGTCP2_ERR_NOMEM
- *     Out of memory
  */
-int ngtcp2_strm_init(ngtcp2_strm *strm, int64_t stream_id, uint32_t flags,
-                     uint64_t max_rx_offset, uint64_t max_tx_offset,
-                     void *stream_user_data, const ngtcp2_mem *mem);
+void ngtcp2_strm_init(ngtcp2_strm *strm, int64_t stream_id, uint32_t flags,
+                      uint64_t max_rx_offset, uint64_t max_tx_offset,
+                      void *stream_user_data, ngtcp2_objalloc *frc_objalloc,
+                      const ngtcp2_mem *mem);
 
 /*
  * ngtcp2_strm_free deallocates memory allocated for |strm|.  This

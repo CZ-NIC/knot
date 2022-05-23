@@ -103,6 +103,40 @@
 /* NGTCP2_RETRY_TAGLEN is the length of Retry packet integrity tag. */
 #define NGTCP2_RETRY_TAGLEN 16
 
+/* NGTCP2_HARD_MAX_UDP_PAYLOAD_SIZE is the maximum UDP payload size
+   that this library can write. */
+#define NGTCP2_HARD_MAX_UDP_PAYLOAD_SIZE ((1 << 24) - 1)
+
+/* NGTCP2_PKT_LENGTHLEN is the number of bytes that is occupied by
+   Length field in Long packet header. */
+#define NGTCP2_PKT_LENGTHLEN 4
+
+/* NGTCP2_PKT_TYPE_INITIAL_V1 is Initial long header packet type for
+   QUIC v1. */
+#define NGTCP2_PKT_TYPE_INITIAL_V1 0x0
+/* NGTCP2_PKT_TYPE_0RTT_V1 is 0RTT long header packet type for QUIC
+   v1. */
+#define NGTCP2_PKT_TYPE_0RTT_V1 0x1
+/* NGTCP2_PKT_TYPE_HANDSHAKE_V1 is Handshake long header packet type
+   for QUIC v1. */
+#define NGTCP2_PKT_TYPE_HANDSHAKE_V1 0x2
+/* NGTCP2_PKT_TYPE_RETRY_V1 is Retry long header packet type for QUIC
+   v1. */
+#define NGTCP2_PKT_TYPE_RETRY_V1 0x3
+
+/* NGTCP2_PKT_TYPE_INITIAL_V2_DRAFT is Initial long header packet type
+   for QUIC v2 draft. */
+#define NGTCP2_PKT_TYPE_INITIAL_V2_DRAFT 0x1
+/* NGTCP2_PKT_TYPE_0RTT_V2_DRAFT is 0RTT long header packet type for
+   QUIC v2 draft. */
+#define NGTCP2_PKT_TYPE_0RTT_V2_DRAFT 0x2
+/* NGTCP2_PKT_TYPE_HANDSHAKE_V2_DRAFT is Handshake long header packet
+   type for QUIC v2 draft. */
+#define NGTCP2_PKT_TYPE_HANDSHAKE_V2_DRAFT 0x3
+/* NGTCP2_PKT_TYPE_RETRY_V2_DRAFT is Retry long header packet type for
+   QUIC v2 draft. */
+#define NGTCP2_PKT_TYPE_RETRY_V2_DRAFT 0x0
+
 typedef struct ngtcp2_pkt_retry {
   ngtcp2_cid odcid;
   ngtcp2_vec token;
@@ -1186,12 +1220,21 @@ int ngtcp2_pkt_verify_retry_tag(uint32_t version, const ngtcp2_pkt_retry *retry,
                                 const ngtcp2_crypto_aead *aead,
                                 const ngtcp2_crypto_aead_ctx *aead_ctx);
 
+/*
+ * ngtcp2_pkt_versioned_type returns versioned packet type for a
+ * version |version| that corresponds to the version-independent
+ * |pkt_type|.
+ */
+uint8_t ngtcp2_pkt_versioned_type(uint32_t version, uint32_t pkt_type);
+
 /**
  * @function
  *
- * `ngtcp2_pkt_get_type_long` returns the long packet type.  |c| is
- * the first byte of Long packet header.
+ * `ngtcp2_pkt_get_type_long` returns the version-independent long
+ * packet type.  |version| is the QUIC version.  |c| is the first byte
+ * of Long packet header.  If |version| is not supported by the
+ * library, it returns 0.
  */
-uint8_t ngtcp2_pkt_get_type_long(uint8_t c);
+uint8_t ngtcp2_pkt_get_type_long(uint32_t version, uint8_t c);
 
 #endif /* NGTCP2_PKT_H */
