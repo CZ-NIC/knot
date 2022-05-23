@@ -33,6 +33,8 @@
 
 #include <ngtcp2/ngtcp2.h>
 
+#include "ngtcp2_objalloc.h"
+
 /*
  * Skip List using single key instead of range.
  */
@@ -79,24 +81,32 @@ struct ngtcp2_ksl_node {
  * ngtcp2_ksl_blk contains ngtcp2_ksl_node objects.
  */
 struct ngtcp2_ksl_blk {
-  /* next points to the next block if leaf field is nonzero. */
-  ngtcp2_ksl_blk *next;
-  /* prev points to the previous block if leaf field is nonzero. */
-  ngtcp2_ksl_blk *prev;
-  /* n is the number of nodes this object contains in nodes. */
-  uint32_t n;
-  /* leaf is nonzero if this block contains leaf nodes. */
-  uint32_t leaf;
   union {
-    uint64_t align;
-    /* nodes is a buffer to contain NGTCP2_KSL_MAX_NBLK
-       ngtcp2_ksl_node objects.  Because ngtcp2_ksl_node object is
-       allocated along with the additional variable length key
-       storage, the size of buffer is unknown until ngtcp2_ksl_init is
-       called. */
-    uint8_t nodes[1];
+    struct {
+      /* next points to the next block if leaf field is nonzero. */
+      ngtcp2_ksl_blk *next;
+      /* prev points to the previous block if leaf field is nonzero. */
+      ngtcp2_ksl_blk *prev;
+      /* n is the number of nodes this object contains in nodes. */
+      uint32_t n;
+      /* leaf is nonzero if this block contains leaf nodes. */
+      uint32_t leaf;
+      union {
+        uint64_t align;
+        /* nodes is a buffer to contain NGTCP2_KSL_MAX_NBLK
+           ngtcp2_ksl_node objects.  Because ngtcp2_ksl_node object is
+           allocated along with the additional variable length key
+           storage, the size of buffer is unknown until ngtcp2_ksl_init is
+           called. */
+        uint8_t nodes[1];
+      };
+    };
+
+    ngtcp2_opl_entry oplent;
   };
 };
+
+ngtcp2_objalloc_def(ksl_blk, ngtcp2_ksl_blk, oplent);
 
 /*
  * ngtcp2_ksl_compar is a function type which returns nonzero if key
@@ -122,6 +132,7 @@ struct ngtcp2_ksl_it {
  * ngtcp2_ksl is a deterministic paged skip list.
  */
 struct ngtcp2_ksl {
+  ngtcp2_objalloc blkalloc;
   /* head points to the root block. */
   ngtcp2_ksl_blk *head;
   /* front points to the first leaf block. */
@@ -135,21 +146,14 @@ struct ngtcp2_ksl {
   /* nodelen is the actual size of ngtcp2_ksl_node including key
      storage. */
   size_t nodelen;
-  const ngtcp2_mem *mem;
 };
 
 /*
  * ngtcp2_ksl_init initializes |ksl|.  |compar| specifies compare
  * function.  |keylen| is the length of key.
- *
- * It returns 0 if it succeeds, or one of the following negative error
- * codes:
- *
- * NGTCP2_ERR_NOMEM
- *   Out of memory.
  */
-int ngtcp2_ksl_init(ngtcp2_ksl *ksl, ngtcp2_ksl_compar compar, size_t keylen,
-                    const ngtcp2_mem *mem);
+void ngtcp2_ksl_init(ngtcp2_ksl *ksl, ngtcp2_ksl_compar compar, size_t keylen,
+                     const ngtcp2_mem *mem);
 
 /*
  * ngtcp2_ksl_free frees resources allocated for |ksl|.  If |ksl| is

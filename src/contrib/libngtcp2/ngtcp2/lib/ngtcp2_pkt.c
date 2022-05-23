@@ -26,7 +26,6 @@
 
 #include <assert.h>
 #include <string.h>
-#include <stdio.h>
 
 #include "ngtcp2_conv.h"
 #include "ngtcp2_str.h"
@@ -68,6 +67,7 @@ int ngtcp2_pkt_decode_version_cid(uint32_t *pversion, const uint8_t **pdcid,
   size_t len;
   uint32_t version;
   size_t dcidlen, scidlen;
+  int supported_version;
 
   assert(datalen);
 
@@ -95,10 +95,15 @@ int ngtcp2_pkt_decode_version_cid(uint32_t *pversion, const uint8_t **pdcid,
 
     version = ngtcp2_get_uint32(&data[1]);
 
-    if ((version == 0 || version == NGTCP2_PROTO_VER_V1 ||
-         (NGTCP2_PROTO_VER_DRAFT_MIN <= version &&
-          version <= NGTCP2_PROTO_VER_DRAFT_MAX)) &&
+    supported_version = ngtcp2_is_supported_version(version);
+
+    if (supported_version &&
         (dcidlen > NGTCP2_MAX_CIDLEN || scidlen > NGTCP2_MAX_CIDLEN)) {
+      return NGTCP2_ERR_INVALID_ARGUMENT;
+    }
+
+    if (version && !supported_version &&
+        datalen < NGTCP2_MAX_UDP_PAYLOAD_SIZE) {
       return NGTCP2_ERR_INVALID_ARGUMENT;
     }
 
@@ -108,9 +113,12 @@ int ngtcp2_pkt_decode_version_cid(uint32_t *pversion, const uint8_t **pdcid,
     *pscid = &data[6 + dcidlen + 1];
     *pscidlen = scidlen;
 
-    if (version && version != NGTCP2_PROTO_VER_V1 &&
-        (version < NGTCP2_PROTO_VER_DRAFT_MIN ||
-         NGTCP2_PROTO_VER_DRAFT_MAX < version)) {
+    if (!version) {
+      /* VN */
+      return 0;
+    }
+
+    if (!supported_version) {
       return NGTCP2_ERR_VERSION_NEGOTIATION;
     }
     return 0;
@@ -184,6 +192,8 @@ ngtcp2_ssize ngtcp2_pkt_decode_hd_long(ngtcp2_pkt_hd *dest, const uint8_t *pkt,
 
   if (version == 0) {
     type = NGTCP2_PKT_VERSION_NEGOTIATION;
+    /* Version Negotiation is not a long header packet. */
+    flags = NGTCP2_PKT_FLAG_NONE;
     /* This must be Version Negotiation packet which lacks packet
        number and payload length fields. */
     len = 5 + 2;
@@ -192,8 +202,10 @@ ngtcp2_ssize ngtcp2_pkt_decode_hd_long(ngtcp2_pkt_hd *dest, const uint8_t *pkt,
       flags |= NGTCP2_PKT_FLAG_FIXED_BIT_CLEAR;
     }
 
-    type = ngtcp2_pkt_get_type_long(pkt[0]);
+    type = ngtcp2_pkt_get_type_long(version, pkt[0]);
     switch (type) {
+    case 0:
+      return NGTCP2_ERR_INVALID_ARGUMENT;
     case NGTCP2_PKT_INITIAL:
       len = 1 /* Token Length */ + NGTCP2_MIN_LONG_HEADERLEN -
             1; /* Cut packet number field */
@@ -268,10 +280,15 @@ ngtcp2_ssize ngtcp2_pkt_decode_hd_long(ngtcp2_pkt_hd *dest, const uint8_t *pkt,
   }
 
   switch (type) {
-  case NGTCP2_PKT_VERSION_NEGOTIATION:
   case NGTCP2_PKT_RETRY:
     break;
   default:
+    if (!(flags & NGTCP2_PKT_FLAG_LONG_FORM)) {
+      assert(type == NGTCP2_PKT_VERSION_NEGOTIATION);
+      /* Version Negotiation is not a long header packet. */
+      break;
+    }
+
     /* Length */
     n = ngtcp2_get_varint_len(p);
     len += n - 1;
@@ -298,11 +315,17 @@ ngtcp2_ssize ngtcp2_pkt_decode_hd_long(ngtcp2_pkt_hd *dest, const uint8_t *pkt,
   p += ntokenlen + tokenlen;
 
   switch (type) {
-  case NGTCP2_PKT_VERSION_NEGOTIATION:
   case NGTCP2_PKT_RETRY:
     dest->len = 0;
     break;
   default:
+    if (!(flags & NGTCP2_PKT_FLAG_LONG_FORM)) {
+      assert(type == NGTCP2_PKT_VERSION_NEGOTIATION);
+      /* Version Negotiation is not a long header packet. */
+      dest->len = 0;
+      break;
+    }
+
     vi = ngtcp2_get_varint(&n, p);
     if (vi > SIZE_MAX) {
       return NGTCP2_ERR_INVALID_ARGUMENT;
@@ -338,7 +361,7 @@ ngtcp2_ssize ngtcp2_pkt_decode_hd_short(ngtcp2_pkt_hd *dest, const uint8_t *pkt,
 
   p = &pkt[1];
 
-  dest->type = NGTCP2_PKT_SHORT;
+  dest->type = NGTCP2_PKT_1RTT;
 
   ngtcp2_cid_init(&dest->dcid, p, dcidlen);
   p += dcidlen;
@@ -366,7 +389,7 @@ ngtcp2_ssize ngtcp2_pkt_encode_hd_long(uint8_t *out, size_t outlen,
                      len and 1 byte for packet number. */
 
   if (hd->type != NGTCP2_PKT_RETRY) {
-    len += 2 /* Length */ + hd->pkt_numlen;
+    len += NGTCP2_PKT_LENGTHLEN /* Length */ + hd->pkt_numlen;
   }
 
   if (hd->type == NGTCP2_PKT_INITIAL) {
@@ -379,7 +402,8 @@ ngtcp2_ssize ngtcp2_pkt_encode_hd_long(uint8_t *out, size_t outlen,
 
   p = out;
 
-  *p = (uint8_t)(NGTCP2_HEADER_FORM_BIT | (hd->type << 4) |
+  *p = (uint8_t)(NGTCP2_HEADER_FORM_BIT |
+                 (ngtcp2_pkt_versioned_type(hd->version, hd->type) << 4) |
                  (uint8_t)(hd->pkt_numlen - 1));
   if (!(hd->flags & NGTCP2_PKT_FLAG_FIXED_BIT_CLEAR)) {
     *p |= NGTCP2_FIXED_BIT_MASK;
@@ -405,7 +429,7 @@ ngtcp2_ssize ngtcp2_pkt_encode_hd_long(uint8_t *out, size_t outlen,
   }
 
   if (hd->type != NGTCP2_PKT_RETRY) {
-    p = ngtcp2_put_varint14(p, (uint16_t)hd->len);
+    p = ngtcp2_put_varint30(p, (uint32_t)hd->len);
     p = ngtcp2_put_pkt_num(p, hd->pkt_num, hd->pkt_numlen);
   }
 
@@ -2259,10 +2283,16 @@ ngtcp2_ssize ngtcp2_pkt_write_retry(
     return pseudo_retrylen;
   }
 
-  if (version == NGTCP2_PROTO_VER_V1) {
+  switch (version) {
+  case NGTCP2_PROTO_VER_V1:
     nonce = (const uint8_t *)NGTCP2_RETRY_NONCE_V1;
     noncelen = sizeof(NGTCP2_RETRY_NONCE_V1) - 1;
-  } else {
+    break;
+  case NGTCP2_PROTO_VER_V2_DRAFT:
+    nonce = (const uint8_t *)NGTCP2_RETRY_NONCE_V2_DRAFT;
+    noncelen = sizeof(NGTCP2_RETRY_NONCE_V2_DRAFT) - 1;
+    break;
+  default:
     nonce = (const uint8_t *)NGTCP2_RETRY_NONCE_DRAFT;
     noncelen = sizeof(NGTCP2_RETRY_NONCE_DRAFT) - 1;
   }
@@ -2345,10 +2375,16 @@ int ngtcp2_pkt_verify_retry_tag(uint32_t version, const ngtcp2_pkt_retry *retry,
 
   pseudo_retrylen = (size_t)(p - pseudo_retry);
 
-  if (version == NGTCP2_PROTO_VER_V1) {
+  switch (version) {
+  case NGTCP2_PROTO_VER_V1:
     nonce = (const uint8_t *)NGTCP2_RETRY_NONCE_V1;
     noncelen = sizeof(NGTCP2_RETRY_NONCE_V1) - 1;
-  } else {
+    break;
+  case NGTCP2_PROTO_VER_V2_DRAFT:
+    nonce = (const uint8_t *)NGTCP2_RETRY_NONCE_V2_DRAFT;
+    noncelen = sizeof(NGTCP2_RETRY_NONCE_V2_DRAFT) - 1;
+    break;
+  default:
     nonce = (const uint8_t *)NGTCP2_RETRY_NONCE_DRAFT;
     noncelen = sizeof(NGTCP2_RETRY_NONCE_DRAFT) - 1;
   }
@@ -2435,8 +2471,98 @@ size_t ngtcp2_pkt_datagram_framelen(size_t len) {
   return 1 /* type */ + ngtcp2_put_varint_len(len) + len;
 }
 
-uint8_t ngtcp2_pkt_get_type_long(uint8_t c) {
-  return (uint8_t)((c & NGTCP2_LONG_TYPE_MASK) >> 4);
+int ngtcp2_is_supported_version(uint32_t version) {
+  switch (version) {
+  case NGTCP2_PROTO_VER_V1:
+  case NGTCP2_PROTO_VER_V2_DRAFT:
+    return 1;
+  default:
+    return NGTCP2_PROTO_VER_DRAFT_MIN <= version &&
+           version <= NGTCP2_PROTO_VER_DRAFT_MAX;
+  }
+}
+
+int ngtcp2_is_reserved_version(uint32_t version) {
+  return (version & NGTCP2_RESERVED_VERSION_MASK) ==
+         NGTCP2_RESERVED_VERSION_MASK;
+}
+
+uint8_t ngtcp2_pkt_get_type_long(uint32_t version, uint8_t c) {
+  uint8_t pkt_type = (uint8_t)((c & NGTCP2_LONG_TYPE_MASK) >> 4);
+
+  switch (version) {
+  case NGTCP2_PROTO_VER_V2_DRAFT:
+    switch (pkt_type) {
+    case NGTCP2_PKT_TYPE_INITIAL_V2_DRAFT:
+      return NGTCP2_PKT_INITIAL;
+    case NGTCP2_PKT_TYPE_0RTT_V2_DRAFT:
+      return NGTCP2_PKT_0RTT;
+    case NGTCP2_PKT_TYPE_HANDSHAKE_V2_DRAFT:
+      return NGTCP2_PKT_HANDSHAKE;
+    case NGTCP2_PKT_TYPE_RETRY_V2_DRAFT:
+      return NGTCP2_PKT_RETRY;
+    default:
+      return 0;
+    }
+  default:
+    if (!ngtcp2_is_supported_version(version)) {
+      return 0;
+    }
+
+    /* QUIC v1 and draft versions share the same numeric packet
+       types. */
+    switch (pkt_type) {
+    case NGTCP2_PKT_TYPE_INITIAL_V1:
+      return NGTCP2_PKT_INITIAL;
+    case NGTCP2_PKT_TYPE_0RTT_V1:
+      return NGTCP2_PKT_0RTT;
+    case NGTCP2_PKT_TYPE_HANDSHAKE_V1:
+      return NGTCP2_PKT_HANDSHAKE;
+    case NGTCP2_PKT_TYPE_RETRY_V1:
+      return NGTCP2_PKT_RETRY;
+    default:
+      return 0;
+    }
+  }
+}
+
+uint8_t ngtcp2_pkt_versioned_type(uint32_t version, uint32_t pkt_type) {
+  switch (version) {
+  case NGTCP2_PROTO_VER_V2_DRAFT:
+    switch (pkt_type) {
+    case NGTCP2_PKT_INITIAL:
+      return NGTCP2_PKT_TYPE_INITIAL_V2_DRAFT;
+    case NGTCP2_PKT_0RTT:
+      return NGTCP2_PKT_TYPE_0RTT_V2_DRAFT;
+    case NGTCP2_PKT_HANDSHAKE:
+      return NGTCP2_PKT_TYPE_HANDSHAKE_V2_DRAFT;
+    case NGTCP2_PKT_RETRY:
+      return NGTCP2_PKT_TYPE_RETRY_V2_DRAFT;
+    default:
+      assert(0);
+      abort();
+    }
+  default:
+    /* Assume that unsupported versions share the numeric long packet
+       types with QUIC v1 in order to send a packet to elicit Version
+       Negotiation packet. */
+
+    /* QUIC v1 and draft versions share the same numeric packet
+       types. */
+    switch (pkt_type) {
+    case NGTCP2_PKT_INITIAL:
+      return NGTCP2_PKT_TYPE_INITIAL_V1;
+    case NGTCP2_PKT_0RTT:
+      return NGTCP2_PKT_TYPE_0RTT_V1;
+    case NGTCP2_PKT_HANDSHAKE:
+      return NGTCP2_PKT_TYPE_HANDSHAKE_V1;
+    case NGTCP2_PKT_RETRY:
+      return NGTCP2_PKT_TYPE_RETRY_V1;
+    default:
+      assert(0);
+      abort();
+    }
+  }
 }
 
 int ngtcp2_pkt_verify_reserved_bits(uint8_t c) {
