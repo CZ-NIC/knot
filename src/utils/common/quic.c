@@ -76,26 +76,13 @@ const gnutls_datum_t doq_alpn[] = {
 	}
 };
 
-static void set_application_error(quic_ctx_t *ctx, uint64_t error, uint8_t *reason, size_t reasonlen)
-{
-	ctx->last_err = (ngtcp2_connection_close_error){
-		.type = NGTCP2_CONNECTION_CLOSE_ERROR_CODE_TYPE_APPLICATION,
-		.error_code = error,
-		.reason = reason,
-		.reasonlen = reasonlen
-	};
-}
+#define set_application_error(ctx, error_code, reason, reason_len) \
+	ngtcp2_connection_close_error_set_application_error(&(ctx)->last_err, \
+	        error_code, reason, reason_len)
 
-
-static void set_transport_error(quic_ctx_t *ctx, uint64_t error, uint8_t *reason, size_t reasonlen)
-{
-	ctx->last_err = (ngtcp2_connection_close_error){
-		.type = NGTCP2_CONNECTION_CLOSE_ERROR_CODE_TYPE_TRANSPORT,
-		.error_code = error,
-		.reason = reason,
-		.reasonlen = reasonlen
-	};
-}
+#define set_transport_error(ctx, error_code, reason, reason_len) \
+	ngtcp2_connection_close_error_set_transport_error(&(ctx)->last_err, \
+	        error_code, reason, reason_len)
 
 static int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
         int64_t stream_id, uint64_t offset, const uint8_t *data,
@@ -897,6 +884,10 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 	return KNOT_NET_ETIMEOUT;
 }
 
+#define quic_ctx_write_close(ctx, dest, dest_len, ts) \
+	ngtcp2_conn_write_connection_close((ctx)->conn, (ngtcp2_path *)ngtcp2_conn_get_path((ctx)->conn), \
+	        &(ctx)->pi, dest, dest_len, &(ctx)->last_err, ts)
+
 void quic_ctx_close(quic_ctx_t *ctx)
 {
 	if (ctx == NULL || ctx->state == CLOSED) {
@@ -913,11 +904,8 @@ void quic_ctx_close(quic_ctx_t *ctx)
 		.msg_iovlen = 1
 	};
 
-	ngtcp2_ssize nwrite = ngtcp2_conn_write_connection_close(ctx->conn,
-	        (ngtcp2_path *)ngtcp2_conn_get_path(ctx->conn),
-	        &ctx->pi, enc_buf, sizeof(enc_buf), ctx->last_err.error_code,
-	        ctx->last_err.reason, ctx->last_err.reasonlen,
-	        quic_timestamp());
+	ngtcp2_ssize nwrite = quic_ctx_write_close(ctx, enc_buf,
+	                sizeof(enc_buf), quic_timestamp());
 	if (nwrite <= 0) {
 		return;
 	}
