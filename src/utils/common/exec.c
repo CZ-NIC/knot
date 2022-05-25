@@ -665,7 +665,14 @@ void print_packet(const knot_pkt_t *packet,
 	// Print packet information header.
 	if (style->show_header) {
 		if (net != NULL) {
-			print_tls(&net->tls);
+#ifdef LIBNGTCP2
+			if (net->quic.params.enable) {
+				print_quic(&net->quic);
+			} else if (net->tls.params != NULL && net->tls.params->enable)
+#endif
+			{
+				print_tls(&net->tls);
+			}
 #ifdef LIBNGHTTP2
 			print_https(&net->https);
 #endif
