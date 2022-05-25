@@ -941,4 +941,15 @@ void quic_ctx_deinit(quic_ctx_t *ctx)
 	}
 }
 
+void print_quic(const quic_ctx_t *ctx)
+{
+	if (ctx == NULL || ctx->tls->session == NULL) {
+		return;
+	}
+
+	char *msg = gnutls_session_get_desc(ctx->tls->session);
+	printf(";; QUIC session (QUICv%d)-%s\n", ngtcp2_conn_get_negotiated_version(ctx->conn), msg);
+	gnutls_free(msg);
+}
+
 #endif
