@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <time.h>
 
 #include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/events/replan.h"
@@ -47,6 +48,8 @@ static void replan_ddns(zone_t *zone, zone_t *old_zone)
 
 /*!
  * \brief Replan events that are already planned for the old zone.
+ *
+ * \notice Preserves notifailed.
  */
 static void replan_from_zone(zone_t *zone, zone_t *old_zone)
 {
@@ -193,6 +196,7 @@ void replan_load_current(conf_t *conf, zone_t *zone, zone_t *old_zone)
 
 void replan_load_updated(zone_t *zone, zone_t *old_zone)
 {
+	zone_notifailed_clear(zone);
 	replan_from_zone(zone, old_zone);
 
 	// other events will cascade from load

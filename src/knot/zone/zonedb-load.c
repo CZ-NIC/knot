@@ -96,6 +96,8 @@ static void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone)
 		replan_load_updated(zone, old_zone);
 	} else {
 		zone->zonefile = old_zone->zonefile;
+		memcpy(&zone->notifailed, &old_zone->notifailed, sizeof(zone->notifailed));
+		memset(&old_zone->notifailed, 0, sizeof(zone->notifailed));
 		replan_load_current(conf, zone, old_zone);
 	}
 }

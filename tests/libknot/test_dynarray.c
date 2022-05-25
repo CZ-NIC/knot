@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -115,6 +115,22 @@ int main(int argc, char *argv[])
 	ok(q.size == test_capacity * 10 - dups - 1, "duplicate items: removed");
 	check_dups(&q, &dup_item, 0, "removed all");
 
+	q_dynarray_free(&q);
+
+	// binary search removal test
+	q = q_fill(test_capacity * 10);
+	for (int i = 0; i < test_capacity * 10; i++) {
+		quadrate_t qu = { i, i * i };
+		if ((qu.x % 2) == 0) {
+			q_dynarray_remove(&q, &qu);
+		}
+	}
+	q_dynarray_sort(&q);
+	for (int i = 0; i < test_capacity * 10; i++) {
+		quadrate_t qu = { i, i * i };
+		int present = (q_dynarray_bsearch(&q, &qu) != NULL ? 1 : 0);
+		ok(present == (i % 2), "presence in sorted array %d", i);
+	}
 	q_dynarray_free(&q);
 
 	return 0;

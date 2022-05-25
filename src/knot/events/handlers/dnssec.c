@@ -55,9 +55,11 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 
 	zone_events_schedule_at(zone,
 		ZONE_EVENT_DNSSEC, refresh_at ? (time_t)refresh_at : ignore,
-		ZONE_EVENT_DS_CHECK, refresh->plan_ds_check ? now : ignore,
-		ZONE_EVENT_NOTIFY, zone_changed ? now : ignore
+		ZONE_EVENT_DS_CHECK, refresh->plan_ds_check ? now : ignore
 	);
+	if (zone_changed) {
+		zone_schedule_notify(zone, 0);
+	}
 }
 
 int event_dnssec(conf_t *conf, zone_t *zone)

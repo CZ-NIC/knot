@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,6 +52,12 @@
 	visibility ntype *prefix ## _dynarray_arr(prefix ## _dynarray_t *dynarray); \
 	visibility ntype *prefix ## _dynarray_add(prefix ## _dynarray_t *dynarray, \
 	                                        ntype const *to_add); \
+	visibility void prefix ## _dynarray_remove(prefix ## _dynarray_t *dynarray, \
+	                                        ntype const *to_remove); \
+	visibility void prefix ## _dynarray_sort(prefix ## _dynarray_t *dynarray); \
+	visibility ntype *prefix ## _dynarray_bsearch(prefix ## _dynarray_t *dynarray, \
+	                                        const ntype *bskey); \
+	visibility void prefix ## _dynarray_sort_dedup(prefix ## _dynarray_t *dynarray); \
 	visibility void prefix ## _dynarray_free(prefix ## _dynarray_t *dynarray);
 
 #define knot_dynarray_foreach(prefix, ntype, ptr, array) \
@@ -134,8 +140,8 @@
 		} /* TODO enable lowering capacity, take care of capacity going back to initial! */ \
 	} \
 	\
-	_unused_ \
-	static int prefix ## _dynarray_memb_cmp(const void *a, const void *b) { \
+	static int prefix ## _dynarray_memb_cmp(const void *a, const void *b) \
+	{ \
 		return memcmp(a, b, sizeof(ntype)); \
 	} \
 	\
@@ -144,6 +150,13 @@
 	{ \
 		ntype *arr = prefix ## _dynarray_arr(dynarray); \
 		qsort(arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
+	} \
+	\
+	_unused_ \
+	visibility ntype *prefix ## _dynarray_bsearch(struct prefix ## _dynarray *dynarray, const ntype *bskey) \
+	{ \
+		ntype *arr = prefix ## _dynarray_arr(dynarray); \
+		return bsearch(bskey, arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
 	} \
 	\
 	_unused_ \
