@@ -143,8 +143,7 @@ typedef enum {
 	MANDATORY = 1 << 0,
 	SOFT      = 1 << 1,
 	OPTIONAL  = 1 << 2,
-	NSEC      = 1 << 3,
-	NSEC3     = 1 << 4,
+	DNSSEC    = 1 << 3,
 } check_level_t;
 
 typedef struct {
@@ -158,6 +157,7 @@ static int check_soa(const zone_node_t *node, semchecks_data_t *data);
 static int check_cname(const zone_node_t *node, semchecks_data_t *data);
 static int check_dname(const zone_node_t *node, semchecks_data_t *data);
 static int check_delegation(const zone_node_t *node, semchecks_data_t *data);
+static int check_nsec3param(const zone_node_t *node, semchecks_data_t *data);
 static int check_submission(const zone_node_t *node, semchecks_data_t *data);
 static int check_ds(const zone_node_t *node, semchecks_data_t *data);
 
@@ -173,7 +173,8 @@ static const struct check_function CHECK_FUNCTIONS[] = {
 	{ check_dname,          MANDATORY | SOFT },
 	{ check_delegation,     MANDATORY | SOFT }, // mandatory for apex, optional for others
 	{ check_ds,             OPTIONAL },
-	{ check_submission,     NSEC | NSEC3 },
+	{ check_nsec3param,     DNSSEC },
+	{ check_submission,     DNSSEC },
 };
 
 static const int CHECK_FUNCTIONS_LEN = sizeof(CHECK_FUNCTIONS)
@@ -496,6 +497,32 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 	return KNOT_EOK;
 }
 
+static int check_nsec3param(const zone_node_t *node, semchecks_data_t *data)
+{
+	if (data->zone->apex != node) {
+		return KNOT_EOK;
+	}
+
+	const knot_rdataset_t *nsec3param_rrs = node_rdataset(node, KNOT_RRTYPE_NSEC3PARAM);
+	if (nsec3param_rrs == NULL) {
+		return KNOT_EOK;
+	}
+
+	uint8_t param = knot_nsec3param_flags(nsec3param_rrs->rdata);
+	if ((param & ~1) != 0) {
+		data->handler->cb(data->handler, data->zone, data->zone->apex->owner,
+		                  SEM_ERR_NSEC3PARAM_RDATA_FLAGS, NULL);
+	}
+
+	param = knot_nsec3param_alg(nsec3param_rrs->rdata);
+	if (param != DNSSEC_NSEC3_ALGORITHM_SHA1) {
+		data->handler->cb(data->handler, data->zone, data->zone->apex->owner,
+		                  SEM_ERR_NSEC3PARAM_RDATA_ALG, NULL);
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Call all semantic checks for each node.
  *
@@ -523,25 +550,6 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 	}
 
 	return ret;
-}
-
-static void check_nsec3param(knot_rdataset_t *nsec3param, zone_contents_t *zone,
-                             sem_handler_t *handler, semchecks_data_t *data)
-{
-	assert(nsec3param);
-
-	data->level |= NSEC3;
-	uint8_t param = knot_nsec3param_flags(nsec3param->rdata);
-	if ((param & ~1) != 0) {
-		handler->cb(handler, zone, zone->apex->owner, SEM_ERR_NSEC3PARAM_RDATA_FLAGS,
-		            NULL);
-	}
-
-	param = knot_nsec3param_alg(nsec3param->rdata);
-	if (param != DNSSEC_NSEC3_ALGORITHM_SHA1) {
-		handler->cb(handler, zone, zone->apex->owner, SEM_ERR_NSEC3PARAM_RDATA_ALG,
-		            NULL);
-	}
 }
 
 static sem_error_t err_dnssec2sem(int err)
@@ -595,23 +603,25 @@ int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_
 		.time = time,
 	};
 
-	if (optional == SEMCHECK_MANDATORY_SOFT) {
+	switch (optional) {
+	case SEMCHECK_MANDATORY_SOFT:
 		data.level |= SOFT;
-	}
-
-	if (optional != SEMCHECK_MANDATORY_ONLY) {
+		break;
+	case SEMCHECK_DNSSEC_AUTO:
 		data.level |= OPTIONAL;
-		if (optional == SEMCHECK_DNSSEC_ON ||
-		    (optional == SEMCHECK_DNSSEC_AUTO && zone->dnssec)) {
-			knot_rdataset_t *nsec3param = node_rdataset(zone->apex,
-			                                            KNOT_RRTYPE_NSEC3PARAM);
-			if (nsec3param != NULL) {
-				data.level |= NSEC3;
-				check_nsec3param(nsec3param, zone, handler, &data);
-			} else {
-				data.level |= NSEC;
-			}
+		if (zone->dnssec) {
+			data.level |= DNSSEC;
 		}
+		break;
+	case SEMCHECK_DNSSEC_ON:
+		data.level |= OPTIONAL;
+		data.level |= DNSSEC;
+		break;
+	case SEMCHECK_DNSSEC_OFF:
+		data.level |= OPTIONAL;
+		break;
+	default:
+		break;
 	}
 
 	int ret = zone_contents_apply(zone, do_checks_in_tree, &data);
@@ -622,8 +632,7 @@ int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_
 		return KNOT_ESEMCHECK;
 	}
 
-	if (optional == SEMCHECK_DNSSEC_ON ||
-	    (optional == SEMCHECK_DNSSEC_AUTO && zone->dnssec)) {
+	if (data.level & DNSSEC) {
 		ret = verify_dnssec(zone, handler, time);
 	}
 
