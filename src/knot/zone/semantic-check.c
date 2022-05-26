@@ -166,7 +166,6 @@ struct check_function {
 	check_level_t level;
 };
 
-/* List of function callbacks for defined check_level */
 static const struct check_function CHECK_FUNCTIONS[] = {
 	{ check_soa,            MANDATORY },
 	{ check_cname,          MANDATORY | SOFT },
@@ -180,13 +179,6 @@ static const struct check_function CHECK_FUNCTIONS[] = {
 static const int CHECK_FUNCTIONS_LEN = sizeof(CHECK_FUNCTIONS)
                                      / sizeof(struct check_function);
 
-/*!
- * \brief Check if glue record for delegation is present.
- *
- * Also check if there is NS record in the zone.
- * \param node Node to check
- * \param data Semantic checks context data
- */
 static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 {
 	if (!((node->flags & NODE_FLAGS_DELEG) || data->zone->apex == node)) {
@@ -243,9 +235,6 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief check_submission_records Check CDS and CDNSKEY
- */
 static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 {
 	const knot_rdataset_t *cdss = node_rdataset(node, KNOT_RRTYPE_CDS);
@@ -358,15 +347,6 @@ static int check_submission(const zone_node_t *node, semchecks_data_t *data)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Semantic check - DS record.
- *
- * \param node Node to check
- * \param data Semantic checks context data
- *
- * \retval KNOT_EOK on success.
- * \return Appropriate error code if error was found.
- */
 static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 {
 	const knot_rdataset_t *dss = node_rdataset(node, KNOT_RRTYPE_DS);
@@ -401,12 +381,6 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Check if apex node contains SOA record
- *
- * \param node Node to check
- * \param data Semantic checks context data
- */
 static int check_soa(const zone_node_t *node, semchecks_data_t *data)
 {
 	if (data->zone->apex != node) {
@@ -423,12 +397,6 @@ static int check_soa(const zone_node_t *node, semchecks_data_t *data)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Check if CNAME record contains other records
- *
- * \param node Node to check
- * \param data Semantic checks context data
- */
 static int check_cname(const zone_node_t *node, semchecks_data_t *data)
 {
 	const knot_rdataset_t *cname_rrs = node_rdataset(node, KNOT_RRTYPE_CNAME);
@@ -459,12 +427,6 @@ static int check_cname(const zone_node_t *node, semchecks_data_t *data)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Check if node with DNAME record satisfies RFC 6672 Section 2.
- *
- * \param node Node to check
- * \param data Semantic checks context data
- */
 static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 {
 	const knot_rdataset_t *dname_rrs = node_rdataset(node, KNOT_RRTYPE_DNAME);
@@ -523,15 +485,6 @@ static int check_nsec3param(const zone_node_t *node, semchecks_data_t *data)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Call all semantic checks for each node.
- *
- * This function is called as callback from zone_contents_tree_apply_inorder.
- * Checks are functions from global const array check_functions.
- *
- * \param node Node to be checked
- * \param data Semantic checks context data
- */
 static int do_checks_in_tree(zone_node_t *node, void *data)
 {
 	semchecks_data_t *s_data = (semchecks_data_t *)data;
