@@ -439,6 +439,24 @@ int check_module_id(
 	} \
 }
 
+#define CHECK_INTERVAL_VALUES_ZONE(low_item, high_item) { \
+	conf_val_t low_val  = conf_zone_get_txn(args->extra->conf, \
+	                                        args->extra->txn, low_item, \
+	                                        yp_dname(args->id)); \
+	conf_val_t high_val = conf_zone_get_txn(args->extra->conf, \
+	                                        args->extra->txn, high_item, \
+	                                        yp_dname(args->id)); \
+	if (low_val.code == KNOT_EOK && high_val.code == KNOT_EOK && \
+	    conf_int(&low_val) > conf_int(&high_val)) { \
+		char dname[KNOT_DNAME_MAXLEN]; \
+		knot_dname_to_str(dname, args->id, KNOT_DNAME_MAXLEN); \
+		CONF_LOG(LOG_NOTICE, "[%s] option '%s.%s' value is higher " \
+		         "than option '%s.%s' value ", dname, \
+		         &low_val.item->parent->name[1], &low_item[1], \
+		         &high_val.item->parent->name[1], &high_item[1]); \
+	} \
+}
+
 static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 {
 #ifdef ENABLE_XDP
@@ -818,6 +836,10 @@ int check_zone(
 	CHECK_LEGACY_NAME_ID(C_ZONE, C_MIN_REFRESH_INTERVAL, C_REFRESH_MIN_INTERVAL);
 	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
 	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
+
+	CHECK_INTERVAL_VALUES_ZONE(C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
+	CHECK_INTERVAL_VALUES_ZONE(C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
+	CHECK_INTERVAL_VALUES_ZONE(C_EXPIRE_MIN_INTERVAL, C_EXPIRE_MAX_INTERVAL);
 
 	conf_val_t zf_load = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_ZONEFILE_LOAD, yp_dname(args->id));
