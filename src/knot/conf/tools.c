@@ -46,6 +46,8 @@
 
 #define MAX_INCLUDE_DEPTH	5
 
+char check_str[1024];
+
 int legacy_item(
 	knotd_conf_check_args_t *args)
 {
@@ -781,9 +783,30 @@ int check_template(
 	return KNOT_EOK;
 }
 
+#define CHECK_ZONE_INTERVALS(low_item, high_item) { \
+	conf_val_t high = conf_zone_get_txn(args->extra->conf, args->extra->txn, \
+	                                    high_item, yp_dname(args->id)); \
+	if (high.code == KNOT_EOK) { \
+		conf_val_t low = conf_zone_get_txn(args->extra->conf, args->extra->txn, \
+		                                   low_item, yp_dname(args->id)); \
+		if (low.code == KNOT_EOK && conf_int(&low) > conf_int(&high)) { \
+			if (snprintf(check_str, sizeof(check_str), "'%s' is higher than '%s'", \
+			    low_item + 1, high_item + 1) < 0) { \
+				check_str[0] = '\0'; \
+			} \
+			args->err_str = check_str; \
+			return KNOT_EINVAL; \
+		} \
+	} \
+}
+
 int check_zone(
 	knotd_conf_check_args_t *args)
 {
+	CHECK_ZONE_INTERVALS(C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
+	CHECK_ZONE_INTERVALS(C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
+	CHECK_ZONE_INTERVALS(C_EXPIRE_MIN_INTERVAL, C_EXPIRE_MAX_INTERVAL);
+
 	conf_val_t zf_load = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_ZONEFILE_LOAD, yp_dname(args->id));
 	if (conf_opt(&zf_load) == ZONEFILE_LOAD_DIFSE) {
