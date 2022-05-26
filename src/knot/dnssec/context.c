@@ -17,10 +17,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "contrib/macros.h"
 #include "contrib/time.h"
 #include "libknot/libknot.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/kasp/keystore.h"
+#include "knot/server/dthreads.h"
 
 knot_dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_NORMAL)
 
@@ -315,7 +317,7 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 		conf_val_t num_threads = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, &policy_id);
 		ctx->policy->signing_threads = conf_int(&num_threads);
 	} else {
-		ctx->policy->signing_threads = 1;
+		ctx->policy->signing_threads = MAX(dt_optimal_size(), 1);
 	}
 
 	int ret = kasp_zone_from_contents(ctx->zone, zone, ctx->policy->single_type_signing,
