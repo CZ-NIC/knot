@@ -48,14 +48,16 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"missing glue record",
 
 	[SEM_ERR_RRSIG_UNVERIFIABLE] =
-	"unverifiable signature",
+	"no valid signature for a record",
 
+	[SEM_ERR_NSEC_NONE] =
+	"missing NSEC(3) record",
 	[SEM_ERR_NSEC_RDATA_BITMAP] =
-	"incorrect type bitmap in NSEC",
+	"wrong NSEC(3) bitmap",
 	[SEM_ERR_NSEC_RDATA_CHAIN] =
-	"incoherent NSEC chain",
+	"inconsistent NSEC(3) chain",
 	[SEM_ERR_NSEC3_INSECURE_DELEGATION_OPT] =
-	"insecure delegation outside NSEC3 opt-out",
+	"wrong NSEC3 opt-out",
 
 	[SEM_ERR_NSEC3PARAM_RDATA_FLAGS] =
 	"invalid flags in NSEC3PARAM",
@@ -318,7 +320,7 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 		uint16_t keytag = knot_ds_key_tag(ds);
 		uint8_t digest_type = knot_ds_digest_type(ds);
 
-		char info[100] = "";
+		char info[64] = "";
 		(void)snprintf(info, sizeof(info), "(keytag %d)", keytag);
 
 		if (!dnssec_algorithm_digest_support(digest_type)) {
@@ -464,13 +466,22 @@ static int do_checks_in_tree(zone_node_t *node, void *data)
 	return ret;
 }
 
-static sem_error_t err_dnssec2sem(int err)
+static sem_error_t err_dnssec2sem(int ret, uint16_t rrtype, char *info, size_t len)
 {
-	switch (err) {
+	char type_str[16];
+
+	switch (ret) {
 	case KNOT_DNSSEC_ENOSIG:
+		if (knot_rrtype_to_string(rrtype, type_str, sizeof(type_str)) > 0) {
+			(void)snprintf(info, len, "(record type %s)", type_str);
+		}
 		return SEM_ERR_RRSIG_UNVERIFIABLE;
 	case KNOT_DNSSEC_ENSEC_BITMAP:
-		return SEM_ERR_NSEC_RDATA_BITMAP;
+		if (rrtype == KNOT_RRTYPE_ANY) {
+			return SEM_ERR_NSEC_NONE;
+		} else {
+			return SEM_ERR_NSEC_RDATA_BITMAP;
+		}
 	case KNOT_DNSSEC_ENSEC_CHAIN:
 		return SEM_ERR_NSEC_RDATA_CHAIN;
 	case KNOT_DNSSEC_ENSEC3_OPTOUT:
@@ -485,9 +496,9 @@ static int verify_dnssec(zone_contents_t *zone, sem_handler_t *handler, time_t t
 	zone_update_t fake_up = { .new_cont = zone, };
 	int ret = knot_dnssec_validate_zone(&fake_up, NULL, time, false);
 	if (fake_up.validation_hint.node != NULL) { // validation found an issue
-		char type_str[16] = { 0 };
-		knot_rrtype_to_string(fake_up.validation_hint.rrtype, type_str, sizeof(type_str));
-		handler->cb(handler, zone, fake_up.validation_hint.node, err_dnssec2sem(ret), type_str);
+		char info[64] = "";
+		sem_error_t err = err_dnssec2sem(ret, fake_up.validation_hint.rrtype, info, sizeof(info));
+		handler->cb(handler, zone, fake_up.validation_hint.node, err, info);
 		return KNOT_EOK;
 	} else if (ret == KNOT_INVALID_PUBLIC_KEY) { // validation failed due to invalid DNSKEY
 		handler->cb(handler, zone, zone->apex->owner, SEM_ERR_DNSKEY_INVALID, NULL);
