@@ -47,54 +47,15 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	[SEM_ERR_NS_GLUE] =
 	"missing glue record",
 
-	[SEM_ERR_RRSIG_RDATA_TYPE_COVERED] =
-	"wrong type covered in RRSIG",
-	[SEM_ERR_RRSIG_RDATA_TTL] =
-	"wrong original TTL in RRSIG",
-	[SEM_ERR_RRSIG_RDATA_EXPIRATION] =
-	"expired RRSIG",
-	[SEM_ERR_RRSIG_RDATA_INCEPTION] =
-	"RRSIG inception in the future",
-	[SEM_ERR_RRSIG_RDATA_LABELS] =
-	"wrong labels in RRSIG",
-	[SEM_ERR_RRSIG_RDATA_OWNER] =
-	"wrong signer's name in RRSIG",
-	[SEM_ERR_RRSIG_NO_RRSIG] =
-	"missing RRSIG",
-	[SEM_ERR_RRSIG_SIGNED] =
-	"signed RRSIG",
 	[SEM_ERR_RRSIG_UNVERIFIABLE] =
 	"unverifiable signature",
 
-	[SEM_ERR_NSEC_NONE] =
-	"missing NSEC",
 	[SEM_ERR_NSEC_RDATA_BITMAP] =
 	"incorrect type bitmap in NSEC",
-	[SEM_ERR_NSEC_RDATA_MULTIPLE] =
-	"multiple NSEC records",
 	[SEM_ERR_NSEC_RDATA_CHAIN] =
 	"incoherent NSEC chain",
-
-	[SEM_ERR_NSEC3_NONE] =
-	"missing NSEC3",
 	[SEM_ERR_NSEC3_INSECURE_DELEGATION_OPT] =
 	"insecure delegation outside NSEC3 opt-out",
-	[SEM_ERR_NSEC3_EXTRA_RECORD] =
-	"invalid record type in NSEC3 chain",
-	[SEM_ERR_NSEC3_RDATA_TTL] =
-	"inconsistent TTL for NSEC3 and minimum TTL in SOA",
-	[SEM_ERR_NSEC3_RDATA_CHAIN] =
-	"incoherent NSEC3 chain",
-	[SEM_ERR_NSEC3_RDATA_BITMAP] =
-	"incorrect type bitmap in NSEC3",
-	[SEM_ERR_NSEC3_RDATA_FLAGS] =
-	"incorrect flags in NSEC3",
-	[SEM_ERR_NSEC3_RDATA_SALT] =
-	"incorrect salt in NSEC3",
-	[SEM_ERR_NSEC3_RDATA_ALG] =
-	"incorrect algorithm in NSEC3",
-	[SEM_ERR_NSEC3_RDATA_ITERS] =
-	"incorrect number of iterations in NSEC3",
 
 	[SEM_ERR_NSEC3PARAM_RDATA_FLAGS] =
 	"invalid flags in NSEC3PARAM",
@@ -110,8 +71,6 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"missing DNSKEY",
 	[SEM_ERR_DNSKEY_INVALID] =
 	"invalid DNSKEY",
-	[SEM_ERR_DNSKEY_RDATA_PROTOCOL] =
-	"invalid protocol in DNSKEY",
 
 	[SEM_ERR_CDS_NONE] =
 	"missing CDS",
