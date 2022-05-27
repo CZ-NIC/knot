@@ -179,6 +179,7 @@ int net_init(const srv_info_t     *local,
              const net_flags_t    flags,
              const tls_params_t   *tls_params,
              const https_params_t *https_params,
+             char                 *preffered_ns,
              net_t                *net)
 {
 	if (remote == NULL || net == NULL) {
@@ -191,7 +192,12 @@ int net_init(const srv_info_t     *local,
 	net->sockfd = -1;
 
 	// Get remote address list.
-	if (get_addr(remote, iptype, socktype, &net->remote_info) != 0) {
+	srv_info_t pref_remote = *remote;
+	net->preffered_ns = preffered_ns;
+	if (preffered_ns && preffered_ns[0]) {
+		pref_remote.name = preffered_ns;
+	}
+	if (get_addr(&pref_remote, iptype, socktype, &net->remote_info) != 0) {
 		net_clean(net);
 		return KNOT_NET_EADDR;
 	}

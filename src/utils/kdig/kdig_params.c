@@ -1169,6 +1169,20 @@ static int opt_nosubnet(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_trace(const char *arg, void *query)
+{
+	query_t *q = query;
+	q->trace = true;
+	return KNOT_EOK;
+}
+
+static int opt_notrace(const char *arg, void *query)
+{
+	query_t *q = query;
+	q->trace = false;
+	return KNOT_EOK;
+}
+
 static int opt_edns(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1456,6 +1470,9 @@ static const param_t kdig_opts2[] = {
 	{ "subnet",         ARG_REQUIRED, opt_subnet },
 	{ "nosubnet",       ARG_NONE,     opt_nosubnet },
 
+	{ "trace",          ARG_NONE,     opt_trace },
+	{ "notrace",        ARG_NONE,     opt_notrace },
+
 	// Obsolete aliases.
 	{ "client",         ARG_REQUIRED, opt_subnet },
 	{ "noclient",       ARG_NONE,     opt_nosubnet },
@@ -1511,6 +1528,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->type_num = -1;
 		query->serial = -1;
 		query->notify = false;
+		query->trace = false;
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
 		query->style.style.now = knot_time();

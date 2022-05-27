@@ -733,6 +733,22 @@ static int process_query_packet(const knot_pkt_t      *query,
 		knot_pkt_free(reply);
 	}
 
+	// Select the server from the response for the next traced query.
+	knot_rdataset_t *rrs = &reply->rr->rrs;
+	if (net->preffered_ns != NULL) {
+		if (rrs->count < 1) {
+			ERR("unable to trace query\n");
+			return -1;
+		}
+		for (int idx = 0; idx < rrs->count; ++idx) {
+			if (knot_dname_to_str(net->preffered_ns,
+			                      rrs->rdata[idx].data,
+			                      KNOT_DNAME_TXT_MAXLEN)) {
+				break;
+			}
+		}
+	}
+
 	// Check for TC bit and repeat query with TCP if required.
 	if (knot_wire_get_tc(reply->wire) != 0 &&
 	    ignore_tc == false && net->socktype == SOCK_DGRAM) {
@@ -818,7 +834,22 @@ static int process_query(const query_t *query, net_t *net)
 	node_t     *server;
 	knot_pkt_t *out_packet;
 	int        ret;
+	char       ns_storage[KNOT_DNAME_TXT_MAXLEN] = { 0 };
+	char       *parent_storage = net->preffered_ns;
 
+	if (query->trace && query->owner && strnlen(query->owner, 2) > 1) {
+		query_t trace_query = *query;
+		if (trace_query.type_num != KNOT_RRTYPE_NS) {
+			trace_query.type_num = KNOT_RRTYPE_NS;
+		} else {
+			trace_query.owner = strchr(trace_query.owner, '.');
+			if (trace_query.owner[1] != '\0') {
+				trace_query.owner++;
+			}
+		}
+		net->preffered_ns = ns_storage;
+		process_query(&trace_query, net);
+	}
 	// Create query packet.
 	out_packet = create_query_packet(query);
 	if (out_packet == NULL) {
@@ -862,7 +893,8 @@ static int process_query(const query_t *query, net_t *net)
 		for (size_t i = 0; i <= query->retries; i++) {
 			// Initialize network structure for current server.
 			ret = net_init(query->local, remote, iptype, socktype,
-				       query->wait, flags, &query->tls, &query->https, net);
+			               query->wait, flags, &query->tls,
+			               &query->https, ns_storage, net);
 			if (ret != KNOT_EOK) {
 				if (ret == KNOT_NET_EADDR) {
 					// Requested address family not available.
@@ -870,6 +902,7 @@ static int process_query(const query_t *query, net_t *net)
 				}
 				continue;
 			}
+			net->preffered_ns = parent_storage;
 
 			// Loop over all resolved addresses for remote.
 			while (net->srv != NULL) {
@@ -1171,7 +1204,7 @@ static int process_xfr(const query_t *query, net_t *net)
 
 	// Initialize network structure.
 	ret = net_init(query->local, remote, iptype, socktype, query->wait,
-	               flags, &query->tls, &query->https, net);
+	               flags, &query->tls, &query->https, NULL, net);
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(out_packet);

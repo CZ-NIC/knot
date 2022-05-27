@@ -101,6 +101,8 @@ struct query {
 	int64_t		serial;
 	/*!< NOTIFY query. */
 	bool		notify;
+	/*!< trace query. */
+	bool        trace;
 	/*!< Header flags. */
 	flags_t		flags;
 	/*!< Output settings. */

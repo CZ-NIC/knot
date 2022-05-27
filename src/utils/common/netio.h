@@ -80,6 +80,8 @@ typedef struct {
 	/*! HTTPS context. */
 	https_ctx_t https;
 #endif
+	/*! storage for preffer NS. Must be at least KNOT_DNAME_TXT_MAXLEN long. */
+	char *preffered_ns;
 } net_t;
 
 /*!
@@ -164,6 +166,7 @@ int net_init(const srv_info_t     *local,
              const net_flags_t    flags,
              const tls_params_t   *tls_params,
              const https_params_t *https_params,
+             char                 *preffered_ns,
              net_t                *net);
 
 /*!
