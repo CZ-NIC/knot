@@ -2148,11 +2148,9 @@ Extra checks:
 
 - Missing NS record at the zone apex
 - Missing glue A or AAAA record
-- Invalid DNSKEY, DS, or NSEC3PARAM record
+- Invalid DS or NSEC3PARAM record
 - CDS or CDNSKEY inconsistency
-- Missing, invalid, or unverifiable RRSIG record
-- Invalid NSEC(3) record
-- Broken or non-cyclic NSEC(3) chain
+- All other DNSSEC checks executed during :ref:`zone_dnssec-validation`
 
 .. NOTE::
    The soft mode allows the refresh event to ignore a CNAME response to a SOA

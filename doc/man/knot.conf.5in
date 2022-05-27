@@ -1971,15 +1971,11 @@ Missing NS record at the zone apex
 .IP \(bu 2
 Missing glue A or AAAA record
 .IP \(bu 2
-Invalid DNSKEY, DS, or NSEC3PARAM record
+Invalid DS or NSEC3PARAM record
 .IP \(bu 2
 CDS or CDNSKEY inconsistency
 .IP \(bu 2
-Missing, invalid, or unverifiable RRSIG record
-.IP \(bu 2
-Invalid NSEC(3) record
-.IP \(bu 2
-Broken or non\-cyclic NSEC(3) chain
+All other DNSSEC checks executed during \fI\%dnssec\-validation\fP
 .UNINDENT
 .sp
 \fBNOTE:\fP
