@@ -31,7 +31,7 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"missing SOA at the zone apex",
 
 	[SEM_ERR_CNAME_EXTRA_RECORDS] =
-	"more records exist at CNAME",
+	"another record exists beside CNAME",
 	[SEM_ERR_CNAME_MULTIPLE] =
 	"multiple CNAME records",
 
@@ -40,7 +40,7 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	[SEM_ERR_DNAME_MULTIPLE] =
 	"multiple DNAME records",
 	[SEM_ERR_DNAME_EXTRA_NS] =
-	"NS record exists at DNAME",
+	"NS record exists beside DNAME",
 
 	[SEM_ERR_NS_APEX] =
 	"missing NS at the zone apex",
