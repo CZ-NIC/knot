@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1240,9 +1240,6 @@ size_t conf_xdp_threads_txn(
 	size_t workers = 0;
 
 	conf_val_t val = conf_get_txn(conf, txn, C_XDP, C_LISTEN);
-	if (val.code != KNOT_EOK) {
-		val = conf_get_txn(conf, txn, C_SRV, C_LISTEN_XDP);
-	}
 	while (val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&val, NULL);
 		conf_xdp_iface_t iface;

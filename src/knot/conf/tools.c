@@ -46,6 +46,16 @@
 
 #define MAX_INCLUDE_DEPTH	5
 
+int legacy_item(
+	knotd_conf_check_args_t *args)
+{
+	CONF_LOG(LOG_NOTICE, "line %zu, option '%s.%s' is obsolete and has no effect",
+	         args->extra->line, args->item->parent->name + 1,
+	         args->item->name + 1);
+
+	return KNOT_EOK;
+}
+
 static bool is_default_id(
 	const uint8_t *id,
 	size_t id_len)
@@ -259,15 +269,6 @@ int check_listen(
 		args->err_str = "invalid port";
 		return KNOT_EINVAL;
 	}
-
-	return KNOT_EOK;
-}
-
-int check_xdp_listen_old(
-	knotd_conf_check_args_t *args)
-{
-	CONF_LOG(LOG_NOTICE, "option 'server.listen-xdp' is obsolete, "
-	                     "use option 'xdp.listen' instead");
 
 	return KNOT_EOK;
 }
