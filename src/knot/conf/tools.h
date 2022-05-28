@@ -30,6 +30,10 @@ typedef struct knotd_conf_check_extra {
 	bool check; /*!< Indication of the confio check mode. */
 } knotd_conf_check_extra_t;
 
+int legacy_item(
+	knotd_conf_check_args_t *args
+);
+
 int conf_exec_callbacks(
 	knotd_conf_check_args_t *args
 );
@@ -67,10 +71,6 @@ int check_ref_dflt(
 );
 
 int check_listen(
-	knotd_conf_check_args_t *args
-);
-
-int check_xdp_listen_old(
 	knotd_conf_check_args_t *args
 );
 

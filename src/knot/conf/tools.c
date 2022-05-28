@@ -46,6 +46,18 @@
 
 #define MAX_INCLUDE_DEPTH	5
 
+char check_str[1024];
+
+int legacy_item(
+	knotd_conf_check_args_t *args)
+{
+	CONF_LOG(LOG_NOTICE, "line %zu, option '%s.%s' is obsolete and has no effect",
+	         args->extra->line, args->item->parent->name + 1,
+	         args->item->name + 1);
+
+	return KNOT_EOK;
+}
+
 static bool is_default_id(
 	const uint8_t *id,
 	size_t id_len)
@@ -259,15 +271,6 @@ int check_listen(
 		args->err_str = "invalid port";
 		return KNOT_EINVAL;
 	}
-
-	return KNOT_EOK;
-}
-
-int check_xdp_listen_old(
-	knotd_conf_check_args_t *args)
-{
-	CONF_LOG(LOG_NOTICE, "option 'server.listen-xdp' is obsolete, "
-	                     "use option 'xdp.listen' instead");
 
 	return KNOT_EOK;
 }
@@ -492,12 +495,6 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 int check_server(
 	knotd_conf_check_args_t *args)
 {
-	CHECK_LEGACY_NAME(C_SRV, C_TCP_REPLY_TIMEOUT, C_TCP_RMT_IO_TIMEOUT);
-	CHECK_LEGACY_NAME(C_SRV, C_MAX_TCP_CLIENTS, C_TCP_MAX_CLIENTS);
-	CHECK_LEGACY_NAME(C_SRV, C_MAX_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD);
-	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV4_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV4);
-	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV6_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV6);
-
 	return KNOT_EOK;
 }
 
@@ -755,16 +752,6 @@ int check_remotes(
 	return KNOT_EOK;
 }
 
-#define CHECK_LEGACY_MOVED(old_item, new_item) { \
-	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
-	                                    C_TPL, old_item, args->id, args->id_len); \
-	if (val.code == KNOT_EOK) { \
-		CONF_LOG(LOG_NOTICE, "option 'template.%s' has no effect, " \
-		                     "use option 'database.%s' instead", \
-		                     &old_item[1], &new_item[1]); \
-	} \
-}
-
 #define CHECK_DFLT(item, name) { \
 	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
 	                                    C_TPL, item, args->id, args->id_len); \
@@ -789,20 +776,6 @@ int check_catalog_group(
 int check_template(
 	knotd_conf_check_args_t *args)
 {
-	CHECK_LEGACY_MOVED(C_TIMER_DB, C_TIMER_DB);
-	CHECK_LEGACY_MOVED(C_MAX_TIMER_DB_SIZE, C_TIMER_DB_MAX_SIZE);
-	CHECK_LEGACY_MOVED(C_JOURNAL_DB, C_JOURNAL_DB);
-	CHECK_LEGACY_MOVED(C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
-	CHECK_LEGACY_MOVED(C_MAX_JOURNAL_DB_SIZE, C_JOURNAL_DB_MAX_SIZE);
-	CHECK_LEGACY_MOVED(C_KASP_DB, C_KASP_DB);
-	CHECK_LEGACY_MOVED(C_MAX_KASP_DB_SIZE, C_KASP_DB_MAX_SIZE);
-
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_ZONE_SIZE, C_ZONE_MAX_SIZE);
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_REFRESH_INTERVAL, C_REFRESH_MAX_INTERVAL);
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MIN_REFRESH_INTERVAL, C_REFRESH_MIN_INTERVAL);
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
-
 	if (!is_default_id(args->id, args->id_len)) {
 		CHECK_DFLT(C_GLOBAL_MODULE, "global module");
 	}
@@ -810,32 +783,50 @@ int check_template(
 	return KNOT_EOK;
 }
 
+#define CHECK_ZONE_INTERVALS(low_item, high_item) { \
+	conf_val_t high = conf_zone_get_txn(args->extra->conf, args->extra->txn, \
+	                                    high_item, yp_dname(args->id)); \
+	if (high.code == KNOT_EOK) { \
+		conf_val_t low = conf_zone_get_txn(args->extra->conf, args->extra->txn, \
+		                                   low_item, yp_dname(args->id)); \
+		if (low.code == KNOT_EOK && conf_int(&low) > conf_int(&high)) { \
+			if (snprintf(check_str, sizeof(check_str), "'%s' is higher than '%s'", \
+			    low_item + 1, high_item + 1) < 0) { \
+				check_str[0] = '\0'; \
+			} \
+			args->err_str = check_str; \
+			return KNOT_EINVAL; \
+		} \
+	} \
+}
+
 int check_zone(
 	knotd_conf_check_args_t *args)
 {
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_ZONE_SIZE, C_ZONE_MAX_SIZE);
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_REFRESH_INTERVAL, C_REFRESH_MAX_INTERVAL);
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MIN_REFRESH_INTERVAL, C_REFRESH_MIN_INTERVAL);
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
+	CHECK_ZONE_INTERVALS(C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
+	CHECK_ZONE_INTERVALS(C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
+	CHECK_ZONE_INTERVALS(C_EXPIRE_MIN_INTERVAL, C_EXPIRE_MAX_INTERVAL);
 
 	conf_val_t zf_load = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_ZONEFILE_LOAD, yp_dname(args->id));
-	conf_val_t journal = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_JOURNAL_CONTENT, yp_dname(args->id));
-	if (conf_opt(&zf_load) == ZONEFILE_LOAD_DIFSE &&
-	    conf_opt(&journal) != JOURNAL_CONTENT_ALL) {
-		args->err_str = "'zonefile-load: difference-no-serial' requires 'journal-content: all'";
-		return KNOT_EINVAL;
+	if (conf_opt(&zf_load) == ZONEFILE_LOAD_DIFSE) {
+		conf_val_t journal = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+		                                       C_JOURNAL_CONTENT, yp_dname(args->id));
+		if (conf_opt(&journal) != JOURNAL_CONTENT_ALL) {
+			args->err_str = "'zonefile-load: difference-no-serial' requires 'journal-content: all'";
+			return KNOT_EINVAL;
+		}
 	}
 
-	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_DNSSEC_SIGNING, yp_dname(args->id));
 	conf_val_t validation = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                          C_DNSSEC_VALIDATION, yp_dname(args->id));
-	if (conf_bool(&signing) == true && conf_bool(&validation) == true) {
-		args->err_str = "'dnssec-validation' is not compatible with 'dnssec-signing'";
-		return KNOT_EINVAL;
+	if (conf_bool(&validation)) {
+		conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+		                                       C_DNSSEC_SIGNING, yp_dname(args->id));
+		if (conf_bool(&signing)) {
+			args->err_str = "'dnssec-validation' is not compatible with 'dnssec-signing'";
+			return KNOT_EINVAL;
+		}
 	}
 
 	conf_val_t catalog_role = conf_zone_get_txn(args->extra->conf, args->extra->txn,
