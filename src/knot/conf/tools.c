@@ -493,12 +493,6 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 int check_server(
 	knotd_conf_check_args_t *args)
 {
-	CHECK_LEGACY_NAME(C_SRV, C_TCP_REPLY_TIMEOUT, C_TCP_RMT_IO_TIMEOUT);
-	CHECK_LEGACY_NAME(C_SRV, C_MAX_TCP_CLIENTS, C_TCP_MAX_CLIENTS);
-	CHECK_LEGACY_NAME(C_SRV, C_MAX_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD);
-	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV4_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV4);
-	CHECK_LEGACY_NAME(C_SRV, C_MAX_IPV6_UDP_PAYLOAD, C_UDP_MAX_PAYLOAD_IPV6);
-
 	return KNOT_EOK;
 }
 
@@ -756,16 +750,6 @@ int check_remotes(
 	return KNOT_EOK;
 }
 
-#define CHECK_LEGACY_MOVED(old_item, new_item) { \
-	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
-	                                    C_TPL, old_item, args->id, args->id_len); \
-	if (val.code == KNOT_EOK) { \
-		CONF_LOG(LOG_NOTICE, "option 'template.%s' has no effect, " \
-		                     "use option 'database.%s' instead", \
-		                     &old_item[1], &new_item[1]); \
-	} \
-}
-
 #define CHECK_DFLT(item, name) { \
 	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
 	                                    C_TPL, item, args->id, args->id_len); \
@@ -790,20 +774,6 @@ int check_catalog_group(
 int check_template(
 	knotd_conf_check_args_t *args)
 {
-	CHECK_LEGACY_MOVED(C_TIMER_DB, C_TIMER_DB);
-	CHECK_LEGACY_MOVED(C_MAX_TIMER_DB_SIZE, C_TIMER_DB_MAX_SIZE);
-	CHECK_LEGACY_MOVED(C_JOURNAL_DB, C_JOURNAL_DB);
-	CHECK_LEGACY_MOVED(C_JOURNAL_DB_MODE, C_JOURNAL_DB_MODE);
-	CHECK_LEGACY_MOVED(C_MAX_JOURNAL_DB_SIZE, C_JOURNAL_DB_MAX_SIZE);
-	CHECK_LEGACY_MOVED(C_KASP_DB, C_KASP_DB);
-	CHECK_LEGACY_MOVED(C_MAX_KASP_DB_SIZE, C_KASP_DB_MAX_SIZE);
-
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_ZONE_SIZE, C_ZONE_MAX_SIZE);
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_REFRESH_INTERVAL, C_REFRESH_MAX_INTERVAL);
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MIN_REFRESH_INTERVAL, C_REFRESH_MIN_INTERVAL);
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
-	CHECK_LEGACY_NAME_ID(C_TPL, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
-
 	if (!is_default_id(args->id, args->id_len)) {
 		CHECK_DFLT(C_GLOBAL_MODULE, "global module");
 	}
@@ -814,12 +784,6 @@ int check_template(
 int check_zone(
 	knotd_conf_check_args_t *args)
 {
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_ZONE_SIZE, C_ZONE_MAX_SIZE);
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_REFRESH_INTERVAL, C_REFRESH_MAX_INTERVAL);
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MIN_REFRESH_INTERVAL, C_REFRESH_MIN_INTERVAL);
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_DEPTH, C_JOURNAL_MAX_DEPTH);
-	CHECK_LEGACY_NAME_ID(C_ZONE, C_MAX_JOURNAL_USAGE, C_JOURNAL_MAX_USAGE);
-
 	conf_val_t zf_load = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_ZONEFILE_LOAD, yp_dname(args->id));
 	conf_val_t journal = conf_zone_get_txn(args->extra->conf, args->extra->txn,
