@@ -786,21 +786,24 @@ int check_zone(
 {
 	conf_val_t zf_load = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_ZONEFILE_LOAD, yp_dname(args->id));
-	conf_val_t journal = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_JOURNAL_CONTENT, yp_dname(args->id));
-	if (conf_opt(&zf_load) == ZONEFILE_LOAD_DIFSE &&
-	    conf_opt(&journal) != JOURNAL_CONTENT_ALL) {
-		args->err_str = "'zonefile-load: difference-no-serial' requires 'journal-content: all'";
-		return KNOT_EINVAL;
+	if (conf_opt(&zf_load) == ZONEFILE_LOAD_DIFSE) {
+		conf_val_t journal = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+		                                       C_JOURNAL_CONTENT, yp_dname(args->id));
+		if (conf_opt(&journal) != JOURNAL_CONTENT_ALL) {
+			args->err_str = "'zonefile-load: difference-no-serial' requires 'journal-content: all'";
+			return KNOT_EINVAL;
+		}
 	}
 
-	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_DNSSEC_SIGNING, yp_dname(args->id));
 	conf_val_t validation = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                          C_DNSSEC_VALIDATION, yp_dname(args->id));
-	if (conf_bool(&signing) == true && conf_bool(&validation) == true) {
-		args->err_str = "'dnssec-validation' is not compatible with 'dnssec-signing'";
-		return KNOT_EINVAL;
+	if (conf_bool(&validation)) {
+		conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+		                                       C_DNSSEC_SIGNING, yp_dname(args->id));
+		if (conf_bool(&signing)) {
+			args->err_str = "'dnssec-validation' is not compatible with 'dnssec-signing'";
+			return KNOT_EINVAL;
+		}
 	}
 
 	conf_val_t catalog_role = conf_zone_get_txn(args->extra->conf, args->extra->txn,
