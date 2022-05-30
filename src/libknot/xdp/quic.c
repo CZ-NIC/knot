@@ -331,7 +331,7 @@ static uint64_t get_timestamp(void)
 
 bool xquic_conn_timeout(knot_xquic_conn_t *conn)
 {
-	return get_timestamp() > ngtcp2_conn_get_idle_expiry(conn->conn);
+	return get_timestamp() > ngtcp2_conn_get_expiry(conn->conn);
 }
 
 static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx)
@@ -564,7 +564,6 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		settings.no_udp_payload_size_shaping = 1;
 	} else {
 		settings.max_udp_payload_size = 1472;
-		settings.assume_symmetric_path = 1;
 	}
 	settings.qlog.odcid = *odcid;
 	// TODO handshake_timeout ?
@@ -693,7 +692,7 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 		if (header.token.len > 0) {
 			ret = ngtcp2_crypto_verify_retry_token(
 				&odcid, header.token.base, header.token.len,
-				(const uint8_t *)table->hash_secret, sizeof(table->hash_secret),
+				(const uint8_t *)table->hash_secret, sizeof(table->hash_secret), header.version,
 				(const struct sockaddr *)&msg->ip_from, sockaddr_len((const struct sockaddr_storage *)&msg->ip_from),
 				&dcid, 2000000000L /* TODO ? */, now
 			);
@@ -833,7 +832,7 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xdp_socket_t *sock,
 		init_random_cid(&new_dcid, 0);
 
 		ret = ngtcp2_crypto_generate_retry_token(
-			retry_token, (const uint8_t *)quic_table->hash_secret, sizeof(quic_table->hash_secret),
+			retry_token, (const uint8_t *)quic_table->hash_secret, sizeof(quic_table->hash_secret), pversion,
 			(const struct sockaddr *)&in_msg->ip_from, sockaddr_len((const struct sockaddr_storage *)&in_msg->ip_from),
 			&new_dcid, &dcid, now
 		);
