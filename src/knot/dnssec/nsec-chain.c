@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -459,6 +459,11 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 		    zone_contents_find_nsec3(data->update->new_cont, node->nsec3_hash, &found_nsec3, &prev_nsec3) != ZONE_NAME_NOT_FOUND ||
 		    found_nsec3 != NULL) {
 			return KNOT_ERROR;
+		}
+		if (prev_nsec3 == NULL) {
+			data->update->validation_hint.node = (nsec_node == NULL ? node->owner : nsec_node->owner);
+			data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
+			return KNOT_DNSSEC_ENSEC_BITMAP;
 		}
 		knot_rdataset_t *nsec3 = node_rdataset(prev_nsec3, KNOT_RRTYPE_NSEC3);
 		if (nsec3 == NULL) {

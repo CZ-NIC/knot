@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ typedef struct {
 } zloader_t;
 
 void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
-                        const zone_node_t *node, sem_error_t error, const char *data);
+                        const knot_dname_t *node, sem_error_t error, const char *data);
 
 /*!
  * \brief Open zone file for loading.

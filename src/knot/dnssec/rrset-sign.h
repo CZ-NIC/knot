@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -93,6 +93,11 @@ int knot_sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
  */
 int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
                      knot_rdataset_t *out_sig, knot_mm_t *mm);
+
+/*!
+ * \brief Determines if a RRSIG exists, covering the specified type.
+ */
+bool knot_synth_rrsig_exists(uint16_t type, const knot_rdataset_t *rrsig_rrs);
 
 /*!
  * \brief Check if RRSIG signature is valid.

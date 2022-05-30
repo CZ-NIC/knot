@@ -32,10 +32,19 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	}
 
 	char *zonefile = conf_zonefile(conf, zone_name);
-	conf_val_t val = conf_zone_get(conf, C_SEM_CHECKS, zone_name);
+
+	conf_val_t semchecks = conf_zone_get(conf, C_SEM_CHECKS, zone_name);
+	semcheck_optional_t mode = conf_opt(&semchecks);
+	if (mode == SEMCHECK_DNSSEC_AUTO) {
+		conf_val_t validation = conf_zone_get(conf, C_DNSSEC_VALIDATION, zone_name);
+		if (conf_bool(&validation)) {
+			// Disable duplicate DNSSEC checks.
+			mode = SEMCHECK_DNSSEC_OFF;
+		}
+	}
 
 	zloader_t zl;
-	int ret = zonefile_open(&zl, zonefile, zone_name, conf_opt(&val), time(NULL));
+	int ret = zonefile_open(&zl, zonefile, zone_name, mode, time(NULL));
 	free(zonefile);
 	if (ret != KNOT_EOK) {
 		return ret;

@@ -16,14 +16,15 @@
 
 #pragma once
 
+#include <time.h>
+
 #include "knot/conf/schema.h"
-#include "knot/zone/node.h"
 #include "knot/zone/contents.h"
 
 typedef enum {
 	SEMCHECK_MANDATORY_ONLY = SEMCHECKS_OFF,
-	SEMCHECK_MANDATORY_SOFT = SEMCHECKS_SOFT,
 	SEMCHECK_DNSSEC_AUTO    = SEMCHECKS_ON,
+	SEMCHECK_MANDATORY_SOFT = SEMCHECKS_SOFT,
 	SEMCHECK_DNSSEC_OFF,
 	SEMCHECK_DNSSEC_ON,
 } semcheck_optional_t;
@@ -46,32 +47,13 @@ typedef enum {
 	SEM_ERR_NS_APEX,
 	SEM_ERR_NS_GLUE,
 
-	SEM_ERR_RRSIG_RDATA_TYPE_COVERED,
-	SEM_ERR_RRSIG_RDATA_TTL,
-	SEM_ERR_RRSIG_RDATA_EXPIRATION,
-	SEM_ERR_RRSIG_RDATA_INCEPTION,
-	SEM_ERR_RRSIG_RDATA_LABELS,
-	SEM_ERR_RRSIG_RDATA_OWNER,
-	SEM_ERR_RRSIG_NO_RRSIG,
-	SEM_ERR_RRSIG_SIGNED,
-	SEM_ERR_RRSIG_TTL,
+	// DNSSEC checks.
 	SEM_ERR_RRSIG_UNVERIFIABLE,
 
 	SEM_ERR_NSEC_NONE,
 	SEM_ERR_NSEC_RDATA_BITMAP,
-	SEM_ERR_NSEC_RDATA_MULTIPLE,
 	SEM_ERR_NSEC_RDATA_CHAIN,
-
-	SEM_ERR_NSEC3_NONE,
 	SEM_ERR_NSEC3_INSECURE_DELEGATION_OPT,
-	SEM_ERR_NSEC3_EXTRA_RECORD,
-	SEM_ERR_NSEC3_RDATA_TTL,
-	SEM_ERR_NSEC3_RDATA_CHAIN,
-	SEM_ERR_NSEC3_RDATA_BITMAP,
-	SEM_ERR_NSEC3_RDATA_FLAGS,
-	SEM_ERR_NSEC3_RDATA_SALT,
-	SEM_ERR_NSEC3_RDATA_ALG,
-	SEM_ERR_NSEC3_RDATA_ITERS,
 
 	SEM_ERR_NSEC3PARAM_RDATA_FLAGS,
 	SEM_ERR_NSEC3PARAM_RDATA_ALG,
@@ -81,7 +63,6 @@ typedef enum {
 
 	SEM_ERR_DNSKEY_NONE,
 	SEM_ERR_DNSKEY_INVALID,
-	SEM_ERR_DNSKEY_RDATA_PROTOCOL,
 
 	SEM_ERR_CDS_NONE,
 	SEM_ERR_CDS_NOT_MATCH,
@@ -104,12 +85,9 @@ typedef struct sem_handler sem_handler_t;
 
 /*!
  * \brief Callback for handle error.
- *
- * Return KNOT_EOK to continue in semantic checks.
- * Return other KNOT_E* to stop semantic check with error.
  */
 typedef void (*sem_callback) (sem_handler_t *ctx, const zone_contents_t *zone,
-                              const zone_node_t *node, sem_error_t error, const char *data);
+                              const knot_dname_t *node, sem_error_t error, const char *data);
 
 struct sem_handler {
 	sem_callback cb;

@@ -470,6 +470,12 @@ static int sign_node_rrsets(const zone_node_t *node,
 		if (!knot_zone_sign_rr_should_be_signed(node, &rrset)) {
 			if (!sign_ctx->dnssec_ctx->validation_mode) {
 				result = remove_rrset_rrsigs(rrset.owner, rrset.type, &rrsigs, changeset);
+			} else {
+				if (knot_synth_rrsig_exists(rrset.type, &rrsigs.rrs)) {
+					hint->node = node->owner;
+					hint->rrtype = rrset.type;
+					result = KNOT_DNSSEC_ENOSIG;
+				}
 			}
 			continue;
 		}

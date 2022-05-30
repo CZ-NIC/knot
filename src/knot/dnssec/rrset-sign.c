@@ -338,6 +338,23 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
 	return out_sig->count > 0 ? KNOT_EOK : KNOT_ENOENT;
 }
 
+bool knot_synth_rrsig_exists(uint16_t type, const knot_rdataset_t *rrsig_rrs)
+{
+	if (rrsig_rrs == NULL) {
+		return false;
+	}
+
+	knot_rdata_t *rr = rrsig_rrs->rdata;
+	for (int i = 0; i < rrsig_rrs->count; ++i) {
+		if (type == knot_rrsig_type_covered(rr)) {
+			return true;
+		}
+		rr = knot_rdataset_next(rr);
+	}
+
+	return false;
+}
+
 /*- Verification of signatures -----------------------------------------------*/
 
 static bool is_expired_signature(const knot_rdata_t *rrsig, knot_time_t now,
