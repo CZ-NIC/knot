@@ -791,7 +791,7 @@ int check_template(
 		                                   low_item, yp_dname(args->id)); \
 		if (low.code == KNOT_EOK && conf_int(&low) > conf_int(&high)) { \
 			if (snprintf(check_str, sizeof(check_str), "'%s' is higher than '%s'", \
-			    low_item + 1, high_item + 1) < 0) { \
+			    &low_item[1], &high_item[1]) < 0) { \
 				check_str[0] = '\0'; \
 			} \
 			args->err_str = check_str; \
