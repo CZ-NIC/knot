@@ -133,6 +133,7 @@ knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, kn
 	if (xconn == NULL) {
 		return NULL;
 	}
+	xconn->streams_count = -1;
 
 	xconn->conn = conn;
 	xconn->xquic_table = table;
@@ -191,7 +192,7 @@ void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
 	for (ssize_t i = conn->streams_count - 1; i >= 0; i--) {
 		xquic_stream_free(conn, (i + conn->streams_first) * 4);
 	}
-	assert(conn->streams_count == 0);
+	assert(conn->streams_count <= 0);
 	assert(conn->obufs_size == 0);
 
 	size_t num_scid = ngtcp2_conn_get_num_scid(conn->conn);
@@ -220,7 +221,7 @@ void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
 
 knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn, int64_t stream_id, bool create)
 {
-	if (stream_id % 4 != 0) {
+	if (stream_id % 4 != 0 || xconn->streams_count < 0) {
 		return NULL;
 	}
 	stream_id /= 4;
@@ -255,6 +256,9 @@ knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn, int64_
 
 int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, const uint8_t *data, size_t len, bool fin)
 {
+	if (xconn->streams_count < 0) {
+		return KNOT_ESEMCHECK;
+	}
 	if (len == 0) {
 		return KNOT_EINVAL;
 	}
@@ -337,6 +341,7 @@ void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, siz
 
 	if (EMPTY_LIST(*obs) && !keep_stream) {
 		if (s == xconn->streams) {
+			assert(xconn->streams_count > 0);
 			xconn->streams_count--;
 
 			if (xconn->streams_count == 0) {
