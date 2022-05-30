@@ -41,11 +41,6 @@
 
 #define TLS_CALLBACK_ERR     (-1)
 
-// TODO it would be good if this is provided by libngtcp2
-int ngtcp2_conn_is_handshake_completed(ngtcp2_conn *conn) {
-	return *(int *)conn /* conn->state */ == 6 /* NGTCP2_CS_POST_HANDSHAKE */;
-}
-
 static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
                                        const gnutls_datum_t *key,
                                        const gnutls_datum_t *data)
@@ -391,6 +386,10 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 	assert(ctx->conn == conn);
+
+	assert(ctx->streams_count < 0);
+	ctx->streams_count = 0;
+
 	if (!ngtcp2_conn_is_server(conn)) {
 		return 0;
 	}
@@ -782,6 +781,9 @@ static int send_stream(knot_xquic_table_t *quic_table, knot_xdp_socket_t *sock,
 		knot_xdp_send_free(sock, &out_msg, 1);
 		return ret;
 	}
+	if (*sent < 0) {
+		*sent = 0;
+	}
 
 	out_msg.payload.iov_len = ret;
 	ret = knot_xdp_send(sock, &out_msg, 1, &xdp_sent);
@@ -881,8 +883,7 @@ int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
 
 	unsigned sent_msgs = 0, stream_msgs = 0;
 	int ret = 1;
-	for (int64_t si = 0; si < relay->streams_count && sent_msgs < max_msgs &&
-	     ngtcp2_conn_is_handshake_completed(relay->conn); /* NO INCREMENT */) {
+	for (int64_t si = 0; si < relay->streams_count && sent_msgs < max_msgs; /* NO INCREMENT */) {
 		int64_t stream_id = 4 * (relay->streams_first + si);
 
 		ngtcp2_ssize sent = 0;
