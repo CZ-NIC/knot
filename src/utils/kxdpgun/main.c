@@ -434,8 +434,10 @@ void *xdp_gun_thread(void *_ctx)
 						knot_xquic_conn_t *newconn = NULL;
 						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
 						if (ret == KNOT_EOK) {
+							newconn->streams_count = 0; // temporarily just to add data to stream 0
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
+							newconn->streams_count = -1;
 							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, false);
 						}
 						if (ret == KNOT_EOK) {
@@ -545,17 +547,18 @@ void *xdp_gun_thread(void *_ctx)
 							continue;
 						}
 
-						knot_xquic_stream_t *stream0 = knot_xquic_conn_get_stream(rl, 0, false);
-						assert(stream0 != NULL);
+						if (rl->streams_count == 0) {
+							rl->streams_count = 1;
 
-						if (ngtcp2_conn_is_handshake_completed(rl->conn) &&
-						    stream0->unsent_obuf != NULL) {
 							local_stats.synack_recv++;
 							if ((ctx->ignore1 & KXDPGUN_IGNORE_QUERY)) {
 								xquic_table_rem(relays[i], quic_table);
 								relays[i] = NULL;
 							}
 						}
+
+						knot_xquic_stream_t *stream0 = knot_xquic_conn_get_stream(rl, 0, false);
+						assert(stream0 != NULL);
 
 						if ((ctx->ignore2 & XDP_TCP_IGNORE_ESTABLISH)) {
 							xquic_table_rem(relays[i], quic_table);

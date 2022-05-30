@@ -63,7 +63,7 @@ typedef struct knot_xquic_conn {
 	struct gnutls_session_int *tls_session;
 
 	knot_xquic_stream_t *streams;
-	int64_t streams_count; // number of allocated streams structures.
+	int64_t streams_count; // number of allocated streams structures. -1 if handshake not completed yet.
 	int64_t streams_first; // stream_id/4 of first allocated stream
 	size_t ibufs_size; // FIXME also global statistics of this counter; sweeping conns based on this
 	size_t obufs_size;
