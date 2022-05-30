@@ -35,8 +35,6 @@ typedef struct knot_quic_creds {
 	uint8_t static_secret[32];
 } knot_xquic_creds_t;
 
-int ngtcp2_conn_is_handshake_completed(ngtcp2_conn *conn);
-
 int knot_xquic_init_creds(knot_xquic_creds_t *creds, const char *tls_cert, const char *tls_key);
 
 void knot_xquic_free_creds(knot_xquic_creds_t *creds);
