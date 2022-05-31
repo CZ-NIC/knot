@@ -114,20 +114,29 @@ static uint64_t cid2hash(const ngtcp2_cid *cid, knot_xquic_table_t *table)
 	return ret;
 }
 
-knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const ngtcp2_cid *cid,
-                                       knot_xquic_table_t *table)
+knot_xquic_cid_t **xquic_table_insert(knot_xquic_conn_t *xconn, const ngtcp2_cid *cid,
+                                      knot_xquic_table_t *table)
 {
 	uint64_t hash = cid2hash(cid, table);
 
-	knot_xquic_conn_t **addto = table->conns + (hash % table->size);
-	xconn->next = *addto;
-	*addto = xconn;
+	knot_xquic_cid_t *cidobj = malloc(sizeof(*cidobj));
+	if (cidobj == NULL) {
+		return NULL;
+	}
+	_Static_assert(sizeof(*cid) <= sizeof(cidobj->cid_placeholder), "insufficient placeholder for CID struct");
+	memcpy(cidobj->cid_placeholder, cid, sizeof(*cid));
+	cidobj->conn = xconn;
+
+	knot_xquic_cid_t **addto = table->conns + (hash % table->size);
+
+	cidobj->next = *addto;
+	*addto = cidobj;
 	table->pointers++;
 
 	return addto;
 }
 
-knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, knot_xquic_table_t *table)
+knot_xquic_conn_t *xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, knot_xquic_table_t *table)
 {
 	knot_xquic_conn_t *xconn = calloc(1, sizeof(*xconn));
 	if (xconn == NULL) {
@@ -138,31 +147,32 @@ knot_xquic_conn_t **xquic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid, kn
 	xconn->conn = conn;
 	xconn->xquic_table = table;
 
-	knot_xquic_conn_t **addto = xquic_table_insert(xconn, cid, table);
+	knot_xquic_cid_t **addto = xquic_table_insert(xconn, cid, table);
+	if (addto == NULL) {
+		free(xconn);
+		return NULL;
+	}
 	table->usage++;
 
-	return addto;
+	return xconn;
 }
 
-knot_xquic_conn_t **xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_table_t *table)
+knot_xquic_cid_t **xquic_table_lookup2(const ngtcp2_cid *cid, knot_xquic_table_t *table)
 {
 	uint64_t hash = cid2hash(cid, table);
 
-	knot_xquic_conn_t **res = table->conns + (hash % table->size);
-	while (*res != NULL) {
-		size_t num_scid = ngtcp2_conn_get_num_scid((*res)->conn); // FIXME this is obvoiusly slow and even crshing when conn table is relatively small. Refactor it somehow
-		ngtcp2_cid *scids = calloc(num_scid, sizeof(*scids));
-		ngtcp2_conn_get_scid((*res)->conn, scids);
-		for (size_t i = 0; i < num_scid; i++) {
-			const ngtcp2_cid *ocid = &scids[i];
-			if (cid_eq(ocid, cid)) {
-				return res;
-			}
-		}
-		free(scids);
+	knot_xquic_cid_t **res = table->conns + (hash % table->size);
+	while (*res != NULL && !cid_eq(cid, (const ngtcp2_cid *)(*res)->cid_placeholder)) {
 		res = &(*res)->next;
 	}
 	return res;
+}
+
+knot_xquic_conn_t *xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_table_t *table)
+{
+	knot_xquic_cid_t **pcid = xquic_table_lookup2(cid, table);
+	assert(pcid != NULL);
+	return *pcid == NULL ? NULL : (*pcid)->conn;
 }
 
 void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
@@ -175,10 +185,11 @@ void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
 	add_tail(l, n);
 }
 
-void xquic_table_rem2(knot_xquic_conn_t **pconn, knot_xquic_table_t *table)
+void xquic_table_rem2(knot_xquic_cid_t **pcid, knot_xquic_table_t *table)
 {
-	knot_xquic_conn_t *conn = *pconn;
-	*pconn = conn->next;
+	knot_xquic_cid_t *cid = *pcid;
+	*pcid = cid->next;
+	free(cid);
 	table->pointers--;
 }
 
@@ -200,11 +211,11 @@ void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
 	ngtcp2_conn_get_scid(conn->conn, scids);
 
 	for (size_t i = 0; i < num_scid; i++) {
-		knot_xquic_conn_t **pconn = xquic_table_lookup(&scids[i], table);
-		assert(pconn != NULL);
-		assert(*pconn != NULL); // FIXME: harden against weird attacks by if(*pconn==NULL)continue; once tested well
-		assert(*pconn == conn);
-		xquic_table_rem2(pconn, table);
+		knot_xquic_cid_t **pcid = xquic_table_lookup2(&scids[i], table);
+		assert(pcid != NULL);
+		assert(*pcid != NULL); // FIXME: harden against weird attacks by if(*pcid==NULL)continue; once tested well
+		assert((*pcid)->conn == conn);
+		xquic_table_rem2(pcid, table);
 	}
 
 	rem_node((node_t *)&conn->timeout);
