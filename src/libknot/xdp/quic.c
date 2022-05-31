@@ -358,7 +358,7 @@ static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	if (init_random_cid(cid, cidlen), cid->datalen == 0) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
-	knot_xquic_conn_t **addto = xquic_table_insert(ctx, cid, ctx->xquic_table);
+	knot_xquic_cid_t **addto = xquic_table_insert(ctx, cid, ctx->xquic_table);
 	(void)addto;
 
 	if (ngtcp2_crypto_generate_stateless_reset_token(token, (uint8_t *)ctx->xquic_table->hash_secret, sizeof(ctx->xquic_table->hash_secret), cid) != 0) {
@@ -374,9 +374,9 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 	assert(ctx->conn == conn);
 
-	knot_xquic_conn_t **torem = xquic_table_lookup(cid, ctx->xquic_table);
+	knot_xquic_cid_t **torem = xquic_table_lookup2(cid, ctx->xquic_table);
 	if (torem != NULL) {
-		assert(*torem == ctx);
+		assert((*torem)->conn == ctx);
 		xquic_table_rem2(torem, ctx->xquic_table);
 	}
 
@@ -615,8 +615,8 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
 	init_random_cid(&scid, 0);
 	init_random_cid(&dcid, 0);
 
-	knot_xquic_conn_t **pxconn = xquic_table_add(NULL, &dcid, table); // TODO scid ??
-	if (pxconn == NULL) {
+	knot_xquic_conn_t *xconn = xquic_table_add(NULL, &dcid, table);
+	if (xconn == NULL) {
 		return ENOMEM;
 	}
 
@@ -626,19 +626,19 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
 	path.local.addr = (struct sockaddr *)via;
 	path.local.addrlen = sockaddr_len(via);
 
-	int ret = conn_new(&(*pxconn)->conn, &path, &dcid, &scid, &dcid /* ??? */, NGTCP2_PROTO_VER_V1, now, *pxconn, false, false);
+	int ret = conn_new(&xconn->conn, &path, &dcid, &scid, &dcid, NGTCP2_PROTO_VER_V1, now, xconn, false, false);
 	if (ret == KNOT_EOK) {
-		ret = tls_init_conn_session(*pxconn, false);
+		ret = tls_init_conn_session(xconn, false);
 	}
 	if (ret == KNOT_EOK) {
-		ret = gnutls_server_name_set((*pxconn)->tls_session, GNUTLS_NAME_DNS, "tcpserver", strlen("tcpserver")); // FIXME
+		ret = gnutls_server_name_set(xconn->tls_session, GNUTLS_NAME_DNS, "tcpserver", strlen("tcpserver")); // FIXME
 	}
 	if (ret != KNOT_EOK) {
-		xquic_table_rem(*pxconn, table);
+		xquic_table_rem(xconn, table);
 		return ret;
 	}
 
-	*out_conn = *pxconn;
+	*out_conn = xconn;
 	return KNOT_EOK;
 }
 
@@ -660,7 +660,7 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 	memcpy(dcid.data, dcid_data, dcid.datalen);
 	memcpy(scid.data, scid_data, scid.datalen);
 
-	knot_xquic_conn_t **pxconn = xquic_table_lookup(&dcid, table), *xconn = *pxconn;
+	knot_xquic_conn_t *xconn = xquic_table_lookup(&dcid, table);
 
 	if (pversion == 0 /* short header */ && xconn == NULL) {
 		return KNOT_EOK; // NOOP
@@ -702,11 +702,10 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 			memcpy(&odcid, &dcid, sizeof(odcid));
 		}
 
-		pxconn = xquic_table_add(NULL, &dcid, table);
-		if (pxconn == NULL) {
+		xconn = xquic_table_add(NULL, &dcid, table);
+		if (xconn == NULL) {
 			return ENOMEM;
 		}
-		xconn = *pxconn;
 
 		ret = conn_new(&xconn->conn, &path, &dcid, &scid, &odcid, pversion, now, xconn, true, header.token.len > 0);
 		if (ret >= 0) {
