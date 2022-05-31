@@ -58,10 +58,14 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
 	}
 
 	while (journal_read_rrset(read, &ixfr->cur_rr, true)) {
-		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA &&
-		    !ixfr->in_remove_section &&
-		    knot_soa_serial(ixfr->cur_rr.rrs.rdata) == ixfr->soa_to) {
-			break;
+		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA) {
+			if (ixfr->in_remove_section) {
+				if (knot_soa_serial(ixfr->cur_rr.rrs.rdata) == ixfr->soa_to) {
+					break;
+				}
+			} else {
+				ixfr->soa_last = knot_soa_serial(ixfr->cur_rr.rrs.rdata);
+			}
 		}
 
 		if (pkt->size > KNOT_WIRE_PTR_MAX) {
@@ -199,6 +203,7 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 
 	xfr_stats_begin(&xfer->proc.stats);
 	xfer->state = IXFR_SOA_DEL;
+	xfer->in_remove_section = true;
 	init_list(&xfer->proc.nodes);
 	knot_rrset_init_empty(&xfer->cur_rr);
 	xfer->qdata = qdata;
@@ -207,6 +212,7 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 
 	xfer->soa_from = knot_soa_serial(their_soa->rrs.rdata);
 	xfer->soa_to = zone_contents_serial(qdata->extra->contents);
+	xfer->soa_last = xfer->soa_from;
 
 	qdata->extra->ext = xfer;
 	qdata->extra->ext_cleanup = &ixfr_answer_cleanup;
@@ -306,6 +312,10 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return KNOT_STATE_PRODUCE; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
+		if (ixfr->soa_last != ixfr->soa_to) {
+			IXFROUT_LOG(LOG_ERR, qdata, "failed (inconsistent history)");
+			return KNOT_STATE_FAIL;
+		}
 		xfr_stats_end(&ixfr->proc.stats);
 		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_IXFR, LOG_DIRECTION_OUT,
 		                 REMOTE(qdata), false, &ixfr->proc.stats);

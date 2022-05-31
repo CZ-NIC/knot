@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,6 +50,7 @@ struct ixfr_proc {
 	knot_mm_t *mm;
 	uint32_t soa_from;
 	uint32_t soa_to;
+	uint32_t soa_last;
 };
 
 /*!
