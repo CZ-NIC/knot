@@ -324,9 +324,12 @@ static uint64_t get_timestamp(void)
 	return (uint64_t)ts.tv_sec * NGTCP2_SECONDS + (uint64_t)ts.tv_nsec;
 }
 
-bool xquic_conn_timeout(knot_xquic_conn_t *conn)
+bool xquic_conn_timeout(knot_xquic_conn_t *conn, uint64_t *now)
 {
-	return get_timestamp() > ngtcp2_conn_get_expiry(conn->conn);
+	if (*now == 0) {
+		*now = get_timestamp();
+	}
+	return *now > ngtcp2_conn_get_expiry(conn->conn);
 }
 
 static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx)
@@ -348,6 +351,16 @@ static void init_random_cid(ngtcp2_cid *cid, size_t len)
 	}
 }
 
+static bool init_unique_cid(ngtcp2_cid *cid, size_t len, knot_xquic_table_t *table)
+{
+	do {
+		if (init_random_cid(cid, len), cid->datalen == 0) {
+			return false;
+		}
+	} while (xquic_table_lookup(cid, table) != NULL);
+	return true;
+}
+
 static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
                                  uint8_t *token, size_t cidlen,
                                  void *user_data)
@@ -355,13 +368,17 @@ static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 	assert(ctx->conn == conn);
 
-	if (init_random_cid(cid, cidlen), cid->datalen == 0) {
+	if (!init_unique_cid(cid, cidlen, ctx->xquic_table)) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
+
 	knot_xquic_cid_t **addto = xquic_table_insert(ctx, cid, ctx->xquic_table);
 	(void)addto;
 
-	if (ngtcp2_crypto_generate_stateless_reset_token(token, (uint8_t *)ctx->xquic_table->hash_secret, sizeof(ctx->xquic_table->hash_secret), cid) != 0) {
+	if (token != NULL &&
+	    ngtcp2_crypto_generate_stateless_reset_token(
+	            token, (uint8_t *)ctx->xquic_table->hash_secret,
+	            sizeof(ctx->xquic_table->hash_secret), cid) != 0) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
@@ -387,8 +404,8 @@ static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 	assert(ctx->conn == conn);
 
-	assert(ctx->streams_count < 0);
-	ctx->streams_count = 0;
+	assert(!ctx->handshake_done);
+	ctx->handshake_done = true;
 
 	if (!ngtcp2_conn_is_server(conn)) {
 		return 0;
@@ -403,7 +420,6 @@ static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
 	memcpy(alpn_str, alpn.data, alpn.size);
 
 	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {
-		printf("Unable to send session ticket\n"); // FIXME
 		return TLS_CALLBACK_ERR;
 	}
 
@@ -510,7 +526,8 @@ static void user_printf(void *user_data, const char *format, ...)
 
 static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
                     const ngtcp2_cid *dcid, const ngtcp2_cid *odcid, uint32_t version,
-                    uint64_t now, void *user_data, bool server, bool retry_sent)
+                    uint64_t now, size_t udp_pl, uint64_t idle_timeout,
+                    void *user_data, bool server, bool retry_sent)
 {
 	// I. CALLBACKS
 	const ngtcp2_callbacks callbacks = {
@@ -518,7 +535,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		ngtcp2_crypto_recv_client_initial_cb,
 		ngtcp2_crypto_recv_crypto_data_cb,
 		knot_handshake_completed_cb,
-		NULL, // recv_version_negotiation FIXME
+		NULL, // recv_version_negotiation not needed on server, nor kxdpgun
 		ngtcp2_crypto_encrypt_cb,
 		ngtcp2_crypto_decrypt_cb,
 		ngtcp2_crypto_hp_mask_cb,
@@ -534,12 +551,12 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		get_new_connection_id,
 		remove_connection_id,
 		ngtcp2_crypto_update_key_cb,
-		NULL, // TODO path_validation,
+		NULL, // path_validation,
 		NULL, // select_preferred_addr
 		recv_stream_rst,
-		NULL, // TODO ::extend_max_remote_streams_bidi,
+		NULL, // extend_max_remote_streams_bidi, might be useful to some allocation optimizations?
 		NULL, // extend_max_remote_streams_uni
-		NULL, // TODO ::extend_max_stream_data,
+		NULL, // extend_max_stream_data,
 		NULL, // dcid_status
 		NULL, // handshake_confirmed
 		NULL, // recv_new_token
@@ -549,7 +566,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		NULL, // ack_datagram
 		NULL, // lost_datagram
 		ngtcp2_crypto_get_path_challenge_data_cb,
-		NULL // TODO stream_stop_sending,
+		NULL // stream_stop_sending
 	};
 
 	// II. SETTINGS
@@ -557,15 +574,9 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	ngtcp2_settings_default(&settings);
 	settings.initial_ts = now;
 	settings.log_printf = user_printf;
-	//TODO UDP payload configuration
-	if (0 /*configured max UDP payload*/) {
-		//settings.max_udp_payload_size = 0; //TODO from configuration
-		settings.no_udp_payload_size_shaping = 1;
-	} else {
-		settings.max_udp_payload_size = 1472;
-	}
+	settings.max_udp_payload_size = udp_pl;
 	settings.qlog.odcid = *odcid;
-	// TODO handshake_timeout ?
+	settings.handshake_timeout = idle_timeout; // NOTE setting handshake timeout to idle_timeout for simplicity
 
 	// III. PARAMS
 	ngtcp2_transport_params params;
@@ -582,7 +593,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	// params.initial_max_data = config.max_data;
 	params.initial_max_streams_bidi = 100;
 	params.initial_max_streams_uni = 3;
-	params.max_idle_timeout = 5000000000L; // FIXME allow idle timeout configuration
+	params.max_idle_timeout = idle_timeout;
 	// params.stateless_reset_token_present = 1;
 	// params.active_connection_id_limit = 7;
 	if (odcid) {
@@ -626,12 +637,20 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
 	path.local.addr = (struct sockaddr *)via;
 	path.local.addrlen = sockaddr_len(via);
 
-	int ret = conn_new(&xconn->conn, &path, &dcid, &scid, &dcid, NGTCP2_PROTO_VER_V1, now, xconn, false, false);
+	int ret = conn_new(&xconn->conn, &path, &dcid, &scid, &dcid, NGTCP2_PROTO_VER_V1, now,
+	                   table->udp_payload_limit, 5000000000L, xconn, false, false);
 	if (ret == KNOT_EOK) {
 		ret = tls_init_conn_session(xconn, false);
 	}
 	if (ret == KNOT_EOK) {
-		ret = gnutls_server_name_set(xconn->tls_session, GNUTLS_NAME_DNS, "tcpserver", strlen("tcpserver")); // FIXME
+		char *hostname = sockaddr_hostname();
+		if (hostname == NULL) {
+			ret = KNOT_ENOMEM;
+		} else {
+			ret = gnutls_server_name_set(xconn->tls_session, GNUTLS_NAME_DNS,
+			                             hostname, strlen(hostname));
+			free(hostname);
+		}
 	}
 	if (ret != KNOT_EOK) {
 		xquic_table_rem(xconn, table);
@@ -642,7 +661,8 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
 	return KNOT_EOK;
 }
 
-static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xquic_conn_t **out_conn)
+_public_
+int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t idle_timeout, knot_xquic_conn_t **out_conn)
 {
 	*out_conn = NULL;
 
@@ -693,7 +713,7 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 				&odcid, header.token.base, header.token.len,
 				(const uint8_t *)table->hash_secret, sizeof(table->hash_secret), header.version,
 				(const struct sockaddr *)&msg->ip_from, sockaddr_len((const struct sockaddr_storage *)&msg->ip_from),
-				&dcid, 2000000000L /* TODO ? */, now
+				&dcid, idle_timeout, now // NOTE setting retry token validity to idle_timeout for simplicity
 			);
 			if (ret != 0) {
 				return KNOT_EOK;
@@ -702,12 +722,19 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 			memcpy(&odcid, &dcid, sizeof(odcid));
 		}
 
+		// server chooses his CID to his liking
+		if (!init_unique_cid(&dcid, 0, table)) {
+			return KNOT_ERROR;
+		}
+
 		xconn = xquic_table_add(NULL, &dcid, table);
 		if (xconn == NULL) {
 			return ENOMEM;
 		}
+		xquic_conn_mark_used(xconn, table);
 
-		ret = conn_new(&xconn->conn, &path, &dcid, &scid, &odcid, pversion, now, xconn, true, header.token.len > 0);
+		ret = conn_new(&xconn->conn, &path, &dcid, &scid, &odcid, pversion, now,
+		               table->udp_payload_limit, idle_timeout, xconn, true, header.token.len > 0);
 		if (ret >= 0) {
 			ret = tls_init_conn_session(xconn, true);
 		}
@@ -717,7 +744,7 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 		}
 	}
 
-	ngtcp2_pkt_info pi = { .ecn = NGTCP2_ECN_NOT_ECT, }; // TODO: explicit congestion notification
+	ngtcp2_pkt_info pi = { .ecn = NGTCP2_ECN_NOT_ECT, };
 
 	ret = ngtcp2_conn_read_pkt(xconn->conn, &path, &pi, msg->payload.iov_base, msg->payload.iov_len, now);
 
@@ -734,12 +761,6 @@ static int handle_packet(knot_xdp_msg_t *msg, knot_xquic_table_t *table, knot_xq
 	xquic_conn_mark_used(xconn, table);
 
 	return KNOT_EOK;
-}
-
-_public_
-int knot_xquic_handle(knot_xquic_table_t *quic_table, knot_xdp_msg_t *in_msg, knot_xquic_conn_t **out_conn)
-{
-	return handle_packet(in_msg, quic_table, out_conn);
 }
 
 static bool stream_exists(knot_xquic_conn_t *xconn, int64_t stream_id)
@@ -810,12 +831,14 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xdp_socket_t *sock,
 	int dvc_ret = ngtcp2_pkt_decode_version_cid(&pversion, &dcid_data, &dcid.datalen, &scid_data, &scid.datalen,
 	                                            in_msg->payload.iov_base, in_msg->payload.iov_len, SERVER_DEFAULT_SCIDLEN);
 
-	uint8_t rnd = 123; // FIXME random !
+	uint8_t rnd = 0;
+	dnssec_random_buffer(&rnd, sizeof(rnd));
 	uint32_t supported_quic[1] = { NGTCP2_PROTO_VER_V1 };
 	ngtcp2_cid new_dcid;
 	uint8_t retry_token[NGTCP2_CRYPTO_MAX_RETRY_TOKENLEN];
 	uint8_t stateless_reset_token[NGTCP2_STATELESS_RESET_TOKENLEN];
-	uint8_t sreset_rand[NGTCP2_MIN_STATELESS_RESET_RANDLEN] = { 0 }; // FIXME random
+	uint8_t sreset_rand[NGTCP2_MIN_STATELESS_RESET_RANDLEN];
+	dnssec_random_buffer(sreset_rand, sizeof(sreset_rand));
 
 	switch (handle_ret) {
 	case -XQUIC_SEND_VERSION_NEGOTIATION:
