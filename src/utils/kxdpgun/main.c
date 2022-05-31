@@ -437,7 +437,7 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	if (ctx->quic) {
 #ifdef ENABLE_XDP_QUIC
-		quic_table = knot_xquic_table_new(ctx->qps * 100, NULL, NULL);
+		quic_table = knot_xquic_table_new(ctx->qps * 100, 1232, NULL, NULL);
 		if (quic_table == NULL) {
 			ERR2("failed to allocate QUIC connection table\n");
 			return NULL;
@@ -503,7 +503,6 @@ void *xdp_gun_thread(void *_ctx)
 						knot_xquic_conn_t *newconn = NULL;
 						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
 						if (ret == KNOT_EOK) {
-							newconn->streams_count = 0; // temporarily just to add data to stream 0
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
 							newconn->streams_count = -1;
@@ -605,7 +604,7 @@ void *xdp_gun_thread(void *_ctx)
 #ifdef ENABLE_XDP_QUIC
 					knot_xquic_conn_t *relays[recvd];
 					for (size_t i = 0; i < recvd; i++) {
-						ret = knot_xquic_handle(quic_table, &pkts[i], &relays[i]);
+						ret = knot_xquic_handle(quic_table, &pkts[i], 5000000000L, &relays[i]);
 						if (ret < 0 || ret > 0) {
 							errors++;
 							break;
@@ -616,13 +615,14 @@ void *xdp_gun_thread(void *_ctx)
 							continue;
 						}
 
-						if (rl->streams_count == 0) {
+						if (rl->handshake_done && rl->streams_count == -1) {
 							rl->streams_count = 1;
 
 							local_stats.synack_recv++;
 							if ((ctx->ignore1 & KXDPGUN_IGNORE_QUERY)) {
 								xquic_table_rem(relays[i], quic_table);
 								relays[i] = NULL;
+								continue;
 							}
 						}
 

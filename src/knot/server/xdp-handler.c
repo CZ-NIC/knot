@@ -142,7 +142,8 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 		conf_t *pconf = conf();
 		char *tls_cert = conf_tls(pconf, C_TLS_CERT);
 		char *tls_key = conf_tls(pconf, C_TLS_KEY);
-		ctx->quic_table = knot_xquic_table_new(ctx->tcp_max_conns, tls_cert, tls_key);
+		size_t udp_pl = MIN(pconf->cache.srv_udp_max_payload_ipv4, pconf->cache.srv_udp_max_payload_ipv6);
+		ctx->quic_table = knot_xquic_table_new(ctx->tcp_max_conns, udp_pl, tls_cert, tls_key);
 		free(tls_cert);
 		free(tls_key);
 		if (ctx->quic_table == NULL) {
@@ -165,17 +166,16 @@ int xdp_handle_recv(xdp_handle_ctx_t *ctx)
 	return ret == KNOT_EOK ? ctx->msg_recv_count : ret;
 }
 
-static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer,
+static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer, bool udponly,
                         const knot_xdp_msg_t *msg, const struct iovec *payload)
 {
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
 	params->xdp_msg = msg;
-	/*if (!(msg->flags & KNOT_XDP_MSG_TCP)) {
+	if (udponly) {
 		params->flags = KNOTD_QUERY_FLAG_NO_AXFR |
 		                KNOTD_QUERY_FLAG_NO_IXFR |
 		                KNOTD_QUERY_FLAG_LIMIT_SIZE;
-	}*/
-	// FIXME make this distinguish QUIC!
+	}
 	struct sockaddr_storage proxied_remote;
 
 	knot_layer_begin(layer, params);
@@ -225,7 +225,7 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		ctx->msg_udp_count++;
 
 		// Consume the query.
-		handle_init(params, layer, msg_recv, &msg_recv->payload);
+		handle_init(params, layer, true, msg_recv, &msg_recv->payload);
 
 		// Process the reply.
 		knot_pkt_t *ans = knot_pkt_new(msg_send->payload.iov_base,
@@ -265,7 +265,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		// Process all complete DNS queries in one TCP stream.
 		for (size_t j = 0; j < rl->inbufs_count; j++) {
 			// Consume the query.
-			handle_init(params, layer, rl->msg, &rl->inbufs[j]);
+			handle_init(params, layer, false, rl->msg, &rl->inbufs[j]);
 			params->xdp_conn = rl->conn;
 
 			// Process the reply.
@@ -291,7 +291,7 @@ static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struc
                                size_t ans_buf_size, const knot_xdp_msg_t *xdp_msg)
 {
 	// Consume the query.
-	handle_init(params, layer, xdp_msg, inbuf);
+	handle_init(params, layer, false, xdp_msg, inbuf);
 
 	// Process the reply.
 	knot_pkt_t *ans = knot_pkt_new(ans_buf, ans_buf_size, layer->mm);
@@ -328,17 +328,20 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
-		ctx->quic_rets[i] = knot_xquic_handle(ctx->quic_table, msg_recv, &ctx->quic_relays[i]);
+		ctx->quic_rets[i] = knot_xquic_handle(ctx->quic_table, msg_recv, ctx->tcp_idle_close * 1000L, &ctx->quic_relays[i]);
 		knot_xquic_conn_t *rl = ctx->quic_relays[i];
 
-		for (int64_t j = 0; rl != NULL && j < rl->streams_count && ctx->msg_quic_count < XQUIC_MAX_SEND_PER_RECV; j++) {
-			int64_t stream_id = (rl->streams_first + j) * 4;
-			knot_xquic_stream_t *stream = knot_xquic_conn_get_stream(rl, stream_id, false);
-			if (stream->inbuf.iov_len > 0) {
-				handle_quic_stream(rl, stream_id, &stream->inbuf, layer, params,
-				                   ans_buf, sizeof(ans_buf), &ctx->msg_recv[i]);
-			}
-			stream->inbuf.iov_len = 0; // FIXME free mem ?
+		int64_t stream_id;
+		knot_xquic_stream_t *stream;
+
+		while (rl != NULL && ctx->msg_quic_count < XQUIC_MAX_SEND_PER_RECV &&
+		       (stream = knot_xquic_stream_get_process(rl, &stream_id)) != NULL) {
+			assert(stream->inbuf_fin);
+			assert(stream->inbuf.iov_len > 0);
+			handle_quic_stream(rl, stream_id, &stream->inbuf, layer, params,
+			                   ans_buf, sizeof(ans_buf), &ctx->msg_recv[i]);
+			stream->inbuf.iov_len = 0;
+			stream->inbuf_fin = false;
 		}
 	}
 #else
@@ -383,6 +386,10 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 	}
 #ifdef ENABLE_XDP_QUIC
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
+		if (ctx->quic_relays[i] == NULL) {
+			continue;
+		}
+
 		int ret = knot_xquic_send(ctx->quic_table, ctx->quic_relays[i], ctx->sock,
 		                          &ctx->msg_recv[i], ctx->quic_rets[i],
 		                          XQUIC_MAX_SEND_PER_RECV, false);
@@ -435,7 +442,11 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 
 #ifdef ENABLE_XDP_QUIC
 		if (ctx->quic_table) {
-			knot_xquic_table_sweep(ctx->quic_table, ctx->tcp_max_conns, ctx->tcp_max_obufs);
+			size_t to = 0, fc = 0;
+			knot_xquic_table_sweep(ctx->quic_table, ctx->tcp_max_conns, ctx->tcp_max_obufs, &to, &fc);
+			if (to > 0 || fc > 0) {
+				log_notice("QUIC, connection timeout %zu, forcibly closed %zu", to, fc);
+			}
 		}
 #endif // ENABLE_XDP_QUIC
 
