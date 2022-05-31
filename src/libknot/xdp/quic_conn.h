@@ -73,6 +73,12 @@ typedef struct knot_xquic_conn {
 	struct knot_xquic_conn *next;
 } knot_xquic_conn_t;
 
+typedef struct knot_xquic_cid {
+	uint8_t cid_placeholder[32];
+	knot_xquic_conn_t *conn;
+	struct knot_xquic_cid *next;
+} knot_xquic_cid_t;
+
 typedef struct knot_xquic_table {
 	size_t size;
 	size_t usage;
@@ -82,7 +88,7 @@ typedef struct knot_xquic_table {
 	uint64_t hash_secret[4];
 	struct knot_quic_creds *creds;
 	knot_xquic_ucw_list_t timeout;
-	knot_xquic_conn_t *conns[];
+	knot_xquic_cid_t *conns[];
 } knot_xquic_table_t;
 
 /*!
@@ -105,16 +111,18 @@ void knot_xquic_table_free(knot_xquic_table_t *table);
 
 int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_conns, size_t max_obufs);
 
-knot_xquic_conn_t **xquic_table_insert(knot_xquic_conn_t *xconn, const struct ngtcp2_cid *cid,
-                                       knot_xquic_table_t *table);
+knot_xquic_cid_t **xquic_table_insert(knot_xquic_conn_t *xconn, const struct ngtcp2_cid *cid,
+                                      knot_xquic_table_t *table);
 
-knot_xquic_conn_t **xquic_table_add(struct ngtcp2_conn *conn, const struct ngtcp2_cid *cid, knot_xquic_table_t *table);
+knot_xquic_conn_t *xquic_table_add(struct ngtcp2_conn *conn, const struct ngtcp2_cid *cid, knot_xquic_table_t *table);
 
-knot_xquic_conn_t **xquic_table_lookup(const struct ngtcp2_cid *cid, knot_xquic_table_t *table);
+knot_xquic_cid_t **xquic_table_lookup2(const struct ngtcp2_cid *cid, knot_xquic_table_t *table);
+
+knot_xquic_conn_t *xquic_table_lookup(const struct ngtcp2_cid *cid, knot_xquic_table_t *table);
 
 void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
 
-void xquic_table_rem2(knot_xquic_conn_t **pconn, knot_xquic_table_t *table);
+void xquic_table_rem2(knot_xquic_cid_t **pcid, knot_xquic_table_t *table);
 
 void xquic_stream_free(knot_xquic_conn_t *xconn, int64_t stream_id);
 
