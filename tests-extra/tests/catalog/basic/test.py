@@ -231,4 +231,9 @@ try:
 except:
     pass
 
+# Check for member zones not leaking after zonedb reload (just trigger the reload)
+slave.ctl("conf-begin")
+slave.ctl("conf-set zone[catalog1.].journal-content changes")
+slave.ctl("conf-commit")
+
 t.end()
