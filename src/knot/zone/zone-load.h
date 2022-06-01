@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #pragma once
 
 #include "knot/conf/conf.h"
+#include "knot/zone/semantic-check.h"
 #include "knot/zone/zone.h"
 
 /*!
@@ -25,6 +26,7 @@
  * \param conf
  * \param zone_name
  * \param contents
+ * \param semcheck_mode
  * \param fail_on_warning
  *
  * \retval KNOT_EOK        if success.
@@ -32,7 +34,8 @@
  * \retval KNOT_E*         if error.
  */
 int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
-                       zone_contents_t **contents, bool fail_on_warning);
+                       zone_contents_t **contents, semcheck_optional_t semcheck_mode,
+                       bool fail_on_warning);
 
 /*!
  * \brief Update zone contents from the journal.

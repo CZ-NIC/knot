@@ -92,7 +92,18 @@ int event_load(conf_t *conf, zone_t *zone)
 		char *filename = conf_zonefile(conf, zone->name);
 		ret = zonefile_exists(filename, &mtime);
 		if (ret == KNOT_EOK) {
-			ret = zone_load_contents(conf, zone->name, &zf_conts, false);
+			conf_val_t semchecks = conf_zone_get(conf, C_SEM_CHECKS, zone->name);
+			semcheck_optional_t mode = conf_opt(&semchecks);
+			if (mode == SEMCHECK_DNSSEC_AUTO) {
+				conf_val_t validation = conf_zone_get(conf, C_DNSSEC_VALIDATION, zone->name);
+				if (conf_bool(&validation)) {
+					/* Disable duplicate DNSSEC checks, which are the
+					   same as DNSSEC validation in zone update commit. */
+					mode = SEMCHECK_DNSSEC_OFF;
+				}
+			}
+
+			ret = zone_load_contents(conf, zone->name, &zf_conts, mode, false);
 		}
 		if (ret != KNOT_EOK) {
 			zf_conts = NULL;
