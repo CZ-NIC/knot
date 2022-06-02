@@ -176,11 +176,10 @@ An example of possible configuration initialization::
 Secondary (slave) mode
 ======================
 
-Running the server as a secondary server is very straightforward as you
-usually bootstrap zones over AXFR and thus avoid any manual zone operations.
-In contrast to AXFR, when the incremental transfer finishes, it stores
-the differences in the journal file and doesn't update the zone file
-immediately but after the :ref:`zone_zonefile-sync` period elapses.
+Running the server as a secondary is very straightforward as the zone
+is transfered automatically from a remote server. The received zone is
+usually stored in a zone file after the :ref:`zone_zonefile-sync` period
+elapses. Zone differences are stored in the :ref:`zone journal <Journal behaviour>`.
 
 .. _Primary mode:
 
