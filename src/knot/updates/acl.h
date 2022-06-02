@@ -24,7 +24,7 @@
 
 /*! \brief ACL actions. */
 typedef enum {
-	ACL_ACTION_NONE     = 0,
+	ACL_ACTION_QUERY    = 0,
 	ACL_ACTION_NOTIFY   = 1,
 	ACL_ACTION_TRANSFER = 2,
 	ACL_ACTION_UPDATE   = 3

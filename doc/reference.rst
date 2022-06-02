@@ -1257,7 +1257,7 @@ and dynamic DNS update) which are allowed to be processed or denied.
      address: ADDR[/INT] | ADDR-ADDR ...
      key: key_id ...
      remote: remote_id | remotes_id ...
-     action: notify | transfer | update ...
+     action: query | notify | transfer | update ...
      deny: BOOL
      update-type: STR ...
      update-owner: key | zone | name
@@ -1317,11 +1317,13 @@ An ordered list of allowed (or denied) actions.
 
 Possible values:
 
+- ``query`` – Allow regular DNS query. As normal queries are always allowed,
+  this action is only useful in combination with :ref:`TSIG key<acl_key>`.
 - ``notify`` – Allow incoming notify (NOTIFY).
 - ``transfer`` – Allow zone transfer (AXFR, IXFR).
 - ``update`` – Allow zone updates (DDNS).
 
-*Default:* not set
+*Default:* query
 
 .. _acl_deny:
 

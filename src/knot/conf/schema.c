@@ -103,6 +103,7 @@ static const knot_lookup_t cds_digesttype[] = {
 };
 
 const knot_lookup_t acl_actions[] = {
+	{ ACL_ACTION_QUERY,    "query" },
 	{ ACL_ACTION_NOTIFY,   "notify" },
 	{ ACL_ACTION_TRANSFER, "transfer" },
 	{ ACL_ACTION_UPDATE,   "update" },
@@ -347,7 +348,7 @@ static const yp_item_t desc_acl[] = {
 	{ C_ADDR,               YP_TNET,   YP_VNONE, YP_FMULTI },
 	{ C_KEY,                YP_TREF,   YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
 	{ C_RMT,                YP_TREF,   YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } },
-	{ C_ACTION,             YP_TOPT,   YP_VOPT = { acl_actions, ACL_ACTION_NONE }, YP_FMULTI },
+	{ C_ACTION,             YP_TOPT,   YP_VOPT = { acl_actions, ACL_ACTION_QUERY }, YP_FMULTI },
 	{ C_DENY,               YP_TBOOL,  YP_VNONE },
 	{ C_UPDATE_TYPE,        YP_TDATA,  YP_VDATA = { 0, NULL, rrtype_to_bin, rrtype_to_txt },
 	                                   YP_FMULTI, },

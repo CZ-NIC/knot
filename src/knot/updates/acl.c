@@ -257,7 +257,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		}
 
 		/* Check if the action is allowed. */
-		if (action != ACL_ACTION_NONE) {
+		if (action != ACL_ACTION_QUERY) {
 			conf_val_t val = conf_id_get(conf, C_ACL, C_ACTION, acl);
 			while (val.code == KNOT_EOK) {
 				if (conf_opt(&val) != action) {

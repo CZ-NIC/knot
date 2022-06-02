@@ -702,15 +702,6 @@ int check_key(
 int check_acl(
 	knotd_conf_check_args_t *args)
 {
-	conf_val_t action = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
-	                                       C_ACTION, args->id, args->id_len);
-	conf_val_t deny = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
-	                                     C_DENY, args->id, args->id_len);
-	if (conf_val_count(&action) == 0 && conf_val_count(&deny) == 0) {
-		args->err_str = "no ACL action defined";
-		return KNOT_EINVAL;
-	}
-
 	conf_val_t addr = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                     C_ADDR, args->id, args->id_len);
 	conf_val_t key = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
