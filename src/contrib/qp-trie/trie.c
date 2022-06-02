@@ -29,7 +29,7 @@
 #include "libknot/errcode.h"
 
 typedef unsigned int uint;
-typedef uint64_t index_t; /*!< nibble index into a key */
+typedef uint64_t trie_index_t; /*!< nibble index into a key */
 typedef uint64_t word; /*!< A type-punned word */
 typedef uint bitmap_t; /*!< Bit-maps, using the range of 1<<0 to 1<<16 (inclusive). */
 
@@ -175,7 +175,7 @@ static int mkleaf(node_t *leaf, const trie_key_t *key, uint32_t len, knot_mm_t *
 }
 
 /*! \brief construct a branch node */
-static node_t mkbranch(index_t index, bitmap_t bmp, node_t *twigs)
+static node_t mkbranch(trie_index_t index, bitmap_t bmp, node_t *twigs)
 {
 	word i = TFLAG_BRANCH | bmp
 		| (index << TSHIFT_INDEX);
@@ -218,7 +218,7 @@ static trie_val_t *tvalp(node_t *t)
 }
 
 /*! \brief Given a branch node, return the index of the corresponding nibble in the key. */
-static index_t branch_index(const node_t *t)
+static trie_index_t branch_index(const node_t *t)
 {
 	assert(isbranch(t));
 	return (t->i & TMASK_INDEX) >> TSHIFT_INDEX;
@@ -252,9 +252,9 @@ static uint twigoff(const node_t *t, bitmap_t bit)
 }
 
 /*! \brief Extract a nibble from a key and turn it into a bitmask. */
-static bitmap_t keybit(index_t ni, const trie_key_t *key, uint32_t len)
+static bitmap_t keybit(trie_index_t ni, const trie_key_t *key, uint32_t len)
 {
-	index_t bytei = ni >> 1;
+	trie_index_t bytei = ni >> 1;
 
 	if (bytei >= len)
 		return BMP_NOBYTE;
@@ -639,7 +639,7 @@ static inline int ns_longer(nstack_t *ns)
  *  \return KNOT_EOK or KNOT_ENOMEM.
  */
 static int ns_find_branch(nstack_t *ns, const trie_key_t *key, uint32_t len,
-                          index_t *idiff, bitmap_t *tbit, bitmap_t *kbit)
+                          trie_index_t *idiff, bitmap_t *tbit, bitmap_t *kbit)
 {
 	assert(ns && ns->len && idiff);
 	// First find some leaf with longest matching prefix.
@@ -665,7 +665,7 @@ static int ns_find_branch(nstack_t *ns, const trie_key_t *key, uint32_t len,
 			break;
 	}
 	// Find which half-byte has matched.
-	index_t index = bytei << 1;
+	trie_index_t index = bytei << 1;
 	if (bytei == len && len == lkey->len) { // found equivalent key
 		index = TMAX_INDEX;
 		goto success;
@@ -837,7 +837,7 @@ static int ns_prefix(nstack_t *ns)
 static int ns_get_leq(nstack_t *ns, const trie_key_t *key, uint32_t len)
 {
 	// First find the key with longest-matching prefix
-	index_t idiff;
+	trie_index_t idiff;
 	bitmap_t tbit, kbit;
 	ERR_RETURN(ns_find_branch(ns, key, len, &idiff, &tbit, &kbit));
 	node_t *t = ns->stack[ns->len - 1];
@@ -938,7 +938,7 @@ static trie_val_t* cow_get_ins(trie_cow_t *cow, trie_t *tbl,
 		nstack_t ns_local;
 	ns_init(&ns_local, tbl);
 	nstack_t *ns = &ns_local;
-	index_t idiff;
+	trie_index_t idiff;
 	bitmap_t tbit, kbit;
 	if (unlikely(ns_find_branch(ns, key, len, &idiff, &tbit, &kbit)))
 		return NULL;
@@ -1387,7 +1387,7 @@ int trie_del_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len, trie_val_
 		nstack_t ns_local;
 	ns_init(&ns_local, tbl);
 	nstack_t *ns = &ns_local;
-	index_t idiff;
+	trie_index_t idiff;
 	bitmap_t tbit, kbit;
 	ERR_RETURN(ns_find_branch(ns, key, len, &idiff, &tbit, &kbit));
 	if (idiff != TMAX_INDEX)
