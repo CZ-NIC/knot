@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ jsonw_t *jsonw_new(FILE *out, const char *indent);
 /*!
  * Free JSON writer created with jsonw_new.
  */
-void jsonw_free(jsonw_t *w);
+void jsonw_free(jsonw_t **w);
 
 /*!
  * Start writing a new object.
@@ -46,31 +46,36 @@ void jsonw_free(jsonw_t *w);
  * The following writes will represent key and value pairs respectively until
  * jsonw_end is called.
  */
-void jsonw_object(jsonw_t *w);
+void jsonw_object(jsonw_t *w, const char *key);
 
 /*!
  * Start writing a new list.
  *
  * The following writes will represent values until jsonw_end is called.
  */
-void jsonw_list(jsonw_t *w);
+void jsonw_list(jsonw_t *w, const char *key);
+
+/*!
+ * Write string as JSON. The string will be escaped properly.
+ */
+void jsonw_str(jsonw_t *w, const char *key, const char *value);
+
+/*!
+ * Write unsigned long value as JSON.
+ */
+void jsonw_ulong(jsonw_t *w, const char *key, unsigned long value);
+
+/*!
+ * Write integer as JSON.
+ */
+void jsonw_int(jsonw_t *w, const char *key, int value);
+
+/*!
+ * Write boolean value as JSON.
+ */
+void jsonw_bool(jsonw_t *w, const char *key, bool value);
 
 /*!
  * Terminate in-progress object or list.
  */
 void jsonw_end(jsonw_t *w);
-
-/*!
- * Write string as JSON. The string will be escaped properly.
- */
-void jsonw_str(jsonw_t *w, const char *value);
-
-/*!
- * Write integer as JSON.
- */
-void jsonw_int(jsonw_t *w, int value);
-
-/*!
- * Write boolean value as JSON.
- */
-void jsonw_bool(jsonw_t *w, bool value);

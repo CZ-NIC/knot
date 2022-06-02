@@ -923,33 +923,24 @@ static void print_key_full(const knot_kasp_key_t *key, knot_time_print_t format)
 
 static void print_key_json(const knot_kasp_key_t *key, knot_time_print_t format, jsonw_t *w, char *name)
 {
-	jsonw_str(w, "zone");
-	jsonw_str(w, name);
-	jsonw_str(w, "id");
-	jsonw_str(w, key->id);
-	jsonw_str(w, "ksk");
-	jsonw_bool(w, key->is_ksk);
-	jsonw_str(w, "zsk");
-	jsonw_bool(w, key->is_zsk);
-	jsonw_str(w, "tag");
-	jsonw_int(w, dnssec_key_get_keytag(key->key));
-	jsonw_str(w, "algo");
-	jsonw_int(w, (int)dnssec_key_get_algorithm(key->key));
-	jsonw_str(w, "size");
-	jsonw_int(w, dnssec_key_get_size(key->key));
-	jsonw_str(w, "public-only");
-	jsonw_bool(w, key->is_pub_only);
+	jsonw_str(w, "zone", name);
+	jsonw_str(w, "id", key->id);
+	jsonw_bool(w, "ksk", key->is_ksk);
+	jsonw_bool(w, "zsk", key->is_zsk);
+	jsonw_int(w, "tag", dnssec_key_get_keytag(key->key));
+	jsonw_int(w, "algo", (int)dnssec_key_get_algorithm(key->key));
+	jsonw_int(w, "size", dnssec_key_get_size(key->key));
+	jsonw_bool(w, "public-only", key->is_pub_only);
 
 	static char buf[100];
 	for (const timer_ctx_t *t = &timers[0]; t->name != NULL; t++) {
 		knot_time_t *val = (void *)(&key->timing) + t->offset;
 		(void)knot_time_print(format, *val, buf, sizeof(buf));
-		
-		jsonw_str(w, t->name);
+
 		if (format == TIME_PRINT_UNIX) {
-			jsonw_int(w, *val);
+			jsonw_int(w, t->name, *val);
 		} else {
-			jsonw_str(w, buf);
+			jsonw_str(w, t->name, buf);
 		}
 	}
 }
@@ -984,21 +975,21 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 		if ((w = jsonw_new(stdout, "  ")) != NULL) {
 			char *name = knot_dname_to_str_alloc(ctx->zone->dname);
 			if (!name) {
-				jsonw_free(w);
+				jsonw_free(&w);
 				return KNOT_ENOMEM;
 			}
 
-			jsonw_list(w);
+			jsonw_list(w, NULL);
 			for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 				knot_kasp_key_t *key = &ctx->zone->keys[i];
 
-				jsonw_object(w);
+				jsonw_object(w, NULL);
 				print_key_json(key, params->format, w, name);
 				jsonw_end(w); // object
 			}
 			jsonw_end(w); // list
 
-			jsonw_free(w);
+			jsonw_free(&w);
 			free(name);
 		}
 
@@ -1126,12 +1117,12 @@ int keymgr_list_zones(knot_lmdb_db_t *kaspdb, bool json)
 
 	if (json) {
 		if ((w = jsonw_new(stdout, "  ")) != NULL) {
-			jsonw_list(w);
+			jsonw_list(w, NULL);
 		}
 	}
 	WALK_LIST(node, zones) {
 		if (json) {
-			jsonw_str(w, knot_dname_to_str(buf, node->d, sizeof(buf)));
+			jsonw_str(w, NULL, knot_dname_to_str(buf, node->d, sizeof(buf)));
 		} else {
 			printf("%s\n", knot_dname_to_str(buf, node->d, sizeof(buf)));
 		}
@@ -1139,7 +1130,7 @@ int keymgr_list_zones(knot_lmdb_db_t *kaspdb, bool json)
 	
 	if (json) {
 		jsonw_end(w); // list
-		jsonw_free(w);
+		jsonw_free(&w);
 	}
 	ptrlist_deep_free(&zones, NULL);
 	return KNOT_EOK;
