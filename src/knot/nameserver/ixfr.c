@@ -51,14 +51,13 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
 
 	if (!knot_rrset_empty(&ixfr->cur_rr)) {
 		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
-		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA) {
-			ixfr->in_remove_section = !ixfr->in_remove_section;
-		}
 		journal_read_clear_rrset(&ixfr->cur_rr);
 	}
 
 	while (journal_read_rrset(read, &ixfr->cur_rr, true)) {
 		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA) {
+			ixfr->in_remove_section = !ixfr->in_remove_section;
+
 			if (ixfr->in_remove_section) {
 				if (knot_soa_serial(ixfr->cur_rr.rrs.rdata) == ixfr->soa_to) {
 					break;
@@ -75,9 +74,6 @@ static int ixfr_put_chg_part(knot_pkt_t *pkt, struct ixfr_proc *ixfr,
 		}
 
 		IXFR_SAFE_PUT(pkt, &ixfr->cur_rr);
-		if (ixfr->cur_rr.type == KNOT_RRTYPE_SOA) {
-			ixfr->in_remove_section = !ixfr->in_remove_section;
-		}
 		journal_read_clear_rrset(&ixfr->cur_rr);
 	}
 
@@ -203,7 +199,6 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 
 	xfr_stats_begin(&xfer->proc.stats);
 	xfer->state = IXFR_SOA_DEL;
-	xfer->in_remove_section = true;
 	init_list(&xfer->proc.nodes);
 	knot_rrset_init_empty(&xfer->cur_rr);
 	xfer->qdata = qdata;
