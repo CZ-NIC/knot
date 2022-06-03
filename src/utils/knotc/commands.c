@@ -574,7 +574,8 @@ static int zone_check(const knot_dname_t *dname, void *data)
 	cmd_args_t *args = data;
 
 	zone_contents_t *contents = NULL;
-	int ret = zone_load_contents(conf(), dname, &contents, args->force);
+	conf_val_t mode = conf_zone_get(conf(), C_SEM_CHECKS, dname);
+	int ret = zone_load_contents(conf(), dname, &contents, conf_opt(&mode), args->force);
 	zone_contents_deep_free(contents);
 	return ret;
 }

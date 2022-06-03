@@ -442,7 +442,7 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 	if ((nsec == NULL || nsec->count != 1) && !shall_no_nsec && !may_no_nsec) {
 		data->update->validation_hint.node = (nsec_node == NULL ? node->owner : nsec_node->owner);
 		data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
-		return KNOT_DNSSEC_ENSEC_BITMAP;
+		return KNOT_DNSSEC_ENONSEC;
 	}
 	if (shall_no_nsec && nsec != NULL && nsec->count > 0) {
 		data->update->validation_hint.node = nsec_node->owner;
@@ -463,7 +463,7 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 		if (prev_nsec3 == NULL) {
 			data->update->validation_hint.node = (nsec_node == NULL ? node->owner : nsec_node->owner);
 			data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
-			return KNOT_DNSSEC_ENSEC_BITMAP;
+			return KNOT_DNSSEC_ENONSEC;
 		}
 		knot_rdataset_t *nsec3 = node_rdataset(prev_nsec3, KNOT_RRTYPE_NSEC3);
 		if (nsec3 == NULL) {

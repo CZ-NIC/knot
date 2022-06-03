@@ -476,12 +476,10 @@ static sem_error_t err_dnssec2sem(int ret, uint16_t rrtype, char *info, size_t l
 			(void)snprintf(info, len, "(record type %s)", type_str);
 		}
 		return SEM_ERR_RRSIG_UNVERIFIABLE;
+	case KNOT_DNSSEC_ENONSEC:
+		return SEM_ERR_NSEC_NONE;
 	case KNOT_DNSSEC_ENSEC_BITMAP:
-		if (rrtype == KNOT_RRTYPE_ANY) {
-			return SEM_ERR_NSEC_NONE;
-		} else {
-			return SEM_ERR_NSEC_RDATA_BITMAP;
-		}
+		return SEM_ERR_NSEC_RDATA_BITMAP;
 	case KNOT_DNSSEC_ENSEC_CHAIN:
 		return SEM_ERR_NSEC_RDATA_CHAIN;
 	case KNOT_DNSSEC_ENSEC3_OPTOUT:
