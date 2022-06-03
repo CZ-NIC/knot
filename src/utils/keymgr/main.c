@@ -302,6 +302,7 @@ int main(int argc, char *argv[])
 		{ "verbose", no_argument,       NULL, 'v' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ "version", no_argument,       NULL, 'V' },
+		{ "json",    no_argument,       NULL, 'j' },
 		{ NULL }
 	};
 
@@ -314,7 +315,7 @@ int main(int argc, char *argv[])
 	list_params.color = isatty(STDOUT_FILENO);
 
 	int opt = 0, parm = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:D:t:lbxXvhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:D:t:jlbxXvhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
@@ -341,6 +342,9 @@ int main(int argc, char *argv[])
 				goto failure;
 			}
 			goto success;
+		case 'j':
+			list_params.json = true;
+			break;
 		case 'l':
 			just_list = true;
 			break;
@@ -381,7 +385,7 @@ int main(int argc, char *argv[])
 	free(kasp_dir);
 
 	if (just_list) {
-		ret = keymgr_list_zones(&kaspdb);
+		ret = keymgr_list_zones(&kaspdb, list_params.json);
 	} else {
 		ret = key_command(argc, argv, optind, &kaspdb, &list_params);
 	}

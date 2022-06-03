@@ -27,6 +27,7 @@
 #include "contrib/base64.h"
 #include "contrib/color.h"
 #include "contrib/ctype.h"
+#include "contrib/json.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "contrib/tolower.h"
@@ -920,6 +921,31 @@ static void print_key_full(const knot_kasp_key_t *key, knot_time_print_t format)
 	printf("\n");
 }
 
+static void print_key_json(const knot_kasp_key_t *key, knot_time_print_t format,
+                           jsonw_t *w, const char *zone_name)
+{
+	jsonw_str(w,   "zone", zone_name);
+	jsonw_str(w,   "id", key->id);
+	jsonw_bool(w,  "ksk", key->is_ksk);
+	jsonw_bool(w,  "zsk", key->is_zsk);
+	jsonw_int(w,   "tag", dnssec_key_get_keytag(key->key));
+	jsonw_ulong(w, "algorithm", dnssec_key_get_algorithm(key->key));
+	jsonw_int(w,   "size", dnssec_key_get_size(key->key));
+	jsonw_bool(w,  "public-only", key->is_pub_only);
+
+	static char buf[100];
+	for (const timer_ctx_t *t = &timers[0]; t->name != NULL; t++) {
+		knot_time_t *val = (void *)(&key->timing) + t->offset;
+		(void)knot_time_print(format, *val, buf, sizeof(buf));
+
+		if (format == TIME_PRINT_UNIX) {
+			jsonw_int(w, t->name, *val);
+		} else {
+			jsonw_str(w, t->name, buf);
+		}
+	}
+}
+
 typedef struct {
 	knot_time_t val;
 	const knot_kasp_key_t *key;
@@ -937,11 +963,30 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 	if (ctx->zone->num_keys == 0) {
 		return KNOT_EOK;
 	}
+
 	if (params->verbose) {
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 			knot_kasp_key_t *key = &ctx->zone->keys[i];
 			print_key_full(key, params->format);
 		}
+	} else if (params->json) {
+		jsonw_t *w = jsonw_new(stdout, "  ");
+		if (w == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		knot_dname_txt_storage_t name;
+		(void)knot_dname_to_str(name, ctx->zone->dname, sizeof(name));
+
+		jsonw_list(w, NULL);
+		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
+			knot_kasp_key_t *key = &ctx->zone->keys[i];
+			jsonw_object(w, NULL);
+			print_key_json(key, params->format, w, name);
+			jsonw_end(w); // object
+		}
+		jsonw_end(w); // list
+		jsonw_free(&w);
 	} else {
 		key_sort_item_t items[ctx->zone->num_keys];
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
@@ -1050,8 +1095,9 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 	return KNOT_EOK;
 }
 
-int keymgr_list_zones(knot_lmdb_db_t *kaspdb)
+int keymgr_list_zones(knot_lmdb_db_t *kaspdb, bool json)
 {
+	jsonw_t *w;
 	list_t zones;
 	init_list(&zones);
 	int ret = kasp_db_list_zones(kaspdb, &zones);
@@ -1060,11 +1106,31 @@ int keymgr_list_zones(knot_lmdb_db_t *kaspdb)
 		return ret;
 	}
 
-	knot_dname_txt_storage_t buf;
+	knot_dname_txt_storage_t name;
 	ptrnode_t *node;
-	WALK_LIST(node, zones) {
-		printf("%s\n", knot_dname_to_str(buf, node->d, sizeof(buf)));
+
+	if (json) {
+		w = jsonw_new(stdout, "  ");
+		if (w == NULL) {
+			ERR2("failed to allocate memory\n");
+			ptrlist_deep_free(&zones, NULL);
+			return KNOT_ENOMEM;
+		}
+		jsonw_list(w, NULL);
 	}
+	WALK_LIST(node, zones) {
+		(void)knot_dname_to_str(name, node->d, sizeof(name));
+		if (json) {
+			jsonw_str(w, NULL, name);
+		} else {
+			printf("%s\n", name);
+		}
+	}
+	if (json) {
+		jsonw_end(w); // list
+		jsonw_free(&w);
+	}
+
 	ptrlist_deep_free(&zones, NULL);
 	return KNOT_EOK;
 }
