@@ -289,6 +289,62 @@ processed::
       - domain: example.com
         acl: update_acl
 
+Restricting dynamic updates
+---------------------------
+
+The :ref:`update-owner<acl_update_owner>` ACL option allows not only to
+compare the updated record's name ("owner") with a list in
+:ref:`update-owner-name<acl_update_owner_name>` as introduced above, but also
+to compare against the name of the zone being updated::
+
+    key:
+      - id: ddns-key
+        ...
+
+    acl:
+     - id: zone_update_acl
+       key: ddns-key
+       update-owner: zone
+       action: zone_update_acl
+
+    zone:
+     - domain: example.com.
+       acl: zone_acl
+     - domain: example.net.
+       acl: zone_acl
+
+This permits update requests signed by the TSIG key `ddns-key` to update
+records at the zone apex of the two zones. Updates to the whole zone can be
+permitted by setting :ref:`update-owner-match<acl_update_owner_match>` to
+`sub-or-equal` additionally.
+
+Furthermore update ACLs can match the record owner against an incoming
+request's TSIG key id. The key id is defined by the :ref:`id<key_id>` field
+in the :ref:`key<key>` section. We do this as follows::
+
+    key:
+     - id: example.com.
+       ...
+     - id: example.net.
+       ...
+
+    acl:
+     - id: ddns_acl
+       update-owner: key
+       key: [example.com., example.net.]
+       action: update
+
+    zone:
+     - domain: example.com.
+       acl: ddns_acl
+     - domain: example.net.
+       acl: ddns_acl
+
+This way each key can only change records in the domain corresponding to it's
+name. Here we only allow updates at the zone apex but we can use
+:ref:`update-owner-match<acl_update_owner_match>` again to allow updates to
+the whole zone if desired.
+
 .. _dnssec:
 
 Automatic DNSSEC signing
