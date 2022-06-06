@@ -47,6 +47,11 @@ Copyright: 2013-2015 Alexei Starovoitov <ast@kernel.org>
            2018-2019 Facebook
 License: LGPL-2.1
 
+Files: src/contrib/libngtcp2/*
+Copyright: 2016-2022 ngtcp2 contributors
+           2012-2017 nghttp2 contributors
+License: MIT
+
 Files: src/contrib/openbsd/siphash.*
 Copyright: 2013 Andre Oppermann <andre@FreeBSD.org>
 License: BSD-3-Clause
