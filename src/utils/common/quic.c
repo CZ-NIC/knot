@@ -779,6 +779,12 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 		.revents = 0,
 	};
 
+	// Open stream when connection keep-opened
+	if (ctx->stream.id == -1) {
+		quic_open_bidi_stream(ctx);
+		quic_send(ctx, sockfd, srv->ai_family);
+	}
+
 	ctx->stream.out_ack += buf_len + sizeof(uint16_t);
 	while (ctx->stream.out_ack) {
 		if (quic_timeout(ctx->idle_ts, ctx->tls->wait)) {
