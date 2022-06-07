@@ -96,6 +96,45 @@ typedef enum {
 } knot_rcode_t;
 
 /*!
+ * \brief Extended error codes as in EDNS option #15.
+ *
+ * \note The default -1 value must be filtered out before storing to uint16_t!
+ *
+ * https://www.iana.org/assignments/dns-parameters/dns-parameters.xml#extended-dns-error-codes
+ */
+typedef enum {
+	KNOT_EDNS_EDE_NONE             = -1,
+	KNOT_EDNS_EDE_OTHER            = 0,
+	KNOT_EDNS_EDE_DNSKEY_ALG       = 1,
+	KNOT_EDNS_EDE_DS_DIGEST        = 2,
+	KNOT_EDNS_EDE_STALE            = 3,
+	KNOT_EDNS_EDE_FORGED           = 4,
+	KNOT_EDNS_EDE_INDETERMINATE    = 5,
+	KNOT_EDNS_EDE_BOGUS            = 6,
+	KNOT_EDNS_EDE_SIG_EXPIRED      = 7,
+	KNOT_EDNS_EDE_SIG_NOTYET       = 8,
+	KNOT_EDNS_EDE_DNSKEY_MISS      = 9,
+	KNOT_EDNS_EDE_RRSIG_MISS       = 10,
+	KNOT_EDNS_EDE_DNSKEY_BIT       = 11,
+	KNOT_EDNS_EDE_NSEC_MISS        = 12,
+	KNOT_EDNS_EDE_CACHED_ERR       = 13,
+	KNOT_EDNS_EDE_NOT_READY        = 14,
+	KNOT_EDNS_EDE_BLOCKED          = 15,
+	KNOT_EDNS_EDE_CENSORED         = 16,
+	KNOT_EDNS_EDE_FILTERED         = 17,
+	KNOT_EDNS_EDE_PROHIBITED       = 18,
+	KNOT_EDNS_EDE_STALE_NXD        = 19,
+	KNOT_EDNS_EDE_NOTAUTH          = 20,
+	KNOT_EDNS_EDE_NOTSUP           = 21,
+	KNOT_EDNS_EDE_NREACH_AUTH      = 22,
+	KNOT_EDNS_EDE_NETWORK          = 23,
+	KNOT_EDNS_EDE_INV_DATA         = 24,
+	KNOT_EDNS_EDE_EXPIRED_INV      = 25,
+	KNOT_EDNS_EDE_TOO_EARLY        = 26,
+	KNOT_EDNS_EDE_NSEC3_ITERS      = 27,
+} knot_edns_ede_t;
+
+/*!
  * \brief DNS packet section identifiers.
  */
 typedef enum {

@@ -95,40 +95,6 @@ enum {
 	KNOT_EDNS_MAX_OPTION_CODE      = 17,
 };
 
-/*!
- * \brief Extended error codes as in EDNS option #15.
- * \warning Don't mix this up with EDNS extended errcode.
- * \note The default -1 value must be filtered out before storing to uint16_t ;)
- */
-enum {
-	KNOT_EDNS_EDE_NONE             = -1,
-	KNOT_EDNS_EDE_OTHER            = 0,
-	KNOT_EDNS_EDE_DNSKEY_ALG       = 1,
-	KNOT_EDNS_EDE_DS_DIGEST        = 2,
-	KNOT_EDNS_EDE_STALE            = 3,
-	KNOT_EDNS_EDE_FORGED           = 4,
-	KNOT_EDNS_EDE_INDETERMINATE    = 5,
-	KNOT_EDNS_EDE_BOGUS            = 6,
-	KNOT_EDNS_EDE_SIG_EXPIRED      = 7,
-	KNOT_EDNS_EDE_SIG_NOTYET       = 8,
-	KNOT_EDNS_EDE_DNSKEY_MISS      = 9,
-	KNOT_EDNS_EDE_RRSIG_MISS       = 10,
-	KNOT_EDNS_EDE_DNSKEY_BIT       = 11,
-	KNOT_EDNS_EDE_NSEC_MISS        = 12,
-	KNOT_EDNS_EDE_CACHED_ERR       = 13,
-	KNOT_EDNS_EDE_NOT_READY        = 14,
-	KNOT_EDNS_EDE_BLOCKED          = 15,
-	KNOT_EDNS_EDE_CENSORED         = 16,
-	KNOT_EDNS_EDE_FILTERED         = 17,
-	KNOT_EDNS_EDE_PROHIBITED       = 18,
-	KNOT_EDNS_EDE_STALE_NXD        = 19,
-	KNOT_EDNS_EDE_NOTAUTH          = 20,
-	KNOT_EDNS_EDE_NOTSUP           = 21,
-	KNOT_EDNS_EDE_NREACH_AUTH      = 22,
-	KNOT_EDNS_EDE_NETWORK          = 23,
-	KNOT_EDNS_EDE_INV_DATA         = 24,
-};
-
 /* Helpers for splitting extended RCODE. */
 #define KNOT_EDNS_RCODE_HI(rc) ((rc >> 4) & 0x00ff)
 #define KNOT_EDNS_RCODE_LO(rc) (rc & 0x000f)
@@ -617,12 +583,5 @@ int knot_edns_cookie_write(uint8_t *option, uint16_t option_len,
  */
 int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
                            const uint8_t *option, uint16_t option_len);
-
-/*!
- * \brief Returns description of option #15 extended error code.
- *
- * \warning Don't use with ext_errcode from knot_edns_get_ext_rcode().
- */
-const char *knot_edns_ede_strerr(uint16_t exterr_code);
 
 /*! @} */

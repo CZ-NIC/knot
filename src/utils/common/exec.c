@@ -250,10 +250,15 @@ static void print_ede(const uint8_t *data, uint16_t len)
 		printf("(malformed)");
 		return;
 	}
+
+
 	uint16_t errcode;
 	memcpy(&errcode, data, sizeof(errcode));
 	errcode = be16toh(errcode);
-	const char *strerr = knot_edns_ede_strerr(errcode);
+
+	const knot_lookup_t *item = knot_lookup_by_id(knot_edns_ede_names, errcode);
+	const char *strerr = (item != NULL) ? item->name : "Unknown code";
+
 	if (len > 2) {
 		printf("%hu (%s): '%.*s'", errcode, strerr, (int)(len - 2), data + 2);
 	} else {

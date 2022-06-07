@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -684,40 +684,4 @@ int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
 	}
 
 	return KNOT_EOK;
-}
-
-static const knot_lookup_t ext_errors[] = {
-	{ KNOT_EDNS_EDE_OTHER,            "Other" },
-	{ KNOT_EDNS_EDE_DNSKEY_ALG,       "Unsupported DNSKEY Algorithm" },
-	{ KNOT_EDNS_EDE_DS_DIGEST,        "Unsupported DS Digest Type" },
-	{ KNOT_EDNS_EDE_STALE,            "Stale Answer" },
-	{ KNOT_EDNS_EDE_FORGED,           "Forged Answer" },
-	{ KNOT_EDNS_EDE_INDETERMINATE,    "DNSSEC Indeterminate" },
-	{ KNOT_EDNS_EDE_BOGUS,            "DNSSEC Bogus" },
-	{ KNOT_EDNS_EDE_SIG_EXPIRED,      "Signature Expired" },
-	{ KNOT_EDNS_EDE_SIG_NOTYET,       "Signature Not Yet Valid" },
-	{ KNOT_EDNS_EDE_DNSKEY_MISS,      "DNSKEY Missing" },
-	{ KNOT_EDNS_EDE_RRSIG_MISS,       "RRSIGs Missing" },
-	{ KNOT_EDNS_EDE_DNSKEY_BIT,       "No Zone Key Bit Set" },
-	{ KNOT_EDNS_EDE_NSEC_MISS,        "NSEC Missing" },
-	{ KNOT_EDNS_EDE_CACHED_ERR,       "Cached Error" },
-	{ KNOT_EDNS_EDE_NOT_READY,        "Not Ready" },
-	{ KNOT_EDNS_EDE_BLOCKED,          "Blocked" },
-	{ KNOT_EDNS_EDE_CENSORED,         "Censored" },
-	{ KNOT_EDNS_EDE_FILTERED,         "Filtered" },
-	{ KNOT_EDNS_EDE_PROHIBITED,       "Prohibited" },
-	{ KNOT_EDNS_EDE_STALE_NXD,        "Stale NXDOMAIN Answer" },
-	{ KNOT_EDNS_EDE_NOTAUTH,          "Not Authoritative" },
-	{ KNOT_EDNS_EDE_NOTSUP,           "Not Supported" },
-	{ KNOT_EDNS_EDE_NREACH_AUTH,      "No Reachable Authority" },
-	{ KNOT_EDNS_EDE_NETWORK,          "Network Error" },
-	{ KNOT_EDNS_EDE_INV_DATA,         "Invalid Data" },
-	{ 0, NULL }
-};
-
-_public_
-const char *knot_edns_ede_strerr(uint16_t ede_code)
-{
-	const knot_lookup_t *ede = knot_lookup_by_id(ext_errors, ede_code);
-	return (ede != NULL ? ede->name : "Unknown Code");
 }
