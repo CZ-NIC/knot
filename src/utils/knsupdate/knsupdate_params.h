@@ -43,8 +43,6 @@ typedef struct {
 	protocol_t	protocol;
 	/*!< Default class number. */
 	uint16_t	class_num;
-	/*!< Default type number. */
-	uint16_t	type_num;
 	/*!< Number of UDP retries. */
 	uint32_t	retries;
 	/*!< Wait for network response in seconds (-1 means forever). */

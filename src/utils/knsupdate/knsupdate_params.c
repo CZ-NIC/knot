@@ -102,7 +102,6 @@ static int knsupdate_init(knsupdate_params_t *params)
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
 	params->class_num = KNOT_CLASS_IN;
-	params->type_num = KNOT_RRTYPE_SOA;
 	params->retries = DEFAULT_RETRIES_NSUPDATE;
 	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
 	params->zone = strdup(".");
