@@ -83,7 +83,7 @@ Commands
 
 **ttl** *value*
   Sets *value* as the default TTL (in seconds). If not used, the default value
-  is 0.
+  is 3600.
 
 **key** [*alg*:]\ *name* *key*
   Specifies the TSIG *key* named *name* to authenticate the request. An optional
