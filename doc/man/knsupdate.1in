@@ -93,12 +93,12 @@ address and port are set by the system automatically. The default port number
 is 0.
 .TP
 \fBzone\fP \fIname\fP
-Specifies that all updates are done within a zone \fIname\fP\&. If not specified,
-the root zone (\fB\&.\fP) is considered.
+Specifies that all updates are done within a zone \fIname\fP\&. The zone name doesn\(aqt
+have a default and must be set explicitly.
 .TP
 \fBorigin\fP \fIname\fP
 Specifies fully qualified domain name suffix which is appended to non\-fqd
-owners in update commands. The default origin is the root zone.
+owners in update commands. The default is the terminal label (\fB\&.\fP).
 .TP
 \fBclass\fP \fIname\fP
 Sets \fIname\fP as the default class for all updates. If not used, the default

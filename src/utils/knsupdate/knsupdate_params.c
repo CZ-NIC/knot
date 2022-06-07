@@ -104,7 +104,6 @@ static int knsupdate_init(knsupdate_params_t *params)
 	params->class_num = KNOT_CLASS_IN;
 	params->retries = DEFAULT_RETRIES_NSUPDATE;
 	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
-	params->zone = strdup(".");
 
 	/* Initialize RR parser. */
 	if (zs_init(&params->parser, ".", params->class_num, 3600) != 0 ||
