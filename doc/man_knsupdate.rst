@@ -70,12 +70,12 @@ Commands
   is 0.
 
 **zone** *name*
-  Specifies that all updates are done within a zone *name*. If not specified,
-  the root zone (**.**) is considered.
+  Specifies that all updates are done within a zone *name*. The zone name doesn't
+  have a default and must be set explicitly.
 
 **origin** *name*
   Specifies fully qualified domain name suffix which is appended to non-fqd
-  owners in update commands. The default origin is the root zone.
+  owners in update commands. The default is the terminal label (**.**).
 
 **class** *name*
   Sets *name* as the default class for all updates. If not used, the default
@@ -83,7 +83,7 @@ Commands
 
 **ttl** *value*
   Sets *value* as the default TTL (in seconds). If not used, the default value
-  is 0.
+  is 3600.
 
 **key** [*alg*:]\ *name* *key*
   Specifies the TSIG *key* named *name* to authenticate the request. An optional

@@ -397,7 +397,7 @@ static int build_query(knsupdate_params_t *params)
 	knot_wire_set_opcode(query->wire, KNOT_OPCODE_UPDATE);
 	knot_dname_t *qname = knot_dname_from_str_alloc(params->zone);
 	int ret = knot_pkt_put_question(query, qname, params->class_num,
-	                                params->type_num);
+	                                KNOT_RRTYPE_SOA);
 	knot_dname_free(qname, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -809,6 +809,11 @@ int cmd_send(const char* lp, knsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 	DBG("sending packet\n");
+
+	if (params->zone == NULL) {
+		ERR("no zone specified\n");
+		return KNOT_EINVAL;
+	}
 
 	/* Build query packet. */
 	int ret = build_query(params);

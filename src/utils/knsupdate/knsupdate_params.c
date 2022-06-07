@@ -102,14 +102,11 @@ static int knsupdate_init(knsupdate_params_t *params)
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
 	params->class_num = KNOT_CLASS_IN;
-	params->type_num = KNOT_RRTYPE_SOA;
-	params->ttl = 0;
 	params->retries = DEFAULT_RETRIES_NSUPDATE;
 	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
-	params->zone = strdup(".");
 
 	/* Initialize RR parser. */
-	if (zs_init(&params->parser, ".", params->class_num, 0) != 0 ||
+	if (zs_init(&params->parser, ".", params->class_num, 3600) != 0 ||
 	    zs_set_processing(&params->parser, NULL, NULL, NULL) != 0) {
 		zs_deinit(&params->parser);
 		return KNOT_ENOMEM;
@@ -286,9 +283,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 int knsupdate_set_ttl(knsupdate_params_t *params, const uint32_t ttl)
 {
 	int ret = parser_set_default(&params->parser, "$TTL %u\n", ttl);
-	if (ret == KNOT_EOK) {
-		params->ttl = ttl;
-	} else {
+	if (ret != KNOT_EOK) {
 		ERR("failed to set default TTL, %s\n", zs_strerror(ret));
 	}
 	return ret;

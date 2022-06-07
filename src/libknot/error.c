@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,6 +80,7 @@ static const struct error errors[] = {
 	{ KNOT_ENOMASTER,    "no usable master" },
 	{ KNOT_EPREREQ,      "UPDATE prerequisite not met" },
 	{ KNOT_ETTL,         "TTL mismatch" },
+	{ KNOT_ENOTTL,       "no TTL specified" },
 	{ KNOT_ENOXFR,       "transfer was not sent" },
 	{ KNOT_EDENIED,      "not allowed" },
 	{ KNOT_ECONN,        "connection reset" },

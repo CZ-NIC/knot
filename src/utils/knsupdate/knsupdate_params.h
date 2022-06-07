@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,10 +43,6 @@ typedef struct {
 	protocol_t	protocol;
 	/*!< Default class number. */
 	uint16_t	class_num;
-	/*!< Default type number. */
-	uint16_t	type_num;
-	/*!< Default TTL. */
-	uint32_t	ttl;
 	/*!< Number of UDP retries. */
 	uint32_t	retries;
 	/*!< Wait for network response in seconds (-1 means forever). */
