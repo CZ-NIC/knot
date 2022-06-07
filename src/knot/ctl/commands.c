@@ -1128,7 +1128,7 @@ static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 
 	const zone_node_t *node = zone_contents_node_or_nsec3(zone->control_update->new_cont, owner);
 	if (node == NULL) {
-		return KNOT_EINVAL;
+		return KNOT_ENOTTL;
 	}
 
 	uint16_t type;
@@ -1136,7 +1136,11 @@ static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 		return KNOT_EINVAL;
 	}
 
-	*ttl = node_rrset(node, type).ttl;
+	knot_rrset_t rrset = node_rrset(node, type);
+	if (knot_rrset_empty(&rrset)) {
+		return KNOT_ENOTTL;
+	}
+	*ttl = rrset.ttl;
 
 	return KNOT_EOK;
 }
