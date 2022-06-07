@@ -684,8 +684,8 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	bool allowed = false;
 
 	if (action != ACL_ACTION_UPDATE) {
-		// ACL_ACTION_NONE is used for SOA/refresh query.
-		assert(action == ACL_ACTION_NONE || action == ACL_ACTION_NOTIFY ||
+		// ACL_ACTION_QUERY is used for SOA/refresh query.
+		assert(action == ACL_ACTION_QUERY || action == ACL_ACTION_NOTIFY ||
 		       action == ACL_ACTION_TRANSFER);
 		const yp_name_t *item = (action == ACL_ACTION_NOTIFY) ? C_MASTER : C_NOTIFY;
 		conf_val_t rmts = conf_zone_get(conf, item, zone_name);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -704,13 +704,12 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		return KNOT_STATE_FAIL;
 	}
 
-	/* Check valid zone, transaction security (optional) and contents. */
+	/* Check if valid zone. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
 
-	/* No applicable ACL, refuse transaction security. */
+	/* Check if a TSIG is present. */
 	if (knot_pkt_has_tsig(qdata->query)) {
-		/* We have been challenged... */
-		NS_NEED_AUTH(qdata, ACL_ACTION_NONE);
+		NS_NEED_AUTH(qdata, ACL_ACTION_QUERY);
 
 		/* Reserve space for TSIG. */
 		int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
@@ -719,7 +718,8 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		}
 	}
 
-	NS_NEED_ZONE_CONTENTS(qdata); /* Expired */
+	/* Check if the zone is not empty or expired. */
+	NS_NEED_ZONE_CONTENTS(qdata);
 
 	/* Get answer to QNAME. */
 	qdata->name = knot_pkt_qname(qdata->query);

@@ -1156,7 +1156,7 @@ acl:
     address: ADDR[/INT] | ADDR\-ADDR ...
     key: key_id ...
     remote: remote_id | remotes_id ...
-    action: notify | transfer | update ...
+    action: query | notify | transfer | update ...
     deny: BOOL
     update\-type: STR ...
     update\-owner: key | zone | name
@@ -1205,6 +1205,9 @@ An ordered list of allowed (or denied) actions.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
+\fBquery\fP – Allow regular DNS query. As normal queries are always allowed,
+this action is only useful in combination with \fI\%TSIG key\fP\&.
+.IP \(bu 2
 \fBnotify\fP – Allow incoming notify (NOTIFY).
 .IP \(bu 2
 \fBtransfer\fP – Allow zone transfer (AXFR, IXFR).
@@ -1212,7 +1215,7 @@ Possible values:
 \fBupdate\fP – Allow zone updates (DDNS).
 .UNINDENT
 .sp
-\fIDefault:\fP not set
+\fIDefault:\fP query
 .SS deny
 .sp
 If enabled, instead of allowing, deny the specified \fI\%action\fP,
