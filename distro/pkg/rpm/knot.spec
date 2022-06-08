@@ -34,6 +34,8 @@ BuildRequires:	gcc
 BuildRequires:	pkgconfig(liburcu)
 BuildRequires:	pkgconfig(gnutls) >= 3.3
 BuildRequires:	pkgconfig(libedit)
+# Missing lmdb.pc in EL
+BuildRequires:	lmdb-devel
 
 # Optional dependencies
 BuildRequires:	pkgconfig(libcap-ng)
@@ -51,17 +53,14 @@ BuildRequires:	pkgconfig(libmaxminddb)
 # Distro-dependent dependencies
 %if 0%{?suse_version}
 BuildRequires:	python3-Sphinx
-BuildRequires:	lmdb-devel
 BuildRequires:	protobuf-c
 Requires(pre):	pwdutils
 %endif
 %if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:	python-sphinx
-BuildRequires:	lmdb-devel
 %endif
 %if 0%{?fedora} || 0%{?rhel} > 7
 BuildRequires:	python3-sphinx
-BuildRequires:	pkgconfig(lmdb)
 %endif
 
 %if 0%{?centos} == 7 || 0%{?rhel} == 7
