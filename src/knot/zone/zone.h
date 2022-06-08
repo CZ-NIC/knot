@@ -51,7 +51,7 @@ typedef enum {
 } zone_flag_t;
 
 /*!
- * \brief Track unsuccessful NOTIFY trgets.
+ * \brief Track unsuccessful NOTIFY targets.
  */
 typedef uint64_t notifailed_rmt_hash;
 knot_dynarray_declare(notifailed_rmt, notifailed_rmt_hash, DYNARRAY_VISIBILITY_NORMAL, 4);
