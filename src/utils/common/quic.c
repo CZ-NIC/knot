@@ -284,10 +284,35 @@ static int hook_func(gnutls_session_t session, unsigned int htype,
                      const gnutls_datum_t *msg)
 {
 	(void)session;
-	(void)htype;
 	(void)when;
 	(void)incoming;
 	(void)msg;
+
+	if (htype == GNUTLS_HANDSHAKE_NEW_SESSION_TICKET) {
+		gnutls_datum_t data;
+		int ret = gnutls_session_get_data2(session, &data);
+		if (ret != 0) {
+			WARN("Unable to obtain session ticket: %s\n", gnutls_strerror(ret));
+			return ret;
+		}
+		FILE *f = fopen("./tls_sessions", "w+");
+		if (f == NULL) {
+			return -1;
+		}
+
+		gnutls_datum_t d;
+		ret = gnutls_pem_base64_encode2("GNUTLS SESSION PARAMETERS", &data, &d);
+		if (ret < 0) {
+			WARN("Unable to encode session ticket\n");
+			return -1;
+		}
+
+		size_t nwrite = fwrite(d.data, sizeof(unsigned char), d.size, f);
+		fflush(f);
+		gnutls_free(d.data);
+		gnutls_free(data.data);
+		fclose(f);
+	}
 
 	return GNUTLS_E_SUCCESS;
 }
@@ -395,12 +420,47 @@ static int quic_setup_tls(tls_ctx_t *tls_ctx)
 	gnutls_handshake_set_secret_function(tls_ctx->session, secret_func);
 	gnutls_handshake_set_read_function(tls_ctx->session, read_func);
 	gnutls_alert_set_read_function(tls_ctx->session, alert_read_func);
-	return gnutls_session_ext_register(tls_ctx->session,
+	int ret = gnutls_session_ext_register(tls_ctx->session,
 	        "QUIC Transport Parameters",
 	        NGTCP2_TLSEXT_QUIC_TRANSPORT_PARAMETERS_V1, GNUTLS_EXT_TLS,
 	        tp_recv_func, tp_send_func, NULL, NULL, NULL,
 	        GNUTLS_EXT_FLAG_TLS | GNUTLS_EXT_FLAG_CLIENT_HELLO |
 	        GNUTLS_EXT_FLAG_EE);
+
+	FILE *f = fopen("./tls_sessions", "r+");
+	if (f == NULL) {
+		WARN("Unable to open TLS Session storage\n");
+		return -1;
+	}
+	fseek(f, 0, SEEK_END);
+	size_t fsize = ftell(f);
+	if (fsize == 0) {
+		return ret;
+	}
+	unsigned char content[fsize];
+	fseek(f, 0, SEEK_SET);
+	fread(content, fsize, fsize, f);
+	fclose(f);
+
+	gnutls_datum_t s = {
+		.data = content,
+		.size = fsize
+	};
+
+	gnutls_datum_t d;
+	ret = gnutls_pem_base64_decode2("GNUTLS SESSION PARAMETERS", &s, &d);
+	if (ret < 0) {
+		WARN("Unable to decode TLS Session storage\n");
+		return -1;
+	}
+
+	ret = gnutls_session_set_data(tls_ctx->session, d.data, d.size);
+	if (ret) {
+		WARN("Unable to setup session from TLS Session storage\n");
+		return -1;
+	}
+
+	return ret;
 }
 
 static int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,

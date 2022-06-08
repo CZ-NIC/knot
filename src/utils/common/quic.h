@@ -93,7 +93,6 @@ typedef struct {
 	ngtcp2_pkt_info pi;
 	quic_state_t state;
 	uint64_t idle_ts;
-	
 } quic_ctx_t;
 
 extern const gnutls_datum_t doq_alpn[];
