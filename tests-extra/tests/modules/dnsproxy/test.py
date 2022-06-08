@@ -24,6 +24,10 @@ remote = t.server("knot")
 t.link(zone_common2, remote)
 t.link(zone_remote, remote)
 
+if local.valgrind:
+    local.semantic_check = False
+    remote.semantic_check = False
+
 def is_subzone(subzone, zone):
     """Tests if the first zone is a subzone of the second one or equal, case insensitive."""
     return subzone.name.lower().endswith(zone.name.lower())

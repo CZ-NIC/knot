@@ -18,6 +18,9 @@ t = Test(stress=False)
 
 knot = t.server("knot")
 
+if knot.valgrind:
+    knot.semantic_check = False
+
 catz = t.zone("catalog1.", storage=".")
 
 t.link(catz, knot)

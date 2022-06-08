@@ -43,6 +43,10 @@ zone0_expire = 45   # zone zones[0] expiration time in its SOA
 valgrind_delay = 2 if slave.valgrind else 0  # allow a little time margin under Valgrind
 valgrind_delay += 2 # even without valgrind, add some tolerance because rounding timestamps to whole seconds multiple times
 
+if master.valgrind:
+    master.semantic_check = False
+    slave.semantic_check = False
+
 t.start()
 serials_init = slave.zones_wait(zones)
 start_time = int(t.uptime())

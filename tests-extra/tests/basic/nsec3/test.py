@@ -16,6 +16,8 @@ t.link(zone, knot)
 t.link(zone, bind)
 
 t.start()
+knot.zone_wait(zone)
+bind.zone_wait(zone)
 
 # B1. Answer.
 resp = knot.dig("x.w.example", "MX", dnssec=True)
