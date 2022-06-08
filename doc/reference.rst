@@ -1285,7 +1285,7 @@ items. If no action is specified, deny all actions.
 
 *Default:* off
 
-.. _acl_update_type:
+.. _acl_update-type:
 
 update-type
 -----------
@@ -1295,50 +1295,50 @@ must match one of the specified types.
 
 *Default:* not set
 
-.. _acl_update_owner:
+.. _acl_update-owner:
 
 update-owner
 ------------
 
 This option restricts possible owners of Resource Records in a zone update by comparing
 them to either the :ref:`TSIG key<acl_key>` identity, the current zone name, or to a list of
-domain names given by the :ref:`update-owner-name<acl_update_owner_name>` option.
-The comparison method is given by the :ref:`update-owner-match<acl_update_owner_match>` option.
+domain names given by the :ref:`acl_update-owner-name` option.
+The comparison method is given by the :ref:`acl_update-owner-match` option.
 
 Possible values:
 
 - ``key`` — The owner of each updated RR must match the identity of the TSIG key if used.
 - ``name`` — The owner of each updated RR must match at least one name in the
-  :ref:`update-owner-name<acl_update_owner_name>` list.
+  :ref:`acl_update-owner-name` list.
 - ``zone`` — The owner of each updated RR must match the current zone name.
 
 *Default:* not set
 
-.. _acl_update_owner_match:
+.. _acl_update-owner-match:
 
 update-owner-match
 ------------------
 
 This option defines how the owners of Resource Records in an update are matched to the domain name(s)
-set by the :ref:`update-owner<acl_update_owner>` option.
+set by the :ref:`acl_update-owner` option.
 
 Possible values:
 
-- ``sub-or-equal`` — The owner of each Resource Record in an update must either be equal to
-  or be a subdomain of at least one domain set by :ref:`update-owner<acl_update_owner>`.
-- ``equal`` — The owner of each updated RR must be equal to at least one domain set by
-  :ref:`update-owner<acl_update_owner>`.
-- ``sub`` — The owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
-  one domain set by :ref:`update-owner<acl_update_owner>`.
+- ``sub-or-equal`` — The owner of each RR in an update must either be equal to
+  or be a subdomain of at least one domain name set by :ref:`acl_update-owner`.
+- ``equal`` — The owner of each updated RR must be equal to at least one domain
+  name set by :ref:`acl_update-owner`.
+- ``sub`` — The owner of each updated RR must be a subdomain of, but MUST NOT
+  be equal to at least one domain name set by :ref:`acl_update-owner`.
 
 *Default:* sub-or-equal
 
-.. _acl_update_owner_name:
+.. _acl_update-owner-name:
 
 update-owner-name
 -----------------
 
-A list of allowed owners of RRs in a zone update used with :ref:`update-owner<acl_update_owner>`
+A list of allowed owners of RRs in a zone update used with :ref:`acl_update-owner`
 set to ``name``. Every listed owner name which is not FQDN (i.e. it doesn't end
 in a dot) is considered as if it was appended with the target zone name.
 Such a relative owner name specification allows better ACL rule reusability across

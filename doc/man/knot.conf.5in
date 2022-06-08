@@ -1232,14 +1232,14 @@ set by the \fI\%update\-owner\fP option.
 Possible values:
 .INDENT 0.0
 .IP \(bu 2
-\fBsub\-or\-equal\fP — The owner of each Resource Record in an update must either be equal to
-or be a subdomain of at least one domain set by \fI\%update\-owner\fP\&.
+\fBsub\-or\-equal\fP — The owner of each RR in an update must either be equal to
+or be a subdomain of at least one domain name set by \fI\%update\-owner\fP\&.
 .IP \(bu 2
-\fBequal\fP — The owner of each updated RR must be equal to at least one domain set by
-\fI\%update\-owner\fP\&.
+\fBequal\fP — The owner of each updated RR must be equal to at least one domain
+name set by \fI\%update\-owner\fP\&.
 .IP \(bu 2
-\fBsub\fP — The owner of each updated RR must be a subdomain of, but MUST NOT be equal to at least
-one domain set by \fI\%update\-owner\fP\&.
+\fBsub\fP — The owner of each updated RR must be a subdomain of, but MUST NOT
+be equal to at least one domain name set by \fI\%update\-owner\fP\&.
 .UNINDENT
 .sp
 \fIDefault:\fP sub\-or\-equal
