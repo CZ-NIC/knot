@@ -12,6 +12,10 @@ zones = t.zone_rnd(5, records=50) + t.zone("records.")
 
 t.link(zones, master, slave, ixfr=True)
 
+if master.valgrind:
+    master.semantic_check = False
+    slave.semantic_check = False
+
 master.tcp_io_timeout = 3000
 slave.tcp_io_timeout = 3000
 slave.tcp_remote_io_timeout = 8000

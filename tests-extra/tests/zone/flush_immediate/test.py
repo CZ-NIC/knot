@@ -17,6 +17,10 @@ master.dnssec(zone).enable = True
 master.zonefile_sync = 0
 slave.zonefile_sync = 0
 
+if master.valgrind:
+    master.semantic_check = False
+    slave.semantic_check = False
+
 t.start()
 
 m_zfpath = master.zones[zone[0].name].zfile.path
