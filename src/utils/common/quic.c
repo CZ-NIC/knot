@@ -416,6 +416,10 @@ static int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,
 		.msg_iovlen = 1
 	};
 	uint64_t ts = quic_timestamp();
+	size_t tb_send = 0;
+	for (int i = 0; i < datavlen; ++i) {
+		tb_send += datav[i].len;
+	}
 
 	while(1) {
 		int64_t stream = -1;
@@ -424,10 +428,17 @@ static int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,
 			flags = NGTCP2_WRITE_STREAM_FLAG_FIN;
 			stream = ctx->stream.id;
 		}
+		ngtcp2_ssize send_datalen = 0;
 		ngtcp2_ssize nwrite = ngtcp2_conn_writev_stream(ctx->conn,
 		                (ngtcp2_path *)ngtcp2_conn_get_path(ctx->conn),
-		                &ctx->pi, enc_buf, sizeof(enc_buf), NULL,
-		                flags, stream, datav, datavlen, ts);
+		                &ctx->pi, enc_buf, sizeof(enc_buf),
+		                &send_datalen, flags, stream, datav, datavlen,
+		                ts);
+		if (send_datalen == tb_send) {
+			ctx->stream.out_ack = send_datalen;
+			datav = NULL;
+			datavlen = 0;
+		}
 		if (nwrite < 0) {
 			switch(nwrite) {
 			case NGTCP2_ERR_WRITE_MORE:
@@ -446,8 +457,6 @@ static int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,
 			ngtcp2_conn_update_pkt_tx_time(ctx->conn, ts);
 			return KNOT_EOK;
 		}
-		datav = NULL;
-		datavlen = 0;
 
 		msg_iov.iov_len = (size_t)nwrite;
 
@@ -785,8 +794,7 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 		quic_send(ctx, sockfd, srv->ai_family);
 	}
 
-	ctx->stream.out_ack += buf_len + sizeof(uint16_t);
-	while (ctx->stream.out_ack) {
+	while (ctx->stream.out_ack == 0) {
 		if (quic_timeout(ctx->idle_ts, ctx->tls->wait)) {
 			WARN("QUIC, failed to send\n");
 			set_application_error(ctx, DOQ_REQUEST_CANCELLED,
