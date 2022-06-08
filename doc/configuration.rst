@@ -138,16 +138,8 @@ the given request is applied and the remaining rules are ignored. Some examples:
       - domain: acl2.example.com
         acl: [deny_all, key_rule]          # Allow with the TSIG except for the subnet
 
-For dynamic DNS updates, additional conditions may be specified for more granular
-filtering. Example::
-
-    acl:
-        - id: owner_type_rule
-          action: update
-          update-type: [A, AAAA, MX]             # Updated records must match one of the specified types
-          update-owner: name                     # Updated record owners are restricted by the next conditions
-          update-owner-match: equal              # The record owner must exactly match one name from the next list
-          update-owner-name: [a, b.example.com.] # Note that non-FQDN names are relative to the effective zone name
+In the case of dynamic DNS updates, some additional conditions may be specified
+for more granular filtering. See more in the section :ref:`Restricting dynamic updates`.
 
 .. NOTE::
    If more conditions (address ranges and/or a key)
@@ -289,61 +281,85 @@ processed::
       - domain: example.com
         acl: update_acl
 
+.. _Restricting dynamic updates:
+
 Restricting dynamic updates
 ---------------------------
 
-The :ref:`update-owner<acl_update_owner>` ACL option allows not only to
-compare the updated record's name ("owner") with a list in
-:ref:`update-owner-name<acl_update_owner_name>` as introduced above, but also
-to compare against the name of the zone being updated::
+There are several additional ACL options for dynamic DNS updates which affect
+the request classification based on the update contents.
+
+Updates can be restricted to specific resource record types::
+
+    acl:
+      - id: type_rule
+        action: update
+        update-type: [A, AAAA, MX]    # Updated records must match one of the specified types
+
+Another possibility is restriction on the owner name of updated records. The option
+:ref:`acl_update-owner` is used to select the source of domain
+names which are used for the comparison. And the option :ref:`acl_update-owner-match`
+specifies the required relation between the record owner and the reference domain
+names. Example::
+
+    acl:
+      - id: owner_rule1
+        action: update
+        update-owner: name             # Updated record owners are restricted by the next conditions
+        update-owner-match: equal      # The record owner must exactly match one name from the next list
+        update-owner-name: [foo, bar.] # Reference domain names
+
+.. NOTE::
+   If the specified owner name is non-FQDN (e.g. ``foo``), it's considered relatively
+   to the effective zone name. So it can apply to more zones
+   (e.g. ``foo.example.com.`` or ``foo.example.net.``). Alternatively, if the
+   name is FQDN (e.g. ``bar.``), the rule only applies to this name.
+
+If the reference domain name is the zone name, the following variant can be used::
+
+    acl:
+      - id: owner_rule2
+        action: update
+        update-owner: zone            # The reference name is the zone name
+        update-owner-match: sub       # Any record owner matches except for the zone name itself
+
+    template:
+      - id: default
+        acl: owner_rule2
+
+    zone:
+      - domain: example.com.
+      - domain: example.net.
+
+The last variant is for the cases where the reference domain name is a TSIG key name,
+which must be used for the transaction security::
 
     key:
-      - id: ddns-key
+      - id: example.com               # Key names are always considered FQDN
+        ...
+      - id: steve.example.net
+        ...
+      - id: jane.example.net
         ...
 
     acl:
-     - id: zone_update_acl
-       key: ddns-key
-       update-owner: zone
-       action: zone_update_acl
+      - id: owner_rule3_com
+        action: update
+        update-owner: key             # The reference name is the TSIG key name
+        update-owner-match: sub       # The record owner must be a subdomain of the key name
+        key: [example.com]            # One common key for updating all non-apex records
+
+      - id: owner_rule3_net
+        action: update
+        update-owner: key             # The reference name is the TSIG key name
+        update-owner-match: equal     # The record owner must exactly match the used key name
+        key: [steve.example.net, jane.example.net] # Keys for updating specific zone nodes
 
     zone:
      - domain: example.com.
-       acl: zone_acl
+       acl: owner_rule3_com
      - domain: example.net.
-       acl: zone_acl
-
-This permits update requests signed by the TSIG key `ddns-key` to update
-records at the zone apex of the two zones. Updates to the whole zone can be
-permitted by setting :ref:`update-owner-match<acl_update_owner_match>` to
-`sub-or-equal` additionally.
-
-Furthermore update ACLs can match the record owner against an incoming
-request's TSIG key id. The key id is defined by the :ref:`id<key_id>` field
-in the :ref:`key<key>` section. We do this as follows::
-
-    key:
-     - id: example.com.
-       ...
-     - id: example.net.
-       ...
-
-    acl:
-     - id: ddns_acl
-       update-owner: key
-       key: [example.com., example.net.]
-       action: update
-
-    zone:
-     - domain: example.com.
-       acl: ddns_acl
-     - domain: example.net.
-       acl: ddns_acl
-
-This way each key can only change records in the domain corresponding to it's
-name. Here we only allow updates at the zone apex but we can use
-:ref:`update-owner-match<acl_update_owner_match>` again to allow updates to
-the whole zone if desired.
+       acl: owner_rule3_net
 
 .. _dnssec:
 

@@ -190,7 +190,7 @@ exceptions.
 ACL
 ---
 
-Configuration option :ref:`acl_update_owner_name` is newly FQDN-sensitive.
+Configuration option :ref:`acl_update-owner-name` is newly FQDN-sensitive.
 It means that values ``a.example.com`` and ``a.example.com.`` are not equivalent.
 
 Module synthrecord
