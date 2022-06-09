@@ -863,6 +863,7 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 		if (ctx->stream.id == -1) {
 			quic_open_bidi_stream(ctx);
 		}
+		return KNOT_EOK;
 		// if (make_stream_early() != 0) {
 	}
 
