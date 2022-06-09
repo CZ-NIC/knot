@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ static void print_help(void)
 	       "                            (default %s)\n"
 	       "  -D, --dir <path>         Path to a KASP database directory, use default configuration.\n"
 	       "  -t, --tsig <name> [alg]  Generate a TSIG key.\n"
+	       "  -j, --json               Print the zones or keys in JSON format.\n"
 	       "  -l, --list               List all zones that have at least one key in KASP database.\n"
 	       "  -x, --mono               Don't color the output.\n"
 	       "  -X, --color              Force output colorization in the normal mode.\n"
