@@ -66,6 +66,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	zone_journal_t j = zone_journal(zone);
 
 	bool force = zone_get_flag(zone, ZONE_FORCE_FLUSH, true);
+	bool user_flush = zone_get_flag(zone, ZONE_USER_FLUSH, true);
 
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
@@ -91,7 +92,8 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	/* Check for updated zone. */
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);
-	if (!force && zone->zonefile.exists && zone->zonefile.serial == serial_to &&
+	if (!force && !user_flush &&
+	    zone->zonefile.exists && zone->zonefile.serial == serial_to &&
 	    !zone->zonefile.retransfer && !zone->zonefile.resigned) {
 		ret = KNOT_EOK; /* No differences. */
 		goto flush_journal_replan;
