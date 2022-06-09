@@ -332,6 +332,21 @@ static int secret_func(gnutls_session_t session,
 		}
 
 		if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION) {
+			ngtcp2_transport_params params;
+			ngtcp2_conn_get_remote_transport_params(ctx->conn, &params);
+			FILE *f = fopen("./quic_session", "w+");
+			if (f != NULL) {
+				fprintf(f, "%lu\n", params.initial_max_streams_bidi);
+				fprintf(f, "%lu\n", params.initial_max_streams_uni);
+				fprintf(f, "%lu\n", params.initial_max_stream_data_bidi_local);
+				fprintf(f, "%lu\n", params.initial_max_stream_data_bidi_remote);
+				fprintf(f, "%lu\n", params.initial_max_stream_data_uni);
+				fprintf(f, "%lu\n", params.initial_max_data);
+				fprintf(f, "%lu\n", params.active_connection_id_limit);
+				fprintf(f, "%lu\n", params.max_datagram_frame_size);
+				fflush(f);
+				fclose(f);
+			}
 			quic_open_bidi_stream(ctx);
 		}
 	}
@@ -430,7 +445,7 @@ static int quic_setup_tls(tls_ctx_t *tls_ctx)
 	FILE *f = fopen("./tls_sessions", "r+");
 	if (f == NULL) {
 		WARN("Unable to open TLS Session storage\n");
-		return -1;
+		return ret;
 	}
 	fseek(f, 0, SEEK_END);
 	size_t fsize = ftell(f);
@@ -778,6 +793,78 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	}
 	gnutls_session_set_ptr(ctx->tls->session, ctx);
 	ngtcp2_conn_set_tls_native_handle(ctx->conn, ctx->tls->session);
+
+	// Early data transport params
+	FILE *f = fopen("./quic_session", "r");
+	if (f != NULL) {
+		char *line = NULL;
+		ssize_t len;
+		ngtcp2_transport_params params = { 0 };
+		long val = 0;
+
+		if (getline(&line, &len, f)) {
+			val = atol(line);
+			free(line);
+			line = NULL;
+			params.initial_max_streams_bidi = val;
+		}
+
+		if (getline(&line, &len, f)) {
+			val = atol(line);
+			free(line);
+			line = NULL;
+			params.initial_max_streams_uni = val;
+		}
+
+		if (getline(&line, &len, f)) {
+			val = atol(line);
+			free(line);
+			line = NULL;
+			params.initial_max_stream_data_bidi_local = val;
+		}
+
+		if (getline(&line, &len, f)) {
+			val = atol(line);
+			free(line);
+			line = NULL;
+			params.initial_max_stream_data_bidi_remote = val;
+		}
+
+		if (getline(&line, &len, f)) {
+			val = atol(line);
+			free(line);
+			line = NULL;
+			params.initial_max_stream_data_uni = val;
+		}
+
+		if (getline(&line, &len, f)) {
+			val = atol(line);
+			free(line);
+			line = NULL;
+			params.initial_max_data = val;
+		}
+
+		if (getline(&line, &len, f)) {
+			val = atol(line);
+			free(line);
+			line = NULL;
+			params.active_connection_id_limit = val;
+		}
+
+		if (getline(&line, &len, f)) {
+			val = atol(line);
+			free(line);
+			line = NULL;
+			params.max_datagram_frame_size = val;
+		}
+
+		fclose(f);
+		ngtcp2_conn_set_early_remote_transport_params(ctx->conn, &params);
+		if (ctx->stream.id == -1) {
+			quic_open_bidi_stream(ctx);
+		}
+		// if (make_stream_early() != 0) {
+	}
 
 	// Initialize poll descriptor structure.
 	struct pollfd pfd = {
