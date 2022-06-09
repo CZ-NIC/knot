@@ -464,6 +464,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 		return ret;
 	}
 
+	zone_set_flag(zone, ZONE_USER_FLUSH);
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
 		zone_set_flag(zone, ZONE_FORCE_FLUSH);
 	}
