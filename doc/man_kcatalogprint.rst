@@ -30,6 +30,12 @@ Config options
 Options
 .......
 
+**-a**, **--catalog**
+  Filter the output by catalog zone name.
+
+**-m**, **--member**
+  Filter the output by member zone name.
+
 **-h**, **--help**
   Print the program help.
 
