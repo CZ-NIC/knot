@@ -53,6 +53,12 @@ Use specified catalog database path and default configuration.
 .SS Options
 .INDENT 0.0
 .TP
+\fB\-a\fP, \fB\-\-catalog\fP
+Filter the output by catalog zone name.
+.TP
+\fB\-m\fP, \fB\-\-member\fP
+Filter the output by member zone name.
+.TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
