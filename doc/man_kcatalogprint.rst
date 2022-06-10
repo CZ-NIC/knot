@@ -16,6 +16,12 @@ The program prints zone catalog stored in a catalog database.
 Options
 .......
 
+**-a**, **--catalog**
+  Filter the output by catalog zone name.
+
+**-m**, **--member**
+  Filter the output by member zone name.
+
 **-h**, **--help**
   Print the program help.
 
