@@ -45,6 +45,8 @@ struct jsonw {
 	struct block stack[MAX_DEPTH];
 	/*! Index pointing to the top of the stack. */
 	int top;
+	/*! Newline needed indication. */
+	bool wrap;
 };
 
 static const char *DEFAULT_INDENT = "\t";
@@ -73,6 +75,11 @@ static struct block *cur_block(jsonw_t *w)
 /*! Insert new line and indent for the next write. */
 static void wrap(jsonw_t *w)
 {
+	if (!w->wrap) {
+		w->wrap = true;
+		return;
+	}
+
 	fputc('\n', w->out);
 	int level = MAX_DEPTH - w->top;
 	for (int i = 0; i < level; i++) {
@@ -136,6 +143,8 @@ void jsonw_free(jsonw_t **w)
 	if (w == NULL) {
 		return;
 	}
+
+	wrap(*w);
 
 	free(*w);
 	*w = NULL;
