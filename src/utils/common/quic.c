@@ -961,6 +961,10 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 
 		ngtcp2_conn_get_remote_transport_params(ctx->conn, &params);
 		int timeout = quic_ceil_duration_to_ms(params.max_ack_delay);
+		// TODO timeout on connection resumption
+		if (timeout == 0) {
+			timeout = 1000;
+		}
 		ret = poll(&pfd, 1, timeout);
 		if (ret < 0) {
 			WARN("QUIC, failed to send\n");
