@@ -1105,10 +1105,12 @@ Pre-requisites
   And insert these lines::
 
     [Service]
-    CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
-    AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_SYS_RESOURCE
+    CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_IPC_LOCK CAP_SYS_RESOURCE
+    AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_ADMIN CAP_IPC_LOCK CAP_SYS_RESOURCE
 
   The `CAP_SYS_RESOURCE` is needed on Linux < 5.11.
+
+  All the capabilities are dropped upon the service is started.
 
 Optimizations
 -------------
