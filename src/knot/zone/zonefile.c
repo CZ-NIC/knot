@@ -352,8 +352,10 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
 		}
 	}
 
-	log_fmt_zone(handler->error ? LOG_ERR : LOG_WARNING,
-	             LOG_SOURCE_ZONE, zone->apex->owner, NULL,
+	int level = handler->soft_check ? LOG_NOTICE :
+	            (handler->error ? LOG_ERR : LOG_WARNING);
+
+	log_fmt_zone(level, LOG_SOURCE_ZONE, zone->apex->owner, NULL,
 	             "check%s%s, %s%s%s",
 	             (node != NULL ? ", node " : ""),
 	             (node != NULL ? owner     : ""),
