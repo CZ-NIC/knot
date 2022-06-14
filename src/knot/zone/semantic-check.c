@@ -527,6 +527,7 @@ int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_
 	switch (optional) {
 	case SEMCHECK_MANDATORY_SOFT:
 		data.level |= SOFT;
+		data.handler->soft_check = true;
 		break;
 	case SEMCHECK_DNSSEC_AUTO:
 		data.level |= OPTIONAL;
