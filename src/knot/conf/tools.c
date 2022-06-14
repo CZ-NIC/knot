@@ -271,6 +271,9 @@ int check_xdp_listen(
 	if (ret != KNOT_EOK) {
 		args->err_str = "invalid XDP interface specification";
 		return ret;
+	} else if (!no_port && if_new.port == 0) {
+		args->err_str = "invalid port";
+		return KNOT_EINVAL;
 	}
 
 	conf_val_t xdp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
