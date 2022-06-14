@@ -1439,7 +1439,7 @@ int conf_xdp_iface(
 			return ret;
 		}
 		ret = sockaddr_port(addr);
-		if (ret < 1) {
+		if (ret < 0) { // Cannot check for 0 as don't know if port specified.
 			return KNOT_EINVAL;
 		}
 		iface->port = ret;
