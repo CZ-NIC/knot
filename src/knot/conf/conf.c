@@ -1439,10 +1439,13 @@ int conf_xdp_iface(
 			return ret;
 		}
 		ret = sockaddr_port(addr);
-		if (ret < 1) {
+		if (ret < 0) {
 			return KNOT_EINVAL;
+		} else if (ret == 0) {
+			iface->port = 53;
+		} else {
+			iface->port = ret;
 		}
-		iface->port = ret;
 	}
 
 	int queues = knot_eth_queues(iface->name);
