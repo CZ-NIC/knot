@@ -22,6 +22,16 @@ const stats_item_t server_stats[] = {
 	{ 0 }
 };
 
+uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads)
+{
+	uint64_t res = 0;
+	for (unsigned i = 0; i < threads; i++) {
+		res += ATOMIC_GET(stats_vals[i][offset]);
+	}
+	return res;
+}
+
+
 uint64_t server_zone_count(server_t *server)
 {
 	return knot_zonedb_size(server->zone_db);

@@ -16,10 +16,8 @@
 
 #pragma once
 
-#include "knot/server/server.h"
-
 #include "knot/common/stats_common.h"
-#include "knot/common/json.h"
+#include "knot/server/server.h"
 
 
 void dump_to_json(FILE *fd, server_t *server);

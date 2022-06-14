@@ -14,9 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
-#include "knot/common/stats.h"
-
 #include <inttypes.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -24,7 +21,7 @@
 #include <urcu.h>
 
 #include "contrib/files.h"
-#include "knot/common/log.h"
+#include "knot/common/stats.h"
 #include "knot/nameserver/query_module.h"
 
 struct {
@@ -34,9 +31,11 @@ struct {
 	server_t *server;
 } stats = { 0 };
 
-static const void (*generators[])(FILE *, server_t *) = {
-    &dump_to_yaml,
-    &dump_to_json
+typedef void (*dump_cb)(FILE *, server_t *);
+
+static const dump_cb generators[] = {
+    dump_to_yaml,
+    dump_to_json
 };
 
 static void dump_stats(server_t *server)
@@ -45,11 +44,11 @@ static void dump_stats(server_t *server)
 	conf_val_t val = conf_get(pconf, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&val, NULL);
 	
-	val = conf_get(conf(), C_STATS, C_FILE);
+	val = conf_get(pconf, C_STATS, C_FILE);
 	char *file_name = conf_abs_path(&val, rundir);
 	free(rundir);
 	
-	val = conf_get(conf(), C_STATS, C_FORMAT);
+	val = conf_get(pconf, C_STATS, C_FORMAT);
 	unsigned format = conf_opt(&val);
 
 	val = conf_get(pconf, C_STATS, C_APPEND);
@@ -84,7 +83,7 @@ static void dump_stats(server_t *server)
 	assert(fd);
 
 	// Dump stats into the file.
-	(*generators[format])(fd, server);
+	generators[format](fd, server);
 
 	fflush(fd);
 	fclose(fd);

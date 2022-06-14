@@ -18,13 +18,4 @@
 
 #include "knot/common/stats_common.h"
 
-
-#define DUMP_STR(fd, level, name, ...) do { \
-	fprintf(fd, "%-.*s"name": %s\n", level, "    ", ##__VA_ARGS__); \
-	} while (0)
-#define DUMP_CTR(fd, level, name, ...) do { \
-	fprintf(fd, "%-.*s"name": %"PRIu64"\n", level, "    ", ##__VA_ARGS__); \
-	} while (0)
-
-
 void dump_to_yaml(FILE *fd, server_t *server);

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "knot/common/log.h"
 #include "knot/server/server.h"
 #include "knot/nameserver/query_module.h"
 
@@ -36,9 +37,11 @@ typedef struct {
 	bool zone_emitted;
 } dump_ctx_t;
 
-uint64_t server_zone_count(server_t *server);
-
 /*!
  * \brief Basic server metrics.
  */
 extern const stats_item_t server_stats[];
+
+uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads);
+
+uint64_t server_zone_count(server_t *server);

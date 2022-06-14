@@ -16,10 +16,17 @@
 
 #include "knot/common/stats_yaml.h"
 
-static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr)
+#define DUMP_STR(fd, level, name, ...) do { \
+	fprintf(fd, "%-.*s"name": %s\n", level, "    ", ##__VA_ARGS__); \
+	} while (0)
+#define DUMP_CTR(fd, level, name, ...) do { \
+	fprintf(fd, "%-.*s"name": %"PRIu64"\n", level, "    ", ##__VA_ARGS__); \
+	} while (0)
+
+static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr, uint64_t **stats_vals, unsigned threads)
 {
 	for (uint32_t j = 0; j < ctr->count; j++) {
-		uint64_t counter = ATOMIC_GET(ctr->counters[j]);
+		uint64_t counter = stats_get_counter(stats_vals, ctr->offset + j, threads);
 
 		// Skip empty counters.
 		if (counter == 0) {
@@ -41,7 +48,7 @@ static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr)
 static void dump_modules(dump_ctx_t *ctx)
 {
 	int level = 0;
-	knotd_mod_t *mod = NULL;
+	knotd_mod_t *mod;
 	WALK_LIST(mod, *ctx->query_modules) {
 		// Skip modules without statistics.
 		if (mod->stats_count == 0) {
@@ -57,7 +64,7 @@ static void dump_modules(dump_ctx_t *ctx)
 			}
 			level = 1;
 
-			char name[KNOT_DNAME_TXT_MAXLEN + 1];
+			knot_dname_txt_storage_t name;
 			if (knot_dname_to_str(name, ctx->zone, sizeof(name)) == NULL) {
 				return;
 			}
@@ -66,22 +73,25 @@ static void dump_modules(dump_ctx_t *ctx)
 			level = 0;
 		}
 
+		unsigned threads = knotd_mod_threads(mod);
+
 		// Dump module counters.
 		DUMP_STR(ctx->fd, level, "%s", mod->id->name + 1, "");
 		for (int i = 0; i < mod->stats_count; i++) {
-			mod_ctr_t *ctr = mod->stats + i;
+			mod_ctr_t *ctr = mod->stats_info + i;
 			if (ctr->name == NULL) {
 				// Empty counter.
 				continue;
 			}
 			if (ctr->count == 1) {
 				// Simple counter.
-				uint64_t counter = ATOMIC_GET(ctr->counter);
+				uint64_t counter = stats_get_counter(mod->stats_vals,
+				                                     ctr->offset, threads);
 				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name, counter);
 			} else {
 				// Array of counters.
 				DUMP_STR(ctx->fd, level + 1, "%s", ctr->name, "");
-				dump_counters(ctx->fd, level + 2, ctr);
+				dump_counters(ctx->fd, level + 2, ctr, mod->stats_vals, threads);
 			}
 		}
 	}
@@ -107,7 +117,7 @@ void dump_to_yaml(FILE *fd, server_t *server)
 	struct tm tm;
 	time_t now = time(NULL);
 	localtime_r(&now, &tm);
-	strftime(date, sizeof(date), "%Y-%m-%dT%H:%M:%S%z", &tm);
+	strftime(date, sizeof(date), KNOT_LOG_TIME_FORMAT, &tm);
 
 	// Get the server identity.
 	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);

@@ -288,10 +288,11 @@ static const yp_item_t desc_log[] = {
 };
 
 static const yp_item_t desc_stats[] = {
-	{ C_TIMER,  YP_TINT,  YP_VINT = { 1, UINT32_MAX, 0, YP_STIME } },
-	{ C_FILE,   YP_TSTR,  YP_VSTR = { "stats.yaml" } },
-	{ C_APPEND, YP_TBOOL, YP_VNONE },
-	{ C_FORMAT, YP_TOPT, YP_VOPT = { statistics_format, STATS_FORMAT_YAML } },
+	{ C_TIMER,   YP_TINT,  YP_VINT = { 1, UINT32_MAX, 0, YP_STIME } },
+	{ C_FILE,    YP_TSTR,  YP_VSTR = { "stats.yaml" } },
+	{ C_APPEND,  YP_TBOOL, YP_VNONE },
+	{ C_COMMENT, YP_TSTR,  YP_VNONE },
+	{ C_FORMAT,  YP_TOPT, YP_VOPT = { statistics_format, STATS_FORMAT_YAML } },
 	{ NULL }
 };
 
@@ -312,7 +313,6 @@ static const yp_item_t desc_database[] = {
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
 	{ NULL }
 };
-
 
 static const yp_item_t desc_keystore[] = {
 	{ C_ID,      YP_TSTR, YP_VNONE },

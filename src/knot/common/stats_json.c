@@ -15,15 +15,17 @@
  */
 
 #include "knot/common/stats_json.h"
+#include "contrib/json.h"
 
 static const size_t ULONG_MAX_SIZE = 21UL; /* constexpr (size_t)ceil(log10(ULONG_MAX)) + 1UL */
 
-static void dump_counters_json(FILE *fd, mod_ctr_t *ctr, jsonw_t *w)
+static void dump_counters_json(FILE *fd, mod_ctr_t *ctr, jsonw_t *w, uint64_t **stats_vals, unsigned threads)
 {
 	bool print_list = false;
 	
 	for (uint32_t j = 0; j < ctr->count; j++) {
-		uint64_t counter = ATOMIC_GET(ctr->counters[j]);
+		uint64_t counter = stats_get_counter(stats_vals, ctr->offset + j, threads);
+
 		// Skip empty counters.
 		if (counter == 0) {
 			continue;
@@ -79,23 +81,26 @@ static void dump_modules_json(dump_ctx_t *ctx, jsonw_t *w)
 			jsonw_list(w, "modules");
 		}
 
+		unsigned threads = knotd_mod_threads(mod);
+
 		// Dump module counters.
 		jsonw_object(w, NULL);
 		jsonw_str(w, "name", mod->id->name + 1);
 		jsonw_object(w, "statistics");
 		for (int i = 0; i < mod->stats_count; i++) {
-			mod_ctr_t *ctr = mod->stats + i;
+			mod_ctr_t *ctr = mod->stats_info + i;
 			if (ctr->name == NULL) {
 				// Empty counter.
 				continue;
 			}
 			if (ctr->count == 1) {
 				// Simple counter.
-				uint64_t counter = ATOMIC_GET(ctr->counter);
+				uint64_t counter = stats_get_counter(mod->stats_vals,
+				                                     ctr->offset, threads);
 				jsonw_ulong(w, ctr->name, counter);
 			} else {
 				// Array of counters.
-				dump_counters_json(ctx->fd, ctr, w);
+				dump_counters_json(ctx->fd, ctr, w, mod->stats_vals, threads);
 			}
 		}
 		jsonw_end(w);
@@ -118,10 +123,17 @@ static void zone_stats_dump_json(zone_t *zone, dump_ctx_t *ctx, jsonw_t *w)
 
 void dump_to_json(FILE *fd, server_t *server)
 {
-    char date[64] = "";
+	char date[64] = "";
+
+	// Get formatted current time string.
+	struct tm tm;
+	time_t now = time(NULL);
+	localtime_r(&now, &tm);
+	strftime(date, sizeof(date), KNOT_LOG_TIME_FORMAT, &tm);
 
 	jsonw_t *w = jsonw_new(fd, "  ");
 	if(!w) {
+		assert(0);
 		return;
 	}
 
@@ -129,12 +141,12 @@ void dump_to_json(FILE *fd, server_t *server)
 	long pos = ftell(fd);
 	while(pos > 0) {
 		if(fgetc(fd) == ']') {
-            // Rewrite end of JSON array with ',' for continue
+			// Rewrite end of JSON array with ',' for continue
 			fseek(fd, --pos, SEEK_SET);
 			fprintf(fd, ",\n");
 
 			append = true;
-            break;
+			break;
 		}
 		fseek(fd, --pos, SEEK_SET);
 	}
@@ -142,12 +154,6 @@ void dump_to_json(FILE *fd, server_t *server)
 	if(!append) {
 		fprintf(fd, "[");
 	}
-
-	// Get formatted current time string.
-	struct tm tm;
-	time_t now = time(NULL);
-	localtime_r(&now, &tm);
-	strftime(date, sizeof(date), "%Y-%m-%dT%H:%M:%S%z", &tm);
 
 	// Get the server identity.
 	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
@@ -165,7 +171,7 @@ void dump_to_json(FILE *fd, server_t *server)
 
 	// Dump server statistics.
 	jsonw_object(w, "server");
-    for (const stats_item_t *item = server_stats; item->name != NULL; item++) {
+	for (const stats_item_t *item = server_stats; item->name != NULL; item++) {
 		jsonw_ulong(w, item->name, item->val(server));
 	}
 	jsonw_end(w);
@@ -191,6 +197,6 @@ void dump_to_json(FILE *fd, server_t *server)
 	jsonw_end(w);
 	jsonw_end(w);
 
-	jsonw_free(w);
+	jsonw_free(&w);
 	fprintf(fd, "\n]\n");
 }
