@@ -113,6 +113,7 @@ typedef struct {
 	uint16_t	target_port;
 	uint16_t	listen_port;
 	knot_xdp_filter_flag_t flags;
+	knot_xdp_conf_t xdp_conf;
 	unsigned	n_threads, thread_id;
 } xdp_gun_ctx_t;
 
@@ -361,7 +362,7 @@ void *xdp_gun_thread(void *_ctx)
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
-	                        ctx->listen_port, ctx->listen_port, mode);
+	                        ctx->listen_port, ctx->listen_port, mode, &ctx->xdp_conf);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u (%s)\n",
 		     ctx->thread_id, knot_strerror(ret));
@@ -687,6 +688,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "interface", required_argument, NULL, 'I' },
 		{ "local",     required_argument, NULL, 'l' },
 		{ "infile",    required_argument, NULL, 'i' },
+		{ "xdp-mode",  required_argument, NULL, 'x' },
 		{ NULL }
 	};
 
@@ -694,7 +696,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::F:I:l:i:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::F:I:l:i:x:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -811,6 +813,19 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				return false;
 			}
 			break;
+		case 'x':
+			switch (optarg[0]) {
+			case 'e':
+				ctx->xdp_conf.force_emulated = true;
+				break;
+			case 'c':
+				ctx->xdp_conf.force_copy = true;
+				break;
+			default:
+				ERR2("invalid XDP mode '%s'\n", optarg);
+				return false;
+			}
+			break;
 		default:
 			print_help();
 			return false;
@@ -831,7 +846,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	}
 	ctx->qps /= ctx->n_threads;
 
-	INFO2("using interface %s, XDP threads %u, %s%s%c\n", ctx->dev, ctx->n_threads,
+	INFO2("using interface %s%s%s, XDP threads %u, %s%s%c\n", ctx->dev,
+	      ctx->xdp_conf.force_emulated ? ", emulated" : "",
+	      ctx->xdp_conf.force_copy ? ", copy" : "",
+	      ctx->n_threads,
 	      ctx->tcp ? "TCP" : "UDP",
 	      (ctx->tcp && ctx->tcp_mode != '0') ? " mode " : "",
 	      (ctx->tcp && ctx->tcp_mode != '0') ? ctx->tcp_mode : ' ');

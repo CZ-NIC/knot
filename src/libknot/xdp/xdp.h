@@ -51,6 +51,11 @@ typedef enum {
 /*! \brief Context structure for one XDP socket. */
 typedef struct knot_xdp_socket knot_xdp_socket_t;
 
+typedef struct {
+	bool force_emulated;
+	bool force_copy;
+} knot_xdp_conf_t;
+
 /*!
  * \brief Initialize XDP socket.
  *
@@ -66,7 +71,7 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
  */
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   knot_xdp_filter_flag_t flags, uint16_t udp_port, uint16_t quic_port,
-                  knot_xdp_load_bpf_t load_bpf);
+                  knot_xdp_load_bpf_t load_bpf, const knot_xdp_conf_t *xdp_conf);
 
 /*!
  * \brief De-init XDP socket.

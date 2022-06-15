@@ -268,13 +268,13 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 		knot_xdp_load_bpf_t mode =
 			(i == 0 ? KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 		ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
-		                    xdp_flags, iface.port, 0, mode);
+		                    xdp_flags, iface.port, 0, mode, NULL);
 		if (ret == -EBUSY && i == 0) {
 			log_notice("XDP interface %s@%u is busy, retrying initialization",
 			           iface.name, iface.port);
 			ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
 			                    xdp_flags, iface.port, 0,
-			                    KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD);
+			                    KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD, NULL);
 		}
 		if (ret != KNOT_EOK) {
 			log_warning("failed to initialize XDP interface %s@%u, queue %d (%s)",

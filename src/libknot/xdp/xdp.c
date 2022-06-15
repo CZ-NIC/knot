@@ -132,7 +132,8 @@ static void deconfigure_xsk_umem(struct kxsk_umem *umem)
 
 static int configure_xsk_socket(struct kxsk_umem *umem,
                                 const struct kxsk_iface *iface,
-                                knot_xdp_socket_t **out_sock)
+                                knot_xdp_socket_t **out_sock,
+                                unsigned bind_flags)
 {
 	knot_xdp_socket_t *xsk_info = calloc(1, sizeof(*xsk_info));
 	if (xsk_info == NULL) {
@@ -145,6 +146,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 		.tx_size = RING_LEN_TX,
 		.rx_size = RING_LEN_RX,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
+		.bind_flags = bind_flags,
 	};
 
 	int ret = xsk_socket__create(&xsk_info->xsk, iface->if_name,
@@ -162,7 +164,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 _public_
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   knot_xdp_filter_flag_t flags, uint16_t udp_port, uint16_t quic_port,
-                  knot_xdp_load_bpf_t load_bpf)
+                  knot_xdp_load_bpf_t load_bpf, const knot_xdp_conf_t *xdp_conf)
 {
 	if (socket == NULL || if_name == NULL ||
 	    (udp_port == quic_port && (flags & KNOT_XDP_FILTER_UDP) && (flags & KNOT_XDP_FILTER_QUIC)) ||
@@ -170,8 +172,18 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 		return KNOT_EINVAL;
 	}
 
+	unsigned xdp_flags = 0;
+	unsigned bind_flags = 0;
+	if (xdp_conf != NULL) {
+		if (xdp_conf->force_emulated) {
+			xdp_flags |= XDP_FLAGS_SKB_MODE;
+		} else if (xdp_conf->force_copy) {
+			bind_flags |= XDP_COPY;
+		}
+	}
+
 	struct kxsk_iface *iface;
-	int ret = kxsk_iface_new(if_name, if_queue, load_bpf, &iface);
+	int ret = kxsk_iface_new(if_name, if_queue, load_bpf, xdp_flags, &iface);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -184,7 +196,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 		return ret;
 	}
 
-	ret = configure_xsk_socket(umem, iface, socket);
+	ret = configure_xsk_socket(umem, iface, socket, bind_flags);
 	if (ret != KNOT_EOK) {
 		deconfigure_xsk_umem(umem);
 		kxsk_iface_free(iface);

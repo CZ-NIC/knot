@@ -15,7 +15,6 @@
  */
 
 #include <bpf/bpf.h>
-#include <linux/if_link.h>
 #include <net/if.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,7 +68,7 @@ static int prog_load(struct bpf_object **pobj, int *prog_fd)
 	return KNOT_EOK;
 }
 
-static int ensure_prog(struct kxsk_iface *iface, bool overwrite)
+static int ensure_prog(struct kxsk_iface *iface, unsigned xdp_flags)
 {
 	if (bpf_kernel_o_len < 2) {
 		return KNOT_ENOTSUP;
@@ -83,12 +82,11 @@ static int ensure_prog(struct kxsk_iface *iface, bool overwrite)
 		return KNOT_EPROGRAM;
 	}
 
-	ret = bpf_set_link_xdp_fd(iface->if_index, prog_fd,
-	                          overwrite ? 0 : XDP_FLAGS_UPDATE_IF_NOEXIST);
+	ret = bpf_set_link_xdp_fd(iface->if_index, prog_fd, xdp_flags);
 	if (ret != 0) {
 		close(prog_fd);
 	}
-	if (ret == -EBUSY && !overwrite) { // We try accepting the present program.
+	if (ret == -EBUSY && (xdp_flags & XDP_FLAGS_UPDATE_IF_NOEXIST)) { // We try accepting the present program.
 		uint32_t prog_id = 0;
 		ret = bpf_get_link_xdp_id(iface->if_index, &prog_id, 0);
 		if (ret == 0 && prog_id != 0) {
@@ -214,7 +212,7 @@ void kxsk_socket_stop(const struct kxsk_iface *iface)
 }
 
 int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t load_bpf,
-                   struct kxsk_iface **out_iface)
+                   unsigned xdp_flags, struct kxsk_iface **out_iface)
 {
 	if (if_name == NULL || out_iface == NULL) {
 		return KNOT_EINVAL;
@@ -253,10 +251,10 @@ int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t l
 		sleep(1);
 		// FALLTHROUGH
 	case KNOT_XDP_LOAD_BPF_ALWAYS:
-		ret = ensure_prog(iface, true);
+		ret = ensure_prog(iface, xdp_flags);
 		break;
 	case KNOT_XDP_LOAD_BPF_MAYBE:
-		ret = ensure_prog(iface, false);
+		ret = ensure_prog(iface, xdp_flags | XDP_FLAGS_UPDATE_IF_NOEXIST);
 		break;
 	default:
 		return KNOT_EINVAL;

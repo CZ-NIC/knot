@@ -26,6 +26,7 @@
 #pragma once
 
 #include <bpf/xsk.h>
+#include <linux/if_link.h>
 
 #include "libknot/xdp/xdp.h"
 
@@ -91,12 +92,13 @@ struct knot_xdp_socket {
  * \param if_name    Name of the net iface (e.g. eth0).
  * \param if_queue   Network card queue id.
  * \param load_bpf   Insert BPF program into packet processing.
+ * \param xdp_flags  Optional XDP flags (XDP_FLAGS_SKB_MODE or XDP_FLAGS_DRV_MODE).
  * \param out_iface  Output: created interface context.
  *
  * \return KNOT_E* or -errno
  */
 int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t load_bpf,
-                   struct kxsk_iface **out_iface);
+                   unsigned xdp_flags, struct kxsk_iface **out_iface);
 
 /*!
  * \brief Unload BPF maps for a socket.
