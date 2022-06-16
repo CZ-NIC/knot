@@ -20,6 +20,7 @@
 #include "utils/common/util_conf.h"
 
 #include "contrib/string.h"
+#include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "libknot/attribute.h"
 #include "utils/common/msg.h"
@@ -44,10 +45,16 @@ int util_conf_init_confdb(const char *confdb)
 		flags |= CONF_FREADONLY;
 	}
 
+	log_init();
+	log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, 0);
+	log_levels_set(LOG_TARGET_STDERR, LOG_SOURCE_ANY, LOG_UPTO(LOG_WARNING));
+	log_levels_set(LOG_TARGET_SYSLOG, LOG_SOURCE_ANY, 0);
+	log_flag_set(LOG_FLAG_NOTIMESTAMP | LOG_FLAG_NOINFO);
+
 	conf_t *new_conf = NULL;
 	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, flags);
 	if (ret != KNOT_EOK) {
-		ERR2("failed opening configuration database %s (%s)\n",
+		ERR2("failed opening configuration database '%s' (%s)\n",
 		     (confdb == NULL ? "" : confdb), knot_strerror(ret));
 	} else {
 		conf_update(new_conf, CONF_UPD_FNONE);
@@ -64,7 +71,7 @@ int util_conf_init_file(const char *conffile)
 
 	ret = conf_import(conf(), conffile, true, false);
 	if (ret != KNOT_EOK) {
-		ERR2("failed opening configuration file %s (%s)\n",
+		ERR2("failed opening configuration file '%s' (%s)\n",
 		     conffile, knot_strerror(ret));
 	}
 	return ret;
@@ -127,5 +134,6 @@ void util_update_privileges(void)
 
 void util_conf_deinit(void)
 {
+	log_close();
 	conf_update(NULL, CONF_UPD_FNONE);
 }
