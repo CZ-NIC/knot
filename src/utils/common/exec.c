@@ -20,7 +20,7 @@
 
 #include "libdnssec/random.h"
 #include "utils/common/exec.h"
-#include "utils/common/json.h"
+#include "contrib/json.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
@@ -748,20 +748,20 @@ static void plain_print_packet(const knot_pkt_t *packet,
 static const char *JSON_INDENT = "  ";
 
 /*! Write domain name in presentation form as JSON string. */
-static void jsonw_dname(jsonw_t *w, const knot_dname_t *dname)
+static void jsonw_dname(jsonw_t *w, const char *key, const knot_dname_t *dname)
 {
 	char *name = knot_dname_to_str_alloc(dname);
 	if (!name) {
 		abort();
 	}
 
-	jsonw_str(w, name);
+	jsonw_str(w, key, name);
 
 	free(name);
 }
 
 /*! Write RDATA in presentation form as JSON string. */
-static void jsonw_rdata(jsonw_t *w, const knot_rrset_t *rrset, size_t pos)
+static void jsonw_rdata(jsonw_t *w, const char *key, const knot_rrset_t *rrset, size_t pos)
 {
 	static const size_t size = 8096;
 	char *buf = calloc(size, sizeof(char));
@@ -776,7 +776,7 @@ static void jsonw_rdata(jsonw_t *w, const knot_rrset_t *rrset, size_t pos)
 //		abort();
 	}
 
-	jsonw_str(w, buf);
+	jsonw_str(w, key, buf);
 	free(buf);
 }
 
@@ -787,20 +787,15 @@ static void json_print_section_google(jsonw_t *w, const char *name,
 		return;
 	}
 
-	jsonw_str(w, name);
-	jsonw_list(w);
+	jsonw_list(w, name);
 
 	for (int i = 0; i < section->count; i++) {
 		const knot_rrset_t *rr = knot_pkt_rr(section, i);
-		jsonw_object(w);
-		jsonw_str(w, "name");
-		jsonw_dname(w, rr->owner);
-		jsonw_str(w, "type");
-		jsonw_int(w, rr->type);
-		jsonw_str(w, "TTL");
-		jsonw_int(w, rr->ttl);
-		jsonw_str(w, "data");
-		jsonw_rdata(w, rr, i);
+		jsonw_object(w, NULL);
+		jsonw_dname(w, "name", rr->owner);
+		jsonw_int(w, "type", rr->type);
+		jsonw_int(w, "TTL", rr->ttl);
+		jsonw_rdata(w, "data", rr, i);
 		jsonw_end(w); // object
 	}
 
@@ -811,29 +806,19 @@ static void json_print_packet_google(const knot_pkt_t *pkt, const net_t *net)
 {
 	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
 
-	jsonw_object(w);
+	jsonw_object(w, NULL);
 
-	jsonw_str(w, "Status");
-	jsonw_int(w, knot_pkt_ext_rcode(pkt));
+	jsonw_int(w, "Status", knot_pkt_ext_rcode(pkt));
+	jsonw_bool(w, "TC", knot_wire_get_tc(pkt->wire));
+	jsonw_bool(w, "RD", knot_wire_get_rd(pkt->wire));
+	jsonw_bool(w, "RA", knot_wire_get_ra(pkt->wire));
+	jsonw_bool(w, "AD", knot_wire_get_ad(pkt->wire));
+	jsonw_bool(w, "CD", knot_wire_get_cd(pkt->wire));
 
-	jsonw_str(w, "TC");
-	jsonw_bool(w, knot_wire_get_tc(pkt->wire));
-	jsonw_str(w, "RD");
-	jsonw_bool(w, knot_wire_get_rd(pkt->wire));
-	jsonw_str(w, "RA");
-	jsonw_bool(w, knot_wire_get_ra(pkt->wire));
-	jsonw_str(w, "AD");
-	jsonw_bool(w, knot_wire_get_ad(pkt->wire));
-	jsonw_str(w, "CD");
-	jsonw_bool(w, knot_wire_get_cd(pkt->wire));
-
-	jsonw_str(w, "Question");
-	jsonw_list(w);
-	jsonw_object(w);
-	jsonw_str(w, "name");
-	jsonw_dname(w, knot_pkt_qname(pkt));
-	jsonw_str(w, "type");
-	jsonw_int(w, knot_pkt_qtype(pkt));
+	jsonw_list(w, "Question");
+	jsonw_object(w, NULL);
+	jsonw_dname(w, "name", knot_pkt_qname(pkt));
+	jsonw_int(w, "type", knot_pkt_qtype(pkt));
 	jsonw_end(w); // list
 	jsonw_end(w); // object
 
@@ -841,14 +826,13 @@ static void json_print_packet_google(const knot_pkt_t *pkt, const net_t *net)
 	json_print_section_google(w, "Authority", knot_pkt_section(pkt, KNOT_AUTHORITY));
 	json_print_section_google(w, "Additional", knot_pkt_section(pkt, KNOT_ADDITIONAL));
 
-	jsonw_str(w, "Comment");
 	char comment[256] = {0};
 	snprintf(comment, sizeof(comment), "Response from %s.", net->remote_str);
-	jsonw_str(w, comment);
+	jsonw_str(w, "Comment", comment);
 
 	jsonw_end(w); // object
 
-	jsonw_free(w);
+	jsonw_free(&w);
 }
 
 static void json_print_section(jsonw_t *w, const char *name,
@@ -858,22 +842,16 @@ static void json_print_section(jsonw_t *w, const char *name,
 		return;
 	}
 
-	jsonw_str(w, name);
-	jsonw_list(w);
+	jsonw_list(w, name);
 
 	for (int i = 0; i < section->count; i++) {
 		const knot_rrset_t *rr = knot_pkt_rr(section, i);
-		jsonw_object(w);
-		jsonw_str(w, "name");
-		jsonw_dname(w, rr->owner);
-		jsonw_str(w, "type");
-		jsonw_int(w, rr->type);
-		jsonw_str(w, "class");
-		jsonw_int(w, rr->rclass);
-		jsonw_str(w, "ttl");
-		jsonw_int(w, rr->ttl);
-		jsonw_str(w, "rdata");
-		jsonw_rdata(w, rr, 0);
+		jsonw_object(w, NULL);
+		jsonw_dname(w, "name", rr->owner);
+		jsonw_int(w, "type", rr->type);
+		jsonw_int(w, "class", rr->rclass);
+		jsonw_int(w, "ttl", rr->ttl);
+		jsonw_rdata(w, "rdata", rr, 0);
 		jsonw_end(w); // object
 	}
 
@@ -886,13 +864,10 @@ static void json_print_edns(jsonw_t *w, const knot_rrset_t *edns)
 		return;
 	}
 
-	jsonw_str(w, "edns");
-	jsonw_object(w);
+	jsonw_object(w, "edns");
 
-	jsonw_str(w, "version");
-	jsonw_int(w, knot_edns_get_version(edns));
-	jsonw_str(w, "udp_size");
-	jsonw_int(w, knot_edns_get_payload(edns));
+	jsonw_int(w, "version", knot_edns_get_version(edns));
+	jsonw_int(w, "udp_size", knot_edns_get_payload(edns));
 
 	knot_rdata_t *rdata = knot_rdataset_at(&edns->rrs, 0);
 	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
@@ -907,21 +882,17 @@ static void json_print_edns(jsonw_t *w, const knot_rrset_t *edns)
 
 		switch (opt_code) {
 		case KNOT_EDNS_OPTION_NSID:
-			jsonw_str(w, "nsid");
-			jsonw_str(w, "todo");
+			jsonw_str(w, "nsid", "todo");
 			//print_nsid(opt_data, opt_len);
 			break;
 		case KNOT_EDNS_OPTION_CLIENT_SUBNET:
-			jsonw_str(w, "subnet");
-			jsonw_str(w, "todo");
+			jsonw_str(w, "subnet", "todo");
 			break;
 		case KNOT_EDNS_OPTION_PADDING:
-			jsonw_str(w, "padding");
-			jsonw_int(w, opt_len);
+			jsonw_int(w, "padding", opt_len);
 			break;
 		case KNOT_EDNS_OPTION_COOKIE:
-			jsonw_str(w, "cookie");
-			jsonw_str(w, "todo");
+			jsonw_str(w, "cookie", "todo");
 			break;
 		default:
 			// ignore
@@ -943,43 +914,26 @@ static void json_print_packet(const knot_pkt_t *pkt, const net_t *net)
 
 	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
 
-	jsonw_object(w);
-
-	jsonw_str(w, "header");
-	jsonw_object(w);
-	jsonw_str(w, "id");
-	jsonw_int(w, knot_wire_get_id(pkt->wire));
-	jsonw_str(w, "rcode");
-	jsonw_int(w, knot_pkt_ext_rcode(pkt));
-	jsonw_str(w, "opcode");
-	jsonw_int(w, knot_wire_get_opcode(pkt->wire));
-	jsonw_str(w, "qr");
-	jsonw_bool(w, knot_wire_get_qr(pkt->wire));
-	jsonw_str(w, "aa");
-	jsonw_bool(w, knot_wire_get_aa(pkt->wire));
-	jsonw_str(w, "tc");
-	jsonw_bool(w, knot_wire_get_tc(pkt->wire));
-	jsonw_str(w, "rd");
-	jsonw_bool(w, knot_wire_get_rd(pkt->wire));
-	jsonw_str(w, "ra");
-	jsonw_bool(w, knot_wire_get_ra(pkt->wire));
-	jsonw_str(w, "ad");
-	jsonw_bool(w, knot_wire_get_ad(pkt->wire));
-	jsonw_str(w, "cd");
-	jsonw_bool(w, knot_wire_get_cd(pkt->wire));
-	jsonw_str(w, "do");
-	jsonw_bool(w, edns && knot_edns_do(edns));
+	jsonw_object(w, NULL);
+	jsonw_object(w, "header");
+	jsonw_int(w, "id", knot_wire_get_id(pkt->wire));
+	jsonw_int(w, "rcode", knot_pkt_ext_rcode(pkt));
+	jsonw_int(w, "opcode", knot_wire_get_opcode(pkt->wire));
+	jsonw_bool(w, "qr", knot_wire_get_qr(pkt->wire));
+	jsonw_bool(w, "aa", knot_wire_get_aa(pkt->wire));
+	jsonw_bool(w, "tc", knot_wire_get_tc(pkt->wire));
+	jsonw_bool(w, "rd", knot_wire_get_rd(pkt->wire));
+	jsonw_bool(w, "ra", knot_wire_get_ra(pkt->wire));
+	jsonw_bool(w, "ad", knot_wire_get_ad(pkt->wire));
+	jsonw_bool(w, "cd", knot_wire_get_cd(pkt->wire));
+	jsonw_bool(w, "do", edns && knot_edns_do(edns));
 	jsonw_end(w); // header object
 
-	jsonw_str(w, "question");
-	jsonw_list(w);
-	jsonw_object(w);
-	jsonw_str(w, "name");
-	jsonw_dname(w, knot_pkt_qname(pkt));
-	jsonw_str(w, "type");
-	jsonw_int(w, knot_pkt_qtype(pkt));
-	jsonw_str(w, "class");
-	jsonw_int(w, knot_pkt_qclass(pkt));
+	jsonw_list(w, "question");
+	jsonw_object(w, NULL);
+	jsonw_dname(w, "name", knot_pkt_qname(pkt));
+	jsonw_int(w, "type", knot_pkt_qtype(pkt));
+	jsonw_int(w, "class", knot_pkt_qclass(pkt));
 	jsonw_end(w); // list
 	jsonw_end(w); // dict
 
@@ -989,24 +943,15 @@ static void json_print_packet(const knot_pkt_t *pkt, const net_t *net)
 
 	json_print_edns(w, edns);
 
-	jsonw_str(w, "stats");
-	jsonw_object(w);
-	jsonw_str(w, "time");
-	jsonw_str(w, "");
-	jsonw_str(w, "remote_ip");
-	jsonw_str(w, "");
-	jsonw_str(w, "remote_port");
-	jsonw_int(w, 0);
-	jsonw_str(w, "messages");
-	jsonw_int(w, 0);
-	jsonw_str(w, "records");
-	jsonw_int(w, 0);
-	jsonw_str(w, "received_bytes");
-	jsonw_int(w, 0);
-	jsonw_str(w, "sent_bytes");
-	jsonw_int(w, 0);
-	jsonw_str(w, "duration_ms");
-	jsonw_int(w, 0);
+	jsonw_object(w, "stats");
+	jsonw_str(w, "time", "");
+	jsonw_str(w, "remote_ip", "");
+	jsonw_int(w, "remote_port", 0);
+	jsonw_int(w, "messages", 0);
+	jsonw_int(w, "records", 0);
+	jsonw_int(w, "received_bytes", 0);
+	jsonw_int(w, "sent_bytes", 0);
+	jsonw_int(w, "duration_ms", 0);
 	jsonw_end(w); // dict
 
 	// TODO: TSIG information
@@ -1014,7 +959,7 @@ static void json_print_packet(const knot_pkt_t *pkt, const net_t *net)
 
 	jsonw_end(w); // object
 
-	jsonw_free(w);
+	jsonw_free(&w);
 }
 
 
