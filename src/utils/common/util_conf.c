@@ -54,7 +54,7 @@ int util_conf_init_confdb(const char *confdb)
 	conf_t *new_conf = NULL;
 	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, flags);
 	if (ret != KNOT_EOK) {
-		ERR2("failed opening configuration database %s (%s)\n",
+		ERR2("failed opening configuration database '%s' (%s)\n",
 		     (confdb == NULL ? "" : confdb), knot_strerror(ret));
 	} else {
 		conf_update(new_conf, CONF_UPD_FNONE);
@@ -71,7 +71,7 @@ int util_conf_init_file(const char *conffile)
 
 	ret = conf_import(conf(), conffile, true, false);
 	if (ret != KNOT_EOK) {
-		ERR2("failed opening configuration file %s (%s)\n",
+		ERR2("failed opening configuration file '%s' (%s)\n",
 		     conffile, knot_strerror(ret));
 	}
 	return ret;
