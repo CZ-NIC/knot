@@ -154,6 +154,8 @@ libknotd_la_SOURCES = \
 	knot/journal/serialization.h		\
 	knot/server/server.c			\
 	knot/server/server.h			\
+	knot/server/quic-handler.c		\
+	knot/server/quic-handler.h		\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\

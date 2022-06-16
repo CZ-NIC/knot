@@ -17,6 +17,7 @@
 #ifdef ENABLE_XDP
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <urcu.h>
 
@@ -321,7 +322,8 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
-		ctx->quic_rets[i] = knot_xquic_handle(ctx->quic_table, msg_recv, ctx->tcp_idle_close * 1000L, &ctx->quic_relays[i]);
+		knot_xquic_reply_ctx_t rctx = { .int_min = INT_MIN, .xdp_sock = ctx->sock, .xdp_query = msg_recv };
+		ctx->quic_rets[i] = knot_xquic_handle(ctx->quic_table, &rctx, ctx->tcp_idle_close * 1000L, &ctx->quic_relays[i]);
 		knot_xquic_conn_t *rl = ctx->quic_relays[i];
 
 		int64_t stream_id;
@@ -383,8 +385,9 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 			continue;
 		}
 
-		int ret = knot_xquic_send(ctx->quic_table, ctx->quic_relays[i], ctx->sock,
-		                          &ctx->msg_recv[i], ctx->quic_rets[i],
+		knot_xquic_reply_ctx_t rctx = { .int_min = INT_MIN, .xdp_sock = ctx->sock, .xdp_query = &ctx->msg_recv[i] };
+		int ret = knot_xquic_send(ctx->quic_table, ctx->quic_relays[i],
+		                          &rctx, ctx->quic_rets[i],
 		                          XQUIC_MAX_SEND_PER_RECV, false);
 		if (ret != KNOT_EOK) {
 			log_notice("QUIC, failed to send some packets");

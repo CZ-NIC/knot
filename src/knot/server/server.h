@@ -68,7 +68,9 @@ typedef struct {
 enum {
 	IO_UDP = 0,
 	IO_TCP = 1,
-	IO_XDP = 2,
+	IO_QUIC = 2,
+	IO_XDP = 3,
+	IO_COUNT,
 };
 
 /*!
@@ -90,7 +92,7 @@ typedef struct server {
 	struct {
 		unsigned size;
 		iohandler_t handler;
-	} handlers[3];
+	} handlers[IO_COUNT];
 
 	/*! \brief Background jobs. */
 	worker_pool_t *workers;

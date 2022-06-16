@@ -132,6 +132,7 @@ static void init_cache(
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
 	static size_t running_xdp_threads;
+	static size_t running_quic_threads;
 	static size_t running_bg_threads;
 
 	if (first_init || reinit_cache) {
@@ -143,6 +144,7 @@ static void init_cache(
 		running_route_check = conf_get_bool(conf, C_XDP, C_ROUTE_CHECK);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
+		running_quic_threads = conf_quic_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
 		running_bg_threads = conf_bg_threads(conf);
 
@@ -186,6 +188,8 @@ static void init_cache(
 	conf->cache.srv_udp_threads = running_udp_threads;
 
 	conf->cache.srv_tcp_threads = running_tcp_threads;
+
+	conf->cache.srv_quic_threads = running_quic_threads;
 
 	conf->cache.srv_xdp_threads = running_xdp_threads;
 

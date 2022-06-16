@@ -129,6 +129,7 @@ typedef struct {
 		unsigned srv_dbus_event;
 		size_t srv_udp_threads;
 		size_t srv_tcp_threads;
+		size_t srv_quic_threads;
 		size_t srv_xdp_threads;
 		size_t srv_bg_threads;
 		size_t srv_tcp_max_clients;

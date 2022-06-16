@@ -1701,9 +1701,9 @@ static int server_status(ctl_args_t *args)
 	} else if (strcasecmp(type, "workers") == 0) {
 		int running_bkg_wrk, wrk_queue;
 		worker_pool_status(args->server->workers, false, &running_bkg_wrk, &wrk_queue);
-		ret = snprintf(buff, sizeof(buff), "UDP workers: %zu, TCP workers: %zu, "
+		ret = snprintf(buff, sizeof(buff), "UDP workers: %zu, TCP workers: %zu, QUIC workers: %zu, "
 		               "XDP workers: %zu, background workers: %zu (running: %d, pending: %d)",
-		               conf()->cache.srv_udp_threads, conf()->cache.srv_tcp_threads,
+		               conf()->cache.srv_udp_threads, conf()->cache.srv_tcp_threads, conf()->cache.srv_quic_threads,
 		               conf()->cache.srv_xdp_threads, conf()->cache.srv_bg_threads,
 		               running_bkg_wrk, wrk_queue);
 	} else if (strcasecmp(type, "configure") == 0) {

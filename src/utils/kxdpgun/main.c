@@ -506,7 +506,8 @@ void *xdp_gun_thread(void *_ctx)
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
 							newconn->streams_count = -1;
-							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, false);
+							knot_xquic_reply_ctx_t rctx = { .int_min = INT_MIN, .xdp_sock = xsk, .xdp_query = &quic_fake_req };
+							ret = knot_xquic_send(quic_table, newconn, &rctx, KNOT_EOK, 1, false);
 						}
 						if (ret == KNOT_EOK) {
 							local_stats.qry_sent++;
@@ -604,7 +605,8 @@ void *xdp_gun_thread(void *_ctx)
 #ifdef ENABLE_XDP_QUIC
 					knot_xquic_conn_t *relays[recvd];
 					for (size_t i = 0; i < recvd; i++) {
-						ret = knot_xquic_handle(quic_table, &pkts[i], 5000000000L, &relays[i]);
+						knot_xquic_reply_ctx_t rctx = { .int_min = INT_MIN, .xdp_sock = xsk, .xdp_query = &pkts[i] };
+						ret = knot_xquic_handle(quic_table, &rctx, 5000000000L, &relays[i]);
 						if (ret < 0 || ret > 0) {
 							errors++;
 							break;
@@ -648,7 +650,8 @@ void *xdp_gun_thread(void *_ctx)
 
 							stream0->inbuf.iov_len = 0;
 						}
-						ret = knot_xquic_send(quic_table, rl, xsk, &pkts[i], KNOT_EOK, 4, (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
+						knot_xquic_reply_ctx_t rctx2 = { .int_min = INT_MIN, .xdp_sock = xsk, .xdp_query = &pkts[i] };
+						ret = knot_xquic_send(quic_table, rl, &rctx2, KNOT_EOK, 4, (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
 						if (ret != KNOT_EOK) {
 							errors++;
 						}

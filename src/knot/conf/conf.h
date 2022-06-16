@@ -792,6 +792,24 @@ static inline size_t conf_tcp_threads(
 }
 
 /*!
+ * Gets the configured number of QUIC threads.
+ *
+ * \param[in] conf  Configuration.
+ * \param[in] txn   Configuration DB transaction.
+ *
+ * \return Number of threads.
+ */
+size_t conf_quic_threads_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn
+);
+static inline size_t conf_quic_threads(
+	conf_t *conf)
+{
+	return conf_quic_threads_txn(conf, &conf->read_txn);
+}
+
+/*!
  * Gets the number of used XDP threads.
  *
  * \param[in] conf  Configuration.

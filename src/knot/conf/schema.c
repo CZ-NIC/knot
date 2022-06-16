@@ -211,6 +211,7 @@ static const yp_item_t desc_server[] = {
 	{ C_PIDFILE,              YP_TSTR,  YP_VSTR = { "knot.pid" } },
 	{ C_UDP_WORKERS,          YP_TINT,  YP_VINT = { 1, CONF_MAX_UDP_WORKERS, YP_NIL } },
 	{ C_TCP_WORKERS,          YP_TINT,  YP_VINT = { 1, CONF_MAX_TCP_WORKERS, YP_NIL } },
+	{ C_QUIC_WORKERS,         YP_TINT,  YP_VINT = { 1, CONF_MAX_UDP_WORKERS, YP_NIL } },
 	{ C_BG_WORKERS,           YP_TINT,  YP_VINT = { 1, CONF_MAX_BG_WORKERS, YP_NIL } },
 	{ C_ASYNC_START,          YP_TBOOL, YP_VNONE },
 	{ C_TCP_IDLE_TIMEOUT,     YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },
@@ -239,6 +240,7 @@ static const yp_item_t desc_server[] = {
 	{ C_AUTO_ACL,             YP_TBOOL, YP_VNONE },
 	{ C_DBUS_EVENT,           YP_TOPT,  YP_VOPT = { dbus_events, DBUS_EVENT_NONE }, YP_FMULTI },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
+	{ C_LISTEN_QUIC,          YP_TADDR, YP_VADDR = { 8853 }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
 	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 0 },                        YP_FMULTI, { legacy_item } },

@@ -36,6 +36,7 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
+#include "knot/server/quic-handler.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
@@ -302,6 +303,8 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 #endif
 }
 
+#include "libknot/endian.h"
+
 /*!
  * \brief Create and initialize new interface.
  *
@@ -317,7 +320,7 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
  * \retval NULL if error.
  */
 static iface_t *server_init_iface(struct sockaddr_storage *addr,
-                                  int udp_thread_count, int tcp_thread_count,
+                                  int udp_thread_count, int tcp_thread_count,/* int quic_thread_count,*/
                                   bool tcp_reuseport, bool socket_affinity)
 {
 	iface_t *new_if = calloc(1, sizeof(*new_if));
@@ -335,6 +338,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	int udp_bind_flags = 0;
 	int tcp_socket_count = 1;
 	int tcp_bind_flags = 0;
+/*	int quic_socket_count = 0;
+	int quic_bind_flags;*/
 
 #ifdef ENABLE_REUSEPORT
 	udp_socket_count = udp_thread_count;
@@ -344,6 +349,9 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		tcp_socket_count = tcp_thread_count;
 		tcp_bind_flags |= NET_BIND_MULTIPLE;
 	}
+/*
+	quic_socket_count = quic_thread_count;
+	quic_bind_flags |= NET_BIND_MULTIPLE;*/
 #endif
 
 	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
@@ -363,6 +371,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	/* Create bound UDP sockets. */
 	for (int i = 0; i < udp_socket_count; i++) {
 		int sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags);
+		printf("nbs port %d %d\n", be16toh(((struct sockaddr_in6 *)addr)->sin6_port), sock);
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			udp_bind_flags |= NET_BIND_NONLOCAL;
 			sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags);
@@ -408,6 +417,13 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
 		new_if->fd_udp_count += 1;
+	}
+
+	if (tcp_thread_count == 0) {
+		tcp_socket_count = 0;
+		free(new_if->fd_tcp);
+		new_if->fd_tcp = NULL;
+		return new_if;
 	}
 
 	warn_bind = true;
@@ -468,6 +484,61 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 		}
 	}
 
+	/*
+	warn_bind = true;
+	warn_cbpf = true;
+	warn_bufsize = true;
+	warn_flag_misc = true;
+
+	for (int i = 0; i < quic_socket_count; i++) {
+		int sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags);
+		if (sock == KNOT_EADDRNOTAVAIL) {
+			udp_bind_flags |= NET_BIND_NONLOCAL;
+			sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags);
+			if (sock >= 0 && warn_bind) {
+				log_warning("address %s UDP bound, but required nonlocal bind", addr_str);
+				warn_bind = false;
+			}
+		}
+
+		if (sock < 0) {
+			log_error("cannot bind address %s UDP (%s)", addr_str,
+			          knot_strerror(sock));
+			server_deinit_iface(new_if, true);
+			return NULL;
+		}
+
+		if ((udp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
+			if (!server_attach_reuseport_bpf(sock, udp_socket_count) &&
+			    warn_cbpf) {
+				log_warning("cannot ensure optimal CPU locality for UDP");
+				warn_cbpf = false;
+			}
+		}
+
+		if (!enlarge_net_buffers(sock, UDP_MIN_RCVSIZE, UDP_MIN_SNDSIZE) &&
+		    warn_bufsize) {
+			log_warning("failed to set network buffer sizes for UDP");
+			warn_bufsize = false;
+		}
+
+		if (sockaddr_is_any(addr) && !enable_pktinfo(sock, addr->ss_family) &&
+		    warn_pktinfo) {
+			log_warning("failed to enable received packet information retrieval");
+			warn_pktinfo = false;
+		}
+
+		int ret = disable_pmtudisc(sock, addr->ss_family);
+		if (ret != KNOT_EOK && warn_flag_misc) {
+			log_warning("failed to disable Path MTU discovery for IPv4/UDP (%s)",
+			            knot_strerror(ret));
+			warn_flag_misc = false;
+		}
+
+		new_if->fd_udp[new_if->fd_udp_count] = sock;
+		new_if->fd_udp_count += 1;
+	}*/
+
 	return new_if;
 }
 
@@ -507,6 +578,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t liquic_val = conf_get(conf, C_SRV, C_LISTEN_QUIC);
 	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 
@@ -535,7 +607,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 #endif
 
 	size_t real_nifs = 0;
-	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
+	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&liquic_val) + conf_val_count(&lisxdp_val);
 	iface_t *newlist = calloc(nifs, sizeof(*newlist));
 	if (newlist == NULL) {
 		log_error("failed to allocate memory for network sockets");
@@ -565,6 +637,28 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		free(new_if);
 
 		conf_val_next(&listen_val);
+	}
+
+	/* Conventional QUIC sockets. */
+	unsigned size_quic = s->handlers[IO_QUIC].handler.unit->size;
+	while (liquic_val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir);
+		char addr_str[SOCKADDR_STRLEN] = { 0 };
+		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
+		log_info("binding QUIC to interface %s", addr_str);
+
+		iface_t *new_if = server_init_iface(&addr, size_quic, 0,
+		                                    false, false);
+		if (new_if == NULL) {
+			server_deinit_iface_list(newlist, nifs);
+			free(rundir);
+			return KNOT_ERROR;
+		}
+		memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
+		printf("socket[%zu] u %u t %u x %u fd %d\n", real_nifs, new_if->fd_udp_count, new_if->fd_tcp_count, new_if->fd_xdp_count, new_if->fd_udp[0]);
+		free(new_if);
+
+		conf_val_next(&liquic_val);
 	}
 	free(rundir);
 
@@ -795,6 +889,7 @@ int server_start(server_t *server, bool async)
 	/* Start I/O handlers. */
 	server->state |= ServerRunning;
 	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
+		printf("proto %d size %u\n", proto, server->handlers[proto].size);
 		if (server->handlers[proto].size > 0) {
 			int ret = dt_start(server->handlers[proto].handler.unit);
 			if (ret != KNOT_EOK) {
@@ -878,6 +973,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	assert(server->ifaces);
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t liquic_val = conf_get(conf, C_SRV, C_LISTEN_QUIC);
 	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
 	size_t new_count = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
 	size_t old_count = server->n_ifaces;
@@ -935,6 +1031,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_socket_affinity = true;
 	static bool warn_udp = true;
 	static bool warn_tcp = true;
+	static bool warn_quic = true;
 	static bool warn_bg = true;
 	static bool warn_listen = true;
 	static bool warn_xdp_udp = true;
@@ -961,6 +1058,11 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_tcp && server->handlers[IO_TCP].size != conf_tcp_threads(conf)) {
 		log_warning(msg, &C_TCP_WORKERS[1]);
 		warn_tcp = false;
+	}
+
+	if (warn_udp && server->handlers[IO_QUIC].size != conf_quic_threads(conf)) {
+		log_warning(msg, &C_QUIC_WORKERS[1]);
+		warn_quic = false;
 	}
 
 	if (warn_bg && conf->cache.srv_bg_threads != conf_bg_threads(conf)) {
@@ -1122,6 +1224,16 @@ static int configure_threads(conf_t *conf, server_t *server)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+	}
+
+	if (conf->cache.srv_quic_threads > 0) {
+#if defined(ENABLE_XDP) && defined(ENABLE_XDP_QUIC)
+		printf("quic threads %zu\n", conf->cache.srv_quic_threads);
+		ret = set_handler(server, IO_QUIC, conf->cache.srv_quic_threads, quic_master);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+#endif // ENABLE_XDP && ENABLE_XDP_QUIC
 	}
 
 	return set_handler(server, IO_TCP, conf->cache.srv_tcp_threads, tcp_master);

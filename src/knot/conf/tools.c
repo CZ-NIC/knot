@@ -495,7 +495,19 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 int check_server(
 	knotd_conf_check_args_t *args)
 {
+#if defined(ENABLE_XDP) && defined(ENABLE_XDP_QUIC)
 	return KNOT_EOK;
+#else
+	conf_val_t quic_listen = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                     C_SRV, C_LISTEN_QUIC);
+	conf_val_t quic_wrk = conf_get_txn(args->extra->conf, args->extra->txn,
+					   C_SRV, C_QUIC_WORKERS);
+	if (quic_listen.code == KNOT_EOK || conf_int(&quic_wrk) > 0) {
+		args->err_str = "not compiled with QUIC support";
+		return KNOT_EINVAL;
+	}
+#endif // ENABLE_XDP && ENABLE_XDP_QUIC
+
 }
 
 int check_xdp(

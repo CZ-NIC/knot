@@ -1248,6 +1248,20 @@ size_t conf_tcp_threads_txn(
 	return workers;
 }
 
+size_t conf_quic_threads_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_QUIC_WORKERS);
+	int64_t workers = conf_int(&val);
+	assert(workers <= CONF_MAX_UDP_WORKERS);
+	if (workers == YP_NIL) {
+		return MIN(dt_optimal_size(), CONF_MAX_UDP_WORKERS);
+	}
+
+	return workers;
+}
+
 size_t conf_xdp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)

@@ -35,6 +35,19 @@ typedef struct knot_quic_creds {
 	uint8_t static_secret[32];
 } knot_xquic_creds_t;
 
+typedef union {
+	struct {
+		int int_min; // = INT_MIN
+		knot_xdp_socket_t *xdp_sock;
+		knot_xdp_msg_t *xdp_query;
+	};
+	struct {
+		int udp_fd;
+		struct msghdr *udp_query;
+		struct sockaddr_storage *local_ip;
+	};
+} knot_xquic_reply_ctx_t;
+
 /*!
  * \brief Init server TLS certificate for DoQ.
  *
@@ -78,13 +91,13 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
  * \brief Handle incoming QUIC packet.
  *
  * \param table           QUIC connectoins table-
- * \param msg             Incoming XDP packet.
+ * \param msg             Incomming connection + packet details.
  * \param idle_timeout    Configured idle timeout for connections.
  * \param out_conn        Out: QUIC connection that this packet belongs to.
  *
  * \return KNOT_E*
  */
-int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg,
+int knot_xquic_handle(knot_xquic_table_t *table, knot_xquic_reply_ctx_t *msg,
                       uint64_t idle_timeout, knot_xquic_conn_t **out_conn);
 
 /*!
@@ -92,8 +105,7 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg,
  *
  * \param quic_table         QUIC connection table.
  * \param relay              QUIC connection.
- * \param sock               XDP socket.
- * \param in_msg             Previous incomming packet for this connection.
+ * \param msg                Incomming connection + packet details.
  * \param handle_ret         Error returned from knot_xquic_handle() for incoming packet.
  * \param max_msgs           Maxmimum packets to be sent.
  * \param ignore_lastbyte    Cut off last byte of QUIC paylod.
@@ -101,5 +113,5 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg,
  * \return KNOT_E*
  */
 int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
-		    knot_xdp_socket_t *sock, knot_xdp_msg_t *in_msg,
+		    knot_xquic_reply_ctx_t *msg,
                     int handle_ret, unsigned max_msgs, bool ignore_lastbyte);

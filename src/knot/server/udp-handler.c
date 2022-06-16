@@ -441,6 +441,11 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 	const iface_t *ifaces = server->ifaces;
 
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
+		if (i->fd_tcp_count == 0 && i->fd_xdp_count == 0) {
+			// ignore QUIC ifaces
+			continue;
+		}
+
 		int fd = iface_udp_fd(i, thread_id, xdp_thread, xdp_socket);
 		if (fd < 0) {
 			continue;

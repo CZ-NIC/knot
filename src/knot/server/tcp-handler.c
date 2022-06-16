@@ -132,8 +132,7 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 	}
 
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
-		if (i->fd_tcp_count == 0) { // Ignore XDP interface.
-			assert(i->fd_xdp_count > 0);
+		if (i->fd_tcp_count == 0) { // Ignore QUIC and XDP interface.
 			continue;
 		}
 
