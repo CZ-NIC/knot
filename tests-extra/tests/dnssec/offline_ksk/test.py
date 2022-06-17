@@ -194,7 +194,7 @@ writef(SKR, out)
 
 cripple_skr(SKR, SKR_BROKEN)
 _, _, err = Keymgr.run_check(knot.confile, ZONE, "validate-skr", SKR_BROKEN)
-if err.split()[0] != "Error:":
+if err.split()[0].casefold() != "error:":
     set_err("keymgr validate-skr")
     detail_log(err)
 Keymgr.run_fail(knot.confile, ZONE, "import-skr", SKR_BROKEN)
