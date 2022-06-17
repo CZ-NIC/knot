@@ -35,7 +35,7 @@ static int get_dest_address(struct msghdr *mh, int sock_fd, uint16_t port_be16, 
 {
 	// FIXME remove workaround later
 	((struct sockaddr_in *)out)->sin_family = AF_INET;
-	((struct sockaddr_in *)out)->sin_port = htobe16(8853);
+	((struct sockaddr_in *)out)->sin_port = htobe16(8857);
 	uint32_t a = 0x0339a8c0;
 	memcpy(&((struct sockaddr_in *)out)->sin_addr, &a, sizeof(a));
 	return KNOT_EOK;
@@ -80,7 +80,6 @@ static unsigned quic_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 	int normal_threads = 0;
 
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
-		printf("IF %lu uc %u tc %u xc %u\n", i - ifaces, i->fd_udp_count, i->fd_tcp_count, i->fd_xdp_count);
 		if (i->fd_tcp_count > 0) {
 			normal_threads += 2; // one UDP, one TCP
 		}
@@ -169,7 +168,6 @@ int quic_master(dthread_t *thread)
 		goto finish;
 	}
 	unsigned nfds = quic_set_ifaces(handler->server->ifaces, nifs, &fds, thread_id);
-	printf("QM %u thr %d\n", nfds, thread_id);
 	if (nfds == 0) {
 		goto finish;
 	}
@@ -219,14 +217,11 @@ int quic_master(dthread_t *thread)
 			iov_in.iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 			int fd = fdset_it_get_fd(&it);
-			printf("fdset\n");
 			int ret = recvmsg(fd, &mh_in, MSG_DONTWAIT);
-			printf("fd %d recvmsg %d len %zu: %zu addrlen %u\n", fd, ret, mh_in.msg_iovlen, mh_in.msg_iov->iov_len, mh_in.msg_namelen);
 			if (ret > 0) {
 				iov_in.iov_len = ret;
 				ret = get_dest_address(&mh_in, fd, port_be, &local_ip);
 				if (ret != KNOT_EOK) {
-					printf("error! (%s)\n", knot_strerror(ret)); // FIXME
 					continue;
 				}
 

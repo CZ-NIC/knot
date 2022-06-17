@@ -371,7 +371,6 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	/* Create bound UDP sockets. */
 	for (int i = 0; i < udp_socket_count; i++) {
 		int sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags);
-		printf("nbs port %d %d\n", be16toh(((struct sockaddr_in6 *)addr)->sin6_port), sock);
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			udp_bind_flags |= NET_BIND_NONLOCAL;
 			sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags);
@@ -655,7 +654,6 @@ static int configure_sockets(conf_t *conf, server_t *s)
 			return KNOT_ERROR;
 		}
 		memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
-		printf("socket[%zu] u %u t %u x %u fd %d\n", real_nifs, new_if->fd_udp_count, new_if->fd_tcp_count, new_if->fd_xdp_count, new_if->fd_udp[0]);
 		free(new_if);
 
 		conf_val_next(&liquic_val);
@@ -889,7 +887,6 @@ int server_start(server_t *server, bool async)
 	/* Start I/O handlers. */
 	server->state |= ServerRunning;
 	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
-		printf("proto %d size %u\n", proto, server->handlers[proto].size);
 		if (server->handlers[proto].size > 0) {
 			int ret = dt_start(server->handlers[proto].handler.unit);
 			if (ret != KNOT_EOK) {
@@ -1228,7 +1225,6 @@ static int configure_threads(conf_t *conf, server_t *server)
 
 	if (conf->cache.srv_quic_threads > 0) {
 #if defined(ENABLE_XDP) && defined(ENABLE_XDP_QUIC)
-		printf("quic threads %zu\n", conf->cache.srv_quic_threads);
 		ret = set_handler(server, IO_QUIC, conf->cache.srv_quic_threads, quic_master);
 		if (ret != KNOT_EOK) {
 			return ret;

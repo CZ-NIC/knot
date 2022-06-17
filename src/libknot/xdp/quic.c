@@ -728,7 +728,6 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xquic_reply_ctx_t *msg, ui
 
 		assert(header.type == NGTCP2_PKT_INITIAL);
 		if (header.token.len == 0 && xquic_require_retry(table)) {
-			printf("my retry\n");
 			return -XQUIC_SEND_RETRY;
 		}
 
@@ -819,21 +818,31 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 static int udp_alloc(knot_xquic_reply_ctx_t *msg, struct msghdr **out, struct iovec **payload)
 {
 	size_t max_payload = 1232; // FIXME
-	*out = calloc(1, sizeof(**out) + sizeof((*out)->msg_iov) + max_payload);
-	if (*out == NULL) {
+
+	struct msghdr *rms;
+	struct iovec *rpl;
+	void *res = calloc(1, sizeof(*rms) + sizeof(*rpl) + max_payload);
+	if (res == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	(*out)->msg_iovlen = 1;
-	(*out)->msg_iov = (void *)(*out) + sizeof(**out);
-	(*out)->msg_iov->iov_len = max_payload;
-	(*out)->msg_iov->iov_base = (void *)(*out) + sizeof(**out) + sizeof((*out)->msg_iov);
-	(*out)->msg_namelen = msg->udp_query->msg_namelen;
-	(*out)->msg_name = msg->udp_query->msg_name;
+	rms = res;
+	rms->msg_iovlen = 1;
 
-	udp_pktinfo_handle(msg->udp_query, *out);
+	rpl = res + sizeof(*rms);
+	rpl->iov_len = max_payload;
+	rpl->iov_base = res + sizeof(*rms) + sizeof(*rpl);
+	assert(rpl->iov_base == (void *)rpl + sizeof (*rpl));
+	rms->msg_iov = rpl;
 
-	*payload = (*out)->msg_iov;
+	rms->msg_namelen = msg->udp_query->msg_namelen;
+	rms->msg_name = msg->udp_query->msg_name;
+
+	udp_pktinfo_handle(msg->udp_query, rms);
+
+	*out = rms;
+	*payload = rpl;
+
 	return KNOT_EOK;
 }
 
@@ -867,7 +876,6 @@ static int reply_send(knot_xquic_reply_ctx_t *msg, struct msghdr *out_udp, knot_
 		}
 		return ret;
 	} else {
-		printf("sendmsg %d %zu: %zu port %d\n", msg->udp_fd, out_udp->msg_iovlen, out_udp->msg_iov->iov_len, be16toh(((struct sockaddr_in *)out_udp->msg_name)->sin_port));
 		int ret = sendmsg(msg->udp_fd, out_udp, 0);
 		free(out_udp);
 		return ret > 0 ? KNOT_EOK : knot_map_errno();
@@ -916,7 +924,6 @@ static int send_stream(knot_xquic_table_t *quic_table, knot_xquic_reply_ctx_t *m
 	if (*sent < 0) {
 		*sent = 0;
 	}
-	printf("send stream %d [ %02x %02x %02x %02x %02x %02x %02x %02x ... ]\n", ret, ((uint8_t *)out_payload->iov_base)[0], ((uint8_t *)out_payload->iov_base)[1], ((uint8_t *)out_payload->iov_base)[2], ((uint8_t *)out_payload->iov_base)[3], ((uint8_t *)out_payload->iov_base)[4], ((uint8_t *)out_payload->iov_base)[5], ((uint8_t *)out_payload->iov_base)[6], ((uint8_t *)out_payload->iov_base)[7] );
 
 	out_payload->iov_len = ret;
 	return reply_send(msg, out_udp, &out_xdp);
@@ -951,7 +958,6 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xquic_reply_ctx_t *
 	uint8_t sreset_rand[NGTCP2_MIN_STATELESS_RESET_RANDLEN];
 	dnssec_random_buffer(sreset_rand, sizeof(sreset_rand));
 
-	printf("handle ret %d\n", handle_ret);
 	switch (handle_ret) {
 	case -XQUIC_SEND_VERSION_NEGOTIATION:
 		assert(dvc_ret == NGTCP2_ERR_VERSION_NEGOTIATION);
@@ -981,7 +987,6 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xquic_reply_ctx_t *
 				out_payload->iov_base, out_payload->iov_len,
 				pversion, &scid, &new_dcid, &dcid, retry_token, ret
 			);
-			printf("write retry %d\n", ret);
 		}
 		break;
 	case -XQUIC_SEND_STATELESS_RESET:
