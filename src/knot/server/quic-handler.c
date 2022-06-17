@@ -33,13 +33,6 @@ typedef union {
 
 static int get_dest_address(struct msghdr *mh, int sock_fd, uint16_t port_be16, struct sockaddr_storage *out)
 {
-	// FIXME remove workaround later
-	((struct sockaddr_in *)out)->sin_family = AF_INET;
-	((struct sockaddr_in *)out)->sin_port = htobe16(8857);
-	uint32_t a = 0x0339a8c0;
-	memcpy(&((struct sockaddr_in *)out)->sin_addr, &a, sizeof(a));
-	return KNOT_EOK;
-
 	for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(mh); cmsg != NULL; cmsg = CMSG_NXTHDR(mh, cmsg)) {
 		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
 			struct in_pktinfo *pi = (struct in_pktinfo *)CMSG_DATA(cmsg);
@@ -146,6 +139,42 @@ static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struc
 	handle_finish(layer);
 }
 
+static int handle_quic(knot_xquic_table_t *table, int udp_fd, struct msghdr *msg,
+                       uint64_t idle_timeout, knot_layer_t *layer, server_t *server,
+                       struct sockaddr_storage *local_ip, int thread_id)
+{
+	size_t msg_quic_count = 0;
+	knot_xquic_reply_ctx_t rctx = { .udp_fd = udp_fd, .udp_query = msg, .local_ip = local_ip };
+	knot_xquic_conn_t *rl = NULL;
+	int ret = knot_xquic_handle(table, &rctx, idle_timeout, &rl);
+
+	if (ret == KNOT_EOK) {
+		uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
+		knotd_qdata_params_t params = {
+			.socket = udp_fd,
+			.server = server,
+			.thread_id = thread_id,
+			.remote = (const struct sockaddr_storage *)msg->msg_name,
+		};
+
+		int64_t stream_id;
+		knot_xquic_stream_t *stream;
+
+		while (rl != NULL && msg_quic_count < QUIC_MAX_SEND_PER_RECV &&
+		       (stream = knot_xquic_stream_get_process(rl, &stream_id)) != NULL) {
+			assert(stream->inbuf_fin);
+			assert(stream->inbuf.iov_len > 0);
+			handle_quic_stream(rl, stream_id, &stream->inbuf, layer, &params,
+					   buf, KNOT_WIRE_MAX_PKTSIZE);
+			stream->inbuf.iov_len = 0;
+			stream->inbuf_fin = false;
+		}
+
+	}
+
+	return knot_xquic_send(table, rl, &rctx, ret, QUIC_MAX_SEND_PER_RECV, false);
+}
+
 int quic_master(dthread_t *thread)
 {
 	if (thread == NULL || thread->data == NULL) {
@@ -225,36 +254,8 @@ int quic_master(dthread_t *thread)
 					continue;
 				}
 
-				// TODO move this code to a function
-				size_t msg_quic_count = 0;
-				knot_xquic_reply_ctx_t rctx = { .udp_fd = fd, .udp_query = &mh_in, .local_ip = &local_ip };
-				knot_xquic_conn_t *rl = NULL;
-				ret = knot_xquic_handle(table, &rctx, quic_idle_timeout, &rl);
-
-				if (ret == KNOT_EOK) {
-					knotd_qdata_params_t params = {
-						.socket = fd,
-						.server = handler->server,
-						.thread_id = thread_id,
-						.remote = (const struct sockaddr_storage *)mh_in.msg_name,
-					};
-
-					int64_t stream_id;
-					knot_xquic_stream_t *stream;
-
-					while (rl != NULL && msg_quic_count < QUIC_MAX_SEND_PER_RECV &&
-					       (stream = knot_xquic_stream_get_process(rl, &stream_id)) != NULL) {
-						assert(stream->inbuf_fin);
-						assert(stream->inbuf.iov_len > 0);
-						handle_quic_stream(rl, stream_id, &stream->inbuf, &layer, &params,
-						                   buf, KNOT_WIRE_MAX_PKTSIZE);
-						stream->inbuf.iov_len = 0;
-						stream->inbuf_fin = false;
-					}
-
-				}
-
-				ret = knot_xquic_send(table, rl, &rctx, ret, QUIC_MAX_SEND_PER_RECV, false);
+				(void)handle_quic(table, fd, &mh_in, quic_idle_timeout,
+				                  &layer, handler->server, &local_ip, thread_id);
 			}
 		}
 

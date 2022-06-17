@@ -906,6 +906,7 @@ static void test_conf_io_list(void)
 	   KNOT_EOK, "list group");
 	ref = "server.version\n"
 	      "server.listen\n"
+	      "server.listen-quic\n"
 	      "server.tcp-idle-timeout\n"
 	      "server.tcp-io-timeout\n"
 	      "server.tcp-remote-io-timeout\n"
@@ -915,6 +916,7 @@ static void test_conf_io_list(void)
 	      "server.socket-affinity\n"
 	      "server.udp-workers\n"
 	      "server.tcp-workers\n"
+	      "server.quic-workers\n"
 	      "server.background-workers\n"
 	      "server.udp-max-payload\n"
 	      "server.udp-max-payload-ipv4\n"
@@ -969,6 +971,7 @@ static void test_conf_io_list(void)
 static const yp_item_t desc_server[] = {
 	{ C_VERSION,              YP_TSTR,  YP_VNONE },
 	{ C_LISTEN,               YP_TADDR, YP_VNONE, YP_FMULTI },
+	{ C_LISTEN_QUIC,          YP_TADDR, YP_VNONE, YP_FMULTI },
 	// Required config cache items - assert fix.
 	{ C_TCP_IDLE_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_IO_TIMEOUT,	  YP_TINT,  YP_VNONE },
@@ -979,6 +982,7 @@ static const yp_item_t desc_server[] = {
 	{ C_SOCKET_AFFINITY,	  YP_TBOOL, YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
+	{ C_QUIC_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_BG_WORKERS,		  YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD,      YP_TINT,  YP_VNONE },
 	{ C_UDP_MAX_PAYLOAD_IPV4, YP_TINT,  YP_VNONE },

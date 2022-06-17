@@ -1000,6 +1000,23 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	}
 	free(rundir);
 
+	while (liquic_val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir);
+		bool found = false;
+		for (size_t i = 0; i < server->n_ifaces; i++) {
+			if (sockaddr_cmp(&addr, &server->ifaces[i].addr, false) == 0) {
+				matches++;
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			break;
+		}
+		conf_val_next(&liquic_val);
+	}
+	free(rundir);
+
 	while (lisxdp_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
 		bool found = false;
@@ -1057,7 +1074,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 		warn_tcp = false;
 	}
 
-	if (warn_udp && server->handlers[IO_QUIC].size != conf_quic_threads(conf)) {
+	if (warn_quic && server->handlers[IO_QUIC].size != conf_quic_threads(conf)) {
 		log_warning(msg, &C_QUIC_WORKERS[1]);
 		warn_quic = false;
 	}
