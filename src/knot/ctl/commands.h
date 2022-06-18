@@ -57,6 +57,8 @@
 #define CTL_FILTER_BACKUP_CATALOG	'c'
 #define CTL_FILTER_BACKUP_NOCATALOG	'C'
 
+#define STATUS_EMPTY			"-"
+
 /*! Control commands. */
 typedef enum {
 	CTL_NONE,

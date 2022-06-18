@@ -256,7 +256,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			                                     KNOT_RRTYPE_SOA);
 			ret = snprintf(buff, sizeof(buff), "%u", knot_soa_serial(soa->rdata));
 		} else {
-			ret = snprintf(buff, sizeof(buff), "none");
+			ret = snprintf(buff, sizeof(buff), STATUS_EMPTY);
 		}
 		if (ret < 0 || ret >= sizeof(buff)) {
 			return KNOT_ESPACE;
@@ -274,7 +274,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_TRANSACTION)) {
 		data[KNOT_CTL_IDX_TYPE] = "transaction";
-		data[KNOT_CTL_IDX_DATA] = (zone->control_update != NULL) ? "open" : "none";
+		data[KNOT_CTL_IDX_DATA] = (zone->control_update != NULL) ? "open" : STATUS_EMPTY;
 		ret = knot_ctl_send(args->ctl, type, &data);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -294,7 +294,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			}
 		} else {
 			if (zone_events_get_time(zone, ZONE_EVENT_UFREEZE) < time(NULL)) {
-				data[KNOT_CTL_IDX_DATA] = "no";
+				data[KNOT_CTL_IDX_DATA] = STATUS_EMPTY;
 			} else {
 				data[KNOT_CTL_IDX_DATA] = "freezing";
 			}
@@ -306,11 +306,11 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			type = KNOT_CTL_TYPE_EXTRA;
 		}
 
-		data[KNOT_CTL_IDX_TYPE] = "XFR freeze";
+		data[KNOT_CTL_IDX_TYPE] = "XFR-freeze";
 		if (zone_get_flag(zone, ZONE_XFR_FROZEN, false)) {
 			data[KNOT_CTL_IDX_DATA] = "yes";
 		} else {
-			data[KNOT_CTL_IDX_DATA] = "no";
+			data[KNOT_CTL_IDX_DATA] = STATUS_EMPTY;
 		}
 		ret = knot_ctl_send(args->ctl, type, &data);
 		if (ret != KNOT_EOK) {
@@ -361,7 +361,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 				}
 				break;
 			default:
-				data[KNOT_CTL_IDX_DATA] = "none";
+				data[KNOT_CTL_IDX_DATA] = STATUS_EMPTY;
 			}
 		}
 
@@ -385,7 +385,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			if (zone->events.running && zone->events.type == i) {
 				ret = snprintf(buff, sizeof(buff), "running");
 			} else if (ev_time <= 0) {
-				ret = snprintf(buff, sizeof(buff), "not scheduled");
+				ret = snprintf(buff, sizeof(buff), STATUS_EMPTY);
 			} else if (ev_time <= time(NULL)) {
 				bool frozen = ufrozen && ufreeze_applies(i);
 				ret = snprintf(buff, sizeof(buff), frozen ? "frozen" : "pending");
