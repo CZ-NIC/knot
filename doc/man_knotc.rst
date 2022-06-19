@@ -43,6 +43,9 @@ Options
   Zone event trigger commands wait until the event is finished. Control timeout
   is set to infinity if not forced by explicit timeout specification.
 
+**-e**, **--extended**
+  Show extended output (even empty items in zone status).
+
 **-f**, **--force**
   Forced operation. Overrides some checks.
 

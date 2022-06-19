@@ -26,6 +26,7 @@
 #include "knot/conf/tools.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
+#include "contrib/color.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
@@ -200,7 +201,7 @@ static int get_conf_key(const char *key, knot_ctl_data_t *data)
 	return KNOT_EOK;
 }
 
-static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
+static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
                         knot_ctl_data_t *data, bool *empty)
 {
 	const char *error = (*data)[KNOT_CTL_IDX_ERROR];
@@ -214,6 +215,8 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	const char *type  = (*data)[KNOT_CTL_IDX_TYPE];
 	const char *value = (*data)[KNOT_CTL_IDX_DATA];
 
+	bool col = false;
+
 	const char *sign = NULL;
 	if (ctl_has_flag(flags, CTL_FLAG_ADD)) {
 		sign = CTL_FLAG_ADD;
@@ -221,7 +224,7 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 		sign = CTL_FLAG_REM;
 	}
 
-	switch (cmd) {
+	switch (args->desc->cmd) {
 	case CTL_STATUS:
 		if (error != NULL) {
 			printf("error: (%s)%s%s", error,
@@ -242,6 +245,8 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 		}
 		break;
 	case CTL_ZONE_STATUS:
+		col = !args->extended;
+		// FALLTHROUGH
 	case CTL_ZONE_RELOAD:
 	case CTL_ZONE_REFRESH:
 	case CTL_ZONE_RETRANSFER:
@@ -260,21 +265,30 @@ static void format_data(ctl_cmd_t cmd, knot_ctl_type_t data_type,
 	case CTL_ZONE_ABORT:
 	case CTL_ZONE_PURGE:
 		if (data_type == KNOT_CTL_TYPE_DATA) {
-			printf("%s%s%s%s%s%s%s%s",
-			       (!(*empty)     ? "\n"      : ""),
-			       (error != NULL ? "error: " : ""),
-			       (zone  != NULL ? "["       : ""),
-			       (zone  != NULL ? zone      : ""),
-			       (zone  != NULL ? "]"       : ""),
-			       (error != NULL ? " ("      : ""),
-			       (error != NULL ? error     : ""),
-			       (error != NULL ? ")"       : ""));
+			printf("%s%s%s%s%s%s%s%s%s%s%s",
+			       (!(*empty)     ? "\n"          : ""),
+			       (error != NULL ? "error: "     : ""),
+			       (zone  != NULL ? "["           : ""),
+			       (zone  != NULL ? COL_BOLD(col) : ""),
+			       (zone  != NULL ? COL_GRN(col)  : ""),
+			       (zone  != NULL ? zone          : ""),
+			       (zone  != NULL ? COL_RST(col)  : ""),
+			       (zone  != NULL ? "]"           : ""),
+			       (error != NULL ? " ("          : ""),
+			       (error != NULL ? error         : ""),
+			       (error != NULL ? ")"           : ""));
 			*empty = false;
 		}
-		if (cmd == CTL_ZONE_STATUS && type != NULL) {
-			printf("%s %s: %s",
+		if (args->desc->cmd == CTL_ZONE_STATUS && type != NULL) {
+			if (!args->extended &&
+			    (value == 0 || strcmp(value, STATUS_EMPTY) == 0) &&
+			    strcmp(type, "serial") != 0) {
+				return;
+			}
+
+			printf("%s %s: %s%s%s",
 			       (data_type != KNOT_CTL_TYPE_DATA ? " |" : ""),
-			       type, value);
+			       type, COL_BOLD(col), value, COL_RST(col));
 		}
 		break;
 	case CTL_CONF_COMMIT: // Can return a check error context.
@@ -433,7 +447,7 @@ static int ctl_receive(cmd_args_t *args)
 			return failed ? KNOT_ERROR : KNOT_EOK;
 		case KNOT_CTL_TYPE_DATA:
 		case KNOT_CTL_TYPE_EXTRA:
-			format_data(args->desc->cmd, type, &data, &empty);
+			format_data(args, type, &data, &empty);
 			break;
 		default:
 			assert(0);
