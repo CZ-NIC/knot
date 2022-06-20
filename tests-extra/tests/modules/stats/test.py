@@ -58,7 +58,8 @@ knot.add_module(zones[0], ModStats())
 knot.add_module(zones[1], ModStats())
 
 t.start()
-t.sleep(5) # Cannot use zones_wait() as it affects the statistics
+knot.zones_wait(zones)
+knot.ctl("-f reload") # Reset module statistics after wait!
 
 check_item(knot, "server", "zone-count", 2)
 
