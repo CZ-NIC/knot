@@ -80,6 +80,9 @@ typedef struct knot_xquic_table {
 	size_t size;
 	size_t usage;
 	size_t pointers;
+	size_t max_conns;
+	size_t ibufs_max;
+	size_t obufs_max;
 	size_t ibufs_size;
 	size_t obufs_size;
 	size_t udp_payload_limit; // for simplicity not distinguishing IPv4/6
@@ -94,13 +97,16 @@ typedef struct knot_xquic_table {
  * \brief Allocate QUIC connections hash table.
  *
  * \param max_conns    Maximum nuber of connections.
+ * \param max_ibufs    Maximum size of buffers for fragmented incomming DNS msgs.
+ * \param max_obufs    Maximum size of buffers for un-ACKed outgoing data.
  * \param udp_pl       Maximum UDP payload size (both IPv4 and 6).
  * \param tls_cert     Server TLS certificate.
  * \param tls_key      TLS private key.
  *
  * \return Allocated table, or NULL.
  */
-knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, size_t udp_pl, const char *tls_cert, const char *tls_key);
+knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
+                                         size_t udp_pl, const char *tls_cert, const char *tls_key);
 
 /*!
  * \brief Free QUIC table including its contents.
@@ -120,7 +126,7 @@ void knot_xquic_table_free(knot_xquic_table_t *table);
  *
  * \return KNOT_E*
  */
-int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_conns, size_t max_obufs,
+int knot_xquic_table_sweep(knot_xquic_table_t *table,
                            size_t *timed_out, size_t *force_closed);
 
 /*!
