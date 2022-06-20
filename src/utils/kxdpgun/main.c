@@ -87,6 +87,7 @@ typedef struct {
 	uint64_t rst_recv;
 	uint64_t size_recv;
 	uint64_t wire_recv;
+	uint64_t pkts_recv;
 	uint64_t rcodes_recv[RCODE_MAX];
 	pthread_mutex_t mutex;
 } kxdpgun_stats_t;
@@ -165,6 +166,7 @@ static void clear_stats(kxdpgun_stats_t *st)
 	st->rst_recv    = 0;
 	st->size_recv   = 0;
 	st->wire_recv   = 0;
+	st->pkts_recv   = 0;
 	st->collected   = 0;
 	memset(st->rcodes_recv, 0, sizeof(st->rcodes_recv));
 	pthread_mutex_unlock(&st->mutex);
@@ -181,6 +183,7 @@ static size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 	into->rst_recv    += what->rst_recv;
 	into->size_recv   += what->size_recv;
 	into->wire_recv   += what->wire_recv;
+	into->pkts_recv   += what->pkts_recv;
 	for (int i = 0; i < RCODE_MAX; i++) {
 		into->rcodes_recv[i] += what->rcodes_recv[i];
 	}
@@ -213,8 +216,8 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool recv)
 		}
 		printf("average DNS reply size: %"PRIu64" B\n",
 		       st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
-		printf("average Ethernet reply rate: %"PRIu64" bps (%.2f Mbps)\n",
-		       ps(st->wire_recv * 8), ps((float)st->wire_recv * 8 / (1000 * 1000)));
+		printf("average Ethernet reply rate: %"PRIu64" bps (%.2f Mbps), %zu raw pps\n",
+		       ps(st->wire_recv * 8), ps((float)st->wire_recv * 8 / (1000 * 1000)), ps(st->pkts_recv));
 
 		for (int i = 0; i < RCODE_MAX; i++) {
 			if (st->rcodes_recv[i] > 0) {
@@ -665,6 +668,7 @@ void *xdp_gun_thread(void *_ctx)
 					}
 				}
 				local_stats.wire_recv += wire;
+				local_stats.pkts_recv += recvd;
 				knot_xdp_recv_finish(xsk, pkts, recvd);
 				pfd.revents = 0;
 			}
