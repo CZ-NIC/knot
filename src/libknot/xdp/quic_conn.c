@@ -35,8 +35,8 @@
 #define BUCKETS_PER_CONNS 8 // Each connecion has several dCIDs, and each CID takes one hash table bucket.
 
 _public_
-knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, size_t udp_pl,
-                                         const char *tls_cert, const char *tls_key)
+knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
+                                         size_t udp_pl, const char *tls_cert, const char *tls_key)
 {
 	size_t table_size = max_conns * BUCKETS_PER_CONNS;
 
@@ -46,6 +46,9 @@ knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, size_t udp_pl,
 	}
 
 	res->size = table_size;
+	res->max_conns = max_conns;
+	res->ibufs_max = max_ibufs;
+	res->obufs_max = max_obufs;
 	res->udp_payload_limit = udp_pl;
 	init_list((list_t *)&res->timeout);
 	res->creds = (void *)res + sizeof(*res) + table_size * sizeof(res->conns[0]);
@@ -82,7 +85,7 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 }
 
 _public_
-int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_conns, size_t max_obufs,
+int knot_xquic_table_sweep(knot_xquic_table_t *table,
                            size_t *timed_out, size_t *force_closed)
 {
 	uint64_t now = 0;
@@ -91,7 +94,7 @@ int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_conns, size_t m
 		if (xquic_conn_timeout(c, &now)) {
 			(*timed_out)++;
 			xquic_table_rem(c, table);
-		} else if (table->usage > max_conns) {
+		} else if (table->usage > table->max_conns) {
 			(*force_closed)++;
 			xquic_table_rem(c, table);
 			// NOTE here it would be correct to send Immediate close
@@ -99,8 +102,13 @@ int knot_xquic_table_sweep(knot_xquic_table_t *table, size_t max_conns, size_t m
 			// nowever, we don't do this for the sake of simplicty
 			// it would be possible to send by using ngtcp2_conn_get_path()...
 			// (also applies to below case)
-		} else if (table->obufs_size > max_obufs) {
+		} else if (table->obufs_size > table->obufs_max) {
 			if (c->obufs_size > 0) {
+				(*force_closed)++;
+				xquic_table_rem(c, table);
+			}
+		} else if (table->ibufs_size > table->ibufs_max) {
+			if (c->ibufs_size > 0) {
 				(*force_closed)++;
 				xquic_table_rem(c, table);
 			}
