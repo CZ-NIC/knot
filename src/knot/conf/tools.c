@@ -794,6 +794,17 @@ int check_template(
 	} \
 }
 
+#define CHECK_CATZ_TPL(option, option_string) \
+{ \
+	val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
+		                 C_TPL, option, catalog_tpl.data, \
+		                 catalog_tpl.len); \
+	if (val.code == KNOT_EOK) { \
+		args->err_str = option_string " in a catalog template"; \
+		return KNOT_EINVAL; \
+	} \
+}
+
 int check_zone(
 	knotd_conf_check_args_t *args)
 {
@@ -863,6 +874,11 @@ int check_zone(
 			default:
 				break;
 			}
+
+			CHECK_CATZ_TPL(C_CATALOG_TPL, "'catalog-template'");
+			CHECK_CATZ_TPL(C_CATALOG_ZONE, "'catalog-zone'");
+			CHECK_CATZ_TPL(C_CATALOG_GROUP, "'catalog-group'");
+
 			conf_val_next(&catalog_tpl);
 		}
 	}
