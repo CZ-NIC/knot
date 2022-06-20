@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 #include "knot/common/fdset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
-#include "knot/query/proxyv2.h"
+#include "knot/server/proxyv2.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/xdp-handler.h"
@@ -85,19 +85,12 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 
 	/* Input packet. */
 	int ret = knot_pkt_parse(query, 0);
-	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
-		/*
-		 * DNS parsing failed, try re-parsing with a PROXY v2 header.
-		 * XXX: This behavior should probably be controlled by a config
-		 * option.
-		 */
-		ret = proxyv2_decapsulate(rx->iov_base, rx->iov_len,
-					  &query, &params, &proxied_remote,
-					  udp->layer.mm);
-
-		if (ret != KNOT_EOK && query->parsed > 0) {
-			// artificially decreasing "parsed" leads to FORMERR
-			query->parsed--;
+	if (ret != KNOT_EOK && query->parsed > 0) {
+		ret = proxyv2_header_strip(&query, params.remote, &proxied_remote);
+		if (ret == KNOT_EOK) {
+			params.remote = &proxied_remote;
+		} else {
+			query->parsed--; // artificially decreasing "parsed" leads to FORMERR
 		}
 	}
 	knot_layer_consume(&udp->layer, query);

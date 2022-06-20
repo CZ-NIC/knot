@@ -147,6 +147,7 @@ typedef struct {
 		bool srv_ecs;
 		bool srv_ans_rotate;
 		bool srv_auto_acl;
+		bool srv_proxy_enabled;
 	} cache;
 
 	/*! List of dynamically loaded modules. */

@@ -14,10 +14,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "knot/query/proxyv2.h"
-
 #include <arpa/inet.h>
 #include <stdint.h>
+#include <string.h>
+
+#include "contrib/proxyv2/proxyv2.h"
+#include "contrib/sockaddr.h"
+#include "libknot/errcode.h"
 
 /*
  * Minimal implementation of the haproxy PROXY v2 protocol.
@@ -61,7 +64,7 @@ struct proxyv2_hdr {
 
 	/*
 	 * The number of PROXY v2 payload bytes following this header to skip
-	 * to reach the proxied packet (i.e., start of the original DNS mesage).
+	 * to reach the proxied packet (i.e., start of the original DNS message).
 	 */
 	uint16_t	len;
 };
@@ -99,35 +102,8 @@ _Static_assert(sizeof(struct proxyv2_addr_ipv6) == 36,
 	       "struct proxyv2_addr_ipv6 is correct size");
 #endif
 
-#define S_ADDR_IS_LOOPBACK(a)	((((long int) (a)) & 0xff000000) == 0x7f000000)
-
-int proxyv2_decapsulate(void *base,
-			size_t len_base,
-			knot_pkt_t **query,
-			knotd_qdata_params_t *params,
-			struct sockaddr_storage *client,
-			knot_mm_t *mm)
+int proxyv2_header_offset(void *base, size_t len_base)
 {
-	/*
-	 * Check if the query was sent from an IP address authorized to send
-	 * proxied DNS traffic. This is a hardcoded ACL check for queries
-	 * originated from 127.0.0.0/8.
-	 *
-	 * XXX: This should be a real ACL check.
-	 */
-	int ret = KNOT_EDENIED;
-	const struct sockaddr_storage *sock = params->remote;
-	if (sock != NULL && sock->ss_family == AF_INET) {
-		const struct sockaddr_in *sock4 = (const struct sockaddr_in *) sock;
-		if (S_ADDR_IS_LOOPBACK(ntohl(sock4->sin_addr.s_addr))) {
-			ret = KNOT_EOK;
-		}
-	}
-	if (ret != KNOT_EOK) {
-		/* Failure. */
-		return ret;
-	}
-
 	/*
 	 * Check that 'base' has enough bytes to read the PROXY v2 signature
 	 * and header, and if so whether the PROXY v2 signature is present.
@@ -140,8 +116,7 @@ int proxyv2_decapsulate(void *base,
 	}
 
 	/* Read the PROXY v2 header. */
-	struct proxyv2_hdr hdr;
-	memcpy(&hdr, base + sizeof(PROXYV2_SIG), sizeof(hdr));
+	struct proxyv2_hdr *hdr = base + sizeof(PROXYV2_SIG);
 
 	/*
 	 * Check that this is a version 2, command "PROXY" payload.
@@ -149,7 +124,7 @@ int proxyv2_decapsulate(void *base,
 	 * XXX: The PROXY v2 spec mandates support for the "LOCAL" command
 	 * (byte 0x20).
 	 */
-	if (hdr.ver_cmd != 0x21) {
+	if (hdr->ver_cmd != 0x21) {
 		/* Failure. */
 		return KNOT_EMALF;
 	}
@@ -160,49 +135,32 @@ int proxyv2_decapsulate(void *base,
 	 * PROXY v2 header, and the bytes of variable length PROXY v2 data
 	 * following the PROXY v2 header.
 	 */
-	const size_t offset_dns =
-		sizeof(PROXYV2_SIG) +
-		sizeof(struct proxyv2_hdr) +
-		ntohs(hdr.len);
-
-	/*
-	 * Check if the calculated offset of the original DNS message is
-	 * actually inside the packet received on the wire, and if so, parse
-	 * the real DNS query message.
-	 */
+	const size_t offset_dns = sizeof(PROXYV2_SIG) +
+	                          sizeof(struct proxyv2_hdr) + ntohs(hdr->len);
 	if (offset_dns < len_base) {
-		/* Free the old, misparsed query message object. */
-		knot_pkt_free(*query);
-
-		/*
-		 * Re-parse the query message using the data in the
-		 * packet following the PROXY v2 payload.
-		 */
-		*query = knot_pkt_new(base + offset_dns,
-				      len_base - offset_dns,
-				      mm);
-		ret = knot_pkt_parse(*query, 0);
-		if (ret != KNOT_EOK) {
-			/* Failure. */
-			return ret;
-		}
+		return offset_dns;
 	}
 
+	return KNOT_EMALF;
+}
+
+int proxyv2_addr_store(void *base, size_t len_base, struct sockaddr_storage *ss)
+{
 	/*
 	 * Calculate the offset of the PROXY v2 address block. This is the data
 	 * immediately following the PROXY v2 header.
 	 */
-	const size_t offset_proxy_addr =
-		sizeof(PROXYV2_SIG) + sizeof(struct proxyv2_hdr);
+	const size_t offset_proxy_addr = sizeof(PROXYV2_SIG) +
+	                                 sizeof(struct proxyv2_hdr);
+	struct proxyv2_hdr *hdr = base + sizeof(PROXYV2_SIG);
 
 	/*
 	 * Handle proxied UDP-over-IPv4 and UDP-over-IPv6 packets.
-	 *
-	 * XXX: What about TCP?
 	 */
-	if (hdr.fam_addr == 0x12) {
+	//TODO What about TCP?
+	if (hdr->fam_addr == 0x12) {
 		/* This is a proxied UDP-over-IPv4 packet. */
-		struct proxyv2_addr_ipv4 addr;
+		struct proxyv2_addr_ipv4 *addr;
 
 		/*
 		 * Check that the packet is large enough to contain the IPv4
@@ -210,29 +168,21 @@ int proxyv2_decapsulate(void *base,
 		 */
 		if (offset_proxy_addr + sizeof(addr) < len_base) {
 			/* Read the PROXY v2 address block. */
-			memcpy(&addr, base + offset_proxy_addr, sizeof(addr));
+			addr = base + offset_proxy_addr;
 
 			/* Copy the client's IPv4 address to the caller. */
-			sockaddr_set_raw(client,
-					 AF_INET,
-					 &addr.src_addr[0],
-					 sizeof(addr.src_addr));
+			sockaddr_set_raw(ss, AF_INET, addr->src_addr,
+					 sizeof(addr->src_addr));
 
 			/* Copy the client's port to the caller. */
-			sockaddr_port_set(client, ntohs(addr.src_port));
-
-			/* Save the address of the proxy. */
-			params->proxy = params->remote;
-
-			/* Expose the address of the proxied client. */
-			params->remote = client;
+			sockaddr_port_set(ss, ntohs(addr->src_port));
 
 			/* Success. */
 			return KNOT_EOK;
 		}
-	} else if (hdr.fam_addr == 0x22) {
+	} else if (hdr->fam_addr == 0x22) {
 		/* This is a proxied UDP-over-IPv6 packet. */
-		struct proxyv2_addr_ipv6 addr;
+		struct proxyv2_addr_ipv6 *addr;
 
 		/*
 		 * Check that the packet is large enough to contain the IPv6
@@ -240,22 +190,14 @@ int proxyv2_decapsulate(void *base,
 		 */
 		if (offset_proxy_addr + sizeof(addr) < len_base) {
 			/* Read the PROXY v2 address block. */
-			memcpy(&addr, base + offset_proxy_addr, sizeof(addr));
+			addr = base + offset_proxy_addr;
 
 			/* Copy the client's IPv6 address to the caller. */
-			sockaddr_set_raw(client,
-					 AF_INET6,
-					 &addr.src_addr[0],
-					 sizeof(addr.src_addr));
+			sockaddr_set_raw(ss, AF_INET6, addr->src_addr,
+					 sizeof(addr->src_addr));
 
 			/* Copy the client's port to the caller. */
-			sockaddr_port_set(client, ntohs(addr.src_port));
-
-			/* Save the address of the proxy. */
-			params->proxy = params->remote;
-
-			/* Expose the address of the proxied client. */
-			params->remote = client;
+			sockaddr_port_set(ss, ntohs(addr->src_port));
 
 			/* Success. */
 			return KNOT_EOK;

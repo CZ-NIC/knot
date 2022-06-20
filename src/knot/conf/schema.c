@@ -236,6 +236,7 @@ static const yp_item_t desc_server[] = {
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ C_AUTO_ACL,             YP_TBOOL, YP_VNONE },
+	{ C_PROXY_ALLOWLIST,      YP_TNET,  YP_VNONE, YP_FMULTI},
 	{ C_DBUS_EVENT,           YP_TOPT,  YP_VOPT = { dbus_events, DBUS_EVENT_NONE }, YP_FMULTI },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
