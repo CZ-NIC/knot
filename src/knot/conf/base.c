@@ -240,6 +240,9 @@ static void init_cache(
 
 	val = conf_get(conf, C_SRV, C_AUTO_ACL);
 	conf->cache.srv_auto_acl = conf_bool(&val);
+
+	val = conf_get(conf, C_SRV, C_PROXY_ALLOWLIST);
+	conf->cache.srv_proxy_enabled = (conf_val_count(&val) > 0);
 }
 
 int conf_new(

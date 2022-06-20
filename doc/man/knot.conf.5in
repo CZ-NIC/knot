@@ -201,6 +201,7 @@ server:
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
     automatic\-acl: BOOL
+    proxy\-allowlist: ADDR[/INT] | ADDR\-ADDR ...
     dbus\-event: none | running | zone\-updated | ksk\-submission | dnssec\-invalid ...
     listen: ADDR[@INT] ...
 .ft P
@@ -443,6 +444,21 @@ If enabled, \fI\%automatic ACL\fP setting of
 configured remotes is considered when evaluating authorized operations.
 .sp
 \fIDefault:\fP off
+.SS proxy\-allowlist
+.sp
+An ordered list of IP addresses, network subnets, or network ranges
+which are allowed as a source address of proxied DNS traffic over UDP.
+The supported proxy protocol is
+\fI\%haproxy PROXY v2\fP\&.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+TCP is not supported.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP not set
 .SS dbus\-event
 .sp
 Specification of server or zone states which emit a D\-Bus signal on the system

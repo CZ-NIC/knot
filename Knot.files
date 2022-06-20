@@ -161,6 +161,8 @@ src/contrib/openbsd/strlcat.h
 src/contrib/openbsd/strlcpy.c
 src/contrib/openbsd/strlcpy.h
 src/contrib/os.h
+src/contrib/proxyv2/proxyv2.c
+src/contrib/proxyv2/proxyv2.h
 src/contrib/qp-trie/trie.c
 src/contrib/qp-trie/trie.h
 src/contrib/semaphore.c
@@ -342,6 +344,8 @@ src/knot/query/requestor.c
 src/knot/query/requestor.h
 src/knot/server/dthreads.c
 src/knot/server/dthreads.h
+src/knot/server/proxyv2.c
+src/knot/server/proxyv2.h
 src/knot/server/server.c
 src/knot/server/server.h
 src/knot/server/tcp-handler.c

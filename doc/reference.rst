@@ -152,6 +152,7 @@ General options related to the server.
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      automatic-acl: BOOL
+     proxy-allowlist: ADDR[/INT] | ADDR-ADDR ...
      dbus-event: none | running | zone-updated | ksk-submission | dnssec-invalid ...
      listen: ADDR[@INT] ...
 
@@ -475,6 +476,21 @@ If enabled, :ref:`automatic ACL<remote_automatic-acl>` setting of
 configured remotes is considered when evaluating authorized operations.
 
 *Default:* off
+
+.. _server_proxy-allowlist:
+
+proxy-allowlist
+---------------
+
+An ordered list of IP addresses, network subnets, or network ranges
+which are allowed as a source address of proxied DNS traffic over UDP.
+The supported proxy protocol is
+`haproxy PROXY v2 <https://www.haproxy.org/download/2.5/doc/proxy-protocol.txt>`_.
+
+.. NOTE::
+   TCP is not supported.
+
+*Default:* not set
 
 .. _server_dbus-event:
 

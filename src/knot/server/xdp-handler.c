@@ -22,6 +22,7 @@
 
 #include "knot/server/xdp-handler.h"
 #include "knot/common/log.h"
+#include "knot/server/proxyv2.h"
 #include "knot/server/server.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
@@ -136,13 +137,19 @@ static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer,
 		                KNOTD_QUERY_FLAG_NO_IXFR |
 		                KNOTD_QUERY_FLAG_LIMIT_SIZE;
 	}
+	struct sockaddr_storage proxied_remote;
 
 	knot_layer_begin(layer, params);
 
 	knot_pkt_t *query = knot_pkt_new(payload->iov_base, payload->iov_len, layer->mm);
 	int ret = knot_pkt_parse(query, 0);
 	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
-		query->parsed--; // artificially decreasing "parsed" leads to FORMERR
+		ret = proxyv2_header_strip(&query, params->remote, &proxied_remote);
+		if (ret == KNOT_EOK) {
+			params->remote = &proxied_remote;
+		} else {
+			query->parsed--; // artificially decreasing "parsed" leads to FORMERR
+		}
 	}
 	knot_layer_consume(layer, query);
 }

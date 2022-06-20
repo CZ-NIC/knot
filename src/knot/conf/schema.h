@@ -97,6 +97,7 @@
 #define C_PIDFILE		"\x07""pidfile"
 #define C_POLICY		"\x06""policy"
 #define C_PROPAG_DELAY		"\x11""propagation-delay"
+#define C_PROXY_ALLOWLIST	"\x0F""proxy-allowlist"
 #define C_REFRESH_MAX_INTERVAL	"\x14""refresh-max-interval"
 #define C_REFRESH_MIN_INTERVAL	"\x14""refresh-min-interval"
 #define C_REPRO_SIGNING		"\x14""reproducible-signing"
