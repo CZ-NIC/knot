@@ -796,11 +796,11 @@ int check_template(
 
 #define CHECK_CATZ_TPL(option, option_string) \
 { \
-	val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
-		                 C_TPL, option, catalog_tpl.data, \
-		                 catalog_tpl.len); \
+	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
+	                                    C_TPL, option, catalog_tpl.data, \
+	                                    catalog_tpl.len); \
 	if (val.code == KNOT_EOK) { \
-		args->err_str = option_string " in a catalog template"; \
+		args->err_str = "'" option_string "' in a catalog template"; \
 		return KNOT_EINVAL; \
 	} \
 }
@@ -861,25 +861,10 @@ int check_zone(
 	if (role == CATALOG_ROLE_INTERPRET) {
 		conf_val(&catalog_tpl);
 		while (catalog_tpl.code == KNOT_EOK) {
-			conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
-			                                    C_TPL, C_CATALOG_ROLE, catalog_tpl.data,
-			                                    catalog_tpl.len);
-			switch (conf_opt(&val)) {
-			case CATALOG_ROLE_INTERPRET:
-			case CATALOG_ROLE_GENERATE:
-				args->err_str = "catalog zone cannot interpret other catalog zones";
-				return KNOT_EINVAL;
-			case CATALOG_ROLE_MEMBER:
-				args->err_str = "catalog zone cannot interpret generated member zones";
-				return KNOT_EINVAL;
-			default:
-				break;
-			}
-
-			CHECK_CATZ_TPL(C_CATALOG_TPL, "'catalog-template'");
-			CHECK_CATZ_TPL(C_CATALOG_ZONE, "'catalog-zone'");
-			CHECK_CATZ_TPL(C_CATALOG_GROUP, "'catalog-group'");
-
+			CHECK_CATZ_TPL(C_CATALOG_TPL,   "catalog-template");
+			CHECK_CATZ_TPL(C_CATALOG_ROLE,  "catalog-role");
+			CHECK_CATZ_TPL(C_CATALOG_ZONE,  "catalog-zone");
+			CHECK_CATZ_TPL(C_CATALOG_GROUP, "catalog-group");
 			conf_val_next(&catalog_tpl);
 		}
 	}
