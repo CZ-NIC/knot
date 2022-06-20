@@ -143,7 +143,7 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 		char *tls_cert = conf_tls(pconf, C_TLS_CERT);
 		char *tls_key = conf_tls(pconf, C_TLS_KEY);
 		size_t udp_pl = MIN(pconf->cache.srv_udp_max_payload_ipv4, pconf->cache.srv_udp_max_payload_ipv6);
-		ctx->quic_table = knot_xquic_table_new(ctx->tcp_max_conns, udp_pl, tls_cert, tls_key);
+		ctx->quic_table = knot_xquic_table_new(ctx->tcp_max_conns, ctx->tcp_max_inbufs, ctx->tcp_max_obufs, udp_pl, tls_cert, tls_key);
 		free(tls_cert);
 		free(tls_key);
 		if (ctx->quic_table == NULL) {
@@ -443,7 +443,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 #ifdef ENABLE_XDP_QUIC
 		if (ctx->quic_table) {
 			size_t to = 0, fc = 0;
-			knot_xquic_table_sweep(ctx->quic_table, ctx->tcp_max_conns, ctx->tcp_max_obufs, &to, &fc);
+			knot_xquic_table_sweep(ctx->quic_table, &to, &fc);
 			if (to > 0 || fc > 0) {
 				log_notice("QUIC, connection timeout %zu, forcibly closed %zu", to, fc);
 			}
