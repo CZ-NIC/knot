@@ -554,32 +554,31 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   libedit_LIBS=
 ])
 
-# libngtcp2
-AC_ARG_WITH(libngtcp2,
-  AS_HELP_STRING([--with-libngtcp2=[DIR|embedded]], [Support DoQ (needs libngtcp2 >= 0.5.0, gnutls >= 3.7.2)]),
-  [with_libngtcp2=$withval], [with_libngtcp2=yes]
-)
+# QUIC support
+AC_ARG_ENABLE([quic],
+   AS_HELP_STRING([--enable-quic=auto|yes|no], [Support DoQ (needs libngtcp2 >= 0.6.0, gnutls >= 3.7.2) [default=auto]]),
+   [], [enable_quic=auto])
 
-AS_IF([test "$with_libngtcp2" != "no"], [
-  AS_IF([test "$with_libngtcp2" = "embedded"], [
-    AS_IF([test "$gnutls_quic" = "yes"],
-      [embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
-       embedded_libngtcp2_LIBS=$libelf_LIBS
-       libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
-      [with_libngtcp2=no
-       AC_MSG_WARN([gnutls >= 3.7.2 is required])])], [
-    PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.5.0 libngtcp2_crypto_gnutls],
-      [with_libngtcp2=libngtcp2],
-      [with_libngtcp2=no
-       AC_MSG_WARN([libngtcp2 >= 0.5.0 not found])])])
-])
-AM_CONDITIONAL([EMBEDDED_LIBNGTCP2], [test "$with_libngtcp2" = "embedded"])
+AS_CASE([$enable_quic],
+   [auto], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.6.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [enable_quic=no])],
+   [yes], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.6.0 libngtcp2_crypto_gnutls], [enable_quic=yes],
+             AS_IF([test "$gnutls_quic" = "yes"],
+                [enable_quic=embedded
+                 embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
+                 embedded_libngtcp2_LIBS=$libelf_LIBS
+                 libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
+                [enable_quic=no
+                 AC_MSG_WARN([gnutls >= 3.7.2 is required])]))],
+   [no], [],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-quic.])]
+)
+AM_CONDITIONAL([EMBEDDED_LIBNGTCP2], [test "$enable_quic" = "embedded"])
 AC_SUBST([embedded_libngtcp2_CFLAGS])
 AC_SUBST([embedded_libngtcp2_LIBS])
 AC_SUBST([libngtcp2_CFLAGS])
 AC_SUBST([libngtcp2_LIBS])
 
-AS_IF([test "$with_libngtcp2" != "no"], [
+AS_IF([test "$enable_quic" != "no"], [
   AC_DEFINE([LIBNGTCP2], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
 
 ############################################
@@ -811,7 +810,7 @@ result_msg_base="  Knot DNS $VERSION
     Use recvmmsg:           ${enable_recvmmsg}
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
     XDP support:            ${enable_xdp}
-    DoQ support:            ${with_libngtcp2}
+    DoQ support:            ${enable_quic}
     Socket polling:         ${socket_polling}
     Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
