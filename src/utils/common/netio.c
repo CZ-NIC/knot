@@ -440,11 +440,15 @@ int net_connect(net_t *net)
 #ifdef LIBNGHTTP2
 			if (net->https.params.enable) {
 				// Establish HTTPS connection.
+				char *remote = net_get_remote(net);
 				ret = tls_ctx_setup_remote_endpoint(&net->tls, &doh_alpn, 1, NULL,
-				        net_get_remote(net));
+				        remote);
 				if (ret != 0) {
 					close(sockfd);
 					return ret;
+				}
+				if (remote && net->https.authority == NULL) {
+					net->https.authority = strdup(remote);
 				}
 				ret = https_ctx_connect(&net->https, sockfd, fastopen,
 				        (struct sockaddr_storage *)net->srv->ai_addr);
