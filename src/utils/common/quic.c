@@ -956,7 +956,7 @@ void quic_ctx_deinit(quic_ctx_t *ctx)
 
 void print_quic(const quic_ctx_t *ctx)
 {
-	if (ctx == NULL || ctx->tls->session == NULL) {
+	if (ctx == NULL || !ctx->params.enable || ctx->tls->session == NULL) {
 		return;
 	}
 
