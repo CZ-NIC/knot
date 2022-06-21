@@ -520,9 +520,10 @@ void https_ctx_deinit(https_ctx_t *ctx)
 
 void print_https(const https_ctx_t *ctx)
 {
-	if (!ctx || !ctx->authority || !ctx->path) {
+	if (!ctx || !ctx->params.enable || !ctx->authority || !ctx->path) {
 		return;
 	}
+
 	printf(";; HTTP session (HTTP/2-%s)-(%s%s)-(status: %lu)\n",
 	       ctx->params.method == POST ? "POST" : "GET", ctx->authority,
 	       ctx->path, ctx->status);

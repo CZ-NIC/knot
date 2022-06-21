@@ -729,7 +729,7 @@ void tls_ctx_deinit(tls_ctx_t *ctx)
 
 void print_tls(const tls_ctx_t *ctx)
 {
-	if (ctx == NULL || ctx->session == NULL) {
+	if (ctx == NULL || ctx->params == NULL || !ctx->params->enable || ctx->session == NULL) {
 		return;
 	}
 
