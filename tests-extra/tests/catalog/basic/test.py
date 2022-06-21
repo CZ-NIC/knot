@@ -184,12 +184,42 @@ t.sleep(6)
 resp = master.dig("cataloged2.", "SOA")
 resp.check(rcode="NOERROR")
 
+master.stop()
+
+# Check purging catalog zone.
+slave.ctl("zone-purge -f %s" % zone[1].name)
+t.sleep(4)
+resp = slave.dig("version.catalog1.", "TXT", udp=False, tsig=True)
+resp.check(rcode="SERVFAIL")
+resp = slave.dig("cataloged2.", "SOA", dnssec=True)
+resp.check(rcode="REFUSED")
+
+master.start()
+
+# Check refresh of catalog after purge.
+slave.ctl("zone-refresh %s" % zone[1].name)
+t.sleep(8)
+resp = slave.dig("version.catalog1.", "TXT", udp=False, tsig=True)
+resp.check(rcode="NOERROR")
+resp = slave.dig("cataloged2.", "SOA", dnssec=True)
+resp.check(rcode="NOERROR")
+resp3 = slave.dig("cataloged2.", "DNSKEY")
+resp3.check_count(2, "DNSKEY")
+if resp3.count("DNSKEY") > 0:
+    for dnskey3 in resp3.resp.answer[0].to_rdataset():
+        if dnskey2.to_text() == dnskey3.to_text():
+            set_err("ZONE NOT PURGED2")
+dnskey3 = resp2.resp.answer[0].to_rdataset()[0]
+
 # Check inaccessibility of catalog zone
 slave.ctl("conf-begin")
 slave.ctl("conf-unset zone[catalog1.].acl") # remove transfer-related ACLs
 slave.ctl("conf-commit")
 t.sleep(3)
-resp = slave.dig("abc.catalog1.", "A")
-resp.check(rcode="REFUSED")
+try:
+    resp = slave.dig("version.catalog1.", "TXT", udp=False, tsig=True)
+    resp.check(rcode="REFUSED")
+except:
+    pass
 
 t.end()
