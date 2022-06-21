@@ -218,6 +218,7 @@ int ngtcp2_crypto_derive_and_install_rx_key(ngtcp2_conn *conn, uint8_t *key,
   size_t ivlen;
   int rv;
   ngtcp2_crypto_ctx cctx;
+  uint32_t version;
 
   if (level == NGTCP2_CRYPTO_LEVEL_EARLY && !ngtcp2_conn_is_server(conn)) {
     return 0;
@@ -238,6 +239,7 @@ int ngtcp2_crypto_derive_and_install_rx_key(ngtcp2_conn *conn, uint8_t *key,
     ngtcp2_crypto_ctx_tls_early(&cctx, tls);
     ngtcp2_conn_set_early_crypto_ctx(conn, &cctx);
     ctx = ngtcp2_conn_get_early_crypto_ctx(conn);
+    version = ngtcp2_conn_get_client_chosen_version(conn);
     break;
   case NGTCP2_CRYPTO_LEVEL_HANDSHAKE:
     if (ngtcp2_conn_is_server(conn) &&
@@ -250,6 +252,7 @@ int ngtcp2_crypto_derive_and_install_rx_key(ngtcp2_conn *conn, uint8_t *key,
     /* fall through */
   default:
     ctx = ngtcp2_conn_get_crypto_ctx(conn);
+    version = ngtcp2_conn_get_negotiated_version(conn);
 
     if (!ctx->aead.native_handle) {
       ngtcp2_crypto_ctx_tls(&cctx, tls);
@@ -263,9 +266,8 @@ int ngtcp2_crypto_derive_and_install_rx_key(ngtcp2_conn *conn, uint8_t *key,
   hp = &ctx->hp;
   ivlen = ngtcp2_crypto_packet_protection_ivlen(aead);
 
-  if (ngtcp2_crypto_derive_packet_protection_key(
-          key, iv, hp_key, ngtcp2_conn_get_negotiated_version(conn), aead, md,
-          secret, secretlen) != 0) {
+  if (ngtcp2_crypto_derive_packet_protection_key(key, iv, hp_key, version, aead,
+                                                 md, secret, secretlen) != 0) {
     return -1;
   }
 
@@ -326,17 +328,10 @@ fail:
  * This function returns 0 if it succeeds, or -1.
  */
 static int crypto_set_local_transport_params(ngtcp2_conn *conn, void *tls) {
-  ngtcp2_transport_params_type exttype =
-      ngtcp2_conn_is_server(conn)
-          ? NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS
-          : NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO;
-  ngtcp2_transport_params params;
   ngtcp2_ssize nwrite;
   uint8_t buf[256];
 
-  ngtcp2_conn_get_local_transport_params(conn, &params);
-
-  nwrite = ngtcp2_encode_transport_params(buf, sizeof(buf), exttype, &params);
+  nwrite = ngtcp2_conn_encode_local_transport_params(conn, buf, sizeof(buf));
   if (nwrite < 0) {
     return -1;
   }
@@ -364,6 +359,7 @@ int ngtcp2_crypto_derive_and_install_tx_key(ngtcp2_conn *conn, uint8_t *key,
   size_t ivlen;
   int rv;
   ngtcp2_crypto_ctx cctx;
+  uint32_t version;
 
   if (level == NGTCP2_CRYPTO_LEVEL_EARLY && ngtcp2_conn_is_server(conn)) {
     return 0;
@@ -384,6 +380,7 @@ int ngtcp2_crypto_derive_and_install_tx_key(ngtcp2_conn *conn, uint8_t *key,
     ngtcp2_crypto_ctx_tls_early(&cctx, tls);
     ngtcp2_conn_set_early_crypto_ctx(conn, &cctx);
     ctx = ngtcp2_conn_get_early_crypto_ctx(conn);
+    version = ngtcp2_conn_get_client_chosen_version(conn);
     break;
   case NGTCP2_CRYPTO_LEVEL_HANDSHAKE:
     if (ngtcp2_conn_is_server(conn) &&
@@ -396,6 +393,7 @@ int ngtcp2_crypto_derive_and_install_tx_key(ngtcp2_conn *conn, uint8_t *key,
     /* fall through */
   default:
     ctx = ngtcp2_conn_get_crypto_ctx(conn);
+    version = ngtcp2_conn_get_negotiated_version(conn);
 
     if (!ctx->aead.native_handle) {
       ngtcp2_crypto_ctx_tls(&cctx, tls);
@@ -409,9 +407,8 @@ int ngtcp2_crypto_derive_and_install_tx_key(ngtcp2_conn *conn, uint8_t *key,
   hp = &ctx->hp;
   ivlen = ngtcp2_crypto_packet_protection_ivlen(aead);
 
-  if (ngtcp2_crypto_derive_packet_protection_key(
-          key, iv, hp_key, ngtcp2_conn_get_negotiated_version(conn), aead, md,
-          secret, secretlen) != 0) {
+  if (ngtcp2_crypto_derive_packet_protection_key(key, iv, hp_key, version, aead,
+                                                 md, secret, secretlen) != 0) {
     return -1;
   }
 
@@ -886,7 +883,7 @@ static size_t crypto_generate_retry_token_aad(uint8_t *dest, uint32_t version,
 
   version = ngtcp2_htonl(version);
   memcpy(p, &version, sizeof(version));
-  memcpy(p, sa, salen);
+  memcpy(p, sa, (size_t)salen);
   p += salen;
   memcpy(p, retry_scid->data, retry_scid->datalen);
   p += retry_scid->datalen;

@@ -267,6 +267,10 @@ ngtcp2_ssize ngtcp2_encode_transport_params_versioned(
            ngtcp2_put_varint_len(version_infolen) + version_infolen;
   }
 
+  if (dest == NULL && destlen == 0) {
+    return (ngtcp2_ssize)len;
+  }
+
   if (destlen < len) {
     return NGTCP2_ERR_NOBUF;
   }
@@ -807,7 +811,8 @@ int ngtcp2_decode_transport_params_versioned(
       p += sizeof(uint32_t);
       if (valuelen > sizeof(uint32_t)) {
         params->version_info.other_versions = (uint8_t *)p;
-        params->version_info.other_versionslen = valuelen - sizeof(uint32_t);
+        params->version_info.other_versionslen =
+            (size_t)valuelen - sizeof(uint32_t);
 
         for (i = sizeof(uint32_t); i < valuelen;
              i += sizeof(uint32_t), p += sizeof(uint32_t)) {
@@ -844,4 +849,77 @@ int ngtcp2_decode_transport_params_versioned(
   }
 
   return 0;
+}
+
+static int transport_params_copy_new(ngtcp2_transport_params **pdest,
+                                     const ngtcp2_transport_params *src,
+                                     const ngtcp2_mem *mem) {
+  size_t len = sizeof(**pdest);
+  ngtcp2_transport_params *dest;
+  uint8_t *p;
+
+  if (src->version_info_present) {
+    len += src->version_info.other_versionslen;
+  }
+
+  dest = ngtcp2_mem_malloc(mem, len);
+  if (dest == NULL) {
+    return NGTCP2_ERR_NOMEM;
+  }
+
+  *dest = *src;
+
+  if (src->version_info_present && src->version_info.other_versionslen) {
+    p = (uint8_t *)dest + sizeof(*dest);
+    memcpy(p, src->version_info.other_versions,
+           src->version_info.other_versionslen);
+    dest->version_info.other_versions = p;
+  }
+
+  *pdest = dest;
+
+  return 0;
+}
+
+int ngtcp2_decode_transport_params_new(ngtcp2_transport_params **pparams,
+                                       ngtcp2_transport_params_type exttype,
+                                       const uint8_t *data, size_t datalen,
+                                       const ngtcp2_mem *mem) {
+  int rv;
+  ngtcp2_transport_params params;
+
+  rv = ngtcp2_decode_transport_params(&params, exttype, data, datalen);
+  if (rv < 0) {
+    return rv;
+  }
+
+  if (mem == NULL) {
+    mem = ngtcp2_mem_default();
+  }
+
+  return transport_params_copy_new(pparams, &params, mem);
+}
+
+void ngtcp2_transport_params_del(ngtcp2_transport_params *params,
+                                 const ngtcp2_mem *mem) {
+  if (params == NULL) {
+    return;
+  }
+
+  if (mem == NULL) {
+    mem = ngtcp2_mem_default();
+  }
+
+  ngtcp2_mem_free(mem, params);
+}
+
+int ngtcp2_transport_params_copy_new(ngtcp2_transport_params **pdest,
+                                     const ngtcp2_transport_params *src,
+                                     const ngtcp2_mem *mem) {
+  if (src == NULL) {
+    *pdest = NULL;
+    return 0;
+  }
+
+  return transport_params_copy_new(pdest, src, mem);
 }
