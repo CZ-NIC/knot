@@ -32,6 +32,7 @@ void quic_params_clean(quic_params_t *params);
 #ifdef LIBNGTCP2
 
 #include <ngtcp2/ngtcp2.h>
+#include <ngtcp2/ngtcp2_crypto.h>
 
 #include "utils/common/tls.h"
 
@@ -71,6 +72,7 @@ typedef enum {
 } quic_doq_error_t;
 
 typedef struct {
+	ngtcp2_crypto_conn_ref conn_ref;
 	// Parameters
 	quic_params_t params;
 
