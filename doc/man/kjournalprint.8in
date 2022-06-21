@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "KJOURNALPRINT" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
-.SH NAME
-kjournalprint \- Knot DNS journal print utility
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "KJOURNALPRINT" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
+.SH NAME
+kjournalprint \- Knot DNS journal print utility
 .SH SYNOPSIS
 .sp
 \fBkjournalprint\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoption\fP\&...] \fIzone_name\fP
