@@ -125,14 +125,14 @@ typedef enum {
 #define NGTCP2_CONNECTION_CLOSE_ERROR_MAX_REASONLEN 1024
 
 /* NGTCP2_WRITE_PKT_FLAG_NONE indicates that no flag is set. */
-#define NGTCP2_WRITE_PKT_FLAG_NONE 0x00
+#define NGTCP2_WRITE_PKT_FLAG_NONE 0x00u
 /* NGTCP2_WRITE_PKT_FLAG_REQUIRE_PADDING indicates that packet other
    than Initial packet should be padded.  Initial packet might be
    padded based on QUIC requirement regardless of this flag. */
-#define NGTCP2_WRITE_PKT_FLAG_REQUIRE_PADDING 0x01
+#define NGTCP2_WRITE_PKT_FLAG_REQUIRE_PADDING 0x01u
 /* NGTCP2_WRITE_PKT_FLAG_MORE indicates that more frames might come
    and it should be encoded into the current packet. */
-#define NGTCP2_WRITE_PKT_FLAG_MORE 0x02
+#define NGTCP2_WRITE_PKT_FLAG_MORE 0x02u
 
 /*
  * ngtcp2_max_frame is defined so that it covers the largest ACK
@@ -157,7 +157,7 @@ void ngtcp2_path_challenge_entry_init(ngtcp2_path_challenge_entry *pcent,
                                       const uint8_t *data);
 
 /* NGTCP2_CONN_FLAG_NONE indicates that no flag is set. */
-#define NGTCP2_CONN_FLAG_NONE 0x00
+#define NGTCP2_CONN_FLAG_NONE 0x00u
 /* NGTCP2_CONN_FLAG_HANDSHAKE_COMPLETED is set when TLS stack declares
    that TLS handshake has completed.  The condition of this
    declaration varies between TLS implementations and this flag does
@@ -165,61 +165,61 @@ void ngtcp2_path_challenge_entry_init(ngtcp2_path_challenge_entry *pcent,
    implementations declare TLS handshake completion as server when
    they write off Server Finished and before deriving application rx
    secret. */
-#define NGTCP2_CONN_FLAG_HANDSHAKE_COMPLETED 0x01
+#define NGTCP2_CONN_FLAG_HANDSHAKE_COMPLETED 0x01u
 /* NGTCP2_CONN_FLAG_CONN_ID_NEGOTIATED is set if connection ID is
    negotiated.  This is only used for client. */
-#define NGTCP2_CONN_FLAG_CONN_ID_NEGOTIATED 0x02
+#define NGTCP2_CONN_FLAG_CONN_ID_NEGOTIATED 0x02u
 /* NGTCP2_CONN_FLAG_TRANSPORT_PARAM_RECVED is set if transport
    parameters are received. */
-#define NGTCP2_CONN_FLAG_TRANSPORT_PARAM_RECVED 0x04
+#define NGTCP2_CONN_FLAG_TRANSPORT_PARAM_RECVED 0x04u
 /* NGTCP2_CONN_FLAG_LOCAL_TRANSPORT_PARAMS_COMMITTED is set when a
    local transport parameters are applied. */
-#define NGTCP2_CONN_FLAG_LOCAL_TRANSPORT_PARAMS_COMMITTED 0x08
+#define NGTCP2_CONN_FLAG_LOCAL_TRANSPORT_PARAMS_COMMITTED 0x08u
 /* NGTCP2_CONN_FLAG_RECV_RETRY is set when a client receives Retry
    packet. */
-#define NGTCP2_CONN_FLAG_RECV_RETRY 0x10
+#define NGTCP2_CONN_FLAG_RECV_RETRY 0x10u
 /* NGTCP2_CONN_FLAG_EARLY_DATA_REJECTED is set when 0-RTT packet is
    rejected by a peer. */
-#define NGTCP2_CONN_FLAG_EARLY_DATA_REJECTED 0x20
+#define NGTCP2_CONN_FLAG_EARLY_DATA_REJECTED 0x20u
 /* NGTCP2_CONN_FLAG_KEEP_ALIVE_CANCELLED is set when the expired
    keep-alive timer has been cancelled. */
-#define NGTCP2_CONN_FLAG_KEEP_ALIVE_CANCELLED 0x40
+#define NGTCP2_CONN_FLAG_KEEP_ALIVE_CANCELLED 0x40u
 /* NGTCP2_CONN_FLAG_HANDSHAKE_CONFIRMED is set when an endpoint
    confirmed completion of handshake. */
-#define NGTCP2_CONN_FLAG_HANDSHAKE_CONFIRMED 0x80
+#define NGTCP2_CONN_FLAG_HANDSHAKE_CONFIRMED 0x80u
 /* NGTCP2_CONN_FLAG_HANDSHAKE_COMPLETED_HANDLED is set when the
    library transitions its state to "post handshake". */
-#define NGTCP2_CONN_FLAG_HANDSHAKE_COMPLETED_HANDLED 0x0100
+#define NGTCP2_CONN_FLAG_HANDSHAKE_COMPLETED_HANDLED 0x0100u
 /* NGTCP2_CONN_FLAG_HANDSHAKE_EARLY_RETRANSMIT is set when the early
    handshake retransmission has done when server receives overlapping
    Initial crypto data. */
-#define NGTCP2_CONN_FLAG_HANDSHAKE_EARLY_RETRANSMIT 0x0200
+#define NGTCP2_CONN_FLAG_HANDSHAKE_EARLY_RETRANSMIT 0x0200u
 /* NGTCP2_CONN_FLAG_CLEAR_FIXED_BIT indicates that the local endpoint
    sends a QUIC packet without Fixed Bit set if a remote endpoint
    supports Greasing QUIC Bit extension. */
-#define NGTCP2_CONN_FLAG_CLEAR_FIXED_BIT 0x0400
+#define NGTCP2_CONN_FLAG_CLEAR_FIXED_BIT 0x0400u
 /* NGTCP2_CONN_FLAG_KEY_UPDATE_NOT_CONFIRMED is set when key update is
    not confirmed by the local endpoint.  That is, it has not received
    ACK frame which acknowledges packet which is encrypted with new
    key. */
-#define NGTCP2_CONN_FLAG_KEY_UPDATE_NOT_CONFIRMED 0x0800
+#define NGTCP2_CONN_FLAG_KEY_UPDATE_NOT_CONFIRMED 0x0800u
 /* NGTCP2_CONN_FLAG_PPE_PENDING is set when
    NGTCP2_WRITE_STREAM_FLAG_MORE is used and the intermediate state of
    ngtcp2_ppe is stored in pkt struct of ngtcp2_conn. */
-#define NGTCP2_CONN_FLAG_PPE_PENDING 0x1000
+#define NGTCP2_CONN_FLAG_PPE_PENDING 0x1000u
 /* NGTCP2_CONN_FLAG_RESTART_IDLE_TIMER_ON_WRITE is set when idle timer
    should be restarted on next write. */
-#define NGTCP2_CONN_FLAG_RESTART_IDLE_TIMER_ON_WRITE 0x2000
+#define NGTCP2_CONN_FLAG_RESTART_IDLE_TIMER_ON_WRITE 0x2000u
 /* NGTCP2_CONN_FLAG_SERVER_ADDR_VERIFIED indicates that server as peer
    verified client address.  This flag is only used by client. */
-#define NGTCP2_CONN_FLAG_SERVER_ADDR_VERIFIED 0x4000
+#define NGTCP2_CONN_FLAG_SERVER_ADDR_VERIFIED 0x4000u
 /* NGTCP2_CONN_FLAG_EARLY_KEY_INSTALLED indicates that an early key is
    installed.  conn->early.ckm cannot be used for this purpose because
    it might be discarded when a certain condition is met. */
-#define NGTCP2_CONN_FLAG_EARLY_KEY_INSTALLED 0x8000
+#define NGTCP2_CONN_FLAG_EARLY_KEY_INSTALLED 0x8000u
 /* NGTCP2_CONN_FLAG_KEY_UPDATE_INITIATOR is set when the local
    endpoint has initiated key update. */
-#define NGTCP2_CONN_FLAG_KEY_UPDATE_INITIATOR 0x10000
+#define NGTCP2_CONN_FLAG_KEY_UPDATE_INITIATOR 0x10000u
 
 typedef struct ngtcp2_crypto_data {
   ngtcp2_buf buf;
@@ -536,11 +536,11 @@ struct ngtcp2_conn {
   struct {
     /* transport_params is the received transport parameters during
        handshake.  It is used for Short packet only. */
-    ngtcp2_transport_params transport_params;
+    ngtcp2_transport_params *transport_params;
     /* pending_transport_params is received transport parameters
        during handshake.  It is copied to transport_params when 1RTT
        key is available. */
-    ngtcp2_transport_params pending_transport_params;
+    ngtcp2_transport_params *pending_transport_params;
     struct {
       ngtcp2_idtr idtr;
       /* unsent_max_streams is the maximum number of streams of peer
@@ -599,6 +599,8 @@ struct ngtcp2_conn {
     ngtcp2_crypto_aead_ctx retry_aead_ctx;
     /* tls_error is TLS related error. */
     int tls_error;
+    /* tls_alert is TLS alert generated by the local endpoint. */
+    uint8_t tls_alert;
     /* decryption_failure_count is the number of received packets that
        fail authentication. */
     uint64_t decryption_failure_count;
@@ -1086,5 +1088,26 @@ ngtcp2_ssize ngtcp2_conn_write_application_close_pkt(
     size_t reasonlen, ngtcp2_tstamp ts);
 
 void ngtcp2_conn_stop_pmtud(ngtcp2_conn *conn);
+
+/**
+ * @function
+ *
+ * `ngtcp2_conn_set_remote_transport_params` sets transport parameter
+ * |params| from a remote endpoint to |conn|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :macro:`NGTCP2_ERR_TRANSPORT_PARAM`
+ *     Failed to validate a remote transport parameters.
+ * :macro:`NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE`
+ *     Version negotiation failure.
+ * :macro:`NGTCP2_ERR_CALLBACK_FAILURE`
+ *     User callback failed
+ * :macro:`NGTCP2_ERR_NOMEM`
+ *     Out of memory.
+ */
+int ngtcp2_conn_set_remote_transport_params(
+    ngtcp2_conn *conn, const ngtcp2_transport_params *params);
 
 #endif /* NGTCP2_CONN_H */

@@ -69,10 +69,10 @@ typedef enum ngtcp2_transport_param_id {
 } ngtcp2_transport_param_id;
 
 /* NGTCP2_CRYPTO_KM_FLAG_NONE indicates that no flag is set. */
-#define NGTCP2_CRYPTO_KM_FLAG_NONE 0x00
+#define NGTCP2_CRYPTO_KM_FLAG_NONE 0x00u
 /* NGTCP2_CRYPTO_KM_FLAG_KEY_PHASE_ONE is set if key phase bit is
    set. */
-#define NGTCP2_CRYPTO_KM_FLAG_KEY_PHASE_ONE 0x01
+#define NGTCP2_CRYPTO_KM_FLAG_KEY_PHASE_ONE 0x01u
 
 typedef struct ngtcp2_crypto_km {
   ngtcp2_vec secret;
@@ -126,5 +126,22 @@ typedef struct ngtcp2_crypto_cc {
 
 void ngtcp2_crypto_create_nonce(uint8_t *dest, const uint8_t *iv, size_t ivlen,
                                 int64_t pkt_num);
+
+/*
+ * ngtcp2_transport_params_copy_new makes a copy of |src|, and assigns
+ * it to |*pdest|.  If |src| is NULL, NULL is assigned to |*pdest|.
+ *
+ * Caller is responsible to call ngtcp2_transport_params_del to free
+ * the memory assigned to |*pdest|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGTCP2_ERR_NOMEM
+ *     Out of memory.
+ */
+int ngtcp2_transport_params_copy_new(ngtcp2_transport_params **pdest,
+                                     const ngtcp2_transport_params *src,
+                                     const ngtcp2_mem *mem);
 
 #endif /* NGTCP2_CRYPTO_H */
