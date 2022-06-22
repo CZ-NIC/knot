@@ -225,6 +225,9 @@ int quic_master(dthread_t *thread)
 	}
 	table->log = conf_get_bool(pconf, C_XDP, C_QUIC_LOG);
 
+	size_t to = 0, fc = 0;
+	uint64_t last_sweep = 0;
+
 	for (;;) {
 		/* Cancellation point. */
 		if (dt_is_cancelled(thread)) {
@@ -259,10 +262,18 @@ int quic_master(dthread_t *thread)
 			}
 		}
 
-		size_t to = 0, fc = 0;
 		knot_xquic_table_sweep(table, quic_max_conns, quic_max_obufs, &to, &fc);
 		if (to > 0 || fc > 0) {
+
+		}
+
+		struct timespec now = time_now();
+		uint64_t sec = now.tv_sec + now.tv_nsec / 1000000000;
+		if (sec - last_sweep > 9 && to + fc > 0) {
 			log_notice("QUIC, connection timeout %zu, forcibly closed %zu", to, fc);
+			last_sweep = sec;
+			to = 0;
+			fc = 0;
 		}
 	}
 
