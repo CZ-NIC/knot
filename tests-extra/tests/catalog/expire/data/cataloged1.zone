@@ -1,0 +1,6 @@
+$ORIGIN cataloged1.
+$TTL 1200
+
+@ SOA ns admin 10001 5 5 15 600
+  NS ns
+ns AAAA ::0

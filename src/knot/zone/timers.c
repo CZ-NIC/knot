@@ -165,6 +165,7 @@ int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
 	knot_lmdb_abort(&txn);
 
 	// backward compatibility
+	// For catalog zones, next_expire is cleaned up later by zone_timers_sanitize().
 	if (timers->next_expire == 0 && timers->last_refresh > 0) {
 		timers->next_expire = timers->last_refresh + timers->soa_expire;
 	}
