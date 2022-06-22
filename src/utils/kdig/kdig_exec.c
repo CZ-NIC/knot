@@ -755,7 +755,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 	check_reply_qr(reply);
 
 	// Print reply packet.
-	print_packet(reply, net, in_len, time_diff_ms(&t_query, &t_end), timestamp,
+	print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end), timestamp,
 	             true, style);
 
 	// Verify signature if a key was specified.
