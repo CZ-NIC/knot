@@ -140,15 +140,6 @@ static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
 	return 0;
 }
 
-static int tls_keylog_callback(gnutls_session_t session, const char *label,
-                               const gnutls_datum_t *secret)
-{
-	(void)(session);
-	(void)(label);
-	(void)(secret);
-	return 0;
-}
-
 static ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref)
 {
 	return ((knot_xquic_conn_t *)conn_ref->user_data)->conn;
@@ -211,7 +202,6 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 	};
 	gnutls_alpn_set_protocols(conn->tls_session, alpn, 2, 0);
 
-	gnutls_session_set_keylog_function(conn->tls_session, tls_keylog_callback);
 	ngtcp2_conn_set_tls_native_handle(conn->conn, conn->tls_session);
 
 	return KNOT_EOK;
