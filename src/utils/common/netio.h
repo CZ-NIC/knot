@@ -81,7 +81,7 @@ typedef struct {
 	/*! HTTPS context. */
 	https_ctx_t https;
 #endif
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 	/*! QUIC context. */
 	quic_ctx_t quic;
 #endif

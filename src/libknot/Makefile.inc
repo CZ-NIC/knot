@@ -7,9 +7,9 @@ libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIB
                       ${fuzzer_LDFLAGS}
 libknot_la_LIBADD   = libdnssec.la $(libcontrib_LIBS) $(lmdb_LIBS) $(math_LIBS)
 
-if EMBEDDED_LIBNGTCP2
+if EMBEDDED_ENABLE_QUIC
 libknot_la_LIBADD += $(libembngtcp2_LIBS)
-endif EMBEDDED_LIBNGTCP2
+endif EMBEDDED_ENABLE_QUIC
 
 include_libknotdir = $(includedir)
 nobase_include_libknot_HEADERS = \
@@ -117,7 +117,7 @@ libknot_la_SOURCES  += \
 	libknot/xdp/tcp.c			\
 	libknot/xdp/xdp.c
 
-if ENABLE_XDP_QUIC
+if ENABLE_QUIC
 
 libknot_la_CPPFLAGS += $(libngtcp2_CFLAGS)
 libknot_la_LIBADD   += $(libngtcp2_LIBS)
@@ -130,7 +130,7 @@ libknot_la_SOURCES  += \
 	libknot/xdp/quic.c                      \
         libknot/xdp/quic_conn.c
 
-endif ENABLE_XDP_QUIC
+endif ENABLE_QUIC
 endif ENABLE_XDP
 
 DIST_SUBDIRS = libknot/xdp

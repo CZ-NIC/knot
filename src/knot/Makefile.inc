@@ -8,9 +8,9 @@ libknotd_LIBS        = libknotd.la libknot.la libdnssec.la libzscanner.la \
                        $(libcontrib_LIBS) $(liburcu_LIBS) $(lmdb_LIBS) \
                        $(systemd_LIBS) $(gnutls_LIBS)
 
-if EMBEDDED_LIBNGTCP2
+if EMBEDDED_ENABLE_QUIC
 libknotd_la_LIBADD += $(libembngtcp2_LIBS)
-endif EMBEDDED_LIBNGTCP2
+endif EMBEDDED_ENABLE_QUIC
 
 include_libknotddir = $(includedir)/knot
 include_libknotd_HEADERS = \

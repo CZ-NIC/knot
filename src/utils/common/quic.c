@@ -40,7 +40,7 @@ void quic_params_clean(quic_params_t *params)
 	params->enable = false;
 }
 
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 
 #include <assert.h>
 #include <poll.h>

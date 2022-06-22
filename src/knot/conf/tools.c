@@ -528,7 +528,7 @@ int check_xdp(
 	conf_val_t quic = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
 	                               C_QUIC);
 	if (conf_int(&quic) > 0) {
-#ifdef ENABLE_XDP_QUIC
+#ifdef ENABLE_QUIC
 		while (xdp_listen.code == KNOT_EOK) {
 			struct sockaddr_storage udp_addr = conf_addr(&xdp_listen, NULL);
 			int udp_port = sockaddr_port(&udp_addr);
@@ -561,7 +561,7 @@ int check_xdp(
 #else
 		args->err_str = "not compiled with QUIC support";
 		return KNOT_EINVAL;
-#endif // ENABLE_XDP_QUIC
+#endif // ENABLE_QUIC
 	}
 
 	return KNOT_EOK;
