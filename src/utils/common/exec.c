@@ -665,7 +665,7 @@ void print_packet(const knot_pkt_t *packet,
 	// Print packet information header.
 	if (style->show_header) {
 		if (net != NULL) {
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 			if (net->quic.params.enable) {
 				print_quic(&net->quic);
 			} else

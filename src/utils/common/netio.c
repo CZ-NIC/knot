@@ -236,7 +236,7 @@ int net_init(const srv_info_t     *local,
 			}
 		} else
 #endif //LIBNGHTTP2
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 		if (quic_params != NULL && quic_params->enable) {
 			ret = tls_ctx_init(&net->tls, tls_params,
 			        GNUTLS_NONBLOCK | GNUTLS_ENABLE_EARLY_DATA |
@@ -251,7 +251,7 @@ int net_init(const srv_info_t     *local,
 				return ret;
 			}
 		} else
-#endif //LIBNGTCP2
+#endif //ENABLE_QUIC
 		{
 			ret = tls_ctx_init(&net->tls, tls_params,
 			                   GNUTLS_NONBLOCK, net->wait);
@@ -334,7 +334,7 @@ static char *net_get_remote(const net_t *net)
 	return NULL;
 }
 
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 static int fd_set_recv_ecn(int fd, int family)
 {
 	unsigned int tos = 1;
@@ -471,7 +471,7 @@ int net_connect(net_t *net)
 			}
 		}
 	}
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 	else if (net->socktype == SOCK_DGRAM) {
 		if (net->quic.params.enable) {
 			// Establish QUIC connection.
@@ -551,7 +551,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 	// Send data over QUIC.
 	if (net->quic.params.enable) {
 		int ret = quic_send_dns_query((quic_ctx_t *)&net->quic,
@@ -636,7 +636,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		.revents = 0,
 	};
 
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 	// Receive data over QUIC.
 	if (net->quic.params.enable) {
 		int ret = quic_recv_dns_response((quic_ctx_t *)&net->quic, buf,
@@ -766,7 +766,7 @@ void net_close(net_t *net)
 		return;
 	}
 
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 	if (net->quic.params.enable) {
 		quic_ctx_close(&net->quic);
 	}
@@ -805,7 +805,7 @@ void net_clean(net_t *net)
 #ifdef LIBNGHTTP2
 	https_ctx_deinit(&net->https);
 #endif
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 	quic_ctx_deinit(&net->quic);
 #endif
 	tls_ctx_deinit(&net->tls);

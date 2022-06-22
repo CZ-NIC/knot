@@ -392,7 +392,7 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 
 	// Set ID = 0 for packet send over HTTPS
 	// Due HTTP cache it is convenient to set the query ID to 0 - GET messages has same header then
-#if defined(LIBNGHTTP2) || defined(LIBNGTCP2)
+#if defined(LIBNGHTTP2) || defined(ENABLE_QUIC)
 	if (query->https.enable || query->quic.enable) {
 		knot_wire_set_id(packet->wire, 0);
 	}

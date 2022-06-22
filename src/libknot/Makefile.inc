@@ -117,7 +117,7 @@ libknot_la_SOURCES  += \
 	libknot/xdp/tcp.c			\
 	libknot/xdp/xdp.c
 
-if ENABLE_XDP_QUIC
+if ENABLE_QUIC
 
 libknot_la_CPPFLAGS += $(libngtcp2_CFLAGS)
 libknot_la_LIBADD   += $(libngtcp2_LIBS)
@@ -130,7 +130,7 @@ libknot_la_SOURCES  += \
 	libknot/xdp/quic.c                      \
         libknot/xdp/quic_conn.c
 
-endif ENABLE_XDP_QUIC
+endif ENABLE_QUIC
 endif ENABLE_XDP
 
 DIST_SUBDIRS = libknot/xdp

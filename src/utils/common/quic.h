@@ -28,7 +28,7 @@ int quic_params_copy(quic_params_t *dst, const quic_params_t *src);
 
 void quic_params_clean(quic_params_t *params);
 
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 
 #include <ngtcp2/ngtcp2.h>
 #include <ngtcp2/ngtcp2_crypto.h>
@@ -122,4 +122,4 @@ void quic_ctx_deinit(quic_ctx_t *ctx);
 
 void print_quic(const quic_ctx_t *ctx);
 
-#endif //LIBNGTCP2
+#endif //ENABLE_QUIC
