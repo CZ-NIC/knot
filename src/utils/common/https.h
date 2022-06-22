@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,6 +45,8 @@ void https_params_clean(https_params_t *params);
 #include <nghttp2/nghttp2.h>
 
 #include "utils/common/tls.h"
+
+extern const gnutls_datum_t doh_alpn;
 
 /*! \brief Structure that stores data source for DATA frames. */
 typedef struct {
@@ -94,7 +96,6 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
  *
  * \param ctx       HTTPS context.
  * \param sockfd    Socket descriptor.
- * \param remote    [optional] Remote name.
  * \param fastopen  Use TCP Fast Open indication.
  * \param addr      Socket address storage with address to server side.
  *
@@ -104,8 +105,8 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
  * \retval KNOT_NET_ETIMEOUT  When server respond takes too long.
  * \retval KNOT_NET_ECONNECT  When unnable to connect to the server.
  */
-int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
-                      bool fastopen, struct sockaddr_storage *addr);
+int https_ctx_connect(https_ctx_t *ctx, int sockfd, bool fastopen,
+                      struct sockaddr_storage *addr);
 
 /*!
  * \brief Send buffer as DNS message over HTTPS.

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -367,10 +367,9 @@ static bool do_verification(const tls_params_t *params)
 	       !EMPTY_LIST(params->ca_files) || params->ocsp_stapling > 0;
 }
 
-static int verify_certificate(gnutls_session_t session)
+int tls_certificate_verification(tls_ctx_t *ctx)
 {
-	tls_ctx_t *ctx = gnutls_session_get_ptr(session);
-
+	gnutls_session_t session = ctx->session;
 	// Check for pinned certificates and print certificate hierarchy.
 	int ret = check_certificates(session, &ctx->params->pins);
 	if (ret != GNUTLS_E_SUCCESS) {
@@ -421,7 +420,15 @@ static int verify_certificate(gnutls_session_t session)
 	return GNUTLS_E_SUCCESS;
 }
 
-int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
+static int verify_certificate(gnutls_session_t session)
+{
+	tls_ctx_t *ctx = gnutls_session_get_ptr(session);
+	return tls_certificate_verification(ctx);
+}
+
+int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
+        unsigned int flags, int wait)
+
 {
 	if (ctx == NULL || params == NULL || !params->enable) {
 		return KNOT_EINVAL;
@@ -494,32 +501,44 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params, int wait)
 		return KNOT_ERROR;
 	}
 
-	return KNOT_EOK;
-}
-
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, bool fastopen,
-                    struct sockaddr_storage *addr, const gnutls_datum_t *protocol)
-{
-	if (ctx == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = gnutls_init(&ctx->session, GNUTLS_CLIENT | GNUTLS_NONBLOCK);
+	ret = gnutls_init(&ctx->session, GNUTLS_CLIENT | flags);
 	if (ret != GNUTLS_E_SUCCESS) {
-		return KNOT_NET_ECONNECT;
-	}
-
-	ret = gnutls_set_default_priority(ctx->session);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_deinit(ctx->session);
-		return KNOT_NET_ECONNECT;
+		return KNOT_ENOMEM;
 	}
 
 	ret = gnutls_credentials_set(ctx->session, GNUTLS_CRD_CERTIFICATE,
 	                             ctx->credentials);
 	if (ret != GNUTLS_E_SUCCESS) {
 		gnutls_deinit(ctx->session);
-		return KNOT_NET_ECONNECT;
+		return KNOT_ERROR;
+	}
+
+	return KNOT_EOK;
+}
+
+int tls_ctx_setup_remote_endpoint(tls_ctx_t *ctx, const gnutls_datum_t *alpn,
+        size_t alpn_size, const char *priority, const char *remote)
+{
+	if (ctx == NULL || ctx->session == NULL || ctx->credentials == NULL) {
+		return KNOT_EINVAL;
+	}
+	int ret = 0;
+	if (alpn != NULL) {
+		ret = gnutls_alpn_set_protocols(ctx->session, alpn, alpn_size, 0);
+		if (ret != GNUTLS_E_SUCCESS) {
+			gnutls_deinit(ctx->session);
+			return KNOT_NET_ECONNECT;
+		}
+	}
+
+	if (priority != NULL) {
+		ret = gnutls_priority_set_direct(ctx->session, priority, NULL);
+	} else {
+		ret = gnutls_set_default_priority(ctx->session);
+	}
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(ctx->session);
+		return KNOT_EINVAL;
 	}
 
 	if (remote != NULL) {
@@ -527,10 +546,20 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, bool fastope
 		                             strlen(remote));
 		if (ret != GNUTLS_E_SUCCESS) {
 			gnutls_deinit(ctx->session);
-			return KNOT_NET_ECONNECT;
+			return KNOT_EINVAL;
 		}
 	}
+	return KNOT_EOK;
+}
 
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, bool fastopen,
+        struct sockaddr_storage *addr)
+{
+	if (ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = 0;
 	gnutls_session_set_ptr(ctx->session, ctx);
 
 	if (fastopen) {
@@ -546,14 +575,6 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, const char *remote, bool fastope
 	}
 
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
-
-	if (protocol != NULL) {
-		ret = gnutls_alpn_set_protocols(ctx->session, protocol, 1, 0);
-		if (ret != GNUTLS_E_SUCCESS) {
-			gnutls_deinit(ctx->session);
-			return KNOT_NET_ECONNECT;
-		}
-	}
 
 	// Initialize poll descriptor structure.
 	struct pollfd pfd = {
@@ -688,7 +709,6 @@ void tls_ctx_close(tls_ctx_t *ctx)
 	}
 
 	gnutls_bye(ctx->session, GNUTLS_SHUT_RDWR);
-	gnutls_deinit(ctx->session);
 }
 
 void tls_ctx_deinit(tls_ctx_t *ctx)
@@ -701,11 +721,15 @@ void tls_ctx_deinit(tls_ctx_t *ctx)
 		gnutls_certificate_free_credentials(ctx->credentials);
 		ctx->credentials = NULL;
 	}
+	if (ctx->session != NULL) {
+		gnutls_deinit(ctx->session);
+		ctx->session = NULL;
+	}
 }
 
 void print_tls(const tls_ctx_t *ctx)
 {
-	if (ctx == NULL || ctx->session == NULL) {
+	if (ctx == NULL || ctx->params == NULL || !ctx->params->enable || ctx->session == NULL) {
 		return;
 	}
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,12 +76,13 @@ void https_params_clean(https_params_t *params)
 static const char default_path[] = "/dns-query";
 static const char default_query[] = "?dns=";
 
-static const gnutls_datum_t https_protocols[] = {
-	{ (unsigned char *)"h2", 2 }
-};
-
 static const nghttp2_settings_entry settings[] = {
 	{ NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, HTTPS_MAX_STREAMS }
+};
+
+const gnutls_datum_t doh_alpn = {
+	.data = (unsigned char *)"h2",
+	.size = 2
 };
 
 static bool https_status_is_redirect(unsigned long status)
@@ -318,15 +319,15 @@ static int sockaddr_to_authority(char *buf, const size_t buf_len, const struct s
 	return KNOT_EOK;
 }
 
-int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
-                      bool fastopen, struct sockaddr_storage *addr)
+int https_ctx_connect(https_ctx_t *ctx, int sockfd, bool fastopen,
+                      struct sockaddr_storage *addr)
 {
 	if (ctx == NULL || addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	// Create TLS connection
-	int ret = tls_ctx_connect(ctx->tls, sockfd, remote, fastopen, addr, https_protocols);
+	int ret = tls_ctx_connect(ctx->tls, sockfd, fastopen, addr);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -344,16 +345,12 @@ int https_ctx_connect(https_ctx_t *ctx, int sockfd, const char *remote,
 
 	// Save authority server
 	if (ctx->authority == NULL) {
-		if (remote != NULL) {
-			ctx->authority = strdup(remote);
-		} else {
-			ctx->authority = (char*)calloc(HTTPS_AUTHORITY_LEN, sizeof(char));
-			ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, addr);
-			if (ret != KNOT_EOK) {
-				free(ctx->authority);
-				ctx->authority = NULL;
-				return KNOT_EINVAL;
-			}
+		ctx->authority = calloc(HTTPS_AUTHORITY_LEN, 1);
+		ret = sockaddr_to_authority(ctx->authority, HTTPS_AUTHORITY_LEN, addr);
+		if (ret != KNOT_EOK) {
+			free(ctx->authority);
+			ctx->authority = NULL;
+			return KNOT_EINVAL;
 		}
 	}
 
@@ -515,9 +512,10 @@ void https_ctx_deinit(https_ctx_t *ctx)
 
 void print_https(const https_ctx_t *ctx)
 {
-	if (!ctx || !ctx->authority || !ctx->path) {
+	if (!ctx || !ctx->params.enable || !ctx->authority || !ctx->path) {
 		return;
 	}
+
 	printf(";; HTTP session (HTTP/2-%s)-(%s%s)-(status: %lu)\n",
 	       ctx->params.method == POST ? "POST" : "GET", ctx->authority,
 	       ctx->path, ctx->status);

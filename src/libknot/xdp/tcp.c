@@ -91,7 +91,7 @@ static void next_ptr_obuf(knot_tcp_conn_t **ptr)
 {
 	do {
 		next_node_ptr(ptr);
-	} while (*ptr != NULL && tcp_outbufs_usage((*ptr)->outbufs) == 0);
+	} while (*ptr != NULL && knot_tcp_outbufs_usage((*ptr)->outbufs) == 0);
 }
 
 _public_
@@ -195,7 +195,7 @@ static void tcp_table_remove(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
 	assert(table->usage > 0);
 	rem_align_pointers(*todel, table);
 	table->inbufs_total -= (*todel)->inbuf.iov_len;
-	table->outbufs_total -= tcp_outbufs_usage((*todel)->outbufs);
+	table->outbufs_total -= knot_tcp_outbufs_usage((*todel)->outbufs);
 	tcp_table_remove_conn(todel);
 	table->usage--;
 }
@@ -310,7 +310,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_
 
 			if (msg->flags & KNOT_XDP_MSG_ACK) {
 				conn->acked = msg->ackno;
-				tcp_outbufs_ack(&conn->outbufs, msg->ackno, &tcp_table->outbufs_total);
+				knot_tcp_outbufs_ack(&conn->outbufs, msg->ackno, &tcp_table->outbufs_total);
 			}
 		}
 
@@ -322,8 +322,8 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_
 			if (!(ignore & XDP_TCP_IGNORE_DATA_ACK)) {
 				relay->auto_answer = KNOT_XDP_MSG_ACK;
 			}
-			ret = tcp_inbuf_update(&conn->inbuf, msg->payload, &relay->inbufs,
-			                       &relay->inbufs_count, &tcp_table->inbufs_total);
+			ret = knot_tcp_inbuf_update(&conn->inbuf, msg->payload, &relay->inbufs,
+			                            &relay->inbufs_count, &tcp_table->inbufs_total);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -450,13 +450,13 @@ int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
 	if (relay == NULL || tcp_table == NULL || relay->conn == NULL) {
 		return KNOT_EINVAL;
 	}
-	int ret = tcp_outbufs_add(&relay->conn->outbufs, data, len, ignore_lastbyte,
-	                          relay->conn->mss, &tcp_table->outbufs_total);
+	int ret = knot_tcp_outbufs_add(&relay->conn->outbufs, data, len, ignore_lastbyte,
+	                               relay->conn->mss, &tcp_table->outbufs_total);
 
-	if (tcp_table->next_obuf == NULL && tcp_outbufs_usage(relay->conn->outbufs) > 0) {
+	if (tcp_table->next_obuf == NULL && knot_tcp_outbufs_usage(relay->conn->outbufs) > 0) {
 		tcp_table->next_obuf = relay->conn;
 	}
-	if (tcp_table->next_resend == NULL && tcp_outbufs_usage(relay->conn->outbufs) > 0) {
+	if (tcp_table->next_resend == NULL && knot_tcp_outbufs_usage(relay->conn->outbufs) > 0) {
 		tcp_table->next_resend = relay->conn;
 	}
 	return ret;
@@ -581,8 +581,8 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 		size_t can_data = 0;
 		knot_tcp_outbuf_t *ob;
 		if (rl->conn != NULL) {
-			tcp_outbufs_can_send(rl->conn->outbufs, rl->conn->window_size,
-			                     rl->answer == XDP_TCP_RESEND, &ob, &can_data);
+			knot_tcp_outbufs_can_send(rl->conn->outbufs, rl->conn->window_size,
+			                          rl->answer == XDP_TCP_RESEND, &ob, &can_data);
 		}
 		while (can_data > 0) {
 			NEXT_MSG
@@ -620,7 +620,7 @@ static void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
 
 	*free_conns -= 1;
 	*free_inbuf -= rl->conn->inbuf.iov_len;
-	*free_outbuf -= tcp_outbufs_usage(rl->conn->outbufs);
+	*free_outbuf -= knot_tcp_outbufs_usage(rl->conn->outbufs);
 
 	if (reset_count != NULL) {
 		(*reset_count)++;
@@ -660,7 +660,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 
 	// reset connections to free obufs
 	while (free_outbuf > 0 && rl != rl_max) {
-		if (tcp_outbufs_usage(tcp_table->next_obuf->outbufs) == 0) {
+		if (knot_tcp_outbufs_usage(tcp_table->next_obuf->outbufs) == 0) {
 			next_ptr_obuf(&tcp_table->next_obuf);
 		}
 		assert(tcp_table->next_obuf != NULL);
