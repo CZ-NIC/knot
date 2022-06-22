@@ -335,7 +335,7 @@ int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, con
 
 	struct iovec in = { (void *)data, len }, *outs;
 	size_t outs_count;
-	int ret = tcp_inbuf_update(&stream->inbuf, in, &outs, &outs_count, &xconn->ibufs_size);
+	int ret = knot_tcp_inbuf_update(&stream->inbuf, in, &outs, &outs_count, &xconn->ibufs_size);
 	if (ret != KNOT_EOK || (outs_count == 0 && !fin)) {
 		return ret;
 	}
