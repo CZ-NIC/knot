@@ -168,7 +168,7 @@ BUILT_SOURCES += $(nodist_libdnstap_la_SOURCES)
 CLEANFILES    += $(nodist_libdnstap_la_SOURCES)
 endif HAVE_LIBDNSTAP
 
-if EMBEDDED_LIBNGTCP2
+if EMBEDDED_ENABLE_QUIC
 noinst_LTLIBRARIES += libembngtcp2.la
 
 libembngtcp2_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) \
@@ -256,4 +256,4 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/crypto/gnutls.c \
 	contrib/libngtcp2/ngtcp2/crypto/shared.c \
 	contrib/libngtcp2/ngtcp2/crypto/shared.h
-endif EMBEDDED_LIBNGTCP2
+endif EMBEDDED_ENABLE_QUIC
