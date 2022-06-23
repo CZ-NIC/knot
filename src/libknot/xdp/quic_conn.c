@@ -87,7 +87,7 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 
 _public_
 int knot_xquic_table_sweep(knot_xquic_table_t *table,
-                           size_t *timed_out, size_t *force_closed)
+                           uint32_t *timed_out, uint32_t *force_closed)
 {
 	uint64_t now = 0;
 	knot_xquic_conn_t *c, *next;

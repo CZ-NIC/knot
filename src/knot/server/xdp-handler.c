@@ -33,6 +33,13 @@
 #include "libknot/xdp/tcp.h"
 
 #define XQUIC_MAX_SEND_PER_RECV 4
+#define CLOSED_LOG_INTERVAL 9
+
+typedef struct {
+	uint64_t last_log;
+	uint32_t closed;
+	uint32_t reset;
+} closed_log_ctx_t;
 
 typedef struct xdp_handle_ctx {
 	knot_xdp_socket_t *sock;
@@ -50,6 +57,7 @@ typedef struct xdp_handle_ctx {
 	knot_xquic_conn_t *quic_relays[XDP_BATCHLEN];
 	int quic_rets[XDP_BATCHLEN];
 	knot_xquic_table_t *quic_table;
+	closed_log_ctx_t quic_closed;
 
 #endif // ENABLE_QUIC
 
@@ -64,10 +72,7 @@ typedef struct xdp_handle_ctx {
 	uint32_t tcp_idle_resend;// In microseconds.
 
 	uint16_t quic_port;
-
-	uint64_t last_sweep;     // Second of the last sweep log.
-	uint32_t sweep_closed;   // Number of sweep-closed to log.
-	uint32_t sweep_reset;    // Number of sweep-reset to log.
+	closed_log_ctx_t tcp_closed;
 } xdp_handle_ctx_t;
 
 static bool udp_state_active(int state)
@@ -83,6 +88,18 @@ static bool tcp_active_state(int state)
 static bool tcp_send_state(int state)
 {
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
+}
+
+static void log_closed(closed_log_ctx_t *ctx, const char *format)
+{
+	struct timespec now = time_now();
+	uint64_t sec = now.tv_sec + now.tv_nsec / 1000000000;
+	if (sec - ctx->last_log > 9 && ctx->closed + ctx->reset > 0) {
+		log_notice(format, ctx->closed, ctx->reset);
+		ctx->last_log = sec;
+		ctx->closed = 0;
+		ctx->reset = 0;
+	}
 }
 
 void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
@@ -411,12 +428,12 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 	do {
 		knot_xdp_send_prepare(ctx->sock);
 
-		prev_total = ctx->sweep_closed + ctx->sweep_reset;
+		prev_total = ctx->tcp_closed.closed + ctx->tcp_closed.reset;
 
 		ret = knot_tcp_sweep(ctx->tcp_table, ctx->tcp_idle_close, ctx->tcp_idle_reset,
 		                     ctx->tcp_idle_resend,
 		                     ctx->tcp_max_conns, ctx->tcp_max_inbufs, ctx->tcp_max_obufs,
-		                     sweep_relays, XDP_BATCHLEN, &ctx->sweep_closed, &ctx->sweep_reset);
+		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed.closed, &ctx->tcp_closed.reset);
 		if (ret == KNOT_EOK) {
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
@@ -427,7 +444,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 
 		ret = knot_tcp_sweep(ctx->syn_table, UINT32_MAX, ctx->tcp_idle_reset,
 		                     UINT32_MAX, ctx->tcp_syn_conns, SIZE_MAX, SIZE_MAX,
-		                     sweep_relays, XDP_BATCHLEN, &ctx->sweep_closed, &ctx->sweep_reset);
+		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed.closed, &ctx->tcp_closed.reset);
 		if (ret == KNOT_EOK) {
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
@@ -435,26 +452,15 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 
 #ifdef ENABLE_QUIC
 		if (ctx->quic_table) {
-			size_t to = 0, fc = 0;
-			knot_xquic_table_sweep(ctx->quic_table, &to, &fc);
-			if (to > 0 || fc > 0) {
-				log_notice("QUIC, connection timeout %zu, forcibly closed %zu", to, fc);
-			}
+			knot_xquic_table_sweep(ctx->quic_table, &ctx->quic_closed.closed, &ctx->quic_closed.reset);
+			log_closed(&ctx->quic_closed, "QUIC, connection timeout %u, forcibly closed %u");
 		}
 #endif // ENABLE_QUIC
 
 		(void)knot_xdp_send_finish(ctx->sock);
-	} while (ret == KNOT_EOK && prev_total < ctx->sweep_closed + ctx->sweep_reset);
+	} while (ret == KNOT_EOK && prev_total < ctx->tcp_closed.closed + ctx->tcp_closed.reset);
 
-	struct timespec now = time_now();
-	uint64_t sec = now.tv_sec + now.tv_nsec / 1000000000;
-	if (sec - ctx->last_sweep > 9 && ctx->sweep_closed + ctx->sweep_reset > 0) {
-		log_notice("TCP, connection timeout, %u closed, %u reset",
-		           ctx->sweep_closed, ctx->sweep_reset);
-		ctx->last_sweep = sec;
-		ctx->sweep_closed = 0;
-		ctx->sweep_reset = 0;
-	}
+	log_closed(&ctx->tcp_closed, "TCP, connection timeout, %u closed, %u reset");
 }
 
 #endif // ENABLE_XDP
