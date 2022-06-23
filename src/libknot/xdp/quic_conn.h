@@ -127,7 +127,7 @@ void knot_xquic_table_free(knot_xquic_table_t *table);
  * \return KNOT_E*
  */
 int knot_xquic_table_sweep(knot_xquic_table_t *table,
-                           size_t *timed_out, size_t *force_closed);
+                           uint32_t *timed_out, uint32_t *force_closed);
 
 /*!
  * \brief Add new connection/CID link to table.
