@@ -71,7 +71,8 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 {
 	if (table != NULL) {
 		knot_xquic_conn_t *c, *next;
-		WALK_LIST_DELSAFE(c, next, *(list_t *)&table->timeout) {
+		list_t *tto = (list_t *)&table->timeout;
+		WALK_LIST_DELSAFE(c, next, *tto) {
 			xquic_table_rem(c, table);
 		}
 		assert(table->usage == 0);
@@ -90,7 +91,8 @@ int knot_xquic_table_sweep(knot_xquic_table_t *table,
 {
 	uint64_t now = 0;
 	knot_xquic_conn_t *c, *next;
-	WALK_LIST_DELSAFE(c, next, *(list_t *)&table->timeout) {
+	list_t *tto = (list_t *)&table->timeout;
+	WALK_LIST_DELSAFE(c, next, *tto) {
 		if (xquic_conn_timeout(c, &now)) {
 			(*timed_out)++;
 			xquic_table_rem(c, table);
@@ -385,7 +387,8 @@ uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 		memcpy(obuf->buf + prefix, data, len);
 	}
 
-	if (EMPTY_LIST(*(list_t *)&s->outbufs)) {
+	list_t *list = (list_t *)&s->outbufs;
+	if (EMPTY_LIST(*list)) {
 		s->unsent_obuf = obuf;
 	}
 	add_tail((list_t *)&s->outbufs, (node_t *)obuf);
