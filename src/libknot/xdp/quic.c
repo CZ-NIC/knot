@@ -16,6 +16,8 @@
 
 #include <assert.h>
 #include <gnutls/gnutls.h>
+#include <gnutls/crypto.h>
+#include <gnutls/x509.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -53,7 +55,57 @@ static void tls_session_ticket_key_free(gnutls_datum_t *ticket) {
 	gnutls_free(ticket->data);
 }
 
-int knot_xquic_init_creds(knot_xquic_creds_t *creds, const char *tls_cert, const char *tls_key)
+static int self_signed_cert(gnutls_certificate_credentials_t tls_cert)
+{
+	gnutls_x509_privkey_t privkey = NULL;
+	gnutls_x509_crt_t cert = NULL;
+	char *hostname = sockaddr_hostname();
+	if (hostname == NULL) {
+		return -ENOMEM;
+	}
+
+	int ret = gnutls_x509_privkey_init(&privkey);
+	if (ret < 0) {
+		free(hostname);
+		return ret;
+	}
+
+	uint8_t serial[16];
+	gnutls_rnd(GNUTLS_RND_NONCE, serial, sizeof(serial));
+	/* clear the left-most bit to avoid signedness confusion: */
+	serial[0] &= 0x8f;
+
+#define CHK(cmd) \
+	ret = (cmd); \
+	if (ret < 0) { goto finish; }
+
+#define now_years(years) (time(NULL) + 365 * 24 * 3600 * (years))
+
+	CHK(gnutls_x509_privkey_generate(privkey, GNUTLS_PK_ECDSA, GNUTLS_CURVE_TO_BITS(GNUTLS_ECC_CURVE_SECP256R1), 0));
+
+	CHK(gnutls_x509_crt_init(&cert));
+	//CHK(gnutls_x509_crt_set_ca_status(cert, 0)); // TODO needed ?
+	CHK(gnutls_x509_crt_set_activation_time(cert, now_years(-1)));
+	CHK(gnutls_x509_crt_set_expiration_time(cert, now_years(20)));
+	CHK(gnutls_x509_crt_set_key(cert, privkey));
+
+	CHK(gnutls_x509_crt_set_serial(cert, serial, sizeof(serial)));
+	CHK(gnutls_x509_crt_set_subject_alt_name(cert, GNUTLS_SAN_DNSNAME, hostname, strlen(hostname), GNUTLS_FSAN_SET));
+	CHK(gnutls_x509_crt_set_version(cert, 3));
+	CHK(gnutls_x509_crt_sign2(cert, cert, privkey, GNUTLS_DIG_SHA256, 0));
+
+	ret = gnutls_certificate_set_x509_key(tls_cert, &cert, 1, privkey);
+
+finish:
+	free(hostname);
+	gnutls_x509_privkey_deinit(privkey);
+	gnutls_x509_crt_deinit(cert);
+
+	return ret;
+}
+
+int knot_xquic_init_creds(knot_xquic_creds_t *creds, bool server,
+                          const char *tls_cert, const char *tls_key)
 {
 	int ret = dnssec_random_buffer(creds->static_secret, sizeof(creds->static_secret));
 	if (ret != DNSSEC_EOK) {
@@ -79,15 +131,18 @@ int knot_xquic_init_creds(knot_xquic_creds_t *creds, const char *tls_cert, const
 		return KNOT_ERROR;
 	}
 
-	if ((bool)(tls_cert == NULL) != (bool)(tls_key == NULL)) {
+	if ((bool)(tls_cert == NULL) != (bool)(tls_key == NULL) ||
+	    (tls_cert != NULL && !server)) {
 		return KNOT_EINVAL;
 	}
 	if (tls_cert != NULL) {
 		ret = gnutls_certificate_set_x509_key_file(creds->tls_cert, tls_cert, tls_key, GNUTLS_X509_FMT_PEM);
-		if (ret != GNUTLS_E_SUCCESS) {
-			knot_xquic_free_creds(creds);
-			return KNOT_ERROR;
-		}
+	} else if (server) {
+		ret = self_signed_cert(creds->tls_cert);
+	}
+	if (ret < 0) {
+		knot_xquic_free_creds(creds);
+		return KNOT_ERROR;
 	}
 
 	ret = gnutls_session_ticket_key_generate(&creds->tls_ticket_key);

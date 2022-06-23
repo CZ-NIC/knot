@@ -440,7 +440,7 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	if (ctx->quic) {
 #ifdef ENABLE_QUIC
-		quic_table = knot_xquic_table_new(ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, NULL, NULL);
+		quic_table = knot_xquic_table_new(false, ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, NULL, NULL);
 		if (quic_table == NULL) {
 			ERR2("failed to allocate QUIC connection table\n");
 			return NULL;

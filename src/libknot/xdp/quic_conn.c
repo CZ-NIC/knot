@@ -35,7 +35,7 @@
 #define BUCKETS_PER_CONNS 8 // Each connecion has several dCIDs, and each CID takes one hash table bucket.
 
 _public_
-knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
+knot_xquic_table_t *knot_xquic_table_new(bool server, size_t max_conns, size_t max_ibufs, size_t max_obufs,
                                          size_t udp_pl, const char *tls_cert, const char *tls_key)
 {
 	size_t table_size = max_conns * BUCKETS_PER_CONNS;
@@ -53,7 +53,7 @@ knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, size_t max_ibufs, siz
 	init_list((list_t *)&res->timeout);
 	res->creds = (void *)res + sizeof(*res) + table_size * sizeof(res->conns[0]);
 
-	if (knot_xquic_init_creds(res->creds, tls_cert, tls_key) != KNOT_EOK) {
+	if (knot_xquic_init_creds(res->creds, server, tls_cert, tls_key) != KNOT_EOK) {
 		free(res);
 		return NULL;
 	}
