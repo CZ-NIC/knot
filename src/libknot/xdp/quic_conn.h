@@ -100,6 +100,7 @@ typedef struct knot_xquic_table {
 /*!
  * \brief Allocate QUIC connections hash table.
  *
+ * \param server       Initialize server-side QUIC conn table.
  * \param max_conns    Maximum nuber of connections.
  * \param max_ibufs    Maximum size of buffers for fragmented incomming DNS msgs.
  * \param max_obufs    Maximum size of buffers for un-ACKed outgoing data.
@@ -109,7 +110,7 @@ typedef struct knot_xquic_table {
  *
  * \return Allocated table, or NULL.
  */
-knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
+knot_xquic_table_t *knot_xquic_table_new(bool server, size_t max_conns, size_t max_ibufs, size_t max_obufs,
                                          size_t udp_pl, const char *tls_cert, const char *tls_key);
 
 /*!
