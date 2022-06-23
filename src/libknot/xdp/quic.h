@@ -39,12 +39,14 @@ typedef struct knot_quic_creds {
  * \brief Init server TLS certificate for DoQ.
  *
  * \param creds       Creds structure to be initialized.
- * \param tls_cert    X509 certificate file path/name.
- * \param tls_key     Key file path/name.
+ * \param server      Initializing for server-side (client otherwise).
+ * \param tls_cert    X509 certificate PEM file path/name.
+ * \param tls_key     Key PEM file path/name.
  *
  * \return KNOT_E*
  */
-int knot_xquic_init_creds(knot_xquic_creds_t *creds, const char *tls_cert, const char *tls_key);
+int knot_xquic_init_creds(knot_xquic_creds_t *creds, bool server,
+                          const char *tls_cert, const char *tls_key);
 
 /*!
  * \brief Init server TLS certificate for DoQ.
