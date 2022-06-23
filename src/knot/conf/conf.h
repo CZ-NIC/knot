@@ -643,7 +643,7 @@ void conf_free_mod_id(
  * \param[in] txn   Configuration DB transaction.
  * \param[in] zone  Zone name.
  *
- * \return Absolute zonef ile path string pointer.
+ * \return Absolute zone file path string pointer.
  */
 char* conf_zonefile_txn(
 	conf_t *conf,
