@@ -541,18 +541,32 @@ int check_xdp(
 		}
 
 		struct stat st;
+		int none = 0, stret = 0;
 		char *tls_cert = conf_tls_txn(args->extra->conf, args->extra->txn, C_TLS_CERT);
-		int stret = stat(tls_cert, &st);
-		free(tls_cert);
-		if (stret != 0 || (st.st_mode & S_IFDIR)) {
+		if (tls_cert == NULL) {
+			CONF_LOG(LOG_NOTICE, "no certificate for QUIC configured, using one-time self-signed server certtificate");
+			none++;
+		} else {
+			stret = stat(tls_cert, &st);
+			free(tls_cert);
+		}
+		if (none == 0 && (stret != 0 || (st.st_mode & S_IFDIR))) {
 			args->err_str = "QUIC requires that TLS server certificate is configured and exists";
 			return KNOT_EINVAL;
 		}
 		char *tls_key = conf_tls_txn(args->extra->conf, args->extra->txn, C_TLS_KEY);
-		stret = stat(tls_key, &st);
-		free(tls_key);
-		if (stret != 0 || (st.st_mode & S_IFDIR)) {
+		if (tls_key == NULL) {
+			none++;
+		} else {
+			stret = stat(tls_key, &st);
+			free(tls_key);
+		}
+		if (none == 0 && (stret != 0 || (st.st_mode & S_IFDIR))) {
 			args->err_str = "QUIC requires that TLS private key is configured and exists";
+			return KNOT_EINVAL;
+		}
+		if (none != 0 && none != 2) {
+			args->err_str = "QUIC, mismatch in server certificate/key configuration";
 			return KNOT_EINVAL;
 		}
 #else

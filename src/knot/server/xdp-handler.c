@@ -158,8 +158,10 @@ xdp_handle_ctx_t *xdp_handle_init(knot_xdp_socket_t *xdp_sock)
 		conf_t *pconf = conf();
 		char *tls_cert = conf_tls(pconf, C_TLS_CERT);
 		char *tls_key = conf_tls(pconf, C_TLS_KEY);
+
 		size_t udp_pl = MIN(pconf->cache.srv_udp_max_payload_ipv4, pconf->cache.srv_udp_max_payload_ipv6);
-		ctx->quic_table = knot_xquic_table_new(ctx->tcp_max_conns, ctx->tcp_max_inbufs, ctx->tcp_max_obufs, udp_pl, tls_cert, tls_key);
+		ctx->quic_table = knot_xquic_table_new(true, ctx->tcp_max_conns, ctx->tcp_max_inbufs,
+		                                       ctx->tcp_max_obufs, udp_pl, tls_cert, tls_key);
 		free(tls_cert);
 		free(tls_key);
 		if (ctx->quic_table == NULL) {
