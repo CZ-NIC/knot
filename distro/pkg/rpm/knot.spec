@@ -110,6 +110,8 @@ included in knot-libs package.
 %package utils
 Summary:	DNS client utilities shipped with the Knot DNS server
 Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
+# Debian package compat
+Provides:	%{name}-dnsutils = %{version}-%{release}
 
 %description utils
 The package contains DNS client utilities shipped with the Knot DNS server.
