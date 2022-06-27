@@ -656,7 +656,8 @@ configured. The configuration for any defined member zone is taken from its
 *group* property value, which should match some catalog-template name.
 If the *group* property is not defined for a member, is empty, or doesn't match
 any of defined catalog-template names, the first catalog-template
-(in the order from configuration) is used.
+(in the order from configuration) is used. Nesting of catalog zones isn't
+supported.
 
 Any de-cataloged member zone is purged immediately, including its
 zone file, journal, timers, and DNSSEC keys. The zone file is not

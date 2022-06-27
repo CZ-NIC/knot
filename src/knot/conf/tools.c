@@ -794,6 +794,17 @@ int check_template(
 	} \
 }
 
+#define CHECK_CATZ_TPL(option, option_string) \
+{ \
+	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
+	                                    C_TPL, option, catalog_tpl.data, \
+	                                    catalog_tpl.len); \
+	if (val.code == KNOT_EOK) { \
+		args->err_str = "'" option_string "' in a catalog template"; \
+		return KNOT_EINVAL; \
+	} \
+}
+
 int check_zone(
 	knotd_conf_check_args_t *args)
 {
@@ -831,21 +842,31 @@ int check_zone(
 	                                            C_CATALOG_ZONE, yp_dname(args->id));
 	conf_val_t catalog_serial = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                              C_SERIAL_POLICY, yp_dname(args->id));
-	if ((bool)(conf_opt(&catalog_role) == CATALOG_ROLE_INTERPRET) !=
-	    (bool)(catalog_tpl.code == KNOT_EOK)) {
+
+	unsigned role = conf_opt(&catalog_role);
+	if ((bool)(role == CATALOG_ROLE_INTERPRET) != (bool)(catalog_tpl.code == KNOT_EOK)) {
 		args->err_str = "'catalog-role' must correspond to configured 'catalog-template'";
 		return KNOT_EINVAL;
 	}
-	if ((bool)(conf_opt(&catalog_role) == CATALOG_ROLE_MEMBER) !=
-	    (bool)(catalog_zone.code == KNOT_EOK)) {
+	if ((bool)(role == CATALOG_ROLE_MEMBER) != (bool)(catalog_zone.code == KNOT_EOK)) {
 		args->err_str = "'catalog-role' must correspond to configured 'catalog-zone'";
 		return KNOT_EINVAL;
 	}
-	if (conf_opt(&catalog_role) == CATALOG_ROLE_GENERATE &&
+	if (role == CATALOG_ROLE_GENERATE &&
 	    conf_opt(&catalog_serial) != SERIAL_POLICY_UNIXTIME && // Default doesn't harm.
 	    catalog_serial.code == KNOT_EOK) {
 		args->err_str = "'serial-policy' must be 'unixtime' for generated catalog zones";
 		return KNOT_EINVAL;
+	}
+	if (role == CATALOG_ROLE_INTERPRET) {
+		conf_val(&catalog_tpl);
+		while (catalog_tpl.code == KNOT_EOK) {
+			CHECK_CATZ_TPL(C_CATALOG_TPL,   "catalog-template");
+			CHECK_CATZ_TPL(C_CATALOG_ROLE,  "catalog-role");
+			CHECK_CATZ_TPL(C_CATALOG_ZONE,  "catalog-zone");
+			CHECK_CATZ_TPL(C_CATALOG_GROUP, "catalog-group");
+			conf_val_next(&catalog_tpl);
+		}
 	}
 
 	return KNOT_EOK;
