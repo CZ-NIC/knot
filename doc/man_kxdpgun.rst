@@ -69,6 +69,12 @@ Options
 *targetIP*
   The IPv4 or IPv6 address of remote destination.
 
+**-L**, **--mac-local**
+  Override auto-detected local MAC address.
+
+**-R**, **--mac-remote**
+  Override auto-detected remote MAC address.
+
 **-h**, **--help**
   Print the program help.
 
