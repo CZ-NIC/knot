@@ -803,6 +803,27 @@ static int dev2mac(const char *dev, uint8_t *mac)
 	return ret;
 }
 
+static bool mac_empty(const uint8_t *mac)
+{
+	static const uint8_t unset_mac[6] = { 0 };
+	return (memcmp(mac, unset_mac, sizeof(unset_mac)) == 0);
+}
+
+static int mac_sscan(const char *src, uint8_t *dst)
+{
+	int tmp[6];
+	if (6 != sscanf(src, "%2x:%2x:%2x:%2x:%2x:%2x",
+	                &tmp[0], &tmp[1], &tmp[2], &tmp[3], &tmp[4], &tmp[5])) {
+		return KNOT_EINVAL;
+	}
+
+	for (int i = 0; i < 6; i++) {
+		dst[i] = (uint8_t)tmp[i];
+	}
+
+	return KNOT_EOK;
+}
+
 static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ctx)
 {
 	int val;
@@ -825,10 +846,14 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	}
 
 	struct sockaddr_storage via = { 0 };
-	int ret = ip_route_get(&ctx->target_ip, &via, &ctx->local_ip, ctx->dev);
-	if (ret < 0) {
-		ERR2("can't find route to '%s' (%s)\n", target_str, strerror(-ret));
-		return false;
+	if (local_ip == NULL || ctx->dev[0] == '\0' || mac_empty(ctx->target_mac)) {
+		char auto_dev[IFNAMSIZ];
+		int ret = ip_route_get(&ctx->target_ip, &via, &ctx->local_ip,
+		                       (ctx->dev[0] == '\0') ? ctx->dev : auto_dev);
+		if (ret < 0) {
+			ERR2("can't find route to '%s' (%s)\n", target_str, strerror(-ret));
+			return false;
+		}
 	}
 
 	ctx->local_ip_range = addr_bits(ctx->ipv6); // by default use one IP
@@ -852,23 +877,28 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		}
 	}
 
-	const struct sockaddr_storage *neigh = via.ss_family == AF_UNSPEC ? &ctx->target_ip : &via;
-	ret = ip_neigh_get(neigh, true, ctx->target_mac);
-	if (ret < 0) {
-		char neigh_str[256] = { 0 };
-		(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), neigh);
-		ERR2("failed to get remote MAC of target/gateway '%s' (%s)\n",
-		     neigh_str, strerror(-ret));
-		return false;
+	if (mac_empty(ctx->target_mac)) {
+		const struct sockaddr_storage *neigh = (via.ss_family == AF_UNSPEC) ?
+		                                       &ctx->target_ip : &via;
+		int ret = ip_neigh_get(neigh, true, ctx->target_mac);
+		if (ret < 0) {
+			char neigh_str[256] = { 0 };
+			(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), neigh);
+			ERR2("failed to get remote MAC of target/gateway '%s' (%s)\n",
+			     neigh_str, strerror(-ret));
+			return false;
+		}
 	}
 
-	ret = dev2mac(ctx->dev, ctx->local_mac);
-	if (ret < 0) {
-		ERR2("failed to get MAC of device '%s' (%s)\n", ctx->dev, strerror(-ret));
-		return false;
+	if (mac_empty(ctx->local_mac)) {
+		int ret = dev2mac(ctx->dev, ctx->local_mac);
+		if (ret < 0) {
+			ERR2("failed to get MAC of device '%s' (%s)\n", ctx->dev, strerror(-ret));
+			return false;
+		}
 	}
 
-	ret = knot_eth_queues(ctx->dev);
+	int ret = knot_eth_queues(ctx->dev);
 	if (ret >= 0) {
 		ctx->n_threads = ret;
 	} else {
@@ -909,6 +939,8 @@ static void print_help(void)
 	       " -i, --infile <file>      "SPACE"Path to a file with query templates.\n"
 	       " -I, --interface <ifname> "SPACE"Override auto-detected interface for outgoing communication.\n"
 	       " -l, --local <ip[/prefix]>"SPACE"Override auto-detected source IP address or subnet.\n"
+	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
+	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
 	       "\n"
@@ -983,19 +1015,21 @@ mode_invalid:
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
 	struct option opts[] = {
-		{ "help",      no_argument,       NULL, 'h' },
-		{ "version",   no_argument,       NULL, 'V' },
-		{ "duration",  required_argument, NULL, 't' },
-		{ "qps",       required_argument, NULL, 'Q' },
-		{ "batch",     required_argument, NULL, 'b' },
-		{ "drop",      no_argument,       NULL, 'r' },
-		{ "port",      required_argument, NULL, 'p' },
-		{ "tcp",       optional_argument, NULL, 'T' },
-		{ "quic",      optional_argument, NULL, 'U' },
-		{ "affinity",  required_argument, NULL, 'F' },
-		{ "interface", required_argument, NULL, 'I' },
-		{ "local",     required_argument, NULL, 'l' },
-		{ "infile",    required_argument, NULL, 'i' },
+		{ "help",       no_argument,       NULL, 'h' },
+		{ "version",    no_argument,       NULL, 'V' },
+		{ "duration",   required_argument, NULL, 't' },
+		{ "qps",        required_argument, NULL, 'Q' },
+		{ "batch",      required_argument, NULL, 'b' },
+		{ "drop",       no_argument,       NULL, 'r' },
+		{ "port",       required_argument, NULL, 'p' },
+		{ "tcp",        optional_argument, NULL, 'T' },
+		{ "quic",       optional_argument, NULL, 'U' },
+		{ "affinity",   required_argument, NULL, 'F' },
+		{ "interface",  required_argument, NULL, 'I' },
+		{ "local",      required_argument, NULL, 'l' },
+		{ "infile",     required_argument, NULL, 'i' },
+		{ "local-mac",  required_argument, NULL, 'L' },
+		{ "remote-mac", required_argument, NULL, 'R' },
 		{ NULL }
 	};
 
@@ -1003,7 +1037,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1108,6 +1142,18 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			break;
 		case 'i':
 			if (!load_queries(optarg, ctx->edns_size, ctx->msgid)) {
+				return false;
+			}
+			break;
+		case 'L':
+			if (mac_sscan(optarg, ctx->local_mac) != KNOT_EOK) {
+				ERR2("invalid local MAC address '%s'\n", optarg);
+				return false;
+			}
+			break;
+		case 'R':
+			if (mac_sscan(optarg, ctx->target_mac) != KNOT_EOK) {
+				ERR2("invalid remote MAC address '%s'\n", optarg);
 				return false;
 			}
 			break;
