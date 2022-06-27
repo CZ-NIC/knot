@@ -110,9 +110,18 @@ included in knot-libs package.
 %package utils
 Summary:	DNS client utilities shipped with the Knot DNS server
 Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
+# Debian package compat
+Provides:	%{name}-dnsutils = %{version}-%{release}
 
 %description utils
 The package contains DNS client utilities shipped with the Knot DNS server.
+
+%package dnssecutils
+Summary:	DNSSEC tools shipped with the Knot DNS server
+Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
+
+%description dnssecutils
+The package contains DNSSEC tools shipped with the Knot DNS server.
 
 %package module-dnstap
 Summary:	dnstap module for Knot DNS
@@ -257,8 +266,6 @@ getent passwd knot >/dev/null || \
 %dir %{_libdir}/knot
 %dir %{_libdir}/knot/modules-*
 %{_unitdir}/knot.service
-%{_bindir}/kzonecheck
-%{_bindir}/kzonesign
 %{_sbindir}/kcatalogprint
 %{_sbindir}/kjournalprint
 %{_sbindir}/keymgr
@@ -267,8 +274,6 @@ getent passwd knot >/dev/null || \
 %if 0%{?suse_version}
 %{_sbindir}/rcknot
 %endif
-%{_mandir}/man1/kzonecheck.*
-%{_mandir}/man1/kzonesign.*
 %{_mandir}/man5/knot.conf.*
 %{_mandir}/man8/kcatalogprint.*
 %{_mandir}/man8/kjournalprint.*
@@ -280,7 +285,6 @@ getent passwd knot >/dev/null || \
 %files utils
 %{_bindir}/kdig
 %{_bindir}/khost
-%{_bindir}/knsec3hash
 %{_bindir}/knsupdate
 %if 0%{?use_xdp}
 %{_sbindir}/kxdpgun
@@ -288,8 +292,15 @@ getent passwd knot >/dev/null || \
 %endif
 %{_mandir}/man1/kdig.*
 %{_mandir}/man1/khost.*
-%{_mandir}/man1/knsec3hash.*
 %{_mandir}/man1/knsupdate.*
+
+%files dnssecutils
+%{_bindir}/knsec3hash
+%{_bindir}/kzonecheck
+%{_bindir}/kzonesign
+%{_mandir}/man1/knsec3hash.*
+%{_mandir}/man1/kzonecheck.*
+%{_mandir}/man1/kzonesign.*
 
 %files module-dnstap
 %{_libdir}/knot/modules-*/dnstap.so
