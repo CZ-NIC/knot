@@ -71,8 +71,8 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 {
 	if (table != NULL) {
 		knot_xquic_conn_t *c, *next;
-		list_t *table = (list_t *)&table->timeout;
-		WALK_LIST_DELSAFE(c, next, *table) {
+		list_t *tto = (list_t *)&table->timeout;
+		WALK_LIST_DELSAFE(c, next, *tto) {
 			xquic_table_rem(c, table);
 		}
 		assert(table->usage == 0);
@@ -91,8 +91,8 @@ int knot_xquic_table_sweep(knot_xquic_table_t *table,
 {
 	uint64_t now = 0;
 	knot_xquic_conn_t *c, *next;
-	list_t *table = (list_t *)&table->timeout;
-	WALK_LIST_DELSAFE(c, next, *table) {
+	list_t *tto = (list_t *)&table->timeout;
+	WALK_LIST_DELSAFE(c, next, *tto) {
 		if (xquic_conn_timeout(c, &now)) {
 			(*timed_out)++;
 			xquic_table_rem(c, table);
