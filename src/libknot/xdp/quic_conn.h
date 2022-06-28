@@ -21,8 +21,6 @@
 #include <stdint.h>
 #include <sys/uio.h>
 
-#include <ngtcp2/ngtcp2_crypto.h> // TODO private structure?
-
 #define MAX_STREAMS_PER_CONN 10
 
 struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
@@ -35,6 +33,11 @@ typedef struct knot_xquic_ucw_node {
 typedef struct knot_xquic_ucw_list {
 	knot_xquic_ucw_node_t head, tail;
 } knot_xquic_ucw_list_t;
+
+typedef struct {
+	void *get_conn;
+	void *user_data;
+} nc_conn_ref_placeholder_t;
 
 typedef struct {
 	knot_xquic_ucw_node_t node;
@@ -56,7 +59,7 @@ typedef struct {
 typedef struct knot_xquic_conn {
 	knot_xquic_ucw_node_t timeout; // MUST be first field of the struct
 
-	ngtcp2_crypto_conn_ref conn_ref; // TODO private structure?
+	nc_conn_ref_placeholder_t conn_ref; // placeholder for internal struct ngtcp2_crypto_conn_ref
 
 	struct ngtcp2_conn *conn;
 
