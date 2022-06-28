@@ -123,12 +123,12 @@ libknot_la_CPPFLAGS += $(libngtcp2_CFLAGS)
 libknot_la_LIBADD   += $(libngtcp2_LIBS)
 
 nobase_include_libknot_HEADERS += \
-        libknot/xdp/quic.h                      \
-        libknot/xdp/quic_conn.h
+	libknot/xdp/quic_conn.h
 
 libknot_la_SOURCES  += \
 	libknot/xdp/quic.c                      \
-        libknot/xdp/quic_conn.c
+	libknot/xdp/quic.h                      \
+	libknot/xdp/quic_conn.c
 
 endif ENABLE_QUIC
 endif ENABLE_XDP

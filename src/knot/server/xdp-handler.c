@@ -28,7 +28,7 @@
 #include "contrib/ucw/mempool.h"
 #include "libknot/error.h"
 #ifdef ENABLE_QUIC
-#include "libknot/xdp/quic.h"
+#include "libknot/xdp/quic_conn.h"
 #endif // ENABLE_QUIC
 #include "libknot/xdp/tcp.h"
 

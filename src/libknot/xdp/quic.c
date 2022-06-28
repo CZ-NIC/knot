@@ -844,7 +844,7 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xdp_socket_t *sock,
 
 _public_
 int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
-                    knot_xdp_socket_t *sock, knot_xdp_msg_t *in_msg,
+                    struct knot_xdp_socket *sock, knot_xdp_msg_t *in_msg,
                     int handle_ret, unsigned max_msgs, bool ignore_lastbyte)
 {
 	if (handle_ret < 0) {

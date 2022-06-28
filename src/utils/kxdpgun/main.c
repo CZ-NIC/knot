@@ -40,7 +40,7 @@
 #include "libknot/libknot.h"
 #include "libknot/xdp.h"
 #ifdef ENABLE_QUIC
-#include "libknot/xdp/quic.h"
+#include "libknot/xdp/quic_conn.h"
 #endif // ENABLE_QUIC
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"

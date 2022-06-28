@@ -19,11 +19,16 @@
 #include <linux/if_ether.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/socket.h>
 #include <sys/uio.h>
+
+#include "libknot/xdp/msg.h"
 
 #define MAX_STREAMS_PER_CONN 10
 
 struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
+
+struct knot_xdp_socket; // declaration from xdp.h
 
 // those are equivalent to contrib/ucw/lists.h , just must not be included.
 typedef struct knot_xquic_ucw_node {
@@ -282,3 +287,52 @@ void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id, si
  * \return True if instead of continuing handshake, Retry packet shall be sent to verify counterpart's address.
  */
 bool xquic_require_retry(knot_xquic_table_t *table);
+
+/*!
+ * \brief Create new outgoing QUIC connection.
+ *
+ * \note This function is defined in quic.c. The quic.h header is private.
+ *
+ * \param table       QUIC connections table to be added to.
+ * \param dest        Destination IP address.
+ * \param via         Source IP address.
+ * \param out_conn    Out: new connection.
+ *
+ * \return KNOT_E*
+ */
+int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
+                      struct sockaddr_storage *via, knot_xquic_conn_t **out_conn);
+
+/*!
+ * \brief Handle incoming QUIC packet.
+ *
+ * \note This function is defined in quic.c. The quic.h header is private.
+ *
+ * \param table           QUIC connectoins table-
+ * \param msg             Incoming XDP packet.
+ * \param idle_timeout    Configured idle timeout for connections.
+ * \param out_conn        Out: QUIC connection that this packet belongs to.
+ *
+ * \return KNOT_E*
+ */
+int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg,
+                      uint64_t idle_timeout, knot_xquic_conn_t **out_conn);
+
+/*!
+ * \brief Send outgoing QUIC packet(s) for a connection.
+ *
+ * \note This function is defined in quic.c. The quic.h header is private.
+ *
+ * \param quic_table         QUIC connection table.
+ * \param relay              QUIC connection.
+ * \param sock               XDP socket.
+ * \param in_msg             Previous incomming packet for this connection.
+ * \param handle_ret         Error returned from knot_xquic_handle() for incoming packet.
+ * \param max_msgs           Maxmimum packets to be sent.
+ * \param ignore_lastbyte    Cut off last byte of QUIC paylod.
+ *
+ * \return KNOT_E*
+ */
+int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
+		    struct knot_xdp_socket *sock, knot_xdp_msg_t *in_msg,
+                    int handle_ret, unsigned max_msgs, bool ignore_lastbyte);
