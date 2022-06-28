@@ -1486,7 +1486,7 @@ class Knot(Server):
                 have_catalog = z
         if have_catalog is not None:
             s.id_item("id", "catalog-default")
-            s.item_str("file", self.dir + "/master/%s.zone")
+            s.item_str("file", self.dir + "/catalog/%s.zone")
             s.item_str("zonefile-load", "difference")
             s.item_str("journal-content", z.journal_content)
 
@@ -1501,13 +1501,13 @@ class Knot(Server):
             self.config_xfr(z, s)
 
             s.id_item("id", "catalog-signed")
-            s.item_str("file", self.dir + "/master/%s.zone")
+            s.item_str("file", self.dir + "/catalog/%s.zone")
             s.item_str("journal-content", z.journal_content)
             s.item_str("dnssec-signing", "on")
             self.config_xfr(z, s)
 
             s.id_item("id", "catalog-unsigned")
-            s.item_str("file", self.dir + "/master/%s.zone")
+            s.item_str("file", self.dir + "/catalog/%s.zone")
             s.item_str("journal-content", z.journal_content)
             self.config_xfr(z, s)
 

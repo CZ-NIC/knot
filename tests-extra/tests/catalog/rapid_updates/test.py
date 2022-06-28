@@ -23,6 +23,8 @@ catz = t.zone("catalog1.", storage=".")
 t.link(catz, knot)
 knot.zones[catz[0].name].catalog = True
 
+os.mkdir(knot.dir + "/catalog")
+
 t.start()
 
 knot.zone_wait(catz, udp=False, tsig=True)
@@ -42,7 +44,7 @@ for i in range(UPDATES):
     zone_add = "member%d." % i
     name_hash = hashlib.md5(zone_add.encode()).hexdigest()
 
-    shutil.copyfile(t.data_dir + "generic.zone" , knot.dir + "/master/" + zone_add + "zone")
+    shutil.copyfile(t.data_dir + "generic.zone" , knot.dir + "/catalog/" + zone_add + "zone")
 
     up = knot.update(catz)
     up.add(name_hash + ".zones", 0, "PTR", zone_add)

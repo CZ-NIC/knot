@@ -8,6 +8,7 @@ from dnstest.module import ModOnlineSign
 import dnstest.params
 
 import glob
+import os
 import shutil
 from subprocess import DEVNULL, PIPE, Popen
 import subprocess
@@ -19,6 +20,9 @@ def check_keys(server, zone_name, expect_keys):
     lines = len(stdout.splitlines())
     if lines != expect_keys:
         set_err("CHECK # of KEYS (%d != %d)" % (lines, expect_keys))
+
+def member_zonefile(server, zone):
+    return server.dir + "/catalog/" + zone + "zone"
 
 t = Test()
 
@@ -38,8 +42,9 @@ if random.choice([True, False]):
 else:
     slave.add_module(zone[1], ModOnlineSign(algorithm="ECDSAP256SHA256", single_type_signing=False))
 
+os.mkdir(master.dir + "/catalog")
 for zf in glob.glob(t.data_dir + "/*.zone"):
-    shutil.copy(zf, master.dir + "/master")
+    shutil.copy(zf, master.dir + "/catalog")
 
 t.start()
 
@@ -58,8 +63,8 @@ resp.check(rcode="REFUSED")
 resp = master.dig("not-cataloged3.", "SOA")
 resp.check(rcode="REFUSED")
 
-# Udating a cataloged zone
-subprocess.run(["sed", "-i", "s/10001/10002/;$s/$/\\nxyz A 1.2.3.4/", master.dir + "/master/cataloged1.zone"])
+# Updating a cataloged zone
+subprocess.run(["sed", "-i", "s/10001/10002/;$s/$/\\nxyz A 1.2.3.4/", member_zonefile(master, "cataloged1.")])
 master.ctl("zone-reload cataloged1.")
 t.sleep(4)
 resp = slave.dig("xyz.cataloged1.", "A", dnssec=True)
@@ -115,7 +120,9 @@ up.delete("bar.zones.catalog1.", "PTR", "cataloged2.")
 up.add("bar2.zones.catalog1.", 0, "PTR", "cataloged2.")
 up.send("NOERROR")
 t.sleep(4)
-shutil.copy(t.data_dir + "/cataloged2.zone", master.dir + "/master") # because the purge deletes even zonefile
+if os.path.exists(member_zonefile(master, "cataloged2.")):
+    set_err("removed member zone file not purged")
+shutil.copy(t.data_dir + "/cataloged2.zone", member_zonefile(master, "cataloged2.")) # because the purge deletes even zonefile
 master.ctl("zone-reload cataloged2.")
 t.sleep(6)
 resp2 = slave.dig("cataloged2.", "DNSKEY")
@@ -176,6 +183,8 @@ resp.check(rcode="REFUSED")
 resp = slave.dig("cataloged1.", "DNSKEY")
 resp.check(rcode="REFUSED")
 check_keys(slave, "cataloged1", 0)
+if os.path.exists(member_zonefile(master, "cataloged1.")):
+    set_err("removed member zone file 2 not purged")
 
 # Check restoring catalog from backup
 master.ctl("zone-restore +journal +backupdir %s/backup %s" % (master.dir, zone[1].name))
