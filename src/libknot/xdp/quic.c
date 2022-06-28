@@ -228,11 +228,12 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 
 	gnutls_record_set_max_early_data_size(conn->tls_session, 0xffffffffu);
 
-	conn->conn_ref = (ngtcp2_crypto_conn_ref) {
+	conn->conn_ref = (nc_conn_ref_placeholder_t) {
 		.get_conn = get_conn,
 		.user_data = conn
 	};
 
+	_Static_assert(sizeof(nc_conn_ref_placeholder_t) == sizeof(ngtcp2_crypto_conn_ref), "invalid placeholder for conn_ref");
 	gnutls_session_set_ptr(conn->tls_session, &conn->conn_ref);
 
 	if (server) {
