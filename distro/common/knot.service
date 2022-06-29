@@ -26,6 +26,7 @@ TemporaryFileSystem=/run:ro /var:ro
 BindPaths=/run/systemd
 RuntimeDirectory=knot
 StateDirectory=knot
+LogsDirectory=knot
 NoNewPrivileges=yes
 
 [Install]
