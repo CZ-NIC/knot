@@ -432,6 +432,20 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		knot_zonedb_insert(db_new, zone);
 	}
 
+	/* Remove deleted cataloged zones from conf before catalog removals are commited. */
+	catalog_it_t *cat_it = catalog_it_begin(&server->catalog_upd);
+	while (!catalog_it_finished(cat_it)) {
+		catalog_upd_val_t *upd = catalog_it_val(cat_it);
+		if (upd->type == CAT_UPD_REM) {
+			zone_t *zone = knot_zonedb_find(db_old, upd->member);
+			if (zone != NULL) {
+				zone_purge(conf, zone);
+			}
+		}
+		catalog_it_next(cat_it);
+	}
+	catalog_it_free(cat_it);
+
 	int ret = catalog_update_commit(&server->catalog_upd, &server->catalog);
 	if (ret != KNOT_EOK) {
 		log_error("catalog, failed to apply changes (%s)", knot_strerror(ret));
@@ -526,19 +540,6 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 	knot_zonedb_iter_free(it);
 
 catalog_only:
-	; /* Remove deleted cataloged zones from conf. */
-	catalog_it_t *cat_it = catalog_it_begin(&server->catalog_upd);
-	while (!catalog_it_finished(cat_it)) {
-		catalog_upd_val_t *upd = catalog_it_val(cat_it);
-		if (upd->type == CAT_UPD_REM) {
-			zone_t *zone = knot_zonedb_find(db_old, upd->member);
-			if (zone != NULL) {
-				zone_purge(conf, zone);
-			}
-		}
-		catalog_it_next(cat_it);
-	}
-	catalog_it_free(cat_it);
 
 	/* Clear catalog changes. No need to use mutex as this is done from main
 	 * thread while all zone events are paused. */
