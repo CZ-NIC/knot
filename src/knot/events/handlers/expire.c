@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,8 +38,8 @@ int event_expire(conf_t *conf, zone_t *zone)
 
 	zone->zonefile.exists = false;
 
-	// NOTE: must preserve zone->timers.soa_expire
-	zone->timers.next_refresh = time(NULL);
+	zone->timers.next_expire = time(NULL);
+	zone->timers.next_refresh = zone->timers.next_expire;
 	replan_from_timers(conf, zone);
 
 	return KNOT_EOK;

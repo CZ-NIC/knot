@@ -251,7 +251,8 @@ static void zone_purge(conf_t *conf, zone_t *zone)
 
 static zone_contents_t *zone_expire(zone_t *zone)
 {
-	zone->timers.next_refresh = time(NULL);
+	zone->timers.next_expire = time(NULL);
+	zone->timers.next_refresh = zone->timers.next_expire;
 	return zone_switch_contents(zone, NULL);
 }
 
