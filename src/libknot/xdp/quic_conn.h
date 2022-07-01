@@ -26,6 +26,7 @@
 #define MAX_STREAMS_PER_CONN 10
 
 struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
+struct knot_quic_creds;
 
 // those are equivalent to contrib/ucw/lists.h , just must not be included.
 typedef struct knot_xquic_ucw_node {
@@ -105,13 +106,12 @@ typedef struct knot_xquic_table {
  * \param max_ibufs    Maximum size of buffers for fragmented incomming DNS msgs.
  * \param max_obufs    Maximum size of buffers for un-ACKed outgoing data.
  * \param udp_pl       Maximum UDP payload size (both IPv4 and 6).
- * \param tls_cert     Server TLS certificate.
- * \param tls_key      TLS private key.
+ * \param creds        QUIC crypto context..
  *
  * \return Allocated table, or NULL.
  */
 knot_xquic_table_t *knot_xquic_table_new(bool server, size_t max_conns, size_t max_ibufs, size_t max_obufs,
-                                         size_t udp_pl, const char *tls_cert, const char *tls_key);
+                                         size_t udp_pl, struct knot_quic_creds *creds);
 
 /*!
  * \brief Free QUIC table including its contents.

@@ -115,7 +115,7 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 }
 
 typedef struct {
-	void* (*udp_init)(void *);
+	void* (*udp_init)(udp_context_t *, void *);
 	void (*udp_deinit)(void *);
 	int (*udp_recv)(int, void *);
 	void (*udp_handle)(udp_context_t *, void *);
@@ -167,7 +167,7 @@ struct udp_recvfrom {
 	cmsg_pktinfo_t pktinfo;
 };
 
-static void *udp_recvfrom_init(_unused_ void *xdp_sock)
+static void *udp_recvfrom_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
 {
 	struct udp_recvfrom *rq = malloc(sizeof(struct udp_recvfrom));
 	if (rq == NULL) {
@@ -256,7 +256,7 @@ struct udp_recvmmsg {
 	cmsg_pktinfo_t pktinfo[RECVMMSG_BATCHLEN];
 };
 
-static void *udp_recvmmsg_init(_unused_ void *xdp_sock)
+static void *udp_recvmmsg_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
 {
 	knot_mm_t mm;
 	mm_ctx_mempool(&mm, sizeof(struct udp_recvmmsg));
@@ -357,9 +357,9 @@ static udp_api_t udp_recvmmsg_api = {
 
 #ifdef ENABLE_XDP
 
-static void *xdp_recvmmsg_init(void *xdp_sock)
+static void *xdp_recvmmsg_init(udp_context_t *ctx, void *xdp_sock)
 {
-	return xdp_handle_init(xdp_sock);
+	return xdp_handle_init(ctx->server, xdp_sock);
 }
 
 static void xdp_recvmmsg_deinit(void *d)
@@ -524,7 +524,7 @@ int udp_master(dthread_t *thread)
 	}
 
 	/* Initialize the networking API. */
-	api_ctx = api->udp_init(xdp_socket);
+	api_ctx = api->udp_init(&udp, xdp_socket);
 	if (api_ctx == NULL) {
 		goto finish;
 	}
