@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -123,6 +123,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
+	knot_time_t zone_expire = 0;
 
 	int result = kdnssec_ctx_init(conf, &ctx, zone_name, zone_kaspdb(update->zone), NULL);
 	if (result != KNOT_EOK) {
@@ -191,8 +192,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	log_zone_info(zone_name, "DNSSEC, signing started");
 
-	knot_time_t next_resign = 0;
-	result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &next_resign);
+	result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
 			       knot_strerror(result));
@@ -213,7 +213,6 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	knot_time_t zone_expire = 0;
 	result = knot_zone_sign(update, &keyset, &ctx, &zone_expire);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign zone content (%s)",
@@ -259,7 +258,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 done:
 	if (result == KNOT_EOK) {
-		reschedule->next_sign = schedule_next(&ctx, &keyset, next_resign, zone_expire);
+		reschedule->next_sign = schedule_next(&ctx, &keyset, ctx.offline_next_time, zone_expire);
 	} else {
 		reschedule->next_sign = knot_dnssec_failover_delay(&ctx);
 		reschedule->next_rollover = 0;
@@ -280,7 +279,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
-	knot_time_t expire_at = 0;
+	knot_time_t zone_expire = 0;
 
 	int result = kdnssec_ctx_init(conf, &ctx, zone_name, zone_kaspdb(update->zone), NULL);
 	if (result != KNOT_EOK) {
@@ -309,9 +308,8 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		goto done;
 	}
 
-	if (zone_update_changes_dnskey(update) || ctx.policy->offline_ksk) {
-		// TODO: move offline rrsigs filling out of knot_zone_sign_update_dnskeys().
-		result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx, &expire_at);
+	if (zone_update_changes_dnskey(update)) {
+		result = knot_zone_sign_update_dnskeys(update, &keyset, &ctx);
 		if (result != KNOT_EOK) {
 			log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
 				       knot_strerror(result));
@@ -325,7 +323,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		goto done;
 	}
 
-	result = knot_zone_sign_update(update, &keyset, &ctx, &expire_at);
+	result = knot_zone_sign_update(update, &keyset, &ctx, &zone_expire);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign changeset (%s)",
 		               knot_strerror(result));
@@ -379,8 +377,10 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 	log_zone_info(zone_name, "DNSSEC, incrementally signed");
 
 done:
-	if (result == KNOT_EOK && expire_at != 0) {
-		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, (time_t)expire_at); // this is usually NOOP since signing planned earlier
+	if (result == KNOT_EOK) {
+		knot_time_t next = knot_time_min(ctx.offline_next_time, zone_expire);
+		// NOTE: this is usually NOOP since signing planned earlier
+		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, next ? next : -1);
 	}
 
 	free_zone_keys(&keyset);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,8 +51,7 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
  */
 int knot_zone_sign_update_dnskeys(zone_update_t *update,
                                   zone_keyset_t *zone_keys,
-                                  kdnssec_ctx_t *dnssec_ctx,
-                                  knot_time_t *next_resign);
+                                  kdnssec_ctx_t *dnssec_ctx);
 
 /*!
  * \brief Check if key can be used to sign given RR.
