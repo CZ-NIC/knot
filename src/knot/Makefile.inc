@@ -133,8 +133,6 @@ libknotd_la_SOURCES = \
 	knot/common/systemd.h			\
 	knot/common/unreachable.c		\
 	knot/common/unreachable.h		\
-	knot/server/dthreads.c			\
-	knot/server/dthreads.h			\
 	knot/journal/journal_basic.c		\
 	knot/journal/journal_basic.h		\
 	knot/journal/journal_metadata.c		\
@@ -147,6 +145,10 @@ libknotd_la_SOURCES = \
 	knot/journal/knot_lmdb.h		\
 	knot/journal/serialization.c		\
 	knot/journal/serialization.h		\
+	knot/server/dthreads.c			\
+	knot/server/dthreads.h			\
+	knot/server/proxyv2.c			\
+	knot/server/proxyv2.h			\
 	knot/server/server.c			\
 	knot/server/server.h			\
 	knot/server/tcp-handler.c		\

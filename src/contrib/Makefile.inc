@@ -66,6 +66,8 @@ libcontrib_la_SOURCES = \
 	contrib/openbsd/strlcat.h		\
 	contrib/openbsd/strlcpy.c		\
 	contrib/openbsd/strlcpy.h		\
+	contrib/proxyv2/proxyv2.c		\
+	contrib/proxyv2/proxyv2.h		\
 	contrib/ucw/array-sort.h		\
 	contrib/ucw/binsearch.h			\
 	contrib/ucw/heap.c			\

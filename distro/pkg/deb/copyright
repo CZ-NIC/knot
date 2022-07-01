@@ -60,6 +60,11 @@ Files: src/contrib/openbsd/strl*
 Copyright: 1998 Todd C. Miller <Todd.Miller@courtesan.com>
 License: 0BSD
 
+Files: src/contrib/proxyv2/*
+Copyright: 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+           2021 Fastly, Inc.
+License: GPL-3+
+
 Files: src/contrib/qp-trie/*
 Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
            2018 Tony Finch <dot@dotat.at>
