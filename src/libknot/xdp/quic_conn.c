@@ -18,6 +18,7 @@
 #include "libknot/xdp/quic.h"
 
 #include <assert.h>
+#include <gnutls/gnutls.h>
 #include <string.h>
 
 #include "contrib/libngtcp2/ngtcp2/ngtcp2.h"
@@ -36,11 +37,11 @@
 
 _public_
 knot_xquic_table_t *knot_xquic_table_new(bool server, size_t max_conns, size_t max_ibufs, size_t max_obufs,
-                                         size_t udp_pl, const char *tls_cert, const char *tls_key)
+                                         size_t udp_pl, struct knot_quic_creds *creds)
 {
 	size_t table_size = max_conns * BUCKETS_PER_CONNS;
 
-	knot_xquic_table_t *res = calloc(1, sizeof(*res) + table_size * sizeof(res->conns[0]) + sizeof(knot_xquic_creds_t));
+	knot_xquic_table_t *res = calloc(1, sizeof(*res) + table_size * sizeof(res->conns[0]));
 	if (res == NULL) {
 		return NULL;
 	}
@@ -51,12 +52,8 @@ knot_xquic_table_t *knot_xquic_table_new(bool server, size_t max_conns, size_t m
 	res->obufs_max = max_obufs;
 	res->udp_payload_limit = udp_pl;
 	init_list((list_t *)&res->timeout);
-	res->creds = (void *)res + sizeof(*res) + table_size * sizeof(res->conns[0]);
 
-	if (knot_xquic_init_creds(res->creds, server, tls_cert, tls_key) != KNOT_EOK) {
-		free(res);
-		return NULL;
-	}
+	res->creds = creds;
 
 	res->hash_secret[0] = dnssec_random_uint64_t();
 	res->hash_secret[1] = dnssec_random_uint64_t();
@@ -78,8 +75,6 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 		assert(table->usage == 0);
 		assert(table->pointers == 0);
 		assert(table->obufs_size == 0);
-
-		knot_xquic_free_creds(table->creds);
 
 		free(table);
 	}
