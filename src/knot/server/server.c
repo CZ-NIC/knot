@@ -24,6 +24,9 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
 #include "libknot/xdp.h"
+#ifdef ENABLE_QUIC
+#include "libknot/xdp/quic.h"
+#endif // ENABLE_QUIC
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
@@ -608,6 +611,21 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		}
 	}
 
+#ifdef ENABLE_QUIC
+	if (xdp_quic > 0) {
+		char *tls_cert = conf_tls(conf, C_TLS_CERT);
+		char *tls_key = conf_tls(conf, C_TLS_KEY);
+
+		s->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
+		free(tls_cert);
+		free(tls_key);
+		if (s->quic_creds == NULL) {
+			log_error("failed to initialize QUIC context");
+			return KNOT_ERROR; // TODO free something?
+		}
+	}
+#endif // ENABLE_QUIC
+
 	return KNOT_EOK;
 }
 
@@ -710,6 +728,10 @@ void server_deinit(server_t *server)
 	conn_pool_deinit(global_conn_pool);
 	global_conn_pool = NULL;
 	knot_unreachables_deinit(&global_unreachables);
+
+#ifdef ENABLE_QUIC
+	knot_xquic_free_creds(server->quic_creds);
+#endif // ENABLE_QUIC
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,

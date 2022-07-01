@@ -426,6 +426,7 @@ void *xdp_gun_thread(void *_ctx)
 	knot_tcp_table_t *tcp_table = NULL;
 #ifdef ENABLE_QUIC
 	knot_xquic_table_t *quic_table = NULL;
+	struct knot_quic_creds *quic_creds = NULL;
 	knot_xdp_msg_t quic_fake_req = { 0 };
 #endif // ENABLE_QUIC
 
@@ -440,7 +441,12 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	if (ctx->quic) {
 #ifdef ENABLE_QUIC
-		quic_table = knot_xquic_table_new(false, ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, NULL, NULL);
+		quic_creds = knot_xquic_init_creds(false, NULL, NULL);
+		if (quic_creds == NULL) {
+			ERR2("failed to initialize QUIC context\n");
+			return NULL;
+		}
+		quic_table = knot_xquic_table_new(false, ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, quic_creds);
 		if (quic_table == NULL) {
 			ERR2("failed to allocate QUIC connection table\n");
 			return NULL;
