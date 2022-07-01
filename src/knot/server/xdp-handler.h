@@ -29,7 +29,7 @@ struct server;
 /*!
  * \brief Initialize XDP packet handling context.
  */
-struct xdp_handle_ctx *xdp_handle_init(knot_xdp_socket_t *sock);
+struct xdp_handle_ctx *xdp_handle_init(struct server *server, knot_xdp_socket_t *sock);
 
 /*!
  * \brief Deinitialize XDP packet handling context.

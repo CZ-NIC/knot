@@ -22,6 +22,10 @@
 #include <string.h>
 #include <time.h>
 
+#include "contrib/libngtcp2/ngtcp2/ngtcp2.h"
+#include "contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h"
+#include "contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h"
+
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/lists.h"
@@ -42,6 +46,14 @@
 #define QUIC_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_CIPHERS":"QUIC_DEFAULT_GROUPS
 
 #define TLS_CALLBACK_ERR     (-1)
+
+typedef struct knot_quic_creds {
+	gnutls_certificate_credentials_t tls_cert;
+	gnutls_anti_replay_t tls_anti_replay;
+	gnutls_datum_t tls_ticket_key;
+	uint8_t static_secret[32];
+	bool is_clone;
+} knot_xquic_creds_t;
 
 static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
                                        const gnutls_datum_t *key,
@@ -104,17 +116,22 @@ finish:
 	return ret;
 }
 
-int knot_xquic_init_creds(knot_xquic_creds_t *creds, bool server,
-                          const char *tls_cert, const char *tls_key)
+struct knot_quic_creds *knot_xquic_init_creds(bool server,
+                                          const char *tls_cert, const char *tls_key)
 {
+	knot_xquic_creds_t *creds = calloc(1, sizeof(*creds));
+	if (creds == NULL) {
+		return NULL;
+	}
+
 	int ret = dnssec_random_buffer(creds->static_secret, sizeof(creds->static_secret));
 	if (ret != DNSSEC_EOK) {
-		return knot_error_from_libdnssec(ret);
+		goto fail;
 	}
 
 	ret = gnutls_anti_replay_init(&creds->tls_anti_replay);
 	if (ret != GNUTLS_E_SUCCESS) {
-		return KNOT_ERROR;
+		goto fail;
 	}
 	gnutls_anti_replay_set_add_function(creds->tls_anti_replay, tls_anti_replay_db_add_func);
 	gnutls_anti_replay_set_ptr(creds->tls_anti_replay, NULL);
@@ -122,18 +139,17 @@ int knot_xquic_init_creds(knot_xquic_creds_t *creds, bool server,
 	ret = gnutls_certificate_allocate_credentials(&creds->tls_cert);
 	if (ret != GNUTLS_E_SUCCESS) {
 		gnutls_anti_replay_deinit(creds->tls_anti_replay);
-		return KNOT_ENOMEM;
+		goto fail;
 	}
 
 	ret = gnutls_certificate_set_x509_system_trust(creds->tls_cert);
 	if (ret < 0) {
-		knot_xquic_free_creds(creds);
-		return KNOT_ERROR;
+		goto fail2;
 	}
 
 	if ((bool)(tls_cert == NULL) != (bool)(tls_key == NULL) ||
 	    (tls_cert != NULL && !server)) {
-		return KNOT_EINVAL;
+		goto fail2;
 	}
 	if (tls_cert != NULL) {
 		ret = gnutls_certificate_set_x509_key_file(creds->tls_cert, tls_cert, tls_key, GNUTLS_X509_FMT_PEM);
@@ -141,27 +157,38 @@ int knot_xquic_init_creds(knot_xquic_creds_t *creds, bool server,
 		ret = self_signed_cert(creds->tls_cert);
 	}
 	if (ret < 0) {
-		knot_xquic_free_creds(creds);
-		return KNOT_ERROR;
+		goto fail2;
 	}
 
 	ret = gnutls_session_ticket_key_generate(&creds->tls_ticket_key);
 	if (ret != GNUTLS_E_SUCCESS) {
-		knot_xquic_free_creds(creds);
-		return KNOT_ERROR;
+		goto fail2;
 	}
 
-	return KNOT_EOK;
+	return creds;
 
+fail:
+	free(creds);
+	return NULL;
+fail2:
+	knot_xquic_free_creds(creds);
+	return NULL;
 }
 
-void knot_xquic_free_creds(knot_xquic_creds_t *creds)
+void knot_xquic_free_creds(struct knot_quic_creds *creds)
 {
-	gnutls_certificate_free_credentials(creds->tls_cert);
-	if (creds->tls_ticket_key.data != NULL) {
-		tls_session_ticket_key_free(&creds->tls_ticket_key);
+	if (creds == NULL) {
+		return;
+	}
+
+	if (!creds->is_clone) {
+		gnutls_certificate_free_credentials(creds->tls_cert);
+		if (creds->tls_ticket_key.data != NULL) {
+			tls_session_ticket_key_free(&creds->tls_ticket_key);
+		}
 	}
 	gnutls_anti_replay_deinit(creds->tls_anti_replay);
+	free(creds);
 }
 
 #define ALPN "\03""doq"

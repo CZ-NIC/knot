@@ -16,9 +16,6 @@
 
 #pragma once
 
-#include "contrib/libngtcp2/ngtcp2/ngtcp2.h"
-#include "contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h"
-#include "contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h"
 
 #include "libknot/xdp/quic_conn.h"
 #include "libknot/xdp/xdp.h"
@@ -28,30 +25,25 @@
 #define XQUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
 #define XQUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
 
-typedef struct knot_quic_creds {
-	gnutls_certificate_credentials_t tls_cert;
-	gnutls_anti_replay_t tls_anti_replay;
-	gnutls_datum_t tls_ticket_key;
-	uint8_t static_secret[32];
-} knot_xquic_creds_t;
+struct knot_quic_creds;
+
 
 /*!
  * \brief Init server TLS certificate for DoQ.
  *
- * \param creds       Creds structure to be initialized.
  * \param server      Initializing for server-side (client otherwise).
  * \param tls_cert    X509 certificate PEM file path/name.
  * \param tls_key     Key PEM file path/name.
  *
- * \return KNOT_E*
+ * \return Initialized creds.
  */
-int knot_xquic_init_creds(knot_xquic_creds_t *creds, bool server,
-                          const char *tls_cert, const char *tls_key);
+struct knot_quic_creds *knot_xquic_init_creds(bool server,
+                                          const char *tls_cert, const char *tls_key);
 
 /*!
  * \brief Init server TLS certificate for DoQ.
  */
-void knot_xquic_free_creds(knot_xquic_creds_t *creds);
+void knot_xquic_free_creds(struct knot_quic_creds *creds);
 
 /*!
  * \brief Check if connection timed out due to inactivity.
