@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include "libknot/xdp/quic_conn.h"
 #include "libknot/xdp/xdp.h"
 
@@ -26,6 +25,11 @@
 #define XQUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
 
 struct knot_quic_creds;
+struct knot_quic_session;
+
+struct knot_quic_session *knot_xquic_session_save(knot_xquic_conn_t *conn);
+
+int knot_xquic_session_load(knot_xquic_conn_t *conn, struct knot_quic_session *session);
 
 
 /*!

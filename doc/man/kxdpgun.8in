@@ -110,11 +110,14 @@ name, and \fIflags\fP is a single character:
 \fBE\fP Send query with EDNS.
 .sp
 \fBD\fP Request DNSSEC (EDNS + DO flag).
-.SS TCP debug modes
+.SS TCP/QUIC debug modes
 .INDENT 0.0
 .TP
+\fB0\fP
+Perform full handshake for all connections (QUIC only).
+.TP
 \fB1\fP
-Just send SYN and receive SYN\-ACK.
+Just send SYN (Initial) and receive SYN\-ACK (Handshake).
 .TP
 \fB2\fP
 Perform TCP handshake and don\(aqt send anything, allow close initiated by counterpart.
@@ -129,10 +132,10 @@ Send incomplete query (N\-1 bytes) and don\(aqt react further.
 Send query and don\(aqt ACK the response or anything further.
 .TP
 \fB8\fP
-Don\(aqt close the connection and ignore close by counterpart.
+Don\(aqt close the connection and ignore close by counterpart (TCP only).
 .TP
 \fB9\fP
-Operate normally except for not ACKing the final FIN+ACK.
+Operate normally except for not ACKing the final FIN+ACK (TCP only).
 .UNINDENT
 .SS Signals
 .sp

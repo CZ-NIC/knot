@@ -37,6 +37,8 @@
 #include <sys/socket.h>
 #include <sys/resource.h>
 
+#include <gnutls/gnutls.h>
+
 #include "libknot/libknot.h"
 #include "libknot/xdp.h"
 #ifdef ENABLE_QUIC
@@ -119,6 +121,7 @@ typedef struct {
 	bool		tcp;
 	char		tcp_mode;
 	bool		quic;
+	bool		quic_full_handshake;
 	xdp_gun_ignore_t  ignore1;
 	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
@@ -428,6 +431,7 @@ void *xdp_gun_thread(void *_ctx)
 	knot_xquic_table_t *quic_table = NULL;
 	struct knot_quic_creds *quic_creds = NULL;
 	knot_xdp_msg_t quic_fake_req = { 0 };
+	list_t quic_sessions;
 #endif // ENABLE_QUIC
 
 	rss_ctx_init(ctx);
@@ -460,6 +464,8 @@ void *xdp_gun_thread(void *_ctx)
 		memcpy(&quic_fake_req.ip_from, &ctx->target_ip,  sizeof(quic_fake_req.ip_from));
 		memcpy(&quic_fake_req.ip_to,   &ctx->local_ip,   sizeof(quic_fake_req.ip_to));
 		quic_fake_req.flags = ctx->ipv6 ? KNOT_XDP_MSG_IPV6 : 0;
+
+		init_list(&quic_sessions);
 #else
 		assert(0);
 #endif // ENABLE_QUIC
@@ -514,7 +520,13 @@ void *xdp_gun_thread(void *_ctx)
 						if (ret == KNOT_EOK) {
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
-							newconn->streams_count = -1;
+							if (EMPTY_LIST(quic_sessions)) {
+								newconn->streams_count = -1;
+							} else {
+								void *session = HEAD(quic_sessions);
+								rem_node(session);
+								(void)knot_xquic_session_load(newconn, session);
+							}
 							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, false);
 						}
 						if (ret == KNOT_EOK) {
@@ -622,6 +634,16 @@ void *xdp_gun_thread(void *_ctx)
 						knot_xquic_conn_t *rl = relays[i];
 						if (rl == NULL) {
 							continue;
+						}
+
+						bool sess_ticket = (gnutls_session_get_flags(rl->tls_session) & GNUTLS_SFLAGS_SESSION_TICKET);
+
+						if (sess_ticket && !rl->session_taken && !ctx->quic_full_handshake) {
+							rl->session_taken = true;
+							void *session = knot_xquic_session_save(rl);
+							if (session != NULL) {
+								add_tail(&quic_sessions, session);
+							}
 						}
 
 						if (rl->handshake_done && rl->streams_count == -1) {
@@ -864,9 +886,12 @@ static void print_help(void)
 
 static bool tcp_mode(const char *arg, xdp_gun_ctx_t *ctx)
 {
-	ctx->tcp_mode = (arg == NULL ? '0' : arg[0]);
+	ctx->tcp_mode = (arg == NULL ? '#' : arg[0]);
 	switch (ctx->tcp_mode) {
+	case '#':
+		break;
 	case '0':
+		ctx->quic_full_handshake = true;
 		break;
 	case '1':
 		ctx->ignore1 = KXDPGUN_IGNORE_QUERY;

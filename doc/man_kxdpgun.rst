@@ -89,11 +89,14 @@ name, and *flags* is a single character:
 
 **D** Request DNSSEC (EDNS + DO flag).
 
-TCP debug modes
-...............
+TCP/QUIC debug modes
+....................
+
+**0**
+  Perform full handshake for all connections (QUIC only).
 
 **1**
-  Just send SYN and receive SYN-ACK.
+  Just send SYN (Initial) and receive SYN-ACK (Handshake).
 
 **2**
   Perform TCP handshake and don't send anything, allow close initiated by counterpart.
@@ -108,10 +111,10 @@ TCP debug modes
   Send query and don't ACK the response or anything further.
 
 **8**
-  Don't close the connection and ignore close by counterpart.
+  Don't close the connection and ignore close by counterpart (TCP only).
 
 **9**
-  Operate normally except for not ACKing the final FIN+ACK.
+  Operate normally except for not ACKing the final FIN+ACK (TCP only).
 
 Signals
 .......

@@ -55,6 +55,61 @@ typedef struct knot_quic_creds {
 	bool is_clone;
 } knot_xquic_creds_t;
 
+typedef struct knot_quic_session {
+	node_t n;
+	gnutls_datum_t tls_session;
+	ngtcp2_transport_params quic_params;
+} knot_xquic_session_t;
+
+_public_
+struct knot_quic_session *knot_xquic_session_save(knot_xquic_conn_t *conn)
+{
+	const ngtcp2_transport_params *tmp = ngtcp2_conn_get_remote_transport_params(conn->conn);
+	if (tmp == NULL) {
+		return NULL;
+	}
+
+	knot_xquic_session_t *session = calloc(1, sizeof(*session));
+	if (session == NULL) {
+		return NULL;
+	}
+
+	int ret = gnutls_session_get_data2(conn->tls_session, &session->tls_session);
+	if (ret != GNUTLS_E_SUCCESS) {
+		free(session);
+		return NULL;
+	}
+
+	memcpy(&session->quic_params, tmp, sizeof(session->quic_params));
+
+	return session;
+}
+
+_public_
+int knot_xquic_session_load(knot_xquic_conn_t *conn, struct knot_quic_session *session)
+{
+	if (session == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = KNOT_EOK;
+	if (conn == NULL) {
+		goto session_free;
+	}
+
+	ret = gnutls_session_set_data(conn->tls_session, session->tls_session.data, session->tls_session.size);
+	if (ret != KNOT_EOK) {
+		goto session_free;
+	}
+
+	ngtcp2_conn_set_early_remote_transport_params(conn->conn, &session->quic_params);
+
+session_free:
+	gnutls_free(session->tls_session.data);
+	free(session);
+	return ret;
+}
+
 static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
                                        const gnutls_datum_t *key,
                                        const gnutls_datum_t *data)
