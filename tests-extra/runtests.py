@@ -116,7 +116,7 @@ def parse_args(cmd_args):
     # Filter out excluded tests.
     for test, cases in excluded.items():
         if cases:
-            if included[test]:
+            if test in included:
                 for case in cases:
                     included[test].remove(case)
         else:
