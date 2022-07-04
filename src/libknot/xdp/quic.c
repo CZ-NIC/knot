@@ -611,6 +611,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	settings.max_udp_payload_size = udp_pl;
 	settings.qlog.odcid = *odcid;
 	settings.handshake_timeout = idle_timeout; // NOTE setting handshake timeout to idle_timeout for simplicity
+	settings.no_pmtud = true;
 
 	// III. PARAMS
 	ngtcp2_transport_params params;
