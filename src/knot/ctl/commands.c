@@ -1533,11 +1533,9 @@ static int orphans_purge(ctl_args_t *args)
 
 static int zone_purge(zone_t *zone, ctl_args_t *args)
 {
-	int ret = KNOT_EOK;
-
 	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
 		// Abort possible editing transaction.
-		ret = zone_txn_abort(zone, args);
+		int ret = zone_txn_abort(zone, args);
 		if (ret != KNOT_EOK && ret != KNOT_TXN_ENOTEXISTS) {
 			log_zone_error(zone->name,
 			               "failed to abort pending transaction (%s)",
