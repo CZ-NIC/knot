@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ static inline void next(udp_stdin_t *rq)
 	}
 }
 
-static void *udp_stdin_init(_unused_ void *xdp_sock)
+static void *udp_stdin_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
 {
 	udp_stdin_t *rq = calloc(1, sizeof(udp_stdin_t));
 	if (rq == NULL) {
