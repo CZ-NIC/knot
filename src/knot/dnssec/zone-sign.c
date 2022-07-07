@@ -223,11 +223,11 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	int result = (!rrsig_covers_type(rrsigs, covered->type) ? KNOT_EOK :
 	             knot_synth_rrsig(covered->type, &rrsigs->rrs, &to_remove.rrs, NULL));
 
-	if (result == KNOT_EOK && sign_ctx->dnssec_ctx->offline_rrsig != NULL &&
-	    knot_dname_cmp(sign_ctx->dnssec_ctx->offline_rrsig->owner, covered->owner) == 0 &&
-	    rrsig_covers_type(sign_ctx->dnssec_ctx->offline_rrsig, covered->type)) {
+	if (result == KNOT_EOK && sign_ctx->dnssec_ctx->offline_records.rrsig.rrs.count > 0 &&
+	    knot_dname_cmp(sign_ctx->dnssec_ctx->offline_records.rrsig.owner, covered->owner) == 0 &&
+	    rrsig_covers_type(&sign_ctx->dnssec_ctx->offline_records.rrsig, covered->type)) {
 		result = knot_synth_rrsig(covered->type,
-		    &sign_ctx->dnssec_ctx->offline_rrsig->rrs, &to_add.rrs, NULL);
+		    &sign_ctx->dnssec_ctx->offline_records.rrsig.rrs, &to_add.rrs, NULL);
 		if (result == KNOT_EOK) {
 			// don't remove what shall be added
 			result = knot_rdataset_subtract(&to_remove.rrs, &to_add.rrs, NULL);
@@ -845,8 +845,7 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
 
 int knot_zone_sign_update_dnskeys(zone_update_t *update,
                                   zone_keyset_t *zone_keys,
-                                  kdnssec_ctx_t *dnssec_ctx,
-                                  knot_time_t *next_resign)
+                                  kdnssec_ctx_t *dnssec_ctx)
 {
 	if (update == NULL || zone_keys == NULL || dnssec_ctx == NULL) {
 		return KNOT_EINVAL;
@@ -857,14 +856,13 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 	}
 
 	const zone_node_t *apex = update->new_cont->apex;
-	key_records_t add_r, rem_r, orig_r;
-	memset(&add_r, 0, sizeof(add_r));
-	memset(&rem_r, 0, sizeof(rem_r));
-	key_records_from_apex(apex, &orig_r);
 	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa)) {
 		return KNOT_EINVAL;
 	}
+
+	key_records_t orig_r;
+	key_records_from_apex(apex, &orig_r);
 
 	changeset_t ch;
 	int ret = changeset_init(&ch, apex->owner);
@@ -872,45 +870,40 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		return ret;
 	}
 
-#define CHECK_RET if (ret != KNOT_EOK) goto cleanup
-
 	if (!dnssec_ctx->policy->incremental) {
 		// remove all. This will cancel out with additions later
 		ret = key_records_to_changeset(&orig_r, &ch, true, 0);
-		CHECK_RET;
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
+	key_records_t add_r, rem_r;
 	key_records_init(dnssec_ctx, &add_r);
 	key_records_init(dnssec_ctx, &rem_r);
 
+#define CHECK_RET if (ret != KNOT_EOK) goto cleanup
+
 	if (dnssec_ctx->policy->offline_ksk) {
-		ret = kasp_db_load_offline_records(dnssec_ctx->kasp_db, apex->owner, dnssec_ctx->now, next_resign, &add_r);
-		if (ret == KNOT_EOK) {
-			log_zone_info(dnssec_ctx->zone->dname,
-			              "DNSSEC, using offline records, DNSKEYs %hu, CDNSKEYs %hu, CDs %hu, RRSIGs %hu",
-			              add_r.dnskey.rrs.count, add_r.cdnskey.rrs.count, add_r.cds.rrs.count, add_r.rrsig.rrs.count);
-		} else {
-			log_zone_warning(dnssec_ctx->zone->dname, "DNSSEC, failed to load offline records (%s)",
-			                 knot_strerror(ret));
-		}
+		key_records_t *r = &dnssec_ctx->offline_records;
+		log_zone_info(dnssec_ctx->zone->dname,
+		              "DNSSEC, using offline records, DNSKEYs %hu, CDNSKEYs %hu, CDs %hu, RRSIGs %hu",
+		              r->dnskey.rrs.count, r->cdnskey.rrs.count, r->cds.rrs.count, r->rrsig.rrs.count);
+		ret = key_records_to_changeset(r, &ch, false, CHANGESET_CHECK);
+		CHECK_RET;
 	} else {
 		ret = knot_zone_sign_add_dnskeys(zone_keys, dnssec_ctx, &add_r, &rem_r, &orig_r);
+		CHECK_RET;
+		ret = key_records_to_changeset(&rem_r, &ch, true, CHANGESET_CHECK);
+		CHECK_RET;
+		ret = key_records_to_changeset(&add_r, &ch, false, CHANGESET_CHECK);
+		CHECK_RET;
 	}
-	CHECK_RET;
 
-	ret = key_records_to_changeset(&rem_r, &ch, true, CHANGESET_CHECK);
-	CHECK_RET;
-	ret = key_records_to_changeset(&add_r, &ch, false, CHANGESET_CHECK);
-	CHECK_RET;
 	if (dnssec_ctx->policy->ds_push && node_rrtype_exists(ch.add->apex, KNOT_RRTYPE_CDS)) {
 		// there is indeed a change to CDS
 		update->zone->timers.next_ds_push = time(NULL) + dnssec_ctx->policy->propagation_delay;
 		zone_events_schedule_at(update->zone, ZONE_EVENT_DS_PUSH, update->zone->timers.next_ds_push);
-	}
-
-	assert(knot_rrset_empty(&rem_r.rrsig));
-	if (!knot_rrset_empty(&add_r.rrsig)) {
-		dnssec_ctx->offline_rrsig = knot_rrset_copy(&add_r.rrsig, NULL);
 	}
 
 	ret = zone_update_apply_changeset(update, &ch);

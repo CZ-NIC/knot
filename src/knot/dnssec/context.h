@@ -44,7 +44,8 @@ typedef struct {
 
 	unsigned dbus_event;
 
-	knot_rrset_t *offline_rrsig;
+	key_records_t offline_records;
+	knot_time_t offline_next_time;
 } kdnssec_ctx_t;
 
 /*!

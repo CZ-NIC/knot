@@ -22,6 +22,7 @@
 #include "libknot/libknot.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/kasp/keystore.h"
+#include "knot/dnssec/key_records.h"
 #include "knot/server/dthreads.h"
 
 knot_dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_NORMAL)
@@ -228,6 +229,16 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 
 	ctx->now = knot_time();
 
+	key_records_init(ctx, &ctx->offline_records);
+	if (ctx->policy->offline_ksk) {
+		ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname,
+		                                   ctx->now, &ctx->offline_next_time,
+		                                   &ctx->offline_records);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			goto init_error;
+		}
+	}
+
 	return KNOT_EOK;
 init_error:
 	kdnssec_ctx_deinit(ctx);
@@ -266,7 +277,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		}
 		free(ctx->policy);
 	}
-	knot_rrset_free(ctx->offline_rrsig, NULL);
+	key_records_clear(&ctx->offline_records);
 	dnssec_keystore_deinit(ctx->keystore);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);
