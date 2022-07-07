@@ -349,6 +349,7 @@ void rss_ctx_init(xdp_gun_ctx_t *ctx)
 	              key, key_len, data, data_len);
 }
 
+#ifdef ENABLE_QUIC
 static void adjust_port(xdp_gun_ctx_t *ctx, struct sockaddr_in6 *local_ip,
                         uint16_t local_port)
 {
@@ -371,6 +372,7 @@ static void adjust_port(xdp_gun_ctx_t *ctx, struct sockaddr_in6 *local_ip,
 	}
 	local_ip->sin6_port = htobe16(local_port);
 }
+#endif // ENABLE_QUIC
 
 static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
                       xdp_gun_ctx_t *ctx, uint64_t tick)
