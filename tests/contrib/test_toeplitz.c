@@ -15,6 +15,7 @@
  */
 
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <tap/basic.h>
 
