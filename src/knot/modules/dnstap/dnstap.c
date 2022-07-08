@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -87,9 +87,10 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	}
 
 	/* Determine whether we run on UDP/TCP. */
-	int protocol = IPPROTO_TCP;
-	if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) {
-		protocol = IPPROTO_UDP;
+	/* TODO: distinguish QUIC. */
+	int protocol = IPPROTO_UDP;
+	if (qdata->params->proto == KNOTD_QUERY_PROTO_TCP) {
+		protocol = IPPROTO_TCP;
 	}
 
 	/* Create a dnstap message. */

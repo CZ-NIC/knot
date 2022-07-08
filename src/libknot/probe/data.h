@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,9 +37,9 @@
 typedef enum {
 	KNOT_PROBE_PROTO_UDP = 0,
 	KNOT_PROBE_PROTO_TCP,
+	KNOT_PROBE_PROTO_QUIC,
 	KNOT_PROBE_PROTO_TLS,
 	KNOT_PROBE_PROTO_HTTPS,
-	KNOT_PROBE_PROTO_QUIC,
 } knot_probe_proto_t;
 
 /*! DNS message header in wire format (network byte order!). */

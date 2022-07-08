@@ -415,8 +415,7 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 	}
 
 	/* Update maximal answer size. */
-	bool has_limit = qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE;
-	if (has_limit) {
+	if (qdata->params->proto == KNOTD_QUERY_PROTO_UDP) {
 		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
 		if (knot_pkt_has_edns(query)) {
 			uint16_t server_size;
@@ -459,10 +458,10 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 		qdata->extra->contents = qdata->extra->zone->contents;
 	}
 
-	/* Allow normal queries to catalog only over TCP and if allowed by ACL. */
+	/* Allow normal queries to catalog only if not UDP and if allowed by ACL. */
 	if (qdata->extra->zone != NULL && qdata->extra->zone->is_catalog_flag &&
 	    query_type(query) == KNOTD_QUERY_TYPE_NORMAL) {
-		if ((qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) ||
+		if (qdata->params->proto == KNOTD_QUERY_PROTO_UDP ||
 		    !process_query_acl_check(conf(), ACL_ACTION_TRANSFER, qdata)) {
 			qdata->extra->zone = NULL;
 			qdata->extra->contents = NULL;

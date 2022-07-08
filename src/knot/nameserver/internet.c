@@ -135,7 +135,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, knotd_qdata_t *qdata)
 		compr_hint = KNOT_COMPR_HINT_QNAME;
 	}
 
-	unsigned put_rr_flags = (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) ?
+	unsigned put_rr_flags = (qdata->params->proto == KNOTD_QUERY_PROTO_UDP) ?
 	                        KNOT_PF_NULL : KNOT_PF_NOTRUNC;
 	put_rr_flags |= KNOT_PF_ORIGTTL;
 
@@ -391,7 +391,7 @@ static int name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	uint16_t old_rrcount = pkt->rrset_count;
 	int ret = put_answer(pkt, qtype, qdata);
 	if (ret != KNOT_EOK) {
-		if (ret == KNOT_ESPACE && (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE)) {
+		if (ret == KNOT_ESPACE && (qdata->params->proto == KNOTD_QUERY_PROTO_UDP)) {
 			return KNOTD_IN_STATE_TRUNC;
 		} else {
 			return KNOTD_IN_STATE_ERROR;

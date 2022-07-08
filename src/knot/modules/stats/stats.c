@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -117,27 +117,35 @@ static char *operation_to_str(uint32_t idx, uint32_t count)
 enum {
 	PROTOCOL_UDP4 = 0,
 	PROTOCOL_TCP4,
+	PROTOCOL_QUIC4,
 	PROTOCOL_UDP6,
 	PROTOCOL_TCP6,
+	PROTOCOL_QUIC6,
 	PROTOCOL_UDP4_XDP,
 	PROTOCOL_TCP4_XDP,
+	PROTOCOL_QUIC4_XDP,
 	PROTOCOL_UDP6_XDP,
 	PROTOCOL_TCP6_XDP,
+	PROTOCOL_QUIC6_XDP,
 	PROTOCOL__COUNT
 };
 
 static char *protocol_to_str(uint32_t idx, uint32_t count)
 {
 	switch (idx) {
-	case PROTOCOL_UDP4:     return strdup("udp4");
-	case PROTOCOL_TCP4:     return strdup("tcp4");
-	case PROTOCOL_UDP6:     return strdup("udp6");
-	case PROTOCOL_TCP6:     return strdup("tcp6");
-	case PROTOCOL_UDP4_XDP: return strdup("udp4-xdp");
-	case PROTOCOL_TCP4_XDP: return strdup("tcp4-xdp");
-	case PROTOCOL_UDP6_XDP: return strdup("udp6-xdp");
-	case PROTOCOL_TCP6_XDP: return strdup("tcp6-xdp");
-	default:                assert(0); return NULL;
+	case PROTOCOL_UDP4:      return strdup("udp4");
+	case PROTOCOL_TCP4:      return strdup("tcp4");
+	case PROTOCOL_QUIC4:     return strdup("quic4");
+	case PROTOCOL_UDP6:      return strdup("udp6");
+	case PROTOCOL_TCP6:      return strdup("tcp6");
+	case PROTOCOL_QUIC6:     return strdup("quic6");
+	case PROTOCOL_UDP4_XDP:  return strdup("udp4-xdp");
+	case PROTOCOL_TCP4_XDP:  return strdup("tcp4-xdp");
+	case PROTOCOL_QUIC4_XDP: return strdup("quic4-xdp");
+	case PROTOCOL_UDP6_XDP:  return strdup("udp6-xdp");
+	case PROTOCOL_TCP6_XDP:  return strdup("tcp6-xdp");
+	case PROTOCOL_QUIC6_XDP: return strdup("quic6-xdp");
+	default:                 assert(0); return NULL;
 	}
 }
 
@@ -497,13 +505,21 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	if (stats->protocol) {
 		bool xdp = qdata->params->xdp_msg != NULL;
 		if (knotd_qdata_remote_addr(qdata)->ss_family == AF_INET) {
-			if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) {
+			if (qdata->params->proto == KNOTD_QUERY_PROTO_UDP) {
 				if (xdp) {
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_UDP4_XDP, 1);
 				} else {
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_UDP4, 1);
+				}
+			} else if (qdata->params->proto == KNOTD_QUERY_PROTO_QUIC) {
+				if (xdp) {
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+					                     PROTOCOL_QUIC4_XDP, 1);
+				} else {
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+					                     PROTOCOL_QUIC4, 1);
 				}
 			} else {
 				if (xdp) {
@@ -515,13 +531,21 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 				}
 			}
 		} else {
-			if (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE) {
+			if (qdata->params->proto == KNOTD_QUERY_PROTO_UDP) {
 				if (xdp) {
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_UDP6_XDP, 1);
 				} else {
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_UDP6, 1);
+				}
+			} else if (qdata->params->proto == KNOTD_QUERY_PROTO_QUIC) {
+				if (xdp) {
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+					                     PROTOCOL_QUIC6_XDP, 1);
+				} else {
+					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+					                     PROTOCOL_QUIC6, 1);
 				}
 			} else {
 				if (xdp) {
