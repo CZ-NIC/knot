@@ -701,6 +701,13 @@ void *xdp_gun_thread(void *_ctx)
 			}
 		}
 
+#ifdef ENABLE_QUIC
+		if (ctx->quic) {
+			uint32_t closed, reset;
+			(void)knot_xquic_table_sweep(quic_table, &closed, &reset);
+		}
+#endif // ENABLE_QUIC
+
 		// speed and signal part
 		uint64_t dura_exp = (local_stats.qry_sent * 1000000) / ctx->qps;
 		duration = timer_end(&timer);
@@ -732,6 +739,14 @@ void *xdp_gun_thread(void *_ctx)
 	knot_xdp_deinit(xsk);
 
 	knot_tcp_table_free(tcp_table);
+#ifdef ENABLE_QUIC
+	knot_xquic_table_free(quic_table);
+	struct knot_quic_session *n, *nxt;
+	WALK_LIST_DELSAFE(n, nxt, quic_sessions) {
+		knot_xquic_session_load(NULL, n);
+	}
+	knot_xquic_free_creds(quic_creds);
+#endif // ENABLE_QUIC
 
 	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
 	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
