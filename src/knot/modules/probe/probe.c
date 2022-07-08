@@ -84,8 +84,7 @@ static knotd_state_t export(knotd_state_t state, knot_pkt_t *pkt,
 	const struct sockaddr_storage *local = knotd_qdata_local_addr(qdata, &buff);
 	const struct sockaddr_storage *remote = knotd_qdata_remote_addr(qdata);
 
-	bool tcp = !(qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE);
-	knot_probe_proto_t proto = (tcp ? KNOT_PROBE_PROTO_TCP : KNOT_PROBE_PROTO_UDP);
+	knot_probe_proto_t proto = (knot_probe_proto_t)qdata->params->proto;
 	const knot_pkt_t *reply = (state != KNOTD_STATE_NOOP ? pkt : NULL);
 
 	uint16_t rcode = qdata->rcode;

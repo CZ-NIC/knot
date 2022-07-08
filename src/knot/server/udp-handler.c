@@ -66,9 +66,8 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 {
 	/* Create query processing parameter. */
 	knotd_qdata_params_t params = {
+		.proto = KNOTD_QUERY_PROTO_UDP,
 		.remote = ss,
-		.flags = KNOTD_QUERY_FLAG_NO_AXFR | KNOTD_QUERY_FLAG_NO_IXFR | /* No transfers. */
-		         KNOTD_QUERY_FLAG_LIMIT_SIZE, /* Enforce UDP packet size limit. */
 		.socket = fd,
 		.server = udp->server,
 		.xdp_msg = xdp_msg,

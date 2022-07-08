@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -167,6 +167,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 
 	/* Create query processing parameter. */
 	knotd_qdata_params_t params = {
+		.proto = KNOTD_QUERY_PROTO_TCP,
 		.remote = &ss,
 		.socket = fd,
 		.server = tcp->server,

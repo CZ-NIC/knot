@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,8 +81,8 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 
 	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
 
-	// Rate limit is not applied to TCP connections.
-	if (!(qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE)) {
+	// Rate limit is applied to pure UDP only.
+	if (qdata->params->proto != KNOTD_QUERY_PROTO_UDP) {
 		return state;
 	}
 
