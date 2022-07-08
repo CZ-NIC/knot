@@ -256,8 +256,8 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		return KNOT_STATE_FAIL;
 	}
 
-	/* If IXFR is disabled, respond with SOA. */
-	if (qdata->params->flags & KNOTD_QUERY_FLAG_NO_IXFR) {
+	/* IXFR over UDP is responded with SOA. */
+	if (qdata->params->proto == KNOTD_QUERY_PROTO_UDP) {
 		return ixfr_answer_soa(pkt, qdata);
 	}
 
