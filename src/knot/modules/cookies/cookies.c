@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -187,10 +187,9 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 	// Compare server cookie.
 	ret = knot_edns_cookie_server_check(&sc, &cc, &params);
 	if (ret != KNOT_EOK) {
-		// TCP server should take the authentication provided by the use
-		// of TCP into account and SHOULD process the request and provide
-		// a normal response.
-		if (!(qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE)) {
+		// Established connection (TCP or QUIC) is taken into account,
+		// so a normal response is provided.
+		if (qdata->params->proto != KNOTD_QUERY_PROTO_UDP) {
 			if (knot_edns_cookie_server_generate(&sc, &cc, &params) != KNOT_EOK ||
 			    put_cookie(qdata, pkt, &cc, &sc) != KNOT_EOK)
 			{

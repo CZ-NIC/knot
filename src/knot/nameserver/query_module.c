@@ -665,8 +665,8 @@ const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata)
 _public_
 uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata)
 {
-	if (qdata == NULL ||
-	    (qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE)) { // not TCP
+	// TODO: add QUIC support.
+	if (qdata == NULL || qdata->params->proto != KNOTD_QUERY_PROTO_TCP) {
 		return 0;
 	}
 

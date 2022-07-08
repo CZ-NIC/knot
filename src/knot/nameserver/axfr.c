@@ -171,8 +171,8 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		return KNOT_STATE_FAIL;
 	}
 
-	/* If AXFR is disabled, respond with NOTIMPL. */
-	if (qdata->params->flags & KNOTD_QUERY_FLAG_NO_AXFR) {
+	/* AXFR over UDP isn't allowed, respond with NOTIMPL. */
+	if (qdata->params->proto == KNOTD_QUERY_PROTO_UDP) {
 		qdata->rcode = KNOT_RCODE_NOTIMPL;
 		return KNOT_STATE_FAIL;
 	}

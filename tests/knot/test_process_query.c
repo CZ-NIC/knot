@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 	sockaddr_set(&ss, AF_INET, "127.0.0.1", 53);
 	knotd_qdata_params_t params = {
+		.proto = KNOTD_QUERY_PROTO_TCP,
 		.remote = &ss,
 		.server = &server
 	};
