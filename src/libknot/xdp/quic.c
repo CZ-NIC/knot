@@ -18,13 +18,14 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 #include <gnutls/x509.h>
+#include <ngtcp2/ngtcp2.h>
+#include <ngtcp2/ngtcp2_crypto.h>
+#include <ngtcp2/ngtcp2_crypto_gnutls.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 
-#include "contrib/libngtcp2/ngtcp2/ngtcp2.h"
-#include "contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h"
-#include "contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h"
+#include "libknot/xdp/quic.h"
 
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
@@ -36,7 +37,6 @@
 #include "libknot/endian.h"
 #include "libknot/error.h"
 #include "libknot/wire.h"
-#include "libknot/xdp/quic.h"
 
 #define SERVER_DEFAULT_SCIDLEN 18
 
@@ -44,6 +44,10 @@
 #define QUIC_DEFAULT_CIPHERS "-CIPHER-ALL:+AES-128-GCM:+AES-256-GCM:+CHACHA20-POLY1305:+AES-128-CCM"
 #define QUIC_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-SECP256R1:+GROUP-X25519:+GROUP-SECP384R1:+GROUP-SECP521R1"
 #define QUIC_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_CIPHERS":"QUIC_DEFAULT_GROUPS
+
+#define XQUIC_SEND_VERSION_NEGOTIATION    NGTCP2_ERR_VERSION_NEGOTIATION
+#define XQUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
+#define XQUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
 
 #define TLS_CALLBACK_ERR     (-1)
 
@@ -119,7 +123,8 @@ static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
 	return 0;
 }
 
-static void tls_session_ticket_key_free(gnutls_datum_t *ticket) {
+static void tls_session_ticket_key_free(gnutls_datum_t *ticket)
+{
 	gnutls_memset(ticket->data, 0, ticket->size);
 	gnutls_free(ticket->data);
 }
@@ -173,8 +178,9 @@ finish:
 	return ret;
 }
 
-struct knot_quic_creds *knot_xquic_init_creds(bool server,
-                                          const char *tls_cert, const char *tls_key)
+_public_
+struct knot_quic_creds *knot_xquic_init_creds(bool server, const char *tls_cert,
+                                              const char *tls_key)
 {
 	knot_xquic_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
@@ -232,6 +238,7 @@ fail2:
 	return NULL;
 }
 
+_public_
 void knot_xquic_free_creds(struct knot_quic_creds *creds)
 {
 	if (creds == NULL) {
@@ -438,7 +445,8 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 	return 0;
 }
 
-static int knot_handshake_completed_cb(ngtcp2_conn *conn, void *user_data) {
+static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
+{
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 	assert(ctx->conn == conn);
 
@@ -572,7 +580,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		ngtcp2_crypto_client_initial_cb,
 		ngtcp2_crypto_recv_client_initial_cb,
 		ngtcp2_crypto_recv_crypto_data_cb,
-		knot_handshake_completed_cb,
+		handshake_completed_cb,
 		NULL, // recv_version_negotiation not needed on server, nor kxdpgun
 		ngtcp2_crypto_encrypt_cb,
 		ngtcp2_crypto_decrypt_cb,
