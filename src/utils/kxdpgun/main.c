@@ -37,11 +37,10 @@
 #include <sys/socket.h>
 #include <sys/resource.h>
 
-#include <gnutls/gnutls.h>
-
 #include "libknot/libknot.h"
 #include "libknot/xdp.h"
 #ifdef ENABLE_QUIC
+#include <gnutls/gnutls.h>
 #include "libknot/xdp/quic.h"
 #endif // ENABLE_QUIC
 #include "contrib/macros.h"

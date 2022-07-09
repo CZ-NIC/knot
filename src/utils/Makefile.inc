@@ -106,6 +106,10 @@ kxdpgun_SOURCES = \
 
 kxdpgun_CPPFLAGS  = $(libknotus_la_CPPFLAGS) $(libmnl_CFLAGS)
 kxdpgun_LDADD     = libknot.la $(libcontrib_LIBS) $(libmnl_LIBS) $(pthread_LIBS)
+if ENABLE_QUIC
+kxdpgun_CPPFLAGS  += $(gnutls_CFLAGS)
+kxdpgun_LDADD     += $(gnutls_LIBS)
+endif ENABLE_QUIC
 endif ENABLE_XDP
 endif HAVE_UTILS
 
