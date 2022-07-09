@@ -119,8 +119,8 @@ libknot_la_SOURCES  += \
 
 if ENABLE_QUIC
 
-libknot_la_CPPFLAGS += $(libngtcp2_CFLAGS)
-libknot_la_LIBADD   += $(libngtcp2_LIBS)
+libknot_la_CPPFLAGS += $(libngtcp2_CFLAGS) $(gnutls_CFLAGS)
+libknot_la_LIBADD   += $(libngtcp2_LIBS) $(gnutls_LIBS)
 
 nobase_include_libknot_HEADERS += \
         libknot/xdp/quic.h                      \
