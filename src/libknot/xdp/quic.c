@@ -47,6 +47,8 @@
 
 #define TLS_CALLBACK_ERR     (-1)
 
+ngtcp2_tstamp ngtcp2_conn_get_idle_expiry(ngtcp2_conn *conn); // from ngtcp2/lib/ngtcp2_conn.h
+
 typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
@@ -355,12 +357,17 @@ static uint64_t get_timestamp(void)
 	return (uint64_t)ts.tv_sec * NGTCP2_SECONDS + (uint64_t)ts.tv_nsec;
 }
 
+uint64_t xquic_conn_get_timeout(knot_xquic_conn_t *conn)
+{
+	return ngtcp2_conn_get_idle_expiry(conn->conn);
+}
+
 bool xquic_conn_timeout(knot_xquic_conn_t *conn, uint64_t *now)
 {
 	if (*now == 0) {
 		*now = get_timestamp();
 	}
-	return *now > ngtcp2_conn_get_expiry(conn->conn);
+	return *now > xquic_conn_get_timeout(conn);
 }
 
 static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx)

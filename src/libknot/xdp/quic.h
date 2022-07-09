@@ -49,6 +49,8 @@ struct knot_quic_creds *knot_xquic_init_creds(bool server,
  */
 void knot_xquic_free_creds(struct knot_quic_creds *creds);
 
+uint64_t xquic_conn_get_timeout(knot_xquic_conn_t *conn);
+
 /*!
  * \brief Check if connection timed out due to inactivity.
  *
