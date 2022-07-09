@@ -422,6 +422,13 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 
 void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 {
+#ifdef ENABLE_QUIC
+	if (ctx->quic_table != NULL) {
+		knot_xquic_table_sweep(ctx->quic_table, &ctx->quic_closed.closed, &ctx->quic_closed.reset);
+		log_closed(&ctx->quic_closed, "QUIC, connection timeout %u, forcibly closed %u");
+	}
+#endif // ENABLE_QUIC
+
 	if (!ctx->tcp) {
 		return;
 	}
@@ -453,13 +460,6 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
 		knot_tcp_cleanup(ctx->syn_table, sweep_relays, XDP_BATCHLEN);
-
-#ifdef ENABLE_QUIC
-		if (ctx->quic_table) {
-			knot_xquic_table_sweep(ctx->quic_table, &ctx->quic_closed.closed, &ctx->quic_closed.reset);
-			log_closed(&ctx->quic_closed, "QUIC, connection timeout %u, forcibly closed %u");
-		}
-#endif // ENABLE_QUIC
 
 		(void)knot_xdp_send_finish(ctx->sock);
 	} while (ret == KNOT_EOK && prev_total < ctx->tcp_closed.closed + ctx->tcp_closed.reset);
