@@ -14,21 +14,20 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "libknot/xdp/quic_conn.h"
-#include "libknot/xdp/quic.h"
-
 #include <assert.h>
 #include <gnutls/gnutls.h>
+#include <ngtcp2/ngtcp2.h>
 #include <string.h>
 
-#include "contrib/libngtcp2/ngtcp2/ngtcp2.h"
+#include "libknot/xdp/quic_conn.h"
+
 #include "contrib/macros.h"
 #include "contrib/openbsd/siphash.h"
 #include "contrib/ucw/lists.h"
 #include "libdnssec/random.h"
-
 #include "libknot/attribute.h"
 #include "libknot/error.h"
+#include "libknot/xdp/quic.h"
 #include "libknot/xdp/tcp_iobuf.h"
 #include "libknot/wire.h"
 

@@ -41,8 +41,8 @@ int knot_xquic_session_load(knot_xquic_conn_t *conn, struct knot_quic_session *s
  *
  * \return Initialized creds.
  */
-struct knot_quic_creds *knot_xquic_init_creds(bool server,
-                                          const char *tls_cert, const char *tls_key);
+struct knot_quic_creds *knot_xquic_init_creds(bool server, const char *tls_cert,
+                                              const char *tls_key);
 
 /*!
  * \brief Init server TLS certificate for DoQ.
