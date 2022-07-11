@@ -62,6 +62,11 @@ uint64_t xquic_conn_get_timeout(knot_xquic_conn_t *conn);
 bool xquic_conn_timeout(knot_xquic_conn_t *conn, uint64_t *now);
 
 /*!
+ * \brief Returns measured connection RTT in usecs.
+ */
+uint32_t knot_xquic_conn_rtt(knot_xquic_conn_t *conn);
+
+/*!
  * \brief Create new outgoing QUIC connection.
  *
  * \param table       QUIC connections table to be added to.

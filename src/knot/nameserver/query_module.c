@@ -665,20 +665,28 @@ const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata)
 _public_
 uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata)
 {
-	// TODO: add QUIC support.
-	if (qdata == NULL || qdata->params->proto != KNOTD_QUERY_PROTO_TCP) {
+	if (qdata == NULL) {
 		return 0;
 	}
 
-	if (qdata->params->xdp_msg != NULL) {
-#ifdef ENABLE_XDP
-		return qdata->params->xdp_conn->establish_rtt;
-#else
-		assert(0);
+	printf("qdata proto %d rtt %u\n", qdata->params->proto, qdata->params->measured_rtt);
+
+	switch (qdata->params->proto) {
+	case KNOTD_QUERY_PROTO_UDP:
 		return 0;
+	case KNOTD_QUERY_PROTO_TCP:
+		if (qdata->params->xdp_msg != NULL) {
+#ifdef ENABLE_XDP
+			return qdata->params->measured_rtt;
+#else
+			assert(0);
+			return 0;
 #endif
-	} else {
-		return knot_probe_tcp_rtt(qdata->params->socket);
+		} else {
+			return knot_probe_tcp_rtt(qdata->params->socket);
+		}
+	case KNOTD_QUERY_PROTO_QUIC:
+		return qdata->params->measured_rtt;
 	}
 }
 

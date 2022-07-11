@@ -373,6 +373,14 @@ bool xquic_conn_timeout(knot_xquic_conn_t *conn, uint64_t *now)
 	return *now > xquic_conn_get_timeout(conn);
 }
 
+_public_
+uint32_t knot_xquic_conn_rtt(knot_xquic_conn_t *conn)
+{
+	ngtcp2_conn_stat stat = { 0 };
+	ngtcp2_conn_get_conn_stat(conn->conn, &stat);
+	return stat.smoothed_rtt / 1000; // nanosec --> usec
+}
+
 static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx)
 {
 	(void)rand_ctx;

@@ -283,7 +283,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		for (size_t j = 0; j < rl->inbufs_count; j++) {
 			// Consume the query.
 			handle_init(params, layer, KNOTD_QUERY_PROTO_TCP, rl->msg, &rl->inbufs[j]);
-			params->xdp_conn = rl->conn;
+			params->measured_rtt = rl->conn->establish_rtt;
 
 			// Process the reply.
 			knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);
@@ -309,6 +309,7 @@ static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struc
 {
 	// Consume the query.
 	handle_init(params, layer, KNOTD_QUERY_PROTO_QUIC, xdp_msg, inbuf);
+	params->measured_rtt = knot_xquic_conn_rtt(conn);
 
 	// Process the reply.
 	knot_pkt_t *ans = knot_pkt_new(ans_buf, ans_buf_size, layer->mm);
