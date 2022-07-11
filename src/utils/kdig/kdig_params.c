@@ -53,7 +53,7 @@ static const flags_t DEFAULT_FLAGS_DIG = {
 	.rd_flag = true,
 	.ra_flag = false,
 	.z_flag  = false,
-	.ad_flag = false,
+	.ad_flag = true,
 	.cd_flag = false,
 	.do_flag = false
 };
