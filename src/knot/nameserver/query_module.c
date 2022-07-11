@@ -669,8 +669,6 @@ uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata)
 		return 0;
 	}
 
-	printf("qdata proto %d rtt %u\n", qdata->params->proto, qdata->params->measured_rtt);
-
 	switch (qdata->params->proto) {
 	case KNOTD_QUERY_PROTO_UDP:
 		return 0;
