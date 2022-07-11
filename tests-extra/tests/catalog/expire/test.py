@@ -32,20 +32,21 @@ slave.zones_wait(members)
 master.stop() # even regular answers must be blocked (to prevent refresh)
 
 # Check non-expiration of catalog.
-t.sleep(10)  # greater than the SOA expire
+t.sleep(4)  # greater than the SOA expire
 resp = slave.dig("catalog1.", "SOA", udp=False, tsig=True)
 resp.check(rcode="NOERROR")
 resp = slave.dig("cataloged1.", "SOA", udp=False, tsig=True)
 resp.check(rcode="NOERROR")
 
 # Check regular expiration of member zones.
-t.sleep(7)  # together with previous sleep greater than members expire
+t.sleep(5)  # together with previous sleep greater than members expire
 resp = slave.dig("catalog1.", "SOA", udp=False, tsig=True)
 resp.check(rcode="NOERROR")
 resp = slave.dig("cataloged1.", "SOA", udp=False, tsig=True)
 resp.check(rcode="SERVFAIL")
 
 master.start()
+slave.ctl("zone-refresh") # don't waste time waiting for member bootstrap
 slave.zones_wait(members)
 
 # Check manual expiration of catalog.
