@@ -8,8 +8,13 @@ src/contrib/libbpf/include/asm
 src/contrib/libbpf/include/linux
 src/contrib/libbpf/include/uapi
 src/contrib/libbpf/include/uapi/linux
+src/contrib/libngtcp2
+src/contrib/libngtcp2/ngtcp2
+src/contrib/libngtcp2/ngtcp2/crypto
+src/contrib/libngtcp2/ngtcp2/lib
 src/contrib/licenses
 src/contrib/openbsd
+src/contrib/proxyv2
 src/contrib/qp-trie
 src/contrib/ucw
 src/contrib/url-parser
@@ -87,8 +92,6 @@ tests/libknot
 tests/libzscanner
 tests/libzscanner/data
 tests/libzscanner/data/includes
-tests/libzscanner/tmp
 tests/modules
 tests/tap
-tests/tmp
 tests/utils
