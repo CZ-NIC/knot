@@ -211,6 +211,9 @@ void xquic_stream_free(knot_xquic_conn_t *xconn, int64_t stream_id)
 _public_
 void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
 {
+	if (conn->streams_count == -1) { // kxdpgun special
+		conn->streams_count = 1;
+	}
 	for (ssize_t i = conn->streams_count - 1; i >= 0; i--) {
 		xquic_stream_free(conn, (i + conn->streams_first) * 4);
 	}

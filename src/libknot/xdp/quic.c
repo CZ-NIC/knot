@@ -676,6 +676,7 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
 	if (xconn == NULL) {
 		return ENOMEM;
 	}
+	xquic_conn_mark_used(xconn, table);
 
 	ngtcp2_path path;
 	path.remote.addr = (struct sockaddr *)dest;
