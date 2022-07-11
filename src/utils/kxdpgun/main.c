@@ -433,6 +433,7 @@ void *xdp_gun_thread(void *_ctx)
 	struct knot_quic_creds *quic_creds = NULL;
 	knot_xdp_msg_t quic_fake_req = { 0 };
 	list_t quic_sessions;
+	init_list(&quic_sessions);
 #endif // ENABLE_QUIC
 
 	rss_ctx_init(ctx);
@@ -465,8 +466,6 @@ void *xdp_gun_thread(void *_ctx)
 		memcpy(&quic_fake_req.ip_from, &ctx->target_ip,  sizeof(quic_fake_req.ip_from));
 		memcpy(&quic_fake_req.ip_to,   &ctx->local_ip,   sizeof(quic_fake_req.ip_to));
 		quic_fake_req.flags = ctx->ipv6 ? KNOT_XDP_MSG_IPV6 : 0;
-
-		init_list(&quic_sessions);
 #else
 		assert(0);
 #endif // ENABLE_QUIC
