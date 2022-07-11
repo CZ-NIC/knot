@@ -351,7 +351,8 @@ void _zone_events_schedule_at(zone_t *zone, ...)
 		}
 
 		time_t current = event_get_time(events, type);
-		if (planned == 0 || current == 0 || planned < current) {
+		if (current == 0 || (planned == 0 && !events->forced[type]) ||
+		    (planned > 0 && planned < current)) {
 			event_set_time(events, type, planned);
 		}
 	}

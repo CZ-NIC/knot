@@ -193,7 +193,7 @@ static void finalize_edns_expire(struct refresh_data *data)
 
 static void fill_expires_in(char *expires_in, size_t size, const struct refresh_data *data)
 {
-	if (!data->zone->is_catalog_flag) {
+	if (data->zone->timers.next_expire > 0) {
 		(void)snprintf(expires_in, size,
 		               ", expires in %u seconds", data->expire_timer);
 	}
@@ -1338,17 +1338,19 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 	if (ret == KNOT_EOK) {
 		assert(trctx.expire_timer != EXPIRE_TIMER_INVALID);
-		zone->timers.next_expire = now + trctx.expire_timer;
 		zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
-		zone->timers.last_refresh_ok = true;
-
 		limit_next(conf, zone->name, C_REFRESH_MIN_INTERVAL,
 		           C_REFRESH_MAX_INTERVAL, now,
 		           &zone->timers.next_refresh);
-		if (trctx.expire_timer == knot_soa_expire(soa->rdata)) {
-			limit_next(conf, zone->name, C_EXPIRE_MIN_INTERVAL,
-			           C_EXPIRE_MAX_INTERVAL, now,
-			           &zone->timers.next_expire);
+		zone->timers.last_refresh_ok = true;
+
+		if (!zone->is_catalog_flag) {  /* For catz, keep next_expire. */
+			zone->timers.next_expire = now + trctx.expire_timer;
+			if (trctx.expire_timer == knot_soa_expire(soa->rdata)) {
+				limit_next(conf, zone->name, C_EXPIRE_MIN_INTERVAL,
+				           C_EXPIRE_MAX_INTERVAL, now,
+				           &zone->timers.next_expire);
+			}
 		}
 	} else {
 		time_t next;

@@ -1,0 +1,10 @@
+$ORIGIN catalog1.
+$TTL 0
+
+@ SOA ns admin 1 2 2 8 600
+  NS ns
+ns AAAA ::0
+version TXT "2"
+foo.zones PTR cataloged1.
+not.zones.in PTR not-cataloged1.
+zones PTR not-cataloged3.

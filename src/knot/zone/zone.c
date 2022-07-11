@@ -594,6 +594,9 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 	if (zone_is_slave(conf, zone)) {
 		// assume now if we don't know
 		time_set_default(&zone->timers.next_refresh, now);
+		if (zone->is_catalog_flag) {
+			zone->timers.next_expire = 0;
+		}
 	} else {
 		// invalidate if we don't have a master
 		zone->timers.last_refresh = 0;

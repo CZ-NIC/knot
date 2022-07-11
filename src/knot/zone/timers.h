@@ -23,6 +23,7 @@
 #include "knot/journal/knot_lmdb.h"
 
 #define LAST_NOTIFIED_SERIAL_VALID (1LLU << 32)
+
 /*!
  * \brief Persistent zone timers.
  */

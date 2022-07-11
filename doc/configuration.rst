@@ -677,6 +677,14 @@ to non-default values.
    The consequence is that new zone files might be discovered and reloaded,
    even for zones that do not relate to updated catalog zone.
 
+   Catalog zones never expire automatically, regardless of what is declared
+   in the catalog zone SOA. However, a catalog zone can be expired manually
+   at any time using `knotc -f zone-purge +expire`.
+
+   Currently, expiration of a catalog zone doesn't have any effect on its
+   member zones. This will likely change in the future depending on the
+   Internet Draft.
+
 .. WARNING::
 
    The server does not work well if one member zone appears in two catalog zones
