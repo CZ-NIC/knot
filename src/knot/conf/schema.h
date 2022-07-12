@@ -100,6 +100,7 @@
 #define C_PROXY_ALLOWLIST	"\x0F""proxy-allowlist"
 #define C_QUIC			"\x04""quic"
 #define C_QUIC_LOG		"\x08""quic-log"
+#define C_QUIC_PORT		"\x09""quic-port"
 #define C_REFRESH_MAX_INTERVAL	"\x14""refresh-max-interval"
 #define C_REFRESH_MIN_INTERVAL	"\x14""refresh-min-interval"
 #define C_REPRO_SIGNING		"\x14""reproducible-signing"

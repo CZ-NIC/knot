@@ -257,7 +257,8 @@ static const yp_item_t desc_xdp[] = {
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp_listen } },
 	{ C_UDP,                  YP_TBOOL, YP_VBOOL = { true } },
 	{ C_TCP,                  YP_TBOOL, YP_VNONE },
-	{ C_QUIC,                 YP_TINT,  YP_VINT = { 0, 65535, 0 } },
+	{ C_QUIC,                 YP_TBOOL, YP_VNONE },
+	{ C_QUIC_PORT,            YP_TINT,  YP_VINT = { 1, 65535, 853 } },
 	{ C_QUIC_LOG,             YP_TBOOL, YP_VNONE }, // FIXME remove or improve
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 1024, INT32_MAX, 1000000 } },
 	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
