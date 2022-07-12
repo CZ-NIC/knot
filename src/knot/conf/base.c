@@ -139,7 +139,10 @@ static void init_cache(
 		running_socket_affinity = conf_get_bool(conf, C_SRV, C_SOCKET_AFFINITY);
 		running_xdp_udp = conf_get_bool(conf, C_XDP, C_UDP);
 		running_xdp_tcp = conf_get_bool(conf, C_XDP, C_TCP);
-		running_xdp_quic = conf_get_int(conf, C_XDP, C_QUIC);
+		running_xdp_quic = 0;
+		if (conf_get_bool(conf, C_XDP, C_QUIC)) {
+			running_xdp_quic = conf_get_int(conf, C_XDP, C_QUIC_PORT);
+		}
 		running_route_check = conf_get_bool(conf, C_XDP, C_ROUTE_CHECK);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
