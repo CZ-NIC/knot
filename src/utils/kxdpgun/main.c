@@ -656,6 +656,9 @@ void *xdp_gun_thread(void *_ctx)
 								continue;
 							}
 						}
+						if (!rl->handshake_done && rl->streams_count == -1) {
+							continue;
+						}
 
 						knot_xquic_stream_t *stream0 = knot_xquic_conn_get_stream(rl, 0, false);
 						assert(stream0 != NULL);
