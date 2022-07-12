@@ -670,8 +670,6 @@ uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata)
 	}
 
 	switch (qdata->params->proto) {
-	case KNOTD_QUERY_PROTO_UDP:
-		return 0;
 	case KNOTD_QUERY_PROTO_TCP:
 		if (qdata->params->xdp_msg != NULL) {
 #ifdef ENABLE_XDP
@@ -685,6 +683,9 @@ uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata)
 		}
 	case KNOTD_QUERY_PROTO_QUIC:
 		return qdata->params->measured_rtt;
+	case KNOTD_QUERY_PROTO_UDP:
+	default:
+		return 0;
 	}
 }
 
