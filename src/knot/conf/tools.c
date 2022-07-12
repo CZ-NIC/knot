@@ -527,8 +527,12 @@ int check_xdp(
 
 	conf_val_t quic = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
 	                               C_QUIC);
-	if (conf_int(&quic) > 0) {
+	if (conf_bool(&quic)) {
 #ifdef ENABLE_QUIC
+		conf_val_t port = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
+		                               C_QUIC_PORT);
+		uint16_t quic_port = conf_int(&port);
+
 		while (xdp_listen.code == KNOT_EOK) {
 			struct sockaddr_storage udp_addr = conf_addr(&xdp_listen, NULL);
 			int udp_port = sockaddr_port(&udp_addr);
@@ -536,7 +540,7 @@ int check_xdp(
 				const char *port_str = strchr(((struct sockaddr_un *)&udp_addr)->sun_path, '@');
 				udp_port = port_str == NULL ? 0 : atoi(port_str + 1);
 			}
-			if (udp_port == conf_int(&quic)) {
+			if (udp_port == quic_port) {
 				args->err_str = "QUIC has to listen on different port than UDP";
 				return KNOT_EINVAL;
 			}
