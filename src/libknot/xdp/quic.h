@@ -19,18 +19,12 @@
 #include "libknot/xdp/quic_conn.h"
 #include "libknot/xdp/xdp.h"
 
-// special values for stream_id signalling a need for special treatment
-#define XQUIC_SEND_VERSION_NEGOTIATION    NGTCP2_ERR_VERSION_NEGOTIATION
-#define XQUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
-#define XQUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
-
 struct knot_quic_creds;
 struct knot_quic_session;
 
 struct knot_quic_session *knot_xquic_session_save(knot_xquic_conn_t *conn);
 
 int knot_xquic_session_load(knot_xquic_conn_t *conn, struct knot_quic_session *session);
-
 
 /*!
  * \brief Init server TLS certificate for DoQ.
@@ -106,5 +100,5 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg,
  * \return KNOT_E*
  */
 int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
-		    knot_xdp_socket_t *sock, knot_xdp_msg_t *in_msg,
+                    knot_xdp_socket_t *sock, knot_xdp_msg_t *in_msg,
                     int handle_ret, unsigned max_msgs, bool ignore_lastbyte);
