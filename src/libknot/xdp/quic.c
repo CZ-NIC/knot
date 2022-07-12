@@ -57,7 +57,6 @@ typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
-	uint8_t static_secret[32];
 	bool is_clone;
 } knot_xquic_creds_t;
 
@@ -187,12 +186,7 @@ struct knot_quic_creds *knot_xquic_init_creds(bool server, const char *tls_cert,
 		return NULL;
 	}
 
-	int ret = dnssec_random_buffer(creds->static_secret, sizeof(creds->static_secret));
-	if (ret != DNSSEC_EOK) {
-		goto fail;
-	}
-
-	ret = gnutls_anti_replay_init(&creds->tls_anti_replay);
+	int ret = gnutls_anti_replay_init(&creds->tls_anti_replay);
 	if (ret != GNUTLS_E_SUCCESS) {
 		goto fail;
 	}
