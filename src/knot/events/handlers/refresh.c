@@ -226,7 +226,10 @@ static void set_timers(const struct refresh_data *data)
 	           &zone->timers.next_refresh);
 	zone->timers.last_refresh_ok = true;
 
-	if (!zone->is_catalog_flag) {  /* For catz, keep next_expire. */
+	if (zone->is_catalog_flag) {
+		// It's already zero in most cases.
+		zone->timers.next_expire = 0;
+	} else {
 		zone->timers.next_expire = now + expire_timer;
 		limit_next(conf, zone->name,
 		           // Limit min if not received as EDNS Expire.
