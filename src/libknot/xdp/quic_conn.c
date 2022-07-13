@@ -185,7 +185,7 @@ knot_xquic_conn_t *xquic_table_lookup(const ngtcp2_cid *cid, knot_xquic_table_t 
 	return *pcid == NULL ? NULL : (*pcid)->conn;
 }
 
-void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
+void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table, uint64_t now)
 {
 	node_t *n = (node_t *)&conn->timeout;
 	list_t *l = (list_t *)&table->timeout;
@@ -193,6 +193,7 @@ void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
 		rem_node(n);
 	}
 	add_tail(l, n);
+	conn->last_ts = now;
 }
 
 void xquic_table_rem2(knot_xquic_cid_t **pcid, knot_xquic_table_t *table)
