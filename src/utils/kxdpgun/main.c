@@ -473,8 +473,14 @@ void *xdp_gun_thread(void *_ctx)
 
 	knot_xdp_load_bpf_t mode = (ctx->thread_id == 0 ?
 	                            KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
+	/*
+	 * This mutex prevents libbpf from logging:
+	 * 'libbpf: can't get link by id (5535): Resource temporarily unavailable'
+	*/
+	pthread_mutex_lock(&global_stats.mutex);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
 	                        ctx->listen_port, ctx->listen_port, mode);
+	pthread_mutex_unlock(&global_stats.mutex);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u (%s)\n",
 		     ctx->thread_id, knot_strerror(ret));
