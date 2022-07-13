@@ -143,6 +143,11 @@ void xdp_handle_free(xdp_handle_ctx_t *ctx)
 	free(ctx);
 }
 
+static void quic_log_cb(const char *line)
+{
+	log_debug("QUIC: %s", line);
+}
+
 xdp_handle_ctx_t *xdp_handle_init(struct server *server, knot_xdp_socket_t *xdp_sock)
 {
 	xdp_handle_ctx_t *ctx = calloc(1, sizeof(*ctx));
@@ -177,7 +182,9 @@ xdp_handle_ctx_t *xdp_handle_init(struct server *server, knot_xdp_socket_t *xdp_
 			xdp_handle_free(ctx);
 			return NULL;
 		}
-		ctx->quic_table->log = conf_get_bool(pconf, C_XDP, C_QUIC_LOG);
+		if (conf_get_bool(pconf, C_XDP, C_QUIC_LOG)) {
+			ctx->quic_table->log_cb = quic_log_cb;
+		}
 #else
 		assert(0); // verified in configuration checks
 #endif // ENABLE_QUIC

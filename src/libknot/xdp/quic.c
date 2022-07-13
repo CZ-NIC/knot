@@ -568,17 +568,14 @@ static int recv_stream_rst(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_
 static void user_printf(void *user_data, const char *format, ...)
 {
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
-	if (!ctx->xquic_table->log) {
-		return;
+	if (ctx->xquic_table->log_cb != NULL) {
+		char buf[256];
+		va_list args;
+		va_start(args, format);
+		vsnprintf(buf, sizeof(buf), format, args);
+		va_end(args);
+		ctx->xquic_table->log_cb(buf);
 	}
-
-	printf("--- ");
-	(void)user_data;
-	va_list args;
-	va_start(args, format);
-	vprintf(format, args);
-	va_end(args);
-	printf("\n");
 }
 
 static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
