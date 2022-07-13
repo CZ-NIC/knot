@@ -51,8 +51,6 @@
 
 #define TLS_CALLBACK_ERR     (-1)
 
-ngtcp2_tstamp ngtcp2_conn_get_idle_expiry(ngtcp2_conn *conn); // from ngtcp2/lib/ngtcp2_conn.h
-
 typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
@@ -360,7 +358,18 @@ static uint64_t get_timestamp(void)
 
 uint64_t xquic_conn_get_timeout(knot_xquic_conn_t *conn)
 {
-	return ngtcp2_conn_get_idle_expiry(conn->conn);
+	// This effectively obtains the locally configured conn timeout.
+	// It would be possible to obey negotitated idle timeout by employing remote params,
+	// but this would differ per-connection and the whole idea of maintaining
+	// to-be-timeouted connections in simple linear list requires that
+	// the idle timeout is homogeneous among conns.
+	// Anyway, we also violate RFC9000/10.1 (Probe Timeout) for the same reason.
+	// TODO for the future: refactor conn table to use some tree/heap
+	// for to-be-timeouted conns, and use ngtcp2_conn_get_expiry() and
+	// ngtcp2_conn_handle_expiry() appropriately.
+	const ngtcp2_transport_params *params = ngtcp2_conn_get_local_transport_params(conn->conn);
+
+	return conn->last_ts + params->max_idle_timeout;
 }
 
 bool xquic_conn_timeout(knot_xquic_conn_t *conn, uint64_t *now)
@@ -682,7 +691,7 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
 	if (xconn == NULL) {
 		return ENOMEM;
 	}
-	xquic_conn_mark_used(xconn, table);
+	xquic_conn_mark_used(xconn, table, now);
 
 	ngtcp2_path path;
 	path.remote.addr = (struct sockaddr *)dest;
@@ -784,7 +793,7 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 		if (xconn == NULL) {
 			return ENOMEM;
 		}
-		xquic_conn_mark_used(xconn, table);
+		xquic_conn_mark_used(xconn, table, now);
 
 		ret = conn_new(&xconn->conn, &path, &dcid, &scid, &odcid, pversion, now,
 		               table->udp_payload_limit, idle_timeout, xconn, true, header.token.len > 0);
@@ -811,7 +820,7 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 	}
 
 	*out_conn = xconn;
-	xquic_conn_mark_used(xconn, table);
+	xquic_conn_mark_used(xconn, table, now);
 
 	return KNOT_EOK;
 }
