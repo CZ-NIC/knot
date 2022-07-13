@@ -96,7 +96,7 @@ typedef struct knot_xquic_table {
 	size_t ibufs_size;
 	size_t obufs_size;
 	size_t udp_payload_limit; // for simplicity not distinguishing IPv4/6
-	bool log;
+	void (*log_cb)(const char *);
 	uint64_t hash_secret[4];
 	struct knot_quic_creds *creds;
 	knot_xquic_ucw_list_t timeout;
