@@ -58,6 +58,7 @@ typedef struct {
 
 typedef struct knot_xquic_conn {
 	knot_xquic_ucw_node_t timeout; // MUST be first field of the struct
+	uint64_t last_ts;
 
 	nc_conn_ref_placeholder_t conn_ref; // placeholder for internal struct ngtcp2_crypto_conn_ref
 
@@ -184,7 +185,7 @@ knot_xquic_conn_t *xquic_table_lookup(const struct ngtcp2_cid *cid, knot_xquic_t
 /*!
  * \brief Put the connection on the end of timeout queue.
  */
-void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
+void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table, uint64_t now);
 
 /*!
  * \brief Remove connection/CID link from table.
