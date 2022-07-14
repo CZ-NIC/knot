@@ -683,7 +683,7 @@ static inline char* conf_db(
 }
 
 /*!
- * Gets the absolute directory path for a TLS key/cert.
+ * Gets the absolute directory path for a TLS key/cert file.
  *
  * \note The result must be explicitly deallocated.
  *
