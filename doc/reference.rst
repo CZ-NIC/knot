@@ -142,6 +142,9 @@ General options related to the server.
      tcp-max-clients: INT
      tcp-reuseport: BOOL
      tcp-fastopen: BOOL
+     quic-max-clients: INT
+     quic-idle-close: INT
+     quic-outbuf-max-size: INT
      remote-pool-limit: INT
      remote-pool-timeout: TIME
      remote-retry-delay: TIME
@@ -357,6 +360,53 @@ configuration as it's enabled automatically if supported by OS.
 
 *Default:* off
 
+.. _server_quic-max-clients:
+
+quic-max-clients
+----------------
+
+A maximum number of QUIC clients connected in parallel.
+
+See also :ref:`xdp_quic`.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Minimum:* 1024
+
+*Default:* 100000 (one hundred thousand)
+
+.. _server_quic-idle-close:
+
+quic-idle-close
+---------------
+
+Time in seconds, after which any idle QUIC connection is gracefully closed.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Minimum:* 1 s
+
+*Default:* 10 s
+
+.. _server_quic-outbuf-max-size:
+
+quic-outbuf-max-size
+--------------------
+
+Maximum cumulative size of memory used for buffers of unACKed
+sent messages.
+
+.. NOTE::
+   Set low if little memory is available (together with :ref:`server_quic-max-clients`
+   since QUIC connections are memory-heavy). Set to high value if outgoing zone
+   transfers of big zone over QUIC are expected.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Minimum:* 1 MiB
+
+*Default:* 100 MiB
+
 .. _server_remote-pool-limit:
 
 remote-pool-limit
@@ -548,6 +598,9 @@ Various options related to XDP listening, especially TCP.
      listen: STR[@INT] | ADDR[@INT] ...
      udp: BOOL
      tcp: BOOL
+     quic: BOOL
+     quic-port: INT
+     quic-log: BOOL
      tcp-max-clients: INT
      tcp-inbuf-max-size: SIZE
      tcp-outbuf-max-size: SIZE
@@ -605,6 +658,40 @@ The TCP stack limitations:
  - Congestion control is not implemented.
  - Lost packets that do not contain TCP payload may not be resend.
  - Not optimized for transfers of non-trivial zones.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* off
+
+.. _xdp_quic:
+
+quic
+----
+
+If enabled, DNS over QUIC is processed with XDP workers.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* off
+
+.. _xdp_quic-port:
+
+quic-port
+---------
+
+DNS over QUIC will listen on the interfaces configured by :ref:`xdp_listen`,
+but on different port, configured by this option.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* 853
+
+.. _xdp_quic-log:
+
+quic-log
+--------
+
+Triggers extensive logging of all QUIC protocol internals for every connection.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
