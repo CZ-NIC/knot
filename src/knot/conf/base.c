@@ -176,6 +176,15 @@ static void init_cache(
 	val = conf_get(conf, C_SRV, C_TCP_FASTOPEN);
 	conf->cache.srv_tcp_fastopen = conf_bool(&val);
 
+	val = conf_get(conf, C_SRV, C_QUIC_MAX_CLIENTS);
+	conf->cache.srv_quic_max_clients = conf_int(&val);
+
+	val = conf_get(conf, C_SRV, C_QUIC_IDLE_CLOSE);
+	conf->cache.srv_quic_idle_close = conf_int(&val);
+
+	val = conf_get(conf, C_SRV, C_QUIC_OUTBUF_MAX_SIZE);
+	conf->cache.srv_quic_obuf_max_size = conf_int(&val);
+
 	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
 
 	conf->cache.srv_socket_affinity = running_socket_affinity;

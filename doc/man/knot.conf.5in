@@ -191,6 +191,9 @@ server:
     tcp\-max\-clients: INT
     tcp\-reuseport: BOOL
     tcp\-fastopen: BOOL
+    quic\-max\-clients: INT
+    quic\-idle\-close: INT
+    quic\-outbuf\-max\-size: INT
     remote\-pool\-limit: INT
     remote\-pool\-timeout: TIME
     remote\-retry\-delay: TIME
@@ -364,6 +367,45 @@ is \fB1\fP for server side, and \fBnet.inet.tcp.fastopen.client_enable\fP is
 .UNINDENT
 .sp
 \fIDefault:\fP off
+.SS quic\-max\-clients
+.sp
+A maximum number of QUIC clients connected in parallel.
+.sp
+See also \fI\%quic\fP\&.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIMinimum:\fP 1024
+.sp
+\fIDefault:\fP 100000 (one hundred thousand)
+.SS quic\-idle\-close
+.sp
+Time in seconds, after which any idle QUIC connection is gracefully closed.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIMinimum:\fP 1 s
+.sp
+\fIDefault:\fP 10 s
+.SS quic\-outbuf\-max\-size
+.sp
+Maximum cumulative size of memory used for buffers of unACKed
+sent messages.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Set low if little memory is available (together with \fI\%quic\-max\-clients\fP
+since QUIC connections are memory\-heavy). Set to high value if outgoing zone
+transfers of big zone over QUIC are expected.
+.UNINDENT
+.UNINDENT
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIMinimum:\fP 1 MiB
+.sp
+\fIDefault:\fP 100 MiB
 .SS remote\-pool\-limit
 .sp
 If nonzero, the server will keep up to this number of outgoing TCP connections
@@ -516,6 +558,9 @@ xdp:
     listen: STR[@INT] | ADDR[@INT] ...
     udp: BOOL
     tcp: BOOL
+    quic: BOOL
+    quic\-port: INT
+    quic\-log: BOOL
     tcp\-max\-clients: INT
     tcp\-inbuf\-max\-size: SIZE
     tcp\-outbuf\-max\-size: SIZE
@@ -581,6 +626,28 @@ Not optimized for transfers of non\-trivial zones.
 .UNINDENT
 .UNINDENT
 .UNINDENT
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP off
+.SS quic
+.sp
+If enabled, DNS over QUIC is processed with XDP workers.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP off
+.SS quic\-port
+.sp
+DNS over QUIC will listen on the interfaces configured by \fI\%listen\fP,
+but on different port, configured by this option.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP 853
+.SS quic\-log
+.sp
+Triggers extensive logging of all QUIC protocol internals for every connection.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
