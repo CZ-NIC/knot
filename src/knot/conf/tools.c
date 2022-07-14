@@ -551,7 +551,6 @@ int check_xdp(
 		int none = 0, stret = 0;
 		char *tls_cert = conf_tls_txn(args->extra->conf, args->extra->txn, C_TLS_CERT);
 		if (tls_cert == NULL) {
-			CONF_LOG(LOG_NOTICE, "no certificate for QUIC configured, using one-time self-signed server certtificate");
 			none++;
 		} else {
 			stret = stat(tls_cert, &st);
