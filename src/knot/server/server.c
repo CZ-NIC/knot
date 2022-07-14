@@ -312,9 +312,9 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 		}
 
 		knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(iface.name));
-		log_debug("%s, queues %d, %s mode%s", msg, iface.queues,
-		          (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"),
-		          route_check ? ", route check" : "");
+		log_info("%s, queues %d, %s mode%s", msg, iface.queues,
+		         (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"),
+		         route_check ? ", route check" : "");
 	}
 
 	return new_if;
