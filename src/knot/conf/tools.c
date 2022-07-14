@@ -512,9 +512,11 @@ int check_xdp(
 	                              C_UDP);
 	conf_val_t tcp = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
 	                              C_TCP);
+	conf_val_t quic = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
+	                               C_QUIC);
 	if (xdp_listen.code == KNOT_EOK) {
-		if (!conf_bool(&udp) && !conf_bool(&tcp)) {
-			args->err_str = "XDP processing requires UDP or TCP enabled";
+		if (!conf_bool(&udp) && !conf_bool(&tcp) && !conf_bool(&quic)) {
+			args->err_str = "XDP processing requires UDP, TCP, or QUIC enabled";
 			return KNOT_EINVAL;
 		}
 
@@ -525,8 +527,6 @@ int check_xdp(
 	}
 	xdp_listen = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP, C_LISTEN);
 
-	conf_val_t quic = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
-	                               C_QUIC);
 	if (conf_bool(&quic)) {
 #ifdef ENABLE_QUIC
 		conf_val_t port = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP,
