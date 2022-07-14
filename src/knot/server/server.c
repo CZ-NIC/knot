@@ -294,9 +294,25 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 	}
 
 	if (ret == KNOT_EOK) {
+		char msg[128];
+		(void)snprintf(msg, sizeof(msg), "initialized XDP interface %s", iface.name);
+		if (udp || tcp) {
+			char buf[32] = "";
+			(void)snprintf(buf, sizeof(buf), ", %s%s%s port %u",
+			               (udp ? "UDP" : ""),
+			               (udp && tcp ? "/" : ""),
+			               (tcp ? "TCP" : ""),
+			               iface.port);
+			strlcat(msg, buf, sizeof(msg));
+		}
+		if (quic) {
+			char buf[32] = "";
+			(void)snprintf(buf, sizeof(buf), ", QUIC port %u", quic);
+			strlcat(msg, buf, sizeof(msg));
+		}
+
 		knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(iface.name));
-		log_debug("initialized XDP interface %s@%u UDP%s, queues %d, %s mode%s",
-		          iface.name, iface.port, (tcp ? "/TCP" : ""), iface.queues,
+		log_debug("%s, queues %d, %s mode%s", msg, iface.queues,
 		          (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"),
 		          route_check ? ", route check" : "");
 	}
