@@ -220,6 +220,9 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
 	{ C_TCP_REUSEPORT,        YP_TBOOL, YP_VNONE },
 	{ C_TCP_FASTOPEN,         YP_TBOOL, YP_VNONE },
+	{ C_QUIC_MAX_CLIENTS,     YP_TINT,  YP_VINT = { 1024, INT32_MAX, 100000 } },
+	{ C_QUIC_IDLE_CLOSE,      YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },
+	{ C_QUIC_OUTBUF_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
 	{ C_RMT_POOL_LIMIT,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
 	{ C_RMT_POOL_TIMEOUT,     YP_TINT,  YP_VINT = { 1, INT32_MAX, 5, YP_STIME } },
 	{ C_RMT_RETRY_DELAY,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
@@ -259,7 +262,7 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP,                  YP_TBOOL, YP_VNONE },
 	{ C_QUIC,                 YP_TBOOL, YP_VNONE },
 	{ C_QUIC_PORT,            YP_TINT,  YP_VINT = { 1, 65535, 853 } },
-	{ C_QUIC_LOG,             YP_TBOOL, YP_VNONE }, // FIXME remove or improve
+	{ C_QUIC_LOG,             YP_TBOOL, YP_VNONE },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 1024, INT32_MAX, 1000000 } },
 	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
 	{ C_TCP_OUTBUF_MAX_SIZE,  YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },

@@ -125,6 +125,9 @@ typedef struct {
 		int srv_tcp_remote_io_timeout;
 		bool srv_tcp_reuseport;
 		bool srv_tcp_fastopen;
+		uint32_t srv_quic_max_clients;
+		uint32_t srv_quic_idle_close;
+		size_t srv_quic_obuf_max_size;
 		bool srv_socket_affinity;
 		unsigned srv_dbus_event;
 		size_t srv_udp_threads;
