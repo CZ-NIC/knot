@@ -91,16 +91,29 @@ static bool tcp_send_state(int state)
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
 }
 
-static void log_closed(closed_log_ctx_t *ctx, const char *format)
+static void log_closed(closed_log_ctx_t *ctx, bool tcp)
 {
 	struct timespec now = time_now();
 	uint64_t sec = now.tv_sec + now.tv_nsec / 1000000000;
-	if (sec - ctx->last_log > 9 && ctx->closed + ctx->reset > 0) {
-		log_notice(format, ctx->closed, ctx->reset);
-		ctx->last_log = sec;
-		ctx->closed = 0;
-		ctx->reset = 0;
+	if (sec - ctx->last_log <= 9 || (ctx->closed + ctx->reset == 0)) {
+		return;
 	}
+
+	if (tcp) {
+		log_notice("TCP, connection timeout, %u closed, %u reset",
+		           ctx->closed, ctx->reset);
+	} else {
+		if (ctx->closed > 0) {
+			log_debug("QUIC, connection timeout, closed %u", ctx->closed);
+		}
+		if (ctx->reset > 0) {
+			log_notice("QUIC, forcibly closed %u", ctx->reset);
+		}
+	}
+
+	ctx->last_log = sec;
+	ctx->closed = 0;
+	ctx->reset = 0;
 }
 
 void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
@@ -424,7 +437,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 #ifdef ENABLE_QUIC
 	if (ctx->quic_table != NULL) {
 		knot_xquic_table_sweep(ctx->quic_table, &ctx->quic_closed.closed, &ctx->quic_closed.reset);
-		log_closed(&ctx->quic_closed, "QUIC, connection timeout %u, forcibly closed %u");
+		log_closed(&ctx->quic_closed, false);
 	}
 #endif // ENABLE_QUIC
 
@@ -463,7 +476,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 		(void)knot_xdp_send_finish(ctx->sock);
 	} while (ret == KNOT_EOK && prev_total < ctx->tcp_closed.closed + ctx->tcp_closed.reset);
 
-	log_closed(&ctx->tcp_closed, "TCP, connection timeout, %u closed, %u reset");
+	log_closed(&ctx->tcp_closed, true);
 }
 
 #endif // ENABLE_XDP
