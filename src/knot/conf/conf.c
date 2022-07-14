@@ -1214,12 +1214,7 @@ char *conf_tls_txn(
 		return NULL;
 	}
 
-	conf_val_t rundir_val = conf_get_txn(conf, txn, C_SRV, C_RUNDIR);
-	char *rundir = conf_abs_path(&rundir_val, NULL);
-	char *tls = conf_abs_path(&tls_val, rundir);
-	free(rundir);
-
-	return tls;
+	return conf_abs_path(&tls_val, CONFIG_DIR);
 }
 
 size_t conf_udp_threads_txn(
