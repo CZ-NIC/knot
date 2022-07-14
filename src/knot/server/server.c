@@ -614,6 +614,25 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	assert(real_nifs <= nifs);
 	nifs = real_nifs;
 
+#ifdef ENABLE_QUIC
+	if (xdp_quic > 0) {
+		char *tls_cert = conf_tls(conf, C_TLS_CERT);
+		char *tls_key = conf_tls(conf, C_TLS_KEY);
+		if (tls_cert == NULL) {
+			log_notice("QUIC, no certificate configured, using one-time "
+			           "self-signed server certificate");
+		}
+		s->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
+		free(tls_cert);
+		free(tls_key);
+		if (s->quic_creds == NULL) {
+			log_error("QUIC, failed to initialize");
+			server_deinit_iface_list(newlist, nifs);
+			return KNOT_ERROR;
+		}
+	}
+#endif // ENABLE_QUIC
+
 	/* Publish new list. */
 	s->ifaces = newlist;
 	s->n_ifaces = nifs;
@@ -626,21 +645,6 @@ static int configure_sockets(conf_t *conf, server_t *s)
 			s->handlers[proto].handler.thread_id[i] = thread_count++;
 		}
 	}
-
-#ifdef ENABLE_QUIC
-	if (xdp_quic > 0) {
-		char *tls_cert = conf_tls(conf, C_TLS_CERT);
-		char *tls_key = conf_tls(conf, C_TLS_KEY);
-
-		s->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
-		free(tls_cert);
-		free(tls_key);
-		if (s->quic_creds == NULL) {
-			log_error("failed to initialize QUIC context");
-			return KNOT_ERROR; // TODO free something?
-		}
-	}
-#endif // ENABLE_QUIC
 
 	return KNOT_EOK;
 }
