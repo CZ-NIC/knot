@@ -158,6 +158,7 @@ static int self_signed_cert(gnutls_certificate_credentials_t tls_cert)
 	//CHK(gnutls_x509_crt_set_ca_status(cert, 0)); // TODO needed ?
 	CHK(gnutls_x509_crt_set_activation_time(cert, now_years(-1)));
 	CHK(gnutls_x509_crt_set_expiration_time(cert, now_years(20)));
+	CHK(gnutls_x509_crt_set_dn(cert, "CN=DoQ Self-Signed Server Certificate", NULL));
 	CHK(gnutls_x509_crt_set_key(cert, privkey));
 
 	CHK(gnutls_x509_crt_set_serial(cert, serial, sizeof(serial)));
