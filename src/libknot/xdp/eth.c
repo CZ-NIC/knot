@@ -84,8 +84,7 @@ int knot_eth_rss(const char *devname, knot_eth_rss_conf_t **rss_conf)
 
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0) {
-		ret = knot_map_errno();
-		goto finish;
+		return knot_map_errno();
 	}
 
 	struct ethtool_rxfh sizes = {
@@ -122,7 +121,7 @@ int knot_eth_rss(const char *devname, knot_eth_rss_conf_t **rss_conf)
 	}
 
 	out = calloc(1, sizeof(*out) + data_size);
-	if (ctx == NULL) {
+	if (out == NULL) {
 		ret = KNOT_ENOMEM;
 		goto finish;
 	}
