@@ -59,7 +59,7 @@ Options
 **-X**, **--color**
   Force colorized output in the normal mode.
 
-**-v**, **--version**
+**-v**, **--verbose**
   Listing of keys with full description.
 
 **-h**, **--help**

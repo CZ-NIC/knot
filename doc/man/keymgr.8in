@@ -82,7 +82,7 @@ Don\(aqt generate colorized output.
 \fB\-X\fP, \fB\-\-color\fP
 Force colorized output in the normal mode.
 .TP
-\fB\-v\fP, \fB\-\-version\fP
+\fB\-v\fP, \fB\-\-verbose\fP
 Listing of keys with full description.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
