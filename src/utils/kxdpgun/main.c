@@ -76,6 +76,7 @@ unsigned global_cpu_aff_step = 1;
 #define LOCAL_PORT_DOQ_DEFAULT   853
 #define LOCAL_PORT_MIN          2000
 #define LOCAL_PORT_MAX         65535
+#define QUIC_THREAD_PORTS        100
 
 #define RCODE_MAX (0x0F + 1)
 
@@ -104,11 +105,6 @@ typedef enum {
 } xdp_gun_ignore_t;
 
 typedef struct {
-	uint8_t data[2 * sizeof(struct in6_addr) + 2 * sizeof(uint16_t)];
-	toeplitz_ctx_t toeplitz;
-} rss_ctx_t;
-
-typedef struct {
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
 	unsigned	at_once;
@@ -130,7 +126,6 @@ typedef struct {
 	knot_xdp_filter_flag_t flags;
 	unsigned	n_threads, thread_id;
 	knot_eth_rss_conf_t *rss_conf;
-	rss_ctx_t	rss;
 } xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
@@ -316,63 +311,64 @@ static void put_dns_payload(struct iovec *put_into, bool zero_copy, xdp_gun_ctx_
 	next_payload(payl, ctx->n_threads);
 }
 
-void rss_ctx_init(xdp_gun_ctx_t *ctx)
+#ifdef ENABLE_QUIC
+static uint16_t get_rss_id(xdp_gun_ctx_t *ctx, uint16_t local_port)
 {
-	if (ctx->rss_conf == NULL) {
-		return;
-	}
-
-	memset(&ctx->rss, 0, sizeof(ctx->rss));
+	assert(ctx->rss_conf);
 
 	const uint8_t *key = (const uint8_t *)&(ctx->rss_conf->data[ctx->rss_conf->table_size]);
 	const size_t key_len = ctx->rss_conf->key_size;
-	uint8_t *data = ctx->rss.data;
+	uint8_t data[2 * sizeof(struct in6_addr) + 2 * sizeof(uint16_t)];
 
 	size_t addr_len;
 	if (ctx->ipv6) {
 		addr_len = sizeof(struct in6_addr);
 		struct sockaddr_in6 *src = (struct sockaddr_in6 *)(&ctx->target_ip);
 		struct sockaddr_in6 *dst = (struct sockaddr_in6 *)(&ctx->local_ip);
-		memcpy(ctx->rss.data, &src->sin6_addr, addr_len);
-		memcpy(ctx->rss.data + addr_len, &dst->sin6_addr, addr_len);
+		memcpy(data, &src->sin6_addr, addr_len);
+		memcpy(data + addr_len, &dst->sin6_addr, addr_len);
 	} else {
 		addr_len = sizeof(struct in_addr);
 		struct sockaddr_in *src = (struct sockaddr_in *)(&ctx->target_ip);
 		struct sockaddr_in *dst = (struct sockaddr_in *)(&ctx->local_ip);
-		memcpy(ctx->rss.data, &src->sin_addr, addr_len);
-		memcpy(ctx->rss.data + addr_len, &dst->sin_addr, addr_len);
+		memcpy(data, &src->sin_addr, addr_len);
+		memcpy(data + addr_len, &dst->sin_addr, addr_len);
 	}
 
 	uint16_t src_port = htobe16(ctx->target_port);
-	memcpy(ctx->rss.data + 2 * addr_len, &src_port, sizeof(src_port));
+	memcpy(data + 2 * addr_len, &src_port, sizeof(src_port));
+	uint16_t dst_port = htobe16(local_port);
+	memcpy(data + 2 * addr_len + sizeof(uint16_t), &dst_port, sizeof(dst_port));
 
 	size_t data_len = 2 * addr_len + 2 * sizeof(uint16_t);
-	toeplitz_init(&ctx->rss.toeplitz, 2 * addr_len + sizeof(uint16_t),
-	              key, key_len, data, data_len);
+	uint16_t hash = toeplitz_hash(key, key_len, data, data_len);
+
+	return ctx->rss_conf->data[hash & ctx->rss_conf->mask];
 }
 
-#ifdef ENABLE_QUIC
-static void adjust_port(xdp_gun_ctx_t *ctx, struct sockaddr_in6 *local_ip,
-                        uint16_t local_port)
+static uint16_t adjust_port(xdp_gun_ctx_t *ctx, uint16_t local_port)
 {
-	if (ctx->rss_conf == NULL) {
-		return;
+	assert(UINT16_MAX == LOCAL_PORT_MAX);
+
+	if (local_port < LOCAL_PORT_MIN) {
+		local_port = LOCAL_PORT_MIN;
 	}
 
-	size_t addr_len = ctx->ipv6 ? sizeof(struct in6_addr) : sizeof(struct in_addr);
+	if (ctx->rss_conf == NULL) {
+		return local_port;
+	}
 
 	for (int i = 0; i < UINT16_MAX; i++) {
-		uint16_t dst_port = htobe16(local_port);
-		memcpy(ctx->rss.data + 2 * addr_len + sizeof(uint16_t), &dst_port, sizeof(dst_port));
-		uint32_t hash = toeplitz_finish(&ctx->rss.toeplitz);
-		uint32_t id = ctx->rss_conf->data[hash & ctx->rss_conf->mask];
-		if (id == ctx->thread_id) {
+		if (ctx->thread_id == get_rss_id(ctx, local_port)) {
 			break;
 		}
-		uint16_t port_range = LOCAL_PORT_MAX - LOCAL_PORT_MIN + 1;
-		local_port = LOCAL_PORT_MIN + (local_port + 1 - LOCAL_PORT_MIN) % port_range;
+		local_port++;
+		if (local_port < LOCAL_PORT_MIN) {
+			local_port = LOCAL_PORT_MIN;
+		}
 	}
-	local_ip->sin6_port = htobe16(local_port);
+
+	return local_port;
 }
 #endif // ENABLE_QUIC
 
@@ -437,9 +433,8 @@ void *xdp_gun_thread(void *_ctx)
 	knot_xdp_msg_t quic_fake_req = { 0 };
 	list_t quic_sessions;
 	init_list(&quic_sessions);
+	struct sockaddr_storage local_ip = ctx->local_ip;
 #endif // ENABLE_QUIC
-
-	rss_ctx_init(ctx);
 
 	if (ctx->tcp) {
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
@@ -462,7 +457,6 @@ void *xdp_gun_thread(void *_ctx)
 		}
 		((struct sockaddr_in6 *)&ctx->target_ip)->sin6_port = htobe16(ctx->target_port);
 		((struct sockaddr_in6 *)&ctx->local_ip)->sin6_port = htobe16(ctx->listen_port);
-		adjust_port(ctx, (struct sockaddr_in6 *)&ctx->local_ip, ctx->listen_port);
 
 		memcpy(quic_fake_req.eth_from, ctx->target_mac,  sizeof(ctx->target_mac));
 		memcpy(quic_fake_req.eth_to,   ctx->local_mac,   sizeof(ctx->local_mac));
@@ -501,6 +495,17 @@ void *xdp_gun_thread(void *_ctx)
 	struct pkt_payload *payload_ptr = NULL;
 	next_payload(&payload_ptr, ctx->thread_id);
 
+#ifdef ENABLE_QUIC
+	uint16_t local_ports[QUIC_THREAD_PORTS];
+	uint16_t port = LOCAL_PORT_MIN;
+	for (int i = 0; i < QUIC_THREAD_PORTS; ++i) {
+		local_ports[i] = adjust_port(ctx, port);
+		port = local_ports[i] + 1;
+		assert(port >= LOCAL_PORT_MIN);
+	}
+	size_t local_ports_it = 0;
+#endif // ENABLE_QUIC
+
 	timer_start(&timer);
 
 	while (duration < ctx->duration + 4000000) {
@@ -523,9 +528,11 @@ void *xdp_gun_thread(void *_ctx)
 					}
 				} else if (ctx->quic) {
 #ifdef ENABLE_QUIC
+					uint16_t local_port = local_ports[local_ports_it++ % QUIC_THREAD_PORTS];
 					for (unsigned i = 0; i < ctx->at_once; i++) {
 						knot_xquic_conn_t *newconn = NULL;
-						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
+						sockaddr_port_set(&local_ip, local_port);
+						ret = knot_xquic_client(quic_table, &ctx->target_ip, &local_ip, &newconn);
 						if (ret == KNOT_EOK) {
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
@@ -536,6 +543,7 @@ void *xdp_gun_thread(void *_ctx)
 								rem_node(session);
 								(void)knot_xquic_session_load(newconn, session);
 							}
+							sockaddr_port_set((struct sockaddr_storage *)&quic_fake_req.ip_to, local_port);
 							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, false);
 						}
 						if (ret == KNOT_EOK) {
