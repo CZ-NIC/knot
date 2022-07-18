@@ -370,7 +370,7 @@ static void adjust_port(xdp_gun_ctx_t *ctx, struct sockaddr_in6 *local_ip,
 			break;
 		}
 		uint16_t port_range = LOCAL_PORT_MAX - LOCAL_PORT_MIN + 1;
-		local_port = LOCAL_PORT_MIN + (local_port + 1) % port_range;
+		local_port = LOCAL_PORT_MIN + (local_port + 1 - LOCAL_PORT_MIN) % port_range;
 	}
 	local_ip->sin6_port = htobe16(local_port);
 }
