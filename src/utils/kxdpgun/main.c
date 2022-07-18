@@ -72,9 +72,10 @@ volatile unsigned stats_trigger = 0;
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
 
-#define LOCAL_PORT_DEFAULT 53
-#define LOCAL_PORT_MIN   2000
-#define LOCAL_PORT_MAX  65535
+#define LOCAL_PORT_DEFAULT        53
+#define LOCAL_PORT_DOQ_DEFAULT   853
+#define LOCAL_PORT_MIN          2000
+#define LOCAL_PORT_MAX         65535
 
 #define RCODE_MAX (0x0F + 1)
 
@@ -124,6 +125,7 @@ typedef struct {
 	xdp_gun_ignore_t  ignore1;
 	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
+	bool		default_port;
 	uint16_t	listen_port;
 	knot_xdp_filter_flag_t flags;
 	unsigned	n_threads, thread_id;
@@ -139,6 +141,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.at_once = 10,
 	.tcp_mode = '0',
 	.target_port = LOCAL_PORT_DEFAULT,
+	.default_port = true,
 	.listen_port = LOCAL_PORT_MIN,
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
 };
@@ -1022,6 +1025,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			arg = atoi(optarg);
 			if (arg > 0 && arg <= 0xffff) {
 				ctx->target_port = arg;
+				ctx->default_port = false;
 			} else {
 				ERR2("invalid port '%s'\n", optarg);
 				return false;
@@ -1043,6 +1047,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			ctx->quic = true;
 			ctx->flags &= ~(KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP);
 			ctx->flags |= KNOT_XDP_FILTER_QUIC;
+			if (ctx->default_port) {
+				ctx->target_port = LOCAL_PORT_DOQ_DEFAULT;
+			}
 			if (default_at_once) {
 				ctx->at_once = 1;
 			}
