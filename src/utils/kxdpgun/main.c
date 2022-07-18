@@ -501,6 +501,21 @@ void *xdp_gun_thread(void *_ctx)
 	struct pkt_payload *payload_ptr = NULL;
 	next_payload(&payload_ptr, ctx->thread_id);
 
+#ifdef ENABLE_QUIC
+	// Pregenerate random port numbers
+	const size_t pregen_addr_cnt = 100;
+	struct sockaddr_in6 pregen_addr[pregen_addr_cnt];
+	const uint16_t local_port_range = LOCAL_PORT_MAX - LOCAL_PORT_MIN + 1;
+	uint16_t port = (LOCAL_PORT_MIN - sockaddr_port(&ctx->local_ip)) % local_port_range + LOCAL_PORT_MIN;
+	size_t pregen_addr_it = 0;
+	for (int i = 0; i < sizeof(pregen_addr) / sizeof(*pregen_addr); ++i) {
+		memcpy(&pregen_addr[i], &ctx->local_ip, sizeof(*pregen_addr));
+		sockaddr_port_set((struct sockaddr_storage *)&pregen_addr[i], port); // without RSS
+		adjust_port(ctx, &pregen_addr[i], port);
+		port = (sockaddr_port((struct sockaddr_storage *)&pregen_addr[i]) + 1 - LOCAL_PORT_MIN) % local_port_range + LOCAL_PORT_MIN;
+	}
+#endif // ENABLE_QUIC
+
 	timer_start(&timer);
 
 	while (duration < ctx->duration + 4000000) {
@@ -523,9 +538,10 @@ void *xdp_gun_thread(void *_ctx)
 					}
 				} else if (ctx->quic) {
 #ifdef ENABLE_QUIC
+					struct sockaddr_in6 *local_ip = &pregen_addr[pregen_addr_it++ % pregen_addr_cnt];
 					for (unsigned i = 0; i < ctx->at_once; i++) {
 						knot_xquic_conn_t *newconn = NULL;
-						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
+						ret = knot_xquic_client(quic_table, &ctx->target_ip, (struct sockaddr_storage *)local_ip, &newconn);
 						if (ret == KNOT_EOK) {
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
@@ -536,6 +552,8 @@ void *xdp_gun_thread(void *_ctx)
 								rem_node(session);
 								(void)knot_xquic_session_load(newconn, session);
 							}
+							port = sockaddr_port((struct sockaddr_storage *)local_ip);
+							sockaddr_port_set((struct sockaddr_storage *)&quic_fake_req.ip_to, port);
 							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, false);
 						}
 						if (ret == KNOT_EOK) {
