@@ -249,7 +249,8 @@ void knot_xquic_free_creds(struct knot_quic_creds *creds)
 }
 
 #define ALPN "\03""doq"
-#define ALPN_TMP "\07""doq-i11"
+#define ALPN_TMP1 "\07""doq-i11"
+#define ALPN_TMP2 "\07""doq-i03"
 
 static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
                                unsigned when, unsigned int incoming,
@@ -271,8 +272,10 @@ static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
 	const char *dq = (const char *)&ALPN[1];
 	if (((unsigned int)ALPN[0] != alpn.size ||
 	     memcmp(dq, alpn.data, alpn.size) != 0) &&
-	   ((unsigned int)ALPN_TMP[0] != alpn.size ||
-	     memcmp((const char *)&ALPN_TMP[1], alpn.data, alpn.size) != 0)) {
+	   ((unsigned int)ALPN_TMP1[0] != alpn.size ||
+	     memcmp((const char *)&ALPN_TMP1[1], alpn.data, alpn.size) != 0) &&
+	   ((unsigned int)ALPN_TMP1[0] != alpn.size ||
+	     memcmp((const char *)&ALPN_TMP2[1], alpn.data, alpn.size) != 0)) {
 		return TLS_CALLBACK_ERR;
 	}
 
@@ -330,17 +333,21 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 	}
 
 
-	gnutls_datum_t alpn[2] = {
+	gnutls_datum_t alpn[3] = {
 		{
 			.data = (uint8_t *)(&ALPN[1]),
 			.size = ALPN[0],
 		},
 		{
-			.data = (uint8_t *)(&ALPN_TMP[1]),
-			.size = ALPN_TMP[0],
+			.data = (uint8_t *)(&ALPN_TMP1[1]),
+			.size = ALPN_TMP1[0],
+		},
+		{
+			.data = (uint8_t *)(&ALPN_TMP2[1]),
+			.size = ALPN_TMP2[0],
 		}
 	};
-	gnutls_alpn_set_protocols(conn->tls_session, alpn, 2, 0);
+	gnutls_alpn_set_protocols(conn->tls_session, alpn, 3, 0);
 
 	ngtcp2_conn_set_tls_native_handle(conn->conn, conn->tls_session);
 
