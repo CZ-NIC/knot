@@ -209,6 +209,34 @@ static void finalize_edns_expire(struct refresh_data *data)
 	data->expire_timer = MIN(data->expire_timer, zone_soa_expire(data->zone));
 }
 
+static void set_timers(const struct refresh_data *data)
+{
+	uint32_t expire_timer = data->expire_timer;
+	conf_t *conf = data->conf;
+	zone_t *zone = data->zone;
+
+	assert(expire_timer != EXPIRE_TIMER_INVALID);
+
+	time_t now = time(NULL);
+	const knot_rdataset_t *soa = zone_soa(zone);
+
+	zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
+	limit_next(conf, zone->name, C_REFRESH_MIN_INTERVAL,
+	           C_REFRESH_MAX_INTERVAL, now,
+	           &zone->timers.next_refresh);
+	zone->timers.last_refresh_ok = true;
+
+	if (!zone->is_catalog_flag) {  /* For catz, keep next_expire. */
+		zone->timers.next_expire = now + expire_timer;
+		limit_next(conf, zone->name,
+		           // Limit min if not received as EDNS Expire.
+			   expire_timer == knot_soa_expire(soa->rdata) ?
+			     C_EXPIRE_MIN_INTERVAL : 0,
+		           C_EXPIRE_MAX_INTERVAL, now,
+		           &zone->timers.next_expire);
+	}
+}
+
 static void fill_expires_in(char *expires_in, size_t size, const struct refresh_data *data)
 {
 	if (data->zone->timers.next_expire > 0) {
@@ -358,6 +386,7 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	finalize_edns_expire(data);
+	set_timers(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
 	                master_serial, dnssec_enable, bootstrap);
 
@@ -631,6 +660,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	}
 
 	finalize_edns_expire(data);
+	set_timers(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
 	                master_serial, dnssec_enable, false);
 
@@ -914,6 +944,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		case XFR_TYPE_UPTODATE:
 			consume_edns_expire(data, pkt, false);
 			finalize_edns_expire(data);
+			set_timers(data);
 			char expires_in[32] = "";
 			fill_expires_in(expires_in, sizeof(expires_in), data);
 			IXFRIN_LOG(LOG_INFO, data,
@@ -1036,6 +1067,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	} else if (master_uptodate) {
 		consume_edns_expire(data, pkt, false);
 		finalize_edns_expire(data);
+		set_timers(data);
 		char expires_in[32] = "";
 		fill_expires_in(expires_in, sizeof(expires_in), data);
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
@@ -1233,7 +1265,6 @@ static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 typedef struct {
 	bool force_axfr;
 	bool send_notify;
-	uint32_t expire_timer;
 } try_refresh_ctx_t;
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
@@ -1309,7 +1340,6 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	if (ret == KNOT_EOK) {
 		trctx->send_notify = data.updated && !master->block_notify_after_xfr;
 		trctx->force_axfr = false;
-		trctx->expire_timer = data.expire_timer;
 	}
 
 	return ret;
@@ -1323,7 +1353,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		return KNOT_ENOTSUP;
 	}
 
-	try_refresh_ctx_t trctx = { .expire_timer = EXPIRE_TIMER_INVALID };
+	try_refresh_ctx_t trctx = { 0 };
 
 	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
 	if (zone_get_flag(zone, ZONE_FORCE_AXFR, true)) {
@@ -1335,36 +1365,17 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	zone_clear_preferred_master(zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "refresh, failed (%s)", knot_strerror(ret));
-	}
 
-	time_t now = time(NULL);
-	const knot_rdataset_t *soa = zone_soa(zone);
-
-	if (ret == KNOT_EOK) {
-		assert(trctx.expire_timer != EXPIRE_TIMER_INVALID);
-		zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
-		limit_next(conf, zone->name, C_REFRESH_MIN_INTERVAL,
-		           C_REFRESH_MAX_INTERVAL, now,
-		           &zone->timers.next_refresh);
-		zone->timers.last_refresh_ok = true;
-
-		if (!zone->is_catalog_flag) {  /* For catz, keep next_expire. */
-			zone->timers.next_expire = now + trctx.expire_timer;
-			limit_next(conf, zone->name,
-			           // Limit min if not received as EDNS Expire.
-			           trctx.expire_timer == knot_soa_expire(soa->rdata) ?
-			             C_EXPIRE_MIN_INTERVAL : 0,
-			           C_EXPIRE_MAX_INTERVAL, now,
-			           &zone->timers.next_expire);
-			}
-		}
-	} else {
+		const knot_rdataset_t *soa = zone_soa(zone);
 		time_t next;
+
 		if (soa) {
 			next = knot_soa_retry(soa->rdata);
 		} else {
 			next = bootstrap_next(&zone->timers);
 		}
+
+		time_t now = time(NULL);
 		zone->timers.next_refresh = now + next;
 		zone->timers.last_refresh_ok = false;
 
