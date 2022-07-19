@@ -201,21 +201,14 @@ static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt, bool
 	}
 }
 
-/*!
- * \brief RFC 7314, section 4, fourth paragraph
- */
-static void finalize_edns_expire(struct refresh_data *data)
+static void finalize_timers(struct refresh_data *data)
 {
-	data->expire_timer = MIN(data->expire_timer, zone_soa_expire(data->zone));
-}
-
-static void set_timers(const struct refresh_data *data)
-{
-	uint32_t expire_timer = data->expire_timer;
 	conf_t *conf = data->conf;
 	zone_t *zone = data->zone;
 
-	assert(expire_timer != EXPIRE_TIMER_INVALID);
+	// EDNS EXPIRE -- RFC 7314, section 4, fourth paragraph.
+	data->expire_timer = MIN(data->expire_timer, zone_soa_expire(data->zone));
+	assert(data->expire_timer != EXPIRE_TIMER_INVALID);
 
 	time_t now = time(NULL);
 	const knot_rdataset_t *soa = zone_soa(zone);
@@ -230,10 +223,10 @@ static void set_timers(const struct refresh_data *data)
 		// It's already zero in most cases.
 		zone->timers.next_expire = 0;
 	} else {
-		zone->timers.next_expire = now + expire_timer;
+		zone->timers.next_expire = now + data->expire_timer;
 		limit_next(conf, zone->name,
 		           // Limit min if not received as EDNS Expire.
-			   expire_timer == knot_soa_expire(soa->rdata) ?
+		           data->expire_timer == knot_soa_expire(soa->rdata) ?
 			     C_EXPIRE_MIN_INTERVAL : 0,
 		           C_EXPIRE_MAX_INTERVAL, now,
 		           &zone->timers.next_expire);
@@ -388,8 +381,7 @@ static int axfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	finalize_edns_expire(data);
-	set_timers(data);
+	finalize_timers(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
 	                master_serial, dnssec_enable, bootstrap);
 
@@ -662,8 +654,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	finalize_edns_expire(data);
-	set_timers(data);
+	finalize_timers(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
 	                master_serial, dnssec_enable, false);
 
@@ -946,8 +937,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			return axfr_consume(pkt, data);
 		case XFR_TYPE_UPTODATE:
 			consume_edns_expire(data, pkt, false);
-			finalize_edns_expire(data);
-			set_timers(data);
+			finalize_timers(data);
 			char expires_in[32] = "";
 			fill_expires_in(expires_in, sizeof(expires_in), data);
 			IXFRIN_LOG(LOG_INFO, data,
@@ -1069,8 +1059,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_RESET; // continue with transfer
 	} else if (master_uptodate) {
 		consume_edns_expire(data, pkt, false);
-		finalize_edns_expire(data);
-		set_timers(data);
+		finalize_timers(data);
 		char expires_in[32] = "";
 		fill_expires_in(expires_in, sizeof(expires_in), data);
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
