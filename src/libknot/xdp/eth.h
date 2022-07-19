@@ -55,7 +55,7 @@ typedef struct {
  * \brief Get RSS configuration of a network interface.
  *
  * \param devname   Name of the ethdev (e.g. eth1).
- * \param rss_conf  Output RSS configuration.
+ * \param rss_conf  Output RSS configuration. Must be freed explicitly.
  *
  * \return KNOT_E*
  */
