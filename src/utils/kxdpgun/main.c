@@ -19,6 +19,7 @@
 #include <getopt.h>
 #include <ifaddrs.h>
 #include <inttypes.h>
+#include <net/if.h>
 #include <poll.h>
 #include <pthread.h>
 #include <signal.h>
@@ -90,7 +91,6 @@ typedef struct {
 	uint64_t rst_recv;
 	uint64_t size_recv;
 	uint64_t wire_recv;
-	uint64_t pkts_recv;
 	uint64_t rcodes_recv[RCODE_MAX];
 	pthread_mutex_t mutex;
 } kxdpgun_stats_t;
@@ -115,9 +115,9 @@ typedef struct {
 	uint8_t		local_ip_range;
 	bool		ipv6;
 	bool		tcp;
-	char		tcp_mode;
 	bool		quic;
 	bool		quic_full_handshake;
+	const char	*sending_mode;
 	xdp_gun_ignore_t  ignore1;
 	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
@@ -134,7 +134,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.qps = 1000,
 	.duration = 5000000UL, // usecs
 	.at_once = 10,
-	.tcp_mode = '0',
+	.sending_mode = "",
 	.target_port = LOCAL_PORT_DEFAULT,
 	.default_port = true,
 	.listen_port = LOCAL_PORT_MIN,
@@ -166,7 +166,6 @@ static void clear_stats(kxdpgun_stats_t *st)
 	st->rst_recv    = 0;
 	st->size_recv   = 0;
 	st->wire_recv   = 0;
-	st->pkts_recv   = 0;
 	st->collected   = 0;
 	memset(st->rcodes_recv, 0, sizeof(st->rcodes_recv));
 	pthread_mutex_unlock(&st->mutex);
@@ -183,7 +182,6 @@ static size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 	into->rst_recv    += what->rst_recv;
 	into->size_recv   += what->size_recv;
 	into->wire_recv   += what->wire_recv;
-	into->pkts_recv   += what->pkts_recv;
 	for (int i = 0; i < RCODE_MAX; i++) {
 		into->rcodes_recv[i] += what->rcodes_recv[i];
 	}
@@ -192,18 +190,20 @@ static size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 	return res;
 }
 
-static void print_stats(kxdpgun_stats_t *st, bool tcp, bool recv)
+static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv)
 {
 	pthread_mutex_lock(&st->mutex);
 
 #define ps(counter)  ((counter) * 1000 / (st->duration / 1000))
 #define pct(counter) ((counter) * 100 / st->qry_sent)
 
-	printf("total %s     %"PRIu64" (%"PRIu64" pps)\n",
-	       tcp ? "SYN:    " : "queries:", st->qry_sent, ps(st->qry_sent));
+	const char *name = tcp ? "SYNs:    " : quic ? "initials:" : "queries: ";
+	printf("total %s    %"PRIu64" (%"PRIu64" pps)\n", name,
+	       st->qry_sent, ps(st->qry_sent));
 	if (st->qry_sent > 0 && recv) {
-		if (tcp) {
-		printf("total established: %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
+		if (tcp || quic) {
+		name = tcp ? "established:" : "handshakes: ";
+		printf("total %s %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n", name,
 		       st->synack_recv, ps(st->synack_recv), pct(st->synack_recv));
 		}
 		printf("total replies:     %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
@@ -216,8 +216,8 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool recv)
 		}
 		printf("average DNS reply size: %"PRIu64" B\n",
 		       st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
-		printf("average Ethernet reply rate: %"PRIu64" bps (%.2f Mbps), %zu raw pps\n",
-		       ps(st->wire_recv * 8), ps((float)st->wire_recv * 8 / (1000 * 1000)), ps(st->pkts_recv));
+		printf("average Ethernet reply rate: %"PRIu64" bps (%.2f Mbps)\n",
+		       ps(st->wire_recv * 8), ps((float)st->wire_recv * 8 / (1000 * 1000)));
 
 		for (int i = 0; i < RCODE_MAX; i++) {
 			if (st->rcodes_recv[i] > 0) {
@@ -713,7 +713,6 @@ void *xdp_gun_thread(void *_ctx)
 					}
 				}
 				local_stats.wire_recv += wire;
-				local_stats.pkts_recv += recvd;
 				knot_xdp_recv_finish(xsk, pkts, recvd);
 				pfd.revents = 0;
 			}
@@ -740,7 +739,7 @@ void *xdp_gun_thread(void *_ctx)
 			size_t collected = collect_stats(&global_stats, &local_stats);
 			assert(collected <= ctx->n_threads);
 			if (collected == ctx->n_threads) {
-				print_stats(&global_stats, ctx->tcp || ctx->quic,
+				print_stats(&global_stats, ctx->tcp, ctx->quic,
 				            !(ctx->flags & KNOT_XDP_FILTER_DROP));
 				clear_stats(&global_stats);
 			}
@@ -919,13 +918,21 @@ static void print_help(void)
 	       ctx_defaults.at_once, 1, LOCAL_PORT_DEFAULT, "0s1");
 }
 
-static bool tcp_mode(const char *arg, xdp_gun_ctx_t *ctx)
+static bool sending_mode(const char *arg, xdp_gun_ctx_t *ctx)
 {
-	ctx->tcp_mode = (arg == NULL ? '#' : arg[0]);
-	switch (ctx->tcp_mode) {
-	case '#':
-		break;
+	if (arg == NULL) {
+		ctx->sending_mode = "";
+		return true;
+	} else if (strlen(arg) != 1) {
+		goto mode_invalid;
+	}
+	ctx->sending_mode = arg;
+
+	switch (ctx->sending_mode[0]) {
 	case '0':
+		if (!ctx->quic) {
+			goto mode_unavailable;
+		}
 		ctx->quic_full_handshake = true;
 		break;
 	case '1':
@@ -948,17 +955,29 @@ static bool tcp_mode(const char *arg, xdp_gun_ctx_t *ctx)
 		ctx->ignore2 = XDP_TCP_IGNORE_DATA_ACK | XDP_TCP_IGNORE_FIN;
 		break;
 	case '8':
+		if (!ctx->tcp) {
+			goto mode_unavailable;
+		}
 		ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
 		ctx->ignore2 = XDP_TCP_IGNORE_FIN;
 		break;
 	case '9':
+		if (!ctx->tcp) {
+			goto mode_unavailable;
+		}
 		ctx->ignore2 = XDP_TCP_IGNORE_FIN;
 		break;
 	default:
-		ERR2("invalid TCP mode '%s'\n", optarg);
-		return false;
+		goto mode_invalid;
 	}
+
 	return true;
+mode_unavailable:
+	ERR2("mode '%s' not available\n", optarg);
+	return false;
+mode_invalid:
+	ERR2("invalid mode '%s'\n", optarg);
+	return false;
 }
 
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
@@ -984,7 +1003,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T:U::F:I:l:i:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1041,18 +1060,20 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			break;
 		case 'T':
 			ctx->tcp = true;
+			ctx->quic = false;
 			ctx->flags &= ~(KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_QUIC);
 			ctx->flags |= KNOT_XDP_FILTER_TCP;
 			if (default_at_once) {
 				ctx->at_once = 1;
 			}
-			if (!tcp_mode(optarg, ctx)) {
+			if (!sending_mode(optarg, ctx)) {
 				return false;
 			}
 			break;
 		case 'U':
 #ifdef ENABLE_QUIC
 			ctx->quic = true;
+			ctx->tcp = false;
 			ctx->flags &= ~(KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP);
 			ctx->flags |= KNOT_XDP_FILTER_QUIC;
 			if (ctx->default_port) {
@@ -1061,11 +1082,11 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (default_at_once) {
 				ctx->at_once = 1;
 			}
-			if (!tcp_mode(optarg, ctx)) {
+			if (!sending_mode(optarg, ctx)) {
 				return false;
 			}
 #else
-			ERR2("not compiled with QUIC support\n");
+			ERR2("QUIC not available\n");
 			return false;
 #endif // ENABLE_QUIC
 			break;
@@ -1110,10 +1131,14 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	}
 	ctx->qps /= ctx->n_threads;
 
-	INFO2("using interface %s, XDP threads %u, %s%s%c\n", ctx->dev, ctx->n_threads,
-	      ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP",
-	      (ctx->tcp && ctx->tcp_mode != '0') ? " mode " : "",
-	      (ctx->tcp && ctx->tcp_mode != '0') ? ctx->tcp_mode : ' ');
+	knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(ctx->dev));
+
+	INFO2("using interface %s, XDP threads %u, %s%s%s, %s mode\n",
+	      ctx->dev, ctx->n_threads,
+	      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
+	      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
+	      (ctx->sending_mode[0] != '\0' ? ctx->sending_mode : ""),
+	      (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"));
 
 	return true;
 }
@@ -1185,7 +1210,7 @@ int main(int argc, char *argv[])
 		pthread_join(threads[i], NULL);
 	}
 	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
-		print_stats(&global_stats, ctx.tcp || ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP));
+		print_stats(&global_stats, ctx.tcp, ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP));
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 
