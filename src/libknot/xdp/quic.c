@@ -902,7 +902,9 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xdp_socket_t *sock,
 
 	switch (handle_ret) {
 	case -XQUIC_SEND_VERSION_NEGOTIATION:
-		assert(dvc_ret == NGTCP2_ERR_VERSION_NEGOTIATION);
+		if (dvc_ret != NGTCP2_ERR_VERSION_NEGOTIATION) {
+			return KNOT_ERROR;
+		}
 		ret = ngtcp2_pkt_write_version_negotiation(
 			out_msg.payload.iov_base, out_msg.payload.iov_len,
 			rnd, scid_data, scid.datalen, dcid_data, dcid.datalen,
@@ -933,7 +935,6 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xdp_socket_t *sock,
 			out_msg.payload.iov_base, out_msg.payload.iov_len,
 			stateless_reset_token, sreset_rand, sizeof(sreset_rand)
 		);
-		ret = KNOT_ENOTSUP;
 		break;
 	default:
 		ret = KNOT_EINVAL;
