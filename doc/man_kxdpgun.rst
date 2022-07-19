@@ -99,10 +99,10 @@ TCP/QUIC debug modes
   Just send SYN (Initial) and receive SYN-ACK (Handshake).
 
 **2**
-  Perform TCP handshake and don't send anything, allow close initiated by counterpart.
+  Perform TCP/QUIC handshake and don't send anything, allow close initiated by counterpart.
 
 **3**
-  Perform TCP handshake and don't react further.
+  Perform TCP/QUIC handshake and don't react further.
 
 **5**
   Send incomplete query (N-1 bytes) and don't react further.

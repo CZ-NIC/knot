@@ -120,10 +120,10 @@ Perform full handshake for all connections (QUIC only).
 Just send SYN (Initial) and receive SYN\-ACK (Handshake).
 .TP
 \fB2\fP
-Perform TCP handshake and don\(aqt send anything, allow close initiated by counterpart.
+Perform TCP/QUIC handshake and don\(aqt send anything, allow close initiated by counterpart.
 .TP
 \fB3\fP
-Perform TCP handshake and don\(aqt react further.
+Perform TCP/QUIC handshake and don\(aqt react further.
 .TP
 \fB5\fP
 Send incomplete query (N\-1 bytes) and don\(aqt react further.
