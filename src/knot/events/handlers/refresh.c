@@ -164,8 +164,8 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
-static void limit_timer(conf_t *conf, const knot_dname_t *zone, const yp_name_t *low,
-                        const yp_name_t *upp, uint32_t *timer)
+static void limit_timer(conf_t *conf, const knot_dname_t *zone, uint32_t *timer,
+                        const char *tm_name, const yp_name_t *low, const yp_name_t *upp)
 {
 	uint32_t tlow = 0;
 	if (low > 0) {
@@ -175,10 +175,13 @@ static void limit_timer(conf_t *conf, const knot_dname_t *zone, const yp_name_t 
 	conf_val_t val2 = conf_zone_get(conf, upp, zone);
 	uint32_t tupp = conf_int(&val2);
 
+	const char *msg = "%s timer trimmed to '%s-%s-interval'";
 	if (*timer < tlow) {
 		*timer = tlow;
+		log_zone_debug(zone, msg, tm_name, tm_name, "min");
 	} else if (*timer > tupp) {
 		*timer = tupp;
+		log_zone_debug(zone, msg, tm_name, tm_name, "max");
 	}
 }
 
@@ -214,8 +217,8 @@ static void finalize_timers(struct refresh_data *data)
 	const knot_rdataset_t *soa = zone_soa(zone);
 
 	uint32_t soa_refresh = knot_soa_refresh(soa->rdata);
-	limit_timer(conf, zone->name, C_REFRESH_MIN_INTERVAL,
-	            C_REFRESH_MAX_INTERVAL, &soa_refresh);
+	limit_timer(conf, zone->name, &soa_refresh, "refresh",
+	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
 	zone->timers.next_refresh = now + soa_refresh;
 	zone->timers.last_refresh_ok = true;
 
@@ -223,11 +226,11 @@ static void finalize_timers(struct refresh_data *data)
 		// It's already zero in most cases.
 		zone->timers.next_expire = 0;
 	} else {
-		limit_timer(conf, zone->name,
+		limit_timer(conf, zone->name, &data->expire_timer, "expire",
 		            // Limit min if not received as EDNS Expire.
 		            data->expire_timer == knot_soa_expire(soa->rdata) ?
 			      C_EXPIRE_MIN_INTERVAL : 0,
-		            C_EXPIRE_MAX_INTERVAL, &data->expire_timer);
+		            C_EXPIRE_MAX_INTERVAL);
 		zone->timers.next_expire = now + data->expire_timer;
 	}
 }
@@ -1366,8 +1369,8 @@ int event_refresh(conf_t *conf, zone_t *zone)
 			next = bootstrap_next(&zone->timers);
 		}
 
-		limit_timer(conf, zone->name, C_RETRY_MIN_INTERVAL,
-		            C_RETRY_MAX_INTERVAL, &next);
+		limit_timer(conf, zone->name, &next, "retry",
+		            C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
 		zone->timers.next_refresh = time(NULL) + next;
 		zone->timers.last_refresh_ok = false;
 	}
