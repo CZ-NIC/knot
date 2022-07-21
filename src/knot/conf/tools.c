@@ -549,7 +549,7 @@ int check_xdp(
 
 		struct stat st;
 		int none = 0, stret = 0;
-		char *tls_cert = conf_tls_txn(args->extra->conf, args->extra->txn, C_TLS_CERT);
+		char *tls_cert = conf_tls_txn(args->extra->conf, args->extra->txn, C_CERT_FILE);
 		if (tls_cert == NULL) {
 			none++;
 		} else {
@@ -560,7 +560,7 @@ int check_xdp(
 			args->err_str = "QUIC requires that TLS server certificate is configured and exists";
 			return KNOT_EINVAL;
 		}
-		char *tls_key = conf_tls_txn(args->extra->conf, args->extra->txn, C_TLS_KEY);
+		char *tls_key = conf_tls_txn(args->extra->conf, args->extra->txn, C_KEY_FILE);
 		if (tls_key == NULL) {
 			none++;
 		} else {

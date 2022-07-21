@@ -616,11 +616,10 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 #ifdef ENABLE_QUIC
 	if (xdp_quic > 0) {
-		char *tls_cert = conf_tls(conf, C_TLS_CERT);
-		char *tls_key = conf_tls(conf, C_TLS_KEY);
+		char *tls_cert = conf_tls(conf, C_CERT_FILE);
+		char *tls_key = conf_tls(conf, C_KEY_FILE);
 		if (tls_cert == NULL) {
-			log_notice("QUIC, no certificate configured, using one-time "
-			           "self-signed server certificate");
+			log_notice("QUIC, no server certificate configured, using one-time one");
 		}
 		s->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
 		free(tls_cert);
