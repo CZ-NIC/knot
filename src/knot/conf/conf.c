@@ -1210,7 +1210,7 @@ char *conf_tls_txn(
 	const yp_name_t *tls_item)
 {
 	conf_val_t tls_val = conf_get_txn(conf, txn, C_SRV, tls_item);
-	if (conf_str(&tls_val)[0] == '\0') {
+	if (conf_str(&tls_val) == NULL) {
 		return NULL;
 	}
 
