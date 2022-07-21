@@ -164,16 +164,16 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
-static void limit_next(conf_t *conf, const knot_dname_t *zone, const yp_name_t *low,
-                       const yp_name_t *upp, time_t now, time_t *timer)
+static void limit_timer(conf_t *conf, const knot_dname_t *zone, const yp_name_t *low,
+                        const yp_name_t *upp, uint32_t *timer)
 {
-	time_t tlow = now;
+	uint32_t tlow = 0;
 	if (low > 0) {
 		conf_val_t val1 = conf_zone_get(conf, low, zone);
-		tlow += conf_int(&val1);
+		tlow = conf_int(&val1);
 	}
 	conf_val_t val2 = conf_zone_get(conf, upp, zone);
-	time_t tupp = now + conf_int(&val2);
+	uint32_t tupp = conf_int(&val2);
 
 	if (*timer < tlow) {
 		*timer = tlow;
@@ -213,23 +213,22 @@ static void finalize_timers(struct refresh_data *data)
 	time_t now = time(NULL);
 	const knot_rdataset_t *soa = zone_soa(zone);
 
-	zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
-	limit_next(conf, zone->name, C_REFRESH_MIN_INTERVAL,
-	           C_REFRESH_MAX_INTERVAL, now,
-	           &zone->timers.next_refresh);
+	uint32_t soa_refresh = knot_soa_refresh(soa->rdata);
+	limit_timer(conf, zone->name, C_REFRESH_MIN_INTERVAL,
+	            C_REFRESH_MAX_INTERVAL, &soa_refresh);
+	zone->timers.next_refresh = now + soa_refresh;
 	zone->timers.last_refresh_ok = true;
 
 	if (zone->is_catalog_flag) {
 		// It's already zero in most cases.
 		zone->timers.next_expire = 0;
 	} else {
+		limit_timer(conf, zone->name,
+		            // Limit min if not received as EDNS Expire.
+		            data->expire_timer == knot_soa_expire(soa->rdata) ?
+			      C_EXPIRE_MIN_INTERVAL : 0,
+		            C_EXPIRE_MAX_INTERVAL, &data->expire_timer);
 		zone->timers.next_expire = now + data->expire_timer;
-		limit_next(conf, zone->name,
-		           // Limit min if not received as EDNS Expire.
-		           data->expire_timer == knot_soa_expire(soa->rdata) ?
-			     C_EXPIRE_MIN_INTERVAL : 0,
-		           C_EXPIRE_MAX_INTERVAL, now,
-		           &zone->timers.next_expire);
 	}
 }
 
@@ -1359,7 +1358,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		log_zone_error(zone->name, "refresh, failed (%s)", knot_strerror(ret));
 
 		const knot_rdataset_t *soa = zone_soa(zone);
-		time_t next;
+		uint32_t next;
 
 		if (soa) {
 			next = knot_soa_retry(soa->rdata);
@@ -1367,13 +1366,10 @@ int event_refresh(conf_t *conf, zone_t *zone)
 			next = bootstrap_next(&zone->timers);
 		}
 
-		time_t now = time(NULL);
-		zone->timers.next_refresh = now + next;
+		limit_timer(conf, zone->name, C_RETRY_MIN_INTERVAL,
+		            C_RETRY_MAX_INTERVAL, &next);
+		zone->timers.next_refresh = time(NULL) + next;
 		zone->timers.last_refresh_ok = false;
-
-		limit_next(conf, zone->name, C_RETRY_MIN_INTERVAL,
-		           C_RETRY_MAX_INTERVAL, now,
-		           &zone->timers.next_refresh);
 	}
 
 	/* Reschedule events. */
