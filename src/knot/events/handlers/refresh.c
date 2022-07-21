@@ -1300,10 +1300,14 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 static void limit_next(conf_t *conf, const knot_dname_t *zone, const yp_name_t *low,
                        const yp_name_t *upp, time_t now, time_t *timer)
 {
-	conf_val_t val1 = conf_zone_get(conf, low, zone);
+	time_t tlow = now;
+	if (low > 0) {
+		conf_val_t val1 = conf_zone_get(conf, low, zone);
+		tlow += conf_int(&val1);
+	}
 	conf_val_t val2 = conf_zone_get(conf, upp, zone);
-	time_t tlow = now + conf_int(&val1);
 	time_t tupp = now + conf_int(&val2);
+
 	if (*timer < tlow) {
 		*timer = tlow;
 	} else if (*timer > tupp) {
@@ -1346,10 +1350,12 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 		if (!zone->is_catalog_flag) {  /* For catz, keep next_expire. */
 			zone->timers.next_expire = now + trctx.expire_timer;
-			if (trctx.expire_timer == knot_soa_expire(soa->rdata)) {
-				limit_next(conf, zone->name, C_EXPIRE_MIN_INTERVAL,
-				           C_EXPIRE_MAX_INTERVAL, now,
-				           &zone->timers.next_expire);
+			limit_next(conf, zone->name,
+			           // Limit min if not received as EDNS Expire.
+			           trctx.expire_timer == knot_soa_expire(soa->rdata) ?
+			             C_EXPIRE_MIN_INTERVAL : 0,
+			           C_EXPIRE_MAX_INTERVAL, now,
+			           &zone->timers.next_expire);
 			}
 		}
 	} else {
