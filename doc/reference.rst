@@ -143,8 +143,8 @@ General options related to the server.
      tcp-reuseport: BOOL
      tcp-fastopen: BOOL
      quic-max-clients: INT
-     quic-idle-close: INT
-     quic-outbuf-max-size: INT
+     quic-outbuf-max-size: SIZE
+     quic-idle-close-timeout: TIME
      remote-pool-limit: INT
      remote-pool-timeout: TIME
      remote-retry-delay: TIME
@@ -152,6 +152,8 @@ General options related to the server.
      udp-max-payload: SIZE
      udp-max-payload-ipv4: SIZE
      udp-max-payload-ipv6: SIZE
+     key-file: STR
+     cert-file: STR
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      automatic-acl: BOOL
@@ -371,22 +373,9 @@ See also :ref:`xdp_quic`.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
-*Minimum:* 1024
+*Minimum:* 128
 
-*Default:* 100000 (one hundred thousand)
-
-.. _server_quic-idle-close:
-
-quic-idle-close
----------------
-
-Time in seconds, after which any idle QUIC connection is gracefully closed.
-
-Change of this parameter requires restart of the Knot server to take effect.
-
-*Minimum:* 1 s
-
-*Default:* 10 s
+*Default:* 10000 (ten thousand)
 
 .. _server_quic-outbuf-max-size:
 
@@ -406,6 +395,19 @@ Change of this parameter requires restart of the Knot server to take effect.
 *Minimum:* 1 MiB
 
 *Default:* 100 MiB
+
+.. _server_quic-idle-close-timeout:
+
+quic-idle-close-timeout
+-----------------------
+
+Time in seconds, after which any idle QUIC connection is gracefully closed.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Minimum:* 1 s
+
+*Default:* 4 s
 
 .. _server_remote-pool-limit:
 
@@ -495,6 +497,28 @@ udp-max-payload-ipv6
 Maximum EDNS0 UDP payload size for IPv6.
 
 *Default:* 1232
+
+.. _server_key-file:
+
+key-file
+--------
+
+Path to a server key PEM file which is used for DNS over QUIC communication.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* one-time in memory key
+
+.. _server_cert-file:
+
+cert-file
+---------
+
+Path to a server certificate PEM file which is used for DNS over QUIC communication.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* one-time in memory certificate
 
 .. _server_edns-client-subnet:
 

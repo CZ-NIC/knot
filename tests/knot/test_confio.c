@@ -913,7 +913,7 @@ static void test_conf_io_list(void)
 	      "server.tcp-reuseport\n"
 	      "server.tcp-fastopen\n"
 	      "server.quic-max-clients\n"
-	      "server.quic-idle-close\n"
+	      "server.quic-idle-close-timeout\n"
 	      "server.quic-outbuf-max-size\n"
 	      "server.socket-affinity\n"
 	      "server.udp-workers\n"
