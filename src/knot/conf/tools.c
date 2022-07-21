@@ -40,6 +40,7 @@
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/xdp.h"
+#include "contrib/files.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/wire_ctx.h"
@@ -423,6 +424,26 @@ int check_module_id(
 	return KNOT_EOK;
 }
 
+int check_file(
+	knotd_conf_check_args_t *args)
+{
+	char *path = abs_path((const char *)args->data, CONFIG_DIR);
+
+	struct stat st;
+	int ret = stat(path, &st);
+	free(path);
+
+	if (ret != 0) {
+		args->err_str = "invalid file";
+		return KNOT_EINVAL;
+	} else if(!S_ISREG(st.st_mode)) {
+		args->err_str = "not a file";
+		return KNOT_EINVAL;
+	} else {
+		return KNOT_EOK;
+	}
+}
+
 #define CHECK_LEGACY_NAME(section, old_item, new_item) { \
 	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn, \
 	                              section, old_item); \
@@ -498,6 +519,15 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 int check_server(
 	knotd_conf_check_args_t *args)
 {
+	conf_val_t key_file = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                   C_SRV, C_KEY_FILE);
+	conf_val_t crt_file = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                   C_SRV, C_CERT_FILE);
+	if (key_file.code != crt_file.code) {
+		args->err_str = "both server certificate and key must be set";
+		return KNOT_EINVAL;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -525,7 +555,6 @@ int check_xdp(
 		}
 		check_mtu(args, &xdp_listen);
 	}
-	xdp_listen = conf_get_txn(args->extra->conf, args->extra->txn, C_XDP, C_LISTEN);
 
 	if (conf_bool(&quic)) {
 #ifdef ENABLE_QUIC
@@ -534,49 +563,16 @@ int check_xdp(
 		uint16_t quic_port = conf_int(&port);
 
 		while (xdp_listen.code == KNOT_EOK) {
+			conf_xdp_iface_t iface;
 			struct sockaddr_storage udp_addr = conf_addr(&xdp_listen, NULL);
-			int udp_port = sockaddr_port(&udp_addr);
-			if (udp_port < 0) {
-				const char *port_str = strchr(((struct sockaddr_un *)&udp_addr)->sun_path, '@');
-				udp_port = port_str == NULL ? 0 : atoi(port_str + 1);
-			}
-			if (udp_port == quic_port) {
+			if (conf_xdp_iface(&udp_addr, &iface) == KNOT_EOK && iface.port == quic_port) {
 				args->err_str = "QUIC has to listen on different port than UDP";
 				return KNOT_EINVAL;
 			}
 			conf_val_next(&xdp_listen);
 		}
-
-		struct stat st;
-		int none = 0, stret = 0;
-		char *tls_cert = conf_tls_txn(args->extra->conf, args->extra->txn, C_CERT_FILE);
-		if (tls_cert == NULL) {
-			none++;
-		} else {
-			stret = stat(tls_cert, &st);
-			free(tls_cert);
-		}
-		if (none == 0 && (stret != 0 || (st.st_mode & S_IFDIR))) {
-			args->err_str = "QUIC requires that TLS server certificate is configured and exists";
-			return KNOT_EINVAL;
-		}
-		char *tls_key = conf_tls_txn(args->extra->conf, args->extra->txn, C_KEY_FILE);
-		if (tls_key == NULL) {
-			none++;
-		} else {
-			stret = stat(tls_key, &st);
-			free(tls_key);
-		}
-		if (none == 0 && (stret != 0 || (st.st_mode & S_IFDIR))) {
-			args->err_str = "QUIC requires that TLS private key is configured and exists";
-			return KNOT_EINVAL;
-		}
-		if (none != 0 && none != 2) {
-			args->err_str = "QUIC, mismatch in server certificate/key configuration";
-			return KNOT_EINVAL;
-		}
 #else
-		args->err_str = "not compiled with QUIC support";
+		args->err_str = "QUIC processing not available";
 		return KNOT_EINVAL;
 #endif // ENABLE_QUIC
 	}
