@@ -1082,7 +1082,7 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	if (data->expire_timer < 2) {
 		REFRESH_LOG(LOG_WARNING, data, LOG_DIRECTION_NONE,
 		            "remote is expired, ignoring");
-		return KNOT_STATE_FAIL;
+		return KNOT_STATE_IGNORE;
 	}
 
 	data->fallback_axfr = (data->xfr_type == XFR_TYPE_IXFR);
