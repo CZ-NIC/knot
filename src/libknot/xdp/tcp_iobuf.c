@@ -157,7 +157,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 		iov_inc2(cur);
 		cur++;
 	}
-	assert(cur == res + res_count);
+	assert(cur == ((res_count) ? res + res_count : res));
 
 	// store the final incomplete payload to buffer
 	if (data.iov_len > 0) {
