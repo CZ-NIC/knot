@@ -27,6 +27,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
+#include "libknot/endian.h"
 #include "libknot/error.h"
 #ifdef ENABLE_QUIC
 #include "libknot/xdp/quic.h"
@@ -73,7 +74,7 @@ typedef struct xdp_handle_ctx {
 	uint32_t tcp_idle_reset; // In microseconds.
 	uint32_t tcp_idle_resend;// In microseconds.
 
-	uint16_t quic_port;
+	uint16_t quic_port; // Network-byte order!
 	size_t quic_max_conns;
 	uint32_t quic_idle_close;
 	size_t quic_max_ibufs;
@@ -128,7 +129,7 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 	conf_t *pconf = conf();
 	ctx->udp            = pconf->cache.xdp_udp;
 	ctx->tcp            = pconf->cache.xdp_tcp;
-	ctx->quic_port      = pconf->cache.xdp_quic;
+	ctx->quic_port      = htobe16(pconf->cache.xdp_quic);
 	ctx->tcp_max_conns  = pconf->cache.xdp_tcp_max_clients / pconf->cache.srv_xdp_threads;
 	ctx->tcp_syn_conns  = 2 * ctx->tcp_max_conns;
 	ctx->tcp_max_inbufs = pconf->cache.xdp_tcp_inbuf_max_size / pconf->cache.srv_xdp_threads;
@@ -256,7 +257,7 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 		// Skip TCP or QUIC or marked (zero length) message.
 		if ((msg_recv->flags & KNOT_XDP_MSG_TCP) ||
-		    sockaddr_port((const struct sockaddr_storage *)&msg_recv->ip_to) == ctx->quic_port ||
+		    msg_recv->ip_to.sin6_port == ctx->quic_port ||
 		    msg_recv->payload.iov_len == 0) {
 			continue;
 		}
@@ -367,9 +368,9 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
 		knot_xdp_msg_t *msg_recv = &ctx->msg_recv[i];
 
-
-		if ((msg_recv->flags & KNOT_XDP_MSG_TCP) || msg_recv->payload.iov_len == 0 ||
-		    sockaddr_port((const struct sockaddr_storage *)&msg_recv->ip_to) != ctx->quic_port) {
+		if ((msg_recv->flags & KNOT_XDP_MSG_TCP) ||
+		    msg_recv->ip_to.sin6_port != ctx->quic_port ||
+		    msg_recv->payload.iov_len == 0) {
 			continue;
 		}
 
