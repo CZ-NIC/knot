@@ -744,8 +744,8 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 	} else if (ret != NGTCP2_NO_ERROR) {
 		return ret;
 	}
-	memcpy(dcid.data, dcid_data, dcid.datalen);
-	memcpy(scid.data, scid_data, scid.datalen);
+	ngtcp2_cid_init(&dcid, dcid_data, dcid.datalen);
+	ngtcp2_cid_init(&scid, scid_data, scid.datalen);
 
 	knot_xquic_conn_t *xconn = xquic_table_lookup(&dcid, table);
 
