@@ -34,6 +34,7 @@ typedef enum {
 	KNOT_STATE_DONE,       //!< Finished.
 	KNOT_STATE_FAIL,       //!< Error.
 	KNOT_STATE_FINAL,      //!< Finished and finalized.
+	KNOT_STATE_IGNORE,     //!< Data has been ignored.
 } knot_layer_state_t;
 
 typedef struct knot_layer_api knot_layer_api_t;

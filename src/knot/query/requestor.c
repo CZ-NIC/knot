@@ -355,10 +355,15 @@ int knot_requestor_exec(knot_requestor_t *requestor, knot_request_t *request,
 	}
 
 	/* Expect complete request. */
-	if (requestor->layer.state != KNOT_STATE_DONE) {
-		ret = KNOT_EPROCESSING;
-	} else {
+	switch (requestor->layer.state) {
+	case KNOT_STATE_DONE:
 		request->flags |= KNOT_REQUEST_KEEP;
+		break;
+	case KNOT_STATE_IGNORE:
+		ret = KNOT_ERROR;
+		break;
+	default:
+		ret = KNOT_EPROCESSING;
 	}
 
 	/* Verify last TSIG */
