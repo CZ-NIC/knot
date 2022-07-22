@@ -471,7 +471,7 @@ int knot_xdp_recv(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
 	for (uint32_t i = 0; i < available; ++i) {
 		knot_xdp_msg_t *msg = &msgs[i];
 		const struct xdp_desc *desc = xsk_ring_cons__rx_desc(&socket->rx, idx++);
-		uint8_t *uframe_p = socket->umem->frames->bytes + desc->addr;
+		uint8_t *uframe_p = (uint8_t *)socket->umem->frames + desc->addr;
 
 		void *payl_end, *payl_start = prot_read_eth(uframe_p, msg, &payl_end);
 
