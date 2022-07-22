@@ -64,6 +64,12 @@ typedef struct knot_quic_session {
 	ngtcp2_transport_params quic_params;
 } knot_xquic_session_t;
 
+static unsigned addr_len(const struct sockaddr_in6 *ss)
+{
+	return (ss->sin6_family ==  AF_INET6 ?
+	        sizeof(struct sockaddr_in6) : sizeof(struct sockaddr));
+}
+
 _public_
 struct knot_quic_session *knot_xquic_session_save(knot_xquic_conn_t *conn)
 {
@@ -700,9 +706,9 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
 
 	ngtcp2_path path;
 	path.remote.addr = (struct sockaddr *)dest;
-	path.remote.addrlen = sockaddr_len(dest);
+	path.remote.addrlen = addr_len((const struct sockaddr_in6 *)dest);
 	path.local.addr = (struct sockaddr *)via;
-	path.local.addrlen = sockaddr_len(via);
+	path.local.addrlen = addr_len((const struct sockaddr_in6 *)via);
 
 	int ret = conn_new(&xconn->conn, &path, &dcid, &scid, &dcid, NGTCP2_PROTO_VER_V1, now,
 	                   table->udp_payload_limit, 5000000000L, xconn, false, false);
@@ -755,9 +761,9 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 
 	ngtcp2_path path;
 	path.remote.addr = (struct sockaddr *)&msg->ip_from;
-	path.remote.addrlen = sockaddr_len((struct sockaddr_storage *)&msg->ip_from);
+	path.remote.addrlen = addr_len(&msg->ip_from);
 	path.local.addr = (struct sockaddr *)&msg->ip_to;
-	path.local.addrlen = sockaddr_len((struct sockaddr_storage *)&msg->ip_to);
+	path.local.addrlen = addr_len(&msg->ip_to);
 
 	if (xconn == NULL) {
 		// new conn
@@ -779,7 +785,7 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 			ret = ngtcp2_crypto_verify_retry_token(
 				&odcid, header.token.base, header.token.len,
 				(const uint8_t *)table->hash_secret, sizeof(table->hash_secret), header.version,
-				(const struct sockaddr *)&msg->ip_from, sockaddr_len((const struct sockaddr_storage *)&msg->ip_from),
+				(const struct sockaddr *)&msg->ip_from, addr_len(&msg->ip_from),
 				&dcid, idle_timeout, now // NOTE setting retry token validity to idle_timeout for simplicity
 			);
 			if (ret != 0) {
