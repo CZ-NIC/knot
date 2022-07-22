@@ -28,7 +28,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KNOT_XDP_MAX_MTU 1792
+#define KNOT_XDP_MAX_MTU 1790
 
 /*!
  * \brief Get number of combined queues of a network interface.
