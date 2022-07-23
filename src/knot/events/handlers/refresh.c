@@ -164,6 +164,27 @@ static time_t bootstrap_next(const zone_timers_t *timers)
 	return interval;
 }
 
+static void limit_timer(conf_t *conf, const knot_dname_t *zone, uint32_t *timer,
+                        const char *tm_name, const yp_name_t *low, const yp_name_t *upp)
+{
+	uint32_t tlow = 0;
+	if (low > 0) {
+		conf_val_t val1 = conf_zone_get(conf, low, zone);
+		tlow = conf_int(&val1);
+	}
+	conf_val_t val2 = conf_zone_get(conf, upp, zone);
+	uint32_t tupp = conf_int(&val2);
+
+	const char *msg = "%s timer trimmed to '%s-%s-interval'";
+	if (*timer < tlow) {
+		*timer = tlow;
+		log_zone_debug(zone, msg, tm_name, tm_name, "min");
+	} else if (*timer > tupp) {
+		*timer = tupp;
+		log_zone_debug(zone, msg, tm_name, tm_name, "max");
+	}
+}
+
 /*!
  * \brief Modify the expire timer wrt the received EDNS EXPIRE (RFC 7314, section 4)
  *
@@ -183,12 +204,35 @@ static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt, bool
 	}
 }
 
-/*!
- * \brief RFC 7314, section 4, fourth paragraph
- */
-static void finalize_edns_expire(struct refresh_data *data)
+static void finalize_timers(struct refresh_data *data)
 {
+	conf_t *conf = data->conf;
+	zone_t *zone = data->zone;
+
+	// EDNS EXPIRE -- RFC 7314, section 4, fourth paragraph.
 	data->expire_timer = MIN(data->expire_timer, zone_soa_expire(data->zone));
+	assert(data->expire_timer != EXPIRE_TIMER_INVALID);
+
+	time_t now = time(NULL);
+	const knot_rdataset_t *soa = zone_soa(zone);
+
+	uint32_t soa_refresh = knot_soa_refresh(soa->rdata);
+	limit_timer(conf, zone->name, &soa_refresh, "refresh",
+	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
+	zone->timers.next_refresh = now + soa_refresh;
+	zone->timers.last_refresh_ok = true;
+
+	if (zone->is_catalog_flag) {
+		// It's already zero in most cases.
+		zone->timers.next_expire = 0;
+	} else {
+		limit_timer(conf, zone->name, &data->expire_timer, "expire",
+		            // Limit min if not received as EDNS Expire.
+		            data->expire_timer == knot_soa_expire(soa->rdata) ?
+			      C_EXPIRE_MIN_INTERVAL : 0,
+		            C_EXPIRE_MAX_INTERVAL);
+		zone->timers.next_expire = now + data->expire_timer;
+	}
 }
 
 static void fill_expires_in(char *expires_in, size_t size, const struct refresh_data *data)
@@ -339,7 +383,7 @@ static int axfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	finalize_edns_expire(data);
+	finalize_timers(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
 	                master_serial, dnssec_enable, bootstrap);
 
@@ -612,7 +656,7 @@ static int ixfr_finalize(struct refresh_data *data)
 		}
 	}
 
-	finalize_edns_expire(data);
+	finalize_timers(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
 	                master_serial, dnssec_enable, false);
 
@@ -895,7 +939,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			return axfr_consume(pkt, data);
 		case XFR_TYPE_UPTODATE:
 			consume_edns_expire(data, pkt, false);
-			finalize_edns_expire(data);
+			finalize_timers(data);
 			char expires_in[32] = "";
 			fill_expires_in(expires_in, sizeof(expires_in), data);
 			IXFRIN_LOG(LOG_INFO, data,
@@ -1017,7 +1061,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_RESET; // continue with transfer
 	} else if (master_uptodate) {
 		consume_edns_expire(data, pkt, false);
-		finalize_edns_expire(data);
+		finalize_timers(data);
 		char expires_in[32] = "";
 		fill_expires_in(expires_in, sizeof(expires_in), data);
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
@@ -1215,7 +1259,6 @@ static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 typedef struct {
 	bool force_axfr;
 	bool send_notify;
-	uint32_t expire_timer;
 } try_refresh_ctx_t;
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
@@ -1291,24 +1334,9 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	if (ret == KNOT_EOK) {
 		trctx->send_notify = data.updated && !master->block_notify_after_xfr;
 		trctx->force_axfr = false;
-		trctx->expire_timer = data.expire_timer;
 	}
 
 	return ret;
-}
-
-static void limit_next(conf_t *conf, const knot_dname_t *zone, const yp_name_t *low,
-                       const yp_name_t *upp, time_t now, time_t *timer)
-{
-	conf_val_t val1 = conf_zone_get(conf, low, zone);
-	conf_val_t val2 = conf_zone_get(conf, upp, zone);
-	time_t tlow = now + conf_int(&val1);
-	time_t tupp = now + conf_int(&val2);
-	if (*timer < tlow) {
-		*timer = tlow;
-	} else if (*timer > tupp) {
-		*timer = tupp;
-	}
 }
 
 int event_refresh(conf_t *conf, zone_t *zone)
@@ -1319,7 +1347,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		return KNOT_ENOTSUP;
 	}
 
-	try_refresh_ctx_t trctx = { .expire_timer = EXPIRE_TIMER_INVALID };
+	try_refresh_ctx_t trctx = { 0 };
 
 	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
 	if (zone_get_flag(zone, ZONE_FORCE_AXFR, true)) {
@@ -1331,40 +1359,20 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	zone_clear_preferred_master(zone);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "refresh, failed (%s)", knot_strerror(ret));
-	}
 
-	time_t now = time(NULL);
-	const knot_rdataset_t *soa = zone_soa(zone);
+		const knot_rdataset_t *soa = zone_soa(zone);
+		uint32_t next;
 
-	if (ret == KNOT_EOK) {
-		assert(trctx.expire_timer != EXPIRE_TIMER_INVALID);
-		zone->timers.next_refresh = now + knot_soa_refresh(soa->rdata);
-		limit_next(conf, zone->name, C_REFRESH_MIN_INTERVAL,
-		           C_REFRESH_MAX_INTERVAL, now,
-		           &zone->timers.next_refresh);
-		zone->timers.last_refresh_ok = true;
-
-		if (!zone->is_catalog_flag) {  /* For catz, keep next_expire. */
-			zone->timers.next_expire = now + trctx.expire_timer;
-			if (trctx.expire_timer == knot_soa_expire(soa->rdata)) {
-				limit_next(conf, zone->name, C_EXPIRE_MIN_INTERVAL,
-				           C_EXPIRE_MAX_INTERVAL, now,
-				           &zone->timers.next_expire);
-			}
-		}
-	} else {
-		time_t next;
 		if (soa) {
 			next = knot_soa_retry(soa->rdata);
 		} else {
 			next = bootstrap_next(&zone->timers);
 		}
-		zone->timers.next_refresh = now + next;
-		zone->timers.last_refresh_ok = false;
 
-		limit_next(conf, zone->name, C_RETRY_MIN_INTERVAL,
-		           C_RETRY_MAX_INTERVAL, now,
-		           &zone->timers.next_refresh);
+		limit_timer(conf, zone->name, &next, "retry",
+		            C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
+		zone->timers.next_refresh = time(NULL) + next;
+		zone->timers.last_refresh_ok = false;
 	}
 
 	/* Reschedule events. */
