@@ -594,7 +594,7 @@ static void user_printf(void *user_data, const char *format, ...)
 
 static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
                     const ngtcp2_cid *dcid, const ngtcp2_cid *odcid, uint32_t version,
-                    uint64_t now, size_t udp_pl, uint64_t idle_timeout,
+                    uint64_t now, size_t udp_pl, uint64_t idle_timeout_ns,
                     void *user_data, bool server, bool retry_sent)
 {
 	// I. CALLBACKS
@@ -647,7 +647,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	settings.log_printf = user_printf;
 	settings.max_udp_payload_size = udp_pl;
 	settings.qlog.odcid = *odcid;
-	settings.handshake_timeout = idle_timeout; // NOTE setting handshake timeout to idle_timeout for simplicity
+	settings.handshake_timeout = idle_timeout_ns; // NOTE setting handshake timeout to idle_timeout for simplicity
 	settings.no_pmtud = true;
 
 	// III. PARAMS
@@ -665,7 +665,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	// params.initial_max_data = config.max_data;
 	params.initial_max_streams_bidi = 100;
 	params.initial_max_streams_uni = 3;
-	params.max_idle_timeout = idle_timeout;
+	params.max_idle_timeout = idle_timeout_ns;
 	// params.stateless_reset_token_present = 1;
 	// params.active_connection_id_limit = 7;
 	if (odcid) {

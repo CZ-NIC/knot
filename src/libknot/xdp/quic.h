@@ -93,7 +93,7 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_in6 *dest,
  *
  * \param table           QUIC connectoins table-
  * \param msg             Incoming XDP packet.
- * \param idle_timeout    Configured idle timeout for connections.
+ * \param idle_timeout    Configured idle timeout for connections (in nanoseconds).
  * \param out_conn        Out: QUIC connection that this packet belongs to.
  *
  * \return KNOT_E*

@@ -34,9 +34,9 @@
 #endif // ENABLE_QUIC
 #include "libknot/xdp/tcp.h"
 
-#define XQUIC_MAX_SEND_PER_RECV 4
-#define CLOSED_LOG_INTERVAL 9
-#define QUIC_IBUFS_PER_CONN 512 // heuristic value: this means that e.g. for 100k allowed QUIC conns, we will limit total size of input buffers to 50 MiB
+#define QUIC_MAX_SEND_PER_RECV	4
+#define QUIC_IBUFS_PER_CONN	512 /* Heuristic value: this means that e.g. for 100k allowed
+				       QUIC conns, we will limit total size of input buffers to 50 MiB. */
 
 typedef struct {
 	uint64_t last_log;
@@ -56,28 +56,25 @@ typedef struct xdp_handle_ctx {
 	knot_tcp_table_t *syn_table;
 
 #ifdef ENABLE_QUIC
-
 	knot_xquic_conn_t *quic_relays[XDP_BATCHLEN];
 	int quic_rets[XDP_BATCHLEN];
 	knot_xquic_table_t *quic_table;
 	closed_log_ctx_t quic_closed;
-
 #endif // ENABLE_QUIC
 
-	bool udp; // TODO: use this
 	bool tcp;
 	size_t tcp_max_conns;
 	size_t tcp_syn_conns;
 	size_t tcp_max_inbufs;
 	size_t tcp_max_obufs;
-	uint32_t tcp_idle_close; // In microseconds.
-	uint32_t tcp_idle_reset; // In microseconds.
-	uint32_t tcp_idle_resend;// In microseconds.
+	uint32_t tcp_idle_close;  // In microseconds.
+	uint32_t tcp_idle_reset;  // In microseconds.
+	uint32_t tcp_idle_resend; // In microseconds.
 
-	uint16_t quic_port; // Network-byte order!
+	uint16_t quic_port;       // Network-byte order!
 	size_t quic_max_conns;
-	uint32_t quic_idle_close;
-	size_t quic_max_ibufs;
+	uint64_t quic_idle_close; // In nanoseconds.
+	size_t quic_max_inbufs;
 	size_t quic_max_obufs;
 
 	closed_log_ctx_t tcp_closed;
@@ -127,7 +124,6 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 {
 	rcu_read_lock();
 	conf_t *pconf = conf();
-	ctx->udp            = pconf->cache.xdp_udp;
 	ctx->tcp            = pconf->cache.xdp_tcp;
 	ctx->quic_port      = htobe16(pconf->cache.xdp_quic);
 	ctx->tcp_max_conns  = pconf->cache.xdp_tcp_max_clients / pconf->cache.srv_xdp_threads;
@@ -138,8 +134,8 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 	ctx->tcp_idle_reset = pconf->cache.xdp_tcp_idle_reset * 1000000;
 	ctx->tcp_idle_resend= pconf->cache.xdp_tcp_idle_resend * 1000000;
 	ctx->quic_max_conns = pconf->cache.srv_quic_max_clients / pconf->cache.srv_xdp_threads;
-	ctx->quic_idle_close= pconf->cache.srv_quic_idle_close * 1000000;
-	ctx->quic_max_ibufs = ctx->quic_max_conns * QUIC_IBUFS_PER_CONN;
+	ctx->quic_idle_close= pconf->cache.srv_quic_idle_close * 1000000000;
+	ctx->quic_max_inbufs= ctx->quic_max_conns * QUIC_IBUFS_PER_CONN;
 	ctx->quic_max_obufs = pconf->cache.srv_quic_obuf_max_size;
 	rcu_read_unlock();
 }
@@ -189,7 +185,7 @@ xdp_handle_ctx_t *xdp_handle_init(struct server *server, knot_xdp_socket_t *xdp_
 #ifdef ENABLE_QUIC
 		conf_t *pconf = conf();
 		size_t udp_pl = MIN(pconf->cache.srv_udp_max_payload_ipv4, pconf->cache.srv_udp_max_payload_ipv6);
-		ctx->quic_table = knot_xquic_table_new(true, ctx->quic_max_conns, ctx->quic_max_ibufs,
+		ctx->quic_table = knot_xquic_table_new(true, ctx->quic_max_conns, ctx->quic_max_inbufs,
 		                                       ctx->quic_max_obufs, udp_pl, server->quic_creds);
 		if (ctx->quic_table == NULL) {
 			xdp_handle_free(ctx);
@@ -374,13 +370,15 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
-		ctx->quic_rets[i] = knot_xquic_handle(ctx->quic_table, msg_recv, ctx->quic_idle_close * 1000L, &ctx->quic_relays[i]);
+		ctx->quic_rets[i] = knot_xquic_handle(ctx->quic_table, msg_recv,
+		                                      ctx->quic_idle_close,
+		                                      &ctx->quic_relays[i]);
 		knot_xquic_conn_t *rl = ctx->quic_relays[i];
 
 		int64_t stream_id;
 		knot_xquic_stream_t *stream;
 
-		while (rl != NULL && ctx->msg_quic_count < XQUIC_MAX_SEND_PER_RECV &&
+		while (rl != NULL && ctx->msg_quic_count < QUIC_MAX_SEND_PER_RECV &&
 		       (stream = knot_xquic_stream_get_process(rl, &stream_id)) != NULL) {
 			assert(stream->inbuf_fin);
 			assert(stream->inbuf.iov_len > 0);
@@ -438,7 +436,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 
 		int ret = knot_xquic_send(ctx->quic_table, ctx->quic_relays[i], ctx->sock,
 		                          &ctx->msg_recv[i], ctx->quic_rets[i],
-		                          XQUIC_MAX_SEND_PER_RECV, false);
+		                          QUIC_MAX_SEND_PER_RECV, false);
 		if (ret != KNOT_EOK) {
 			log_notice("QUIC, failed to send some packets");
 		}
