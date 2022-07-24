@@ -689,8 +689,8 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 }
 
 _public_
-int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_storage *dest,
-                      struct sockaddr_storage *via, knot_xquic_conn_t **out_conn)
+int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_in6 *dest,
+                      struct sockaddr_in6 *via, knot_xquic_conn_t **out_conn)
 {
 	ngtcp2_cid scid = { 0 }, dcid = { 0 };
 	uint64_t now = get_timestamp();

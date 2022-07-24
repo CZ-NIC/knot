@@ -111,7 +111,8 @@ typedef struct {
 	uint16_t	msgid;
 	uint16_t	edns_size;
 	uint8_t		local_mac[6], target_mac[6];
-	struct sockaddr_storage local_ip, target_ip;
+	struct sockaddr_in6 local_ip;
+	struct sockaddr_in6 target_ip;
 	uint8_t		local_ip_range;
 	bool		ipv6;
 	bool		tcp;
@@ -253,18 +254,16 @@ static unsigned addr_bits(bool ipv6)
 	return ipv6 ? 128 : 32;
 }
 
-static void shuffle_sockaddr4(void *dst_v, struct sockaddr_storage *src_ss, uint64_t increment)
+static void shuffle_sockaddr4(struct sockaddr_in *dst, struct sockaddr_in *src, uint64_t increment)
 {
-	struct sockaddr_in *dst = dst_v, *src = (struct sockaddr_in *)src_ss;
 	memcpy(&dst->sin_addr, &src->sin_addr, sizeof(dst->sin_addr));
 	if (increment > 0) {
 		dst->sin_addr.s_addr = htobe32(be32toh(src->sin_addr.s_addr) + increment);
 	}
 }
 
-static void shuffle_sockaddr6(void *dst_v, struct sockaddr_storage *src_ss, uint64_t increment)
+static void shuffle_sockaddr6(struct sockaddr_in6 *dst, struct sockaddr_in6 *src, uint64_t increment)
 {
-	struct sockaddr_in6 *dst = dst_v, *src = (struct sockaddr_in6 *)src_ss;
 	memcpy(&dst->sin6_addr, &src->sin6_addr, sizeof(dst->sin6_addr));
 	if (increment > 0) {
 		dst->sin6_addr.__in6_u.__u6_addr32[2] =
@@ -274,15 +273,15 @@ static void shuffle_sockaddr6(void *dst_v, struct sockaddr_storage *src_ss, uint
 	}
 }
 
-static void shuffle_sockaddr(struct sockaddr_in6 *dst, struct sockaddr_storage *ss,
+static void shuffle_sockaddr(struct sockaddr_in6 *dst, struct sockaddr_in6 *src,
                              uint16_t port, uint64_t increment)
 {
-	dst->sin6_family = ss->ss_family;
+	dst->sin6_family = src->sin6_family;
 	dst->sin6_port = htobe16(port);
-	if (ss->ss_family == AF_INET6) {
-		shuffle_sockaddr6(dst, ss, increment);
+	if (src->sin6_family == AF_INET6) {
+		shuffle_sockaddr6(dst, src, increment);
 	} else {
-		shuffle_sockaddr4(dst, ss, increment);
+		shuffle_sockaddr4((struct sockaddr_in *)dst, (struct sockaddr_in *)src, increment);
 	}
 }
 
@@ -433,7 +432,7 @@ void *xdp_gun_thread(void *_ctx)
 	knot_xdp_msg_t quic_fake_req = { 0 };
 	list_t quic_sessions;
 	init_list(&quic_sessions);
-	struct sockaddr_storage local_ip = ctx->local_ip;
+	struct sockaddr_in6 local_ip = ctx->local_ip;
 #endif // ENABLE_QUIC
 
 	if (ctx->tcp) {
@@ -531,7 +530,7 @@ void *xdp_gun_thread(void *_ctx)
 					uint16_t local_port = local_ports[local_ports_it++ % QUIC_THREAD_PORTS];
 					for (unsigned i = 0; i < ctx->at_once; i++) {
 						knot_xquic_conn_t *newconn = NULL;
-						sockaddr_port_set(&local_ip, local_port);
+						local_ip.sin6_port = htobe16(local_port);
 						ret = knot_xquic_client(quic_table, &ctx->target_ip, &local_ip, &newconn);
 						if (ret == KNOT_EOK) {
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
@@ -543,7 +542,7 @@ void *xdp_gun_thread(void *_ctx)
 								rem_node(session);
 								(void)knot_xquic_session_load(newconn, session);
 							}
-							sockaddr_port_set((struct sockaddr_storage *)&quic_fake_req.ip_to, local_port);
+							quic_fake_req.ip_to.sin6_port = htobe16(local_port);
 							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, false);
 						}
 						if (ret == KNOT_EOK) {
@@ -836,16 +835,16 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	ctx->ipv6 = false;
 	if (!inet_aton(target_str, &((struct sockaddr_in *)&ctx->target_ip)->sin_addr)) {
 		ctx->ipv6 = true;
-		ctx->target_ip.ss_family = AF_INET6;
+		ctx->target_ip.sin6_family = AF_INET6;
 		if (inet_pton(AF_INET6, target_str, &((struct sockaddr_in6 *)&ctx->target_ip)->sin6_addr) <= 0) {
 			ERR2("invalid target IP\n");
 			return false;
 		}
 	} else {
-		ctx->target_ip.ss_family = AF_INET;
+		ctx->target_ip.sin6_family = AF_INET;
 	}
 
-	struct sockaddr_storage via = { 0 };
+	struct sockaddr_in6 via = { 0 };
 	if (local_ip == NULL || ctx->dev[0] == '\0' || mac_empty(ctx->target_mac)) {
 		char auto_dev[IFNAMSIZ];
 		int ret = ip_route_get(&ctx->target_ip, &via, &ctx->local_ip,
@@ -878,12 +877,12 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	}
 
 	if (mac_empty(ctx->target_mac)) {
-		const struct sockaddr_storage *neigh = (via.ss_family == AF_UNSPEC) ?
-		                                       &ctx->target_ip : &via;
+		const struct sockaddr_in6 *neigh = (via.sin6_family == AF_UNSPEC) ?
+		                                   &ctx->target_ip : &via;
 		int ret = ip_neigh_get(neigh, true, ctx->target_mac);
 		if (ret < 0) {
 			char neigh_str[256] = { 0 };
-			(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), neigh);
+			(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), (struct sockaddr_storage *)neigh);
 			ERR2("failed to get remote MAC of target/gateway '%s' (%s)\n",
 			     neigh_str, strerror(-ret));
 			return false;
