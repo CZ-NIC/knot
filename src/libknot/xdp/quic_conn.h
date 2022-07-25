@@ -221,7 +221,7 @@ void xquic_stream_free(knot_xquic_conn_t *xconn, int64_t stream_id);
  * \param conn      Connection to be removed.
  * \param table     Table to remove from.
  */
-void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
+void knot_xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
 
 /*!
  * \brief Fetch or initialize a QUIC stream.

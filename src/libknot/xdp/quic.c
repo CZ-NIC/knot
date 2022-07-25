@@ -566,7 +566,7 @@ static int recv_stateless_rst(ngtcp2_conn *conn, const ngtcp2_pkt_stateless_rese
 	knot_xquic_conn_t *ctx = (knot_xquic_conn_t *)user_data;
 	assert(ctx->conn == conn);
 
-	xquic_table_rem(ctx, ctx->xquic_table);
+	knot_xquic_table_rem(ctx, ctx->xquic_table);
 
 	return 0;
 }
@@ -726,7 +726,7 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_in6 *dest,
 		}
 	}
 	if (ret != KNOT_EOK) {
-		xquic_table_rem(xconn, table);
+		knot_xquic_table_rem(xconn, table);
 		return ret;
 	}
 
@@ -812,7 +812,7 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 			ret = tls_init_conn_session(xconn, true);
 		}
 		if (ret < 0) {
-			xquic_table_rem(xconn, table);
+			knot_xquic_table_rem(xconn, table);
 			return ret;
 		}
 	}
@@ -824,7 +824,7 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 	if (ret == NGTCP2_ERR_DRAINING // received CONNECTION_CLOSE from the counterpart
 	    || ngtcp2_err_is_fatal(ret)) { // connection doomed
 
-		xquic_table_rem(xconn, table);
+		knot_xquic_table_rem(xconn, table);
 		return KNOT_EOK;
 	} else if (ret != NGTCP2_NO_ERROR) { // non-fatal error, discard packet
 		return KNOT_EOK;

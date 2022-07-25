@@ -204,6 +204,21 @@ libknot.so.12 libknot12 #MINVER#
  knot_xdp_send_free@Base 3.1.0
  knot_xdp_send_prepare@Base 3.1.0
  knot_xdp_socket_fd@Base 3.1.0
+ knot_xquic_client@Base 3.2.0
+ knot_xquic_conn_get_stream@Base 3.2.0
+ knot_xquic_conn_rtt@Base 3.2.0
+ knot_xquic_free_creds@Base 3.2.0
+ knot_xquic_handle@Base 3.2.0
+ knot_xquic_init_creds@Base 3.2.0
+ knot_xquic_send@Base 3.2.0
+ knot_xquic_session_load@Base 3.2.0
+ knot_xquic_session_save@Base 3.2.0
+ knot_xquic_stream_add_data@Base 3.2.0
+ knot_xquic_stream_get_process@Base 3.2.0
+ knot_xquic_table_free@Base 3.2.0
+ knot_xquic_table_new@Base 3.2.0
+ knot_xquic_table_rem@Base 3.2.0
+ knot_xquic_table_sweep@Base 3.2.0
  yp_addr@Base 3.1.0
  yp_addr_noport@Base 3.1.0
  yp_addr_noport_to_bin@Base 3.1.0
