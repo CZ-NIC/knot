@@ -444,7 +444,7 @@ void *xdp_gun_thread(void *_ctx)
 			ERR2("failed to initialize QUIC context\n");
 			return NULL;
 		}
-		quic_table = knot_xquic_table_new(false, ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, quic_creds);
+		quic_table = knot_xquic_table_new(ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, quic_creds);
 		if (quic_table == NULL) {
 			ERR2("failed to allocate QUIC connection table\n");
 			return NULL;

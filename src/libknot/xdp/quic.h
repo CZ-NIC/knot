@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief General QUIC functionality.
+ *
+ * \addtogroup xdp
+ * @{
+ */
+
 #pragma once
 
 #include "libknot/xdp/quic_conn.h"
@@ -34,8 +43,8 @@ struct knot_quic_session *knot_xquic_session_save(knot_xquic_conn_t *conn);
 /*!
  * \brief Loads data needed for session resumption.
  *
- * \param conn   QUIC connection.
- * \param conn   QUIC session context.
+ * \param conn     QUIC connection.
+ * \param session  QUIC session context.
  *
  * \return KNOT_E*
  */
@@ -58,13 +67,17 @@ struct knot_quic_creds *knot_xquic_init_creds(bool server, const char *tls_cert,
  */
 void knot_xquic_free_creds(struct knot_quic_creds *creds);
 
+/*!
+ * \brief Returns timeout value for the connection.
+ */
 uint64_t xquic_conn_get_timeout(knot_xquic_conn_t *conn);
 
 /*!
  * \brief Check if connection timed out due to inactivity.
  *
  * \param conn   QUIC connection.
- * \param now    In/out: current monotonic time. Use zero first and reuse for next calls for optimization.
+ * \param now    In/out: current monotonic time. Use zero first and reuse for
+ *               next calls for optimization.
  *
  * \return True if the connection timed out idle.
  */
@@ -117,3 +130,5 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg,
 int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
                     knot_xdp_socket_t *sock, knot_xdp_msg_t *in_msg,
                     int handle_ret, unsigned max_msgs, bool ignore_lastbyte);
+
+/*! @} */
