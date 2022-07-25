@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,15 +42,10 @@ typedef struct {
 	bool trunc_mode;
 } noudp_ctx_t;
 
-static bool is_udp(knotd_qdata_t *qdata)
-{
-	return qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE;
-}
-
 static knotd_state_t noudp_begin(knotd_state_t state, knot_pkt_t *pkt,
                                  knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	if (!is_udp(qdata)) {
+	if (qdata->params->proto != KNOTD_QUERY_PROTO_UDP) {
 		return state;
 	}
 

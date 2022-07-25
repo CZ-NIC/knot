@@ -127,22 +127,33 @@ static void init_cache(
 	static bool   running_socket_affinity;
 	static bool   running_xdp_udp;
 	static bool   running_xdp_tcp;
+	static uint16_t running_xdp_quic;
 	static bool   running_route_check;
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
 	static size_t running_xdp_threads;
 	static size_t running_bg_threads;
+	static size_t running_quic_clients;
+	static size_t running_quic_outbufs;
+	static size_t running_quic_idle;
 
 	if (first_init || reinit_cache) {
 		running_tcp_reuseport = conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT);
 		running_socket_affinity = conf_get_bool(conf, C_SRV, C_SOCKET_AFFINITY);
 		running_xdp_udp = conf_get_bool(conf, C_XDP, C_UDP);
 		running_xdp_tcp = conf_get_bool(conf, C_XDP, C_TCP);
+		running_xdp_quic = 0;
+		if (conf_get_bool(conf, C_XDP, C_QUIC)) {
+			running_xdp_quic = conf_get_int(conf, C_XDP, C_QUIC_PORT);
+		}
 		running_route_check = conf_get_bool(conf, C_XDP, C_ROUTE_CHECK);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
 		running_bg_threads = conf_bg_threads(conf);
+		running_quic_clients = conf_get_int(conf, C_SRV, C_QUIC_MAX_CLIENTS);
+		running_quic_outbufs = conf_get_int(conf, C_SRV, C_QUIC_OUTBUF_MAX_SIZE);
+		running_quic_idle = conf_get_int(conf, C_SRV, C_QUIC_IDLE_CLOSE);
 
 		first_init = false;
 	}
@@ -170,6 +181,12 @@ static void init_cache(
 
 	val = conf_get(conf, C_SRV, C_TCP_FASTOPEN);
 	conf->cache.srv_tcp_fastopen = conf_bool(&val);
+
+	conf->cache.srv_quic_max_clients = running_quic_clients;
+
+	conf->cache.srv_quic_idle_close = running_quic_idle;
+
+	conf->cache.srv_quic_obuf_max_size = running_quic_outbufs;
 
 	conf->cache.srv_tcp_reuseport = running_tcp_reuseport;
 
@@ -212,6 +229,8 @@ static void init_cache(
 	conf->cache.xdp_udp = running_xdp_udp;
 
 	conf->cache.xdp_tcp = running_xdp_tcp;
+
+	conf->cache.xdp_quic = running_xdp_quic;
 
 	conf->cache.xdp_route_check = running_route_check;
 

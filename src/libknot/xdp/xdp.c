@@ -52,6 +52,8 @@
 #define ALLOC_RETRY_NUM		15
 #define ALLOC_RETRY_DELAY	20 // In nanoseconds.
 
+#define PKT_ALIGNMENT		2 // Fix for misaligned access to packet structures.
+
 /* With recent compilers we statically check #defines for settings that
  * get refused by AF_XDP drivers (in current versions, at least). */
 #if (__STDC_VERSION__ >= 201112L)
@@ -88,7 +90,7 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 		.fill_size = RING_LEN_FQ,
 		.comp_size = RING_LEN_CQ,
 		.frame_size = FRAME_SIZE,
-		.frame_headroom = 0,
+		.frame_headroom = PKT_ALIGNMENT,
 	};
 
 	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * FRAME_COUNT,
@@ -296,8 +298,8 @@ static struct umem_frame *alloc_tx_frame(knot_xdp_socket_t *socket)
 static void prepare_payload(knot_xdp_msg_t *msg, void *uframe)
 {
 	size_t hdr_len = prot_write_hdrs_len(msg);
-	msg->payload.iov_base = uframe + hdr_len;
-	msg->payload.iov_len = FRAME_SIZE - hdr_len;
+	msg->payload.iov_base = uframe + hdr_len + PKT_ALIGNMENT;
+	msg->payload.iov_len = FRAME_SIZE - hdr_len - PKT_ALIGNMENT;
 }
 
 _public_
@@ -341,7 +343,7 @@ int knot_xdp_reply_alloc(knot_xdp_socket_t *socket, const knot_xdp_msg_t *query,
 static void free_unsent(knot_xdp_socket_t *socket, const knot_xdp_msg_t *msg)
 {
 	if (unlikely(socket->send_mock != NULL)) {
-		free(msg->payload.iov_base - prot_write_hdrs_len(msg));
+		free(msg->payload.iov_base - prot_write_hdrs_len(msg) - PKT_ALIGNMENT);
 		return;
 	}
 	uint64_t addr_relative = (uint8_t *)msg->payload.iov_base
@@ -469,7 +471,7 @@ int knot_xdp_recv(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
 	for (uint32_t i = 0; i < available; ++i) {
 		knot_xdp_msg_t *msg = &msgs[i];
 		const struct xdp_desc *desc = xsk_ring_cons__rx_desc(&socket->rx, idx++);
-		uint8_t *uframe_p = socket->umem->frames->bytes + desc->addr;
+		uint8_t *uframe_p = (uint8_t *)socket->umem->frames + desc->addr;
 
 		void *payl_end, *payl_start = prot_read_eth(uframe_p, msg, &payl_end);
 

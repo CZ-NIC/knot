@@ -912,6 +912,9 @@ static void test_conf_io_list(void)
 	      "server.tcp-max-clients\n"
 	      "server.tcp-reuseport\n"
 	      "server.tcp-fastopen\n"
+	      "server.quic-max-clients\n"
+	      "server.quic-idle-close-timeout\n"
+	      "server.quic-outbuf-max-size\n"
 	      "server.socket-affinity\n"
 	      "server.udp-workers\n"
 	      "server.tcp-workers\n"
@@ -976,6 +979,9 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_MAX_CLIENTS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_REUSEPORT,	  YP_TBOOL, YP_VNONE },
 	{ C_TCP_FASTOPEN,	  YP_TBOOL, YP_VNONE },
+	{ C_QUIC_MAX_CLIENTS,	  YP_TINT,  YP_VNONE },
+	{ C_QUIC_IDLE_CLOSE,	  YP_TINT,  YP_VNONE },
+	{ C_QUIC_OUTBUF_MAX_SIZE, YP_TINT,  YP_VNONE },
 	{ C_SOCKET_AFFINITY,	  YP_TBOOL, YP_VNONE },
 	{ C_UDP_WORKERS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_WORKERS,	  YP_TINT,  YP_VNONE },
@@ -993,6 +999,7 @@ static const yp_item_t desc_server[] = {
 static const yp_item_t desc_xdp[] = {
 	{ C_UDP,                YP_TBOOL, YP_VNONE },
 	{ C_TCP,                YP_TBOOL, YP_VNONE },
+	{ C_QUIC,               YP_TBOOL,  YP_VNONE },
 	{ C_TCP_MAX_CLIENTS,    YP_TINT,  YP_VNONE },
 	{ C_TCP_INBUF_MAX_SIZE, YP_TINT,  YP_VNONE },
 	{ C_TCP_OUTBUF_MAX_SIZE,YP_TINT,  YP_VNONE },

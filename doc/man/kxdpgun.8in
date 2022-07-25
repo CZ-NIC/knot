@@ -54,6 +54,9 @@ Duration of traffic generation, specified as a decimal number in seconds
 \fB\-T\fP, \fB\-\-tcp\fP[\fB=\fP\fIdebug_mode\fP]
 Send queries over TCP. See the list of optional debug modes below.
 .TP
+\fB\-U\fP, \fB\-\-quic\fP[\fB=\fP\fIdebug_mode\fP]
+Send queries over QUIC. See the list of optional debug modes below.
+.TP
 \fB\-Q\fP, \fB\-\-qps\fP \fIqueries\fP
 Number of queries\-per\-second (approximately) to be sent (default is 1000).
 The program is not optimized for low speeds at which it may lose
@@ -62,13 +65,13 @@ communication packets. The recommended minimum speed is 2 packets per thread
 .TP
 \fB\-b\fP, \fB\-\-batch\fP \fIsize\fP
 Send more queries in a batch. Improves QPS but may affect the counterpart\(aqs
-packet loss (default is 10 for UDP and 1 for TCP).
+packet loss (default is 10 for UDP and 1 for TCP/QUIC).
 .TP
 \fB\-r\fP, \fB\-\-drop\fP
 Drop incoming responses. Improves QPS, but disables response statistics.
 .TP
 \fB\-p\fP, \fB\-\-port\fP \fInumber\fP
-Remote destination port (default is 53).
+Remote destination port (default is 53 for UDP/TCP, 853 for QUIC).
 .TP
 \fB\-F\fP, \fB\-\-affinity\fP \fIcpu_spec\fP
 CPU affinity for all threads specified in the format [<cpu_start>][s<cpu_step>],
@@ -84,10 +87,17 @@ when the interfaces are in a bond for example.
 .TP
 \fB\-l\fP, \fB\-\-local\fP \fIlocalIP\fP[\fB/\fP\fIprefix\fP]
 Override the auto\-detected source IP address. If an address range is specified
-instead, various IPs from the range will be used for different queries uniformly.
+instead, various IPs from the range will be used for different queries uniformly
+(address range not supported in the QUIC mode).
 .TP
 \fItargetIP\fP
 The IPv4 or IPv6 address of remote destination.
+.TP
+\fB\-L\fP, \fB\-\-mac\-local\fP
+Override auto\-detected local MAC address.
+.TP
+\fB\-R\fP, \fB\-\-mac\-remote\fP
+Override auto\-detected remote MAC address.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
@@ -107,17 +117,20 @@ name, and \fIflags\fP is a single character:
 \fBE\fP Send query with EDNS.
 .sp
 \fBD\fP Request DNSSEC (EDNS + DO flag).
-.SS TCP debug modes
+.SS TCP/QUIC debug modes
 .INDENT 0.0
 .TP
+\fB0\fP
+Perform full handshake for all connections (QUIC only).
+.TP
 \fB1\fP
-Just send SYN and receive SYN\-ACK.
+Just send SYN (Initial) and receive SYN\-ACK (Handshake).
 .TP
 \fB2\fP
-Perform TCP handshake and don\(aqt send anything, allow close initiated by counterpart.
+Perform TCP/QUIC handshake and don\(aqt send anything, allow close initiated by counterpart.
 .TP
 \fB3\fP
-Perform TCP handshake and don\(aqt react further.
+Perform TCP/QUIC handshake and don\(aqt react further.
 .TP
 \fB5\fP
 Send incomplete query (N\-1 bytes) and don\(aqt react further.
@@ -126,10 +139,10 @@ Send incomplete query (N\-1 bytes) and don\(aqt react further.
 Send query and don\(aqt ACK the response or anything further.
 .TP
 \fB8\fP
-Don\(aqt close the connection and ignore close by counterpart.
+Don\(aqt close the connection and ignore close by counterpart (TCP only).
 .TP
 \fB9\fP
-Operate normally except for not ACKing the final FIN+ACK.
+Operate normally except for not ACKing the final FIN+ACK (TCP only).
 .UNINDENT
 .SS Signals
 .sp

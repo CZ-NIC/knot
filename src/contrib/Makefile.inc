@@ -57,6 +57,7 @@ libcontrib_la_SOURCES = \
 	contrib/strtonum.h			\
 	contrib/time.c				\
 	contrib/time.h				\
+	contrib/toeplitz.h			\
 	contrib/tolower.h			\
 	contrib/trim.h				\
 	contrib/wire_ctx.h			\

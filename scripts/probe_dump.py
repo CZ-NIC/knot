@@ -33,16 +33,16 @@ if __name__ == "__main__":
         formatter_class = argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--libknot-path",
+        "-l", "--libknot-path",
         help="path to the libknot shared library"
     )
     parser.add_argument(
-        "--probe-dir",
+        "-d", "--probe-dir",
         default="/run/knot",
         help="path to the probe directory"
     )
     parser.add_argument(
-        "--channel",
+        "-c", "--channel",
         type=int,
         default=1,
         help="the probe channel"

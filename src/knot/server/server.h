@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 
 struct server;
 struct knot_xdp_socket;
+struct knot_quic_creds;
 
 /*!
  * \brief I/O handler structure.
@@ -107,6 +108,9 @@ typedef struct server {
 
 	/*! \brief Context of pending zones' backup. */
 	zone_backup_ctxs_t backup_ctxs;
+
+	/*! \brief Crendentials context for QUIC. */
+	struct knot_quic_creds *quic_creds;
 } server_t;
 
 /*!

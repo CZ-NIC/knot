@@ -142,6 +142,9 @@ General options related to the server.
      tcp-max-clients: INT
      tcp-reuseport: BOOL
      tcp-fastopen: BOOL
+     quic-max-clients: INT
+     quic-outbuf-max-size: SIZE
+     quic-idle-close-timeout: TIME
      remote-pool-limit: INT
      remote-pool-timeout: TIME
      remote-retry-delay: TIME
@@ -149,6 +152,8 @@ General options related to the server.
      udp-max-payload: SIZE
      udp-max-payload-ipv4: SIZE
      udp-max-payload-ipv6: SIZE
+     key-file: STR
+     cert-file: STR
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      automatic-acl: BOOL
@@ -357,6 +362,53 @@ configuration as it's enabled automatically if supported by OS.
 
 *Default:* off
 
+.. _server_quic-max-clients:
+
+quic-max-clients
+----------------
+
+A maximum number of QUIC clients connected in parallel.
+
+See also :ref:`xdp_quic`.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Minimum:* 128
+
+*Default:* 10000 (ten thousand)
+
+.. _server_quic-outbuf-max-size:
+
+quic-outbuf-max-size
+--------------------
+
+Maximum cumulative size of memory used for buffers of unACKed
+sent messages.
+
+.. NOTE::
+   Set low if little memory is available (together with :ref:`server_quic-max-clients`
+   since QUIC connections are memory-heavy). Set to high value if outgoing zone
+   transfers of big zone over QUIC are expected.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Minimum:* 1 MiB
+
+*Default:* 100 MiB
+
+.. _server_quic-idle-close-timeout:
+
+quic-idle-close-timeout
+-----------------------
+
+Time in seconds, after which any idle QUIC connection is gracefully closed.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Minimum:* 1 s
+
+*Default:* 4 s
+
 .. _server_remote-pool-limit:
 
 remote-pool-limit
@@ -445,6 +497,28 @@ udp-max-payload-ipv6
 Maximum EDNS0 UDP payload size for IPv6.
 
 *Default:* 1232
+
+.. _server_key-file:
+
+key-file
+--------
+
+Path to a server key PEM file which is used for DNS over QUIC communication.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* one-time in memory key
+
+.. _server_cert-file:
+
+cert-file
+---------
+
+Path to a server certificate PEM file which is used for DNS over QUIC communication.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* one-time in memory certificate
 
 .. _server_edns-client-subnet:
 
@@ -548,6 +622,9 @@ Various options related to XDP listening, especially TCP.
      listen: STR[@INT] | ADDR[@INT] ...
      udp: BOOL
      tcp: BOOL
+     quic: BOOL
+     quic-port: INT
+     quic-log: BOOL
      tcp-max-clients: INT
      tcp-inbuf-max-size: SIZE
      tcp-outbuf-max-size: SIZE
@@ -605,6 +682,40 @@ The TCP stack limitations:
  - Congestion control is not implemented.
  - Lost packets that do not contain TCP payload may not be resend.
  - Not optimized for transfers of non-trivial zones.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* off
+
+.. _xdp_quic:
+
+quic
+----
+
+If enabled, DNS over QUIC is processed with XDP workers.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* off
+
+.. _xdp_quic-port:
+
+quic-port
+---------
+
+DNS over QUIC will listen on the interfaces configured by :ref:`xdp_listen`,
+but on different port, configured by this option.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* 853
+
+.. _xdp_quic-log:
+
+quic-log
+--------
+
+Triggers extensive logging of all QUIC protocol internals for every connection.
 
 Change of this parameter requires restart of the Knot server to take effect.
 

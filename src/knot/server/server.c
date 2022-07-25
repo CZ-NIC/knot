@@ -24,6 +24,9 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
 #include "libknot/xdp.h"
+#ifdef ENABLE_QUIC
+#include "libknot/xdp/quic.h"
+#endif // ENABLE_QUIC
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
@@ -225,7 +228,7 @@ static int disable_pmtudisc(int sock, int family)
 }
 
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
-                                      bool udp, bool tcp, unsigned *thread_id_start)
+                                      bool udp, bool tcp, uint16_t quic, unsigned *thread_id_start)
 {
 #ifndef ENABLE_XDP
 	assert(0);
@@ -260,6 +263,9 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 	if (tcp) {
 		xdp_flags |= KNOT_XDP_FILTER_TCP;
 	}
+	if (quic > 0) {
+		xdp_flags |= KNOT_XDP_FILTER_QUIC;
+	}
 	if (route_check) {
 		xdp_flags |= KNOT_XDP_FILTER_ROUTE;
 	}
@@ -268,12 +274,12 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 		knot_xdp_load_bpf_t mode =
 			(i == 0 ? KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 		ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
-		                    xdp_flags, iface.port, 0, mode);
+		                    xdp_flags, iface.port, quic, mode);
 		if (ret == -EBUSY && i == 0) {
 			log_notice("XDP interface %s@%u is busy, retrying initialization",
 			           iface.name, iface.port);
 			ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
-			                    xdp_flags, iface.port, 0,
+			                    xdp_flags, iface.port, quic,
 			                    KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD);
 		}
 		if (ret != KNOT_EOK) {
@@ -288,11 +294,27 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 	}
 
 	if (ret == KNOT_EOK) {
+		char msg[128];
+		(void)snprintf(msg, sizeof(msg), "initialized XDP interface %s", iface.name);
+		if (udp || tcp) {
+			char buf[32] = "";
+			(void)snprintf(buf, sizeof(buf), ", %s%s%s port %u",
+			               (udp ? "UDP" : ""),
+			               (udp && tcp ? "/" : ""),
+			               (tcp ? "TCP" : ""),
+			               iface.port);
+			strlcat(msg, buf, sizeof(msg));
+		}
+		if (quic) {
+			char buf[32] = "";
+			(void)snprintf(buf, sizeof(buf), ", QUIC port %u", quic);
+			strlcat(msg, buf, sizeof(msg));
+		}
+
 		knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(iface.name));
-		log_debug("initialized XDP interface %s@%u UDP%s, queues %d, %s mode%s",
-		          iface.name, iface.port, (tcp ? "/TCP" : ""), iface.queues,
-		          (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"),
-		          route_check ? ", route check" : "");
+		log_info("%s, queues %d, %s mode%s", msg, iface.queues,
+		         (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"),
+		         route_check ? ", route check" : "");
 	}
 
 	return new_if;
@@ -568,6 +590,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	/* XDP sockets. */
 	bool xdp_udp = conf->cache.xdp_udp;
 	bool xdp_tcp = conf->cache.xdp_tcp;
+	uint16_t xdp_quic = conf->cache.xdp_quic;
 	bool route_check = conf->cache.xdp_route_check;
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
@@ -578,7 +601,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		log_info("binding to XDP interface %s", addr_str);
 
 		iface_t *new_if = server_init_xdp_iface(&addr, route_check, xdp_udp,
-		                                        xdp_tcp, &thread_id);
+		                                        xdp_tcp, xdp_quic, &thread_id);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
@@ -590,6 +613,24 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 	assert(real_nifs <= nifs);
 	nifs = real_nifs;
+
+#ifdef ENABLE_QUIC
+	if (xdp_quic > 0) {
+		char *tls_cert = conf_tls(conf, C_CERT_FILE);
+		char *tls_key = conf_tls(conf, C_KEY_FILE);
+		if (tls_cert == NULL) {
+			log_notice("QUIC, no server certificate configured, using one-time one");
+		}
+		s->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
+		free(tls_cert);
+		free(tls_key);
+		if (s->quic_creds == NULL) {
+			log_error("QUIC, failed to initialize server credentials");
+			server_deinit_iface_list(newlist, nifs);
+			return KNOT_ERROR;
+		}
+	}
+#endif // ENABLE_QUIC
 
 	/* Publish new list. */
 	s->ifaces = newlist;
@@ -706,6 +747,10 @@ void server_deinit(server_t *server)
 	conn_pool_deinit(global_conn_pool);
 	global_conn_pool = NULL;
 	knot_unreachables_deinit(&global_unreachables);
+
+#ifdef ENABLE_QUIC
+	knot_xquic_free_creds(server->quic_creds);
+#endif // ENABLE_QUIC
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
@@ -935,6 +980,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_listen = true;
 	static bool warn_xdp_udp = true;
 	static bool warn_xdp_tcp = true;
+	static bool warn_xdp_quic = true;
 	static bool warn_route_check = true;
 	static bool warn_rmt_pool_limit = true;
 
@@ -976,6 +1022,16 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_xdp_tcp && conf->cache.xdp_tcp != conf_get_bool(conf, C_XDP, C_TCP)) {
 		log_warning(msg, &C_TCP[1]);
 		warn_xdp_tcp = false;
+	}
+
+	if (warn_xdp_quic && (bool)conf->cache.xdp_quic != conf_get_bool(conf, C_XDP, C_QUIC)) {
+		log_warning(msg, &C_QUIC[1]);
+		warn_xdp_quic = false;
+	}
+
+	if (warn_xdp_quic && conf->cache.xdp_quic != conf_get_int(conf, C_XDP, C_QUIC_PORT)) {
+		log_warning(msg, &C_QUIC_PORT[1]);
+		warn_xdp_quic = false;
 	}
 
 	if (warn_route_check && conf->cache.xdp_route_check != conf_get_bool(conf, C_XDP, C_ROUTE_CHECK)) {

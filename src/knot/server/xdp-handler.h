@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ struct server;
 /*!
  * \brief Initialize XDP packet handling context.
  */
-struct xdp_handle_ctx *xdp_handle_init(knot_xdp_socket_t *sock);
+struct xdp_handle_ctx *xdp_handle_init(struct server *server, knot_xdp_socket_t *sock);
 
 /*!
  * \brief Deinitialize XDP packet handling context.

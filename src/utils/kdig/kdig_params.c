@@ -933,7 +933,7 @@ static int opt_nohttps_get(const char *arg, void *query)
 
 static int opt_quic(const char *arg, void *query)
 {
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 	query_t *q = query;
 
 	q->quic.enable = true;
@@ -945,12 +945,12 @@ static int opt_quic(const char *arg, void *query)
 	return KNOT_EOK;
 #else
 	return KNOT_ENOTSUP;
-#endif //LIBNGTCP2
+#endif //ENABLE_QUIC
 }
 
 static int opt_noquic(const char *arg, void *query)
 {
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 	query_t *q = query;
 
 	quic_params_clean(&q->quic);
@@ -958,7 +958,7 @@ static int opt_noquic(const char *arg, void *query)
 	return opt_notls(arg, query);
 #else
 	return KNOT_ENOTSUP;
-#endif //LIBNGTCP2
+#endif //ENABLE_QUIC
 }
 
 static int opt_nsid(const char *arg, void *query)
@@ -2232,7 +2232,7 @@ static void print_help(void)
 	       "                                  URL as [authority][/path] where query will be sent.\n"
 	       "       +[no]https-get             Use HTTPS protocol with GET method instead of POST.\n"
 #endif
-#ifdef LIBNGTCP2
+#ifdef ENABLE_QUIC
 	       "       +[no]quic                  Use QUIC protocol.\n"
 #endif
 	       "       +[no]nsid                  Request NSID.\n"

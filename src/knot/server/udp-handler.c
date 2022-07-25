@@ -66,9 +66,8 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 {
 	/* Create query processing parameter. */
 	knotd_qdata_params_t params = {
+		.proto = KNOTD_QUERY_PROTO_UDP,
 		.remote = ss,
-		.flags = KNOTD_QUERY_FLAG_NO_AXFR | KNOTD_QUERY_FLAG_NO_IXFR | /* No transfers. */
-		         KNOTD_QUERY_FLAG_LIMIT_SIZE, /* Enforce UDP packet size limit. */
 		.socket = fd,
 		.server = udp->server,
 		.xdp_msg = xdp_msg,
@@ -115,7 +114,7 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 }
 
 typedef struct {
-	void* (*udp_init)(void *);
+	void* (*udp_init)(udp_context_t *, void *);
 	void (*udp_deinit)(void *);
 	int (*udp_recv)(int, void *);
 	void (*udp_handle)(udp_context_t *, void *);
@@ -167,7 +166,7 @@ struct udp_recvfrom {
 	cmsg_pktinfo_t pktinfo;
 };
 
-static void *udp_recvfrom_init(_unused_ void *xdp_sock)
+static void *udp_recvfrom_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
 {
 	struct udp_recvfrom *rq = malloc(sizeof(struct udp_recvfrom));
 	if (rq == NULL) {
@@ -256,7 +255,7 @@ struct udp_recvmmsg {
 	cmsg_pktinfo_t pktinfo[RECVMMSG_BATCHLEN];
 };
 
-static void *udp_recvmmsg_init(_unused_ void *xdp_sock)
+static void *udp_recvmmsg_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
 {
 	knot_mm_t mm;
 	mm_ctx_mempool(&mm, sizeof(struct udp_recvmmsg));
@@ -357,14 +356,16 @@ static udp_api_t udp_recvmmsg_api = {
 
 #ifdef ENABLE_XDP
 
-static void *xdp_recvmmsg_init(void *xdp_sock)
+static void *xdp_recvmmsg_init(udp_context_t *ctx, void *xdp_sock)
 {
-	return xdp_handle_init(xdp_sock);
+	return xdp_handle_init(ctx->server, xdp_sock);
 }
 
 static void xdp_recvmmsg_deinit(void *d)
 {
-	xdp_handle_free(d);
+	if (d != NULL) {
+		xdp_handle_free(d);
+	}
 }
 
 static int xdp_recvmmsg_recv(_unused_ int fd, void *d)
@@ -522,7 +523,7 @@ int udp_master(dthread_t *thread)
 	}
 
 	/* Initialize the networking API. */
-	api_ctx = api->udp_init(xdp_socket);
+	api_ctx = api->udp_init(&udp, xdp_socket);
 	if (api_ctx == NULL) {
 		goto finish;
 	}

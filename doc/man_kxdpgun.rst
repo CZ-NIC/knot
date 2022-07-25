@@ -31,6 +31,9 @@ Options
 **-T**, **--tcp**\[\ **=**\ *debug_mode*\]
   Send queries over TCP. See the list of optional debug modes below.
 
+**-U**, **--quic**\[\ **=**\ *debug_mode*\]
+  Send queries over QUIC. See the list of optional debug modes below.
+
 **-Q**, **--qps** *queries*
   Number of queries-per-second (approximately) to be sent (default is 1000).
   The program is not optimized for low speeds at which it may lose
@@ -39,13 +42,13 @@ Options
 
 **-b**, **--batch** *size*
   Send more queries in a batch. Improves QPS but may affect the counterpart's
-  packet loss (default is 10 for UDP and 1 for TCP).
+  packet loss (default is 10 for UDP and 1 for TCP/QUIC).
 
 **-r**, **--drop**
   Drop incoming responses. Improves QPS, but disables response statistics.
 
 **-p**, **--port** *number*
-  Remote destination port (default is 53).
+  Remote destination port (default is 53 for UDP/TCP, 853 for QUIC).
 
 **-F**, **--affinity** *cpu_spec*
   CPU affinity for all threads specified in the format [<cpu_start>][s<cpu_step>],
@@ -61,10 +64,17 @@ Options
 
 **-l**, **--local** *localIP*\ [**/**\ *prefix*]
   Override the auto-detected source IP address. If an address range is specified
-  instead, various IPs from the range will be used for different queries uniformly.
+  instead, various IPs from the range will be used for different queries uniformly
+  (address range not supported in the QUIC mode).
 
 *targetIP*
   The IPv4 or IPv6 address of remote destination.
+
+**-L**, **--mac-local**
+  Override auto-detected local MAC address.
+
+**-R**, **--mac-remote**
+  Override auto-detected remote MAC address.
 
 **-h**, **--help**
   Print the program help.
@@ -86,17 +96,20 @@ name, and *flags* is a single character:
 
 **D** Request DNSSEC (EDNS + DO flag).
 
-TCP debug modes
-...............
+TCP/QUIC debug modes
+....................
+
+**0**
+  Perform full handshake for all connections (QUIC only).
 
 **1**
-  Just send SYN and receive SYN-ACK.
+  Just send SYN (Initial) and receive SYN-ACK (Handshake).
 
 **2**
-  Perform TCP handshake and don't send anything, allow close initiated by counterpart.
+  Perform TCP/QUIC handshake and don't send anything, allow close initiated by counterpart.
 
 **3**
-  Perform TCP handshake and don't react further.
+  Perform TCP/QUIC handshake and don't react further.
 
 **5**
   Send incomplete query (N-1 bytes) and don't react further.
@@ -105,10 +118,10 @@ TCP debug modes
   Send query and don't ACK the response or anything further.
 
 **8**
-  Don't close the connection and ignore close by counterpart.
+  Don't close the connection and ignore close by counterpart (TCP only).
 
 **9**
-  Operate normally except for not ACKing the final FIN+ACK.
+  Operate normally except for not ACKing the final FIN+ACK (TCP only).
 
 Signals
 .......

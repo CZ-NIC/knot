@@ -36,7 +36,7 @@
 /*** Query module API. ***/
 
 /*! Current module ABI version. */
-#define KNOTD_MOD_ABI_VERSION	300
+#define KNOTD_MOD_ABI_VERSION	400
 /*! Module configuration name prefix. */
 #define KNOTD_MOD_NAME_PREFIX	"mod-"
 
@@ -388,23 +388,28 @@ typedef enum {
 	KNOTD_QUERY_TYPE_UPDATE,  /*!< Dynamic update. */
 } knotd_query_type_t;
 
+/*! Supported transport protocols. */
+typedef enum {
+	KNOTD_QUERY_PROTO_UDP  = KNOT_PROBE_PROTO_UDP,  /*!< Pure UDP. */
+	KNOTD_QUERY_PROTO_TCP  = KNOT_PROBE_PROTO_TCP,  /*!< Pure TCP. */
+	KNOTD_QUERY_PROTO_QUIC = KNOT_PROBE_PROTO_QUIC, /*!< QUIC/UDP. */
+} knotd_query_proto_t;
+
 /*! Query processing specific flags. */
 typedef enum {
-	KNOTD_QUERY_FLAG_NO_AXFR    = 1 << 0, /*!< Don't process AXFR. */
-	KNOTD_QUERY_FLAG_NO_IXFR    = 1 << 1, /*!< Don't process IXFR. */
-	KNOTD_QUERY_FLAG_LIMIT_SIZE = 1 << 2, /*!< Apply UDP size limit. */
-	KNOTD_QUERY_FLAG_COOKIE     = 1 << 3, /*!< Valid DNS Cookie indication. */
+	KNOTD_QUERY_FLAG_COOKIE  = 1 << 0, /*!< Valid DNS Cookie indication. */
 } knotd_query_flag_t;
 
 /*! Query processing data context parameters. */
 typedef struct {
+	knotd_query_proto_t proto;             /*!< Transport protocol used. */
 	knotd_query_flag_t flags;              /*!< Current query flags. */
 	const struct sockaddr_storage *remote; /*!< Current remote address. */
 	int socket;                            /*!< Current network socket. */
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
 	const struct knot_xdp_msg *xdp_msg;    /*!< Possible XDP message context. */
-	const struct knot_tcp_conn *xdp_conn;  /*!< Possible XDP TCP connection context. */
+	uint32_t measured_rtt;                 /*!< Measured RTT in usecs: QUIC or TCP-XDP. */
 } knotd_qdata_params_t;
 
 /*! Query processing data context. */

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,9 +29,9 @@
  *
  * \return 0 on success, negative errno otherwise.
  */
-int ip_route_get(const struct sockaddr_storage *ip,
-                 struct sockaddr_storage *via,
-                 struct sockaddr_storage *src,
+int ip_route_get(const struct sockaddr_in6 *ip,
+                 struct sockaddr_in6 *via,
+                 struct sockaddr_in6 *src,
                  char *dev);
 
 /*!
@@ -43,5 +43,5 @@ int ip_route_get(const struct sockaddr_storage *ip,
  *
  * \return 0 on success, -ENOENT if neighbour not found, negative errno otherwise.
  */
-int ip_neigh_get(const struct sockaddr_storage *ip,
+int ip_neigh_get(const struct sockaddr_in6 *ip,
                  bool dummy_sendto, uint8_t *mac);

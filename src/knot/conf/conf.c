@@ -1204,6 +1204,19 @@ char* conf_db_txn(
 	return dbdir;
 }
 
+char *conf_tls_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const yp_name_t *tls_item)
+{
+	conf_val_t tls_val = conf_get_txn(conf, txn, C_SRV, tls_item);
+	if (conf_str(&tls_val) == NULL) {
+		return NULL;
+	}
+
+	return conf_abs_path(&tls_val, CONFIG_DIR);
+}
+
 size_t conf_udp_threads_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
