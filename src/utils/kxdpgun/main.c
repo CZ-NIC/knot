@@ -1160,7 +1160,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	}
 
 	if (ctx->target_port == 0) {
-		ctx->target_port == REMOTE_PORT_DEFAULT;
+		ctx->target_port = REMOTE_PORT_DEFAULT;
 	}
 
 	if (!configure_target(argv[optind], local_ip, ctx)) {
