@@ -556,12 +556,12 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
 
 # QUIC support
 AC_ARG_ENABLE([quic],
-   AS_HELP_STRING([--enable-quic=auto|yes|no], [Support DoQ (needs libngtcp2 = 0.6.0, gnutls >= 3.7.2) [default=auto]]),
+   AS_HELP_STRING([--enable-quic=auto|yes|no], [Support DoQ (needs libngtcp2 = 0.7.0, gnutls >= 3.7.2) [default=auto]]),
    [], [enable_quic=auto])
 
 AS_CASE([$enable_quic],
-   [auto], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 = 0.6.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [enable_quic=no])],
-   [yes], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 = 0.6.0 libngtcp2_crypto_gnutls], [enable_quic=yes],
+   [auto], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 = 0.7.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [enable_quic=no])],
+   [yes], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 = 0.7.0 libngtcp2_crypto_gnutls], [enable_quic=yes],
              AS_IF([test "$gnutls_quic" = "yes"],
                 [enable_quic=embedded
                  embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"

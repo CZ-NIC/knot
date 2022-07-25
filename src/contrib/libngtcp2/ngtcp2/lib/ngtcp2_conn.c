@@ -7139,8 +7139,7 @@ static int conn_recv_stream(ngtcp2_conn *conn, const ngtcp2_stream *fr) {
         return NGTCP2_ERR_FINAL_SIZE;
       }
 
-      if (strm->flags &
-          (NGTCP2_STRM_FLAG_STOP_SENDING | NGTCP2_STRM_FLAG_RECV_RST)) {
+      if (strm->flags & NGTCP2_STRM_FLAG_RECV_RST) {
         return 0;
       }
 
@@ -7153,10 +7152,6 @@ static int conn_recv_stream(ngtcp2_conn *conn, const ngtcp2_stream *fr) {
       strm->rx.last_offset = fr_end_offset;
 
       ngtcp2_strm_shutdown(strm, NGTCP2_STRM_FLAG_SHUT_RD);
-
-      if (strm->flags & NGTCP2_STRM_FLAG_STOP_SENDING) {
-        return ngtcp2_conn_close_stream_if_shut_rdwr(conn, strm);
-      }
     }
   } else {
     if ((strm->flags & NGTCP2_STRM_FLAG_SHUT_RD) &&
@@ -7170,8 +7165,7 @@ static int conn_recv_stream(ngtcp2_conn *conn, const ngtcp2_stream *fr) {
       return 0;
     }
 
-    if (strm->flags &
-        (NGTCP2_STRM_FLAG_STOP_SENDING | NGTCP2_STRM_FLAG_RECV_RST)) {
+    if (strm->flags & NGTCP2_STRM_FLAG_RECV_RST) {
       return 0;
     }
   }
@@ -7194,6 +7188,10 @@ static int conn_recv_stream(ngtcp2_conn *conn, const ngtcp2_stream *fr) {
     } else {
       data = NULL;
       datalen = 0;
+    }
+
+    if (strm->flags & NGTCP2_STRM_FLAG_STOP_SENDING) {
+      return ngtcp2_conn_close_stream_if_shut_rdwr(conn, strm);
     }
 
     fin = (strm->flags & NGTCP2_STRM_FLAG_SHUT_RD) &&
@@ -7543,8 +7541,7 @@ static int conn_recv_stop_sending(ngtcp2_conn *conn,
 
   /* No RESET_STREAM is required if we have sent FIN and all data have
      been acknowledged. */
-  if ((!(strm->flags & NGTCP2_STRM_FLAG_SHUT_WR) ||
-       !ngtcp2_strm_is_all_tx_data_acked(strm)) &&
+  if (!ngtcp2_strm_is_all_tx_data_fin_acked(strm) &&
       !(strm->flags & NGTCP2_STRM_FLAG_SENT_RST)) {
     rv = conn_reset_stream(conn, strm, fr->app_error_code);
     if (rv != 0) {
@@ -12256,8 +12253,7 @@ int ngtcp2_conn_close_stream_if_shut_rdwr(ngtcp2_conn *conn,
        ngtcp2_strm_rx_offset(strm) == strm->rx.last_offset) &&
       (((strm->flags & NGTCP2_STRM_FLAG_SENT_RST) &&
         (strm->flags & NGTCP2_STRM_FLAG_RST_ACKED)) ||
-       (!(strm->flags & NGTCP2_STRM_FLAG_SENT_RST) &&
-        ngtcp2_strm_is_all_tx_data_acked(strm)))) {
+       ngtcp2_strm_is_all_tx_data_fin_acked(strm))) {
     return ngtcp2_conn_close_stream(conn, strm);
   }
   return 0;
@@ -12275,7 +12271,8 @@ int ngtcp2_conn_close_stream_if_shut_rdwr(ngtcp2_conn *conn,
  */
 static int conn_shutdown_stream_write(ngtcp2_conn *conn, ngtcp2_strm *strm,
                                       uint64_t app_error_code) {
-  if (strm->flags & NGTCP2_STRM_FLAG_SENT_RST) {
+  if ((strm->flags & NGTCP2_STRM_FLAG_SENT_RST) ||
+      ngtcp2_strm_is_all_tx_data_fin_acked(strm)) {
     return 0;
   }
 
@@ -12508,16 +12505,14 @@ static void conn_discard_early_data_state(ngtcp2_conn *conn) {
   }
 }
 
-int ngtcp2_conn_early_data_rejected(ngtcp2_conn *conn) {
+void ngtcp2_conn_early_data_rejected(ngtcp2_conn *conn) {
   if (conn->flags & NGTCP2_CONN_FLAG_EARLY_DATA_REJECTED) {
-    return 0;
+    return;
   }
 
   conn->flags |= NGTCP2_CONN_FLAG_EARLY_DATA_REJECTED;
 
   conn_discard_early_data_state(conn);
-
-  return 0;
 }
 
 int ngtcp2_conn_update_rtt(ngtcp2_conn *conn, ngtcp2_duration rtt,

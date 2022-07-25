@@ -52,6 +52,9 @@
 
 #ifndef NGTCP2_USE_GENERIC_SOCKADDR
 #  ifdef WIN32
+#    ifndef WIN32_LEAN_AND_MEAN
+#      define WIN32_LEAN_AND_MEAN
+#    endif
 #    include <ws2tcpip.h>
 #  else
 #    include <sys/socket.h>
@@ -314,7 +317,7 @@ typedef struct ngtcp2_mem {
 /**
  * @macrosection
  *
- * IP packet related macros
+ * UDP datagram related macros
  */
 
 /**
@@ -4788,7 +4791,7 @@ NGTCP2_EXTERN uint32_t ngtcp2_conn_get_negotiated_version(ngtcp2_conn *conn);
  * Application which wishes to retransmit early data, it has to open
  * streams and send stream data again.
  */
-NGTCP2_EXTERN int ngtcp2_conn_early_data_rejected(ngtcp2_conn *conn);
+NGTCP2_EXTERN void ngtcp2_conn_early_data_rejected(ngtcp2_conn *conn);
 
 /**
  * @function
