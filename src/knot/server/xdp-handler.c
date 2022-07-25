@@ -210,13 +210,11 @@ int xdp_handle_recv(xdp_handle_ctx_t *ctx)
 
 static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer,
                         knotd_query_proto_t proto, const knot_xdp_msg_t *msg,
-                        const struct iovec *payload)
+                        const struct iovec *payload, struct sockaddr_storage *proxied_remote)
 {
 	params->proto = proto;
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
 	params->xdp_msg = msg;
-
-	struct sockaddr_storage proxied_remote;
 
 	knot_layer_begin(layer, params);
 
@@ -224,8 +222,9 @@ static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer,
 	int ret = knot_pkt_parse(query, 0);
 	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
 		if (params->proto == KNOTD_QUERY_PROTO_UDP &&
-		    proxyv2_header_strip(&query, params->remote, &proxied_remote) == KNOT_EOK) {
-			params->remote = &proxied_remote;
+		    proxyv2_header_strip(&query, params->remote, proxied_remote) == KNOT_EOK) {
+			assert(proxied_remote);
+			params->remote = proxied_remote;
 		} else {
 			query->parsed--; // artificially decreasing "parsed" leads to FORMERR
 		}
@@ -244,6 +243,8 @@ static void handle_finish(knot_layer_t *layer)
 static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                        knotd_qdata_params_t *params)
 {
+	struct sockaddr_storage proxied_remote;
+
 	ctx->msg_udp_count = 0;
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
@@ -265,7 +266,8 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		ctx->msg_udp_count++;
 
 		// Consume the query.
-		handle_init(params, layer, KNOTD_QUERY_PROTO_UDP, msg_recv, &msg_recv->payload);
+		handle_init(params, layer, KNOTD_QUERY_PROTO_UDP, msg_recv, &msg_recv->payload,
+		            &proxied_remote);
 
 		// Process the reply.
 		knot_pkt_t *ans = knot_pkt_new(msg_send->payload.iov_base,
@@ -305,7 +307,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		// Process all complete DNS queries in one TCP stream.
 		for (size_t j = 0; j < rl->inbufs_count; j++) {
 			// Consume the query.
-			handle_init(params, layer, KNOTD_QUERY_PROTO_TCP, rl->msg, &rl->inbufs[j]);
+			handle_init(params, layer, KNOTD_QUERY_PROTO_TCP, rl->msg, &rl->inbufs[j], NULL);
 			params->measured_rtt = rl->conn->establish_rtt;
 
 			// Process the reply.
@@ -331,7 +333,7 @@ static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struc
                                size_t ans_buf_size, const knot_xdp_msg_t *xdp_msg)
 {
 	// Consume the query.
-	handle_init(params, layer, KNOTD_QUERY_PROTO_QUIC, xdp_msg, inbuf);
+	handle_init(params, layer, KNOTD_QUERY_PROTO_QUIC, xdp_msg, inbuf, NULL);
 	params->measured_rtt = knot_xquic_conn_rtt(conn);
 
 	// Process the reply.
