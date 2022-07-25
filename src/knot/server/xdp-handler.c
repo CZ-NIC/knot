@@ -51,7 +51,6 @@ typedef struct xdp_handle_ctx {
 	knot_tcp_relay_t relays[XDP_BATCHLEN];
 	uint32_t msg_recv_count;
 	uint32_t msg_udp_count;
-	uint32_t msg_quic_count;
 	knot_tcp_table_t *tcp_table;
 	knot_tcp_table_t *syn_table;
 
@@ -378,8 +377,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		int64_t stream_id;
 		knot_xquic_stream_t *stream;
 
-		while (rl != NULL && ctx->msg_quic_count < QUIC_MAX_SEND_PER_RECV &&
-		       (stream = knot_xquic_stream_get_process(rl, &stream_id)) != NULL) {
+		while (rl != NULL && (stream = knot_xquic_stream_get_process(rl, &stream_id)) != NULL) {
 			assert(stream->inbuf_fin);
 			assert(stream->inbuf.iov_len > 0);
 			handle_quic_stream(rl, stream_id, &stream->inbuf, layer, params,
