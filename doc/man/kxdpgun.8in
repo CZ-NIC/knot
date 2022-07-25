@@ -65,13 +65,13 @@ communication packets. The recommended minimum speed is 2 packets per thread
 .TP
 \fB\-b\fP, \fB\-\-batch\fP \fIsize\fP
 Send more queries in a batch. Improves QPS but may affect the counterpart\(aqs
-packet loss (default is 10 for UDP and 1 for TCP).
+packet loss (default is 10 for UDP and 1 for TCP/QUIC).
 .TP
 \fB\-r\fP, \fB\-\-drop\fP
 Drop incoming responses. Improves QPS, but disables response statistics.
 .TP
 \fB\-p\fP, \fB\-\-port\fP \fInumber\fP
-Remote destination port (default is 53).
+Remote destination port (default is 53 for UDP/TCP, 853 for QUIC).
 .TP
 \fB\-F\fP, \fB\-\-affinity\fP \fIcpu_spec\fP
 CPU affinity for all threads specified in the format [<cpu_start>][s<cpu_step>],
@@ -87,7 +87,8 @@ when the interfaces are in a bond for example.
 .TP
 \fB\-l\fP, \fB\-\-local\fP \fIlocalIP\fP[\fB/\fP\fIprefix\fP]
 Override the auto\-detected source IP address. If an address range is specified
-instead, various IPs from the range will be used for different queries uniformly.
+instead, various IPs from the range will be used for different queries uniformly
+(address range not supported in the QUIC mode).
 .TP
 \fItargetIP\fP
 The IPv4 or IPv6 address of remote destination.

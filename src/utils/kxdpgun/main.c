@@ -73,8 +73,8 @@ volatile unsigned stats_trigger = 0;
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
 
-#define LOCAL_PORT_DEFAULT        53
-#define LOCAL_PORT_DOQ_DEFAULT   853
+#define REMOTE_PORT_DEFAULT       53
+#define REMOTE_PORT_DOQ_DEFAULT  853
 #define LOCAL_PORT_MIN          2000
 #define LOCAL_PORT_MAX         65535
 #define QUIC_THREAD_PORTS        100
@@ -122,8 +122,6 @@ typedef struct {
 	xdp_gun_ignore_t  ignore1;
 	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
-	bool		default_port;
-	uint16_t	listen_port;
 	knot_xdp_filter_flag_t flags;
 	unsigned	n_threads, thread_id;
 	knot_eth_rss_conf_t *rss_conf;
@@ -136,9 +134,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.duration = 5000000UL, // usecs
 	.at_once = 10,
 	.sending_mode = "",
-	.target_port = LOCAL_PORT_DEFAULT,
-	.default_port = true,
-	.listen_port = LOCAL_PORT_MIN,
+	.target_port = 0,
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
 };
 
@@ -432,7 +428,6 @@ void *xdp_gun_thread(void *_ctx)
 	knot_xdp_msg_t quic_fake_req = { 0 };
 	list_t quic_sessions;
 	init_list(&quic_sessions);
-	struct sockaddr_in6 local_ip = ctx->local_ip;
 #endif // ENABLE_QUIC
 
 	if (ctx->tcp) {
@@ -454,8 +449,7 @@ void *xdp_gun_thread(void *_ctx)
 			ERR2("failed to allocate QUIC connection table\n");
 			return NULL;
 		}
-		((struct sockaddr_in6 *)&ctx->target_ip)->sin6_port = htobe16(ctx->target_port);
-		((struct sockaddr_in6 *)&ctx->local_ip)->sin6_port = htobe16(ctx->listen_port);
+		ctx->target_ip.sin6_port = htobe16(ctx->target_port);
 
 		memcpy(quic_fake_req.eth_from, ctx->target_mac,  sizeof(ctx->target_mac));
 		memcpy(quic_fake_req.eth_to,   ctx->local_mac,   sizeof(ctx->local_mac));
@@ -475,7 +469,7 @@ void *xdp_gun_thread(void *_ctx)
 	*/
 	pthread_mutex_lock(&global_stats.mutex);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
-	                        ctx->listen_port, ctx->listen_port, mode);
+	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode);
 	pthread_mutex_unlock(&global_stats.mutex);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u (%s)\n",
@@ -530,8 +524,8 @@ void *xdp_gun_thread(void *_ctx)
 					uint16_t local_port = local_ports[local_ports_it++ % QUIC_THREAD_PORTS];
 					for (unsigned i = 0; i < ctx->at_once; i++) {
 						knot_xquic_conn_t *newconn = NULL;
-						local_ip.sin6_port = htobe16(local_port);
-						ret = knot_xquic_client(quic_table, &ctx->target_ip, &local_ip, &newconn);
+						ctx->local_ip.sin6_port = htobe16(local_port);
+						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
 						if (ret == KNOT_EOK) {
 							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
@@ -932,7 +926,7 @@ static void print_help(void)
 	       "                          "SPACE" (default is %d for UDP, %d for TCP)\n"
 	       " -r, --drop               "SPACE"Drop incoming responses (disables response statistics).\n"
 	       " -p, --port <port>        "SPACE"Remote destination port.\n"
-	       "                          "SPACE" (default is %d)\n"
+	       "                          "SPACE" (default is %d for UDP/TCP, %u for QUIC)\n"
 	       " -F, --affinity <spec>    "SPACE"CPU affinity in the format [<cpu_start>][s<cpu_step>].\n"
 	       "                          "SPACE" (default is %s)\n"
 	       " -i, --infile <file>      "SPACE"Path to a file with query templates.\n"
@@ -946,7 +940,7 @@ static void print_help(void)
 	       "Arguments:\n"
 	       " <dest_ip>                "SPACE"IPv4 or IPv6 address of the remote destination.\n",
 	       PROGRAM_NAME, ctx_defaults.duration / 1000000, ctx_defaults.qps,
-	       ctx_defaults.at_once, 1, LOCAL_PORT_DEFAULT, "0s1");
+	       ctx_defaults.at_once, 1, REMOTE_PORT_DEFAULT, REMOTE_PORT_DOQ_DEFAULT, "0s1");
 }
 
 static bool sending_mode(const char *arg, xdp_gun_ctx_t *ctx)
@@ -1085,7 +1079,6 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			arg = atoi(optarg);
 			if (arg > 0 && arg <= 0xffff) {
 				ctx->target_port = arg;
-				ctx->default_port = false;
 			} else {
 				ERR2("invalid port '%s'\n", optarg);
 				return false;
@@ -1109,8 +1102,8 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			ctx->tcp = false;
 			ctx->flags &= ~(KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP);
 			ctx->flags |= KNOT_XDP_FILTER_QUIC;
-			if (ctx->default_port) {
-				ctx->target_port = LOCAL_PORT_DOQ_DEFAULT;
+			if (ctx->target_port > 0) {
+				ctx->target_port = REMOTE_PORT_DOQ_DEFAULT;
 			}
 			if (default_at_once) {
 				ctx->at_once = 1;
@@ -1164,6 +1157,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	if (global_payloads == NULL || argc - optind != 1) {
 		print_help();
 		return false;
+	}
+
+	if (ctx->target_port == 0) {
+		ctx->target_port == REMOTE_PORT_DEFAULT;
 	}
 
 	if (!configure_target(argv[optind], local_ip, ctx)) {

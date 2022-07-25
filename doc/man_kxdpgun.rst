@@ -42,13 +42,13 @@ Options
 
 **-b**, **--batch** *size*
   Send more queries in a batch. Improves QPS but may affect the counterpart's
-  packet loss (default is 10 for UDP and 1 for TCP).
+  packet loss (default is 10 for UDP and 1 for TCP/QUIC).
 
 **-r**, **--drop**
   Drop incoming responses. Improves QPS, but disables response statistics.
 
 **-p**, **--port** *number*
-  Remote destination port (default is 53).
+  Remote destination port (default is 53 for UDP/TCP, 853 for QUIC).
 
 **-F**, **--affinity** *cpu_spec*
   CPU affinity for all threads specified in the format [<cpu_start>][s<cpu_step>],
@@ -64,7 +64,8 @@ Options
 
 **-l**, **--local** *localIP*\ [**/**\ *prefix*]
   Override the auto-detected source IP address. If an address range is specified
-  instead, various IPs from the range will be used for different queries uniformly.
+  instead, various IPs from the range will be used for different queries uniformly
+  (address range not supported in the QUIC mode).
 
 *targetIP*
   The IPv4 or IPv6 address of remote destination.
