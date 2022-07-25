@@ -257,14 +257,14 @@ are employed if supported.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP root:root
+\fIDefault:\fP \fBroot:root\fP
 .SS pidfile
 .sp
 A PID file location.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP \fI\%rundir\fP/knot.pid
+\fIDefault:\fP \fI\%rundir\fP\fB/knot.pid\fP
 .SS udp\-workers
 .sp
 A number of UDP workers (threads) used to process incoming queries
@@ -294,16 +294,16 @@ Change of this parameter requires restart of the Knot server to take effect.
 If enabled, server doesn\(aqt wait for the zones to be loaded and starts
 responding immediately with SERVFAIL answers until the zone loads.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS tcp\-idle\-timeout
 .sp
 Maximum idle time (in seconds) between requests on an inbound TCP connection.
 It means if there is no activity on an inbound TCP connection during this limit,
 the connection is closed by the server.
 .sp
-\fIMinimum:\fP 1 s
+\fIMinimum:\fP \fB1\fP
 .sp
-\fIDefault:\fP 10 s
+\fIDefault:\fP \fB10\fP
 .SS tcp\-io\-timeout
 .sp
 Maximum time (in milliseconds) to receive or send one DNS message over an inbound
@@ -312,7 +312,7 @@ incoming DDNS, and \fBoutgoing zone transfers\fP\&. The timeout is measured sinc
 data is already available for processing.
 Set to 0 for infinity.
 .sp
-\fIDefault:\fP 500 ms
+\fIDefault:\fP \fB500\fP (milliseconds)
 .sp
 \fBCAUTION:\fP
 .INDENT 0.0
@@ -330,7 +330,7 @@ DDNS forwarding, and DS check or push. This timeout includes the time needed
 for a network round\-trip and for a query processing by the remote.
 Set to 0 for infinity.
 .sp
-\fIDefault:\fP 5000 ms
+\fIDefault:\fP \fB5000\fP (milliseconds)
 .SS tcp\-reuseport
 .sp
 If enabled, each TCP worker listens on its own socket and the OS kernel
@@ -343,7 +343,7 @@ advisable to use this option on secondary servers.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS tcp\-fastopen
 .sp
 If enabled, use TCP Fast Open for outbound TCP communication (client side):
@@ -368,7 +368,7 @@ is \fB1\fP for server side, and \fBnet.inet.tcp.fastopen.client_enable\fP is
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS quic\-max\-clients
 .sp
 A maximum number of QUIC clients connected in parallel.
@@ -377,9 +377,9 @@ See also \fI\%quic\fP\&.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIMinimum:\fP 128
+\fIMinimum:\fP \fB128\fP
 .sp
-\fIDefault:\fP 10000 (ten thousand)
+\fIDefault:\fP \fB10000\fP (ten thousand)
 .SS quic\-outbuf\-max\-size
 .sp
 Maximum cumulative size of memory used for buffers of unACKed
@@ -396,18 +396,18 @@ transfers of big zone over QUIC are expected.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIMinimum:\fP 1 MiB
+\fIMinimum:\fP \fB1M\fP (1 MiB)
 .sp
-\fIDefault:\fP 100 MiB
+\fIDefault:\fP \fB100M\fP (100 MiB)
 .SS quic\-idle\-close\-timeout
 .sp
 Time in seconds, after which any idle QUIC connection is gracefully closed.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIMinimum:\fP 1 s
+\fIMinimum:\fP \fB1\fP
 .sp
-\fIDefault:\fP 4 s
+\fIDefault:\fP \fB4\fP
 .SS remote\-pool\-limit
 .sp
 If nonzero, the server will keep up to this number of outgoing TCP connections
@@ -416,20 +416,20 @@ TCP connections to the same remote.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP 0
+\fIDefault:\fP \fB0\fP
 .SS remote\-pool\-timeout
 .sp
 The timeout in seconds after which the unused kept\-open outgoing TCP connections
 to remote servers are closed.
 .sp
-\fIDefault:\fP 5
+\fIDefault:\fP \fB5\fP
 .SS remote\-retry\-delay
 .sp
 When a connection attempt times out to some remote address, this information will be
 kept for this specified time (in milliseconds) and other connections to the same address won\(aqt
 be attempted. This prevents repetitive waiting for timeout on an unreachable remote.
 .sp
-\fIDefault:\fP 0
+\fIDefault:\fP \fB0\fP
 .SS socket\-affinity
 .sp
 If enabled and if SO_REUSEPORT is available on Linux, all configured network
@@ -439,7 +439,7 @@ is lower than the number of UDP or TCP workers.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS tcp\-max\-clients
 .sp
 A maximum number of TCP clients connected in parallel, set this below the file
@@ -458,50 +458,50 @@ operating system configuration.
 .sp
 Maximum EDNS0 UDP payload size default for both IPv4 and IPv6.
 .sp
-\fIDefault:\fP 1232
+\fIDefault:\fP \fB1232\fP
 .SS udp\-max\-payload\-ipv4
 .sp
 Maximum EDNS0 UDP payload size for IPv4.
 .sp
-\fIDefault:\fP 1232
+\fIDefault:\fP \fB1232\fP
 .SS udp\-max\-payload\-ipv6
 .sp
 Maximum EDNS0 UDP payload size for IPv6.
 .sp
-\fIDefault:\fP 1232
+\fIDefault:\fP \fB1232\fP
 .SS key\-file
 .sp
 Path to a server key PEM file which is used for DNS over QUIC communication.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP one\-time in memory key
+\fIDefault:\fP one\-time in\-memory key
 .SS cert\-file
 .sp
 Path to a server certificate PEM file which is used for DNS over QUIC communication.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP one\-time in memory certificate
+\fIDefault:\fP one\-time in\-memory certificate
 .SS edns\-client\-subnet
 .sp
 Enable or disable EDNS Client Subnet support. If enabled, responses to queries
 containing the EDNS Client Subnet option
 always contain a valid EDNS Client Subnet option according to \fI\%RFC 7871\fP\&.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS answer\-rotation
 .sp
 Enable or disable sorted\-rrset rotation in the answer section of normal replies.
 The rotation shift is simply determined by a query ID.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS automatic\-acl
 .sp
 If enabled, \fI\%automatic ACL\fP setting of
 configured remotes is considered when evaluating authorized operations.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS proxy\-allowlist
 .sp
 An ordered list of IP addresses, network subnets, or network ranges
@@ -549,7 +549,7 @@ This function requires systemd version at least 221.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP none
+\fIDefault:\fP \fBnone\fP
 .SS listen
 .sp
 One or more IP addresses where the server listens for incoming queries.
@@ -624,7 +624,7 @@ If enabled, DNS over UDP is processed with XDP workers.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP on
+\fIDefault:\fP \fBon\fP
 .SS tcp
 .sp
 If enabled, DNS over TCP traffic is processed with XDP workers.
@@ -645,14 +645,14 @@ Not optimized for transfers of non\-trivial zones.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS quic
 .sp
 If enabled, DNS over QUIC is processed with XDP workers.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS quic\-port
 .sp
 DNS over QUIC will listen on the interfaces configured by \fI\%listen\fP,
@@ -660,59 +660,59 @@ but on different port, configured by this option.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP 853
+\fIDefault:\fP \fB853\fP
 .SS quic\-log
 .sp
 Triggers extensive logging of all QUIC protocol internals for every connection.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS tcp\-max\-clients
 .sp
 A maximum number of TCP clients connected in parallel.
 .sp
-\fIMinimum:\fP 1024
+\fIMinimum:\fP \fB1024\fP
 .sp
-\fIDefault:\fP 1000000 (one million)
+\fIDefault:\fP \fB1000000\fP (one million)
 .SS tcp\-inbuf\-max\-size
 .sp
 Maximum cumulative size of memory used for buffers of incompletely
 received messages.
 .sp
-\fIMinimum:\fP 1 MiB
+\fIMinimum:\fP \fB1M\fP (1 MiB)
 .sp
-\fIDefault:\fP 100 MiB
+\fIDefault:\fP \fB100M\fP (100 MiB)
 .SS tcp\-outbuf\-max\-size
 .sp
 Maximum cumulative size of memory used for buffers of unACKed
 sent messages.
 .sp
-\fIMinimum:\fP 1 MiB
+\fIMinimum:\fP \fB1M\fP (1 MiB)
 .sp
-\fIDefault:\fP 100 MiB
+\fIDefault:\fP \fB100M\fP (100 MiB)
 .SS tcp\-idle\-close\-timeout
 .sp
 Time in seconds, after which any idle connection is gracefully closed.
 .sp
-\fIMinimum:\fP 1 s
+\fIMinimum:\fP \fB1\fP
 .sp
-\fIDefault:\fP 10 s
+\fIDefault:\fP \fB10\fP
 .SS tcp\-idle\-reset\-timeout
 .sp
 Time in seconds, after which any idle connection is forcibly closed.
 .sp
-\fIMinimum:\fP 1 s
+\fIMinimum:\fP \fB1\fP
 .sp
-\fIDefault:\fP 20 s
+\fIDefault:\fP \fB20\fP
 .SS tcp\-resend\-timeout
 .sp
 Resend outgoing data packets (with DNS response payload) if not ACKed
 before this timeout.
 .sp
-\fIMinimum:\fP 1 s
+\fIMinimum:\fP \fB1\fP
 .sp
-\fIDefault:\fP 5 s
+\fIDefault:\fP \fB5\fP
 .SS route\-check
 .sp
 If enabled, routing information from the operating system is considered
@@ -743,7 +743,7 @@ If forwarding is disabled, all incoming DNS packets are dropped!
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SH CONTROL SECTION
 .sp
 Configuration of the server control interface.
@@ -763,13 +763,13 @@ control:
 .sp
 A UNIX socket path where the server listens for control commands.
 .sp
-\fIDefault:\fP \fI\%rundir\fP/knot.sock
+\fIDefault:\fP \fI\%rundir\fP\fB/knot.sock\fP
 .SS timeout
 .sp
 Maximum time (in seconds) the control socket operations can take.
 Set to 0 for infinity.
 .sp
-\fIDefault:\fP 5
+\fIDefault:\fP \fB5\fP
 .SH LOGGING SECTION
 .sp
 Server can be configured to log to the standard output, standard error
@@ -876,13 +876,13 @@ A period after which all available statistics metrics will by written to the
 .sp
 A file path of statistics output in the YAML format.
 .sp
-\fIDefault:\fP \fI\%rundir\fP/stats.yaml
+\fIDefault:\fP \fI\%rundir\fP\fB/stats.yaml\fP
 .SS append
 .sp
 If enabled, the output will be appended to the \fI\%file\fP
 instead of file replacement.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SH DATABASE SECTION
 .sp
 Configuration of databases for zone contents, DNSSEC metadata, or event timers.
@@ -917,7 +917,7 @@ An explicit specification of the persistent journal database directory.
 Non\-absolute path (i.e. not starting with \fB/\fP) is relative to
 \fI\%storage\fP\&.
 .sp
-\fIDefault:\fP \fI\%storage\fP/journal
+\fIDefault:\fP \fI\%storage\fP\fB/journal\fP
 .SS journal\-db\-mode
 .sp
 Specifies journal LMDB backend configuration, which influences performance
@@ -934,7 +934,7 @@ better performance at the expense of lower database durability in the case of
 a crash. This mode is recommended on secondary servers with many zones.
 .UNINDENT
 .sp
-\fIDefault:\fP robust
+\fIDefault:\fP \fBrobust\fP
 .SS journal\-db\-max\-size
 .sp
 The hard limit for the journal database maximum size. There is no cleanup logic
@@ -955,14 +955,14 @@ This value also influences server\(aqs usage of virtual memory.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 20 GiB (512 MiB for 32\-bit)
+\fIDefault:\fP \fB20G\fP (20 GiB), or \fB512M\fP (512 MiB) for 32\-bit
 .SS kasp\-db
 .sp
 An explicit specification of the KASP database directory.
 Non\-absolute path (i.e. not starting with \fB/\fP) is relative to
 \fI\%storage\fP\&.
 .sp
-\fIDefault:\fP \fI\%storage\fP/keys
+\fIDefault:\fP \fI\%storage\fP\fB/keys\fP
 .SS kasp\-db\-max\-size
 .sp
 The hard limit for the KASP database maximum size.
@@ -974,14 +974,14 @@ This value also influences server\(aqs usage of virtual memory.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 500 MiB
+\fIDefault:\fP \fB500M\fP (500 MiB)
 .SS timer\-db
 .sp
 An explicit specification of the persistent timer database directory.
 Non\-absolute path (i.e. not starting with \fB/\fP) is relative to
 \fI\%storage\fP\&.
 .sp
-\fIDefault:\fP \fI\%storage\fP/timers
+\fIDefault:\fP \fI\%storage\fP\fB/timers\fP
 .SS timer\-db\-max\-size
 .sp
 The hard limit for the timer database maximum size.
@@ -993,7 +993,7 @@ This value also influences server\(aqs usage of virtual memory.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 100 MiB
+\fIDefault:\fP \fB100M\fP (100 MiB)
 .SS catalog\-db
 .sp
 An explicit specification of the zone catalog database directory.
@@ -1001,7 +1001,7 @@ Only useful if catalog\-zones are enabled.
 Non\-absolute path (i.e. not starting with \fB/\fP) is relative to
 \fI\%storage\fP\&.
 .sp
-\fIDefault:\fP \fI\%storage\fP/catalog
+\fIDefault:\fP \fI\%storage\fP\fB/catalog\fP
 .SS catalog\-db\-max\-size
 .sp
 The hard limit for the catalog database maximum size.
@@ -1013,7 +1013,7 @@ This value also influences server\(aqs usage of virtual memory.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 20 GiB (512 MiB for 32\-bit)
+\fIDefault:\fP \fB20G\fP (20 GiB), or \fB512M\fP (512 MiB) for 32\-bit
 .SH KEYSTORE SECTION
 .sp
 DNSSEC keystore configuration.
@@ -1045,7 +1045,7 @@ Possible values:
 \fBpkcs11\fP – PKCS #11 storage.
 .UNINDENT
 .sp
-\fIDefault:\fP pem
+\fIDefault:\fP \fBpem\fP
 .SS config
 .sp
 A backend specific configuration. A directory with PEM files (the path can
@@ -1069,7 +1069,7 @@ Example configuration string for PKCS #11:
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP \fI\%kasp\-db\fP/keys
+\fIDefault:\fP \fI\%kasp\-db\fP\fB/keys\fP
 .SH KEY SECTION
 .sp
 Shared TSIG keys used to authenticate communication with the server.
@@ -1184,14 +1184,14 @@ the communication with the remote server.
 When incoming AXFR/IXFR from this remote (as a primary server), suppress
 sending NOTIFY messages to all configured secondary servers.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS no\-edns
 .sp
 If enabled, no OPT record (EDNS) is inserted to outgoing requests to this
 remote server. This mode is necessary for communication with some broken
 implementations (e.g. Windows Server 2016).
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS automatic\-acl
 .sp
 If enabled, some authorized operations for the remote are automatically allowed
@@ -1215,7 +1215,7 @@ This functionality requires global activation via
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP on
+\fIDefault:\fP \fBon\fP
 .SH REMOTES SECTION
 .sp
 Definitions of groups of remote servers. Remote grouping can simplify the
@@ -1314,14 +1314,14 @@ this action is only useful in combination with \fI\%TSIG key\fP\&.
 \fBupdate\fP – Allow zone updates (DDNS).
 .UNINDENT
 .sp
-\fIDefault:\fP query
+\fIDefault:\fP \fBquery\fP
 .SS deny
 .sp
 If enabled, instead of allowing, deny the specified \fI\%action\fP,
 \fI\%address\fP, \fI\%key\fP, or combination if these
 items. If no action is specified, deny all actions.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS update\-type
 .sp
 A list of allowed types of Resource Records in a zone update. Every record in an update
@@ -1365,7 +1365,7 @@ name set by \fI\%update\-owner\fP\&.
 be equal to at least one domain name set by \fI\%update\-owner\fP\&.
 .UNINDENT
 .sp
-\fIDefault:\fP sub\-or\-equal
+\fIDefault:\fP \fBsub\-or\-equal\fP
 .SS update\-owner\-name
 .sp
 A list of allowed owners of RRs in a zone update used with \fI\%update\-owner\fP
@@ -1417,21 +1417,21 @@ A DNSSEC\-validating resolver can be set as a parent.
 Interval for periodic checks of DS presence on parent\(aqs DNS servers, in the
 case of the KSK submission.
 .sp
-\fIDefault:\fP 1 hour
+\fIDefault:\fP \fB1h\fP (1 hour)
 .SS timeout
 .sp
 After this time period (in seconds) the KSK submission is automatically considered
 successful, even if all the checks were negative or no parents are configured.
 Set to 0 for infinity.
 .sp
-\fIDefault:\fP 0
+\fIDefault:\fP \fB0\fP
 .SS parent\-delay
 .sp
 After successful parent DS check, wait for this period before continuing the next
 key roll\-over step. This delay shall cover the propagation delay of update in the
 parent zone.
 .sp
-\fIDefault:\fP 0
+\fIDefault:\fP \fB0\fP
 .SH POLICY SECTION
 .sp
 DNSSEC policy configuration.
@@ -1496,13 +1496,13 @@ A configured keystore called "default" won\(aqt be used unless explicitly refere
 .sp
 If enabled, automatic key management is not used.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS single\-type\-signing
 .sp
 If enabled, Single\-Type Signing Scheme is used in the automatic key management
 mode.
 .sp
-\fIDefault:\fP off (module onlinesign has default on)
+\fIDefault:\fP \fBoff\fP (module onlinesign has default \fBon\fP)
 .SS algorithm
 .sp
 An algorithm of signing keys and issued signatures. See
@@ -1537,13 +1537,14 @@ Ed448 algorithm is only available if compiled with GnuTLS 3.6.12+ and Nettle 3.6
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP ecdsap256sha256
+\fIDefault:\fP \fBecdsap256sha256\fP
 .SS ksk\-size
 .sp
 A length of newly generated KSK or
 CSK keys.
 .sp
-\fIDefault:\fP 2048 (rsa*), 256 (ecdsap256), 384 (ecdsap384), 256 (ed25519), 456 (ed448)
+\fIDefault:\fP \fB2048\fP (rsa*), \fB256\fP (ecdsap256), \fB384\fP (ecdsap384), \fB256\fP (ed25519),
+\fB456\fP (ed448)
 .SS zsk\-size
 .sp
 A length of newly generated ZSK keys.
@@ -1563,7 +1564,7 @@ a new KSK is needed.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS dnskey\-ttl
 .sp
 A TTL value for DNSKEY records added into zone apex.
@@ -1615,7 +1616,7 @@ This applies for CSK lifetime if single\-type\-signing is enabled.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 0
+\fIDefault:\fP \fB0\fP
 .SS zsk\-lifetime
 .sp
 A period between ZSK activation and the next rollover initiation.
@@ -1633,7 +1634,7 @@ Zero (aka infinity) value causes no ZSK rollover as a result.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 30 days
+\fIDefault:\fP \fB30d\fP (30 days)
 .SS delete\-delay
 .sp
 Once a key (KSK or ZSK) is rolled\-over and removed from the zone,
@@ -1641,7 +1642,7 @@ keep it in the KASP database for at least this period before deleting it complet
 This might be useful in some troubleshooting cases when resurrection
 is needed.
 .sp
-\fIDefault:\fP 0
+\fIDefault:\fP \fB0\fP
 .SS propagation\-delay
 .sp
 An extra delay added for each key rollover step. This value should be high
@@ -1655,7 +1656,7 @@ Has influence over ZSK key lifetime.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 1 hour
+\fIDefault:\fP \fB1h\fP (1 hour)
 .SS rrsig\-lifetime
 .sp
 A validity period of newly issued signatures.
@@ -1668,7 +1669,7 @@ time period is not counted to the signature lifetime.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 14 days
+\fIDefault:\fP \fB14d\fP (14 days)
 .SS rrsig\-refresh
 .sp
 A period how long at least before a signature expiration the signature will be refreshed,
@@ -1681,7 +1682,7 @@ A period how long at most before a signature refresh time the signature might be
 in order to refresh RRSIGs in bigger batches on a frequently updated zone
 (avoid re\-sign event too often).
 .sp
-\fIDefault:\fP 1 hour
+\fIDefault:\fP \fB1h\fP (1 hour)
 .SS reproducible\-signing
 .sp
 For ECDSA algorithms, generate RRSIG signatures deterministically (\fI\%RFC 6979\fP).
@@ -1689,17 +1690,17 @@ Besides better theoretical cryptographic security, this mode allows significant
 speed\-up of loading signed (by the same method) zones. However, the zone signing
 is a bit slower.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS nsec3
 .sp
 Specifies if NSEC3 will be used instead of NSEC.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS nsec3\-iterations
 .sp
 A number of additional times the hashing is performed.
 .sp
-\fIDefault:\fP 0
+\fIDefault:\fP \fB0\fP
 .SS nsec3\-opt\-out
 .sp
 If set, NSEC3 records won\(aqt be created for insecure delegations.
@@ -1713,13 +1714,13 @@ in this zone.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS nsec3\-salt\-length
 .sp
 A length of a salt field in octets, which is appended to the original owner
 name before hashing.
 .sp
-\fIDefault:\fP 8
+\fIDefault:\fP \fB8\fP
 .SS nsec3\-salt\-lifetime
 .sp
 A validity period of newly issued salt field.
@@ -1729,7 +1730,7 @@ Zero value means infinity.
 Special value \fI\-1\fP triggers re\-salt every time when active ZSK changes.
 This optimizes the number of big changes to the zone.
 .sp
-\fIDefault:\fP 30 days
+\fIDefault:\fP \fB30d\fP (30 days)
 .SS signing\-threads
 .sp
 When signing zone or update, use this number of threads for parallel signing.
@@ -1743,7 +1744,7 @@ Some steps of the DNSSEC signing operation are not parallelized.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 1 (no extra threads)
+\fIDefault:\fP \fB1\fP (no extra threads)
 .SS ksk\-submission
 .sp
 A reference to \fI\%submission\fP section holding parameters of
@@ -1802,12 +1803,12 @@ more records depending on the keys available.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP rollover
+\fIDefault:\fP \fBrollover\fP
 .SS cds\-digest\-type
 .sp
 Specify digest type for published CDS records.
 .sp
-\fIDefault:\fP sha256
+\fIDefault:\fP \fBsha256\fP
 .SS dnskey\-management
 .sp
 Specify how the DNSKEY, CDNSKEY, and CDS RRSets at the zone apex are handled
@@ -1842,12 +1843,12 @@ deleted keys.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP full
+\fIDefault:\fP \fBfull\fP
 .SS offline\-ksk
 .sp
 Specifies if Offline KSK feature is enabled.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS unsafe\-operation
 .sp
 Turn off some DNSSEC safety features.
@@ -1878,7 +1879,7 @@ This mode is intended for DNSSEC experts who understand the corresponding conseq
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP none
+\fIDefault:\fP \fBnone\fP
 .SH TEMPLATE SECTION
 .sp
 A template is shareable zone settings, which can simplify configuration by
@@ -1967,7 +1968,7 @@ A zone name identifier.
 .sp
 A \fI\%reference\fP to a configuration template.
 .sp
-\fIDefault:\fP not set or \fIdefault\fP (if the template exists)
+\fIDefault:\fP not set or \fBdefault\fP (if the template exists)
 .SS storage
 .sp
 A data directory for storing zone files.
@@ -2005,7 +2006,7 @@ where DDD is corresponding decimal ASCII code.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP \fI\%storage\fP/\fB%s\fP\&.zone
+\fIDefault:\fP \fI\%storage\fP\fB/%s.zone\fP
 .SS master
 .sp
 An ordered list of references \fI\%remote\fP and
@@ -2088,7 +2089,7 @@ query (malformed message) and triggers a zone bootstrap instead.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS zonefile\-sync
 .sp
 The time after which the current zone in memory will be synced with a zone file
@@ -2108,7 +2109,7 @@ the immediate sync with a zone file is not desirable, increase the value.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 0 (immediate)
+\fIDefault:\fP \fB0\fP (immediate)
 .SS zonefile\-load
 .sp
 Selects how the zone file contents are applied during zone load.
@@ -2131,7 +2132,7 @@ ignored, the server takes care of incrementing the serial automatically.
 When \fBdifference\fP is configured and there are no zone contents yet (cold start
 and no zone contents in the journal), it behaves the same way as \fBwhole\fP\&.
 .sp
-\fIDefault:\fP whole
+\fIDefault:\fP \fBwhole\fP
 .SS journal\-content
 .sp
 Selects how the journal shall be used to store zone and its changes.
@@ -2146,7 +2147,7 @@ Possible values:
 \fBall\fP – Zone contents and history is stored in journal.
 .UNINDENT
 .sp
-\fIDefault:\fP changes
+\fIDefault:\fP \fBchanges\fP
 .SS journal\-max\-usage
 .sp
 Policy how much space in journal DB will the zone\(aqs journal occupy.
@@ -2159,7 +2160,7 @@ all zones, because of DB free space fragmentation.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP 100 MiB
+\fIDefault:\fP \fB100M\fP (100 MiB)
 .SS journal\-max\-depth
 .sp
 Maximum history length of the journal.
@@ -2171,9 +2172,9 @@ Zone\-in\-journal changeset isn\(aqt counted to the limit.
 .UNINDENT
 .UNINDENT
 .sp
-\fIMinimum:\fP 2
+\fIMinimum:\fP \fB2\fP
 .sp
-\fIDefault:\fP 20
+\fIDefault:\fP \fB20\fP
 .SS zone\-max\-size
 .sp
 Maximum size of the zone. The size is measured as size of the zone records
@@ -2184,19 +2185,19 @@ For incremental transfers (IXFR), the effective limit for the total size of
 the records in the transfer is twice the configured value. However the final
 size of the zone must satisfy the configured value.
 .sp
-\fIDefault:\fP 2^64
+\fIDefault:\fP unlimited
 .SS adjust\-threads
 .sp
-Parallelize internal zone adjusting procedures. This is useful with huge
-zones with NSEC3. Speedup observable at server startup and while processing
-NSEC3 re\-salt.
+Parallelize internal zone adjusting procedures by using specified number of
+threads. This is useful with huge zones with NSEC3. Speedup observable at
+server startup and while processing NSEC3 re\-salt.
 .sp
-\fIDefault:\fP 1
+\fIDefault:\fP \fB1\fP (no extra threads)
 .SS dnssec\-signing
 .sp
 If enabled, automatic DNSSEC signing for the zone is turned on.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS dnssec\-validation
 .sp
 If enabled, the zone contents are validated for being correctly signed
@@ -2221,6 +2222,8 @@ Every NSEC(3) RR is linked to the lexicographically next one.
 The validation is not affected by \fI\%dnssec\-policy\fP configuration,
 except for \fI\%signing\-threads\fP option, which specifies the number
 of threads for parallel validation.
+.sp
+\fIDefault:\fP not set
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -2253,7 +2256,7 @@ Zone digest calculation may take much time and CPU on large zones.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS zonemd\-generate
 .sp
 On each zone update, calculate ZONEMD and put it into the zone.
@@ -2270,7 +2273,7 @@ Possible values:
 \fBremove\fP – Remove any ZONEMD from the zone apex.
 .UNINDENT
 .sp
-\fIDefault:\fP none
+\fIDefault:\fP \fBnone\fP
 .SS serial\-policy
 .sp
 Specifies how the zone serial is updated after a dynamic update or
@@ -2303,12 +2306,14 @@ Generated catalog zones use \fBunixtime\fP only.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP increment (unixtime for generated catalog zones)
+\fIDefault:\fP \fBincrement\fP (\fBunixtime\fP for generated catalog zones)
 .SS refresh\-min\-interval
 .sp
 Forced minimum zone refresh interval (in seconds) to avoid flooding primary server.
 .sp
-\fIDefault:\fP 2 (minimum allowed)
+\fIMinimum:\fP \fB2\fP
+.sp
+\fIDefault:\fP \fB2\fP
 .SS refresh\-max\-interval
 .sp
 Forced maximum zone refresh interval (in seconds).
@@ -2318,7 +2323,9 @@ Forced maximum zone refresh interval (in seconds).
 .sp
 Forced minimum zone retry interval (in seconds) to avoid flooding primary server.
 .sp
-\fIDefault:\fP 1 (minimum allowed)
+\fIMinimum:\fP \fB1\fP
+.sp
+\fIDefault:\fP \fB1\fP
 .SS retry\-max\-interval
 .sp
 Forced maximum zone retry interval (in seconds).
@@ -2328,7 +2335,9 @@ Forced maximum zone retry interval (in seconds).
 .sp
 Forced minimum zone expire interval (in seconds) to avoid flooding primary server.
 .sp
-\fIDefault:\fP 3 (minimum allowed)
+\fIMinimum:\fP \fB3\fP
+.sp
+\fIDefault:\fP \fB3\fP
 .SS expire\-max\-interval
 .sp
 Forced maximum zone expire interval (in seconds).
@@ -2350,7 +2359,7 @@ assigned member zones.
 \fBmember\fP – A member zone that is assigned to one generated catalog zone.
 .UNINDENT
 .sp
-\fIDefault:\fP none
+\fIDefault:\fP \fBnone\fP
 .SS catalog\-template
 .sp
 For the catalog member zones, the specified configuration template will be applied.
