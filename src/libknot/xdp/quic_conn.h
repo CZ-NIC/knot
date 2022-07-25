@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief QUIC connection management.
+ *
+ * \addtogroup xdp
+ * @{
+ */
+
 #pragma once
 
 #include <linux/if_ether.h>
@@ -106,7 +115,6 @@ typedef struct knot_xquic_table {
 /*!
  * \brief Allocate QUIC connections hash table.
  *
- * \param server       Initialize server-side QUIC conn table.
  * \param max_conns    Maximum nuber of connections.
  * \param max_ibufs    Maximum size of buffers for fragmented incomming DNS msgs.
  * \param max_obufs    Maximum size of buffers for un-ACKed outgoing data.
@@ -115,8 +123,8 @@ typedef struct knot_xquic_table {
  *
  * \return Allocated table, or NULL.
  */
-knot_xquic_table_t *knot_xquic_table_new(bool server, size_t max_conns, size_t max_ibufs, size_t max_obufs,
-                                         size_t udp_pl, struct knot_quic_creds *creds);
+knot_xquic_table_t *knot_xquic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
+                                         size_t udp_payload, struct knot_quic_creds *creds);
 
 /*!
  * \brief Free QUIC table including its contents.
@@ -129,15 +137,13 @@ void knot_xquic_table_free(knot_xquic_table_t *table);
  * \brief Close timed out connections and some oldest ones if table full.
  *
  * \param table            QUIC table to be cleaned up.
- * \param max_conns        Limit for connections count in table.
- * \param max_obufs        Limit of allocated outgiong payload buffers.
  * \param timed_out        Out: number of closed connections due to timeout.
  * \param force_closed     Out: number of closed connections due to overfull.
  *
  * \return KNOT_E*
  */
-int knot_xquic_table_sweep(knot_xquic_table_t *table,
-                           uint32_t *timed_out, uint32_t *force_closed);
+int knot_xquic_table_sweep(knot_xquic_table_t *table, uint32_t *timed_out,
+                           uint32_t *force_closed);
 
 /*!
  * \brief Add new connection/CID link to table.
@@ -148,7 +154,8 @@ int knot_xquic_table_sweep(knot_xquic_table_t *table,
  *
  * \return Pointer on the CID reference in table, or NULL.
  */
-knot_xquic_cid_t **xquic_table_insert(knot_xquic_conn_t *xconn, const struct ngtcp2_cid *cid,
+knot_xquic_cid_t **xquic_table_insert(knot_xquic_conn_t *xconn,
+                                      const struct ngtcp2_cid *cid,
                                       knot_xquic_table_t *table);
 
 /*!
@@ -160,7 +167,9 @@ knot_xquic_cid_t **xquic_table_insert(knot_xquic_conn_t *xconn, const struct ngt
  *
  * \return Allocated (and linked) Knot conn struct, or NULL.
  */
-knot_xquic_conn_t *xquic_table_add(struct ngtcp2_conn *conn, const struct ngtcp2_cid *cid, knot_xquic_table_t *table);
+knot_xquic_conn_t *xquic_table_add(struct ngtcp2_conn *conn,
+                                   const struct ngtcp2_cid *cid,
+                                   knot_xquic_table_t *table);
 
 /*!
  * \brief Lookup connection/CID link in table.
@@ -170,7 +179,8 @@ knot_xquic_conn_t *xquic_table_add(struct ngtcp2_conn *conn, const struct ngtcp2
  *
  * \return Pointer on the CID reference in table, or NULL.
  */
-knot_xquic_cid_t **xquic_table_lookup2(const struct ngtcp2_cid *cid, knot_xquic_table_t *table);
+knot_xquic_cid_t **xquic_table_lookup2(const struct ngtcp2_cid *cid,
+                                       knot_xquic_table_t *table);
 
 /*!
  * \brief Lookup QUIC connection in table.
@@ -180,12 +190,14 @@ knot_xquic_cid_t **xquic_table_lookup2(const struct ngtcp2_cid *cid, knot_xquic_
  *
  * \return Connection that the CID belongs to, or NULL.
  */
-knot_xquic_conn_t *xquic_table_lookup(const struct ngtcp2_cid *cid, knot_xquic_table_t *table);
+knot_xquic_conn_t *xquic_table_lookup(const struct ngtcp2_cid *cid,
+                                      knot_xquic_table_t *table);
 
 /*!
  * \brief Put the connection on the end of timeout queue.
  */
-void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table, uint64_t now);
+void xquic_conn_mark_used(knot_xquic_conn_t *conn, knot_xquic_table_t *table,
+                          uint64_t now);
 
 /*!
  * \brief Remove connection/CID link from table.
@@ -220,7 +232,8 @@ void xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table);
  *
  * \return Stream or NULL.
  */
-knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn, int64_t stream_id, bool create);
+knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn,
+                                                int64_t stream_id, bool create);
 
 /*!
  * \brief Process incomming stream data to stream structure.
@@ -233,7 +246,8 @@ knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn, int64_
  *
  * \return KNOT_E*
  */
-int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, const uint8_t *data, size_t len, bool fin);
+int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id,
+                                const uint8_t *data, size_t len, bool fin);
 
 /*!
  * \brief Get next stream which has pending incomming data to be processed.
@@ -243,7 +257,8 @@ int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id, con
  *
  * \return Stream with incomming data.
  */
-knot_xquic_stream_t *knot_xquic_stream_get_process(knot_xquic_conn_t *xconn, int64_t *stream_id);
+knot_xquic_stream_t *knot_xquic_stream_get_process(knot_xquic_conn_t *xconn,
+                                                   int64_t *stream_id);
 
 /*!
  * \brief Add outgiong data to the stream for sending.
@@ -255,7 +270,8 @@ knot_xquic_stream_t *knot_xquic_stream_get_process(knot_xquic_conn_t *xconn, int
  *
  * \return NULL if error, or pinter at the data in outgiong buffer.
  */
-uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id, uint8_t *data, size_t len);
+uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id,
+                                    uint8_t *data, size_t len);
 
 /*!
  * \brief Mark outgiong data as acknowledged after ACK received.
@@ -265,7 +281,8 @@ uint8_t *knot_xquic_stream_add_data(knot_xquic_conn_t *xconn, int64_t stream_id,
  * \param end_acked      Offset of ACKed data + ACKed length.
  * \param keep_stream    Don't free the stream even when ACKed all outgoing data.
  */
-void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, size_t end_acked, bool keep_stream);
+void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id,
+                                size_t end_acked, bool keep_stream);
 
 /*!
  * \brief Mark outgoing data as sent.
@@ -274,13 +291,17 @@ void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id, siz
  * \param stream_id      Stream ID of sent data.
  * \param amount_sent    Length of sent data.
  */
-void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id, size_t amount_sent);
+void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id,
+                                 size_t amount_sent);
 
 /*!
  * \brief Toggle sending Retry packet as a reaction to Initial packet of new connection.
  *
  * \param table       Connection table.
  *
- * \return True if instead of continuing handshake, Retry packet shall be sent to verify counterpart's address.
+ * \return True if instead of continuing handshake, Retry packet shall be sent
+ *              to verify counterpart's address.
  */
 bool xquic_require_retry(knot_xquic_table_t *table);
+
+/*! @} */
