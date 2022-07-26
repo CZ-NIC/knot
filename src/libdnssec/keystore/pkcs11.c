@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -198,7 +198,7 @@ static int pkcs11_close(void *_ctx)
 }
 
 static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
-			       unsigned bits, char **id_ptr)
+			       unsigned bits, const char *label, char **id_ptr)
 {
 	pkcs11_ctx_t *ctx = _ctx;
 
@@ -208,7 +208,8 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 
 	int flags = TOKEN_ADD_FLAGS | GNUTLS_PKCS11_OBJ_FLAG_LOGIN;
 	gnutls_datum_t gt_cka_id = binary_to_datum(&cka_id);
-	int r = gnutls_pkcs11_privkey_generate3(ctx->url, algorithm, bits, NULL, &gt_cka_id, 0, NULL, 0, flags);
+	int r = gnutls_pkcs11_privkey_generate3(ctx->url, algorithm, bits, label,
+	                                        &gt_cka_id, 0, NULL, 0, flags);
 	if (r != GNUTLS_E_SUCCESS) {
 		return DNSSEC_KEY_GENERATE_ERROR;
 	}

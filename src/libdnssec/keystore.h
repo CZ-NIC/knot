@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,13 +97,14 @@ int dnssec_keystore_close(dnssec_keystore_t *store);
  * \param[in]  store      Key store.
  * \param[in]  algorithm  Algorithm.
  * \param[in]  bits       Bit length of the key to be generated.
+ * \param[in]  label      Optional key label for PKCS #11.
  * \param[out] id_ptr     ID of the generated key. Must be freed by the caller.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_keystore_generate(dnssec_keystore_t *store,
 			     dnssec_key_algorithm_t algorithm,
-			     unsigned bits, char **id_ptr);
+			     unsigned bits, const char *label, char **id_ptr);
 
 /*!
  * Import an existing key into the key store.

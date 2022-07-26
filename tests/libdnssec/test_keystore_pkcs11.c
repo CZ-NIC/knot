@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -337,7 +337,8 @@ static void test_algorithm(dnssec_keystore_t *store,
 
 	diag("algorithm %d, generated key", params->algorithm);
 
-	r = dnssec_keystore_generate(store, params->algorithm, params->bit_size, &id_generate);
+	r = dnssec_keystore_generate(store, params->algorithm, params->bit_size,
+	                             NULL, &id_generate);
 	ok(r == DNSSEC_EOK && id_generate != NULL, "dnssec_keystore_generate()");
 	test_key_use(store, params->algorithm, id_generate);
 

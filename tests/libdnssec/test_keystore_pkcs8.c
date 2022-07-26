@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,12 +46,12 @@ int main(void)
 
 	char *id_A = NULL;
 	r = dnssec_keystore_generate(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256,
-	                             1024, &id_A);
+	                             1024, NULL, &id_A);
 	ok(r == DNSSEC_EOK, "generate A");
 
 	char *id_B = NULL;
 	r = dnssec_keystore_generate(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256,
-	                             1024, &id_B);
+	                             1024, NULL, &id_B);
 	ok(r == DNSSEC_EOK, "generate B");
 
 	// reading existing content

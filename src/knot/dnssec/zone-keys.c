@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ static int generate_dnssec_key(dnssec_keystore_t *keystore,
 	*key = NULL;
 	*id = NULL;
 
-	int ret = dnssec_keystore_generate(keystore, alg, size, id);
+	int ret = dnssec_keystore_generate(keystore, alg, size, NULL, id);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

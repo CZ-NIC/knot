@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -283,11 +283,13 @@ static int pkcs8_close(void *ctx)
 }
 
 static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
-			      unsigned bits, char **id_ptr)
+			      unsigned bits, const char *label, char **id_ptr)
 {
 	if (!ctx || !id_ptr) {
 		return DNSSEC_EINVAL;
 	}
+
+	(void)label;
 
 	pkcs8_dir_handle_t *handle = ctx;
 

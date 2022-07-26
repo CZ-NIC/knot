@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -103,7 +103,7 @@ int dnssec_keystore_close(dnssec_keystore_t *store)
 _public_
 int dnssec_keystore_generate(dnssec_keystore_t *store,
 			     dnssec_key_algorithm_t _algorithm,
-			     unsigned bits, char **id_ptr)
+			     unsigned bits, const char *label, char **id_ptr)
 {
 	if (!store || !_algorithm || !id_ptr) {
 		return DNSSEC_EINVAL;
@@ -120,7 +120,7 @@ int dnssec_keystore_generate(dnssec_keystore_t *store,
 		return DNSSEC_INVALID_KEY_SIZE;
 	}
 
-	return store->functions->generate_key(store->ctx, algorithm, bits, id_ptr);
+	return store->functions->generate_key(store->ctx, algorithm, bits, label, id_ptr);
 }
 
 _public_
