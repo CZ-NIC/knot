@@ -568,7 +568,7 @@ AS_CASE([$enable_quic],
                  embedded_libngtcp2_LIBS=$libelf_LIBS
                  libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
                 [enable_quic=no
-                 AC_MSG_WARN([gnutls >= 3.7.2 is required])]))],
+                 AC_MSG_WARN([gnutls >= 3.7.2 is required for QUIC])]))],
    [no], [],
    [*], [AC_MSG_ERROR([Invalid value of --enable-quic.])]
 )
