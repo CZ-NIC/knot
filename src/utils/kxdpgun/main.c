@@ -469,7 +469,7 @@ void *xdp_gun_thread(void *_ctx)
 	*/
 	pthread_mutex_lock(&global_stats.mutex);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
-	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode);
+	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, NULL);
 	pthread_mutex_unlock(&global_stats.mutex);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u (%s)\n",

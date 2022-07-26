@@ -61,12 +61,13 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
  * \param udp_port     UDP and/or TCP port to listen on if enabled via \a opts.
  * \param quic_port    QUIC/UDP port to listen on if enabled via \a opts.
  * \param load_bpf     Insert BPF program into packet processing.
+ * \param xdp_config   Optional XDP socket configuration.
  *
  * \return KNOT_E* or -errno
  */
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   knot_xdp_filter_flag_t flags, uint16_t udp_port, uint16_t quic_port,
-                  knot_xdp_load_bpf_t load_bpf);
+                  knot_xdp_load_bpf_t load_bpf, const void *xdp_config);
 
 /*!
  * \brief De-init XDP socket.

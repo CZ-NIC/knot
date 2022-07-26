@@ -164,7 +164,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 _public_
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   knot_xdp_filter_flag_t flags, uint16_t udp_port, uint16_t quic_port,
-                  knot_xdp_load_bpf_t load_bpf)
+                  knot_xdp_load_bpf_t load_bpf, const void *xdp_config)
 {
 	if (socket == NULL || if_name == NULL ||
 	    (udp_port == quic_port && (flags & KNOT_XDP_FILTER_UDP) && (flags & KNOT_XDP_FILTER_QUIC)) ||
