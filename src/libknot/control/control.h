@@ -74,7 +74,7 @@ void knot_ctl_free(knot_ctl_t *ctx);
 /*!
  * Sets the timeout for socket operations.
  *
- * Default value is 5 seconds.
+ * Default value is 30 seconds.
  *
  * \param[in] ctx         Control context.
  * \param[in] timeout_ms  Timeout in milliseconds (0 for infinity).
