@@ -841,7 +841,9 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	struct sockaddr_in6 via = { 0 };
 	if (local_ip == NULL || ctx->dev[0] == '\0' || mac_empty(ctx->target_mac)) {
 		char auto_dev[IFNAMSIZ];
-		int ret = ip_route_get(&ctx->target_ip, &via, &ctx->local_ip,
+		int ret = ip_route_get((struct sockaddr_storage *)&ctx->target_ip,
+		                       (struct sockaddr_storage *)&via,
+		                       (struct sockaddr_storage *)&ctx->local_ip,
 		                       (ctx->dev[0] == '\0') ? ctx->dev : auto_dev);
 		if (ret < 0) {
 			ERR2("can't find route to '%s' (%s)\n", target_str, strerror(-ret));
@@ -858,12 +860,12 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		}
 		if (ctx->ipv6) {
 			if (ctx->local_ip_range < 64 ||
-			    inet_pton(AF_INET6, local_ip, &((struct sockaddr_in6 *)&ctx->local_ip)->sin6_addr) <= 0) {
+			    inet_pton(AF_INET6, local_ip, &ctx->local_ip.sin6_addr) <= 0) {
 				ERR2("invalid local IPv6 or unsupported prefix length\n");
 				return false;
 			}
 		} else {
-			if (inet_pton(AF_INET, local_ip, &((struct sockaddr_in *)&ctx->local_ip)->sin_addr) <= 0) {
+			if (inet_pton(AF_INET, local_ip, &ctx->local_ip.sin6_addr) <= 0) {
 				ERR2("invalid local IPv4\n");
 				return false;
 			}
@@ -873,7 +875,8 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	if (mac_empty(ctx->target_mac)) {
 		const struct sockaddr_in6 *neigh = (via.sin6_family == AF_UNSPEC) ?
 		                                   &ctx->target_ip : &via;
-		int ret = ip_neigh_get(neigh, true, ctx->target_mac);
+		int ret = ip_neigh_get((const struct sockaddr_storage *)neigh,
+		                       true, ctx->target_mac);
 		if (ret < 0) {
 			char neigh_str[256] = { 0 };
 			(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), (struct sockaddr_storage *)neigh);

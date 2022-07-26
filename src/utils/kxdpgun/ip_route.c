@@ -45,7 +45,7 @@ static size_t addr_len(int family)
 	}
 }
 
-static int send_dummy_pkt(const struct sockaddr_in6 *ip)
+static int send_dummy_pkt(const struct sockaddr_storage *ip)
 {
 	static const uint8_t dummy_pkt[] = {
 		// dummy data
@@ -57,14 +57,14 @@ static int send_dummy_pkt(const struct sockaddr_in6 *ip)
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	};
 
-	int fd = socket(ip->sin6_family, SOCK_RAW,
-	                ip->sin6_family == AF_INET6 ? IPPROTO_ICMPV6 : IPPROTO_ICMP);
+	int fd = socket(ip->ss_family, SOCK_RAW,
+	                ip->ss_family == AF_INET6 ? IPPROTO_ICMPV6 : IPPROTO_ICMP);
 	if (fd < 0) {
 		return -errno;
 	}
 	int ret = sendto(fd, dummy_pkt, sizeof(dummy_pkt), 0, (const struct sockaddr *)ip,
-	                 ip->sin6_family == AF_INET6 ? sizeof(struct sockaddr_in6) :
-	                                               sizeof(struct sockaddr_in));
+	                 ip->ss_family == AF_INET6 ? sizeof(struct sockaddr_in6) :
+	                                             sizeof(struct sockaddr_in));
 	if (ret < 0) {
 		ret = -errno;
 	}
@@ -136,9 +136,9 @@ end:
 }
 
 typedef struct {
-	const struct sockaddr_in6 *ip;
-	struct sockaddr_in6 *via;
-	struct sockaddr_in6 *src;
+	const struct sockaddr_storage *ip;
+	struct sockaddr_storage *via;
+	struct sockaddr_storage *src;
 	char *dev;
 	uint64_t priority; // top 32 bits: unmatched address bits; bottom 32 bits: route metric priority
 	unsigned match;
@@ -170,7 +170,7 @@ static int validate_attr_route(const struct nlattr *attr, void *data)
 	case RTA_SRC:
 	case RTA_PREFSRC:
 	case RTA_GATEWAY:
-		if (mnl_attr_validate2(attr, MNL_TYPE_BINARY, addr_len(ctx->ip->sin6_family)) < 0) {
+		if (mnl_attr_validate2(attr, MNL_TYPE_BINARY, addr_len(ctx->ip->ss_family)) < 0) {
 			return MNL_CB_ERROR;
 		}
 		break;
@@ -184,13 +184,13 @@ static int validate_attr_route(const struct nlattr *attr, void *data)
 	return MNL_CB_OK;
 }
 
-static void attr2addr(const struct nlattr *attr, int family, struct sockaddr_in6 *out)
+static void attr2addr(const struct nlattr *attr, int family, struct sockaddr_storage *out)
 {
 	if (attr == NULL) {
-		out->sin6_family = AF_UNSPEC;
+		out->ss_family = AF_UNSPEC;
 		return;
 	}
-	out->sin6_family = family;
+	out->ss_family = family;
 	if (family == AF_INET6) {
 		struct in6_addr *addr = mnl_attr_get_payload(attr);
 		memcpy(&((struct sockaddr_in6 *)out)->sin6_addr, addr, sizeof(*addr));
@@ -221,7 +221,7 @@ static int ip_route_get_cb(const struct nlmsghdr *nlh, void *data)
 {
 	ip_route_get_ctx_t *ctx = data;
 	struct rtmsg *rm = mnl_nlmsg_get_payload(nlh);
-	if (rm->rtm_family != ctx->ip->sin6_family) {
+	if (rm->rtm_family != ctx->ip->ss_family) {
 		return MNL_CB_ERROR;
 	}
 
@@ -233,13 +233,11 @@ static int ip_route_get_cb(const struct nlmsghdr *nlh, void *data)
 		return MNL_CB_OK;
 	}
 
-	struct sockaddr_in6 dst;
+	struct sockaddr_storage dst;
 	attr2addr(ctx->tb[RTA_DST], rm->rtm_family, &dst);
 
 	if (rm->rtm_dst_len == 0 ||
-	    sockaddr_net_match((struct sockaddr_storage *)&dst,
-	                       (struct sockaddr_storage *)ctx->ip,
-	                       rm->rtm_dst_len)) {
+	    sockaddr_net_match(&dst, ctx->ip, rm->rtm_dst_len)) {
 		attr2addr(ctx->tb[RTA_PREFSRC], rm->rtm_family, ctx->src);
 		attr2addr(ctx->tb[RTA_GATEWAY], rm->rtm_family, ctx->via);
 		attr2dev(ctx->tb[RTA_OIF], ctx->dev);
@@ -251,38 +249,39 @@ static int ip_route_get_cb(const struct nlmsghdr *nlh, void *data)
 	return MNL_CB_OK;
 }
 
-int ip_route_get(const struct sockaddr_in6 *ip,
-                 struct sockaddr_in6 *via,
-                 struct sockaddr_in6 *src,
+int ip_route_get(const struct sockaddr_storage *ip,
+                 struct sockaddr_storage *via,
+                 struct sockaddr_storage *src,
                  char *dev)
 {
-	struct sockaddr_in6 last_via = { 0 };
+	struct sockaddr_storage last_via = { 0 };
 	ip_route_get_ctx_t ctx = { ip, &last_via, src, dev, 0, 0 };
 	do {
 		ctx.priority = UINT64_MAX;
 
 		size_t qextra_len;
-		void *qextra = sockaddr_raw((struct sockaddr_storage *)ip, &qextra_len);
-		int ret = netlink_query(ip->sin6_family, RTM_GETROUTE, ip_route_get_cb, &ctx,
-		                        qextra, qextra_len, IFA_ADDRESS);
+		void *qextra = sockaddr_raw(ip, &qextra_len);
+		int ret = netlink_query(ip->ss_family, RTM_GETROUTE,
+		                        ip_route_get_cb, &ctx, qextra,
+		                        qextra_len, IFA_ADDRESS);
 		if (ret != 0) {
 			return ret;
 		}
-		if (last_via.sin6_family == ip->sin6_family) { // not AF_UNSPEC
-			memcpy(via, &last_via, sizeof(*via));
+		if (last_via.ss_family == ip->ss_family) { // not AF_UNSPEC
+			memcpy(via, &last_via, sockaddr_len(via));
 		}
 
 		// next loop will search for path to "via"
 		ctx.ip = via;
-	} while (last_via.sin6_family != AF_UNSPEC &&
+	} while (last_via.ss_family != AF_UNSPEC &&
 	         ctx.priority != UINT64_MAX && // avoid loop when nothing found
 	         ctx.match < ROUTE_LOOKUP_LOOP_LIMIT);  // avoid loop when looped route
 
-	return src->sin6_family == ip->sin6_family ? 0 : -ENOENT;
+	return src->ss_family == ip->ss_family ? 0 : -ENOENT;
 }
 
 typedef struct {
-	const struct sockaddr_in6 *ip;
+	const struct sockaddr_storage *ip;
 	uint8_t *mac;
 	unsigned match;
 
@@ -302,7 +301,7 @@ static int validate_attr_neigh(const struct nlattr *attr, void *data)
 	int type = mnl_attr_get_type(attr);
 	switch (type) {
 	case NDA_DST:
-		if (mnl_attr_validate2(attr, MNL_TYPE_BINARY, addr_len(ctx->ip->sin6_family)) < 0) {
+		if (mnl_attr_validate2(attr, MNL_TYPE_BINARY, addr_len(ctx->ip->ss_family)) < 0) {
 			return MNL_CB_ERROR;
 		}
 		break;
@@ -321,13 +320,13 @@ static int ip_neigh_cb(const struct nlmsghdr *nlh, void *data)
 {
 	ip_neigh_ctx_t *ctx = data;
 	struct rtmsg *rm = mnl_nlmsg_get_payload(nlh);
-	if (rm->rtm_family != ctx->ip->sin6_family) {
+	if (rm->rtm_family != ctx->ip->ss_family) {
 		return MNL_CB_ERROR;
 	}
 
 	mnl_attr_parse(nlh, sizeof(*rm), validate_attr_neigh, data);
 
-	struct sockaddr_in6 dst;
+	struct sockaddr_storage dst;
 	attr2addr(ctx->tb[NDA_DST], rm->rtm_family, &dst);
 
 	if (sockaddr_cmp((struct sockaddr_storage *)&dst, (struct sockaddr_storage *)ctx->ip, true) == 0 &&
@@ -340,8 +339,7 @@ static int ip_neigh_cb(const struct nlmsghdr *nlh, void *data)
 	return MNL_CB_OK;
 }
 
-int ip_neigh_get(const struct sockaddr_in6 *ip,
-                 bool dummy_sendto, uint8_t *mac)
+int ip_neigh_get(const struct sockaddr_storage *ip, bool dummy_sendto, uint8_t *mac)
 {
 	if (dummy_sendto) {
 		int ret = send_dummy_pkt(ip);
@@ -351,7 +349,7 @@ int ip_neigh_get(const struct sockaddr_in6 *ip,
 		usleep(10000);
 	}
 	ip_neigh_ctx_t ctx = { ip, mac, 0 };
-	int ret = netlink_query(ip->sin6_family, RTM_GETNEIGH, ip_neigh_cb, &ctx,
+	int ret = netlink_query(ip->ss_family, RTM_GETNEIGH, ip_neigh_cb, &ctx,
 	                        NULL, 0, 0);
 	if (ret == 0 && ctx.match == 0) {
 		return -ENOENT;
