@@ -29,9 +29,9 @@
  *
  * \return 0 on success, negative errno otherwise.
  */
-int ip_route_get(const struct sockaddr_in6 *ip,
-                 struct sockaddr_in6 *via,
-                 struct sockaddr_in6 *src,
+int ip_route_get(const struct sockaddr_storage *ip,
+                 struct sockaddr_storage *via,
+                 struct sockaddr_storage *src,
                  char *dev);
 
 /*!
@@ -43,5 +43,4 @@ int ip_route_get(const struct sockaddr_in6 *ip,
  *
  * \return 0 on success, -ENOENT if neighbour not found, negative errno otherwise.
  */
-int ip_neigh_get(const struct sockaddr_in6 *ip,
-                 bool dummy_sendto, uint8_t *mac);
+int ip_neigh_get(const struct sockaddr_storage *ip, bool dummy_sendto, uint8_t *mac);
