@@ -65,17 +65,17 @@ BuildRequires:	pkgconfig(lmdb)
 %endif
 
 %if 0%{?centos} == 7 || 0%{?rhel} == 7
-# disable XDP on old EL
 %define configure_xdp --enable-xdp=no
 %else
 %define use_xdp 1
-%if 0%{?rhel} >= 8 || 0%{?suse_version}
-# enable XDP on recent EL using embedded libbpf
+%if 0%{?rhel} == 8 || 0%{?suse_version}
+# Use the embedded libbpf
 %define use_xdp 1
-%define configure_xdp --enable-xdp=yes
+%define configure_xdp --enable-xdp=yes --enable-quic=yes
 BuildRequires:	pkgconfig(libelf)
 %else
 # XDP is auto-enabled when libbpf is present
+%define configure_xdp --enable-quic=yes
 BuildRequires:  pkgconfig(libbpf) >= 0.0.6
 %endif
 %endif
