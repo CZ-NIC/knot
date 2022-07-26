@@ -15,6 +15,7 @@ EXTRA_DIST += \
 	contrib/licenses/LGPL-2.0		\
 	contrib/licenses/LGPL-2.1		\
 	contrib/libbpf/LICENSE			\
+	contrib/libngtcp2/LICENSE		\
 	contrib/openbsd/LICENSE			\
 	contrib/ucw/LICENSE			\
 	contrib/url-parser/LICENSE		\
@@ -177,6 +178,9 @@ libembngtcp2_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libembngtcp2_LIBS        = libembngtcp2.la $(embedded_libngtcp2_LIBS) $(gnutls_LIBS)
 
 libembngtcp2_la_SOURCES = \
+	contrib/libngtcp2/ngtcp2/crypto/gnutls.c \
+	contrib/libngtcp2/ngtcp2/crypto/shared.c \
+	contrib/libngtcp2/ngtcp2/crypto/shared.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.c \
@@ -253,7 +257,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_version.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.h \
-	contrib/libngtcp2/ngtcp2/crypto/gnutls.c \
-	contrib/libngtcp2/ngtcp2/crypto/shared.c \
-	contrib/libngtcp2/ngtcp2/crypto/shared.h
+	contrib/libngtcp2/ngtcp2/ngtcp2.h \
+	contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h \
+	contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h \
+	contrib/libngtcp2/ngtcp2/version.h
 endif EMBEDDED_LIBNGTCP2
