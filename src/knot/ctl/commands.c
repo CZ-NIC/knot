@@ -1691,7 +1691,7 @@ static int server_status(ctl_args_t *args)
 		return KNOT_EOK;
 	}
 
-	char buff[2048] = "";
+	char buff[4096] = "";
 
 	int ret;
 	if (strcasecmp(type, "version") == 0) {
