@@ -579,7 +579,7 @@ AC_SUBST([embedded_libngtcp2_LIBS])
 AC_SUBST([libngtcp2_CFLAGS])
 AC_SUBST([libngtcp2_LIBS])
 
-AS_IF([test "$enable_quic" != "no"], [
+AS_IF([test "$enable_quic" != "no" -a "$enable_xdp" != "no"], [
   AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
 
 ############################################
