@@ -40,7 +40,7 @@
 #define LISTEN_BACKLOG		5
 
 /*! Default socket operations timeout in milliseconds. */
-#define DEFAULT_TIMEOUT		(5 * 1000)
+#define DEFAULT_TIMEOUT		(30 * 1000)
 
 /*! Accept poll timeout in milliseconds. */
 #define ACCEPT_TIMEOUT		(5 * 1000)
