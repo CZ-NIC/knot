@@ -72,6 +72,10 @@ override_dh_auto_install-arch:
 	# Some workarounds where XDP is unavailable
 	@if [ -f "$(CURDIR)/debian/tmp/usr/sbin/kxdpgun" ]; then \
 	  echo "XDP enabled"; \
+	  if grep -E -q "DoQ support: +no" "$(CURDIR)/debian/tmp/usr/sbin/knotd"; then \
+	    echo "Stripping the QUIC symbols"; \
+	    sed -i '/knot_xquic_/d' $(LIBKNOT_SYMBOLS); \
+	  fi \
 	else \
 	  echo "XDP disabled"; \
 	  touch $(CURDIR)/debian/tmp/usr/share/man/man8/kxdpgun.8; \
