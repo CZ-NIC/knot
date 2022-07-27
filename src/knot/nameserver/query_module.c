@@ -729,6 +729,7 @@ int knotd_mod_dnssec_init(knotd_mod_t *mod)
 	                           conf_bool(&conf) ? NULL : mod->id);
 	if (ret != KNOT_EOK) {
 		free(mod->dnssec);
+		mod->dnssec = NULL;
 		return ret;
 	}
 
