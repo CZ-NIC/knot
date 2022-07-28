@@ -93,7 +93,7 @@ log-queries
 
 If enabled, query messages will be logged.
 
-*Default:* on
+*Default:* ``on``
 
 .. _mod-dnstap_log-responses:
 
@@ -102,7 +102,7 @@ log-responses
 
 If enabled, response messages will be logged.
 
-*Default:* on
+*Default:* ``on``
 
 responses-with-queries
 ......................
@@ -110,4 +110,4 @@ responses-with-queries
 If enabled, dnstap ``AUTH_RESPONSE`` messages will also include the original
 query message as well as the response message sent by the server.
 
-*Default:* off
+*Default:* ``off``

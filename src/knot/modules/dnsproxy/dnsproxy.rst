@@ -81,7 +81,7 @@ timeout
 
 A remote response timeout in milliseconds.
 
-*Default:* 500
+*Default:* ``500`` (milliseconds)
 
 .. _mod-dnsproxy_address:
 
@@ -103,7 +103,7 @@ If enabled, locally unsatisfied queries leading to REFUSED (no zone) are forward
 If disabled, all queries are directly forwarded without any local attempts
 to resolve them.
 
-*Default:* on
+*Default:* ``on``
 
 .. _mod-dnsproxy_tcp-fastopen:
 
@@ -112,7 +112,7 @@ tcp-fastopen
 
 If enabled, TCP Fast Open is used when forwarding TCP queries.
 
-*Default:* off
+*Default:* ``off``
 
 .. _mod-dnsproxy_catch-nxdomain:
 
@@ -122,4 +122,4 @@ catch-nxdomain
 If enabled, locally unsatisfied queries leading to NXDOMAIN are forwarded.
 This option is only relevant in the fallback mode.
 
-*Default:* off
+*Default:* ``off``

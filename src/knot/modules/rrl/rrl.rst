@@ -83,7 +83,7 @@ a reasonably large prime due to better hash function distribution properties.
 Hash table is internally chained and works well up to a fill rate of 90 %, general
 rule of thumb is to select a prime near 1.2 * maximum_qps.
 
-*Default:* 393241
+*Default:* ``393241``
 
 .. _mod-rrl_slip:
 
@@ -119,7 +119,7 @@ noting, that some responses can't be truncated (e.g. SERVFAIL).
   legitimate requestors to reconnect using TCP. These attributes are inversely
   proportional to the configured value. Setting the value high is not advisable.
 
-*Default:* 1
+*Default:* ``1``
 
 .. _mod-rrl_whitelist:
 

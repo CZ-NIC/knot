@@ -234,9 +234,9 @@ Full path to the response configuration file as described above.
 ttl
 ...
 
-The time to live of Resource Records returned by the module.
+The time to live of Resource Records returned by the module, in seconds.
 
-*Default:* 60
+*Default:* ``60``
 
 .. _mod-geoip_mode:
 
@@ -252,7 +252,7 @@ Possible values:
   from the configured database.
 - ``weighted`` – Responses are tailored according to a statistical weight.
 
-*Default:* subnet
+*Default:* ``subnet``
 
 .. _mod-geoip_dnssec:
 

@@ -77,10 +77,10 @@ A module identifier.
 secret-lifetime
 ...............
 
-This option configures how often the Server Secret is regenerated.
+This option configures in seconds how often the Server Secret is regenerated.
 The maximum allowed value is 36 days (:rfc:`7873#section-7.1`).
 
-*Default:* 26 hours
+*Default:* ``26h`` (26 hours)
 
 .. _mod-cookies_badcookie-slip:
 
@@ -96,7 +96,7 @@ an invalid cookie by sending them the correct cookie.
 - The value **N > 2** means that the server responds to every N\ :sup:`th`
   query with an invalid cookie, the rest of the queries is dropped.
 
-*Default:* 1
+*Default:* ``1``
 
 .. _mod-cookies_secret:
 

@@ -65,4 +65,4 @@ every N\ :sup:`th` UDP reply is truncated.
    The rate value is associated with one UDP worker. If more UDP workers are
    configured, the specified value may not be obvious to clients.
 
-*Default:* 1
+*Default:* ``1``

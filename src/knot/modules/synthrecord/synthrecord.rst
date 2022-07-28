@@ -149,7 +149,7 @@ ttl
 
 Time to live of the generated records.
 
-*Default:* 3600
+*Default:* ``3600``
 
 .. _mod-synthrecord_network:
 
@@ -167,4 +167,4 @@ reverse-short
 
 If enabled, a shortened IPv6 address can be used for reverse record rdata synthesis.
 
-*Default:* on
+*Default:* ``on``
