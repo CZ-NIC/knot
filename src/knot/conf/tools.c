@@ -622,7 +622,7 @@ int check_policy(
 	conf_val_t dnskey_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 						   C_DNSKEY_TTL, args->id, args->id_len);
 	conf_val_t zone_max_ttl = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
-						     C_ZONE_MAX_TLL, args->id, args->id_len);
+						     C_ZONE_MAX_TTL, args->id, args->id_len);
 	conf_val_t nsec3 = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                      C_NSEC3, args->id, args->id_len);
 	conf_val_t nsec3_iters = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
