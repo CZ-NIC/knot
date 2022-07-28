@@ -227,14 +227,14 @@ test:debian:arm64:
 pkg:debian:symbols:libknot:
   variables:
     LIB_NAME: libknot
-    LIB_ABI: 12
+    LIB_ABI: 13
   <<: *debian_stable
   <<: *pkg_symbols
 
 pkg:debian:symbols:libdnssec:
   variables:
     LIB_NAME: libdnssec
-    LIB_ABI: 8
+    LIB_ABI: 9
   <<: *debian_stable
   <<: *pkg_symbols
 

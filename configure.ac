@@ -16,8 +16,8 @@ AC_CANONICAL_HOST
 
 # Update library versions
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-KNOT_LIB_VERSION([libknot],    12, 0, 0)
-KNOT_LIB_VERSION([libdnssec],   8, 0, 0)
+KNOT_LIB_VERSION([libknot],    13, 0, 0)
+KNOT_LIB_VERSION([libdnssec],   9, 0, 0)
 KNOT_LIB_VERSION([libzscanner], 4, 0, 0)
 
 AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)

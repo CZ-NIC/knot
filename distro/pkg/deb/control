@@ -42,8 +42,8 @@ Package: knot
 Architecture: any
 Depends:
  adduser,
- libdnssec8 (= ${binary:Version}),
- libknot12 (= ${binary:Version}),
+ libdnssec9 (= ${binary:Version}),
+ libknot13 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  lsb-base (>= 3.0-6),
  ${misc:Depends},
@@ -60,7 +60,7 @@ Description: Authoritative domain name server
  registry and hence is well suited to run anything from the root
  zone, the top-level domain, to many smaller standard domain names.
 
-Package: libknot12
+Package: libknot13
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -96,7 +96,7 @@ Description: DNS zone-parsing shared library from Knot DNS
  This package provides a fast zone parser shared library used by Knot
  DNS and Knot Resolver.
 
-Package: libdnssec8
+Package: libdnssec9
 Architecture: any
 Multi-Arch: same
 Depends:
@@ -117,9 +117,9 @@ Description: DNSSEC shared library from Knot DNS
 Package: libknot-dev
 Architecture: any
 Depends:
- libdnssec8 (= ${binary:Version}),
+ libdnssec9 (= ${binary:Version}),
  libgnutls28-dev,
- libknot12 (= ${binary:Version}),
+ libknot13 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -137,8 +137,8 @@ Description: Knot DNS shared library development files
 Package: knot-dnsutils
 Architecture: any
 Depends:
- libdnssec8 (= ${binary:Version}),
- libknot12 (= ${binary:Version}),
+ libdnssec9 (= ${binary:Version}),
+ libknot13 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -164,8 +164,8 @@ Description: DNS clients provided with Knot DNS (kdig, knsupdate)
 Package: knot-dnssecutils
 Architecture: any
 Depends:
- libdnssec8 (= ${binary:Version}),
- libknot12 (= ${binary:Version}),
+ libdnssec9 (= ${binary:Version}),
+ libknot13 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -186,8 +186,8 @@ Description: DNSSEC tools provided with Knot DNS
 Package: knot-host
 Architecture: any
 Depends:
- libdnssec8 (= ${binary:Version}),
- libknot12 (= ${binary:Version}),
+ libdnssec9 (= ${binary:Version}),
+ libknot13 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
