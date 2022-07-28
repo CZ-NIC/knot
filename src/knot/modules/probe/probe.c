@@ -38,7 +38,7 @@
 const yp_item_t probe_conf[] = {
 	{ MOD_PATH,     YP_TSTR, YP_VNONE },
 	{ MOD_CHANNELS, YP_TINT, YP_VINT = { 1, UINT16_MAX, 1 } },
-	{ MOD_MAX_RATE, YP_TINT, YP_VINT = { 0, UINT32_MAX, 1000 } },
+	{ MOD_MAX_RATE, YP_TINT, YP_VINT = { 0, UINT32_MAX, 100000 } },
 	{ NULL }
 };
 
