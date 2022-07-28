@@ -86,4 +86,4 @@ Maximum number of queries/replies per second the probe is allowed to transfer.
 If the limit is exceeded, the over-limit traffic is ignored. Zero value means
 no limit.
 
-*Default:* ``1000``
+*Default:* ``100000`` (one hundred thousand)
