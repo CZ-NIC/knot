@@ -171,7 +171,7 @@
 #define C_ZONEMD_GENERATE	"\x0F""zonemd-generate"
 #define C_ZONEMD_VERIFY		"\x0D""zonemd-verify"
 #define C_ZONE_MAX_SIZE		"\x0D""zone-max-size"
-#define C_ZONE_MAX_TLL		"\x0C""zone-max-ttl"
+#define C_ZONE_MAX_TTL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
 
