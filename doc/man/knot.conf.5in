@@ -1026,6 +1026,7 @@ keystore:
   \- id: STR
     backend: pem | pkcs11
     config: STR
+    key_label: BOOL
 .ft P
 .fi
 .UNINDENT
@@ -1070,6 +1071,12 @@ Example configuration string for PKCS #11:
 .UNINDENT
 .sp
 \fIDefault:\fP \fI\%kasp\-db\fP\fB/keys\fP
+.SS key\-label
+.sp
+If enabled in combination with the PKCS #11 \fI\%backend\fP, generated keys
+are labeled in the form \fB<zone_name> KSK|ZSK\fP\&.
+.sp
+\fIDefault:\fP \fBoff\fP
 .SH KEY SECTION
 .sp
 Shared TSIG keys used to authenticate communication with the server.
