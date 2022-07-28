@@ -588,9 +588,14 @@ int check_keystore(
 	                                        C_BACKEND, args->id, args->id_len);
 	conf_val_t config = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_KEYSTORE,
 	                                       C_CONFIG, args->id, args->id_len);
-
+	conf_val_t key_label = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_KEYSTORE,
+	                                          C_KEY_LABEL, args->id, args->id_len);
 	if (conf_opt(&backend) == KEYSTORE_BACKEND_PKCS11 && conf_str(&config) == NULL) {
 		args->err_str = "no PKCS #11 configuration defined";
+		return KNOT_EINVAL;
+	}
+	if (conf_opt(&backend) != KEYSTORE_BACKEND_PKCS11 && conf_bool(&key_label)) {
+		args->err_str = "key labels not supported with the specified keystore";
 		return KNOT_EINVAL;
 	}
 

@@ -1141,6 +1141,7 @@ DNSSEC keystore configuration.
    - id: STR
      backend: pem | pkcs11
      config: STR
+     key_label: BOOL
 
 .. _keystore_id:
 
@@ -1179,6 +1180,16 @@ a configuration string for PKCS #11 storage (`<pkcs11-url> <module-path>`).
      "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
 
 *Default:* :ref:`kasp-db<database_kasp-db>`\ ``/keys``
+
+.. _keystore_key-label:
+
+key-label
+---------
+
+If enabled in combination with the PKCS #11 :ref:`keystore_backend`, generated keys
+are labeled in the form ``<zone_name> KSK|ZSK``.
+
+*Default:* ``off``
 
 .. _Key section:
 

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -315,7 +315,7 @@ void free_key_params(key_params_t *parm)
 }
 
 int zone_init_keystore(conf_t *conf, conf_val_t *policy_id,
-                       dnssec_keystore_t **keystore, unsigned *backend)
+                       dnssec_keystore_t **keystore, unsigned *backend, bool *key_label)
 {
 	char *zone_path = conf_db(conf, C_KASP_DB);
 	if (zone_path == NULL) {
@@ -332,6 +332,11 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id,
 
 	val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, &keystore_id);
 	const char *config = conf_str(&val);
+
+	if (key_label != NULL) {
+		val = conf_id_get(conf, C_KEYSTORE, C_KEY_LABEL, &keystore_id);
+		*key_label = conf_bool(&val);
+	}
 
 	int ret = keystore_load(config, _backend, zone_path, keystore);
 

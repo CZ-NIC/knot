@@ -129,6 +129,7 @@ typedef struct {
 	bool ds_push;
 	bool offline_ksk;
 	bool incremental;
+	bool key_label;
 	unsigned unsafe;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??

@@ -22,6 +22,7 @@
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
+#include "contrib/openbsd/strlcat.h"
 
 #define MAX_KEY_INFO 128
 
@@ -48,6 +49,7 @@ void normalize_generate_flags(kdnssec_generate_flags_t *flags)
 
 static int generate_dnssec_key(dnssec_keystore_t *keystore,
                                const knot_dname_t *zone_name,
+                               const char *key_label,
                                dnssec_key_algorithm_t alg,
                                unsigned size,
                                kdnssec_generate_flags_t flags,
@@ -57,7 +59,7 @@ static int generate_dnssec_key(dnssec_keystore_t *keystore,
 	*key = NULL;
 	*id = NULL;
 
-	int ret = dnssec_keystore_generate(keystore, alg, size, NULL, id);
+	int ret = dnssec_keystore_generate(keystore, alg, size, key_label, id);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -111,11 +113,21 @@ static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
 	unsigned size = (flags & DNSKEY_GENERATE_KSK) ? ctx->policy->ksk_size :
 	                                                ctx->policy->zsk_size;
 
+	const char *label = NULL;
+
+	char label_buf[sizeof(knot_dname_txt_storage_t) + 16];
+	if (ctx->policy->key_label &&
+	    knot_dname_to_str(label_buf, ctx->zone->dname, sizeof(label_buf)) != NULL) {
+		const char *key_type = (flags & DNSKEY_GENERATE_KSK) ? " KSK" : " ZSK" ;
+		strlcat(label_buf, key_type, sizeof(label_buf));
+		label = label_buf;
+	}
+
 	for (size_t i = 0; i < GENERATE_KEYTAG_ATTEMPTS; i++) {
 		dnssec_key_free(*key);
 		free(*id);
 
-		int ret = generate_dnssec_key(ctx->keystore, ctx->zone->dname,
+		int ret = generate_dnssec_key(ctx->keystore, ctx->zone->dname, label,
 		                              ctx->policy->algorithm, size, flags,
 		                              id, key);
 		if (ret != KNOT_EOK) {

@@ -76,6 +76,7 @@
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
 #define C_KEY_FILE		"\x08""key-file"
+#define C_KEY_LABEL		"\x09""key-label"
 #define C_KSK_LIFETIME		"\x0C""ksk-lifetime"
 #define C_KSK_SBM		"\x0E""ksk-submission"
 #define C_KSK_SHARED		"\x0a""ksk-shared"
