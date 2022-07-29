@@ -216,6 +216,7 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	const char *value = (*data)[KNOT_CTL_IDX_DATA];
 
 	bool col = false;
+	const char *status_col = "";
 
 	const char *sign = NULL;
 	if (ctl_has_flag(flags, CTL_FLAG_ADD)) {
@@ -246,6 +247,10 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 		break;
 	case CTL_ZONE_STATUS:
 		col = !args->extended;
+		if (type != NULL && strcmp(type, "role") == 0) {
+			status_col = strcmp(value, "master") == 0 ? COL_GRN(col) :
+			                                            COL_RED(col);
+		}
 		// FALLTHROUGH
 	case CTL_ZONE_RELOAD:
 	case CTL_ZONE_REFRESH:
@@ -270,7 +275,7 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 			       (error != NULL ? "error: "     : ""),
 			       (zone  != NULL ? "["           : ""),
 			       (zone  != NULL ? COL_BOLD(col) : ""),
-			       (zone  != NULL ? COL_GRN(col)  : ""),
+			       (zone  != NULL ? status_col    : ""),
 			       (zone  != NULL ? zone          : ""),
 			       (zone  != NULL ? COL_RST(col)  : ""),
 			       (zone  != NULL ? "]"           : ""),
