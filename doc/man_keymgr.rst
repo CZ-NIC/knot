@@ -46,6 +46,9 @@ Options
   TSIG key is only displayed on `stdout`: the command does not create a file, nor include the
   key in a keystore.
 
+**-e**, **--extended**
+  Extended output (listing of keys with full description).
+
 **-j**, **--json**
   Print the zones or keys in JSON format.
 
@@ -58,9 +61,6 @@ Options
 
 **-X**, **--color**
   Force colorized output in the normal mode.
-
-**-v**, **--verbose**
-  Listing of keys with full description.
 
 **-h**, **--help**
   Print the program help.

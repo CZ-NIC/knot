@@ -69,6 +69,9 @@ bit length of the key by number (default: optimal length given by algorithm). Th
 TSIG key is only displayed on \fIstdout\fP: the command does not create a file, nor include the
 key in a keystore.
 .TP
+\fB\-e\fP, \fB\-\-extended\fP
+Extended output (listing of keys with full description).
+.TP
 \fB\-j\fP, \fB\-\-json\fP
 Print the zones or keys in JSON format.
 .TP
@@ -81,9 +84,6 @@ Don\(aqt generate colorized output.
 .TP
 \fB\-X\fP, \fB\-\-color\fP
 Force colorized output in the normal mode.
-.TP
-\fB\-v\fP, \fB\-\-verbose\fP
-Listing of keys with full description.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.

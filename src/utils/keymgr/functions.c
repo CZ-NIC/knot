@@ -964,7 +964,7 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 		return KNOT_EOK;
 	}
 
-	if (params->verbose) {
+	if (params->extended) {
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 			knot_kasp_key_t *key = &ctx->zone->keys[i];
 			print_key_full(key, params->format);

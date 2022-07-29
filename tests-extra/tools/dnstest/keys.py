@@ -90,7 +90,7 @@ class Keymgr(object):
     def run(cls, conf_file, *args):
         cmdline = [dnstest.params.keymgr_bin]
         if conf_file:
-            cmdline += ["-c", conf_file, "-v"]
+            cmdline += ["-c", conf_file, "-e"]
         cmdline += list(args)
 
         cmd = Popen(cmdline, stdout=PIPE, stderr=PIPE, universal_newlines=True)

@@ -43,11 +43,11 @@ static void print_help(void)
 	       "                            (default %s)\n"
 	       "  -D, --dir <path>         Path to a KASP database directory, use default configuration.\n"
 	       "  -t, --tsig <name> [alg]  Generate a TSIG key.\n"
+	       "  -e, --extended           Extended output (listing of keys with full description).\n"
 	       "  -j, --json               Print the zones or keys in JSON format.\n"
 	       "  -l, --list               List all zones that have at least one key in KASP database.\n"
 	       "  -x, --mono               Don't color the output.\n"
 	       "  -X, --color              Force output colorization in the normal mode.\n"
-	       "  -v, --verbose            Listing of keys with full description.\n"
 	       "  -h, --help               Print the program help.\n"
 	       "  -V, --version            Print the program version.\n"
 	       "\n"
@@ -292,18 +292,18 @@ main_end:
 int main(int argc, char *argv[])
 {
 	struct option opts[] = {
-		{ "config",  required_argument, NULL, 'c' },
-		{ "confdb",  required_argument, NULL, 'C' },
-		{ "dir",     required_argument, NULL, 'D' },
-		{ "tsig",    required_argument, NULL, 't' },
-		{ "list",    no_argument,       NULL, 'l' },
-		{ "brief",   no_argument,       NULL, 'b' }, // Legacy.
-		{ "mono",    no_argument,       NULL, 'x' },
-		{ "color",   no_argument,       NULL, 'X' },
-		{ "verbose", no_argument,       NULL, 'v' },
-		{ "help",    no_argument,       NULL, 'h' },
-		{ "version", no_argument,       NULL, 'V' },
-		{ "json",    no_argument,       NULL, 'j' },
+		{ "config",   required_argument, NULL, 'c' },
+		{ "confdb",   required_argument, NULL, 'C' },
+		{ "dir",      required_argument, NULL, 'D' },
+		{ "tsig",     required_argument, NULL, 't' },
+		{ "extended", no_argument,       NULL, 'e' },
+		{ "list",     no_argument,       NULL, 'l' },
+		{ "brief",    no_argument,       NULL, 'b' }, // Legacy.
+		{ "mono",     no_argument,       NULL, 'x' },
+		{ "color",    no_argument,       NULL, 'X' },
+		{ "help",     no_argument,       NULL, 'h' },
+		{ "version",  no_argument,       NULL, 'V' },
+		{ "json",     no_argument,       NULL, 'j' },
 		{ NULL }
 	};
 
@@ -316,7 +316,7 @@ int main(int argc, char *argv[])
 	list_params.color = isatty(STDOUT_FILENO);
 
 	int opt = 0, parm = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:D:t:jlbxXvhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:D:t:ejlbxXhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
@@ -343,6 +343,9 @@ int main(int argc, char *argv[])
 				goto failure;
 			}
 			goto success;
+		case 'e':
+			list_params.extended = true;
+			break;
 		case 'j':
 			list_params.json = true;
 			break;
@@ -357,9 +360,6 @@ int main(int argc, char *argv[])
 			break;
 		case 'X':
 			list_params.color = true;
-			break;
-		case 'v':
-			list_params.verbose = true;
 			break;
 		case 'h':
 			print_help();
