@@ -270,6 +270,7 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP_IDLE_RESET,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 20, YP_STIME } },
 	{ C_TCP_RESEND,           YP_TINT,  YP_VINT = { 1, INT32_MAX, 5, YP_STIME } },
 	{ C_ROUTE_CHECK,          YP_TBOOL, YP_VNONE },
+	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
@@ -313,6 +314,7 @@ static const yp_item_t desc_database[] = {
 	{ C_CATALOG_DB,          YP_TSTR,  YP_VSTR = { "catalog" } },
 	{ C_CATALOG_DB_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
+	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
@@ -512,7 +514,7 @@ const yp_item_t conf_schema[] = {
 	{ C_KEYSTORE, YP_TGRP, YP_VGRP = { desc_keystore }, YP_FMULTI, { check_keystore } },
 	{ C_KEY,      YP_TGRP, YP_VGRP = { desc_key }, YP_FMULTI, { check_key } },
 	{ C_RMT,      YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
-        { C_RMTS,     YP_TGRP, YP_VGRP = { desc_remotes }, YP_FMULTI, { check_remotes } },
+	{ C_RMTS,     YP_TGRP, YP_VGRP = { desc_remotes }, YP_FMULTI, { check_remotes } },
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_SBM,      YP_TGRP, YP_VGRP = { desc_submission }, YP_FMULTI },
 	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
