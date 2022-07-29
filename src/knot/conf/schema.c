@@ -257,6 +257,7 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP_IDLE_CLOSE,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },
 	{ C_TCP_IDLE_RESET,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 20, YP_STIME } },
 	{ C_ROUTE_CHECK,          YP_TBOOL, YP_VNONE },
+	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
@@ -300,6 +301,7 @@ static const yp_item_t desc_database[] = {
 	{ C_CATALOG_DB,          YP_TSTR,  YP_VSTR = { "catalog" } },
 	{ C_CATALOG_DB_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
+	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
