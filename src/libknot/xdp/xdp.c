@@ -16,9 +16,8 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <netinet/in.h>
 #include <linux/if_ether.h>
-#include <linux/ip.h>
-#include <linux/ipv6.h>
 #include <linux/udp.h>
 #include <stddef.h>
 #include <stdlib.h>
