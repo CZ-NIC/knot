@@ -21,7 +21,6 @@
 #include <linux/ipv6.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
-#include <netinet/in.h>
 #include <string.h>
 
 #include "libknot/endian.h"

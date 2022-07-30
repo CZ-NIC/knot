@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #ifdef ENABLE_XDP
+#include <netinet/in.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/udp.h>

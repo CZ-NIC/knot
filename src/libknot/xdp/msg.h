@@ -27,7 +27,7 @@
 
 #include <stdint.h>
 #include <linux/if_ether.h>
-#include <linux/ipv6.h>
+#include <netinet/in.h>
 #include <sys/uio.h>
 
 /*! \brief Message flags. */
