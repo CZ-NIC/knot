@@ -268,7 +268,7 @@ int ip_route_get(const struct sockaddr_storage *ip,
 			return ret;
 		}
 		if (last_via.ss_family == ip->ss_family) { // not AF_UNSPEC
-			memcpy(via, &last_via, sockaddr_len(via));
+			memcpy(via, &last_via, sizeof(*via));
 		}
 
 		// next loop will search for path to "via"
