@@ -262,10 +262,9 @@ static void shuffle_sockaddr6(struct sockaddr_in6 *dst, struct sockaddr_in6 *src
 {
 	memcpy(&dst->sin6_addr, &src->sin6_addr, sizeof(dst->sin6_addr));
 	if (increment > 0) {
-		uint32_t *dst_addr = (uint32_t *)&dst->sin6_addr;
-		uint32_t *src_addr = (uint32_t *)&src->sin6_addr;
-		dst_addr[2] = htobe32(be32toh(src_addr[2]) + (increment >> 32));
-		dst_addr[3] = htobe32(be32toh(src_addr[3]) + (increment & 0xffffffff));
+		uint64_t *dst_addr = (uint64_t *)&dst->sin6_addr;
+		uint64_t *src_addr = (uint64_t *)&src->sin6_addr;
+		dst_addr[1] = htobe64(be64toh(src_addr[1]) + increment);
 	}
 }
 
