@@ -572,7 +572,9 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	}
 
 	struct sockaddr_storage via = { 0 };
-	int ret = ip_route_get(&ctx->target_ip, &via, &ctx->local_ip, ctx->dev);
+	char auto_dev[IFNAMSIZ];
+	int ret = ip_route_get(&ctx->target_ip, &via, &ctx->local_ip,
+	                       (ctx->dev[0] == '\0') ? ctx->dev : auto_dev);
 	if (ret < 0) {
 		printf("can't find route to `%s`: %s\n", target_str, strerror(-ret));
 		return false;
