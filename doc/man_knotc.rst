@@ -84,7 +84,9 @@ Actions
 
 **zone-status** [*zone*...] [*filter*]
   Show the zone status. Filters are **+role**, **+serial**, **+transaction**,
-  **+events**, **+freeze**, and **+catalog**.
+  **+events**, **+freeze**, and **+catalog**. Empty zone parameters are omitted,
+  unless the **--extended** option is used. A single dash in the output represents
+  an unset value.
 
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For

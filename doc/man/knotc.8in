@@ -107,7 +107,9 @@ when semantic check warning appears. (*)
 .TP
 \fBzone\-status\fP [\fIzone\fP\&...] [\fIfilter\fP]
 Show the zone status. Filters are \fB+role\fP, \fB+serial\fP, \fB+transaction\fP,
-\fB+events\fP, \fB+freeze\fP, and \fB+catalog\fP\&.
+\fB+events\fP, \fB+freeze\fP, and \fB+catalog\fP\&. Empty zone parameters are omitted,
+unless the \fB\-\-extended\fP option is used. A single dash in the output represents
+an unset value.
 .TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
 Trigger a zone reload from a disk without checking its modification time. For
