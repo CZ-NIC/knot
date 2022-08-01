@@ -218,6 +218,8 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	bool col = false;
 	char status_col[32] = "";
 
+	static bool first_status_item = true;
+
 	const char *sign = NULL;
 	if (ctl_has_flag(flags, CTL_FLAG_DIFF_ADD)) {
 		sign = CTL_FLAG_DIFF_ADD;
@@ -291,6 +293,9 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 			*empty = false;
 		}
 		if (args->desc->cmd == CTL_ZONE_STATUS && type != NULL) {
+			if (data_type == KNOT_CTL_TYPE_DATA) {
+				first_status_item = true;
+			}
 			if (!args->extended &&
 			    (value == 0 || strcmp(value, STATUS_EMPTY) == 0) &&
 			    strcmp(type, "serial") != 0) {
@@ -298,8 +303,9 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 			}
 
 			printf("%s %s: %s%s%s",
-			       (data_type != KNOT_CTL_TYPE_DATA ? " |" : ""),
+			       (first_status_item ? "" : " |"),
 			       type, COL_BOLD(col), value, COL_RST(col));
+			first_status_item = false;
 		}
 		break;
 	case CTL_CONF_COMMIT: // Can return a check error context.
