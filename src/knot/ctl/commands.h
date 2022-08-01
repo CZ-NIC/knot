@@ -21,8 +21,9 @@
 
 #define CTL_FLAG_FORCE		"F"
 #define CTL_FLAG_BLOCKING	"B"
-#define CTL_FLAG_ADD		"+"
-#define CTL_FLAG_REM		"-"
+
+#define CTL_FLAG_DIFF_ADD	"+"
+#define CTL_FLAG_DIFF_REM	"-"
 
 #define CTL_FLAG_LIST_SCHEMA	"s"
 #define CTL_FLAG_LIST_TXN	"t"

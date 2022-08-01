@@ -1039,7 +1039,7 @@ static int zone_txn_get(zone_t *zone, ctl_args_t *args)
 
 static int send_changeset_part(changeset_t *ch, send_ctx_t *ctx, bool from)
 {
-	ctx->data[KNOT_CTL_IDX_FLAGS] = from ? CTL_FLAG_REM : CTL_FLAG_ADD;
+	ctx->data[KNOT_CTL_IDX_FLAGS] = from ? CTL_FLAG_DIFF_REM : CTL_FLAG_DIFF_ADD;
 
 	// Send SOA only if explicitly changed.
 	if (ch->soa_to != NULL) {
@@ -1106,7 +1106,7 @@ static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
 
 	// FULL update has no changeset to print, do a 'get' instead.
 	if (zone->control_update->flags & UPDATE_FULL) {
-		return zone_flag_txn_get(zone, args, CTL_FLAG_ADD);
+		return zone_flag_txn_get(zone, args, CTL_FLAG_DIFF_ADD);
 	}
 
 	send_ctx_t *ctx = &ctl_globals.send_ctx;
@@ -1980,8 +1980,8 @@ static int send_block(conf_io_t *io)
 
 	// Get the item prefix.
 	switch (io->type) {
-	case NEW: data[KNOT_CTL_IDX_FLAGS] = CTL_FLAG_ADD; break;
-	case OLD: data[KNOT_CTL_IDX_FLAGS] = CTL_FLAG_REM; break;
+	case NEW: data[KNOT_CTL_IDX_FLAGS] = CTL_FLAG_DIFF_ADD; break;
+	case OLD: data[KNOT_CTL_IDX_FLAGS] = CTL_FLAG_DIFF_REM; break;
 	default: break;
 	}
 

@@ -219,10 +219,10 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	const char *status_col = "";
 
 	const char *sign = NULL;
-	if (ctl_has_flag(flags, CTL_FLAG_ADD)) {
-		sign = CTL_FLAG_ADD;
-	} else if (ctl_has_flag(flags, CTL_FLAG_REM)) {
-		sign = CTL_FLAG_REM;
+	if (ctl_has_flag(flags, CTL_FLAG_DIFF_ADD)) {
+		sign = CTL_FLAG_DIFF_ADD;
+	} else if (ctl_has_flag(flags, CTL_FLAG_DIFF_REM)) {
+		sign = CTL_FLAG_DIFF_REM;
 	}
 
 	switch (args->desc->cmd) {
