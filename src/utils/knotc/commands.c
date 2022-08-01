@@ -248,7 +248,9 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 		}
 		break;
 	case CTL_ZONE_STATUS:
-		col = args->extended ? args->color_force : args->color;
+		if (error == NULL) {
+			col =  args->extended ? args->color_force : args->color;
+		}
 		if (!ctl_has_flag(flags, CTL_FLAG_STATUS_EMPTY)) {
 			strlcat(status_col, COL_BOLD(col), sizeof(status_col));
 		}
