@@ -241,6 +241,8 @@ int process_cmd(int argc, const char **argv, params_t *params)
 		.argv = argv + 1,
 		.force = params->force,
 		.extended = params->extended,
+		.color = params->color,
+		.color_force = params->color_force,
 		.blocking = params->blocking
 	};
 

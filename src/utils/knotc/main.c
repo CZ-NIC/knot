@@ -16,6 +16,7 @@
 
 #include <getopt.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "contrib/strtonum.h"
 #include "knot/common/log.h"
@@ -45,6 +46,8 @@ static void print_help(void)
 	       " -b, --blocking	          "SPACE"Zone event trigger commands wait until the event is finished.\n"
 	       " -e, --extended           "SPACE"Show extended output.\n"
 	       " -f, --force              "SPACE"Forced operation. Overrides some checks.\n"
+	       " -x, --mono               "SPACE"Don't color the output.\n"
+	       " -X, --color              "SPACE"Force output colorization.\n"
 	       " -v, --verbose            "SPACE"Enable debug output.\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n",
@@ -71,6 +74,8 @@ int main(int argc, char **argv)
 		{ "blocking",      no_argument,       NULL, 'b' },
 		{ "extended",      no_argument,       NULL, 'e' },
 		{ "force",         no_argument,       NULL, 'f' },
+		{ "mono",          no_argument,       NULL, 'x' },
+		{ "color",         no_argument,       NULL, 'X' },
 		{ "verbose",       no_argument,       NULL, 'v' },
 		{ "help",          no_argument,       NULL, 'h' },
 		{ "version",       no_argument,       NULL, 'V' },
@@ -80,9 +85,12 @@ int main(int argc, char **argv)
 	/* Set the time zone. */
 	tzset();
 
+	params.color = isatty(STDOUT_FILENO);
+	params.color_force = false;
+
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:befvhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:befxXvhV", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			params.orig_config = optarg;
@@ -120,6 +128,13 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			params.verbose = true;
+			break;
+		case 'x':
+			params.color = false;
+			break;
+		case 'X':
+			params.color = true;
+			params.color_force = true;
 			break;
 		case 'h':
 			print_help();

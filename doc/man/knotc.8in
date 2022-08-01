@@ -72,6 +72,12 @@ Show extended output (even empty items in zone status).
 \fB\-f\fP, \fB\-\-force\fP
 Forced operation. Overrides some checks.
 .TP
+\fB\-x\fP, \fB\-\-mono\fP
+Don\(aqt generate colorized output.
+.TP
+\fB\-X\fP, \fB\-\-color\fP
+Force colorized output in extended output or to a pipe.
+.TP
 \fB\-v\fP, \fB\-\-verbose\fP
 Enable debug output.
 .TP
@@ -109,7 +115,8 @@ when semantic check warning appears. (*)
 Show the zone status. Filters are \fB+role\fP, \fB+serial\fP, \fB+transaction\fP,
 \fB+events\fP, \fB+freeze\fP, and \fB+catalog\fP\&. Empty zone parameters are omitted,
 unless the \fB\-\-extended\fP option is used. A single dash in the output represents
-an unset value.
+an unset value. Automatic colorization can be overruled using the \fB\-\-mono\fP and
+\fB\-\-color\fP options.
 .TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
 Trigger a zone reload from a disk without checking its modification time. For

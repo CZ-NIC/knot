@@ -49,6 +49,12 @@ Options
 **-f**, **--force**
   Forced operation. Overrides some checks.
 
+**-x**, **--mono**
+  Don't generate colorized output.
+
+**-X**, **--color**
+  Force colorized output in extended output or to a pipe.
+
 **-v**, **--verbose**
   Enable debug output.
 
@@ -86,7 +92,8 @@ Actions
   Show the zone status. Filters are **+role**, **+serial**, **+transaction**,
   **+events**, **+freeze**, and **+catalog**. Empty zone parameters are omitted,
   unless the **--extended** option is used. A single dash in the output represents
-  an unset value.
+  an unset value. Automatic colorization can be overruled using the **--mono** and
+  **--color** options.
 
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For

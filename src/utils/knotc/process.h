@@ -33,6 +33,8 @@ typedef struct {
 	bool force;
 	bool blocking;
 	int timeout;
+	bool color;
+	bool color_force;
 } params_t;
 
 /*!
