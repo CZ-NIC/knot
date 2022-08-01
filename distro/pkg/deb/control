@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 Maintainer: Knot DNS <knot-dns@labs.nic.cz>
 Uploaders:
- Tomas Krizek <tomas.krizek@nic.cz>,
+ Jakub Ružička <jakub.ruzicka@nic.cz>,
  Daniel Salzman <daniel.salzman@nic.cz>,
 Build-Depends-Indep:
  python3-setuptools,
