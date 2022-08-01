@@ -29,6 +29,10 @@
 #define CTL_FLAG_LIST_TXN	"t"
 #define CTL_FLAG_LIST_ZONES	"z"
 
+#define CTL_FLAG_STATUS_EMPTY	"e"
+#define CTL_FLAG_STATUS_SLAVE	"s"
+#define CTL_FLAG_STATUS_MEMBER	"m"
+
 #define CTL_FILTER_FLUSH_OUTDIR		'd'
 
 #define CTL_FILTER_STATUS_ROLE		'r'

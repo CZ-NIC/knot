@@ -216,7 +216,7 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	const char *value = (*data)[KNOT_CTL_IDX_DATA];
 
 	bool col = false;
-	const char *status_col = "";
+	char status_col[32] = "";
 
 	const char *sign = NULL;
 	if (ctl_has_flag(flags, CTL_FLAG_DIFF_ADD)) {
@@ -247,9 +247,16 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 		break;
 	case CTL_ZONE_STATUS:
 		col = !args->extended;
-		if (type != NULL && strcmp(type, "role") == 0) {
-			status_col = strcmp(value, "master") == 0 ? COL_GRN(col) :
-			                                            COL_RED(col);
+		if (!ctl_has_flag(flags, CTL_FLAG_STATUS_EMPTY)) {
+			strlcat(status_col, COL_BOLD(col), sizeof(status_col));
+		}
+		if (ctl_has_flag(flags, CTL_FLAG_STATUS_SLAVE)) {
+			strlcat(status_col, COL_RED(col), sizeof(status_col));
+		} else {
+			strlcat(status_col, COL_GRN(col), sizeof(status_col));
+		}
+		if (ctl_has_flag(flags, CTL_FLAG_STATUS_MEMBER)) {
+			strlcat(status_col, COL_UNDR(col), sizeof(status_col));
 		}
 		// FALLTHROUGH
 	case CTL_ZONE_RELOAD:
@@ -270,11 +277,10 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	case CTL_ZONE_ABORT:
 	case CTL_ZONE_PURGE:
 		if (data_type == KNOT_CTL_TYPE_DATA) {
-			printf("%s%s%s%s%s%s%s%s%s%s%s",
+			printf("%s%s%s%s%s%s%s%s%s%s",
 			       (!(*empty)     ? "\n"          : ""),
 			       (error != NULL ? "error: "     : ""),
 			       (zone  != NULL ? "["           : ""),
-			       (zone  != NULL ? COL_BOLD(col) : ""),
 			       (zone  != NULL ? status_col    : ""),
 			       (zone  != NULL ? zone          : ""),
 			       (zone  != NULL ? COL_RST(col)  : ""),

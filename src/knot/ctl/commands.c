@@ -223,9 +223,24 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
+	char flags[16] = "";
 	knot_ctl_data_t data = {
-		[KNOT_CTL_IDX_ZONE] = name
+		[KNOT_CTL_IDX_ZONE] = name,
+		[KNOT_CTL_IDX_FLAGS] = flags
 	};
+
+	const bool slave = zone_is_slave(conf(), zone);
+	if (slave) {
+		strlcat(flags, CTL_FLAG_STATUS_SLAVE, sizeof(flags));
+	}
+	const bool empty = (zone->contents == NULL);
+	if (empty) {
+		strlcat(flags, CTL_FLAG_STATUS_EMPTY, sizeof(flags));
+	}
+	const bool member = (zone->flags & ZONE_IS_CAT_MEMBER);
+	if (member) {
+		strlcat(flags, CTL_FLAG_STATUS_MEMBER, sizeof(flags));
+	}
 
 	int ret;
 	char buff[128];
@@ -234,7 +249,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_ROLE)) {
 		data[KNOT_CTL_IDX_TYPE] = "role";
 
-		if (zone_is_slave(conf(), zone)) {
+		if (slave) {
 			data[KNOT_CTL_IDX_DATA] = "slave";
 		} else {
 			data[KNOT_CTL_IDX_DATA] = "master";
@@ -251,12 +266,12 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_SERIAL)) {
 		data[KNOT_CTL_IDX_TYPE] = "serial";
 
-		if (zone->contents != NULL) {
+		if (empty) {
+			ret = snprintf(buff, sizeof(buff), STATUS_EMPTY);
+		} else {
 			knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
 			                                     KNOT_RRTYPE_SOA);
 			ret = snprintf(buff, sizeof(buff), "%u", knot_soa_serial(soa->rdata));
-		} else {
-			ret = snprintf(buff, sizeof(buff), STATUS_EMPTY);
 		}
 		if (ret < 0 || ret >= sizeof(buff)) {
 			return KNOT_ESPACE;
@@ -283,7 +298,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		}
 	}
 
-	bool ufrozen = zone->events.ufrozen;
+	const bool ufrozen = zone->events.ufrozen;
 	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_FREEZE)) {
 		data[KNOT_CTL_IDX_TYPE] = "freeze";
 		if (ufrozen) {
@@ -323,7 +338,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		data[KNOT_CTL_IDX_TYPE] = "catalog";
 		data[KNOT_CTL_IDX_DATA] = buf;
 
-		if (zone->flags & ZONE_IS_CAT_MEMBER) {
+		if (member) {
 			const knot_dname_t *catz;
 			const char *group;
 			void *to_free;
