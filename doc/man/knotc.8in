@@ -117,6 +117,11 @@ Show the zone status. Filters are \fB+role\fP, \fB+serial\fP, \fB+transaction\fP
 unless the \fB\-\-extended\fP option is used. A single dash in the output represents
 an unset value. Automatic colorization can be overruled using the \fB\-\-mono\fP and
 \fB\-\-color\fP options.
+.sp
+The color code is:
+\fIgreen\fP \- zone acts as a master / \fIred\fP \- zone acts as a slave,
+\fIbold font (highlited)\fP \- zone is active / \fInormal\fP \- zone is empty,
+\fIunderscored\fP \- zone is an interpreted catalog member.
 .TP
 \fBzone\-reload\fP [\fIzone\fP\&...]
 Trigger a zone reload from a disk without checking its modification time. For
