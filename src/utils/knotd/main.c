@@ -466,7 +466,6 @@ int main(int argc, char **argv)
 
 	/* Initialize cryptographic backend. */
 	dnssec_crypto_init();
-	atexit(dnssec_crypto_cleanup);
 
 	/* Initialize pseudorandom number generator. */
 	srand(time(NULL));
@@ -481,6 +480,7 @@ int main(int argc, char **argv)
 	int ret = set_config(confdb, config, max_conf_size);
 	if (ret != KNOT_EOK) {
 		log_close();
+		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
 	}
 
@@ -494,6 +494,7 @@ int main(int argc, char **argv)
 		log_fatal("failed to initialize server (%s)", knot_strerror(ret));
 		conf_free(conf());
 		log_close();
+		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
 	}
 
@@ -506,6 +507,7 @@ int main(int argc, char **argv)
 		server_deinit(&server);
 		conf_free(conf());
 		log_close();
+		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
 	}
 
@@ -527,6 +529,7 @@ int main(int argc, char **argv)
 		conf_free(conf());
 		systemd_dbus_close();
 		log_close();
+		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
 	}
 
@@ -545,6 +548,7 @@ int main(int argc, char **argv)
 		conf_free(conf());
 		systemd_dbus_close();
 		log_close();
+		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
 	}
 
@@ -582,9 +586,10 @@ int main(int argc, char **argv)
 		server_deinit(&server);
 		rcu_unregister_thread();
 		pid_cleanup();
+		conf_free(conf());
 		systemd_dbus_close();
 		log_close();
-		conf_free(conf());
+		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
 	}
 
@@ -616,6 +621,8 @@ int main(int argc, char **argv)
 
 	log_info("shutting down");
 	log_close();
+
+	dnssec_crypto_cleanup();
 
 	return EXIT_SUCCESS;
 }
