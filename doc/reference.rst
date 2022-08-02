@@ -2007,6 +2007,10 @@ Possible values:
    If the zone keys are managed manually, the CDS and CDNSKEY rrsets may contain
    more records depending on the keys available.
 
+.. WARNING::
+   The ``double-ds`` value does not trigger double-DS roll-over method. That method is
+   only suppored by Knot when performed manually, with unset :ref:`policy_ksk-submission-check`.
+
 *Default:* ``rollover``
 
 .. _policy_cds-digest-type:
