@@ -24,9 +24,9 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
 #include "libknot/xdp.h"
-#ifdef ENABLE_QUIC
+#if defined ENABLE_XDP && ENABLE_QUIC
 #include "libknot/xdp/quic.h"
-#endif // ENABLE_QUIC
+#endif // ENABLE_XDP && ENABLE_QUIC
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
@@ -614,7 +614,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	assert(real_nifs <= nifs);
 	nifs = real_nifs;
 
-#ifdef ENABLE_QUIC
+#if defined ENABLE_XDP && ENABLE_QUIC
 	if (xdp_quic > 0) {
 		char *tls_cert = conf_tls(conf, C_CERT_FILE);
 		char *tls_key = conf_tls(conf, C_KEY_FILE);
@@ -630,7 +630,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 			return KNOT_ERROR;
 		}
 	}
-#endif // ENABLE_QUIC
+#endif // ENABLE_XDP && ENABLE_QUIC
 
 	/* Publish new list. */
 	s->ifaces = newlist;
@@ -748,9 +748,9 @@ void server_deinit(server_t *server)
 	global_conn_pool = NULL;
 	knot_unreachables_deinit(&global_unreachables);
 
-#ifdef ENABLE_QUIC
+#if defined ENABLE_XDP && ENABLE_QUIC
 	knot_xquic_free_creds(server->quic_creds);
-#endif // ENABLE_QUIC
+#endif // ENABLE_XDP && ENABLE_QUIC
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
