@@ -875,7 +875,6 @@ static void json_print_edns(jsonw_t *w, const knot_rrset_t *edns)
 	while (wire_ctx_available(&wire) >= KNOT_EDNS_OPTION_HDRLEN) {
 		uint16_t opt_code = wire_ctx_read_u16(&wire);
 		uint16_t opt_len = wire_ctx_read_u16(&wire);
-		uint8_t *opt_data = wire.position;
 		if (wire.error != KNOT_EOK) {
 			break;
 		}
