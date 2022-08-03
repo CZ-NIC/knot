@@ -840,7 +840,7 @@ void quic_ctx_close(quic_ctx_t *ctx)
 
 	struct sockaddr_in6 si = { 0 };
 	socklen_t si_len = sizeof(si);
-	if (getsockname(ctx->tls->sockfd, &si, &si_len) == 0) {
+	if (getsockname(ctx->tls->sockfd, (struct sockaddr *)&si, &si_len) == 0) {
 		quic_set_enc(ctx->tls->sockfd, si.sin6_family, ctx->pi.ecn);
 	}
 
