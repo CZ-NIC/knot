@@ -364,6 +364,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
 		knot_xdp_msg_t *msg_recv = &ctx->msg_recv[i];
+		ctx->quic_relays[i] = NULL;
 
 		if ((msg_recv->flags & KNOT_XDP_MSG_TCP) ||
 		    msg_recv->ip_to.sin6_port != ctx->quic_port ||
