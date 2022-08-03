@@ -429,18 +429,16 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 		}
 	}
 #ifdef ENABLE_QUIC
-	if (ctx->quic_table != NULL && ctx->quic_table->usage > 0) {
-		for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
-			if (ctx->quic_relays[i] == NULL) {
-				continue;
-			}
+	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
+		if (ctx->quic_relays[i] == NULL) {
+			continue;
+		}
 
-			int ret = knot_xquic_send(ctx->quic_table, ctx->quic_relays[i], ctx->sock,
-			                          &ctx->msg_recv[i], ctx->quic_rets[i],
-			                          QUIC_MAX_SEND_PER_RECV, false);
-			if (ret != KNOT_EOK) {
-				log_notice("QUIC, failed to send some packets");
-			}
+		int ret = knot_xquic_send(ctx->quic_table, ctx->quic_relays[i], ctx->sock,
+		                          &ctx->msg_recv[i], ctx->quic_rets[i],
+		                          QUIC_MAX_SEND_PER_RECV, false);
+		if (ret != KNOT_EOK) {
+			log_notice("QUIC, failed to send some packets");
 		}
 	}
 #endif // ENABLE_QUIC
