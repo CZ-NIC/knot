@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -115,6 +115,7 @@ unsigned long pid_check_and_create(void)
 		free(pidfile);
 		return 0;
 	} else if (stat(pidfile, &st) == 0) {
+		assert(pidfile);
 		log_warning("removing stale PID file '%s'", pidfile);
 		pid_cleanup();
 	}
