@@ -1104,7 +1104,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			ctx->tcp = false;
 			ctx->flags &= ~(KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP);
 			ctx->flags |= KNOT_XDP_FILTER_QUIC;
-			if (ctx->target_port > 0) {
+			if (ctx->target_port == 0) {
 				ctx->target_port = REMOTE_PORT_DOQ_DEFAULT;
 			}
 			if (default_at_once) {
