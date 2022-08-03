@@ -847,115 +847,51 @@ static void json_print_section(jsonw_t *w, const char *name,
 	for (int i = 0; i < section->count; i++) {
 		const knot_rrset_t *rr = knot_pkt_rr(section, i);
 		jsonw_object(w, NULL);
-		jsonw_dname(w, "name", rr->owner);
-		jsonw_int(w, "type", rr->type);
-		jsonw_int(w, "class", rr->rclass);
-		jsonw_int(w, "ttl", rr->ttl);
-		jsonw_rdata(w, "rdata", rr, 0);
+		jsonw_dname(w, "NAME", rr->owner);
+		jsonw_int(w, "TYPE", rr->type);
+		jsonw_int(w, "CLASS", rr->rclass);
+		jsonw_int(w, "TTL", rr->ttl);
+		jsonw_rdata(w, "RDATA", rr, 0);
 		jsonw_end(w); // object
 	}
 
 	jsonw_end(w); // list
 }
 
-static void json_print_edns(jsonw_t *w, const knot_rrset_t *edns)
-{
-	if (!edns) {
-		return;
-	}
-
-	jsonw_object(w, "edns");
-
-	jsonw_int(w, "version", knot_edns_get_version(edns));
-	jsonw_int(w, "udp_size", knot_edns_get_payload(edns));
-
-	knot_rdata_t *rdata = knot_rdataset_at(&edns->rrs, 0);
-	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
-
-	while (wire_ctx_available(&wire) >= KNOT_EDNS_OPTION_HDRLEN) {
-		uint16_t opt_code = wire_ctx_read_u16(&wire);
-		uint16_t opt_len = wire_ctx_read_u16(&wire);
-		if (wire.error != KNOT_EOK) {
-			break;
-		}
-
-		switch (opt_code) {
-		case KNOT_EDNS_OPTION_NSID:
-			jsonw_str(w, "nsid", "todo");
-			//print_nsid(opt_data, opt_len);
-			break;
-		case KNOT_EDNS_OPTION_CLIENT_SUBNET:
-			jsonw_str(w, "subnet", "todo");
-			break;
-		case KNOT_EDNS_OPTION_PADDING:
-			jsonw_int(w, "padding", opt_len);
-			break;
-		case KNOT_EDNS_OPTION_COOKIE:
-			jsonw_str(w, "cookie", "todo");
-			break;
-		default:
-			// ignore
-			break;
-		}
-
-		wire_ctx_skip(&wire, opt_len);
-	}
-
-	jsonw_end(w); // dict
-}
-
 static void json_print_packet(const knot_pkt_t *pkt, const net_t *net)
 {
-	const knot_rrset_t *edns = NULL;
-	if (knot_pkt_has_edns(pkt)) {
-		edns = pkt->opt_rr;
-	}
-
 	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
-
 	jsonw_object(w, NULL);
-	jsonw_object(w, "header");
-	jsonw_int(w, "id", knot_wire_get_id(pkt->wire));
-	jsonw_int(w, "rcode", knot_pkt_ext_rcode(pkt));
-	jsonw_int(w, "opcode", knot_wire_get_opcode(pkt->wire));
-	jsonw_bool(w, "qr", knot_wire_get_qr(pkt->wire));
-	jsonw_bool(w, "aa", knot_wire_get_aa(pkt->wire));
-	jsonw_bool(w, "tc", knot_wire_get_tc(pkt->wire));
-	jsonw_bool(w, "rd", knot_wire_get_rd(pkt->wire));
-	jsonw_bool(w, "ra", knot_wire_get_ra(pkt->wire));
-	jsonw_bool(w, "ad", knot_wire_get_ad(pkt->wire));
-	jsonw_bool(w, "cd", knot_wire_get_cd(pkt->wire));
-	jsonw_bool(w, "do", edns && knot_edns_do(edns));
-	jsonw_end(w); // header object
-
-	jsonw_list(w, "question");
-	jsonw_object(w, NULL);
-	jsonw_dname(w, "name", knot_pkt_qname(pkt));
-	jsonw_int(w, "type", knot_pkt_qtype(pkt));
-	jsonw_int(w, "class", knot_pkt_qclass(pkt));
-	jsonw_end(w); // list
-	jsonw_end(w); // dict
-
-	json_print_section(w, "answer", knot_pkt_section(pkt, KNOT_ANSWER));
-	json_print_section(w, "authority", knot_pkt_section(pkt, KNOT_AUTHORITY));
-	json_print_section(w, "additional", knot_pkt_section(pkt, KNOT_ADDITIONAL));
-
-	json_print_edns(w, edns);
-
-	jsonw_object(w, "stats");
-	jsonw_str(w, "time", "");
-	jsonw_str(w, "remote_ip", "");
-	jsonw_int(w, "remote_port", 0);
-	jsonw_int(w, "messages", 0);
-	jsonw_int(w, "records", 0);
-	jsonw_int(w, "received_bytes", 0);
-	jsonw_int(w, "sent_bytes", 0);
-	jsonw_int(w, "duration_ms", 0);
-	jsonw_end(w); // dict
-
-	// TODO: TSIG information
-	// TODO: TLS information
-
+	jsonw_object(w, "queryMessage");
+	jsonw_int(w, "ID", knot_wire_get_id(pkt->wire));
+	jsonw_bool(w, "QR", false);
+	jsonw_int(w, "Opcode", knot_wire_get_opcode(pkt->wire));
+	jsonw_bool(w, "AA", knot_wire_get_aa(pkt->wire));
+	jsonw_bool(w, "TC", knot_wire_get_tc(pkt->wire));
+	jsonw_bool(w, "RD", knot_wire_get_rd(pkt->wire));
+	jsonw_bool(w, "RA", knot_wire_get_ra(pkt->wire));
+	jsonw_bool(w, "AD", knot_wire_get_ad(pkt->wire));
+	jsonw_bool(w, "CD", knot_wire_get_cd(pkt->wire));
+	jsonw_dname(w, "QNAME", knot_pkt_qname(pkt));
+	jsonw_int(w, "QTYPE", knot_pkt_qtype(pkt));
+	jsonw_int(w, "QCLASS", knot_pkt_qclass(pkt));
+	jsonw_end(w);
+	if (knot_wire_get_qr(pkt->wire)) {
+		jsonw_object(w, "responseMessage");
+		jsonw_int(w, "ID", knot_wire_get_id(pkt->wire));
+		jsonw_bool(w, "QR", true);
+		jsonw_int(w, "RCODE", knot_pkt_ext_rcode(pkt));
+		jsonw_int(w, "QDCOUNT", knot_wire_get_qdcount(pkt->wire));
+		jsonw_int(w, "ANCOUNT", knot_wire_get_ancount(pkt->wire));
+		jsonw_int(w, "NSCOUNT", knot_wire_get_nscount(pkt->wire));
+		jsonw_int(w, "ARCOUNT", knot_wire_get_arcount(pkt->wire));
+		if (pkt->rrset_count) {
+			json_print_section(w, "answerRRs", knot_pkt_section(pkt, KNOT_ANSWER));
+			json_print_section(w, "authorityRRs", knot_pkt_section(pkt, KNOT_AUTHORITY));
+			json_print_section(w, "additionalRRs", knot_pkt_section(pkt, KNOT_ADDITIONAL));
+		}
+		jsonw_end(w); // header object
+	}
 	jsonw_end(w); // object
 
 	jsonw_free(&w);

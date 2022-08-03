@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "KNOTC" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
-.SH NAME
-knotc \- Knot DNS control utility
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "KNOTC" "8" "@RELEASE_DATE@" "@VERSION@" "Knot DNS"
+.SH NAME
+knotc \- Knot DNS control utility
 .SH SYNOPSIS
 .sp
 \fBknotc\fP [\fIparameters\fP] \fIaction\fP [\fIaction_args\fP]
