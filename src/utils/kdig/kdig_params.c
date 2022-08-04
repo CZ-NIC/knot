@@ -708,10 +708,10 @@ static int opt_tls_pin(const char *arg, void *query)
 
 	int ret = knot_base64_decode((const uint8_t *)arg, strlen(arg), pin, sizeof(pin));
 	if (ret < 0) {
-		ERR("invalid +tls-pin=%s\n", arg);
+		ERR("invalid +tls-pin=%s", arg);
 		return ret;
 	} else if (ret != CERT_PIN_LEN) { // Check for 256-bit value.
-		ERR("invalid sha256 hash length +tls-pin=%s\n", arg);
+		ERR("invalid sha256 hash length +tls-pin=%s", arg);
 		return KNOT_EINVAL;
 	}
 
@@ -832,7 +832,7 @@ static int opt_tls_ocsp_stapling(const char *arg, void *query)
 	} else {
 		uint32_t num = 0;
 		if (str_to_u32(arg, &num) != KNOT_EOK || num == 0) {
-			ERR("invalid +tls-ocsp-stapling=%s\n", arg);
+			ERR("invalid +tls-ocsp-stapling=%s", arg);
 			return KNOT_EINVAL;
 		}
 
@@ -864,7 +864,7 @@ static int opt_https(const char *arg, void *query)
 		} else {
 			resource += 3;  // strlen("://")
 			if (*resource == '\0') {
-				ERR("invalid +https=%s\n", arg);
+				ERR("invalid +https=%s", arg);
 				return KNOT_EINVAL;
 			}
 		}
@@ -985,7 +985,7 @@ static int opt_bufsize(const char *arg, void *query)
 
 	uint16_t num = 0;
 	if (str_to_u16(arg, &num) != KNOT_EOK) {
-		ERR("invalid +bufsize=%s\n", arg);
+		ERR("invalid +bufsize=%s", arg);
 		return KNOT_EINVAL;
 	}
 
@@ -1020,12 +1020,12 @@ static int opt_cookie(const char *arg, void *query)
 
 		int ret = hex_decode(arg, &input, &input_len);
 		if (ret != KNOT_EOK) {
-			ERR("invalid +cookie=%s\n", arg);
+			ERR("invalid +cookie=%s", arg);
 			return KNOT_EINVAL;
 		}
 
 		if (input_len < KNOT_EDNS_COOKIE_CLNT_SIZE) {
-			ERR("too short client +cookie=%s\n", arg);
+			ERR("too short client +cookie=%s", arg);
 			free(input);
 			return KNOT_EINVAL;
 		}
@@ -1035,12 +1035,12 @@ static int opt_cookie(const char *arg, void *query)
 		input_len -= q->cc.len;
 		if (input_len > 0) {
 			if (input_len < KNOT_EDNS_COOKIE_SRVR_MIN_SIZE) {
-				ERR("too short server +cookie=%s\n", arg);
+				ERR("too short server +cookie=%s", arg);
 				free(input);
 				return KNOT_EINVAL;
 			}
 			if (input_len > KNOT_EDNS_COOKIE_SRVR_MAX_SIZE) {
-				ERR("too long server +cookie=%s\n", arg);
+				ERR("too long server +cookie=%s", arg);
 				free(input);
 				return KNOT_EINVAL;
 			}
@@ -1093,7 +1093,7 @@ static int opt_padding(const char *arg, void *query)
 	} else {
 		uint16_t num = 0;
 		if (str_to_u16(arg, &num) != KNOT_EOK) {
-			ERR("invalid +padding=%s\n", arg);
+			ERR("invalid +padding=%s", arg);
 			return KNOT_EINVAL;
 		}
 
@@ -1121,7 +1121,7 @@ static int opt_alignment(const char *arg, void *query)
 	} else {
 		uint16_t num = 0;
 		if (str_to_u16(arg, &num) != KNOT_EOK || num < 2) {
-			ERR("invalid +alignment=%s\n", arg);
+			ERR("invalid +alignment=%s", arg);
 			return KNOT_EINVAL;
 		}
 
@@ -1164,7 +1164,7 @@ static int opt_subnet(const char *arg, void *query)
 	char *addr_str = strndup(arg, addr_len);
 	if (getaddrinfo(addr_str, NULL, &hints, &ai) != 0) {
 		free(addr_str);
-		ERR("invalid address +subnet=%s\n", arg);
+		ERR("invalid address +subnet=%s", arg);
 		return KNOT_EINVAL;
 	}
 
@@ -1173,7 +1173,7 @@ static int opt_subnet(const char *arg, void *query)
 	free(addr_str);
 
 	if (knot_edns_client_subnet_set_addr(&q->subnet, &ss) != KNOT_EOK) {
-		ERR("invalid address +subnet=%s\n", arg);
+		ERR("invalid address +subnet=%s", arg);
 		return KNOT_EINVAL;
 	}
 
@@ -1183,7 +1183,7 @@ static int opt_subnet(const char *arg, void *query)
 		mask += addr_len + 1;
 		uint8_t num = 0;
 		if (str_to_u8(mask, &num) != KNOT_EOK || num > q->subnet.source_len) {
-			ERR("invalid network mask +subnet=%s\n", arg);
+			ERR("invalid network mask +subnet=%s", arg);
 			return KNOT_EINVAL;
 		}
 		q->subnet.source_len = num;
@@ -1211,7 +1211,7 @@ static int opt_edns(const char *arg, void *query)
 	} else {
 		uint8_t num = 0;
 		if (str_to_u8(arg, &num) != KNOT_EOK) {
-			ERR("invalid +edns=%s\n", arg);
+			ERR("invalid +edns=%s", arg);
 			return KNOT_EINVAL;
 		}
 
@@ -1241,7 +1241,7 @@ static int opt_timeout(const char *arg, void *query)
 	query_t *q = query;
 
 	if (params_parse_wait(arg, &q->wait) != KNOT_EOK) {
-		ERR("invalid +timeout=%s\n", arg);
+		ERR("invalid +timeout=%s", arg);
 		return KNOT_EINVAL;
 	}
 
@@ -1262,7 +1262,7 @@ static int opt_retry(const char *arg, void *query)
 	query_t *q = query;
 
 	if (str_to_u32(arg, &q->retries) != KNOT_EOK) {
-		ERR("invalid +retry=%s\n", arg);
+		ERR("invalid +retry=%s", arg);
 		return KNOT_EINVAL;
 	}
 
@@ -1321,7 +1321,7 @@ static int opt_ednsopt(const char *arg, void *query)
 	ednsopt_t *opt = NULL;
 	int ret = parse_ednsopt(arg, &opt);
 	if (ret != KNOT_EOK) {
-		ERR("invalid +ednsopt=%s\n", arg);
+		ERR("invalid +ednsopt=%s", arg);
 		return KNOT_EINVAL;
 	}
 
@@ -1941,7 +1941,7 @@ static int parse_server(const char *value, kdig_params_t *params)
 	}
 
 	if (params_parse_server(value, &query->servers, query->port) != KNOT_EOK) {
-		ERR("invalid server @%s\n", value);
+		ERR("invalid server @%s", value);
 		return KNOT_EINVAL;
 	}
 
@@ -2045,7 +2045,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 				free(s->service);
 				s->service = strdup(def_port);
 				if (s->service == NULL) {
-					WARN("can't set port %s\n", def_port);
+					WARN("can't set port %s", def_port);
 					return;
 				}
 			}
@@ -2069,7 +2069,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 
 			srv_info_t *server = srv_info_create(s->name, port);
 			if (server == NULL) {
-				WARN("can't set nameserver %s port %s\n",
+				WARN("can't set nameserver %s port %s",
 				     s->name, s->service);
 				return;
 			}
@@ -2119,7 +2119,7 @@ void complete_queries(list_t *queries, const query_t *conf)
 	if (list_size(queries) == 0) {
 		query_t *q = query_create(".", conf);
 		if (q == NULL) {
-			WARN("can't create query . NS IN\n");
+			WARN("can't create query . NS IN");
 			return;
 		}
 		q->class_num = KNOT_CLASS_IN;
@@ -2174,7 +2174,7 @@ void complete_queries(list_t *queries, const query_t *conf)
 		     !compare_servers(&q->servers, &q_prev->servers)))
 		{
 			WARN("connection parameters mismatch for query (%s), "
-			     "ignoring keepopen\n", q->owner);
+			     "ignoring keepopen", q->owner);
 			q_prev->keepopen = false;
 		}
 	}
@@ -2277,7 +2277,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 	switch (opt[0]) {
 	case '4':
 		if (len > 1) {
-			ERR("invalid option -%s\n", opt);
+			ERR("invalid option -%s", opt);
 			return KNOT_ENOTSUP;
 		}
 
@@ -2285,7 +2285,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		break;
 	case '6':
 		if (len > 1) {
-			ERR("invalid option -%s\n", opt);
+			ERR("invalid option -%s", opt);
 			return KNOT_ENOTSUP;
 		}
 
@@ -2293,12 +2293,12 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		break;
 	case 'b':
 		if (val == NULL) {
-			ERR("missing address\n");
+			ERR("missing address");
 			return KNOT_EINVAL;
 		}
 
 		if (parse_local(val, query) != KNOT_EOK) {
-			ERR("bad address %s\n", val);
+			ERR("bad address %s", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
@@ -2308,7 +2308,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		break;
 	case 'h':
 		if (len > 1) {
-			ERR("invalid option -%s\n", opt);
+			ERR("invalid option -%s", opt);
 			return KNOT_ENOTSUP;
 		}
 
@@ -2317,36 +2317,36 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		break;
 	case 'c':
 		if (val == NULL) {
-			ERR("missing class\n");
+			ERR("missing class");
 			return KNOT_EINVAL;
 		}
 
 		if (parse_class(val, query) != KNOT_EOK) {
-			ERR("bad class %s\n", val);
+			ERR("bad class %s", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	case 'k':
 		if (val == NULL) {
-			ERR("missing filename\n");
+			ERR("missing filename");
 			return KNOT_EINVAL;
 		}
 
 		if (parse_keyfile(val, query) != KNOT_EOK) {
-			ERR("bad keyfile %s\n", value);
+			ERR("bad keyfile %s", value);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	case 'p':
 		if (val == NULL) {
-			ERR("missing port\n");
+			ERR("missing port");
 			return KNOT_EINVAL;
 		}
 
 		if (parse_port(val, query) != KNOT_EOK) {
-			ERR("bad port %s\n", value);
+			ERR("bad port %s", value);
 			return KNOT_EINVAL;
 		}
 		*index += add;
@@ -2355,26 +2355,26 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		// Allow empty QNAME.
 		if (parse_name(val, &params->queries, params->config)
 		    != KNOT_EOK) {
-			ERR("bad query name %s\n", val);
+			ERR("bad query name %s", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	case 't':
 		if (val == NULL) {
-			ERR("missing type\n");
+			ERR("missing type");
 			return KNOT_EINVAL;
 		}
 
 		if (parse_type(val, query) != KNOT_EOK) {
-			ERR("bad type %s\n", val);
+			ERR("bad type %s", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	case 'V':
 		if (len > 1) {
-			ERR("invalid option -%s\n", opt);
+			ERR("invalid option -%s", opt);
 			return KNOT_ENOTSUP;
 		}
 
@@ -2383,25 +2383,25 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		break;
 	case 'x':
 		if (val == NULL) {
-			ERR("missing address\n");
+			ERR("missing address");
 			return KNOT_EINVAL;
 		}
 
 		if (parse_reverse(val, &params->queries, params->config)
 		    != KNOT_EOK) {
-			ERR("bad reverse name %s\n", val);
+			ERR("bad reverse name %s", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 		break;
 	case 'y':
 		if (val == NULL) {
-			ERR("missing key\n");
+			ERR("missing key");
 			return KNOT_EINVAL;
 		}
 
 		if (parse_tsig(val, query) != KNOT_EOK) {
-			ERR("bad key %s\n", value);
+			ERR("bad key %s", value);
 			return KNOT_EINVAL;
 		}
 		*index += add;
@@ -2409,24 +2409,24 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 	case 'E':
 #if USE_DNSTAP
 		if (val == NULL) {
-			ERR("missing filename\n");
+			ERR("missing filename");
 			return KNOT_EINVAL;
 		}
 
 		if (parse_dnstap_output(val, query) != KNOT_EOK) {
-			ERR("unable to open dnstap output file %s\n", val);
+			ERR("unable to open dnstap output file %s", val);
 			return KNOT_EINVAL;
 		}
 		*index += add;
 #else
-		ERR("no dnstap support but -E specified\n");
+		ERR("no dnstap support but -E specified");
 		return KNOT_EINVAL;
 #endif // USE_DNSTAP
 		break;
 	case 'G':
 #if USE_DNSTAP
 		if (val == NULL) {
-			ERR("missing filename\n");
+			ERR("missing filename");
 			return KNOT_EINVAL;
 		}
 
@@ -2436,7 +2436,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		}
 
 		if (parse_dnstap_input(val, query) != KNOT_EOK) {
-			ERR("unable to open dnstap input file %s\n", val);
+			ERR("unable to open dnstap input file %s", val);
 			query_free(query);
 			return KNOT_EINVAL;
 		}
@@ -2446,7 +2446,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 
 		*index += add;
 #else
-		ERR("no dnstap support but -G specified\n");
+		ERR("no dnstap support but -G specified");
 		return KNOT_EINVAL;
 #endif // USE_DNSTAP
 		break;
@@ -2458,12 +2458,12 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 			print_version(PROGRAM_NAME);
 			params->stop = true;
 		} else {
-			ERR("invalid option: -%s\n", opt);
+			ERR("invalid option: -%s", opt);
 			return KNOT_ENOTSUP;
 		}
 		break;
 	default:
-		ERR("invalid option: -%s\n", opt);
+		ERR("invalid option: -%s", opt);
 		return KNOT_ENOTSUP;
 	}
 
@@ -2485,7 +2485,7 @@ static int parse_opt2(const char *value, kdig_params_t *params)
 	const char *arg_sep = "=";
 	size_t opt_len = strcspn(value, arg_sep);
 	if (opt_len < 1) {
-		ERR("invalid option: +%s\n", value);
+		ERR("invalid option: +%s", value);
 		return KNOT_ENOTSUP;
 	}
 
@@ -2500,10 +2500,10 @@ static int parse_opt2(const char *value, kdig_params_t *params)
 	bool unique;
 	int ret = best_param(value, opt_len, kdig_opts2, &unique);
 	if (ret < 0) {
-		ERR("invalid option: +%s\n", value);
+		ERR("invalid option: +%s", value);
 		return KNOT_ENOTSUP;
 	} else if (!unique) {
-		ERR("ambiguous option: +%s\n", value);
+		ERR("ambiguous option: +%s", value);
 		return KNOT_ENOTSUP;
 	}
 
@@ -2511,18 +2511,18 @@ static int parse_opt2(const char *value, kdig_params_t *params)
 	switch (kdig_opts2[ret].arg) {
 	case ARG_NONE:
 		if (arg != NULL && *arg != '\0') {
-			WARN("superfluous option argument: +%s\n", value);
+			WARN("superfluous option argument: +%s", value);
 		}
 		break;
 	case ARG_REQUIRED:
 		if (arg == NULL) {
-			ERR("missing argument: +%s\n", value);
+			ERR("missing argument: +%s", value);
 			return KNOT_EFEWDATA;
 		}
 		// FALLTHROUGH
 	case ARG_OPTIONAL:
 		if (arg != NULL && *arg == '\0') {
-			ERR("empty argument: +%s\n", value);
+			ERR("empty argument: +%s", value);
 			return KNOT_EFEWDATA;
 		}
 		break;
@@ -2545,7 +2545,7 @@ static int parse_token(const char *value, kdig_params_t *params)
 
 	// Try to guess the meaning of the token.
 	if (strlen(value) == 0) {
-		ERR("invalid empty parameter\n");
+		ERR("invalid empty parameter");
 	} else if (parse_type(value, query) == KNOT_EOK) {
 		return KNOT_EOK;
 	} else if (parse_class(value, query) == KNOT_EOK) {
@@ -2553,7 +2553,7 @@ static int parse_token(const char *value, kdig_params_t *params)
 	} else if (parse_name(value, &params->queries, params->config) == KNOT_EOK) {
 		return KNOT_EOK;
 	} else {
-		ERR("invalid parameter: %s\n", value);
+		ERR("invalid parameter: %s", value);
 	}
 
 	return KNOT_EINVAL;
@@ -2574,7 +2574,7 @@ int kdig_parse(kdig_params_t *params, int argc, char *argv[])
 #ifdef LIBIDN
 	// Set up localization.
 	if (setlocale(LC_CTYPE, "") == NULL) {
-		WARN("can't setlocale, disabling IDN\n");
+		WARN("can't setlocale, disabling IDN");
 		params->config->idn = false;
 		params->config->style.style.ascii_to_idn = NULL;
 	}

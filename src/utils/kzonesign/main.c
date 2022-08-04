@@ -71,19 +71,19 @@ static int zonesign(sign_params_t *params)
 
 	conf_val_t val = conf_zone_get(conf(), C_DOMAIN, params->zone_name);
 	if (val.code != KNOT_EOK) {
-		ERR2("zone '%s' not configured\n", params->zone_name_str);
+		ERR2("zone '%s' not configured", params->zone_name_str);
 		ret = KNOT_ENOENT;
 		goto fail;
 	}
 	val = conf_zone_get(conf(), C_DNSSEC_POLICY, params->zone_name);
 	if (val.code != KNOT_EOK) {
-		WARN2("DNSSEC policy not configured for zone '%s', taking defaults\n",
+		WARN2("DNSSEC policy not configured for zone '%s', taking defaults",
 		      params->zone_name_str);
 	}
 
 	zone_struct = zone_new(params->zone_name);
 	if (zone_struct == NULL) {
-		ERR2("out of memory\n");
+		ERR2("out of memory");
 		ret = KNOT_ENOMEM;
 		goto fail;
 	}
@@ -91,13 +91,13 @@ static int zonesign(sign_params_t *params)
 	ret = zone_load_contents(conf(), params->zone_name, &unsigned_conts,
 	                         SEMCHECK_MANDATORY_SOFT, false);
 	if (ret != KNOT_EOK) {
-		ERR2("failed to load zone contents (%s)\n", knot_strerror(ret));
+		ERR2("failed to load zone contents (%s)", knot_strerror(ret));
 		goto fail;
 	}
 
 	ret = zone_update_from_contents(&up, zone_struct, unsigned_conts, UPDATE_FULL);
 	if (ret != KNOT_EOK) {
-		ERR2("failed to initialize zone update (%s)\n", knot_strerror(ret));
+		ERR2("failed to initialize zone update (%s)", knot_strerror(ret));
 		zone_contents_deep_free(unsigned_conts);
 		goto fail;
 	}
@@ -106,22 +106,22 @@ static int zonesign(sign_params_t *params)
 		val = conf_zone_get(conf(), C_ADJUST_THR, params->zone_name);
 		ret = zone_adjust_full(up.new_cont, conf_int(&val));
 		if (ret != KNOT_EOK) {
-			ERR2("failed to adjust the zone (%s)\n", knot_strerror(ret));
+			ERR2("failed to adjust the zone (%s)", knot_strerror(ret));
 			zone_update_clear(&up);
 			goto fail;
 		}
 
 		ret = knot_dnssec_validate_zone(&up, conf(), params->timestamp, false);
 		if (ret != KNOT_EOK) {
-			ERR2("DNSSEC validation failed (%s)\n", knot_strerror(ret));
+			ERR2("DNSSEC validation failed (%s)", knot_strerror(ret));
 			char type_str[16];
 			knot_dname_txt_storage_t name_str;
 			if (knot_dname_to_str(name_str, up.validation_hint.node, sizeof(name_str)) != NULL &&
 			    knot_rrtype_to_string(up.validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
-				ERR2("affected node: '%s' type '%s'\n", name_str, type_str);
+				ERR2("affected node: '%s' type '%s'", name_str, type_str);
 			}
 		} else {
-			INFO2("DNSSEC validation successful\n");
+			INFO2("DNSSEC validation successful");
 		}
 		zone_update_clear(&up);
 		goto fail;
@@ -138,7 +138,7 @@ static int zonesign(sign_params_t *params)
 		                            params->timestamp, &next_sign);
 	}
 	if (ret != KNOT_EOK) {
-		ERR2("failed to sign the zone (%s)\n", knot_strerror(ret));
+		ERR2("failed to sign the zone (%s)", knot_strerror(ret));
 		zone_update_clear(&up);
 		goto fail;
 	}
@@ -155,24 +155,24 @@ static int zonesign(sign_params_t *params)
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
 		if (params->outdir == NULL) {
-			ERR2("failed to update zone file '%s' (%s)\n",
+			ERR2("failed to update zone file '%s' (%s)",
 			     zonefile, knot_strerror(ret));
 		} else {
-			ERR2("failed to flush signed zone to '%s' file (%s)\n",
+			ERR2("failed to flush signed zone to '%s' file (%s)",
 			     params->outdir, knot_strerror(ret));
 
 		}
 		goto fail;
 	}
 
-	printf("Next signing: %"KNOT_TIME_PRINTF"\n", next_sign.next_sign);
+	INFO2("Next signing: %"KNOT_TIME_PRINTF, next_sign.next_sign);
 	if (params->rollover) {
-		printf("Next roll-over: %"KNOT_TIME_PRINTF"\n", next_sign.next_rollover);
+		INFO2("Next roll-over: %"KNOT_TIME_PRINTF, next_sign.next_rollover);
 		if (next_sign.next_nsec3resalt) {
-			printf("Next NSEC3 re-salt: %"KNOT_TIME_PRINTF"\n", next_sign.next_nsec3resalt);
+			INFO2("Next NSEC3 re-salt: %"KNOT_TIME_PRINTF, next_sign.next_nsec3resalt);
 		}
 		if (next_sign.plan_ds_check) {
-			printf("KSK submission to parent zone needed\n");
+			INFO2("KSK submission to parent zone needed");
 		}
 	}
 
@@ -246,14 +246,14 @@ int main(int argc, char *argv[])
 		}
 	}
 	if (argc - optind != 1) {
-		ERR2("missing zone name\n");
+		ERR2("missing zone name");
 		print_help();
 		goto failure;
 	}
 	params.zone_name_str = argv[optind];
 	if (knot_dname_from_str(params.zone_name, params.zone_name_str,
 	                        sizeof(params.zone_name)) == NULL) {
-		ERR2("invalid zone name '%s'\n", params.zone_name_str);
+		ERR2("invalid zone name '%s'", params.zone_name_str);
 		print_help();
 		goto failure;
 	}

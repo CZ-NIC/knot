@@ -142,7 +142,7 @@ static int get_addr(const srv_info_t *server,
 		/* FALLTHROUGH */
 #endif	/* EAI_ADDRFAMILY */
 	default:
-		ERR("%s for %s@%s\n", gai_strerror(ret), server->name, server->service);
+		ERR("%s for %s@%s", gai_strerror(ret), server->name, server->service);
 	}
 	return -1;
 }
@@ -371,7 +371,7 @@ int net_connect(net_t *net)
 	// Create socket.
 	int sockfd = socket(net->srv->ai_family, net->socktype, 0);
 	if (sockfd == -1) {
-		WARN("can't create socket for %s\n", net->remote_str);
+		WARN("can't create socket for %s", net->remote_str);
 		return KNOT_NET_ESOCKET;
 	}
 
@@ -384,7 +384,7 @@ int net_connect(net_t *net)
 
 	// Set non-blocking socket.
 	if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
-		WARN("can't set non-blocking socket for %s\n", net->remote_str);
+		WARN("can't set non-blocking socket for %s", net->remote_str);
 		return KNOT_NET_ESOCKET;
 	}
 
@@ -392,7 +392,7 @@ int net_connect(net_t *net)
 	if (net->local_info != NULL) {
 		if (bind(sockfd, net->local_info->ai_addr,
 		         net->local_info->ai_addrlen) == -1) {
-			WARN("can't assign address %s\n", net->local->name);
+			WARN("can't assign address %s", net->local->name);
 			return KNOT_NET_ESOCKET;
 		}
 	} else {
@@ -415,14 +415,14 @@ int net_connect(net_t *net)
 				ret = connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen);
 			}
 			if (ret != 0 && errno != EINPROGRESS) {
-				WARN("can't connect to %s\n", net->remote_str);
+				WARN("can't connect to %s", net->remote_str);
 				close(sockfd);
 				return KNOT_NET_ECONNECT;
 			}
 
 			// Check for connection timeout.
 			if (!fastopen && poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("connection timeout for %s\n", net->remote_str);
+				WARN("connection timeout for %s", net->remote_str);
 				close(sockfd);
 				return KNOT_NET_ECONNECT;
 			}
@@ -430,7 +430,7 @@ int net_connect(net_t *net)
 			// Check if NB socket is writeable.
 			cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
 			if (cs < 0 || err != 0) {
-				WARN("can't connect to %s\n", net->remote_str);
+				WARN("can't connect to %s", net->remote_str);
 				close(sockfd);
 				return KNOT_NET_ECONNECT;
 			}
@@ -523,7 +523,7 @@ int net_set_local_info(net_t *net)
 	new_info->ai_addrlen = local_addr_len;
 
 	if (getsockname(net->sockfd, new_info->ai_addr,	&local_addr_len) == -1) {
-		WARN("can't get local address\n");
+		WARN("can't get local address");
 		free(new_info);
 		return KNOT_NET_ESOCKET;
 	}
@@ -557,7 +557,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		int ret = quic_send_dns_query((quic_ctx_t *)&net->quic,
 		                              net->sockfd, net->srv, buf, buf_len);
 		if (ret != KNOT_EOK) {
-			WARN("can't send query to %s\n", net->remote_str);
+			WARN("can't send query to %s", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
 	} else
@@ -566,7 +566,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	if (net->socktype == SOCK_DGRAM) {
 		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
 		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
-			WARN("can't send query to %s\n", net->remote_str);
+			WARN("can't send query to %s", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
 #ifdef LIBNGHTTP2
@@ -574,7 +574,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	} else if (net->https.params.enable) {
 		int ret = https_send_dns_query((https_ctx_t *)&net->https, buf, buf_len);
 		if (ret != KNOT_EOK) {
-			WARN("can't send query to %s\n", net->remote_str);
+			WARN("can't send query to %s", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
 #endif //LIBNGHTTP2
@@ -582,7 +582,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	} else if (net->tls.params != NULL) {
 		int ret = tls_ctx_send((tls_ctx_t *)&net->tls, buf, buf_len);
 		if (ret != KNOT_EOK) {
-			WARN("can't send query to %s\n", net->remote_str);
+			WARN("can't send query to %s", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
 	// Send data over TCP.
@@ -614,7 +614,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 			ret = sendmsg(net->sockfd, &msg, 0);
 		}
 		if (ret != total) {
-			WARN("can't send query to %s\n", net->remote_str);
+			WARN("can't send query to %s", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
 	}
@@ -642,7 +642,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		int ret = quic_recv_dns_response((quic_ctx_t *)&net->quic, buf,
 		                                 buf_len, net->srv);
 		if (ret < 0) {
-			WARN("can't receive reply from %s\n", net->remote_str);
+			WARN("can't receive reply from %s", net->remote_str);
 			return KNOT_NET_ERECV;
 		}
 		return ret;
@@ -659,7 +659,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 			// Wait for datagram data.
 			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("response timeout for %s\n",
+				WARN("response timeout for %s",
 				     net->remote_str);
 				return KNOT_NET_ETIMEOUT;
 			}
@@ -668,7 +668,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 			ssize_t ret = recvfrom(net->sockfd, buf, buf_len, 0,
 			                       (struct sockaddr *)&from, &from_len);
 			if (ret <= 0) {
-				WARN("can't receive reply from %s\n",
+				WARN("can't receive reply from %s",
 				     net->remote_str);
 				return KNOT_NET_ERECV;
 			}
@@ -678,7 +678,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 			    memcmp(&from, net->srv->ai_addr, from_len) != 0) {
 				char *src = NULL;
 				get_addr_str(&from, net->socktype, &src);
-				WARN("unexpected reply source %s\n", src);
+				WARN("unexpected reply source %s", src);
 				free(src);
 				continue;
 			}
@@ -690,7 +690,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 	} else if (net->https.params.enable) {
 		int ret = https_recv_dns_response((https_ctx_t *)&net->https, buf, buf_len);
 		if (ret < 0) {
-			WARN("can't receive reply from %s\n", net->remote_str);
+			WARN("can't receive reply from %s", net->remote_str);
 			return KNOT_NET_ERECV;
 		}
 		return ret;
@@ -699,7 +699,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 	} else if (net->tls.params != NULL) {
 		int ret = tls_ctx_receive((tls_ctx_t *)&net->tls, buf, buf_len);
 		if (ret < 0) {
-			WARN("can't receive reply from %s\n", net->remote_str);
+			WARN("can't receive reply from %s", net->remote_str);
 			return KNOT_NET_ERECV;
 		}
 		return ret;
@@ -711,7 +711,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		// Receive TCP message header.
 		while (total < sizeof(msg_len)) {
 			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("response timeout for %s\n",
+				WARN("response timeout for %s",
 				     net->remote_str);
 				return KNOT_NET_ETIMEOUT;
 			}
@@ -720,7 +720,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 			ssize_t ret = recv(net->sockfd, (uint8_t *)&msg_len + total,
 				           sizeof(msg_len) - total, 0);
 			if (ret <= 0) {
-				WARN("can't receive reply from %s\n",
+				WARN("can't receive reply from %s",
 				     net->remote_str);
 				return KNOT_NET_ERECV;
 			}
@@ -738,7 +738,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		// Receive whole answer message by parts.
 		while (total < msg_len) {
 			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("response timeout for %s\n",
+				WARN("response timeout for %s",
 				     net->remote_str);
 				return KNOT_NET_ETIMEOUT;
 			}
@@ -746,7 +746,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 			// Receive piece of message.
 			ssize_t ret = recv(net->sockfd, buf + total, msg_len - total, 0);
 			if (ret <= 0) {
-				WARN("can't receive reply from %s\n",
+				WARN("can't receive reply from %s",
 				     net->remote_str);
 				return KNOT_NET_ERECV;
 			}

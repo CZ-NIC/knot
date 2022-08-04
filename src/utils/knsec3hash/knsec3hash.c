@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,11 +26,10 @@
 #include "libdnssec/error.h"
 #include "libdnssec/nsec.h"
 #include "libknot/libknot.h"
+#include "utils/common/msg.h"
 #include "utils/common/params.h"
 
 #define PROGRAM_NAME	"knsec3hash"
-
-#define error(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 
 /*!
  * \brief Print program help (and example).
@@ -66,26 +65,26 @@ static bool parse_nsec3_params(dnssec_nsec3_params_t *params, const char *salt_s
 	uint8_t algorithm = 0;
 	int r = str_to_u8(algorithm_str, &algorithm);
 	if (r != KNOT_EOK) {
-		error("Invalid algorithm number.");
+		ERR2("invalid algorithm number");
 		return false;
 	}
 
 	uint16_t iterations = 0;
 	r = str_to_u16(iterations_str, &iterations);
 	if (r != KNOT_EOK) {
-		error("Invalid iteration count.");
+		ERR2("invalid iteration count");
 		return false;
 	}
 
 	dnssec_binary_t salt = { 0 };
 	r = str_to_salt(salt_str, &salt);
 	if (r != DNSSEC_EOK) {
-		error("Invalid salt, %s.", knot_strerror(r));
+		ERR2("invalid salt (%s)", knot_strerror(r));
 		return false;
 	}
 
 	if (salt.size > UINT8_MAX) {
-		error("Invalid salt, maximum length is %d bytes.", UINT8_MAX);
+		ERR2("invalid salt, maximum length is %d bytes", UINT8_MAX);
 		dnssec_binary_free(&salt);
 		return false;
 	}
@@ -153,7 +152,7 @@ int main(int argc, char *argv[])
 
 	dname.data = knot_dname_from_str_alloc(argv[new_params ? 5 : 4]);
 	if (dname.data == NULL) {
-		error("Cannot parse domain name.");
+		ERR2("cannot parse domain name");
 		goto fail;
 	}
 	knot_dname_to_lower(dname.data);
@@ -161,13 +160,13 @@ int main(int argc, char *argv[])
 
 	int r = dnssec_nsec3_hash(&dname, &nsec3_params, &digest);
 	if (r != DNSSEC_EOK) {
-		error("Cannot compute NSEC3 hash, %s.", knot_strerror(r));
+		ERR2("cannot compute NSEC3 hash (%s)", knot_strerror(r));
 		goto fail;
 	}
 
 	r = knot_base32hex_encode_alloc(digest.data, digest.size, &digest_print.data);
 	if (r < 0) {
-		error("Cannot encode computed hash, %s.", knot_strerror(r));
+		ERR2("cannot encode computed hash (%s)", knot_strerror(r));
 		goto fail;
 	}
 	digest_print.size = r;

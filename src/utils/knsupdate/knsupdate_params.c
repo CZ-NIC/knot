@@ -219,21 +219,21 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			free(params->server->service);
 			params->server->service = strdup(optarg);
 			if (!params->server->service) {
-				ERR("failed to set default port '%s'\n", optarg);
+				ERR("failed to set default port '%s'", optarg);
 				return KNOT_ENOMEM;
 			}
 			break;
 		case 'r':
 			ret = str_to_u32(optarg, &params->retries);
 			if (ret != KNOT_EOK) {
-				ERR("invalid retries '%s'\n", optarg);
+				ERR("invalid retries '%s'", optarg);
 				return ret;
 			}
 			break;
 		case 't':
 			ret = params_parse_wait(optarg, &params->wait);
 			if (ret != KNOT_EOK) {
-				ERR("invalid timeout '%s'\n", optarg);
+				ERR("invalid timeout '%s'", optarg);
 				return ret;
 			}
 			break;
@@ -241,7 +241,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			knot_tsig_key_deinit(&params->tsig_key);
 			ret = knot_tsig_key_init_str(&params->tsig_key, optarg);
 			if (ret != KNOT_EOK) {
-				ERR("failed to parse key '%s'\n", optarg);
+				ERR("failed to parse key '%s'", optarg);
 				return ret;
 			}
 			break;
@@ -249,7 +249,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			knot_tsig_key_deinit(&params->tsig_key);
 			ret = knot_tsig_key_init_file(&params->tsig_key, optarg);
 			if (ret != KNOT_EOK) {
-				ERR("failed to parse keyfile '%s'\n", optarg);
+				ERR("failed to parse keyfile '%s'", optarg);
 				return ret;
 			}
 			break;
@@ -284,7 +284,7 @@ int knsupdate_set_ttl(knsupdate_params_t *params, const uint32_t ttl)
 {
 	int ret = parser_set_default(&params->parser, "$TTL %u\n", ttl);
 	if (ret != KNOT_EOK) {
-		ERR("failed to set default TTL, %s\n", zs_strerror(ret));
+		ERR("failed to set default TTL, %s", zs_strerror(ret));
 	}
 	return ret;
 }
@@ -298,7 +298,7 @@ int knsupdate_set_origin(knsupdate_params_t *params, const char *origin)
 	free(fqdn);
 
 	if (ret != KNOT_EOK) {
-		ERR("failed to set default origin, %s\n", zs_strerror(ret));
+		ERR("failed to set default origin, %s", zs_strerror(ret));
 	}
 	return ret;
 }

@@ -39,7 +39,7 @@ static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 	// generate ZSKs
 	int ret = knot_dnssec_key_rollover(ctx, KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 	if (ret != KNOT_EOK) {
-		ERR2("key rollover failed\n");
+		ERR2("key rollover failed");
 		return ret;
 	}
 	// we don't need to do anything explicitly with the generated ZSKs
@@ -62,7 +62,7 @@ static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_ke
 
 	int ret = load_zone_keys(ctx, keyset, false);
 	if (ret != KNOT_EOK) {
-		ERR2("failed to load keys\n");
+		ERR2("failed to load keys");
 		return ret;
 	}
 
@@ -71,7 +71,7 @@ static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_ke
 		if (key->is_public) {
 			ret = rrset_add_zone_key(dnskey, key);
 			if (ret != KNOT_EOK) {
-				ERR2("failed to add zone key\n");
+				ERR2("failed to add zone key");
 				return ret;
 			}
 		}
@@ -102,7 +102,7 @@ int keymgr_pregenerate_zsks(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 
 	if (ctx->policy->dnskey_ttl       == UINT32_MAX ||
 	    ctx->policy->zone_maximal_ttl == UINT32_MAX) {
-		ERR2("dnskey-ttl or zone-max-ttl not configured\n");
+		ERR2("dnskey-ttl or zone-max-ttl not configured");
 		return KNOT_ESEMCHECK;
 	}
 
@@ -232,7 +232,7 @@ done:
 
 #define OFFLINE_KSK_CONF_CHECK \
 	if (!ctx->policy->offline_ksk || !ctx->policy->manual) { \
-		ERR2("offline-ksk and manual must be enabled in configuration\n"); \
+		ERR2("offline-ksk and manual must be enabled in configuration"); \
 		return KNOT_ESEMCHECK; \
 	}
 
@@ -431,7 +431,7 @@ static void skr_validate_header(zs_scanner_t *sc)
 	if (ctx->timestamp > 0 && ctx->ret == KNOT_EOK) {
 		int ret = key_records_verify(&ctx->r, ctx->kctx, ctx->timestamp);
 		if (ret != KNOT_EOK) { // ctx->ret untouched
-			ERR2("invalid SignedKeyResponse for %"KNOT_TIME_PRINTF" (%s)\n",
+			ERR2("invalid SignedKeyResponse for %"KNOT_TIME_PRINTF" (%s)",
 			     ctx->timestamp, knot_strerror(ret));
 		}
 		key_records_clear_rdatasets(&ctx->r);

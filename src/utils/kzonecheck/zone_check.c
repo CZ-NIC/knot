@@ -17,13 +17,14 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "utils/kzonecheck/zone_check.h"
+
 #include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
-#include "utils/kzonecheck/zone_check.h"
+#include "utils/common/msg.h"
 
 typedef struct {
 	sem_handler_t handler;
-	FILE *outfile;
 	unsigned errors[SEM_ERR_UNKNOWN + 1]; /*!< Counting errors by type. */
 	unsigned error_count;                 /*!< Total error count. */
 } err_handler_stats_t;
@@ -42,10 +43,9 @@ static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
 		owner = "";
 	}
 
-	fprintf(stats->outfile, "[%s] %s%s%s\n",
-	        owner, sem_error_msg(error),
-	        (data != NULL ? " "  : ""),
-	        (data != NULL ? data : ""));
+	INFO2("[%s] %s%s%s\n", owner, sem_error_msg(error),
+	      (data != NULL ? " "  : ""),
+	      (data != NULL ? data : ""));
 
 	stats->errors[error]++;
 	stats->error_count++;
@@ -53,21 +53,19 @@ static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
 
 static void print_statistics(err_handler_stats_t *stats)
 {
-	fprintf(stats->outfile, "\nError summary:\n");
+	INFO2("Error summary:");
 	for (sem_error_t i = 0; i <= SEM_ERR_UNKNOWN; ++i) {
 		if (stats->errors[i] > 0) {
-			fprintf(stats->outfile, "%4u\t%s\n", stats->errors[i],
-			        sem_error_msg(i));
+			INFO2("%4u\t%s", stats->errors[i], sem_error_msg(i));
 		}
 	}
 }
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name,
-               FILE *outfile, semcheck_optional_t optional, time_t time)
+               semcheck_optional_t optional, time_t time)
 {
 	err_handler_stats_t stats = {
 		.handler = { .cb = err_callback },
-		.outfile = outfile
 	};
 
 	zloader_t zl;

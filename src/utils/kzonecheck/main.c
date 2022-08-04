@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
 #include "knot/zone/semantic-check.h"
+#include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/kzonecheck/zone_check.h"
 
@@ -105,7 +106,7 @@ int main(int argc, char *argv[])
 		case 't':
 			if (knot_time_parse("YMDhms|#|+-#U|+-#",
 			                    optarg, &check_time) != KNOT_EOK) {
-				fprintf(stderr, "Unknown time format\n");
+				ERR2("unknown time format");
 				return EXIT_FAILURE;
 			}
 			break;
@@ -117,7 +118,7 @@ int main(int argc, char *argv[])
 
 	/* Check if there's at least one remaining non-option. */
 	if (optind >= argc) {
-		fprintf(stderr, "Expected zone file name\n");
+		ERR2("expected zone file name");
 		print_help();
 		return EXIT_FAILURE;
 	}
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
 	knot_dname_to_lower(dname);
 	free(zonename);
-	int ret = zone_check(filename, dname, stdout, optional, (time_t)check_time);
+	int ret = zone_check(filename, dname, optional, (time_t)check_time);
 	knot_dname_free(dname, NULL);
 
 	log_close();
@@ -161,20 +162,20 @@ int main(int argc, char *argv[])
 	switch (ret) {
 	case KNOT_EOK:
 		if (verbose) {
-			fprintf(stdout, "No semantic error found\n");
+			INFO2("no semantic error found");
 		}
 		return EXIT_SUCCESS;
 	case KNOT_EZONEINVAL:
-		fprintf(stdout, "Serious semantic error detected\n");
+		ERR2("serious semantic error detected");
 		// FALLTHROUGH
 	case KNOT_ESEMCHECK:
 		return EXIT_FAILURE;
 	case KNOT_EACCES:
 	case KNOT_EFILE:
-		fprintf(stderr, "Failed to load the zone file\n");
+		ERR2("failed to load the zone file");
 		return EXIT_FAILURE;
 	default:
-		fprintf(stderr, "Failed to run semantic checks (%s)\n", knot_strerror(ret));
+		ERR2("failed to run semantic checks (%s)", knot_strerror(ret));
 		return EXIT_FAILURE;
 	}
 }

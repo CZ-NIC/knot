@@ -79,7 +79,7 @@ static void catalog_print(catalog_t *cat)
 			ret = catalog_apply(cat, filter_member, catalog_print_cb, &total, false);
 		}
 		if (ret != KNOT_EOK) {
-			ERR2("failed to print catalog (%s)\n", knot_strerror(ret));
+			ERR2("failed to print catalog (%s)", knot_strerror(ret));
 			return;
 		}
 	}
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 
 	// Backward compatibility.
 	if (argc - optind > 0) {
-		WARN2("obsolete parameter specified\n");
+		WARN2("obsolete parameter specified");
 		if (util_conf_init_justdb("catalog-db", argv[optind]) != KNOT_EOK) {
 			goto failure;
 		}

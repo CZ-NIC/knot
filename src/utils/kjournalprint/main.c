@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -196,7 +196,7 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 
 	ret = journal_info(j, &exists, NULL, NULL, NULL, NULL, NULL, &occupied, &occupied_all);
 	if (ret != KNOT_EOK || !exists) {
-		ERR2("zone not exists in the journal DB %s\n", path);
+		ERR2("zone not exists in the journal DB %s", path);
 		knot_lmdb_deinit(&jdb);
 		return ret == KNOT_EOK ? KNOT_ENOENT : ret;
 	}
@@ -204,9 +204,9 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 	if (params->check) {
 		ret = journal_sem_check(j);
 		if (ret > 0) {
-			ERR2("semantic check failed with code %d\n", ret);
+			ERR2("semantic check failed with code %d", ret);
 		} else if (ret != KNOT_EOK) {
-			ERR2("semantic check failed (%s)\n", knot_strerror(ret));
+			ERR2("semantic check failed (%s)", knot_strerror(ret));
 		}
 	}
 
@@ -391,7 +391,7 @@ int main(int argc, char *argv[])
 
 	// Backward compatibility.
 	if ((justlist && (argc - optind > 0)) || (!justlist && (argc - optind > 1))) {
-		WARN2("obsolete parameter specified\n");
+		WARN2("obsolete parameter specified");
 		if (util_conf_init_justdb("journal-db", argv[optind]) != KNOT_EOK) {
 			goto failure;
 		}
@@ -409,18 +409,18 @@ int main(int argc, char *argv[])
 		free(db);
 		switch (ret) {
 		case KNOT_ENOENT:
-			printf("No zones in journal DB\n");
+			INFO2("No zones in journal DB");
 			// FALLTHROUGH
 		case KNOT_EOK:
 			goto success;
 		case KNOT_ENODB:
-			ERR2("the journal DB does not exist\n");
+			ERR2("the journal DB does not exist");
 			goto failure;
 		case KNOT_EMALF:
-			ERR2("the journal DB is broken\n");
+			ERR2("the journal DB is broken");
 			goto failure;
 		default:
-			ERR2("failed to load zone list (%s)\n", knot_strerror(ret));
+			ERR2("failed to load zone list (%s)", knot_strerror(ret));
 			goto failure;
 		}
 	} else {
@@ -438,21 +438,21 @@ int main(int argc, char *argv[])
 		switch (ret) {
 		case KNOT_ENOENT:
 			if (params.from_serial) {
-				printf("The journal is empty or the serial not present\n");
+				INFO2("The journal is empty or the serial not present");
 			} else {
-				printf("The journal is empty\n");
+				INFO2("The journal is empty");
 			}
 			break;
 		case KNOT_ENODB:
-			ERR2("the journal DB does not exist\n");
+			ERR2("the journal DB does not exist");
 			goto failure;
 		case KNOT_EOUTOFZONE:
-			ERR2("the journal DB does not contain the specified zone\n");
+			ERR2("the journal DB does not contain the specified zone");
 			goto failure;
 		case KNOT_EOK:
 			break;
 		default:
-			ERR2("failed to load changesets (%s)\n", knot_strerror(ret));
+			ERR2("failed to load changesets (%s)", knot_strerror(ret));
 			goto failure;
 		}
 	}

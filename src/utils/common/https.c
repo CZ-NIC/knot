@@ -107,7 +107,7 @@ static ssize_t https_send_callback(nghttp2_session *session, const uint8_t *data
 
 	gnutls_record_cork(tls_session);
 	if ((len = gnutls_record_send(tls_session, data, length)) <= 0) {
-		WARN("TLS, failed to send\n");
+		WARN("TLS, failed to send");
 		return KNOT_NET_ESEND;
 	}
 	return len;
@@ -122,7 +122,7 @@ static int https_on_frame_send_callback(nghttp2_session *session, const nghttp2_
 	while (gnutls_record_check_corked(tls_session) > 0) {
 		int ret = gnutls_record_uncork(tls_session, 0);
 		if (ret < 0 && gnutls_error_is_fatal(ret) != 0) {
-			WARN("TLS, failed to send (%s)\n", gnutls_strerror(ret));
+			WARN("TLS, failed to send (%s)", gnutls_strerror(ret));
 			return KNOT_NET_ESEND;
 		}
 	}
@@ -147,14 +147,14 @@ static ssize_t https_recv_callback(nghttp2_session *session, uint8_t *data, size
 			return NGHTTP2_ERR_WOULDBLOCK;
 		}
 		if (ret == 0) {
-			WARN("TLS, peer has closed the connection\n");
+			WARN("TLS, peer has closed the connection");
 			return KNOT_NET_ERECV;
 		} else if (gnutls_error_is_fatal(ret)) {
-			WARN("TLS, failed to receive reply (%s)\n",
+			WARN("TLS, failed to receive reply (%s)",
 			     gnutls_strerror(ret));
 			return KNOT_NET_ERECV;
 		} else if (poll(&pfd, 1, 1000 * ctx->tls->wait) != 1) {
-			WARN("TLS, peer took too long to respond\n");
+			WARN("TLS, peer took too long to respond");
 			return KNOT_ETIMEOUT;
 		}
 	}
@@ -221,7 +221,7 @@ static int https_on_header_callback(nghttp2_session *session, const nghttp2_fram
 			ctx->path = strndup((const char *)(value + redirect_url.field_data[UF_PATH].off),
 			                    redirect_url.field_data[UF_PATH].len);
 		}
-		WARN("HTTP redirect (%s%s)->(%s%s)\n", old_auth, old_path, ctx->authority, ctx->path);
+		WARN("HTTP redirect (%s%s)->(%s%s)", old_auth, old_path, ctx->authority, ctx->path);
 		if (r_auth) {
 			free(old_auth);
 		}

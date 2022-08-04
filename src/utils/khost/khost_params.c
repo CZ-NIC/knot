@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -99,7 +99,7 @@ void khost_clean(kdig_params_t *params)
 static int parse_server(const char *value, list_t *servers, const char *def_port)
 {
 	if (params_parse_server(value, servers, def_port) != KNOT_EOK) {
-		ERR("invalid server %s\n", value);
+		ERR("invalid server %s", value);
 		return KNOT_EINVAL;
 	}
 
@@ -134,7 +134,7 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 
 			// Check for correct address.
 			if (reverse == NULL) {
-				ERR("invalid IPv4/IPv6 address %s\n", value);
+				ERR("invalid IPv4/IPv6 address %s", value);
 				return KNOT_EINVAL;
 			}
 
@@ -302,7 +302,7 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 			break;
 		case 'c':
 			if (params_parse_class(optarg, &rclass) != KNOT_EOK) {
-				ERR("invalid class '%s'\n", optarg);
+				ERR("invalid class '%s'", optarg);
 				return KNOT_EINVAL;
 			}
 			conf->class_num = rclass;
@@ -310,7 +310,7 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 		case 't':
 			if (params_parse_type(optarg, &rtype, &serial, &notify)
 			    != KNOT_EOK) {
-				ERR("invalid type '%s'\n", optarg);
+				ERR("invalid type '%s'", optarg);
 				return KNOT_EINVAL;
 			}
 			conf->type_num = rtype;
@@ -324,13 +324,13 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 			break;
 		case 'R':
 			if (str_to_u32(optarg, &conf->retries) != KNOT_EOK) {
-				ERR("invalid retries '%s'\n", optarg);
+				ERR("invalid retries '%s'", optarg);
 				return KNOT_EINVAL;
 			}
 			break;
 		case 'W':
 			if (params_parse_wait(optarg, &conf->wait) != KNOT_EOK) {
-				ERR("invalid wait '%s'\n", optarg);
+				ERR("invalid wait '%s'", optarg);
 				return KNOT_EINVAL;
 			}
 			break;

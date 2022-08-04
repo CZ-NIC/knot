@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,10 +88,10 @@ int tok_find(const char *lp, const char **tbl)
 	int bp = 0;
 	if ((bp = tok_scan(lp, tbl, &lpm)) < 0) {
 		if (lpm > -1) {
-			ERR("unexpected literal: '%s', did you mean '%s' ?\n",
+			ERR("unexpected literal: '%s', did you mean '%s' ?",
 			    lp, TOK_S(tbl[lpm]));
 		} else {
-			ERR("unexpected literal: '%s'\n", lp);
+			ERR("unexpected literal: '%s'", lp);
 		}
 
 		return KNOT_EPARSEFAIL;

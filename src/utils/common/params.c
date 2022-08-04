@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ char *name_from_idn(const char *idn_name) {
 
 	int rc = idna_to_ascii_lz(idn_name, &name, 0);
 	if (rc != IDNA_SUCCESS) {
-		ERR("IDNA (%s)\n", idna_strerror(rc));
+		ERR("IDNA (%s)", idna_strerror(rc));
 		return NULL;
 	}
 
@@ -273,7 +273,7 @@ int params_parse_type(const char *value, uint16_t *rtype, int64_t *serial,
 	if (param_pos == strlen(value)) {
 		// IXFR requires serial parameter.
 		if (*rtype == KNOT_RRTYPE_IXFR) {
-			DBG("SOA serial is required for IXFR query\n");
+			DBG("SOA serial is required for IXFR query");
 			return KNOT_EINVAL;
 		} else {
 			*serial = -1;
@@ -289,13 +289,13 @@ int params_parse_type(const char *value, uint16_t *rtype, int64_t *serial,
 
 			// Check for bad serial string.
 			if (end == param_str || *end != '\0' || num > UINT32_MAX) {
-				DBG("bad SOA serial '%s'\n", param_str);
+				DBG("bad SOA serial '%s'", param_str);
 				return KNOT_EINVAL;
 			}
 
 			*serial = num;
 		} else {
-			DBG("unsupported parameter '%s'\n", value);
+			DBG("unsupported parameter '%s'", value);
 			return KNOT_EINVAL;
 		}
 	}

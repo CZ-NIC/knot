@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ bool util_conf_initialized(void)
 int util_conf_init_confdb(const char *confdb)
 {
 	if (util_conf_initialized()) {
-		ERR2("configuration already initialized\n");
+		ERR2("configuration already initialized");
 		util_conf_deinit();
 		return KNOT_ESEMCHECK;
 	}
@@ -54,7 +54,7 @@ int util_conf_init_confdb(const char *confdb)
 	conf_t *new_conf = NULL;
 	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, flags);
 	if (ret != KNOT_EOK) {
-		ERR2("failed opening configuration database '%s' (%s)\n",
+		ERR2("failed opening configuration database '%s' (%s)",
 		     (confdb == NULL ? "" : confdb), knot_strerror(ret));
 	} else {
 		conf_update(new_conf, CONF_UPD_FNONE);
@@ -71,7 +71,7 @@ int util_conf_init_file(const char *conffile)
 
 	ret = conf_import(conf(), conffile, true, false);
 	if (ret != KNOT_EOK) {
-		ERR2("failed opening configuration file '%s' (%s)\n",
+		ERR2("failed opening configuration file '%s' (%s)",
 		     conffile, knot_strerror(ret));
 	}
 	return ret;
@@ -94,7 +94,7 @@ int util_conf_init_justdb(const char *db_type, const char *db_path)
 	ret = conf_import(conf(), conf_str, false, false);
 	free(conf_str);
 	if (ret != KNOT_EOK) {
-		ERR2("failed creating temporary configuration (%s)\n", knot_strerror(ret));
+		ERR2("failed creating temporary configuration (%s)", knot_strerror(ret));
 	}
 	return ret;
 }
@@ -109,7 +109,7 @@ int util_conf_init_default(bool allow_db)
 	} else if (stat(CONF_DEFAULT_FILE, &st) == 0) {
 		return util_conf_init_file(CONF_DEFAULT_FILE);
 	} else {
-		ERR2("couldn't initialize configuration, please provide %s option\n",
+		ERR2("couldn't initialize configuration, please provide %s option",
 		     (allow_db ? "-c, -C, or -D" : "-c or -C"));
 		return KNOT_EINVAL;
 	}

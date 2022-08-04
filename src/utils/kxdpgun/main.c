@@ -432,7 +432,7 @@ void *xdp_gun_thread(void *_ctx)
 	if (ctx->tcp) {
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
 		if (tcp_table == NULL) {
-			ERR2("failed to allocate TCP connection table\n");
+			ERR2("failed to allocate TCP connection table");
 			return NULL;
 		}
 	}
@@ -440,12 +440,12 @@ void *xdp_gun_thread(void *_ctx)
 #ifdef ENABLE_QUIC
 		quic_creds = knot_xquic_init_creds(false, NULL, NULL);
 		if (quic_creds == NULL) {
-			ERR2("failed to initialize QUIC context\n");
+			ERR2("failed to initialize QUIC context");
 			return NULL;
 		}
 		quic_table = knot_xquic_table_new(ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, quic_creds);
 		if (quic_table == NULL) {
-			ERR2("failed to allocate QUIC connection table\n");
+			ERR2("failed to allocate QUIC connection table");
 			return NULL;
 		}
 		ctx->target_ip.sin6_port = htobe16(ctx->target_port);
@@ -471,7 +471,7 @@ void *xdp_gun_thread(void *_ctx)
 	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, NULL);
 	pthread_mutex_unlock(&global_stats.mutex);
 	if (ret != KNOT_EOK) {
-		ERR2("failed to initialize XDP socket#%u (%s)\n",
+		ERR2("failed to initialize XDP socket#%u (%s)",
 		     ctx->thread_id, knot_strerror(ret));
 		knot_tcp_table_free(tcp_table);
 		return NULL;
@@ -767,7 +767,7 @@ void *xdp_gun_thread(void *_ctx)
 	if (errors > 0) {
 		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
 	}
-	INFO2("thread#%02u: sent %"PRIu64"%s%s%s\n",
+	INFO2("thread#%02u: sent %"PRIu64"%s%s%s",
 	      ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
 	local_stats.duration = ctx->duration;
 	collect_stats(&global_stats, &local_stats);
@@ -830,7 +830,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		ctx->ipv6 = true;
 		ctx->target_ip.sin6_family = AF_INET6;
 		if (inet_pton(AF_INET6, target_str, &((struct sockaddr_in6 *)&ctx->target_ip)->sin6_addr) <= 0) {
-			ERR2("invalid target IP\n");
+			ERR2("invalid target IP");
 			return false;
 		}
 	} else {
@@ -845,7 +845,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		                       (struct sockaddr_storage *)&ctx->local_ip,
 		                       (ctx->dev[0] == '\0') ? ctx->dev : auto_dev);
 		if (ret < 0) {
-			ERR2("can't find route to '%s' (%s)\n", target_str, strerror(-ret));
+			ERR2("can't find route to '%s' (%s)", target_str, strerror(-ret));
 			return false;
 		}
 	}
@@ -860,12 +860,12 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		if (ctx->ipv6) {
 			if (ctx->local_ip_range < 64 ||
 			    inet_pton(AF_INET6, local_ip, &ctx->local_ip.sin6_addr) <= 0) {
-				ERR2("invalid local IPv6 or unsupported prefix length\n");
+				ERR2("invalid local IPv6 or unsupported prefix length");
 				return false;
 			}
 		} else {
 			if (inet_pton(AF_INET, local_ip, &ctx->local_ip.sin6_addr) <= 0) {
-				ERR2("invalid local IPv4\n");
+				ERR2("invalid local IPv4");
 				return false;
 			}
 		}
@@ -879,7 +879,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		if (ret < 0) {
 			char neigh_str[256] = { 0 };
 			(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), (struct sockaddr_storage *)neigh);
-			ERR2("failed to get remote MAC of target/gateway '%s' (%s)\n",
+			ERR2("failed to get remote MAC of target/gateway '%s' (%s)",
 			     neigh_str, strerror(-ret));
 			return false;
 		}
@@ -888,7 +888,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	if (mac_empty(ctx->local_mac)) {
 		int ret = dev2mac(ctx->dev, ctx->local_mac);
 		if (ret < 0) {
-			ERR2("failed to get MAC of device '%s' (%s)\n", ctx->dev, strerror(-ret));
+			ERR2("failed to get MAC of device '%s' (%s)", ctx->dev, strerror(-ret));
 			return false;
 		}
 	}
@@ -897,7 +897,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	if (ret >= 0) {
 		ctx->n_threads = ret;
 	} else {
-		ERR2("unable to get number of queues for '%s' (%s)\n", ctx->dev,
+		ERR2("unable to get number of queues for '%s' (%s)", ctx->dev,
 		     knot_strerror(ret));
 		return false;
 	}
@@ -905,7 +905,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	if (ctx->n_threads > 1 && ctx->quic) {
 		ret = knot_eth_rss(ctx->dev, &ctx->rss_conf);
 		if (ret != 0) {
-			WARN2("unable to read NIC RSS configuration for '%s' (%s)\n",
+			WARN2("unable to read NIC RSS configuration for '%s' (%s)",
 			      ctx->dev, knot_strerror(ret));
 		}
 	}
@@ -1000,10 +1000,10 @@ static bool sending_mode(const char *arg, xdp_gun_ctx_t *ctx)
 
 	return true;
 mode_unavailable:
-	ERR2("mode '%s' not available\n", optarg);
+	ERR2("mode '%s' not available", optarg);
 	return false;
 mode_invalid:
-	ERR2("invalid mode '%s'\n", optarg);
+	ERR2("invalid mode '%s'", optarg);
 	return false;
 }
 
@@ -1047,7 +1047,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				ctx->duration = argf * 1000000.0;
 				assert(ctx->duration >= 1000);
 			} else {
-				ERR2("invalid duration '%s'\n", optarg);
+				ERR2("invalid duration '%s'", optarg);
 				return false;
 			}
 			break;
@@ -1057,7 +1057,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (arg > 0) {
 				ctx->qps = arg;
 			} else {
-				ERR2("invalid QPS '%s'\n", optarg);
+				ERR2("invalid QPS '%s'", optarg);
 				return false;
 			}
 			break;
@@ -1068,7 +1068,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				default_at_once = false;
 				ctx->at_once = arg;
 			} else {
-				ERR2("invalid batch size '%s'\n", optarg);
+				ERR2("invalid batch size '%s'", optarg);
 				return false;
 			}
 			break;
@@ -1082,7 +1082,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			if (arg > 0 && arg <= 0xffff) {
 				ctx->target_port = arg;
 			} else {
-				ERR2("invalid port '%s'\n", optarg);
+				ERR2("invalid port '%s'", optarg);
 				return false;
 			}
 			break;
@@ -1114,7 +1114,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				return false;
 			}
 #else
-			ERR2("QUIC not available\n");
+			ERR2("QUIC not available");
 			return false;
 #endif // ENABLE_QUIC
 			break;
@@ -1141,13 +1141,13 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			break;
 		case 'L':
 			if (mac_sscan(optarg, ctx->local_mac) != KNOT_EOK) {
-				ERR2("invalid local MAC address '%s'\n", optarg);
+				ERR2("invalid local MAC address '%s'", optarg);
 				return false;
 			}
 			break;
 		case 'R':
 			if (mac_sscan(optarg, ctx->target_mac) != KNOT_EOK) {
-				ERR2("invalid remote MAC address '%s'\n", optarg);
+				ERR2("invalid remote MAC address '%s'", optarg);
 				return false;
 			}
 			break;
@@ -1170,14 +1170,14 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	}
 
 	if (ctx->qps < ctx->n_threads) {
-		WARN2("QPS increased to the number of threads/queues: %u\n", ctx->n_threads);
+		WARN2("QPS increased to the number of threads/queues: %u", ctx->n_threads);
 		ctx->qps = ctx->n_threads;
 	}
 	ctx->qps /= ctx->n_threads;
 
 	knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(ctx->dev));
 
-	INFO2("using interface %s, XDP threads %u, %s%s%s, %s mode\n",
+	INFO2("using interface %s, XDP threads %u, %s%s%s, %s mode",
 	      ctx->dev, ctx->n_threads,
 	      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
 	      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
@@ -1201,7 +1201,7 @@ int main(int argc, char *argv[])
 	thread_ctxs = calloc(ctx.n_threads, sizeof(*thread_ctxs));
 	threads = calloc(ctx.n_threads, sizeof(*threads));
 	if (thread_ctxs == NULL || threads == NULL) {
-		ERR2("out of memory\n");
+		ERR2("out of memory");
 		free(thread_ctxs);
 		free(threads);
 		free_global_payloads();
@@ -1219,7 +1219,7 @@ int main(int argc, char *argv[])
 		    cur_limit.rlim_max != min_limit.rlim_max) {
 			int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
 			if (ret != 0) {
-				WARN2("unable to increase RLIMIT_MEMLOCK: %s\n",
+				WARN2("unable to increase RLIMIT_MEMLOCK: %s",
 				      strerror(errno));
 			}
 		}
@@ -1241,7 +1241,7 @@ int main(int argc, char *argv[])
 		(void)pthread_create(&threads[i], NULL, xdp_gun_thread, &thread_ctxs[i]);
 		int ret = pthread_setaffinity_np(threads[i], sizeof(cpu_set_t), &set);
 		if (ret != 0) {
-			WARN2("failed to set affinity of thread#%zu to CPU#%u\n", i, affinity);
+			WARN2("failed to set affinity of thread#%zu to CPU#%u", i, affinity);
 		}
 		usleep(20000);
 	}

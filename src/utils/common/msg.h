@@ -35,7 +35,7 @@ int msg_enable_debug(int val);
 int msg_debug(const char *fmt, ...);
 
 /*! \brief Debug message for null input. */
-#define DBG_NULL	DBG("%s: null parameter\n", __func__)
+#define DBG_NULL	DBG("%s: null parameter", __func__)
 
 #define ERR2(msg, ...)	{ fprintf(stderr, "error: "   msg "\n", ##__VA_ARGS__); fflush(stderr); }
 #define WARN2(msg, ...)	{ fprintf(stderr, "warning: " msg "\n", ##__VA_ARGS__); fflush(stderr); }

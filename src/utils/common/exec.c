@@ -313,7 +313,7 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 		uint8_t *opt_data = wire.position;
 
 		if (wire.error != KNOT_EOK) {
-			WARN("invalid OPT record data\n");
+			WARN("invalid OPT record data");
 			return;
 		}
 
@@ -357,7 +357,7 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 	}
 
 	if (wire_ctx_available(&wire) > 0) {
-		WARN("invalid OPT record data\n");
+		WARN("invalid OPT record data");
 	}
 }
 
@@ -376,7 +376,7 @@ static void print_section_question(const knot_dname_t *owner,
 	knot_rrset_t *question = knot_rrset_new(owner, qtype, qclass, 0, NULL);
 
 	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &qstyle) < 0) {
-		WARN("can't print whole question section\n");
+		WARN("can't print whole question section");
 	}
 
 	printf("%s\n", buf);
@@ -406,7 +406,7 @@ static void print_section_full(const knot_rrset_t *rrsets,
 
 		if (knot_rrset_txt_dump(&rrsets[i], &buf, &buflen,
 		                        &(style->style)) < 0) {
-				WARN("can't print whole section\n");
+				WARN("can't print whole section");
 				break;
 		}
 		printf("%s", buf);
@@ -431,13 +431,13 @@ static void print_section_dig(const knot_rrset_t *rrsets,
 				buflen += 4096;
 				// Oversize protection.
 				if (buflen > 100000) {
-					WARN("can't print whole section\n");
+					WARN("can't print whole section");
 					break;
 				}
 
 				char *newbuf = realloc(buf, buflen);
 				if (newbuf == NULL) {
-					WARN("can't print whole section\n");
+					WARN("can't print whole section");
 					break;
 				}
 				buf = newbuf;
@@ -480,13 +480,13 @@ static void print_section_host(const knot_rrset_t *rrsets,
 				buflen += 4096;
 				// Oversize protection.
 				if (buflen > 100000) {
-					WARN("can't print whole section\n");
+					WARN("can't print whole section");
 					break;
 				}
 
 				char *newbuf = realloc(buf, buflen);
 				if (newbuf == NULL) {
-					WARN("can't print whole section\n");
+					WARN("can't print whole section");
 					break;
 				}
 				buf = newbuf;
@@ -495,10 +495,8 @@ static void print_section_host(const knot_rrset_t *rrsets,
 			if (descr != NULL) {
 				printf("%s %s %s\n", owner, descr->name, buf);
 			} else {
-				knot_rrtype_to_string(rrset->type, type,
-						      sizeof(type));
-				printf("%s has %s record %s\n",
-				       owner, type, buf);
+				knot_rrtype_to_string(rrset->type, type, sizeof(type));
+				printf("%s has %s record %s\n", owner, type, buf);
 			}
 		}
 

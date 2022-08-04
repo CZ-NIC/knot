@@ -176,53 +176,53 @@ static bool verify_ocsp(gnutls_session_t *session)
 
 	gnutls_datum_t ocsp_resp_raw;
 	if (gnutls_ocsp_status_request_get(*session, &ocsp_resp_raw) != GNUTLS_E_SUCCESS) {
-		WARN("TLS, unable to retrieve stapled OCSP data\n");
+		WARN("TLS, unable to retrieve stapled OCSP data");
 		goto cleanup;
 	}
 	if (gnutls_ocsp_resp_init(&ocsp_resp) != GNUTLS_E_SUCCESS) {
-		WARN("TLS, unable to init OCSP data\n");
+		WARN("TLS, unable to init OCSP data");
 		goto cleanup;
 	}
 	deinit_ocsp_resp = true;
 	if (gnutls_ocsp_resp_import(ocsp_resp, &ocsp_resp_raw) != GNUTLS_E_SUCCESS) {
-		WARN("TLS, unable to import OCSP response\n");
+		WARN("TLS, unable to import OCSP response");
 		goto cleanup;
 	}
 
 	unsigned int cert_list_size = 0;
 	const gnutls_datum_t *cert_list = gnutls_certificate_get_peers(*session, &cert_list_size);
 	if (cert_list_size == 0) {
-		WARN("TLS, unable to retrieve peer certs when verifying OCSP\n");
+		WARN("TLS, unable to retrieve peer certs when verifying OCSP");
 		goto cleanup;
 	}
 	if (gnutls_x509_crt_init(&server_cert) != GNUTLS_E_SUCCESS) {
-		WARN("TLS, unable to init server cert when verifying OCSP\n");
+		WARN("TLS, unable to init server cert when verifying OCSP");
 		goto cleanup;
 	}
 	deinit_server_cert = true;
 	if (gnutls_x509_crt_import(server_cert, &cert_list[0], GNUTLS_X509_FMT_DER) != GNUTLS_E_SUCCESS) {
-		WARN("TLS, unable to import server cert when verifying OCSP\n");
+		WARN("TLS, unable to import server cert when verifying OCSP");
 		goto cleanup;
 	}
 
 	if (gnutls_certificate_allocate_credentials(&xcred) != GNUTLS_E_SUCCESS) {
-		WARN("TLS, unable to allocate credentials when verifying OCSP\n");
+		WARN("TLS, unable to allocate credentials when verifying OCSP");
 		goto cleanup;
 	}
 	deinit_xcreds = true;
 
 	if (gnutls_certificate_get_issuer(xcred, server_cert, &issuer_cert, 0) != GNUTLS_E_SUCCESS) {
 		if (cert_list_size < 2) {
-			WARN("TLS, unable to get issuer (CA) cert when verifying OCSP\n");
+			WARN("TLS, unable to get issuer (CA) cert when verifying OCSP");
 			goto cleanup;
 		}
 		if (gnutls_x509_crt_init(&issuer_cert) != GNUTLS_E_SUCCESS) {
-			WARN("TLS, unable to init issuer cert when verifying OCSP\n");
+			WARN("TLS, unable to init issuer cert when verifying OCSP");
 			goto cleanup;
 		}
 		deinit_issuer_cert = true;
 		if (gnutls_x509_crt_import(issuer_cert, &cert_list[1], GNUTLS_X509_FMT_DER) != GNUTLS_E_SUCCESS) {
-			WARN("TLS, unable to import issuer cert when verifying OCSP\n");
+			WARN("TLS, unable to import issuer cert when verifying OCSP");
 			goto cleanup;
 		}
 	}
@@ -230,24 +230,24 @@ static bool verify_ocsp(gnutls_session_t *session)
 	unsigned int status;
 	time_t this_upd, next_upd, now = time(0);
 	if (gnutls_ocsp_resp_check_crt(ocsp_resp, 0, server_cert) != GNUTLS_E_SUCCESS) {
-		WARN("TLS, OCSP response either empty or not for provided server cert\n");
+		WARN("TLS, OCSP response either empty or not for provided server cert");
 		goto cleanup;
 	}
 	if (gnutls_ocsp_resp_verify_direct(ocsp_resp, issuer_cert, &status, 0) != GNUTLS_E_SUCCESS) {
-		WARN("TLS, unable to verify OCSP response against issuer cert\n");
+		WARN("TLS, unable to verify OCSP response against issuer cert");
 		goto cleanup;
 	}
 	if (status != 0) {
-		WARN("TLS, got a non-zero status when verifying OCSP response against issuer cert\n");
+		WARN("TLS, got a non-zero status when verifying OCSP response against issuer cert");
 		goto cleanup;
 	}
 	if (gnutls_ocsp_resp_get_single(ocsp_resp, 0, NULL, NULL, NULL, NULL, &status,
 	                                &this_upd, &next_upd, NULL, NULL) != GNUTLS_E_SUCCESS) {
-		WARN("TLS, error reading OCSP response\n");
+		WARN("TLS, error reading OCSP response");
 		goto cleanup;
 	}
 	if (status == GNUTLS_OCSP_CERT_REVOKED) {
-		WARN("TLS, OCSP data shows that cert was revoked\n");
+		WARN("TLS, OCSP data shows that cert was revoked");
 		goto cleanup;
 	}
 	if (next_upd == -1) {
@@ -255,12 +255,12 @@ static bool verify_ocsp(gnutls_session_t *session)
 		assert(now >= this_upd);
 		assert(ctx->params->ocsp_stapling > 0);
 		if (now - this_upd > ctx->params->ocsp_stapling) {
-			WARN("TLS, OCSP response is out of date.\n");
+			WARN("TLS, OCSP response is out of date.");
 			goto cleanup;
 		}
 	} else {
 		if (next_upd < now) {
-			WARN("TLS, a newer OCSP response is available but was not sent\n");
+			WARN("TLS, a newer OCSP response is available but was not sent");
 			goto cleanup;
 		}
 	}
@@ -288,7 +288,7 @@ cleanup:
 static int check_certificates(gnutls_session_t session, const list_t *pins)
 {
 	if (gnutls_certificate_type_get(session) != GNUTLS_CRT_X509) {
-		DBG("TLS, invalid certificate type\n");
+		DBG("TLS, invalid certificate type");
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 
@@ -296,13 +296,13 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 	const gnutls_datum_t *cert_list =
 		gnutls_certificate_get_peers(session, &cert_list_size);
 	if (cert_list == NULL || cert_list_size == 0) {
-		DBG("TLS, empty certificate list\n");
+		DBG("TLS, empty certificate list");
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 
 	size_t matches = 0;
 
-	DBG("TLS, received certificate hierarchy:\n");
+	DBG("TLS, received certificate hierarchy:");
 	for (int i = 0; i < cert_list_size; i++) {
 		gnutls_x509_crt_t cert;
 		int ret = gnutls_x509_crt_init(&cert);
@@ -322,7 +322,7 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 			gnutls_x509_crt_deinit(cert);
 			return ret;
 		}
-		DBG(" #%i, %s\n", i + 1, cert_name.data);
+		DBG(" #%i, %s", i + 1, cert_name.data);
 		gnutls_free(cert_name.data);
 
 		uint8_t cert_pin[CERT_PIN_LEN] = { 0 };
@@ -344,7 +344,7 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 			gnutls_x509_crt_deinit(cert);
 			return ret;
 		}
-		DBG("     SHA-256 PIN: %.*s%s\n", ret, txt_pin, match ? ", MATCH" : "");
+		DBG("     SHA-256 PIN: %.*s%s", ret, txt_pin, match ? ", MATCH" : "");
 		free(txt_pin);
 
 		gnutls_x509_crt_deinit(cert);
@@ -353,10 +353,10 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 	if (matches > 0) {
 		return GNUTLS_E_SUCCESS;
 	} else if (EMPTY_LIST(*pins)) {
-		DBG("TLS, skipping certificate PIN check\n");
+		DBG("TLS, skipping certificate PIN check");
 		return GNUTLS_E_SUCCESS;
 	} else {
-		DBG("TLS, no certificate PIN match\n");
+		DBG("TLS, no certificate PIN match");
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 }
@@ -377,12 +377,12 @@ int tls_certificate_verification(tls_ctx_t *ctx)
 	}
 
 	if (!do_verification(ctx->params)) {
-		DBG("TLS, skipping certificate verification\n");
+		DBG("TLS, skipping certificate verification");
 		return GNUTLS_E_SUCCESS;
 	}
 
 	if (ctx->params->ocsp_stapling > 0 && !verify_ocsp(&session)) {
-		WARN("TLS, failed to validate required OCSP data\n");
+		WARN("TLS, failed to validate required OCSP data");
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 
@@ -395,13 +395,13 @@ int tls_certificate_verification(tls_ctx_t *ctx)
 	};
 	size_t data_count = (ctx->params->hostname != NULL) ? 2 : 1;
 	if (data_count == 1) {
-		WARN("TLS, no hostname provided, will not verify certificate owner\n")
+		WARN("TLS, no hostname provided, will not verify certificate owner")
 	}
 
 	unsigned int status;
 	ret = gnutls_certificate_verify_peers(session, data, data_count, &status);
 	if (ret != GNUTLS_E_SUCCESS) {
-		WARN("TLS, failed to verify peer certificate\n");
+		WARN("TLS, failed to verify peer certificate");
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 
@@ -409,7 +409,7 @@ int tls_certificate_verification(tls_ctx_t *ctx)
 	ret = gnutls_certificate_verification_status_print(
 		status, gnutls_certificate_type_get(session), &msg, 0);
 	if (ret == GNUTLS_E_SUCCESS) {
-		DBG("TLS, %s\n", msg.data);
+		DBG("TLS, %s", msg.data);
 	}
 	gnutls_free(msg.data);
 
@@ -449,11 +449,11 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 	    (ctx->params->hostname != NULL && EMPTY_LIST(ctx->params->ca_files))) {
 		ret = gnutls_certificate_set_x509_system_trust(ctx->credentials);
 		if (ret < 0) {
-			WARN("TLS, failed to import system certificates (%s)\n",
+			WARN("TLS, failed to import system certificates (%s)",
 			     gnutls_strerror_name(ret));
 			return KNOT_ERROR;
 		} else {
-			DBG("TLS, imported %i system certificates\n", ret);
+			DBG("TLS, imported %i system certificates", ret);
 		}
 	}
 
@@ -464,11 +464,11 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 		ret = gnutls_certificate_set_x509_trust_file(ctx->credentials, file,
 		                                             GNUTLS_X509_FMT_PEM);
 		if (ret < 0) {
-			WARN("TLS, failed to import certificate file '%s' (%s)\n",
+			WARN("TLS, failed to import certificate file '%s' (%s)",
 			    file, gnutls_strerror_name(ret));
 			return KNOT_ERROR;
 		} else {
-			DBG("TLS, imported %i certificates from '%s'\n", ret, file);
+			DBG("TLS, imported %i certificates from '%s'", ret, file);
 		}
 	}
 
@@ -486,18 +486,18 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 		}
 
 		if (ret != GNUTLS_E_SUCCESS) {
-			WARN("TLS, failed to add client certfile '%s' and keyfile '%s'\n",
+			WARN("TLS, failed to add client certfile '%s' and keyfile '%s'",
 			     params->certfile, params->keyfile);
 			return KNOT_ERROR;
 		} else {
-			DBG("TLS, added client certfile '%s' and keyfile '%s'\n",
+			DBG("TLS, added client certfile '%s' and keyfile '%s'",
 			    params->certfile, params->keyfile);
 		}
 	} else if (params->keyfile != NULL) {
-		WARN("TLS, cannot use client keyfile without a certfile\n");
+		WARN("TLS, cannot use client keyfile without a certfile");
 		return KNOT_ERROR;
 	} else if (params->certfile != NULL) {
-		WARN("TLS, cannot use client certfile without a keyfile\n");
+		WARN("TLS, cannot use client certfile without a keyfile");
 		return KNOT_ERROR;
 	}
 
@@ -588,14 +588,14 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, bool fastopen,
 		ret = gnutls_handshake(ctx->session);
 		if (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0) {
 			if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
-				WARN("TLS, peer took too long to respond\n");
+				WARN("TLS, peer took too long to respond");
 				gnutls_deinit(ctx->session);
 				return KNOT_NET_ETIMEOUT;
 			}
 		}
 	} while (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0);
 	if (ret != GNUTLS_E_SUCCESS) {
-		WARN("TLS, handshake failed (%s)\n", gnutls_strerror(ret));
+		WARN("TLS, handshake failed (%s)", gnutls_strerror(ret));
 		tls_ctx_close(ctx);
 		return KNOT_NET_ESOCKET;
 	}
@@ -617,18 +617,18 @@ int tls_ctx_send(tls_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
 	gnutls_record_cork(ctx->session);
 
 	if (gnutls_record_send(ctx->session, &msg_len, sizeof(msg_len)) <= 0) {
-		WARN("TLS, failed to send\n");
+		WARN("TLS, failed to send");
 		return KNOT_NET_ESEND;
 	}
 	if (gnutls_record_send(ctx->session, buf, buf_len) <= 0) {
-		WARN("TLS, failed to send\n");
+		WARN("TLS, failed to send");
 		return KNOT_NET_ESEND;
 	}
 
 	while (gnutls_record_check_corked(ctx->session) > 0) {
 		int ret = gnutls_record_uncork(ctx->session, 0);
 		if (ret < 0 && gnutls_error_is_fatal(ret) != 0) {
-			WARN("TLS, failed to send (%s)\n", gnutls_strerror(ret));
+			WARN("TLS, failed to send (%s)", gnutls_strerror(ret));
 			return KNOT_NET_ESEND;
 		}
 	}
@@ -660,14 +660,14 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 		if (ret > 0) {
 			total += ret;
 		} else if (ret == 0) {
-			WARN("TLS, peer has closed the connection\n");
+			WARN("TLS, peer has closed the connection");
 			return KNOT_NET_ERECV;
 		} else if (gnutls_error_is_fatal(ret) != 0) {
-			WARN("TLS, failed to receive reply (%s)\n",
+			WARN("TLS, failed to receive reply (%s)",
 			     gnutls_strerror(ret));
 			return KNOT_NET_ERECV;
 		} else if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
-			WARN("TLS, peer took too long to respond\n");
+			WARN("TLS, peer took too long to respond");
 			return KNOT_NET_ETIMEOUT;
 		}
 	}
@@ -687,14 +687,14 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 		if (ret > 0) {
 			total += ret;
 		} else if (ret == 0) {
-			WARN("TLS, peer has closed the connection\n");
+			WARN("TLS, peer has closed the connection");
 			return KNOT_NET_ERECV;
 		} else if (gnutls_error_is_fatal(ret) != 0) {
-			WARN("TLS, failed to receive reply (%s)\n",
+			WARN("TLS, failed to receive reply (%s)",
 			     gnutls_strerror(ret));
 			return KNOT_NET_ERECV;
 		} else if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
-			WARN("TLS, peer took too long to respond\n");
+			WARN("TLS, peer took too long to respond");
 			return KNOT_NET_ETIMEOUT;
 		}
 	}
