@@ -744,9 +744,9 @@ static inline bool conf_get_bool(
  * \param[in] section  Section name.
  * \param[in] param    Parameter name.
  *
- * \return True if enabled, false otherwise.
+ * \return Configured integer value.
  */
-static inline int conf_get_int(
+static inline int64_t conf_get_int(
 	conf_t *conf,
 	const yp_name_t *section,
 	const yp_name_t *param)
