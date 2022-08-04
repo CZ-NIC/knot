@@ -20,6 +20,10 @@
 #include "utils/common/quic.h"
 #include "utils/common/msg.h"
 
+#define KILO (1024ULL)
+#define MEGA (1024ULL * KILO)
+#define GIGA (1024ULL * MEGA)
+
 int quic_params_copy(quic_params_t *dst, const quic_params_t *src)
 {
 	if (dst == NULL || src == NULL) {
@@ -581,8 +585,8 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	ngtcp2_transport_params_default(&params);
 	params.initial_max_streams_uni = 0;
 	params.initial_max_streams_bidi = 0;
-	params.initial_max_stream_data_bidi_local = MAX_PACKET_SIZE;
-	params.initial_max_data = MAX_PACKET_SIZE;
+	params.initial_max_stream_data_bidi_local = 10 * GIGA;
+	params.initial_max_data = NGTCP2_MAX_VARINT;
 
 	struct sockaddr_in6 src_addr;
 	socklen_t src_addr_len = sizeof(src_addr);
