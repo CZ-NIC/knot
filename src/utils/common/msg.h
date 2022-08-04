@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 #define WARNING_	";; WARNING: "
 #define DEBUG_		";; DEBUG: "
 
-#define ERR(msg, ...)	{ fprintf(stderr, ERROR_ msg, ##__VA_ARGS__); fflush(stderr); }
-#define INFO(msg, ...)	{ fprintf(stdout, INFO_ msg, ##__VA_ARGS__); fflush(stdout); }
-#define WARN(msg, ...)	{ fprintf(stderr, WARNING_ msg, ##__VA_ARGS__); fflush(stderr); }
-#define DBG(msg, ...)	msg_debug(DEBUG_ msg, ##__VA_ARGS__)
+#define ERR(msg, ...)	{ fprintf(stderr, ERROR_   msg "\n", ##__VA_ARGS__); fflush(stderr); }
+#define INFO(msg, ...)	{ fprintf(stdout, INFO_    msg "\n", ##__VA_ARGS__); fflush(stdout); }
+#define WARN(msg, ...)	{ fprintf(stderr, WARNING_ msg "\n", ##__VA_ARGS__); fflush(stderr); }
+#define DBG(msg, ...)	{ msg_debug(DEBUG_         msg "\n", ##__VA_ARGS__); fflush(stdout); }
 
 /*! \brief Enable/disable debugging. */
 int msg_enable_debug(int val);
@@ -37,6 +37,6 @@ int msg_debug(const char *fmt, ...);
 /*! \brief Debug message for null input. */
 #define DBG_NULL	DBG("%s: null parameter\n", __func__)
 
-#define ERR2(msg, ...)	{ fprintf(stderr, "error: "   msg, ##__VA_ARGS__); fflush(stderr); }
-#define WARN2(msg, ...)	{ fprintf(stderr, "warning: " msg, ##__VA_ARGS__); fflush(stderr); }
-#define INFO2(msg, ...)	{ fprintf(stdout,             msg, ##__VA_ARGS__); fflush(stdout); }
+#define ERR2(msg, ...)	{ fprintf(stderr, "error: "   msg "\n", ##__VA_ARGS__); fflush(stderr); }
+#define WARN2(msg, ...)	{ fprintf(stderr, "warning: " msg "\n", ##__VA_ARGS__); fflush(stderr); }
+#define INFO2(msg, ...)	{ fprintf(stdout,             msg "\n", ##__VA_ARGS__); fflush(stdout); }
