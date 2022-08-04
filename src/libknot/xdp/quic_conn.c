@@ -413,21 +413,20 @@ void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 		return;
 	}
 
-	if (!keep_stream) {
-		s->unsent_obuf = NULL;
-	}
-
 	list_t *obs = (list_t *)&s->outbufs;
 
 	knot_xquic_obuf_t *first;
 	while (!EMPTY_LIST(*obs) && end_acked >= (first = HEAD(*obs))->len + s->first_offset) {
-		assert(first != s->unsent_obuf);
 		rem_node((node_t *)first);
 		s->obufs_size -= first->len;
 		xconn->obufs_size -= first->len;
 		xconn->xquic_table->obufs_size -= first->len;
 		s->first_offset += first->len;
 		free(first);
+		if (s->unsent_obuf == first) {
+			s->unsent_obuf = EMPTY_LIST(*obs) ? NULL : HEAD(*obs);
+			s->unsent_offset = 0;
+		}
 	}
 
 	if (EMPTY_LIST(*obs) && !keep_stream) {
