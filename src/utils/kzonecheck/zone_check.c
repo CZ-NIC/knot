@@ -43,7 +43,7 @@ static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
 		owner = "";
 	}
 
-	INFO2("[%s] %s%s%s\n", owner, sem_error_msg(error),
+	printf("[%s] %s%s%s\n", owner, sem_error_msg(error),
 	      (data != NULL ? " "  : ""),
 	      (data != NULL ? data : ""));
 
@@ -53,10 +53,10 @@ static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
 
 static void print_statistics(err_handler_stats_t *stats)
 {
-	INFO2("Error summary:");
+	printf("\nError summary:\n");
 	for (sem_error_t i = 0; i <= SEM_ERR_UNKNOWN; ++i) {
 		if (stats->errors[i] > 0) {
-			INFO2("%4u\t%s", stats->errors[i], sem_error_msg(i));
+			printf("%4u\t%s\n", stats->errors[i], sem_error_msg(i));
 		}
 	}
 }

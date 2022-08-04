@@ -162,11 +162,11 @@ int main(int argc, char *argv[])
 	switch (ret) {
 	case KNOT_EOK:
 		if (verbose) {
-			INFO2("no semantic error found");
+			INFO2("No semantic error found");
 		}
 		return EXIT_SUCCESS;
 	case KNOT_EZONEINVAL:
-		ERR2("serious semantic error detected");
+		INFO2("Serious semantic error detected");
 		// FALLTHROUGH
 	case KNOT_ESEMCHECK:
 		return EXIT_FAILURE;
