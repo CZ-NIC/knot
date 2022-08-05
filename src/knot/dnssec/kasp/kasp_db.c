@@ -507,10 +507,15 @@ int kasp_db_load_offline_records(knot_lmdb_db_t *db, const knot_dname_t *for_dna
 	if (prefix.mv_data == NULL) {
 		return KNOT_ENOMEM;
 	}
-	MDB_val search = make_key_time(KASPDBKEY_OFFLINE_RECORDS, for_dname, for_time);
+	unsigned operator = KNOT_LMDB_GEQ;
+	MDB_val search = prefix;
+	if (for_time != 0) {
+		operator = KNOT_LMDB_LEQ;
+		search = make_key_time(KASPDBKEY_OFFLINE_RECORDS, for_dname, for_time);
+	}
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, false);
-	if (knot_lmdb_find(&txn, &search, KNOT_LMDB_LEQ) &&
+	if (knot_lmdb_find(&txn, &search, operator) &&
 	    knot_lmdb_is_prefix_of(&prefix, &txn.cur_key)) {
 		wire_ctx_t wire = wire_ctx_init(txn.cur_val.mv_data, txn.cur_val.mv_size);
 		txn.ret = key_records_deserialize(&wire, r);
@@ -522,7 +527,9 @@ int kasp_db_load_offline_records(knot_lmdb_db_t *db, const knot_dname_t *for_dna
 		txn.ret = KNOT_ENOENT;
 	}
 	knot_lmdb_abort(&txn);
-	free(search.mv_data);
+	if (for_time != 0) {
+		free(search.mv_data);
+	}
 	free(prefix.mv_data);
 	return txn.ret;
 }

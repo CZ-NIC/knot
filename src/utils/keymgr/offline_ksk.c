@@ -229,6 +229,33 @@ done:
 	return ret;
 }
 
+static int last_offline_timestamp(kdnssec_ctx_t *ctx, knot_time_t *last)
+{
+	knot_time_t from = 0;
+	while (true) {
+		knot_time_t next;
+		key_records_t r = { { 0 } };
+		int ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname,
+		                                       from, &next, &r);
+		key_records_clear(&r);
+		if (ret == KNOT_ENOENT) {
+			break;
+		} else if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		if (next == 0) {
+			break;
+		}
+		from = next;
+	}
+	if (from == 0) {
+		from = knot_time();
+	}
+	*last = from;
+	return KNOT_EOK;
+}
+
 #define OFFLINE_KSK_CONF_CHECK \
 	if (!ctx->policy->offline_ksk || !ctx->policy->manual) { \
 		ERROR("offline-ksk and manual must be enabled in configuration\n"); \
@@ -240,11 +267,15 @@ int keymgr_print_ksr(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 	OFFLINE_KSK_CONF_CHECK
 
 	knot_time_t from, to;
-	int ret = parse_timestamp(arg_from, &from);
+	int ret = parse_timestamp(arg_to, &to);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	ret = parse_timestamp(arg_to, &to);
+	if (arg_from == NULL) {
+		ret = last_offline_timestamp(ctx, &from);
+	} else {
+		ret = parse_timestamp(arg_from, &from);
+	}
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
