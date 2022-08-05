@@ -1003,7 +1003,9 @@ int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
 		if (sent > 0 && ignore_lastbyte) {
 			sent++;
 		}
-		knot_xquic_stream_mark_sent(relay, stream_id, sent);
+		if (sent > 0) {
+			knot_xquic_stream_mark_sent(relay, stream_id, sent);
+		}
 
 		if (stream_msgs >= max_msgs / relay->streams_count) {
 			stream_msgs = 0;
