@@ -90,7 +90,7 @@ static void print_help(void)
 	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
 	       "                 (syntax: pregenerate [<from>] <to>)\n"
 	       "  show-offline  Print pre-generated offline key-related records for specified time interval (possibly to infinity).\n"
-	       "                 (syntax: show-offline <from> [<to>])\n"
+	       "                 (syntax: show-offline [<from>] [<to>])\n"
 	       "  del-offline   Delete pre-generated offline key-related records in specified time interval.\n"
 	       "                 (syntax: del-offline <from> <to>)\n"
 	       "  del-all-old   Delete old keys that are in state 'removed'.\n"
@@ -251,8 +251,8 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,
 		                                     argc > 3 ? argv[3] : argv[2]);
 	} else if (strcmp(argv[1], "show-offline") == 0) {
-		CHECK_MISSING_ARG("Timestamp from not specified");
-		ret = keymgr_print_offline_records(&kctx, argv[2], argc > 3 ? argv[3] : NULL);
+		ret = keymgr_print_offline_records(&kctx, argc > 2 ? argv[2] : NULL,
+		                                          argc > 3 ? argv[3] : NULL);
 		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "del-offline") == 0) {
 		CHECK_MISSING_ARG2("Timestamps from-to not specified");

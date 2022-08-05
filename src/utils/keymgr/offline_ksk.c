@@ -142,33 +142,53 @@ static void print_header(const char *of_what, knot_time_t timestamp, const char 
 
 int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)
 {
-	knot_time_t from = 0, to = 0, next = 0;
-	int ret = parse_timestamp(arg_from, &from);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	if (arg_to != NULL) {
-		ret = parse_timestamp(arg_to, &to);
+	knot_time_t from = 0, to = 0;
+	if (arg_from != NULL) {
+		int ret = parse_timestamp(arg_from, &from);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
+	if (arg_to != NULL) {
+		int ret = parse_timestamp(arg_to, &to);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	char *buf = NULL;
 	size_t buf_size = 512;
-	for (knot_time_t i = from; ret == KNOT_EOK && i != 0 && (arg_to == NULL || knot_time_cmp(i, to) < 0); i = next) {
+	while (true) {
+		if (arg_to != NULL && knot_time_cmp(from, to) > 0) {
+			break;
+		}
+		knot_time_t next;
 		key_records_t r = { { 0 } };
-		ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname, i, &next, &r);
-		if (ret == KNOT_EOK) {
-			ret = key_records_dump(&buf, &buf_size, &r, true);
+		int ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname,
+		                                       from, &next, &r);
+		if (ret == KNOT_ENOENT) {
+			break;
+		} else if (ret != KNOT_EOK) {
+			free(buf);
+			return ret;
 		}
-		if (ret == KNOT_EOK) {
-			print_header("Offline records for", i, buf);
-		}
+
+		ret = key_records_dump(&buf, &buf_size, &r, true);
 		key_records_clear(&r);
+		if (ret != KNOT_EOK) {
+			free(buf);
+			return ret;
+		}
+		print_header("Offline records for", from, buf);
+
+		if (next == 0) {
+			break;
+		}
+		from = next;
 	}
 	free(buf);
 
-	return ret;
+	return KNOT_EOK;
 }
 
 int keymgr_delete_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_to)

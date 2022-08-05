@@ -137,9 +137,10 @@ Commands related to Offline KSK feature
 **pregenerate** [*timestamp-from*] *timestamp-to*
   Pre-generate ZSKs for use with offline KSK, for the specified period starting from now or specified time.
 
-**show-offline** *timestamp-from* [*timestamp-to*]
+**show-offline** [*timestamp-from*] [*timestamp-to*]
   Print pre-generated offline key-related records for specified time interval. If *timestamp_to*
-  is omitted, it will be to infinity.
+  is omitted, it will be to infinity. If *timestamp-from* is omitted, it will start from the
+  beginning.
 
 **del-offline** *timestamp-from* *timestamp-to*
   Delete pre-generated offline key-related records in specified time interval.
