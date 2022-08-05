@@ -536,7 +536,7 @@ void *xdp_gun_thread(void *_ctx)
 								(void)knot_xquic_session_load(newconn, session);
 							}
 							quic_fake_req.ip_to.sin6_port = htobe16(local_port);
-							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, false);
+							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
 						}
 						if (ret == KNOT_EOK) {
 							local_stats.qry_sent++;
