@@ -388,14 +388,17 @@ static int quic_recv(quic_ctx_t *ctx, int sockfd)
 	if (nwrite <= 0) {
 		return knot_map_errno();
 	}
+	ngtcp2_pkt_info *pi = &ctx->pi;
 	ctx->pi.ecn = quic_get_ecn(&msg, from.sin6_family);
-	if (ctx->pi.ecn == 0 && errno != 0) {
+	if (errno == ENOENT) {
+		pi = NULL;
+	} else if (errno != 0) {
 		return knot_map_errno();
 	}
 
 	int ret = ngtcp2_conn_read_pkt(ctx->conn,
 	                               ngtcp2_conn_get_path(ctx->conn),
-	                               &ctx->pi, enc_buf, nwrite,
+	                               pi, enc_buf, nwrite,
 	                               quic_timestamp());
 	if (ret != 0) {
 		if (ret == NGTCP2_ERR_DROP_CONN) {
@@ -551,7 +554,7 @@ int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx, const quic_params_t *para
 int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 {
 	if (connect(sockfd, (const struct sockaddr *)(dst_addr->ai_addr),
-	            sizeof(struct sockaddr_storage)) != 0) {
+	            dst_addr->ai_addrlen) != 0) {
 		tls_ctx_deinit(ctx->tls);
 		return knot_map_errno();
 	}
