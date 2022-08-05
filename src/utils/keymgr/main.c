@@ -91,7 +91,7 @@ static void print_help(void)
 	       "                 (syntax: del-offline <from> <to>)\n"
 	       "  del-all-old   Delete old keys that are in state 'removed'.\n"
 	       "  generate-ksr  Print to stdout KeySigningRequest based on pre-generated ZSKS.\n"
-	       "                 (syntax: generate-ksr <from> <to>)\n"
+	       "                 (syntax: generate-ksr [<from>] <to>)\n"
 	       "  sign-ksr      Read KeySigningRequest from a file, sign it and print SignedKeyResponse to stdout.\n"
 	       "                 (syntax: sign-ksr <ksr_file>)\n"
 	       "  validate-skr  Validate RRSIGs in a SignedKeyResponse (if not corrupt).\n"
@@ -256,8 +256,9 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	} else if (strcmp(argv[1], "del-all-old") == 0) {
 		ret = keymgr_del_all_old(&kctx);
 	} else if (strcmp(argv[1], "generate-ksr") == 0) {
-		CHECK_MISSING_ARG2("Timestamps from-to not specified");
-		ret = keymgr_print_ksr(&kctx, argv[2], argv[3]);
+		CHECK_MISSING_ARG("Timestamps to not specified");
+		ret = keymgr_print_ksr(&kctx, argc > 3 ? argv[2] : NULL,
+		                              argc > 3 ? argv[3] : argv[2]);
 		print_ok_on_succes = false;
 	} else if (strcmp(argv[1], "sign-ksr") == 0) {
 		CHECK_MISSING_ARG("Input file not specified");
