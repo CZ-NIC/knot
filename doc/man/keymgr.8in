@@ -163,6 +163,7 @@ owned by both zones equally.
 .TP
 \fBpregenerate\fP [\fItimestamp\-from\fP] \fItimestamp\-to\fP
 Pre\-generate ZSKs for use with offline KSK, for the specified period starting from now or specified time.
+This function also applies to non\-offline KSK keys.
 .TP
 \fBshow\-offline\fP [\fItimestamp\-from\fP] [\fItimestamp\-to\fP]
 Print pre\-generated offline key\-related records for specified time interval. If \fItimestamp_to\fP
@@ -173,7 +174,8 @@ beginning.
 Delete pre\-generated offline key\-related records in specified time interval.
 .TP
 \fBdel\-all\-old\fP
-Delete old keys that are in state \(aqremoved\(aq.
+Delete old keys that are in state \(aqremoved\(aq. This function also applies to
+non\-offline KSK keys.
 .TP
 \fBgenerate\-ksr\fP [\fItimestamp\-from\fP] \fItimestamp\-to\fP
 Print to stdout KeySigningRequest based on pre\-generated ZSKs for specified time period.
