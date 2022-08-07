@@ -166,7 +166,7 @@ int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_t
 		knot_time_t next;
 		key_records_t r = { { 0 } };
 		int ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname,
-		                                       from, &next, &r);
+		                                       &from, &next, &r);
 		if (ret == KNOT_ENOENT) {
 			break;
 		} else if (ret != KNOT_EOK) {
@@ -257,7 +257,7 @@ static int last_offline_timestamp(kdnssec_ctx_t *ctx, knot_time_t *last)
 		knot_time_t next;
 		key_records_t r = { { 0 } };
 		int ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname,
-		                                       from, &next, &r);
+		                                       &from, &next, &r);
 		key_records_clear(&r);
 		if (ret == KNOT_ENOENT) {
 			break;

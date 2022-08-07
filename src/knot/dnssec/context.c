@@ -233,7 +233,7 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 	key_records_init(ctx, &ctx->offline_records);
 	if (ctx->policy->offline_ksk) {
 		ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname,
-		                                   ctx->now, &ctx->offline_next_time,
+		                                   &ctx->now, &ctx->offline_next_time,
 		                                   &ctx->offline_records);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			goto init_error;
