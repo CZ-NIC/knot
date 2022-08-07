@@ -133,7 +133,7 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 	ctx->tcp_idle_reset = pconf->cache.xdp_tcp_idle_reset * 1000000;
 	ctx->tcp_idle_resend= pconf->cache.xdp_tcp_idle_resend * 1000000;
 	ctx->quic_max_conns = pconf->cache.srv_quic_max_clients / pconf->cache.srv_xdp_threads;
-	ctx->quic_idle_close= pconf->cache.srv_quic_idle_close * 1000000000;
+	ctx->quic_idle_close= pconf->cache.srv_quic_idle_close * 1000000000LU;
 	ctx->quic_max_inbufs= ctx->quic_max_conns * QUIC_IBUFS_PER_CONN;
 	ctx->quic_max_obufs = pconf->cache.srv_quic_obuf_max_size;
 	rcu_read_unlock();
