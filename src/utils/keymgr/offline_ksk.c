@@ -133,6 +133,33 @@ static int dump_rrset_to_buf(const knot_rrset_t *rrset, char **buf, size_t *buf_
 	return knot_rrset_txt_dump(rrset, buf, buf_size, &style);
 }
 
+static int last_offline_timestamp(kdnssec_ctx_t *ctx, knot_time_t *last)
+{
+	knot_time_t from = 0;
+	while (true) {
+		knot_time_t next;
+		key_records_t r = { { 0 } };
+		int ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname,
+		                                       &from, &next, &r);
+		key_records_clear(&r);
+		if (ret == KNOT_ENOENT) {
+			break;
+		} else if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		if (next == 0) {
+			break;
+		}
+		from = next;
+	}
+	if (from == 0) {
+		from = knot_time();
+	}
+	*last = from;
+	return KNOT_EOK;
+}
+
 static void print_header(const char *of_what, knot_time_t timestamp, const char *contents)
 {
 	char date[64] = { 0 };
@@ -157,6 +184,7 @@ int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_t
 		}
 	}
 
+	bool empty = true;
 	char *buf = NULL;
 	size_t buf_size = 512;
 	while (true) {
@@ -181,6 +209,7 @@ int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_t
 			return ret;
 		}
 		print_header("Offline records for", from, buf);
+		empty = false;
 
 		if (next == 0) {
 			break;
@@ -189,6 +218,15 @@ int keymgr_print_offline_records(kdnssec_ctx_t *ctx, char *arg_from, char *arg_t
 	}
 	free(buf);
 
+	/* If from is lower than the first record's timestamp, try to start
+	   from the first one's instead of empty output. */
+	if (empty && from > 0) {
+		knot_time_t last = 0;
+		int ret = last_offline_timestamp(ctx, &last);
+		if (ret == KNOT_EOK && knot_time_cmp(last, from) > 0) {
+			return keymgr_print_offline_records(ctx, 0, arg_to);
+		}
+	}
 	return KNOT_EOK;
 }
 
@@ -250,33 +288,6 @@ done:
 	knot_rrset_free(dnskey, NULL);
 	free_zone_keys(&keyset);
 	return ret;
-}
-
-static int last_offline_timestamp(kdnssec_ctx_t *ctx, knot_time_t *last)
-{
-	knot_time_t from = 0;
-	while (true) {
-		knot_time_t next;
-		key_records_t r = { { 0 } };
-		int ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname,
-		                                       &from, &next, &r);
-		key_records_clear(&r);
-		if (ret == KNOT_ENOENT) {
-			break;
-		} else if (ret != KNOT_EOK) {
-			return ret;
-		}
-
-		if (next == 0) {
-			break;
-		}
-		from = next;
-	}
-	if (from == 0) {
-		from = knot_time();
-	}
-	*last = from;
-	return KNOT_EOK;
 }
 
 #define OFFLINE_KSK_CONF_CHECK \
