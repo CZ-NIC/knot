@@ -163,7 +163,11 @@ static void del_conn(knot_tcp_conn_t *conn)
 {
 	if (conn != NULL) {
 		free(conn->inbuf.iov_base);
-		free(conn->outbufs);
+		while (conn->outbufs != NULL) {
+			struct knot_tcp_outbuf *next = conn->outbufs->next;
+			free(conn->outbufs);
+			conn->outbufs = next;
+		}
 		free(conn);
 	}
 }
