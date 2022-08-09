@@ -329,6 +329,6 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %doc %{_pkgdocdir}/html
 
 %changelog
-* Wed Feb 21 2018 Tomas Krizek <tomas.krizek@nic.cz> - 2.6.5-1
-- move spec upstream
-- see NEWS or https://knot-dns.cz
+* {{ now }} Jakub Ružička <jakub.ruzicka@nic.cz> - {{ version }}-{{ release }}
+- upstream package
+- see https://www.knot-dns.cz
