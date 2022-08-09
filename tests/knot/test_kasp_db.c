@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -208,19 +208,20 @@ int main(int argc, char *argv[])
 	free(zoneX);
 	free(keyidX);
 
+	knot_time_t two = 2;
 	key_records_t kr;
 	init_key_records(&kr);
 	ret = kasp_db_store_offline_records(db, 1, &kr);
 	is_int(KNOT_EOK, ret, "kasp_db: store key records");
 	//key_records_clear_rdatasets(&kr);
-	ret = kasp_db_load_offline_records(db, zone1, 2, &time, &kr);
+	ret = kasp_db_load_offline_records(db, zone1, &two, &time, &kr);
 	is_int(KNOT_EOK, ret, "kasp_db: load key records");
 	ok(kr.cds.type == KNOT_RRTYPE_CDS && kr.rrsig.rrs.count == 1, "kasp_db: key records ok");
 	is_int(0, time, "kasp_db: no next key records");
 	key_records_clear(&kr);
 	ret = kasp_db_delete_offline_records(db, zone1, 1, 3);
 	is_int(KNOT_EOK, ret, "kasp_db: delete key records");
-	ret = kasp_db_load_offline_records(db, zone1, 2, &time, &kr);
+	ret = kasp_db_load_offline_records(db, zone1, &two, &time, &kr);
 	is_int(KNOT_ENOENT, ret, "kasp_db: no more key records");
 
 	knot_lmdb_deinit(db);

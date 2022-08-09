@@ -271,3 +271,30 @@ int key_records_deserialize(wire_ctx_t *wire, key_records_t *r)
 	}
 	return ret;
 }
+
+int key_records_last_timestamp(kdnssec_ctx_t *ctx, knot_time_t *last)
+{
+	knot_time_t from = 0;
+	while (true) {
+		knot_time_t next;
+		key_records_t r = { { 0 } };
+		int ret = kasp_db_load_offline_records(ctx->kasp_db, ctx->zone->dname,
+		                                       &from, &next, &r);
+		key_records_clear(&r);
+		if (ret == KNOT_ENOENT) {
+			break;
+		} else if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		if (next == 0) {
+			break;
+		}
+		from = next;
+	}
+	if (from == 0) {
+		from = knot_time();
+	}
+	*last = from;
+	return KNOT_EOK;
+}

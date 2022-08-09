@@ -141,19 +141,24 @@ Commands related to Offline KSK feature
 
 **pregenerate** [*timestamp-from*] *timestamp-to*
   Pre-generate ZSKs for use with offline KSK, for the specified period starting from now or specified time.
+  This function also applies to non-offline KSK keys.
 
-**show-offline** *timestamp-from* [*timestamp-to*]
+**show-offline** [*timestamp-from*] [*timestamp-to*]
   Print pre-generated offline key-related records for specified time interval. If *timestamp_to*
-  is omitted, it will be to infinity.
+  is omitted, it will be to infinity. If *timestamp-from* is omitted, it will start from the
+  beginning.
 
 **del-offline** *timestamp-from* *timestamp-to*
   Delete pre-generated offline key-related records in specified time interval.
 
 **del-all-old**
-  Delete old keys that are in state 'removed'.
+  Delete old keys that are in state 'removed'. This function also applies to
+  non-offline KSK keys.
 
-**generate-ksr** *timestamp-from* *timestamp-to*
-  Print to stdout KeySigningRequest based on pre-generated ZSKs for specified period.
+**generate-ksr** [*timestamp-from*] *timestamp-to*
+  Print to stdout KeySigningRequest based on pre-generated ZSKs for specified time period.
+  If *timestamp-from* is omitted, timestamp of the last offline records set is used
+  or now if no records available.
 
 **sign-ksr** *ksr_file*
   Read KeySigningRequest from a text file, sign it using local keyset and print SignedKeyResponse to stdout.

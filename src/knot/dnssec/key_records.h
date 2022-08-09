@@ -49,3 +49,6 @@ size_t key_records_serialized_size(const key_records_t *r);
 int key_records_serialize(wire_ctx_t *wire, const key_records_t *r);
 
 int key_records_deserialize(wire_ctx_t *wire, key_records_t *r);
+
+// Returns now if no records available.
+int key_records_last_timestamp(kdnssec_ctx_t *ctx, knot_time_t *last);

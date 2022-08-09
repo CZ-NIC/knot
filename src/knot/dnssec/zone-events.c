@@ -22,6 +22,7 @@
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/key-events.h"
+#include "knot/dnssec/key_records.h"
 #include "knot/dnssec/policy.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-keys.h"
@@ -107,6 +108,29 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool soa_rrsigs_ok,
 	}
 
 	return ret;
+}
+
+static void check_offline_records(kdnssec_ctx_t *ctx)
+{
+	if (!ctx->policy->offline_ksk) {
+		return;
+	}
+
+	int ret;
+	knot_time_t last;
+	if (ctx->offline_next_time == 0) {
+		log_zone_warning(ctx->zone->dname,
+		                 "DNSSEC, using last offline KSK record set available, "
+		                 "import new SKR before RRSIGs expire");
+	} else if ((ret = key_records_last_timestamp(ctx, &last)) != KNOT_EOK) {
+		log_zone_error(ctx->zone->dname,
+		               "DNSSEC, failed to load offline KSK records (%s)",
+		               knot_strerror(ret));
+	} else if (knot_time_diff(last, ctx->now) < 7 * 24 * 3600) {
+		log_zone_notice(ctx->zone->dname,
+		                "DNSSEC, having offline KSK records for less than "
+		                "a week, import new SKR");
+	}
 }
 
 int knot_dnssec_zone_sign(zone_update_t *update,
@@ -212,6 +236,8 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		               knot_strerror(result));
 		goto done;
 	}
+
+	check_offline_records(&ctx);
 
 	result = knot_zone_sign(update, &keyset, &ctx, &zone_expire);
 	if (result != KNOT_EOK) {
@@ -322,6 +348,8 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 	if (result != KNOT_EOK) {
 		goto done;
 	}
+
+	check_offline_records(&ctx);
 
 	result = knot_zone_sign_update(update, &keyset, &ctx, &zone_expire);
 	if (result != KNOT_EOK) {

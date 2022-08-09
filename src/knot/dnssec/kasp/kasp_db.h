@@ -228,13 +228,14 @@ int kasp_db_store_offline_records(knot_lmdb_db_t *db, knot_time_t for_time, cons
  * \param db         KASP db.
  * \param for_dname  Name of the related zone.
  * \param for_time   Now. Closest RRSIG (timestamp equals or is closest lower).
+ *                   If zero, the first record is returned and its time is stored.
  * \param next_time  Out: timestamp of next saved RRSIG (for easy "iteration").
  * \param r          Out: offline records.
  *
  * \return KNOT_E*
  */
 int kasp_db_load_offline_records(knot_lmdb_db_t *db, const knot_dname_t *for_dname,
-                                 knot_time_t for_time, knot_time_t *next_time,
+                                 knot_time_t *for_time, knot_time_t *next_time,
                                  key_records_t *r);
 
 /*!

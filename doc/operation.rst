@@ -756,7 +756,7 @@ For the ZSK side (i.e. the operator of the DNS server), the zone has to be confi
   - Explicit :ref:`policy_dnskey-ttl`
   - Explicit :ref:`policy_zone-max-ttl`
   - Other options are optional
-- KASP DB may contain a ZSK (the present or some previous ones)
+- KASP DB may contain a ZSK (the present or some previous one(s))
 
 For the KSK side (i.e. the operator of the KSK signer), the zone has to be configured with:
 
@@ -765,7 +765,8 @@ For the KSK side (i.e. the operator of the KSK signer), the zone has to be confi
   - Enabled :ref:`policy_manual`
   - Enabled :ref:`policy_offline-ksk`
   - Optional :ref:`policy_rrsig-lifetime`, :ref:`policy_rrsig-refresh`,
-    :ref:`policy_algorithm`, and :ref:`policy_reproducible-signing`
+    :ref:`policy_algorithm`, and :ref:`policy_reproducible-signing`,
+    :ref:`policy_cds-cdnskey-publish`
   - Other options are ignored
 - KASP DB contains a KSK (the present or a newly generated one)
 
