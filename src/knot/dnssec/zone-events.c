@@ -116,13 +116,17 @@ static void check_offline_records(kdnssec_ctx_t *ctx)
 		return;
 	}
 
+	int ret;
 	knot_time_t last;
 	if (ctx->offline_next_time == 0) {
 		log_zone_warning(ctx->zone->dname,
 		                 "DNSSEC, using last offline KSK record set available, "
 		                 "import new SKR before RRSIGs expire");
-	} else if (key_records_last_timestamp(ctx, &last) == KNOT_EOK &&
-	           knot_time_diff(last, ctx->now) < 7 * 24 * 3600) {
+	} else if ((ret = key_records_last_timestamp(ctx, &last)) != KNOT_EOK) {
+		log_zone_error(ctx->zone->dname,
+		               "DNSSEC, failed to load offline KSK records (%s)",
+		               knot_strerror(ret));
+	} else if (knot_time_diff(last, ctx->now) < 7 * 24 * 3600) {
 		log_zone_notice(ctx->zone->dname,
 		                "DNSSEC, having offline KSK records for less than "
 		                "a week, import new SKR");
