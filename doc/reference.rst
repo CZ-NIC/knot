@@ -1141,7 +1141,7 @@ DNSSEC keystore configuration.
    - id: STR
      backend: pem | pkcs11
      config: STR
-     key_label: BOOL
+     key-label: BOOL
 
 .. _keystore_id:
 

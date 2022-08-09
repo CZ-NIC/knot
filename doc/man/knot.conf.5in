@@ -1026,7 +1026,7 @@ keystore:
   \- id: STR
     backend: pem | pkcs11
     config: STR
-    key_label: BOOL
+    key\-label: BOOL
 .ft P
 .fi
 .UNINDENT
