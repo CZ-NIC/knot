@@ -1,3 +1,33 @@
+Knot DNS 3.1.9 (2022-08-10)
+===========================
+
+Improvements:
+-------------
+ - knotd: new configuration checks on unsupported catalog settings
+ - knotd: semantic check issues have notice log level in the soft mode
+ - keymgr: command generate-ksr automatically sets 'from' parameter to last
+           offline KSK records' timestamp if it's not specified
+ - keymgr: command show-offline starts from the first offline KSK record set
+           if 'from' parameter isn't specified
+ - kcatalogprint: new parameters for filtering catalog or member zone
+ - mod-probe: default rate limit was increased to 100000
+ - libknot: default control timeout was increased to 30 seconds
+ - python/libknot: various exceptions are raised from class KnotCtl
+ - doc: some improvements
+
+Bugfixes:
+---------
+ - knotd: incomplete outgoing IXFR is responded if journal history is inconsistent
+ - knotd: manually triggered zone flush is suppressed if disabled zone synchronization
+ - knotd: failed to configure XDP listen interface without port specification
+ - knotd: de-cataloged member zone's file isn't deleted #805
+ - knotd: member zone leaks memory when reloading catalog during dynamic configuration change
+ - knotd: server can crash when reloading modules with DNSSEC signing (Thanks to iqinlongfei)
+ - knotd: server crashes during shutdown if PKCS #11 keystore is used
+ - keymgr: command del-all-old isn't applied to all keys in the removed state
+ - kxdpgun: user specified network interface isn't used
+ - libs: fixed compilation on illumos derivatives (Thanks to Nick Ewins)
+
 Knot DNS 3.1.8 (2022-04-28)
 ===========================
 
