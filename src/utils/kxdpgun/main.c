@@ -40,6 +40,7 @@
 
 #include "libknot/libknot.h"
 #include "libknot/xdp.h"
+#include "libknot/xdp/tcp_iobuf.h"
 #ifdef ENABLE_QUIC
 #include <gnutls/gnutls.h>
 #include "libknot/xdp/quic.h"
@@ -488,6 +489,7 @@ void *xdp_gun_thread(void *_ctx)
 	next_payload(&payload_ptr, ctx->thread_id);
 
 #ifdef ENABLE_QUIC
+	knot_sweep_stats_t sweep_stats = { 0 };
 	uint16_t local_ports[QUIC_THREAD_PORTS];
 	uint16_t port = LOCAL_PORT_MIN;
 	for (int i = 0; i < QUIC_THREAD_PORTS; ++i) {
@@ -712,8 +714,7 @@ void *xdp_gun_thread(void *_ctx)
 
 #ifdef ENABLE_QUIC
 		if (ctx->quic) {
-			uint32_t closed, reset;
-			(void)knot_xquic_table_sweep(quic_table, &closed, &reset);
+			(void)knot_xquic_table_sweep(quic_table, &sweep_stats);
 		}
 #endif // ENABLE_QUIC
 

@@ -617,7 +617,7 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 
 static void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
                         ssize_t *free_conns, ssize_t *free_inbuf, ssize_t *free_outbuf,
-                        uint32_t *reset_count)
+                        knot_sweep_stats_t *stats, knot_sweep_counter_t counter)
 {
 	rl->answer = XDP_TCP_RESET | XDP_TCP_FREE;
 	tcp_table_remove(tcp_table_re_lookup(rl->conn, tcp_table), tcp_table); // also updates tcp_table->next_*
@@ -626,9 +626,7 @@ static void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
 	*free_inbuf -= rl->conn->inbuf.iov_len;
 	*free_outbuf -= knot_tcp_outbufs_usage(rl->conn->outbufs);
 
-	if (reset_count != NULL) {
-		(*reset_count)++;
-	}
+	knot_sweep_stats_incr(stats, counter);
 }
 
 _public_
@@ -637,7 +635,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
                    uint32_t resend_timeout, uint32_t limit_conn_count,
                    size_t limit_ibuf_size, size_t limit_obuf_size,
                    knot_tcp_relay_t *relays, uint32_t max_relays,
-                   uint32_t *close_count, uint32_t *reset_count)
+                   struct knot_sweep_stats *stats)
 {
 	if (tcp_table == NULL || relays == NULL || max_relays < 1) {
 		return KNOT_EINVAL;
@@ -658,7 +656,8 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 		}
 		assert(tcp_table->next_ibuf != NULL);
 		rl->conn = tcp_table->next_ibuf;
-		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf, reset_count);
+		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf,
+		            stats, KNOT_SWEEP_CTR_LIMIT_IBUF);
 		rl++;
 	}
 
@@ -669,7 +668,8 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 		}
 		assert(tcp_table->next_obuf != NULL);
 		rl->conn = tcp_table->next_obuf;
-		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf, reset_count);
+		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf,
+		            stats, KNOT_SWEEP_CTR_LIMIT_OBUF);
 		rl++;
 	}
 
@@ -681,7 +681,8 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 		}
 
 		rl->conn = conn;
-		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf, reset_count);
+		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf,
+		            stats, KNOT_SWEEP_CTR_LIMIT_CONN);
 		rl++;
 	}
 
@@ -692,9 +693,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 		if (tcp_table->next_close->state != XDP_TCP_CLOSING1) {
 			rl->conn = tcp_table->next_close;
 			rl->answer = XDP_TCP_CLOSE;
-			if (close_count != NULL) {
-				(*close_count)++;
-			}
+			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_TIMEOUT);
 			rl++;
 		}
 		next_node_ptr(&tcp_table->next_close);

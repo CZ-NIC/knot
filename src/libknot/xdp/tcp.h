@@ -28,6 +28,8 @@
 #include "libknot/xdp/msg.h"
 #include "libknot/xdp/xdp.h"
 
+struct knot_sweep_stats;
+
 typedef enum {
 	XDP_TCP_NOOP      = 0,
 	XDP_TCP_SYN       = 1,
@@ -201,8 +203,7 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
  * \param limit_obuf_size  Limit of memory usage by output buffers, reset if exceeded.
  * \param relays           Out: relays to be filled with close/reset instructions for knot_tcp_send().
  * \param max_relays       Maximum relays to be used.
- * \param close_count      Out: number of connections closed (can be NULL).
- * \param reset_count      Out: number of connections reset (can be NULL).
+ * \param stats            Out: sweeped out connection statistics.
  *
  * \return KNOT_E*
  */
@@ -211,7 +212,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
                    uint32_t resend_timeout, uint32_t limit_conn_count,
                    size_t limit_ibuf_size, size_t limit_obuf_size,
                    knot_tcp_relay_t *relays, uint32_t max_relays,
-                   uint32_t *close_count, uint32_t *reset_count);
+                   struct knot_sweep_stats *stats);
 
 /*!
  * \brief Free resources of closed/reset connections.

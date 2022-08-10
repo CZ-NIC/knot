@@ -34,6 +34,7 @@
 
 struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
 struct knot_quic_creds;
+struct knot_sweep_stats;
 
 // those are equivalent to contrib/ucw/lists.h , just must not be included.
 typedef struct knot_xquic_ucw_node {
@@ -136,14 +137,12 @@ void knot_xquic_table_free(knot_xquic_table_t *table);
 /*!
  * \brief Close timed out connections and some oldest ones if table full.
  *
- * \param table            QUIC table to be cleaned up.
- * \param timed_out        Out: number of closed connections due to timeout.
- * \param force_closed     Out: number of closed connections due to overfull.
+ * \param table       QUIC table to be cleaned up.
+ * \param stats       Out: sweep statistics.
  *
  * \return KNOT_E*
  */
-int knot_xquic_table_sweep(knot_xquic_table_t *table, uint32_t *timed_out,
-                           uint32_t *force_closed);
+int knot_xquic_table_sweep(knot_xquic_table_t *table, struct knot_sweep_stats *stats);
 
 /*!
  * \brief Add new connection/CID link to table.
