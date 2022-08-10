@@ -84,8 +84,6 @@ static const style_t DEFAULT_STYLE_DIG = {
 	.show_footer = true
 };
 
-static int opt_padding(const char *arg, void *query);
-
 static int opt_multiline(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -940,7 +938,6 @@ static int opt_quic(const char *arg, void *query)
 
 	opt_tls(arg, query);
 	opt_notcp(arg, query);
-	opt_padding(arg, query);
 
 	return KNOT_EOK;
 #else
