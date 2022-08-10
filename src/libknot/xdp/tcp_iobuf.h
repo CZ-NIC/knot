@@ -38,6 +38,29 @@ typedef struct knot_tcp_outbuf {
 	uint8_t bytes[];
 } knot_tcp_outbuf_t;
 
+typedef enum {
+	KNOT_SWEEP_CTR_TIMEOUT    = 0,
+	KNOT_SWEEP_CTR_LIMIT_CONN = 1,
+	KNOT_SWEEP_CTR_LIMIT_IBUF = 2,
+	KNOT_SWEEP_CTR_LIMIT_OBUF = 3,
+} knot_sweep_counter_t;
+
+typedef struct knot_sweep_stats {
+	uint32_t total;
+	uint32_t counters[4];
+} knot_sweep_stats_t;
+
+inline static void knot_sweep_stats_incr(knot_sweep_stats_t *stats, knot_sweep_counter_t counter)
+{
+	(stats->counters[counter])++;
+	(stats->total)++;
+}
+
+inline static void knot_sweep_stats_reset(knot_sweep_stats_t *stats)
+{
+	memset(stats, 0, sizeof(*stats));
+}
+
 /*!
  * \brief Handle DNS-over-TCP payloads in buffer and message.
  *

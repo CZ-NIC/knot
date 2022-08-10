@@ -420,22 +420,22 @@ void test_many(void)
 	is_int(KNOT_EOK, ret, "many/survivor: OK");
 	clean_sent();
 
-	uint32_t reset_count = 0, close_count = 0;
+	knot_sweep_stats_t stats = { 0 };
 	ret = knot_tcp_sweep(test_table, timeout_time, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
-	                     UINT32_MAX, rls, CONNS, &close_count, &reset_count);
+	                     UINT32_MAX, rls, CONNS, &stats);
 	is_int(KNOT_EOK, ret, "many/timeout1: OK");
-	is_int(CONNS - 1, close_count, "many/timeout1: close count");
-	is_int(0, reset_count, "may/timeout1: reset count");
+	is_int(CONNS - 1, stats.counters[KNOT_SWEEP_CTR_TIMEOUT], "many/timeout1: close count");
+	is_int(0, stats.counters[KNOT_SWEEP_CTR_LIMIT_CONN], "may/timeout1: reset count");
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
 	is_int(KNOT_EOK, ret, "many/timeout1: send OK");
 	check_sent(0, 0, 0, CONNS - 1);
 
-	close_count = 0;
+	knot_sweep_stats_reset(&stats);
 	ret = knot_tcp_sweep(test_table, UINT32_MAX, timeout_time, UINT32_MAX, UINT32_MAX, UINT32_MAX,
-	                     UINT32_MAX, rls, CONNS, &close_count, &reset_count);
+	                     UINT32_MAX, rls, CONNS, &stats);
 	is_int(KNOT_EOK, ret, "many/timeout2: OK");
-	is_int(0, close_count, "many/timeout2: close count");
-	is_int(CONNS - 1, reset_count, "may/timeout2: reset count");
+	is_int(0, stats.counters[KNOT_SWEEP_CTR_TIMEOUT], "many/timeout2: close count");
+	is_int(CONNS - 1, stats.counters[KNOT_SWEEP_CTR_LIMIT_CONN], "may/timeout2: reset count");
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
 	is_int(KNOT_EOK, ret, "many/timeout2: send OK");
 	check_sent(0, CONNS - 1, 0, 0);
@@ -501,16 +501,16 @@ void test_ibufs_size(void)
 	knot_tcp_cleanup(test_table, rls, CONNS);
 
 	// now free some
-	uint32_t reset_count = 0, close_count = 0;
+	knot_sweep_stats_t stats = { 0 };
 	ret = knot_tcp_sweep(test_table, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
 	                     test_table->inbufs_total - 8, UINT32_MAX, rls,
-	                     CONNS, &close_count, &reset_count);
+	                     CONNS, &stats);
 	is_int(KNOT_EOK, ret, "inbufs: timeout OK");
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
 	is_int(KNOT_EOK, ret, "inbufs: timeout send OK");
 	check_sent(0, 2, 0, 0);
-	is_int(0, close_count, "inbufs: close count");
-	is_int(2, reset_count, "inbufs: reset count");
+	is_int(0, stats.counters[KNOT_SWEEP_CTR_TIMEOUT], "inbufs: close count");
+	is_int(2, stats.counters[KNOT_SWEEP_CTR_LIMIT_IBUF], "inbufs: reset count");
 	knot_tcp_cleanup(test_table, rls, CONNS);
 	is_int(7, test_table->inbufs_total, "inbufs: final state");
 	ok(NULL != tcp_table_find(test_table, &msgs[0]), "inbufs: first conn survived");

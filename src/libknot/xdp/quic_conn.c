@@ -80,18 +80,17 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 }
 
 _public_
-int knot_xquic_table_sweep(knot_xquic_table_t *table,
-                           uint32_t *timed_out, uint32_t *force_closed)
+int knot_xquic_table_sweep(knot_xquic_table_t *table, struct knot_sweep_stats *stats)
 {
 	uint64_t now = 0;
 	knot_xquic_conn_t *c, *next;
 	list_t *tto = (list_t *)&table->timeout;
 	WALK_LIST_DELSAFE(c, next, *tto) {
 		if (xquic_conn_timeout(c, &now)) {
-			(*timed_out)++;
+			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_TIMEOUT);
 			knot_xquic_table_rem(c, table);
 		} else if (table->usage > table->max_conns) {
-			(*force_closed)++;
+			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_CONN);
 			knot_xquic_table_rem(c, table);
 			// NOTE here it would be correct to send Immediate close
 			// with DoQ errcode DOQ_EXCESSIVE_LOAD
@@ -100,12 +99,12 @@ int knot_xquic_table_sweep(knot_xquic_table_t *table,
 			// (also applies to below case)
 		} else if (table->obufs_size > table->obufs_max) {
 			if (c->obufs_size > 0) {
-				(*force_closed)++;
+				knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_OBUF);
 				knot_xquic_table_rem(c, table);
 			}
 		} else if (table->ibufs_size > table->ibufs_max) {
 			if (c->ibufs_size > 0) {
-				(*force_closed)++;
+				knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_IBUF);
 				knot_xquic_table_rem(c, table);
 			}
 		} else {

@@ -33,6 +33,7 @@
 #include "libknot/xdp/quic.h"
 #endif // ENABLE_QUIC
 #include "libknot/xdp/tcp.h"
+#include "libknot/xdp/tcp_iobuf.h"
 
 #define QUIC_MAX_SEND_PER_RECV	4
 #define QUIC_IBUFS_PER_CONN	512 /* Heuristic value: this means that e.g. for 100k allowed
@@ -40,8 +41,7 @@
 
 typedef struct {
 	uint64_t last_log;
-	uint32_t closed;
-	uint32_t reset;
+	knot_sweep_stats_t stats;
 } closed_log_ctx_t;
 
 typedef struct xdp_handle_ctx {
@@ -98,25 +98,26 @@ static void log_closed(closed_log_ctx_t *ctx, bool tcp)
 {
 	struct timespec now = time_now();
 	uint64_t sec = now.tv_sec + now.tv_nsec / 1000000000;
-	if (sec - ctx->last_log <= 9 || (ctx->closed + ctx->reset == 0)) {
+	if (sec - ctx->last_log <= 9 || (ctx->stats.total == 0)) {
 		return;
 	}
 
-	if (tcp) {
-		log_notice("TCP, connection timeout, %u closed, %u reset",
-		           ctx->closed, ctx->reset);
+	const char *proto = tcp ? "TCP" : "QUIC";
+
+	uint32_t timedout = ctx->stats.counters[KNOT_SWEEP_CTR_TIMEOUT];
+	uint32_t limit_conn = ctx->stats.counters[KNOT_SWEEP_CTR_LIMIT_CONN];
+	uint32_t limit_ibuf = ctx->stats.counters[KNOT_SWEEP_CTR_LIMIT_IBUF];
+	uint32_t limit_obuf = ctx->stats.counters[KNOT_SWEEP_CTR_LIMIT_OBUF];
+
+	if (tcp || ctx->stats.total != timedout) {
+		log_notice("%s, connection sweep, closed %u, count limit %u, inbuf limit %u, outbuf limit %u",
+		           proto, timedout, limit_conn, limit_ibuf, limit_obuf);
 	} else {
-		if (ctx->closed > 0) {
-			log_debug("QUIC, connection timeout, closed %u", ctx->closed);
-		}
-		if (ctx->reset > 0) {
-			log_notice("QUIC, forcibly closed %u", ctx->reset);
-		}
+		log_debug("%s, timed out connections %u", proto, timedout);
 	}
 
 	ctx->last_log = sec;
-	ctx->closed = 0;
-	ctx->reset = 0;
+	knot_sweep_stats_reset(&ctx->stats);
 }
 
 void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
@@ -455,7 +456,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 {
 #ifdef ENABLE_QUIC
 	if (ctx->quic_table != NULL) {
-		knot_xquic_table_sweep(ctx->quic_table, &ctx->quic_closed.closed, &ctx->quic_closed.reset);
+		knot_xquic_table_sweep(ctx->quic_table, &ctx->quic_closed.stats);
 		log_closed(&ctx->quic_closed, false);
 	}
 #endif // ENABLE_QUIC
@@ -470,12 +471,12 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 	do {
 		knot_xdp_send_prepare(ctx->sock);
 
-		prev_total = ctx->tcp_closed.closed + ctx->tcp_closed.reset;
+		prev_total = ctx->tcp_closed.stats.total;
 
 		ret = knot_tcp_sweep(ctx->tcp_table, ctx->tcp_idle_close, ctx->tcp_idle_reset,
 		                     ctx->tcp_idle_resend,
 		                     ctx->tcp_max_conns, ctx->tcp_max_inbufs, ctx->tcp_max_obufs,
-		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed.closed, &ctx->tcp_closed.reset);
+		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed.stats);
 		if (ret == KNOT_EOK) {
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
@@ -486,14 +487,14 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 
 		ret = knot_tcp_sweep(ctx->syn_table, UINT32_MAX, ctx->tcp_idle_reset,
 		                     UINT32_MAX, ctx->tcp_syn_conns, SIZE_MAX, SIZE_MAX,
-		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed.closed, &ctx->tcp_closed.reset);
+		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed.stats);
 		if (ret == KNOT_EOK) {
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
 		knot_tcp_cleanup(ctx->syn_table, sweep_relays, XDP_BATCHLEN);
 
 		(void)knot_xdp_send_finish(ctx->sock);
-	} while (ret == KNOT_EOK && prev_total < ctx->tcp_closed.closed + ctx->tcp_closed.reset);
+	} while (ret == KNOT_EOK && prev_total < ctx->tcp_closed.stats.total);
 
 	log_closed(&ctx->tcp_closed, true);
 }
