@@ -54,6 +54,7 @@ typedef struct event {
 	struct heap_val hpos;
 	struct timeval tv; /*!< Event scheduled time. */
 	void *data;        /*!< Usable data ptr. */
+	pthread_mutex_t *mx; /*!< Optional user mutex. */
 	event_cb_t cb;     /*!< Event callback. */
 	struct evsched *sched; /*!< Scheduler for this event. */
 } event_t;
@@ -93,12 +94,14 @@ void evsched_deinit(evsched_t *sched);
  *
  * \param sched Pointer to event scheduler instance.
  * \param cb Callback handler.
+ * \param mx Optional: mutex to be locked before calling cb. Unlock yourself!
  * \param data Data for callback.
  *
  * \retval New instance on success.
  * \retval NULL on error.
  */
-event_t *evsched_event_create(evsched_t *sched, event_cb_t cb, void *data);
+event_t *evsched_event_create(evsched_t *sched, event_cb_t cb,
+                              pthread_mutex_t *mx, void *data);
 
 /*!
  * \brief Dispose event instance.

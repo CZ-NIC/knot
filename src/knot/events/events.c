@@ -267,7 +267,6 @@ static void event_dispatch(event_t *event)
 
 	zone_events_t *events = event->data;
 
-	pthread_mutex_lock(&events->mx);
 	if (!events->running && !events->frozen) {
 		events->running = true;
 		worker_pool_assign(events->pool, &events->task);
@@ -300,7 +299,7 @@ int zone_events_setup(struct zone *zone, worker_pool_t *workers,
 	}
 
 	event_t *event;
-	event = evsched_event_create(scheduler, event_dispatch, &zone->events);
+	event = evsched_event_create(scheduler, event_dispatch, &zone->events.mx, &zone->events);
 	if (!event) {
 		return KNOT_ENOMEM;
 	}

@@ -85,6 +85,9 @@ static int evsched_run(dthread_t *thread)
 
 		if (timercmp_ge(&dt, &ev->tv)) {
 			heap_delmin(&sched->heap);
+			if (ev->mx != NULL) {
+				pthread_mutex_lock(ev->mx);
+			}
 			pthread_mutex_unlock(&sched->heap_lock);
 			ev->cb(ev);
 			pthread_mutex_lock(&sched->heap_lock);
@@ -147,7 +150,8 @@ void evsched_deinit(evsched_t *sched)
 	memset(sched, 0, sizeof(evsched_t));
 }
 
-event_t *evsched_event_create(evsched_t *sched, event_cb_t cb, void *data)
+event_t *evsched_event_create(evsched_t *sched, event_cb_t cb,
+                              pthread_mutex_t *mx, void *data)
 {
 	/* Create event. */
 	if (sched == NULL) {
@@ -164,6 +168,7 @@ event_t *evsched_event_create(evsched_t *sched, event_cb_t cb, void *data)
 	memset(e, 0, sizeof(event_t));
 	e->sched = sched;
 	e->cb = cb;
+	e->mx = mx;
 	e->data = data;
 	e->hpos.pos = 0;
 
