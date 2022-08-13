@@ -1,3 +1,93 @@
+Knot DNS 3.2.0 (2022-08-22)
+===========================
+
+Features:
+---------
+ - knotd: finalized TCP over XDP implementation
+ - knotd: initial implementation of DNS over QUIC in the XDP mode (see 'xdp.quic')
+ - knotd: new incremental DNSKEY management for multi-signer deployment (see 'policy.dnskey-management')
+ - knotd: support for remote grouping in configuration (see 'groups' section)
+ - knotd: implemented EDNS Expire option (RFC 7314)
+ - knotd: NSEC3 salt is changed with every ZSK rollover if lifetime is set to -1
+ - knotd: support for PROXY v2 protocol over UDP (Thanks to Robert Edmonds) #762
+ - knotd: support for key labels with PKCS #11 keystore (see 'keystore.key-label')
+ - knotd: SVCB/HTTPS treatment according to draft-ietf-dnsop-svcb-https
+ - keymgr: new JSON output format (see '-j' parameter) for listing keys or zones (Thanks to JP Mens)
+ - kxdpgun: support for DNS over QUIC with some testing modes (see '-U' parameter)
+ - kdig: new DNS over QUIC support (see '+quic')
+
+Improvements:
+-------------
+ - knotd: reduced memory consumption when processing IXFR, DNSSEC, catalog, or DDNS
+ - knotd: RRSIG refresh values don't have to match in the mode Offline KSK
+ - knotd: better decision whether AXFR fallback is needed upon a refresh error
+ - knotd: NSEC3 resalt event was merged with the DNSSEC event
+ - knotd: server logs when the connection to remote was taken from the pool
+ - knotd: server logs zone expiration time when the zone is loaded
+ - knotd: DS check verifies removal of old DS during algorithm rollover
+ - knotd: DNSSEC-related records can be updated via DDNS
+ - knotd: new 'xdp.udp' configuration option for disabling UDP over XDP
+ - knotd: outgoing NOTIFY is replanned if failed
+ - knotd: configuration checks if zone MIN interval values are lower or equal to MAX ones
+ - knotd: DNSSEC-related zone semantic checks use DNSSEC validation
+ - knotd: new configuration value 'query' for setting ACL action
+ - knotd: new check on near end of imported Offline KSK records
+ - knotd/knotc: implemented zone catalog purge, including orphaned member zones
+ - knotc: interactive mode supports catalog zone completion, value completion, and more
+ - knotc: new default brief and colorized output from zone status
+ - knotc: unified empty values in zone status output
+ - keymgr: DNSKEY TTL is taken from KSR in the Offline KSK mode
+ - kjournalprint: path to journal DB is automatically taken from the configuration,
+                  which can be specified using '-c', '-C' (or '-D')
+ - kcatalogprint: path to catalog DB is automatically taken from the configuration,
+                  which can be specified using '-c', '-C' (or '-D')
+ - kzonesign: added automatic configuration file detection and '-C' parameter
+              for configuration DB specificaion
+ - kzonesign: all CPU threads are used for DNSSEC validation
+ - libknot: dname pointer cannot point to another dname pointer when encoding RRsets #765
+ - libknot: QNAME case is preserved in knot_pkt_t 'wire' field (Thanks to Robert Edmonds) #780
+ - libknot: reduced memory consumption of the XDP mode
+ - libknot: XDP filter supports up to 256 NIC queues
+ - kxdpgun: new options for specifying source and remote MAC addresses
+ - utils: extended logging of LMDB-related errors
+ - utils: improved error outputs
+ - kdig: query has AD bit set by default
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: zone changeset is stored to journal even if disabled
+ - knotd: journal not applied to zone file if zone file changed during reload
+ - knotd: possible out-of-order processing or postponed zone events to far future
+ - knotd: incorrect TTL is used if updated RRSet is empty over control interface
+ - knotd/libs: serial arithmetics not used for RRSIG expiration processing
+ - knsupdate: incorrect RRTYPE in the question section
+
+Compatibility:
+--------------
+ - knotd: default value for 'zone.journal-max-depth' was lowered to 20
+ - knotd: default value for 'policy.nsec3-iterations' was lowered to 0
+ - knotd: default value for 'policy.rrsig-refresh' is propagation delay + zone maximum TTL
+ - knotd: server fails to load configuration if 'policy.rrsig-refresh' is too low
+ - knotd: configuration option 'server.listen-xdp' has no effect
+ - knotd: new configuration check on deprecated DNSSEC algorithm
+ - knotc: new '-e' parameter for full zone status output
+ - keymgr: new '-e' parameter for full key list output
+ - keymgr: brief key listing mode is enabled by default
+ - keymgr: renamed parameter '-d' to '-D'
+ - knsupdate: default TTL is set to 3600
+ - knsupdate: default zone is empty
+ - kjournalprint: renamed parameter '-c' to '-H'
+ - python/libknot: removed compatibility with Python 2
+
+Packaging:
+----------
+ - systemd: removed knot.tmpfile
+ - systemd: added some hardening options
+ - distro: Debian 9 and Ubuntu 16.04 no longer supported
+ - distro: packages for CentOS 7 are built in a separate COPR repository
+ - kzonecheck/kzonesign/knsec3hash: moved to new package knot-dnssecutils
+
 Knot DNS 3.1.9 (2022-08-10)
 ===========================
 
