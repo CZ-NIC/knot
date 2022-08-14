@@ -113,18 +113,16 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 
 	time_t expire_pre = TIME_IGNORE;
 	time_t expire = TIME_IGNORE;
-	if (zone_is_slave(conf, zone) && !zone_expired(zone)) {
+	if (zone_is_slave(conf, zone) && zone->contents != NULL) {
 		expire_pre = TIME_CANCEL;
 		expire = zone->timers.next_expire;
 	}
 
 	time_t flush = TIME_IGNORE;
-	if (!zone_is_slave(conf, zone) || !zone_expired(zone)) {
-		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
-		int64_t sync_timeout = conf_int(&val);
-		if (sync_timeout > 0) {
-			flush = zone->timers.last_flush + sync_timeout;
-		}
+	conf_val_t val2 = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
+	int64_t sync_timeout = conf_int(&val2);
+	if (sync_timeout > 0) {
+		flush = zone->timers.last_flush + sync_timeout;
 	}
 
 	time_t resalt = TIME_IGNORE;
