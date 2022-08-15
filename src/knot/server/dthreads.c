@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,9 +48,9 @@ static inline void unlock_thread_rw(dthread_t *thread)
 /*! \brief Signalize thread state change. */
 static inline void unit_signalize_change(dt_unit_t *unit)
 {
-	pthread_mutex_lock(&unit->_report_mx);
-	pthread_cond_signal(&unit->_report);
-	pthread_mutex_unlock(&unit->_report_mx);
+	pthread_mutex_lock(&unit->_notify_mx);
+	pthread_cond_broadcast(&unit->_report);
+	pthread_mutex_unlock(&unit->_notify_mx);
 }
 
 /*!
@@ -73,25 +73,19 @@ static inline int dt_update_thread(dthread_t *thread, int state)
 	}
 
 	// Cancel current runnable if running
-	pthread_mutex_lock(&unit->_notify_mx);
-	lock_thread_rw(thread);
 	if (thread->state & (ThreadIdle | ThreadActive)) {
-
 		// Update state
-		thread->state = state;
-		unlock_thread_rw(thread);
+		atomic_store(&thread->state, state);
 
 		// Notify thread
+		pthread_mutex_lock(&unit->_report_mx);
 		pthread_cond_broadcast(&unit->_notify);
-		pthread_mutex_unlock(&unit->_notify_mx);
-	} else {
-		/* Unable to update thread, it is already dead. */
-		unlock_thread_rw(thread);
-		pthread_mutex_unlock(&unit->_notify_mx);
-		return KNOT_EINVAL;
+		pthread_mutex_unlock(&unit->_report_mx);
+
+		return KNOT_EOK;
 	}
 
-	return KNOT_EOK;
+	return KNOT_EINVAL;
 }
 
 /*!
@@ -128,57 +122,43 @@ static void *thread_ep(void *data)
 
 	// Run loop
 	for (;;) {
-
 		// Check thread state
-		lock_thread_rw(thread);
 		if (thread->state == ThreadDead) {
-			unlock_thread_rw(thread);
 			break;
 		}
 
 		// Update data
+		lock_thread_rw(thread);
 		thread->data = thread->_adata;
 		runnable_t _run = thread->run;
+		unlock_thread_rw(thread);
 
 		// Start runnable if thread is marked Active
 		if ((thread->state == ThreadActive) && (thread->run != 0)) {
-			unlock_thread_rw(thread);
 			_run(thread);
-		} else {
-			unlock_thread_rw(thread);
 		}
 
 		// If the runnable was cancelled, start new iteration
-		lock_thread_rw(thread);
 		if (thread->state & ThreadCancelled) {
-			thread->state &= ~ThreadCancelled;
-			unlock_thread_rw(thread);
+			atomic_fetch_and(&thread->state, ~ThreadCancelled);
 			continue;
 		}
-		unlock_thread_rw(thread);
 
 		// Runnable finished without interruption, mark as Idle
-		pthread_mutex_lock(&unit->_notify_mx);
-		lock_thread_rw(thread);
 		if (thread->state & ThreadActive) {
-			thread->state &= ~ThreadActive;
-			thread->state |= ThreadIdle;
-		}
-
-		// Go to sleep if idle
-		if (thread->state & ThreadIdle) {
-			unlock_thread_rw(thread);
+			atomic_fetch_and(&thread->state, ~ThreadActive);
+			atomic_fetch_or(&thread->state, ThreadIdle);
 
 			// Signalize state change
 			unit_signalize_change(unit);
-
-			// Wait for notification from unit
-			pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
-			pthread_mutex_unlock(&unit->_notify_mx);
-		} else {
-			unlock_thread_rw(thread);
-			pthread_mutex_unlock(&unit->_notify_mx);
 		}
+
+		// Go to sleep if idle
+		pthread_mutex_lock(&unit->_notify_mx);
+		while (thread->state & ThreadIdle) {
+			pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
+		}
+		pthread_mutex_unlock(&unit->_notify_mx);
 	}
 
 	// Thread destructor
@@ -187,10 +167,8 @@ static void *thread_ep(void *data)
 	}
 
 	// Report thread state change
+	atomic_fetch_or(&thread->state, ThreadJoinable);
 	unit_signalize_change(unit);
-	lock_thread_rw(thread);
-	thread->state |= ThreadJoinable;
-	unlock_thread_rw(thread);
 	rcu_unregister_thread();
 
 	// Return
@@ -213,7 +191,7 @@ static dthread_t *dt_create_thread(dt_unit_t *unit)
 	memset(thread, 0, sizeof(dthread_t));
 
 	// Blank thread state
-	thread->state = ThreadJoined;
+	atomic_store(&thread->state, ThreadJoined);
 	pthread_mutex_init(&thread->_mx, 0);
 
 	// Set membership in unit
@@ -379,7 +357,6 @@ void dt_delete(dt_unit_t **unit)
 	 *  or else the behavior is undefined.
 	 *  Sorry.
 	 */
-
 	if (unit == 0) {
 		return;
 	}
@@ -417,22 +394,19 @@ static int dt_start_id(dthread_t *thread)
 		return KNOT_EINVAL;
 	}
 
-	lock_thread_rw(thread);
 
 	// Update state
 	int prev_state = thread->state;
-	thread->state |= ThreadActive;
-	thread->state &= ~ThreadIdle;
-	thread->state &= ~ThreadDead;
-	thread->state &= ~ThreadJoined;
-	thread->state &= ~ThreadJoinable;
+	atomic_fetch_or(&thread->state, ThreadActive);
+	atomic_fetch_and(&thread->state, (~ThreadIdle) & (~ThreadDead) &
+	                 (~ThreadJoined) & (~ThreadJoinable));
 
 	// Do not re-create running threads
 	if (prev_state != ThreadJoined) {
-		unlock_thread_rw(thread);
 		return 0;
 	}
 
+	lock_thread_rw(thread);
 	// Start thread
 	sigset_t mask_all, mask_old;
 	sigfillset(&mask_all);
@@ -456,7 +430,6 @@ int dt_start(dt_unit_t *unit)
 	}
 
 	// Lock unit
-	pthread_mutex_lock(&unit->_notify_mx);
 	dt_unit_lock(unit);
 	for (int i = 0; i < unit->size; ++i) {
 
@@ -471,8 +444,11 @@ int dt_start(dt_unit_t *unit)
 
 	// Unlock unit
 	dt_unit_unlock(unit);
+
+	pthread_mutex_lock(&unit->_report_mx);
 	pthread_cond_broadcast(&unit->_notify);
-	pthread_mutex_unlock(&unit->_notify_mx);
+	pthread_mutex_unlock(&unit->_report_mx);
+
 	return KNOT_EOK;
 }
 
@@ -504,9 +480,11 @@ int dt_join(dt_unit_t *unit)
 	}
 
 	for (;;) {
+		pthread_mutex_lock(&unit->_report_mx);
+		pthread_cond_broadcast(&unit->_notify);
+		pthread_mutex_unlock(&unit->_report_mx);
 
 		// Lock unit
-		pthread_mutex_lock(&unit->_report_mx);
 		dt_unit_lock(unit);
 
 		// Browse threads
@@ -515,33 +493,32 @@ int dt_join(dt_unit_t *unit)
 
 			// Count active or cancelled but pending threads
 			dthread_t *thread = unit->threads[i];
-			lock_thread_rw(thread);
 			if (thread->state & (ThreadActive|ThreadCancelled)) {
 				++active_threads;
 			}
 
 			// Reclaim dead threads, but only fast
 			if (thread->state & ThreadJoinable) {
-				unlock_thread_rw(thread);
 				pthread_join(thread->_thr, 0);
-				lock_thread_rw(thread);
-				thread->state = ThreadJoined;
-				unlock_thread_rw(thread);
-			} else {
-				unlock_thread_rw(thread);
+				atomic_store(&thread->state, ThreadJoined);
 			}
 		}
+
+		pthread_mutex_lock(&unit->_report_mx);
+		pthread_cond_broadcast(&unit->_notify);
+		pthread_mutex_unlock(&unit->_report_mx);
 
 		// Unlock unit
 		dt_unit_unlock(unit);
 
 		// Check result
 		if (active_threads == 0) {
-			pthread_mutex_unlock(&unit->_report_mx);
 			break;
 		}
 
 		// Wait for a thread to finish
+		pthread_mutex_lock(&unit->_report_mx);
+		pthread_cond_broadcast(&unit->_notify);
 		pthread_cond_wait(&unit->_report, &unit->_report_mx);
 		pthread_mutex_unlock(&unit->_report_mx);
 	}
@@ -556,28 +533,24 @@ int dt_stop(dt_unit_t *unit)
 	}
 
 	// Lock unit
-	pthread_mutex_lock(&unit->_notify_mx);
 	dt_unit_lock(unit);
 
 	// Signalize all threads to stop
 	for (int i = 0; i < unit->size; ++i) {
-
 		// Lock thread
 		dthread_t *thread = unit->threads[i];
-		lock_thread_rw(thread);
 		if (thread->state & (ThreadIdle | ThreadActive)) {
-			thread->state = ThreadDead | ThreadCancelled;
-			dt_signalize(thread, SIGALRM);
+			dt_update_thread(thread, ThreadDead | ThreadCancelled);
 		}
-		unlock_thread_rw(thread);
 	}
 
 	// Unlock unit
 	dt_unit_unlock(unit);
 
 	// Broadcast notification
+	pthread_mutex_lock(&unit->_report_mx);
 	pthread_cond_broadcast(&unit->_notify);
-	pthread_mutex_unlock(&unit->_notify_mx);
+	pthread_mutex_unlock(&unit->_report_mx);
 
 	return KNOT_EOK;
 }
@@ -640,46 +613,41 @@ int dt_compact(dt_unit_t *unit)
 		return KNOT_EINVAL;
 	}
 
-	// Lock unit
-	pthread_mutex_lock(&unit->_notify_mx);
-	dt_unit_lock(unit);
-
 	// Reclaim all Idle threads
 	for (int i = 0; i < unit->size; ++i) {
 
 		// Locked state update
 		dthread_t *thread = unit->threads[i];
-		lock_thread_rw(thread);
 		if (thread->state & (ThreadIdle)) {
-			thread->state = ThreadDead | ThreadCancelled;
-			dt_signalize(thread, SIGALRM);
+			dt_update_thread(thread, ThreadDead | ThreadCancelled);
+			//dt_signalize(thread, SIGALRM);
 		}
-		unlock_thread_rw(thread);
 	}
 
 	// Notify all threads
+	pthread_mutex_lock(&unit->_report_mx);
 	pthread_cond_broadcast(&unit->_notify);
-	pthread_mutex_unlock(&unit->_notify_mx);
+	pthread_mutex_unlock(&unit->_report_mx);
+
+	// Lock unit
+	dt_unit_lock(unit);
 
 	// Join all threads
 	for (int i = 0; i < unit->size; ++i) {
 
 		// Reclaim all dead threads
 		dthread_t *thread = unit->threads[i];
-		lock_thread_rw(thread);
 		if (thread->state & (ThreadDead)) {
-			unlock_thread_rw(thread);
 			pthread_join(thread->_thr, 0);
-			lock_thread_rw(thread);
-			thread->state = ThreadJoined;
-			unlock_thread_rw(thread);
-		} else {
-			unlock_thread_rw(thread);
+			atomic_store(&thread->state, ThreadJoined);
 		}
 	}
 
 	// Unlock unit
 	dt_unit_unlock(unit);
+	pthread_mutex_lock(&unit->_report_mx);
+	pthread_cond_broadcast(&unit->_notify);
+	pthread_mutex_unlock(&unit->_report_mx);
 
 	return KNOT_EOK;
 }

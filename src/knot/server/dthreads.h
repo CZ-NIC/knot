@@ -33,6 +33,7 @@
 #pragma once
 
 #include <pthread.h>
+#include <stdatomic.h>
 
 #define DEFAULT_THR_COUNT 2  /*!< Default thread count. */
 
@@ -70,7 +71,7 @@ typedef int (*runnable_t)(struct dthread *);
  * \brief Single thread descriptor public API.
  */
 typedef struct dthread {
-	volatile unsigned  state; /*!< Bitfield of dt_flag flags. */
+	atomic_int         state; /*!< Bitfield of dt_flag flags. */
 	runnable_t           run; /*!< Runnable function or 0. */
 	runnable_t      destruct; /*!< Destructor function or 0. */
 	void               *data; /*!< Currently active data */

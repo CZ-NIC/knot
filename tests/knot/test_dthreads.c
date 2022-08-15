@@ -17,6 +17,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <tap/basic.h>
 
@@ -50,15 +51,12 @@ int runnable(struct dthread *thread)
 }
 
 /* Destructor data. */
-static volatile int _destructor_data = 0;
-static pthread_mutex_t _destructor_mx;
+static atomic_int _destructor_data = 0;
 
 /*! \brief Thread destructor. */
 int destruct(struct dthread *thread)
 {
-	pthread_mutex_lock(&_destructor_mx);
-	_destructor_data += 1;
-	pthread_mutex_unlock(&_destructor_mx);
+	atomic_fetch_add_explicit(&_destructor_data, 1, memory_order_relaxed);
 
 	return 0;
 }
@@ -86,7 +84,6 @@ int main(int argc, char *argv[])
 	/* Initialize */
 	srand(time(NULL));
 	pthread_mutex_init(&_runnable_mx, NULL);
-	pthread_mutex_init(&_destructor_mx, NULL);
 
 	/* Test 1: Create unit */
 	int size = 2;
@@ -132,7 +129,7 @@ int main(int argc, char *argv[])
 	is_int(-198, ret, "dthreads: correct values when passed NULL context");
 
 	/* Test 8: Thread destructor. */
-	_destructor_data = 0;
+	atomic_store(&_destructor_data, 0);
 	unit = dt_create(2, 0, destruct, 0);
 	dt_start(unit);
 	dt_stop(unit);
@@ -143,6 +140,5 @@ int main(int argc, char *argv[])
 skip_all:
 
 	pthread_mutex_destroy(&_runnable_mx);
-	pthread_mutex_destroy(&_destructor_mx);
 	return 0;
 }
