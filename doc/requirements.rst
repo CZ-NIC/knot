@@ -103,5 +103,12 @@ tool. These are only supported on Linux operating systems. See the chapter
 :ref:`Mode XDP <Mode XDP_pre-requisites>` for software and hardware
 recommendations.
 
-* libbpf >= 0.0.6
+* libbpf >= 0.0.6 (or embedded one via `--enable-xdp`)
 * libmnl (for kxdpgun)
+
+DNS-over-QUIC (DoQ) support in :doc:`knotd<man_knotd>`, :doc:`kxdpgun<man_kxdpgun>`,
+and :doc:`kdig<man_kdig>`:
+
+* libngtcp2 == 0.7.0 (or embedded one via `--enable-quic`)
+* gnutls >= 3.7.2
+* :ref:`Mode XDP` (for knotd and kxdpgun)
