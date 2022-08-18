@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     bus = dbus.SystemBus()
-    knotd = bus.get_object('cz.nic.knotd', '/cz/nic/knotd')
+    knotd = bus.get_object('cz.nic.knotd', '/cz/nic/knotd', introspect=False)
     events_iface = dbus.Interface(knotd, dbus_interface='cz.nic.knotd.events')
     events_iface.connect_to_signal("zone_updated", updated)
     loop = GLib.MainLoop()
