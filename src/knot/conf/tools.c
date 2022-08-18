@@ -635,9 +635,9 @@ int check_policy(
 	                                            C_NSEC3_ITER, args->id, args->id_len);
 
 	unsigned algorithm = conf_opt(&alg);
-	if (algorithm == 3 || algorithm == 6) {
-		args->err_str = "DSA algorithm no longer supported";
-		return KNOT_EINVAL;
+	if (algorithm < DNSSEC_KEY_ALGORITHM_RSA_SHA256) {
+		CONF_LOG(LOG_NOTICE, "algorithm %u is deprecated and shouldn't be used for DNSSEC signing",
+		         algorithm);
 	}
 
 	int64_t ksk_size = conf_int(&ksk);
