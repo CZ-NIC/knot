@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include "knot/common/systemd.h"
+#include "knot/server/dthreads.h"
 #include "contrib/strtonum.h"
 
 #ifdef ENABLE_SYSTEMD
@@ -46,6 +47,7 @@ static int systemd_zone_load_timeout(void)
 #include <systemd/sd-bus.h>
 
 static sd_bus *_dbus = NULL;
+static dt_unit_t *_bg_workers = NULL;
 #endif
 
 void systemd_zone_load_timeout_notify(void)
@@ -90,6 +92,24 @@ void systemd_stopping_notify(void)
 #endif
 }
 
+#ifdef ENABLE_DBUS
+static int process(dthread_t *thread)
+{
+	if (thread == NULL) {
+		return -1;
+	}
+
+	for (;;) {
+		if (dt_is_cancelled(thread)) {
+			break;
+		}
+		sd_bus_process(_dbus, NULL);
+		sd_bus_wait(_dbus, 1000 * 1000); // timeout 1s
+	}
+	return 0;
+}
+#endif
+
 int systemd_dbus_open(void)
 {
 #ifdef ENABLE_DBUS
@@ -109,6 +129,17 @@ int systemd_dbus_open(void)
 		return ret;
 	}
 
+	ret = sd_bus_add_object_manager(_dbus, NULL, KNOT_DBUS_PATH);
+	if (ret < 0) {
+		systemd_dbus_close();
+		return ret;
+	}
+
+	if (_bg_workers == NULL) {
+		_bg_workers = dt_create(1, process, NULL, NULL);
+		dt_start(_bg_workers);
+	}
+
 	return KNOT_EOK;
 #else
 	return KNOT_ENOTSUP;
@@ -118,6 +149,12 @@ int systemd_dbus_open(void)
 void systemd_dbus_close(void)
 {
 #ifdef ENABLE_DBUS
+	if (_bg_workers != NULL) {
+		dt_stop(_bg_workers);
+		dt_join(_bg_workers);
+		dt_delete(&_bg_workers);
+	}
+	sd_bus_close(_dbus);
 	_dbus = sd_bus_unref(_dbus);
 #endif
 }
