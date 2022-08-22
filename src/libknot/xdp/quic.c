@@ -739,23 +739,24 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 {
 	*out_conn = NULL;
 
-	uint32_t pversion = 0;
+	ngtcp2_version_cid decoded_cids = { 0 };
 	ngtcp2_cid scid = { 0 }, dcid = { 0 }, odcid = { 0 };
-	const uint8_t *scid_data, *dcid_data;
 	uint64_t now = get_timestamp();
-	int ret = ngtcp2_pkt_decode_version_cid(&pversion, &dcid_data, &dcid.datalen, &scid_data, &scid.datalen,
-	                                        msg->payload.iov_base, msg->payload.iov_len, SERVER_DEFAULT_SCIDLEN);
+	int ret = ngtcp2_pkt_decode_version_cid(&decoded_cids,
+	                                        msg->payload.iov_base,
+	                                        msg->payload.iov_len,
+	                                        SERVER_DEFAULT_SCIDLEN);
 	if (ret == NGTCP2_ERR_VERSION_NEGOTIATION) {
 		return -XQUIC_SEND_VERSION_NEGOTIATION;
 	} else if (ret != NGTCP2_NO_ERROR) {
 		return ret;
 	}
-	ngtcp2_cid_init(&dcid, dcid_data, dcid.datalen);
-	ngtcp2_cid_init(&scid, scid_data, scid.datalen);
+	ngtcp2_cid_init(&dcid, decoded_cids.dcid, decoded_cids.dcidlen);
+	ngtcp2_cid_init(&scid, decoded_cids.scid, decoded_cids.scidlen);
 
 	knot_xquic_conn_t *xconn = xquic_table_lookup(&dcid, table);
 
-	if (pversion == 0 /* short header */ && xconn == NULL) {
+	if (decoded_cids.version == 0 /* short header */ && xconn == NULL) {
 		return KNOT_EOK; // NOOP
 	}
 
@@ -806,7 +807,7 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 		}
 		xquic_conn_mark_used(xconn, table, now);
 
-		ret = conn_new(&xconn->conn, &path, &dcid, &scid, &odcid, pversion, now,
+		ret = conn_new(&xconn->conn, &path, &dcid, &scid, &odcid, decoded_cids.version, now,
 		               table->udp_payload_limit, idle_timeout, xconn, true, header.token.len > 0);
 		if (ret >= 0) {
 			ret = tls_init_conn_session(xconn, true);
@@ -896,13 +897,14 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xdp_socket_t *sock,
 		return ret;
 	}
 
-	const uint8_t *scid_data, *dcid_data;
 	uint64_t now = get_timestamp();
-	uint32_t pversion = 0;
+	ngtcp2_version_cid decoded_cids = { 0 };
 	ngtcp2_cid scid = { 0 }, dcid = { 0 };
 
-	int dvc_ret = ngtcp2_pkt_decode_version_cid(&pversion, &dcid_data, &dcid.datalen, &scid_data, &scid.datalen,
-	                                            in_msg->payload.iov_base, in_msg->payload.iov_len, SERVER_DEFAULT_SCIDLEN);
+	int dvc_ret = ngtcp2_pkt_decode_version_cid(&decoded_cids,
+	                                            in_msg->payload.iov_base,
+	                                            in_msg->payload.iov_len,
+	                                            SERVER_DEFAULT_SCIDLEN);
 
 	uint8_t rnd = 0;
 	dnssec_random_buffer(&rnd, sizeof(rnd));
@@ -920,18 +922,19 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xdp_socket_t *sock,
 		}
 		ret = ngtcp2_pkt_write_version_negotiation(
 			out_msg.payload.iov_base, out_msg.payload.iov_len,
-			rnd, scid_data, scid.datalen, dcid_data, dcid.datalen,
-			supported_quic, sizeof(supported_quic) / sizeof(*supported_quic)
+			rnd, decoded_cids.scid, decoded_cids.scidlen, decoded_cids.dcid,
+			decoded_cids.dcidlen, supported_quic,
+			sizeof(supported_quic) / sizeof(*supported_quic)
 		);
 		break;
 	case -XQUIC_SEND_RETRY:
-		memcpy(dcid.data, dcid_data, dcid.datalen);
-		memcpy(scid.data, scid_data, scid.datalen);
+		ngtcp2_cid_init(&dcid, decoded_cids.dcid, decoded_cids.dcidlen);
+		ngtcp2_cid_init(&scid, decoded_cids.scid, decoded_cids.scidlen);
 
 		init_random_cid(&new_dcid, 0);
 
 		ret = ngtcp2_crypto_generate_retry_token(
-			retry_token, (const uint8_t *)quic_table->hash_secret, sizeof(quic_table->hash_secret), pversion,
+			retry_token, (const uint8_t *)quic_table->hash_secret, sizeof(quic_table->hash_secret), decoded_cids.version,
 			(const struct sockaddr *)&in_msg->ip_from, sockaddr_len((const struct sockaddr_storage *)&in_msg->ip_from),
 			&new_dcid, &dcid, now
 		);
@@ -939,7 +942,7 @@ static int send_special(knot_xquic_table_t *quic_table, knot_xdp_socket_t *sock,
 		if (ret >= 0) {
 			ret = ngtcp2_crypto_write_retry(
 				out_msg.payload.iov_base, out_msg.payload.iov_len,
-				pversion, &scid, &new_dcid, &dcid, retry_token, ret
+				decoded_cids.version, &scid, &new_dcid, &dcid, retry_token, ret
 			);
 		}
 		break;
