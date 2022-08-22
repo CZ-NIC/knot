@@ -1,5 +1,5 @@
 ## Intermediate stage ##
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # Environment
 ENV BUILD_PKGS \
@@ -39,6 +39,7 @@ RUN autoreconf -if && \
                 --with-configdir=/config \
                 --with-module-dnstap=yes \
                 --${FASTPARSER}-fastparser \
+                --enable-quic \
                 --enable-dnstap \
                 --disable-static \
                 --disable-documentation && \
@@ -50,7 +51,7 @@ RUN if [ "$CHECK" = "enable" ]; then make -j$(grep -c ^processor /proc/cpuinfo) 
     make install DESTDIR=/tmp/knot-install
 
 ## Final stage ##
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 
 # Environment
