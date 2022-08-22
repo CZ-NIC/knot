@@ -23,6 +23,8 @@
 #include "libknot/xdp/tcp_iobuf.c"
 #include "libknot/xdp/bpf-user.h"
 
+#define INFTY INT32_MAX
+
 knot_tcp_table_t *test_table = NULL;
 knot_tcp_table_t *test_syn_table = NULL;
 #define TEST_TABLE_SIZE 100
@@ -148,7 +150,7 @@ static int mock_send2(_unused_ knot_xdp_socket_t *sock, const knot_xdp_msg_t msg
 
 static void clean_table(void)
 {
-	(void)tcp_cleanup(test_table, 0, UINT32_MAX);
+	(void)tcp_cleanup(test_table, 0, INFTY);
 }
 
 static void clean_sent(void)
@@ -421,8 +423,8 @@ void test_many(void)
 	clean_sent();
 
 	knot_sweep_stats_t stats = { 0 };
-	ret = knot_tcp_sweep(test_table, timeout_time, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
-	                     UINT32_MAX, rls, CONNS, &stats);
+	ret = knot_tcp_sweep(test_table, timeout_time, INFTY, INFTY, INFTY, INFTY,
+	                     INFTY, rls, CONNS, &stats);
 	is_int(KNOT_EOK, ret, "many/timeout1: OK");
 	is_int(CONNS - 1, stats.counters[KNOT_SWEEP_CTR_TIMEOUT], "many/timeout1: close count");
 	is_int(0, stats.counters[KNOT_SWEEP_CTR_LIMIT_CONN], "may/timeout1: reset count");
@@ -431,8 +433,8 @@ void test_many(void)
 	check_sent(0, 0, 0, CONNS - 1);
 
 	knot_sweep_stats_reset(&stats);
-	ret = knot_tcp_sweep(test_table, UINT32_MAX, timeout_time, UINT32_MAX, UINT32_MAX, UINT32_MAX,
-	                     UINT32_MAX, rls, CONNS, &stats);
+	ret = knot_tcp_sweep(test_table, INFTY, timeout_time, INFTY, INFTY, INFTY,
+	                     INFTY, rls, CONNS, &stats);
 	is_int(KNOT_EOK, ret, "many/timeout2: OK");
 	is_int(0, stats.counters[KNOT_SWEEP_CTR_TIMEOUT], "many/timeout2: close count");
 	is_int(CONNS - 1, stats.counters[KNOT_SWEEP_CTR_LIMIT_CONN], "may/timeout2: reset count");
@@ -502,8 +504,8 @@ void test_ibufs_size(void)
 
 	// now free some
 	knot_sweep_stats_t stats = { 0 };
-	ret = knot_tcp_sweep(test_table, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
-	                     test_table->inbufs_total - 8, UINT32_MAX, rls,
+	ret = knot_tcp_sweep(test_table, INFTY, INFTY, INFTY, INFTY,
+	                     test_table->inbufs_total - 8, INFTY, rls,
 	                     CONNS, &stats);
 	is_int(KNOT_EOK, ret, "inbufs: timeout OK");
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
