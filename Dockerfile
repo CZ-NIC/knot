@@ -67,7 +67,7 @@ ENV RUNTIME_PKGS \
     libmnl0 \
     libnghttp2-14 \
     libprotobuf-c1 \
-    liburcu6
+    liburcu8
 
 # Copy artifacts
 COPY --from=0 /tmp/knot-install/ /
