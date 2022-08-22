@@ -294,6 +294,48 @@ Packaging
 Users who use module :ref:`geoip<mod-geoip>` or :ref:`dnstap<mod-dnstap>` might
 need installing an additional package with the module.
 
+.. _Upgrade 3.1.x to 3.2.x:
+
+Upgrade 3.1.x to 3.2.x
+======================
+
+Knot DNS version 3.2.x is functionally compatible with 3.1.x with the following
+exceptions.
+
+Configuration changes
+---------------------
+
+- Ignored obsolete option (with a notice log):
+
+  - ``server.listen-xdp``
+
+Utilities:
+----------
+
+- :doc:`knotc<man_knotc>` prints simplified zones status by default. Use ``-e``
+  for full output.
+- :doc:`keymgr<man_keymgr>` uses the brief key listing mode by default. Use ``-e``
+  for full output.
+- :doc:`keymgr<man_keymgr>` parameter ``-d`` was renamed to ``-D``.
+- :doc:`kjournalprint<man_kjournalprint>` parameter ``-c`` was renamed to ``-H``.
+
+Packaging
+---------
+
+- Linux distributions Debian 9 and Ubuntu 16.04 are no longer supported.
+
+- Packages for CentOS 7 are stored in a separate COPR repository
+  ``cznic/knot-dns-latest-centos7``.
+
+- Utilities :doc:`kzonecheck<man_kzonecheck>`, :doc:`kzonesign<man_kzonesign>`,
+  and :doc:`knsec3hash<man_knsec3hash>` are located in a new ``knot-dnssecutils``
+  package.
+
+Python
+------
+
+- Compatibility with Python 2 was removed.
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users
