@@ -1,7 +1,0 @@
----
-- name: geoip_config set up knot.conf
-  copy:
-    dest: /etc/knot/knot.conf
-    mode: 0640
-    content: |
-      mod-geoip:

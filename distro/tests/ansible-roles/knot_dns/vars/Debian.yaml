@@ -1,5 +1,0 @@
----
-show_package_version: dpkg -s knot | grep '^Version'
-packages:
-  - knot
-  - knot-dnsutils
