@@ -10,3 +10,4 @@ Depends:
  findutils,
  knot,
  knot-dnsutils,
+ knot-dnssecutils,

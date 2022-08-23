@@ -143,8 +143,8 @@ if ! "${kdig}" -p "${port}" @"${ip}" -t DNSKEY example.net. +dnssec 2>&1 | grep 
 fi
 
 section "listing keys with keymgr"
-"${keymgr}" "$knot_conf" example.net. list
-if ! "${keymgr}" "$knot_conf" example.net. list 2>&1 | grep -q "ksk=yes"; then
+"${keymgr}" "$knot_conf" -e example.net. list
+if ! "${keymgr}" "$knot_conf" -e example.net. list 2>&1 | grep -q "ksk=yes"; then
     printf "keymgr did not list KSK as expected" >&2
     exit 1
 fi
