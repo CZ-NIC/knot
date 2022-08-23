@@ -10,6 +10,7 @@ stages:
   - image
   - build
   - test
+  - pkg
   - documentation
 
 .image: &image
@@ -333,3 +334,89 @@ build:documentation:
       - doc/_build/latex/KnotDNS.pdf
       - doc/_build/epub/KnotDNS.epub
     expire_in: '1 hour'
+
+# packaging tests using apkg
+
+.apkg_image: &apkg_image
+  # apkg images use LC_ALL=C.UTF-8
+  variables:
+    LC_ALL: C.UTF-8
+
+.pkg_test: &pkg_test
+  <<: *apkg_image
+  stage: pkg
+  needs:
+    - pkg:make-archive
+  script:
+    - python3 -m pip install apkg
+    # make sure the archive from pkg:make-archive is available
+    - apkg info cache | grep archive/dev
+    - apkg install --build-dep
+    - apkg test --test-dep
+
+.pkg_test_deb: &pkg_test_deb
+  <<: *pkg_test
+  before_script:
+    - apt update
+
+pkg:make-archive:
+  # archive is created once and reused in other pkg jobs
+  <<: *apkg_image
+  stage: pkg
+  needs:
+    - build:debian:amd64
+  image: $CI_REGISTRY/packaging/apkg/ci/debian-11:apkg
+  artifacts:
+    paths:
+      - pkg/
+  before_script:
+    - apt update
+  script:
+    - python3 -m pip install apkg
+    - apkg build-dep
+    - apkg make-archive
+
+pkg:debian-11:
+  <<: *pkg_test_deb
+  image: $CI_REGISTRY/packaging/apkg/ci/debian-11:apkg
+
+pkg:debian-10:
+  <<: *pkg_test_deb
+  image: $CI_REGISTRY/packaging/apkg/ci/debian-10:apkg
+
+pkg:ubuntu-22.04:
+  <<: *pkg_test_deb
+  image: $CI_REGISTRY/packaging/apkg/ci/ubuntu-22.04:apkg
+
+pkg:ubuntu-20.04:
+  <<: *pkg_test_deb
+  image: $CI_REGISTRY/packaging/apkg/ci/ubuntu-20.04:apkg
+
+pkg:ubuntu-18.04:
+  <<: *pkg_test_deb
+  image: $CI_REGISTRY/packaging/apkg/ci/ubuntu-18.04:apkg
+
+pkg:fedora-36:
+  <<: *pkg_test
+  image: $CI_REGISTRY/packaging/apkg/ci/fedora-36:apkg
+
+pkg:fedora-35:
+  <<: *pkg_test
+  image: $CI_REGISTRY/packaging/apkg/ci/fedora-35:apkg
+
+pkg:alma-9:
+  <<: *pkg_test
+  image: $CI_REGISTRY/packaging/apkg/ci/alma-9:apkg
+
+pkg:rocky-8:
+  <<: *pkg_test
+  image: $CI_REGISTRY/packaging/apkg/ci/rocky-8:apkg
+
+pkg:centos-7:
+  <<: *pkg_test
+  image: $CI_REGISTRY/packaging/apkg/ci/centos-7:apkg
+  allow_failure: true
+
+pkg:suse-15:
+  <<: *pkg_test
+  image: $CI_REGISTRY/packaging/apkg/ci/suse-15:apkg

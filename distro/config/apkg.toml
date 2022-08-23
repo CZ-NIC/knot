@@ -9,8 +9,18 @@ archive_url = "https://secure.nic.cz/files/knot-dns/knot-{{ version }}.tar.xz"
 signature_url = "https://secure.nic.cz/files/knot-dns/knot-{{ version }}.tar.xz.asc"
 
 [apkg]
-compat = 2
+compat = 3
 
 [[distro.aliases]]
 name = "el-7"
 distro = ["centos == 7", "rhel == 7"]
+
+# pkstyle aliases bellow are expected to be built-in in apkg >= 0.5.0
+# https://gitlab.nic.cz/packaging/apkg/-/issues/79
+[[distro.aliases]]
+name = "deb"
+distro = ['ubuntu', 'debian']
+
+[[distro.aliases]]
+name = "rpm"
+distro = ['almalinux', 'centos', 'fedora', 'opensuse', 'oracle', 'rhel', 'rocky', 'scientific']
