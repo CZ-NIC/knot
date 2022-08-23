@@ -24,7 +24,6 @@ Environment="KNOT_CONF_MAX_SIZE=512"
 # Expected systemd >= v239
 RuntimeDirectory=knot
 StateDirectory=knot
-LogsDirectory=knot
 NoNewPrivileges=yes
 
 [Install]
