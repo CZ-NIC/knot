@@ -220,6 +220,15 @@ AM_CONDITIONAL([EMBEDDED_LIBBPF], [test "$enable_xdp" = "embedded"])
 AM_CONDITIONAL([ENABLE_XDP], [test "$enable_xdp" != "no"])
 AC_SUBST([embedded_libbpf_CFLAGS])
 AC_SUBST([embedded_libbpf_LIBS])
+
+AS_IF([test "$enable_xdp" == "yes"], [
+   PKG_CHECK_MODULES([libxdp], [libxdp], [enable_xdp=libxdp], [enable_xdp=yes])
+   AS_IF([test "$enable_xdp" == "libxdp"], [
+      AC_DEFINE([USE_LIBXDP], [1], [Use external libxdp and libbpf.])
+      libbpf_CFLAGS="$libbpf_CFLAGS $libxdp_CFLAGS"
+      libbpf_LIBS="$libbpf_LIBS $libxdp_LIBS"
+   ])]
+)
 AC_SUBST([libbpf_CFLAGS])
 AC_SUBST([libbpf_LIBS])
 

@@ -25,7 +25,11 @@
 
 #pragma once
 
-#include <bpf/xsk.h>
+#if USE_LIBXDP
+ #include <xdp/xsk.h>
+#else
+ #include <bpf/xsk.h>
+#endif
 
 #include "libknot/xdp/xdp.h"
 
