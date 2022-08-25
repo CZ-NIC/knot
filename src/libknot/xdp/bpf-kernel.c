@@ -36,20 +36,20 @@
 #define QUEUE_MAX	256
 
 /* A map of configuration options. */
-struct bpf_map_def SEC("maps") opts_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(__u32), /* Must be 4 bytes. */
-	.value_size = sizeof(knot_xdp_opts_t),
-	.max_entries = QUEUE_MAX,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, QUEUE_MAX);
+	__uint(key_size, sizeof(__u32)); /* Must be 4 bytes. */
+	__uint(value_size, sizeof(knot_xdp_opts_t));
+} opts_map SEC(".maps");
 
 /* A map of AF_XDP sockets. */
-struct bpf_map_def SEC("maps") xsks_map = {
-	.type = BPF_MAP_TYPE_XSKMAP,
-	.key_size = sizeof(__u32), /* Must be 4 bytes. */
-	.value_size = sizeof(int),
-	.max_entries = QUEUE_MAX,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_XSKMAP);
+	__uint(max_entries, QUEUE_MAX);
+	__uint(key_size, sizeof(__u32)); /* Must be 4 bytes. */
+	__uint(value_size, sizeof(int));
+} xsks_map SEC(".maps");
 
 struct ipv6_frag_hdr {
 	unsigned char nexthdr;
