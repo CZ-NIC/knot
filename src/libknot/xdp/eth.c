@@ -210,8 +210,13 @@ int knot_eth_name_from_addr(const struct sockaddr_storage *addr, char *out,
 _public_
 knot_xdp_mode_t knot_eth_xdp_mode(int if_index)
 {
+#if USE_LIBXDP
+	struct bpf_xdp_query_opts info = { .sz = sizeof(info) };
+	int ret = bpf_xdp_query(if_index, 0, &info);
+#else
 	struct xdp_link_info info;
 	int ret = bpf_get_link_xdp_info(if_index, &info, sizeof(info), 0);
+#endif
 	if (ret != 0) {
 		return KNOT_XDP_MODE_NONE;
 	}
