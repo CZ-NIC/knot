@@ -340,9 +340,11 @@ static int fd_set_recv_ecn(int fd, int family)
 	unsigned int tos = 1;
 	switch (family) {
 	case AF_INET:
+#ifdef IP_RECVTOS
 		if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &tos, sizeof(tos)) == -1) {
 			return knot_map_errno();
 		}
+#endif
 		break;
 	case AF_INET6:
 		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &tos, sizeof(tos)) == -1) {
