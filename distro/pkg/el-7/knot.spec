@@ -65,21 +65,8 @@ BuildRequires:	python3-sphinx
 BuildRequires:	pkgconfig(lmdb)
 %endif
 
-%if 0%{?centos} == 7 || 0%{?rhel} == 7
 # disable XDP on old EL
 %define configure_xdp --enable-xdp=no
-%else
-%define use_xdp 1
-%if 0%{?rhel} >= 8 || 0%{?suse_version}
-# enable XDP on recent EL using embedded libbpf
-%define use_xdp 1
-%define configure_xdp --enable-xdp=yes
-BuildRequires:	pkgconfig(libelf)
-%else
-# XDP is auto-enabled when libbpf is present
-BuildRequires:  pkgconfig(libbpf) >= 0.0.6
-%endif
-%endif
 
 Requires(post):		systemd %{_sbindir}/runuser
 Requires(preun):	systemd
@@ -111,9 +98,18 @@ included in knot-libs package.
 %package utils
 Summary:	DNS client utilities shipped with the Knot DNS server
 Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
+# Debian package compat
+Provides:	%{name}-dnsutils = %{version}-%{release}
 
 %description utils
 The package contains DNS client utilities shipped with the Knot DNS server.
+
+%package dnssecutils
+Summary:	DNSSEC tools shipped with the Knot DNS server
+Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
+
+%description dnssecutils
+The package contains DNSSEC tools shipped with the Knot DNS server.
 
 %package module-dnstap
 Summary:	dnstap module for Knot DNS
@@ -132,7 +128,7 @@ The package contains geoip Knot DNS module for geography-based responses.
 %package doc
 Summary:	Documentation for the Knot DNS server
 BuildArch:	noarch
-Provides:	bundled(jquery) = 3.1.0
+Provides:	bundled(jquery)
 
 %description doc
 The package contains documentation for the Knot DNS server.
@@ -263,8 +259,6 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %dir %{_libdir}/knot/modules-*
 %{_unitdir}/knot.service
 %{_tmpfilesdir}/knot.conf
-%{_bindir}/kzonecheck
-%{_bindir}/kzonesign
 %{_sbindir}/kcatalogprint
 %{_sbindir}/kjournalprint
 %{_sbindir}/keymgr
@@ -273,8 +267,6 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %if 0%{?suse_version}
 %{_sbindir}/rcknot
 %endif
-%{_mandir}/man1/kzonecheck.*
-%{_mandir}/man1/kzonesign.*
 %{_mandir}/man5/knot.conf.*
 %{_mandir}/man8/kcatalogprint.*
 %{_mandir}/man8/kjournalprint.*
@@ -286,7 +278,6 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %files utils
 %{_bindir}/kdig
 %{_bindir}/khost
-%{_bindir}/knsec3hash
 %{_bindir}/knsupdate
 %if 0%{?use_xdp}
 %{_sbindir}/kxdpgun
@@ -294,8 +285,15 @@ systemd-tmpfiles --create %{_tmpfilesdir}/knot.conf &>/dev/null || :
 %endif
 %{_mandir}/man1/kdig.*
 %{_mandir}/man1/khost.*
-%{_mandir}/man1/knsec3hash.*
 %{_mandir}/man1/knsupdate.*
+
+%files dnssecutils
+%{_bindir}/knsec3hash
+%{_bindir}/kzonecheck
+%{_bindir}/kzonesign
+%{_mandir}/man1/knsec3hash.*
+%{_mandir}/man1/kzonecheck.*
+%{_mandir}/man1/kzonesign.*
 
 %files module-dnstap
 %{_libdir}/knot/modules-*/dnstap.so
