@@ -172,7 +172,7 @@ int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc)
 	return check_route(ctx, desc);
 }
 
-SEC("xdp_redirect_dns")
+SEC("xdp")
 int xdp_redirect_dns_func(struct xdp_md *ctx)
 {
 	void *data = (void *)(long)ctx->data;
