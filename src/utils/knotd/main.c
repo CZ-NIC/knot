@@ -614,10 +614,10 @@ int main(int argc, char **argv)
 	server_deinit(&server);
 	conf_free(conf());
 
+	systemd_dbus_close();
+
 	/* Unhook from RCU. */
 	rcu_unregister_thread();
-
-	systemd_dbus_close();
 
 	log_info("shutting down");
 	log_close();
