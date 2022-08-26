@@ -1940,19 +1940,21 @@ static int dump_caa(DUMP_PARAMS)
 static int dump_svcb(DUMP_PARAMS)
 {
 	DUMP_NUM16; DUMP_SPACE;
-	DUMP_DNAME; DUMP_SPACE;
+	DUMP_DNAME;
 	if (p->style->wrap) {
-		WRAP_INIT;
 		if (p->in_max > 0) {
-			DUMP_SVCPARAM; DUMP_SPACE;
+			DUMP_SPACE;
+			WRAP_INIT;
+			DUMP_SVCPARAM;
+			while (p->in_max > 0) {
+				WRAP_LINE; DUMP_SVCPARAM;
+			}
+			WRAP_END;
 		}
-		while (p->in_max > 0) {
-			WRAP_LINE; DUMP_SVCPARAM; DUMP_SPACE;
-		}
-		WRAP_END;
 	} else {
 		while (p->in_max > 0) {
-			DUMP_SVCPARAM; DUMP_SPACE;
+			DUMP_SPACE;
+			DUMP_SVCPARAM;
 		}
 	}
 
