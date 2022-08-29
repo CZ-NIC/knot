@@ -5,6 +5,7 @@ variables:
   DOCKER_DRIVER: overlay2
   GIT_SUBMODULE_STRATEGY: recursive
   DISTROTEST_PRIORITY: 6
+  PKGTEST: 0
 
 stages:
   - image
@@ -347,6 +348,9 @@ build:documentation:
   stage: pkg
   needs:
     - pkg:make-archive
+  only:
+    variables:
+      - $PKGTEST == "1"
   script:
     - python3 -m pip install apkg
     # make sure the archive from pkg:make-archive is available
@@ -365,6 +369,9 @@ pkg:make-archive:
   stage: pkg
   needs:
     - build:debian:amd64
+  only:
+    variables:
+      - $PKGTEST == "1"
   image: $CI_REGISTRY/packaging/apkg/ci/debian-11:apkg
   artifacts:
     paths:
