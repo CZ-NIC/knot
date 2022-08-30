@@ -110,6 +110,7 @@ int knot_xquic_table_sweep(knot_xquic_table_t *table, struct knot_sweep_stats *s
 		} else {
 			break;
 		}
+		knot_xquic_cleanup(&c, 1);
 	}
 	return KNOT_EOK;
 }
@@ -242,8 +243,7 @@ void knot_xquic_table_rem(knot_xquic_conn_t *conn, knot_xquic_table_t *table)
 
 	gnutls_deinit(conn->tls_session);
 	ngtcp2_conn_del(conn->conn);
-
-	free(conn);
+	conn->conn = NULL;
 
 	table->usage--;
 }
@@ -465,6 +465,21 @@ void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id,
 		s->unsent_obuf = (knot_xquic_obuf_t *)s->unsent_obuf->node.next;
 		if (s->unsent_obuf->node.next == NULL) { // already behind the tail of list
 			s->unsent_obuf = NULL;
+		}
+	}
+}
+
+_public_
+void knot_xquic_cleanup(knot_xquic_conn_t *conns[], size_t n_conns)
+{
+	for (size_t i = 0; i < n_conns; i++) {
+		if (conns[i] != NULL && conns[i]->conn == NULL) {
+			free(conns[i]);
+			for (size_t j = i + 1; j < n_conns; j++) {
+				if (conns[j] == conns[i]) {
+					conns[j] = NULL;
+				}
+			}
 		}
 	}
 }
