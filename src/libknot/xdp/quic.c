@@ -822,6 +822,7 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 
 	ret = ngtcp2_conn_read_pkt(xconn->conn, &path, &pi, msg->payload.iov_base, msg->payload.iov_len, now);
 
+	*out_conn = xconn;
 	if (ret == NGTCP2_ERR_DRAINING // received CONNECTION_CLOSE from the counterpart
 	    || ngtcp2_err_is_fatal(ret)) { // connection doomed
 
@@ -831,7 +832,6 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 		return KNOT_EOK;
 	}
 
-	*out_conn = xconn;
 	xquic_conn_mark_used(xconn, table, now);
 
 	return KNOT_EOK;
@@ -976,8 +976,10 @@ int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
 		return handle_ret;
 	} else if (handle_ret > 0) {
 		return send_special(quic_table, sock, in_msg, handle_ret);
-	} else if (relay == NULL || relay->conn == NULL) {
+	} else if (relay == NULL) {
 		return KNOT_EINVAL;
+	} else if (relay->conn == NULL) {
+		return KNOT_EOK;
 	}
 
 	unsigned sent_msgs = 0, stream_msgs = 0;

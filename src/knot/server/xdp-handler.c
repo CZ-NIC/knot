@@ -443,6 +443,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 			log_notice("QUIC, failed to send some packets");
 		}
 	}
+	knot_xquic_cleanup(ctx->quic_relays, ctx->msg_recv_count);
 #endif // ENABLE_QUIC
 
 	(void)knot_xdp_send_finish(ctx->sock);

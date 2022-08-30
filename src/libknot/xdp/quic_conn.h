@@ -294,6 +294,14 @@ void knot_xquic_stream_mark_sent(knot_xquic_conn_t *xconn, int64_t stream_id,
                                  size_t amount_sent);
 
 /*!
+ * \brief Free rest of resources of closed conns.
+ *
+ * \param conns      Array with recently used conns (possibly NULLs).
+ * \param n_conns    Size of the array.
+ */
+void knot_xquic_cleanup(knot_xquic_conn_t *conns[], size_t n_conns);
+
+/*!
  * \brief Toggle sending Retry packet as a reaction to Initial packet of new connection.
  *
  * \param table       Connection table.
