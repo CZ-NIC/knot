@@ -1,0 +1,10 @@
+Tests: kdig
+Restrictions: skippable
+{%- if distro.match('deb') %}
+Depends: iputils-ping, ca-certificates
+{%- elif distro.match('rpm') %}
+Depends: iputils
+{%- endif %}
+
+Tests: authoritative-server
+Depends: findutils
