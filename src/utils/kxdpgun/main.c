@@ -698,6 +698,7 @@ void *xdp_gun_thread(void *_ctx)
 							errors++;
 						}
 					}
+					knot_xquic_cleanup(relays, recvd);
 					(void)knot_xdp_send_finish(xsk);
 #endif // ENABLE_QUIC
 				} else {
