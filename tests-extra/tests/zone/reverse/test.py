@@ -49,4 +49,39 @@ r.check(rcode="NXDOMAIN", nordata="mail.example.com.")
 r = knot.dig("1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.1.0.0.2.ip6.arpa.", "PTR")
 r.check(rcode="NOERROR", rdata="dns1.example.com.")
 
+knot.ctl("zone-reload %s" % zones[2].name)
+t.sleep(5)
+
+r = knot.dig("1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.1.0.0.2.ip6.arpa.", "PTR")
+r.check(rcode="NOERROR", rdata="dns1.example.com.")
+
+knot.zones.pop(zones[1].name)
+knot.gen_confile()
+knot.reload()
+t.sleep(5)
+
+knot.update_zonefile(zones[0], version=2)
+knot.ctl("zone-reload %s" % zones[0].name)
+t.sleep(5)
+
+r = knot.dig("2.2.0.192.in-addr.arpa.", "PTR")
+r.check(rcode="REFUSED", nordata="dns2.example.com.")
+
+r = knot.dig("5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.1.0.0.2.ip6.arpa.", "PTR")
+r.check(rcode="NOERROR", rdata="added2.example.com.")
+
+knot.zones.pop(zones[0].name)
+knot.gen_confile()
+knot.reload()
+t.sleep(5)
+
+r = knot.dig("1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.1.0.0.2.ip6.arpa.", "PTR")
+r.check(rcode="NOERROR", rdata="dns1.example.com.")
+
+knot.ctl("zone-reload %s" % zones[2].name)
+t.sleep(5)
+
+r = knot.dig("1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.1.0.0.2.ip6.arpa.", "PTR")
+r.check(rcode="NXDOMAIN", nordata="dns1.example.com.")
+
 t.end()
