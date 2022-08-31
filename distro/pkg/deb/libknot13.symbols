@@ -204,6 +204,7 @@ libknot.so.13 libknot13 #MINVER#
  knot_xdp_send_free@Base 3.2.0
  knot_xdp_send_prepare@Base 3.2.0
  knot_xdp_socket_fd@Base 3.2.0
+ knot_xquic_cleanup@Base 3.2.1
  knot_xquic_client@Base 3.2.0
  knot_xquic_conn_get_stream@Base 3.2.0
  knot_xquic_conn_rtt@Base 3.2.0
