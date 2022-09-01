@@ -435,6 +435,7 @@ void *xdp_gun_thread(void *_ctx)
 	list_t quic_sessions;
 	init_list(&quic_sessions);
 #endif // ENABLE_QUIC
+	const uint64_t extra_wait = ctx->quic ? 4000000 : 1000000;
 
 	if (ctx->tcp) {
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
@@ -508,7 +509,7 @@ void *xdp_gun_thread(void *_ctx)
 
 	timer_start(&timer);
 
-	while (duration < ctx->duration + 4000000) {
+	while (duration < ctx->duration + extra_wait) {
 
 		// sending part
 		if (duration < ctx->duration) {
