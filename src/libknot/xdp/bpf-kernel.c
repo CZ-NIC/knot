@@ -119,6 +119,7 @@ int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc)
 {
 	const void *data_end = (void *)(long)ctx->data_end;
 	__u16 port_dest;
+	__u8 match = 0;
 
 	if (desc->stream) {
 		const struct tcphdr *tcp = desc->l4_hdr;
@@ -129,6 +130,13 @@ int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc)
 		}
 
 		port_dest = __bpf_ntohs(tcp->dest);
+
+		if ((desc->opts.flags & KNOT_XDP_FILTER_TCP) &&
+		    (port_dest == desc->opts.udp_port ||
+		     ((desc->opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= desc->opts.udp_port))) {
+			match = 1;
+		}
 	} else {
 		const struct udphdr *udp = desc->l4_hdr;
 
@@ -143,29 +151,28 @@ int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc)
 		}
 
 		port_dest = __bpf_ntohs(udp->dest);
-	}
 
-	/* Treat specified destination ports. */
-	if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
-	     port_dest == desc->opts.udp_port) ||
-	    (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
-	     port_dest == desc->opts.quic_port)) {
-		if (desc->opts.flags & KNOT_XDP_FILTER_DROP) {
-			return XDP_DROP;
+		if ((desc->opts.flags & KNOT_XDP_FILTER_UDP) &&
+		    (port_dest == desc->opts.udp_port ||
+		     ((desc->opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= desc->opts.udp_port))) {
+			match = 1;
+		} else if ((desc->opts.flags & KNOT_XDP_FILTER_QUIC) &&
+		    (port_dest == desc->opts.quic_port ||
+		     ((desc->opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= desc->opts.quic_port))) {
+			match = 1;
 		}
-		/* Exact port match*/
-	} else if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
-	            port_dest < desc->opts.udp_port) ||
-	           (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
-	            port_dest < desc->opts.quic_port)) {
-		/* Unaffected port range.  */
-		return XDP_PASS;
-	} else if (!(desc->opts.flags & KNOT_XDP_FILTER_PASS)) {
-		return XDP_DROP;
 	}
 
-	/* Drop fragmented packet. */
-	if (desc->fragmented) {
+	if (!match) {
+		/* Pass not-matching packet. */
+		return XDP_PASS;
+	} else if (desc->opts.flags & KNOT_XDP_FILTER_DROP) {
+		/* Drop matching packet if requested. */
+		return XDP_DROP;
+	} else if (desc->fragmented) {
+		/* Drop fragmented packet. */
 		return XDP_DROP;
 	}
 
@@ -251,6 +258,17 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		return XDP_PASS;
 	}
 
+	/* Check transport protocol. */
+	switch (ip_proto) {
+	case IPPROTO_UDP:
+		break;
+	case IPPROTO_TCP:
+		desc.stream = 1;
+		break;
+	default:
+		return XDP_PASS;
+	}
+
 	/* Get the queue options. */
 	__u32 index = ctx->rx_queue_index;
 	struct knot_xdp_opts *opts = bpf_map_lookup_elem(&opts_map, &index);
@@ -258,23 +276,6 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		return XDP_ABORTED;
 	}
 	desc.opts = *opts;
-
-	/* Treat UDP or TCP transport protocol. */
-	switch (ip_proto) {
-	case IPPROTO_UDP:
-		if (desc.opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_QUIC)) {
-			break;
-		}
-		return XDP_PASS;
-	case IPPROTO_TCP:
-		if (desc.opts.flags & KNOT_XDP_FILTER_TCP) {
-			desc.stream = 1;
-			break;
-		}
-		return XDP_PASS;
-	default:
-		return XDP_PASS;
-	}
 
 	return process_l4(ctx, &desc);
 }
