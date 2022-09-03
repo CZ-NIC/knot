@@ -63,54 +63,6 @@ struct pkt_desc {
 	__u8 ipv4;
 };
 
-static __always_inline
-int check_route(struct xdp_md *ctx, const struct pkt_desc *desc)
-{
-	__u32 index = ctx->rx_queue_index;
-
-	/* Take into account routing information. */
-	if (desc->opts.flags & KNOT_XDP_FILTER_ROUTE) {
-		struct bpf_fib_lookup fib = {
-			.ifindex = 1 /* Loopback. */
-		};
-		if (desc->ipv4) {
-			const struct iphdr *ip4 = desc->ip_hdr;
-			fib.family   = AF_INET;
-			fib.ipv4_src = ip4->daddr;
-			fib.ipv4_dst = ip4->saddr;
-		} else {
-			const struct ipv6hdr *ip6 = desc->ip_hdr;
-			struct in6_addr *ipv6_src = (struct in6_addr *)fib.ipv6_src;
-			struct in6_addr *ipv6_dst = (struct in6_addr *)fib.ipv6_dst;
-			fib.family = AF_INET6;
-			*ipv6_src  = ip6->daddr;
-			*ipv6_dst  = ip6->saddr;
-		}
-
-		int ret = bpf_fib_lookup(ctx, &fib, sizeof(fib), BPF_FIB_LOOKUP_DIRECT);
-		switch (ret) {
-		case BPF_FIB_LKUP_RET_SUCCESS:
-			/* Cross-interface answers are handled thru normal stack. */
-			if (fib.ifindex != ctx->ingress_ifindex) {
-				return XDP_PASS;
-			}
-
-			/* Update destination MAC for responding. */
-			__builtin_memcpy(desc->eth_hdr->h_source, fib.dmac, ETH_ALEN);
-			break;
-		case BPF_FIB_LKUP_RET_FWD_DISABLED: /* Disabled forwarding on loopback. */
-			return XDP_ABORTED;
-		case BPF_FIB_LKUP_RET_NO_NEIGH: /* Use normal stack to obtain MAC. */
-			return XDP_PASS;
-		default:
-			return XDP_DROP;
-		}
-	}
-
-	/* Forward the packet to user space. */
-	return bpf_redirect_map(&xsks_map, index, 0);
-}
-
 SEC("xdp")
 int xdp_redirect_dns_func(struct xdp_md *ctx)
 {
@@ -267,7 +219,47 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		return XDP_DROP;
 	}
 
-	return check_route(ctx, &desc);
+	/* Take into account routing information. */
+	if (desc.opts.flags & KNOT_XDP_FILTER_ROUTE) {
+		struct bpf_fib_lookup fib = {
+			.ifindex = 1 /* Loopback. */
+		};
+		if (desc.ipv4) {
+			const struct iphdr *ip4 = desc.ip_hdr;
+			fib.family   = AF_INET;
+			fib.ipv4_src = ip4->daddr;
+			fib.ipv4_dst = ip4->saddr;
+		} else {
+			const struct ipv6hdr *ip6 = desc.ip_hdr;
+			struct in6_addr *ipv6_src = (struct in6_addr *)fib.ipv6_src;
+			struct in6_addr *ipv6_dst = (struct in6_addr *)fib.ipv6_dst;
+			fib.family = AF_INET6;
+			*ipv6_src  = ip6->daddr;
+			*ipv6_dst  = ip6->saddr;
+		}
+
+		int ret = bpf_fib_lookup(ctx, &fib, sizeof(fib), BPF_FIB_LOOKUP_DIRECT);
+		switch (ret) {
+		case BPF_FIB_LKUP_RET_SUCCESS:
+			/* Cross-interface answers are handled thru normal stack. */
+			if (fib.ifindex != ctx->ingress_ifindex) {
+				return XDP_PASS;
+			}
+
+			/* Update destination MAC for responding. */
+			__builtin_memcpy(desc.eth_hdr->h_source, fib.dmac, ETH_ALEN);
+			break;
+		case BPF_FIB_LKUP_RET_FWD_DISABLED: /* Disabled forwarding on loopback. */
+			return XDP_ABORTED;
+		case BPF_FIB_LKUP_RET_NO_NEIGH: /* Use normal stack to obtain MAC. */
+			return XDP_PASS;
+		default:
+			return XDP_DROP;
+		}
+	}
+
+	/* Forward the packet to user space. */
+	return bpf_redirect_map(&xsks_map, ctx->rx_queue_index, 0);
 }
 
 char _license[] SEC("license") = "GPL";
