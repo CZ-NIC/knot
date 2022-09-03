@@ -56,40 +56,32 @@ struct ipv6_frag_hdr {
 	unsigned char whatever[7];
 } __attribute__((packed));
 
-struct pkt_desc {
-	knot_xdp_opts_t opts;
-	struct ethhdr *eth_hdr;
-	const void *ip_hdr;
-	__u8 ipv4;
-};
-
 SEC("xdp")
 int xdp_redirect_dns_func(struct xdp_md *ctx)
 {
 	void *data = (void *)(long)ctx->data;
 	const void *data_end = (void *)(long)ctx->data_end;
 
+	struct ethhdr *eth_hdr = data;
+	const void *ip_hdr;
 	const struct iphdr *ip4;
 	const struct ipv6hdr *ip6;
 	const void *l4_hdr;
+	__u8 ipv4;
 	__u8 ip_proto;
 	__u8 fragmented = 0;
 
-	struct pkt_desc desc = {
-		.eth_hdr = data
-	};
-
 	/* Parse Ethernet header. */
-	if ((void *)desc.eth_hdr + sizeof(*desc.eth_hdr) > data_end) {
+	if ((void *)eth_hdr + sizeof(*eth_hdr) > data_end) {
 		return XDP_DROP;
 	}
-	data += sizeof(*desc.eth_hdr);
-	desc.ip_hdr = data;
+	data += sizeof(*eth_hdr);
+	ip_hdr = data;
 
 	/* Parse IPv4 or IPv6 header. */
-	switch (desc.eth_hdr->h_proto) {
+	switch (eth_hdr->h_proto) {
 	case __constant_htons(ETH_P_IP):
-		ip4 = desc.ip_hdr;
+		ip4 = ip_hdr;
 		if ((void *)ip4 + sizeof(*ip4) > data_end) {
 			return XDP_DROP;
 		}
@@ -109,10 +101,10 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		}
 		ip_proto = ip4->protocol;
 		l4_hdr = data + ip4->ihl * 4;
-		desc.ipv4 = 1;
+		ipv4 = 1;
 		break;
 	case __constant_htons(ETH_P_IPV6):
-		ip6 = desc.ip_hdr;
+		ip6 = ip_hdr;
 		if ((void *)ip6 + sizeof(*ip6) > data_end) {
 			return XDP_DROP;
 		}
@@ -138,6 +130,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			data += sizeof(*frag);
 		}
 		l4_hdr = data;
+		ipv4 = 0;
 		break;
 	default:
 		/* Also applies to VLAN. */
@@ -146,11 +139,11 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 	/* Get the queue options. */
 	__u32 index = ctx->rx_queue_index;
-	struct knot_xdp_opts *opts = bpf_map_lookup_elem(&opts_map, &index);
-	if (!opts) {
+	struct knot_xdp_opts *opts_ptr = bpf_map_lookup_elem(&opts_map, &index);
+	if (!opts_ptr) {
 		return XDP_ABORTED;
 	}
-	desc.opts = *opts;
+	knot_xdp_opts_t opts = *opts_ptr;
 
 	const struct tcphdr *tcp;
 	const struct udphdr *udp;
@@ -160,26 +153,24 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	/* Check the transport protocol. */
 	switch (ip_proto) {
 	case IPPROTO_TCP:
-		tcp = l4_hdr;
-
 		/* Parse TCP header. */
+		tcp = l4_hdr;
 		if (l4_hdr + sizeof(*tcp) > data_end) {
 			return XDP_DROP;
 		}
 
 		port_dest = __bpf_ntohs(tcp->dest);
 
-		if ((desc.opts.flags & KNOT_XDP_FILTER_TCP) &&
-		    (port_dest == desc.opts.udp_port ||
-		     ((desc.opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
-		      port_dest >= desc.opts.udp_port))) {
+		if ((opts.flags & KNOT_XDP_FILTER_TCP) &&
+		    (port_dest == opts.udp_port ||
+		     ((opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= opts.udp_port))) {
 			match = 1;
 		}
 		break;
 	case IPPROTO_UDP:
-		udp = l4_hdr;
-
 		/* Parse UDP header. */
+		udp = l4_hdr;
 		if (l4_hdr + sizeof(*udp) > data_end) {
 			return XDP_DROP;
 		}
@@ -191,15 +182,15 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 		port_dest = __bpf_ntohs(udp->dest);
 
-		if ((desc.opts.flags & KNOT_XDP_FILTER_UDP) &&
-		    (port_dest == desc.opts.udp_port ||
-		     ((desc.opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
-		      port_dest >= desc.opts.udp_port))) {
+		if ((opts.flags & KNOT_XDP_FILTER_UDP) &&
+		    (port_dest == opts.udp_port ||
+		     ((opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= opts.udp_port))) {
 			match = 1;
-		} else if ((desc.opts.flags & KNOT_XDP_FILTER_QUIC) &&
-		    (port_dest == desc.opts.quic_port ||
-		     ((desc.opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
-		      port_dest >= desc.opts.quic_port))) {
+		} else if ((opts.flags & KNOT_XDP_FILTER_QUIC) &&
+		    (port_dest == opts.quic_port ||
+		     ((opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= opts.quic_port))) {
 			match = 1;
 		}
 		break;
@@ -209,9 +200,9 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	}
 
 	if (!match) {
-		/* Pass not-matching packet. */
+		/* Pass non-matching packet. */
 		return XDP_PASS;
-	} else if (desc.opts.flags & KNOT_XDP_FILTER_DROP) {
+	} else if (opts.flags & KNOT_XDP_FILTER_DROP) {
 		/* Drop matching packet if requested. */
 		return XDP_DROP;
 	} else if (fragmented) {
@@ -220,17 +211,15 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	}
 
 	/* Take into account routing information. */
-	if (desc.opts.flags & KNOT_XDP_FILTER_ROUTE) {
+	if (opts.flags & KNOT_XDP_FILTER_ROUTE) {
 		struct bpf_fib_lookup fib = {
 			.ifindex = 1 /* Loopback. */
 		};
-		if (desc.ipv4) {
-			const struct iphdr *ip4 = desc.ip_hdr;
+		if (ipv4) {
 			fib.family   = AF_INET;
 			fib.ipv4_src = ip4->daddr;
 			fib.ipv4_dst = ip4->saddr;
 		} else {
-			const struct ipv6hdr *ip6 = desc.ip_hdr;
 			struct in6_addr *ipv6_src = (struct in6_addr *)fib.ipv6_src;
 			struct in6_addr *ipv6_dst = (struct in6_addr *)fib.ipv6_dst;
 			fib.family = AF_INET6;
@@ -247,7 +236,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			}
 
 			/* Update destination MAC for responding. */
-			__builtin_memcpy(desc.eth_hdr->h_source, fib.dmac, ETH_ALEN);
+			__builtin_memcpy(eth_hdr->h_source, fib.dmac, ETH_ALEN);
 			break;
 		case BPF_FIB_LKUP_RET_FWD_DISABLED: /* Disabled forwarding on loopback. */
 			return XDP_ABORTED;
