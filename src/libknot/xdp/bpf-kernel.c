@@ -60,10 +60,7 @@ struct pkt_desc {
 	knot_xdp_opts_t opts;
 	struct ethhdr *eth_hdr;
 	const void *ip_hdr;
-	const void *l4_hdr;
 	__u8 ipv4;
-	__u8 stream;
-	__u8 fragmented;
 };
 
 static __always_inline
@@ -114,71 +111,6 @@ int check_route(struct xdp_md *ctx, const struct pkt_desc *desc)
 	return bpf_redirect_map(&xsks_map, index, 0);
 }
 
-static __always_inline
-int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc)
-{
-	const void *data_end = (void *)(long)ctx->data_end;
-	__u16 port_dest;
-	__u8 match = 0;
-
-	if (desc->stream) {
-		const struct tcphdr *tcp = desc->l4_hdr;
-
-		/* Parse TCP header. */
-		if (desc->l4_hdr + sizeof(*tcp) > data_end) {
-			return XDP_DROP;
-		}
-
-		port_dest = __bpf_ntohs(tcp->dest);
-
-		if ((desc->opts.flags & KNOT_XDP_FILTER_TCP) &&
-		    (port_dest == desc->opts.udp_port ||
-		     ((desc->opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
-		      port_dest >= desc->opts.udp_port))) {
-			match = 1;
-		}
-	} else {
-		const struct udphdr *udp = desc->l4_hdr;
-
-		/* Parse UDP header. */
-		if (desc->l4_hdr + sizeof(*udp) > data_end) {
-			return XDP_DROP;
-		}
-
-		/* Check the UDP length. */
-		if (data_end - (void *)udp < __bpf_ntohs(udp->len)) {
-			return XDP_DROP;
-		}
-
-		port_dest = __bpf_ntohs(udp->dest);
-
-		if ((desc->opts.flags & KNOT_XDP_FILTER_UDP) &&
-		    (port_dest == desc->opts.udp_port ||
-		     ((desc->opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
-		      port_dest >= desc->opts.udp_port))) {
-			match = 1;
-		} else if ((desc->opts.flags & KNOT_XDP_FILTER_QUIC) &&
-		    (port_dest == desc->opts.quic_port ||
-		     ((desc->opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
-		      port_dest >= desc->opts.quic_port))) {
-			match = 1;
-		}
-	}
-
-	if (!match) {
-		/* Pass not-matching packet. */
-		return XDP_PASS;
-	} else if (desc->opts.flags & KNOT_XDP_FILTER_DROP) {
-		/* Drop matching packet if requested. */
-		return XDP_DROP;
-	} else if (desc->fragmented) {
-		/* Drop fragmented packet. */
-		return XDP_DROP;
-	}
-
-	return check_route(ctx, desc);
-}
-
 SEC("xdp")
 int xdp_redirect_dns_func(struct xdp_md *ctx)
 {
@@ -187,7 +119,9 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 	const struct iphdr *ip4;
 	const struct ipv6hdr *ip6;
+	const void *l4_hdr;
 	__u8 ip_proto;
+	__u8 fragmented = 0;
 
 	struct pkt_desc desc = {
 		.eth_hdr = data
@@ -219,10 +153,10 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 		if (ip4->frag_off != 0 &&
 		    ip4->frag_off != __constant_htons(IP_DF)) {
-			desc.fragmented = 1;
+			fragmented = 1;
 		}
 		ip_proto = ip4->protocol;
-		desc.l4_hdr = data + ip4->ihl * 4;
+		l4_hdr = data + ip4->ihl * 4;
 		desc.ipv4 = 1;
 		break;
 	case __constant_htons(ETH_P_IPV6):
@@ -243,7 +177,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		ip_proto = ip6->nexthdr;
 		data += sizeof(*ip6);
 		if (ip_proto == IPPROTO_FRAGMENT) {
-			desc.fragmented = 1;
+			fragmented = 1;
 			const struct ipv6_frag_hdr *frag = data;
 			if ((void *)frag + sizeof(*frag) > data_end) {
 				return XDP_DROP;
@@ -251,21 +185,10 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			ip_proto = frag->nexthdr;
 			data += sizeof(*frag);
 		}
-		desc.l4_hdr = data;
+		l4_hdr = data;
 		break;
 	default:
 		/* Also applies to VLAN. */
-		return XDP_PASS;
-	}
-
-	/* Check transport protocol. */
-	switch (ip_proto) {
-	case IPPROTO_UDP:
-		break;
-	case IPPROTO_TCP:
-		desc.stream = 1;
-		break;
-	default:
 		return XDP_PASS;
 	}
 
@@ -277,7 +200,74 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	}
 	desc.opts = *opts;
 
-	return process_l4(ctx, &desc);
+	const struct tcphdr *tcp;
+	const struct udphdr *udp;
+	__u16 port_dest;
+	__u8 match = 0;
+
+	/* Check the transport protocol. */
+	switch (ip_proto) {
+	case IPPROTO_TCP:
+		tcp = l4_hdr;
+
+		/* Parse TCP header. */
+		if (l4_hdr + sizeof(*tcp) > data_end) {
+			return XDP_DROP;
+		}
+
+		port_dest = __bpf_ntohs(tcp->dest);
+
+		if ((desc.opts.flags & KNOT_XDP_FILTER_TCP) &&
+		    (port_dest == desc.opts.udp_port ||
+		     ((desc.opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= desc.opts.udp_port))) {
+			match = 1;
+		}
+		break;
+	case IPPROTO_UDP:
+		udp = l4_hdr;
+
+		/* Parse UDP header. */
+		if (l4_hdr + sizeof(*udp) > data_end) {
+			return XDP_DROP;
+		}
+
+		/* Check the UDP length. */
+		if (data_end - (void *)udp < __bpf_ntohs(udp->len)) {
+			return XDP_DROP;
+		}
+
+		port_dest = __bpf_ntohs(udp->dest);
+
+		if ((desc.opts.flags & KNOT_XDP_FILTER_UDP) &&
+		    (port_dest == desc.opts.udp_port ||
+		     ((desc.opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= desc.opts.udp_port))) {
+			match = 1;
+		} else if ((desc.opts.flags & KNOT_XDP_FILTER_QUIC) &&
+		    (port_dest == desc.opts.quic_port ||
+		     ((desc.opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= desc.opts.quic_port))) {
+			match = 1;
+		}
+		break;
+	default:
+		/* Pass packets of possible other protocols. */
+		return XDP_PASS;
+	}
+
+	if (!match) {
+		/* Pass not-matching packet. */
+		return XDP_PASS;
+	} else if (desc.opts.flags & KNOT_XDP_FILTER_DROP) {
+		/* Drop matching packet if requested. */
+		return XDP_DROP;
+	} else if (fragmented) {
+		/* Drop fragmented packet. */
+		return XDP_DROP;
+	}
+
+	return check_route(ctx, &desc);
 }
 
 char _license[] SEC("license") = "GPL";
