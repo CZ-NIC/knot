@@ -83,14 +83,23 @@ static int ensure_prog(struct kxsk_iface *iface, bool overwrite)
 		return KNOT_EPROGRAM;
 	}
 
+#if USE_LIBXDP
+	ret = bpf_xdp_attach(iface->if_index, prog_fd,
+	                     overwrite ? 0 : XDP_FLAGS_UPDATE_IF_NOEXIST, NULL);
+#else
 	ret = bpf_set_link_xdp_fd(iface->if_index, prog_fd,
 	                          overwrite ? 0 : XDP_FLAGS_UPDATE_IF_NOEXIST);
+#endif
 	if (ret != 0) {
 		close(prog_fd);
 	}
 	if (ret == -EBUSY && !overwrite) { // We try accepting the present program.
 		uint32_t prog_id = 0;
+#if USE_LIBXDP
+		ret = bpf_xdp_query_id(iface->if_index, 0, &prog_id);
+#else
 		ret = bpf_get_link_xdp_id(iface->if_index, &prog_id, 0);
+#endif
 		if (ret == 0 && prog_id != 0) {
 			ret = prog_fd = bpf_prog_get_fd_by_id(prog_id);
 		}
@@ -143,7 +152,7 @@ static int get_bpf_maps(int prog_fd, struct kxsk_iface *iface)
 			continue;
 		}
 
-		struct bpf_map_info map_info;
+		struct bpf_map_info map_info = { 0 };
 		uint32_t map_len = sizeof(struct bpf_map_info);
 		ret = bpf_obj_get_info_by_fd(fd, &map_info, &map_len);
 		if (ret != 0) {
@@ -239,7 +248,11 @@ int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t l
 	case KNOT_XDP_LOAD_BPF_NEVER:
 		(void)0;
 		uint32_t prog_id = 0;
+#if USE_LIBXDP
+		ret = bpf_xdp_query_id(iface->if_index, 0, &prog_id);
+#else
 		ret = bpf_get_link_xdp_id(iface->if_index, &prog_id, 0);
+#endif
 		if (ret == 0) {
 			if (prog_id == 0) {
 				ret = KNOT_EPROGRAM;
@@ -249,7 +262,11 @@ int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t l
 		}
 		break;
 	case KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD:
+#if USE_LIBXDP
+		(void)bpf_xdp_detach(iface->if_index, 0, NULL);
+#else
 		(void)bpf_set_link_xdp_fd(iface->if_index, -1, 0);
+#endif
 		sleep(1);
 		// FALLTHROUGH
 	case KNOT_XDP_LOAD_BPF_ALWAYS:

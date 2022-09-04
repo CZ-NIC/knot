@@ -106,14 +106,20 @@ typedef enum {
 } xdp_gun_ignore_t;
 
 typedef struct {
+	union {
+		struct sockaddr_in6 local_ip;
+		struct sockaddr_storage local_ip_ss;
+	};
+	union {
+		struct sockaddr_in6 target_ip;
+		struct sockaddr_storage target_ip_ss;
+	};
 	char		dev[IFNAMSIZ];
 	uint64_t	qps, duration;
 	unsigned	at_once;
 	uint16_t	msgid;
 	uint16_t	edns_size;
 	uint8_t		local_mac[6], target_mac[6];
-	struct sockaddr_in6 local_ip;
-	struct sockaddr_in6 target_ip;
 	uint8_t		local_ip_range;
 	bool		ipv6;
 	bool		tcp;
@@ -429,6 +435,7 @@ void *xdp_gun_thread(void *_ctx)
 	list_t quic_sessions;
 	init_list(&quic_sessions);
 #endif // ENABLE_QUIC
+	const uint64_t extra_wait = ctx->quic ? 4000000 : 1000000;
 
 	if (ctx->tcp) {
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
@@ -502,7 +509,7 @@ void *xdp_gun_thread(void *_ctx)
 
 	timer_start(&timer);
 
-	while (duration < ctx->duration + 4000000) {
+	while (duration < ctx->duration + extra_wait) {
 
 		// sending part
 		if (duration < ctx->duration) {
@@ -842,9 +849,9 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	struct sockaddr_storage via = { 0 };
 	if (local_ip == NULL || ctx->dev[0] == '\0' || mac_empty(ctx->target_mac)) {
 		char auto_dev[IFNAMSIZ];
-		int ret = ip_route_get((struct sockaddr_storage *)&ctx->target_ip,
+		int ret = ip_route_get(&ctx->target_ip_ss,
 		                       &via,
-		                       (struct sockaddr_storage *)&ctx->local_ip,
+		                       &ctx->local_ip_ss,
 		                       (ctx->dev[0] == '\0') ? ctx->dev : auto_dev);
 		if (ret < 0) {
 			ERR2("can't find route to '%s' (%s)", target_str, strerror(-ret));

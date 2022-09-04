@@ -36,167 +36,52 @@
 #define QUEUE_MAX	256
 
 /* A map of configuration options. */
-struct bpf_map_def SEC("maps") opts_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(__u32), /* Must be 4 bytes. */
-	.value_size = sizeof(knot_xdp_opts_t),
-	.max_entries = QUEUE_MAX,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, QUEUE_MAX);
+	__uint(key_size, sizeof(__u32)); /* Must be 4 bytes. */
+	__uint(value_size, sizeof(knot_xdp_opts_t));
+} opts_map SEC(".maps");
 
 /* A map of AF_XDP sockets. */
-struct bpf_map_def SEC("maps") xsks_map = {
-	.type = BPF_MAP_TYPE_XSKMAP,
-	.key_size = sizeof(__u32), /* Must be 4 bytes. */
-	.value_size = sizeof(int),
-	.max_entries = QUEUE_MAX,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_XSKMAP);
+	__uint(max_entries, QUEUE_MAX);
+	__uint(key_size, sizeof(__u32)); /* Must be 4 bytes. */
+	__uint(value_size, sizeof(int));
+} xsks_map SEC(".maps");
 
 struct ipv6_frag_hdr {
 	unsigned char nexthdr;
 	unsigned char whatever[7];
 } __attribute__((packed));
 
-struct pkt_desc {
-	knot_xdp_opts_t opts;
-	struct ethhdr *eth_hdr;
-	const void *ip_hdr;
-	const void *l4_hdr;
-	__u8 ipv4;
-	__u8 stream;
-	__u8 fragmented;
-};
-
-static __always_inline
-int check_route(struct xdp_md *ctx, const struct pkt_desc *desc)
-{
-	__u32 index = ctx->rx_queue_index;
-
-	/* Take into account routing information. */
-	if (desc->opts.flags & KNOT_XDP_FILTER_ROUTE) {
-		struct bpf_fib_lookup fib = {
-			.ifindex = 1 /* Loopback. */
-		};
-		if (desc->ipv4) {
-			const struct iphdr *ip4 = desc->ip_hdr;
-			fib.family   = AF_INET;
-			fib.ipv4_src = ip4->daddr;
-			fib.ipv4_dst = ip4->saddr;
-		} else {
-			const struct ipv6hdr *ip6 = desc->ip_hdr;
-			struct in6_addr *ipv6_src = (struct in6_addr *)fib.ipv6_src;
-			struct in6_addr *ipv6_dst = (struct in6_addr *)fib.ipv6_dst;
-			fib.family = AF_INET6;
-			*ipv6_src  = ip6->daddr;
-			*ipv6_dst  = ip6->saddr;
-		}
-
-		int ret = bpf_fib_lookup(ctx, &fib, sizeof(fib), BPF_FIB_LOOKUP_DIRECT);
-		switch (ret) {
-		case BPF_FIB_LKUP_RET_SUCCESS:
-			/* Cross-interface answers are handled thru normal stack. */
-			if (fib.ifindex != ctx->ingress_ifindex) {
-				return XDP_PASS;
-			}
-
-			/* Update destination MAC for responding. */
-			__builtin_memcpy(desc->eth_hdr->h_source, fib.dmac, ETH_ALEN);
-			break;
-		case BPF_FIB_LKUP_RET_FWD_DISABLED: /* Disabled forwarding on loopback. */
-			return XDP_ABORTED;
-		case BPF_FIB_LKUP_RET_NO_NEIGH: /* Use normal stack to obtain MAC. */
-			return XDP_PASS;
-		default:
-			return XDP_DROP;
-		}
-	}
-
-	/* Forward the packet to user space. */
-	return bpf_redirect_map(&xsks_map, index, 0);
-}
-
-static __always_inline
-int process_l4(struct xdp_md *ctx, const struct pkt_desc *desc)
-{
-	const void *data_end = (void *)(long)ctx->data_end;
-	__u16 port_dest;
-
-	if (desc->stream) {
-		const struct tcphdr *tcp = desc->l4_hdr;
-
-		/* Parse TCP header. */
-		if (desc->l4_hdr + sizeof(*tcp) > data_end) {
-			return XDP_DROP;
-		}
-
-		port_dest = __bpf_ntohs(tcp->dest);
-	} else {
-		const struct udphdr *udp = desc->l4_hdr;
-
-		/* Parse UDP header. */
-		if (desc->l4_hdr + sizeof(*udp) > data_end) {
-			return XDP_DROP;
-		}
-
-		/* Check the UDP length. */
-		if (data_end - (void *)udp < __bpf_ntohs(udp->len)) {
-			return XDP_DROP;
-		}
-
-		port_dest = __bpf_ntohs(udp->dest);
-	}
-
-	/* Treat specified destination ports. */
-	if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
-	     port_dest == desc->opts.udp_port) ||
-	    (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
-	     port_dest == desc->opts.quic_port)) {
-		if (desc->opts.flags & KNOT_XDP_FILTER_DROP) {
-			return XDP_DROP;
-		}
-		/* Exact port match*/
-	} else if ((desc->opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP) &&
-	            port_dest < desc->opts.udp_port) ||
-	           (desc->opts.flags & (KNOT_XDP_FILTER_QUIC) &&
-	            port_dest < desc->opts.quic_port)) {
-		/* Unaffected port range.  */
-		return XDP_PASS;
-	} else if (!(desc->opts.flags & KNOT_XDP_FILTER_PASS)) {
-		return XDP_DROP;
-	}
-
-	/* Drop fragmented packet. */
-	if (desc->fragmented) {
-		return XDP_DROP;
-	}
-
-	return check_route(ctx, desc);
-}
-
-SEC("xdp_redirect_dns")
+SEC("xdp")
 int xdp_redirect_dns_func(struct xdp_md *ctx)
 {
 	void *data = (void *)(long)ctx->data;
 	const void *data_end = (void *)(long)ctx->data_end;
 
+	struct ethhdr *eth_hdr = data;
+	const void *ip_hdr;
 	const struct iphdr *ip4;
 	const struct ipv6hdr *ip6;
+	const void *l4_hdr;
+	__u8 ipv4;
 	__u8 ip_proto;
-
-	struct pkt_desc desc = {
-		.eth_hdr = data
-	};
+	__u8 fragmented = 0;
 
 	/* Parse Ethernet header. */
-	if ((void *)desc.eth_hdr + sizeof(*desc.eth_hdr) > data_end) {
+	if ((void *)eth_hdr + sizeof(*eth_hdr) > data_end) {
 		return XDP_DROP;
 	}
-	data += sizeof(*desc.eth_hdr);
-	desc.ip_hdr = data;
+	data += sizeof(*eth_hdr);
+	ip_hdr = data;
 
 	/* Parse IPv4 or IPv6 header. */
-	switch (desc.eth_hdr->h_proto) {
+	switch (eth_hdr->h_proto) {
 	case __constant_htons(ETH_P_IP):
-		ip4 = desc.ip_hdr;
+		ip4 = ip_hdr;
 		if ((void *)ip4 + sizeof(*ip4) > data_end) {
 			return XDP_DROP;
 		}
@@ -212,14 +97,14 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 		if (ip4->frag_off != 0 &&
 		    ip4->frag_off != __constant_htons(IP_DF)) {
-			desc.fragmented = 1;
+			fragmented = 1;
 		}
 		ip_proto = ip4->protocol;
-		desc.l4_hdr = data + ip4->ihl * 4;
-		desc.ipv4 = 1;
+		l4_hdr = data + ip4->ihl * 4;
+		ipv4 = 1;
 		break;
 	case __constant_htons(ETH_P_IPV6):
-		ip6 = desc.ip_hdr;
+		ip6 = ip_hdr;
 		if ((void *)ip6 + sizeof(*ip6) > data_end) {
 			return XDP_DROP;
 		}
@@ -236,7 +121,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		ip_proto = ip6->nexthdr;
 		data += sizeof(*ip6);
 		if (ip_proto == IPPROTO_FRAGMENT) {
-			desc.fragmented = 1;
+			fragmented = 1;
 			const struct ipv6_frag_hdr *frag = data;
 			if ((void *)frag + sizeof(*frag) > data_end) {
 				return XDP_DROP;
@@ -244,7 +129,8 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			ip_proto = frag->nexthdr;
 			data += sizeof(*frag);
 		}
-		desc.l4_hdr = data;
+		l4_hdr = data;
+		ipv4 = 0;
 		break;
 	default:
 		/* Also applies to VLAN. */
@@ -253,30 +139,116 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 	/* Get the queue options. */
 	__u32 index = ctx->rx_queue_index;
-	struct knot_xdp_opts *opts = bpf_map_lookup_elem(&opts_map, &index);
-	if (!opts) {
+	struct knot_xdp_opts *opts_ptr = bpf_map_lookup_elem(&opts_map, &index);
+	if (!opts_ptr) {
 		return XDP_ABORTED;
 	}
-	desc.opts = *opts;
+	knot_xdp_opts_t opts = *opts_ptr;
 
-	/* Treat UDP or TCP transport protocol. */
+	const struct tcphdr *tcp;
+	const struct udphdr *udp;
+	__u16 port_dest;
+	__u8 match = 0;
+
+	/* Check the transport protocol. */
 	switch (ip_proto) {
-	case IPPROTO_UDP:
-		if (desc.opts.flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_QUIC)) {
-			break;
-		}
-		return XDP_PASS;
 	case IPPROTO_TCP:
-		if (desc.opts.flags & KNOT_XDP_FILTER_TCP) {
-			desc.stream = 1;
-			break;
+		/* Parse TCP header. */
+		tcp = l4_hdr;
+		if (l4_hdr + sizeof(*tcp) > data_end) {
+			return XDP_DROP;
 		}
-		return XDP_PASS;
+
+		port_dest = __bpf_ntohs(tcp->dest);
+
+		if ((opts.flags & KNOT_XDP_FILTER_TCP) &&
+		    (port_dest == opts.udp_port ||
+		     ((opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= opts.udp_port))) {
+			match = 1;
+		}
+		break;
+	case IPPROTO_UDP:
+		/* Parse UDP header. */
+		udp = l4_hdr;
+		if (l4_hdr + sizeof(*udp) > data_end) {
+			return XDP_DROP;
+		}
+
+		/* Check the UDP length. */
+		if (data_end - (void *)udp < __bpf_ntohs(udp->len)) {
+			return XDP_DROP;
+		}
+
+		port_dest = __bpf_ntohs(udp->dest);
+
+		if ((opts.flags & KNOT_XDP_FILTER_UDP) &&
+		    (port_dest == opts.udp_port ||
+		     ((opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= opts.udp_port))) {
+			match = 1;
+		} else if ((opts.flags & KNOT_XDP_FILTER_QUIC) &&
+		    (port_dest == opts.quic_port ||
+		     ((opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
+		      port_dest >= opts.quic_port))) {
+			match = 1;
+		}
+		break;
 	default:
+		/* Pass packets of possible other protocols. */
 		return XDP_PASS;
 	}
 
-	return process_l4(ctx, &desc);
+	if (!match) {
+		/* Pass non-matching packet. */
+		return XDP_PASS;
+	} else if (opts.flags & KNOT_XDP_FILTER_DROP) {
+		/* Drop matching packet if requested. */
+		return XDP_DROP;
+	} else if (fragmented) {
+		/* Drop fragmented packet. */
+		return XDP_DROP;
+	}
+
+	/* Take into account routing information. */
+	if (opts.flags & KNOT_XDP_FILTER_ROUTE) {
+		struct bpf_fib_lookup fib = {
+			.ifindex = 1 /* Loopback. */
+		};
+		if (ipv4) {
+			fib.family   = AF_INET;
+			fib.ipv4_src = ip4->daddr;
+			fib.ipv4_dst = ip4->saddr;
+		} else {
+			struct in6_addr *ipv6_src = (struct in6_addr *)fib.ipv6_src;
+			struct in6_addr *ipv6_dst = (struct in6_addr *)fib.ipv6_dst;
+			fib.family = AF_INET6;
+			*ipv6_src  = ip6->daddr;
+			*ipv6_dst  = ip6->saddr;
+		}
+
+		int ret = bpf_fib_lookup(ctx, &fib, sizeof(fib), BPF_FIB_LOOKUP_DIRECT);
+		switch (ret) {
+		case BPF_FIB_LKUP_RET_SUCCESS:
+			/* Cross-interface answers are handled thru normal stack. */
+			if (fib.ifindex != ctx->ingress_ifindex) {
+				return XDP_PASS;
+			}
+
+			/* Update destination MAC for responding. */
+			__builtin_memcpy(eth_hdr->h_source, fib.dmac, ETH_ALEN);
+			break;
+		case BPF_FIB_LKUP_RET_FWD_DISABLED: /* Disabled forwarding on loopback. */
+			return XDP_ABORTED;
+		case BPF_FIB_LKUP_RET_NO_NEIGH: /* Use normal stack to obtain MAC. */
+			return XDP_PASS;
+		default:
+			return XDP_DROP;
+		}
+	}
+
+	/* Forward the packet to user space. */
+	return bpf_redirect_map(&xsks_map, ctx->rx_queue_index, 0);
 }
 
 char _license[] SEC("license") = "GPL";
