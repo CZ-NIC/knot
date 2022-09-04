@@ -76,7 +76,10 @@ BuildRequires:	pkgconfig(libelf)
 %else
 # XDP is auto-enabled when libbpf is present
 %define configure_xdp --enable-quic=yes
-BuildRequires:  pkgconfig(libbpf) >= 0.0.6
+BuildRequires:	pkgconfig(libbpf) >= 0.0.6
+%if 0%{?fedora} >= 36
+BuildRequires:	pkgconfig(libxdp)
+%endif
 %endif
 %endif
 
