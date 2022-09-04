@@ -157,20 +157,6 @@ docker:knot-dns:fedora:
   except:
     - schedules
 
-.pkg_symbols: &pkg_symbols
-  stage: test
-  script:
-    - ln -s distro/pkg/deb debian
-    - sed -i "s/{{ version }}/99/g" distro/pkg/deb/changelog
-    - sed -i "s/{{ release }}/1/g" distro/pkg/deb/changelog
-    - dpkg-gensymbols -c4 -esrc/.libs/$LIB_NAME.so.$LIB_ABI -P. -p$LIB_NAME$LIB_ABI
-  allow_failure: true
-  except:
-  only:
-    - schedules
-  dependencies:
-    - build:debian:amd64
-
 build:fedora:amd64:
   <<: *fedora_latest
   <<: *build_job
@@ -223,27 +209,6 @@ test:debian:arm64:
   <<: *test_job
   dependencies:
     - build:debian:arm64
-
-pkg:debian:symbols:libknot:
-  variables:
-    LIB_NAME: libknot
-    LIB_ABI: 13
-  <<: *debian_stable
-  <<: *pkg_symbols
-
-pkg:debian:symbols:libdnssec:
-  variables:
-    LIB_NAME: libdnssec
-    LIB_ABI: 9
-  <<: *debian_stable
-  <<: *pkg_symbols
-
-pkg:debian:symbols:libzscanner:
-  variables:
-    LIB_NAME: libzscanner
-    LIB_ABI: 4
-  <<: *debian_stable
-  <<: *pkg_symbols
 
 build:debian:unstable:amd64:
   <<: *debian_unstable
