@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,10 +14,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include <pthread.h>
 #include <semaphore.h>
-
-#pragma once
 
 typedef struct {
 	pthread_mutex_t mutex;
@@ -32,9 +32,17 @@ typedef struct {
 	};
 } knot_sem_t;
 
-void knot_sem_init(knot_sem_t *sem, unsigned int value);
+void knot_sem_init(knot_sem_t *sem, int value);
+
+void knot_sem_init_nonposix(knot_sem_t *sem, int value);
+
+void knot_sem_reset(knot_sem_t *sem, int value);
 
 void knot_sem_wait(knot_sem_t *sem);
+
+void knot_sem_wait_post(knot_sem_t *sem);
+
+void knot_sem_get_ahead(knot_sem_t *sem);
 
 void knot_sem_post(knot_sem_t *sem);
 
