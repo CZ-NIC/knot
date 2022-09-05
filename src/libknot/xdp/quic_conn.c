@@ -70,6 +70,7 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 		list_t *tto = (list_t *)&table->timeout;
 		WALK_LIST_DELSAFE(c, next, *tto) {
 			knot_xquic_table_rem(c, table);
+			knot_xquic_cleanup(&c, 1);
 		}
 		assert(table->usage == 0);
 		assert(table->pointers == 0);
