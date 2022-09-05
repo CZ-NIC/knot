@@ -104,6 +104,7 @@ tool. These are only supported on Linux operating systems. See the chapter
 recommendations.
 
 * libbpf >= 0.0.6 (or embedded one via `--enable-xdp`)
+* libxdp (if libbpf >= 1.0)
 * libmnl (for kxdpgun)
 
 DNS-over-QUIC (DoQ) support in :doc:`knotd<man_knotd>`, :doc:`kxdpgun<man_kxdpgun>`,
