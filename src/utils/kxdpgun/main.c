@@ -671,6 +671,7 @@ void *xdp_gun_thread(void *_ctx)
 							local_stats.synack_recv++;
 							if ((ctx->ignore1 & KXDPGUN_IGNORE_QUERY)) {
 								knot_xquic_table_rem(relays[i], quic_table);
+								knot_xquic_cleanup(&relays[i], 1);
 								relays[i] = NULL;
 								continue;
 							}
@@ -684,6 +685,7 @@ void *xdp_gun_thread(void *_ctx)
 
 						if ((ctx->ignore2 & XDP_TCP_IGNORE_ESTABLISH)) {
 							knot_xquic_table_rem(relays[i], quic_table);
+							knot_xquic_cleanup(&relays[i], 1);
 							relays[i] = NULL;
 							local_stats.synack_recv++;
 							continue;
@@ -695,6 +697,7 @@ void *xdp_gun_thread(void *_ctx)
 
 							if ((ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK)) {
 								knot_xquic_table_rem(relays[i], quic_table);
+								knot_xquic_cleanup(&relays[i], 1);
 								relays[i] = NULL;
 								continue;
 							}
