@@ -517,7 +517,7 @@ void *xdp_gun_thread(void *_ctx)
 				knot_xdp_send_prepare(xsk);
 				int alloced = alloc_pkts(pkts, xsk, ctx, tick);
 				if (alloced < ctx->at_once) {
-					lost++;
+					lost += (alloced < 0) ? ctx->at_once : ctx->at_once - alloced;
 					if (alloced == 0) {
 						break;
 					}
@@ -562,7 +562,9 @@ void *xdp_gun_thread(void *_ctx)
 				}
 
 				uint32_t really_sent = 0;
-				(void)knot_xdp_send(xsk, pkts, alloced, &really_sent);
+				if (knot_xdp_send(xsk, pkts, alloced, &really_sent) != KNOT_EOK) {
+					lost += alloced;
+				}
 				assert(really_sent == alloced);
 				local_stats.qry_sent += really_sent;
 				(void)knot_xdp_send_finish(xsk);
