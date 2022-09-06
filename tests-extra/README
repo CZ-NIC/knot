@@ -2,7 +2,7 @@ Prerequisites:
 --------------
 
 Python >=3.3
-dnspython >=1.16.0
+dnspython >=2.2.0
 python3-psutil
 dnssec-signzone
 dnssec-keygen
