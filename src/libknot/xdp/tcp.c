@@ -118,13 +118,26 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size, knot_tcp_table_t *secret_share
 	return table;
 }
 
+static void del_conn(knot_tcp_conn_t *conn)
+{
+	if (conn != NULL) {
+		free(conn->inbuf.iov_base);
+		while (conn->outbufs != NULL) {
+			struct knot_tcp_outbuf *next = conn->outbufs->next;
+			free(conn->outbufs);
+			conn->outbufs = next;
+		}
+		free(conn);
+	}
+}
+
 _public_
 void knot_tcp_table_free(knot_tcp_table_t *table)
 {
 	if (table != NULL) {
 		knot_tcp_conn_t *conn, *next;
 		WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(table)) {
-			free(conn);
+			del_conn(conn);
 		}
 		free(table);
 	}
@@ -157,19 +170,6 @@ static knot_tcp_conn_t **tcp_table_re_lookup(knot_tcp_conn_t *conn,
 	                                         &unused_hash, table);
 	assert(*res == conn);
 	return res;
-}
-
-static void del_conn(knot_tcp_conn_t *conn)
-{
-	if (conn != NULL) {
-		free(conn->inbuf.iov_base);
-		while (conn->outbufs != NULL) {
-			struct knot_tcp_outbuf *next = conn->outbufs->next;
-			free(conn->outbufs);
-			conn->outbufs = next;
-		}
-		free(conn);
-	}
 }
 
 static void rem_align_pointers(knot_tcp_conn_t *to_rem, knot_tcp_table_t *table)
