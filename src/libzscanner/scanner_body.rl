@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,9 +22,9 @@
 		fhold; fret;
 	}
 
-	# BEGIN - Blank space processing
+	# BEGIN - Blank space processing (ignore transformed CR bytes)
 	action _newline {
-		s->line_counter++;
+		if (*p == '\n') s->line_counter++;
 	}
 
 	action _check_multiline_begin {
@@ -95,10 +95,6 @@
 		s->buffer_length = 0;
 	}
 	action _err_line {
-		if (fc == '\r') {
-			ERR(ZS_DOS_NEWLINE);
-		}
-
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = fc;
 		}

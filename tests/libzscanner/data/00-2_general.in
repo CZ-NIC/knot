@@ -1,1 +1,7 @@
-$ORIGIN .
+$ORIGIN zone.
+$TTL  4
+;        
+@ NS ns.
+        
+@ 1 TXT text 
+

@@ -91,6 +91,8 @@ static inline void window_add_bit(const uint16_t type, zs_scanner_t *s) {
 %%{
 	machine zone_scanner;
 
+	getkey P; # Macro P is defined in parse().
+
 	include "scanner_body.rl";
 
 	write data;
@@ -426,8 +428,12 @@ static void parse(
 	// Initialization of the last r_data byte.
 	uint8_t *rdata_stop = s->r_data + ZS_MAX_RDATA_LENGTH - 1;
 
+#define P (*p != '\r') ? *p : '\n'  // Transform CR byte to LF one.
+
 	// Write scanner body (in C).
 	%% write exec;
+
+#undef P
 
 	// Check if the scanner state machine is in an uncovered state.
 	bool extra_error = false;

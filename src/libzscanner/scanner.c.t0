@@ -6680,6 +6680,8 @@ static void parse(
 	// Initialization of the last r_data byte.
 	uint8_t *rdata_stop = s->r_data + ZS_MAX_RDATA_LENGTH - 1;
 
+#define P (*p != '\r') ? *p : '\n'  // Transform CR byte to LF one.
+
 	// Write scanner body (in C).
 
 	{
@@ -6695,7 +6697,7 @@ static void parse(
 	if ( cs == 0 )
 		goto _out;
 _resume:
-	_widec = (*p);
+	_widec = ( P);
 	_klen = _zone_scanner_cond_lengths[cs];
 	_keys = _zone_scanner_cond_keys + (_zone_scanner_cond_offsets[cs]*2);
 	if ( _klen > 0 ) {
@@ -6714,49 +6716,49 @@ _resume:
 			else {
 				switch ( _zone_scanner_cond_spaces[_zone_scanner_cond_offsets[cs] + ((_mid - _keys)>>1)] ) {
 	case 0: {
-		_widec = (short)(1664 + ((*p) - -128));
+		_widec = (short)(1664 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		break;
 	}
 	case 1: {
-		_widec = (short)(2176 + ((*p) - -128));
+		_widec = (short)(2176 + (( P) - -128));
 		if (
  !s->multiline  ) _widec += 256;
 		break;
 	}
 	case 2: {
-		_widec = (short)(128 + ((*p) - -128));
+		_widec = (short)(128 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		break;
 	}
 	case 3: {
-		_widec = (short)(640 + ((*p) - -128));
+		_widec = (short)(640 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		break;
 	}
 	case 4: {
-		_widec = (short)(1152 + ((*p) - -128));
+		_widec = (short)(1152 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		break;
 	}
 	case 5: {
-		_widec = (short)(3712 + ((*p) - -128));
+		_widec = (short)(3712 + (( P) - -128));
 		if (
  s->number64 != 0  ) _widec += 256;
 		break;
 	}
 	case 6: {
-		_widec = (short)(5248 + ((*p) - -128));
+		_widec = (short)(5248 + (( P) - -128));
 		if (
  s->number64 == 0  ) _widec += 256;
 		break;
 	}
 	case 7: {
-		_widec = (short)(2688 + ((*p) - -128));
+		_widec = (short)(2688 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		if (
@@ -6764,7 +6766,7 @@ _resume:
 		break;
 	}
 	case 8: {
-		_widec = (short)(4224 + ((*p) - -128));
+		_widec = (short)(4224 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		if (
@@ -6772,7 +6774,7 @@ _resume:
 		break;
 	}
 	case 9: {
-		_widec = (short)(5760 + ((*p) - -128));
+		_widec = (short)(5760 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		if (
@@ -6780,7 +6782,7 @@ _resume:
 		break;
 	}
 	case 10: {
-		_widec = (short)(6784 + ((*p) - -128));
+		_widec = (short)(6784 + (( P) - -128));
 		if (
  s->number64 != 0  ) _widec += 256;
 		if (
@@ -6788,7 +6790,7 @@ _resume:
 		break;
 	}
 	case 11: {
-		_widec = (short)(13952 + ((*p) - -128));
+		_widec = (short)(13952 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		if (
@@ -6798,7 +6800,7 @@ _resume:
 		break;
 	}
 	case 12: {
-		_widec = (short)(7808 + ((*p) - -128));
+		_widec = (short)(7808 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		if (
@@ -6808,7 +6810,7 @@ _resume:
 		break;
 	}
 	case 13: {
-		_widec = (short)(9856 + ((*p) - -128));
+		_widec = (short)(9856 + (( P) - -128));
 		if (
  s->multiline  ) _widec += 256;
 		if (
@@ -6893,7 +6895,7 @@ _match:
 	break;
 	case 1:
 	{
-		s->line_counter++;
+		if (*p == '\n') s->line_counter++;
 	}
 	break;
 	case 2:
@@ -6922,7 +6924,7 @@ _match:
 	case 5:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
-			s->buffer[s->buffer_length++] = (*p);
+			s->buffer[s->buffer_length++] = ( P);
 		}
 	}
 	break;
@@ -6960,12 +6962,8 @@ _match:
 	break;
 	case 10:
 	{
-		if ((*p) == '\r') {
-			ERR(ZS_DOS_NEWLINE);
-		}
-
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
-			s->buffer[s->buffer_length++] = (*p);
+			s->buffer[s->buffer_length++] = ( P);
 		}
 	}
 	break;
@@ -7022,7 +7020,7 @@ _match:
 	{
 		// Check for maximum dname label length.
 		if (s->item_length < ZS_MAX_LABEL_LENGTH) {
-			(s->dname)[s->dname_tmp_length++] = (*p);
+			(s->dname)[s->dname_tmp_length++] = ( P);
 			s->item_length++;
 		} else {
 			WARN(ZS_LABEL_OVERFLOW);
@@ -7057,7 +7055,7 @@ _match:
 	case 17:
 	{
 		(s->dname)[s->dname_tmp_length] *= 10;
-		(s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)(*p)];
+		(s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)( P)];
 	}
 	break;
 	case 18:
@@ -7207,11 +7205,11 @@ _match:
 		// Overflow check: 10*(s->number64) + fc - '0' <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + '0')
+			 ((uint8_t)( P) <= (UINT64_MAX % 10) + '0')
 			)
 		   ) {
 			s->number64 *= 10;
-			s->number64 += digit_to_num[(uint8_t)(*p)];
+			s->number64 += digit_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_NUMBER64_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7388,7 +7386,7 @@ _match:
 	case 58:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
-			s->buffer[s->buffer_length++] = (*p);
+			s->buffer[s->buffer_length++] = ( P);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7456,7 +7454,7 @@ _match:
 				}
 			}
 
-			*(rdata_tail++) = (*p);
+			*(rdata_tail++) = ( P);
 		} else {
 			WARN(ZS_TEXT_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7504,11 +7502,11 @@ _match:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 ((*p) <= (UINT8_MAX % 10) + '0')
+			 (( P) <= (UINT8_MAX % 10) + '0')
 			)
 		   ) {
 			*rdata_tail *= 10;
-			*rdata_tail += digit_to_num[(uint8_t)(*p)];
+			*rdata_tail += digit_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_NUMBER8_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7756,7 +7754,7 @@ _match:
 	case 95:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
-			s->buffer[s->buffer_length++] = (*p);
+			s->buffer[s->buffer_length++] = ( P);
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7893,7 +7891,7 @@ _match:
 	case 108:
 	{
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = first_hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = first_hex_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7902,7 +7900,7 @@ _match:
 	break;
 	case 109:
 	{
-		*rdata_tail += second_hex_to_num[(uint8_t)(*p)];
+		*rdata_tail += second_hex_to_num[(uint8_t)( P)];
 		rdata_tail++;
 	}
 	break;
@@ -7929,7 +7927,7 @@ _match:
 	case 113:
 	{
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = first_base64_to_num[(uint8_t)(*p)];
+			*rdata_tail = first_base64_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7938,10 +7936,10 @@ _match:
 	break;
 	case 114:
 	{
-		*(rdata_tail++) += second_left_base64_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += second_left_base64_to_num[(uint8_t)( P)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = second_right_base64_to_num[(uint8_t)(*p)];
+			*rdata_tail = second_right_base64_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7950,10 +7948,10 @@ _match:
 	break;
 	case 115:
 	{
-		*(rdata_tail++) += third_left_base64_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += third_left_base64_to_num[(uint8_t)( P)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = third_right_base64_to_num[(uint8_t)(*p)];
+			*rdata_tail = third_right_base64_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7962,7 +7960,7 @@ _match:
 	break;
 	case 116:
 	{
-		*(rdata_tail++) += fourth_base64_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += fourth_base64_to_num[(uint8_t)( P)];
 	}
 	break;
 	case 117:
@@ -7977,7 +7975,7 @@ _match:
 	case 119:
 	{
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = first_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = first_base32hex_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7986,10 +7984,10 @@ _match:
 	break;
 	case 120:
 	{
-		*(rdata_tail++) += second_left_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += second_left_base32hex_to_num[(uint8_t)( P)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = second_right_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = second_right_base32hex_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -7998,15 +7996,15 @@ _match:
 	break;
 	case 121:
 	{
-		*rdata_tail += third_base32hex_to_num[(uint8_t)(*p)];
+		*rdata_tail += third_base32hex_to_num[(uint8_t)( P)];
 	}
 	break;
 	case 122:
 	{
-		*(rdata_tail++) += fourth_left_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += fourth_left_base32hex_to_num[(uint8_t)( P)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = fourth_right_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = fourth_right_base32hex_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -8015,10 +8013,10 @@ _match:
 	break;
 	case 123:
 	{
-		*(rdata_tail++) += fifth_left_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += fifth_left_base32hex_to_num[(uint8_t)( P)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = fifth_right_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = fifth_right_base32hex_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -8027,15 +8025,15 @@ _match:
 	break;
 	case 124:
 	{
-		*rdata_tail += sixth_base32hex_to_num[(uint8_t)(*p)];
+		*rdata_tail += sixth_base32hex_to_num[(uint8_t)( P)];
 	}
 	break;
 	case 125:
 	{
-		*(rdata_tail++) += seventh_left_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += seventh_left_base32hex_to_num[(uint8_t)( P)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = seventh_right_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = seventh_right_base32hex_to_num[(uint8_t)( P)];
 		} else {
 			WARN(ZS_RDATA_OVERFLOW);
 			p--; {cs = 307;goto _again;}
@@ -8044,7 +8042,7 @@ _match:
 	break;
 	case 126:
 	{
-		*(rdata_tail++) += eighth_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += eighth_base32hex_to_num[(uint8_t)( P)];
 	}
 	break;
 	case 127:
@@ -9556,6 +9554,8 @@ goto _again;}
 	_out: {}
 	}
 
+
+#undef P
 
 	// Check if the scanner state machine is in an uncovered state.
 	bool extra_error = false;
