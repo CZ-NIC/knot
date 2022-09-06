@@ -371,10 +371,10 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 * and the API doesn't allow "cancelling reservations".
 	 * Therefore we handle `socket->tx.cached_prod` by hand.
 	 */
-	/* As the buffers have been allocated by knot_xdp_send_alloc(),
-	 * there must be enough room in the TX ring for them.
-	 */
-	assert(xsk_prod_nb_free(&socket->tx, count) >= count);
+	if (xsk_prod_nb_free(&socket->tx, count) < count) {
+		/* This situation was sometimes observed in the emulated XDP mode. */
+		return KNOT_ENOBUFS;
+	}
 	uint32_t idx = socket->tx.cached_prod;
 
 	for (uint32_t i = 0; i < count; ++i) {

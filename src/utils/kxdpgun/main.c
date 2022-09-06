@@ -373,8 +373,8 @@ static uint16_t adjust_port(xdp_gun_ctx_t *ctx, uint16_t local_port)
 }
 #endif // ENABLE_QUIC
 
-static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
-                      xdp_gun_ctx_t *ctx, uint64_t tick)
+static unsigned alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
+                           xdp_gun_ctx_t *ctx, uint64_t tick)
 {
 	uint64_t unique = (tick * ctx->n_threads + ctx->thread_id) * ctx->at_once;
 
@@ -385,7 +385,7 @@ static int alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
 		return ctx->at_once; // NOOP
 	}
 
-	for (int i = 0; i < ctx->at_once; i++) {
+	for (unsigned i = 0; i < ctx->at_once; i++) {
 		int ret = knot_xdp_send_alloc(xsk, flags, &pkts[i]);
 		if (ret != KNOT_EOK) {
 			return i;
@@ -515,9 +515,9 @@ void *xdp_gun_thread(void *_ctx)
 		if (duration < ctx->duration) {
 			while (1) {
 				knot_xdp_send_prepare(xsk);
-				int alloced = alloc_pkts(pkts, xsk, ctx, tick);
+				unsigned alloced = alloc_pkts(pkts, xsk, ctx, tick);
 				if (alloced < ctx->at_once) {
-					lost++;
+					lost += ctx->at_once - alloced;
 					if (alloced == 0) {
 						break;
 					}
@@ -562,8 +562,9 @@ void *xdp_gun_thread(void *_ctx)
 				}
 
 				uint32_t really_sent = 0;
-				(void)knot_xdp_send(xsk, pkts, alloced, &really_sent);
-				assert(really_sent == alloced);
+				if (knot_xdp_send(xsk, pkts, alloced, &really_sent) != KNOT_EOK) {
+					lost += alloced;
+				}
 				local_stats.qry_sent += really_sent;
 				(void)knot_xdp_send_finish(xsk);
 

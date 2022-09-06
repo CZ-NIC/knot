@@ -472,15 +472,17 @@ static knot_xdp_msg_t *first_msg(knot_xdp_msg_t *msgs, uint32_t n_msgs)
 	return msgs - 1; // will be incremented just before first use
 }
 
-static void send_msgs(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_socket_t *socket)
+static int send_msgs(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_socket_t *socket)
 {
 	assert(socket);
 	assert(msgs);
 
 	if (n_msgs > 0) {
 		uint32_t unused;
-		(void)knot_xdp_send(socket, msgs, n_msgs, &unused);
+		return knot_xdp_send(socket, msgs, n_msgs, &unused);
 	}
+
+	return KNOT_EOK;
 }
 
 static void msg_init_from_conn(knot_xdp_msg_t *msg, knot_tcp_conn_t *conn)
@@ -504,7 +506,10 @@ static int next_msg(knot_xdp_msg_t *msgs, uint32_t n_msgs, knot_xdp_msg_t **cur,
 {
 	(*cur)++;
 	if (*cur - msgs >= n_msgs) {
-		send_msgs(msgs, n_msgs, socket);
+		int ret = send_msgs(msgs, n_msgs, socket);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		*cur = first_msg(msgs, n_msgs);
 		(*cur)++;
 	}
@@ -610,9 +615,7 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 #undef NEXT_MSG
 	}
 
-	send_msgs(msgs, msg - first, socket);
-
-	return KNOT_EOK;
+	return send_msgs(msgs, msg - first, socket);
 }
 
 static void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
