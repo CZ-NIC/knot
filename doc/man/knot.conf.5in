@@ -1654,7 +1654,11 @@ is needed.
 .sp
 An extra delay added for each key rollover step. This value should be high
 enough to cover propagation of data from the primary server to all
-secondary servers.
+secondary servers, as well as the duration of signing routine itself and
+possible outages in signing and propagation infrastructure. In other words,
+this delay should ensure that within this period of time after planned
+change of the key set, all public\-facing secondaries will already serve
+new DNSKEY RRSet for sure.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
