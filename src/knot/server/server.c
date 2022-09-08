@@ -1029,7 +1029,8 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 		warn_xdp_quic = false;
 	}
 
-	if (warn_xdp_quic && conf->cache.xdp_quic != conf_get_int(conf, C_XDP, C_QUIC_PORT)) {
+	if (warn_xdp_quic && conf->cache.xdp_quic > 0 &&
+	    conf->cache.xdp_quic != conf_get_int(conf, C_XDP, C_QUIC_PORT)) {
 		log_warning(msg, &C_QUIC_PORT[1]);
 		warn_xdp_quic = false;
 	}
