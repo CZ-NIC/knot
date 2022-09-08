@@ -1,3 +1,23 @@
+Knot DNS 3.2.1 (2022-09-09)
+===========================
+
+Improvements:
+-------------
+ - libknot: added compatibility with libbpf 1.0 and libxdp
+ - libknot: removed some trailing white space characters from textual RR format
+ - libs: upgraded embedded libngtcp2 to 0.8.1
+
+Bugfixes:
+---------
+ - knotd: some non-DNS packets not passed to OS if XDP mode enabled
+ - knotd: inappropriate log about QUIC port change if QUIC not enabled
+ - knotd/kxdpgun: various memory leaks related to QUIC and TCP
+ - kxdpgun: can crash at high rates in emulated XDP mode
+ - tests: broken XDP-TCP test on 32-bit platforms
+ - kdig: failed to build with enabled QUIC on OpenBSD
+ - systemd: failed to start server due to TemporaryFileSystem setting
+ - packaging: missing knot-dnssecutils package on CentOS 7
+
 Knot DNS 3.2.0 (2022-08-22)
 ===========================
 
