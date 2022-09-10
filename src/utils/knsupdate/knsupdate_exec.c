@@ -968,7 +968,7 @@ int cmd_answer(const char* lp, knsupdate_params_t *params)
 		return KNOT_EOK;
 	}
 
-	printf("\nAnswer:\n");
+	printf("Answer:\n");
 	print_packet(params->answer, NULL, 0, -1, 0, true, &params->style);
 
 	return KNOT_EOK;
