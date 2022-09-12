@@ -299,7 +299,7 @@ parameters (also DNSSEC signing applies), the existence of a zone file and journ
 (and their relative out-of-dateness), and whether it is a cold start of the server
 or a zone reload (e.g. invoked by the :doc:`knotc<man_knotc>` interface). Please note
 that zone transfers are not taken into account here – they are planned after the zone
-is loaded (including AXFR bootstrap).
+is loaded (including :ref:`zone bootstrap<Zone bootstrap>`).
 
 If the zone file exists and is not excluded by the configuration, it is first loaded
 and according to its SOA serial number, relevant journal changesets are applied.
@@ -429,6 +429,33 @@ automatically. So the user no longer needs to care about it in the zone file.
 
 However, this requires setting :ref:`zone_journal-content` to `all` so that
 the information about the last real SOA serial is preserved in case of server re-start.
+
+.. _Zone bootstrap:
+
+Zone bootstrapping on secondary
+===============================
+
+When zone refresh from the primary fails, the ``retry`` value from SOA is used
+as the interval between refresh attempts. In a case that SOA isn't known to the
+secondary (either because the zone hasn't been retrieved from the primary yet,
+or the zone has expired), an exponential backoff is used for repeated retry
+attempts.
+
+The backoff works as follows: first a random interval between 0 and 30 secs is
+chosen. This is the first iteration interval. Then, each following attempt interval
+takes the same time as what time has passed since the last expiration (or since
+the first unsuccessfull attempt to transfer the zone from the master), and again
+random 0 to 30 seconds are added to it. These steps repeat as necessary.
+As a result, the interval effectively approximately doubles in each attempt under
+normal circumstances.
+
+However, if `knotd` was halted for some time and the refresh hasn't been successful
+yet, that pause accounts into the new interval too, irrespective of whether there
+actually were any real retry attempts in the meantime, or not.
+
+In each attempt, retry interval is subject to :ref:`zone_retry-min-interval`
+and :ref:`zone_retry-max-interval`. As a safety measure, retry interval during
+zone bootstrap is always limited to 24 hours as maximum.
 
 .. _DNSSEC Key states:
 
