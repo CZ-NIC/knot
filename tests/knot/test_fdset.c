@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,16 +25,21 @@
 #define PATTERN1		"0x45"
 #define PATTERN2		"0xED"
 
+#define TIMEOUT0		2000
+#define TIMEOUT1		10
+#define TIMEOUT2		400
+#define JITTER			(TIMEOUT2 - TIMEOUT1 - 10)
+
 void *thr_action1(void *arg)
 {
-	usleep(10000);
+	usleep(1000 * TIMEOUT1);
 	_unused_ int ret = write(*((int *)arg), &PATTERN1, 1);
 	return NULL;
 }
 
 void *thr_action2(void *arg)
 {
-	usleep(20000);
+	usleep(1000 * TIMEOUT2);
 	_unused_ int ret = write(*((int *)arg), &PATTERN2, 1);
 	return NULL;
 }
@@ -75,11 +80,11 @@ int main(int argc, char *argv[])
 	ok(ret == 0, "create thread 2");
 
 	fdset_it_t it;
-	ret = fdset_poll(&fdset, &it, 0, 100);
+	ret = fdset_poll(&fdset, &it, 0, TIMEOUT0);
 	struct timespec time1 = time_now();
 	double diff1 = time_diff_ms(&time0, &time1);
 	ok(ret == 1, "fdset_poll return 1");
-	ok(diff1 > 5 && diff1 < 100, "fdset_poll timeout 1");
+	ok(diff1 >= TIMEOUT1 && diff1 < TIMEOUT1 + JITTER, "fdset_poll timeout 1 (%f)", diff1);
 	for(; !fdset_it_is_done(&it); fdset_it_next(&it)) {
 		ok(!fdset_it_is_error(&it), "fdset no error");
 		ok(fdset_it_is_pollin(&it), "fdset can read");
@@ -100,11 +105,11 @@ int main(int argc, char *argv[])
 	int fd2_dup = dup(fds2[0]);
 	ok(fd2_dup >= 0, "duplicate fd");
 
-	ret = fdset_poll(&fdset, &it, 0, 100);
+	ret = fdset_poll(&fdset, &it, 0, TIMEOUT0);
 	struct timespec time2 = time_now();
 	double diff2 = time_diff_ms(&time0, &time2);
-	ok(ret == 1, "fdset_poll return 2");
-	ok(diff2 > 15 && diff2 < 100, "fdset_poll timeout 2");
+	ok(ret == 1, "fdset_poll return 2 (%f)", diff2);
+	ok(diff2 >= TIMEOUT2 && diff2 < TIMEOUT2 + JITTER, "fdset_poll timeout 2");
 	for(; !fdset_it_is_done(&it); fdset_it_next(&it)) {
 		ok(!fdset_it_is_error(&it), "fdset no error");
 		ok(fdset_it_is_pollin(&it), "fdset can read");
