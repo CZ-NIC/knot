@@ -336,6 +336,6 @@ getent passwd knot >/dev/null || \
 %doc %{_pkgdocdir}/html
 
 %changelog
-* {{ now }} Jakub Ružička <jakub.ruzicka@nic.cz> - {{ version }}-{{ release }}
+* {{ now }} Knot DNS <knot-dns@labs.nic.cz> - {{ version }}-{{ release }}
 - upstream package
 - see https://www.knot-dns.cz
