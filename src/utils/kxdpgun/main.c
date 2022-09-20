@@ -485,6 +485,16 @@ void *xdp_gun_thread(void *_ctx)
 		return NULL;
 	}
 
+	if (ctx->thread_id == 0) {
+		INFO2("using interface %s, XDP threads %u, %s%s%s, %s mode",
+		      ctx->dev, ctx->n_threads,
+		      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
+		      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
+		      (ctx->sending_mode[0] != '\0' ? ctx->sending_mode : ""),
+		      (knot_eth_xdp_mode(if_nametoindex(ctx->dev)) == KNOT_XDP_MODE_FULL ?
+		       "native" : "emulated"));
+	}
+
 	struct pollfd pfd = { knot_xdp_socket_fd(xsk), POLLIN, 0 };
 
 	while (xdp_trigger == KXDPGUN_WAIT) {
@@ -1187,15 +1197,6 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		ctx->qps = ctx->n_threads;
 	}
 	ctx->qps /= ctx->n_threads;
-
-	knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(ctx->dev));
-
-	INFO2("using interface %s, XDP threads %u, %s%s%s, %s mode",
-	      ctx->dev, ctx->n_threads,
-	      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
-	      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
-	      (ctx->sending_mode[0] != '\0' ? ctx->sending_mode : ""),
-	      (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"));
 
 	return true;
 }
