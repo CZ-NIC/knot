@@ -118,6 +118,8 @@ static void *thread_ep(void *data)
 		return 0;
 	}
 
+	knot_sem_get_ahead(&unit->_semaphore);
+
 	// Unblock SIGALRM for synchronization
 	sigset_t mask;
 	(void)sigemptyset(&mask);
@@ -472,8 +474,6 @@ int dt_start(dt_unit_t *unit)
 	// Lock unit
 	pthread_mutex_lock(&unit->_notify_mx);
 	dt_unit_lock(unit);
-
-	knot_sem_reset(&unit->_semaphore, -unit->size + 1);
 
 	for (int i = 0; i < unit->size; ++i) {
 

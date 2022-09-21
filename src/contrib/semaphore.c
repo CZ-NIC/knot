@@ -59,7 +59,6 @@ void knot_sem_reset(knot_sem_t *sem, int value)
 	pthread_mutex_unlock(&sem->status_lock->mutex);
 }
 
-
 void knot_sem_wait(knot_sem_t *sem)
 {
 	assert(sem != NULL);
@@ -97,6 +96,15 @@ void knot_sem_get_ahead(knot_sem_t *sem)
 	pthread_mutex_unlock(&sem->status_lock->mutex);
 }
 
+void knot_sem_get_assert(knot_sem_t *sem)
+{
+	assert((sem != NULL) && (sem->status != SEM_STATUS_POSIX));
+	pthread_mutex_lock(&sem->status_lock->mutex);
+	assert(sem->status > 0);
+	sem->status--;
+	pthread_mutex_unlock(&sem->status_lock->mutex);
+}
+
 void knot_sem_post(knot_sem_t *sem)
 {
 	assert(sem != NULL);
@@ -115,7 +123,7 @@ void knot_sem_post(knot_sem_t *sem)
 void knot_sem_destroy(knot_sem_t *sem)
 {
 	assert(sem != NULL);
-	knot_sem_wait(sem);
+	knot_sem_wait(sem); // NOTE this is questionable if the initial value was > 1
 	if (sem->status == SEM_STATUS_POSIX) {
 		sem_destroy(&sem->semaphore);
 	} else {
