@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -118,6 +118,8 @@ static void *thread_ep(void *data)
 		return 0;
 	}
 
+	knot_sem_get_ahead(&unit->_semaphore);
+
 	// Unblock SIGALRM for synchronization
 	sigset_t mask;
 	(void)sigemptyset(&mask);
@@ -172,8 +174,13 @@ static void *thread_ep(void *data)
 			// Signalize state change
 			unit_signalize_change(unit);
 
+			knot_sem_post(&unit->_semaphore);
+
 			// Wait for notification from unit
 			pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
+
+			knot_sem_get_ahead(&unit->_semaphore);
+
 			pthread_mutex_unlock(&unit->_notify_mx);
 		} else {
 			unlock_thread_rw(thread);
@@ -191,6 +198,9 @@ static void *thread_ep(void *data)
 	lock_thread_rw(thread);
 	thread->state |= ThreadJoinable;
 	unlock_thread_rw(thread);
+
+	knot_sem_post(&unit->_semaphore);
+
 	rcu_unregister_thread();
 
 	// Return
@@ -293,6 +303,9 @@ static dt_unit_t *dt_create_unit(int count)
 		free(unit);
 		return 0;
 	}
+
+	// Init value to `1` ensures that not started dt_unit_t will block on destruction
+	knot_sem_init_nonposix(&unit->_semaphore, 1);
 
 	// Save unit size
 	unit->size = count;
@@ -405,6 +418,9 @@ void dt_delete(dt_unit_t **unit)
 	pthread_cond_destroy(&d_unit->_notify);
 	pthread_cond_destroy(&d_unit->_report);
 
+	// Deinit semaphore
+	knot_sem_destroy(&d_unit->_semaphore);
+
 	// Free memory
 	free(d_unit->threads);
 	free(d_unit);
@@ -458,6 +474,7 @@ int dt_start(dt_unit_t *unit)
 	// Lock unit
 	pthread_mutex_lock(&unit->_notify_mx);
 	dt_unit_lock(unit);
+
 	for (int i = 0; i < unit->size; ++i) {
 
 		dthread_t *thread = unit->threads[i];
@@ -545,6 +562,8 @@ int dt_join(dt_unit_t *unit)
 		pthread_cond_wait(&unit->_report, &unit->_report_mx);
 		pthread_mutex_unlock(&unit->_report_mx);
 	}
+
+	knot_sem_wait_post(&unit->_semaphore);
 
 	return KNOT_EOK;
 }

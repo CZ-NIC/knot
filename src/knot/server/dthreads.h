@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #pragma once
 
 #include <pthread.h>
+#include "contrib/semaphore.h"
 
 #define DEFAULT_THR_COUNT 2  /*!< Default thread count. */
 
@@ -89,13 +90,14 @@ typedef struct dthread {
  * the same runnable.
  */
 typedef struct dt_unit {
-	int                   size; /*!< Unit width (number of threads) */
-	struct dthread   **threads; /*!< Array of threads */
-	pthread_cond_t     _notify; /*!< Notify thread */
-	pthread_mutex_t _notify_mx; /*!< Condition mutex */
-	pthread_cond_t     _report; /*!< Report thread state */
-	pthread_mutex_t _report_mx; /*!< Condition mutex */
-	pthread_mutex_t        _mx; /*!< Unit lock */
+	int                    size; /*!< Unit width (number of threads) */
+	struct dthread    **threads; /*!< Array of threads */
+	pthread_cond_t      _notify; /*!< Notify thread */
+	pthread_mutex_t  _notify_mx; /*!< Condition mutex */
+	pthread_cond_t      _report; /*!< Report thread state */
+	pthread_mutex_t  _report_mx; /*!< Condition mutex */
+	pthread_mutex_t         _mx; /*!< Unit lock */
+	knot_sem_t       _semaphore; /*!< Join semaphore */
 } dt_unit_t;
 
 /*!
