@@ -118,7 +118,7 @@ static void *thread_ep(void *data)
 		return 0;
 	}
 
-	knot_sem_get_assert(&unit->_semaphore);
+	knot_sem_get_ahead(&unit->_semaphore);
 
 	// Unblock SIGALRM for synchronization
 	sigset_t mask;
@@ -179,7 +179,7 @@ static void *thread_ep(void *data)
 			// Wait for notification from unit
 			pthread_cond_wait(&unit->_notify, &unit->_notify_mx);
 
-			knot_sem_get_assert(&unit->_semaphore);
+			knot_sem_get_ahead(&unit->_semaphore);
 
 			pthread_mutex_unlock(&unit->_notify_mx);
 		} else {
@@ -305,7 +305,7 @@ static dt_unit_t *dt_create_unit(int count)
 	}
 
 	// Init value to `1` ensures that not started dt_unit_t will block on destruction
-	knot_sem_init_nonposix(&unit->_semaphore, count);
+	knot_sem_init_nonposix(&unit->_semaphore, 1);
 
 	// Save unit size
 	unit->size = count;
@@ -565,7 +565,7 @@ int dt_join(dt_unit_t *unit)
 		pthread_mutex_unlock(&unit->_report_mx);
 	}
 
-	knot_sem_wait4all(&unit->_semaphore, 0);
+	knot_sem_wait_post(&unit->_semaphore);
 
 	return KNOT_EOK;
 }
