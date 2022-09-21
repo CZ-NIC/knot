@@ -48,6 +48,7 @@ void knot_sem_init_nonposix(knot_sem_t *sem, int value)
 	sem->status_lock = malloc(sizeof(*sem->status_lock));
 	pthread_mutex_init(&sem->status_lock->mutex, NULL);
 	pthread_cond_init(&sem->status_lock->cond, NULL);
+	sem->status_lock->init_status = value;
 }
 
 void knot_sem_reset(knot_sem_t *sem, int value)
@@ -55,10 +56,10 @@ void knot_sem_reset(knot_sem_t *sem, int value)
 	assert((sem != NULL) && (value != SEM_STATUS_POSIX) && (sem->status != SEM_STATUS_POSIX));
 	pthread_mutex_lock(&sem->status_lock->mutex);
 	sem->status = value;
+	sem->status_lock->init_status = value;
 	pthread_cond_signal(&sem->status_lock->cond);
 	pthread_mutex_unlock(&sem->status_lock->mutex);
 }
-
 
 void knot_sem_wait(knot_sem_t *sem)
 {
@@ -89,10 +90,32 @@ void knot_sem_wait_post(knot_sem_t *sem)
 	pthread_mutex_unlock(&sem->status_lock->mutex);
 }
 
+void knot_sem_wait4all(knot_sem_t *sem, int keep_locked)
+{
+	assert((sem != NULL) && (sem->status != SEM_STATUS_POSIX));
+	pthread_mutex_lock(&sem->status_lock->mutex);
+	while (sem->status < sem->status_lock->init_status) {
+		pthread_cond_wait(&sem->status_lock->cond, &sem->status_lock->mutex);
+	}
+	if (keep_locked) {
+		sem->status -= sem->status_lock->init_status;
+	}
+	pthread_mutex_unlock(&sem->status_lock->mutex);
+}
+
 void knot_sem_get_ahead(knot_sem_t *sem)
 {
 	assert((sem != NULL) && (sem->status != SEM_STATUS_POSIX));
 	pthread_mutex_lock(&sem->status_lock->mutex);
+	sem->status--;
+	pthread_mutex_unlock(&sem->status_lock->mutex);
+}
+
+void knot_sem_get_assert(knot_sem_t *sem)
+{
+	assert((sem != NULL) && (sem->status != SEM_STATUS_POSIX));
+	pthread_mutex_lock(&sem->status_lock->mutex);
+	assert(sem->status > 0);
 	sem->status--;
 	pthread_mutex_unlock(&sem->status_lock->mutex);
 }
@@ -115,10 +138,11 @@ void knot_sem_post(knot_sem_t *sem)
 void knot_sem_destroy(knot_sem_t *sem)
 {
 	assert(sem != NULL);
-	knot_sem_wait(sem);
 	if (sem->status == SEM_STATUS_POSIX) {
+		knot_sem_wait(sem); // NOTE this is questionable if the initial value was > 1
 		sem_destroy(&sem->semaphore);
 	} else {
+		knot_sem_wait4all(sem, 0);
 		pthread_cond_destroy(&sem->status_lock->cond);
 		pthread_mutex_destroy(&sem->status_lock->mutex);
 		free(sem->status_lock);

@@ -22,13 +22,14 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
-} knot_sem_mutex_t;
+	int init_status;
+} knot_sem_nonposix_t;
 
 typedef struct {
 	int status;
 	union {
 		sem_t semaphore;
-		knot_sem_mutex_t *status_lock;
+		knot_sem_nonposix_t *status_lock;
 	};
 } knot_sem_t;
 
@@ -42,7 +43,11 @@ void knot_sem_wait(knot_sem_t *sem);
 
 void knot_sem_wait_post(knot_sem_t *sem);
 
+void knot_sem_wait4all(knot_sem_t *sem, int keep_locked);
+
 void knot_sem_get_ahead(knot_sem_t *sem);
+
+void knot_sem_get_assert(knot_sem_t *sem);
 
 void knot_sem_post(knot_sem_t *sem);
 
