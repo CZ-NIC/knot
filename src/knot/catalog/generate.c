@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ static knot_dname_t *catalog_member_owner(const knot_dname_t *member,
 	SipHash24_Update(&hash, &u64time, sizeof(u64time));
 	uint64_t hashres = SipHash24_End(&hash);
 
-	char *hexhash = bin_to_hex((uint8_t *)&hashres, sizeof(hashres));
+	char *hexhash = bin_to_hex((uint8_t *)&hashres, sizeof(hashres), false);
 	if (hexhash == NULL) {
 		return NULL;
 	}

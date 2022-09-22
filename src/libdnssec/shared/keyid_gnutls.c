@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ static int keyid_hex(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, char **i
 		return r;
 	}
 
-	*id = bin_to_hex(bin.data, bin.size);
+	*id = bin_to_hex(bin.data, bin.size, false);
 	if (*id == NULL) {
 		return DNSSEC_ENOMEM;
 	}

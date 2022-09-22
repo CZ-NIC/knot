@@ -173,10 +173,11 @@ void *memzero(void *s, size_t n)
 }
 
 static const char BIN_TO_HEX[] = {
-	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
+	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 };
 
-char *bin_to_hex(const uint8_t *bin, size_t bin_len)
+char *bin_to_hex(const uint8_t *bin, size_t bin_len, bool upper_case)
 {
 	if (bin == NULL) {
 		return NULL;
@@ -188,9 +189,10 @@ char *bin_to_hex(const uint8_t *bin, size_t bin_len)
 		return NULL;
 	}
 
+	unsigned offset = upper_case ? 16 : 0;
 	for (size_t i = 0; i < bin_len; i++) {
-		hex[2 * i]     = BIN_TO_HEX[bin[i] >> 4];
-		hex[2 * i + 1] = BIN_TO_HEX[bin[i] & 0x0f];
+		hex[2 * i]     = BIN_TO_HEX[offset + (bin[i] >> 4)];
+		hex[2 * i + 1] = BIN_TO_HEX[offset + (bin[i] & 0x0f)];
 	}
 	hex[hex_size] = '\0';
 

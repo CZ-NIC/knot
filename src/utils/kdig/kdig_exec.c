@@ -25,6 +25,7 @@
 #include "utils/common/netio.h"
 #include "utils/common/sign.h"
 #include "libknot/libknot.h"
+#include "contrib/json.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
@@ -626,7 +627,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 {
 	struct timespec	t_start, t_query, t_query_full, t_end, t_end_full;
 	time_t		timestamp;
-	knot_pkt_t	*reply;
+	knot_pkt_t	*reply = NULL;
 	uint8_t		in[MAX_PACKET_SIZE];
 	int		in_len;
 	int		ret;
@@ -662,7 +663,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 #endif // USE_DNSTAP
 
 	// Print query packet if required.
-	if (style->show_query) {
+	if (style->show_query && style->format != FORMAT_JSON) {
 		// Create copy of query packet for parsing.
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
 		if (q != NULL) {
@@ -683,11 +684,12 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 	// Loop over incoming messages, unless reply id is correct or timeout.
 	while (true) {
+		reply = NULL;
+
 		// Receive a reply message.
 		in_len = net_receive(net, in, sizeof(in));
 		if (in_len <= 0) {
-			net_close(net);
-			return -1;
+			goto fail;
 		}
 
 		// Get stop reply time.
@@ -705,8 +707,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		reply = knot_pkt_new(in, in_len, NULL);
 		if (reply == NULL) {
 			ERR("internal error (%s)", knot_strerror(KNOT_ENOMEM));
-			net_close(net);
-			return -1;
+			goto fail;
 		}
 
 		// Parse reply to the packet structure.
@@ -715,9 +716,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 			WARN("malformed reply packet (%s)", knot_strerror(ret));
 		} else if (ret != KNOT_EOK) {
 			ERR("malformed reply packet from %s", net->remote_str);
-			knot_pkt_free(reply);
-			net_close(net);
-			return -1;
+			goto fail;
 		}
 
 		// Compare reply header id.
@@ -725,9 +724,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 			break;
 		// Check for timeout.
 		} else if (time_diff_ms(&t_query, &t_end) > 1000 * net->wait) {
-			knot_pkt_free(reply);
-			net_close(net);
-			return -1;
+			goto fail;
 		}
 
 		knot_pkt_free(reply);
@@ -755,8 +752,15 @@ static int process_query_packet(const knot_pkt_t      *query,
 	check_reply_qr(reply);
 
 	// Print reply packet.
-	print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end), timestamp,
-	             true, style);
+	if (style->format != FORMAT_JSON) {
+		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end),
+		             timestamp, true, style);
+	} else {
+		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+		(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
+		print_packets_json(q, reply, net, timestamp, style);
+		knot_pkt_free(q);
+	}
 
 	// Verify signature if a key was specified.
 	if (sign_ctx->digest != NULL) {
@@ -780,17 +784,15 @@ static int process_query_packet(const knot_pkt_t      *query,
 		uint8_t *opt = knot_pkt_edns_option(reply, KNOT_EDNS_OPTION_COOKIE);
 		if (opt == NULL) {
 			ERR("bad cookie, missing EDNS section");
-			knot_pkt_free(reply);
-			return -1;
+			goto fail;
 		}
 
 		const uint8_t *data = knot_edns_opt_get_data(opt);
 		uint16_t data_len = knot_edns_opt_get_length(opt);
 		ret = knot_edns_cookie_parse(&new_ctx.cc, &new_ctx.sc, data, data_len);
 		if (ret != KNOT_EOK) {
-			knot_pkt_free(reply);
 			ERR("bad cookie, missing EDNS cookie option");
-			return -1;
+			goto fail;
 		}
 		knot_pkt_free(reply);
 
@@ -811,6 +813,19 @@ static int process_query_packet(const knot_pkt_t      *query,
 	net_close_keepopen(net, query_ctx);
 
 	return 0;
+
+fail:
+	if (style->format == FORMAT_JSON) {
+		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+		(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
+		print_packets_json(q, reply, net, timestamp, style);
+		knot_pkt_free(q);
+	}
+
+	knot_pkt_free(reply);
+	net_close(net);
+
+	return -1;
 }
 
 static int process_query(const query_t *query, net_t *net)
@@ -950,6 +965,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	size_t          total_len = 0;
 	size_t          msg_count = 0;
 	size_t          rr_count = 0;
+	jsonw_t         *w = NULL;
 
 	// Get start query time.
 	timestamp = time(NULL);
@@ -982,7 +998,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 #endif // USE_DNSTAP
 
 	// Print query packet if required.
-	if (style->show_query) {
+	if (style->show_query && style->format != FORMAT_JSON) {
 		// Create copy of query packet for parsing.
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
 		if (q != NULL) {
@@ -1003,6 +1019,8 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 	// Loop over reply messages unless first and last SOA serials differ.
 	while (true) {
+		reply = NULL;
+
 		// Receive a reply message.
 		in_len = net_receive(net, in, sizeof(in));
 		if (in_len <= 0) {
@@ -1044,7 +1062,14 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 		// Print leading transfer information.
 		if (msg_count == 0) {
-			print_header_xfr(query, style);
+			if (style->format != FORMAT_JSON) {
+				print_header_xfr(query, style);
+			} else {
+				knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+				(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
+				w = print_header_xfr_json(q, timestamp, style);
+				knot_pkt_free(q);
+			}
 		}
 
 		// Check for error reply.
@@ -1065,7 +1090,9 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 						.style = style->style,
 						.show_tsig = true
 					};
-					print_data_xfr(reply, &tsig_style);
+					if (style->format != FORMAT_JSON) {
+						print_data_xfr(reply, &tsig_style);
+					}
 
 					ERR("reply verification for %s (%s)",
 					    net->remote_str, knot_strerror(ret));
@@ -1094,7 +1121,11 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		total_len += in_len;
 
 		// Print reply packet.
-		print_data_xfr(reply, style);
+		if (style->format != FORMAT_JSON) {
+			print_data_xfr(reply, style);
+		} else {
+			print_data_xfr_json(w, reply, timestamp);
+		}
 
 		// Check for finished transfer.
 		if (finished_xfr(serial, reply, query, msg_count, query_ctx->serial != -1)) {
@@ -1108,8 +1139,12 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 	// Print full transfer information.
 	t_end = time_now();
-	print_footer_xfr(total_len, msg_count, rr_count, net,
-	                 time_diff_ms(&t_query, &t_end), timestamp, style);
+	if (style->format != FORMAT_JSON) {
+		print_footer_xfr(total_len, msg_count, rr_count, net,
+		                 time_diff_ms(&t_query, &t_end), timestamp, style);
+	} else {
+		print_footer_xfr_json(&w, style);
+	}
 
 	net_close_keepopen(net, query_ctx);
 
@@ -1118,11 +1153,17 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 fail:
 	// Print partial transfer information.
 	t_end = time_now();
-	print_footer_xfr(total_len, msg_count, rr_count, net,
-	                 time_diff_ms(&t_query, &t_end), timestamp, style);
+	if (style->format != FORMAT_JSON) {
+		print_footer_xfr(total_len, msg_count, rr_count, net,
+		                 time_diff_ms(&t_query, &t_end), timestamp, style);
+	} else {
+		print_data_xfr_json(w, reply, timestamp);
+		print_footer_xfr_json(&w, style);
+	}
 
 	knot_pkt_free(reply);
 	net_close(net);
+	free(w);
 
 	return -1;
 }
