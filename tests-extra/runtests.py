@@ -27,6 +27,8 @@ outs_dir = None
 def save_traceback(outdir, exc):
     path = os.path.join(Context().out_dir, "traceback.log")
     with open(path, mode="a") as f:
+        traceback.print_exc(file=f)
+        print("\n==== Detailed backtrace with local variables ====\n", file=f)
         tb = traceback.TracebackException.from_exception(exc, capture_locals=True)
         print("".join(tb.format()), file=f)
 
