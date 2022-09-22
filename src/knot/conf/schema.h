@@ -19,6 +19,9 @@
 #include "libknot/lookup.h"
 #include "libknot/yparser/ypschema.h"
 
+#define C_BUSY_POLL_TIMEOUT	"\x10""busypoll-timeout"
+#define C_BUSY_POLL_BUDGET	"\x0F""busypoll-budget"
+#define C_NEED_WAKEUP		"\x0B""need-wakeup"
 #define C_ACL			"\x03""acl"
 #define C_ACTION		"\x06""action"
 #define C_ADDR			"\x07""address"
