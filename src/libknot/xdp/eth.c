@@ -19,9 +19,10 @@
 #include <errno.h>
 #include <ifaddrs.h>
 #include <linux/ethtool.h>
-#include <linux/if.h>
 #include <linux/if_link.h>
+#include <linux/if_vlan.h>
 #include <linux/sockios.h>
+#include <net/if.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -29,6 +30,7 @@
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/sockaddr.h"
 #include "libknot/attribute.h"
+#include "libknot/endian.h"
 #include "libknot/errcode.h"
 #include "libknot/xdp/eth.h"
 
@@ -48,7 +50,7 @@ int knot_eth_queues(const char *devname)
 		.cmd = ETHTOOL_GCHANNELS
 	};
 	struct ifreq ifr = {
-		.ifr_data = &ch
+		.ifr_data = (char *)&ch
 	};
 	strlcpy(ifr.ifr_name, devname, IFNAMSIZ);
 
@@ -91,7 +93,7 @@ int knot_eth_rss(const char *devname, knot_eth_rss_conf_t **rss_conf)
 		.cmd = ETHTOOL_GRSSH
 	};
 	struct ifreq ifr = {
-		.ifr_data = &sizes
+		.ifr_data = (char *)&sizes
 	};
 	strlcpy(ifr.ifr_name, devname, IFNAMSIZ);
 
@@ -112,7 +114,7 @@ int knot_eth_rss(const char *devname, knot_eth_rss_conf_t **rss_conf)
 	ctx->cmd = ETHTOOL_GRSSH;
 	ctx->indir_size = sizes.indir_size;
 	ctx->key_size = sizes.key_size;
-	ifr.ifr_data = ctx;
+	ifr.ifr_data = (char *)ctx;
 
 	ret = ioctl(fd, SIOCETHTOOL, &ifr);
 	if (ret != 0) {
@@ -205,6 +207,82 @@ int knot_eth_name_from_addr(const struct sockaddr_storage *addr, char *out,
 
 	freeifaddrs(ifaces);
 	return matches == 0 ? KNOT_EADDRNOTAVAIL : KNOT_ELIMIT;
+}
+
+_public_
+int knot_eth_vlans(uint16_t *vlan_map[], uint16_t *vlan_map_max)
+{
+	if (vlan_map == NULL || vlan_map_max == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	struct ifaddrs *ifaces = NULL;
+	if (getifaddrs(&ifaces) != 0) {
+		return knot_map_errno();
+	}
+
+	unsigned map_size = 0;
+	for (struct ifaddrs *ifa = ifaces; ifa != NULL; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr->sa_family != AF_PACKET) {
+			continue;
+		}
+		map_size++;
+	}
+
+	uint16_t *map = calloc(sizeof(uint16_t), 1 + map_size); // Indexed from 1.
+	if (map == NULL) {
+		freeifaddrs(ifaces);
+		return KNOT_ENOMEM;
+	}
+
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0) {
+		free(map);
+		freeifaddrs(ifaces);
+		return knot_map_errno();
+	}
+
+	for (struct ifaddrs *ifa = ifaces; ifa != NULL; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr->sa_family != AF_PACKET) {
+			continue;
+		}
+
+		unsigned if_index = if_nametoindex(ifa->ifa_name);
+		if (if_index == 0) {
+			close(fd);
+			free(map);
+			freeifaddrs(ifaces);
+			return knot_map_errno();
+		}
+
+		struct vlan_ioctl_args ifv = {
+			.cmd = GET_VLAN_REALDEV_NAME_CMD
+		};
+		strlcpy(ifv.device1, ifa->ifa_name, sizeof(ifv.device1));
+
+		if (ioctl(fd, SIOCGIFVLAN, &ifv) >= 0) {
+			memset(&ifv, 0, sizeof(ifv));
+			ifv.cmd = GET_VLAN_VID_CMD;
+			strlcpy(ifv.device1, ifa->ifa_name, sizeof(ifv.device1));
+
+			if (ioctl(fd, SIOCGIFVLAN, &ifv) < 0) {
+				close(fd);
+				free(map);
+				freeifaddrs(ifaces);
+				return knot_map_errno();
+			}
+
+			map[if_index] = htobe16(ifv.u.VID);
+		}
+	}
+
+	close(fd);
+	freeifaddrs(ifaces);
+
+	*vlan_map = map;
+	*vlan_map_max = map_size;
+
+	return KNOT_EOK;
 }
 
 _public_

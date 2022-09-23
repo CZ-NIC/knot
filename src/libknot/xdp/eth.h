@@ -83,6 +83,16 @@ int knot_eth_mtu(const char *devname);
 int knot_eth_name_from_addr(const struct sockaddr_storage *addr, char *out,
                             size_t out_len);
 
+/*!
+ * \brief Get the mapping of interface index to VLAN tags.
+ *
+ * \param vlan_map       Output array of the mappings.
+ * \param vlan_map_max   Maximum interface index allowed.
+ *
+ * \return KNOT_E*
+ */
+int knot_eth_vlans(uint16_t *vlan_map[], uint16_t *vlan_map_max);
+
 typedef enum {
 	KNOT_XDP_MODE_NONE, /*!< XDP not available, BPF not loaded, or error. */
 	KNOT_XDP_MODE_FULL, /*!< Full XDP support in driver or HW. */
