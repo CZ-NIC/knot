@@ -803,10 +803,12 @@ when processing every incoming DNS packet received over the XDP interface:
   (XDP isn't used).
 - If the destination address is blackholed, unreachable, or prohibited,
   the DNS packet is dropped without any response.
-- The destination MAC address for the response is taken from the routing system.
+- The destination MAC address and possible VLAN tag for the response are taken
+  from the routing system.
 
 If disabled, symmetrical routing is applied. It means that the query source
-MAC address is used as a response destination MAC address.
+MAC address is used as a response destination MAC address. Possible VLAN tag
+is preserved.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -814,6 +816,8 @@ Change of this parameter requires restart of the Knot server to take effect.
    This mode requires forwarding enabled on the loopback interface
    (``sysctl -w net.ipv4.conf.lo.forwarding=1`` and ``sysctl -w net.ipv6.conf.lo.forwarding=1``).
    If forwarding is disabled, all incoming DNS packets are dropped!
+
+   Only VLAN 802.1Q is supported.
 
 *Default:* ``off``
 

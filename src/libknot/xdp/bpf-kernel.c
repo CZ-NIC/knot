@@ -59,8 +59,20 @@ struct ipv6_frag_hdr {
 SEC("xdp")
 int xdp_redirect_dns_func(struct xdp_md *ctx)
 {
+	/* Reserve space in front of the packet for additional data. */
+	if (bpf_xdp_adjust_meta(ctx, - (int)sizeof(struct knot_xdp_info)
+	                             - KNOT_XDP_PKT_ALIGNMENT)) {
+		return XDP_ABORTED;
+	}
+
 	void *data = (void *)(long)ctx->data;
 	const void *data_end = (void *)(long)ctx->data_end;
+	struct knot_xdp_info *meta = (void *)(long)ctx->data_meta;
+
+	/* Check data_meta pointer. */
+	if ((void *)meta + sizeof(*meta) > data) {
+		return XDP_ABORTED;
+	}
 
 	struct ethhdr *eth_hdr = data;
 	const void *ip_hdr;
@@ -70,16 +82,29 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	__u8 ipv4;
 	__u8 ip_proto;
 	__u8 fragmented = 0;
+	__u16 eth_type; /* In big endian. */
 
 	/* Parse Ethernet header. */
 	if ((void *)eth_hdr + sizeof(*eth_hdr) > data_end) {
 		return XDP_DROP;
 	}
 	data += sizeof(*eth_hdr);
+
+	/* Parse possible VLAN (802.1Q) header. */
+	if (eth_hdr->h_proto == __constant_htons(ETH_P_8021Q)) {
+		if (data + sizeof(__u16) + sizeof(eth_type) > data_end) {
+			return XDP_DROP;
+		}
+		__builtin_memcpy(&eth_type, data + sizeof(__u16), sizeof(eth_type));
+		data += sizeof(__u16) + sizeof(eth_type);
+	} else {
+		eth_type = eth_hdr->h_proto;
+	}
+
 	ip_hdr = data;
 
 	/* Parse IPv4 or IPv6 header. */
-	switch (eth_hdr->h_proto) {
+	switch (eth_type) {
 	case __constant_htons(ETH_P_IP):
 		ip4 = ip_hdr;
 		if ((void *)ip4 + sizeof(*ip4) > data_end) {
@@ -227,13 +252,20 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			*ipv6_dst  = ip6->saddr;
 		}
 
+		const __u16 *mac_in = (const __u16 *)eth_hdr->h_dest;
+		const __u16 *mac_out = (const __u16 *)fib.smac;
 		int ret = bpf_fib_lookup(ctx, &fib, sizeof(fib), BPF_FIB_LOOKUP_DIRECT);
 		switch (ret) {
 		case BPF_FIB_LKUP_RET_SUCCESS:
-			/* Cross-interface answers are handled thru normal stack. */
-			if (fib.ifindex != ctx->ingress_ifindex) {
+			/* Cross-interface answers are handled through normal stack. */
+			if (mac_in[0] != mac_out[0] ||
+			    mac_in[1] != mac_out[1] ||
+			    mac_in[2] != mac_out[2]) {
 				return XDP_PASS;
 			}
+
+			/* Store output interface index for later use in user space. */
+			meta->out_if_index = fib.ifindex;
 
 			/* Update destination MAC for responding. */
 			__builtin_memcpy(eth_hdr->h_source, fib.dmac, ETH_ALEN);

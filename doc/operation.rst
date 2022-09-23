@@ -1162,7 +1162,7 @@ Some helpful commands::
 Limitations
 -----------
 
-* VLAN segmentation is not supported.
+* Request and its response must go through the same physical network device.
 * Dynamic DNS over XDP is not supported.
 * MTU higher than 1790 bytes is not supported.
 * Multiple BPF filters per one network device are not supported.
