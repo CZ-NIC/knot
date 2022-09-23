@@ -1642,8 +1642,10 @@ typedef struct ngtcp2_conn_stat {
    */
   uint64_t delivery_rate_sec;
   /**
-   * :member:`pacing_rate` is the current packet sending rate.  If
-   * pacing is disabled, 0 is set.
+   * :member:`pacing_rate` is the current packet sending rate computed
+   * by a congestion controller.  0 if a congestion controller does
+   * not set pacing rate.  Even if this value is set to 0, the library
+   * paces packets.
    */
   double pacing_rate;
   /**
@@ -1668,13 +1670,11 @@ typedef enum ngtcp2_cc_algo {
    */
   NGTCP2_CC_ALGO_CUBIC = 0x01,
   /**
-   * :enum:`NGTCP2_CC_ALGO_BBR` represents BBR.  If BBR is chosen,
-   * packet pacing is enabled.
+   * :enum:`NGTCP2_CC_ALGO_BBR` represents BBR.
    */
   NGTCP2_CC_ALGO_BBR = 0x02,
   /**
-   * :enum:`NGTCP2_CC_ALGO_BBR2` represents BBR v2.  If BBR v2 is
-   * chosen, packet pacing is enabled.
+   * :enum:`NGTCP2_CC_ALGO_BBR2` represents BBR v2.
    */
   NGTCP2_CC_ALGO_BBR2 = 0x03
 } ngtcp2_cc_algo;
@@ -4287,7 +4287,11 @@ NGTCP2_EXTERN int ngtcp2_conn_open_uni_stream(ngtcp2_conn *conn,
  * deletion is done when the remote endpoint sends acknowledgement.
  * Calling this function is equivalent to call
  * `ngtcp2_conn_shutdown_stream_read`, and
- * `ngtcp2_conn_shutdown_stream_write` sequentially.
+ * `ngtcp2_conn_shutdown_stream_write` sequentially with the following
+ * differences.  If |stream_id| refers to a local unidirectional
+ * stream, this function only shutdowns write side of the stream.  If
+ * |stream_id| refers to a remote unidirectional stream, this function
+ * only shutdowns read side of the stream.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -4314,6 +4318,8 @@ NGTCP2_EXTERN int ngtcp2_conn_shutdown_stream(ngtcp2_conn *conn,
  *
  * :macro:`NGTCP2_ERR_NOMEM`
  *     Out of memory
+ * :macro:`NGTCP2_ERR_INVALID_ARGUMENT`
+ *     |stream_id| refers to a remote unidirectional stream.
  */
 NGTCP2_EXTERN int ngtcp2_conn_shutdown_stream_write(ngtcp2_conn *conn,
                                                     int64_t stream_id,
@@ -4333,6 +4339,8 @@ NGTCP2_EXTERN int ngtcp2_conn_shutdown_stream_write(ngtcp2_conn *conn,
  *
  * :macro:`NGTCP2_ERR_NOMEM`
  *     Out of memory
+ * :macro:`NGTCP2_ERR_INVALID_ARGUMENT`
+ *     |stream_id| refers to a local unidirectional stream.
  */
 NGTCP2_EXTERN int ngtcp2_conn_shutdown_stream_read(ngtcp2_conn *conn,
                                                    int64_t stream_id,
@@ -4473,11 +4481,9 @@ NGTCP2_EXTERN ngtcp2_ssize ngtcp2_conn_write_stream_versioned(
  * This function must not be called from inside the callback
  * functions.
  *
- * If pacing is enabled, `ngtcp2_conn_update_pkt_tx_time` must be
- * called after this function.  Application may call this function
- * multiple times before calling `ngtcp2_conn_update_pkt_tx_time`.
- * Packet pacing is enabled if BBR congestion controller algorithm is
- * used.
+ * `ngtcp2_conn_update_pkt_tx_time` must be called after this
+ * function.  Application may call this function multiple times before
+ * calling `ngtcp2_conn_update_pkt_tx_time`.
  *
  * This function returns the number of bytes written in |dest| if it
  * succeeds, or one of the following negative error codes:
@@ -4922,10 +4928,10 @@ ngtcp2_conn_get_path_max_udp_payload_size(ngtcp2_conn *conn);
  * @function
  *
  * `ngtcp2_conn_initiate_immediate_migration` starts connection
- * migration to the given |path|.
- * Only client can initiate migration.  This function does
- * immediate migration; it does not probe peer reachability from a new
- * local address.
+ * migration to the given |path|.  Only client can initiate migration.
+ * This function does immediate migration; while the path validation
+ * is nonetheless performed, this function does not wait for it to
+ * succeed.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -5391,12 +5397,11 @@ NGTCP2_EXTERN int ngtcp2_conn_set_stream_user_data(ngtcp2_conn *conn,
  * @function
  *
  * `ngtcp2_conn_update_pkt_tx_time` sets the time instant of the next
- * packet transmission.  This function is noop if packet pacing is
- * disabled.  If packet pacing is enabled, this function must be
- * called after (multiple invocation of) `ngtcp2_conn_writev_stream`.
- * If packet aggregation (e.g., packet batching, GSO) is used, call
- * this function after all aggregated datagrams are sent, which
- * indicates multiple invocation of `ngtcp2_conn_writev_stream`.
+ * packet transmission.  This function must be called after (multiple
+ * invocation of) `ngtcp2_conn_writev_stream`.  If packet aggregation
+ * (e.g., packet batching, GSO) is used, call this function after all
+ * aggregated datagrams are sent, which indicates multiple invocation
+ * of `ngtcp2_conn_writev_stream`.
  */
 NGTCP2_EXTERN void ngtcp2_conn_update_pkt_tx_time(ngtcp2_conn *conn,
                                                   ngtcp2_tstamp ts);
@@ -5405,8 +5410,7 @@ NGTCP2_EXTERN void ngtcp2_conn_update_pkt_tx_time(ngtcp2_conn *conn,
  * @function
  *
  * `ngtcp2_conn_get_send_quantum` returns the maximum number of bytes
- * that can be sent in one go without packet spacing.  If packet
- * pacing is disabled, this function returns SIZE_MAX.
+ * that can be sent in one go without packet spacing.
  */
 NGTCP2_EXTERN size_t ngtcp2_conn_get_send_quantum(ngtcp2_conn *conn);
 
