@@ -120,7 +120,7 @@ static const struct signal SIGNALS[] = {
 	{ SIGINT,  true  },  /* Terminate server. */
 	{ SIGTERM, true  },  /* Terminate server. */
 	{ SIGALRM, false },  /* Internal thread synchronization. */
-	{ SIGPIPE, false },  /* Ignored. Some I/O errors. */
+	{ SIGPIPE, true  },  /* Ignored. Some I/O errors. */
 	{ 0 }
 };
 
@@ -141,7 +141,11 @@ static void handle_signal(int signum)
 		}
 		sig_req_stop = true;
 		break;
+	case SIGPIPE:
+		log_info(">>>> signal SIGPIPE received");
+		break;
 	default:
+		log_info(">>>> signal %d received", signum);
 		/* ignore */
 		break;
 	}
