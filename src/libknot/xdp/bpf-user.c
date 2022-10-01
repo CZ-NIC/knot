@@ -197,7 +197,7 @@ int kxsk_socket_start(const struct kxsk_iface *iface, knot_xdp_filter_flag_t fla
 	}
 
 	knot_xdp_opts_t opts = {
-		.flags = flags,
+		.flags = flags | KNOT_XDP_FILTER_ON,
 		.udp_port = udp_port,
 		.quic_port = quic_port,
 	};

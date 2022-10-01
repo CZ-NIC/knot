@@ -31,6 +31,7 @@
 
 /*! \brief XDP filter configuration flags. */
 typedef enum {
+	KNOT_XDP_FILTER_ON    = 1 << 0,  /*!< Filter enabled. */
 	KNOT_XDP_FILTER_UDP   = 1 << 1,  /*!< Apply filter to UDP. */
 	KNOT_XDP_FILTER_TCP   = 1 << 2,  /*!< Apply filter to TCP. */
 	KNOT_XDP_FILTER_QUIC  = 1 << 3,  /*!< Apply filter to QUIC/UDP. */
