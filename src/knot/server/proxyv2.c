@@ -46,31 +46,22 @@ int proxyv2_header_strip(knot_pkt_t **query,
 	}
 
 	/*
-	 * Re-parse the query message using the data in the
-	 * packet following the PROXY v2 payload.
+	 * Store the provided remote address.
 	 */
-	knot_pkt_t *q = knot_pkt_new(pkt + offset, pkt_len - offset, &(*query)->mm);
-
-	/*
-	 * Check if the calculated offset of the original DNS message is
-	 * actually inside the packet received on the wire, and if so, parse
-	 * the real DNS query message.
-	 */
-	int ret = knot_pkt_parse(q, 0);
+	int ret = proxyv2_addr_store(pkt, pkt_len, new_remote);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	/*
-	 * Store the provided remote address.
+	 * Re-parse the query message using the data in the
+	 * packet following the PROXY v2 payload.
 	 */
-	ret = proxyv2_addr_store(pkt, pkt_len, new_remote);
-	if (ret != KNOT_EOK && q->parsed > 0) {
-		return ret;
-	}
+	knot_pkt_t *q = knot_pkt_new(pkt + offset, pkt_len - offset, &(*query)->mm);
+	ret = knot_pkt_parse(q, 0);
 
 	knot_pkt_free(*query);
 	*query = q;
 
-	return KNOT_EOK;
+	return ret;
 }
