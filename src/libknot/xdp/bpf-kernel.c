@@ -59,6 +59,19 @@ struct ipv6_frag_hdr {
 SEC("xdp")
 int xdp_redirect_dns_func(struct xdp_md *ctx)
 {
+	/* Get the queue options. */
+	__u32 index = ctx->rx_queue_index;
+	struct knot_xdp_opts *opts_ptr = bpf_map_lookup_elem(&opts_map, &index);
+	if (!opts_ptr) {
+		return XDP_ABORTED;
+	}
+	knot_xdp_opts_t opts = *opts_ptr;
+
+	/* Check if the filter is disabled. */
+	if (!(opts.flags & KNOT_XDP_FILTER_ON)) {
+		return XDP_PASS;
+	}
+
 	/* Reserve space in front of the packet for additional data. */
 	if (bpf_xdp_adjust_meta(ctx, - (int)sizeof(struct knot_xdp_info)
 	                             - KNOT_XDP_PKT_ALIGNMENT)) {
@@ -161,14 +174,6 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		/* Also applies to VLAN. */
 		return XDP_PASS;
 	}
-
-	/* Get the queue options. */
-	__u32 index = ctx->rx_queue_index;
-	struct knot_xdp_opts *opts_ptr = bpf_map_lookup_elem(&opts_map, &index);
-	if (!opts_ptr) {
-		return XDP_ABORTED;
-	}
-	knot_xdp_opts_t opts = *opts_ptr;
 
 	const struct tcphdr *tcp;
 	const struct udphdr *udp;
