@@ -166,7 +166,7 @@ int proxyv2_addr_store(void *base, size_t len_base, struct sockaddr_storage *ss)
 		 * Check that the packet is large enough to contain the IPv4
 		 * address block.
 		 */
-		if (offset_proxy_addr + sizeof(addr) < len_base) {
+		if (offset_proxy_addr + sizeof(*addr) < len_base) {
 			/* Read the PROXY v2 address block. */
 			addr = base + offset_proxy_addr;
 
@@ -188,7 +188,7 @@ int proxyv2_addr_store(void *base, size_t len_base, struct sockaddr_storage *ss)
 		 * Check that the packet is large enough to contain the IPv6
 		 * address block.
 		 */
-		if (offset_proxy_addr + sizeof(addr) < len_base) {
+		if (offset_proxy_addr + sizeof(*addr) < len_base) {
 			/* Read the PROXY v2 address block. */
 			addr = base + offset_proxy_addr;
 
