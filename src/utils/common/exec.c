@@ -613,7 +613,7 @@ static void print_packet_json(jsonw_t *w, const knot_pkt_t *pkt, time_t time)
 	localtime_r(&time, &tm);
 	strftime(date, sizeof(date), "%Y-%m-%dT%H:%M:%S%z", &tm);
 	jsonw_str(w, "dateString", date);
-	jsonw_int(w, "dateSeconds", time);
+	jsonw_ulong(w, "dateSeconds", time);
 
 	jsonw_int(w, "msgLength", pkt->size);
 
