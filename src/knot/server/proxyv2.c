@@ -55,13 +55,15 @@ int proxyv2_header_strip(knot_pkt_t **query,
 
 	/*
 	 * Re-parse the query message using the data in the
-	 * packet following the PROXY v2 payload.
+	 * packet following the PROXY v2 payload. And replace the original
+	 * query with the decapsulated one.
 	 */
 	knot_pkt_t *q = knot_pkt_new(pkt + offset, pkt_len - offset, &(*query)->mm);
-	ret = knot_pkt_parse(q, 0);
-
+	if (q == NULL) {
+		return KNOT_ENOMEM;
+	}
 	knot_pkt_free(*query);
 	*query = q;
 
-	return ret;
+	return knot_pkt_parse(q, 0);
 }
