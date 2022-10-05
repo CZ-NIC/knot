@@ -208,6 +208,7 @@ server:
     automatic\-acl: BOOL
     proxy\-allowlist: ADDR[/INT] | ADDR\-ADDR ...
     dbus\-event: none | running | zone\-updated | ksk\-submission | dnssec\-invalid ...
+    dbus\-init\-delay: TIME
     listen: ADDR[@INT] ...
 .ft P
 .fi
@@ -549,7 +550,19 @@ This function requires systemd version at least 221.
 .UNINDENT
 .UNINDENT
 .sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
 \fIDefault:\fP \fBnone\fP
+.SS dbus\-init\-delay
+.sp
+Time in seconds which the server waits upon D\-Bus initialization to ensure
+the D\-Bus client is ready to receive signals.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIMinimum:\fP \fB0\fP
+.sp
+\fIDefault:\fP \fB1\fP
 .SS listen
 .sp
 One or more IP addresses where the server listens for incoming queries.

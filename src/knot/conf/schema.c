@@ -243,6 +243,7 @@ static const yp_item_t desc_server[] = {
 	{ C_AUTO_ACL,             YP_TBOOL, YP_VNONE },
 	{ C_PROXY_ALLOWLIST,      YP_TNET,  YP_VNONE, YP_FMULTI},
 	{ C_DBUS_EVENT,           YP_TOPT,  YP_VOPT = { dbus_events, DBUS_EVENT_NONE }, YP_FMULTI },
+	{ C_DBUS_INIT_DELAY,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 1, YP_STIME } },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
