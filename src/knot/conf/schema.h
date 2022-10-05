@@ -47,6 +47,7 @@
 #define C_CTL			"\x07""control"
 #define C_DB			"\x08""database"
 #define C_DBUS_EVENT		"\x0A""dbus-event"
+#define C_DBUS_INIT_DELAY	"\x0F""dbus-init-delay"
 #define C_DDNS_MASTER		"\x0B""ddns-master"
 #define C_DENY			"\x04""deny"
 #define C_DNSKEY_MGMT		"\x11""dnskey-management"

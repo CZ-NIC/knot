@@ -159,6 +159,7 @@ General options related to the server.
      automatic-acl: BOOL
      proxy-allowlist: ADDR[/INT] | ADDR-ADDR ...
      dbus-event: none | running | zone-updated | ksk-submission | dnssec-invalid ...
+     dbus-init-delay: TIME
      listen: ADDR[@INT] ...
 
 .. CAUTION::
@@ -591,7 +592,23 @@ Possible values:
 .. NOTE::
    This function requires systemd version at least 221.
 
+Change of this parameter requires restart of the Knot server to take effect.
+
 *Default:* ``none``
+
+.. _server_dbus-init-delay:
+
+dbus-init-delay
+---------------
+
+Time in seconds which the server waits upon D-Bus initialization to ensure
+the D-Bus client is ready to receive signals.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Minimum:* ``0``
+
+*Default:* ``1``
 
 .. _server_listen:
 
