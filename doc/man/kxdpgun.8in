@@ -99,6 +99,9 @@ Override auto\-detected local MAC address.
 \fB\-R\fP, \fB\-\-mac\-remote\fP
 Override auto\-detected remote MAC address.
 .TP
+\fB\-v\fP, \fB\-\-vlan\fP \fIid\fP
+Add VLAN 802.1Q header with the given id.
+.TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
