@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+
+'''Test of a combined addition to and removal from a catalog.'''
+
+from dnstest.test import Test
+from dnstest.utils import set_err, detail_log, check_log
+import dnstest.params
+
+import os
+import random
+import time
+import hashlib
+import threading
+import shutil
+from subprocess import Popen, PIPE, DEVNULL, check_call
+
+def sign_wait(tolaunch, zonename):
+    check_call(tolaunch, stdout=DEVNULL, stderr=DEVNULL)
+
+def sign_wait_bg(server, zonename):
+    server[-1] = "120" # timeout
+    tolaunch = server + ["-b", "zone-sign", zonename]
+    threading.Thread(target=sign_wait, args=[tolaunch, zonename]).start()
+
+def check_catalog_db(server, memb_name):
+    '''Check that the member is not present in server's catalog DB'''
+    pipe = Popen([dnstest.params.kcatalogprint_bin, "-c", server.confile],
+                 stdout=PIPE, stderr=PIPE, universal_newlines=True)
+    (stdout, stderr) = pipe.communicate()
+    for line in stdout.splitlines():
+        if line.startswith(memb_name + " "):
+            set_err("MEMBER LEFT IN CATALOG DB")
+            check_log("ERROR: MEMBER %s LEFT IN CATALOG DB" % memb_name)
+            return False
+    return True
+
+#t = Test(stress=False) # switch the stressing off for better log readability
+t = Test()
+
+knot = t.server("knot")
+knot.bg_workers = 4
+
+knot.semantic_check = False
+
+catz = t.zone("catalog1.", storage=".")
+rzone = t.zone(".") # to slow down background workers
+rzone[0].update_rnd() # it needs to be larger, slower
+
+t.link(catz, knot, journal_content = "none")
+t.link(rzone, knot, journal_content = "none")
+knot.cat_interpret(catz)
+catalog_dir = os.path.join(knot.dir, "catalog")
+os.mkdir(catalog_dir)
+
+for z in rzone:
+    # slow down processing as much as possible
+    knot.dnssec(z).enable = True
+    knot.dnssec(z).rrsig_lifetime = "1"
+    knot.dnssec(z).signing_threads = str(random.randint(2,4))
+    if not knot.valgrind: # it would be too slow with valgrind
+        knot.dnssec(z).nsec3 = True
+        knot.dnssec(z).nsec3_iters = "65000"
+        knot.dnssec(z).alg = "rsasha512"
+        knot.dnssec(z).zsk_size = "4096"
+
+t.start()
+
+rootser = knot.zones_wait(rzone)
+t.sleep(5)
+
+for z in rzone:
+    sign_wait_bg([knot.control_bin] + knot.ctl_params, z.name)
+t.sleep(1)
+
+up = knot.update(catz)
+up.add("bar.zones." + catz[0].name, 0, "PTR", "cataloged2.")
+up.try_send()
+
+t.sleep(4)
+
+up = knot.update(catz)
+up.delete("bar.zones." + catz[0].name, "PTR", "cataloged2.")
+up.try_send()
+
+knot.zones_wait(rzone, rootser)
+t.sleep(10)
+
+# Check the catalog zone.
+resp = knot.dig("bar.zones.catalog1.", "PTR", udp=False, tsig=True)
+resp.check(rcode="NXDOMAIN", nordata="PTR")
+
+# Check a DNS query / zonedb.
+resp = knot.dig("cataloged2.", "SOA")
+resp.check(rcode="NXDOMAIN") # not REFUSED due to presence of root zone;
+                             # not SERVFAIL what is the point of the test
+
+# Check the catalog DB.
+knot.stop()
+check_catalog_db(knot, "cataloged2.")
+
+t.end()
