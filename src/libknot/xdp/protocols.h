@@ -204,7 +204,7 @@ inline static size_t prot_write_hdrs_len(const knot_xdp_msg_t *msg)
 {
 	size_t res = sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
 
-	if (msg->vlan_tci != 0) {
+	if (msg->vlan_tci != 0 || msg->flags & KNOT_XDP_MSG_VLAN) {
 		res += HDR_8021Q_LEN;
 	}
 
