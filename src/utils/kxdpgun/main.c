@@ -385,6 +385,9 @@ static unsigned alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
 	} else if (ctx->quic) {
 		return ctx->at_once; // NOOP
 	}
+	if (ctx->vlan_tci != 0) {
+		flags |= KNOT_XDP_MSG_VLAN;
+	}
 
 	for (unsigned i = 0; i < ctx->at_once; i++) {
 		int ret = knot_xdp_send_alloc(xsk, flags, &pkts[i]);

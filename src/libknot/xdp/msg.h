@@ -40,6 +40,7 @@ typedef enum {
 	KNOT_XDP_MSG_RST   = (1 << 5), /*!< RST flag set (TCP only). */
 	KNOT_XDP_MSG_MSS   = (1 << 6), /*!< MSS option in TCP header (TCP only). */
 	KNOT_XDP_MSG_WSC   = (1 << 7), /*!< Window Scale option in TCP header. */
+	KNOT_XDP_MSG_VLAN  = (1 << 8), /*!< This packet will contain VLAN header. */
 } knot_xdp_msg_flag_t;
 
 /*! \brief Packet description with src & dst MAC & IP addrs + DNS payload. */
