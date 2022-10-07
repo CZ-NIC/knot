@@ -24,10 +24,13 @@
 #include <string.h>
 
 #include "libknot/endian.h"
+#include "libknot/xdp/bpf-consts.h"
 #include "libknot/xdp/msg.h"
 
 /* Don't fragment flag. */
 #define	IP_DF 0x4000
+
+#define HDR_8021Q_LEN 4;
 
 /*
  * Following prot_read_*() functions do not check sanity of parsed packet.
@@ -166,13 +169,26 @@ inline static void *prot_read_ipv6(void *data, knot_xdp_msg_t *msg, void **data_
 	}
 }
 
-inline static void *prot_read_eth(void *data, knot_xdp_msg_t *msg, void **data_end)
+inline static void *prot_read_eth(void *data, knot_xdp_msg_t *msg, void **data_end,
+                                  const uint16_t *vlan_map, unsigned vlan_map_max)
 {
 	const struct ethhdr *eth = data;
+	knot_xdp_info_t *info = data - KNOT_XDP_PKT_ALIGNMENT - sizeof(*info);
 
 	memcpy(msg->eth_from, eth->h_source, ETH_ALEN);
 	memcpy(msg->eth_to,   eth->h_dest,   ETH_ALEN);
 	msg->flags = 0;
+
+	if (eth->h_proto == __constant_htons(ETH_P_8021Q)) {
+		assert(vlan_map);
+		if (info->out_if_index > 0 && info->out_if_index <= vlan_map_max) {
+			msg->vlan_tci = vlan_map[info->out_if_index];
+		} else {
+			memcpy(&msg->vlan_tci, data + sizeof(*eth), sizeof(msg->vlan_tci));
+		}
+		data += HDR_8021Q_LEN;
+		eth = data;
+	}
 
 	data += sizeof(*eth);
 
@@ -187,6 +203,10 @@ inline static void *prot_read_eth(void *data, knot_xdp_msg_t *msg, void **data_e
 inline static size_t prot_write_hdrs_len(const knot_xdp_msg_t *msg)
 {
 	size_t res = sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
+
+	if (msg->vlan_tci != 0) {
+		res += HDR_8021Q_LEN;
+	}
 
 	if (msg->flags & KNOT_XDP_MSG_IPV6) {
 		res += sizeof(struct ipv6hdr) - sizeof(struct iphdr);
@@ -406,6 +426,13 @@ inline static void prot_write_eth(void *data, const knot_xdp_msg_t *msg,
 
 	memcpy(eth->h_source, msg->eth_from, ETH_ALEN);
 	memcpy(eth->h_dest,   msg->eth_to,   ETH_ALEN);
+
+	if (msg->vlan_tci != 0) {
+		eth->h_proto = __constant_htons(ETH_P_8021Q);
+		memcpy(data + sizeof(*eth), &msg->vlan_tci, sizeof(msg->vlan_tci));
+		data += HDR_8021Q_LEN;
+		eth = data;
+	}
 
 	data += sizeof(*eth);
 

@@ -62,6 +62,8 @@ inline static void msg_init_reply(knot_xdp_msg_t *msg, const knot_xdp_msg_t *que
 	memcpy(&msg->ip_from, &query->ip_to,   sizeof(msg->ip_from));
 	memcpy(&msg->ip_to,   &query->ip_from, sizeof(msg->ip_to));
 
+	msg->vlan_tci = query->vlan_tci;
+
 	if (msg->flags & KNOT_XDP_MSG_TCP) {
 		msg->ackno = knot_tcp_next_seqno(query);
 		msg->seqno = query->ackno;

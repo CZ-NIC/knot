@@ -87,6 +87,10 @@ struct knot_xdp_socket {
 
 	/*! The limit of frame size. */
 	unsigned frame_limit;
+
+	/*! Mapping of interface indices to VLAN tags. */
+	uint16_t *vlan_map;
+	uint16_t vlan_map_max;
 };
 
 /*!

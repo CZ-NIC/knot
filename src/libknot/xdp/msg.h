@@ -55,6 +55,7 @@ typedef struct knot_xdp_msg {
 	uint16_t mss;
 	uint16_t win;
 	uint8_t win_scale;
+	uint16_t vlan_tci;
 } knot_xdp_msg_t;
 
 /*! @} */
