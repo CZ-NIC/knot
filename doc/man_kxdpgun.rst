@@ -76,6 +76,9 @@ Options
 **-R**, **--mac-remote**
   Override auto-detected remote MAC address.
 
+**-v**, **--vlan** *id*
+  Add VLAN 802.1Q header with the given id.
+
 **-h**, **--help**
   Print the program help.
 

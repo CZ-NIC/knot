@@ -119,6 +119,7 @@ typedef struct {
 	unsigned	at_once;
 	uint16_t	msgid;
 	uint16_t	edns_size;
+	uint16_t	vlan_tci;
 	uint8_t		local_mac[6], target_mac[6];
 	uint8_t		local_ip_range;
 	bool		ipv6;
@@ -399,6 +400,8 @@ static unsigned alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
 
 		memcpy(pkts[i].eth_from, ctx->local_mac, 6);
 		memcpy(pkts[i].eth_to, ctx->target_mac, 6);
+
+		pkts[i].vlan_tci = ctx->vlan_tci;
 
 		unique++;
 	}
@@ -959,6 +962,7 @@ static void print_help(void)
 	       " -l, --local <ip[/prefix]>"SPACE"Override auto-detected source IP address or subnet.\n"
 	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
+	       " -v, --vlan <id>          "SPACE"Add VLAN 802.1Q header with the given id.\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
 	       "\n"
@@ -1048,6 +1052,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "infile",     required_argument, NULL, 'i' },
 		{ "local-mac",  required_argument, NULL, 'L' },
 		{ "remote-mac", required_argument, NULL, 'R' },
+		{ "vlan",       required_argument, NULL, 'v' },
 		{ NULL }
 	};
 
@@ -1055,7 +1060,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1171,6 +1176,17 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		case 'R':
 			if (mac_sscan(optarg, ctx->target_mac) != KNOT_EOK) {
 				ERR2("invalid remote MAC address '%s'", optarg);
+				return false;
+			}
+			break;
+		case 'v':
+			assert(optarg);
+			arg = atoi(optarg);
+			if (arg > 0 && arg < 4095) {
+				uint16_t id = arg;
+				ctx->vlan_tci = htobe16(id);
+			} else {
+				ERR2("invalid VLAN id '%s'", optarg);
 				return false;
 			}
 			break;
