@@ -81,6 +81,7 @@ libknot.so.13 libknot13 #MINVER#
  knot_eth_name_from_addr@Base 3.2.0
  knot_eth_queues@Base 3.2.0
  knot_eth_rss@Base 3.2.0
+ knot_eth_vlans@Base 3.2.2
  knot_eth_xdp_mode@Base 3.2.0
  knot_get_obsolete_rdata_descriptor@Base 3.2.0
  knot_get_rdata_descriptor@Base 3.2.0
