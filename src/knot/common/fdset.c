@@ -227,6 +227,7 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 	 * `set->n < it->unprocessed`. */
 	if (it->unprocessed > 0 && unlikely(it->unprocessed > set->n)) {
 		assert(it->unprocessed == 232);
+		assert(0);
 		it->unprocessed = 0;
 	}
 #endif
@@ -258,6 +259,7 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 	 * `set->n < it->unprocessed`. */
 	if (it->unprocessed > 0 && unlikely(it->unprocessed > set->n - offset)) {
 		assert(it->unprocessed == 7);
+		assert(0);
 		it->unprocessed = 0;
 	}
 #endif

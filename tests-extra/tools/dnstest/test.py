@@ -210,9 +210,7 @@ class Test(object):
         if params.valgrind_bin and \
            (valgrind or (valgrind == None and server == "knot")):
             srv.valgrind = [params.valgrind_bin] + \
-                           params.valgrind_flags.split() + \
-                           ["--log-file=%s" % srv.valgrind_log] + \
-                           (["--undef-value-errors=no"] if xdp_enable else [])
+                           params.valgrind_flags.split()
             suppressions_file = "%s/%s.supp" % (params.common_data_dir, server)
             if os.path.isfile(suppressions_file):
                 srv.valgrind.append("--suppressions=%s" % suppressions_file)
