@@ -130,6 +130,7 @@ typedef struct {
 	knot_tcp_ignore_t ignore2;
 	uint16_t	target_port;
 	knot_xdp_filter_flag_t flags;
+	knot_xdp_conf_t xdp_conf;
 	unsigned	n_threads, thread_id;
 	knot_eth_rss_conf_t *rss_conf;
 } xdp_gun_ctx_t;
@@ -476,7 +477,7 @@ void *xdp_gun_thread(void *_ctx)
 	*/
 	pthread_mutex_lock(&global_stats.mutex);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
-	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, NULL);
+	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, &ctx->xdp_conf);
 	pthread_mutex_unlock(&global_stats.mutex);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u (%s)",
@@ -486,13 +487,14 @@ void *xdp_gun_thread(void *_ctx)
 	}
 
 	if (ctx->thread_id == 0) {
-		INFO2("using interface %s, XDP threads %u, %s%s%s, %s mode",
+		INFO2("using interface %s, XDP threads %u, %s%s%s, %s mode%s",
 		      ctx->dev, ctx->n_threads,
 		      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
 		      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
 		      (ctx->sending_mode[0] != '\0' ? ctx->sending_mode : ""),
 		      (knot_eth_xdp_mode(if_nametoindex(ctx->dev)) == KNOT_XDP_MODE_FULL ?
-		       "native" : "emulated"));
+		       "native" : "emulated"),
+		      (ctx->xdp_conf.force_copy ? ", COPY" : ""));
 	}
 
 	struct pollfd pfd = { knot_xdp_socket_fd(xsk), POLLIN, 0 };
@@ -959,6 +961,7 @@ static void print_help(void)
 	       " -l, --local <ip[/prefix]>"SPACE"Override auto-detected source IP address or subnet.\n"
 	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
+	       " -c, --copy               "SPACE"Force XDP copy mode.\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
 	       "\n"
@@ -1048,6 +1051,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "infile",     required_argument, NULL, 'i' },
 		{ "local-mac",  required_argument, NULL, 'L' },
 		{ "remote-mac", required_argument, NULL, 'R' },
+		{ "copy",       no_argument,       NULL, 'c' },
 		{ NULL }
 	};
 
@@ -1055,7 +1059,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:c", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1173,6 +1177,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				ERR2("invalid remote MAC address '%s'", optarg);
 				return false;
 			}
+			break;
+		case 'c':
+			ctx->xdp_conf.force_copy = true;
 			break;
 		default:
 			print_help();
