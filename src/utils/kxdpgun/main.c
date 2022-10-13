@@ -425,7 +425,7 @@ void *xdp_gun_thread(void *_ctx)
 	struct knot_xdp_socket *xsk;
 	struct timespec timer;
 	knot_xdp_msg_t pkts[ctx->at_once];
-	uint64_t errors = 0, lost = 0, duration = 0;
+	uint64_t errors = 0, busy = 0, duration = 0;
 	kxdpgun_stats_t local_stats = { 0 };
 	unsigned stats_triggered = 0;
 	knot_tcp_table_t *tcp_table = NULL;
@@ -529,7 +529,7 @@ void *xdp_gun_thread(void *_ctx)
 				knot_xdp_send_prepare(xsk);
 				unsigned alloced = alloc_pkts(pkts, xsk, ctx, tick);
 				if (alloced < ctx->at_once) {
-					lost += ctx->at_once - alloced;
+					busy += ctx->at_once - alloced;
 					if (alloced == 0) {
 						break;
 					}
@@ -575,7 +575,7 @@ void *xdp_gun_thread(void *_ctx)
 
 				uint32_t really_sent = 0;
 				if (knot_xdp_send(xsk, pkts, alloced, &really_sent) != KNOT_EOK) {
-					lost += alloced;
+					busy += alloced;
 				}
 				local_stats.qry_sent += really_sent;
 				(void)knot_xdp_send_finish(xsk);
@@ -786,8 +786,8 @@ void *xdp_gun_thread(void *_ctx)
 	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
 		(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, local_stats.ans_recv);
 	}
-	if (lost > 0) {
-		(void)snprintf(lost_str, sizeof(lost_str), ", lost %"PRIu64, lost);
+	if (busy > 0) {
+		(void)snprintf(lost_str, sizeof(lost_str), ", busy %"PRIu64, busy);
 	}
 	if (errors > 0) {
 		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
