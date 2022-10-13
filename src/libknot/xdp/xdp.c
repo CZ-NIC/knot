@@ -474,7 +474,7 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 		return KNOT_EOK;
 	}
 
-	int ret = sendmsg(xsk_socket__fd(socket->xsk), NULL, MSG_DONTWAIT);
+	int ret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
 	if (ret >= 0) {
 		return KNOT_EOK;
 	} else if (errno == ENOBUFS || errno == EAGAIN || errno == EBUSY ||

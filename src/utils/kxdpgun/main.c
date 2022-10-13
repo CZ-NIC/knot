@@ -563,7 +563,9 @@ void *xdp_gun_thread(void *_ctx)
 							local_stats.qry_sent++;
 						}
 					}
-					(void)knot_xdp_send_finish(xsk);
+					if (ctx->flags & KNOT_XDP_FILTER_DROP) {
+						(void)knot_xdp_send_finish(xsk);
+					}
 #endif // ENABLE_QUIC
 					break;
 				} else {
@@ -578,7 +580,9 @@ void *xdp_gun_thread(void *_ctx)
 					busy += alloced;
 				}
 				local_stats.qry_sent += really_sent;
-				(void)knot_xdp_send_finish(xsk);
+				if (ctx->flags & KNOT_XDP_FILTER_DROP) {
+					(void)knot_xdp_send_finish(xsk);
+				}
 
 				break;
 			}
