@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -122,6 +122,7 @@ typedef struct {
 	uint32_t ttl;
 	trie_t *geo_trie;
 	bool dnssec;
+	bool rotate;
 
 	geodb_t *geodb;
 	geodb_path_t paths[GEODB_MAX_DEPTH];
@@ -922,9 +923,10 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 			qdata->ecs->scope_len = netmask;
 		}
 
-		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rr, 0);
+		uint16_t rotate = ctx->rotate ? knot_wire_get_id(qdata->query->wire) : 0;
+		knot_pkt_put_rotate(pkt, KNOT_COMPR_HINT_QNAME, rr, rotate, 0);
 		if (ctx->dnssec && knot_pkt_has_dnssec(qdata->query) && rrsig != NULL) {
-			knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, rrsig, 0);
+			knot_pkt_put_rotate(pkt, KNOT_COMPR_HINT_QNAME, rrsig, rotate, 0);
 		}
 
 		// We've got an answer, set the AA bit.
@@ -1007,6 +1009,9 @@ static int load_module(check_ctx_t *check)
 				return ret;
 			}
 		}
+
+		conf = knotd_conf(mod, C_SRV, C_ANS_ROTATION, NULL);
+		ctx->rotate = conf.single.boolean;
 	}
 
 	// Parse geo configuration file.
