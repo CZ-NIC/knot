@@ -89,17 +89,15 @@ for i in range(ROUNDS):
 
     knot.ctl("zone-sign . nu.")
 
-    up = knot.update(catz)
+    up_add = knot.update(catz)
+    up_del = knot.update(catz)
     for j in range(batch):
 ##
         shutil.copyfile(zonefile_src, member_list[j][3])
-        up.add(member_list[j][1], 0, "PTR", member_list[j][0])
-    up.try_send()
-
-    up = knot.update(catz)
-    for j in range(batch):
-        up.delete(member_list[j][1], "PTR", member_list[j][0])
-    up.try_send()
+        up_add.add(member_list[j][1], 0, "PTR", member_list[j][0])
+        up_del.delete(member_list[j][1], "PTR", member_list[j][0])
+    up_add.try_send()
+    up_del.try_send()
 
     for j in range(batch):
         resp = knot.dig(member_list[j][2], "PTR", udp=False, tsig=True)
