@@ -337,6 +337,10 @@ is an optional hex encoded string to use as EDNS option value. This argument
 can be used multiple times. +noednsopt clears all EDNS options specified by
 +ednsopt.
 .TP
+\fB+\fP[\fBno\fP]\fBproxy\fP=\fISRC_ADDR\fP[#\fISRC_PORT\fP]\-\fIDST_ADDR\fP[#\fIDST_PORT\fP]
+Add PROXYv2 header with the specified source and destination addresses to the query.
+The default source port is 0 and destination port 53.
+.TP
 \fB+\fP[\fBno\fP]\fBjson\fP
 Use JSON for output encoding (RFC 8427).
 .TP
