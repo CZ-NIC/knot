@@ -1364,6 +1364,72 @@ static int opt_nojson(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int parse_addr(struct sockaddr_storage *addr, const char *arg, const char *def_port)
+{
+	srv_info_t *info = parse_nameserver(arg, def_port);
+	if (info == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	struct addrinfo *addr_info = NULL;
+	int ret = getaddrinfo(info->name, info->service, NULL, &addr_info);
+	srv_info_free(info);
+	if (ret != 0) {
+		return KNOT_EINVAL;
+	}
+
+	memcpy(addr, addr_info->ai_addr, addr_info->ai_addrlen);
+	freeaddrinfo(addr_info);
+
+	return KNOT_EOK;
+}
+
+static int opt_proxy(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	const char *sep = strchr(arg, '-');
+	if (sep == NULL || sep == arg || *(sep + 1) == '\0') {
+		ERR("invalid specification +proxy=%s", arg);
+		return KNOT_EINVAL;
+	}
+
+	char *src = strndup(arg, sep - arg);
+	int ret = parse_addr(&q->proxy.src, src, "0");
+	if (ret != KNOT_EOK) {
+		ERR("invalid proxy source address '%s'", src);
+		free(src);
+		return KNOT_EINVAL;
+	}
+
+	const char *dst = sep + 1;
+	ret = parse_addr(&q->proxy.dst, dst, "53");
+	if (ret != KNOT_EOK) {
+		ERR("invalid proxy destination address '%s'", dst);
+		free(src);
+		return KNOT_EINVAL;
+	}
+
+	if (q->proxy.src.ss_family != q->proxy.dst.ss_family) {
+		ERR("proxy address family mismatch '%s' versus '%s'", src, dst);
+		free(src);
+		return KNOT_EINVAL;
+	}
+	free(src);
+
+	return KNOT_EOK;
+}
+
+static int opt_noproxy(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->proxy.src.ss_family = 0;
+	q->proxy.dst.ss_family = 0;
+
+	return KNOT_EOK;
+}
+
 static const param_t kdig_opts2[] = {
 	{ "multiline",      ARG_NONE,     opt_multiline },
 	{ "nomultiline",    ARG_NONE,     opt_nomultiline },
@@ -1505,6 +1571,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "subnet",         ARG_REQUIRED, opt_subnet },
 	{ "nosubnet",       ARG_NONE,     opt_nosubnet },
+
+	{ "proxy",          ARG_REQUIRED, opt_proxy },
+	{ "noproxy",        ARG_NONE,     opt_noproxy },
 
 	// Obsolete aliases.
 	{ "client",         ARG_REQUIRED, opt_subnet },
@@ -2264,6 +2333,7 @@ static void print_help(void)
 	       "       +[no]cookie[=HEX]          Attach EDNS(0) cookie to the query.\n"
 	       "       +[no]badcookie             Repeat a query with the correct cookie.\n"
 	       "       +[no]ednsopt=CODE[:HEX]    Set custom EDNS option.\n"
+	       "       +[no]proxy=SADDR-DADDR     Add PROXYv2 header with src and dest addresses.\n"
 	       "       +[no]json                  Use JSON for output encoding (RFC 8427).\n"
 	       "       +noidn                     Disable IDN transformation.\n"
 	       "\n"

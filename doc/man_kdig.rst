@@ -305,7 +305,7 @@ Options
   AXFR/IXFR.
 
 **+**\ [\ **no**\ ]\ **cookie**\[\ =\ *HEX*\]
-   Attach EDNS(0) cookie to the query.
+  Attach EDNS(0) cookie to the query.
 
 **+**\ [\ **no**\ ]\ **badcookie**
   Repeat a query with the correct cookie.
@@ -315,6 +315,10 @@ Options
   is an optional hex encoded string to use as EDNS option value. This argument
   can be used multiple times. +noednsopt clears all EDNS options specified by
   +ednsopt.
+
+**+**\ [\ **no**\ ]\ **proxy**\ =\ *SRC_ADDR*\[#\ *SRC_PORT*\]-*DST_ADDR*\[#\ *DST_PORT*\]
+  Add PROXYv2 header with the specified source and destination addresses to the query.
+  The default source port is 0 and destination port 53.
 
 **+**\ [\ **no**\ ]\ **json**
   Use JSON for output encoding (RFC 8427).

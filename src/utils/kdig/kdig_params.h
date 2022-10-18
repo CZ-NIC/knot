@@ -134,6 +134,11 @@ struct query {
 	knot_edns_client_subnet_t subnet;
 	/*!< Lits of custom EDNS options. */
 	list_t		edns_opts;
+	/*!< PROXYv2 source and destination address. */
+	struct {
+		struct sockaddr_storage src;
+		struct sockaddr_storage dst;
+	} proxy;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;
