@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include <linux/if_ether.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/uio.h>

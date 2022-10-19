@@ -424,6 +424,49 @@ inline static bool check_dns_payload(struct iovec *payl, xdp_gun_ctx_t *ctx,
 	return true;
 }
 
+#ifdef ENABLE_QUIC
+static int quic_alloc_cb(knot_quic_reply_t *rpl)
+{
+	xdp_gun_ctx_t *ctx = rpl->in_ctx;
+	knot_xdp_msg_t *msg = rpl->out_ctx;
+
+	unsigned flags = ctx->ipv6 ? KNOT_XDP_MSG_IPV6 : 0;
+	if (ctx->vlan_tci != 0) {
+		flags |= KNOT_XDP_MSG_VLAN;
+	}
+
+	int ret = knot_xdp_send_alloc(rpl->sock, flags, msg);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	memcpy(msg->eth_from, ctx->local_mac,  sizeof(ctx->local_mac));
+	memcpy(msg->eth_to,   ctx->target_mac, sizeof(ctx->target_mac));
+	memcpy(&msg->ip_from, &ctx->local_ip,  sizeof(msg->ip_from));
+	memcpy(&msg->ip_to,   &ctx->target_ip, sizeof(msg->ip_to));
+
+	msg->vlan_tci = ctx->vlan_tci;
+
+	return KNOT_EOK;
+}
+
+static int quic_reply_alloc_cb(knot_quic_reply_t *rpl)
+{
+	return knot_xdp_reply_alloc(rpl->sock, rpl->in_ctx, rpl->out_ctx);
+}
+
+static int quic_send_cb(knot_quic_reply_t *rpl)
+{
+	uint32_t sent = 0;
+	return knot_xdp_send(rpl->sock, rpl->out_ctx, 1, &sent);
+}
+
+static void quic_free_cb(knot_quic_reply_t *rpl)
+{
+	knot_xdp_send_free(rpl->sock, rpl->out_ctx, 1);
+}
+#endif // ENABLE_QUIC
+
 void *xdp_gun_thread(void *_ctx)
 {
 	xdp_gun_ctx_t *ctx = _ctx;
@@ -437,9 +480,9 @@ void *xdp_gun_thread(void *_ctx)
 #ifdef ENABLE_QUIC
 	knot_xquic_table_t *quic_table = NULL;
 	struct knot_quic_creds *quic_creds = NULL;
-	knot_xdp_msg_t quic_fake_req = { 0 };
 	list_t quic_sessions;
 	init_list(&quic_sessions);
+	knot_quic_reply_t replies[ctx->at_once];
 #endif // ENABLE_QUIC
 	const uint64_t extra_wait = ctx->quic ? 4000000 : 1000000;
 
@@ -462,13 +505,6 @@ void *xdp_gun_thread(void *_ctx)
 			ERR2("failed to allocate QUIC connection table");
 			return NULL;
 		}
-		ctx->target_ip.sin6_port = htobe16(ctx->target_port);
-
-		memcpy(quic_fake_req.eth_from, ctx->target_mac,  sizeof(ctx->target_mac));
-		memcpy(quic_fake_req.eth_to,   ctx->local_mac,   sizeof(ctx->local_mac));
-		memcpy(&quic_fake_req.ip_from, &ctx->target_ip,  sizeof(quic_fake_req.ip_from));
-		memcpy(&quic_fake_req.ip_to,   &ctx->local_ip,   sizeof(quic_fake_req.ip_to));
-		quic_fake_req.flags = ctx->ipv6 ? KNOT_XDP_MSG_IPV6 : 0;
 #else
 		assert(0);
 #endif // ENABLE_QUIC
@@ -512,7 +548,30 @@ void *xdp_gun_thread(void *_ctx)
 	next_payload(&payload_ptr, ctx->thread_id);
 
 #ifdef ENABLE_QUIC
+	knot_quic_reply_t send_reply = {
+		.out_payload = &pkts->payload,
+		.in_ctx = ctx,
+		.out_ctx = pkts,
+		.sock = xsk,
+		.alloc_reply = quic_alloc_cb,
+		.send_reply = quic_send_cb,
+		.free_reply = quic_free_cb,
+	};
+	knot_xdp_msg_t msg_out;
+	for (int i = 0; i < ctx->at_once; i++) {
+		knot_quic_reply_t *reply = &replies[i];
+		memset(reply, 0, sizeof(*reply));
+		reply->out_payload = &msg_out.payload;
+		reply->out_ctx = &msg_out;
+		reply->sock = xsk;
+		reply->alloc_reply = quic_reply_alloc_cb;
+		reply->send_reply = quic_send_cb;
+		reply->free_reply = quic_free_cb;
+	}
+
+	ctx->target_ip.sin6_port = htobe16(ctx->target_port);
 	knot_sweep_stats_t sweep_stats = { 0 };
+
 	uint16_t local_ports[QUIC_THREAD_PORTS];
 	uint16_t port = LOCAL_PORT_MIN;
 	for (int i = 0; i < QUIC_THREAD_PORTS; ++i) {
@@ -546,12 +605,16 @@ void *xdp_gun_thread(void *_ctx)
 				} else if (ctx->quic) {
 #ifdef ENABLE_QUIC
 					uint16_t local_port = local_ports[local_ports_it++ % QUIC_THREAD_PORTS];
+					ctx->local_ip.sin6_port = htobe16(local_port);
+
 					for (unsigned i = 0; i < ctx->at_once; i++) {
 						knot_xquic_conn_t *newconn = NULL;
-						ctx->local_ip.sin6_port = htobe16(local_port);
 						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
 						if (ret == KNOT_EOK) {
-							struct iovec tmp = { knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len), 0 };
+							struct iovec tmp = {
+								knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len),
+								0
+							};
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
 							if (EMPTY_LIST(quic_sessions)) {
 								newconn->streams_count = -1;
@@ -560,8 +623,8 @@ void *xdp_gun_thread(void *_ctx)
 								rem_node(session);
 								(void)knot_xquic_session_load(newconn, session);
 							}
-							quic_fake_req.ip_to.sin6_port = htobe16(local_port);
-							ret = knot_xquic_send(quic_table, newconn, xsk, &quic_fake_req, KNOT_EOK, 1, (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
+							ret = knot_quic_send(quic_table, newconn, &send_reply, 1,
+							                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
 						}
 						if (ret == KNOT_EOK) {
 							local_stats.qry_sent++;
@@ -659,8 +722,17 @@ void *xdp_gun_thread(void *_ctx)
 				} else if (ctx->quic) {
 #ifdef ENABLE_QUIC
 					knot_xquic_conn_t *relays[recvd];
+
 					for (size_t i = 0; i < recvd; i++) {
-						ret = knot_xquic_handle(quic_table, &pkts[i], 5000000000L, &relays[i]);
+						knot_xdp_msg_t *msg_in = &pkts[i];
+						knot_quic_reply_t *reply = &replies[i];
+
+						reply->ip_rem = (struct sockaddr_storage *)&msg_in->ip_from;
+						reply->ip_loc = (struct sockaddr_storage *)&msg_in->ip_to;
+						reply->in_payload = &msg_in->payload;
+						reply->in_ctx = msg_in;
+
+						ret = knot_quic_handle(quic_table, &replies[i], 5000000000L, &relays[i]);
 						if (ret == KNOT_ECONN) {
 							local_stats.rst_recv++;
 							continue;
@@ -723,7 +795,8 @@ void *xdp_gun_thread(void *_ctx)
 								continue;
 							}
 						}
-						ret = knot_xquic_send(quic_table, rl, xsk, &pkts[i], KNOT_EOK, 4, (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
+						ret = knot_quic_send(quic_table, rl, &replies[i], 4,
+						                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
 						if (ret != KNOT_EOK) {
 							errors++;
 						}
