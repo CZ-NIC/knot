@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ typedef struct xdp_handle_ctx {
 
 #ifdef ENABLE_QUIC
 	knot_xquic_conn_t *quic_relays[XDP_BATCHLEN];
-	int quic_rets[XDP_BATCHLEN];
+	knot_quic_reply_t quic_replies[XDP_BATCHLEN];
 	knot_xquic_table_t *quic_table;
 	knot_sweep_stats_t quic_closed;
 #endif // ENABLE_QUIC
@@ -150,6 +150,22 @@ static void quic_log_cb(const char *line)
 {
 	log_debug("QUIC: %s", line);
 }
+
+static int quic_alloc_cb(struct knot_quic_reply *rpl)
+{
+	return knot_xdp_reply_alloc(rpl->sock, rpl->in_ctx, rpl->out_ctx);
+}
+
+static int quic_send_cb(struct knot_quic_reply *rpl)
+{
+	uint32_t sent = 0;
+	return knot_xdp_send(rpl->sock, rpl->out_ctx, 1, &sent);
+}
+
+static void quic_free_cb(struct knot_quic_reply *rpl)
+{
+	knot_xdp_send_free(rpl->sock, rpl->out_ctx, 1);
+}
 #endif // ENABLE_QUIC
 
 xdp_handle_ctx_t *xdp_handle_init(struct server *server, knot_xdp_socket_t *xdp_sock)
@@ -188,6 +204,13 @@ xdp_handle_ctx_t *xdp_handle_init(struct server *server, knot_xdp_socket_t *xdp_
 		}
 		if (conf_get_bool(pconf, C_XDP, C_QUIC_LOG)) {
 			ctx->quic_table->log_cb = quic_log_cb;
+		}
+		for (int i = 0; i < XDP_BATCHLEN; i++) {
+			knot_quic_reply_t *reply = &ctx->quic_replies[i];
+			reply->sock = xdp_sock;
+			reply->alloc_reply = quic_alloc_cb;
+			reply->send_reply = quic_send_cb;
+			reply->free_reply = quic_free_cb;
 		}
 #else
 		assert(0); // verified in configuration checks
@@ -368,9 +391,19 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
-		ctx->quic_rets[i] = knot_xquic_handle(ctx->quic_table, msg_recv,
-		                                      ctx->quic_idle_close,
-		                                      &ctx->quic_relays[i]);
+		knot_quic_reply_t *reply = &ctx->quic_replies[i];
+		knot_xdp_msg_t *msg_out = &ctx->msg_send_udp[i];
+
+		reply->ip_rem = (struct sockaddr_storage *)&msg_recv->ip_from;
+		reply->ip_loc = (struct sockaddr_storage *)&msg_recv->ip_to;
+		reply->in_payload = &msg_recv->payload;
+		reply->out_payload = &msg_out->payload;
+		reply->in_ctx = msg_recv;
+		reply->out_ctx = msg_out;
+
+		(void)knot_quic_handle(ctx->quic_table, reply, ctx->quic_idle_close,
+		                       &ctx->quic_relays[i]);
+
 		knot_xquic_conn_t *rl = ctx->quic_relays[i];
 
 		int64_t stream_id;
@@ -434,9 +467,8 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 			continue;
 		}
 
-		ret = knot_xquic_send(ctx->quic_table, ctx->quic_relays[i], ctx->sock,
-		                      &ctx->msg_recv[i], ctx->quic_rets[i],
-		                      QUIC_MAX_SEND_PER_RECV, false);
+		ret = knot_quic_send(ctx->quic_table, ctx->quic_relays[i],
+		                     &ctx->quic_replies[i], QUIC_MAX_SEND_PER_RECV, false);
 		if (ret != KNOT_EOK) {
 			log_notice("QUIC, failed to send some packets");
 		}
