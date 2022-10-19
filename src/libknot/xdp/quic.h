@@ -26,10 +26,27 @@
 #pragma once
 
 #include "libknot/xdp/quic_conn.h"
+#ifdef ENABLE_XDP
 #include "libknot/xdp/xdp.h"
+#endif
 
 struct knot_quic_creds;
 struct knot_quic_session;
+
+typedef struct knot_quic_reply {
+	struct sockaddr_storage *ip_rem;
+	struct sockaddr_storage *ip_loc;
+	struct iovec *in_payload;
+	struct iovec *out_payload;
+	void *in_ctx;
+	void *out_ctx;
+	void *ctx;
+	int in_ret;
+
+	int (*alloc_reply)(struct knot_quic_reply *);
+	int (*send_reply)(struct knot_quic_reply *);
+	void (*free_reply)(struct knot_quic_reply *);
+} knot_quic_reply_t;
 
 /*!
  * \brief Gets data needed for session resumption.
@@ -104,31 +121,48 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_in6 *dest,
 /*!
  * \brief Handle incoming QUIC packet.
  *
- * \param table           QUIC connectoins table-
- * \param msg             Incoming XDP packet.
+ * \param table           QUIC connectoins table.
+ * \param rpl             Incoming packet info.
  * \param idle_timeout    Configured idle timeout for connections (in nanoseconds).
  * \param out_conn        Out: QUIC connection that this packet belongs to.
  *
  * \return KNOT_E*
  */
-int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg,
-                      uint64_t idle_timeout, knot_xquic_conn_t **out_conn);
+int knot_quic_handle(knot_xquic_table_t *table, const knot_quic_reply_t *rpl,
+                     uint64_t idle_timeout, knot_xquic_conn_t **out_conn);
 
 /*!
  * \brief Send outgoing QUIC packet(s) for a connection.
  *
  * \param quic_table         QUIC connection table.
- * \param relay              QUIC connection.
- * \param sock               XDP socket.
- * \param in_msg             Previous incomming packet for this connection.
- * \param handle_ret         Error returned from knot_xquic_handle() for incoming packet.
+ * \param qconn              QUIC connection.
+ * \param reply              Incoming/outgoing packet info.
  * \param max_msgs           Maxmimum packets to be sent.
  * \param ignore_lastbyte    Cut off last byte of QUIC paylod.
  *
  * \return KNOT_E*
  */
-int knot_xquic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *relay,
-                    knot_xdp_socket_t *sock, knot_xdp_msg_t *in_msg,
-                    int handle_ret, unsigned max_msgs, bool ignore_lastbyte);
+int knot_quic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *qconn,
+                   knot_quic_reply_t *reply, unsigned max_msgs, bool ignore_lastbyte);
+
+#ifdef ENABLE_XDP
+
+/*!
+ * \brief Handle incoming XDP packet.
+ *
+ * \param table           QUIC connectoins table.
+ * \param rpl             (Out:) incoming packet info.
+ * \param sock            XDP socket.
+ * \param xmsg            XDP incoming XDP packet.
+ * \param idle_timeout    Configured idle timeout for connections (in nanoseconds).
+ * \param out_conn        Out: QUIC connection that this packet belongs to.
+ *
+ * \return KNOT_E*
+ */
+int knot_xquic_handle(knot_xquic_table_t *table, knot_quic_reply_t *rpl,
+                      knot_xdp_socket_t *sock, knot_xdp_msg_t *xmsg,
+                      uint64_t idle_timeout, knot_xquic_conn_t **out_conn);
+
+#endif // ENABLE_XDP
 
 /*! @} */
