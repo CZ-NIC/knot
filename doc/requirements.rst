@@ -110,6 +110,6 @@ recommendations.
 DNS-over-QUIC (DoQ) support in :doc:`knotd<man_knotd>`, :doc:`kxdpgun<man_kxdpgun>`,
 and :doc:`kdig<man_kdig>`:
 
-* libngtcp2 >= 0.8.0 (or embedded one via `--enable-quic`)
+* libngtcp2 >= 0.10.0 (or embedded one via `--enable-quic`)
 * gnutls >= 3.7.2
 * :ref:`Mode XDP` (for knotd and kxdpgun)

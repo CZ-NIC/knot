@@ -35,6 +35,7 @@
 #include "ngtcp2_addr.h"
 #include "ngtcp2_path.h"
 #include "ngtcp2_rcvry.h"
+#include "ngtcp2_unreachable.h"
 
 /* NGTCP2_FLOW_WINDOW_RTT_FACTOR is the factor of RTT when flow
    control window auto-tuning is triggered. */
@@ -810,7 +811,7 @@ static void conn_reset_conn_stat_cc(ngtcp2_conn *conn,
   cstat->pto_count = 0;
   cstat->loss_detection_timer = UINT64_MAX;
   cstat->cwnd =
-      ngtcp2_cc_compute_initcwnd(conn->local.settings.max_udp_payload_size);
+      ngtcp2_cc_compute_initcwnd(conn->local.settings.max_tx_udp_payload_size);
   cstat->ssthresh = UINT64_MAX;
   cstat->congestion_recovery_start_ts = UINT64_MAX;
   cstat->bytes_in_flight = 0;
@@ -959,7 +960,7 @@ static void conn_handle_tx_ecn(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
   case NGTCP2_ECN_STATE_FAILED:
     break;
   default:
-    assert(0);
+    ngtcp2_unreachable();
   }
 }
 
@@ -1065,8 +1066,8 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_cid *dcid,
 
   assert(settings->max_window <= NGTCP2_MAX_VARINT);
   assert(settings->max_stream_window <= NGTCP2_MAX_VARINT);
-  assert(settings->max_udp_payload_size);
-  assert(settings->max_udp_payload_size <= NGTCP2_HARD_MAX_UDP_PAYLOAD_SIZE);
+  assert(settings->max_tx_udp_payload_size);
+  assert(settings->max_tx_udp_payload_size <= NGTCP2_HARD_MAX_UDP_PAYLOAD_SIZE);
   assert(params->active_connection_id_limit <= NGTCP2_MAX_DCID_POOL_SIZE);
   assert(params->initial_max_data <= NGTCP2_MAX_VARINT);
   assert(params->initial_max_stream_data_bidi_local <= NGTCP2_MAX_VARINT);
@@ -1157,8 +1158,8 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_cid *dcid,
 
   conn_reset_conn_stat(*pconn, &(*pconn)->cstat);
   (*pconn)->cstat.initial_rtt = settings->initial_rtt;
-  (*pconn)->cstat.max_udp_payload_size =
-      (*pconn)->local.settings.max_udp_payload_size;
+  (*pconn)->cstat.max_tx_udp_payload_size =
+      (*pconn)->local.settings.max_tx_udp_payload_size;
 
   ngtcp2_rst_init(&(*pconn)->rst);
 
@@ -1194,7 +1195,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_cid *dcid,
     }
     break;
   default:
-    assert(0);
+    ngtcp2_unreachable();
   }
 
   rv = pktns_new(&(*pconn)->in_pktns, NGTCP2_PKTNS_ID_INITIAL, &(*pconn)->rst,
@@ -1888,7 +1889,7 @@ static size_t pktns_select_pkt_numlen(ngtcp2_pktns *pktns) {
  */
 static uint64_t conn_get_cwnd(ngtcp2_conn *conn) {
   return conn->pv && (conn->pv->flags & NGTCP2_PV_FLAG_FALLBACK_ON_FAILURE)
-             ? ngtcp2_cc_compute_initcwnd(conn->cstat.max_udp_payload_size)
+             ? ngtcp2_cc_compute_initcwnd(conn->cstat.max_tx_udp_payload_size)
              : conn->cstat.cwnd;
 }
 
@@ -2590,8 +2591,7 @@ conn_write_handshake_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi, uint8_t *dest,
     cc.hp_ctx = pktns->crypto.tx.hp_ctx;
     break;
   default:
-    assert(0);
-    abort();
+    ngtcp2_unreachable();
   }
 
   cc.aead = pktns->crypto.ctx.aead;
@@ -2673,7 +2673,7 @@ conn_write_handshake_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi, uint8_t *dest,
 
       rv = conn_ppe_write_frame_hd_log(conn, &ppe, &hd_logged, &hd, &nfrc->fr);
       if (rv != 0) {
-        assert(0);
+        ngtcp2_unreachable();
       }
 
       *pfrc = nfrc;
@@ -2872,8 +2872,7 @@ static ngtcp2_ssize conn_write_ack_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
     ack_delay_exponent = conn->local.transport_params.ack_delay_exponent;
     break;
   default:
-    assert(0);
-    abort();
+    ngtcp2_unreachable();
   }
 
   if (!pktns->crypto.tx.ckm) {
@@ -2992,11 +2991,11 @@ static ngtcp2_ssize conn_write_handshake_ack_pkts(ngtcp2_conn *conn,
   ngtcp2_ssize res = 0, nwrite = 0;
 
   /* In the most cases, client sends ACK in conn_write_handshake_pkt.
-     This function is only called when it is CWND limited.  It is not
-     required for client to send ACK for server Initial.  This is
-     because once it gets server Initial, it gets Handshake tx key and
-     discards Initial key.  The only good reason to send ACK is give
-     server RTT measurement early. */
+     This function is only called when it is CWND limited or pacing
+     limited.  It is not required for client to send ACK for server
+     Initial.  This is because once it gets server Initial, it gets
+     Handshake tx key and discards Initial key.  The only good reason
+     to send ACK is give server RTT measurement early. */
   if (conn->server && conn->in_pktns) {
     nwrite =
         conn_write_ack_pkt(conn, pi, dest, destlen, NGTCP2_PKT_INITIAL, ts);
@@ -3574,7 +3573,7 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
       break;
     default:
       /* Unreachable */
-      assert(0);
+      ngtcp2_unreachable();
     }
 
     cc->encrypt = conn->callbacks.encrypt;
@@ -3717,8 +3716,7 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
 
         break;
       case NGTCP2_FRAME_STREAM:
-        assert(0);
-        break;
+        ngtcp2_unreachable();
       case NGTCP2_FRAME_MAX_STREAMS_BIDI:
         if ((*pfrc)->fr.max_streams.max_streams <
             conn->remote.bidi.max_streams) {
@@ -3757,8 +3755,7 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
         }
         break;
       case NGTCP2_FRAME_CRYPTO:
-        assert(0);
-        break;
+        ngtcp2_unreachable();
       }
 
       rv = conn_ppe_write_frame_hd_log(conn, ppe, &hd_logged, hd, &(*pfrc)->fr);
@@ -3802,7 +3799,7 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
 
         rv = conn_ppe_write_frame_hd_log(conn, ppe, &hd_logged, hd, &nfrc->fr);
         if (rv != 0) {
-          assert(0);
+          ngtcp2_unreachable();
         }
 
         *pfrc = nfrc;
@@ -3976,7 +3973,7 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
 
         rv = conn_ppe_write_frame_hd_log(conn, ppe, &hd_logged, hd, &nfrc->fr);
         if (rv != 0) {
-          assert(0);
+          ngtcp2_unreachable();
         }
 
         *pfrc = nfrc;
@@ -4068,7 +4065,7 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
 
     rv = conn_ppe_write_frame_hd_log(conn, ppe, &hd_logged, hd, &nfrc->fr);
     if (rv != 0) {
-      assert(0);
+      ngtcp2_unreachable();
     }
 
     *pfrc = nfrc;
@@ -4178,7 +4175,7 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
          calls ngtcp2_conn_writev_datagram again. */
       break;
     default:
-      assert(0);
+      ngtcp2_unreachable();
     }
   }
 
@@ -4360,8 +4357,7 @@ ngtcp2_ssize ngtcp2_conn_write_single_frame_pkt(
     break;
   default:
     /* We don't support 0-RTT packet in this function. */
-    assert(0);
-    abort();
+    ngtcp2_unreachable();
   }
 
   cc.aead = pktns->crypto.ctx.aead;
@@ -4488,7 +4484,17 @@ ngtcp2_ssize ngtcp2_conn_write_single_frame_pkt(
     conn_update_keep_alive_last_ts(conn, ts);
   }
 
-  conn->tx.pacing.pktlen += (size_t)nwrite;
+  if (!padded) {
+    switch (fr->type) {
+    case NGTCP2_FRAME_ACK:
+    case NGTCP2_FRAME_ACK_ECN:
+      break;
+    default:
+      conn->tx.pacing.pktlen += (size_t)nwrite;
+    }
+  } else {
+    conn->tx.pacing.pktlen += (size_t)nwrite;
+  }
 
   ngtcp2_qlog_metrics_updated(&conn->qlog, &conn->cstat);
 
@@ -4689,9 +4695,9 @@ static int conn_start_pmtud(ngtcp2_conn *conn) {
   assert(conn->remote.transport_params->max_udp_payload_size >=
          NGTCP2_MAX_UDP_PAYLOAD_SIZE);
 
-  hard_max_udp_payload_size =
-      (size_t)ngtcp2_min(conn->remote.transport_params->max_udp_payload_size,
-                         (uint64_t)conn->local.settings.max_udp_payload_size);
+  hard_max_udp_payload_size = (size_t)ngtcp2_min(
+      conn->remote.transport_params->max_udp_payload_size,
+      (uint64_t)conn->local.settings.max_tx_udp_payload_size);
 
   rv = ngtcp2_pmtud_new(&conn->pmtud, conn->dcid.current.max_udp_payload_size,
                         hard_max_udp_payload_size,
@@ -4850,9 +4856,9 @@ static size_t conn_shape_udp_payload(ngtcp2_conn *conn, const ngtcp2_dcid *dcid,
   }
 
   payloadlen =
-      ngtcp2_min(payloadlen, conn->local.settings.max_udp_payload_size);
+      ngtcp2_min(payloadlen, conn->local.settings.max_tx_udp_payload_size);
 
-  if (conn->local.settings.no_udp_payload_size_shaping) {
+  if (conn->local.settings.no_tx_udp_payload_size_shaping) {
     return payloadlen;
   }
 
@@ -5999,8 +6005,7 @@ static size_t pkt_num_bits(size_t pkt_numlen) {
   case 4:
     return 32;
   default:
-    assert(0);
-    abort();
+    ngtcp2_unreachable();
   }
 }
 
@@ -6568,7 +6573,7 @@ conn_recv_handshake_pkt(ngtcp2_conn *conn, const ngtcp2_path *path,
     }
     break;
   default:
-    assert(0);
+    ngtcp2_unreachable();
   }
 
   if (payloadlen == 0) {
@@ -9020,7 +9025,7 @@ static ngtcp2_ssize conn_recv_pkt(ngtcp2_conn *conn, const ngtcp2_path *path,
       break;
     default:
       /* Unreachable */
-      assert(0);
+      ngtcp2_unreachable();
     }
   } else {
     rv = conn_verify_dcid(conn, &new_cid_used, &hd);
@@ -9899,8 +9904,7 @@ int ngtcp2_conn_read_pkt_versioned(ngtcp2_conn *conn, const ngtcp2_path *path,
     }
     break;
   default:
-    assert(0);
-    abort();
+    ngtcp2_unreachable();
   }
 
   return conn_recv_cpkt(conn, path, pi, pkt, pktlen, ts);
@@ -11082,15 +11086,28 @@ conn_client_validate_transport_params(ngtcp2_conn *conn,
     assert(vneg_other_versions_includes(conn->vneg.other_versions,
                                         conn->vneg.other_versionslen,
                                         conn->negotiated_version));
-  } else if (conn->client_chosen_version != conn->negotiated_version ||
-             conn->client_chosen_version !=
-                 conn->local.settings.original_version) {
+  } else if (conn->client_chosen_version != conn->negotiated_version) {
     return NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE;
   }
 
   /* When client reacted upon Version Negotiation */
   if (conn->local.settings.original_version != conn->client_chosen_version) {
-    assert(params->version_info_present);
+    if (!params->version_info_present) {
+      assert(conn->client_chosen_version == conn->negotiated_version);
+
+      /* QUIC v1 (and the supported draft versions) are treated
+         specially.  If version_info is missing, no further validation
+         is necessary.
+         https://datatracker.ietf.org/doc/html/draft-ietf-quic-version-negotiation-10#section-8
+       */
+      if (conn->client_chosen_version == NGTCP2_PROTO_VER_V1 ||
+          (NGTCP2_PROTO_VER_DRAFT_MIN <= conn->client_chosen_version &&
+           conn->client_chosen_version <= NGTCP2_PROTO_VER_DRAFT_MAX)) {
+        return 0;
+      }
+
+      return NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE;
+    }
 
     /* Server choose original version after Version Negotiation.
        Draft does not say this particular case, but this smells like
@@ -11499,8 +11516,9 @@ static ngtcp2_ssize conn_write_vmsg_wrapper(ngtcp2_conn *conn,
 
   if (vmsg == NULL && cstat->bytes_in_flight < cstat->cwnd &&
       conn->tx.strmq_nretrans == 0) {
-    if (conn->local.settings.no_udp_payload_size_shaping) {
-      undersized = (size_t)nwrite < conn->local.settings.max_udp_payload_size;
+    if (conn->local.settings.no_tx_udp_payload_size_shaping) {
+      undersized =
+          (size_t)nwrite < conn->local.settings.max_tx_udp_payload_size;
     } else {
       undersized = (size_t)nwrite < conn->dcid.current.max_udp_payload_size;
     }
@@ -11509,7 +11527,7 @@ static ngtcp2_ssize conn_write_vmsg_wrapper(ngtcp2_conn *conn,
       conn->rst.app_limited = conn->rst.delivered + cstat->bytes_in_flight;
 
       if (conn->rst.app_limited == 0) {
-        conn->rst.app_limited = cstat->max_udp_payload_size;
+        conn->rst.app_limited = cstat->max_tx_udp_payload_size;
       }
     }
   }
@@ -11642,14 +11660,16 @@ ngtcp2_ssize ngtcp2_conn_write_vmsg(ngtcp2_conn *conn, ngtcp2_path *path,
     pi->ecn = NGTCP2_ECN_NOT_ECT;
   }
 
-  if (!conn_pacing_pkt_tx_allowed(conn, ts)) {
-    return 0;
-  }
-
   switch (conn->state) {
   case NGTCP2_CS_CLIENT_INITIAL:
   case NGTCP2_CS_CLIENT_WAIT_HANDSHAKE:
   case NGTCP2_CS_CLIENT_TLS_HANDSHAKE_FAILED:
+    if (!conn_pacing_pkt_tx_allowed(conn, ts)) {
+      assert(!ppe_pending);
+
+      return conn_write_handshake_ack_pkts(conn, pi, dest, origlen, ts);
+    }
+
     nwrite = conn_client_write_handshake(conn, pi, dest, destlen, vmsg, ts);
     /* We might be unable to write a packet because of depletion of
        congestion window budget, perhaps due to packet loss that
@@ -11680,6 +11700,21 @@ ngtcp2_ssize ngtcp2_conn_write_vmsg(ngtcp2_conn *conn, ngtcp2_path *path,
   case NGTCP2_CS_SERVER_INITIAL:
   case NGTCP2_CS_SERVER_WAIT_HANDSHAKE:
   case NGTCP2_CS_SERVER_TLS_HANDSHAKE_FAILED:
+    if (!conn_pacing_pkt_tx_allowed(conn, ts)) {
+      assert(!ppe_pending);
+
+      if (!(conn->dcid.current.flags & NGTCP2_DCID_FLAG_PATH_VALIDATED)) {
+        server_tx_left = conn_server_tx_left(conn, &conn->dcid.current);
+        if (server_tx_left == 0) {
+          return 0;
+        }
+
+        origlen = (size_t)ngtcp2_min((uint64_t)origlen, server_tx_left);
+      }
+
+      return conn_write_handshake_ack_pkts(conn, pi, dest, origlen, ts);
+    }
+
     if (!ppe_pending) {
       if (!(conn->dcid.current.flags & NGTCP2_DCID_FLAG_PATH_VALIDATED)) {
         server_tx_left = conn_server_tx_left(conn, &conn->dcid.current);
@@ -11718,7 +11753,7 @@ ngtcp2_ssize ngtcp2_conn_write_vmsg(ngtcp2_conn *conn, ngtcp2_path *path,
               NGTCP2_DATAGRAM_OVERHEAD;
           break;
         default:
-          assert(0);
+          ngtcp2_unreachable();
         }
 
         if (conn->in_pktns && write_datalen > 0) {
@@ -11758,6 +11793,22 @@ ngtcp2_ssize ngtcp2_conn_write_vmsg(ngtcp2_conn *conn, ngtcp2_path *path,
     }
     break;
   case NGTCP2_CS_POST_HANDSHAKE:
+    if (!conn_pacing_pkt_tx_allowed(conn, ts)) {
+      assert(!ppe_pending);
+
+      if (conn->server &&
+          !(conn->dcid.current.flags & NGTCP2_DCID_FLAG_PATH_VALIDATED)) {
+        server_tx_left = conn_server_tx_left(conn, &conn->dcid.current);
+        if (server_tx_left == 0) {
+          return 0;
+        }
+
+        origlen = (size_t)ngtcp2_min((uint64_t)origlen, server_tx_left);
+      }
+
+      return conn_write_ack_pkt(conn, pi, dest, origlen, NGTCP2_PKT_1RTT, ts);
+    }
+
     break;
   case NGTCP2_CS_CLOSING:
     return NGTCP2_ERR_CLOSING;
@@ -12536,14 +12587,24 @@ static void conn_discard_early_data_state(ngtcp2_conn *conn) {
   }
 }
 
-void ngtcp2_conn_early_data_rejected(ngtcp2_conn *conn) {
+int ngtcp2_conn_early_data_rejected(ngtcp2_conn *conn) {
   if (conn->flags & NGTCP2_CONN_FLAG_EARLY_DATA_REJECTED) {
-    return;
+    return 0;
   }
 
   conn->flags |= NGTCP2_CONN_FLAG_EARLY_DATA_REJECTED;
 
   conn_discard_early_data_state(conn);
+
+  if (conn->callbacks.early_data_rejected) {
+    return conn->callbacks.early_data_rejected(conn, conn->user_data);
+  }
+
+  return 0;
+}
+
+int ngtcp2_conn_get_early_data_rejected(ngtcp2_conn *conn) {
+  return (conn->flags & NGTCP2_CONN_FLAG_EARLY_DATA_REJECTED) != 0;
 }
 
 int ngtcp2_conn_update_rtt(ngtcp2_conn *conn, ngtcp2_duration rtt,
@@ -12619,7 +12680,7 @@ static void conn_get_loss_time_and_pktns(ngtcp2_conn *conn,
   ngtcp2_pktns *pktns = conn->in_pktns;
   size_t i;
 
-  for (i = 0; i < sizeof(ns) / sizeof(ns[0]); ++i) {
+  for (i = 0; i < ngtcp2_arraylen(ns); ++i) {
     if (ns[i] == NULL || loss_time[i] >= earliest_loss_time) {
       continue;
     }
@@ -13035,13 +13096,13 @@ const ngtcp2_path *ngtcp2_conn_get_path(ngtcp2_conn *conn) {
   return &conn->dcid.current.ps.path;
 }
 
-size_t ngtcp2_conn_get_max_udp_payload_size(ngtcp2_conn *conn) {
-  return conn->local.settings.max_udp_payload_size;
+size_t ngtcp2_conn_get_max_tx_udp_payload_size(ngtcp2_conn *conn) {
+  return conn->local.settings.max_tx_udp_payload_size;
 }
 
-size_t ngtcp2_conn_get_path_max_udp_payload_size(ngtcp2_conn *conn) {
-  if (conn->local.settings.no_udp_payload_size_shaping) {
-    return ngtcp2_conn_get_max_udp_payload_size(conn);
+size_t ngtcp2_conn_get_path_max_tx_udp_payload_size(ngtcp2_conn *conn) {
+  if (conn->local.settings.no_tx_udp_payload_size_shaping) {
+    return ngtcp2_conn_get_max_tx_udp_payload_size(conn);
   }
 
   return conn->dcid.current.max_udp_payload_size;
@@ -13342,23 +13403,25 @@ int ngtcp2_conn_set_stream_user_data(ngtcp2_conn *conn, int64_t stream_id,
 }
 
 void ngtcp2_conn_update_pkt_tx_time(ngtcp2_conn *conn, ngtcp2_tstamp ts) {
+  double pacing_rate;
+  ngtcp2_duration interval;
+
   if (conn->tx.pacing.pktlen == 0) {
     return;
   }
 
   if (conn->cstat.pacing_rate > 0) {
-    conn->tx.pacing.next_ts =
-        ts + (ngtcp2_duration)((double)conn->tx.pacing.pktlen /
-                               conn->cstat.pacing_rate);
+    pacing_rate = conn->cstat.pacing_rate;
   } else {
-    double pacing_rate =
-        (double)conn->cstat.cwnd / (double)(conn->cstat.min_rtt != UINT64_MAX
-                                                ? conn->cstat.min_rtt
-                                                : NGTCP2_MILLISECONDS);
-    conn->tx.pacing.next_ts =
-        ts + (ngtcp2_duration)((double)conn->tx.pacing.pktlen / pacing_rate);
+    /* 1.25 is the under-utilization avoidance factor described in
+       https://datatracker.ietf.org/doc/html/rfc9002#section-7.7 */
+    pacing_rate =
+        (double)conn->cstat.cwnd / (double)conn->cstat.smoothed_rtt * 1.25;
   }
 
+  interval = (ngtcp2_duration)((double)conn->tx.pacing.pktlen / pacing_rate);
+
+  conn->tx.pacing.next_ts = ts + interval;
   conn->tx.pacing.pktlen = 0;
 }
 
@@ -13370,15 +13433,14 @@ int ngtcp2_conn_track_retired_dcid_seq(ngtcp2_conn *conn, uint64_t seq) {
   size_t i;
 
   if (conn->dcid.retire_unacked.len >=
-      sizeof(conn->dcid.retire_unacked.seqs) /
-          sizeof(conn->dcid.retire_unacked.seqs[0])) {
+      ngtcp2_arraylen(conn->dcid.retire_unacked.seqs)) {
     return NGTCP2_ERR_CONNECTION_ID_LIMIT;
   }
 
   /* Make sure that we do not have a duplicate */
   for (i = 0; i < conn->dcid.retire_unacked.len; ++i) {
     if (conn->dcid.retire_unacked.seqs[i] == seq) {
-      assert(0);
+      ngtcp2_unreachable();
     }
   }
 
@@ -13431,7 +13493,7 @@ void ngtcp2_settings_default_versioned(int settings_version,
   settings->cc_algo = NGTCP2_CC_ALGO_CUBIC;
   settings->initial_rtt = NGTCP2_DEFAULT_INITIAL_RTT;
   settings->ack_thresh = 2;
-  settings->max_udp_payload_size = 1500 - 48;
+  settings->max_tx_udp_payload_size = 1500 - 48;
   settings->handshake_timeout = NGTCP2_DEFAULT_HANDSHAKE_TIMEOUT;
 }
 

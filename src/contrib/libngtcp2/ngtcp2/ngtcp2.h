@@ -1507,10 +1507,9 @@ typedef struct ngtcp2_transport_params {
   uint8_t stateless_reset_token[NGTCP2_STATELESS_RESET_TOKENLEN];
   /**
    * :member:`grease_quic_bit` is nonzero if sender supports "Greasing
-   * the QUIC Bit" extension.  See
-   * https://datatracker.ietf.org/doc/html/draft-ietf-quic-bit-grease.
-   * Note that the local endpoint always enables greasing QUIC bit
-   * regardless of this field value.
+   * the QUIC Bit" extension.  See :rfc:`9287`.  Note that the local
+   * endpoint always enables greasing QUIC bit regardless of this
+   * field value.
    */
   uint8_t grease_quic_bit;
   /**
@@ -1631,11 +1630,11 @@ typedef struct ngtcp2_conn_stat {
    */
   uint64_t bytes_in_flight;
   /**
-   * :member:`max_udp_payload_size` is the maximum size of UDP
+   * :member:`max_tx_udp_payload_size` is the maximum size of UDP
    * datagram payload that this endpoint transmits.  It is used by
    * congestion controller to compute congestion window.
    */
-  size_t max_udp_payload_size;
+  size_t max_tx_udp_payload_size;
   /**
    * :member:`delivery_rate_sec` is the current sending rate measured
    * in byte per second.
@@ -1789,11 +1788,11 @@ typedef struct ngtcp2_settings {
    */
   ngtcp2_printf log_printf;
   /**
-   * :member:`max_udp_payload_size` is the maximum size of UDP
+   * :member:`max_tx_udp_payload_size` is the maximum size of UDP
    * datagram payload that this endpoint transmits.  It is used by
    * congestion controller to compute congestion window.
    */
-  size_t max_udp_payload_size;
+  size_t max_tx_udp_payload_size;
   /**
    * :member:`token` is a token from Retry packet or NEW_TOKEN frame.
    *
@@ -1840,14 +1839,14 @@ typedef struct ngtcp2_settings {
    */
   size_t ack_thresh;
   /**
-   * :member:`no_udp_payload_size_shaping`, if set to nonzero,
+   * :member:`no_tx_udp_payload_size_shaping`, if set to nonzero,
    * instructs the library not to limit the UDP payload size to
    * :macro:`NGTCP2_MAX_UDP_PAYLOAD_SIZE` (which can be extended by
    * Path MTU Discovery) and instead use the mininum size among the
-   * given buffer size, :member:`max_udp_payload_size`, and the
+   * given buffer size, :member:`max_tx_udp_payload_size`, and the
    * received max_udp_payload QUIC transport parameter.
    */
-  int no_udp_payload_size_shaping;
+  int no_tx_udp_payload_size_shaping;
   /**
    * :member:`handshake_timeout` is the period of time before giving
    * up QUIC connection establishment.  If QUIC handshake is not
@@ -3320,6 +3319,18 @@ typedef int (*ngtcp2_version_negotiation)(ngtcp2_conn *conn, uint32_t version,
 typedef int (*ngtcp2_recv_key)(ngtcp2_conn *conn, ngtcp2_crypto_level level,
                                void *user_data);
 
+/**
+ * @functypedef
+ *
+ * :type:`ngtcp2_early_data_rejected` is invoked when early data was
+ * rejected by server, or client decided not to attempt early data.
+ *
+ * The callback function must return 0 if it succeeds.  Returning
+ * :macro:`NGTCP2_ERR_CALLBACK_FAILURE` makes the library call return
+ * immediately.
+ */
+typedef int (*ngtcp2_early_data_rejected)(ngtcp2_conn *conn, void *user_data);
+
 #define NGTCP2_CALLBACKS_VERSION_V1 1
 #define NGTCP2_CALLBACKS_VERSION NGTCP2_CALLBACKS_VERSION_V1
 
@@ -3578,6 +3589,13 @@ typedef struct ngtcp2_callbacks {
    * :enum:`ngtcp2_crypto_level.NGTCP2_CRYPTO_LEVEL_INITIAL`.
    */
   ngtcp2_recv_key recv_tx_key;
+  /**
+   * :member:`ngtcp2_early_data_rejected` is a callback function which
+   * is invoked when an attempt to send early data by client was
+   * rejected by server, or client decided not to attempt early data.
+   * This callback function is only used by client.
+   */
+  ngtcp2_early_data_rejected early_data_rejected;
 } ngtcp2_callbacks;
 
 /**
@@ -4397,7 +4415,7 @@ NGTCP2_EXTERN ngtcp2_ssize ngtcp2_conn_write_stream_versioned(
  * handshake as well.
  *
  * |destlen| should be at least
- * :member:`ngtcp2_settings.max_udp_payload_size`.
+ * :member:`ngtcp2_settings.max_tx_udp_payload_size`.
  *
  * Specifying -1 to |stream_id| means no new stream data to send.
  *
@@ -4550,7 +4568,7 @@ NGTCP2_EXTERN ngtcp2_ssize ngtcp2_conn_writev_stream_versioned(
  * as well.
  *
  * |destlen| should be at least
- * :member:`ngtcp2_settings.max_udp_payload_size`.
+ * :member:`ngtcp2_settings.max_tx_udp_payload_size`.
  *
  * For |path| and |pi| parameters, refer to
  * `ngtcp2_conn_writev_stream`.
@@ -4817,8 +4835,8 @@ NGTCP2_EXTERN uint32_t ngtcp2_conn_get_negotiated_version(ngtcp2_conn *conn);
  * @function
  *
  * `ngtcp2_conn_early_data_rejected` tells |conn| that early data was
- * rejected by a server.  |conn| discards the following connection
- * states:
+ * rejected by a server, or client decided not to attempt early data
+ * for some reason.  |conn| discards the following connection states:
  *
  * - Any opended streams.
  * - Stream identifier allocations.
@@ -4828,8 +4846,22 @@ NGTCP2_EXTERN uint32_t ngtcp2_conn_get_negotiated_version(ngtcp2_conn *conn);
  *
  * Application which wishes to retransmit early data, it has to open
  * streams and send stream data again.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :macro:`NGTCP2_ERR_CALLBACK_FAILURE`
+ *     User callback failed
  */
-NGTCP2_EXTERN void ngtcp2_conn_early_data_rejected(ngtcp2_conn *conn);
+NGTCP2_EXTERN int ngtcp2_conn_early_data_rejected(ngtcp2_conn *conn);
+
+/**
+ * @function
+ *
+ * `ngtcp2_conn_get_early_data_rejected` returns nonzero if
+ * `ngtcp2_conn_early_data_rejected` has been called.
+ */
+NGTCP2_EXTERN int ngtcp2_conn_get_early_data_rejected(ngtcp2_conn *conn);
 
 /**
  * @function
@@ -4904,25 +4936,25 @@ NGTCP2_EXTERN const ngtcp2_path *ngtcp2_conn_get_path(ngtcp2_conn *conn);
 /**
  * @function
  *
- * `ngtcp2_conn_get_max_udp_payload_size` returns the maximum UDP
+ * `ngtcp2_conn_get_max_tx_udp_payload_size` returns the maximum UDP
  * payload size that this local endpoint would send.  This is the
- * value of :member:`ngtcp2_settings.max_udp_payload_size` that is
+ * value of :member:`ngtcp2_settings.max_tx_udp_payload_size` that is
  * passed to `ngtcp2_conn_client_new` or `ngtcp2_conn_server_new`.
  */
-NGTCP2_EXTERN size_t ngtcp2_conn_get_max_udp_payload_size(ngtcp2_conn *conn);
+NGTCP2_EXTERN size_t ngtcp2_conn_get_max_tx_udp_payload_size(ngtcp2_conn *conn);
 
 /**
  * @function
  *
- * `ngtcp2_conn_get_path_max_udp_payload_size` returns the maximum UDP
- * payload size for the current path.  If
- * :member:`ngtcp2_settings.no_udp_payload_size_shaping` is set to
+ * `ngtcp2_conn_get_path_max_tx_udp_payload_size` returns the maximum
+ * UDP payload size for the current path.  If
+ * :member:`ngtcp2_settings.no_tx_udp_payload_size_shaping` is set to
  * nonzero, this function is equivalent to
- * `ngtcp2_conn_get_max_udp_payload_size`.  Otherwise, it returns the
- * maximum UDP payload size that is probed for the current path.
+ * `ngtcp2_conn_get_max_tx_udp_payload_size`.  Otherwise, it returns
+ * the maximum UDP payload size that is probed for the current path.
  */
 NGTCP2_EXTERN size_t
-ngtcp2_conn_get_path_max_udp_payload_size(ngtcp2_conn *conn);
+ngtcp2_conn_get_path_max_tx_udp_payload_size(ngtcp2_conn *conn);
 
 /**
  * @function
@@ -5513,8 +5545,8 @@ NGTCP2_EXTERN void ngtcp2_path_storage_zero(ngtcp2_path_storage *ps);
  * * :type:`initial_rtt <ngtcp2_settings.initial_rtt>` =
  *   :macro:`NGTCP2_DEFAULT_INITIAL_RTT`
  * * :type:`ack_thresh <ngtcp2_settings.ack_thresh>` = 2
- * * :type:`max_udp_payload_size
- *   <ngtcp2_settings.max_udp_payload_size>` = 1452
+ * * :type:`max_tx_udp_payload_size
+ *   <ngtcp2_settings.max_tx_udp_payload_size>` = 1452
  * * :type:`handshake_timeout <ngtcp2_settings.handshake_timeout>` =
  *   :macro:`NGTCP2_DEFAULT_HANDSHAKE_TIMEOUT`.
  */

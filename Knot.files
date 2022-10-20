@@ -140,6 +140,8 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_unreachable.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_unreachable.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_version.c
