@@ -1,4 +1,5 @@
-/*  Copyright (C) 2021 Fastly, Inc.
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+    Copyright (C) 2021 Fastly, Inc.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,6 +89,10 @@ struct proxyv2_addr_ipv6 {
 	uint16_t	src_port;
 	uint16_t	dst_port;
 };
+
+const size_t PROXYV2_HEADER_MAXLEN = sizeof(PROXYV2_SIG) +
+                                     sizeof(struct proxyv2_hdr) +
+                                     sizeof(struct proxyv2_addr_ipv6);
 
 /*
  * Make sure the C compiler lays out the PROXY v2 address block structs so that
@@ -206,4 +211,71 @@ int proxyv2_addr_store(void *base, size_t len_base, struct sockaddr_storage *ss)
 
 	/* Failure. */
 	return KNOT_EMALF;
+}
+
+int proxyv2_write_header(char *buf, size_t buflen, int socktype, const struct sockaddr *src,
+                         const struct sockaddr *dst)
+{
+	if (buflen < PROXYV2_HEADER_MAXLEN) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t fam_addr = 0;
+	int family = src->sa_family;
+	if (socktype == SOCK_DGRAM) {
+		fam_addr += 0x2;
+	} else if (socktype == SOCK_STREAM) {
+		fam_addr += 0x1;
+	} else {
+		return KNOT_EINVAL;
+	}
+	if (family == AF_INET) {
+		fam_addr += 0x10;
+	} else if (family == AF_INET6) {
+		fam_addr += 0x20;
+	} else {
+		return KNOT_EINVAL;
+	}
+
+	struct proxyv2_hdr hdr = {
+		.ver_cmd = 0x21,
+		.fam_addr = fam_addr,
+		.len = (family == AF_INET)
+		       ? htons(sizeof(struct proxyv2_addr_ipv4))
+		       : htons(sizeof(struct proxyv2_addr_ipv6))
+	};
+
+	size_t offset = 0;
+	memcpy(buf, PROXYV2_SIG, sizeof(PROXYV2_SIG));
+	offset += sizeof(PROXYV2_SIG);
+	memcpy(buf + offset, &hdr, sizeof(hdr));
+	offset += sizeof(hdr);
+
+	if (family == AF_INET) {
+		struct proxyv2_addr_ipv4 ipv4 = { 0 };
+		struct sockaddr_in *p_src = (struct sockaddr_in *)src;
+		struct sockaddr_in *p_dst = (struct sockaddr_in *)dst;
+		memcpy(ipv4.src_addr, &p_src->sin_addr, sizeof(p_src->sin_addr));
+		memcpy(ipv4.dst_addr, &p_dst->sin_addr, sizeof(p_dst->sin_addr));
+		ipv4.src_port = p_src->sin_port;
+		ipv4.dst_port = p_dst->sin_port;
+
+		// Store in buffer
+		memcpy(buf + offset, &ipv4, sizeof(ipv4));
+		offset += sizeof(ipv4);
+	} else {
+		struct proxyv2_addr_ipv6 ipv6 = { 0 };
+		struct sockaddr_in6 *p_src = (struct sockaddr_in6 *)src;
+		struct sockaddr_in6 *p_dst = (struct sockaddr_in6 *)dst;
+		memcpy(ipv6.src_addr, &p_src->sin6_addr, sizeof(p_src->sin6_addr));
+		memcpy(ipv6.dst_addr, &p_dst->sin6_addr, sizeof(p_dst->sin6_addr));
+		ipv6.src_port = p_src->sin6_port;
+		ipv6.dst_port = p_dst->sin6_port;
+
+		// Store in buffer
+		memcpy(buf + offset, &ipv6, sizeof(ipv6));
+		offset += sizeof(ipv6);
+	}
+
+	return offset;
 }

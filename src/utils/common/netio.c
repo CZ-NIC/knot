@@ -32,6 +32,7 @@
 #include "utils/common/msg.h"
 #include "utils/common/tls.h"
 #include "libknot/libknot.h"
+#include "contrib/proxyv2/proxyv2.h"
 #include "contrib/sockaddr.h"
 
 srv_info_t *srv_info_create(const char *name, const char *service)
@@ -171,16 +172,18 @@ void get_addr_str(const struct sockaddr_storage *ss,
 	}
 }
 
-int net_init(const srv_info_t     *local,
-             const srv_info_t     *remote,
-             const int            iptype,
-             const int            socktype,
-             const int            wait,
-             const net_flags_t    flags,
-             const tls_params_t   *tls_params,
-             const https_params_t *https_params,
-             const quic_params_t  *quic_params,
-             net_t                *net)
+int net_init(const srv_info_t      *local,
+             const srv_info_t      *remote,
+             const int             iptype,
+             const int             socktype,
+             const int             wait,
+             const net_flags_t     flags,
+             const tls_params_t    *tls_params,
+             const https_params_t  *https_params,
+             const quic_params_t   *quic_params,
+             const struct sockaddr *proxy_src,
+             const struct sockaddr *proxy_dst,
+             net_t                 *net)
 {
 	if (remote == NULL || net == NULL) {
 		DBG_NULL;
@@ -216,6 +219,8 @@ int net_init(const srv_info_t     *local,
 	net->local = local;
 	net->remote = remote;
 	net->flags = flags;
+	net->proxy.src = proxy_src;
+	net->proxy.dst = proxy_dst;
 
 	// Prepare for TLS.
 	if (tls_params != NULL && tls_params->enable) {
@@ -566,8 +571,35 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 #endif
 	// Send data over UDP.
 	if (net->socktype == SOCK_DGRAM) {
-		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
-		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
+		char proxy_buf[PROXYV2_HEADER_MAXLEN];
+		struct iovec iov[2] = {
+			{ .iov_base = proxy_buf, .iov_len = 0 },
+			{ .iov_base = (void *)buf, .iov_len = buf_len }
+		};
+
+		struct msghdr msg = {
+			.msg_name = net->srv->ai_addr,
+			.msg_namelen = net->srv->ai_addrlen,
+			.msg_iov = &iov[1],
+			.msg_iovlen = 1
+		};
+
+		if (net->proxy.src->sa_family && net->proxy.dst->sa_family) {
+			int ret = proxyv2_write_header(proxy_buf, sizeof(proxy_buf),
+			                               SOCK_DGRAM, net->proxy.src,
+			                               net->proxy.dst);
+			if (ret < 0) {
+				WARN("can't send proxied query to %s", net->remote_str);
+				return KNOT_NET_ESEND;
+			}
+			iov[0].iov_len = ret;
+			msg.msg_iov--;
+			msg.msg_iovlen++;
+		}
+
+		ssize_t total = iov[0].iov_len + iov[1].iov_len;
+
+		if (sendmsg(net->sockfd, &msg, 0) != total) {
 			WARN("can't send query to %s", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
@@ -591,23 +623,35 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 	} else {
 		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
 
-		// Leading packet length bytes.
-		uint16_t pktsize = htons(buf_len);
+		char proxy_buf[PROXYV2_HEADER_MAXLEN];
+		uint16_t pktsize = htons(buf_len); // Leading packet length bytes.
+		struct iovec iov[3] = {
+			{ .iov_base = proxy_buf, .iov_len = 0 },
+			{ .iov_base = &pktsize, .iov_len = sizeof(pktsize) },
+			{ .iov_base = (void *)buf, .iov_len = buf_len }
+		};
 
-		struct iovec iov[2];
-		iov[0].iov_base = &pktsize;
-		iov[0].iov_len = sizeof(pktsize);
-		iov[1].iov_base = (uint8_t *)buf;
-		iov[1].iov_len = buf_len;
+		struct msghdr msg = {
+			.msg_name = net->srv->ai_addr,
+			.msg_namelen = net->srv->ai_addrlen,
+			.msg_iov = &iov[1],
+			.msg_iovlen = 2
+		};
 
-		// Compute packet total length.
-		ssize_t total = iov[0].iov_len + iov[1].iov_len;
+		if (net->proxy.src->sa_family && net->proxy.dst->sa_family) {
+			int ret = proxyv2_write_header(proxy_buf, sizeof(proxy_buf),
+			                               SOCK_STREAM, net->proxy.src,
+			                               net->proxy.dst);
+			if (ret < 0) {
+				WARN("can't send proxied query to %s", net->remote_str);
+				return KNOT_NET_ESEND;
+			}
+			iov[0].iov_len = ret;
+			msg.msg_iov--;
+			msg.msg_iovlen++;
+		}
 
-		struct msghdr msg = {0};
-		msg.msg_iov = iov;
-		msg.msg_iovlen = sizeof(iov) / sizeof(*iov);
-		msg.msg_name = net->srv->ai_addr;
-		msg.msg_namelen = net->srv->ai_addrlen;
+		ssize_t total = iov[0].iov_len + iov[1].iov_len + iov[2].iov_len;
 
 		int ret = 0;
 		if (fastopen) {

@@ -85,6 +85,10 @@ typedef struct {
 	/*! QUIC context. */
 	quic_ctx_t quic;
 #endif
+	struct {
+		const struct sockaddr *src;
+		const struct sockaddr *dst;
+	} proxy;
 } net_t;
 
 /*!
@@ -161,16 +165,18 @@ void get_addr_str(const struct sockaddr_storage *ss,
  * \retval KNOT_EOK	if success.
  * \retval errcode	if error.
  */
-int net_init(const srv_info_t     *local,
-             const srv_info_t     *remote,
-             const int            iptype,
-             const int            socktype,
-             const int            wait,
-             const net_flags_t    flags,
-             const tls_params_t   *tls_params,
-             const https_params_t *https_params,
-             const quic_params_t  *quic_params,
-             net_t                *net);
+int net_init(const srv_info_t      *local,
+             const srv_info_t      *remote,
+             const int             iptype,
+             const int             socktype,
+             const int             wait,
+             const net_flags_t     flags,
+             const tls_params_t    *tls_params,
+             const https_params_t  *https_params,
+             const quic_params_t   *quic_params,
+             const struct sockaddr *proxy_src,
+             const struct sockaddr *proxy_dst,
+             net_t                 *net);
 
 /*!
  * \brief Creates socket and connects (if TCP) to remote address specified
