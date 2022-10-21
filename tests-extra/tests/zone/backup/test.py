@@ -29,7 +29,7 @@ t.link(zones, master, slave)
 for z in zones:
     if random.choice([True, False]):
         master.dnssec(z).enable = True
-        master.dnssec(z).algorithm = "ECDSAP256SHA256"
+        master.dnssec(z).alg = "ECDSAP256SHA256"
         master.dnssec(z).single_type_signing = False
     else:
         master.add_module(z, ModOnlineSign(algorithm="ECDSAP256SHA256"))
