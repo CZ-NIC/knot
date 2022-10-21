@@ -243,7 +243,7 @@ int knot_eth_vlans(uint16_t *vlan_map[], uint16_t *vlan_map_max)
 	}
 
 	for (struct ifaddrs *ifa = ifaces; ifa != NULL; ifa = ifa->ifa_next) {
-		if (ifa->ifa_addr->sa_family != AF_PACKET) {
+		if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_PACKET) {
 			continue;
 		}
 
