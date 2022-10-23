@@ -197,14 +197,16 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 		(*socket)->frame_limit = MIN((unsigned)ret, (*socket)->frame_limit);
 	}
 
-	ret = knot_eth_vlans(&(*socket)->vlan_map, &(*socket)->vlan_map_max);
-	if (ret != KNOT_EOK) {
-		xsk_socket__delete((*socket)->xsk);
-		deconfigure_xsk_umem(umem);
-		kxsk_iface_free(iface);
-		free(*socket);
-		*socket = NULL;
-		return ret;
+	if (flags & KNOT_XDP_FILTER_ROUTE) {
+		ret = knot_eth_vlans(&(*socket)->vlan_map, &(*socket)->vlan_map_max);
+		if (ret != KNOT_EOK) {
+			xsk_socket__delete((*socket)->xsk);
+			deconfigure_xsk_umem(umem);
+			kxsk_iface_free(iface);
+			free(*socket);
+			*socket = NULL;
+			return ret;
+		}
 	}
 
 	ret = kxsk_socket_start(iface, flags, udp_port, quic_port, (*socket)->xsk);
