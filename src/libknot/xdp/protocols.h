@@ -180,8 +180,8 @@ inline static void *prot_read_eth(void *data, knot_xdp_msg_t *msg, void **data_e
 	msg->flags = 0;
 
 	if (eth->h_proto == __constant_htons(ETH_P_8021Q)) {
-		assert(vlan_map);
 		if (info->out_if_index > 0 && info->out_if_index <= vlan_map_max) {
+			assert(vlan_map);
 			msg->vlan_tci = vlan_map[info->out_if_index];
 		} else {
 			memcpy(&msg->vlan_tci, data + sizeof(*eth), sizeof(msg->vlan_tci));
