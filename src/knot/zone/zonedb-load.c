@@ -501,6 +501,27 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 	}
 	catalog_it_free(it);
 
+	it = knot_zonedb_iter_begin(db_new);
+	while (!knot_zonedb_iter_finished(it)) {
+		zone_t *z = knot_zonedb_iter_val(it);
+		conf_val_t val = conf_zone_get(conf, C_REVERSE_GEN, z->name);
+		if (val.code == KNOT_EOK) {
+			const knot_dname_t *forw_name = conf_dname(&val);
+			zone_t *forw = knot_zonedb_find(db_new, forw_name);
+			if (forw == NULL) {
+				knot_dname_txt_storage_t forw_str;
+				(void)knot_dname_to_str(forw_str, forw_name, sizeof(forw_str));
+				log_zone_warning(z->name, "zone to reverse '%s' doesn't exist",
+				                 forw_str);
+			} else {
+				z->reverse_from = forw;
+				zone_local_notify_subscribe(forw, z);
+			}
+		}
+		knot_zonedb_iter_next(it);
+	}
+	knot_zonedb_iter_free(it);
+
 	return db_new;
 }
 

@@ -2178,6 +2178,7 @@ Definition of zones served by the server.
      zonemd-verify: BOOL
      zonemd-generate: none | zonemd-sha384 | zonemd-sha512 | remove
      serial-policy: increment | unixtime | dateserial
+     reverse-generate: DNAME
      refresh-min-interval: TIME
      refresh-max-interval: TIME
      retry-min-interval: TIME
@@ -2546,6 +2547,23 @@ Possible values:
    Generated catalog zones use ``unixtime`` only.
 
 *Default:* ``increment`` (``unixtime`` for generated catalog zones)
+
+.. _zone_reverse-generate:
+
+reverse-generate
+----------------
+
+Triggers auto-generating reverse PTR records into this zone, based on A/AAAA records
+in the zone specified by this option.
+
+Limitations (may be relaxed in the future):
+
+- Only one zone to be reversed can be specified.
+- Requires :ref:`zone_journal-content`: ``all`` and
+  :ref:`zone_zonefile-load`: ``difference-no-serial``.
+- Is slow for large zones (even when changing a little).
+
+*Default:* none
 
 .. _zone_refresh-min-interval:
 

@@ -94,6 +94,7 @@ class Zone(object):
         self.ixfr = ixfr
         self.journal_content = journal_content # journal contents
         self.modules = []
+        self.reverse_from = None
         self.dnssec = ZoneDnssec()
         self.catalog_role = ZoneCatalogRole.NONE
         self.catalog_gen_name = None # Generated catalog name for this member
@@ -1541,6 +1542,9 @@ class Knot(Server):
             self._str(s, "serial-policy", self.serial_policy)
 
             s.item_str("journal-content", z.journal_content)
+            
+            if z.reverse_from:
+                s.item_str("reverse-generate", z.reverse_from.name)
 
             self._str(s, "refresh-min-interval", z.refresh_min)
             self._str(s, "refresh-max-interval", z.refresh_max)

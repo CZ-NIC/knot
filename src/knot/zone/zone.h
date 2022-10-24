@@ -128,6 +128,10 @@ typedef struct zone
 	catalog_update_t *cat_members;
 	const char *catalog_group;
 
+	/*! \brief Auto-generated reverse zones... */
+	struct zone *reverse_from;
+	list_t internal_notify;
+
 	/*! \brief Preferred master lock. Also used for flags access. */
 	pthread_mutex_t preferred_lock;
 	/*! \brief Preferred master for remote operation. */
@@ -276,6 +280,9 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 
 /*! \brief Write zone contents to zonefile, but into different directory. */
 int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir);
+
+void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe);
+void zone_local_notify(zone_t *zone);
 
 int zone_set_master_serial(zone_t *zone, uint32_t serial);
 

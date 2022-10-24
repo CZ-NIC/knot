@@ -1982,6 +1982,7 @@ zone:
     zonemd\-verify: BOOL
     zonemd\-generate: none | zonemd\-sha384 | zonemd\-sha512 | remove
     serial\-policy: increment | unixtime | dateserial
+    reverse\-generate: DNAME
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
     retry\-min\-interval: TIME
@@ -2343,6 +2344,23 @@ Generated catalog zones use \fBunixtime\fP only.
 .UNINDENT
 .sp
 \fIDefault:\fP \fBincrement\fP (\fBunixtime\fP for generated catalog zones)
+.SS reverse\-generate
+.sp
+Triggers auto\-generating reverse PTR records into this zone, based on A/AAAA records
+in the zone specified by this option.
+.sp
+Limitations (may be relaxed in the future):
+.INDENT 0.0
+.IP \(bu 2
+Only one zone to be reversed can be specified.
+.IP \(bu 2
+Requires \fI\%journal\-content\fP: \fBall\fP and
+\fI\%zonefile\-load\fP: \fBdifference\-no\-serial\fP\&.
+.IP \(bu 2
+Is slow for large zones (even when changing a little).
+.UNINDENT
+.sp
+\fIDefault:\fP none
 .SS refresh\-min\-interval
 .sp
 Forced minimum zone refresh interval (in seconds) to avoid flooding primary server.

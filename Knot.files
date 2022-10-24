@@ -387,6 +387,8 @@ src/knot/zone/measure.c
 src/knot/zone/measure.h
 src/knot/zone/node.c
 src/knot/zone/node.h
+src/knot/zone/reverse.c
+src/knot/zone/reverse.h
 src/knot/zone/semantic-check.c
 src/knot/zone/semantic-check.h
 src/knot/zone/serial.c
