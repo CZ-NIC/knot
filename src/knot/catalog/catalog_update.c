@@ -188,13 +188,6 @@ int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
                        catalog_upd_type_t type, const char *group,
                        size_t group_len, catalog_t *check_rem)
 {
-	if ((type == CAT_UPD_REM || type == CAT_UPD_PROP) && check_rem != NULL &&
-	    !catalog_contains_exact(check_rem, member, owner, catzone)) {
-		return KNOT_EOK;
-		// we need to perform this check immediately because
-		// garbage removal would block legitimate removal
-	}
-
 	int bail = catalog_bailiwick_shift(owner, catzone);
 	if (bail < 0) {
 		return KNOT_EOUTOFZONE;
@@ -205,6 +198,22 @@ int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
 	uint8_t *lf = knot_dname_lf(member, lf_storage);
 
 	trie_val_t *found = trie_get_try(u->upd, lf + 1, lf[0]);
+
+	if ((type == CAT_UPD_REM || type == CAT_UPD_PROP) && check_rem != NULL &&
+	    !catalog_contains_exact(check_rem, member, owner, catzone)) {
+		if (found == NULL) {
+			// we need to perform this check immediately because
+			// garbage removal would block legitimate removal
+			return KNOT_EOK;
+		}
+		if (type == CAT_UPD_REM) {
+			catalog_upd_val_t *val = *found;
+			catalog_upd_val_free(val);
+			trie_del(u->upd, lf + 1, lf[0], NULL);
+			return KNOT_EOK;
+		}
+	}
+
 	if (found != NULL) {
 		catalog_upd_val_t *val = *found;
 		assert(knot_dname_is_equal(val->member, member));
