@@ -580,6 +580,7 @@ void zonedb_reload(conf_t *conf, server_t *server)
 	init_list(&contents_tofree);
 
 	catalog_update_finalize(&server->catalog_upd, &server->catalog, conf);
+	log_info("catalog, updating, %zu changes", trie_weight(server->catalog_upd.upd));
 
 	/* Insert all required zones to the new zone DB. */
 	knot_zonedb_t *db_new = create_zonedb(conf, server, &contents_tofree);
