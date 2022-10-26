@@ -6,6 +6,7 @@ from dnstest.test import Test
 from dnstest.utils import set_err, detail_log, check_log
 import dnstest.params
 
+import glob
 import os
 import random
 import time
@@ -49,8 +50,11 @@ rzone[0].update_rnd() # it needs to be larger, slower
 t.link(catz, knot, journal_content = "none")
 t.link(rzone, knot, journal_content = "none")
 knot.cat_interpret(catz)
+
 catalog_dir = os.path.join(knot.dir, "catalog")
 os.mkdir(catalog_dir)
+for zf in glob.glob(t.data_dir + "/*.zone"):
+    shutil.copy(zf, knot.dir + "/catalog")
 
 for z in rzone:
     # slow down processing as much as possible
@@ -62,6 +66,9 @@ for z in rzone:
         knot.dnssec(z).nsec3_iters = "65000"
         knot.dnssec(z).alg = "rsasha512"
         knot.dnssec(z).zsk_size = "4096"
+
+# Whether to test a property change instead of add/del.
+test_prop_change = random.choice([True, False])
 
 t.start()
 
@@ -79,23 +86,35 @@ up.try_send()
 t.sleep(4)
 
 up = knot.update(catz)
-up.delete("bar.zones." + catz[0].name, "PTR", "cataloged2.")
+if test_prop_change:
+    up.delete("group.bar.zones." + catz[0].name, "TXT")
+    up.add("group.bar.zones." + catz[0].name, 0, "TXT", "catalog-signed")
+else:
+    up.delete("bar.zones." + catz[0].name, "PTR", "cataloged2.")
 up.try_send()
 
 knot.zones_wait(rzone, rootser)
 t.sleep(10)
 
-# Check the catalog zone.
-resp = knot.dig("bar.zones.catalog1.", "PTR", udp=False, tsig=True)
-resp.check(rcode="NXDOMAIN", nordata="PTR")
+if test_prop_change:
+    # Check successfull change of a zone group.
+    t.sleep(4)
+    resp = knot.dig("cataloged2.", "SOA", dnssec=True)
+    resp.check(rcode="NOERROR")
+    resp.check_count(1, "RRSIG")
 
-# Check a DNS query / zonedb.
-resp = knot.dig("cataloged2.", "SOA")
-resp.check(rcode="NXDOMAIN") # not REFUSED due to presence of root zone;
-                             # not SERVFAIL what is the point of the test
+else:
+    # Check the catalog zone.
+    resp = knot.dig("bar.zones.catalog1.", "PTR", udp=False, tsig=True)
+    resp.check(rcode="NXDOMAIN", nordata="PTR")
 
-# Check the catalog DB.
-knot.stop()
-check_catalog_db(knot, "cataloged2.")
+    # Check a DNS query / zonedb.
+    resp = knot.dig("cataloged2.", "SOA")
+    resp.check(rcode="NXDOMAIN") # not REFUSED due to presence of root zone;
+                                 # not SERVFAIL what is the point of the test
+
+    # Check the catalog DB.
+    knot.stop()
+    check_catalog_db(knot, "cataloged2.")
 
 t.end()
