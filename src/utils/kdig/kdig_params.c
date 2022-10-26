@@ -1361,7 +1361,7 @@ static int opt_nojson(const char *arg, void *query)
 
 	q->style.format = FORMAT_FULL;
 
-	return KNOT_EINVAL;
+	return KNOT_EOK;
 }
 
 static const param_t kdig_opts2[] = {
