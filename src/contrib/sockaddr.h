@@ -134,6 +134,12 @@ char *sockaddr_hostname(void);
 bool sockaddr_is_any(const struct sockaddr_storage *ss);
 
 /*!
+ * \brief Check if given listening addresses conflict (or hit) each other.
+ */
+bool sockaddr_listen_hit(const struct sockaddr_storage *ss1,
+                         const struct sockaddr_storage *ss2);
+
+/*!
  * \brief Check if two addresses match the given network prefix.
  *
  * \param ss1     First address.

@@ -529,6 +529,40 @@ int check_server(
 		return KNOT_EINVAL;
 	}
 
+	conf_val_t liquic_val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                     C_SRV, C_LISTEN_QUIC);
+	size_t liquic_count = conf_val_count(&liquic_val);
+	if (liquic_count > 0) {
+#ifdef ENABLE_QUIC
+		conf_val_t listen_val = conf_get_txn(args->extra->conf, args->extra->txn,
+		                                     C_SRV, C_LISTEN);
+		size_t listen_count = conf_val_count(&listen_val);
+		if (listen_count == 0) {
+			args->err_str = "not allowed to listen only on QUIC";
+			return KNOT_EINVAL;
+		}
+
+		for (size_t i = 0; i < liquic_count; i++) {
+			struct sockaddr_storage liquic_addr = conf_addr(&liquic_val, NULL);
+
+			for (size_t j = 0; j < listen_count; j++) {
+				struct sockaddr_storage listen_addr = conf_addr(&listen_val, NULL);
+				if (sockaddr_listen_hit(&liquic_addr, &listen_addr)) {
+					args->err_str = "QUIC listen address/port overlaps with UDP listen address/port";
+					return KNOT_EINVAL;
+				}
+				conf_val_next(&listen_val);
+			}
+
+			conf_val(&listen_val);
+			conf_val_next(&liquic_val);
+		}
+#else
+		args->err_str = "QUIC processing not available";
+		return KNOT_EINVAL;
+#endif // ENABLE_QUIC
+	}
+
 	return KNOT_EOK;
 }
 

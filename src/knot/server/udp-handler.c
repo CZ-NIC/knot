@@ -30,17 +30,21 @@
 #endif /* HAVE_SYS_UIO_H */
 #include <unistd.h>
 
-#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 #include "knot/common/fdset.h"
+#include "knot/common/log.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "knot/server/proxyv2.h"
 #include "knot/server/server.h"
+#ifdef ENABLE_QUIC
+#include "knot/server/quic-handler.h"
+#endif // ENABLE_QUIC
 #include "knot/server/udp-handler.h"
 #include "knot/server/xdp-handler.h"
+#include "libknot/xdp/tcp_iobuf.h"
 
 /* Buffer identifiers. */
 enum {
@@ -54,6 +58,9 @@ typedef struct {
 	knot_layer_t layer; /*!< Query processing layer. */
 	server_t *server;   /*!< Name server structure. */
 	unsigned thread_id; /*!< Thread identifier. */
+
+	uint64_t quic_idle_close; // In nanoseconds.
+	knot_sweep_stats_t quic_closed;
 } udp_context_t;
 
 static bool udp_state_active(int state)
@@ -113,13 +120,33 @@ static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	mp_flush(udp->layer.mm->ctx);
 }
 
+static void udp_quic_handle2(udp_context_t *udp, int fd, void *quic_table,
+                             struct sockaddr_storage *ss, struct msghdr *mh_in, struct msghdr *mh_out,
+                             struct iovec *rx, struct iovec *tx, struct knot_xdp_msg *xdp_msg)
+{
+#ifdef ENABLE_QUIC
+	knotd_qdata_params_t params = {
+		.proto = KNOTD_QUERY_PROTO_QUIC,
+		.remote = ss,
+		.socket = fd,
+		.server = udp->server,
+		.xdp_msg = xdp_msg,
+		.thread_id = udp->thread_id
+	};
+
+	udp_quic_handle(&params, &udp->layer, udp->quic_idle_close, quic_table, mh_in, mh_out, rx, tx);
+#else
+	assert(0);
+#endif // ENABLE_QUIC
+}
+
 typedef struct {
 	void* (*udp_init)(udp_context_t *, void *);
 	void (*udp_deinit)(void *);
 	int (*udp_recv)(int, void *);
-	void (*udp_handle)(udp_context_t *, void *);
+	void (*udp_handle)(udp_context_t *, void *, void *);
 	void (*udp_send)(void *);
-	void (*udp_sweep)(void *); // Optional
+	void (*udp_sweep)(udp_context_t *, void *, void*); // Optional
 } udp_api_t;
 
 /*! \brief Control message to fit IP_PKTINFO or IPv6_RECVPKTINFO. */
@@ -154,6 +181,19 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 		info->ipi6_ifindex = 0;
 	}
 #endif
+}
+
+static void udp_recvxmsg_sweep(udp_context_t *ctx, void *d, void *quic_ctx)
+{
+	if (quic_ctx != NULL) {
+#ifdef ENABLE_QUIC
+		ctx->quic_idle_close = conf()->cache.srv_quic_idle_close * 1000000000LU;
+
+		udp_quic_handle_sweep(quic_ctx, &ctx->quic_closed);
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+	}
 }
 
 /* UDP recvfrom() request struct. */
@@ -211,7 +251,7 @@ static int udp_recvfrom_recv(int fd, void *d)
 	return 0;
 }
 
-static void udp_recvfrom_handle(udp_context_t *ctx, void *d)
+static void udp_recvfrom_handle(udp_context_t *ctx, void *d, void *quic_table)
 {
 	struct udp_recvfrom *rq = d;
 
@@ -222,7 +262,12 @@ static void udp_recvfrom_handle(udp_context_t *ctx, void *d)
 	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
 
 	/* Process received pkt. */
-	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX], NULL);
+	if (quic_table != NULL) {
+		udp_quic_handle2(ctx, rq->fd, quic_table, &rq->addr, &rq->msg[RX],
+		                 &rq->msg[TX], &rq->iov[RX], &rq->iov[TX], NULL);
+	} else {
+		udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX], NULL);
+	}
 }
 
 static void udp_recvfrom_send(void *d)
@@ -240,6 +285,7 @@ static udp_api_t udp_recvfrom_api = {
 	udp_recvfrom_recv,
 	udp_recvfrom_handle,
 	udp_recvfrom_send,
+	udp_recvxmsg_sweep,
 };
 
 #ifdef ENABLE_RECVMMSG
@@ -267,6 +313,7 @@ static void *udp_recvmmsg_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_s
 	/* Initialize buffers. */
 	for (unsigned i = 0; i < NBUFS; ++i) {
 		rq->iobuf[i] = mm_alloc(&mm, KNOT_WIRE_MAX_PKTSIZE * RECVMMSG_BATCHLEN);
+		memset(rq->iobuf[i], 0, KNOT_WIRE_MAX_PKTSIZE * RECVMMSG_BATCHLEN);
 		rq->iov[i] = mm_alloc(&mm, sizeof(struct iovec) * RECVMMSG_BATCHLEN);
 		rq->msgs[i] = mm_alloc(&mm, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
 		memset(rq->msgs[i], 0, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
@@ -305,7 +352,7 @@ static int udp_recvmmsg_recv(int fd, void *d)
 	return n;
 }
 
-static void udp_recvmmsg_handle(udp_context_t *ctx, void *d)
+static void udp_recvmmsg_handle(udp_context_t *ctx, void *d, void *quic_table)
 {
 	struct udp_recvmmsg *rq = d;
 
@@ -324,7 +371,13 @@ static void udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 		/* Update output message control buffer. */
 		udp_pktinfo_handle(rx, tx);
 
-		udp_handle(ctx, rq->fd, rq->addrs + i, rx->msg_iov, tx->msg_iov, NULL);
+		if (quic_table != NULL) {
+			udp_quic_handle2(ctx, rq->fd, quic_table, rq->addrs + i,
+			                 rx, tx, rx->msg_iov, tx->msg_iov, NULL);
+		} else {
+			udp_handle(ctx, rq->fd, rq->addrs + i, rx->msg_iov,
+			           tx->msg_iov, NULL);
+		}
 
 		if (tx->msg_iov->iov_len > 0) {
 			rq->msgs[TX][j].msg_len = tx->msg_iov->iov_len;
@@ -361,6 +414,7 @@ static udp_api_t udp_recvmmsg_api = {
 	udp_recvmmsg_recv,
 	udp_recvmmsg_handle,
 	udp_recvmmsg_send,
+	udp_recvxmsg_sweep,
 };
 #endif /* ENABLE_RECVMMSG */
 
@@ -383,8 +437,9 @@ static int xdp_recvmmsg_recv(_unused_ int fd, void *d)
 	return xdp_handle_recv(d);
 }
 
-static void xdp_recvmmsg_handle(udp_context_t *ctx, void *d)
+static void xdp_recvmmsg_handle(udp_context_t *ctx, void *d, void *quic_ctx)
 {
+	assert(quic_ctx == NULL);
 	xdp_handle_msgs(d, &ctx->layer, ctx->server, ctx->thread_id);
 }
 
@@ -393,7 +448,7 @@ static void xdp_recvmmsg_send(void *d)
 	xdp_handle_send(d);
 }
 
-static void xdp_recvmmsg_sweep(void *d)
+static void xdp_recvmmsg_sweep(_unused_ udp_context_t *ctx, void *d, _unused_ void *quic_ctx)
 {
 	xdp_handle_reconfigure(d);
 	xdp_handle_sweep(d);
@@ -461,7 +516,7 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 		if (fd < 0) {
 			continue;
 		}
-		int ret = fdset_add(fds, fd, FDSET_POLLIN, NULL);
+		int ret = fdset_add(fds, fd, FDSET_POLLIN, i->quic ? ((void *)1) : NULL);
 		if (ret < 0) {
 			return 0;
 		}
@@ -479,6 +534,7 @@ int udp_master(dthread_t *thread)
 
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	int thread_id = handler->thread_id[dt_get_id(thread)];
+	void *quic_table = NULL;
 
 	if (handler->server->n_ifaces == 0) {
 		return KNOT_EOK;
@@ -532,6 +588,22 @@ int udp_master(dthread_t *thread)
 		goto finish;
 	}
 
+#ifdef ENABLE_QUIC
+	unsigned j;
+	for (j = 0; j < nfds; j++) {
+		if (fds.ctx[j] != NULL) {
+			break;
+		}
+	}
+	if (j < nfds) { // at least one fd is QUIC
+		udp.quic_idle_close= conf()->cache.srv_quic_idle_close * 1000000000LU;
+		quic_table = udp_quic_make_table(handler->server);
+		if (quic_table == NULL) {
+			goto finish;
+		}
+	}
+#endif // ENABLE_QUIC
+
 	/* Initialize the networking API. */
 	api_ctx = api->udp_init(&udp, xdp_socket);
 	if (api_ctx == NULL) {
@@ -555,19 +627,23 @@ int udp_master(dthread_t *thread)
 				continue;
 			}
 			if (api->udp_recv(fdset_it_get_fd(&it), api_ctx) > 0) {
-				api->udp_handle(&udp, api_ctx);
+				bool quic = (fdset_it_get_ctx(&it) != NULL);
+				api->udp_handle(&udp, api_ctx, quic ? quic_table : NULL);
 				api->udp_send(api_ctx);
 			}
 		}
 
 		/* Regular maintenance (XDP-TCP only). */
 		if (api->udp_sweep != NULL) {
-			api->udp_sweep(api_ctx);
+			api->udp_sweep(&udp, api_ctx, quic_table);
 		}
 	}
 
 finish:
 	api->udp_deinit(api_ctx);
+#ifdef ENABLE_QUIC
+	udp_quic_unmake_table(quic_table);
+#endif // ENABLE_QUIC
 	mp_delete(mm.ctx);
 	fdset_clear(&fds);
 

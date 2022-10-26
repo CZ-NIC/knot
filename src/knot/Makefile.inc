@@ -217,6 +217,11 @@ libknotd_la_SOURCES = \
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
+if ENABLE_QUIC
+libknotd_la_SOURCES += knot/server/quic-handler.c \
+                       knot/server/quic-handler.h
+endif ENABLE_QUIC
+
 if HAVE_DAEMON
 noinst_LTLIBRARIES += libknotd.la
 pkgconfig_DATA     += knotd.pc

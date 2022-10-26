@@ -84,6 +84,18 @@ int knot_eth_name_from_addr(const struct sockaddr_storage *addr, char *out,
                             size_t out_len);
 
 /*!
+ * \brief Get local IP address of given socket file descriptor.
+ *
+ * \param socket_fd    Interface socket.
+ * \param mh           Optional: message header of a recvmsg'ed packet.
+ * \param out          Output: detected local IP.
+ *
+ * \return KNOT_E*
+ */
+int knot_eth_addr_from_fd(int socket_fd, struct msghdr *mh,
+                          struct sockaddr_storage *out);
+
+/*!
  * \brief Get the mapping of interface index to VLAN tags.
  *
  * \param vlan_map       Output array of the mappings.

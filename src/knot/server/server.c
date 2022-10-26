@@ -24,9 +24,9 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
 #include "libknot/xdp.h"
-#if defined ENABLE_XDP && ENABLE_QUIC
+#ifdef ENABLE_QUIC
 #include "libknot/xdp/quic.h"
-#endif // ENABLE_XDP && ENABLE_QUIC
+#endif // ENABLE_QUIC
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
@@ -526,6 +526,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t liquic_val = conf_get(conf, C_SRV, C_LISTEN_QUIC);
+	uint16_t convent_quic = conf_val_count(&liquic_val);
 	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 
@@ -554,7 +556,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 #endif
 
 	size_t real_nifs = 0;
-	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
+	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&liquic_val) + conf_val_count(&lisxdp_val);
 	iface_t *newlist = calloc(nifs, sizeof(*newlist));
 	if (newlist == NULL) {
 		log_error("failed to allocate memory for network sockets");
@@ -585,6 +587,25 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 		conf_val_next(&listen_val);
 	}
+	while (liquic_val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir);
+		char addr_str[SOCKADDR_STRLEN] = { 0 };
+		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
+		log_info("binding to QUIC interface %s", addr_str);
+
+		iface_t *new_if = server_init_iface(&addr, size_udp, 1, // FIXME TCP handling at quic fd
+		                                    false, socket_affinity);
+		if (new_if == NULL) {
+			server_deinit_iface_list(newlist, nifs);
+			free(rundir);
+			return KNOT_ERROR;
+		}
+		new_if->quic = true;
+		memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
+		free(new_if);
+
+		conf_val_next(&liquic_val);
+	}
 	free(rundir);
 
 	/* XDP sockets. */
@@ -614,8 +635,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	assert(real_nifs <= nifs);
 	nifs = real_nifs;
 
-#if defined ENABLE_XDP && ENABLE_QUIC
-	if (xdp_quic > 0) {
+	if (xdp_quic > 0 || convent_quic > 0) {
+#ifdef ENABLE_QUIC
 		char *tls_cert = conf_tls(conf, C_CERT_FILE);
 		char *tls_key = conf_tls(conf, C_KEY_FILE);
 		if (tls_cert == NULL) {
@@ -629,8 +650,10 @@ static int configure_sockets(conf_t *conf, server_t *s)
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
 		}
+#else
+		assert(0);
+#endif // ENABLE_QUIC
 	}
-#endif // ENABLE_XDP && ENABLE_QUIC
 
 	/* Publish new list. */
 	s->ifaces = newlist;
@@ -919,6 +942,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	assert(server->ifaces);
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t liquic_val = conf_get(conf, C_SRV, C_LISTEN_QUIC);
 	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
 	size_t new_count = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
 	size_t old_count = server->n_ifaces;
@@ -945,6 +969,21 @@ static bool listen_changed(conf_t *conf, server_t *server)
 			break;
 		}
 		conf_val_next(&listen_val);
+	}
+	while (liquic_val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir);
+		bool found = false;
+		for (size_t i = 0; i < server->n_ifaces; i++) {
+			if (sockaddr_cmp(&addr, &server->ifaces[i].addr, false) == 0) {
+				matches++;
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			break;
+		}
+		conf_val_next(&liquic_val);
 	}
 	free(rundir);
 

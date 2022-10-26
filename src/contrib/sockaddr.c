@@ -311,6 +311,17 @@ bool sockaddr_is_any(const struct sockaddr_storage *ss)
 	return false;
 }
 
+bool sockaddr_listen_hit(const struct sockaddr_storage *ss1,
+                         const struct sockaddr_storage *ss2)
+{
+	if (sockaddr_is_any(ss1) || sockaddr_is_any(ss2)) {
+		return ss1->ss_family == ss2->ss_family &&
+		       sockaddr_port(ss1) == sockaddr_port(ss2);
+	} else {
+		return sockaddr_cmp(ss1, ss2, false) == 0;
+	}
+}
+
 bool sockaddr_net_match(const struct sockaddr_storage *ss1,
                         const struct sockaddr_storage *ss2,
                         unsigned prefix)

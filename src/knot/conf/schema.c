@@ -245,6 +245,7 @@ static const yp_item_t desc_server[] = {
 	{ C_DBUS_EVENT,           YP_TOPT,  YP_VOPT = { dbus_events, DBUS_EVENT_NONE }, YP_FMULTI },
 	{ C_DBUS_INIT_DELAY,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 1, YP_STIME } },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
+	{ C_LISTEN_QUIC,          YP_TADDR, YP_VADDR = { 8853 }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
 	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 0 },                        YP_FMULTI, { legacy_item } },

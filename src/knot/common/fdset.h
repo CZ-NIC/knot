@@ -257,6 +257,20 @@ inline static int fdset_it_get_fd(const fdset_it_t *it)
 }
 
 /*!
+ * \brief Get context of event referenced by iterator.
+ *
+ * \param it  Target iterator.
+ *
+ * \retval Context of the fd.
+ */
+inline static void *fdset_it_get_ctx(const fdset_it_t *it)
+{
+	assert(it);
+
+	return it->set->ctx[fdset_it_get_idx(it)];
+}
+
+/*!
  * \brief Move iterator on next received event.
  *
  * \param it  Target iterator.

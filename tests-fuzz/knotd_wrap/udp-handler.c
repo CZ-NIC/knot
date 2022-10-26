@@ -74,9 +74,10 @@ static int udp_stdin_recv(_unused_ int fd, void *d)
 	return rq->iov[RX].iov_len;
 }
 
-static void udp_stdin_handle(udp_context_t *ctx, void *d)
+static void udp_stdin_handle(udp_context_t *ctx, void *d, void *qctx)
 {
 	udp_stdin_t *rq = (udp_stdin_t *)d;
+	(void)qctx;
 	udp_handle(ctx, STDIN_FILENO, &rq->addr, &rq->iov[RX], &rq->iov[TX], false);
 }
 

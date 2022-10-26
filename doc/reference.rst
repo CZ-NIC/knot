@@ -161,6 +161,7 @@ General options related to the server.
      dbus-event: none | running | zone-updated | ksk-submission | dnssec-invalid ...
      dbus-init-delay: TIME
      listen: ADDR[@INT] ...
+     listen-quic: ADDR[@INT] ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -623,6 +624,22 @@ for listening on local unix SOCK_STREAM socket. Non-local address binding
 is automatically enabled if supported by the operating system.
 
 Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* not set
+
+.. _server_listen-quic:
+
+listen-quic
+-----------
+
+One or more IP addresses (and optionally ports) where the server listens
+for incoming queries over QUIC protocol.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+The configured addreses for QUIC must not overlap with normal listen
+addresses. If QUIC listening is enabled, normal listening must be enabled
+as well (on any address, possibly just loopback).
 
 *Default:* not set
 

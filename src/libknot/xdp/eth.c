@@ -211,6 +211,71 @@ int knot_eth_name_from_addr(const struct sockaddr_storage *addr, char *out,
 	return matches == 0 ? KNOT_EADDRNOTAVAIL : KNOT_ELIMIT;
 }
 
+static int addr_from_cmsg(struct msghdr *mh, struct sockaddr_storage *out)
+{
+	for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(mh); cmsg != NULL; cmsg = CMSG_NXTHDR(mh, cmsg)) {
+		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
+			struct in_pktinfo *pi = (struct in_pktinfo *)CMSG_DATA(cmsg);
+			struct sockaddr_in *out4 = (struct sockaddr_in *)out;
+			out4->sin_family = AF_INET;
+			memcpy(&out4->sin_addr, &pi->ipi_addr, sizeof(pi->ipi_addr));
+			return KNOT_EOK;
+		} else if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
+			struct in6_pktinfo *pi6 = (struct in6_pktinfo *)CMSG_DATA(cmsg);
+			struct sockaddr_in6 *out6 = (struct sockaddr_in6 *)out;
+			out6->sin6_family = AF_INET6;
+			memcpy(&out6->sin6_addr, &pi6->ipi6_addr, sizeof(pi6->ipi6_addr));
+			return KNOT_EOK;
+		}
+	}
+	return KNOT_ERROR;
+}
+
+static int addr_from_getsockname(int sock_fd, bool just_port, struct sockaddr_storage *out)
+{
+	struct sockaddr_storage tmp = { 0 };
+	socklen_t len = sizeof(tmp);
+	if (getsockname(sock_fd, (struct sockaddr *)&tmp, &len) < 0) {
+		return KNOT_ERROR;
+	}
+
+	if (tmp.ss_family == AF_INET6) {
+		struct sockaddr_in6 *a = (struct sockaddr_in6 *)&tmp;
+		struct sockaddr_in6 *b = (struct sockaddr_in6 *)out;
+		assert(len == sizeof(*a));
+
+		b->sin6_port = a->sin6_port;
+		if (!just_port) {
+			b->sin6_family = a->sin6_family;
+			memcpy(&b->sin6_addr, &a->sin6_addr, sizeof(b->sin6_addr));
+		}
+	} else if (tmp.ss_family == AF_INET) {
+		struct sockaddr_in *a = (struct sockaddr_in *)&tmp;
+		struct sockaddr_in *b = (struct sockaddr_in *)out;
+		assert(len == sizeof(*a));
+
+		b->sin_port = a->sin_port;
+		if (!just_port) {
+			b->sin_family = a->sin_family;
+			memcpy(&b->sin_addr, &a->sin_addr, sizeof(b->sin_addr));
+		}
+	} else {
+		return KNOT_ENOTSUP;
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_eth_addr_from_fd(int socket_fd, struct msghdr *mh, struct sockaddr_storage *out)
+{
+	int ret = KNOT_ERROR;
+	if (mh != NULL) {
+		ret = addr_from_cmsg(mh, out);
+	}
+	return addr_from_getsockname(socket_fd, ret == KNOT_EOK, out);
+}
+
 _public_
 int knot_eth_vlans(uint16_t *vlan_map[], uint16_t *vlan_map_max)
 {

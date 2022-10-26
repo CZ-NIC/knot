@@ -34,8 +34,8 @@ struct knot_quic_creds;
 struct knot_quic_session;
 
 typedef struct knot_quic_reply {
-	struct sockaddr_storage *ip_rem;
-	struct sockaddr_storage *ip_loc;
+	const struct sockaddr_storage *ip_rem;
+	const struct sockaddr_storage *ip_loc;
 	struct iovec *in_payload;
 	struct iovec *out_payload;
 	void *in_ctx;
