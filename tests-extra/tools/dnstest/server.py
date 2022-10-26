@@ -73,6 +73,7 @@ class ZoneDnssec(object):
         self.cds_digesttype = None
         self.dnskey_mgmt = None
         self.offline_ksk = None
+        self.signing_threads = None
 
 class ZoneCatalogRole(enum.IntEnum):
     """Zone catalog roles."""
@@ -1458,7 +1459,9 @@ class Knot(Server):
                 self._str(s, "cds-digest-type", z.dnssec.cds_digesttype)
             self._str(s, "dnskey-management", z.dnssec.dnskey_mgmt)
             self._bool(s, "offline-ksk", z.dnssec.offline_ksk)
-            self._str(s, "signing-threads", str(random.randint(1,4)))
+            self._str(s, "signing-threads",
+                      z.dnssec.signing_threads if z.dnssec.signing_threads is not None
+                      else str(random.randint(1,4)))
         if have_policy:
             s.end()
 
