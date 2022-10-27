@@ -46,6 +46,7 @@ typedef enum {
 } knot_sweep_counter_t;
 
 typedef struct knot_sweep_stats {
+	uint64_t last_log; // in seconds
 	uint32_t total;
 	uint32_t counters[4];
 } knot_sweep_stats_t;
