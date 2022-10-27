@@ -39,11 +39,6 @@
 #define QUIC_IBUFS_PER_CONN	512 /* Heuristic value: this means that e.g. for 100k allowed
 				       QUIC conns, we will limit total size of input buffers to 50 MiB. */
 
-typedef struct {
-	uint64_t last_log;
-	knot_sweep_stats_t stats;
-} closed_log_ctx_t;
-
 typedef struct xdp_handle_ctx {
 	knot_xdp_socket_t *sock;
 	knot_xdp_msg_t msg_recv[XDP_BATCHLEN];
@@ -58,7 +53,7 @@ typedef struct xdp_handle_ctx {
 	knot_xquic_conn_t *quic_relays[XDP_BATCHLEN];
 	int quic_rets[XDP_BATCHLEN];
 	knot_xquic_table_t *quic_table;
-	closed_log_ctx_t quic_closed;
+	knot_sweep_stats_t quic_closed;
 #endif // ENABLE_QUIC
 
 	bool tcp;
@@ -76,7 +71,7 @@ typedef struct xdp_handle_ctx {
 	size_t quic_max_inbufs;
 	size_t quic_max_obufs;
 
-	closed_log_ctx_t tcp_closed;
+	knot_sweep_stats_t tcp_closed;
 } xdp_handle_ctx_t;
 
 static bool udp_state_active(int state)
@@ -94,30 +89,30 @@ static bool tcp_send_state(int state)
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
 }
 
-static void log_closed(closed_log_ctx_t *ctx, bool tcp)
+static void log_closed(knot_sweep_stats_t *stats, bool tcp)
 {
 	struct timespec now = time_now();
 	uint64_t sec = now.tv_sec + now.tv_nsec / 1000000000;
-	if (sec - ctx->last_log <= 9 || (ctx->stats.total == 0)) {
+	if (sec - stats->last_log <= 9 || (stats->total == 0)) {
 		return;
 	}
 
 	const char *proto = tcp ? "TCP" : "QUIC";
 
-	uint32_t timedout = ctx->stats.counters[KNOT_SWEEP_CTR_TIMEOUT];
-	uint32_t limit_conn = ctx->stats.counters[KNOT_SWEEP_CTR_LIMIT_CONN];
-	uint32_t limit_ibuf = ctx->stats.counters[KNOT_SWEEP_CTR_LIMIT_IBUF];
-	uint32_t limit_obuf = ctx->stats.counters[KNOT_SWEEP_CTR_LIMIT_OBUF];
+	uint32_t timedout = stats->counters[KNOT_SWEEP_CTR_TIMEOUT];
+	uint32_t limit_conn = stats->counters[KNOT_SWEEP_CTR_LIMIT_CONN];
+	uint32_t limit_ibuf = stats->counters[KNOT_SWEEP_CTR_LIMIT_IBUF];
+	uint32_t limit_obuf = stats->counters[KNOT_SWEEP_CTR_LIMIT_OBUF];
 
-	if (tcp || ctx->stats.total != timedout) {
+	if (tcp || stats->total != timedout) {
 		log_notice("%s, connection sweep, closed %u, count limit %u, inbuf limit %u, outbuf limit %u",
 		           proto, timedout, limit_conn, limit_ibuf, limit_obuf);
 	} else {
 		log_debug("%s, timed out connections %u", proto, timedout);
 	}
 
-	ctx->last_log = sec;
-	knot_sweep_stats_reset(&ctx->stats);
+	knot_sweep_stats_reset(stats);
+	stats->last_log = sec;
 }
 
 void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
@@ -460,7 +455,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 {
 #ifdef ENABLE_QUIC
 	if (ctx->quic_table != NULL) {
-		knot_xquic_table_sweep(ctx->quic_table, &ctx->quic_closed.stats);
+		knot_xquic_table_sweep(ctx->quic_table, &ctx->quic_closed);
 		log_closed(&ctx->quic_closed, false);
 	}
 #endif // ENABLE_QUIC
@@ -475,12 +470,12 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 	do {
 		knot_xdp_send_prepare(ctx->sock);
 
-		prev_total = ctx->tcp_closed.stats.total;
+		prev_total = ctx->tcp_closed.total;
 
 		ret = knot_tcp_sweep(ctx->tcp_table, ctx->tcp_idle_close, ctx->tcp_idle_reset,
 		                     ctx->tcp_idle_resend,
 		                     ctx->tcp_max_conns, ctx->tcp_max_inbufs, ctx->tcp_max_obufs,
-		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed.stats);
+		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed);
 		if (ret == KNOT_EOK) {
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
@@ -491,14 +486,14 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 
 		ret = knot_tcp_sweep(ctx->syn_table, UINT32_MAX, ctx->tcp_idle_reset,
 		                     UINT32_MAX, ctx->tcp_syn_conns, SIZE_MAX, SIZE_MAX,
-		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed.stats);
+		                     sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed);
 		if (ret == KNOT_EOK) {
 			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
 		}
 		knot_tcp_cleanup(ctx->syn_table, sweep_relays, XDP_BATCHLEN);
 
 		(void)knot_xdp_send_finish(ctx->sock);
-	} while (ret == KNOT_EOK && prev_total < ctx->tcp_closed.stats.total);
+	} while (ret == KNOT_EOK && prev_total < ctx->tcp_closed.total);
 
 	log_closed(&ctx->tcp_closed, true);
 }
