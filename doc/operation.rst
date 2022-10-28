@@ -1148,6 +1148,11 @@ Pre-requisites
 
   All the capabilities are dropped upon the service is started.
 
+* For proper processing of VLAN traffic, VLAN offloading should be disabled. E.g.::
+
+    ethtool -K <interface> tx-vlan-offload off rx-vlan-offload off
+
+
 Optimizations
 -------------
 
@@ -1171,4 +1176,4 @@ Limitations
 * DNS over XDP traffic is not visible to common system tools (e.g. firewall, tcpdump etc.).
 * BPF filter is not automatically unloaded from the network device. Manual filter unload::
 
-   ip link set dev <ETH> xdp off
+   ip link set dev <interface> xdp off
