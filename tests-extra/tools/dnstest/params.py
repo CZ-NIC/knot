@@ -61,6 +61,8 @@ knot_ctl = get_binary("KNOT_TEST_KNOTC", repo_binary("src/knotc"))
 keymgr_bin = get_binary("KNOT_TEST_KEYMGR", repo_binary("src/keymgr"))
 # KNOT_TEST_KJOURNALPRINT - Knot journal print binary.
 kjournalprint_bin = get_binary("KNOT_TEST_KJOURNALPRINT", repo_binary("src/kjournalprint"))
+# KNOT_TEST_KCATALOGPRINT - Knot catalog print binary.
+kcatalogprint_bin = get_binary("KNOT_TEST_KCATALOGPRINT", repo_binary("src/kcatalogprint"))
 # KNOT_TEST_BIND - Bind binary.
 bind_bin = get_binary("KNOT_TEST_BIND", "named")
 # KNOT_TEST_BINDC - Bind control binary.
