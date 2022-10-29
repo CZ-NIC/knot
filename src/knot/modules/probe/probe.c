@@ -70,14 +70,16 @@ static knotd_state_t export(knotd_state_t state, knot_pkt_t *pkt,
 	uint16_t idx = qdata->params->thread_id % ctx->probe_count;
 	knot_probe_t *probe = ctx->probes[idx];
 
-	// Check the rate limit.
-	struct timespec now = time_now();
-	uint64_t now_ns = 1000000000 * now.tv_sec + now.tv_nsec;
-	uint64_t last_ns = ATOMIC_GET(ctx->last_times[idx]);
-	if (now_ns - last_ns < ctx->min_diff_ns) {
-		return state;
+	// Check the rate limit if enabled.
+	if (ctx->min_diff_ns > 0) {
+		struct timespec now = time_now();
+		uint64_t now_ns = 1000000000 * now.tv_sec + now.tv_nsec;
+		uint64_t last_ns = ATOMIC_GET(ctx->last_times[idx]);
+		if (now_ns - last_ns < ctx->min_diff_ns) {
+			return state;
+		}
+		ATOMIC_SET(ctx->last_times[idx], now_ns);
 	}
-	ATOMIC_SET(ctx->last_times[idx], now_ns);
 
 	// Prepare data sources.
 	struct sockaddr_storage buff;
