@@ -59,7 +59,6 @@ for zf in glob.glob(t.data_dir + "/*.zone"):
 for z in rzone:
     # slow down processing as much as possible
     knot.dnssec(z).enable = True
-    knot.dnssec(z).rrsig_lifetime = "1"
     knot.dnssec(z).signing_threads = str(random.randint(2,4))
     if not knot.valgrind: # it would be too slow with valgrind
         knot.dnssec(z).nsec3 = True
@@ -76,6 +75,10 @@ rootser = knot.zones_wait(rzone)
 t.sleep(5)
 
 for z in rzone:
+    knot.ctl("zone-sign " + z.name)
+t.sleep(0.5)
+
+for z in rzone:
     sign_wait_bg([knot.control_bin] + knot.ctl_params, z.name)
 t.sleep(1)
 
@@ -83,7 +86,7 @@ up = knot.update(catz)
 up.add("bar.zones." + catz[0].name, 0, "PTR", "cataloged2.")
 up.try_send()
 
-t.sleep(4)
+t.sleep(0.5)
 
 up = knot.update(catz)
 if test_prop_change:
