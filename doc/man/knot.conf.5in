@@ -1800,6 +1800,15 @@ not to be set to \fBnone\fP\&.
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
+The mentioned change to CDS record usually means that a KSK roll\-over is running
+and the new key being rolled\-in is in "ready" state already for the period of
+\fI\%propagation\-delay\fP\&.
+.UNINDENT
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
 Module Onlinesign doesn\(aqt support DS push.
 .UNINDENT
 .UNINDENT

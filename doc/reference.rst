@@ -2009,6 +2009,11 @@ It's possible to manage both child and parent zones by the same Knot DNS server.
    not to be set to ``none``.
 
 .. NOTE::
+   The mentioned change to CDS record usually means that a KSK roll-over is running
+   and the new key being rolled-in is in "ready" state already for the period of
+   :ref:`propagation-delay<policy_propagation-delay>`.
+
+.. NOTE::
    Module :ref:`Onlinesign<mod-onlinesign>` doesn't support DS push.
 
 *Default:* not set
