@@ -59,7 +59,7 @@ for zf in glob.glob(t.data_dir + "/*.zone"):
 for z in rzone:
     # slow down processing as much as possible
     knot.dnssec(z).enable = True
-    knot.dnssec(z).signing_threads = str(random.randint(2,4))
+    knot.dnssec(z).signing_threads = "2"
     if not knot.valgrind: # it would be too slow with valgrind
         knot.dnssec(z).nsec3 = True
         knot.dnssec(z).nsec3_iters = "65000"
