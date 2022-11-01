@@ -1,3 +1,28 @@
+Knot DNS 3.2.2 (2022-11-01)
+===========================
+
+Features:
+---------
+ - knotd,kxdpgun: support for VLAN (802.1Q) traffic in the XDP mode
+ - knotd: added configurable delay upon D-Bus initialization (see 'server.dbus-init-delay')
+ - kdig: support for JSON (RFC 8427) output format (see '+json')
+ - kdig: support for PROXYv2 (see '+proxy') (Gift for Peter van Dijk)
+
+Improvements:
+-------------
+ - mod-geoip: module respects the server configuration of answer rotation
+ - libs: upgraded embedded libngtcp2 to 0.10.0
+ - tests: improved robustness of some unit tests
+ - doc: added description of zone bootstrap re-planning
+
+Bugfixes:
+---------
+ - knotd: catalog confusion when a member is added and immediately deleted #818
+ - knotd: defective handling of short messages with PROXYv2 header #816
+ - knotd: inconsistent processing of malformed messages with PROXYv2 header #817
+ - kxdpgun: incorrect XDP mode is logged
+ - packaging: outdated dependency check in RPM packages
+
 Knot DNS 3.2.1 (2022-09-09)
 ===========================
 
