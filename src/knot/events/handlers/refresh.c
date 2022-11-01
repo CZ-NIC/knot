@@ -1358,8 +1358,6 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	int ret = zone_master_try(conf, zone, try_refresh, &trctx, "refresh");
 	zone_clear_preferred_master(zone);
 	if (ret != KNOT_EOK) {
-		log_zone_error(zone->name, "refresh, failed (%s)", knot_strerror(ret));
-
 		const knot_rdataset_t *soa = zone_soa(zone);
 		uint32_t next;
 
@@ -1373,6 +1371,14 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		            C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
 		zone->timers.next_refresh = time(NULL) + next;
 		zone->timers.last_refresh_ok = false;
+
+		char time_str[64] = { 0 };
+		struct tm time_gm = { 0 };
+		localtime_r(&zone->timers.next_refresh, &time_gm);
+		strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
+
+		log_zone_error(zone->name, "refresh, failed (%s), next retry at %s",
+		               knot_strerror(ret), time_str);
 	}
 
 	/* Reschedule events. */
