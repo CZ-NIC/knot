@@ -714,8 +714,10 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 			WARN("QUIC, failed to send");
 			return ret;
 		}
-		pdatav = NULL;
-		datavlen = 0;
+		if (ctx->stream.out_ack > 0) {
+			pdatav = NULL;
+			datavlen = 0;
+		}
 
 		const ngtcp2_transport_params *pp =
 			ngtcp2_conn_get_remote_transport_params(ctx->conn);
