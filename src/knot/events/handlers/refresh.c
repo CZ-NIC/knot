@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1302,6 +1302,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	const struct sockaddr_storage *dst = &master->addr;
 	const struct sockaddr_storage *src = &master->via;
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
+	flags |= (master->quic ? KNOT_REQUEST_QUIC : 0);
 	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &master->key, flags);
 	if (!req) {
 		knot_request_free(req, NULL);

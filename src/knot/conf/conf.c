@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1394,6 +1394,9 @@ conf_remote_t conf_remote_txn(
 		}
 		conf_val_next(&val);
 	}
+
+	val = conf_id_get_txn(conf, txn, C_RMT, C_QUIC, id);
+	out.quic = conf_bool(&val);
 
 	// Get TSIG key (optional).
 	conf_val_t key_id = conf_id_get_txn(conf, txn, C_RMT, C_KEY, id);

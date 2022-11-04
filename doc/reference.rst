@@ -1303,6 +1303,7 @@ transfer, target for a notification, etc.).
    - id: STR
      address: ADDR[@INT] | STR ...
      via: ADDR[@INT] ...
+     quic: BOOL
      key: key_id
      cert-pin: BASE64 ...
      block-notify-after-transfer: BOOL
@@ -1347,6 +1348,23 @@ Optional source port (default is random) can be appended
 to the address using ``@`` separator.
 
 *Default:* not set
+
+.. _remote_quic:
+
+quic
+----
+
+If this option is set, the QUIC protocol will be used for outgoing communication
+with this remote.
+
+Current limitations:
+
+- One connection per each transfer is opened, :ref:`server_remote-pool-limit`
+  does not take effect for QUIC.
+- Full handshake is always performed, obtained Session tickets are not
+  utilized for faster handshakes.
+- The client does not close the connection gracefully and let it time out
+  from the server side.
 
 .. _remote_key:
 

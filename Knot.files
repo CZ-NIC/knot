@@ -307,6 +307,8 @@ src/knot/query/capture.h
 src/knot/query/layer.h
 src/knot/query/query.c
 src/knot/query/query.h
+src/knot/query/quic-requestor.c
+src/knot/query/quic-requestor.h
 src/knot/query/requestor.c
 src/knot/query/requestor.h
 src/knot/server/dthreads.c
