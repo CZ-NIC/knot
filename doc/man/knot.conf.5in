@@ -1177,6 +1177,7 @@ remote:
   \- id: STR
     address: ADDR[@INT] | STR ...
     via: ADDR[@INT] ...
+    quic: BOOL
     key: key_id
     cert\-pin: BASE64 ...
     block\-notify\-after\-transfer: BOOL
@@ -1217,6 +1218,23 @@ Optional source port (default is random) can be appended
 to the address using \fB@\fP separator.
 .sp
 \fIDefault:\fP not set
+.SS quic
+.sp
+If this option is set, the QUIC protocol will be used for outgoing communication
+with this remote.
+.sp
+Current limitations:
+.INDENT 0.0
+.IP \(bu 2
+One connection per each transfer is opened, \fI\%remote\-pool\-limit\fP
+does not take effect for QUIC.
+.IP \(bu 2
+Full handshake is always performed, obtained Session tickets are not
+utilized for faster handshakes.
+.IP \(bu 2
+The client does not close the connection gracefully and let it time out
+from the server side.
+.UNINDENT
 .SS key
 .sp
 A \fI\%reference\fP to the TSIG key which is used to authenticate

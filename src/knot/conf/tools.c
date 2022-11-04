@@ -852,6 +852,17 @@ int check_remote(
 		return KNOT_EINVAL;
 	}
 
+	conf_val_t quic = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
+	                                     C_QUIC, args->id, args->id_len);
+	if (quic.code == KNOT_EOK) {
+#ifdef ENABLE_QUIC
+		(void)0;
+#else
+		args->err_str = "QUIC not available";
+		return KNOT_EINVAL;
+#endif
+	}
+
 	return KNOT_EOK;
 }
 
