@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,11 +24,14 @@
 #include "libknot/mm_ctx.h"
 #include "libknot/rrtype/tsig.h"
 
+struct knot_quic_reply;
+
 typedef enum {
 	KNOT_REQUEST_NONE = 0,       /*!< Empty flag. */
 	KNOT_REQUEST_UDP  = 1 << 0,  /*!< Use UDP for requests. */
 	KNOT_REQUEST_TFO  = 1 << 1,  /*!< Enable TCP Fast Open for requests. */
 	KNOT_REQUEST_KEEP = 1 << 2,  /*!< Keep upstream TCP connection in pool for later reuse. */
+	KNOT_REQUEST_QUIC = 1 << 3,  /*!< Use QUIC/UDP for requests. */
 } knot_request_flag_t;
 
 typedef enum {
@@ -48,6 +51,7 @@ typedef struct {
 /*! \brief Request data (socket, payload, response, TSIG and endpoints). */
 typedef struct {
 	int fd;
+	struct knot_quic_reply *quic_ctx;
 	knot_request_flag_t flags;
 	struct sockaddr_storage remote, source;
 	knot_pkt_t *query;
