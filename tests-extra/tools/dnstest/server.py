@@ -157,6 +157,7 @@ class Server(object):
         self.addr = None
         self.addr_extra = list()
         self.port = 53 # Needed for keymgr when port not yet generated
+        self.quic = None
         self.udp_workers = None
         self.bg_workers = None
         self.fixed_port = False
@@ -1276,6 +1277,8 @@ class Knot(Server):
         s.item_str("rundir", self.dir)
         s.item_str("pidfile", os.path.join(self.dir, self.pidfile))
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
+        if self.quic:
+            s.item_str("listen-quic", "%s@8853" % self.addr)
         if self.udp_workers:
             s.item_str("udp-workers", self.udp_workers)
         if self.bg_workers:
@@ -1324,7 +1327,11 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", master.name)
-                    s.item_str("address", "%s@%s" % (master.addr, master.port))
+                    if master.quic:
+                        s.item_str("address", "%s@8853" % master.addr)
+                        s.item_str("quic-remote-certfile", "something")
+                    else:
+                        s.item_str("address", "%s@%s" % (master.addr, master.port))
                     if self.tsig:
                         s.item_str("key", self.tsig.name)
                     if master.no_xfr_edns:

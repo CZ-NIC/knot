@@ -1296,6 +1296,7 @@ transfer, target for a notification, etc.).
    - id: STR
      address: ADDR[@INT] ...
      via: ADDR[@INT] ...
+     quic-remote-certfile: STR
      key: key_id
      block-notify-after-transfer: BOOL
      no-edns: BOOL
@@ -1336,6 +1337,27 @@ Optional source port (default is random) can be appended
 to the address using ``@`` separator.
 
 *Default:* not set
+
+.. _remote_quic-remote-certfile:
+
+quic-remote-certfile
+--------------------
+
+If this option is set, the QUIC protocol will be used for outstanding queries
+to this remote.
+
+Current limitations:
+
+- The certificate check is in fact not yet implemented. This option is
+  effectively so far only an on/off switch.
+- Only used for zone transfers (SOA query/AXFR/IXFR).
+- One connection per each transfer is opened, :ref:`server_remote-pool-limit`
+  does not take effect for QUIC.
+- Full handshake is always performed, obtained Session tickets are not
+  utilized for faster handshakes.
+- The client does not close the connection gracefully and let it time out
+  from the server side.
+- Multi-DNS-message-transfer is broken. Only use this for small (< 15KiB) zones.
 
 .. _remote_key:
 

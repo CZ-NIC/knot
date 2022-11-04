@@ -19,6 +19,9 @@
 #include "libknot/attribute.h"
 #include "knot/common/unreachable.h"
 #include "knot/query/requestor.h"
+#ifdef ENABLE_QUIC
+#include "knot/query/quic-requestor.h"
+#endif // ENABLE_QUIC
 #include "libknot/errcode.h"
 #include "contrib/conn_pool.h"
 #include "contrib/mempattern.h"
@@ -27,7 +30,12 @@
 
 static bool use_tcp(knot_request_t *request)
 {
-	return (request->flags & KNOT_REQUEST_UDP) == 0;
+	return (request->flags & (KNOT_REQUEST_UDP | KNOT_REQUEST_QUIC)) == 0;
+}
+
+static bool use_quic(knot_request_t *request)
+{
+	return (request->flags & KNOT_REQUEST_QUIC) != 0;
 }
 
 static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer)
@@ -73,6 +81,18 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd)
 		return request->fd;
 	}
 
+	if (use_quic(request)) {
+#ifdef ENABLE_QUIC
+		request->quic_ctx = knot_qreq_connect(request->fd, &request->remote);
+		if (request->quic_ctx == NULL) {
+			close(request->fd);
+			return KNOT_EUNREACH; // FIXME correct code?
+		}
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+	}
+
 	return KNOT_EOK;
 }
 
@@ -93,7 +113,14 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 	                                    &request->remote : NULL;
 
 	/* Send query. */
-	if (use_tcp(request)) {
+	if (request->quic_ctx != NULL) {
+#ifdef ENABLE_QUIC
+		struct iovec tosend = { wire, wire_len };
+		return knot_qreq_send(request->quic_ctx, &tosend);
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+	} else if (use_tcp(request)) {
 		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms,
 		                       tfo_addr);
 		if (ret == KNOT_ETIMEOUT) { // Includes establishing conn which times out.
@@ -124,7 +151,16 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	}
 
 	/* Receive it */
-	if (use_tcp(request)) {
+	if (request->quic_ctx != NULL) {
+#ifdef ENABLE_QUIC
+		struct iovec recvd = { resp->wire, resp->max_size };
+		ret = knot_qreq_recv(request->quic_ctx, &recvd);
+		resp->size = recvd.iov_len;
+		return ret;
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+	} else if (use_tcp(request)) {
 		ret = net_dns_tcp_recv(request->fd, resp->wire, resp->max_size, timeout_ms);
 	} else {
 		ret = net_dgram_recv(request->fd, resp->wire, resp->max_size, timeout_ms);
@@ -185,6 +221,14 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 {
 	if (request == NULL) {
 		return;
+	}
+
+	if (request->quic_ctx != NULL) {
+#ifdef ENABLE_QUIC
+		knot_qreq_close(request->quic_ctx);
+#else
+		assert(0);
+#endif // ENABLE_QUIC
 	}
 
 	if (request->fd >= 0 && use_tcp(request) &&

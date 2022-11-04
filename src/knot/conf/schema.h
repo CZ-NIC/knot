@@ -109,6 +109,7 @@
 #define C_QUIC_MAX_CLIENTS	"\x10""quic-max-clients"
 #define C_QUIC_OUTBUF_MAX_SIZE	"\x14""quic-outbuf-max-size"
 #define C_QUIC_PORT		"\x09""quic-port"
+#define C_QUIC_RMT_CERT		"\x14""quic-remote-certfile"
 #define C_REFRESH_MAX_INTERVAL	"\x14""refresh-max-interval"
 #define C_REFRESH_MIN_INTERVAL	"\x14""refresh-min-interval"
 #define C_REPRO_SIGNING		"\x14""reproducible-signing"

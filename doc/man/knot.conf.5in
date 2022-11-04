@@ -1174,6 +1174,7 @@ remote:
   \- id: STR
     address: ADDR[@INT] ...
     via: ADDR[@INT] ...
+    quic\-remote\-certfile: STR
     key: key_id
     block\-notify\-after\-transfer: BOOL
     no\-edns: BOOL
@@ -1210,6 +1211,30 @@ Optional source port (default is random) can be appended
 to the address using \fB@\fP separator.
 .sp
 \fIDefault:\fP not set
+.SS quic\-remote\-certfile
+.sp
+If this option is set, the QUIC protocol will be used for outstanding queries
+to this remote.
+.sp
+Current limitations:
+.INDENT 0.0
+.IP \(bu 2
+The certificate check is in fact not yet implemented. This option is
+effectively so far only an on/off switch.
+.IP \(bu 2
+Only used for zone transfers (SOA query/AXFR/IXFR).
+.IP \(bu 2
+One connection per each transfer is opened, \fI\%remote\-pool\-limit\fP
+does not take effect for QUIC.
+.IP \(bu 2
+Full handshake is always performed, obtained Session tickets are not
+utilized for faster handshakes.
+.IP \(bu 2
+The client does not close the connection gracefully and let it time out
+from the server side.
+.IP \(bu 2
+Multi\-DNS\-message\-transfer is broken. Only use this for small (< 15KiB) zones.
+.UNINDENT
 .SS key
 .sp
 A \fI\%reference\fP to the TSIG key which is used to authenticate

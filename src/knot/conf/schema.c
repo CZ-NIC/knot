@@ -342,6 +342,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_ID,               YP_TSTR,  YP_VNONE, CONF_IO_FREF },
 	{ C_ADDR,             YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
 	{ C_VIA,              YP_TADDR, YP_VNONE, YP_FMULTI },
+	{ C_QUIC_RMT_CERT,    YP_TSTR,  YP_VNONE },
 	{ C_KEY,              YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
 	{ C_BLOCK_NOTIFY_XFR, YP_TBOOL, YP_VNONE },
 	{ C_NO_EDNS,          YP_TBOOL, YP_VNONE },
