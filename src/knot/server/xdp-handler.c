@@ -382,12 +382,12 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		knot_xquic_stream_t *stream;
 
 		while (rl != NULL && (stream = knot_xquic_stream_get_process(rl, &stream_id)) != NULL) {
-			assert(stream->inbuf_fin);
-			assert(stream->inbuf.iov_len > 0);
-			handle_quic_stream(rl, stream_id, &stream->inbuf, layer, params,
+			assert(stream->inbuf_fin != NULL);
+			assert(stream->inbuf_fin->iov_len > 0);
+			handle_quic_stream(rl, stream_id, stream->inbuf_fin, layer, params,
 			                   ans_buf, sizeof(ans_buf), &ctx->msg_recv[i]);
-			stream->inbuf.iov_len = 0;
-			stream->inbuf_fin = false;
+			free(stream->inbuf_fin);
+			stream->inbuf_fin = NULL;
 		}
 	}
 #else

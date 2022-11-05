@@ -318,7 +318,7 @@ static void stream_outprocess(knot_xquic_conn_t *xconn, knot_xquic_stream_t *str
 
 	for (int16_t idx = xconn->stream_inprocess + 1; idx < xconn->streams_count; idx++) {
 		stream = &xconn->streams[idx];
-		if (stream->inbuf_fin) {
+		if (stream->inbuf_fin != NULL) {
 			xconn->stream_inprocess = stream - xconn->streams;
 			return;
 		}
@@ -350,10 +350,8 @@ int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 		return KNOT_ESEMCHECK;
 	}
 
-	stream->inbuf = outs[0];
-	stream->inbuf_fin = true;
+	stream->inbuf_fin = outs;
 	stream_inprocess(xconn, stream);
-	free(outs);
 	return KNOT_EOK;
 }
 
@@ -432,7 +430,7 @@ void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 	if (EMPTY_LIST(*obs) && !keep_stream) {
 		stream_outprocess(xconn, s);
 		memset(s, 0, sizeof(*s));
-		while (s = &xconn->streams[0], s->inbuf.iov_len == 0 && s->obufs_size == 0) {
+		while (s = &xconn->streams[0], s->inbuf.iov_len == 0 && s->inbuf_fin == NULL && s->obufs_size == 0) {
 			assert(xconn->streams_count > 0);
 			xconn->streams_count--;
 

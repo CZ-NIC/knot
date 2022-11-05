@@ -708,8 +708,10 @@ void *xdp_gun_thread(void *_ctx)
 						}
 
 						stream0 = knot_xquic_conn_get_stream(rl, 0, false);
-						if (stream0 != NULL && stream0->inbuf.iov_len > 0) {
-							check_dns_payload(&stream0->inbuf, ctx, &local_stats);
+						if (stream0 != NULL && stream0->inbuf_fin != NULL) {
+							check_dns_payload(stream0->inbuf_fin, ctx, &local_stats);
+							free(stream0->inbuf_fin);
+							stream0->inbuf_fin = NULL;
 
 							if ((ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK)) {
 								knot_xquic_table_rem(relays[i], quic_table);
@@ -717,8 +719,6 @@ void *xdp_gun_thread(void *_ctx)
 								relays[i] = NULL;
 								continue;
 							}
-
-							stream0->inbuf.iov_len = 0;
 						}
 						ret = knot_xquic_send(quic_table, rl, xsk, &pkts[i], KNOT_EOK, 4, (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
 						if (ret != KNOT_EOK) {
