@@ -222,6 +222,12 @@ int net_init(const srv_info_t      *local,
 	net->proxy.src = proxy_src;
 	net->proxy.dst = proxy_dst;
 
+	if ((bool)(proxy_src == NULL) != (bool)(proxy_dst == NULL) ||
+	    (proxy_src != NULL && proxy_src->sa_family != proxy_dst->sa_family)) {
+		net_clean(net);
+		return KNOT_EINVAL;
+	}
+
 	// Prepare for TLS.
 	if (tls_params != NULL && tls_params->enable) {
 		int ret = 0;
@@ -584,7 +590,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 			.msg_iovlen = 1
 		};
 
-		if (net->proxy.src->sa_family && net->proxy.dst->sa_family) {
+		if (net->proxy.src != NULL && net->proxy.src->sa_family != 0) {
 			int ret = proxyv2_write_header(proxy_buf, sizeof(proxy_buf),
 			                               SOCK_DGRAM, net->proxy.src,
 			                               net->proxy.dst);
@@ -638,7 +644,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 			.msg_iovlen = 2
 		};
 
-		if (net->proxy.src->sa_family && net->proxy.dst->sa_family) {
+		if (net->proxy.src != NULL && net->proxy.src->sa_family != 0) {
 			int ret = proxyv2_write_header(proxy_buf, sizeof(proxy_buf),
 			                               SOCK_STREAM, net->proxy.src,
 			                               net->proxy.dst);
