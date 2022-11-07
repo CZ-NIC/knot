@@ -15,7 +15,9 @@
  */
 
 #include <assert.h>
+#ifdef ENABLE_XDP
 #include <bpf/libbpf.h>
+#endif
 #include <errno.h>
 #include <ifaddrs.h>
 #include <linux/ethtool.h>
@@ -288,13 +290,14 @@ int knot_eth_vlans(uint16_t *vlan_map[], uint16_t *vlan_map_max)
 _public_
 knot_xdp_mode_t knot_eth_xdp_mode(int if_index)
 {
+#ifdef ENABLE_XDP
 #if USE_LIBXDP
 	struct bpf_xdp_query_opts info = { .sz = sizeof(info) };
 	int ret = bpf_xdp_query(if_index, 0, &info);
 #else
 	struct xdp_link_info info;
 	int ret = bpf_get_link_xdp_info(if_index, &info, sizeof(info), 0);
-#endif
+#endif // USE_LIBXDP
 	if (ret != 0) {
 		return KNOT_XDP_MODE_NONE;
 	}
@@ -308,4 +311,7 @@ knot_xdp_mode_t knot_eth_xdp_mode(int if_index)
 	default:
 		return KNOT_XDP_MODE_NONE;
 	}
+#else
+	return KNOT_XDP_MODE_NONE;
+#endif // ENABLE_XDP
 }

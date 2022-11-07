@@ -61,6 +61,7 @@ nobase_include_libknot_HEADERS = \
 	libknot/yparser/ypschema.h		\
 	libknot/yparser/yptrafo.h		\
 	libknot/version.h			\
+	libknot/xdp/eth.h			\
 	libknot/xdp/tcp_iobuf.h			\
 	libknot/xdp.h
 
@@ -90,6 +91,7 @@ libknot_la_SOURCES = \
 	libknot/yparser/ypformat.c		\
 	libknot/yparser/ypschema.c		\
 	libknot/yparser/yptrafo.c		\
+	libknot/xdp/eth.c			\
 	libknot/xdp/tcp_iobuf.c
 
 if EMBEDDED_LIBBPF
@@ -101,7 +103,6 @@ libknot_la_LIBADD   += $(libbpf_LIBS)
 
 nobase_include_libknot_HEADERS += \
 	libknot/xdp/bpf-consts.h		\
-	libknot/xdp/eth.h			\
 	libknot/xdp/msg.h			\
 	libknot/xdp/tcp.h			\
 	libknot/xdp/xdp.h
@@ -111,7 +112,6 @@ libknot_la_SOURCES  += \
 	libknot/xdp/bpf-kernel-obj.h		\
 	libknot/xdp/bpf-user.c			\
 	libknot/xdp/bpf-user.h			\
-	libknot/xdp/eth.c			\
 	libknot/xdp/msg_init.h			\
 	libknot/xdp/protocols.h			\
 	libknot/xdp/tcp.c			\
