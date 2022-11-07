@@ -287,6 +287,15 @@ knot_xquic_stream_t *knot_xquic_conn_get_stream(knot_xquic_conn_t *xconn,
 			}
 		}
 
+		for (knot_xquic_stream_t *si = new_streams;
+		     si < new_streams + xconn->streams_count; si++) {
+			if (si->obufs_size == 0) {
+				init_list((list_t *)&si->outbufs);
+			} else {
+				fix_list((list_t *)&si->outbufs);
+			}
+		}
+
 		for (knot_xquic_stream_t *si = new_streams + xconn->streams_count;
 		     si < new_streams + new_streams_count; si++) {
 			memset(si, 0, sizeof(*si));
@@ -444,6 +453,13 @@ void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 				xconn->stream_inprocess--;
 				memmove(s, s + 1, sizeof(*s) * xconn->streams_count);
 				// possible realloc to shrink allocated space, but probably useless
+				for (knot_xquic_stream_t *si = s;  si < s + xconn->streams_count; si++) {
+					if (si->obufs_size == 0) {
+						init_list((list_t *)&si->outbufs);
+					} else {
+						fix_list((list_t *)&si->outbufs);
+					}
+				}
 			}
 		}
 	}

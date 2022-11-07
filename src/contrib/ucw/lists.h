@@ -2,7 +2,7 @@
  *	BIRD Library -- Linked Lists
  *
  *	(c) 1998 Martin Mares <mj@ucw.cz>
- *	(c) 2015, 2020-2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+ *	(c) 2015, 2020-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
  *	Can be freely distributed and used under the terms of the GNU GPL.
  */
@@ -55,6 +55,7 @@ void init_list(list_t *);
 void insert_node(node_t *, node_t *);
 void list_dup(list_t *dst, list_t *src, size_t itemsz);
 size_t list_size(const list_t *);
+void fix_list(list_t *);
 
 /*!
  * \brief Generic pointer list implementation.
