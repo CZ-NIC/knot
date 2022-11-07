@@ -2,7 +2,7 @@
  *	BIRD Library -- Linked Lists
  *
  *	(c) 1998 Martin Mares <mj@ucw.cz>
- *	(c) 2015, 2020-2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+ *	(c) 2015, 2020-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
  *	Can be freely distributed and used under the terms of the GNU GPL.
  */
@@ -178,6 +178,23 @@ size_t list_size(const list_t *l)
 	}
 
 	return count;
+}
+
+/**
+ * fix_list - correction of head/tail pointers when list had been memmove'd
+ * \p l: list
+ *
+ * WARNING: must not be called on empty list
+ */
+void fix_list(list_t *l)
+{
+	node_t *n = HEAD(*l);
+	assert(n->next != NULL);
+	n->prev = &l->head;
+
+	n = TAIL(*l);
+	assert(n->prev != NULL);
+	n->next = &l->tail;
 }
 
 /**
