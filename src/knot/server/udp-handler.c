@@ -330,7 +330,19 @@ static void udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 static void udp_recvmmsg_send(void *d)
 {
 	struct udp_recvmmsg *rq = d;
-	(void)sendmmsg(rq->fd, rq->msgs[TX], rq->rcvd, 0);
+	bool fail = false;
+	for (unsigned i = 1; i < rq->rcvd; ++i) {
+		if (rq->msgs[TX][i].msg_hdr.msg_namelen > 0 &&
+		    rq->msgs[TX][i-1].msg_hdr.msg_namelen == 0) {
+			fail = true;
+			printf("hidden %d-th outgoing msg [%u] ", i, rq->msgs[TX][i].msg_len);
+		}
+	}
+
+	int ret = sendmmsg(rq->fd, rq->msgs[TX], rq->rcvd, 0);
+	if (fail) {
+		printf("...sent %d\n", ret);
+	}
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		/* Reset buffer size and address len. */
 		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
