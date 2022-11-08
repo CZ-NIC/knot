@@ -181,6 +181,7 @@ void udp_quic_handle(knotd_qdata_params_t *params, knot_layer_t *layer, uint64_t
 	while (conn != NULL && (stream = knot_xquic_stream_get_process(conn, &stream_id)) != NULL) {
 		assert(stream->inbuf_fin != NULL);
 		assert(stream->inbuf_fin->iov_len > 0);
+		// NOTE: if multiple buffers in inbuf_fin, only the first is used and rest ignored
 		handle_quic_stream(conn, stream_id, stream->inbuf_fin, layer, params,
 		                   tx->iov_base, tx->iov_len, params->remote); // NOTE: tx is used here just as temporary buffer
 		free(stream->inbuf_fin);

@@ -354,13 +354,16 @@ int knot_xquic_stream_recv_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 	if (ret != KNOT_EOK || (outs_count == 0 && !fin)) {
 		return ret;
 	}
-	if (outs_count != 1 || !fin) {
-		free(outs);
+
+	if (stream->inbuf_fin != NULL) {
 		return KNOT_ESEMCHECK;
 	}
 
 	stream->inbuf_fin = outs;
-	stream_inprocess(xconn, stream);
+	stream->inbuf_fin_count = outs_count;
+	if (fin) {
+		stream_inprocess(xconn, stream);
+	}
 	return KNOT_EOK;
 }
 
