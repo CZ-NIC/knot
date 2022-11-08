@@ -1357,7 +1357,6 @@ Current limitations:
   utilized for faster handshakes.
 - The client does not close the connection gracefully and let it time out
   from the server side.
-- Multi-DNS-message-transfer is broken. Only use this for small (< 15KiB) zones.
 
 .. _remote_key:
 

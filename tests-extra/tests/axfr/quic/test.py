@@ -10,7 +10,7 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-zone = t.zone_rnd(5, records=15)
+zone = t.zone_rnd(1, records=15) + t.zone_rnd(1, records=60) + t.zone_rnd(1, records=100) + t.zone_rnd(1, records=600)
 
 t.link(zone, master, slave)
 master.quic = True

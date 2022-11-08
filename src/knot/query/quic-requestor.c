@@ -147,26 +147,49 @@ int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data)
 int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out)
 {
 	knot_xquic_conn_t *conn = r->ctx;
-	int64_t stream_id = -1;
-	knot_xquic_stream_t *stream = NULL;
-	int ret = KNOT_EOK;
+	knot_xquic_stream_t *stream = &conn->streams[conn->streams_count - 1];
 
-	while (ret == KNOT_EOK && (stream = knot_xquic_stream_get_process(conn, &stream_id)) == NULL) {
-		ret = quic_exchange(conn, r);
+	assert(conn->streams_count != 0);
+
+	assert(stream->inbuf_fin_count <= 2);
+	if (stream->inbuf_fin_count == 2) { // first inbuf has been processed last time
+		if (stream->inbuf_fin[1].iov_len > out->iov_len) {
+			return KNOT_ESPACE;
+		}
+		out->iov_len = stream->inbuf_fin[1].iov_len;
+		memcpy(out->iov_base, stream->inbuf_fin[1].iov_base, out->iov_len);
+		free(stream->inbuf_fin);
+		stream->inbuf_fin = NULL;
+		return KNOT_EOK;
 	}
-	if (ret == KNOT_EOK) {
-		if (stream_id != (conn->streams_count - 1) * 4) {
-			ret = KNOT_ESEMCHECK;
-		} else if (stream->inbuf_fin->iov_len <= out->iov_len) {
-			out->iov_len = stream->inbuf_fin->iov_len;
-			memcpy(out->iov_base, stream->inbuf_fin->iov_base, out->iov_len);
-			free(stream->inbuf_fin);
-			stream->inbuf_fin = NULL;
-		} else {
-			ret = KNOT_ESPACE;
+
+	while (stream->inbuf_fin == NULL) {
+		int ret = quic_exchange(conn, r);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		if (conn->streams_count == 0) {
+			return KNOT_ECONN;
 		}
 	}
-	return ret;
+
+	assert(stream->inbuf_fin_count > 0);
+	if (stream->inbuf_fin_count > 2) {
+		return KNOT_ESEMCHECK; // this would be difficult to handle and in practice it hardly happens
+	}
+
+	if (stream->inbuf_fin->iov_len <= out->iov_len) {
+		out->iov_len = stream->inbuf_fin->iov_len;
+		memcpy(out->iov_base, stream->inbuf_fin->iov_base, out->iov_len);
+		if (stream->inbuf_fin_count < 2) {
+			free(stream->inbuf_fin);
+			stream->inbuf_fin = NULL;
+		}
+	} else {
+		return KNOT_ESPACE;
+	}
+
+	return KNOT_EOK;
 }
 
 void knot_qreq_close(struct knot_quic_reply *r)
