@@ -2,6 +2,7 @@
 
 import time
 import random
+import socket
 import multiprocessing
 import dns.message
 import dns.query
@@ -37,12 +38,10 @@ class Inquirer:
         while self.active:
             try:
                 for q in _queries:
-                    if _udp:
-                        dns.query.udp(q, server.addr, port=server.port,
-                                      timeout=0.02)
-                    else:
-                        dns.query.tcp(q, server.addr, port=server.port,
-                                      timeout=0.05)
+                    wiretrunc = q.to_wire()[0:10]
+                    af = socket.AF_INET6 if ":" in str(server.addr) else socket.AF_INET # FIXME :)
+                    sock = socket.socket(af, socket.SOCK_DGRAM)
+                    sock.sendto(wiretrunc, (server.addr, server.port))
             except:
                 pass
 
