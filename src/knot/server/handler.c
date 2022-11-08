@@ -113,6 +113,7 @@ void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
 		} else {
 			params_update(params, knot_quic_conn_rtt(conn), conn);
 		}
+		// NOTE: if multiple buffers in inbuf_fin, only the first is used and rest ignored
 		handle_quic_stream(conn, stream_id, stream->inbuf_fin, layer, params,
 		                   ans_buf, sizeof(ans_buf));
 		free(stream->inbuf_fin);
