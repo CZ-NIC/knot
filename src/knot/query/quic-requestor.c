@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "contrib/net.h"
+#include "contrib/time.h"
 #include "knot/query/quic-requestor.h"
 #include "libknot/endian.h"
 #include "libknot/error.h"
@@ -29,9 +30,8 @@
 #define QUIC_MAX_SEND_PER_RECV	4 // NOTE: also in xdp-handler.c
 #define QUIC_BUF_SIZE 4096
 
-static int quic_exchange(knot_xquic_conn_t *conn, knot_quic_reply_t *r)
+static int quic_exchange(knot_xquic_conn_t *conn, knot_quic_reply_t *r, int timeout_ms)
 {
-	uint64_t timeout_ms = 5000000L; // FIXME
 	int fd = (int)(size_t)r->in_ctx;
 
 	int ret = knot_quic_send(conn->xquic_table, conn, r, QUIC_MAX_SEND_PER_RECV, false);
@@ -85,7 +85,7 @@ void qr_free_reply(struct knot_quic_reply *r)
 }
 
 struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_addr,
-                                          const char *quic_cert)
+                                          const char *quic_cert, int timeout_ms)
 {
 	knot_quic_reply_t *r = calloc(1, sizeof(*r) + 2 * sizeof(struct iovec) + 2 * QUIC_BUF_SIZE + sizeof(*r->ip_loc));
 	if (r == NULL) {
@@ -129,8 +129,11 @@ struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_a
 		return NULL;
 	}
 
+	struct timespec t_start = time_now(), t_cur;
 	while (!conn->handshake_done) {
-		if (quic_exchange(conn, r) != KNOT_EOK) {
+		t_cur = time_now();
+		if (time_diff_ms(&t_start, &t_cur) > timeout_ms ||
+		    quic_exchange(conn, r, timeout_ms) != KNOT_EOK) {
 			knot_qreq_close(r);
 			return NULL;
 		}
@@ -146,7 +149,7 @@ int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data)
 	return knot_xquic_stream_add_data(conn, conn->streams_count * 4, data->iov_base, data->iov_len) == NULL ? KNOT_NET_ESEND : KNOT_EOK;
 }
 
-int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out)
+int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 {
 	knot_xquic_conn_t *conn = r->ctx;
 	knot_xquic_stream_t *stream = &conn->streams[conn->streams_count - 1];
@@ -165,10 +168,15 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out)
 		return KNOT_EOK;
 	}
 
+	struct timespec t_start = time_now(), t_cur;
 	while (stream->inbuf_fin == NULL) {
-		int ret = quic_exchange(conn, r);
+		int ret = quic_exchange(conn, r, timeout_ms);
 		if (ret != KNOT_EOK) {
 			return ret;
+		}
+		t_cur = time_now();
+		if (time_diff_ms(&t_start, &t_cur) > timeout_ms) {
+			return KNOT_NET_ETIMEOUT;
 		}
 		if (conn->streams_count == 0) {
 			return KNOT_ECONN;

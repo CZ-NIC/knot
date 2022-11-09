@@ -44,7 +44,7 @@ static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer
 }
 
 /*! \brief Ensure a socket is connected. */
-static int request_ensure_connected(knot_request_t *request, bool *reused_fd)
+static int request_ensure_connected(knot_request_t *request, bool *reused_fd, int timeout_ms)
 {
 	if (request->fd >= 0) {
 		return KNOT_EOK;
@@ -83,7 +83,8 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd)
 
 	if (use_quic(request)) {
 #ifdef ENABLE_QUIC
-		request->quic_ctx = knot_qreq_connect(request->fd, &request->remote, request->quic_cert);
+		request->quic_ctx = knot_qreq_connect(request->fd, &request->remote,
+		                                      request->quic_cert, timeout_ms);
 		if (request->quic_ctx == NULL) {
 			close(request->fd);
 			return KNOT_EUNREACH; // FIXME correct code?
@@ -100,7 +101,7 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 {
 	/* Initiate non-blocking connect if not connected. */
 	*reused_fd = false;
-	int ret = request_ensure_connected(request, reused_fd);
+	int ret = request_ensure_connected(request, reused_fd, timeout_ms);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -145,7 +146,7 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	knot_pkt_clear(resp);
 
 	/* Wait for readability */
-	int ret = request_ensure_connected(request, NULL);
+	int ret = request_ensure_connected(request, NULL, timeout_ms);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -154,7 +155,7 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	if (request->quic_ctx != NULL) {
 #ifdef ENABLE_QUIC
 		struct iovec recvd = { resp->wire, resp->max_size };
-		ret = knot_qreq_recv(request->quic_ctx, &recvd);
+		ret = knot_qreq_recv(request->quic_ctx, &recvd, timeout_ms);
 		resp->size = recvd.iov_len;
 		return ret;
 #else

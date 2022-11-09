@@ -20,10 +20,11 @@
 
 struct knot_quic_reply;
 
-struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_addr, const char *quic_cert);
+struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_addr,
+                                          const char *quic_cert, int timeout_ms);
 
 int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data);
 
-int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out);
+int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms);
 
 void knot_qreq_close(struct knot_quic_reply *r);
