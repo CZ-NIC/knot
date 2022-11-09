@@ -1346,10 +1346,10 @@ quic-remote-certfile
 If this option is set, the QUIC protocol will be used for outstanding queries
 to this remote.
 
+The value of this option is the path to the x509/PEM file with server certificate.
+
 Current limitations:
 
-- The certificate check is in fact not yet implemented. This option is
-  effectively so far only an on/off switch.
 - Only used for zone transfers (SOA query/AXFR/IXFR).
 - One connection per each transfer is opened, :ref:`server_remote-pool-limit`
   does not take effect for QUIC.

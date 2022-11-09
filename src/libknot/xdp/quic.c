@@ -204,19 +204,24 @@ struct knot_quic_creds *knot_xquic_init_creds(bool server, const char *tls_cert,
 		goto fail;
 	}
 
-	ret = gnutls_certificate_set_x509_system_trust(creds->tls_cert);
-	if (ret < 0) {
-		goto fail2;
-	}
-
-	if ((bool)(tls_cert == NULL) != (bool)(tls_key == NULL) ||
-	    (tls_cert != NULL && !server)) {
-		goto fail2;
-	}
-	if (tls_cert != NULL) {
-		ret = gnutls_certificate_set_x509_key_file(creds->tls_cert, tls_cert, tls_key, GNUTLS_X509_FMT_PEM);
-	} else if (server) {
-		ret = self_signed_cert(creds->tls_cert);
+	if (server) {
+		if ((bool)(tls_cert == NULL) != (bool)(tls_key == NULL)) {
+			goto fail2;
+		}
+		if (tls_cert != NULL) {
+			ret = gnutls_certificate_set_x509_key_file(creds->tls_cert, tls_cert, tls_key, GNUTLS_X509_FMT_PEM);
+		} else if (server) {
+			ret = self_signed_cert(creds->tls_cert);
+		}
+	} else {
+		if (tls_key != NULL) {
+			goto fail2;
+		}
+		if (tls_cert != NULL) {
+			ret = gnutls_certificate_set_x509_trust_file(creds->tls_cert, tls_cert, GNUTLS_X509_FMT_PEM);
+		} else {
+			ret = gnutls_certificate_set_x509_system_trust(creds->tls_cert);
+		}
 	}
 	if (ret < 0) {
 		goto fail2;
@@ -337,7 +342,7 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 	                           conn->xquic_table->creds->tls_cert) != GNUTLS_E_SUCCESS) {
 		return TLS_CALLBACK_ERR;
 	}
-
+	gnutls_session_set_verify_cert(conn->tls_session, NULL, 0);
 
 	gnutls_datum_t alpn[3] = {
 		{

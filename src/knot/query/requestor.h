@@ -52,6 +52,7 @@ typedef struct {
 typedef struct {
 	int fd;
 	struct knot_quic_reply *quic_ctx;
+	const char *quic_cert;
 	knot_request_flag_t flags;
 	struct sockaddr_storage remote, source;
 	knot_pkt_t *query;
@@ -69,6 +70,7 @@ typedef struct {
  * \param source    Source address (or NULL).
  * \param query     Query message.
  * \param tsig_key  TSIG key for authentication.
+ * \param quic_ctx  QUIC context.
  * \param flags     Request flags.
  *
  * \return Prepared request or NULL in case of error.
@@ -78,6 +80,7 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
                                   const struct sockaddr_storage *source,
                                   knot_pkt_t *query,
                                   const knot_tsig_key_t *tsig_key,
+                                  const char *quic_ctx,
                                   knot_request_flag_t flags);
 
 /*!

@@ -635,6 +635,8 @@ int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
 				*master = remote;
 				pthread_mutex_unlock(&zone->preferred_lock);
 				return KNOT_EOK;
+			} else {
+				free(remote.quic);
 			}
 		}
 
@@ -672,6 +674,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 	conf_remote_t preferred = { { AF_UNSPEC } };
 	if (preferred_master(conf, zone, &preferred) == KNOT_EOK) {
 		int ret = callback(conf, zone, &preferred, callback_data, &fallback);
+		free(preferred.quic);
 		if (ret == KNOT_EOK) {
 			return ret;
 		} else if (!fallback.remote) {
@@ -704,11 +707,13 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 			if (preferred.addr.ss_family != AF_UNSPEC &&
 			    sockaddr_net_match(&master.addr, &preferred.addr, -1)) {
 				preferred.addr.ss_family = AF_UNSPEC;
+				free(master.quic);
 				continue;
 			}
 
 			tried = true;
 			int ret = callback(conf, zone, &master, callback_data, &fallback);
+			free(master.quic);
 			if (ret == KNOT_EOK) {
 				success = true;
 				break;

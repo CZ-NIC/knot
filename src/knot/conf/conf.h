@@ -28,7 +28,7 @@ typedef struct {
 	/*! Local outgoing socket address. */
 	struct sockaddr_storage via;
 	/*! QUIC context. */
-	bool quic;
+	char *quic;
 	/*! TSIG key. */
 	knot_tsig_key_t key;
 	/*! Suppress sending NOTIFY after zone transfer from this master. */

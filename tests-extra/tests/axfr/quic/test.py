@@ -13,7 +13,7 @@ slave = t.server("knot")
 zone = t.zone_rnd(1, records=15) + t.zone_rnd(1, records=60) + t.zone_rnd(1, records=100) + t.zone_rnd(1, records=600)
 
 t.link(zone, master, slave)
-master.quic = True
+master.tls_set("tls.crt", "tls.key", t.data_dir)
 
 for z in zone:
     master.dnssec(z).enable = True

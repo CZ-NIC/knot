@@ -1216,11 +1216,10 @@ to the address using \fB@\fP separator.
 If this option is set, the QUIC protocol will be used for outstanding queries
 to this remote.
 .sp
+The value of this option is the path to the x509/PEM file with server certificate.
+.sp
 Current limitations:
 .INDENT 0.0
-.IP \(bu 2
-The certificate check is in fact not yet implemented. This option is
-effectively so far only an on/off switch.
 .IP \(bu 2
 Only used for zone transfers (SOA query/AXFR/IXFR).
 .IP \(bu 2

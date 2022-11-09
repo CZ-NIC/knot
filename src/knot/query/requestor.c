@@ -83,7 +83,7 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd)
 
 	if (use_quic(request)) {
 #ifdef ENABLE_QUIC
-		request->quic_ctx = knot_qreq_connect(request->fd, &request->remote);
+		request->quic_ctx = knot_qreq_connect(request->fd, &request->remote, request->quic_cert);
 		if (request->quic_ctx == NULL) {
 			close(request->fd);
 			return KNOT_EUNREACH; // FIXME correct code?
@@ -182,6 +182,7 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
                                   const struct sockaddr_storage *source,
                                   knot_pkt_t *query,
                                   const knot_tsig_key_t *tsig_key,
+                                  const char *quic_ctx,
                                   knot_request_flag_t flags)
 {
 	if (remote == NULL || query == NULL) {
@@ -201,6 +202,7 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
 
 	request->query = query;
 	request->fd = -1;
+	request->quic_cert = quic_ctx;
 	request->flags = flags;
 	memcpy(&request->remote, remote, sockaddr_len(remote));
 	if (source) {

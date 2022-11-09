@@ -92,7 +92,7 @@ static knot_request_t *make_query(knot_requestor_t *requestor,
 
 	knot_request_flag_t flags = TFO ? KNOT_REQUEST_TFO: KNOT_REQUEST_NONE;
 
-	return knot_request_make(requestor->mm, dst, src, pkt, NULL, flags);
+	return knot_request_make(requestor->mm, dst, src, pkt, NULL, NULL, flags);
 }
 
 static void test_disconnected(knot_requestor_t *requestor,

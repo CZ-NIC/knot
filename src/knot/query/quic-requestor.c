@@ -84,7 +84,9 @@ void qr_free_reply(struct knot_quic_reply *r)
 	(void)r;
 }
 
-struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_addr) {
+struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_addr,
+                                          const char *quic_cert)
+{
 	knot_quic_reply_t *r = calloc(1, sizeof(*r) + 2 * sizeof(struct iovec) + 2 * QUIC_BUF_SIZE + sizeof(*r->ip_loc));
 	if (r == NULL) {
 		return NULL;
@@ -106,7 +108,7 @@ struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_a
 		return NULL;
 	}
 
-	struct knot_quic_creds *creds = knot_xquic_init_creds(false, NULL, NULL);
+	struct knot_quic_creds *creds = knot_xquic_init_creds(false, quic_cert, NULL);
 	if (creds == NULL) {
 		free(r);
 		return NULL;

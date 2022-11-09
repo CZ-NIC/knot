@@ -278,6 +278,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 	if (ctx->policy != NULL) {
 		free(ctx->policy->string);
 		knot_dynarray_foreach(parent, knot_kasp_parent_t, i, ctx->policy->parents) {
+			free(i->addr->quic);
 			free(i->addr);
 		}
 		free(ctx->policy);

@@ -812,6 +812,18 @@ class Server(object):
         return dnstest.update.Update(self, dns.update.Update(zone.name,
                                                              **key_params))
 
+    def tls_cert(self, privkey):
+        if privkey:
+            (_, fname) = self.quic
+        else:
+            (fname, _) = self.quic
+        return self.dir + "/" + fname
+
+    def tls_set(self, cert, privkey, dir_from):
+        self.quic = (cert, privkey)
+        shutil.copyfile(dir_from + "/" + cert, self.tls_cert(False))
+        shutil.copyfile(dir_from + "/" + privkey, self.tls_cert(True))
+
     def gen_key(self, zone, **args):
         zone = zone_arg_check(zone)
 
@@ -1279,6 +1291,8 @@ class Knot(Server):
         s.item_str("listen", "%s@%s" % (self.addr, self.port))
         if self.quic:
             s.item_str("listen-quic", "%s@8853" % self.addr)
+            s.item_str("cert-file", self.tls_cert(False))
+            s.item_str("key-file", self.tls_cert(True))
         if self.udp_workers:
             s.item_str("udp-workers", self.udp_workers)
         if self.bg_workers:
@@ -1329,7 +1343,7 @@ class Knot(Server):
                     s.id_item("id", master.name)
                     if master.quic:
                         s.item_str("address", "%s@8853" % master.addr)
-                        s.item_str("quic-remote-certfile", "something")
+                        s.item_str("quic-remote-certfile", master.tls_cert(False))
                     else:
                         s.item_str("address", "%s@%s" % (master.addr, master.port))
                     if self.tsig:

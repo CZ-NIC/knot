@@ -20,7 +20,7 @@
 
 struct knot_quic_reply;
 
-struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_addr);
+struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_addr, const char *quic_cert);
 
 int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data);
 

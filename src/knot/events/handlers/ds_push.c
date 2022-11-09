@@ -200,7 +200,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 
 	const struct sockaddr_storage *dst = &parent->addr;
 	const struct sockaddr_storage *src = &parent->via;
-	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
+	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, parent->quic, 0);
 	if (req == NULL) {
 		knot_rdataset_clear(&data.del_old_ds.rrs, NULL);
 		knot_request_free(req, NULL);
@@ -258,6 +258,7 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 		for (int i = 0; i < addr_count; i++) {
 			conf_remote_t parent = conf_remote(conf, iter.id, i);
 			ret = send_ds_push(conf, zone, &parent, timeout);
+			free(parent.quic);
 			if (ret == KNOT_EOK) {
 				zone->timers.next_ds_push = 0;
 				break;

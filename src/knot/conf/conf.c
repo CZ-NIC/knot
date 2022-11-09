@@ -1397,7 +1397,7 @@ conf_remote_t conf_remote_txn(
 	}
 
 	val = conf_id_get_txn(conf, txn, C_RMT, C_QUIC_RMT_CERT, id);
-	out.quic = (val.code == KNOT_EOK);
+	out.quic = conf_abs_path(&val, CONFIG_DIR);
 
 	// Get TSIG key (optional).
 	conf_val_t key_id = conf_id_get_txn(conf, txn, C_RMT, C_KEY, id);
