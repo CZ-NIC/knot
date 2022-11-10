@@ -87,7 +87,7 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 		                                      request->quic_cert, timeout_ms);
 		if (request->quic_ctx == NULL) {
 			close(request->fd);
-			return KNOT_EUNREACH; // FIXME correct code?
+			return KNOT_ECONN;
 		}
 #else
 		assert(0);

@@ -40,11 +40,9 @@ static int quic_exchange(knot_xquic_conn_t *conn, knot_quic_reply_t *r, int time
 	}
 
 	ret = net_dgram_recv(fd, r->in_payload->iov_base, QUIC_BUF_SIZE, timeout_ms);
-	if (ret <= 0) {
-		r->in_payload->iov_len = 0; // TODO needed?
-		if (ret == 0) {
-			return KNOT_ECONN;
-		}
+	if (ret == 0) {
+		return KNOT_ECONN;
+	} else if (ret < 0) {
 		return ret;
 	}
 	r->in_payload->iov_len = ret;
@@ -114,7 +112,7 @@ struct knot_quic_reply *knot_qreq_connect(int fd, struct sockaddr_storage *rem_a
 		return NULL;
 	}
 
-	knot_xquic_table_t *table = knot_xquic_table_new(1, QUIC_BUF_SIZE, QUIC_BUF_SIZE, 1232 /* FIXME */, creds); // NOTE the limits on conns and buffers do not do anything since we do not sweep
+	knot_xquic_table_t *table = knot_xquic_table_new(1, QUIC_BUF_SIZE, QUIC_BUF_SIZE, 0, creds); // NOTE the limits on conns and buffers do not do anything since we do not sweep
 	if (table == NULL) {
 		knot_xquic_free_creds(creds);
 		free(r);
