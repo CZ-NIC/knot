@@ -928,6 +928,22 @@ int check_zone(
 		}
 	}
 
+	conf_val_t ds_push = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                       C_DS_PUSH, yp_dname(args->id));
+	if (ds_push.code == KNOT_EOK) {
+		conf_val_t policy_id = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+		                                         C_DNSSEC_POLICY, yp_dname(args->id));
+		if (policy_id.code == KNOT_EOK) {
+			conf_val_t cds_cdnskey = conf_id_get_txn(args->extra->conf, args->extra->txn,
+			                                         C_POLICY, C_CDS_CDNSKEY,
+			                                         &policy_id);
+			if (conf_val_count(&ds_push) > 0 && conf_opt(&cds_cdnskey) == CDS_CDNSKEY_NONE) {
+				args->err_str = "DS push requires enabled CDS/CDNSKEY publication";
+				return KNOT_EINVAL;
+			}
+		}
+	}
+
 	return KNOT_EOK;
 }
 
