@@ -27,7 +27,8 @@
 
 knot_dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_NORMAL)
 
-static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id)
+static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id,
+                        const knot_dname_t *zone_name)
 {
 	if (conf_str(id) == NULL) {
 		policy->string = strdup("default");
@@ -149,7 +150,10 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	val = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, id);
 	policy->signing_threads = conf_int(&val);
 
-	val = conf_id_get(conf, C_POLICY, C_DS_PUSH, id);
+	val = conf_zone_get(conf, C_DS_PUSH, zone_name);
+	if (val.code != KNOT_EOK) {
+		val = conf_id_get(conf, C_POLICY, C_DS_PUSH, id);
+	}
 	policy->ds_push = conf_val_count(&val) > 0;
 
 	val = conf_id_get(conf, C_POLICY, C_OFFLINE_KSK, id);
@@ -218,7 +222,7 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		policy_id = conf_mod_get(conf, C_POLICY, from_module);
 	}
 	conf_id_fix_default(&policy_id);
-	policy_load(ctx->policy, conf, &policy_id);
+	policy_load(ctx->policy, conf, &policy_id, ctx->zone->dname);
 
 	ret = zone_init_keystore(conf, &policy_id, &ctx->keystore, NULL,
 	                         &ctx->policy->key_label);

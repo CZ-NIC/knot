@@ -242,9 +242,12 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 
-	conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
-	conf_id_fix_default(&policy_id);
-	conf_val_t ds_push = conf_id_get(conf, C_POLICY, C_DS_PUSH, &policy_id);
+	conf_val_t ds_push = conf_zone_get(conf, C_DS_PUSH, zone->name);
+	if (ds_push.code != KNOT_EOK) {
+		conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
+		conf_id_fix_default(&policy_id);
+		ds_push = conf_id_get(conf, C_POLICY, C_DS_PUSH, &policy_id);
+	}
 	conf_mix_iter_t iter;
 	conf_mix_iter_init(conf, &ds_push, &iter);
 	while (iter.id->code == KNOT_EOK) {

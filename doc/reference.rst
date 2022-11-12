@@ -2180,6 +2180,7 @@ Definition of zones served by the server.
      dnssec-signing: BOOL
      dnssec-validation: BOOL
      dnssec-policy: policy_id
+     ds-push: remote_id | remotes_id ...
      zonemd-verify: BOOL
      zonemd-generate: none | zonemd-sha384 | zonemd-sha512 | remove
      serial-policy: increment | unixtime | dateserial
@@ -2495,6 +2496,16 @@ A :ref:`reference<policy_id>` to DNSSEC signing policy.
 
 .. NOTE::
    A configured policy called "default" won't be used unless explicitly referenced.
+
+.. _zone_ds-push:
+
+ds-push
+-------
+
+Per zone configuration of :ref:`policy_ds-push`. This option overrides possible
+per policy option.
+
+*Default:* not set
 
 .. _zone_zonemd-verify:
 
