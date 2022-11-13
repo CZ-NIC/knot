@@ -19,10 +19,13 @@ RUN apt-get -y install \
 	libmaxminddb-dev \
 	libmnl-dev \
 	libnghttp2-dev \
+	libngtcp2-crypto-gnutls-dev \
+	libngtcp2-dev \
 	libprotobuf-c-dev \
 	libsystemd-dev \
 	libtool \
 	liburcu-dev \
+	libxdp-dev \
 	locales-all \
 	pkg-config \
 	protobuf-c-compiler
