@@ -376,6 +376,18 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 		}
 	}
 
+	/* Allign the response if QUIC with EDNS. */
+	if (qdata->params->proto == KNOTD_QUERY_PROTO_QUIC) {
+		int pad_len = knot_pkt_default_padding_size(resp, &qdata->opt_rr);
+		if (pad_len > 0) {
+			ret = knot_edns_reserve_option(&qdata->opt_rr, KNOT_EDNS_OPTION_PADDING,
+			                               pad_len, NULL, qdata->mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
 	/* Reclaim reserved size. */
 	ret = knot_pkt_reclaim(resp, opt_wire_size);
 	if (ret != KNOT_EOK) {
