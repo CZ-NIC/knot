@@ -2320,6 +2320,7 @@ Mandatory checks affected by the soft mode:
 - DNAME record having a record under it (:rfc:`6672`)
 - Multiple DNAME records with the same owner exist (:rfc:`6672`)
 - NS record exists together with a DNAME record (:rfc:`6672`)
+- DS record exists at the zone apex (:rfc:`3658`)
 
 Extra checks:
 
@@ -2327,6 +2328,7 @@ Extra checks:
 - Missing glue A or AAAA record
 - Invalid DS or NSEC3PARAM record
 - CDS or CDNSKEY inconsistency
+- DS record exists at a non-delegation point (:rfc:`3658`)
 - All other DNSSEC checks executed during :ref:`zone_dnssec-validation`
 
 .. NOTE::

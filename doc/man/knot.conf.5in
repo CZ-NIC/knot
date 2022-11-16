@@ -2112,6 +2112,8 @@ DNAME record having a record under it (\fI\%RFC 6672\fP)
 Multiple DNAME records with the same owner exist (\fI\%RFC 6672\fP)
 .IP \(bu 2
 NS record exists together with a DNAME record (\fI\%RFC 6672\fP)
+.IP \(bu 2
+DS record exists at the zone apex (\fI\%RFC 3658\fP)
 .UNINDENT
 .sp
 Extra checks:
@@ -2124,6 +2126,8 @@ Missing glue A or AAAA record
 Invalid DS or NSEC3PARAM record
 .IP \(bu 2
 CDS or CDNSKEY inconsistency
+.IP \(bu 2
+DS record exists at a non\-delegation point (\fI\%RFC 3658\fP)
 .IP \(bu 2
 All other DNSSEC checks executed during \fI\%dnssec\-validation\fP
 .UNINDENT

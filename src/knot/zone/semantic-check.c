@@ -68,6 +68,10 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"invalid algorithm in DS",
 	[SEM_ERR_DS_RDATA_DIGLEN] =
 	"invalid digest length in DS",
+	[SEM_ERR_DS_APEX] =
+	"DS at the zone apex",
+	[SEM_ERR_DS_NONDELEG] =
+	"DS at non-delegation point",
 
 	[SEM_ERR_DNSKEY_NONE] =
 	"missing DNSKEY",
@@ -132,7 +136,7 @@ static const struct check_function CHECK_FUNCTIONS[] = {
 	{ check_cname,          MANDATORY | SOFT },
 	{ check_dname,          MANDATORY | SOFT },
 	{ check_delegation,     MANDATORY | SOFT }, // mandatory for apex, optional for others
-	{ check_ds,             OPTIONAL },
+	{ check_ds,             MANDATORY | SOFT }, // mandatory for apex, optional for others
 	{ check_nsec3param,     DNSSEC },
 	{ check_submission,     DNSSEC },
 };
@@ -312,6 +316,23 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 {
 	const knot_rdataset_t *dss = node_rdataset(node, KNOT_RRTYPE_DS);
 	if (dss == NULL) {
+		return KNOT_EOK;
+	}
+
+	if (data->zone->apex == node) {
+		data->handler->error = true;
+		data->handler->cb(data->handler, data->zone, node->owner,
+		                  SEM_ERR_DS_APEX, NULL);
+		return KNOT_EOK;
+	}
+
+	if (!(data->level & OPTIONAL)) {
+		return KNOT_EOK;
+	}
+
+	if (!(node->flags & NODE_FLAGS_DELEG)) {
+		data->handler->cb(data->handler, data->zone, node->owner,
+		                  SEM_ERR_DS_NONDELEG, NULL);
 		return KNOT_EOK;
 	}
 
