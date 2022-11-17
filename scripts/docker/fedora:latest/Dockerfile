@@ -23,4 +23,5 @@ RUN dnf -y install \
 	'pkgconfig(libprotobuf-c)' \
 	'pkgconfig(libsystemd)' \
 	'pkgconfig(liburcu)' \
+	'pkgconfig(libxdp)' \
 	'python-sphinx'

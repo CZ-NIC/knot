@@ -13,6 +13,7 @@ RUN apt-get -y install \
 	git \
 	language-pack-en \
 	latexmk \
+	libbpf-dev \
 	libedit-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
