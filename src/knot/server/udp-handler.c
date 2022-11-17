@@ -309,39 +309,49 @@ static void udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 {
 	struct udp_recvmmsg *rq = d;
 
-	/* Handle each received msg. */
+	/* Handle each received message. */
+	unsigned j = 0;
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
-		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
-		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
-		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
+		struct msghdr *rx = &rq->msgs[RX][i].msg_hdr;
+		struct msghdr *tx = &rq->msgs[TX][j].msg_hdr;
 
-		udp_pktinfo_handle(&rq->msgs[RX][i].msg_hdr, &rq->msgs[TX][i].msg_hdr);
+		/* Set received bytes. */
+		rx->msg_iov->iov_len = rq->msgs[RX][i].msg_len;
+		/* Update mapping of address buffer. */
+		tx->msg_name = rx->msg_name;
+		tx->msg_namelen = rx->msg_namelen;
 
-		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx, NULL);
-		rq->msgs[TX][i].msg_len = tx->iov_len;
-		rq->msgs[TX][i].msg_hdr.msg_namelen = 0;
-		if (tx->iov_len > 0) {
-			/* @note sendmmsg() workaround to prevent sending the packet */
-			rq->msgs[TX][i].msg_hdr.msg_namelen = rq->msgs[RX][i].msg_hdr.msg_namelen;
+		/* Update output message control buffer. */
+		udp_pktinfo_handle(rx, tx);
+
+		udp_handle(ctx, rq->fd, rq->addrs + i, rx->msg_iov, tx->msg_iov, NULL);
+
+		if (tx->msg_iov->iov_len > 0) {
+			rq->msgs[TX][j].msg_len = tx->msg_iov->iov_len;
+			j++;
+		} else {
+			/* Reset tainted output context. */
+			tx->msg_iov->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 		}
+
+		/* Reset input context. */
+		rx->msg_iov->iov_len = KNOT_WIRE_MAX_PKTSIZE;
+		rx->msg_namelen = sizeof(struct sockaddr_storage);
+		rx->msg_controllen = sizeof(cmsg_pktinfo_t);
 	}
+	rq->rcvd = j;
 }
 
 static void udp_recvmmsg_send(void *d)
 {
 	struct udp_recvmmsg *rq = d;
+
 	(void)sendmmsg(rq->fd, rq->msgs[TX], rq->rcvd, 0);
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
-		/* Reset buffer size and address len. */
-		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
-		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
-		rx->iov_len = KNOT_WIRE_MAX_PKTSIZE; /* Reset RX buflen */
-		tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
+		struct msghdr *tx = &rq->msgs[TX][i].msg_hdr;
 
-		memset(rq->addrs + i, 0, sizeof(struct sockaddr_storage));
-		rq->msgs[RX][i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
-		rq->msgs[TX][i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
-		rq->msgs[RX][i].msg_hdr.msg_controllen = sizeof(cmsg_pktinfo_t);
+		/* Reset output context. */
+		tx->msg_iov->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	}
 }
 
