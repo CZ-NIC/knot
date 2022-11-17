@@ -29,7 +29,6 @@ RUN apt-get -y install \
 	liburcu-dev \
 	llvm \
 	locales-all \
-	osc \
 	pkg-config \
 	protobuf-c-compiler \
 	python3-sphinx \
