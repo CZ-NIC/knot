@@ -107,10 +107,12 @@ typedef enum {
 
 typedef struct {
 	union {
+		struct sockaddr_in local_ip4;
 		struct sockaddr_in6 local_ip;
 		struct sockaddr_storage local_ip_ss;
 	};
 	union {
+		struct sockaddr_in target_ip4;
 		struct sockaddr_in6 target_ip;
 		struct sockaddr_storage target_ip_ss;
 	};
@@ -325,16 +327,12 @@ static uint16_t get_rss_id(xdp_gun_ctx_t *ctx, uint16_t local_port)
 	size_t addr_len;
 	if (ctx->ipv6) {
 		addr_len = sizeof(struct in6_addr);
-		struct sockaddr_in6 *src = (struct sockaddr_in6 *)(&ctx->target_ip);
-		struct sockaddr_in6 *dst = (struct sockaddr_in6 *)(&ctx->local_ip);
-		memcpy(data, &src->sin6_addr, addr_len);
-		memcpy(data + addr_len, &dst->sin6_addr, addr_len);
+		memcpy(data, &ctx->target_ip.sin6_addr, addr_len);
+		memcpy(data + addr_len, &ctx->local_ip.sin6_addr, addr_len);
 	} else {
 		addr_len = sizeof(struct in_addr);
-		struct sockaddr_in *src = (struct sockaddr_in *)(&ctx->target_ip);
-		struct sockaddr_in *dst = (struct sockaddr_in *)(&ctx->local_ip);
-		memcpy(data, &src->sin_addr, addr_len);
-		memcpy(data + addr_len, &dst->sin_addr, addr_len);
+		memcpy(data, &ctx->target_ip4.sin_addr, addr_len);
+		memcpy(data + addr_len, &ctx->local_ip4.sin_addr, addr_len);
 	}
 
 	uint16_t src_port = htobe16(ctx->target_port);
@@ -855,10 +853,10 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 	}
 
 	ctx->ipv6 = false;
-	if (!inet_aton(target_str, &((struct sockaddr_in *)&ctx->target_ip)->sin_addr)) {
+	if (inet_pton(AF_INET, target_str, &ctx->target_ip4.sin_addr) <= 0) {
 		ctx->ipv6 = true;
 		ctx->target_ip.sin6_family = AF_INET6;
-		if (inet_pton(AF_INET6, target_str, &((struct sockaddr_in6 *)&ctx->target_ip)->sin6_addr) <= 0) {
+		if (inet_pton(AF_INET6, target_str, &ctx->target_ip.sin6_addr) <= 0) {
 			ERR2("invalid target IP");
 			return false;
 		}
@@ -893,7 +891,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 				return false;
 			}
 		} else {
-			if (inet_pton(AF_INET, local_ip, &ctx->local_ip.sin6_addr) <= 0) {
+			if (inet_pton(AF_INET, local_ip, &ctx->local_ip4.sin_addr) <= 0) {
 				ERR2("invalid local IPv4");
 				return false;
 			}
@@ -902,8 +900,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 
 	if (mac_empty(ctx->target_mac)) {
 		const struct sockaddr_storage *neigh = (via.ss_family == AF_UNSPEC) ?
-		                                       (const struct sockaddr_storage *)&ctx->target_ip :
-		                                       &via;
+		                                       &ctx->target_ip_ss : &via;
 		int ret = ip_neigh_get(neigh, true, ctx->target_mac);
 		if (ret < 0) {
 			char neigh_str[256] = { 0 };
