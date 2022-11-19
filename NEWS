@@ -1,3 +1,20 @@
+Knot DNS 3.2.3 (2022-11-20)
+===========================
+
+Improvements:
+-------------
+ - knotd: new per-zone DS push configuration option (see 'zone.ds-push')
+ - libs: upgraded embedded libngtcp2 to 0.11.0
+
+Bugfixes:
+---------
+ - knsupdate: program crashes when sending an update
+ - knotd: server drops more responses over UDP under higher load
+ - knotd: missing EDNS padding in responses over QUIC
+ - knotd: some memory issues when handling unusual QUIC traffic
+ - kxdpgun: broken IPv4 source subnet processing
+ - kdig: incorrect handling of unsent data over QUIC
+
 Knot DNS 3.2.2 (2022-11-01)
 ===========================
 
