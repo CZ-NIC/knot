@@ -770,8 +770,8 @@ performing a ZSK rollover, the DNSKEY records will be pre-generated and signed b
 signer (the "KSK side"). Both sides exchange keys in the form of human-readable messages with the help
 of the :doc:`keymgr<man_keymgr>` utility.
 
-Pre-requisites
---------------
+Prerequisites
+-------------
 
 For the ZSK side (i.e. the operator of the DNS server), the zone has to be configured with:
 
@@ -792,8 +792,8 @@ For the KSK side (i.e. the operator of the KSK signer), the zone has to be confi
   - Enabled :ref:`policy_manual`
   - Enabled :ref:`policy_offline-ksk`
   - Optional :ref:`policy_rrsig-lifetime`, :ref:`policy_rrsig-refresh`,
-    :ref:`policy_algorithm`, and :ref:`policy_reproducible-signing`,
-    :ref:`policy_cds-cdnskey-publish`
+    :ref:`policy_algorithm`, :ref:`policy_reproducible-signing`,
+    and :ref:`policy_cds-cdnskey-publish`
   - Other options are ignored
 - KASP DB contains a KSK (the present or a newly generated one)
 
