@@ -22,7 +22,7 @@ class Inquirer:
     # queries=list(list(name, type),...)
     def _query(self, server, queries=None, sleep=0.05):
         _tcp = random.choice([True, False])
-        _malformed = random.choice([True, False])
+        _malformed = random.choices([True, False], cum_weights=[25, 100], k=1)[0]
         _queries = list()
 
         if queries:
