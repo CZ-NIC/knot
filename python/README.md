@@ -11,6 +11,9 @@ A Python interface for managing the Knot DNS daemon.
 * [Probe module](#probe-module)
   + [Usage](#using-the-probe-module)
   + [Example](#probe-module-example)
+* [Dname module](#dname-module)
+  + [Usage](#using-the-dname-module)
+  + [Example](#dname-module-example)
 
 ## Introduction
 
@@ -115,4 +118,30 @@ while (True):
         # Printing received data units in the default format
         for item in data:
             print(item)
+```
+
+## Dname module
+
+This module provides a few dname-related operations.
+
+### Using the Dname module
+
+The dname object is initialized from a string with textual dname.
+Then the dname can be reformatted to wire format or back to textual format.
+
+### Dname module example
+
+```python3
+import libknot.dname
+
+dname = libknot.dname.KnotDname("e\\120ample.c\om.")
+print(dname.size()
+print(dname.str())
+print(dname.wire())
+```
+
+```bash
+13
+example.com.
+b'\x07example\x03com\x00'
 ```
