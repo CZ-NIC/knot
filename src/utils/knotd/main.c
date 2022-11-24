@@ -259,11 +259,13 @@ static void event_loop(server_t *server, const char *socket)
 		/* Interrupts. */
 		if (sig_req_reload && !sig_req_stop) {
 			sig_req_reload = false;
-			server_reload(server);
+			server_reload(server, RELOAD_FULL);
 		}
 		if (sig_req_zones_reload && !sig_req_stop) {
 			sig_req_zones_reload = false;
-			server_update_zones(conf(), server);
+			reload_t mode = server->catalog_upd_signal ? RELOAD_CATALOG : RELOAD_ZONES;
+			server->catalog_upd_signal = false;
+			server_update_zones(conf(), server, mode);
 		}
 		if (sig_req_stop) {
 			break;
@@ -571,7 +573,7 @@ int main(int argc, char **argv)
 
 	/* Populate zone database. */
 	log_info("loading %zu zones", conf_id_count(conf(), C_ZONE));
-	server_update_zones(conf(), &server);
+	server_update_zones(conf(), &server, RELOAD_ZONES);
 
 	/* Check number of loaded zones. */
 	if (knot_zonedb_size(server.zone_db) == 0) {

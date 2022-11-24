@@ -712,7 +712,7 @@ LIBS="$save_LIBS"
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS_ONCE([pthread_np.h sys/uio.h bsd/string.h])
+AC_CHECK_HEADERS_ONCE([pthread_np.h stdatomic.h sys/uio.h bsd/string.h])
 
 # Checks for optional library functions.
 AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
