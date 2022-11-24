@@ -32,9 +32,6 @@
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 
-#define FULL(conf) (!((conf)->io.flags & CONF_IO_FACTIVE) || \
-                     ((conf)->io.flags & CONF_IO_FRLD_ZONES))
-
 static bool zone_file_updated(conf_t *conf, const zone_t *old_zone,
                               const knot_dname_t *zone_name)
 {
@@ -278,13 +275,11 @@ static bool check_open_catalog(catalog_t *cat)
 }
 
 static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
-                                 list_t *expired_contents)
+                                 reload_t mode, list_t *expired_contents)
 {
 	if (!zone_get_flag(zone, ZONE_IS_CAT_MEMBER, false)) {
 		return NULL;
 	}
-
-	bool full = FULL(conf);
 
 	catalog_upd_val_t *upd = catalog_update_get(&server->catalog_upd, zone->name);
 	if (upd != NULL) {
@@ -295,10 +290,12 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 			ptrlist_add(expired_contents, zone_expire(zone), NULL);
 			knot_sem_post(&zone->cow_lock);
 			// FALLTHROUGH
+		case CAT_UPD_PROP:
+			zone->change_type = CONF_IO_TRELOAD;
+			break; // reload the member zone
 		case CAT_UPD_INVALID:
 		case CAT_UPD_MINOR:
-		case CAT_UPD_PROP:
-			break; // reload the member zone
+			return zone; // reuse the member zone
 		case CAT_UPD_REM:
 			return NULL; // remove the member zone
 		case CAT_UPD_ADD: // cannot add existing member
@@ -306,9 +303,7 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 			assert(0);
 			return NULL;
 		}
-	}
-
-	if (!full && (upd == NULL || upd->type != CAT_UPD_UNIQ)) {
+	} else if (mode & (RELOAD_COMMIT | RELOAD_CATALOG)) {
 		return zone; // reuse the member zone
 	}
 
@@ -400,11 +395,13 @@ static zone_t *add_member_zone(catalog_upd_val_t *val, knot_zonedb_t *check,
  *
  * \param conf              New server configuration.
  * \param server            Server instance.
+ * \param mode              Reload mode.
  * \param expired_contents  Out: ptrlist of zone_contents_t to be deep freed after sync RCU.
  *
  * \return New zone database.
  */
-static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expired_contents)
+static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mode,
+                                    list_t *expired_contents)
 {
 	assert(conf);
 	assert(server);
@@ -415,10 +412,8 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		return NULL;
 	}
 
-	bool full = FULL(conf);
-
-	/* Mark changed zones. */
-	if (!full) {
+	/* Mark changed zones during dynamic configuration. */
+	if (mode == RELOAD_COMMIT) {
 		mark_changed_zones(db_old, conf->io.zones);
 	}
 
@@ -429,7 +424,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		const knot_dname_t *name = conf_dname(&id);
 
 		zone_t *old_zone = knot_zonedb_find(db_old, name);
-		if (old_zone != NULL && !full) {
+		if (old_zone != NULL && (mode & (RELOAD_COMMIT | RELOAD_CATALOG))) {
 			/* Reuse unchanged zone. */
 			if (!(old_zone->change_type & CONF_IO_TRELOAD)) {
 				knot_zonedb_insert(db_new, old_zone);
@@ -449,13 +444,14 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		knot_zonedb_insert(db_new, zone);
 	}
 
-	/* Remove deleted cataloged zones from conf before catalog removals are commited. */
+	/* Purge decataloged zones before catalog removals are commited. */
 	catalog_it_t *cat_it = catalog_it_begin(&server->catalog_upd);
 	while (!catalog_it_finished(cat_it)) {
 		catalog_upd_val_t *upd = catalog_it_val(cat_it);
 		if (upd->type == CAT_UPD_REM) {
 			zone_t *zone = knot_zonedb_find(db_old, upd->member);
 			if (zone != NULL) {
+				zone->change_type = CONF_IO_TUNSET;
 				zone_purge(conf, zone);
 			}
 		}
@@ -474,7 +470,8 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
 		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
 		while (!knot_zonedb_iter_finished(it)) {
 			zone_t *newzone = reuse_member_zone(knot_zonedb_iter_val(it),
-			                                    server, conf, expired_contents);
+			                                    server, conf, mode,
+			                                    expired_contents);
 			if (newzone != NULL) {
 				knot_zonedb_insert(db_new, newzone);
 			}
@@ -536,13 +533,11 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, list_t *expi
  * \param server  Server context.
   */
 static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
-                              server_t *server)
+                              server_t *server, reload_t mode)
 {
 	catalog_commit_cleanup(&server->catalog);
 
 	knot_zonedb_t *db_new = server->zone_db;
-
-	bool full = FULL(conf);
 
 	if (db_old == NULL) {
 		goto catalog_only;
@@ -551,7 +546,7 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
 	while (!knot_zonedb_iter_finished(it)) {
 		zone_t *zone = knot_zonedb_iter_val(it);
-		if (full) {
+		if (mode & (RELOAD_FULL | RELOAD_ZONES)) {
 			/* Check if reloaded (reused contents). */
 			zone_t *new_zone = knot_zonedb_find(db_new, zone->name);
 			if (new_zone != NULL) {
@@ -565,7 +560,6 @@ static void remove_old_zonedb(conf_t *conf, knot_zonedb_t *db_old,
 				zone_t *new_zone = knot_zonedb_find(db_new, zone->name);
 				assert(new_zone);
 				replan_events(conf, new_zone, zone);
-
 				zone->contents = NULL;
 				zone_free(&zone);
 			/* Check if removed (drop also contents). */
@@ -584,27 +578,37 @@ catalog_only:
 	 * thread while all zone events are paused. */
 	catalog_update_clear(&server->catalog_upd);
 
-	if (full) {
+	if (mode & (RELOAD_FULL | RELOAD_ZONES)) {
 		knot_zonedb_deep_free(&db_old, false);
 	} else {
 		knot_zonedb_free(&db_old);
 	}
 }
 
-void zonedb_reload(conf_t *conf, server_t *server)
+void zonedb_reload(conf_t *conf, server_t *server, reload_t mode)
 {
 	if (conf == NULL || server == NULL) {
 		return;
+	}
+
+	if (mode == RELOAD_COMMIT) {
+		assert(conf->io.flags & CONF_IO_FACTIVE);
+		if (conf->io.flags & CONF_IO_FRLD_ZONES) {
+			mode = RELOAD_ZONES;
+		}
 	}
 
 	list_t contents_tofree;
 	init_list(&contents_tofree);
 
 	catalog_update_finalize(&server->catalog_upd, &server->catalog, conf);
-	log_info("catalog, updating, %zu changes", trie_weight(server->catalog_upd.upd));
+	size_t cat_upd_size = trie_weight(server->catalog_upd.upd);
+	if (cat_upd_size > 0) {
+		log_info("catalog, updating, %zu changes", cat_upd_size);
+	}
 
 	/* Insert all required zones to the new zone DB. */
-	knot_zonedb_t *db_new = create_zonedb(conf, server, &contents_tofree);
+	knot_zonedb_t *db_new = create_zonedb(conf, server, mode, &contents_tofree);
 	if (db_new == NULL) {
 		log_error("failed to create new zone database");
 		return;
@@ -622,7 +626,7 @@ void zonedb_reload(conf_t *conf, server_t *server)
 	ptrlist_free_custom(&contents_tofree, NULL, (ptrlist_free_cb)zone_contents_deep_free);
 
 	/* Remove old zone DB. */
-	remove_old_zonedb(conf, db_old, server);
+	remove_old_zonedb(conf, db_old, server, mode);
 }
 
 int zone_reload_modules(conf_t *conf, server_t *server, const knot_dname_t *zone_name)

@@ -1047,7 +1047,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	}
 }
 
-int server_reload(server_t *server)
+int server_reload(server_t *server, reload_t mode)
 {
 	if (server == NULL) {
 		return KNOT_EINVAL;
@@ -1109,7 +1109,7 @@ int server_reload(server_t *server)
 		stats_reconfigure(conf(), server);
 	}
 	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
-		server_update_zones(conf(), server);
+		server_update_zones(conf(), server, mode);
 	}
 
 	/* Free old config needed for module unload in zone reload. */
@@ -1303,7 +1303,7 @@ int server_reconfigure(conf_t *conf, server_t *server)
 	return KNOT_EOK;
 }
 
-void server_update_zones(conf_t *conf, server_t *server)
+void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 {
 	if (conf == NULL || server == NULL) {
 		return;
@@ -1319,7 +1319,7 @@ void server_update_zones(conf_t *conf, server_t *server)
 	worker_pool_wait(server->workers);
 
 	/* Reload zone database and free old zones. */
-	zonedb_reload(conf, server);
+	zonedb_reload(conf, server, mode);
 
 	/* Trim extra heap. */
 	mem_trim();

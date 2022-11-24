@@ -14,10 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <signal.h>
+#include <unistd.h>
+#include <urcu.h>
+
 #include "knot/catalog/interpret.h"
 #include "knot/common/log.h"
 #include "knot/common/systemd.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/server/server.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
@@ -27,10 +32,6 @@
 #include "knot/zone/zonefile.h"
 #include "contrib/trim.h"
 #include "contrib/ucw/lists.h"
-
-#include <signal.h>
-#include <unistd.h>
-#include <urcu.h>
 
 // Call mem_trim() whenever accumulated size of updated zones reaches this size.
 #define UPDATE_MEMTRIM_AT (10 * 1024 * 1024)
@@ -783,6 +784,7 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 
 	if (ret == KNOT_EOK) {
 		log_zone_info(update->zone->name, "catalog reloaded, %zd updates", upd_count);
+		update->zone->server->catalog_upd_signal = true;
 		if (kill(getpid(), SIGUSR1) != 0) {
 			ret = knot_map_errno();
 		}
