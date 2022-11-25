@@ -24,6 +24,7 @@ EXTRA_DIST += \
 
 libcontrib_la_SOURCES = \
 	contrib/asan.h				\
+	contrib/atomic.h			\
 	contrib/base32hex.c			\
 	contrib/base32hex.h			\
 	contrib/base64.c			\
