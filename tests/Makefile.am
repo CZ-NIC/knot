@@ -48,6 +48,7 @@ libtap_la_SOURCES = \
 EXTRA_PROGRAMS = tap/runtests
 
 check_PROGRAMS = \
+	contrib/test_atomic			\
 	contrib/test_base32hex			\
 	contrib/test_base64			\
 	contrib/test_base64url			\
