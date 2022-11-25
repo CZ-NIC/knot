@@ -1,4 +1,5 @@
 src/contrib/asan.h
+src/contrib/atomic.h
 src/contrib/base32hex.c
 src/contrib/base32hex.h
 src/contrib/base64.c
@@ -620,6 +621,7 @@ tests-fuzz/knotd_wrap/server.c
 tests-fuzz/knotd_wrap/tcp-handler.c
 tests-fuzz/knotd_wrap/udp-handler.c
 tests-fuzz/main.c
+tests/contrib/test_atomic.c
 tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
 tests/contrib/test_base64url.c
