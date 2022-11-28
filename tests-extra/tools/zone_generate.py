@@ -95,8 +95,6 @@ for i, word in enumerate(WORDS):
 
 # For delegations
 DELEG_EXIST = set([])
-# For unique names
-NAME_EXIST = set([])
 
 # For A/AAAA names
 A_NAMES = []
@@ -139,7 +137,6 @@ def rnd_dnl(enable_sub = 1):
     while fqdn.lower() in DELEG_EXIST:
         dn = rnd_dname(enable_sub)
         fqdn = g_fqdn(dn)
-    NAME_EXIST.add(fqdn.lower())
     return dn
 
 def rnd_dnr():
@@ -301,7 +298,6 @@ def g_ipseckey(rt):
     # precedence gw-type algorithm gw pubkey
     # TODO: Doesn't make much sense in non-reverse zones
     dn = rnd_ip4()
-    NAME_EXIST.add(dn.lower())
     prec = rnd(1,20)
     gwtype = 3 #rnd(1, 3) # TODO: fix, 1,2 needs valid IPs as dnames in zone
     algo = rnd(1, 2)
