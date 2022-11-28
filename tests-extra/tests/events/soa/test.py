@@ -48,6 +48,7 @@ def init_servers(master, slave):
     master.start()
     slave.start()
     slave.zone_wait(zone)
+    t.sleep(0.5)
 
 def test_run_case(t, master, slave, action):
     #test that zone does not expire when master is alive
