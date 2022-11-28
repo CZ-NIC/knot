@@ -49,8 +49,7 @@ ctx = Context()
 RRTYPES = [ \
 #   [ typename, generator, probability, typeid ]
     [ 'A',        'g_a',        1.00,   1 ], \
-    [ 'NS',       'g_dname',    0.25,   2 ], \
-    [ 'CNAME',    'g_dname',    0.25,   5 ], \
+    [ 'NS',       'g_ns',       0.25,   2 ], \
 #   [ 'PTR',      'g_ptr',      0.50,  12 ], \
     [ 'HINFO',    'g_hinfo',    0.05,  13 ], \
     [ 'MX',       'g_mx',       0.25,  15 ], \
@@ -63,7 +62,6 @@ RRTYPES = [ \
     [ 'SRV',      'g_srv',      0.25,  33 ], \
     [ 'KX',       'g_mx',       0.02,  36 ], \
     [ 'CERT',     'g_cert',     0.05,  37 ], \
-    [ 'DNAME',    'g_dname',    0.25,  39 ], \
     [ 'APL',      'g_apl',      0.05,  42 ], \
     [ 'SSHFP',    'g_sshfp',    0.10,  44 ], \
     [ 'IPSECKEY', 'g_ipseckey', 0.05,  45 ], \
@@ -95,8 +93,8 @@ for i, word in enumerate(WORDS):
         size = random.randint(2, 20)
         WORDS[i] = ''.join(random.choice(string.hexdigits) for _ in range(size))
 
-# For unique CNAMES/DNAMES
-CNAME_EXIST = set([])
+# For delegations
+DELEG_EXIST = set([])
 # For unique names
 NAME_EXIST = set([])
 
@@ -129,7 +127,7 @@ def rnd_dname(enable_sub = 1):
     dname = rnd_str()
     # Chance for subdomain
     if enable_sub == 1 and rnd_fl(0, 1) < ctx.SUB_CHANCE:
-        dname += '.%s' % rnd_dnl(0) # DNAME must not have children
+        dname += '.%s' % rnd_dnl(0) # Ensure owners not below delegations
     # Chance for FQDN
     if rnd_fl(0, 1) < ctx.FQDN_CHANCE:
         dname = g_fqdn(dname)
@@ -138,7 +136,7 @@ def rnd_dname(enable_sub = 1):
 def rnd_dnl(enable_sub = 1):
     dn = rnd_dname(enable_sub)
     fqdn = g_fqdn(dn)
-    while fqdn.lower() in CNAME_EXIST:
+    while fqdn.lower() in DELEG_EXIST:
         dn = rnd_dname(enable_sub)
         fqdn = g_fqdn(dn)
     NAME_EXIST.add(fqdn.lower())
@@ -224,18 +222,12 @@ def g_srv(rt):
     rdt = g_rdata(rt, '%d %d %d %s' % (rnd(1, 50), rnd(1, 50), rnd(1024, 65535), rnd_dnr()))
     return '%s %s %s' % (name, g_rtype(rt), rdt)
 
-def g_dname(rt):
-    # Ensure unique owners for CNAME/DNAME
+def g_ns(rt):
     dn = rnd_dname()
     fqdn = g_fqdn(dn)
-    while (fqdn.lower() in CNAME_EXIST) or \
-          (fqdn.lower() in NAME_EXIST):
-        dn = rnd_dname()
-        fqdn = g_fqdn(dn)
-    CNAME_EXIST.add(fqdn.lower())
+    DELEG_EXIST.add(fqdn.lower())
     # Value (domain-name)
     rd = rnd_dnr()
-    CNAME_EXIST.add(g_fqdn(rd).lower())
     return '%s %s %s' % (dn, g_rtype(rt), rd)
 
 def g_mx(rt):
@@ -486,11 +478,6 @@ def main(args):
     # Open zone file
     if UPDATE:
         shutil.copyfile(UPDATE, in_fname)
-
-        # Disable additional CNAME generation
-        for idx, val in enumerate(RRTYPES):
-            if val[0] == 'CNAME':
-                RRTYPES[idx][2] = 0
 
     outf = open(in_fname, "a")
 
