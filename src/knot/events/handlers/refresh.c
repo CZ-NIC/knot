@@ -438,7 +438,7 @@ static int axfr_consume_packet(knot_pkt_t *pkt, struct refresh_data *data)
 	return ret;
 }
 
-static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
+static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data, bool reuse_soa)
 {
 	assert(pkt);
 	assert(data);
@@ -471,7 +471,8 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	int next;
 	// Process saved SOA if fallback from IXFR
 	if (data->initial_soa_copy != NULL) {
-		next = axfr_consume_rr(data->initial_soa_copy, data);
+		next = reuse_soa ? axfr_consume_rr(data->initial_soa_copy, data) :
+		                   KNOT_STATE_CONSUME;
 		knot_rrset_free(data->initial_soa_copy, data->mm);
 		data->initial_soa_copy = NULL;
 		if (next != KNOT_STATE_CONSUME) {
@@ -936,7 +937,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		case XFR_TYPE_AXFR:
 			IXFRIN_LOG(LOG_INFO, data,
 			           "receiving AXFR-style IXFR");
-			return axfr_consume(pkt, data);
+			return axfr_consume(pkt, data, true);
 		case XFR_TYPE_UPTODATE:
 			consume_edns_expire(data, pkt, false);
 			finalize_timers(data);
@@ -1131,7 +1132,7 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	data->fallback_axfr = (data->xfr_type == XFR_TYPE_IXFR);
 
-	int next = (data->xfr_type == XFR_TYPE_AXFR) ? axfr_consume(pkt, data) :
+	int next = (data->xfr_type == XFR_TYPE_AXFR) ? axfr_consume(pkt, data, false) :
 	                                               ixfr_consume(pkt, data);
 
 	// Transfer completed
