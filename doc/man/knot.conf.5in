@@ -1295,14 +1295,15 @@ An ACL rule identifier.
 .SS address
 .sp
 An ordered list of IP addresses, network subnets, or network ranges. The query\(aqs
-source address must match one of them. Empty value means that address match is not
-required.
+source address must match one of them. If this configuration item isn\(aqt defined,
+no address match is required.
 .sp
 \fIDefault:\fP not set
 .SS key
 .sp
 An ordered list of \fI\%reference\fPs to TSIG keys. The query must
-match one of them. Empty value means that transaction authentication is not used.
+match one of them. Not setting this configuration item means that transaction
+authentication is not used.
 .sp
 \fIDefault:\fP not set
 .SS remote

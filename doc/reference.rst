@@ -1436,8 +1436,8 @@ address
 -------
 
 An ordered list of IP addresses, network subnets, or network ranges. The query's
-source address must match one of them. Empty value means that address match is not
-required.
+source address must match one of them. If this configuration item isn't defined,
+no address match is required.
 
 *Default:* not set
 
@@ -1447,7 +1447,8 @@ key
 ---
 
 An ordered list of :ref:`reference<key_id>`\ s to TSIG keys. The query must
-match one of them. Empty value means that transaction authentication is not used.
+match one of them. Not setting this configuration item means that transaction
+authentication is not used.
 
 *Default:* not set
 
