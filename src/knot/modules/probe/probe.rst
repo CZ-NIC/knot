@@ -26,7 +26,7 @@ Per zone probe with 8 channels and maximum 1M logs per second limit::
 
    mod-probe:
      - id: custom
-       prefix: /tmp/knot-probe
+       path: /tmp/knot-probe
        channels: 8
        max-rate: 1000000
 
