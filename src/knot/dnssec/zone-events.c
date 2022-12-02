@@ -167,6 +167,11 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		result = KNOT_EINVAL;
 		goto done;
 	}
+	if (ctx.policy->rrsig_lifetime <= ctx.policy->rrsig_refresh_before) {
+		log_zone_error(zone_name, "DNSSEC, rrsig-lifetime lower than rrsig-refresh");
+		result = KNOT_EINVAL;
+		goto done;
+	}
 
 	// perform key rollover if needed
 	result = knot_dnssec_key_rollover(&ctx, roll_flags, reschedule);
