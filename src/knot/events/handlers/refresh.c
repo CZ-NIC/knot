@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <math.h>
 #include <stdint.h>
 
 #include "contrib/mempattern.h"
@@ -78,9 +79,6 @@
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_IXFR, LOG_DIRECTION_IN, \
 	       (data)->remote, (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
 
-#define BOOTSTRAP_MAXTIME (24*60*60)
-#define BOOTSTRAP_JITTER (30)
-
 enum state {
 	REFRESH_STATE_INVALID = 0,
 	STATE_SOA_QUERY,
@@ -143,25 +141,18 @@ static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 	return (serial_compare(local_serial, remote_serial) & SERIAL_MASK_GEQ);
 }
 
-static time_t bootstrap_next(const zone_timers_t *timers)
+static time_t bootstrap_next(uint8_t *count)
 {
-	time_t expired_at = timers->next_expire;
+	double increment = 5 * pow(*count, 2);
 
-	// Time since the zone expiration.
-	// The new interval is double of the previous one (an exponential backoff).
-	time_t interval = timers->next_refresh - expired_at;
-	if (interval < 0) {
-		interval = 0;
+	if (increment < 7200) {
+		(*count)++;
+	} else {
+		increment = 7200;
 	}
 
-	if (interval > BOOTSTRAP_MAXTIME) {
-		interval = BOOTSTRAP_MAXTIME;
-	}
-
-	// prevent burst refresh
-	interval += dnssec_random_uint16_t() % BOOTSTRAP_JITTER;
-
-	return interval;
+	// Add another random increment to prevent burst refresh.
+	return (time_t)increment + dnssec_random_uint16_t() % 30;
 }
 
 static void limit_timer(conf_t *conf, const knot_dname_t *zone, uint32_t *timer,
@@ -1370,8 +1361,9 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 		if (soa) {
 			next = knot_soa_retry(soa->rdata);
+			zone->zonefile.bootstrap_cnt = 0;
 		} else {
-			next = bootstrap_next(&zone->timers);
+			next = bootstrap_next(&zone->zonefile.bootstrap_cnt);
 		}
 
 		limit_timer(conf, zone->name, &next, "retry",
@@ -1386,6 +1378,8 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 		log_zone_error(zone->name, "refresh, failed (%s), next retry at %s",
 		               knot_strerror(ret), time_str);
+	} else {
+		zone->zonefile.bootstrap_cnt = 0;
 	}
 
 	/* Reschedule events. */
