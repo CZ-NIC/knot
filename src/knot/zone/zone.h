@@ -97,6 +97,7 @@ typedef struct zone
 		bool exists;
 		bool resigned;
 		bool retransfer;
+		uint8_t bootstrap_cnt; //!< Rebootstrap count (not related to zonefile).
 	} zonefile;
 
 	/*! \brief Zone events. */
