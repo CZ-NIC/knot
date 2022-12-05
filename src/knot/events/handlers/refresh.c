@@ -196,6 +196,11 @@ static void limit_timer(conf_t *conf, const knot_dname_t *zone, uint32_t *timer,
  */
 static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt, bool strictly_follow)
 {
+	if (data->zone->is_catalog_flag) {
+		data->expire_timer = EXPIRE_TIMER_INVALID;
+		return;
+	}
+
 	uint8_t *expire_opt = knot_pkt_edns_option(pkt, KNOT_EDNS_OPTION_EXPIRE);
 	if (expire_opt != NULL && knot_edns_opt_get_length(expire_opt) == sizeof(uint32_t)) {
 		uint32_t edns_expire = knot_wire_read_u32(knot_edns_opt_get_data(expire_opt));
