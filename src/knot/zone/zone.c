@@ -281,6 +281,7 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 		zone->timers = (zone_timers_t) {
 			.catalog_member = zone->timers.catalog_member
 		};
+		zone->zonefile.bootstrap_cnt = 0;
 		ret = zone_timers_sweep(&zone->server->timerdb,
 		                        (sweep_cb)knot_dname_cmp, zone->name);
 		RETURN_IF_FAILED("timers", KNOT_ENOENT);
