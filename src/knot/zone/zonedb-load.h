@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,10 +22,11 @@
 /*!
  * \brief Update zone database according to configuration.
  *
- * \param[in] conf Configuration.
- * \param[in] server Server instance.
+ * \param conf    Configuration.
+ * \param server  Server instance.
+ * \param mode    Reload mode.
  */
-void zonedb_reload(conf_t *conf, server_t *server);
+void zonedb_reload(conf_t *conf, server_t *server, reload_t mode);
 
 /*!
  * \brief Re-create zone_t struct in zoneDB so that the zone is reloaded incl modules.

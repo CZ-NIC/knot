@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -398,6 +398,7 @@ int catalog_zone_purge(server_t *server, conf_t *conf, const knot_dname_t *zone)
 	int ret = catalog_update_del_all(&server->catalog_upd, &server->catalog, zone, &members);
 	if (ret == KNOT_EOK && members > 0) {
 		log_zone_info(zone, "catalog zone purged, %zd member zones deconfigured", members);
+		server->catalog_upd_signal = true;
 		if (kill(getpid(), SIGUSR1) != 0) {
 			ret = knot_map_errno();
 		}
