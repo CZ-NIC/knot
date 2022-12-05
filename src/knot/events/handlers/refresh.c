@@ -237,6 +237,7 @@ static void finalize_timers(struct refresh_data *data)
 
 static void fill_expires_in(char *expires_in, size_t size, const struct refresh_data *data)
 {
+	assert(!data->zone->is_catalog_flag || data->zone->timers.next_expire == 0);
 	if (data->zone->timers.next_expire > 0) {
 		(void)snprintf(expires_in, size,
 		               ", expires in %u seconds", data->expire_timer);
