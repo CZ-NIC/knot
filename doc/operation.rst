@@ -438,24 +438,18 @@ Zone bootstrapping on secondary
 When zone refresh from the primary fails, the ``retry`` value from SOA is used
 as the interval between refresh attempts. In a case that SOA isn't known to the
 secondary (either because the zone hasn't been retrieved from the primary yet,
-or the zone has expired), an exponential backoff is used for repeated retry
-attempts.
+or the zone has expired), a backoff is used for repeated retry attempts.
 
-The backoff works as follows: first a random interval between 0 and 30 secs is
-chosen. This is the first iteration interval. Then, each following attempt interval
-takes the same time as what time has passed since the last expiration (or since
-the first unsuccessfull attempt to transfer the zone from the primary), and again
-random 0 to 30 seconds are added to it. These steps repeat as necessary.
-As a result, the interval effectively approximately doubles in each attempt under
-normal circumstances.
+With every retry, the delay rises as a quadratic polynomial (5 * n^2, where n
+represents the sequence number of the retry attempt) up to two hours, each time
+with a random delay of 0 to 30 seconds added to spread the load on the primary.
+In each attempt, the retry interval is subject to :ref:`zone_retry-min-interval`
+and :ref:`zone_retry-max-interval`.
 
-However, if `knotd` was halted for some time and the refresh hasn't been successful
-yet, that pause accounts into the new interval too, irrespective of whether there
-actually were any real retry attempts in the meantime, or not.
-
-In each attempt, retry interval is subject to :ref:`zone_retry-min-interval`
-and :ref:`zone_retry-max-interval`. As a safety measure, retry interval during
-zone bootstrap is always limited to 24 hours as maximum.
+Until the refresh has been successfully completed, the backoff is restarted from
+the beginning by every ```zone-refresh``` or ```zone-retransfer``` of the zone
+triggered manually via :doc:`knotc<man_knotc>`, by ```zone-purge``` or
+```zone-restore``` of the zone's timers, or by a restart of :doc:`knotd<man_knotd>`.
 
 .. _DNSSEC Key states:
 
