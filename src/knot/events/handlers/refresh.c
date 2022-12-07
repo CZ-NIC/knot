@@ -15,7 +15,6 @@
  */
 
 #include <assert.h>
-#include <math.h>
 #include <stdint.h>
 
 #include "contrib/mempattern.h"
@@ -143,16 +142,17 @@ static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 
 static time_t bootstrap_next(uint8_t *count)
 {
-	double increment = 5 * pow(*count, 2);
+	// Let the increment gradually grow in a sensible way.
+	time_t increment = 5 * (*count) * (*count);
 
-	if (increment < 7200) {
+	if (increment < 7200) { // two hours
 		(*count)++;
 	} else {
 		increment = 7200;
 	}
 
-	// Add another random increment to prevent burst refresh.
-	return (time_t)increment + dnssec_random_uint16_t() % 30;
+	// Add a random delay to prevent burst refresh.
+	return increment + dnssec_random_uint16_t() % 30;
 }
 
 static void limit_timer(conf_t *conf, const knot_dname_t *zone, uint32_t *timer,
@@ -1361,7 +1361,6 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 		if (soa) {
 			next = knot_soa_retry(soa->rdata);
-			zone->zonefile.bootstrap_cnt = 0;
 		} else {
 			next = bootstrap_next(&zone->zonefile.bootstrap_cnt);
 		}
