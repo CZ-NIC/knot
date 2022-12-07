@@ -30,7 +30,8 @@ Patch2:		02-revert-AC_PROG_CC.patch
 BuildRequires:	autoconf
 BuildRequires:	automake
 BuildRequires:	libtool
-BuildRequires:	devtoolset-7
+BuildRequires:	devtoolset-11-make
+BuildRequires:	devtoolset-11-gcc
 BuildRequires:	pkgconfig(liburcu)
 BuildRequires:	pkgconfig(gnutls) >= 3.3
 BuildRequires:	pkgconfig(libedit)
@@ -155,7 +156,7 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
 
 autoreconf -if
 
-export CC="/opt/rh/devtoolset-7/root/usr/bin/gcc"
+export CC="/opt/rh/devtoolset-11/root/usr/bin/gcc"
 %configure \
   --sysconfdir=/etc \
   --localstatedir=/var/lib \
