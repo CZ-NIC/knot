@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -219,6 +219,14 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 				buf4_pos -= *label;
 				memcpy(buf4_pos, label + 1, *label);
 				*--buf4_pos = '.';
+				break;
+			case 4:
+			case 5:
+			case 6: // Ignore second possibly classless label (e.g. 0/25, 193/26).
+				if (labels-- != 1) {
+					return KNOT_EINVAL;
+				}
+				can_ipv6 = false;
 				break;
 			default:
 				return KNOT_EINVAL;
