@@ -446,6 +446,7 @@ static int zone_refresh(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
+	zone->zonefile.bootstrap_cnt = 0; // restart delays
 	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 }
 
@@ -457,6 +458,7 @@ static int zone_retransfer(zone_t *zone, _unused_ ctl_args_t *args)
 	}
 
 	zone_set_flag(zone, ZONE_FORCE_AXFR);
+	zone->zonefile.bootstrap_cnt = 0; // restart delays
 	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 }
 
