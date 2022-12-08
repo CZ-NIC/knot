@@ -1,0 +1,7 @@
+$ORIGIN 0/25.2.0.10.in-addr.arpa.
+@	SOA	ns.A.domain. hostmaster.A.domain. 1 600 600 3600 0
+	NS	ns.A.domain.
+
+; Two static records
+1	PTR	host1.A.domain.
+2	PTR	host2.A.domain.

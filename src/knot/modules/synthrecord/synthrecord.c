@@ -220,6 +220,14 @@ static int reverse_addr_parse(knotd_qdata_t *qdata, const synth_template_t *tpl,
 				memcpy(buf4_pos, label + 1, *label);
 				*--buf4_pos = '.';
 				break;
+			case 4:
+			case 5:
+			case 6: // Ignore second possible classless label (e.g. 0/25, 192/26).
+				if (labels-- != 1) {
+					return KNOT_EINVAL;
+				}
+				can_ipv6 = false;
+				break;
 			default:
 				return KNOT_EINVAL;
 			}
