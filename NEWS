@@ -1,3 +1,24 @@
+Knot DNS 3.2.4 (2022-12-12)
+===========================
+
+Improvements:
+-------------
+ - knotd: significant speed-up of catalog zone update processing
+ - knotd: new runtime check if RRSIG lifetime is lower than RRSIG refresh
+ - knotd: reworked zone re-bootstrap scheduling to be less progressive
+ - mod-synthrecord: module can work with CIDR-style reverse zones #826
+ - python: new libknot wrappers for some dname transformation functions
+ - doc: a few fixes and improvements
+
+Bugfixes:
+---------
+ - knotd: incomplete zone is received when IXFR falls back to AXFR due to
+          connection timeout if primary puts initial SOA only to the first message
+ - knotd: first zone re-bootstrap is planned after 24 hours
+ - knotd: EDNS EXPIRE option is present in outgoing transfer of a catalog zone
+ - knotd: catalog zone can expire upon EDNS EXPIRE processing
+ - knotd: DNSSEC signing doesn't fail if no offline KSK records available
+
 Knot DNS 3.2.3 (2022-11-20)
 ===========================
 
