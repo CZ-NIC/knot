@@ -29,6 +29,7 @@ for zf in glob.glob(t.data_dir + "/*.zone"):
 t.start()
 
 slave.zones_wait(members)
+slave.ctl("zone-refresh", wait=True) # make sure the expire timers are fresh on slave
 master.stop() # even regular answers must be blocked (to prevent refresh)
 
 # Check non-expiration of catalog.
