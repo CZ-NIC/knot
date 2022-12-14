@@ -47,7 +47,6 @@
 #include <tools/libc_compat.h>
 #include <libelf.h>
 #include <gelf.h>
-#include <zlib.h>
 
 #include "libbpf.h"
 #include "bpf.h"
@@ -1642,7 +1641,7 @@ static int bpf_object__read_kconfig_file(struct bpf_object *obj, void *data)
 	char buf[PATH_MAX];
 	struct utsname uts;
 	int len, err = 0;
-	gzFile file;
+	FILE *file;
 
 	uname(&uts);
 	len = snprintf(buf, PATH_MAX, "/boot/config-%s", uts.release);
@@ -1652,16 +1651,13 @@ static int bpf_object__read_kconfig_file(struct bpf_object *obj, void *data)
 		return -ENAMETOOLONG;
 
 	/* gzopen also accepts uncompressed files. */
-	file = gzopen(buf, "r");
-	if (!file)
-		file = gzopen("/proc/config.gz", "r");
-
+	file = fopen(buf, "r");
 	if (!file) {
 		pr_warn("failed to open system Kconfig\n");
 		return -ENOENT;
 	}
 
-	while (gzgets(file, buf, sizeof(buf))) {
+	while (fgets(buf, sizeof(buf), file)) {
 		err = bpf_object__process_kconfig_line(obj, buf, data);
 		if (err) {
 			pr_warn("error parsing system Kconfig line '%s': %d\n",
@@ -1671,7 +1667,7 @@ static int bpf_object__read_kconfig_file(struct bpf_object *obj, void *data)
 	}
 
 out:
-	gzclose(file);
+	fclose(file);
 	return err;
 }
 
