@@ -121,6 +121,7 @@ libembbpf_la_SOURCES = \
 	contrib/libbpf/bpf/hashmap.h			\
 	contrib/libbpf/bpf/libbpf.c			\
 	contrib/libbpf/bpf/libbpf.h			\
+	contrib/libbpf/bpf/libbpf_common.h		\
 	contrib/libbpf/bpf/libbpf_errno.c		\
 	contrib/libbpf/bpf/libbpf_internal.h		\
 	contrib/libbpf/bpf/libbpf_probes.c		\
@@ -128,6 +129,7 @@ libembbpf_la_SOURCES = \
 	contrib/libbpf/bpf/netlink.c			\
 	contrib/libbpf/bpf/nlattr.c			\
 	contrib/libbpf/bpf/nlattr.h			\
+	contrib/libbpf/bpf/ringbuf.c			\
 	contrib/libbpf/bpf/str_error.c			\
 	contrib/libbpf/bpf/str_error.h			\
 	contrib/libbpf/bpf/xsk.c			\

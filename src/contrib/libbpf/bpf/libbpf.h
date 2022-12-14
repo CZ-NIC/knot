@@ -17,12 +17,10 @@
 #include <sys/types.h>  // for size_t
 #include <linux/bpf.h>
 
+#include "libbpf_common.h"
+
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#ifndef LIBBPF_API
-#define LIBBPF_API __attribute__((visibility("default")))
 #endif
 
 enum libbpf_errno {
@@ -67,28 +65,6 @@ struct bpf_object_open_attr {
 	enum bpf_prog_type prog_type;
 };
 
-/* Helper macro to declare and initialize libbpf options struct
- *
- * This dance with uninitialized declaration, followed by memset to zero,
- * followed by assignment using compound literal syntax is done to preserve
- * ability to use a nice struct field initialization syntax and **hopefully**
- * have all the padding bytes initialized to zero. It's not guaranteed though,
- * when copying literal, that compiler won't copy garbage in literal's padding
- * bytes, but that's the best way I've found and it seems to work in practice.
- *
- * Macro declares opts struct of given type and name, zero-initializes,
- * including any extra padding, it with memset() and then assigns initial
- * values provided by users in struct initializer-syntax as varargs.
- */
-#define DECLARE_LIBBPF_OPTS(TYPE, NAME, ...)				    \
-	struct TYPE NAME = ({ 						    \
-		memset(&NAME, 0, sizeof(struct TYPE));			    \
-		(struct TYPE) {						    \
-			.sz = sizeof(struct TYPE),			    \
-			__VA_ARGS__					    \
-		};							    \
-	})
-
 struct bpf_object_open_opts {
 	/* size of this struct, for forward/backward compatiblity */
 	size_t sz;
@@ -101,7 +77,11 @@ struct bpf_object_open_opts {
 	const char *object_name;
 	/* parse map definitions non-strictly, allowing extra attributes/data */
 	bool relaxed_maps;
-	/* process CO-RE relocations non-strictly, allowing them to fail */
+	/* DEPRECATED: handle CO-RE relocations non-strictly, allowing failures.
+	 * Value is ignored. Relocations always are processed non-strictly.
+	 * Non-relocatable instructions are replaced with invalid ones to
+	 * prevent accidental errors.
+	 * */
 	bool relaxed_core_relocs;
 	/* maps that set the 'pinning' attribute in their definition will have
 	 * their pin_path attribute set to a file in this directory, and be
@@ -109,15 +89,19 @@ struct bpf_object_open_opts {
 	 */
 	const char *pin_root_path;
 	__u32 attach_prog_fd;
+	/* Additional kernel config content that augments and overrides
+	 * system Kconfig for CONFIG_xxx externs.
+	 */
+	const char *kconfig;
 };
-#define bpf_object_open_opts__last_field attach_prog_fd
+#define bpf_object_open_opts__last_field kconfig
 
 LIBBPF_API struct bpf_object *bpf_object__open(const char *path);
 LIBBPF_API struct bpf_object *
-bpf_object__open_file(const char *path, struct bpf_object_open_opts *opts);
+bpf_object__open_file(const char *path, const struct bpf_object_open_opts *opts);
 LIBBPF_API struct bpf_object *
 bpf_object__open_mem(const void *obj_buf, size_t obj_buf_sz,
-		     struct bpf_object_open_opts *opts);
+		     const struct bpf_object_open_opts *opts);
 
 /* deprecated bpf_object__open variants */
 LIBBPF_API struct bpf_object *
@@ -125,11 +109,6 @@ bpf_object__open_buffer(const void *obj_buf, size_t obj_buf_sz,
 			const char *name);
 LIBBPF_API struct bpf_object *
 bpf_object__open_xattr(struct bpf_object_open_attr *attr);
-
-int bpf_object__section_size(const struct bpf_object *obj, const char *name,
-			     __u32 *size);
-int bpf_object__variable_offset(const struct bpf_object *obj, const char *name,
-				__u32 *off);
 
 enum libbpf_pin_type {
 	LIBBPF_PIN_NONE,
@@ -161,6 +140,7 @@ struct bpf_object_load_attr {
 LIBBPF_API int bpf_object__load(struct bpf_object *obj);
 LIBBPF_API int bpf_object__load_xattr(struct bpf_object_load_attr *attr);
 LIBBPF_API int bpf_object__unload(struct bpf_object *obj);
+
 LIBBPF_API const char *bpf_object__name(const struct bpf_object *obj);
 LIBBPF_API unsigned int bpf_object__kversion(const struct bpf_object *obj);
 
@@ -171,6 +151,9 @@ LIBBPF_API int bpf_object__btf_fd(const struct bpf_object *obj);
 LIBBPF_API struct bpf_program *
 bpf_object__find_program_by_title(const struct bpf_object *obj,
 				  const char *title);
+LIBBPF_API struct bpf_program *
+bpf_object__find_program_by_name(const struct bpf_object *obj,
+				 const char *name);
 
 LIBBPF_API struct bpf_object *bpf_object__next(struct bpf_object *prev);
 #define bpf_object__for_each_safe(pos, tmp)			\
@@ -214,8 +197,11 @@ LIBBPF_API void *bpf_program__priv(const struct bpf_program *prog);
 LIBBPF_API void bpf_program__set_ifindex(struct bpf_program *prog,
 					 __u32 ifindex);
 
+LIBBPF_API const char *bpf_program__name(const struct bpf_program *prog);
 LIBBPF_API const char *bpf_program__title(const struct bpf_program *prog,
 					  bool needs_copy);
+LIBBPF_API bool bpf_program__autoload(const struct bpf_program *prog);
+LIBBPF_API int bpf_program__set_autoload(struct bpf_program *prog, bool autoload);
 
 /* returns program size in bytes */
 LIBBPF_API size_t bpf_program__size(const struct bpf_program *prog);
@@ -235,8 +221,19 @@ LIBBPF_API void bpf_program__unload(struct bpf_program *prog);
 
 struct bpf_link;
 
+LIBBPF_API struct bpf_link *bpf_link__open(const char *path);
+LIBBPF_API int bpf_link__fd(const struct bpf_link *link);
+LIBBPF_API const char *bpf_link__pin_path(const struct bpf_link *link);
+LIBBPF_API int bpf_link__pin(struct bpf_link *link, const char *path);
+LIBBPF_API int bpf_link__unpin(struct bpf_link *link);
+LIBBPF_API int bpf_link__update_program(struct bpf_link *link,
+					struct bpf_program *prog);
+LIBBPF_API void bpf_link__disconnect(struct bpf_link *link);
+LIBBPF_API int bpf_link__detach(struct bpf_link *link);
 LIBBPF_API int bpf_link__destroy(struct bpf_link *link);
 
+LIBBPF_API struct bpf_link *
+bpf_program__attach(struct bpf_program *prog);
 LIBBPF_API struct bpf_link *
 bpf_program__attach_perf_event(struct bpf_program *prog, int pfd);
 LIBBPF_API struct bpf_link *
@@ -253,9 +250,32 @@ bpf_program__attach_tracepoint(struct bpf_program *prog,
 LIBBPF_API struct bpf_link *
 bpf_program__attach_raw_tracepoint(struct bpf_program *prog,
 				   const char *tp_name);
-
 LIBBPF_API struct bpf_link *
 bpf_program__attach_trace(struct bpf_program *prog);
+LIBBPF_API struct bpf_link *
+bpf_program__attach_lsm(struct bpf_program *prog);
+LIBBPF_API struct bpf_link *
+bpf_program__attach_cgroup(struct bpf_program *prog, int cgroup_fd);
+LIBBPF_API struct bpf_link *
+bpf_program__attach_netns(struct bpf_program *prog, int netns_fd);
+LIBBPF_API struct bpf_link *
+bpf_program__attach_xdp(struct bpf_program *prog, int ifindex);
+
+struct bpf_map;
+
+LIBBPF_API struct bpf_link *bpf_map__attach_struct_ops(struct bpf_map *map);
+
+struct bpf_iter_attach_opts {
+	size_t sz; /* size of this struct for forward/backward compatibility */
+	union bpf_iter_link_info *link_info;
+	__u32 link_info_len;
+};
+#define bpf_iter_attach_opts__last_field link_info_len
+
+LIBBPF_API struct bpf_link *
+bpf_program__attach_iter(struct bpf_program *prog,
+			 const struct bpf_iter_attach_opts *opts);
+
 struct bpf_insn;
 
 /*
@@ -327,11 +347,15 @@ LIBBPF_API int bpf_program__set_socket_filter(struct bpf_program *prog);
 LIBBPF_API int bpf_program__set_tracepoint(struct bpf_program *prog);
 LIBBPF_API int bpf_program__set_raw_tracepoint(struct bpf_program *prog);
 LIBBPF_API int bpf_program__set_kprobe(struct bpf_program *prog);
+LIBBPF_API int bpf_program__set_lsm(struct bpf_program *prog);
 LIBBPF_API int bpf_program__set_sched_cls(struct bpf_program *prog);
 LIBBPF_API int bpf_program__set_sched_act(struct bpf_program *prog);
 LIBBPF_API int bpf_program__set_xdp(struct bpf_program *prog);
 LIBBPF_API int bpf_program__set_perf_event(struct bpf_program *prog);
 LIBBPF_API int bpf_program__set_tracing(struct bpf_program *prog);
+LIBBPF_API int bpf_program__set_struct_ops(struct bpf_program *prog);
+LIBBPF_API int bpf_program__set_extension(struct bpf_program *prog);
+LIBBPF_API int bpf_program__set_sk_lookup(struct bpf_program *prog);
 
 LIBBPF_API enum bpf_prog_type bpf_program__get_type(struct bpf_program *prog);
 LIBBPF_API void bpf_program__set_type(struct bpf_program *prog,
@@ -343,15 +367,23 @@ LIBBPF_API void
 bpf_program__set_expected_attach_type(struct bpf_program *prog,
 				      enum bpf_attach_type type);
 
+LIBBPF_API int
+bpf_program__set_attach_target(struct bpf_program *prog, int attach_prog_fd,
+			       const char *attach_func_name);
+
 LIBBPF_API bool bpf_program__is_socket_filter(const struct bpf_program *prog);
 LIBBPF_API bool bpf_program__is_tracepoint(const struct bpf_program *prog);
 LIBBPF_API bool bpf_program__is_raw_tracepoint(const struct bpf_program *prog);
 LIBBPF_API bool bpf_program__is_kprobe(const struct bpf_program *prog);
+LIBBPF_API bool bpf_program__is_lsm(const struct bpf_program *prog);
 LIBBPF_API bool bpf_program__is_sched_cls(const struct bpf_program *prog);
 LIBBPF_API bool bpf_program__is_sched_act(const struct bpf_program *prog);
 LIBBPF_API bool bpf_program__is_xdp(const struct bpf_program *prog);
 LIBBPF_API bool bpf_program__is_perf_event(const struct bpf_program *prog);
 LIBBPF_API bool bpf_program__is_tracing(const struct bpf_program *prog);
+LIBBPF_API bool bpf_program__is_struct_ops(const struct bpf_program *prog);
+LIBBPF_API bool bpf_program__is_extension(const struct bpf_program *prog);
+LIBBPF_API bool bpf_program__is_sk_lookup(const struct bpf_program *prog);
 
 /*
  * No need for __attribute__((packed)), all members of 'bpf_map_def'
@@ -371,7 +403,6 @@ struct bpf_map_def {
  * The 'struct bpf_map' in include/linux/bpf.h is internal to the kernel,
  * so no need to worry about a name clash.
  */
-struct bpf_map;
 LIBBPF_API struct bpf_map *
 bpf_object__find_map_by_name(const struct bpf_object *obj, const char *name);
 
@@ -396,21 +427,47 @@ bpf_map__next(const struct bpf_map *map, const struct bpf_object *obj);
 LIBBPF_API struct bpf_map *
 bpf_map__prev(const struct bpf_map *map, const struct bpf_object *obj);
 
+/* get/set map FD */
 LIBBPF_API int bpf_map__fd(const struct bpf_map *map);
+LIBBPF_API int bpf_map__reuse_fd(struct bpf_map *map, int fd);
+/* get map definition */
 LIBBPF_API const struct bpf_map_def *bpf_map__def(const struct bpf_map *map);
+/* get map name */
 LIBBPF_API const char *bpf_map__name(const struct bpf_map *map);
+/* get/set map type */
+LIBBPF_API enum bpf_map_type bpf_map__type(const struct bpf_map *map);
+LIBBPF_API int bpf_map__set_type(struct bpf_map *map, enum bpf_map_type type);
+/* get/set map size (max_entries) */
+LIBBPF_API __u32 bpf_map__max_entries(const struct bpf_map *map);
+LIBBPF_API int bpf_map__set_max_entries(struct bpf_map *map, __u32 max_entries);
+LIBBPF_API int bpf_map__resize(struct bpf_map *map, __u32 max_entries);
+/* get/set map flags */
+LIBBPF_API __u32 bpf_map__map_flags(const struct bpf_map *map);
+LIBBPF_API int bpf_map__set_map_flags(struct bpf_map *map, __u32 flags);
+/* get/set map NUMA node */
+LIBBPF_API __u32 bpf_map__numa_node(const struct bpf_map *map);
+LIBBPF_API int bpf_map__set_numa_node(struct bpf_map *map, __u32 numa_node);
+/* get/set map key size */
+LIBBPF_API __u32 bpf_map__key_size(const struct bpf_map *map);
+LIBBPF_API int bpf_map__set_key_size(struct bpf_map *map, __u32 size);
+/* get/set map value size */
+LIBBPF_API __u32 bpf_map__value_size(const struct bpf_map *map);
+LIBBPF_API int bpf_map__set_value_size(struct bpf_map *map, __u32 size);
+/* get map key/value BTF type IDs */
 LIBBPF_API __u32 bpf_map__btf_key_type_id(const struct bpf_map *map);
 LIBBPF_API __u32 bpf_map__btf_value_type_id(const struct bpf_map *map);
+/* get/set map if_index */
+LIBBPF_API __u32 bpf_map__ifindex(const struct bpf_map *map);
+LIBBPF_API int bpf_map__set_ifindex(struct bpf_map *map, __u32 ifindex);
 
 typedef void (*bpf_map_clear_priv_t)(struct bpf_map *, void *);
 LIBBPF_API int bpf_map__set_priv(struct bpf_map *map, void *priv,
 				 bpf_map_clear_priv_t clear_priv);
 LIBBPF_API void *bpf_map__priv(const struct bpf_map *map);
-LIBBPF_API int bpf_map__reuse_fd(struct bpf_map *map, int fd);
-LIBBPF_API int bpf_map__resize(struct bpf_map *map, __u32 max_entries);
+LIBBPF_API int bpf_map__set_initial_value(struct bpf_map *map,
+					  const void *data, size_t size);
 LIBBPF_API bool bpf_map__is_offload_neutral(const struct bpf_map *map);
 LIBBPF_API bool bpf_map__is_internal(const struct bpf_map *map);
-LIBBPF_API void bpf_map__set_ifindex(struct bpf_map *map, __u32 ifindex);
 LIBBPF_API int bpf_map__set_pin_path(struct bpf_map *map, const char *path);
 LIBBPF_API const char *bpf_map__get_pin_path(const struct bpf_map *map);
 LIBBPF_API bool bpf_map__is_pinned(const struct bpf_map *map);
@@ -443,11 +500,40 @@ struct xdp_link_info {
 	__u8 attach_mode;
 };
 
+struct bpf_xdp_set_link_opts {
+	size_t sz;
+	int old_fd;
+};
+#define bpf_xdp_set_link_opts__last_field old_fd
+
 LIBBPF_API int bpf_set_link_xdp_fd(int ifindex, int fd, __u32 flags);
+LIBBPF_API int bpf_set_link_xdp_fd_opts(int ifindex, int fd, __u32 flags,
+					const struct bpf_xdp_set_link_opts *opts);
 LIBBPF_API int bpf_get_link_xdp_id(int ifindex, __u32 *prog_id, __u32 flags);
 LIBBPF_API int bpf_get_link_xdp_info(int ifindex, struct xdp_link_info *info,
 				     size_t info_size, __u32 flags);
 
+/* Ring buffer APIs */
+struct ring_buffer;
+
+typedef int (*ring_buffer_sample_fn)(void *ctx, void *data, size_t size);
+
+struct ring_buffer_opts {
+	size_t sz; /* size of this struct, for forward/backward compatiblity */
+};
+
+#define ring_buffer_opts__last_field sz
+
+LIBBPF_API struct ring_buffer *
+ring_buffer__new(int map_fd, ring_buffer_sample_fn sample_cb, void *ctx,
+		 const struct ring_buffer_opts *opts);
+LIBBPF_API void ring_buffer__free(struct ring_buffer *rb);
+LIBBPF_API int ring_buffer__add(struct ring_buffer *rb, int map_fd,
+				ring_buffer_sample_fn sample_cb, void *ctx);
+LIBBPF_API int ring_buffer__poll(struct ring_buffer *rb, int timeout_ms);
+LIBBPF_API int ring_buffer__consume(struct ring_buffer *rb);
+
+/* Perf buffer APIs */
 struct perf_buffer;
 
 typedef void (*perf_buffer_sample_fn)(void *ctx, int cpu,
@@ -503,6 +589,7 @@ perf_buffer__new_raw(int map_fd, size_t page_cnt,
 
 LIBBPF_API void perf_buffer__free(struct perf_buffer *pb);
 LIBBPF_API int perf_buffer__poll(struct perf_buffer *pb, int timeout_ms);
+LIBBPF_API int perf_buffer__consume(struct perf_buffer *pb);
 
 typedef enum bpf_perf_event_ret
 	(*bpf_perf_event_print_t)(struct perf_event_header *hdr,
@@ -511,18 +598,6 @@ LIBBPF_API enum bpf_perf_event_ret
 bpf_perf_event_read_simple(void *mmap_mem, size_t mmap_size, size_t page_size,
 			   void **copy_mem, size_t *copy_size,
 			   bpf_perf_event_print_t fn, void *private_data);
-
-struct nlattr;
-typedef int (*libbpf_dump_nlmsg_t)(void *cookie, void *msg, struct nlattr **tb);
-int libbpf_netlink_open(unsigned int *nl_pid);
-int libbpf_nl_get_link(int sock, unsigned int nl_pid,
-		       libbpf_dump_nlmsg_t dump_link_nlmsg, void *cookie);
-int libbpf_nl_get_class(int sock, unsigned int nl_pid, int ifindex,
-			libbpf_dump_nlmsg_t dump_class_nlmsg, void *cookie);
-int libbpf_nl_get_qdisc(int sock, unsigned int nl_pid, int ifindex,
-			libbpf_dump_nlmsg_t dump_qdisc_nlmsg, void *cookie);
-int libbpf_nl_get_filter(int sock, unsigned int nl_pid, int ifindex, int handle,
-			 libbpf_dump_nlmsg_t dump_filter_nlmsg, void *cookie);
 
 struct bpf_prog_linfo;
 struct bpf_prog_info;
@@ -550,6 +625,7 @@ LIBBPF_API bool bpf_probe_prog_type(enum bpf_prog_type prog_type,
 LIBBPF_API bool bpf_probe_map_type(enum bpf_map_type map_type, __u32 ifindex);
 LIBBPF_API bool bpf_probe_helper(enum bpf_func_id id,
 				 enum bpf_prog_type prog_type, __u32 ifindex);
+LIBBPF_API bool bpf_probe_large_insn_limit(__u32 ifindex);
 
 /*
  * Get bpf_prog_info in continuous memory
@@ -629,6 +705,50 @@ bpf_program__bpil_offs_to_addr(struct bpf_prog_info_linear *info_linear);
  *
  */
 LIBBPF_API int libbpf_num_possible_cpus(void);
+
+struct bpf_map_skeleton {
+	const char *name;
+	struct bpf_map **map;
+	void **mmaped;
+};
+
+struct bpf_prog_skeleton {
+	const char *name;
+	struct bpf_program **prog;
+	struct bpf_link **link;
+};
+
+struct bpf_object_skeleton {
+	size_t sz; /* size of this struct, for forward/backward compatibility */
+
+	const char *name;
+	void *data;
+	size_t data_sz;
+
+	struct bpf_object **obj;
+
+	int map_cnt;
+	int map_skel_sz; /* sizeof(struct bpf_skeleton_map) */
+	struct bpf_map_skeleton *maps;
+
+	int prog_cnt;
+	int prog_skel_sz; /* sizeof(struct bpf_skeleton_prog) */
+	struct bpf_prog_skeleton *progs;
+};
+
+LIBBPF_API int
+bpf_object__open_skeleton(struct bpf_object_skeleton *s,
+			  const struct bpf_object_open_opts *opts);
+LIBBPF_API int bpf_object__load_skeleton(struct bpf_object_skeleton *s);
+LIBBPF_API int bpf_object__attach_skeleton(struct bpf_object_skeleton *s);
+LIBBPF_API void bpf_object__detach_skeleton(struct bpf_object_skeleton *s);
+LIBBPF_API void bpf_object__destroy_skeleton(struct bpf_object_skeleton *s);
+
+enum libbpf_tristate {
+	TRI_NO = 0,
+	TRI_YES = 1,
+	TRI_MODULE = 2,
+};
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -8,6 +8,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/utsname.h>
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <linux/kernel.h>
 #include <linux/err.h>
 #include <linux/btf.h>
 #include <gelf.h>
@@ -17,8 +21,11 @@
 #include "libbpf_internal.h"
 #include "hashmap.h"
 
-#define BTF_MAX_NR_TYPES 0x7fffffff
-#define BTF_MAX_STR_OFFSET 0x7fffffff
+/* make sure libbpf doesn't use kernel-only integer typedefs */
+#pragma GCC poison u8 u16 u32 u64 s8 s16 s32 s64
+
+#define BTF_MAX_NR_TYPES 0x7fffffffU
+#define BTF_MAX_STR_OFFSET 0x7fffffffU
 
 static struct btf_type btf_void;
 
@@ -34,6 +41,7 @@ struct btf {
 	__u32 types_size;
 	__u32 data_size;
 	int fd;
+	int ptr_sz;
 };
 
 static inline __u64 ptr_to_u64(const void *ptr)
@@ -50,7 +58,7 @@ static int btf_add_type(struct btf *btf, struct btf_type *t)
 		if (btf->types_size == BTF_MAX_NR_TYPES)
 			return -E2BIG;
 
-		expand_by = max(btf->types_size >> 2, 16);
+		expand_by = max(btf->types_size >> 2, 16U);
 		new_size = min(BTF_MAX_NR_TYPES, btf->types_size + expand_by);
 
 		new_types = realloc(btf->types, sizeof(*new_types) * new_size);
@@ -214,6 +222,70 @@ const struct btf_type *btf__type_by_id(const struct btf *btf, __u32 type_id)
 	return btf->types[type_id];
 }
 
+static int determine_ptr_size(const struct btf *btf)
+{
+	const struct btf_type *t;
+	const char *name;
+	int i;
+
+	for (i = 1; i <= btf->nr_types; i++) {
+		t = btf__type_by_id(btf, i);
+		if (!btf_is_int(t))
+			continue;
+
+		name = btf__name_by_offset(btf, t->name_off);
+		if (!name)
+			continue;
+
+		if (strcmp(name, "long int") == 0 ||
+		    strcmp(name, "long unsigned int") == 0) {
+			if (t->size != 4 && t->size != 8)
+				continue;
+			return t->size;
+		}
+	}
+
+	return -1;
+}
+
+static size_t btf_ptr_sz(const struct btf *btf)
+{
+	if (!btf->ptr_sz)
+		((struct btf *)btf)->ptr_sz = determine_ptr_size(btf);
+	return btf->ptr_sz < 0 ? sizeof(void *) : btf->ptr_sz;
+}
+
+/* Return pointer size this BTF instance assumes. The size is heuristically
+ * determined by looking for 'long' or 'unsigned long' integer type and
+ * recording its size in bytes. If BTF type information doesn't have any such
+ * type, this function returns 0. In the latter case, native architecture's
+ * pointer size is assumed, so will be either 4 or 8, depending on
+ * architecture that libbpf was compiled for. It's possible to override
+ * guessed value by using btf__set_pointer_size() API.
+ */
+size_t btf__pointer_size(const struct btf *btf)
+{
+	if (!btf->ptr_sz)
+		((struct btf *)btf)->ptr_sz = determine_ptr_size(btf);
+
+	if (btf->ptr_sz < 0)
+		/* not enough BTF type info to guess */
+		return 0;
+
+	return btf->ptr_sz;
+}
+
+/* Override or set pointer size in bytes. Only values of 4 and 8 are
+ * supported.
+ */
+int btf__set_pointer_size(struct btf *btf, size_t ptr_sz)
+{
+	if (ptr_sz != 4 && ptr_sz != 8)
+		return -EINVAL;
+	btf->ptr_sz = ptr_sz;
+	return 0;
+}
+
 static bool btf_type_is_void(const struct btf_type *t)
 {
 	return t == &btf_void || btf_is_fwd(t);
@@ -246,7 +318,7 @@ __s64 btf__resolve_size(const struct btf *btf, __u32 type_id)
 			size = t->size;
 			goto done;
 		case BTF_KIND_PTR:
-			size = sizeof(void *);
+			size = btf_ptr_sz(btf);
 			goto done;
 		case BTF_KIND_TYPEDEF:
 		case BTF_KIND_VOLATILE:
@@ -276,6 +348,45 @@ done:
 		return -E2BIG;
 
 	return nelems * size;
+}
+
+int btf__align_of(const struct btf *btf, __u32 id)
+{
+	const struct btf_type *t = btf__type_by_id(btf, id);
+	__u16 kind = btf_kind(t);
+
+	switch (kind) {
+	case BTF_KIND_INT:
+	case BTF_KIND_ENUM:
+		return min(btf_ptr_sz(btf), (size_t)t->size);
+	case BTF_KIND_PTR:
+		return btf_ptr_sz(btf);
+	case BTF_KIND_TYPEDEF:
+	case BTF_KIND_VOLATILE:
+	case BTF_KIND_CONST:
+	case BTF_KIND_RESTRICT:
+		return btf__align_of(btf, t->type);
+	case BTF_KIND_ARRAY:
+		return btf__align_of(btf, btf_array(t)->type);
+	case BTF_KIND_STRUCT:
+	case BTF_KIND_UNION: {
+		const struct btf_member *m = btf_members(t);
+		__u16 vlen = btf_vlen(t);
+		int i, max_align = 1, align;
+
+		for (i = 0; i < vlen; i++, m++) {
+			align = btf__align_of(btf, m->type);
+			if (align <= 0)
+				return align;
+			max_align = max(max_align, align);
+		}
+
+		return max_align;
+	}
+	default:
+		pr_warn("unsupported BTF_KIND:%u\n", btf_kind(t));
+		return 0;
+	}
 }
 
 int btf__resolve_type(const struct btf *btf, __u32 type_id)
@@ -340,10 +451,10 @@ __s32 btf__find_by_name_kind(const struct btf *btf, const char *type_name,
 
 void btf__free(struct btf *btf)
 {
-	if (!btf)
+	if (IS_ERR_OR_NULL(btf))
 		return;
 
-	if (btf->fd != -1)
+	if (btf->fd >= 0)
 		close(btf->fd);
 
 	free(btf->data);
@@ -351,7 +462,7 @@ void btf__free(struct btf *btf)
 	free(btf);
 }
 
-struct btf *btf__new(__u8 *data, __u32 size)
+struct btf *btf__new(const void *data, __u32 size)
 {
 	struct btf *btf;
 	int err;
@@ -487,6 +598,18 @@ struct btf *btf__parse_elf(const char *path, struct btf_ext **btf_ext)
 	if (IS_ERR(btf))
 		goto done;
 
+	switch (gelf_getclass(elf)) {
+	case ELFCLASS32:
+		btf__set_pointer_size(btf, 4);
+		break;
+	case ELFCLASS64:
+		btf__set_pointer_size(btf, 8);
+		break;
+	default:
+		pr_warn("failed to get ELF class (bitness) for %s\n", path);
+		break;
+	}
+
 	if (btf_ext && btf_ext_data) {
 		*btf_ext = btf_ext__new(btf_ext_data->d_buf,
 					btf_ext_data->d_size);
@@ -516,6 +639,83 @@ done:
 	return btf;
 }
 
+struct btf *btf__parse_raw(const char *path)
+{
+	struct btf *btf = NULL;
+	void *data = NULL;
+	FILE *f = NULL;
+	__u16 magic;
+	int err = 0;
+	long sz;
+
+	f = fopen(path, "rb");
+	if (!f) {
+		err = -errno;
+		goto err_out;
+	}
+
+	/* check BTF magic */
+	if (fread(&magic, 1, sizeof(magic), f) < sizeof(magic)) {
+		err = -EIO;
+		goto err_out;
+	}
+	if (magic != BTF_MAGIC) {
+		/* definitely not a raw BTF */
+		err = -EPROTO;
+		goto err_out;
+	}
+
+	/* get file size */
+	if (fseek(f, 0, SEEK_END)) {
+		err = -errno;
+		goto err_out;
+	}
+	sz = ftell(f);
+	if (sz < 0) {
+		err = -errno;
+		goto err_out;
+	}
+	/* rewind to the start */
+	if (fseek(f, 0, SEEK_SET)) {
+		err = -errno;
+		goto err_out;
+	}
+
+	/* pre-alloc memory and read all of BTF data */
+	data = malloc(sz);
+	if (!data) {
+		err = -ENOMEM;
+		goto err_out;
+	}
+	if (fread(data, 1, sz, f) < sz) {
+		err = -EIO;
+		goto err_out;
+	}
+
+	/* finally parse BTF data */
+	btf = btf__new(data, sz);
+
+err_out:
+	free(data);
+	if (f)
+		fclose(f);
+	return err ? ERR_PTR(err) : btf;
+}
+
+struct btf *btf__parse(const char *path, struct btf_ext **btf_ext)
+{
+	struct btf *btf;
+
+	if (btf_ext)
+		*btf_ext = NULL;
+
+	btf = btf__parse_raw(path);
+	if (!IS_ERR(btf) || PTR_ERR(btf) != -EPROTO)
+		return btf;
+
+	return btf__parse_elf(path, btf_ext);
+}
+
 static int compare_vsi_off(const void *_a, const void *_b)
 {
 	const struct btf_var_secinfo *a = _a;
@@ -538,6 +738,12 @@ static int btf_fixup_datasec(struct bpf_object *obj, struct btf *btf,
 		pr_debug("No name found in string section for DATASEC kind.\n");
 		return -ENOENT;
 	}
+
+	/* .extern datasec size and var offsets were set correctly during
+	 * extern collection step, so just skip straight to sorting variables
+	 */
+	if (t->size)
+		goto sort_vars;
 
 	ret = bpf_object__section_size(obj, name, &size);
 	if (ret || !size || (t->size && t->size != size)) {
@@ -575,7 +781,8 @@ static int btf_fixup_datasec(struct bpf_object *obj, struct btf *btf,
 		vsi->offset = off;
 	}
 
-	qsort(t + 1, vars, sizeof(*vsi), compare_vsi_off);
+sort_vars:
+	qsort(btf_var_secinfos(t), vars, sizeof(*vsi), compare_vsi_off);
 	return 0;
 }
 
@@ -604,22 +811,32 @@ int btf__finalize_data(struct bpf_object *obj, struct btf *btf)
 
 int btf__load(struct btf *btf)
 {
-	__u32 log_buf_size = BPF_LOG_BUF_SIZE;
+	__u32 log_buf_size = 0;
 	char *log_buf = NULL;
 	int err = 0;
 
 	if (btf->fd >= 0)
 		return -EEXIST;
 
-	log_buf = malloc(log_buf_size);
-	if (!log_buf)
-		return -ENOMEM;
+retry_load:
+	if (log_buf_size) {
+		log_buf = malloc(log_buf_size);
+		if (!log_buf)
+			return -ENOMEM;
 
-	*log_buf = 0;
+		*log_buf = 0;
+	}
 
 	btf->fd = bpf_load_btf(btf->data, btf->data_size,
 			       log_buf, log_buf_size, false);
 	if (btf->fd < 0) {
+		if (!log_buf || errno == ENOSPC) {
+			log_buf_size = max((__u32)BPF_LOG_BUF_SIZE,
+					   log_buf_size << 1);
+			free(log_buf);
+			goto retry_load;
+		}
+
 		err = -errno;
 		pr_warn("Error loading BTF: %s(%d)\n", strerror(errno), errno);
 		if (*log_buf)
@@ -635,6 +852,11 @@ done:
 int btf__fd(const struct btf *btf)
 {
 	return btf->fd;
+}
+
+void btf__set_fd(struct btf *btf, int fd)
+{
+	btf->fd = fd;
 }
 
 const void *btf__get_raw_data(const struct btf *btf, __u32 *size)
@@ -957,7 +1179,7 @@ static int btf_ext_parse_hdr(__u8 *data, __u32 data_size)
 
 void btf_ext__free(struct btf_ext *btf_ext)
 {
-	if (!btf_ext)
+	if (IS_ERR_OR_NULL(btf_ext))
 		return;
 	free(btf_ext->data);
 	free(btf_ext);
@@ -1352,7 +1574,7 @@ static int btf_dedup_hypot_map_add(struct btf_dedup *d,
 	if (d->hypot_cnt == d->hypot_cap) {
 		__u32 *new_list;
 
-		d->hypot_cap += max(16, d->hypot_cap / 2);
+		d->hypot_cap += max((size_t)16, d->hypot_cap / 2);
 		new_list = realloc(d->hypot_list, sizeof(__u32) * d->hypot_cap);
 		if (!new_list)
 			return -ENOMEM;
@@ -1648,7 +1870,7 @@ static int btf_dedup_strings(struct btf_dedup *d)
 		if (strs.cnt + 1 > strs.cap) {
 			struct btf_str_ptr *new_ptrs;
 
-			strs.cap += max(strs.cnt / 2, 16);
+			strs.cap += max(strs.cnt / 2, 16U);
 			new_ptrs = realloc(strs.ptrs,
 					   sizeof(strs.ptrs[0]) * strs.cap);
 			if (!new_ptrs) {
@@ -2881,4 +3103,55 @@ static int btf_dedup_remap_types(struct btf_dedup *d)
 			return r;
 	}
 	return 0;
+}
+
+/*
+ * Probe few well-known locations for vmlinux kernel image and try to load BTF
+ * data out of it to use for target BTF.
+ */
+struct btf *libbpf_find_kernel_btf(void)
+{
+	struct {
+		const char *path_fmt;
+		bool raw_btf;
+	} locations[] = {
+		/* try canonical vmlinux BTF through sysfs first */
+		{ "/sys/kernel/btf/vmlinux", true /* raw BTF */ },
+		/* fall back to trying to find vmlinux ELF on disk otherwise */
+		{ "/boot/vmlinux-%1$s" },
+		{ "/lib/modules/%1$s/vmlinux-%1$s" },
+		{ "/lib/modules/%1$s/build/vmlinux" },
+		{ "/usr/lib/modules/%1$s/kernel/vmlinux" },
+		{ "/usr/lib/debug/boot/vmlinux-%1$s" },
+		{ "/usr/lib/debug/boot/vmlinux-%1$s.debug" },
+		{ "/usr/lib/debug/lib/modules/%1$s/vmlinux" },
+	};
+	char path[PATH_MAX + 1];
+	struct utsname buf;
+	struct btf *btf;
+	int i;
+
+	uname(&buf);
+
+	for (i = 0; i < ARRAY_SIZE(locations); i++) {
+		snprintf(path, PATH_MAX, locations[i].path_fmt, buf.release);
+
+		if (access(path, R_OK))
+			continue;
+
+		if (locations[i].raw_btf)
+			btf = btf__parse_raw(path);
+		else
+			btf = btf__parse_elf(path, NULL);
+
+		pr_debug("loading kernel BTF '%s': %ld\n",
+			 path, IS_ERR(btf) ? PTR_ERR(btf) : 0);
+		if (IS_ERR(btf))
+			continue;
+
+		return btf;
+	}
+
+	pr_warn("failed to find valid kernel BTF\n");
+	return ERR_PTR(-ESRCH);
 }

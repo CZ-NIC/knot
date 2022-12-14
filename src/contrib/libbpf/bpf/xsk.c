@@ -32,6 +32,9 @@
 #include "libbpf_internal.h"
 #include "xsk.h"
 
+/* make sure libbpf doesn't use kernel-only integer typedefs */
+#pragma GCC poison u8 u16 u32 u64 s8 s16 s32 s64
+
 #ifndef SOL_XDP
  #define SOL_XDP 283
 #endif
@@ -277,7 +280,11 @@ int xsk_umem__create_v0_0_4(struct xsk_umem **umem_ptr, void *umem_area,
 	fill->consumer = map + off.fr.consumer;
 	fill->flags = map + off.fr.flags;
 	fill->ring = map + off.fr.desc;
-	fill->cached_cons = umem->config.fill_size;
+	fill->cached_prod = *fill->producer;
+	/* cached_cons is "size" bigger than the real consumer pointer
+	 * See xsk_prod_nb_free
+	 */
+	fill->cached_cons = *fill->consumer + umem->config.fill_size;
 
 	map = mmap(NULL, off.cr.desc + umem->config.comp_size * sizeof(__u64),
 		   PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, umem->fd,
@@ -294,6 +301,8 @@ int xsk_umem__create_v0_0_4(struct xsk_umem **umem_ptr, void *umem_area,
 	comp->consumer = map + off.cr.consumer;
 	comp->flags = map + off.cr.flags;
 	comp->ring = map + off.cr.desc;
+	comp->cached_prod = *comp->producer;
+	comp->cached_cons = *comp->consumer;
 
 	*umem_ptr = umem;
 	return 0;
@@ -669,6 +678,8 @@ int xsk_socket__create(struct xsk_socket **xsk_ptr, const char *ifname,
 		rx->consumer = rx_map + off.rx.consumer;
 		rx->flags = rx_map + off.rx.flags;
 		rx->ring = rx_map + off.rx.desc;
+		rx->cached_prod = *rx->producer;
+		rx->cached_cons = *rx->consumer;
 	}
 	xsk->rx = rx;
 
@@ -688,7 +699,11 @@ int xsk_socket__create(struct xsk_socket **xsk_ptr, const char *ifname,
 		tx->consumer = tx_map + off.tx.consumer;
 		tx->flags = tx_map + off.tx.flags;
 		tx->ring = tx_map + off.tx.desc;
-		tx->cached_cons = xsk->config.tx_size;
+		tx->cached_prod = *tx->producer;
+		/* cached_cons is r->size bigger than the real consumer pointer
+		 * See xsk_prod_nb_free
+		 */
+		tx->cached_cons = *tx->consumer + xsk->config.tx_size;
 	}
 	xsk->tx = tx;
 
