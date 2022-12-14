@@ -3,6 +3,7 @@
 '''Test for DNSSEC validation of Bind9 master by Knot slave'''
 
 from dnstest.test import Test
+from dnstest.utils import *
 
 t = Test()
 
@@ -34,11 +35,21 @@ for i in range(4):
         master.random_ddns(z, allow_empty=False)
 
     serials = master.zones_wait(zones, serials_prev)
+    master.flush() # needed for the next master.random_ddns()
+
+    t.sleep(2)
+    for z in zones:
+        if slave.log_search("[%s] DNSSEC, validation failed (no valid signature for a record)" % z.name.lower()):
+            detail_log("!Ignoring zone '%s' with invalid signature" % z.name.lower())
+            zones.remove(z)
+
     slave.zones_wait(zones, serials_prev)
     serials_prev = serials
 
-    master.flush()
-
     t.xfr_diff(master, slave, zones, serials_init)
+
+    slave.flush(wait=True)
+    for z in zones:
+        slave.zone_verify(z)
 
 t.end()
