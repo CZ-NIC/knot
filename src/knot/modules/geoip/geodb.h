@@ -40,7 +40,8 @@ typedef enum {
 
 static const knot_lookup_t geodb_key_types[] = {
 	{ GEODB_KEY_ID, "id" },
-	{ GEODB_KEY_TXT, "" }
+	{ GEODB_KEY_TXT, "" },
+	{ 0, NULL }
 };
 
 typedef struct {
