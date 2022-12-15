@@ -2201,7 +2201,7 @@ static int rrset_txt_dump(const knot_rrset_t      *rrset,
 
 	size_t len = 0;
 	size_t color_len = (style->color != NULL ? strlen(style->color) : 0);
-	size_t reset_len = (style->color != NULL ? strlen(COL_RST(true)) : 0);
+	size_t reset_len = (color_len > 0 ? strlen(COL_RST(true)) : 0);
 
 	dst[0] = '\0';
 
