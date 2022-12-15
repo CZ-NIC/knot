@@ -104,10 +104,13 @@ int geoip_conf_check(knotd_conf_check_args_t *args)
 			return KNOT_EINVAL;
 		}
 		for (size_t i = 0; i < conf.count; i++) {
-			geodb_path_t path;
+			geodb_path_t path = { 0 };
 			if (parse_geodb_path(&path, (char *)conf.multi[i].string) != 0) {
 				args->err_str = "unrecognized geodb-key format";
 				return KNOT_EINVAL;
+			}
+			for (int j = 0; j < GEODB_MAX_PATH_LEN; j++) {
+				free(path.path[j]);
 			}
 		}
 		knotd_conf_free(&conf);
