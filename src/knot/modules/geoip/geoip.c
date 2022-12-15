@@ -101,12 +101,14 @@ int geoip_conf_check(knotd_conf_check_args_t *args)
 		conf = knotd_conf_check_item(args, MOD_GEODB_KEY);
 		if (conf.count > GEODB_MAX_DEPTH) {
 			args->err_str = "maximal number of geodb-key items exceeded";
+			knotd_conf_free(&conf);
 			return KNOT_EINVAL;
 		}
 		for (size_t i = 0; i < conf.count; i++) {
 			geodb_path_t path = { 0 };
 			if (parse_geodb_path(&path, (char *)conf.multi[i].string) != 0) {
 				args->err_str = "unrecognized geodb-key format";
+				knotd_conf_free(&conf);
 				return KNOT_EINVAL;
 			}
 			for (int j = 0; j < GEODB_MAX_PATH_LEN; j++) {
