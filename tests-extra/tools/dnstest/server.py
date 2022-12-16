@@ -984,6 +984,7 @@ class Bind(Server):
         s.item("auth-nxdomain", "no")
         s.item("recursion", "no")
         s.item("masterfile-format", "text")
+        s.item("masterfile-style", "full")
         s.item("max-refresh-time", "2")
         s.item("max-retry-time", "2")
         s.item("transfers-in", "30")
