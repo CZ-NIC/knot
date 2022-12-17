@@ -14,17 +14,17 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <linux/in.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
+#include <bpf/bpf_endian.h>
+#include <bpf/bpf_helpers.h>
 
 #include "bpf-consts.h"
-#include "../../contrib/libbpf/include/uapi/linux/bpf.h"
-#include "../../contrib/libbpf/bpf/bpf_endian.h"
-#include "../../contrib/libbpf/bpf/bpf_helpers.h"
 
 /* Don't fragment flag. */
 #define	IP_DF		0x4000

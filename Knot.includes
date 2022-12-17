@@ -1,13 +1,6 @@
 src
 src/contrib
 src/contrib/dnstap
-src/contrib/libbpf
-src/contrib/libbpf/bpf
-src/contrib/libbpf/include
-src/contrib/libbpf/include/asm
-src/contrib/libbpf/include/linux
-src/contrib/libbpf/include/uapi
-src/contrib/libbpf/include/uapi/linux
 src/contrib/libngtcp2
 src/contrib/libngtcp2/ngtcp2
 src/contrib/libngtcp2/ngtcp2/crypto

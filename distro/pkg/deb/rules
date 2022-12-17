@@ -80,6 +80,8 @@ override_dh_auto_install-arch:
 	  echo "XDP disabled"; \
 	  touch $(CURDIR)/debian/tmp/usr/share/man/man8/kxdpgun.8; \
 	  printf '#!/bin/sh\n\necho "kxdpgun not available"\n' > $(CURDIR)/debian/tmp/usr/sbin/kxdpgun; \
+	  echo "Stripping the XDP symbols"; \
+	  sed -i -E '/knot_xdp_|knot_eth_|knot_tcp_[crst]|knot_xquic_|KNOT_XDP_/d' $(LIBKNOT_SYMBOLS); \
 	fi
 
 override_dh_auto_install-indep:

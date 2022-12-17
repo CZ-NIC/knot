@@ -92,9 +92,6 @@ libknot_la_SOURCES = \
 	libknot/yparser/yptrafo.c		\
 	libknot/xdp/tcp_iobuf.c
 
-if EMBEDDED_LIBBPF
-libknot_la_LIBADD   += $(libembbpf_LIBS)
-endif EMBEDDED_LIBBPF
 if ENABLE_XDP
 libknot_la_CPPFLAGS += $(libbpf_CFLAGS)
 libknot_la_LIBADD   += $(libbpf_LIBS)

@@ -202,29 +202,18 @@ AC_ARG_ENABLE([xdp],
    [], [enable_xdp=auto])
 
 AS_CASE([$enable_xdp],
-   [auto], [PKG_CHECK_MODULES([libbpf], [libbpf >= 0.0.6], [enable_xdp=yes], [enable_xdp=no])],
-   [yes], [PKG_CHECK_MODULES([libbpf], [libbpf >= 0.0.6], [enable_xdp=yes],
-             [PKG_CHECK_MODULES([libelf], [libelf],
-                [AC_CHECK_FUNC([reallocarray],
-                   [enable_xdp=embedded
-                    embedded_libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf/include -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"
-                    embedded_libbpf_LIBS=$libelf_LIBS
-                    libbpf_CFLAGS="-I\$(top_srcdir)/src/contrib/libbpf -I\$(top_srcdir)/src/contrib/libbpf/include/uapi"],
-                   [enable_xdp=no
-                    AC_MSG_WARN([reallocarray not available])])],
-                [AC_MSG_ERROR([libelf is required])])])],
+   [auto], [PKG_CHECK_MODULES([libbpf], [libbpf], [enable_xdp=yes], [enable_xdp=no])],
+   [yes], [PKG_CHECK_MODULES([libbpf], [libbpf], [enable_xdp=yes], [
+           AC_MSG_WARN([libbpf not available])])],
    [no], [],
    [*], [AC_MSG_ERROR([Invalid value of --enable-xdp.])]
 )
-AM_CONDITIONAL([EMBEDDED_LIBBPF], [test "$enable_xdp" = "embedded"])
 AM_CONDITIONAL([ENABLE_XDP], [test "$enable_xdp" != "no"])
-AC_SUBST([embedded_libbpf_CFLAGS])
-AC_SUBST([embedded_libbpf_LIBS])
 
 AS_IF([test "$enable_xdp" == "yes"], [
    PKG_CHECK_MODULES([libxdp], [libxdp], [enable_xdp=libxdp], [enable_xdp=yes])
    AS_IF([test "$enable_xdp" == "libxdp"], [
-      AC_DEFINE([USE_LIBXDP], [1], [Use external libxdp and libbpf.])
+      AC_DEFINE([USE_LIBXDP], [1], [Use libxdp.])
       libbpf_CFLAGS="$libbpf_CFLAGS $libxdp_CFLAGS"
       libbpf_LIBS="$libbpf_LIBS $libxdp_LIBS"
    ])]
