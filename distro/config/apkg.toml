@@ -15,6 +15,10 @@ compat = 3
 name = "el-7"
 distro = ["centos == 7", "rhel == 7"]
 
+[[distro.aliases]]
+name = "_deb-noxdp"
+distro = ["debian == 10", "ubuntu == 18.04"]
+
 # pkstyle aliases bellow are expected to be built-in in apkg >= 0.5.0
 # https://gitlab.nic.cz/packaging/apkg/-/issues/79
 [[distro.aliases]]

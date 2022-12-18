@@ -1,0 +1,272 @@
+Source: knot
+Section: net
+Priority: optional
+Maintainer: Knot DNS <knot-dns@labs.nic.cz>
+Uploaders:
+ Jakub Ružička <jakub.ruzicka@nic.cz>,
+ Daniel Salzman <daniel.salzman@nic.cz>,
+Build-Depends-Indep:
+ python3-setuptools,
+ python3-sphinx,
+Build-Depends:
+ autoconf,
+ automake,
+ debhelper (>= 11),
+ dh-python,
+ libcap-ng-dev,
+ libedit-dev,
+ libelf-dev,
+ libfstrm-dev,
+ libgnutls28-dev,
+ libidn2-dev,
+ liblmdb-dev,
+ libmaxminddb-dev,
+ libmnl-dev,
+ libnghttp2-dev,
+ libprotobuf-c-dev,
+ libsofthsm2 <!nocheck>,
+ libsystemd-dev [linux-any] | libsystemd-daemon-dev [linux-any],
+ libsystemd-dev [linux-any] | libsystemd-journal-dev [linux-any],
+ libtool,
+ liburcu-dev,
+ pkg-config,
+ protobuf-c-compiler,
+ python3-all,
+Standards-Version: 4.5.0
+Homepage: https://www.knot-dns.cz/
+Vcs-Browser: https://gitlab.nic.cz/knot/knot-dns
+Vcs-Git: https://gitlab.nic.cz/knot/knot-dns.git
+Rules-Requires-Root: no
+
+Package: knot
+Architecture: any
+Depends:
+ adduser,
+ libdnssec9 (= ${binary:Version}),
+ libknot13 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
+ lsb-base (>= 3.0-6),
+ ${misc:Depends},
+ ${shlibs:Depends},
+Pre-Depends:
+ ${misc:Pre-Depends},
+Suggests:
+ systemd,
+Description: Authoritative domain name server
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+
+Package: libknot13
+Architecture: any
+Multi-Arch: same
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
+Section: libs
+Description: DNS shared library from Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides a DNS shared library used by Knot DNS and
+ Knot Resolver.
+
+Package: libzscanner4
+Architecture: any
+Multi-Arch: same
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
+Section: libs
+Description: DNS zone-parsing shared library from Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides a fast zone parser shared library used by Knot
+ DNS and Knot Resolver.
+
+Package: libdnssec9
+Architecture: any
+Multi-Arch: same
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
+Section: libs
+Description: DNSSEC shared library from Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides common DNSSEC shared library used by Knot DNS
+ and Knot Resolver.
+
+Package: libknot-dev
+Architecture: any
+Depends:
+ libdnssec9 (= ${binary:Version}),
+ libgnutls28-dev,
+ libknot13 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
+Section: libdevel
+Description: Knot DNS shared library development files
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides development files for shared libraries from Knot DNS.
+
+Package: knot-dnsutils
+Architecture: any
+Depends:
+ libdnssec9 (= ${binary:Version}),
+ libknot13 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
+Description: DNS clients provided with Knot DNS (kdig, knsupdate)
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package delivers various DNS client programs from Knot DNS.
+ .
+  - kdig - query a DNS server in various ways
+  - knsupdate - perform dynamic updates (See RFC2136)
+ .
+ Those clients were designed to be almost 1:1 compatible with BIND dnsutils,
+ but they provide some enhancements, which are documented.
+ .
+ WARNING: knslookup is not provided as it is considered obsolete.
+
+Package: knot-dnssecutils
+Architecture: any
+Depends:
+ libdnssec9 (= ${binary:Version}),
+ libknot13 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
+Description: DNSSEC tools provided with Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package delivers various DNSSEC tools from Knot DNS.
+ .
+  - kzonecheck
+  - kzonesign
+  - knsec3hash
+
+Package: knot-host
+Architecture: any
+Depends:
+ libdnssec9 (= ${binary:Version}),
+ libknot13 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
+Description: Version of 'host' bundled with Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides the 'host' program from Knot DNS. This program is
+ designed to be almost 1:1 compatible with BIND 9.x 'host' program.
+
+Package: knot-module-dnstap
+Architecture: any
+Multi-Arch: same
+Depends:
+ knot (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
+Description: dnstap module for Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package contains dnstap module for logging DNS traffic.
+
+Package: knot-module-geoip
+Architecture: any
+Multi-Arch: same
+Depends:
+ knot (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
+Description: geoip module for Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package contains geoip module for geography-based responses.
+
+Package: knot-doc
+Architecture: all
+Multi-Arch: foreign
+Depends:
+ libjs-jquery,
+ libjs-sphinxdoc,
+ libjs-underscore,
+ ${misc:Depends},
+Section: doc
+Description: Documentation for Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides various documents that are useful for
+ maintaining a working Knot DNS installation.
+
+Package: python3-libknot
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ${python3:Depends},
+Section: python
+Description: Python bindings for libknot
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides Python bindings for the libknot shared library.

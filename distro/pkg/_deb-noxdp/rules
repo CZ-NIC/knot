@@ -54,8 +54,6 @@ override_dh_auto_configure:
 	  $(RECVMMSG) \
 	  $(FASTPARSER) \
 	  --disable-silent-rules \
-	  --enable-xdp=yes \
-	  --enable-quic=yes \
 	  --disable-static
 
 override_dh_auto_configure-indep:
@@ -69,10 +67,6 @@ override_dh_auto_install-arch:
 	dh_auto_install -- install
 	# rename knot.sample.conf to knot.conf
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
-	@if grep -E -q "DoQ support: +no" "$(CURDIR)/debian/tmp/usr/sbin/knotd"; then \
-	  echo "Stripping the QUIC symbols"; \
-	  sed -i '/knot_xquic_/d' $(LIBKNOT_SYMBOLS); \
-	fi
 
 override_dh_auto_install-indep:
 	dh_auto_install -- install-html
