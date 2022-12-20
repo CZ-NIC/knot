@@ -18,6 +18,7 @@ RUN dnf -y --enablerepo crb install \
 	'pkgconfig(libfstrm)' \
 	'pkgconfig(libidn2)' \
 	'pkgconfig(libmaxminddb)' \
+	'pkgconfig(libmnl)' \
 	'pkgconfig(libprotobuf-c)' \
 	'pkgconfig(libsystemd)' \
 	'pkgconfig(liburcu)' \
