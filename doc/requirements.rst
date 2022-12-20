@@ -103,7 +103,7 @@ tool. These are only supported on Linux operating systems. See the chapter
 :ref:`Mode XDP <Mode XDP_pre-requisites>` for software and hardware
 recommendations.
 
-* libbpf >= 0.0.6 (or embedded one via `--enable-xdp`)
+* libbpf
 * libxdp (if libbpf >= 1.0)
 * libmnl (for kxdpgun)
 

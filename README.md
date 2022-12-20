@@ -30,7 +30,7 @@ sudo apt-get install \
 #### Install optional packages:
 ```bash
 sudo apt-get install \
-  libcap-ng-dev libsystemd-dev libidn2-0-dev libprotobuf-c-dev protobuf-c-compiler libfstrm-dev libmaxminddb-dev libnghttp2-dev libmnl-dev
+  libcap-ng-dev libsystemd-dev libidn2-0-dev libprotobuf-c-dev protobuf-c-compiler libfstrm-dev libmaxminddb-dev libnghttp2-dev libbpf-dev libmnl-dev
 ```
 
 ### Fedora like distributions
@@ -54,12 +54,11 @@ dnf install \
 #### Install optional packages:
 ```bash
 dnf install \
-  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel libnghttp2-devel libmnl-devel
+  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel libnghttp2-devel libbpf-devel libmnl-devel
 ```
 
 When compiling on RHEL based system, the Fedora EPEL repository has to be
-enabled. Also for RHEL 6, forward compatibility package gnutls30-devel
-with newer GnuTLS is required instead of gnutls-devel.
+enabled.
 
 ## 2. Install Knot DNS
 
