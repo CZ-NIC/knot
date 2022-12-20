@@ -8,10 +8,9 @@ RUN dnf -y install \
 	'clang' \
 	'diffutils' \
 	'libtool' \
-	'llvm' \
-	'lmdb-devel' \
 	'make' \
 	'pkgconfig' \
+	'pkgconfig(lmdb)' \
 	'pkgconfig(gnutls)' \
 	'pkgconfig(libbpf)' \
 	'pkgconfig(libcap-ng)' \
