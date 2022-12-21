@@ -34,7 +34,7 @@ if gvn < 0x03060a:
 
 t = Test()
 
-master = t.server("knot")
+master = t.server("knot", valgrind=False)
 slave1 = t.server("knot")
 slave2 = t.server("knot")
 
