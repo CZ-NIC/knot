@@ -5,6 +5,8 @@
 from dnstest.test import Test
 from dnstest.utils import *
 
+from subprocess import PIPE, Popen
+
 t = Test()
 
 master = t.server("bind")
@@ -50,6 +52,20 @@ for i in range(4):
 
     slave.flush(wait=True)
     for z in zones:
+        ##### Temporary workaround for BIND 9 faulty DNSSEC signing.
+        ##### Remove this and "from subprocess import ..." line once ISC fixes BIND 9.
+        origin = z.name.lower()
+        path = master.zones[z.name].zfile.path + ".signed"
+        cmd = Popen(["dnssec-verify", "-I", "raw", "-z", "-o", origin, path],
+                    stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        (out, err) = cmd.communicate()
+        if cmd.returncode != 0:
+            check_log("BIND 9 DNSSEC failure, skipping zone '%s'" % z.name)
+            detail_log(" <dnssec-verify>\n" + err.strip())
+            detail_log(SEP)
+            continue
+        ##### End of the workaround.
+
         slave.zone_verify(z)
 
 t.end()
