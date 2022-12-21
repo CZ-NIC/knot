@@ -862,10 +862,10 @@ class Server(object):
         else:
             self.zones[zone.name].zfile.upd_file(storage=storage, version=version)
 
-    def random_ddns(self, zone, allow_empty=True):
+    def random_ddns(self, zone, allow_empty=True, tries=20):
         zone = zone_arg_check(zone)
 
-        while True:
+        for i in range(tries):
             up = self.update(zone)
 
             while True:
@@ -874,7 +874,9 @@ class Server(object):
                     break
 
             if up.try_send() == "NOERROR":
-                break
+                return
+
+        raise Failed("Can't send DDNS update of zone '%s' to server '%s'" % (zone.name, self.name))
 
     def add_module(self, zone, module):
         zone = zone_arg_check(zone)
