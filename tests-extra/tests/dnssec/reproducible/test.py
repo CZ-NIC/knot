@@ -14,24 +14,6 @@ from dnstest.test import Test
 from dnstest.keys import Keymgr
 from dnstest.utils import *
 
-def gnutls_ver_num():
-    try:
-        gnutls_h = "/usr/include/gnutls/gnutls.h"
-        with open(gnutls_h, "r") as gh_file:
-            for gh_line in gh_file:
-                gh = gh_line.split()
-                if len(gh) == 3 and gh[0] == "#define" and gh[1] == "GNUTLS_VERSION_NUMBER":
-                    return int(gh[2], 0)
-    except:
-        return None
-    return None
-
-gvn = gnutls_ver_num()
-if gvn is None:
-    raise Skip("GNUTLS detect failed")
-if gvn < 0x03060a:
-    raise Skip("GNUTLS < 3.6.10")
-
 t = Test()
 
 master = t.server("knot")
