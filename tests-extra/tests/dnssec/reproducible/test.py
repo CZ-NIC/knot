@@ -44,9 +44,9 @@ t.link(zone, master, slave1)
 t.link(zone, master, slave2)
 
 algorithms = [
-        { 'code': 13, 'name': 'ECDSAP256SHA256', 'size': 256, 'always_reproducible': False },
-        { 'code': 15, 'name': 'ED25519',         'size': 256, 'always_reproducible': True  },
-        { 'code': 16, 'name': 'ED448',           'size': 456, 'always_reproducible': True  }
+        { 'code': 13, 'name': 'ECDSAP256SHA256', 'always_reproducible': False },
+        { 'code': 15, 'name': 'ED25519',         'always_reproducible': True  },
+        { 'code': 16, 'name': 'ED448',           'always_reproducible': True  }
 ]
 
 alg = random.choice(algorithms)
@@ -60,7 +60,7 @@ for z in zone:
 
 slave1.gen_confile() # needed for keymgr
 
-slave1.key_gen(zone[0].name, algorithm=str(alg['code']), ksk="true", zsk="true", size=str(alg['size']))
+slave1.key_gen(zone[0].name, algorithm=str(alg['code']), ksk="true", zsk="true")
 
 slave2keydir = slave2.keydir
 os.rmdir(slave2keydir)
