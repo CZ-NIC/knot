@@ -63,8 +63,22 @@ while round((time.time()%1) * 100) > 1:
 os.rename(ZFILE_, ZFILE)
 master.ctl("zone-reload")
 
-serial_orig = slave1.zone_wait(zone)
-t.sleep(1)
+# ensure that both signers signed the zone at the same second
+serial1 = None
+serial2 = None
+for i in range(10):
+    serial1 = slave1.zone_wait(zone, serial1)
+    serial2 = slave2.zone_wait(zone, serial2)
+    s1 = slave1.dig("example.com.", "SOA", dnssec=True)
+    s2 = slave2.dig("example.com.", "SOA", dnssec=True)
+    exp1 = str(s1.resp.answer[1].to_rdataset()).split()[7]
+    exp2 = str(s2.resp.answer[1].to_rdataset()).split()[7]
+    if exp1 == exp2:
+        break
+    else:
+        detail_log("Time mismatch, re-signing the zone")
+        slave1.ctl("zone-sign example.com")
+        slave2.ctl("zone-sign example.com")
 
 t.xfr_diff(slave1, slave2, zone)
 
@@ -74,7 +88,7 @@ t.sleep(3)
 slave1.start()
 
 serial = slave1.zone_wait(zone)
-if serial != serial_orig:
+if serial != serial1:
     set_err("zone was re-signed")
 
 t.end()
