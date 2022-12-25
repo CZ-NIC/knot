@@ -6,6 +6,8 @@ AM_CPPFLAGS = \
 	-DMODULE_DIR='"${module_dir}"'		\
 	-DMODULE_INSTDIR='"${module_instdir}"'
 
+AM_LDFLAGS = $(LT_NO_UNDEFINED)
+
 EXTRA_DIST =
 CLEANFILES =
 BUILT_SOURCES =

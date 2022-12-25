@@ -61,6 +61,12 @@ AC_PROG_INSTALL
 # Initialize libtool
 LT_INIT
 
+# Build DLLs on Cygwin/MSYS2
+AS_CASE([$host],
+  [*-cygwin* | *-msys*], [LT_NO_UNDEFINED="-no-undefined"]
+)
+AC_SUBST(LT_NO_UNDEFINED)
+
 # Use pkg-config
 PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
