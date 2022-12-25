@@ -36,6 +36,7 @@
 #include "ngtcp2_path.h"
 #include "ngtcp2_rcvry.h"
 #include "ngtcp2_unreachable.h"
+#include "ngtcp2_net.h"
 
 /* NGTCP2_FLOW_WINDOW_RTT_FACTOR is the factor of RTT when flow
    control window auto-tuning is triggered. */
@@ -6091,6 +6092,7 @@ static int vneg_other_versions_includes(const uint8_t *other_versions,
                                         size_t other_versionslen,
                                         uint32_t version) {
   size_t i;
+  uint32_t v;
 
   assert(!(other_versionslen & 0x3));
 
@@ -6099,7 +6101,9 @@ static int vneg_other_versions_includes(const uint8_t *other_versions,
   }
 
   for (i = 0; i < other_versionslen; i += sizeof(uint32_t)) {
-    if (version == ngtcp2_get_uint32(&other_versions[i])) {
+    other_versions = ngtcp2_get_uint32(&v, other_versions);
+
+    if (version == v) {
       return 1;
     }
   }
@@ -6750,7 +6754,7 @@ static ngtcp2_ssize conn_recv_handshake_cpkt(ngtcp2_conn *conn,
 
       if ((pkt[0] & NGTCP2_HEADER_FORM_BIT) && pktlen > 4) {
         /* Not a Version Negotiation packet */
-        version = ngtcp2_get_uint32(&pkt[1]);
+        ngtcp2_get_uint32(&version, &pkt[1]);
         if (ngtcp2_pkt_get_type_long(version, pkt[0]) == NGTCP2_PKT_INITIAL) {
           if (conn->server) {
             if (is_unrecoverable_error((int)nread)) {
@@ -8717,6 +8721,61 @@ conn_recv_delayed_handshake_pkt(ngtcp2_conn *conn, const ngtcp2_pkt_info *pi,
 }
 
 /*
+ * conn_allow_path_change_under_disable_active_migration returns
+ * nonzero if a packet from |path| is acceptable under
+ * disable_active_migration is on.
+ */
+static int
+conn_allow_path_change_under_disable_active_migration(ngtcp2_conn *conn,
+                                                      const ngtcp2_path *path) {
+  uint32_t remote_addr_cmp;
+  const ngtcp2_preferred_addr *paddr;
+  ngtcp2_addr addr;
+
+  assert(conn->server);
+  assert(conn->local.transport_params.disable_active_migration);
+
+  /* If local address does not change, it must be passive migration
+     (NAT rebinding). */
+  if (ngtcp2_addr_eq(&conn->dcid.current.ps.path.local, &path->local)) {
+    remote_addr_cmp =
+        ngtcp2_addr_compare(&conn->dcid.current.ps.path.remote, &path->remote);
+
+    return (remote_addr_cmp | NGTCP2_ADDR_COMPARE_FLAG_PORT) ==
+           NGTCP2_ADDR_COMPARE_FLAG_PORT;
+  }
+
+  /* If local address changes, it must be one of the preferred
+     addresses. */
+
+  if (!conn->local.transport_params.preferred_address_present) {
+    return 0;
+  }
+
+  paddr = &conn->local.transport_params.preferred_address;
+
+  if (paddr->ipv4_present) {
+    ngtcp2_addr_init(&addr, (const ngtcp2_sockaddr *)&paddr->ipv4,
+                     sizeof(paddr->ipv4));
+
+    if (ngtcp2_addr_eq(&addr, &path->local)) {
+      return 1;
+    }
+  }
+
+  if (paddr->ipv6_present) {
+    ngtcp2_addr_init(&addr, (const ngtcp2_sockaddr *)&paddr->ipv6,
+                     sizeof(paddr->ipv6));
+
+    if (ngtcp2_addr_eq(&addr, &path->local)) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+/*
  * conn_recv_pkt processes a packet contained in the buffer pointed by
  * |pkt| of length |pktlen|.  |pkt| may contain multiple QUIC packets.
  * This function only processes the first packet.  |pkt_ts| is the
@@ -8778,6 +8837,15 @@ static ngtcp2_ssize conn_recv_pkt(ngtcp2_conn *conn, const ngtcp2_path *path,
   int recv_ncid = 0;
   int new_cid_used = 0;
   int path_challenge_recved = 0;
+
+  if (conn->server && conn->local.transport_params.disable_active_migration &&
+      !ngtcp2_path_eq(&conn->dcid.current.ps.path, path) &&
+      !conn_allow_path_change_under_disable_active_migration(conn, path)) {
+    ngtcp2_log_info(&conn->log, NGTCP2_LOG_EVENT_PKT,
+                    "packet is discarded because active migration is disabled");
+
+    return NGTCP2_ERR_DISCARD_PKT;
+  }
 
   if (pkt[0] & NGTCP2_HEADER_FORM_BIT) {
     nread = ngtcp2_pkt_decode_hd_long(&hd, pkt, pktlen);
@@ -11029,6 +11097,8 @@ static uint32_t select_preferred_version(const uint32_t *preferred_versions,
                                          size_t other_versionslen,
                                          uint32_t fallback_version) {
   size_t i, j;
+  const uint8_t *p;
+  uint32_t v;
 
   if (!preferred_versionslen ||
       (!other_versionslen && chosen_version == fallback_version)) {
@@ -11039,12 +11109,13 @@ static uint32_t select_preferred_version(const uint32_t *preferred_versions,
     if (preferred_versions[i] == chosen_version) {
       return chosen_version;
     }
-    for (j = 0; j < other_versionslen; j += sizeof(uint32_t)) {
-      if (preferred_versions[i] != ngtcp2_get_uint32(&other_versions[j])) {
-        continue;
-      }
+    for (j = 0, p = other_versions; j < other_versionslen;
+         j += sizeof(uint32_t)) {
+      p = ngtcp2_get_uint32(&v, p);
 
-      return preferred_versions[i];
+      if (preferred_versions[i] == v) {
+        return v;
+      }
     }
   }
 
