@@ -204,7 +204,7 @@ AC_ARG_ENABLE([xdp],
 AS_CASE([$enable_xdp],
    [auto], [PKG_CHECK_MODULES([libbpf], [libbpf], [enable_xdp=yes], [enable_xdp=no])],
    [yes], [PKG_CHECK_MODULES([libbpf], [libbpf], [enable_xdp=yes], [
-           AC_MSG_WARN([libbpf not available])])],
+           AC_MSG_ERROR([libbpf not available])])],
    [no], [],
    [*], [AC_MSG_ERROR([Invalid value of --enable-xdp.])]
 )
