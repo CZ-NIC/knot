@@ -72,19 +72,17 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		return XDP_PASS;
 	}
 
-	/* Reserve space in front of the packet for additional data. */
-	if (bpf_xdp_adjust_meta(ctx, - (int)sizeof(struct knot_xdp_info)
-	                             - KNOT_XDP_PKT_ALIGNMENT)) {
-		return XDP_ABORTED;
-	}
+	/* Try to reserve space in front of the packet for additional data. */
+	(void)bpf_xdp_adjust_meta(ctx, - (int)sizeof(struct knot_xdp_info)
+	                               - KNOT_XDP_PKT_ALIGNMENT);
 
 	void *data = (void *)(long)ctx->data;
 	const void *data_end = (void *)(long)ctx->data_end;
 	struct knot_xdp_info *meta = (void *)(long)ctx->data_meta;
 
-	/* Check data_meta pointer. */
+	/* Check if meta data pointer is usable (e.g. tap interface). */
 	if ((void *)meta + sizeof(*meta) > data) {
-		return XDP_ABORTED;
+		meta = 0;
 	}
 
 	struct ethhdr *eth_hdr = data;
@@ -107,6 +105,8 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	if (eth_hdr->h_proto == __constant_htons(ETH_P_8021Q)) {
 		if (data + sizeof(__u16) + sizeof(eth_type) > data_end) {
 			return XDP_DROP;
+		} else if (!meta) {
+			return XDP_PASS; /* VLAN not supported. */
 		}
 		__builtin_memcpy(&eth_type, data + sizeof(__u16), sizeof(eth_type));
 		data += sizeof(__u16) + sizeof(eth_type);
@@ -270,7 +270,9 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			}
 
 			/* Store output interface index for later use in user space. */
-			meta->out_if_index = fib.ifindex;
+			if (meta) {
+				meta->out_if_index = fib.ifindex;
+			}
 
 			/* Update destination MAC for responding. */
 			__builtin_memcpy(eth_hdr->h_source, fib.dmac, ETH_ALEN);
