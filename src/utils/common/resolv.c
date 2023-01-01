@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,8 +41,11 @@ srv_info_t* parse_nameserver(const char *str, const char *def_port)
 	const size_t str_len = strlen(str);
 	const char *str_end = str + str_len;
 
+	// UNIX socket path.
+	if (*str == '/') {
+		return srv_info_create(str, "");
 	// [address]:port notation.
-	if (*str == '[') {
+	} else if (*str == '[') {
 		addr = str + 1;
 		const char *addr_end = strchr(addr, ']');
 		// Missing closing bracket -> stop processing.
