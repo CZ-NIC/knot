@@ -32,7 +32,8 @@ Parameters
 *server*
   Is a domain name or an IPv4 or IPv6 address of the nameserver to send a query
   to. An additional port can be specified using address:port ([address]:port
-  for IPv6 address), address@port, or address#port notation. If no server is
+  for IPv6 address), address@port, or address#port notation. A value which begins
+  with '/' character is considered an absolute UNIX socket path. If no server is
   specified, the servers from :file:`/etc/resolv.conf` are used.
 
 If no arguments are provided, :program:`kdig` sends NS query for the root

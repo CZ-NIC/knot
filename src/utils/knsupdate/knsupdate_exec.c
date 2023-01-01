@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -432,7 +432,7 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 
 	ret = net_init(params->srcif,
 	               params->server,
-	               get_iptype(params->ip),
+	               get_iptype(params->ip, params->server),
 	               get_socktype(params->protocol, KNOT_RRTYPE_SOA),
 	               params->wait,
 	               NET_FLAGS_NONE,

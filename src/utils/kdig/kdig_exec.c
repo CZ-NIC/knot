@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -860,13 +860,13 @@ static int process_query(const query_t *query, net_t *net)
 	}
 
 	// Get connection parameters.
-	int iptype = get_iptype(query->ip);
 	int socktype = get_socktype(query->protocol, query->type_num);
 	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
 
 	// Loop over server list to process query.
 	WALK_LIST(server, query->servers) {
 		srv_info_t *remote = (srv_info_t *)server;
+		int iptype = get_iptype(query->ip, remote);
 
 		DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 		    "port(%s), protocol(%s)", query->owner, query->class_num,
@@ -1202,12 +1202,12 @@ static int process_xfr(const query_t *query, net_t *net)
 	}
 
 	// Get connection parameters.
-	int iptype = get_iptype(query->ip);
 	int socktype = get_socktype(query->protocol, query->type_num);
 	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
 
 	// Use the first nameserver from the list.
 	srv_info_t *remote = HEAD(query->servers);
+	int iptype = get_iptype(query->ip, remote);
 
 	DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 	    "port(%s), protocol(%s)", query->owner, query->class_num,

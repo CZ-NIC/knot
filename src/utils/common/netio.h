@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,10 +113,11 @@ void srv_info_free(srv_info_t *server);
  * \brief Translates enum IP version type to int version.
  *
  * \param ip		IP version to convert.
+ * \param server	Server structure.
  *
- * \retval AF_INET, AF_INET6 or AF_UNSPEC.
+ * \retval AF_INET, AF_INET6, AF_UNIX, or AF_UNSPEC.
  */
-int get_iptype(const ip_t ip);
+int get_iptype(const ip_t ip, const srv_info_t *server);
 
 /*!
  * \brief Translates enum IP protocol type to int version in context to the

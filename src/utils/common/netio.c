@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -75,15 +75,17 @@ void srv_info_free(srv_info_t *server)
 	free(server);
 }
 
-int get_iptype(const ip_t ip)
+int get_iptype(const ip_t ip, const srv_info_t *server)
 {
+	bool unix_socket = (server->name[0] == '/');
+
 	switch (ip) {
 	case IP_4:
 		return AF_INET;
 	case IP_6:
 		return AF_INET6;
 	default:
-		return AF_UNSPEC;
+		return unix_socket ? AF_UNIX : AF_UNSPEC;
 	}
 }
 
@@ -194,10 +196,27 @@ int net_init(const srv_info_t      *local,
 	memset(net, 0, sizeof(*net));
 	net->sockfd = -1;
 
-	// Get remote address list.
-	if (get_addr(remote, iptype, socktype, &net->remote_info) != 0) {
-		net_clean(net);
-		return KNOT_NET_EADDR;
+	if (iptype == AF_UNIX) {
+		struct addrinfo *info = calloc(1, sizeof(struct addrinfo));
+		info->ai_addr = calloc(1, sizeof(struct sockaddr_storage));
+		info->ai_addrlen = sizeof(struct sockaddr_un);
+		info->ai_socktype = socktype;
+		info->ai_family = iptype;
+		int ret = sockaddr_set_raw((struct sockaddr_storage *)info->ai_addr,
+		                           AF_UNIX, (const uint8_t *)remote->name,
+		                           strlen(remote->name));
+		if (ret != KNOT_EOK) {
+			free(info->ai_addr);
+			free(info);
+			return ret;
+		}
+		net->remote_info = info;
+	} else {
+		// Get remote address list.
+		if (get_addr(remote, iptype, socktype, &net->remote_info) != 0) {
+			net_clean(net);
+			return KNOT_NET_EADDR;
+		}
 	}
 
 	// Set current remote address.
@@ -644,6 +663,10 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 			.msg_iovlen = 2
 		};
 
+		if (net->srv->ai_addr->sa_family == AF_UNIX) {
+			msg.msg_name = NULL;
+		}
+
 		if (net->proxy.src != NULL && net->proxy.src->sa_family != 0) {
 			int ret = proxyv2_write_header(proxy_buf, sizeof(proxy_buf),
 			                               SOCK_STREAM, net->proxy.src,
@@ -850,7 +873,12 @@ void net_clean(net_t *net)
 	}
 
 	if (net->remote_info != NULL) {
-		freeaddrinfo(net->remote_info);
+		if (net->remote_info->ai_addr->sa_family == AF_UNIX) {
+			free(net->remote_info->ai_addr);
+			free(net->remote_info);
+		} else {
+			freeaddrinfo(net->remote_info);
+		}
 		net->remote_info = NULL;
 	}
 
