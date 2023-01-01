@@ -155,6 +155,10 @@ void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size)
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
 		*addr_size = sizeof(ipv6->sin6_addr);
 		return &ipv6->sin6_addr;
+	} else if (ss->ss_family == AF_UNIX) {
+		struct sockaddr_un *un = (struct sockaddr_un *)ss;
+		*addr_size = sizeof(un->sun_path);
+		return un->sun_path;
 	} else {
 		return NULL;
 	}
@@ -172,11 +176,13 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
 
 	size_t ss_size = 0;
 	void *ss_data = sockaddr_raw(ss, &ss_size);
-	if (ss_data == NULL || ss_size != raw_addr_size) {
+	if (ss_data == NULL ||
+	    (family != AF_UNIX && ss_size != raw_addr_size) ||
+	    (family == AF_UNIX && ss_size <= raw_addr_size)) {
 		return KNOT_EINVAL;
 	}
 
-	memcpy(ss_data, raw_addr, ss_size);
+	memcpy(ss_data, raw_addr, raw_addr_size);
 
 	return KNOT_EOK;
 }
