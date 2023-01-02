@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -77,15 +77,6 @@ static void update_tcp_conf(tcp_context_t *tcp)
 	rcu_read_unlock();
 }
 
-static void client_addr(const struct sockaddr_storage *ss, char *out, size_t out_len)
-{
-	if (ss->ss_family == AF_UNIX) {
-		strlcpy(out, "UNIX", out_len);
-	} else if (sockaddr_tostr(out, out_len, ss) < 0) {
-		strlcpy(out, "unknown", out_len);
-	}
-}
-
 /*! \brief Sweep TCP connection. */
 static fdset_sweep_state_t tcp_sweep(fdset_t *set, int fd, _unused_ void *data)
 {
@@ -96,7 +87,7 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int fd, _unused_ void *data)
 	socklen_t len = sizeof(struct sockaddr_storage);
 	if (getpeername(fd, (struct sockaddr *)&ss, &len) == 0) {
 		char addr_str[SOCKADDR_STRLEN];
-		client_addr(&ss, addr_str, sizeof(addr_str));
+		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
 		log_notice("TCP, terminated inactive client, address %s", addr_str);
 	}
 
@@ -118,7 +109,7 @@ static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, in
 	/* Don't log ECONN as it usually means client closed the connection. */
 	if (ret == KNOT_ETIMEOUT) {
 		char addr_str[SOCKADDR_STRLEN];
-		client_addr(ss, addr_str, sizeof(addr_str));
+		sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 		log_debug("TCP, failed to %s due to IO timeout, closing connection, address %s",
 		          operation, addr_str);
 	}

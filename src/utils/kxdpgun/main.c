@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -904,7 +904,7 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		int ret = ip_neigh_get(neigh, true, ctx->target_mac);
 		if (ret < 0) {
 			char neigh_str[256] = { 0 };
-			(void)sockaddr_tostr(neigh_str, sizeof(neigh_str), (struct sockaddr_storage *)neigh);
+			sockaddr_tostr(neigh_str, sizeof(neigh_str), (struct sockaddr_storage *)neigh);
 			ERR2("failed to get remote MAC of target/gateway '%s' (%s)",
 			     neigh_str, strerror(-ret));
 			return false;
