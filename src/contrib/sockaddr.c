@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -198,9 +198,11 @@ int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
 		out = inet_ntop(ss->ss_family, &s->sin_addr, buf, maxlen);
 	} else if (ss->ss_family == AF_UNIX) {
 		const struct sockaddr_un *s = (const struct sockaddr_un *)ss;
-		size_t ret = strlcpy(buf, s->sun_path, maxlen);
+		const char *path = (s->sun_path[0] != '\0' ? s->sun_path : "UNIX socket");
+		size_t ret = strlcpy(buf, path, maxlen);
 		out = (ret < maxlen) ? buf : NULL;
 	} else {
+		*buf = '\0';
 		return KNOT_EINVAL;
 	}
 
