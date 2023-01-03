@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 
 // 1280 (IPv6 minimum link MTU) - 40 (IPv6 fixed header) - 20 (TCP fixed header)
 #define KNOT_TCP_MSS	1220
@@ -48,13 +49,15 @@ int net_unbound_socket(int type, const struct sockaddr_storage *addr);
  *
  * The socket is set to non-blocking mode.
  *
- * \param type   Socket transport type (SOCK_STREAM, SOCK_DGRAM).
- * \param addr   Socket address.
- * \param flags  Socket binding options.
+ * \param type       Socket transport type (SOCK_STREAM, SOCK_DGRAM).
+ * \param addr       Socket address.
+ * \param flags      Socket binding options.
+ * \param unix_mode  Socket file mode (UNIX socket only). 0 means don't set mode.
  *
  * \return socket or error code
  */
-int net_bound_socket(int type, const struct sockaddr_storage *addr, net_bind_flag_t flags);
+int net_bound_socket(int type, const struct sockaddr_storage *addr,
+                     net_bind_flag_t flags, mode_t unix_mode);
 
 /*!
  * \brief Create socket connected (asynchronously) to destination address.
