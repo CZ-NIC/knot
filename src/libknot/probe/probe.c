@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -131,12 +131,10 @@ int knot_probe_set_consumer(knot_probe_t *probe, const char *dir, uint16_t idx)
 		return knot_map_errno();
 	}
 
-#if defined(__linux__)
-	if (chmod(probe->path.sun_path, S_IRWXU | S_IRWXG | S_IRWXO) != 0) {
+	if (chmod(probe->path.sun_path, S_IWUSR | S_IWGRP | S_IWOTH) != 0) {
 		close(probe->fd);
 		return knot_map_errno();
 	}
-#endif
 
 	return KNOT_EOK;
 }
