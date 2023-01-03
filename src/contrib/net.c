@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -162,7 +162,8 @@ static void unlink_unix_socket(const struct sockaddr_storage *addr)
 	unlink(path);
 }
 
-int net_bound_socket(int type, const struct sockaddr_storage *addr, net_bind_flag_t flags)
+int net_bound_socket(int type, const struct sockaddr_storage *addr,
+                     net_bind_flag_t flags, mode_t unix_mode)
 {
 	/* Create socket. */
 	int sock = net_unbound_socket(type, addr);
@@ -229,6 +230,15 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr, net_bind_fla
 		return ret;
 	}
 
+	if (addr->ss_family == AF_UNIX && unix_mode != 0) {
+		const char *path = ((const struct sockaddr_un *)addr)->sun_path;
+		if (chmod(path, unix_mode) != 0) {
+			ret = knot_map_errno();
+			close(sock);
+			return ret;
+		}
+	}
+
 	return sock;
 }
 
@@ -269,7 +279,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	/* Bind to specific source address - if set. */
 	int sock = -1;
 	if (src_addr && src_addr->ss_family != AF_UNSPEC) {
-		sock = net_bound_socket(type, src_addr, 0);
+		sock = net_bound_socket(type, src_addr, 0, 0);
 	} else {
 		sock = net_unbound_socket(type, dst_addr);
 	}

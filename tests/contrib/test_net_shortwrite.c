@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 	// create TCP server
 
 	struct sockaddr_storage addr = localhost();
-	int server = net_bound_socket(SOCK_STREAM, &addr, 0);
+	int server = net_bound_socket(SOCK_STREAM, &addr, 0, 0);
 	ok(server >= 0, "server: bind socket");
 
 	r = listen(server, 1);
