@@ -247,6 +247,10 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	case AF_INET6:
 		max_payload = conf()->cache.srv_udp_max_payload_ipv6;
 		break;
+	case AF_UNIX:
+		max_payload = MIN(conf()->cache.srv_udp_max_payload_ipv4,
+		                  conf()->cache.srv_udp_max_payload_ipv6);
+		break;
 	default:
 		return KNOT_ERROR;
 	}
