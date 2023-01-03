@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,9 +57,7 @@ int knot_probe_data_set(knot_probe_data_t *data, knot_probe_proto_t proto,
 		}
 
 		data->ip = 4;
-	} else {
-		assert(remote_addr->ss_family == AF_INET6);
-
+	} else if (remote_addr->ss_family == AF_INET6) {
 		const struct sockaddr_in6 *sa = (struct sockaddr_in6 *)remote_addr;
 		const struct sockaddr_in6 *da = (struct sockaddr_in6 *)local_addr;
 
@@ -74,6 +72,11 @@ int knot_probe_data_set(knot_probe_data_t *data, knot_probe_proto_t proto,
 		}
 
 		data->ip = 6;
+	} else {
+		memset(&data->remote, 0, sizeof(data->remote));
+		memset(&data->local, 0, sizeof(data->local));
+
+		data->ip = 0;
 	}
 
 	if (reply != NULL) {

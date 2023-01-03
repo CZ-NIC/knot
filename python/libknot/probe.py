@@ -122,9 +122,12 @@ class KnotProbeData(ctypes.Structure):
         string = str()
         if timestamp:
             string += "%s " % COL(datetime.datetime.now().time(), YELW)
-        string += "%s -> %s, " % (COL(self.addr_str(self.remote_addr), UNDR),
-                                  COL(self.addr_str(self.local_addr), UNDR))
-        string += "port %u -> %u " % (self.remote_port, self.local_port)
+        if self.ip != 0:
+            string += "%s -> %s, " % (COL(self.addr_str(self.remote_addr), UNDR),
+                                      COL(self.addr_str(self.local_addr), UNDR))
+            string += "port %u -> %u " % (self.remote_port, self.local_port)
+        else:
+            string += "%s, " % COL("UNIX", UNDR)
         if self.proto == KnotProbeDataProto.UDP:
             string += COL("UDP", GRN)
         elif self.proto == KnotProbeDataProto.TCP:
