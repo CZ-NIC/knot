@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,7 +61,7 @@ int knot_probe_set_producer(knot_probe_t *probe, const char *dir, uint16_t idx);
 /*!
  * \brief Initializes one probe consumer.
  *
- * \note The socket permissions are set to 777 on Linux!
+ * \note The socket permissions are set to 0222!
  *
  * \param probe  Probe context.
  * \param dir    Unix socket directory.
