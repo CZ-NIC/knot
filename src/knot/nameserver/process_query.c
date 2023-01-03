@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -246,6 +246,10 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 		break;
 	case AF_INET6:
 		max_payload = conf()->cache.srv_udp_max_payload_ipv6;
+		break;
+	case AF_UNIX:
+		max_payload = MIN(conf()->cache.srv_udp_max_payload_ipv4,
+		                  conf()->cache.srv_udp_max_payload_ipv6);
 		break;
 	default:
 		return KNOT_ERROR;
