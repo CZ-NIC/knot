@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,6 +32,27 @@
 /* Address string "address[@port]" maximum length. */
 #define SOCKADDR_STRLEN_EXT (1 + 6) /* '@', 5 digits number, \0 */
 #define SOCKADDR_STRLEN (sizeof(struct sockaddr_un) + SOCKADDR_STRLEN_EXT)
+
+/*
+ * A convenient replacement of `struct sockaddr_storage` with smaller AF_UNIX storage.
+ *
+ * Ensure this structure isn't accessed at full `struct sockaddr_storage` range!
+ *
+ * The alignment is needed when this structure is an array type and a pointer to this
+ * array is casted to `struct sockaddr_storage *` and accessed. UBSAN complains otherwise.
+ *
+ * The `sun_path` size is a result of:
+ *   `sizeof(struct sockaddr_in6) - sizeof(sa_family_t) + 4B padding`.
+ */
+typedef union __attribute__ ((aligned (8))) {
+	struct sockaddr ip;
+	struct sockaddr_in ip4;
+	struct sockaddr_in6 ip6;
+	struct {
+		sa_family_t sun_family;
+		char sun_path[30];
+	} un;
+} sockaddr_t;
 
 /*!
  * \brief Calculate current structure length based on address family.
