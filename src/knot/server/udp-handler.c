@@ -156,48 +156,49 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 #endif
 }
 
-/* UDP recvfrom() request struct. */
-struct udp_recvfrom {
+typedef struct {
 	int fd;
-	sockaddr_t addr;
 	struct msghdr msg[NBUFS];
 	struct iovec iov[NBUFS];
-	uint8_t buf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
+	uint8_t iobuf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
+	sockaddr_t addr;
 	cmsg_pktinfo_t pktinfo;
-};
+} udp_msg_ctx_t;
 
-static void *udp_recvfrom_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
+static void *udp_msg_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
 {
-	struct udp_recvfrom *rq = malloc(sizeof(struct udp_recvfrom));
+	udp_msg_ctx_t *rq = calloc(1, sizeof(*rq));
 	if (rq == NULL) {
 		return NULL;
 	}
-	memset(rq, 0, sizeof(struct udp_recvfrom));
 
 	for (unsigned i = 0; i < NBUFS; ++i) {
-		rq->iov[i].iov_base = rq->buf + i;
-		rq->iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
-		rq->msg[i].msg_name = &rq->addr;
-		rq->msg[i].msg_namelen = sizeof(rq->addr);
+		rq->iov[i].iov_base = rq->iobuf[i];
+		rq->iov[i].iov_len = sizeof(rq->iobuf[i]);
 		rq->msg[i].msg_iov = &rq->iov[i];
 		rq->msg[i].msg_iovlen = 1;
+		rq->msg[i].msg_name = &rq->addr;
+		rq->msg[i].msg_namelen = sizeof(rq->addr);
 		rq->msg[i].msg_control = &rq->pktinfo.cmsg;
 		rq->msg[i].msg_controllen = sizeof(rq->pktinfo);
 	}
+
 	return rq;
 }
 
-static void udp_recvfrom_deinit(void *d)
+static void udp_msg_deinit(void *d)
 {
-	struct udp_recvfrom *rq = d;
+	udp_msg_ctx_t *rq = d;
+
 	free(rq);
 }
 
-static int udp_recvfrom_recv(int fd, void *d)
+static int udp_msg_recv(int fd, void *d)
 {
+	udp_msg_ctx_t *rq = (udp_msg_ctx_t *)d;
+
 	/* Reset max lengths. */
-	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
-	rq->iov[RX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+	rq->iov[RX].iov_len = sizeof(rq->iobuf[RX]);
 	rq->msg[RX].msg_namelen = sizeof(rq->addr);
 	rq->msg[RX].msg_controllen = sizeof(rq->pktinfo);
 
@@ -211,13 +212,13 @@ static int udp_recvfrom_recv(int fd, void *d)
 	return 0;
 }
 
-static void udp_recvfrom_handle(udp_context_t *ctx, void *d)
+static void udp_msg_handle(udp_context_t *ctx, void *d)
 {
-	struct udp_recvfrom *rq = d;
+	udp_msg_ctx_t *rq = d;
 
 	/* Prepare TX address. */
 	rq->msg[TX].msg_namelen = rq->msg[RX].msg_namelen;
-	rq->iov[TX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+	rq->iov[TX].iov_len = sizeof(rq->iobuf[TX]);
 
 	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
 
@@ -225,21 +226,22 @@ static void udp_recvfrom_handle(udp_context_t *ctx, void *d)
 	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX], NULL);
 }
 
-static void udp_recvfrom_send(void *d)
+static void udp_msg_send(void *d)
 {
-	struct udp_recvfrom *rq = d;
+	udp_msg_ctx_t *rq = d;
+
 	if (rq->iov[TX].iov_len > 0) {
 		(void)sendmsg(rq->fd, &rq->msg[TX], 0);
 	}
 }
 
 _unused_
-static udp_api_t udp_recvfrom_api = {
-	udp_recvfrom_init,
-	udp_recvfrom_deinit,
-	udp_recvfrom_recv,
-	udp_recvfrom_handle,
-	udp_recvfrom_send,
+static udp_api_t udp_msg_api = {
+	udp_msg_init,
+	udp_msg_deinit,
+	udp_msg_recv,
+	udp_msg_handle,
+	udp_msg_send,
 };
 
 #ifdef ENABLE_RECVMMSG
@@ -503,7 +505,7 @@ int udp_master(dthread_t *thread)
 #ifdef ENABLE_RECVMMSG
 		api = &udp_recvmmsg_api;
 #else
-		api = &udp_recvfrom_api;
+		api = &udp_msg_api;
 #endif
 	}
 	void *api_ctx = NULL;
