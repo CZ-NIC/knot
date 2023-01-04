@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,13 +61,13 @@ static bool udp_state_active(int state)
 	return (state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL);
 }
 
-static void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
+static void udp_handle(udp_context_t *udp, int fd, const sockaddr_t *remote,
                        struct iovec *rx, struct iovec *tx, struct knot_xdp_msg *xdp_msg)
 {
 	/* Create query processing parameter. */
 	knotd_qdata_params_t params = {
 		.proto = KNOTD_QUERY_PROTO_UDP,
-		.remote = ss,
+		.remote = (const struct sockaddr_storage *)remote,
 		.socket = fd,
 		.server = udp->server,
 		.xdp_msg = xdp_msg,
@@ -159,7 +159,7 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 /* UDP recvfrom() request struct. */
 struct udp_recvfrom {
 	int fd;
-	struct sockaddr_storage addr;
+	sockaddr_t addr;
 	struct msghdr msg[NBUFS];
 	struct iovec iov[NBUFS];
 	uint8_t buf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
@@ -198,7 +198,7 @@ static int udp_recvfrom_recv(int fd, void *d)
 	/* Reset max lengths. */
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 	rq->iov[RX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
-	rq->msg[RX].msg_namelen = sizeof(struct sockaddr_storage);
+	rq->msg[RX].msg_namelen = sizeof(rq->addr);
 	rq->msg[RX].msg_controllen = sizeof(rq->pktinfo);
 
 	int ret = recvmsg(fd, &rq->msg[RX], MSG_DONTWAIT);
@@ -246,7 +246,7 @@ static udp_api_t udp_recvfrom_api = {
 /* UDP recvmmsg() request struct. */
 struct udp_recvmmsg {
 	int fd;
-	struct sockaddr_storage addrs[RECVMMSG_BATCHLEN];
+	sockaddr_t addrs[RECVMMSG_BATCHLEN];
 	char *iobuf[NBUFS];
 	struct iovec *iov[NBUFS];
 	struct mmsghdr *msgs[NBUFS];
@@ -276,7 +276,7 @@ static void *udp_recvmmsg_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_s
 			rq->msgs[i][k].msg_hdr.msg_iov = rq->iov[i] + k;
 			rq->msgs[i][k].msg_hdr.msg_iovlen = 1;
 			rq->msgs[i][k].msg_hdr.msg_name = rq->addrs + k;
-			rq->msgs[i][k].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+			rq->msgs[i][k].msg_hdr.msg_namelen = sizeof(rq->addrs[0]);
 			rq->msgs[i][k].msg_hdr.msg_control = &rq->pktinfo[k].cmsg;
 			rq->msgs[i][k].msg_hdr.msg_controllen = sizeof(cmsg_pktinfo_t);
 		}
@@ -336,7 +336,7 @@ static void udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 
 		/* Reset input context. */
 		rx->msg_iov->iov_len = KNOT_WIRE_MAX_PKTSIZE;
-		rx->msg_namelen = sizeof(struct sockaddr_storage);
+		rx->msg_namelen = sizeof(rq->addrs[0]);
 		rx->msg_controllen = sizeof(cmsg_pktinfo_t);
 	}
 	rq->rcvd = j;
