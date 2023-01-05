@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 typedef struct {
 	struct iovec iov[NBUFS];
 	uint8_t buf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
-	struct sockaddr_storage addr;
+	sockaddr_t addr;
 	bool afl_persistent;
 } udp_stdin_t;
 
@@ -37,20 +37,19 @@ static inline void next(udp_stdin_t *rq)
 
 static void *udp_stdin_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
 {
-	udp_stdin_t *rq = calloc(1, sizeof(udp_stdin_t));
+	udp_stdin_t *rq = calloc(1, sizeof(*rq));
 	if (rq == NULL) {
 		return NULL;
 	}
 
 	for (unsigned i = 0; i < NBUFS; ++i) {
 		rq->iov[i].iov_base = rq->buf[i];
-		rq->iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+		rq->iov[i].iov_len = sizeof(rq->buf[i]);
 	}
 
-	struct sockaddr_in *a = (struct sockaddr_in *)&rq->addr;
-	a->sin_family = AF_INET;
-	a->sin_addr.s_addr = IN_LOOPBACKNET;
-	a->sin_port = 42;
+	rq->addr.ip4.sin_family = AF_INET;
+	rq->addr.ip4.sin_addr.s_addr = IN_LOOPBACKNET;
+	rq->addr.ip4.sin_port = 42;
 
 	rq->afl_persistent = getenv("AFL_PERSISTENT") != NULL;
 
@@ -109,8 +108,8 @@ void udp_master_init_stdio(server_t *server) {
 	server->n_ifaces = 1;
 	server->ifaces = ifc;
 
-	udp_recvfrom_api = stdin_api;
+	udp_msg_api = stdin_api;
 #ifdef ENABLE_RECVMMSG
-	udp_recvmmsg_api = stdin_api;
+	udp_mmsg_api = stdin_api;
 #endif
 }
