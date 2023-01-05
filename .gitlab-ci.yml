@@ -337,7 +337,7 @@ pkg:make-archive:
   only:
     variables:
       - $PKGTEST == "1"
-  image: $CI_REGISTRY/packaging/apkg/ci/debian-11:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/debian-11
   artifacts:
     paths:
       - pkg/
@@ -350,45 +350,45 @@ pkg:make-archive:
 
 pkg:debian-11:
   <<: *pkg_test_deb
-  image: $CI_REGISTRY/packaging/apkg/ci/debian-11:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/debian-11
 
 pkg:debian-10:
   <<: *pkg_test_deb
-  image: $CI_REGISTRY/packaging/apkg/ci/debian-10:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/debian-10
 
 pkg:ubuntu-22.04:
   <<: *pkg_test_deb
-  image: $CI_REGISTRY/packaging/apkg/ci/ubuntu-22.04:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/ubuntu-22.04
 
 pkg:ubuntu-20.04:
   <<: *pkg_test_deb
-  image: $CI_REGISTRY/packaging/apkg/ci/ubuntu-20.04:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/ubuntu-20.04
 
 pkg:ubuntu-18.04:
   <<: *pkg_test_deb
-  image: $CI_REGISTRY/packaging/apkg/ci/ubuntu-18.04:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/ubuntu-18.04
+
+pkg:fedora-37:
+  <<: *pkg_test
+  image: $CI_REGISTRY/packaging/apkg/test/fedora-37
 
 pkg:fedora-36:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/ci/fedora-36:apkg
-
-pkg:fedora-35:
-  <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/ci/fedora-35:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/fedora-36
 
 pkg:alma-9:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/ci/alma-9:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/alma-9
 
 pkg:rocky-8:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/ci/rocky-8:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/rocky-8
 
 pkg:centos-7:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/ci/centos-7:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/centos-7
   allow_failure: true
 
 pkg:suse-15:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/ci/suse-15:apkg
+  image: $CI_REGISTRY/packaging/apkg/test/suse-15
