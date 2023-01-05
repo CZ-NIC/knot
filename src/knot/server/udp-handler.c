@@ -357,47 +357,46 @@ static udp_api_t udp_mmsg_api = {
 #endif /* ENABLE_RECVMMSG */
 
 #ifdef ENABLE_XDP
-
-static void *xdp_recvmmsg_init(udp_context_t *ctx, void *xdp_sock)
+static void *xdp_mmsg_init(udp_context_t *ctx, void *xdp_sock)
 {
 	return xdp_handle_init(ctx->server, xdp_sock);
 }
 
-static void xdp_recvmmsg_deinit(void *d)
+static void xdp_mmsg_deinit(void *d)
 {
 	if (d != NULL) {
 		xdp_handle_free(d);
 	}
 }
 
-static int xdp_recvmmsg_recv(_unused_ int fd, void *d)
+static int xdp_mmsg_recv(_unused_ int fd, void *d)
 {
 	return xdp_handle_recv(d);
 }
 
-static void xdp_recvmmsg_handle(udp_context_t *ctx, void *d)
+static void xdp_mmsg_handle(udp_context_t *ctx, void *d)
 {
 	xdp_handle_msgs(d, &ctx->layer, ctx->server, ctx->thread_id);
 }
 
-static void xdp_recvmmsg_send(void *d)
+static void xdp_mmsg_send(void *d)
 {
 	xdp_handle_send(d);
 }
 
-static void xdp_recvmmsg_sweep(void *d)
+static void xdp_mmsg_sweep(void *d)
 {
 	xdp_handle_reconfigure(d);
 	xdp_handle_sweep(d);
 }
 
-static udp_api_t xdp_recvmmsg_api = {
-	xdp_recvmmsg_init,
-	xdp_recvmmsg_deinit,
-	xdp_recvmmsg_recv,
-	xdp_recvmmsg_handle,
-	xdp_recvmmsg_send,
-	xdp_recvmmsg_sweep,
+static udp_api_t xdp_mmsg_api = {
+	xdp_mmsg_init,
+	xdp_mmsg_deinit,
+	xdp_mmsg_recv,
+	xdp_mmsg_handle,
+	xdp_mmsg_send,
+	xdp_mmsg_sweep,
 };
 #endif /* ENABLE_XDP */
 
@@ -487,7 +486,7 @@ int udp_master(dthread_t *thread)
 	udp_api_t *api = NULL;
 	if (is_xdp_thread(handler->server, thread_id)) {
 #ifdef ENABLE_XDP
-		api = &xdp_recvmmsg_api;
+		api = &xdp_mmsg_api;
 #else
 		assert(0);
 #endif
