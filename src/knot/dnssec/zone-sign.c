@@ -212,7 +212,8 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
                               bool skip_crypto,
                               changeset_t *changeset,
                               zone_update_t *update,
-                              knot_time_t *expires_at)
+                              knot_time_t *expires_at,
+                              size_t *signatures)
 {
 	assert(!knot_rrset_empty(covered));
 	assert(sign_ctx);
@@ -256,6 +257,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		}
 		result = knot_sign_rrset(&to_add, covered, key->key, sign_ctx->sign_ctxs[i],
 		                         sign_ctx->dnssec_ctx, NULL, expires_at);
+		if (signatures != NULL) {
+			(*signatures)++;
+		}
 	}
 
 	if (!knot_rrset_empty(&to_remove) && result == KNOT_EOK) {
@@ -368,7 +372,8 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
 static int force_resign_rrset(const knot_rrset_t *covered,
                               const knot_rrset_t *rrsigs,
                               zone_sign_ctx_t *sign_ctx,
-                              changeset_t *changeset)
+                              changeset_t *changeset,
+                              size_t *signatures)
 {
 	assert(!knot_rrset_empty(covered));
 
@@ -380,7 +385,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 		}
 	}
 
-	return add_missing_rrsigs(covered, NULL, sign_ctx, false, changeset, NULL, NULL);
+	return add_missing_rrsigs(covered, NULL, sign_ctx, false, changeset, NULL, NULL, signatures);
 }
 
 /*!
@@ -400,11 +405,12 @@ static int resign_rrset(const knot_rrset_t *covered,
                         zone_sign_ctx_t *sign_ctx,
                         bool skip_crypto,
                         changeset_t *changeset,
-                        knot_time_t *expires_at)
+                        knot_time_t *expires_at,
+                        size_t *signatures)
 {
 	assert(!knot_rrset_empty(covered));
 
-	return add_missing_rrsigs(covered, rrsigs, sign_ctx, skip_crypto, changeset, NULL, expires_at);
+	return add_missing_rrsigs(covered, rrsigs, sign_ctx, skip_crypto, changeset, NULL, expires_at, signatures);
 }
 
 static int remove_standalone_rrsigs(const zone_node_t *node,
@@ -453,7 +459,8 @@ static int sign_node_rrsets(const zone_node_t *node,
                             zone_sign_ctx_t *sign_ctx,
                             changeset_t *changeset,
                             knot_time_t *expires_at,
-                            dnssec_validation_hint_t *hint)
+                            dnssec_validation_hint_t *hint,
+                            size_t *signatures)
 {
 	assert(node);
 	assert(sign_ctx);
@@ -488,10 +495,10 @@ static int sign_node_rrsets(const zone_node_t *node,
 			}
 		} else if (sign_ctx->dnssec_ctx->rrsig_drop_existing) {
 			result = force_resign_rrset(&rrset, &rrsigs,
-			                            sign_ctx, changeset);
+			                            sign_ctx, changeset, signatures);
 		} else {
 			result = resign_rrset(&rrset, &rrsigs, sign_ctx, skip_crypto,
-			                      changeset, expires_at);
+			                      changeset, expires_at, signatures);
 		}
 	}
 
@@ -516,6 +523,7 @@ typedef struct {
 	int errcode;
 	int thread_init_errcode;
 	pthread_t thread;
+	size_t signatures;
 } node_sign_args_t;
 
 /*!
@@ -541,7 +549,14 @@ static int sign_node(zone_node_t *node, void *data)
 
 	int result = sign_node_rrsets(node, args->sign_ctx,
 	                              &args->changeset, &args->expires_at,
-	                              args->hint);
+	                              args->hint, &args->signatures);
+
+#define SIG_COUNT 100
+	if (args->signatures >= SIG_COUNT) {
+		args->signatures -= SIG_COUNT;
+		log_notice("DNSSEC, computed signatures %u, thread %zu",
+		           SIG_COUNT, args->thread_index);
+	}
 
 	return result;
 }
@@ -958,7 +973,7 @@ static int sign_in_changeset(zone_node_t *node, uint16_t rrtype, knot_rrset_t *r
 	if (knot_rrset_empty(&rr)) {
 		return KNOT_EOK;
 	}
-	return add_missing_rrsigs(&rr, rrsigs, sign_ctx, skip_crypto, NULL, up, NULL);
+	return add_missing_rrsigs(&rr, rrsigs, sign_ctx, skip_crypto, NULL, up, NULL, NULL);
 }
 
 int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
@@ -1070,7 +1085,7 @@ int knot_zone_sign_apex_rr(zone_update_t *update, uint16_t rrtype,
 			changeset_clear(&ch);
 			return KNOT_ENOMEM;
 		}
-		ret = force_resign_rrset(&rr, &rrsig, sign_ctx, &ch);
+		ret = force_resign_rrset(&rr, &rrsig, sign_ctx, &ch, NULL);
 		if (ret == KNOT_EOK) {
 			ret = zone_update_apply_changeset(update, &ch);
 		}
