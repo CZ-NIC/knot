@@ -156,7 +156,8 @@ Time to live of the generated records.
 network
 .......
 
-An IP address, a network subnet, or a network range the query must match.
+An ordered list of IP addresses, network subnets or network ranges
+the query must match.
 
 *Required*
 

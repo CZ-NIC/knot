@@ -52,7 +52,7 @@ Module reference
    - id: STR
      remote: remote_id
      timeout: INT
-     address: ADDR[/INT] | ADDR-ADDR ...
+     address: ADDR[/INT] | ADDR-ADDR | STR ...
      fallback: BOOL
      tcp-fastopen: BOOL
      catch-nxdomain: BOOL
@@ -88,8 +88,9 @@ A remote response timeout in milliseconds.
 address
 .......
 
-An optional list of allowed ranges and/or subnets for query's source address.
-If the query's address does not fall into any of the configured ranges, the
+An ordered list of IP addresses, absolute UNIX socket paths, network subnets,
+or network ranges.
+If the query's source address does not fall into any of the configured ranges, the
 query isn't forwarded.
 
 *Default:* not set

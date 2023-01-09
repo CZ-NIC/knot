@@ -206,10 +206,10 @@ server:
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
     automatic\-acl: BOOL
-    proxy\-allowlist: ADDR[/INT] | ADDR\-ADDR ...
+    proxy\-allowlist: ADDR[/INT] | ADDR\-ADDR | STR ...
     dbus\-event: none | running | zone\-updated | ksk\-submission | dnssec\-invalid ...
     dbus\-init\-delay: TIME
-    listen: ADDR[@INT] ...
+    listen: ADDR[@INT] | STR ...
 .ft P
 .fi
 .UNINDENT
@@ -505,7 +505,7 @@ configured remotes is considered when evaluating authorized operations.
 \fIDefault:\fP \fBoff\fP
 .SS proxy\-allowlist
 .sp
-An ordered list of IP addresses, network subnets, or network ranges
+An ordered list of IP addresses, absolute UNIX socket paths, network subnets, or network ranges
 which are allowed as a source address of proxied DNS traffic over UDP.
 The supported proxy protocol is
 \fI\%haproxy PROXY v2\fP\&.
@@ -569,7 +569,8 @@ One or more IP addresses where the server listens for incoming queries.
 Optional port specification (default is 53) can be appended to each address
 using \fB@\fP separator. Use \fB0.0.0.0\fP for all configured IPv4 addresses or
 \fB::\fP for all configured IPv6 addresses. Filesystem path can be specified
-for listening on local unix SOCK_STREAM socket. Non\-local address binding
+for listening on local unix SOCK_STREAM socket. Non\-absolute paths are relative
+to \fI\%rundir\fP\&. Non\-local address binding
 is automatically enabled if supported by the operating system.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
@@ -1159,7 +1160,7 @@ transfer, target for a notification, etc.).
 .ft C
 remote:
   \- id: STR
-    address: ADDR[@INT] ...
+    address: ADDR[@INT] | STR ...
     via: ADDR[@INT] ...
     key: key_id
     block\-notify\-after\-transfer: BOOL
@@ -1174,8 +1175,9 @@ remote:
 A remote identifier.
 .SS address
 .sp
-An ordered list of destination IP addresses which are used for communication
-with the remote server. The addresses are tried in sequence until the
+An ordered list of destination IP addresses or UNIX socket paths which are
+used for communication with the remote server. Non\-absolute paths are relative
+to \fI\%rundir\fP\&. The addresses are tried in sequence until the
 remote is reached. Optional destination port (default is 53)
 can be appended to the address using \fB@\fP separator.
 .sp
@@ -1276,7 +1278,7 @@ and dynamic DNS update) which are allowed to be processed or denied.
 .ft C
 acl:
   \- id: STR
-    address: ADDR[/INT] | ADDR\-ADDR ...
+    address: ADDR[/INT] | ADDR\-ADDR | STR ...
     key: key_id ...
     remote: remote_id | remotes_id ...
     action: query | notify | transfer | update ...
@@ -1294,7 +1296,8 @@ acl:
 An ACL rule identifier.
 .SS address
 .sp
-An ordered list of IP addresses, network subnets, or network ranges. The query\(aqs
+An ordered list of IP addresses, absolute UNIX socket paths, network subnets,
+or network ranges. The query\(aqs
 source address must match one of them. If this item is not set, address match is not
 required.
 .sp
