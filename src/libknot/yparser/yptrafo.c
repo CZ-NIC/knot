@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -528,22 +528,27 @@ int yp_addr_range_to_bin(
 	// Format: 0 - single address, 1 - address prefix, 2 - address range.
 	uint8_t format = 0;
 
-	// Check for the "addr/mask" format.
-	const uint8_t *pos = (uint8_t *)strchr((char *)in->position, '/');
-	if (pos >= stop) {
-		pos = NULL;
-	}
+	const bool unix_path = (in->position[0] == '/');
+	const uint8_t *pos = NULL;
 
-	if (pos != NULL) {
-		format = 1;
-	} else {
-		// Check for the "addr1-addr2" format.
-		pos = (uint8_t *)strchr((char *)in->position, '-');
+	if (!unix_path) {
+		// Check for the "addr/mask" format.
+		pos = (uint8_t *)strchr((char *)in->position, '/');
 		if (pos >= stop) {
 			pos = NULL;
 		}
+
 		if (pos != NULL) {
-			format = 2;
+			format = 1;
+		} else {
+			// Check for the "addr1-addr2" format.
+			pos = (uint8_t *)strchr((char *)in->position, '-');
+			if (pos >= stop) {
+				pos = NULL;
+			}
+			if (pos != NULL) {
+				format = 2;
+			}
 		}
 	}
 
@@ -551,7 +556,7 @@ int yp_addr_range_to_bin(
 	uint8_t *type1 = out->position;
 
 	// Write the first address.
-	int ret = yp_addr_noport_to_bin(in, out, pos, false);
+	int ret = yp_addr_noport_to_bin(in, out, pos, unix_path);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
