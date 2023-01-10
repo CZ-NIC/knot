@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <netdb.h>
@@ -37,7 +38,8 @@ int sockaddr_len(const struct sockaddr_storage *ss)
 	case AF_INET6:
 		return sizeof(struct sockaddr_in6);
 	case AF_UNIX:
-		return sizeof(struct sockaddr_un);
+		; const struct sockaddr_un *un = (const struct sockaddr_un *)ss;
+		return offsetof(struct sockaddr_un, sun_path) + strlen(un->sun_path) + 1;
 	default:
 		return 0;
 	}
@@ -157,7 +159,8 @@ void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size)
 		return &ipv6->sin6_addr;
 	} else if (ss->ss_family == AF_UNIX) {
 		struct sockaddr_un *un = (struct sockaddr_un *)ss;
-		*addr_size = sizeof(un->sun_path);
+		*addr_size = offsetof(struct sockaddr_un, sun_path) +
+		             strlen(un->sun_path) + 1;
 		return un->sun_path;
 	} else {
 		return NULL;
@@ -178,7 +181,7 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
 	void *ss_data = sockaddr_raw(ss, &ss_size);
 	if (ss_data == NULL ||
 	    (family != AF_UNIX && ss_size != raw_addr_size) ||
-	    (family == AF_UNIX && ss_size <= raw_addr_size)) {
+	    (family == AF_UNIX && raw_addr_size >= sizeof((struct sockaddr_un *)ss)->sun_path)) {
 		return KNOT_EINVAL;
 	}
 
@@ -331,22 +334,28 @@ bool sockaddr_net_match(const struct sockaddr_storage *ss1,
 		return false;
 	}
 
-	size_t raw_len = 0;
-	const uint8_t *raw_1 = sockaddr_raw(ss1, &raw_len);
-	const uint8_t *raw_2 = sockaddr_raw(ss2, &raw_len);
+	if (ss1->ss_family == AF_UNIX) {
+		const struct sockaddr_un *un1 = (const struct sockaddr_un *)ss1;
+		const struct sockaddr_un *un2 = (const struct sockaddr_un *)ss2;
+		return strcmp(un1->sun_path, un2->sun_path) == 0;
+	} else {
+		size_t raw_len = 0;
+		const uint8_t *raw_1 = sockaddr_raw(ss1, &raw_len);
+		const uint8_t *raw_2 = sockaddr_raw(ss2, &raw_len);
 
-	prefix = MIN(prefix, raw_len * 8);
-	unsigned bytes = prefix / 8;
-	unsigned bits = prefix % 8;
+		prefix = MIN(prefix, raw_len * 8);
+		unsigned bytes = prefix / 8;
+		unsigned bits = prefix % 8;
 
-	/* Compare full bytes. */
-	if (memcmp(raw_1, raw_2, bytes) != 0) {
-		return false;
+		/* Compare full bytes. */
+		if (memcmp(raw_1, raw_2, bytes) != 0) {
+			return false;
+		}
+
+		/* Compare last partial byte. */
+		return bits == 0 ||
+		       (raw_1[bytes] >> (8 - bits) == raw_2[bytes] >> (8 - bits));
 	}
-
-	/* Compare last partial byte. */
-	return bits == 0 ||
-	       (raw_1[bytes] >> (8 - bits) == raw_2[bytes] >> (8 - bits));
 }
 
 bool sockaddr_range_match(const struct sockaddr_storage *ss,
@@ -358,7 +367,8 @@ bool sockaddr_range_match(const struct sockaddr_storage *ss,
 	}
 
 	if (ss_min->ss_family != ss_max->ss_family ||
-	    ss_min->ss_family != ss->ss_family) {
+	    ss_min->ss_family != ss->ss_family ||
+	    ss->ss_family == AF_UNIX) {
 		return false;
 	}
 
