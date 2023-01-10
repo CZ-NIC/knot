@@ -54,6 +54,7 @@ typedef struct {
 	knot_layer_t layer; /*!< Query processing layer. */
 	server_t *server;   /*!< Name server structure. */
 	unsigned thread_id; /*!< Thread identifier. */
+	sockaddr_t local;   /*!< Storage for local any address. */
 } udp_context_t;
 
 static bool udp_state_active(int state)
@@ -62,12 +63,14 @@ static bool udp_state_active(int state)
 }
 
 static void udp_handle(udp_context_t *udp, int fd, const sockaddr_t *remote,
-                       struct iovec *rx, struct iovec *tx, struct knot_xdp_msg *xdp_msg)
+                       const sockaddr_t *local, struct iovec *rx, struct iovec *tx,
+                       struct knot_xdp_msg *xdp_msg)
 {
 	/* Create query processing parameter. */
 	knotd_qdata_params_t params = {
 		.proto = KNOTD_QUERY_PROTO_UDP,
 		.remote = (const struct sockaddr_storage *)remote,
+		.local = (const struct sockaddr_storage *)local,
 		.socket = fd,
 		.server = udp->server,
 		.xdp_msg = xdp_msg,
@@ -117,7 +120,7 @@ typedef struct {
 	void* (*udp_init)(udp_context_t *, void *);
 	void (*udp_deinit)(void *);
 	int (*udp_recv)(int, void *);
-	void (*udp_handle)(udp_context_t *, void *);
+	void (*udp_handle)(udp_context_t *, const iface_t *, void *);
 	void (*udp_send)(void *);
 	void (*udp_sweep)(void *); // Optional
 } udp_api_t;
@@ -128,7 +131,8 @@ typedef union {
 	uint8_t buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
 } cmsg_pktinfo_t;
 
-static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
+static const sockaddr_t *udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx,
+                                            sockaddr_t *local, const iface_t *iface)
 {
 	tx->msg_controllen = rx->msg_controllen;
 	if (tx->msg_controllen > 0) {
@@ -138,10 +142,9 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 		tx->msg_control = NULL;
 	}
 
-#if defined(__linux__) || defined(__APPLE__)
 	struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx);
 	if (cmsg == NULL) {
-		return;
+		return (const sockaddr_t *)&iface->addr;
 	}
 
 	/* Unset the ifindex to not bypass the routing tables. */
@@ -149,11 +152,22 @@ static void udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx)
 		struct in_pktinfo *info = (struct in_pktinfo *)CMSG_DATA(cmsg);
 		info->ipi_spec_dst = info->ipi_addr;
 		info->ipi_ifindex = 0;
+
+		local->ip4.sin_family = AF_INET;
+		local->ip4.sin_port = ((const struct sockaddr_in *)&iface->addr)->sin_port;
+		local->ip4.sin_addr = info->ipi_addr;
+		return local;
 	} else if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
 		struct in6_pktinfo *info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
 		info->ipi6_ifindex = 0;
+
+		local->ip6.sin6_family = AF_INET6;
+		local->ip6.sin6_port = ((const struct sockaddr_in6 *)&iface->addr)->sin6_port;
+		local->ip6.sin6_addr = info->ipi6_addr;
+		return local;
 	}
-#endif
+
+	return (const sockaddr_t *)&iface->addr;
 }
 
 typedef struct {
@@ -212,7 +226,7 @@ static int udp_msg_recv(int fd, void *d)
 	return 0;
 }
 
-static void udp_msg_handle(udp_context_t *ctx, void *d)
+static void udp_msg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 {
 	udp_msg_ctx_t *rq = d;
 
@@ -220,10 +234,11 @@ static void udp_msg_handle(udp_context_t *ctx, void *d)
 	rq->msg[TX].msg_namelen = rq->msg[RX].msg_namelen;
 	rq->iov[TX].iov_len = sizeof(rq->iobuf[TX]);
 
-	udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX]);
+	const sockaddr_t *local = udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX],
+	                                             &ctx->local, iface);
 
 	/* Process received pkt. */
-	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX], NULL);
+	udp_handle(ctx, rq->fd, &rq->addr, local, &rq->iov[RX], &rq->iov[TX], NULL);
 }
 
 static void udp_msg_send(void *d)
@@ -297,7 +312,7 @@ static int udp_mmsg_recv(int fd, void *d)
 	return n;
 }
 
-static void udp_mmsg_handle(udp_context_t *ctx, void *d)
+static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 {
 	udp_mmsg_ctx_t *rq = d;
 
@@ -314,9 +329,10 @@ static void udp_mmsg_handle(udp_context_t *ctx, void *d)
 		tx->msg_namelen = rx->msg_namelen;
 
 		/* Update output message control buffer. */
-		udp_pktinfo_handle(rx, tx);
+		const sockaddr_t *local = udp_pktinfo_handle(rx, tx, &ctx->local, iface);
 
-		udp_handle(ctx, rq->fd, &rq->addrs[i], rx->msg_iov, tx->msg_iov, NULL);
+		udp_handle(ctx, rq->fd, &rq->addrs[i], local, rx->msg_iov,
+		           tx->msg_iov, NULL);
 
 		if (tx->msg_iov->iov_len > 0) {
 			rq->msgs[TX][j].msg_len = tx->msg_iov->iov_len;
@@ -374,7 +390,7 @@ static int xdp_mmsg_recv(_unused_ int fd, void *d)
 	return xdp_handle_recv(d);
 }
 
-static void xdp_mmsg_handle(udp_context_t *ctx, void *d)
+static void xdp_mmsg_handle(udp_context_t *ctx, _unused_ const iface_t *iface, void *d)
 {
 	xdp_handle_msgs(d, &ctx->layer, ctx->server, ctx->thread_id);
 }
@@ -452,7 +468,7 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 		if (fd < 0) {
 			continue;
 		}
-		int ret = fdset_add(fds, fd, FDSET_POLLIN, NULL);
+		int ret = fdset_add(fds, fd, FDSET_POLLIN, (void *)i);
 		if (ret < 0) {
 			return 0;
 		}
@@ -546,7 +562,9 @@ int udp_master(dthread_t *thread)
 				continue;
 			}
 			if (api->udp_recv(fdset_it_get_fd(&it), api_ctx) > 0) {
-				api->udp_handle(&udp, api_ctx);
+				const iface_t *iface = fdset_it_get_ctx(&it);
+				assert(iface);
+				api->udp_handle(&udp, iface, api_ctx);
 				api->udp_send(api_ctx);
 			}
 		}

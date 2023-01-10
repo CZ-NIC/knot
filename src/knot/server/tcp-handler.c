@@ -104,7 +104,7 @@ static bool tcp_send_state(int state)
 	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
 }
 
-static void tcp_log_error(struct sockaddr_storage *ss, const char *operation, int ret)
+static void tcp_log_error(const struct sockaddr_storage *ss, const char *operation, int ret)
 {
 	/* Don't log ECONN as it usually means client closed the connection. */
 	if (ret == KNOT_ETIMEOUT) {
@@ -138,7 +138,7 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 			tcp_id = thread_id - i->fd_udp_count;
 		}
 #endif
-		int ret = fdset_add(fds, i->fd_tcp[tcp_id], FDSET_POLLIN, NULL);
+		int ret = fdset_add(fds, i->fd_tcp[tcp_id], FDSET_POLLIN, (void *)i);
 		if (ret < 0) {
 			return 0;
 		}
@@ -147,19 +147,14 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 	return fdset_get_length(fds);
 }
 
-static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec *tx)
+static int tcp_handle(tcp_context_t *tcp, int fd, const sockaddr_t *remote,
+                      const sockaddr_t *local, struct iovec *rx, struct iovec *tx)
 {
-	/* Get peer name. */
-	struct sockaddr_storage ss;
-	socklen_t addrlen = sizeof(struct sockaddr_storage);
-	if (getpeername(fd, (struct sockaddr *)&ss, &addrlen) != 0) {
-		return KNOT_EADDRNOTAVAIL;
-	}
-
 	/* Create query processing parameter. */
 	knotd_qdata_params_t params = {
 		.proto = KNOTD_QUERY_PROTO_TCP,
-		.remote = &ss,
+		.remote = (const struct sockaddr_storage *)remote,
+		.local = (const struct sockaddr_storage *)local,
 		.socket = fd,
 		.server = tcp->server,
 		.thread_id = tcp->thread_id
@@ -173,7 +168,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {
-		tcp_log_error(&ss, "receive", recv);
+		tcp_log_error(params.remote, "receive", recv);
 		return KNOT_EOF;
 	}
 
@@ -199,7 +194,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 			int sent = net_dns_tcp_send(fd, ans->wire, ans->size,
 			                            tcp->io_timeout, NULL);
 			if (sent != ans->size) {
-				tcp_log_error(&ss, "send", sent);
+				tcp_log_error(params.remote, "send", sent);
 				ret = KNOT_EOF;
 				break;
 			}
@@ -215,14 +210,14 @@ static int tcp_handle(tcp_context_t *tcp, int fd, struct iovec *rx, struct iovec
 	return ret;
 }
 
-static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
+static void tcp_event_accept(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 {
 	/* Accept client. */
 	int fd = fdset_get_fd(&tcp->set, i);
 	int client = net_accept(fd, NULL);
 	if (client >= 0) {
 		/* Assign to fdset. */
-		int idx = fdset_add(&tcp->set, client, FDSET_POLLIN, NULL);
+		int idx = fdset_add(&tcp->set, client, FDSET_POLLIN, (void *)iface);
 		if (idx < 0) {
 			close(client);
 			return;
@@ -233,10 +228,31 @@ static void tcp_event_accept(tcp_context_t *tcp, unsigned i)
 	}
 }
 
-static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
+static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 {
-	int ret = tcp_handle(tcp, fdset_get_fd(&tcp->set, i),
-	                     &tcp->iov[0], &tcp->iov[1]);
+	int fd = fdset_get_fd(&tcp->set, i);
+
+	/* Get local address. */
+	sockaddr_t *local = (sockaddr_t *)&iface->addr;
+	sockaddr_t local_buf;
+	if (iface->anyaddr) {
+		socklen_t local_len = sizeof(local_buf);
+		if (getsockname(fd, &local_buf.ip, &local_len) == 0) {
+			local = &local_buf;
+		}
+	}
+
+	/* Get remote address. */
+	sockaddr_t *remote = (sockaddr_t *)&iface->addr;
+	sockaddr_t remote_buf;
+	if (iface->addr.ss_family != AF_UNIX) {
+		socklen_t remote_len = sizeof(remote_buf);
+		if (getpeername(fd, &remote_buf.ip, &remote_len) == 0) {
+			remote = &remote_buf;
+		}
+	}
+
+	int ret = tcp_handle(tcp, fd, remote, local, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		(void)fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
@@ -270,15 +286,17 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 		if (fdset_it_is_error(&it)) {
 			should_close = (idx >= tcp->client_threshold);
 		} else if (fdset_it_is_pollin(&it)) {
+			const iface_t *iface = fdset_it_get_ctx(&it);
+			assert(iface);
 			/* Master sockets - new connection to accept. */
 			if (idx < tcp->client_threshold) {
 				/* Don't accept more clients than configured. */
 				if (fdset_get_length(set) < tcp->max_worker_fds) {
-					tcp_event_accept(tcp, idx);
+					tcp_event_accept(tcp, idx, iface);
 				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
-			} else if (tcp_event_serve(tcp, idx) != KNOT_EOK) {
+			} else if (tcp_event_serve(tcp, idx, iface) != KNOT_EOK) {
 				should_close = true;
 			}
 		}

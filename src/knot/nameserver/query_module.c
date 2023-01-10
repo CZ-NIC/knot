@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -619,8 +619,7 @@ void knotd_conf_free(knotd_conf_t *conf)
 }
 
 _public_
-const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata,
-                                                      struct sockaddr_storage *buff)
+const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata)
 {
 	if (qdata == NULL) {
 		return NULL;
@@ -634,12 +633,7 @@ const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata,
 		return NULL;
 #endif
 	} else {
-		socklen_t buff_len = sizeof(*buff);
-		if (getsockname(qdata->params->socket, (struct sockaddr *)buff,
-		                &buff_len) != 0) {
-			return NULL;
-		}
-		return buff;
+		return qdata->params->local;
 	}
 }
 

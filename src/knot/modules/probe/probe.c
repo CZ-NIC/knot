@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -82,8 +82,7 @@ static knotd_state_t export(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Prepare data sources.
-	struct sockaddr_storage buff;
-	const struct sockaddr_storage *local = knotd_qdata_local_addr(qdata, &buff);
+	const struct sockaddr_storage *local = knotd_qdata_local_addr(qdata);
 	const struct sockaddr_storage *remote = knotd_qdata_remote_addr(qdata);
 
 	knot_probe_proto_t proto = (knot_probe_proto_t)qdata->params->proto;

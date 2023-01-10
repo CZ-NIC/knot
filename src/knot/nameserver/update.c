@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/update.h"
 #include "knot/query/requestor.h"
+#include "contrib/sockaddr.h"
 #include "libknot/libknot.h"
 
 static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
@@ -35,7 +36,8 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 
 	/* Store socket and remote address. */
 	req->fd = dup(qdata->params->socket);
-	memcpy(&req->remote, knotd_qdata_remote_addr(qdata), sizeof(req->remote));
+	const struct sockaddr_storage *remote = knotd_qdata_remote_addr(qdata);
+	memcpy(&req->remote, remote, sockaddr_len(remote));
 
 	/* Store update request. */
 	req->query = knot_pkt_new(NULL, qdata->query->max_size, NULL);
