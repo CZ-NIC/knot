@@ -43,7 +43,7 @@ srv_info_t* parse_nameserver(const char *str, const char *def_port)
 
 	// UNIX socket path.
 	if (*str == '/') {
-		return srv_info_create(str, "");
+		return srv_info_create(str, "UNIX");
 	// [address]:port notation.
 	} else if (*str == '[') {
 		addr = str + 1;
