@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -876,7 +876,7 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 	}
 
 	uint16_t netmask = 0;
-	geodb_data_t entries[ctx->path_count];
+	geodb_data_t entries[GEODB_MAX_DEPTH];
 
 	// Create dummy view and fill it with data about the current remote.
 	geo_view_t dummy = { 0 };
