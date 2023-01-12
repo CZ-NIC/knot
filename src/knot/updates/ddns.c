@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -644,7 +644,7 @@ int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
 	init_list(&rrset_list);
 
 	const knot_pktsection_t *answer = knot_pkt_section(query, KNOT_ANSWER);
-	const knot_rrset_t *answer_rr = knot_pkt_rr(answer, 0);
+	const knot_rrset_t *answer_rr = (answer->count > 0) ? knot_pkt_rr(answer, 0) : NULL;
 	for (int i = 0; i < answer->count; ++i) {
 		// Check what can be checked, store full RRs into list
 		ret = process_prereq(&answer_rr[i], knot_pkt_qclass(query),
@@ -675,7 +675,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 
 	// Process all RRs in the authority section.
 	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
-	const knot_rrset_t *authority_rr = knot_pkt_rr(authority, 0);
+	const knot_rrset_t *authority_rr = (authority->count > 0) ? knot_pkt_rr(authority, 0) : NULL;
 	for (uint16_t i = 0; i < authority->count; ++i) {
 		const knot_rrset_t *rr = &authority_rr[i];
 		// Check if RR is correct.
