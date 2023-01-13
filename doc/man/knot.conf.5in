@@ -216,6 +216,7 @@ server:
     dbus\-event: none | running | zone\-updated | ksk\-submission | dnssec\-invalid ...
     dbus\-init\-delay: TIME
     listen: ADDR[@INT] | STR ...
+    listen\-quic: ADDR[@INT] ...
 .ft P
 .fi
 .UNINDENT
@@ -578,6 +579,14 @@ using \fB@\fP separator. Use \fB0.0.0.0\fP for all configured IPv4 addresses or
 for listening on local unix SOCK_STREAM socket. Non\-absolute path
 (i.e. not starting with \fB/\fP) is relative to \fI\%rundir\fP\&.
 Non\-local address binding is automatically enabled if supported by the operating system.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP not set
+.SS listen\-quic
+.sp
+One or more IP addresses (and optionally ports) where the server listens
+for incoming queries over QUIC protocol.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp

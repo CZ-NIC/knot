@@ -76,8 +76,8 @@ static int udp_stdin_recv(_unused_ int fd, void *d)
 static void udp_stdin_handle(udp_context_t *ctx, _unused_ const iface_t *iface, void *d)
 {
 	udp_stdin_t *rq = (udp_stdin_t *)d;
-	udp_handle(ctx, STDIN_FILENO, &rq->addr, (const sockaddr_t *)&iface->addr,
-	           &rq->iov[RX], &rq->iov[TX], false);
+	PARAMS_INIT(false, STDIN_FILENO, &rq->addr, &iface->addr, ctx);
+	udp_handler(ctx, &params, &rq->iov[RX], &rq->iov[TX]);
 }
 
 static void udp_stdin_send(void *d)
