@@ -83,6 +83,7 @@
 #define C_KSK_SHARED		"\x0a""ksk-shared"
 #define C_KSK_SIZE		"\x08""ksk-size"
 #define C_LISTEN		"\x06""listen"
+#define C_LISTEN_QUIC		"\x0B""listen-quic"
 #define C_LOG			"\x03""log"
 #define C_MANUAL		"\x06""manual"
 #define C_MASTER		"\x06""master"
