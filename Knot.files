@@ -308,6 +308,8 @@ src/knot/server/dthreads.c
 src/knot/server/dthreads.h
 src/knot/server/proxyv2.c
 src/knot/server/proxyv2.h
+src/knot/server/quic-handler.c
+src/knot/server/quic-handler.h
 src/knot/server/server.c
 src/knot/server/server.h
 src/knot/server/tcp-handler.c
