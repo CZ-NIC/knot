@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -257,6 +257,20 @@ inline static int fdset_it_get_fd(const fdset_it_t *it)
 }
 
 /*!
+ * \brief Get context of event referenced by iterator.
+ *
+ * \param it  Target iterator.
+ *
+ * \retval Context of the fd.
+ */
+inline static void *fdset_it_get_ctx(const fdset_it_t *it)
+{
+	assert(it);
+
+	return it->set->ctx[fdset_it_get_idx(it)];
+}
+
+/*!
  * \brief Move iterator on next received event.
  *
  * \param it  Target iterator.
@@ -304,9 +318,9 @@ inline static void fdset_it_remove(fdset_it_t *it)
 	/*       EVFILT_WRITE (1) -> -2                    */
 	/* If not marked for delete then mark for delete.  */
 #if defined(__NetBSD__)
-	if ((signed short)it->set->ev[idx].filter >= 0) 
+	if ((signed short)it->set->ev[idx].filter >= 0)
 #else
-	if (it->set->ev[idx].filter < 0) 
+	if (it->set->ev[idx].filter < 0)
 #endif
 	{
 		it->set->ev[idx].filter = ~it->set->ev[idx].filter;

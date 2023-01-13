@@ -32,8 +32,8 @@ Module reference
 
    mod-queryacl:
      - id: STR
-       address: ADDR[/INT] | ADDR-ADDR ...
-       interface: ADDR[/INT] | ADDR-ADDR ...
+       address: ADDR[/INT] | ADDR-ADDR | STR ...
+       interface: ADDR[/INT] | ADDR-ADDR | STR ...
 
 .. _mod-queryacl_id:
 
@@ -47,7 +47,8 @@ A module identifier.
 address
 .......
 
-An optional list of allowed ranges and/or subnets for query's source address.
+An ordered list of IP addresses, absolute UNIX socket paths, network subnets,
+or network ranges.
 If the query's address does not fall into any
 of the configured ranges, NOTAUTH rcode is returned.
 
@@ -58,7 +59,8 @@ of the configured ranges, NOTAUTH rcode is returned.
 interface
 .........
 
-An optional list of allowed ranges and/or subnets for query's target interface.
+An ordered list of IP addresses, absolute UNIX socket paths, network subnets,
+or network ranges.
 If the interface does not fall into any
 of the configured ranges, NOTAUTH rcode is returned. Note that every interface
 used has to be configured in :ref:`listen<server_listen>`.

@@ -192,9 +192,10 @@ static bool enable_pktinfo(int sock, int family)
 		break;
 	case AF_INET6:
 		level = IPPROTO_IPV6;
-		option = IPV6_RECVPKTINFO;
+		option = IPV6_RECVPKTINFO; /* Multiplatform */
 		break;
 	default:
+		assert(0);
 		return false;
 	}
 
@@ -414,10 +415,12 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			warn_bufsize = false;
 		}
 
-		if (sockaddr_is_any(addr) && !enable_pktinfo(sock, addr->ss_family) &&
-		    warn_pktinfo) {
-			log_warning("failed to enable received packet information retrieval");
-			warn_pktinfo = false;
+		if (sockaddr_is_any(addr)) {
+			new_if->anyaddr = true;
+			if (!enable_pktinfo(sock, addr->ss_family) && warn_pktinfo) {
+				log_warning("failed to enable PKTINFO for ANY address interface");
+				warn_pktinfo = false;
+			}
 		}
 
 		int ret = disable_pmtudisc(sock, addr->ss_family);

@@ -21,6 +21,7 @@ import dnstest.config
 import dnstest.inquirer
 import dnstest.params as params
 import dnstest.keys
+from dnstest.libknot import libknot
 import dnstest.module
 import dnstest.response
 import dnstest.update
@@ -208,14 +209,19 @@ class Server(object):
         self.binding_errors = 0
 
     def _check_socket(self, proto, port):
-        if ipaddress.ip_address(self.addr).version == 4:
-            iface = "4%s@%s:%i" % (proto, self.addr, port)
+        if self.addr.startswith("/"):
+            param = ""
+            iface = self.addr
         else:
-            iface = "6%s@[%s]:%i" % (proto, self.addr, port)
+            param = "-i"
+            if ipaddress.ip_address(self.addr).version == 4:
+                iface = "4%s@%s:%i" % (proto, self.addr, port)
+            else:
+                iface = "6%s@[%s]:%i" % (proto, self.addr, port)
 
         for i in range(5):
             pids = []
-            proc = Popen(["lsof", "-i", iface],
+            proc = Popen(["lsof", param, iface],
                          stdout=PIPE, stderr=PIPE, universal_newlines=True)
             (out, err) = proc.communicate()
             for line in out.split("\n"):
@@ -720,7 +726,8 @@ class Server(object):
                     count += 1
         return count
 
-    def zone_wait(self, zone, serial=None, equal=False, greater=True, udp=True, tsig=None):
+    def zone_wait(self, zone, serial=None, equal=False, greater=True, udp=True,
+                  tsig=None, use_ctl=False):
         '''Try to get SOA record. With an optional serial number and given
            relation (equal or/and greater).'''
 
@@ -728,30 +735,38 @@ class Server(object):
 
         _serial = 0
 
+        if use_ctl:
+            ctl = libknot.control.KnotCtl()
+            zone_name = zone.name.lower()
+
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
         attempts = 60 if not self.valgrind else 100
         for t in range(attempts):
             try:
-                resp = self.dig(zone.name, "SOA", udp=udp, tries=1,
-                                timeout=2, log_no_sep=True, tsig=tsig)
+                if use_ctl:
+                    ctl.connect(os.path.join(self.dir, "knot.sock"))
+                    ctl.send_block(cmd="zone-read", zone=zone_name,
+                                   owner="@", rtype="SOA")
+                    resp = ctl.receive_block()
+                    ctl.send(libknot.control.KnotCtlType.END)
+                    ctl.close()
+                    soa_rdata = resp[zone_name][zone_name]["SOA"]["data"][0]
+                    _serial = int(soa_rdata.split()[2])
+                else:
+                    resp = self.dig(zone.name, "SOA", udp=udp, tries=1,
+                                    timeout=2, log_no_sep=True, tsig=tsig)
+                    soa = str((resp.resp.answer[0]).to_rdataset())
+                    _serial = int(soa.split()[5])
             except:
                 pass
             else:
-                if resp.resp.rcode() == 0:
-                    if not resp.resp.answer:
-                        raise Failed("No SOA in ANSWER, zone='%s', server='%s'" %
-                                     (zone.name, self.name))
-
-                    soa = str((resp.resp.answer[0]).to_rdataset())
-                    _serial = int(soa.split()[5])
-
-                    if not serial:
-                        break
-                    elif equal and serial == _serial:
-                        break
-                    elif greater and serial < _serial:
-                        break
+                if not serial:
+                    break
+                elif equal and serial == _serial:
+                    break
+                elif greater and serial < _serial:
+                    break
             time.sleep(2)
         else:
             self.backtrace()
@@ -766,7 +781,8 @@ class Server(object):
 
         return _serial
 
-    def zones_wait(self, zone_list, serials=None, serials_zfile=False, equal=False, greater=True):
+    def zones_wait(self, zone_list, serials=None, serials_zfile=False, equal=False,
+                   greater=True, use_ctl=False):
         new_serials = dict()
 
         if serials_zfile:
@@ -779,7 +795,7 @@ class Server(object):
         for zone in zone_list:
             old_serial = serials[zone.name] if serials else None
             new_serial = self.zone_wait(zone, serial=old_serial, equal=equal,
-                                        greater=greater)
+                                        greater=greater, use_ctl=use_ctl)
             new_serials[zone.name] = new_serial
 
         return new_serials
@@ -1276,7 +1292,10 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         s.item_str("rundir", self.dir)
         s.item_str("pidfile", os.path.join(self.dir, self.pidfile))
-        s.item_str("listen", "%s@%s" % (self.addr, self.port))
+        if self.addr.startswith("/"):
+            s.item_str("listen", "%s" % self.addr)
+        else:
+            s.item_str("listen", "%s@%s" % (self.addr, self.port))
         if self.udp_workers:
             s.item_str("udp-workers", self.udp_workers)
         if self.bg_workers:
@@ -1325,7 +1344,10 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", master.name)
-                    s.item_str("address", "%s@%s" % (master.addr, master.port))
+                    if master.addr.startswith("/"):
+                        s.item_str("address", "%s" % master.addr)
+                    else:
+                        s.item_str("address", "%s@%s" % (master.addr, master.port))
                     if self.tsig:
                         s.item_str("key", self.tsig.name)
                     if master.no_xfr_edns:
@@ -1337,7 +1359,10 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", slave.name)
-                    s.item_str("address", "%s@%s" % (slave.addr, slave.port))
+                    if slave.addr.startswith("/"):
+                        s.item_str("address", "%s" % slave.addr)
+                    else:
+                        s.item_str("address", "%s@%s" % (slave.addr, slave.port))
                     if self.tsig:
                         s.item_str("key", self.tsig.name)
                     servers.add(slave.name)
@@ -1347,7 +1372,10 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", parent.name)
-                    s.item_str("address", "%s@%s" % (parent.addr, parent.port))
+                    if parent.addr.startswith("/"):
+                        s.item_str("address", "%s" % parent.addr)
+                    else:
+                        s.item_str("address", "%s@%s" % (parent.addr, parent.port))
                     servers.add(parent.name)
 
         if have_remote:
@@ -1366,7 +1394,10 @@ class Knot(Server):
             for master in z.masters:
                 if master.name not in servers:
                     s.id_item("id", "acl_%s" % master.name)
-                    s.item_str("address", master.addr)
+                    if master.addr.startswith("/"):
+                        s.item_str("address", self.addr)
+                    else:
+                        s.item_str("address", master.addr)
                     if master.tsig:
                         s.item_str("key", master.tsig.name)
                     s.item("action", "notify")
@@ -1375,7 +1406,10 @@ class Knot(Server):
                 if slave.name in servers:
                     continue
                 s.id_item("id", "acl_%s" % slave.name)
-                s.item_str("address", slave.addr)
+                if slave.addr.startswith("/"):
+                    s.item_str("address", self.addr)
+                else:
+                    s.item_str("address", slave.addr)
                 if slave.tsig:
                     s.item_str("key", slave.tsig.name)
                 s.item("action", "transfer")

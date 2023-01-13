@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,8 +52,7 @@ static knotd_state_t queryacl_process(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	if (ctx->allow_iface.count > 0) {
-		struct sockaddr_storage buff;
-		const struct sockaddr_storage *addr = knotd_qdata_local_addr(qdata, &buff);
+		const struct sockaddr_storage *addr = knotd_qdata_local_addr(qdata);
 		if (!knotd_conf_addr_range_match(&ctx->allow_iface, addr)) {
 			qdata->rcode = KNOT_RCODE_NOTAUTH;
 			return KNOTD_STATE_FAIL;

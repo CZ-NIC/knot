@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -75,8 +75,8 @@ typedef enum {
 	YP_TOPT,      /*!< Option from the list. */
 	YP_TSTR,      /*!< String. */
 	YP_THEX,      /*!< String or hexadecimal string if "0x" prefix. */
-	YP_TADDR,     /*!< Address (address[\@port] or UNIX socket path). */
-	YP_TNET,      /*!< Network address range (address[/mask] or address-address). */
+	YP_TADDR,     /*!< Address (address[\@port] | UNIX path). */
+	YP_TNET,      /*!< Network address range (address[/mask] | abs. UNIX path | address-address). */
 	YP_TDNAME,    /*!< Domain name. */
 	YP_TB64,      /*!< Base64 encoded string. */
 	YP_TDATA,     /*!< Customized data. */

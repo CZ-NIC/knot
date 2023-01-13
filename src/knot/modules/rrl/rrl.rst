@@ -46,7 +46,7 @@ Module reference
      rate-limit: INT
      slip: INT
      table-size: INT
-     whitelist: ADDR[/INT] | ADDR-ADDR ...
+     whitelist: ADDR[/INT] | ADDR-ADDR | STR ...
 
 .. _mod-rrl_id:
 
@@ -126,8 +126,8 @@ noting, that some responses can't be truncated (e.g. SERVFAIL).
 whitelist
 .........
 
-A list of IP addresses, network subnets, or network ranges to exempt from
-rate limiting. Empty list means that no incoming connection will be
-white-listed.
+An ordered list of IP addresses, absolute UNIX socket paths, network subnets,
+or network ranges to exempt from rate limiting.
+Empty list means that no incoming connection will be white-listed.
 
 *Default:* not set

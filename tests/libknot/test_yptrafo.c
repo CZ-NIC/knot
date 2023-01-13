@@ -1,4 +1,4 @@
-/*  Copyright (C) 2015 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -369,6 +369,7 @@ int main(int argc, char *argv[])
 	addr_bad_test("192.168.123.1@65536", KNOT_ERANGE);
 
 	/* Address range tests. */
+	addr_range_test("/tmp/unix.sock");
 	addr_range_test("1.1.1.1");
 	addr_range_test("1.1.1.1/0");
 	addr_range_test("1.1.1.1/32");

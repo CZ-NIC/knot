@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,10 +33,31 @@
 #define SOCKADDR_STRLEN_EXT (1 + 6) /* '@', 5 digits number, \0 */
 #define SOCKADDR_STRLEN (sizeof(struct sockaddr_un) + SOCKADDR_STRLEN_EXT)
 
+/*
+ * A convenient replacement of `struct sockaddr_storage` with smaller AF_UNIX storage.
+ *
+ * Ensure this structure isn't accessed at full `struct sockaddr_storage` range!
+ *
+ * The alignment is needed when this structure is an array type and a pointer to this
+ * array is casted to `struct sockaddr_storage *` and accessed. UBSAN complains otherwise.
+ *
+ * The `sun_path` size is a result of:
+ *   `sizeof(struct sockaddr_in6) - sizeof(sa_family_t) + 4B padding`.
+ */
+typedef union __attribute__ ((aligned (8))) {
+	struct sockaddr ip;
+	struct sockaddr_in ip4;
+	struct sockaddr_in6 ip6;
+	struct {
+		sa_family_t sun_family;
+		char sun_path[30];
+	} un;
+} sockaddr_t;
+
 /*!
  * \brief Calculate current structure length based on address family.
  *
- * \param ss  Socket address.
+ * \param ss  Socket address (can be sockaddr_t).
  *
  * \return Number of bytes or error code.
  */
@@ -45,8 +66,8 @@ int sockaddr_len(const struct sockaddr_storage *ss);
 /*!
  * \brief Compare addresses.
  *
- * \param a            First address.
- * \param b            Second address.
+ * \param a            First address (can be sockaddr_t).
+ * \param b            Second address (can be sockaddr_t).
  * \param ignore_port  Ignore port indication.
  *
  * \return like memcmp(3)
@@ -57,7 +78,7 @@ int sockaddr_cmp(const struct sockaddr_storage *a, const struct sockaddr_storage
 /*!
  * \brief Set address and port.
  *
- * \param ss       Socket address.
+ * \param ss       Socket address (CANNOT be sockaddr_t!).
  * \param family   Address family.
  * \param straddr  IP address in string format.
  * \param port     Port.
@@ -69,7 +90,7 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 /*!
  * \brief Return raw network address in network byte order.
  *
- * \param[in]  ss        Socket address.
+ * \param[in]  ss        Socket address (can be sockaddr_t).
  * \param[out] addr_size Address length.
  *
  * \return Pointer to binary buffer of size addr_size.
@@ -79,7 +100,7 @@ void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size);
 /*!
  * \brief Set raw address.
  *
- * \param ss             Socket address.
+ * \param ss             Socket address (CANNOT be sockaddr_t!).
  * \param family         Address family.
  * \param raw_addr       IP address in binary format.
  * \param raw_addr_size  Size of the binary address.
@@ -96,7 +117,7 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
  *
  * \param buf     Destination for string representation.
  * \param maxlen  Maximum number of written bytes.
- * \param ss      Socket address.
+ * \param ss      Socket address (can be sockaddr_t).
  *
  * \return Number of bytes written on success, error code on failure.
  */
@@ -129,15 +150,15 @@ char *sockaddr_hostname(void);
 /*!
  * \brief Check if address is ANY address.
  *
- * \param ss  Socket address.
+ * \param ss  Socket address (can be sockaddr_t).
  */
 bool sockaddr_is_any(const struct sockaddr_storage *ss);
 
 /*!
  * \brief Check if two addresses match the given network prefix.
  *
- * \param ss1     First address.
- * \param ss2     Second address.
+ * \param ss1     First address (can be sockaddr_t).
+ * \param ss2     Second address (can be sockaddr_t).
  * \param prefix  Prefix length.
  *
  * \return True on match.
@@ -149,9 +170,9 @@ bool sockaddr_net_match(const struct sockaddr_storage *ss1,
 /*!
  * \brief Check if the address is within the given address range (inclusive).
  *
- * \param ss      Address to check.
- * \param ss_min  Minimum address.
- * \param ss_max  Maximum address.
+ * \param ss      Address to check (can be sockaddr_t).
+ * \param ss_min  Minimum address (can be sockaddr_t).
+ * \param ss_max  Maximum address (can be sockaddr_t).
  *
  * \return True on match.
  */

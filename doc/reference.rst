@@ -160,7 +160,7 @@ General options related to the server.
      proxy-allowlist: ADDR[/INT] | ADDR-ADDR ...
      dbus-event: none | running | zone-updated | ksk-submission | dnssec-invalid ...
      dbus-init-delay: TIME
-     listen: ADDR[@INT] ...
+     listen: ADDR[@INT] | STR ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -557,7 +557,7 @@ configured remotes is considered when evaluating authorized operations.
 proxy-allowlist
 ---------------
 
-An ordered list of IP addresses, network subnets, or network ranges
+An ordered list of IP addresses, absolute UNIX socket paths, network subnets, or network ranges
 which are allowed as a source address of proxied DNS traffic over UDP.
 The supported proxy protocol is
 `haproxy PROXY v2 <https://www.haproxy.org/download/2.5/doc/proxy-protocol.txt>`_.
@@ -1277,7 +1277,7 @@ transfer, target for a notification, etc.).
 
  remote:
    - id: STR
-     address: ADDR[@INT] ...
+     address: ADDR[@INT] | STR ...
      via: ADDR[@INT] ...
      key: key_id
      block-notify-after-transfer: BOOL
@@ -1296,7 +1296,8 @@ A remote identifier.
 address
 -------
 
-An ordered list of destination IP addresses which are used for communication
+An ordered list of destination IP addresses or UNIX socket paths which are
+used for communication
 with the remote server. The addresses are tried in sequence until the
 remote is reached. Optional destination port (default is 53)
 can be appended to the address using ``@`` separator.
@@ -1413,7 +1414,7 @@ and dynamic DNS update) which are allowed to be processed or denied.
 
  acl:
    - id: STR
-     address: ADDR[/INT] | ADDR-ADDR ...
+     address: ADDR[/INT] | ADDR-ADDR | STR ...
      key: key_id ...
      remote: remote_id | remotes_id ...
      action: query | notify | transfer | update ...
@@ -1435,7 +1436,8 @@ An ACL rule identifier.
 address
 -------
 
-An ordered list of IP addresses, network subnets, or network ranges. The query's
+An ordered list of IP addresses, absolute UNIX socket paths, network subnets,
+or network ranges. The query's
 source address must match one of them. If this item is not set, address match is not
 required.
 
