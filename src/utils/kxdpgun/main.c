@@ -86,6 +86,7 @@ typedef struct {
 	size_t collected;
 	uint64_t duration;
 	uint64_t qry_sent;
+	uint64_t syn_sent;
 	uint64_t synack_recv;
 	uint64_t ans_recv;
 	uint64_t finack_recv;
@@ -167,6 +168,7 @@ static void clear_stats(kxdpgun_stats_t *st)
 	pthread_mutex_lock(&st->mutex);
 	st->duration    = 0;
 	st->qry_sent    = 0;
+	st->syn_sent    = 0;
 	st->synack_recv = 0;
 	st->ans_recv    = 0;
 	st->finack_recv = 0;
@@ -183,6 +185,7 @@ static size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 	pthread_mutex_lock(&into->mutex);
 	into->duration = MAX(into->duration, what->duration);
 	into->qry_sent    += what->qry_sent;
+	into->syn_sent    += what->syn_sent;
 	into->synack_recv += what->synack_recv;
 	into->ans_recv    += what->ans_recv;
 	into->finack_recv += what->finack_recv;
@@ -202,24 +205,30 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv)
 	pthread_mutex_lock(&st->mutex);
 
 #define ps(counter)  ((counter) * 1000 / (st->duration / 1000))
-#define pct(counter) ((counter) * 100 / st->qry_sent)
+#define pctg(counter, unit) ((counter) * 100 / (unit))
+#define pct(counter) (pctg((counter), st->qry_sent))
 
+	const uint64_t connections = tcp ? st->syn_sent : st->qry_sent;
 	const char *name = tcp ? "SYNs:    " : quic ? "initials:" : "queries: ";
 	printf("total %s    %"PRIu64" (%"PRIu64" pps)\n", name,
-	       st->qry_sent, ps(st->qry_sent));
+	       connections, ps(connections));
 	if (st->qry_sent > 0 && recv) {
 		if (tcp || quic) {
 		name = tcp ? "established:" : "handshakes: ";
 		printf("total %s %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n", name,
-		       st->synack_recv, ps(st->synack_recv), pct(st->synack_recv));
+		       st->synack_recv, ps(st->synack_recv), pctg(st->synack_recv, connections));
+		}
+		if (tcp) {
+			printf("total queries:     %"PRIu64" (%"PRIu64" pps)\n",
+			       st->qry_sent, ps(st->qry_sent));
 		}
 		printf("total replies:     %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
 		       st->ans_recv, ps(st->ans_recv), pct(st->ans_recv));
 		if (tcp) {
 		printf("total closed:      %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
-		       st->finack_recv, ps(st->finack_recv), pct(st->finack_recv));
+		       st->finack_recv, ps(st->finack_recv), pctg(st->finack_recv, connections));
 		printf("total reset:       %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
-		       st->rst_recv, ps(st->rst_recv), pct(st->rst_recv));
+		       st->rst_recv, ps(st->rst_recv), pctg(st->rst_recv, connections));
 		}
 		printf("average DNS reply size: %"PRIu64" B\n",
 		       st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
@@ -439,7 +448,7 @@ void *xdp_gun_thread(void *_ctx)
 	list_t quic_sessions;
 	init_list(&quic_sessions);
 #endif // ENABLE_QUIC
-	const uint64_t extra_wait = ctx->quic ? 4000000 : 1000000;
+	const uint64_t extra_wait = ctx->quic || ctx->tcp ? 4000000 : 1000000;
 
 	if (ctx->tcp) {
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
@@ -579,7 +588,11 @@ void *xdp_gun_thread(void *_ctx)
 				if (knot_xdp_send(xsk, pkts, alloced, &really_sent) != KNOT_EOK) {
 					lost += alloced;
 				}
-				local_stats.qry_sent += really_sent;
+				if (ctx->tcp) {
+					local_stats.syn_sent += really_sent;
+				} else {
+					local_stats.qry_sent += really_sent;
+				}
 				(void)knot_xdp_send_finish(xsk);
 
 				break;
@@ -628,6 +641,7 @@ void *xdp_gun_thread(void *_ctx)
 							if (ret != KNOT_EOK) {
 								errors++;
 							}
+							local_stats.qry_sent++;
 							break;
 						case XDP_TCP_CLOSE:
 							local_stats.finack_recv++;
@@ -644,6 +658,17 @@ void *xdp_gun_thread(void *_ctx)
 									rl->answer = XDP_TCP_CLOSE;
 								}
 							}
+						}
+						if (rl->inbufs_count > 0 && duration < ctx->duration) {
+							put_dns_payload(&payl, true, ctx, &payload_ptr);
+							ret = knot_tcp_reply_data(rl, tcp_table,
+							                          (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE),
+							                          payl.iov_base, payl.iov_len);
+							if (ret != KNOT_EOK) {
+								errors++;
+							}
+							local_stats.qry_sent++;
+							rl->answer = XDP_TCP_NOOP;
 						}
 					}
 
@@ -745,7 +770,7 @@ void *xdp_gun_thread(void *_ctx)
 #endif // ENABLE_QUIC
 
 		// speed and signal part
-		uint64_t dura_exp = (local_stats.qry_sent * 1000000) / ctx->qps;
+		uint64_t dura_exp = (MAX(local_stats.qry_sent, local_stats.syn_sent) * 1000000) / ctx->qps;
 		duration = timer_end(&timer);
 		if (xdp_trigger == KXDPGUN_STOP && ctx->duration > duration) {
 			ctx->duration = duration;
