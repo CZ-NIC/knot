@@ -65,7 +65,7 @@ static int udp_stdin_recv(_unused_ int fd, void *d)
 {
 	udp_stdin_t *rq = (udp_stdin_t *)d;
 	rq->iov[RX].iov_len = fread(rq->iov[RX].iov_base, 1,
-	                            KNOT_WIRE_MAX_PKTSIZE, stdin);
+	                            sizeof(rq->buf[RX]), stdin);
 	if (rq->iov[RX].iov_len == 0) {
 		next(rq);
 	}
