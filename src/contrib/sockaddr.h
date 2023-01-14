@@ -55,7 +55,7 @@ typedef union __attribute__ ((aligned (8))) {
 } sockaddr_t;
 
 /*!
- * \brief Calculate current structure length based on address family.
+ * \brief Calculate current structure length based on its content.
  *
  * \param ss  Socket address (can be sockaddr_t).
  *
@@ -126,7 +126,7 @@ int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss);
 /*!
  * \brief Return port number from address.
  *
- * \param ss  Socket address.
+ * \param ss  Socket address (can be sockaddr_t).
  *
  * \return Port number or error code.
  */
@@ -135,7 +135,7 @@ int sockaddr_port(const struct sockaddr_storage *ss);
 /*!
  * \brief Set port number.
  *
- * \param ss    Socket address.
+ * \param ss    Socket address (can be sockaddr_t).
  * \param port  Port to set.
  */
 void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port);

@@ -159,8 +159,7 @@ void *sockaddr_raw(const struct sockaddr_storage *ss, size_t *addr_size)
 		return &ipv6->sin6_addr;
 	} else if (ss->ss_family == AF_UNIX) {
 		struct sockaddr_un *un = (struct sockaddr_un *)ss;
-		*addr_size = offsetof(struct sockaddr_un, sun_path) +
-		             strlen(un->sun_path) + 1;
+		*addr_size = strlen(un->sun_path) + 1;
 		return un->sun_path;
 	} else {
 		return NULL;
