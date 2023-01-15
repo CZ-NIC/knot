@@ -126,6 +126,27 @@ static void test_net_match(void)
 	ok(ret == true, "match: ipv6 - last byte, precise prefix");
 	ret = sockaddr_net_match(&t, &ref6, 127);
 	ok(ret == false, "match: ipv6 - last byte, not match");
+
+	// UNIX socket path tests
+
+	struct sockaddr_storage ref_un = { 0 };
+	check_sockaddr_set(&ref_un, AF_UNIX, "/tmp/knot.listen", 0);
+
+	check_sockaddr_set(&t, AF_UNIX, "/tmp/knot.listen", 0);
+	ret = sockaddr_net_match(&t, &ref_un, 0);
+	ok(ret == true, "match: UNIX, match");
+
+	check_sockaddr_set(&t, AF_UNIX, "/tmp/knot.liste", 0);
+	ret = sockaddr_net_match(&t, &ref_un, 0);
+	ok(ret == false, "match: UNIX, shorter, not match");
+
+	check_sockaddr_set(&t, AF_UNIX, "/tmp/knot.listen.", 0);
+	ret = sockaddr_net_match(&t, &ref_un, 0);
+	ok(ret == false, "match: UNIX, longer, not match");
+
+	check_sockaddr_set(&t, AF_UNIX, "1234567890123456789012345678901234567890", 0);
+	ret = sockaddr_net_match(&t, &ref_un, 0);
+	ok(ret == false, "match: UNIX, longer than max for sockaddr_t, not match");
 }
 
 static void test_range_match(void)
@@ -210,6 +231,12 @@ static void test_range_match(void)
 	check_sockaddr_set(&t, AF_INET6, "2:FA24::4:24", 0);
 	ret = sockaddr_range_match(&t, &min, &max);
 	ok(ret == false, "match: ipv6 middle range - negative far max");
+
+	// UNIX socket path tests
+
+	check_sockaddr_set(&t, AF_UNIX, "/tmp/knot.listen", 0);
+	ret = sockaddr_range_match(&t, &t, &t);
+	ok(ret == false, "match: range not supported for UNIX");
 }
 
 int main(int argc, char *argv[])
