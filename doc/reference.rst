@@ -557,7 +557,7 @@ configured remotes is considered when evaluating authorized operations.
 proxy-allowlist
 ---------------
 
-An ordered list of IP addresses, absolute UNIX socket paths, network subnets, or network ranges
+An ordered list of IP addresses, network subnets, or network ranges
 which are allowed as a source address of proxied DNS traffic over UDP.
 The supported proxy protocol is
 `haproxy PROXY v2 <https://www.haproxy.org/download/2.5/doc/proxy-protocol.txt>`_.
@@ -619,8 +619,9 @@ One or more IP addresses where the server listens for incoming queries.
 Optional port specification (default is 53) can be appended to each address
 using ``@`` separator. Use ``0.0.0.0`` for all configured IPv4 addresses or
 ``::`` for all configured IPv6 addresses. Filesystem path can be specified
-for listening on local unix SOCK_STREAM socket. Non-local address binding
-is automatically enabled if supported by the operating system.
+for listening on local unix SOCK_STREAM socket. Non-absolute path
+(i.e. not starting with ``/``) is relative to :ref:`server_rundir`.
+Non-local address binding is automatically enabled if supported by the operating system.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -1297,10 +1298,12 @@ address
 -------
 
 An ordered list of destination IP addresses or UNIX socket paths which are
-used for communication
-with the remote server. The addresses are tried in sequence until the
-remote is reached. Optional destination port (default is 53)
+used for communication with the remote server. Non-absolute path
+(i.e. not starting with ``/``) is relative to :ref:`server_rundir`.
+Optional destination port (default is 53)
 can be appended to the address using ``@`` separator.
+The addresses are tried in sequence until the
+remote is reached.
 
 *Default:* not set
 

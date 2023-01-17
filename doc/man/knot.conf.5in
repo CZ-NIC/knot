@@ -206,7 +206,7 @@ server:
     edns\-client\-subnet: BOOL
     answer\-rotation: BOOL
     automatic\-acl: BOOL
-    proxy\-allowlist: ADDR[/INT] | ADDR\-ADDR | STR ...
+    proxy\-allowlist: ADDR[/INT] | ADDR\-ADDR ...
     dbus\-event: none | running | zone\-updated | ksk\-submission | dnssec\-invalid ...
     dbus\-init\-delay: TIME
     listen: ADDR[@INT] | STR ...
@@ -505,7 +505,7 @@ configured remotes is considered when evaluating authorized operations.
 \fIDefault:\fP \fBoff\fP
 .SS proxy\-allowlist
 .sp
-An ordered list of IP addresses, absolute UNIX socket paths, network subnets, or network ranges
+An ordered list of IP addresses, network subnets, or network ranges
 which are allowed as a source address of proxied DNS traffic over UDP.
 The supported proxy protocol is
 \fI\%haproxy PROXY v2\fP\&.
@@ -569,9 +569,9 @@ One or more IP addresses where the server listens for incoming queries.
 Optional port specification (default is 53) can be appended to each address
 using \fB@\fP separator. Use \fB0.0.0.0\fP for all configured IPv4 addresses or
 \fB::\fP for all configured IPv6 addresses. Filesystem path can be specified
-for listening on local unix SOCK_STREAM socket. Non\-absolute paths are relative
-to \fI\%rundir\fP\&. Non\-local address binding
-is automatically enabled if supported by the operating system.
+for listening on local unix SOCK_STREAM socket. Non\-absolute path
+(i.e. not starting with \fB/\fP) is relative to \fI\%rundir\fP\&.
+Non\-local address binding is automatically enabled if supported by the operating system.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
@@ -1176,10 +1176,12 @@ A remote identifier.
 .SS address
 .sp
 An ordered list of destination IP addresses or UNIX socket paths which are
-used for communication with the remote server. Non\-absolute paths are relative
-to \fI\%rundir\fP\&. The addresses are tried in sequence until the
-remote is reached. Optional destination port (default is 53)
+used for communication with the remote server. Non\-absolute path
+(i.e. not starting with \fB/\fP) is relative to \fI\%rundir\fP\&.
+Optional destination port (default is 53)
 can be appended to the address using \fB@\fP separator.
+The addresses are tried in sequence until the
+remote is reached.
 .sp
 \fIDefault:\fP not set
 .sp
