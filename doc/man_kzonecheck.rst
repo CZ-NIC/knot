@@ -1,7 +1,7 @@
 .. highlight:: console
 
-kzonecheck – Knot DNS zone file checking tool
-=============================================
+``kzonecheck`` – Knot DNS zone file checking tool
+=================================================
 
 Synopsis
 --------

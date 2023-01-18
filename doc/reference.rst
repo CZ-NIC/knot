@@ -16,20 +16,20 @@ that not all of the features are supported.
 For the description of configuration items, we have to declare a meaning of
 the following symbols:
 
-- *INT* – Integer
-- *STR* – Textual string
-- *HEXSTR* – Hexadecimal string (with ``0x`` prefix)
-- *BOOL* – Boolean value (``on``/``off`` or ``true``/``false``)
-- *TIME* – Number of seconds, an integer with possible time multiplier suffix
+- ``INT`` – Integer
+- ``STR`` – Textual string
+- ``HEXSTR`` – Hexadecimal string (with ``0x`` prefix)
+- ``BOOL`` – Boolean value (``on``/``off`` or ``true``/``false``)
+- ``TIME`` – Number of seconds, an integer with possible time multiplier suffix
   (``s`` ~ 1, ``m`` ~ 60, ``h`` ~ 3600 or ``d`` ~ 24 * 3600)
-- *SIZE* – Number of bytes, an integer with possible size multiplier suffix
+- ``SIZE`` – Number of bytes, an integer with possible size multiplier suffix
   (``B`` ~ 1, ``K`` ~ 1024, ``M`` ~ 1024^2 or ``G`` ~ 1024^3)
-- *BASE64* – Base64 encoded string
-- *ADDR* – IPv4 or IPv6 address
-- *DNAME* – Domain name
-- ... – Multi-valued item, order of the values is preserved
-- [ ] – Optional value
-- \| – Choice
+- ``BASE64`` – Base64 encoded string
+- ``ADDR`` – IPv4 or IPv6 address
+- ``DNAME`` – Domain name
+- ``...`` – Multi-valued item, order of the values is preserved
+- ``[`` ``]`` – Optional value
+- ``|`` – Choice
 
 The configuration consists of several fixed sections and optional module
 sections. There are 16 fixed sections (``module``, ``server``, ``xdp``, ``control``,
@@ -63,25 +63,35 @@ Also each configuration section or sequence block allows a permanent
 comment using the ``comment`` item which is stored in the server beside the
 configuration.
 
-.. _Includes:
+.. _including configuration:
 
-Includes
-========
+Including configuration
+=======================
 
 Another configuration file or files, matching a pattern, can be included at
-the top level in the current file. If the path is not absolute, then it
-is considered to be relative to the current file. The pattern can be
-an arbitrary string meeting POSIX *glob* requirements, e.g. dir/\*.conf.
-Matching files are processed in sorted order.
+the top level in the current file.
 
 ::
 
  include: STR
 
-.. _Module section:
+.. _include:
 
-Module section
-==============
+include
+-------
+
+A path or a matching pattern specifying one or more files that are included
+at the place of the include option position in the configuration.
+If the path is not absolute, then it is considered to be relative to the
+current file. The pattern can be an arbitrary string meeting POSIX *glob*
+requirements, e.g. dir/\*.conf. Matching files are processed in sorted order.
+
+*Default:* not set
+
+.. _module section:
+
+``module`` section
+==================
 
 Dynamic modules loading configuration.
 
@@ -116,10 +126,10 @@ A path to a shared library file with the module implementation.
 *Default:* ``${libdir}/knot/modules-${version}``/module_name.so
 (or ``${path}``/module_name.so if configured with ``--with-moduledir=path``)
 
-.. _Server section:
+.. _server section:
 
-Server section
-==============
+``server`` section
+==================
 
 General options related to the server.
 
@@ -627,10 +637,10 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
-.. _XDP section:
+.. _xdp section:
 
-XDP section
-===========
+``xdp`` section
+===============
 
 Various options related to XDP listening, especially TCP.
 
@@ -839,10 +849,10 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* ``off``
 
-.. _Control section:
+.. _control section:
 
-Control section
-===============
+``control`` section
+===================
 
 Configuration of the server control interface.
 
@@ -871,9 +881,9 @@ Set to 0 for infinity.
 
 *Default:* ``5``
 
-.. _Logging section:
+.. _log section:
 
-Logging section
+``log`` section
 ===============
 
 Server can be configured to log to the standard output, standard error
@@ -957,10 +967,10 @@ Minimum severity level for all message types to be logged.
 
 *Default:* not set
 
-.. _statistics_section:
+.. _stats section:
 
-Statistics section
-==================
+``stats`` section
+=================
 
 Periodic server statistics dumping.
 
@@ -1000,10 +1010,10 @@ instead of file replacement.
 
 *Default:* ``off``
 
-.. _Database section:
+.. _database section:
 
-Database section
-================
+``database`` section
+====================
 
 Configuration of databases for zone contents, DNSSEC metadata, or event timers.
 
@@ -1150,10 +1160,10 @@ The hard limit for the catalog database maximum size.
 
 *Default:* ``20G`` (20 GiB), or ``512M`` (512 MiB) for 32-bit
 
-.. _Keystore section:
+.. _keystore section:
 
-Keystore section
-================
+``keystore`` section
+====================
 
 DNSSEC keystore configuration.
 
@@ -1213,10 +1223,10 @@ are labeled in the form ``<zone_name> KSK|ZSK``.
 
 *Default:* ``off``
 
-.. _Key section:
+.. _key section:
 
-Key section
-===========
+``key`` section
+===============
 
 Shared TSIG keys used to authenticate communication with the server.
 
@@ -1266,10 +1276,10 @@ Shared key secret.
 
 *Default:* not set
 
-.. _Remote section:
+.. _remote section:
 
-Remote section
-==============
+``remote`` section
+==================
 
 Definitions of remote servers for outgoing connections (source of a zone
 transfer, target for a notification, etc.).
@@ -1376,8 +1386,10 @@ Automatic ACL rules are evaluated before explicit :ref:`zone ACL <zone_acl>` con
 
 *Default:* ``on``
 
-Remotes section
-===============
+.. _remotes section:
+
+``remotes`` section
+===================
 
 Definitions of groups of remote servers. Remote grouping can simplify the
 configuration.
@@ -1404,10 +1416,10 @@ An ordered list of :ref:`references<remote_id>` to remote server definitions.
 
 *Default:* not set
 
-.. _ACL section:
+.. _acl section:
 
-ACL section
-===========
+``acl`` section
+===============
 
 Access control list rule definitions. An ACL rule is a description of one
 or more authorized operations (zone transfer request, zone change notification,
@@ -1561,10 +1573,10 @@ multiple zones.
 
 *Default:* not set
 
-.. _Submission section:
+.. _submission section:
 
-Submission section
-==================
+``submission`` section
+======================
 
 Parameters of KSK submission checks.
 
@@ -1632,10 +1644,10 @@ parent zone.
 
 *Default:* ``0``
 
-.. _Policy section:
+.. _policy section:
 
-Policy section
-==============
+``policy`` section
+==================
 
 DNSSEC policy configuration.
 
@@ -2119,10 +2131,10 @@ Multiple values may be specified.
 
 *Default:* ``none``
 
-.. _Template section:
+.. _template section:
 
-Template section
-================
+``template`` section
+====================
 
 A template is shareable zone settings, which can simplify configuration by
 reducing duplicates. A special default template (with the *default* identifier)
@@ -2135,6 +2147,10 @@ if a zone doesn't have another template specified.
    - id: STR
      global-module: STR/STR ...
      # All zone options (excluding 'template' item)
+
+.. NOTE::
+   If an item is explicitly specified both in the referenced template and
+   the zone, the template item value is overriden by the zone item value.
 
 .. _template_id:
 
@@ -2156,10 +2172,10 @@ An ordered list of references to query modules in the form of *module_name* or
 
 *Default:* not set
 
-.. _Zone section:
+.. _zone section:
 
-Zone section
-============
+``zone`` section
+================
 
 Definition of zones served by the server.
 

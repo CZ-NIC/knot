@@ -6,7 +6,7 @@ Troubleshooting
 ***************
 
 First of all, check the logs. Enabling at least the ``warning`` message
-severity may help you to identify some problems. See the :ref:`Logging section`
+severity may help you to identify some problems. See the :ref:`log section`
 for details.
 
 ..  _Submitting a bugreport:
