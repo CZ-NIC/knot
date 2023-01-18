@@ -32,10 +32,10 @@ Now let's walk through this configuration step by step:
   defines where the server will listen for incoming connections.
   We have defined the server to listen on all available IPv4 and IPv6 addresses,
   all on port 53.
-- The :ref:`zone section<Zone section>` defines the zones that the server will
+- The :ref:`zone section` defines the zones that the server will
   serve. In this case, we defined one zone named *example.com* which is stored
   in the zone file :file:`/var/lib/knot/zones/example.com.zone`.
-- The :ref:`log section<Logging section>` defines the log facilities for
+- The :ref:`log section` defines the log facilities for
   the server. In this example, we told Knot DNS to send its log messages with
   the severity ``info`` or more serious to the syslog (or systemd journal).
 

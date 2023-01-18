@@ -1,7 +1,7 @@
 .. highlight:: console
 
-kdig – Advanced DNS lookup utility
-==================================
+``kdig`` – Advanced DNS lookup utility
+======================================
 
 Synopsis
 --------

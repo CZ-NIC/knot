@@ -1,7 +1,7 @@
 .. highlight:: console
 
-knotd – Knot DNS server daemon
-==============================
+``knotd`` – Knot DNS server daemon
+==================================
 
 Synopsis
 --------

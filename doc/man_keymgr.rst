@@ -1,7 +1,7 @@
 .. highlight:: console
 
-keymgr – Key management utility
-===============================
+``keymgr`` – Key management utility
+===================================
 
 Synopsis
 --------

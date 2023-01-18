@@ -1087,7 +1087,7 @@ Per zone statistics can be shown by::
 To show all supported counters even with 0 value, use the force option.
 
 A simple periodic statistic dump to a YAML file can also be enabled. See
-:ref:`statistics_section` for the configuration details.
+:ref:`stats section` for the configuration details.
 
 As the statistics data can be accessed over the server control socket,
 it is possible to create an arbitrary script (Python is supported at the moment)

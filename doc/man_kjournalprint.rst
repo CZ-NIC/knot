@@ -1,7 +1,7 @@
 .. highlight:: console
 
-kjournalprint – Knot DNS journal print utility
-==============================================
+``kjournalprint`` – Knot DNS journal print utility
+==================================================
 
 Synopsis
 --------

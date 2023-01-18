@@ -1,7 +1,7 @@
 .. highlight:: console
 
-kzonesign – DNSSEC signing utility
-==================================
+``kzonesign`` – DNSSEC signing utility
+======================================
 
 Synopsis
 --------
