@@ -1,7 +1,7 @@
 .. highlight:: console
 
-knsec3hash – NSEC hash computation utility
-==========================================
+``knsec3hash`` – NSEC hash computation utility
+==============================================
 
 Synopsis
 --------

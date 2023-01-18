@@ -1,7 +1,7 @@
 .. highlight:: console
 
-kxdpgun – DNS benchmarking tool
-===============================
+``kxdpgun`` – DNS benchmarking tool
+===================================
 
 Synopsis
 --------
