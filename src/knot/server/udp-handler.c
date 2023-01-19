@@ -147,19 +147,29 @@ static const sockaddr_t *udp_pktinfo_handle(const struct msghdr *rx, struct msgh
 		return (const sockaddr_t *)&iface->addr;
 	}
 
-	/* Unset the ifindex to not bypass the routing tables. */
+#if defined(IP_PKTINFO)
 	if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
 		struct in_pktinfo *info = (struct in_pktinfo *)CMSG_DATA(cmsg);
 		info->ipi_spec_dst = info->ipi_addr;
-		info->ipi_ifindex = 0;
+		info->ipi_ifindex = 0; // Unset to not bypass the routing tables.
 
 		local->ip4.sin_family = AF_INET;
 		local->ip4.sin_port = ((const struct sockaddr_in *)&iface->addr)->sin_port;
 		local->ip4.sin_addr = info->ipi_addr;
 		return local;
+#elif defined(IP_RECVDSTADDR)
+	if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_RECVDSTADDR) {
+		struct in_addr *addr = (struct in_addr *)CMSG_DATA(cmsg);
+		local->ip4.sin_family = AF_INET;
+		local->ip4.sin_port = ((const struct sockaddr_in *)&iface->addr)->sin_port;
+		local->ip4.sin_addr = *addr;
+		return local;
+#else
+	if (false) {
+#endif
 	} else if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
 		struct in6_pktinfo *info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
-		info->ipi6_ifindex = 0;
+		info->ipi6_ifindex = 0; // Unset to not bypass the routing tables.
 
 		local->ip6.sin6_family = AF_INET6;
 		local->ip6.sin6_port = ((const struct sockaddr_in6 *)&iface->addr)->sin6_port;
