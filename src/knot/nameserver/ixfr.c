@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -179,6 +179,12 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 		return KNOT_EAGAIN;
 	}
 
+	conf_val_t provide = conf_zone_get(conf(), C_PROVIDE_IXFR,
+	                                   qdata->extra->zone->name);
+	if (!conf_bool(&provide)) {
+		return KNOT_ENOTSUP;
+	}
+
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
 	const knot_rrset_t *their_soa = knot_pkt_rr(authority, 0);
 	*serial_from = knot_soa_serial(their_soa->rrs.rdata);
@@ -275,6 +281,10 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
 			IXFROUT_LOG(LOG_INFO, qdata, "zone is up-to-date, serial %u", soa_from);
 			return ixfr_answer_soa(pkt, qdata);
+		case KNOT_ENOTSUP:
+			IXFROUT_LOG(LOG_INFO, qdata, "cannot provide, fallback to AXFR");
+			qdata->type = KNOTD_QUERY_TYPE_AXFR; /* Solve as AXFR. */
+			return axfr_process_query(pkt, qdata);
 		case KNOT_ERANGE:    /* No history -> AXFR. */
 		case KNOT_ENOENT:
 			IXFROUT_LOG(LOG_INFO, qdata, "incomplete history, serial %u, fallback to AXFR", soa_from);

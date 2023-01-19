@@ -1996,6 +1996,7 @@ zone:
     ddns\-master: remote_id
     notify: remote_id | remotes_id ...
     acl: acl_id ...
+    provide\-ixfr: BOOL
     semantic\-checks: BOOL | soft
     zonefile\-sync: TIME
     zonefile\-load: none | difference | difference\-no\-serial | whole
@@ -2099,6 +2100,12 @@ An ordered list of \fI\%references\fP to ACL rules which can allow
 or disallow zone transfers, updates or incoming notifies.
 .sp
 \fIDefault:\fP not set
+.SS provide\-ixfr
+.sp
+If disabled, the server is forced to respond with AXFR to IXFR queries.
+If enabled, IXFR requests are responded normally.
+.sp
+\fIDefault:\fP \fBon\fP
 .SS semantic\-checks
 .sp
 Selects if extra zone semantic checks are used or impacts of the mandatory checks.

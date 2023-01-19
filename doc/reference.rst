@@ -2190,6 +2190,7 @@ Definition of zones served by the server.
      ddns-master: remote_id
      notify: remote_id | remotes_id ...
      acl: acl_id ...
+     provide-ixfr: BOOL
      semantic-checks: BOOL | soft
      zonefile-sync: TIME
      zonefile-load: none | difference | difference-no-serial | whole
@@ -2312,6 +2313,16 @@ An ordered list of :ref:`references<acl_id>` to ACL rules which can allow
 or disallow zone transfers, updates or incoming notifies.
 
 *Default:* not set
+
+.. _zone_provide-ixfr:
+
+provide-ixfr
+------------
+
+If disabled, the server is forced to respond with AXFR to IXFR queries.
+If enabled, IXFR requests are responded normally.
+
+*Default:* ``on``
 
 .. _zone_semantic-checks:
 

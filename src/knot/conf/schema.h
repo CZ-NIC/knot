@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -101,6 +101,7 @@
 #define C_PIDFILE		"\x07""pidfile"
 #define C_POLICY		"\x06""policy"
 #define C_PROPAG_DELAY		"\x11""propagation-delay"
+#define C_PROVIDE_IXFR		"\x0C""provide-ixfr"
 #define C_PROXY_ALLOWLIST	"\x0F""proxy-allowlist"
 #define C_QUIC			"\x04""quic"
 #define C_QUIC_IDLE_CLOSE	"\x17""quic-idle-close-timeout"
