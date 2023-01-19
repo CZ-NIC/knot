@@ -14,6 +14,7 @@ MANPAGES_IN = \
 	man/kxdpgun.8in
 
 MANPAGES_RST = \
+	reference.rst		\
 	man_knotc.rst		\
 	man_knotd.rst		\
 	man_kcatalogprint.rst	\
@@ -59,8 +60,6 @@ SPHINX_V_1 = -n
 AM_V_SPHINX = $(AM_V_SPHINX_@AM_V@)
 AM_V_SPHINX_ = $(AM_V_SPHINX_@AM_DEFAULT_V@)
 AM_V_SPHINX_0 = @echo "  SPHINX   $@";
-
-AM_V_ECHO = @sh -c 'if $(AM_V_P); then echo $$1; fi' --
 
 SPHINXBUILDDIR = $(builddir)/_build
 
@@ -151,8 +150,7 @@ if HAVE_DOCS
 if HAVE_SPHINXBUILD
 html-local:
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
-	$(AM_V_ECHO)
-	$(AM_V_ECHO) "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/html/."
+	@echo "The HTML documentation has been built in $(SPHINXBUILDDIR)/html/"
 
 install-html-local:
 	$(INSTALL) -d $(DESTDIR)/$(docdir) $(DESTDIR)/$(docdir)/_static $(DESTDIR)/$(docdir)/_sources
@@ -162,8 +160,7 @@ install-html-local:
 
 singlehtml:
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
-	$(AM_V_ECHO)
-	$(AM_V_ECHO) "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml/."
+	@echo "The single HTML documentation has been built in $(SPHINXBUILDDIR)/singlehtml/"
 
 install-singlehtml: singlehtml
 	$(INSTALL) -d $(DESTDIR)/$(docdir) $(DESTDIR)/$(docdir)/_static
@@ -172,8 +169,7 @@ install-singlehtml: singlehtml
 
 epub:
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b epub -A today=$(RELEASE_DATE) -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/epub
-	$(AM_V_ECHO)
-	$(AM_V_ECHO) "Build finished. The EPUB file is in $(SPHINXBUILDDIR)/epub/."
+	@echo "The EPUB documentation has been built in $(SPHINXBUILDDIR)/epub/"
 
 install-epub:
 	$(INSTALL) -d $(DESTDIR)/$(docdir)
@@ -183,8 +179,7 @@ if HAVE_PDFLATEX
 pdf-local:
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
 	$(MAKE) -C $(SPHINXBUILDDIR)/latex all-pdf
-	$(AM_V_ECHO)
-	$(AM_V_ECHO) "Build finished. The PDF file is in $(SPHINXBUILDDIR)/latex/."
+	@echo "The PDF documentation has been built in $(SPHINXBUILDDIR)/latex/"
 
 install-pdf-local:
 	$(INSTALL) -d $(DESTDIR)/$(docdir)
@@ -192,16 +187,14 @@ install-pdf-local:
 
 else
 pdf-local install-pdf-local:
-	$(AM_V_ECHO) "You need to install pdflatex and re-run configure to be"
-	$(AM_V_ECHO) "able to generate PDF documentation."
-endif
+	@echo "Install 'pdflatex' and re-run configure to be able to generate PDF documentation!"
+endif # HAVE_PDFLATEX
 
 if HAVE_MAKEINFO
 info-local:
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b texinfo -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
 	$(MAKE) -C $(SPHINXBUILDDIR)/texinfo info
-	$(AM_V_ECHO)
-	$(AM_V_ECHO) "Build finished. The Info file is in $(SPHINXBUILDDIR)/texinfo/."
+	@echo "The Info pages have been built in $(SPHINXBUILDDIR)/texinfo/"
 
 install-info-local:
 	$(INSTALL) -d $(DESTDIR)/$(infodir)
@@ -209,9 +202,8 @@ install-info-local:
 
 else
 info-local install-info-local:
-	$(AM_V_ECHO) "You need to install GNU Texinfo and re-run configure to be"
-	$(AM_V_ECHO) "able to generate info pages."
-endif
+	@echo "Install 'texinfo' and re-run configure to be able to generate Info pages!"
+endif # HAVE_MAKEINFO
 
 .NOTPARALLEL: man
 man: $(man_MANS)
@@ -221,12 +213,10 @@ $(MANPAGES_IN): $(MANPAGES_RST)
 	@for f in $(SPHINXBUILDDIR)/man/*; do \
 	  sed -e '/^\.TP$$/ {' -e 'n' -e 's/^\.B //' -e '}' "$$f" > "$(srcdir)/man/$$(basename $$f)in"; \
 	done
-	$(AM_V_ECHO)
-	$(AM_V_ECHO) "Build finished. The man pages are in man/."
 
 else
 html-local singlehtml pdf-local info-local epub man install-html-local install-singlehtml install-pdf-local install-info-local install-epub:
-	$(AM_V_ECHO) "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
+	@echo "Install 'sphinx-build' and re-run configure to be able to generate documentation!"
 endif # HAVE_SPHINXBUILD
 
 endif # HAVE_DOCS
