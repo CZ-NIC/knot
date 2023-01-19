@@ -192,6 +192,7 @@ class Server(object):
         self.zone_size_limit = None
         self.serial_policy = None
         self.auto_acl = None
+        self.provide_ixfr = None
 
         self.inquirer = None
 
@@ -1583,7 +1584,7 @@ class Knot(Server):
             self._str(s, "serial-policy", self.serial_policy)
 
             s.item_str("journal-content", z.journal_content)
-            
+
             if z.reverse_from:
                 s.item_str("reverse-generate", z.reverse_from.name)
 
@@ -1598,6 +1599,8 @@ class Knot(Server):
                 s.item_str("zonefile-load", self.zonefile_load)
             elif z.ixfr:
                 s.item_str("zonefile-load", "difference")
+
+            self._bool(s, "provide-ixfr", self.provide_ixfr)
 
             if z.catalog_role == ZoneCatalogRole.GENERATE:
                 s.item_str("catalog-role", "generate")
