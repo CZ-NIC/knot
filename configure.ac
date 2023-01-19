@@ -768,16 +768,12 @@ AM_CONDITIONAL([OSS_FUZZ], [test "$with_oss_fuzz" != "no"])
 
 AS_IF([test "$enable_documentation" = "yes"],[
 
-AC_PATH_PROGS([SPHINXBUILD], [sphinx-build sphinx-build-3], [false])
+AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
 AS_IF([test "$SPHINXBUILD" = "false"],
-  [AC_MSG_WARN([Could not find the 'sphinx-build' executable, you will be unable to regenerate documentation.])],
-  [AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
-   AS_IF([test "$PDFLATEX" = ""],
-     [AC_MSG_WARN([Could not find the 'pdflatex' executable, you will be unable to generate PDF documentation.])])
-   AC_PATH_PROG([MAKEINFO], [makeinfo], [false])
-   AS_IF([test "$MAKEINFO" = "false"],
-     [AC_MSG_WARN([Could not find the 'makeinfo' executable, you will be unable to generate info documentation.])])
-  ])
+  [AC_MSG_WARN([missing 'sphinx-build' executable for documentation generation])]
+)
+AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
+AC_PATH_PROG([MAKEINFO], [makeinfo], [false])
 
 ])
 
