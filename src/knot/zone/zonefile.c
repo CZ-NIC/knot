@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -147,7 +147,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 
 	/* Check zone file. */
 	if (access(source, F_OK | R_OK) != 0) {
-		return KNOT_EACCES;
+		return knot_map_errno();
 	}
 
 	/* Create context. */
