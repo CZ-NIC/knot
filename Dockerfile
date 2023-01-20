@@ -8,7 +8,6 @@ ENV BUILD_PKGS \
     gcc \
     libbpf-dev \
     libedit-dev \
-    libelf-dev \
     libfstrm-dev \
     libgnutls28-dev \
     libidn2-0-dev \
@@ -19,6 +18,7 @@ ENV BUILD_PKGS \
     libprotobuf-c-dev \
     libtool \
     liburcu-dev \
+    libxdp-dev \
     make \
     pkg-config \
     protobuf-c-compiler
@@ -56,9 +56,8 @@ MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
 
 # Environment
 ENV RUNTIME_PKGS \
-    libbpf0 \
+    libbpf1 \
     libedit2 \
-    libelf1 \
     libfstrm0 \
     libgnutls30 \
     libidn2-0 \
@@ -67,7 +66,8 @@ ENV RUNTIME_PKGS \
     libmnl0 \
     libnghttp2-14 \
     libprotobuf-c1 \
-    liburcu8
+    liburcu8 \
+    libxdp1
 
 # Copy artifacts
 COPY --from=0 /tmp/knot-install/ /
