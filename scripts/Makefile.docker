@@ -22,7 +22,7 @@ QEMUDETECT	= /proc/sys/fs/binfmt_misc/qemu-m68k
 
 docker-multiarch: qemu buildx docker-multiarch-builder
 	docker login
-	docker buildx build --builder docker-multiarch --pull --push ${LABEL} \
+	docker buildx build --no-cache --builder docker-multiarch --pull --push ${LABEL} \
 	                    --platform ${PLATFORMS} ${ARGS} ${BRANCHTAG} ${RELTAG} ${EXTRATAG} ..
 
 qemu: ${QEMUDETECT}

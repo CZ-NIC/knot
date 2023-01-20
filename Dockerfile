@@ -79,7 +79,13 @@ RUN apt-get update && \
     install -o knot -g knot -d /config /rundir /storage
 
 # Copy artifacts
-COPY --from=builder /tmp/knot-install/ /
+# `COPY --from=builder /tmp/knot-install/ /` doesn't work with DOCKER_BUILDKIT=1 under buildx
+COPY --from=builder /tmp/knot-install/bin/     /bin/
+COPY --from=builder /tmp/knot-install/config/  /config/
+COPY --from=builder /tmp/knot-install/include/ /include/
+COPY --from=builder /tmp/knot-install/lib/     /lib/
+COPY --from=builder /tmp/knot-install/sbin/    /sbin/
+COPY --from=builder /tmp/knot-install/share/   /share/
 
 # Expose port
 EXPOSE 53/UDP
