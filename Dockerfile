@@ -1,5 +1,5 @@
 ## Intermediate stage ##
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim AS builder
 
 # Environment
 ENV BUILD_PKGS \
@@ -69,17 +69,17 @@ ENV RUNTIME_PKGS \
     liburcu8 \
     libxdp1
 
-# Copy artifacts
-COPY --from=0 /tmp/knot-install/ /
-
 # Install dependencies and create knot user and group
 ARG UID=53
 RUN apt-get update && \
-    apt-get install -yqq ${RUNTIME_PKGS} && \
+    apt-get install -yqq ${RUNTIME_PKGS} adduser && \
     rm -rf /var/lib/apt/lists/* && \
     ldconfig && \
     adduser --quiet --system --group --no-create-home --home /storage --uid=${UID} knot && \
-    chown knot:knot /config /rundir /storage
+    install -o knot -g knot -d /config /rundir /storage
+
+# Copy artifacts
+COPY --from=builder /tmp/knot-install/ /
 
 # Expose port
 EXPOSE 53/UDP
