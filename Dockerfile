@@ -15,6 +15,8 @@ ENV BUILD_PKGS \
     libmaxminddb-dev \
     libmnl-dev \
     libnghttp2-dev \
+    libngtcp2-crypto-gnutls-dev \
+    libngtcp2-dev \
     libprotobuf-c-dev \
     libtool \
     liburcu-dev \
@@ -65,6 +67,8 @@ ENV RUNTIME_PKGS \
     libmaxminddb0 \
     libmnl0 \
     libnghttp2-14 \
+    libngtcp2-crypto-gnutls2 \
+    libngtcp2-9 \
     libprotobuf-c1 \
     liburcu8 \
     libxdp1
