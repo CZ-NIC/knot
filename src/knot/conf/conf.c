@@ -225,8 +225,7 @@ conf_val_t conf_zone_get_txn(
 		const char *group;
 		int ret = catalog_get_catz(conf->catalog, dname, &catalog, &group, &tofree);
 		if (ret == KNOT_EOK) {
-			conf_db_get(conf, txn, C_ZONE, C_CATALOG_TPL, catalog,
-			            knot_dname_size(catalog), &val);
+			val = conf_zone_get_txn(conf, txn, C_CATALOG_TPL, catalog);
 			if (val.code == KNOT_EOK) {
 				conf_val(&val);
 				while (val.code == KNOT_EOK) {
