@@ -298,7 +298,7 @@ Options
 
 **+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
-  applies to each query attempt. Zero value or *notimeout* is intepreted as
+  applies to each query attempt. Zero value or *notimeout* is interpreted as
   infinity.
 
 **+**\ [\ **no**\ ]\ **retry**\ =\ *N*

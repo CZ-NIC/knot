@@ -2051,7 +2051,7 @@ Possible values:
 
 .. WARNING::
    The ``double-ds`` value does not trigger double-DS roll-over method. That method is
-   only suppored by Knot when performed manually, with unset :ref:`policy_ksk-submission-check`.
+   only supported when performed manually, with unset :ref:`policy_ksk-submission-check`.
 
 *Default:* ``rollover``
 
