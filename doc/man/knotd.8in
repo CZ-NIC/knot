@@ -71,7 +71,7 @@ Print the program version.
 .SS Signals
 .sp
 If the \fIknotd\fP process receives a SIGHUP signal, it reloads its configuration and
-reopens the log files, if they are configured. When \fIknotd\fP recieves a SIGUSR1
+reopens the log files, if they are configured. When \fIknotd\fP receives a SIGUSR1
 signal, it reloads all configured zones. Upon receiving a SIGINT signal, \fIknotd\fP
 exits.
 .SH EXIT VALUES
