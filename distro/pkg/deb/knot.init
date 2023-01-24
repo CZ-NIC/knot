@@ -24,7 +24,7 @@ RUNDIR=/run/knot
 # Exit if the package is not installed
 [ -x $DAEMON ] || exit 0
 
-KNOTD_ARGS="-c /etc/knot/knot.conf"
+KNOTD_ARGS=""
 
 # Read configuration variable file if it is present
 [ -r /etc/default/knot ] && . /etc/default/knot
