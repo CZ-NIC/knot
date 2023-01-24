@@ -259,7 +259,7 @@ getent passwd knot >/dev/null || \
 %license COPYING
 %doc %{_pkgdocdir}
 %exclude %{_pkgdocdir}/html
-%attr(770,root,knot) %dir %{_sysconfdir}/knot
+%attr(750,root,knot) %dir %{_sysconfdir}/knot
 %config(noreplace) %attr(640,root,knot) %{_sysconfdir}/knot/knot.conf
 %if 0%{?fedora} || 0%{?rhel} > 7
 %config(noreplace) %attr(644,root,root) %{_sysconfdir}/dbus-1/system.d/cz.nic.knotd.conf
