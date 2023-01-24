@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -216,7 +216,8 @@ int copy_file(const char *dest, const char *src)
 		goto done;
 	}
 
-	ret = open_tmp_file(dest, &tmp_name, &file, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+	ret = open_tmp_file(dest, &tmp_name, &file,
+	                    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
