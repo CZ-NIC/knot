@@ -2,15 +2,18 @@
 set -e
 
 if test "$1" = "purge"; then
-    spool=/var/lib/knot
-    rm -rf $spool/timers $spool/keys $spool/journal
-    rmdir $spool 2>/dev/null || true
+    state_dir=/var/lib/knot
+    for db_name in "catalog" "confdb" "journal" "keys" "timers"; do
+        rm -rf $state_dir/$db_name >/dev/null 2>&1 || true
+    done
+    rmdir $state_dir >/dev/null 2>&1 || true
+    [ -e $state_dir/* ] && echo "Notice: there are still data in ${state_dir}, please check."
 
-    dpkg-statoverride --remove /var/lib/knot >/dev/null 2>/dev/null || true
-    dpkg-statoverride --remove /etc/knot/knot.conf >/dev/null 2>/dev/null || true
-    dpkg-statoverride --remove /etc/knot >/dev/null 2>/dev/null || true
+    dpkg-statoverride --remove /var/lib/knot >/dev/null 2>&1 || true
+    dpkg-statoverride --remove /etc/knot/knot.conf >/dev/null 2>&1 || true
+    dpkg-statoverride --remove /etc/knot >/dev/null 2>&1 || true
 
-    deluser --quiet knot > /dev/null || true
+    deluser --quiet knot >/dev/null 2>&1 || true
 fi
 
 #DEBHELPER#
