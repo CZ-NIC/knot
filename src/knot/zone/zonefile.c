@@ -288,14 +288,16 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 		return KNOT_EEMPTYZONE;
 	}
 
-	int ret = make_path(path, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP);
+	int ret = make_path(path, S_IRUSR | S_IWUSR | S_IXUSR |
+	                          S_IRGRP | S_IWGRP | S_IXGRP);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	FILE *file = NULL;
 	char *tmp_name = NULL;
-	ret = open_tmp_file(path, &tmp_name, &file, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+	ret = open_tmp_file(path, &tmp_name, &file, S_IRUSR | S_IWUSR |
+	                                            S_IRGRP | S_IWGRP);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

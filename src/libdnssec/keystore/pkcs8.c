@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -108,8 +108,8 @@ static int key_open_read(const char *dir_name, const char *id, int *fd_ptr)
 
 static int key_open_write(const char *dir_name, const char *id, int *fd_ptr)
 {
-	return key_open(dir_name, id, O_WRONLY|O_CREAT|O_EXCL,
-			S_IRUSR|S_IWUSR|S_IRGRP, fd_ptr);
+	return key_open(dir_name, id, O_WRONLY | O_CREAT | O_EXCL,
+			S_IRUSR | S_IWUSR | S_IRGRP, fd_ptr);
 }
 
 static int pkcs8_dir_read(pkcs8_dir_handle_t *handle, const char *id, dnssec_binary_t *pem)

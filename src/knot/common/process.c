@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@ static int pid_write(const char *filename, pid_t pid)
 
 	/* Create file. */
 	int ret = KNOT_EOK;
-	int fd = open(filename, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP);
+	int fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
 	if (fd >= 0) {
 		if (write(fd, buf, len) != len) {
 			ret = knot_map_errno();

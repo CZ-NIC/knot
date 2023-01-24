@@ -1,4 +1,5 @@
 /*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -185,7 +186,7 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 			return KNOT_ENOTDIR;
 		}
 	} else {
-		ret = make_dir(ctx->backup_dir, S_IRWXU|S_IRWXG, true);
+		ret = make_dir(ctx->backup_dir, S_IRWXU | S_IRWXG, true);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -215,7 +216,7 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 		}
 	} else {
 		// Create it (which also checks for its existence).
-		int lock_file = open(full_path, O_CREAT|O_EXCL,
+		int lock_file = open(full_path, O_CREAT | O_EXCL,
 		                     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 		if (lock_file < 0) {
 			// Make the reported error better understandable than KNOT_EEXIST.
