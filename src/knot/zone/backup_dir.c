@@ -215,7 +215,8 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 		}
 	} else {
 		// Create it (which also checks for its existence).
-		int lock_file = open(full_path, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
+		int lock_file = open(full_path, O_CREAT|O_EXCL,
+		                     S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 		if (lock_file < 0) {
 			// Make the reported error better understandable than KNOT_EEXIST.
 			return errno == EEXIST ? KNOT_EBUSY : knot_map_errno();
