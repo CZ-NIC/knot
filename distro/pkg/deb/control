@@ -45,7 +45,6 @@ Depends:
  libdnssec9 (= ${binary:Version}),
  libknot13 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
- lsb-base (>= 3.0-6),
  ${misc:Depends},
  ${shlibs:Depends},
 Pre-Depends:
