@@ -31,7 +31,7 @@ KNOTD_ARGS="-c /etc/knot/knot.conf"
 DAEMON_ARGS="-d $KNOTD_ARGS"
 
 # Define LSB log_* functions.
-# Depend on lsb-base (>= 3.0-6) to ensure that this file is present.
+# Depend on sysvinit-utils (>= 2.96) to ensure that this file is present.
 . /lib/lsb/init-functions
 
 #
