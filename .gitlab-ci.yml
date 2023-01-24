@@ -316,6 +316,10 @@ build:documentation:
   only:
     variables:
       - $PKGTEST == "1"
+  artifacts:
+    paths:
+      - pkg/
+    expire_in: '1 week'
   script:
     - python3 -m pip install apkg
     # make sure the archive from pkg:make-archive is available
