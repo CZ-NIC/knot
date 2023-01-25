@@ -1,4 +1,5 @@
 libdnssec.so.9 libdnssec9 #MINVER#
+* Build-Depends-Package: libknot-dev
  dnssec_algorithm_digest_support@Base 3.2.0
  dnssec_algorithm_key_size_check@Base 3.2.0
  dnssec_algorithm_key_size_default@Base 3.2.0
