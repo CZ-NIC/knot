@@ -296,8 +296,8 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 
 	FILE *file = NULL;
 	char *tmp_name = NULL;
-	ret = open_tmp_file(path, &tmp_name, &file, S_IRUSR | S_IWUSR |
-	                                            S_IRGRP | S_IWGRP);
+	ret = open_tmp_file(path, &tmp_name, &file,
+			    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
