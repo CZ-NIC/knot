@@ -218,6 +218,8 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv)
 		if (tcp) {
 		printf("total closed:      %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
 		       st->finack_recv, ps(st->finack_recv), pct(st->finack_recv));
+		}
+		if (tcp || quic) {
 		printf("total reset:       %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
 		       st->rst_recv, ps(st->rst_recv), pct(st->rst_recv));
 		}
@@ -659,7 +661,10 @@ void *xdp_gun_thread(void *_ctx)
 					knot_xquic_conn_t *relays[recvd];
 					for (size_t i = 0; i < recvd; i++) {
 						ret = knot_xquic_handle(quic_table, &pkts[i], 5000000000L, &relays[i]);
-						if (ret < 0 || ret > 0) {
+						if (ret == KNOT_ECONN) {
+							local_stats.rst_recv++;
+							continue;
+						} else if (ret != 0) {
 							errors++;
 							break;
 						}

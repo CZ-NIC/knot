@@ -827,7 +827,7 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 	    || ngtcp2_err_is_fatal(ret)) { // connection doomed
 
 		knot_xquic_table_rem(xconn, table);
-		return KNOT_EOK;
+		return KNOT_ECONN;
 	} else if (ret != NGTCP2_NO_ERROR) { // non-fatal error, discard packet
 		return KNOT_EOK;
 	}
