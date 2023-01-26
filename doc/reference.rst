@@ -2145,7 +2145,7 @@ if a zone doesn't have another template specified.
 
 .. NOTE::
    If an item is explicitly specified both in the referenced template and
-   the zone, the template item value is overriden by the zone item value.
+   the zone, the template item value is overridden by the zone item value.
 
 .. _template_id:
 

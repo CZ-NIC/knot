@@ -1955,7 +1955,7 @@ template:
 .INDENT 0.0
 .INDENT 3.5
 If an item is explicitly specified both in the referenced template and
-the zone, the template item value is overriden by the zone item value.
+the zone, the template item value is overridden by the zone item value.
 .UNINDENT
 .UNINDENT
 .SS id
