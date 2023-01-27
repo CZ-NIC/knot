@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,7 +106,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			ret = zone_load_contents(conf, zone->name, &zf_conts, mode, false);
 		}
 		if (ret != KNOT_EOK) {
-			zf_conts = NULL;
+			assert(!zf_conts);
 			if (dontcare_load_error(conf, zone)) {
 				log_zone_info(zone->name, "failed to parse zone file '%s' (%s)",
 				              filename, knot_strerror(ret));
