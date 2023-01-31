@@ -24,8 +24,7 @@ t.start()
 serial = master.zone_wait(zone)
 slave.zone_wait(zone, serial, equal=True, greater=False)
 
-if slave.zonemd_generate == "zonemd-sha384": # otherwise dnssec-verify bug
-    slave.zone_backup(zone, flush=True)
-    slave.zone_verify(zone)
+slave.zone_backup(zone, flush=True)
+slave.zone_verify(zone)
 
 t.end()
