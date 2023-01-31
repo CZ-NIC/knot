@@ -357,7 +357,7 @@ uint32_t changeset_to(const changeset_t *ch)
 	return ch->soa_to == NULL ? 0 : knot_soa_serial(ch->soa_to->rrs.rdata);
 }
 
-bool changeset_differs_just_serial(const changeset_t *ch)
+bool changeset_differs_just_serial(const changeset_t *ch, bool ignore_zonemd)
 {
 	if (ch == NULL || ch->soa_from == NULL || ch->soa_to == NULL) {
 		return false;
@@ -374,10 +374,22 @@ bool changeset_differs_just_serial(const changeset_t *ch)
 
 	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset) && ret) {
-		if (rrset.type != KNOT_RRTYPE_RRSIG ||
-		    knot_rrsig_type_covered(rrset.rrs.rdata) != KNOT_RRTYPE_SOA) {
+		switch (rrset.type) {
+		case KNOT_RRTYPE_ZONEMD:
+			ret = ignore_zonemd;
+			break;
+		case KNOT_RRTYPE_RRSIG:
+			; uint16_t covered = knot_rrsig_type_covered(rrset.rrs.rdata);
+			if (covered == KNOT_RRTYPE_SOA ||
+			    (covered == KNOT_RRTYPE_ZONEMD && ignore_zonemd)) {
+				break;
+			}
+			// FALLTHROUGH
+		default:
 			ret = false;
+			break;
 		}
+
 		rrset = changeset_iter_next(&itt);
 	}
 	changeset_iter_clear(&itt);
