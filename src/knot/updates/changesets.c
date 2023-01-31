@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -374,7 +374,7 @@ bool changeset_differs_just_serial(const changeset_t *ch)
 
 	knot_rrset_t rrset = changeset_iter_next(&itt);
 	while (!knot_rrset_empty(&rrset) && ret) {
-		if (rrset.type != KNOT_RRTYPE_RRSIG || rrset.rrs.count != 1 ||
+		if (rrset.type != KNOT_RRTYPE_RRSIG ||
 		    knot_rrsig_type_covered(rrset.rrs.rdata) != KNOT_RRTYPE_SOA) {
 			ret = false;
 		}
