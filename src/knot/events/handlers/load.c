@@ -178,6 +178,10 @@ int event_load(conf_t *conf, zone_t *zone)
 	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE || zone->cat_members != NULL);
 	bool ignore_dnssec = (do_diff && dnssec_enable);
 
+	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
+	unsigned digest_alg = conf_opt(&val);
+	bool update_zonemd = (digest_alg != ZONE_DIGEST_NONE);
+
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
 		if (zone->cat_members != NULL) {
@@ -282,9 +286,6 @@ load_end:
 		}
 	}
 
-	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
-	unsigned digest_alg = conf_opt(&val);
-
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { 0 };
 	if (dnssec_enable) {
@@ -298,7 +299,7 @@ load_end:
 			                 "'zonefile-load: difference' should be set to avoid malformed "
 			                 "IXFR after manual zone file update");
 		}
-	} else if (digest_alg != ZONE_DIGEST_NONE) {
+	} else if (update_zonemd) {
 		if (zone_update_to(&up) == NULL || middle_serial == zone->zonefile.serial) {
 			ret = zone_update_increment_soa(&up, conf);
 		}
@@ -313,16 +314,27 @@ load_end:
 	// If the change is only automatically incremented SOA serial, make it no change.
 	if ((zf_from == ZONEFILE_LOAD_DIFSE || zone->cat_members != NULL) &&
 	    (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
-	    changeset_differs_just_serial(&up.change)) {
+	    changeset_differs_just_serial(&up.change, update_zonemd)) {
 		changeset_t *cpy = changeset_clone(&up.change);
 		if (cpy == NULL) {
 			ret = KNOT_ENOMEM;
 			goto cleanup;
 		}
 		ret = zone_update_apply_changeset_reverse(&up, cpy);
-		changeset_free(cpy);
 		if (ret != KNOT_EOK) {
+			changeset_free(cpy);
 			goto cleanup;
+		}
+
+		// If the original ZONEMD is outdated, use the reverted changeset again.
+		if (update_zonemd && !zone_contents_digest_exists(up.new_cont, digest_alg, false)) {
+			ret = zone_update_apply_changeset(&up, cpy);
+			changeset_free(cpy);
+			if (ret != KNOT_EOK) {
+				goto cleanup;
+			}
+		} else {
+			changeset_free(cpy);
 		}
 	}
 
