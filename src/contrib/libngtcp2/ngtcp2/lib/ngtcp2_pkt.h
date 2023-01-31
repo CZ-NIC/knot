@@ -124,22 +124,23 @@
    v1. */
 #define NGTCP2_PKT_TYPE_RETRY_V1 0x3
 
-/* NGTCP2_PKT_TYPE_INITIAL_V2_DRAFT is Initial long header packet type
-   for QUIC v2 draft. */
-#define NGTCP2_PKT_TYPE_INITIAL_V2_DRAFT 0x1
-/* NGTCP2_PKT_TYPE_0RTT_V2_DRAFT is 0RTT long header packet type for
-   QUIC v2 draft. */
-#define NGTCP2_PKT_TYPE_0RTT_V2_DRAFT 0x2
-/* NGTCP2_PKT_TYPE_HANDSHAKE_V2_DRAFT is Handshake long header packet
-   type for QUIC v2 draft. */
-#define NGTCP2_PKT_TYPE_HANDSHAKE_V2_DRAFT 0x3
-/* NGTCP2_PKT_TYPE_RETRY_V2_DRAFT is Retry long header packet type for
-   QUIC v2 draft. */
-#define NGTCP2_PKT_TYPE_RETRY_V2_DRAFT 0x0
+/* NGTCP2_PKT_TYPE_INITIAL_V2 is Initial long header packet type for
+   QUIC v2. */
+#define NGTCP2_PKT_TYPE_INITIAL_V2 0x1
+/* NGTCP2_PKT_TYPE_0RTT_V2 is 0RTT long header packet type for QUIC
+   v2. */
+#define NGTCP2_PKT_TYPE_0RTT_V2 0x2
+/* NGTCP2_PKT_TYPE_HANDSHAKE_V2 is Handshake long header packet type
+   for QUIC v2. */
+#define NGTCP2_PKT_TYPE_HANDSHAKE_V2 0x3
+/* NGTCP2_PKT_TYPE_RETRY_V2 is Retry long header packet type for QUIC
+   v2. */
+#define NGTCP2_PKT_TYPE_RETRY_V2 0x0
 
 typedef struct ngtcp2_pkt_retry {
   ngtcp2_cid odcid;
-  ngtcp2_vec token;
+  uint8_t *token;
+  size_t tokenlen;
   uint8_t tag[NGTCP2_RETRY_TAGLEN];
 } ngtcp2_pkt_retry;
 
@@ -313,7 +314,8 @@ typedef struct ngtcp2_crypto {
 
 typedef struct ngtcp2_new_token {
   uint8_t type;
-  ngtcp2_vec token;
+  uint8_t *token;
+  size_t tokenlen;
 } ngtcp2_new_token;
 
 typedef struct ngtcp2_retire_connection_id {

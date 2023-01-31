@@ -267,12 +267,11 @@ typedef struct ngtcp2_mem {
 /**
  * @macro
  *
- * :macro:`NGTCP2_PROTO_VER_V2_DRAFT` is the provisional version
- * number for QUIC version 2 draft.
+ * :macro:`NGTCP2_PROTO_VER_V2` is the QUIC version 2.
  *
  * https://quicwg.org/quic-v2/draft-ietf-quic-v2.html
  */
-#define NGTCP2_PROTO_VER_V2_DRAFT ((uint32_t)0x709a50c4u)
+#define NGTCP2_PROTO_VER_V2 ((uint32_t)0x6b3343cfu)
 
 /**
  * @macro
@@ -412,24 +411,23 @@ typedef struct ngtcp2_mem {
 /**
  * @macro
  *
- * :macro:`NGTCP2_RETRY_KEY_V2_DRAFT` is an encryption key to create
- * integrity tag of Retry packet.  It is used for QUIC v2 draft.
+ * :macro:`NGTCP2_RETRY_KEY_V2` is an encryption key to create
+ * integrity tag of Retry packet.  It is used for QUIC v2.
  *
  * https://quicwg.org/quic-v2/draft-ietf-quic-v2.html
  */
-#define NGTCP2_RETRY_KEY_V2_DRAFT                                              \
-  "\xba\x85\x8d\xc7\xb4\x3d\xe5\xdb\xf8\x76\x17\xff\x4a\xb2\x53\xdb"
+#define NGTCP2_RETRY_KEY_V2                                                    \
+  "\x8f\xb4\xb0\x1b\x56\xac\x48\xe2\x60\xfb\xcb\xce\xad\x7c\xcc\x92"
 
 /**
  * @macro
  *
- * :macro:`NGTCP2_RETRY_NONCE_V2_DRAFT` is nonce used when generating
- * integrity tag of Retry packet.  It is used for QUIC v2 draft.
+ * :macro:`NGTCP2_RETRY_NONCE_V2` is nonce used when generating
+ * integrity tag of Retry packet.  It is used for QUIC v2.
  *
  * https://quicwg.org/quic-v2/draft-ietf-quic-v2.html
  */
-#define NGTCP2_RETRY_NONCE_V2_DRAFT                                            \
-  "\x14\x1b\x99\xc2\x39\xb0\x3e\x78\x5d\x6a\x2e\x9f"
+#define NGTCP2_RETRY_NONCE_V2 "\xd8\x69\x69\xbc\x2d\x7c\x6d\x99\x90\xef\xb0\x4a"
 
 /**
  * @macro
@@ -1061,12 +1059,12 @@ typedef enum ngtcp2_pkt_type {
 /**
  * @macro
  *
- * :macro:`NGTCP2_VERSION_NEGOTIATION_ERROR_DRAFT` is QUIC transport
- * error code ``VERSION_NEGOTIATION_ERROR``.
+ * :macro:`NGTCP2_VERSION_NEGOTIATION_ERROR` is QUIC transport error
+ * code ``VERSION_NEGOTIATION_ERROR``.
  *
- * https://quicwg.org/quic-v2/draft-ietf-quic-v2.html
+ * https://datatracker.ietf.org/doc/html/draft-ietf-quic-version-negotiation-14
  */
-#define NGTCP2_VERSION_NEGOTIATION_ERROR_DRAFT 0x53f8u
+#define NGTCP2_VERSION_NEGOTIATION_ERROR 0x11
 
 /**
  * @enum
@@ -1182,7 +1180,11 @@ typedef struct ngtcp2_pkt_hd {
    * :member:`token` contains token for Initial
    * packet.
    */
-  ngtcp2_vec token;
+  const uint8_t *token;
+  /**
+   * :member:`tokenlen` is the length of :member:`token`.
+   */
+  size_t tokenlen;
   /**
    * :member:`pkt_numlen` is the number of bytes spent to encode
    * :member:`pkt_num`.
@@ -1462,15 +1464,17 @@ typedef struct ngtcp2_version_info {
    */
   uint32_t chosen_version;
   /**
-   * :member:`other_versions` points the wire image of other_versions
-   * field.  The each version is therefore in network byte order.
+   * :member:`available_versions` points the wire image of
+   * available_versions field.  The each version is therefore in
+   * network byte order.
    */
-  uint8_t *other_versions;
+  const uint8_t *available_versions;
   /**
-   * :member:`other_versionslen` is the number of bytes pointed by
-   * :member:`other_versions`, not the number of versions included.
+   * :member:`available_versionslen` is the number of bytes pointed by
+   * :member:`available_versions`, not the number of versions
+   * included.
    */
-  size_t other_versionslen;
+  size_t available_versionslen;
 } ngtcp2_version_info;
 
 #define NGTCP2_TRANSPORT_PARAMS_VERSION_V1 1
@@ -1907,7 +1911,11 @@ typedef struct ngtcp2_settings {
    * `ngtcp2_conn_server_new` and `ngtcp2_conn_client_new` make a copy
    * of token.
    */
-  ngtcp2_vec token;
+  const uint8_t *token;
+  /**
+   * :member:`tokenlen` is the length of :member:`token`.
+   */
+  size_t tokenlen;
   /**
    * :member:`rand_ctx` is an optional random number generator to be
    * passed to :type:`ngtcp2_rand` callback.
@@ -1965,10 +1973,13 @@ typedef struct ngtcp2_settings {
    * of preference.
    *
    * On compatible version negotiation, server will negotiate one of
-   * those versions contained in this array if a client initially
-   * chooses a less preferred version.  This version set corresponds
-   * to Offered Versions in QUIC Version Negotiation draft, and it should
-   * be sent in Version Negotiation packet.
+   * those versions contained in this array if there is some overlap
+   * between these versions and the versions offered by the client.
+   * If there is no overlap, but the client chosen version is
+   * supported by the library, the server chooses the client chosen
+   * version as the negotiated version.  This version set corresponds
+   * to Offered Versions in QUIC Version Negotiation draft, and it
+   * should be included in Version Negotiation packet.
    *
    * Client uses this field and :member:`original_version` to prevent
    * version downgrade attack if it reacted upon Version Negotiation
@@ -1976,7 +1987,7 @@ typedef struct ngtcp2_settings {
    * |client_chosen_version| passed to `ngtcp2_conn_client_new` unless
    * |client_chosen_version| is a reserved version.
    */
-  uint32_t *preferred_versions;
+  const uint32_t *preferred_versions;
   /**
    * :member:`preferred_versionslen` is the number of versions that
    * are contained in the array pointed by
@@ -1984,9 +1995,10 @@ typedef struct ngtcp2_settings {
    */
   size_t preferred_versionslen;
   /**
-   * :member:`other_versions` is the array of versions that are set in
-   * :member:`other_versions <ngtcp2_version_info.other_versions>`
-   * field of outgoing version_information QUIC transport parameter.
+   * :member:`available_versions` is the array of versions that are
+   * going to be set in :member:`available_versions
+   * <ngtcp2_version_info.available_versions>` field of outgoing
+   * version_information QUIC transport parameter.
    *
    * For server, this corresponds to Fully-Deployed Versions in QUIC
    * Version Negotiation draft.  If this field is set not, it is set
@@ -2002,12 +2014,13 @@ typedef struct ngtcp2_settings {
    * `ngtcp2_conn_client_new` will be set in this field internally
    * unless |client_chosen_version| is a reserved version.
    */
-  uint32_t *other_versions;
+  const uint32_t *available_versions;
   /**
-   * :member:`other_versionslen` is the number of versions that are
-   * contained in the array pointed by :member:`other_versions`.
+   * :member:`available_versionslen` is the number of versions that
+   * are contained in the array pointed by
+   * :member:`available_versions`.
    */
-  size_t other_versionslen;
+  size_t available_versionslen;
   /**
    * :member:`original_version` is the original version that client
    * initially used to make a connection attempt.  If it is set, and
@@ -2240,8 +2253,8 @@ NGTCP2_EXTERN ngtcp2_ssize ngtcp2_encode_transport_params_versioned(
  * The following fields may point to somewhere inside the buffer
  * pointed by |data| of length |datalen|:
  *
- * - :member:`ngtcp2_transport_params.version_info.other_versions
- *   <ngtcp2_version_info.other_versions>`
+ * - :member:`ngtcp2_transport_params.version_info.available_versions
+ *   <ngtcp2_version_info.available_versions>`
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -3166,14 +3179,14 @@ typedef int (*ngtcp2_connection_id_status)(ngtcp2_conn *conn, int type,
  * :type:`ngtcp2_recv_new_token` is a callback function which is
  * called when new token is received from server.
  *
- * |token| is the received token.
+ * |token| is the received token of length |tokenlen| bytes long.
  *
  * The callback function must return 0 if it succeeds.  Returning
  * :macro:`NGTCP2_ERR_CALLBACK_FAILURE` makes the library call return
  * immediately.
  */
-typedef int (*ngtcp2_recv_new_token)(ngtcp2_conn *conn, const ngtcp2_vec *token,
-                                     void *user_data);
+typedef int (*ngtcp2_recv_new_token)(ngtcp2_conn *conn, const uint8_t *token,
+                                     size_t tokenlen, void *user_data);
 
 /**
  * @functypedef
@@ -5253,7 +5266,7 @@ typedef struct ngtcp2_connection_close_error {
    * received from a remote endpoint, it is truncated to at most 1024
    * bytes.
    */
-  uint8_t *reason;
+  const uint8_t *reason;
   /**
    * :member:`reasonlen` is the length of data pointed by
    * :member:`reason`.
