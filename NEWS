@@ -1,3 +1,30 @@
+Knot DNS 3.2.5 (2023-02-02)
+===========================
+
+Features:
+---------
+ - knotd: new configuration option for enforcing IXFR fallback (see 'zone.provide-ixfr')
+
+Improvements:
+-------------
+ - knotd: changed UNIX socket file mode to 0222 for answering and 0220 for control
+ - mod-probe: new support for communication over a UNIX socket
+ - kdig: new support for communication over a UNIX socket
+ - libs: upgraded embedded libngtcp2 to 0.13.0
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: failed to get catalog member configuration if catalog template is in a template
+ - knotd: failed to respond over a UNIX socket with EDNS
+ - knotd: unexpected zone update upon restart or zone reload if ZONEMD generation is enabled
+ - knotd: redundant zone flush of unchanged zone if zone file load is 'difference-no-serial'
+ - knotd/kxdpgun: failed to receive messages over XDP with drivers tap or ena
+ - knotc: zone check doesn't report missing zone file #829
+ - kxdpgun: program crashes when remote closes QUIC connection instead of resumption
+ - mod-geoip: configuration check leaks memory in the geodb mode
+ - utils: unwanted color reset sequences in non-color output
+
 Knot DNS 3.2.4 (2022-12-12)
 ===========================
 
