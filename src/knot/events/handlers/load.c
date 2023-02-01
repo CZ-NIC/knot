@@ -228,7 +228,8 @@ int event_load(conf_t *conf, zone_t *zone)
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
-			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
+			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL,
+			                                   ignore_dnssec, update_zonemd);
 		}
 	} else {
 		if (journal_conts != NULL && (zf_from != ZONEFILE_LOAD_WHOLE || zone->cat_members != NULL)) {
@@ -238,7 +239,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			} else {
 				// load zone-in-journal, compute ZF diff and if success, apply it
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts,
-				                                   UPDATE_HYBRID, ignore_dnssec);
+				                                   UPDATE_HYBRID, ignore_dnssec, update_zonemd);
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name,
 					                 "zone file changed with SOA serial %s, "
@@ -324,14 +325,19 @@ load_end:
 			                 "IXFR after manual zone file update");
 		}
 	} else if (update_zonemd) {
-		if (zone_update_to(&up) == NULL || middle_serial == zone->zonefile.serial) {
-			ret = zone_update_increment_soa(&up, conf);
-		}
-		if (ret == KNOT_EOK) {
-			ret = zone_update_add_digest(&up, digest_alg, false);
-		}
-		if (ret != KNOT_EOK) {
-			goto cleanup;
+		/* Don't update ZONEMD if no change and ZONEMD is up-to-date.
+		 * If ZONEFILE_LOAD_DIFSE, the change is non-empty and ZONEMD
+		 * is directly updated without its verification. */
+		if (!zone_update_no_change(&up) || !zone_contents_digest_exists(up.new_cont, digest_alg, false)) {
+			if (zone_update_to(&up) == NULL || middle_serial == zone->zonefile.serial) {
+				ret = zone_update_increment_soa(&up, conf);
+			}
+			if (ret == KNOT_EOK) {
+				ret = zone_update_add_digest(&up, digest_alg, false);
+			}
+			if (ret != KNOT_EOK) {
+				goto cleanup;
+			}
 		}
 	}
 
