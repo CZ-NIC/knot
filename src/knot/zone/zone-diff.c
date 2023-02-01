@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ struct zone_diff_param {
 	zone_tree_t *nodes;
 	changeset_t *changeset;
 	bool ignore_dnssec;
+	bool ignore_zonemd;
 };
 
 static bool rrset_is_dnssec(const knot_rrset_t *rrset)
@@ -88,13 +89,15 @@ static int load_soas(const zone_contents_t *zone1, const zone_contents_t *zone2,
 	return KNOT_EOK;
 }
 
-static int add_node(const zone_node_t *node, changeset_t *changeset, bool ignore_dnssec)
+static int add_node(const zone_node_t *node, changeset_t *changeset,
+                    bool ignore_dnssec, bool ignore_zonemd)
 {
 	/* Add all rrsets from node. */
 	for (unsigned i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
 
-		if (ignore_dnssec && rrset_is_dnssec(&rrset)) {
+		if ((ignore_dnssec && rrset_is_dnssec(&rrset)) ||
+		    (ignore_zonemd && rrset.type == KNOT_RRTYPE_ZONEMD)) {
 			continue;
 		}
 
@@ -107,13 +110,15 @@ static int add_node(const zone_node_t *node, changeset_t *changeset, bool ignore
 	return KNOT_EOK;
 }
 
-static int remove_node(const zone_node_t *node, changeset_t *changeset, bool ignore_dnssec)
+static int remove_node(const zone_node_t *node, changeset_t *changeset,
+                       bool ignore_dnssec, bool ignore_zonemd)
 {
 	/* Remove all the RRSets of the node. */
 	for (unsigned i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
 
-		if (ignore_dnssec && rrset_is_dnssec(&rrset)) {
+		if ((ignore_dnssec && rrset_is_dnssec(&rrset)) ||
+		    (ignore_zonemd && rrset.type == KNOT_RRTYPE_ZONEMD)) {
 			continue;
 		}
 
@@ -225,7 +230,8 @@ static int knot_zone_diff_node(zone_node_t *node, void *data)
 	 */
 	zone_node_t *node_in_second_tree = zone_tree_get(param->nodes, node->owner);
 	if (node_in_second_tree == NULL) {
-		return remove_node(node, param->changeset, param->ignore_dnssec);
+		return remove_node(node, param->changeset, param->ignore_dnssec,
+		                   param->ignore_zonemd);
 	}
 
 	assert(node_in_second_tree != node);
@@ -236,7 +242,8 @@ static int knot_zone_diff_node(zone_node_t *node, void *data)
 		 * If there are no RRs in the first tree, all of the RRs
 		 * in the second tree will have to be inserted to ADD section.
 		 */
-		return add_node(node_in_second_tree, param->changeset, param->ignore_dnssec);
+		return add_node(node_in_second_tree, param->changeset,
+		                param->ignore_dnssec, param->ignore_zonemd);
 	}
 
 	for (unsigned i = 0; i < node->rrset_count; i++) {
@@ -248,7 +255,8 @@ static int knot_zone_diff_node(zone_node_t *node, void *data)
 			continue;
 		}
 
-		if (param->ignore_dnssec && rrset_is_dnssec(&rrset)) {
+		if ((param->ignore_dnssec && rrset_is_dnssec(&rrset)) ||
+		    (param->ignore_zonemd && rrset.type == KNOT_RRTYPE_ZONEMD)) {
 			continue;
 		}
 
@@ -280,7 +288,8 @@ static int knot_zone_diff_node(zone_node_t *node, void *data)
 			continue;
 		}
 
-		if (param->ignore_dnssec && rrset_is_dnssec(&rrset)) {
+		if ((param->ignore_dnssec && rrset_is_dnssec(&rrset)) ||
+		    (param->ignore_zonemd && rrset.type == KNOT_RRTYPE_ZONEMD)) {
 			continue;
 		}
 
@@ -318,20 +327,22 @@ static int add_new_nodes(zone_node_t *node, void *data)
 	zone_node_t *new_node = zone_tree_get(param->nodes, node->owner);
 	if (new_node == NULL) {
 		assert(node);
-		return add_node(node, param->changeset, param->ignore_dnssec);
+		return add_node(node, param->changeset, param->ignore_dnssec,
+		                param->ignore_zonemd);
 	}
 
 	return KNOT_EOK;
 }
 
 static int load_trees(zone_tree_t *nodes1, zone_tree_t *nodes2,
-		      changeset_t *changeset, bool ignore_dnssec)
+                      changeset_t *changeset, bool ignore_dnssec, bool ignore_zonemd)
 {
 	assert(changeset);
 
 	struct zone_diff_param param = {
 		.changeset = changeset,
 		.ignore_dnssec = ignore_dnssec,
+		.ignore_zonemd = ignore_zonemd,
 	};
 
 	// Traverse one tree, compare every node, each RRSet with its rdata.
@@ -347,7 +358,7 @@ static int load_trees(zone_tree_t *nodes1, zone_tree_t *nodes2,
 }
 
 int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone2,
-		       changeset_t *changeset, bool ignore_dnssec)
+                       changeset_t *changeset, bool ignore_dnssec, bool ignore_zonemd)
 {
 	if (changeset == NULL) {
 		return KNOT_EINVAL;
@@ -362,12 +373,14 @@ int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone
 		return ret_soa;
 	}
 
-	int ret = load_trees(zone1->nodes, zone2->nodes, changeset, ignore_dnssec);
+	int ret = load_trees(zone1->nodes, zone2->nodes, changeset,
+	                     ignore_dnssec, ignore_zonemd);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = load_trees(zone1->nsec3_nodes, zone2->nsec3_nodes, changeset, ignore_dnssec);
+	ret = load_trees(zone1->nsec3_nodes, zone2->nsec3_nodes, changeset,
+	                 ignore_dnssec, ignore_zonemd);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -385,5 +398,5 @@ int zone_tree_add_diff(zone_tree_t *t1, zone_tree_t *t2, changeset_t *changeset)
 		return KNOT_EINVAL;
 	}
 
-	return load_trees(t1, t2, changeset, false);
+	return load_trees(t1, t2, changeset, false, false);
 }
