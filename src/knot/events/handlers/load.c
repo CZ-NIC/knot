@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -108,7 +108,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			ret = zone_load_contents(conf, zone->name, &zf_conts, mode, false);
 		}
 		if (ret != KNOT_EOK) {
-			zf_conts = NULL;
+			assert(!zf_conts);
 			if (dontcare_load_error(conf, zone)) {
 				log_zone_info(zone->name, "failed to parse zone file '%s' (%s)",
 				              filename, knot_strerror(ret));
@@ -155,7 +155,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			conf_val_t policy = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
 			uint32_t set = serial_next(serial, conf_opt(&policy), 1);
 			zone_contents_set_soa_serial(zf_conts, set);
-			log_zone_info(zone->name, "zone file parsed, serial corrected %u -> %u",
+			log_zone_info(zone->name, "zone file parsed, serial updated %u -> %u",
 			              zone->zonefile.serial, set);
 			zone->zonefile.serial = set;
 		} else {
@@ -202,6 +202,10 @@ int event_load(conf_t *conf, zone_t *zone)
 	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE || zone->cat_members != NULL);
 	bool ignore_dnssec = (do_diff && dnssec_enable);
 
+	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
+	unsigned digest_alg = conf_opt(&val);
+	bool update_zonemd = (digest_alg != ZONE_DIGEST_NONE);
+
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
 		if (zone->cat_members != NULL) {
@@ -224,7 +228,8 @@ int event_load(conf_t *conf, zone_t *zone)
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
-			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL, ignore_dnssec);
+			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL,
+			                                   ignore_dnssec, update_zonemd);
 		}
 	} else {
 		if (journal_conts != NULL && (zf_from != ZONEFILE_LOAD_WHOLE || zone->cat_members != NULL)) {
@@ -234,7 +239,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			} else {
 				// load zone-in-journal, compute ZF diff and if success, apply it
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts,
-				                                   UPDATE_HYBRID, ignore_dnssec);
+				                                   UPDATE_HYBRID, ignore_dnssec, update_zonemd);
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name,
 					                 "zone file changed with SOA serial %s, "
@@ -306,9 +311,6 @@ load_end:
 		}
 	}
 
-	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
-	unsigned digest_alg = conf_opt(&val);
-
 	// Sign zone using DNSSEC if configured.
 	zone_sign_reschedule_t dnssec_refresh = { 0 };
 	if (dnssec_enable) {
@@ -322,31 +324,54 @@ load_end:
 			                 "'zonefile-load: difference' should be set to avoid malformed "
 			                 "IXFR after manual zone file update");
 		}
-	} else if (digest_alg != ZONE_DIGEST_NONE) {
-		if (zone_update_to(&up) == NULL || middle_serial == zone->zonefile.serial) {
-			ret = zone_update_increment_soa(&up, conf);
-		}
-		if (ret == KNOT_EOK) {
-			ret = zone_update_add_digest(&up, digest_alg, false);
-		}
-		if (ret != KNOT_EOK) {
-			goto cleanup;
+	} else if (update_zonemd) {
+		/* Don't update ZONEMD if no change and ZONEMD is up-to-date.
+		 * If ZONEFILE_LOAD_DIFSE, the change is non-empty and ZONEMD
+		 * is directly updated without its verification. */
+		if (!zone_update_no_change(&up) || !zone_contents_digest_exists(up.new_cont, digest_alg, false)) {
+			if (zone_update_to(&up) == NULL || middle_serial == zone->zonefile.serial) {
+				ret = zone_update_increment_soa(&up, conf);
+			}
+			if (ret == KNOT_EOK) {
+				ret = zone_update_add_digest(&up, digest_alg, false);
+			}
+			if (ret != KNOT_EOK) {
+				goto cleanup;
+			}
 		}
 	}
 
 	// If the change is only automatically incremented SOA serial, make it no change.
 	if ((zf_from == ZONEFILE_LOAD_DIFSE || zone->cat_members != NULL) &&
 	    (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
-	    changeset_differs_just_serial(&up.change)) {
+	    changeset_differs_just_serial(&up.change, update_zonemd)) {
 		changeset_t *cpy = changeset_clone(&up.change);
 		if (cpy == NULL) {
 			ret = KNOT_ENOMEM;
 			goto cleanup;
 		}
 		ret = zone_update_apply_changeset_reverse(&up, cpy);
-		changeset_free(cpy);
 		if (ret != KNOT_EOK) {
+			changeset_free(cpy);
 			goto cleanup;
+		}
+
+		// If the original ZONEMD is outdated, use the reverted changeset again.
+		if (update_zonemd && !zone_contents_digest_exists(up.new_cont, digest_alg, false)) {
+			ret = zone_update_apply_changeset(&up, cpy);
+			changeset_free(cpy);
+			if (ret != KNOT_EOK) {
+				goto cleanup;
+			}
+		} else {
+			changeset_free(cpy);
+			// Revert automatic zone serial increment.
+			zone->zonefile.serial = zone_contents_serial(up.new_cont);
+			/* Reset possibly set the resigned flag. Note that dnssec
+			 * reschedule isn't reverted, but shouldn't be a problem
+			 * for non-empty zones as SOA, ZONEMD, and their RRSIGs
+			 * are always updated with other changes in the zone. */
+			zone->zonefile.resigned = false;
 		}
 	}
 
