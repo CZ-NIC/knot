@@ -359,6 +359,13 @@ load_end:
 			}
 		} else {
 			changeset_free(cpy);
+			// Revert automatic zone serial increment.
+			zone->zonefile.serial = zone_contents_serial(up.new_cont);
+			/* Reset possibly set the resigned flag. Note that dnssec
+			 * reschedule isn't reverted, but shouldn't be a problem
+			 * for non-empty zones as SOA, ZONEMD, and their RRSIGs
+			 * are always updated with other changes in the zone. */
+			zone->zonefile.resigned = false;
 		}
 	}
 
