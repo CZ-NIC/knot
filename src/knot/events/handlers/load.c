@@ -131,7 +131,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			conf_val_t policy = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
 			uint32_t set = serial_next(serial, conf_opt(&policy), 1);
 			zone_contents_set_soa_serial(zf_conts, set);
-			log_zone_info(zone->name, "zone file parsed, serial corrected %u -> %u",
+			log_zone_info(zone->name, "zone file parsed, serial updated %u -> %u",
 			              zone->zonefile.serial, set);
 			zone->zonefile.serial = set;
 		} else {
