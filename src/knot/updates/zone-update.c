@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -164,7 +164,8 @@ int zone_update_init(zone_update_t *update, zone_t *zone, zone_update_flags_t fl
 }
 
 int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_contents_t *old_cont,
-				 zone_contents_t *new_cont, zone_update_flags_t flags, bool ignore_dnssec)
+                                 zone_contents_t *new_cont, zone_update_flags_t flags,
+                                 bool ignore_dnssec, bool ignore_zonemd)
 {
 	if (update == NULL || zone == NULL || new_cont == NULL ||
 	    !(flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) || (flags & UPDATE_FULL)) {
@@ -187,7 +188,7 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 		old_cont = zone->contents;
 	}
 
-	ret = zone_contents_diff(old_cont, new_cont, &diff, ignore_dnssec);
+	ret = zone_contents_diff(old_cont, new_cont, &diff, ignore_dnssec, ignore_zonemd);
 	switch (ret) {
 	case KNOT_ENODIFF:
 	case KNOT_ESEMCHECK:
@@ -288,7 +289,8 @@ int zone_update_start_extra(zone_update_t *update, conf_t *conf)
 			return ret;
 		}
 
-		ret = zone_contents_diff(update->init_cont, update->new_cont, &update->extra_ch, false);
+		ret = zone_contents_diff(update->init_cont, update->new_cont,
+		                         &update->extra_ch, false, false);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
