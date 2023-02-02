@@ -45,6 +45,7 @@ for load in ["whole", "difference", "difference-no-serial"]:
         slave.ctl("-f zone-purge " + ZONE)
         slave.reload()
         new_serials = slave.zones_wait(zone)
+        compare(serial, new_serials, "serials on master nad slave")
 
         # Check if unchanged serial upon restart.
         master.stop()
