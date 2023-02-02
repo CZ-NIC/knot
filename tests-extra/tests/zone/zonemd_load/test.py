@@ -56,4 +56,12 @@ for load in ["whole", "difference", "difference-no-serial"]:
         master.ctl("zone-reload " + ZONE)
         master.zones_wait(zone, serial, equal=True, greater=False)
 
+        # Check if unchanged serial upon zonefile restore.
+        backup_cnt += 1
+        backup_dir = os.path.join(master.dir, "backup" + str(backup_cnt))
+        master.ctl("zone-backup %s +backupdir %s +zonefile" % (ZONE, backup_dir))
+        master.ctl("-f zone-purge " + ZONE, wait=True)
+        master.ctl("zone-restore %s +backupdir %s" % (ZONE, backup_dir))
+        master.zones_wait(zone, serial, equal=True, greater=False)
+
 t.end()
