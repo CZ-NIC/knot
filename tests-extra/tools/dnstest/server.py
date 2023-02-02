@@ -846,11 +846,6 @@ class Server(object):
 
         self.zones[zone.name].zfile.disable_nsec3()
 
-    def backup_zone(self, zone):
-        zone = zone_arg_check(zone)
-
-        self.zones[zone.name].zfile.backup()
-
     def update_zonefile(self, zone, version=None, random=False, storage=None):
         zone = zone_arg_check(zone)
 
