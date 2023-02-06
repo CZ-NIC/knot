@@ -185,7 +185,7 @@ rm -f %{buildroot}%{_pkgdocdir}/html/.buildinfo
 rm %{buildroot}%{_sysconfdir}/%{name}/*
 install -p -m 0644 -D %{repodir}/samples/%{name}.sample.conf %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
 %if 0%{?fedora} || 0%{?rhel} > 7
-install -p -m 0644 -D %{repodir}/distro/common/cz.nic.knotd.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/cz.nic.knotd.conf
+install -p -m 0644 -D %{repodir}/distro/common/cz.nic.knotd.conf %{buildroot}/usr/share/dbus-1/system.d/cz.nic.knotd.conf
 %endif
 
 # install systemd files
