@@ -61,7 +61,6 @@ Description: Authoritative domain name server
 
 Package: libknot13
 Architecture: any
-Multi-Arch: same
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
@@ -79,7 +78,6 @@ Description: DNS shared library from Knot DNS
 
 Package: libzscanner4
 Architecture: any
-Multi-Arch: same
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
@@ -97,7 +95,6 @@ Description: DNS zone-parsing shared library from Knot DNS
 
 Package: libdnssec9
 Architecture: any
-Multi-Arch: same
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
@@ -203,7 +200,6 @@ Description: Version of 'host' bundled with Knot DNS
 
 Package: knot-module-dnstap
 Architecture: any
-Multi-Arch: same
 Depends:
  knot (= ${binary:Version}),
  ${misc:Depends},
@@ -220,7 +216,6 @@ Description: dnstap module for Knot DNS
 
 Package: knot-module-geoip
 Architecture: any
-Multi-Arch: same
 Depends:
  knot (= ${binary:Version}),
  ${misc:Depends},
