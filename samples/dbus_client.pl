@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 
+# This package is needed on Debian derived ditributions: libnet-dbus-perl
+
 use Net::DBus;
 use Net::DBus::Reactor;
 use Time::HiRes;
