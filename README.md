@@ -1,4 +1,3 @@
-[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/CZ-NIC/knot.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/CZ-NIC/knot/context:cpp)
 [![Coverity Status](https://img.shields.io/coverity/scan/knot-dns.svg)](https://scan.coverity.com/projects/knot-dns)
 [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/knot-dns.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:knot-dns)
 [![Documentation Status](https://readthedocs.org/projects/knot/badge/?version=master)](https://knot.readthedocs.io/en/master/)
