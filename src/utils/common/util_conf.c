@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ int util_conf_init_confdb(const char *confdb)
 
 	size_t max_conf_size = (size_t)CONF_MAPSIZE * 1024 * 1024;
 
-	conf_flag_t flags = CONF_FNOHOSTNAME | CONF_FOPTMODULES;
+	conf_flag_t flags = CONF_FNOHOSTNAME;
 	if (confdb != NULL) {
 		flags |= CONF_FREADONLY;
 	}
