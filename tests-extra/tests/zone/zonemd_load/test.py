@@ -21,6 +21,7 @@ master.zonemd_generate = "zonemd-sha384"
 slave.zonemd_verify = True
 
 VALIDATE_ZONEFILE = random.choice([True, False])
+backup_cnt = 0
 
 t.start()
 
