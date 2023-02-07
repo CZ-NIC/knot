@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# This package is needed on Debian derived ditributions: libglib2.0-bin
+
 cb() {
 	case "$1" in
 	zone_ksk_submission)

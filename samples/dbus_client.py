@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# This package is needed on Debian derived ditributions: python3-dbus
+
 import dbus
 import dbus.mainloop.glib
 import signal
