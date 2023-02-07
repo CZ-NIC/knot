@@ -170,13 +170,18 @@ kcatalogprint_SOURCES = \
 
 kzonecheck_CPPFLAGS    = $(libknotus_la_CPPFLAGS)
 kzonecheck_LDADD       = $(libknotd_LIBS)
+kzonecheck_LDFLAGS     = $(AM_LDFLAGS) -rdynamic
 kzonesign_CPPFLAGS     = $(libknotus_la_CPPFLAGS)
 kzonesign_LDADD        = $(libknotd_LIBS) $(libknotus_LIBS)
+kzonesign_LDFLAGS      = $(AM_LDFLAGS) -rdynamic
 keymgr_CPPFLAGS        = $(libknotus_la_CPPFLAGS)
 keymgr_LDADD           = $(libknotd_LIBS) $(libknotus_LIBS)
+keymgr_LDFLAGS         = $(AM_LDFLAGS) -rdynamic
 kjournalprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
 kjournalprint_LDADD    = $(libknotd_LIBS) $(libknotus_LIBS)
+kjournalprint_LDFLAGS  = $(AM_LDFLAGS) -rdynamic
 kcatalogprint_CPPFLAGS = $(libknotus_la_CPPFLAGS)
 kcatalogprint_LDADD    = $(libknotd_LIBS) $(libknotus_LIBS)
+kcatalogprint_LDFLAGS  = $(AM_LDFLAGS) -rdynamic
 endif HAVE_UTILS
 endif HAVE_DAEMON
