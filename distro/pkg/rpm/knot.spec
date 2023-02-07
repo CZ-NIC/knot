@@ -185,7 +185,7 @@ rm -f %{buildroot}%{_pkgdocdir}/html/.buildinfo
 rm %{buildroot}%{_sysconfdir}/%{name}/*
 install -p -m 0644 -D %{repodir}/samples/%{name}.sample.conf %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
 %if 0%{?fedora} || 0%{?rhel} > 7
-install -p -m 0644 -D %{repodir}/distro/common/cz.nic.knotd.conf %{buildroot}/usr/share/dbus-1/system.d/cz.nic.knotd.conf
+install -p -m 0644 -D %{repodir}/distro/common/cz.nic.knotd.conf %{buildroot}%{_datadir}/dbus-1/system.d/cz.nic.knotd.conf
 %endif
 
 # install systemd files
@@ -248,7 +248,7 @@ getent passwd knot >/dev/null || \
 %attr(750,root,knot) %dir %{_sysconfdir}/knot
 %config(noreplace) %attr(640,root,knot) %{_sysconfdir}/knot/knot.conf
 %if 0%{?fedora} || 0%{?rhel} > 7
-%config(noreplace) %attr(644,root,root) %{_sysconfdir}/dbus-1/system.d/cz.nic.knotd.conf
+%config(noreplace) %attr(644,root,root) %{_datadir}/dbus-1/system.d/cz.nic.knotd.conf
 %endif
 %attr(770,root,knot) %dir %{_sharedstatedir}/knot
 %dir %{_libdir}/knot
