@@ -2105,9 +2105,9 @@ If enabled, IXFR requests are responded normally.
 Selects if extra zone semantic checks are used or impacts of the mandatory checks.
 .sp
 There are several mandatory checks which are always enabled and cannot be turned
-off. An error in a mandatory check causes the zone not to be loaded. Some of
-the mandatory checks can be weakened by setting \fBsoft\fP, when the zone isn\(aqt
-prevented from loading.
+off. An error in a mandatory check causes the zone not to be loaded. Most of
+the mandatory checks can be weakened by setting \fBsoft\fP, which allows the zone to
+be loaded even if the check fails.
 .sp
 If enabled, extra checks are used. These checks don\(aqt prevent the zone from loading.
 .sp
@@ -2117,11 +2117,7 @@ control interface. The extra checks are applied to zone files only!
 Mandatory checks:
 .INDENT 0.0
 .IP \(bu 2
-Missing SOA record at the zone apex (\fI\%RFC 1034\fP)
-.UNINDENT
-.sp
-Mandatory checks affected by the soft mode:
-.INDENT 0.0
+Missing SOA record at the zone apex (\fI\%RFC 1034\fP) (*)
 .IP \(bu 2
 An extra record exists together with a CNAME record except for RRSIG and NSEC (\fI\%RFC 1034\fP)
 .IP \(bu 2
@@ -2133,6 +2129,9 @@ Multiple DNAME records with the same owner exist (\fI\%RFC 6672\fP)
 .IP \(bu 2
 NS record exists together with a DNAME record (\fI\%RFC 6672\fP)
 .UNINDENT
+.sp
+(*) The marked check can\(aqt be weakened by the soft mode. All other mandatory checks
+are subject to the optional soft mode.
 .sp
 Extra checks:
 .INDENT 0.0
