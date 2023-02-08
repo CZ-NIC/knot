@@ -2332,9 +2332,9 @@ semantic-checks
 Selects if extra zone semantic checks are used or impacts of the mandatory checks.
 
 There are several mandatory checks which are always enabled and cannot be turned
-off. An error in a mandatory check causes the zone not to be loaded. Some of
-the mandatory checks can be weakened by setting ``soft``, when the zone isn't
-prevented from loading.
+off. An error in a mandatory check causes the zone not to be loaded. Most of
+the mandatory checks can be weakened by setting ``soft``, which allows the zone to
+be loaded even if the check fails.
 
 If enabled, extra checks are used. These checks don't prevent the zone from loading.
 
@@ -2343,16 +2343,16 @@ control interface. The extra checks are applied to zone files only!
 
 Mandatory checks:
 
-- Missing SOA record at the zone apex (:rfc:`1034`)
-
-Mandatory checks affected by the soft mode:
-
+- Missing SOA record at the zone apex (:rfc:`1034`) (*)
 - An extra record exists together with a CNAME record except for RRSIG and NSEC (:rfc:`1034`)
 - Multiple CNAME records with the same owner exist (:rfc:`1034`)
 - DNAME record having a record under it (:rfc:`6672`)
 - Multiple DNAME records with the same owner exist (:rfc:`6672`)
 - NS record exists together with a DNAME record (:rfc:`6672`)
 - DS record exists at the zone apex (:rfc:`3658`)
+
+(*) The marked check can't be weakened by the soft mode. All other mandatory checks
+are subject to the optional soft mode.
 
 Extra checks:
 
