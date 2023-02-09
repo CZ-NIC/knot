@@ -1389,7 +1389,7 @@ static int purge_orphan_member_cb(const knot_dname_t *member, const knot_dname_t
 	orphan->name = (knot_dname_t *)member;
 	orphan->server = server;
 
-	purge_flag_t params =
+	const purge_flag_t params =
 		PURGE_ZONE_TIMERS | PURGE_ZONE_JOURNAL | PURGE_ZONE_KASPDB |
 		PURGE_ZONE_BEST | PURGE_ZONE_LOG;
 
@@ -1585,7 +1585,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		(void)schedule_trigger(zone, args, ZONE_EVENT_EXPIRE, true);
 	}
 
-	purge_flag_t params =
+	const purge_flag_t params =
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)   * PURGE_ZONE_TIMERS |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_ZONEFILE) * PURGE_ZONE_ZONEFILE |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)  * PURGE_ZONE_JOURNAL |
