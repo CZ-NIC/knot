@@ -4,7 +4,7 @@ Upstream-Contact: knot-dns@labs.nic.cz
 Source: https://secure.nic.cz/files/knot-dns/
 
 Files: *
-Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+Copyright: 2011-2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 License: GPL-3+
 
 Files: m4/*
@@ -17,8 +17,8 @@ Copyright: 1994 X Consortium
 License: MIT
 
 Files: debian/* distro/pkg/deb/*
-Copyright: 2011 Ondřej Surý <ondrej@debian.org>
-           2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+Copyright: 2011-2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+           2011 Ondřej Surý <ondrej@debian.org>
 License: GPL-3+
 
 Files: tests/tap/*
@@ -36,7 +36,7 @@ Copyright: 2014, Farsight Security, Inc. <software@farsightsecurity.com>
 License: GPL-3+
 
 Files: src/contrib/libngtcp2/*
-Copyright: 2016-2022 ngtcp2 contributors
+Copyright: 2016-2023 ngtcp2 contributors
            2012-2017 nghttp2 contributors
 License: MIT
 
@@ -59,13 +59,14 @@ Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 License: GPL-3+
 
 Files: src/contrib/ucw/*
-Copyright: 1997-2017 Martin Mares <mj@ucw.cz>
+Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+           1997-2017 Martin Mares <mj@ucw.cz>
            2007 Pavel Charvat <pchar@ucw.cz>
            2012 Ondrej Filip <feela@network.cz>
 License: LGPL-2.0
 
 Files: src/contrib/ucw/heap.h
-Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 License: GPL-3+
 
 Files: src/contrib/url-parser/*
