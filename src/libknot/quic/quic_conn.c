@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 #include <ngtcp2/ngtcp2.h>
 #include <string.h>
 
-#include "libknot/xdp/quic_conn.h"
+#include "libknot/quic/quic_conn.h"
 
 #include "contrib/macros.h"
 #include "contrib/openbsd/siphash.h"
@@ -27,7 +27,7 @@
 #include "libdnssec/random.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
-#include "libknot/xdp/quic.h"
+#include "libknot/quic/quic.h"
 #include "libknot/xdp/tcp_iobuf.h"
 #include "libknot/wire.h"
 

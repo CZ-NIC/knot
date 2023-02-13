@@ -25,7 +25,7 @@
 #include "libknot/yparser/ypschema.h"
 #include "libknot/xdp.h"
 #if defined ENABLE_XDP && ENABLE_QUIC
-#include "libknot/xdp/quic.h"
+#include "libknot/quic/quic.h"
 #endif // ENABLE_XDP && ENABLE_QUIC
 #include "knot/common/log.h"
 #include "knot/common/stats.h"

@@ -19,13 +19,16 @@
  *
  * \brief General QUIC functionality.
  *
- * \addtogroup xdp
+ * \addtogroup quic
  * @{
  */
 
 #pragma once
 
-#include "libknot/xdp/quic_conn.h"
+#include <sys/types.h>
+#include <netinet/in.h>
+
+#include "libknot/quic/quic_conn.h"
 
 struct knot_quic_creds;
 struct knot_quic_session;
