@@ -27,6 +27,7 @@
  - \ref dname     — Domain name manipulation
  - \ref pkt       — DNS packet manipulation
  - \ref probe     — DNS traffic probe interface
+ - \ref quic      — QUIC interface
  - \ref rr        — DNS resource record manipulation
  - \ref rrtype    — DNS resource record types
  - \ref knot-tsig — TSIG operations
@@ -39,6 +40,7 @@
 \defgroup dname      dname
 \defgroup pkt        pkt
 \defgroup probe      probe
+\defgroup quic       quic
 \defgroup rr         rr
 \defgroup rrtype     rrtype
 \defgroup knot-tsig  tsig

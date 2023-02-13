@@ -43,7 +43,7 @@
 #include "libknot/xdp/tcp_iobuf.h"
 #ifdef ENABLE_QUIC
 #include <gnutls/gnutls.h>
-#include "libknot/xdp/quic.h"
+#include "libknot/quic/quic.h"
 #endif // ENABLE_QUIC
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"

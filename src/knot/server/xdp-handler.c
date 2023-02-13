@@ -30,7 +30,7 @@
 #include "libknot/endian.h"
 #include "libknot/error.h"
 #ifdef ENABLE_QUIC
-#include "libknot/xdp/quic.h"
+#include "libknot/quic/quic.h"
 #endif // ENABLE_QUIC
 #include "libknot/xdp/tcp.h"
 #include "libknot/xdp/tcp_iobuf.h"
