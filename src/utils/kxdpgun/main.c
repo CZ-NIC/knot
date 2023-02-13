@@ -609,7 +609,8 @@ void *xdp_gun_thread(void *_ctx)
 
 					for (unsigned i = 0; i < ctx->at_once; i++) {
 						knot_xquic_conn_t *newconn = NULL;
-						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip, &newconn);
+						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip,
+						                        NULL, &newconn);
 						if (ret == KNOT_EOK) {
 							struct iovec tmp = {
 								knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len),

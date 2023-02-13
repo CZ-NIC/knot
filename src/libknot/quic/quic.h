@@ -112,12 +112,14 @@ uint32_t knot_xquic_conn_rtt(knot_xquic_conn_t *conn);
  * \param table       QUIC connections table to be added to.
  * \param dest        Destination IP address.
  * \param via         Source IP address.
+ * \param server_name Optional server name.
  * \param out_conn    Out: new connection.
  *
  * \return KNOT_E*
  */
 int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_in6 *dest,
-                      struct sockaddr_in6 *via, knot_xquic_conn_t **out_conn);
+                      struct sockaddr_in6 *via, const char *server_name,
+                      knot_xquic_conn_t **out_conn);
 
 /*!
  * \brief Handle incoming QUIC packet.
