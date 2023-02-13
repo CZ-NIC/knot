@@ -698,7 +698,8 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 
 _public_
 int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_in6 *dest,
-                      struct sockaddr_in6 *via, knot_xquic_conn_t **out_conn)
+                      struct sockaddr_in6 *via, const char *server_name,
+                      knot_xquic_conn_t **out_conn)
 {
 	ngtcp2_cid scid = { 0 }, dcid = { 0 };
 	uint64_t now = get_timestamp();
@@ -723,15 +724,9 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_in6 *dest,
 	if (ret == KNOT_EOK) {
 		ret = tls_init_conn_session(xconn, false);
 	}
-	if (ret == KNOT_EOK) {
-		char *hostname = sockaddr_hostname();
-		if (hostname == NULL) {
-			ret = KNOT_ENOMEM;
-		} else {
-			ret = gnutls_server_name_set(xconn->tls_session, GNUTLS_NAME_DNS,
-			                             hostname, strlen(hostname));
-			free(hostname);
-		}
+	if (ret == KNOT_EOK && server_name != NULL) {
+		ret = gnutls_server_name_set(xconn->tls_session, GNUTLS_NAME_DNS,
+		                             server_name, strlen(server_name));
 	}
 	if (ret != KNOT_EOK) {
 		knot_xquic_table_rem(xconn, table);
