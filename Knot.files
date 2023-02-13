@@ -460,6 +460,10 @@ src/libknot/probe/data.c
 src/libknot/probe/data.h
 src/libknot/probe/probe.c
 src/libknot/probe/probe.h
+src/libknot/quic/quic.c
+src/libknot/quic/quic.h
+src/libknot/quic/quic_conn.c
+src/libknot/quic/quic_conn.h
 src/libknot/rdata.h
 src/libknot/rdataset.c
 src/libknot/rdataset.h
@@ -500,10 +504,6 @@ src/libknot/xdp/eth.h
 src/libknot/xdp/msg.h
 src/libknot/xdp/msg_init.h
 src/libknot/xdp/protocols.h
-src/libknot/xdp/quic.c
-src/libknot/xdp/quic.h
-src/libknot/xdp/quic_conn.c
-src/libknot/xdp/quic_conn.h
 src/libknot/xdp/tcp.c
 src/libknot/xdp/tcp.h
 src/libknot/xdp/tcp_iobuf.c

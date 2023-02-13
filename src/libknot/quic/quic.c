@@ -25,7 +25,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "libknot/xdp/quic.h"
+#include "libknot/quic/quic.h"
 
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
