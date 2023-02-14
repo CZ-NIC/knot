@@ -1566,8 +1566,8 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		}
 
 		// Expire the zone.
-		// KNOT_EOK is the only return value from event_expire().
-		(void)schedule_trigger(zone, args, ZONE_EVENT_EXPIRE, true);
+		// No ret, KNOT_EOK is the only return value from event_expire().
+		(void)zone_events_schedule_blocking(zone, ZONE_EVENT_EXPIRE, true);
 	}
 
 	purge_flag_t params =
