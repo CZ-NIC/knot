@@ -55,7 +55,6 @@ typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
-	bool is_clone;
 } knot_xquic_creds_t;
 
 typedef struct knot_quic_session {
@@ -67,7 +66,7 @@ typedef struct knot_quic_session {
 static unsigned addr_len(const struct sockaddr_in6 *ss)
 {
 	return (ss->sin6_family ==  AF_INET6 ?
-	        sizeof(struct sockaddr_in6) : sizeof(struct sockaddr));
+	        sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
 }
 
 _public_
@@ -248,12 +247,11 @@ void knot_xquic_free_creds(struct knot_quic_creds *creds)
 		return;
 	}
 
-	if (!creds->is_clone) {
-		gnutls_certificate_free_credentials(creds->tls_cert);
-		if (creds->tls_ticket_key.data != NULL) {
-			tls_session_ticket_key_free(&creds->tls_ticket_key);
-		}
+	gnutls_certificate_free_credentials(creds->tls_cert);
+	if (creds->tls_ticket_key.data != NULL) {
+		tls_session_ticket_key_free(&creds->tls_ticket_key);
 	}
+
 	gnutls_anti_replay_deinit(creds->tls_anti_replay);
 	free(creds);
 }
@@ -316,7 +314,7 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 	}
 
 	gnutls_handshake_set_hook_function(conn->tls_session,
-					   GNUTLS_HANDSHAKE_CLIENT_HELLO,
+	                                   GNUTLS_HANDSHAKE_CLIENT_HELLO,
 	                                   GNUTLS_HOOK_POST, tls_client_hello_cb);
 	int ret = ngtcp2_crypto_gnutls_configure_server_session(conn->tls_session);
 	if (ret != 0) {
