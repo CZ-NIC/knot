@@ -233,6 +233,7 @@ static void handle_init(knotd_qdata_params_t *params, knot_layer_t *layer,
 {
 	params->proto = proto;
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
+	params->local = (struct sockaddr_storage *)&msg->ip_to;
 	params->xdp_msg = msg;
 
 	knot_layer_begin(layer, params);

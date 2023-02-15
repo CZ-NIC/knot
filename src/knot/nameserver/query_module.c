@@ -619,44 +619,6 @@ void knotd_conf_free(knotd_conf_t *conf)
 }
 
 _public_
-const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata)
-{
-	if (qdata == NULL) {
-		return NULL;
-	}
-
-	if (qdata->params->xdp_msg != NULL) {
-#ifdef ENABLE_XDP
-		return (struct sockaddr_storage *)&qdata->params->xdp_msg->ip_to;
-#else
-		assert(0);
-		return NULL;
-#endif
-	} else {
-		return qdata->params->local;
-	}
-}
-
-_public_
-const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata)
-{
-	if (qdata == NULL) {
-		return NULL;
-	}
-
-	if (qdata->params->xdp_msg != NULL) {
-#ifdef ENABLE_XDP
-		return (struct sockaddr_storage *)&qdata->params->xdp_msg->ip_from;
-#else
-		assert(0);
-		return NULL;
-#endif
-	} else {
-		return qdata->params->remote;
-	}
-}
-
-_public_
 uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata)
 {
 	if (qdata == NULL) {
