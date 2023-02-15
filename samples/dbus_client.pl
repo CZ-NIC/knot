@@ -4,6 +4,7 @@
 
 use Net::DBus;
 use Net::DBus::Reactor;
+use Time::HiRes;
 
 my $bus = Net::DBus->system;
 
@@ -16,7 +17,7 @@ while (true) {
     if (!$@) {
         last;
     }
-    sleep(1);
+    sleep(0.1); # replaced from Time::HiRes
 }
 
 # Get the device manager
