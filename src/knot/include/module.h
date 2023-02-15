@@ -440,7 +440,10 @@ typedef struct {
  *
  * \return Local address or NULL if error.
  */
-const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata);
+inline static const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata)
+{
+	return qdata->params->local;
+}
 
 /*!
  * Gets the remote (source) address of the query.
@@ -449,7 +452,10 @@ const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata);
  *
  * \return Remote address or NULL if error.
  */
-const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata);
+inline static const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata)
+{
+	return qdata->params->remote;
+}
 
 /*!
  * Gets the measured TCP round-trip-time.
