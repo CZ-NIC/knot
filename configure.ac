@@ -62,8 +62,8 @@ AC_PROG_INSTALL
 LT_INIT
 
 # Build DLLs on Cygwin/MSYS2
-AS_CASE([$host],
-  [*-cygwin* | *-msys*], [LT_NO_UNDEFINED="-no-undefined"]
+AS_CASE([$host_os],
+  [cygwin* | msys*], [LT_NO_UNDEFINED="-no-undefined"]
 )
 AC_SUBST(LT_NO_UNDEFINED)
 
