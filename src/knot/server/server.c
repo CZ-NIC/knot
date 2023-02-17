@@ -401,7 +401,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
-		if ((udp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
+		if ((udp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity &&
+		    addr->ss_family != AF_UNIX) {
 			if (!server_attach_reuseport_bpf(sock, udp_socket_count) &&
 			    warn_cbpf) {
 				log_warning("cannot ensure optimal CPU locality for UDP");
@@ -475,7 +476,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
-		if ((tcp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
+		if ((tcp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity &&
+		    addr->ss_family != AF_UNIX) {
 			if (!server_attach_reuseport_bpf(sock, tcp_socket_count) &&
 			    warn_cbpf) {
 				log_warning("cannot ensure optimal CPU locality for TCP");
