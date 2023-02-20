@@ -96,5 +96,4 @@
 /modules/test_onlinesign
 /modules/test_rrl
 
-/utils/test_cert
 /utils/test_lookup

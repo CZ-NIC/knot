@@ -18,8 +18,6 @@ libknotus_la_LIBADD += $(libembngtcp2_LIBS)
 endif EMBEDDED_LIBNGTCP2
 
 libknotus_la_SOURCES = \
-	utils/common/cert.c			\
-	utils/common/cert.h			\
 	utils/common/exec.c			\
 	utils/common/exec.h			\
 	utils/common/hex.c			\
