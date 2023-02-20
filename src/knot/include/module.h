@@ -410,6 +410,7 @@ typedef struct {
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
 	const struct knot_xdp_msg *xdp_msg;    /*!< Possible XDP message context. */
+	struct gnutls_session_int *session;    /*!< QUIC session. */
 	uint32_t measured_rtt;                 /*!< Measured RTT in usecs: QUIC or TCP-XDP. */
 } knotd_qdata_params_t;
 

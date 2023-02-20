@@ -38,6 +38,7 @@
 #include "knot/conf/module.h"
 #include "knot/conf/schema.h"
 #include "knot/common/log.h"
+#include "knot/updates/acl.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/xdp.h"
@@ -315,6 +316,20 @@ int check_xdp_listen(
 
 	return KNOT_EOK;
 #endif
+}
+
+int check_cert_pin(
+	knotd_conf_check_args_t *args)
+{
+	if (args->data_len != sizeof(uint16_t) + CERT_PIN_LEN) {
+		(void)snprintf(check_str, sizeof(check_str),
+		               "invalid certificate pin, expected base64-encoded "
+		               "%u bytes", CERT_PIN_LEN);
+		args->err_str = check_str;
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
 }
 
 static int dir_exists(const char *dir)

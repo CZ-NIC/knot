@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,8 +14,75 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <gnutls/x509.h>
+
 #include "knot/updates/acl.h"
 #include "contrib/wire_ctx.h"
+
+void cert_pin(gnutls_session_t session, uint8_t *out, size_t *out_len, bool local)
+{
+	if (session == NULL) {
+		goto error;
+	}
+
+	const gnutls_datum_t *data;
+	if (local) {
+		data = gnutls_certificate_get_ours(session);
+	} else {
+		unsigned count = 0;
+		data = gnutls_certificate_get_peers(session, &count);
+		if (count == 0) {
+			goto error;
+		}
+	}
+
+	gnutls_x509_crt_t cert;
+	int ret = gnutls_x509_crt_init(&cert);
+	if (ret != GNUTLS_E_SUCCESS) {
+		goto error;
+	}
+
+	ret = gnutls_x509_crt_import(cert, &data[0], GNUTLS_X509_FMT_DER);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_x509_crt_deinit(cert);
+		goto error;
+	}
+
+	ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256, out, out_len);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_x509_crt_deinit(cert);
+		goto error;
+	}
+
+	gnutls_x509_crt_deinit(cert);
+
+	return;
+error:
+	if (out_len != NULL) {
+		*out_len = 0;
+	}
+}
+
+bool cert_pin_check(const uint8_t *session_pin, size_t session_pin_size, conf_val_t *pins)
+{
+	if (pins->code == KNOT_ENOENT) { // No certificate pin authentication required.
+		return true;
+	} else if (session_pin_size == 0) { // Not a QUIC connection.
+		return false;
+	}
+
+	while (pins->code == KNOT_EOK) {
+		size_t pin_size;
+		const uint8_t *pin = conf_bin(pins, &pin_size);
+		if (pin_size == session_pin_size &&
+		    memcmp(pin, session_pin, pin_size) == 0) {
+			return true;
+		}
+		conf_val_next(pins);
+	}
+
+	return false;
+}
 
 static bool match_type(uint16_t type, conf_val_t *types)
 {
@@ -156,7 +223,9 @@ static bool update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
 
 static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_val,
                            bool remote, const struct sockaddr_storage *addr,
-                           const knot_tsig_key_t *tsig, bool deny)
+                           const knot_tsig_key_t *tsig, conf_val_t *pin_val,
+                           const uint8_t *session_pin, size_t session_pin_size,
+                           bool deny)
 {
 	/* Check if the address matches the acl address list or remote addresses. */
 	if (addr_val->code != KNOT_ENOENT) {
@@ -169,6 +238,11 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
 				return false;
 			}
 		}
+	}
+
+	/* Check if possible client certificate pin matches. */
+	if (!cert_pin_check(session_pin, session_pin_size, pin_val)) {
+		return false;
 	}
 
 	/* Check if the key matches the acl key list or remote key. */
@@ -220,11 +294,16 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
 
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
-                 const knot_dname_t *zone_name, knot_pkt_t *query)
+                 const knot_dname_t *zone_name, knot_pkt_t *query,
+                 gnutls_session_t session)
 {
 	if (acl == NULL || addr == NULL || tsig == NULL) {
 		return false;
 	}
+
+	uint8_t session_pin[CERT_PIN_LEN];
+	size_t session_pin_size = sizeof(session_pin);
+	cert_pin(session, session_pin, &session_pin_size, false);
 
 	while (acl->code == KNOT_EOK) {
 		conf_val_t rmt_val = conf_id_get(conf, C_ACL, C_RMT, acl);
@@ -233,13 +312,16 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		bool deny = conf_bool(&deny_val);
 
 		/* Check if a remote matches given address and key. */
-		conf_val_t addr_val, key_val;
+		conf_val_t addr_val, key_val, pin_val;
 		conf_mix_iter_t iter;
 		conf_mix_iter_init(conf, &rmt_val, &iter);
 		while (iter.id->code == KNOT_EOK) {
 			addr_val = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 			key_val = conf_id_get(conf, C_RMT, C_KEY, iter.id);
-			if (check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig, deny)) {
+			pin_val = conf_id_get(conf, C_RMT, C_CERT_PIN, iter.id);
+			if (check_addr_key(conf, &addr_val, &key_val, remote, addr,
+			                   tsig, &pin_val, session_pin, session_pin_size,
+			                   deny)) {
 				break;
 			}
 			conf_mix_iter_next(&iter);
@@ -251,7 +333,10 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		if (!remote) {
 			addr_val = conf_id_get(conf, C_ACL, C_ADDR, acl);
 			key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
-			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig, deny)) {
+			pin_val = conf_id_get(conf, C_ACL, C_CERT_PIN, acl);
+			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr,
+			                    tsig, &pin_val, session_pin, session_pin_size,
+			                    deny)) {
 				goto next_acl;
 			}
 		}
@@ -303,17 +388,26 @@ next_acl:
 }
 
 bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig)
+                 knot_tsig_key_t *tsig, gnutls_session_t session)
 {
 	if (!conf->cache.srv_auto_acl) {
 		return false;
 	}
+
+	uint8_t session_pin[CERT_PIN_LEN];
+	size_t session_pin_size = sizeof(session_pin);
+	cert_pin(session, session_pin, &session_pin_size, false);
 
 	conf_mix_iter_t iter;
 	conf_mix_iter_init(conf, rmts, &iter);
 	while (iter.id->code == KNOT_EOK) {
 		conf_val_t val = conf_id_get(conf, C_RMT, C_AUTO_ACL, iter.id);
 		if (!conf_bool(&val)) {
+			goto next_remote;
+		}
+
+		conf_val_t pin_val = conf_id_get(conf, C_RMT, C_CERT_PIN, iter.id);
+		if (!cert_pin_check(session_pin, session_pin_size, &pin_val)) {
 			goto next_remote;
 		}
 

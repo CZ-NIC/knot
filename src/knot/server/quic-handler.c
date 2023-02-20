@@ -186,6 +186,7 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 	while (conn != NULL && (stream = knot_xquic_stream_get_process(conn, &stream_id)) != NULL) {
 		assert(stream->inbuf_fin != NULL);
 		assert(stream->inbuf_fin->iov_len > 0);
+		params->session = conn->tls_session;
 		handle_quic_stream(conn, stream_id, stream->inbuf_fin, layer, params,
 		                   tx->iov_base, tx->iov_len, params->remote, params->local); // NOTE: tx is used here just as temporary buffer
 		free(stream->inbuf_fin);
