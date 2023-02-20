@@ -529,8 +529,6 @@ src/libzscanner/functions.h
 src/libzscanner/scanner.h
 src/libzscanner/scanner.rl
 src/libzscanner/scanner_body.rl
-src/utils/common/cert.c
-src/utils/common/cert.h
 src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/hex.c
