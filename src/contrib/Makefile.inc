@@ -41,6 +41,8 @@ libcontrib_la_SOURCES = \
 	contrib/macros.h			\
 	contrib/mempattern.c			\
 	contrib/mempattern.h			\
+	contrib/musl/inet_ntop.c		\
+	contrib/musl/inet_ntop.h		\
 	contrib/net.c				\
 	contrib/net.h				\
 	contrib/os.h				\
