@@ -14,6 +14,7 @@ EXTRA_DIST += \
 	contrib/licenses/BSD-3-Clause		\
 	contrib/licenses/LGPL-2.0		\
 	contrib/licenses/LGPL-2.1		\
+	contrib/licenses/MIT			\
 	contrib/libbpf/LICENSE			\
 	contrib/libngtcp2/LICENSE		\
 	contrib/openbsd/LICENSE			\
@@ -43,6 +44,8 @@ libcontrib_la_SOURCES = \
 	contrib/macros.h			\
 	contrib/mempattern.c			\
 	contrib/mempattern.h			\
+	contrib/musl/inet_ntop.c		\
+	contrib/musl/inet_ntop.h		\
 	contrib/net.c				\
 	contrib/net.h				\
 	contrib/os.h				\

@@ -52,6 +52,10 @@ Copyright: 2016-2023 ngtcp2 contributors
            2012-2017 nghttp2 contributors
 License: MIT
 
+Files: src/contrib/musl/*
+Copyright: 2005-2020 Rich Felker, et al.
+License: MIT
+
 Files: src/contrib/openbsd/siphash.*
 Copyright: 2013 Andre Oppermann <andre@FreeBSD.org>
 License: BSD-3-Clause

@@ -154,6 +154,8 @@ src/contrib/libngtcp2/ngtcp2/version.h
 src/contrib/macros.h
 src/contrib/mempattern.c
 src/contrib/mempattern.h
+src/contrib/musl/inet_ntop.c
+src/contrib/musl/inet_ntop.h
 src/contrib/net.c
 src/contrib/net.h
 src/contrib/openbsd/siphash.c
