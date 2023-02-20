@@ -30,6 +30,7 @@
 
 #include "libknot/quic/quic_conn.h"
 
+struct gnutls_x509_crt_int;
 struct knot_quic_creds;
 struct knot_quic_session;
 
@@ -79,6 +80,16 @@ int knot_xquic_session_load(knot_xquic_conn_t *conn, struct knot_quic_session *s
  */
 struct knot_quic_creds *knot_xquic_init_creds(bool server, const char *tls_cert,
                                               const char *tls_key);
+
+/*!
+ * \brief Gets the certificate from credentials.
+ *
+ * \param creds  TLS credentials.
+ * \param cert   Output certificate.
+ *
+ * \return KNOT_E*
+ */
+int knot_xquic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_int **cert);
 
 /*!
  * \brief Init server TLS certificate for DoQ.

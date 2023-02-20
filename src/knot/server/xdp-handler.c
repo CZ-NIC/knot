@@ -413,6 +413,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		while (rl != NULL && (stream = knot_xquic_stream_get_process(rl, &stream_id)) != NULL) {
 			assert(stream->inbuf_fin != NULL);
 			assert(stream->inbuf_fin->iov_len > 0);
+			params->session = rl->tls_session;
 			handle_quic_stream(rl, stream_id, stream->inbuf_fin, layer, params,
 			                   ans_buf, sizeof(ans_buf), &ctx->msg_recv[i]);
 			free(stream->inbuf_fin);

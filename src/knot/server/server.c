@@ -17,6 +17,7 @@
 #define __APPLE_USE_RFC_3542
 
 #include <assert.h>
+#include <gnutls/x509.h>
 #include <sys/types.h>   // OpenBSD
 #include <netinet/tcp.h> // TCP_FASTOPEN
 #include <sys/resource.h>
@@ -39,9 +40,11 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
+#include "knot/updates/acl.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
+#include "contrib/base64.h"
 #include "contrib/conn_pool.h"
 #include "contrib/net.h"
 #include "contrib/openbsd/strlcat.h"
@@ -526,6 +529,39 @@ static void log_sock_conf(conf_t *conf)
 	}
 }
 
+static int init_creds(server_t *server, conf_t *conf)
+{
+#ifdef ENABLE_QUIC
+	char *tls_cert = conf_tls(conf, C_CERT_FILE);
+	char *tls_key = conf_tls(conf, C_KEY_FILE);
+	if (tls_cert == NULL) {
+		log_notice("QUIC, no server certificate configured, using one-time one");
+	}
+	server->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
+	free(tls_cert);
+	free(tls_key);
+	if (server->quic_creds == NULL) {
+		log_error("QUIC, failed to initialize server credentials");
+	}
+
+	int pin_size = 0;
+	uint8_t bin_pin[CERT_PIN_LEN], pin[2 * CERT_PIN_LEN];
+	size_t bin_pin_size = sizeof(bin_pin);
+	gnutls_x509_crt_t cert;
+	if (knot_xquic_creds_cert(server->quic_creds, &cert) == KNOT_EOK &&
+	    gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
+	                               bin_pin, &bin_pin_size) == GNUTLS_E_SUCCESS &&
+	    (pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin))) > 0) {
+		log_info("QUIC, public key pin %.*s", pin_size, pin);
+	}
+	gnutls_x509_crt_deinit(cert);
+
+	return KNOT_EOK;
+#else
+	return KNOT_ERROR;
+#endif // ENABLE_QUIC
+}
+
 /*! \brief Initialize bound sockets according to configuration. */
 static int configure_sockets(conf_t *conf, server_t *s)
 {
@@ -644,24 +680,12 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	assert(real_nifs <= nifs);
 	nifs = real_nifs;
 
+	/* QUIC credentials initialization. */
 	if (xdp_quic > 0 || convent_quic > 0) {
-#ifdef ENABLE_QUIC
-		char *tls_cert = conf_tls(conf, C_CERT_FILE);
-		char *tls_key = conf_tls(conf, C_KEY_FILE);
-		if (tls_cert == NULL) {
-			log_notice("QUIC, no server certificate configured, using one-time one");
-		}
-		s->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
-		free(tls_cert);
-		free(tls_key);
-		if (s->quic_creds == NULL) {
-			log_error("QUIC, failed to initialize server credentials");
+		if (init_creds(s, conf) != KNOT_EOK) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
 		}
-#else
-		assert(0);
-#endif // ENABLE_QUIC
 	}
 
 	/* Publish new list. */
@@ -780,9 +804,9 @@ void server_deinit(server_t *server)
 	global_conn_pool = NULL;
 	knot_unreachables_deinit(&global_unreachables);
 
-#if defined ENABLE_XDP && ENABLE_QUIC
+#if defined ENABLE_QUIC
 	knot_xquic_free_creds(server->quic_creds);
-#endif // ENABLE_XDP && ENABLE_QUIC
+#endif // ENABLE_QUIC
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
