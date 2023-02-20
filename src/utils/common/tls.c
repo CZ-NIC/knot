@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <poll.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/ocsp.h>
 #include <gnutls/x509.h>
@@ -28,7 +30,6 @@
 #endif
 
 #include "utils/common/tls.h"
-#include "utils/common/cert.h"
 #include "utils/common/msg.h"
 #include "contrib/base64.h"
 #include "libknot/errcode.h"
@@ -326,10 +327,12 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 		gnutls_free(cert_name.data);
 
 		uint8_t cert_pin[CERT_PIN_LEN] = { 0 };
-		ret = cert_get_pin(cert, cert_pin, sizeof(cert_pin));
-		if (ret != KNOT_EOK) {
+		size_t cert_pin_size = sizeof(cert_pin);
+		ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
+		                                 cert_pin, &cert_pin_size);
+		if (ret != 0) {
 			gnutls_x509_crt_deinit(cert);
-			return GNUTLS_E_CERTIFICATE_ERROR;
+			return ret;
 		}
 
 		// Check if correspond to a specified PIN.
