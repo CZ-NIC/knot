@@ -41,6 +41,7 @@
 #include "contrib/base64.h"
 #include "contrib/color.h"
 #include "contrib/ctype.h"
+#include "contrib/musl/network/inet_ntop.h"
 #include "contrib/time.h"
 #include "contrib/wire_ctx.h"
 
@@ -256,7 +257,7 @@ static void wire_ipv6_to_str(rrset_dump_params_t *p)
 	FILL_IN_INPUT(addr6.s6_addr)
 
 	// Write address.
-	if (inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
+	if (knot_inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
 		p->ret = -1;
 		return;
 	}
