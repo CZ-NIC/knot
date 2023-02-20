@@ -241,6 +241,27 @@ fail2:
 }
 
 _public_
+int knot_xquic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_int **cert)
+{
+	if (creds == NULL || cert == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	gnutls_x509_crt_t *certs;
+	unsigned cert_count;
+	int ret = gnutls_certificate_get_x509_crt(creds->tls_cert, 0, &certs, &cert_count);
+	if (ret == GNUTLS_E_SUCCESS) {
+		if (cert_count == 0) {
+			gnutls_x509_crt_deinit(*certs);
+			return KNOT_ENOENT;
+		}
+		*cert = *certs;
+		free(certs);
+	}
+	return ret;
+}
+
+_public_
 void knot_xquic_free_creds(struct knot_quic_creds *creds)
 {
 	if (creds == NULL) {
@@ -302,6 +323,9 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 	                GNUTLS_NO_END_OF_EARLY_DATA) != GNUTLS_E_SUCCESS) {
 		return TLS_CALLBACK_ERR;
 	}
+
+	gnutls_certificate_send_x509_rdn_sequence(conn->tls_session, 1);
+	gnutls_certificate_server_set_request(conn->tls_session, GNUTLS_CERT_REQUEST);
 
 	if (gnutls_priority_set_direct(conn->tls_session, QUIC_PRIORITIES,
 	                               NULL) != GNUTLS_E_SUCCESS) {

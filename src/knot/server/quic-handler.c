@@ -180,6 +180,10 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 
 	(void)knot_quic_handle(quic_table, &rpl, idle_close, &conn);
 
+	if (conn != NULL) {
+		params->session = conn->tls_session;
+	}
+
 	int64_t stream_id;
 	knot_xquic_stream_t *stream;
 

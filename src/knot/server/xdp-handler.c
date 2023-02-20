@@ -407,6 +407,10 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 		knot_xquic_conn_t *rl = ctx->quic_relays[i];
 
+		if (rl != NULL) {
+			params->session = rl->tls_session;
+		}
+
 		int64_t stream_id;
 		knot_xquic_stream_t *stream;
 
