@@ -51,6 +51,10 @@
 
 #define TLS_CALLBACK_ERR     (-1)
 
+const gnutls_datum_t doq_alpn = {
+	(unsigned char *)"doq", 3
+};
+
 typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
@@ -277,10 +281,6 @@ void knot_xquic_free_creds(struct knot_quic_creds *creds)
 	free(creds);
 }
 
-#define ALPN "\03""doq"
-#define ALPN_TMP1 "\07""doq-i11"
-#define ALPN_TMP2 "\07""doq-i03"
-
 static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
                                unsigned when, unsigned int incoming,
                                const gnutls_datum_t *msg)
@@ -298,13 +298,8 @@ static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
 		return ret;
 	}
 
-	const char *dq = (const char *)&ALPN[1];
-	if (((unsigned int)ALPN[0] != alpn.size ||
-	     memcmp(dq, alpn.data, alpn.size) != 0) &&
-	   ((unsigned int)ALPN_TMP1[0] != alpn.size ||
-	     memcmp((const char *)&ALPN_TMP1[1], alpn.data, alpn.size) != 0) &&
-	   ((unsigned int)ALPN_TMP1[0] != alpn.size ||
-	     memcmp((const char *)&ALPN_TMP2[1], alpn.data, alpn.size) != 0)) {
+	if (((unsigned int)doq_alpn.size != alpn.size ||
+	     memcmp(doq_alpn.data, alpn.data, alpn.size) != 0)) {
 		return TLS_CALLBACK_ERR;
 	}
 
@@ -364,22 +359,7 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 		return TLS_CALLBACK_ERR;
 	}
 
-
-	gnutls_datum_t alpn[3] = {
-		{
-			.data = (uint8_t *)(&ALPN[1]),
-			.size = ALPN[0],
-		},
-		{
-			.data = (uint8_t *)(&ALPN_TMP1[1]),
-			.size = ALPN_TMP1[0],
-		},
-		{
-			.data = (uint8_t *)(&ALPN_TMP2[1]),
-			.size = ALPN_TMP2[0],
-		}
-	};
-	gnutls_alpn_set_protocols(conn->tls_session, alpn, 3, 0);
+	gnutls_alpn_set_protocols(conn->tls_session, &doq_alpn, 1, 0);
 
 	ngtcp2_conn_set_tls_native_handle(conn->conn, conn->tls_session);
 
