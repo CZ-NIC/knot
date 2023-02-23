@@ -513,7 +513,7 @@ int net_connect(net_t *net)
 				return ret;
 			}
 			ret = tls_ctx_setup_remote_endpoint(&net->tls,
-			        doq_alpn, 4, QUIC_PRIORITY, net_get_remote(net));
+			        &doq_alpn, 1, QUIC_PRIORITY, net_get_remote(net));
 			if (ret != 0) {
 				close(sockfd);
 				return ret;
