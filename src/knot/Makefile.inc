@@ -152,6 +152,8 @@ libknotd_la_SOURCES = \
 	knot/journal/serialization.h		\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
+	knot/server/handler.c			\
+	knot/server/handler.h			\
 	knot/server/proxyv2.c			\
 	knot/server/proxyv2.h			\
 	knot/server/server.c			\

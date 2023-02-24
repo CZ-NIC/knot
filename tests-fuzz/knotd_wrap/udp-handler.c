@@ -76,7 +76,8 @@ static int udp_stdin_recv(_unused_ int fd, void *d)
 static void udp_stdin_handle(udp_context_t *ctx, _unused_ const iface_t *iface, void *d)
 {
 	udp_stdin_t *rq = (udp_stdin_t *)d;
-	PARAMS_INIT(false, STDIN_FILENO, &rq->addr, &iface->addr, ctx);
+	knotd_qdata_params_t params = params_init(KNOTD_QUERY_PROTO_UDP, &rq->addr,
+	                                          &iface->addr, STDIN_FILENO, NULL, 0);
 	udp_handler(ctx, &params, &rq->iov[RX], &rq->iov[TX]);
 }
 

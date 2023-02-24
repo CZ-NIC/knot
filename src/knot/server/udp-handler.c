@@ -36,7 +36,7 @@
 #include "knot/common/fdset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
-#include "knot/server/proxyv2.h"
+#include "knot/server/handler.h"
 #include "knot/server/server.h"
 #ifdef ENABLE_QUIC
 #include "knot/server/quic-handler.h"
@@ -66,62 +66,12 @@ typedef struct {
 #endif // ENABLE_QUIC
 } udp_context_t;
 
-static bool udp_state_active(int state)
-{
-	return (state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL);
-}
-
-#define PARAMS_INIT(is_quic, fd, remote_ss, local_ss, udp) \
-	knotd_qdata_params_t params = { \
-		.proto = is_quic ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP, \
-		.remote = (const struct sockaddr_storage *)remote_ss, \
-		.local = (const struct sockaddr_storage *)local_ss, \
-		.socket = fd, \
-		.server = udp->server, \
-		.thread_id = udp->thread_id \
-	};
-
 static void udp_handler(udp_context_t *udp, knotd_qdata_params_t *params,
                         struct iovec *rx, struct iovec *tx)
 {
+	// Prepare a reply.
 	struct sockaddr_storage proxied_remote;
-
-	/* Start query processing. */
-	knot_layer_begin(&udp->layer, params);
-
-	/* Create packets. */
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, udp->layer.mm);
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, udp->layer.mm);
-
-	/* Input packet. */
-	int ret = knot_pkt_parse(query, 0);
-	if (ret != KNOT_EOK && query->parsed > 0) {
-		ret = proxyv2_header_strip(&query, params->remote, &proxied_remote);
-		if (ret == KNOT_EOK) {
-			params->remote = &proxied_remote;
-		} else {
-			query->parsed--; // artificially decreasing "parsed" leads to FORMERR
-		}
-	}
-	knot_layer_consume(&udp->layer, query);
-
-	/* Process answer. */
-	while (udp_state_active(udp->layer.state)) {
-		knot_layer_produce(&udp->layer, ans);
-	}
-
-	/* Send response only if finished successfully. */
-	if (udp->layer.state == KNOT_STATE_DONE) {
-		tx->iov_len = ans->size;
-	} else {
-		tx->iov_len = 0;
-	}
-
-	/* Reset after processing. */
-	knot_layer_finish(&udp->layer);
-
-	/* Flush per-query memory (including query and answer packets). */
-	mp_flush(udp->layer.mm->ctx);
+	handle_udp_reply(params, &udp->layer, rx, tx, &proxied_remote);
 }
 
 typedef struct {
@@ -268,7 +218,9 @@ static void udp_msg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 	                                             &ctx->local, iface);
 
 	/* Process received pkt. */
-	PARAMS_INIT(iface->quic, rq->fd, &rq->addr, local, ctx);
+	knotd_qdata_params_t params = params_init(
+		iface->quic ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP,
+		&rq->addr, local, rq->fd, ctx->server, ctx->thread_id);
 	if (iface->quic) {
 #ifdef ENABLE_QUIC
 		quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
@@ -372,7 +324,9 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 		/* Update output message control buffer. */
 		const sockaddr_t *local = udp_pktinfo_handle(rx, tx, &ctx->local, iface);
 
-		PARAMS_INIT(iface->quic, rq->fd, &rq->addrs[i], local, ctx);
+		knotd_qdata_params_t params = params_init(
+			iface->quic ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP,
+			&rq->addrs[i], local, rq->fd, ctx->server, ctx->thread_id);
 		if (iface->quic) {
 #ifdef ENABLE_QUIC
 			quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
