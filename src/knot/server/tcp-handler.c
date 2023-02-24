@@ -29,6 +29,7 @@
 #include <sys/uio.h>
 #endif // HAVE_SYS_UIO_H
 
+#include "knot/server/handler.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"
@@ -94,16 +95,6 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int fd, _unused_ void *data)
 	return FDSET_SWEEP;
 }
 
-static bool tcp_active_state(int state)
-{
-	return (state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL);
-}
-
-static bool tcp_send_state(int state)
-{
-	return (state != KNOT_STATE_FAIL && state != KNOT_STATE_NOOP);
-}
-
 static void tcp_log_error(const struct sockaddr_storage *ss, const char *operation, int ret)
 {
 	/* Don't log ECONN as it usually means client closed the connection. */
@@ -151,14 +142,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd, const sockaddr_t *remote,
                       const sockaddr_t *local, struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	knotd_qdata_params_t params = {
-		.proto = KNOTD_QUERY_PROTO_TCP,
-		.remote = (const struct sockaddr_storage *)remote,
-		.local = (const struct sockaddr_storage *)local,
-		.socket = fd,
-		.server = tcp->server,
-		.thread_id = tcp->thread_id
-	};
+	knotd_qdata_params_t params = params_init(KNOTD_QUERY_PROTO_TCP, remote, local,
+	                                          fd, tcp->server, tcp->thread_id);
 
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
@@ -172,42 +157,27 @@ static int tcp_handle(tcp_context_t *tcp, int fd, const sockaddr_t *remote,
 		return KNOT_EOF;
 	}
 
-	/* Initialize processing layer. */
-	knot_layer_begin(&tcp->layer, &params);
-
-	/* Create packets. */
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, tcp->layer.mm);
-
-	/* Input packet. */
-	int ret = knot_pkt_parse(query, 0);
-	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
-		query->parsed--; // artificially decreasing "parsed" leads to FORMERR
-	}
-	knot_layer_consume(&tcp->layer, query);
+	handle_query(&params, &tcp->layer, rx, NULL);
 
 	/* Resolve until NOOP or finished. */
-	while (tcp_active_state(tcp->layer.state)) {
+	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
+	while (active_state(tcp->layer.state)) {
 		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
-		if (ans->size > 0 && tcp_send_state(tcp->layer.state)) {
+		if (ans->size > 0 && send_state(tcp->layer.state)) {
 			int sent = net_dns_tcp_send(fd, ans->wire, ans->size,
 			                            tcp->io_timeout, NULL);
 			if (sent != ans->size) {
 				tcp_log_error(params.remote, "send", sent);
-				ret = KNOT_EOF;
-				break;
+				handle_finish(&tcp->layer);
+				return KNOT_EOF;
 			}
 		}
 	}
 
-	/* Reset after processing. */
-	knot_layer_finish(&tcp->layer);
+	handle_finish(&tcp->layer);
 
-	/* Flush per-query memory (including query and answer packets). */
-	mp_flush(tcp->layer.mm->ctx);
-
-	return ret;
+	return KNOT_EOK;
 }
 
 static void tcp_event_accept(tcp_context_t *tcp, unsigned i, const iface_t *iface)
