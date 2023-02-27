@@ -120,58 +120,40 @@ static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struc
 
 static int uq_alloc_reply(knot_quic_reply_t *r)
 {
-	if (r->out_payload->iov_len == 0) {
-		r->out_payload->iov_len = KNOT_WIRE_MAX_PKTSIZE;
-	} else if (r->out_payload->iov_len != KNOT_WIRE_MAX_PKTSIZE) {
-		assert(r->out_ctx == NULL);
-		r->out_ctx = r->out_payload->iov_base;
-		size_t curr = r->out_payload->iov_len;
+	r->out_payload->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
-		r->out_payload->iov_base += curr;
-		r->out_payload->iov_len = KNOT_WIRE_MAX_PKTSIZE - curr;
-	}
 	return KNOT_EOK;
 }
 
 static int uq_send_reply(knot_quic_reply_t *r)
 {
-	if (r->out_ctx != NULL) {
-		struct iovec second_msg = { r->out_payload->iov_base, r->out_payload->iov_len };
-		r->out_payload->iov_len = second_msg.iov_base - r->out_ctx;
-		r->out_payload->iov_base = r->out_ctx;
-
-		// a packet for the same conn is already awaiting send
-		(void)sendmsg(*(int *)r->sock, r->in_ctx, 0);
-
-		r->out_payload->iov_len = second_msg.iov_len;
-		memmove(r->out_payload->iov_base, second_msg.iov_base, second_msg.iov_len);
-
-		r->out_ctx = NULL;
+	int ret = sendmsg(*(int *)r->sock, r->out_ctx, 0);
+	if (ret < 0) {
+		return knot_map_errno();
+	} else if (ret == r->out_payload->iov_len) {
+		return KNOT_EOK;
+	} else {
+		return KNOT_EAGAIN;
 	}
-	return KNOT_EOK;
 }
 
 static void uq_free_reply(knot_quic_reply_t *r)
 {
-	if (r->out_ctx != NULL) {
-		void *second_msg = r->out_payload->iov_base;
-		r->out_payload->iov_len = second_msg - r->out_ctx;
-		r->out_payload->iov_base = r->out_ctx;
-		r->out_ctx = NULL;
-	}
+	// This prevents udp send handler from sending.
+	r->out_payload->iov_len = 0;
 }
 
 void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
                   uint64_t idle_close, knot_xquic_table_t *table,
-                  struct msghdr *mh_out, struct iovec *rx, struct iovec *tx)
+                  struct iovec *rx, struct msghdr *mh_out)
 {
 	knot_quic_reply_t rpl = {
 		.ip_rem = params->remote,
 		.ip_loc = params->local,
 		.in_payload = rx,
-		.out_payload = tx,
+		.out_payload = mh_out->msg_iov,
 		.sock = &params->socket,
-		.in_ctx = mh_out,
+		.out_ctx = mh_out,
 		.alloc_reply = uq_alloc_reply,
 		.send_reply = uq_send_reply,
 		.free_reply = uq_free_reply
@@ -196,10 +178,6 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 	(void)knot_quic_send(table, conn, &rpl, QUIC_MAX_SEND_PER_RECV, false);
 
 	knot_xquic_cleanup(&conn, 1);
-
-	if (tx->iov_len == KNOT_WIRE_MAX_PKTSIZE) {
-		tx->iov_len = 0;
-	}
 }
 
 void quic_sweep(knot_xquic_table_t *table, knot_sweep_stats_t *stats)

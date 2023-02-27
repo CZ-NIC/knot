@@ -272,8 +272,7 @@ static void udp_msg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 	if (iface->quic) {
 #ifdef ENABLE_QUIC
 		quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
-		             ctx->quic_table, &rq->msg[TX],
-		             &rq->iov[RX], &rq->iov[TX]);
+		             ctx->quic_table, &rq->iov[RX],  &rq->msg[TX]);
 #else
 		assert(0);
 #endif // ENABLE_QUIC
@@ -377,7 +376,7 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 		if (iface->quic) {
 #ifdef ENABLE_QUIC
 			quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
-			             ctx->quic_table, tx, rx->msg_iov, tx->msg_iov);
+			             ctx->quic_table, rx->msg_iov, tx);
 #else
 		assert(0);
 #endif // ENABLE_QUIC
