@@ -32,13 +32,12 @@ struct server;
  * \param layer         Query processing layer.
  * \param idle_close    QUIC policy when to close idel connections, in nanoseconds.
  * \param table         QUIC connection table.
- * \param mh_out        Msghdr for potential outgoing packets.
  * \param rx            Incoming packet payload.
- * \param tx            Buffer for outgoing packet payload.
+ * \param mh_out        Msghdr for outgoing packets.
  */
 void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
                   uint64_t idle_close, knot_xquic_table_t *table,
-                  struct msghdr *mh_out, struct iovec *rx, struct iovec *tx);
+                  struct iovec *rx, struct msghdr *mh_out);
 
 /*!
  * \brief Sweep idle or excessive QUIC connections.
