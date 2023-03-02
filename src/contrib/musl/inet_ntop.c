@@ -55,7 +55,7 @@ const char *knot_inet_ntop(int af, const void *restrict a0, char *restrict s, so
 			         256*a[8]+a[9],256*a[10]+a[11],
 			         a[12],a[13],a[14],a[15]);
 		/* Replace longest /(^0|:)[:0]{2,}/ with "::" */
-		for (i=best=0, max=2; buf[i]; i++) {
+		for (i=best=0, max=3; buf[i]; i++) {
 			if (i && buf[i] != ':') continue;
 			j = strspn(buf+i, ":0");
 			if (j>max) best=i, max=j;
