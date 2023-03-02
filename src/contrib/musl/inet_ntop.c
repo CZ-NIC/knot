@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "contrib/musl/network/inet_ntop.h"
+#include "contrib/musl/inet_ntop.h"
 
 const char *knot_inet_ntop(int af, const void *restrict a0, char *restrict s, socklen_t l)
 {

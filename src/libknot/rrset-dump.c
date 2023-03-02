@@ -41,7 +41,7 @@
 #include "contrib/base64.h"
 #include "contrib/color.h"
 #include "contrib/ctype.h"
-#include "contrib/musl/network/inet_ntop.h"
+#include "contrib/musl/inet_ntop.h"
 #include "contrib/time.h"
 #include "contrib/wire_ctx.h"
 
