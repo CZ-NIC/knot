@@ -65,9 +65,8 @@ const char *knot_inet_ntop(int af, const void *restrict a0, char *restrict s, so
 				if (j>max) best=i, max=j; /* values skewed by 1 */
 			}
 			if (max>2) {
-				best--, max++;
-				buf[best] = buf[best+1] = ':';
-				memmove(buf+best+2, buf+best+max, i-best-max+1);
+				buf[best-1] = buf[best] = ':';
+				memmove(buf+best+1, buf+best+max, i-best-max);
 			}
 		}
 		if (strlen(buf) < l) {
