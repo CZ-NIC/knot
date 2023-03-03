@@ -327,7 +327,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 	}
 #ifdef ENABLE_QUIC
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
-		if (ctx->quic_relays[i] == NULL) {
+		if (ctx->quic_relays[i] == NULL || ctx->quic_rets[i] != 0) {
 			continue;
 		}
 
