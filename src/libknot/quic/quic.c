@@ -922,8 +922,11 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	                           reply->in_payload->iov_len, now);
 
 	*out_conn = conn;
-	if (ret == NGTCP2_ERR_DRAINING // received CONNECTION_CLOSE from the counterpart
-	    || ngtcp2_err_is_fatal(ret)) { // connection doomed
+	if (ret == NGTCP2_ERR_DRAINING) { // received CONNECTION_CLOSE from the counterpart
+		knot_quic_table_rem(conn, table);
+		ret = KNOT_EOK;
+		goto finish;
+	} else if(ngtcp2_err_is_fatal(ret)) { // connection doomed
 		knot_quic_table_rem(conn, table);
 		ret = KNOT_ECONN;
 		goto finish;
