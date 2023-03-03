@@ -52,6 +52,7 @@ check_PROGRAMS = \
 	contrib/test_base64			\
 	contrib/test_base64url			\
 	contrib/test_heap			\
+	contrib/test_inet_ntop			\
 	contrib/test_net			\
 	contrib/test_net_shortwrite		\
 	contrib/test_qp-trie			\
