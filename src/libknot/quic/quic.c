@@ -281,31 +281,6 @@ void knot_xquic_free_creds(struct knot_quic_creds *creds)
 	free(creds);
 }
 
-static int tls_client_hello_cb(gnutls_session_t session, unsigned int htype,
-                               unsigned when, unsigned int incoming,
-                               const gnutls_datum_t *msg)
-{
-	assert(htype == GNUTLS_HANDSHAKE_CLIENT_HELLO);
-	assert(when == GNUTLS_HOOK_POST);
-
-	if (!incoming) {
-		return 0;
-	}
-
-	gnutls_datum_t alpn;
-	int ret = gnutls_alpn_get_selected_protocol(session, &alpn);
-	if (ret != 0) {
-		return ret;
-	}
-
-	if (((unsigned int)doq_alpn.size != alpn.size ||
-	     memcmp(doq_alpn.data, alpn.data, alpn.size) != 0)) {
-		return TLS_CALLBACK_ERR;
-	}
-
-	return 0;
-}
-
 static ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref)
 {
 	return ((knot_xquic_conn_t *)conn_ref->user_data)->conn;
@@ -332,9 +307,6 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 		return TLS_CALLBACK_ERR;
 	}
 
-	gnutls_handshake_set_hook_function(conn->tls_session,
-	                                   GNUTLS_HANDSHAKE_CLIENT_HELLO,
-	                                   GNUTLS_HOOK_POST, tls_client_hello_cb);
 	int ret = ngtcp2_crypto_gnutls_configure_server_session(conn->tls_session);
 	if (ret != 0) {
 		return TLS_CALLBACK_ERR;
@@ -359,7 +331,7 @@ static int tls_init_conn_session(knot_xquic_conn_t *conn, bool server)
 		return TLS_CALLBACK_ERR;
 	}
 
-	gnutls_alpn_set_protocols(conn->tls_session, &doq_alpn, 1, 0);
+	gnutls_alpn_set_protocols(conn->tls_session, &doq_alpn, 1, GNUTLS_ALPN_MANDATORY);
 
 	ngtcp2_conn_set_tls_native_handle(conn->conn, conn->tls_session);
 
@@ -487,14 +459,6 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 	if (!ngtcp2_conn_is_server(conn)) {
 		return 0;
 	}
-
-	gnutls_datum_t alpn;
-	if (gnutls_alpn_get_selected_protocol(ctx->tls_session, &alpn) != 0) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-	char alpn_str[alpn.size + 1];
-	alpn_str[alpn.size] = '\0';
-	memcpy(alpn_str, alpn.data, alpn.size);
 
 	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {
 		return TLS_CALLBACK_ERR;
