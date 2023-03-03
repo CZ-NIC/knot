@@ -823,8 +823,10 @@ int knot_xquic_handle(knot_xquic_table_t *table, knot_xdp_msg_t *msg, uint64_t i
 	ret = ngtcp2_conn_read_pkt(xconn->conn, &path, &pi, msg->payload.iov_base, msg->payload.iov_len, now);
 
 	*out_conn = xconn;
-	if (ret == NGTCP2_ERR_DRAINING // received CONNECTION_CLOSE from the counterpart
-	    || ngtcp2_err_is_fatal(ret)) { // connection doomed
+	if (ret == NGTCP2_ERR_DRAINING) { // received CONNECTION_CLOSE from the counterpart
+		knot_xquic_table_rem(xconn, table);
+		return KNOT_EOK;
+	} else if(ngtcp2_err_is_fatal(ret)) { // connection doomed
 		knot_xquic_table_rem(xconn, table);
 		return KNOT_ECONN;
 	} else if (ret != NGTCP2_NO_ERROR) { // non-fatal error, discard packet
