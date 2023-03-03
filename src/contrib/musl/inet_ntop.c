@@ -56,15 +56,16 @@ const char *knot_inet_ntop(int af, const void *restrict a0, char *restrict s, so
 			         a[12],a[13],a[14],a[15]);
 		/* Replace longest /(^0|:)[:0]{2,}/ with "::" */
 		if (buf[0]) {
-			for (i=1, best=0, max=3; buf[i]; i+=j) {
-				if (buf[i] != ':') {
-					j = 1;
+			for (i=1, best=0, max=2; buf[i]; i+=j) {
+				if (buf[i++] != ':') {
+					j = 0;
 					continue;
 				}
 				j = strspn(buf+i, ":0");
-				if (j>max) best=i, max=j;
+				if (j>max) best=i, max=j; /* values skewed by 1 */
 			}
-			if (max>3) {
+			if (max>2) {
+				best--, max++;
 				buf[best] = buf[best+1] = ':';
 				memmove(buf+best+2, buf+best+max, i-best-max+1);
 			}
