@@ -286,7 +286,8 @@ class Test(object):
 
         return [zone]
 
-    def zone_rnd(self, number, dnssec=None, nsec3=None, records=None, serial=None, ttl=None):
+    def zone_rnd(self, number, dnssec=None, nsec3=None, records=None, serial=None,
+                 ttl=None, exists=True):
         zones = list()
 
         # Generate unique zone names.
@@ -294,8 +295,11 @@ class Test(object):
         for name in names:
             zone = dnstest.zonefile.ZoneFile(self.zones_dir)
             zone.set_name(name)
-            zone.gen_file(dnssec=dnssec, nsec3=nsec3, records=records,
-                          serial=serial, ttl=ttl)
+            if exists:
+                zone.gen_file(dnssec=dnssec, nsec3=nsec3, records=records,
+                              serial=serial, ttl=ttl)
+            else:
+                zone.file_name = zone.name + "zone"
             zones.append(zone)
 
         return zones
