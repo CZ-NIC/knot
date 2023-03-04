@@ -17,6 +17,7 @@
 #define __APPLE_USE_RFC_3542
 
 #include <assert.h>
+#include <gnutls/x509.h>
 #include <sys/types.h>   // OpenBSD
 #include <netinet/tcp.h> // TCP_FASTOPEN
 #include <sys/resource.h>
@@ -24,9 +25,9 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
 #include "libknot/xdp.h"
-#if defined ENABLE_XDP && ENABLE_QUIC
-#include "libknot/xdp/quic.h"
-#endif // ENABLE_XDP && ENABLE_QUIC
+#ifdef ENABLE_QUIC
+#include "libknot/quic/quic.h"
+#endif // ENABLE_QUIC
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
@@ -39,9 +40,11 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
+#include "knot/updates/acl.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
+#include "contrib/base64.h"
 #include "contrib/conn_pool.h"
 #include "contrib/net.h"
 #include "contrib/openbsd/strlcat.h"
@@ -328,6 +331,7 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
  * Both TCP and UDP sockets will be created for the interface.
  *
  * \param addr              Socket address.
+ * \param quic              QUIC interface indication.
  * \param udp_thread_count  Number of created UDP workers.
  * \param tcp_thread_count  Number of created TCP workers.
  * \param tcp_reuseport     Indication if reuseport on TCP is enabled.
@@ -336,7 +340,7 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
  * \retval Pointer to a new initialized interface.
  * \retval NULL if error.
  */
-static iface_t *server_init_iface(struct sockaddr_storage *addr,
+static iface_t *server_init_iface(struct sockaddr_storage *addr, bool quic,
                                   int udp_thread_count, int tcp_thread_count,
                                   bool tcp_reuseport, bool socket_affinity)
 {
@@ -353,14 +357,14 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 
 	int udp_socket_count = 1;
 	int udp_bind_flags = 0;
-	int tcp_socket_count = 1;
+	int tcp_socket_count = !quic ? 1 : 0;
 	int tcp_bind_flags = 0;
 
 #ifdef ENABLE_REUSEPORT
 	udp_socket_count = udp_thread_count;
 	udp_bind_flags |= NET_BIND_MULTIPLE;
 
-	if (tcp_reuseport) {
+	if (!quic && tcp_reuseport) {
 		tcp_socket_count = tcp_thread_count;
 		tcp_bind_flags |= NET_BIND_MULTIPLE;
 	}
@@ -401,7 +405,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
-		if ((udp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
+		if ((udp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity &&
+		    addr->ss_family != AF_UNIX) {
 			if (!server_attach_reuseport_bpf(sock, udp_socket_count) &&
 			    warn_cbpf) {
 				log_warning("cannot ensure optimal CPU locality for UDP");
@@ -475,7 +480,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 			return NULL;
 		}
 
-		if ((tcp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
+		if ((tcp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity &&
+		    addr->ss_family != AF_UNIX) {
 			if (!server_attach_reuseport_bpf(sock, tcp_socket_count) &&
 			    warn_cbpf) {
 				log_warning("cannot ensure optimal CPU locality for TCP");
@@ -523,6 +529,39 @@ static void log_sock_conf(conf_t *conf)
 	}
 }
 
+static int init_creds(server_t *server, conf_t *conf)
+{
+#ifdef ENABLE_QUIC
+	char *tls_cert = conf_tls(conf, C_CERT_FILE);
+	char *tls_key = conf_tls(conf, C_KEY_FILE);
+	if (tls_cert == NULL) {
+		log_notice("QUIC, no server certificate configured, using one-time one");
+	}
+	server->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
+	free(tls_cert);
+	free(tls_key);
+	if (server->quic_creds == NULL) {
+		log_error("QUIC, failed to initialize server credentials");
+	}
+
+	int pin_size = 0;
+	uint8_t bin_pin[CERT_PIN_LEN], pin[2 * CERT_PIN_LEN];
+	size_t bin_pin_size = sizeof(bin_pin);
+	gnutls_x509_crt_t cert;
+	if (knot_xquic_creds_cert(server->quic_creds, &cert) == KNOT_EOK &&
+	    gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
+	                               bin_pin, &bin_pin_size) == GNUTLS_E_SUCCESS &&
+	    (pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin))) > 0) {
+		log_info("QUIC, public key pin %.*s", pin_size, pin);
+	}
+	gnutls_x509_crt_deinit(cert);
+
+	return KNOT_EOK;
+#else
+	return KNOT_ERROR;
+#endif // ENABLE_QUIC
+}
+
 /*! \brief Initialize bound sockets according to configuration. */
 static int configure_sockets(conf_t *conf, server_t *s)
 {
@@ -531,10 +570,12 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t liquic_val = conf_get(conf, C_SRV, C_LISTEN_QUIC);
 	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
+	uint16_t convent_quic = conf_val_count(&liquic_val);
 
-	if (listen_val.code == KNOT_EOK) {
+	if (listen_val.code == KNOT_EOK || liquic_val.code == KNOT_EOK) {
 		log_sock_conf(conf);
 	} else if (lisxdp_val.code != KNOT_EOK) {
 		log_warning("no network interface configured");
@@ -559,7 +600,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 #endif
 
 	size_t real_nifs = 0;
-	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
+	size_t nifs = conf_val_count(&listen_val) + conf_val_count(&liquic_val) +
+	              conf_val_count(&lisxdp_val);
 	iface_t *newlist = calloc(nifs, sizeof(*newlist));
 	if (newlist == NULL) {
 		log_error("failed to allocate memory for network sockets");
@@ -578,7 +620,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 		log_info("binding to interface %s", addr_str);
 
-		iface_t *new_if = server_init_iface(&addr, size_udp, size_tcp,
+		iface_t *new_if = server_init_iface(&addr, false, size_udp, size_tcp,
 		                                    tcp_reuseport, socket_affinity);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
@@ -589,6 +631,25 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		free(new_if);
 
 		conf_val_next(&listen_val);
+	}
+	while (liquic_val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir);
+		char addr_str[SOCKADDR_STRLEN] = { 0 };
+		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
+		log_info("binding to QUIC interface %s", addr_str);
+
+		iface_t *new_if = server_init_iface(&addr, true, size_udp, 0,
+		                                    false, socket_affinity);
+		if (new_if == NULL) {
+			server_deinit_iface_list(newlist, nifs);
+			free(rundir);
+			return KNOT_ERROR;
+		}
+		new_if->quic = true;
+		memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
+		free(new_if);
+
+		conf_val_next(&liquic_val);
 	}
 	free(rundir);
 
@@ -619,23 +680,13 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	assert(real_nifs <= nifs);
 	nifs = real_nifs;
 
-#if defined ENABLE_XDP && ENABLE_QUIC
-	if (xdp_quic > 0) {
-		char *tls_cert = conf_tls(conf, C_CERT_FILE);
-		char *tls_key = conf_tls(conf, C_KEY_FILE);
-		if (tls_cert == NULL) {
-			log_notice("QUIC, no server certificate configured, using one-time one");
-		}
-		s->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
-		free(tls_cert);
-		free(tls_key);
-		if (s->quic_creds == NULL) {
-			log_error("QUIC, failed to initialize server credentials");
+	/* QUIC credentials initialization. */
+	if (xdp_quic > 0 || convent_quic > 0) {
+		if (init_creds(s, conf) != KNOT_EOK) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
 		}
 	}
-#endif // ENABLE_XDP && ENABLE_QUIC
 
 	/* Publish new list. */
 	s->ifaces = newlist;
@@ -753,9 +804,9 @@ void server_deinit(server_t *server)
 	global_conn_pool = NULL;
 	knot_unreachables_deinit(&global_unreachables);
 
-#if defined ENABLE_XDP && ENABLE_QUIC
+#if defined ENABLE_QUIC
 	knot_xquic_free_creds(server->quic_creds);
-#endif // ENABLE_XDP && ENABLE_QUIC
+#endif // ENABLE_QUIC
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
@@ -924,8 +975,10 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	assert(server->ifaces);
 
 	conf_val_t listen_val = conf_get(conf, C_SRV, C_LISTEN);
+	conf_val_t liquic_val = conf_get(conf, C_SRV, C_LISTEN_QUIC);
 	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
-	size_t new_count = conf_val_count(&listen_val) + conf_val_count(&lisxdp_val);
+	size_t new_count = conf_val_count(&listen_val) + conf_val_count(&liquic_val) +
+	                   conf_val_count(&lisxdp_val);
 	size_t old_count = server->n_ifaces;
 	if (new_count != old_count) {
 		return true;
@@ -950,6 +1003,21 @@ static bool listen_changed(conf_t *conf, server_t *server)
 			break;
 		}
 		conf_val_next(&listen_val);
+	}
+	while (liquic_val.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir);
+		bool found = false;
+		for (size_t i = 0; i < server->n_ifaces; i++) {
+			if (sockaddr_cmp(&addr, &server->ifaces[i].addr, false) == 0) {
+				matches++;
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			break;
+		}
+		conf_val_next(&liquic_val);
 	}
 	free(rundir);
 

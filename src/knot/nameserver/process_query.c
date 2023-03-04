@@ -30,6 +30,7 @@
 #include "knot/nameserver/notify.h"
 #include "knot/server/server.h"
 #include "libknot/libknot.h"
+#include "contrib/base64.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 
@@ -704,22 +705,34 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		       action == ACL_ACTION_TRANSFER);
 		const yp_name_t *item = (action == ACL_ACTION_NOTIFY) ? C_MASTER : C_NOTIFY;
 		conf_val_t rmts = conf_zone_get(conf, item, zone_name);
-		allowed = rmt_allowed(conf, &rmts, query_source, &tsig);
+		allowed = rmt_allowed(conf, &rmts, query_source, &tsig,
+		                      qdata->params->session);
 		automatic = allowed;
 	}
 	if (!allowed) {
 		conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
-		allowed = acl_allowed(conf, &acl, action, query_source, &tsig, zone_name, query);
+		allowed = acl_allowed(conf, &acl, action, query_source, &tsig,
+		                      zone_name, query, qdata->params->session);
+	}
+
+	int pin_size = 0;
+	uint8_t bin_pin[CERT_PIN_LEN], pin[2 * CERT_PIN_LEN];
+	size_t bin_pin_size = sizeof(bin_pin);
+	cert_pin(qdata->params->session, bin_pin, &bin_pin_size, false);
+	if (bin_pin_size > 0) {
+		pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin));
 	}
 
 	log_zone_debug(zone_name,
-	               "ACL, %s, action %s, remote %s, key %s%s%s%s",
+	               "ACL, %s, action %s, remote %s%s%s%s%.*s%s",
 	               allowed ? "allowed" : "denied",
 	               (act != NULL) ? act->name : "query",
 	               addr_str,
-	               (key_name[0] != '\0') ? "'" : "",
-	               (key_name[0] != '\0') ? key_name : "none",
-	               (key_name[0] != '\0') ? "'" : "",
+	               (key_name[0] != '\0') ? ", key " : "",
+	               (key_name[0] != '\0') ? key_name : "",
+	               (pin_size > 0) ? ", pin " : "",
+	               (pin_size > 0) ? pin_size : 0,
+	               (pin_size > 0) ? (const char *)pin : "",
 	               automatic ? ", automatic" : "");
 
 	/* Check if authorized. */

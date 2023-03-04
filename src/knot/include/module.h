@@ -410,6 +410,7 @@ typedef struct {
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
 	const struct knot_xdp_msg *xdp_msg;    /*!< Possible XDP message context. */
+	struct gnutls_session_int *session;    /*!< QUIC session. */
 	uint32_t measured_rtt;                 /*!< Measured RTT in usecs: QUIC or TCP-XDP. */
 } knotd_qdata_params_t;
 
@@ -440,7 +441,10 @@ typedef struct {
  *
  * \return Local address or NULL if error.
  */
-const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata);
+inline static const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata)
+{
+	return qdata->params->local;
+}
 
 /*!
  * Gets the remote (source) address of the query.
@@ -449,7 +453,10 @@ const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata);
  *
  * \return Remote address or NULL if error.
  */
-const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata);
+inline static const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata)
+{
+	return qdata->params->remote;
+}
 
 /*!
  * Gets the measured TCP round-trip-time.

@@ -171,6 +171,7 @@ General options related to the server.
      dbus-event: none | running | zone-updated | ksk-submission | dnssec-invalid ...
      dbus-init-delay: TIME
      listen: ADDR[@INT] | STR ...
+     listen-quic: ADDR[@INT] ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -632,6 +633,18 @@ using ``@`` separator. Use ``0.0.0.0`` for all configured IPv4 addresses or
 for listening on local unix SOCK_STREAM socket. Non-absolute path
 (i.e. not starting with ``/``) is relative to :ref:`server_rundir`.
 Non-local address binding is automatically enabled if supported by the operating system.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* not set
+
+.. _server_listen-quic:
+
+listen-quic
+-----------
+
+One or more IP addresses (and optionally ports) where the server listens
+for incoming queries over QUIC protocol.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -1291,6 +1304,7 @@ transfer, target for a notification, etc.).
      address: ADDR[@INT] | STR ...
      via: ADDR[@INT] ...
      key: key_id
+     cert-pin: BASE64 ...
      block-notify-after-transfer: BOOL
      no-edns: BOOL
      automatic-acl: BOOL
@@ -1341,6 +1355,22 @@ key
 
 A :ref:`reference<key_id>` to the TSIG key which is used to authenticate
 the communication with the remote server.
+
+*Default:* not set
+
+.. _remote_cert-pin:
+
+cert-pin
+--------
+
+An ordered list of remote certificate PINs. If the list is non-empty,
+communication with the remote is possible only via QUIC protocol and
+a peer certificate is required. The peer certificate must match one of the
+specified PINs.
+
+A PIN is a unique identifier that represent the public key of the peer certificate.
+It's a base64-encoded SHA-256 hash of the public key. This identifier
+remains the same on a certificate renewal.
 
 *Default:* not set
 
@@ -1431,6 +1461,7 @@ and dynamic DNS update) which are allowed to be processed or denied.
    - id: STR
      address: ADDR[/INT] | ADDR-ADDR | STR ...
      key: key_id ...
+     cert-pin: BASE64 ...
      remote: remote_id | remotes_id ...
      action: query | notify | transfer | update ...
      deny: BOOL
@@ -1465,6 +1496,22 @@ key
 
 An ordered list of :ref:`reference<key_id>`\ s to TSIG keys. The query must
 match one of them. If this item is not set, transaction authentication is not used.
+
+*Default:* not set
+
+.. _acl_cert-pin:
+
+cert-pin
+--------
+
+An ordered list of remote certificate PINs. If the list is non-empty,
+communication with the remote is possible only via QUIC protocol and
+a peer certificate is required. The peer certificate must match one of the
+specified PINs.
+
+A PIN is a unique identifier that represent the public key of the peer certificate.
+It's a base64-encoded SHA-256 hash of the public key. This identifier
+remains the same on a certificate renewal.
 
 *Default:* not set
 

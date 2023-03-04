@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@
 #include "knot/conf/module.h"
 #include "knot/conf/schema.h"
 #include "knot/common/log.h"
+#include "knot/updates/acl.h"
 #include "libknot/errcode.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/xdp.h"
@@ -317,6 +318,20 @@ int check_xdp_listen(
 #endif
 }
 
+int check_cert_pin(
+	knotd_conf_check_args_t *args)
+{
+	if (args->data_len != sizeof(uint16_t) + CERT_PIN_LEN) {
+		(void)snprintf(check_str, sizeof(check_str),
+		               "invalid certificate pin, expected base64-encoded "
+		               "%u bytes", CERT_PIN_LEN);
+		args->err_str = check_str;
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 static int dir_exists(const char *dir)
 {
 	struct stat st;
@@ -517,6 +532,19 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 #endif
 }
 
+#ifdef ENABLE_QUIC
+static bool listen_hit(const struct sockaddr_storage *ss1,
+                       const struct sockaddr_storage *ss2)
+{
+	if (sockaddr_is_any(ss1) || sockaddr_is_any(ss2)) {
+		return ss1->ss_family == ss2->ss_family &&
+		       sockaddr_port(ss1) == sockaddr_port(ss2);
+	} else {
+		return sockaddr_cmp(ss1, ss2, false) == 0;
+	}
+}
+#endif // ENABLE_QUIC
+
 int check_server(
 	knotd_conf_check_args_t *args)
 {
@@ -527,6 +555,37 @@ int check_server(
 	if (key_file.code != crt_file.code) {
 		args->err_str = "both server certificate and key must be set";
 		return KNOT_EINVAL;
+	}
+
+	conf_val_t liquic_val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                     C_SRV, C_LISTEN_QUIC);
+	size_t liquic_count = conf_val_count(&liquic_val);
+	if (liquic_count > 0) {
+#ifdef ENABLE_QUIC
+		conf_val_t listen_val = conf_get_txn(args->extra->conf, args->extra->txn,
+		                                     C_SRV, C_LISTEN);
+		size_t listen_count = conf_val_count(&listen_val);
+
+		for (size_t i = 0; listen_count > 0 && i < liquic_count; i++) {
+			struct sockaddr_storage liquic_addr = conf_addr(&liquic_val, NULL);
+
+			for (size_t j = 0; j < listen_count; j++) {
+				struct sockaddr_storage listen_addr = conf_addr(&listen_val, NULL);
+				if (listen_hit(&liquic_addr, &listen_addr)) {
+					args->err_str = "QUIC listen address/port overlaps "
+					                "with UDP listen address/port";
+					return KNOT_EINVAL;
+				}
+				conf_val_next(&listen_val);
+			}
+
+			conf_val(&listen_val);
+			conf_val_next(&liquic_val);
+		}
+#else
+		args->err_str = "QUIC processing not available";
+		return KNOT_EINVAL;
+#endif // ENABLE_QUIC
 	}
 
 	return KNOT_EOK;

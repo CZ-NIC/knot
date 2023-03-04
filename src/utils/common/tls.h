@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/lists.h"
+
+#define CERT_PIN_LEN 32
 
 /*! \brief TLS parameters. */
 typedef struct {

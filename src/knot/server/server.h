@@ -73,6 +73,7 @@ typedef struct {
 	unsigned fd_xdp_count;
 	unsigned xdp_first_thread_id;
 	bool anyaddr;
+	bool quic;
 	struct knot_xdp_socket **xdp_sockets;
 	struct sockaddr_storage addr;
 } iface_t;

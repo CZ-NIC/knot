@@ -152,6 +152,8 @@ libknotd_la_SOURCES = \
 	knot/journal/serialization.h		\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
+	knot/server/handler.c			\
+	knot/server/handler.h			\
 	knot/server/proxyv2.c			\
 	knot/server/proxyv2.h			\
 	knot/server/server.c			\
@@ -216,6 +218,12 @@ libknotd_la_SOURCES = \
 	knot/zone/zonedb.h			\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
+
+if ENABLE_QUIC
+libknotd_la_SOURCES += \
+	knot/server/quic-handler.c		\
+	knot/server/quic-handler.h
+endif ENABLE_QUIC
 
 if HAVE_DAEMON
 noinst_LTLIBRARIES += libknotd.la

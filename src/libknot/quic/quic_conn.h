@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,13 +19,12 @@
  *
  * \brief QUIC connection management.
  *
- * \addtogroup xdp
+ * \addtogroup quic
  * @{
  */
 
 #pragma once
 
-#include <linux/if_ether.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/uio.h>
@@ -119,7 +118,7 @@ typedef struct knot_xquic_table {
  * \param max_conns    Maximum nuber of connections.
  * \param max_ibufs    Maximum size of buffers for fragmented incomming DNS msgs.
  * \param max_obufs    Maximum size of buffers for un-ACKed outgoing data.
- * \param udp_pl       Maximum UDP payload size (both IPv4 and 6).
+ * \param udp_payload  Maximum UDP payload size (both IPv4 and 6).
  * \param creds        QUIC crypto context..
  *
  * \return Allocated table, or NULL.

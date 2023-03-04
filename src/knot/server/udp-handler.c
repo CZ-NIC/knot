@@ -30,17 +30,20 @@
 #endif /* HAVE_SYS_UIO_H */
 #include <unistd.h>
 
-#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 #include "knot/common/fdset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
-#include "knot/server/proxyv2.h"
+#include "knot/server/handler.h"
 #include "knot/server/server.h"
+#ifdef ENABLE_QUIC
+#include "knot/server/quic-handler.h"
+#endif // ENABLE_QUIC
 #include "knot/server/udp-handler.h"
 #include "knot/server/xdp-handler.h"
+#include "libknot/xdp/tcp_iobuf.h"
 
 /* Buffer identifiers. */
 enum {
@@ -55,65 +58,20 @@ typedef struct {
 	server_t *server;   /*!< Name server structure. */
 	unsigned thread_id; /*!< Thread identifier. */
 	sockaddr_t local;   /*!< Storage for local any address. */
+
+#ifdef ENABLE_QUIC
+	knot_xquic_table_t *quic_table; /*!< QUIC connection table if active. */
+	knot_sweep_stats_t quic_closed; /*!< QUIC sweep context. */
+	uint64_t quic_idle_close;       /*!< QUIC idle close timeout (in nanoseconds). */
+#endif // ENABLE_QUIC
 } udp_context_t;
 
-static bool udp_state_active(int state)
+static void udp_handler(udp_context_t *udp, knotd_qdata_params_t *params,
+                        struct iovec *rx, struct iovec *tx)
 {
-	return (state == KNOT_STATE_PRODUCE || state == KNOT_STATE_FAIL);
-}
-
-static void udp_handle(udp_context_t *udp, int fd, const sockaddr_t *remote,
-                       const sockaddr_t *local, struct iovec *rx, struct iovec *tx,
-                       struct knot_xdp_msg *xdp_msg)
-{
-	/* Create query processing parameter. */
-	knotd_qdata_params_t params = {
-		.proto = KNOTD_QUERY_PROTO_UDP,
-		.remote = (const struct sockaddr_storage *)remote,
-		.local = (const struct sockaddr_storage *)local,
-		.socket = fd,
-		.server = udp->server,
-		.xdp_msg = xdp_msg,
-		.thread_id = udp->thread_id
-	};
+	// Prepare a reply.
 	struct sockaddr_storage proxied_remote;
-
-	/* Start query processing. */
-	knot_layer_begin(&udp->layer, &params);
-
-	/* Create packets. */
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, udp->layer.mm);
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, udp->layer.mm);
-
-	/* Input packet. */
-	int ret = knot_pkt_parse(query, 0);
-	if (ret != KNOT_EOK && query->parsed > 0) {
-		ret = proxyv2_header_strip(&query, params.remote, &proxied_remote);
-		if (ret == KNOT_EOK) {
-			params.remote = &proxied_remote;
-		} else {
-			query->parsed--; // artificially decreasing "parsed" leads to FORMERR
-		}
-	}
-	knot_layer_consume(&udp->layer, query);
-
-	/* Process answer. */
-	while (udp_state_active(udp->layer.state)) {
-		knot_layer_produce(&udp->layer, ans);
-	}
-
-	/* Send response only if finished successfully. */
-	if (udp->layer.state == KNOT_STATE_DONE) {
-		tx->iov_len = ans->size;
-	} else {
-		tx->iov_len = 0;
-	}
-
-	/* Reset after processing. */
-	knot_layer_finish(&udp->layer);
-
-	/* Flush per-query memory (including query and answer packets). */
-	mp_flush(udp->layer.mm->ctx);
+	handle_udp_reply(params, &udp->layer, rx, tx, &proxied_remote);
 }
 
 typedef struct {
@@ -122,7 +80,7 @@ typedef struct {
 	int (*udp_recv)(int, void *);
 	void (*udp_handle)(udp_context_t *, const iface_t *, void *);
 	void (*udp_send)(void *);
-	void (*udp_sweep)(void *); // Optional
+	void (*udp_sweep)(udp_context_t *, void *);
 } udp_api_t;
 
 /*! \brief Control message to fit IP_PKTINFO or IPv6_RECVPKTINFO. */
@@ -178,6 +136,18 @@ static const sockaddr_t *udp_pktinfo_handle(const struct msghdr *rx, struct msgh
 	}
 
 	return (const sockaddr_t *)&iface->addr;
+}
+
+static void udp_sweep(udp_context_t *ctx, _unused_ void *d)
+{
+#ifdef ENABLE_QUIC
+	if (ctx->quic_table != NULL) {
+		ctx->quic_idle_close = conf()->cache.srv_quic_idle_close * 1000000000LU;
+		quic_sweep(ctx->quic_table, &ctx->quic_closed);
+	}
+#else
+	assert(0);
+#endif // ENABLE_QUIC
 }
 
 typedef struct {
@@ -248,7 +218,19 @@ static void udp_msg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 	                                             &ctx->local, iface);
 
 	/* Process received pkt. */
-	udp_handle(ctx, rq->fd, &rq->addr, local, &rq->iov[RX], &rq->iov[TX], NULL);
+	knotd_qdata_params_t params = params_init(
+		iface->quic ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP,
+		&rq->addr, local, rq->fd, ctx->server, ctx->thread_id);
+	if (iface->quic) {
+#ifdef ENABLE_QUIC
+		quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
+		             ctx->quic_table, &rq->iov[RX],  &rq->msg[TX]);
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+	} else {
+		udp_handler(ctx, &params, &rq->iov[RX], &rq->iov[TX]);
+	}
 }
 
 static void udp_msg_send(void *d)
@@ -267,6 +249,7 @@ static udp_api_t udp_msg_api = {
 	udp_msg_recv,
 	udp_msg_handle,
 	udp_msg_send,
+	udp_sweep,
 };
 
 #ifdef ENABLE_RECVMMSG
@@ -341,8 +324,19 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 		/* Update output message control buffer. */
 		const sockaddr_t *local = udp_pktinfo_handle(rx, tx, &ctx->local, iface);
 
-		udp_handle(ctx, rq->fd, &rq->addrs[i], local, rx->msg_iov,
-		           tx->msg_iov, NULL);
+		knotd_qdata_params_t params = params_init(
+			iface->quic ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP,
+			&rq->addrs[i], local, rq->fd, ctx->server, ctx->thread_id);
+		if (iface->quic) {
+#ifdef ENABLE_QUIC
+			quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
+			             ctx->quic_table, rx->msg_iov, tx);
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+		} else {
+			udp_handler(ctx, &params, rx->msg_iov, tx->msg_iov);
+		}
 
 		if (tx->msg_iov->iov_len > 0) {
 			rq->msgs[TX][j].msg_len = tx->msg_iov->iov_len;
@@ -379,6 +373,7 @@ static udp_api_t udp_mmsg_api = {
 	udp_mmsg_recv,
 	udp_mmsg_handle,
 	udp_mmsg_send,
+	udp_sweep,
 };
 #endif /* ENABLE_RECVMMSG */
 
@@ -402,6 +397,7 @@ static int xdp_mmsg_recv(_unused_ int fd, void *d)
 
 static void xdp_mmsg_handle(udp_context_t *ctx, _unused_ const iface_t *iface, void *d)
 {
+	assert(!iface->quic);
 	xdp_handle_msgs(d, &ctx->layer, ctx->server, ctx->thread_id);
 }
 
@@ -410,7 +406,7 @@ static void xdp_mmsg_send(void *d)
 	xdp_handle_send(d);
 }
 
-static void xdp_mmsg_sweep(void *d)
+static void xdp_mmsg_sweep(_unused_ udp_context_t *ctx, void *d)
 {
 	xdp_handle_reconfigure(d);
 	xdp_handle_sweep(d);
@@ -464,7 +460,7 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 }
 
 static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t *fds,
-                               int thread_id, void **xdp_socket)
+                               int thread_id, void **xdp_socket, bool *quic)
 {
 	if (n_ifaces == 0) {
 		return 0;
@@ -481,6 +477,9 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 		int ret = fdset_add(fds, fd, FDSET_POLLIN, (void *)i);
 		if (ret < 0) {
 			return 0;
+		}
+		if (i->quic) {
+			*quic = true;
 		}
 	}
 
@@ -537,6 +536,7 @@ int udp_master(dthread_t *thread)
 	knot_layer_init(&udp.layer, &mm, process_query_layer());
 
 	/* Allocate descriptors for the configured interfaces. */
+	bool quic = false;
 	void *xdp_socket = NULL;
 	size_t nifs = handler->server->n_ifaces;
 	fdset_t fds;
@@ -544,10 +544,20 @@ int udp_master(dthread_t *thread)
 		goto finish;
 	}
 	unsigned nfds = udp_set_ifaces(handler->server, nifs, &fds,
-	                               thread_id, &xdp_socket);
+	                               thread_id, &xdp_socket, &quic);
 	if (nfds == 0) {
 		goto finish;
 	}
+
+#ifdef ENABLE_QUIC
+	if (quic) {
+		udp.quic_idle_close= conf()->cache.srv_quic_idle_close * 1000000000LU;
+		udp.quic_table = quic_make_table(handler->server);
+		if (udp.quic_table == NULL) {
+			goto finish;
+		}
+	}
+#endif // ENABLE_QUIC
 
 	/* Initialize the networking API. */
 	api_ctx = api->udp_init(&udp, xdp_socket);
@@ -579,14 +589,15 @@ int udp_master(dthread_t *thread)
 			}
 		}
 
-		/* Regular maintenance (XDP-TCP only). */
-		if (api->udp_sweep != NULL) {
-			api->udp_sweep(api_ctx);
-		}
+		/* Regular maintenance. */
+		api->udp_sweep(&udp, api_ctx);
 	}
 
 finish:
 	api->udp_deinit(api_ctx);
+#ifdef ENABLE_QUIC
+	quic_unmake_table(udp.quic_table);
+#endif // ENABLE_QUIC
 	mp_delete(mm.ctx);
 	fdset_clear(&fds);
 

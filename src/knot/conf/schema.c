@@ -245,6 +245,7 @@ static const yp_item_t desc_server[] = {
 	{ C_DBUS_EVENT,           YP_TOPT,  YP_VOPT = { dbus_events, DBUS_EVENT_NONE }, YP_FMULTI },
 	{ C_DBUS_INIT_DELAY,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 1, YP_STIME } },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
+	{ C_LISTEN_QUIC,          YP_TADDR, YP_VADDR = { 853 }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	// Legacy items.
 	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { 0 },                        YP_FMULTI, { legacy_item } },
@@ -342,6 +343,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_ADDR,             YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI },
 	{ C_VIA,              YP_TADDR, YP_VNONE, YP_FMULTI },
 	{ C_KEY,              YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
+	{ C_CERT_PIN,         YP_TB64,  YP_VNONE, YP_FMULTI, { check_cert_pin } },
 	{ C_BLOCK_NOTIFY_XFR, YP_TBOOL, YP_VNONE },
 	{ C_NO_EDNS,          YP_TBOOL, YP_VNONE },
 	{ C_AUTO_ACL,         YP_TBOOL, YP_VBOOL = { true } },
@@ -369,6 +371,7 @@ static const yp_item_t desc_acl[] = {
 	{ C_UPDATE_OWNER_MATCH, YP_TOPT,   YP_VOPT = { acl_update_owner_match, ACL_UPDATE_MATCH_SUBEQ } },
 	{ C_UPDATE_OWNER_NAME,  YP_TDATA,  YP_VDATA = { 0, NULL, rdname_to_bin, rdname_to_txt },
 	                                   YP_FMULTI, },
+	{ C_CERT_PIN,           YP_TB64,   YP_VNONE, YP_FMULTI, { check_cert_pin } },
 	{ C_COMMENT,            YP_TSTR,   YP_VNONE },
 	{ NULL }
 };

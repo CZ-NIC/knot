@@ -273,33 +273,26 @@ char *sockaddr_hostname(void)
 	/* Just to be sure. */
 	host[sizeof(host) - 1] = '\0';
 
-	/* Fetch canonical name for this address/DNS. */
+	char *canon = NULL;
+
+	/* Fetch first canonical name for this address/DNS if available. */
 	struct addrinfo hints, *info = NULL;
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_CANONNAME;
-	if (getaddrinfo(host, "domain", &hints, &info) != 0) {
-		return NULL;
-	}
-
-	/* Fetch first valid hostname. */
-	char *hname = NULL;
-	struct addrinfo *p = NULL;
-	for (p = info; p != NULL; p = p->ai_next) {
-		if (p->ai_canonname) {
-			hname = strdup(p->ai_canonname);
-			break;
+	if (getaddrinfo(host, "domain", &hints, &info) == 0) {
+		struct addrinfo *p = NULL;
+		for (p = info; p != NULL; p = p->ai_next) {
+			if (p->ai_canonname) {
+				canon = strdup(p->ai_canonname);
+				break;
+			}
 		}
+		freeaddrinfo(info);
 	}
 
-	/* No valid hostname found, resort to gethostname() result */
-	if (hname == NULL) {
-		hname = strdup(host);
-	}
-
-	freeaddrinfo(info);
-	return hname;
+	return (canon != NULL) ? canon : strdup(host);
 }
 
 bool sockaddr_is_any(const struct sockaddr_storage *ss)

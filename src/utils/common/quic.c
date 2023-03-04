@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,20 +59,8 @@ void quic_params_clean(quic_params_t *params)
 #define quic_send(ctx, sockfd, family) quic_send_data(ctx, sockfd, family, NULL, 0)
 #define quic_timeout(ts, wait) (((ts) + NGTCP2_SECONDS * (wait)) <= quic_timestamp())
 
-const gnutls_datum_t doq_alpn[] = {
-	{
-		.data = (unsigned char *)"doq",
-		.size = 3
-	},{
-		.data = (unsigned char *)"doq-i12",
-		.size = 7
-	},{
-		.data = (unsigned char *)"doq-i11",
-		.size = 7
-	},{
-		.data = (unsigned char *)"doq-i03",
-		.size = 7
-	}
+const gnutls_datum_t doq_alpn = {
+	(unsigned char *)"doq", 3
 };
 
 #define set_application_error(ctx, error_code, reason, reason_len) \
