@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -170,11 +170,17 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	                        ZONE_EVENT_DS_PUSH, ds_push);
 }
 
-void replan_load_new(zone_t *zone)
+void replan_load_new(zone_t *zone, bool gen_catalog)
 {
-	// enqueue directly, make first load waitable
-	// other events will cascade from load
-	zone_events_enqueue(zone, ZONE_EVENT_LOAD);
+	if (gen_catalog) {
+		/* Catalog generation must wait until the zonedb
+		 * is fully created. */
+		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+	} else {
+		/* Enqueue directly, make first load waitable,
+		 * other events will cascade from load. */
+		zone_events_enqueue(zone, ZONE_EVENT_LOAD);
+	}
 }
 
 void replan_load_bootstrap(conf_t *conf, zone_t *zone)
