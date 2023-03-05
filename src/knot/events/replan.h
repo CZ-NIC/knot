@@ -1,4 +1,4 @@
-/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone);
  * \defgroup replan_load Replan timers after zone load or reload.
  * @{
  */
-void replan_load_new(zone_t *zone);
+void replan_load_new(zone_t *zone, bool gen_catalog);
 void replan_load_bootstrap(conf_t *conf, zone_t *zone);
 void replan_load_current(conf_t *conf, zone_t *zone, zone_t *old_zone);
 void replan_load_updated(zone_t *zone, zone_t *old_zone);

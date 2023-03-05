@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -148,8 +148,9 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 
 	zone_timers_sanitize(conf, zone);
 
-	conf_val_t role = conf_zone_get(conf, C_CATALOG_ROLE, name);
-	if (conf_opt(&role) == CATALOG_ROLE_MEMBER) {
+	conf_val_t role_val = conf_zone_get(conf, C_CATALOG_ROLE, name);
+	unsigned role = conf_opt(&role_val);
+	if (role == CATALOG_ROLE_MEMBER) {
 		conf_val_t catz = conf_zone_get(conf, C_CATALOG_ZONE, name);
 		assert(catz.code == KNOT_EOK); // conf consistency checked in conf/tools.c
 		zone->catalog_gen = knot_dname_copy(conf_dname(&catz), NULL);
@@ -162,7 +163,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 			zone_free(&zone);
 			return NULL;
 		}
-	} else if (conf_opt(&role) == CATALOG_ROLE_GENERATE) {
+	} else if (role == CATALOG_ROLE_GENERATE) {
 		zone->cat_members = catalog_update_new();
 		if (zone->cat_members == NULL) {
 			log_zone_error(zone->name, "failed to initialize catalog zone (%s)",
@@ -171,7 +172,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 			return NULL;
 		}
 		zone_set_flag(zone, ZONE_IS_CATALOG);
-	} else if (conf_opt(&role) == CATALOG_ROLE_INTERPRET) {
+	} else if (role == CATALOG_ROLE_INTERPRET) {
 		ret = catalog_open(&server->catalog);
 		if (ret != KNOT_EOK) {
 			log_error("failed to open catalog database (%s)", knot_strerror(ret));
@@ -186,7 +187,8 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		replan_load_bootstrap(conf, zone);
 	} else {
 		log_zone_info(zone->name, "zone will be loaded");
-		replan_load_new(zone); // if load fails, fallback to bootstrap
+		// if load fails, fallback to bootstrap
+		replan_load_new(zone, role == CATALOG_ROLE_GENERATE);
 	}
 
 	return zone;
