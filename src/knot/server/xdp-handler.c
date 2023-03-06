@@ -21,6 +21,7 @@
 #include <urcu.h>
 
 #include "knot/server/handler.h"
+#include "knot/server/quic-handler.h"
 #include "knot/server/xdp-handler.h"
 #include "knot/common/log.h"
 #include "knot/server/server.h"
@@ -58,10 +59,7 @@ typedef struct xdp_handle_ctx {
 	uint32_t tcp_idle_resend; // In microseconds.
 
 	uint16_t quic_port;       // Network-byte order!
-	size_t quic_max_conns;
 	uint64_t quic_idle_close; // In nanoseconds.
-	size_t quic_max_inbufs;
-	size_t quic_max_obufs;
 
 	knot_sweep_stats_t tcp_closed;
 } xdp_handle_ctx_t;
@@ -79,10 +77,7 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 	ctx->tcp_idle_close = pconf->cache.xdp_tcp_idle_close * 1000000;
 	ctx->tcp_idle_reset = pconf->cache.xdp_tcp_idle_reset * 1000000;
 	ctx->tcp_idle_resend= pconf->cache.xdp_tcp_idle_resend * 1000000;
-	ctx->quic_max_conns = pconf->cache.srv_quic_max_clients / pconf->cache.srv_xdp_threads;
 	ctx->quic_idle_close= pconf->cache.srv_quic_idle_close * 1000000000LU;
-	ctx->quic_max_inbufs= ctx->quic_max_conns * QUIC_IBUFS_PER_CONN;
-	ctx->quic_max_obufs = pconf->cache.srv_quic_obuf_max_size;
 	rcu_read_unlock();
 }
 
@@ -91,17 +86,12 @@ void xdp_handle_free(xdp_handle_ctx_t *ctx)
 	knot_tcp_table_free(ctx->tcp_table);
 	knot_tcp_table_free(ctx->syn_table);
 #ifdef ENABLE_QUIC
-	knot_xquic_table_free(ctx->quic_table);
+	quic_unmake_table(ctx->quic_table);
 #endif // ENABLE_QUIC
 	free(ctx);
 }
 
 #ifdef ENABLE_QUIC
-static void quic_log_cb(const char *line)
-{
-	log_debug("QUIC: %s", line);
-}
-
 static int quic_alloc_cb(knot_quic_reply_t *rpl)
 {
 	return knot_xdp_reply_alloc(rpl->sock, rpl->in_ctx, rpl->out_ctx);
@@ -145,16 +135,10 @@ xdp_handle_ctx_t *xdp_handle_init(server_t *server, knot_xdp_socket_t *xdp_sock)
 
 	if (ctx->quic_port > 0) {
 #ifdef ENABLE_QUIC
-		conf_t *pconf = conf();
-		size_t udp_pl = MIN(pconf->cache.srv_udp_max_payload_ipv4, pconf->cache.srv_udp_max_payload_ipv6);
-		ctx->quic_table = knot_xquic_table_new(ctx->quic_max_conns, ctx->quic_max_inbufs,
-		                                       ctx->quic_max_obufs, udp_pl, server->quic_creds);
+		ctx->quic_table = quic_make_table(server);
 		if (ctx->quic_table == NULL) {
 			xdp_handle_free(ctx);
 			return NULL;
-		}
-		if (conf_get_bool(pconf, C_XDP, C_QUIC_LOG)) {
-			ctx->quic_table->log_cb = quic_log_cb;
 		}
 		for (int i = 0; i < XDP_BATCHLEN; i++) {
 			knot_quic_reply_t *reply = &ctx->quic_replies[i];
@@ -350,10 +334,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 {
 #ifdef ENABLE_QUIC
-	if (ctx->quic_table != NULL) {
-		knot_xquic_table_sweep(ctx->quic_table, &ctx->quic_closed);
-		log_swept(&ctx->quic_closed, false);
-	}
+	quic_sweep_table(ctx->quic_table, &ctx->quic_closed);
 #endif // ENABLE_QUIC
 
 	if (!ctx->tcp) {

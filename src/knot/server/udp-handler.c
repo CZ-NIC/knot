@@ -141,10 +141,7 @@ static const sockaddr_t *udp_pktinfo_handle(const struct msghdr *rx, struct msgh
 static void udp_sweep(udp_context_t *ctx, _unused_ void *d)
 {
 #ifdef ENABLE_QUIC
-	if (ctx->quic_table != NULL) {
-		ctx->quic_idle_close = conf()->cache.srv_quic_idle_close * 1000000000LU;
-		quic_sweep(ctx->quic_table, &ctx->quic_closed);
-	}
+	quic_sweep_table(ctx->quic_table, &ctx->quic_closed);
 #endif // ENABLE_QUIC
 }
 

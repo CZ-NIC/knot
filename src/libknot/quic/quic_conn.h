@@ -138,10 +138,8 @@ void knot_xquic_table_free(knot_xquic_table_t *table);
  *
  * \param table       QUIC table to be cleaned up.
  * \param stats       Out: sweep statistics.
- *
- * \return KNOT_E*
  */
-int knot_xquic_table_sweep(knot_xquic_table_t *table, struct knot_sweep_stats *stats);
+void knot_xquic_table_sweep(knot_xquic_table_t *table, struct knot_sweep_stats *stats);
 
 /*!
  * \brief Add new connection/CID link to table.

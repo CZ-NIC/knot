@@ -40,21 +40,21 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
                   struct iovec *rx, struct msghdr *mh_out);
 
 /*!
- * \brief Sweep idle or excessive QUIC connections.
- *
- * \param table    QUIC connection table.
- * \param stats    Statistics to be updated.
- */
-void quic_sweep(knot_xquic_table_t *table, knot_sweep_stats_t *stats);
-
-/*!
  * \brief Allocate QUIC connection table.
  *
  * \param server    Server.
  *
  * \return QUIC connection table, or NULL.
  */
-void *quic_make_table(struct server *server);
+knot_xquic_table_t *quic_make_table(struct server *server);
+
+/*!
+ * \brief Sweep idle or excessive QUIC connections.
+ *
+ * \param table    QUIC connection table.
+ * \param stats    Statistics to be updated.
+ */
+void quic_sweep_table(knot_xquic_table_t *table, knot_sweep_stats_t *stats);
 
 /*!
  * \brief Deallocate QUIC connecton table.

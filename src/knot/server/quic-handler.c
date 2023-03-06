@@ -18,11 +18,17 @@
 #include <string.h>
 
 #include "contrib/macros.h"
+#include "knot/common/log.h"
 #include "knot/server/handler.h"
 #include "knot/server/quic-handler.h"
 #include "knot/server/server.h"
 #include "libknot/quic/quic.h"
 #include "libknot/xdp/tcp_iobuf.h"
+
+static void quic_log_cb(const char *line)
+{
+	log_debug("QUIC: %s", line);
+}
 
 static int uq_alloc_reply(knot_quic_reply_t *r)
 {
@@ -75,25 +81,32 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 	knot_xquic_cleanup(&conn, 1);
 }
 
-void quic_sweep(knot_xquic_table_t *table, knot_sweep_stats_t *stats)
-{
-	(void)knot_xquic_table_sweep(table, stats);
-	log_swept(stats, false);
-}
-
-void *quic_make_table(struct server *server)
+knot_xquic_table_t *quic_make_table(struct server *server)
 {
 	conf_t *pconf = conf();
 	size_t udp_pl = MIN(pconf->cache.srv_udp_max_payload_ipv4,
 	                    pconf->cache.srv_udp_max_payload_ipv6);
-
 	size_t quic_max_conns = pconf->cache.srv_quic_max_clients /
 	                        pconf->cache.srv_udp_threads;
 	size_t quic_max_inbufs= quic_max_conns * QUIC_IBUFS_PER_CONN;
 	size_t quic_max_obufs = pconf->cache.srv_quic_obuf_max_size;
 
-	return knot_xquic_table_new(quic_max_conns, quic_max_inbufs, quic_max_obufs,
-	                            udp_pl, server->quic_creds);
+	knot_xquic_table_t *table =
+		knot_xquic_table_new(quic_max_conns, quic_max_inbufs, quic_max_obufs,
+		                     udp_pl, server->quic_creds);
+	if (table != NULL && conf_get_bool(pconf, C_XDP, C_QUIC_LOG)) {
+		table->log_cb = quic_log_cb;
+	}
+
+	return table;
+}
+
+void quic_sweep_table(knot_xquic_table_t *table, knot_sweep_stats_t *stats)
+{
+	if (table != NULL) {
+		knot_xquic_table_sweep(table, stats);
+		log_swept(stats, false);
+	}
 }
 
 void quic_unmake_table(knot_xquic_table_t *table)

@@ -81,7 +81,7 @@ void knot_xquic_table_free(knot_xquic_table_t *table)
 }
 
 _public_
-int knot_xquic_table_sweep(knot_xquic_table_t *table, struct knot_sweep_stats *stats)
+void knot_xquic_table_sweep(knot_xquic_table_t *table, struct knot_sweep_stats *stats)
 {
 	uint64_t now = 0;
 	knot_xquic_conn_t *c, *next;
@@ -113,7 +113,6 @@ int knot_xquic_table_sweep(knot_xquic_table_t *table, struct knot_sweep_stats *s
 		}
 		knot_xquic_cleanup(&c, 1);
 	}
-	return KNOT_EOK;
 }
 
 static uint64_t cid2hash(const ngtcp2_cid *cid, knot_xquic_table_t *table)
