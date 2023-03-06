@@ -145,8 +145,6 @@ static void udp_sweep(udp_context_t *ctx, _unused_ void *d)
 		ctx->quic_idle_close = conf()->cache.srv_quic_idle_close * 1000000000LU;
 		quic_sweep(ctx->quic_table, &ctx->quic_closed);
 	}
-#else
-	assert(0);
 #endif // ENABLE_QUIC
 }
 
