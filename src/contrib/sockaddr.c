@@ -24,6 +24,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/macros.h"
+#include "contrib/musl/inet_ntop.h"
 
 int sockaddr_len(const struct sockaddr_storage *ss)
 {
@@ -198,10 +199,10 @@ int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
 	/* Convert network address string. */
 	if (ss->ss_family == AF_INET6) {
 		const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)ss;
-		out = inet_ntop(ss->ss_family, &s->sin6_addr, buf, maxlen);
+		out = knot_inet_ntop(ss->ss_family, &s->sin6_addr, buf, maxlen);
 	} else if (ss->ss_family == AF_INET) {
 		const struct sockaddr_in *s = (const struct sockaddr_in *)ss;
-		out = inet_ntop(ss->ss_family, &s->sin_addr, buf, maxlen);
+		out = knot_inet_ntop(ss->ss_family, &s->sin_addr, buf, maxlen);
 	} else if (ss->ss_family == AF_UNIX) {
 		const struct sockaddr_un *s = (const struct sockaddr_un *)ss;
 		const char *path = (s->sun_path[0] != '\0' ? s->sun_path : "UNIX socket");
