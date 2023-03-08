@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 #include <time.h>
 
 #include "knot/modules/rrl/functions.h"
+#include "contrib/musl/inet_ntop.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
@@ -275,7 +276,7 @@ static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage
 		suffix = "/24";
 	}
 
-	if (inet_ntop(ss->ss_family, addr, dst, maxlen) != NULL) {
+	if (knot_inet_ntop(ss->ss_family, addr, dst, maxlen) != NULL) {
 		strlcat(dst, suffix, maxlen);
 	} else {
 		dst[0] = '\0';

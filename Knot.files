@@ -113,6 +113,8 @@ src/contrib/libngtcp2/ngtcp2/version.h
 src/contrib/macros.h
 src/contrib/mempattern.c
 src/contrib/mempattern.h
+src/contrib/musl/inet_ntop.c
+src/contrib/musl/inet_ntop.h
 src/contrib/net.c
 src/contrib/net.h
 src/contrib/openbsd/siphash.c
@@ -612,6 +614,7 @@ tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
 tests/contrib/test_base64url.c
 tests/contrib/test_heap.c
+tests/contrib/test_inet_ntop.c
 tests/contrib/test_net.c
 tests/contrib/test_net_shortwrite.c
 tests/contrib/test_qp-cow.c

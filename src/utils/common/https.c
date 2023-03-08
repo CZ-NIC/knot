@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 
 #include "contrib/base64url.h"
 #include "contrib/macros.h"
+#include "contrib/musl/inet_ntop.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/url-parser/url_parser.h"
@@ -291,7 +292,7 @@ static int sockaddr_to_authority(char *buf, const size_t buf_len, const struct s
 		const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)ss;
 		buf[0] = '[';
 
-		out = inet_ntop(ss->ss_family, &s->sin6_addr, buf + 1, buf_len - 1);
+		out = knot_inet_ntop(ss->ss_family, &s->sin6_addr, buf + 1, buf_len - 1);
 		if (out == NULL) {
 			return KNOT_EINVAL;
 		}
@@ -307,7 +308,7 @@ static int sockaddr_to_authority(char *buf, const size_t buf_len, const struct s
 
 		const struct sockaddr_in *s = (const struct sockaddr_in *)ss;
 
-		out = inet_ntop(ss->ss_family, &s->sin_addr, buf, buf_len);
+		out = knot_inet_ntop(ss->ss_family, &s->sin_addr, buf, buf_len);
 		if (out == NULL) {
 			return KNOT_EINVAL;
 		}

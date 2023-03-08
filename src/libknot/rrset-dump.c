@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
 #include "contrib/base64.h"
 #include "contrib/color.h"
 #include "contrib/ctype.h"
+#include "contrib/musl/inet_ntop.h"
 #include "contrib/time.h"
 #include "contrib/wire_ctx.h"
 
@@ -229,7 +230,7 @@ static void wire_ipv4_to_str(rrset_dump_params_t *p)
 	FILL_IN_INPUT(addr4.s_addr)
 
 	// Write address.
-	if (inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
+	if (knot_inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
 		p->ret = -1;
 		return;
 	}
@@ -256,7 +257,7 @@ static void wire_ipv6_to_str(rrset_dump_params_t *p)
 	FILL_IN_INPUT(addr6.s6_addr)
 
 	// Write address.
-	if (inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
+	if (knot_inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
 		p->ret = -1;
 		return;
 	}
@@ -920,7 +921,7 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 		}
 
 		// Write address.
-		if (inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
+		if (knot_inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
 			p->ret = -1;
 			return;
 		}
@@ -941,7 +942,7 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 		}
 
 		// Write address.
-		if (inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
+		if (knot_inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
 			p->ret = -1;
 			return;
 		}
