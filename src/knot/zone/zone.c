@@ -687,9 +687,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		                 err_str, addr_str);
 	}
 
-	/* Try all the other servers. */
-
-	bool success = false;
+	/* Try all the other servers until successful. */
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
 	conf_mix_iter_t iter;
@@ -710,18 +708,16 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 
 			tried = true;
 			int ret = callback(conf, zone, &master, callback_data, &fallback);
-			if (ret == KNOT_EOK) {
-				success = true;
-				break;
-			} else if (!fallback.remote) {
-				return ret; // Local error.
+			if (ret == KNOT_EOK ||
+			    !fallback.remote) { // Local error.
+				return ret;
 			}
 
 			log_try_addr_error(zone, conf_str(iter.id), &master.addr,
 			                   err_str, ret);
 		}
 
-		if (!success && tried) {
+		if (tried) {
 			log_zone_warning(zone->name, "%s, remote %s not usable",
 			                 err_str, conf_str(iter.id));
 		}
@@ -729,7 +725,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		conf_mix_iter_next(&iter);
 	}
 
-	return success ? KNOT_EOK : KNOT_ENOMASTER;
+	return KNOT_ENOMASTER;
 }
 
 int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
