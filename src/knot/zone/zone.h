@@ -268,13 +268,14 @@ typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *r
                               void *data, zone_master_fallback_t *fallback);
 
 /*!
- * \brief Perform an action with a first working master server.
+ * \brief Perform an action with all configured master servers.
  *
  * The function iterates over available masters. For each master, the callback
- * function is called. If the callback function succeeds (\ref KNOT_EOK is
- * returned), the iteration is terminated.
+ * function is called once for its every adresses until the callback function
+ * succeeds (\ref KNOT_EOK is returned) and then the iteration continues with
+ * the next master.
  *
- * \return Error code from the last callback.
+ * \return Error code from the last callback or KNOT_ENOMASTER.
  */
 int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
                     void *callback_data, const char *err_str);
