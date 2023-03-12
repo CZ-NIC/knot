@@ -52,10 +52,10 @@ inline static knotd_qdata_params_t params_init(knotd_query_proto_t proto,
 }
 
 inline static void params_update(knotd_qdata_params_t *params, uint32_t rtt,
-                                 struct gnutls_session_int *session)
+                                 struct knot_xquic_conn *conn)
 {
 	params->measured_rtt = rtt;
-	params->session = session;
+	params->quic_conn = conn;
 }
 
 #ifdef ENABLE_XDP
@@ -75,14 +75,14 @@ inline static void params_xdp_update(knotd_qdata_params_t *params,
                                      knotd_query_proto_t proto,
                                      struct knot_xdp_msg *msg,
                                      uint32_t rtt,
-                                     struct gnutls_session_int *session)
+                                     struct knot_xquic_conn *conn)
 {
 	params->proto = proto;
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
 	params->local = (struct sockaddr_storage *)&msg->ip_to;
 	params->xdp_msg = msg;
 	params->measured_rtt = rtt;
-	params->session = session;
+	params->quic_conn = conn;
 }
 #endif // ENABLE_XDP
 

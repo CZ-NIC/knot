@@ -30,6 +30,8 @@
 
 #include "libknot/quic/quic_conn.h"
 
+#define KNOT_QUIC_PIN_LEN	32
+
 struct gnutls_x509_crt_int;
 struct knot_quic_creds;
 struct knot_quic_session;
@@ -116,6 +118,18 @@ bool xquic_conn_timeout(knot_xquic_conn_t *conn, uint64_t *now);
  * \brief Returns measured connection RTT in usecs.
  */
 uint32_t knot_xquic_conn_rtt(knot_xquic_conn_t *conn);
+
+/*!
+ * \brief Gets local or remote certificate pin.
+ *
+ * \note Zero output pin_size value means no certificate available or error.
+ *
+ * \param conn      QUIC connection.
+ * \param pin       Output certificate pin.
+ * \param pin_size  Input size of the storage / output size of the stored pin.
+ * \param local     Local or remote certificate indication.
+ */
+void knot_quic_conn_pin(knot_xquic_conn_t *conn, uint8_t *pin, size_t *pin_size, bool local);
 
 /*!
  * \brief Create new outgoing QUIC connection.

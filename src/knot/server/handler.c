@@ -108,10 +108,10 @@ void handle_quic_streams(knot_xquic_conn_t *conn, knotd_qdata_params_t *params,
 		if (msg) {
 #ifdef ENABLE_XDP
 			params_xdp_update(params, KNOTD_QUERY_PROTO_QUIC, msg,
-			                  knot_xquic_conn_rtt(conn), conn->tls_session);
+			                  knot_xquic_conn_rtt(conn), conn);
 #endif // ENABLE_XDP
 		} else {
-			params_update(params, knot_xquic_conn_rtt(conn), conn->tls_session);
+			params_update(params, knot_xquic_conn_rtt(conn), conn);
 		}
 		handle_quic_stream(conn, stream_id, stream->inbuf_fin, layer, params,
 		                   ans_buf, sizeof(ans_buf));

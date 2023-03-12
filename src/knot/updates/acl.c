@@ -14,56 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <gnutls/x509.h>
-
 #include "knot/updates/acl.h"
+
 #include "contrib/wire_ctx.h"
+#ifdef ENABLE_QUIC
+#include "libknot/quic/quic.h"
+#endif // ENABLE_QUIC
 
-void cert_pin(gnutls_session_t session, uint8_t *out, size_t *out_len, bool local)
-{
-	if (session == NULL) {
-		goto error;
-	}
-
-	const gnutls_datum_t *data;
-	if (local) {
-		data = gnutls_certificate_get_ours(session);
-	} else {
-		unsigned count = 0;
-		data = gnutls_certificate_get_peers(session, &count);
-		if (count == 0) {
-			goto error;
-		}
-	}
-
-	gnutls_x509_crt_t cert;
-	int ret = gnutls_x509_crt_init(&cert);
-	if (ret != GNUTLS_E_SUCCESS) {
-		goto error;
-	}
-
-	ret = gnutls_x509_crt_import(cert, &data[0], GNUTLS_X509_FMT_DER);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_x509_crt_deinit(cert);
-		goto error;
-	}
-
-	ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256, out, out_len);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_x509_crt_deinit(cert);
-		goto error;
-	}
-
-	gnutls_x509_crt_deinit(cert);
-
-	return;
-error:
-	if (out_len != NULL) {
-		*out_len = 0;
-	}
-}
-
-bool cert_pin_check(const uint8_t *session_pin, size_t session_pin_size, conf_val_t *pins)
+static bool cert_pin_check(const uint8_t *session_pin, size_t session_pin_size,
+                           conf_val_t *pins)
 {
 	if (pins->code == KNOT_ENOENT) { // No certificate pin authentication required.
 		return true;
@@ -295,15 +254,20 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query,
-                 gnutls_session_t session)
+                 struct knot_xquic_conn *conn)
 {
 	if (acl == NULL || addr == NULL || tsig == NULL) {
 		return false;
 	}
 
-	uint8_t session_pin[CERT_PIN_LEN];
+#ifdef ENABLE_QUIC
+	uint8_t session_pin[KNOT_QUIC_PIN_LEN];
 	size_t session_pin_size = sizeof(session_pin);
-	cert_pin(session, session_pin, &session_pin_size, false);
+	knot_quic_conn_pin(conn, session_pin, &session_pin_size, false);
+#else
+	uint8_t session_pin[1];
+	size_t session_pin_size = 0;
+#endif // ENABLE_QUIC
 
 	while (acl->code == KNOT_EOK) {
 		conf_val_t rmt_val = conf_id_get(conf, C_ACL, C_RMT, acl);
@@ -388,15 +352,20 @@ next_acl:
 }
 
 bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig, gnutls_session_t session)
+                 knot_tsig_key_t *tsig, struct knot_xquic_conn *conn)
 {
 	if (!conf->cache.srv_auto_acl) {
 		return false;
 	}
 
-	uint8_t session_pin[CERT_PIN_LEN];
+#ifdef ENABLE_QUIC
+	uint8_t session_pin[KNOT_QUIC_PIN_LEN];
 	size_t session_pin_size = sizeof(session_pin);
-	cert_pin(session, session_pin, &session_pin_size, false);
+	knot_quic_conn_pin(conn, session_pin, &session_pin_size, false);
+#else
+	uint8_t session_pin[1];
+	size_t session_pin_size = 0;
+#endif // ENABLE_QUIC
 
 	conf_mix_iter_t iter;
 	conf_mix_iter_init(conf, rmts, &iter);
