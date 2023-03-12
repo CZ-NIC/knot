@@ -16,6 +16,7 @@
 
 #include "knot/updates/acl.h"
 
+#include "contrib/string.h"
 #include "contrib/wire_ctx.h"
 #ifdef ENABLE_QUIC
 #include "libknot/quic/quic.h"
@@ -34,7 +35,7 @@ static bool cert_pin_check(const uint8_t *session_pin, size_t session_pin_size,
 		size_t pin_size;
 		const uint8_t *pin = conf_bin(pins, &pin_size);
 		if (pin_size == session_pin_size &&
-		    memcmp(pin, session_pin, pin_size) == 0) {
+		    const_time_memcmp(pin, session_pin, pin_size) == 0) {
 			return true;
 		}
 		conf_val_next(pins);

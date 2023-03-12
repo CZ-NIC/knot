@@ -33,6 +33,7 @@
 
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
+#include "contrib/string.h"
 #include "contrib/ucw/lists.h"
 #include "libknot/endian.h"
 #include "libdnssec/error.h"
@@ -62,6 +63,8 @@ typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
+	uint8_t *peer_pin;
+	uint8_t peer_pin_len;
 } knot_xquic_creds_t;
 
 typedef struct knot_quic_session {
@@ -236,7 +239,9 @@ finish:
 _public_
 struct knot_quic_creds *knot_xquic_init_creds(bool server,
                                               const char *cert_file,
-                                              const char *key_file)
+                                              const char *key_file,
+                                              const uint8_t *peer_pin,
+                                              uint8_t peer_pin_len)
 {
 	knot_xquic_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
@@ -270,6 +275,15 @@ struct knot_quic_creds *knot_xquic_init_creds(bool server,
 		ret = gnutls_session_ticket_key_generate(&creds->tls_ticket_key);
 		if (ret != GNUTLS_E_SUCCESS) {
 			goto fail;
+		}
+	} else {
+		if (peer_pin_len > 0) {
+			creds->peer_pin = malloc(peer_pin_len);
+			if (creds->peer_pin == NULL || peer_pin == 0) {
+				goto fail;
+			}
+			memcpy(creds->peer_pin, peer_pin, peer_pin_len);
+			creds->peer_pin_len = peer_pin_len;
 		}
 	}
 
@@ -309,11 +323,11 @@ void knot_xquic_free_creds(struct knot_quic_creds *creds)
 	}
 
 	gnutls_certificate_free_credentials(creds->tls_cert);
+	gnutls_anti_replay_deinit(creds->tls_anti_replay);
 	if (creds->tls_ticket_key.data != NULL) {
 		tls_session_ticket_key_free(&creds->tls_ticket_key);
 	}
-
-	gnutls_anti_replay_deinit(creds->tls_anti_replay);
+	free(creds->peer_pin);
 	free(creds);
 }
 
@@ -536,6 +550,17 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 	ctx->handshake_done = true;
 
 	if (!ngtcp2_conn_is_server(conn)) {
+		knot_xquic_creds_t *creds = ctx->xquic_table->creds;
+		if (creds->peer_pin_len == 0) {
+			return 0;
+		}
+		uint8_t pin[KNOT_QUIC_PIN_LEN];
+		size_t pin_size = sizeof(pin);
+		knot_quic_conn_pin(ctx, pin, &pin_size, false);
+		if (pin_size != creds->peer_pin_len ||
+		    const_time_memcmp(pin, creds->peer_pin, pin_size) != 0) {
+			return NGTCP2_ERR_CALLBACK_FAILURE;
+		}
 		return 0;
 	}
 
