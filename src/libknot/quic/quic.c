@@ -21,6 +21,7 @@
 #include <ngtcp2/ngtcp2.h>
 #include <ngtcp2/ngtcp2_crypto.h>
 #include <ngtcp2/ngtcp2_crypto_gnutls.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -378,6 +379,49 @@ uint32_t knot_xquic_conn_rtt(knot_xquic_conn_t *conn)
 	ngtcp2_conn_stat stat = { 0 };
 	ngtcp2_conn_get_conn_stat(conn->conn, &stat);
 	return stat.smoothed_rtt / 1000; // nanosec --> usec
+}
+
+_public_
+void knot_quic_conn_pin(knot_xquic_conn_t *conn, uint8_t *pin, size_t *pin_size, bool local)
+{
+	if (conn == NULL) {
+		goto error;
+	}
+
+	const gnutls_datum_t *data;
+	if (local) {
+		data = gnutls_certificate_get_ours(conn->tls_session);
+	} else {
+		unsigned count = 0;
+		data = gnutls_certificate_get_peers(conn->tls_session, &count);
+		if (count == 0) {
+			goto error;
+		}
+	}
+
+	gnutls_x509_crt_t cert;
+	int ret = gnutls_x509_crt_init(&cert);
+	if (ret != GNUTLS_E_SUCCESS) {
+		goto error;
+	}
+
+	ret = gnutls_x509_crt_import(cert, &data[0], GNUTLS_X509_FMT_DER);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_x509_crt_deinit(cert);
+		goto error;
+	}
+
+	ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256, pin, pin_size);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_x509_crt_deinit(cert);
+		goto error;
+	}
+
+	gnutls_x509_crt_deinit(cert);
+error:
+	if (pin_size != NULL) {
+		*pin_size = 0;
+	}
 }
 
 static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx)

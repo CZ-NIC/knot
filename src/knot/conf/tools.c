@@ -38,8 +38,11 @@
 #include "knot/conf/module.h"
 #include "knot/conf/schema.h"
 #include "knot/common/log.h"
-#include "knot/updates/acl.h"
+#include "libknot/quic/quic.h"
 #include "libknot/errcode.h"
+#ifdef ENABLE_QUIC
+#include "libknot/quic/quic.h"
+#endif // ENABLE_QUIC
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/xdp.h"
 #include "contrib/files.h"
@@ -321,13 +324,15 @@ int check_xdp_listen(
 int check_cert_pin(
 	knotd_conf_check_args_t *args)
 {
-	if (args->data_len != sizeof(uint16_t) + CERT_PIN_LEN) {
+#ifdef ENABLE_QUIC
+	if (args->data_len != sizeof(uint16_t) + KNOT_QUIC_PIN_LEN) {
 		(void)snprintf(check_str, sizeof(check_str),
 		               "invalid certificate pin, expected base64-encoded "
-		               "%u bytes", CERT_PIN_LEN);
+		               "%u bytes", KNOT_QUIC_PIN_LEN);
 		args->err_str = check_str;
 		return KNOT_EINVAL;
 	}
+#endif // ENABLE_QUIC
 
 	return KNOT_EOK;
 }

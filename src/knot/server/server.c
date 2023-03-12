@@ -545,7 +545,7 @@ static int init_creds(server_t *server, conf_t *conf)
 	}
 
 	int pin_size = 0;
-	uint8_t bin_pin[CERT_PIN_LEN], pin[2 * CERT_PIN_LEN];
+	uint8_t bin_pin[KNOT_QUIC_PIN_LEN], pin[2 * KNOT_QUIC_PIN_LEN];
 	size_t bin_pin_size = sizeof(bin_pin);
 	gnutls_x509_crt_t cert;
 	if (knot_xquic_creds_cert(server->quic_creds, &cert) == KNOT_EOK &&
