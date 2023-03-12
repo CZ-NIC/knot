@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <fcntl.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 #include <gnutls/x509.h>
@@ -24,6 +25,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #include "libknot/quic/quic.h"
@@ -42,9 +45,8 @@
 #define SERVER_DEFAULT_SCIDLEN 18
 
 #define QUIC_DEFAULT_VERSION "-VERS-ALL:+VERS-TLS1.3"
-#define QUIC_DEFAULT_CIPHERS "-CIPHER-ALL:+AES-128-GCM:+AES-256-GCM:+CHACHA20-POLY1305:+AES-128-CCM"
-#define QUIC_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-SECP256R1:+GROUP-X25519:+GROUP-SECP384R1:+GROUP-SECP521R1"
-#define QUIC_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_CIPHERS":"QUIC_DEFAULT_GROUPS
+#define QUIC_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-X25519:+GROUP-SECP256R1:+GROUP-SECP384R1:+GROUP-SECP521R1"
+#define QUIC_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_GROUPS
 
 #define XQUIC_SEND_VERSION_NEGOTIATION    NGTCP2_ERR_VERSION_NEGOTIATION
 #define XQUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
@@ -137,110 +139,143 @@ static void tls_session_ticket_key_free(gnutls_datum_t *ticket)
 	gnutls_free(ticket->data);
 }
 
-static int self_signed_cert(gnutls_certificate_credentials_t tls_cert)
+static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file)
 {
-	gnutls_x509_privkey_t privkey = NULL;
-	gnutls_x509_crt_t cert = NULL;
-	char *hostname = sockaddr_hostname();
-	if (hostname == NULL) {
-		return -ENOMEM;
-	}
+	gnutls_datum_t data = { 0 };
 
-	int ret = gnutls_x509_privkey_init(&privkey);
-	if (ret < 0) {
-		free(hostname);
+	int ret = gnutls_x509_privkey_init(privkey);
+	if (ret != GNUTLS_E_SUCCESS) {
 		return ret;
 	}
 
+	int fd = open(key_file, O_RDONLY);
+	if (fd != -1) {
+		struct stat stat;
+		if (fstat(fd, &stat) != 0 ||
+		    (data.data = gnutls_malloc(stat.st_size)) == NULL ||
+		    read(fd, data.data, stat.st_size) != stat.st_size) {
+			ret = GNUTLS_E_KEYFILE_ERROR;
+			goto finish;
+		}
+
+		data.size = stat.st_size;
+		ret = gnutls_x509_privkey_import_pkcs8(*privkey, &data, GNUTLS_X509_FMT_PEM,
+		                                       NULL, GNUTLS_PKCS_PLAIN);
+		if (ret != GNUTLS_E_SUCCESS) {
+			goto finish;
+		}
+	} else {
+		ret = gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_EDDSA_ED25519,
+		                                   GNUTLS_CURVE_TO_BITS(GNUTLS_ECC_CURVE_ED25519), 0);
+		if (ret != GNUTLS_E_SUCCESS) {
+			goto finish;
+		}
+
+		ret = gnutls_x509_privkey_export2_pkcs8(*privkey, GNUTLS_X509_FMT_PEM, NULL,
+		                                        GNUTLS_PKCS_PLAIN, &data);
+		if (ret != GNUTLS_E_SUCCESS ||
+		    (fd = open(key_file, O_WRONLY | O_CREAT, 0600)) == -1 ||
+		    write(fd, data.data, data.size) != data.size) {
+			ret = GNUTLS_E_KEYFILE_ERROR;
+			goto finish;
+		}
+	}
+
+finish:
+	close(fd);
+	gnutls_free(data.data);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(*privkey);
+		*privkey = NULL;
+	}
+	return ret;
+}
+
+static int self_signed_cert(gnutls_certificate_credentials_t tls_cert,
+                            const char *key_file)
+{
+	gnutls_x509_privkey_t privkey = NULL;
+	gnutls_x509_crt_t cert = NULL;
+
+	char *hostname = sockaddr_hostname();
+	if (hostname == NULL) {
+		return GNUTLS_E_MEMORY_ERROR;
+	}
+
+	int ret;
 	uint8_t serial[16];
 	gnutls_rnd(GNUTLS_RND_NONCE, serial, sizeof(serial));
-	/* clear the left-most bit to avoid signedness confusion: */
-	serial[0] &= 0x8f;
+	// Clear the left-most bit to be a positive number (two's complement form).
+	serial[0] &= 0x7F;
 
-#define CHK(cmd) \
-	ret = (cmd); \
-	if (ret < 0) { goto finish; }
+#define CHK(cmd) if ((ret = (cmd)) != GNUTLS_E_SUCCESS) { goto finish; }
+#define NOW_DAYS(days) (time(NULL) + 24 * 3600 * (days))
 
-#define now_years(years) (time(NULL) + 365 * 24 * 3600 * (years))
-
-	CHK(gnutls_x509_privkey_generate(privkey, GNUTLS_PK_ECDSA,
-	                                 GNUTLS_CURVE_TO_BITS(GNUTLS_ECC_CURVE_SECP256R1), 0));
+	CHK(self_key(&privkey, key_file));
 
 	CHK(gnutls_x509_crt_init(&cert));
-	//CHK(gnutls_x509_crt_set_ca_status(cert, 0)); // TODO needed ?
-	CHK(gnutls_x509_crt_set_activation_time(cert, now_years(-1)));
-	CHK(gnutls_x509_crt_set_expiration_time(cert, now_years(20)));
-	CHK(gnutls_x509_crt_set_dn(cert, "CN=DoQ Self-Signed Server Certificate", NULL));
-	CHK(gnutls_x509_crt_set_key(cert, privkey));
-
-	CHK(gnutls_x509_crt_set_serial(cert, serial, sizeof(serial)));
-	CHK(gnutls_x509_crt_set_subject_alt_name(cert, GNUTLS_SAN_DNSNAME, hostname,
-	                                         strlen(hostname), GNUTLS_FSAN_SET));
 	CHK(gnutls_x509_crt_set_version(cert, 3));
-	CHK(gnutls_x509_crt_sign2(cert, cert, privkey, GNUTLS_DIG_SHA256, 0));
+	CHK(gnutls_x509_crt_set_serial(cert, serial, sizeof(serial)));
+	CHK(gnutls_x509_crt_set_activation_time(cert, NOW_DAYS(-1)));
+	CHK(gnutls_x509_crt_set_expiration_time(cert, NOW_DAYS(10 * 365)));
+	CHK(gnutls_x509_crt_set_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0,
+	                                  hostname, strlen(hostname)));
+	CHK(gnutls_x509_crt_set_key(cert, privkey));
+	CHK(gnutls_x509_crt_sign2(cert, cert, privkey, GNUTLS_DIG_SHA512, 0));
 
 	ret = gnutls_certificate_set_x509_key(tls_cert, &cert, 1, privkey);
 
 finish:
 	free(hostname);
-	gnutls_x509_privkey_deinit(privkey);
 	gnutls_x509_crt_deinit(cert);
+	gnutls_x509_privkey_deinit(privkey);
 
 	return ret;
 }
 
 _public_
-struct knot_quic_creds *knot_xquic_init_creds(bool server, const char *tls_cert,
-                                              const char *tls_key)
+struct knot_quic_creds *knot_xquic_init_creds(bool server,
+                                              const char *cert_file,
+                                              const char *key_file)
 {
 	knot_xquic_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
 		return NULL;
 	}
 
-	int ret = gnutls_anti_replay_init(&creds->tls_anti_replay);
+	int ret = gnutls_certificate_allocate_credentials(&creds->tls_cert);
 	if (ret != GNUTLS_E_SUCCESS) {
 		goto fail;
 	}
-	gnutls_anti_replay_set_add_function(creds->tls_anti_replay, tls_anti_replay_db_add_func);
-	gnutls_anti_replay_set_ptr(creds->tls_anti_replay, NULL);
 
-	ret = gnutls_certificate_allocate_credentials(&creds->tls_cert);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_anti_replay_deinit(creds->tls_anti_replay);
-		goto fail;
-	}
+	if (server) {
+		ret = gnutls_anti_replay_init(&creds->tls_anti_replay);
+		if (ret != GNUTLS_E_SUCCESS) {
+			goto fail;
+		}
+		gnutls_anti_replay_set_add_function(creds->tls_anti_replay, tls_anti_replay_db_add_func);
+		gnutls_anti_replay_set_ptr(creds->tls_anti_replay, NULL);
 
-	ret = gnutls_certificate_set_x509_system_trust(creds->tls_cert);
-	if (ret < 0) {
-		goto fail2;
-	}
+		if (cert_file != NULL) {
+			ret = gnutls_certificate_set_x509_key_file(creds->tls_cert,
+			                                           cert_file, key_file,
+			                                           GNUTLS_X509_FMT_PEM);
+		} else {
+			ret = self_signed_cert(creds->tls_cert, key_file);
+		}
+		if (ret != GNUTLS_E_SUCCESS) {
+			goto fail;
+		}
 
-	if ((bool)(tls_cert == NULL) != (bool)(tls_key == NULL) ||
-	    (tls_cert != NULL && !server)) {
-		goto fail2;
-	}
-	if (tls_cert != NULL) {
-		ret = gnutls_certificate_set_x509_key_file(creds->tls_cert, tls_cert,
-		                                           tls_key, GNUTLS_X509_FMT_PEM);
-	} else if (server) {
-		ret = self_signed_cert(creds->tls_cert);
-	}
-	if (ret < 0) {
-		goto fail2;
-	}
-
-	ret = gnutls_session_ticket_key_generate(&creds->tls_ticket_key);
-	if (ret != GNUTLS_E_SUCCESS) {
-		goto fail2;
+		ret = gnutls_session_ticket_key_generate(&creds->tls_ticket_key);
+		if (ret != GNUTLS_E_SUCCESS) {
+			goto fail;
+		}
 	}
 
 	return creds;
 
 fail:
-	free(creds);
-	return NULL;
-fail2:
 	knot_xquic_free_creds(creds);
 	return NULL;
 }
