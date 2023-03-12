@@ -46,6 +46,7 @@
 #include "knot/worker/pool.h"
 #include "contrib/base64.h"
 #include "contrib/conn_pool.h"
+#include "contrib/files.h"
 #include "contrib/net.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/os.h"
@@ -59,6 +60,8 @@
 #ifdef SO_ATTACH_REUSEPORT_CBPF
 #include <linux/filter.h>
 #endif
+
+#define DFLT_QUIC_KEY_FILE	"quic_key.pem"
 
 /*! \brief Minimal send/receive buffer sizes. */
 enum {
@@ -532,17 +535,31 @@ static void log_sock_conf(conf_t *conf)
 static int init_creds(server_t *server, conf_t *conf)
 {
 #ifdef ENABLE_QUIC
-	char *tls_cert = conf_tls(conf, C_CERT_FILE);
-	char *tls_key = conf_tls(conf, C_KEY_FILE);
-	if (tls_cert == NULL) {
-		log_notice("QUIC, no server certificate configured, using one-time one");
+	char *cert_file = conf_tls(conf, C_CERT_FILE);
+	char *key_file = conf_tls(conf, C_KEY_FILE);
+	if (cert_file == NULL) {
+		assert(key_file == NULL);
+		char *kasp_dir = conf_db(conf, C_KASP_DB);
+		int ret = make_dir(kasp_dir, 0660, true);
+		if (ret != KNOT_EOK) {
+			log_error("QUIC, failed to create directory '%s'", kasp_dir);
+			free(kasp_dir);
+			return ret;
+		}
+		key_file = abs_path(DFLT_QUIC_KEY_FILE, kasp_dir);
+		free(kasp_dir);
+		log_debug("QUIC, using self generated key '%s' with "
+		          "one-time certificate", key_file);
 	}
-	server->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
-	free(tls_cert);
-	free(tls_key);
+	server->quic_creds = knot_xquic_init_creds(true, cert_file, key_file);
+	free(cert_file);
 	if (server->quic_creds == NULL) {
-		log_error("QUIC, failed to initialize server credentials");
+		log_error("QUIC, failed to initialize server credentials with key '%s'",
+		          key_file);
+		free(key_file);
+		return KNOT_ERROR;
 	}
+	free(key_file);
 
 	int pin_size = 0;
 	uint8_t bin_pin[KNOT_QUIC_PIN_LEN], pin[2 * KNOT_QUIC_PIN_LEN];

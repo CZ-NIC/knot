@@ -75,13 +75,13 @@ int knot_xquic_session_load(knot_xquic_conn_t *conn, struct knot_quic_session *s
  * \brief Init server TLS certificate for DoQ.
  *
  * \param server      Initializing for server-side (client otherwise).
- * \param tls_cert    X509 certificate PEM file path/name.
- * \param tls_key     Key PEM file path/name.
+ * \param cert_file   X509 certificate PEM file path/name.
+ * \param key_file    Key PEM file path/name.
  *
  * \return Initialized creds.
  */
-struct knot_quic_creds *knot_xquic_init_creds(bool server, const char *tls_cert,
-                                              const char *tls_key);
+struct knot_quic_creds *knot_xquic_init_creds(bool server, const char *cert_file,
+                                              const char *key_file);
 
 /*!
  * \brief Gets the certificate from credentials.
