@@ -551,7 +551,7 @@ static int init_creds(server_t *server, conf_t *conf)
 		log_debug("QUIC, using self generated key '%s' with "
 		          "one-time certificate", key_file);
 	}
-	server->quic_creds = knot_xquic_init_creds(true, cert_file, key_file);
+	server->quic_creds = knot_xquic_init_creds(true, cert_file, key_file, NULL, 0);
 	free(cert_file);
 	if (server->quic_creds == NULL) {
 		log_error("QUIC, failed to initialize server credentials with key '%s'",
