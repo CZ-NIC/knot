@@ -52,7 +52,7 @@ inline static knotd_qdata_params_t params_init(knotd_query_proto_t proto,
 }
 
 inline static void params_update(knotd_qdata_params_t *params, uint32_t rtt,
-                                 struct knot_xquic_conn *conn)
+                                 struct knot_quic_conn *conn)
 {
 	params->measured_rtt = rtt;
 	params->quic_conn = conn;
@@ -75,7 +75,7 @@ inline static void params_xdp_update(knotd_qdata_params_t *params,
                                      knotd_query_proto_t proto,
                                      struct knot_xdp_msg *msg,
                                      uint32_t rtt,
-                                     struct knot_xquic_conn *conn)
+                                     struct knot_quic_conn *conn)
 {
 	params->proto = proto;
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
@@ -106,7 +106,7 @@ void handle_udp_reply(knotd_qdata_params_t *params, knot_layer_t *layer,
                       struct sockaddr_storage *proxied_remote);
 
 #ifdef ENABLE_QUIC
-void handle_quic_streams(knot_xquic_conn_t *conn, knotd_qdata_params_t *params,
+void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
                          knot_layer_t *layer, void *msg);
 #endif // ENABLE_QUIC
 

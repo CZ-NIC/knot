@@ -43,9 +43,9 @@ typedef struct xdp_handle_ctx {
 	knot_tcp_table_t *syn_table;
 
 #ifdef ENABLE_QUIC
-	knot_xquic_conn_t *quic_relays[XDP_BATCHLEN];
+	knot_quic_conn_t *quic_relays[XDP_BATCHLEN];
 	knot_quic_reply_t quic_replies[XDP_BATCHLEN];
-	knot_xquic_table_t *quic_table;
+	knot_quic_table_t *quic_table;
 	knot_sweep_stats_t quic_closed;
 #endif // ENABLE_QUIC
 
@@ -265,7 +265,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 		(void)knot_quic_handle(ctx->quic_table, reply, ctx->quic_idle_close,
 		                       &ctx->quic_relays[i]);
-		knot_xquic_conn_t *conn = ctx->quic_relays[i];
+		knot_quic_conn_t *conn = ctx->quic_relays[i];
 
 		handle_quic_streams(conn, params, layer, &ctx->msg_recv[i]);
 	}
@@ -321,7 +321,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 			log_notice("QUIC, failed to send some packets");
 		}
 	}
-	knot_xquic_cleanup(ctx->quic_relays, ctx->msg_recv_count);
+	knot_quic_cleanup(ctx->quic_relays, ctx->msg_recv_count);
 #endif // ENABLE_QUIC
 
 	(void)knot_xdp_send_finish(ctx->sock);
