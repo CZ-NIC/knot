@@ -777,11 +777,11 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 	init_random_cid(&scid, 0);
 	init_random_cid(&dcid, 0);
 
-	knot_quic_conn_t *xconn = quic_table_add(NULL, &dcid, table);
-	if (xconn == NULL) {
+	knot_quic_conn_t *conn = quic_table_add(NULL, &dcid, table);
+	if (conn == NULL) {
 		return ENOMEM;
 	}
-	quic_conn_mark_used(xconn, table, now);
+	quic_conn_mark_used(conn, table, now);
 
 	ngtcp2_path path;
 	path.remote.addr = (struct sockaddr *)dest;
@@ -789,21 +789,21 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 	path.local.addr = (struct sockaddr *)via;
 	path.local.addrlen = addr_len((const struct sockaddr_in6 *)via);
 
-	int ret = conn_new(&xconn->conn, &path, &dcid, &scid, &dcid, NGTCP2_PROTO_VER_V1, now,
-	                   table->udp_payload_limit, 5000000000L, xconn, false, false);
+	int ret = conn_new(&conn->conn, &path, &dcid, &scid, &dcid, NGTCP2_PROTO_VER_V1, now,
+	                   table->udp_payload_limit, 5000000000L, conn, false, false);
 	if (ret == KNOT_EOK) {
-		ret = tls_init_conn_session(xconn, false);
+		ret = tls_init_conn_session(conn, false);
 	}
 	if (ret == KNOT_EOK && server_name != NULL) {
-		ret = gnutls_server_name_set(xconn->tls_session, GNUTLS_NAME_DNS,
+		ret = gnutls_server_name_set(conn->tls_session, GNUTLS_NAME_DNS,
 		                             server_name, strlen(server_name));
 	}
 	if (ret != KNOT_EOK) {
-		knot_quic_table_rem(xconn, table);
+		knot_quic_table_rem(conn, table);
 		return ret;
 	}
 
-	*out_conn = xconn;
+	*out_conn = conn;
 	return KNOT_EOK;
 }
 
@@ -829,9 +829,9 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	ngtcp2_cid_init(&dcid, decoded_cids.dcid, decoded_cids.dcidlen);
 	ngtcp2_cid_init(&scid, decoded_cids.scid, decoded_cids.scidlen);
 
-	knot_quic_conn_t *xconn = quic_table_lookup(&dcid, table);
+	knot_quic_conn_t *conn = quic_table_lookup(&dcid, table);
 
-	if (decoded_cids.version == 0 /* short header */ && xconn == NULL) {
+	if (decoded_cids.version == 0 /* short header */ && conn == NULL) {
 		ret = KNOT_EOK; // NOOP
 		goto finish;
 	}
@@ -842,7 +842,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	path.local.addr = (struct sockaddr *)reply->ip_loc;
 	path.local.addrlen = addr_len((struct sockaddr_in6 *)reply->ip_loc);
 
-	if (xconn == NULL) {
+	if (conn == NULL) {
 		// new conn
 
 		ngtcp2_pkt_hd header = { 0 };
@@ -885,34 +885,34 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			goto finish;
 		}
 
-		xconn = quic_table_add(NULL, &dcid, table);
-		if (xconn == NULL) {
+		conn = quic_table_add(NULL, &dcid, table);
+		if (conn == NULL) {
 			ret = KNOT_ENOMEM;
 			goto finish;
 		}
-		quic_conn_mark_used(xconn, table, now);
+		quic_conn_mark_used(conn, table, now);
 
-		ret = conn_new(&xconn->conn, &path, &dcid, &scid, &odcid, decoded_cids.version,
-		               now, table->udp_payload_limit, idle_timeout, xconn, true,
+		ret = conn_new(&conn->conn, &path, &dcid, &scid, &odcid, decoded_cids.version,
+		               now, table->udp_payload_limit, idle_timeout, conn, true,
 		               header.tokenlen > 0);
 		if (ret >= 0) {
-			ret = tls_init_conn_session(xconn, true);
+			ret = tls_init_conn_session(conn, true);
 		}
 		if (ret < 0) {
-			knot_quic_table_rem(xconn, table);
+			knot_quic_table_rem(conn, table);
 			goto finish;
 		}
 	}
 
 	ngtcp2_pkt_info pi = { .ecn = NGTCP2_ECN_NOT_ECT, };
 
-	ret = ngtcp2_conn_read_pkt(xconn->conn, &path, &pi, reply->in_payload->iov_base,
+	ret = ngtcp2_conn_read_pkt(conn->conn, &path, &pi, reply->in_payload->iov_base,
 	                           reply->in_payload->iov_len, now);
 
-	*out_conn = xconn;
+	*out_conn = conn;
 	if (ret == NGTCP2_ERR_DRAINING // received CONNECTION_CLOSE from the counterpart
 	    || ngtcp2_err_is_fatal(ret)) { // connection doomed
-		knot_quic_table_rem(xconn, table);
+		knot_quic_table_rem(conn, table);
 		ret = KNOT_ECONN;
 		goto finish;
 	} else if (ret != NGTCP2_NO_ERROR) { // non-fatal error, discard packet
@@ -920,7 +920,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		goto finish;
 	}
 
-	quic_conn_mark_used(xconn, table, now);
+	quic_conn_mark_used(conn, table, now);
 
 	ret = KNOT_EOK;
 finish:
@@ -928,10 +928,10 @@ finish:
 	return ret;
 }
 
-static bool stream_exists(knot_quic_conn_t *xconn, int64_t stream_id)
+static bool stream_exists(knot_quic_conn_t *conn, int64_t stream_id)
 {
 	// TRICK, we never use stream_user_data
-	return (ngtcp2_conn_set_stream_user_data(xconn->conn, stream_id, NULL) == NGTCP2_NO_ERROR);
+	return (ngtcp2_conn_set_stream_user_data(conn->conn, stream_id, NULL) == NGTCP2_NO_ERROR);
 }
 
 static int send_stream(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,

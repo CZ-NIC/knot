@@ -124,7 +124,7 @@ static uint64_t cid2hash(const ngtcp2_cid *cid, knot_quic_table_t *table)
 	return ret;
 }
 
-knot_quic_cid_t **quic_table_insert(knot_quic_conn_t *xconn, const ngtcp2_cid *cid,
+knot_quic_cid_t **quic_table_insert(knot_quic_conn_t *conn, const ngtcp2_cid *cid,
                                     knot_quic_table_t *table)
 {
 	uint64_t hash = cid2hash(cid, table);
@@ -135,7 +135,7 @@ knot_quic_cid_t **quic_table_insert(knot_quic_conn_t *xconn, const ngtcp2_cid *c
 	}
 	_Static_assert(sizeof(*cid) <= sizeof(cidobj->cid_placeholder), "insufficient placeholder for CID struct");
 	memcpy(cidobj->cid_placeholder, cid, sizeof(*cid));
-	cidobj->conn = xconn;
+	cidobj->conn = conn;
 
 	knot_quic_cid_t **addto = table->conns + (hash % table->size);
 
@@ -146,26 +146,26 @@ knot_quic_cid_t **quic_table_insert(knot_quic_conn_t *xconn, const ngtcp2_cid *c
 	return addto;
 }
 
-knot_quic_conn_t *quic_table_add(ngtcp2_conn *conn, const ngtcp2_cid *cid,
-				 knot_quic_table_t *table)
+knot_quic_conn_t *quic_table_add(ngtcp2_conn *ngconn, const ngtcp2_cid *cid,
+                                 knot_quic_table_t *table)
 {
-	knot_quic_conn_t *xconn = calloc(1, sizeof(*xconn));
-	if (xconn == NULL) {
+	knot_quic_conn_t *conn = calloc(1, sizeof(*conn));
+	if (conn == NULL) {
 		return NULL;
 	}
 
-	xconn->conn = conn;
-	xconn->quic_table = table;
-	xconn->stream_inprocess = -1;
+	conn->conn = ngconn;
+	conn->quic_table = table;
+	conn->stream_inprocess = -1;
 
-	knot_quic_cid_t **addto = quic_table_insert(xconn, cid, table);
+	knot_quic_cid_t **addto = quic_table_insert(conn, cid, table);
 	if (addto == NULL) {
-		free(xconn);
+		free(conn);
 		return NULL;
 	}
 	table->usage++;
 
-	return xconn;
+	return conn;
 }
 
 knot_quic_cid_t **quic_table_lookup2(const ngtcp2_cid *cid, knot_quic_table_t *table)
@@ -206,9 +206,9 @@ void quic_table_rem2(knot_quic_cid_t **pcid, knot_quic_table_t *table)
 	table->pointers--;
 }
 
-void quic_stream_free(knot_quic_conn_t *xconn, int64_t stream_id)
+void quic_stream_free(knot_quic_conn_t *conn, int64_t stream_id)
 {
-	knot_quic_stream_ack_data(xconn, stream_id, SIZE_MAX, false);
+	knot_quic_stream_ack_data(conn, stream_id, SIZE_MAX, false);
 }
 
 _public_
@@ -249,7 +249,7 @@ void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 }
 
 _public_
-knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *xconn,
+knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *conn,
                                               int64_t stream_id, bool create)
 {
 	if (stream_id % 4 != 0) {
@@ -257,37 +257,37 @@ knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *xconn,
 	}
 	stream_id /= 4;
 
-	if (xconn->streams_first > stream_id) {
+	if (conn->streams_first > stream_id) {
 		return NULL;
 	}
-	if (xconn->streams_count > stream_id - xconn->streams_first) {
-		return &xconn->streams[stream_id - xconn->streams_first];
+	if (conn->streams_count > stream_id - conn->streams_first) {
+		return &conn->streams[stream_id - conn->streams_first];
 	}
 
 	if (create) {
 		size_t new_streams_count;
 		knot_quic_stream_t *new_streams;
 
-		if (xconn->streams_count == 0) {
+		if (conn->streams_count == 0) {
 			new_streams = malloc(sizeof(new_streams[0]));
 			if (new_streams == NULL) {
 				return NULL;
 			}
 			new_streams_count = 1;
-			xconn->streams_first = stream_id;
+			conn->streams_first = stream_id;
 		} else {
-			new_streams_count = stream_id + 1 - xconn->streams_first;
+			new_streams_count = stream_id + 1 - conn->streams_first;
 			if (new_streams_count > MAX_STREAMS_PER_CONN) {
 				return NULL;
 			}
-			new_streams = realloc(xconn->streams, new_streams_count * sizeof(*new_streams));
+			new_streams = realloc(conn->streams, new_streams_count * sizeof(*new_streams));
 			if (new_streams == NULL) {
 				return NULL;
 			}
 		}
 
 		for (knot_quic_stream_t *si = new_streams;
-		     si < new_streams + xconn->streams_count; si++) {
+		     si < new_streams + conn->streams_count; si++) {
 			if (si->obufs_size == 0) {
 				init_list((list_t *)&si->outbufs);
 			} else {
@@ -295,53 +295,53 @@ knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *xconn,
 			}
 		}
 
-		for (knot_quic_stream_t *si = new_streams + xconn->streams_count;
+		for (knot_quic_stream_t *si = new_streams + conn->streams_count;
 		     si < new_streams + new_streams_count; si++) {
 			memset(si, 0, sizeof(*si));
 			init_list((list_t *)&si->outbufs);
 		}
-		xconn->streams = new_streams;
-		xconn->streams_count = new_streams_count;
+		conn->streams = new_streams;
+		conn->streams_count = new_streams_count;
 
-		return &xconn->streams[stream_id - xconn->streams_first];
+		return &conn->streams[stream_id - conn->streams_first];
 	}
 	return NULL;
 }
 
-static void stream_inprocess(knot_quic_conn_t *xconn, knot_quic_stream_t *stream)
+static void stream_inprocess(knot_quic_conn_t *conn, knot_quic_stream_t *stream)
 {
-	int16_t idx = stream - xconn->streams;
+	int16_t idx = stream - conn->streams;
 	assert(idx >= 0);
-	assert(idx < xconn->streams_count);
-	if (xconn->stream_inprocess < 0 || xconn->stream_inprocess > idx) {
-		xconn->stream_inprocess = idx;
+	assert(idx < conn->streams_count);
+	if (conn->stream_inprocess < 0 || conn->stream_inprocess > idx) {
+		conn->stream_inprocess = idx;
 	}
 }
 
-static void stream_outprocess(knot_quic_conn_t *xconn, knot_quic_stream_t *stream)
+static void stream_outprocess(knot_quic_conn_t *conn, knot_quic_stream_t *stream)
 {
-	if (stream != &xconn->streams[xconn->stream_inprocess]) {
+	if (stream != &conn->streams[conn->stream_inprocess]) {
 		return;
 	}
 
-	for (int16_t idx = xconn->stream_inprocess + 1; idx < xconn->streams_count; idx++) {
-		stream = &xconn->streams[idx];
+	for (int16_t idx = conn->stream_inprocess + 1; idx < conn->streams_count; idx++) {
+		stream = &conn->streams[idx];
 		if (stream->inbuf_fin != NULL) {
-			xconn->stream_inprocess = stream - xconn->streams;
+			conn->stream_inprocess = stream - conn->streams;
 			return;
 		}
 	}
-	xconn->stream_inprocess = -1;
+	conn->stream_inprocess = -1;
 }
 
-int knot_quic_stream_recv_data(knot_quic_conn_t *xconn, int64_t stream_id,
+int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
                                const uint8_t *data, size_t len, bool fin)
 {
 	if (len == 0) {
 		return KNOT_EINVAL;
 	}
 
-	knot_quic_stream_t *stream = knot_quic_conn_get_stream(xconn, stream_id, true);
+	knot_quic_stream_t *stream = knot_quic_conn_get_stream(conn, stream_id, true);
 	if (stream == NULL) {
 		return KNOT_ENOENT;
 	}
@@ -349,7 +349,7 @@ int knot_quic_stream_recv_data(knot_quic_conn_t *xconn, int64_t stream_id,
 	struct iovec in = { (void *)data, len }, *outs;
 	size_t outs_count;
 	int ret = knot_tcp_inbuf_update(&stream->inbuf, in, &outs, &outs_count,
-	                                &xconn->ibufs_size);
+	                                &conn->ibufs_size);
 	if (ret != KNOT_EOK || (outs_count == 0 && !fin)) {
 		return ret;
 	}
@@ -359,29 +359,29 @@ int knot_quic_stream_recv_data(knot_quic_conn_t *xconn, int64_t stream_id,
 	}
 
 	stream->inbuf_fin = outs;
-	stream_inprocess(xconn, stream);
+	stream_inprocess(conn, stream);
 	return KNOT_EOK;
 }
 
 _public_
-knot_quic_stream_t *knot_quic_stream_get_process(knot_quic_conn_t *xconn,
+knot_quic_stream_t *knot_quic_stream_get_process(knot_quic_conn_t *conn,
                                                  int64_t *stream_id)
 {
-	if (xconn->stream_inprocess < 0) {
+	if (conn->stream_inprocess < 0) {
 		return NULL;
 	}
 
-	knot_quic_stream_t *stream = &xconn->streams[xconn->stream_inprocess];
-	*stream_id = (xconn->streams_first + xconn->stream_inprocess) * 4;
-	stream_outprocess(xconn, stream);
+	knot_quic_stream_t *stream = &conn->streams[conn->stream_inprocess];
+	*stream_id = (conn->streams_first + conn->stream_inprocess) * 4;
+	stream_outprocess(conn, stream);
 	return stream;
 }
 
 _public_
-uint8_t *knot_quic_stream_add_data(knot_quic_conn_t *xconn, int64_t stream_id,
+uint8_t *knot_quic_stream_add_data(knot_quic_conn_t *conn, int64_t stream_id,
                                    uint8_t *data, size_t len)
 {
-	knot_quic_stream_t *s = knot_quic_conn_get_stream(xconn, stream_id, true);
+	knot_quic_stream_t *s = knot_quic_conn_get_stream(conn, stream_id, true);
 	if (s == NULL) {
 		return NULL;
 	}
@@ -405,16 +405,16 @@ uint8_t *knot_quic_stream_add_data(knot_quic_conn_t *xconn, int64_t stream_id,
 	}
 	add_tail((list_t *)&s->outbufs, (node_t *)obuf);
 	s->obufs_size += obuf->len;
-	xconn->obufs_size += obuf->len;
-	xconn->quic_table->obufs_size += obuf->len;
+	conn->obufs_size += obuf->len;
+	conn->quic_table->obufs_size += obuf->len;
 
 	return obuf->buf + prefix;
 }
 
-void knot_quic_stream_ack_data(knot_quic_conn_t *xconn, int64_t stream_id,
+void knot_quic_stream_ack_data(knot_quic_conn_t *conn, int64_t stream_id,
                                size_t end_acked, bool keep_stream)
 {
-	knot_quic_stream_t *s = knot_quic_conn_get_stream(xconn, stream_id, false);
+	knot_quic_stream_t *s = knot_quic_conn_get_stream(conn, stream_id, false);
 	if (s == NULL) {
 		return;
 	}
@@ -425,8 +425,8 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *xconn, int64_t stream_id,
 	while (!EMPTY_LIST(*obs) && end_acked >= (first = HEAD(*obs))->len + s->first_offset) {
 		rem_node((node_t *)first);
 		s->obufs_size -= first->len;
-		xconn->obufs_size -= first->len;
-		xconn->quic_table->obufs_size -= first->len;
+		conn->obufs_size -= first->len;
+		conn->quic_table->obufs_size -= first->len;
 		s->first_offset += first->len;
 		free(first);
 		if (s->unsent_obuf == first) {
@@ -436,23 +436,23 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *xconn, int64_t stream_id,
 	}
 
 	if (EMPTY_LIST(*obs) && !keep_stream) {
-		stream_outprocess(xconn, s);
+		stream_outprocess(conn, s);
 		memset(s, 0, sizeof(*s));
-		while (s = &xconn->streams[0], s->inbuf.iov_len == 0 && s->inbuf_fin == NULL && s->obufs_size == 0) {
-			assert(xconn->streams_count > 0);
-			xconn->streams_count--;
+		while (s = &conn->streams[0], s->inbuf.iov_len == 0 && s->inbuf_fin == NULL && s->obufs_size == 0) {
+			assert(conn->streams_count > 0);
+			conn->streams_count--;
 
-			if (xconn->streams_count == 0) {
-				free(xconn->streams);
-				xconn->streams = 0;
-				xconn->streams_first = 0;
+			if (conn->streams_count == 0) {
+				free(conn->streams);
+				conn->streams = 0;
+				conn->streams_first = 0;
 				break;
 			} else {
-				xconn->streams_first++;
-				xconn->stream_inprocess--;
-				memmove(s, s + 1, sizeof(*s) * xconn->streams_count);
+				conn->streams_first++;
+				conn->stream_inprocess--;
+				memmove(s, s + 1, sizeof(*s) * conn->streams_count);
 				// possible realloc to shrink allocated space, but probably useless
-				for (knot_quic_stream_t *si = s;  si < s + xconn->streams_count; si++) {
+				for (knot_quic_stream_t *si = s;  si < s + conn->streams_count; si++) {
 					if (si->obufs_size == 0) {
 						init_list((list_t *)&si->outbufs);
 					} else {
@@ -464,10 +464,10 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *xconn, int64_t stream_id,
 	}
 }
 
-void knot_quic_stream_mark_sent(knot_quic_conn_t *xconn, int64_t stream_id,
+void knot_quic_stream_mark_sent(knot_quic_conn_t *conn, int64_t stream_id,
                                 size_t amount_sent)
 {
-	knot_quic_stream_t *s = knot_quic_conn_get_stream(xconn, stream_id, false);
+	knot_quic_stream_t *s = knot_quic_conn_get_stream(conn, stream_id, false);
 	if (s == NULL) {
 		return;
 	}
