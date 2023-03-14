@@ -144,26 +144,26 @@ void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_sweep_stats *st
 /*!
  * \brief Add new connection/CID link to table.
  *
- * \param xconn    QUIC connection linked.
- * \param cid      New CID to be added.
- * \param table    QUIC table to be modified.
+ * \param conn    QUIC connection linked.
+ * \param cid     New CID to be added.
+ * \param table   QUIC table to be modified.
  *
  * \return Pointer on the CID reference in table, or NULL.
  */
-knot_quic_cid_t **quic_table_insert(knot_quic_conn_t *xconn,
+knot_quic_cid_t **quic_table_insert(knot_quic_conn_t *conn,
                                     const struct ngtcp2_cid *cid,
                                     knot_quic_table_t *table);
 
 /*!
  * \brief Add new connection to the table, allocating conn struct.
  *
- * \param conn      Ngtcp2 conn struct.
+ * \param ngconn    Ngtcp2 conn struct.
  * \param cid       CID to be linked (usually oscid for server).
  * \param table     QUIC table to be modified.
  *
  * \return Allocated (and linked) Knot conn struct, or NULL.
  */
-knot_quic_conn_t *quic_table_add(struct ngtcp2_conn *conn,
+knot_quic_conn_t *quic_table_add(struct ngtcp2_conn *ngconn,
                                  const struct ngtcp2_cid *cid,
                                  knot_quic_table_t *table);
 
@@ -206,10 +206,10 @@ void quic_table_rem2(knot_quic_cid_t **pcid, knot_quic_table_t *table);
 /*!
  * \brief Remove specified stream from QUIC connection, freeing all buffers.
  *
- * \param xconn         QUIC connection to remove from.
+ * \param conn          QUIC connection to remove from.
  * \param stream_id     Stream QUIC ID.
  */
-void quic_stream_free(knot_quic_conn_t *xconn, int64_t stream_id);
+void quic_stream_free(knot_quic_conn_t *conn, int64_t stream_id);
 
 /*!
  * \brief Remove and deinitialize connection completely.
@@ -222,19 +222,19 @@ void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table);
 /*!
  * \brief Fetch or initialize a QUIC stream.
  *
- * \param xconn          QUIC connection.
+ * \param conn           QUIC connection.
  * \param stream_id      Stream QUIC ID.
  * \param create         Trigger stream creation if not exists.
  *
  * \return Stream or NULL.
  */
-knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *xconn,
+knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *conn,
                                               int64_t stream_id, bool create);
 
 /*!
  * \brief Process incomming stream data to stream structure.
  *
- * \param xconn         QUIC connection that has received data.
+ * \param conn          QUIC connection that has received data.
  * \param stream_id     Stream QUIC ID of the incomming data.
  * \param data          Incomming payload data.
  * \param len           Incomming payload data length.
@@ -242,52 +242,52 @@ knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *xconn,
  *
  * \return KNOT_E*
  */
-int knot_quic_stream_recv_data(knot_quic_conn_t *xconn, int64_t stream_id,
+int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
                                const uint8_t *data, size_t len, bool fin);
 
 /*!
  * \brief Get next stream which has pending incomming data to be processed.
  *
- * \param xconn        QUIC connection.
+ * \param conn         QUIC connection.
  * \param stream_id    Out: strem QUIC ID of the returned stream.
  *
  * \return Stream with incomming data.
  */
-knot_quic_stream_t *knot_quic_stream_get_process(knot_quic_conn_t *xconn,
+knot_quic_stream_t *knot_quic_stream_get_process(knot_quic_conn_t *conn,
                                                  int64_t *stream_id);
 
 /*!
  * \brief Add outgiong data to the stream for sending.
  *
- * \param xconn         QUIC connection that shall send data.
+ * \param conn          QUIC connection that shall send data.
  * \param stream_id     Stream ID for outgoing data.
  * \param data          Data payload.
  * \param len           Data payload length.
  *
  * \return NULL if error, or pinter at the data in outgiong buffer.
  */
-uint8_t *knot_quic_stream_add_data(knot_quic_conn_t *xconn, int64_t stream_id,
+uint8_t *knot_quic_stream_add_data(knot_quic_conn_t *conn, int64_t stream_id,
                                    uint8_t *data, size_t len);
 
 /*!
  * \brief Mark outgiong data as acknowledged after ACK received.
  *
- * \param xconn          QUIC connection that received ACK.
+ * \param conn           QUIC connection that received ACK.
  * \param stream_id      Stream ID of ACKed data.
  * \param end_acked      Offset of ACKed data + ACKed length.
  * \param keep_stream    Don't free the stream even when ACKed all outgoing data.
  */
-void knot_quic_stream_ack_data(knot_quic_conn_t *xconn, int64_t stream_id,
+void knot_quic_stream_ack_data(knot_quic_conn_t *conn, int64_t stream_id,
                                size_t end_acked, bool keep_stream);
 
 /*!
  * \brief Mark outgoing data as sent.
  *
- * \param xconn          QUIC connection that sent data.
+ * \param conn           QUIC connection that sent data.
  * \param stream_id      Stream ID of sent data.
  * \param amount_sent    Length of sent data.
  */
-void knot_quic_stream_mark_sent(knot_quic_conn_t *xconn, int64_t stream_id,
+void knot_quic_stream_mark_sent(knot_quic_conn_t *conn, int64_t stream_id,
                                 size_t amount_sent);
 
 /*!
