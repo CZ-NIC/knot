@@ -59,7 +59,7 @@ typedef struct knot_quic_reply {
  *
  * \return QUIC session context.
  */
-struct knot_quic_session *knot_xquic_session_save(knot_xquic_conn_t *conn);
+struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn);
 
 /*!
  * \brief Loads data needed for session resumption.
@@ -69,7 +69,7 @@ struct knot_quic_session *knot_xquic_session_save(knot_xquic_conn_t *conn);
  *
  * \return KNOT_E*
  */
-int knot_xquic_session_load(knot_xquic_conn_t *conn, struct knot_quic_session *session);
+int knot_quic_session_load(knot_quic_conn_t *conn, struct knot_quic_session *session);
 
 /*!
  * \brief Init server TLS certificate for DoQ.
@@ -82,11 +82,11 @@ int knot_xquic_session_load(knot_xquic_conn_t *conn, struct knot_quic_session *s
  *
  * \return Initialized creds.
  */
-struct knot_quic_creds *knot_xquic_init_creds(bool server,
-                                              const char *cert_file,
-                                              const char *key_file,
-                                              const uint8_t *peer_pin,
-                                              uint8_t peer_pin_len);
+struct knot_quic_creds *knot_quic_init_creds(bool server,
+                                             const char *cert_file,
+                                             const char *key_file,
+                                             const uint8_t *peer_pin,
+                                             uint8_t peer_pin_len);
 
 /*!
  * \brief Gets the certificate from credentials.
@@ -96,17 +96,17 @@ struct knot_quic_creds *knot_xquic_init_creds(bool server,
  *
  * \return KNOT_E*
  */
-int knot_xquic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_int **cert);
+int knot_quic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_int **cert);
 
 /*!
  * \brief Init server TLS certificate for DoQ.
  */
-void knot_xquic_free_creds(struct knot_quic_creds *creds);
+void knot_quic_free_creds(struct knot_quic_creds *creds);
 
 /*!
  * \brief Returns timeout value for the connection.
  */
-uint64_t xquic_conn_get_timeout(knot_xquic_conn_t *conn);
+uint64_t quic_conn_get_timeout(knot_quic_conn_t *conn);
 
 /*!
  * \brief Check if connection timed out due to inactivity.
@@ -117,12 +117,12 @@ uint64_t xquic_conn_get_timeout(knot_xquic_conn_t *conn);
  *
  * \return True if the connection timed out idle.
  */
-bool xquic_conn_timeout(knot_xquic_conn_t *conn, uint64_t *now);
+bool quic_conn_timeout(knot_quic_conn_t *conn, uint64_t *now);
 
 /*!
  * \brief Returns measured connection RTT in usecs.
  */
-uint32_t knot_xquic_conn_rtt(knot_xquic_conn_t *conn);
+uint32_t knot_quic_conn_rtt(knot_quic_conn_t *conn);
 
 /*!
  * \brief Gets local or remote certificate pin.
@@ -134,7 +134,7 @@ uint32_t knot_xquic_conn_rtt(knot_xquic_conn_t *conn);
  * \param pin_size  Input size of the storage / output size of the stored pin.
  * \param local     Local or remote certificate indication.
  */
-void knot_quic_conn_pin(knot_xquic_conn_t *conn, uint8_t *pin, size_t *pin_size, bool local);
+void knot_quic_conn_pin(knot_quic_conn_t *conn, uint8_t *pin, size_t *pin_size, bool local);
 
 /*!
  * \brief Create new outgoing QUIC connection.
@@ -147,9 +147,9 @@ void knot_quic_conn_pin(knot_xquic_conn_t *conn, uint8_t *pin, size_t *pin_size,
  *
  * \return KNOT_E*
  */
-int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_in6 *dest,
-                      struct sockaddr_in6 *via, const char *server_name,
-                      knot_xquic_conn_t **out_conn);
+int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
+                     struct sockaddr_in6 *via, const char *server_name,
+                     knot_quic_conn_t **out_conn);
 
 /*!
  * \brief Handle incoming QUIC packet.
@@ -159,10 +159,10 @@ int knot_xquic_client(knot_xquic_table_t *table, struct sockaddr_in6 *dest,
  * \param idle_timeout    Configured idle timeout for connections (in nanoseconds).
  * \param out_conn        Out: QUIC connection that this packet belongs to.
  *
- * \return KNOT_E* or -XQUIC_SEND_*
+ * \return KNOT_E* or -QUIC_SEND_*
  */
-int knot_quic_handle(knot_xquic_table_t *table, knot_quic_reply_t *reply,
-                     uint64_t idle_timeout, knot_xquic_conn_t **out_conn);
+int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
+                     uint64_t idle_timeout, knot_quic_conn_t **out_conn);
 
 /*!
  * \brief Send outgoing QUIC packet(s) for a connection.
@@ -175,7 +175,7 @@ int knot_quic_handle(knot_xquic_table_t *table, knot_quic_reply_t *reply,
  *
  * \return KNOT_E*
  */
-int knot_quic_send(knot_xquic_table_t *quic_table, knot_xquic_conn_t *conn,
+int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
                    knot_quic_reply_t *reply, unsigned max_msgs, bool ignore_lastbyte);
 
 /*! @} */

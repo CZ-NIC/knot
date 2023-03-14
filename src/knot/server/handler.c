@@ -72,7 +72,7 @@ void handle_udp_reply(knotd_qdata_params_t *params, knot_layer_t *layer,
 }
 
 #ifdef ENABLE_QUIC
-static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struct iovec *inbuf,
+static void handle_quic_stream(knot_quic_conn_t *conn, int64_t stream_id, struct iovec *inbuf,
                                knot_layer_t *layer, knotd_qdata_params_t *params, uint8_t *ans_buf,
                                size_t ans_buf_size)
 {
@@ -86,7 +86,7 @@ static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struc
 		if (!send_state(layer->state)) {
 			continue;
 		}
-		if (knot_xquic_stream_add_data(conn, stream_id, ans->wire, ans->size) == NULL) {
+		if (knot_quic_stream_add_data(conn, stream_id, ans->wire, ans->size) == NULL) {
 			break;
 		}
 	}
@@ -94,24 +94,24 @@ static void handle_quic_stream(knot_xquic_conn_t *conn, int64_t stream_id, struc
 	handle_finish(layer);
 }
 
-void handle_quic_streams(knot_xquic_conn_t *conn, knotd_qdata_params_t *params,
+void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
                          knot_layer_t *layer, void *msg)
 {
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
 	int64_t stream_id;
-	knot_xquic_stream_t *stream;
+	knot_quic_stream_t *stream;
 
-	while (conn != NULL && (stream = knot_xquic_stream_get_process(conn, &stream_id)) != NULL) {
+	while (conn != NULL && (stream = knot_quic_stream_get_process(conn, &stream_id)) != NULL) {
 		assert(stream->inbuf_fin != NULL);
 		assert(stream->inbuf_fin->iov_len > 0);
 		if (msg) {
 #ifdef ENABLE_XDP
 			params_xdp_update(params, KNOTD_QUERY_PROTO_QUIC, msg,
-			                  knot_xquic_conn_rtt(conn), conn);
+			                  knot_quic_conn_rtt(conn), conn);
 #endif // ENABLE_XDP
 		} else {
-			params_update(params, knot_xquic_conn_rtt(conn), conn);
+			params_update(params, knot_quic_conn_rtt(conn), conn);
 		}
 		handle_quic_stream(conn, stream_id, stream->inbuf_fin, layer, params,
 		                   ans_buf, sizeof(ans_buf));

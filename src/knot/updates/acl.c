@@ -255,7 +255,7 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query,
-                 struct knot_xquic_conn *conn)
+                 struct knot_quic_conn *conn)
 {
 	if (acl == NULL || addr == NULL || tsig == NULL) {
 		return false;
@@ -353,7 +353,7 @@ next_acl:
 }
 
 bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig, struct knot_xquic_conn *conn)
+                 knot_tsig_key_t *tsig, struct knot_quic_conn *conn)
 {
 	if (!conf->cache.srv_auto_acl) {
 		return false;

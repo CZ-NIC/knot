@@ -60,7 +60,7 @@ typedef struct {
 	sockaddr_t local;   /*!< Storage for local any address. */
 
 #ifdef ENABLE_QUIC
-	knot_xquic_table_t *quic_table; /*!< QUIC connection table if active. */
+	knot_quic_table_t *quic_table;  /*!< QUIC connection table if active. */
 	knot_sweep_stats_t quic_closed; /*!< QUIC sweep context. */
 	uint64_t quic_idle_close;       /*!< QUIC idle close timeout (in nanoseconds). */
 #endif // ENABLE_QUIC

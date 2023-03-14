@@ -71,7 +71,7 @@ override_dh_auto_install-arch:
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
 	@if grep -E -q "DoQ support: +no" "$(CURDIR)/debian/tmp/usr/sbin/knotd"; then \
 	  echo "Stripping the QUIC symbols"; \
-	  sed -i '/knot_xquic_/d' $(LIBKNOT_SYMBOLS); \
+	  sed -i '/knot_quic_/d' $(LIBKNOT_SYMBOLS); \
 	fi
 
 override_dh_auto_install-indep:

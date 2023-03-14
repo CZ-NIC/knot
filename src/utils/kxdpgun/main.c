@@ -478,7 +478,7 @@ void *xdp_gun_thread(void *_ctx)
 	unsigned stats_triggered = 0;
 	knot_tcp_table_t *tcp_table = NULL;
 #ifdef ENABLE_QUIC
-	knot_xquic_table_t *quic_table = NULL;
+	knot_quic_table_t *quic_table = NULL;
 	struct knot_quic_creds *quic_creds = NULL;
 	list_t quic_sessions;
 	init_list(&quic_sessions);
@@ -494,12 +494,12 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	if (ctx->quic) {
 #ifdef ENABLE_QUIC
-		quic_creds = knot_xquic_init_creds(false, NULL, NULL, NULL, 0);
+		quic_creds = knot_quic_init_creds(false, NULL, NULL, NULL, 0);
 		if (quic_creds == NULL) {
 			ERR2("failed to initialize QUIC context");
 			return NULL;
 		}
-		quic_table = knot_xquic_table_new(ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, quic_creds);
+		quic_table = knot_quic_table_new(ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, quic_creds);
 		if (quic_table == NULL) {
 			ERR2("failed to allocate QUIC connection table");
 			return NULL;
@@ -605,12 +605,12 @@ void *xdp_gun_thread(void *_ctx)
 					ctx->local_ip.sin6_port = htobe16(local_port);
 
 					for (unsigned i = 0; i < ctx->at_once; i++) {
-						knot_xquic_conn_t *newconn = NULL;
-						ret = knot_xquic_client(quic_table, &ctx->target_ip, &ctx->local_ip,
-						                        NULL, &newconn);
+						knot_quic_conn_t *newconn = NULL;
+						ret = knot_quic_client(quic_table, &ctx->target_ip, &ctx->local_ip,
+						                       NULL, &newconn);
 						if (ret == KNOT_EOK) {
 							struct iovec tmp = {
-								knot_xquic_stream_add_data(newconn, 0, NULL, payload_ptr->len),
+								knot_quic_stream_add_data(newconn, 0, NULL, payload_ptr->len),
 								0
 							};
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
@@ -619,7 +619,7 @@ void *xdp_gun_thread(void *_ctx)
 							} else {
 								void *session = HEAD(quic_sessions);
 								rem_node(session);
-								(void)knot_xquic_session_load(newconn, session);
+								(void)knot_quic_session_load(newconn, session);
 							}
 							ret = knot_quic_send(quic_table, newconn, &quic_send_reply, 1,
 							                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
@@ -721,7 +721,7 @@ void *xdp_gun_thread(void *_ctx)
 #ifdef ENABLE_QUIC
 					for (size_t i = 0; i < recvd; i++) {
 						knot_xdp_msg_t *msg_in = &pkts[i];
-						knot_xquic_conn_t *conn;
+						knot_quic_conn_t *conn;
 
 						quic_reply.ip_rem = (struct sockaddr_storage *)&msg_in->ip_from;
 						quic_reply.ip_loc = (struct sockaddr_storage *)&msg_in->ip_to;
@@ -745,7 +745,7 @@ void *xdp_gun_thread(void *_ctx)
 
 						if (sess_ticket && !conn->session_taken && !ctx->quic_full_handshake) {
 							conn->session_taken = true;
-							void *session = knot_xquic_session_save(conn);
+							void *session = knot_quic_session_save(conn);
 							if (session != NULL) {
 								add_tail(&quic_sessions, session);
 							}
@@ -756,42 +756,42 @@ void *xdp_gun_thread(void *_ctx)
 
 							local_stats.synack_recv++;
 							if ((ctx->ignore1 & KXDPGUN_IGNORE_QUERY)) {
-								knot_xquic_table_rem(conn, quic_table);
-								knot_xquic_cleanup(&conn, 1);
+								knot_quic_table_rem(conn, quic_table);
+								knot_quic_cleanup(&conn, 1);
 								continue;
 							}
 						}
 						if (!conn->handshake_done && conn->streams_count == -1) {
-							knot_xquic_table_rem(conn, quic_table);
-							knot_xquic_cleanup(&conn, 1);
+							knot_quic_table_rem(conn, quic_table);
+							knot_quic_cleanup(&conn, 1);
 							continue;
 						}
 
-						knot_xquic_stream_t *stream0 = knot_xquic_conn_get_stream(conn, 0, false);
+						knot_quic_stream_t *stream0 = knot_quic_conn_get_stream(conn, 0, false);
 						assert(stream0 != NULL);
 
 						if ((ctx->ignore2 & XDP_TCP_IGNORE_ESTABLISH)) {
-							knot_xquic_table_rem(conn, quic_table);
-							knot_xquic_cleanup(&conn, 1);
+							knot_quic_table_rem(conn, quic_table);
+							knot_quic_cleanup(&conn, 1);
 							local_stats.synack_recv++;
 							continue;
 						}
 
-						stream0 = knot_xquic_conn_get_stream(conn, 0, false);
+						stream0 = knot_quic_conn_get_stream(conn, 0, false);
 						if (stream0 != NULL && stream0->inbuf_fin != NULL) {
 							check_dns_payload(stream0->inbuf_fin, ctx, &local_stats);
 							free(stream0->inbuf_fin);
 							stream0->inbuf_fin = NULL;
 
 							if ((ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK)) {
-								knot_xquic_table_rem(conn, quic_table);
-								knot_xquic_cleanup(&conn, 1);
+								knot_quic_table_rem(conn, quic_table);
+								knot_quic_cleanup(&conn, 1);
 								continue;
 							}
 						}
 						ret = knot_quic_send(quic_table, conn, &quic_reply, 4,
 						                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
-						knot_xquic_cleanup(&conn, 1);
+						knot_quic_cleanup(&conn, 1);
 						if (ret != KNOT_EOK) {
 							errors++;
 						}
@@ -812,7 +812,7 @@ void *xdp_gun_thread(void *_ctx)
 
 #ifdef ENABLE_QUIC
 		if (ctx->quic) {
-			(void)knot_xquic_table_sweep(quic_table, &sweep_stats);
+			(void)knot_quic_table_sweep(quic_table, &sweep_stats);
 		}
 #endif // ENABLE_QUIC
 
@@ -848,12 +848,12 @@ void *xdp_gun_thread(void *_ctx)
 
 	knot_tcp_table_free(tcp_table);
 #ifdef ENABLE_QUIC
-	knot_xquic_table_free(quic_table);
+	knot_quic_table_free(quic_table);
 	struct knot_quic_session *n, *nxt;
 	WALK_LIST_DELSAFE(n, nxt, quic_sessions) {
-		knot_xquic_session_load(NULL, n);
+		knot_quic_session_load(NULL, n);
 	}
-	knot_xquic_free_creds(quic_creds);
+	knot_quic_free_creds(quic_creds);
 #endif // ENABLE_QUIC
 
 	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
