@@ -435,9 +435,15 @@ int net_connect(net_t *net)
 
 	int ret = 0;
 	if (net->socktype == SOCK_STREAM) {
-		int  cs, err;
+		int  cs = 1, err;
 		socklen_t err_len = sizeof(err);
 		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
+
+#ifdef TCP_NODELAY
+		if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &cs, sizeof(cs))) {
+			return KNOT_NET_ESOCKET;
+		}
+#endif
 
 		// Establish a connection.
 		if (net->tls.params == NULL || !fastopen) {
