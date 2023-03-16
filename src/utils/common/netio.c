@@ -435,9 +435,13 @@ int net_connect(net_t *net)
 
 	int ret = 0;
 	if (net->socktype == SOCK_STREAM) {
-		int  cs, err;
+		int  cs = 1, err;
 		socklen_t err_len = sizeof(err);
 		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
+
+#ifdef TCP_NODELAY
+		(void)setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &cs, sizeof(cs));
+#endif
 
 		// Establish a connection.
 		if (net->tls.params == NULL || !fastopen) {
