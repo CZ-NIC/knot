@@ -444,6 +444,11 @@ int net_connect(net_t *net)
 			return KNOT_NET_ESOCKET;
 		}
 #endif
+#ifdef TCP_QUICKACK
+		if (setsockopt(sockfd, IPPROTO_TCP, TCP_QUICKACK, &cs, sizeof(cs))) {
+			return KNOT_NET_ESOCKET;
+		}
+#endif
 
 		// Establish a connection.
 		if (net->tls.params == NULL || !fastopen) {
