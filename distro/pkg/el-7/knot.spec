@@ -23,6 +23,7 @@ BuildRequires:	gnupg2
 %endif
 
 Patch1:		01-revert-AC_PROG_CC.patch
+Patch2:		02-fix-compilation-by-using-SHA-1.patch
 
 # Required dependencies
 BuildRequires:	autoconf
