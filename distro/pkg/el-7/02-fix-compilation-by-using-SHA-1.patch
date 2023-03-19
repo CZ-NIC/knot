@@ -1,0 +1,55 @@
+From 41aa904a6ebfac41d1ff01f03ac30a951bb0d8a0 Mon Sep 17 00:00:00 2001
+From: Daniel Salzman <daniel.salzman@nic.cz>
+Date: Sun, 19 Mar 2023 19:51:06 +0100
+Subject: [PATCH] distro/el-7: fix compilation by using SHA-1 for certificate
+ PIN computation
+
+---
+ src/knot/updates/acl.c | 2 +-
+ src/utils/common/tls.c | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/knot/updates/acl.c b/src/knot/updates/acl.c
+index da904411b..8e3b4c845 100644
+--- a/src/knot/updates/acl.c
++++ b/src/knot/updates/acl.c
+@@ -48,7 +48,7 @@ void cert_pin(gnutls_session_t session, uint8_t *out, size_t *out_len, bool loca
+ 		goto error;
+ 	}
+ 
+-	ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256, out, out_len);
++	ret = gnutls_x509_crt_get_key_id(cert, 0, out, out_len);
+ 	if (ret != GNUTLS_E_SUCCESS) {
+ 		gnutls_x509_crt_deinit(cert);
+ 		goto error;
+diff --git a/src/utils/common/tls.c b/src/utils/common/tls.c
+index 245dd3f96..e7e465661 100644
+--- a/src/utils/common/tls.c
++++ b/src/utils/common/tls.c
+@@ -328,7 +328,7 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
+ 
+ 		uint8_t cert_pin[CERT_PIN_LEN] = { 0 };
+ 		size_t cert_pin_size = sizeof(cert_pin);
+-		ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
++		ret = gnutls_x509_crt_get_key_id(cert, 0,
+ 		                                 cert_pin, &cert_pin_size);
+ 		if (ret != 0) {
+ 			gnutls_x509_crt_deinit(cert);
+@@ -342,12 +342,12 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
+ 		}
+ 
+ 		uint8_t *txt_pin;
+-		ret = knot_base64_encode_alloc(cert_pin, sizeof(cert_pin), &txt_pin);
++		ret = knot_base64_encode_alloc(cert_pin, cert_pin_size, &txt_pin);
+ 		if (ret < 0) {
+ 			gnutls_x509_crt_deinit(cert);
+ 			return ret;
+ 		}
+-		DBG("     SHA-256 PIN: %.*s%s", ret, txt_pin, match ? ", MATCH" : "");
++		DBG("     SHA-1 PIN: %.*s%s", ret, txt_pin, match ? ", MATCH" : "");
+ 		free(txt_pin);
+ 
+ 		gnutls_x509_crt_deinit(cert);
+-- 
+2.25.1
+
