@@ -619,15 +619,16 @@ ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
 		return KNOT_EINVAL;
 	}
 
-	struct iovec iov = { 0 };
-	iov.iov_base = (void *)buffer;
-	iov.iov_len = size;
-
-	struct msghdr msg = { 0 };
-	msg.msg_name = (void *)addr;
-	msg.msg_namelen = sockaddr_len(addr);
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
+	struct iovec iov = {
+		.iov_base = (void *)buffer,
+		.iov_len = size
+	};
+	struct msghdr msg = {
+		.msg_name = (void *)addr,
+		.msg_namelen = sockaddr_len(addr),
+		.msg_iov = &iov,
+		.msg_iovlen = 1
+	};
 
 	int ret = send_data(sock, &msg, &timeout_ms, false);
 	if (ret < 0) {
@@ -646,15 +647,16 @@ ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
 		return KNOT_EINVAL;
 	}
 
-	struct iovec iov = { 0 };
-	iov.iov_base = buffer;
-	iov.iov_len = size;
-
-	struct msghdr msg = { 0 };
-	msg.msg_name = (void *)addr;
-	msg.msg_namelen = addr ? sizeof(*addr) : 0;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
+	struct iovec iov = {
+		.iov_base = buffer,
+		.iov_len = size
+	};
+	struct msghdr msg = {
+		.msg_name = (void *)addr,
+		.msg_namelen = addr ? sizeof(*addr) : 0,
+		.msg_iov = &iov,
+		.msg_iovlen = 1
+	};
 
 	return recv_data(sock, &msg, true, &timeout_ms);
 }
@@ -689,18 +691,23 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeo
 		return KNOT_EINVAL;
 	}
 
-	struct iovec iov[2];
 	uint16_t pktsize = htons(size);
-	iov[0].iov_base = &pktsize;
-	iov[0].iov_len = sizeof(uint16_t);
-	iov[1].iov_base = (void *)buffer;
-	iov[1].iov_len = size;
-
-	struct msghdr msg = { 0 };
-	msg.msg_iov = iov;
-	msg.msg_iovlen = 2;
-	msg.msg_name = (void *)tfo_addr;
-	msg.msg_namelen = tfo_addr ? sizeof(*tfo_addr) : 0;
+	struct iovec iov[2] = {
+	{
+		.iov_base = &pktsize,
+		.iov_len = sizeof(uint16_t)
+	},
+	{
+		.iov_base = (void *)buffer,
+		.iov_len = size
+	}
+	};
+	struct msghdr msg = {
+		.msg_name = (void *)tfo_addr,
+		.msg_namelen = tfo_addr ? sizeof(*tfo_addr) : 0,
+		.msg_iov = iov,
+		.msg_iovlen = 2
+	};
 
 	ssize_t ret = send_data(sock, &msg, &timeout_ms, tfo_addr != NULL);
 	if (ret < 0) {
