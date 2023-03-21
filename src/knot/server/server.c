@@ -46,6 +46,7 @@
 #include "knot/worker/pool.h"
 #include "contrib/base64.h"
 #include "contrib/conn_pool.h"
+#include "contrib/files.h"
 #include "contrib/net.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/os.h"
@@ -59,6 +60,8 @@
 #ifdef SO_ATTACH_REUSEPORT_CBPF
 #include <linux/filter.h>
 #endif
+
+#define DFLT_QUIC_KEY_FILE	"quic_key.pem"
 
 /*! \brief Minimal send/receive buffer sizes. */
 enum {
@@ -532,23 +535,37 @@ static void log_sock_conf(conf_t *conf)
 static int init_creds(server_t *server, conf_t *conf)
 {
 #ifdef ENABLE_QUIC
-	char *tls_cert = conf_tls(conf, C_CERT_FILE);
-	char *tls_key = conf_tls(conf, C_KEY_FILE);
-	if (tls_cert == NULL) {
-		log_notice("QUIC, no server certificate configured, using one-time one");
+	char *cert_file = conf_tls(conf, C_CERT_FILE);
+	char *key_file = conf_tls(conf, C_KEY_FILE);
+	if (cert_file == NULL) {
+		assert(key_file == NULL);
+		char *kasp_dir = conf_db(conf, C_KASP_DB);
+		int ret = make_dir(kasp_dir, 0660, true);
+		if (ret != KNOT_EOK) {
+			log_error("QUIC, failed to create directory '%s'", kasp_dir);
+			free(kasp_dir);
+			return ret;
+		}
+		key_file = abs_path(DFLT_QUIC_KEY_FILE, kasp_dir);
+		free(kasp_dir);
+		log_debug("QUIC, using self generated key '%s' with "
+		          "one-time certificate", key_file);
 	}
-	server->quic_creds = knot_xquic_init_creds(true, tls_cert, tls_key);
-	free(tls_cert);
-	free(tls_key);
+	server->quic_creds = knot_quic_init_creds(true, cert_file, key_file, NULL, 0);
+	free(cert_file);
 	if (server->quic_creds == NULL) {
-		log_error("QUIC, failed to initialize server credentials");
+		log_error("QUIC, failed to initialize server credentials with key '%s'",
+		          key_file);
+		free(key_file);
+		return KNOT_ERROR;
 	}
+	free(key_file);
 
 	int pin_size = 0;
-	uint8_t bin_pin[CERT_PIN_LEN], pin[2 * CERT_PIN_LEN];
+	uint8_t bin_pin[KNOT_QUIC_PIN_LEN], pin[2 * KNOT_QUIC_PIN_LEN];
 	size_t bin_pin_size = sizeof(bin_pin);
 	gnutls_x509_crt_t cert;
-	if (knot_xquic_creds_cert(server->quic_creds, &cert) == KNOT_EOK &&
+	if (knot_quic_creds_cert(server->quic_creds, &cert) == KNOT_EOK &&
 	    gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
 	                               bin_pin, &bin_pin_size) == GNUTLS_E_SUCCESS &&
 	    (pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin))) > 0) {
@@ -805,7 +822,7 @@ void server_deinit(server_t *server)
 	knot_unreachables_deinit(&global_unreachables);
 
 #if defined ENABLE_QUIC
-	knot_xquic_free_creds(server->quic_creds);
+	knot_quic_free_creds(server->quic_creds);
 #endif // ENABLE_QUIC
 }
 

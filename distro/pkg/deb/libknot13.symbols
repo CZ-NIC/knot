@@ -112,6 +112,24 @@ libknot.so.13 libknot13 #MINVER#
  knot_probe_set_consumer@Base 3.2.0
  knot_probe_set_producer@Base 3.2.0
  knot_probe_tcp_rtt@Base 3.2.0
+ knot_quic_cleanup@Base 3.3.0
+ knot_quic_client@Base 3.3.0
+ knot_quic_conn_get_stream@Base 3.3.0
+ knot_quic_conn_pin@Base 3.3.0
+ knot_quic_conn_rtt@Base 3.3.0
+ knot_quic_creds_cert@Base 3.3.0
+ knot_quic_free_creds@Base 3.3.0
+ knot_quic_handle@Base 3.3.0
+ knot_quic_init_creds@Base 3.3.0
+ knot_quic_send@Base 3.3.0
+ knot_quic_session_load@Base 3.3.0
+ knot_quic_session_save@Base 3.3.0
+ knot_quic_stream_add_data@Base 3.3.0
+ knot_quic_stream_get_process@Base 3.3.0
+ knot_quic_table_free@Base 3.3.0
+ knot_quic_table_new@Base 3.3.0
+ knot_quic_table_rem@Base 3.3.0
+ knot_quic_table_sweep@Base 3.3.0
  knot_rcode_names@Base 3.2.0
  knot_rdataset_add@Base 3.2.0
  knot_rdataset_at@Base 3.2.0
@@ -206,22 +224,6 @@ libknot.so.13 libknot13 #MINVER#
  knot_xdp_send_free@Base 3.2.0
  knot_xdp_send_prepare@Base 3.2.0
  knot_xdp_socket_fd@Base 3.2.0
- knot_xquic_cleanup@Base 3.2.1
- knot_xquic_client@Base 3.2.0
- knot_xquic_conn_get_stream@Base 3.2.0
- knot_xquic_conn_rtt@Base 3.2.0
- knot_xquic_free_creds@Base 3.2.0
- knot_xquic_handle@Base 3.2.0
- knot_xquic_init_creds@Base 3.2.0
- knot_xquic_send@Base 3.2.0
- knot_xquic_session_load@Base 3.2.0
- knot_xquic_session_save@Base 3.2.0
- knot_xquic_stream_add_data@Base 3.2.0
- knot_xquic_stream_get_process@Base 3.2.0
- knot_xquic_table_free@Base 3.2.0
- knot_xquic_table_new@Base 3.2.0
- knot_xquic_table_rem@Base 3.2.0
- knot_xquic_table_sweep@Base 3.2.0
  yp_addr@Base 3.2.0
  yp_addr_noport@Base 3.2.0
  yp_addr_noport_to_bin@Base 3.2.0
