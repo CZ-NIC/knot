@@ -66,11 +66,7 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	}
 
 	// Prepare the server identity.
-	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
-	const char *ident = conf_str(&val);
-	if (ident == NULL || ident[0] == '\0') {
-		ident = conf()->hostname;
-	}
+	const char *ident = conf()->cache.srv_ident;
 
 	// Prepare the timestamps.
 	char started_time[64], finished_time[64];

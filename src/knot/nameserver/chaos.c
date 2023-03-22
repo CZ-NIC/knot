@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,24 +56,13 @@ static const char *get_txt_response_string(knot_pkt_t *response)
 	/* Allow hostname.bind. for compatibility. */
 	if (strcasecmp("id.server.",     qname) == 0 ||
 	    strcasecmp("hostname.bind.", qname) == 0) {
-		conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
-		if (val.code == KNOT_EOK) {
-			response_str = conf_str(&val); // Can be NULL!
-		} else {
-			response_str = conf()->hostname;
-		}
+		response_str = conf()->cache.srv_ident;
 	/* Allow version.bind. for compatibility. */
 	} else if (strcasecmp("version.server.", qname) == 0 ||
 	           strcasecmp("version.bind.",   qname) == 0) {
-		conf_val_t val = conf_get(conf(), C_SRV, C_VERSION);
-		if (val.code == KNOT_EOK) {
-			response_str = conf_str(&val); // Can be NULL!
-		} else {
-			response_str = "Knot DNS " PACKAGE_VERSION;
-		}
+		response_str = conf()->cache.srv_version;
 	} else if (strcasecmp("fortune.", qname) == 0) {
-		conf_val_t val = conf_get(conf(), C_SRV, C_VERSION);
-		if (val.code != KNOT_EOK) {
+		if (!conf()->cache.srv_has_version) {
 			uint16_t wishno = knot_wire_get_id(response->wire) %
 			                  (sizeof(wishes) / sizeof(wishes[0]));
 			response_str = wishes[wishno];

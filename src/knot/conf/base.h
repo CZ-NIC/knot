@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -152,6 +152,9 @@ typedef struct {
 		bool srv_ans_rotate;
 		bool srv_auto_acl;
 		bool srv_proxy_enabled;
+		const char *srv_ident;
+		const char *srv_version;
+		bool srv_has_version;
 	} cache;
 
 	/*! List of dynamically loaded modules. */

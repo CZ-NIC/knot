@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -262,6 +262,22 @@ static void init_cache(
 
 	val = conf_get(conf, C_SRV, C_PROXY_ALLOWLIST);
 	conf->cache.srv_proxy_enabled = (conf_val_count(&val) > 0);
+
+	val = conf_get(conf, C_SRV, C_IDENT);
+	if (val.code == KNOT_EOK) {
+		conf->cache.srv_ident = conf_str(&val); // Can be NULL!
+	} else {
+		conf->cache.srv_ident = conf->hostname;
+	}
+
+	val = conf_get(conf, C_SRV, C_VERSION);
+	if (val.code == KNOT_EOK) {
+		conf->cache.srv_has_version = true;
+		conf->cache.srv_version = conf_str(&val); // Can be NULL!
+	} else {
+		conf->cache.srv_has_version = false;
+		conf->cache.srv_version = "Knot DNS " PACKAGE_VERSION;
+	}
 }
 
 int conf_new(

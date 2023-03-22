@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -151,7 +151,7 @@ static void zone_stats_dump(zone_t *zone, dump_ctx_t *ctx)
 	dump_modules(ctx);
 }
 
-static void dump_to_file(FILE *fd, server_t *server)
+static void dump_to_file(conf_t *conf, FILE *fd, server_t *server)
 {
 	char date[64] = "";
 
@@ -162,11 +162,7 @@ static void dump_to_file(FILE *fd, server_t *server)
 	strftime(date, sizeof(date), KNOT_LOG_TIME_FORMAT, &tm);
 
 	// Get the server identity.
-	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
-	const char *ident = conf_str(&val);
-	if (ident == NULL || ident[0] == '\0') {
-		ident = conf()->hostname;
-	}
+	const char *ident = conf->cache.srv_ident;
 
 	// Dump record header.
 	fprintf(fd,
@@ -183,7 +179,7 @@ static void dump_to_file(FILE *fd, server_t *server)
 
 	dump_ctx_t ctx = {
 		.fd = fd,
-		.query_modules = conf()->query_modules,
+		.query_modules = conf->query_modules,
 	};
 
 	// Dump global statistics.
@@ -229,7 +225,7 @@ static void dump_stats(server_t *server)
 	assert(fd);
 
 	// Dump stats into the file.
-	dump_to_file(fd, server);
+	dump_to_file(pconf, fd, server);
 
 	fflush(fd);
 	fclose(fd);
