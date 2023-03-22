@@ -162,11 +162,7 @@ static void dump_to_file(FILE *fd, server_t *server)
 	strftime(date, sizeof(date), KNOT_LOG_TIME_FORMAT, &tm);
 
 	// Get the server identity.
-	conf_val_t val = conf_get(conf(), C_SRV, C_IDENT);
-	const char *ident = conf_str(&val);
-	if (ident == NULL || ident[0] == '\0') {
-		ident = conf()->hostname;
-	}
+	const char *ident = conf()->cache.srv_ident;
 
 	// Dump record header.
 	fprintf(fd,
