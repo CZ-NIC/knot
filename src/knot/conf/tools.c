@@ -1054,7 +1054,7 @@ int load_module(
 	}
 
 	int ret = conf_mod_load_extra(args->extra->conf, mod_name, file_name,
-	                              args->extra->check);
+	                              args->extra->check ? MOD_TEMPORARY : MOD_EXPLICIT);
 	free(mod_name);
 	if (ret != KNOT_EOK) {
 		return ret;

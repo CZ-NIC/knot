@@ -896,7 +896,8 @@ static int reload_conf(conf_t *new_conf)
 		     iter.code == KNOT_EOK; conf_iter_next(new_conf, &iter)) {
 			conf_val_t id = conf_iter_id(new_conf, &iter);
 			conf_val_t file = conf_id_get(new_conf, C_MODULE, C_FILE, &id);
-			ret = conf_mod_load_extra(new_conf, conf_str(&id), conf_str(&file), false);
+			ret = conf_mod_load_extra(new_conf, conf_str(&id), conf_str(&file),
+			                          MOD_EXPLICIT);
 			if (ret != KNOT_EOK) {
 				conf_iter_finish(new_conf, &iter);
 				return ret;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ int conf_mod_load_common(
  * \param[in] conf       Configuration.
  * \param[in] mod_name   Module name.
  * \param[in] file_name  Shared library file name.
- * \param[in] temporary  Mark module as temporary.
+ * \param[in] type       Type of module.
  *
  * \return Error code, KNOT_EOK if success.
  */
@@ -62,7 +62,7 @@ int conf_mod_load_extra(
 	conf_t *conf,
 	const char *mod_name,
 	const char *file_name,
-	bool temporary
+	module_type_t type
 );
 
 /*!
