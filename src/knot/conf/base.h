@@ -68,14 +68,26 @@ typedef struct {
 	int code;
 } conf_val_t;
 
+/*! Shared module types. */
+typedef enum {
+	/*! Static module. */
+	MOD_STATIC = 0,
+	/*! Implicit shared module which is always loaded. */
+	MOD_IMPLICIT,
+	/*! Explicit shared module which is currently loaded. */
+	MOD_EXPLICIT,
+	/*! Explicit shared temporary module which is loaded during config check. */
+	MOD_TEMPORARY
+} module_type_t;
+
 /*! Query module context. */
 typedef struct {
 	/*! Module interface. */
 	const knotd_mod_api_t *api;
 	/*! Shared library dlopen handler. */
 	void *lib_handle;
-	/*! Indication of a temporary module created during confio check. */
-	bool temporary;
+	/*! Module type. */
+	module_type_t type;
 } module_t;
 
 knot_dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL, 16)

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,9 +57,11 @@ module_t *conf_mod_find(
 		}
 	}
 
+	module_type_t excluded_type = temporary ? MOD_EXPLICIT : MOD_TEMPORARY;
+
 	// Second, search in dynamic modules.
 	knot_dynarray_foreach(mod, module_t *, module, conf->modules) {
-		if ((*module) != NULL && (*module)->temporary == temporary &&
+		if ((*module) != NULL && (*module)->type != excluded_type &&
 		    strncmp(name, (*module)->api->name, len) == 0) {
 			return (*module);
 		}
@@ -179,7 +181,7 @@ int conf_mod_load_common(
 		// Process each module in the directory.
 		for (size_t i = 0; i < glob_buf.gl_pathc; i++) {
 			(void)conf_mod_load_extra(conf, NULL, glob_buf.gl_pathv[i],
-			                          false);
+			                          MOD_IMPLICIT);
 		}
 
 		globfree(&glob_buf);
@@ -195,7 +197,7 @@ int conf_mod_load_extra(
 	conf_t *conf,
 	const char *mod_name,
 	const char *file_name,
-	bool temporary)
+	module_type_t type)
 {
 	if (conf == NULL || (mod_name == NULL && file_name == NULL)) {
 		return KNOT_EINVAL;
@@ -247,7 +249,8 @@ int conf_mod_load_extra(
 	}
 
 	// Check if the module is already loaded.
-	module_t *found = conf_mod_find(conf, api->name, strlen(api->name), temporary);
+	module_t *found = conf_mod_find(conf, api->name, strlen(api->name),
+	                                type == MOD_TEMPORARY);
 	if (found != NULL) {
 		log_error("module '%s', duplicate module", api->name);
 		dlclose(handle);
@@ -261,7 +264,7 @@ int conf_mod_load_extra(
 	}
 	mod->api = api;
 	mod->lib_handle = handle;
-	mod->temporary = temporary;
+	mod->type = type;
 
 	int ret = mod_load(conf, mod);
 	if (ret != KNOT_EOK) {
@@ -313,7 +316,7 @@ void conf_mod_load_purge(
 	old_schema_dynarray_free(&conf->old_schemas);
 
 	knot_dynarray_foreach(mod, module_t *, module, conf->modules) {
-		if ((*module) != NULL && (*module)->temporary) {
+		if ((*module) != NULL && (*module)->type == MOD_TEMPORARY) {
 			unload_shared((*module));
 			*module = NULL; // Cannot remove from dynarray.
 		}
