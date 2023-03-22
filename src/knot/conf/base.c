@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -368,7 +368,8 @@ int conf_new(
 		     iter.code == KNOT_EOK; conf_iter_next(out, &iter)) {
 			conf_val_t id = conf_iter_id(out, &iter);
 			conf_val_t file = conf_id_get(out, C_MODULE, C_FILE, &id);
-			ret = conf_mod_load_extra(out, conf_str(&id), conf_str(&file), false);
+			ret = conf_mod_load_extra(out, conf_str(&id), conf_str(&file),
+			                          MOD_EXPLICIT);
 			if (ret != KNOT_EOK && (flags & CONF_FREQMODULES)) {
 				conf_iter_finish(out, &iter);
 				goto new_error;
