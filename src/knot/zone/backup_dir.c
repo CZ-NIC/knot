@@ -37,16 +37,18 @@
 
 #define FNAME_MAX (MAX(sizeof(LABEL_FILE), sizeof(LOCK_FILE)))
 #define PREPARE_PATH(var, file) \
-		char var[path_size(ctx)]; \
-		get_full_path(ctx, file, var);
+		size_t var_size = path_size(ctx); \
+		char var[var_size]; \
+		get_full_path(ctx, file, var, var_size);
 
 static const char *label_file_name = LABEL_FILE;
 static const char *lock_file_name =  LOCK_FILE;
 static const char *label_file_head = LABEL_FILE_HEAD;
 
-static void get_full_path(zone_backup_ctx_t *ctx, const char *filename, char *full_path)
+static void get_full_path(zone_backup_ctx_t *ctx, const char *filename,
+                          char *full_path, size_t full_path_size)
 {
-	(void)sprintf(full_path, "%s/%s", ctx->backup_dir, filename);
+	(void)snprintf(full_path, full_path_size, "%s/%s", ctx->backup_dir, filename);
 }
 
 static size_t path_size(zone_backup_ctx_t *ctx)
@@ -188,7 +190,8 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 		}
 	}
 
-	char full_path[path_size(ctx)];
+	size_t full_path_size = path_size(ctx);
+	char full_path[full_path_size];
 
 	// Check for existence of a label file and the backup format used.
 	if (ctx->restore_mode) {
@@ -197,14 +200,14 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 			return ret;
 		}
 	} else {
-		get_full_path(ctx, label_file_name, full_path);
+		get_full_path(ctx, label_file_name, full_path, full_path_size);
 		if (stat(full_path, &sb) == 0) {
 			return KNOT_EEXIST;
 		}
 	}
 
 	// Make (or check for existence of) a lock file.
-	get_full_path(ctx, lock_file_name, full_path);
+	get_full_path(ctx, lock_file_name, full_path, full_path_size);
 	if (ctx->restore_mode) {
 		// Just check.
 		if (stat(full_path, &sb) == 0) {

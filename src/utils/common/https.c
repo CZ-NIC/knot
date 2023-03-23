@@ -422,9 +422,12 @@ static ssize_t https_send_data_callback(nghttp2_session *session, int32_t stream
 
 static int https_send_dns_query_post(https_ctx_t *ctx)
 {
-	                                             // size of number in text form (base 10)
-	char content_length[sizeof(size_t) * 3 + 1]; // limit for x->inf: log10(2^(8*sizeof(x))-1)/sizeof(x) = 2,408239965 -> 3
-	int content_length_len = sprintf(content_length, "%zu", ctx->send_buflen);
+	// limit for x->inf: log10(2^(8*sizeof(x))-1)/sizeof(x) = 2,408239965 -> 3
+	size_t capacity = sizeof(size_t) * 3 + 1;
+	// size of number in text form (base 10)
+	char content_length[capacity];
+	int content_length_len = snprintf(content_length, capacity, "%zu", ctx->send_buflen);
+	assert(content_length_len > 0 && content_length_len < capacity);
 
 	nghttp2_nv hdrs[] = {
 		MAKE_STATIC_NV(":method", "POST"),

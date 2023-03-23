@@ -31,8 +31,9 @@ static const uint8_t hex_chars[] = {
 static void reverse_owner4(knot_dname_storage_t out, uint8_t *in_addr_raw)
 {
 	uint8_t *pos = out;
+	uint8_t *end = pos + sizeof(knot_dname_storage_t) - 1;
 	for (int i = 3; i >= 0; i--) {
-		pos[0] = sprintf((char *)(pos + 1), "%d", (int)in_addr_raw[i]);
+		pos[0] = snprintf((char *)(pos + 1), end - pos, "%d", (int)in_addr_raw[i]);
 		pos += pos[0] + 1;
 		assert(pos[0] <= 3);
 	}
