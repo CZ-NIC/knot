@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "contrib/musl/inet_ntop.h"
+#include "contrib/openbsd/strlcpy.h"
 
 const char *knot_inet_ntop(int af, const void *restrict a0, char *restrict s, socklen_t l)
 {
@@ -65,7 +66,7 @@ const char *knot_inet_ntop(int af, const void *restrict a0, char *restrict s, so
 			memmove(buf+best+2, buf+best+max, i-best-max+1);
 		}
 		if (strlen(buf) < l) {
-			strcpy(s, buf);
+			strlcpy(s, buf, l);
 			return s;
 		}
 		break;
