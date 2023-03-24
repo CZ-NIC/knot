@@ -1417,7 +1417,7 @@ class Knot(Server):
                     s.item_str("address", slave.addr)
                 if slave.tsig:
                     s.item_str("key", slave.tsig.name)
-                s.item("action", "transfer")
+                s.item("action", "[transfer, update]")
                 servers.add(slave.name)
         s.end()
 
