@@ -31,6 +31,7 @@
 #include "ngtcp2_mem.h"
 #include "ngtcp2_rcvry.h"
 #include "ngtcp2_rst.h"
+#include "ngtcp2_conn_stat.h"
 
 static const double pacing_gain_cycle[] = {1.25, 0.75, 1, 1, 1, 1, 1, 1};
 
@@ -377,10 +378,11 @@ static void bbr_set_send_quantum(ngtcp2_bbr_cc *cc, ngtcp2_conn_stat *cstat) {
   } else if (cstat->pacing_rate < 24.0 * 1024 * 1024 / 8 / NGTCP2_SECONDS) {
     cstat->send_quantum = cstat->max_tx_udp_payload_size * 2;
   } else {
-    send_quantum =
-        (uint64_t)(cstat->pacing_rate * (double)(cstat->min_rtt == UINT64_MAX
-                                                     ? NGTCP2_MILLISECONDS
-                                                     : cstat->min_rtt));
+    send_quantum = (uint64_t)(cstat->pacing_rate *
+                              (double)((cstat->min_rtt == UINT64_MAX ||
+                                        cstat->min_rtt < NGTCP2_MILLISECONDS)
+                                           ? NGTCP2_MILLISECONDS
+                                           : cstat->min_rtt));
     cstat->send_quantum = (size_t)ngtcp2_min(send_quantum, 64 * 1024);
   }
 
