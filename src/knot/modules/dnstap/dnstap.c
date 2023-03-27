@@ -127,6 +127,10 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 		msg.query_message.len = qdata->query->size;
 		msg.query_message.data = qdata->query->wire;
 		msg.has_query_message = 1;
+		msg.query_time_sec = msg.response_time_sec;
+		msg.query_time_nsec = msg.response_time_nsec;
+		msg.has_query_time_sec = msg.has_response_time_sec;
+		msg.has_query_time_nsec = msg.has_response_time_nsec;
 	}
 
 	/* Pack the message. */
