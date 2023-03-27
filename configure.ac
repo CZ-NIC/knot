@@ -710,7 +710,7 @@ AC_HEADER_RESOLV
 AC_CHECK_HEADERS_ONCE([pthread_np.h stdatomic.h sys/uio.h bsd/string.h])
 
 # Checks for optional library functions.
-AC_CHECK_FUNCS([accept4 clock_gettime fgetln getline initgroups malloc_trim \
+AC_CHECK_FUNCS([accept4 fgetln getline initgroups malloc_trim \
                 setgroups strlcat strlcpy sysctlbyname])
 
 # Check for robust memory cleanup implementations.
