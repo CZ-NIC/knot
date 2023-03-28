@@ -247,6 +247,7 @@ static void dump_stats(server_t *server)
 
 static void *dumper(void *data)
 {
+	rcu_register_thread();
 	while (true) {
 		assert(stats.timer > 0);
 		sleep(stats.timer);
@@ -257,7 +258,7 @@ static void *dumper(void *data)
 		rcu_read_unlock();
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	}
-
+	rcu_unregister_thread();
 	return NULL;
 }
 
