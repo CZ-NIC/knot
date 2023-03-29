@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -132,6 +132,8 @@ typedef enum {
 	KNOT_EDNS_EDE_EXPIRED_INV      = 25,
 	KNOT_EDNS_EDE_TOO_EARLY        = 26,
 	KNOT_EDNS_EDE_NSEC3_ITERS      = 27,
+	KNOT_EDNS_EDE_NONCONF_POLICY   = 28,
+	KNOT_EDNS_EDE_SYNTHESIZED      = 29,
 } knot_edns_ede_t;
 
 /*!
