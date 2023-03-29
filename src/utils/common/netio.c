@@ -440,9 +440,7 @@ int net_connect(net_t *net)
 		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
 
 #ifdef TCP_NODELAY
-		if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &cs, sizeof(cs))) {
-			return KNOT_NET_ESOCKET;
-		}
+		(void)setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &cs, sizeof(cs));
 #endif
 
 		// Establish a connection.
