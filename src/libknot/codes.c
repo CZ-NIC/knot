@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,6 +89,8 @@ const knot_lookup_t knot_edns_ede_names[] = {
 	{ KNOT_EDNS_EDE_EXPIRED_INV,      "Signature Expired before Valid" },
 	{ KNOT_EDNS_EDE_TOO_EARLY,        "Too Early" },
 	{ KNOT_EDNS_EDE_NSEC3_ITERS,      "Unsupported NSEC3 Iterations Value" },
+	{ KNOT_EDNS_EDE_NONCONF_POLICY,   "Unable to conform to policy" },
+	{ KNOT_EDNS_EDE_SYNTHESIZED,      "Synthesized" },
 	{ 0, NULL }
 };
 
