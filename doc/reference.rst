@@ -1359,6 +1359,11 @@ If enabled, no OPT record (EDNS) is inserted to outgoing requests to this
 remote server. This mode is necessary for communication with some broken
 implementations (e.g. Windows Server 2016).
 
+.. NOTE::
+   If EDNS isn't explicitly disabled by this parameter and EDNS EXPIRE option
+   is present in the SOA, IXFR, or AFXR response from the primary, the rules from
+   :rfc:`7314` are applied and the zone expire timer may be updated accordingly.
+
 *Default:* ``off``
 
 .. _remote_automatic-acl:
