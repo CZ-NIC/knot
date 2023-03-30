@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1814,6 +1814,14 @@ static int server_status(ctl_args_t *args)
 		               running_bkg_wrk, wrk_queue);
 	} else if (strcasecmp(type, "configure") == 0) {
 		ret = snprintf(buff, sizeof(buff), "%s", CONFIGURE_SUMMARY);
+	} else if (strcasecmp(type, "cert-pin") == 0) {
+		uint8_t pin[128];
+		size_t pin_len = server_cert_pin(args->server, pin, sizeof(pin));
+		if (pin_len > 0) {
+			ret = snprintf(buff, sizeof(buff), "%.*s", (int)pin_len, pin);
+		} else {
+			ret = snprintf(buff, sizeof(buff), "none");
+		}
 	} else {
 		return KNOT_EINVAL;
 	}
