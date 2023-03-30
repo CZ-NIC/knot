@@ -203,3 +203,14 @@ int server_reconfigure(conf_t *conf, server_t *server);
  * \param mode    Reload mode.
  */
 void server_update_zones(conf_t *conf, server_t *server, reload_t mode);
+
+/*!
+ * \brief Returns current server certificate public key PIN as base64 string.
+ *
+ * \param server    Server instance.
+ * \param out       Output buffer.
+ * \param out_size  Size of the output buffer.
+ *
+ * \return Length of the output PIN string.
+ */
+size_t server_cert_pin(server_t *server, uint8_t *out, size_t out_size);
