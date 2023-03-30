@@ -561,17 +561,11 @@ static int init_creds(server_t *server, conf_t *conf)
 	}
 	free(key_file);
 
-	int pin_size = 0;
-	uint8_t bin_pin[KNOT_QUIC_PIN_LEN], pin[2 * KNOT_QUIC_PIN_LEN];
-	size_t bin_pin_size = sizeof(bin_pin);
-	gnutls_x509_crt_t cert;
-	if (knot_quic_creds_cert(server->quic_creds, &cert) == KNOT_EOK &&
-	    gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
-	                               bin_pin, &bin_pin_size) == GNUTLS_E_SUCCESS &&
-	    (pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin))) > 0) {
-		log_info("QUIC, public key pin %.*s", pin_size, pin);
+	size_t pin_len;
+	uint8_t pin[128];
+	if ((pin_len = server_cert_pin(server, pin, sizeof(pin))) > 0) {
+		log_info("QUIC, public key pin %.*s", (int)pin_len, pin);
 	}
-	gnutls_x509_crt_deinit(cert);
 
 	return KNOT_EOK;
 #else
@@ -1420,4 +1414,26 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
+}
+
+size_t server_cert_pin(server_t *server, uint8_t *out, size_t out_size)
+{
+#ifdef ENABLE_QUIC
+	int pin_size = 0;
+
+	uint8_t bin_pin[KNOT_QUIC_PIN_LEN];
+	size_t bin_pin_size = sizeof(bin_pin);
+	gnutls_x509_crt_t cert = NULL;
+	if (server->quic_creds != NULL &&
+	    knot_quic_creds_cert(server->quic_creds, &cert) == KNOT_EOK &&
+	    gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
+	                               bin_pin, &bin_pin_size) == GNUTLS_E_SUCCESS) {
+		pin_size = knot_base64_encode(bin_pin, bin_pin_size, out, out_size);
+	}
+	gnutls_x509_crt_deinit(cert);
+
+	return (pin_size >= 0) ? pin_size : 0;
+#else
+	return 0;
+#endif // ENABLE_QUIC
 }
