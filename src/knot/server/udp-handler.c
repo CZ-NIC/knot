@@ -465,6 +465,13 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 	const iface_t *ifaces = server->ifaces;
 
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
+#ifndef ENABLE_REUSEPORT
+		/* If loadbalanced SO_REUSEPORT isn't available, ensure that
+		 * just one (first) UDP worker handles the QUIC sockets. */
+		if (i->quic && thread_id > 0) {
+			continue;
+		}
+#endif
 		int fd = iface_udp_fd(i, thread_id, xdp_thread, xdp_socket);
 		if (fd < 0) {
 			continue;
