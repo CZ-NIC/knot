@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -198,9 +198,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr_storage *dst = &parent->addr;
-	const struct sockaddr_storage *src = &parent->via;
-	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
+	knot_request_t *req = knot_request_make(NULL, parent, pkt, 0);
 	if (req == NULL) {
 		knot_rdataset_clear(&data.del_old_ds.rrs, NULL);
 		knot_request_free(req, NULL);
@@ -211,15 +209,15 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	ret = knot_requestor_exec(&requestor, req, timeout);
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
-		DS_PUSH_LOG(LOG_INFO, zone->name, dst,
+		DS_PUSH_LOG(LOG_INFO, zone->name, &parent->addr,
 		            requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		            "success");
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
-		DS_PUSH_LOG(LOG_WARNING, zone->name, dst,
+		DS_PUSH_LOG(LOG_WARNING, zone->name, &parent->addr,
 		            requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		            "failed (%s)", knot_strerror(ret));
 	} else {
-		DS_PUSH_LOG(LOG_WARNING, zone->name, dst,
+		DS_PUSH_LOG(LOG_WARNING, zone->name, &parent->addr,
 		            requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		            "server responded with error '%s'",
 		            knot_pkt_ext_rcode_name(req->resp));

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -100,16 +100,14 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 	knot_requestor_init(&requestor, &NOTIFY_API, &data, NULL);
 
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
-	if (!pkt) {
+	if (pkt == NULL) {
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr_storage *dst = &slave->addr;
-	const struct sockaddr_storage *src = &slave->via;
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
-	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &slave->key, flags);
-	if (!req) {
+	knot_request_t *req = knot_request_make(NULL, slave, pkt, flags);
+	if (req == NULL) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
@@ -120,16 +118,16 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 	const char *log_retry = retry ? "retry, " : "";
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
-		NOTIFY_OUT_LOG(LOG_INFO, zone->name, dst,
+		NOTIFY_OUT_LOG(LOG_INFO, zone->name, &slave->addr,
 		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		               "%sserial %u", log_retry, knot_soa_serial(soa->rrs.rdata));
 		zone->timers.last_notified_serial = (knot_soa_serial(soa->rrs.rdata) | LAST_NOTIFIED_SERIAL_VALID);
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
-		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, dst,
+		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, &slave->addr,
 		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		               "%sfailed (%s)", log_retry, knot_strerror(ret));
 	} else {
-		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, dst,
+		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, &slave->addr,
 		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
 		               "%sserver responded with error '%s'",
 		               log_retry, knot_pkt_ext_rcode_name(req->resp));
