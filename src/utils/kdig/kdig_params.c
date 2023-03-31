@@ -1275,6 +1275,32 @@ static int opt_noretry(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_expire(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	ednsopt_t *opt = ednsopt_create(KNOT_EDNS_OPTION_EXPIRE, 0, NULL);
+	add_tail(&q->edns_opts, &opt->n);
+
+	return KNOT_EOK;
+}
+
+static int opt_noexpire(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	ednsopt_t *node, *nxt;
+	WALK_LIST_DELSAFE(node, nxt, q->edns_opts) {
+		ednsopt_t *opt = node;
+		if (opt->code == KNOT_EDNS_OPTION_EXPIRE) {
+			rem_node(&opt->n);
+			ednsopt_free(opt);
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 static int parse_ednsopt(const char *arg, ednsopt_t **opt_ptr)
 {
 	errno = 0;
@@ -1587,6 +1613,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "retry",          ARG_REQUIRED, opt_retry },
 	{ "noretry",        ARG_NONE,     opt_noretry },
+
+	{ "expire",         ARG_NONE,     opt_expire },
+	{ "noexpire",       ARG_NONE,     opt_noexpire },
 
 	{ "cookie",         ARG_OPTIONAL, opt_cookie },
 	{ "nocookie",       ARG_NONE,     opt_nocookie },
@@ -2330,6 +2359,7 @@ static void print_help(void)
 	       "       +[no]edns[=N]              Use EDNS(=version).\n"
 	       "       +[no]timeout=T             Set wait for reply interval in seconds.\n"
 	       "       +[no]retry=N               Set number of retries.\n"
+	       "       +[no]expire                Set the EXPIRE EDNS option.\n"
 	       "       +[no]cookie[=HEX]          Attach EDNS(0) cookie to the query.\n"
 	       "       +[no]badcookie             Repeat a query with the correct cookie.\n"
 	       "       +[no]ednsopt=CODE[:HEX]    Set custom EDNS option.\n"

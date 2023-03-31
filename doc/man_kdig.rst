@@ -305,6 +305,9 @@ Options
   Set the number (>=0) of UDP retries (default is 2). This doesn't apply to
   AXFR/IXFR.
 
+**+**\ [\ **no**\ ]\ **expire**
+  Sets the EXPIRE EDNS option.
+
 **+**\ [\ **no**\ ]\ **cookie**\[\ =\ *HEX*\]
   Attach EDNS(0) cookie to the query.
 
