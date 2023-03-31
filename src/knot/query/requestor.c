@@ -90,7 +90,8 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 		}
 #ifdef ENABLE_QUIC
 		request->quic_ctx = knot_qreq_connect(request->fd, &request->remote,
-		                                      &request->source, timeout_ms);
+		                                      &request->source, request->pin,
+		                                      request->pin_len, timeout_ms);
 		if (request->quic_ctx == NULL) {
 			close(request->fd);
 			return KNOT_ECONN;
@@ -184,18 +185,20 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	return ret;
 }
 
-knot_request_t *knot_request_make(knot_mm_t *mm,
-                                  const struct sockaddr_storage *remote,
-                                  const struct sockaddr_storage *source,
-                                  knot_pkt_t *query,
-                                  const knot_tsig_key_t *tsig_key,
-                                  knot_request_flag_t flags)
+knot_request_t *knot_request_make_generic(knot_mm_t *mm,
+                                          const struct sockaddr_storage *remote,
+                                          const struct sockaddr_storage *source,
+                                          knot_pkt_t *query,
+                                          const knot_tsig_key_t *tsig_key,
+                                          const uint8_t *pin,
+                                          size_t pin_len,
+                                          knot_request_flag_t flags)
 {
 	if (remote == NULL || query == NULL) {
 		return NULL;
 	}
 
-	knot_request_t *request = mm_calloc(mm, 1, sizeof(*request));
+	knot_request_t *request = mm_calloc(mm, 1, sizeof(*request) + pin_len);
 	if (request == NULL) {
 		return NULL;
 	}
@@ -221,7 +224,26 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
 	}
 	tsig_init(&request->tsig, tsig_key);
 
+	if (flags & KNOT_REQUEST_QUIC && pin_len > 0) {
+		request->pin_len = pin_len;
+		memcpy(request->pin, pin, pin_len);
+	}
+
 	return request;
+}
+
+knot_request_t *knot_request_make(knot_mm_t *mm,
+                                  const conf_remote_t *remote,
+                                  knot_pkt_t *query,
+                                  knot_request_flag_t flags)
+{
+	if (remote->quic) {
+		flags |= KNOT_REQUEST_QUIC;
+	}
+
+	return knot_request_make_generic(mm, &remote->addr, &remote->via,
+	                                 query, &remote->key, remote->pin,
+	                                 remote->pin_len, flags);
 }
 
 void knot_request_free(knot_request_t *request, knot_mm_t *mm)
