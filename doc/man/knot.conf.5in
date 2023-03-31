@@ -1224,9 +1224,8 @@ implementations (e.g. Windows Server 2016).
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-If EDNS isn\(aqt explicitly disabled by this parameter and EDNS EXPIRE option
-is present in the SOA, IXFR, or AFXR response from the primary, the rules from
-\fI\%RFC 7314\fP are applied and the zone expire timer may be updated accordingly.
+This option effectively disables zone expire timer
+updates via EDNS EXPIRE option specified in \fI\%RFC 7314\fP\&.
 .UNINDENT
 .UNINDENT
 .sp

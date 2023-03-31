@@ -451,6 +451,33 @@ the beginning by every ```zone-refresh``` or ```zone-retransfer``` of the zone
 triggered manually via :doc:`knotc<man_knotc>`, by ```zone-purge``` or
 ```zone-restore``` of the zone's timers, or by a restart of :doc:`knotd<man_knotd>`.
 
+.. _Zone expiration:
+
+Zone expiration
+===============
+
+On a primary, zone normally never expires. On a secondary, zone expiration results
+in removal of the current zone contents and a trigger of immediate zone refresh.
+The zone file and zone's journal are kept, but not used for answering requests
+until the refresh is successfully completed.
+
+The zone expire timer is set according to the zone's SOA expire field. In addition
+to it, Knot DNS also supports EDNS EXPIRE extension of the expire timer in both
+primary and secondary roles as described in :rfc:`7314`.
+
+When Knot DNS is configured as a secondary, EDNS EXPIRE option present in a SOA,
+IXFR, or AFXR response from the primary is processed and used to update the zone
+timer when necessary. This functionality (together with requests of any other EDNS
+options) for a specified primary may be disabled using the :ref:`remote_no-edns`
+configuration parameter.
+
+If it's necessary, any zone may be expired manually using the ``zone-purge``
+command of the :doc:`knotc<man_knotc>` utility. Manual expiration is applicable
+to any zone, including a catalog zone or a zone on a primary. Beware, a manually
+expired zone on a primary or a manually expired catalog zone becomes valid again
+after a server configuration is reloaded or the :doc:`knotd<man_knotd>` process
+is restarted, provided that the zone data hasn't been removed.
+
 .. _DNSSEC Key states:
 
 DNSSEC key states
