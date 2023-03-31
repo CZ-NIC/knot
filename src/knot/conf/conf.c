@@ -1398,6 +1398,9 @@ conf_remote_t conf_remote_txn(
 	val = conf_id_get_txn(conf, txn, C_RMT, C_QUIC, id);
 	out.quic = conf_bool(&val);
 
+	val = conf_id_get_txn(conf, txn, C_RMT, C_CERT_PIN, id);
+	out.pin = (uint8_t *)conf_bin(&val, &out.pin_len);
+
 	// Get TSIG key (optional).
 	conf_val_t key_id = conf_id_get_txn(conf, txn, C_RMT, C_KEY, id);
 	if (key_id.code == KNOT_EOK) {

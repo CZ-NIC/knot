@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -194,15 +194,13 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 	knot_requestor_init(&requestor, &ds_query_api, &data, NULL);
 
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
-	if (!pkt) {
+	if (pkt == NULL) {
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr_storage *dst = &parent->addr;
-	const struct sockaddr_storage *src = &parent->via;
-	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &parent->key, 0);
-	if (!req) {
+	knot_request_t *req = knot_request_make(NULL, parent, pkt, 0);
+	if (req == NULL) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
