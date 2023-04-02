@@ -70,8 +70,7 @@ typedef struct knot_quic_creds {
 typedef struct knot_quic_session {
 	node_t n;
 	gnutls_datum_t tls_session;
-	size_t quic_params_len;
-	uint8_t quic_params[sizeof(ngtcp2_transport_params)];
+	ngtcp2_transport_params quic_params;
 } knot_quic_session_t;
 
 static unsigned addr_len(const struct sockaddr_in6 *ss)
@@ -83,7 +82,12 @@ static unsigned addr_len(const struct sockaddr_in6 *ss)
 _public_
 struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn)
 {
-	knot_quic_session_t *session = malloc(sizeof(*session));
+	const ngtcp2_transport_params *tmp = ngtcp2_conn_get_remote_transport_params(conn->conn);
+	if (tmp == NULL) {
+		return NULL;
+	}
+
+	knot_quic_session_t *session = calloc(1, sizeof(*session));
 	if (session == NULL) {
 		return NULL;
 	}
@@ -94,14 +98,7 @@ struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn)
 		return NULL;
 	}
 
-	ngtcp2_ssize ret2 =
-		ngtcp2_conn_encode_early_transport_params(conn->conn, session->quic_params,
-		                                          sizeof(session->quic_params));
-	if (ret2 < 0) {
-		free(session);
-		return NULL;
-	}
-	session->quic_params_len = ret2;
+	memcpy(&session->quic_params, tmp, sizeof(session->quic_params));
 
 	return session;
 }
@@ -114,22 +111,17 @@ int knot_quic_session_load(knot_quic_conn_t *conn, struct knot_quic_session *ses
 	}
 
 	int ret = KNOT_EOK;
-	if (conn == NULL) { // Just cleanup the session.
+	if (conn == NULL) {
 		goto session_free;
 	}
 
 	ret = gnutls_session_set_data(conn->tls_session, session->tls_session.data,
 	                              session->tls_session.size);
-	if (ret != GNUTLS_E_SUCCESS) {
-		ret = KNOT_ERROR;
+	if (ret != KNOT_EOK) {
 		goto session_free;
 	}
 
-	ret = ngtcp2_conn_decode_early_transport_params(conn->conn, session->quic_params,
-	                                                session->quic_params_len);
-	if (ret != 0) {
-		ret = KNOT_ERROR;
-	}
+	ngtcp2_conn_set_early_remote_transport_params(conn->conn, &session->quic_params);
 
 session_free:
 	gnutls_free(session->tls_session.data);
@@ -433,9 +425,9 @@ bool quic_conn_timeout(knot_quic_conn_t *conn, uint64_t *now)
 _public_
 uint32_t knot_quic_conn_rtt(knot_quic_conn_t *conn)
 {
-	ngtcp2_conn_info info = { 0 };
-	ngtcp2_conn_get_conn_info(conn->conn, &info);
-	return info.smoothed_rtt / 1000; // nanosec --> usec
+	ngtcp2_conn_stat stat = { 0 };
+	ngtcp2_conn_get_conn_stat(conn->conn, &stat);
+	return stat.smoothed_rtt / 1000; // nanosec --> usec
 }
 
 _public_
