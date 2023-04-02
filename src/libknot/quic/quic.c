@@ -730,10 +730,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	settings.initial_ts = now;
 	settings.log_printf = user_printf;
 	settings.max_tx_udp_payload_size = udp_pl;
-	if (odcid != NULL) {
-		settings.qlog.odcid = *odcid;
-	}
-
+	settings.qlog.odcid = *odcid;
 	settings.handshake_timeout = idle_timeout_ns; // NOTE setting handshake timeout to idle_timeout for simplicity
 	settings.no_pmtud = true;
 
@@ -755,13 +752,12 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	params.max_idle_timeout = idle_timeout_ns;
 	// params.stateless_reset_token_present = 1;
 	// params.active_connection_id_limit = 7;
-	if (odcid != NULL) {
+	if (odcid) {
 		params.original_dcid = *odcid;
-		params.original_dcid_present = true;
+	} else {
+		params.original_dcid = *scid;
 	}
-
 	if (retry_sent) {
-		assert(scid);
 		params.retry_scid_present = 1;
 		params.retry_scid = *scid;
 	}
@@ -801,7 +797,7 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 	path.local.addr = (struct sockaddr *)via;
 	path.local.addrlen = addr_len((const struct sockaddr_in6 *)via);
 
-	int ret = conn_new(&conn->conn, &path, &dcid, &scid, NULL, NGTCP2_PROTO_VER_V1, now,
+	int ret = conn_new(&conn->conn, &path, &dcid, &scid, &dcid, NGTCP2_PROTO_VER_V1, now,
 	                   table->udp_payload_limit, 5000000000L, conn, false, false);
 	if (ret == KNOT_EOK) {
 		ret = tls_init_conn_session(conn, false);
