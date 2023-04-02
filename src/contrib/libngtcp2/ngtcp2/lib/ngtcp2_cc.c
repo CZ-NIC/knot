@@ -34,7 +34,6 @@
 #include "ngtcp2_macro.h"
 #include "ngtcp2_mem.h"
 #include "ngtcp2_rcvry.h"
-#include "ngtcp2_conn_stat.h"
 
 uint64_t ngtcp2_cc_compute_initcwnd(size_t max_udp_payload_size) {
   uint64_t n = 2 * max_udp_payload_size;
@@ -179,8 +178,7 @@ void ngtcp2_cc_reno_cc_on_ack_recv(ngtcp2_cc *ccx, ngtcp2_conn_stat *cstat,
       ngtcp2_max(cc->max_delivery_rate_sec, cstat->delivery_rate_sec);
 
   if (cstat->min_rtt != UINT64_MAX && cc->max_delivery_rate_sec) {
-    target_cwnd =
-        cc->max_delivery_rate_sec * cstat->smoothed_rtt / NGTCP2_SECONDS;
+    target_cwnd = cc->max_delivery_rate_sec * cstat->min_rtt / NGTCP2_SECONDS;
     initcwnd = ngtcp2_cc_compute_initcwnd(cstat->max_tx_udp_payload_size);
     cc->target_cwnd = ngtcp2_max(initcwnd, target_cwnd) * 289 / 100;
 
@@ -324,11 +322,13 @@ void ngtcp2_cc_cubic_cc_on_pkt_acked(ngtcp2_cc *ccx, ngtcp2_conn_stat *cstat,
     return;
   }
 
+  if (cc->target_cwnd && cc->target_cwnd < cstat->cwnd) {
+    return;
+  }
+
   if (cstat->cwnd < cstat->ssthresh) {
     /* slow-start */
-    if (cc->target_cwnd == 0 || cc->target_cwnd > cstat->cwnd) {
-      cstat->cwnd += pkt->pktlen;
-    }
+    cstat->cwnd += pkt->pktlen;
 
     ngtcp2_log_info(cc->ccb.log, NGTCP2_LOG_EVENT_RCV,
                     "pkn=%" PRId64 " acked, slow start cwnd=%" PRIu64,
@@ -438,9 +438,7 @@ void ngtcp2_cc_cubic_cc_on_pkt_acked(ngtcp2_cc *ccx, ngtcp2_conn_stat *cstat,
     }
   }
 
-  if (cc->target_cwnd == 0 || cc->target_cwnd > cstat->cwnd) {
-    cstat->cwnd += add;
-  }
+  cstat->cwnd += add;
 
   ngtcp2_log_info(cc->ccb.log, NGTCP2_LOG_EVENT_RCV,
                   "pkn=%" PRId64 " acked, cubic-ca cwnd=%" PRIu64 " t=%" PRIu64
@@ -548,8 +546,7 @@ void ngtcp2_cc_cubic_cc_on_ack_recv(ngtcp2_cc *ccx, ngtcp2_conn_stat *cstat,
       ngtcp2_max(cc->max_delivery_rate_sec, cstat->delivery_rate_sec);
 
   if (cstat->min_rtt != UINT64_MAX && cc->max_delivery_rate_sec) {
-    target_cwnd =
-        cc->max_delivery_rate_sec * cstat->smoothed_rtt / NGTCP2_SECONDS;
+    target_cwnd = cc->max_delivery_rate_sec * cstat->min_rtt / NGTCP2_SECONDS;
     initcwnd = ngtcp2_cc_compute_initcwnd(cstat->max_tx_udp_payload_size);
     cc->target_cwnd = ngtcp2_max(initcwnd, target_cwnd) * 289 / 100;
 

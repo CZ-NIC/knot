@@ -150,11 +150,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cid.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn.h \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn_stat.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.h \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conversion.c \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conversion.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.c \
