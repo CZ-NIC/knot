@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,9 +16,11 @@
 
 #pragma once
 
+#include <inttypes.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <time.h>
-#include <inttypes.h>
 
 #ifdef __APPLE__
  #define st_mtim st_mtimespec
@@ -191,3 +193,19 @@ int knot_time_parse(const char *format, const char *timespec, knot_time_t *time)
  * \return  0 OK, timestamp printed successfully.
  */
 int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_t dst_len);
+
+/*!
+ * \brief Print the timestamp in a predefined human format.
+ *
+ * Condensed format (zone file compatible): 1w2d3h4m5s
+ * Normal format: 1 week 2 days 3 hours 4 minutes 5 seconds
+ *
+ * \param time       The timestamp to be printed.
+ * \param dst        The destination buffer pointer with text-formatted timestamp.
+ * \param dst_len    The destination buffer length.
+ * \param condensed  Condensed format indication.
+ *
+ * \retval -1 An error occurred, the buffer may be filled with nonsense.
+ * \return >0 OK, timestamp printed successfully.
+ */
+int knot_time_print_human(knot_time_t time, char *dst, size_t dst_len, bool condensed);

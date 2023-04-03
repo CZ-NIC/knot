@@ -713,36 +713,6 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 	p->total += out_len;
 }
 
-static int time_to_human_str(char         *out,
-                             const size_t out_len,
-                             uint32_t     data)
-{
-	size_t   total_len = 0;
-	uint32_t num;
-	int      ret;
-
-#define tths_process(unit_name, unit_size) \
-	num = data / (unit_size); \
-	if (num > 0) { \
-		ret = snprintf(out + total_len, out_len - total_len, \
-		               "%u%s", num, (unit_name)); \
-		if (ret <= 0 || (size_t)ret >= out_len - total_len) { \
-			return -1; \
-		} \
-		total_len += ret; \
-		data -= num * (unit_size); \
-	}
-
-	tths_process("d", 86400);
-	tths_process("h", 3600);
-	tths_process("m", 60);
-	tths_process("s", 1);
-
-#undef tths_process
-
-	return total_len > 0 ? total_len : -1;
-}
-
 static void wire_ttl_to_str(rrset_dump_params_t *p)
 {
 	CHECK_PRET
@@ -758,7 +728,7 @@ static void wire_ttl_to_str(rrset_dump_params_t *p)
 
 	if (p->style->human_ttl) {
 		// Write time in human readable format.
-		ret = time_to_human_str(p->out, p->out_max, ntohl(data));
+		ret = knot_time_print_human(ntohl(data), p->out, p->out_max, true);
 		CHECK_RET_POSITIVE
 	} else {
 		// Write timestamp only.
@@ -2150,7 +2120,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 			ret = snprintf(dst + len, maxlen - len, "%c", sep);
 		} else if (style->human_ttl) {
 			// Create human readable ttl string.
-			if (time_to_human_str(buf, sizeof(buf), ttl) < 0) {
+			if (knot_time_print_human(ttl, buf, sizeof(buf), true) < 0) {
 				return KNOT_ESPACE;
 			}
 			ret = snprintf(dst + len, maxlen - len, "%s%c",

@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -402,4 +403,39 @@ int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_
 	default:
 		return -1;
 	}
+}
+
+int knot_time_print_human(knot_time_t time, char *dst, size_t dst_len, bool condensed)
+{
+	int ret;
+	knot_time_t num;
+	bool empty = true;
+	size_t total_len = 0;
+
+#define tths_process(unit, unit_name, unit_size) \
+	num = time / (unit_size); \
+	if (num > 0) { \
+		ret = snprintf(dst + total_len, dst_len - total_len, \
+		               "%s%"PRIu64"%s%s", \
+		               (!empty && !condensed ? " " : ""), \
+		               num, \
+		               (condensed ? unit : unit_name), \
+		               (num > 1 && !condensed ? "s" : "")); \
+		if (ret <= 0 || (size_t)ret >= dst_len - total_len) { \
+			return -1; \
+		} \
+		empty = false; \
+		total_len += ret; \
+		time -= num * (unit_size); \
+	}
+
+	tths_process("w", " week", 604800);
+	tths_process("d", " day",   86400);
+	tths_process("h", " hour",   3600);
+	tths_process("m", " minute",   60);
+	tths_process("s", " second",    1);
+
+#undef tths_process
+
+	return total_len > 0 ? total_len : -1;
 }
