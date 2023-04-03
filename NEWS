@@ -1,3 +1,27 @@
+Knot DNS 3.2.6 (2023-04-04)
+===========================
+
+Improvements:
+-------------
+ - libs: upgraded embedded libngtcp2 to 0.13.1
+ - libs: added support for building on Cygwin and MSYS (Thanks to Christopher Ng)
+ - mod-dnstap: improved precision of stored time values
+ - kdig: added option for EDNS EXPIRE (see '+expire') #836
+ - kdig: extended description of SOA timers in the multiline mode
+ - kdig: reduced latency of TLS communication
+ - libknot: added EDE codes 28 and 29
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: generated catalog zone not updated upon server reload #834
+ - knotd: failed to check shared module configuration
+ - knotd: missing RCU registration of the statistics thread (Thanks to Qin Longfei)
+ - knotd: server logs failed to send QUIC packets in the XDP mode
+ - libs: inconsistent transformation of IPv4-Compatible IPv6 Addresses
+ - utils: failed to load configuration if dnstap module is enabled #831
+ - libknot: missing include string.h
+
 Knot DNS 3.2.5 (2023-02-02)
 ===========================
 
