@@ -1820,7 +1820,7 @@ static int server_status(ctl_args_t *args)
 		if (pin_len > 0) {
 			ret = snprintf(buff, sizeof(buff), "%.*s", (int)pin_len, pin);
 		} else {
-			ret = snprintf(buff, sizeof(buff), "none");
+			ret = snprintf(buff, sizeof(buff), STATUS_EMPTY);
 		}
 	} else {
 		return KNOT_EINVAL;
