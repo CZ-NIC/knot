@@ -30,7 +30,7 @@ def sig_submission(*args, **kwargs):
 
 def sig_invalid(*args, **kwargs):
     (zone) = args
-    print("Invalid DNSSEC fo zone=%s" % (zone))
+    print("Invalid DNSSEC for zone=%s" % (zone))
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, sigint_handler)
