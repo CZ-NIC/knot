@@ -713,6 +713,20 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 	p->total += out_len;
 }
 
+static uint32_t wire_time_to_val(rrset_dump_params_t *p)
+{
+	uint32_t data;
+	size_t   in_len = sizeof(data);
+
+	if (p->ret < 0 || p->in_max < in_len ||
+	    memcpy(&data, p->in, in_len) == NULL) {
+		p->ret = -1;
+		return 0;
+	}
+
+	return ntohl(data);
+}
+
 static void wire_ttl_to_str(rrset_dump_params_t *p)
 {
 	CHECK_PRET
@@ -1459,6 +1473,20 @@ static void dnskey_info(const uint8_t *rdata,
 			    dump_string(p, s); CHECK_RET(p); \
 			}
 
+#define STORE_TIME	if (p->style->verbose) { \
+				time = wire_time_to_val(p); CHECK_RET(p); \
+			}
+#define COMMENT_TIME(s)	if (p->style->verbose) { \
+			    char buf[80]; \
+			    if (knot_time_print_human(time, buf, sizeof(buf), false) > 0) { \
+			        dump_string(p, " ; "); CHECK_RET(p); \
+			        dump_string(p, s); CHECK_RET(p); \
+			        dump_string(p, " ("); CHECK_RET(p); \
+			        dump_string(p, buf); CHECK_RET(p); \
+			        dump_string(p, ")"); CHECK_RET(p); \
+			    } \
+			}
+
 #define DUMP_SPACE	dump_string(p, " "); CHECK_RET(p);
 #define DUMP_NUM8	wire_num8_to_str(p); CHECK_RET(p);
 #define DUMP_NUM16	wire_num16_to_str(p); CHECK_RET(p);
@@ -1514,13 +1542,14 @@ static int dump_ns(DUMP_PARAMS)
 static int dump_soa(DUMP_PARAMS)
 {
 	if (p->style->wrap) {
+		uint32_t time = 0;
 		DUMP_DNAME; DUMP_SPACE;
 		DUMP_DNAME; DUMP_SPACE; WRAP_INIT;
 		DUMP_NUM32; COMMENT("serial"); WRAP_LINE;
-		DUMP_TIME;  COMMENT("refresh"); WRAP_LINE;
-		DUMP_TIME;  COMMENT("retry"); WRAP_LINE;
-		DUMP_TIME;  COMMENT("expire"); WRAP_LINE;
-		DUMP_TIME;  COMMENT("minimum"); WRAP_END;
+		STORE_TIME; DUMP_TIME; COMMENT_TIME("refresh"); WRAP_LINE;
+		STORE_TIME; DUMP_TIME; COMMENT_TIME("retry"); WRAP_LINE;
+		STORE_TIME; DUMP_TIME; COMMENT_TIME("expire"); WRAP_LINE;
+		STORE_TIME; DUMP_TIME; COMMENT_TIME("minimum"); WRAP_END;
 	} else {
 		DUMP_DNAME; DUMP_SPACE;
 		DUMP_DNAME; DUMP_SPACE;
