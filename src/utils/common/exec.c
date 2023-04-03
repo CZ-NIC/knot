@@ -278,8 +278,11 @@ static void print_expire(const uint8_t *data, uint16_t len)
 	} else {
 		char str[80] = "";
 		uint32_t timer = knot_wire_read_u32(data);
-		knot_time_print_human(timer, str, sizeof(str), false);
-		printf("%u (%s)", timer, str);
+		if (knot_time_print_human(timer, str, sizeof(str), false) > 0) {
+			printf("%u (%s)", timer, str);
+		} else {
+			printf("%u", timer);
+		}
 	}
 }
 
