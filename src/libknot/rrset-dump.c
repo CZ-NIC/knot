@@ -1478,9 +1478,9 @@ static void dnskey_info(const uint8_t *rdata,
 			}
 #define COMMENT_TIME(s)	if (p->style->verbose) { \
 			    char buf[80]; \
+			    dump_string(p, " ; "); CHECK_RET(p); \
+			    dump_string(p, s); CHECK_RET(p); \
 			    if (knot_time_print_human(time, buf, sizeof(buf), false) > 0) { \
-			        dump_string(p, " ; "); CHECK_RET(p); \
-			        dump_string(p, s); CHECK_RET(p); \
 			        dump_string(p, " ("); CHECK_RET(p); \
 			        dump_string(p, buf); CHECK_RET(p); \
 			        dump_string(p, ")"); CHECK_RET(p); \
