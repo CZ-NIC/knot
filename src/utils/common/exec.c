@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "libknot/libknot.h"
 #include "contrib/ctype.h"
 #include "contrib/sockaddr.h"
+#include "contrib/time.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/wire_ctx.h"
@@ -275,8 +276,10 @@ static void print_expire(const uint8_t *data, uint16_t len)
 	} else if (len != sizeof(uint32_t)) {
 		printf("(malformed)");
 	} else {
+		char str[80] = "";
 		uint32_t timer = knot_wire_read_u32(data);
-		printf("%u", timer);
+		knot_time_print_human(timer, str, sizeof(str), false);
+		printf("%u (%s)", timer, str);
 	}
 }
 
