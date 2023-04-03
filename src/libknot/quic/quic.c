@@ -445,7 +445,7 @@ void knot_quic_conn_pin(knot_quic_conn_t *conn, uint8_t *pin, size_t *pin_size, 
 		goto error;
 	}
 
-	const gnutls_datum_t *data;
+	const gnutls_datum_t *data = NULL;
 	if (local) {
 		data = gnutls_certificate_get_ours(conn->tls_session);
 	} else {
@@ -455,6 +455,9 @@ void knot_quic_conn_pin(knot_quic_conn_t *conn, uint8_t *pin, size_t *pin_size, 
 			goto error;
 		}
 	}
+	if (data == NULL) {
+		goto error;
+	}
 
 	gnutls_x509_crt_t cert;
 	int ret = gnutls_x509_crt_init(&cert);
@@ -462,7 +465,7 @@ void knot_quic_conn_pin(knot_quic_conn_t *conn, uint8_t *pin, size_t *pin_size, 
 		goto error;
 	}
 
-	ret = gnutls_x509_crt_import(cert, &data[0], GNUTLS_X509_FMT_DER);
+	ret = gnutls_x509_crt_import(cert, data, GNUTLS_X509_FMT_DER);
 	if (ret != GNUTLS_E_SUCCESS) {
 		gnutls_x509_crt_deinit(cert);
 		goto error;
