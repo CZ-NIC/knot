@@ -96,7 +96,7 @@ requirements, e.g. dir/\*.conf. Matching files are processed in sorted order.
 Dynamic modules loading configuration.
 
 .. NOTE::
-   If configured with non-empty ```--with-moduledir=path``` parameter, all
+   If configured with non-empty ``--with-moduledir=path`` parameter, all
    shared modules in this directory will be automatically loaded.
 
 ::

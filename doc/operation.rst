@@ -221,9 +221,9 @@ To start a writing transaction on all zones or on specific zones::
     $ knotc zone-begin --
     $ knotc zone-begin example.com example.net
 
-Now you can list all nodes within the transaction using the ```zone-get```
+Now you can list all nodes within the transaction using the ``zone-get``
 command, which always returns current data with all changes included. The
-command has the same syntax as ```zone-read```.
+command has the same syntax as ``zone-read``.
 
 Within the transaction, you can add a record to a specific zone or to all
 zones with an open transaction::
@@ -447,9 +447,9 @@ In each attempt, the retry interval is subject to :ref:`zone_retry-min-interval`
 and :ref:`zone_retry-max-interval`.
 
 Until the refresh has been successfully completed, the backoff is restarted from
-the beginning by every ```zone-refresh``` or ```zone-retransfer``` of the zone
-triggered manually via :doc:`knotc<man_knotc>`, by ```zone-purge``` or
-```zone-restore``` of the zone's timers, or by a restart of :doc:`knotd<man_knotd>`.
+the beginning by every ``zone-refresh`` or ``zone-retransfer`` of the zone
+triggered manually via :doc:`knotc<man_knotc>`, by ``zone-purge`` or
+``zone-restore`` of the zone's timers, or by a restart of :doc:`knotd<man_knotd>`.
 
 .. _Zone expiration:
 

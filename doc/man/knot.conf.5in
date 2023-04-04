@@ -139,7 +139,7 @@ Dynamic modules loading configuration.
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-If configured with non\-empty \fB\(ga\-\-with\-moduledir=path\(ga\fP parameter, all
+If configured with non\-empty \fB\-\-with\-moduledir=path\fP parameter, all
 shared modules in this directory will be automatically loaded.
 .UNINDENT
 .UNINDENT
