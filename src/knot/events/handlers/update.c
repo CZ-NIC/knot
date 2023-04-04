@@ -21,6 +21,7 @@
 #include "knot/nameserver/process_query.h"
 #include "knot/query/capture.h"
 #include "knot/query/requestor.h"
+#include "knot/server/server.h"
 #include "knot/updates/ddns.h"
 #include "knot/zone/digest.h"
 #include "knot/zone/zone.h"
@@ -214,7 +215,8 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	zone_schedule_notify(zone, 1);
 }
 
-static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *remote)
+static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *remote,
+                          zone_t *zone)
 {
 	/* Copy request (without possible TSIG) and assign new ID. */
 	knot_pkt_t *query = knot_pkt_new(NULL, request->query->size +
@@ -245,7 +247,8 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 
 	/* Create a request. */
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
-	knot_request_t *req = knot_request_make(NULL, remote, query, flags);
+	knot_request_t *req = knot_request_make(NULL, remote, query,
+	                                        zone->server->quic_creds, flags);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
 		knot_pkt_free(query);
@@ -280,7 +283,7 @@ static void forward_request(conf_t *conf, zone_t *zone, knot_request_t *request)
 	for (size_t i = 0; i < addr_count; i++) {
 		conf_remote_t master = conf_remote(conf, &remote, i);
 
-		ret = remote_forward(conf, request, &master);
+		ret = remote_forward(conf, request, &master, zone);
 		if (ret == KNOT_EOK) {
 			break;
 		}

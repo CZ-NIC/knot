@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,8 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	ret = knot_parent_ds_query(conf, &ctx, conf->cache.srv_tcp_remote_io_timeout);
+	ret = knot_parent_ds_query(conf, &ctx, zone->server,
+	                           conf->cache.srv_tcp_remote_io_timeout);
 
 	zone->timers.next_ds_check = 0;
 	switch (ret) {
