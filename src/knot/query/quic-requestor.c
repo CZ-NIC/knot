@@ -86,8 +86,9 @@ void qr_free_reply(struct knot_quic_reply *r)
 struct knot_quic_reply *knot_qreq_connect(int fd,
                                           struct sockaddr_storage *remote,
                                           struct sockaddr_storage *local,
-                                          const uint8_t *pin,
-                                          uint8_t pin_len,
+                                          const struct knot_quic_creds *local_creds,
+                                          const uint8_t *peer_pin,
+                                          uint8_t peer_pin_len,
                                           int timeout_ms)
 {
 	knot_quic_reply_t *r = calloc(1, sizeof(*r) + 2 * sizeof(struct iovec) +
@@ -107,8 +108,8 @@ struct knot_quic_reply *knot_qreq_connect(int fd,
 	r->send_reply = qr_send_reply;
 	r->free_reply = qr_free_reply;
 
-	struct knot_quic_creds *creds = knot_quic_init_creds(false, NULL, NULL,
-	                                                     pin, pin_len);
+	struct knot_quic_creds *creds = knot_quic_init_creds_peer(local_creds,
+	                                                          peer_pin, peer_pin_len);
 	if (creds == NULL) {
 		free(r);
 		return NULL;
