@@ -451,8 +451,6 @@ the beginning by every ```zone-refresh``` or ```zone-retransfer``` of the zone
 triggered manually via :doc:`knotc<man_knotc>`, by ```zone-purge``` or
 ```zone-restore``` of the zone's timers, or by a restart of :doc:`knotd<man_knotd>`.
 
-.. _DNSSEC Key states:
-
 .. _Zone expiration:
 
 Zone expiration
@@ -479,6 +477,8 @@ to any zone, including a catalog zone or a zone on a primary. Beware, a manually
 expired zone on a primary or a manually expired catalog zone becomes valid again
 after a server configuration is reloaded or the :doc:`knotd<man_knotd>` process
 is restarted, provided that the zone data hasn't been removed.
+
+.. _DNSSEC Key states:
 
 DNSSEC key states
 =================
