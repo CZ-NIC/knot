@@ -63,8 +63,9 @@ typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
-	uint8_t *peer_pin;
+	bool peer;
 	uint8_t peer_pin_len;
+	uint8_t peer_pin[];
 } knot_quic_creds_t;
 
 typedef struct knot_quic_session {
@@ -245,11 +246,8 @@ finish:
 }
 
 _public_
-struct knot_quic_creds *knot_quic_init_creds(bool server,
-                                             const char *cert_file,
-                                             const char *key_file,
-                                             const uint8_t *peer_pin,
-                                             uint8_t peer_pin_len)
+struct knot_quic_creds *knot_quic_init_creds(const char *cert_file,
+                                             const char *key_file)
 {
 	knot_quic_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
@@ -261,45 +259,54 @@ struct knot_quic_creds *knot_quic_init_creds(bool server,
 		goto fail;
 	}
 
-	if (server) {
-		ret = gnutls_anti_replay_init(&creds->tls_anti_replay);
-		if (ret != GNUTLS_E_SUCCESS) {
-			goto fail;
-		}
-		gnutls_anti_replay_set_add_function(creds->tls_anti_replay, tls_anti_replay_db_add_func);
-		gnutls_anti_replay_set_ptr(creds->tls_anti_replay, NULL);
+	ret = gnutls_anti_replay_init(&creds->tls_anti_replay);
+	if (ret != GNUTLS_E_SUCCESS) {
+		goto fail;
+	}
+	gnutls_anti_replay_set_add_function(creds->tls_anti_replay, tls_anti_replay_db_add_func);
+	gnutls_anti_replay_set_ptr(creds->tls_anti_replay, NULL);
 
-		if (cert_file != NULL) {
-			ret = gnutls_certificate_set_x509_key_file(creds->tls_cert,
-			                                           cert_file, key_file,
-			                                           GNUTLS_X509_FMT_PEM);
-		} else {
-			ret = self_signed_cert(creds->tls_cert, key_file);
-		}
-		if (ret != GNUTLS_E_SUCCESS) {
-			goto fail;
-		}
-
-		ret = gnutls_session_ticket_key_generate(&creds->tls_ticket_key);
-		if (ret != GNUTLS_E_SUCCESS) {
-			goto fail;
-		}
+	if (cert_file != NULL) {
+		ret = gnutls_certificate_set_x509_key_file(creds->tls_cert,
+		                                           cert_file, key_file,
+		                                           GNUTLS_X509_FMT_PEM);
 	} else {
-		if (peer_pin_len > 0) {
-			creds->peer_pin = malloc(peer_pin_len);
-			if (creds->peer_pin == NULL || peer_pin == NULL) {
-				goto fail;
-			}
-			memcpy(creds->peer_pin, peer_pin, peer_pin_len);
-			creds->peer_pin_len = peer_pin_len;
-		}
+		ret = self_signed_cert(creds->tls_cert, key_file);
+	}
+	if (ret != GNUTLS_E_SUCCESS) {
+		goto fail;
+	}
+
+	ret = gnutls_session_ticket_key_generate(&creds->tls_ticket_key);
+	if (ret != GNUTLS_E_SUCCESS) {
+		goto fail;
 	}
 
 	return creds;
-
 fail:
 	knot_quic_free_creds(creds);
 	return NULL;
+}
+
+_public_
+struct knot_quic_creds *knot_quic_init_creds_peer(const struct knot_quic_creds *local_creds,
+                                                  const uint8_t *peer_pin,
+                                                  uint8_t peer_pin_len)
+{
+	knot_quic_creds_t *creds = calloc(1, sizeof(*creds) + peer_pin_len);
+	if (creds == NULL) {
+		return NULL;
+	}
+
+	creds->peer = true;
+	creds->tls_cert = local_creds->tls_cert;
+
+	if (peer_pin_len > 0 && peer_pin != NULL) {
+		memcpy(creds->peer_pin, peer_pin, peer_pin_len);
+		creds->peer_pin_len = peer_pin_len;
+	}
+
+	return creds;
 }
 
 _public_
@@ -330,12 +337,13 @@ void knot_quic_free_creds(struct knot_quic_creds *creds)
 		return;
 	}
 
-	gnutls_certificate_free_credentials(creds->tls_cert);
+	if (!creds->peer && creds->tls_cert != NULL) {
+		gnutls_certificate_free_credentials(creds->tls_cert);
+	}
 	gnutls_anti_replay_deinit(creds->tls_anti_replay);
 	if (creds->tls_ticket_key.data != NULL) {
 		tls_session_ticket_key_free(&creds->tls_ticket_key);
 	}
-	free(creds->peer_pin);
 	free(creds);
 }
 

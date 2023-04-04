@@ -214,6 +214,10 @@ void quic_stream_free(knot_quic_conn_t *conn, int64_t stream_id)
 _public_
 void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 {
+	if (conn->conn == NULL) {
+		return;
+	}
+
 	if (conn->streams_count == -1) { // kxdpgun special
 		conn->streams_count = 1;
 	}
