@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,4 +19,7 @@
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/context.h"
 
-int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, size_t timeout);
+struct server;
+
+int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, struct server *server,
+                         size_t timeout);

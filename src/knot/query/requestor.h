@@ -25,6 +25,7 @@
 #include "libknot/mm_ctx.h"
 #include "libknot/rrtype/tsig.h"
 
+struct knot_quic_creds;
 struct knot_quic_reply;
 
 typedef enum {
@@ -61,6 +62,7 @@ typedef struct {
 
 	knot_sign_context_t sign; /*!< Required for async. DDNS processing. */
 
+	const struct knot_quic_creds *creds;
 	size_t pin_len;
 	uint8_t pin[];
 } knot_request_t;
@@ -72,6 +74,7 @@ typedef struct {
  * \param remote    Remote endpoint address.
  * \param source    Source address (or NULL).
  * \param query     Query message.
+ * \param creds     Local (server) credentials.
  * \param tsig_key  TSIG key for authentication.
  * \param pin       Possible remote certificate PIN.
  * \param pin_len   Length of the remote certificate PIN.
@@ -83,6 +86,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct sockaddr_storage *remote,
                                           const struct sockaddr_storage *source,
                                           knot_pkt_t *query,
+                                          const struct knot_quic_creds *creds,
                                           const knot_tsig_key_t *tsig_key,
                                           const uint8_t *pin,
                                           size_t pin_len,
@@ -97,6 +101,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 knot_request_t *knot_request_make(knot_mm_t *mm,
                                   const conf_remote_t *remote,
                                   knot_pkt_t *query,
+                                  const struct knot_quic_creds *creds,
                                   knot_request_flag_t flags);
 
 /*!

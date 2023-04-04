@@ -20,6 +20,7 @@
 #include "knot/conf/conf.h"
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
+#include "knot/server/server.h"
 #include "knot/zone/zone.h"
 #include "libknot/errcode.h"
 
@@ -198,7 +199,8 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		return KNOT_ENOMEM;
 	}
 
-	knot_request_t *req = knot_request_make(NULL, parent, pkt, 0);
+	knot_request_t *req = knot_request_make(NULL, parent, pkt,
+	                                        zone->server->quic_creds, 0);
 	if (req == NULL) {
 		knot_rdataset_clear(&data.del_old_ds.rrs, NULL);
 		knot_request_free(req, NULL);

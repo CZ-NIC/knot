@@ -494,7 +494,7 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	if (ctx->quic) {
 #ifdef ENABLE_QUIC
-		quic_creds = knot_quic_init_creds(false, NULL, NULL, NULL, 0);
+		quic_creds = knot_quic_init_creds_peer(NULL, NULL, 0);
 		if (quic_creds == NULL) {
 			ERR2("failed to initialize QUIC context");
 			return NULL;

@@ -24,6 +24,7 @@
 #include "knot/query/layer.h"
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
+#include "knot/server/server.h"
 
 static bool match_key_ds(knot_kasp_key_t *key, knot_rdata_t *ds)
 {
@@ -171,7 +172,8 @@ static const knot_layer_api_t ds_query_api = {
 };
 
 static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote_t *parent,
-                  knot_kasp_key_t *key, knot_kasp_key_t *not_key, size_t timeout, uint32_t *ds_ttl)
+                  knot_kasp_key_t *key, knot_kasp_key_t *not_key, server_t *server,
+                  size_t timeout, uint32_t *ds_ttl)
 {
 	// TODO: Abstract interface to issue DNS queries. This is almost copy-pasted.
 
@@ -199,7 +201,7 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 		return KNOT_ENOMEM;
 	}
 
-	knot_request_t *req = knot_request_make(NULL, parent, pkt, 0);
+	knot_request_t *req = knot_request_make(NULL, parent, pkt, server->quic_creds, 0);
 	if (req == NULL) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
@@ -239,7 +241,7 @@ static knot_kasp_key_t *get_not_key(kdnssec_ctx_t *kctx, knot_kasp_key_t *key)
 }
 
 static bool parents_have_ds(conf_t *conf, kdnssec_ctx_t *kctx, knot_kasp_key_t *key,
-                            size_t timeout, uint32_t *max_ds_ttl)
+                            server_t *server, size_t timeout, uint32_t *max_ds_ttl)
 {
 	bool success = false;
 	knot_dynarray_foreach(parent, knot_kasp_parent_t, i, kctx->policy->parents) {
@@ -247,7 +249,7 @@ static bool parents_have_ds(conf_t *conf, kdnssec_ctx_t *kctx, knot_kasp_key_t *
 		for (size_t j = 0; j < i->addrs; j++) {
 			uint32_t ds_ttl = 0;
 			int ret = try_ds(conf, kctx->zone->dname, &i->addr[j], key,
-			                 get_not_key(kctx, key), timeout, &ds_ttl);
+			                 get_not_key(kctx, key), server, timeout, &ds_ttl);
 			if (ret == KNOT_EOK) {
 				*max_ds_ttl = MAX(*max_ds_ttl, ds_ttl);
 				success = true;
@@ -265,7 +267,8 @@ static bool parents_have_ds(conf_t *conf, kdnssec_ctx_t *kctx, knot_kasp_key_t *
 	return success;
 }
 
-int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, size_t timeout)
+int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, struct server *server,
+                         size_t timeout)
 {
 	uint32_t max_ds_ttl = 0;
 
@@ -275,7 +278,7 @@ int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, size_t timeout)
 		    knot_time_cmp(key->timing.ready, kctx->now) <= 0 &&
 		    knot_time_cmp(key->timing.active, kctx->now) > 0) {
 			assert(key->is_ksk);
-			if (parents_have_ds(conf, kctx, key, timeout, &max_ds_ttl)) {
+			if (parents_have_ds(conf, kctx, key, server, timeout, &max_ds_ttl)) {
 				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl + kctx->policy->ksk_sbm_delay);
 			} else {
 				return KNOT_ENOENT;

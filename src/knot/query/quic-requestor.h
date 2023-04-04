@@ -18,13 +18,15 @@
 
 #include "contrib/sockaddr.h"
 
+struct knot_quic_creds;
 struct knot_quic_reply;
 
 struct knot_quic_reply *knot_qreq_connect(int fd,
                                           struct sockaddr_storage *remote,
                                           struct sockaddr_storage *local,
-                                          const uint8_t *pin,
-                                          uint8_t pin_len,
+                                          const struct knot_quic_creds *local_creds,
+                                          const uint8_t *peer_pin,
+                                          uint8_t peer_pin_len,
                                           int timeout_ms);
 
 int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data);
