@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1386,6 +1386,8 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	if (trctx.send_notify) {
 		zone_schedule_notify(zone, 1);
 	}
+
+	zone_set_flag(zone, ZONE_LOAD_ATTEMPT);
 
 	return ret;
 }

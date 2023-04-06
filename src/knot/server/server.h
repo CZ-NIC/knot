@@ -86,6 +86,15 @@ enum {
 };
 
 /*!
+ * \brief Server start states.
+ */
+typedef enum {
+	START_STARTED = 0, /*!< The server itself was started. */
+	START_RUNNING = 1, /*!< All configured zones were at least tried to load. */
+	START_LOADED  = 2, /*!< All configured zones were loaded. */
+} start_state_t;
+
+/*!
  * \brief Main server structure.
  *
  * Keeps references to all important structures needed for operation.
@@ -93,6 +102,7 @@ enum {
 typedef struct server {
 	/*! \brief Server state tracking. */
 	volatile unsigned state;
+	start_state_t start;
 
 	knot_zonedb_t *zone_db;
 	knot_lmdb_db_t timerdb;

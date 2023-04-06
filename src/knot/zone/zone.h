@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ typedef enum {
 	ZONE_IS_CAT_MEMBER  = 1 << 6, /*!< This zone exists according to a catalog. */
 	ZONE_XFR_FROZEN     = 1 << 7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
 	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
+	ZONE_LOAD_ATTEMPT   = 1 << 9, /*!< The zone was at least tried to load/bootstrap. */
 } zone_flag_t;
 
 /*!

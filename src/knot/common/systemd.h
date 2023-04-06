@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 #define KNOT_DBUS_PATH "/cz/nic/knotd"
 
 #define KNOT_BUS_EVENT_STARTED       "started"
+#define KNOT_BUS_EVENT_RUNNING       "running"
+#define KNOT_BUS_EVENT_LOADED        "loaded"
 #define KNOT_BUS_EVENT_STOPPED       "stopped"
 #define KNOT_BUS_EVENT_ZONE_UPD      "zone_updated"
 #define KNOT_BUS_EVENT_ZONE_KSK_SUBM "zone_ksk_submission"
@@ -77,7 +79,7 @@ void systemd_dbus_close(void);
  *
  * \param up  Indication if the server has been started.
  */
-void systemd_emit_running(bool up);
+void systemd_emit_start(const char *signal);
 
 /*!
  * \brief Emit event signal for updated zones.

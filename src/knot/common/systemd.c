@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,10 +126,10 @@ void systemd_dbus_close(void)
 	sd_bus_emit_signal(_dbus, KNOT_DBUS_PATH, KNOT_DBUS_NAME".events", \
 	                   event, __VA_ARGS__)
 
-void systemd_emit_running(bool up)
+void systemd_emit_start(const char *signal)
 {
 #ifdef ENABLE_DBUS
-	emit_event(up ? KNOT_BUS_EVENT_STARTED : KNOT_BUS_EVENT_STOPPED, "");
+	emit_event(signal, "");
 #endif
 }
 

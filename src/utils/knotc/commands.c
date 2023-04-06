@@ -389,7 +389,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 {
 	switch (cmd) {
 	case CTL_STATUS:
-		printf("%s\n", (failed || !empty) ? "" : "Running");
+		printf("\n");
 		break;
 	case CTL_STOP:
 		printf("%s\n", failed ? "" : "Stopped");

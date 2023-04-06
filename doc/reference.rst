@@ -589,8 +589,13 @@ the interface name is ``cz.nic.knotd.events``.
 Possible values:
 
 - ``none`` – No signal is emitted.
-- ``running`` – The signal ``started`` is emitted when the server is fully operational
-  and the signal ``stopped`` is emitted at the beginning of the server shutdown.
+- ``running`` – There are four possible signals emitted:
+
+  - ``started`` when the server itself is started and ready to accept control commands,
+  - ``running`` when each configured zone (including catalog members) has at least
+    attempted to load or bootstrap,
+  - ``loaded`` when each configured zone (including catalog members) is loaded,
+  - ``stopped`` when the server shutdown sequence is initiated.
 - ``zone-updated`` – The signal ``zone_updated`` is emitted when a zone has been updated;
   the signal parameters are `zone name` and `zone SOA serial`.
 - ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if there is
