@@ -33,6 +33,7 @@
 #include "libdnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "contrib/strtonum.h"
+#include "contrib/time.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/migration.h"
@@ -203,6 +204,50 @@ static void drop_capabilities(void)
 #endif /* ENABLE_CAP_NG */
 }
 
+static void check_state(server_t *server)
+{
+	if (server->start == START_LOADED) {
+		return;
+	}
+
+	/* Avoid traversing the zonedb too frequently. */
+	static struct timespec last = { 0 };
+	struct timespec now = time_now();
+	if (last.tv_sec == now.tv_sec) {
+		return;
+	}
+	last = now;
+
+	start_state_t new_state = START_LOADED;
+
+	rcu_read_lock();
+	knot_zonedb_iter_t *it = knot_zonedb_iter_begin((server->zone_db));
+	while (new_state != START_STARTED && !knot_zonedb_iter_finished(it)) {
+		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
+		if (!zone_get_flag(zone, ZONE_LOAD_ATTEMPT, false)) {
+			new_state = START_STARTED;
+			break;
+		} else if (zone->contents == NULL) {
+			new_state = START_RUNNING;
+		}
+		knot_zonedb_iter_next(it);
+	}
+	knot_zonedb_iter_free(it);
+	rcu_read_unlock();
+
+	if ((conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) &&
+	    server->start != new_state) {
+		if (server->start != START_RUNNING) {
+			assert(server->start == START_STARTED);
+			systemd_emit_start(KNOT_BUS_EVENT_RUNNING);
+		}
+		if (new_state == START_LOADED) {
+			systemd_emit_start(KNOT_BUS_EVENT_LOADED);
+		}
+	}
+	server->start = new_state;
+}
+
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server, const char *socket)
 {
@@ -251,7 +296,7 @@ static void event_loop(server_t *server, const char *socket)
 	/* Notify systemd about successful start. */
 	systemd_ready_notify();
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
-		systemd_emit_running(true);
+		systemd_emit_start(KNOT_BUS_EVENT_STARTED);
 	}
 
 	/* Run event loop. */
@@ -278,6 +323,8 @@ static void event_loop(server_t *server, const char *socket)
 			continue;
 		}
 
+		check_state(server);
+
 		ret = knot_ctl_accept(ctl);
 		if (ret != KNOT_EOK) {
 			continue;
@@ -291,7 +338,7 @@ static void event_loop(server_t *server, const char *socket)
 	}
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
-		systemd_emit_running(false);
+		systemd_emit_start(KNOT_BUS_EVENT_STOPPED);
 	}
 
 	/* Unbind the control socket. */

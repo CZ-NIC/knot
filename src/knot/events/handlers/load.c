@@ -22,6 +22,7 @@
 #include "knot/conf/conf.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/events/events.h"
 #include "knot/events/handlers.h"
 #include "knot/events/replan.h"
 #include "knot/zone/digest.h"
@@ -416,8 +417,9 @@ load_end:
 		zone_schedule_notify(zone, 0);
 	}
 
-	return KNOT_EOK;
+	zone_set_flag(zone, ZONE_LOAD_ATTEMPT);
 
+	return KNOT_EOK;
 cleanup:
 	// Try to bootstrap the zone if local error.
 	replan_from_timers(conf, zone);
@@ -426,5 +428,13 @@ cleanup:
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
 
-	return (dontcare_load_error(conf, zone) ? KNOT_EOK : ret);
+	if (dontcare_load_error(conf, zone)) {
+		if (zone_events_get_time(zone, ZONE_EVENT_REFRESH) > time(NULL)) {
+			zone_set_flag(zone, ZONE_LOAD_ATTEMPT);
+		}
+		return KNOT_EOK;
+	} else {
+		zone_set_flag(zone, ZONE_LOAD_ATTEMPT);
+		return ret;
+	}
 }

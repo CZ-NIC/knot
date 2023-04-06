@@ -87,6 +87,12 @@ enum {
 	IO_XDP = 2,
 };
 
+typedef enum {
+	START_STARTED = 0,
+	START_RUNNING = 1,
+	START_LOADED  = 2,
+} start_state_t;
+
 /*!
  * \brief Main server structure.
  *
@@ -95,6 +101,7 @@ enum {
 typedef struct server {
 	/*! \brief Server state tracking. */
 	volatile unsigned state;
+	start_state_t start;
 
 	knot_zonedb_t *zone_db;
 	knot_lmdb_db_t timerdb;

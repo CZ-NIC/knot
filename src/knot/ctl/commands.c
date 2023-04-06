@@ -1795,14 +1795,18 @@ static int server_status(ctl_args_t *args)
 {
 	const char *type = args->data[KNOT_CTL_IDX_TYPE];
 
-	if (type == NULL || strlen(type) == 0) {
-		return KNOT_EOK;
-	}
-
 	char buff[4096] = "";
 
 	int ret;
-	if (strcasecmp(type, "version") == 0) {
+	if (type == NULL || strlen(type) == 0) {
+		const char *status;
+		switch (args->server->start) {
+		default:            status = "Started"; break;
+		case START_RUNNING: status = "Running"; break;
+		case START_LOADED:  status = "Loaded"; break;
+		}
+		ret = snprintf(buff, sizeof(buff), "%s", status);
+	} else if (strcasecmp(type, "version") == 0) {
 		ret = snprintf(buff, sizeof(buff), "Version: %s", PACKAGE_VERSION);
 	} else if (strcasecmp(type, "workers") == 0) {
 		int running_bkg_wrk, wrk_queue;

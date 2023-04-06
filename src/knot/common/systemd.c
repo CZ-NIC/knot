@@ -126,10 +126,10 @@ void systemd_dbus_close(void)
 	sd_bus_emit_signal(_dbus, KNOT_DBUS_PATH, KNOT_DBUS_NAME".events", \
 	                   event, __VA_ARGS__)
 
-void systemd_emit_running(bool up)
+void systemd_emit_start(const char *signal)
 {
 #ifdef ENABLE_DBUS
-	emit_event(up ? KNOT_BUS_EVENT_STARTED : KNOT_BUS_EVENT_STOPPED, "");
+	emit_event(signal, "");
 #endif
 }
 

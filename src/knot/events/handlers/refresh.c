@@ -1387,5 +1387,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone_schedule_notify(zone, 1);
 	}
 
+	zone_set_flag(zone, ZONE_LOAD_ATTEMPT);
+
 	return ret;
 }

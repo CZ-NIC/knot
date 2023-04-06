@@ -48,6 +48,7 @@ typedef enum {
 	ZONE_IS_CAT_MEMBER  = 1 << 6, /*!< This zone exists according to a catalog. */
 	ZONE_XFR_FROZEN     = 1 << 7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
 	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
+	ZONE_LOAD_ATTEMPT   = 1 << 9, /*!< The zone was at least tried to load/bootstrap. */
 } zone_flag_t;
 
 /*!
