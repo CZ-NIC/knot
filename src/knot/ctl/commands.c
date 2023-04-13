@@ -1808,7 +1808,7 @@ static int server_status(ctl_args_t *args)
 		}
 		ret = snprintf(buff, sizeof(buff), "%s", status);
 	} else if (strcasecmp(type, "version") == 0) {
-		ret = snprintf(buff, sizeof(buff), "Version: %s", PACKAGE_VERSION);
+		ret = snprintf(buff, sizeof(buff), "%s", PACKAGE_VERSION);
 	} else if (strcasecmp(type, "workers") == 0) {
 		int running_bkg_wrk, wrk_queue;
 		worker_pool_status(args->server->workers, false, &running_bkg_wrk, &wrk_queue);

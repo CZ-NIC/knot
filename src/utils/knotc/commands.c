@@ -392,10 +392,10 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 		printf("\n");
 		break;
 	case CTL_STOP:
-		printf("%s\n", failed ? "" : "Stopped");
+		printf("%s\n", failed ? "" : "stop triggered");
 		break;
 	case CTL_RELOAD:
-		printf("%s\n", failed ? "" : "Reloaded");
+		printf("%s\n", failed ? "" : "reload triggered");
 		break;
 	case CTL_CONF_BEGIN:
 	case CTL_CONF_COMMIT:
@@ -423,7 +423,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_SET:
 	case CTL_ZONE_UNSET:
 	case CTL_ZONE_PURGE:
-		printf("%s\n", failed ? "" : "OK");
+		printf("%s\n", failed ? "" : "ok");
 		break;
 	case CTL_ZONE_STATUS:
 	case CTL_ZONE_READ:
