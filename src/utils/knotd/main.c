@@ -240,7 +240,8 @@ static void check_loaded(server_t *server)
 }
 
 /*! \brief Event loop listening for signals and remote commands. */
-static void event_loop(server_t *server, const char *socket)
+static void event_loop(server_t *server, const char *socket, bool daemonize,
+                       unsigned long pid)
 {
 	knot_ctl_t *ctl = knot_ctl_alloc();
 	if (ctl == NULL) {
@@ -286,6 +287,11 @@ static void event_loop(server_t *server, const char *socket)
 
 	/* Notify systemd about successful start. */
 	systemd_ready_notify();
+	if (daemonize) {
+		log_info("server started as a daemon, PID %lu", pid);
+	} else {
+		log_info("server started in the foreground, PID %lu", pid);
+	}
 
 	/* Run event loop. */
 	for (;;) {
@@ -635,14 +641,8 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (daemonize) {
-		log_info("server started as a daemon, PID %lu", pid);
-	} else {
-		log_info("server started in the foreground, PID %lu", pid);
-	}
-
 	/* Start the event loop. */
-	event_loop(&server, socket);
+	event_loop(&server, socket, daemonize, pid);
 
 	/* Teardown server. */
 	server_stop(&server);
