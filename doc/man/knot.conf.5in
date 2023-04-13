@@ -536,8 +536,18 @@ Possible values:
 .IP \(bu 2
 \fBnone\fP – No signal is emitted.
 .IP \(bu 2
-\fBrunning\fP – The signal \fBstarted\fP is emitted when the server is fully operational
-and the signal \fBstopped\fP is emitted at the beginning of the server shutdown.
+\fBrunning\fP – There are four possible signal emitted:
+.INDENT 2.0
+.IP \(bu 2
+\fBstarted\fP when the server itself is started and ready to accept control commands,
+.IP \(bu 2
+\fBrunning\fP when each configured zone (including catalog members) has at least
+attempted to load or bootstrap,
+.IP \(bu 2
+\fBloaded\fP when each configured zone (including catalog members) is loaded,
+.IP \(bu 2
+\fBstopped\fP when the server shutdown sequence is inititated.
+.UNINDENT
 .IP \(bu 2
 \fBzone\-updated\fP – The signal \fBzone_updated\fP is emitted when a zone has been updated;
 the signal parameters are \fIzone name\fP and \fIzone SOA serial\fP\&.

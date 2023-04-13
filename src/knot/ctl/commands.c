@@ -21,6 +21,7 @@
 
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
+#include "knot/common/systemd.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
 #include "knot/dnssec/key-events.h"
@@ -1801,9 +1802,9 @@ static int server_status(ctl_args_t *args)
 	if (type == NULL || strlen(type) == 0) {
 		const char *status;
 		switch (args->server->start) {
-		default:            status = "Started"; break;
-		case START_RUNNING: status = "Running"; break;
-		case START_LOADED:  status = "Loaded"; break;
+		default:            status = KNOT_BUS_EVENT_STARTED; break;
+		case START_RUNNING: status = KNOT_BUS_EVENT_RUNNING; break;
+		case START_LOADED:  status = KNOT_BUS_EVENT_LOADED; break;
 		}
 		ret = snprintf(buff, sizeof(buff), "%s", status);
 	} else if (strcasecmp(type, "version") == 0) {

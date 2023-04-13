@@ -87,10 +87,13 @@ enum {
 	IO_XDP = 2,
 };
 
+/*!
+ * \brief Server start states.
+ */
 typedef enum {
-	START_STARTED = 0,
-	START_RUNNING = 1,
-	START_LOADED  = 2,
+	START_STARTED = 0, /*!< The server itself was started. */
+	START_RUNNING = 1, /*!< All configured zones were at least tried to load. */
+	START_LOADED  = 2, /*!< All configured zones were loaded. */
 } start_state_t;
 
 /*!

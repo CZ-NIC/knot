@@ -222,13 +222,18 @@ static void check_state(server_t *server)
 
 	rcu_read_lock();
 	knot_zonedb_iter_t *it = knot_zonedb_iter_begin((server->zone_db));
-	while (new_state != START_STARTED && !knot_zonedb_iter_finished(it)) {
+	while (!knot_zonedb_iter_finished(it)) {
 		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
 		if (!zone_get_flag(zone, ZONE_LOAD_ATTEMPT, false)) {
 			new_state = START_STARTED;
 			break;
 		} else if (zone->contents == NULL) {
-			new_state = START_RUNNING;
+			if (zone_get_flag(zone, ZONE_IS_CATALOG, false)) {
+				new_state = START_STARTED;
+				break;
+			} else {
+				new_state = START_RUNNING;
+			}
 		}
 		knot_zonedb_iter_next(it);
 	}
