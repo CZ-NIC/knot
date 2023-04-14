@@ -89,13 +89,14 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 			                  &local_len);
 		}
 #ifdef ENABLE_QUIC
-		request->quic_ctx = knot_qreq_connect(request->fd, &request->remote,
-		                                      &request->source, request->creds,
-		                                      request->pin, request->pin_len,
-		                                      timeout_ms);
-		if (request->quic_ctx == NULL) {
+		int ret = knot_qreq_connect(&request->quic_ctx,
+		                            request->fd, &request->remote,
+		                            &request->source, request->creds,
+		                            request->pin, request->pin_len,
+		                            timeout_ms);
+		if (ret != KNOT_EOK) {
 			close(request->fd);
-			return KNOT_ECONN;
+			return ret;
 		}
 #else
 		assert(0);
