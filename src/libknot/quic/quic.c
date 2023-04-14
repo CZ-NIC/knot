@@ -939,9 +939,13 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		knot_quic_table_rem(conn, table);
 		ret = KNOT_EOK;
 		goto finish;
-	} else if(ngtcp2_err_is_fatal(ret)) { // connection doomed
+	} else if (ngtcp2_err_is_fatal(ret)) { // connection doomed
+		if (ret == NGTCP2_ERR_CALLBACK_FAILURE) {
+			ret = KNOT_EBADCERTKEY;
+		} else {
+			ret = KNOT_ECONN;
+		}
 		knot_quic_table_rem(conn, table);
-		ret = KNOT_ECONN;
 		goto finish;
 	} else if (ret != NGTCP2_NO_ERROR) { // non-fatal error, discard packet
 		ret = KNOT_EOK;

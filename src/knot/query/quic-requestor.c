@@ -46,13 +46,13 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 	r->in_payload->iov_len = ret;
 
 	knot_quic_conn_t *hconn = NULL;
-	(void)knot_quic_handle(conn->quic_table, r, timeout_ms * 1000L, &hconn);
+	ret = knot_quic_handle(conn->quic_table, r, timeout_ms * 1000L, &hconn);
 	if (hconn == NULL) {
 		return KNOT_EOK;
 	} else if (hconn != conn) {
 		return KNOT_ESEMCHECK;
 	} else {
-		return KNOT_EOK;
+		return ret;
 	}
 }
 
@@ -81,18 +81,19 @@ void qr_free_reply(struct knot_quic_reply *r)
 	(void)r;
 }
 
-struct knot_quic_reply *knot_qreq_connect(int fd,
-                                          struct sockaddr_storage *remote,
-                                          struct sockaddr_storage *local,
-                                          const struct knot_quic_creds *local_creds,
-                                          const uint8_t *peer_pin,
-                                          uint8_t peer_pin_len,
-                                          int timeout_ms)
+int knot_qreq_connect(struct knot_quic_reply **out,
+                      int fd,
+                      struct sockaddr_storage *remote,
+                      struct sockaddr_storage *local,
+                      const struct knot_quic_creds *local_creds,
+                      const uint8_t *peer_pin,
+                      uint8_t peer_pin_len,
+                      int timeout_ms)
 {
-	knot_quic_reply_t *r = calloc(1, sizeof(*r) + 2 * sizeof(struct iovec) +
-	                                 2 * QUIC_BUF_SIZE);
+	struct knot_quic_reply *r = calloc(1, sizeof(*r) + 2 * sizeof(struct iovec) +
+	                                      2 * QUIC_BUF_SIZE);
 	if (r == NULL) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
 	r->ip_rem = remote;
@@ -110,7 +111,7 @@ struct knot_quic_reply *knot_qreq_connect(int fd,
 	                                                          peer_pin, peer_pin_len);
 	if (creds == NULL) {
 		free(r);
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
 	// NOTE the limits on conns and buffers do not do anything since we do not sweep
@@ -119,7 +120,7 @@ struct knot_quic_reply *knot_qreq_connect(int fd,
 	if (table == NULL) {
 		knot_quic_free_creds(creds);
 		free(r);
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
 	knot_quic_conn_t *conn = NULL;
@@ -128,21 +129,23 @@ struct knot_quic_reply *knot_qreq_connect(int fd,
 	r->in_ctx = conn;
 	if (ret != KNOT_EOK) {
 		knot_qreq_close(r);
-		return NULL;
+		return ret;
 	}
 
 	struct timespec t_start = time_now(), t_cur;
 	while (!conn->handshake_done) {
 		t_cur = time_now();
 		if (time_diff_ms(&t_start, &t_cur) > timeout_ms ||
-		    quic_exchange(conn, r, timeout_ms) != KNOT_EOK) {
+		    (ret = quic_exchange(conn, r, timeout_ms)) != KNOT_EOK) {
 			knot_qreq_close(r);
-			return NULL;
+			return ret;
 		}
 	}
 
 	r->in_ctx = conn;
-	return r;
+	*out = r;
+
+	return KNOT_EOK;
 }
 
 int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data)
