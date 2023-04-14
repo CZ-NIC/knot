@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ typedef trie_it_t knot_zonedb_iter_t;
  */
 #define knot_zonedb_foreach(db, callback, ...) \
 { \
-	knot_zonedb_iter_t *it = knot_zonedb_iter_begin((db)); \
+	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db); \
 	while(!knot_zonedb_iter_finished(it)) { \
 		callback((zone_t *)knot_zonedb_iter_val(it), ##__VA_ARGS__); \
 		knot_zonedb_iter_next(it); \
