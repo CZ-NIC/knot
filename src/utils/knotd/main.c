@@ -221,7 +221,7 @@ static void check_state(server_t *server)
 	start_state_t new_state = START_LOADED;
 
 	rcu_read_lock();
-	knot_zonedb_iter_t *it = knot_zonedb_iter_begin((server->zone_db));
+	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
 	while (!knot_zonedb_iter_finished(it)) {
 		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
 		if (!zone_get_flag(zone, ZONE_LOAD_ATTEMPT, false)) {

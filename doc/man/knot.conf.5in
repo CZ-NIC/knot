@@ -536,7 +536,7 @@ Possible values:
 .IP \(bu 2
 \fBnone\fP – No signal is emitted.
 .IP \(bu 2
-\fBrunning\fP – There are four possible signal emitted:
+\fBrunning\fP – There are four possible signals emitted:
 .INDENT 2.0
 .IP \(bu 2
 \fBstarted\fP when the server itself is started and ready to accept control commands,
@@ -546,7 +546,7 @@ attempted to load or bootstrap,
 .IP \(bu 2
 \fBloaded\fP when each configured zone (including catalog members) is loaded,
 .IP \(bu 2
-\fBstopped\fP when the server shutdown sequence is inititated.
+\fBstopped\fP when the server shutdown sequence is initiated.
 .UNINDENT
 .IP \(bu 2
 \fBzone\-updated\fP – The signal \fBzone_updated\fP is emitted when a zone has been updated;
