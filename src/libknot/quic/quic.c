@@ -486,6 +486,8 @@ void knot_quic_conn_pin(knot_quic_conn_t *conn, uint8_t *pin, size_t *pin_size, 
 	}
 
 	gnutls_x509_crt_deinit(cert);
+
+	return;
 error:
 	if (pin_size != NULL) {
 		*pin_size = 0;
