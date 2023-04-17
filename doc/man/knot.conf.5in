@@ -1185,7 +1185,7 @@ remote:
     via: ADDR[@INT] ...
     quic: BOOL
     key: key_id
-    cert\-pin: BASE64 ...
+    cert\-key: BASE64 ...
     block\-notify\-after\-transfer: BOOL
     no\-edns: BOOL
     automatic\-acl: BOOL
@@ -1247,14 +1247,14 @@ A \fI\%reference\fP to the TSIG key which is used to authenticate
 the communication with the remote server.
 .sp
 \fIDefault:\fP not set
-.SS cert\-pin
+.SS cert\-key
 .sp
-An ordered list of remote certificate PINs. If the list is non\-empty,
+An ordered list of remote certificate public key PINs. If the list is non\-empty,
 communication with the remote is possible only via QUIC protocol and
-a peer certificate is required. The peer certificate must match one of the
+a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 .sp
-A PIN is a unique identifier that represent the public key of the peer certificate.
+A PIN is a unique identifier that represents the public key of the peer certificate.
 It\(aqs a base64\-encoded SHA\-256 hash of the public key. This identifier
 remains the same on a certificate renewal.
 .sp
@@ -1342,7 +1342,7 @@ acl:
   \- id: STR
     address: ADDR[/INT] | ADDR\-ADDR | STR ...
     key: key_id ...
-    cert\-pin: BASE64 ...
+    cert\-key: BASE64 ...
     remote: remote_id | remotes_id ...
     action: query | notify | transfer | update ...
     deny: BOOL
@@ -1371,14 +1371,14 @@ An ordered list of \fI\%reference\fPs to TSIG keys. The query must
 match one of them. If this item is not set, transaction authentication is not used.
 .sp
 \fIDefault:\fP not set
-.SS cert\-pin
+.SS cert\-key
 .sp
-An ordered list of remote certificate PINs. If the list is non\-empty,
+An ordered list of remote certificate public key PINs. If the list is non\-empty,
 communication with the remote is possible only via QUIC protocol and
-a peer certificate is required. The peer certificate must match one of the
+a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 .sp
-A PIN is a unique identifier that represent the public key of the peer certificate.
+A PIN is a unique identifier that represents the public key of the peer certificate.
 It\(aqs a base64\-encoded SHA\-256 hash of the public key. This identifier
 remains the same on a certificate renewal.
 .sp
