@@ -93,7 +93,7 @@ Print the program version.
 \fBstatus\fP [\fIdetail\fP]
 Check if the server is running. Details are \fBversion\fP for the running
 server version, \fBworkers\fP for the numbers of worker threads,
-\fBconfigure\fP for the configure summary, or \fBcert\-pin\fP for the
+\fBconfigure\fP for the configure summary, or \fBcert\-key\fP for the
 public key pin of the currently used certificate.
 .TP
 \fBstop\fP
