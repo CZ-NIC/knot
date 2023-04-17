@@ -41,7 +41,7 @@
 #define C_CDS_CDNSKEY		"\x13""cds-cdnskey-publish"
 #define C_CDS_DIGESTTYPE	"\x0F""cds-digest-type"
 #define C_CERT_FILE		"\x09""cert-file"
-#define C_CERT_PIN		"\x08""cert-pin"
+#define C_CERT_KEY		"\x08""cert-key"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
 #define C_COMMENT		"\x07""comment"
 #define C_CONFIG		"\x06""config"
