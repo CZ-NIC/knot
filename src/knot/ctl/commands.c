@@ -1819,7 +1819,7 @@ static int server_status(ctl_args_t *args)
 		               running_bkg_wrk, wrk_queue);
 	} else if (strcasecmp(type, "configure") == 0) {
 		ret = snprintf(buff, sizeof(buff), "%s", CONFIGURE_SUMMARY);
-	} else if (strcasecmp(type, "cert-pin") == 0) {
+	} else if (strcasecmp(type, "cert-key") == 0) {
 		uint8_t pin[128];
 		size_t pin_len = server_cert_pin(args->server, pin, sizeof(pin));
 		if (pin_len > 0) {

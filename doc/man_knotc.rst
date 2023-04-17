@@ -70,7 +70,7 @@ Actions
 **status** [*detail*]
   Check if the server is running. Details are **version** for the running
   server version, **workers** for the numbers of worker threads,
-  **configure** for the configure summary, or **cert-pin** for the
+  **configure** for the configure summary, or **cert-key** for the
   public key pin of the currently used certificate.
 
 **stop**
