@@ -344,7 +344,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_VIA,              YP_TADDR, YP_VNONE, YP_FMULTI },
 	{ C_QUIC,             YP_TBOOL, YP_VNONE },
 	{ C_KEY,              YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
-	{ C_CERT_PIN,         YP_TB64,  YP_VNONE, YP_FMULTI, { check_cert_pin } },
+	{ C_CERT_KEY,         YP_TB64,  YP_VNONE, YP_FMULTI, { check_cert_pin } },
 	{ C_BLOCK_NOTIFY_XFR, YP_TBOOL, YP_VNONE },
 	{ C_NO_EDNS,          YP_TBOOL, YP_VNONE },
 	{ C_AUTO_ACL,         YP_TBOOL, YP_VBOOL = { true } },
@@ -372,7 +372,7 @@ static const yp_item_t desc_acl[] = {
 	{ C_UPDATE_OWNER_MATCH, YP_TOPT,   YP_VOPT = { acl_update_owner_match, ACL_UPDATE_MATCH_SUBEQ } },
 	{ C_UPDATE_OWNER_NAME,  YP_TDATA,  YP_VDATA = { 0, NULL, rdname_to_bin, rdname_to_txt },
 	                                   YP_FMULTI, },
-	{ C_CERT_PIN,           YP_TB64,   YP_VNONE, YP_FMULTI, { check_cert_pin } },
+	{ C_CERT_KEY,           YP_TB64,   YP_VNONE, YP_FMULTI, { check_cert_pin } },
 	{ C_COMMENT,            YP_TSTR,   YP_VNONE },
 	{ NULL }
 };

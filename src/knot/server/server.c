@@ -548,7 +548,7 @@ static int init_creds(server_t *server, conf_t *conf)
 		}
 		key_file = abs_path(DFLT_QUIC_KEY_FILE, kasp_dir);
 		free(kasp_dir);
-		log_debug("QUIC, using self generated key '%s' with "
+		log_debug("QUIC, using self-generated key '%s' with "
 		          "one-time certificate", key_file);
 	}
 	server->quic_creds = knot_quic_init_creds(cert_file, key_file);
@@ -564,7 +564,7 @@ static int init_creds(server_t *server, conf_t *conf)
 	size_t pin_len;
 	uint8_t pin[128];
 	if ((pin_len = server_cert_pin(server, pin, sizeof(pin))) > 0) {
-		log_info("QUIC, public key pin %.*s", (int)pin_len, pin);
+		log_info("QUIC, certificate public key %.*s", (int)pin_len, pin);
 	}
 
 	return KNOT_EOK;

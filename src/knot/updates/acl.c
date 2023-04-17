@@ -283,7 +283,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		while (iter.id->code == KNOT_EOK) {
 			addr_val = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 			key_val = conf_id_get(conf, C_RMT, C_KEY, iter.id);
-			pin_val = conf_id_get(conf, C_RMT, C_CERT_PIN, iter.id);
+			pin_val = conf_id_get(conf, C_RMT, C_CERT_KEY, iter.id);
 			if (check_addr_key(conf, &addr_val, &key_val, remote, addr,
 			                   tsig, &pin_val, session_pin, session_pin_size,
 			                   deny)) {
@@ -298,7 +298,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		if (!remote) {
 			addr_val = conf_id_get(conf, C_ACL, C_ADDR, acl);
 			key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
-			pin_val = conf_id_get(conf, C_ACL, C_CERT_PIN, acl);
+			pin_val = conf_id_get(conf, C_ACL, C_CERT_KEY, acl);
 			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr,
 			                    tsig, &pin_val, session_pin, session_pin_size,
 			                    deny)) {
@@ -376,7 +376,7 @@ bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *
 			goto next_remote;
 		}
 
-		conf_val_t pin_val = conf_id_get(conf, C_RMT, C_CERT_PIN, iter.id);
+		conf_val_t pin_val = conf_id_get(conf, C_RMT, C_CERT_KEY, iter.id);
 		if (!cert_pin_check(session_pin, session_pin_size, &pin_val)) {
 			goto next_remote;
 		}
