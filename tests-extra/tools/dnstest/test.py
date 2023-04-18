@@ -20,7 +20,12 @@ class Test(object):
     '''Specification of DNS test topology'''
 
     MAX_START_TRIES = 10
-    LOCAL_ADDR = {4: "127.0.0.1", 6: "::1"}
+
+    LOCAL_ADDR_COMMON = {4: "127.0.0.1", 6: "::1"}
+    LOCAL_ADDR_MULTI = LOCAL_ADDR_COMMON
+    if params.addresses > 1:
+        idx = 1 + Context().job_id % params.addresses
+        LOCAL_ADDR_MULTI = {4: "127.0.1.%i" % idx, 6: "::1%i" % idx}
 
     # Value of the last generated port.
     last_port = None
@@ -40,11 +45,11 @@ class Test(object):
         self.zones_dir = self.out_dir + "/zones/"
 
         if address == 4 or address == 6:
-            self.addr = Test.LOCAL_ADDR[address]
+            self.addr = Test.LOCAL_ADDR_COMMON[address]
         elif address:
             self.addr = address
         else:
-            self.addr = Test.LOCAL_ADDR[random.choice([4, 6])]
+            self.addr = Test.LOCAL_ADDR_MULTI[random.choice([4, 6])]
 
         self.tsig = None
         if tsig != None:
@@ -125,7 +130,7 @@ class Test(object):
         srv.version = version
 
         if address == 4 or address == 6:
-            srv.addr = Test.LOCAL_ADDR[address]
+            srv.addr = Test.LOCAL_ADDR_COMMON[address]
         elif address:
             srv.addr = address
         else:

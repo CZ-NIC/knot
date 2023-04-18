@@ -39,6 +39,9 @@ def get_param(env_name, default):
 # Indication of debug mode (print ERR on stdout).
 debug = False
 
+# Number of available loopback addreeses per each IP version
+addresses = 1
+
 # KNOT_TEST_VALGRIND - valgrind binary if defined.
 valgrind_bin = get_binary("KNOT_TEST_VALGRIND", "valgrind")
 # KNOT_TEST_VALGRIND_FLAGS - valgrind flags.
