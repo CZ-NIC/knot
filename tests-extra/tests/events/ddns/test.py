@@ -44,7 +44,7 @@ def flood(server, zone):
     
 random.seed()
 
-t = Test()
+t = Test(address=4)
 
 zone = t.zone_rnd(1, dnssec=False)
 master = t.server("knot")
