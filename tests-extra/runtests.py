@@ -64,6 +64,8 @@ def parse_args(cmd_args):
                         default=1, type=int, help="run test set n times, endless when 0")
     parser.add_argument("-j", "--jobs", dest="jobs", action="store", type=int,\
                         help="number of concurrent jobs")
+    parser.add_argument("-a", "--addresses", dest="addresses", action="store", type=int,\
+                        help="number of available loopback addresses per each IP version")
     parser.add_argument("-e", "--exit-on-error", dest="error_exit", \
                         action="store_true", help="stop execution on error")
     parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
@@ -73,6 +75,7 @@ def parse_args(cmd_args):
     params.debug = True if args.debug else False
     params.repeat = max(int(args.repeat), 0)
     params.jobs = max(int(args.jobs), 1) if args.jobs else 1
+    params.addresses = max(int(args.addresses), 1) if args.addresses else 1
     params.common_data_dir = os.path.join(current_dir, "data")
     params.exit_on_error = args.error_exit
 
@@ -136,7 +139,7 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
-def job(tasks, results, stop):
+def job(job_id, tasks, results, stop):
     case_cnt = 0
     fail_cnt = 0
     skip_cnt = 0
@@ -168,6 +171,7 @@ def job(tasks, results, stop):
             log_file = os.path.join(out_dir, "case.log")
 
             os.makedirs(out_dir, exist_ok=True)
+            ctx.job_id = job_id
             ctx.module_name = "%s_%s_%i" % (test, case, repeat)
             ctx.module_path = os.path.join(os.path.dirname(sys.argv[0]), TESTS_DIR, test, case)
             ctx.test_dir = case_dir
@@ -309,15 +313,15 @@ def main(args):
 
     if params.jobs > 1: # Multi-thread run
         threads = []
-        for _ in range(params.jobs):
-            t = multiprocessing.Process(target=job, args=(tasks, results, stop))
+        for j in range(params.jobs):
+            t = multiprocessing.Process(target=job, args=(j + 1, tasks, results, stop))
             threads.append(t)
             t.start()
 
         for thread in threads:
             thread.join()
     else: # Single-thread run
-        job(tasks, results, stop)
+        job(1, tasks, results, stop)
 
     while not results.empty():
         a, b, c = results.get()
