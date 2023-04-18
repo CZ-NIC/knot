@@ -20,8 +20,8 @@ class Test(object):
     '''Specification of DNS test topology'''
 
     MAX_START_TRIES = 10
-    LOCAL_ADDR = {4: "127.0.0.1", 6: "::1"}
-
+    #LOCAL_ADDR = {4: "127.0.0.1", 6: "::1"}
+    LOCAL_ADDR = {4: "127.0.1.%i" % Context().job_id, 6: "::1%i" % Context().job_id}
     # Value of the last generated port.
     last_port = None
 

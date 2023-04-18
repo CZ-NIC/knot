@@ -3,6 +3,8 @@
 class Context(object):
     class _Context(object):
         def __init__(self):
+            # Current job id (counted from 1)
+            self.job_id = None
             # Current module name.
             self.module = ""
             # Current case relative directory.
