@@ -64,10 +64,11 @@ Use specified KASP database path and default configuration.
 .INDENT 0.0
 .TP
 \fB\-t\fP, \fB\-\-tsig\fP \fItsig_name\fP [\fItsig_algorithm\fP [\fItsig_bits\fP]]
-Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac\-sha256),
-bit length of the key by number (default: optimal length given by algorithm). The generated
-TSIG key is only displayed on \fIstdout\fP: the command does not create a file, nor include the
-key in a keystore.
+Generates a TSIG key for the given name. Optionally the key algorithm can
+be specified by its name (default: hmac\-sha256) and
+a bit length of the key (default: optimal length given by algorithm).
+The generated TSIG key is only displayed on \fIstdout\fP:
+the command does not create a file, nor include the key in a keystore.
 .TP
 \fB\-e\fP, \fB\-\-extended\fP
 Extended output (listing of keys with full description).
@@ -204,7 +205,8 @@ Arguments are separated by space, each of them is in format \(aqname=value\(aq.
 .INDENT 0.0
 .TP
 \fBalgorithm\fP
-Either an algorithm number (e.g. 14), or text name without dashes (e.g. ECDSAP384SHA384).
+Either an algorithm number (e.g. 14) or algorithm name
+without dashes (e.g. ECDSAP384SHA384).
 .TP
 \fBsize\fP
 Key length in bits.

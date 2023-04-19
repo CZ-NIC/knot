@@ -41,10 +41,11 @@ Options
 .......
 
 **-t**, **--tsig** *tsig_name* [*tsig_algorithm* [*tsig_bits*]]
-  Generates a TSIG key. TSIG algorithm can be specified by string (default: hmac-sha256),
-  bit length of the key by number (default: optimal length given by algorithm). The generated
-  TSIG key is only displayed on `stdout`: the command does not create a file, nor include the
-  key in a keystore.
+  Generates a TSIG key for the given name. Optionally the key algorithm can
+  be specified by its :ref:`name<key_algorithm>` (default: hmac-sha256) and
+  a bit length of the key (default: optimal length given by algorithm).
+  The generated TSIG key is only displayed on `stdout`:
+  the command does not create a file, nor include the key in a keystore.
 
 **-e**, **--extended**
   Extended output (listing of keys with full description).
@@ -177,7 +178,8 @@ Generate arguments
 Arguments are separated by space, each of them is in format 'name=value'.
 
 **algorithm**
-  Either an algorithm number (e.g. 14), or text name without dashes (e.g. ECDSAP384SHA384).
+  Either an algorithm number (e.g. 14) or :ref:`algorithm name<policy_algorithm>`
+  without dashes (e.g. ECDSAP384SHA384).
 
 **size**
   Key length in bits.
