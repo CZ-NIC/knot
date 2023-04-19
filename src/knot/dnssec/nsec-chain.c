@@ -318,6 +318,11 @@ int nsec_check_connect_nodes(zone_node_t *a, zone_node_t *b,
 			return KNOT_DNSSEC_ENSEC_CHAIN;
 		}
 	} else {
+		if (!(a->flags & NODE_FLAGS_NSEC3_NORPHAN)) {
+			data->update->validation_hint.node = a->owner;
+			data->update->validation_hint.rrtype = KNOT_RRTYPE_ANY;
+			return KNOT_DNSSEC_ENSEC_BITMAP;
+		}
 		uint8_t next_len = knot_nsec3_next_len(nsec->rdata);
 		uint8_t bdecoded[next_len];
 		int len = knot_base32hex_decode(b->owner + 1, b->owner[0], bdecoded, next_len);

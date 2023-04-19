@@ -118,6 +118,8 @@ zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
 			}
 			node->nsec3_node = binode_first(nsec3);
 			node->flags |= NODE_FLAGS_NSEC3_NODE;
+			assert(nsec3 == node_nsec3_get(node));
+			nsec3->flags |= NODE_FLAGS_NSEC3_NORPHAN;
 		}
 	}
 
@@ -133,13 +135,11 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 	}
 	assert(counter->nsec3_node != NULL); // shut up cppcheck
 
-	zone_node_t *nsec3_counter = (counter->flags & NODE_FLAGS_NSEC3_NODE) ?
-	                             counter->nsec3_node : NULL;
+	zone_node_t *nsec3_counter = node_nsec3_get(counter);
 	if (nsec3_counter != NULL && !(binode_node_as(nsec3_counter, node)->flags & NODE_FLAGS_DELETED)) {
-		assert(node->flags & NODE_FLAGS_NSEC3_NODE);
 		node->flags |= NODE_FLAGS_NSEC3_NODE;
-		assert(!(nsec3_counter->flags & NODE_FLAGS_SECOND));
-		node->nsec3_node = nsec3_counter;
+		assert(nsec3_counter->flags & NODE_FLAGS_NSEC3_NORPHAN);
+		node->nsec3_node = binode_first(nsec3_counter);
 	} else {
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 		if (counter->flags & NODE_FLAGS_NSEC3_NODE) {

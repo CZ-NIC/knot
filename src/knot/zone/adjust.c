@@ -79,6 +79,7 @@ int unadjust_cb_point_to_nsec3(zone_node_t *node, adjust_ctx_t *ctx)
 {
 	// downgrade the NSEC3 node pointer to NSEC3 name
 	if (node->flags & NODE_FLAGS_NSEC3_NODE) {
+		node_nsec3_get(node)->flags &= ~NODE_FLAGS_NSEC3_NORPHAN;
 		node->nsec3_hash = knot_dname_copy(node->nsec3_node->owner, NULL);
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 	}
@@ -172,6 +173,10 @@ int adjust_cb_nsec3_pointer(zone_node_t *node, adjust_ctx_t *ctx)
 		if (!(node->flags & NODE_FLAGS_NSEC3_NODE) &&
 		    node->nsec3_hash != binode_counterpart(node)->nsec3_hash) {
 			free(node->nsec3_hash);
+		}
+		zone_node_t *n3n = node_nsec3_get(node);
+		if (n3n != NULL) {
+			n3n->flags &= ~NODE_FLAGS_NSEC3_NORPHAN;
 		}
 		node->nsec3_hash = NULL;
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;

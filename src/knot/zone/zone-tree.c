@@ -265,6 +265,13 @@ int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool free_deleted)
 	node->flags |= NODE_FLAGS_DELETED;
 	zone_tree_remove_node(tree, node->owner);
 
+	zone_node_t *n3n = node_nsec3_get(node);
+	if (n3n != NULL) {
+		n3n->flags &= ~NODE_FLAGS_NSEC3_NORPHAN;
+		node->nsec3_node = NULL;
+		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
+	}
+
 	if (free_deleted) {
 		node_free(node, NULL);
 	}
