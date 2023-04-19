@@ -41,8 +41,8 @@ Options
 .......
 
 **-t**, **--tsig** *tsig_name* [*tsig_algorithm* [*tsig_bits*]]
-  Generates a TSIG key. :ref:`TSIG algorithm<key_algorithm>` can be specified by
-  string (default: hmac-sha256), bit length of the key by number (default: optimal
+  Generates a TSIG key. TSIG algorithm can be specified by :ref:`string<key_algorithm>`
+  (default: hmac-sha256), bit length of the key by number (default: optimal
   length given by algorithm). The generated TSIG key is only displayed on `stdout`:
   the command does not create a file, nor include the key in a keystore.
 
