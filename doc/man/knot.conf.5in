@@ -1195,7 +1195,7 @@ A remote identifier.
 An ordered list of destination IP addresses or UNIX socket paths which are
 used for communication with the remote server. Non\-absolute path
 (i.e. not starting with \fB/\fP) is relative to \fI\%rundir\fP\&.
-Optional destination port (default is 53)
+Optional destination port (default is 53 for UDP/TCP and 853 for QUIC)
 can be appended to the address using \fB@\fP separator.
 The addresses are tried in sequence until the
 remote is reached.
