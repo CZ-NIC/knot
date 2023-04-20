@@ -129,7 +129,16 @@ zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
 int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 {
 	zone_node_t *counter = binode_counterpart(node);
-	if (counter->nsec3_hash == NULL) {
+
+	if (node->flags & NODE_FLAGS_NSEC3_NODE) {
+		if (node_nsec3_get(node)->flags & NODE_FLAGS_DELETED) {
+			goto downgrade_nsec3_ptr;
+		} else {
+			return KNOT_EOK;
+		}
+	}
+
+	if (node->nsec3_hash != NULL || counter->nsec3_hash == NULL) {
 		(void)node_nsec3_node(node, zone);
 		return KNOT_EOK;
 	}
@@ -140,7 +149,9 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 		node->flags |= NODE_FLAGS_NSEC3_NODE;
 		assert(nsec3_counter->flags & NODE_FLAGS_NSEC3_NORPHAN);
 		node->nsec3_node = binode_first(nsec3_counter);
+		node_nsec3_get(node)->flags |= NODE_FLAGS_NSEC3_NORPHAN;
 	} else {
+downgrade_nsec3_ptr:
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
 		if (counter->flags & NODE_FLAGS_NSEC3_NODE) {
 			// downgrade the NSEC3 node pointer to NSEC3 name

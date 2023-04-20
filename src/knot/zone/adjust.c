@@ -593,7 +593,7 @@ int zone_adjust_incremental_update(zone_update_t *update, unsigned threads)
 				ret = zone_adjust_update(update, adjust_cb_void, adjust_cb_void, true);
 			}
 		} else {
-			ret = zone_adjust_update(update, adjust_cb_wildcard_nsec3, adjust_cb_void, true);
+			ret = zone_adjust_update(update, adjust_cb_nsec3_and_wildcard, adjust_cb_void, true);
 		}
 	}
 	if (ret == KNOT_EOK) {
