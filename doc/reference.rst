@@ -1328,7 +1328,7 @@ address
 An ordered list of destination IP addresses or UNIX socket paths which are
 used for communication with the remote server. Non-absolute path
 (i.e. not starting with ``/``) is relative to :ref:`server_rundir`.
-Optional destination port (default is 53)
+Optional destination port (default is 53 for UDP/TCP and 853 for QUIC)
 can be appended to the address using ``@`` separator.
 The addresses are tried in sequence until the
 remote is reached.

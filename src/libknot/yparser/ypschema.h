@@ -150,8 +150,10 @@ typedef union {
 	} s;
 	/*! Address variables. */
 	struct {
-		/*! Default port. */
+		/*! Default port (e.g. UDP). */
 		uint16_t dflt_port;
+		/*! Alternative default port (e.g. QUIC). */
+		uint16_t dflt_port_alt;
 		/*! Default socket. */
 		char const *dflt_socket;
 	} a;
