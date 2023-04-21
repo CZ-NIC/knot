@@ -27,9 +27,9 @@ Knot DNS features
 DNS features:
 
 * Primary and secondary server operation
-* Internet class (IN)
-* DNS extension (EDNS0, EDE)
-* TCP and UDP protocols
+* Internet (IN) and Chaos (CH) classes
+* DNS extension (EDNS0, EDE, EXPIRE)
+* UDP, TCP, and QUIC protocols
 * Zone catalog generation and interpretation
 * Minimal responses
 * Dynamic zone updates
@@ -73,8 +73,8 @@ Remarkable module extensions:
 Remarkable supported networking features:
 
 * TCP Fast Open (client and server)
-* High-performance UDP and TCP through AF_XDP processing (on Linux 4.18+)
-* Inbound DNS-over-QUIC processing (on Linux)
+* Opportunistic, strict, and mutual authentication profiles over QUIC
+* High-performance UDP, TCP, and QUIC through AF_XDP processing (on Linux 4.18+)
 * SO_REUSEPORT (on Linux) or SO_REUSEPORT_LB (on FreeBSD 12.0+) on UDP and by choice on TCP
 * Binding to non-local addresses (IP_FREEBIND on Linux, IP_BINDANY/IPV6_BINDANY on FreeBSD)
 * Ignoring PMTU information for IPv4/UDP via IP_PMTUDISC_OMIT
