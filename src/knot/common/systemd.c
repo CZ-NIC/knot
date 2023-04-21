@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,9 +24,10 @@
 #ifdef ENABLE_SYSTEMD
 #include <systemd/sd-daemon.h>
 
+#define ZONE_LOAD_TIMEOUT_EMPTY   -1
 #define ZONE_LOAD_TIMEOUT_DEFAULT 60
 
-static int zone_load_timeout_s;
+static int zone_load_timeout_s = ZONE_LOAD_TIMEOUT_EMPTY;
 
 static int systemd_zone_load_timeout(void)
 {
@@ -51,10 +52,12 @@ static sd_bus *_dbus = NULL;
 void systemd_zone_load_timeout_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
-	if (zone_load_timeout_s == 0) {
+	if (zone_load_timeout_s == ZONE_LOAD_TIMEOUT_EMPTY) {
 		zone_load_timeout_s = systemd_zone_load_timeout();
 	}
-	sd_notifyf(0, "EXTEND_TIMEOUT_USEC=%d000000", zone_load_timeout_s);
+	if (zone_load_timeout_s > 0) {
+		sd_notifyf(0, "EXTEND_TIMEOUT_USEC=%d000000", zone_load_timeout_s);
+	}
 #endif
 }
 
