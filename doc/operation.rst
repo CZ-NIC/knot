@@ -253,9 +253,10 @@ A full example of setting up a completely new zone from scratch::
     $ knotc conf-set zone.domain example.com
     $ knotc conf-commit
     $ knotc zone-begin example.com
-    $ knotc zone-set example.com @ 7200 SOA ns hostmaster 1 86400 900 691200 3600
-    $ knotc zone-set example.com ns 3600 A 192.168.0.1
-    $ knotc zone-set example.com www 3600 A 192.168.0.100
+    $ knotc zone-set example.com  @ 3600 SOA  ns admin 1 86400 900 691200 3600
+    $ knotc zone-set example.com  @ 3600 NS   ns
+    $ knotc zone-set example.com ns 3600 A    192.168.0.1
+    $ knotc zone-set example.com ns 3600 AAAA 2001:DB8::1
     $ knotc zone-commit example.com
 
 .. NOTE::
