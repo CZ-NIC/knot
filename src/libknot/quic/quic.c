@@ -756,17 +756,12 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	ngtcp2_transport_params params;
 	ngtcp2_transport_params_default(&params);
 
-	params.initial_max_data = 786432;
-	params.initial_max_stream_data_bidi_local = 524288;
-	params.initial_max_stream_data_bidi_remote = 524288;
-	params.initial_max_stream_data_uni = 524288;
+	params.initial_max_streams_uni = 0;
+	params.initial_max_streams_bidi = 1024;
+	params.initial_max_stream_data_bidi_local = NGTCP2_MAX_VARINT;
+	params.initial_max_stream_data_bidi_remote = 102400;
+	params.initial_max_data = NGTCP2_MAX_VARINT;
 
-	// params.initial_max_stream_data_bidi_local = config.max_stream_data_bidi_local;
-	// params.initial_max_stream_data_bidi_remote = config.max_stream_data_bidi_remote;
-	// params.initial_max_stream_data_uni = config.max_stream_data_uni;
-	// params.initial_max_data = config.max_data;
-	params.initial_max_streams_bidi = 100;
-	params.initial_max_streams_uni = 3;
 	params.max_idle_timeout = idle_timeout_ns;
 	// params.stateless_reset_token_present = 1;
 	// params.active_connection_id_limit = 7;
