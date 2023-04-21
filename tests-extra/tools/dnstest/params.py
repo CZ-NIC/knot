@@ -78,19 +78,3 @@ home_dir = get_param("HOME", "/tmp")
 
 # Common data directory (e.g. zone files).
 common_data_dir = ""
-
-# Current module name.
-module = ""
-# Current case relative directory.
-test_dir = ""
-# Current case absolute output directory.
-out_dir = ""
-# Current case log file.
-case_log = None
-# Current test object (for stopping it from the main script).
-test = None
-
-# Indication for failed test.
-err = False
-# What is wrong.
-err_msg = ""
