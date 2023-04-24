@@ -290,6 +290,16 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 		}
 	}
 
+	/* Add EXPIRE if not catalog zone, which cannot expire. */
+	if (knot_pkt_edns_option(query, KNOT_EDNS_OPTION_EXPIRE) != NULL &&
+	    qdata->extra->contents != NULL && !qdata->extra->zone->is_catalog_flag) {
+		ret = knot_edns_reserve_option(&qdata->opt_rr, KNOT_EDNS_OPTION_EXPIRE,
+		                               sizeof(uint32_t), NULL, qdata->mm);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	/* Initialize EDNS Client Subnet if configured and present in query. */
 	if (conf()->cache.srv_ecs) {
 		uint8_t *ecs_opt = knot_pkt_edns_option(query, KNOT_EDNS_OPTION_CLIENT_SUBNET);
@@ -327,20 +337,31 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 		return KNOT_EOK;
 	}
 
-	/* Add ECS if present. */
 	int ret = KNOT_EOK;
-	if (qdata->ecs != NULL) {
-		uint8_t *ecs_opt = knot_edns_get_option(&qdata->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET, NULL);
-		if (ecs_opt != NULL) {
-			uint8_t *ecs_data = knot_edns_opt_get_data(ecs_opt);
-			uint16_t ecs_len = knot_edns_opt_get_length(ecs_opt);
-			ret = knot_edns_client_subnet_write(ecs_data, ecs_len, qdata->ecs);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
+	uint8_t *opt = NULL;
+
+	/* Add EXPIRE if present. */
+	if (knot_pkt_edns_option(qdata->query, KNOT_EDNS_OPTION_EXPIRE) != NULL &&
+	    (opt = knot_edns_get_option(&qdata->opt_rr, KNOT_EDNS_OPTION_EXPIRE, opt)) != NULL) {
+		int64_t timer = qdata->extra->zone->timers.next_expire == 0
+		              ? zone_soa_expire(qdata->extra->zone)
+		              : qdata->extra->zone->timers.next_expire - time(NULL);
+		timer = MAX(timer, 0);
+		knot_wire_write_u32(knot_edns_opt_get_data(opt), timer);
+	}
+
+	/* Add ECS if present. */
+	if (qdata->ecs != NULL &&
+	    (opt = knot_edns_get_option(&qdata->opt_rr, KNOT_EDNS_OPTION_CLIENT_SUBNET, opt)) != NULL) {
+		uint8_t *ecs_data = knot_edns_opt_get_data(opt);
+		uint16_t ecs_len = knot_edns_opt_get_length(opt);
+		ret = knot_edns_client_subnet_write(ecs_data, ecs_len, qdata->ecs);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 	}
 
+	/* Get the size of already reserved OPT parts. */
 	size_t opt_wire_size = knot_edns_wire_size(&qdata->opt_rr);
 
 	/* Add EDE. Pragmatic: only if space in pkt. */
@@ -357,30 +378,6 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 		                           sizeof(ede_code), (uint8_t *)&ede_code, qdata->mm);
 		if (ret != KNOT_EOK) {
 			return ret;
-		}
-	}
-
-	/* Add EXPIRE if space and not catalog zone, which cannot expire. */
-	if (knot_pkt_edns_option(qdata->query, KNOT_EDNS_OPTION_EXPIRE) != NULL &&
-	    qdata->extra->contents != NULL && !qdata->extra->zone->is_catalog_flag) {
-		int64_t timer = qdata->extra->zone->timers.next_expire == 0
-		              ? zone_soa_expire(qdata->extra->zone)
-		              : qdata->extra->zone->timers.next_expire - time(NULL);
-		timer = MAX(timer, 0);
-		uint32_t timer_be;
-		knot_wire_write_u32((uint8_t *)&timer_be, (uint32_t)timer);
-
-		uint16_t expire_size = KNOT_EDNS_OPTION_HDRLEN + sizeof(timer_be);
-		if (knot_pkt_reserve(resp, expire_size) == KNOT_EOK) {
-			ret = knot_pkt_reclaim(resp, expire_size);
-			assert(ret == KNOT_EOK);
-
-			ret = knot_edns_add_option(&qdata->opt_rr, KNOT_EDNS_OPTION_EXPIRE,
-			                           sizeof(timer_be), (uint8_t *)&timer_be,
-			                           qdata->mm);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
 		}
 	}
 
