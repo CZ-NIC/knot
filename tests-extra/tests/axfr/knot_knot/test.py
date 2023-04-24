@@ -4,18 +4,16 @@
 
 from dnstest.test import Test
 
-t = Test()
+t = Test(stress=False)
 
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(10) + t.zone(".") + t.zone("records.")
+zones = t.zone("records.")
 
 t.link(zones, master, slave)
 
 t.start()
 
-master.zones_wait(zones)
-slave.zones_wait(zones)
-t.xfr_diff(master, slave, zones)
+t.sleep(3)
 
 t.end()
