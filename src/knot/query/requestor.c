@@ -293,6 +293,10 @@ static int request_consume(knot_requestor_t *req, knot_request_t *last,
 		return KNOT_EMALF;
 	}
 
+	if (knot_wire_get_tc(last->resp->wire)) {
+		return KNOT_EFEWDATA;
+	}
+
 	ret = tsig_verify_packet(&last->tsig, last->resp);
 	if (ret != KNOT_EOK) {
 		return ret;
