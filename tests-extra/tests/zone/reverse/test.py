@@ -14,9 +14,6 @@ zones = t.zone("example.com.", storage=".") + \
         t.zone("2.0.192.in-addr.arpa.", storage=".") + \
         t.zone("0.8.b.d.1.0.0.2.ip6.arpa.", storage=".")
 t.link(zones, knot)
-for z in zones:
-    knot.zones[z.name].journal_content = "all"
-knot.zonefile_load = "difference-no-serial"
 
 knot.zones[zones[1].name].reverse_from = zones[0]
 knot.zones[zones[2].name].reverse_from = zones[0]

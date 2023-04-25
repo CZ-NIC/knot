@@ -138,6 +138,8 @@ int event_load(conf_t *conf, zone_t *zone)
 					goto cleanup;
 				}
 				rcu_read_unlock();
+				zf_from = ZONEFILE_LOAD_DIFSE;
+				load_from = JOURNAL_CONTENT_ALL;
 			} else {
 				ret = KNOT_EOK;
 				knot_dname_txt_storage_t forw_str;
@@ -146,6 +148,10 @@ int event_load(conf_t *conf, zone_t *zone)
 				rcu_read_unlock();
 				goto cleanup;
 			}
+		} else if (conf_zone_get(conf, C_REVERSE_GEN, zone->name).code == KNOT_EOK) {
+			// if configured to reverse-gen, but the relevant zone doesnt exist, still use following conf
+			zf_from = ZONEFILE_LOAD_DIFSE;
+			load_from = JOURNAL_CONTENT_ALL;
 		}
 
 		// If configured and possible, fix the SOA serial of zonefile.
