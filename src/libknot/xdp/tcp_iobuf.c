@@ -88,9 +88,6 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 	size_t res_count = 0;
 	struct iovec *res = NULL, *cur = NULL;
 
-	*inbufs = NULL;
-	*inbufs_count = 0;
-
 	if (data.iov_len < 1) {
 		return KNOT_EOK;
 	}
@@ -109,19 +106,21 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 		if (data_use.iov_len <= data.iov_len) { // usable payload combined from buffer and data ---> res[0] allocated tohether with res
 			iov_inc(&data, data_use.iov_len);
 
-			res_count = 1 + iov_count(&data);
+			res_count = 1 + iov_count(&data) + *inbufs_count;
 			res = malloc(res_count * sizeof(*res) + buffer_req);
 			if (res == NULL) {
 				return KNOT_ENOMEM;
 			}
-			res[0].iov_base = (void *)(res + res_count);
-			res[0].iov_len = 0;
-			iov_append(&res[0], buffer);
-			iov_append(&res[0], &data_use);
-			assert(res[0].iov_len == buffer_req);
-			iov_inc2(&res[0]);
+			memcpy(res, *inbufs, *inbufs_count * sizeof(*res));
+			cur = res + *inbufs_count;
+			cur[0].iov_base = (void *)(res + res_count);
+			cur[0].iov_len = 0;
+			iov_append(&cur[0], buffer);
+			iov_append(&cur[0], &data_use);
+			assert(cur[0].iov_len == buffer_req);
+			iov_inc2(&cur[0]);
 
-			cur = &res[1];
+			cur++;
 			*buffers_total -= buffer->iov_len;
 			iov_clear(buffer);
 		} else { // just extend the buffer with data
@@ -135,13 +134,14 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 			return KNOT_EOK;
 		}
 	} else { // just allocate res
-		res_count = iov_count(&data);
+		res_count = iov_count(&data) + *inbufs_count;
 		if (res_count > 0) {
 			res = malloc(res_count * sizeof(*res));
 			if (res == NULL) {
 				return KNOT_ENOMEM;
 			}
-			cur = &res[0];
+			memcpy(res, *inbufs, *inbufs_count * sizeof(*res));
+			cur = res + *inbufs_count;
 		}
 	}
 
@@ -172,6 +172,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 		iov_append(buffer, &data);
 	}
 
+	free(*inbufs);
 	*inbufs = res;
 	*inbufs_count = res_count;
 
