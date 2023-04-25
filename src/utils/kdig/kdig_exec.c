@@ -1130,6 +1130,12 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			print_data_xfr_json(w, reply, timestamp);
 		}
 
+		// Fail to continue if TC is set.
+		if (knot_wire_get_tc(reply->wire)) {
+			ERR("truncated reply");
+			goto fail;
+		}
+
 		// Check for finished transfer.
 		if (finished_xfr(serial, reply, query, msg_count, query_ctx->serial != -1)) {
 			knot_pkt_free(reply);
