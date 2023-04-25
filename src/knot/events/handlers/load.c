@@ -67,12 +67,17 @@ int event_load(conf_t *conf, zone_t *zone)
 	val = conf_zone_get(conf, C_ZONEFILE_LOAD, zone->name);
 	unsigned zf_from = conf_opt(&val);
 
+	// Note: zone->reverse_from!=NULL almost works, but we need to check if configured even when failed.
+	if (conf_zone_get(conf, C_REVERSE_GEN, zone->name).code == KNOT_EOK ||
+	    zone->cat_members != NULL) { // This should be equivalent to setting catalog-role:generate.
+		zf_from = ZONEFILE_LOAD_DIFSE;
+		load_from = JOURNAL_CONTENT_ALL;
+	}
+
 	int ret = KNOT_EOK;
 
 	// If configured, load journal contents.
-	if (!old_contents_exist &&
-	    ((load_from == JOURNAL_CONTENT_ALL && zf_from != ZONEFILE_LOAD_WHOLE) ||
-	     zone->cat_members != NULL)) {
+	if (!old_contents_exist && (load_from == JOURNAL_CONTENT_ALL && zf_from != ZONEFILE_LOAD_WHOLE)) {
 		ret = zone_load_from_journal(conf, zone, &journal_conts);
 		switch (ret) {
 		case KNOT_EOK:
@@ -138,8 +143,6 @@ int event_load(conf_t *conf, zone_t *zone)
 					goto cleanup;
 				}
 				rcu_read_unlock();
-				zf_from = ZONEFILE_LOAD_DIFSE;
-				load_from = JOURNAL_CONTENT_ALL;
 			} else {
 				ret = KNOT_EOK;
 				knot_dname_txt_storage_t forw_str;
@@ -148,10 +151,6 @@ int event_load(conf_t *conf, zone_t *zone)
 				rcu_read_unlock();
 				goto cleanup;
 			}
-		} else if (conf_zone_get(conf, C_REVERSE_GEN, zone->name).code == KNOT_EOK) {
-			// if configured to reverse-gen, but the relevant zone doesnt exist, still use following conf
-			zf_from = ZONEFILE_LOAD_DIFSE;
-			load_from = JOURNAL_CONTENT_ALL;
 		}
 
 		// If configured and possible, fix the SOA serial of zonefile.
@@ -191,8 +190,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	// If configured contents=all, but not present, store zonefile.
-	if ((load_from == JOURNAL_CONTENT_ALL || zone->cat_members != NULL) &&
-	    !zone_in_journal_exists && (zf_conts != NULL || old_contents_exist)) {
+	if (load_from == JOURNAL_CONTENT_ALL && !zone_in_journal_exists && (zf_conts != NULL || old_contents_exist)) {
 		zone_contents_t *store_c = old_contents_exist ? zone->contents : zf_conts;
 		ret = zone_in_journal_store(conf, zone, store_c);
 		if (ret != KNOT_EOK) {
@@ -205,7 +203,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = (conf_bool(&val) && zone->cat_members == NULL), zu_from_zf_conts = false;
-	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE || zone->cat_members != NULL);
+	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE);
 	bool ignore_dnssec = (do_diff && dnssec_enable);
 
 	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
@@ -238,7 +236,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			                                   ignore_dnssec, update_zonemd);
 		}
 	} else {
-		if (journal_conts != NULL && (zf_from != ZONEFILE_LOAD_WHOLE || zone->cat_members != NULL)) {
+		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
 			if (zf_conts == NULL) {
 				// load zone-in-journal
 				ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
@@ -348,8 +346,7 @@ load_end:
 	}
 
 	// If the change is only automatically incremented SOA serial, make it no change.
-	if ((zf_from == ZONEFILE_LOAD_DIFSE || zone->cat_members != NULL) &&
-	    (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
+	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
 	    changeset_differs_just_serial(&up.change, update_zonemd)) {
 		changeset_t *cpy = changeset_clone(&up.change);
 		if (cpy == NULL) {
