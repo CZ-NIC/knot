@@ -385,7 +385,7 @@ skip_whitespace(const char *p)
 
 /*
  * Start a program, connecting its stdout to a pipe on our end and its stderr
- * to /dev/null, and storing the file descriptor to read from in the two
+ * to /dev/null, and storing the file descriptor to read from in the second
  * argument.  Returns the PID of the new process.  Errors are fatal.
  */
 static pid_t
