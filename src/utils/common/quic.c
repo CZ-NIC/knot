@@ -91,15 +91,15 @@ static int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
 		.iov_len = datalen
 	};
 
+	size_t buffer_stats = 0;
 	int ret = knot_tcp_inbuf_update(&ctx->stream.in_buffer, in,
 	                &ctx->stream.in_parsed, &ctx->stream.in_parsed_size,
-	                &ctx->stream.in_parsed_total);
+	                &ctx->stream.in_parsed_total, &buffer_stats);
 	if (ret != KNOT_EOK) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	ctx->idle_ts = quic_timestamp();
-	ctx->stream.in_parsed_it = 0;
 	return 0;
 }
 
@@ -404,19 +404,20 @@ static int quic_recv(quic_ctx_t *ctx, int sockfd)
 static int quic_respcpy(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 {
 	assert(ctx && buf && buf_len > 0);
-	if (ctx->stream.in_parsed &&
-	    ctx->stream.in_parsed_it < ctx->stream.in_parsed_size) {
+	if (ctx->stream.in_parsed_it != ctx->stream.in_parsed_size) {
+		assert(ctx->stream.in_parsed_it < ctx->stream.in_parsed_size);
 		struct iovec *it =
-		        &ctx->stream.in_parsed[ctx->stream.in_parsed_it];
+		        &ctx->stream.in_parsed[ctx->stream.in_parsed_it++];
 		if (buf_len < it->iov_len) {
 			return KNOT_ENOMEM;
 		}
-		ctx->stream.in_parsed_it++;
 		size_t len = it->iov_len;
 		memcpy(buf, it->iov_base, len);
+		free(it->iov_base);
+		it->iov_base = NULL;
+		it->iov_len = 0;
 		if (ctx->stream.in_parsed_it == ctx->stream.in_parsed_size) {
-			free(ctx->stream.in_parsed);
-			ctx->stream.in_parsed = NULL;
+			ctx->stream.in_parsed_it = 0;
 			ctx->stream.in_parsed_size = 0;
 		}
 		return len;
