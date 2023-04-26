@@ -105,6 +105,7 @@ typedef struct {
 	knot_tcp_action_t answer;
 	struct iovec *inbufs;
 	size_t inbufs_count;
+	size_t inbufs_size;
 	knot_tcp_conn_t *conn;
 } knot_tcp_relay_t;
 
