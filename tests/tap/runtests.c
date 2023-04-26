@@ -391,7 +391,7 @@ skip_whitespace(const char *p)
 static pid_t
 test_start(const char *path, int *fd)
 {
-    int fds[2], errfd;
+    int fds[2];
     pid_t child;
 
     if (pipe(fds) == -1) {
@@ -406,13 +406,10 @@ test_start(const char *path, int *fd)
         sysdie("can't fork");
     } else if (child == 0) {
         /* In child.  Set up our stdout and stderr. */
-        errfd = open("/dev/null", O_WRONLY);
-        if (errfd < 0)
-            _exit(CHILDERR_STDERR);
-        if (dup2(errfd, 2) == -1)
-            _exit(CHILDERR_DUP);
         close(fds[0]);
-        if (dup2(fds[1], 1) == -1)
+        if (dup2(fds[1], STDOUT_FILENO) == -1)
+            _exit(CHILDERR_DUP);
+        if (dup2(fds[1], STDERR_FILENO) == -1)
             _exit(CHILDERR_DUP);
 
         /* Now, exec our process. */
