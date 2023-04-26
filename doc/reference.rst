@@ -2654,14 +2654,13 @@ Possible values:
 reverse-generate
 ----------------
 
-Triggers auto-generating reverse PTR records into this zone, based on A/AAAA records
-in the zone specified by this option.
+This option triggers the automatic generation of reverse PTR records based on
+A/AAAA records in the specified zone. The entire generated zone is automatically
+stored in the journal.
 
-Limitations (may be relaxed in the future):
+Current limitations:
 
 - Only one zone to be reversed can be specified.
-- Requires :ref:`zone_journal-content`: ``all`` and
-  :ref:`zone_zonefile-load`: ``difference-no-serial``.
 - Is slow for large zones (even when changing a little).
 
 *Default:* none

@@ -945,14 +945,6 @@ int check_zone(
 		}
 	}
 
-	conf_val_t reverse = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_REVERSE_GEN, yp_dname(args->id));
-	if (reverse.code == KNOT_EOK &&
-	    !(conf_opt(&zf_load) == ZONEFILE_LOAD_DIFSE && conf_opt(&journal) == JOURNAL_CONTENT_ALL)) {
-		args->err_str = "'reverse-generate' requires 'zonefile-load: difference-no-serial' and 'journal-content: all'";
-		return KNOT_EINVAL;
-	}
-
 	conf_val_t validation = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                          C_DNSSEC_VALIDATION, yp_dname(args->id));
 	if (conf_bool(&validation)) {

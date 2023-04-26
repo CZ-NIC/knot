@@ -2434,16 +2434,14 @@ Generated catalog zones use \fBunixtime\fP only.
 \fIDefault:\fP \fBincrement\fP (\fBunixtime\fP for generated catalog zones)
 .SS reverse\-generate
 .sp
-Triggers auto\-generating reverse PTR records into this zone, based on A/AAAA records
-in the zone specified by this option.
+This option triggers the automatic generation of reverse PTR records based on
+A/AAAA records in the specified zone. The entire generated zone is automatically
+stored in the journal.
 .sp
-Limitations (may be relaxed in the future):
+Current limitations:
 .INDENT 0.0
 .IP \(bu 2
 Only one zone to be reversed can be specified.
-.IP \(bu 2
-Requires \fI\%journal\-content\fP: \fBall\fP and
-\fI\%zonefile\-load\fP: \fBdifference\-no\-serial\fP\&.
 .IP \(bu 2
 Is slow for large zones (even when changing a little).
 .UNINDENT
