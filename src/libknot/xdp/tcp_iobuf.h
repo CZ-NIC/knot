@@ -72,10 +72,12 @@ inline static void knot_sweep_stats_reset(knot_sweep_stats_t *stats)
  * \param buffers_total  In/Out: total size of buffers (will be increased or decreased).
  *
  * \return KNOT_EOK, KNOT_ENOMEM
+ *
+ * \note buffer->iov_base can be NULL, otherwise it must be greater than or equal to size 65537.
  */
 int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
                           struct iovec **inbufs, size_t *inbufs_count,
-                          size_t *buffers_total);
+                          size_t *inbufs_size, size_t *buffers_total);
 
 /*!
  * \brief Add payload to be sent by TCP, to output buffers.
