@@ -64,11 +64,11 @@ const gnutls_datum_t doq_alpn = {
 };
 
 #define set_application_error(ctx, error_code, reason, reason_len) \
-	ngtcp2_connection_close_error_set_application_error(&(ctx)->last_err, \
+	ngtcp2_ccerr_set_application_error(&(ctx)->last_err, \
 	        error_code, reason, reason_len)
 
 #define set_transport_error(ctx, error_code, reason, reason_len) \
-	ngtcp2_connection_close_error_set_transport_error(&(ctx)->last_err, \
+	ngtcp2_ccerr_set_transport_error(&(ctx)->last_err, \
 	        error_code, reason, reason_len)
 
 static int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,

@@ -86,7 +86,7 @@ typedef struct {
 		size_t in_parsed_it;
 		int resets;
 	} stream;
-	ngtcp2_connection_close_error last_err;
+	ngtcp2_ccerr last_err;
 	uint8_t secret[32];
 	tls_ctx_t *tls;
 	ngtcp2_conn *conn;
