@@ -80,10 +80,9 @@ typedef struct {
 		int64_t id;
 		uint64_t out_ack;
 		struct iovec in_buffer;
-		struct iovec *in_parsed;
-		size_t in_parsed_size;
-		size_t in_parsed_total;
+		struct knot_tinbufu_res *in_parsed;
 		size_t in_parsed_it;
+		size_t in_parsed_total;
 		int resets;
 	} stream;
 	ngtcp2_connection_close_error last_err;
