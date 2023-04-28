@@ -80,16 +80,27 @@ static void iov_append(struct iovec *what, const struct iovec *with)
 	what->iov_len += with->iov_len;
 }
 
+static knot_tinbufu_res_t *tinbufu_alloc(size_t inbuf_count, size_t first_inbuf)
+{
+	knot_tinbufu_res_t *res = malloc(sizeof(*res) + inbuf_count*sizeof(*res->inbufs) + first_inbuf);
+	if (res == NULL) {
+		return NULL;
+	}
+
+	res->next = NULL;
+	res->n_inbufs = inbuf_count;
+	res->inbufs = (void *)(res + 1);
+	res->inbufs[0].iov_base = (void *)(res->inbufs + inbuf_count);
+	res->inbufs[0].iov_len = 0;
+	return res;
+}
+
 _public_
 int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
-                          struct iovec **inbufs, size_t *inbufs_count,
-                          size_t *buffers_total)
+                          knot_tinbufu_res_t **result, size_t *buffers_total)
 {
-	size_t res_count = 0;
-	struct iovec *res = NULL, *cur = NULL;
-
-	*inbufs = NULL;
-	*inbufs_count = 0;
+	knot_tinbufu_res_t *out = NULL;
+	struct iovec *cur = NULL;
 
 	if (data.iov_len < 1) {
 		return KNOT_EOK;
@@ -102,6 +113,12 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 			return KNOT_EOK;
 		}
 	}
+
+	// find the end of linked list if not already
+	while (*result != NULL) {
+		result = &(*result)->next;
+	}
+
 	if (buffer->iov_len > 0) {
 		size_t buffer_req = tcp_payload_len(buffer);
 		assert(buffer_req > buffer->iov_len);
@@ -109,19 +126,17 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 		if (data_use.iov_len <= data.iov_len) { // usable payload combined from buffer and data ---> res[0] allocated tohether with res
 			iov_inc(&data, data_use.iov_len);
 
-			res_count = 1 + iov_count(&data);
-			res = malloc(res_count * sizeof(*res) + buffer_req);
-			if (res == NULL) {
+			out = tinbufu_alloc(1 + iov_count(&data), buffer_req);
+			if (out == NULL) {
 				return KNOT_ENOMEM;
 			}
-			res[0].iov_base = (void *)(res + res_count);
-			res[0].iov_len = 0;
-			iov_append(&res[0], buffer);
-			iov_append(&res[0], &data_use);
-			assert(res[0].iov_len == buffer_req);
-			iov_inc2(&res[0]);
+			cur = out->inbufs;
+			iov_append(cur, buffer);
+			iov_append(cur, &data_use);
+			assert(cur->iov_len == buffer_req);
+			iov_inc2(cur);
 
-			cur = &res[1];
+			cur++;
 			*buffers_total -= buffer->iov_len;
 			iov_clear(buffer);
 		} else { // just extend the buffer with data
@@ -135,13 +150,13 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 			return KNOT_EOK;
 		}
 	} else { // just allocate res
-		res_count = iov_count(&data);
+		size_t res_count = iov_count(&data);
 		if (res_count > 0) {
-			res = malloc(res_count * sizeof(*res));
-			if (res == NULL) {
+			out = tinbufu_alloc(res_count, 0);
+			if (out == NULL) {
 				return KNOT_ENOMEM;
 			}
-			cur = &res[0];
+			cur = out->inbufs;
 		}
 	}
 
@@ -157,14 +172,13 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 		iov_inc2(cur);
 		cur++;
 	}
-	assert(cur == ((res_count) ? res + res_count : res));
 
 	// store the final incomplete payload to buffer
 	if (data.iov_len > 0) {
 		assert(buffer->iov_base == NULL);
 		buffer->iov_base = malloc(MAX(data.iov_len, 2));
 		if (buffer->iov_base == NULL) {
-			free(res);
+			free(out);
 			return KNOT_ENOMEM;
 		}
 		*buffers_total += MAX(data.iov_len, 2);
@@ -172,8 +186,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 		iov_append(buffer, &data);
 	}
 
-	*inbufs = res;
-	*inbufs_count = res_count;
+	*result = out;
 
 	return KNOT_EOK;
 }

@@ -51,6 +51,12 @@ typedef struct knot_sweep_stats {
 	uint32_t counters[4];
 } knot_sweep_stats_t;
 
+typedef struct knot_tinbufu_res {
+	struct iovec *inbufs;
+	size_t n_inbufs;
+	struct knot_tinbufu_res *next;
+} knot_tinbufu_res_t;
+
 inline static void knot_sweep_stats_incr(knot_sweep_stats_t *stats, knot_sweep_counter_t counter)
 {
 	(stats->counters[counter])++;
@@ -67,15 +73,13 @@ inline static void knot_sweep_stats_reset(knot_sweep_stats_t *stats)
  *
  * \param buffer         In/out: persistent buffer to store incomplete DNS payloads between receiving packets.
  * \param data           In: momental DNS payloads in incoming packet.
- * \param inbufs         Out: list of incoming DNS messages.
- * \param inbufs_count   Out: number of inbufs.
+ * \param result         Out: list of incoming DNS messages.
  * \param buffers_total  In/Out: total size of buffers (will be increased or decreased).
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
 int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
-                          struct iovec **inbufs, size_t *inbufs_count,
-                          size_t *buffers_total);
+                          knot_tinbufu_res_t **result, size_t *buffers_total);
 
 /*!
  * \brief Add payload to be sent by TCP, to output buffers.

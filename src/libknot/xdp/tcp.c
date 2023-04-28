@@ -326,8 +326,8 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_
 			if (!(ignore & XDP_TCP_IGNORE_DATA_ACK)) {
 				relay->auto_answer = KNOT_XDP_MSG_ACK;
 			}
-			ret = knot_tcp_inbuf_update(&conn->inbuf, msg->payload, &relay->inbufs,
-			                            &relay->inbufs_count, &tcp_table->inbufs_total);
+			ret = knot_tcp_inbuf_update(&conn->inbuf, msg->payload, &relay->inbf,
+			                            &tcp_table->inbufs_total);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -724,6 +724,6 @@ void knot_tcp_cleanup(knot_tcp_table_t *tcp_table, knot_tcp_relay_t relays[],
 		if (relays[i].answer & XDP_TCP_FREE) {
 			del_conn(relays[i].conn);
 		}
-		free(relays[i].inbufs);
+		free(relays[i].inbf);
 	}
 }
