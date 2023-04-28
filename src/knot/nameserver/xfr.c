@@ -24,7 +24,6 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata)
 	}
 
 	int ret = KNOT_EOK;
-	knot_mm_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->extra->ext;
 
 	/* Check if the zone wasn't expired during multi-message transfer. */
@@ -49,7 +48,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata)
 		if (ret == KNOT_EOK) { /* Finished. */
 			/* Complete change set. */
 			rem_node((node_t *)head);
-			mm_free(mm, head);
+			mm_free(qdata->mm, head);
 		} else { /* Packet full or other error. */
 			break;
 		}

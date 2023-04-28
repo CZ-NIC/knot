@@ -150,12 +150,11 @@ static int ixfr_query_check(knotd_qdata_t *qdata)
 static void ixfr_answer_cleanup(knotd_qdata_t *qdata)
 {
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->extra->ext;
-	knot_mm_t *mm = qdata->mm;
 
 	knot_rrset_clear(&ixfr->cur_rr, NULL);
-	ptrlist_free(&ixfr->proc.nodes, mm);
+	ptrlist_free(&ixfr->proc.nodes, qdata->mm);
 	journal_read_end(ixfr->journal_ctx);
-	mm_free(mm, qdata->extra->ext);
+	mm_free(qdata->mm, qdata->extra->ext);
 
 	/* Allow zone changes (finished). */
 	rcu_read_unlock();
