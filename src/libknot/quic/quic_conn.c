@@ -330,7 +330,7 @@ static void stream_outprocess(knot_quic_conn_t *conn, knot_quic_stream_t *stream
 
 	for (int16_t idx = conn->stream_inprocess + 1; idx < conn->streams_count; idx++) {
 		stream = &conn->streams[idx];
-		if (stream->inbuf_fin != NULL) {
+		if (stream->inbufs != NULL) {
 			conn->stream_inprocess = stream - conn->streams;
 			return;
 		}
@@ -350,20 +350,20 @@ int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
 		return KNOT_ENOENT;
 	}
 
-	struct iovec in = { (void *)data, len }, *outs;
-	size_t outs_count;
-	int ret = knot_tcp_inbuf_update(&stream->inbuf, in, &outs, &outs_count,
+	struct iovec in = { (void *)data, len };
+	knot_tinbufu_res_t *inbufu = NULL;
+	int ret = knot_tcp_inbuf_update(&stream->inbuf, in, &inbufu,
 	                                &conn->ibufs_size);
-	if (ret != KNOT_EOK || (outs_count == 0 && !fin)) {
+	if (ret != KNOT_EOK || (inbufu == NULL && !fin)) {
 		return ret;
 	}
+	//if (inbufu == NULL || inbufu->n_inbufs != 1 || !fin) {
+	//	free(inbufu);
+	//	return KNOT_ESEMCHECK;
+	//}
 
-	if (stream->inbuf_fin != NULL) {
-		return KNOT_ESEMCHECK;
-	}
-
-	stream->inbuf_fin = outs;
-	stream->inbuf_fin_count = outs_count;
+	stream->inbufs = inbufu;
+	//stream->inbuf_fin_count = outs_count;
 	if (fin) {
 		stream_inprocess(conn, stream);
 	}
@@ -445,7 +445,7 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *conn, int64_t stream_id,
 	if (EMPTY_LIST(*obs) && !keep_stream) {
 		stream_outprocess(conn, s);
 		memset(s, 0, sizeof(*s));
-		while (s = &conn->streams[0], s->inbuf.iov_len == 0 && s->inbuf_fin == NULL && s->obufs_size == 0) {
+		while (s = &conn->streams[0], s->inbuf.iov_len == 0 && s->inbufs == NULL && s->obufs_size == 0) {
 			assert(conn->streams_count > 0);
 			conn->streams_count--;
 
