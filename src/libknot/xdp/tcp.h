@@ -103,8 +103,7 @@ typedef struct {
 	knot_xdp_msg_flag_t auto_answer;
 	uint32_t auto_seqno;
 	knot_tcp_action_t answer;
-	struct iovec *inbufs;
-	size_t inbufs_count;
+	struct knot_tinbufu_res *inbf;
 	knot_tcp_conn_t *conn;
 } knot_tcp_relay_t;
 
@@ -126,7 +125,7 @@ inline static uint32_t knot_tcp_next_seqno(const knot_xdp_msg_t *msg)
 inline static bool knot_tcp_relay_empty(const knot_tcp_relay_t *relay)
 {
 	return relay->action == XDP_TCP_NOOP && relay->answer == XDP_TCP_NOOP &&
-	       relay->auto_answer == 0 && relay->inbufs_count == 0;
+	       relay->auto_answer == 0 && relay->inbf == NULL;
 }
 
 /*!
