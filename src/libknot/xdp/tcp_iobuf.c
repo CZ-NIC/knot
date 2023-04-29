@@ -95,6 +95,22 @@ static knot_tinbufu_res_t *tinbufu_alloc(size_t inbuf_count, size_t first_inbuf)
 	return res;
 }
 
+uint64_t buffer_alloc_size(uint64_t buffer_len)
+{
+	if (buffer_len == 0) {
+		return 0;
+	}
+	uint64_t x = buffer_len - 1;
+	x |= 0x3f; // the result will be at least 64
+	x |= (x >> 1);
+	x |= (x >> 2);
+	x |= (x >> 4);
+	x |= (x >> 8);
+	x |= (x >> 16);
+	x |= (x >> 32);
+	return x + 1; // closest higher (than buffer_len-1) power of two
+}
+
 _public_
 int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
                           knot_tinbufu_res_t **result, size_t *buffers_total)
@@ -121,6 +137,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 
 	if (buffer->iov_len > 0) {
 		size_t buffer_req = tcp_payload_len(buffer);
+		size_t bufusage = buffer_alloc_size(buffer->iov_len);
 		assert(buffer_req > buffer->iov_len);
 		struct iovec data_use = { data.iov_base, buffer_req - buffer->iov_len };
 		if (data_use.iov_len <= data.iov_len) { // usable payload combined from buffer and data ---> res[0] allocated tohether with res
@@ -137,16 +154,20 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 			iov_inc2(cur);
 
 			cur++;
-			*buffers_total -= buffer->iov_len;
+			*buffers_total -= bufusage;
 			iov_clear(buffer);
 		} else { // just extend the buffer with data
-			void *bufnew = realloc(buffer->iov_base, buffer->iov_len + data.iov_len);
-			if (bufnew == NULL) {
-				return KNOT_ENOMEM;
+			size_t bufnewlen = buffer->iov_len + data.iov_len;
+			if (bufnewlen > bufusage) {
+				size_t bufalloc = buffer_alloc_size(bufnewlen);
+				void *bufnew = realloc(buffer->iov_base, bufalloc);
+				if (bufnew == NULL) {
+					return KNOT_ENOMEM;
+				}
+				buffer->iov_base = bufnew;
+				*buffers_total += bufalloc - bufusage;
 			}
-			buffer->iov_base = bufnew;
 			iov_append(buffer, &data);
-			*buffers_total += data.iov_len;
 			return KNOT_EOK;
 		}
 	} else { // just allocate res
@@ -176,12 +197,13 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 	// store the final incomplete payload to buffer
 	if (data.iov_len > 0) {
 		assert(buffer->iov_base == NULL);
-		buffer->iov_base = malloc(MAX(data.iov_len, 2));
+		size_t bufalloc = buffer_alloc_size(data.iov_len);
+		buffer->iov_base = malloc(bufalloc);
 		if (buffer->iov_base == NULL) {
 			free(out);
 			return KNOT_ENOMEM;
 		}
-		*buffers_total += MAX(data.iov_len, 2);
+		*buffers_total += bufalloc;
 		buffer->iov_len = 0;
 		iov_append(buffer, &data);
 	}

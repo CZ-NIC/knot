@@ -68,6 +68,8 @@ inline static void knot_sweep_stats_reset(knot_sweep_stats_t *stats)
 	memset(stats, 0, sizeof(*stats));
 }
 
+uint64_t buffer_alloc_size(uint64_t buffer_len);
+
 /*!
  * \brief Handle DNS-over-TCP payloads in buffer and message.
  *
