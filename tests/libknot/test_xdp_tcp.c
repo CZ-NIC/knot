@@ -483,7 +483,7 @@ void test_ibufs_size(void)
 	ret = knot_tcp_send(test_sock, &rls[0], 1, 1);
 	is_int(KNOT_EOK, ret, "ibufs: must send OK");
 	check_sent(1, 0, 0, 0);
-	is_int(7, test_table->inbufs_total, "inbufs: first inbuf");
+	is_int(64, test_table->inbufs_total, "inbufs: first inbuf");
 	knot_tcp_cleanup(test_table, &rls[0], 1);
 
 	// other connection will just store fragments
@@ -497,7 +497,7 @@ void test_ibufs_size(void)
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
 	is_int(KNOT_EOK, ret, "inbufs: send OK");
 	check_sent(CONNS, 0, 0, 0);
-	is_int(21, test_table->inbufs_total, "inbufs: after change");
+	is_int(192, test_table->inbufs_total, "inbufs: after change");
 	is_int(0, rls[1].action, "inbufs: one relay");
 	is_int(10, rls[0].inbf->inbufs[0].iov_len, "inbufs: data length");
 	knot_tcp_cleanup(test_table, rls, CONNS);
@@ -505,7 +505,7 @@ void test_ibufs_size(void)
 	// now free some
 	knot_sweep_stats_t stats = { 0 };
 	ret = knot_tcp_sweep(test_table, INFTY, INFTY, INFTY, INFTY,
-	                     test_table->inbufs_total - 8, INFTY, rls,
+	                     64, INFTY, rls,
 	                     CONNS, &stats);
 	is_int(KNOT_EOK, ret, "inbufs: timeout OK");
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
@@ -514,7 +514,7 @@ void test_ibufs_size(void)
 	is_int(0, stats.counters[KNOT_SWEEP_CTR_TIMEOUT], "inbufs: close count");
 	is_int(2, stats.counters[KNOT_SWEEP_CTR_LIMIT_IBUF], "inbufs: reset count");
 	knot_tcp_cleanup(test_table, rls, CONNS);
-	is_int(7, test_table->inbufs_total, "inbufs: final state");
+	is_int(64, test_table->inbufs_total, "inbufs: final state");
 	ok(NULL != tcp_table_find(test_table, &msgs[0]), "inbufs: first conn survived");
 	ok(NULL == tcp_table_find(test_table, &msgs[1]), "inbufs: second conn not survived");
 	ok(NULL == tcp_table_find(test_table, &msgs[2]), "inbufs: third conn not survived");
