@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -478,7 +478,7 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data, bool reuse_s
 	}
 
 	// Process answer packet
-	xfr_stats_add(&data->stats, pkt->size);
+	xfr_stats_add(&data->stats, pkt->size + knot_rrset_size(pkt->tsig_rr));
 	next = axfr_consume_packet(pkt, data);
 
 	// Finalize
@@ -929,7 +929,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 				data->ret = KNOT_ENOMEM;
 				return KNOT_STATE_FAIL;
 			}
-			xfr_stats_add(&data->stats, pkt->size);
+			xfr_stats_add(&data->stats, pkt->size + knot_rrset_size(pkt->tsig_rr));
 			return KNOT_STATE_CONSUME;
 		case XFR_TYPE_AXFR:
 			IXFRIN_LOG(LOG_INFO, data,
@@ -943,7 +943,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 			IXFRIN_LOG(LOG_INFO, data,
 			          "zone is up-to-date%s", expires_in);
 			xfr_stats_begin(&data->stats);
-			xfr_stats_add(&data->stats, pkt->size);
+			xfr_stats_add(&data->stats, pkt->size + knot_rrset_size(pkt->tsig_rr));
 			xfr_stats_end(&data->stats);
 			return KNOT_STATE_DONE;
 		case XFR_TYPE_IXFR:
@@ -980,7 +980,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	}
 
 	// Process answer packet
-	xfr_stats_add(&data->stats, pkt->size);
+	xfr_stats_add(&data->stats, pkt->size + knot_rrset_size(pkt->tsig_rr));
 	next = ixfr_consume_packet(pkt, data);
 
 	// Finalize
