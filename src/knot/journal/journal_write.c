@@ -20,6 +20,7 @@
 #include "knot/journal/journal_metadata.h"
 #include "knot/journal/journal_read.h"
 #include "knot/journal/serialization.h"
+#include "knot/zone/serial.h"
 #include "libknot/error.h"
 
 static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser,
@@ -270,9 +271,14 @@ int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *e
 
 	uint32_t ch_from = zdiff == NULL ? changeset_from(ch) : zone_diff_from(zdiff);
 	uint32_t ch_to = zdiff == NULL ? changeset_to(ch) : zone_diff_to(zdiff);
-	if (extra != NULL && (changeset_to(extra) != ch_to ||
-	     changeset_from(extra) == ch_from)) {
+	uint32_t extra_from = extra == NULL ? 0 : changeset_from(extra);
+	uint32_t extra_to = extra == NULL ? 0 : changeset_to(extra);
+	if (extra != NULL && (extra_to != ch_to || extra_from == ch_from)) {
 		return KNOT_EINVAL;
+	}
+	if (serial_compare(ch_from, ch_to) != SERIAL_LOWER ||
+	    (extra != NULL && serial_compare(extra_from, extra_to) != SERIAL_LOWER)) {
+		return KNOT_ESEMCHECK;
 	}
 	int ret = knot_lmdb_open(j.db);
 	if (ret != KNOT_EOK) {
@@ -324,7 +330,7 @@ int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *e
 
 	if (extra != NULL) {
 		journal_write_changeset(&txn, extra);
-		journal_metadata_after_extra(&md, changeset_from(extra), changeset_to(extra));
+		journal_metadata_after_extra(&md, extra_from, extra_to);
 	}
 
 	journal_store_metadata(&txn, j.zone, &md);
