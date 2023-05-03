@@ -1,7 +1,7 @@
 lib_LTLIBRARIES += libknot.la
 pkgconfig_DATA  += libknot.pc
 
-libknot_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS)\
+libknot_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
                       $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS) \
                       ${fuzzer_CFLAGS}
 libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS) \
