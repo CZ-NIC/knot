@@ -32,6 +32,8 @@ struct journal_read {
 	const knot_dname_t *zone;
 	wire_ctx_t wire;
 	uint32_t next;
+	uint32_t changesets_read;
+	uint32_t changesets_total;
 };
 
 int journal_read_get_error(const journal_read_t *ctx, int another_error)
@@ -56,6 +58,10 @@ static bool go_next_changeset(journal_read_t *ctx, bool go_zone, const knot_dnam
 		ctx->txn.ret = KNOT_ELOOP;
 		return false;
 	}
+	if (++ctx->changesets_read > ctx->changesets_total) {
+		ctx->txn.ret = KNOT_ELOOP;
+		return false;
+	}
 	ctx->next = journal_next_serial(&ctx->txn.cur_val);
 	update_ctx_wire(ctx);
 	return true;
@@ -77,6 +83,10 @@ int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, j
 	newctx->next = serial_from;
 
 	knot_lmdb_begin(j.db, &newctx->txn, false);
+
+	journal_metadata_t md = { 0 };
+	journal_load_metadata(&newctx->txn, newctx->zone, &md);
+	newctx->changesets_total = md.changeset_count + (read_zone ? 1 : 0);
 
 	if (go_next_changeset(newctx, read_zone, j.zone)) {
 		*ctx = newctx;
@@ -271,8 +281,7 @@ int journal_walk_from(zone_journal_t j, uint32_t from,
 		return ret;
 	}
 
-	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && from != md.serial_to &&
-	    ret == KNOT_EOK) {
+	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && ret == KNOT_EOK) {
 		ret = journal_read_begin(j, false, from, &read);
 		while (ret == KNOT_EOK && journal_read_changeset(read, &ch)) {
 			ret = cb(false, &ch, ctx);
@@ -331,6 +340,9 @@ read_one_special:
 
 	if (ret == KNOT_EOK) {
 		ret = journal_walk_from(j, md.first_serial, cb, ctx);
+		if (ret == KNOT_ENOENT && zone_in_j) {
+			ret = KNOT_EOK; // solo zone-in-journal
+		}
 	}
 	return ret;
 }

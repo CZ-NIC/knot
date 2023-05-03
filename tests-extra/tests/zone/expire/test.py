@@ -90,6 +90,10 @@ test_not_expired(zone, sub_slave)
 # shorter EDNS Expire received in SOA query responses. Simulate an
 # expire timer difference (normally caused by multi-path propagation)
 # by lowering the expire value while keeping the serial.
+# Journal must be disabled in order to allow mangled SOA serials.
+master.zones["example."].journal_content = "none"
+master.gen_confile()
+master.reload()
 master.ctl("zone-begin example.")
 master.ctl("zone-set example. example. 1200 SOA ns admin 4242 2 2 5 600")
 master.ctl("zone-commit example.")
