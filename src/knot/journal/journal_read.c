@@ -281,8 +281,7 @@ int journal_walk_from(zone_journal_t j, uint32_t from,
 		return ret;
 	}
 
-	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && from != md.serial_to &&
-	    ret == KNOT_EOK) {
+	if ((md.flags & JOURNAL_SERIAL_TO_VALID) && ret == KNOT_EOK) {
 		ret = journal_read_begin(j, false, from, &read);
 		while (ret == KNOT_EOK && journal_read_changeset(read, &ch)) {
 			ret = cb(false, &ch, ctx);
@@ -341,6 +340,9 @@ read_one_special:
 
 	if (ret == KNOT_EOK) {
 		ret = journal_walk_from(j, md.first_serial, cb, ctx);
+		if (ret == KNOT_ENOENT && zone_in_j) {
+			ret = KNOT_EOK; // solo zone-in-journal
+		}
 	}
 	return ret;
 }
