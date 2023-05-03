@@ -27,6 +27,6 @@ struct pkt_payload {
 
 extern struct pkt_payload *global_payloads;
 
-bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid);
+bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid, size_t maxcount);
 
 void free_global_payloads(void);
