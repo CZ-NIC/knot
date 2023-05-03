@@ -4,7 +4,8 @@ sbin_PROGRAMS =
 if HAVE_LIBUTILS
 noinst_LTLIBRARIES += libknotus.la
 
-libknotus_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS) \
+libknotus_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
+                        $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS) \
                         $(libedit_CFLAGS) $(libidn2_CFLAGS) $(libidn_CFLAGS) \
                         $(libkqueue_CFLAGS) $(libnghttp2_CFLAGS) $(libngtcp2_CFLAGS) \
                         $(lmdb_CFLAGS)
