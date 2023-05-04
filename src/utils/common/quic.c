@@ -91,7 +91,7 @@ static int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
 		.iov_len = datalen
 	};
 
-	int ret = knot_tcp_inbuf_update(&ctx->stream.in_buffer, in,
+	int ret = knot_tcp_inbuf_update(&ctx->stream.in_buffer, in, true,
 	                &ctx->stream.in_parsed, &ctx->stream.in_parsed_total);
 	if (ret != KNOT_EOK) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
