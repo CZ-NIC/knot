@@ -63,12 +63,20 @@ static bool iov_inc_pf(struct iovec *iov)
 	}
 }
 
-static size_t iov_count(const struct iovec *iov)
+static size_t iov_count(const struct iovec *iov, size_t *out_data)
 {
 	size_t res = 0;
 	struct iovec tmp = *iov;
-	while (tmp.iov_len >= sizeof(uint16_t) && iov_inc_pf(&tmp)) {
+	while (tmp.iov_len >= sizeof(uint16_t)) {
+		size_t shift = tcp_payload_len(iov);
+		if (tmp.iov_len < shift) {
+			return res;
+		}
 		res++;
+		if (out_data != NULL) {
+			*out_data += shift;
+		}
+		iov_inc(&tmp, shift);
 	}
 	return res;
 }
@@ -112,7 +120,7 @@ uint64_t buffer_alloc_size(uint64_t buffer_len)
 }
 
 _public_
-int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
+int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bufs,
                           knot_tinbufu_res_t **result, size_t *buffers_total)
 {
 	knot_tinbufu_res_t *out = NULL;
@@ -143,7 +151,8 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 		if (data_use.iov_len <= data.iov_len) { // usable payload combined from buffer and data ---> res[0] allocated tohether with res
 			iov_inc(&data, data_use.iov_len);
 
-			out = tinbufu_alloc(1 + iov_count(&data), buffer_req);
+			size_t bufssiz = 0, nbufs = 1 + iov_count(&data, &bufssiz);
+			out = tinbufu_alloc(nbufs, buffer_req + (alloc_bufs ? bufssiz : 0));
 			if (out == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -171,9 +180,9 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 			return KNOT_EOK;
 		}
 	} else { // just allocate res
-		size_t res_count = iov_count(&data);
+		size_t bufssiz = 0, res_count = iov_count(&data, &bufssiz);
 		if (res_count > 0) {
-			out = tinbufu_alloc(res_count, 0);
+			out = tinbufu_alloc(res_count, alloc_bufs ? bufssiz : 0);
 			if (out == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -188,8 +197,15 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
 			break;
 		}
 		assert(cur);
-		cur->iov_base = last;
+		if (!alloc_bufs) {
+			cur->iov_base = last;
+		} else if (cur != out->inbufs) {
+			cur->iov_base = (cur-1)->iov_base + (cur-1)->iov_len;
+		}
 		cur->iov_len = data.iov_base - last;
+		if (alloc_bufs) {
+			memcpy(cur->iov_base, last, cur->iov_len);
+		}
 		iov_inc2(cur);
 		cur++;
 	}

@@ -75,12 +75,13 @@ uint64_t buffer_alloc_size(uint64_t buffer_len);
  *
  * \param buffer         In/out: persistent buffer to store incomplete DNS payloads between receiving packets.
  * \param data           In: momental DNS payloads in incoming packet.
+ * \param alloc_bufs     In: allocate extra buffers and always copy data instead of pointing inside recvd data.
  * \param result         Out: list of incoming DNS messages.
  * \param buffers_total  In/Out: total size of buffers (will be increased or decreased).
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
+int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bufs,
                           knot_tinbufu_res_t **result, size_t *buffers_total);
 
 /*!
