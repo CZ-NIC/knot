@@ -197,7 +197,7 @@ static size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 	return res;
 }
 
-static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv)
+static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv, uint64_t qps)
 {
 	pthread_mutex_lock(&st->mutex);
 
@@ -205,8 +205,8 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv)
 #define pct(counter) ((counter) * 100.0 / st->qry_sent)
 
 	const char *name = tcp ? "SYNs:    " : quic ? "initials:" : "queries: ";
-	printf("total %s    %"PRIu64" (%"PRIu64" pps)\n", name,
-	       st->qry_sent, ps(st->qry_sent));
+	printf("total %s    %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name,
+	       st->qry_sent, ps(st->qry_sent), 100.0 * st->qry_sent / (st->duration / 1000000.0 * qps));
 	if (st->qry_sent > 0 && recv) {
 		if (tcp || quic) {
 		name = tcp ? "established:" : "handshakes: ";
@@ -764,7 +764,8 @@ void *xdp_gun_thread(void *_ctx)
 			assert(collected <= ctx->n_threads);
 			if (collected == ctx->n_threads) {
 				print_stats(&global_stats, ctx->tcp, ctx->quic,
-				            !(ctx->flags & KNOT_XDP_FILTER_DROP));
+				            !(ctx->flags & KNOT_XDP_FILTER_DROP),
+					    ctx->qps);
 				clear_stats(&global_stats);
 			}
 		}
@@ -1295,7 +1296,7 @@ int main(int argc, char *argv[])
 		pthread_join(threads[i], NULL);
 	}
 	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
-		print_stats(&global_stats, ctx.tcp, ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP));
+		print_stats(&global_stats, ctx.tcp, ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP), ctx.qps);
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 
