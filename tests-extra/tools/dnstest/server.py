@@ -194,6 +194,7 @@ class Server(object):
         self.serial_policy = None
         self.auto_acl = None
         self.provide_ixfr = None
+        self.quic_log = None
 
         self.inquirer = None
 
@@ -1315,6 +1316,11 @@ class Knot(Server):
         self._str(s, "remote-retry-delay", str(random.choice([0, 1, 5])))
         self._bool(s, "automatic-acl", self.auto_acl)
         s.end()
+
+        if self.quic_log:
+            s.begin("xdp")
+            s.item_str("quic-log", "on")
+            s.end()
 
         s.begin("control")
         s.item_str("listen", "knot.sock")
