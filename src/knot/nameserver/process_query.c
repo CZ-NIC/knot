@@ -642,6 +642,11 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 			next_state = KNOT_STATE_FAIL;
 			goto finish;
 		}
+
+		/* Optional postprocessing with known final EDNS + TSIG (for XFR stats). */
+		if (qdata->extra->ext_finished != NULL) {
+			qdata->extra->ext_finished(qdata, pkt, next_state);
+		}
 	}
 
 finish:

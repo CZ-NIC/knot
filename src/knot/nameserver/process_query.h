@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ typedef struct knotd_qdata_extra {
 	/* Extensions. */
 	void *ext;
 	void (*ext_cleanup)(knotd_qdata_t *); /*!< Extensions cleanup callback. */
+	void (*ext_finished)(knotd_qdata_t *, knot_pkt_t *, int); /*!< Optional postprocessing callback. */
 } knotd_qdata_extra_t;
 
 /*! \brief Visited wildcard node list. */

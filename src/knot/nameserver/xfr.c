@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata)
 	}
 
 	int ret = KNOT_EOK;
-	knot_mm_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->extra->ext;
 
 	/* Check if the zone wasn't expired during multi-message transfer. */
@@ -49,7 +48,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata)
 		if (ret == KNOT_EOK) { /* Finished. */
 			/* Complete change set. */
 			rem_node((node_t *)head);
-			mm_free(mm, head);
+			mm_free(qdata->mm, head);
 		} else { /* Packet full or other error. */
 			break;
 		}
@@ -59,9 +58,6 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, knotd_qdata_t *qdata)
 	if (ret == KNOT_EOK) {
 		ret = knot_pkt_put(pkt, 0, &soa_rr, KNOT_PF_NOTRUNC);
 	}
-
-	/* Update counters. */
-	xfr_stats_add(&xfer->stats, pkt->size + knot_rrset_size(&qdata->opt_rr));
 
 	/* If a rrset is larger than the message,
 	 * fail to avoid infinite loop of empty messages */

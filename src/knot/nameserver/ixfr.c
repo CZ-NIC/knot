@@ -150,15 +150,33 @@ static int ixfr_query_check(knotd_qdata_t *qdata)
 static void ixfr_answer_cleanup(knotd_qdata_t *qdata)
 {
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->extra->ext;
-	knot_mm_t *mm = qdata->mm;
 
 	knot_rrset_clear(&ixfr->cur_rr, NULL);
-	ptrlist_free(&ixfr->proc.nodes, mm);
+	ptrlist_free(&ixfr->proc.nodes, qdata->mm);
 	journal_read_end(ixfr->journal_ctx);
-	mm_free(mm, qdata->extra->ext);
+	mm_free(qdata->mm, qdata->extra->ext);
 
 	/* Allow zone changes (finished). */
 	rcu_read_unlock();
+}
+
+static void ixfr_answer_finished(knotd_qdata_t *qdata, knot_pkt_t *pkt, int state)
+{
+	struct xfr_proc *xfr = qdata->extra->ext;
+
+	switch (state) {
+	case KNOT_STATE_PRODUCE:
+		xfr_stats_add(&xfr->stats, pkt->size);
+		break;
+	case KNOT_STATE_DONE:
+		xfr_stats_add(&xfr->stats, pkt->size);
+		xfr_stats_end(&xfr->stats);
+		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_IXFR, LOG_DIRECTION_OUT,
+		                 REMOTE(qdata), false, &xfr->stats);
+		break;
+	default:
+		break;
+	}
 }
 
 static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
@@ -217,6 +235,7 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 
 	qdata->extra->ext = xfer;
 	qdata->extra->ext_cleanup = &ixfr_answer_cleanup;
+	qdata->extra->ext_finished = &ixfr_answer_finished;
 
 	/* No zone changes during multipacket answer (unlocked in ixfr_answer_cleanup) */
 	rcu_read_lock();
@@ -321,9 +340,6 @@ int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 			IXFROUT_LOG(LOG_ERR, qdata, "failed (inconsistent history)");
 			return KNOT_STATE_FAIL;
 		}
-		xfr_stats_end(&ixfr->proc.stats);
-		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_IXFR, LOG_DIRECTION_OUT,
-		                 REMOTE(qdata), false, &ixfr->proc.stats);
 		return KNOT_STATE_DONE;
 	default:          /* Generic error. */
 		IXFROUT_LOG(LOG_ERR, qdata, "failed (%s)", knot_strerror(ret));
