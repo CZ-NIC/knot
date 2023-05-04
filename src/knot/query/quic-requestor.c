@@ -22,11 +22,18 @@
 
 #include "contrib/net.h"
 #include "contrib/time.h"
+#include "knot/common/log.h" // please use this only for tiny stuff like quic-log
+#include "knot/conf/conf.h" // please use this only for tiny stuff like quic-log
 #include "knot/server/handler.h"
 #include "libknot/error.h"
 #include "libknot/quic/quic.h"
 
 #define QUIC_BUF_SIZE 4096
+
+static void quic_log_cb(const char *line)
+{
+	log_debug("QUIC: %s", line);
+}
 
 static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeout_ms)
 {
@@ -121,6 +128,11 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 		knot_quic_free_creds(creds);
 		free(r);
 		return KNOT_ENOMEM;
+	}
+
+	conf_val_t qlval = conf_get(conf(), C_XDP, C_QUIC_LOG);
+	if (conf_bool(&qlval)) {
+		table->log_cb = quic_log_cb;
 	}
 
 	knot_quic_conn_t *conn = NULL;
