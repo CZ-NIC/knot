@@ -44,8 +44,9 @@ void free_global_payloads()
 	global_payloads = NULL;
 }
 
-bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
+bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid, size_t maxcount)
 {
+	size_t read = 0;
 	FILE *f = fopen(filename, "r");
 	if (f == NULL) {
 		ERR2(ERR_PREFIX "file '%s' (%s)", filename, strerror(errno));
@@ -66,7 +67,10 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 		goto fail;
 	}
 
-	while (fgets(bufs->line, sizeof(bufs->line), f) != NULL) {
+	while (read < maxcount) {
+		if (fgets(bufs->line, sizeof(bufs->line), f) == NULL) {
+			break;
+		}
 		bufs->flags_txt[0] = '\0';
 		int ret = sscanf(bufs->line, "%s%s%s", bufs->dname_txt, bufs->type_txt, bufs->flags_txt);
 		if (ret < 2) {
@@ -140,6 +144,7 @@ bool load_queries(const char *filename, uint16_t edns_size, uint16_t msgid)
 			g_payloads_top->next = pkt;
 			g_payloads_top = pkt;
 		}
+		read++;
 	}
 
 	if (global_payloads == NULL) {

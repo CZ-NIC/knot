@@ -1131,7 +1131,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	int opt = 0, arg;
 	bool default_at_once = true;
 	double argf;
-	char *argcp, *local_ip = NULL;
+	char *argcp, *local_ip = NULL, *filename = NULL;
 	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
@@ -1235,9 +1235,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			local_ip = optarg;
 			break;
 		case 'i':
-			if (!load_queries(optarg, ctx->edns_size, ctx->msgid)) {
-				return false;
-			}
+			filename = optarg;
 			break;
 		case 'L':
 			if (mac_sscan(optarg, ctx->local_mac) != KNOT_EOK) {
@@ -1266,6 +1264,14 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			print_help();
 			return false;
 		}
+	}
+	if (filename == NULL) {
+		print_help();
+		return false;
+	}
+	size_t qcount = ctx->duration / 1000000 * ctx->qps;
+	if (!load_queries(filename, ctx->edns_size, ctx->msgid, qcount)) {
+		return false;
 	}
 	if (global_payloads == NULL || argc - optind != 1) {
 		print_help();
