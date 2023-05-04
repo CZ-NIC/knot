@@ -202,7 +202,7 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv)
 	pthread_mutex_lock(&st->mutex);
 
 #define ps(counter)  ((counter) * 1000 / (st->duration / 1000))
-#define pct(counter) ((counter) * 100 / st->qry_sent)
+#define pct(counter) ((counter) * 100.0 / st->qry_sent)
 
 	const char *name = tcp ? "SYNs:    " : quic ? "initials:" : "queries: ";
 	printf("total %s    %"PRIu64" (%"PRIu64" pps)\n", name,
@@ -210,17 +210,17 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv)
 	if (st->qry_sent > 0 && recv) {
 		if (tcp || quic) {
 		name = tcp ? "established:" : "handshakes: ";
-		printf("total %s %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n", name,
+		printf("total %s %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name,
 		       st->synack_recv, ps(st->synack_recv), pct(st->synack_recv));
 		}
-		printf("total replies:     %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
+		printf("total replies:     %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
 		       st->ans_recv, ps(st->ans_recv), pct(st->ans_recv));
 		if (tcp) {
-		printf("total closed:      %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
+		printf("total closed:      %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
 		       st->finack_recv, ps(st->finack_recv), pct(st->finack_recv));
 		}
 		if (st->rst_recv > 0) {
-		printf("total reset:       %"PRIu64" (%"PRIu64" pps) (%"PRIu64"%%)\n",
+		printf("total reset:       %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
 		       st->rst_recv, ps(st->rst_recv), pct(st->rst_recv));
 		}
 		printf("average DNS reply size: %"PRIu64" B\n",
