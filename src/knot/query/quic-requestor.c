@@ -53,7 +53,7 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 	r->in_payload->iov_len = ret;
 
 	knot_quic_conn_t *hconn = NULL;
-	ret = knot_quic_handle(conn->quic_table, r, timeout_ms * 1000L, &hconn);
+	ret = knot_quic_handle(conn->quic_table, r, timeout_ms * 1000000LU, &hconn);
 	if (hconn == NULL) {
 		return KNOT_EOK;
 	} else if (hconn != conn) {
@@ -106,7 +106,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 	r->ip_rem = remote;
 	r->ip_loc = local;
 	r->in_payload = ((void *)r) + sizeof(*r);
-	r->out_payload = r->in_payload + 1;
+	r->out_payload = ((void *)r->in_payload) + sizeof(*r->in_payload);
 	r->in_payload->iov_base = ((void *)r->out_payload) + sizeof(*r->out_payload);
 	r->out_payload->iov_base = r->in_payload->iov_base + QUIC_BUF_SIZE;
 	r->sock = (void *)(size_t)fd;
@@ -154,7 +154,6 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 		}
 	}
 
-	r->in_ctx = conn;
 	*out = r;
 
 	return KNOT_EOK;
