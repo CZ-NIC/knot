@@ -832,7 +832,7 @@ void *xdp_gun_thread(void *_ctx)
 			if (collected == ctx->n_threads) {
 				print_stats(&global_stats, ctx->tcp, ctx->quic,
 				            !(ctx->flags & KNOT_XDP_FILTER_DROP),
-					    ctx->qps);
+					    ctx->qps * ctx->n_threads);
 				clear_stats(&global_stats);
 			}
 		}
@@ -1363,7 +1363,7 @@ int main(int argc, char *argv[])
 		pthread_join(threads[i], NULL);
 	}
 	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
-		print_stats(&global_stats, ctx.tcp, ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP), ctx.qps);
+		print_stats(&global_stats, ctx.tcp, ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP), ctx.qps * ctx.n_threads);
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 
