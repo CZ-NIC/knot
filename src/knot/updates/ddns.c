@@ -19,7 +19,6 @@
 #include "knot/common/log.h"
 #include "knot/updates/ddns.h"
 #include "knot/updates/changesets.h"
-#include "knot/updates/zone-update.h"
 #include "knot/zone/serial.h"
 #include "libknot/libknot.h"
 #include "contrib/ucw/lists.h"
@@ -661,10 +660,10 @@ int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
 	return ret;
 }
 
-int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
-                        zone_update_t *update, uint16_t *rcode)
+int ddns_process_update(const knot_pkt_t *query, zone_update_t *update,
+                        uint16_t *rcode)
 {
-	if (zone == NULL || query == NULL || update == NULL || rcode == NULL) {
+	if (query == NULL || update == NULL || rcode == NULL) {
 		if (rcode) {
 			*rcode = ret_to_rcode(KNOT_EINVAL);
 		}

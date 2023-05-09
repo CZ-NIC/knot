@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ static void init_qdata_from_request(knotd_qdata_t *qdata,
 }
 
 static int check_prereqs(knot_request_t *request,
-                         const zone_t *zone, zone_update_t *update,
+                         zone_update_t *update,
                          knotd_qdata_t *qdata)
 {
 	uint16_t rcode = KNOT_RCODE_NOERROR;
@@ -67,11 +67,11 @@ static int check_prereqs(knot_request_t *request,
 }
 
 static int process_single_update(knot_request_t *request,
-                                 const zone_t *zone, zone_update_t *update,
+                                 zone_update_t *update,
                                  knotd_qdata_t *qdata)
 {
 	uint16_t rcode = KNOT_RCODE_NOERROR;
-	int ret = ddns_process_update(zone, request->query, update, &rcode);
+	int ret = ddns_process_update(request->query, update, &rcode);
 	if (ret != KNOT_EOK) {
 		UPDATE_LOG(LOG_WARNING, qdata, "failed to apply (%s)",
 		           knot_strerror(ret));
@@ -108,13 +108,13 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 		knotd_qdata_extra_t extra;
 		init_qdata_from_request(&qdata, zone, req, &params, &extra);
 
-		int ret = check_prereqs(req, zone, up, &qdata);
+		int ret = check_prereqs(req, up, &qdata);
 		if (ret != KNOT_EOK) {
 			// Skip updates with failed prereqs.
 			continue;
 		}
 
-		ret = process_single_update(req, zone, up, &qdata);
+		ret = process_single_update(req, up, &qdata);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
