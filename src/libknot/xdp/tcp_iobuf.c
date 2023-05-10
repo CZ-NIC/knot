@@ -126,7 +126,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 	knot_tinbufu_res_t *out = NULL;
 	struct iovec *cur = NULL;
 
-	if (data.iov_len < 1) {
+	if (data.iov_len <= 0) {
 		return KNOT_EOK;
 	}
 	if (buffer->iov_len == 1) {
