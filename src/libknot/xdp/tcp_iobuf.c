@@ -229,15 +229,19 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 
 	// store the final incomplete payload to buffer
 	if (data.iov_len > 0) {
-		assert(buffer->iov_base == NULL);
-		size_t bufalloc = buffer_alloc_size(data.iov_len);
-		buffer->iov_base = malloc(bufalloc);
-		if (buffer->iov_base == NULL) {
-			free(out);
-			return KNOT_ENOMEM;
+		size_t buffer_original_size = buffer_alloc_size(buffer->iov_len);
+		size_t bufalloc = buffer_alloc_size(buffer->iov_len + data.iov_len);
+		if (buffer_original_size < bufalloc) {
+			void *newbuf = realloc(buffer->iov_base, bufalloc);
+			if (newbuf == NULL) {
+				free(buffer->iov_base);
+				buffer->iov_base = NULL;
+				free(out);
+				return KNOT_ENOMEM;
+			}
+			buffer->iov_base = newbuf;
+			*buffers_total += bufalloc - buffer_original_size;
 		}
-		*buffers_total += bufalloc;
-		buffer->iov_len = 0;
 		iov_append(buffer, &data);
 	}
 
