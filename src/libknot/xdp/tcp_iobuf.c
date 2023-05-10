@@ -109,15 +109,15 @@ uint64_t buffer_alloc_size(uint64_t buffer_len)
 	if (buffer_len == 0) {
 		return 0;
 	}
-	uint64_t x = buffer_len - 1;
-	x |= 0x3f; // the result will be at least 64
-	x |= (x >> 1);
-	x |= (x >> 2);
-	x |= (x >> 4);
-	x |= (x >> 8);
-	x |= (x >> 16);
-	x |= (x >> 32);
-	return x + 1; // closest higher (than buffer_len-1) power of two
+	buffer_len -= 1;
+	buffer_len |= 0x3f; // the result will be at least 64
+	buffer_len |= (buffer_len >> 1);
+	buffer_len |= (buffer_len >> 2);
+	buffer_len |= (buffer_len >> 4);
+	buffer_len |= (buffer_len >> 8);
+	buffer_len |= (buffer_len >> 16);
+	buffer_len |= (buffer_len >> 32);
+	return buffer_len + 1;
 }
 
 _public_
