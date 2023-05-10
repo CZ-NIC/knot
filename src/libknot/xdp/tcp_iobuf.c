@@ -129,11 +129,15 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 	if (data.iov_len <= 0) {
 		return KNOT_EOK;
 	}
+
+	// Finalize size bytes in buffer
+	assert(buffer != NULL && result != NULL && buffers_total != NULL);
 	if (buffer->iov_len == 1) {
+		assert(buffer->iov_base != NULL);
 		((uint8_t *)buffer->iov_base)[1] = ((uint8_t *)data.iov_base)[0];
 		buffer->iov_len++;
 		iov_inc(&data, 1);
-		if (data.iov_len < 1) {
+		if (data.iov_len <= 0) {
 			return KNOT_EOK;
 		}
 	}
