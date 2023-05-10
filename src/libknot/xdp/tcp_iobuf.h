@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,7 +52,6 @@ typedef struct knot_sweep_stats {
 } knot_sweep_stats_t;
 
 typedef struct knot_tinbufu_res {
-	struct iovec *inbufs;
 	size_t n_inbufs;
 	struct knot_tinbufu_res *next;
 } knot_tinbufu_res_t;
@@ -124,5 +123,10 @@ void knot_tcp_outbufs_can_send(knot_tcp_outbuf_t *bufs, ssize_t window_size, boo
  * \brief Compute allocated size of output buffers.
  */
 size_t knot_tcp_outbufs_usage(knot_tcp_outbuf_t *bufs);
+
+/*!
+ * \brief Return pointer to parsed iovec
+ */
+struct iovec *knot_tinbufu_res_inbufs(knot_tinbufu_res_t *node);
 
 /*! @} */
