@@ -216,7 +216,8 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			// Consume the query.
 			params_xdp_update(params, KNOTD_QUERY_PROTO_TCP, ctx->msg_recv,
 			                  rl->conn->establish_rtt, NULL);
-			handle_query(params, layer, &rl->inbf->inbufs[j], NULL);
+			struct iovec *inbufs = knot_tinbufu_res_inbufs(rl->inbf);
+			handle_query(params, layer, &inbufs[j], NULL);
 
 			// Process the reply.
 			knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);

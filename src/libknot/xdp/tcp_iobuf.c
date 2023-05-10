@@ -56,16 +56,13 @@ static void iov_append(struct iovec *what, const struct iovec *with)
 
 static knot_tinbufu_res_t *tinbufu_alloc(size_t inbuf_count, size_t first_inbuf)
 {
-	knot_tinbufu_res_t *res = malloc(sizeof(*res) + inbuf_count*sizeof(*res->inbufs) + first_inbuf);
+	knot_tinbufu_res_t *res = malloc(sizeof(*res) + inbuf_count*sizeof(struct iovec) + first_inbuf);
 	if (res == NULL) {
 		return NULL;
 	}
 
 	res->next = NULL;
 	res->n_inbufs = inbuf_count;
-	res->inbufs = (void *)(res + 1);
-	res->inbufs[0].iov_base = (void *)(res->inbufs + inbuf_count);
-	res->inbufs[0].iov_len = 0;
 	return res;
 }
 
@@ -150,9 +147,9 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 			return KNOT_ENOMEM;
 		}
 
-		uint8_t *out_buf_ptr = (uint8_t *)(out->inbufs + iov_cnt);
+		cur = knot_tinbufu_res_inbufs(out);
+		uint8_t *out_buf_ptr = (uint8_t *)(cur + iov_cnt);
 		data_use = data;
-		cur = out->inbufs;
 		if (buffer->iov_len >= 2) { // at least some data in buffer
 			struct iovec bf = {
 				.iov_base = buffer->iov_base + sizeof(uint16_t),
@@ -172,7 +169,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 		}
 
 		if (alloc_bufs) {
-			for (; cur != out->inbufs + iov_cnt; ++cur) {
+			for (; cur != knot_tinbufu_res_inbufs(out) + iov_cnt; ++cur) {
 				cur->iov_base = out_buf_ptr;
 				cur->iov_len = 0;
 				data_use.iov_len = tcp_payload_len(&data);
@@ -183,7 +180,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 				out_buf_ptr = cur->iov_base + cur->iov_len;
 			}
 		} else {
-			for (; cur != out->inbufs + iov_cnt; ++cur) {
+			for (; cur != knot_tinbufu_res_inbufs(out) + iov_cnt; ++cur) {
 				cur->iov_len = tcp_payload_len(&data);
 				iov_inc(&data, 2);
 				cur->iov_base = data.iov_base;
@@ -300,4 +297,10 @@ size_t knot_tcp_outbufs_usage(knot_tcp_outbuf_t *bufs)
 		res += i->len + sizeof(*i);
 	}
 	return res;
+}
+
+_public_
+struct iovec *knot_tinbufu_res_inbufs(knot_tinbufu_res_t *node)
+{
+	return (struct iovec *)(node + 1);
 }

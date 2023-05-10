@@ -52,7 +52,6 @@ typedef struct knot_sweep_stats {
 } knot_sweep_stats_t;
 
 typedef struct knot_tinbufu_res {
-	struct iovec *inbufs;
 	size_t n_inbufs;
 	struct knot_tinbufu_res *next;
 } knot_tinbufu_res_t;
@@ -124,5 +123,10 @@ void knot_tcp_outbufs_can_send(knot_tcp_outbuf_t *bufs, ssize_t window_size, boo
  * \brief Compute allocated size of output buffers.
  */
 size_t knot_tcp_outbufs_usage(knot_tcp_outbuf_t *bufs);
+
+/*!
+ * \brief Return pointer to parsed iovec
+ */
+struct iovec *knot_tinbufu_res_inbufs(knot_tinbufu_res_t *node);
 
 /*! @} */
