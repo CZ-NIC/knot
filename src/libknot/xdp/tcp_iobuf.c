@@ -46,10 +46,11 @@ static void iov_inc2(struct iovec *iov)
 
 static size_t tcp_payload_len(const struct iovec *payload)
 {
-	assert(payload->iov_len >= 2);
-	uint16_t val;
-	memcpy(&val, payload->iov_base, sizeof(val));
-	return be16toh(val) + sizeof(val);
+	if (payload->iov_len < 2) {
+		return 0;
+	}
+	uint16_t val = *(uint16_t *)payload->iov_base;
+	return be16toh(val);
 }
 
 static bool iov_inc_pf(struct iovec *iov)
@@ -145,6 +146,36 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 	// find the end of linked list if not already
 	while (*result != NULL) {
 		result = &(*result)->next;
+	}
+
+	// Count space needed for finished segments
+	size_t iov_cnt = 0, iov_bytesize = 0, message_len = 0;
+	struct iovec data_use = data;
+	bool skip_cnt = false;
+	if (buffer->iov_len >= 2) {
+		message_len = tcp_payload_len(buffer);
+		size_t data_offset = message_len - (buffer->iov_len - sizeof(uint16_t));
+		if (data_use.iov_len >= data_offset) {
+			++iov_cnt;
+			iov_bytesize += message_len;
+			iov_inc(&data_use, data_offset);
+		} else {
+			skip_cnt = true;
+		}
+	}
+	if (!skip_cnt) {
+		if (alloc_bufs) {
+			while (data_use.iov_len >= 2 && (message_len = tcp_payload_len(&data_use)) <= (data_use.iov_len - sizeof(uint16_t))) {
+				++iov_cnt;
+				iov_bytesize += message_len;
+				iov_inc(&data_use, message_len + sizeof(uint16_t));
+			}
+		} else {
+			while (data_use.iov_len >= 2 && (message_len = tcp_payload_len(&data_use)) <= (data_use.iov_len - sizeof(uint16_t))) {
+				++iov_cnt;
+				iov_inc(&data_use, message_len + sizeof(uint16_t));
+			}
+		}
 	}
 
 	if (buffer->iov_len > 0) {
