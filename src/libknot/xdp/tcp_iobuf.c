@@ -38,12 +38,6 @@ static void iov_inc(struct iovec *iov, size_t shift)
 	iov->iov_len -= shift;
 }
 
-/*! \brief Strip 2-byte length prefix from a payload. */
-static void iov_inc2(struct iovec *iov)
-{
-	iov_inc(iov, sizeof(uint16_t));
-}
-
 static size_t tcp_payload_len(const struct iovec *payload)
 {
 	if (payload->iov_len < 2) {
@@ -51,35 +45,6 @@ static size_t tcp_payload_len(const struct iovec *payload)
 	}
 	uint16_t val = *(uint16_t *)payload->iov_base;
 	return be16toh(val);
-}
-
-static bool iov_inc_pf(struct iovec *iov)
-{
-	size_t shift = tcp_payload_len(iov);
-	if (iov->iov_len >= shift) {
-		iov_inc(iov, shift);
-		return true;
-	} else {
-		return false;
-	}
-}
-
-static size_t iov_count(const struct iovec *iov, size_t *out_data)
-{
-	size_t res = 0;
-	struct iovec tmp = *iov;
-	while (tmp.iov_len >= sizeof(uint16_t)) {
-		size_t shift = tcp_payload_len(iov);
-		if (tmp.iov_len < shift) {
-			return res;
-		}
-		res++;
-		if (out_data != NULL) {
-			*out_data += shift;
-		}
-		iov_inc(&tmp, shift);
-	}
-	return res;
 }
 
 static void iov_append(struct iovec *what, const struct iovec *with)
