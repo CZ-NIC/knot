@@ -702,7 +702,7 @@ void *xdp_gun_thread(void *_ctx)
 							break;
 						}
 						for (size_t j = 0; rl->inbf != NULL && j < rl->inbf->n_inbufs; j++) {
-							if (check_dns_payload(&rl->inbf->inbufs[j], ctx, &local_stats)) {
+							if (check_dns_payload(&knot_tinbufu_res_inbufs(rl->inbf)[j], ctx, &local_stats)) {
 								if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
 									rl->answer = XDP_TCP_CLOSE;
 								}
@@ -779,7 +779,7 @@ void *xdp_gun_thread(void *_ctx)
 
 						stream0 = knot_quic_conn_get_stream(conn, 0, false);
 						if (stream0 != NULL && stream0->inbufs != NULL) {
-							check_dns_payload(&stream0->inbufs->inbufs[0], ctx, &local_stats);
+							check_dns_payload(&knot_tinbufu_res_inbufs(stream0->inbufs)[0], ctx, &local_stats);
 							free(stream0->inbufs);
 							stream0->inbufs = NULL;
 
