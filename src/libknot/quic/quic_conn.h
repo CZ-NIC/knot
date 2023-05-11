@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <sys/uio.h>
 
-#define MAX_STREAMS_PER_CONN 10
+#define MAX_STREAMS_PER_CONN 10 // this limits the number of un-finished streams per conn (i.e. if response has been recvd with FIN, it doesn't count)
 
 struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
 struct knot_quic_creds;
