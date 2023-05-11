@@ -51,12 +51,12 @@ static void test_scheduling(zone_t *zone)
 	timestamp = zone_events_get_next(zone, &event);
 	ok(timestamp >= now + (offset / 2) && event == ZONE_EVENT_FLUSH, "flush is next");
 
-	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, 0);
+	zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, (time_t)0);
 
 	timestamp = zone_events_get_next(zone, &event);
 	ok(timestamp >= now + offset && event == ZONE_EVENT_EXPIRE, "expire is next");
 
-	zone_events_schedule_at(zone, ZONE_EVENT_EXPIRE, 0);
+	zone_events_schedule_at(zone, ZONE_EVENT_EXPIRE, (time_t)0);
 
 	timestamp = zone_events_get_next(zone, &event);
 	ok(timestamp < 0 && event == ZONE_EVENT_INVALID, "nothing planned");
