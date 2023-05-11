@@ -87,19 +87,12 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 		msgtype = DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE;
 	}
 
-	/* Determine whether we run on UDP/TCP. */
-	/* TODO: distinguish QUIC. */
-	int protocol = IPPROTO_UDP;
-	if (qdata->params->proto == KNOTD_QUERY_PROTO_TCP) {
-		protocol = IPPROTO_TCP;
-	}
-
 	/* Create a dnstap message. */
 	Dnstap__Message msg;
 	int ret = dt_message_fill(&msg, msgtype,
 	                          (const struct sockaddr *)knotd_qdata_remote_addr(qdata),
 	                          (const struct sockaddr *)knotd_qdata_local_addr(qdata),
-	                          protocol, pkt->wire, pkt->size, &tv);
+	                          qdata->params->proto, pkt->wire, pkt->size, &tv);
 	if (ret != KNOT_EOK) {
 		return state;
 	}
