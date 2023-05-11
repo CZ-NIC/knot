@@ -57,7 +57,7 @@ static const mapping_t SOCKET_PROTOCOL_MAPPING[] = {
  */
 static int encode(const mapping_t *mapping, int real)
 {
-	for (const mapping_t *m = mapping; m->dnstap != 0 ; m += 1) {
+	for (const mapping_t *m = mapping; m->dnstap != 0; m += 1) {
 		if (m->real == real) {
 			return m->dnstap;
 		}

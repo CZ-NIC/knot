@@ -31,9 +31,9 @@
 #include "contrib/ucw/lists.h"
 
 #if USE_DNSTAP
-# include "contrib/dnstap/convert.h"
-# include "contrib/dnstap/message.h"
-# include "contrib/dnstap/writer.h"
+#include "contrib/dnstap/convert.h"
+#include "contrib/dnstap/message.h"
+#include "contrib/dnstap/writer.h"
 
 #include "knot/include/module.h"
 
