@@ -35,6 +35,8 @@
 # include "contrib/dnstap/message.h"
 # include "contrib/dnstap/writer.h"
 
+#include "knot/include/module.h"
+
 static int write_dnstap(dt_writer_t           *writer,
                         const bool            is_query,
                         const uint8_t         *wire,
@@ -109,15 +111,18 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 
 	struct sockaddr_storage ss = { 0 };
 	int family = dt_family_decode(message->socket_family);
-	int proto = dt_protocol_decode(message->socket_protocol);
+	knotd_query_proto_t proto = dt_protocol_decode(message->socket_protocol);
 	int sock_type = 0;
 
 	switch (proto) {
-	case IPPROTO_TCP:
-		sock_type = SOCK_STREAM;
-		break;
-	case IPPROTO_UDP:
+	case KNOTD_QUERY_PROTO_UDP:
+	case KNOTD_QUERY_PROTO_QUIC:
 		sock_type = SOCK_DGRAM;
+		break;
+	case KNOTD_QUERY_PROTO_TCP:
+	case KNOTD_QUERY_PROTO_TLS:
+	case KNOTD_QUERY_PROTO_HTTPS:
+		sock_type = SOCK_STREAM;
 		break;
 	default:
 		break;
