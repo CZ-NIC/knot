@@ -151,7 +151,7 @@ flush_journal_replan:
 	zone->timers.last_flush = time(NULL);
 	if (sync_timeout > 0) {
 		time_t next_flush = zone->timers.last_flush + sync_timeout;
-		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, 0,
+		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, (time_t)0,
 		                              ZONE_EVENT_FLUSH, next_flush);
 	}
 

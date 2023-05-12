@@ -428,7 +428,7 @@ done:
 	if (result == KNOT_EOK) {
 		knot_time_t next = knot_time_min(ctx.offline_next_time, zone_expire);
 		// NOTE: this is usually NOOP since signing planned earlier
-		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, next ? next : -1);
+		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, (time_t)(next ? next : -1));
 	}
 
 	free_zone_keys(&keyset);
