@@ -984,24 +984,27 @@ static int zone_read(zone_t *zone, ctl_args_t *args)
 	}
 
 	rcu_read_lock();
+	zone_contents_t *contents = zone->contents;
 	if (args->data[KNOT_CTL_IDX_OWNER] != NULL) {
 		knot_dname_storage_t owner;
 
 		ret = get_owner(owner, sizeof(owner), zone->name, args);
 		if (ret != KNOT_EOK) {
+			rcu_read_unlock();
 			return ret;
 		}
 
-		const zone_node_t *node = zone_contents_node_or_nsec3(zone->contents, owner);
+		const zone_node_t *node = zone_contents_node_or_nsec3(contents, owner);
 		if (node == NULL) {
+			rcu_read_unlock();
 			return KNOT_ENONODE;
 		}
 
 		ret = send_node((zone_node_t *)node, ctx);
-	} else if (zone->contents != NULL) {
-		ret = zone_contents_apply(zone->contents, send_node, ctx);
+	} else if (contents != NULL) {
+		ret = zone_contents_apply(contents, send_node, ctx);
 		if (ret == KNOT_EOK) {
-			ret = zone_contents_nsec3_apply(zone->contents, send_node, ctx);
+			ret = zone_contents_nsec3_apply(contents, send_node, ctx);
 		}
 	}
 	rcu_read_unlock();
