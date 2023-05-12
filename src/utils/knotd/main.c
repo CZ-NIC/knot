@@ -33,6 +33,7 @@
 #include "libdnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "contrib/strtonum.h"
+#include "contrib/time.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/migration.h"
@@ -203,8 +204,44 @@ static void drop_capabilities(void)
 #endif /* ENABLE_CAP_NG */
 }
 
+static void check_loaded(server_t *server)
+{
+	static bool finished = false;
+	if (finished) {
+		return;
+	}
+
+	/* Avoid traversing the zonedb too frequently. */
+	static struct timespec last = { 0 };
+	struct timespec now = time_now();
+	if (last.tv_sec == now.tv_sec) {
+		return;
+	}
+	last = now;
+
+	if (!(conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING)) {
+		finished = true;
+		return;
+	}
+
+	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
+	while (!knot_zonedb_iter_finished(it)) {
+		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
+		if (zone->contents == NULL) {
+			knot_zonedb_iter_free(it);
+			return;
+		}
+		knot_zonedb_iter_next(it);
+	}
+	knot_zonedb_iter_free(it);
+
+	finished = true;
+	systemd_emit_running(true);
+}
+
 /*! \brief Event loop listening for signals and remote commands. */
-static void event_loop(server_t *server, const char *socket)
+static void event_loop(server_t *server, const char *socket, bool daemonize,
+                       unsigned long pid)
 {
 	knot_ctl_t *ctl = knot_ctl_alloc();
 	if (ctl == NULL) {
@@ -250,8 +287,10 @@ static void event_loop(server_t *server, const char *socket)
 
 	/* Notify systemd about successful start. */
 	systemd_ready_notify();
-	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
-		systemd_emit_running(true);
+	if (daemonize) {
+		log_info("server started as a daemon, PID %lu", pid);
+	} else {
+		log_info("server started in the foreground, PID %lu", pid);
 	}
 
 	/* Run event loop. */
@@ -277,6 +316,8 @@ static void event_loop(server_t *server, const char *socket)
 		if (sig_req_reload || sig_req_zones_reload) {
 			continue;
 		}
+
+		check_loaded(server);
 
 		ret = knot_ctl_accept(ctl);
 		if (ret != KNOT_EOK) {
@@ -600,14 +641,8 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (daemonize) {
-		log_info("server started as a daemon, PID %lu", pid);
-	} else {
-		log_info("server started in the foreground, PID %lu", pid);
-	}
-
 	/* Start the event loop. */
-	event_loop(&server, socket);
+	event_loop(&server, socket, daemonize, pid);
 
 	/* Teardown server. */
 	server_stop(&server);
