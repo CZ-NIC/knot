@@ -63,7 +63,7 @@ BuildRequires:	pkgconfig(libxdp)
 %if 0%{?fedora} || 0%{?rhel}
 BuildRequires:	python3-sphinx
 BuildRequires:	pkgconfig(lmdb)
-%if 0%{?fedora}
+%if 0%{?fedora} || 0%{?rhel} >= 9
 BuildRequires:	pkgconfig(libxdp)
 %endif
 %endif
