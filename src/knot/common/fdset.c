@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@ int fdset_init(fdset_t *set, const unsigned size)
 #if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	if (ret != KNOT_EOK) {
 		close(set->pfd);
+		memset(set, 0, sizeof(*set));
 	}
 #endif
 	return ret;
@@ -245,6 +246,7 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 		it->ptr++;
 		it->unprocessed--;
 	}
+
 	return it->unprocessed;
 #else
 	it->unprocessed = poll(&set->pfd[offset], set->n - offset, timeout_ms);
