@@ -96,6 +96,7 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 		                            timeout_ms);
 		if (ret != KNOT_EOK) {
 			close(request->fd);
+			request->fd = -1;
 			return ret;
 		}
 #else
