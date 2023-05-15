@@ -24,6 +24,7 @@
 #include "libknot/attribute.h"
 #include "libknot/endian.h"
 #include "libknot/error.h"
+#include "libknot/wire.h"
 
 static void iov_clear(struct iovec *iov)
 {
@@ -43,8 +44,7 @@ static size_t tcp_payload_len(const struct iovec *payload)
 	if (payload->iov_len < 2) {
 		return 0;
 	}
-	uint16_t val = *(uint16_t *)payload->iov_base;
-	return be16toh(val);
+	return knot_wire_read_u16(payload->iov_base);
 }
 
 static void iov_append(struct iovec *what, const struct iovec *with)
