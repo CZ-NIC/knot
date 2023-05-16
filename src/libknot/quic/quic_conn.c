@@ -351,19 +351,12 @@ int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
 	}
 
 	struct iovec in = { (void *)data, len };
-	knot_tinbufu_res_t *inbufu = NULL;
 	int ret = knot_tcp_inbuf_update(&stream->inbuf, in, true,
-	                                &inbufu, &conn->ibufs_size);
-	if (ret != KNOT_EOK || (inbufu == NULL && !fin)) {
+	                                &stream->inbufs, &conn->ibufs_size);
+	if (ret != KNOT_EOK || (stream->inbufs == NULL && !fin)) {
 		return ret;
 	}
-	//if (inbufu == NULL || inbufu->n_inbufs != 1 || !fin) {
-	//	free(inbufu);
-	//	return KNOT_ESEMCHECK;
-	//}
 
-	stream->inbufs = inbufu;
-	//stream->inbuf_fin_count = outs_count;
 	if (fin) {
 		stream_inprocess(conn, stream);
 	}
