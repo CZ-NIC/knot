@@ -25,7 +25,7 @@ def upd_check_zones(master, slave, zones, prev_serials):
 
     serials = slave.zones_wait(zones, prev_serials)
     t.xfr_diff(master, slave, zones, prev_serials)
-    prev_serials = serials
+    return serials
 
 try:
     t.start()
@@ -45,13 +45,13 @@ master.get_cert_key()
 slave.gen_confile()
 slave.reload()
 
-upd_check_zones(master, slave, rnd_zones, serials)
+serials = upd_check_zones(master, slave, rnd_zones, serials)
 
 # Authenticate slave
 slave.get_cert_key()
 master.gen_confile()
 master.reload()
 
-upd_check_zones(master, slave, rnd_zones, serials)
+serials = upd_check_zones(master, slave, rnd_zones, serials)
 
 t.end()
