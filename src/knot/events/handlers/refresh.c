@@ -107,6 +107,7 @@ struct refresh_data {
 	query_edns_data_t edns;           //!< EDNS data to be used in queries.
 	zone_master_fallback_t *fallback; //!< Flags allowing zone_master_try() fallbacks.
 	bool fallback_axfr;               //!< Flag allowing fallback to AXFR,
+	bool ixfr_by_one;                 //!< Allow only single changeset within IXFR.
 	uint32_t expire_timer;            //!< Result: expire timer from answer EDNS.
 
 	// internal state, initialize with zeroes:
@@ -742,6 +743,12 @@ static int ixfr_next_state(struct refresh_data *data, const knot_rrset_t *rr)
 
 	if ((state == IXFR_SOA_ADD || state == IXFR_ADD) &&
 	    knot_rrset_equal(rr, data->ixfr.final_soa, true)) {
+		data->ixfr_by_one = false; // just one changeset was there, no need to replan IXFR now
+		return IXFR_DONE;
+	}
+
+	if ((state == IXFR_SOA_ADD || state == IXFR_ADD) &&
+	    soa && data->ixfr_by_one) {
 		return IXFR_DONE;
 	}
 
@@ -1257,6 +1264,7 @@ static size_t max_zone_size(conf_t *conf, const knot_dname_t *zone)
 typedef struct {
 	bool force_axfr;
 	bool send_notify;
+	bool ixfr_by_one;
 } try_refresh_ctx_t;
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
@@ -1288,6 +1296,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.expire_timer = EXPIRE_TIMER_INVALID,
 		.fallback = fallback,
 		.fallback_axfr = false, // will be set upon IXFR consume
+		.ixfr_by_one = trctx->ixfr_by_one,
 	};
 
 	knot_requestor_t requestor;
@@ -1332,6 +1341,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	if (ret == KNOT_EOK) {
 		trctx->send_notify = data.updated && !master->block_notify_after_xfr;
 		trctx->force_axfr = false;
+		trctx->ixfr_by_one = data.updated && data.ixfr_by_one && data.xfr_type == XFR_TYPE_IXFR;
 	}
 
 	return ret;
@@ -1352,6 +1362,9 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		trctx.force_axfr = true;
 		zone->zonefile.retransfer = true;
 	}
+
+	conf_val_t val = conf_zone_get(conf, C_IXFR_BY_ONE, zone->name);
+	trctx.ixfr_by_one = conf_bool(&val);
 
 	int ret = zone_master_try(conf, zone, try_refresh, &trctx, "refresh");
 	zone_clear_preferred_master(zone);
@@ -1385,6 +1398,9 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	replan_from_timers(conf, zone);
 	if (trctx.send_notify) {
 		zone_schedule_notify(zone, 1);
+	}
+	if (trctx.ixfr_by_one && ret == KNOT_EOK) {
+		zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 	}
 
 	return ret;

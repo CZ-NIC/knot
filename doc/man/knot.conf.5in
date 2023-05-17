@@ -2012,6 +2012,7 @@ zone:
     journal\-content: none | changes | all
     journal\-max\-usage: SIZE
     journal\-max\-depth: INT
+    ixfr\-by\-one: BOOL
     zone\-max\-size : SIZE
     adjust\-threads: INT
     dnssec\-signing: BOOL
@@ -2255,6 +2256,18 @@ Zone\-in\-journal changeset isn\(aqt counted to the limit.
 \fIMinimum:\fP \fB2\fP
 .sp
 \fIDefault:\fP \fB20\fP
+.SS ixfr\-by\-one
+.sp
+Within incoming IXFR, process only one changeset at a time, not multiple together.
+This preserves the complete history in the journal and prevents the merging of
+changesets when multiple changesets are IXFRed simultaneously. However, this does not
+prevent the merging (or deletion) of old changesets in the journal to save space,
+as described in journal behaviour\&.
+.sp
+This option leads to increased server load when processing IXFR, including
+network traffic.
+.sp
+\fIDefault:\fP \fBoff\fP
 .SS zone\-max\-size
 .sp
 Maximum size of the zone. The size is measured as size of the zone records
