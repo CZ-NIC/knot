@@ -57,6 +57,7 @@ typedef struct {
 typedef struct {
 	struct iovec inbuf;
 	struct knot_tinbufu_res *inbufs;
+	size_t firstib_consumed;
 	knot_quic_ucw_list_t outbufs;
 	size_t obufs_size;
 

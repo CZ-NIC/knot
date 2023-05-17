@@ -173,20 +173,6 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 
 	assert(conn->streams_count != 0);
 
-	knot_tinbufu_res_t *firstib = stream->inbufs;
-	if (firstib != NULL && firstib->n_inbufs >= 2) { // first inbuf has been processed last time
-		assert(firstib->n_inbufs == 2);
-		struct iovec *inbufs = knot_tinbufu_res_inbufs(firstib);
-		if (inbufs[1].iov_len > out->iov_len) {
-			return KNOT_ESPACE;
-		}
-		out->iov_len = inbufs[1].iov_len;
-		memcpy(out->iov_base, inbufs[1].iov_base, out->iov_len);
-		stream->inbufs = firstib->next;
-		free(firstib);
-		return KNOT_EOK;
-	}
-
 	struct timespec t_start = time_now(), t_cur;
 	while (stream->inbufs == NULL) {
 		int ret = quic_exchange(conn, r, timeout_ms);
@@ -202,21 +188,19 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 		}
 	}
 
-	firstib = stream->inbufs;
-	if (firstib->n_inbufs > 2) {
-		return KNOT_ESEMCHECK; // this hardly happens
-	}
-
+	knot_tinbufu_res_t *firstib = stream->inbufs;
+	assert(stream->firstib_consumed < firstib->n_inbufs);
 	struct iovec *inbufs = knot_tinbufu_res_inbufs(firstib);
-	if (inbufs[0].iov_len <= out->iov_len) {
-		out->iov_len = inbufs[0].iov_len;
-		memcpy(out->iov_base, inbufs[0].iov_base, out->iov_len);
-		if (firstib->n_inbufs < 2) {
-			stream->inbufs = firstib->next;
-			free(firstib);
-		}
-	} else {
+	struct iovec *consum = &inbufs[stream->firstib_consumed];
+	if (consum->iov_len > out->iov_len) {
 		return KNOT_ESPACE;
+	}
+	out->iov_len = consum->iov_len;
+	memcpy(out->iov_base, consum->iov_base, out->iov_len);
+	if (++stream->firstib_consumed == firstib->n_inbufs) {
+		stream->firstib_consumed = 0;
+		stream->inbufs = firstib->next;
+		free(firstib);
 	}
 
 	return KNOT_EOK;
