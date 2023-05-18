@@ -751,7 +751,9 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	/* Check if authorized. */
 	if (!allowed) {
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
+		/* Don't insert possible TSIG record if generally denied by ACL. */
+		qdata->rcode_tsig = KNOT_RCODE_NOERROR;
+		qdata->sign.tsig_key.name = NULL;
 		return false;
 	}
 
