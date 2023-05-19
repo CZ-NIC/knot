@@ -108,7 +108,7 @@ struct knot_quic_creds *knot_quic_init_creds_peer(const struct knot_quic_creds *
 int knot_quic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_int **cert);
 
 /*!
- * \brief Init server TLS certificate for DoQ.
+ * \brief Deinit server TLS certificate for DoQ.
  */
 void knot_quic_free_creds(struct knot_quic_creds *creds);
 

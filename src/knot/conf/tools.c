@@ -467,7 +467,7 @@ int check_file(
 	if (ret != 0) {
 		args->err_str = "invalid file";
 		return KNOT_EINVAL;
-	} else if(!S_ISREG(st.st_mode)) {
+	} else if (!S_ISREG(st.st_mode)) {
 		args->err_str = "not a file";
 		return KNOT_EINVAL;
 	} else {
