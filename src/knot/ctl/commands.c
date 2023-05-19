@@ -81,7 +81,6 @@ static struct {
  *
  * \return false if there is a filter conflict, true otherwise.
  */
-
 static bool eval_opposite_filters(ctl_args_t *args, bool *param, bool dflt,
                                   int filter, int neg_filter)
 {
