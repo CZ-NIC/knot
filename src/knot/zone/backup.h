@@ -38,6 +38,8 @@ typedef struct zone_backup_ctx {
 	bool backup_timers;                 // if true, also backup timers (default on)
 	bool backup_kaspdb;                 // if true, also backup KASP database (default on)
 	bool backup_catalog;                // if true, also backup zone catalog (default on)
+	bool backup_quic;                   // if true, also backup QUIC server key and certificate
+	                                    //   (default on for backup, off for restore)
 	bool backup_global;                 // perform global backup for all zones
 	ssize_t readers;                    // when decremented to 0, all zones done, free this context
 	pthread_mutex_t readers_mutex;      // mutex covering readers counter

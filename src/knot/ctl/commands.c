@@ -516,7 +516,8 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	// Evaluate filters (and possibly fail) before writing to the filesystem.
-	bool filter_zonefile, filter_journal, filter_timers, filter_kaspdb, filter_catalog;
+	bool filter_zonefile, filter_journal, filter_timers, filter_kaspdb,
+	     filter_catalog, filter_quic;
 
 	// The default filter values are set just in this paragraph.
 	if (!(eval_opposite_filters(args, &filter_zonefile, true,
@@ -528,7 +529,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	    eval_opposite_filters(args, &filter_kaspdb, true,
 	                          CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB) &&
 	    eval_opposite_filters(args, &filter_catalog, true,
-	                          CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG))) {
+	                          CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG) &&
+	    eval_opposite_filters(args, &filter_quic, restore_mode ? false : true,
+	                          CTL_FILTER_BACKUP_QUIC, CTL_FILTER_BACKUP_NOQUIC))) {
 		return KNOT_EXPARAM;
 	}
 
@@ -556,6 +559,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	ctx->backup_timers = filter_timers;
 	ctx->backup_kaspdb = filter_kaspdb;
 	ctx->backup_catalog = filter_catalog;
+	ctx->backup_quic = filter_quic;
 
 	zone_backups_add(&args->server->backup_ctxs, ctx);
 
