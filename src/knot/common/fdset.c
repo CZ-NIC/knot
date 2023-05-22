@@ -67,7 +67,7 @@ int fdset_init(fdset_t *set, const unsigned size)
 #if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	if (ret != KNOT_EOK) {
 		close(set->pfd);
-		memset(set, 0, sizeof(*set));
+		set->pfd = -1;
 	}
 #endif
 	return ret;
@@ -246,7 +246,6 @@ int fdset_poll(fdset_t *set, fdset_it_t *it, const unsigned offset, const int ti
 		it->ptr++;
 		it->unprocessed--;
 	}
-
 	return it->unprocessed;
 #else
 	it->unprocessed = poll(&set->pfd[offset], set->n - offset, timeout_ms);
