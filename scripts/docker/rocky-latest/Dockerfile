@@ -22,5 +22,6 @@ RUN dnf -y --enablerepo crb install \
 	'pkgconfig(libprotobuf-c)' \
 	'pkgconfig(libsystemd)' \
 	'pkgconfig(liburcu)' \
+	'pkgconfig(libxdp)' \
 	'python3-sphinx' \
 	'systemd'
