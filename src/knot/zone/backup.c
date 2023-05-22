@@ -39,7 +39,7 @@
 #include "libdnssec/error.h"
 
 // Current backup format version for output. Don't decrease it.
-#define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.
+#define BACKUP_VERSION BACKUP_FORMAT_3  // Starting with release 3.3.0.
 
 static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 {
@@ -252,6 +252,7 @@ static int backup_zonefile(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 		ABORT_IF_ENOMEM(backup_zf);
 		break;
 	case BACKUP_FORMAT_2:
+	case BACKUP_FORMAT_3:
 	default:
 		backup_zfiles_dir = dir_file(ctx->backup_dir, "zonefiles");
 		ABORT_IF_ENOMEM(backup_zfiles_dir);

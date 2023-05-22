@@ -25,7 +25,8 @@
 /*! \bref Backup format versions. */
 typedef enum {
 	BACKUP_FORMAT_1 = 1,           // in Knot DNS 3.0.x, no label file
-	BACKUP_FORMAT_2 = 2,           // in Knot DNS 3.1.x
+	BACKUP_FORMAT_2 = 2,           // in Knot DNS 3.1.x, 3.2.x
+	BACKUP_FORMAT_3 = 3,           // in Knot DNS 3.3.x, QUIC added
 	BACKUP_FORMAT_TERM,
 } knot_backup_format_t;
 
