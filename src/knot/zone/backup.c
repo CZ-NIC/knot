@@ -34,6 +34,7 @@
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
+#include "knot/server/server.h"
 #include "knot/zone/backup_dir.h"
 #include "knot/zone/zonefile.h"
 #include "libdnssec/error.h"
@@ -229,6 +230,27 @@ static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)
 	return policy;
 }
 
+static int backup_file(char *dst, char *src)
+{
+	struct stat st;
+	int ret;
+
+	if (stat(src, &st) == 0) {
+		ret = make_path(dst, S_IRWXU | S_IRWXG);
+		if (ret == KNOT_EOK) {
+			ret = copy_file(dst, src);
+		}
+	} else {
+		ret = errno == ENOENT ? KNOT_EFILE : knot_map_errno();
+		// If there's no src file, remove any old dst file.
+		if (ret == KNOT_EFILE) {
+			unlink(dst);
+		}
+	}
+
+	return ret;
+}
+
 #define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)", ctx->restore_mode ? \
                          "restore" : "backup", (action), knot_strerror(ret))
 #define LOG_MARK_FAIL(action) LOG_FAIL(action); \
@@ -264,21 +286,7 @@ static int backup_zonefile(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	}
 
 	if (ctx->restore_mode) {
-		struct stat st;
-		if (stat(backup_zf, &st) == 0) {
-			ret = make_path(local_zf, S_IRWXU | S_IRWXG);
-			if (ret == KNOT_EOK) {
-				ret = copy_file(local_zf, backup_zf);
-			}
-		} else {
-			ret = errno == ENOENT ? KNOT_EFILE : knot_map_errno();
-			/* If there's no zone file in the backup, remove any old zone file
-			 * from the repository.
-			 */
-			if (ret == KNOT_EFILE) {
-				unlink(local_zf);
-			}
-		}
+		ret = backup_file(local_zf, backup_zf);
 	} else {
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		bool can_flush = (conf_int(&val) > -1);
@@ -458,5 +466,67 @@ int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
 	if (ret != KNOT_EOK) {
 		ctx->failed = true;
 	}
+	return ret;
+}
+
+static int backup_quic_file(zone_backup_ctx_t *ctx, char *file, char *desc)
+{
+	char *backup_quic_dir = NULL, *backup_orig = NULL, *backup;
+	int ret;
+
+	backup_quic_dir = dir_file(ctx->backup_dir, "keys");
+	ABORT_IF_ENOMEM(backup_quic_dir);
+	backup_orig = backup = dir_file(backup_quic_dir, file);
+	ABORT_IF_ENOMEM(backup);
+
+	BACKUP_SWAP(ctx, backup, file);
+	ret = backup_file(backup, file);
+	if (ret == KNOT_EFILE) {
+		log_ctl_notice("no QUIC %s file from %s", desc,
+		               ctx->restore_mode ? "backup" : "repository");
+		ret = KNOT_EOK;
+	}
+done:
+	free(backup_orig);
+	free(backup_quic_dir);
+	return ret;
+}
+
+int backup_quic(zone_backup_ctx_t *ctx)
+{
+	if (!ctx->backup_quic) {
+		return KNOT_EOK;
+	}
+
+	if (ctx->backup_format < BACKUP_FORMAT_3) {
+		// In the backup mode, backup_format is always at least BACKUP_FORMAT_3.
+		log_ctl_error("old backup format, no QUIC data for restore");
+		return KNOT_ENOTSUP;
+	}
+
+	// Backup the configured QUIC data regardless if the QUIC itself is configured.
+	char *tls_cert = conf_tls(conf(), C_CERT_FILE);
+	char *tls_key = conf_tls(conf(), C_KEY_FILE);
+	int ret = KNOT_EOK;
+
+	if (tls_cert == NULL) {
+		// Detect the auto-generated key.
+		assert(tls_key == NULL);
+		conf_val_t liquic_val = conf_get(conf(), C_SRV, C_LISTEN_QUIC);
+		if (conf_val_count(&liquic_val) > 0) {
+			char *kasp_dir = conf_db(conf(), C_KASP_DB);
+			tls_key = abs_path(DFLT_QUIC_KEY_FILE, kasp_dir);
+			free(kasp_dir);
+		}
+	} else {
+		ret = backup_quic_file(ctx, tls_cert, "certificate");
+	}
+	free(tls_cert);
+
+	if (ret == KNOT_EOK && tls_key != NULL) {
+		ret = backup_quic_file(ctx, tls_key, "key");
+	}
+	free(tls_key);
+
 	return ret;
 }
