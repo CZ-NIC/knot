@@ -28,6 +28,8 @@
 #include "knot/zone/backup.h"
 #include "knot/zone/zonedb.h"
 
+#define DFLT_QUIC_KEY_FILE	"quic_key.pem"
+
 struct server;
 struct knot_xdp_socket;
 struct knot_quic_creds;

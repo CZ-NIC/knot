@@ -61,8 +61,6 @@
 #include <linux/filter.h>
 #endif
 
-#define DFLT_QUIC_KEY_FILE	"quic_key.pem"
-
 /*! \brief Minimal send/receive buffer sizes. */
 enum {
 	UDP_MIN_RCVSIZE = 4096,
