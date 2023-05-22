@@ -32,7 +32,7 @@
 
 static void quic_log_cb(const char *line)
 {
-	log_debug("QUIC: %s", line);
+	log_debug("QUIC requestor: %s", line);
 }
 
 static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeout_ms)
