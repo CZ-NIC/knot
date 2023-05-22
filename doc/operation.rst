@@ -1073,6 +1073,14 @@ if the backup was created for only a subset of zones.
    to 3.1, it's necessary to use the ``-f`` option. Since this option also
    turns off some verification checks, it shouldn't be used in other cases.
 
+.. NOTE::
+   For QUIC, only the auto-generated key is restored. The ``zone-restore``
+   command doesn't restore a user-defined QUIC key and certificate so as to
+   avoid possible configuration management conflicts and they must be restored
+   from the backup (its subdirectory ``quic``) manually. In all cases,
+   restart of the Knot server after the restore is necessary for the restored
+   QUIC key/certificate to take effect.
+
 Limitations
 -----------
 

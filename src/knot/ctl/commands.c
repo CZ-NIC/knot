@@ -630,9 +630,21 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		return KNOT_CTL_EZONE;
 	}
 
+	zone_backup_ctx_t *ctx = latest_backup_ctx(args);
+
+	/* QUIC - server key and cert backup. */
+	ret = backup_quic(ctx);
+	if (ret != KNOT_EOK) {
+		log_ctl_error("control, QUIC %s error (%s)",
+		              restore_mode ? "restore" : "backup",
+		              knot_strerror(ret));
+		send_error(args, knot_strerror(ret));
+		ret = KNOT_EOK;
+		goto done;
+	}
+
 	/* Global catalog zones backup. */
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-		zone_backup_ctx_t *ctx = latest_backup_ctx(args);
 		ctx->backup_global = true;
 		ret = global_backup(ctx, &args->server->catalog, NULL);
 		if (ret != KNOT_EOK) {
