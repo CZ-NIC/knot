@@ -1306,8 +1306,9 @@ transfer, target for a notification, etc.).
    - id: STR
      address: ADDR[@INT] | STR ...
      via: ADDR[@INT] ...
+     quic: BOOL
      key: key_id
-     cert-pin: BASE64 ...
+     cert-key: BASE64 ...
      block-notify-after-transfer: BOOL
      no-edns: BOOL
      automatic-acl: BOOL
@@ -1327,7 +1328,7 @@ address
 An ordered list of destination IP addresses or UNIX socket paths which are
 used for communication with the remote server. Non-absolute path
 (i.e. not starting with ``/``) is relative to :ref:`server_rundir`.
-Optional destination port (default is 53)
+Optional destination port (default is 53 for UDP/TCP and 853 for QUIC)
 can be appended to the address using ``@`` separator.
 The addresses are tried in sequence until the
 remote is reached.
@@ -1351,6 +1352,23 @@ to the address using ``@`` separator.
 
 *Default:* not set
 
+.. _remote_quic:
+
+quic
+----
+
+If this option is set, the QUIC protocol will be used for outgoing communication
+with this remote.
+
+Current limitations:
+
+- One connection per each transfer is opened, :ref:`server_remote-pool-limit`
+  does not take effect for QUIC.
+- Full handshake is always performed, obtained Session tickets are not
+  utilized for faster handshakes.
+- The client does not close the connection gracefully and let it time out
+  from the server side.
+
 .. _remote_key:
 
 key
@@ -1361,17 +1379,17 @@ the communication with the remote server.
 
 *Default:* not set
 
-.. _remote_cert-pin:
+.. _remote_cert-key:
 
-cert-pin
+cert-key
 --------
 
-An ordered list of remote certificate PINs. If the list is non-empty,
+An ordered list of remote certificate public key PINs. If the list is non-empty,
 communication with the remote is possible only via QUIC protocol and
-a peer certificate is required. The peer certificate must match one of the
+a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 
-A PIN is a unique identifier that represent the public key of the peer certificate.
+A PIN is a unique identifier that represents the public key of the peer certificate.
 It's a base64-encoded SHA-256 hash of the public key. This identifier
 remains the same on a certificate renewal.
 
@@ -1468,7 +1486,7 @@ and dynamic DNS update) which are allowed to be processed or denied.
    - id: STR
      address: ADDR[/INT] | ADDR-ADDR | STR ...
      key: key_id ...
-     cert-pin: BASE64 ...
+     cert-key: BASE64 ...
      remote: remote_id | remotes_id ...
      action: query | notify | transfer | update ...
      deny: BOOL
@@ -1506,17 +1524,17 @@ match one of them. If this item is not set, transaction authentication is not us
 
 *Default:* not set
 
-.. _acl_cert-pin:
+.. _acl_cert-key:
 
-cert-pin
+cert-key
 --------
 
-An ordered list of remote certificate PINs. If the list is non-empty,
+An ordered list of remote certificate public key PINs. If the list is non-empty,
 communication with the remote is possible only via QUIC protocol and
-a peer certificate is required. The peer certificate must match one of the
+a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 
-A PIN is a unique identifier that represent the public key of the peer certificate.
+A PIN is a unique identifier that represents the public key of the peer certificate.
 It's a base64-encoded SHA-256 hash of the public key. This identifier
 remains the same on a certificate renewal.
 

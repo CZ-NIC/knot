@@ -103,8 +103,10 @@ void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
 	knot_quic_stream_t *stream;
 
 	while (conn != NULL && (stream = knot_quic_stream_get_process(conn, &stream_id)) != NULL) {
-		assert(stream->inbuf_fin != NULL);
-		assert(stream->inbuf_fin->iov_len > 0);
+		assert(stream->inbufs != NULL);
+		assert(stream->inbufs->n_inbufs > 0);
+		struct iovec *inbufs = knot_tinbufu_res_inbufs(stream->inbufs);
+		assert(inbufs[0].iov_len > 0);
 		if (msg) {
 #ifdef ENABLE_XDP
 			params_xdp_update(params, KNOTD_QUERY_PROTO_QUIC, msg,
@@ -113,10 +115,14 @@ void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
 		} else {
 			params_update(params, knot_quic_conn_rtt(conn), conn);
 		}
-		handle_quic_stream(conn, stream_id, stream->inbuf_fin, layer, params,
+		// NOTE: only the first msg in the stream is used, the rest is dropped.
+		handle_quic_stream(conn, stream_id, &inbufs[0], layer, params,
 		                   ans_buf, sizeof(ans_buf));
-		free(stream->inbuf_fin);
-		stream->inbuf_fin = NULL;
+		while (stream->inbufs != NULL) {
+			struct knot_tinbufu_res *tofree = stream->inbufs;
+			stream->inbufs = tofree->next;
+			free(tofree);
+		}
 	}
 }
 #endif // ENABLE_QUIC

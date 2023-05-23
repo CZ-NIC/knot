@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,12 +27,18 @@ typedef struct {
 	struct sockaddr_storage addr;
 	/*! Local outgoing socket address. */
 	struct sockaddr_storage via;
+	/*! QUIC context. */
+	bool quic;
 	/*! TSIG key. */
 	knot_tsig_key_t key;
 	/*! Suppress sending NOTIFY after zone transfer from this master. */
 	bool block_notify_after_xfr;
 	/*! Disable EDNS on XFR queries. */
 	bool no_edns;
+	/*! Possible remote certificate PIN. */
+	const uint8_t *pin;
+	/*! Length of the remote certificate PIN. Zero if PIN not specified. */
+	size_t pin_len;
 } conf_remote_t;
 
 /*! Configuration section iterator. */
@@ -531,13 +537,21 @@ const uint8_t* conf_data(
  *
  * \param[in] val            Item value.
  * \param[in] sock_base_dir  Path prefix for a relative UNIX socket location.
+ * \param[in] alternative    Use alternative default port if port not specified.
  *
  * \return Socket address.
  */
-struct sockaddr_storage conf_addr(
+struct sockaddr_storage conf_addr_alt(
 	conf_val_t *val,
-	const char *sock_base_dir
+	const char *sock_base_dir,
+	bool alternative
 );
+inline static struct sockaddr_storage conf_addr(
+	conf_val_t *val,
+	const char *sock_base_dir)
+{
+	return conf_addr_alt(val, sock_base_dir, false);
+}
 
 /*!
  * Checks the configured address if equal to given one (except port).

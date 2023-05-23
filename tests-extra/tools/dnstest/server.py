@@ -158,6 +158,8 @@ class Server(object):
         self.addr = None
         self.addr_extra = list()
         self.port = 53 # Needed for keymgr when port not yet generated
+        self.quic_port = None
+        self.cert_key = str()
         self.udp_workers = None
         self.bg_workers = None
         self.fixed_port = False
@@ -193,6 +195,7 @@ class Server(object):
         self.serial_policy = None
         self.auto_acl = None
         self.provide_ixfr = None
+        self.quic_log = None
 
         self.inquirer = None
 
@@ -515,6 +518,17 @@ class Server(object):
         f = open(self.confile, mode="w")
         f.write(self.get_config())
         f.close()
+
+    def fill_cert_key(self):
+        try:
+            out = check_output([self.control_bin] + self.ctl_params + ["status", "cert-key"],
+                               stderr=open(self.dir + "/call.err", mode="a"))
+            key = out.rstrip().decode('ascii')
+            if key != "-":
+                self.cert_key = key
+        except CalledProcessError as e:
+            raise Failed("Can't get certificate key, server='%s', ret='%i'" %
+                         (self.name, e.returncode))
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
             tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
@@ -1294,6 +1308,8 @@ class Knot(Server):
             s.item_str("listen", "%s" % self.addr)
         else:
             s.item_str("listen", "%s@%s" % (self.addr, self.port))
+        if self.quic_port:
+            s.item_str("listen-quic", "%s@%s" % (self.addr, self.quic_port))
         if self.udp_workers:
             s.item_str("udp-workers", self.udp_workers)
         if self.bg_workers:
@@ -1312,6 +1328,11 @@ class Knot(Server):
         self._str(s, "remote-retry-delay", str(random.choice([0, 1, 5])))
         self._bool(s, "automatic-acl", self.auto_acl)
         s.end()
+
+        if self.quic_log:
+            s.begin("xdp")
+            s.item_str("quic-log", "on")
+            s.end()
 
         s.begin("control")
         s.item_str("listen", "knot.sock")
@@ -1342,10 +1363,16 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", master.name)
-                    if master.addr.startswith("/"):
-                        s.item_str("address", "%s" % master.addr)
+                    if master.quic_port:
+                        s.item_str("address", "%s@%s" % (master.addr, master.quic_port))
+                        s.item_str("quic", "on")
+                        if master.cert_key:
+                            s.item_str("cert-key", master.cert_key)
                     else:
-                        s.item_str("address", "%s@%s" % (master.addr, master.port))
+                        if master.addr.startswith("/"):
+                            s.item_str("address", "%s" % master.addr)
+                        else:
+                            s.item_str("address", "%s@%s" % (master.addr, master.port))
                     if self.tsig:
                         s.item_str("key", self.tsig.name)
                     if master.no_xfr_edns:
@@ -1357,10 +1384,16 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", slave.name)
-                    if slave.addr.startswith("/"):
-                        s.item_str("address", "%s" % slave.addr)
+                    if slave.quic_port:
+                        s.item_str("address", "%s@%s" % (slave.addr, slave.quic_port))
+                        s.item_str("quic", "on")
+                        if slave.cert_key:
+                            s.item_str("cert-key", slave.cert_key)
                     else:
-                        s.item_str("address", "%s@%s" % (slave.addr, slave.port))
+                        if slave.addr.startswith("/"):
+                            s.item_str("address", "%s" % slave.addr)
+                        else:
+                            s.item_str("address", "%s@%s" % (slave.addr, slave.port))
                     if self.tsig:
                         s.item_str("key", self.tsig.name)
                     servers.add(slave.name)
@@ -1398,6 +1431,8 @@ class Knot(Server):
                         s.item_str("address", master.addr)
                     if master.tsig:
                         s.item_str("key", master.tsig.name)
+                    if master.cert_key:
+                        s.item_str("cert-key", master.cert_key)
                     s.item("action", "notify")
                     servers.add(master.name)
             for slave in z.slaves:
@@ -1410,7 +1445,9 @@ class Knot(Server):
                     s.item_str("address", slave.addr)
                 if slave.tsig:
                     s.item_str("key", slave.tsig.name)
-                s.item("action", "transfer")
+                if slave.cert_key:
+                    s.item_str("cert-key", slave.cert_key)
+                s.item("action", "[transfer, update]")
                 servers.add(slave.name)
         s.end()
 

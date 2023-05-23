@@ -31,13 +31,14 @@ class Test(object):
     rel_time = time.time()
     start_time = 0
 
-    def __init__(self, address=None, tsig=None, stress=True):
+    def __init__(self, address=None, tsig=None, stress=True, quic=False):
         if not os.path.exists(Context().out_dir):
             raise Exception("Output directory doesn't exist")
 
         self.out_dir = Context().out_dir
         self.data_dir = Context().test_dir + "/data/"
         self.zones_dir = self.out_dir + "/zones/"
+        self.quic = quic
 
         if address == 4 or address == 6:
             self.addr = Test.LOCAL_ADDR[address]
@@ -196,6 +197,7 @@ class Test(object):
 
             server.port = self._gen_port()
             server.ctlport = self._gen_port()
+            server.quic_port = self._gen_port() if self.quic else None
 
         for server in self.servers:
             server.gen_confile()

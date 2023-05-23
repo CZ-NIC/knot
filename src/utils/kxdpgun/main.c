@@ -494,7 +494,7 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	if (ctx->quic) {
 #ifdef ENABLE_QUIC
-		quic_creds = knot_quic_init_creds(false, NULL, NULL, NULL, 0);
+		quic_creds = knot_quic_init_creds_peer(NULL, NULL, 0);
 		if (quic_creds == NULL) {
 			ERR2("failed to initialize QUIC context");
 			return NULL;
@@ -701,8 +701,8 @@ void *xdp_gun_thread(void *_ctx)
 						default:
 							break;
 						}
-						for (size_t j = 0; j < rl->inbufs_count; j++) {
-							if (check_dns_payload(&rl->inbufs[j], ctx, &local_stats)) {
+						for (size_t j = 0; rl->inbf != NULL && j < rl->inbf->n_inbufs; j++) {
+							if (check_dns_payload(&knot_tinbufu_res_inbufs(rl->inbf)[j], ctx, &local_stats)) {
 								if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
 									rl->answer = XDP_TCP_CLOSE;
 								}
@@ -778,10 +778,10 @@ void *xdp_gun_thread(void *_ctx)
 						}
 
 						stream0 = knot_quic_conn_get_stream(conn, 0, false);
-						if (stream0 != NULL && stream0->inbuf_fin != NULL) {
-							check_dns_payload(stream0->inbuf_fin, ctx, &local_stats);
-							free(stream0->inbuf_fin);
-							stream0->inbuf_fin = NULL;
+						if (stream0 != NULL && stream0->inbufs != NULL) {
+							check_dns_payload(&knot_tinbufu_res_inbufs(stream0->inbufs)[0], ctx, &local_stats);
+							free(stream0->inbufs);
+							stream0->inbufs = NULL;
 
 							if ((ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK)) {
 								knot_quic_table_rem(conn, quic_table);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,10 +15,14 @@
  */
 
 #include <assert.h>
+#include <sys/socket.h>
 
 #include "libknot/attribute.h"
 #include "knot/common/unreachable.h"
 #include "knot/query/requestor.h"
+#ifdef ENABLE_QUIC
+#include "knot/query/quic-requestor.h"
+#endif // ENABLE_QUIC
 #include "libknot/errcode.h"
 #include "contrib/conn_pool.h"
 #include "contrib/mempattern.h"
@@ -27,7 +31,12 @@
 
 static bool use_tcp(knot_request_t *request)
 {
-	return (request->flags & KNOT_REQUEST_UDP) == 0;
+	return (request->flags & (KNOT_REQUEST_UDP | KNOT_REQUEST_QUIC)) == 0;
+}
+
+static bool use_quic(knot_request_t *request)
+{
+	return (request->flags & KNOT_REQUEST_QUIC) != 0;
 }
 
 static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer)
@@ -36,7 +45,7 @@ static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer
 }
 
 /*! \brief Ensure a socket is connected. */
-static int request_ensure_connected(knot_request_t *request, bool *reused_fd)
+static int request_ensure_connected(knot_request_t *request, bool *reused_fd, int timeout_ms)
 {
 	if (request->fd >= 0) {
 		return KNOT_EOK;
@@ -73,6 +82,28 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd)
 		return request->fd;
 	}
 
+	if (use_quic(request)) {
+		if (request->source.ss_family == AF_UNSPEC) {
+			socklen_t local_len = sizeof(request->source);
+			(void)getsockname(request->fd, (struct sockaddr *)&request->source,
+			                  &local_len);
+		}
+#ifdef ENABLE_QUIC
+		int ret = knot_qreq_connect(&request->quic_ctx,
+		                            request->fd, &request->remote,
+		                            &request->source, request->creds,
+		                            request->pin, request->pin_len,
+		                            timeout_ms);
+		if (ret != KNOT_EOK) {
+			close(request->fd);
+			request->fd = -1;
+			return ret;
+		}
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+	}
+
 	return KNOT_EOK;
 }
 
@@ -80,7 +111,7 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 {
 	/* Initiate non-blocking connect if not connected. */
 	*reused_fd = false;
-	int ret = request_ensure_connected(request, reused_fd);
+	int ret = request_ensure_connected(request, reused_fd, timeout_ms);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -93,7 +124,14 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 	                                    &request->remote : NULL;
 
 	/* Send query. */
-	if (use_tcp(request)) {
+	if (use_quic(request)) {
+#ifdef ENABLE_QUIC
+		struct iovec tosend = { wire, wire_len };
+		return knot_qreq_send(request->quic_ctx, &tosend);
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+	} else if (use_tcp(request)) {
 		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms,
 		                       tfo_addr);
 		if (ret == KNOT_ETIMEOUT) { // Includes establishing conn which times out.
@@ -118,13 +156,22 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	knot_pkt_clear(resp);
 
 	/* Wait for readability */
-	int ret = request_ensure_connected(request, NULL);
+	int ret = request_ensure_connected(request, NULL, timeout_ms);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	/* Receive it */
-	if (use_tcp(request)) {
+	if (use_quic(request)) {
+#ifdef ENABLE_QUIC
+		struct iovec recvd = { resp->wire, resp->max_size };
+		ret = knot_qreq_recv(request->quic_ctx, &recvd, timeout_ms);
+		resp->size = recvd.iov_len;
+		return ret;
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+	} else if (use_tcp(request)) {
 		ret = net_dns_tcp_recv(request->fd, resp->wire, resp->max_size, timeout_ms);
 	} else {
 		ret = net_dgram_recv(request->fd, resp->wire, resp->max_size, timeout_ms);
@@ -141,18 +188,21 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	return ret;
 }
 
-knot_request_t *knot_request_make(knot_mm_t *mm,
-                                  const struct sockaddr_storage *remote,
-                                  const struct sockaddr_storage *source,
-                                  knot_pkt_t *query,
-                                  const knot_tsig_key_t *tsig_key,
-                                  knot_request_flag_t flags)
+knot_request_t *knot_request_make_generic(knot_mm_t *mm,
+                                          const struct sockaddr_storage *remote,
+                                          const struct sockaddr_storage *source,
+                                          knot_pkt_t *query,
+                                          const struct knot_quic_creds *creds,
+                                          const knot_tsig_key_t *tsig_key,
+                                          const uint8_t *pin,
+                                          size_t pin_len,
+                                          knot_request_flag_t flags)
 {
 	if (remote == NULL || query == NULL) {
 		return NULL;
 	}
 
-	knot_request_t *request = mm_calloc(mm, 1, sizeof(*request));
+	knot_request_t *request = mm_calloc(mm, 1, sizeof(*request) + pin_len);
 	if (request == NULL) {
 		return NULL;
 	}
@@ -178,13 +228,42 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
 	}
 	tsig_init(&request->tsig, tsig_key);
 
+	request->creds = creds;
+	if (flags & KNOT_REQUEST_QUIC && pin_len > 0) {
+		request->pin_len = pin_len;
+		memcpy(request->pin, pin, pin_len);
+	}
+
 	return request;
+}
+
+knot_request_t *knot_request_make(knot_mm_t *mm,
+                                  const conf_remote_t *remote,
+                                  knot_pkt_t *query,
+                                  const struct knot_quic_creds *creds,
+                                  knot_request_flag_t flags)
+{
+	if (remote->quic) {
+		flags |= KNOT_REQUEST_QUIC;
+	}
+
+	return knot_request_make_generic(mm, &remote->addr, &remote->via,
+	                                 query, creds, &remote->key, remote->pin,
+	                                 remote->pin_len, flags);
 }
 
 void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 {
 	if (request == NULL) {
 		return;
+	}
+
+	if (request->quic_ctx != NULL) {
+#ifdef ENABLE_QUIC
+		knot_qreq_close(request->quic_ctx);
+#else
+		assert(0);
+#endif // ENABLE_QUIC
 	}
 
 	if (request->fd >= 0 && use_tcp(request) &&

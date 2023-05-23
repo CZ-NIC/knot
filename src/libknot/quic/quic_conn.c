@@ -214,6 +214,10 @@ void quic_stream_free(knot_quic_conn_t *conn, int64_t stream_id)
 _public_
 void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 {
+	if (conn->conn == NULL) {
+		return;
+	}
+
 	if (conn->streams_count == -1) { // kxdpgun special
 		conn->streams_count = 1;
 	}
@@ -326,7 +330,7 @@ static void stream_outprocess(knot_quic_conn_t *conn, knot_quic_stream_t *stream
 
 	for (int16_t idx = conn->stream_inprocess + 1; idx < conn->streams_count; idx++) {
 		stream = &conn->streams[idx];
-		if (stream->inbuf_fin != NULL) {
+		if (stream->inbufs != NULL) {
 			conn->stream_inprocess = stream - conn->streams;
 			return;
 		}
@@ -346,20 +350,16 @@ int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
 		return KNOT_ENOENT;
 	}
 
-	struct iovec in = { (void *)data, len }, *outs;
-	size_t outs_count;
-	int ret = knot_tcp_inbuf_update(&stream->inbuf, in, &outs, &outs_count,
-	                                &conn->ibufs_size);
-	if (ret != KNOT_EOK || (outs_count == 0 && !fin)) {
+	struct iovec in = { (void *)data, len };
+	int ret = knot_tcp_inbuf_update(&stream->inbuf, in, true,
+	                                &stream->inbufs, &conn->ibufs_size);
+	if (ret != KNOT_EOK || (stream->inbufs == NULL && !fin)) {
 		return ret;
 	}
-	if (outs_count != 1 || !fin) {
-		free(outs);
-		return KNOT_ESEMCHECK;
-	}
 
-	stream->inbuf_fin = outs;
-	stream_inprocess(conn, stream);
+	if (fin) {
+		stream_inprocess(conn, stream);
+	}
 	return KNOT_EOK;
 }
 
@@ -438,7 +438,7 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *conn, int64_t stream_id,
 	if (EMPTY_LIST(*obs) && !keep_stream) {
 		stream_outprocess(conn, s);
 		memset(s, 0, sizeof(*s));
-		while (s = &conn->streams[0], s->inbuf.iov_len == 0 && s->inbuf_fin == NULL && s->obufs_size == 0) {
+		while (s = &conn->streams[0], s->inbuf.iov_len == 0 && s->inbufs == NULL && s->obufs_size == 0) {
 			assert(conn->streams_count > 0);
 			conn->streams_count--;
 

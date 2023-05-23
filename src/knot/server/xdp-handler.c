@@ -212,11 +212,12 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		knot_tcp_relay_t *rl = &ctx->relays[i];
 
 		// Process all complete DNS queries in one TCP stream.
-		for (size_t j = 0; j < rl->inbufs_count; j++) {
+		for (size_t j = 0; j < rl->inbf->n_inbufs; j++) {
 			// Consume the query.
 			params_xdp_update(params, KNOTD_QUERY_PROTO_TCP, ctx->msg_recv,
 			                  rl->conn->establish_rtt, NULL);
-			handle_query(params, layer, &rl->inbufs[j], NULL);
+			struct iovec *inbufs = knot_tinbufu_res_inbufs(rl->inbf);
+			handle_query(params, layer, &inbufs[j], NULL);
 
 			// Process the reply.
 			knot_pkt_t *ans = knot_pkt_new(ans_buf, sizeof(ans_buf), layer->mm);

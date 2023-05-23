@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -198,7 +198,7 @@ static void tcp_table_remove(knot_tcp_conn_t **todel, knot_tcp_table_t *table)
 {
 	assert(table->usage > 0);
 	rem_align_pointers(*todel, table);
-	table->inbufs_total -= (*todel)->inbuf.iov_len;
+	table->inbufs_total -= buffer_alloc_size((*todel)->inbuf.iov_len);
 	table->outbufs_total -= knot_tcp_outbufs_usage((*todel)->outbufs);
 	tcp_table_remove_conn(todel);
 	table->usage--;
@@ -326,8 +326,8 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_
 			if (!(ignore & XDP_TCP_IGNORE_DATA_ACK)) {
 				relay->auto_answer = KNOT_XDP_MSG_ACK;
 			}
-			ret = knot_tcp_inbuf_update(&conn->inbuf, msg->payload, &relay->inbufs,
-			                            &relay->inbufs_count, &tcp_table->inbufs_total);
+			ret = knot_tcp_inbuf_update(&conn->inbuf, msg->payload, false,
+			                            &relay->inbf, &tcp_table->inbufs_total);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -626,7 +626,7 @@ static void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
 	tcp_table_remove(tcp_table_re_lookup(rl->conn, tcp_table), tcp_table); // also updates tcp_table->next_*
 
 	*free_conns -= 1;
-	*free_inbuf -= rl->conn->inbuf.iov_len;
+	*free_inbuf -= buffer_alloc_size(rl->conn->inbuf.iov_len);
 	*free_outbuf -= knot_tcp_outbufs_usage(rl->conn->outbufs);
 
 	knot_sweep_stats_incr(stats, counter);
@@ -724,6 +724,6 @@ void knot_tcp_cleanup(knot_tcp_table_t *tcp_table, knot_tcp_relay_t relays[],
 		if (relays[i].answer & XDP_TCP_FREE) {
 			del_conn(relays[i].conn);
 		}
-		free(relays[i].inbufs);
+		free(relays[i].inbf);
 	}
 }

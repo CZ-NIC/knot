@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -222,7 +222,7 @@ void test_syn(void)
 	check_sent(0, 0, 1, 0);
 	is_int(XDP_TCP_SYN, rl.action, "SYN: relay action");
 	is_int(XDP_TCP_NOOP, rl.answer, "SYN: relay answer");
-	is_int(0, rl.inbufs_count, "SYN: no payload");
+	ok(NULL == rl.inbf, "SYN: no payload");
 	is_int(0, test_table->usage, "SYN: no connection in normal table");
 	is_int(1, test_syn_table->usage, "SYN: one connection in SYN table");
 	knot_tcp_conn_t *conn = tcp_table_find(test_syn_table, &msg);
@@ -314,31 +314,34 @@ void test_data_fragments(void)
 	is_int(KNOT_XDP_MSG_ACK, rls[0].auto_answer, "fragments[0]: auto answer");
 	ok(rls[0].conn != NULL, "fragments0: connection present");
 	ok(rls[0].conn == test_conn, "fragments0: same connection");
-	is_int(1, rls[0].inbufs_count, "fragments0: inbufs count");
-	is_int(3, rls[0].inbufs[0].iov_len, "fragments0: data length");
-	is_int(0, memcmp("xyz", rls[0].inbufs[0].iov_base, rls[0].inbufs[0].iov_len), "fragments0: data");
+	is_int(1, rls[0].inbf->n_inbufs, "fragments0: inbufs count");
+	struct iovec *inbufs = knot_tinbufu_res_inbufs(rls[0].inbf);
+	is_int(3, inbufs[0].iov_len, "fragments0: data length");
+	is_int(0, memcmp("xyz", inbufs[0].iov_base, inbufs[0].iov_len), "fragments0: data");
 
 	is_int(KNOT_XDP_MSG_ACK, rls[1].auto_answer, "fragments[1]: auto answer");
 	is_int(XDP_TCP_NOOP, rls[1].action, "fragments[1]: action"); // NOTE: NOOP
 	ok(rls[0].conn != NULL, "fragments1: connection present");
 	ok(rls[0].conn == test_conn, "fragments1: same connection");
-	is_int(0, rls[1].inbufs_count, "fragments1: inbufs count");
+	ok(NULL == rls[1].inbf, "fragments1: inbufs count");
 
 	is_int(KNOT_XDP_MSG_ACK, rls[2].auto_answer, "fragments[2]: auto answer");
 	ok(rls[0].conn != NULL, "fragments2: connection present");
 	ok(rls[0].conn == test_conn, "fragments2: same connection");
-	is_int(2, rls[2].inbufs_count, "fragments2: inbufs count");
-	is_int(4, rls[2].inbufs[0].iov_len, "fragments2-0: data length");
-	is_int(0, memcmp("abcd", rls[2].inbufs[0].iov_base, rls[2].inbufs[0].iov_len), "fragments2-0: data");
-	is_int(1, rls[2].inbufs[1].iov_len, "fragments2-1: data length");
-	is_int(0, memcmp("i", rls[2].inbufs[1].iov_base, rls[2].inbufs[1].iov_len), "fragments2-1: data");
+	is_int(2, rls[2].inbf->n_inbufs, "fragments2: inbufs count");
+	inbufs = knot_tinbufu_res_inbufs(rls[2].inbf);
+	is_int(4, inbufs[0].iov_len, "fragments2-0: data length");
+	is_int(0, memcmp("abcd", inbufs[0].iov_base, inbufs[0].iov_len), "fragments2-0: data");
+	is_int(1, inbufs[1].iov_len, "fragments2-1: data length");
+	is_int(0, memcmp("i", inbufs[1].iov_base, inbufs[1].iov_len), "fragments2-1: data");
 
 	is_int(KNOT_XDP_MSG_ACK, rls[3].auto_answer, "fragments[3]: auto answer");
 	ok(rls[0].conn != NULL, "fragments3: connection present");
 	ok(rls[0].conn == test_conn, "fragments3: same connection");
-	is_int(1, rls[3].inbufs_count, "fragments3: inbufs count");
-	is_int(2, rls[3].inbufs[0].iov_len, "fragments3: data length");
-	is_int(0, memcmp("AB", rls[3].inbufs[0].iov_base, rls[3].inbufs[0].iov_len), "fragments3: data");
+	is_int(1, rls[3].inbf->n_inbufs, "fragments3: inbufs count");
+	inbufs = knot_tinbufu_res_inbufs(rls[3].inbf);
+	is_int(2, inbufs[0].iov_len, "fragments3: data length");
+	is_int(0, memcmp("AB", inbufs[0].iov_base, inbufs[0].iov_len), "fragments3: data");
 
 	knot_tcp_cleanup(test_table, rls, 4);
 }
@@ -483,7 +486,7 @@ void test_ibufs_size(void)
 	ret = knot_tcp_send(test_sock, &rls[0], 1, 1);
 	is_int(KNOT_EOK, ret, "ibufs: must send OK");
 	check_sent(1, 0, 0, 0);
-	is_int(7, test_table->inbufs_total, "inbufs: first inbuf");
+	is_int(64, test_table->inbufs_total, "inbufs: first inbuf");
 	knot_tcp_cleanup(test_table, &rls[0], 1);
 
 	// other connection will just store fragments
@@ -497,15 +500,15 @@ void test_ibufs_size(void)
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
 	is_int(KNOT_EOK, ret, "inbufs: send OK");
 	check_sent(CONNS, 0, 0, 0);
-	is_int(21, test_table->inbufs_total, "inbufs: after change");
+	is_int(192, test_table->inbufs_total, "inbufs: after change");
 	is_int(0, rls[1].action, "inbufs: one relay");
-	is_int(10, rls[0].inbufs[0].iov_len, "inbufs: data length");
+	is_int(10, knot_tinbufu_res_inbufs(rls[0].inbf)[0].iov_len, "inbufs: data length");
 	knot_tcp_cleanup(test_table, rls, CONNS);
 
 	// now free some
 	knot_sweep_stats_t stats = { 0 };
 	ret = knot_tcp_sweep(test_table, INFTY, INFTY, INFTY, INFTY,
-	                     test_table->inbufs_total - 8, INFTY, rls,
+	                     64, INFTY, rls,
 	                     CONNS, &stats);
 	is_int(KNOT_EOK, ret, "inbufs: timeout OK");
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
@@ -514,7 +517,7 @@ void test_ibufs_size(void)
 	is_int(0, stats.counters[KNOT_SWEEP_CTR_TIMEOUT], "inbufs: close count");
 	is_int(2, stats.counters[KNOT_SWEEP_CTR_LIMIT_IBUF], "inbufs: reset count");
 	knot_tcp_cleanup(test_table, rls, CONNS);
-	is_int(7, test_table->inbufs_total, "inbufs: final state");
+	is_int(64, test_table->inbufs_total, "inbufs: final state");
 	ok(NULL != tcp_table_find(test_table, &msgs[0]), "inbufs: first conn survived");
 	ok(NULL == tcp_table_find(test_table, &msgs[1]), "inbufs: second conn not survived");
 	ok(NULL == tcp_table_find(test_table, &msgs[2]), "inbufs: third conn not survived");

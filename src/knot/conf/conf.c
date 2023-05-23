@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -721,9 +721,10 @@ const uint8_t* conf_data(
 	}
 }
 
-struct sockaddr_storage conf_addr(
+struct sockaddr_storage conf_addr_alt(
 	conf_val_t *val,
-	const char *sock_base_dir)
+	const char *sock_base_dir,
+	bool alternative)
 {
 	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TADDR ||
@@ -747,7 +748,9 @@ struct sockaddr_storage conf_addr(
 				free(tmp);
 			}
 		} else if (no_port) {
-			sockaddr_port_set(&out, val->item->var.a.dflt_port);
+			sockaddr_port_set(&out, alternative ?
+			                        val->item->var.a.dflt_port_alt :
+			                        val->item->var.a.dflt_port);
 		}
 	} else {
 		const char *dflt_socket = val->item->var.a.dflt_socket;
@@ -1370,11 +1373,14 @@ conf_remote_t conf_remote_txn(
 
 	conf_remote_t out = { { AF_UNSPEC } };
 
+	conf_val_t val = conf_id_get_txn(conf, txn, C_RMT, C_QUIC, id);
+	out.quic = conf_bool(&val);
+
 	conf_val_t rundir_val = conf_get_txn(conf, txn, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 
 	// Get indexed remote address.
-	conf_val_t val = conf_id_get_txn(conf, txn, C_RMT, C_ADDR, id);
+	val = conf_id_get_txn(conf, txn, C_RMT, C_ADDR, id);
 	for (size_t i = 0; val.code == KNOT_EOK && i < index; i++) {
 		if (i == 0) {
 			conf_val(&val);
@@ -1382,7 +1388,7 @@ conf_remote_t conf_remote_txn(
 		conf_val_next(&val);
 	}
 	// Index overflow causes empty socket.
-	out.addr = conf_addr(&val, rundir);
+	out.addr = conf_addr_alt(&val, rundir, out.quic);
 
 	// Get outgoing address if family matches (optional).
 	val = conf_id_get_txn(conf, txn, C_RMT, C_VIA, id);
@@ -1394,6 +1400,9 @@ conf_remote_t conf_remote_txn(
 		}
 		conf_val_next(&val);
 	}
+
+	val = conf_id_get_txn(conf, txn, C_RMT, C_CERT_KEY, id);
+	out.pin = (uint8_t *)conf_bin(&val, &out.pin_len);
 
 	// Get TSIG key (optional).
 	conf_val_t key_id = conf_id_get_txn(conf, txn, C_RMT, C_KEY, id);

@@ -91,9 +91,8 @@ static int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
 		.iov_len = datalen
 	};
 
-	int ret = knot_tcp_inbuf_update(&ctx->stream.in_buffer, in,
-	                &ctx->stream.in_parsed, &ctx->stream.in_parsed_size,
-	                &ctx->stream.in_parsed_total);
+	int ret = knot_tcp_inbuf_update(&ctx->stream.in_buffer, in, true,
+	                &ctx->stream.in_parsed, &ctx->stream.in_parsed_total);
 	if (ret != KNOT_EOK) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
@@ -404,20 +403,18 @@ static int quic_recv(quic_ctx_t *ctx, int sockfd)
 static int quic_respcpy(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 {
 	assert(ctx && buf && buf_len > 0);
-	if (ctx->stream.in_parsed &&
-	    ctx->stream.in_parsed_it < ctx->stream.in_parsed_size) {
-		struct iovec *it =
-		        &ctx->stream.in_parsed[ctx->stream.in_parsed_it];
+	if (ctx->stream.in_parsed != NULL) {
+		knot_tinbufu_res_t *cur = ctx->stream.in_parsed;
+		struct iovec *it = &knot_tinbufu_res_inbufs(cur)[ctx->stream.in_parsed_it];
 		if (buf_len < it->iov_len) {
 			return KNOT_ENOMEM;
 		}
-		ctx->stream.in_parsed_it++;
 		size_t len = it->iov_len;
 		memcpy(buf, it->iov_base, len);
-		if (ctx->stream.in_parsed_it == ctx->stream.in_parsed_size) {
-			free(ctx->stream.in_parsed);
-			ctx->stream.in_parsed = NULL;
-			ctx->stream.in_parsed_size = 0;
+		if (++ctx->stream.in_parsed_it == cur->n_inbufs) {
+			ctx->stream.in_parsed_it = 0;
+			ctx->stream.in_parsed = cur->next;
+			free(cur);
 		}
 		return len;
 	}
@@ -724,7 +721,7 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 			WARN("QUIC, failed to send");
 			return ret;
 		}
-		if (ctx->stream.in_parsed_size) {
+		if (ctx->stream.in_parsed != NULL) {
 			return KNOT_EOK;
 		}
 	}
@@ -856,8 +853,10 @@ void quic_ctx_deinit(quic_ctx_t *ctx)
 		free(ctx->stream.in_buffer.iov_base);
 	}
 
-	if (ctx->stream.in_parsed != NULL) {
-		free(ctx->stream.in_parsed);
+	while (ctx->stream.in_parsed != NULL) {
+		struct knot_tinbufu_res *tofree = ctx->stream.in_parsed;
+		ctx->stream.in_parsed = tofree->next;
+		free(tofree);
 	}
 }
 

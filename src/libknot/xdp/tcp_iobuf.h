@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,11 @@ typedef struct knot_sweep_stats {
 	uint32_t counters[4];
 } knot_sweep_stats_t;
 
+typedef struct knot_tinbufu_res {
+	size_t n_inbufs;
+	struct knot_tinbufu_res *next;
+} knot_tinbufu_res_t;
+
 inline static void knot_sweep_stats_incr(knot_sweep_stats_t *stats, knot_sweep_counter_t counter)
 {
 	(stats->counters[counter])++;
@@ -62,20 +67,21 @@ inline static void knot_sweep_stats_reset(knot_sweep_stats_t *stats)
 	memset(stats, 0, sizeof(*stats));
 }
 
+uint64_t buffer_alloc_size(uint64_t buffer_len);
+
 /*!
  * \brief Handle DNS-over-TCP payloads in buffer and message.
  *
  * \param buffer         In/out: persistent buffer to store incomplete DNS payloads between receiving packets.
  * \param data           In: momental DNS payloads in incoming packet.
- * \param inbufs         Out: list of incoming DNS messages.
- * \param inbufs_count   Out: number of inbufs.
+ * \param alloc_bufs     In: allocate extra buffers and always copy data instead of pointing inside recvd data.
+ * \param result         Out: list of incoming DNS messages.
  * \param buffers_total  In/Out: total size of buffers (will be increased or decreased).
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data,
-                          struct iovec **inbufs, size_t *inbufs_count,
-                          size_t *buffers_total);
+int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bufs,
+                          knot_tinbufu_res_t **result, size_t *buffers_total);
 
 /*!
  * \brief Add payload to be sent by TCP, to output buffers.
@@ -117,5 +123,13 @@ void knot_tcp_outbufs_can_send(knot_tcp_outbuf_t *bufs, ssize_t window_size, boo
  * \brief Compute allocated size of output buffers.
  */
 size_t knot_tcp_outbufs_usage(knot_tcp_outbuf_t *bufs);
+
+/*!
+ * \brief Return pointer to parsed iovec
+ */
+inline static struct iovec *knot_tinbufu_res_inbufs(knot_tinbufu_res_t *node)
+{
+	return (struct iovec *)(node + 1);
+}
 
 /*! @} */

@@ -16,10 +16,22 @@
 
 #pragma once
 
-#include "knot/dnssec/zone-keys.h"
-#include "knot/dnssec/context.h"
+#include "contrib/sockaddr.h"
 
-struct server;
+struct knot_quic_creds;
+struct knot_quic_reply;
 
-int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, struct server *server,
-                         size_t timeout);
+int knot_qreq_connect(struct knot_quic_reply **out,
+                      int fd,
+                      struct sockaddr_storage *remote,
+                      struct sockaddr_storage *local,
+                      const struct knot_quic_creds *local_creds,
+                      const uint8_t *peer_pin,
+                      uint8_t peer_pin_len,
+                      int timeout_ms);
+
+int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data);
+
+int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms);
+
+void knot_qreq_close(struct knot_quic_reply *r);

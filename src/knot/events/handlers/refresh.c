@@ -28,6 +28,7 @@
 #include "knot/query/layer.h"
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
+#include "knot/server/server.h"
 #include "knot/updates/changesets.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/digest.h"
@@ -1294,16 +1295,15 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	knot_requestor_init(&requestor, &REFRESH_API, &data, NULL);
 
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
-	if (!pkt) {
+	if (pkt == NULL) {
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
 	}
 
-	const struct sockaddr_storage *dst = &master->addr;
-	const struct sockaddr_storage *src = &master->via;
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
-	knot_request_t *req = knot_request_make(NULL, dst, src, pkt, &master->key, flags);
-	if (!req) {
+	knot_request_t *req = knot_request_make(NULL, master, pkt,
+	                                        zone->server->quic_creds, flags);
+	if (req == NULL) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
