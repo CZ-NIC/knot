@@ -155,16 +155,17 @@ blocking mode) to a zone file in the specified directory. See
 \fBzone\-backup\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fIfilter\fP\&...]
 Trigger a zone data and metadata backup to a specified directory.
 Available filters are \fB+zonefile\fP, \fB+journal\fP, \fB+timers\fP, \fB+kaspdb\fP,
-\fB+catalog\fP, and their negative counterparts \fB+nozonefile\fP, \fB+nojournal\fP,
-\fB+notimers\fP, \fB+nokaspdb\fP, and \fB+nocatalog\fP\&. With these filters set,
-zone contents, zone\(aqs journal, zone related timers, zone related data in the
-KASP database together with keys, and zone\(aqs catalog, respectively, are backed up,
+\fB+catalog\fP, \fB+quic\fP, and their negative counterparts \fB+nozonefile\fP,
+\fB+nojournal\fP, \fB+notimers\fP, \fB+nokaspdb\fP, \fB+nocatalog\fP, and \fB+noquic\fP\&.
+With these filters set, zone contents, zone\(aqs journal, zone\-related timers,
+zone\-related data in the KASP database together with keys, zone\(aqs catalog,
+and the server QUIC key and certificate, respectively, are backed up,
 or omitted from the backup. By default, filters \fB+zonefile\fP, \fB+timers\fP,
-\fB+kaspdb\fP, \fB+catalog\fP, and \fB+nojournal\fP are set. Setting a filter
-for an item doesn\(aqt change default settings for other items. If zone flushing
-is disabled, original zone file is backed up instead of writing out zone
-contents to a file. See \fI\%Notes\fP below about the directory
-permissions. (#)
+\fB+kaspdb\fP, \fB+catalog\fP, \fB+nojournal\fP, and \fB+noquic\fP are set. Setting
+a filter for an item doesn\(aqt change default settings for other items.
+If zone flushing is disabled, the original zone file is backed up instead of
+writing out zone contents to a file. See \fI\%Notes\fP below about
+the directory permissions. (#)
 .TP
 \fBzone\-restore\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fIfilter\fP\&...]
 Trigger a zone data and metadata restore from a specified backup directory.
