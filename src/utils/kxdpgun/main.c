@@ -779,7 +779,7 @@ void *xdp_gun_thread(void *_ctx)
 
 						stream0 = knot_quic_conn_get_stream(conn, 0, false);
 						if (stream0 != NULL && stream0->inbufs != NULL) {
-							check_dns_payload(&knot_tinbufu_res_inbufs(stream0->inbufs)[0], ctx, &local_stats);
+							check_dns_payload(knot_tinbufu_res_inbufs(stream0->inbufs), ctx, &local_stats);
 							free(stream0->inbufs);
 							stream0->inbufs = NULL;
 
