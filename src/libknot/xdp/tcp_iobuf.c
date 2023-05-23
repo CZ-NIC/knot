@@ -56,7 +56,7 @@ static void iov_append(struct iovec *what, const struct iovec *with)
 
 static knot_tinbufu_res_t *tinbufu_alloc(size_t inbuf_count, size_t first_inbuf)
 {
-	knot_tinbufu_res_t *res = malloc(sizeof(*res) + inbuf_count*sizeof(struct iovec) + first_inbuf);
+	knot_tinbufu_res_t *res = malloc(sizeof(*res) + inbuf_count * sizeof(struct iovec) + first_inbuf);
 	if (res == NULL) {
 		return NULL;
 	}
@@ -127,13 +127,15 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 	}
 	if (!skip_cnt) {
 		if (alloc_bufs) {
-			while (data_use.iov_len >= 2 && (message_len = tcp_payload_len(&data_use)) <= (data_use.iov_len - sizeof(uint16_t))) {
+			while (data_use.iov_len >= 2 &&
+			       (message_len = tcp_payload_len(&data_use)) <= (data_use.iov_len - sizeof(uint16_t))) {
 				++iov_cnt;
 				iov_bytesize += message_len;
 				iov_inc(&data_use, message_len + sizeof(uint16_t));
 			}
 		} else {
-			while (data_use.iov_len >= 2 && (message_len = tcp_payload_len(&data_use)) <= (data_use.iov_len - sizeof(uint16_t))) {
+			while (data_use.iov_len >= 2 &&
+			       (message_len = tcp_payload_len(&data_use)) <= (data_use.iov_len - sizeof(uint16_t))) {
 				++iov_cnt;
 				iov_inc(&data_use, message_len + sizeof(uint16_t));
 			}
@@ -297,10 +299,4 @@ size_t knot_tcp_outbufs_usage(knot_tcp_outbuf_t *bufs)
 		res += i->len + sizeof(*i);
 	}
 	return res;
-}
-
-_public_
-struct iovec *knot_tinbufu_res_inbufs(knot_tinbufu_res_t *node)
-{
-	return (struct iovec *)(node + 1);
 }

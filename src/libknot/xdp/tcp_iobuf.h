@@ -127,6 +127,9 @@ size_t knot_tcp_outbufs_usage(knot_tcp_outbuf_t *bufs);
 /*!
  * \brief Return pointer to parsed iovec
  */
-struct iovec *knot_tinbufu_res_inbufs(knot_tinbufu_res_t *node);
+inline static struct iovec *knot_tinbufu_res_inbufs(knot_tinbufu_res_t *node)
+{
+	return (struct iovec *)(node + 1);
+}
 
 /*! @} */
