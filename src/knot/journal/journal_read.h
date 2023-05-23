@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ typedef struct journal_read journal_read_t;
 
 typedef int (*journal_read_cb_t)(bool in_remove_section, const knot_rrset_t *rr, void *ctx);
 
-typedef int (*journal_walk_cb_t)(bool special, const changeset_t *ch, void *ctx);
+typedef int (*journal_walk_cb_t)(bool special, const changeset_t *ch, uint64_t timestamp, void *ctx);
 
 /*!
  * \brief Start reading journal from specified changeset.

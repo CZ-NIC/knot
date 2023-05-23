@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "contrib/color.h"
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
+#include "contrib/time.h"
 
 #define PROGRAM_NAME	"kjournalprint"
 
@@ -71,21 +72,26 @@ typedef struct {
 	size_t changes;
 } print_params_t;
 
-static void print_changeset(const changeset_t *chs, print_params_t *params)
+static void print_changeset(const changeset_t *chs, uint64_t timestamp, print_params_t *params)
 {
+	char time_buf[64] = { 0 };
+	(void)knot_time_print(TIME_PRINT_UNIX, timestamp, time_buf, sizeof(time_buf));
+
 	static size_t count = 1;
 	if (chs->soa_from == NULL) {
-		printf("%s;; Zone-in-journal, serial: %u, changeset: %zu%s\n",
+		printf("%s;; Zone-in-journal, serial: %u, changeset: %zu, timestamp: %s%s\n",
 		       COL_YELW(params->color),
 		       knot_soa_serial(chs->soa_to->rrs.rdata),
 		       count++,
+		       time_buf,
 		       COL_RST(params->color));
 	} else {
-		printf("%s;; Changes between zone versions: %u -> %u, changeset: %zu%s\n",
+		printf("%s;; Changes between zone versions: %u -> %u, changeset: %zu, timestamp: %s%s\n",
 		       COL_YELW(params->color),
 		       knot_soa_serial(chs->soa_from->rrs.rdata),
 		       knot_soa_serial(chs->soa_to->rrs.rdata),
 		       count++,
+		       time_buf,
 		       COL_RST(params->color));
 	}
 	changeset_print(chs, stdout, params->color);
@@ -124,8 +130,11 @@ static int rrtypelist_callback(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-static void print_changeset_debugmode(const changeset_t *chs)
+static void print_changeset_debugmode(const changeset_t *chs, uint64_t timestamp)
 {
+	char time_buf[64] = { 0 };
+	(void)knot_time_print(TIME_PRINT_HUMAN_MIXED, timestamp, time_buf, sizeof(time_buf));
+
 	// detect all types
 	rrtype_dynarray_t types = { 0 };
 	size_t count_minus = 1, count_plus = 1; // 1 for SOA which is always present but not iterated
@@ -136,11 +145,11 @@ static void print_changeset_debugmode(const changeset_t *chs)
 	(void)zone_contents_nsec3_apply(chs->add, rrtypelist_callback, &ctx_plus);
 
 	if (chs->soa_from == NULL) {
-		printf("Zone-in-journal %u  +++: %zu\t size: %zu\t", knot_soa_serial(chs->soa_to->rrs.rdata),
-		       count_plus, changeset_serialized_size(chs));
+		printf("Zone-in-journal %u  +++: %zu\t size: %zu\t timestamp: %s\t", knot_soa_serial(chs->soa_to->rrs.rdata),
+		       count_plus, changeset_serialized_size(chs), time_buf);
 	} else {
-		printf("%u -> %u  ---: %zu\t  +++: %zu\t size: %zu\t", knot_soa_serial(chs->soa_from->rrs.rdata),
-		       knot_soa_serial(chs->soa_to->rrs.rdata), count_minus, count_plus, changeset_serialized_size(chs));
+		printf("%u -> %u  ---: %zu\t  +++: %zu\t size: %zu\t timestamp: %s\t", knot_soa_serial(chs->soa_from->rrs.rdata),
+		       knot_soa_serial(chs->soa_to->rrs.rdata), count_minus, count_plus, changeset_serialized_size(chs), time_buf);
 	}
 
 	char temp[100];
@@ -151,7 +160,7 @@ static void print_changeset_debugmode(const changeset_t *chs)
 	printf("\n");
 }
 
-static int count_changeset_cb(_unused_ bool special, const changeset_t *ch, void *ctx)
+static int count_changeset_cb(_unused_ bool special, const changeset_t *ch, _unused_ uint64_t timestamp, void *ctx)
 {
 	print_params_t *params = ctx;
 	if (ch != NULL) {
@@ -160,15 +169,15 @@ static int count_changeset_cb(_unused_ bool special, const changeset_t *ch, void
 	return KNOT_EOK;
 }
 
-static int print_changeset_cb(bool special, const changeset_t *ch, void *ctx)
+static int print_changeset_cb(bool special, const changeset_t *ch, uint64_t timestamp, void *ctx)
 {
 	print_params_t *params = ctx;
 	if (ch != NULL && params->counter++ >= params->limit) {
 		if (params->debug) {
-			print_changeset_debugmode(ch);
+			print_changeset_debugmode(ch, timestamp);
 			params->changes++;
 		} else {
-			print_changeset(ch, params);
+			print_changeset(ch, timestamp, params);
 		}
 		if (special && params->debug) {
 			printf("---------------------------------------------\n");

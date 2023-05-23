@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include "knot/journal/journal_write.h"
 
 #include "contrib/macros.h"
+#include "contrib/time.h"
 #include "knot/journal/journal_metadata.h"
 #include "knot/journal/journal_read.h"
 #include "knot/journal/serialization.h"
@@ -28,6 +29,7 @@ static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser,
 {
 	MDB_val chunk;
 	uint32_t i = 0;
+	uint64_t now = knot_time();
 	while (serialize_unfinished(ser) && txn->ret == KNOT_EOK) {
 		serialize_prepare(ser, JOURNAL_CHUNK_THRESH - JOURNAL_HEADER_SIZE,
 		                  JOURNAL_CHUNK_MAX - JOURNAL_HEADER_SIZE, &chunk.mv_size);
@@ -38,7 +40,7 @@ static void journal_write_serialize(knot_lmdb_txn_t *txn, serialize_ctx_t *ser,
 		chunk.mv_data = NULL;
 		MDB_val key = journal_make_chunk_key(apex, ch_from, zij, i);
 		if (knot_lmdb_insert(txn, &key, &chunk)) {
-			journal_make_header(chunk.mv_data, ch_to);
+			journal_make_header(chunk.mv_data, ch_to, now);
 			serialize_chunk(ser, chunk.mv_data + JOURNAL_HEADER_SIZE, chunk.mv_size - JOURNAL_HEADER_SIZE);
 		}
 		free(key.mv_data);
