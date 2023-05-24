@@ -540,7 +540,7 @@ static int init_creds(server_t *server, conf_t *conf)
 	if (cert_file == NULL) {
 		assert(key_file == NULL);
 		char *kasp_dir = conf_db(conf, C_KASP_DB);
-		int ret = make_dir(kasp_dir, 0660, true);
+		int ret = make_dir(kasp_dir, S_IRWXU | S_IRWXG, true);
 		if (ret != KNOT_EOK) {
 			log_error("QUIC, failed to create directory '%s'", kasp_dir);
 			free(kasp_dir);
