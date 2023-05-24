@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,16 +49,21 @@ void journal_del_zone(knot_lmdb_txn_t *txn, const knot_dname_t *zone)
 	free(prefix.mv_data);
 }
 
-void journal_make_header(void *chunk, uint32_t ch_serial_to)
+void journal_make_header(void *chunk, uint32_t ch_serial_to, uint64_t now)
 {
 	knot_lmdb_make_key_part(chunk, JOURNAL_HEADER_SIZE, "IILLL", ch_serial_to,
 	                        (uint32_t)0 /* we no longer care for # of chunks */,
-	                        (uint64_t)0, (uint64_t)0, (uint64_t)0);
+	                        (uint64_t)0, now, (uint64_t)0);
 }
 
 uint32_t journal_next_serial(const MDB_val *chunk)
 {
 	return knot_wire_read_u32(chunk->mv_data);
+}
+
+uint64_t journal_ch_timestamp(const MDB_val *chunk)
+{
+	return knot_wire_read_u64(chunk->mv_data + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint64_t));
 }
 
 bool journal_serial_to(knot_lmdb_txn_t *txn, bool zij, uint32_t serial,

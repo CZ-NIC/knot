@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,8 +76,9 @@ void journal_del_zone(knot_lmdb_txn_t *txn, const knot_dname_t *zone);
  *
  * \param chunk   Pointer to the changeset chunk. It must be at least JOURNAL_HEADER_SIZE, perhaps more.
  * \param ch      Serial-to of the changeset being serialized.
+ * \param now     Current timestamp.
  */
-void journal_make_header(void *chunk, uint32_t ch_serial_to);
+void journal_make_header(void *chunk, uint32_t ch_serial_to, uint64_t now);
 
 /*!
  * \brief Obtain serial-to of the serialized changeset.
@@ -87,6 +88,15 @@ void journal_make_header(void *chunk, uint32_t ch_serial_to);
  * \return The changeset's serial-to.
  */
 uint32_t journal_next_serial(const MDB_val *chunk);
+
+/*!
+ * \brief Obtain timestamp of the serialized changeset.
+ *
+ * \param chunk   Any chunk of a serialized changeset.
+ *
+ * \return Timestamp in unixtime.
+ */
+uint64_t journal_ch_timestamp(const MDB_val *chunk);
 
 /*!
  * \brief Obtain serial-to of a changeset stored in journal.
