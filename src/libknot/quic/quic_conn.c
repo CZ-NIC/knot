@@ -208,6 +208,17 @@ void quic_table_rem2(knot_quic_cid_t **pcid, knot_quic_table_t *table)
 
 void quic_stream_free(knot_quic_conn_t *conn, int64_t stream_id)
 {
+	knot_quic_stream_t *s = knot_quic_conn_get_stream(conn, stream_id, false);
+	if (s != NULL && s->inbuf.iov_len > 0) {
+		free(s->inbuf.iov_base);
+		conn->ibufs_size -= s->inbuf.iov_len;
+		memset(&s->inbuf, 0, sizeof(s->inbuf));
+	}
+	while (s != NULL && s->inbufs != NULL) {
+		void *tofree = s->inbufs;
+		s->inbufs = s->inbufs->next;
+		free(tofree);
+	}
 	knot_quic_stream_ack_data(conn, stream_id, SIZE_MAX, false);
 }
 
