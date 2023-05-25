@@ -2269,6 +2269,7 @@ Definition of zones served by the server.
      journal-content: none | changes | all
      journal-max-usage: SIZE
      journal-max-depth: INT
+     ixfr-by-one: BOOL
      zone-max-size : SIZE
      adjust-threads: INT
      dnssec-signing: BOOL
@@ -2524,6 +2525,22 @@ Maximum history length of the journal.
 *Minimum:* ``2``
 
 *Default:* ``20``
+
+.. _zone_ixfr-by-one:
+
+ixfr-by-one
+-----------
+
+Within incoming IXFR, process only one changeset at a time, not multiple together.
+This preserves the complete history in the journal and prevents the merging of
+changesets when multiple changesets are IXFRed simultaneously. However, this does not
+prevent the merging (or deletion) of old changesets in the journal to save space,
+as described in :ref:`journal behaviour <Journal behaviour>`.
+
+This option leads to increased server load when processing IXFR, including
+network traffic.
+
+*Default:* ``off``
 
 .. _zone_zone-max-size:
 
