@@ -451,6 +451,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref_empty } }, \
 	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } }, \
 	{ C_ACL,                 YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
+	{ C_MASTER_PIN_TOL,      YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME } }, \
 	{ C_PROVIDE_IXFR,        YP_TBOOL, YP_VBOOL = { true } }, \
 	{ C_SEM_CHECKS,          YP_TOPT,  YP_VOPT = { semantic_checks, SEMCHECKS_OFF }, FLAGS }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \

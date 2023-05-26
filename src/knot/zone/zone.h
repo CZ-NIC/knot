@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -236,6 +236,9 @@ void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr
 /*! \brief Clears the current preferred master address. */
 void zone_clear_preferred_master(zone_t *zone);
 
+/*! \brief Updates the last master address used. */
+void zone_set_last_master(zone_t *zone, const struct sockaddr_storage *addr);
+
 /*! \brief Sets a zone flag. */
 void zone_set_flag(zone_t *zone, zone_flag_t flag);
 
@@ -260,8 +263,10 @@ bool zone_expired(const zone_t *zone);
 void zone_timers_sanitize(conf_t *conf, zone_t *zone);
 
 typedef struct {
-	bool address; //!< Fallback to next remote address is required.
-	bool remote;  //!< Fallback to next remote server is required.
+	bool address;     //!< Fallback to next remote address is required.
+	bool remote;      //!< Fallback to next remote server is required.
+	bool trying_last; //!< This master try is for the same server as last time;
+	uint32_t pin_tol; //!< Configured mster pin tolerance (0 for no pin).
 } zone_master_fallback_t;
 
 typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *remote,

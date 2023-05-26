@@ -89,6 +89,7 @@
 #define C_LOG			"\x03""log"
 #define C_MANUAL		"\x06""manual"
 #define C_MASTER		"\x06""master"
+#define C_MASTER_PIN_TOL	"\x14""master-pin-tolerance"
 #define C_MODULE		"\x06""module"
 #define C_NO_EDNS		"\x07""no-edns"
 #define C_NOTIFY		"\x06""notify"

@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "contrib/sockaddr.h"
 #include "libknot/dname.h"
 #include "knot/journal/knot_lmdb.h"
 
@@ -38,6 +39,8 @@ struct zone_timers {
 	time_t next_ds_push;           //!< Next DDNS to parent zone with updated DS record.
 	time_t catalog_member;         //!< This catalog member zone created.
 	time_t next_expire;            //!< Timestamp of the zone to expire.
+	struct sockaddr_storage last_master; //!< Address of pinned master (used last time).
+	time_t master_pin_hit;         //!< Fist occurence of another master more updated than the pinned one.
 };
 
 typedef struct zone_timers zone_timers_t;
