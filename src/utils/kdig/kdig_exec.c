@@ -111,21 +111,6 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 	struct sockaddr_storage ss = { 0 };
 	int family = dt_family_decode(message->socket_family);
 	knot_probe_proto_t proto = dt_protocol_decode(message->socket_protocol);
-	int sock_type = 0;
-
-	switch (proto) {
-	case KNOT_PROBE_PROTO_UDP:
-	case KNOT_PROBE_PROTO_QUIC:
-		sock_type = SOCK_DGRAM;
-		break;
-	case KNOT_PROBE_PROTO_TCP:
-	case KNOT_PROBE_PROTO_TLS:
-	case KNOT_PROBE_PROTO_HTTPS:
-		sock_type = SOCK_STREAM;
-		break;
-	default:
-		break;
-	}
 
 	ProtobufCBinaryData *addr = NULL;
 	uint32_t port = 0;
@@ -140,7 +125,7 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 	sockaddr_set_raw(&ss, family, addr->data, addr->len);
 	sockaddr_port_set(&ss, port);
 
-	get_addr_str(&ss, sock_type, &net->remote_str);
+	get_addr_str(&ss, get_protocol(proto), &net->remote_str);
 }
 
 static int process_dnstap(const query_t *query)
