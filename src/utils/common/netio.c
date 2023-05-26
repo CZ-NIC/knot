@@ -35,6 +35,29 @@
 #include "contrib/proxyv2/proxyv2.h"
 #include "contrib/sockaddr.h"
 
+int net_get_protocol(const net_t *net)
+{
+#ifdef ENABLE_QUIC
+	if (net->quic.params.enable) {
+		return KNOT_PROBE_PROTO_QUIC;
+	} else
+#endif
+#ifdef LIBNGHTTP2
+	if (net->https.params.enable) {
+		return KNOT_PROBE_PROTO_HTTPS;
+	} else
+#endif
+	if (net->tls.params != NULL && net->tls.params->enable) {
+		return KNOT_PROBE_PROTO_TLS;
+	} else if (net->socktype == PROTO_TCP) {
+		return KNOT_PROBE_PROTO_TCP;
+	} else if (net->socktype == PROTO_UDP) {
+		return KNOT_PROBE_PROTO_UDP;
+	} else {
+		return -1;
+	}
+}
+
 srv_info_t *srv_info_create(const char *name, const char *service)
 {
 	if (name == NULL || service == NULL) {
@@ -150,8 +173,25 @@ static int get_addr(const srv_info_t *server,
 	return -1;
 }
 
+const char *get_protocol_str(const int proto) {
+	switch (proto) {
+		case KNOT_PROBE_PROTO_UDP:
+			return "UDP";
+		case KNOT_PROBE_PROTO_QUIC:
+			return "QUIC";
+		case KNOT_PROBE_PROTO_TCP:
+			return "TCP";
+		case KNOT_PROBE_PROTO_TLS:
+			return "TLS";
+		case KNOT_PROBE_PROTO_HTTPS:
+			return "HTTPS";
+		default:
+			return "UNKNOWN";
+	}
+}
+
 void get_addr_str(const struct sockaddr_storage *ss,
-                  const int                     socktype,
+                  const char                    *protocol,
                   char                          **dst)
 {
 	char addr_str[SOCKADDR_STRLEN] = {0};
@@ -160,14 +200,13 @@ void get_addr_str(const struct sockaddr_storage *ss,
 	sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 
 	// Calculate needed buffer size
-	const char *sock_name = get_sockname(socktype);
-	size_t buflen = strlen(addr_str) + strlen(sock_name) + 3 /* () */;
+	size_t buflen = strlen(addr_str) + strlen(protocol) + 3 /* () */;
 
 	// Free previous string if any and write result
 	free(*dst);
 	*dst = malloc(buflen);
 	if (*dst != NULL) {
-		int ret = snprintf(*dst, buflen, "%s(%s)", addr_str, sock_name);
+		int ret = snprintf(*dst, buflen, "%s(%s)", addr_str, protocol);
 		if (ret <= 0 || ret >= buflen) {
 			**dst = '\0';
 		}
@@ -397,8 +436,9 @@ int net_connect(net_t *net)
 	}
 
 	// Set remote information string.
+	int proto = net_get_protocol(net);
 	get_addr_str((struct sockaddr_storage *)net->srv->ai_addr,
-	             net->socktype, &net->remote_str);
+	             get_protocol_str(proto), &net->remote_str);
 
 	// Create socket.
 	int sockfd = socket(net->srv->ai_family, net->socktype, 0);
@@ -574,8 +614,9 @@ int net_set_local_info(net_t *net)
 
 	net->local_info = new_info;
 
+	int proto = net_get_protocol(net);
 	get_addr_str((struct sockaddr_storage *)net->local_info->ai_addr,
-	             net->socktype, &net->local_str);
+	             get_protocol_str(proto), &net->local_str);
 
 	return KNOT_EOK;
 }
@@ -755,8 +796,9 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 			// Compare reply address with the remote one.
 			if (from_len > sizeof(from) ||
 			    memcmp(&from, net->srv->ai_addr, from_len) != 0) {
+				int proto = net_get_protocol(net);
 				char *src = NULL;
-				get_addr_str(&from, net->socktype, &src);
+				get_addr_str(&from, get_protocol_str(proto), &src);
 				WARN("unexpected reply source %s", src);
 				free(src);
 				continue;
