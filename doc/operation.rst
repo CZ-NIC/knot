@@ -1028,6 +1028,10 @@ the backup work is done and a simple result status is printed out.
    Care must always be taken **not to remove this file** from the backup nor to
    damage it.
 
+If a backup fails, the backup directory containing incomplete backup is retained.
+For repeated backup attempts to the same directory, it must be removed or renamed
+manually first.
+
 Offline restore
 ---------------
 
