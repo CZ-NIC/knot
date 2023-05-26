@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 #include "contrib/dnstap/convert.h"
 #include "contrib/dnstap/dnstap.pb-c.h"
+#include "libknot/probe/data.h"
 
 /*!
  * \brief Translation between real and Dnstap value.
@@ -43,8 +44,11 @@ static const mapping_t SOCKET_FAMILY_MAPPING[] = {
  * \brief Mapping from network protocol.
  */
 static const mapping_t SOCKET_PROTOCOL_MAPPING[] = {
-	{ IPPROTO_UDP, DNSTAP__SOCKET_PROTOCOL__UDP },
-	{ IPPROTO_TCP, DNSTAP__SOCKET_PROTOCOL__TCP },
+	{ KNOT_PROBE_PROTO_UDP,   DNSTAP__SOCKET_PROTOCOL__UDP },
+	{ KNOT_PROBE_PROTO_TCP,   DNSTAP__SOCKET_PROTOCOL__TCP },
+	{ KNOT_PROBE_PROTO_TLS,   DNSTAP__SOCKET_PROTOCOL__DOT },
+	{ KNOT_PROBE_PROTO_HTTPS, DNSTAP__SOCKET_PROTOCOL__DOH },
+	{ KNOT_PROBE_PROTO_QUIC,  DNSTAP__SOCKET_PROTOCOL__DOQ },
 	{ 0 }
 };
 
@@ -53,7 +57,7 @@ static const mapping_t SOCKET_PROTOCOL_MAPPING[] = {
  */
 static int encode(const mapping_t *mapping, int real)
 {
-	for (const mapping_t *m = mapping; m->real != 0; m += 1) {
+	for (const mapping_t *m = mapping; m->dnstap != 0; m += 1) {
 		if (m->real == real) {
 			return m->dnstap;
 		}
@@ -67,7 +71,7 @@ static int encode(const mapping_t *mapping, int real)
  */
 static int decode(const mapping_t *mapping, int dnstap)
 {
-	for (const mapping_t *m = mapping; m->real != 0; m += 1) {
+	for (const mapping_t *m = mapping; m->dnstap != 0; m += 1) {
 		if (m->dnstap == dnstap) {
 			return m->real;
 		}

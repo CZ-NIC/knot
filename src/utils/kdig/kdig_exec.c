@@ -31,9 +31,10 @@
 #include "contrib/ucw/lists.h"
 
 #if USE_DNSTAP
-# include "contrib/dnstap/convert.h"
-# include "contrib/dnstap/message.h"
-# include "contrib/dnstap/writer.h"
+#include "contrib/dnstap/convert.h"
+#include "contrib/dnstap/message.h"
+#include "contrib/dnstap/writer.h"
+#include "libknot/probe/data.h"
 
 static int write_dnstap(dt_writer_t           *writer,
                         const bool            is_query,
@@ -109,15 +110,18 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 
 	struct sockaddr_storage ss = { 0 };
 	int family = dt_family_decode(message->socket_family);
-	int proto = dt_protocol_decode(message->socket_protocol);
+	knot_probe_proto_t proto = dt_protocol_decode(message->socket_protocol);
 	int sock_type = 0;
 
 	switch (proto) {
-	case IPPROTO_TCP:
-		sock_type = SOCK_STREAM;
-		break;
-	case IPPROTO_UDP:
+	case KNOT_PROBE_PROTO_UDP:
+	case KNOT_PROBE_PROTO_QUIC:
 		sock_type = SOCK_DGRAM;
+		break;
+	case KNOT_PROBE_PROTO_TCP:
+	case KNOT_PROBE_PROTO_TLS:
+	case KNOT_PROBE_PROTO_HTTPS:
+		sock_type = SOCK_STREAM;
 		break;
 	default:
 		break;
