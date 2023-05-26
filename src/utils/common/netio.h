@@ -146,7 +146,7 @@ const char *get_sockname(const int socktype);
  *
  * \retval "TCP", "UDP", "QUIC", "TLS" or "HTTPS".
  */
-char *get_protocol(const int proto);
+const char *get_protocol(const int proto);
 /*!
  * \brief Translates int socket type to the common string one.
  *

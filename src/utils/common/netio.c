@@ -150,7 +150,7 @@ static int get_addr(const srv_info_t *server,
 	return -1;
 }
 
-char *get_protocol(const int proto) {
+const char *get_protocol(const int proto) {
 	switch (proto) {
 		case KNOT_PROBE_PROTO_UDP:
 			return "UDP";
@@ -413,11 +413,17 @@ int net_connect(net_t *net)
 	}
 
 	int proto = -1;
+#ifdef ENABLE_QUIC
 	if (net->quic.params.enable) {
 		proto = KNOT_PROBE_PROTO_QUIC;
-	} else if (net->https.params.enable) {
+	} else
+#endif
+#ifdef LIBNGHTTP2
+	if (net->https.params.enable) {
 		proto = KNOT_PROBE_PROTO_HTTPS;
-	} else if (net->tls.params->enable) {
+	} else
+#endif
+	if (net->tls.params->enable) {
 		proto = KNOT_PROBE_PROTO_TLS;
 	} else if (net->socktype == PROTO_TCP) {
 		proto = KNOT_PROBE_PROTO_TCP;
