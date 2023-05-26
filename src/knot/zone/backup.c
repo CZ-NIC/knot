@@ -508,6 +508,7 @@ int backup_quic(zone_backup_ctx_t *ctx)
 	char *tls_cert = conf_tls(conf(), C_CERT_FILE);
 	char *tls_key = conf_tls(conf(), C_KEY_FILE);
 	int ret = KNOT_EOK;
+	const char *cert_log = "";
 
 	if (tls_cert == NULL) {
 		// Detect the auto-generated key.
@@ -520,11 +521,17 @@ int backup_quic(zone_backup_ctx_t *ctx)
 		}
 	} else {
 		ret = backup_quic_file(ctx, tls_cert, "certificate");
+		cert_log = " and certificate";
 	}
 	free(tls_cert);
 
 	if (ret == KNOT_EOK && tls_key != NULL) {
 		ret = backup_quic_file(ctx, tls_key, "key");
+		if (ret == KNOT_EOK) {
+			log_ctl_info("control, QUIC key%s %s %s", cert_log,
+			             ctx->restore_mode ? "restored from" : "backed up to",
+			             ctx->backup_dir);
+		}
 	}
 	free(tls_key);
 
