@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
+#include "libknot/probe/data.h"
 #include "utils/common/https.h"
 #include "utils/common/params.h"
 #include "utils/common/quic.h"
@@ -140,14 +141,14 @@ int get_socktype(const protocol_t proto, const uint16_t type);
 const char *get_sockname(const int socktype);
 
 /*!
- * \brief Translates int socket type to the common string one.
+ * \brief Translates protocol type to a common string.
  *
  * \param ss		Socket address storage.
- * \param socktype	Socket type (SOCK_STREAM or SOCK_DGRAM).
+ * \param socktype	Protocol type.
  * \param dst		Output string.
  */
 void get_addr_str(const struct sockaddr_storage *ss,
-                  const int                     socktype,
+                  const knot_probe_proto_t      socktype,
                   char                          **dst);
 
 /*!
