@@ -509,6 +509,20 @@ void zone_clear_preferred_master(zone_t *zone)
 	pthread_mutex_unlock(&zone->preferred_lock);
 }
 
+void zone_set_last_master(zone_t *zone, const struct sockaddr_storage *addr)
+{
+	if (zone == NULL) {
+		return;
+	}
+
+	if (addr == NULL) {
+		memset(&zone->timers.last_master, 0, sizeof(zone->timers.last_master));
+	} else {
+		memcpy(&zone->timers.last_master, addr, sizeof(zone->timers.last_master));
+	}
+	zone->timers.master_pin_hit = 0;
+}
+
 static void set_flag(zone_t *zone, zone_flag_t flag, bool remove)
 {
 	if (zone == NULL) {
@@ -611,42 +625,6 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 	}
 }
 
-/*!
- * \brief Get preferred zone master while checking its existence.
- */
-int static preferred_master(conf_t *conf, zone_t *zone, conf_remote_t *master)
-{
-	pthread_mutex_lock(&zone->preferred_lock);
-
-	if (zone->preferred_master == NULL) {
-		pthread_mutex_unlock(&zone->preferred_lock);
-		return KNOT_ENOENT;
-	}
-
-	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
-	conf_mix_iter_t iter;
-	conf_mix_iter_init(conf, &masters, &iter);
-	while (iter.id->code == KNOT_EOK) {
-		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
-		size_t addr_count = conf_val_count(&addr);
-
-		for (size_t i = 0; i < addr_count; i++) {
-			conf_remote_t remote = conf_remote(conf, iter.id, i);
-			if (sockaddr_net_match(&remote.addr, zone->preferred_master, -1)) {
-				*master = remote;
-				pthread_mutex_unlock(&zone->preferred_lock);
-				return KNOT_EOK;
-			}
-		}
-
-		conf_mix_iter_next(&iter);
-	}
-
-	pthread_mutex_unlock(&zone->preferred_lock);
-
-	return KNOT_ENOENT;
-}
-
 static void log_try_addr_error(const zone_t *zone, const char *remote_name,
                                const struct sockaddr_storage *remote_addr,
                                const char *err_str, int ret)
@@ -666,15 +644,71 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		return KNOT_EINVAL;
 	}
 
-	zone_master_fallback_t fallback = { true, true };
+	conf_val_t pin_tolerance = conf_zone_get(conf, C_MASTER_PIN_TOL, zone->name);
+	zone_master_fallback_t fallback = { true, true, true, conf_int(&pin_tolerance) };
+
+	/* Find last and preferred master in conf. */
+
+	conf_val_t last = { 0 };
+	conf_remote_t preferred = { { AF_UNSPEC } };
+	int idx = 0, last_idx = -1, preferred_idx = -1;
+
+	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
+	conf_mix_iter_t iter;
+	conf_mix_iter_init(conf, &masters, &iter);
+	pthread_mutex_lock(&zone->preferred_lock);
+	while (iter.id->code == KNOT_EOK) {
+		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
+		size_t addr_count = conf_val_count(&addr);
+
+		for (size_t i = 0; i < addr_count; i++) {
+			conf_remote_t remote = conf_remote(conf, iter.id, i);
+			if (sockaddr_net_match(&remote.addr, zone->preferred_master, -1)) {
+				preferred = remote;
+				preferred_idx = idx;
+			}
+			if (fallback.pin_tol > 0 && sockaddr_net_match(&remote.addr, &zone->timers.last_master, -1)) {
+				last = *iter.id;
+				last_idx = idx;
+			}
+		}
+
+		idx++;
+		conf_mix_iter_next(&iter);
+	}
+	pthread_mutex_unlock(&zone->preferred_lock);
+
+	/* Try the last server. */
+
+	int ret = KNOT_EOK;
+
+	size_t addr_count = last_idx >= 0 ? conf_val_count(&last) : 0;
+	for (size_t i = 0; i < addr_count && fallback.address; i++) {
+		conf_remote_t master = conf_remote(conf, &last, i);
+		ret = callback(conf, zone, &master, callback_data, &fallback);
+		if (!fallback.remote) {
+			return ret; // Success or local error.
+		} else if (ret == KNOT_EOK) {
+			break;
+		}
+
+		log_try_addr_error(zone, conf_str(iter.id), &master.addr,
+		                   err_str, ret);
+	}
+
+	if (ret != KNOT_EOK) {
+		log_zone_warning(zone->name, "%s, remote %s not usable",
+		                 err_str, conf_str(iter.id));
+	}
+
+	fallback.trying_last = false;
 
 	/* Try the preferred server. */
 
-	conf_remote_t preferred = { { AF_UNSPEC } };
-	if (preferred_master(conf, zone, &preferred) == KNOT_EOK) {
-		int ret = callback(conf, zone, &preferred, callback_data, &fallback);
+	if (preferred_idx >= 0 && preferred_idx != last_idx) {
+		ret = callback(conf, zone, &preferred, callback_data, &fallback);
 		if (ret == KNOT_EOK) {
-			return ret;
+			return ret; // FIXME simplify code
 		} else if (!fallback.remote) {
 			return ret; // Local error.
 		}
@@ -689,18 +723,17 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 
 	/* Try all the other servers. */
 
-	bool success = false;
+	idx = 0;
 
-	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
-	conf_mix_iter_t iter;
+	conf_val_reset(&masters);
 	conf_mix_iter_init(conf, &masters, &iter);
 	while (iter.id->code == KNOT_EOK && fallback.remote) {
 		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
-		size_t addr_count = conf_val_count(&addr);
+		addr_count = conf_val_count(&addr);
 
-		bool tried = false;
+		ret = KNOT_EOK;
 		fallback.address = true;
-		for (size_t i = 0; i < addr_count && fallback.address; i++) {
+		for (size_t i = 0; i < addr_count && fallback.address && idx != last_idx; i++) {
 			conf_remote_t master = conf_remote(conf, iter.id, i);
 			if (preferred.addr.ss_family != AF_UNSPEC &&
 			    sockaddr_net_match(&master.addr, &preferred.addr, -1)) {
@@ -708,10 +741,8 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 				continue;
 			}
 
-			tried = true;
-			int ret = callback(conf, zone, &master, callback_data, &fallback);
+			ret = callback(conf, zone, &master, callback_data, &fallback);
 			if (ret == KNOT_EOK) {
-				success = true;
 				break;
 			} else if (!fallback.remote) {
 				return ret; // Local error.
@@ -721,15 +752,16 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 			                   err_str, ret);
 		}
 
-		if (!success && tried) {
+		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "%s, remote %s not usable",
 			                 err_str, conf_str(iter.id));
 		}
 
+		idx++;
 		conf_mix_iter_next(&iter);
 	}
 
-	return success ? KNOT_EOK : KNOT_ENOMASTER;
+	return ret == KNOT_EOK ? KNOT_EOK : KNOT_ENOMASTER;
 }
 
 int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)

@@ -107,7 +107,7 @@ class Test(object):
 
     def server(self, server, nsid=None, ident=None, version=None, \
                valgrind=None, address=None, port=None, ctlport=None, \
-               external=False, tsig=None):
+               external=False, tsig=None, via=None):
         if server == "knot":
             srv = dnstest.server.Knot()
         elif server == "bind":
@@ -131,6 +131,9 @@ class Test(object):
             srv.addr = address
         else:
             srv.addr = self.addr
+
+        if via:
+            srv.via = srv.addr if via == True else via
 
         if port:
             srv.port = int(port)

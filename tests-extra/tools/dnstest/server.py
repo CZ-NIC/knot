@@ -170,6 +170,7 @@ class Server(object):
         self.tsig = None
         self.tsig_test = None
         self.no_xfr_edns = None
+        self.via = None
 
         self.zones = dict()
 
@@ -198,6 +199,7 @@ class Server(object):
         self.serial_policy = None
         self.auto_acl = None
         self.provide_ixfr = None
+        self.master_pin_tol = None
         self.quic_log = None
 
         self.inquirer = None
@@ -1367,6 +1369,8 @@ class Knot(Server):
                             s.item_str("address", "%s@%s" % (master.addr, master.port))
                     if self.tsig:
                         s.item_str("key", self.tsig.name)
+                    if self.via:
+                        s.item_str("via", self.via)
                     if master.no_xfr_edns:
                         s.item_str("no-edns", "on")
                     servers.add(master.name)
@@ -1386,6 +1390,8 @@ class Knot(Server):
                             s.item_str("address", "%s" % slave.addr)
                         else:
                             s.item_str("address", "%s@%s" % (slave.addr, slave.port))
+                    if self.via:
+                        s.item_str("via", self.via)
                     if self.tsig:
                         s.item_str("key", self.tsig.name)
                     servers.add(slave.name)
@@ -1399,6 +1405,8 @@ class Knot(Server):
                         s.item_str("address", "%s" % parent.addr)
                     else:
                         s.item_str("address", "%s@%s" % (parent.addr, parent.port))
+                    if self.via:
+                        s.item_str("via", self.via)
                     servers.add(parent.name)
 
         if have_remote:
@@ -1629,6 +1637,7 @@ class Knot(Server):
                 s.item_str("zonefile-load", "difference")
 
             self._bool(s, "provide-ixfr", self.provide_ixfr)
+            self._str(s, "master-pin-tolerance", self.master_pin_tol)
 
             if z.catalog_role == ZoneCatalogRole.GENERATE:
                 s.item_str("catalog-role", "generate")

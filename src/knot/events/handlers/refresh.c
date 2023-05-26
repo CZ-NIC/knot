@@ -395,6 +395,9 @@ static int axfr_finalize(struct refresh_data *data)
 	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
 	                master_serial, dnssec_enable, bootstrap);
 
+	data->fallback->remote = false;
+	zone_set_last_master(data->zone, (const struct sockaddr_storage *)data->remote);
+
 	return KNOT_EOK;
 }
 
@@ -668,6 +671,11 @@ static int ixfr_finalize(struct refresh_data *data)
 	finalize_timers(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
 	                master_serial, dnssec_enable, false);
+
+	if (old_serial != zone_contents_serial(data->zone->contents)) {
+		data->fallback->remote = false;
+		zone_set_last_master(data->zone, (const struct sockaddr_storage *)data->remote);
+	}
 
 	return KNOT_EOK;
 }
@@ -1023,6 +1031,24 @@ static int soa_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 	return KNOT_STATE_CONSUME;
 }
 
+static bool wait4pinned_master(struct refresh_data *data)
+{
+	if (data->fallback->pin_tol <= 0 || data->fallback->trying_last) {
+		return false;
+	}
+
+	time_t now = time(NULL);
+	if (data->zone->timers.master_pin_hit == 0) {
+		data->zone->timers.master_pin_hit = now;
+		zone_events_schedule_at(data->zone, ZONE_EVENT_REFRESH, now + data->fallback->pin_tol);
+	} else if (data->zone->timers.master_pin_hit + data->fallback->pin_tol <= now) {
+		data->xfr_type = XFR_TYPE_AXFR;
+		return false;
+	}
+
+	return true;
+}
+
 static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 {
 	struct refresh_data *data = layer->data;
@@ -1063,6 +1089,12 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	bool master_uptodate = serial_is_current(remote_serial, local_serial);
 
 	if (!current) {
+		if (wait4pinned_master(data)) {
+			REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+			            "remote serial %u, zone is outdated, waiting for pinned master",
+			            remote_serial);
+			return KNOT_STATE_DONE;
+		}
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
 		            "remote serial %u, zone is outdated", remote_serial);
 		data->state = STATE_TRANSFER;
