@@ -413,6 +413,7 @@ void test_many(void)
 	is_int(CONNS, test_table->usage, "many: table usage");
 
 	knot_tcp_cleanup(test_table, rls, CONNS);
+	memset(rls, 0, CONNS * sizeof(*rls));
 	usleep(timeout_time);
 	knot_xdp_msg_t *survive = &msgs[i_survive];
 	knot_tcp_relay_t surv_rl = { 0 };
@@ -571,6 +572,7 @@ void test_obufs(void)
 		}
 	}
 	knot_tcp_cleanup(test_table, &rl, 1);
+	memset(&rl, 0, sizeof(rl));
 
 	prepare_seqack(&msg, 0, TEST_MSS);
 	ret = knot_tcp_recv(&rl, &msg, 1, test_table, test_syn_table, XDP_TCP_IGNORE_NONE);
