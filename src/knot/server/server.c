@@ -365,8 +365,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr,
 	}
 #endif
 
-	new_if->fd_udp = malloc(udp_socket_count * sizeof(int));
-	new_if->fd_tcp = malloc(tcp_socket_count * sizeof(int));
+	new_if->fd_udp = calloc(udp_socket_count, sizeof(int));
+	new_if->fd_tcp = calloc(tcp_socket_count, sizeof(int));
 	if (new_if->fd_udp == NULL || new_if->fd_tcp == NULL) {
 		log_error("failed to initialize interface");
 		server_deinit_iface(new_if, true);
