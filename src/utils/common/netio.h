@@ -92,6 +92,16 @@ typedef struct {
 } net_t;
 
 /*!
+ * \brief Returns protocol of passed net_t structure.
+ *
+ * \param net		net_t structure pointer
+ *
+ * \retval knot_probe_proto_t	for known protocol.
+ * \retval -1			if error.
+ */
+int net_get_protocol(const net_t *net);
+
+/*!
  * \brief Creates and fills server structure.
  *
  * \param name		Address or host name.
@@ -146,7 +156,7 @@ const char *get_sockname(const int socktype);
  *
  * \retval "TCP", "UDP", "QUIC", "TLS" or "HTTPS".
  */
-const char *get_protocol(const int proto);
+const char *get_protocol_str(const int proto);
 /*!
  * \brief Translates int socket type to the common string one.
  *
