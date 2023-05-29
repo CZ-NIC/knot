@@ -47,7 +47,7 @@ int net_get_protocol(const net_t *net)
 		return KNOT_PROBE_PROTO_HTTPS;
 	} else
 #endif
-	if (net->tls.params->enable) {
+	if (net->tls.params != NULL && net->tls.params->enable) {
 		return KNOT_PROBE_PROTO_TLS;
 	} else if (net->socktype == PROTO_TCP) {
 		return KNOT_PROBE_PROTO_TCP;
