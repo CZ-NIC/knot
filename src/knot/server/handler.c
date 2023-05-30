@@ -106,7 +106,6 @@ void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
 		assert(stream->inbufs != NULL);
 		assert(stream->inbufs->n_inbufs > 0);
 		struct iovec *inbufs = knot_tinbufu_res_inbufs(stream->inbufs);
-		assert(inbufs[0].iov_len > 0);
 		if (msg) {
 #ifdef ENABLE_XDP
 			params_xdp_update(params, KNOTD_QUERY_PROTO_QUIC, msg,
