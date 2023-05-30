@@ -453,6 +453,7 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *conn, int64_t stream_id,
 	if (EMPTY_LIST(*obs) && !keep_stream) {
 		stream_outprocess(conn, s);
 		memset(s, 0, sizeof(*s));
+		init_list((list_t *)&s->outbufs);
 		while (s = &conn->streams[0], s->inbuf.iov_len == 0 && s->inbufs == NULL && s->obufs_size == 0) {
 			assert(conn->streams_count > 0);
 			conn->streams_count--;
