@@ -364,11 +364,15 @@ int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
 	struct iovec in = { (void *)data, len };
 	int ret = knot_tcp_inbuf_update(&stream->inbuf, in, true,
 	                                &stream->inbufs, &conn->ibufs_size);
-	if (ret != KNOT_EOK || (stream->inbufs == NULL && !fin)) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	if (fin) {
+	if (fin && stream->inbufs == NULL) {
+		return KNOT_ESEMCHECK;
+	}
+
+	if (stream->inbufs != NULL) {
 		stream_inprocess(conn, stream);
 	}
 	return KNOT_EOK;
