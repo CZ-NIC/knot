@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -439,6 +439,7 @@ void knot_xquic_stream_ack_data(knot_xquic_conn_t *xconn, int64_t stream_id,
 	if (EMPTY_LIST(*obs) && !keep_stream) {
 		stream_outprocess(xconn, s);
 		memset(s, 0, sizeof(*s));
+		init_list((list_t *)&s->outbufs);
 		while (s = &xconn->streams[0], s->inbuf.iov_len == 0 && s->inbuf_fin == NULL && s->obufs_size == 0) {
 			assert(xconn->streams_count > 0);
 			xconn->streams_count--;
