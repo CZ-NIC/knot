@@ -359,9 +359,8 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 	/* Add EXPIRE if space and not catalog zone, which cannot expire. */
 	if (knot_pkt_edns_option(qdata->query, KNOT_EDNS_OPTION_EXPIRE) != NULL &&
 	    qdata->extra->contents != NULL && !qdata->extra->zone->is_catalog_flag) {
-		int64_t timer = qdata->extra->zone->timers.next_expire == 0
-		              ? zone_soa_expire(qdata->extra->zone)
-		              : qdata->extra->zone->timers.next_expire - time(NULL);
+		int64_t timer = qdata->extra->zone->timers.next_expire;
+		timer = (timer == 0 ? zone_soa_expire(qdata->extra->zone) : timer - time(NULL));
 		timer = MAX(timer, 0);
 		uint32_t timer_be;
 		knot_wire_write_u32((uint8_t *)&timer_be, (uint32_t)timer);
