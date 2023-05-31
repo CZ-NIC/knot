@@ -1366,8 +1366,6 @@ Current limitations:
   does not take effect for QUIC.
 - Full handshake is always performed, obtained Session tickets are not
   utilized for faster handshakes.
-- The client does not close the connection gracefully and let it time out
-  from the server side.
 
 .. _remote_key:
 

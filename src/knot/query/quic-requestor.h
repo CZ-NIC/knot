@@ -34,4 +34,4 @@ int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data);
 
 int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms);
 
-void knot_qreq_close(struct knot_quic_reply *r);
+void knot_qreq_close(struct knot_quic_reply *r, bool send_close);

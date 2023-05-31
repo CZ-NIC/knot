@@ -1237,9 +1237,6 @@ does not take effect for QUIC.
 .IP \(bu 2
 Full handshake is always performed, obtained Session tickets are not
 utilized for faster handshakes.
-.IP \(bu 2
-The client does not close the connection gracefully and let it time out
-from the server side.
 .UNINDENT
 .SS key
 .sp

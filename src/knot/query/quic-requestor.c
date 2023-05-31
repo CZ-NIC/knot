@@ -140,7 +140,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 	                           (struct sockaddr_in6 *)r->ip_loc, NULL, &conn);
 	r->in_ctx = conn;
 	if (ret != KNOT_EOK) {
-		knot_qreq_close(r);
+		knot_qreq_close(r, false);
 		return ret;
 	}
 
@@ -149,7 +149,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 		t_cur = time_now();
 		if (time_diff_ms(&t_start, &t_cur) > timeout_ms ||
 		    (ret = quic_exchange(conn, r, timeout_ms)) != KNOT_EOK) {
-			knot_qreq_close(r);
+			knot_qreq_close(r, false);
 			return ret;
 		}
 	}
@@ -206,10 +206,16 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 	return KNOT_EOK;
 }
 
-void knot_qreq_close(struct knot_quic_reply *r)
+void knot_qreq_close(struct knot_quic_reply *r, bool send_close)
 {
 	knot_quic_conn_t *conn = r->in_ctx;
 	knot_quic_table_t *table = conn->quic_table;
+
+	if (send_close) {
+		r->handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
+		(void)knot_quic_send(table, conn, r, QUIC_MAX_SEND_PER_RECV, false);
+	}
+
 	knot_quic_table_rem(conn, table);
 	knot_quic_cleanup(&conn, 1);
 	knot_quic_free_creds(table->creds);

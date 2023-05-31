@@ -52,6 +52,8 @@ typedef struct knot_quic_reply {
 	void (*free_reply)(struct knot_quic_reply *);
 } knot_quic_reply_t;
 
+#define KNOT_QUIC_HANDLE_RET_CLOSE  (2000)
+
 /*!
  * \brief Gets data needed for session resumption.
  *

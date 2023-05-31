@@ -52,6 +52,7 @@
 #define QUIC_SEND_VERSION_NEGOTIATION    NGTCP2_ERR_VERSION_NEGOTIATION
 #define QUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
 #define QUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
+#define QUIC_SEND_CONN_CLOSE             (-KNOT_QUIC_HANDLE_RET_CLOSE)
 
 #define TLS_CALLBACK_ERR     (-1)
 
@@ -1007,7 +1008,8 @@ static int send_stream(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	return ret;
 }
 
-static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl)
+static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
+			knot_quic_conn_t *relay /* only for connection close */)
 {
 	int ret = rpl->alloc_reply(rpl);
 	if (ret != KNOT_EOK) {
@@ -1031,6 +1033,8 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl)
 	uint8_t stateless_reset_token[NGTCP2_STATELESS_RESET_TOKENLEN];
 	uint8_t sreset_rand[NGTCP2_MIN_STATELESS_RESET_RANDLEN];
 	dnssec_random_buffer(sreset_rand, sizeof(sreset_rand));
+	ngtcp2_ccerr ccerr;
+	ngtcp2_ccerr_default(&ccerr);
 
 	switch (rpl->handle_ret) {
 	case -QUIC_SEND_VERSION_NEGOTIATION:
@@ -1072,6 +1076,11 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl)
 			stateless_reset_token, sreset_rand, sizeof(sreset_rand)
 		);
 		break;
+	case -QUIC_SEND_CONN_CLOSE:
+		ret = ngtcp2_conn_write_connection_close(
+			relay->conn, NULL, NULL, rpl->out_payload->iov_base, rpl->out_payload->iov_len, &ccerr, get_timestamp()
+		);
+		break;
 	default:
 		ret = KNOT_EINVAL;
 		break;
@@ -1093,7 +1102,7 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
 	if (reply->handle_ret < 0) {
 		return reply->handle_ret;
 	} else if (reply->handle_ret > 0) {
-		return send_special(quic_table, reply);
+		return send_special(quic_table, reply, conn);
 	} else if (conn == NULL) {
 		return KNOT_EINVAL;
 	} else if (conn->conn == NULL) {
