@@ -979,7 +979,7 @@ static int reload_conf(conf_t *new_conf)
 	return KNOT_EOK;
 }
 
-/*! \brief Check if parameter listen(-xdp) has been changed since knotd started. */
+/*! \brief Check if parameter listen(-xdp,-quic) has been changed since knotd started. */
 static bool listen_changed(conf_t *conf, server_t *server)
 {
 	assert(server->ifaces);
@@ -1093,7 +1093,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	}
 
 	if (warn_listen && server->ifaces != NULL && listen_changed(conf, server)) {
-		log_warning(msg, "listen(-xdp)");
+		log_warning(msg, "listen(-xdp,-quic)");
 		warn_listen = false;
 	}
 
