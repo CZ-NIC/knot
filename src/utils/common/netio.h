@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 
+#include "libknot/probe/data.h"
 #include "utils/common/https.h"
 #include "utils/common/params.h"
 #include "utils/common/quic.h"
@@ -92,16 +93,6 @@ typedef struct {
 } net_t;
 
 /*!
- * \brief Returns protocol of passed net_t structure.
- *
- * \param net		net_t structure pointer
- *
- * \retval knot_probe_proto_t	for known protocol.
- * \retval -1			if error.
- */
-int net_get_protocol(const net_t *net);
-
-/*!
  * \brief Creates and fills server structure.
  *
  * \param name		Address or host name.
@@ -150,22 +141,14 @@ int get_socktype(const protocol_t proto, const uint16_t type);
 const char *get_sockname(const int socktype);
 
 /*!
- * \brief Translates int protocol to the common string one.
- *
- * \param socktype	Protocol
- *
- * \retval "TCP", "UDP", "QUIC", "TLS" or "HTTPS".
- */
-const char *get_protocol_str(const int proto);
-/*!
- * \brief Translates int socket type to the common string one.
+ * \brief Translates protocol type to a common string.
  *
  * \param ss		Socket address storage.
- * \param socktype	Socket type (SOCK_STREAM or SOCK_DGRAM).
+ * \param socktype	Protocol type.
  * \param dst		Output string.
  */
 void get_addr_str(const struct sockaddr_storage *ss,
-                  const char                    *protocol,
+                  const knot_probe_proto_t      socktype,
                   char                          **dst);
 
 /*!

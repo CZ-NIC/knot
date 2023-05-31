@@ -125,7 +125,7 @@ static void fill_remote_addr(net_t *net, Dnstap__Message *message, bool is_initi
 	sockaddr_set_raw(&ss, family, addr->data, addr->len);
 	sockaddr_port_set(&ss, port);
 
-	get_addr_str(&ss, get_protocol_str(proto), &net->remote_str);
+	get_addr_str(&ss, proto, &net->remote_str);
 }
 
 static int process_dnstap(const query_t *query)
