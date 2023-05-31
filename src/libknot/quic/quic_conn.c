@@ -74,6 +74,7 @@ void knot_quic_table_free(knot_quic_table_t *table)
 		}
 		assert(table->usage == 0);
 		assert(table->pointers == 0);
+		assert(table->ibufs_size == 0);
 		assert(table->obufs_size == 0);
 
 		free(table);
@@ -212,6 +213,7 @@ void quic_stream_free(knot_quic_conn_t *conn, int64_t stream_id)
 	if (s != NULL && s->inbuf.iov_len > 0) {
 		free(s->inbuf.iov_base);
 		conn->ibufs_size -= s->inbuf.iov_len;
+		conn->quic_table->ibufs_size -= s->inbuf.iov_len;
 		memset(&s->inbuf, 0, sizeof(s->inbuf));
 	}
 	while (s != NULL && s->inbufs != NULL) {
@@ -362,8 +364,10 @@ int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
 	}
 
 	struct iovec in = { (void *)data, len };
+	ssize_t prev_ibufs_size = conn->ibufs_size;
 	int ret = knot_tcp_inbuf_update(&stream->inbuf, in, true,
 	                                &stream->inbufs, &conn->ibufs_size);
+	conn->quic_table->ibufs_size += (ssize_t)conn->ibufs_size - prev_ibufs_size;
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
