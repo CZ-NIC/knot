@@ -41,6 +41,9 @@ Options
   format, or [+/-]\ *time*\ [unit] format, where unit can be **Y**, **M**,
   **D**, **h**, **m**, or **s**. Default is current UNIX timestamp.
 
+**-p**, **--print**
+  Print the zone on stdout.
+
 **-v**, **--verbose**
   Enable debug output.
 

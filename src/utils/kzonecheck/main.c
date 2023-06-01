@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@ static void print_help(void)
 	       " -d, --dnssec <on|off>       Also check DNSSEC-related records.\n"
 	       " -t, --time <timestamp>      Current time specification.\n"
 	       "                              (default current UNIX time)\n"
+	       " -p, --print                 Print the zone on stdout.\n"
 	       " -v, --verbose               Enable debug output.\n"
 	       " -h, --help                  Print the program help.\n"
 	       " -V, --version               Print the program version.\n"
@@ -66,7 +67,7 @@ static bool str2bool(const char *s)
 int main(int argc, char *argv[])
 {
 	const char *origin = NULL;
-	bool verbose = false;
+	bool verbose = false, print = false;
 	semcheck_optional_t optional = SEMCHECK_DNSSEC_AUTO; // default value for --dnssec
 	knot_time_t check_time = (knot_time_t)time(NULL);
 
@@ -75,6 +76,7 @@ int main(int argc, char *argv[])
 		{ "origin",  required_argument, NULL, 'o' },
 		{ "time",    required_argument, NULL, 't' },
 		{ "dnssec",  required_argument, NULL, 'd' },
+		{ "print",   no_argument,       NULL, 'p' },
 		{ "verbose", no_argument,       NULL, 'v' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ "version", no_argument,       NULL, 'V' },
@@ -86,10 +88,13 @@ int main(int argc, char *argv[])
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "o:t:d:vVh", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "o:t:d:pvVh", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'o':
 			origin = optarg;
+			break;
+		case 'p':
+			print = true;
 			break;
 		case 'v':
 			verbose = true;
@@ -154,7 +159,7 @@ int main(int argc, char *argv[])
 	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
 	knot_dname_to_lower(dname);
 	free(zonename);
-	int ret = zone_check(filename, dname, optional, (time_t)check_time);
+	int ret = zone_check(filename, dname, optional, (time_t)check_time, print);
 	knot_dname_free(dname, NULL);
 
 	log_close();
@@ -166,7 +171,7 @@ int main(int argc, char *argv[])
 		}
 		return EXIT_SUCCESS;
 	case KNOT_EZONEINVAL:
-		INFO2("Serious semantic error detected");
+		ERR2("serious semantic error detected");
 		// FALLTHROUGH
 	case KNOT_ESEMCHECK:
 		return EXIT_FAILURE;

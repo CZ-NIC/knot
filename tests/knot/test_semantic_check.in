@@ -16,10 +16,10 @@ expect_error()
 		return
 	fi
 
-	"$KZONECHECK" -o example.com "$DATA/$1" > "$LOG"
+	"$KZONECHECK" -o example.com "$DATA/$1" > "$LOG" 2>&1
 	ok "$1 - check program return" test $? -eq 1
 
-	fatal=$(grep -E "^Serious semantic error detected" $LOG | wc -l)
+	fatal=$(grep -E "^error: serious semantic error detected" $LOG | wc -l)
 	ok "$1 - check fatal" test $fatal -eq $2
 
 	errors=$(grep -E "^\[.+\] $4" $LOG | wc -l)
@@ -32,14 +32,14 @@ expect_error()
 #param zonefile
 test_correct()
 {
-	$KZONECHECK -o example.com "$DATA/$1" > /dev/null
+	$KZONECHECK -o example.com "$DATA/$1" > /dev/null 2>&1
 	ok "$1 - correct zone, without error" test $? -eq 0
 }
 
 #param zonefile
 test_correct_no_dnssec()
 {
-	$KZONECHECK -o example.com -d off "$DATA/$1" > /dev/null
+	$KZONECHECK -o example.com -d off "$DATA/$1" > /dev/null 2>&1
 	ok "$1 - correct zone, without error" test $? -eq 0
 }
 
