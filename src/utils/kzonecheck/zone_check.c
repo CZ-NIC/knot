@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 #include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
+#include "knot/zone/zone-dump.h"
 #include "utils/common/msg.h"
 
 typedef struct {
@@ -43,9 +44,9 @@ static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
 		owner = "";
 	}
 
-	printf("[%s] %s%s%s\n", owner, sem_error_msg(error),
-	      (data != NULL ? " "  : ""),
-	      (data != NULL ? data : ""));
+	fprintf(stderr, "[%s] %s%s%s\n", owner, sem_error_msg(error),
+	       (data != NULL ? " "  : ""),
+	       (data != NULL ? data : ""));
 
 	stats->errors[error]++;
 	stats->error_count++;
@@ -53,16 +54,16 @@ static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
 
 static void print_statistics(err_handler_stats_t *stats)
 {
-	printf("\nError summary:\n");
+	fprintf(stderr, "\nError summary:\n");
 	for (sem_error_t i = 0; i <= SEM_ERR_UNKNOWN; ++i) {
 		if (stats->errors[i] > 0) {
-			printf("%4u\t%s\n", stats->errors[i], sem_error_msg(i));
+			fprintf(stderr, "%4u\t%s\n", stats->errors[i], sem_error_msg(i));
 		}
 	}
 }
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name,
-               semcheck_optional_t optional, time_t time)
+               semcheck_optional_t optional, time_t time, bool print)
 {
 	err_handler_stats_t stats = {
 		.handler = { .cb = err_callback },
@@ -81,12 +82,20 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name,
 	if (contents == NULL && !stats.handler.error) {
 		return KNOT_ERROR;
 	}
-	zone_contents_deep_free(contents);
 
 	if (stats.error_count > 0) {
 		print_statistics(&stats);
-		return stats.handler.error ? KNOT_EZONEINVAL : KNOT_ESEMCHECK;
-	} else {
-		return KNOT_EOK;
+		ret = stats.handler.error ? KNOT_EZONEINVAL : KNOT_ESEMCHECK;
+		if (print) {
+			fprintf(stderr, "\n");
+		}
 	}
+
+	if (print) {
+		printf(";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
+		zone_dump_text(contents, stdout, false, NULL);
+	}
+	zone_contents_deep_free(contents);
+
+	return ret;
 }
