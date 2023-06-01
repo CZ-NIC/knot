@@ -53,12 +53,20 @@ static knot_lookup_t rtypes[] = {
 
 static void print_header(const knot_pkt_t *packet, const style_t *style)
 {
+	if (packet->size < KNOT_WIRE_OFFSET_QDCOUNT) {
+		return;
+	}
+
 	char flags[64] = "";
 	char unknown_rcode[64] = "";
 	char unknown_opcode[64] = "";
 
 	const char *rcode_str = NULL;
 	const char *opcode_str = NULL;
+
+	uint16_t qdcount = 0, ancount = 0, nscount = 0, arcount = 0;
+
+	uint16_t id = knot_wire_get_id(packet->wire);
 
 	// Get extended RCODE.
 	const char *code_name = knot_pkt_ext_rcode_name(packet);
@@ -108,14 +116,15 @@ static void print_header(const knot_pkt_t *packet, const style_t *style)
 		strlcat(flags, " cd", flags_rest);
 	}
 
-	uint16_t id = knot_wire_get_id(packet->wire);
-	uint16_t qdcount = knot_wire_get_qdcount(packet->wire);
-	uint16_t ancount = knot_wire_get_ancount(packet->wire);
-	uint16_t nscount = knot_wire_get_nscount(packet->wire);
-	uint16_t arcount = knot_wire_get_arcount(packet->wire);
+	if (packet->size >= KNOT_WIRE_HEADER_SIZE) {
+		qdcount = knot_wire_get_qdcount(packet->wire);
+		ancount = knot_wire_get_ancount(packet->wire);
+		nscount = knot_wire_get_nscount(packet->wire);
+		arcount = knot_wire_get_arcount(packet->wire);
 
-	if (knot_pkt_has_tsig(packet)) {
-		arcount++;
+		if (knot_pkt_has_tsig(packet)) {
+			arcount++;
+		}
 	}
 
 	// Print formatted info.
@@ -867,10 +876,11 @@ void print_packet(const knot_pkt_t *packet,
 	const knot_pktsection_t *additional = knot_pkt_section(packet,
 	                                                       KNOT_ADDITIONAL);
 
-	uint16_t qdcount = knot_wire_get_qdcount(packet->wire);
-	uint16_t ancount = knot_wire_get_ancount(packet->wire);
-	uint16_t nscount = knot_wire_get_nscount(packet->wire);
-	uint16_t arcount = knot_wire_get_arcount(packet->wire);
+	uint16_t qdcount = packet->parsed >= KNOT_WIRE_OFFSET_ANCOUNT ?
+	                   knot_wire_get_qdcount(packet->wire) : 0;
+	uint16_t ancount = packet->sections[KNOT_ANSWER].count;
+	uint16_t nscount = packet->sections[KNOT_AUTHORITY].count;
+	uint16_t arcount = packet->sections[KNOT_ADDITIONAL].count;
 
 	// Disable additionals printing if there are no other records.
 	// OPT record may be placed anywhere within additionals!
