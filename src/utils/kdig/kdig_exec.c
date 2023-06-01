@@ -625,11 +625,11 @@ static int process_query_packet(const knot_pkt_t      *query,
                                 const sign_context_t  *sign_ctx,
                                 const style_t         *style)
 {
-	struct timespec	t_start, t_query, t_query_full, t_end, t_end_full;
+	struct timespec	t_start, t_query, t_end;
 	time_t		timestamp;
 	knot_pkt_t	*reply = NULL;
 	uint8_t		in[MAX_PACKET_SIZE];
-	int		in_len;
+	int		in_len = 0;
 	int		ret;
 
 	// Get start query time.
@@ -653,10 +653,11 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 	// Get stop query time and start reply time.
 	t_query = time_now();
-	t_query_full = time_diff(&t_start, &t_query);
-	t_query_full.tv_sec += timestamp;
 
 #if USE_DNSTAP
+	struct timespec t_query_full = time_diff(&t_start, &t_query);
+	t_query_full.tv_sec += timestamp;
+
 	// Make the dnstap copy of the query.
 	write_dnstap(query_ctx->dt_writer, true, query->wire, query->size,
 	             net, &t_query_full);
@@ -688,16 +689,15 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 		// Receive a reply message.
 		in_len = net_receive(net, in, sizeof(in));
+		t_end = time_now();
 		if (in_len <= 0) {
 			goto fail;
 		}
 
-		// Get stop reply time.
-		t_end = time_now();
-		t_end_full = time_diff(&t_start, &t_end);
+#if USE_DNSTAP
+		struct timespec t_end_full = time_diff(&t_start, &t_end);
 		t_end_full.tv_sec += timestamp;
 
-#if USE_DNSTAP
 		// Make the dnstap copy of the response.
 		write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
 		             &t_end_full);
@@ -753,7 +753,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 	// Print reply packet.
 	if (style->format != FORMAT_JSON) {
-		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end),
+		print_packet(reply, net, in_len, time_diff_ms(&t_query, &t_end),
 		             timestamp, true, style);
 	} else {
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
@@ -815,7 +815,10 @@ static int process_query_packet(const knot_pkt_t      *query,
 	return 0;
 
 fail:
-	if (style->format == FORMAT_JSON) {
+	if (style->format != FORMAT_JSON) {
+		print_packet(reply, net, in_len, time_diff_ms(&t_query, &t_end),
+		             timestamp, true, style);
+	} else {
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
 		(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
 		print_packets_json(q, reply, net, timestamp, style);
@@ -958,7 +961,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
                               const sign_context_t  *sign_ctx,
                               const style_t         *style)
 {
-	struct timespec t_start, t_query, t_query_full, t_end, t_end_full;
+	struct timespec t_start, t_query, t_end;
 	time_t		timestamp;
 	knot_pkt_t      *reply = NULL;
 	uint8_t         in[MAX_PACKET_SIZE];
@@ -991,10 +994,11 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 	// Get stop query time and start reply time.
 	t_query = time_now();
-	t_query_full = time_diff(&t_start, &t_query);
-	t_query_full.tv_sec += timestamp;
 
 #if USE_DNSTAP
+	struct timespec t_query_full = time_diff(&t_start, &t_query);
+	t_query_full.tv_sec += timestamp;
+
 	// Make the dnstap copy of the query.
 	write_dnstap(query_ctx->dt_writer, true, query->wire, query->size,
 	             net, &t_query_full);
@@ -1026,16 +1030,15 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 		// Receive a reply message.
 		in_len = net_receive(net, in, sizeof(in));
+		t_end = time_now();
 		if (in_len <= 0) {
 			goto fail;
 		}
 
-		// Get stop message time.
-		t_end = time_now();
-		t_end_full = time_diff(&t_start, &t_end);
+#if USE_DNSTAP
+		struct timespec t_end_full = time_diff(&t_start, &t_end);
 		t_end_full.tv_sec += timestamp;
 
-#if USE_DNSTAP
 		// Make the dnstap copy of the response.
 		write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
 		             &t_end_full);
@@ -1163,6 +1166,7 @@ fail:
 	// Print partial transfer information.
 	t_end = time_now();
 	if (style->format != FORMAT_JSON) {
+		print_data_xfr(reply, style);
 		print_footer_xfr(total_len, msg_count, rr_count, net,
 		                 time_diff_ms(&t_query, &t_end), timestamp, style);
 	} else {
