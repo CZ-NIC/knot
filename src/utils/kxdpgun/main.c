@@ -742,6 +742,7 @@ void *xdp_gun_thread(void *_ctx)
 						}
 
 						bool sess_ticket = (gnutls_session_get_flags(conn->tls_session) & GNUTLS_SFLAGS_SESSION_TICKET);
+						bool resp_recvd = false;
 
 						if (sess_ticket && !conn->session_taken && !ctx->quic_full_handshake) {
 							conn->session_taken = true;
@@ -787,6 +788,8 @@ void *xdp_gun_thread(void *_ctx)
 								knot_quic_table_rem(conn, quic_table);
 								knot_quic_cleanup(&conn, 1);
 								continue;
+							} else {
+								resp_recvd = true;
 							}
 						}
 						ret = knot_quic_send(quic_table, conn, &quic_reply, 4,
@@ -794,6 +797,17 @@ void *xdp_gun_thread(void *_ctx)
 						knot_quic_cleanup(&conn, 1);
 						if (ret != KNOT_EOK) {
 							errors++;
+						}
+
+						if (resp_recvd && !(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
+							assert(!(ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK));
+							quic_reply.handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
+							ret = knot_quic_send(quic_table, conn, &quic_reply, 1, false);
+							knot_quic_table_rem(conn, quic_table);
+							knot_quic_cleanup(&conn, 1);
+							if (ret != KNOT_EOK) {
+								errors++;
+							}
 						}
 					}
 					(void)knot_xdp_send_finish(xsk);
@@ -1082,9 +1096,6 @@ static bool sending_mode(const char *arg, xdp_gun_ctx_t *ctx)
 		ctx->ignore2 = XDP_TCP_IGNORE_DATA_ACK | XDP_TCP_IGNORE_FIN;
 		break;
 	case '8':
-		if (!ctx->tcp) {
-			goto mode_unavailable;
-		}
 		ctx->ignore1 = KXDPGUN_IGNORE_CLOSE;
 		ctx->ignore2 = XDP_TCP_IGNORE_FIN;
 		break;

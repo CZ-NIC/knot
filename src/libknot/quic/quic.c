@@ -1086,7 +1086,7 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 		break;
 	case -QUIC_SEND_CONN_CLOSE:
 		ret = ngtcp2_conn_write_connection_close(
-			relay->conn, NULL, NULL, rpl->out_payload->iov_base, rpl->out_payload->iov_len, &ccerr, get_timestamp()
+			relay->conn, NULL, NULL, rpl->out_payload->iov_base, rpl->out_payload->iov_len, &ccerr, now
 		);
 		break;
 	default:
