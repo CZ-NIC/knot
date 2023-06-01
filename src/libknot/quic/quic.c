@@ -298,8 +298,16 @@ struct knot_quic_creds *knot_quic_init_creds_peer(const struct knot_quic_creds *
 		return NULL;
 	}
 
-	creds->peer = true;
-	creds->tls_cert = local_creds->tls_cert;
+	if (local_creds) {
+		creds->peer = true;
+		creds->tls_cert = local_creds->tls_cert;
+	} else {
+		int ret = gnutls_certificate_allocate_credentials(&creds->tls_cert);
+		if (ret != GNUTLS_E_SUCCESS) {
+			free(creds);
+			return NULL;
+		}
+	}
 
 	if (peer_pin_len > 0 && peer_pin != NULL) {
 		memcpy(creds->peer_pin, peer_pin, peer_pin_len);
