@@ -121,7 +121,7 @@ TCP/QUIC debug modes
   Send query and don't ACK the response or anything further.
 
 **8**
-  Don't close the connection and ignore close by counterpart (TCP only).
+  Don't close the connection and ignore close by counterpart.
 
 **9**
   Operate normally except for not ACKing the final FIN+ACK (TCP only).

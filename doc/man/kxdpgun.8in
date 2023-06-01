@@ -142,7 +142,7 @@ Send incomplete query (N\-1 bytes) and don\(aqt react further.
 Send query and don\(aqt ACK the response or anything further.
 .TP
 \fB8\fP
-Don\(aqt close the connection and ignore close by counterpart (TCP only).
+Don\(aqt close the connection and ignore close by counterpart.
 .TP
 \fB9\fP
 Operate normally except for not ACKing the final FIN+ACK (TCP only).
