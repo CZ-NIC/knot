@@ -260,7 +260,7 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 
 	if (request->quic_ctx != NULL) {
 #ifdef ENABLE_QUIC
-		knot_qreq_close(request->quic_ctx);
+		knot_qreq_close(request->quic_ctx, true);
 #else
 		assert(0);
 #endif // ENABLE_QUIC
