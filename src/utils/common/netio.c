@@ -32,6 +32,7 @@
 #include "utils/common/msg.h"
 #include "utils/common/tls.h"
 #include "libknot/libknot.h"
+#include "contrib/net.h"
 #include "contrib/proxyv2/proxyv2.h"
 #include "contrib/sockaddr.h"
 
@@ -404,31 +405,6 @@ static char *net_get_remote(const net_t *net)
 	return NULL;
 }
 
-#ifdef ENABLE_QUIC
-static int fd_set_recv_ecn(int fd, int family)
-{
-	unsigned int tos = 1;
-	switch (family) {
-	case AF_INET:
-#ifdef IP_RECVTOS
-		if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &tos, sizeof(tos)) == -1) {
-			return knot_map_errno();
-		}
-#endif
-		break;
-	case AF_INET6:
-		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &tos, sizeof(tos)) == -1) {
-			return knot_map_errno();
-		}
-		break;
-	default:
-		return KNOT_EINVAL;
-	}
-	return KNOT_EOK;
-}
-#endif
-
-
 int net_connect(net_t *net)
 {
 	if (net == NULL || net->srv == NULL) {
@@ -551,8 +527,8 @@ int net_connect(net_t *net)
 	else if (net->socktype == SOCK_DGRAM) {
 		if (net->quic.params.enable) {
 			// Establish QUIC connection.
-			ret = fd_set_recv_ecn(sockfd, net->srv->ai_family);
-			if (ret != KNOT_EOK) {
+			ret = net_cmsg_ecn_enable(sockfd, net->srv->ai_family);
+			if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
 				close(sockfd);
 				return ret;
 			}

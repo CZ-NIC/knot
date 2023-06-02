@@ -385,6 +385,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool quic,
 	bool warn_cbpf = true;
 	bool warn_bufsize = true;
 	bool warn_pktinfo = true;
+	bool warn_ecn = true;
 	bool warn_flag_misc = true;
 
 	/* Create bound UDP sockets. */
@@ -434,6 +435,14 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool quic,
 			log_warning("failed to disable Path MTU discovery for IPv4/UDP (%s)",
 			            knot_strerror(ret));
 			warn_flag_misc = false;
+		}
+
+		if (quic) {
+			ret = net_cmsg_ecn_enable(sock, addr->ss_family);
+			if (ret != KNOT_EOK && ret != KNOT_ENOTSUP && warn_ecn) {
+				log_warning("failed to enable ECN for QUIC");
+				warn_ecn = false;
+			}
 		}
 
 		new_if->fd_udp[new_if->fd_udp_count] = sock;

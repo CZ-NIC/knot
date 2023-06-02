@@ -30,11 +30,12 @@
 #endif /* HAVE_SYS_UIO_H */
 #include <unistd.h>
 
-#include "knot/common/log.h"
 #include "contrib/mempattern.h"
+#include "contrib/net.h"
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 #include "knot/common/fdset.h"
+#include "knot/common/log.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "knot/server/handler.h"
@@ -58,7 +59,7 @@ typedef struct {
 	knot_layer_t layer; /*!< Query processing layer. */
 	server_t *server;   /*!< Name server structure. */
 	unsigned thread_id; /*!< Thread identifier. */
-	sockaddr_t local;   /*!< Storage for local any address. */
+	sockaddr_t local;   /*!< Storage for local any address for currently processed query. */
 
 #ifdef ENABLE_QUIC
 	knot_quic_table_t *quic_table;  /*!< QUIC connection table if active. */
@@ -90,22 +91,24 @@ typedef union {
 	uint8_t buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
 } cmsg_pktinfo_t;
 
-static const sockaddr_t *udp_pktinfo_handle(const struct msghdr *rx, struct msghdr *tx,
-                                            sockaddr_t *local, const iface_t *iface)
+static const sockaddr_t *local_addr(sockaddr_t *local_storage, const iface_t *iface)
 {
-	tx->msg_controllen = rx->msg_controllen;
-	if (tx->msg_controllen > 0) {
-		tx->msg_control = rx->msg_control;
-	} else {
-		// BSD has problem with zero length and not-null pointer
-		tx->msg_control = NULL;
-	}
+	return local_storage->un.sun_family == AF_UNSPEC
+	       ? (const sockaddr_t *)&iface->addr
+	       : local_storage;
+}
 
-	struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx);
-	if (cmsg == NULL) {
-		return (const sockaddr_t *)&iface->addr;
+static void cmsg_handle_ecn(int **p_ecn, struct cmsghdr *cmsg)
+{
+	int *p = net_cmsg_ecn_ptr(cmsg);
+	if (p != NULL) {
+		*p_ecn = p;
 	}
+}
 
+static void cmsg_handle_pktinfo(sockaddr_t *local, const iface_t *iface,
+                                struct cmsghdr *cmsg)
+{
 #if defined(IP_PKTINFO)
 	if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
 		struct in_pktinfo *info = (struct in_pktinfo *)CMSG_DATA(cmsg);
@@ -115,14 +118,12 @@ static const sockaddr_t *udp_pktinfo_handle(const struct msghdr *rx, struct msgh
 		local->ip4.sin_family = AF_INET;
 		local->ip4.sin_port = ((const struct sockaddr_in *)&iface->addr)->sin_port;
 		local->ip4.sin_addr = info->ipi_addr;
-		return local;
 #elif defined(IP_RECVDSTADDR)
 	if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_RECVDSTADDR) {
 		struct in_addr *addr = (struct in_addr *)CMSG_DATA(cmsg);
 		local->ip4.sin_family = AF_INET;
 		local->ip4.sin_port = ((const struct sockaddr_in *)&iface->addr)->sin_port;
 		local->ip4.sin_addr = *addr;
-		return local;
 #else
 	if (false) {
 #endif
@@ -133,10 +134,35 @@ static const sockaddr_t *udp_pktinfo_handle(const struct msghdr *rx, struct msgh
 		local->ip6.sin6_family = AF_INET6;
 		local->ip6.sin6_port = ((const struct sockaddr_in6 *)&iface->addr)->sin6_port;
 		local->ip6.sin6_addr = info->ipi6_addr;
-		return local;
+	}
+}
+
+void cmsg_handle(const struct msghdr *rx, struct msghdr *tx,
+                 sockaddr_t *local, int **p_ecn, const iface_t *iface)
+{
+	local->un.sun_family = AF_UNSPEC;
+
+	tx->msg_controllen = rx->msg_controllen;
+	if (tx->msg_controllen > 0) {
+		tx->msg_control = rx->msg_control;
+	} else {
+		// BSD has problem with zero length and not-null pointer
+		tx->msg_control = NULL;
 	}
 
-	return (const sockaddr_t *)&iface->addr;
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx);
+	if (iface->quic) {
+		*p_ecn = NULL;
+		while (cmsg != NULL) {
+			cmsg_handle_ecn(p_ecn, cmsg);
+			cmsg_handle_pktinfo(local, iface, cmsg);
+			cmsg = CMSG_NXTHDR(tx, cmsg);
+		}
+	} else {
+		if (cmsg != NULL) {
+			cmsg_handle_pktinfo(local, iface, cmsg);
+		}
+	}
 }
 
 static void udp_sweep(udp_context_t *ctx, _unused_ void *d)
@@ -185,7 +211,7 @@ static void udp_msg_deinit(void *d)
 
 static int udp_msg_recv(int fd, void *d)
 {
-	udp_msg_ctx_t *rq = (udp_msg_ctx_t *)d;
+	udp_msg_ctx_t *rq = d;
 
 	/* Reset max lengths. */
 	rq->iov[RX].iov_len = sizeof(rq->iobuf[RX]);
@@ -210,8 +236,9 @@ static void udp_msg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 	rq->msg[TX].msg_namelen = rq->msg[RX].msg_namelen;
 	rq->iov[TX].iov_len = sizeof(rq->iobuf[TX]);
 
-	const sockaddr_t *local = udp_pktinfo_handle(&rq->msg[RX], &rq->msg[TX],
-	                                             &ctx->local, iface);
+	int *p_ecn;
+	cmsg_handle(&rq->msg[RX], &rq->msg[TX], &ctx->local, &p_ecn, iface);
+	const sockaddr_t *local = local_addr(&ctx->local, iface);
 
 	/* Process received pkt. */
 	knotd_qdata_params_t params = params_init(
@@ -220,7 +247,7 @@ static void udp_msg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 	if (iface->quic) {
 #ifdef ENABLE_QUIC
 		quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
-		             ctx->quic_table, &rq->iov[RX],  &rq->msg[TX]);
+		             ctx->quic_table, &rq->iov[RX], &rq->msg[TX], p_ecn);
 #else
 		assert(0);
 #endif // ENABLE_QUIC
@@ -321,7 +348,9 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 		tx->msg_namelen = rx->msg_namelen;
 
 		/* Update output message control buffer. */
-		const sockaddr_t *local = udp_pktinfo_handle(rx, tx, &ctx->local, iface);
+		int *p_ecn;
+		cmsg_handle(rx, tx, &ctx->local, &p_ecn, iface);
+		const sockaddr_t *local = local_addr(&ctx->local, iface);
 
 		knotd_qdata_params_t params = params_init(
 			iface->quic ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP,
@@ -329,7 +358,7 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 		if (iface->quic) {
 #ifdef ENABLE_QUIC
 			quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
-			             ctx->quic_table, rx->msg_iov, tx);
+			             ctx->quic_table, rx->msg_iov, tx, p_ecn);
 #else
 		assert(0);
 #endif // ENABLE_QUIC

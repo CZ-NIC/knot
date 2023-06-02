@@ -46,6 +46,7 @@ typedef struct knot_quic_reply {
 
 	void *sock;
 	int handle_ret;
+	uint8_t ecn;
 
 	int (*alloc_reply)(struct knot_quic_reply *);
 	int (*send_reply)(struct knot_quic_reply *);
