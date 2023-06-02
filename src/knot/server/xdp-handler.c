@@ -100,7 +100,9 @@ static int quic_alloc_cb(knot_quic_reply_t *rpl)
 static int quic_send_cb(knot_quic_reply_t *rpl)
 {
 	uint32_t sent = 0;
-	return knot_xdp_send(rpl->sock, rpl->out_ctx, 1, &sent);
+	knot_xdp_msg_t *msg = rpl->out_ctx;
+	msg->ecn = rpl->ecn;
+	return knot_xdp_send(rpl->sock, msg, 1, &sent);
 }
 
 static void quic_free_cb(knot_quic_reply_t *rpl)
@@ -263,6 +265,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		reply->out_payload = &msg_out->payload;
 		reply->in_ctx = msg_recv;
 		reply->out_ctx = msg_out;
+		reply->ecn = msg_recv->ecn;
 
 		(void)knot_quic_handle(ctx->quic_table, reply, ctx->quic_idle_close,
 		                       &ctx->quic_relays[i]);

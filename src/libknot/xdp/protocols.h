@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -128,6 +128,8 @@ inline static void *prot_read_ipv4(void *data, knot_xdp_msg_t *msg, void **data_
 	src->sin_family = AF_INET;
 	dst->sin_family = AF_INET;
 
+	msg->ecn = (ip4->tos & 0x3);
+
 	*data_end = data + be16toh(ip4->tot_len);
 	data += ip4->ihl * 4;
 
@@ -157,6 +159,8 @@ inline static void *prot_read_ipv6(void *data, knot_xdp_msg_t *msg, void **data_
 	src->sin6_flowinfo = 0;
 	dst->sin6_flowinfo = 0;
 	// Scope ID is ignored.
+
+	msg->ecn = ((ip6->flow_lbl[0] & 0x30) >> 4);
 
 	data += sizeof(*ip6);
 	*data_end = data + be16toh(ip6->payload_len);
@@ -361,7 +365,7 @@ inline static void prot_write_ipv4(void *data, const knot_xdp_msg_t *msg,
 
 	ip4->version  = 4;
 	ip4->ihl      = sizeof(*ip4) / 4;
-	ip4->tos      = 0;
+	ip4->tos      = msg->ecn;
 	ip4->tot_len  = htobe16(data_end - data);
 	ip4->id       = 0;
 	ip4->frag_off = 0;
@@ -395,6 +399,7 @@ inline static void prot_write_ipv6(void *data, const knot_xdp_msg_t *msg,
 
 	ip6->version     = 6;
 	ip6->priority    = 0;
+	ip6->flow_lbl[0] = (msg->ecn << 4);
 	ip6->payload_len = htobe16(data_end - data - sizeof(*ip6));
 	ip6->nexthdr     = ((msg->flags & KNOT_XDP_MSG_TCP) ? IPPROTO_TCP : IPPROTO_UDP);
 	ip6->hop_limit   = IPDEFTTL;

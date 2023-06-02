@@ -324,6 +324,64 @@ int net_bound_tfo(int sock, int backlog)
 	return KNOT_ENOTSUP;
 }
 
+int net_cmsg_ecn_enable(int sock, int family)
+{
+	switch (family) {
+	case AF_INET:
+#ifdef IP_RECVTOS
+		return sockopt_enable(sock, IPPROTO_IP, IP_RECVTOS);
+#else
+		return KNOT_ENOTSUP;
+#endif
+	case AF_INET6:
+		return sockopt_enable(sock, IPPROTO_IPV6, IPV6_RECVTCLASS);
+	default:
+		return KNOT_EINVAL;
+	}
+}
+
+uint8_t net_cmsg_ecn(struct msghdr *msg)
+{
+	uint8_t ecn = 0;
+	for (struct cmsghdr *c = CMSG_FIRSTHDR(msg); c != NULL; c = CMSG_NXTHDR(msg, c)) {
+		if (c->cmsg_level == IPPROTO_IPV6 && c->cmsg_type == IPV6_RECVTCLASS && c->cmsg_len > 0) {
+			ecn = *(uint8_t *)CMSG_DATA(c);
+			break;
+		}
+#ifdef IP_RECVTOS
+		else if (c->cmsg_level == IPPROTO_IP && c->cmsg_type == IP_RECVTOS && c->cmsg_len > 0) {
+			ecn = *(uint8_t *)CMSG_DATA(c);
+			break;
+		}
+#endif
+	}
+	return (ecn & 0x3);
+}
+
+int net_ecn_set(int sock, int family, uint8_t ecn)
+{
+	int val = ecn;
+	switch (family) {
+	case AF_INET:
+#ifdef IP_RECVTOS /* Disallow setting TOS if RECVTOS isn't supported (OpenBSD). */
+		if (setsockopt(sock, IPPROTO_IP, IP_TOS, &val, sizeof(val)) != 0) {
+			return knot_map_errno();
+		}
+#else
+		return KNOT_ENOTSUP;
+#endif
+		break;
+	case AF_INET6:
+		if (setsockopt(sock, IPPROTO_IPV6, IPV6_TCLASS, &val, sizeof(val)) != 0) {
+			return knot_map_errno();
+		}
+		break;
+	default:
+		return KNOT_ENOTSUP;
+	}
+	return KNOT_EOK;
+}
+
 bool net_is_connected(int sock)
 {
 	struct sockaddr_storage addr;
@@ -659,6 +717,26 @@ ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
 	};
 
 	return recv_data(sock, &msg, true, &timeout_ms);
+}
+
+ssize_t net_msg_send(int sock, struct msghdr *msg, int timeout_ms)
+{
+	if (msg->msg_iovlen != 1) {
+		return KNOT_EINVAL;
+	}
+	int ret = send_data(sock, msg, &timeout_ms, false);
+	if (ret < 0) {
+		return ret;
+	} else if (ret != msg->msg_iov->iov_len) {
+		return KNOT_ECONN;
+	}
+
+	return ret;
+}
+
+ssize_t net_msg_recv(int sock, struct msghdr *msg, int timeout_ms)
+{
+	return recv_data(sock, msg, true, &timeout_ms);
 }
 
 ssize_t net_dgram_send(int sock, const uint8_t *buffer, size_t size,

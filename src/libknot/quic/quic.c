@@ -932,7 +932,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		}
 	}
 
-	ngtcp2_pkt_info pi = { .ecn = NGTCP2_ECN_NOT_ECT, };
+	ngtcp2_pkt_info pi = { .ecn = reply->ecn, };
 
 	ret = ngtcp2_conn_read_pkt(conn->conn, &path, &pi, reply->in_payload->iov_base,
 	                           reply->in_payload->iov_len, now);
@@ -993,8 +993,9 @@ static int send_stream(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	uint32_t fl = ((stream_id >= 0 && fin) ? NGTCP2_WRITE_STREAM_FLAG_FIN :
 	                                         NGTCP2_WRITE_STREAM_FLAG_NONE);
 	ngtcp2_vec vec = { .base = data, .len = len };
+	ngtcp2_pkt_info pi = { 0 };
 
-	ret = ngtcp2_conn_writev_stream(relay->conn, NULL, NULL, rpl->out_payload->iov_base,
+	ret = ngtcp2_conn_writev_stream(relay->conn, NULL, &pi, rpl->out_payload->iov_base,
 	                                rpl->out_payload->iov_len, sent, fl, stream_id,
 	                                &vec, (stream_id >= 0 ? 1 : 0), get_timestamp());
 	if (ret <= 0) {
@@ -1006,6 +1007,7 @@ static int send_stream(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	}
 
 	rpl->out_payload->iov_len = ret;
+	rpl->ecn = pi.ecn;
 	ret = rpl->send_reply(rpl);
 	if (ret == KNOT_EOK) {
 		return 1;
@@ -1040,6 +1042,7 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	dnssec_random_buffer(sreset_rand, sizeof(sreset_rand));
 	ngtcp2_ccerr ccerr;
 	ngtcp2_ccerr_default(&ccerr);
+	ngtcp2_pkt_info pi = { 0 };
 
 	switch (rpl->handle_ret) {
 	case -QUIC_SEND_VERSION_NEGOTIATION:
@@ -1083,7 +1086,7 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 		break;
 	case -QUIC_SEND_CONN_CLOSE:
 		ret = ngtcp2_conn_write_connection_close(
-			relay->conn, NULL, NULL, rpl->out_payload->iov_base, rpl->out_payload->iov_len, &ccerr, now
+			relay->conn, NULL, &pi, rpl->out_payload->iov_base, rpl->out_payload->iov_len, &ccerr, now
 		);
 		break;
 	default:
@@ -1095,6 +1098,7 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 		rpl->free_reply(rpl);
 	} else {
 		rpl->out_payload->iov_len = ret;
+		rpl->ecn = pi.ecn;
 		ret = rpl->send_reply(rpl);
 	}
 	return ret;
