@@ -128,6 +128,11 @@ class Zone(object):
         self.zfile = new_zone_file
         self.ixfr = False
 
+class Protocol(enum.Enum):
+    UDP = 1,
+    TCP = 2,
+    QUIC = 3
+
 class Server(object):
     '''Specification of DNS server'''
 
@@ -547,19 +552,24 @@ class Server(object):
         # Set port type.
         if rtype.upper() == "AXFR":
             # Always use TCP.
-            udp = False
+            protocol = Protocol.TCP
         elif rtype.upper() == "IXFR":
             # Use TCP if not specified.
-            udp = udp if udp != None else False
+            protocol = Protocol.UDP if udp is True else random.choice([Protocol.UDP, Protocol.TCP, Protocol.QUIC])
             rtype_str += "=%i" % int(serial)
         else:
             # Use TCP or UDP at random if not specified.
-            udp = udp if udp != None else random.choice([True, False])
+            if udp is True:
+                protocol = Protocol.UDP
+            else:
+                protocol = random.choice([Protocol.UDP, Protocol.TCP, Protocol.QUIC])
 
-        if udp:
+        if protocol is Protocol.UDP:
             dig_flags = "+notcp"
-        else:
+        elif protocol is Protocol.TCP:
             dig_flags = "+tcp"
+        elif protocol is Protocol.QUIC:
+            dig_flags = "+quic"
 
         dig_flags += " +retry=%i" % (tries - 1)
 
@@ -680,18 +690,22 @@ class Server(object):
                 if rtype.upper() == "AXFR":
                     resp = dns.query.xfr(addr, rname, rtype, rclass,
                                          port=self.port, lifetime=timeout,
-                                         use_udp=udp, **key_params)
+                                         use_udp=protocol is Protocol.UDP, **key_params)
                 elif rtype.upper() == "IXFR":
                     resp = dns.query.xfr(addr, rname, rtype, rclass,
                                          port=self.port, lifetime=timeout,
-                                         use_udp=udp, serial=int(serial),
+                                         use_udp=protocol is Protocol.UDP, serial=int(serial),
                                          **key_params)
-                elif udp:
+                elif protocol is Protocol.UDP:
                     resp = dns.query.udp(query, addr, port=self.port,
                                          timeout=timeout, source=source)
-                else:
+                elif protocol is Protocol.TCP:
                     resp = dns.query.tcp(query, addr, port=self.port,
                                          timeout=timeout, source=source)
+                else:
+                    resp = dns.query.quic(query, addr, port=self.port,
+                                         timeout=timeout, source=source)
+
 
                 if not log_no_sep:
                     detail_log(SEP)
