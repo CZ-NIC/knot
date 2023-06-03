@@ -818,6 +818,11 @@ If the module is configurable, a corresponding module section with
 an identifier must be created and then referenced in the form of
 ``module_name/module_id``. See :ref:`Modules` for the list of available modules.
 
+The same module can be specified multiple times, such as a global module and
+a per-zone module, or with different configurations. However, not all modules
+are intended for this, for example, mod-cookies! Global modules are executed
+before per-zone modules.
+
 .. NOTE::
    Query modules are processed in the order they are specified in the
    zone/template configuration. In most cases, the recommended order is::
