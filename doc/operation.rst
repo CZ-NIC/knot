@@ -729,6 +729,8 @@ Further rollovers::
          print("%s, zone=%s, keytag=%s" % (k["__REALTIME_TIMESTAMP"], k["ZONE"], k["KEY_SUBMISSION"]))
      '
 
+   Alternatively, the :ref:`D-Bus signaling<server_dbus-event>` can be utilized for the same use.
+
 .. _DNSSEC Shared KSK:
 
 DNSSEC shared KSK
