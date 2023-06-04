@@ -268,15 +268,18 @@ static int list_zone(const knot_dname_t *zone, bool detailed, knot_lmdb_db_t *jd
 
 	if (detailed) {
 		zone_journal_t j = { jdb, zone };
-		bool exists;
+		uint32_t first_serial = 0, last_serial = 0;
+		bool exists = false, zij = false;
 		uint64_t occupied;
 
-		int ret = journal_info(j, &exists, NULL, NULL, NULL, NULL, NULL, &occupied, occupied_all);
+		int ret = journal_info(j, &exists, &first_serial, &zij, &last_serial,
+		                       NULL, NULL, &occupied, occupied_all);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 		assert(exists);
-		printf("%s \t%"PRIu64" KiB\n", zone_str, occupied / 1024);
+		printf("%-28s     %8"PRIu64"     %10u    %10u         %3s\n",
+		       zone_str, occupied / 1024, first_serial, last_serial, zij ? "yes" : "no");
 	} else {
 		printf("%s\n", zone_str);
 	}
@@ -292,11 +295,15 @@ int list_zones(char *path, bool detailed)
 	init_list(&zones);
 	ptrnode_t *zone;
 	uint64_t occupied_all = 0;
+	bool first = detailed;
 
 	int ret = journals_walk(&jdb, add_zone_to_list, &zones);
 	WALK_LIST(zone, zones) {
 		if (ret != KNOT_EOK) {
 			break;
+		} else if (first) {
+			printf(";; <zone name>              <occupied KiB> <first serial> <last serial> <full zone>\n");
+			first = false;
 		}
 		ret = list_zone(zone->d, detailed, &jdb, &occupied_all);
 	}
@@ -305,7 +312,7 @@ int list_zones(char *path, bool detailed)
 	ptrlist_deep_free(&zones, NULL);
 
 	if (detailed && ret == KNOT_EOK) {
-		printf("Occupied all zones together: %"PRIu64" KiB\n", occupied_all / 1024);
+		printf(";; Occupied all zones together: %"PRIu64" KiB\n", occupied_all / 1024);
 	}
 	return ret;
 }
