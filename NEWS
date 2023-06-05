@@ -1,3 +1,35 @@
+Knot DNS 3.2.7 (2023-06-06)
+===========================
+
+Features:
+---------
+ - knotd: new configuration option for preserving incoming IXFR changeset history
+          (see 'zone.ixfr-by-one')
+
+Improvements:
+-------------
+ - knotd: journal ensures the stored changeset's SOA serials are strictly increasing
+ - knotd: more effective handling of zero KNOT_ZONE_LOAD_TIMEOUT_SEC environment value
+ - knotd, kdig: incoming transfer fails if a message has the TC bit set
+ - knotd, kjournalprint: store or print the timestamp of changeset creation
+ - kxdpgun: load only necessary number of queries (Thanks to Petr Špaček)
+ - kxdpgun: print ratio of sent vs. requested queries (Thanks to Petr Špaček)
+ - kxdpgun: print percentages as floats (Thanks to Petr Špaček)
+ - kjournalprint: ability to print a changeset loop
+ - kjournalprint: added changset serials information to '-z -d' output
+ - packaging: RHEL9 requires libxdp like fedora since RHEL 9.1 #844
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: journal loading can get stuck in a multi-changeset loop
+ - knotd: missing RCU lock when reading zone through the control interface
+ - knotd: server start D-Bus signaling doesn't work well if the zone file is
+          missing, catalog zones are used, or in the async-start mode
+ - knotd: test suite fails on 32bit architectures on musl 1.2 and newer #843
+ - knotd: failed to process zero-length messages over QUIC
+ - libs: compilation with embedded ngtcp2 fails if there is another ngtcp2 in the path
+
 Knot DNS 3.2.6 (2023-04-04)
 ===========================
 
