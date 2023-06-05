@@ -181,6 +181,7 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_path.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pktns_id.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pmtud.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pmtud.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ppe.c \

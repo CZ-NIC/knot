@@ -1,7 +1,7 @@
 /*
  * ngtcp2
  *
- * Copyright (c) 2016 ngtcp2 contributors
+ * Copyright (c) 2023 ngtcp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,30 +22,41 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef VERSION_H
-#define VERSION_H
+#ifndef NGTCP2_PKTNS_ID_H
+#define NGTCP2_PKTNS_ID_H
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif /* HAVE_CONFIG_H */
+
+#include <ngtcp2/ngtcp2.h>
 
 /**
- * @macrosection
+ * @enum
  *
- * Library version macros
+ * :type:`ngtcp2_pktns_id` defines packet number space identifier.
  */
+typedef enum ngtcp2_pktns_id {
+  /**
+   * :enum:`NGTCP2_PKTNS_ID_INITIAL` is the Initial packet number
+   * space.
+   */
+  NGTCP2_PKTNS_ID_INITIAL,
+  /**
+   * :enum:`NGTCP2_PKTNS_ID_HANDSHAKE` is the Handshake packet number
+   * space.
+   */
+  NGTCP2_PKTNS_ID_HANDSHAKE,
+  /**
+   * :enum:`NGTCP2_PKTNS_ID_APPLICATION` is the Application data
+   * packet number space.
+   */
+  NGTCP2_PKTNS_ID_APPLICATION,
+  /**
+   * :enum:`NGTCP2_PKTNS_ID_MAX` is defined to get the number of
+   * packet number spaces.
+   */
+  NGTCP2_PKTNS_ID_MAX
+} ngtcp2_pktns_id;
 
-/**
- * @macro
- *
- * Version number of the ngtcp2 library release.
- */
-#define NGTCP2_VERSION "0.16.0"
-
-/**
- * @macro
- *
- * Numerical representation of the version number of the ngtcp2
- * library release. This is a 24 bit number with 8 bits for major
- * number, 8 bits for minor and 8 bits for patch. Version 1.2.3
- * becomes 0x010203.
- */
-#define NGTCP2_VERSION_NUM 0x001000
-
-#endif /* VERSION_H */
+#endif /* NGTCP2_PKTNS_ID_H */
