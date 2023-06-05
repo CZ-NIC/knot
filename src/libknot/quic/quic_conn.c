@@ -212,8 +212,8 @@ void quic_stream_free(knot_quic_conn_t *conn, int64_t stream_id)
 	knot_quic_stream_t *s = knot_quic_conn_get_stream(conn, stream_id, false);
 	if (s != NULL && s->inbuf.iov_len > 0) {
 		free(s->inbuf.iov_base);
-		conn->ibufs_size -= s->inbuf.iov_len;
-		conn->quic_table->ibufs_size -= s->inbuf.iov_len;
+		conn->ibufs_size -= buffer_alloc_size(s->inbuf.iov_len);
+		conn->quic_table->ibufs_size -= buffer_alloc_size(s->inbuf.iov_len);
 		memset(&s->inbuf, 0, sizeof(s->inbuf));
 	}
 	while (s != NULL && s->inbufs != NULL) {
