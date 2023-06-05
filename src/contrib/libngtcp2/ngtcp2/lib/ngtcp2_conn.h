@@ -222,14 +222,6 @@ void ngtcp2_path_challenge_entry_init(ngtcp2_path_challenge_entry *pcent,
    endpoint has initiated key update. */
 #define NGTCP2_CONN_FLAG_KEY_UPDATE_INITIATOR 0x10000u
 
-typedef struct ngtcp2_crypto_data {
-  ngtcp2_buf buf;
-  /* pkt_type is the type of packet to send data in buf.  If it is 0,
-     it must be sent in Short packet.  Otherwise, it is sent the long
-     packet type denoted by pkt_type. */
-  uint8_t pkt_type;
-} ngtcp2_crypto_data;
-
 typedef struct ngtcp2_pktns {
   struct {
     /* last_pkt_num is the packet number which the local endpoint sent
@@ -1126,7 +1118,7 @@ int ngtcp2_conn_set_remote_transport_params(
 /**
  * @function
  *
- * `ngtcp2_conn_set_early_remote_transport_params` sets |params| as
+ * `ngtcp2_conn_set_0rtt_remote_transport_params` sets |params| as
  * transport parameters previously received from a server.  The
  * parameters are used to send early data.  QUIC requires that client
  * application should remember transport parameters along with a
@@ -1159,7 +1151,29 @@ int ngtcp2_conn_set_remote_transport_params(
  * :macro:`NGTCP2_ERR_NOMEM`
  *     Out of memory.
  */
-int ngtcp2_conn_set_early_remote_transport_params(
+int ngtcp2_conn_set_0rtt_remote_transport_params(
     ngtcp2_conn *conn, const ngtcp2_transport_params *params);
+
+/*
+ * ngtcp2_conn_create_ack_frame creates ACK frame, and assigns its
+ * pointer to |*pfr| if there are any received packets to acknowledge.
+ * If there are no packets to acknowledge, this function returns 0,
+ * and |*pfr| is untouched.  The caller is advised to set |*pfr| to
+ * NULL before calling this function, and check it after this function
+ * returns.
+ *
+ * Call ngtcp2_acktr_commit_ack after a created ACK frame is
+ * successfully serialized into a packet.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGTCP2_ERR_NOMEM
+ *     Out of memory.
+ */
+int ngtcp2_conn_create_ack_frame(ngtcp2_conn *conn, ngtcp2_frame **pfr,
+                                 ngtcp2_pktns *pktns, uint8_t type,
+                                 ngtcp2_tstamp ts, ngtcp2_duration ack_delay,
+                                 uint64_t ack_delay_exponent);
 
 #endif /* NGTCP2_CONN_H */

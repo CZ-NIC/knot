@@ -97,8 +97,8 @@ struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn)
 	}
 
 	ngtcp2_ssize ret2 =
-		ngtcp2_conn_encode_early_transport_params(conn->conn, session->quic_params,
-		                                          sizeof(session->quic_params));
+		ngtcp2_conn_encode_0rtt_transport_params(conn->conn, session->quic_params,
+		                                         sizeof(session->quic_params));
 	if (ret2 < 0) {
 		free(session);
 		return NULL;
@@ -127,8 +127,8 @@ int knot_quic_session_load(knot_quic_conn_t *conn, struct knot_quic_session *ses
 		goto session_free;
 	}
 
-	ret = ngtcp2_conn_decode_early_transport_params(conn->conn, session->quic_params,
-	                                                session->quic_params_len);
+	ret = ngtcp2_conn_decode_and_set_0rtt_transport_params(conn->conn, session->quic_params,
+	                                                       session->quic_params_len);
 	if (ret != 0) {
 		ret = KNOT_ERROR;
 	}
@@ -753,9 +753,6 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	settings.log_printf = user_printf;
 	if (udp_pl != 0) {
 		settings.max_tx_udp_payload_size = udp_pl;
-	}
-	if (odcid != NULL) {
-		settings.qlog.odcid = *odcid;
 	}
 
 	settings.handshake_timeout = idle_timeout_ns; // NOTE setting handshake timeout to idle_timeout for simplicity
