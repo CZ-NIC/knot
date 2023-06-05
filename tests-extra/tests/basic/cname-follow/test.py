@@ -10,6 +10,7 @@ Basic checks for CNAME following.
 And some ANY checks.
 """
 
+from dnstest.server import Protocol
 from dnstest.test import Test
 
 t = Test()
@@ -46,13 +47,13 @@ resp.check_empty("authority")
 
 # CNAME loop
 
-resp = knot.dig("loop.follow", "AAAA", udp=False)
+resp = knot.dig("loop.follow", "AAAA", protocol=Protocol.TCP)
 resp.check(rcode="NOERROR")
 resp.check_count(3, rtype="CNAME")
 
 # CNAME chain too long
 
-resp = knot.dig("chain.follow", "AAAA", udp=False)
+resp = knot.dig("chain.follow", "AAAA", protocol=Protocol.TCP)
 resp.check(rcode="NOERROR")
 resp.check_count(5, rtype="CNAME")
 resp.check_count(0, rtype="AAAA")
@@ -104,7 +105,7 @@ resp = knot.dig("63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                 "63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx." +
                 "63o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx." +
                 "50o-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.big.follow.",
-                "CNAME", udp=True, dnssec=True)
+                "CNAME", protocol=Protocol.UDP, dnssec=True)
 resp.check(rcode="YXDOMAIN")
 resp.check_record(section="answer", rtype="DNAME", rdata="uhuh.follow.")
 resp.check_rr(section="answer", rname="big.follow.", rtype="RRSIG")

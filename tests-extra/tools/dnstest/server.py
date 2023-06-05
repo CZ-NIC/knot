@@ -537,9 +537,10 @@ class Server(object):
             raise Failed("Can't get certificate key, server='%s', ret='%i'" %
                          (self.name, e.returncode))
 
-    def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
-            tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
-            log_no_sep=False, tsig=None, addr=None, source=None):
+    def dig(self, rname, rtype, rclass="IN", protocol=None, serial=None,
+            timeout=None, tries=3, flags="", bufsize=None, edns=None,
+            nsid=False, dnssec=False, log_no_sep=False, tsig=None, addr=None,
+            source=None):
 
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
@@ -547,22 +548,31 @@ class Server(object):
                 raise Failed("One zone required")
             rname = rname[0].name
 
-        rtype_str = rtype.upper()
+        if protocol is None:
+            protocol = [Protocol.UDP, Protocol.TCP, Protocol.QUIC]
+        elif type(protocol) is Protocol:
+            protocol = [protocol]
+        elif type(protocol) is list[Protocol]:
+            pass
+        else:
+            raise Exception("Wrong type of argument 'protocol'")
 
+        rtype_str = rtype.upper()
         # Set port type.
-        if rtype.upper() == "AXFR":
-            # Always use TCP.
-            protocol = Protocol.TCP
-        elif rtype.upper() == "IXFR":
-            # Use TCP if not specified.
-            protocol = Protocol.UDP if udp is True else random.choice([Protocol.UDP, Protocol.TCP, Protocol.QUIC])
+        if rtype_str == "AXFR":
+            # Do not use UDP for AXFR
+            _proto = list(set(protocol) & {Protocol.TCP, Protocol.QUIC})
+            if not _proto:
+                raise Exception("Insufficient set at 'protocol'")
+            protocol = random.choice(_proto)
+        elif rtype_str == "IXFR":
+            _proto = list(set(protocol) & {Protocol.UDP, Protocol.TCP, Protocol.QUIC})
+            if not _proto:
+                raise Exception("Insufficient set at 'protocol'")
+            protocol = random.choice(_proto)
             rtype_str += "=%i" % int(serial)
         else:
-            # Use TCP or UDP at random if not specified.
-            if udp is True:
-                protocol = Protocol.UDP
-            else:
-                protocol = random.choice([Protocol.UDP, Protocol.TCP, Protocol.QUIC])
+            protocol = random.choice(protocol)
 
         if protocol is Protocol.UDP:
             dig_flags = "+notcp"
@@ -785,8 +795,10 @@ class Server(object):
                     soa_rdata = resp[zone_name][zone_name]["SOA"]["data"][0]
                     _serial = int(soa_rdata.split()[2])
                 else:
-                    resp = self.dig(zone.name, "SOA", udp=udp, tries=1,
-                                    timeout=2, log_no_sep=True, tsig=tsig)
+                    resp = self.dig(zone.name, "SOA",
+                                    protocol=Protocol.UDP if udp else None,
+                                    tries=1, timeout=2, log_no_sep=True,
+                                    tsig=tsig)
                     soa = str((resp.resp.answer[0]).to_rdataset())
                     _serial = int(soa.split()[5])
             except:

@@ -4,6 +4,7 @@
 
 from dnstest.test import Test
 from dnstest.utils import set_err, detail_log, check_log
+from dnstest.server import Protocol
 import dnstest.params
 
 import glob
@@ -108,7 +109,7 @@ if test_prop_change:
 
 else:
     # Check the catalog zone.
-    resp = knot.dig("bar.zones.catalog1.", "PTR", udp=False, tsig=True)
+    resp = knot.dig("bar.zones.catalog1.", "PTR", protocol=Protocol.TCP, tsig=True)
     resp.check(rcode="NXDOMAIN", nordata="PTR")
 
     # Check a DNS query / zonedb.

@@ -5,6 +5,7 @@
 import os
 import re
 import dns.flags
+from dnstest.server import Protocol
 from dnstest.test import Test
 from dnstest.module import ModNoudp
 from dnstest.utils import *
@@ -30,18 +31,18 @@ knot.add_module(zone_50_50, ModNoudp(trunc_rate=2))
 t.start()
 
 for _ in range(0, 10):
-    resp = knot.dig(zone_tc[0].name, "SOA", udp=True)
+    resp = knot.dig(zone_tc[0].name, "SOA", protocol=Protocol.UDP)
     resp.check(flags="TC")
 
 for _ in range(0, 10):
-    resp = knot.dig(zone_notc[0].name, "SOA", udp=True)
+    resp = knot.dig(zone_notc[0].name, "SOA", protocol=Protocol.UDP)
     resp.check(noflags="TC")
 
 for _ in range(0, 5):
-    resp = knot.dig(zone_50_50[0].name, "SOA", udp=True)
+    resp = knot.dig(zone_50_50[0].name, "SOA", protocol=Protocol.UDP)
     resp.check(noflags="TC")
 
-    resp = knot.dig(zone_50_50[0].name, "SOA", udp=True)
+    resp = knot.dig(zone_50_50[0].name, "SOA", protocol=Protocol.UDP)
     resp.check(flags="TC")
 
 t.end()

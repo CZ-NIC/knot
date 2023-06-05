@@ -4,6 +4,7 @@
 
 from dnstest.test import Test
 from dnstest.utils import set_err, detail_log
+from dnstest.server import Protocol
 
 import os
 import random
@@ -63,7 +64,7 @@ for i in range(UPDATES):
 t.sleep(4)
 
 for n in check_names:
-    resp = knot.dig(n, "SOA", udp=False, tsig=True)
+    resp = knot.dig(n, "SOA", protocol=Protocol.TCP, tsig=True)
     resp.check(rcode="NOERROR") # not REFUSED
 
 if knot.log_search("catalog, interpreting 2 updates"):

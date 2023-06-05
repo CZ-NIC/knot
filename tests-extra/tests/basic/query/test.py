@@ -2,6 +2,7 @@
 
 ''' For various query processing states. '''
 
+from dnstest.server import Protocol
 from dnstest.utils import *
 from dnstest.test import Test
 
@@ -19,68 +20,68 @@ def query_test(knot, bind, dnssec):
     ''' Negative answers. '''
 
     # Negative (REFUSED)
-    resp = knot.dig("another.world", "SOA", udp=True, dnssec=dnssec)
+    resp = knot.dig("another.world", "SOA", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="REFUSED", flags="QR", noflags="AA TC AD RA")
     resp.cmp(bind)
 
     # Negative (NXDOMAIN)
-    resp = knot.dig("nxdomain.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("nxdomain.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NXDOMAIN", flags="QR AA", noflags="TC AD RA")
     resp.cmp(bind)
 
     # Check that SOA TTL is limited by minimum-ttl field.
-    resp = knot.dig("nxdomain.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("nxdomain.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check_auth_soa_ttl(dnssec=False)
 
     ''' Positive answers. '''
 
     # Positive (SOA)
-    resp = knot.dig("flags", "SOA", udp=True, dnssec=dnssec)
+    resp = knot.dig("flags", "SOA", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
     resp.cmp(bind)
 
     # Positive (DATA)
-    resp = knot.dig("dns1.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("dns1.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
     resp.cmp(bind)
 
     # Positive (NODATA)
-    resp = knot.dig("dns1.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("dns1.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
     resp.cmp(bind)
 
     # Positive (REFERRAL)
-    resp = knot.dig("sub.flags", "NS", udp=True, dnssec=dnssec)
+    resp = knot.dig("sub.flags", "NS", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
     resp.cmp(bind, additional=True)
 
     # Positive (REFERRAL, below delegation)
-    resp = knot.dig("ns.sub.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("ns.sub.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
     resp.cmp(bind, additional=True)
 
     # Positive (REFERRAL, below delegation, ignoring empty-nonterminal during lookup)
-    resp = knot.dig("bellow.ns.sub.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("bellow.ns.sub.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
     resp.cmp(bind, additional=True)
 
     # Positive (NODATA, at delegation, DS type)
-    resp = knot.dig("ds-sub.flags", "DS", udp=True, dnssec=dnssec)
+    resp = knot.dig("ds-sub.flags", "DS", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
     resp.cmp(bind, additional=True)
 
     # Positive (NODATA, at delegation, DS type, below empty-non-terminal)
-    resp = knot.dig("deleg.ent.flags", "DS", udp=True, dnssec=dnssec)
+    resp = knot.dig("deleg.ent.flags", "DS", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
     resp.cmp(bind, additional=True)
 
     # Positive (REFERRAL, below delegation, DS type)
-    resp = knot.dig("net.ds-sub.flags", "DS", udp=True, dnssec=dnssec)
+    resp = knot.dig("net.ds-sub.flags", "DS", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
     resp.cmp(bind, additional=True)
 
     # SVCB in additionals
-    resp = knot.dig("svcb-loop.flags.", "SVCB", udp=False, dnssec=dnssec)
+    resp = knot.dig("svcb-loop.flags.", "SVCB", protocol=Protocol.TCP, dnssec=dnssec)
     resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
     resp.check_count(1, "SVCB", section="answer")
     resp.check_count(1 if dnssec else 0, "RRSIG", section="answer")
@@ -94,55 +95,55 @@ def query_test(knot, bind, dnssec):
     ''' CNAME answers. '''
 
     # CNAME query
-    resp = knot.dig("cname.flags", "CNAME", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname.flags", "CNAME", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # CNAME leading to A
-    resp = knot.dig("cname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # CNAME leading to A (NODATA)
-    resp = knot.dig("cname.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # CNAME leading to delegation
-    resp = knot.dig("cname-ns.flags", "NS", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-ns.flags", "NS", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind, additional=True)
 
     # CNAME leading below delegation
-    resp = knot.dig("cname-below-ns.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-below-ns.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind, additional=True)
 
     # CNAME being below a delegation
-    resp = knot.dig("cname.below.sub.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname.below.sub.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind, additional=True)
 
     # CNAME leading out
-    resp = knot.dig("cname-out.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-out.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # CNAME leading to wildcard-covered name
-    resp = knot.dig("cname-wildcard.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-wildcard.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # CNAME leading to wildcard-covered name (NODATA)
-    resp = knot.dig("cname-wildcard.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-wildcard.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # CNAME leading to DNAME tree
-    resp = knot.dig("cname-dname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-dname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # CNAME leading to DNAME tree (NXDOMAIN)
-    resp = knot.dig("cname-dname-nx.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-dname-nx.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # CNAME leading to DNAME tree (NODATA)
-    resp = knot.dig("cname-dname.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-dname.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Long CNAME loop (Bind truncates the loop at 17 records)
-    resp = knot.dig("ab.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("ab.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR")
     compare(resp.count(rtype="CNAME", section="answer"), 5, "Count of CNAME records in loop.")
 
@@ -155,71 +156,71 @@ def query_test(knot, bind, dnssec):
     # is not simple.
 
     # Leading to existing name
-    resp = knot.dig("cname-mx.flags", "MX", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-mx.flags", "MX", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Leading to delegation
-    resp = knot.dig("cname-mx-deleg.flags", "MX", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-mx-deleg.flags", "MX", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Leading to wildcard-covered name
-    resp = knot.dig("cname-mx-wc.flags", "MX", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-mx-wc.flags", "MX", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Leading to name outside zone
-    resp = knot.dig("cname-mx-out.flags", "MX", udp=True, dnssec=dnssec)
+    resp = knot.dig("cname-mx-out.flags", "MX", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     ''' DNAME answers. '''
 
     # DNAME query (NODATA)
-    resp = knot.dig("dname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("dname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # DNAME query (NXDOMAIN)
-    resp = knot.dig("nxd.dname-dangl.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("nxd.dname-dangl.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NXDOMAIN")
     resp.cmp(bind)
 
     # CNAME type query on DNAME
-    resp = knot.dig("nxd.dname-dangl.flags", "CNAME", udp=True, dnssec=dnssec)
+    resp = knot.dig("nxd.dname-dangl.flags", "CNAME", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR")
     #resp.cmp(bind) NOTE: this does not work well on Bind (yet)
 
     # DNAME type query
-    resp = knot.dig("dname.flags", "DNAME", udp=True, dnssec=dnssec)
+    resp = knot.dig("dname.flags", "DNAME", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # DNAME being below a delegation
-    resp = knot.dig("a.dname.below.sub.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.dname.below.sub.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind, additional=True)
 
     # DNAME query leading out of zone
-    resp = knot.dig("a.dname-out.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.dname-out.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # DNAME subtree query leading to A
-    resp = knot.dig("a.dname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.dname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # DNAME subtree query leading to NODATA
-    resp = knot.dig("a.dname.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.dname.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # DNAME subtree query leading to CNAME
-    resp = knot.dig("c.dname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("c.dname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # DNAME subtree query leading to CNAME leading to wildcard
-    resp = knot.dig("d.dname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("d.dname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # DNAME-CNAME-DNAME loop
-    resp = knot.dig("e.dname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("e.dname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # DNAME-DNAME loop
-    resp = knot.dig("x.f.dname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("x.f.dname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.check_record(name="dname.flags.",          rtype="DNAME", ttl=3600, rdata="dname-tree.flags.")
     resp.check_record(name="x.f.dname.flags.",      rtype="CNAME", ttl=3600, rdata="x.f.dname-tree.flags.")
@@ -229,7 +230,7 @@ def query_test(knot, bind, dnssec):
     # resp.cmp(bind) BIND responds deeply unrolled CNAME loop
 
     # Infinite DNAME loop
-    resp = knot.dig("end.dname-outloop.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("end.dname-outloop.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.check_record(name="dname-outloop.flags.", rtype="DNAME", ttl=3600, rdata="loop.dname-outloop.flags.")
     compare(resp.count(rtype="CNAME", section="answer"), 5, "Count of synthesized CNAME records in loop.")
@@ -238,7 +239,7 @@ def query_test(knot, bind, dnssec):
     resp.check_counts(7 if dnssec else 6, 0, 0)
 
     # Recursive DNAME loop - full
-    resp = knot.dig("loop.loop.loop.loop.loop.loop.dname-inloop.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("loop.loop.loop.loop.loop.loop.dname-inloop.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.check_record(name="loop.dname-inloop.flags.", rtype="DNAME", ttl=3600, rdata="dname-inloop.flags.")
     compare(resp.count(rtype="CNAME", section="answer"), 5, "Count of synthesized CNAME records in loop.")
@@ -246,7 +247,7 @@ def query_test(knot, bind, dnssec):
     resp.check_counts(9 if dnssec else 7, 0, 0)
 
     # Recursive DNAME loop - incomplete
-    resp = knot.dig("loop.loop.loop.loop.loop.loop.loop.dname-inloop.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("loop.loop.loop.loop.loop.loop.loop.dname-inloop.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.check_record(name="loop.dname-inloop.flags.", rtype="DNAME", ttl=3600, rdata="dname-inloop.flags.")
     compare(resp.count(rtype="CNAME", section="answer"), 5, "Count of synthesized CNAME records in loop.")
@@ -255,63 +256,63 @@ def query_test(knot, bind, dnssec):
     ''' Wildcard answers. '''
 
     # Wildcard query
-    resp = knot.dig("wildcard.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("wildcard.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard leading to A
-    resp = knot.dig("a.wildcard.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.wildcard.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard leading to A (NODATA)
-    resp = knot.dig("a.wildcard.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.wildcard.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Deeper wildcard usage
-    resp = knot.dig("a.a.a.wildcard.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.a.a.wildcard.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Asterisk label
-    resp = knot.dig("sub.*.wildcard.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("sub.*.wildcard.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Asterisk label (NODATA)
-    resp = knot.dig("sub.*.wildcard.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("sub.*.wildcard.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard node under asterisk label
-    resp = knot.dig("*.*.wildcard.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("*.*.wildcard.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard node under asterisk label (NODATA)
-    resp = knot.dig("*.*.wildcard.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("*.*.wildcard.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard under asterisk label
-    resp = knot.dig("a.*.wildcard.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.*.wildcard.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard under asterisk label (NODATA)
-    resp = knot.dig("a.*.wildcard.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.*.wildcard.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard under DNAME subtree
-    resp = knot.dig("a.wildcard.dname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.wildcard.dname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard under DNAME subtree (NODATA)
-    resp = knot.dig("a.wildcard.dname.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.wildcard.dname.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard chain to A
-    resp = knot.dig("a.wildcard-cname.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.wildcard-cname.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard chain to A (NODATA)
-    resp = knot.dig("a.wildcard-cname.flags", "TXT", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.wildcard-cname.flags", "TXT", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind, additional=True)
 
     # Wildcard chain to NS
-    resp = knot.dig("a.wildcard-deleg.flags", "NS", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.wildcard-deleg.flags", "NS", protocol=Protocol.UDP, dnssec=dnssec)
     if resp.count(rtype="NSEC", section="authority") > 0:
         # Bind does this one wrong, but working on it.
         resp.check_count(2, rtype="NSEC", section="authority")
@@ -319,39 +320,39 @@ def query_test(knot, bind, dnssec):
         resp.cmp(bind, additional=True)
 
     # Wildcard CNAME with asterisk query
-    resp = knot.dig("*.a.wildcard-cname.flags", "A", udp=True)
+    resp = knot.dig("*.a.wildcard-cname.flags", "A", protocol=Protocol.UDP)
     resp.cmp(bind)
 
     # Double wildcard expansion
-    resp = knot.dig("wild-cname.flags", "TXT", udp=True)
+    resp = knot.dig("wild-cname.flags", "TXT", protocol=Protocol.UDP)
     resp.cmp(bind)
 
     # Wildcard leading out
-    resp = knot.dig("a.wildcard-out.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("a.wildcard-out.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard leading to CNAME loop
-    resp = knot.dig("test.loop-entry.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("test.loop-entry.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     # Wildcard-covered additional record discovery
-    resp = knot.dig("mx-additional.flags", "MX", udp=True, dnssec=dnssec)
+    resp = knot.dig("mx-additional.flags", "MX", protocol=Protocol.UDP, dnssec=dnssec)
     resp.cmp(bind)
 
     ''' Varied case tests. '''
 
     # Negative (case preservation in question)
-    resp = knot.dig("ANOTHER.world", "SOA", udp=True, dnssec=dnssec)
+    resp = knot.dig("ANOTHER.world", "SOA", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="REFUSED")
     resp.cmp(bind)
 
     # Positive (varied name in zone)
-    resp = knot.dig("dNS1.flags", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("dNS1.flags", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.cmp(bind)
 
     # Positive (varied zone name)
-    resp = knot.dig("dns1.flAGs", "A", udp=True, dnssec=dnssec)
+    resp = knot.dig("dns1.flAGs", "A", protocol=Protocol.UDP, dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.cmp(bind)
 

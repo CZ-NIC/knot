@@ -2,6 +2,7 @@
 Tests for TC flag setting in delegations.
 """
 
+from dnstest.server import Protocol
 from dnstest.test import Test
 
 t = Test()
@@ -27,7 +28,7 @@ class DelegationTest:
         name = "%s%s" % ("" if self._auth else "www.", self._name)
         rtype = "NS" if self._auth else "A"
         flags, noflags = self._get_flags(truncated)
-        resp = knot.dig(name, rtype, udp=True, dnssec=True, bufsize=bufsize)
+        resp = knot.dig(name, rtype, protocol=Protocol.UDP, dnssec=True, bufsize=bufsize)
         resp.check(rcode="NOERROR", noflags=noflags, flags=flags)
         for section in counts:
             for rtype in counts[section]:

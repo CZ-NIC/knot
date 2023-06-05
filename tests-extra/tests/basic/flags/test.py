@@ -2,6 +2,7 @@
 
 '''Test for header flags in response'''
 
+from dnstest.server import Protocol
 from dnstest.test import Test
 
 t = Test()
@@ -61,17 +62,17 @@ resp.check(flags="QR", noflags="AA TC RD RA AD CD Z")
 resp.cmp(bind)
 
 # Check maximal UDP payload which fits into a response message.
-resp = knot.dig("512resp.flags", "TXT", udp=True)
+resp = knot.dig("512resp.flags", "TXT", protocol=Protocol.UDP)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD Z")
 resp.cmp(bind)
 
 # TC bit - UDP.
-resp = knot.dig("513resp.flags", "TXT", udp=True)
+resp = knot.dig("513resp.flags", "TXT", protocol=Protocol.UDP)
 resp.check(flags="QR AA TC", noflags="RD RA AD CD Z")
 resp.cmp(bind)
 
 # No TC bit - TCP.
-resp = knot.dig("513resp.flags", "TXT", udp=False)
+resp = knot.dig("513resp.flags", "TXT", protocol=Protocol.TCP)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD Z")
 resp.cmp(bind)
 

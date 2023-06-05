@@ -5,6 +5,7 @@
 import os
 import random
 
+from dnstest.server import Protocol
 from dnstest.libknot import libknot
 from dnstest.module import ModStats
 from dnstest.test import Test
@@ -63,15 +64,15 @@ knot.ctl("-f reload") # Reset module statistics after wait!
 
 check_item(knot, "server", "zone-count", 2)
 
-resp = knot.dig(zones[0].name, "SOA", tries=1, udp=True)
+resp = knot.dig(zones[0].name, "SOA", tries=1, protocol=Protocol.UDP)
 query_size1 = resp.query_size()
 reply_size1 = resp.response_size()
 
-resp = knot.dig(zones[0].name, "NS", tries=1, udp=False)
+resp = knot.dig(zones[0].name, "NS", tries=1, protocol=Protocol.TCP)
 query_size2 = resp.query_size()
 reply_size2 = resp.response_size()
 
-resp = knot.dig(zones[1].name, "TYPE11", tries=1, udp=True)
+resp = knot.dig(zones[1].name, "TYPE11", tries=1, protocol=Protocol.UDP)
 query_size3 = resp.query_size()
 reply_size3 = resp.response_size()
 
