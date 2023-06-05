@@ -2057,7 +2057,7 @@ zone:
     storage: STR
     file: STR
     master: remote_id | remotes_id ...
-    ddns\-master: remote_id
+    ddns\-master: [remote_id]
     notify: remote_id | remotes_id ...
     acl: acl_id ...
     provide\-ixfr: BOOL
@@ -2148,8 +2148,13 @@ An ordered list of references \fI\%remote\fP and
 \fIDefault:\fP not set
 .SS ddns\-master
 .sp
-A \fI\%reference\fP to zone primary master. If not specified,
-the first \fI\%master\fP server is used.
+A \fI\%reference\fP to a zone primary master where DDNS messages
+should be forwarded to. If not specified, the first \fI\%master\fP
+server is used.
+.sp
+If set to the empty value (""), incoming DDNS messages aren\(aqt forwarded but are applied
+to the local zone instead, no matter if it is a secondary server. This is only allowed in
+combination with \fI\%dnssec\-signing\fP enabled.
 .sp
 \fIDefault:\fP not set
 .SS notify

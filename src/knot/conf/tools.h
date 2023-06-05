@@ -70,6 +70,10 @@ int check_ref_dflt(
 	knotd_conf_check_args_t *args
 );
 
+int check_ref_empty(
+	knotd_conf_check_args_t *args
+);
+
 int check_listen(
 	knotd_conf_check_args_t *args
 );

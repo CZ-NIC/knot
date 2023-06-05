@@ -182,6 +182,7 @@ class Server(object):
         self.udp_max_payload_ipv4 = None
         self.udp_max_payload_ipv6 = None
         self.disable_notify = None
+        self.ddns_master = None
         self.semantic_check = True
         self.zonefile_sync = "1d"
         self.zonefile_load = None
@@ -1619,6 +1620,7 @@ class Knot(Server):
             self.config_xfr(z, s)
 
             self._str(s, "serial-policy", self.serial_policy)
+            self._str(s, "ddns-master", self.ddns_master)
 
             s.item_str("journal-content", z.journal_content)
             self._str(s, "ixfr-by-one", self.ixfr_by_one)
