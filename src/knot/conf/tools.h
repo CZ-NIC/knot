@@ -98,10 +98,6 @@ int check_module_id(
 	knotd_conf_check_args_t *args
 );
 
-int check_file(
-	knotd_conf_check_args_t *args
-);
-
 int check_server(
 	knotd_conf_check_args_t *args
 );
