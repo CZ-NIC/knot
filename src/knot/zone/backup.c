@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -229,6 +229,27 @@ static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)
 	return policy;
 }
 
+static int backup_file(char *dst, char *src)
+{
+	struct stat st;
+	int ret;
+
+	if (stat(src, &st) == 0) {
+		ret = make_path(dst, S_IRWXU | S_IRWXG);
+		if (ret == KNOT_EOK) {
+			ret = copy_file(dst, src);
+		}
+	} else {
+		ret = knot_map_errno();
+		// If there's no src file, remove any old dst file.
+		if (ret == KNOT_ENOENT) {
+			unlink(dst);
+		}
+	}
+
+	return ret;
+}
+
 #define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)", ctx->restore_mode ? \
                          "restore" : "backup", (action), knot_strerror(ret))
 #define LOG_MARK_FAIL(action) LOG_FAIL(action); \
@@ -263,21 +284,9 @@ static int backup_zonefile(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	}
 
 	if (ctx->restore_mode) {
-		struct stat st;
-		if (stat(backup_zf, &st) == 0) {
-			ret = make_path(local_zf, S_IRWXU | S_IRWXG);
-			if (ret == KNOT_EOK) {
-				ret = copy_file(local_zf, backup_zf);
-			}
-		} else {
-			ret = errno == ENOENT ? KNOT_EFILE : knot_map_errno();
-			/* If there's no zone file in the backup, remove any old zone file
-			 * from the repository.
-			 */
-			if (ret == KNOT_EFILE) {
-				unlink(local_zf);
-			}
-		}
+		ret = backup_file(local_zf, backup_zf);
+                ret = ret == KNOT_ENOENT ? KNOT_EFILE : ret;
+
 	} else {
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		bool can_flush = (conf_int(&val) > -1);
