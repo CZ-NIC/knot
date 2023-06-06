@@ -1361,7 +1361,7 @@ static int purge_orphan_member_cb(const knot_dname_t *member, const knot_dname_t
 
 	knot_dname_txt_storage_t catz_str;
 	(void)knot_dname_to_str(catz_str, catz, sizeof(catz_str));
-	log_zone_info(member, "member of a non-%s zone %s",
+	log_zone_info(member, "member of a non-%s zone %s, purging",
 	              err_str, catz_str);
 
 	// Single-purpose fake zone_t containing only minimal data.
