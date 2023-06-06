@@ -538,9 +538,10 @@ class Server(object):
             raise Failed("Can't get certificate key, server='%s', ret='%i'" %
                          (self.name, e.returncode))
 
-    def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
-            tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
-            log_no_sep=False, tsig=None, addr=None, source=None):
+    def dig(self, rname, rtype, rclass="IN", udp=None, quic=False, serial=None,
+            timeout=None, tries=3, flags="", bufsize=None, edns=None,
+            nsid=False, dnssec=False, log_no_sep=False, tsig=None, addr=None,
+            source=None):
 
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
@@ -562,7 +563,9 @@ class Server(object):
             # Use TCP or UDP at random if not specified.
             udp = udp if udp != None else random.choice([True, False])
 
-        if udp:
+        if quic:
+            dig_flags = "+quic"
+        elif udp:
             dig_flags = "+notcp"
         else:
             dig_flags = "+tcp"
@@ -692,6 +695,10 @@ class Server(object):
                                          port=self.port, lifetime=timeout,
                                          use_udp=udp, serial=int(serial),
                                          **key_params)
+                elif quic and isinstance(self, Knot):
+                    resp = dns.query.quic(query, addr, port=self.quic_port,
+                                         timeout=timeout, source=source,
+                                         verify=False)
                 elif udp:
                     resp = dns.query.udp(query, addr, port=self.port,
                                          timeout=timeout, source=source)
