@@ -53,7 +53,7 @@ dnf install \
 #### Install optional packages:
 ```bash
 dnf install \
-  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel libnghttp2-devel libbpf-devel libmnl-devel python-sphinx
+  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel libnghttp2-devel libbpf-devel libxdp-devel libmnl-devel python-sphinx
 ```
 
 When compiling on RHEL based system, the Fedora EPEL repository has to be
