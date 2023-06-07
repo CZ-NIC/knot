@@ -79,6 +79,15 @@ Options
 **-v**, **--vlan** *id*
   Add VLAN 802.1Q header with the given id. VLAN offloading should be disabled.
 
+**-z**, **--zero-copy** *mode*
+  Set zero-copy mode for XDP. The supported values are *auto* (default), *true*, and *false*.
+
+  Zero-copy allows moving packets between kernel and user-space more efficiently which improves performance.
+
+  When the mode is set to *auto*, zero-copy is enabled if it is supported by the network adapter driver.
+  When set to *true*, zero-copy is enforced and initialization will fail if the functionality is
+  not available. Value *false* disables zero-copy.
+
 **-h**, **--help**
   Print the program help.
 
