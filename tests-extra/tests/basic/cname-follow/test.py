@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Basic checks for CNAME following.
 

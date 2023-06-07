@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Validate ZSK and KSK constrains checks.
 """

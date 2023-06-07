@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""
 
+"""
 Basic checks of Additional section content.
 
 - Query into a delegation scope adds glue into additionals.
