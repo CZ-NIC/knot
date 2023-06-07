@@ -135,6 +135,7 @@ typedef struct {
 	knot_xdp_filter_flag_t flags;
 	unsigned	n_threads, thread_id;
 	knot_eth_rss_conf_t *rss_conf;
+	knot_xdp_config_t xdp_config;
 } xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
@@ -146,6 +147,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.sending_mode = "",
 	.target_port = 0,
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
+	.xdp_config = {0},
 };
 
 static void sigterm_handler(int signo)
@@ -517,7 +519,7 @@ void *xdp_gun_thread(void *_ctx)
 	*/
 	pthread_mutex_lock(&global_stats.mutex);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
-	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, NULL);
+	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, &ctx->xdp_config);
 	pthread_mutex_unlock(&global_stats.mutex);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u (%s)",
@@ -1050,6 +1052,8 @@ static void print_help(void)
 	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
 	       " -v, --vlan <id>          "SPACE"Add VLAN 802.1Q header with the given id.\n"
+	       " -z, --zero-copy <mode>   "SPACE"Set zero-copy mode (auto, true, false).\n"
+	       "                          "SPACE" (default is auto)\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
 	       "\n"
@@ -1118,6 +1122,29 @@ mode_invalid:
 	return false;
 }
 
+static int set_zerocopy(const char *arg, knot_xdp_zerocopy_t *mode)
+{
+	assert(arg != NULL);
+	assert(mode != NULL);
+
+	if (strcmp(arg, "auto") == 0) {
+		*mode = KNOT_XDP_ZEROCOPY_AUTO;
+		return KNOT_EOK;
+	}
+
+	if (strcmp(arg, "true") == 0) {
+		*mode = KNOT_XDP_ZEROCOPY_ENABLED;
+		return KNOT_EOK;
+	}
+
+	if (strcmp(arg, "false") == 0) {
+		*mode = KNOT_XDP_ZEROCOPY_DISABLED;
+		return KNOT_EOK;
+	}
+
+	return KNOT_EINVAL;
+}
+
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
 	struct option opts[] = {
@@ -1137,6 +1164,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "local-mac",  required_argument, NULL, 'L' },
 		{ "remote-mac", required_argument, NULL, 'R' },
 		{ "vlan",       required_argument, NULL, 'v' },
+		{ "zero-copy",  required_argument, NULL, 'z' },
 		{ NULL }
 	};
 
@@ -1144,7 +1172,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL, *filename = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:z:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1269,6 +1297,13 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				ctx->vlan_tci = htobe16(id);
 			} else {
 				ERR2("invalid VLAN id '%s'", optarg);
+				return false;
+			}
+			break;
+		case 'z':
+			assert(optarg != NULL);
+			if (set_zerocopy(optarg, &ctx->xdp_config.zerocopy) != KNOT_EOK) {
+				ERR2("invalid zero-copy mode '%s'", optarg);
 				return false;
 			}
 			break;
