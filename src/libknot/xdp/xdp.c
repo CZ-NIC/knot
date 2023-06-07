@@ -130,9 +130,28 @@ static void deconfigure_xsk_umem(struct kxsk_umem *umem)
 	free(umem);
 }
 
+static uint16_t xdp_bind_flags(const knot_xdp_config_t *config)
+{
+	if (config == NULL) {
+		return 0;
+	}
+
+	switch (config->zerocopy) {
+	case KNOT_XDP_ZEROCOPY_AUTO:
+		return 0;
+	case KNOT_XDP_ZEROCOPY_DISABLED:
+		return XDP_COPY;
+	case KNOT_XDP_ZEROCOPY_ENABLED:
+		return XDP_ZEROCOPY;
+	default:
+		return 0;
+	}
+}
+
 static int configure_xsk_socket(struct kxsk_umem *umem,
                                 const struct kxsk_iface *iface,
-                                knot_xdp_socket_t **out_sock)
+                                knot_xdp_socket_t **out_sock,
+                                const knot_xdp_config_t *config)
 {
 	knot_xdp_socket_t *xsk_info = calloc(1, sizeof(*xsk_info));
 	if (xsk_info == NULL) {
@@ -145,6 +164,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 		.tx_size = RING_LEN_TX,
 		.rx_size = RING_LEN_RX,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
+		.bind_flags = xdp_bind_flags(config),
 	};
 
 	int ret = xsk_socket__create(&xsk_info->xsk, iface->if_name,
@@ -162,7 +182,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 _public_
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   knot_xdp_filter_flag_t flags, uint16_t udp_port, uint16_t quic_port,
-                  knot_xdp_load_bpf_t load_bpf, const void *xdp_config)
+                  knot_xdp_load_bpf_t load_bpf, const knot_xdp_config_t *xdp_config)
 {
 	if (socket == NULL || if_name == NULL ||
 	    (udp_port == quic_port && (flags & KNOT_XDP_FILTER_UDP) && (flags & KNOT_XDP_FILTER_QUIC)) ||
@@ -184,7 +204,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 		return ret;
 	}
 
-	ret = configure_xsk_socket(umem, iface, socket);
+	ret = configure_xsk_socket(umem, iface, socket, xdp_config);
 	if (ret != KNOT_EOK) {
 		deconfigure_xsk_umem(umem);
 		kxsk_iface_free(iface);

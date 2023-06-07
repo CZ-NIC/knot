@@ -51,6 +51,21 @@ typedef enum {
 /*! \brief Context structure for one XDP socket. */
 typedef struct knot_xdp_socket knot_xdp_socket_t;
 
+/*! \brief Configuration of zero-copy mode. */
+typedef enum {
+	KNOT_XDP_ZEROCOPY_AUTO = 0, /*!< Use zero-copy mode if supported. */
+	KNOT_XDP_ZEROCOPY_DISABLED, /*!< Force copy mode. */
+	KNOT_XDP_ZEROCOPY_ENABLED,  /*!< Force zero-copy mode. */
+} knot_xdp_zerocopy_t;
+
+/*! \brief Configuration of XDP socket. */
+struct knot_xdp_config {
+	knot_xdp_zerocopy_t zerocopy;
+};
+
+/*! \brief Configuration of XDP socket. */
+typedef struct knot_xdp_config knot_xdp_config_t;
+
 /*!
  * \brief Initialize XDP socket.
  *
@@ -67,7 +82,7 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
  */
 int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   knot_xdp_filter_flag_t flags, uint16_t udp_port, uint16_t quic_port,
-                  knot_xdp_load_bpf_t load_bpf, const void *xdp_config);
+                  knot_xdp_load_bpf_t load_bpf, const knot_xdp_config_t *xdp_config);
 
 /*!
  * \brief De-init XDP socket.
