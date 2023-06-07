@@ -1,3 +1,9 @@
+
+import logging
+
+logger = logging.getLogger('quic')
+logger.disabled = True
+
 __all__ = [
     "config",
     "context",
