@@ -299,6 +299,8 @@ def main(args):
     # Set up logging.
     log = logging.getLogger()
     log.setLevel(logging.NOTSET)
+    quic_log = logging.getLogger("quic")
+    quic_log.disabled = True
     create_log(log)
     create_log(log, os.path.join(outs_dir, "summary.log"), logging.NOTSET)
 
