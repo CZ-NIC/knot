@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Tests for TC flag setting in delegations.
 """

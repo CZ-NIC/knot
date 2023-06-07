@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 DNSSEC Single-Type Signing Scheme, RFC 6781
 """
