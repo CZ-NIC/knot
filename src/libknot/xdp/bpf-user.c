@@ -69,7 +69,7 @@ static int prog_load(struct bpf_object **pobj, int *prog_fd)
 	return KNOT_EOK;
 }
 
-static int ensure_prog(struct kxsk_iface *iface, bool overwrite)
+static int ensure_prog(struct kxsk_iface *iface, bool overwrite, bool generic_xdp)
 {
 	if (bpf_kernel_o_len < 2) {
 		return KNOT_ENOTSUP;
@@ -83,12 +83,18 @@ static int ensure_prog(struct kxsk_iface *iface, bool overwrite)
 		return KNOT_EPROGRAM;
 	}
 
+	int flags = 0;
+	if (overwrite) {
+		flags |= XDP_FLAGS_UPDATE_IF_NOEXIST;
+	}
+	if (generic_xdp) {
+		flags |= XDP_FLAGS_SKB_MODE;
+	}
+
 #if USE_LIBXDP
-	ret = bpf_xdp_attach(iface->if_index, prog_fd,
-	                     overwrite ? 0 : XDP_FLAGS_UPDATE_IF_NOEXIST, NULL);
+	ret = bpf_xdp_attach(iface->if_index, prog_fd, flags, NULL);
 #else
-	ret = bpf_set_link_xdp_fd(iface->if_index, prog_fd,
-	                          overwrite ? 0 : XDP_FLAGS_UPDATE_IF_NOEXIST);
+	ret = bpf_set_link_xdp_fd(iface->if_index, prog_fd, flags);
 #endif
 	if (ret != 0) {
 		close(prog_fd);
@@ -223,7 +229,7 @@ void kxsk_socket_stop(const struct kxsk_iface *iface)
 }
 
 int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t load_bpf,
-                   struct kxsk_iface **out_iface)
+                   bool generic_xdp, struct kxsk_iface **out_iface)
 {
 	if (if_name == NULL || out_iface == NULL) {
 		return KNOT_EINVAL;
@@ -270,10 +276,10 @@ int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t l
 		sleep(1);
 		// FALLTHROUGH
 	case KNOT_XDP_LOAD_BPF_ALWAYS:
-		ret = ensure_prog(iface, true);
+		ret = ensure_prog(iface, true, generic_xdp);
 		break;
 	case KNOT_XDP_LOAD_BPF_MAYBE:
-		ret = ensure_prog(iface, false);
+		ret = ensure_prog(iface, false, generic_xdp);
 		break;
 	default:
 		return KNOT_EINVAL;

@@ -135,6 +135,7 @@ typedef struct {
 	knot_xdp_filter_flag_t flags;
 	unsigned	n_threads, thread_id;
 	knot_eth_rss_conf_t *rss_conf;
+	knot_xdp_config_t xdp_config;
 } xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
@@ -146,6 +147,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.sending_mode = "",
 	.target_port = 0,
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
+	.xdp_config = { 0 },
 };
 
 static void sigterm_handler(int signo)
@@ -517,7 +519,7 @@ void *xdp_gun_thread(void *_ctx)
 	*/
 	pthread_mutex_lock(&global_stats.mutex);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
-	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, NULL);
+	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, &ctx->xdp_config);
 	pthread_mutex_unlock(&global_stats.mutex);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u (%s)",
@@ -1050,6 +1052,7 @@ static void print_help(void)
 	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
 	       " -v, --vlan <id>          "SPACE"Add VLAN 802.1Q header with the given id.\n"
+	       " -m, --mode <mode>        "SPACE"Set XDP mode (auto, copy, generic).\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
 	       "\n"
@@ -1118,6 +1121,32 @@ mode_invalid:
 	return false;
 }
 
+static int set_mode(const char *arg, knot_xdp_config_t *config)
+{
+	assert(arg != NULL);
+	assert(config != NULL);
+
+	if (strcmp(arg, "auto") == 0) {
+		config->force_copy = false;
+		config->force_generic = false;
+		return KNOT_EOK;
+	}
+
+	if (strcmp(arg, "copy") == 0) {
+		config->force_copy = true;
+		config->force_generic = false;
+		return KNOT_EOK;
+	}
+
+	if (strcmp(arg, "generic") == 0) {
+		config->force_copy = false;
+		config->force_generic = true;
+		return KNOT_EOK;
+	}
+
+	return KNOT_EINVAL;
+}
+
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
 	struct option opts[] = {
@@ -1137,6 +1166,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "local-mac",  required_argument, NULL, 'L' },
 		{ "remote-mac", required_argument, NULL, 'R' },
 		{ "vlan",       required_argument, NULL, 'v' },
+		{ "mode",       required_argument, NULL, 'm' },
 		{ NULL }
 	};
 
@@ -1144,7 +1174,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL, *filename = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:m:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1269,6 +1299,13 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				ctx->vlan_tci = htobe16(id);
 			} else {
 				ERR2("invalid VLAN id '%s'", optarg);
+				return false;
+			}
+			break;
+		case 'm':
+			assert(optarg);
+			if (set_mode(optarg, &ctx->xdp_config) != KNOT_EOK) {
+				ERR2("invalid mode '%s'", optarg);
 				return false;
 			}
 			break;
