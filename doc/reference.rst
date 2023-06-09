@@ -1367,6 +1367,8 @@ Current limitations:
 - Full handshake is always performed, obtained Session tickets are not
   utilized for faster handshakes.
 
+*Default:* ``off``
+
 .. _remote_key:
 
 key

@@ -1238,6 +1238,8 @@ does not take effect for QUIC.
 Full handshake is always performed, obtained Session tickets are not
 utilized for faster handshakes.
 .UNINDENT
+.sp
+\fIDefault:\fP \fBoff\fP
 .SS key
 .sp
 A \fI\%reference\fP to the TSIG key which is used to authenticate
