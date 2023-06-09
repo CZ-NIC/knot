@@ -103,6 +103,10 @@ address: 10.0.0.2
 .sp
 If an item value contains spaces or other special characters, it is necessary
 to enclose such a value within double quotes \fB"\fP \fB"\fP\&.
+.sp
+If not specified otherwise, an item representing a file or a directory path may
+be defined either as an absolute path (starting with \fB/\fP), or a path relative
+to the same directory as the default value of the item.
 .SH COMMENTS
 .sp
 A comment begins with a \fB#\fP character and is ignored during processing.
@@ -250,7 +254,8 @@ A DNS name server identifier (\fI\%RFC 5001\fP). Set to an empty value to disabl
 \fIDefault:\fP FQDN hostname at the moment of the daemon start
 .SS rundir
 .sp
-A path for storing run\-time data (PID file, unix sockets, etc.).
+A path for storing run\-time data (PID file, unix sockets, etc.). A non\-absolute
+path is relative to the knotd startup directory.
 .sp
 Depending on the usage of this parameter, its change may require restart of the Knot
 server to take effect.
@@ -479,6 +484,8 @@ Maximum EDNS0 UDP payload size for IPv6.
 .SS key\-file
 .sp
 Path to a server key PEM file which is used for DNS over QUIC communication.
+A non\-absolute path of a user specified key file is relative to the
+\fB@config_dir@\fP directory.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
@@ -486,6 +493,7 @@ Change of this parameter requires restart of the Knot server to take effect.
 .SS cert\-file
 .sp
 Path to a server certificate PEM file which is used for DNS over QUIC communication.
+A non\-absolute path is relative to the \fB@config_dir@\fP directory.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
@@ -858,6 +866,9 @@ Possible values:
 With \fBsyslog\fP target, syslog service is used. However, if Knot DNS has been compiled
 with systemd support and operating system has been booted with systemd, systemd journal
 is used for logging instead of syslog.
+.sp
+A \fIfile_name\fP may be specified as an absolute path or a path relative to the
+knotd startup directory.
 .SS server
 .sp
 Minimum severity level for messages related to general operation of the server to be
@@ -937,14 +948,13 @@ database:
 .UNINDENT
 .SS storage
 .sp
-A data directory for storing journal, KASP, and timer databases.
+A data directory for storing journal, KASP, and timer databases. A non\-absolute
+path is relative to the knotd startup directory.
 .sp
 \fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS journal\-db
 .sp
 An explicit specification of the persistent journal database directory.
-Non\-absolute path (i.e. not starting with \fB/\fP) is relative to
-\fI\%storage\fP\&.
 .sp
 \fIDefault:\fP \fI\%storage\fP\fB/journal\fP
 .SS journal\-db\-mode
@@ -988,8 +998,6 @@ This value also influences server\(aqs usage of virtual memory.
 .SS kasp\-db
 .sp
 An explicit specification of the KASP database directory.
-Non\-absolute path (i.e. not starting with \fB/\fP) is relative to
-\fI\%storage\fP\&.
 .sp
 \fIDefault:\fP \fI\%storage\fP\fB/keys\fP
 .SS kasp\-db\-max\-size
@@ -1007,8 +1015,6 @@ This value also influences server\(aqs usage of virtual memory.
 .SS timer\-db
 .sp
 An explicit specification of the persistent timer database directory.
-Non\-absolute path (i.e. not starting with \fB/\fP) is relative to
-\fI\%storage\fP\&.
 .sp
 \fIDefault:\fP \fI\%storage\fP\fB/timers\fP
 .SS timer\-db\-max\-size
@@ -1027,8 +1033,6 @@ This value also influences server\(aqs usage of virtual memory.
 .sp
 An explicit specification of the zone catalog database directory.
 Only useful if catalog\-zones are enabled.
-Non\-absolute path (i.e. not starting with \fB/\fP) is relative to
-\fI\%storage\fP\&.
 .sp
 \fIDefault:\fP \fI\%storage\fP\fB/catalog\fP
 .SS catalog\-db\-max\-size
@@ -2047,14 +2051,13 @@ A \fI\%reference\fP to a configuration template.
 \fIDefault:\fP not set or \fBdefault\fP (if the template exists)
 .SS storage
 .sp
-A data directory for storing zone files.
+A data directory for storing zone files. A non\-absolute path is relative to
+the knotd startup directory.
 .sp
 \fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS file
 .sp
-A path to the zone file. Non\-absolute path (i.e. not starting with \fB/\fP) is
-relative to \fI\%storage\fP\&.
-It is also possible to use the following formatters:
+A path to the zone file. It is also possible to use the following formatters:
 .INDENT 0.0
 .IP \(bu 2
 \fB%c[\fP\fIN\fP\fB]\fP or \fB%c[\fP\fIN\fP\fB\-\fP\fIM\fP\fB]\fP – Means the \fIN\fPth
