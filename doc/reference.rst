@@ -53,6 +53,10 @@ or as more single-valued items each on an extra line::
 If an item value contains spaces or other special characters, it is necessary
 to enclose such a value within double quotes ``"`` ``"``.
 
+If not specified otherwise, an item representing a file or a directory path may
+be defined either as an absolute path (starting with ``/``), or a path relative
+to the same directory as the default value of the item.
+
 .. _Comments:
 
 Comments
@@ -240,8 +244,7 @@ Change of this parameter requires restart of the Knot server to take effect.
 pidfile
 -------
 
-A PID file location. A non-absolute path is relative to the
-:ref:`rundir<server_rundir>` directory.
+A PID file location.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -889,7 +892,6 @@ listen
 ------
 
 A UNIX socket path where the server listens for control commands.
-A non-absolute path is relative to the :ref:`rundir<server_rundir>` directory.
 
 *Default:* :ref:`rundir<server_rundir>`\ ``/knot.sock``
 
@@ -1021,8 +1023,7 @@ A period after which all available statistics metrics will by written to the
 file
 ----
 
-A file path of statistics output in the YAML format. A non-absolute path is
-relative to the :ref:`rundir<server_rundir>` directory.
+A file path of statistics output in the YAML format.
 
 *Default:* :ref:`rundir<server_rundir>`\ ``/stats.yaml``
 
@@ -1073,8 +1074,6 @@ journal-db
 ----------
 
 An explicit specification of the persistent journal database directory.
-Non-absolute path (i.e. not starting with ``/``) is relative to
-:ref:`storage<database_storage>`.
 
 *Default:* :ref:`storage<database_storage>`\ ``/journal``
 
@@ -1123,8 +1122,6 @@ kasp-db
 -------
 
 An explicit specification of the KASP database directory.
-Non-absolute path (i.e. not starting with ``/``) is relative to
-:ref:`storage<database_storage>`.
 
 *Default:* :ref:`storage<database_storage>`\ ``/keys``
 
@@ -1146,8 +1143,6 @@ timer-db
 --------
 
 An explicit specification of the persistent timer database directory.
-Non-absolute path (i.e. not starting with ``/``) is relative to
-:ref:`storage<database_storage>`.
 
 *Default:* :ref:`storage<database_storage>`\ ``/timers``
 
@@ -1170,8 +1165,6 @@ catalog-db
 
 An explicit specification of the zone catalog database directory.
 Only useful if :ref:`catalog-zones` are enabled.
-Non-absolute path (i.e. not starting with ``/``) is relative to
-:ref:`storage<database_storage>`.
 
 *Default:* :ref:`storage<database_storage>`\ ``/catalog``
 
@@ -2334,9 +2327,7 @@ the :doc:`knotd<man_knotd>` startup directory.
 file
 ----
 
-A path to the zone file. Non-absolute path (i.e. not starting with ``/``) is
-relative to :ref:`storage<zone_storage>`.
-It is also possible to use the following formatters:
+A path to the zone file. It is also possible to use the following formatters:
 
 - ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – Means the *N*\ th
   character or a sequence of characters beginning from the *N*\ th and ending
