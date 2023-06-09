@@ -2316,8 +2316,6 @@ The validation is not affected by \fI\%dnssec\-policy\fP configuration,
 except for \fI\%signing\-threads\fP option, which specifies the number
 of threads for parallel validation.
 .sp
-\fIDefault:\fP not set
-.sp
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
@@ -2326,11 +2324,11 @@ Redundant or garbage NSEC3 records are ignored.
 This mode is not compatible with \fI\%dnssec\-signing\fP\&.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP not set
 .SS dnssec\-policy
 .sp
 A \fI\%reference\fP to DNSSEC signing policy.
-.sp
-\fIDefault:\fP an imaginary policy with all default values
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -2338,6 +2336,8 @@ A \fI\%reference\fP to DNSSEC signing policy.
 A configured policy called "default" won\(aqt be used unless explicitly referenced.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP an imaginary policy with all default values
 .SS ds\-push
 .sp
 Per zone configuration of \fI\%ds\-push\fP\&. This option overrides possible

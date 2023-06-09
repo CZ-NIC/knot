@@ -2527,13 +2527,13 @@ The validation is not affected by :ref:`zone_dnssec-policy` configuration,
 except for :ref:`policy_signing-threads` option, which specifies the number
 of threads for parallel validation.
 
-*Default:* not set
-
 .. NOTE::
 
    Redundant or garbage NSEC3 records are ignored.
 
    This mode is not compatible with :ref:`zone_dnssec-signing`.
+
+*Default:* not set
 
 .. _zone_dnssec-policy:
 
@@ -2542,10 +2542,10 @@ dnssec-policy
 
 A :ref:`reference<policy_id>` to DNSSEC signing policy.
 
-*Default:* an imaginary policy with all default values
-
 .. NOTE::
    A configured policy called "default" won't be used unless explicitly referenced.
+
+*Default:* an imaginary policy with all default values
 
 .. _zone_ds-push:
 
