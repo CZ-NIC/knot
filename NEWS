@@ -17,7 +17,7 @@ Improvements:
  - kxdpgun: print percentages as floats (Thanks to Petr Špaček)
  - kjournalprint: ability to print a changeset loop
  - kjournalprint: added changset serials information to '-z -d' output
- - packaging: RHEL9 requires libxdp like fedora since RHEL 9.1 #844
+ - packaging: RHEL9 requires libxdp like fedora since RHEL 9.2 #844
  - doc: various improvements
 
 Bugfixes:
