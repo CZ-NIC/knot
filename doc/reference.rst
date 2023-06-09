@@ -53,6 +53,12 @@ or as more single-valued items each on an extra line::
 If an item value contains spaces or other special characters, it is necessary
 to enclose such a value within double quotes ``"`` ``"``.
 
+.. _default_paths:
+
+If not specified otherwise, an item representing a file or a directory path may
+be defined either as an absolute path (starting with ``/``), or a path relative
+to the same directory as the default value of the item.
+
 .. _Comments:
 
 Comments
@@ -214,7 +220,8 @@ A DNS name server identifier (:rfc:`5001`). Set to an empty value to disable.
 rundir
 ------
 
-A path for storing run-time data (PID file, unix sockets, etc.).
+A path for storing run-time data (PID file, unix sockets, etc.). A non-absolute
+path is relative to the :doc:`knotd<man_knotd>` startup directory.
 
 Depending on the usage of this parameter, its change may require restart of the Knot
 server to take effect.
@@ -239,7 +246,7 @@ Change of this parameter requires restart of the Knot server to take effect.
 pidfile
 -------
 
-A PID file location.
+A PID file :ref:`location<default_paths>`.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -516,6 +523,8 @@ key-file
 --------
 
 Path to a server key PEM file which is used for DNS over QUIC communication.
+A non-absolute path of a user specified key file is relative to the
+:file:`@config_dir@` directory.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -527,6 +536,7 @@ cert-file
 ---------
 
 Path to a server certificate PEM file which is used for DNS over QUIC communication.
+A non-absolute path is relative to the :file:`@config_dir@` directory.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -883,7 +893,8 @@ Configuration of the server control interface.
 listen
 ------
 
-A UNIX socket path where the server listens for control commands.
+A UNIX socket :ref:`path<default_paths>` where the server listens for
+control commands.
 
 *Default:* :ref:`rundir<server_rundir>`\ ``/knot.sock``
 
@@ -945,6 +956,9 @@ Possible values:
 With ``syslog`` target, syslog service is used. However, if Knot DNS has been compiled
 with systemd support and operating system has been booted with systemd, systemd journal
 is used for logging instead of syslog.
+
+A *file_name* may be specified as an absolute path or a path relative to the
+:doc:`knotd<man_knotd>` startup directory.
 
 .. _log_server:
 
@@ -1012,7 +1026,7 @@ A period (in seconds) after which all available statistics metrics will by writt
 file
 ----
 
-A file path of statistics output in the YAML format.
+A file :ref:`path<default_paths>` of statistics output in the YAML format.
 
 *Default:* :ref:`rundir<server_rundir>`\ ``/stats.yaml``
 
@@ -1052,7 +1066,8 @@ Configuration of databases for zone contents, DNSSEC metadata, or event timers.
 storage
 -------
 
-A data directory for storing journal, KASP, and timer databases.
+A data directory for storing journal, KASP, and timer databases. A non-absolute
+path is relative to the :doc:`knotd<man_knotd>` startup directory.
 
 *Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 
@@ -1061,9 +1076,8 @@ A data directory for storing journal, KASP, and timer databases.
 journal-db
 ----------
 
-An explicit specification of the persistent journal database directory.
-Non-absolute path (i.e. not starting with ``/``) is relative to
-:ref:`storage<database_storage>`.
+An explicit :ref:`specification<default_paths>` of the persistent journal database
+directory.
 
 *Default:* :ref:`storage<database_storage>`\ ``/journal``
 
@@ -1111,9 +1125,7 @@ journal usage limits. See more details regarding
 kasp-db
 -------
 
-An explicit specification of the KASP database directory.
-Non-absolute path (i.e. not starting with ``/``) is relative to
-:ref:`storage<database_storage>`.
+An explicit :ref:`specification<default_paths>` of the KASP database directory.
 
 *Default:* :ref:`storage<database_storage>`\ ``/keys``
 
@@ -1134,9 +1146,8 @@ The hard limit for the KASP database maximum size.
 timer-db
 --------
 
-An explicit specification of the persistent timer database directory.
-Non-absolute path (i.e. not starting with ``/``) is relative to
-:ref:`storage<database_storage>`.
+An explicit :ref:`specification<default_paths>` of the persistent timer
+database directory.
 
 *Default:* :ref:`storage<database_storage>`\ ``/timers``
 
@@ -1157,10 +1168,8 @@ The hard limit for the timer database maximum size.
 catalog-db
 ----------
 
-An explicit specification of the zone catalog database directory.
-Only useful if :ref:`catalog-zones` are enabled.
-Non-absolute path (i.e. not starting with ``/``) is relative to
-:ref:`storage<database_storage>`.
+An explicit :ref:`specification<default_paths>` of the zone catalog
+database directory. Only useful if :ref:`catalog-zones` are enabled.
 
 *Default:* :ref:`storage<database_storage>`\ ``/catalog``
 
@@ -2313,7 +2322,8 @@ A :ref:`reference<template_id>` to a configuration template.
 storage
 -------
 
-A data directory for storing zone files.
+A data directory for storing zone files. A non-absolute path is relative to
+the :doc:`knotd<man_knotd>` startup directory.
 
 *Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 
@@ -2322,9 +2332,8 @@ A data directory for storing zone files.
 file
 ----
 
-A path to the zone file. Non-absolute path (i.e. not starting with ``/``) is
-relative to :ref:`storage<zone_storage>`.
-It is also possible to use the following formatters:
+A :ref:`path<default_paths>` to the zone file. It is also possible to use
+the following formatters:
 
 - ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – Means the *N*\ th
   character or a sequence of characters beginning from the *N*\ th and ending

@@ -225,7 +225,8 @@ A module identifier.
 config-file
 ...........
 
-Full path to the response configuration file as described above.
+A path to the response configuration file as described above. A non-absolute
+path is relative to the :doc:`knotd<man_knotd>` startup directory.
 
 *Required*
 
@@ -287,7 +288,8 @@ A :ref:`reference<policy_id>` to DNSSEC signing policy which is used if
 geodb-file
 ..........
 
-Full path to a .mmdb file containing the GeoIP database.
+A path to a .mmdb file containing the GeoIP database. A non-absolute
+path is relative to the :doc:`knotd<man_knotd>` startup directory.
 
 *Required if* :ref:`mod-geoip_mode` *is set to* **geodb**
 

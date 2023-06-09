@@ -58,7 +58,8 @@ A module identifier.
 path
 ....
 
-A directory path the UNIX sockets are located.
+A directory path where the UNIX sockets are located. A non-absolute path is
+relative to the :doc:`knotd<man_knotd>` startup directory.
 
 .. NOTE::
    It's recommended to use a directory with the execute permission restricted
