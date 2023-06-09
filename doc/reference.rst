@@ -214,7 +214,8 @@ A DNS name server identifier (:rfc:`5001`). Set to an empty value to disable.
 rundir
 ------
 
-A path for storing run-time data (PID file, unix sockets, etc.).
+A path for storing run-time data (PID file, unix sockets, etc.). A non-absolute
+path is relative to the :doc:`knotd<man_knotd>` startup directory.
 
 Depending on the usage of this parameter, its change may require restart of the Knot
 server to take effect.
@@ -239,7 +240,8 @@ Change of this parameter requires restart of the Knot server to take effect.
 pidfile
 -------
 
-A PID file location.
+A PID file location. A non-absolute path is relative to the
+:ref:`rundir<server_rundir>` directory.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -516,6 +518,8 @@ key-file
 --------
 
 Path to a server key PEM file which is used for DNS over QUIC communication.
+A non-absolute path of a user specified key file is relative to the
+:file:`@config_dir@` directory.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -527,6 +531,7 @@ cert-file
 ---------
 
 Path to a server certificate PEM file which is used for DNS over QUIC communication.
+A non-absolute path is relative to the :file:`@config_dir@` directory.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -884,6 +889,7 @@ listen
 ------
 
 A UNIX socket path where the server listens for control commands.
+A non-absolute path is relative to the :ref:`rundir<server_rundir>` directory.
 
 *Default:* :ref:`rundir<server_rundir>`\ ``/knot.sock``
 
@@ -945,6 +951,9 @@ Possible values:
 With ``syslog`` target, syslog service is used. However, if Knot DNS has been compiled
 with systemd support and operating system has been booted with systemd, systemd journal
 is used for logging instead of syslog.
+
+A *file_name* may be specified as an absolute path or a path relative to the
+:doc:`knotd<man_knotd>` startup directory.
 
 .. _log_server:
 
@@ -1012,7 +1021,8 @@ A period after which all available statistics metrics will by written to the
 file
 ----
 
-A file path of statistics output in the YAML format.
+A file path of statistics output in the YAML format. A non-absolute path is
+relative to the :ref:`rundir<server_rundir>` directory.
 
 *Default:* :ref:`rundir<server_rundir>`\ ``/stats.yaml``
 
@@ -1052,7 +1062,8 @@ Configuration of databases for zone contents, DNSSEC metadata, or event timers.
 storage
 -------
 
-A data directory for storing journal, KASP, and timer databases.
+A data directory for storing journal, KASP, and timer databases. A non-absolute
+path is relative to the :doc:`knotd<man_knotd>` startup directory.
 
 *Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 
@@ -2313,7 +2324,8 @@ A :ref:`reference<template_id>` to a configuration template.
 storage
 -------
 
-A data directory for storing zone files.
+A data directory for storing zone files. A non-absolute path is relative to
+the :doc:`knotd<man_knotd>` startup directory.
 
 *Default:* ``${localstatedir}/lib/knot`` (configured with ``--with-storage=path``)
 

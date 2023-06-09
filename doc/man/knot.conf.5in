@@ -251,7 +251,8 @@ A DNS name server identifier (\fI\%RFC 5001\fP). Set to an empty value to disabl
 \fIDefault:\fP FQDN hostname at the moment of the daemon start
 .SS rundir
 .sp
-A path for storing run\-time data (PID file, unix sockets, etc.).
+A path for storing run\-time data (PID file, unix sockets, etc.). A non\-absolute
+path is relative to the knotd startup directory.
 .sp
 Depending on the usage of this parameter, its change may require restart of the Knot
 server to take effect.
@@ -268,7 +269,8 @@ Change of this parameter requires restart of the Knot server to take effect.
 \fIDefault:\fP \fBroot:root\fP
 .SS pidfile
 .sp
-A PID file location.
+A PID file location. A non\-absolute path is relative to the
+\fI\%rundir\fP directory.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
@@ -480,6 +482,8 @@ Maximum EDNS0 UDP payload size for IPv6.
 .SS key\-file
 .sp
 Path to a server key PEM file which is used for DNS over QUIC communication.
+A non\-absolute path of a user specified key file is relative to the
+\fB@config_dir@\fP directory.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
@@ -487,6 +491,7 @@ Change of this parameter requires restart of the Knot server to take effect.
 .SS cert\-file
 .sp
 Path to a server certificate PEM file which is used for DNS over QUIC communication.
+A non\-absolute path is relative to the \fB@config_dir@\fP directory.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
@@ -801,6 +806,7 @@ control:
 .SS listen
 .sp
 A UNIX socket path where the server listens for control commands.
+A non\-absolute path is relative to the \fI\%rundir\fP directory.
 .sp
 \fIDefault:\fP \fI\%rundir\fP\fB/knot.sock\fP
 .SS timeout
@@ -868,6 +874,9 @@ Possible values:
 With \fBsyslog\fP target, syslog service is used. However, if Knot DNS has been compiled
 with systemd support and operating system has been booted with systemd, systemd journal
 is used for logging instead of syslog.
+.sp
+A \fIfile_name\fP may be specified as an absolute path or a path relative to the
+knotd startup directory.
 .SS server
 .sp
 Minimum severity level for messages related to general operation of the server to be
@@ -913,7 +922,8 @@ A period after which all available statistics metrics will by written to the
 \fIDefault:\fP not set
 .SS file
 .sp
-A file path of statistics output in the YAML format.
+A file path of statistics output in the YAML format. A non\-absolute path is
+relative to the \fI\%rundir\fP directory.
 .sp
 \fIDefault:\fP \fI\%rundir\fP\fB/stats.yaml\fP
 .SS append
@@ -947,7 +957,8 @@ database:
 .UNINDENT
 .SS storage
 .sp
-A data directory for storing journal, KASP, and timer databases.
+A data directory for storing journal, KASP, and timer databases. A non\-absolute
+path is relative to the knotd startup directory.
 .sp
 \fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS journal\-db
@@ -2105,7 +2116,8 @@ A \fI\%reference\fP to a configuration template.
 \fIDefault:\fP not set or \fBdefault\fP (if the template exists)
 .SS storage
 .sp
-A data directory for storing zone files.
+A data directory for storing zone files. A non\-absolute path is relative to
+the knotd startup directory.
 .sp
 \fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS file
