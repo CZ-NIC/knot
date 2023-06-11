@@ -447,7 +447,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR }, FLAGS }, \
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } }, \
-	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref } }, \
+	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref_empty } }, \
 	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } }, \
 	{ C_ACL,                 YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
 	{ C_PROVIDE_IXFR,        YP_TBOOL, YP_VBOOL = { true } }, \

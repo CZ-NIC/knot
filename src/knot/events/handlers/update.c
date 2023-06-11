@@ -16,6 +16,7 @@
 
 #include <assert.h>
 
+#include "knot/conf/tools.h"
 #include "knot/events/handlers.h"
 #include "knot/nameserver/log.h"
 #include "knot/nameserver/process_query.h"
@@ -413,9 +414,15 @@ int event_update(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
+	bool noforward = false;
+	conf_val_t ddnsmaster = conf_zone_get(conf, C_DDNS_MASTER, zone->name);
+	if (ddnsmaster.code == KNOT_EOK && *conf_str(&ddnsmaster) == '\0') {
+		noforward = true;
+	}
+
 	/* Process update list - forward if zone has master, or execute.
 	   RCODEs are set. */
-	if (zone_is_slave(conf, zone)) {
+	if (!noforward && zone_is_slave(conf, zone)) {
 		log_zone_info(zone->name,
 		              "DDNS, forwarding %zu updates", update_count);
 		forward_requests(conf, zone, &updates);

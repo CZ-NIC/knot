@@ -2257,7 +2257,7 @@ Definition of zones served by the server.
      storage: STR
      file: STR
      master: remote_id | remotes_id ...
-     ddns-master: remote_id
+     ddns-master: [remote_id]
      notify: remote_id | remotes_id ...
      acl: acl_id ...
      provide-ixfr: BOOL
@@ -2359,8 +2359,13 @@ An ordered list of references :ref:`remote<remote_id>` and
 ddns-master
 -----------
 
-A :ref:`reference<remote_id>` to zone primary master. If not specified,
-the first :ref:`master<zone_master>` server is used.
+A :ref:`reference<remote_id>` to a zone primary master where DDNS messages
+should be forwarded to. If not specified, the first :ref:`master<zone_master>`
+server is used.
+
+If set to the empty value (""), incoming DDNS messages aren't forwarded but are applied
+to the local zone instead, no matter if it is a secondary server. This is only allowed in
+combination with :ref:`zone_dnssec-signing` enabled.
 
 *Default:* not set
 
