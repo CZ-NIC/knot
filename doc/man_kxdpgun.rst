@@ -79,14 +79,18 @@ Options
 **-v**, **--vlan** *id*
   Add VLAN 802.1Q header with the given id. VLAN offloading should be disabled.
 
-**-z**, **--zero-copy** *mode*
-  Set zero-copy mode for XDP. The supported values are *auto* (default), *true*, and *false*.
+**-m**, **--mode** *mode*
+  Set the XDP mode. Supported values are *auto* (default), *copy*, and *generic*.
 
-  Zero-copy allows moving packets between kernel and user-space more efficiently which improves performance.
+  When the mode is set to *auto*, kxdpgun uses native driver or hardware XDP
+  implementation. The zero-copy for packet data between kernel and user space is
+  also enabled if supported by the implementation.
 
-  When the mode is set to *auto*, zero-copy is enabled if it is supported by the network adapter driver.
-  When set to *true*, zero-copy is enforced and initialization will fail if the functionality is
-  not available. Value *false* disables zero-copy.
+  When the mode is set to *copy*, kxdpgun also uses native driver but disables
+  the zero-copy.
+
+  When the mode is set to *generic*, kxdpgun uses generic XDP implementation
+  which doesn't require support from the driver nor hardware.
 
 **-h**, **--help**
   Print the program help.
