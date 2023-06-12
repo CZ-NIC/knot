@@ -130,24 +130,6 @@ static void deconfigure_xsk_umem(struct kxsk_umem *umem)
 	free(umem);
 }
 
-static uint16_t xdp_bind_flags(const knot_xdp_config_t *config)
-{
-	if (config == NULL) {
-		return 0;
-	}
-
-	switch (config->zerocopy) {
-	case KNOT_XDP_ZEROCOPY_AUTO:
-		return 0;
-	case KNOT_XDP_ZEROCOPY_DISABLED:
-		return XDP_COPY;
-	case KNOT_XDP_ZEROCOPY_ENABLED:
-		return XDP_ZEROCOPY;
-	default:
-		return 0;
-	}
-}
-
 static int configure_xsk_socket(struct kxsk_umem *umem,
                                 const struct kxsk_iface *iface,
                                 knot_xdp_socket_t **out_sock,
@@ -160,11 +142,16 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	xsk_info->iface = iface;
 	xsk_info->umem = umem;
 
+	uint16_t bind_flags = 0;
+	if (config != NULL && config->force_copy) {
+		bind_flags |= XDP_COPY;
+	}
+
 	const struct xsk_socket_config sock_conf = {
 		.tx_size = RING_LEN_TX,
 		.rx_size = RING_LEN_RX,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
-		.bind_flags = xdp_bind_flags(config),
+		.bind_flags = bind_flags,
 	};
 
 	int ret = xsk_socket__create(&xsk_info->xsk, iface->if_name,
@@ -191,7 +178,8 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 	}
 
 	struct kxsk_iface *iface;
-	int ret = kxsk_iface_new(if_name, if_queue, load_bpf, &iface);
+	const bool generic_xdp = (xdp_config != NULL && xdp_config->force_generic);
+	int ret = kxsk_iface_new(if_name, if_queue, load_bpf, generic_xdp, &iface);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

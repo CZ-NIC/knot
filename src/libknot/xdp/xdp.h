@@ -51,16 +51,10 @@ typedef enum {
 /*! \brief Context structure for one XDP socket. */
 typedef struct knot_xdp_socket knot_xdp_socket_t;
 
-/*! \brief Configuration of zero-copy mode. */
-typedef enum {
-	KNOT_XDP_ZEROCOPY_AUTO = 0, /*!< Use zero-copy mode if supported. */
-	KNOT_XDP_ZEROCOPY_DISABLED, /*!< Force copy mode. */
-	KNOT_XDP_ZEROCOPY_ENABLED,  /*!< Force zero-copy mode. */
-} knot_xdp_zerocopy_t;
-
 /*! \brief Configuration of XDP socket. */
 struct knot_xdp_config {
-	knot_xdp_zerocopy_t zerocopy;
+	bool force_generic; /*!< Use generic XDP mode (avoid driver/hadrware implementation). */
+	bool force_copy;    /*!< Force copying packet data between kernel and user-space (avoid zero-copy). */
 };
 
 /*! \brief Configuration of XDP socket. */

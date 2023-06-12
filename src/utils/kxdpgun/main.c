@@ -1052,8 +1052,7 @@ static void print_help(void)
 	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
 	       " -v, --vlan <id>          "SPACE"Add VLAN 802.1Q header with the given id.\n"
-	       " -z, --zero-copy <mode>   "SPACE"Set zero-copy mode (auto, true, false).\n"
-	       "                          "SPACE" (default is auto)\n"
+	       " -m, --mode <mode>        "SPACE"Set XDP mode (auto, copy, generic).\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
 	       "\n"
@@ -1122,23 +1121,26 @@ mode_invalid:
 	return false;
 }
 
-static int set_zerocopy(const char *arg, knot_xdp_zerocopy_t *mode)
+static int set_mode(const char *arg, knot_xdp_config_t *config)
 {
 	assert(arg != NULL);
-	assert(mode != NULL);
+	assert(config != NULL);
 
 	if (strcmp(arg, "auto") == 0) {
-		*mode = KNOT_XDP_ZEROCOPY_AUTO;
+		config->force_copy = false;
+		config->force_generic = false;
 		return KNOT_EOK;
 	}
 
-	if (strcmp(arg, "true") == 0) {
-		*mode = KNOT_XDP_ZEROCOPY_ENABLED;
+	if (strcmp(arg, "copy") == 0) {
+		config->force_copy = true;
+		config->force_generic = false;
 		return KNOT_EOK;
 	}
 
-	if (strcmp(arg, "false") == 0) {
-		*mode = KNOT_XDP_ZEROCOPY_DISABLED;
+	if (strcmp(arg, "generic") == 0) {
+		config->force_copy = false;
+		config->force_generic = true;
 		return KNOT_EOK;
 	}
 
@@ -1164,7 +1166,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "local-mac",  required_argument, NULL, 'L' },
 		{ "remote-mac", required_argument, NULL, 'R' },
 		{ "vlan",       required_argument, NULL, 'v' },
-		{ "zero-copy",  required_argument, NULL, 'z' },
+		{ "mode",       required_argument, NULL, 'm' },
 		{ NULL }
 	};
 
@@ -1172,7 +1174,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL, *filename = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:z:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:m:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1300,10 +1302,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				return false;
 			}
 			break;
-		case 'z':
+		case 'm':
 			assert(optarg != NULL);
-			if (set_zerocopy(optarg, &ctx->xdp_config.zerocopy) != KNOT_EOK) {
-				ERR2("invalid zero-copy mode '%s'", optarg);
+			if (set_mode(optarg, &ctx->xdp_config) != KNOT_EOK) {
+				ERR2("invalid mode '%s'", optarg);
 				return false;
 			}
 			break;
