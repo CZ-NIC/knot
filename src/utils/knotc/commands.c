@@ -681,19 +681,18 @@ static int cmd_zone_ctl(cmd_args_t *args)
 	return ctl_receive(args);
 }
 
-#define MAX_FILTERS 14
-
 typedef struct {
 	const char *name;
 	char id;
 	bool with_data; // Only ONE filter of each filter_desc_t may have data!
 } filter_desc_t;
 
-const filter_desc_t zone_flush_filters[MAX_FILTERS] = {
+const filter_desc_t zone_flush_filters[] = {
 	{ "+outdir", CTL_FILTER_FLUSH_OUTDIR, true },
+	{ NULL },
 };
 
-const filter_desc_t zone_backup_filters[MAX_FILTERS] = {
+const filter_desc_t zone_backup_filters[] = {
 	{ "+backupdir",   CTL_FILTER_BACKUP_OUTDIR,      true },
 	{ "+zonefile",    CTL_FILTER_BACKUP_ZONEFILE,   false },
 	{ "+nozonefile",  CTL_FILTER_BACKUP_NOZONEFILE, false },
@@ -707,18 +706,20 @@ const filter_desc_t zone_backup_filters[MAX_FILTERS] = {
 	{ "+nocatalog",   CTL_FILTER_BACKUP_NOCATALOG,  false },
 	{ "+quic",        CTL_FILTER_BACKUP_QUIC,       false },
 	{ "+noquic",      CTL_FILTER_BACKUP_NOQUIC,     false },
+	{ NULL },
 };
 
-const filter_desc_t zone_status_filters[MAX_FILTERS] = {
+const filter_desc_t zone_status_filters[] = {
 	{ "+role",        CTL_FILTER_STATUS_ROLE },
 	{ "+serial",      CTL_FILTER_STATUS_SERIAL },
 	{ "+transaction", CTL_FILTER_STATUS_TRANSACTION },
 	{ "+freeze",      CTL_FILTER_STATUS_FREEZE },
 	{ "+catalog",     CTL_FILTER_STATUS_CATALOG },
 	{ "+events",      CTL_FILTER_STATUS_EVENTS },
+	{ NULL },
 };
 
-const filter_desc_t zone_purge_filters[MAX_FILTERS] = {
+const filter_desc_t zone_purge_filters[] = {
 	{ "+expire",   CTL_FILTER_PURGE_EXPIRE },
 	{ "+zonefile", CTL_FILTER_PURGE_ZONEFILE },
 	{ "+journal",  CTL_FILTER_PURGE_JOURNAL },
@@ -726,9 +727,12 @@ const filter_desc_t zone_purge_filters[MAX_FILTERS] = {
 	{ "+kaspdb",   CTL_FILTER_PURGE_KASPDB },
 	{ "+catalog",  CTL_FILTER_PURGE_CATALOG },
 	{ "+orphan",   CTL_FILTER_PURGE_ORPHAN },
+	{ NULL },
 };
 
-const filter_desc_t null_filter = { 0 };
+const filter_desc_t null_filter = { NULL };
+
+#define MAX_FILTERS sizeof(zone_backup_filters) / sizeof(filter_desc_t) - 1
 
 static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 {
@@ -750,7 +754,7 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 	default:
 		return &null_filter;
 	}
-	for (size_t i = 0; i < MAX_FILTERS && fd[i].name != NULL; i++) {
+	for (size_t i = 0; fd[i].name != NULL; i++) {
 		if (strcmp(fd[i].name, filter_name) == 0) {
 			return &fd[i];
 		}
