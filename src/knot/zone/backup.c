@@ -502,7 +502,7 @@ done:
 				goto done; \
 			}
 
-int backup_quic(zone_backup_ctx_t *ctx)
+int backup_quic(zone_backup_ctx_t *ctx, bool quic_on)
 {
 	if (!ctx->backup_quic) {
 		return KNOT_EOK;
@@ -516,9 +516,6 @@ int backup_quic(zone_backup_ctx_t *ctx)
 	bool log_key = false;
 	bool log_cert = false;
 	int ret;
-
-	conf_val_t liquic_val = conf_get(conf(), C_SRV, C_LISTEN_QUIC);
-	bool quic_on = (conf_val_count(&liquic_val) > 0);
 
 	char *cert_file = conf_tls(conf(), C_CERT_FILE);
 	char *key_file = conf_tls(conf(), C_KEY_FILE);

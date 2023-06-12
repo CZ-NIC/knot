@@ -725,7 +725,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	nifs = real_nifs;
 
 	/* QUIC credentials initialization. */
-	if (xdp_quic > 0 || convent_quic > 0) {
+	s->quic_active = xdp_quic > 0 || convent_quic > 0;
+	if (s->quic_active) {
 		if (init_creds(s, conf) != KNOT_EOK) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;

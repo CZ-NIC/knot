@@ -633,7 +633,7 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 	zone_backup_ctx_t *ctx = latest_backup_ctx(args);
 
 	/* QUIC - server key and cert backup. */
-	ret = backup_quic(ctx);
+	ret = backup_quic(ctx, args->server->quic_active);
 	if (ret != KNOT_EOK) {
 		log_ctl_error("control, QUIC %s error (%s)",
 		              restore_mode ? "restore" : "backup",

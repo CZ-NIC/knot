@@ -74,4 +74,4 @@ void zone_backups_deinit(zone_backup_ctxs_t *ctxs);
 void zone_backups_add(zone_backup_ctxs_t *ctxs, zone_backup_ctx_t *ctx);
 void zone_backups_rem(zone_backup_ctx_t *ctx);
 
-int backup_quic(zone_backup_ctx_t *ctx);
+int backup_quic(zone_backup_ctx_t *ctx, bool quic_on);
