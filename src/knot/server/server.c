@@ -61,8 +61,6 @@
 #include <linux/filter.h>
 #endif
 
-#define DFLT_QUIC_KEY_FILE	"quic_key.pem"
-
 /*! \brief Minimal send/receive buffer sizes. */
 enum {
 	UDP_MIN_RCVSIZE = 4096,
@@ -532,15 +530,50 @@ static void log_sock_conf(conf_t *conf)
 	}
 }
 
+#ifdef ENABLE_QUIC
+static int check_file(char *path, char *role)
+{
+	if (path == NULL) {
+		return KNOT_EOK;
+	}
+
+	char *err_str;
+
+	struct stat st;
+	int ret = stat(path, &st);
+	if (ret != 0) {
+		err_str = "invalid file";
+	} else if (!S_ISREG(st.st_mode)) {
+		err_str = "not a file";
+	} else {
+		return KNOT_EOK;
+	}
+
+	log_error("QUIC, %s file '%s' (%s)", role, path, err_str);
+	return KNOT_EINVAL;
+}
+#endif // ENABLE_QUIC
+
 static int init_creds(server_t *server, conf_t *conf)
 {
 #ifdef ENABLE_QUIC
 	char *cert_file = conf_tls(conf, C_CERT_FILE);
 	char *key_file = conf_tls(conf, C_KEY_FILE);
+
+	int ret = check_file(cert_file, "certificate");
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = check_file(key_file, "key");
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	if (cert_file == NULL) {
 		assert(key_file == NULL);
 		char *kasp_dir = conf_db(conf, C_KASP_DB);
-		int ret = make_dir(kasp_dir, S_IRWXU | S_IRWXG, true);
+		ret = make_dir(kasp_dir, S_IRWXU | S_IRWXG, true);
 		if (ret != KNOT_EOK) {
 			log_error("QUIC, failed to create directory '%s'", kasp_dir);
 			free(kasp_dir);
@@ -692,7 +725,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	nifs = real_nifs;
 
 	/* QUIC credentials initialization. */
-	if (xdp_quic > 0 || convent_quic > 0) {
+	s->quic_active = xdp_quic > 0 || convent_quic > 0;
+	if (s->quic_active) {
 		if (init_creds(s, conf) != KNOT_EOK) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
@@ -981,7 +1015,7 @@ static int reload_conf(conf_t *new_conf)
 	return KNOT_EOK;
 }
 
-/*! \brief Check if parameter listen(-xdp) has been changed since knotd started. */
+/*! \brief Check if parameter listen(-xdp,-quic) has been changed since knotd started. */
 static bool listen_changed(conf_t *conf, server_t *server)
 {
 	assert(server->ifaces);
@@ -1095,7 +1129,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	}
 
 	if (warn_listen && server->ifaces != NULL && listen_changed(conf, server)) {
-		log_warning(msg, "listen(-xdp)");
+		log_warning(msg, "listen(-xdp,-quic)");
 		warn_listen = false;
 	}
 

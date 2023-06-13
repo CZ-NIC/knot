@@ -483,7 +483,7 @@ Path to a server key PEM file which is used for DNS over QUIC communication.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
-\fIDefault:\fP one\-time in\-memory key
+\fIDefault:\fP auto\-generated key
 .SS cert\-file
 .sp
 Path to a server certificate PEM file which is used for DNS over QUIC communication.

@@ -28,6 +28,8 @@
 #include "knot/zone/backup.h"
 #include "knot/zone/zonedb.h"
 
+#define DFLT_QUIC_KEY_FILE	"quic_key.pem"
+
 struct server;
 struct knot_xdp_socket;
 struct knot_quic_creds;
@@ -117,6 +119,7 @@ typedef struct server {
 	/*! \brief List of interfaces. */
 	iface_t *ifaces;
 	size_t n_ifaces;
+	bool quic_active;
 
 	/*! \brief Pending changes to catalog member zones, update indication. */
 	catalog_update_t catalog_upd;

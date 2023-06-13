@@ -519,7 +519,7 @@ Path to a server key PEM file which is used for DNS over QUIC communication.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
-*Default:* one-time in-memory key
+*Default:* auto-generated key
 
 .. _server_cert-file:
 

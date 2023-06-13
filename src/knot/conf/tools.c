@@ -455,26 +455,6 @@ int check_module_id(
 	return KNOT_EOK;
 }
 
-int check_file(
-	knotd_conf_check_args_t *args)
-{
-	char *path = abs_path((const char *)args->data, CONFIG_DIR);
-
-	struct stat st;
-	int ret = stat(path, &st);
-	free(path);
-
-	if (ret != 0) {
-		args->err_str = "invalid file";
-		return KNOT_EINVAL;
-	} else if(!S_ISREG(st.st_mode)) {
-		args->err_str = "not a file";
-		return KNOT_EINVAL;
-	} else {
-		return KNOT_EOK;
-	}
-}
-
 #define CHECK_LEGACY_NAME(section, old_item, new_item) { \
 	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn, \
 	                              section, old_item); \

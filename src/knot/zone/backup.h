@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,11 +33,12 @@ typedef struct zone_backup_ctx {
 	node_t n;                           // ability to be put into list_t
 	bool restore_mode;                  // if true, this is not a backup, but restore
 	bool forced;                        // if true, the force flag has been set
-	bool backup_zonefile;               // if true, also backup zone contents to a zonefile (default on)
-	bool backup_journal;                // if true, also backup journal (default off)
-	bool backup_timers;                 // if true, also backup timers (default on)
-	bool backup_kaspdb;                 // if true, also backup KASP database (default on)
-	bool backup_catalog;                // if true, also backup zone catalog (default on)
+	bool backup_zonefile;               // if true, also backup zone contents to a zonefile
+	bool backup_journal;                // if true, also backup journal
+	bool backup_timers;                 // if true, also backup timers
+	bool backup_kaspdb;                 // if true, also backup KASP database
+	bool backup_catalog;                // if true, also backup zone catalog
+	bool backup_quic;                   // if true, also backup QUIC server key and certificate
 	bool backup_global;                 // perform global backup for all zones
 	ssize_t readers;                    // when decremented to 0, all zones done, free this context
 	pthread_mutex_t readers_mutex;      // mutex covering readers counter
@@ -72,3 +73,5 @@ void zone_backups_init(zone_backup_ctxs_t *ctxs);
 void zone_backups_deinit(zone_backup_ctxs_t *ctxs);
 void zone_backups_add(zone_backup_ctxs_t *ctxs, zone_backup_ctx_t *ctx);
 void zone_backups_rem(zone_backup_ctx_t *ctx);
+
+int backup_quic(zone_backup_ctx_t *ctx, bool quic_on);

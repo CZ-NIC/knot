@@ -81,7 +81,6 @@ static struct {
  *
  * \return false if there is a filter conflict, true otherwise.
  */
-
 static bool eval_opposite_filters(ctl_args_t *args, bool *param, bool dflt,
                                   int filter, int neg_filter)
 {
@@ -517,7 +516,8 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	// Evaluate filters (and possibly fail) before writing to the filesystem.
-	bool filter_zonefile, filter_journal, filter_timers, filter_kaspdb, filter_catalog;
+	bool filter_zonefile, filter_journal, filter_timers, filter_kaspdb,
+	     filter_catalog, filter_quic;
 
 	// The default filter values are set just in this paragraph.
 	if (!(eval_opposite_filters(args, &filter_zonefile, true,
@@ -529,7 +529,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	    eval_opposite_filters(args, &filter_kaspdb, true,
 	                          CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB) &&
 	    eval_opposite_filters(args, &filter_catalog, true,
-	                          CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG))) {
+	                          CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG) &&
+	    eval_opposite_filters(args, &filter_quic, false,
+	                          CTL_FILTER_BACKUP_QUIC, CTL_FILTER_BACKUP_NOQUIC))) {
 		return KNOT_EXPARAM;
 	}
 
@@ -557,6 +559,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	ctx->backup_timers = filter_timers;
 	ctx->backup_kaspdb = filter_kaspdb;
 	ctx->backup_catalog = filter_catalog;
+	ctx->backup_quic = filter_quic;
 
 	zone_backups_add(&args->server->backup_ctxs, ctx);
 
@@ -627,9 +630,21 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		return KNOT_CTL_EZONE;
 	}
 
+	zone_backup_ctx_t *ctx = latest_backup_ctx(args);
+
+	/* QUIC - server key and cert backup. */
+	ret = backup_quic(ctx, args->server->quic_active);
+	if (ret != KNOT_EOK) {
+		log_ctl_error("control, QUIC %s error (%s)",
+		              restore_mode ? "restore" : "backup",
+		              knot_strerror(ret));
+		send_error(args, knot_strerror(ret));
+		ret = KNOT_EOK;
+		goto done;
+	}
+
 	/* Global catalog zones backup. */
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-		zone_backup_ctx_t *ctx = latest_backup_ctx(args);
 		ctx->backup_global = true;
 		ret = global_backup(ctx, &args->server->catalog, NULL);
 		if (ret != KNOT_EOK) {

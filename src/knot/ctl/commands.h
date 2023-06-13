@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,6 +61,8 @@
 #define CTL_FILTER_BACKUP_NOKASPDB	'K'
 #define CTL_FILTER_BACKUP_CATALOG	'c'
 #define CTL_FILTER_BACKUP_NOCATALOG	'C'
+#define CTL_FILTER_BACKUP_QUIC		'q'
+#define CTL_FILTER_BACKUP_NOQUIC	'Q'
 
 #define STATUS_EMPTY			"-"
 

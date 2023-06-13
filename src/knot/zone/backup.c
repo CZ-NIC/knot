@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
+#include "knot/server/server.h"
 #include "knot/zone/backup_dir.h"
 #include "knot/zone/zonefile.h"
 #include "libdnssec/error.h"
@@ -229,6 +230,27 @@ static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)
 	return policy;
 }
 
+static int backup_file(char *dst, char *src)
+{
+	struct stat st;
+	int ret;
+
+	if (stat(src, &st) == 0) {
+		ret = make_path(dst, S_IRWXU | S_IRWXG);
+		if (ret == KNOT_EOK) {
+			ret = copy_file(dst, src);
+		}
+	} else {
+		ret = knot_map_errno();
+		// If there's no src file, remove any old dst file.
+		if (ret == KNOT_ENOENT) {
+			unlink(dst);
+		}
+	}
+
+	return ret;
+}
+
 #define LOG_FAIL(action) log_zone_warning(zone->name, "%s, %s failed (%s)", ctx->restore_mode ? \
                          "restore" : "backup", (action), knot_strerror(ret))
 #define LOG_MARK_FAIL(action) LOG_FAIL(action); \
@@ -263,21 +285,9 @@ static int backup_zonefile(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	}
 
 	if (ctx->restore_mode) {
-		struct stat st;
-		if (stat(backup_zf, &st) == 0) {
-			ret = make_path(local_zf, S_IRWXU | S_IRWXG);
-			if (ret == KNOT_EOK) {
-				ret = copy_file(local_zf, backup_zf);
-			}
-		} else {
-			ret = errno == ENOENT ? KNOT_EFILE : knot_map_errno();
-			/* If there's no zone file in the backup, remove any old zone file
-			 * from the repository.
-			 */
-			if (ret == KNOT_EFILE) {
-				unlink(local_zf);
-			}
-		}
+		ret = backup_file(local_zf, backup_zf);
+                ret = ret == KNOT_ENOENT ? KNOT_EFILE : ret;
+
 	} else {
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		bool can_flush = (conf_int(&val) > -1);
@@ -457,5 +467,103 @@ int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
 	if (ret != KNOT_EOK) {
 		ctx->failed = true;
 	}
+	return ret;
+}
+
+static int backup_quic_file(zone_backup_ctx_t *ctx, char *file, char *subdir,
+                            const char *desc, bool required, bool *success)
+{
+	char *backup_quic_dir = NULL, *backup_orig = NULL, *backup;
+	int ret;
+
+	backup_quic_dir = dir_file(ctx->backup_dir, subdir);
+	ABORT_IF_ENOMEM(backup_quic_dir);
+	backup_orig = backup = dir_file(backup_quic_dir, file);
+	ABORT_IF_ENOMEM(backup);
+
+	BACKUP_SWAP(ctx, backup, file);
+	ret = backup_file(backup, file);
+	if (ret == KNOT_EOK) {
+		*success = true;
+	} else if (!required && ret == KNOT_ENOENT) {
+		ret = KNOT_EOK;
+	} else {
+		log_ctl_error("control, QUIC %s file %s failed (%s)", desc,
+		              ctx->restore_mode ? "restore" : "backup",
+		              knot_strerror(ret));
+	}
+done:
+	free(backup_orig);
+	free(backup_quic_dir);
+	return ret;
+}
+
+#define DONE_ON_ERROR	if (ret != KNOT_EOK) { \
+				goto done; \
+			}
+
+int backup_quic(zone_backup_ctx_t *ctx, bool quic_on)
+{
+	if (!ctx->backup_quic) {
+		return KNOT_EOK;
+	}
+
+	const char *str_auto = "auto-generated key";
+	const char *str_key = "configured key";
+	const char *str_cert = "certificate";
+
+	bool log_auto = false;
+	bool log_key = false;
+	bool log_cert = false;
+	int ret;
+
+	char *cert_file = conf_tls(conf(), C_CERT_FILE);
+	char *key_file = conf_tls(conf(), C_KEY_FILE);
+	bool user_keys = (key_file != NULL);
+
+	char *kasp_dir = conf_db(conf(), C_KASP_DB);
+	char *auto_file = abs_path(DFLT_QUIC_KEY_FILE, kasp_dir);
+	ABORT_IF_ENOMEM(auto_file);
+	free(kasp_dir);
+
+	// Backup/restore of auto-generated key is required if it's in active use,
+	// otherwise use it if the file is found (no fail if missing).
+	ret = backup_quic_file(ctx, auto_file, "keys", str_auto,
+	                       quic_on && !user_keys, &log_auto);
+	DONE_ON_ERROR;
+
+	// If QUIC isn't configured, backup of configured key and cert is possible,
+	// but it isn't required (no fail if missing).
+	if (user_keys && !ctx->restore_mode) {
+		char *quic_subdir = "quic";
+		ret = backup_quic_file(ctx, key_file, quic_subdir, str_key,
+		                       quic_on, &log_key);
+		DONE_ON_ERROR;
+
+		ret = backup_quic_file(ctx, cert_file, quic_subdir, str_cert,
+		                       quic_on, &log_cert);
+		DONE_ON_ERROR;
+	}
+
+	if (log_auto || log_key) {
+		log_ctl_info("control, QUIC %s%s%s%s%s %s '%s'",
+		             log_auto ? str_auto : "",
+		             (log_auto && log_key) ? ", " : "",
+		             log_key ? str_key : "",
+		             log_cert ? " and " : "",
+		             log_cert ? str_cert : "",
+		             ctx->restore_mode ? "restored from" : "backed up to",
+		             ctx->backup_dir);
+	}
+
+done:
+	free(auto_file);
+	free(key_file);
+	free(cert_file);
+
+	if (ret != KNOT_EOK) {
+		ctx->failed = true;
+	}
+
 	return ret;
 }
