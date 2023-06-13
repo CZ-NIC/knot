@@ -147,7 +147,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.sending_mode = "",
 	.target_port = 0,
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
-	.xdp_config = {0},
+	.xdp_config = { 0 },
 };
 
 static void sigterm_handler(int signo)
@@ -1303,7 +1303,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		case 'm':
-			assert(optarg != NULL);
+			assert(optarg);
 			if (set_mode(optarg, &ctx->xdp_config) != KNOT_EOK) {
 				ERR2("invalid mode '%s'", optarg);
 				return false;
