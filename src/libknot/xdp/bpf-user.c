@@ -83,8 +83,8 @@ static int ensure_prog(struct kxsk_iface *iface, bool overwrite, bool generic_xd
 		return KNOT_EPROGRAM;
 	}
 
-	int flags = 0;
-	if (overwrite) {
+	uint32_t flags = 0;
+	if (!overwrite) {
 		flags |= XDP_FLAGS_UPDATE_IF_NOEXIST;
 	}
 	if (generic_xdp) {
