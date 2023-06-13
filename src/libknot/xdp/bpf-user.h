@@ -96,15 +96,16 @@ struct knot_xdp_socket {
 /*!
  * \brief Set up BPF program and map for one XDP socket.
  *
- * \param if_name    Name of the net iface (e.g. eth0).
- * \param if_queue   Network card queue id.
- * \param load_bpf   Insert BPF program into packet processing.
- * \param out_iface  Output: created interface context.
+ * \param if_name      Name of the net iface (e.g. eth0).
+ * \param if_queue     Network card queue id.
+ * \param load_bpf     Insert BPF program into packet processing.
+ * \param generic_xdp  Use generic XDP implementation instead of a native one.
+ * \param out_iface    Output: created interface context.
  *
  * \return KNOT_E* or -errno
  */
 int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t load_bpf,
-                   struct kxsk_iface **out_iface);
+                   bool generic_xdp, struct kxsk_iface **out_iface);
 
 /*!
  * \brief Unload BPF maps for a socket.

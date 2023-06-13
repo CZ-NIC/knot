@@ -79,6 +79,21 @@ Options
 **-v**, **--vlan** *id*
   Add VLAN 802.1Q header with the given id. VLAN offloading should be disabled.
 
+**-m**, **--mode** *mode*
+  Set the XDP mode. Supported values are:
+
+  - **auto** (default) – the XDP mode is selected automatically to achieve
+    the best performance, which means that native driver support is preferred
+    over the generic one, and zero-copy is used if available.
+
+  - **copy** – the XDP socket copy mode is forced even if zero-copy
+    is available. This can resolve various driver issues, but at the cost
+    of lower performance.
+
+  - **generic** – the generic XDP implementation is forced even if native
+    implementation is available. This mode doesn't require support from the
+    driver nor hardware, but offers the worst performance.
+
 **-h**, **--help**
   Print the program help.
 
