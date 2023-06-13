@@ -16,6 +16,10 @@ name = "el-7"
 distro = ["centos == 7", "rhel == 7"]
 
 [[distro.aliases]]
+name = "_deb-nolibxdp"
+distro = ["debian == 11", "ubuntu == 20.04", "ubuntu == 22.04"]
+
+[[distro.aliases]]
 name = "_deb-noxdp"
 distro = ["debian == 10", "ubuntu == 18.04"]
 
