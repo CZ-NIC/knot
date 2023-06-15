@@ -46,13 +46,29 @@ typedef struct {
 	fprintf(fd, "%-.*s"name": %"PRIu64"\n", level, "    ", ##__VA_ARGS__); \
 	} while (0)
 
-uint64_t server_zone_count(server_t *server)
+static uint64_t server_zone_count(server_t *server)
 {
 	return knot_zonedb_size(server->zone_db);
 }
 
 const stats_item_t server_stats[] = {
-	{ "zone-count", server_zone_count },
+	{ "zone-count", { .server_val = server_zone_count } },
+	{ 0 }
+};
+
+static uint64_t zone_size(zone_t *zone)
+{
+	return zone->contents != NULL ? zone->contents->size : 0;
+}
+
+static uint64_t zone_max_ttl(zone_t *zone)
+{
+	return zone->contents != NULL ? zone->contents->max_ttl : 0;
+}
+
+const stats_item_t zone_contents_stats[] = {
+	{ "size",    { .zone_val = zone_size } },
+	{ "max-ttl", { .zone_val = zone_max_ttl } },
 	{ 0 }
 };
 
@@ -174,7 +190,7 @@ static void dump_to_file(conf_t *conf, FILE *fd, server_t *server)
 	// Dump server statistics.
 	DUMP_STR(fd, 0, "server", "");
 	for (const stats_item_t *item = server_stats; item->name != NULL; item++) {
-		DUMP_CTR(fd, 1, "%s", item->name, item->val(server));
+		DUMP_CTR(fd, 1, "%s", item->name, item->server_val(server));
 	}
 
 	dump_ctx_t ctx = {

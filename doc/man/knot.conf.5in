@@ -907,7 +907,7 @@ statistics:
 .UNINDENT
 .SS timer
 .sp
-A period after which all available statistics metrics will by written to the
+A period (in seconds) after which all available statistics metrics will by written to the
 \fI\%file\fP\&.
 .sp
 \fIDefault:\fP not set

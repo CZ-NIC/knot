@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,20 +22,29 @@
 
 #include "knot/server/server.h"
 
-typedef uint64_t (*stats_val_f)(server_t *server);
+typedef uint64_t (*stats_server_val_f)(server_t *server);
+typedef uint64_t (*stats_zone_val_f)(zone_t *zone);
 
 /*!
  * \brief Statistics metrics item.
  */
 typedef struct {
-	const char *name; /*!< Metrics name. */
-	stats_val_f val;  /*!< Metrics value getter. */
+	const char *name;                       /*!< Metrics name. */
+	union {
+		stats_server_val_f server_val;  /*!< Server metrics value getter. */
+		stats_zone_val_f zone_val;      /*!< Zone metrics value getter. */
+	};
 } stats_item_t;
 
 /*!
  * \brief Basic server metrics.
  */
 extern const stats_item_t server_stats[];
+
+/*!
+ * \brief Basic zone metrics.
+ */
+extern const stats_item_t zone_contents_stats[];
 
 /*!
  * \brief Read out value of single counter summed across threads.
