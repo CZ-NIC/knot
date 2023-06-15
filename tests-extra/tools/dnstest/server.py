@@ -464,6 +464,10 @@ class Server(object):
         detail_log(SEP)
         f.close()
 
+    def _assert_check(self):
+        if not isinstance(self, Dummy) and fsearch(self.ferr, "Assertion"):
+            set_err("ASSERT")
+
     def backtrace(self):
         if self.valgrind:
             check_log("BACKTRACE %s" % self.name)
@@ -498,6 +502,7 @@ class Server(object):
                 detail_log(SEP)
                 self.kill()
         if check:
+            self._assert_check()
             self._valgrind_check()
 
     def kill(self):
@@ -722,27 +727,10 @@ class Server(object):
                          (len(data), self.name))
 
     def log_search(self, pattern):
-        with open(self.fout) as log:
-            for line in log:
-                if pattern in line:
-                    return True
-        with open(self.ferr) as log:
-            for line in log:
-                if pattern in line:
-                    return True
-        return False
+        return fsearch(self.fout, pattern) or fsearch(self.ferr, pattern)
 
     def log_search_count(self, pattern):
-        count = 0
-        with open(self.fout) as log:
-            for line in log:
-                if pattern in line:
-                    count += 1
-        with open(self.ferr) as log:
-            for line in log:
-                if pattern in line:
-                    count += 1
-        return count
+        return fsearch_count(self.fout, pattern) + fsearch_count(self.ferr, pattern)
 
     def zone_wait(self, zone, serial=None, equal=False, greater=True, udp=True,
                   tsig=None, use_ctl=False):
