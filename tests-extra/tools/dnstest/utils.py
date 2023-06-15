@@ -40,6 +40,21 @@ def test_info():
     else:
         return "dnstest"
 
+def fsearch(fname, pattern):
+    with open(fname) as f:
+        for line in f:
+            if pattern in line:
+                return True
+    return False
+
+def fsearch_count(fname, pattern):
+    count = 0
+    with open(fname) as f:
+        for line in f:
+            if pattern in line:
+                count += 1
+    return count
+
 def check_log(text):
     '''Log message header'''
 
