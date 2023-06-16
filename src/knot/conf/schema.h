@@ -52,6 +52,7 @@
 #define C_DDNS_MASTER		"\x0B""ddns-master"
 #define C_DENY			"\x04""deny"
 #define C_DNSKEY_MGMT		"\x11""dnskey-management"
+#define C_DNSKEY_SYNC		"\x0B""dnskey-sync"
 #define C_DNSKEY_TTL		"\x0A""dnskey-ttl"
 #define C_DNSSEC_POLICY		"\x0D""dnssec-policy"
 #define C_DNSSEC_SIGNING	"\x0E""dnssec-signing"

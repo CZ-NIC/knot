@@ -884,6 +884,19 @@ int check_remotes(
 	return KNOT_EOK;
 }
 
+int check_dnskey_sync(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t addr = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_DNSKEY_SYNC,
+	                                     C_RMT, args->id, args->id_len);
+	if (conf_val_count(&addr) == 0) {
+		args->err_str = "no remote address defined";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 #define CHECK_DFLT(item, name) { \
 	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
 	                                    C_TPL, item, args->id, args->id_len); \

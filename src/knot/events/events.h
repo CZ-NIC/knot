@@ -42,6 +42,7 @@ typedef enum zone_event_type {
 	ZONE_EVENT_UTHAW,
 	ZONE_EVENT_DS_CHECK,
 	ZONE_EVENT_DS_PUSH,
+	ZONE_EVENT_DNSKEY_SYNC,
 	// terminator
 	ZONE_EVENT_COUNT,
 } zone_event_type_t;

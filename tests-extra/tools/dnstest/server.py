@@ -68,6 +68,7 @@ class ZoneDnssec(object):
         self.ksk_sbm_timeout = None
         self.ksk_sbm_delay = None
         self.ds_push = None
+        self.dnskey_sync = None
         self.ksk_shared = None
         self.shared_policy_with = None
         self.cds_publish = None
@@ -1283,6 +1284,8 @@ class Knot(Server):
                 acl += ", acl_%s" % slave.name
             if slaves:
                 conf.item("notify", "[%s]" % slaves)
+        for remote in zone.dnssec.dnskey_sync if zone.dnssec.dnskey_sync else []:
+            acl += ", acl_%s_ddns" % remote.name
         if not self.auto_acl:
             conf.item("acl", "[%s]" % acl)
 
@@ -1346,6 +1349,8 @@ class Knot(Server):
                     self._key(s, keys, master.tsig, master.name)
                 for slave in z.slaves:
                     self._key(s, keys, slave.tsig, slave.name)
+                for remote in z.dnssec.dnskey_sync if z.dnssec.dnskey_sync else []:
+                    self._key(s, keys, remote.tsig, remote.name)
             s.end()
 
         have_remote = False
@@ -1409,6 +1414,21 @@ class Knot(Server):
                     if self.via:
                         s.item_str("via", self.via)
                     servers.add(parent.name)
+            for remote in z.dnssec.dnskey_sync if z.dnssec.dnskey_sync else []:
+                if remote.name not in servers:
+                    if not have_remote:
+                        s.begin("remote")
+                        have_remote = True
+                    s.id_item("id", remote.name)
+                    if remote.addr.startswith("/"):
+                        s.item_str("address", "%s" % remote.addr)
+                    else:
+                        s.item_str("address", "%s@%s" % (remote.addr, remote.port))
+                    if remote.via:
+                        s.item_str("via", self.via)
+                    if remote.tsig:
+                        s.item_str("key", self.tsig.name)
+                    servers.add(remote.name)
 
         if have_remote:
             s.end()
@@ -1450,6 +1470,15 @@ class Knot(Server):
                     s.item_str("cert-key", slave.cert_key)
                 s.item("action", "[transfer, update]")
                 servers.add(slave.name)
+            for remote in z.dnssec.dnskey_sync if z.dnssec.dnskey_sync else []:
+                dupl_name = remote.name + "_ddns"
+                if dupl_name in servers:
+                    continue
+                s.id_item("id", "acl_%s" % dupl_name)
+                if remote.tsig:
+                    s.item_str("key", remote.tsig.name)
+                s.item("action", "update")
+                servers.add(dupl_name)
         s.end()
 
         if len(self.modules) > 0:
@@ -1486,6 +1515,27 @@ class Knot(Server):
             if z.dnssec.ksk_sbm_delay is not None:
                 self._str(s, "parent-delay", z.dnssec.ksk_sbm_delay)
         if have_sbm:
+            s.end()
+
+        have_dnskeysync = False
+        for zone in sorted(self.zones):
+            z = self.zones[zone]
+            if not z.dnssec.enable:
+                continue
+            if z.dnssec.dnskey_sync is None:
+                continue
+            if not have_dnskeysync:
+                s.begin("dnskey-sync")
+                have_dnskeysync = True
+            s.id_item("id", z.name)
+            remotes = ""
+            for remote in z.dnssec.dnskey_sync:
+                if remotes:
+                    remotes += ", "
+                remotes += remote.name
+            if remotes != "":
+                s.item("remote", "[%s]" % remotes)
+        if have_dnskeysync:
             s.end()
 
         have_policy = False
@@ -1525,6 +1575,8 @@ class Knot(Server):
                 s.item("ksk-submission", z.name)
             if z.dnssec.ds_push:
                 self._str(s, "ds-push", z.dnssec.ds_push.name)
+            if z.dnssec.dnskey_sync:
+                s.item("dnskey-sync", z.name)
             self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
             self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
             if z.dnssec.cds_digesttype:

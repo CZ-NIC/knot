@@ -47,3 +47,5 @@ int event_uthaw(conf_t *conf, zone_t *zone);
 int event_ds_check(conf_t *conf, zone_t *zone);
 /*! \brief After change of CDS/CDNSKEY, push the new DS to parent zone as DDNS. */
 int event_ds_push(conf_t *conf, zone_t *zone);
+/*! \brief After DNSSEC sign, synchronize DNSKEY+CDNSKEY+CDS using DDNS. */
+int event_dnskey_sync(conf_t *conf, zone_t *zone);

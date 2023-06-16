@@ -302,6 +302,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 done:
 	if (result == KNOT_EOK) {
 		reschedule->next_sign = schedule_next(&ctx, &keyset, ctx.offline_next_time, zone_expire);
+		reschedule->plan_dnskey_sync = ctx.policy->has_dnskey_sync;
 	} else {
 		reschedule->next_sign = knot_dnssec_failover_delay(&ctx);
 		reschedule->next_rollover = 0;
@@ -429,6 +430,9 @@ done:
 		knot_time_t next = knot_time_min(ctx.offline_next_time, zone_expire);
 		// NOTE: this is usually NOOP since signing planned earlier
 		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, (time_t)(next ? next : -1));
+		if (ctx.policy->has_dnskey_sync) {
+			zone_events_schedule_now(update->zone, ZONE_EVENT_DNSKEY_SYNC);
+		}
 	}
 
 	free_zone_keys(&keyset);

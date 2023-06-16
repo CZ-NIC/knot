@@ -49,6 +49,7 @@ typedef struct {
 	knot_time_t last_nsec3resalt;
 	bool keys_changed;
 	bool plan_ds_check;
+	bool plan_dnskey_sync;
 } zone_sign_reschedule_t;
 
 /*!

@@ -82,6 +82,7 @@ libknotd_la_SOURCES = \
 	knot/events/events.h			\
 	knot/events/handlers.h			\
 	knot/events/handlers/backup.c		\
+	knot/events/handlers/dnskey_sync.c	\
 	knot/events/handlers/dnssec.c		\
 	knot/events/handlers/ds_check.c		\
 	knot/events/handlers/ds_push.c		\

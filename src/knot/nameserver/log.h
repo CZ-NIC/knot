@@ -28,6 +28,7 @@ typedef enum {
 	LOG_OPERATION_UPDATE,
 	LOG_OPERATION_DS_CHECK,
 	LOG_OPERATION_DS_PUSH,
+	LOG_OPERATION_DNSKEY_SYNC,
 } log_operation_t;
 
 typedef enum {
@@ -53,6 +54,8 @@ static inline const char *log_operation_name(log_operation_t operation)
 		return "DS check";
 	case LOG_OPERATION_DS_PUSH:
 		return "DS push";
+	case LOG_OPERATION_DNSKEY_SYNC:
+		return "DNSKEY sync";
 	default:
 		return "?";
 	}
