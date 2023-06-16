@@ -987,6 +987,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	ret = commit_journal(conf, update);
 	if (ret != KNOT_EOK) {
+		log_zone_error(update->zone->name, "journal update failed (%s)", knot_strerror(ret));
 		discard_adds_tree(update);
 		return ret;
 	}
