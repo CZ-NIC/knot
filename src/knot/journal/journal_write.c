@@ -128,7 +128,10 @@ void journal_merge(zone_journal_t j, knot_lmdb_txn_t *txn, bool merge_zij,
 	uint32_t del_next_serial;
 	uint64_t del_freed;
 	delete_one(txn, merge_zij, merge_serial, j.zone, &del_freed, &del_next_serial);
-	assert(del_freed > 0 && del_next_serial == *original_serial_to);
+	if (txn->ret == KNOT_EOK) {
+		assert(del_freed > 0);
+		assert(del_next_serial == *original_serial_to);
+	}
 
 	journal_write_changeset(txn, &merge);
 	journal_read_clear_changeset(&merge);
