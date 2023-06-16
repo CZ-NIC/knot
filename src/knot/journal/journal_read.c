@@ -88,7 +88,10 @@ int journal_read_begin(zone_journal_t j, bool read_zone, uint32_t serial_from, j
 
 	journal_metadata_t md = { 0 };
 	journal_load_metadata(&newctx->txn, newctx->zone, &md);
-	newctx->changesets_total = md.changeset_count + (read_zone ? 1 : 0);
+	newctx->changesets_total = md.changeset_count;
+	if (read_zone || ((md.flags & JOURNAL_MERGED_SERIAL_VALID) && serial_from == md.merged_serial)) {
+		newctx->changesets_total++;
+	}
 
 	if (go_next_changeset(newctx, read_zone, j.zone)) {
 		*ctx = newctx;
