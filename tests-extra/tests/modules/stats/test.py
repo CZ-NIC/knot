@@ -49,7 +49,7 @@ proto = random.choice([4, 6])
 t = Test(stress=False, tsig=False, address=proto)
 
 knot = t.server("knot")
-zones = t.zone_rnd(2)
+zones = t.zone("example.") + t.zone(".")
 
 t.link(zones, knot)
 
@@ -62,6 +62,8 @@ knot.zones_wait(zones)
 knot.ctl("-f reload") # Reset module statistics after wait!
 
 check_item(knot, "server", "zone-count", 2)
+check_item(knot, "zone", "max-ttl", 3600, zone=knot.zones["example."])
+check_item(knot, "zone", "max-ttl", 518400, zone=knot.zones["."])
 
 resp = knot.dig(zones[0].name, "SOA", tries=1, udp=True)
 query_size1 = resp.query_size()
