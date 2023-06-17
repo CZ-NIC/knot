@@ -473,11 +473,10 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 		qdata->extra->contents = qdata->extra->zone->contents;
 	}
 
-	/* Allow normal queries to catalog only if not UDP and if allowed by ACL. */
+	/* Allow normal queries to catalog only if allowed by ACL. */
 	if (qdata->extra->zone != NULL && qdata->extra->zone->is_catalog_flag &&
 	    query_type(query) == KNOTD_QUERY_TYPE_NORMAL) {
-		if (qdata->params->proto == KNOTD_QUERY_PROTO_UDP ||
-		    !process_query_acl_check(conf(), ACL_ACTION_TRANSFER, qdata)) {
+		if (!process_query_acl_check(conf(), ACL_ACTION_TRANSFER, qdata)) {
 			qdata->extra->zone = NULL;
 			qdata->extra->contents = NULL;
 		}
