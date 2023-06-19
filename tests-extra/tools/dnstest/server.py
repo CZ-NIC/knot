@@ -465,7 +465,7 @@ class Server(object):
         f.close()
 
     def _assert_check(self):
-        if not isinstance(self, Dummy) and fsearch(self.ferr, "Assertion"):
+        if os.path.isfile(self.ferr) and fsearch(self.ferr, "Assertion"):
             set_err("ASSERT")
 
     def backtrace(self):
