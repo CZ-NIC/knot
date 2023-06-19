@@ -134,14 +134,18 @@ Then the dname can be reformatted to wire format or back to textual format.
 ```python3
 import libknot.dname
 
-dname = libknot.dname.KnotDname("e\\120ample.c\om.")
-print(dname.size()
-print(dname.str())
-print(dname.wire())
+dname1 = libknot.dname.KnotDname("knot-dns.cz")
+print("%s: wire: %s size: %u" % (dname1.str(), dname1.wire(), dname1.size()))
+
+dname2 = libknot.dname.KnotDname("e\\120ample.c\om.")
+print("%s: wire: %s size: %u" % (dname2.str(), dname2.wire(), dname2.size()))
+
+dname3 = libknot.dname.KnotDname(dname_wire=b'\x02cz\x00')
+print("%s: wire: %s size: %u" % (dname3.str(), dname3.wire(), dname3.size()))
 ```
 
 ```bash
-13
-example.com.
-b'\x07example\x03com\x00'
+knot-dns.cz.: wire: b'\x08knot-dns\x02cz\x00' size: 13
+example.com.: wire: b'\x07example\x03com\x00' size: 13
+cz.: wire: b'\x02cz\x00' size: 4
 ```
