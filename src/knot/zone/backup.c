@@ -523,8 +523,8 @@ int backup_quic(zone_backup_ctx_t *ctx, bool quic_on)
 
 	char *kasp_dir = conf_db(conf(), C_KASP_DB);
 	char *auto_file = abs_path(DFLT_QUIC_KEY_FILE, kasp_dir);
-	ABORT_IF_ENOMEM(auto_file);
 	free(kasp_dir);
+	ABORT_IF_ENOMEM(auto_file);
 
 	// Backup/restore of auto-generated key is required if it's in active use,
 	// otherwise use it if the file is found (no fail if missing).
