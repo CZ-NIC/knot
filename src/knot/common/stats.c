@@ -36,15 +36,20 @@ typedef struct {
 	FILE *fd;
 	const list_t *query_modules;
 	const knot_dname_t *zone;
+	unsigned threads;
+	int level;
 	bool zone_emitted;
+	bool zone_name_emitted;
+	bool module_emitted;
 } dump_ctx_t;
 
 #define DUMP_STR(fd, level, name, ...) do { \
-	fprintf(fd, "%-.*s"name": %s\n", level, "    ", ##__VA_ARGS__); \
-	} while (0)
-#define DUMP_CTR(fd, level, name, ...) do { \
-	fprintf(fd, "%-.*s"name": %"PRIu64"\n", level, "    ", ##__VA_ARGS__); \
-	} while (0)
+	fprintf(fd, "%-.*s"name":\n", level, "    ", ##__VA_ARGS__); \
+} while (0)
+
+#define DUMP_CTR(fd, level, name, idx, val) do { \
+	fprintf(fd, "%-.*s"name": %"PRIu64"\n", level, "    ", idx, val); \
+} while (0)
 
 static uint64_t server_zone_count(server_t *server)
 {
@@ -81,31 +86,78 @@ uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned thre
 	return res;
 }
 
-static void dump_counters(FILE *fd, int level, mod_ctr_t *ctr, uint64_t **stats_vals, unsigned threads)
+static void dump_common(dump_ctx_t *ctx, knotd_mod_t *mod)
 {
-	for (uint32_t j = 0; j < ctr->count; j++) {
-		uint64_t counter = stats_get_counter(stats_vals, ctr->offset + j, threads);
+	// Dump zone name.
+	if (ctx->zone != NULL) {
+		// Prevent from zone section override.
+		if (!ctx->zone_emitted) {
+			ctx->level = 0;
+			DUMP_STR(ctx->fd, ctx->level++, "zone");
+			ctx->zone_emitted = true;
+		}
 
-		// Skip empty counters.
+		if (!ctx->zone_name_emitted) {
+			ctx->level = 1;
+			knot_dname_txt_storage_t name;
+			if (knot_dname_to_str(name, ctx->zone, sizeof(name)) == NULL) {
+				return;
+			}
+			DUMP_STR(ctx->fd, ctx->level++, "\"%s\"", name);
+			ctx->zone_name_emitted = true;
+		}
+	}
+
+	if (!ctx->module_emitted) {
+		DUMP_STR(ctx->fd, ctx->level++, "%s", mod->id->name + 1);
+		ctx->module_emitted = true;
+	}
+}
+
+static void dump_counter(dump_ctx_t *ctx, knotd_mod_t *mod, mod_ctr_t *ctr)
+{
+	uint64_t counter = stats_get_counter(mod->stats_vals, ctr->offset, ctx->threads);
+	if (counter == 0) {
+		// Skip empty counter.
+		return;
+	}
+
+	dump_common(ctx, mod);
+
+	DUMP_CTR(ctx->fd, ctx->level, "%s", ctr->name, counter);
+}
+
+static void dump_counters(dump_ctx_t *ctx, knotd_mod_t *mod, mod_ctr_t *ctr)
+{
+	bool counter_emitted = false;
+	for (uint32_t j = 0; j < ctr->count; j++) {
+		uint64_t counter = stats_get_counter(mod->stats_vals, ctr->offset + j, ctx->threads);
 		if (counter == 0) {
+			// Skip empty counter.
 			continue;
+		}
+
+		dump_common(ctx, mod);
+
+		if (!counter_emitted) {
+			DUMP_STR(ctx->fd, ctx->level, "%s", ctr->name);
+			counter_emitted = true;
 		}
 
 		if (ctr->idx_to_str != NULL) {
 			char *str = ctr->idx_to_str(j, ctr->count);
 			if (str != NULL) {
-				DUMP_CTR(fd, level, "%s", str, counter);
+				DUMP_CTR(ctx->fd, ctx->level + 1, "%s", str, counter);
 				free(str);
 			}
 		} else {
-			DUMP_CTR(fd, level, "%u", j, counter);
+			DUMP_CTR(ctx->fd, ctx->level + 1, "%u", j, counter);
 		}
 	}
 }
 
 static void dump_modules(dump_ctx_t *ctx)
 {
-	int level = 0;
 	knotd_mod_t *mod;
 	WALK_LIST(mod, *ctx->query_modules) {
 		// Skip modules without statistics.
@@ -113,28 +165,12 @@ static void dump_modules(dump_ctx_t *ctx)
 			continue;
 		}
 
-		// Dump zone name.
-		if (ctx->zone != NULL) {
-			// Prevent from zone section override.
-			if (!ctx->zone_emitted) {
-				DUMP_STR(ctx->fd, 0, "zone", "");
-				ctx->zone_emitted = true;
-			}
-			level = 1;
-
-			knot_dname_txt_storage_t name;
-			if (knot_dname_to_str(name, ctx->zone, sizeof(name)) == NULL) {
-				return;
-			}
-			DUMP_STR(ctx->fd, level++, "\"%s\"", name, "");
-		} else {
-			level = 0;
+		if (ctx->threads == 0) {
+			ctx->threads = knotd_mod_threads(mod);
 		}
 
-		unsigned threads = knotd_mod_threads(mod);
-
 		// Dump module counters.
-		DUMP_STR(ctx->fd, level, "%s", mod->id->name + 1, "");
+		ctx->module_emitted = false;
 		for (int i = 0; i < mod->stats_count; i++) {
 			mod_ctr_t *ctr = mod->stats_info + i;
 			if (ctr->name == NULL) {
@@ -143,13 +179,10 @@ static void dump_modules(dump_ctx_t *ctx)
 			}
 			if (ctr->count == 1) {
 				// Simple counter.
-				uint64_t counter = stats_get_counter(mod->stats_vals,
-				                                     ctr->offset, threads);
-				DUMP_CTR(ctx->fd, level + 1, "%s", ctr->name, counter);
+				dump_counter(ctx, mod, ctr);
 			} else {
 				// Array of counters.
-				DUMP_STR(ctx->fd, level + 1, "%s", ctr->name, "");
-				dump_counters(ctx->fd, level + 2, ctr, mod->stats_vals, threads);
+				dump_counters(ctx, mod, ctr);
 			}
 		}
 	}
@@ -163,6 +196,7 @@ static void zone_stats_dump(zone_t *zone, dump_ctx_t *ctx)
 
 	ctx->query_modules = &zone->query_modules;
 	ctx->zone = zone->name;
+	ctx->zone_name_emitted = false;
 
 	dump_modules(ctx);
 }
@@ -187,16 +221,16 @@ static void dump_to_file(conf_t *conf, FILE *fd, server_t *server)
 	        "identity: %s\n",
 	        date, ident);
 
-	// Dump server statistics.
-	DUMP_STR(fd, 0, "server", "");
-	for (const stats_item_t *item = server_stats; item->name != NULL; item++) {
-		DUMP_CTR(fd, 1, "%s", item->name, item->server_val(server));
-	}
-
 	dump_ctx_t ctx = {
 		.fd = fd,
 		.query_modules = conf->query_modules,
 	};
+
+	// Dump server statistics.
+	DUMP_STR(ctx.fd, ctx.level, "server");
+	for (const stats_item_t *item = server_stats; item->name != NULL; item++) {
+		DUMP_CTR(ctx.fd, ctx.level + 1, "%s", item->name, item->server_val(server));
+	}
 
 	// Dump global statistics.
 	dump_modules(&ctx);
