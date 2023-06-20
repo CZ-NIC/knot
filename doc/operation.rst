@@ -1124,7 +1124,11 @@ Server statistics or global module statistics can be shown by::
 
 Per zone statistics can be shown by::
 
-    $ knotc zone-stats example.com mod-stats
+    $ knotc zone-stats example.com.                       # Show all zone counters
+    $ knotc zone-stats example.com. mod-stats             # Show all zone mod-stats counters
+    $ knotc zone-stats example.com. mod-stats.query-type  # Show specific zone counter
+    $ knotc zone-stats --                                 # Show all zone counters for all zones
+    $ knotc zone-stats -- mod-stats.request-protocol      # Show specific zone counter for all zones
 
 To show all supported counters even with 0 value, use the force option.
 

@@ -1002,7 +1002,7 @@ Periodic server statistics dumping.
 timer
 -----
 
-A period after which all available statistics metrics will by written to the
+A period (in seconds) after which all available statistics metrics will by written to the
 :ref:`file<statistics_file>`.
 
 *Default:* not set
