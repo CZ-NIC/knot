@@ -1345,6 +1345,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		trctx->more_xfr = trctx->more_xfr || (data.updated && data.ixfr_by_one && data.xfr_type == XFR_TYPE_IXFR);
 	}
 
+	REFRESH_LOG(LOG_NOTICE, &data, LOG_DIRECTION_IN, "DBG1, notify %d updated %d block %d (%s)", trctx->send_notify, data.updated, master->block_notify_after_xfr, knot_strerror(ret));
 	return ret;
 }
 
@@ -1396,6 +1397,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	}
 
 	/* Reschedule events. */
+	log_zone_notice(zone->name, "DBG2, notify %d moreXFR %d timerXFR %ld (%s)", trctx.send_notify, trctx.more_xfr, zone->timers.next_refresh - time(0), knot_strerror(ret));
 	replan_from_timers(conf, zone);
 	if (trctx.send_notify) {
 		zone_schedule_notify(zone, 1);

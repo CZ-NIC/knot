@@ -147,6 +147,8 @@ int event_notify(conf_t *conf, zone_t *zone)
 
 	bool failed = false;
 
+	log_zone_notice(zone->name, "DBG3, NOTIFY conts %d notifailed %zu", !zone_contents_is_empty(zone->contents), zone->notifailed.size);
+
 	if (zone_contents_is_empty(zone->contents)) {
 		return KNOT_EOK;
 	}
