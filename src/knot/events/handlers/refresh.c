@@ -1077,7 +1077,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	} else {
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
 		            "remote serial %u, remote is outdated", remote_serial);
-		return KNOT_STATE_FAIL;
+		return KNOT_STATE_DONE;
 	}
 }
 
