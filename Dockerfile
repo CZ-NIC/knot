@@ -94,6 +94,7 @@ COPY --from=builder /tmp/knot-install/share/   /share/
 # Expose port
 EXPOSE 53/UDP
 EXPOSE 53/TCP
+EXPOSE 853/UDP
 
 # Prepare shared directories
 VOLUME /config
