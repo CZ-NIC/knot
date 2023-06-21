@@ -9,7 +9,7 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-slave.disable_notify = True
+master.disable_notify = True
 
 zone_del = t.zone_rnd(1, dnssec=False)
 zone_upd = t.zone_rnd(1, dnssec=False)

@@ -15,7 +15,6 @@ zone = t.zone("example.", storage=".")
 t.link(zone, master, slave)
 
 master.disable_notify = True
-slave.disable_notify = True
 
 t.start()
 

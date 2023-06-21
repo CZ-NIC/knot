@@ -18,7 +18,6 @@ zones = zone_min_ + zone_max_
 t.link(zones, master, slave, ixfr=True)
 
 master.disable_notify = True
-slave.disable_notify = True
 
 slave.zones[zone_min.name].refresh_min = 12
 slave.zones[zone_max.name].refresh_max = 9
