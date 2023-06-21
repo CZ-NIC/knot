@@ -354,7 +354,7 @@ static int axfr_finalize(struct refresh_data *data)
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_zone_sign(&up, data->conf, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_ALL, 0, &resch);
-		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
+		event_dnssec_reschedule(data->conf, data->zone, &resch, false);
 	} else if (digest_alg != ZONE_DIGEST_NONE) {
 		assert(zone_update_to(&up) != NULL);
 		ret = zone_update_add_digest(&up, digest_alg, false);
