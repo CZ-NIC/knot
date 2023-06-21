@@ -354,7 +354,7 @@ static int axfr_finalize(struct refresh_data *data)
 	if (dnssec_enable) {
 		zone_sign_reschedule_t resch = { 0 };
 		ret = knot_dnssec_zone_sign(&up, data->conf, ZONE_SIGN_KEEP_SERIAL, KEY_ROLL_ALLOW_ALL, 0, &resch);
-		event_dnssec_reschedule(data->conf, data->zone, &resch, true);
+		event_dnssec_reschedule(data->conf, data->zone, &resch, false);
 	} else if (digest_alg != ZONE_DIGEST_NONE) {
 		assert(zone_update_to(&up) != NULL);
 		ret = zone_update_add_digest(&up, digest_alg, false);
@@ -1077,7 +1077,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	} else {
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
 		            "remote serial %u, remote is outdated", remote_serial);
-		return KNOT_STATE_FAIL;
+		return KNOT_STATE_DONE;
 	}
 }
 
@@ -1266,6 +1266,7 @@ typedef struct {
 	bool force_axfr;
 	bool send_notify;
 	bool ixfr_by_one;
+	bool more_xfr;
 } try_refresh_ctx_t;
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
@@ -1339,9 +1340,9 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	knot_requestor_clear(&requestor);
 
 	if (ret == KNOT_EOK) {
-		trctx->send_notify = data.updated && !master->block_notify_after_xfr;
+		trctx->send_notify = trctx->send_notify || (data.updated && !master->block_notify_after_xfr);
 		trctx->force_axfr = false;
-		trctx->ixfr_by_one = data.updated && data.ixfr_by_one && data.xfr_type == XFR_TYPE_IXFR;
+		trctx->more_xfr = trctx->more_xfr || (data.updated && data.ixfr_by_one && data.xfr_type == XFR_TYPE_IXFR);
 	}
 
 	return ret;
@@ -1399,7 +1400,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	if (trctx.send_notify) {
 		zone_schedule_notify(zone, 1);
 	}
-	if (trctx.ixfr_by_one && ret == KNOT_EOK) {
+	if (trctx.more_xfr && ret == KNOT_EOK) {
 		zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
 	}
 

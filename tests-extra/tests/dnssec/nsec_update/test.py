@@ -57,7 +57,6 @@ t.link(zone0, master0, master)
 t.link(zones, master, slave)
 
 master.disable_notify = True
-slave.disable_notify = True
 
 for zone in zones:
     master.dnssec(zone).enable = True
