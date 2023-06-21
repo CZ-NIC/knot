@@ -23,7 +23,7 @@ slave.zone_wait(zone)
 slave.ctl("zone-backup +backupdir " + BACKUP_DIR, wait=True)
 
 # temporarily disable notify
-slave.disable_notify = True
+master.disable_notify = True
 master.gen_confile()
 master.reload()
 
@@ -35,7 +35,7 @@ resp = slave.dig("notify.", "SOA")
 resp.check_soa_serial(serial)
 
 # enable notify again
-slave.disable_notify = False
+master.disable_notify = False
 master.gen_confile()
 master.start()
 

@@ -1056,7 +1056,7 @@ class Bind(Server):
             if z.slaves:
                 slaves = ""
                 for slave in z.slaves:
-                    if slave.disable_notify:
+                    if self.disable_notify:
                         continue
                     if self.tsig:
                         slaves += "%s port %i key %s; " \
@@ -1252,7 +1252,7 @@ class Knot(Server):
         if zone.slaves:
             slaves = ""
             for slave in sorted(zone.slaves, key=lambda srv: srv.name):
-                if not slave.disable_notify:
+                if not self.disable_notify:
                     if slaves:
                         slaves += ", "
                     slaves += slave.name

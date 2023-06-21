@@ -12,7 +12,6 @@ zone = t.zone("example.com.", storage=".")
 t.link(zone, master, slave, ixfr=True)
 
 master.disable_notify = True
-slave.disable_notify = True
 
 t.start()
 
