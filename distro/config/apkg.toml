@@ -16,14 +16,12 @@ name = "el-7"
 distro = ["centos == 7", "rhel == 7"]
 
 [[distro.aliases]]
-name = "_deb-noxdp"
-distro = ["debian == 10", "ubuntu == 18.04"]
+name = "deb-nolibxdp"
+distro = ["debian == 11", "ubuntu == 20.04", "ubuntu == 22.04"]
 
-# pkstyle aliases bellow are expected to be built-in in apkg >= 0.5.0
-# https://gitlab.nic.cz/packaging/apkg/-/issues/79
 [[distro.aliases]]
-name = "deb"
-distro = ['ubuntu', 'debian']
+name = "deb-noxdp"
+distro = ["debian == 10", "ubuntu == 18.04"]
 
 [[distro.aliases]]
 name = "rpm"

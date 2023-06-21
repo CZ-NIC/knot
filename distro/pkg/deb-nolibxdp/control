@@ -29,7 +29,6 @@ Build-Depends:
  libsystemd-dev [linux-any] | libsystemd-journal-dev [linux-any],
  libtool,
  liburcu-dev,
- libxdp-dev,
  pkg-config,
  protobuf-c-compiler,
  python3-all,
