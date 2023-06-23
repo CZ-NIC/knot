@@ -53,6 +53,8 @@ or as more single-valued items each on an extra line::
 If an item value contains spaces or other special characters, it is necessary
 to enclose such a value within double quotes ``"`` ``"``.
 
+.. _default_paths:
+
 If not specified otherwise, an item representing a file or a directory path may
 be defined either as an absolute path (starting with ``/``), or a path relative
 to the same directory as the default value of the item.
@@ -244,7 +246,7 @@ Change of this parameter requires restart of the Knot server to take effect.
 pidfile
 -------
 
-A PID file location.
+A PID file :ref:`location<default_paths>`.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -891,7 +893,8 @@ Configuration of the server control interface.
 listen
 ------
 
-A UNIX socket path where the server listens for control commands.
+A UNIX socket :ref:`path<default_paths>` where the server listens for
+control commands.
 
 *Default:* :ref:`rundir<server_rundir>`\ ``/knot.sock``
 
@@ -1023,7 +1026,7 @@ A period after which all available statistics metrics will by written to the
 file
 ----
 
-A file path of statistics output in the YAML format.
+A file :ref:`path<default_paths>` of statistics output in the YAML format.
 
 *Default:* :ref:`rundir<server_rundir>`\ ``/stats.yaml``
 
@@ -1073,7 +1076,8 @@ path is relative to the :doc:`knotd<man_knotd>` startup directory.
 journal-db
 ----------
 
-An explicit specification of the persistent journal database directory.
+An explicit :ref:`specification<default_paths>` of the persistent journal database
+directory.
 
 *Default:* :ref:`storage<database_storage>`\ ``/journal``
 
@@ -1121,7 +1125,7 @@ journal usage limits. See more details regarding
 kasp-db
 -------
 
-An explicit specification of the KASP database directory.
+An explicit :ref:`specification<default_paths>` of the KASP database directory.
 
 *Default:* :ref:`storage<database_storage>`\ ``/keys``
 
@@ -1142,7 +1146,8 @@ The hard limit for the KASP database maximum size.
 timer-db
 --------
 
-An explicit specification of the persistent timer database directory.
+An explicit :ref:`specification<default_paths>` of the persistent timer
+database directory.
 
 *Default:* :ref:`storage<database_storage>`\ ``/timers``
 
@@ -1163,8 +1168,8 @@ The hard limit for the timer database maximum size.
 catalog-db
 ----------
 
-An explicit specification of the zone catalog database directory.
-Only useful if :ref:`catalog-zones` are enabled.
+An explicit :ref:`specification<default_paths>` of the zone catalog
+database directory. Only useful if :ref:`catalog-zones` are enabled.
 
 *Default:* :ref:`storage<database_storage>`\ ``/catalog``
 
@@ -2327,7 +2332,8 @@ the :doc:`knotd<man_knotd>` startup directory.
 file
 ----
 
-A path to the zone file. It is also possible to use the following formatters:
+A :ref:`path<default_paths>` to the zone file. It is also possible to use
+the following formatters:
 
 - ``%c[``\ *N*\ ``]`` or ``%c[``\ *N*\ ``-``\ *M*\ ``]`` – Means the *N*\ th
   character or a sequence of characters beginning from the *N*\ th and ending
