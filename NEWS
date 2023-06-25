@@ -1,3 +1,19 @@
+Knot DNS 3.2.8 (2023-26-06)
+===========================
+
+Improvements:
+-------------
+ - kdig: malformed messages are parsed and printed using a best-effort approach
+ - python: new dname from wire initialization
+
+Bugfixes:
+---------
+ - knotd: missing outgoing NOTIFY upon refresh if one of more primaries is up-to-date
+ - knotd: journal loop detection can prevent zone from loading
+ - knotd: cryptic error message when journal is full #842
+ - knotd: failed to query catalog zone over UDP
+ - configure: libngtcp2 check wrongly requires version 0.13.0 instead of 0.13.1
+
 Knot DNS 3.2.7 (2023-06-06)
 ===========================
 
