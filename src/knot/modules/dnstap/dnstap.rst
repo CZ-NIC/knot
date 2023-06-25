@@ -61,7 +61,8 @@ sink
 ....
 
 A sink path, which can be either a file or a UNIX socket when prefixed with
-``unix:``.
+``unix:``. The file may be specified as an absolute path or a path relative
+to the :doc:`knotd<man_knotd>` startup directory.
 
 *Required*
 
