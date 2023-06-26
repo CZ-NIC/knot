@@ -272,7 +272,7 @@ Change of this parameter requires restart of the Knot server to take effect.
 \fIDefault:\fP \fBroot:root\fP
 .SS pidfile
 .sp
-A PID file location.
+A PID file \fI\%location\fP\&.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
@@ -798,7 +798,8 @@ control:
 .UNINDENT
 .SS listen
 .sp
-A UNIX socket path where the server listens for control commands.
+A UNIX socket \fI\%path\fP where the server listens for
+control commands.
 .sp
 \fIDefault:\fP \fI\%rundir\fP\fB/knot.sock\fP
 .SS timeout
@@ -914,7 +915,7 @@ A period after which all available statistics metrics will by written to the
 \fIDefault:\fP not set
 .SS file
 .sp
-A file path of statistics output in the YAML format.
+A file \fI\%path\fP of statistics output in the YAML format.
 .sp
 \fIDefault:\fP \fI\%rundir\fP\fB/stats.yaml\fP
 .SS append
@@ -954,7 +955,8 @@ path is relative to the knotd startup directory.
 \fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS journal\-db
 .sp
-An explicit specification of the persistent journal database directory.
+An explicit \fI\%specification\fP of the persistent journal database
+directory.
 .sp
 \fIDefault:\fP \fI\%storage\fP\fB/journal\fP
 .SS journal\-db\-mode
@@ -997,7 +999,7 @@ This value also influences server\(aqs usage of virtual memory.
 \fIDefault:\fP \fB20G\fP (20 GiB), or \fB512M\fP (512 MiB) for 32\-bit
 .SS kasp\-db
 .sp
-An explicit specification of the KASP database directory.
+An explicit \fI\%specification\fP of the KASP database directory.
 .sp
 \fIDefault:\fP \fI\%storage\fP\fB/keys\fP
 .SS kasp\-db\-max\-size
@@ -1014,7 +1016,8 @@ This value also influences server\(aqs usage of virtual memory.
 \fIDefault:\fP \fB500M\fP (500 MiB)
 .SS timer\-db
 .sp
-An explicit specification of the persistent timer database directory.
+An explicit \fI\%specification\fP of the persistent timer
+database directory.
 .sp
 \fIDefault:\fP \fI\%storage\fP\fB/timers\fP
 .SS timer\-db\-max\-size
@@ -1031,8 +1034,8 @@ This value also influences server\(aqs usage of virtual memory.
 \fIDefault:\fP \fB100M\fP (100 MiB)
 .SS catalog\-db
 .sp
-An explicit specification of the zone catalog database directory.
-Only useful if catalog\-zones are enabled.
+An explicit \fI\%specification\fP of the zone catalog
+database directory. Only useful if catalog\-zones are enabled.
 .sp
 \fIDefault:\fP \fI\%storage\fP\fB/catalog\fP
 .SS catalog\-db\-max\-size
@@ -2057,7 +2060,8 @@ the knotd startup directory.
 \fIDefault:\fP \fB${localstatedir}/lib/knot\fP (configured with \fB\-\-with\-storage=path\fP)
 .SS file
 .sp
-A path to the zone file. It is also possible to use the following formatters:
+A \fI\%path\fP to the zone file. It is also possible to use
+the following formatters:
 .INDENT 0.0
 .IP \(bu 2
 \fB%c[\fP\fIN\fP\fB]\fP or \fB%c[\fP\fIN\fP\fB\-\fP\fIM\fP\fB]\fP – Means the \fIN\fPth
