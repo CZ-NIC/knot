@@ -68,7 +68,7 @@ slave.zones_wait(zone + zone_add)
 # testcase 3: removing member zone online/offline
 rem_online = random.choice([True, False])
 
-serial_bef_rem = slave.zone_wait(catz, udp=False, tsig=True)
+serial_bef_rem = slave.zone_wait(catz, tsig=True)
 master.zones.pop("example.com.")
 master.gen_confile()
 
@@ -79,7 +79,7 @@ else:
     t.sleep(1)
     master.start()
 
-slave.zone_wait(catz, serial_bef_rem, udp=False, tsig=True)
+slave.zone_wait(catz, serial_bef_rem, tsig=True)
 t.sleep(2) # allow the member zone to actually be purged
 resp = slave.dig("example.com.", "SOA")
 resp.check(rcode="REFUSED")

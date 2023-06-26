@@ -30,7 +30,7 @@ os.mkdir(knot.dir + "/catalog")
 
 t.start()
 
-knot.zone_wait(catz, udp=False, tsig=True)
+knot.zone_wait(catz, tsig=True)
 
 check_names = list()
 
@@ -63,7 +63,7 @@ for i in range(UPDATES):
 t.sleep(4)
 
 for n in check_names:
-    resp = knot.dig(n, "SOA", udp=False, tsig=True)
+    resp = knot.dig(n, "SOA", tsig=True)
     resp.check(rcode="NOERROR") # not REFUSED
 
 if knot.log_search("catalog, interpreting 2 updates"):
