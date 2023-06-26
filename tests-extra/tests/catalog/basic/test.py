@@ -198,7 +198,7 @@ master.stop()
 # Check purging catalog zone.
 slave.ctl("zone-purge -f %s" % zone[1].name)
 t.sleep(4)
-resp = slave.dig("version.catalog1.", "TXT", udp=False, tsig=True)
+resp = slave.dig("version.catalog1.", "TXT", tsig=True)
 resp.check(rcode="SERVFAIL")
 resp = slave.dig("cataloged2.", "SOA", dnssec=True)
 resp.check(rcode="REFUSED")
@@ -208,7 +208,7 @@ master.start()
 # Check refresh of catalog after purge.
 slave.ctl("zone-refresh %s" % zone[1].name)
 t.sleep(8)
-resp = slave.dig("version.catalog1.", "TXT", udp=False, tsig=True)
+resp = slave.dig("version.catalog1.", "TXT", tsig=True)
 resp.check(rcode="NOERROR")
 resp = slave.dig("cataloged2.", "SOA", dnssec=True)
 resp.check(rcode="NOERROR")
@@ -226,7 +226,7 @@ slave.ctl("conf-unset zone[catalog1.].acl") # remove transfer-related ACLs
 slave.ctl("conf-commit")
 t.sleep(3)
 try:
-    resp = slave.dig("version.catalog1.", "TXT", udp=False, tsig=True)
+    resp = slave.dig("version.catalog1.", "TXT", tsig=True)
     resp.check(rcode="REFUSED")
 except:
     pass

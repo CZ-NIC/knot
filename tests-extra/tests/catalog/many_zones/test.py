@@ -37,7 +37,7 @@ if master.valgrind:
 
 t.start()
 
-slave.zone_wait(catz, udp=False, tsig=True)
+slave.zone_wait(catz, tsig=True)
 
 for i in range(UPDATES):
     zone_add = t.zone_rnd(ADD_ZONES, records=5, dnssec=False)
@@ -54,12 +54,12 @@ for i in range(UPDATES):
     for z in master.zones:
         if z != catz[0].name and random.random() * 100  < REM_PERCENT:
             zone_rem.append(z)
-    serial_bef_rem = slave.zone_wait(catz, udp=False, tsig=True)
+    serial_bef_rem = slave.zone_wait(catz, tsig=True)
     for z in zone_rem:
         master.zones.pop(z)
     master.gen_confile()
     master.reload()
-    slave.zone_wait(catz, serial_bef_rem, udp=False, tsig=True)
+    slave.zone_wait(catz, serial_bef_rem, tsig=True)
     t.sleep(5)
     for z in zone_rem:
         resp = slave.dig(z, "SOA")
