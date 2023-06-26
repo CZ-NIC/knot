@@ -30,7 +30,7 @@ master.key_gen(stuckzone[0].name, ksk="true", zsk="true", active="+0")
 
 t.start()
 
-serial = master.zone_wait(catz, udp=False, tsig=True)
+serial = master.zone_wait(catz, tsig=True)
 
 master.key_gen(stuckzone[0].name, ksk="true", zsk="true", ready="+0", active="+100")
 master.ctl("zone-sign")
@@ -43,7 +43,7 @@ up = master.update(catz)
 up.add("add.zones.%s" % catz[0].name, 3600, "PTR", "added.")
 up.send()
 
-master.zone_wait(catz, serial, udp=False, tsig=True)
+master.zone_wait(catz, serial, tsig=True)
 
 resp = master.dig("added.", "SOA")
 resp.check(rcode="REFUSED")
@@ -53,7 +53,7 @@ master.kill() # zonedb_reload does not make it before the kill because one BG wo
 t.sleep(5)
 
 master.start()
-master.zone_wait(catz, udp=False, tsig=True)
+master.zone_wait(catz, tsig=True)
 t.sleep(4)
 
 resp = master.dig("added.", "SOA")

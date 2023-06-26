@@ -34,16 +34,16 @@ master.stop() # even regular answers must be blocked (to prevent refresh)
 
 # Check non-expiration of catalog.
 t.sleep(4)  # greater than the SOA expire
-resp = slave.dig("catalog1.", "SOA", udp=False, tsig=True)
+resp = slave.dig("catalog1.", "SOA", tsig=True)
 resp.check(rcode="NOERROR")
-resp = slave.dig("cataloged1.", "SOA", udp=False, tsig=True)
+resp = slave.dig("cataloged1.", "SOA", tsig=True)
 resp.check(rcode="NOERROR")
 
 # Check regular expiration of member zones.
 t.sleep(5)  # together with previous sleep greater than members expire
-resp = slave.dig("catalog1.", "SOA", udp=False, tsig=True)
+resp = slave.dig("catalog1.", "SOA", tsig=True)
 resp.check(rcode="NOERROR")
-resp = slave.dig("cataloged1.", "SOA", udp=False, tsig=True)
+resp = slave.dig("cataloged1.", "SOA", tsig=True)
 resp.check(rcode="SERVFAIL")
 
 master.start()
@@ -53,9 +53,9 @@ slave.zones_wait(members)
 # Check manual expiration of catalog.
 master.ctl("zone-purge -f +expire %s" % zone[0].name, wait=True)
 slave.ctl("zone-purge -f +expire %s" % zone[0].name, wait=True)
-resp = master.dig("catalog1.", "SOA", udp=False, tsig=True)
+resp = master.dig("catalog1.", "SOA", tsig=True)
 resp.check(rcode="SERVFAIL")
-resp = slave.dig("catalog1.", "SOA", udp=False, tsig=True)
+resp = slave.dig("catalog1.", "SOA", tsig=True)
 resp.check(rcode="SERVFAIL")
 # State of members after a catalog expire isn't standardised yet.
 # Add a check for it in the future.

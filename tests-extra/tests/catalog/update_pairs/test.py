@@ -108,7 +108,7 @@ if test_prop_change:
 
 else:
     # Check the catalog zone.
-    resp = knot.dig("bar.zones.catalog1.", "PTR", udp=False, tsig=True)
+    resp = knot.dig("bar.zones.catalog1.", "PTR", tsig=True)
     resp.check(rcode="NXDOMAIN", nordata="PTR")
 
     # Check a DNS query / zonedb.
