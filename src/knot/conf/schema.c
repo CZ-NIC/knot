@@ -191,6 +191,7 @@ static const knot_lookup_t dbus_events[] = {
 	{ DBUS_EVENT_NONE,            "none" },
 	{ DBUS_EVENT_RUNNING,         "running" },
 	{ DBUS_EVENT_ZONE_UPDATED,    "zone-updated" },
+	{ DBUS_EVENT_KEYS_UPDATED,    "keys-updated" },
 	{ DBUS_EVENT_ZONE_SUBMISSION, "ksk-submission" },
 	{ DBUS_EVENT_ZONE_INVALID,    "dnssec-invalid" },
 	{ 0, NULL }

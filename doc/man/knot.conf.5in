@@ -556,6 +556,9 @@ catalog zones and their members) are loaded or successfully bootstrapped.
 \fBzone\-updated\fP – The signal \fBzone_updated\fP is emitted when a zone has been updated;
 the signal parameters are \fIzone name\fP and \fIzone SOA serial\fP\&.
 .IP \(bu 2
+\fBkeys\-updated\fP \- The signal \fBkeys_updated\fP is emitted when a DNSSEC key set
+of this zone is updated.
+.IP \(bu 2
 \fBksk\-submission\fP – The signal \fBzone_ksk_submission\fP is emitted if there is
 a ready KSK present when the zone is signed; the signal parameters are
 \fIzone name\fP, \fIKSK keytag\fP, and \fIKSK KASP id\fP\&.

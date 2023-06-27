@@ -24,6 +24,10 @@ def sig_updated(*args, **kwargs):
     (zone, serial) = args
     print("Updated zone=%s to serial=%d" % (zone, serial))
 
+def sig_keys_upd(*args, **kwargs):
+    (zone) = args
+    print("Keys updated for zone=%s" % (zone))
+
 def sig_submission(*args, **kwargs):
     (zone, key_tag, kasp_id) = args
     print("Ready KSK for zone=%s keytag=%u keyid=%s" % (zone, key_tag, kasp_id))
@@ -50,6 +54,7 @@ if __name__ == '__main__':
     events_iface.connect_to_signal("started", sig_started)
     events_iface.connect_to_signal("stopped", sig_stopped)
     events_iface.connect_to_signal("zone_updated", sig_updated)
+    events_iface.connect_to_signal("keys_updated", sig_keys_upd)
     events_iface.connect_to_signal("zone_ksk_submission", sig_submission)
     events_iface.connect_to_signal("zone_dnssec_invalid", sig_invalid)
 

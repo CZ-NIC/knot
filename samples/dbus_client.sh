@@ -7,6 +7,9 @@ cb() {
 	zone_ksk_submission)
 		echo "Ready KSK for zone=${2} keytag=${3} keyid=${4}"
 		;;
+	keys_updated)
+		echo "Keys updated for zone=${2}"
+		;;
 	zone_updated)
 		echo "Updated zone=${2} to serial=${3}"
 		;;
