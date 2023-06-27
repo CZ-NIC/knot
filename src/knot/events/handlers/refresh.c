@@ -201,7 +201,7 @@ static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt, bool
 	}
 }
 
-static void finalize_timers(struct refresh_data *data)
+static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 {
 	conf_t *conf = data->conf;
 	zone_t *zone = data->zone;
@@ -222,7 +222,7 @@ static void finalize_timers(struct refresh_data *data)
 	if (zone->is_catalog_flag) {
 		// It's already zero in most cases.
 		zone->timers.next_expire = 0;
-	} else {
+	} else if (also_expire) {
 		limit_timer(conf, zone->name, &data->expire_timer, "expire",
 		            // Limit min if not received as EDNS Expire.
 		            data->expire_timer == knot_soa_expire(soa->rdata) ?
@@ -230,6 +230,16 @@ static void finalize_timers(struct refresh_data *data)
 		            C_EXPIRE_MAX_INTERVAL);
 		zone->timers.next_expire = now + data->expire_timer;
 	}
+}
+
+static void finalize_timers(struct refresh_data *data)
+{
+	finalize_timers_base(data, true);
+}
+
+static void finalize_timers_noexpire(struct refresh_data *data)
+{
+	finalize_timers_base(data, false);
 }
 
 static void fill_expires_in(char *expires_in, size_t size, const struct refresh_data *data)
@@ -1074,6 +1084,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		            remote_serial, expires_in);
 		return KNOT_STATE_DONE;
 	} else {
+		finalize_timers_noexpire(data);
 		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
 		            "remote serial %u, remote is outdated", remote_serial);
 		return KNOT_STATE_DONE;
