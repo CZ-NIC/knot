@@ -85,11 +85,11 @@ typedef struct {
 	void (*udp_sweep)(udp_context_t *, void *);
 } udp_api_t;
 
-/*! \brief Control message to fit IP_PKTINFO or IPv6_RECVPKTINFO. */
+/*! \brief Control message to fit IP_PKTINFO/IPv6_RECVPKTINFO and/or ECN. */
 typedef union {
 	struct cmsghdr cmsg;
-	uint8_t buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
-} cmsg_pktinfo_t;
+	uint8_t buf[CMSG_SPACE(sizeof(struct in6_pktinfo)) + CMSG_SPACE(sizeof(int))];
+} cmsg_buf_t;
 
 static const sockaddr_t *local_addr(sockaddr_t *local_storage, const iface_t *iface)
 {
@@ -178,7 +178,7 @@ typedef struct {
 	struct iovec iov[NBUFS];
 	uint8_t iobuf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
 	sockaddr_t addr;
-	cmsg_pktinfo_t pktinfo;
+	cmsg_buf_t cmsgs;
 } udp_msg_ctx_t;
 
 static void *udp_msg_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
@@ -195,8 +195,8 @@ static void *udp_msg_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
 		rq->msg[i].msg_iovlen = 1;
 		rq->msg[i].msg_name = &rq->addr;
 		rq->msg[i].msg_namelen = sizeof(rq->addr);
-		rq->msg[i].msg_control = &rq->pktinfo.cmsg;
-		rq->msg[i].msg_controllen = sizeof(rq->pktinfo);
+		rq->msg[i].msg_control = &rq->cmsgs.cmsg;
+		rq->msg[i].msg_controllen = sizeof(rq->cmsgs);
 	}
 
 	return rq;
@@ -216,7 +216,7 @@ static int udp_msg_recv(int fd, void *d)
 	/* Reset max lengths. */
 	rq->iov[RX].iov_len = sizeof(rq->iobuf[RX]);
 	rq->msg[RX].msg_namelen = sizeof(rq->addr);
-	rq->msg[RX].msg_controllen = sizeof(rq->pktinfo);
+	rq->msg[RX].msg_controllen = sizeof(rq->cmsgs);
 
 	int ret = recvmsg(fd, &rq->msg[RX], MSG_DONTWAIT);
 	if (ret > 0) {
@@ -286,7 +286,7 @@ typedef struct {
 	struct iovec iov[NBUFS][RECVMMSG_BATCHLEN];
 	uint8_t iobuf[NBUFS][RECVMMSG_BATCHLEN][KNOT_WIRE_MAX_PKTSIZE];
 	sockaddr_t addrs[RECVMMSG_BATCHLEN];
-	cmsg_pktinfo_t pktinfo[RECVMMSG_BATCHLEN];
+	cmsg_buf_t cmsgs[RECVMMSG_BATCHLEN];
 } udp_mmsg_ctx_t;
 
 static void *udp_mmsg_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
@@ -304,8 +304,8 @@ static void *udp_mmsg_init(_unused_ udp_context_t *ctx, _unused_ void *xdp_sock)
 			rq->msgs[i][k].msg_hdr.msg_iovlen = 1;
 			rq->msgs[i][k].msg_hdr.msg_name = &rq->addrs[k];
 			rq->msgs[i][k].msg_hdr.msg_namelen = sizeof(rq->addrs[k]);
-			rq->msgs[i][k].msg_hdr.msg_control = &rq->pktinfo[k].cmsg;
-			rq->msgs[i][k].msg_hdr.msg_controllen = sizeof(rq->pktinfo[k]);
+			rq->msgs[i][k].msg_hdr.msg_control = &rq->cmsgs[k].cmsg;
+			rq->msgs[i][k].msg_hdr.msg_controllen = sizeof(rq->cmsgs[k]);
 		}
 	}
 
@@ -377,7 +377,7 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 		/* Reset input context. */
 		rx->msg_iov->iov_len = sizeof(rq->iobuf[RX][i]);
 		rx->msg_namelen = sizeof(rq->addrs[i]);
-		rx->msg_controllen = sizeof(rq->pktinfo[i]);
+		rx->msg_controllen = sizeof(rq->cmsgs[i]);
 	}
 	rq->rcvd = j;
 }
