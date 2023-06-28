@@ -114,7 +114,8 @@ static knot_rrset_t get_next_rrset(serialize_ctx_t *ctx)
 		ctx->changeset_phase = PHASE_ZONE_NODES;
 		return node_rrset(ctx->zdiff.apex, KNOT_RRTYPE_SOA);
 	case PHASE_ZONE_NODES:
-	case PHASE_ZONE_NSEC3:
+	case PHASE_ZONE_NSEC3: ;
+skip_next_nsec3:
 		while (ctx->n == NULL || ctx->node_pos >= ctx->n->rrset_count) {
 			if (zone_tree_it_finished(&ctx->zit)) {
 				zone_tree_it_free(&ctx->zit);
@@ -141,13 +142,13 @@ static knot_rrset_t get_next_rrset(serialize_ctx_t *ctx)
 		}
 		res = node_rrset_at(ctx->n, ctx->node_pos++);
 		if (ctx->n == ctx->zdiff.apex && res.type == KNOT_RRTYPE_SOA) {
-			return get_next_rrset(ctx);
+			goto skip_next_nsec3;
 		}
 		if (ctx->zone_diff) {
 			knot_rrset_t counter_rr = node_rrset(binode_counterpart(ctx->n), res.type);
 			if (counter_rr.ttl == res.ttl && !knot_rrset_empty(&counter_rr)) {
 				if (knot_rdataset_subset(&res.rrs, &counter_rr.rrs)) {
-					return get_next_rrset(ctx);
+					goto skip_next_nsec3;
 				}
 				knot_rdataset_t rd_copy;
 				ctx->ret = knot_rdataset_copy(&rd_copy, &res.rrs, NULL);
