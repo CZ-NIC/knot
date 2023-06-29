@@ -1,0 +1,16 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	CASE	0	"CZ"	A	127.0.0.1
+@	CASE	0	"CZ"	AAAA	::1
+@	CASE	0	"CZ"	TXT	"test" "strings"
+@	CASE	255	"CZ"	A	127.0.0.1	; Comment
+@	CASE	1	"192.168.0.0/24"	CNAME	example.com.
+@	TYPE65333	\# 10 0102435A00017F000001
+@	TYPE65333	0	""	A	127.0.0.1
+@	case	0	""	A	127.0.0.1
+
+; KO
+@	CASE
+@	CASE						; Empty rdata

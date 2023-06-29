@@ -114,6 +114,7 @@
 		top = 0;
 
 		// Reset per-record contexts.
+		s->case_record = false;
 		s->long_string = false;
 		s->comma_list = false;
 
@@ -895,7 +896,10 @@
 		}
 	}
 
-	r_class = "IN"i %_r_class_in_exit;
+	# The negative case is needed to solve IN vs IPSECKEY collision.
+	r_class = "I"i . (  "N"i %_r_class_in_exit
+	                 | ^"N"i @{ fhold; fhold; fhold; } @_default_r_class_exit
+	                 );
 
 	r_ttl = time %_r_ttl_exit;
 	# END
@@ -1914,7 +1918,7 @@
 
 	# BEGIN - Rdata processing
 	action _r_data_init {
-		rdata_tail = s->r_data;
+		rdata_tail = s->case_record ? rdata_tail + 2 : s->r_data;
 	}
 	action _r_data_error {
 		WARN(ZS_BAD_RDATA);
@@ -2054,6 +2058,28 @@
 		(num16 . sep . r_dname . svcb_params)
 		$!_r_data_error %_ret . all_wchar;
 
+	action _case_init {
+		if (s->case_record) {
+			WARN(ZS_BAD_RDATA);
+			fhold; fgoto err_line;
+		}
+		s->case_record = true;
+	}
+	action _case_parse {
+		 fhold; fcall r_type_data_;
+	}
+	action _case_exit {
+		uint16_t val = htons(s->r_type);
+		memcpy(s->r_data + 2 + s->r_data[1], &val, 2);
+		s->r_type = KNOT_RRTYPE_CASE;
+		s->case_record = false;
+	}
+
+	r_data_case :=
+		(num8 . sep . text_string . sep .
+		 alnum >_case_init $_case_parse %_case_exit)
+		$!_r_data_error %_ret . all_wchar;
+
 	action _text_r_data {
 		fhold;
 		switch (s->r_type) {
@@ -2137,6 +2163,8 @@
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
 			fcall r_data_svcb;
+		case KNOT_RRTYPE_CASE:
+			fcall r_data_case;
 		default:
 			WARN(ZS_CANNOT_TEXT_DATA);
 			fgoto err_line;
@@ -2192,6 +2220,7 @@
 		case KNOT_RRTYPE_CAA:
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
+		case KNOT_RRTYPE_CASE:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
@@ -2276,6 +2305,7 @@
 		| "CAA"i        %{ s->r_type = KNOT_RRTYPE_CAA; }
 		| "SVCB"i       %{ s->r_type = KNOT_RRTYPE_SVCB; }
 		| "HTTPS"i      %{ s->r_type = KNOT_RRTYPE_HTTPS; }
+		| "CASE"i       %{ s->r_type = KNOT_RRTYPE_CASE; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
 	# END
@@ -2307,15 +2337,16 @@
 	}
 
 	# Resource record.
+	r_type_data_ := r_type . r_data %_ret . rest . newline;
+	r_type_data = alnum ${ fhold; fcall r_type_data_; };
+
 	record =
 		r_owner . sep .
 		( (r_class . sep . ((r_ttl   . sep) | (zlen %_default_r_ttl_exit  )))
 		| (r_ttl   . sep . ((r_class . sep) | (zlen %_default_r_class_exit)))
 		| zlen %_default_r_class_exit %_default_r_ttl_exit
-		) $!_r_type_error .
-		r_type . r_data .
-		rest %_record_exit .
-		newline;
+		) $!_r_type_error <:
+		r_type_data . rest %_record_exit . newline;
 
 	# Blank spaces with comments.
 	blank = rest . newline;

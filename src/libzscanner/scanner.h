@@ -115,6 +115,8 @@ struct zs_scanner {
 
 	/*! Indicates whether current record is multiline. */
 	bool     multiline;
+	/*! Indicates if parsing a CASE record. */
+	bool     case_record;
 	/*! Auxiliary number for all numeric operations. */
 	uint64_t number64;
 	/*! Auxiliary variable for time and other numeric operations. */
