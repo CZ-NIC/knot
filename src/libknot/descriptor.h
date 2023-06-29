@@ -126,6 +126,8 @@ enum knot_rr_type {
 	KNOT_RRTYPE_ANY        = 255, /*!< QTYPE. Any record. */
 	KNOT_RRTYPE_URI        = 256, /*!< Uniform resource identifier. */
 	KNOT_RRTYPE_CAA        = 257, /*!< Certification authority restriction. */
+
+	KNOT_RRTYPE_CASE       = 65333, /*!< Certification authority restriction. */
 };
 
 /*!

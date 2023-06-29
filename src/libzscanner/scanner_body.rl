@@ -2054,6 +2054,67 @@
 		(num16 . sep . r_dname . svcb_params)
 		$!_r_data_error %_ret . all_wchar;
 
+	action _r_type_error {
+		WARN(ZS_UNSUPPORTED_TYPE);
+		fhold; fgoto err_line;
+	}
+
+	r_type =
+		( "A"i          %{ s->r_type = KNOT_RRTYPE_A; }
+		| "NS"i         %{ s->r_type = KNOT_RRTYPE_NS; }
+		| "CNAME"i      %{ s->r_type = KNOT_RRTYPE_CNAME; }
+		| "SOA"i        %{ s->r_type = KNOT_RRTYPE_SOA; }
+		| "PTR"i        %{ s->r_type = KNOT_RRTYPE_PTR; }
+		| "HINFO"i      %{ s->r_type = KNOT_RRTYPE_HINFO; }
+		| "MINFO"i      %{ s->r_type = KNOT_RRTYPE_MINFO; }
+		| "MX"i         %{ s->r_type = KNOT_RRTYPE_MX; }
+		| "TXT"i        %{ s->r_type = KNOT_RRTYPE_TXT; }
+		| "RP"i         %{ s->r_type = KNOT_RRTYPE_RP; }
+		| "AFSDB"i      %{ s->r_type = KNOT_RRTYPE_AFSDB; }
+		| "RT"i         %{ s->r_type = KNOT_RRTYPE_RT; }
+		| "KEY"i        %{ s->r_type = KNOT_RRTYPE_KEY; }
+		| "AAAA"i       %{ s->r_type = KNOT_RRTYPE_AAAA; }
+		| "LOC"i        %{ s->r_type = KNOT_RRTYPE_LOC; }
+		| "SRV"i        %{ s->r_type = KNOT_RRTYPE_SRV; }
+		| "NAPTR"i      %{ s->r_type = KNOT_RRTYPE_NAPTR; }
+		| "KX"i         %{ s->r_type = KNOT_RRTYPE_KX; }
+		| "CERT"i       %{ s->r_type = KNOT_RRTYPE_CERT; }
+		| "DNAME"i      %{ s->r_type = KNOT_RRTYPE_DNAME; }
+		| "APL"i        %{ s->r_type = KNOT_RRTYPE_APL; }
+		| "DS"i         %{ s->r_type = KNOT_RRTYPE_DS; }
+		| "SSHFP"i      %{ s->r_type = KNOT_RRTYPE_SSHFP; }
+		| "IPSECKEY"i   %{ s->r_type = KNOT_RRTYPE_IPSECKEY; }
+		| "RRSIG"i      %{ s->r_type = KNOT_RRTYPE_RRSIG; }
+		| "NSEC"i       %{ s->r_type = KNOT_RRTYPE_NSEC; }
+		| "DNSKEY"i     %{ s->r_type = KNOT_RRTYPE_DNSKEY; }
+		| "DHCID"i      %{ s->r_type = KNOT_RRTYPE_DHCID; }
+		| "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
+		| "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
+		| "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
+		| "SMIMEA"i     %{ s->r_type = KNOT_RRTYPE_SMIMEA; }
+		| "CDS"i        %{ s->r_type = KNOT_RRTYPE_CDS; }
+		| "CDNSKEY"i    %{ s->r_type = KNOT_RRTYPE_CDNSKEY; }
+		| "OPENPGPKEY"i %{ s->r_type = KNOT_RRTYPE_OPENPGPKEY; }
+		| "CSYNC"i      %{ s->r_type = KNOT_RRTYPE_CSYNC; }
+		| "ZONEMD"i     %{ s->r_type = KNOT_RRTYPE_ZONEMD; }
+		| "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
+		| "NID"i        %{ s->r_type = KNOT_RRTYPE_NID; }
+		| "L32"i        %{ s->r_type = KNOT_RRTYPE_L32; }
+		| "L64"i        %{ s->r_type = KNOT_RRTYPE_L64; }
+		| "LP"i         %{ s->r_type = KNOT_RRTYPE_LP; }
+		| "EUI48"i      %{ s->r_type = KNOT_RRTYPE_EUI48; }
+		| "EUI64"i      %{ s->r_type = KNOT_RRTYPE_EUI64; }
+		| "URI"i        %{ s->r_type = KNOT_RRTYPE_URI; }
+		| "CAA"i        %{ s->r_type = KNOT_RRTYPE_CAA; }
+		| "SVCB"i       %{ s->r_type = KNOT_RRTYPE_SVCB; }
+		| "HTTPS"i      %{ s->r_type = KNOT_RRTYPE_HTTPS; }
+		| "CASE"i       %{ s->r_type = KNOT_RRTYPE_CASE; }
+		| "TYPE"i      . type_number
+		) $!_r_type_error;
+	r_data_case :=
+		(text_string . sep . r_type . r_data)
+		$!_r_data_error %_ret . all_wchar;
+
 	action _text_r_data {
 		fhold;
 		switch (s->r_type) {
@@ -2137,6 +2198,8 @@
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
 			fcall r_data_svcb;
+		case KNOT_RRTYPE_CASE:
+			fcall r_data_case;
 		default:
 			WARN(ZS_CANNOT_TEXT_DATA);
 			fgoto err_line;
@@ -2192,6 +2255,7 @@
 		case KNOT_RRTYPE_CAA:
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
+		case KNOT_RRTYPE_CASE:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
@@ -2222,62 +2286,6 @@
 	# END
 
 	# BEGIN - Record type processing
-	action _r_type_error {
-		WARN(ZS_UNSUPPORTED_TYPE);
-		fhold; fgoto err_line;
-	}
-
-	r_type =
-		( "A"i          %{ s->r_type = KNOT_RRTYPE_A; }
-		| "NS"i         %{ s->r_type = KNOT_RRTYPE_NS; }
-		| "CNAME"i      %{ s->r_type = KNOT_RRTYPE_CNAME; }
-		| "SOA"i        %{ s->r_type = KNOT_RRTYPE_SOA; }
-		| "PTR"i        %{ s->r_type = KNOT_RRTYPE_PTR; }
-		| "HINFO"i      %{ s->r_type = KNOT_RRTYPE_HINFO; }
-		| "MINFO"i      %{ s->r_type = KNOT_RRTYPE_MINFO; }
-		| "MX"i         %{ s->r_type = KNOT_RRTYPE_MX; }
-		| "TXT"i        %{ s->r_type = KNOT_RRTYPE_TXT; }
-		| "RP"i         %{ s->r_type = KNOT_RRTYPE_RP; }
-		| "AFSDB"i      %{ s->r_type = KNOT_RRTYPE_AFSDB; }
-		| "RT"i         %{ s->r_type = KNOT_RRTYPE_RT; }
-		| "KEY"i        %{ s->r_type = KNOT_RRTYPE_KEY; }
-		| "AAAA"i       %{ s->r_type = KNOT_RRTYPE_AAAA; }
-		| "LOC"i        %{ s->r_type = KNOT_RRTYPE_LOC; }
-		| "SRV"i        %{ s->r_type = KNOT_RRTYPE_SRV; }
-		| "NAPTR"i      %{ s->r_type = KNOT_RRTYPE_NAPTR; }
-		| "KX"i         %{ s->r_type = KNOT_RRTYPE_KX; }
-		| "CERT"i       %{ s->r_type = KNOT_RRTYPE_CERT; }
-		| "DNAME"i      %{ s->r_type = KNOT_RRTYPE_DNAME; }
-		| "APL"i        %{ s->r_type = KNOT_RRTYPE_APL; }
-		| "DS"i         %{ s->r_type = KNOT_RRTYPE_DS; }
-		| "SSHFP"i      %{ s->r_type = KNOT_RRTYPE_SSHFP; }
-		| "IPSECKEY"i   %{ s->r_type = KNOT_RRTYPE_IPSECKEY; }
-		| "RRSIG"i      %{ s->r_type = KNOT_RRTYPE_RRSIG; }
-		| "NSEC"i       %{ s->r_type = KNOT_RRTYPE_NSEC; }
-		| "DNSKEY"i     %{ s->r_type = KNOT_RRTYPE_DNSKEY; }
-		| "DHCID"i      %{ s->r_type = KNOT_RRTYPE_DHCID; }
-		| "NSEC3"i      %{ s->r_type = KNOT_RRTYPE_NSEC3; }
-		| "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
-		| "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
-		| "SMIMEA"i     %{ s->r_type = KNOT_RRTYPE_SMIMEA; }
-		| "CDS"i        %{ s->r_type = KNOT_RRTYPE_CDS; }
-		| "CDNSKEY"i    %{ s->r_type = KNOT_RRTYPE_CDNSKEY; }
-		| "OPENPGPKEY"i %{ s->r_type = KNOT_RRTYPE_OPENPGPKEY; }
-		| "CSYNC"i      %{ s->r_type = KNOT_RRTYPE_CSYNC; }
-		| "ZONEMD"i     %{ s->r_type = KNOT_RRTYPE_ZONEMD; }
-		| "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
-		| "NID"i        %{ s->r_type = KNOT_RRTYPE_NID; }
-		| "L32"i        %{ s->r_type = KNOT_RRTYPE_L32; }
-		| "L64"i        %{ s->r_type = KNOT_RRTYPE_L64; }
-		| "LP"i         %{ s->r_type = KNOT_RRTYPE_LP; }
-		| "EUI48"i      %{ s->r_type = KNOT_RRTYPE_EUI48; }
-		| "EUI64"i      %{ s->r_type = KNOT_RRTYPE_EUI64; }
-		| "URI"i        %{ s->r_type = KNOT_RRTYPE_URI; }
-		| "CAA"i        %{ s->r_type = KNOT_RRTYPE_CAA; }
-		| "SVCB"i       %{ s->r_type = KNOT_RRTYPE_SVCB; }
-		| "HTTPS"i      %{ s->r_type = KNOT_RRTYPE_HTTPS; }
-		| "TYPE"i      . type_number
-		) $!_r_type_error;
 	# END
 
 	# BEGIN - The highest level processing
