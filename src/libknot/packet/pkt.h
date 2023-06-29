@@ -399,10 +399,12 @@ static inline int knot_pkt_default_padding_size(const knot_pkt_t *pkt,
                                                 const knot_rrset_t *opt_rr)
 {
 	if (knot_wire_get_qr(pkt->wire)) {
-		return knot_edns_alignment_size(pkt->size, knot_rrset_size(opt_rr),
+		return knot_edns_alignment_size(pkt->size + pkt->reserved,
+		                                knot_rrset_size(opt_rr),
 		                                KNOT_EDNS_ALIGNMENT_RESPONSE_DEFAULT);
 	} else {
-		return knot_edns_alignment_size(pkt->size, knot_rrset_size(opt_rr),
+		return knot_edns_alignment_size(pkt->size + pkt->reserved,
+		                                knot_rrset_size(opt_rr),
 		                                KNOT_EDNS_ALIGNMENT_QUERY_DEFAULT);
 	}
 }

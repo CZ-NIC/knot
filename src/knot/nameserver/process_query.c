@@ -383,6 +383,12 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 		}
 	}
 
+	/* Reclaim reserved OPT size. Should remain reserved space just for TSIG. */
+	ret = knot_pkt_reclaim(resp, opt_wire_size);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	/* Align the response if QUIC with EDNS. */
 	if (qdata->params->proto == KNOTD_QUERY_PROTO_QUIC) {
 		int pad_len = knot_pkt_default_padding_size(resp, &qdata->opt_rr);
@@ -393,12 +399,6 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 				return ret;
 			}
 		}
-	}
-
-	/* Reclaim reserved size. */
-	ret = knot_pkt_reclaim(resp, opt_wire_size);
-	if (ret != KNOT_EOK) {
-		return ret;
 	}
 
 	uint8_t *wire_end = resp->wire + resp->size;
