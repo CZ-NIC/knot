@@ -816,6 +816,9 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 
 	if (ret == KNOT_EOK && reschedule->keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
+		if (ret == KNOT_EOK && (ctx->dbus_event & DBUS_EVENT_KEYS_UPDATED)) {
+			systemd_emit_keys_updated(ctx->zone->dname);
+		}
 	}
 
 	if (ret == KNOT_EOK && reschedule->plan_ds_check) {

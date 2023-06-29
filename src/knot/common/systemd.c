@@ -147,6 +147,17 @@ void systemd_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial)
 #endif
 }
 
+void systemd_emit_keys_updated(const knot_dname_t *zone_name)
+{
+#ifdef ENABLE_DBUS
+	knot_dname_txt_storage_t buff;
+	char *zone_str = knot_dname_to_str(buff, zone_name, sizeof(buff));
+	if (zone_str != NULL) {
+		emit_event(KNOT_BUS_EVENT_ZONE_KEYS_UPD, "s", zone_str);
+	}
+#endif
+}
+
 void systemd_emit_zone_submission(const knot_dname_t *zone_name, uint16_t keytag,
                                   const char *keyid)
 {

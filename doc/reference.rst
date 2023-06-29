@@ -607,6 +607,8 @@ Possible values:
   - ``stopped`` when the server shutdown sequence is initiated.
 - ``zone-updated`` – The signal ``zone_updated`` is emitted when a zone has been updated;
   the signal parameters are `zone name` and `zone SOA serial`.
+- ``keys-updated`` - The signal ``keys_updated`` is emitted when a DNSSEC key set 
+  of this zone is updated.
 - ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if there is
   a ready KSK present when the zone is signed; the signal parameters are
   `zone name`, `KSK keytag`, and `KSK KASP id`.

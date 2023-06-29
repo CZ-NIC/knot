@@ -39,6 +39,12 @@ $knotd_interface->connect_to_signal('zone_updated', sub
     print "Updated zone=$zone to serial=$serial\n";
 });
 
+$knotd_interface->connect_to_signal('keys_updated', sub
+{
+    my ($zone) = @_;
+    print "Keys updated for zone=$zone\n";
+});
+
 $knotd_interface->connect_to_signal('zone_ksk_submission', sub
 {
     my ($zone, $key_tag, $kasp_id) = @_;

@@ -276,6 +276,7 @@ enum {
 	DBUS_EVENT_ZONE_UPDATED    = (1 << 1),
 	DBUS_EVENT_ZONE_SUBMISSION = (1 << 2),
 	DBUS_EVENT_ZONE_INVALID    = (1 << 3),
+	DBUS_EVENT_KEYS_UPDATED    = (1 << 4),
 };
 
 extern const knot_lookup_t acl_actions[];
