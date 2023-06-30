@@ -39,7 +39,8 @@ query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family,
 		               conf->cache.srv_udp_max_payload_ipv4 :
 		               conf->cache.srv_udp_max_payload_ipv6,
 		.do_flag = (opts & QUERY_EDNS_OPT_DO),
-		.expire_option = (opts & QUERY_EDNS_OPT_EXPIRE)
+		.expire_option = (opts & QUERY_EDNS_OPT_EXPIRE),
+		.padding = (opts & QUERY_EDNS_OPT_PADDING),
 	};
 
 	return edns;
@@ -68,6 +69,18 @@ int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns)
 		if (ret != KNOT_EOK) {
 			knot_rrset_clear(&opt_rr, &pkt->mm);
 			return ret;
+		}
+	}
+
+	if (edns->padding) {
+		int padsize = knot_pkt_default_padding_size(pkt, &opt_rr);
+		if (padsize > -1) {
+			// it's OK to just "reserve" instead of "add" since the padding payload is zeroes
+			ret = knot_edns_reserve_option(&opt_rr, KNOT_EDNS_OPTION_PADDING,
+			                               padsize, NULL, &pkt->mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 	}
 

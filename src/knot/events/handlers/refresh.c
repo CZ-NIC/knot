@@ -1283,6 +1283,11 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	}
 
+	query_edns_opt_t ednsopt = QUERY_EDNS_OPT_EXPIRE;
+	if (master->quic) {
+		ednsopt |= QUERY_EDNS_OPT_PADDING;
+	}
+
 	struct refresh_data data = {
 		.zone = zone,
 		.conf = conf,
@@ -1290,8 +1295,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 		.use_edns = !master->no_edns,
-		.edns = query_edns_data_init(conf, master->addr.ss_family,
-		                             QUERY_EDNS_OPT_EXPIRE),
+		.edns = query_edns_data_init(conf, master->addr.ss_family, ednsopt),
 		.expire_timer = EXPIRE_TIMER_INVALID,
 		.fallback = fallback,
 		.fallback_axfr = false, // will be set upon IXFR consume

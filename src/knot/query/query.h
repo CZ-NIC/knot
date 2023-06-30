@@ -27,11 +27,13 @@ typedef struct {
 	uint16_t max_payload;
 	bool do_flag;
 	bool expire_option;
+	bool padding;
 } query_edns_data_t;
 
 typedef enum {
-	QUERY_EDNS_OPT_DO     = 1 << 0,
-	QUERY_EDNS_OPT_EXPIRE = 1 << 1,
+	QUERY_EDNS_OPT_DO      = 1 << 0,
+	QUERY_EDNS_OPT_EXPIRE  = 1 << 1,
+	QUERY_EDNS_OPT_PADDING = 1 << 2,
 } query_edns_opt_t;
 
 /*!

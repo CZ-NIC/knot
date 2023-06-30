@@ -175,13 +175,17 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 	assert(zone_name);
 	assert(parent);
 
+	query_edns_opt_t ednsopt = QUERY_EDNS_OPT_DO;
+	if (parent->quic) {
+		ednsopt |= QUERY_EDNS_OPT_PADDING;
+	}
+
 	struct ds_query_data data = {
 		.zone_name = zone_name,
 		.remote = (struct sockaddr *)&parent->addr,
 		.key = key,
 		.not_key = not_key,
-		.edns = query_edns_data_init(conf, parent->addr.ss_family,
-		                             QUERY_EDNS_OPT_DO),
+		.edns = query_edns_data_init(conf, parent->addr.ss_family, ednsopt),
 		.ds_ok = false,
 		.result_logged = false,
 		.ttl = 0,
