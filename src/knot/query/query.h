@@ -59,9 +59,11 @@ query_edns_data_t query_edns_data_init(conf_t *conf, const conf_remote_t *remote
 /*!
  * \brief Append EDNS into the packet.
  *
- * \param pkt   Packet to add EDNS into.
- * \param edns  EDNS data.
+ * \param pkt       Packet to add EDNS into.
+ * \param edns      EDNS data.
+ * \param padding   Add EDNS padding option beforehand.
  *
  * \return KNOT_E*
  */
-int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns);
+int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns,
+                   bool padding);

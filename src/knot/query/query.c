@@ -46,7 +46,7 @@ query_edns_data_t query_edns_data_init(conf_t *conf, const conf_remote_t *remote
 	return edns;
 }
 
-int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns)
+int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns, bool padding)
 {
 	if (!pkt || !edns) {
 		return KNOT_EINVAL;
@@ -69,6 +69,18 @@ int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns)
 		if (ret != KNOT_EOK) {
 			knot_rrset_clear(&opt_rr, &pkt->mm);
 			return ret;
+		}
+	}
+
+	if (padding) {
+		int padsize = knot_pkt_default_padding_size(pkt, &opt_rr);
+		if (padsize > -1) {
+			// it's OK to just "reserve" instead of "add" since the padding payload is zeroes
+			ret = knot_edns_reserve_option(&opt_rr, KNOT_EDNS_OPTION_PADDING,
+			                               padsize, NULL, &pkt->mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 	}
 

@@ -347,7 +347,8 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 	}
 
 	if (last->edns != NULL && !last->edns->no_edns) {
-		ret = query_put_edns(last->query, last->edns);
+		ret = query_put_edns(last->query, last->edns,
+		                     (last->flags & KNOT_REQUEST_QUIC));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
