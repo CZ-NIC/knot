@@ -104,7 +104,6 @@ struct refresh_data {
 	const struct sockaddr *remote;    //!< Remote endpoint.
 	const knot_rrset_t *soa;          //!< Local SOA (NULL for AXFR).
 	const size_t max_zone_size;       //!< Maximal zone size.
-	bool use_edns;                    //!< Allow EDNS in SOA/AXFR/IXFR queries.
 	query_edns_data_t edns;           //!< EDNS data to be used in queries.
 	zone_master_fallback_t *fallback; //!< Flags allowing zone_master_try() fallbacks.
 	bool fallback_axfr;               //!< Flag allowing fallback to AXFR,
@@ -1021,13 +1020,6 @@ static int soa_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_FAIL;
 	}
 
-	if (data->use_edns) {
-		data->ret = query_put_edns(pkt, &data->edns);
-		if (data->ret != KNOT_EOK) {
-			return KNOT_STATE_FAIL;
-		}
-	}
-
 	return KNOT_STATE_CONSUME;
 }
 
@@ -1123,13 +1115,6 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		knot_pkt_begin(pkt, KNOT_AUTHORITY);
 		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, sending_soa, 0);
 		knot_rrset_free(sending_soa, data->mm);
-	}
-
-	if (data->use_edns) {
-		data->ret = query_put_edns(pkt, &data->edns);
-		if (data->ret != KNOT_EOK) {
-			return KNOT_STATE_FAIL;
-		}
 	}
 
 	return KNOT_STATE_CONSUME;
@@ -1303,9 +1288,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.remote = (struct sockaddr *)&master->addr,
 		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
-		.use_edns = !master->no_edns,
-		.edns = query_edns_data_init(conf, master->addr.ss_family,
-		                             QUERY_EDNS_OPT_EXPIRE),
+		.edns = query_edns_data_init(conf, master, QUERY_EDNS_OPT_EXPIRE),
 		.expire_timer = EXPIRE_TIMER_INVALID,
 		.fallback = fallback,
 		.fallback_axfr = false, // will be set upon IXFR consume
@@ -1322,8 +1305,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	}
 
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
-	knot_request_t *req = knot_request_make(NULL, master, pkt,
-	                                        zone->server->quic_creds, flags);
+	knot_request_t *req = knot_request_make(NULL, master, pkt, zone->server->quic_creds,
+	                                        &data.edns, flags);
 	if (req == NULL) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);

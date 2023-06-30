@@ -193,6 +193,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct sockaddr_storage *source,
                                           knot_pkt_t *query,
                                           const struct knot_quic_creds *creds,
+                                          const query_edns_data_t *edns,
                                           const knot_tsig_key_t *tsig_key,
                                           const uint8_t *pin,
                                           size_t pin_len,
@@ -228,6 +229,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 	}
 	tsig_init(&request->tsig, tsig_key);
 
+	request->edns = edns;
 	request->creds = creds;
 	if (flags & KNOT_REQUEST_QUIC && pin_len > 0) {
 		request->pin_len = pin_len;
@@ -241,6 +243,7 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
                                   const conf_remote_t *remote,
                                   knot_pkt_t *query,
                                   const struct knot_quic_creds *creds,
+                                  const query_edns_data_t *edns,
                                   knot_request_flag_t flags)
 {
 	if (remote->quic) {
@@ -248,7 +251,7 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
 	}
 
 	return knot_request_make_generic(mm, &remote->addr, &remote->via,
-	                                 query, creds, &remote->key, remote->pin,
+	                                 query, creds, edns, &remote->key, remote->pin,
 	                                 remote->pin_len, flags);
 }
 
@@ -335,6 +338,13 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
                            int timeout_ms)
 {
 	knot_layer_produce(&req->layer, last->query);
+
+	if (last->edns != NULL && !last->edns->no_edns) {
+		int ret = query_put_edns(last->query, last->edns);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
 
 	int ret = tsig_sign_packet(&last->tsig, last->query);
 	if (ret != KNOT_EOK) {

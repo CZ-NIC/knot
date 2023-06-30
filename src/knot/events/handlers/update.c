@@ -249,7 +249,7 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 	/* Create a request. */
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
 	knot_request_t *req = knot_request_make(NULL, remote, query,
-	                                        zone->server->quic_creds, flags);
+	                                        zone->server->quic_creds, NULL, flags);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
 		knot_pkt_free(query);
