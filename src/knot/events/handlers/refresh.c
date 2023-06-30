@@ -1021,13 +1021,6 @@ static int soa_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_FAIL;
 	}
 
-	if (data->use_edns) {
-		data->ret = query_put_edns(pkt, &data->edns);
-		if (data->ret != KNOT_EOK) {
-			return KNOT_STATE_FAIL;
-		}
-	}
-
 	return KNOT_STATE_CONSUME;
 }
 
@@ -1123,13 +1116,6 @@ static int transfer_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		knot_pkt_begin(pkt, KNOT_AUTHORITY);
 		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, sending_soa, 0);
 		knot_rrset_free(sending_soa, data->mm);
-	}
-
-	if (data->use_edns) {
-		data->ret = query_put_edns(pkt, &data->edns);
-		if (data->ret != KNOT_EOK) {
-			return KNOT_STATE_FAIL;
-		}
 	}
 
 	return KNOT_STATE_CONSUME;
@@ -1322,8 +1308,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	}
 
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
-	knot_request_t *req = knot_request_make(NULL, master, pkt,
-	                                        zone->server->quic_creds, flags);
+	knot_request_t *req = knot_request_make(NULL, master, pkt, zone->server->quic_creds,
+	                                        data.use_edns ? &data.edns : NULL, flags);
 	if (req == NULL) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);

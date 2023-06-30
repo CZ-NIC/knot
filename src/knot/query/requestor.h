@@ -22,6 +22,7 @@
 #include "knot/conf/conf.h"
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/query/layer.h"
+#include "knot/query/query.h"
 #include "libknot/mm_ctx.h"
 #include "libknot/rrtype/tsig.h"
 
@@ -58,6 +59,7 @@ typedef struct {
 	struct sockaddr_storage remote, source;
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
+	const query_edns_data_t *edns;
 	tsig_ctx_t tsig;
 
 	knot_sign_context_t sign; /*!< Required for async. DDNS processing. */
@@ -75,6 +77,7 @@ typedef struct {
  * \param source    Source address (or NULL).
  * \param query     Query message.
  * \param creds     Local (server) credentials.
+ * \param edns      EDNS parameters.
  * \param tsig_key  TSIG key for authentication.
  * \param pin       Possible remote certificate PIN.
  * \param pin_len   Length of the remote certificate PIN.
@@ -87,6 +90,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct sockaddr_storage *source,
                                           knot_pkt_t *query,
                                           const struct knot_quic_creds *creds,
+                                          const query_edns_data_t *edns,
                                           const knot_tsig_key_t *tsig_key,
                                           const uint8_t *pin,
                                           size_t pin_len,
@@ -102,6 +106,7 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
                                   const conf_remote_t *remote,
                                   knot_pkt_t *query,
                                   const struct knot_quic_creds *creds,
+                                  const query_edns_data_t *edns,
                                   knot_request_flag_t flags);
 
 /*!

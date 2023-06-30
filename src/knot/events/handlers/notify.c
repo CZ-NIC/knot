@@ -67,8 +67,6 @@ static int notify_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, data->soa, 0);
 	}
 
-	query_put_edns(pkt, &data->edns);
-
 	return KNOT_STATE_CONSUME;
 }
 
@@ -108,7 +106,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
 	knot_request_t *req = knot_request_make(NULL, slave, pkt,
-	                                        zone->server->quic_creds, flags);
+	                                        zone->server->quic_creds, &data.edns, flags);
 	if (req == NULL) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
