@@ -339,14 +339,21 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 {
 	knot_layer_produce(&req->layer, last->query);
 
+	// it would make more sense to reserve space for TSIG _before_ producing query packet, but layer_produce usually resets the packet including reserved space
+	int ret = knot_pkt_reserve(last->query, knot_tsig_wire_size(last->tsig.key));
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	if (last->edns != NULL) {
-		int ret = query_put_edns(last->query, last->edns);
+		ret = query_put_edns(last->query, last->edns);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
 
-	int ret = tsig_sign_packet(&last->tsig, last->query);
+	// NOTE: it's not necessary to reclaim pkt->reserved space for TSIG, as following function does not use knot_pkt_put to insert it, it just brutally writes at the end of wire
+	ret = tsig_sign_packet(&last->tsig, last->query);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
