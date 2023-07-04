@@ -160,7 +160,7 @@ Configuration changes
   - ``server.tcp-handshake-timeout``
   - ``zone.request-edns-option``
 
-- New default values for:
+- New default value for:
 
   - :ref:`server_tcp-workers`
   - :ref:`server_tcp-max-clients`
@@ -304,6 +304,21 @@ exceptions.
 
 Configuration changes
 ---------------------
+
+- Default value for:
+
+  - :ref:`zone_journal-max-depth` was lowered to 20.
+    This change may trigger journal history merging.
+  - :ref:`policy_nsec3-iterations` was lowered to 0.
+    This change may trigger complete NSEC3 chain reconstruction!
+  - :ref:`policy_rrsig-refresh` is set to :ref:`policy_propagation-delay` + "zone maximum TTL".
+    This change affects effective RRSIG lifetime!
+
+- New checks:
+
+  - :ref:`policy_rrsig-refresh` must be high enough to ensure all RRSIGs are
+    refreshed before their expiration.
+  - A notice log message is emitted if :ref:`policy_algorithm` is deprecated.
 
 - Ignored obsolete option (with a notice log):
 
