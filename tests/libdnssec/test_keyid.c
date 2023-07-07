@@ -24,7 +24,7 @@
 static void test_keyid_is_valid_run(const char *param, bool should_ok)
 {
 	ok(dnssec_keyid_is_valid(param) == should_ok,
-	   "dnssec_keyid_is_valid(\"%s\")", param);
+	   "dnssec_keyid_is_valid(\"%s\")", param == NULL ? "(null)" : param);
 }
 
 static void test_keyid_is_valid(void)
