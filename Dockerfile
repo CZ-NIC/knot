@@ -54,7 +54,7 @@ RUN if [ "$CHECK" = "enable" ]; then make -j$(grep -c ^processor /proc/cpuinfo) 
 
 ## Final stage ##
 FROM debian:bookworm-slim
-MAINTAINER Knot DNS <knot-dns@labs.nic.cz>
+LABEL maintainer="Knot DNS <knot-dns@labs.nic.cz>"
 
 # Environment
 ENV RUNTIME_PKGS \
