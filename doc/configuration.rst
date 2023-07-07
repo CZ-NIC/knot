@@ -588,11 +588,10 @@ primary server consistent while applying the changes with a different serial.
 Catalog zones
 =============
 
-Catalog zones are a concept whereby a list of zones to be configured is maintained
+Catalog zones (:rfc:`9432`) are a concept whereby a list of zones to be configured is maintained
 as contents of a separate, special zone. This approach has the benefit of simple
 propagation of a zone list to secondary servers, especially when the list is
-frequently updated. Currently, catalog zones are described in this `Internet Draft
-<https://tools.ietf.org/html/draft-ietf-dnsop-dns-catalog-zones>`_.
+frequently updated.
 
 Terminology first. *Catalog zone* is a meta-zone which shall not be a part
 of the DNS tree, but it contains information about the set of member zones and
