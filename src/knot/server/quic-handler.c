@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "contrib/macros.h"
+#include "contrib/net.h"
 #include "knot/common/log.h"
 #include "knot/server/handler.h"
 #include "knot/server/quic-handler.h"
@@ -39,7 +40,12 @@ static int uq_alloc_reply(knot_quic_reply_t *r)
 
 static int uq_send_reply(knot_quic_reply_t *r)
 {
-	int ret = sendmsg(*(int *)r->sock, r->out_ctx, 0);
+	int fd = *(int *)r->sock;
+
+	if (r->in_ctx != NULL) {
+		*(int *)r->in_ctx = r->ecn; // set ECN for outgoing CMSG
+	}
+	int ret = sendmsg(fd, r->out_ctx, 0);
 	if (ret < 0) {
 		return knot_map_errno();
 	} else if (ret == r->out_payload->iov_len) {
@@ -57,7 +63,7 @@ static void uq_free_reply(knot_quic_reply_t *r)
 
 void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
                   uint64_t idle_close, knot_quic_table_t *table,
-                  struct iovec *rx, struct msghdr *mh_out)
+                  struct iovec *rx, struct msghdr *mh_out, int *p_ecn)
 {
 	knot_quic_reply_t rpl = {
 		.ip_rem = params->remote,
@@ -65,7 +71,9 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 		.in_payload = rx,
 		.out_payload = mh_out->msg_iov,
 		.sock = &params->socket,
+		.in_ctx = p_ecn,
 		.out_ctx = mh_out,
+		.ecn = (p_ecn == NULL ? 0 : (*p_ecn & 0x3)),
 		.alloc_reply = uq_alloc_reply,
 		.send_reply = uq_send_reply,
 		.free_reply = uq_free_reply

@@ -102,8 +102,6 @@ int quic_generate_secret(uint8_t *buf, size_t buflen);
 
 uint32_t quic_get_ecn(struct msghdr *msg, const int family);
 
-int quic_set_enc(int sockfd, int family, uint32_t ecn);
-
 int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx, const quic_params_t *params);
 
 int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr);

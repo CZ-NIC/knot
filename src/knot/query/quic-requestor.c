@@ -35,6 +35,11 @@ static void quic_log_cb(const char *line)
 	log_debug("QUIC requestor: %s", line);
 }
 
+typedef union {
+	struct cmsghdr cmsg;
+	uint8_t buf[CMSG_SPACE(sizeof(int))];
+} cmsg_tos_t;
+
 static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeout_ms)
 {
 	int fd = (int)(size_t)r->sock;
@@ -44,13 +49,22 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 		return ret;
 	}
 
-	ret = net_dgram_recv(fd, r->in_payload->iov_base, QUIC_BUF_SIZE, timeout_ms);
+	cmsg_tos_t tos = { 0 };
+	r->in_payload->iov_len = QUIC_BUF_SIZE;
+	struct msghdr msg = {
+		.msg_iov = r->in_payload,
+		.msg_iovlen = 1,
+		.msg_control = &tos,
+		.msg_controllen = sizeof(tos),
+	};
+	ret = net_msg_recv(fd, &msg, timeout_ms);
 	if (ret == 0) {
 		return KNOT_ECONN;
 	} else if (ret < 0) {
 		return ret;
 	}
 	r->in_payload->iov_len = ret;
+	r->ecn = net_cmsg_ecn(&msg);
 
 	knot_quic_conn_t *hconn = NULL;
 	ret = knot_quic_handle(conn->quic_table, r, timeout_ms * 1000000LU, &hconn);
@@ -72,8 +86,31 @@ int qr_alloc_reply(struct knot_quic_reply *r)
 int qr_send_reply(struct knot_quic_reply *r)
 {
 	int fd = (int)(size_t)r->sock;
-	int ret = net_dgram_send(fd, r->out_payload->iov_base,
-	                         r->out_payload->iov_len, r->ip_rem);
+
+	cmsg_tos_t tos = {
+		.cmsg.cmsg_len = CMSG_LEN(sizeof(int))
+	};
+	*(int *)CMSG_DATA(&tos.cmsg) = r->ecn;
+	struct msghdr msg = {
+		.msg_iov = r->out_payload,
+		.msg_iovlen = 1,
+		.msg_control = &tos,
+		.msg_controllen = sizeof(tos),
+	};
+	if (r->ip_rem->ss_family == AF_INET6) {
+		tos.cmsg.cmsg_level = IPPROTO_IPV6;
+		tos.cmsg.cmsg_type = IPV6_TCLASS;
+	} else {
+#ifdef IP_RECVTOS
+		tos.cmsg.cmsg_level = IPPROTO_IP;
+		tos.cmsg.cmsg_type = IP_TOS;
+#else /* Disallow setting TOS if RECVTOS isn't supported (OpenBSD). */
+		msg.msg_control = NULL;
+		msg.msg_controllen = 0;
+#endif
+	}
+
+	int ret = net_msg_send(fd, &msg, 0);
 	if (ret < 0) {
 		return ret;
 	} else if (ret == r->out_payload->iov_len) {
@@ -143,6 +180,8 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 		knot_qreq_close(r, false);
 		return ret;
 	}
+
+	(void)net_cmsg_ecn_enable(fd, remote->ss_family);
 
 	struct timespec t_start = time_now(), t_cur;
 	while (!conn->handshake_done) {

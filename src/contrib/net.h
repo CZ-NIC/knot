@@ -84,6 +84,47 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 int net_bound_tfo(int sock, int backlog);
 
 /*!
+ * \brief Tell kernel to send ECN bits thru CMSG on packet receival.
+ *
+ * \param sock      Socket to enable receiving ECN bits.
+ * \param family    Address family on that socket.
+ *
+ * \return KNOT_E*
+ */
+int net_cmsg_ecn_enable(int sock, int family);
+
+/*!
+ * \brief Return pointer to possible ECN value in cmsg.
+ *
+ * \note The function also updates cmsg_type for outgoing use.
+ *
+ * \param cmsg     Received control message.
+ *
+ * \return Pointer to ECN value or NULL.
+ */
+int *net_cmsg_ecn_ptr(struct cmsghdr *cmsg);
+
+/*!
+ * \brief Get ECN bits of packets received by recv(m)msg.
+ *
+ * \param msg     Received message header.
+ *
+ * \return 0..3
+ */
+uint8_t net_cmsg_ecn(struct msghdr *msg);
+
+/*!
+ * \brief Set ECN for outgoing packets on this socket.
+ *
+ * \param sock      Socket file descriptor.
+ * \param family    Address family for outgoing packets.
+ * \param ecn       ECN bits to be set.
+ *
+ * \return KNOT_E*
+ */
+int net_ecn_set(int sock, int family, uint8_t ecn);
+
+/*!
  * \brief Return true if the socket is fully connected.
  *
  * \param sock  Socket.
@@ -153,6 +194,20 @@ ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
  */
 ssize_t net_base_recv(int sock, uint8_t *buffer, size_t size,
                       struct sockaddr_storage *addr, int timeout_ms);
+
+/*!
+ * \brief Send a message with prepared msghdr structure.
+ *
+ * \see net_base_send
+ */
+ssize_t net_msg_send(int sock, struct msghdr *msg, int timeout_ms);
+
+/*!
+ * \brief Receive a message into msghdr structure.
+ *
+ * \see net_base_send
+ */
+ssize_t net_msg_recv(int sock, struct msghdr *msg, int timeout_ms);
 
 /*!
  * \brief Send a message on a SOCK_DGRAM socket.
