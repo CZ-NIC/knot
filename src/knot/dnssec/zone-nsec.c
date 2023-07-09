@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -107,7 +107,7 @@ knot_dname_t *node_nsec3_hash(zone_node_t *node, const zone_contents_t *zone)
 	}
 }
 
-zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
+void node_update_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
 {
 	if (!(node->flags & NODE_FLAGS_NSEC3_NODE) && knot_is_nsec3_enabled(zone)) {
 		knot_dname_t *hash = node_nsec3_hash(node, zone);
@@ -120,15 +120,13 @@ zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone)
 			node->flags |= NODE_FLAGS_NSEC3_NODE;
 		}
 	}
-
-	return node_nsec3_get(node);
 }
 
 int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 {
 	zone_node_t *counter = binode_counterpart(node);
 	if (counter->nsec3_hash == NULL) {
-		(void)node_nsec3_node(node, zone);
+		node_update_nsec3_node(node, zone);
 		return KNOT_EOK;
 	}
 	assert(counter->nsec3_node != NULL); // shut up cppcheck
@@ -148,7 +146,7 @@ int binode_fix_nsec3_pointer(zone_node_t *node, const zone_contents_t *zone)
 		} else {
 			node->nsec3_hash = counter->nsec3_hash;
 		}
-		(void)node_nsec3_node(node, zone);
+		node_update_nsec3_node(node, zone);
 	}
 	return KNOT_EOK;
 }
