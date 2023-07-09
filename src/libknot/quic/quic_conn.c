@@ -240,7 +240,7 @@ void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 	assert(conn->streams_count <= 0);
 	assert(conn->obufs_size == 0);
 
-	size_t num_scid = ngtcp2_conn_get_num_scid(conn->conn);
+	size_t num_scid = ngtcp2_conn_get_scid(conn->conn, NULL);
 	ngtcp2_cid *scids = calloc(num_scid, sizeof(*scids));
 	ngtcp2_conn_get_scid(conn->conn, scids);
 
