@@ -681,8 +681,7 @@ to non-default values.
    at any time using `knotc -f zone-purge +expire`.
 
    Currently, expiration of a catalog zone doesn't have any effect on its
-   member zones. This will likely change in the future depending on the
-   Internet Draft.
+   member zones.
 
 .. WARNING::
 
