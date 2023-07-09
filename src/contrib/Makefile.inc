@@ -207,6 +207,7 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_tstamp.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_unreachable.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_unreachable.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.c \

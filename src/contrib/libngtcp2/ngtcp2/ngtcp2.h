@@ -276,22 +276,6 @@ typedef struct ngtcp2_mem {
 /**
  * @macro
  *
- * :macro:`NGTCP2_PROTO_VER_DRAFT_MAX` is the maximum QUIC draft
- * version that this library supports.
- */
-#define NGTCP2_PROTO_VER_DRAFT_MAX 0xff000020u
-
-/**
- * @macro
- *
- * :macro:`NGTCP2_PROTO_VER_DRAFT_MIN` is the minimum QUIC draft
- * version that this library supports.
- */
-#define NGTCP2_PROTO_VER_DRAFT_MIN 0xff00001du
-
-/**
- * @macro
- *
  * :macro:`NGTCP2_PROTO_VER_MAX` is the highest QUIC version that this
  * library supports.
  */
@@ -303,7 +287,7 @@ typedef struct ngtcp2_mem {
  * :macro:`NGTCP2_PROTO_VER_MIN` is the lowest QUIC version that this
  * library supports.
  */
-#define NGTCP2_PROTO_VER_MIN NGTCP2_PROTO_VER_DRAFT_MIN
+#define NGTCP2_PROTO_VER_MIN NGTCP2_PROTO_VER_V1
 
 /**
  * @macro
@@ -372,24 +356,6 @@ typedef struct ngtcp2_mem {
  * PATH_CHALLENGE data.
  */
 #define NGTCP2_PATH_CHALLENGE_DATALEN 8
-
-/**
- * @macro
- *
- * :macro:`NGTCP2_RETRY_KEY_DRAFT` is an encryption key to create
- * integrity tag of Retry packet.  It is used for QUIC draft versions.
- */
-#define NGTCP2_RETRY_KEY_DRAFT                                                 \
-  "\xcc\xce\x18\x7e\xd0\x9a\x09\xd0\x57\x28\x15\x5a\x6c\xb9\x6b\xe1"
-
-/**
- * @macro
- *
- * :macro:`NGTCP2_RETRY_NONCE_DRAFT` is nonce used when generating
- * integrity tag of Retry packet.  It is used for QUIC draft versions.
- */
-#define NGTCP2_RETRY_NONCE_DRAFT                                               \
-  "\xe5\x49\x30\xf9\x7f\x21\x36\xf0\x53\x0a\x8c\x1c"
 
 /**
  * @macro
@@ -550,190 +516,190 @@ typedef struct NGTCP2_ALIGN(8) ngtcp2_pkt_info {
  * :macro:`NGTCP2_ERR_NOBUF` indicates that a provided buffer does not
  * have enough space to store data.
  */
-#define NGTCP2_ERR_NOBUF -203
+#define NGTCP2_ERR_NOBUF -202
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_PROTO` indicates a general protocol error.
  */
-#define NGTCP2_ERR_PROTO -205
+#define NGTCP2_ERR_PROTO -203
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_INVALID_STATE` indicates that a requested
  * operation is not allowed at the current connection state.
  */
-#define NGTCP2_ERR_INVALID_STATE -206
+#define NGTCP2_ERR_INVALID_STATE -204
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_ACK_FRAME` indicates that an invalid ACK frame
  * is received.
  */
-#define NGTCP2_ERR_ACK_FRAME -207
+#define NGTCP2_ERR_ACK_FRAME -205
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_STREAM_ID_BLOCKED` indicates that there is no
  * spare stream ID available.
  */
-#define NGTCP2_ERR_STREAM_ID_BLOCKED -208
+#define NGTCP2_ERR_STREAM_ID_BLOCKED -206
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_STREAM_IN_USE` indicates that a stream ID is
  * already in use.
  */
-#define NGTCP2_ERR_STREAM_IN_USE -209
+#define NGTCP2_ERR_STREAM_IN_USE -207
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_STREAM_DATA_BLOCKED` indicates that stream data
  * cannot be sent because of flow control.
  */
-#define NGTCP2_ERR_STREAM_DATA_BLOCKED -210
+#define NGTCP2_ERR_STREAM_DATA_BLOCKED -208
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_FLOW_CONTROL` indicates flow control error.
  */
-#define NGTCP2_ERR_FLOW_CONTROL -211
+#define NGTCP2_ERR_FLOW_CONTROL -209
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_CONNECTION_ID_LIMIT` indicates that the number
  * of received Connection ID exceeds acceptable limit.
  */
-#define NGTCP2_ERR_CONNECTION_ID_LIMIT -212
+#define NGTCP2_ERR_CONNECTION_ID_LIMIT -210
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_STREAM_LIMIT` indicates that a remote endpoint
  * opens more streams that is permitted.
  */
-#define NGTCP2_ERR_STREAM_LIMIT -213
+#define NGTCP2_ERR_STREAM_LIMIT -211
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_FINAL_SIZE` indicates that inconsistent final
  * size of a stream.
  */
-#define NGTCP2_ERR_FINAL_SIZE -214
+#define NGTCP2_ERR_FINAL_SIZE -212
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_CRYPTO` indicates crypto (TLS) related error.
  */
-#define NGTCP2_ERR_CRYPTO -215
+#define NGTCP2_ERR_CRYPTO -213
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_PKT_NUM_EXHAUSTED` indicates that packet number
  * is exhausted.
  */
-#define NGTCP2_ERR_PKT_NUM_EXHAUSTED -216
+#define NGTCP2_ERR_PKT_NUM_EXHAUSTED -214
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_REQUIRED_TRANSPORT_PARAM` indicates that a
  * required transport parameter is missing.
  */
-#define NGTCP2_ERR_REQUIRED_TRANSPORT_PARAM -217
+#define NGTCP2_ERR_REQUIRED_TRANSPORT_PARAM -215
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM` indicates that a
  * transport parameter is malformed.
  */
-#define NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM -218
+#define NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM -216
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_FRAME_ENCODING` indicates there is an error in
  * frame encoding.
  */
-#define NGTCP2_ERR_FRAME_ENCODING -219
+#define NGTCP2_ERR_FRAME_ENCODING -217
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_DECRYPT` indicates a decryption failure.
  */
-#define NGTCP2_ERR_DECRYPT -220
+#define NGTCP2_ERR_DECRYPT -218
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_STREAM_SHUT_WR` indicates no more data can be
  * sent to a stream.
  */
-#define NGTCP2_ERR_STREAM_SHUT_WR -221
+#define NGTCP2_ERR_STREAM_SHUT_WR -219
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_STREAM_NOT_FOUND` indicates that a stream was
  * not found.
  */
-#define NGTCP2_ERR_STREAM_NOT_FOUND -222
+#define NGTCP2_ERR_STREAM_NOT_FOUND -220
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_STREAM_STATE` indicates that a requested
  * operation is not allowed at the current stream state.
  */
-#define NGTCP2_ERR_STREAM_STATE -226
+#define NGTCP2_ERR_STREAM_STATE -221
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_RECV_VERSION_NEGOTIATION` indicates that Version
  * Negotiation packet was received.
  */
-#define NGTCP2_ERR_RECV_VERSION_NEGOTIATION -229
+#define NGTCP2_ERR_RECV_VERSION_NEGOTIATION -222
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_CLOSING` indicates that connection is in closing
  * state.
  */
-#define NGTCP2_ERR_CLOSING -230
+#define NGTCP2_ERR_CLOSING -223
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_DRAINING` indicates that connection is in
  * draining state.
  */
-#define NGTCP2_ERR_DRAINING -231
+#define NGTCP2_ERR_DRAINING -224
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_TRANSPORT_PARAM` indicates a general transport
  * parameter error.
  */
-#define NGTCP2_ERR_TRANSPORT_PARAM -234
+#define NGTCP2_ERR_TRANSPORT_PARAM -225
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_DISCARD_PKT` indicates a packet was discarded.
  */
-#define NGTCP2_ERR_DISCARD_PKT -235
+#define NGTCP2_ERR_DISCARD_PKT -226
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_CONN_ID_BLOCKED` indicates that there is no
  * spare Connection ID available.
  */
-#define NGTCP2_ERR_CONN_ID_BLOCKED -237
+#define NGTCP2_ERR_CONN_ID_BLOCKED -227
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_INTERNAL` indicates an internal error.
  */
-#define NGTCP2_ERR_INTERNAL -238
+#define NGTCP2_ERR_INTERNAL -228
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_CRYPTO_BUFFER_EXCEEDED` indicates that a crypto
  * buffer exceeded.
  */
-#define NGTCP2_ERR_CRYPTO_BUFFER_EXCEEDED -239
+#define NGTCP2_ERR_CRYPTO_BUFFER_EXCEEDED -229
 /**
  * @macro
  *
@@ -741,21 +707,21 @@ typedef struct NGTCP2_ALIGN(8) ngtcp2_pkt_info {
  * :macro:`NGTCP2_WRITE_STREAM_FLAG_MORE` is used and a function call
  * succeeded.
  */
-#define NGTCP2_ERR_WRITE_MORE -240
+#define NGTCP2_ERR_WRITE_MORE -230
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_RETRY` indicates that server should send Retry
  * packet.
  */
-#define NGTCP2_ERR_RETRY -241
+#define NGTCP2_ERR_RETRY -231
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_DROP_CONN` indicates that an endpoint should
  * drop connection immediately.
  */
-#define NGTCP2_ERR_DROP_CONN -242
+#define NGTCP2_ERR_DROP_CONN -232
 /**
  * @macro
  *
@@ -763,7 +729,7 @@ typedef struct NGTCP2_ALIGN(8) ngtcp2_pkt_info {
  * limit is reached and key update is not available.  An endpoint
  * should drop connection immediately.
  */
-#define NGTCP2_ERR_AEAD_LIMIT_REACHED -243
+#define NGTCP2_ERR_AEAD_LIMIT_REACHED -233
 /**
  * @macro
  *
@@ -771,41 +737,41 @@ typedef struct NGTCP2_ALIGN(8) ngtcp2_pkt_info {
  * could not probe that a path is capable of sending UDP datagram
  * payload of size at least 1200 bytes.
  */
-#define NGTCP2_ERR_NO_VIABLE_PATH -244
+#define NGTCP2_ERR_NO_VIABLE_PATH -234
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_VERSION_NEGOTIATION` indicates that server
  * should send Version Negotiation packet.
  */
-#define NGTCP2_ERR_VERSION_NEGOTIATION -245
+#define NGTCP2_ERR_VERSION_NEGOTIATION -235
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_HANDSHAKE_TIMEOUT` indicates that QUIC
  * connection is not established before the specified deadline.
  */
-#define NGTCP2_ERR_HANDSHAKE_TIMEOUT -246
+#define NGTCP2_ERR_HANDSHAKE_TIMEOUT -236
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE` indicates the
  * version negotiation failed.
  */
-#define NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE -247
+#define NGTCP2_ERR_VERSION_NEGOTIATION_FAILURE -237
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_IDLE_CLOSE` indicates the connection should be
  * closed silently because of idle timeout.
  */
-#define NGTCP2_ERR_IDLE_CLOSE -248
+#define NGTCP2_ERR_IDLE_CLOSE -238
 /**
  * @macro
  *
  * :macro:`NGTCP2_ERR_FATAL` indicates that error codes less than this
  * value is fatal error.  When this error is returned, an endpoint
- * should drop connection immediately.
+ * should close connection immediately.
  */
 #define NGTCP2_ERR_FATAL -500
 /**
@@ -1273,15 +1239,6 @@ typedef struct ngtcp2_pkt_stateless_reset {
  */
 #define NGTCP2_TLSEXT_QUIC_TRANSPORT_PARAMETERS_V1 0x39u
 
-/**
- * @macro
- *
- * :macro:`NGTCP2_TLSEXT_QUIC_TRANSPORT_PARAMETERS_DRAFT` is TLS
- * extension type of quic_transport_parameters used during draft
- * development.
- */
-#define NGTCP2_TLSEXT_QUIC_TRANSPORT_PARAMETERS_DRAFT 0xffa5u
-
 #ifdef NGTCP2_USE_GENERIC_SOCKADDR
 typedef unsigned short int ngtcp2_sa_family;
 typedef uint16_t ngtcp2_in_port;
@@ -1428,10 +1385,8 @@ typedef struct ngtcp2_version_info {
   size_t available_versionslen;
 } ngtcp2_version_info;
 
-/* TODO Reset to NGTCP2_TRANSPORT_PARAMS_V1 on ngtcp2 v1 */
 #define NGTCP2_TRANSPORT_PARAMS_V1 1
-#define NGTCP2_TRANSPORT_PARAMS_V2 2
-#define NGTCP2_TRANSPORT_PARAMS_VERSION NGTCP2_TRANSPORT_PARAMS_V2
+#define NGTCP2_TRANSPORT_PARAMS_VERSION NGTCP2_TRANSPORT_PARAMS_V1
 
 /**
  * @struct
@@ -1513,7 +1468,8 @@ typedef struct ngtcp2_transport_params {
   uint64_t initial_max_streams_uni;
   /**
    * :member:`max_idle_timeout` is a duration during which sender
-   * allows quiescent.
+   * allows quiescent.  0 means no idle timeout.  It must not be
+   * UINT64_MAX.
    */
   ngtcp2_duration max_idle_timeout;
   /**
@@ -1533,7 +1489,10 @@ typedef struct ngtcp2_transport_params {
   uint64_t ack_delay_exponent;
   /**
    * :member:`max_ack_delay` is the maximum acknowledgement delay by
-   * which the local endpoint will delay sending acknowledgements.
+   * which the local endpoint will delay sending acknowledgements.  It
+   * must be strictly less than (1 << 14) milliseconds.
+   * Sub-millisecond part is dropped when sending it in a QUIC
+   * transport parameter.
    */
   ngtcp2_duration max_ack_delay;
   /**
@@ -1595,14 +1554,6 @@ typedef struct ngtcp2_transport_params {
    * this field.
    */
   uint8_t version_info_present;
-
-  /* The following fields are available since
-     NGTCP2_TRANSPORT_PARAMS_V2 */
-  /* TODO The following 2 fields are added to test
-     ngtcp2_transport_params version conversion.  These fields are
-     removed on ngtcp2 v1. */
-  uint64_t placeholder_field1;
-  uint64_t placeholder_field2;
 } ngtcp2_transport_params;
 
 #define NGTCP2_CONN_INFO_V1 1
@@ -1906,6 +1857,11 @@ typedef struct ngtcp2_settings {
    * Discovery.
    */
   uint8_t no_pmtud;
+  /**
+   * :member:`pkt_num` is the initial packet number for each packet
+   * number space.  It must be in range [0, INT32_MAX], inclusive.
+   */
+  uint32_t initial_pkt_num;
 } ngtcp2_settings;
 
 /**
@@ -4025,8 +3981,10 @@ NGTCP2_EXTERN uint8_t ngtcp2_conn_get_tls_alert(ngtcp2_conn *conn);
  *
  * `ngtcp2_conn_set_keep_alive_timeout` sets keep-alive timeout.  If
  * nonzero value is given, after a connection is idle at least in a
- * given amount of time, a keep-alive packet is sent.  If 0 is set,
- * keep-alive functionality is disabled, and this is the default.
+ * given amount of time, a keep-alive packet is sent.  If UINT64_MAX
+ * is set, keep-alive functionality is disabled, and this is the
+ * default.  Specifying 0 in |timeout| is reserved for a future
+ * extension, and for now it is treated as if UINT64_MAX is given.
  */
 NGTCP2_EXTERN void ngtcp2_conn_set_keep_alive_timeout(ngtcp2_conn *conn,
                                                       ngtcp2_duration timeout);
@@ -4757,30 +4715,16 @@ ngtcp2_conn_get_client_initial_dcid(ngtcp2_conn *conn);
 /**
  * @function
  *
- * `ngtcp2_conn_get_num_scid` returns the number of Source Connection
- * IDs which a local endpoint has provided to a remote endpoint, and
- * are not retired.
- */
-NGTCP2_EXTERN size_t ngtcp2_conn_get_num_scid(ngtcp2_conn *conn);
-
-/**
- * @function
- *
  * `ngtcp2_conn_get_scid` writes the all Source Connection IDs which a
  * local endpoint has provided to a remote endpoint, and are not
- * retired in |dest|.  The buffer pointed by |dest| must have
- * sizeof(:type:`ngtcp2_cid`) * n bytes available, where n is the
- * return value of `ngtcp2_conn_get_num_scid`.
+ * retired in |dest|.  If |dest| is NULL, this function does not write
+ * anything, and returns the number of Source Connection IDs that
+ * would otherwise be written to the provided buffer.  The buffer
+ * pointed by |dest| must have sizeof(:type:`ngtcp2_cid`) * n bytes
+ * available, where n is the return value of `ngtcp2_conn_get_scid`
+ * with |dest| == NULL.
  */
 NGTCP2_EXTERN size_t ngtcp2_conn_get_scid(ngtcp2_conn *conn, ngtcp2_cid *dest);
-
-/**
- * @function
- *
- * `ngtcp2_conn_get_num_active_dcid` returns the number of the active
- * Destination Connection ID.
- */
-NGTCP2_EXTERN size_t ngtcp2_conn_get_num_active_dcid(ngtcp2_conn *conn);
 
 /**
  * @struct
@@ -4818,10 +4762,14 @@ typedef struct ngtcp2_cid_token {
  * @function
  *
  * `ngtcp2_conn_get_active_dcid` writes the all active Destination
- * Connection IDs and their tokens to |dest|.  The buffer pointed by
- * |dest| must have sizeof(:type:`ngtcp2_cid_token`) * n bytes
- * available, where n is the return value of
- * `ngtcp2_conn_get_num_active_dcid`.
+ * Connection IDs and their tokens to |dest|.  Before handshake
+ * completes, this function returns 0.  If |dest| is NULL, this
+ * function does not write anything, and returns the number of
+ * Destination Connection IDs that would otherwise be written to the
+ * provided buffer.  The buffer pointed by |dest| must have
+ * sizeof(:type:`ngtcp2_cid_token`) * n bytes available, where n is
+ * the return value of `ngtcp2_conn_get_active_dcid` with |dest| ==
+ * NULL.
  */
 NGTCP2_EXTERN size_t ngtcp2_conn_get_active_dcid(ngtcp2_conn *conn,
                                                  ngtcp2_cid_token *dest);
