@@ -98,11 +98,6 @@ static int ds_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 		return KNOT_STATE_FAIL;
 	}
 
-	r = query_put_edns(pkt, &data->edns);
-	if (r != KNOT_EOK) {
-		return KNOT_STATE_FAIL;
-	}
-
 	knot_wire_set_rd(pkt->wire);
 
 	return KNOT_STATE_CONSUME;
@@ -185,8 +180,7 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 		.remote = (struct sockaddr *)&parent->addr,
 		.key = key,
 		.not_key = not_key,
-		.edns = query_edns_data_init(conf, parent->addr.ss_family,
-		                             QUERY_EDNS_OPT_DO),
+		.edns = query_edns_data_init(conf, parent, QUERY_EDNS_OPT_DO),
 		.ds_ok = false,
 		.result_logged = false,
 		.ttl = 0,
@@ -201,7 +195,7 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 		return KNOT_ENOMEM;
 	}
 
-	knot_request_t *req = knot_request_make(NULL, parent, pkt, server->quic_creds, 0);
+	knot_request_t *req = knot_request_make(NULL, parent, pkt, server->quic_creds, &data.edns, 0);
 	if (req == NULL) {
 		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);

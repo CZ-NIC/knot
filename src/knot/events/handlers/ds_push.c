@@ -59,11 +59,6 @@ static int parent_soa_produce(struct ds_push_data *data, knot_pkt_t *pkt)
 		return KNOT_STATE_FAIL;
 	}
 
-	ret = query_put_edns(pkt, &data->edns);
-	if (ret != KNOT_EOK) {
-		return KNOT_STATE_FAIL;
-	}
-
 	return KNOT_STATE_CONSUME;
 }
 
@@ -100,8 +95,6 @@ static int ds_push_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 			return KNOT_STATE_FAIL;
 		}
 	}
-
-	query_put_edns(pkt, &data->edns);
 
 	return KNOT_STATE_CONSUME;
 }
@@ -180,7 +173,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		.parent_query = zone->name,
 		.new_ds = zone_cds,
 		.remote = (struct sockaddr *)&parent->addr,
-		.edns = query_edns_data_init(conf, parent->addr.ss_family, 0)
+		.edns = query_edns_data_init(conf, parent, 0)
 	};
 
 	knot_rrset_init(&data.del_old_ds, zone->name, KNOT_RRTYPE_DS, KNOT_CLASS_ANY, 0);
@@ -200,7 +193,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	}
 
 	knot_request_t *req = knot_request_make(NULL, parent, pkt,
-	                                        zone->server->quic_creds, 0);
+	                                        zone->server->quic_creds, &data.edns, 0);
 	if (req == NULL) {
 		knot_rdataset_clear(&data.del_old_ds.rrs, NULL);
 		knot_request_free(req, NULL);

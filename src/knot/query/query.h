@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
  */
 typedef struct {
 	uint16_t max_payload;
+	bool no_edns;
 	bool do_flag;
 	bool expire_option;
 } query_edns_data_t;
@@ -46,21 +47,23 @@ void query_init_pkt(knot_pkt_t *pkt);
 /*!
  * \brief Initialize EDNS parameters from server configuration.
  *
- * \param[in]  conf           Server configuration.
- * \param[in]  remote_family  Address family for remote host.
- * \param[in]  opts           EDNS options.
+ * \param[in]  conf     Server configuration.
+ * \param[in]  remote   Remote parameters.
+ * \param[in]  opts     EDNS options.
  *
  * \return EDNS parameters.
  */
-query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family,
+query_edns_data_t query_edns_data_init(conf_t *conf, const conf_remote_t *remote,
                                        query_edns_opt_t opts);
 
 /*!
  * \brief Append EDNS into the packet.
  *
- * \param pkt   Packet to add EDNS into.
- * \param edns  EDNS data.
+ * \param pkt       Packet to add EDNS into.
+ * \param edns      EDNS data.
+ * \param padding   Add EDNS padding option beforehand.
  *
  * \return KNOT_E*
  */
-int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns);
+int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns,
+                   bool padding);

@@ -193,6 +193,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct sockaddr_storage *source,
                                           knot_pkt_t *query,
                                           const struct knot_quic_creds *creds,
+                                          const query_edns_data_t *edns,
                                           const knot_tsig_key_t *tsig_key,
                                           const uint8_t *pin,
                                           size_t pin_len,
@@ -228,6 +229,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 	}
 	tsig_init(&request->tsig, tsig_key);
 
+	request->edns = edns;
 	request->creds = creds;
 	if (flags & KNOT_REQUEST_QUIC && pin_len > 0) {
 		request->pin_len = pin_len;
@@ -241,6 +243,7 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
                                   const conf_remote_t *remote,
                                   knot_pkt_t *query,
                                   const struct knot_quic_creds *creds,
+                                  const query_edns_data_t *edns,
                                   knot_request_flag_t flags)
 {
 	if (remote->quic) {
@@ -248,7 +251,7 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
 	}
 
 	return knot_request_make_generic(mm, &remote->addr, &remote->via,
-	                                 query, creds, &remote->key, remote->pin,
+	                                 query, creds, edns, &remote->key, remote->pin,
 	                                 remote->pin_len, flags);
 }
 
@@ -336,12 +339,28 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 {
 	knot_layer_produce(&req->layer, last->query);
 
-	int ret = tsig_sign_packet(&last->tsig, last->query);
+	/* NOTE: it would make more sense to reserve space for TSIG _before_ producing query packet,
+	         but layer_produce usually resets the packet including reserved space. */
+	int ret = knot_pkt_reserve(last->query, knot_tsig_wire_size(last->tsig.key));
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	// TODO: verify condition
+	if (last->edns != NULL && !last->edns->no_edns) {
+		ret = query_put_edns(last->query, last->edns,
+		                     (last->flags & KNOT_REQUEST_QUIC));
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	/* NOTE: it's not necessary to reclaim pkt->reserved space for TSIG, as the following function
+	         does not use knot_pkt_put to insert it, it just writes at the end of wire. */
+	ret = tsig_sign_packet(&last->tsig, last->query);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	if (req->layer.state == KNOT_STATE_CONSUME) {
 		bool reused_fd = false;
 		ret = request_send(last, timeout_ms, &reused_fd);

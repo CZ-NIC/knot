@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,15 +29,16 @@ void query_init_pkt(knot_pkt_t *pkt)
 	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
 }
 
-query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family,
+query_edns_data_t query_edns_data_init(conf_t *conf, const conf_remote_t *remote,
                                        query_edns_opt_t opts)
 {
 	assert(conf);
 
 	query_edns_data_t edns = {
-		.max_payload = remote_family == AF_INET ?
+		.max_payload = remote->addr.ss_family == AF_INET ?
 		               conf->cache.srv_udp_max_payload_ipv4 :
 		               conf->cache.srv_udp_max_payload_ipv6,
+		.no_edns = remote->no_edns,
 		.do_flag = (opts & QUERY_EDNS_OPT_DO),
 		.expire_option = (opts & QUERY_EDNS_OPT_EXPIRE)
 	};
@@ -45,7 +46,7 @@ query_edns_data_t query_edns_data_init(conf_t *conf, int remote_family,
 	return edns;
 }
 
-int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns)
+int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns, bool padding)
 {
 	if (!pkt || !edns) {
 		return KNOT_EINVAL;
@@ -68,6 +69,18 @@ int query_put_edns(knot_pkt_t *pkt, const query_edns_data_t *edns)
 		if (ret != KNOT_EOK) {
 			knot_rrset_clear(&opt_rr, &pkt->mm);
 			return ret;
+		}
+	}
+
+	if (padding) {
+		int padsize = knot_pkt_default_padding_size(pkt, &opt_rr);
+		if (padsize > -1) {
+			// it's OK to just "reserve" instead of "add" since the padding payload is zeroes
+			ret = knot_edns_reserve_option(&opt_rr, KNOT_EDNS_OPTION_PADDING,
+			                               padsize, NULL, &pkt->mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 	}
 
