@@ -554,18 +554,6 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (conf()->cache.srv_dbus_event != DBUS_EVENT_NONE) {
-		ret = systemd_dbus_open();
-		if (ret != KNOT_EOK) {
-			log_error("d-bus: failed to open system bus (%s)",
-			          knot_strerror(ret));
-		} else {
-			log_info("d-bus: connected to system bus");
-		}
-		int64_t delay = conf_get_int(conf(), C_SRV, C_DBUS_INIT_DELAY);
-		sleep(delay);
-	}
-
 	/* Alter privileges. */
 	int uid, gid;
 	if (conf_user(conf(), &uid, &gid) != KNOT_EOK ||
@@ -579,6 +567,18 @@ int main(int argc, char **argv)
 		log_close();
 		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
+	}
+
+	if (conf()->cache.srv_dbus_event != DBUS_EVENT_NONE) {
+		ret = systemd_dbus_open();
+		if (ret != KNOT_EOK) {
+			log_error("d-bus: failed to open system bus (%s)",
+			          knot_strerror(ret));
+		} else {
+			log_info("d-bus: connected to system bus");
+		}
+		int64_t delay = conf_get_int(conf(), C_SRV, C_DBUS_INIT_DELAY);
+		sleep(delay);
 	}
 
 	/* Drop POSIX capabilities. */
