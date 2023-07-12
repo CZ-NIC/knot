@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -116,8 +116,13 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
                              const zone_timers_t *timers)
 {
+	const char *format = (timers->last_master.sin6_family == AF_INET ||
+	                      timers->last_master.sin6_family == AF_INET6) ?
+	                     "BLBLBLBLBLBLBLBLBDBL" :
+	                     "BLBLBLBLBLBLBLBL";
+
 	MDB_val k = { knot_dname_size(zone), (void *)zone };
-	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBLBDBL",
+	MDB_val v = knot_lmdb_make_key(format,
 		TIMER_LAST_FLUSH,    (uint64_t)timers->last_flush,
 		TIMER_NEXT_REFRESH,  (uint64_t)timers->next_refresh,
 		TIMER_LAST_REFR_OK,  (uint64_t)timers->last_refresh_ok,
