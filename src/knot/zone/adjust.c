@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -175,7 +175,7 @@ int adjust_cb_nsec3_pointer(zone_node_t *node, adjust_ctx_t *ctx)
 		}
 		node->nsec3_hash = NULL;
 		node->flags &= ~NODE_FLAGS_NSEC3_NODE;
-		(void)node_nsec3_node(node, ctx->zone);
+		node_update_nsec3_node(node, ctx->zone);
 	} else {
 		ret = binode_fix_nsec3_pointer(node, ctx->zone);
 	}

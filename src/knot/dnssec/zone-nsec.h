@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -87,16 +87,12 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
 knot_dname_t *node_nsec3_hash(zone_node_t *node, const zone_contents_t *zone);
 
 /*!
- * \brief Return (and compute if needed) the corresponding NSEC3 node.
+ * \brief Compute the corresponding NSEC3 node if needed.
  *
  * \param node   Normal node.
  * \param zone   Optional: zone contents with NSEC3 params and NSEC3 tree.
- *
- * \return NSEC3 node.
- *
- * \note The result is also stored in (node), unless zone == NULL;
  */
-zone_node_t *node_nsec3_node(zone_node_t *node, const zone_contents_t *zone);
+void node_update_nsec3_node(zone_node_t *node, const zone_contents_t *zone);
 
 /*!
  * \brief Update node's NSEC3 pointer (or hash), taking it from bi-node counterpart if possible.
