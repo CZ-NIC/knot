@@ -15,7 +15,6 @@ Build-Depends:
  dh-python,
  libcap-ng-dev,
  libedit-dev,
- libelf-dev,
  libfstrm-dev,
  libgnutls28-dev,
  libidn2-dev,
