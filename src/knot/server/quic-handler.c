@@ -79,6 +79,8 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 		.free_reply = uq_free_reply
 	};
 
+	rpl.out_payload->iov_len = 0; // prevent send attempt if uq_alloc_reply is not called at all
+
 	knot_quic_conn_t *conn = NULL;
 	(void)knot_quic_handle(table, &rpl, idle_close, &conn);
 
