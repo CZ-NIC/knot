@@ -2465,6 +2465,14 @@ assigned member zones.
 \fBmember\fP – A member zone that is assigned to one generated catalog zone.
 .UNINDENT
 .sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+If set to \fBgenerate\fP, the \fI\%zonefile\-load\fP option has no effect
+since a zone file is never loaded.
+.UNINDENT
+.UNINDENT
+.sp
 \fIDefault:\fP \fBnone\fP
 .SS catalog\-template
 .sp
