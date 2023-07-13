@@ -2793,6 +2793,10 @@ Trigger zone catalog feature. Possible values:
   assigned member zones.
 - ``member`` – A member zone that is assigned to one generated catalog zone.
 
+.. NOTE::
+   If set to ``generate``, the :ref:`zone_zonefile-load` option has no effect
+   since a zone file is never loaded.
+
 *Default:* ``none``
 
 .. _zone_catalog-template:
