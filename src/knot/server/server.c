@@ -61,6 +61,8 @@
 #include <linux/filter.h>
 #endif
 
+#define SESSION_TICKET_POOL_TIMEOUT (24 * 3600)
+
 /*! \brief Minimal send/receive buffer sizes. */
 enum {
 	UDP_MIN_RCVSIZE = 4096,
@@ -856,6 +858,8 @@ void server_deinit(server_t *server)
 	/* Close and deinit connection pool. */
 	conn_pool_deinit(global_conn_pool);
 	global_conn_pool = NULL;
+	conn_pool_deinit(global_sessticket_pool);
+	global_sessticket_pool = NULL;
 	knot_unreachables_deinit(&global_unreachables);
 
 #if defined ENABLE_QUIC
@@ -1339,14 +1343,25 @@ static int reconfigure_timer_db(conf_t *conf, server_t *server)
 	return ret;
 }
 
-static int reconfigure_remote_pool(conf_t *conf)
+#ifdef ENABLE_QUIC
+static void free_sess_ticket(intptr_t ptr)
+{
+	if (ptr != CONN_POOL_FD_INVALID) {
+		knot_quic_session_load(NULL, (void *)ptr);
+	}
+}
+#endif // ENABLE_QUIC
+
+static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 {
 	conf_val_t val = conf_get(conf, C_SRV, C_RMT_POOL_LIMIT);
 	size_t limit = conf_int(&val);
 	val = conf_get(conf, C_SRV, C_RMT_POOL_TIMEOUT);
 	knot_timediff_t timeout = conf_int(&val);
 	if (global_conn_pool == NULL && limit > 0) {
-		conn_pool_t *new_pool = conn_pool_init(limit, timeout);
+		conn_pool_t *new_pool = conn_pool_init(limit, timeout,
+		                                       conn_pool_close_cb_dflt,
+		                                       conn_pool_invalid_cb_dflt);
 		if (new_pool == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -1354,6 +1369,31 @@ static int reconfigure_remote_pool(conf_t *conf)
 	} else {
 		(void)conn_pool_timeout(global_conn_pool, timeout);
 	}
+
+#ifdef ENABLE_QUIC
+	if (global_sessticket_pool == NULL && server->quic_active) {
+		size_t quic_rmt_count = 0;
+		for (conf_iter_t iter = conf_iter(conf, C_RMT);
+		     iter.code == KNOT_EOK; conf_iter_next(conf, &iter)) {
+			conf_val_t id = conf_iter_id(conf, &iter);
+			conf_val_t rmt_quic = conf_id_get(conf, C_RMT, C_QUIC, &id);
+			if (conf_bool(&rmt_quic)) {
+				quic_rmt_count++;
+			}
+		}
+
+		if (quic_rmt_count > 0) {
+			size_t max_tickets = conf_bg_threads(conf) * quic_rmt_count * 2; // Two addresses per remote.
+			conn_pool_t *new_pool =
+				conn_pool_init(max_tickets, SESSION_TICKET_POOL_TIMEOUT,
+				               free_sess_ticket, conn_pool_invalid_cb_allvalid);
+			if (new_pool == NULL) {
+				return KNOT_ENOMEM;
+			}
+			global_sessticket_pool = new_pool;
+		}
+	}
+#endif // ENABLE_QUIC
 
 	val = conf_get(conf, C_SRV, C_RMT_RETRY_DELAY);
 	int delay_ms = conf_int(&val);
@@ -1423,7 +1463,7 @@ int server_reconfigure(conf_t *conf, server_t *server)
 	}
 
 	/* Reconfigure connection pool. */
-	if ((ret = reconfigure_remote_pool(conf)) != KNOT_EOK) {
+	if ((ret = reconfigure_remote_pool(conf, server)) != KNOT_EOK) {
 		log_error("failed to reconfigure remote pool (%s)",
 		          knot_strerror(ret));
 	}

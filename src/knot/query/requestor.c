@@ -54,9 +54,9 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 	int sock_type = use_tcp(request) ? SOCK_STREAM : SOCK_DGRAM;
 
 	if (sock_type == SOCK_STREAM) {
-		request->fd = conn_pool_get(global_conn_pool,
-		                            &request->source,
-		                            &request->remote);
+		request->fd = (int)conn_pool_get(global_conn_pool,
+		                                 &request->source,
+		                                 &request->remote);
 		if (request->fd >= 0) {
 			if (reused_fd != NULL) {
 				*reused_fd = true;
@@ -93,7 +93,7 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 		                            request->fd, &request->remote,
 		                            &request->source, request->creds,
 		                            request->pin, request->pin_len,
-		                            timeout_ms);
+		                            reused_fd, timeout_ms);
 		if (ret != KNOT_EOK) {
 			close(request->fd);
 			request->fd = -1;
@@ -271,10 +271,10 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 
 	if (request->fd >= 0 && use_tcp(request) &&
 	    (request->flags & KNOT_REQUEST_KEEP)) {
-		request->fd = conn_pool_put(global_conn_pool,
-		                            &request->source,
-		                            &request->remote,
-		                            request->fd);
+		request->fd = (int)conn_pool_put(global_conn_pool,
+		                                 &request->source,
+		                                 &request->remote,
+		                                 (conn_pool_fd_t)request->fd);
 	}
 	if (request->fd >= 0) {
 		close(request->fd);
