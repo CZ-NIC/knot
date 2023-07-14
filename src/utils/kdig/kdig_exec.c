@@ -742,7 +742,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 	// Print reply packet.
 	if (style->format != FORMAT_JSON) {
-		print_packet(reply, net, in_len, time_diff_ms(&t_query, &t_end),
+		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end), //intentionaly start-end because of QUIC can have receive time 0
 		             timestamp, true, style);
 	} else {
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
@@ -805,7 +805,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 fail:
 	if (style->format != FORMAT_JSON) {
-		print_packet(reply, net, in_len, time_diff_ms(&t_query, &t_end),
+		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end), //intentionaly start-end because of QUIC can have receive time 0
 		             timestamp, true, style);
 	} else {
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
