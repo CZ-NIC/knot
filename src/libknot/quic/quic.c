@@ -1130,6 +1130,10 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
 		return KNOT_EOK;
 	}
 
+	if (!conn->handshake_done) {
+		max_msgs = 1;
+	}
+
 	unsigned sent_msgs = 0, stream_msgs = 0;
 	int ret = 1;
 	for (int64_t si = 0; si < conn->streams_count && sent_msgs < max_msgs; /* NO INCREMENT */) {
