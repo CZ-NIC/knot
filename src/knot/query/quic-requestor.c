@@ -273,7 +273,7 @@ void knot_qreq_close(struct knot_quic_reply *r, bool send_close)
 	knot_quic_conn_t *conn = r->in_ctx;
 	knot_quic_table_t *table = conn->quic_table;
 
-	if (send_close) {
+	if (send_close && conn->conn != NULL) {
 		r->handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
 		(void)knot_quic_send(table, conn, r, QUIC_MAX_SEND_PER_RECV, false);
 	}
