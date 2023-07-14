@@ -625,16 +625,35 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 	}
 }
 
-static void log_try_addr_error(const zone_t *zone, const char *remote_name,
-                               const struct sockaddr_storage *remote_addr,
-                               const char *err_str, int ret)
+static int try_remote(conf_t *conf, zone_t *zone, zone_master_cb callback,
+                      void *callback_data, const char *err_str, const char *remote_id,
+                      conf_val_t *remote, zone_master_fallback_t *fallback,
+                      const char *remote_prefix)
 {
-	char addr_str[SOCKADDR_STRLEN] = { 0 };
-	sockaddr_tostr(addr_str, sizeof(addr_str), remote_addr);
-	log_zone_info(zone->name, "%s%s%s, address %s, failed (%s)", err_str,
-	              (remote_name != NULL ? ", remote " : ""),
-	              (remote_name != NULL ? remote_name : ""),
-	              addr_str, knot_strerror(ret));
+	int ret = KNOT_ERROR;
+
+	conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, remote);
+	size_t addr_count = conf_val_count(&addr);
+	assert(addr_count > 0);
+	assert(fallback->address);
+
+	for (size_t i = 0; i < addr_count && fallback->address; i++) {
+		conf_remote_t master = conf_remote(conf, remote, i);
+		ret = callback(conf, zone, &master, callback_data, fallback);
+		if (ret == KNOT_EOK) {
+			return ret;
+		}
+
+		char addr_str[SOCKADDR_STRLEN] = { 0 };
+		sockaddr_tostr(addr_str, sizeof(addr_str), &master.addr);
+		log_zone_info(zone->name, "%s, %sremote %s, address %s, failed (%s)",
+		              err_str, remote_prefix, remote_id, addr_str, knot_strerror(ret));
+	}
+
+	log_zone_warning(zone->name, "%s, %sremote %s not usable",
+	                 err_str, remote_prefix, remote_id);
+
+	return ret;
 }
 
 int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
@@ -644,13 +663,13 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		return KNOT_EINVAL;
 	}
 
-	conf_val_t pin_tolerance = conf_zone_get(conf, C_MASTER_PIN_TOL, zone->name);
-	zone_master_fallback_t fallback = { true, true, true, conf_int(&pin_tolerance) };
+	conf_val_t val = conf_zone_get(conf, C_MASTER_PIN_TOL, zone->name);
+	uint32_t pin_tolerance = conf_int(&val);
 
 	/* Find last and preferred master in conf. */
 
-	conf_val_t last = { 0 };
-	conf_remote_t preferred = { { AF_UNSPEC } };
+	const char *last_id = NULL, *preferred_id = NULL;
+	conf_val_t last = { 0 }, preferred = { 0 };
 	int idx = 0, last_idx = -1, preferred_idx = -1;
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
@@ -664,13 +683,14 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t remote = conf_remote(conf, iter.id, i);
 			if (zone->preferred_master != NULL &&
-			    zone->preferred_master->ss_family != AF_UNSPEC &&
 			    sockaddr_net_match(&remote.addr, zone->preferred_master, -1)) {
-				preferred = remote;
+				preferred_id = conf_str(iter.id);
+				preferred = *iter.id;
 				preferred_idx = idx;
 			}
-			if (fallback.pin_tol > 0 &&
+			if (pin_tolerance > 0 &&
 			    sockaddr_net_match(&remote.addr, (struct sockaddr_storage *)&zone->timers.last_master, -1)) {
+				last_id = conf_str(iter.id);
 				last = *iter.id;
 				last_idx = idx;
 			}
@@ -681,86 +701,49 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 	}
 	pthread_mutex_unlock(&zone->preferred_lock);
 
-	/* Try the last server. */
-
 	int ret = KNOT_EOK;
-
-	size_t addr_count = last_idx >= 0 ? conf_val_count(&last) : 0;
-	for (size_t i = 0; i < addr_count && fallback.address; i++) {
-		conf_remote_t master = conf_remote(conf, &last, i);
-		ret = callback(conf, zone, &master, callback_data, &fallback);
-		if (!fallback.remote) {
-			return ret; // Success or local error.
-		} else if (ret == KNOT_EOK) {
-			break;
-		}
-
-		log_try_addr_error(zone, conf_str(iter.id), &master.addr,
-		                   err_str, ret);
-	}
-
-	if (ret != KNOT_EOK) {
-		log_zone_warning(zone->name, "%s, remote %s not usable",
-		                 err_str, conf_str(iter.id));
-	}
-
-	fallback.trying_last = false;
 
 	/* Try the preferred server. */
 
-	if (preferred_idx >= 0 && preferred_idx != last_idx) {
-		ret = callback(conf, zone, &preferred, callback_data, &fallback);
-		if (ret == KNOT_EOK) {
-			return ret; // FIXME simplify code
-		} else if (!fallback.remote) {
+	if (preferred_idx >= 0) {
+		zone_master_fallback_t fallback = {
+			true, true, preferred_idx == last_idx, pin_tolerance
+		};
+		ret = try_remote(conf, zone, callback, callback_data, err_str,
+		                 preferred_id, &preferred, &fallback, "notifying ");
+		if (ret == KNOT_EOK || !fallback.remote) {
+			return ret; // Success or local error.
+		}
+	}
+
+	/* Try the last server. */
+
+	if (last_idx >= 0 && last_idx != preferred_idx) {
+		zone_master_fallback_t fallback = {
+			true, true, true, pin_tolerance
+		};
+		ret = try_remote(conf, zone, callback, callback_data, err_str,
+		                 last_id, &last, &fallback, "pinned ");
+		if (!fallback.remote) {
 			return ret; // Local error.
 		}
-
-		log_try_addr_error(zone, NULL, &preferred.addr, err_str, ret);
-
-		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), &preferred.addr);
-		log_zone_warning(zone->name, "%s, address %s not usable",
-		                 err_str, addr_str);
 	}
 
 	/* Try all the other servers. */
 
-	idx = 0;
-
 	conf_val_reset(&masters);
 	conf_mix_iter_init(conf, &masters, &iter);
-	while (iter.id->code == KNOT_EOK && fallback.remote) {
-		conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
-		addr_count = conf_val_count(&addr);
-
-		ret = KNOT_EOK;
-		fallback.address = true;
-		for (size_t i = 0; i < addr_count && fallback.address && idx != last_idx; i++) {
-			conf_remote_t master = conf_remote(conf, iter.id, i);
-			if (preferred.addr.ss_family != AF_UNSPEC &&
-			    sockaddr_net_match(&master.addr, &preferred.addr, -1)) {
-				preferred.addr.ss_family = AF_UNSPEC;
-				continue;
+	zone_master_fallback_t fallback = { true, true, false, pin_tolerance };
+	for (idx = 0; iter.id->code == KNOT_EOK && fallback.remote; idx++) {
+		if (idx != last_idx && idx != preferred_idx) {
+			fallback.address = true;
+			conf_val_t remote = *iter.id;
+			ret = try_remote(conf, zone, callback, callback_data, err_str,
+			                 conf_str(&remote), &remote, &fallback, "");
+			if (!fallback.remote) {
+				break; // Local error.
 			}
-
-			ret = callback(conf, zone, &master, callback_data, &fallback);
-			if (ret == KNOT_EOK) {
-				break;
-			} else if (!fallback.remote) {
-				return ret; // Local error.
-			}
-
-			log_try_addr_error(zone, conf_str(iter.id), &master.addr,
-			                   err_str, ret);
 		}
-
-		if (ret != KNOT_EOK) {
-			log_zone_warning(zone->name, "%s, remote %s not usable",
-			                 err_str, conf_str(iter.id));
-		}
-
-		idx++;
 		conf_mix_iter_next(&iter);
 	}
 

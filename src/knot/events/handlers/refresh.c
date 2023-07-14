@@ -1033,14 +1033,24 @@ static int soa_query_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 static bool wait4pinned_master(struct refresh_data *data)
 {
-	if (data->fallback->pin_tol <= 0 || data->fallback->trying_last) {
+	// Master pinning not enabled.
+	if (data->fallback->pin_tol == 0) {
+		return false;
+	// Don't restrict refresh from the pinned master.
+	} else if (data->fallback->trying_last) {
+		return false;
+	// Pinned master expected but not yet set, force AXFR (e.g. dropped timers).
+	} else if (data->zone->timers.last_master.sin6_family == AF_UNSPEC) {
+		data->xfr_type = XFR_TYPE_AXFR;
 		return false;
 	}
 
 	time_t now = time(NULL);
+	// Starting countdown for master transition.
 	if (data->zone->timers.master_pin_hit == 0) {
 		data->zone->timers.master_pin_hit = now;
 		zone_events_schedule_at(data->zone, ZONE_EVENT_REFRESH, now + data->fallback->pin_tol);
+	// Switch to a new master.
 	} else if (data->zone->timers.master_pin_hit + data->fallback->pin_tol <= now) {
 		data->xfr_type = XFR_TYPE_AXFR;
 		return false;
