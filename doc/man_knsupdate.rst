@@ -134,11 +134,12 @@ Notes
 
 Options **-k** and **-y** can not be used simultaneously.
 
-Dnssec-keygen keyfile format is not supported. Use :manpage:`keymgr(8)` instead.
+Neither `tsig-keygen(8)` nor `dnssec-keygen(1)` keyfile formats are supported.
+Use :manpage:`keymgr(8)` to construct a string for **-y** or the file passed to **-k**.
 
 Zone name/server guessing is not supported if the zone name/server is not specified.
 
-Empty line doesn't send the update.
+An empty line doesn't send the update.
 
 Interactive mode
 ................

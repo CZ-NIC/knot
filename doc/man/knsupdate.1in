@@ -156,11 +156,12 @@ End the program.
 .sp
 Options \fB\-k\fP and \fB\-y\fP can not be used simultaneously.
 .sp
-Dnssec\-keygen keyfile format is not supported. Use \fBkeymgr(8)\fP instead.
+Neither \fItsig\-keygen(8)\fP nor \fIdnssec\-keygen(1)\fP keyfile formats are supported.
+Use \fBkeymgr(8)\fP to construct a string for \fB\-y\fP or the file passed to \fB\-k\fP\&.
 .sp
 Zone name/server guessing is not supported if the zone name/server is not specified.
 .sp
-Empty line doesn\(aqt send the update.
+An empty line doesn\(aqt send the update.
 .SS Interactive mode
 .sp
 The utility provides interactive mode with basic line editing functionality,
