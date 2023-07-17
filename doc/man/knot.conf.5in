@@ -671,6 +671,14 @@ working TCP.
 .UNINDENT
 .UNINDENT
 .sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Incoming DDNS over XDP isn\(aqt supported.
+The server always responds with SERVFAIL.
+.UNINDENT
+.UNINDENT
+.sp
 \fIDefault:\fP not set
 .SS udp
 .sp

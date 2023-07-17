@@ -717,6 +717,10 @@ Change of this parameter requires restart of the Knot server to take effect.
    intended to offer the DNS service, at least to fulfil the DNS requirement for
    working TCP.
 
+.. NOTE::
+   Incoming :ref:`DDNS<dynamic updates>` over XDP isn't supported.
+   The server always responds with SERVFAIL.
+
 *Default:* not set
 
 .. _xdp_udp:
