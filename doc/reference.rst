@@ -665,6 +665,10 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
+.. NOTE::
+   Incoming :ref:`DDNS<dynamic updates>` over QUIC isn't supported.
+   The server always responds with SERVFAIL.
+
 .. _xdp section:
 
 ``xdp`` section

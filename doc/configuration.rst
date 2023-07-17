@@ -261,6 +261,8 @@ all notified sequentially in the specified order.
 A secondary zone may serve as a primary zone for a different set of remotes
 at the same time.
 
+.. _dynamic updates:
+
 Dynamic updates
 ===============
 
