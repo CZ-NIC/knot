@@ -6,6 +6,7 @@
 
 import datetime
 import lmdb
+import socket
 import struct
 import sys
 
@@ -36,33 +37,41 @@ class TimerDBInfo:
             return "%d" % (value & 0xffffffff)
 
     @classmethod
+    def format_last_master(cls, value):
+        offset = 4 if value[0] == socket.AF_INET else 16
+        return socket.inet_ntop(value[0], value[-offset:])
+
+    @classmethod
     def format_value(cls, id, value):
         timers = {
                 # knot >= 1.6
-                0x01: ("legacy_refresh", cls.format_timestamp),
-                0x02: ("legacy_expire",  cls.format_timestamp),
-                0x03: ("legacy_flush",   cls.format_timestamp),
+                0x01: ("legacy_refresh",   8, cls.format_timestamp),
+                0x02: ("legacy_expire",    8, cls.format_timestamp),
+                0x03: ("legacy_flush",     8, cls.format_timestamp),
                 # knot >= 2.4
-                0x80: ("soa_expire",     cls.format_seconds),
-                0x81: ("last_flush",     cls.format_timestamp),
-                0x82: ("last_refresh",   cls.format_timestamp),
-                0x83: ("next_refresh",   cls.format_timestamp),
+                0x80: ("soa_expire",       8, cls.format_seconds),
+                0x81: ("last_flush",       8, cls.format_timestamp),
+                0x82: ("last_refresh",     8, cls.format_timestamp),
+                0x83: ("next_refresh",     8, cls.format_timestamp),
                 # knot >= 2.6
-                0x84: ("legacy_resalt",  cls.format_timestamp),
-                0x85: ("next_ds_check",  cls.format_timestamp),
+                0x84: ("legacy_resalt",    8, cls.format_timestamp),
+                0x85: ("next_ds_check",    8, cls.format_timestamp),
                 # knot >= 2.8
-                0x86: ("next_ds_push",   cls.format_timestamp),
+                0x86: ("next_ds_push",     8, cls.format_timestamp),
                 # knot >= 3.1
-                0x87: ("catalog_member", cls.format_timestamp),
-                0x88: ("notify_serial",  cls.format_notify_serial),
+                0x87: ("catalog_member",   8, cls.format_timestamp),
+                0x88: ("notify_serial",    8, cls.format_notify_serial),
                 # knot >= 3.2
-                0x89: ("last_refresh_ok", cls.format_bool),
-                0x8a: ("next_expire",     cls.format_timestamp),
+                0x89: ("last_refresh_ok",  8, cls.format_bool),
+                0x8a: ("next_expire",      8, cls.format_timestamp),
+                # knot >= 3.3
+                0x8b: ("last_master",     28, cls.format_last_master),
+                0x8c: ("master_pin_hit",   8, cls.format_timestamp),
         }
         if id in timers:
-            return (timers[id][0], timers[id][1](value))
+            return (timers[id][0], timers[id][2](value)) if value != None else timers[id][1]
         else:
-            return ("%02x" % id, "%08x" % value)
+            return ("%02x" % id, "%08x" % value) if value != None else 0
 
     @classmethod
     def parse_dname(cls, dname):
@@ -78,9 +87,16 @@ class TimerDBInfo:
     def parse_timers(cls, binary):
         timers = {}
         while len(binary) > 0:
-            chunk = binary[:9]
-            binary = binary[9:]
-            id, value = struct.unpack("!BQ", chunk)
+            id_chunk = binary[:1]
+            binary = binary[1:]
+            id = struct.unpack("!B", id_chunk)[0]
+            val_len = cls.format_value(id, None)
+            if val_len == 8:
+                val_chunk = binary[:val_len]
+                value = struct.unpack("!Q", val_chunk)[0]
+            else:
+                value = binary[:val_len]
+            binary = binary[val_len:]
             timers[id] = value
         return timers
 
