@@ -683,7 +683,6 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		for (size_t i = 0; i < addr_count; i++) {
 			conf_remote_t remote = conf_remote(conf, iter.id, i);
 			if (zone->preferred_master != NULL &&
-			    zone->preferred_master->ss_family != AF_UNSPEC &&
 			    sockaddr_net_match(&remote.addr, zone->preferred_master, -1)) {
 				preferred_id = conf_str(iter.id);
 				preferred = *iter.id;
