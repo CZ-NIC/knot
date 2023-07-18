@@ -187,6 +187,10 @@ Options
 **+**\ [\ **no**\ ]\ **opttext**
   Try to show unknown EDNS options as text.
 
+**+**\ [\ **no**\ ]\ **optpresent**
+  Show EDNS in presentation format according to the specification in version
+  `draft-peltan-edns-presentation-format-01 <https://www.ietf.org/archive/id/draft-peltan-edns-presentation-format-01.html>`_.
+
 **+**\ [\ **no**\ ]\ **question**
   Show the question section.
 

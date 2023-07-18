@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -94,6 +94,8 @@ typedef struct {
 	bool	show_tsig;
 	/*!< Show footer info. */
 	bool	show_footer;
+	/*!< Display EDNS in Presentation format. */
+	bool	present_edns;
 
 	/*!< KHOST - Hide CNAME record in answer (duplicity reduction). */
 	bool	hide_cname;
