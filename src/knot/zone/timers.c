@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,6 +59,8 @@ enum timer_id {
 	TIMER_LAST_NOTIFIED  = 0x88,
 	TIMER_LAST_REFR_OK   = 0x89,
 	TIMER_NEXT_EXPIRE    = 0x8a,
+	TIMER_LAST_MASTER    = 0x8b,
+	TIMER_MASTER_PIN_HIT = 0x8c,
 };
 
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
@@ -80,6 +82,10 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 	wire_ctx_t wire = wire_ctx_init_const(data, size);
 	while (wire_ctx_available(&wire) >= TIMER_SIZE) {
 		uint8_t id = wire_ctx_read_u8(&wire);
+		if (id == TIMER_LAST_MASTER) {
+			wire_ctx_read(&wire, &timers.last_master, sizeof(timers.last_master));
+			continue;
+		}
 		uint64_t value = wire_ctx_read_u64(&wire);
 		switch (id) {
 		case TIMER_SOA_EXPIRE:     timers.soa_expire = value; break;
@@ -92,6 +98,7 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		case TIMER_NEXT_DS_PUSH:   timers.next_ds_push = value; break;
 		case TIMER_CATALOG_MEMBER: timers.catalog_member = value; break;
 		case TIMER_NEXT_EXPIRE:    timers.next_expire = value; break;
+		case TIMER_MASTER_PIN_HIT: timers.master_pin_hit = value; break;
 		default:                   break; // ignore
 		}
 	}
@@ -109,8 +116,13 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
                              const zone_timers_t *timers)
 {
+	const char *format = (timers->last_master.sin6_family == AF_INET ||
+	                      timers->last_master.sin6_family == AF_INET6) ?
+	                     "BLBLBLBLBLBLBLBLBDBL" :
+	                     "BLBLBLBLBLBLBLBL";
+
 	MDB_val k = { knot_dname_size(zone), (void *)zone };
-	MDB_val v = knot_lmdb_make_key("BLBLBLBLBLBLBLBL",
+	MDB_val v = knot_lmdb_make_key(format,
 		TIMER_LAST_FLUSH,    (uint64_t)timers->last_flush,
 		TIMER_NEXT_REFRESH,  (uint64_t)timers->next_refresh,
 		TIMER_LAST_REFR_OK,  (uint64_t)timers->last_refresh_ok,
@@ -118,7 +130,9 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 		TIMER_NEXT_DS_CHECK, (uint64_t)timers->next_ds_check,
 		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push,
 		TIMER_CATALOG_MEMBER,(uint64_t)timers->catalog_member,
-		TIMER_NEXT_EXPIRE,   (uint64_t)timers->next_expire);
+		TIMER_NEXT_EXPIRE,   (uint64_t)timers->next_expire,
+		TIMER_LAST_MASTER,   &timers->last_master, sizeof(timers->last_master),
+		TIMER_MASTER_PIN_HIT,(uint64_t)timers->master_pin_hit);
 	knot_lmdb_insert(txn, &k, &v);
 	free(v.mv_data);
 }

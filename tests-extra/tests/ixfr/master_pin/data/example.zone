@@ -1,0 +1,14 @@
+example.	6 IN SOA	ns1.example. bugs.x.w.example. 1081539377 6 3 6000 6
+example.	6 IN NS	ns1.example.
+example.	6 IN NS	ns2.example.
+example.	6 IN MX	1 xx.example.
+ns1.a.example.	6 IN A	192.0.2.5
+ns2.a.example.	6 IN A	192.0.2.6
+ns1.b.example.	6 IN A	192.0.2.7
+ns2.b.example.	6 IN A	192.0.2.8
+a.example.	6 IN NS	ns1.a.example.
+a.example.	6 IN NS	ns2.a.example.
+ai.example.	6 IN A	192.0.2.9
+xx.example.	6 IN AAAA	2001:db8::f00:baaa
+x.w.example.	6 IN MX	1 xx.example.
+

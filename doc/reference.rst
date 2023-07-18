@@ -2281,6 +2281,7 @@ Definition of zones served by the server.
      ddns-master: [remote_id]
      notify: remote_id | remotes_id ...
      acl: acl_id ...
+     master-pin-tolerance: TIME
      provide-ixfr: BOOL
      semantic-checks: BOOL | soft
      zonefile-sync: TIME
@@ -2410,6 +2411,22 @@ An ordered list of :ref:`references<acl_id>` to ACL rules which can allow
 or disallow zone transfers, updates or incoming notifies.
 
 *Default:* not set
+
+.. _zone_master-pin-tolerance:
+
+master-pin-tolerance
+--------------------
+
+If set to a nonzero value on a secondary, always request AXFR/IXFR from the same
+primary as the last time, effectively pinning one primary. Only when another
+primary is updated and the current one lags behind for the specified amount of time
+(defined by this option), change to the updated primary and force AXFR.
+
+This option is useful when multiple primaries may have different zone history
+in their journals, making it unsafe to combine interchanged IXFR
+from different primaries.
+
+*Default:* 0
 
 .. _zone_provide-ixfr:
 

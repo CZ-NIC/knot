@@ -38,6 +38,8 @@ int event_expire(conf_t *conf, zone_t *zone)
 
 	zone->zonefile.exists = false;
 
+	zone_set_last_master(zone, NULL);
+
 	zone->timers.next_expire = time(NULL);
 	zone->timers.next_refresh = zone->timers.next_expire;
 	replan_from_timers(conf, zone);

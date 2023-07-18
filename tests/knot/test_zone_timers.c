@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,24 +26,31 @@
 #include "libknot/error.h"
 
 static const zone_timers_t MOCK_TIMERS = {
-	.next_refresh = 1474559960,
-	.last_notified_serial = 0,
-	.last_flush = 1,
-	.next_ds_check = 1474559961,
-	.next_ds_push = 1474559962,
-	.catalog_member = 1474559963,
-	.next_expire = 1639727731,
+	.last_flush     = 1474559960,
+	.next_refresh   = 1474559961,
+	.last_refresh_ok = true,
+	.last_notified_serial = 123456,
+	.next_ds_check  = 1474559962,
+	.next_ds_push   = 1474559963,
+	.catalog_member = 1474559964,
+	.next_expire    = 1474559965,
+	.last_master    = { .sin6_family = AF_INET, .sin6_port = 53 },
+	.master_pin_hit = 1474559966,
 };
 
-static bool timers_eq(const zone_timers_t *a, const zone_timers_t *b)
+static bool timers_eq(const zone_timers_t *val, const zone_timers_t *ref)
 {
-	return a->next_refresh == b->next_refresh &&
-	       a->last_notified_serial == b->last_notified_serial &&
-	       a->last_flush == b->last_flush &&
-	       a->next_ds_check == b->next_ds_check &&
-	       a->next_ds_push == b->next_ds_push &&
-	       a->catalog_member == b->catalog_member &&
-	       a->next_expire == b->next_expire;
+	return	val->last_flush == ref->last_flush &&
+		val->next_refresh == ref->next_refresh &&
+		val->last_refresh_ok == ref->last_refresh_ok &&
+		val->last_notified_serial == ref->last_notified_serial &&
+		val->next_ds_check == ref->next_ds_check &&
+		val->next_ds_push == ref->next_ds_push &&
+		val->catalog_member == ref->catalog_member &&
+		val->next_expire == ref->next_expire &&
+		sockaddr_cmp((struct sockaddr_storage *)&val->last_master,
+		             (struct sockaddr_storage *)&ref->last_master, false) == 0 &&
+		val->master_pin_hit == ref->master_pin_hit;
 }
 
 static bool keep_all(const knot_dname_t *zone, void *data)
