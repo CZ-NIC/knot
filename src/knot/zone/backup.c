@@ -327,7 +327,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 		return ret;
 	}
 	if (backend_type == KEYSTORE_BACKEND_PKCS11) {
-		log_zone_warning(zone->name, "private keys from PKCS#11 aren't subject of backup/restore");
+		log_zone_warning(zone->name, "private keys from PKCS #11 aren't subject of backup/restore");
 		(void)dnssec_keystore_deinit(from);
 		return KNOT_EOK;
 	}
