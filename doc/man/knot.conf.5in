@@ -608,6 +608,14 @@ for incoming queries over QUIC protocol.
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fIDefault:\fP not set
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Incoming DDNS over QUIC isn\(aqt supported.
+The server always responds with SERVFAIL.
+.UNINDENT
+.UNINDENT
 .SH XDP SECTION
 .sp
 Various options related to XDP listening, especially TCP.
@@ -660,6 +668,14 @@ If XDP workers only process regular DNS traffic over UDP, it is strongly
 recommended to also \fI\%listen\fP on the addresses which are
 intended to offer the DNS service, at least to fulfil the DNS requirement for
 working TCP.
+.UNINDENT
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Incoming DDNS over XDP isn\(aqt supported.
+The server always responds with SERVFAIL.
 .UNINDENT
 .UNINDENT
 .sp

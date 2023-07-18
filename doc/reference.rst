@@ -665,6 +665,10 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
+.. NOTE::
+   Incoming :ref:`DDNS<dynamic updates>` over QUIC isn't supported.
+   The server always responds with SERVFAIL.
+
 .. _xdp section:
 
 ``xdp`` section
@@ -712,6 +716,10 @@ Change of this parameter requires restart of the Knot server to take effect.
    recommended to also :ref:`listen <server_listen>` on the addresses which are
    intended to offer the DNS service, at least to fulfil the DNS requirement for
    working TCP.
+
+.. NOTE::
+   Incoming :ref:`DDNS<dynamic updates>` over XDP isn't supported.
+   The server always responds with SERVFAIL.
 
 *Default:* not set
 

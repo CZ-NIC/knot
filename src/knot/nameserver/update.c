@@ -80,7 +80,7 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	/* DDNS over XDP not supported. */
-	if (qdata->params->xdp_msg != NULL) {
+	if (qdata->params->xdp_msg != NULL || qdata->params->proto == KNOTD_QUERY_PROTO_QUIC) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return KNOT_STATE_FAIL;
 	}
