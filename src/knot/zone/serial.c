@@ -50,7 +50,7 @@ static uint32_t serial_dateserial(uint32_t current)
 uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
                      unsigned policy, uint32_t must_increment)
 {
-	uint32_t minimum;
+	uint32_t minimum, result;
 
 	if (policy == SERIAL_POLICY_AUTO) {
 		assert(conf);
@@ -74,10 +74,25 @@ uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
 		return 0;
 	}
 	if (serial_compare(minimum, current) != SERIAL_GREATER) {
-		return current + must_increment;
+		result = current + must_increment;
 	} else {
-		return minimum;
+		result = minimum;
 	}
+
+	if (conf != NULL) { // NULL conf SHOULD be only allowed in tests
+		conf_val_t val = conf_zone_get(conf, C_SERIAL_MODULO, zone);
+		uint32_t a, b;
+		int ret = conf_tuple(&val, &a, &b);
+		assert(ret == KNOT_EOK && a < b); // ensured by conf/tools.c
+		if (b > 1) {
+			uint32_t incr = ((a + b) - (result % b)) % b;
+			assert(incr == 0 || result % b != a);
+			result += incr;
+			assert(result % b == a);
+		}
+	}
+
+	return result;
 }
 
 serial_cmp_result_t kserial_cmp(kserial_t a, kserial_t b)

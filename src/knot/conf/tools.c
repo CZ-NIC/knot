@@ -940,7 +940,8 @@ int check_zone(
 	                                       C_ZONEFILE_LOAD, yp_dname(args->id));
 	conf_val_t journal = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_JOURNAL_CONTENT, yp_dname(args->id));
-	if (conf_opt(&zf_load) == ZONEFILE_LOAD_DIFSE) {
+	int zf_load_val = conf_opt(&zf_load);
+	if (zf_load_val == ZONEFILE_LOAD_DIFSE) {
 		if (conf_opt(&journal) != JOURNAL_CONTENT_ALL) {
 			args->err_str = "'zonefile-load: difference-no-serial' requires 'journal-content: all'";
 			return KNOT_EINVAL;
@@ -961,6 +962,24 @@ int check_zone(
 		                                          C_DDNS_MASTER, yp_dname(args->id));
 		if (ddnsmaster.code == KNOT_EOK && *conf_str(&ddnsmaster) == '\0') {
 			args->err_str = "empty 'ddns-master' requires 'dnssec-signing' enabled";
+			return KNOT_EINVAL;
+		}
+	}
+
+	conf_val_t serial_modulo = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                             C_SERIAL_MODULO, yp_dname(args->id));
+	uint32_t a, b;
+	int ret = conf_tuple(&serial_modulo, &a, &b);
+	if (ret != KNOT_EOK || a >= b) {
+		args->err_str = "invalid format of 'serial-modulo'";
+		return KNOT_EINVAL;
+	} else if (b > 1) {
+		if (!conf_bool(&signing)) {
+			args->err_str = "'serial-modulo' is only possible with `dnssec-signing`";
+			return KNOT_EINVAL;
+		} else if (zf_load_val != ZONEFILE_LOAD_DIFSE && zf_load_val != ZONEFILE_LOAD_NONE) {
+			args->err_str = "'serial-modulo' requires 'zonefile-load' either 'none'"
+			                " or 'difference-no-serial'";
 			return KNOT_EINVAL;
 		}
 	}

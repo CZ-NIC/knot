@@ -469,6 +469,7 @@ static const yp_item_t desc_policy[] = {
 	                                   { check_ref } }, \
 	{ C_REVERSE_GEN,         YP_TDNAME,YP_VNONE, FLAGS | CONF_IO_FRLD_ZONES }, \
 	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
+	{ C_SERIAL_MODULO,       YP_TSTR,  YP_VSTR = { "0/1" } }, \
 	{ C_ZONEMD_GENERATE,     YP_TOPT,  YP_VOPT = { zone_digest, ZONE_DIGEST_NONE }, FLAGS }, \
 	{ C_ZONEMD_VERIFY,       YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_REFRESH_MIN_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, 2, YP_STIME } }, \

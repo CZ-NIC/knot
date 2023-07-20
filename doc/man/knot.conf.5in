@@ -2106,6 +2106,7 @@ zone:
     zonemd\-verify: BOOL
     zonemd\-generate: none | zonemd\-sha384 | zonemd\-sha512 | remove
     serial\-policy: increment | unixtime | dateserial
+    serial\-modulo: INT/INT
     reverse\-generate: DNAME
     refresh\-min\-interval: TIME
     refresh\-max\-interval: TIME
@@ -2512,6 +2513,29 @@ Generated catalog zones use \fBunixtime\fP only.
 .UNINDENT
 .sp
 \fIDefault:\fP \fBincrement\fP (\fBunixtime\fP for generated catalog zones)
+.SS serial\-modulo
+.sp
+Specifies that the zone serials shall be congruent by specified modulo.
+The option value must be a string in the format \fBR/M\fP, where \fBR < M <= 256\fP are
+positive integers. Whenever the zone serial is incremented, it is ensured
+that \fBserial % M == R\fP\&. This can be useful in the case of multiple inconsistent
+primaries, where distinct zone serial sequences prevent cross\-master\-IXFR
+by any secondary.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+In order to ensure the congruent policy, this option is only allowed
+with \fI\%DNSSEC signing enabled\fP and
+\fI\%zonefile\-load\fP to be either \fBdifference\-no\-serial\fP or \fBnone\fP\&.
+.sp
+Because the zone serial effectively always increments by \fBM\fP instead of
+\fB1\fP, it is not recommended to use \fBdateserial\fP \fI\%serial\-policy\fP
+or even \fBunixtime\fP in case of rapidly updated zone.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP \fB0/1\fP
 .SS reverse\-generate
 .sp
 This option triggers the automatic generation of reverse PTR records based on

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1034,6 +1034,7 @@ static const knot_lookup_t opts[] = {
 	{ C_JOURNAL_CONTENT,   YP_TOPT,  YP_VOPT = { opts, 0 } }, \
 	{ C_DNSSEC_SIGNING,    YP_TBOOL, YP_VNONE }, \
 	{ C_DNSSEC_VALIDATION, YP_TBOOL, YP_VNONE }, \
+	{ C_SERIAL_MODULO,     YP_TSTR,  YP_VSTR = { "0/1" } }, \
 	{ C_CATALOG_ROLE,      YP_TOPT,  YP_VOPT = { opts, 0 } }, \
 	{ C_CATALOG_TPL,       YP_TREF,  YP_VREF = { C_RMT } }, \
 	{ C_COMMENT,           YP_TSTR,  YP_VNONE },
