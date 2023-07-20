@@ -20,6 +20,7 @@
 
 #include "knot/query/quic-requestor.h"
 
+#include "contrib/conn_pool.h"
 #include "contrib/net.h"
 #include "contrib/time.h"
 #include "knot/common/log.h" // please use this only for tiny stuff like quic-log
@@ -72,9 +73,19 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 		return KNOT_EOK;
 	} else if (hconn != conn) {
 		return KNOT_ESEMCHECK;
-	} else {
-		return ret;
 	}
+
+	if (ret == KNOT_EOK && global_sessticket_pool != NULL &&
+	    knot_quic_session_available(conn)) {
+		void *sessticket = knot_quic_session_save(conn);
+		if (sessticket != NULL) {
+			intptr_t tofree = conn_pool_put(global_sessticket_pool, r->ip_loc,
+			                                r->ip_rem, (intptr_t)sessticket);
+			global_sessticket_pool->close_cb(tofree);
+		}
+	}
+
+	return ret;
 }
 
 int qr_alloc_reply(struct knot_quic_reply *r)
@@ -132,6 +143,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
                       const struct knot_quic_creds *local_creds,
                       const uint8_t *peer_pin,
                       uint8_t peer_pin_len,
+                      bool *reused_fd,
                       int timeout_ms)
 {
 	struct knot_quic_reply *r = calloc(1, sizeof(*r) + 2 * sizeof(struct iovec) +
@@ -183,8 +195,19 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 
 	(void)net_cmsg_ecn_enable(fd, remote->ss_family);
 
+	intptr_t sessticket = conn_pool_get(global_sessticket_pool, r->ip_loc, r->ip_rem);
+	if (sessticket != CONN_POOL_FD_INVALID) {
+		ret = knot_quic_session_load(conn, (void *)sessticket);
+		if (ret != KNOT_EOK) {
+			global_sessticket_pool->close_cb(sessticket);
+			sessticket = CONN_POOL_FD_INVALID;
+		} else if (reused_fd != NULL) {
+			*reused_fd = true;
+		}
+	}
+
 	struct timespec t_start = time_now(), t_cur;
-	while (!conn->handshake_done) {
+	while (!conn->handshake_done && sessticket == CONN_POOL_FD_INVALID) {
 		t_cur = time_now();
 		if (time_diff_ms(&t_start, &t_cur) > timeout_ms ||
 		    (ret = quic_exchange(conn, r, timeout_ms)) != KNOT_EOK) {
@@ -250,7 +273,7 @@ void knot_qreq_close(struct knot_quic_reply *r, bool send_close)
 	knot_quic_conn_t *conn = r->in_ctx;
 	knot_quic_table_t *table = conn->quic_table;
 
-	if (send_close) {
+	if (send_close && conn->conn != NULL) {
 		r->handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
 		(void)knot_quic_send(table, conn, r, QUIC_MAX_SEND_PER_RECV, false);
 	}

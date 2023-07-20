@@ -28,6 +28,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
                       const struct knot_quic_creds *local_creds,
                       const uint8_t *peer_pin,
                       uint8_t peer_pin_len,
+                      bool *reused_fd,
                       int timeout_ms);
 
 int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data);

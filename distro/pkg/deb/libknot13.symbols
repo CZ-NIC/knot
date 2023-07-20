@@ -123,6 +123,7 @@ libknot.so.13 libknot13 #MINVER#
  knot_quic_init_creds@Base 3.3.0
  knot_quic_init_creds_peer@Base 3.3.0
  knot_quic_send@Base 3.3.0
+ knot_quic_session_available@Base 3.3.0
  knot_quic_session_load@Base 3.3.0
  knot_quic_session_save@Base 3.3.0
  knot_quic_stream_add_data@Base 3.3.0

@@ -1379,12 +1379,11 @@ quic
 If this option is set, the QUIC protocol will be used for outgoing communication
 with this remote.
 
-Current limitations:
-
-- One connection per each transfer is opened, :ref:`server_remote-pool-limit`
-  does not take effect for QUIC.
-- Full handshake is always performed, obtained Session tickets are not
-  utilized for faster handshakes.
+.. NOTE::
+   One connection per each remote is opened; :ref:`server_remote-pool-limit`
+   does not take effect for QUIC. However, fast QUIC handshakes utilizing obtained
+   session tickets are used for reopening connections to recently (up to 1 day)
+   queried remotes.
 
 *Default:* ``off``
 

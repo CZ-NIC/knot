@@ -83,8 +83,19 @@ static unsigned addr_len(const struct sockaddr_in6 *ss)
 }
 
 _public_
+bool knot_quic_session_available(knot_quic_conn_t *conn)
+{
+	return !conn->session_taken &&
+	       (gnutls_session_get_flags(conn->tls_session) & GNUTLS_SFLAGS_SESSION_TICKET);
+}
+
+_public_
 struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn)
 {
+	if (!knot_quic_session_available(conn)) {
+		return NULL;
+	}
+
 	knot_quic_session_t *session = malloc(sizeof(*session));
 	if (session == NULL) {
 		return NULL;
@@ -95,6 +106,7 @@ struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn)
 		free(session);
 		return NULL;
 	}
+	conn->session_taken = true;
 
 	ngtcp2_ssize ret2 =
 		ngtcp2_conn_encode_0rtt_transport_params(conn->conn, session->quic_params,
@@ -1116,6 +1128,10 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
 		return KNOT_EINVAL;
 	} else if (conn->conn == NULL) {
 		return KNOT_EOK;
+	}
+
+	if (!conn->handshake_done) {
+		max_msgs = 1;
 	}
 
 	unsigned sent_msgs = 0, stream_msgs = 0;

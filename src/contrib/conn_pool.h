@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,10 +22,16 @@
 
 #include "contrib/time.h"
 
+typedef intptr_t conn_pool_fd_t;
+extern const conn_pool_fd_t CONN_POOL_FD_INVALID;
+
+typedef void (*conn_pool_close_cb_t)(conn_pool_fd_t fd);
+typedef bool (*conn_pool_invalid_cb_t)(conn_pool_fd_t fd);
+
 typedef struct {
 	struct sockaddr_storage src;
 	struct sockaddr_storage dst;
-	int fd;
+	conn_pool_fd_t fd;
 	knot_time_t last_active;
 } conn_pool_memb_t;
 
@@ -35,20 +41,27 @@ typedef struct {
 	knot_timediff_t timeout;
 	pthread_mutex_t mutex;
 	pthread_t closing_thread;
+	conn_pool_close_cb_t close_cb;
+	conn_pool_invalid_cb_t invalid_cb;
 	conn_pool_memb_t conns[];
 } conn_pool_t;
 
 extern conn_pool_t *global_conn_pool;
+extern conn_pool_t *global_sessticket_pool; // pool for outgoing QUIC connection session tickets
 
 /*!
  * \brief Allocate connection pool.
  *
- * \param capacity  Connection pool capacity (must be positive number).
- * \param timeout   Connection timeout (must be positive number).
+ * \param capacity     Connection pool capacity (must be positive number).
+ * \param timeout      Connection timeout (must be positive number).
+ * \param close_cb     Callback for closing fd.
+ * \param invalid_cb   Callback detecting if given fd is already unusable.
  *
  * \return Connection pool or NULL if error.
  */
-conn_pool_t *conn_pool_init(size_t capacity, knot_timediff_t timeout);
+conn_pool_t *conn_pool_init(size_t capacity, knot_timediff_t timeout,
+                            conn_pool_close_cb_t close_cb,
+                            conn_pool_invalid_cb_t invalid_cb);
 
 /*!
  * \brief Deallocate the pool, close all connections, terminate closing thread.
@@ -78,9 +91,9 @@ knot_timediff_t conn_pool_timeout(conn_pool_t *pool,
  * \retval -1    If error (no such connection).
  * \return >= 0  File descriptor of the connection.
  */
-int conn_pool_get(conn_pool_t *pool,
-                  struct sockaddr_storage *src,
-                  struct sockaddr_storage *dst);
+conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
+                             const struct sockaddr_storage *src,
+                             const struct sockaddr_storage *dst);
 
 /*!
  * \brief Put an open connection to the pool, possibly displacing the oldest one there.
@@ -94,7 +107,22 @@ int conn_pool_get(conn_pool_t *pool,
  * \retval fd    If not able to store connection.
  * \return >= 0  File descriptor of the displaced old connection.
  */
-int conn_pool_put(conn_pool_t *pool,
-                  struct sockaddr_storage *src,
-                  struct sockaddr_storage *dst,
-                  int fd);
+conn_pool_fd_t conn_pool_put(conn_pool_t *pool,
+                             const struct sockaddr_storage *src,
+                             const struct sockaddr_storage *dst,
+                             conn_pool_fd_t fd);
+
+/*!
+ * \brief Default close callback calling close() on given fd.
+ */
+void conn_pool_close_cb_dflt(conn_pool_fd_t fd);
+
+/*!
+ * \brief Default invalidness callback detecting socket not ready to write.
+ */
+bool conn_pool_invalid_cb_dflt(conn_pool_fd_t fd);
+
+/*!
+ * \brief Default invalidness callback always reporting valid fd.
+ */
+bool conn_pool_invalid_cb_allvalid(conn_pool_fd_t fd);

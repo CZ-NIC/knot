@@ -743,11 +743,9 @@ void *xdp_gun_thread(void *_ctx)
 							continue;
 						}
 
-						bool sess_ticket = (gnutls_session_get_flags(conn->tls_session) & GNUTLS_SFLAGS_SESSION_TICKET);
 						bool resp_recvd = false;
 
-						if (sess_ticket && !conn->session_taken && !ctx->quic_full_handshake) {
-							conn->session_taken = true;
+						if (!ctx->quic_full_handshake && knot_quic_session_available(conn)) {
 							void *session = knot_quic_session_save(conn);
 							if (session != NULL) {
 								add_tail(&quic_sessions, session);

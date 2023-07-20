@@ -56,6 +56,11 @@ typedef struct knot_quic_reply {
 #define KNOT_QUIC_HANDLE_RET_CLOSE  (2000)
 
 /*!
+ * \brief Check if session ticket can be taken out of this connection.
+ */
+bool knot_quic_session_available(knot_quic_conn_t *conn);
+
+/*!
  * \brief Gets data needed for session resumption.
  *
  * \param conn   QUIC connection.
