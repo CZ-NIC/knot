@@ -81,9 +81,10 @@ static const knot_layer_api_t NOTIFY_API = {
 	.consume = notify_consume,
 };
 
-#define NOTIFY_OUT_LOG(priority, zone, remote, reused, fmt, ...) \
+#define NOTIFY_OUT_LOG(priority, zone, remote, flags, fmt, ...) \
 	ns_log(priority, zone, LOG_OPERATION_NOTIFY, LOG_DIRECTION_OUT, remote, \
-	       (reused), fmt, ## __VA_ARGS__)
+	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
+	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
 
 static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
                        const conf_remote_t *slave, int timeout, bool retry)
@@ -119,16 +120,16 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_OUT_LOG(LOG_INFO, zone->name, &slave->addr,
-		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
+		               requestor.layer.flags,
 		               "%sserial %u", log_retry, knot_soa_serial(soa->rrs.rdata));
 		zone->timers.last_notified_serial = (knot_soa_serial(soa->rrs.rdata) | LAST_NOTIFIED_SERIAL_VALID);
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, &slave->addr,
-		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
+		               requestor.layer.flags,
 		               "%sfailed (%s)", log_retry, knot_strerror(ret));
 	} else {
 		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, &slave->addr,
-		               requestor.layer.flags & KNOT_REQUESTOR_REUSED,
+		               requestor.layer.flags,
 		               "%sserver responded with error '%s'",
 		               log_retry, knot_pkt_ext_rcode_name(req->resp));
 	}

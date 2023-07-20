@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,10 +37,11 @@ void xfr_stats_end(struct xfr_stats *stats);
 static inline
 void xfr_log_finished(const knot_dname_t *zone, log_operation_t op,
                       log_direction_t dir, const struct sockaddr *remote,
-                      bool reused, const struct xfr_stats *stats)
+                      knotd_query_proto_t proto, const struct xfr_stats *stats)
 {
-	ns_log(LOG_INFO, zone, op, dir, remote, reused,
-	       "finished, %0.2f seconds, %u messages, %u bytes",
+	ns_log(LOG_INFO, zone, op, dir, remote, proto, false,
+	       "%sfinished, %0.2f seconds, %u messages, %u bytes",
+	       (proto == KNOTD_QUERY_PROTO_QUIC && dir == LOG_DIRECTION_OUT ? "buffering " : ""),
 	       time_diff_ms(&stats->begin, &stats->end) / 1000.0,
 	       stats->messages, stats->bytes);
 }

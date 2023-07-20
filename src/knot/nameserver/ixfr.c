@@ -29,10 +29,11 @@
 
 #define ZONE_NAME(qdata) knot_pkt_qname((qdata)->query)
 #define REMOTE(qdata) (struct sockaddr *)knotd_qdata_remote_addr(qdata)
+#define PROTO(qdata) (qdata)->params->proto
 
 #define IXFROUT_LOG(priority, qdata, fmt...) \
 	ns_log(priority, ZONE_NAME(qdata), LOG_OPERATION_IXFR, \
-	       LOG_DIRECTION_OUT, REMOTE(qdata), false, fmt)
+	       LOG_DIRECTION_OUT, REMOTE(qdata), PROTO(qdata), false, fmt)
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
@@ -172,7 +173,7 @@ static void ixfr_answer_finished(knotd_qdata_t *qdata, knot_pkt_t *pkt, int stat
 		xfr_stats_add(&xfr->stats, pkt->size);
 		xfr_stats_end(&xfr->stats);
 		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_IXFR, LOG_DIRECTION_OUT,
-		                 REMOTE(qdata), false, &xfr->stats);
+		                 REMOTE(qdata), PROTO(qdata), &xfr->stats);
 		break;
 	default:
 		break;

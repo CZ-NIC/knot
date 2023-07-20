@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,8 @@
 
 #define NOTIFY_IN_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_NOTIFY, \
-	       LOG_DIRECTION_IN, knotd_qdata_remote_addr(qdata), false, fmt)
+	       LOG_DIRECTION_IN, knotd_qdata_remote_addr(qdata), qdata->params->proto, \
+	       false, fmt)
 
 static int notify_check_query(knotd_qdata_t *qdata)
 {
