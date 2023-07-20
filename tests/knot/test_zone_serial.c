@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ static uint32_t random_serial(void)
 
 static void check_unixtime(uint32_t current, uint32_t increment, uint32_t expected, const char *msg)
 {
-	uint32_t next = serial_next(current, SERIAL_POLICY_UNIXTIME, increment);
+	uint32_t next = serial_next(current, NULL, NULL, SERIAL_POLICY_UNIXTIME, increment);
 	ok(next == expected, "unixtime: %s", msg);
 }
 
@@ -63,7 +63,7 @@ static void test_unixtime(void)
 
 static void check_dateserial(uint32_t current, uint32_t increment, uint32_t expected, const char *msg)
 {
-	uint32_t next = serial_next(current, SERIAL_POLICY_DATESERIAL, increment);
+	uint32_t next = serial_next(current, NULL, NULL, SERIAL_POLICY_DATESERIAL, increment);
 	ok(next == expected, "dateserial: %s", msg);
 }
 

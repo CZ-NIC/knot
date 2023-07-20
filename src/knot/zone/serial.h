@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,8 +16,7 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "knot/conf/conf.h"
 
 #define SERIAL_MAX_INCREMENT 2147483647
 
@@ -49,14 +48,16 @@ inline static bool serial_equal(uint32_t a, uint32_t b)
  * \brief Get (next) serial for given serial update policy.
  *
  * \param current  Current SOA serial.
- * \param policy   SERIAL_POLICY_INCREMENT, SERIAL_POLICY_UNIXTIME or
- *                 SERIAL_POLICY_DATESERIAL.
+ * \param conf     Configuration to get serial-policy from (if SERIAL_POLICY_AUTO).
+ * \param zone     Zone to read out configured policy of (if SERIAL_POLICY_AUTO).
+ * \param policy   Specific policy to use instead of configured one.
  * \param must_increment The minimum difference to the current value.
  *                 0 only ensures policy; 1 also increments.
  *
  * \return New serial.
  */
-uint32_t serial_next(uint32_t current, int policy, uint32_t must_increment);
+uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
+                     unsigned policy, uint32_t must_increment);
 
 typedef struct {
 	uint32_t serial;

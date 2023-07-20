@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <time.h>
 
-#include "knot/conf/conf.h"
 #include "knot/zone/serial.h"
 
 static const serial_cmp_result_t diffbrief2result[4] = {
@@ -48,9 +47,18 @@ static uint32_t serial_dateserial(uint32_t current)
 	       (       now.tm_mday) *     100;
 }
 
-uint32_t serial_next(uint32_t current, int policy, uint32_t must_increment)
+uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
+                     unsigned policy, uint32_t must_increment)
 {
 	uint32_t minimum;
+
+	if (policy == SERIAL_POLICY_AUTO) {
+		assert(conf);
+		assert(zone);
+		conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, zone);
+		policy = conf_opt(&val);
+	}
+
 	switch (policy) {
 	case SERIAL_POLICY_INCREMENT:
 		minimum = current;

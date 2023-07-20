@@ -639,9 +639,11 @@ int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t
 	return zone_update_apply_changeset(update, &reverse);
 }
 
-static int set_new_soa(zone_update_t *update, unsigned serial_policy)
+int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
 {
-	assert(update);
+	if (update == NULL || conf == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	knot_rrset_t *soa_cpy = node_create_rrset(update->new_cont->apex,
 	                                          KNOT_RRTYPE_SOA);
@@ -656,7 +658,8 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 	}
 
 	uint32_t old_serial = knot_soa_serial(soa_cpy->rrs.rdata);
-	uint32_t new_serial = serial_next(old_serial, serial_policy, 1);
+	uint32_t new_serial = serial_next(old_serial, conf, update->zone->name,
+	                                  SERIAL_POLICY_AUTO, 1);
 	if (serial_compare(old_serial, new_serial) != SERIAL_LOWER) {
 		log_zone_warning(update->zone->name, "updated SOA serial is lower "
 		                 "than current, serial %u -> %u",
@@ -670,16 +673,6 @@ static int set_new_soa(zone_update_t *update, unsigned serial_policy)
 	knot_rrset_free(soa_cpy, NULL);
 
 	return ret;
-}
-
-int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
-{
-	if (update == NULL || conf == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, update->zone->name);
-	return set_new_soa(update, conf_opt(&val));
 }
 
 static void get_zone_diff(zone_diff_t *zdiff, zone_update_t *up)
