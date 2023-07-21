@@ -47,17 +47,10 @@ static uint32_t serial_dateserial(uint32_t current)
 	       (       now.tm_mday) *     100;
 }
 
-uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
-                     unsigned policy, uint32_t must_increment)
+uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_increment,
+                             uint8_t rem, uint8_t mod)
 {
 	uint32_t minimum, result;
-
-	if (policy == SERIAL_POLICY_AUTO) {
-		assert(conf);
-		assert(zone);
-		conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, zone);
-		policy = conf_opt(&val);
-	}
 
 	switch (policy) {
 	case SERIAL_POLICY_INCREMENT:
@@ -79,20 +72,33 @@ uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
 		result = minimum;
 	}
 
-	if (conf != NULL) { // NULL conf SHOULD be only allowed in tests
-		conf_val_t val = conf_zone_get(conf, C_SERIAL_MODULO, zone);
-		uint32_t a, b;
-		int ret = conf_tuple(&val, &a, &b);
-		assert(ret == KNOT_EOK && a < b); // ensured by conf/tools.c
-		if (b > 1) {
-			uint32_t incr = ((a + b) - (result % b)) % b;
-			assert(incr == 0 || result % b != a);
-			result += incr;
-			assert(result % b == a);
-		}
+	if (mod > 1) {
+		uint32_t incr = ((rem + mod) - (result % mod)) % mod;
+		assert(incr == 0 || result % mod != rem);
+		result += incr;
+		assert(result % mod == rem);
 	}
 
 	return result;
+}
+
+uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
+                     unsigned policy, uint32_t must_increment)
+{
+	assert(conf);
+	assert(zone);
+
+	if (policy == SERIAL_POLICY_AUTO) {
+		conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, zone);
+		policy = conf_opt(&val);
+	}
+
+	uint32_t rem, mod;
+	conf_val_t val = conf_zone_get(conf, C_SERIAL_MODULO, zone);
+	int ret = conf_tuple(&val, &rem, &mod);
+	assert(ret == KNOT_EOK && rem < mod); // ensured by conf/tools.c
+
+	return serial_next_generic(current, policy, must_increment, rem, mod);
 }
 
 serial_cmp_result_t kserial_cmp(kserial_t a, kserial_t b)

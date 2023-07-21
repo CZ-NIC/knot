@@ -48,8 +48,26 @@ inline static bool serial_equal(uint32_t a, uint32_t b)
  * \brief Get (next) serial for given serial update policy.
  *
  * \param current  Current SOA serial.
- * \param conf     Configuration to get serial-policy from (if SERIAL_POLICY_AUTO).
- * \param zone     Zone to read out configured policy of (if SERIAL_POLICY_AUTO).
+ * \param policy   Specific policy to use instead of configured one.
+ * \param must_increment The minimum difference to the current value.
+ *                 0 only ensures policy; 1 also increments.
+ * \param rem      Requested remainder after division by the modulus.
+ * \param mod      Modulus of the given congruency.
+ *
+ * \return New serial.
+ */
+uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_increment,
+                             uint8_t rem, uint8_t mod);
+
+/*!
+ * \brief Get (next) serial for given serial update policy.
+ *
+ * This function is similar to serial_next_generic() but policy and parameters
+ * of the congruency are taken from the server configuration.
+ *
+ * \param current  Current SOA serial.
+ * \param conf     Configuration to get serial-policy from.
+ * \param zone     Zone to read out configured policy of.
  * \param policy   Specific policy to use instead of configured one.
  * \param must_increment The minimum difference to the current value.
  *                 0 only ensures policy; 1 also increments.
