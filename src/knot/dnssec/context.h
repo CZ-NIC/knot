@@ -34,6 +34,7 @@ typedef struct {
 	knot_kasp_zone_t *zone;
 	knot_kasp_policy_t *policy;
 	dnssec_keystore_t *keystore;
+	unsigned keystore_type;
 
 	char *kasp_zone_path;
 

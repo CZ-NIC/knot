@@ -446,6 +446,13 @@ fail:
 	return knot_error_from_libdnssec(ret);
 }
 
+static void err_import_key(char *keyid, const char *file)
+{
+	ERR2("failed to get key%s%s from %s%s",
+	     *keyid == '\0' ? "" : " ", keyid,
+	     *file == '\0' ? "the keystore" : "file ", file);
+}
+
 static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
                       int argc, char *argv[])
 {
@@ -477,6 +484,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		// open file
 		int fd = open(param, O_RDONLY, 0);
 		if (fd == -1) {
+			err_import_key("", param);
 			return knot_map_errno();
 		}
 
@@ -484,10 +492,12 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		off_t fsize = lseek(fd, 0, SEEK_END);
 		if (fsize == -1) {
 			close(fd);
+			err_import_key("", param);
 			return knot_map_errno();
 		}
 		if (lseek(fd, 0, SEEK_SET) == -1) {
 			close(fd);
+			err_import_key("", param);
 			return knot_map_errno();
 		}
 
@@ -496,6 +506,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		ret = dnssec_binary_alloc(&pem, fsize);
 		if (ret != DNSSEC_EOK) {
 			close(fd);
+			err_import_key("", param);
 			goto fail;
 		}
 
@@ -505,6 +516,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		if (read_count == -1) {
 			dnssec_binary_free(&pem);
 			ret = knot_map_errno();
+			err_import_key("", param);
 			goto fail;
 		}
 
@@ -512,6 +524,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
 		if (ret != DNSSEC_EOK) {
+			err_import_key(keyid, param);
 			goto fail;
 		}
 	} else {
@@ -534,6 +547,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	// fill key structure from keystore (incl. pubkey from privkey computation)
 	ret = dnssec_keystore_get_private(ctx->keystore, keyid, key);
 	if (ret != DNSSEC_EOK) {
+		err_import_key(keyid, "");
 		goto fail;
 	}
 
@@ -576,6 +590,14 @@ int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[
 	if (!dnssec_keyid_is_valid(key_id)) {
 		return DNSSEC_INVALID_KEY_ID;
 	}
+
+	if (ctx->keystore_type != KEYSTORE_BACKEND_PKCS11) {
+		knot_dname_txt_storage_t dname_str;
+		(void)knot_dname_to_str(dname_str, ctx->zone->dname, sizeof(dname_str));
+		ERR2("not a PKCS #11 keystore for zone %s", dname_str);
+		return KNOT_ERROR;
+	}
+
 	dnssec_keyid_normalize(key_id);
 	return import_key(ctx, KEYSTORE_BACKEND_PKCS11, key_id, argc, argv);
 }

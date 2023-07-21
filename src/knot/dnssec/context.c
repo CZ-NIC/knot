@@ -224,8 +224,8 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 	conf_id_fix_default(&policy_id);
 	policy_load(ctx->policy, conf, &policy_id, ctx->zone->dname);
 
-	ret = zone_init_keystore(conf, &policy_id, &ctx->keystore, NULL,
-	                         &ctx->policy->key_label);
+	ret = zone_init_keystore(conf, &policy_id, &ctx->keystore,
+	                         &ctx->keystore_type, &ctx->policy->key_label);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}
