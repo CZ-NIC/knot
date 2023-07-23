@@ -234,6 +234,22 @@ static int disable_pmtudisc(int sock, int family)
 	return KNOT_EOK;
 }
 
+static size_t quic_rmt_count(conf_t *conf)
+{
+	size_t count = 0;
+
+	for (conf_iter_t iter = conf_iter(conf, C_RMT);
+	     iter.code == KNOT_EOK; conf_iter_next(conf, &iter)) {
+		conf_val_t id = conf_iter_id(conf, &iter);
+		conf_val_t rmt_quic = conf_id_get(conf, C_RMT, C_QUIC, &id);
+		if (conf_bool(&rmt_quic)) {
+			count++;
+		}
+	}
+
+	return count;
+}
+
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
                                       bool udp, bool tcp, uint16_t quic, unsigned *thread_id_start)
 {
@@ -736,7 +752,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	nifs = real_nifs;
 
 	/* QUIC credentials initialization. */
-	s->quic_active = xdp_quic > 0 || convent_quic > 0;
+	s->quic_active = xdp_quic > 0 || convent_quic > 0 || quic_rmt_count(conf) > 0;
 	if (s->quic_active) {
 		if (init_creds(s, conf) != KNOT_EOK) {
 			server_deinit_iface_list(newlist, nifs);
@@ -1372,18 +1388,9 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 
 #ifdef ENABLE_QUIC
 	if (global_sessticket_pool == NULL && server->quic_active) {
-		size_t quic_rmt_count = 0;
-		for (conf_iter_t iter = conf_iter(conf, C_RMT);
-		     iter.code == KNOT_EOK; conf_iter_next(conf, &iter)) {
-			conf_val_t id = conf_iter_id(conf, &iter);
-			conf_val_t rmt_quic = conf_id_get(conf, C_RMT, C_QUIC, &id);
-			if (conf_bool(&rmt_quic)) {
-				quic_rmt_count++;
-			}
-		}
-
-		if (quic_rmt_count > 0) {
-			size_t max_tickets = conf_bg_threads(conf) * quic_rmt_count * 2; // Two addresses per remote.
+		size_t rmt_count = quic_rmt_count(conf);
+		if (rmt_count > 0) {
+			size_t max_tickets = conf_bg_threads(conf) * rmt_count * 2; // Two addresses per remote.
 			conn_pool_t *new_pool =
 				conn_pool_init(max_tickets, SESSION_TICKET_POOL_TIMEOUT,
 				               free_sess_ticket, conn_pool_invalid_cb_allvalid);
