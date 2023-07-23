@@ -22,7 +22,3 @@ distro = ["debian == 11", "ubuntu == 20.04", "ubuntu == 22.04"]
 [[distro.aliases]]
 name = "deb-noxdp"
 distro = ["debian == 10", "ubuntu == 18.04"]
-
-[[distro.aliases]]
-name = "rpm"
-distro = ['almalinux', 'centos', 'fedora', 'opensuse', 'oracle', 'rhel', 'rocky', 'scientific']
