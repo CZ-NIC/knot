@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -279,6 +279,11 @@ void knot_lmdb_deinit(knot_lmdb_db_t *db)
 
 void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn, bool rw)
 {
+	if (rw) { // Cleaning up reader lock table can be done occasionally. Opening a RW txn seems a good occasion.
+		int dead = 0, checkret = mdb_reader_check(db->env, &dead);
+		(void)(dead && checkret); // best effort, don't care about results
+	}
+
 	txn->ret = mdb_txn_begin(db->env, NULL, rw ? 0 : MDB_RDONLY, &txn->txn);
 	err_to_knot(&txn->ret);
 	if (txn->ret == KNOT_EOK) {
