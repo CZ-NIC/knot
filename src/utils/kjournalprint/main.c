@@ -15,6 +15,7 @@
  */
 
 #include <getopt.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -34,6 +35,19 @@
 #include "contrib/time.h"
 
 #define PROGRAM_NAME	"kjournalprint"
+
+knot_lmdb_db_t journal_db = { 0 }; // global so that accessible from signal handler
+
+int SIGNAL_REPEAT = 1;
+
+static void signal_handler(int signum)
+{
+	if (--SIGNAL_REPEAT < 0) {
+		abort();
+	}
+	knot_lmdb_close(&journal_db);
+	exit(EXIT_FAILURE);
+}
 
 static void print_help(void)
 {
@@ -188,25 +202,24 @@ static int print_changeset_cb(bool special, const changeset_t *ch, uint64_t time
 
 int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 {
-	knot_lmdb_db_t jdb = { 0 };
-	zone_journal_t j = { &jdb, name };
+	zone_journal_t j = { &journal_db, name };
 	bool exists;
 	uint64_t occupied, occupied_all;
 
-	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST, true), NULL);
-	int ret = knot_lmdb_exists(&jdb);
+	knot_lmdb_init(&journal_db, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST, true), NULL);
+	int ret = knot_lmdb_exists(&journal_db);
 	if (ret == KNOT_EOK) {
-		ret = knot_lmdb_open(&jdb);
+		ret = knot_lmdb_open(&journal_db);
 	}
 	if (ret != KNOT_EOK) {
-		knot_lmdb_deinit(&jdb);
+		knot_lmdb_deinit(&journal_db);
 		return ret;
 	}
 
 	ret = journal_info(j, &exists, NULL, NULL, NULL, NULL, NULL, &occupied, &occupied_all);
 	if (ret != KNOT_EOK || !exists) {
 		ERR2("zone not exists in the journal DB %s", path);
-		knot_lmdb_deinit(&jdb);
+		knot_lmdb_deinit(&journal_db);
 		return ret == KNOT_EOK ? KNOT_ENOENT : ret;
 	}
 
@@ -246,7 +259,7 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 		printf("Occupied all zones together: %"PRIu64" KiB\n", occupied_all / 1024);
 	}
 
-	knot_lmdb_deinit(&jdb);
+	knot_lmdb_deinit(&journal_db);
 	return ret;
 }
 
@@ -288,8 +301,7 @@ static int list_zone(const knot_dname_t *zone, bool detailed, knot_lmdb_db_t *jd
 
 int list_zones(char *path, bool detailed)
 {
-	knot_lmdb_db_t jdb = { 0 };
-	knot_lmdb_init(&jdb, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST, true), NULL);
+	knot_lmdb_init(&journal_db, path, 0, journal_env_flags(JOURNAL_MODE_ROBUST, true), NULL);
 
 	list_t zones;
 	init_list(&zones);
@@ -297,7 +309,7 @@ int list_zones(char *path, bool detailed)
 	uint64_t occupied_all = 0;
 	bool first = detailed;
 
-	int ret = journals_walk(&jdb, add_zone_to_list, &zones);
+	int ret = journals_walk(&journal_db, add_zone_to_list, &zones);
 	WALK_LIST(zone, zones) {
 		if (ret != KNOT_EOK) {
 			break;
@@ -305,10 +317,10 @@ int list_zones(char *path, bool detailed)
 			printf(";; <zone name>              <occupied KiB> <first serial> <last serial> <full zone>\n");
 			first = false;
 		}
-		ret = list_zone(zone->d, detailed, &jdb, &occupied_all);
+		ret = list_zone(zone->d, detailed, &journal_db, &occupied_all);
 	}
 
-	knot_lmdb_deinit(&jdb);
+	knot_lmdb_deinit(&journal_db);
 	ptrlist_deep_free(&zones, NULL);
 
 	if (detailed && ret == KNOT_EOK) {
@@ -419,6 +431,15 @@ int main(int argc, char *argv[])
 	}
 
 	char *db = conf_db(conf(), C_JOURNAL_DB);
+
+	struct sigaction sigact = { .sa_handler = signal_handler };
+	sigaction(SIGHUP, &sigact, NULL);
+	sigaction(SIGINT, &sigact, NULL);
+	sigaction(SIGPIPE, &sigact, NULL);
+	sigaction(SIGALRM, &sigact, NULL);
+	sigaction(SIGTERM, &sigact, NULL);
+	sigaction(SIGUSR1, &sigact, NULL);
+	sigaction(SIGUSR2, &sigact, NULL);
 
 	if (justlist) {
 		int ret = list_zones(db, params.debug);
