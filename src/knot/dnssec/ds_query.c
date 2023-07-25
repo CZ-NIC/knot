@@ -26,6 +26,11 @@
 #include "knot/query/requestor.h"
 #include "knot/server/server.h"
 
+#define DS_CHECK_LOG(priority, zone, remote, flags, fmt, ...) \
+	ns_log(priority, zone, LOG_OPERATION_DS_CHECK, LOG_DIRECTION_OUT, remote, \
+	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
+	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
+
 static bool match_key_ds(knot_kasp_key_t *key, knot_rdata_t *ds)
 {
 	assert(key);
@@ -110,10 +115,8 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	uint16_t rcode = knot_pkt_ext_rcode(pkt);
 	if (rcode != KNOT_RCODE_NOERROR) {
-		ns_log((rcode == KNOT_RCODE_NXDOMAIN ? LOG_NOTICE : LOG_WARNING),
-		       data->zone_name, LOG_OPERATION_DS_CHECK,
-		       LOG_DIRECTION_OUT, data->remote,
-		       layer->flags & KNOT_REQUESTOR_REUSED,
+		DS_CHECK_LOG((rcode == KNOT_RCODE_NXDOMAIN ? LOG_NOTICE : LOG_WARNING),
+		       data->zone_name, data->remote, layer->flags,
 		       "failed (%s)", knot_pkt_ext_rcode_name(pkt));
 		return KNOT_STATE_FAIL;
 	}
@@ -148,9 +151,8 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		match = false;
 	}
 
-	ns_log(LOG_INFO, data->zone_name, LOG_OPERATION_DS_CHECK,
-	       LOG_DIRECTION_OUT, data->remote, layer->flags & KNOT_REQUESTOR_REUSED,
-	       "KSK submission check: %s", (match ? "positive" : "negative"));
+	DS_CHECK_LOG(LOG_INFO, data->zone_name, data->remote, layer->flags,
+	             "KSK submission check: %s", (match ? "positive" : "negative"));
 
 	if (match) {
 		data->ds_ok = true;
@@ -212,9 +214,7 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 	}
 
 	if (ret != KNOT_EOK && !data.result_logged) {
-		ns_log(LOG_WARNING, zone_name, LOG_OPERATION_DS_CHECK,
-		       LOG_DIRECTION_OUT, data.remote,
-		       requestor.layer.flags & KNOT_REQUESTOR_REUSED,
+		DS_CHECK_LOG(LOG_WARNING, zone_name, data.remote, requestor.layer.flags,
 		       "failed (%s)", knot_strerror(ret));
 	}
 

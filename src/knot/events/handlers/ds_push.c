@@ -36,9 +36,10 @@ struct ds_push_data {
 
 #define DS_PUSH_RETRY	600
 
-#define DS_PUSH_LOG(priority, zone, remote, reused, fmt, ...) \
+#define DS_PUSH_LOG(priority, zone, remote, flags, fmt, ...) \
 	ns_log(priority, zone, LOG_OPERATION_DS_PUSH, LOG_DIRECTION_OUT, remote, \
-	       reused, fmt, ## __VA_ARGS__)
+	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
+	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
 
 static const knot_rdata_t remove_cds = { 5, { 0, 0, 0, 0, 0 } };
 
@@ -127,8 +128,7 @@ static int ds_push_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	if (data->parent_query[0] == '\0') {
 		// query for parent SOA systematically fails
-		DS_PUSH_LOG(LOG_WARNING, data->zone, data->remote,
-		            layer->flags & KNOT_REQUESTOR_REUSED,
+		DS_PUSH_LOG(LOG_WARNING, data->zone, data->remote, layer->flags,
 		            "unable to query parent SOA");
 		return KNOT_STATE_FAIL;
 	}
@@ -204,16 +204,13 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	ret = knot_requestor_exec(&requestor, req, timeout);
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
-		DS_PUSH_LOG(LOG_INFO, zone->name, &parent->addr,
-		            requestor.layer.flags & KNOT_REQUESTOR_REUSED,
+		DS_PUSH_LOG(LOG_INFO, zone->name, &parent->addr, requestor.layer.flags,
 		            "success");
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
-		DS_PUSH_LOG(LOG_WARNING, zone->name, &parent->addr,
-		            requestor.layer.flags & KNOT_REQUESTOR_REUSED,
+		DS_PUSH_LOG(LOG_WARNING, zone->name, &parent->addr, requestor.layer.flags,
 		            "failed (%s)", knot_strerror(ret));
 	} else {
-		DS_PUSH_LOG(LOG_WARNING, zone->name, &parent->addr,
-		            requestor.layer.flags & KNOT_REQUESTOR_REUSED,
+		DS_PUSH_LOG(LOG_WARNING, zone->name, &parent->addr, requestor.layer.flags,
 		            "server responded with error '%s'",
 		            knot_pkt_ext_rcode_name(req->resp));
 	}

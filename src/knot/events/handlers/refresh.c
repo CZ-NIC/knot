@@ -67,17 +67,20 @@
  * \endverbatim
  */
 
-#define REFRESH_LOG(priority, data, direction, msg...) \
-	ns_log(priority, (data)->zone->name, LOG_OPERATION_REFRESH, direction, \
-	       (data)->remote, (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
+#define PROTO(data) \
+	((data)->layer->flags & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP
+
+#define REFRESH_LOG(priority, data, msg...) \
+	ns_log(priority, (data)->zone->name, LOG_OPERATION_REFRESH, LOG_DIRECTION_NONE, \
+	       (data)->remote, 0, false, msg)
 
 #define AXFRIN_LOG(priority, data, msg...) \
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_AXFR, LOG_DIRECTION_IN, \
-	       (data)->remote, (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
+	       (data)->remote, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
 
 #define IXFRIN_LOG(priority, data, msg...) \
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_IXFR, LOG_DIRECTION_IN, \
-	       (data)->remote, (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
+	       (data)->remote, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
 
 enum state {
 	REFRESH_STATE_INVALID = 0,
@@ -275,7 +278,7 @@ static void xfr_log_publish(const struct refresh_data *data,
 	char expires_in[32] = "";
 	fill_expires_in(expires_in, sizeof(expires_in), data);
 
-	REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+	REFRESH_LOG(LOG_INFO, data,
 	            "zone updated, %0.2f seconds, serial %s -> %u%s%s",
 	            duration, old_info, new_serial, master_info, expires_in);
 }
@@ -1064,7 +1067,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	struct refresh_data *data = layer->data;
 
 	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
-		REFRESH_LOG(LOG_WARNING, data, LOG_DIRECTION_IN,
+		REFRESH_LOG(LOG_WARNING, data,
 		            "server responded with error '%s'",
 		            knot_pkt_ext_rcode_name(pkt));
 		data->ret = KNOT_EDENIED;
@@ -1074,7 +1077,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	const knot_rrset_t *rr = answer->count == 1 ? knot_pkt_rr(answer, 0) : NULL;
 	if (!rr || rr->type != KNOT_RRTYPE_SOA || rr->rrs.count != 1) {
-		REFRESH_LOG(LOG_WARNING, data, LOG_DIRECTION_IN,
+		REFRESH_LOG(LOG_WARNING, data,
 		            "malformed message");
 		conf_val_t val = conf_zone_get(data->conf, C_SEM_CHECKS, data->zone->name);
 		if (conf_opt(&val) == SEMCHECKS_SOFT) {
@@ -1100,12 +1103,12 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	if (!current) {
 		if (wait4pinned_master(data)) {
-			REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+			REFRESH_LOG(LOG_INFO, data,
 			            "remote serial %u, zone is outdated, waiting for pinned master",
 			            remote_serial);
 			return KNOT_STATE_DONE;
 		}
-		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+		REFRESH_LOG(LOG_INFO, data,
 		            "remote serial %u, zone is outdated", remote_serial);
 		data->state = STATE_TRANSFER;
 		return KNOT_STATE_RESET; // continue with transfer
@@ -1114,13 +1117,13 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		finalize_timers(data);
 		char expires_in[32] = "";
 		fill_expires_in(expires_in, sizeof(expires_in), data);
-		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+		REFRESH_LOG(LOG_INFO, data,
 		            "remote serial %u, zone is up-to-date%s",
 		            remote_serial, expires_in);
 		return KNOT_STATE_DONE;
 	} else {
 		finalize_timers_noexpire(data);
-		REFRESH_LOG(LOG_INFO, data, LOG_DIRECTION_NONE,
+		REFRESH_LOG(LOG_INFO, data,
 		            "remote serial %u, remote is outdated", remote_serial);
 		return KNOT_STATE_DONE;
 	}
@@ -1168,7 +1171,7 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	consume_edns_expire(data, pkt, true);
 	if (data->expire_timer < 2) {
-		REFRESH_LOG(LOG_WARNING, data, LOG_DIRECTION_NONE,
+		REFRESH_LOG(LOG_WARNING, data,
 		            "remote is expired, ignoring");
 		return KNOT_STATE_IGNORE;
 	}
@@ -1186,7 +1189,8 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		                 data->xfr_type == XFR_TYPE_UPTODATE ?
 		                 LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
 		                 LOG_DIRECTION_IN, data->remote,
-		                 layer->flags & KNOT_REQUESTOR_REUSED,
+		                 (layer->flags & KNOT_REQUESTOR_QUIC ?
+		                  KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP),
 		                 &data->stats);
 
 		/*
@@ -1363,7 +1367,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	while (ret = knot_requestor_exec(&requestor, req, timeout),
 	       ret = (data.ret == KNOT_EOK ? ret : data.ret),
 	       data.fallback_axfr && ret != KNOT_EOK) {
-		REFRESH_LOG(LOG_WARNING, &data, LOG_DIRECTION_IN,
+		REFRESH_LOG(LOG_WARNING, &data,
 		            "fallback to AXFR (%s)", knot_strerror(ret));
 		ixfr_cleanup(&data);
 		data.ret = KNOT_EOK;
