@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <time.h>
 
-#include "knot/conf/conf.h"
 #include "knot/zone/serial.h"
 
 static const serial_cmp_result_t diffbrief2result[4] = {
@@ -48,9 +47,11 @@ static uint32_t serial_dateserial(uint32_t current)
 	       (       now.tm_mday) *     100;
 }
 
-uint32_t serial_next(uint32_t current, int policy, uint32_t must_increment)
+uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_increment,
+                             uint8_t rem, uint8_t mod)
 {
-	uint32_t minimum;
+	uint32_t minimum, result;
+
 	switch (policy) {
 	case SERIAL_POLICY_INCREMENT:
 		minimum = current;
@@ -66,10 +67,38 @@ uint32_t serial_next(uint32_t current, int policy, uint32_t must_increment)
 		return 0;
 	}
 	if (serial_compare(minimum, current) != SERIAL_GREATER) {
-		return current + must_increment;
+		result = current + must_increment;
 	} else {
-		return minimum;
+		result = minimum;
 	}
+
+	if (mod > 1) {
+		uint32_t incr = ((rem + mod) - (result % mod)) % mod;
+		assert(incr == 0 || result % mod != rem);
+		result += incr;
+		assert(result % mod == rem);
+	}
+
+	return result;
+}
+
+uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
+                     unsigned policy, uint32_t must_increment)
+{
+	assert(conf);
+	assert(zone);
+
+	if (policy == SERIAL_POLICY_AUTO) {
+		conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, zone);
+		policy = conf_opt(&val);
+	}
+
+	uint32_t rem, mod;
+	conf_val_t val = conf_zone_get(conf, C_SERIAL_MODULO, zone);
+	int ret = serial_modulo_parse(conf_str(&val), &rem, &mod);
+	assert(ret == KNOT_EOK && rem < mod); // ensured by conf/tools.c
+
+	return serial_next_generic(current, policy, must_increment, rem, mod);
 }
 
 serial_cmp_result_t kserial_cmp(kserial_t a, kserial_t b)

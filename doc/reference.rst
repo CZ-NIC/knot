@@ -2298,6 +2298,7 @@ Definition of zones served by the server.
      zonemd-verify: BOOL
      zonemd-generate: none | zonemd-sha384 | zonemd-sha512 | remove
      serial-policy: increment | unixtime | dateserial
+     serial-modulo: INT/INT
      reverse-generate: DNAME
      refresh-min-interval: TIME
      refresh-max-interval: TIME
@@ -2726,6 +2727,29 @@ Possible values:
    Generated catalog zones use ``unixtime`` only.
 
 *Default:* ``increment`` (``unixtime`` for generated catalog zones)
+
+.. _zone_serial-modulo:
+
+serial-modulo
+-------------
+
+Specifies that the zone serials shall be congruent by specified modulo.
+The option value must be a string in the format ``R/M``, where ``R < M <= 256`` are
+positive integers. Whenever the zone serial is incremented, it is ensured
+that ``serial % M == R``. This can be useful in the case of multiple inconsistent
+primaries, where distinct zone serial sequences prevent cross-master-IXFR
+by any secondary.
+
+.. NOTE::
+   In order to ensure the congruent policy, this option is only allowed
+   with :ref:`DNSSEC signing enabled<zone_dnssec-signing>` and
+   :ref:`zone_zonefile-load` to be either ``difference-no-serial`` or ``none``.
+
+   Because the zone serial effectively always increments by ``M`` instead of
+   ``1``, it is not recommended to use ``dateserial`` :ref:`zone_serial-policy`
+   or even ``unixtime`` in case of rapidly updated zone.
+
+*Default:* ``0/1``
 
 .. _zone_reverse-generate:
 

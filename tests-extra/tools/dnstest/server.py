@@ -92,6 +92,7 @@ class Zone(object):
         self.zfile = zone_file
         self.masters = set()
         self.slaves = set()
+        self.serial_modulo = None
         self.ddns = ddns
         self.ixfr = ixfr
         self.journal_content = journal_content # journal contents
@@ -1616,6 +1617,7 @@ class Knot(Server):
             self.config_xfr(z, s)
 
             self._str(s, "serial-policy", self.serial_policy)
+            self._str(s, "serial-modulo", z.serial_modulo)
             self._str(s, "ddns-master", self.ddns_master)
 
             s.item_str("journal-content", z.journal_content)

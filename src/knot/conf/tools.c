@@ -38,6 +38,7 @@
 #include "knot/conf/module.h"
 #include "knot/conf/schema.h"
 #include "knot/common/log.h"
+#include "knot/zone/serial.h"
 #include "libknot/errcode.h"
 #ifdef ENABLE_QUIC
 #include "libknot/quic/quic.h"
@@ -343,6 +344,19 @@ int check_cert_pin(
 		return KNOT_EINVAL;
 	}
 #endif // ENABLE_QUIC
+
+	return KNOT_EOK;
+}
+
+int check_modulo(
+	knotd_conf_check_args_t *args)
+{
+	uint32_t rem, mod;
+	if (serial_modulo_parse((const char *)args->data, &rem, &mod) != KNOT_EOK ||
+	    mod > 256 || rem >= mod) {
+		args->err_str = "invalid value, expected format 'R/M', where R < M <= 256";
+		return KNOT_EINVAL;
+	}
 
 	return KNOT_EOK;
 }
@@ -940,7 +954,8 @@ int check_zone(
 	                                       C_ZONEFILE_LOAD, yp_dname(args->id));
 	conf_val_t journal = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_JOURNAL_CONTENT, yp_dname(args->id));
-	if (conf_opt(&zf_load) == ZONEFILE_LOAD_DIFSE) {
+	int zf_load_val = conf_opt(&zf_load);
+	if (zf_load_val == ZONEFILE_LOAD_DIFSE) {
 		if (conf_opt(&journal) != JOURNAL_CONTENT_ALL) {
 			args->err_str = "'zonefile-load: difference-no-serial' requires 'journal-content: all'";
 			return KNOT_EINVAL;
@@ -962,6 +977,23 @@ int check_zone(
 		if (ddnsmaster.code == KNOT_EOK && *conf_str(&ddnsmaster) == '\0') {
 			args->err_str = "empty 'ddns-master' requires 'dnssec-signing' enabled";
 			return KNOT_EINVAL;
+		}
+	}
+
+	conf_val_t serial_modulo = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                             C_SERIAL_MODULO, yp_dname(args->id));
+	if (serial_modulo.code == KNOT_EOK) {
+		uint32_t rem, mod;
+		int ret = serial_modulo_parse(conf_str(&serial_modulo), &rem, &mod);
+		if (ret == KNOT_EOK && mod > 1) {
+			if (!conf_bool(&signing)) {
+				args->err_str = "'serial-modulo' is only possible with `dnssec-signing`";
+				return KNOT_EINVAL;
+			} else if (zf_load_val != ZONEFILE_LOAD_DIFSE && zf_load_val != ZONEFILE_LOAD_NONE) {
+				args->err_str = "'serial-modulo' requires 'zonefile-load' either 'none'"
+				                " or 'difference-no-serial'";
+				return KNOT_EINVAL;
+			}
 		}
 	}
 

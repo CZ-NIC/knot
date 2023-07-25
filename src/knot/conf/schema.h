@@ -132,6 +132,7 @@
 #define C_SBM			"\x0A""submission"
 #define C_SECRET		"\x06""secret"
 #define C_SEM_CHECKS		"\x0F""semantic-checks"
+#define C_SERIAL_MODULO		"\x0D""serial-modulo"
 #define C_SERIAL_POLICY		"\x0D""serial-policy"
 #define C_SERVER		"\x06""server"
 #define C_SIGNING_THREADS	"\x0F""signing-threads"
@@ -228,6 +229,7 @@ enum {
 };
 
 enum {
+	SERIAL_POLICY_AUTO       = 0,
 	SERIAL_POLICY_INCREMENT  = 1,
 	SERIAL_POLICY_UNIXTIME   = 2,
 	SERIAL_POLICY_DATESERIAL = 3,

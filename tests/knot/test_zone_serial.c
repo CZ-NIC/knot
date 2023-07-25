@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ static uint32_t random_serial(void)
 
 static void check_unixtime(uint32_t current, uint32_t increment, uint32_t expected, const char *msg)
 {
-	uint32_t next = serial_next(current, SERIAL_POLICY_UNIXTIME, increment);
+	uint32_t next = serial_next_generic(current, SERIAL_POLICY_UNIXTIME, increment, 0, 1);
 	ok(next == expected, "unixtime: %s", msg);
 }
 
@@ -63,7 +63,7 @@ static void test_unixtime(void)
 
 static void check_dateserial(uint32_t current, uint32_t increment, uint32_t expected, const char *msg)
 {
-	uint32_t next = serial_next(current, SERIAL_POLICY_DATESERIAL, increment);
+	uint32_t next = serial_next_generic(current, SERIAL_POLICY_DATESERIAL, increment, 0, 1);
 	ok(next == expected, "dateserial: %s", msg);
 }
 
@@ -90,6 +90,60 @@ static void test_dateserial(void)
 	check_dateserial(serial0 + 99, 1, serial0 + 100, "wrap from today");
 	check_dateserial(2100010100, 1, 2100010101, "from future date");
 	check_dateserial(2100010100, 0, 2100010100, "at future date");
+}
+
+static void check_modulo(uint32_t current, uint32_t expected, uint8_t rem, uint8_t mod)
+{
+	uint32_t next = serial_next_generic(current, SERIAL_POLICY_INCREMENT, 1, rem, mod);
+	ok(next == expected, "modulo: %u->%u %u/%u", current, expected, rem, mod);
+}
+
+static void test_modulo(void)
+{
+	// mod 1
+
+	check_modulo(0, 1, 0, 1);
+	check_modulo(1, 2, 0, 1);
+	check_modulo(2, 3, 0, 1);
+	check_modulo(3, 4, 0, 1);
+	check_modulo(S_2HIGHEST, S_HIGHEST, 0, 1);
+	check_modulo(S_HIGHEST, S_LOWEST,   0, 1);
+
+	// mod 2
+
+	check_modulo(0, 2, 0, 2);
+	check_modulo(1, 2, 0, 2);
+	check_modulo(2, 4, 0, 2);
+	check_modulo(3, 4, 0, 2);
+	check_modulo(4, 6, 0, 2);
+	check_modulo(S_2HIGHEST, S_LOWEST, 0, 2);
+
+	check_modulo(0, 1, 1, 2);
+	check_modulo(1, 3, 1, 2);
+	check_modulo(2, 3, 1, 2);
+	check_modulo(3, 5, 1, 2);
+	check_modulo(4, 5, 1, 2);
+	check_modulo(S_2HIGHEST, S_HIGHEST, 1, 2);
+
+	// mod 3
+
+	check_modulo(0, 3, 0, 3);
+	check_modulo(1, 3, 0, 3);
+	check_modulo(2, 3, 0, 3);
+	check_modulo(3, 6, 0, 3);
+	check_modulo(4, 6, 0, 3);
+
+	check_modulo(0, 1, 1, 3);
+	check_modulo(1, 4, 1, 3);
+	check_modulo(2, 4, 1, 3);
+	check_modulo(3, 4, 1, 3);
+	check_modulo(4, 7, 1, 3);
+
+	check_modulo(0, 2, 2, 3);
+	check_modulo(1, 2, 2, 3);
+	check_modulo(2, 5, 2, 3);
+	check_modulo(3, 5, 2, 3);
+	check_modulo(4, 5, 2, 3);
 }
 
 int main(int argc, char *argv[])
@@ -154,6 +208,7 @@ int main(int argc, char *argv[])
 
 	test_dateserial();
 	test_unixtime();
+	test_modulo();
 
 	return 0;
 }

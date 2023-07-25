@@ -310,21 +310,20 @@ static void axfr_slave_sign_serial(zone_contents_t *new_contents, zone_t *zone,
 {
 	// Update slave's serial to ensure it's growing and consistent with
 	// its serial policy.
-	conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
-	unsigned serial_policy = conf_opt(&val);
 
 	*master_serial = zone_contents_serial(new_contents);
 
 	uint32_t new_serial, lastsigned_serial;
 	if (zone->contents != NULL) {
 		// Retransfer or AXFR-fallback - increment current serial.
-		new_serial = serial_next(zone_contents_serial(zone->contents), serial_policy, 1);
+		uint32_t cont_serial = zone_contents_serial(zone->contents);
+		new_serial = serial_next(cont_serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
 	} else if (zone_get_lastsigned_serial(zone, &lastsigned_serial) == KNOT_EOK) {
 		// Bootstrap - increment stored serial.
-		new_serial = serial_next(lastsigned_serial, serial_policy, 1);
+		new_serial = serial_next(lastsigned_serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
 	} else {
 		// Bootstrap - try to reuse master serial, considering policy.
-		new_serial = serial_next(*master_serial, serial_policy, 0);
+		new_serial = serial_next(*master_serial, conf, zone->name, SERIAL_POLICY_AUTO, 0);
 	}
 	zone_contents_set_soa_serial(new_contents, new_serial);
 }
@@ -541,7 +540,7 @@ static void ixfr_cleanup(struct refresh_data *data)
 	changesets_free(&data->ixfr.changesets);
 }
 
-static bool ixfr_serial_once(changeset_t *ch, int policy, uint32_t *master_serial, uint32_t *local_serial)
+static bool ixfr_serial_once(changeset_t *ch, conf_t *conf, uint32_t *master_serial, uint32_t *local_serial)
 {
 	uint32_t ch_from = changeset_from(ch), ch_to = changeset_to(ch);
 
@@ -550,7 +549,7 @@ static bool ixfr_serial_once(changeset_t *ch, int policy, uint32_t *master_seria
 	}
 
 	uint32_t new_from = *local_serial;
-	uint32_t new_to = serial_next(new_from, policy, 1);
+	uint32_t new_to = serial_next(new_from, conf, ch->soa_from->owner, SERIAL_POLICY_AUTO, 1);
 	knot_soa_serial_set(ch->soa_from->rrs.rdata, new_from);
 	knot_soa_serial_set(ch->soa_to->rrs.rdata, new_to);
 
@@ -570,9 +569,6 @@ static int ixfr_slave_sign_serial(list_t *changesets, zone_t *zone,
 		return KNOT_ERROR;
 	}
 
-	conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
-	unsigned serial_policy = conf_opt(&val);
-
 	int ret = zone_get_master_serial(zone, master_serial);
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "failed to read master serial"
@@ -581,7 +577,7 @@ static int ixfr_slave_sign_serial(list_t *changesets, zone_t *zone,
 	}
 	changeset_t *chs;
 	WALK_LIST(chs, *changesets) {
-		if (!ixfr_serial_once(chs, serial_policy, master_serial, &local_serial)) {
+		if (!ixfr_serial_once(chs, conf, master_serial, &local_serial)) {
 			return KNOT_EINVAL;
 		}
 	}
