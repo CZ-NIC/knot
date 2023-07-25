@@ -563,7 +563,6 @@ int main(int argc, char **argv)
 		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf());
-		systemd_dbus_close();
 		log_close();
 		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
