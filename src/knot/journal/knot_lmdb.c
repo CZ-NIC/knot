@@ -279,6 +279,11 @@ void knot_lmdb_deinit(knot_lmdb_db_t *db)
 
 void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn, bool rw)
 {
+	if (rw) { // Cleaning up reader lock table can be done occasionally. Opening a RW txn seems a good occasion.
+		int dead = 0, checkret = mdb_reader_check(db->env, &dead);
+		(void)(dead && checkret); // best effort, don't care about results
+	}
+
 	txn->ret = mdb_txn_begin(db->env, NULL, rw ? 0 : MDB_RDONLY, &txn->txn);
 	err_to_knot(&txn->ret);
 	if (txn->ret == KNOT_EOK) {
