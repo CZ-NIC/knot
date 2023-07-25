@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,11 +24,13 @@
 
 #include "knot/conf/conf.h"
 #include "contrib/files.h"
+#include "contrib/time.h"
 #include "contrib/wire_ctx.h"
 #include "libknot/dname.h"
 #include "libknot/endian.h"
 #include "libknot/error.h"
 
+#define READER_LOCK_CLEAN_MAX_FREQ 3 // minimal interval between reader-lock-table cleanups
 #define LMDB_DIR_MODE   0770
 #define LMDB_FILE_MODE  0660
 
@@ -81,6 +83,7 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
 	pthread_mutex_init(&db->opening_mutex, NULL);
 	db->maxdbs = 2;
 	db->maxreaders = conf_lmdb_readers(conf());
+	db->last_readlock_clean = 0;
 }
 
 static int lmdb_stat(const char *lmdb_path, struct stat *st)
@@ -279,6 +282,12 @@ void knot_lmdb_deinit(knot_lmdb_db_t *db)
 
 void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn, bool rw)
 {
+	uint64_t next_readlock_clean = db->last_readlock_clean + READER_LOCK_CLEAN_MAX_FREQ, now = knot_time();
+	if (rw && next_readlock_clean < now) { // Cleaning up reader lock table can be done occasionally. Opening a RW txn seems a good occasion.
+		int cleared = 0, _unused_ ret = mdb_reader_check(db->env, &cleared);
+		db->last_readlock_clean = now;
+	}
+
 	txn->ret = mdb_txn_begin(db->env, NULL, rw ? 0 : MDB_RDONLY, &txn->txn);
 	err_to_knot(&txn->ret);
 	if (txn->ret == KNOT_EOK) {
