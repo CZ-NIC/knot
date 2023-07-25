@@ -496,21 +496,6 @@ const char* conf_str(
 );
 
 /*!
- * Gets the tuple value of a string item in format "##/##".
- *
- * \param[in]    val  Item value.
- * \param[out]   a    First numeric value.
- * \param[out]   b    Second numeric value.
- *
- * \return KNOT_EOK if OK, KNOT_EMALF if the tuple format not recognized.
- */
-int conf_tuple(
-	conf_val_t *val,
-	uint32_t *a,
-	uint32_t *b
-);
-
-/*!
  * Gets the dname value of the item.
  *
  * \param[in] val  Item value.

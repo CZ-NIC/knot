@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <inttypes.h>
+#include <stdio.h>
+
 #include "knot/conf/conf.h"
 
 #define SERIAL_MAX_INCREMENT 2147483647
@@ -92,4 +95,23 @@ serial_cmp_result_t kserial_cmp(kserial_t a, kserial_t b);
 inline static bool kserial_equal(kserial_t a, kserial_t b)
 {
 	return kserial_cmp(a, b) == SERIAL_EQUAL;
+}
+
+/*!
+ * Gets the tuple value (remainder, modulus) of a string in the format "#/#".
+ *
+ * \param[in]    str  String value to parse.
+ * \param[out]   rem  Parsed remainder value.
+ * \param[out]   mod  Parsed modulus value.
+ *
+ * \return KNOT_EOK if OK, KNOT_E* otherwise.
+ */
+inline static int serial_modulo_parse(const char *str, uint32_t *rem, uint32_t *mod)
+{
+	if (str == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	char c; // Possible first trailing character.
+	return sscanf(str, "%"SCNu32"/%"SCNu32"%c", rem, mod, &c) == 2 ? KNOT_EOK : KNOT_EMALF;
 }

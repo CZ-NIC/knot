@@ -95,7 +95,7 @@ uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
 
 	uint32_t rem, mod;
 	conf_val_t val = conf_zone_get(conf, C_SERIAL_MODULO, zone);
-	int ret = conf_tuple(&val, &rem, &mod);
+	int ret = serial_modulo_parse(conf_str(&val), &rem, &mod);
 	assert(ret == KNOT_EOK && rem < mod); // ensured by conf/tools.c
 
 	return serial_next_generic(current, policy, must_increment, rem, mod);

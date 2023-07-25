@@ -666,16 +666,6 @@ const char* conf_str(
 	}
 }
 
-int conf_tuple(
-	conf_val_t *val,
-	uint32_t *a,
-	uint32_t *b)
-{
-	const char *str = conf_str(val);
-	int res = sscanf(str, "%"SCNu32"/%"SCNu32, a, b);
-	return res == 2 ? KNOT_EOK : KNOT_EMALF;
-}
-
 const knot_dname_t* conf_dname(
 	conf_val_t *val)
 {
