@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,6 +42,11 @@ jsonw_t *jsonw_new(FILE *out, const char *indent);
 void jsonw_free(jsonw_t **w);
 
 /*!
+ * Write null value as JSON.
+ */
+void jsonw_null(jsonw_t *w, const char *key);
+
+/*!
  * Start writing a new object.
  *
  * The following writes will represent key and value pairs respectively until
@@ -60,6 +65,11 @@ void jsonw_list(jsonw_t *w, const char *key);
  * Write string as JSON. The string will be escaped properly.
  */
 void jsonw_str(jsonw_t *w, const char *key, const char *value);
+
+/*!
+ * Write string with specified length as JSON. The string will be escaped properly, including \0.
+ */
+void jsonw_str_len(jsonw_t *w, const char *key, const uint8_t *value, size_t len, bool quote);
 
 /*!
  * Write unsigned long value as JSON.

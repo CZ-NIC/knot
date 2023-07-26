@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,17 +96,24 @@ static void end_block(jsonw_t *w)
 	w->top += 1;
 }
 
-static void escaped_print(jsonw_t *w, const char *str)
+static void escaped_print(jsonw_t *w, const char *str, size_t maxlen, bool quote)
 {
-	fputc('"', w->out);
-	for (const char *pos = str; *pos != '\0'; pos++) {
+	if (quote) {
+		fputc('"', w->out);
+	}
+	for (const char *pos = str; maxlen == SIZE_MAX ? (*pos != '\0') : (pos - str < maxlen); pos++) {
 		char c = *pos;
 		if (c == '\\' || c == '\"') {
 			fputc('\\', w->out);
+		} else if (c == '\0') {
+			fprintf(w->out, "\\u0000");
+			continue;
 		}
 		fputc(c, w->out);
 	}
-	fputc('"', w->out);
+	if (quote) {
+		fputc('"', w->out);
+	}
 }
 
 static void align_key(jsonw_t *w, const char *key)
@@ -119,7 +126,7 @@ static void align_key(jsonw_t *w, const char *key)
 	wrap(w);
 
 	if (key && key[0]) {
-		escaped_print(w, key);
+		escaped_print(w, key, SIZE_MAX, true);
 		fprintf(w->out, ": ");
 	}
 }
@@ -152,6 +159,14 @@ void jsonw_free(jsonw_t **w)
 	*w = NULL;
 }
 
+void jsonw_null(jsonw_t *w, const char *key)
+{
+	assert(w);
+
+	align_key(w, key);
+	fprintf(w->out, "null");
+}
+
 void jsonw_object(jsonw_t *w, const char *key)
 {
 	assert(w);
@@ -175,7 +190,15 @@ void jsonw_str(jsonw_t *w, const char *key, const char *value)
 	assert(w);
 
 	align_key(w, key);
-	escaped_print(w, value);
+	escaped_print(w, value, SIZE_MAX, true);
+}
+
+void jsonw_str_len(jsonw_t *w, const char *key, const uint8_t *value, size_t len, bool quote)
+{
+	assert(w);
+
+	align_key(w, key);
+	escaped_print(w, (const char *)value, len, quote);
 }
 
 void jsonw_ulong(jsonw_t *w, const char *key, unsigned long value)
