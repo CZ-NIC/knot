@@ -42,7 +42,7 @@ int SIGNAL_REPEAT = 1;
 
 static void signal_handler(int signum)
 {
-	if (--SIGNAL_REPEAT < 0 || signum == SIGKILL) {
+	if (--SIGNAL_REPEAT < 0) {
 		abort();
 	}
 	knot_lmdb_close(&jounal_db);
@@ -433,10 +433,12 @@ int main(int argc, char *argv[])
 	char *db = conf_db(conf(), C_JOURNAL_DB);
 
 	struct sigaction sigact = { .sa_handler = signal_handler };
-	sigaction(SIGTERM, &sigact, NULL);
+	sigaction(SIGHUP, &sigact, NULL);
 	sigaction(SIGINT, &sigact, NULL);
-	sigaction(SIGKILL, &sigact, NULL);
 	sigaction(SIGPIPE, &sigact, NULL);
+	sigaction(SIGTERM, &sigact, NULL);
+	sigaction(SIGUSR1, &sigact, NULL);
+	sigaction(SIGUSR2, &sigact, NULL);
 
 	if (justlist) {
 		int ret = list_zones(db, params.debug);
