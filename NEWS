@@ -1,3 +1,20 @@
+Knot DNS 3.2.9 (2023-27-07)
+===========================
+
+Improvements:
+-------------
+ - keymgr: 'import-pkcs11' not allowed if no PKCS #11 keystore backend is configured
+ - keymgr: more verbose key import errors
+ - doc: extended migration notes
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: server may crash when storing changeset of a big zone migrating to/from NSEC3
+ - knotd: zone refresh loop when all masters are outdated and timers cleared
+ - knotd: failed to active D-Bus notifications if not started as systemd service
+ - kjournalprint: database transaction not properly closed when terminated prematurely
+
 Knot DNS 3.2.8 (2023-26-06)
 ===========================
 
