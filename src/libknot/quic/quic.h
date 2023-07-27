@@ -140,6 +140,11 @@ bool quic_conn_timeout(knot_quic_conn_t *conn, uint64_t *now);
 uint32_t knot_quic_conn_rtt(knot_quic_conn_t *conn);
 
 /*!
+ * \brief Returns the port from local-address of given conn IN BIG ENDIAN.
+ */
+uint16_t knot_quic_conn_local_port(knot_quic_conn_t *conn);
+
+/*!
  * \brief Gets local or remote certificate pin.
  *
  * \note Zero output pin_size value means no certificate available or error.

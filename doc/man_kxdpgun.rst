@@ -141,6 +141,9 @@ TCP/QUIC debug modes
 **9**
   Operate normally except for not ACKing the final FIN+ACK (TCP only).
 
+**R**
+  Instead of opening a connection for each query, reuse connections.
+
 Signals
 .......
 

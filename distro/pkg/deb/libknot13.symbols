@@ -115,8 +115,11 @@ libknot.so.13 libknot13 #MINVER#
  knot_quic_cleanup@Base 3.3.0
  knot_quic_client@Base 3.3.0
  knot_quic_conn_get_stream@Base 3.3.0
+ knot_quic_conn_local_port@Base 3.3.0
+ knot_quic_conn_new_stream@Base 3.3.0
  knot_quic_conn_pin@Base 3.3.0
  knot_quic_conn_rtt@Base 3.3.0
+ knot_quic_conn_stream_free@Base 3.3.0
  knot_quic_creds_cert@Base 3.3.0
  knot_quic_free_creds@Base 3.3.0
  knot_quic_handle@Base 3.3.0

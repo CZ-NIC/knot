@@ -468,6 +468,13 @@ uint32_t knot_quic_conn_rtt(knot_quic_conn_t *conn)
 }
 
 _public_
+uint16_t knot_quic_conn_local_port(knot_quic_conn_t *conn)
+{
+	const ngtcp2_path *path = ngtcp2_conn_get_path(conn->conn);
+	return ((const struct sockaddr_in6 *)path->local.addr)->sin6_port;
+}
+
+_public_
 void knot_quic_conn_pin(knot_quic_conn_t *conn, uint8_t *pin, size_t *pin_size, bool local)
 {
 	if (conn == NULL) {
@@ -668,7 +675,7 @@ static int stream_closed(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 
 	bool keep = !ngtcp2_conn_is_server(conn); // kxdpgun: process incomming reply after recvd&closed
 	if (!keep) {
-		quic_stream_free(ctx, stream_id);
+		knot_quic_conn_stream_free(ctx, stream_id);
 	}
 	return 0;
 }

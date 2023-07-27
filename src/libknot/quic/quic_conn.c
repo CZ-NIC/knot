@@ -207,7 +207,8 @@ void quic_table_rem2(knot_quic_cid_t **pcid, knot_quic_table_t *table)
 	table->pointers--;
 }
 
-void quic_stream_free(knot_quic_conn_t *conn, int64_t stream_id)
+_public_
+void knot_quic_conn_stream_free(knot_quic_conn_t *conn, int64_t stream_id)
 {
 	knot_quic_stream_t *s = knot_quic_conn_get_stream(conn, stream_id, false);
 	if (s != NULL && s->inbuf.iov_len > 0) {
@@ -235,7 +236,7 @@ void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 		conn->streams_count = 1;
 	}
 	for (ssize_t i = conn->streams_count - 1; i >= 0; i--) {
-		quic_stream_free(conn, (i + conn->streams_first) * 4);
+		knot_quic_conn_stream_free(conn, (i + conn->streams_first) * 4);
 	}
 	assert(conn->streams_count <= 0);
 	assert(conn->obufs_size == 0);
@@ -323,6 +324,13 @@ knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *conn,
 		return &conn->streams[stream_id - conn->streams_first];
 	}
 	return NULL;
+}
+
+_public_
+knot_quic_stream_t *knot_quic_conn_new_stream(knot_quic_conn_t *conn)
+{
+	int64_t new_id = (conn->streams_first + conn->streams_count) * 4;
+	return knot_quic_conn_get_stream(conn, new_id, true);
 }
 
 static void stream_inprocess(knot_quic_conn_t *conn, knot_quic_stream_t *stream)
