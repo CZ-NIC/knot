@@ -743,8 +743,6 @@ void *xdp_gun_thread(void *_ctx)
 							continue;
 						}
 
-						bool resp_recvd = false;
-
 						if (!ctx->quic_full_handshake && knot_quic_session_available(conn)) {
 							void *session = knot_quic_session_save(conn);
 							if (session != NULL) {
@@ -779,17 +777,14 @@ void *xdp_gun_thread(void *_ctx)
 						}
 
 						stream0 = knot_quic_conn_get_stream(conn, 0, false);
-						if (stream0 != NULL && stream0->inbufs != NULL) {
+						if (stream0 != NULL && stream0->inbufs != NULL && stream0->inbufs->n_inbufs > 0) {
 							check_dns_payload(&knot_tinbufu_res_inbufs(stream0->inbufs)[0], ctx, &local_stats);
-							free(stream0->inbufs);
-							stream0->inbufs = NULL;
+							stream0->inbufs->n_inbufs = 0; // signal that data have been read out
 
 							if ((ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK)) {
 								knot_quic_table_rem(conn, quic_table);
 								knot_quic_cleanup(&conn, 1);
 								continue;
-							} else {
-								resp_recvd = true;
 							}
 						}
 						ret = knot_quic_send(quic_table, conn, &quic_reply, 4,
@@ -799,7 +794,8 @@ void *xdp_gun_thread(void *_ctx)
 							errors++;
 						}
 
-						if (resp_recvd && !(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
+						if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE) && conn->session_taken &&
+						    stream0 != NULL && stream0->inbufs != NULL && stream0->inbufs->n_inbufs == 0) {
 							assert(!(ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK));
 							quic_reply.handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
 							ret = knot_quic_send(quic_table, conn, &quic_reply, 1, false);
