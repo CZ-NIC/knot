@@ -202,7 +202,6 @@ int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	struct axfr_proc *axfr = qdata->extra->ext;
 	if (axfr == NULL) {
 		int ret = axfr_query_init(qdata);
-		axfr = qdata->extra->ext;
 		switch (ret) {
 		case KNOT_EOK:      /* OK */
 			AXFROUT_LOG(LOG_INFO, qdata, "started, serial %u",
