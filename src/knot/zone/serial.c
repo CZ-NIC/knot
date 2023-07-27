@@ -73,6 +73,7 @@ uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_in
 	}
 
 	if (mod > 1) {
+		assert(rem < mod);
 		uint32_t incr = ((rem + mod) - (result % mod)) % mod;
 		assert(incr == 0 || result % mod != rem);
 		result += incr;
@@ -95,8 +96,10 @@ uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
 
 	uint32_t rem, mod;
 	conf_val_t val = conf_zone_get(conf, C_SERIAL_MODULO, zone);
-	int ret = serial_modulo_parse(conf_str(&val), &rem, &mod);
-	assert(ret == KNOT_EOK && rem < mod); // ensured by conf/tools.c
+	if (serial_modulo_parse(conf_str(&val), &rem, &mod) != KNOT_EOK) {
+		assert(0); // cannot happen - ensured by conf check
+		return 0;
+	}
 
 	return serial_next_generic(current, policy, must_increment, rem, mod);
 }
