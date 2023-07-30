@@ -1350,7 +1350,6 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	knot_request_t *req = knot_request_make(NULL, master, pkt, zone->server->quic_creds,
 	                                        &data.edns, flags);
 	if (req == NULL) {
-		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
 	}

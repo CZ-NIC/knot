@@ -109,7 +109,6 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 	knot_request_t *req = knot_request_make(NULL, slave, pkt,
 	                                        zone->server->quic_creds, &data.edns, flags);
 	if (req == NULL) {
-		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
 	}

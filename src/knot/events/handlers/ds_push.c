@@ -196,7 +196,6 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	                                        zone->server->quic_creds, &data.edns, 0);
 	if (req == NULL) {
 		knot_rdataset_clear(&data.del_old_ds.rrs, NULL);
-		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
 	}

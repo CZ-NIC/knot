@@ -199,7 +199,6 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 
 	knot_request_t *req = knot_request_make(NULL, parent, pkt, server->quic_creds, &data.edns, 0);
 	if (req == NULL) {
-		knot_request_free(req, NULL);
 		knot_requestor_clear(&requestor);
 		return KNOT_ENOMEM;
 	}
