@@ -27,6 +27,7 @@ RUN apt-get -y install \
 	libsystemd-dev \
 	libtool \
 	liburcu-dev \
+	libxdp-dev \
 	llvm \
 	locales-all \
 	pkg-config \
