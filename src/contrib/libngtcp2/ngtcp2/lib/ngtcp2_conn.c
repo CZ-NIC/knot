@@ -50,6 +50,8 @@
    packet payload that should be coalesced to a long packet. */
 #define NGTCP2_MIN_COALESCED_PAYLOADLEN 128
 
+ngtcp2_objalloc_def(strm, ngtcp2_strm, oplent);
+
 /*
  * conn_local_stream returns nonzero if |stream_id| indicates that it
  * is the stream initiated by local endpoint.
@@ -7029,10 +7031,7 @@ static int conn_recv_crypto(ngtcp2_conn *conn,
     uint64_t offset = rx_offset;
 
     rx_offset += datalen;
-    rv = ngtcp2_strm_update_rx_offset(crypto, rx_offset);
-    if (rv != 0) {
-      return rv;
-    }
+    ngtcp2_strm_update_rx_offset(crypto, rx_offset);
 
     rv = conn_call_recv_crypto_data(conn, encryption_level, offset, data,
                                     datalen);
@@ -7239,10 +7238,7 @@ static int conn_recv_stream(ngtcp2_conn *conn, const ngtcp2_stream *fr) {
       datalen -= ncut;
 
       rx_offset += datalen;
-      rv = ngtcp2_strm_update_rx_offset(strm, rx_offset);
-      if (rv != 0) {
-        return rv;
-      }
+      ngtcp2_strm_update_rx_offset(strm, rx_offset);
     } else {
       data = NULL;
       datalen = 0;
