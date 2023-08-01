@@ -866,6 +866,7 @@ void quic_ctx_deinit(quic_ctx_t *ctx)
 
 	if (ctx->stream.in_buffer.iov_base != NULL) {
 		free(ctx->stream.in_buffer.iov_base);
+		ctx->stream.in_buffer.iov_base = NULL;
 	}
 
 	if (ctx->stream.in_parsed != NULL) {
