@@ -468,6 +468,9 @@ conf_t *conf_update(
 			free(conf->query_modules);
 			conf->query_modules = s_conf->query_modules;
 			conf->query_plan = s_conf->query_plan;
+			knot_dynarray_foreach(mod, module_t *, module, s_conf->modules) {
+				mod_dynarray_add(&conf->modules, module);
+			}
 		}
 	}
 
@@ -486,6 +489,7 @@ conf_t *conf_update(
 		if (flags & CONF_UPD_FMODULES) {
 			old_conf->query_modules = NULL;
 			old_conf->query_plan = NULL;
+			old_conf->modules.size = 0; // Preserve shared modules.
 		}
 		if (!(flags & CONF_UPD_FNOFREE)) {
 			conf_free(old_conf);
