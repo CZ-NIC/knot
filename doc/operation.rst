@@ -919,10 +919,10 @@ Emergency key replacement:
 * Align the keys with the new states (backup key as active, compromised key as public)
 * Re-sign the zone
 
-.. _DNSSEC Import of keys to HSM:
+.. _DNSSEC key import to HSM:
 
-Import of keys to HSM
-=====================
+DNSSEC key import to HSM
+========================
 
 Knot DNS stores DNSSEC keys in textual PEM format (:rfc:`7468`),
 while many HSM management software require the keys for import to be in binary
