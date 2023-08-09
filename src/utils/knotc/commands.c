@@ -1122,7 +1122,13 @@ static int cmd_conf_import(cmd_args_t *args)
 
 		log_debug("importing confdb from file '%s'", args->argv[0]);
 
-		ret = conf_import(conf(), args->argv[0], true, false);
+		// Import to a cloned conf to avoid external module conflict.
+		conf_t *new_conf = NULL;
+		ret = conf_clone(&new_conf);
+		if (ret == KNOT_EOK) {
+			ret = conf_import(new_conf, args->argv[0], true, false);
+			conf_free(new_conf);
+		}
 	}
 
 	if (ret == KNOT_EOK) {
