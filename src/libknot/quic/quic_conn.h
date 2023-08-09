@@ -210,7 +210,7 @@ void quic_table_rem2(knot_quic_cid_t **pcid, knot_quic_table_t *table);
  * \param conn          QUIC connection to remove from.
  * \param stream_id     Stream QUIC ID.
  */
-void quic_stream_free(knot_quic_conn_t *conn, int64_t stream_id);
+void knot_quic_conn_stream_free(knot_quic_conn_t *conn, int64_t stream_id);
 
 /*!
  * \brief Remove and deinitialize connection completely.
@@ -231,6 +231,11 @@ void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table);
  */
 knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *conn,
                                               int64_t stream_id, bool create);
+
+/*!
+ * \brief Create a new, subsequent stream.
+ */
+knot_quic_stream_t *knot_quic_conn_new_stream(knot_quic_conn_t *conn);
 
 /*!
  * \brief Process incomming stream data to stream structure.

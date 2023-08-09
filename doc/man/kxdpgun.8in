@@ -163,6 +163,9 @@ Don\(aqt close the connection and ignore close by counterpart.
 .TP
 \fB9\fP
 Operate normally except for not ACKing the final FIN+ACK (TCP only).
+.TP
+\fBR\fP
+Instead of opening a connection for each query, reuse connections.
 .UNINDENT
 .SS Signals
 .sp

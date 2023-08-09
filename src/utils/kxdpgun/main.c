@@ -103,6 +103,7 @@ typedef enum {
 	KXDPGUN_IGNORE_QUERY    = (1 << 0),
 	KXDPGUN_IGNORE_LASTBYTE = (1 << 1),
 	KXDPGUN_IGNORE_CLOSE    = (1 << 2),
+	KXDPGUN_REUSE_CONN      = (1 << 3),
 } xdp_gun_ignore_t;
 
 typedef struct {
@@ -485,6 +486,8 @@ void *xdp_gun_thread(void *_ctx)
 	list_t quic_sessions;
 	init_list(&quic_sessions);
 #endif // ENABLE_QUIC
+	list_t reuse_conns;
+	init_list(&reuse_conns);
 	const uint64_t extra_wait = ctx->quic ? 4000000 : 1000000;
 
 	if (ctx->tcp) {
@@ -600,6 +603,26 @@ void *xdp_gun_thread(void *_ctx)
 				if (ctx->tcp) {
 					for (int i = 0; i < alloced; i++) {
 						pkts[i].payload.iov_len = 0;
+
+						if (!EMPTY_LIST(reuse_conns)) {
+							ptrnode_t *n = HEAD(reuse_conns);
+							knot_tcp_relay_t *rl = n->d;
+							rem_node(&n->n);
+							free(n);
+							struct iovec payl;
+							put_dns_payload(&payl, true, ctx, &payload_ptr);
+							ret = knot_tcp_reply_data(rl, tcp_table,
+							                          (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE),
+							                          payl.iov_base, payl.iov_len);
+							if (ret == KNOT_EOK) {
+								ret = knot_tcp_send(xsk, rl, 1, ctx->at_once);
+							}
+							if (ret == KNOT_EOK) {
+								pkts[i].flags &= ~KNOT_XDP_MSG_SYN; // skip sending respective packet
+								local_stats.qry_sent++;
+							}
+							free(rl);
+						}
 					}
 				} else if (ctx->quic) {
 #ifdef ENABLE_QUIC
@@ -608,20 +631,37 @@ void *xdp_gun_thread(void *_ctx)
 
 					for (unsigned i = 0; i < ctx->at_once; i++) {
 						knot_quic_conn_t *newconn = NULL;
-						ret = knot_quic_client(quic_table, &ctx->target_ip, &ctx->local_ip,
-						                       NULL, &newconn);
+						if (!EMPTY_LIST(reuse_conns)) {
+							ptrnode_t *n = HEAD(reuse_conns);
+							newconn = n->d;
+							rem_node(&n->n);
+							free(n);
+							if (newconn->streams_count < 1) {
+								newconn = NULL; // un-re-usable conn
+							} else {
+								ctx->local_ip.sin6_port = knot_quic_conn_local_port(newconn);
+								ret = KNOT_EOK;
+							}
+						}
+						if (newconn == NULL) {
+							ret = knot_quic_client(quic_table, &ctx->target_ip, &ctx->local_ip,
+							                       NULL, &newconn);
+						}
 						if (ret == KNOT_EOK) {
 							struct iovec tmp = {
-								knot_quic_stream_add_data(newconn, 0, NULL, payload_ptr->len),
+								knot_quic_stream_add_data(newconn, (newconn->streams_first + newconn->streams_count) * 4,
+								                          NULL, payload_ptr->len),
 								0
 							};
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
-							if (EMPTY_LIST(quic_sessions)) {
-								newconn->streams_count = -1;
-							} else {
-								void *session = HEAD(quic_sessions);
-								rem_node(session);
-								(void)knot_quic_session_load(newconn, session);
+							if (newconn->streams_count < 2) {
+								if (EMPTY_LIST(quic_sessions)) {
+									newconn->streams_count = -1;
+								} else {
+									void *session = HEAD(quic_sessions);
+									rem_node(session);
+									(void)knot_quic_session_load(newconn, session);
+								}
 							}
 							ret = knot_quic_send(quic_table, newconn, &quic_send_reply, 1,
 							                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
@@ -707,6 +747,12 @@ void *xdp_gun_thread(void *_ctx)
 							if (check_dns_payload(&knot_tinbufu_res_inbufs(rl->inbf)[j], ctx, &local_stats)) {
 								if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
 									rl->answer = XDP_TCP_CLOSE;
+								} else if ((ctx->ignore1 & KXDPGUN_REUSE_CONN)) {
+									knot_tcp_relay_t *rl_copy = malloc(sizeof(*rl));
+									memcpy(rl_copy, rl, sizeof(*rl));
+									ptrlist_add(&reuse_conns, rl_copy, NULL);
+									rl_copy->answer = XDP_TCP_NOOP;
+									rl_copy->auto_answer = 0;
 								}
 							}
 						}
@@ -743,8 +789,6 @@ void *xdp_gun_thread(void *_ctx)
 							continue;
 						}
 
-						bool resp_recvd = false;
-
 						if (!ctx->quic_full_handshake && knot_quic_session_available(conn)) {
 							void *session = knot_quic_session_save(conn);
 							if (session != NULL) {
@@ -767,9 +811,7 @@ void *xdp_gun_thread(void *_ctx)
 							knot_quic_cleanup(&conn, 1);
 							continue;
 						}
-
-						knot_quic_stream_t *stream0 = knot_quic_conn_get_stream(conn, 0, false);
-						assert(stream0 != NULL);
+						assert(conn->streams_count > 0);
 
 						if ((ctx->ignore2 & XDP_TCP_IGNORE_ESTABLISH)) {
 							knot_quic_table_rem(conn, quic_table);
@@ -778,18 +820,21 @@ void *xdp_gun_thread(void *_ctx)
 							continue;
 						}
 
-						stream0 = knot_quic_conn_get_stream(conn, 0, false);
-						if (stream0 != NULL && stream0->inbufs != NULL) {
+						int64_t s0id;
+						knot_quic_stream_t *stream0 = knot_quic_stream_get_process(conn, &s0id);
+						if (stream0 != NULL && stream0->inbufs != NULL && stream0->inbufs->n_inbufs > 0) {
 							check_dns_payload(&knot_tinbufu_res_inbufs(stream0->inbufs)[0], ctx, &local_stats);
-							free(stream0->inbufs);
-							stream0->inbufs = NULL;
+							stream0->inbufs->n_inbufs = 0; // signal that data have been read out
 
 							if ((ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK)) {
 								knot_quic_table_rem(conn, quic_table);
 								knot_quic_cleanup(&conn, 1);
 								continue;
-							} else {
-								resp_recvd = true;
+							} else if ((ctx->ignore1 & KXDPGUN_REUSE_CONN)) {
+								if (conn->streams_count > 1) { // keep the number of outstanding streams below MAX_STREAMS_PER_CONN, while preserving at least one at all times
+									knot_quic_conn_stream_free(conn, conn->streams_first * 4);
+								}
+								ptrlist_add(&reuse_conns, conn, NULL);
 							}
 						}
 						ret = knot_quic_send(quic_table, conn, &quic_reply, 4,
@@ -799,7 +844,8 @@ void *xdp_gun_thread(void *_ctx)
 							errors++;
 						}
 
-						if (resp_recvd && !(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
+						if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE) && conn->session_taken &&
+						    stream0 != NULL && stream0->inbufs != NULL && stream0->inbufs->n_inbufs == 0) {
 							assert(!(ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK));
 							quic_reply.handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
 							ret = knot_quic_send(quic_table, conn, &quic_reply, 1, false);
@@ -861,7 +907,15 @@ void *xdp_gun_thread(void *_ctx)
 
 	knot_xdp_deinit(xsk);
 
+	if (ctx->tcp) {
+		ptrlist_deep_free(&reuse_conns, NULL);
+	} else if (ctx->quic) {
+		ptrlist_free(&reuse_conns, NULL); // stored conns get freed as part of xyz_table_free
+	} else {
+		assert(EMPTY_LIST(reuse_conns));
+	}
 	knot_tcp_table_free(tcp_table);
+
 #ifdef ENABLE_QUIC
 	knot_quic_table_free(quic_table);
 	struct knot_quic_session *n, *nxt;
@@ -1105,6 +1159,10 @@ static bool sending_mode(const char *arg, xdp_gun_ctx_t *ctx)
 			goto mode_unavailable;
 		}
 		ctx->ignore2 = XDP_TCP_IGNORE_FIN;
+		break;
+	case 'R':
+		ctx->ignore1 = KXDPGUN_IGNORE_CLOSE | KXDPGUN_REUSE_CONN;
+		ctx->quic_full_handshake = true;
 		break;
 	default:
 		goto mode_invalid;

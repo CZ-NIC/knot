@@ -468,6 +468,13 @@ uint32_t knot_quic_conn_rtt(knot_quic_conn_t *conn)
 }
 
 _public_
+uint16_t knot_quic_conn_local_port(knot_quic_conn_t *conn)
+{
+	const ngtcp2_path *path = ngtcp2_conn_get_path(conn->conn);
+	return ((const struct sockaddr_in6 *)path->local.addr)->sin6_port;
+}
+
+_public_
 void knot_quic_conn_pin(knot_quic_conn_t *conn, uint8_t *pin, size_t *pin_size, bool local)
 {
 	if (conn == NULL) {
@@ -668,7 +675,7 @@ static int stream_closed(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 
 	bool keep = !ngtcp2_conn_is_server(conn); // kxdpgun: process incomming reply after recvd&closed
 	if (!keep) {
-		quic_stream_free(ctx, stream_id);
+		knot_quic_conn_stream_free(ctx, stream_id);
 	}
 	return 0;
 }
@@ -685,6 +692,7 @@ static int recv_stateless_rst(ngtcp2_conn *conn, const ngtcp2_pkt_stateless_rese
 	assert(ctx->conn == conn);
 
 	knot_quic_table_rem(ctx, ctx->quic_table);
+	knot_quic_cleanup(&ctx, 1);
 
 	return 0;
 }
@@ -840,6 +848,7 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 	}
 	if (ret != KNOT_EOK) {
 		knot_quic_table_rem(conn, table);
+		knot_quic_cleanup(&conn, 1);
 		return ret;
 	}
 
@@ -940,6 +949,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		}
 		if (ret < 0) {
 			knot_quic_table_rem(conn, table);
+			knot_quic_cleanup(&conn, 1);
 			goto finish;
 		}
 	}
@@ -952,6 +962,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	*out_conn = conn;
 	if (ret == NGTCP2_ERR_DRAINING) { // received CONNECTION_CLOSE from the counterpart
 		knot_quic_table_rem(conn, table);
+		knot_quic_cleanup(&conn, 1);
 		ret = KNOT_EOK;
 		goto finish;
 	} else if (ngtcp2_err_is_fatal(ret)) { // connection doomed
@@ -961,6 +972,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			ret = KNOT_ECONN;
 		}
 		knot_quic_table_rem(conn, table);
+		knot_quic_cleanup(&conn, 1);
 		goto finish;
 	} else if (ret != NGTCP2_NO_ERROR) { // non-fatal error, discard packet
 		ret = KNOT_EOK;
