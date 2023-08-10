@@ -3,14 +3,14 @@ EXTRA_DIST =			\
 	libknot/control.py	\
 	libknot/dname.py	\
 	libknot/probe.py	\
-	README.md		\
-	setup.py.in
+	pyproject.toml.in	\
+	README.md
 
 clean-local:
 	-rm -rf dist *.egg-info
 
 dist: clean-local
-	python3 setup.py sdist
+	hatchling build
 
 upload:
 	twine upload dist/*
