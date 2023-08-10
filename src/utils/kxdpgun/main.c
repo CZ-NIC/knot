@@ -785,7 +785,7 @@ void *xdp_gun_thread(void *_ctx)
 							break;
 						}
 
-						if (conn == NULL) {
+						if (conn == NULL || conn->conn == NULL) {
 							continue;
 						}
 
