@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "libknot"
+version = "@PACKAGE_VERSION@"
+description = "Python bindings for libknot"
+readme = "README.md"
+requires-python = ">=3.5"
+license = { text = "GPL-3.0" }
+authors = [
+    { name = "CZ.NIC, z.s.p.o.", email = "knot-dns@labs.nic.cz" },
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Topic :: Internet :: Name Service (DNS)",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Systems Administration",
+]
+
+[project.urls]
+Documentation = "https://www.knot-dns.cz/documentation"
+Issues = "https://gitlab.nic.cz/knot/knot-dns/-/issues"
+Source = "https://gitlab.nic.cz/knot/knot-dns"
+
+[tool.hatch.build.targets.sdist]
+artifacts = [
+    "libknot/__init__.py",
+]
+exclude = [
+    ".*",
+    "*.in",
+    "Makefile*",
+]
