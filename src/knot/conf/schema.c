@@ -389,6 +389,13 @@ static const yp_item_t desc_submission[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_dnskey_sync[] = {
+	{ C_ID,           YP_TSTR, YP_VNONE },
+	{ C_RMT,          YP_TREF, YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } },
+	{ C_CHK_INTERVAL, YP_TINT, YP_VINT = { 1, UINT32_MAX, 60, YP_STIME } },
+	{ NULL }
+};
+
 static const yp_item_t desc_policy[] = {
 	{ C_ID,                  YP_TSTR,  YP_VNONE, CONF_IO_FREF },
 	{ C_KEYSTORE,            YP_TREF,  YP_VREF = { C_KEYSTORE }, CONF_IO_FRLD_ZONES,
@@ -431,6 +438,8 @@ static const yp_item_t desc_policy[] = {
 	{ C_KSK_SBM,             YP_TREF,  YP_VREF = { C_SBM }, CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
 	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FRLD_ZONES,
+	                                   { check_ref } },
+	{ C_DNSKEY_SYNC,         YP_TREF,  YP_VREF = { C_DNSKEY_SYNC }, CONF_IO_FRLD_ZONES,
 	                                   { check_ref } },
 	{ C_CDS_CDNSKEY,         YP_TOPT,  YP_VOPT = { cds_cdnskey, CDS_CDNSKEY_ROLLOVER },
 	                                   CONF_IO_FRLD_ZONES },
@@ -531,6 +540,7 @@ const yp_item_t conf_schema[] = {
 	{ C_RMTS,     YP_TGRP, YP_VGRP = { desc_remotes }, YP_FMULTI, { check_remotes } },
 	{ C_ACL,      YP_TGRP, YP_VGRP = { desc_acl }, YP_FMULTI, { check_acl } },
 	{ C_SBM,      YP_TGRP, YP_VGRP = { desc_submission }, YP_FMULTI },
+	{ C_DNSKEY_SYNC, YP_TGRP, YP_VGRP = { desc_dnskey_sync }, YP_FMULTI, { check_dnskey_sync } },
 	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
 	{ C_TPL,      YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE,     YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI | CONF_IO_FZONE, { check_zone } },

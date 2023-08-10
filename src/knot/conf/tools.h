@@ -134,6 +134,10 @@ int check_remotes(
 	knotd_conf_check_args_t *args
 );
 
+int check_dnskey_sync(
+	knotd_conf_check_args_t *args
+);
+
 int check_catalog_group(
 	knotd_conf_check_args_t *args
 );

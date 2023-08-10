@@ -1734,6 +1734,48 @@ parent zone.
 
 *Default:* ``0``
 
+.. _dnskey-sync section:
+
+``dnskey-sync`` section
+=======================
+
+Parameters of DNSKEY dynamic-update synchrnization.
+
+::
+
+ dnskey-sync:
+   - id: STR
+     remote: remote_id | remotes_id ...
+     check-interval: TIME
+
+.. _dnskey-sync_id:
+
+id
+--
+
+A dnskey-sync identifier.
+
+.. _dnskey-sync_remote:
+
+remote
+------
+
+A list of references :ref:`remote<remote_id>` and :ref:`remotes<remotes_id>`
+to other signers or common master, which the DDNS updates with
+DNSKEY/CDNSKEY/CDS records shall be sent to.
+
+*Default:* not set
+
+.. _dnskey-sync_check-interval:
+
+check-interval
+--------------
+
+If the last DNSKEY sync failed or resulted in any change, re-check
+the consistence after this interval and re-try if needed.
+
+*Default:* ``60`` (1 minute)
+
 .. _policy section:
 
 ``policy`` section
@@ -2122,6 +2164,16 @@ It's possible to manage both child and parent zones by the same Knot DNS server.
 
 .. NOTE::
    Module :ref:`Onlinesign<mod-onlinesign>` doesn't support DS push.
+
+*Default:* not set
+
+.. _policy_dnskey-sync:
+
+dnskey-sync
+-----------
+
+A reference to :ref:`dnskey-sync<dnskey-sync_id>` section holding parameters
+of DNSKEY synchronization.
 
 *Default:* not set
 

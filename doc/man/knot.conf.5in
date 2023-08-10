@@ -1559,6 +1559,38 @@ key roll\-over step. This delay shall cover the propagation delay of update in t
 parent zone.
 .sp
 \fIDefault:\fP \fB0\fP
+.SH DNSKEY-SYNC SECTION
+.sp
+Parameters of DNSKEY dynamic\-update synchrnization.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+dnskey\-sync:
+  \- id: STR
+    remote: remote_id | remotes_id ...
+    check\-interval: TIME
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS id
+.sp
+A dnskey\-sync identifier.
+.SS remote
+.sp
+A list of references \fI\%remote\fP and \fI\%remotes\fP
+to other signers or common master, which the DDNS updates with
+DNSKEY/CDNSKEY/CDS records shall be sent to.
+.sp
+\fIDefault:\fP not set
+.SS check\-interval
+.sp
+If the last DNSKEY sync failed or resulted in any change, re\-check
+the consistence after this interval and re\-try if needed.
+.sp
+\fIDefault:\fP \fB60\fP (1 minute)
 .SH POLICY SECTION
 .sp
 DNSSEC policy configuration.
@@ -1915,6 +1947,12 @@ and the new key being rolled\-in is in "ready" state already for the period of
 Module Onlinesign doesn\(aqt support DS push.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP not set
+.SS dnskey\-sync
+.sp
+A reference to \fI\%dnskey\-sync\fP section holding parameters
+of DNSKEY synchronization.
 .sp
 \fIDefault:\fP not set
 .SS cds\-cdnskey\-publish

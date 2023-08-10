@@ -919,10 +919,165 @@ Emergency key replacement:
 * Align the keys with the new states (backup key as active, compromised key as public)
 * Re-sign the zone
 
-.. _DNSSEC Import of keys to HSM:
+.. _DNSSEC multi-signer:
 
-Import of keys to HSM
-=====================
+DNSSEC multi-signer
+===================
+
+`Multi-signer` is a general term that refers to any mode of operation in which
+a DNS zone is signed by multiple servers (usually two) in parallel.
+Knot DNS offers various multi-signer modes, which are recommended for redundancy
+within an organization. For multi-signer operations involving multiple
+"DNSSEC providers" and the ability to switch between them, you can also refer to
+`MUSIC <https://github.com/DNSSEC-Provisioning/music>`_.
+
+
+Regardless of the chosen mode from the following options, any secondary that has multiple signers
+configured as primaries must prevent interchanged IXFR from them. This can be achieved
+either by setting :ref:`master pinning <zone_master-pin-tolerance>` on every secondary or
+by setting distinct :ref:`zone_serial-modulo` on each signer. It is recommended to combine
+both approaches. Alternatively, if any of the secondaries is not Knot DNS,
+:ref:`zone_provide-ixfr` can be disabled on the signers.
+
+Sharing private keys, manual policy
+-----------------------------------
+
+When DNSSEC keys are shared among zone signing servers (signers), one challenge
+is automatic key management (roll-overs) and synchronization among the signers.
+In this example mode of operation, it is expected that key management is maintained
+outside of Knot, and the generated keys, including private keys and metadata
+(timers), are available in Bind9 format.
+
+Every new key is then imported into each Knot using the :doc:`keymgr <man_keymgr>`
+``import-bind`` command, after which :doc:`knotc <man_knotc>` ``zone-keys-load``
+is invoked. With :ref:`policy_manual` policy configured, the signers simply
+follow prescribed key timers, maintaining the same key set at each signer.
+For more useful commands like ``list``, ``set``, and ``delete``, refer
+to :doc:`keymgr <man_keymgr>`.
+
+Sharing private keys, automatic policy
+--------------------------------------
+
+Knot handles automatic key management very well, but enabling it on multiple
+instances would lead to redundant key generation. However, it's possible to enable it on one signer
+and keep synchronizing the keys to all others. The managing signer shall be configured with
+:ref:`automatic ZSK/KSK management <dnssec-automatic-zsk-management>`, all others
+with :ref:`policy_manual` policy.
+
+The key set changes on the managing signer can be monitored by periodic queries
+with :doc:`keymgr <man_keymgr>` ``list``, or by listening to
+:ref:`D-Bus <server_dbus-event>` interface and watching for the ``keys_updated`` event.
+
+Whenever the key set is changed, key synchronization can be safely performed with
+:ref:`Data and metadata backup` feature. Dump the KASP
+database on the managing signer with :doc:`knotc <man_knotc>` ``zone-backup +kaspdb``,
+transfer the backup directory to each other signer, and import the keys by
+:doc:`knotc <man_knotc>` ``zone-restore +kaspdb``, followed by ``zone-keys-load``
+on them.
+
+This way, the full key set, including private keys and all metadata, is always
+synchronized between signers. The method of transporting the backup directory
+is beyond the scope of Knot and this documentation. An eventual loss of the managing
+signer results in the automatic key management being halted, but DNSSEC signing continues
+to function. The synchronization delay for keys between the managing signer and other
+signers must be accounted for in :ref:`policy_propagation-delay`.
+
+Distinct keys, DNSKEY record synchronization
+--------------------------------------------
+
+When the DNSSEC keys are not shared among signers, each server can manage its own keys separately.
+However, the DNSKEY (including CDNSKEY and CDS) records (with public keys) must be synchronized
+for full validity of the signed zone. :ref:`Dynamic updates` can be used to achieve this sharing.
+
+The following configuration options should be used:
+
+  - Set :ref:`policy_dnskey-management` to ``incremental`` on each signer to ensure
+    it retains the other's DNSKEY records in the zone during signing.
+  - Set :ref:`policy_delete-delay` to a reasonable time interval, which ensures that
+    all signers get synchronized during this period.
+  - Set :ref:`policy_cds-cdnskey-publish` to either ``none`` or ``always``, otherwise
+    the parent DS record might configure itself to point only to one signer's KSK.
+  - Configure :ref:`policy_dnskey-sync` to all other signers so that this signer's
+    public keys appear in each other's DNSKEY (also applies to CDNSKEY and CDS) RRSets.
+  - Configure :ref:`ACL` so that DDNS from all other signers is allowed.
+  - Set :ref:`zone_ddns-master` to empty value (`""`) so that DDNS from other signers
+    is not forwarded to the primary master if any.
+  - Additionally, the synchronization delay between all signers must be accounted
+    for in :ref:`policy_propagation-delay`.
+
+With careful configuration, all signers automatically synchronize their DNSKEY (and eventually
+CDNSKEY and CDS) RRSets, keeping them synchronized during roll-overs. Nevertheless,
+it is recommended to monitor their logs.
+
+.. NOTE::
+   It is highly recommended to use this mode with only two signers. With three or more signers,
+   it often happens that they continuously overwrite each other's DNSKEYs for a long time before
+   settling down. This can be mitigated by configuring :ref:`policy_dnskey-sync` in a cyclic maner,
+   such that they form a cycle (i.e. signer1 synchronizes only to signer2, signer2 to signer3 and so on).
+   However, this in turn leads to a breakage in DNSKEY synchronization whenever any signer goes offline.
+   A practical compromise is carefully configuring the order of each signer's :ref:`policy_dnskey-sync`
+   values in the way that the "cycling" signer is at the first position and the remaining signers follow.
+
+An illustrative example of the second of three signers::
+
+   remote:
+       - id: signer1
+         address: 10.20.30.1
+       - id: signer3
+         address: 10.20.30.3
+
+    acl:
+       - id: signers
+         remote: [ signer1, signer3 ]
+         action: [ query, update ]
+         # TODO configure TSIGs!
+
+   dnskey-sync:
+       - id: sync
+         remote: [ signer3, signer1 ] # the order matters here!
+
+   policy:
+       - id: multisigner
+         single-type-signing: on
+         ksk-lifetime: 60d
+         ksk-submission: ... # TODO see Automatic KSK management
+         propagation-delay: 14h
+         delete-delay: 2h
+         cds-cdnskey-publish: always
+         dnskey-management: incremental
+         dnskey-sync: sync
+
+   zone:
+       - domain: example.com.
+         # TODO configure zonefile and journal
+         # TODO configure transfers in/out: master, NOTIFY, ACLs...
+         dnssec-signing: on
+         dnssec-policy: multisigner
+         ddns-master: ""
+         serial-modulo: 1/3
+         acl: signers
+
+Distinct keys, DNSKEY at common unsigned primary
+------------------------------------------------
+
+The same approach and configuration can be used, with the difference that the signers
+do not send updated DNSKEYs (along with CDNSKEYs and CDSs) to each other. Instead, they
+send the updates to their common primary, which holds the unsigned version of zone.
+The only configuration change involves redirecting
+:ref:`policy_dnskey-sync` to the common primary and adjusting its ACL to allow DDNS
+from the signers.
+
+However, this mode is not currently supported by Knot. The reason is that it results in
+IXFRs containg the DNSKEY updates back to the signers (as intended), but also with
+each signer's own keys, leading to additions of already existing records, and removals
+of non-existing ones. This would result in AXFR fallbacks. Achieving smooth operation
+without these fallbacks would require implementation of benevolent IXFR processing,
+a feature that there is little interest in.
+
+.. _DNSSEC keys import to HSM:
+
+DNSSEC keys import to HSM
+=========================
 
 Knot DNS stores DNSSEC keys in textual PEM format (:rfc:`7468`),
 while many HSM management software require the keys for import to be in binary
