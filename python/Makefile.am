@@ -1,16 +1,3 @@
-EXTRA_DIST =			\
-	libknot/__init__.py.in	\
-	libknot/control.py	\
-	libknot/dname.py	\
-	libknot/probe.py	\
-	pyproject.toml.in	\
-	README.md
+SUBDIRS = libknot
 
-clean-local:
-	-rm -rf dist *.egg-info
-
-dist: clean-local
-	hatchling build
-
-upload:
-	twine upload dist/*
+include $(srcdir)/libknot/Makefile.inc

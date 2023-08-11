@@ -855,8 +855,8 @@ AC_CONFIG_FILES([Makefile
                  samples/Makefile
                  distro/Makefile
                  python/Makefile
-                 python/pyproject.toml
-                 python/libknot/__init__.py
+                 python/libknot/pyproject.toml
+                 python/libknot/libknot/__init__.py
                  src/Makefile
                  src/libknot/xdp/Makefile
                  src/knot/modules/static_modules.h
