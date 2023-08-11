@@ -1,4 +1,4 @@
-/dist/
-/libknot.egg-info/
-/libknot/__init__.py
-/setup.py
+dist/
+*.egg-info/
+__init__.py
+pyproject.toml
