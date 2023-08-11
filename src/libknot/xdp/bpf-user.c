@@ -21,7 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 #include "libknot/error.h"
 #include "libknot/xdp/bpf-kernel-obj.h"
 #include "libknot/xdp/bpf-user.h"

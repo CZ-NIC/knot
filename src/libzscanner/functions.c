@@ -20,7 +20,7 @@
 
 #include "libzscanner/error.h"
 #include "libzscanner/functions.h"
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 
 const uint8_t digit_to_num[] = {
     ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,

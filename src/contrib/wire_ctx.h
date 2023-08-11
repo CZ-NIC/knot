@@ -24,7 +24,7 @@
 #include <sys/types.h>
 
 #include "contrib/string.h"
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 #include "libknot/errcode.h"
 
 /*!

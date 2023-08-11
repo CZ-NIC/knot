@@ -484,7 +484,7 @@ src/libknot/descriptor.h
 src/libknot/dname.c
 src/libknot/dname.h
 src/libknot/dynarray.h
-src/libknot/endian.h
+src/libknot/knot_endian.h
 src/libknot/errcode.h
 src/libknot/error.c
 src/libknot/error.h
