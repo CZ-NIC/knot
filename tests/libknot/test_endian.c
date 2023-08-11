@@ -19,7 +19,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 
 int main(int argc, char *argv[])
 {

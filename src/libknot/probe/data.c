@@ -20,7 +20,7 @@
 #include <netinet/tcp.h>
 
 #include "libknot/attribute.h"
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 #include "libknot/errcode.h"
 #include "libknot/probe/probe.h"
 #include "contrib/macros.h"
