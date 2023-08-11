@@ -278,7 +278,7 @@ build:archive:
     - mkdir _build
     - cd _build
     - ../configure
-    - make distcheck V=1
+    - make distcheck V=1 DISTCHECK_CONFIGURE_FLAGS="--disable-static" -j2
   only:
     - master
     - tags
