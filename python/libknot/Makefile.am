@@ -9,8 +9,10 @@ EXTRA_DIST =			\
 clean-local:
 	-rm -rf dist *.egg-info
 
-dist: clean-local
+.PHONY: libknot
+libknot: clean-local
 	hatchling build
 
+.PHONY: upload
 upload:
 	twine upload dist/*

@@ -1,3 +1,5 @@
 SUBDIRS = libknot
 
-include $(srcdir)/libknot/Makefile.inc
+.PHONY: dist
+dist:
+	$(MAKE) -C libknot libknot
