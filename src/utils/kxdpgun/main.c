@@ -779,13 +779,16 @@ void *xdp_gun_thread(void *_ctx)
 						ret = knot_quic_handle(quic_table, &quic_reply, 5000000000L, &conn);
 						if (ret == KNOT_ECONN) {
 							local_stats.rst_recv++;
+							knot_quic_cleanup(&conn, 1);
 							continue;
 						} else if (ret != 0) {
 							errors++;
+							knot_quic_cleanup(&conn, 1);
 							break;
 						}
 
 						if (conn == NULL || conn->conn == NULL) {
+							knot_quic_cleanup(&conn, 1);
 							continue;
 						}
 
@@ -839,7 +842,6 @@ void *xdp_gun_thread(void *_ctx)
 						}
 						ret = knot_quic_send(quic_table, conn, &quic_reply, 4,
 						                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
-						knot_quic_cleanup(&conn, 1);
 						if (ret != KNOT_EOK) {
 							errors++;
 						}
