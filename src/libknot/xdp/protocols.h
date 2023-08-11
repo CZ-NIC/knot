@@ -23,7 +23,7 @@
 #include <linux/udp.h>
 #include <string.h>
 
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 #include "libknot/xdp/bpf-consts.h"
 #include "libknot/xdp/msg.h"
 

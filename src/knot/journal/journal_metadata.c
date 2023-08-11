@@ -16,7 +16,7 @@
 
 #include "knot/journal/journal_metadata.h"
 
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 #include "libknot/error.h"
 
 static void fix_endian(void *data, size_t data_size, bool in)

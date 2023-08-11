@@ -26,7 +26,7 @@
 #include "contrib/files.h"
 #include "contrib/wire_ctx.h"
 #include "libknot/dname.h"
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 #include "libknot/error.h"
 
 #define LMDB_DIR_MODE   0770

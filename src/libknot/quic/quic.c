@@ -35,11 +35,10 @@
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/ucw/lists.h"
-#include "libknot/endian.h"
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
+#include "libknot/knot_endian.h"
 #include "libknot/attribute.h"
-#include "libknot/endian.h"
 #include "libknot/error.h"
 #include "libknot/wire.h"
 

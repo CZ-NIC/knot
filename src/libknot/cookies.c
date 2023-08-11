@@ -19,7 +19,7 @@
 
 #include "libknot/attribute.h"
 #include "libknot/cookies.h"
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 #include "libknot/errcode.h"
 #include "contrib/string.h"
 #include "contrib/sockaddr.h"

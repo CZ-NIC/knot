@@ -22,7 +22,7 @@
 
 #include "contrib/macros.h"
 #include "libknot/attribute.h"
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 #include "libknot/error.h"
 #include "libknot/wire.h"
 

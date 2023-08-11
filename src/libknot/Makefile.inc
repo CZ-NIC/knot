@@ -22,7 +22,7 @@ nobase_include_libknot_HEADERS = \
 	libknot/descriptor.h			\
 	libknot/dname.h				\
 	libknot/dynarray.h			\
-	libknot/endian.h			\
+	libknot/knot_endian.h			\
 	libknot/errcode.h			\
 	libknot/error.h				\
 	libknot/libknot.h			\

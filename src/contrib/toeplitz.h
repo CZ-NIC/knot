@@ -23,7 +23,7 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 
 /*!
  * \brief Computes a Toeplitz hash value for given key and data.

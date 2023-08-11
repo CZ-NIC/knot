@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 
 /*!
  * \brief Reads 2 bytes from the wireformat data.
