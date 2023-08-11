@@ -949,7 +949,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		}
 		if (ret < 0) {
 			knot_quic_table_rem(conn, table);
-			knot_quic_cleanup(&conn, 1);
+			*out_conn = conn; // we need knot_quic_cleanup() by the caller afterwards
 			goto finish;
 		}
 	}
@@ -962,7 +962,6 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	*out_conn = conn;
 	if (ret == NGTCP2_ERR_DRAINING) { // received CONNECTION_CLOSE from the counterpart
 		knot_quic_table_rem(conn, table);
-		knot_quic_cleanup(&conn, 1);
 		ret = KNOT_EOK;
 		goto finish;
 	} else if (ngtcp2_err_is_fatal(ret)) { // connection doomed
@@ -972,7 +971,6 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			ret = KNOT_ECONN;
 		}
 		knot_quic_table_rem(conn, table);
-		knot_quic_cleanup(&conn, 1);
 		goto finish;
 	} else if (ret != NGTCP2_NO_ERROR) { // non-fatal error, discard packet
 		ret = KNOT_EOK;
