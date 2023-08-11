@@ -6,7 +6,7 @@ Uploaders:
  Jakub Ružička <jakub.ruzicka@nic.cz>,
  Daniel Salzman <daniel.salzman@nic.cz>,
 Build-Depends-Indep:
- python3-setuptools,
+ python3-hatchling,
  python3-sphinx,
 Build-Depends:
  autoconf,
