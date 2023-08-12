@@ -3,4 +3,4 @@ dist/
 pyproject.toml
 setup.py
 
-/libknot/__init__.py
+/libknot/libknot/__init__.py
