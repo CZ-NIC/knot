@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -184,6 +184,6 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
  * \param socket  XDP socket.
  * \param file    Output file.
  */
-void knot_xdp_info(const knot_xdp_socket_t *socket, FILE *file);
+void knot_xdp_socket_info(const knot_xdp_socket_t *socket, FILE *file);
 
 /*! @} */

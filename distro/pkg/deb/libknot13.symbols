@@ -195,7 +195,6 @@ libknot.so.13 libknot13 #MINVER#
  knot_tsig_wire_maxsize@Base 3.2.0
  knot_tsig_wire_size@Base 3.2.0
  knot_xdp_deinit@Base 3.2.0
- knot_xdp_info@Base 3.2.0
  knot_xdp_init@Base 3.2.0
  knot_xdp_recv@Base 3.2.0
  knot_xdp_recv_finish@Base 3.2.0
@@ -205,6 +204,7 @@ libknot.so.13 libknot13 #MINVER#
  knot_xdp_send_finish@Base 3.2.0
  knot_xdp_send_free@Base 3.2.0
  knot_xdp_send_prepare@Base 3.2.0
+ knot_xdp_socket_info@Base 3.3.0
  knot_xdp_socket_fd@Base 3.2.0
  knot_xquic_cleanup@Base 3.2.1
  knot_xquic_client@Base 3.2.0
