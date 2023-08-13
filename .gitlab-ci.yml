@@ -403,6 +403,7 @@ pkg:centos-7:
   image: $CI_REGISTRY/packaging/apkg/test/centos-7
   allow_failure: true
 
-pkg:suse-15:
-  <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/test/suse-15
+#Temporarily disable SUSE-15 as it lacks libxdp
+#pkg:suse-15:
+#  <<: *pkg_test
+#  image: $CI_REGISTRY/packaging/apkg/test/suse-15
