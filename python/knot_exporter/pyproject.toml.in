@@ -35,10 +35,9 @@ Source = "https://gitlab.nic.cz/knot/knot-dns/python/knot_exporter"
 [project.scripts]
 knot-exporter = "knot_exporter.knot_exporter:main"
 
-[tool.hatch.build.targets.sdist]
-artifacts = [
-    "knot_exporter/__init__.py",
-]
+[tool.hatch.build]
+# don't filter by .gitignore
+ignore-vcs = true
 exclude = [
     ".*",
     "*.in",

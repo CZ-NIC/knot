@@ -28,10 +28,9 @@ Documentation = "https://www.knot-dns.cz/documentation"
 Issues = "https://gitlab.nic.cz/knot/knot-dns/-/issues"
 Source = "https://gitlab.nic.cz/knot/knot-dns"
 
-[tool.hatch.build.targets.sdist]
-artifacts = [
-    "libknot/__init__.py",
-]
+[tool.hatch.build]
+# don't filter by .gitignore
+ignore-vcs = true
 exclude = [
     ".*",
     "*.in",
