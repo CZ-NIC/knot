@@ -790,6 +790,284 @@ different templates::
       catalog-role: interpret
       catalog-template: [ unsigned, signed ]
 
+.. _DNS_over_QUIC:
+
+DNS over QUIC
+=============
+
+QUIC is a low-latency, encrypted, internet transport protocol.
+Knot DNS supports DNS over QUIC (DoQ) (:rfc:`9250`), including zone transfers (XoQ).
+By default, the UDP port `853` is used for DNS over QUIC.
+
+To use QUIC, a server :ref:`private key<server_key-file>` and a :ref:`certificate<server_cert-file>`
+must be available. If no key is configured, the server automatically generates one
+with a self-signed temporary certificate. The key is stored in the KASP database
+directory for persistence across restarts.
+
+In order to listen for incoming requests over QUIC, at least one :ref:`interface<server_listen-quic>`
+or :ref:`XDP interface<xdp_quic>` must be configured.
+
+An example of configuration of listening for DNS over QUIC on the loopback interface:
+
+.. code-block:: console
+
+  server:
+    listen-quic: ::1
+
+When the server is started, it logs some interface details and public key pin
+of the used certificate:
+
+.. code-block:: console
+
+  ... info: binding to QUIC interface ::1@853
+  ... info: QUIC, certificate public key 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
+
+.. TIP::
+
+  The public key pin, which isn't secret, can also be displayed via:
+
+  .. code-block:: console
+
+    $ knotc status cert-key
+    0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
+
+  Or from the keyfile via:
+
+  .. code-block:: console
+
+    $ certtool --infile=quic_key.pem -k | grep pin-sha256
+         pin-sha256:0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
+
+Using :doc:`kdig<man_kdig>` we can verify that the server responds over QUIC:
+
+.. code-block:: console
+
+  $ kdig @::1 ch txt version.server +quic
+  ;; QUIC session (QUICv1)-(TLS1.3)-(ECDHE-X25519)-(EdDSA-Ed25519)-(AES-256-GCM)
+  ;; ->>HEADER<<- opcode: QUERY; status: NOERROR; id: 0
+  ;; Flags: qr rd; QUERY: 1; ANSWER: 1; AUTHORITY: 0; ADDITIONAL: 1
+
+  ;; EDNS PSEUDOSECTION:
+  ;; Version: 0; flags: ; UDP size: 1232 B; ext-rcode: NOERROR
+  ;; PADDING: 370 B
+
+  ;; QUESTION SECTION:
+  ;; version.server.     		CH	TXT
+
+  ;; ANSWER SECTION:
+  version.server.     	0	CH	TXT	"Knot DNS 3.3.0"
+
+  ;; Received 468 B
+  ;; Time 2023-08-15 15:04:36 CEST
+  ;; From ::1@853(QUIC) in 1.1 ms
+
+In this case, :rfc:`opportunistic authentication<9103#section-9.3.1>` was
+used, which doesn't guarantee that the client communicates with the genuine server
+and vice versa. For :rfc:`strict authentication<9103#section-9.3.2>`
+of the server, we can enforce certificate key pin check by specifying it
+(enabled debug mode for details):
+
+.. code-block:: console
+
+  $ kdig @::1 ch txt version.server +tls-pin=0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw= +quic -d
+  ;; DEBUG: Querying for owner(version.server.), class(3), type(16), server(::1), port(853), protocol(UDP)
+  ;; DEBUG: TLS, received certificate hierarchy:
+  ;; DEBUG:  #1, CN=tester
+  ;; DEBUG:      SHA-256 PIN: 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=, MATCH
+  ;; DEBUG: TLS, skipping certificate verification
+  ;; QUIC session (QUICv1)-(TLS1.3)-(ECDHE-X25519)-(EdDSA-Ed25519)-(AES-256-GCM)
+  ...
+
+We see that a server certificate key matches the specified pin. Another possibility
+is to use certificate chain validation if a suitable certificate is configured
+on the server.
+
+Zone transfers
+--------------
+
+For outgoing requests (e.g. NOTIFY and refresh), Knot DNS utilizes
+:rfc:`session resumption<9250#section-5.5.3>`, which speeds up QUIC connection
+establishment.
+
+Here are a few examples of zone transfer configurations using various
+:rfc:`authentication mechanisms<9103#section-9>`:
+
+Opportunistic authentication:
+.............................
+
+Primary and secondary can authenticate using TSIG. Fallback to clear-text DNS
+isn't supported.
+
+.. panels::
+
+  Primary:
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::1
+        automatic-acl: on
+
+    key:
+      - id: xfr_key
+        algorithm: hmac-sha256
+        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+
+    remote:
+      - id: secondary
+        address: ::2
+        key: xfr_key  # TSIG for secondary authentication
+        quic: on
+
+    zone:
+      - domain: example.com
+        notify: secondary
+
+  ---
+
+  Secondary:
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::2
+        automatic-acl: on
+
+    key:
+      - id: xfr_key
+        algorithm: hmac-sha256
+        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+
+    remote:
+      - id: primary
+        address: ::1
+        key: xfr_key  # TSIG for primary authentication
+        quic: on
+
+    zone:
+      - domain: example.com
+        master: primary
+
+Strict authentication:
+......................
+
+Note that the automatic ACL doesn't work in this case due to asymmetrical
+configuration. The secondary can authenticate using TSIG.
+
+.. panels::
+
+  Primary:
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::1
+
+    key:
+      - id: secondary_key
+        algorithm: hmac-sha256
+        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+
+    remote:
+      - id: secondary
+        address: ::2
+        quic: on
+
+    acl:
+      - id: secondary_xfr
+        address: ::2
+        key: secondary_key  # TSIG for secondary authentication
+        action: transfer
+
+    zone:
+      - domain: example.com
+        notify: secondary
+        acl: secondary_xfr
+
+  ---
+
+  Secondary:
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::2
+
+    key:
+      - id: secondary_key
+        algorithm: hmac-sha256
+        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+
+    remote:
+      - id: primary
+        address: ::1
+        key: secondary_key  # TSIG for secondary authentication
+        quic: on
+
+    acl:
+      - id: primary_notify
+        address: ::1
+        cert-key: 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
+        action: notify
+
+    zone:
+      - domain: example.com
+        master: primary
+        acl: primary_notify
+
+Mutual authentication:
+......................
+
+The :rfc:`mutual authentication<9103#section-9.3.3>` guarantees authentication
+for both the primary and the secondary. In this case, TSIG would be redundant.
+This mode is recommended if possible.
+
+.. panels::
+
+  Primary:
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::1
+        automatic-acl: on
+
+    remote:
+      - id: secondary
+        address: ::2
+        quic: on
+        cert-key: PXqv7/lXn6N7scg/KJWvfU/TEPe5BoIUHQGRLMPr6YQ=
+
+    zone:
+      - domain: example.com
+        notify: secondary
+
+  ---
+
+  Secondary:
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::2
+        automatic-acl: on
+
+    remote:
+      - id: primary
+        address: ::1
+        quic: on
+        cert-key: 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
+
+    zone:
+      - domain: example.com
+        master: primary
+
+.. NOTE::
+
+  Instead of certificate verification with specified authentication domain name,
+  Knot DNS uses certificate public key pinning. This approach has much lower
+  overhead and in most cases simplifies configuration and certificate management.
+
 .. _query-modules:
 
 Query modules
