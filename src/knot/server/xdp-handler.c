@@ -27,7 +27,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
-#include "libknot/endian.h"
+#include "libknot/knot_endian.h"
 #include "libknot/error.h"
 #ifdef ENABLE_QUIC
 #include "libknot/xdp/quic.h"
