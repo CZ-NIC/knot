@@ -31,6 +31,8 @@ iso_codes = ['AD', 'AE', 'AF', 'AG', 'AI', 'AL', 'AM', 'AO', 'AQ', 'AR', 'AS', '
              'TW', 'TZ', 'UA', 'UG', 'UM', 'US', 'UY', 'UZ', 'VA', 'VC', 'VE', 'VG',
              'VI', 'VN', 'VU', 'WF', 'WS', 'YE', 'YT', 'ZA', 'ZM', 'ZW'];
 
+RELOAD_OVERWRITE = random.choice([False, True])
+
 t = Test(address=4, stress=False)
 knot = t.server("knot")
 
@@ -127,11 +129,13 @@ for i in range(1, 1000):
     resp.check(rcode="NOERROR", rdata="1::4")
 
 # Switch subnet file.
-#shutil.move(subnet2_filename, subnet_filename)
-#knot.ctl("-f zone-reload example.com.", wait=True)
-mod_subnet.config_file = subnet2_filename
-knot.gen_confile()
-knot.reload()
+if RELOAD_OVERWRITE:
+    shutil.copyfile(subnet2_filename, subnet_filename)
+    knot.ctl("-f zone-reload example.com.", wait=True)
+else:
+    mod_subnet.config_file = subnet2_filename
+    knot.gen_confile()
+    knot.reload()
 t.sleep(2)
 
 # Test that dependent answers differ
@@ -151,11 +155,18 @@ for i in range(1, 1000):
 
 # Attempt invalid subnet file.
 
-mod_subnet.config_file = subnet3_filename
-knot.gen_confile()
+
+if RELOAD_OVERWRITE:
+    shutil.copyfile(subnet3_filename, subnet_filename)
+else:
+    mod_subnet.config_file = subnet3_filename
+    knot.gen_confile()
 reload_failed = False
 try:
-    knot.reload()
+    if RELOAD_OVERWRITE:
+        knot.ctl("-f zone-reload example.com.", wait=True)
+    else:
+        knot.reload()
 except:
     reload_failed = True
 if not reload_failed:
@@ -167,3 +178,5 @@ random_client = "127.255." + middle + ".0"
 expected_rdata = "126.255." + middle + ".0"
 resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
 resp.check(rcode="NOERROR", rdata=expected_rdata, nordata=random_client)
+
+t.end()
