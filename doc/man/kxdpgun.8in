@@ -119,6 +119,13 @@ implementation is available. This mode doesn\(aqt require support from the
 driver nor hardware, but offers the worst performance.
 .UNINDENT
 .TP
+\fB\-G\fP, \fB\-\-qlog\fP \fIpath\fP
+Generate qlog files in the directory specified by \fIpath\fP\&. The directory
+has to exist.
+.sp
+This option is ignored if not in the QUIC mode. The recommended usage is
+with \fB\-\-quic=R\fP or with low QPS. Otherwise, too many files are generated.
+.TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
