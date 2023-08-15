@@ -718,6 +718,45 @@ static void user_printf(void *user_data, const char *format, ...)
 	}
 }
 
+static void hex_encode(const uint8_t  *in, const uint32_t in_len, char *out)
+{
+	static const char hex[] = "0123456789abcdef";
+
+	for (uint32_t i = 0; i < in_len; i++) {
+		out[2 * i]     = hex[in[i] / 16];
+		out[2 * i + 1] = hex[in[i] % 16];
+	}
+}
+
+static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t datalen)
+{
+	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
+	if (ctx->quic_table->qlog_dir != NULL) {
+		if (ctx->qlog_fd < 0) {
+			const ngtcp2_cid *cid = ngtcp2_conn_get_client_initial_dcid(ctx->conn);
+			if (cid->datalen == 0) {
+				cid = ngtcp2_conn_get_dcid(ctx->conn);
+			}
+			unsigned qlog_dir_len = strlen(ctx->quic_table->qlog_dir);
+			unsigned qlog_name_len = qlog_dir_len + 2 * cid->datalen + 7;
+			char qlog_name[qlog_name_len];
+			memcpy(qlog_name, ctx->quic_table->qlog_dir, qlog_dir_len);
+			qlog_name[qlog_dir_len] = '/';
+			hex_encode(cid->data, cid->datalen, qlog_name + qlog_dir_len + 1);
+			memcpy(qlog_name + qlog_name_len - 6, ".qlog", 6);
+
+			ctx->qlog_fd = open(qlog_name, O_CREAT | O_WRONLY | O_APPEND, 0666);
+		}
+		if (ctx->qlog_fd >= 0) { // othewise silently skip
+			(void)write(ctx->qlog_fd, data, datalen);
+			if (flags & NGTCP2_QLOG_WRITE_FLAG_FIN) {
+				close(ctx->qlog_fd);
+				ctx->qlog_fd = -1;
+			}
+		}
+	}
+}
+
 static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
                     const ngtcp2_cid *dcid, const ngtcp2_cid *odcid, uint32_t version,
                     uint64_t now, size_t udp_pl, uint64_t idle_timeout_ns,
@@ -771,6 +810,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	ngtcp2_settings_default(&settings);
 	settings.initial_ts = now;
 	settings.log_printf = user_printf;
+	settings.qlog_write = user_qlog;
 	if (udp_pl != 0) {
 		settings.max_tx_udp_payload_size = udp_pl;
 	}

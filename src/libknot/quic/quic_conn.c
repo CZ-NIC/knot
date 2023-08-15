@@ -158,6 +158,7 @@ knot_quic_conn_t *quic_table_add(ngtcp2_conn *ngconn, const ngtcp2_cid *cid,
 	conn->conn = ngconn;
 	conn->quic_table = table;
 	conn->stream_inprocess = -1;
+	conn->qlog_fd = -1;
 
 	knot_quic_cid_t **addto = quic_table_insert(conn, cid, table);
 	if (addto == NULL) {

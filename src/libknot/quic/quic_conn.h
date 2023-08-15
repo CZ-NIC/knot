@@ -81,6 +81,7 @@ typedef struct knot_quic_conn {
 	int16_t stream_inprocess; // index of first stream that has complete incomming data to be processed (aka inbuf_fin)
 	bool handshake_done;
 	bool session_taken; // session ticket has already been extracted
+	int qlog_fd;
 	int64_t streams_first; // stream_id/4 of first allocated stream
 	size_t ibufs_size;
 	size_t obufs_size;
@@ -107,6 +108,7 @@ typedef struct knot_quic_table {
 	size_t obufs_size;
 	size_t udp_payload_limit; // for simplicity not distinguishing IPv4/6
 	void (*log_cb)(const char *);
+	const char *qlog_dir;
 	uint64_t hash_secret[4];
 	struct knot_quic_creds *creds;
 	knot_quic_ucw_list_t timeout;

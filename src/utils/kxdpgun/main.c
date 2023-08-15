@@ -129,6 +129,7 @@ typedef struct {
 	bool		tcp;
 	bool		quic;
 	bool		quic_full_handshake;
+	const char 	*qlog_dir;
 	const char	*sending_mode;
 	xdp_gun_ignore_t  ignore1;
 	knot_tcp_ignore_t ignore2;
@@ -509,6 +510,7 @@ void *xdp_gun_thread(void *_ctx)
 			ERR2("failed to allocate QUIC connection table");
 			return NULL;
 		}
+		quic_table->qlog_dir = ctx->qlog_dir;
 #else
 		assert(0);
 #endif // ENABLE_QUIC
@@ -1107,6 +1109,7 @@ static void print_help(void)
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
 	       " -v, --vlan <id>          "SPACE"Add VLAN 802.1Q header with the given id.\n"
 	       " -m, --mode <mode>        "SPACE"Set XDP mode (auto, copy, generic).\n"
+	       " -G, --qlog <path>        "SPACE"Output directory for qlog (useful for QUIC only).\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
 	       "\n"
@@ -1217,6 +1220,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "port",       required_argument, NULL, 'p' },
 		{ "tcp",        optional_argument, NULL, 'T' },
 		{ "quic",       optional_argument, NULL, 'U' },
+		{ "qlog",       required_argument, NULL, 'G' },
 		{ "affinity",   required_argument, NULL, 'F' },
 		{ "interface",  required_argument, NULL, 'I' },
 		{ "local",      required_argument, NULL, 'l' },
@@ -1232,7 +1236,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL, *filename = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:m:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:m:G:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1317,6 +1321,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			ERR2("QUIC not available");
 			return false;
 #endif // ENABLE_QUIC
+			break;
+		case 'G':
+			ctx->qlog_dir = optarg;
 			break;
 		case 'F':
 			assert(optarg);

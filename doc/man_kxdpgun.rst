@@ -94,6 +94,13 @@ Options
     implementation is available. This mode doesn't require support from the
     driver nor hardware, but offers the worst performance.
 
+**-G**, **--qlog** *path*
+  Generate qlog files in the directory specified by *path*. The directory
+  has to exist.
+
+  This option is ignored if not in the QUIC mode. The recommended usage is
+  with **--quic=R** or with low QPS. Otherwise, too many files are generated.
+
 **-h**, **--help**
   Print the program help.
 
