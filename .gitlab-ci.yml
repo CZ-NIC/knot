@@ -347,7 +347,7 @@ pkg:make-archive:
   only:
     variables:
       - $PKGTEST == "1"
-  image: $CI_REGISTRY/packaging/apkg/test/debian-11
+  image: $CI_REGISTRY/packaging/apkg/test/debian-12
   artifacts:
     paths:
       - pkg/
