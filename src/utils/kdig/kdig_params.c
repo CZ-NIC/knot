@@ -654,6 +654,9 @@ static int opt_tls(const char *arg, void *query)
 	query_t *q = query;
 
 	q->tls.enable = true;
+	if (q->quic.enable) {
+		return KNOT_EOK;
+	}
 	return opt_tcp(arg, query);
 }
 
