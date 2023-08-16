@@ -748,7 +748,7 @@ static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t 
 			ctx->qlog_fd = open(qlog_name, O_CREAT | O_WRONLY | O_APPEND, 0666);
 		}
 		if (ctx->qlog_fd >= 0) { // othewise silently skip
-			(void)write(ctx->qlog_fd, data, datalen);
+			_unused_ ssize_t unused = write(ctx->qlog_fd, data, datalen);
 			if (flags & NGTCP2_QLOG_WRITE_FLAG_FIN) {
 				close(ctx->qlog_fd);
 				ctx->qlog_fd = -1;
