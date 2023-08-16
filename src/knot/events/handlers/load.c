@@ -93,6 +93,10 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone_in_journal_exists = zone_journal_has_zij(zone);
 	}
 
+	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	bool dnssec_enable = (conf_bool(&val) && zone->cat_members == NULL), zu_from_zf_conts = false;
+	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE);
+
 	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
 	unsigned digest_alg = conf_opt(&val);
 	bool update_zonemd = (digest_alg != ZONE_DIGEST_NONE);
@@ -204,9 +208,6 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	bool dnssec_enable = (conf_bool(&val) && zone->cat_members == NULL), zu_from_zf_conts = false;
-	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE);
 	bool ignore_dnssec = (do_diff && dnssec_enable);
 
 	// Create zone_update structure according to current state.
