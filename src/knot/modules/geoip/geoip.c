@@ -480,7 +480,7 @@ static int parse_view(check_ctx_t *check, geoip_ctx_t *ctx, yp_parser_t *yp, geo
 			}
 		}
 	} else if (ctx->mode == MODE_WEIGHTED) {
-		uint8_t weight;
+		uint8_t weight = 0;
 		ret = str_to_u8(yp->data, &weight);
 		if (ret != KNOT_EOK) {
 			geo_log(check, LOG_ERR, "invalid weight '%s' on line %zu",
