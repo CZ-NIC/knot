@@ -468,14 +468,14 @@ int net_connect(net_t *net)
 			}
 			if (ret != 0 && errno != EINPROGRESS) {
 				WARN("can't connect to %s", net->remote_str);
-				close(sockfd);
+				net_close(net);
 				return KNOT_NET_ECONNECT;
 			}
 
 			// Check for connection timeout.
 			if (!fastopen && poll(&pfd, 1, 1000 * net->wait) != 1) {
 				WARN("connection timeout for %s", net->remote_str);
-				close(sockfd);
+				net_close(net);
 				return KNOT_NET_ECONNECT;
 			}
 
@@ -483,7 +483,7 @@ int net_connect(net_t *net)
 			cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
 			if (cs < 0 || err != 0) {
 				WARN("can't connect to %s", net->remote_str);
-				close(sockfd);
+				net_close(net);
 				return KNOT_NET_ECONNECT;
 			}
 		}
@@ -496,7 +496,7 @@ int net_connect(net_t *net)
 				ret = tls_ctx_setup_remote_endpoint(&net->tls, &doh_alpn, 1, NULL,
 				        remote);
 				if (ret != 0) {
-					close(sockfd);
+					net_close(net);
 					return ret;
 				}
 				if (remote && net->https.authority == NULL) {
@@ -511,14 +511,14 @@ int net_connect(net_t *net)
 				ret = tls_ctx_setup_remote_endpoint(&net->tls, &dot_alpn, 1, NULL,
 				        net_get_remote(net));
 				if (ret != 0) {
-					close(sockfd);
+					net_close(net);
 					return ret;
 				}
 				ret = tls_ctx_connect(&net->tls, sockfd, fastopen,
 				        (struct sockaddr_storage *)net->srv->ai_addr);
 			}
 			if (ret != KNOT_EOK) {
-				close(sockfd);
+				net_close(net);
 				return ret;
 			}
 		}
@@ -529,19 +529,19 @@ int net_connect(net_t *net)
 			// Establish QUIC connection.
 			ret = net_cmsg_ecn_enable(sockfd, net->srv->ai_family);
 			if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
-				close(sockfd);
+				net_close(net);
 				return ret;
 			}
 			ret = tls_ctx_setup_remote_endpoint(&net->tls,
 			        &doq_alpn, 1, QUIC_PRIORITY, net_get_remote(net));
 			if (ret != 0) {
-				close(sockfd);
+				net_close(net);
 				return ret;
 			}
 			ret = quic_ctx_connect(&net->quic, sockfd,
 			        (struct addrinfo *)net->srv);
 			if (ret != KNOT_EOK) {
-				close(sockfd);
+				net_close(net);
 				return ret;
 			}
 		}
