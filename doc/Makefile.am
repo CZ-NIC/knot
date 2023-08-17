@@ -50,6 +50,7 @@ EXTRA_DIST = \
 	logo.pdf		\
 	logo.svg		\
 	\
+	ext/ignore_panels.py	\
 	theme_html
 
 SPHINX_V = $(SPHINX_V_@AM_V@)
@@ -78,6 +79,7 @@ man_SPHINXOPTS = $(_SPHINXOPTS) \
 	         -D version="@""VERSION@" \
 	         -D today="@""RELEASE_DATE@" \
 	         -D release="@""VERSION@" \
+	         -D extensions="ignore_panels" \
 	         $(SPHINXOPTS) \
 	         $(srcdir)
 
