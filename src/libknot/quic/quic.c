@@ -85,7 +85,7 @@ static unsigned addr_len(const struct sockaddr_in6 *ss)
 _public_
 bool knot_quic_session_available(knot_quic_conn_t *conn)
 {
-	return !conn->session_taken &&
+	return !(conn->flags & KNOT_QUIC_CONN_SESSION_TAKEN) &&
 	       (gnutls_session_get_flags(conn->tls_session) & GNUTLS_SFLAGS_SESSION_TICKET);
 }
 
@@ -106,7 +106,7 @@ struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn)
 		free(session);
 		return NULL;
 	}
-	conn->session_taken = true;
+	conn->flags |= KNOT_QUIC_CONN_SESSION_TAKEN;
 
 	ngtcp2_ssize ret2 =
 		ngtcp2_conn_encode_0rtt_transport_params(conn->conn, session->quic_params,
@@ -595,8 +595,8 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
 	assert(ctx->conn == conn);
 
-	assert(!ctx->handshake_done);
-	ctx->handshake_done = true;
+	assert(!(ctx->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE));
+	ctx->flags |= KNOT_QUIC_CONN_HANDSHAKE_DONE;
 
 	if (!ngtcp2_conn_is_server(conn)) {
 		knot_quic_creds_t *creds = ctx->quic_table->creds;
@@ -1180,7 +1180,7 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
 		return KNOT_EOK;
 	}
 
-	if (!conn->handshake_done) {
+	if (!(conn->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE)) {
 		max_msgs = 1;
 	}
 
