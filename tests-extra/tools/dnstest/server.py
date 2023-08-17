@@ -1431,10 +1431,16 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", remote.name)
-                    if remote.addr.startswith("/"):
-                        s.item_str("address", "%s" % remote.addr)
+                    if remote.quic_port:
+                        s.item_str("address", "%s@%s" % (remote.addr, remote.quic_port))
+                        s.item_str("quic", "on")
+                        if remote.cert_key:
+                            s.item_str("cert-key", remote.cert_key)
                     else:
-                        s.item_str("address", "%s@%s" % (remote.addr, remote.port))
+                        if remote.addr.startswith("/"):
+                            s.item_str("address", "%s" % remote.addr)
+                        else:
+                            s.item_str("address", "%s@%s" % (remote.addr, remote.port))
                     if remote.via:
                         s.item_str("via", self.via)
                     if remote.tsig:

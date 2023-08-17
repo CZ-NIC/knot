@@ -44,18 +44,20 @@ inline static knotd_qdata_params_t params_init(knotd_query_proto_t proto,
 		.remote = (const struct sockaddr_storage *)remote,
 		.local = (const struct sockaddr_storage *)local,
 		.socket = sock,
+		.thread_id = thread_id,
 		.server = server,
-		.thread_id = thread_id
+		.quic_stream = -1,
 	};
 
 	return params;
 }
 
 inline static void params_update(knotd_qdata_params_t *params, uint32_t rtt,
-                                 struct knot_quic_conn *conn)
+                                 struct knot_quic_conn *conn, int64_t stream_id)
 {
-	params->measured_rtt = rtt;
 	params->quic_conn = conn;
+	params->quic_stream = stream_id;
+	params->measured_rtt = rtt;
 }
 
 #ifdef ENABLE_XDP
@@ -64,8 +66,8 @@ inline static knotd_qdata_params_t params_xdp_init(int sock, server_t *server,
 {
 	knotd_qdata_params_t params = {
 		.socket = sock,
+		.thread_id = thread_id,
 		.server = server,
-		.thread_id = thread_id
 	};
 
 	return params;
@@ -81,8 +83,8 @@ inline static void params_xdp_update(knotd_qdata_params_t *params,
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
 	params->local = (struct sockaddr_storage *)&msg->ip_to;
 	params->xdp_msg = msg;
-	params->measured_rtt = rtt;
 	params->quic_conn = conn;
+	params->measured_rtt = rtt;
 }
 #endif // ENABLE_XDP
 

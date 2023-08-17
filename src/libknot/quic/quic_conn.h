@@ -69,6 +69,7 @@ typedef struct {
 typedef enum {
 	KNOT_QUIC_CONN_HANDSHAKE_DONE = (1 << 0),
 	KNOT_QUIC_CONN_SESSION_TAKEN  = (1 << 1),
+	KNOT_QUIC_CONN_BLOCKED        = (1 << 2),
 } knot_quic_conn_flag_t;
 
 typedef struct knot_quic_conn {

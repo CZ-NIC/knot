@@ -57,6 +57,8 @@ typedef struct {
 typedef struct {
 	int fd;
 	struct knot_quic_reply *quic_ctx;
+	struct knot_quic_conn *quic_conn;
+	int64_t quic_stream;
 	knot_request_flag_t flags;
 	struct sockaddr_storage remote, source;
 	knot_pkt_t *query;

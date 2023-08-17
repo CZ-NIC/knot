@@ -112,7 +112,7 @@ void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
 			                  knot_quic_conn_rtt(conn), conn);
 #endif // ENABLE_XDP
 		} else {
-			params_update(params, knot_quic_conn_rtt(conn), conn);
+			params_update(params, knot_quic_conn_rtt(conn), conn, stream_id);
 		}
 		// NOTE: only the first msg in the stream is used, the rest is dropped.
 		handle_quic_stream(conn, stream_id, &inbufs[0], layer, params,
