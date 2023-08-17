@@ -5,3 +5,4 @@ $TTL 0
   NS ns
 ns AAAA ::0
 version TXT "2"
+uniq1.zones PTR cataloged1.

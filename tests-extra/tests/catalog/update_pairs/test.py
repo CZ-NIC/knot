@@ -67,7 +67,8 @@ for z in rzone:
         knot.dnssec(z).zsk_size = "4096"
 
 # Whether to test a property change instead of add/del.
-test_prop_change = random.choice([True, False])
+scenario = random.choice(["addrem", "propchange", "uniq2x"])
+detail_log("SCENARIO " + scenario)
 
 t.start()
 
@@ -83,13 +84,20 @@ for z in rzone:
 t.sleep(1)
 
 up = knot.update(catz)
-up.add("bar.zones." + catz[0].name, 0, "PTR", "cataloged2.")
+if scenario == "uniq2x":
+    up.delete("uniq1.zones." + catz[0].name, "PTR", "cataloged1.")
+    up.add("uniq2.zones." + catz[0].name, 0, "PTR", "cataloged1.")
+else:
+    up.add("bar.zones." + catz[0].name, 0, "PTR", "cataloged2.")
 up.try_send()
 
 t.sleep(0.5)
 
 up = knot.update(catz)
-if test_prop_change:
+if scenario == "uniq2x":
+    up.delete("uniq2.zones." + catz[0].name, "PTR", "cataloged1.")
+    up.add("uniq3.zones." + catz[0].name, 0, "PTR", "cataloged1.")
+elif scenario == "propchange":
     up.delete("group.bar.zones." + catz[0].name, "TXT")
     up.add("group.bar.zones." + catz[0].name, 0, "TXT", "catalog-signed")
 else:
@@ -99,7 +107,16 @@ up.try_send()
 knot.zones_wait(rzone, rootser)
 t.sleep(10)
 
-if test_prop_change:
+if scenario == "uniq2x":
+    # Check the catalog zone.
+    resp = knot.dig("uniq3.zones.catalog1.", "PTR", tsig=True)
+    resp.check(rcode="NOERROR", rdata="cataloged1.")
+
+    # Check a DNS query / zonedb.
+    resp = knot.dig("cataloged1.", "SOA")
+    resp.check(rcode="SERVFAIL") # the zone got purged
+
+elif scenario == "propchange":
     # Check successfull change of a zone group.
     t.sleep(4)
     resp = knot.dig("cataloged2.", "SOA", dnssec=True)
