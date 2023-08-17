@@ -119,6 +119,13 @@ static catalog_upd_val_t *upd_val_new(const knot_dname_t *member, int bail,
 	return val;
 }
 
+// expecting member name is already known to be equal
+static bool upd_val_equal(const catalog_upd_val_t *older, const knot_dname_t *catz, const knot_dname_t *owner)
+{
+	return knot_dname_is_equal(older->add_catz, catz) &&
+	       knot_dname_is_equal(older->add_owner, owner);
+}
+
 static const knot_dname_t *get_uniq(const knot_dname_t *ptr_owner,
                                     const knot_dname_t *catz)
 {
@@ -136,33 +143,6 @@ static bool same_uniq(const knot_dname_t *owner1, const knot_dname_t *catz1,
 		return false;
 	}
 	return memcmp(uniq1 + 1, uniq2 + 1, *uniq1) == 0;
-}
-
-static int upd_val_update(catalog_upd_val_t *val, int bail,
-                          const knot_dname_t *owner, bool rem)
-{
-	if ((rem  && val->type != CAT_UPD_ADD) ||
-	    (!rem && val->type != CAT_UPD_REM)) {
-		log_zone_error(val->member, "duplicate addition/removal of the member node, ignoring");
-		return KNOT_EOK;
-	}
-	knot_dname_t *owner_cpy = knot_dname_copy(owner, NULL);
-	if (owner_cpy == NULL) {
-		return KNOT_ENOMEM;
-	}
-	if (rem) {
-		val->rem_owner = owner_cpy;
-		val->rem_catz = owner_cpy + bail;
-	} else {
-		val->add_owner = owner_cpy;
-		val->add_catz = owner_cpy + bail;
-	}
-	if (same_uniq(val->rem_owner, val->rem_catz, val->add_owner, val->add_catz)) {
-		val->type = CAT_UPD_MINOR;
-	} else {
-		val->type = CAT_UPD_UNIQ;
-	}
-	return KNOT_EOK;
 }
 
 static int upd_val_set_prop(catalog_upd_val_t *val, const knot_dname_t *check_ow,
@@ -188,6 +168,8 @@ int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
                        catalog_upd_type_t type, const char *group,
                        size_t group_len, catalog_t *check_rem)
 {
+	assert(type == CAT_UPD_REM || type == CAT_UPD_PROP || type == CAT_UPD_ADD);
+
 	int bail = catalog_bailiwick_shift(owner, catzone);
 	if (bail < 0) {
 		return KNOT_EOUTOFZONE;
@@ -199,29 +181,54 @@ int catalog_update_add(catalog_update_t *u, const knot_dname_t *member,
 
 	trie_val_t *found = trie_get_try(u->upd, lf + 1, lf[0]);
 
-	if ((type == CAT_UPD_REM || type == CAT_UPD_PROP) && check_rem != NULL &&
-	    !catalog_contains_exact(check_rem, member, owner, catzone)) {
-		if (found == NULL) {
-			// we need to perform this check immediately because
-			// garbage removal would block legitimate removal
-			return KNOT_EOK;
-		}
+	if (found != NULL) {
+		catalog_upd_val_t *val = *found;
+		assert(knot_dname_is_equal(val->member, member));
 		if (type == CAT_UPD_REM) {
-			catalog_upd_val_t *val = *found;
-			catalog_upd_val_free(val);
-			trie_del(u->upd, lf + 1, lf[0], NULL);
+			if (val->type == CAT_UPD_REM) {
+				log_zone_error(member, "duplicate removal of the member zone, ignoring");
+			} else if (!upd_val_equal(val, catzone, owner)) {
+				log_zone_error(member, "incorrect removal of wrong member node, ignoring");
+			} else if (val->type == CAT_UPD_ADD) {
+				// removing what has been just added -> cancel out
+				catalog_upd_val_free(val);
+				trie_del(u->upd, lf + 1, lf[0], NULL);
+			} else {
+				val->type = CAT_UPD_REM;
+			}
+			return KNOT_EOK;
+		} else if (type == CAT_UPD_PROP) {
+			return upd_val_set_prop(val, owner, catzone, group, group_len);
+		} else { // type == CAT_UPD_ADD
+			if (val->type != CAT_UPD_REM) {
+				log_zone_error(val->member, "duplicate addition of the member node, ignoring");
+			} else {
+				knot_dname_t *owner_cpy = knot_dname_copy(owner, NULL);
+				if (owner_cpy == NULL) {
+					return KNOT_ENOMEM;
+				}
+				free(val->add_owner);
+				val->add_owner = owner_cpy;
+				val->add_catz = owner_cpy + bail;
+				if (same_uniq(val->rem_owner, val->rem_catz, val->add_owner, val->add_catz)) {
+					val->type = CAT_UPD_MINOR;
+				} else {
+					val->type = CAT_UPD_UNIQ;
+				}
+			}
 			return KNOT_EOK;
 		}
 	}
 
-	if (found != NULL) {
-		catalog_upd_val_t *val = *found;
-		assert(knot_dname_is_equal(val->member, member));
-		if (type == CAT_UPD_PROP) {
-			return upd_val_set_prop(val, owner, catzone, group, group_len);
-		} else {
-			return upd_val_update(val, bail, owner, type == CAT_UPD_REM);
-		}
+	if ((type == CAT_UPD_REM || type == CAT_UPD_PROP) && check_rem != NULL &&
+	    !catalog_contains_exact(check_rem, member, owner, catzone)) {
+		log_zone_error(member, "incorrect removal of unknown member node, ignoring");
+		return KNOT_EOK;
+	}
+
+	if (type == CAT_UPD_ADD && check_rem != NULL && catalog_has_member(check_rem, member)) {
+		log_zone_error(member, "incorrect addition of already existing member, ignoring");
+		return KNOT_EOK;
 	}
 
 	catalog_upd_val_t *val = upd_val_new(member, bail, owner, type);
