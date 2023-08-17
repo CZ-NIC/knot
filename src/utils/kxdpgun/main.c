@@ -801,7 +801,7 @@ void *xdp_gun_thread(void *_ctx)
 							}
 						}
 
-						if (conn->handshake_done && conn->streams_count == -1) {
+						if ((conn->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE) && conn->streams_count == -1) {
 							conn->streams_count = 1;
 
 							local_stats.synack_recv++;
@@ -811,7 +811,7 @@ void *xdp_gun_thread(void *_ctx)
 								continue;
 							}
 						}
-						if (!conn->handshake_done && conn->streams_count == -1) {
+						if (!(conn->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE) && conn->streams_count == -1) {
 							knot_quic_table_rem(conn, quic_table);
 							knot_quic_cleanup(&conn, 1);
 							continue;
@@ -848,7 +848,7 @@ void *xdp_gun_thread(void *_ctx)
 							errors++;
 						}
 
-						if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE) && conn->session_taken &&
+						if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE) && (conn->flags & KNOT_QUIC_CONN_SESSION_TAKEN)  &&
 						    stream0 != NULL && stream0->inbufs != NULL && stream0->inbufs->n_inbufs == 0) {
 							assert(!(ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK));
 							quic_reply.handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;

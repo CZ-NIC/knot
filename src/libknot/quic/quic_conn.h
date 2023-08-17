@@ -66,6 +66,11 @@ typedef struct {
 	size_t unsent_offset;
 } knot_quic_stream_t;
 
+typedef enum {
+	KNOT_QUIC_CONN_HANDSHAKE_DONE = (1 << 0),
+	KNOT_QUIC_CONN_SESSION_TAKEN  = (1 << 1),
+} knot_quic_conn_flag_t;
+
 typedef struct knot_quic_conn {
 	knot_quic_ucw_node_t timeout; // MUST be first field of the struct
 	uint64_t last_ts;
@@ -79,8 +84,7 @@ typedef struct knot_quic_conn {
 	knot_quic_stream_t *streams;
 	int16_t streams_count; // number of allocated streams structures
 	int16_t stream_inprocess; // index of first stream that has complete incomming data to be processed (aka inbuf_fin)
-	bool handshake_done;
-	bool session_taken; // session ticket has already been extracted
+	knot_quic_conn_flag_t flags;
 	int qlog_fd;
 	int64_t streams_first; // stream_id/4 of first allocated stream
 	size_t ibufs_size;
@@ -98,6 +102,7 @@ typedef struct knot_quic_cid {
 } knot_quic_cid_t;
 
 typedef struct knot_quic_table {
+	uint32_t flags; // unused yet
 	size_t size;
 	size_t usage;
 	size_t pointers;

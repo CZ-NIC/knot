@@ -207,7 +207,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 	}
 
 	struct timespec t_start = time_now(), t_cur;
-	while (!conn->handshake_done && sessticket == CONN_POOL_FD_INVALID) {
+	while (!(conn->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE) && sessticket == CONN_POOL_FD_INVALID) {
 		t_cur = time_now();
 		if (time_diff_ms(&t_start, &t_cur) > timeout_ms ||
 		    (ret = quic_exchange(conn, r, timeout_ms)) != KNOT_EOK) {
