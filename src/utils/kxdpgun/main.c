@@ -666,7 +666,7 @@ void *xdp_gun_thread(void *_ctx)
 								}
 							}
 							ret = knot_quic_send(quic_table, newconn, &quic_send_reply, 1,
-							                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
+							                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE) ? KNOT_QUIC_SEND_IGNORE_LASTBYTE : 0);
 						}
 						if (ret == KNOT_EOK) {
 							local_stats.qry_sent++;
@@ -843,7 +843,7 @@ void *xdp_gun_thread(void *_ctx)
 							}
 						}
 						ret = knot_quic_send(quic_table, conn, &quic_reply, 4,
-						                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE));
+						                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE) ? KNOT_QUIC_SEND_IGNORE_LASTBYTE : 0);
 						if (ret != KNOT_EOK) {
 							errors++;
 						}
@@ -852,7 +852,7 @@ void *xdp_gun_thread(void *_ctx)
 						    stream0 != NULL && stream0->inbufs != NULL && stream0->inbufs->n_inbufs == 0) {
 							assert(!(ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK));
 							quic_reply.handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
-							ret = knot_quic_send(quic_table, conn, &quic_reply, 1, false);
+							ret = knot_quic_send(quic_table, conn, &quic_reply, 1, 0);
 							knot_quic_table_rem(conn, quic_table);
 							knot_quic_cleanup(&conn, 1);
 							if (ret != KNOT_EOK) {

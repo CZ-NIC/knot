@@ -320,7 +320,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 		}
 
 		ret = knot_quic_send(ctx->quic_table, ctx->quic_relays[i],
-		                     &ctx->quic_replies[i], QUIC_MAX_SEND_PER_RECV, false);
+		                     &ctx->quic_replies[i], QUIC_MAX_SEND_PER_RECV, 0);
 		if (ret != KNOT_EOK) {
 			log_debug("QUIC/XDP, failed to send some packets");
 		}

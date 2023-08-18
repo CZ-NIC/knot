@@ -36,6 +36,10 @@ struct gnutls_x509_crt_int;
 struct knot_quic_creds;
 struct knot_quic_session;
 
+typedef enum {
+	KNOT_QUIC_SEND_IGNORE_LASTBYTE = (1 << 0),
+} knot_quic_send_flag_t;
+
 typedef struct knot_quic_reply {
 	const struct sockaddr_storage *ip_rem;
 	const struct sockaddr_storage *ip_loc;
@@ -191,11 +195,12 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
  * \param conn               QUIC connection.
  * \param reply              Incoming/outgoing packet info.
  * \param max_msgs           Maxmimum packets to be sent.
- * \param ignore_lastbyte    Cut off last byte of QUIC paylod.
+ * \param flags              Various options for special use-cases.
  *
  * \return KNOT_E*
  */
 int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
-                   knot_quic_reply_t *reply, unsigned max_msgs, bool ignore_lastbyte);
+                   knot_quic_reply_t *reply, unsigned max_msgs,
+                   knot_quic_send_flag_t flags);
 
 /*! @} */
