@@ -3,6 +3,7 @@
 '''Test of freeze-thaw feature'''
 
 from dnstest.test import Test
+import threading
 
 t = Test(tsig=False)
 
@@ -17,6 +18,12 @@ def sleep_alt(time1, option=False, time2=None):
         t.sleep(time1)
     else:
         t.sleep(time2)
+
+def send_update(up, err):
+    up.send(err)
+
+def send_up_bg(up, err):
+    threading.Thread(target=send_update, args=[up, err]).start()
 
 t.start()
 
@@ -42,13 +49,15 @@ slave.zone_wait(zone, serial=2, equal=True)
 resp = slave.dig("added.example.", "A")
 resp.check(rcode="NOERROR", rdata="1.2.3.4")
 
-# check that update is refused
-up = slave.update(zone)
-up.add("noddns", 3600, "A", "1.2.3.6")
-up.send("REFUSED")
-sleep_alt(2, master.valgrind, 4)
-resp = slave.dig("noddns.example.", "A")
-resp.check(rcode="NXDOMAIN", nordata="1.2.3.6")
+# check that update is refused after 8 queued
+for i in range(10):
+    up = slave.update(zone)
+    up.add("freezedddns" + str(i), 3600, "A", "1.2.3.6")
+    if i < 8:
+        send_up_bg(up, "NOERROR")
+    else:
+        up.send("REFUSED")
+    t.sleep(0.2)
 
 master.update_zonefile(zone, version=2)
 master.reload()
@@ -64,10 +73,15 @@ resp.check(rcode="NOERROR", rdata="1.2.3.5")
 
 # check that update works now
 up = slave.update(zone)
-up.add("ddns", 3600, "A", "1.2.3.7")
+up.add("freezedddns10", 3600, "A", "1.2.3.6")
 up.send("NOERROR")
 sleep_alt(2, master.valgrind, 4)
-resp = slave.dig("ddns.example.", "A")
-resp.check(rcode="NOERROR", rdata="1.2.3.7")
+
+for i in range(11):
+    resp = slave.dig("freezedddns" + str(i) + ".example.", "A")
+    if i == 8 or i == 9:
+        resp.check(rcode="NXDOMAIN", nordata="1.2.3.6")
+    else:
+        resp.check(rcode="NOERROR", rdata="1.2.3.6")
 
 t.stop()
