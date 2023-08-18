@@ -15,7 +15,7 @@ setuptools.setup(
     author_email='knot-dns@labs.nic.cz',
     url='https://gitlab.nic.cz/knot/knot-dns/python/knot_exporter',
     license='GPL-3.0',
-    packages=['libknot'],
+    packages=['knot_exporter'],
     classifiers=[ # See https://pypi.org/classifiers
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: System Administrators',
