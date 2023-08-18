@@ -86,7 +86,7 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 
 	handle_quic_streams(conn, params, layer, NULL);
 
-	(void)knot_quic_send(table, conn, &rpl, QUIC_MAX_SEND_PER_RECV, false);
+	(void)knot_quic_send(table, conn, &rpl, QUIC_MAX_SEND_PER_RECV, 0);
 
 	knot_quic_cleanup(&conn, 1);
 }

@@ -1168,7 +1168,8 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 
 _public_
 int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
-                   knot_quic_reply_t *reply, unsigned max_msgs, bool ignore_lastbyte)
+                   knot_quic_reply_t *reply, unsigned max_msgs,
+                   knot_quic_send_flag_t flags)
 {
 	if (reply->handle_ret < 0) {
 		return reply->handle_ret;
@@ -1184,7 +1185,7 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
 		max_msgs = 1;
 	}
 
-	unsigned sent_msgs = 0, stream_msgs = 0;
+	unsigned sent_msgs = 0, stream_msgs = 0, ignore_last = ((flags & KNOT_QUIC_SEND_IGNORE_LASTBYTE) ? 1 : 0);
 	int ret = 1;
 	for (int64_t si = 0; si < conn->streams_count && sent_msgs < max_msgs; /* NO INCREMENT */) {
 		int64_t stream_id = 4 * (conn->streams_first + si);
@@ -1197,9 +1198,9 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
 			continue;
 		}
 
-		bool fin = (((node_t *)uo->node.next)->next == NULL) && !ignore_lastbyte;
+		bool fin = (((node_t *)uo->node.next)->next == NULL) && ignore_last == 0;
 		ret = send_stream(quic_table, reply, conn, stream_id,
-		                  uo->buf + uf, uo->len - uf - (ignore_lastbyte ? 1 : 0),
+		                  uo->buf + uf, uo->len - uf - ignore_last,
 		                  fin, &sent);
 		if (ret < 0) {
 			return ret;
@@ -1207,7 +1208,7 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
 
 		sent_msgs++;
 		stream_msgs++;
-		if (sent > 0 && ignore_lastbyte) {
+		if (sent > 0 && ignore_last > 0) {
 			sent++;
 		}
 		if (sent > 0) {

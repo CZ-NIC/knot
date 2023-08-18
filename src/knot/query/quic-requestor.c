@@ -45,7 +45,7 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 {
 	int fd = (int)(size_t)r->sock;
 
-	int ret = knot_quic_send(conn->quic_table, conn, r, QUIC_MAX_SEND_PER_RECV, false);
+	int ret = knot_quic_send(conn->quic_table, conn, r, QUIC_MAX_SEND_PER_RECV, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -275,7 +275,7 @@ void knot_qreq_close(struct knot_quic_reply *r, bool send_close)
 
 	if (send_close && conn->conn != NULL) {
 		r->handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
-		(void)knot_quic_send(table, conn, r, QUIC_MAX_SEND_PER_RECV, false);
+		(void)knot_quic_send(table, conn, r, QUIC_MAX_SEND_PER_RECV, 0);
 	}
 
 	knot_quic_table_rem(conn, table);
