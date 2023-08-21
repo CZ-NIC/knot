@@ -32,7 +32,10 @@ LIBKNOT_SYMBOLS := $(wildcard $(CURDIR)/debian/libknot*.symbols)
 # MAJOR.MINOR version part
 BASE_VERSION := $(shell echo $(DEB_VERSION) | sed 's/^\([^.]\+\.[^.]\+\).*/\1/')
 
-PYBUILD = pybuild --dir python --dest-dir debian/python3-libknot
+# pyproject is supported by knot but fails on second `pybuild --build`
+# invocation due to bug in dh-python's plugin_pyproject.py wheel unpack
+export PYBUILD_SYSTEM = distutils
+
 
 %:
 	dh $@ \
@@ -57,11 +60,13 @@ override_dh_auto_configure:
 	  --disable-static
 
 override_dh_auto_configure-indep:
-	$(PYBUILD) --configure
+	pybuild --dir python/libknot --configure
+	pybuild --dir python/knot_exporter --configure
 
 override_dh_auto_build-indep:
 	dh_auto_build -- html
-	$(PYBUILD) --build
+	pybuild --dir python/libknot --build
+	pybuild --dir python/knot_exporter --build
 
 override_dh_auto_install-arch:
 	dh_auto_install -- install
@@ -72,7 +77,10 @@ override_dh_auto_install-indep:
 	dh_auto_install -- install-html
 	# rename knot.sample.conf to knot.conf
 	mv $(CURDIR)/debian/tmp/etc/knot/knot.sample.conf $(CURDIR)/debian/tmp/etc/knot/knot.conf
-	$(PYBUILD) --install
+	pybuild --dir python/libknot --install
+	pybuild --dir python/knot_exporter --install
+	rm -rf $(CURDIR)/debian/tmp/usr/lib/python*/dist-packages/libknot/__pycache__
+	rm -rf $(CURDIR)/debian/tmp/usr/lib/python*/dist-packages/knot_exporter/__pycache__
 
 override_dh_auto_test-indep:
 override_dh_auto_test-arch:
