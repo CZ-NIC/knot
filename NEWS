@@ -1,3 +1,202 @@
+Knot DNS 3.2.9 (2023-27-07)
+===========================
+
+Improvements:
+-------------
+ - keymgr: 'import-pkcs11' not allowed if no PKCS #11 keystore backend is configured
+ - keymgr: more verbose key import errors
+ - doc: extended migration notes
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: server may crash when storing changeset of a big zone migrating to/from NSEC3
+ - knotd: zone refresh loop when all masters are outdated and timers cleared
+ - knotd: failed to active D-Bus notifications if not started as systemd service
+ - kjournalprint: database transaction not properly closed when terminated prematurely
+
+Knot DNS 3.2.8 (2023-26-06)
+===========================
+
+Improvements:
+-------------
+ - kdig: malformed messages are parsed and printed using a best-effort approach
+ - python: new dname from wire initialization
+
+Bugfixes:
+---------
+ - knotd: missing outgoing NOTIFY upon refresh if one of more primaries is up-to-date
+ - knotd: journal loop detection can prevent zone from loading
+ - knotd: cryptic error message when journal is full #842
+ - knotd: failed to query catalog zone over UDP
+ - configure: libngtcp2 check wrongly requires version 0.13.0 instead of 0.13.1
+
+Knot DNS 3.2.7 (2023-06-06)
+===========================
+
+Features:
+---------
+ - knotd: new configuration option for preserving incoming IXFR changeset history
+          (see 'zone.ixfr-by-one')
+
+Improvements:
+-------------
+ - knotd: journal ensures the stored changeset's SOA serials are strictly increasing
+ - knotd: more effective handling of zero KNOT_ZONE_LOAD_TIMEOUT_SEC environment value
+ - knotd, kdig: incoming transfer fails if a message has the TC bit set
+ - knotd, kjournalprint: store or print the timestamp of changeset creation
+ - kxdpgun: load only necessary number of queries (Thanks to Petr Špaček)
+ - kxdpgun: print ratio of sent vs. requested queries (Thanks to Petr Špaček)
+ - kxdpgun: print percentages as floats (Thanks to Petr Špaček)
+ - kjournalprint: ability to print a changeset loop
+ - kjournalprint: added changset serials information to '-z -d' output
+ - packaging: RHEL9 requires libxdp like fedora since RHEL 9.2 #844
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: journal loading can get stuck in a multi-changeset loop
+ - knotd: missing RCU lock when reading zone through the control interface
+ - knotd: server start D-Bus signaling doesn't work well if the zone file is
+          missing, catalog zones are used, or in the async-start mode
+ - knotd: test suite fails on 32bit architectures on musl 1.2 and newer #843
+ - knotd: failed to process zero-length messages over QUIC
+ - libs: compilation with embedded ngtcp2 fails if there is another ngtcp2 in the path
+
+Knot DNS 3.2.6 (2023-04-04)
+===========================
+
+Improvements:
+-------------
+ - libs: upgraded embedded libngtcp2 to 0.13.1
+ - libs: added support for building on Cygwin and MSYS (Thanks to Christopher Ng)
+ - mod-dnstap: improved precision of stored time values
+ - kdig: added option for EDNS EXPIRE (see '+expire') #836
+ - kdig: extended description of SOA timers in the multiline mode
+ - kdig: reduced latency of TLS communication
+ - libknot: added EDE codes 28 and 29
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: generated catalog zone not updated upon server reload #834
+ - knotd: failed to check shared module configuration
+ - knotd: missing RCU registration of the statistics thread (Thanks to Qin Longfei)
+ - knotd: server logs failed to send QUIC packets in the XDP mode
+ - libs: inconsistent transformation of IPv4-Compatible IPv6 Addresses
+ - utils: failed to load configuration if dnstap module is enabled #831
+ - libknot: missing include string.h
+
+Knot DNS 3.2.5 (2023-02-02)
+===========================
+
+Features:
+---------
+ - knotd: new configuration option for enforcing IXFR fallback (see 'zone.provide-ixfr')
+
+Improvements:
+-------------
+ - knotd: changed UNIX socket file mode to 0222 for answering and 0220 for control
+ - mod-probe: new support for communication over a UNIX socket
+ - kdig: new support for communication over a UNIX socket
+ - libs: upgraded embedded libngtcp2 to 0.13.0
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: failed to get catalog member configuration if catalog template is in a template
+ - knotd: failed to respond over a UNIX socket with EDNS
+ - knotd: unexpected zone update upon restart or zone reload if ZONEMD generation is enabled
+ - knotd: redundant zone flush of unchanged zone if zone file load is 'difference-no-serial'
+ - knotd/kxdpgun: failed to receive messages over XDP with drivers tap or ena
+ - knotc: zone check doesn't report missing zone file #829
+ - kxdpgun: program crashes when remote closes QUIC connection instead of resumption
+ - mod-geoip: configuration check leaks memory in the geodb mode
+ - utils: unwanted color reset sequences in non-color output
+
+Knot DNS 3.2.4 (2022-12-12)
+===========================
+
+Improvements:
+-------------
+ - knotd: significant speed-up of catalog zone update processing
+ - knotd: new runtime check if RRSIG lifetime is lower than RRSIG refresh
+ - knotd: reworked zone re-bootstrap scheduling to be less progressive
+ - mod-synthrecord: module can work with CIDR-style reverse zones #826
+ - python: new libknot wrappers for some dname transformation functions
+ - doc: a few fixes and improvements
+
+Bugfixes:
+---------
+ - knotd: incomplete zone is received when IXFR falls back to AXFR due to
+          connection timeout if primary puts initial SOA only to the first message
+ - knotd: first zone re-bootstrap is planned after 24 hours
+ - knotd: EDNS EXPIRE option is present in outgoing transfer of a catalog zone
+ - knotd: catalog zone can expire upon EDNS EXPIRE processing
+ - knotd: DNSSEC signing doesn't fail if no offline KSK records available
+
+Knot DNS 3.2.3 (2022-11-20)
+===========================
+
+Improvements:
+-------------
+ - knotd: new per-zone DS push configuration option (see 'zone.ds-push')
+ - libs: upgraded embedded libngtcp2 to 0.11.0
+
+Bugfixes:
+---------
+ - knsupdate: program crashes when sending an update
+ - knotd: server drops more responses over UDP under higher load
+ - knotd: missing EDNS padding in responses over QUIC
+ - knotd: some memory issues when handling unusual QUIC traffic
+ - kxdpgun: broken IPv4 source subnet processing
+ - kdig: incorrect handling of unsent data over QUIC
+
+Knot DNS 3.2.2 (2022-11-01)
+===========================
+
+Features:
+---------
+ - knotd,kxdpgun: support for VLAN (802.1Q) traffic in the XDP mode
+ - knotd: added configurable delay upon D-Bus initialization (see 'server.dbus-init-delay')
+ - kdig: support for JSON (RFC 8427) output format (see '+json')
+ - kdig: support for PROXYv2 (see '+proxy') (Gift for Peter van Dijk)
+
+Improvements:
+-------------
+ - mod-geoip: module respects the server configuration of answer rotation
+ - libs: upgraded embedded libngtcp2 to 0.10.0
+ - tests: improved robustness of some unit tests
+ - doc: added description of zone bootstrap re-planning
+
+Bugfixes:
+---------
+ - knotd: catalog confusion when a member is added and immediately deleted #818
+ - knotd: defective handling of short messages with PROXYv2 header #816
+ - knotd: inconsistent processing of malformed messages with PROXYv2 header #817
+ - kxdpgun: incorrect XDP mode is logged
+ - packaging: outdated dependency check in RPM packages
+
+Knot DNS 3.2.1 (2022-09-09)
+===========================
+
+Improvements:
+-------------
+ - libknot: added compatibility with libbpf 1.0 and libxdp
+ - libknot: removed some trailing white space characters from textual RR format
+ - libs: upgraded embedded libngtcp2 to 0.8.1
+
+Bugfixes:
+---------
+ - knotd: some non-DNS packets not passed to OS if XDP mode enabled
+ - knotd: inappropriate log about QUIC port change if QUIC not enabled
+ - knotd/kxdpgun: various memory leaks related to QUIC and TCP
+ - kxdpgun: can crash at high rates in emulated XDP mode
+ - tests: broken XDP-TCP test on 32-bit platforms
+ - kdig: failed to build with enabled QUIC on OpenBSD
+ - systemd: failed to start server due to TemporaryFileSystem setting
+ - packaging: missing knot-dnssecutils package on CentOS 7
+
 Knot DNS 3.2.0 (2022-08-22)
 ===========================
 
