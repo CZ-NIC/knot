@@ -73,6 +73,7 @@ libknot.so.14 libknot14 #MINVER#
  knot_edns_keepalive_parse@Base 3.3.0
  knot_edns_keepalive_size@Base 3.3.0
  knot_edns_keepalive_write@Base 3.3.0
+ knot_edns_opt_names@Base 3.3.0
  knot_edns_reserve_option@Base 3.3.0
  knot_edns_set_ext_rcode@Base 3.3.0
  knot_edns_set_version@Base 3.3.0
