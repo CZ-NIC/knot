@@ -252,6 +252,22 @@ Description: Documentation for Knot DNS
  This package provides various documents that are useful for
  maintaining a working Knot DNS installation.
 
+Package: knot-exporter
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ${python3:Depends},
+Section: python
+Description: Prometheus exporter for Knot DNS
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides Python Prometheus exporter for Knot DNS.
+
 Package: python3-libknot
 Architecture: all
 Depends:
