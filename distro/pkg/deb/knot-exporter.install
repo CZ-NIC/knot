@@ -1,0 +1,3 @@
+usr/lib/python3*/dist-packages/knot_exporter-*.egg-info
+usr/lib/python3*/dist-packages/knot_exporter/*.py
+usr/bin/knot-exporter /usr/sbin/knot-exporter
