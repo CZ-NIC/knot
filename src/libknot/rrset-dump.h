@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -95,6 +95,25 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
  */
 int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
                              const size_t            pos,
+                             char                    *dst,
+                             const size_t            maxlen,
+                             const knot_dump_style_t *style);
+
+/*!
+ * \brief Dumps ENDS(0) OPT record.
+ *
+ * \param rrset		OPT record.
+ * \param hdr_rcode	The four lower bits of RCODE from the message header.
+ * 			If set to 0xffff, UNKNOWNRCODE### is dumped.
+ * \param dst		Output buffer.
+ * \param maxlen	Output buffer size.
+ * \param style		Output style.
+ *
+ * \retval output length	if success.
+ * \retval < 0			if error.
+ */
+int knot_rrset_txt_dump_edns(const knot_rrset_t      *rrset,
+                             const uint16_t          hdr_rcode,
                              char                    *dst,
                              const size_t            maxlen,
                              const knot_dump_style_t *style);

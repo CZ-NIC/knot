@@ -162,6 +162,7 @@ libknot.so.14 libknot14 #MINVER#
  knot_rrset_to_wire_extra@Base 3.3.0
  knot_rrset_txt_dump@Base 3.3.0
  knot_rrset_txt_dump_data@Base 3.3.0
+ knot_rrset_txt_dump_edns@Base 3.3.0
  knot_rrset_txt_dump_header@Base 3.3.0
  knot_rrtype_additional_needed@Base 3.3.0
  knot_rrtype_from_string@Base 3.3.0

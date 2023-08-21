@@ -432,6 +432,24 @@ static int opt_noquestion(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_optpresent(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.present_edns = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nooptpresent(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.present_edns = false;
+
+	return KNOT_EOK;
+}
+
 static int opt_answer(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1513,6 +1531,9 @@ static const param_t kdig_opts2[] = {
 	{ "opttext",        ARG_NONE,     opt_opttext },
 	{ "noopttext",      ARG_NONE,     opt_noopttext },
 
+	{ "optpresent",     ARG_NONE,     opt_optpresent },
+	{ "nooptpresent",   ARG_NONE,     opt_nooptpresent },
+
 	{ "question",       ARG_NONE,     opt_question },
 	{ "noquestion",     ARG_NONE,     opt_noquestion },
 
@@ -2323,6 +2344,7 @@ static void print_help(void)
 	       "       +[no]comments              Show commented section names.\n"
 	       "       +[no]opt                   Show EDNS pseudosection.\n"
 	       "       +[no]opttext               Try to show unknown EDNS options as text.\n"
+	       "       +[no]optpresent            Show EDNS in presenatation format.\n"
 	       "       +[no]question              Show question section.\n"
 	       "       +[no]answer                Show answer section.\n"
 	       "       +[no]authority             Show authority section.\n"

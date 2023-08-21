@@ -297,6 +297,21 @@ static void print_expire(const uint8_t *data, uint16_t len)
 
 static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 {
+	if (style->present_edns) {
+		size_t buflen = 8192;
+		char *buf = calloc(buflen, 1);
+		int ret = knot_rrset_txt_dump_edns(packet->opt_rr,
+		                                   knot_wire_get_rcode(packet->wire),
+		                                   buf, buflen, &style->style);
+		if (ret < 0) {
+			WARN("can't print OPT record (%s)", knot_strerror(ret));
+		} else {
+			printf(". 0 ANY EDNS0\t\t\t%s\n", buf);
+		}
+		free(buf);
+		return;
+	}
+
 	char unknown_ercode[64] = "";
 	const char *ercode_str = NULL;
 
@@ -314,7 +329,7 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 		ercode_str = unknown_ercode;
 	}
 
-	printf("Version: %u; flags: %s; UDP size: %u B; ext-rcode: %s\n",
+	printf(";; Version: %u; flags: %s; UDP size: %u B; ext-rcode: %s\n",
 	       knot_edns_get_version(packet->opt_rr),
 	       (knot_edns_do(packet->opt_rr) != 0) ? "do" : "",
 	       knot_edns_get_payload(packet->opt_rr),
@@ -908,7 +923,7 @@ void print_packet(const knot_pkt_t *packet,
 
 	// Print EDNS section.
 	if (style->show_edns && knot_pkt_has_edns(packet)) {
-		printf("%s", style->show_section ? "\n;; EDNS PSEUDOSECTION:\n;; " : ";;");
+		printf("%s", style->show_section ? "\n;; EDNS PSEUDOSECTION:\n" : ";;");
 		print_section_opt(packet, style);
 	}
 

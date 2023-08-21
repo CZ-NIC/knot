@@ -17,6 +17,7 @@
 #include "libknot/attribute.h"
 #include "libknot/codes.h"
 #include "libknot/consts.h"
+#include "libknot/rrtype/opt.h"
 #include "libdnssec/key.h"
 
 _public_
@@ -126,4 +127,16 @@ const knot_lookup_t knot_svcb_param_names[] = {
 	{ KNOT_SVCB_PARAM_ECH,       "ech" },
 	{ KNOT_SVCB_PARAM_IPV6HINT,  "ipv6hint" },
 	{ 0, NULL }
+};
+
+_public_
+const knot_lookup_t knot_edns_opt_names[] = {
+	{ KNOT_EDNS_OPTION_NSID,          "NSID" },
+	{ KNOT_EDNS_OPTION_CLIENT_SUBNET, "ECS" },
+	{ KNOT_EDNS_OPTION_EXPIRE,        "EXPIRE" },
+	{ KNOT_EDNS_OPTION_COOKIE,        "COOKIE" },
+	{ KNOT_EDNS_OPTION_TCP_KEEPALIVE, "KEEPALIVE" },
+	{ KNOT_EDNS_OPTION_PADDING,       "PADDING" },
+	{ KNOT_EDNS_OPTION_CHAIN,         "CHAIN" },
+	{ KNOT_EDNS_OPTION_EDE,           "EDE" },
 };
