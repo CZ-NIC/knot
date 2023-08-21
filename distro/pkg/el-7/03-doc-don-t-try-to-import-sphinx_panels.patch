@@ -1,0 +1,25 @@
+From c05abb0401d3343b96ced4a6cdd724ee04adfe1b Mon Sep 17 00:00:00 2001
+From: Daniel Salzman <daniel.salzman@nic.cz>
+Date: Mon, 21 Aug 2023 16:54:46 +0200
+Subject: [PATCH] doc: don't try to import sphinx_panels on CentOS 7
+
+
+ 1 file changed, 3 deletions(-)
+
+diff --git a/doc/conf.py b/doc/conf.py
+index fc2e94d96..515241051 100644
+--- a/doc/conf.py
++++ b/doc/conf.py
+@@ -27,9 +27,6 @@ sys.path.insert(0, os.path.abspath('ext'))
+ 
+ # Add any Sphinx extension module names here, as strings. They can be extensions
+ # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
+-import importlib.util
+-if importlib.util.find_spec("sphinx_panels"):
+-    extensions = [ 'sphinx_panels' ]
+ 
+ # Add any paths that contain templates here, relative to this directory.
+ templates_path = ['_templates']
+-- 
+2.25.1
+
