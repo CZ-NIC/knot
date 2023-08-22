@@ -636,6 +636,7 @@ static bool allow_zero_rdata(const knot_rrset_t *rr,
 {
 	return rr->rclass != KNOT_CLASS_IN ||  // NONE and ANY for DDNS
 	       rr->type == KNOT_RRTYPE_APL ||  // APL RR type
+	       rr->type == KNOT_RRTYPE_NULL || // NULL RR type
 	       desc->type_name == NULL;        // Unknown RR type
 }
 
