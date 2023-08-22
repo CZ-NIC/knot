@@ -50,6 +50,11 @@ resp = knot.dig("flags", "NS", flags="Z")
 resp.check(flags="QR AA", noflags="TC RA AD CD RD Z")
 resp.cmp(bind)
 
+# NULL record
+resp = knot.dig("empty-null.flags.", "TYPE10")
+resp.check(rcode="NOERROR", rdata="")
+resp.cmp(bind)
+
 # NS record for delegated subdomain (not authoritative).
 resp = knot.dig("sub.flags", "NS")
 resp.check(flags="QR", noflags="AA TC RD RA AD CD Z")
