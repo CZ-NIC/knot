@@ -26,6 +26,9 @@ ns.sub	A	192.0.2.4
 ; Opt-outable delegation below empty-non-terminal
 deleg.ent	NS	sub
 
+; NULL type with empty rdata
+empty-null	TYPE10	\# 0
+
 ; CNAME to A record
 cname	CNAME	dns1
 
