@@ -21,12 +21,15 @@
 #include "contrib/strtonum.h"
 #include "knot/common/log.h"
 #include "utils/common/params.h"
+#include "utils/common/signal.h"
 #include "utils/knotc/commands.h"
 #include "utils/knotc/interactive.h"
 #include "utils/knotc/process.h"
 
 #define PROGRAM_NAME		"knotc"
 #define SPACE			"  "
+
+knot_lmdb_db_t *signal_close_db = NULL; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -84,6 +87,9 @@ int main(int argc, char **argv)
 
 	/* Set the time zone. */
 	tzset();
+
+	/* Inititalize the termination signals handler. */
+	signal_init_std();
 
 	params.color = isatty(STDOUT_FILENO);
 	params.color_force = false;

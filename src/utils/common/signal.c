@@ -1,0 +1,56 @@
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include <signal.h>
+
+#include "utils/common/signal.h"
+
+#include "knot/conf/base.h"
+#include "knot/journal/knot_lmdb.h"
+
+extern knot_lmdb_db_t *signal_close_db; // It must be defined as global in each utility.
+int SIGNAL_REPEAT = 1;
+
+static void signal_handler(int signum)
+{
+	if (--SIGNAL_REPEAT < 0) {
+		abort();
+	}
+
+	conf_t *config = conf();
+	if (config != NULL && config->api != NULL) {
+		config->api->deinit(config->db);
+	}
+
+	if (signal_close_db != NULL) {
+		knot_lmdb_close(signal_close_db);
+	}
+
+	exit(EXIT_FAILURE);
+}
+
+void signal_init_std(void)
+{
+	struct sigaction sigact = { .sa_handler = signal_handler };
+
+	sigaction(SIGHUP, &sigact, NULL);
+	sigaction(SIGINT, &sigact, NULL);
+	sigaction(SIGPIPE, &sigact, NULL);
+	sigaction(SIGALRM, &sigact, NULL);
+	sigaction(SIGTERM, &sigact, NULL);
+	sigaction(SIGUSR1, &sigact, NULL);
+	sigaction(SIGUSR2, &sigact, NULL);
+}

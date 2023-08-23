@@ -15,7 +15,6 @@
  */
 
 #include <getopt.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -28,6 +27,7 @@
 #include "knot/zone/zone-dump.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
+#include "utils/common/signal.h"
 #include "utils/common/util_conf.h"
 #include "contrib/color.h"
 #include "contrib/strtonum.h"
@@ -36,18 +36,8 @@
 
 #define PROGRAM_NAME	"kjournalprint"
 
-knot_lmdb_db_t journal_db = { 0 }; // global so that accessible from signal handler
-
-int SIGNAL_REPEAT = 1;
-
-static void signal_handler(int signum)
-{
-	if (--SIGNAL_REPEAT < 0) {
-		abort();
-	}
-	knot_lmdb_close(&journal_db);
-	exit(EXIT_FAILURE);
-}
+knot_lmdb_db_t journal_db = { 0 };
+knot_lmdb_db_t *signal_close_db = NULL; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -358,6 +348,9 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
+	signal_close_db = &journal_db;
+	signal_init_std();
+
 	int opt = 0;
 	while ((opt = getopt_long(argc, argv, "c:C:D:l:s:zHdnxXhV", opts, NULL)) != -1) {
 		switch (opt) {
@@ -431,15 +424,6 @@ int main(int argc, char *argv[])
 	}
 
 	char *db = conf_db(conf(), C_JOURNAL_DB);
-
-	struct sigaction sigact = { .sa_handler = signal_handler };
-	sigaction(SIGHUP, &sigact, NULL);
-	sigaction(SIGINT, &sigact, NULL);
-	sigaction(SIGPIPE, &sigact, NULL);
-	sigaction(SIGALRM, &sigact, NULL);
-	sigaction(SIGTERM, &sigact, NULL);
-	sigaction(SIGUSR1, &sigact, NULL);
-	sigaction(SIGUSR2, &sigact, NULL);
 
 	if (justlist) {
 		int ret = list_zones(db, params.debug);
