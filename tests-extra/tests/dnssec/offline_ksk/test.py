@@ -179,7 +179,7 @@ def tickf(when):
 
 # generate keys, including manual KSK rollover on the beginning
 key_ksk1 = signer.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0", retire=tickf(4), remove=tickf(5))
-key_ksk2 = signer.key_gen(ZONE, ksk="true", created="+0", publish=tickf(2), ready=tickf(3), active=tickf(4), retire="+2h", remove="+3h")
+key_ksk2 = signer.key_gen(ZONE, ksk="true", created="+0", publish=tickf(3), ready=tickf(4), active=tickf(5), retire="+2h", remove="+3h")
 key_zsk1 = knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", active="+0")
 
 # pregenerate keys, exchange KSR, pre-sign it, exchange SKR
@@ -209,7 +209,7 @@ knot.zone_wait(zone)
 check_zone(knot, zone, 2, 1, 1, "init")
 
 zone_update(master, knot, zone, ON_SLAVE)
-wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE)
+wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE * 2)
 check_zone(knot, zone, 3, 2, 1, "KSK rollover: publish")
 
 zone_update(master, knot, zone, ON_SLAVE)

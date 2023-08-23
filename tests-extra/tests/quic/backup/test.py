@@ -18,9 +18,17 @@ backup_dir2 = os.path.join(master.dir, "backup2")
 keyfile = os.path.join(master.dir, "keys", DFLT_QUIC_KEY_FILE)
 backup_keyfile = os.path.join(backup_dir, "keys", DFLT_QUIC_KEY_FILE)
 
-t.start()
+try:
+    t.start()
+except Failed as e:
+    stderr = t.out_dir + "/" + str(e).split("'")[1] + "/stderr"
+    with open(stderr) as fstderr:
+        if "QUIC" in fstderr.readline():
+            raise Skip("QUIC support not compiled in")
+    raise e
 
 master.zones_wait(zones)
+t.sleep(1)
 master.fill_cert_key()
 key1_pin = master.cert_key
 
@@ -31,6 +39,7 @@ master.stop()
 master.start()
 
 master.zones_wait(zones)
+t.sleep(1)
 master.fill_cert_key()
 key2_pin = master.cert_key
 
@@ -43,6 +52,7 @@ master.stop()
 master.start()
 
 master.zones_wait(zones)
+t.sleep(1)
 master.fill_cert_key()
 key3_pin = master.cert_key
 

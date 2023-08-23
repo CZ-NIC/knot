@@ -29,6 +29,7 @@ serial = master.zone_wait(zone, serial)
 master.update_zonefile(zone, version=2)
 master.stop()
 master.start()
+master.zone_wait(zone)
 
 # Try to refresh slave, IXFR should fail, AXFR ok
 slave.ctl("zone-refresh", wait=True)

@@ -204,6 +204,7 @@ resp = slave.dig("cataloged2.", "SOA", dnssec=True)
 resp.check(rcode="REFUSED")
 
 master.start()
+master.zone_wait(zone[0])
 
 # Check refresh of catalog after purge.
 slave.ctl("zone-refresh %s" % zone[1].name)
