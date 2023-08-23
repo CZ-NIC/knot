@@ -72,7 +72,7 @@ detail_log("SCENARIO " + scenario)
 
 t.start()
 
-rootser = knot.zones_wait(rzone)
+rootser = knot.zone_wait(rzone)
 t.sleep(5)
 
 for z in rzone:
@@ -104,7 +104,7 @@ else:
     up.delete("bar.zones." + catz[0].name, "PTR", "cataloged2.")
 up.try_send()
 
-knot.zones_wait(rzone, rootser)
+knot.zone_wait(rzone, rootser + 2, equal=True) # signed twice
 t.sleep(10)
 
 if scenario == "uniq2x":
