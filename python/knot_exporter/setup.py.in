@@ -13,7 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     author='CZ.NIC, z.s.p.o.',
     author_email='knot-dns@labs.nic.cz',
-    url='https://gitlab.nic.cz/knot/knot-dns/python/knot_exporter',
+    url='https://gitlab.nic.cz/knot/knot-dns/-/tree/master/python/knot_exporter',
     license='GPL-3.0',
     packages=['knot_exporter'],
     classifiers=[ # See https://pypi.org/classifiers

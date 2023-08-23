@@ -26,7 +26,7 @@ classifiers = [
 [project.urls]
 Documentation = "https://www.knot-dns.cz/documentation"
 Issues = "https://gitlab.nic.cz/knot/knot-dns/-/issues"
-Source = "https://gitlab.nic.cz/knot/knot-dns"
+Source = "https://gitlab.nic.cz/knot/knot-dns/-/tree/master/python/libknot"
 
 [tool.hatch.build]
 # don't filter by .gitignore
