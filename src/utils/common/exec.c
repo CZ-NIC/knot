@@ -667,6 +667,33 @@ static bool all_zero(const uint8_t * const str, const size_t len)
 	return true;
 }
 
+static void json_edns_ecs(jsonw_t *w, uint8_t *optdata, uint16_t optlen, char *tmps)
+{
+	knot_edns_client_subnet_t ecs = { 0 };
+	struct sockaddr_storage addr = { 0 };
+
+	int ret = knot_edns_client_subnet_parse(&ecs, optdata, optlen);
+	if (ret == KNOT_EOK) {
+		ret = knot_edns_client_subnet_get_addr(&addr, &ecs);
+	}
+	if (ret == KNOT_EOK) {
+		jsonw_object(w, "ECS");
+		jsonw_int(w, "FAMILY", ecs.family);
+
+		ret = sockaddr_tostr(tmps, sizeof(tmps), &addr);
+		assert(ret == KNOT_EOK);
+		jsonw_str(w, "IP", tmps);
+
+		jsonw_int(w, "SOURCE", ecs.source_len);
+		if (ecs.scope_len != 0) {
+			jsonw_int(w, "SCOPE", ecs.scope_len);
+		}
+		jsonw_end(w);
+	} else {
+		json_edns_unknown(w, optdata, KNOT_EDNS_OPTION_CLIENT_SUBNET, optlen);
+	}
+}
+
 static void json_edns_opt(jsonw_t *w, uint8_t *optdata, uint16_t optype, uint16_t optlen)
 {
 	char tmps[SOCKADDR_STRLEN] = { 0 };
@@ -678,26 +705,7 @@ static void json_edns_opt(jsonw_t *w, uint8_t *optdata, uint16_t optype, uint16_
 		jsonw_str_len(w, "NSID", optdata, optlen, true);
 		break;
 	case KNOT_EDNS_OPTION_CLIENT_SUBNET:
-		;
-		knot_edns_client_subnet_t ecs = { 0 };
-		int ret = knot_edns_client_subnet_parse(&ecs, optdata, optlen);
-		if (ret == KNOT_EOK) {
-			jsonw_object(w, "ECS");
-			jsonw_int(w, "FAMILY", ecs.family);
-
-			struct sockaddr_storage addr = { 0 };
-			ret = knot_edns_client_subnet_get_addr(&addr, &ecs);
-			sockaddr_tostr(tmps, sizeof(tmps), &addr);
-			jsonw_str(w, "IP", tmps);
-
-			jsonw_int(w, "SOURCE", ecs.source_len);
-			if (ecs.scope_len != 0) {
-				jsonw_int(w, "SCOPE", ecs.scope_len);
-			}
-			jsonw_end(w);
-		} else {
-			json_edns_unknown(w, optdata, optype, optlen);
-		}
+		json_edns_ecs(w, optdata, optlen, tmps);
 		break;
 	case KNOT_EDNS_OPTION_EXPIRE:
 		if (optlen == 0) {
