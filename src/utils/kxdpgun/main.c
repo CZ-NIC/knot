@@ -637,6 +637,7 @@ void *xdp_gun_thread(void *_ctx)
 							ptrnode_t *n = HEAD(reuse_conns);
 							newconn = n->d;
 							rem_node(&n->n);
+							assert(HEAD(reuse_conns) != n);
 							free(n);
 							if (newconn->streams_count < 1) {
 								newconn = NULL; // un-re-usable conn

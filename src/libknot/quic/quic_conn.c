@@ -452,6 +452,7 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *conn, int64_t stream_id,
 	knot_quic_obuf_t *first;
 	while (!EMPTY_LIST(*obs) && end_acked >= (first = HEAD(*obs))->len + s->first_offset) {
 		rem_node((node_t *)first);
+		assert(HEAD(*obs) != first); // help CLANG analyzer understand what rem_node did and that further usage of HEAD(*obs) is safe
 		s->obufs_size -= first->len;
 		conn->obufs_size -= first->len;
 		conn->quic_table->obufs_size -= first->len;

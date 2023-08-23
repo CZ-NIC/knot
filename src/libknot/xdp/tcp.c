@@ -654,6 +654,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 
 	// reset connections to free ibufs
 	while (free_inbuf > 0 && rl != rl_max) {
+		assert(tcp_table->next_ibuf != NULL);
 		if (tcp_table->next_ibuf->inbuf.iov_len == 0) { // this conn might have get rid of ibuf in the meantime
 			next_ptr_ibuf(&tcp_table->next_ibuf);
 		}
@@ -666,6 +667,7 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 
 	// reset connections to free obufs
 	while (free_outbuf > 0 && rl != rl_max) {
+		assert(tcp_table->next_obuf != NULL);
 		if (knot_tcp_outbufs_usage(tcp_table->next_obuf->outbufs) == 0) {
 			next_ptr_obuf(&tcp_table->next_obuf);
 		}

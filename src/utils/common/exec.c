@@ -793,7 +793,7 @@ static void json_print_edns(jsonw_t *w, const knot_pkt_t *pkt)
 	}
 	jsonw_end(w);
 
-	const knot_lookup_t *item = item = knot_lookup_by_id(knot_rcode_names, knot_pkt_ext_rcode(pkt));
+	const knot_lookup_t *item = knot_lookup_by_id(knot_rcode_names, knot_pkt_ext_rcode(pkt));
 	(void)snprintf(tmp, sizeof(tmp), "RCODE%hu", knot_pkt_ext_rcode(pkt));
 	jsonw_str(w, "RCODE", item == NULL ? tmp : item->name);
 	jsonw_int(w, "UDPSIZE", knot_edns_get_payload(pkt->opt_rr));
