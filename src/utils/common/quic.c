@@ -401,7 +401,7 @@ static int quic_respcpy(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 	assert(ctx && buf && buf_len > 0);
 	if (ctx->stream.in_parsed != NULL) {
 		knot_tinbufu_res_t *cur = ctx->stream.in_parsed;
-		struct iovec *it = &knot_tinbufu_res_inbufs(cur)[ctx->stream.in_parsed_it];
+		struct iovec *it = &cur->inbufs[ctx->stream.in_parsed_it];
 		if (buf_len < it->iov_len) {
 			return KNOT_ENOMEM;
 		}

@@ -149,7 +149,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 			return KNOT_ENOMEM;
 		}
 
-		cur = knot_tinbufu_res_inbufs(out);
+		cur = out->inbufs;
 		uint8_t *out_buf_ptr = (uint8_t *)(cur + iov_cnt);
 		data_use = data;
 		if (buffer->iov_len >= 2) { // at least some data in buffer
@@ -171,7 +171,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 		}
 
 		if (alloc_bufs) {
-			for (; cur != knot_tinbufu_res_inbufs(out) + iov_cnt; ++cur) {
+			for (; cur != out->inbufs + iov_cnt; ++cur) {
 				cur->iov_base = out_buf_ptr;
 				cur->iov_len = 0;
 				data_use.iov_len = tcp_payload_len(&data);
@@ -182,7 +182,7 @@ int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bu
 				out_buf_ptr = cur->iov_base + cur->iov_len;
 			}
 		} else {
-			for (; cur != knot_tinbufu_res_inbufs(out) + iov_cnt; ++cur) {
+			for (; cur != out->inbufs + iov_cnt; ++cur) {
 				cur->iov_len = tcp_payload_len(&data);
 				iov_inc(&data, 2);
 				cur->iov_base = data.iov_base;

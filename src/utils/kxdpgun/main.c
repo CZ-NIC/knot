@@ -747,7 +747,7 @@ void *xdp_gun_thread(void *_ctx)
 							break;
 						}
 						for (size_t j = 0; rl->inbf != NULL && j < rl->inbf->n_inbufs; j++) {
-							if (check_dns_payload(&knot_tinbufu_res_inbufs(rl->inbf)[j], ctx, &local_stats)) {
+							if (check_dns_payload(&rl->inbf->inbufs[j], ctx, &local_stats)) {
 								if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
 									rl->answer = XDP_TCP_CLOSE;
 								} else if ((ctx->ignore1 & KXDPGUN_REUSE_CONN)) {
@@ -829,7 +829,7 @@ void *xdp_gun_thread(void *_ctx)
 						int64_t s0id;
 						knot_quic_stream_t *stream0 = knot_quic_stream_get_process(conn, &s0id);
 						if (stream0 != NULL && stream0->inbufs != NULL && stream0->inbufs->n_inbufs > 0) {
-							check_dns_payload(&knot_tinbufu_res_inbufs(stream0->inbufs)[0], ctx, &local_stats);
+							check_dns_payload(&stream0->inbufs->inbufs[0], ctx, &local_stats);
 							stream0->inbufs->n_inbufs = 0; // signal that data have been read out
 
 							if ((ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK)) {

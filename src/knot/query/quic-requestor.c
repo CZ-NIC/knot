@@ -252,7 +252,7 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 
 	knot_tinbufu_res_t *firstib = stream->inbufs;
 	assert(stream->firstib_consumed < firstib->n_inbufs);
-	struct iovec *inbufs = knot_tinbufu_res_inbufs(firstib);
+	struct iovec *inbufs = firstib->inbufs;
 	struct iovec *consum = &inbufs[stream->firstib_consumed];
 	if (consum->iov_len > out->iov_len) {
 		return KNOT_ESPACE;
