@@ -262,7 +262,7 @@ static void udp_msg_send(void *d)
 
 	if (rq->iov[TX].iov_len > 0) {
 		int ret = sendmsg(rq->fd, &rq->msg[TX], 0);
-		if (ret == -1) {
+		if (ret == -1 && log_enabled_debug()) {
 			log_debug("UDP, failed to send a packet (%s)", strerror(errno));
 		}
 	}
@@ -387,7 +387,7 @@ static void udp_mmsg_send(void *d)
 	udp_mmsg_ctx_t *rq = d;
 
 	int ret = sendmmsg(rq->fd, rq->msgs[TX], rq->rcvd, 0);
-	if (ret == -1) {
+	if (ret == -1 && log_enabled_debug()) {
 		log_debug("UDP, failed to send some packets (%s)", strerror(errno));
 	}
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
