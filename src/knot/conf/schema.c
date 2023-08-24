@@ -265,7 +265,6 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP,                  YP_TBOOL, YP_VNONE },
 	{ C_QUIC,                 YP_TBOOL, YP_VNONE },
 	{ C_QUIC_PORT,            YP_TINT,  YP_VINT = { 1, 65535, 853 } },
-	{ C_QUIC_LOG,             YP_TBOOL, YP_VNONE },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 1024, INT32_MAX, 1000000 } },
 	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
 	{ C_TCP_OUTBUF_MAX_SIZE,  YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
@@ -274,6 +273,8 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP_RESEND,           YP_TINT,  YP_VINT = { 1, INT32_MAX, 5, YP_STIME } },
 	{ C_ROUTE_CHECK,          YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
+	// Legacy items.
+	{ C_QUIC_LOG,             YP_TBOOL, YP_VNONE, YP_FNONE, { legacy_item } },
 	{ NULL }
 };
 
@@ -289,6 +290,7 @@ static const yp_item_t desc_log[] = {
 	{ C_SERVER,  YP_TOPT, YP_VOPT = { log_severities, 0 } },
 	{ C_CTL,     YP_TOPT, YP_VOPT = { log_severities, 0 } },
 	{ C_ZONE,    YP_TOPT, YP_VOPT = { log_severities, 0 } },
+	{ C_QUIC,    YP_TOPT, YP_VOPT = { log_severities, 0 } },
 	{ C_ANY,     YP_TOPT, YP_VOPT = { log_severities, 0 } },
 	{ C_COMMENT, YP_TSTR, YP_VNONE },
 	{ NULL }

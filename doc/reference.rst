@@ -684,7 +684,6 @@ Various options related to XDP listening, especially TCP.
      tcp: BOOL
      quic: BOOL
      quic-port: INT
-     quic-log: BOOL
      tcp-max-clients: INT
      tcp-inbuf-max-size: SIZE
      tcp-outbuf-max-size: SIZE
@@ -773,17 +772,6 @@ but on different port, configured by this option.
 Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* ``853``
-
-.. _xdp_quic-log:
-
-quic-log
---------
-
-Triggers extensive logging of all QUIC protocol internals for every connection.
-
-Change of this parameter requires restart of the Knot server to take effect.
-
-*Default:* ``off``
 
 .. _xdp_tcp-max-clients:
 
@@ -947,6 +935,7 @@ will be logged to both standard error output and syslog. The ``info`` and
      server: critical | error | warning | notice | info | debug
      control: critical | error | warning | notice | info | debug
      zone: critical | error | warning | notice | info | debug
+     quic: critical | error | warning | notice | info | debug
      any: critical | error | warning | notice | info | debug
 
 .. _log_target:
@@ -998,12 +987,21 @@ Minimum severity level for messages related to zones to be logged.
 
 *Default:* not set
 
+.. _log_quic:
+
+quic
+----
+
+Minimum severity level for messages related to QUIC to be logged.
+
+*Default:* not set
+
 .. _log_any:
 
 any
 ---
 
-Minimum severity level for all message types to be logged.
+Minimum severity level for all message types, except ``quic``, to be logged.
 
 *Default:* not set
 

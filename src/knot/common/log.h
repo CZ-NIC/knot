@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +49,8 @@ typedef enum {
 	LOG_SOURCE_SERVER  = 0, /*!< Server module. */
 	LOG_SOURCE_CONTROL = 1, /*!< Server control module. */
 	LOG_SOURCE_ZONE    = 2, /*!< Zone manipulation module. */
-	LOG_SOURCE_ANY     = 3  /*!< Any module. */
+	LOG_SOURCE_QUIC    = 3, /*!< QUIC debug information. */
+	LOG_SOURCE_ANY     = 4  /*!< Any module (QUIC not included). */
 } log_source_t;
 
 /*! \brief Logging format flags. */
@@ -76,8 +77,8 @@ void log_flag_set(log_flag_t flag);
 /*!
  * \brief Set log levels for given target.
  *
- * \param target  Logging target index (LOG_TARGET_SYSLOG...).
- * \param src     Logging source (LOG_SOURCE_SERVER...LOG_SOURCE_ANY).
+ * \param target  Logging target index.
+ * \param src     Logging source.
  * \param levels  Bitmask of specified log levels.
  */
 void log_levels_set(log_target_t target, log_source_t src, int levels);
@@ -88,8 +89,8 @@ void log_levels_set(log_target_t target, log_source_t src, int levels);
  * New levels are added on top of existing, the resulting levels set is
  * "old_levels OR new_levels".
  *
- * \param target  Logging target index (LOG_TARGET_SYSLOG...).
- * \param src     Logging source (LOG_SOURCE_SERVER...LOG_SOURCE_ANY).
+ * \param target  Logging target index.
+ * \param src     Logging source.
  * \param levels  Bitmask of specified log levels.
  */
 void log_levels_add(log_target_t target, log_source_t src, int levels);
@@ -102,7 +103,7 @@ void log_levels_add(log_target_t target, log_source_t src, int levels);
  * \note LOG_SOURCE_ANY is not a valid value for the src parameter.
  *
  * \param priority  Message priority.
- * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
+ * \param src       Message source.
  * \param fmt       Content of the logged message.
  */
 void log_fmt(int priority, log_source_t src, const char *fmt, ...)
@@ -114,7 +115,7 @@ __attribute__((format(printf, 3, 4)));
  * \see log_fmt
  *
  * \param priority  Message priority.
- * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
+ * \param src       Message source.
  * \param zone      Zone name in wire format.
  * \param param     Optional key-value parameter for structured logging.
  * \param fmt       Content of the logged message.
@@ -130,7 +131,7 @@ __attribute__((format(printf, 5, 6)));
  *
  * \param zone  Zone name as an ASCII string.
  * \param priority  Message priority.
- * \param src       Message source (LOG_SOURCE_SERVER...LOG_SOURCE_ZONE).
+ * \param src       Message source.
  * \param fmt       Content of the logged message.
  */
 void log_fmt_zone_str(int priority, log_source_t src, const char *zone, const char *fmt, ...)
@@ -185,3 +186,13 @@ int log_update_privileges(int uid, int gid);
  * \brief Setup logging facilities from config.
  */
 void log_reconfigure(conf_t *conf);
+
+/*!
+ * \brief Check if debug logging is enabled.
+ */
+bool log_enabled_debug(void);
+
+/*!
+ * \brief Check if QUIC debug logging is enabled.
+ */
+bool log_enabled_quic_debug(void);

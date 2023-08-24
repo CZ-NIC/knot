@@ -28,7 +28,7 @@
 
 static void quic_log_cb(const char *line)
 {
-	log_debug("QUIC: %s", line);
+	log_fmt(LOG_DEBUG, LOG_SOURCE_QUIC, "QUIC, %s", line);
 }
 
 static int uq_alloc_reply(knot_quic_reply_t *r)
@@ -104,7 +104,7 @@ knot_quic_table_t *quic_make_table(struct server *server)
 	knot_quic_table_t *table =
 		knot_quic_table_new(quic_max_conns, quic_max_inbufs, quic_max_obufs,
 		                     udp_pl, server->quic_creds);
-	if (table != NULL && conf_get_bool(pconf, C_XDP, C_QUIC_LOG)) {
+	if (table != NULL && log_enabled_quic_debug()) {
 		table->log_cb = quic_log_cb;
 	}
 
