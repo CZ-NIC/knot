@@ -1215,7 +1215,8 @@ config
 
 A backend specific configuration. A directory with PEM files (the path can
 be specified as a relative path to :ref:`kasp-db<database_kasp-db>`) or
-a configuration string for PKCS #11 storage (`<pkcs11-url> <module-path>`).
+a configuration string for PKCS #11 storage (`<pkcs11-uri> <module-path>`).
+The PKCS #11 URI Scheme is defined in :rfc:`7512`.
 
 .. NOTE::
    Example configuration string for PKCS #11::
