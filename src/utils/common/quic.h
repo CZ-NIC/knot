@@ -80,7 +80,7 @@ typedef struct {
 		int64_t id;
 		uint64_t out_ack;
 		struct iovec in_buffer;
-		struct knot_tinbufu_res *in_parsed;
+		struct knot_tcp_inbuf_upd_res *in_parsed;
 		size_t in_parsed_it;
 		size_t in_parsed_total;
 		int resets;

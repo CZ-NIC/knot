@@ -400,7 +400,7 @@ static int quic_respcpy(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 {
 	assert(ctx && buf && buf_len > 0);
 	if (ctx->stream.in_parsed != NULL) {
-		knot_tinbufu_res_t *cur = ctx->stream.in_parsed;
+		knot_tcp_inbuf_upd_res_t *cur = ctx->stream.in_parsed;
 		struct iovec *it = &cur->inbufs[ctx->stream.in_parsed_it];
 		if (buf_len < it->iov_len) {
 			return KNOT_ENOMEM;
@@ -799,7 +799,7 @@ void quic_ctx_deinit(quic_ctx_t *ctx)
 	}
 
 	while (ctx->stream.in_parsed != NULL) {
-		struct knot_tinbufu_res *tofree = ctx->stream.in_parsed;
+		knot_tcp_inbuf_upd_res_t *tofree = ctx->stream.in_parsed;
 		ctx->stream.in_parsed = tofree->next;
 		free(tofree);
 	}
