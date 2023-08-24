@@ -721,30 +721,32 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		                      zone_name, query, qdata->params->quic_conn);
 	}
 
-	int pin_size = 0;
+	if (log_enabled_debug()) {
+		int pin_size = 0;
 #ifdef ENABLE_QUIC
-	uint8_t bin_pin[KNOT_QUIC_PIN_LEN], pin[2 * KNOT_QUIC_PIN_LEN];
-	size_t bin_pin_size = sizeof(bin_pin);
-	knot_quic_conn_pin(qdata->params->quic_conn, bin_pin, &bin_pin_size, false);
-	if (bin_pin_size > 0) {
-		pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin));
-	}
+		uint8_t bin_pin[KNOT_QUIC_PIN_LEN], pin[2 * KNOT_QUIC_PIN_LEN];
+		size_t bin_pin_size = sizeof(bin_pin);
+		knot_quic_conn_pin(qdata->params->quic_conn, bin_pin, &bin_pin_size, false);
+		if (bin_pin_size > 0) {
+			pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin));
+		}
 #else
-	uint8_t pin[1];
+		uint8_t pin[1];
 #endif // ENABLE_QUIC
 
-	log_zone_debug(zone_name,
-	               "ACL, %s, action %s, remote %s%s%s%s%s%.*s%s",
-	               allowed ? "allowed" : "denied",
-	               (act != NULL) ? act->name : "query",
-	               addr_str,
-	               (key_name[0] != '\0') ? ", key " : "",
-	               (key_name[0] != '\0') ? key_name : "",
-	               (qdata->params->proto == KNOTD_QUERY_PROTO_QUIC) ? ", QUIC" : "",
-	               (pin_size > 0) ? " cert-key " : "",
-	               (pin_size > 0) ? pin_size : 0,
-	               (pin_size > 0) ? (const char *)pin : "",
-	               automatic ? ", automatic" : "");
+		log_zone_debug(zone_name,
+		               "ACL, %s, action %s, remote %s%s%s%s%s%.*s%s",
+		               allowed ? "allowed" : "denied",
+		               (act != NULL) ? act->name : "query",
+		               addr_str,
+		               (key_name[0] != '\0') ? ", key " : "",
+		               (key_name[0] != '\0') ? key_name : "",
+		               (qdata->params->proto == KNOTD_QUERY_PROTO_QUIC) ? ", QUIC" : "",
+		               (pin_size > 0) ? " cert-key " : "",
+		               (pin_size > 0) ? pin_size : 0,
+		               (pin_size > 0) ? (const char *)pin : "",
+		               automatic ? ", automatic" : "");
+	}
 
 	/* Check if authorized. */
 	if (!allowed) {
@@ -810,7 +812,7 @@ int process_query_verify(knotd_qdata_t *qdata)
 	if (qdata->rcode == KNOT_RCODE_SERVFAIL) {
 		log_zone_error(qdata->extra->zone->name,
 		               "TSIG, verification failed (%s)", knot_strerror(ret));
-	} else if (qdata->rcode != KNOT_RCODE_NOERROR) {
+	} else if (qdata->rcode != KNOT_RCODE_NOERROR && log_enabled_debug()) {
 		const knot_lookup_t *item = NULL;
 		if (qdata->rcode_tsig != KNOT_RCODE_NOERROR) {
 			item = knot_lookup_by_id(knot_tsig_rcode_names, qdata->rcode_tsig);
