@@ -326,8 +326,8 @@ int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_
 			if (!(ignore & XDP_TCP_IGNORE_DATA_ACK)) {
 				relay->auto_answer = KNOT_XDP_MSG_ACK;
 			}
-			ret = knot_tcp_inbuf_update(&conn->inbuf, msg->payload, false,
-			                            &relay->inbf, &tcp_table->inbufs_total);
+			ret = knot_tcp_inbufs_upd(&conn->inbuf, msg->payload, false,
+			                          &relay->inbf, &tcp_table->inbufs_total);
 			if (ret != KNOT_EOK) {
 				break;
 			}

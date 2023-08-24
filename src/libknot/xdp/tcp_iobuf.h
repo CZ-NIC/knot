@@ -51,11 +51,11 @@ typedef struct knot_sweep_stats {
 	uint32_t counters[4];
 } knot_sweep_stats_t;
 
-typedef struct knot_tcp_inbuf_upd_res {
+typedef struct knot_tcp_inbufs_upd_res {
 	size_t n_inbufs;
-	struct knot_tcp_inbuf_upd_res *next;
+	struct knot_tcp_inbufs_upd_res *next;
 	struct iovec inbufs[];
-} knot_tcp_inbuf_upd_res_t;
+} knot_tcp_inbufs_upd_res_t;
 
 inline static void knot_sweep_stats_incr(knot_sweep_stats_t *stats, knot_sweep_counter_t counter)
 {
@@ -81,8 +81,8 @@ uint64_t buffer_alloc_size(uint64_t buffer_len);
  *
  * \return KNOT_EOK, KNOT_ENOMEM
  */
-int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bufs,
-                          knot_tcp_inbuf_upd_res_t **result, size_t *buffers_total);
+int knot_tcp_inbufs_upd(struct iovec *buffer, struct iovec data, bool alloc_bufs,
+                        knot_tcp_inbufs_upd_res_t **result, size_t *buffers_total);
 
 /*!
  * \brief Add payload to be sent by TCP, to output buffers.

@@ -54,9 +54,9 @@ static void iov_append(struct iovec *what, const struct iovec *with)
 	what->iov_len += with->iov_len;
 }
 
-knot_tcp_inbuf_upd_res_t *tinbufu_alloc(size_t inbuf_count, size_t first_inbuf)
+knot_tcp_inbufs_upd_res_t *tinbufu_alloc(size_t inbuf_count, size_t first_inbuf)
 {
-	knot_tcp_inbuf_upd_res_t *res = malloc(sizeof(*res) + inbuf_count * sizeof(struct iovec) + first_inbuf);
+	knot_tcp_inbufs_upd_res_t *res = malloc(sizeof(*res) + inbuf_count * sizeof(struct iovec) + first_inbuf);
 	if (res == NULL) {
 		return NULL;
 	}
@@ -83,10 +83,10 @@ uint64_t buffer_alloc_size(uint64_t buffer_len)
 }
 
 _public_
-int knot_tcp_inbuf_update(struct iovec *buffer, struct iovec data, bool alloc_bufs,
-                          knot_tcp_inbuf_upd_res_t **result, size_t *buffers_total)
+int knot_tcp_inbufs_upd(struct iovec *buffer, struct iovec data, bool alloc_bufs,
+                        knot_tcp_inbufs_upd_res_t **result, size_t *buffers_total)
 {
-	knot_tcp_inbuf_upd_res_t *out = NULL;
+	knot_tcp_inbufs_upd_res_t *out = NULL;
 	struct iovec *cur = NULL;
 
 	if (data.iov_len <= 0) {

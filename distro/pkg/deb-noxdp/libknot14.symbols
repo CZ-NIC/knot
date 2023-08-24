@@ -143,7 +143,7 @@ libknot.so.14 libknot14 #MINVER#
  knot_rrtype_to_string@Base 3.3.0
  knot_strerror@Base 3.3.0
  knot_svcb_param_names@Base 3.3.0
- knot_tcp_inbuf_update@Base 3.3.0
+ knot_tcp_inbufs_upd@Base 3.3.0
  knot_tcp_outbufs_ack@Base 3.3.0
  knot_tcp_outbufs_add@Base 3.3.0
  knot_tcp_outbufs_can_send@Base 3.3.0

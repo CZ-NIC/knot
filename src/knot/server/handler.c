@@ -118,7 +118,7 @@ void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
 		handle_quic_stream(conn, stream_id, &inbufs[0], layer, params,
 		                   ans_buf, sizeof(ans_buf));
 		while (stream->inbufs != NULL) {
-			knot_tcp_inbuf_upd_res_t *tofree = stream->inbufs;
+			knot_tcp_inbufs_upd_res_t *tofree = stream->inbufs;
 			stream->inbufs = tofree->next;
 			free(tofree);
 		}

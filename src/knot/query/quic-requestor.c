@@ -250,7 +250,7 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 		}
 	}
 
-	knot_tcp_inbuf_upd_res_t *firstib = stream->inbufs;
+	knot_tcp_inbufs_upd_res_t *firstib = stream->inbufs;
 	assert(stream->firstib_consumed < firstib->n_inbufs);
 	struct iovec *inbufs = firstib->inbufs;
 	struct iovec *consum = &inbufs[stream->firstib_consumed];
