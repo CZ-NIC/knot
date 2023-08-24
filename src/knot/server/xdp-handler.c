@@ -303,13 +303,13 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 {
 	uint32_t unused;
 	int ret = knot_xdp_send(ctx->sock, ctx->msg_send_udp, ctx->msg_udp_count, &unused);
-	if (ret != KNOT_EOK) {
+	if (ret != KNOT_EOK && log_enabled_debug()) {
 		log_debug("UDP/XDP, failed to send some packets");
 	}
 	if (ctx->tcp) {
 		ret = knot_tcp_send(ctx->sock, ctx->relays, ctx->msg_recv_count,
 		                    XDP_BATCHLEN);
-		if (ret != KNOT_EOK) {
+		if (ret != KNOT_EOK && log_enabled_debug()) {
 			log_debug("TCP/XDP, failed to send some packets");
 		}
 	}
@@ -321,7 +321,7 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 
 		ret = knot_quic_send(ctx->quic_table, ctx->quic_relays[i],
 		                     &ctx->quic_replies[i], QUIC_MAX_SEND_PER_RECV, 0);
-		if (ret != KNOT_EOK) {
+		if (ret != KNOT_EOK && log_enabled_debug()) {
 			log_debug("QUIC/XDP, failed to send some packets");
 		}
 	}

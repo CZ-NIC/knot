@@ -98,7 +98,7 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int fd, _unused_ void *data)
 static void tcp_log_error(const struct sockaddr_storage *ss, const char *operation, int ret)
 {
 	/* Don't log ECONN as it usually means client closed the connection. */
-	if (ret == KNOT_ETIMEOUT) {
+	if (ret == KNOT_ETIMEOUT && log_enabled_debug()) {
 		char addr_str[SOCKADDR_STRLEN];
 		sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 		log_debug("TCP, failed to %s due to IO timeout, closing connection, address %s",
