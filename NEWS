@@ -1,3 +1,68 @@
+Knot DNS 3.3.0 (2023-08-28)
+===========================
+
+Features:
+---------
+ - knotd: full DNS over QUIC (DoQ, RFC 9250) implementation, also without XDP
+ - knotd: bidirectional XFR over QUIC (XoQ) support with opportunistic, strict,
+          and mutual authentication profiles
+ - knotd: automatic reverse PTR records pre-generation (see 'zone.reverse-generate')
+ - knotd: new per zone statistic counters 'zone.size' and 'zone.max-ttl'
+ - knotd: new primary server pinning (see 'zone.master-pin-tolerance')
+ - knotd: new SOA serial modulo policy (see 'zone.serial-modulo')
+ - knotd: new multi-signer operation mode (see 'policy.dnskey-sync' and 'DNSSEC multi-signer')
+ - kdig: support for EDNS presentation format, also in JSON mode (see '+optpresent')
+ - kxdpgun: new TCP/QUIC debug mode 'R' for connection reuse
+ - kxdpgun: new XDP mode parameter '--mode' (Thanks to Jan Včelák)
+ - kxdpgun: new parameter '--qlog' for qlog destination specification
+ - kzonecheck: new '--print' parameter for dumping the zone on stdout
+
+Improvements:
+-------------
+ - knotd: secondary can be configured not to forward DDNS (see 'zone.ddns-master')
+ - knotd: extended support for UNIX socket configuration (remote, acl)
+ - knotd: stats no longer dump empty or zero counters
+ - knotd: new 'keys-updated' D-Bus event
+ - knotd: added transport protocol information to outgoing event and nameserver logs
+ - knotd: server cleans up stale LMDB readers when opening a RW transaction
+ - knotd,kzonecheck: semantic check allows DS only at delegation point
+ - knotc: new zone backup filters '+quic' and '+noquic' for QUIC key backup
+ - mod-dnstap: DNS over QUIC traffic is marked as QUIC
+ - kxdpgun: QUIC connections are closed by default
+ - libs: upgraded embedded libngtcp2 to 0.18.0
+ - kdig: QUIC, TLS, or HTTPS protocol is printed in the final statistics
+ - doc: new sections 'DNS over QUIC' and 'DNSSEC multi-signer'
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: server can crash if a shared module is loaded and dynamic configuration used
+ - knotd: inaccurate transfer size is logged if EDNS EXPIRE, PADDING, or TSIG is present
+ - knotd: subsequent addition and removal to catalog zone isn't handled properly
+ - knotc: configuration import fails if an explicit shared module is configured
+ - utils: database transactions not properly closed when terminated prematurely
+ - kdig: double-free on some malformed responses over QUIC #869
+ - kdig: some TLS parameters override QUIC parameters
+ - libs: NULL record with empty RDATA isn't allowed
+ - tests: dthreads destructor test sometimes fails
+
+Compatibility:
+--------------
+ - knotd: responses to forwarded DDNS requests are signed with local TSIG key
+ - knotd: NOTIFY-initiated refresh tries all configured addresses of the remote
+ - knotd: configuration option 'xdp.quic-log' was replaced with 'log.quic'
+ - libs: removed embedded libbpf, an external one is necessary for XDP
+ - libs: DNS over QUIC implementation only supports 'doq' ALPN
+ - ctl: removed 'Version: ' prefix from 'status version' output
+ - modules: reduced parameters of 'knotd_qdata_local_addr()'
+
+Packaging:
+----------
+ - knot-exporter: Prometheus exporter imported from GitHub
+ - knot-exporter: packages for Debian, Ubuntu, and PyPI
+ - debian,ubuntu: new self-hosted repository (see https://pkg.labs.nic.cz/doc/)
+ - docker: upgraded to Debian bookworm-slim
+
 Knot DNS 3.2.9 (2023-27-07)
 ===========================
 
