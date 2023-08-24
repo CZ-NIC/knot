@@ -92,7 +92,7 @@ static int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
 		.iov_len = datalen
 	};
 
-	int ret = knot_tcp_inbuf_update(&ctx->stream.in_buffer, in, true,
+	int ret = knot_tcp_inbufs_upd(&ctx->stream.in_buffer, in, true,
 	                &ctx->stream.in_parsed, &ctx->stream.in_parsed_total);
 	if (ret != KNOT_EOK) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -400,7 +400,7 @@ static int quic_respcpy(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 {
 	assert(ctx && buf && buf_len > 0);
 	if (ctx->stream.in_parsed != NULL) {
-		knot_tinbufu_res_t *cur = ctx->stream.in_parsed;
+		knot_tcp_inbufs_upd_res_t *cur = ctx->stream.in_parsed;
 		struct iovec *it = &cur->inbufs[ctx->stream.in_parsed_it];
 		if (buf_len < it->iov_len) {
 			return KNOT_ENOMEM;
@@ -799,7 +799,7 @@ void quic_ctx_deinit(quic_ctx_t *ctx)
 	}
 
 	while (ctx->stream.in_parsed != NULL) {
-		struct knot_tinbufu_res *tofree = ctx->stream.in_parsed;
+		knot_tcp_inbufs_upd_res_t *tofree = ctx->stream.in_parsed;
 		ctx->stream.in_parsed = tofree->next;
 		free(tofree);
 	}

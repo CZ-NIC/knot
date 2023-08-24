@@ -103,7 +103,7 @@ typedef struct {
 	knot_xdp_msg_flag_t auto_answer;
 	uint32_t auto_seqno;
 	knot_tcp_action_t answer;
-	struct knot_tinbufu_res *inbf;
+	struct knot_tcp_inbufs_upd_res *inbf;
 	knot_tcp_conn_t *conn;
 } knot_tcp_relay_t;
 
