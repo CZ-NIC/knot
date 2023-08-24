@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,6 +48,10 @@ typedef struct {
 	size_t file_count;   /*!< Open files count. */
 	FILE **file;         /*!< Open files. */
 	log_flag_t flags;    /*!< Formatting flags. */
+	struct {
+		bool debug;       /*!< Indication if any target uses DEBUG. */
+		bool quic_debug;  /*!< Indication if any target uses QUIC DEBUG. */
+	} active;
 } log_t;
 
 /*! Log singleton. */
@@ -123,15 +127,31 @@ static int *src_levels(log_t *log, log_target_t target, log_source_t src)
 	return &log->target[LOG_SOURCE_ANY * target + src];
 }
 
+static void mark_level(log_t *log, log_source_t src, int levels)
+{
+	if (levels & LOG_MASK(LOG_DEBUG)) {
+		if (src == LOG_SOURCE_QUIC) {
+			log->active.quic_debug = true;
+		} else {
+			log->active.debug = true;
+		}
+	}
+}
+
 static void sink_levels_set(log_t *log, log_target_t target, log_source_t src, int levels)
 {
 	// Assign levels to the specified source.
 	if (src != LOG_SOURCE_ANY) {
 		*src_levels(log, target, src) = levels;
+		mark_level(log, src, levels);
 	} else {
 		// ANY ~ set levels to all sources.
 		for (int i = 0; i < LOG_SOURCE_ANY; ++i) {
+			if (i == LOG_SOURCE_QUIC) {
+				continue;
+			}
 			*src_levels(log, target, i) = levels;
+			mark_level(log, i, levels);
 		}
 	}
 }
@@ -141,10 +161,15 @@ static void sink_levels_add(log_t *log, log_target_t target, log_source_t src, i
 	// Add levels to the specified source.
 	if (src != LOG_SOURCE_ANY) {
 		*src_levels(log, target, src) |= levels;
+		mark_level(log, src, levels);
 	} else {
 		// ANY ~ add levels to all sources.
 		for (int i = 0; i < LOG_SOURCE_ANY; ++i) {
+			if (i == LOG_SOURCE_QUIC) {
+				continue;
+			}
 			*src_levels(log, target, i) |= levels;
+			mark_level(log, i, levels);
 		}
 	}
 }
@@ -481,6 +506,11 @@ void log_reconfigure(conf_t *conf)
 		levels = conf_opt(&levels_val);
 		sink_levels_add(log, target, LOG_SOURCE_ZONE, levels);
 
+		// Set QUIC logging.
+		levels_val = conf_id_get(conf, C_LOG, C_QUIC, &id);
+		levels = conf_opt(&levels_val);
+		sink_levels_add(log, target, LOG_SOURCE_QUIC, levels);
+
 		// Set ANY logging.
 		levels_val = conf_id_get(conf, C_LOG, C_ANY, &id);
 		levels = conf_opt(&levels_val);
@@ -488,4 +518,14 @@ void log_reconfigure(conf_t *conf)
 	}
 
 	sink_publish(log);
+}
+
+bool log_enabled_debug(void)
+{
+	return s_log != NULL && s_log->active.debug;
+}
+
+bool log_enabled_quic_debug(void)
+{
+	return s_log != NULL && s_log->active.quic_debug;
 }

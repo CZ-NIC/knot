@@ -630,7 +630,6 @@ xdp:
     tcp: BOOL
     quic: BOOL
     quic\-port: INT
-    quic\-log: BOOL
     tcp\-max\-clients: INT
     tcp\-inbuf\-max\-size: SIZE
     tcp\-outbuf\-max\-size: SIZE
@@ -723,13 +722,6 @@ but on different port, configured by this option.
 Change of this parameter requires restart of the Knot server to take effect.
 .sp
 \fIDefault:\fP \fB853\fP
-.SS quic\-log
-.sp
-Triggers extensive logging of all QUIC protocol internals for every connection.
-.sp
-Change of this parameter requires restart of the Knot server to take effect.
-.sp
-\fIDefault:\fP \fBoff\fP
 .SS tcp\-max\-clients
 .sp
 A maximum number of TCP clients connected in parallel.
@@ -872,6 +864,7 @@ log:
     server: critical | error | warning | notice | info | debug
     control: critical | error | warning | notice | info | debug
     zone: critical | error | warning | notice | info | debug
+    quic: critical | error | warning | notice | info | debug
     any: critical | error | warning | notice | info | debug
 .ft P
 .fi
@@ -915,9 +908,14 @@ Minimum severity level for messages related to server control to be logged.
 Minimum severity level for messages related to zones to be logged.
 .sp
 \fIDefault:\fP not set
+.SS quic
+.sp
+Minimum severity level for messages related to QUIC to be logged.
+.sp
+\fIDefault:\fP not set
 .SS any
 .sp
-Minimum severity level for all message types to be logged.
+Minimum severity level for all message types, except \fBquic\fP, to be logged.
 .sp
 \fIDefault:\fP not set
 .SH STATS SECTION

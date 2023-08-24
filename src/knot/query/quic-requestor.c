@@ -33,7 +33,7 @@
 
 static void quic_log_cb(const char *line)
 {
-	log_debug("QUIC requestor: %s", line);
+	log_fmt(LOG_DEBUG, LOG_SOURCE_QUIC, "QUIC requestor, %s", line);
 }
 
 typedef union {
@@ -179,8 +179,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 		return KNOT_ENOMEM;
 	}
 
-	conf_val_t qlval = conf_get(conf(), C_XDP, C_QUIC_LOG);
-	if (conf_bool(&qlval)) {
+	if (log_enabled_quic_debug()) {
 		table->log_cb = quic_log_cb;
 	}
 
