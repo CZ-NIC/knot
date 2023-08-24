@@ -760,8 +760,10 @@ static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t 
 static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
                     const ngtcp2_cid *dcid, const ngtcp2_cid *odcid, uint32_t version,
                     uint64_t now, size_t udp_pl, uint64_t idle_timeout_ns,
-                    void *user_data, bool server, bool retry_sent)
+                    knot_quic_conn_t *qconn, bool server, bool retry_sent)
 {
+	knot_quic_table_t *qtable = qconn->quic_table;
+
 	// I. CALLBACKS
 	const ngtcp2_callbacks callbacks = {
 		ngtcp2_crypto_client_initial_cb,
@@ -809,8 +811,12 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	ngtcp2_settings settings;
 	ngtcp2_settings_default(&settings);
 	settings.initial_ts = now;
-	settings.log_printf = user_printf;
-	settings.qlog_write = user_qlog;
+	if (qtable->log_cb != NULL) {
+		settings.log_printf = user_printf;
+	}
+	if (qtable->qlog_dir != NULL) {
+		settings.qlog_write = user_qlog;
+	}
 	if (udp_pl != 0) {
 		settings.max_tx_udp_payload_size = udp_pl;
 	}
@@ -847,10 +853,10 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 
 	if (server) {
 		return ngtcp2_conn_server_new(pconn, dcid, scid, path, version, &callbacks,
-		                              &settings, &params, NULL, user_data);
+		                              &settings, &params, NULL, qconn);
 	} else {
 		return ngtcp2_conn_client_new(pconn, dcid, scid, path, version, &callbacks,
-		                              &settings, &params, NULL, user_data);
+		                              &settings, &params, NULL, qconn);
 	}
 }
 
