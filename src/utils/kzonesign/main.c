@@ -31,7 +31,7 @@
 
 #define PROGRAM_NAME "kzonesign"
 
-knot_lmdb_db_t *signal_close_db = NULL; // global, needed by signal handler
+signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -73,7 +73,7 @@ static int zonesign(sign_params_t *params)
 	int ret = KNOT_ERROR;
 
 	// set the kaspdb for close in emergency
-	signal_close_db = &fake_server.kaspdb;
+	signal_ctx.close_db = &fake_server.kaspdb;
 
 	conf_val_t val = conf_zone_get(conf(), C_DOMAIN, params->zone_name);
 	if (val.code != KNOT_EOK) {

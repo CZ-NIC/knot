@@ -19,10 +19,10 @@
 
 #include "utils/common/signal.h"
 
+#include "contrib/color.h"
 #include "knot/conf/base.h"
-#include "knot/journal/knot_lmdb.h"
 
-extern knot_lmdb_db_t *signal_close_db; // It must be defined as global in each utility.
+extern signal_ctx_t signal_ctx; // It must be defined as global in each utility.
 int SIGNAL_REPEAT = 1;
 
 static void signal_handler(int signum)
@@ -37,15 +37,16 @@ static void signal_handler(int signum)
 		abort();
 	}
 
-	(void)printf("%s\n", signum == SIGINT ? "" : strsignal(signum));
+	(void)printf("%s%s\n", COL_RST(signal_ctx.color),
+	             signum == SIGINT ? "" : strsignal(signum));
 
 	conf_t *config = conf();
 	if (config != NULL && config->api != NULL) {
 		config->api->deinit(config->db);
 	}
 
-	if (signal_close_db != NULL) {
-		knot_lmdb_close(signal_close_db);
+	if (signal_ctx.close_db != NULL) {
+		knot_lmdb_close(signal_ctx.close_db);
 	}
 
 	exit(EXIT_FAILURE);

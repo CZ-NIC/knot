@@ -37,7 +37,7 @@
 #define PROGRAM_NAME	"kjournalprint"
 
 knot_lmdb_db_t journal_db = { 0 };
-knot_lmdb_db_t *signal_close_db = NULL; // global, needed by signal handler
+signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -348,7 +348,7 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
-	signal_close_db = &journal_db;
+	signal_ctx.close_db = &journal_db;
 	signal_init_std();
 
 	int opt = 0;
@@ -418,6 +418,8 @@ int main(int argc, char *argv[])
 		}
 		optind++;
 	}
+
+	signal_ctx.color = params.color;
 
 	if (util_conf_init_default(true) != KNOT_EOK) {
 		goto failure;

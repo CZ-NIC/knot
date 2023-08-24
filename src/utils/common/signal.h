@@ -14,12 +14,24 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
+#include "knot/journal/knot_lmdb.h"
+
+/*!
+ * \brief Data passed to the signal handler.
+ */
+typedef struct {
+	knot_lmdb_db_t *close_db; // LMDB database to be closed
+	bool color;               // do a terminal color reset
+} signal_ctx_t;
+
 /*!
  * \brief Prepares a signal handler for a clean shutdown.
  *
  * \note  Configures common break signals to initiate close of confdb
  *        and of another LMDB database defined by the global variable
- *        knot_lmdb_db_t *signal_close_db. If set to NULL, only confdb
+ *        signal_ctx_t signal_ctx. If set to NULL, only confdb
  *        is closed.
  */
 void signal_init_std(void);

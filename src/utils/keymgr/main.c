@@ -30,7 +30,7 @@
 
 #define PROGRAM_NAME	"keymgr"
 
-knot_lmdb_db_t *signal_close_db = NULL; // global, needed by signal handler
+signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -315,7 +315,7 @@ int main(int argc, char *argv[])
 
 	tzset();
 
-	signal_close_db = &kaspdb;
+	signal_ctx.close_db = &kaspdb;
 	signal_init_std();
 
 	int ret;
@@ -381,6 +381,8 @@ int main(int argc, char *argv[])
 			goto failure;
 		}
 	}
+
+	signal_ctx.color = list_params.color;
 
 	if (util_conf_init_default(true) != KNOT_EOK) {
 		goto failure;

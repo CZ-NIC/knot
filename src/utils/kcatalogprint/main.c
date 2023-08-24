@@ -29,7 +29,7 @@
 static knot_dname_t *filter_member = NULL;
 static knot_dname_t *filter_catalog = NULL;
 
-knot_lmdb_db_t *signal_close_db = NULL; // global, needed by signal handler
+signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
-	signal_close_db = &c.db;
+	signal_ctx.close_db = &c.db;
 	signal_init_std();
 
 	int opt = 0;

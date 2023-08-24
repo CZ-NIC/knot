@@ -29,7 +29,7 @@
 #define PROGRAM_NAME		"knotc"
 #define SPACE			"  "
 
-knot_lmdb_db_t *signal_close_db = NULL; // global, needed by signal handler
+signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -153,6 +153,8 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 	}
+
+	signal_ctx.color = params.color;
 
 	/* Set up simplified logging just to stdout/stderr. */
 	log_init();
