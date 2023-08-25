@@ -26,6 +26,12 @@ int SIGNAL_REPEAT = 1;
 
 static void signal_handler(int signum)
 {
+	// Allow a repeated signal during the handler run (in case
+	// the handler gets stuck).
+	sigset_t set;
+	(void)sigaddset(&set, signum);
+	(void)sigprocmask(SIG_UNBLOCK, &set, NULL);
+
 	if (--SIGNAL_REPEAT < 0) {
 		abort();
 	}
