@@ -26,6 +26,7 @@
 #include "utils/common/netio.h"
 #include "libknot/libknot.h"
 #include "libknot/tsig.h"
+#include "contrib/base64.h"
 #include "contrib/mempattern.h"
 #include "contrib/strtonum.h"
 #include "contrib/ucw/mempool.h"
@@ -174,8 +175,10 @@ void knsupdate_reset(knsupdate_params_t *params)
 
 static void print_help(void)
 {
-	printf("Usage: %s [-d] [-v | -q] [-k keyfile | -y [hmac:]name:key]\n"
-	       "                 [-p port] [-t timeout] [-r retries] [filename]\n",
+	printf("Usage: %s [-c [CA-file]] [-C certfile] [-d] [-v | -q]\n"
+	       "                 [-H hostname] [-k keyfile | -y [hmac:]name:key]\n"
+	       "                 [-K filename] [-p port] [-P base64] [-s str]\n"
+	       "                 [-t timeout] [-r retries] [filename]\n",
 	       PROGRAM_NAME);
 }
 
@@ -201,9 +204,23 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 
 	/* Command line options processing. */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "dhDvqVp:t:r:y:k:", opts, NULL))
+	while ((opt = getopt_long(argc, argv, "dDhvqVc::C:H:p:P:s:t:r:y:k:K:", opts, NULL))
 	       != -1) {
 		switch (opt) {
+		case 'c':
+			if (optarg == NULL) {
+				params->tls_params.system_ca = true;
+			} else {
+				if (ptrlist_add(&params->tls_params.ca_files, strdup(optarg), NULL) == NULL) {
+					ERR("failed to set default port '%s'", optarg);
+					return KNOT_ENOMEM;
+				}
+			}
+			break;
+		case 'C':
+			free(params->tls_params.certfile);
+			params->tls_params.certfile = strdup(optarg);
+			break;
 		case 'd':
 		case 'D': /* Extra debugging. */
 			msg_enable_debug(1);
@@ -212,6 +229,14 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			print_help();
 			params->stop = true;
 			return KNOT_EOK;
+		case 'H':
+			free(params->tls_params.hostname);
+			params->tls_params.hostname = strdup(optarg);
+			break;
+		case 's':
+			free(params->tls_params.sni);
+			params->tls_params.sni = strdup(optarg);
+			break;
 		case 'v':
 			params->protocol = PROTO_TCP;
 			break;
@@ -238,6 +263,29 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 				ERR("failed to set default port '%s'", optarg);
 				return KNOT_ENOMEM;
 			}
+			break;
+		case 'P':;
+			uint8_t pin[64] = { 0 };
+			ret = knot_base64_decode((const uint8_t *)optarg, strlen(optarg), pin, sizeof(pin));
+			if (ret < 0) {
+				ERR("invalid TLS pin %s", optarg);
+				return ret;
+			} else if (ret != CERT_PIN_LEN) { // Check for 256-bit value.
+				ERR("invalid SHA256 hash length of TLS pin %s", optarg);
+				return KNOT_EINVAL;
+			}
+
+			uint8_t *item = malloc(1 + ret); // 1 ~ leading data length.
+			if (item == NULL) {
+				return KNOT_ENOMEM;
+			}
+			item[0] = ret;
+			memcpy(&item[1], pin, ret);
+
+			if (ptrlist_add(&params->tls_params.pins, item, NULL) == NULL) {
+				return KNOT_ENOMEM;
+			}
+
 			break;
 		case 'r':
 			ret = str_to_u32(optarg, &params->retries);
@@ -268,6 +316,10 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 				ERR("failed to parse keyfile '%s'", optarg);
 				return ret;
 			}
+			break;
+		case 'K':
+			free(params->tls_params.keyfile);
+			params->tls_params.keyfile = strdup(optarg);
 			break;
 		default:
 			print_help();
