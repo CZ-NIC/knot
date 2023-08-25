@@ -30,7 +30,7 @@ dependencies = [
 [project.urls]
 Documentation = "https://www.knot-dns.cz/documentation"
 Issues = "https://gitlab.nic.cz/knot/knot-dns/-/issues"
-Source = "https://gitlab.nic.cz/knot/knot-dns/-/tree/master/python/knot_exporter
+Source = "https://gitlab.nic.cz/knot/knot-dns/-/tree/master/python/knot_exporter"
 
 [project.scripts]
 knot-exporter = "knot_exporter.knot_exporter:main"
