@@ -50,6 +50,13 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 knot_quic_table_t *quic_make_table(struct server *server);
 
 /*!
+ * \brief Change QUIC configuration while running.
+ *
+ * \param table   QUIC connection table.
+ */
+void quic_reconfigure_table(knot_quic_table_t *table);
+
+/*!
  * \brief Sweep idle or excessive QUIC connections.
  *
  * \param table    QUIC connection table.

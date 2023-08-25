@@ -111,6 +111,21 @@ knot_quic_table_t *quic_make_table(struct server *server)
 	return table;
 }
 
+void quic_reconfigure_table(knot_quic_table_t *table)
+{
+	if (table != NULL) {
+		conf_t *pconf = conf();
+		size_t udp_pl = MIN(pconf->cache.srv_udp_max_payload_ipv4,
+				    pconf->cache.srv_udp_max_payload_ipv6);
+		table->udp_payload_limit = udp_pl;
+
+		// it's also easy to re-configure inbuf and outbuf limits, but no need to yet
+		// but it's more difficult to re-configure table size (realloc...)
+
+		table->log_cb = log_enabled_quic_debug() ? quic_log_cb : NULL;
+	}
+}
+
 void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats)
 {
 	if (table != NULL) {
