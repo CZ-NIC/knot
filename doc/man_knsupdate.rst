@@ -37,6 +37,9 @@ Options
   Set the port to use for connections to the server (if not explicitly specified
   in the update). The default is 53.
 
+**-q**
+  Use a QUIC connection.
+
 **-r** *retries*
   The number of retries for UDP requests. The default is 3.
 
