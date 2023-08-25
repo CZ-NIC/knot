@@ -339,6 +339,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 {
 #ifdef ENABLE_QUIC
 	quic_sweep_table(ctx->quic_table, &ctx->quic_closed);
+	quic_reconfigure_table(ctx->quic_table);
 #endif // ENABLE_QUIC
 
 	if (!ctx->tcp) {
