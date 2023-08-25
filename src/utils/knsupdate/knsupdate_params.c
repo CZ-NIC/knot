@@ -174,7 +174,7 @@ void knsupdate_reset(knsupdate_params_t *params)
 
 static void print_help(void)
 {
-	printf("Usage: %s [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
+	printf("Usage: %s [-d] [-v | -q] [-k keyfile | -y [hmac:]name:key]\n"
 	       "                 [-p port] [-t timeout] [-r retries] [filename]\n",
 	       PROGRAM_NAME);
 }
