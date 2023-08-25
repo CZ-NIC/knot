@@ -15,6 +15,7 @@
  */
 
 #include <signal.h>
+#include <stdio.h>
 
 #include "utils/common/signal.h"
 
@@ -35,6 +36,8 @@ static void signal_handler(int signum)
 	if (--SIGNAL_REPEAT < 0) {
 		abort();
 	}
+
+	(void)printf("%s\n", signum == SIGINT ? "" : strsignal(signum));
 
 	conf_t *config = conf();
 	if (config != NULL && config->api != NULL) {
