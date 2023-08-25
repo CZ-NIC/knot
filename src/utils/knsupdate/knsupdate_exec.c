@@ -436,11 +436,11 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	               get_socktype(params->protocol, KNOT_RRTYPE_SOA),
 	               params->wait,
 	               NET_FLAGS_NONE,
+	               &params->tls_params,
+	               NULL,
+	               &params->quic_params,
 	               NULL,
 	               NULL,
-	               NULL,
-		       NULL,
-		       NULL,
 	               &net);
 	if (ret != KNOT_EOK) {
 		return -1;
