@@ -32,7 +32,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 knsupdate \- Dynamic DNS update utility
 .SH SYNOPSIS
 .sp
-\fBknsupdate\fP [\fIoptions\fP] [\fIfilename\fP]
+\fBknsupdate\fP [\fB\-v\fP] [\fIoptions\fP] [\fIfilename\fP]
+.sp
+\fBknsupdate\fP [\fB\-q\fP] [\fIquic_options\fP] [\fIoptions\fP] [\fIfilename\fP]
 .SH DESCRIPTION
 .sp
 This utility sends Dynamic DNS update messages to a DNS server. Update content
@@ -51,42 +53,67 @@ Path to the file with knsupdate commands.
 .SS Options
 .INDENT 0.0
 .TP
-\fB\-d\fP
+\fB\-v\fP, \fB\-\-tcp\fP
+Use a TCP connection.
+.TP
+\fB\-q\fP, \fB\-\-quic\fP
+Use a QUIC connection.
+.TP
+\fB\-p\fP, \fB\-\-port\fP \fInumber\fP
+Set the port to use for connections to the server (if not explicitly specified
+in the update). The default is 53 for UDP/TCP or 853 for QUIC.
+.TP
+\fB\-r\fP, \fB\-\-retry\fP \fIcount\fP
+The number of retries for UDP requests. The default is 3.
+.TP
+\fB\-t\fP, \fB\-\-timeout\fP \fIseconds\fP
+The total timeout (for all UDP update tries) of the update request in seconds.
+The default is 12. If set to zero, the timeout is infinite.
+.TP
+\fB\-y\fP, \fB\-\-tsig\fP [\fIalg\fP:]\fIname\fP:\fIkey\fP
+Use the TSIG key with a name \fIname\fP to authenticate the request. The \fIalg\fP
+part specifies the algorithm (the default is hmac\-sha256) and \fIkey\fP specifies
+the shared secret encoded in Base64.
+.TP
+\fB\-k\fP, \fB\-\-tsigfile\fP \fIpath\fP
+Use the TSIG key stored in a file \fIkeyfile\fP to authenticate the request. The
+file should contain the key in the same format, which is accepted by the
+\fB\-y\fP option.
+.TP
+\fB\-d\fP, \fB\-\-debug\fP
 Enable debug messages.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
-\fB\-k\fP \fIkeyfile\fP
-Use the TSIG key stored in a file \fIkeyfile\fP to authenticate the request. The
-file should contain the key in the same format, which is accepted by the
-\fB\-y\fP option.
-.TP
-\fB\-p\fP \fIport\fP
-Set the port to use for connections to the server (if not explicitly specified
-in the update). The default is 53.
-.TP
-\fB\-q\fP
-Use a QUIC connection.
-.TP
-\fB\-r\fP \fIretries\fP
-The number of retries for UDP requests. The default is 3.
-.TP
-\fB\-t\fP \fItimeout\fP
-The total timeout (for all UDP update tries) of the update request in seconds.
-The default is 12. If set to zero, the timeout is infinite.
-.TP
-\fB\-v\fP
-Use a TCP connection.
-.TP
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version. The option \fB\-VV\fP makes the program
 print the compile time configuration summary.
+.UNINDENT
+.SS QUIC options
+.INDENT 0.0
 .TP
-\fB\-y\fP [\fIalg\fP:]\fIname\fP:\fIkey\fP
-Use the TSIG key with a name \fIname\fP to authenticate the request. The \fIalg\fP
-part specifies the algorithm (the default is hmac\-sha256) and \fIkey\fP specifies
-the shared secret encoded in Base64.
+\fB\-H\fP, \fB\-\-hostname\fP \fIstring\fP
+Enable remote server hostname validation.
+.TP
+\fB\-\-pin\fP \fIbase64\fP
+Use Out\-of\-Band key\-pinned privacy profile
+(RFC 7858#section\-4.2). The PIN must be a Base64 encoded SHA\-256 hash of the
+X.509 SubjectPublicKeyInfo. Can be specified multiple times.
+.TP
+\fB\-\-ca\fP \fIpath\fP
+Enable certificate validation. Certification authority certificates
+are loaded from the specified PEM file (default is system certificate storage
+if no argument is provided). Can be specified multiple times.
+.TP
+\fB\-\-certfile\fP \fIpath\fP
+Path to a client certificate file.
+.TP
+\fB\-\-keyfile\fP \fIpath\fP
+Path to a client key file.
+.TP
+\fB\-\-sni\fP \fIstring\fP
+Use specified Server Name Indication.
 .UNINDENT
 .SS Commands
 .INDENT 0.0
