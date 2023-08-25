@@ -20,7 +20,9 @@
 
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
+#include "utils/common/quic.h"
 #include "utils/common/sign.h"
+#include "utils/common/tls.h"
 #include "libknot/libknot.h"
 #include "libzscanner/scanner.h"
 #include "contrib/ucw/lists.h"
@@ -63,6 +65,10 @@ typedef struct {
 	style_t		style;
 	/*!< Memory context. */
 	knot_mm_t	mm;
+	/*!< TLS params. */
+	tls_params_t	tls_params;
+	/*!< QUIC params. */
+	quic_params_t	quic_params;
 } knsupdate_params_t;
 
 int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[]);

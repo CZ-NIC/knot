@@ -90,6 +90,8 @@ static int knsupdate_init(knsupdate_params_t *params)
 	init_list(&params->update_list);
 	init_list(&params->prereq_list);
 
+	tls_params_init(&params->tls_params);
+
 	/* Initialize memory context. */
 	mm_ctx_mempool(&params->mm, MM_DEFAULT_BLKSIZE);
 
@@ -195,9 +197,11 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 		{ NULL }
 	};
 
+	bool default_port = true;
+
 	/* Command line options processing. */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "dhDvVp:t:r:y:k:", opts, NULL))
+	while ((opt = getopt_long(argc, argv, "dhDvqVp:t:r:y:k:", opts, NULL))
 	       != -1) {
 		switch (opt) {
 		case 'd':
@@ -211,11 +215,23 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 		case 'v':
 			params->protocol = PROTO_TCP;
 			break;
+		case 'q':
+			params->protocol = PROTO_UDP;
+
+			params->tls_params.enable = true;
+			params->quic_params.enable = true;
+
+			if (default_port) {
+				free(params->server->service);
+				params->server->service = strdup(DEFAULT_DNS_QUIC_PORT);
+			}
+			break;
 		case 'V':
 			print_version(PROGRAM_NAME);
 			params->stop = true;
 			return KNOT_EOK;
 		case 'p':
+			default_port = false;
 			free(params->server->service);
 			params->server->service = strdup(optarg);
 			if (!params->server->service) {
@@ -260,7 +276,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 	}
 
 	/* No retries for TCP. */
-	if (params->protocol == PROTO_TCP) {
+	if (params->protocol == PROTO_TCP || params->quic_params.enable) {
 		params->retries = 0;
 	} else {
 		/* If wait/tries < 1 s, set 1 second for each try. */
