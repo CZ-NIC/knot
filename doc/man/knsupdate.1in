@@ -45,26 +45,48 @@ comments and are not processed.
 .SS Options
 .INDENT 0.0
 .TP
+\fB\-c\fP \fICA\-file\fP
+Use TLS with a certificate validation. Certification authority certificates
+are loaded from the specified PEM file (default is system certificate storage
+if no argument is provided). Can be specified multiple times.
+.TP
+\fB\-C\fP \fIcertfile\fP
+Use TLS with a client certfile.
+.TP
 \fB\-d\fP
 Enable debug messages.
 .TP
 \fB\-h\fP, \fB\-\-help\fP
 Print the program help.
 .TP
+\fB\-H\fP \fIhostname\fP
+Use TLS with a remote server hostname check.
+.TP
 \fB\-k\fP \fIkeyfile\fP
 Use the TSIG key stored in a file \fIkeyfile\fP to authenticate the request. The
 file should contain the key in the same format, which is accepted by the
 \fB\-y\fP option.
 .TP
+\fB\-K\fP \fIkeyfile\fP
+Use TLS with a client keyfile.
+.TP
 \fB\-p\fP \fIport\fP
 Set the port to use for connections to the server (if not explicitly specified
 in the update). The default is 53.
+.TP
+\fB\-P\fP \fIbase64\fP
+Use TLS with the Out\-of\-Band key\-pinned privacy profile
+(RFC 7858#section\-4.2). The PIN must be a Base64 encoded SHA\-256 hash of the
+X.509 SubjectPublicKeyInfo. Can be specified multiple times.
 .TP
 \fB\-q\fP
 Use a QUIC connection.
 .TP
 \fB\-r\fP \fIretries\fP
 The number of retries for UDP requests. The default is 3.
+.TP
+\fB\-s\fP \fISNI\fP
+Use TLS with a Server Name Indication.
 .TP
 \fB\-t\fP \fItimeout\fP
 The total timeout (for all UDP update tries) of the update request in seconds.

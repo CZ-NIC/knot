@@ -22,26 +22,48 @@ comments and are not processed.
 Options
 .......
 
+**-c** *CA-file*
+  Use TLS with a certificate validation. Certification authority certificates
+  are loaded from the specified PEM file (default is system certificate storage
+  if no argument is provided). Can be specified multiple times.
+
+**-C** *certfile*
+  Use TLS with a client certfile.
+
 **-d**
   Enable debug messages.
 
 **-h**, **--help**
   Print the program help.
 
+**-H** *hostname*
+  Use TLS with a remote server hostname check.
+
 **-k** *keyfile*
   Use the TSIG key stored in a file *keyfile* to authenticate the request. The
   file should contain the key in the same format, which is accepted by the
   **-y** option.
 
+**-K** *keyfile*
+  Use TLS with a client keyfile.
+
 **-p** *port*
   Set the port to use for connections to the server (if not explicitly specified
   in the update). The default is 53.
+
+**-P** *base64*
+  Use TLS with the Out-of-Band key-pinned privacy profile
+  (RFC 7858#section-4.2). The PIN must be a Base64 encoded SHA-256 hash of the
+  X.509 SubjectPublicKeyInfo. Can be specified multiple times.
 
 **-q**
   Use a QUIC connection.
 
 **-r** *retries*
   The number of retries for UDP requests. The default is 3.
+
+**-s** *SNI*
+  Use TLS with a Server Name Indication.
 
 **-t** *timeout*
   The total timeout (for all UDP update tries) of the update request in seconds.
