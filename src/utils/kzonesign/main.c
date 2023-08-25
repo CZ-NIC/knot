@@ -25,10 +25,13 @@
 #include "knot/zone/zonefile.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
+#include "utils/common/signal.h"
 #include "utils/common/util_conf.h"
 #include "contrib/strtonum.h"
 
 #define PROGRAM_NAME "kzonesign"
+
+signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -68,6 +71,9 @@ static int zonesign(sign_params_t *params)
 	server_t fake_server = { 0 };
 	zone_sign_reschedule_t next_sign = { 0 };
 	int ret = KNOT_ERROR;
+
+	// set the kaspdb for close in emergency
+	signal_ctx.close_db = &fake_server.kaspdb;
 
 	conf_val_t val = conf_zone_get(conf(), C_DOMAIN, params->zone_name);
 	if (val.code != KNOT_EOK) {
@@ -203,6 +209,7 @@ int main(int argc, char *argv[])
 	};
 
 	tzset();
+	signal_init_std();
 
 	int opt = 0;
 	while ((opt = getopt_long(argc, argv, "c:C:o:rvt:hV", opts, NULL)) != -1) {

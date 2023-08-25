@@ -21,12 +21,15 @@
 #include "contrib/strtonum.h"
 #include "knot/common/log.h"
 #include "utils/common/params.h"
+#include "utils/common/signal.h"
 #include "utils/knotc/commands.h"
 #include "utils/knotc/interactive.h"
 #include "utils/knotc/process.h"
 
 #define PROGRAM_NAME		"knotc"
 #define SPACE			"  "
+
+signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -84,6 +87,9 @@ int main(int argc, char **argv)
 
 	/* Set the time zone. */
 	tzset();
+
+	/* Inititalize the termination signals handler. */
+	signal_init_std();
 
 	params.color = isatty(STDOUT_FILENO);
 	params.color_force = false;
@@ -147,6 +153,8 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 	}
+
+	signal_ctx.color = params.color;
 
 	/* Set up simplified logging just to stdout/stderr. */
 	log_init();

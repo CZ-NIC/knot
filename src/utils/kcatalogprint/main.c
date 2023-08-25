@@ -21,12 +21,15 @@
 #include "knot/catalog/catalog_db.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
+#include "utils/common/signal.h"
 #include "utils/common/util_conf.h"
 
 #define PROGRAM_NAME	"kcatalogprint"
 
 static knot_dname_t *filter_member = NULL;
 static knot_dname_t *filter_catalog = NULL;
+
+signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -95,6 +98,8 @@ static void params_cleanup(void)
 
 int main(int argc, char *argv[])
 {
+	catalog_t c = { { 0 } };
+
 	struct option opts[] = {
 		{ "config",  required_argument, NULL, 'c' },
 		{ "confdb",  required_argument, NULL, 'C' },
@@ -105,6 +110,9 @@ int main(int argc, char *argv[])
 		{ "version", no_argument,       NULL, 'V' },
 		{ NULL }
 	};
+
+	signal_ctx.close_db = &c.db;
+	signal_init_std();
 
 	int opt = 0;
 	while ((opt = getopt_long(argc, argv, "c:C:D:a:m:hV", opts, NULL)) != -1) {
@@ -158,8 +166,6 @@ int main(int argc, char *argv[])
 	if (util_conf_init_default(true) != KNOT_EOK) {
 		goto failure;
 	}
-
-	catalog_t c = { { 0 } };
 
 	char *db = conf_db(conf(), C_CATALOG_DB);
 	catalog_init(&c, db, 0); // mapsize grows automatically

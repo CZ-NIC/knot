@@ -23,11 +23,14 @@
 #include "libknot/libknot.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
+#include "utils/common/signal.h"
 #include "utils/common/util_conf.h"
 #include "utils/keymgr/functions.h"
 #include "utils/keymgr/offline_ksk.h"
 
 #define PROGRAM_NAME	"keymgr"
+
+signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
@@ -292,6 +295,8 @@ main_end:
 
 int main(int argc, char *argv[])
 {
+	knot_lmdb_db_t kaspdb = { 0 };
+
 	struct option opts[] = {
 		{ "config",   required_argument, NULL, 'c' },
 		{ "confdb",   required_argument, NULL, 'C' },
@@ -309,6 +314,9 @@ int main(int argc, char *argv[])
 	};
 
 	tzset();
+
+	signal_ctx.close_db = &kaspdb;
+	signal_init_std();
 
 	int ret;
 	bool just_list = false;
@@ -374,13 +382,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	signal_ctx.color = list_params.color;
+
 	if (util_conf_init_default(true) != KNOT_EOK) {
 		goto failure;
 	}
 
 	util_update_privileges();
 
-	knot_lmdb_db_t kaspdb = { 0 };
 	conf_val_t mapsize = conf_db_param(conf(), C_KASP_DB_MAX_SIZE);
 	char *kasp_dir = conf_db(conf(), C_KASP_DB);
 	knot_lmdb_init(&kaspdb, kasp_dir, conf_int(&mapsize), 0, "keys_db");
