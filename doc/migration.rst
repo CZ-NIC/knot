@@ -351,6 +351,45 @@ Python
 
 - Compatibility with Python 2 was removed.
 
+.. _Upgrade 3.2.x to 3.3.x:
+
+Upgrade 3.2.x to 3.3.x
+======================
+
+There are some changes between Knot DNS versions 3.3.x and 3.2.x that should be
+taken into consideration before upgrading.
+
+Configuration changes
+---------------------
+
+- The configuration option ``xdp_quic-log`` has been replaced with a more general
+  logging option :ref:`log_quic`, which applies to both conventional QUIC and
+  QUIC over XDP.
+
+Functionality
+-------------
+
+- Responses to forwarded DDNS requests are signed with the local TSIG key instead
+  of the remote one.
+- Addresses for the remote which is considered the source of the NOTIFY are tried
+  in the order they are specified in the remote configuration, regardless of which
+  address the NOTIFY came from.
+- The ``Version:`` prefix has been removed from the ``status version`` control output.
+- DNS over QUIC requires ``doq`` ALPN. The previous versions ``doq-i03`` and
+  ``doq-i11`` are no longer supported.
+
+XDP
+---
+
+The embedded library ``libbpf`` has been removed from the project, and an external
+one is required for the XDP support. If ``libbpf`` is version 1.0 or higher,
+an additional library ``libxdp`` is also required.
+
+Query module API change
+-----------------------
+
+The function ``knotd_qdata_local_addr()`` only takes one parameter.
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users
