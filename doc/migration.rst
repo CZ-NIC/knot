@@ -374,6 +374,7 @@ Functionality
 - Addresses for the remote which is considered the source of the NOTIFY are tried
   in the order they are specified in the remote configuration, regardless of which
   address the NOTIFY came from.
+- Semantic checks don't allow DS record at non-delegation point.
 - The ``Version:`` prefix has been removed from the ``status version`` control output.
 - DNS over QUIC requires ``doq`` ALPN. The previous versions ``doq-i03`` and
   ``doq-i11`` are no longer supported.
