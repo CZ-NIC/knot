@@ -395,7 +395,7 @@ Change of this parameter requires restart of the Knot server to take effect.
 .SS quic\-outbuf\-max\-size
 .sp
 Maximum cumulative size of memory used for buffers of unACKed
-sent messages.
+sent messages. This limit is per one UDP worker.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0

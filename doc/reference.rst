@@ -401,7 +401,7 @@ quic-outbuf-max-size
 --------------------
 
 Maximum cumulative size of memory used for buffers of unACKed
-sent messages.
+sent messages. This limit is per one UDP worker.
 
 .. NOTE::
    Set low if little memory is available (together with :ref:`server_quic-max-clients`
