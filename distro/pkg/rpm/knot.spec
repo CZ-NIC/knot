@@ -80,8 +80,7 @@ Knot DNS is a high-performance authoritative DNS server implementation.
 
 %package libs
 Summary:	Libraries used by the Knot DNS server and client applications
-# Knot DNS 3.2+ isn't compatible with earlier knot-resolver
-Conflicts:	knot-resolver < 5.5.2
+Conflicts:	knot-resolver < 5.7.0
 
 %description libs
 The package contains shared libraries used by the Knot DNS server and

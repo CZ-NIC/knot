@@ -72,8 +72,7 @@ Requires(post):		systemd %{_sbindir}/runuser
 Requires(preun):	systemd
 Requires(postun):	systemd
 
-# Knot DNS 2.7+ isn't compatible with earlier knot-resolver
-Conflicts:	knot-resolver < 3.0.0
+Conflicts:	knot-resolver < 5.7.0
 
 Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 
