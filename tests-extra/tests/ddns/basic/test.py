@@ -205,46 +205,118 @@ def do_normal_tests(master, zone, dnssec=False):
     # add SVCB w/o glue
     check_log("glueless SVCB")
     up = master.update(zone)
-    try:
-        up.add("svcb.ddns.", 3600, "SVCB", "0 target.svcb.ddns.")
-    except:
-        up.add("svcb.ddns.", 3600, "TYPE64", "\# 20 00000674617267657404737663620464646E7300")
-
+    up.add("svcb.ddns.", 3600, "SVCB", "0 target.svcb.svcbtarget.ddns.")
     up.send("NOERROR")
-    resp = master.dig("svcb.ddns.", "TYPE64", dnssec=dnssec)
+    resp = master.dig("svcb.ddns.", "SVCB", dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.check_count(0, rtype="AAAA", section="additional")
 
     # add glue to SVCB
     check_log("Add glue to SVCB")
     up = master.update(zone)
-    up.add("target.svcb.ddns.", 3600, "AAAA", "1::2")
-    try:
-        up.add("target.svcb.ddns.", 3600, "SVCB", "2 . alpn=h2")
-    except:
-        up.add("target.svcb.ddns.", 3600, "TYPE64", "\# 10 00020000010003026832")
+    up.add("target.svcb.svcbtarget.ddns.", 3600, "AAAA", "1::2")
+    up.add("target.svcb.svcbtarget.ddns.", 3600, "SVCB", "2 . alpn=h2")
     up.send("NOERROR")
-    resp = master.dig("svcb.ddns.", "TYPE64", dnssec=dnssec)
+    resp = master.dig("svcb.ddns.", "SVCB", dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.check_count(1, rtype="AAAA", section="additional")
-    resp.check_count(1, rtype="TYPE64", section="additional")
+    resp.check_count(1, rtype="SVCB", section="additional")
     if dnssec:
         resp.check_count(3, rtype="RRSIG", section="additional")
 
     # remove glue from SVCB
     check_log("Remove glue from SVCB")
     up = master.update(zone)
-    up.delete("target.svcb.ddns.", "AAAA")
-    up.delete("target.svcb.ddns.", "TYPE64")
+    up.delete("target.svcb.svcbtarget.ddns.", "AAAA")
+    up.delete("target.svcb.svcbtarget.ddns.", "SVCB")
     up.send("NOERROR")
-    resp = master.dig("svcb.ddns.", "TYPE64", dnssec=dnssec)
+    resp = master.dig("svcb.ddns.", "SVCB", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_count(0, rtype="AAAA", section="additional")
+    resp.check_count(0, rtype="RRSIG", section="additional")
+
+    # Add wildcard glue to SVCB
+    check_log("SVCB wildcard glue")
+    up = master.update(zone)
+    up.add("*.svcbtarget.ddns.", 3600, "AAAA", "1::3")
+    up.send("NOERROR")
+    resp = master.dig("svcb.ddns.", "SVCB", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_record(section="additional", name="*.svcbtarget.ddns.", rtype="AAAA", ttl=3600, rdata="1::3")
+    resp.check_count(1, rtype="AAAA", section="additional")
+    if dnssec:
+        resp.check_count(2, rtype="RRSIG", section="additional")
+
+    # just shuffle with that SVCB
+    check_log("SVCB shuffle")
+    up.delete("svcb.ddns.", "SVCB")
+    up.add("svcb.ddns.", 3600, "SVCB", "1 target.svcb.svcbtarget.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("svcb.ddns.", "SVCB", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_record(section="additional", name="*.svcbtarget.ddns.", rtype="AAAA", ttl=3600, rdata="1::3")
+    resp.check_count(1, rtype="AAAA", section="additional")
+    if dnssec:
+        resp.check_count(2, rtype="RRSIG", section="additional")
+
+    # remove wildcard glue
+    check_log("Remove wildcard glue")
+    up = master.update(zone)
+    up.delete("*.svcbtarget.ddns.", "AAAA", "1::3")
+    up.send("NOERROR")
+    t.sleep(1) # wait for zone_update_cleanup to trigger lost glue
+    resp = master.dig("svcb.ddns.", "SVCB", dnssec=dnssec)
     resp.check(rcode="NOERROR")
     resp.check_count(0, rtype="AAAA", section="additional")
     resp.check_count(0, rtype="RRSIG", section="additional")
     # now remove SVCB in order to make ldns-verify work
     up = master.update(zone)
-    up.delete("svcb.ddns.", "TYPE64")
+    up.delete("svcb.ddns.", "SVCB")
     up.send()
+
+    # Add double-wildcard MX
+    check_log("Double-wildcard MX")
+    up = master.update(zone)
+    up.add("double.wc.mx.ddns.", 3600, "MX", "1 a.*.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("double.wc.mx.ddns.", "MX", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_count(1, rtype="MX", section="answer")
+    resp.check_count(0, rtype="AAAA", section="additional")
+
+    # Add double-wildcard glue
+    check_log("Double-wildcard glue")
+    up = master.update(zone)
+    up.add("*.*.ddns.", 3600, "AAAA", "3::5")
+    up.send("NOERROR")
+    resp = master.dig("double.wc.mx.ddns.", "MX", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_count(1, rtype="MX", section="answer")
+    resp.check_record(section="additional", name="a.*.ddns.", rtype="AAAA", ttl=3600, rdata="3::5")
+    resp.check_count(1, rtype="AAAA", section="additional")
+
+    # just shuffle with that MX
+    check_log("MX shuffle")
+    up = master.update(zone)
+    up.delete("double.wc.mx.ddns.", "MX")
+    up.add("double.wc.mx.ddns.", 3600, "MX", "2 a.*.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("double.wc.mx.ddns.", "MX", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_count(1, rtype="MX", section="answer")
+    resp.check_record(section="additional", name="a.*.ddns.", rtype="AAAA", ttl=3600, rdata="3::5")
+    resp.check_count(1, rtype="AAAA", section="additional")
+
+    # Remove double-wildcard glue
+    check_log("Remove double-wildcard glue")
+    up = master.update(zone)
+    up.delete("*.*.ddns.", "AAAA")
+    up.send("NOERROR")
+    t.sleep(1) # wait for zone_update_cleanup to trigger lost glue
+    resp = master.dig("double.wc.mx.ddns.", "MX", dnssec=dnssec)
+    resp.check(rcode="NOERROR")
+    resp.check_count(1, rtype="MX", section="answer")
+    resp.check_count(0, rtype="AAAA", section="additional")
 
     # add CNAME to node with A records, should be ignored
     check_log("Add CNAME to A node")
