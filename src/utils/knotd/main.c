@@ -45,12 +45,18 @@
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 
+/* For temporary debug helper. */
+#include "knot/nameserver/process_query.h"
+
 #define PROGRAM_NAME "knotd"
 
 /* Signal flags. */
 static volatile bool sig_req_stop = false;
 static volatile bool sig_req_reload = false;
 static volatile bool sig_req_zones_reload = false;
+
+/* Temporary debug helper. */
+knotd_qdata_t *dbg_glue_qdata = NULL;
 
 static int make_daemon(int nochdir, int noclose)
 {
@@ -146,6 +152,21 @@ static void handle_signal(int signum)
 		/* ignore */
 		break;
 	}
+}
+
+/*! \brief Temporary debug helper - SIGSEGV signal handler. */
+static void dbg_handle_signal_segv(int signum)
+{
+	log_zone_fatal(dbg_glue_qdata->name, "corrupted glue for this zone");
+	printf("%s\n", strsignal(signum));
+	abort();
+}
+
+/*! \brief Temporary debug helper - setup SIGSEGV signal handler. */
+static void dbg_setup_signal_segv(void)
+{
+	struct sigaction action = { .sa_handler = dbg_handle_signal_segv };
+	sigaction(SIGSEGV, &action, NULL);
 }
 
 /*! \brief Setup signal handlers and blocking mask. */
@@ -506,6 +527,9 @@ int main(int argc, char **argv)
 
 	/* Setup base signal handling. */
 	setup_signals();
+
+	/* Temporary debug helper - setup SIGSEGV signal handler. */
+	dbg_setup_signal_segv();
 
 	/* Initialize cryptographic backend. */
 	dnssec_crypto_init();
