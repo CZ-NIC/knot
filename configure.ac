@@ -781,13 +781,11 @@ AS_IF([test "$SPHINXBUILD" = "false"],
   [AC_MSG_WARN([missing 'sphinx-build' executable for documentation generation])]
 )
 AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
-AC_PATH_PROG([MAKEINFO], [makeinfo], [false])
 
 ])
 
 AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
-AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \

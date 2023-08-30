@@ -83,7 +83,7 @@ man_SPHINXOPTS = $(_SPHINXOPTS) \
 	         $(SPHINXOPTS) \
 	         $(srcdir)
 
-.PHONY: html-local singlehtml pdf-local info-local epub man install-html-local install-singlehtml install-pdf-local install-info-local install-epub
+.PHONY: html-local singlehtml pdf-local epub man install-html-local install-singlehtml install-pdf-local install-epub
 
 man_MANS =
 
@@ -192,21 +192,6 @@ pdf-local install-pdf-local:
 	@echo "Install 'pdflatex' and re-run configure to be able to generate PDF documentation!"
 endif # HAVE_PDFLATEX
 
-if HAVE_MAKEINFO
-info-local:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b texinfo -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
-	$(MAKE) -C $(SPHINXBUILDDIR)/texinfo info
-	@echo "The Info pages have been built in $(SPHINXBUILDDIR)/texinfo/"
-
-install-info-local:
-	$(INSTALL) -d $(DESTDIR)/$(infodir)
-	$(INSTALL_DATA) $(SPHINXBUILDDIR)/texinfo/knot.info $(DESTDIR)/$(infodir)/
-
-else
-info-local install-info-local:
-	@echo "Install 'texinfo' and re-run configure to be able to generate Info pages!"
-endif # HAVE_MAKEINFO
-
 .NOTPARALLEL: man
 man: $(man_MANS)
 $(MANPAGES_IN): $(MANPAGES_RST)
@@ -217,7 +202,7 @@ $(MANPAGES_IN): $(MANPAGES_RST)
 	done
 
 else
-html-local singlehtml pdf-local info-local epub man install-html-local install-singlehtml install-pdf-local install-info-local install-epub:
+html-local singlehtml pdf-local epub man install-html-local install-singlehtml install-pdf-local install-epub:
 	@echo "Install 'sphinx-build' and re-run configure to be able to generate documentation!"
 endif # HAVE_SPHINXBUILD
 
