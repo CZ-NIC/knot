@@ -481,7 +481,7 @@ bool zone_is_slave(conf_t *conf, const zone_t *zone)
 	}
 
 	conf_val_t val = conf_zone_get(conf, C_MASTER, zone->name);
-	return conf_val_count(&val) > 0 ? true : false;
+	return (val.code == KNOT_EOK) ? true : false; // Reference item cannot be empty.
 }
 
 void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr)
