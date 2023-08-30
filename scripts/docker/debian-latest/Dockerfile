@@ -34,7 +34,6 @@ RUN apt-get -y install \
 	protobuf-c-compiler \
 	python3-sphinx \
 	python3-sphinx-panels \
-	texinfo \
 	texlive \
 	texlive-font-utils \
 	texlive-latex-extra \

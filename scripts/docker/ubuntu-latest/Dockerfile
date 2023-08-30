@@ -29,7 +29,6 @@ RUN apt-get -y install \
 	pkg-config \
 	protobuf-c-compiler \
 	python3-sphinx \
-	texinfo \
 	texlive \
 	texlive-font-utils \
 	texlive-latex-extra \
