@@ -185,6 +185,7 @@ class Server(object):
         self.ixfr_by_one = None
         self.journal_db_size = 20 * 1024 * 1024
         self.journal_max_usage = 5 * 1024 * 1024
+        self.journal_max_depth = 100
         self.timer_db_size = 1 * 1024 * 1024
         self.kasp_db_size = 10 * 1024 * 1024
         self.catalog_db_size = 10 * 1024 * 1024
@@ -1483,6 +1484,7 @@ class Knot(Server):
         if self.zonemd_generate is not None:
             s.item_str("zonemd-generate", self.zonemd_generate)
         s.item_str("journal-max-usage", self.journal_max_usage)
+        s.item_str("journal-max-depth", self.journal_max_depth)
         s.item_str("adjust-threads", str(random.randint(1,4)))
         if self.semantic_check == "soft":
             self._str(s, "semantic-checks", self.semantic_check)

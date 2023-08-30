@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -217,18 +217,8 @@ int additionals_tree_update_from_binodes(additionals_tree_t *a_t, const zone_tre
 	return ret;
 }
 
-int additionals_reverse_apply(additionals_tree_t *a_t, const knot_dname_t *name,
-                              node_apply_cb_t cb, void *ctx)
+static int reverse_apply_nodes(a_t_node_t *nodes, node_apply_cb_t cb, void *ctx)
 {
-	knot_dname_storage_t lf_storage;
-	uint8_t *lf = knot_dname_lf(name, lf_storage);
-
-	trie_val_t *val = trie_get_try(a_t, lf + 1, *lf);
-	if (val == NULL) {
-		return KNOT_EOK;
-	}
-
-	a_t_node_t *nodes = *(a_t_node_t **)val;
 	if (nodes == NULL) {
 		return KNOT_EOK;
 	}
@@ -248,13 +238,81 @@ int additionals_reverse_apply(additionals_tree_t *a_t, const knot_dname_t *name,
 	return KNOT_EOK;
 }
 
+int additionals_reverse_apply(additionals_tree_t *a_t, const knot_dname_t *name,
+                              node_apply_cb_t cb, void *ctx)
+{
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(name, lf_storage);
+
+	trie_val_t *val = trie_get_try(a_t, lf + 1, *lf);
+	if (val == NULL) {
+		return KNOT_EOK;
+	}
+
+	return reverse_apply_nodes(*(a_t_node_t **)val, cb, ctx);
+}
+
+static bool key_in_bailiwick(const uint8_t *root_key, size_t root_len,
+                             const uint8_t *sub_key, size_t sub_len)
+{
+	return sub_len >= root_len &&
+	       memcmp(sub_key, root_key, root_len) == 0;
+}
+
+static bool it_in_bailiwick(trie_it_t *it, const uint8_t *root_key, size_t root_len)
+{
+	size_t cur_len = 0;
+	const uint8_t *cur_key = trie_it_key(it, &cur_len);
+	return key_in_bailiwick(root_key, root_len, cur_key, cur_len);
+}
+
+static int reverse_apply_subtree(additionals_tree_t *a_t, const knot_dname_t *name,
+                                 node_apply_cb_t cb, void *ctx)
+{
+	knot_dname_storage_t lf_storage;
+	uint8_t *lf = knot_dname_lf(name, lf_storage);
+
+	trie_it_t *it = trie_it_begin(a_t);
+	if (it == NULL) {
+		return KNOT_ENOMEM;
+	}
+	int ret = trie_it_get_leq(it, lf + 1, *lf);
+	if (ret == KNOT_ENOENT) {
+		trie_it_free(it);
+		it = trie_it_begin(a_t); // no node "less or equal", start at the beginning
+		assert(it != NULL);
+		ret = KNOT_EOK;
+	} else if (ret == KNOT_EOK || ret == 1) {
+		trie_it_next(it); // skip name itself, only iterate on subtree
+		ret = KNOT_EOK;
+	} else {
+		trie_it_free(it);
+		return ret;
+	}
+
+	while (!trie_it_finished(it) && it_in_bailiwick(it, lf + 1, *lf) && ret == KNOT_EOK) {
+		trie_val_t *val = trie_it_val(it);
+		ret = reverse_apply_nodes(*(a_t_node_t **)val, cb, ctx);
+		trie_it_next(it);
+	}
+	trie_it_free(it);
+
+	return ret;
+}
+
 int additionals_reverse_apply_multi(additionals_tree_t *a_t, const zone_tree_t *tree,
                                     node_apply_cb_t cb, void *ctx)
 {
 	zone_tree_it_t it = { 0 };
 	int ret = zone_tree_it_begin((zone_tree_t *)tree, &it);
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
-		ret = additionals_reverse_apply(a_t, zone_tree_it_val(&it)->owner, cb, ctx);
+		const knot_dname_t *owner = zone_tree_it_val(&it)->owner;
+		if (knot_dname_is_wildcard(owner)) {
+			// this skips the subtree root, but includes the wildcard node itself as it's part of the subtree
+			ret = reverse_apply_subtree(a_t, owner + 2 /* strip wildcard label */, cb, ctx);
+		} else {
+			ret = additionals_reverse_apply(a_t, owner, cb, ctx);
+		}
 		zone_tree_it_next(&it);
 	}
 	zone_tree_it_free(&it);
