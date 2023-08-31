@@ -39,6 +39,9 @@
 knot_lmdb_db_t journal_db = { 0 };
 signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
+/* Temporary debug helper. */
+knotd_qdata_t *dbg_glue_qdata = NULL;
+
 static void print_help(void)
 {
 	printf("Usage:\n"

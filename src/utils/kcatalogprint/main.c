@@ -31,6 +31,9 @@ static knot_dname_t *filter_catalog = NULL;
 
 signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
+/* Temporary debug helper. */
+knotd_qdata_t *dbg_glue_qdata = NULL;
+
 static void print_help(void)
 {
 	printf("Usage: %s [-c | -C | -D <path>] [parameters]\n"

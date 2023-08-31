@@ -32,6 +32,9 @@
 #define STDIN_SUBST "-"
 #define STDIN_REPL "/dev/stdin"
 
+/* Temporary debug helper. */
+knotd_qdata_t *dbg_glue_qdata = NULL;
+
 static void print_help(void)
 {
 	printf("Usage: %s [parameters] <filename>\n"
