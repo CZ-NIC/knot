@@ -57,11 +57,9 @@ typedef enum {
   /* Client specific handshake states */
   NGTCP2_CS_CLIENT_INITIAL,
   NGTCP2_CS_CLIENT_WAIT_HANDSHAKE,
-  NGTCP2_CS_CLIENT_TLS_HANDSHAKE_FAILED,
   /* Server specific handshake states */
   NGTCP2_CS_SERVER_INITIAL,
   NGTCP2_CS_SERVER_WAIT_HANDSHAKE,
-  NGTCP2_CS_SERVER_TLS_HANDSHAKE_FAILED,
   /* Shared by both client and server */
   NGTCP2_CS_POST_HANDSHAKE,
   NGTCP2_CS_CLOSING,
@@ -442,6 +440,9 @@ struct ngtcp2_conn {
     /* max_offset is the maximum offset that local endpoint can
        send. */
     uint64_t max_offset;
+    /* last_blocked_offset is the largest offset where the
+       transmission of stream data is blocked. */
+    uint64_t last_blocked_offset;
     /* last_max_data_ts is the timestamp when last MAX_DATA frame is
        sent. */
     ngtcp2_tstamp last_max_data_ts;

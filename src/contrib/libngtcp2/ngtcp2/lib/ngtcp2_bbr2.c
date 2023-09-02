@@ -715,7 +715,7 @@ static void bbr_start_probe_bw_up(ngtcp2_cc_bbr2 *bbr, ngtcp2_conn_stat *cstat,
   bbr->cycle_stamp = ts;
   bbr->state = NGTCP2_BBR2_STATE_PROBE_BW_UP;
   bbr->pacing_gain = 1.25;
-  bbr->cwnd_gain = 2;
+  bbr->cwnd_gain = 2.25;
 
   bbr_raise_inflight_hi_slope(bbr, cstat);
 }
@@ -1315,7 +1315,8 @@ static void bbr_handle_recovery(ngtcp2_cc_bbr2 *bbr, ngtcp2_conn_stat *cstat,
       bbr->packet_conservation = 0;
     }
 
-    if (!in_congestion_recovery(cstat, ack->largest_acked_sent_ts)) {
+    if (ack->largest_pkt_sent_ts != UINT64_MAX &&
+        !in_congestion_recovery(cstat, ack->largest_pkt_sent_ts)) {
       bbr->in_loss_recovery = 0;
       bbr->packet_conservation = 0;
       bbr_restore_cwnd(bbr, cstat);
