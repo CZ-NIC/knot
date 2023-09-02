@@ -494,7 +494,7 @@ typedef struct NGTCP2_ALIGN(8) ngtcp2_pkt_info {
    * :macro:`NGTCP2_ECN_NOT_ECT`, :macro:`NGTCP2_ECN_ECT_1`,
    * :macro:`NGTCP2_ECN_ECT_0`, or :macro:`NGTCP2_ECN_CE`.
    */
-  uint32_t ecn;
+  uint8_t ecn;
 } ngtcp2_pkt_info;
 
 /**
@@ -1537,9 +1537,7 @@ typedef struct ngtcp2_transport_params {
   uint8_t stateless_reset_token[NGTCP2_STATELESS_RESET_TOKENLEN];
   /**
    * :member:`grease_quic_bit` is nonzero if sender supports "Greasing
-   * the QUIC Bit" extension.  See :rfc:`9287`.  Note that the local
-   * endpoint always enables greasing QUIC bit regardless of this
-   * field value.
+   * the QUIC Bit" extension.  See :rfc:`9287`.
    */
   uint8_t grease_quic_bit;
   /**
@@ -1617,9 +1615,9 @@ typedef enum ngtcp2_cc_algo {
    */
   NGTCP2_CC_ALGO_BBR = 0x02,
   /**
-   * :enum:`NGTCP2_CC_ALGO_BBR2` represents BBR v2.
+   * :enum:`NGTCP2_CC_ALGO_BBR_V2` represents BBR v2.
    */
-  NGTCP2_CC_ALGO_BBR2 = 0x03
+  NGTCP2_CC_ALGO_BBR_V2 = 0x03
 } ngtcp2_cc_algo;
 
 /**
@@ -1679,6 +1677,29 @@ typedef struct ngtcp2_rand_ctx {
 typedef void (*ngtcp2_qlog_write)(void *user_data, uint32_t flags,
                                   const void *data, size_t datalen);
 
+/**
+ * @enum
+ *
+ * :type:`ngtcp2_token_type` defines the type of token.
+ */
+typedef enum ngtcp2_token_type {
+  /**
+   * :enum:`NGTCP2_TOKEN_TYPE_UNKNOWN` indicates that the type of
+   * token is unknown.
+   */
+  NGTCP2_TOKEN_TYPE_UNKNOWN,
+  /**
+   * :enum:`NGTCP2_TOKEN_TYPE_RETRY` indicates that a token comes from
+   * Retry packet.
+   */
+  NGTCP2_TOKEN_TYPE_RETRY,
+  /**
+   * :enum:`NGTCP2_TOKEN_TYPE_NEW_TOKEN` indicates that a token comes
+   * from NEW_TOKEN frame.
+   */
+  NGTCP2_TOKEN_TYPE_NEW_TOKEN
+} ngtcp2_token_type;
+
 #define NGTCP2_SETTINGS_V1 1
 #define NGTCP2_SETTINGS_VERSION NGTCP2_SETTINGS_V1
 
@@ -1722,7 +1743,8 @@ typedef struct ngtcp2_settings {
    * :member:`token` is a token from Retry packet or NEW_TOKEN frame.
    *
    * Server sets this field if it received the token in Client Initial
-   * packet and successfully validated.
+   * packet and successfully validated.  It should also set
+   * :member:`token_type` field.
    *
    * Client sets this field if it intends to send token in its Initial
    * packet.
@@ -1738,6 +1760,11 @@ typedef struct ngtcp2_settings {
    * there is no token.
    */
   size_t tokenlen;
+  /**
+   * :member:`token_type` is the type of token.  Server application
+   * should set this field.
+   */
+  ngtcp2_token_type token_type;
   /**
    * :member:`rand_ctx` is an optional random number generator to be
    * passed to :type:`ngtcp2_rand` callback.
