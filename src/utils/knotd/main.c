@@ -38,6 +38,7 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/module.h"
+#include "knot/common/dbg_signal.h" /* Temporary debug helper. */
 #include "knot/common/log.h"
 #include "knot/common/process.h"
 #include "knot/common/stats.h"
@@ -506,6 +507,9 @@ int main(int argc, char **argv)
 
 	/* Setup base signal handling. */
 	setup_signals();
+
+	/* Temporary debug helper - signal handler setup. */
+	dbg_signal_setup();
 
 	/* Initialize cryptographic backend. */
 	dnssec_crypto_init();
