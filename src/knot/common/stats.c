@@ -185,6 +185,9 @@ static void dump_modules(dump_ctx_t *ctx)
 				dump_counters(ctx, mod, ctr);
 			}
 		}
+		if (ctx->module_emitted) {
+			ctx->level--;
+		}
 	}
 }
 
