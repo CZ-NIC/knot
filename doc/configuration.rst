@@ -638,6 +638,8 @@ Additionally, records in the format
 ``group.unique-id.zones.catalog. 0 IN TXT "conf-template"``
 are processed as a definition of the member's *group* property. The
 ``unique-id`` must match the one of the PTR record defining the member.
+It's required that at most one group is defined for each member. If multiple
+groups are defined, one group is picked at random.
 
 All other records and other member properties are ignored. They remain in the catalog
 zone, however, and might be for example transferred to a secondary server,
