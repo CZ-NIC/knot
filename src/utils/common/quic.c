@@ -55,7 +55,6 @@ void quic_params_clean(quic_params_t *params)
 #include "libknot/xdp/tcp_iobuf.h"
 #include "utils/common/params.h"
 
-#define quic_ceil_duration_to_ms(x) (((x) + NGTCP2_MILLISECONDS - 1) / NGTCP2_MILLISECONDS)
 #define quic_get_encryption_level(level) ngtcp2_crypto_gnutls_from_gnutls_record_encryption_level(level)
 #define quic_send(ctx, sockfd, family) quic_send_data(ctx, sockfd, family, NULL, 0)
 #define quic_timeout(ts, wait) (((ts) + NGTCP2_SECONDS * (wait)) <= quic_timestamp())
@@ -313,16 +312,14 @@ static int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,
 		                &ctx->pi, enc_buf, sizeof(enc_buf),
 		                &send_datalen, flags, stream, datav, datavlen,
 		                ts);
-		if (send_datalen == tb_send) {
-			ctx->stream.out_ack = send_datalen;
-			datav = NULL;
-			datavlen = 0;
-		}
-		if (nwrite < 0) {
+		if (nwrite <= 0) {
 			switch(nwrite) {
+			case 0:
+				ngtcp2_conn_update_pkt_tx_time(ctx->conn, ts);
+				return KNOT_EOK;
 			case NGTCP2_ERR_WRITE_MORE:
 				assert(0);
-				continue;
+				return KNOT_NET_ESEND;
 			case NGTCP2_ERR_STREAM_SHUT_WR:
 				ctx->stream.id = -1;
 				// [[ fallthrough ]]
@@ -332,9 +329,9 @@ static int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,
 				        NULL, 0);
 				return KNOT_NET_ESEND;
 			}
-		} else if (nwrite == 0) {
-			ngtcp2_conn_update_pkt_tx_time(ctx->conn, ts);
-			return KNOT_EOK;
+		}
+		if (send_datalen > 0) {
+			tb_send -= send_datalen;
 		}
 
 		msg_iov.iov_len = (size_t)nwrite;
@@ -348,6 +345,10 @@ static int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,
 			set_transport_error(ctx, NGTCP2_INTERNAL_ERROR, NULL,
 			                    0);
 			return KNOT_NET_ESEND;
+		}
+
+		if (tb_send == 0) {
+			break;
 		}
 	}
 	return KNOT_EOK;
@@ -560,37 +561,26 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	};
 	ctx->tls->sockfd = sockfd;
 
-	int timeout = ctx->tls->wait * 1000;
-	while(ctx->state != CONNECTED) {
-		if (quic_timeout(ctx->idle_ts, ctx->tls->wait)) {
-			WARN("QUIC, peer took too long to respond");
-			tls_ctx_deinit(ctx->tls);
-			return KNOT_NET_ETIMEOUT;
-		}
-		ret = quic_send(ctx, sockfd, dst_addr->ai_family);
-		if (ret != KNOT_EOK) {
-			tls_ctx_deinit(ctx->tls);
-			return ret;
-		}
+	ret = quic_send(ctx, sockfd, dst_addr->ai_family);
+	if (ret != KNOT_EOK) {
+		tls_ctx_deinit(ctx->tls);
+		return ret;
+	}
 
-		ret = poll(&pfd, 1, timeout);
-		if (ret < 0) {
-			tls_ctx_deinit(ctx->tls);
-			return knot_map_errno();
-		} else if (ret == 0) {
-			continue;
-		}
+	ret = poll(&pfd, 1, ctx->tls->wait * 1000);
+	if (ret == 0) {
+		WARN("QUIC, peer took too long to respond");
+		tls_ctx_deinit(ctx->tls);
+		return KNOT_NET_ECONNECT;
+	} else if (ret < 0) {
+		tls_ctx_deinit(ctx->tls);
+		return knot_map_errno();
+	}
 
-		ret = quic_recv(ctx, sockfd);
-		if (ret != KNOT_EOK) {
-			tls_ctx_deinit(ctx->tls);
-			return ret;
-		}
-		const ngtcp2_transport_params *pp =
-			ngtcp2_conn_get_remote_transport_params(ctx->conn);
-		if (pp != NULL) {
-			timeout = quic_ceil_duration_to_ms(pp->max_ack_delay);
-		}
+	ret = quic_recv(ctx, sockfd);
+	if (ret != KNOT_EOK) {
+		tls_ctx_deinit(ctx->tls);
+		return ret;
 	}
 
 	return KNOT_EOK;
@@ -628,7 +618,6 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 		quic_send(ctx, sockfd, srv->ai_family);
 	}
 
-	int timeout =  ctx->tls->wait * 1000;
 	while (ctx->stream.out_ack == 0) {
 		if (quic_timeout(ctx->idle_ts, ctx->tls->wait)) {
 			WARN("QUIC, failed to send");
@@ -648,12 +637,7 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 			datavlen = 0;
 		}
 
-		const ngtcp2_transport_params *pp =
-			ngtcp2_conn_get_remote_transport_params(ctx->conn);
-		if (pp != NULL) {
-			timeout = quic_ceil_duration_to_ms(pp->max_ack_delay);
-		}
-		ret = poll(&pfd, 1, timeout);
+		ret = poll(&pfd, 1, ctx->tls->wait * 1000);
 		if (ret < 0) {
 			WARN("QUIC, failed to send");
 			return knot_map_errno();
@@ -695,14 +679,8 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 		.revents = 0,
 	};
 
-	int timeout = ctx->tls->wait * 1000;
 	while (!quic_timeout(ctx->idle_ts, ctx->tls->wait)) {
-		const ngtcp2_transport_params *pp =
-			ngtcp2_conn_get_remote_transport_params(ctx->conn);
-		if (pp != NULL) {
-			timeout = quic_ceil_duration_to_ms(pp->max_ack_delay);
-		}
-		ret = poll(&pfd, 1, timeout);
+		ret = poll(&pfd, 1, ctx->tls->wait * 1000);
 		if (ret < 0) {
 			WARN("QUIC, failed to receive reply (%s)",
 			     knot_strerror(errno));
