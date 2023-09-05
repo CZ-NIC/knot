@@ -214,7 +214,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		knot_tcp_relay_t *rl = &ctx->relays[i];
 
 		// Process all complete DNS queries in one TCP stream.
-		for (size_t j = 0; j < rl->inbf->n_inbufs; j++) {
+		for (size_t j = 0; rl->inbf != NULL && j < rl->inbf->n_inbufs; j++) {
 			// Consume the query.
 			params_xdp_update(params, KNOTD_QUERY_PROTO_TCP, ctx->msg_recv,
 			                  rl->conn->establish_rtt, NULL);
