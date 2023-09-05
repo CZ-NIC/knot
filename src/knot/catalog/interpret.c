@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 #include <stdio.h>
 
 #include "knot/catalog/interpret.h"
+#include "knot/common/log.h"
 #include "knot/journal/serialization.h"
 
 struct cat_upd_ctx;
@@ -160,8 +161,8 @@ static int cat_update_add_grp(zone_node_t *node, cat_upd_ctx_t *ctx)
 	const knot_rdataset_t *txt = node_rdataset(node, KNOT_RRTYPE_TXT);
 	if (txt == NULL) {
 		return KNOT_EOK;
-	} else if (txt->count != 1) {
-		return KNOT_ERROR;
+	} else {
+		assert(txt->count >= 1);
 	}
 
 	const knot_rdataset_t *counter_txt = node_rdataset(binode_counterpart(node), KNOT_RRTYPE_TXT);
@@ -172,13 +173,16 @@ static int cat_update_add_grp(zone_node_t *node, cat_upd_ctx_t *ctx)
 	const char *newgr = "";
 	size_t grlen = 0;
 	if (!ctx->remove) {
-		assert(txt->count == 1);
 		// TXT rdata consists of one or more 1-byte prefixed strings.
 		if (txt->rdata->len != txt->rdata->data[0] + 1) {
 			return KNOT_EMALF;
 		}
 		newgr = (const char *)txt->rdata->data + 1;
 		grlen = txt->rdata->data[0];
+		if (txt->count > 1) {
+			log_zone_warning(member, "member zone has multiple groups defined, picking '%.*s'",
+			                         (int)grlen, newgr);
+		}
 		assert(grlen <= CATALOG_GROUP_MAXLEN);
 	}
 
@@ -233,11 +237,6 @@ static int member_verify(zone_node_t *node, cat_upd_ctx_t *ctx)
 
 static int prop_verify(zone_node_t *node, cat_upd_ctx_t *ctx)
 {
-	if (label_eq(node->owner, CATALOG_GROUP_LABEL) &&
-	    rr_count(node, KNOT_RRTYPE_TXT) > 1) {
-		return KNOT_EISRECORD;
-	}
-
 	return KNOT_EOK;
 }
 
