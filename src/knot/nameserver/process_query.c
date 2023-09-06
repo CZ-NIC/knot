@@ -757,8 +757,10 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		return false;
 	}
 
-	/* Remember used TSIG key. */
-	qdata->sign.tsig_key = tsig;
+	/* Remember used TSIG key (can be empty when DDNS forwarding). */
+	if (tsig.secret.size > 0) {
+		qdata->sign.tsig_key = tsig;
+	}
 
 	return true;
 }
@@ -769,7 +771,7 @@ int process_query_verify(knotd_qdata_t *qdata)
 	knot_sign_context_t *ctx = &qdata->sign;
 
 	/* NOKEY => no verification. */
-	if (query->tsig_rr == NULL) {
+	if (query->tsig_rr == NULL || qdata->sign.tsig_key.secret.size == 0) {
 		return KNOT_EOK;
 	}
 
