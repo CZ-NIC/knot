@@ -420,15 +420,17 @@ int event_update(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	bool noforward = false;
-	conf_val_t ddnsmaster = conf_zone_get(conf, C_DDNS_MASTER, zone->name);
-	if (ddnsmaster.code == KNOT_EOK && *conf_str(&ddnsmaster) == '\0') {
-		noforward = true;
+	bool forward = false;
+	if (zone_is_slave(conf, zone)) {
+		conf_val_t ddnsmaster = conf_zone_get(conf, C_DDNS_MASTER, zone->name);
+		if (ddnsmaster.code != KNOT_EOK || *conf_str(&ddnsmaster) != '\0') {
+			forward = true;
+		}
 	}
 
 	/* Process update list - forward if zone has master, or execute.
 	   RCODEs are set. */
-	if (!noforward && zone_is_slave(conf, zone)) {
+	if (forward) {
 		log_zone_info(zone->name,
 		              "DDNS, forwarding %zu updates", update_count);
 		forward_requests(conf, zone, &updates);
