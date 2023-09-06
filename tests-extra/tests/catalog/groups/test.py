@@ -64,6 +64,7 @@ resp.check_count(1, "RRSIG")
 # Move member between groups
 up = master.update(zone)
 up.delete("group.bar.zones.catalog2.", "TXT")
+up.add("group.bar.zones.catalog2.", 0, "TXT", "redundant-ignored")
 up.add("group.bar.zones.catalog2.", 0, "TXT", "catalog-signed")
 up.send("NOERROR")
 t.sleep(4)
@@ -73,6 +74,7 @@ resp.check_count(1, "RRSIG")
 
 # Add member to a group
 up = master.update(zone)
+up.add("group.baz.zones.catalog2.", 0, "TXT", "redundant-ignored")
 up.add("group.baz.zones.catalog2.", 0, "TXT", "catalog-signed")
 up.send("NOERROR")
 t.sleep(4)
