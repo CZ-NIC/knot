@@ -185,7 +185,7 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
                            bool remote, const struct sockaddr_storage *addr,
                            const knot_tsig_key_t *tsig, conf_val_t *pin_val,
                            const uint8_t *session_pin, size_t session_pin_size,
-                           bool deny)
+                           bool deny, bool forward)
 {
 	/* Check if the address matches the acl address list or remote addresses. */
 	if (addr_val->code != KNOT_ENOENT) {
@@ -240,8 +240,8 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
 		// Key match.
 		break;
 	case KNOT_ENOENT:
-		// Empty list without key provided or denied.
-		if (tsig->name == NULL || deny) {
+		// Empty list without key provided, forwarded DDNS, or denied.
+		if (tsig->name == NULL || forward || deny) {
 			break;
 		}
 		// FALLTHROUGH
@@ -270,6 +270,17 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 	size_t session_pin_size = 0;
 #endif // ENABLE_QUIC
 
+	bool forward = false;
+	if (action == ACL_ACTION_UPDATE) {
+		conf_val_t val = conf_zone_get(conf, C_MASTER, zone_name);
+		if (val.code == KNOT_EOK) {
+			val = conf_zone_get(conf, C_DDNS_MASTER, zone_name);
+			if (val.code != KNOT_EOK || *conf_str(&val) != '\0') {
+				forward = true;
+			}
+		}
+	}
+
 	while (acl->code == KNOT_EOK) {
 		conf_val_t rmt_val = conf_id_get(conf, C_ACL, C_RMT, acl);
 		bool remote = (rmt_val.code == KNOT_EOK);
@@ -286,7 +297,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 			pin_val = conf_id_get(conf, C_RMT, C_CERT_KEY, iter.id);
 			if (check_addr_key(conf, &addr_val, &key_val, remote, addr,
 			                   tsig, &pin_val, session_pin, session_pin_size,
-			                   deny)) {
+			                   deny, forward)) {
 				break;
 			}
 			conf_mix_iter_next(&iter);
@@ -301,7 +312,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 			pin_val = conf_id_get(conf, C_ACL, C_CERT_KEY, acl);
 			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr,
 			                    tsig, &pin_val, session_pin, session_pin_size,
-			                    deny)) {
+			                    deny, forward)) {
 				goto next_acl;
 			}
 		}
@@ -339,7 +350,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		}
 
 		/* Fill the output with tsig secret if provided. */
-		if (tsig->name != NULL) {
+		if (tsig->name != NULL && key_val.code == KNOT_EOK) {
 			conf_val_t val = conf_id_get(conf, C_KEY, C_SECRET, &key_val);
 			tsig->secret.data = (uint8_t *)conf_bin(&val, &tsig->secret.size);
 		}
