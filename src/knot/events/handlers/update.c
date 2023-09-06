@@ -264,20 +264,26 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 static void forward_request(conf_t *conf, zone_t *zone, knot_request_t *request)
 {
 	/* Read the ddns master or the first master. */
-	conf_val_t remote = conf_zone_get(conf, C_DDNS_MASTER, zone->name);
-	if (remote.code != KNOT_EOK) {
-		remote = conf_zone_get(conf, C_MASTER, zone->name);
+	conf_val_t *remote;
+	conf_mix_iter_t iter;
+	conf_val_t master_val = conf_zone_get(conf, C_DDNS_MASTER, zone->name);
+	if (master_val.code == KNOT_EOK) {
+		remote = &master_val;
+	} else {
+		master_val = conf_zone_get(conf, C_MASTER, zone->name);
+		conf_mix_iter_init(conf, &master_val, &iter);
+		remote = iter.id;
 	}
 
 	/* Get the number of remote addresses. */
-	conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, &remote);
+	conf_val_t addr = conf_id_get(conf, C_RMT, C_ADDR, remote);
 	size_t addr_count = conf_val_count(&addr);
 	assert(addr_count > 0);
 
 	/* Try all remote addresses to forward the request to. */
 	int ret = KNOT_EOK;
 	for (size_t i = 0; i < addr_count; i++) {
-		conf_remote_t master = conf_remote(conf, &remote, i);
+		conf_remote_t master = conf_remote(conf, remote, i);
 
 		ret = remote_forward(conf, request, &master);
 		if (ret == KNOT_EOK) {
