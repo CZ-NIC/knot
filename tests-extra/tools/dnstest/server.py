@@ -528,6 +528,9 @@ class Server(object):
                     pass
 
     def gen_confile(self):
+        if os.path.isfile(self.confile):
+            copyfile(self.confile, self.confile + str(int(time.time())))
+
         f = open(self.confile, mode="w")
         f.write(self.get_config())
         f.close()
