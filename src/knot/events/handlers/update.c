@@ -244,7 +244,7 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 
 	/* Create a request. */
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
-	if (request->query->tsig_rr != NULL) {
+	if (request->query->tsig_rr != NULL && request->sign.tsig_key.secret.size == 0) {
 		// Put the TSIG back on the wire as it was removed when parsing in pkt copy.
 		knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
 		flags |= KNOT_REQUEST_FWD;
@@ -299,7 +299,7 @@ static void forward_request(conf_t *conf, zone_t *zone, knot_request_t *request)
 
 	/* Restore message ID. */
 	knot_wire_set_id(request->resp->wire, knot_wire_get_id(request->query->wire));
-	if (request->query->tsig_rr != NULL) {
+	if (request->query->tsig_rr != NULL && request->sign.tsig_key.secret.size == 0) {
 		/* Put the remote signature back on the response wire. */
 		knot_tsig_append(request->resp->wire, &request->resp->size,
 		                 request->resp->max_size, request->resp->tsig_rr);
@@ -330,8 +330,8 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 static void send_update_response(conf_t *conf, zone_t *zone, knot_request_t *req)
 {
 	if (req->resp) {
-		// Try to sign the response if not signed by the master or not forwarded.
-		if (req->resp->tsig_rr == NULL) {
+		// Sign the response if the secret is known.
+		if (req->sign.tsig_key.secret.size > 0) {
 			knotd_qdata_t qdata;
 			knotd_qdata_extra_t extra;
 			init_qdata_from_request(&qdata, zone, req, NULL, &extra);

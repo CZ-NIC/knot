@@ -108,4 +108,25 @@ send_update(master, slave, zone, slave_tsig_test=key_client, positive=False)
 # Check that client TSIG has been used for 2xDDNS and QUERY+XFR to client.
 isset(master.log_search_count("key key_client.") == 4, "Used key_client")
 
+## client key: key_client, slave key: key_client, key_master, master key: key_master
+
+slave.tsig_test = key_client
+
+master.gen_confile()
+slave.gen_confile()
+master.reload()
+slave.reload()
+
+# Get reference value.
+isset(master.log_search_count("key key_master.") == 10, "Used key_master")
+
+send_update(master, slave, zone)
+send_update(master, slave, zone, positive=False)
+
+# Check that client TSIG has been used only for 2xXFR additional comparisons.
+isset(master.log_search_count("key key_client.") == 6, "Used key_client")
+
+# Check that master TSIG has been used for 2xDDNS and QUERY+XFR to slave.
+isset(master.log_search_count("key key_master.") == 14, "Used key_master")
+
 t.end()
