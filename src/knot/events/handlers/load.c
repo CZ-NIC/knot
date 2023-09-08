@@ -394,6 +394,11 @@ load_end:
 		goto cleanup;
 	}
 
+	if (zf_from == ZONEFILE_LOAD_DIFF && *new_serial_str == '\0') {
+		// Reflect possible serial bump during zone_update_commit().
+		middle_serial = zone_contents_serial(zone->contents);
+	}
+
 	char expires_in[32] = "";
 	if (zone->timers.next_expire > 0) {
 		(void)snprintf(expires_in, sizeof(expires_in),
