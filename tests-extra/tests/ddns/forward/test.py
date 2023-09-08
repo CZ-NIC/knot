@@ -50,10 +50,10 @@ send_update.serial = 0
 
 ctl = libknot.control.KnotCtl()
 
-t = Test(tsig=False, stress=False)
+t = Test(tsig=False, stress=False, address=4) # IPv4 allows different loopback addresses
 
-master = t.server("knot")
-slave = t.server("knot")
+master = t.server("knot", address="127.0.0.2", via=True)
+slave = t.server("knot", address="127.0.0.1", via=True) # use the default loopback address so that master's ACL for client queries applies to those forwarded through slave
 zone = t.zone("example.com.")
 
 t.link(zone, master, slave, ddns=True)
