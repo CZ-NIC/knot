@@ -154,7 +154,7 @@ int knotd_conf_check_ref(knotd_conf_check_args_t *args);
  *
  * \return Pointer to optional module context.
  */
-void *knotd_mod_ctx(knotd_mod_t *mod);
+void *knotd_mod_ctx(const knotd_mod_t *mod);
 
 /*!
  * Sets optional module context.
@@ -171,7 +171,7 @@ void knotd_mod_ctx_set(knotd_mod_t *mod, void *ctx);
  *
  * \return Zone name.
  */
-const knot_dname_t *knotd_mod_zone(knotd_mod_t *mod);
+const knot_dname_t *knotd_mod_zone(const knotd_mod_t *mod);
 
 /*!
  * Emits a module specific log message.
@@ -442,7 +442,7 @@ typedef struct {
  *
  * \return Local address or NULL if error.
  */
-inline static const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata)
+inline static const struct sockaddr_storage *knotd_qdata_local_addr(const knotd_qdata_t *qdata)
 {
 	return qdata->params->local;
 }
@@ -454,7 +454,7 @@ inline static const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_
  *
  * \return Remote address or NULL if error.
  */
-inline static const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata)
+inline static const struct sockaddr_storage *knotd_qdata_remote_addr(const knotd_qdata_t *qdata)
 {
 	return qdata->params->remote;
 }
@@ -475,7 +475,7 @@ uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata);
  *
  * \return Zone name.
  */
-const knot_dname_t *knotd_qdata_zone_name(knotd_qdata_t *qdata);
+const knot_dname_t *knotd_qdata_zone_name(const knotd_qdata_t *qdata);
 
 /*!
  * Gets the current zone apex rrset of the given type.
@@ -485,7 +485,7 @@ const knot_dname_t *knotd_qdata_zone_name(knotd_qdata_t *qdata);
  *
  * \return A copy of the zone apex rrset.
  */
-knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type);
+knot_rrset_t knotd_qdata_zone_apex_rrset(const knotd_qdata_t *qdata, uint16_t type);
 
 /*! General query processing states. */
 typedef enum {

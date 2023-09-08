@@ -207,7 +207,7 @@ void query_module_reset(conf_t *conf, knotd_mod_t *module, struct query_plan *ne
 }
 
 _public_
-void *knotd_mod_ctx(knotd_mod_t *mod)
+void *knotd_mod_ctx(const knotd_mod_t *mod)
 {
 	return (mod != NULL) ? mod->ctx : NULL;
 }
@@ -219,7 +219,7 @@ void knotd_mod_ctx_set(knotd_mod_t *mod, void *ctx)
 }
 
 _public_
-const knot_dname_t *knotd_mod_zone(knotd_mod_t *mod)
+const knot_dname_t *knotd_mod_zone(const knotd_mod_t *mod)
 {
 	return (mod != NULL) ? mod->zone : NULL;
 }
@@ -646,7 +646,7 @@ uint32_t knotd_qdata_rtt(knotd_qdata_t *qdata)
 }
 
 _public_
-const knot_dname_t *knotd_qdata_zone_name(knotd_qdata_t *qdata)
+const knot_dname_t *knotd_qdata_zone_name(const knotd_qdata_t *qdata)
 {
 	if (qdata == NULL || qdata->extra->zone == NULL) {
 		return NULL;
@@ -656,7 +656,7 @@ const knot_dname_t *knotd_qdata_zone_name(knotd_qdata_t *qdata)
 }
 
 _public_
-knot_rrset_t knotd_qdata_zone_apex_rrset(knotd_qdata_t *qdata, uint16_t type)
+knot_rrset_t knotd_qdata_zone_apex_rrset(const knotd_qdata_t *qdata, uint16_t type)
 {
 	if (qdata == NULL || qdata->extra->contents == NULL) {
 		return node_rrset(NULL, type);
