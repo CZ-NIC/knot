@@ -53,7 +53,7 @@ zones1 = t.zone_rnd(20, dnssec=False, records=1) + \
 zone0 = t.zone("dk.", storage=".")
 zones = zones1 + zone0
 
-t.link(zone0, master0, master)
+t.link(zone0, master0, master, ddns=True)
 t.link(zones, master, slave)
 
 master.disable_notify = True
