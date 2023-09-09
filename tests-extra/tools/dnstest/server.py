@@ -528,6 +528,9 @@ class Server(object):
                     pass
 
     def gen_confile(self):
+        if os.path.isfile(self.confile):
+            copyfile(self.confile, self.confile + str(int(time.time())))
+
         f = open(self.confile, mode="w")
         f.write(self.get_config())
         f.close()
@@ -1469,7 +1472,7 @@ class Knot(Server):
                     s.item_str("key", slave.tsig.name)
                 if slave.cert_key:
                     s.item_str("cert-key", slave.cert_key)
-                s.item("action", "[transfer, update]")
+                s.item("action", "[transfer" + (", update" if z.ddns else "") + "]")
                 servers.add(slave.name)
             for remote in z.dnssec.dnskey_sync if z.dnssec.dnskey_sync else []:
                 dupl_name = remote.name + "_ddns"

@@ -41,7 +41,7 @@ class Update(object):
         if rc is not None:
             compare(self.rc, rc, "UPDATE RCODE")
 
-        if self.upd.keyring and not resp.had_tsig:
+        if self.upd.keyring and self.rc != "NOTAUTH" and not resp.had_tsig:
             set_err("INVALID RESPONSE")
             check_log("ERROR: Expected TSIG signed response")
 

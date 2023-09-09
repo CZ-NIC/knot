@@ -224,7 +224,8 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 		request->source.ss_family = AF_UNSPEC;
 	}
 
-	if (tsig_key && tsig_key->algorithm == DNSSEC_TSIG_UNKNOWN) {
+	if (tsig_key && (tsig_key->algorithm == DNSSEC_TSIG_UNKNOWN ||
+	                 (flags & KNOT_REQUEST_FWD))) {
 		tsig_key = NULL;
 	}
 	tsig_init(&request->tsig, tsig_key);
