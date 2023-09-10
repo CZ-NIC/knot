@@ -370,7 +370,9 @@ Functionality
 -------------
 
 - Responses to forwarded DDNS requests are signed with the local TSIG key instead
-  of the remote one.
+  of the remote one if the TSIG secret is known. To forward DDNS requests
+  signed with a locally unknown key, an ACL rule for the action ``update`` without
+  a key must be configured for the zone.
 - Addresses for the remote which is considered the source of the NOTIFY are tried
   in the order they are specified in the remote configuration, regardless of which
   address the NOTIFY came from.

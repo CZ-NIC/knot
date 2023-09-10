@@ -268,7 +268,8 @@ Dynamic updates
 
 Dynamic updates for the zone are allowed via proper ACL rule with the
 ``update`` action. If the zone is configured as a secondary and a DNS update
-message is accepted, the server forwards the message to its primary master.
+message is accepted, the server forwards the message to its first primary
+:ref:`zone_master` or :ref:`zone_ddns-master` if configured.
 The primary master's response is then forwarded back to the originator.
 
 However, if the zone is configured as a primary, the update is accepted and
@@ -280,8 +281,21 @@ processed::
         action: update
 
     zone:
-      - domain: example.com
+      - domain: example.com.
         acl: update_acl
+
+.. NOTE::
+   To forward DDNS requests signed with a locally unknown key, an ACL rule for
+   the action ``update`` without a key must be configured for the zone. E.g.::
+
+    acl:
+      - id: fwd_foreign_key
+        action: update
+        # possible non-key options
+
+    zone:
+     - domain: example.com.
+       acl: fwd_foreign_key
 
 .. _Restricting dynamic updates:
 
