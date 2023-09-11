@@ -18,13 +18,12 @@ from prometheus_client.exposition import MetricsHandler
 
 def memory_usage():
     out = dict()
-    pids = subprocess.check_output(['pidof', 'knotd']).split(b' ')
-    for pid in pids:
-        if not pid:
-            continue
-        key = int(pid)
-        out[key] = psutil.Process(key).memory_info()._asdict()['rss']
-    return out
+    try:
+        pids = subprocess.check_output(['pidof', 'knotd']).decode().split()
+        for pid in pids:
+            out[pid] = psutil.Process(int(pid)).memory_info()._asdict()['rss']
+    finally:
+        return out
 
 
 class KnotCollector(object):
