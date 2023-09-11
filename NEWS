@@ -1,3 +1,22 @@
+Knot DNS 3.2.10 (2023-11-09)
+============================
+
+Improvements:
+-------------
+ - knotd: multiple catalog groups per member are tolerated, but only one is used
+ - knotd: server cleans up stale LMDB readers when opening a RW transaction
+
+Bugfixes:
+---------
+ - knotd: server can crash when adjusting a wildcard glue
+ - knotd: failed to forward DDNS if 'zone.master' points to 'remotes'
+ - knotd: subsequent addition and removal to catalog zone isn't handled properly
+ - knotd: server can crash if a shared module is loaded and dynamic configuration used
+ - knotc: configuration import fails if an explicit shared module is configured
+ - kdig: double-free on some malformed responses over QUIC #869
+ - kdig: some TLS parameters override QUIC parameters
+ - libs: NULL record with empty RDATA isn't allowed
+
 Knot DNS 3.2.9 (2023-27-07)
 ===========================
 
