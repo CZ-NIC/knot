@@ -179,31 +179,40 @@ static int parse_full_rr(zs_scanner_t *s, const char* lp)
 
 static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 {
+	knot_dname_txt_storage_t owner_str = { 0 };
+
 	/* Extract owner. */
 	size_t len = strcspn(lp, SEP_CHARS);
-	char *owner_str = calloc(1, len + 2); // 2 ~ ('.' + '\0')
 	memcpy(owner_str, lp, len);
 
-	/* Make dname FQDN if it isn't. */
+	/* Check if ORIGIN (@) or FQDN. */
+	bool origin = false;
 	bool fqdn = true;
-	if (owner_str[len - 1] != '.') {
-		owner_str[len] = '.';
+	if (len == 1 && owner_str[0] == '@') {
+		origin = true;
+		fqdn = false;
+	} else if (owner_str[len - 1] != '.') {
 		fqdn = false;
 	}
 
-	knot_dname_t *owner = knot_dname_from_str_alloc(owner_str);
-	free(owner_str);
-	if (owner == NULL) {
-		return KNOT_ENOMEM;
-	}
+	/* Convert textual owner to dname. */
+	if (!origin) {
+		knot_dname_storage_t owner;
+		if (knot_dname_from_str(owner, owner_str, sizeof(owner)) == NULL) {
+			return KNOT_EINVAL;
+		}
 
-	s->r_owner_length = knot_dname_size(owner);
-	memcpy(s->r_owner, owner, s->r_owner_length);
-	knot_dname_free(owner, NULL);
+		s->r_owner_length = knot_dname_size(owner);
+		memcpy(s->r_owner, owner, s->r_owner_length);
+	} else {
+		s->r_owner_length = 0;
+	}
 
 	/* Append origin if not FQDN. */
 	if (!fqdn) {
-		s->r_owner_length--;
+		if (!origin) {
+			s->r_owner_length--;
+		}
 		memcpy(s->r_owner + s->r_owner_length, s->zone_origin,
 		       s->zone_origin_length);
 		s->r_owner_length += s->zone_origin_length;
