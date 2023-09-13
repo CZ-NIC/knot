@@ -120,7 +120,6 @@ Depends:
  libknot14 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
- ${shlibs:Depends},
 Section: libdevel
 Description: Knot DNS shared library development files
  Knot DNS is a fast, authoritative only, high performance, feature
