@@ -366,10 +366,6 @@ pkg:debian-11:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/debian-11
 
-pkg:debian-10:
-  <<: *pkg_test_deb
-  image: $CI_REGISTRY/packaging/apkg/test/debian-10
-
 pkg:ubuntu-22.04:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/ubuntu-22.04
@@ -377,10 +373,6 @@ pkg:ubuntu-22.04:
 pkg:ubuntu-20.04:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/ubuntu-20.04
-
-pkg:ubuntu-18.04:
-  <<: *pkg_test_deb
-  image: $CI_REGISTRY/packaging/apkg/test/ubuntu-18.04
 
 pkg:fedora-37:
   <<: *pkg_test
@@ -397,11 +389,6 @@ pkg:alma-9:
 pkg:rocky-8:
   <<: *pkg_test
   image: $CI_REGISTRY/packaging/apkg/test/rocky-8
-
-pkg:centos-7:
-  <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/test/centos-7
-  allow_failure: true
 
 #Temporarily disable SUSE-15 as it lacks libxdp
 #pkg:suse-15:

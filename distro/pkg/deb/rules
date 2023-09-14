@@ -36,11 +36,9 @@ BASE_VERSION := $(shell echo $(DEB_VERSION) | sed 's/^\([^.]\+\.[^.]\+\).*/\1/')
 # invocation due to bug in dh-python's plugin_pyproject.py wheel unpack
 export PYBUILD_SYSTEM = distutils
 
-
 %:
 	dh $@ \
-	 --exclude=.la --exclude=example.com.zone \
-	 --with python3
+	  --with python3
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
@@ -95,7 +93,7 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 endif
 
 override_dh_missing:
-	dh_missing --fail-missing
+	dh_missing --exclude=.la --fail-missing
 
 override_dh_installchangelogs:
 	dh_installchangelogs NEWS
