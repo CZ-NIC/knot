@@ -23,6 +23,7 @@
 #include "knot/ctl/commands.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/confdb.h"
+#include "knot/conf/module.h"
 #include "knot/conf/tools.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
@@ -1132,7 +1133,11 @@ static int cmd_conf_import(cmd_args_t *args)
 		conf_t *new_conf = NULL;
 		ret = conf_clone(&new_conf);
 		if (ret == KNOT_EOK) {
-			ret = conf_import(new_conf, args->argv[0], true, false);
+			yp_schema_purge_dynamic(new_conf->schema);
+			ret = conf_mod_load_common(new_conf);
+			if (ret == KNOT_EOK) {
+				ret = conf_import(new_conf, args->argv[0], true, false);
+			}
 			conf_free(new_conf);
 		}
 	}
