@@ -32,7 +32,8 @@ class KnotCollector(object):
             collect_stats : bool,
             collect_zone_stats : bool,
             collect_zone_status : bool,
-            collect_zone_timers : bool,):
+            collect_zone_timers : bool,
+            collect_zone_serial : bool,):
         libknot.Knot(lib)
         self._sock = sock
         self._ttl = ttl
@@ -41,6 +42,7 @@ class KnotCollector(object):
         self.collect_zone_stats = collect_zone_stats
         self.collect_zone_status = collect_zone_status
         self.collect_zone_timers = collect_zone_timers
+        self.collect_zone_serial = collect_zone_serial
 
     def convert_state_time(time):
         if time == "pending" or time == "running" or time == "frozen":
@@ -113,9 +115,10 @@ class KnotCollector(object):
             zone_states = ctl.receive_block()
 
             for zone, info in zone_states.items():
-                serial = info.get('serial', False)
-                if serial and serial != "none" and serial != "-":
-                    metric_families_append('knot_zone_serial', ['zone'], [zone], int(serial))
+                if self.collect_zone_serial:
+                    serial = info.get('serial', False)
+                    if serial and serial != "none" and serial != "-":
+                        metric_families_append('knot_zone_serial', ['zone'], [zone], int(serial))
 
                 metrics = ['expiration', 'refresh']
 
@@ -214,6 +217,12 @@ def main():
         help="disable collection of zone timer settings"
     )
 
+    parser.add_argument(
+        "--no-zone-serial",
+        action='store_false',
+        help="disable collection of zone serial"
+    )
+
     args = parser.parse_args()
 
     REGISTRY.register(KnotCollector(
@@ -225,6 +234,7 @@ def main():
         args.no_zone_stats,
         args.no_zone_status,
         args.no_zone_timers,
+        args.no_zone_serial,
     ))
 
     class Server(http.server.HTTPServer):
