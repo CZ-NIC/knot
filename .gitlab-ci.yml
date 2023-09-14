@@ -398,11 +398,6 @@ pkg:rocky-8:
   <<: *pkg_test
   image: $CI_REGISTRY/packaging/apkg/test/rocky-8
 
-pkg:centos-7:
-  <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/test/centos-7
-  allow_failure: true
-
 #Temporarily disable SUSE-15 as it lacks libxdp
 #pkg:suse-15:
 #  <<: *pkg_test
