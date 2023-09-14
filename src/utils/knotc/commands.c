@@ -23,6 +23,7 @@
 #include "knot/ctl/commands.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/confdb.h"
+#include "knot/conf/module.h"
 #include "knot/conf/tools.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
@@ -1120,13 +1121,17 @@ static int cmd_conf_import(cmd_args_t *args)
 			return KNOT_EDENIED;
 		}
 
-		log_debug("importing confdb from file '%s'", args->argv[0]);
-
 		// Import to a cloned conf to avoid external module conflict.
 		conf_t *new_conf = NULL;
 		ret = conf_clone(&new_conf);
 		if (ret == KNOT_EOK) {
-			ret = conf_import(new_conf, args->argv[0], true, false);
+			yp_schema_purge_dynamic(new_conf->schema);
+			log_debug("loading modules for imported configuration");
+			ret = conf_mod_load_common(new_conf);
+			if (ret == KNOT_EOK) {
+				log_debug("importing confdb from file '%s'", args->argv[0]);
+				ret = conf_import(new_conf, args->argv[0], true, false);
+			}
 			conf_free(new_conf);
 		}
 	}
