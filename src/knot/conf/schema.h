@@ -110,7 +110,6 @@
 #define C_PROXY_ALLOWLIST	"\x0F""proxy-allowlist"
 #define C_QUIC			"\x04""quic"
 #define C_QUIC_IDLE_CLOSE	"\x17""quic-idle-close-timeout"
-#define C_QUIC_LOG		"\x08""quic-log"
 #define C_QUIC_MAX_CLIENTS	"\x10""quic-max-clients"
 #define C_QUIC_OUTBUF_MAX_SIZE	"\x14""quic-outbuf-max-size"
 #define C_QUIC_PORT		"\x09""quic-port"
@@ -184,24 +183,6 @@
 #define C_ZONE_MAX_TTL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
-
-// Legacy items.
-#define C_DISABLE_ANY		"\x0B""disable-any"
-#define C_LISTEN_XDP		"\x0A""listen-xdp"
-#define C_MAX_TIMER_DB_SIZE	"\x11""max-timer-db-size"
-#define C_MAX_JOURNAL_DB_SIZE	"\x13""max-journal-db-size"
-#define C_MAX_KASP_DB_SIZE	"\x10""max-kasp-db-size"
-#define C_TCP_HSHAKE_TIMEOUT	"\x15""tcp-handshake-timeout"
-#define C_TCP_REPLY_TIMEOUT	"\x11""tcp-reply-timeout"
-#define C_MAX_TCP_CLIENTS	"\x0F""max-tcp-clients"
-#define C_MAX_UDP_PAYLOAD	"\x0F""max-udp-payload"
-#define C_MAX_IPV4_UDP_PAYLOAD	"\x14""max-ipv4-udp-payload"
-#define C_MAX_IPV6_UDP_PAYLOAD	"\x14""max-ipv6-udp-payload"
-#define C_MAX_ZONE_SIZE		"\x0D""max-zone-size"
-#define C_MAX_REFRESH_INTERVAL	"\x14""max-refresh-interval"
-#define C_MIN_REFRESH_INTERVAL	"\x14""min-refresh-interval"
-#define C_MAX_JOURNAL_DEPTH	"\x11""max-journal-depth"
-#define C_MAX_JOURNAL_USAGE	"\x11""max-journal-usage"
 
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,
