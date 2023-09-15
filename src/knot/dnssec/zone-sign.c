@@ -658,23 +658,6 @@ static int zone_tree_sign(zone_tree_t *tree,
 
 /*- private API - signing of NSEC(3) in changeset ----------------------------*/
 
-/*!
- * \brief Struct to carry data for changeset signing callback functions.
- */
-typedef struct {
-	const zone_contents_t *zone;
-	changeset_iter_t itt;
-	zone_sign_ctx_t *sign_ctx;
-	changeset_t changeset;
-	knot_time_t expires_at;
-	size_t num_threads;
-	size_t thread_index;
-	size_t rrset_index;
-	int errcode;
-	int thread_init_errcode;
-	pthread_t thread;
-} changeset_signing_data_t;
-
 int rrset_add_zone_key(knot_rrset_t *rrset, zone_key_t *zone_key)
 {
 	if (rrset == NULL || zone_key == NULL) {
