@@ -249,7 +249,6 @@ Configuration changes
 
 - Ignored obsolete options (with a notice log):
 
-  - ``server.max-zone-size``
   - ``server.max-journal-depth``
   - ``server.max-journal-usage``
   - ``server.max-refresh-interval``
@@ -262,6 +261,7 @@ Configuration changes
   - ``template.journal-db``
   - ``template.kasp-db``
   - ``template.timer-db``
+  - ``template.max-zone-size``
   - ``template.max-journal-db-size``
   - ``template.max-timer-db-size``
   - ``template.max-kasp-db-size``
