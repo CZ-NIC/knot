@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -344,14 +344,13 @@ static knot_db_iter_t *iter_set(knot_db_iter_t *iter, knot_db_val_t *key, unsign
 	default: break;
 	}
 
-	MDB_val db_key = { 0, NULL };
+	MDB_val db_key = { 0, NULL }, unused_val = { 0, NULL };
 	if (key) {
 		db_key.mv_data = key->data;
 		db_key.mv_size = key->len;
 	}
-	MDB_val unused_key = { 0, NULL }, unused_val = { 0, NULL };
 
-	int ret = mdb_cursor_get(cursor, key ? &db_key : &unused_key, &unused_val, op);
+	int ret = mdb_cursor_get(cursor, &db_key, &unused_val, op);
 
 	/* LEQ is not supported in LMDB, workaround using GEQ. */
 	if (flags == KNOT_DB_LEQ && key) {
