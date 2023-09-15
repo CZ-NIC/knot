@@ -588,11 +588,18 @@ static int zone_tree_sign(zone_tree_t *tree,
 	*expires_at = knot_time_plus(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime);
 
 	// init context structures
+	zone_keyset_t keyset[num_threads];
 	for (size_t i = 0; i < num_threads; i++) {
+		if (!dnssec_ctx->validation_mode) {
+			ret = load_zone_keys(dnssec_ctx, &keyset[i], false);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+		}
 		args[i].tree = tree;
 		args[i].sign_ctx = dnssec_ctx->validation_mode
 		                 ? zone_validation_ctx(dnssec_ctx)
-		                 : zone_sign_ctx(zone_keys, dnssec_ctx);
+		                 : zone_sign_ctx(&keyset[i], dnssec_ctx);
 		if (args[i].sign_ctx == NULL) {
 			ret = KNOT_ENOMEM;
 			break;
@@ -651,6 +658,9 @@ static int zone_tree_sign(zone_tree_t *tree,
 		assert(!dnssec_ctx->validation_mode || changeset_empty(&args[i].changeset));
 		changeset_clear(&args[i].changeset);
 		zone_sign_ctx_free(args[i].sign_ctx);
+		if (!dnssec_ctx->validation_mode) {
+			free_zone_keys(&keyset[i]);
+		}
 	}
 
 	return ret;
