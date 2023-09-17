@@ -588,7 +588,7 @@ static int zone_tree_sign(zone_tree_t *tree,
 	zone_keyset_t keyset[num_threads];
 	for (size_t i = 0; i < num_threads; i++) {
 		if (!dnssec_ctx->validation_mode) {
-			ret = load_zone_keys(dnssec_ctx, &keyset[i], false);
+			ret = load_zone_keys_thrd(dnssec_ctx, &keyset[i], false, i);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -617,6 +617,9 @@ static int zone_tree_sign(zone_tree_t *tree,
 		for (size_t i = 0; i < num_threads; i++) {
 			changeset_clear(&args[i].changeset);
 			zone_sign_ctx_free(args[i].sign_ctx);
+			if (!dnssec_ctx->validation_mode) {
+				free_zone_keys(&keyset[i]);
+			}
 		}
 		return ret;
 	}

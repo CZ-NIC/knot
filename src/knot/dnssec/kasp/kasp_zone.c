@@ -414,12 +414,14 @@ int kasp_zone_from_contents(knot_kasp_zone_t *zone,
 	knot_rdataset_t *zone_dnskey = node_rdataset(contents->apex, KNOT_RRTYPE_DNSKEY);
 	if (zone_dnskey == NULL || zone_dnskey->count < 1) {
 		free(zone->dname);
+		zone->dname = NULL;
 		return KNOT_DNSSEC_ENOKEY;
 	}
 
 	int ret = kasp_zone_keys_from_rr(zone, zone_dnskey, policy_single_type_signing, keytag_conflict);
 	if (ret != KNOT_EOK) {
 		free(zone->dname);
+		zone->dname = NULL;
 		return ret;
 	}
 

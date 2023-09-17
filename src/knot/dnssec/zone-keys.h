@@ -124,15 +124,21 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
 int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
 
 /*!
- * \brief Load zone keys and init cryptographic context.
+ * \brief Load zone keys and init cryptographic context for specified thread.
  *
  * \param ctx            Zone signing context.
  * \param keyset_ptr     Resulting zone keyset.
  * \param verbose        Print key summary into log.
+ * \param thread_id      Thread id.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose);
+int load_zone_keys_thrd(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose, int thread_id);
+
+inline static int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
+{
+	return load_zone_keys_thrd(ctx, keyset_ptr, verbose, 0);
+}
 
 /*!
  * \brief Free structure with zone keys and associated DNSSEC contexts.

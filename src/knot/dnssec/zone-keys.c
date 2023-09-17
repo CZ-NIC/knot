@@ -514,7 +514,7 @@ static int log_key_sort(const void *a, const void *b)
 /*!
  * \brief Load zone keys and init cryptographic context.
  */
-int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
+int load_zone_keys_thrd(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose, int thread_id)
 {
 	if (!ctx || !keyset_ptr) {
 		return KNOT_EINVAL;
@@ -522,21 +522,23 @@ int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
 
 	zone_keyset_t keyset = { 0 };
 
-	if (ctx->zone->num_keys < 1) {
-		log_zone_error(ctx->zone->dname, "DNSSEC, no keys are available");
+	knot_kasp_zone_t *zone = &ctx->zone[thread_id];
+
+	if (zone->num_keys < 1) {
+		log_zone_error(zone->dname, "DNSSEC, no keys are available");
 		return KNOT_DNSSEC_ENOKEY;
 	}
 
-	keyset.count = ctx->zone->num_keys;
+	keyset.count = zone->num_keys;
 	keyset.keys = calloc(keyset.count, sizeof(zone_key_t));
 	if (!keyset.keys) {
 		free_zone_keys(&keyset);
 		return KNOT_ENOMEM;
 	}
 
-	key_info_t key_info[ctx->zone->num_keys];
-	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
+	key_info_t key_info[zone->num_keys];
+	for (size_t i = 0; i < zone->num_keys; i++) {
+		knot_kasp_key_t *kasp_key = &zone->keys[i];
 		uint8_t kk_alg = dnssec_key_get_algorithm(kasp_key->key);
 		bool same_alg_zsk = alg_has_active_zsk(ctx, kk_alg);
 		set_key(kasp_key, ctx->now, &keyset.keys[i], same_alg_zsk);
@@ -552,15 +554,15 @@ int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
 
 	// Sort the keys by publish/pre_active timestamps.
 	if (verbose) {
-		qsort(key_info, ctx->zone->num_keys, sizeof(key_info[0]), log_key_sort);
-		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-			log_zone_info(ctx->zone->dname, "%s", key_info[i].msg);
+		qsort(key_info, zone->num_keys, sizeof(key_info[0]), log_key_sort);
+		for (size_t i = 0; i < zone->num_keys; i++) {
+			log_zone_info(zone->dname, "%s", key_info[i].msg);
 		}
 	}
 
 	int ret = walk_algorithms(ctx, &keyset);
 	if (ret != KNOT_EOK) {
-		log_zone_error(ctx->zone->dname, "DNSSEC, keys validation failed (%s)",
+		log_zone_error(zone->dname, "DNSSEC, keys validation failed (%s)",
 		               knot_strerror(ret));
 		free_zone_keys(&keyset);
 		return ret;
@@ -569,7 +571,7 @@ int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
 	ret = load_private_keys(ctx->keystore, &keyset);
 	ret = knot_error_from_libdnssec(ret);
 	if (ret != KNOT_EOK) {
-		log_zone_error(ctx->zone->dname, "DNSSEC, failed to load private "
+		log_zone_error(zone->dname, "DNSSEC, failed to load private "
 		               "keys (%s)", knot_strerror(ret));
 		free_zone_keys(&keyset);
 		return ret;

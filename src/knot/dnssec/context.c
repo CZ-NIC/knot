@@ -181,20 +181,8 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 
 	memset(ctx, 0, sizeof(*ctx));
 
-	ctx->zone = calloc(1, sizeof(*ctx->zone));
-	if (ctx->zone == NULL) {
-		ret = KNOT_ENOMEM;
-		goto init_error;
-	}
-
 	ctx->kasp_db = kaspdb;
 	ret = knot_lmdb_open(ctx->kasp_db);
-	if (ret != KNOT_EOK) {
-		goto init_error;
-	}
-
-	ret = kasp_zone_load(ctx->zone, zone_name, ctx->kasp_db,
-	                     &ctx->keytag_conflict);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}
@@ -225,12 +213,21 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		policy_id = conf_mod_get(conf, C_POLICY, from_module);
 	}
 	conf_id_fix_default(&policy_id);
-	policy_load(ctx->policy, conf, &policy_id, ctx->zone->dname);
+	policy_load(ctx->policy, conf, &policy_id, zone_name);
 
 	ret = zone_init_keystore(conf, &policy_id, &ctx->keystore,
 	                         &ctx->keystore_type, &ctx->policy->key_label);
 	if (ret != KNOT_EOK) {
 		goto init_error;
+	}
+
+	ctx->zone = calloc(ctx->policy->signing_threads, sizeof(*ctx->zone));
+	for (int i = 0; i < ctx->policy->signing_threads; i++) {
+		ret = kasp_zone_load(&ctx->zone[i], zone_name, ctx->kasp_db,
+		                     &ctx->keytag_conflict);
+		if (ret != KNOT_EOK) {
+			goto init_error;
+		}
 	}
 
 	ctx->dbus_event = conf->cache.srv_dbus_event;
@@ -278,6 +275,12 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		return;
 	}
 
+	if (ctx->zone != NULL) {
+		for (int i = 0; i < ctx->policy->signing_threads; i++) {
+			kasp_zone_clear(&ctx->zone[i]);
+		}
+		free(ctx->zone);
+	}
 	if (ctx->policy != NULL) {
 		free(ctx->policy->string);
 		knot_dynarray_foreach(parent, knot_kasp_parent_t, i, ctx->policy->parents) {
@@ -287,7 +290,6 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 	}
 	key_records_clear(&ctx->offline_records);
 	dnssec_keystore_deinit(ctx->keystore);
-	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);
 
 	memset(ctx, 0, sizeof(*ctx));
@@ -318,14 +320,8 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 
 	memset(ctx, 0, sizeof(*ctx));
 
-	ctx->zone = calloc(1, sizeof(*ctx->zone));
-	if (ctx->zone == NULL) {
-		return KNOT_ENOMEM;
-	}
-
 	ctx->policy = calloc(1, sizeof(*ctx->policy));
 	if (ctx->policy == NULL) {
-		free(ctx->zone);
 		return KNOT_ENOMEM;
 	}
 
@@ -339,13 +335,20 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 		ctx->policy->signing_threads = MAX(dt_optimal_size(), 1);
 	}
 
-	int ret = kasp_zone_from_contents(ctx->zone, zone, ctx->policy->single_type_signing,
-	                                  ctx->policy->nsec3_enabled, &ctx->policy->nsec3_iterations,
-	                                  &ctx->keytag_conflict);
-	if (ret != KNOT_EOK) {
-		memset(ctx->zone, 0, sizeof(*ctx->zone));
+	ctx->zone = calloc(ctx->policy->signing_threads, sizeof(*ctx->zone));
+	if (ctx->zone == NULL) {
 		kdnssec_ctx_deinit(ctx);
-		return ret;
+		return KNOT_ENOMEM;
+	}
+
+	for (int i = 0; i < ctx->policy->signing_threads; i++) {
+		int ret = kasp_zone_from_contents(&ctx->zone[i], zone, ctx->policy->single_type_signing,
+		                                  ctx->policy->nsec3_enabled, &ctx->policy->nsec3_iterations,
+		                                  &ctx->keytag_conflict);
+		if (ret != KNOT_EOK) {
+			kdnssec_ctx_deinit(ctx);
+			return ret;
+		}
 	}
 
 	ctx->now = knot_time();
