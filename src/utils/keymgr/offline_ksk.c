@@ -327,6 +327,11 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	ctx->now = now;
 	ctx->policy->dnskey_ttl = zsk->ttl;
 
+	knot_timediff_t rrsig_refresh = ctx->policy->rrsig_refresh_before;
+	if (rrsig_refresh == UINT32_MAX) { // not setting rrsig-refresh prohibited by documentation, but we need to do something
+		rrsig_refresh = ctx->policy->dnskey_ttl + ctx->policy->propagation_delay;
+	}
+
 	int ret = load_zone_keys(ctx, &keyset, false);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -357,7 +362,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 		print_header("SignedKeyResponse "KSR_SKR_VER, ctx->now, buf);
 		*next_sign = knot_time_min(
 			knot_get_next_zone_key_event(&keyset),
-			knot_time_add(rrsigs_expire, -(knot_timediff_t)ctx->policy->rrsig_refresh_before)
+			knot_time_add(rrsigs_expire, -rrsig_refresh)
 		);
 	}
 
