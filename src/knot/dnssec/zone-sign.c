@@ -564,7 +564,6 @@ static int set_signed(zone_node_t *node, _unused_ void *data)
  *
  * \param tree        Zone tree to be signed.
  * \param num_threads Number of threads to use for parallel signing.
- * \param zone_keys   Zone keys.
  * \param policy      DNSSEC policy.
  * \param update      Zone update structure to be updated.
  * \param expires_at  Expiration time of the oldest signature in zone.
@@ -573,12 +572,10 @@ static int set_signed(zone_node_t *node, _unused_ void *data)
  */
 static int zone_tree_sign(zone_tree_t *tree,
                           size_t num_threads,
-                          zone_keyset_t *zone_keys,
-                          const kdnssec_ctx_t *dnssec_ctx,
+                          kdnssec_ctx_t *dnssec_ctx,
                           zone_update_t *update,
                           knot_time_t *expires_at)
 {
-	assert(zone_keys || dnssec_ctx->validation_mode);
 	assert(dnssec_ctx);
 	assert(update || dnssec_ctx->validation_mode);
 
@@ -692,13 +689,11 @@ static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key, dnssec_k
 }
 
 int knot_zone_sign(zone_update_t *update,
-                   zone_keyset_t *zone_keys,
-                   const kdnssec_ctx_t *dnssec_ctx,
+                   kdnssec_ctx_t *dnssec_ctx,
                    knot_time_t *expire_at)
 {
 	if (!update || !dnssec_ctx || !expire_at ||
-	    dnssec_ctx->policy->signing_threads < 1 ||
-	    (zone_keys == NULL && !dnssec_ctx->validation_mode)) {
+	    dnssec_ctx->policy->signing_threads < 1) {
 		return KNOT_EINVAL;
 	}
 
@@ -706,14 +701,14 @@ int knot_zone_sign(zone_update_t *update,
 
 	knot_time_t normal_expire = 0;
 	result = zone_tree_sign(update->new_cont->nodes, dnssec_ctx->policy->signing_threads,
-	                        zone_keys, dnssec_ctx, update, &normal_expire);
+	                        dnssec_ctx, update, &normal_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
 	knot_time_t nsec3_expire = 0;
 	result = zone_tree_sign(update->new_cont->nsec3_nodes, dnssec_ctx->policy->signing_threads,
-	                        zone_keys, dnssec_ctx, update, &nsec3_expire);
+	                        dnssec_ctx, update, &nsec3_expire);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -1014,13 +1009,11 @@ bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
 }
 
 int knot_zone_sign_update(zone_update_t *update,
-                          zone_keyset_t *zone_keys,
-                          const kdnssec_ctx_t *dnssec_ctx,
+                          kdnssec_ctx_t *dnssec_ctx,
                           knot_time_t *expire_at)
 {
 	if (update == NULL || dnssec_ctx == NULL || expire_at == NULL ||
-	    dnssec_ctx->policy->signing_threads < 1 ||
-	    (zone_keys == NULL && !dnssec_ctx->validation_mode)) {
+	    dnssec_ctx->policy->signing_threads < 1) {
 		return KNOT_EINVAL;
 	}
 
@@ -1030,16 +1023,16 @@ int knot_zone_sign_update(zone_update_t *update,
 	 * If so, we have to sign the whole zone. */
 	const bool full_sign = apex_dnssec_changed(update);
 	if (full_sign) {
-		ret = knot_zone_sign(update, zone_keys, dnssec_ctx, expire_at);
+		ret = knot_zone_sign(update, dnssec_ctx, expire_at);
 	} else {
 		ret = zone_tree_sign(update->a_ctx->node_ptrs, dnssec_ctx->policy->signing_threads,
-				     zone_keys, dnssec_ctx, update, expire_at);
+				     dnssec_ctx, update, expire_at);
 		if (ret == KNOT_EOK) {
 			ret = zone_tree_apply(update->a_ctx->node_ptrs, set_signed, NULL);
 		}
 		if (ret == KNOT_EOK && dnssec_ctx->validation_mode) {
 			ret = zone_tree_sign(update->a_ctx->nsec3_ptrs, dnssec_ctx->policy->signing_threads,
-			                     zone_keys, dnssec_ctx, update, expire_at);
+			                     dnssec_ctx, update, expire_at);
 		}
 		if (ret == KNOT_EOK && dnssec_ctx->validation_mode) {
 			ret = zone_tree_apply(update->a_ctx->nsec3_ptrs, set_signed, NULL);

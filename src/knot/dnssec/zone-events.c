@@ -256,7 +256,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	result = knot_zone_sign(update, &keyset, &ctx, &zone_expire);
+	result = knot_zone_sign(update, &ctx, &zone_expire);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign zone content (%s)",
 		               knot_strerror(result));
@@ -372,7 +372,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		goto done;
 	}
 
-	result = knot_zone_sign_update(update, &keyset, &ctx, &zone_expire);
+	result = knot_zone_sign_update(update, &ctx, &zone_expire);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign changeset (%s)",
 		               knot_strerror(result));
@@ -464,9 +464,9 @@ int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf, knot_time_t n
 		knot_time_t unused = 0;
 		assert(ctx.validation_mode);
 		if (incremental) {
-			ret = knot_zone_sign_update(update, NULL, &ctx, &unused);
+			ret = knot_zone_sign_update(update, &ctx, &unused);
 		} else {
-			ret = knot_zone_sign(update, NULL, &ctx, &unused);
+			ret = knot_zone_sign(update, &ctx, &unused);
 		}
 	}
 	kdnssec_ctx_deinit(&ctx);
