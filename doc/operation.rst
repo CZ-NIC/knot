@@ -815,7 +815,8 @@ For the KSK side (i.e. the operator of the KSK signer), the zone has to be confi
 
   - Enabled :ref:`policy_manual`
   - Enabled :ref:`policy_offline-ksk`
-  - Optional :ref:`policy_rrsig-lifetime`, :ref:`policy_rrsig-refresh`,
+  - Explicit :ref:`policy_rrsig-refresh`
+  - Optional :ref:`policy_rrsig-lifetime`, :ref:`policy_rrsig-pre-refresh`,
     :ref:`policy_algorithm`, :ref:`policy_reproducible-signing`,
     and :ref:`policy_cds-cdnskey-publish`
   - Other options are ignored
