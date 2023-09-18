@@ -453,7 +453,12 @@ static void skr_import_header(zs_scanner_t *sc)
 		if (ctx->ret != KNOT_EOK) {
 			return;
 		}
-
+		if (next_timestamp > 0) {
+			ctx->ret = key_records_verify(&ctx->r, ctx->kctx, next_timestamp - 1);
+			if (ctx->ret != KNOT_EOK) {
+				return;
+			}
+		}
 		ctx->ret = kasp_db_store_offline_records(ctx->kctx->kasp_db,
 		                                         ctx->timestamp, &ctx->r);
 		key_records_clear_rdatasets(&ctx->r);
@@ -486,6 +491,13 @@ static void skr_validate_header(zs_scanner_t *sc)
 		if (ret != KNOT_EOK) { // ctx->ret untouched
 			ERR2("invalid SignedKeyResponse for %"KNOT_TIME_PRINTF" (%s)",
 			     ctx->timestamp, knot_strerror(ret));
+		}
+		if (next_timestamp > 0) {
+			ret = key_records_verify(&ctx->r, ctx->kctx, next_timestamp - 1);
+			if (ret != KNOT_EOK) { // ctx->ret untouched
+				ERR2("invalid SignedKeyResponse for %"KNOT_TIME_PRINTF" (%s)",
+				     next_timestamp - 1, knot_strerror(ret));
+			}
 		}
 		key_records_clear_rdatasets(&ctx->r);
 	}
