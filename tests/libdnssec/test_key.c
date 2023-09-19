@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -148,7 +148,7 @@ static void test_private_key(const key_parameters_t *params)
 
 	check_key_tag(copy, params);
 	check_key_size(copy, params);
-	check_usage(copy, true, false);
+	check_usage(copy, true, true);
 
 	dnssec_key_free(copy);
 	dnssec_key_free(key);
