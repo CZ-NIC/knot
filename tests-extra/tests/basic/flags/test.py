@@ -65,6 +65,21 @@ resp = knot.dig("ns.sub.flags", "A")
 resp.check(flags="QR", noflags="AA TC RD RA AD CD Z")
 resp.cmp(bind)
 
+# Wildcard DNAME
+resp = knot.dig("a.b.wildcard-dname.flags", "A")
+resp.check(flags="QR AA", noflags="TC RD RA AD CD Z")
+resp.cmp(bind)
+
+# Wildcard DNAME "wildcard" query
+resp = knot.dig("a.*.wildcard-dname.flags", "A")
+resp.check(flags="QR AA", noflags="TC RD RA AD CD Z")
+resp.cmp(bind)
+
+# Wildcard DNAME DNAME query
+resp = knot.dig("a.wildcard-dname.flags", "DNAME")
+resp.check(flags="QR AA", noflags="TC RD RA AD CD Z")
+resp.cmp(bind)
+
 # Check maximal UDP payload which fits into a response message.
 resp = knot.dig("512resp.flags", "TXT", udp=True)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD Z")
