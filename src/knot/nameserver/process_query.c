@@ -910,7 +910,7 @@ int process_query_put_rr(knot_pkt_t *pkt, knotd_qdata_t *qdata,
 
 	/* Wildcard expansion applies only for answers. */
 	bool expand = false;
-	if (pkt->current == KNOT_ANSWER) {
+	if (pkt->current == KNOT_ANSWER && rr->type != KNOT_RRTYPE_DNAME) {
 		/* Expand if RR is wildcard. TRICK: if the asterix node is queried directly, we behave like if wildcard would be expanded. It's the same. */
 		expand = knot_dname_is_wildcard(rr->owner);
 	}
