@@ -125,6 +125,9 @@ wild-cname	CNAME	*.expanded.wildcard-cname2
 ; Wildcard leading out
 *.wildcard-out CNAME	another.world.
 
+; Wildcard DNAME
+*.wildcard-dname DNAME	some.domain.
+
 ; Text record which doesn't fit into answer section in 512 B UDP message
 513resp	TXT	( "12345678901234567890123456789012345678901234567890"
 		  "12345678901234567890123456789012345678901234567890"
