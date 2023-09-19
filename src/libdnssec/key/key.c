@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -139,6 +139,24 @@ dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key)
 	) {
 		dnssec_key_free(dup);
 		return NULL;
+	}
+
+	if (key->private_key != NULL) {
+		gnutls_privkey_init(&dup->private_key);
+
+		gnutls_privkey_type_t type = gnutls_privkey_get_type(key->private_key);
+		if (type == GNUTLS_PRIVKEY_PKCS11) {
+			gnutls_pkcs11_privkey_t tmp;
+			gnutls_privkey_export_pkcs11(key->private_key, &tmp);
+			gnutls_privkey_import_pkcs11(dup->private_key, tmp,
+			                             GNUTLS_PRIVKEY_IMPORT_AUTO_RELEASE);
+		} else {
+			assert(type == GNUTLS_PRIVKEY_X509);
+			gnutls_x509_privkey_t tmp;
+			gnutls_privkey_export_x509(key->private_key, &tmp);
+			gnutls_privkey_import_x509(dup->private_key, tmp,
+			                           GNUTLS_PRIVKEY_IMPORT_AUTO_RELEASE);
+		}
 	}
 
 	return dup;
