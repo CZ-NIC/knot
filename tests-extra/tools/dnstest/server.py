@@ -469,6 +469,10 @@ class Server(object):
         detail_log(SEP)
         f.close()
 
+    def _asan_check(self):
+        if os.path.isfile(self.ferr) and fsearch(self.ferr, "LeakSanitizer"):
+            set_err("LeakSanitizer")
+
     def _assert_check(self):
         if os.path.isfile(self.ferr) and fsearch(self.ferr, "Assertion"):
             set_err("ASSERT")
@@ -509,6 +513,7 @@ class Server(object):
         if check:
             self._assert_check()
             self._valgrind_check()
+            self._asan_check()
 
     def kill(self):
         if Context().test.stress and self.inquirer:
