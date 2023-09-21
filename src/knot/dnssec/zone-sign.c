@@ -588,6 +588,7 @@ static int zone_tree_sign(zone_tree_t *tree,
 	*expires_at = knot_time_plus(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime);
 
 	// init context structures
+	log_zone_notice(dnssec_ctx->zone->dname, "DBG DNSSEC ctx init");
 	for (size_t i = 0; i < num_threads; i++) {
 		args[i].tree = tree;
 		args[i].sign_ctx = dnssec_ctx->validation_mode
@@ -617,9 +618,11 @@ static int zone_tree_sign(zone_tree_t *tree,
 		return ret;
 	}
 
+	log_zone_notice(dnssec_ctx->zone->dname, "DBG DNSSEC ctx finished");
 	if (num_threads == 1) {
 		args[0].thread_init_errcode = 0;
 		tree_sign_thread(&args[0]);
+		log_zone_notice(dnssec_ctx->zone->dname, "DBG DNSSEC THD %i signing finished", 0);
 	} else {
 		// start working threads
 		for (size_t i = 0; i < num_threads; i++) {
@@ -631,6 +634,7 @@ static int zone_tree_sign(zone_tree_t *tree,
 		for (size_t i = 0; i < num_threads; i++) {
 			if (args[i].thread_init_errcode == 0) {
 				args[i].thread_init_errcode = pthread_join(args[i].thread, NULL);
+				log_zone_notice(dnssec_ctx->zone->dname, "DBG DNSSEC THD %zu signing finished", i);
 			}
 		}
 	}
