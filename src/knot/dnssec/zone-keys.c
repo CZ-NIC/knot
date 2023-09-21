@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -639,6 +639,21 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_key_digest_t digesttype,
 	return ret;
 }
 
+static int dup_zone_key(const zone_key_t *src, zone_key_t *dst)
+{
+	assert(src);
+	assert(dst);
+
+	*dst = *src;
+
+	dst->key = dnssec_key_dup(src->key);
+	if (dst->key == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	return KNOT_EOK;
+}
+
 zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx)
 {
 	zone_sign_ctx_t *ctx = calloc(1, sizeof(*ctx) + keyset->count * sizeof(*ctx->sign_ctxs));
@@ -647,11 +662,24 @@ zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t 
 	}
 
 	ctx->sign_ctxs = (dnssec_sign_ctx_t **)(ctx + 1);
+
+	ctx->keys = calloc(keyset->count, sizeof(*ctx->keys));
+	if (ctx->keys == NULL) {
+		zone_sign_ctx_free(ctx);
+		return NULL;
+	}
 	ctx->count = keyset->count;
-	ctx->keys = keyset->keys;
+
 	ctx->dnssec_ctx = dnssec_ctx;
 	for (size_t i = 0; i < ctx->count; i++) {
-		int ret = dnssec_sign_new(&ctx->sign_ctxs[i], ctx->keys[i].key);
+		// Clone the key to avoid thread contention on the key mutex.
+		int ret = dup_zone_key(&keyset->keys[i], &ctx->keys[i]);
+		if (ret != KNOT_EOK) {
+			zone_sign_ctx_free(ctx);
+			return NULL;
+		}
+
+		ret = dnssec_sign_new(&ctx->sign_ctxs[i], ctx->keys[i].key);
 		if (ret != DNSSEC_EOK) {
 			zone_sign_ctx_free(ctx);
 			return NULL;
@@ -688,8 +716,12 @@ void zone_sign_ctx_free(zone_sign_ctx_t *ctx)
 {
 	if (ctx != NULL) {
 		for (size_t i = 0; i < ctx->count; i++) {
+			if (ctx->keys != NULL) {
+				dnssec_key_free(ctx->keys[i].key);
+			}
 			dnssec_sign_free(ctx->sign_ctxs[i]);
 		}
+		free(ctx->keys);
 		free(ctx);
 	}
 }

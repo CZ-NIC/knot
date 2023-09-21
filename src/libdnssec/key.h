@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -134,7 +134,7 @@ void dnssec_key_free(dnssec_key_t *key);
 /*!
  * Create a copy of a DNSSEC key.
  *
- * Only a public part of the key is copied.
+ * Public key isn't duplicated.
  */
 dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key);
 
