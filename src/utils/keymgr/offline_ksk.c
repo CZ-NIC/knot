@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <time.h>
 
 #include "utils/keymgr/offline_ksk.h"
+#include "contrib/strtonum.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/key_records.h"
@@ -383,14 +384,19 @@ static void ksr_sign_header(zs_scanner_t *sc)
 	ksr_sign_ctx_t *ctx = sc->process.data;
 
 	// parse header
-	float header_ver;
-	knot_time_t next_timestamp = 0;
+	_unused_ float header_ver;
+	char next_str[21] = { 0 };
 	if (sc->error.code != 0 || ctx->ret != KNOT_EOK ||
-	    sscanf((const char *)sc->buffer, "; KeySigningRequest %f %"PRIu64,
-	           &header_ver, &next_timestamp) < 1) {
+	    sscanf((const char *)sc->buffer, "; KeySigningRequest %f %20s",
+	           &header_ver, next_str) < 1) {
 		return;
 	}
-	(void)header_ver;
+
+	knot_time_t next_timestamp;
+	if (str_to_u64(next_str, &next_timestamp) != KNOT_EOK) {
+		// trailing header without timestamp
+		next_timestamp = 0;
+	}
 
 	// sign previous KSR and inbetween KSK changes
 	if (ctx->timestamp > 0) {
@@ -422,14 +428,19 @@ static void skr_import_header(zs_scanner_t *sc)
 	ksr_sign_ctx_t *ctx = sc->process.data;
 
 	// parse header
-	float header_ver;
-	knot_time_t next_timestamp;
+	_unused_ float header_ver;
+	char next_str[21] = { 0 };
 	if (sc->error.code != 0 || ctx->ret != KNOT_EOK ||
-	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %"PRIu64,
-	           &header_ver, &next_timestamp) < 1) {
+	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %20s",
+	           &header_ver, next_str) < 1) {
 		return;
 	}
-	(void)header_ver;
+
+	knot_time_t next_timestamp;
+	if (str_to_u64(next_str, &next_timestamp) != KNOT_EOK) {
+		// trailing header without timestamp
+		next_timestamp = 0;
+	}
 
 	// delete possibly existing conflicting offline records
 	ctx->ret = kasp_db_delete_offline_records(
@@ -456,14 +467,19 @@ static void skr_validate_header(zs_scanner_t *sc)
 {
 	ksr_sign_ctx_t *ctx = sc->process.data;
 
-	float header_ver;
-	knot_time_t next_timestamp;
+	_unused_ float header_ver;
+	char next_str[21] = { 0 };
 	if (sc->error.code != 0 || ctx->ret != KNOT_EOK ||
-	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %"PRIu64,
-	           &header_ver, &next_timestamp) < 1) {
+	    sscanf((const char *)sc->buffer, "; SignedKeyResponse %f %20s",
+	           &header_ver, next_str) < 1) {
 		return;
 	}
-	(void)header_ver;
+
+	knot_time_t next_timestamp;
+	if (str_to_u64(next_str, &next_timestamp) != KNOT_EOK) {
+		// trailing header without timestamp
+		next_timestamp = 0;
+	}
 
 	if (ctx->timestamp > 0 && ctx->ret == KNOT_EOK) {
 		int ret = key_records_verify(&ctx->r, ctx->kctx, ctx->timestamp);
