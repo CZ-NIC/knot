@@ -58,11 +58,13 @@ t.link(zone, knot)
 
 knot.zonefile_sync = 24 * 60 * 60
 
+# ZSK side
 knot.dnssec(zone).enable = True
 knot.dnssec(zone).manual = True
 knot.dnssec(zone).offline_ksk = True
 knot.dnssec(zone).dnskey_ttl = 3600
 knot.dnssec(zone).zone_max_ttl = 3600
+# optional
 knot.dnssec(zone).zsk_lifetime = 3600 * 24 * 365
 
 # needed for keymgr
@@ -71,12 +73,13 @@ knot.gen_confile()
 signer = t.server("knot")
 t.link(zone, signer)
 
-# mandatory options
+# KSK side
 signer.dnssec(zone).enable = True
 signer.dnssec(zone).manual = True
 signer.dnssec(zone).offline_ksk = True
-signer.dnssec(zone).rrsig_lifetime = 3600 * 24 * 160
 #signer.dnssec(zone).rrsig_refresh = 3600 * 24 * 40 # unset
+# optional
+signer.dnssec(zone).rrsig_lifetime = 3600 * 24 * 160
 
 # needed for keymgr
 signer.gen_confile()
