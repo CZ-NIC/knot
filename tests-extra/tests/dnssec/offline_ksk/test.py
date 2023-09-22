@@ -135,19 +135,22 @@ else:
 
 knot.zonefile_sync = 24 * 60 * 60
 
+# ZSK side
 knot.dnssec(zone).enable = True
 knot.dnssec(zone).manual = True
 knot.dnssec(zone).offline_ksk = True
-knot.dnssec(zone).alg = "ECDSAP384SHA384"
 knot.dnssec(zone).dnskey_ttl = 2
 knot.dnssec(zone).zone_max_ttl = 3
+# optional
+knot.dnssec(zone).alg = "ECDSAP384SHA384"
 knot.dnssec(zone).zsk_lifetime = STARTUP + 6 * TICK # see ksk1 lifetime
-knot.dnssec(zone).ksk_lifetime = NONSENSE
 knot.dnssec(zone).propagation_delay = TICK - 2
 knot.dnssec(zone).cds_publish = "rollover"
 knot.dnssec(zone).rrsig_lifetime = 15
 knot.dnssec(zone).rrsig_refresh = 6
 knot.dnssec(zone).rrsig_prerefresh = 1
+# options without any effect
+knot.dnssec(zone).ksk_lifetime = NONSENSE
 
 # needed for keymgr
 knot.gen_confile()
@@ -155,21 +158,21 @@ knot.gen_confile()
 signer = t.server("knot")
 t.link(zone, signer)
 
-# mandatory options
+# KSK side
 signer.dnssec(zone).enable = True
 signer.dnssec(zone).manual = True
 signer.dnssec(zone).offline_ksk = True
-# needed options
+signer.dnssec(zone).rrsig_refresh = 2
+# optional
 signer.dnssec(zone).alg = "ECDSAP384SHA384"
+signer.dnssec(zone).cds_publish = random.choice(["none", "rollover"])
+signer.dnssec(zone).rrsig_lifetime = 6
+signer.dnssec(zone).rrsig_prerefresh = 1
 # options without any effect
 signer.dnssec(zone).dnskey_ttl = int(NONSENSE / 10)
 signer.dnssec(zone).zone_max_ttl = NONSENSE
 signer.dnssec(zone).ksk_lifetime = NONSENSE * 2
 signer.dnssec(zone).propagation_delay = int(NONSENSE / 10)
-signer.dnssec(zone).cds_publish = random.choice(["none", "rollover"])
-signer.dnssec(zone).rrsig_lifetime = 6
-signer.dnssec(zone).rrsig_refresh = 2
-signer.dnssec(zone).rrsig_prerefresh = 1
 
 # needed for keymgr
 signer.gen_confile()
