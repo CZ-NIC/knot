@@ -720,7 +720,8 @@ class Server(object):
                 pass
             except Exception as e:
                 detail_log("DIG returned: %s" % e)
-                time.sleep(timeout)
+                if t < tries - 1:
+                    time.sleep(timeout)
 
         raise Failed("Can't query server='%s' for '%s %s %s'" % \
                      (self.name, rname, rclass, rtype))
