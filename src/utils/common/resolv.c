@@ -14,9 +14,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <limits.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "utils/common/resolv.h"
 #include "utils/common/msg.h"
@@ -25,6 +27,17 @@
 #include "contrib/ucw/lists.h"
 
 #define RESOLV_FILE	"/etc/resolv.conf"
+
+void resolv_conf_init(resolv_conf_t *conf)
+{
+	init_list(&conf->domains);
+	conf->options.ndots = 1;
+}
+
+void resolv_conf_deinit(resolv_conf_t *conf)
+{
+	WALK_LIST_FREE(conf->domains);
+}
 
 srv_info_t* parse_nameserver(const char *str, const char *def_port)
 {
@@ -208,4 +221,122 @@ void get_nameservers(list_t *servers, const char *def_port)
 			add_tail(servers, (node_t *)server);
 		}
 	}
+}
+
+int get_domains(resolv_conf_t *conf)
+{
+	char line[512];
+	char hostname[HOST_NAME_MAX + 1];
+
+	int ret = gethostname(hostname, HOST_NAME_MAX + 1);
+	if (ret == -1) {
+		return knot_map_errno();
+	}
+
+	char *domain_name = strchr(hostname, '.');
+	if (domain_name == NULL) {
+		domain_name = ".";
+	}
+
+	size_t domain_name_len = strlen(domain_name);
+	if (domain_name[domain_name_len - 1] != '.') {
+		domain_name[domain_name_len] = '.';
+		domain_name_len += 1;
+		// NOTE 'domain_name' is not null-terminated string anymore
+	}
+	resolv_domain_t *new_node = malloc(sizeof(resolv_domain_t) + domain_name_len);
+	new_node->head = (struct node){ 0 };
+	new_node->tail = (struct node){ 0 };
+	new_node->len = domain_name_len;
+	memcpy(new_node->domain, domain_name, domain_name_len);
+	add_tail(&conf->domains, (node_t *)new_node);
+
+	// Open config file.
+	FILE *f = fopen(RESOLV_FILE, "r");
+	if (f == NULL) {
+		return 0;
+	}
+
+	// Read lines from config file.
+	while (fgets(line, sizeof(line), f) != NULL) {
+		size_t len;
+		char   *pos = line;
+		char   *option, *value;
+
+		// Find leading white characters.
+		len = strspn(pos, SEP_CHARS);
+		pos += len;
+
+		// Start of the first token.
+		option = pos;
+
+		// Find length of the token.
+		len = strcspn(pos, SEP_CHARS);
+		pos += len;
+
+		// Check if the token is not empty.
+		if (len == 0) {
+			continue;
+		}
+
+		// Find separating white characters.
+		len = strspn(pos, SEP_CHARS);
+		pos += len;
+
+		// Check if there is a separation between tokens.
+		if (len == 0) {
+			continue;
+		}
+
+		// Copy of the second token.
+		len = strcspn(pos, SEP_CHARS);
+		value = strndup(pos, len);
+
+		// Process value with respect to option name.
+		const size_t search_len = sizeof("search") - 1;
+		if (strncmp(option, "search", search_len) == 0) {
+			WALK_LIST_FREE(conf->domains);
+			while (value) {
+				int not_fqdn = false;
+				if (value[len - 1] != '.') {
+					not_fqdn = true;
+				}
+
+				new_node = malloc(sizeof(resolv_domain_t) + len + not_fqdn);
+				new_node->head = (struct node){ 0 };
+				new_node->tail = (struct node){ 0 };
+				new_node->len = len + not_fqdn;
+				memcpy(new_node->domain, value, len);
+				if (not_fqdn) {
+					new_node->domain[len] = '.';
+				}
+				add_tail(&conf->domains, (node_t *)new_node);
+
+				// parse next value from input
+				pos += len;
+				// Find leading white characters.
+				len = strspn(pos, SEP_CHARS);
+				pos += len;
+
+				// Find length of the token.
+				len = strcspn(pos, SEP_CHARS);
+				pos += len;
+
+				// Check if the token is not empty.
+				if (len == 0) {
+					break;
+				}
+
+				// Copy of the second token.
+				len = strcspn(pos, SEP_CHARS);
+				free(value);
+				value = strndup(pos, len);
+			}
+		}
+	}
+
+	// Close config file.
+	fclose(f);
+
+	return KNOT_EOK;
 }

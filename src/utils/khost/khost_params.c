@@ -26,6 +26,7 @@
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
 #include "libknot/libknot.h"
+#include "contrib/macros.h"
 #include "contrib/strtonum.h"
 #include "contrib/ucw/lists.h"
 
@@ -106,35 +107,63 @@ static int parse_server(const char *value, list_t *servers, const char *def_port
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Count whether there are less occurrences of `cmp` character in the string than `lt`.
+ *
+ * \param str		Input string.
+ * \param str_len	Length of compared string.
+ * \param cmp		Character we looking for.
+ * \param lt		Count of characters that should be less than this number.
+ *
+ * \retval = 0 string not satisfy the count condition.
+ * \retval > 0 string satisfy the count condition.
+ * \retval < 0 error.
+ */
+static int knot_strchr_cnt_lt(char *str, size_t str_len, char cmp, size_t lt)
+{
+	for(char *_it = str, *end = str + str_len;
+	    lt > 0 && _it != end;
+	    ++_it
+	) {
+		lt -= (*_it == cmp);
+	}
+	return lt;
+}
+
 static int parse_name(const char *value, list_t *queries, const query_t *conf)
 {
-	char	*reverse = get_reverse_name(value);
-	char	*ascii_name = (char *)value;
-	query_t	*query;
+	char		*reverse = get_reverse_name(value);
+	char		*ascii_name = (char *)value;
+	char		*freeable_name = NULL;
+	query_t		*query;
+	resolv_conf_t	resolv_conf;
 
 	if (conf->idn) {
-		ascii_name = name_from_idn(value);
+		freeable_name = ascii_name = name_from_idn(value);
 		if (ascii_name == NULL) {
 			free(reverse);
 			return KNOT_EINVAL;
 		}
 	}
 
-	// If name is not FQDN, append trailing dot.
-	char *fqd_name = get_fqd_name(ascii_name);
-
-	if (conf->idn) {
-		free(ascii_name);
+	resolv_conf_init(&resolv_conf);
+	int ret = get_domains(&resolv_conf); // load /etc/resolv.conf
+	if (ret != KNOT_EOK) {
+		free(freeable_name);
+		resolv_conf_deinit(&resolv_conf);
+		return ret;
 	}
+	int not_finalized = knot_strchr_cnt_lt(ascii_name, strlen(ascii_name),
+	                                       '.', resolv_conf.options.ndots);
 
 	// RR type is known.
 	if (conf->type_num >= 0) {
 		if (conf->type_num == KNOT_RRTYPE_PTR) {
-			free(fqd_name);
-
 			// Check for correct address.
 			if (reverse == NULL) {
 				ERR("invalid IPv4/IPv6 address %s", value);
+				free(freeable_name);
+				resolv_conf_deinit(&resolv_conf);
 				return KNOT_EINVAL;
 			}
 
@@ -142,59 +171,97 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 			query = query_create(reverse, conf);
 			free(reverse);
 			if (query == NULL) {
+				free(freeable_name);
+				resolv_conf_deinit(&resolv_conf);
 				return KNOT_ENOMEM;
 			}
 			add_tail(queries, (node_t *)query);
 		} else {
 			free(reverse);
 
-			// Add query for name and specified type.
-			query = query_create(fqd_name, conf);
-			free(fqd_name);
-			if (query == NULL) {
-				return KNOT_ENOMEM;
+			node_t *n;
+			WALK_LIST(n, resolv_conf.domains) {
+				resolv_domain_t *d = (resolv_domain_t *)n;
+				size_t length_remain = KNOT_DNAME_MAXLEN;
+				char fqdn_tmp[KNOT_DNAME_MAXLEN + 1];
+				strncpy(fqdn_tmp, ascii_name, length_remain);
+				length_remain -= strlen(ascii_name);
+				if (fqdn_tmp[KNOT_DNAME_MAXLEN - length_remain - 1] != '.') {
+					strncat(fqdn_tmp, ".", length_remain);
+					length_remain -= 1;
+				}
+				if (not_finalized) { // append suffix
+					strncat(fqdn_tmp, d->domain, MIN(d->len, length_remain));
+				}
+
+				// Add query for name and specified type.
+				query = query_create(fqdn_tmp, conf);
+				if (query == NULL) {
+					free(freeable_name);
+					resolv_conf_deinit(&resolv_conf);
+					return KNOT_ENOMEM;
+				}
+				add_tail(queries, (node_t *)query);
 			}
-			add_tail(queries, (node_t *)query);
 		}
 	// RR type is unknown, use defaults.
 	} else {
 		if (reverse == NULL) {
-			// Add query for name and type A.
-			query = query_create(fqd_name, conf);
-			if (query == NULL) {
-				free(fqd_name);
-				return KNOT_ENOMEM;
-			}
-			query->type_num = KNOT_RRTYPE_A;
-			add_tail(queries, (node_t *)query);
+			node_t *n;
+			WALK_LIST(n, resolv_conf.domains) {
+				resolv_domain_t *d = (resolv_domain_t *)n;
+				size_t length_remain = KNOT_DNAME_MAXLEN;
+				char fqdn_tmp[KNOT_DNAME_MAXLEN + 1];
+				strncpy(fqdn_tmp, ascii_name, length_remain);
+				length_remain -= strlen(ascii_name);
+				if (fqdn_tmp[KNOT_DNAME_MAXLEN - length_remain - 1] != '.') {
+					strncat(fqdn_tmp, ".", length_remain);
+					length_remain -= 1;
+				}
+				if (not_finalized) { // append suffix
+					strncat(fqdn_tmp, d->domain, MIN(d->len, length_remain));
+				}
 
-			// Add query for name and type AAAA.
-			query = query_create(fqd_name, conf);
-			if (query == NULL) {
-				free(fqd_name);
-				return KNOT_ENOMEM;
-			}
-			query->type_num = KNOT_RRTYPE_AAAA;
-			query->style.hide_cname = true;
-			add_tail(queries, (node_t *)query);
+				// Add query for name and type A.
+				query = query_create(fqdn_tmp, conf);
+				if (query == NULL) {
+					free(freeable_name);
+					resolv_conf_deinit(&resolv_conf);
+					return KNOT_ENOMEM;
+				}
+				query->type_num = KNOT_RRTYPE_A;
+				add_tail(queries, (node_t *)query);
 
-			// Add query for name and type MX.
-			query = query_create(fqd_name, conf);
-			if (query == NULL) {
-				free(fqd_name);
-				return KNOT_ENOMEM;
+
+				// Add query for name and type AAAA.
+				query = query_create(fqdn_tmp, conf);
+				if (query == NULL) {
+					free(freeable_name);
+					resolv_conf_deinit(&resolv_conf);
+					return KNOT_ENOMEM;
+				}
+				query->type_num = KNOT_RRTYPE_AAAA;
+				query->style.hide_cname = true;
+				add_tail(queries, (node_t *)query);
+
+				// Add query for name and type MX.
+				query = query_create(fqdn_tmp, conf);
+				if (query == NULL) {
+					free(ascii_name);
+					resolv_conf_deinit(&resolv_conf);
+					return KNOT_ENOMEM;
+				}
+				query->type_num = KNOT_RRTYPE_MX;
+				query->style.hide_cname = true;
+				add_tail(queries, (node_t *)query);
 			}
-			free(fqd_name);
-			query->type_num = KNOT_RRTYPE_MX;
-			query->style.hide_cname = true;
-			add_tail(queries, (node_t *)query);
 		} else {
-			free(fqd_name);
-
 			// Add reverse query for address.
 			query = query_create(reverse, conf);
 			free(reverse);
 			if (query == NULL) {
+				free(freeable_name);
+				resolv_conf_deinit(&resolv_conf);
 				return KNOT_ENOMEM;
 			}
 			query->type_num = KNOT_RRTYPE_PTR;
@@ -202,6 +269,8 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 		}
 	}
 
+	free(freeable_name);
+	resolv_conf_deinit(&resolv_conf);
 	return KNOT_EOK;
 }
 
