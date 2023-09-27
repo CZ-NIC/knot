@@ -52,6 +52,7 @@ enum {
 	KNOT_PF_NOCANON   = 1 << 5, /*!< Don't canonicalize rrsets during parsing. */
 	KNOT_PF_ORIGTTL   = 1 << 6, /*!< Write RRSIGs with their original TTL. */
 	KNOT_PF_SOAMINTTL = 1 << 7, /*!< Write SOA with its minimum-ttl as TTL. */
+	KNOT_PF_BUFENOUGH = 1 << 8, /*!< The output buffer is big enough for the output. */
 };
 
 typedef struct knot_pkt knot_pkt_t;
