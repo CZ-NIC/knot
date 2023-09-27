@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,12 +41,12 @@
  * \return Output size, negative number on error (KNOT_E*).
  */
 int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
-                             uint16_t max_size, uint16_t rotate,
+                             uint32_t max_size, uint16_t rotate,
                              knot_compr_t *compr, uint16_t flags);
 
 /*! \brief Same as knot_rrset_to_wire_extra but without rrset rotation and flags. */
 static inline int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
-                                     uint16_t max_size, knot_compr_t *compr)
+                                     uint32_t max_size, knot_compr_t *compr)
 {
 	return knot_rrset_to_wire_extra(rrset, wire, max_size, 0, compr, 0);
 }
