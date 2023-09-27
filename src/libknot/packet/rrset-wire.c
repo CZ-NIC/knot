@@ -505,6 +505,11 @@ int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
 	uint8_t *write = wire;
 	size_t capacity = max_size;
 
+	// FIXME remove this and make the max_size parameter uint32_t in next major libknot release!
+	if ((flags & KNOT_PF_BUFENOUGH)) {
+		capacity = SIZE_MAX;
+	}
+
 	uint16_t count = rrset->rrs.count;
 	for (int i = rotate; i < count + rotate; i++) {
 		uint16_t pos = (i < count) ? i : (i - count);
