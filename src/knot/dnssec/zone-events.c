@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -297,7 +297,8 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		}
 	}
 
-	log_zone_info(zone_name, "DNSSEC, successfully signed");
+	log_zone_info(zone_name, "DNSSEC, successfully signed, serial %u",
+	              zone_contents_serial(update->new_cont));
 
 done:
 	if (result == KNOT_EOK) {
@@ -423,7 +424,8 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		}
 	}
 
-	log_zone_info(zone_name, "DNSSEC, incrementally signed");
+	log_zone_info(zone_name, "DNSSEC, incrementally signed, serial %u",
+	              zone_contents_serial(update->new_cont));
 
 done:
 	if (result == KNOT_EOK) {
