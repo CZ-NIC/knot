@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx
 	}
 
 	int ret = knot_rrset_to_wire_extra(rrset, ctx->buf, ctx->buf_size, 0,
-	                                   NULL, KNOT_PF_ORIGTTL | KNOT_PF_BUFENOUGH);
+	                                   NULL, KNOT_PF_ORIGTTL);
 
 	// cleanup apex RRSIGs mess
 	if (node == ctx->apex && rrset->type == KNOT_RRTYPE_RRSIG) {

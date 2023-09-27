@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -489,7 +489,7 @@ static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index, uint8_t **d
 
 _public_
 int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
-                             uint16_t max_size, uint16_t rotate,
+                             uint32_t max_size, uint16_t rotate,
                              knot_compr_t *compr, uint16_t flags)
 {
 	if (rrset == NULL || wire == NULL) {
@@ -504,11 +504,6 @@ int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
 
 	uint8_t *write = wire;
 	size_t capacity = max_size;
-
-	// FIXME remove this and make the max_size parameter uint32_t in next major libknot release!
-	if ((flags & KNOT_PF_BUFENOUGH)) {
-		capacity = SIZE_MAX;
-	}
 
 	uint16_t count = rrset->rrs.count;
 	for (int i = rotate; i < count + rotate; i++) {
