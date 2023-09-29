@@ -41,13 +41,14 @@
 
 #define FRAME_COUNT_TX		2048
 #define FRAME_COUNT_RX		2048
-#define FRAME_COUNT		(FRAME_COUNT_TX + FRAME_COUNT_RX)
+#define FRAME_COUNT_HW		2048 // Reserved buffers for HW RX.
+#define FRAME_COUNT		(FRAME_COUNT_TX + FRAME_COUNT_RX + FRAME_COUNT_HW)
 
 #define RING_LEN_TX		FRAME_COUNT_TX
 #define RING_LEN_CQ		FRAME_COUNT_TX
 #define RING_LEN_RX		FRAME_COUNT_RX
 /* It's recommended that the FQ ring size >= HW RX ring size + AF_XDP RX ring size. */
-#define RING_LEN_FQ		8192
+#define RING_LEN_FQ		FRAME_COUNT_HW + FRAME_COUNT_RX
 
 #define RETRY_DELAY		20 // In nanoseconds.
 
@@ -107,17 +108,17 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 
 	/* Designate the rest of buffers for RX, and pass them to the driver. */
 	uint32_t idx = 0;
-	ret = xsk_ring_prod__reserve(&umem->fq, FRAME_COUNT_RX, &idx);
-	if (ret != FRAME_COUNT_RX) {
+	ret = xsk_ring_prod__reserve(&umem->fq, RING_LEN_FQ, &idx);
+	if (ret != RING_LEN_FQ) {
 		assert(0);
 		return KNOT_ERROR;
 	}
 	assert(idx == 0);
-	assert(FRAME_COUNT == FRAME_COUNT_TX + FRAME_COUNT_RX);
+	assert(FRAME_COUNT == FRAME_COUNT_TX + RING_LEN_FQ);
 	for (uint32_t i = FRAME_COUNT_TX; i < FRAME_COUNT; ++i) {
 		*xsk_ring_prod__fill_addr(&umem->fq, idx++) = i * FRAME_SIZE;
 	}
-	xsk_ring_prod__submit(&umem->fq, FRAME_COUNT_RX);
+	xsk_ring_prod__submit(&umem->fq, RING_LEN_FQ);
 
 	return KNOT_EOK;
 }
