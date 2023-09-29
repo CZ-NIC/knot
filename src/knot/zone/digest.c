@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include "libknot/libknot.h"
 
 #define DIGEST_BUF_MIN 4096
-#define DIGEST_BUF_MAX (40 * 1024 * 1024)
 
 typedef struct {
 	size_t buf_size;
@@ -61,19 +60,17 @@ static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx
 		}
 	}
 
-	// serialize RRSet, expand buf as needed
-	int ret = knot_rrset_to_wire_extra(rrset, ctx->buf, ctx->buf_size, 0,
-	                                   NULL, KNOT_PF_ORIGTTL);
-	while (ret == KNOT_ESPACE && ctx->buf_size < DIGEST_BUF_MAX) {
-		free(ctx->buf);
-		ctx->buf_size *= 2;
-		ctx->buf = malloc(ctx->buf_size);
-		if (ctx->buf == NULL) {
+	size_t buf_req = knot_rrset_size(rrset);
+	if (buf_req > ctx->buf_size) {
+		uint8_t *newbuf = realloc(ctx->buf, buf_req);
+		if (newbuf == NULL) {
 			return KNOT_ENOMEM;
 		}
-		ret = knot_rrset_to_wire_extra(rrset, ctx->buf, ctx->buf_size, 0,
-		                               NULL, KNOT_PF_ORIGTTL);
+		ctx->buf_size = buf_req;
 	}
+
+	int ret = knot_rrset_to_wire_extra(rrset, ctx->buf, ctx->buf_size, 0,
+	                                   NULL, KNOT_PF_ORIGTTL);
 
 	// cleanup apex RRSIGs mess
 	if (node == ctx->apex && rrset->type == KNOT_RRTYPE_RRSIG) {

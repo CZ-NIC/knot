@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -157,13 +157,13 @@ static int sign_ctx_add_self(dnssec_sign_ctx_t *ctx, const uint8_t *rdata)
  */
 static int sign_ctx_add_records(dnssec_sign_ctx_t *ctx, const knot_rrset_t *covered)
 {
-	// huge block of rrsets can be optionally created
-	uint8_t *rrwf = malloc(KNOT_WIRE_MAX_PKTSIZE);
+	size_t rrwl = knot_rrset_size(covered);
+	uint8_t *rrwf = malloc(rrwl);
 	if (!rrwf) {
 		return KNOT_ENOMEM;
 	}
 
-	int written = knot_rrset_to_wire(covered, rrwf, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	int written = knot_rrset_to_wire_extra(covered, rrwf, rrwl, 0, NULL, 0);
 	if (written < 0) {
 		free(rrwf);
 		return written;
