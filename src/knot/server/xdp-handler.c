@@ -184,7 +184,9 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 		// Try to allocate a buffer for a reply.
 		if (knot_xdp_reply_alloc(ctx->sock, msg_recv, msg_send) != KNOT_EOK) {
-			log_notice("UDP, failed to send some packets");
+			if (log_enabled_debug()) {
+				log_debug("UDP/XDP, failed to allocate a buffer");
+			}
 			break; // Drop the rest of the messages.
 		}
 		ctx->msg_udp_count++;
@@ -202,7 +204,9 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	int ret = knot_tcp_recv(ctx->relays, ctx->msg_recv, ctx->msg_recv_count,
 	                        ctx->tcp_table, ctx->syn_table, XDP_TCP_IGNORE_NONE);
 	if (ret != KNOT_EOK) {
-		log_notice("TCP, failed to process some packets (%s)", knot_strerror(ret));
+		if (log_enabled_debug()) {
+			log_debug("TCP/XDP, failed to process some packets (%s)", knot_strerror(ret));
+		}
 		return;
 	} else if (knot_tcp_relay_empty(&ctx->relays[0])) { // no TCP traffic
 		return;
