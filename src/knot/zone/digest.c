@@ -66,6 +66,7 @@ static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx
 		if (newbuf == NULL) {
 			return KNOT_ENOMEM;
 		}
+		ctx->buf = newbuf;
 		ctx->buf_size = buf_req;
 	}
 
