@@ -269,7 +269,7 @@ static bool check_member(catalog_upd_val_t *val, conf_t *conf, catalog_t *cat)
 	if (!conf_rawid_exists(conf, C_ZONE, val->add_catz, knot_dname_size(val->add_catz))) {
 		knot_dname_txt_storage_t cat_str;
 		(void)knot_dname_to_str(cat_str, val->add_catz, sizeof(cat_str));
-		log_zone_error(val->member, "catalog template zone '%s' not configured, ignoring", cat_str);
+		log_zone_error(val->member, "catalog template zone %s not configured, ignoring", cat_str);
 		return false;
 	}
 	if (conf_rawid_exists(conf, C_ZONE, val->member, knot_dname_size(val->member))) {
