@@ -510,7 +510,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mod
 			if (forw == NULL) {
 				knot_dname_txt_storage_t forw_str;
 				(void)knot_dname_to_str(forw_str, forw_name, sizeof(forw_str));
-				log_zone_warning(z->name, "zone to reverse '%s' doesn't exist",
+				log_zone_warning(z->name, "zone to reverse %s doesn't exist",
 				                 forw_str);
 			} else {
 				z->reverse_from = forw;
