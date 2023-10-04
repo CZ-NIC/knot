@@ -2301,8 +2301,6 @@ Invalid DS or NSEC3PARAM record
 .IP \(bu 2
 CDS or CDNSKEY inconsistency
 .IP \(bu 2
-DS record exists at a non\-delegation point (\fI\%RFC 3658\fP)
-.IP \(bu 2
 All other DNSSEC checks executed during \fI\%dnssec\-validation\fP
 .UNINDENT
 .sp
