@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,7 +61,6 @@ typedef enum {
 	SEM_ERR_DS_RDATA_ALG,
 	SEM_ERR_DS_RDATA_DIGLEN,
 	SEM_ERR_DS_APEX,
-	SEM_ERR_DS_NONDELEG,
 
 	SEM_ERR_DNSKEY_NONE,
 	SEM_ERR_DNSKEY_INVALID,
