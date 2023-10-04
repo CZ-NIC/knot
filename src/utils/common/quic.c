@@ -560,11 +560,6 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	};
 	ctx->tls->sockfd = sockfd;
 
-	if (quic_timeout(ctx->idle_ts, ctx->tls->wait)) {
-		WARN("QUIC, peer took too long to respond");
-		tls_ctx_deinit(ctx->tls);
-		return KNOT_NET_ETIMEOUT;
-	}
 	ret = quic_send(ctx, sockfd, dst_addr->ai_family);
 	if (ret != KNOT_EOK) {
 		tls_ctx_deinit(ctx->tls);
@@ -572,7 +567,11 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	}
 
 	ret = poll(&pfd, 1, ctx->tls->wait * 1000);
-	if (ret < 0) {
+	if (ret == 0) {
+		WARN("QUIC, peer took too long to respond");
+		tls_ctx_deinit(ctx->tls);
+		return KNOT_NET_ECONNECT;
+	} else if (ret < 0) {
 		tls_ctx_deinit(ctx->tls);
 		return knot_map_errno();
 	}
