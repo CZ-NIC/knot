@@ -2525,7 +2525,6 @@ Extra checks:
 - Missing glue A or AAAA record
 - Invalid DS or NSEC3PARAM record
 - CDS or CDNSKEY inconsistency
-- DS record exists at a non-delegation point (:rfc:`3658`)
 - All other DNSSEC checks executed during :ref:`zone_dnssec-validation`
 
 .. NOTE::

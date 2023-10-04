@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -70,8 +70,6 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"invalid digest length in DS",
 	[SEM_ERR_DS_APEX] =
 	"DS at the zone apex",
-	[SEM_ERR_DS_NONDELEG] =
-	"DS at non-delegation point",
 
 	[SEM_ERR_DNSKEY_NONE] =
 	"missing DNSKEY",
@@ -327,12 +325,6 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 	}
 
 	if (!(data->level & OPTIONAL)) {
-		return KNOT_EOK;
-	}
-
-	if (!(node->flags & NODE_FLAGS_DELEG)) {
-		data->handler->cb(data->handler, data->zone, node->owner,
-		                  SEM_ERR_DS_NONDELEG, NULL);
 		return KNOT_EOK;
 	}
 
