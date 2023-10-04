@@ -322,6 +322,7 @@ static int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,
 				return KNOT_EOK;
 			case NGTCP2_ERR_WRITE_MORE:
 				assert(0);
+				return KNOT_NET_ESEND;
 			case NGTCP2_ERR_STREAM_SHUT_WR:
 				ctx->stream.id = -1;
 				// [[ fallthrough ]]
