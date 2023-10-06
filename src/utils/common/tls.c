@@ -704,7 +704,7 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 
 void tls_ctx_close(tls_ctx_t *ctx)
 {
-	if (ctx == NULL || ctx->session == NULL) {
+	if (ctx == NULL || ctx->session == NULL || ctx->sockfd < 0) {
 		return;
 	}
 
