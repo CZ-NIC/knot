@@ -32,13 +32,19 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 kjournalprint \- Knot DNS journal print utility
 .SH SYNOPSIS
 .sp
-\fBkjournalprint\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoption\fP\&...] \fIzone_name\fP
+\fBkjournalprint\fP [\fIconfig_option\fP] [\fIoptions\fP] \fIzone_name\fP
 .sp
-\fBkjournalprint\fP [\fIconfig_option\fP \fIconfig_argument\fP] \fB\-z\fP
+\fBkjournalprint\fP [\fIconfig_option\fP] \fB\-z\fP
 .SH DESCRIPTION
 .sp
 The program prints zone history stored in a journal database. As default,
 changes are colored for terminal.
+.SS Parameters
+.INDENT 0.0
+.TP
+\fIzone_name\fP
+A name of the zone to print the history for.
+.UNINDENT
 .SS Config options
 .INDENT 0.0
 .TP
@@ -85,12 +91,6 @@ Print the program help.
 .TP
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
-.UNINDENT
-.SS Parameters
-.INDENT 0.0
-.TP
-\fIzone_name\fP
-A name of the zone to print the history for.
 .UNINDENT
 .SH EXIT VALUES
 .sp

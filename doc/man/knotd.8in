@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 knotd \- Knot DNS server daemon
 .SH SYNOPSIS
 .sp
-\fBknotd\fP [\fIparameters\fP]
+\fBknotd\fP [\fIoptions\fP]
 .SH DESCRIPTION
 .sp
 Knot DNS is a high\-performance authoritative DNS server. The \fIknotd\fP program is

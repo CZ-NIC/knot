@@ -30,6 +30,9 @@ Parameters
 *name*
   Specifies the domain name to be hashed.
 
+*flags*
+  Specifies NSEC3 flags as an unsigned integer.
+
 Exit values
 -----------
 
