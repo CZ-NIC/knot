@@ -6,7 +6,7 @@
 Synopsis
 --------
 
-:program:`kxdpgun` [*options*] **-i** *filename* *targetIP*
+:program:`kxdpgun` [*options*] **-i** *filename* *target_IP*
 
 Description
 -----------
@@ -20,6 +20,15 @@ checked against queries.
 
 The number of parallel threads is autodetected according to the number of queues
 configured for the network interface.
+
+Parameters
+..........
+
+*filename*
+  Path to the queries file. See the description below regarding the file format.
+
+*target_IP*
+  The IPv4 or IPv6 address of remote destination.
 
 Options
 .......
@@ -66,9 +75,6 @@ Options
   Override the auto-detected source IP address. If an address range is specified
   instead, various IPs from the range will be used for different queries uniformly
   (address range not supported in the QUIC mode).
-
-*targetIP*
-  The IPv4 or IPv6 address of remote destination.
 
 **-L**, **--mac-local**
   Override auto-detected local MAC address.

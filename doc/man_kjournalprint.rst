@@ -6,15 +6,21 @@
 Synopsis
 --------
 
-:program:`kjournalprint` [*config_option* *config_argument*] [*option*...] *zone_name*
+:program:`kjournalprint` [*config_option*] [*options*] *zone_name*
 
-:program:`kjournalprint` [*config_option* *config_argument*] **-z**
+:program:`kjournalprint` [*config_option*] **-z**
 
 Description
 -----------
 
 The program prints zone history stored in a journal database. As default,
 changes are colored for terminal.
+
+Parameters
+..........
+
+*zone_name*
+  A name of the zone to print the history for.
 
 Config options
 ..............
@@ -62,12 +68,6 @@ Options
 
 **-V**, **--version**
   Print the program version.
-
-Parameters
-..........
-
-*zone_name*
-  A name of the zone to print the history for.
 
 Exit values
 -----------

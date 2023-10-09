@@ -6,7 +6,7 @@
 Synopsis
 --------
 
-:program:`knotd` [*parameters*]
+:program:`knotd` [*options*]
 
 Description
 -----------

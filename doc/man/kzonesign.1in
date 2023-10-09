@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 kzonesign \- DNSSEC signing utility
 .SH SYNOPSIS
 .sp
-\fBkzonesign\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoptions\fP] \fIzone_name\fP
+\fBkzonesign\fP [\fIconfig_option\fP] [\fIoptions\fP] \fIzone_name\fP
 .SH DESCRIPTION
 .sp
 This utility reads the zone\(aqs zone file, signs the zone according to given
@@ -40,6 +40,12 @@ configuration, and writes the signed zone file back. An alternative mode
 is DNSSEC validation of the given zone. The signing or validation
 can run in parallel if enabled in the configuration (see policy.signing\-threads
 and zone.adjust\-threads).
+.SS Parameters
+.INDENT 0.0
+.TP
+\fIzone_name\fP
+A name of the zone to be signed.
+.UNINDENT
 .SS Config options
 .INDENT 0.0
 .TP
@@ -73,12 +79,6 @@ Print the program help.
 .TP
 \fB\-V\fP, \fB\-\-version\fP
 Print the program version.
-.UNINDENT
-.SS Parameters
-.INDENT 0.0
-.TP
-\fIzone_name\fP
-A name of the zone to be signed.
 .UNINDENT
 .SH EXIT VALUES
 .sp

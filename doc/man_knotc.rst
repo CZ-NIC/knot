@@ -6,7 +6,7 @@
 Synopsis
 --------
 
-:program:`knotc` [*parameters*] *action* [*action_args*]
+:program:`knotc` [*options*] [*action*]
 
 Description
 -----------
