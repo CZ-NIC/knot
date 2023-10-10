@@ -8,7 +8,7 @@ Synopsis
 
 :program:`keymgr` [*config_option*] [*options*] *zone_name* *command*
 
-:program:`keymgr` [*config_option*] **-l**
+:program:`keymgr` [*config_option*] [-j] **-l**
 
 :program:`keymgr` **-t** *parameter*...
 
