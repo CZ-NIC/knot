@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,12 +39,14 @@ static void print_help(void)
 	       "  %s [-c | -C | -D <path>] -l\n"
 	       "  %s -t <tsig_name> [<algorithm> [<bits>]]\n"
 	       "\n"
-	       "Parameters:\n"
+	       "Config options:\n"
 	       "  -c, --config <file>      Path to a textual configuration file.\n"
 	       "                            (default %s)\n"
 	       "  -C, --confdb <dir>       Path to a configuration database directory.\n"
 	       "                            (default %s)\n"
 	       "  -D, --dir <path>         Path to a KASP database directory, use default configuration.\n"
+	       "\n"
+	       "Options:\n"
 	       "  -t, --tsig <name> [alg]  Generate a TSIG key.\n"
 	       "  -e, --extended           Extended output (listing of keys with full description).\n"
 	       "  -j, --json               Print the zones or keys in JSON format.\n"

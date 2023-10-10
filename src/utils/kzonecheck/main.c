@@ -34,9 +34,9 @@
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] <filename>\n"
+	printf("Usage: %s [options] <filename>\n"
 	       "\n"
-	       "Parameters:\n"
+	       "Options:\n"
 	       " -o, --origin <zone_origin>  Zone name.\n"
 	       "                              (default filename without .zone)\n"
 	       " -d, --dnssec <on|off>       Also check DNSSEC-related records.\n"
