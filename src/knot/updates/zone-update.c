@@ -465,48 +465,27 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EOK;
 	}
 
-	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
-		int ret = solve_add_different_ttl(update, rrset);
-		if (ret == KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
-			ret = changeset_add_addition(&update->change, rrset, CHANGESET_CHECK);
-		}
-		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
-			assert(!(update->flags & UPDATE_NO_CHSET));
-			ret = changeset_add_addition(&update->extra_ch, rrset, CHANGESET_CHECK);
-		}
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
+	int ret = KNOT_EOK;
 
 	if (update->flags & UPDATE_INCREMENTAL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			// replace previous SOA
-			int ret = apply_replace_soa(update->a_ctx, rrset);
-			if (ret != KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
-				changeset_remove_addition(&update->change, rrset);
+			ret = apply_replace_soa(update->a_ctx, rrset);
+		} else {
+			ret = apply_add_rr(update->a_ctx, rrset);
+			if (ret == KNOT_EOK) {
+				update_affected_rrtype(update, rrset->type);
 			}
-			return ret;
 		}
-
-		int ret = apply_add_rr(update->a_ctx, rrset);
-		if (ret != KNOT_EOK) {
-			if (!(update->flags & UPDATE_NO_CHSET)) {
-				changeset_remove_addition(&update->change, rrset);
-			}
-			return ret;
-		}
-
-		update_affected_rrtype(update, rrset->type);
-		return KNOT_EOK;
 	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* replace previous SOA */
-			return replace_soa(update->new_cont, rrset);
+			ret = replace_soa(update->new_cont, rrset);
+			goto chset_add;
 		}
 
 		zone_node_t *n = NULL;
-		int ret = zone_contents_add_rr(update->new_cont, rrset, &n);
+		ret = zone_contents_add_rr(update->new_cont, rrset, &n);
 		if (ret == KNOT_ETTL) {
 			knot_dname_txt_storage_t buff;
 			char *owner = knot_dname_to_str(buff, rrset->owner, sizeof(buff));
@@ -518,13 +497,25 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 			log_zone_notice(update->new_cont->apex->owner,
 			                "TTL mismatch, owner %s, type %s, "
 			                "TTL set to %u", owner, type, rrset->ttl);
-			return KNOT_EOK;
+			ret = KNOT_EOK;
 		}
-
-		return ret;
 	} else {
 		return KNOT_EINVAL;
 	}
+
+chset_add:
+	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && ret == KNOT_EOK) {
+		ret = solve_add_different_ttl(update, rrset);
+		if (ret == KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
+			ret = changeset_add_addition(&update->change, rrset, CHANGESET_CHECK);
+		}
+		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+			assert(!(update->flags & UPDATE_NO_CHSET));
+			ret = changeset_add_addition(&update->extra_ch, rrset, CHANGESET_CHECK);
+		}
+	}
+
+	return ret;
 }
 
 int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
@@ -536,40 +527,44 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EOK;
 	}
 
-	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
-	    rrset->type != KNOT_RRTYPE_SOA && !(update->flags & UPDATE_NO_CHSET)) {
-		int ret = changeset_add_removal(&update->change, rrset, CHANGESET_CHECK);
-		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
-			assert(!(update->flags & UPDATE_NO_CHSET));
-			ret = changeset_add_removal(&update->extra_ch, rrset, CHANGESET_CHECK);
-		}
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+	/* Copy the rrset as sometimes rrset may be what is actually being removed thus
+	 * its contents might be already freed memory when we get to changeset removal. */
+	knot_rrset_t *rrset_copy = knot_rrset_copy(rrset, NULL);
+	if (rrset_copy == NULL) {
+		return KNOT_ENOMEM;
 	}
+
+	int ret = KNOT_EOK;
 
 	if (update->flags & UPDATE_INCREMENTAL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* SOA is replaced with addition */
-			return KNOT_EOK;
-		}
-
-		int ret = apply_remove_rr(update->a_ctx, rrset);
-		if (ret != KNOT_EOK) {
-			if (!(update->flags & UPDATE_NO_CHSET)) {
-				changeset_remove_removal(&update->change, rrset);
+		} else {
+			ret = apply_remove_rr(update->a_ctx, rrset);
+			if (ret == KNOT_EOK) {
+				update_affected_rrtype(update, rrset->type);
 			}
-			return ret;
 		}
-
-		update_affected_rrtype(update, rrset->type);
-		return KNOT_EOK;
 	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
 		zone_node_t *n = NULL;
-		return zone_contents_remove_rr(update->new_cont, rrset, &n);
+		ret = zone_contents_remove_rr(update->new_cont, rrset, &n);
 	} else {
-		return KNOT_EINVAL;
+		knot_rrset_free(rrset_copy, NULL);
+		ret = KNOT_EINVAL;
 	}
+
+	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
+	    rrset_copy->type != KNOT_RRTYPE_SOA && !(update->flags & UPDATE_NO_CHSET) &&
+	    ret == KNOT_EOK) {
+		ret = changeset_add_removal(&update->change, rrset_copy, CHANGESET_CHECK);
+		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+			assert(!(update->flags & UPDATE_NO_CHSET));
+			ret = changeset_add_removal(&update->extra_ch, rrset_copy, CHANGESET_CHECK);
+		}
+	}
+
+	knot_rrset_free(rrset_copy, NULL);
+	return ret;
 }
 
 int zone_update_remove_rrset(zone_update_t *update, knot_dname_t *owner, uint16_t type)
