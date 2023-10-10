@@ -342,13 +342,14 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters]\n"
+	printf("Usage: %s [-c | -C <path>] [options]\n"
 	       "\n"
-	       "Parameters:\n"
+	       "Config options:\n"
 	       " -c, --config <file>        Use a textual configuration file.\n"
 	       "                             (default %s)\n"
 	       " -C, --confdb <dir>         Use a binary configuration database directory.\n"
 	       "                             (default %s)\n"
+	       "Options:\n"
 	       " -m, --max-conf-size <MiB>  Set maximum size of the configuration database (max 10000 MiB).\n"
 	       "                             (default %d MiB)\n"
 	       " -s, --socket <path>        Use a remote control UNIX socket path.\n"
