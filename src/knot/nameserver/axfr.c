@@ -121,7 +121,7 @@ static void axfr_answer_finished(knotd_qdata_t *qdata, knot_pkt_t *pkt, int stat
 		xfr_stats_add(&xfr->stats, pkt->size);
 		xfr_stats_end(&xfr->stats);
 		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_AXFR, LOG_DIRECTION_OUT,
-				 REMOTE(qdata), PROTO(qdata), KEY(qdata), &xfr->stats);
+				 REMOTE(qdata), PROTO(qdata), KEY(qdata), "", &xfr->stats);
 		break;
 	default:
 		break;

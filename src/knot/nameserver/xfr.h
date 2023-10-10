@@ -38,12 +38,12 @@ static inline
 void xfr_log_finished(const knot_dname_t *zone, log_operation_t op,
                       log_direction_t dir, const struct sockaddr_storage *remote,
                       knotd_query_proto_t proto, const knot_dname_t *key_name,
-                      const struct xfr_stats *stats)
+                      const char *serial_log, const struct xfr_stats *stats)
 {
 	ns_log(LOG_INFO, zone, op, dir, remote, proto, false, key_name,
-	       "%sfinished, %0.2f seconds, %u messages, %u bytes",
+	       "%sfinished,%s %0.2f seconds, %u messages, %u bytes",
 	       (proto == KNOTD_QUERY_PROTO_QUIC && dir == LOG_DIRECTION_OUT ? "buffering " : ""),
-	       time_diff_ms(&stats->begin, &stats->end) / 1000.0,
+	       serial_log, time_diff_ms(&stats->begin, &stats->end) / 1000.0,
 	       stats->messages, stats->bytes);
 }
 
