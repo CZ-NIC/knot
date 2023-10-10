@@ -33,15 +33,16 @@ signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
-	printf("Usage: %s [-c | -C | -D <path>] [parameters]\n"
+	printf("Usage: %s [-c | -C | -D <path>] [options]\n"
 	       "\n"
-	       "Parameters:\n"
+	       "Config options:\n"
 	       " -c, --config <file>   Path to a textual configuration file.\n"
 	       "                        (default %s)\n"
 	       " -C, --confdb <dir>    Path to a configuration database directory.\n"
 	       "                        (default %s)\n"
 	       " -D, --dir <path>      Path to a catalog database directory, use default\n"
 	       "                       configuration.\n"
+	       "Options:\n"
 	       " -a, --catalog <name>  Filter the output by catalog zone name.\n"
 	       " -m, --member <name>   Filter the output by member zone name.\n"
 	       " -h, --help            Print the program help.\n"

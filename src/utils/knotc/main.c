@@ -33,13 +33,14 @@ signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] <action> [action_args]\n"
+	printf("Usage: %s [-c | -C <path>] [options] <action> [action_args]\n"
 	       "\n"
-	       "Parameters:\n"
+	       "Config options:\n"
 	       " -c, --config <file>      "SPACE"Use a textual configuration file.\n"
 	       "                          "SPACE" (default %s)\n"
 	       " -C, --confdb <dir>       "SPACE"Use a binary configuration database directory.\n"
 	       "                          "SPACE" (default %s)\n"
+	       "Options:\n"
 	       " -m, --max-conf-size <MiB>"SPACE"Set maximum size of the configuration database (max 10000 MiB).\n"
 	       "                          "SPACE" (default %d MiB)\n"
 	       " -s, --socket <path>      "SPACE"Use a control UNIX socket path.\n"

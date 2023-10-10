@@ -1087,9 +1087,9 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] -i <queries_file> <dest_ip>\n"
+	printf("Usage: %s [options] -i <queries_file> <dest_ip>\n"
 	       "\n"
-	       "Parameters:\n"
+	       "Options:\n"
 	       " -t, --duration <sec>     "SPACE"Duration of traffic generation.\n"
 	       "                          "SPACE" (default is %"PRIu64" seconds)\n"
 	       " -T, --tcp[=debug_mode]   "SPACE"Send queries over TCP.\n"
@@ -1114,7 +1114,7 @@ static void print_help(void)
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
 	       "\n"
-	       "Arguments:\n"
+	       "Parameters:\n"
 	       " <dest_ip>                "SPACE"IPv4 or IPv6 address of the remote destination.\n",
 	       PROGRAM_NAME, ctx_defaults.duration / 1000000, ctx_defaults.qps,
 	       ctx_defaults.at_once, 1, REMOTE_PORT_DEFAULT, REMOTE_PORT_DOQ_DEFAULT, "0s1");
