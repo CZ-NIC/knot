@@ -35,8 +35,8 @@ signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 static void print_help(void)
 {
 	printf("Usage:\n"
-	       "  %s [-c | -C | -D <path>] <zone_name> <command> [<argument>...]\n"
-	       "  %s [-c | -C | -D <path>] -l\n"
+	       "  %s [-c | -C | -D <path>] [options] <zone_name> <command> [<argument>...]\n"
+	       "  %s [-c | -C | -D <path>] [-j] -l\n"
 	       "  %s -t <tsig_name> [<algorithm> [<bits>]]\n"
 	       "\n"
 	       "Config options:\n"
