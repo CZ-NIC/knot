@@ -49,8 +49,7 @@ static void print_help(void)
 	       " -t, --time <timestamp>   Current time specification.\n"
 	       "                           (default current UNIX time)\n"
 	       " -h, --help               Print the program help.\n"
-	       " -V, --version            Print the program version.\n"
-	       "\n",
+	       " -V, --version            Print the program version.\n",
 	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 
