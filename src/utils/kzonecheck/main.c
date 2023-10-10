@@ -45,8 +45,7 @@ static void print_help(void)
 	       " -p, --print                 Print the zone on stdout.\n"
 	       " -v, --verbose               Enable debug output.\n"
 	       " -h, --help                  Print the program help.\n"
-	       " -V, --version               Print the program version.\n"
-	       "\n",
+	       " -V, --version               Print the program version.\n",
 	       PROGRAM_NAME);
 }
 
