@@ -508,9 +508,45 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 	}
 }
 
-static void wire_data_omit(rrset_dump_params_t *p)
+static void wire_data_omit(rrset_dump_params_t *p,
+                           const size_t        len_len,
+                           const bool          print_len)
 {
 	CHECK_PRET
+
+	size_t in_len;
+
+	// First len_len bytes are data length.
+	CHECK_INMAX(len_len)
+
+	// Read data length.
+	switch (len_len) {
+	case 0:
+		in_len = p->in_max;
+		break;
+	case 2:
+		in_len = knot_wire_read_u16(p->in);
+		break;
+	default:
+		p->ret = -1;
+		return;
+	}
+
+	// If required print data length.
+	if (print_len == true && len_len != 0) {
+		assert(len_len == 2);
+		wire_num16_to_str(p);
+		CHECK_PRET
+
+		// If something follows, print one space character.
+		if (in_len > 0) {
+			dump_string(p, " ");
+			CHECK_PRET
+		}
+	} else {
+		p->in += len_len;
+		p->in_max -= len_len;
+	}
 
 	const char *omit_message = "[omitted]";
 	const size_t omlen = strlen(omit_message);
@@ -527,8 +563,8 @@ static void wire_data_omit(rrset_dump_params_t *p)
 
 	STRING_TERMINATION
 
-	p->in += p->in_max;
-	p->in_max = 0;
+	p->in += in_len;
+	p->in_max -= in_len;
 }
 
 static void wire_dnskey_to_tag(rrset_dump_params_t *p)
@@ -1725,6 +1761,10 @@ static void dnskey_info(const uint8_t *rdata,
 #define DUMP_TYPE	wire_type_to_str(p); CHECK_RET(p);
 #define DUMP_HEX	wire_data_encode_to_str(p, &hex_encode, \
 				&hex_encode_alloc); CHECK_RET(p);
+#define DUMP_OMIT	wire_data_omit(p, 0, false); CHECK_RET(p);
+#define DUMP_HEX_OMIT	if (p->style->hide_crypto) { DUMP_OMIT; } \
+			else if (p->style->wrap) { WRAP_INIT; DUMP_HEX; WRAP_END; } \
+			else { DUMP_HEX; }
 #define DUMP_BASE64	wire_data_encode_to_str(p, &knot_base64_encode, \
 				&knot_base64_encode_alloc); CHECK_RET(p);
 #define DUMP_HASH	wire_len_data_encode_to_str(p, &knot_base32hex_encode, \
@@ -1733,9 +1773,9 @@ static void dnskey_info(const uint8_t *rdata,
 				1, false, "-"); CHECK_RET(p);
 #define DUMP_TSIG_DGST	wire_len_data_encode_to_str(p, &knot_base64_encode, \
 				2, true, ""); CHECK_RET(p);
+#define DUMP_TSIG_OMIT	wire_data_omit(p, 2, true); CHECK_RET(p);
 #define DUMP_TSIG_DATA	wire_len_data_encode_to_str(p, &num48_encode, \
 				2, true, ""); CHECK_RET(p);
-#define DUMP_OMIT	wire_data_omit(p); CHECK_RET(p);
 #define DUMP_KEY_OMIT	wire_dnskey_to_tag(p); CHECK_RET(p);
 #define DUMP_TEXT	wire_text_to_str1(p, true, false); CHECK_RET(p);
 #define DUMP_LONG_TEXT	wire_text_to_str(p, p->in_max, NULL, true, false); CHECK_RET(p);
@@ -1913,16 +1953,17 @@ static int dump_naptr(DUMP_PARAMS)
 
 static int dump_cert(DUMP_PARAMS)
 {
-	if (p->style->wrap) {
-		DUMP_NUM16;  DUMP_SPACE;
-		DUMP_NUM16;  DUMP_SPACE;
-		DUMP_NUM8;   DUMP_SPACE; WRAP_INIT;
+	DUMP_NUM16;  DUMP_SPACE;
+	DUMP_NUM16;  DUMP_SPACE;
+	DUMP_NUM8;   DUMP_SPACE;
+
+	if (p->style->hide_crypto) {
+		DUMP_OMIT;
+	} else if (p->style->wrap) {
+		WRAP_INIT;
 		DUMP_BASE64;
 		WRAP_END;
 	} else {
-		DUMP_NUM16;  DUMP_SPACE;
-		DUMP_NUM16;  DUMP_SPACE;
-		DUMP_NUM8;   DUMP_SPACE;
 		DUMP_BASE64;
 	}
 
@@ -1972,34 +2013,19 @@ static int dump_apl(DUMP_PARAMS)
 
 static int dump_ds(DUMP_PARAMS)
 {
-	if (p->style->wrap) {
-		DUMP_NUM16; DUMP_SPACE;
-		DUMP_NUM8;  DUMP_SPACE;
-		DUMP_NUM8;  DUMP_SPACE; WRAP_INIT;
-		DUMP_HEX;
-		WRAP_END;
-	} else {
-		DUMP_NUM16; DUMP_SPACE;
-		DUMP_NUM8;  DUMP_SPACE;
-		DUMP_NUM8;  DUMP_SPACE;
-		DUMP_HEX;
-	}
+	DUMP_NUM16; DUMP_SPACE;
+	DUMP_NUM8;  DUMP_SPACE;
+	DUMP_NUM8;  DUMP_SPACE;
+	DUMP_HEX_OMIT;
 
 	DUMP_END;
 }
 
 static int dump_sshfp(DUMP_PARAMS)
 {
-	if (p->style->wrap) {
-		DUMP_NUM8; DUMP_SPACE;
-		DUMP_NUM8; DUMP_SPACE; WRAP_INIT;
-		DUMP_HEX;
-		WRAP_END;
-	} else {
-		DUMP_NUM8; DUMP_SPACE;
-		DUMP_NUM8; DUMP_SPACE;
-		DUMP_HEX;
-	}
+	DUMP_NUM8; DUMP_SPACE;
+	DUMP_NUM8; DUMP_SPACE;
+	DUMP_HEX_OMIT;
 
 	DUMP_END;
 }
@@ -2057,7 +2083,9 @@ static int dump_nsec(DUMP_PARAMS)
 
 static int dump_dhcid(DUMP_PARAMS)
 {
-	if (p->style->wrap) {
+	if (p->style->hide_crypto) {
+		DUMP_OMIT;
+	} else if (p->style->wrap) {
 		WRAP_INIT;
 		DUMP_BASE64;
 		WRAP_END;
@@ -2102,18 +2130,10 @@ static int dump_nsec3param(DUMP_PARAMS)
 
 static int dump_tlsa(DUMP_PARAMS)
 {
-	if (p->style->wrap) {
-		DUMP_NUM8; DUMP_SPACE;
-		DUMP_NUM8; DUMP_SPACE;
-		DUMP_NUM8; DUMP_SPACE; WRAP_INIT;
-		DUMP_HEX;
-		WRAP_END;
-	} else {
-		DUMP_NUM8; DUMP_SPACE;
-		DUMP_NUM8; DUMP_SPACE;
-		DUMP_NUM8; DUMP_SPACE;
-		DUMP_HEX;
-	}
+	DUMP_NUM8; DUMP_SPACE;
+	DUMP_NUM8; DUMP_SPACE;
+	DUMP_NUM8; DUMP_SPACE;
+	DUMP_HEX_OMIT;
 
 	DUMP_END;
 }
@@ -2129,18 +2149,10 @@ static int dump_csync(DUMP_PARAMS)
 
 static int dump_zonemd(DUMP_PARAMS)
 {
-	if (p->style->wrap) {
-		DUMP_NUM32; DUMP_SPACE;
-		DUMP_NUM8;  DUMP_SPACE;
-		DUMP_NUM8;  DUMP_SPACE; WRAP_INIT;
-		DUMP_HEX;
-		WRAP_END;
-	} else {
-		DUMP_NUM32; DUMP_SPACE;
-		DUMP_NUM8;  DUMP_SPACE;
-		DUMP_NUM8;  DUMP_SPACE;
-		DUMP_HEX;
-	}
+	DUMP_NUM32; DUMP_SPACE;
+	DUMP_NUM8;  DUMP_SPACE;
+	DUMP_NUM8;  DUMP_SPACE;
+	DUMP_HEX_OMIT;
 
 	DUMP_END;
 }
@@ -2174,7 +2186,11 @@ static int dump_tsig(DUMP_PARAMS)
 		DUMP_DNAME; DUMP_SPACE;
 		DUMP_NUM48; DUMP_SPACE;
 		DUMP_NUM16; DUMP_SPACE; WRAP_INIT;
-		DUMP_TSIG_DGST; WRAP_LINE;
+		if (p->style->hide_crypto) {
+			DUMP_TSIG_OMIT; WRAP_LINE;
+		} else {
+			DUMP_TSIG_DGST; WRAP_LINE;
+		}
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_TSIG_RCODE; DUMP_SPACE;
 		DUMP_TSIG_DATA;
@@ -2183,7 +2199,11 @@ static int dump_tsig(DUMP_PARAMS)
 		DUMP_DNAME; DUMP_SPACE;
 		DUMP_NUM48; DUMP_SPACE;
 		DUMP_NUM16; DUMP_SPACE;
-		DUMP_TSIG_DGST; DUMP_SPACE;
+		if (p->style->hide_crypto) {
+			DUMP_TSIG_OMIT; DUMP_SPACE;
+		} else {
+			DUMP_TSIG_DGST; DUMP_SPACE;
+		}
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_TSIG_RCODE; DUMP_SPACE;
 		DUMP_TSIG_DATA;
