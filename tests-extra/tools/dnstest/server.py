@@ -192,6 +192,7 @@ class Server(object):
         self.zonemd_verify = None
         self.zonemd_generate = None
         self.ixfr_by_one = None
+        self.ixfr_from_axfr = None
         self.journal_db_size = 20 * 1024 * 1024
         self.journal_max_usage = 5 * 1024 * 1024
         self.journal_max_depth = 100
@@ -1684,6 +1685,7 @@ class Knot(Server):
 
             s.item_str("journal-content", z.journal_content)
             self._str(s, "ixfr-by-one", self.ixfr_by_one)
+            self._str(s, "ixfr-from-axfr", self.ixfr_from_axfr)
 
             if z.reverse_from:
                 s.item_str("reverse-generate", z.reverse_from.name)
