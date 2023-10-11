@@ -105,6 +105,7 @@ static const struct error errors[] = {
 	{ KNOT_ENODB,        "database does not exist" },
 	{ KNOT_EUNREACH,     "remote known to be unreachable" },
 	{ KNOT_EBADCERTKEY,  "unknown certificate key" },
+	{ KNOT_EFACCES,      "file permission denied" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 
