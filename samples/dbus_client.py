@@ -1,62 +1,89 @@
 #!/usr/bin/env python3
 
-# This package is needed on Debian derived ditributions: python3-dbus
+# This package is needed on Debian derived ditributions: python3-dasbus
 
-import dbus
-import dbus.mainloop.glib
+import argparse
+import socket
+import dasbus.connection
+import dasbus.loop
 import signal
+import sys
 import time
-from gi.repository import GLib
 
-def sigint_handler(sig, frame):
-    if sig == signal.SIGINT:
-        loop.quit()
-    else:
-        raise ValueError("Undefined handler for '{}'".format(sig))
-
-def sig_started(*args, **kwargs):
+def sig_started(sender, path, interface, signal, args):
     print("Server started")
 
-def sig_stopped(*args, **kwargs):
+def sig_stopped(sender, path, interface, signal, args):
     print("Server stopped")
 
-def sig_updated(*args, **kwargs):
+def sig_updated(sender, path, interface, signal, args):
     (zone, serial) = args
     print("Updated zone=%s to serial=%d" % (zone, serial))
 
-def sig_keys_upd(*args, **kwargs):
+def sig_keys_upd(sender, path, interface, signal, args):
     (zone) = args
     print("Keys updated for zone=%s" % (zone))
 
-def sig_submission(*args, **kwargs):
+def sig_submission(sender, path, interface, signal, args):
     (zone, key_tag, kasp_id) = args
     print("Ready KSK for zone=%s keytag=%u keyid=%s" % (zone, key_tag, kasp_id))
 
-def sig_invalid(*args, **kwargs):
+def sig_invalid(sender, path, interface, signal, args):
     (zone) = args
     print("Invalid DNSSEC for zone=%s" % (zone))
 
 if __name__ == '__main__':
+    loop = dasbus.loop.EventLoop()
+
+    def sigint_handler(sig, frame):
+        loop.quit()
+        sys.exit()
+
     signal.signal(signal.SIGINT, sigint_handler)
 
-    loop = dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    parser = argparse.ArgumentParser(
+        description="A D-Bus client for processing signals emitted by knotd",
+    )
+    parser.add_argument(
+        "-s",
+        "--socket",
+        nargs="?",
+        help="optional address of D-Bus UNIX socket (e.g. '/rundir/dbus.sock'); " +
+             "note that the caller's UID must exist in the remote system " +
+             "(due to D-Bus EXTERNAL authentication)"
+    )
+    args = parser.parse_args()
 
-    bus = dbus.SystemBus()
-    while True: # Wait until the service (knotd) is ready.
-        try:
-            knotd = bus.get_object('cz.nic.knotd', '/cz/nic/knotd',
-                                   follow_name_owner_changes=True,
-                                   introspect=False)
-            break
-        except:
-            time.sleep(0.1)
-    events_iface = dbus.Interface(knotd, dbus_interface='cz.nic.knotd.events')
-    events_iface.connect_to_signal("started", sig_started)
-    events_iface.connect_to_signal("stopped", sig_stopped)
-    events_iface.connect_to_signal("zone_updated", sig_updated)
-    events_iface.connect_to_signal("keys_updated", sig_keys_upd)
-    events_iface.connect_to_signal("zone_ksk_submission", sig_submission)
-    events_iface.connect_to_signal("zone_dnssec_invalid", sig_invalid)
+    if args.socket:
+        while True:  # Wait until specified D-Bus socket can be used
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            result = s.connect_ex(args.socket)
+            s.close()
+            if not result:
+                break
+            time.sleep(0.5)
+        bus = dasbus.connection.AddressedMessageBus(address="unix:path=" + args.socket)
+    else:
+        bus = dasbus.connection.SystemMessageBus()
 
-    loop = GLib.MainLoop()
+    def connect_to_signal(_signal, _callback):
+        bus.connection.signal_subscribe(
+            "cz.nic.knotd",
+            "cz.nic.knotd.events",
+            _signal,
+            "/cz/nic/knotd",
+            None,
+            0,
+            lambda _, sender, path, interface, signal, args: _callback(
+                sender, path, interface, signal, args.unpack()
+            ),
+        )
+
+    connect_to_signal("started", sig_started)
+    connect_to_signal("stopped", sig_stopped)
+    connect_to_signal("zone_updated", sig_updated)
+    connect_to_signal("keys_updated", sig_keys_upd)
+    connect_to_signal("zone_ksk_submission", sig_submission)
+    connect_to_signal("zone_dnssec_invalid", sig_invalid)
+
     loop.run()
