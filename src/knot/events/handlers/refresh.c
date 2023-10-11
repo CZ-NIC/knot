@@ -111,6 +111,7 @@ struct refresh_data {
 	zone_master_fallback_t *fallback; //!< Flags allowing zone_master_try() fallbacks.
 	bool fallback_axfr;               //!< Flag allowing fallback to AXFR,
 	bool ixfr_by_one;                 //!< Allow only single changeset within IXFR.
+	bool ixfr_from_axfr;              //!< Diff computation of incremental update from AXFR allowed.
 	uint32_t expire_timer;            //!< Result: expire timer from answer EDNS.
 
 	// internal state, initialize with zeroes:
@@ -118,6 +119,7 @@ struct refresh_data {
 	int ret;                          //!< Error code.
 	enum state state;                 //!< Event processing state.
 	enum xfr_type xfr_type;           //!< Transer type (mostly IXFR versus AXFR).
+	bool axfr_style_ixfr;             //!< Master responded with AXFR-style-IXFR.
 	knot_rrset_t *initial_soa_copy;   //!< Copy of the received initial SOA.
 	struct xfr_stats stats;           //!< Transfer statistics.
 	struct timespec started;          //!< When refresh started.
@@ -342,7 +344,13 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	zone_update_t up = { 0 };
-	int ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
+	int ret;
+
+	if (data->ixfr_from_axfr && data->axfr_style_ixfr) {
+		ret = zone_update_from_differences(&up, data->zone, NULL, new_zone, UPDATE_INCREMENTAL, false, false);
+	} else {
+		ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
+	}
 	if (ret != KNOT_EOK) {
 		data->fallback->remote = false;
 		return ret;
@@ -394,7 +402,7 @@ static int axfr_finalize(struct refresh_data *data)
 	}
 
 	finalize_timers(data);
-	xfr_log_publish(data, old_serial, zone_contents_serial(new_zone),
+	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
 	                master_serial, dnssec_enable, bootstrap);
 
 	data->fallback->remote = false;
@@ -958,6 +966,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 		case XFR_TYPE_AXFR:
 			IXFRIN_LOG(LOG_INFO, data,
 			           "receiving AXFR-style IXFR");
+			data->axfr_style_ixfr = true;
 			return axfr_consume(pkt, data, true);
 		case XFR_TYPE_UPTODATE:
 			consume_edns_expire(data, pkt, false);
@@ -1304,6 +1313,7 @@ typedef struct {
 	bool force_axfr;
 	bool send_notify;
 	bool ixfr_by_one;
+	bool ixfr_from_axfr;
 	bool more_xfr;
 } try_refresh_ctx_t;
 
@@ -1335,6 +1345,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.fallback = fallback,
 		.fallback_axfr = false, // will be set upon IXFR consume
 		.ixfr_by_one = trctx->ixfr_by_one,
+		.ixfr_from_axfr = trctx->ixfr_from_axfr,
 	};
 
 	knot_requestor_t requestor;
@@ -1401,6 +1412,8 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 	conf_val_t val = conf_zone_get(conf, C_IXFR_BY_ONE, zone->name);
 	trctx.ixfr_by_one = conf_bool(&val);
+	val = conf_zone_get(conf, C_IXFR_FROM_AXFR, zone->name);
+	trctx.ixfr_from_axfr = conf_bool(&val);
 
 	int ret = zone_master_try(conf, zone, try_refresh, &trctx, "refresh");
 	zone_clear_preferred_master(zone);
