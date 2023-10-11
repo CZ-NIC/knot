@@ -2192,6 +2192,7 @@ Definition of zones served by the server.
      journal-content: none | changes | all
      journal-max-usage: SIZE
      journal-max-depth: INT
+     ixfr-from-axfr: BOOL
      zone-max-size : SIZE
      adjust-threads: INT
      dnssec-signing: BOOL
@@ -2444,6 +2445,17 @@ Maximum history length of the journal.
 *Minimum:* ``2``
 
 *Default:* ``20``
+
+.. _zone_ixfr-from-axfr:
+
+ixfr-from-axfr
+--------------
+
+If a primary sends AXFR-style-IXFR upon an IXFR request, compute the difference
+and process it as an incremental zone update (e.g. by storing the changeset in
+the journal).
+
+*Default:* ``off``
 
 .. _zone_zone-max-size:
 

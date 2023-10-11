@@ -182,6 +182,7 @@ class Server(object):
         self.zonefile_load = None
         self.zonemd_verify = None
         self.zonemd_generate = None
+        self.ixfr_from_axfr = None
         self.journal_db_size = 20 * 1024 * 1024
         self.journal_max_usage = 5 * 1024 * 1024
         self.timer_db_size = 1 * 1024 * 1024
@@ -1551,6 +1552,7 @@ class Knot(Server):
             self._str(s, "serial-policy", self.serial_policy)
 
             s.item_str("journal-content", z.journal_content)
+            self._str(s, "ixfr-from-axfr", self.ixfr_from_axfr)
 
             self._str(s, "refresh-min-interval", z.refresh_min)
             self._str(s, "refresh-max-interval", z.refresh_max)
