@@ -321,7 +321,7 @@ int bind_pubkey_parse(const char *filename, dnssec_key_t **key_ptr)
 			ret = KNOT_EFILE;
 			break;
 		case ZS_FILE_ACCESS:
-			ret = KNOT_EACCES;
+			ret = KNOT_EFACCES;
 			break;
 		default:
 			ret = KNOT_EPARSEFAIL;
