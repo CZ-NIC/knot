@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 '''Test that removal of nonexisting or addition of existing record over IXFR
-is not accepted by a slave'''
+is ignored by a slave'''
 
 from dnstest.test import Test
 from dnstest.utils import *
@@ -22,18 +22,17 @@ t.start()
 serial = master.zone_wait(zone)
 slave.zone_wait(zone)
 
-# Check that removal of nonexisting record is not accepted
+# Check that removal of nonexisting record is ignored
 
 master.update_zonefile(zone, version=1)
 master.reload()
 
 serial = slave.zone_wait(zone, serial)
-if not slave.log_search("no such record in zone found") or not slave.log_search("fallback to AXFR"):
-    detail_log("IXFR ignored a removal of a nonexisting RR and did not fall back to AXFR")
-    set_err("IXFR ERROR")
+if slave.log_search("fallback to AXFR"):
+    set_err("AXFR FALLBACK")
 t.xfr_diff(master, slave, zone)
 
-# Check that addition of existing record is not accepted
+# Check that addition of existing record is ignored
 
 slave.stop()
 slave.update_zonefile(zone, version="slave1")
@@ -44,9 +43,8 @@ master.update_zonefile(zone, version=2)
 master.reload()
 
 serial = slave.zone_wait(zone, serial)
-if not slave.log_search("such record already exists in zone") or not slave.log_search("fallback to AXFR"):
-    detail_log("IXFR ignored an addition of existent RR and did not fall back to AXFR")
-    set_err("IXFR ERROR")
+if slave.log_search("fallback to AXFR"):
+    set_err("AXFR FALLBACK")
 t.xfr_diff(master, slave, zone)
 
 t.end()
