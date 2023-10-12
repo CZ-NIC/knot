@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -202,7 +202,6 @@ bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
  * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  * \param changeset   Changeset to be updated.
  * \param update      Zone update to be updated. Exactly one of "changeset" and "update" must be NULL!
- * \param expires_at  Earliest RRSIG expiration.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -211,8 +210,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
                               zone_sign_ctx_t *sign_ctx,
                               bool skip_crypto,
                               changeset_t *changeset,
-                              zone_update_t *update,
-                              knot_time_t *expires_at)
+                              zone_update_t *update)
 {
 	assert(!knot_rrset_empty(covered));
 	assert(sign_ctx);
@@ -251,11 +249,14 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		                           sign_ctx->dnssec_ctx, refresh, skip_crypto, NULL, &valid_at)) {
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
 			result = knot_rdataset_remove(&to_remove.rrs, valid_rr, NULL);
-			note_earliest_expiration(valid_rr, sign_ctx->dnssec_ctx->now, expires_at);
+			knot_spin_lock(&sign_ctx->dnssec_ctx->stats->lock);
+			note_earliest_expiration(valid_rr, sign_ctx->dnssec_ctx->now,
+			                         &sign_ctx->dnssec_ctx->stats->expire);
+			knot_spin_unlock(&sign_ctx->dnssec_ctx->stats->lock);
 			continue;
 		}
 		result = knot_sign_rrset(&to_add, covered, key->key, sign_ctx->sign_ctxs[i],
-		                         sign_ctx->dnssec_ctx, NULL, expires_at);
+		                         sign_ctx->dnssec_ctx, NULL);
 	}
 
 	if (!knot_rrset_empty(&to_remove) && result == KNOT_EOK) {
@@ -380,7 +381,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 		}
 	}
 
-	return add_missing_rrsigs(covered, NULL, sign_ctx, false, changeset, NULL, NULL);
+	return add_missing_rrsigs(covered, NULL, sign_ctx, false, changeset, NULL);
 }
 
 /*!
@@ -391,7 +392,6 @@ static int force_resign_rrset(const knot_rrset_t *covered,
  * \param sign_ctx    Local zone signing context.
  * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  * \param changeset   Changeset to be updated.
- * \param expires_at  Current earliest expiration, will be updated.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -399,12 +399,11 @@ static int resign_rrset(const knot_rrset_t *covered,
                         const knot_rrset_t *rrsigs,
                         zone_sign_ctx_t *sign_ctx,
                         bool skip_crypto,
-                        changeset_t *changeset,
-                        knot_time_t *expires_at)
+                        changeset_t *changeset)
 {
 	assert(!knot_rrset_empty(covered));
 
-	return add_missing_rrsigs(covered, rrsigs, sign_ctx, skip_crypto, changeset, NULL, expires_at);
+	return add_missing_rrsigs(covered, rrsigs, sign_ctx, skip_crypto, changeset, NULL);
 }
 
 static int remove_standalone_rrsigs(const zone_node_t *node,
@@ -445,14 +444,13 @@ static int remove_standalone_rrsigs(const zone_node_t *node,
  * \param node        Node to be signed.
  * \param sign_ctx    Local zone signing context.
  * \param changeset   Changeset to be updated.
- * \param expires_at  Current earliest expiration, will be updated.
+ * \param hint        Out: if DNSSEC validation failed, hint why and where.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int sign_node_rrsets(const zone_node_t *node,
                             zone_sign_ctx_t *sign_ctx,
                             changeset_t *changeset,
-                            knot_time_t *expires_at,
                             dnssec_validation_hint_t *hint)
 {
 	assert(node);
@@ -491,7 +489,7 @@ static int sign_node_rrsets(const zone_node_t *node,
 			                            sign_ctx, changeset);
 		} else {
 			result = resign_rrset(&rrset, &rrsigs, sign_ctx, skip_crypto,
-			                      changeset, expires_at);
+			                      changeset);
 		}
 	}
 
@@ -508,7 +506,6 @@ typedef struct {
 	zone_tree_t *tree;
 	zone_sign_ctx_t *sign_ctx;
 	changeset_t changeset;
-	knot_time_t expires_at;
 	dnssec_validation_hint_t *hint;
 	size_t num_threads;
 	size_t thread_index;
@@ -539,11 +536,7 @@ static int sign_node(zone_node_t *node, void *data)
 		return KNOT_EOK;
 	}
 
-	int result = sign_node_rrsets(node, args->sign_ctx,
-	                              &args->changeset, &args->expires_at,
-	                              args->hint);
-
-	return result;
+	return sign_node_rrsets(node, args->sign_ctx, &args->changeset, args->hint);
 }
 
 static void *tree_sign_thread(void *_arg)
@@ -567,7 +560,6 @@ static int set_signed(zone_node_t *node, _unused_ void *data)
  * \param zone_keys   Zone keys.
  * \param policy      DNSSEC policy.
  * \param update      Zone update structure to be updated.
- * \param expires_at  Expiration time of the oldest signature in zone.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -575,8 +567,7 @@ static int zone_tree_sign(zone_tree_t *tree,
                           size_t num_threads,
                           zone_keyset_t *zone_keys,
                           const kdnssec_ctx_t *dnssec_ctx,
-                          zone_update_t *update,
-                          knot_time_t *expires_at)
+                          zone_update_t *update)
 {
 	assert(zone_keys || dnssec_ctx->validation_mode);
 	assert(dnssec_ctx);
@@ -585,7 +576,6 @@ static int zone_tree_sign(zone_tree_t *tree,
 	int ret = KNOT_EOK;
 	node_sign_args_t args[num_threads];
 	memset(args, 0, sizeof(args));
-	*expires_at = knot_time_plus(dnssec_ctx->now, dnssec_ctx->policy->rrsig_lifetime);
 
 	// init context structures
 	for (size_t i = 0; i < num_threads; i++) {
@@ -601,7 +591,6 @@ static int zone_tree_sign(zone_tree_t *tree,
 		if (ret != KNOT_EOK) {
 			break;
 		}
-		args[i].expires_at = 0;
 		args[i].hint = &update->validation_hint;
 		args[i].num_threads = num_threads;
 		args[i].thread_index = i;
@@ -644,7 +633,6 @@ static int zone_tree_sign(zone_tree_t *tree,
 				ret = args[i].errcode;
 				if (ret == KNOT_EOK && !dnssec_ctx->validation_mode) {
 					ret = zone_update_apply_changeset(update, &args[i].changeset); // _fix not needed
-					*expires_at = knot_time_min(*expires_at, args[i].expires_at);
 				}
 			}
 		}
@@ -683,10 +671,9 @@ static int rrset_add_zone_ds(knot_rrset_t *rrset, zone_key_t *zone_key, dnssec_k
 
 int knot_zone_sign(zone_update_t *update,
                    zone_keyset_t *zone_keys,
-                   const kdnssec_ctx_t *dnssec_ctx,
-                   knot_time_t *expire_at)
+                   const kdnssec_ctx_t *dnssec_ctx)
 {
-	if (!update || !dnssec_ctx || !expire_at ||
+	if (!update || !dnssec_ctx ||
 	    dnssec_ctx->policy->signing_threads < 1 ||
 	    (zone_keys == NULL && !dnssec_ctx->validation_mode)) {
 		return KNOT_EINVAL;
@@ -694,16 +681,14 @@ int knot_zone_sign(zone_update_t *update,
 
 	int result;
 
-	knot_time_t normal_expire = 0;
 	result = zone_tree_sign(update->new_cont->nodes, dnssec_ctx->policy->signing_threads,
-	                        zone_keys, dnssec_ctx, update, &normal_expire);
+	                        zone_keys, dnssec_ctx, update);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	knot_time_t nsec3_expire = 0;
 	result = zone_tree_sign(update->new_cont->nsec3_nodes, dnssec_ctx->policy->signing_threads,
-	                        zone_keys, dnssec_ctx, update, &nsec3_expire);
+	                        zone_keys, dnssec_ctx, update);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -713,8 +698,6 @@ int knot_zone_sign(zone_update_t *update,
 	if (result == KNOT_EOK) {
 		result = zone_tree_apply(whole ? update->new_cont->nsec3_nodes : update->a_ctx->nsec3_ptrs, set_signed, NULL);
 	}
-
-	*expire_at = knot_time_min(normal_expire, nsec3_expire);
 
 	return result;
 }
@@ -941,7 +924,7 @@ static int sign_in_changeset(zone_node_t *node, uint16_t rrtype, knot_rrset_t *r
 	if (knot_rrset_empty(&rr)) {
 		return KNOT_EOK;
 	}
-	return add_missing_rrsigs(&rr, rrsigs, sign_ctx, skip_crypto, NULL, up, NULL);
+	return add_missing_rrsigs(&rr, rrsigs, sign_ctx, skip_crypto, NULL, up);
 }
 
 int knot_zone_sign_nsecs_in_changeset(const zone_keyset_t *zone_keys,
@@ -1005,10 +988,9 @@ bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
 
 int knot_zone_sign_update(zone_update_t *update,
                           zone_keyset_t *zone_keys,
-                          const kdnssec_ctx_t *dnssec_ctx,
-                          knot_time_t *expire_at)
+                          const kdnssec_ctx_t *dnssec_ctx)
 {
-	if (update == NULL || dnssec_ctx == NULL || expire_at == NULL ||
+	if (update == NULL || dnssec_ctx == NULL ||
 	    dnssec_ctx->policy->signing_threads < 1 ||
 	    (zone_keys == NULL && !dnssec_ctx->validation_mode)) {
 		return KNOT_EINVAL;
@@ -1020,16 +1002,16 @@ int knot_zone_sign_update(zone_update_t *update,
 	 * If so, we have to sign the whole zone. */
 	const bool full_sign = apex_dnssec_changed(update);
 	if (full_sign) {
-		ret = knot_zone_sign(update, zone_keys, dnssec_ctx, expire_at);
+		ret = knot_zone_sign(update, zone_keys, dnssec_ctx);
 	} else {
 		ret = zone_tree_sign(update->a_ctx->node_ptrs, dnssec_ctx->policy->signing_threads,
-				     zone_keys, dnssec_ctx, update, expire_at);
+				     zone_keys, dnssec_ctx, update);
 		if (ret == KNOT_EOK) {
 			ret = zone_tree_apply(update->a_ctx->node_ptrs, set_signed, NULL);
 		}
 		if (ret == KNOT_EOK && dnssec_ctx->validation_mode) {
 			ret = zone_tree_sign(update->a_ctx->nsec3_ptrs, dnssec_ctx->policy->signing_threads,
-			                     zone_keys, dnssec_ctx, update, expire_at);
+			                     zone_keys, dnssec_ctx, update);
 		}
 		if (ret == KNOT_EOK && dnssec_ctx->validation_mode) {
 			ret = zone_tree_apply(update->a_ctx->nsec3_ptrs, set_signed, NULL);

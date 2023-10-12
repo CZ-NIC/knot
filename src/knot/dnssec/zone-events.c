@@ -156,7 +156,6 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
-	knot_time_t zone_expire = 0;
 
 	int result = kdnssec_ctx_init(conf, &ctx, zone_name, zone_kaspdb(update->zone), NULL);
 	if (result != KNOT_EOK) {
@@ -256,7 +255,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		goto done;
 	}
 
-	result = knot_zone_sign(update, &keyset, &ctx, &zone_expire);
+	result = knot_zone_sign(update, &keyset, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign zone content (%s)",
 		               knot_strerror(result));
@@ -302,7 +301,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 done:
 	if (result == KNOT_EOK) {
-		reschedule->next_sign = schedule_next(&ctx, &keyset, ctx.offline_next_time, zone_expire);
+		reschedule->next_sign = schedule_next(&ctx, &keyset, ctx.offline_next_time, ctx.stats->expire);
 		reschedule->plan_dnskey_sync = ctx.policy->has_dnskey_sync;
 	} else {
 		reschedule->next_sign = knot_dnssec_failover_delay(&ctx);
@@ -324,7 +323,6 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 	const knot_dname_t *zone_name = update->new_cont->apex->owner;
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
-	knot_time_t zone_expire = 0;
 
 	int result = kdnssec_ctx_init(conf, &ctx, zone_name, zone_kaspdb(update->zone), NULL);
 	if (result != KNOT_EOK) {
@@ -373,7 +371,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		goto done;
 	}
 
-	result = knot_zone_sign_update(update, &keyset, &ctx, &zone_expire);
+	result = knot_zone_sign_update(update, &keyset, &ctx);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to sign changeset (%s)",
 		               knot_strerror(result));
@@ -429,7 +427,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 
 done:
 	if (result == KNOT_EOK) {
-		knot_time_t next = knot_time_min(ctx.offline_next_time, zone_expire);
+		knot_time_t next = knot_time_min(ctx.offline_next_time, ctx.stats->expire);
 		// NOTE: this is usually NOOP since signing planned earlier
 		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, (time_t)(next ? next : -1));
 		if (ctx.policy->has_dnskey_sync) {
@@ -463,12 +461,11 @@ int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf, knot_time_t n
 		ret = knot_zone_check_nsec_chain(update, &ctx, incremental);
 	}
 	if (ret == KNOT_EOK) {
-		knot_time_t unused = 0;
 		assert(ctx.validation_mode);
 		if (incremental) {
-			ret = knot_zone_sign_update(update, NULL, &ctx, &unused);
+			ret = knot_zone_sign_update(update, NULL, &ctx);
 		} else {
-			ret = knot_zone_sign(update, NULL, &ctx, &unused);
+			ret = knot_zone_sign(update, NULL, &ctx);
 		}
 	}
 	kdnssec_ctx_deinit(&ctx);

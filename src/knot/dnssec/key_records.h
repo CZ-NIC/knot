@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ int key_records_intersect(key_records_t *r, const key_records_t *against);
 
 int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool verbose);
 
-int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx, knot_time_t *expires);
+int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx);
 
 // WARNING this modifies 'kctx' with updated timestamp and with zone_keys from r->dnskey
 int key_records_verify(key_records_t *r, kdnssec_ctx_t *kctx, knot_time_t timestamp);

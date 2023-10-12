@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,14 +97,12 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
  * \param update      Zone Update containing the zone and to be updated with new DNSKEYs and RRSIGs.
  * \param zone_keys   Zone keys.
  * \param dnssec_ctx  DNSSEC context.
- * \param expire_at   Time, when the oldest signature in the zone expires.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_sign(zone_update_t *update,
                    zone_keyset_t *zone_keys,
-                   const kdnssec_ctx_t *dnssec_ctx,
-                   knot_time_t *expire_at);
+                   const kdnssec_ctx_t *dnssec_ctx);
 
 /*!
  * \brief Sign NSEC/NSEC3 nodes in changeset and update the changeset.
@@ -138,14 +136,12 @@ bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
  * \param update     Zone Update structure.
  * \param zone_keys  Zone keys.
  * \param dnssec_ctx DNSSEC context.
- * \param expire_at  Time, when the oldest signature in the update expires.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_sign_update(zone_update_t *update,
                           zone_keyset_t *zone_keys,
-                          const kdnssec_ctx_t *dnssec_ctx,
-                          knot_time_t *expire_at);
+                          const kdnssec_ctx_t *dnssec_ctx);
 
 /*!
  * \brief Force re-sign of a RRSet in zone apex.
