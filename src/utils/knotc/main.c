@@ -33,7 +33,7 @@ signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
-	printf("Usage: %s [-c | -C <path>] [options] <action> [action_args]\n"
+	printf("Usage: %s [-c | -C <path>] [options] <action>\n"
 	       "\n"
 	       "Config options:\n"
 	       " -c, --config <file>      "SPACE"Use a textual configuration file.\n"
