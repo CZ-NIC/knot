@@ -32,14 +32,14 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 knotc \- Knot DNS control utility
 .SH SYNOPSIS
 .sp
-\fBknotc\fP [\fIparameters\fP] \fIaction\fP [\fIaction_args\fP]
+\fBknotc\fP [\fIconfig_option\fP] [\fIoptions\fP] [\fIaction\fP]
 .SH DESCRIPTION
 .sp
 This program controls a running \fIknotd\fP process using a socket.
 .sp
 If an \fIaction\fP is specified, it is performed and \fIknotc\fP exits, otherwise the program
 is executed in the interactive mode.
-.SS Options
+.SS Config options
 .INDENT 0.0
 .TP
 \fB\-c\fP, \fB\-\-config\fP \fIfile\fP
@@ -49,6 +49,9 @@ Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
 Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
 The default configuration database, if exists, has a preference to the default
 configuration file.
+.UNINDENT
+.SS Options
+.INDENT 0.0
 .TP
 \fB\-m\fP, \fB\-\-max\-conf\-size\fP \fIMiB\fP
 Set maximum size of the configuration database

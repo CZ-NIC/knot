@@ -6,7 +6,7 @@
 Synopsis
 --------
 
-:program:`knotc` [*parameters*] *action* [*action_args*]
+:program:`knotc` [*config_option*] [*options*] [*action*]
 
 Description
 -----------
@@ -16,8 +16,8 @@ This program controls a running `knotd` process using a socket.
 If an *action* is specified, it is performed and `knotc` exits, otherwise the program
 is executed in the interactive mode.
 
-Options
-.......
+Config options
+..............
 
 **-c**, **--config** *file*
   Use a textual configuration file (default is :file:`@config_dir@/knot.conf`).
@@ -26,6 +26,9 @@ Options
   Use a binary configuration database directory (default is :file:`@storage_dir@/confdb`).
   The default configuration database, if exists, has a preference to the default
   configuration file.
+
+Options
+.......
 
 **-m**, **--max-conf-size** *MiB*
   Set maximum size of the configuration database

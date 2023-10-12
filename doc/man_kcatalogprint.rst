@@ -6,7 +6,7 @@ kcatalogprint – Knot DNS catalog print utility
 Synopsis
 --------
 
-:program:`kcatalogprint` [*config_option* *config_argument*] [*option*]
+:program:`kcatalogprint` [*config_option*] [*options*]
 
 Description
 -----------

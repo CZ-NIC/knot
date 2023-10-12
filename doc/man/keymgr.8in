@@ -32,9 +32,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 keymgr \- Knot DNS key management utility
 .SH SYNOPSIS
 .sp
-\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoption\fP\&...] \fIzone_name\fP \fIcommand\fP \fIargument\fP\&...
+\fBkeymgr\fP [\fIconfig_option\fP] [\fIoptions\fP] \fIzone_name\fP \fIcommand\fP
 .sp
-\fBkeymgr\fP [\fIconfig_option\fP \fIconfig_argument\fP] \fB\-l\fP
+\fBkeymgr\fP [\fIconfig_option\fP] [\-j] \fB\-l\fP
 .sp
 \fBkeymgr\fP \fB\-t\fP \fIparameter\fP\&...
 .SH DESCRIPTION
@@ -46,6 +46,12 @@ management are provided.
 .sp
 The DNSSEC and KASP configuration is stored in a so called KASP database.
 The database is backed by LMDB.
+.SS Parameters
+.INDENT 0.0
+.TP
+\fIzone_name\fP
+Name of the zone the command is executed for.
+.UNINDENT
 .SS Config options
 .INDENT 0.0
 .TP

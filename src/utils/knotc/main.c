@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,13 +33,14 @@ signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
-	printf("Usage: %s [parameters] <action> [action_args]\n"
+	printf("Usage: %s [-c | -C <path>] [options] <action>\n"
 	       "\n"
-	       "Parameters:\n"
+	       "Config options:\n"
 	       " -c, --config <file>      "SPACE"Use a textual configuration file.\n"
 	       "                          "SPACE" (default %s)\n"
 	       " -C, --confdb <dir>       "SPACE"Use a binary configuration database directory.\n"
 	       "                          "SPACE" (default %s)\n"
+	       "Options:\n"
 	       " -m, --max-conf-size <MiB>"SPACE"Set maximum size of the configuration database (max 10000 MiB).\n"
 	       "                          "SPACE" (default %d MiB)\n"
 	       " -s, --socket <path>      "SPACE"Use a control UNIX socket path.\n"

@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 kcatalogprint \- Knot DNS catalog print utility
 .SH SYNOPSIS
 .sp
-\fBkcatalogprint\fP [\fIconfig_option\fP \fIconfig_argument\fP] [\fIoption\fP]
+\fBkcatalogprint\fP [\fIconfig_option\fP] [\fIoptions\fP]
 .SH DESCRIPTION
 .sp
 The program prints zone catalog stored in a catalog database.

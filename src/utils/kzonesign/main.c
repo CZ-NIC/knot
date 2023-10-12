@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,21 +35,21 @@ signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
-	printf("Usage: %s [-c | -C <path>] [parameters] <zone_name>\n"
+	printf("Usage: %s [-c | -C <path>] [options] <zone_name>\n"
 	       "\n"
-	       "Parameters:\n"
+	       "Config options:\n"
 	       " -c, --config <file>      Path to a textual configuration file.\n"
 	       "                           (default %s)\n"
 	       " -C, --confdb <dir>       Path to a configuration database directory.\n"
 	       "                           (default %s)\n"
+	       "Options:\n"
 	       " -o, --outdir <dir_name>  Output directory.\n"
 	       " -r, --rollover           Allow key rollovers and NSEC3 re-salt.\n"
 	       " -v, --verify             Only verify if zone is signed correctly.\n"
 	       " -t, --time <timestamp>   Current time specification.\n"
 	       "                           (default current UNIX time)\n"
 	       " -h, --help               Print the program help.\n"
-	       " -V, --version            Print the program version.\n"
-	       "\n",
+	       " -V, --version            Print the program version.\n",
 	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
 }
 

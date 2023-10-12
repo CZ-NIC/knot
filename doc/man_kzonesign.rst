@@ -6,7 +6,7 @@
 Synopsis
 --------
 
-:program:`kzonesign` [*config_option* *config_argument*] [*options*] *zone_name*
+:program:`kzonesign` [*config_option*] [*options*] *zone_name*
 
 Description
 -----------
@@ -16,6 +16,12 @@ configuration, and writes the signed zone file back. An alternative mode
 is DNSSEC validation of the given zone. The signing or validation
 can run in parallel if enabled in the configuration (see policy.signing-threads
 and zone.adjust-threads).
+
+Parameters
+..........
+
+*zone_name*
+  A name of the zone to be signed.
 
 Config options
 ..............
@@ -50,12 +56,6 @@ Options
 
 **-V**, **--version**
   Print the program version.
-
-Parameters
-..........
-
-*zone_name*
-  A name of the zone to be signed.
 
 Exit values
 -----------

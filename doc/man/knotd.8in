@@ -32,12 +32,12 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 knotd \- Knot DNS server daemon
 .SH SYNOPSIS
 .sp
-\fBknotd\fP [\fIparameters\fP]
+\fBknotd\fP [\fIconfig_option\fP] [\fIoptions\fP]
 .SH DESCRIPTION
 .sp
 Knot DNS is a high\-performance authoritative DNS server. The \fIknotd\fP program is
 the DNS server daemon.
-.SS Options
+.SS Config options
 .INDENT 0.0
 .TP
 \fB\-c\fP, \fB\-\-config\fP \fIfile\fP
@@ -47,6 +47,9 @@ Use a textual configuration file (default is \fB@config_dir@/knot.conf\fP).
 Use a binary configuration database directory (default is \fB@storage_dir@/confdb\fP).
 The default configuration database, if exists, has a preference to the default
 configuration file.
+.UNINDENT
+.SS Options
+.INDENT 0.0
 .TP
 \fB\-m\fP, \fB\-\-max\-conf\-size\fP \fIMiB\fP
 Set maximum size of the configuration database

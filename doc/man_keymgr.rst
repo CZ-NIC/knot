@@ -6,9 +6,9 @@
 Synopsis
 --------
 
-:program:`keymgr` [*config_option* *config_argument*] [*option*...] *zone_name* *command* *argument*...
+:program:`keymgr` [*config_option*] [*options*] *zone_name* *command*
 
-:program:`keymgr` [*config_option* *config_argument*] **-l**
+:program:`keymgr` [*config_option*] [-j] **-l**
 
 :program:`keymgr` **-t** *parameter*...
 
@@ -22,6 +22,12 @@ management are provided.
 
 The DNSSEC and KASP configuration is stored in a so called KASP database.
 The database is backed by LMDB.
+
+Parameters
+..........
+
+*zone_name*
+  Name of the zone the command is executed for.
 
 Config options
 ..............

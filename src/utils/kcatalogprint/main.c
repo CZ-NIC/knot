@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,15 +33,16 @@ signal_ctx_t signal_ctx = { 0 }; // global, needed by signal handler
 
 static void print_help(void)
 {
-	printf("Usage: %s [-c | -C | -D <path>] [parameters]\n"
+	printf("Usage: %s [-c | -C | -D <path>] [options]\n"
 	       "\n"
-	       "Parameters:\n"
+	       "Config options:\n"
 	       " -c, --config <file>   Path to a textual configuration file.\n"
 	       "                        (default %s)\n"
 	       " -C, --confdb <dir>    Path to a configuration database directory.\n"
 	       "                        (default %s)\n"
 	       " -D, --dir <path>      Path to a catalog database directory, use default\n"
 	       "                       configuration.\n"
+	       "Options:\n"
 	       " -a, --catalog <name>  Filter the output by catalog zone name.\n"
 	       " -m, --member <name>   Filter the output by member zone name.\n"
 	       " -h, --help            Print the program help.\n"

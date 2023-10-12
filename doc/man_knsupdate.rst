@@ -19,6 +19,12 @@ The format of updates is textual and is made up of commands. Every command is
 placed on the separate line of the input. Lines starting with a semicolon are
 comments and are not processed.
 
+Parameters
+..........
+
+*filename*
+  Path to the file with knsupdate commands.
+
 Options
 .......
 
