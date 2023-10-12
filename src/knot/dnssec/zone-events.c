@@ -297,8 +297,8 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		}
 	}
 
-	log_zone_info(zone_name, "DNSSEC, successfully signed, serial %u",
-	              zone_contents_serial(update->new_cont));
+	log_zone_info(zone_name, "DNSSEC, successfully signed, serial %u, new RRSIGs %zu",
+	              zone_contents_serial(update->new_cont), ctx.stats->rrsig_count);
 
 done:
 	if (result == KNOT_EOK) {
@@ -424,8 +424,8 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		}
 	}
 
-	log_zone_info(zone_name, "DNSSEC, incrementally signed, serial %u",
-	              zone_contents_serial(update->new_cont));
+	log_zone_info(zone_name, "DNSSEC, incrementally signed, serial %u, new RRSIGs %zu",
+	              zone_contents_serial(update->new_cont), ctx.stats->rrsig_count);
 
 done:
 	if (result == KNOT_EOK) {

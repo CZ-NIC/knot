@@ -282,6 +282,9 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	if (ret == KNOT_EOK && expires != NULL) {
 		*expires = knot_time_min(*expires, sig_expire);
 	}
+	if (ret == KNOT_EOK) {
+		dnssec_ctx->stats->rrsig_count++;
+	}
 	return ret;
 }
 

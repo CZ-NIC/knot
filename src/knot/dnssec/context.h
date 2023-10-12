@@ -24,6 +24,10 @@
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/policy.h"
 
+typedef struct {
+	size_t rrsig_count;
+} zone_sign_stats_t;
+
 /*!
  * \brief DNSSEC signing context.
  */
@@ -37,6 +41,8 @@ typedef struct {
 	unsigned keystore_type;
 
 	char *kasp_zone_path;
+
+	zone_sign_stats_t *stats;
 
 	bool rrsig_drop_existing;
 	bool keep_deleted_keys;

@@ -205,11 +205,12 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		goto init_error;
 	}
 
-	ctx->policy = calloc(1, sizeof(*ctx->policy));
+	ctx->policy = calloc(1, sizeof(*ctx->policy) + sizeof(*ctx->stats));
 	if (ctx->policy == NULL) {
 		ret = KNOT_ENOMEM;
 		goto init_error;
 	}
+	ctx->stats = (void *)ctx->policy + sizeof(*ctx->policy);
 
 	ret = kasp_db_get_saved_ttls(ctx->kasp_db, zone_name,
 	                             &ctx->policy->saved_max_ttl,
