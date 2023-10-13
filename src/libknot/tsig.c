@@ -141,7 +141,7 @@ int knot_tsig_key_init_file(knot_tsig_key_t *key, const char *filename)
 
 	FILE *file = fopen(filename, "r");
 	if (!file) {
-		return KNOT_EACCES;
+		return KNOT_EFACCES;
 	}
 
 	char *line = NULL;
