@@ -1063,7 +1063,9 @@ int ngtcp2_crypto_verify_retry_token(
 
   cil = plaintext[0];
 
-  assert(cil == 0 || (cil >= NGTCP2_MIN_CIDLEN && cil <= NGTCP2_MAX_CIDLEN));
+  if (cil != 0 && (cil < NGTCP2_MIN_CIDLEN || cil > NGTCP2_MAX_CIDLEN)) {
+    return -1;
+  }
 
   memcpy(&gen_ts, plaintext + /* cid len = */ 1 + NGTCP2_MAX_CIDLEN,
          sizeof(gen_ts));
@@ -1084,11 +1086,11 @@ static size_t crypto_generate_regular_token_aad(uint8_t *dest,
   size_t addrlen;
 
   switch (sa->sa_family) {
-  case AF_INET:
+  case NGTCP2_AF_INET:
     addr = (const uint8_t *)&((const ngtcp2_sockaddr_in *)(void *)sa)->sin_addr;
     addrlen = sizeof(((const ngtcp2_sockaddr_in *)(void *)sa)->sin_addr);
     break;
-  case AF_INET6:
+  case NGTCP2_AF_INET6:
     addr =
         (const uint8_t *)&((const ngtcp2_sockaddr_in6 *)(void *)sa)->sin6_addr;
     addrlen = sizeof(((const ngtcp2_sockaddr_in6 *)(void *)sa)->sin6_addr);

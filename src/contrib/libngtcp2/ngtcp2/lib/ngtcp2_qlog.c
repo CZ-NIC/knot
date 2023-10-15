@@ -412,7 +412,7 @@ static uint8_t *write_stop_sending_frame(uint8_t *p,
   return p;
 }
 
-static uint8_t *write_crypto_frame(uint8_t *p, const ngtcp2_crypto *fr) {
+static uint8_t *write_crypto_frame(uint8_t *p, const ngtcp2_stream *fr) {
   /*
    * {"frame_type":"crypto","offset":0000000000000000000,"length":0000000000000000000}
    */
@@ -531,11 +531,13 @@ static uint8_t *
 write_stream_data_blocked_frame(uint8_t *p,
                                 const ngtcp2_stream_data_blocked *fr) {
   /*
-   * {"frame_type":"stream_data_blocked","limit":0000000000000000000}
+   * {"frame_type":"stream_data_blocked","stream_id":0000000000000000000,"limit":0000000000000000000}
    */
-#define NGTCP2_QLOG_STREAM_DATA_BLOCKED_FRAME_OVERHEAD 64
+#define NGTCP2_QLOG_STREAM_DATA_BLOCKED_FRAME_OVERHEAD 96
 
   p = write_verbatim(p, "{\"frame_type\":\"stream_data_blocked\",");
+  p = write_pair_number(p, "stream_id", (uint64_t)fr->stream_id);
+  *p++ = ',';
   p = write_pair_number(p, "limit", fr->offset);
   *p++ = '}';
 
@@ -544,16 +546,22 @@ write_stream_data_blocked_frame(uint8_t *p,
 
 static uint8_t *write_streams_blocked_frame(uint8_t *p,
                                             const ngtcp2_streams_blocked *fr) {
-  (void)fr;
-
   /*
-   * {"frame_type":"streams_blocked"}
+   * {"frame_type":"streams_blocked","stream_type":"unidirectional","limit":0000000000000000000}
    */
-#define NGTCP2_QLOG_STREAMS_BLOCKED_FRAME_OVERHEAD 32
+#define NGTCP2_QLOG_STREAMS_BLOCKED_FRAME_OVERHEAD 91
 
-  /* TODO Log stream_type and limit */
+  p = write_verbatim(p, "{\"frame_type\":\"streams_blocked\",\"stream_type\":");
+  if (fr->type == NGTCP2_FRAME_STREAMS_BLOCKED_BIDI) {
+    p = write_string(p, "bidirectional");
+  } else {
+    p = write_string(p, "unidirectional");
+  }
+  *p++ = ',';
+  p = write_pair_number(p, "limit", fr->max_streams);
+  *p++ = '}';
 
-  return write_verbatim(p, "{\"frame_type\":\"streams_blocked\"}");
+  return p;
 }
 
 static uint8_t *
@@ -790,7 +798,7 @@ void ngtcp2_qlog_write_frame(ngtcp2_qlog *qlog, const ngtcp2_frame *fr) {
     if (ngtcp2_buf_left(&qlog->buf) < NGTCP2_QLOG_CRYPTO_FRAME_OVERHEAD + 1) {
       return;
     }
-    p = write_crypto_frame(p, &fr->crypto);
+    p = write_crypto_frame(p, &fr->stream);
     break;
   case NGTCP2_FRAME_NEW_TOKEN:
     if (ngtcp2_buf_left(&qlog->buf) <
