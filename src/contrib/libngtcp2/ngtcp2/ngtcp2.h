@@ -62,19 +62,6 @@
 #  endif /* !WIN32 */
 #endif   /* NGTCP2_USE_GENERIC_SOCKADDR */
 
-#ifdef AF_INET
-#  define NGTCP2_AF_INET AF_INET
-#else /* !AF_INET */
-#  define NGTCP2_AF_INET 2
-#endif /* !AF_INET */
-
-#ifdef AF_INET6
-#  define NGTCP2_AF_INET6 AF_INET6
-#else /* !AF_INET6 */
-#  define NGTCP2_AF_INET6 23
-#  define NGTCP2_USE_GENERIC_IPV6_SOCKADDR
-#endif /* !AF_INET6 */
-
 #include <ngtcp2/version.h>
 
 #ifdef NGTCP2_STATICLIB
@@ -1240,6 +1227,14 @@ typedef struct ngtcp2_pkt_stateless_reset {
 #define NGTCP2_TLSEXT_QUIC_TRANSPORT_PARAMETERS_V1 0x39u
 
 #ifdef NGTCP2_USE_GENERIC_SOCKADDR
+#  ifndef NGTCP2_AF_INET
+#    error NGTCP2_AF_INET must be defined
+#  endif /* !NGTCP2_AF_INET */
+
+#  ifndef NGTCP2_AF_INET6
+#    error NGTCP2_AF_INET6 must be defined
+#  endif /* !NGTCP2_AF_INET6 */
+
 typedef unsigned short int ngtcp2_sa_family;
 typedef uint16_t ngtcp2_in_port;
 
@@ -1259,8 +1254,23 @@ typedef struct ngtcp2_sockaddr_in {
   uint8_t sin_zero[8];
 } ngtcp2_sockaddr_in;
 
+typedef struct ngtcp2_in6_addr {
+  uint8_t in6_addr[16];
+} ngtcp2_in6_addr;
+
+typedef struct ngtcp2_sockaddr_in6 {
+  ngtcp2_sa_family sin6_family;
+  ngtcp2_in_port sin6_port;
+  uint32_t sin6_flowinfo;
+  ngtcp2_in6_addr sin6_addr;
+  uint32_t sin6_scope_id;
+} ngtcp2_sockaddr_in6;
+
 typedef uint32_t ngtcp2_socklen;
-#else  /* !NGTCP2_USE_GENERIC_SOCKADDR */
+#else /* !NGTCP2_USE_GENERIC_SOCKADDR */
+#  define NGTCP2_AF_INET AF_INET
+#  define NGTCP2_AF_INET6 AF_INET6
+
 /**
  * @typedef
  *
@@ -1280,38 +1290,20 @@ typedef struct sockaddr_in ngtcp2_sockaddr_in;
 /**
  * @typedef
  *
+ * :type:`ngtcp2_sockaddr_in6` is typedefed to struct sockaddr_in6.
+ * If :macro:`NGTCP2_USE_GENERIC_SOCKADDR` is defined, it is typedefed
+ * to the generic struct sockaddr_in6 defined in ngtcp2.h.
+ */
+typedef struct sockaddr_in6 ngtcp2_sockaddr_in6;
+/**
+ * @typedef
+ *
  * :type:`ngtcp2_socklen` is typedefed to socklen_t.  If
  * :macro:`NGTCP2_USE_GENERIC_SOCKADDR` is defined, it is typedefed to
  * uint32_t.
  */
 typedef socklen_t ngtcp2_socklen;
 #endif /* !NGTCP2_USE_GENERIC_SOCKADDR */
-
-#if defined(NGTCP2_USE_GENERIC_SOCKADDR) ||                                    \
-    defined(NGTCP2_USE_GENERIC_IPV6_SOCKADDR)
-typedef struct ngtcp2_in6_addr {
-  uint8_t in6_addr[16];
-} ngtcp2_in6_addr;
-
-typedef struct ngtcp2_sockaddr_in6 {
-  ngtcp2_sa_family sin6_family;
-  ngtcp2_in_port sin6_port;
-  uint32_t sin6_flowinfo;
-  ngtcp2_in6_addr sin6_addr;
-  uint32_t sin6_scope_id;
-} ngtcp2_sockaddr_in6;
-#else  /* !defined(NGTCP2_USE_GENERIC_SOCKADDR) &&                             \
-          !defined(NGTCP2_USE_GENERIC_IPV6_SOCKADDR) */
-/**
- * @typedef
- *
- * :type:`ngtcp2_sockaddr_in6` is typedefed to struct sockaddr_in6.
- * If :macro:`NGTCP2_USE_GENERIC_SOCKADDR` is defined, it is typedefed
- * to the generic struct sockaddr_in6 defined in ngtcp2.h.
- */
-typedef struct sockaddr_in6 ngtcp2_sockaddr_in6;
-#endif /* !defined(NGTCP2_USE_GENERIC_SOCKADDR) &&                             \
-          !defined(NGTCP2_USE_GENERIC_IPV6_SOCKADDR) */
 
 /**
  * @struct
@@ -1611,13 +1603,9 @@ typedef enum ngtcp2_cc_algo {
    */
   NGTCP2_CC_ALGO_CUBIC = 0x01,
   /**
-   * :enum:`NGTCP2_CC_ALGO_BBR` represents BBR.
+   * :enum:`NGTCP2_CC_ALGO_BBR` represents BBR v2.
    */
-  NGTCP2_CC_ALGO_BBR = 0x02,
-  /**
-   * :enum:`NGTCP2_CC_ALGO_BBR_V2` represents BBR v2.
-   */
-  NGTCP2_CC_ALGO_BBR_V2 = 0x03
+  NGTCP2_CC_ALGO_BBR = 0x02
 } ngtcp2_cc_algo;
 
 /**
@@ -4477,8 +4465,11 @@ NGTCP2_EXTERN ngtcp2_ssize ngtcp2_conn_write_stream_versioned(
  * When application uses :macro:`NGTCP2_WRITE_STREAM_FLAG_MORE` at
  * least once, it must not call other ngtcp2 API functions
  * (application can still call `ngtcp2_conn_write_connection_close` to
- * handle error from this function), just keep calling this function
- * (or `ngtcp2_conn_writev_datagram`) until it returns 0, a positive
+ * handle error from this function.  It can also call
+ * `ngtcp2_conn_shutdown_stream_read`,
+ * `ngtcp2_conn_shutdown_stream_write`, and
+ * `ngtcp2_conn_shutdown_stream`), just keep calling this function (or
+ * `ngtcp2_conn_writev_datagram`) until it returns 0, a positive
  * number (which indicates a complete packet is ready), or the error
  * codes other than :macro:`NGTCP2_ERR_WRITE_MORE`,
  * :macro:`NGTCP2_ERR_STREAM_DATA_BLOCKED`,
@@ -4612,8 +4603,10 @@ NGTCP2_EXTERN ngtcp2_ssize ngtcp2_conn_writev_stream_versioned(
  * When application sees :macro:`NGTCP2_ERR_WRITE_MORE`, it must not
  * call other ngtcp2 API functions (application can still call
  * `ngtcp2_conn_write_connection_close` to handle error from this
- * function).  Just keep calling this function (or
- * `ngtcp2_conn_writev_stream`) until it returns a positive number
+ * function.  It can also call `ngtcp2_conn_shutdown_stream_read`,
+ * `ngtcp2_conn_shutdown_stream_write`, and
+ * `ngtcp2_conn_shutdown_stream`).  Just keep calling this function
+ * (or `ngtcp2_conn_writev_stream`) until it returns a positive number
  * (which indicates a complete packet is ready).
  *
  * This function returns the number of bytes written in |dest| if it

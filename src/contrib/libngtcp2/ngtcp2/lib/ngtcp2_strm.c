@@ -50,6 +50,8 @@ void ngtcp2_strm_init(ngtcp2_strm *strm, int64_t stream_id, uint32_t flags,
   strm->tx.last_max_stream_data_ts = UINT64_MAX;
   strm->tx.loss_count = 0;
   strm->tx.last_lost_pkt_num = -1;
+  strm->tx.stop_sending_app_error_code = 0;
+  strm->tx.reset_stream_app_error_code = 0;
   strm->rx.rob = NULL;
   strm->rx.cont_offset = 0;
   strm->rx.last_offset = 0;
@@ -175,7 +177,8 @@ static int strm_streamfrq_init(ngtcp2_strm *strm) {
 int ngtcp2_strm_streamfrq_push(ngtcp2_strm *strm, ngtcp2_frame_chain *frc) {
   int rv;
 
-  assert(frc->fr.type == NGTCP2_FRAME_STREAM);
+  assert(frc->fr.type == NGTCP2_FRAME_STREAM ||
+         frc->fr.type == NGTCP2_FRAME_CRYPTO);
   assert(frc->next == NULL);
 
   if (strm->tx.streamfrq == NULL) {
@@ -306,7 +309,7 @@ static int strm_streamfrq_unacked_pop(ngtcp2_strm *strm,
 
     assert(nfr->data[0].len > end_base_offset);
 
-    nfr->type = NGTCP2_FRAME_STREAM;
+    nfr->type = fr->type;
     nfr->flags = 0;
     nfr->fin = fr->fin;
     nfr->stream_id = fr->stream_id;
@@ -408,7 +411,7 @@ int ngtcp2_strm_streamfrq_pop(ngtcp2_strm *strm, ngtcp2_frame_chain **pfrc,
     }
 
     nfr = &nfrc->fr.stream;
-    nfr->type = NGTCP2_FRAME_STREAM;
+    nfr->type = fr->type;
     nfr->flags = 0;
     nfr->fin = fr->fin;
     nfr->stream_id = fr->stream_id;

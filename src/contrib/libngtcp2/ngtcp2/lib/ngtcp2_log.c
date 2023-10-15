@@ -47,6 +47,7 @@ void ngtcp2_log_init(ngtcp2_log *log, const ngtcp2_cid *scid,
     log->scid[0] = '\0';
   }
   log->log_printf = log_printf;
+  log->events = 0xff;
   log->ts = log->last_ts = ts;
   log->user_data = user_data;
 }
@@ -67,7 +68,7 @@ void ngtcp2_log_init(ngtcp2_log *log, const ngtcp2_cid *scid,
  *   Source Connection ID in hex string.
  *
  * <EVENT>:
- *   Event.  pkt=packet, frm=frame, rcv=recovery, cry=crypto,
+ *   Event.  pkt=packet, frm=frame, ldc=loss-detection, cry=crypto,
  *   con=connection(catch all)
  *
  * # Frame event
@@ -204,12 +205,14 @@ static const char *strevent(ngtcp2_log_event ev) {
     return "pkt";
   case NGTCP2_LOG_EVENT_FRM:
     return "frm";
-  case NGTCP2_LOG_EVENT_RCV:
-    return "rcv";
+  case NGTCP2_LOG_EVENT_LDC:
+    return "ldc";
   case NGTCP2_LOG_EVENT_CRY:
     return "cry";
   case NGTCP2_LOG_EVENT_PTV:
     return "ptv";
+  case NGTCP2_LOG_EVENT_CCA:
+    return "cca";
   case NGTCP2_LOG_EVENT_NONE:
   default:
     return "non";
@@ -414,7 +417,7 @@ static void log_fr_path_response(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
 }
 
 static void log_fr_crypto(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
-                          const ngtcp2_crypto *fr, const char *dir) {
+                          const ngtcp2_stream *fr, const char *dir) {
   log->log_printf(
       log->user_data,
       (NGTCP2_LOG_PKT " CRYPTO(0x%02x) offset=%" PRIu64 " len=%" PRIu64),
@@ -521,7 +524,7 @@ static void log_fr(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
     log_fr_path_response(log, hd, &fr->path_response, dir);
     break;
   case NGTCP2_FRAME_CRYPTO:
-    log_fr_crypto(log, hd, &fr->crypto, dir);
+    log_fr_crypto(log, hd, &fr->stream, dir);
     break;
   case NGTCP2_FRAME_NEW_TOKEN:
     log_fr_new_token(log, hd, &fr->new_token, dir);
@@ -543,7 +546,7 @@ static void log_fr(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
 
 void ngtcp2_log_rx_fr(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
                       const ngtcp2_frame *fr) {
-  if (!log->log_printf) {
+  if (!log->log_printf || !(log->events & NGTCP2_LOG_EVENT_FRM)) {
     return;
   }
 
@@ -552,7 +555,7 @@ void ngtcp2_log_rx_fr(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
 
 void ngtcp2_log_tx_fr(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
                       const ngtcp2_frame *fr) {
-  if (!log->log_printf) {
+  if (!log->log_printf || !(log->events & NGTCP2_LOG_EVENT_FRM)) {
     return;
   }
 
@@ -563,7 +566,7 @@ void ngtcp2_log_rx_vn(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
                       const uint32_t *sv, size_t nsv) {
   size_t i;
 
-  if (!log->log_printf) {
+  if (!log->log_printf || !(log->events & NGTCP2_LOG_EVENT_PKT)) {
     return;
   }
 
@@ -578,7 +581,7 @@ void ngtcp2_log_rx_sr(ngtcp2_log *log, const ngtcp2_pkt_stateless_reset *sr) {
   ngtcp2_pkt_hd shd;
   ngtcp2_pkt_hd *hd = &shd;
 
-  if (!log->log_printf) {
+  if (!log->log_printf || !(log->events & NGTCP2_LOG_EVENT_PKT)) {
     return;
   }
 
@@ -605,7 +608,7 @@ void ngtcp2_log_remote_tp(ngtcp2_log *log,
   const uint8_t *p;
   uint32_t version;
 
-  if (!log->log_printf) {
+  if (!log->log_printf || !(log->events & NGTCP2_LOG_EVENT_CRY)) {
     return;
   }
 
@@ -749,11 +752,11 @@ void ngtcp2_log_remote_tp(ngtcp2_log *log,
 
 void ngtcp2_log_pkt_lost(ngtcp2_log *log, int64_t pkt_num, uint8_t type,
                          uint8_t flags, ngtcp2_tstamp sent_ts) {
-  if (!log->log_printf) {
+  if (!log->log_printf || !(log->events & NGTCP2_LOG_EVENT_LDC)) {
     return;
   }
 
-  ngtcp2_log_info(log, NGTCP2_LOG_EVENT_RCV,
+  ngtcp2_log_info(log, NGTCP2_LOG_EVENT_LDC,
                   "pkn=%" PRId64 " lost type=%s sent_ts=%" PRIu64, pkt_num,
                   strpkttype_type_flags(type, flags), sent_ts);
 }
@@ -763,7 +766,7 @@ static void log_pkt_hd(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
   uint8_t dcid[sizeof(hd->dcid.data) * 2 + 1];
   uint8_t scid[sizeof(hd->scid.data) * 2 + 1];
 
-  if (!log->log_printf) {
+  if (!log->log_printf || !(log->events & NGTCP2_LOG_EVENT_PKT)) {
     return;
   }
 
@@ -798,7 +801,7 @@ void ngtcp2_log_info(ngtcp2_log *log, ngtcp2_log_event ev, const char *fmt,
   int n;
   char buf[NGTCP2_LOG_BUFLEN];
 
-  if (!log->log_printf) {
+  if (!log->log_printf || !(log->events & ev)) {
     return;
   }
 
