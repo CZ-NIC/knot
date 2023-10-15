@@ -43,7 +43,6 @@
 #include "ngtcp2_pq.h"
 #include "ngtcp2_cc.h"
 #include "ngtcp2_bbr.h"
-#include "ngtcp2_bbr2.h"
 #include "ngtcp2_pv.h"
 #include "ngtcp2_pmtud.h"
 #include "ngtcp2_cid.h"
@@ -294,8 +293,6 @@ typedef struct ngtcp2_pktns {
 
   struct {
     struct {
-      /* frq contains crypto data sorted by their offset. */
-      ngtcp2_ksl frq;
       /* offset is the offset of crypto stream in this packet number
          space. */
       uint64_t offset;
@@ -675,7 +672,6 @@ struct ngtcp2_conn {
     ngtcp2_cc_reno reno;
     ngtcp2_cc_cubic cubic;
     ngtcp2_cc_bbr bbr;
-    ngtcp2_cc_bbr2 bbr2;
   };
   const ngtcp2_mem *mem;
   /* idle_ts is the time instant when idle timer started. */

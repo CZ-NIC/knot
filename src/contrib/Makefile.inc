@@ -140,8 +140,6 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.h \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr2.c \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr2.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_buf.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_buf.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cc.c \
