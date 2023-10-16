@@ -18,6 +18,7 @@ ENV BUILD_PKGS \
     libngtcp2-crypto-gnutls-dev \
     libngtcp2-dev \
     libprotobuf-c-dev \
+    libsystemd-dev \
     libtool \
     liburcu-dev \
     libxdp-dev \
@@ -58,6 +59,7 @@ LABEL maintainer="Knot DNS <knot-dns@labs.nic.cz>"
 
 # Environment
 ENV RUNTIME_PKGS \
+    dbus \
     libbpf1 \
     libedit2 \
     libfstrm0 \
@@ -90,6 +92,11 @@ COPY --from=builder /tmp/knot-install/include/ /include/
 COPY --from=builder /tmp/knot-install/lib/     /lib/
 COPY --from=builder /tmp/knot-install/sbin/    /sbin/
 COPY --from=builder /tmp/knot-install/share/   /share/
+
+# Prepare configurations for optional D-Bus signaling
+COPY --from=builder /knot-src/distro/common/system-local.conf /etc/dbus-1/
+COPY --from=builder /knot-src/distro/common/cz.nic.knotd.conf /usr/share/dbus-1/system.d/
+RUN mkdir -p /run/dbus
 
 # Expose port
 EXPOSE 53/UDP
