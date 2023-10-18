@@ -549,7 +549,6 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		zone_node_t *n = NULL;
 		ret = zone_contents_remove_rr(update->new_cont, rrset, &n);
 	} else {
-		knot_rrset_free(rrset_copy, NULL);
 		ret = KNOT_EINVAL;
 	}
 
