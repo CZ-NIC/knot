@@ -2339,6 +2339,7 @@ Definition of zones served by the server.
      journal-content: none | changes | all
      journal-max-usage: SIZE
      journal-max-depth: INT
+     ixfr-benevolent: BOOL
      ixfr-by-one: BOOL
      ixfr-from-axfr: BOOL
      zone-max-size : SIZE
@@ -2617,6 +2618,16 @@ Maximum history length of the journal.
 *Minimum:* ``2``
 
 *Default:* ``20``
+
+.. _zone_ixfr-benevolent:
+
+ixfr-benevolent
+---------------
+
+If enabled, incoming IXFR is applied even when it contains removals of non-existing
+or additions of existing records.
+
+*Default:* off
 
 .. _zone_ixfr-by-one:
 

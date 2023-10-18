@@ -14,5 +14,3 @@ dns2	A	192.0.2.2
 
 mail	A	192.0.2.3
 	AAAA	2001:DB8::3
-
-onlyslave   A   100.0.0.1
