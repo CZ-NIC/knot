@@ -124,27 +124,6 @@ static void dump_string(rrset_dump_params_t *p, const char *str)
 	p->total += in_len;
 }
 
-static void dump_str_len(rrset_dump_params_t *p, const uint8_t *str, size_t len)
-{
-	CHECK_PRET
-
-	if (len >= p->out_max) {
-		p->ret = -1;
-		return;
-	}
-
-	if (memcpy(p->out, str, len) == NULL) {
-		p->ret = -1;
-		return;
-	}
-
-	p->out += len;
-	p->out_max -= len;
-	p->total += len;
-
-	p->out[0] = '\0';
-}
-
 static void dump_str_uint(rrset_dump_params_t *p, const char *str, uint64_t num)
 {
 	CHECK_PRET
@@ -960,6 +939,14 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 	dump_str_uint(p, "/", prefix);
 }
 
+static void wire_ednsversion_to_str(rrset_dump_params_t *p)
+{
+	CHECK_PRET
+
+	uint16_t version = (p->opt.rrset_ttl & 0x00ff0000) >> 16;
+	dump_uint(p, version);
+}
+
 static void wire_ednsflags_to_str(rrset_dump_params_t *p)
 {
 	CHECK_PRET
@@ -983,7 +970,7 @@ static void wire_ednsflags_to_str(rrset_dump_params_t *p)
 		mask >>= 1;
 	}
 	if (!hit) {
-		dump_string(p, "0");
+		dump_string(p, "\"\"");
 	}
 }
 
@@ -994,12 +981,12 @@ static void wire_ednsrcode_to_str(rrset_dump_params_t *p)
 	uint16_t opt_rc = (p->opt.rrset_ttl >> 24) & 0xff;
 
 	if (p->opt.hdr_rcode == 0xffff) {
-		dump_str_uint(p, "UNKNOWNRCODE", opt_rc << 4);
+		dump_str_uint(p, "EXT", opt_rc << 4);
 	} else {
 		uint16_t rc = knot_edns_whole_rcode(opt_rc, p->opt.hdr_rcode);
 		const knot_lookup_t *item = knot_lookup_by_id(knot_rcode_names, rc);
 		if (item == NULL) {
-			dump_str_uint(p, "RCODE", rc);
+			dump_uint(p, rc);
 		} else {
 			dump_string(p, item->name);
 		}
@@ -1042,6 +1029,8 @@ static void wire_ecs_to_str(rrset_dump_params_t *p, uint16_t optlen)
 	if (ret == KNOT_EOK) {
 		ret = knot_edns_client_subnet_get_addr(&addr, &ecs);
 	}
+	dump_string(p, "\"");
+	CHECK_PRET
 	if (ret == KNOT_EOK) {
 		ret = sockaddr_tostr(p->out, p->out_max, &addr);
 		CHECK_RET_OUTMAX_SNPRINTF
@@ -1058,6 +1047,8 @@ static void wire_ecs_to_str(rrset_dump_params_t *p, uint16_t optlen)
 	} else {
 		wire_data_to_hex(p, optlen);
 	}
+	CHECK_PRET
+	dump_string(p, "\"");
 }
 
 static void wire_ednsoptval_to_str(rrset_dump_params_t *p, uint16_t opt, uint16_t len)
@@ -1068,12 +1059,15 @@ static void wire_ednsoptval_to_str(rrset_dump_params_t *p, uint16_t opt, uint16_
 	switch (opt) {
 	case KNOT_EDNS_OPTION_NSID:
 		wire_data_to_hex(p, len);
-		if (len > 0 && p->ret >= 0 &&
-		    p->style->wrap && p->style->verbose &&
-		    all_print(p->in - len, len)) {
-			dump_string(p, " ; ");
-			CHECK_PRET
-			dump_str_len(p, p->in - len, len);
+		CHECK_PRET
+		dump_string(p, " ");
+		CHECK_PRET
+		if (all_print(p->in - len, len)) {
+			p->in -= len;
+			p->in_max += len;
+			wire_text_to_str(p, len, "", true, false);
+		} else {
+			dump_string(p, "\"\"");
 		}
 		break;
 	case KNOT_EDNS_OPTION_CLIENT_SUBNET:
@@ -1085,11 +1079,12 @@ static void wire_ednsoptval_to_str(rrset_dump_params_t *p, uint16_t opt, uint16_
 			wire_num32_to_str(p);
 
 			char comment[64] = " ; ", comlen = strlen(comment);
-			if (knot_time_print_human(tstamp, comment + comlen, sizeof(comment) - comlen, false) > 0) {
+			if (p->style->wrap &&
+			    knot_time_print_human(tstamp, comment + comlen, sizeof(comment) - comlen, false) > 0) {
 				dump_string(p, comment);
 			}
 		} else {
-			wire_data_to_hex(p, len); // includes correct empty output for zero-length
+			dump_string(p, "NONE");
 		}
 		break;
 	case KNOT_EDNS_OPTION_COOKIE:
@@ -1105,46 +1100,41 @@ static void wire_ednsoptval_to_str(rrset_dump_params_t *p, uint16_t opt, uint16_
 		break;
 	case KNOT_EDNS_OPTION_TCP_KEEPALIVE:
 		if (len != sizeof(uint16_t)) {
-			wire_data_to_hex(p, len);
+			dump_string(p, "0"); // should never happen, but hesitate assert
 		} else {
-			uint16_t timeout = knot_wire_read_u16(p->in);
-			p->in += sizeof(timeout);
-			p->in_max -= sizeof(timeout);
-			dump_uint(p, timeout / 10);
-			CHECK_PRET
-			dump_str_uint(p, ".", timeout % 10);
+			wire_num16_to_str(p);
 		}
 		break;
 	case KNOT_EDNS_OPTION_PADDING:
-		if (all_zero(p->in, len)) {
-			dump_str_uint(p, "[", len);
-			CHECK_PRET
-			dump_string(p, "]");
+		dump_uint(p, len);
+		CHECK_PRET
+		dump_string(p, " \"");
+		CHECK_PRET
+		if (!all_zero(p->in, len)) {
+			wire_data_to_hex(p, len);
+		} else {
 			p->in += len;
 			p->in_max -= len;
-		} else {
-			wire_data_to_hex(p, len);
 		}
+		dump_string(p, "\"");
 		break;
 	case KNOT_EDNS_OPTION_CHAIN:
 		wire_dname_to_str(p);
 		break;
 	case KNOT_EDNS_OPTION_EDE:
 		wire_num16_to_str(p);
-		if (p->ret >= 0 && p->style->wrap && p->style->verbose) {
-			uint16_t ede = knot_wire_read_u16(p->in - sizeof(ede));
-			const knot_lookup_t *item = knot_lookup_by_id(knot_edns_ede_names, ede);
-			if (item != NULL) {
-				dump_string(p, " ; ");
-				CHECK_PRET
-				dump_string(p, item->name);
-			}
-		}
-		if (len > sizeof(uint16_t)) {
-			dump_string(p, p->style->wrap ? BLOCK_INDENT : " ");
+		CHECK_PRET
+		dump_string(p, " \"");
+		CHECK_PRET
+		uint16_t ede = knot_wire_read_u16(p->in - sizeof(ede));
+		const knot_lookup_t *item = knot_lookup_by_id(knot_edns_ede_names, ede);
+		if (item != NULL) {
+			dump_string(p, item->name);
 			CHECK_PRET
-			wire_text_to_str(p, len - sizeof(uint16_t), "EDETXT=", false, false);
 		}
+		dump_string(p, "\" ");
+		CHECK_PRET
+		wire_text_to_str(p, len - sizeof(uint16_t), "", true, false);
 		break;
 	default:
 		assert(0); // this should be handled in wire_ednsopt_to_str() by generic OPT##=hex
@@ -1167,15 +1157,13 @@ static void wire_ednsopt_to_str(rrset_dump_params_t *p)
 	if (item == NULL) {
 		dump_str_uint(p, "OPT", opt);
 		CHECK_PRET
-		dump_string(p, "=");
+		dump_string(p, ": ");
 		CHECK_PRET
 		wire_data_to_hex(p, len);
 	} else {
 		dump_string(p, item->name);
-		if (len != 0) {
-			CHECK_PRET
-			dump_string(p, "=");
-		}
+		CHECK_PRET
+		dump_string(p, ": ");
 		CHECK_PRET
 		wire_ednsoptval_to_str(p, opt, len);
 	}
@@ -1753,9 +1741,10 @@ static void dnskey_info(const uint8_t *rdata,
 #define DUMP_LONG_TEXT	wire_text_to_str(p, p->in_max, NULL, true, false); CHECK_RET(p);
 #define DUMP_UNQUOTED	wire_text_to_str1(p, false, false); CHECK_RET(p);
 #define DUMP_BITMAP	wire_bitmap_to_str(p); CHECK_RET(p);
-#define DUMP_EDNS_FL	dump_string(p, "FLAGS="); CHECK_RET(p); wire_ednsflags_to_str(p); CHECK_RET(p);
-#define DUMP_EDNS_RC	dump_string(p, "RCODE="); CHECK_RET(p); wire_ednsrcode_to_str(p); CHECK_RET(p);
-#define DUMP_EDNS_US	dump_string(p, "UDPSIZE="); CHECK_RET(p); wire_ednsudpsize_to_str(p); CHECK_RET(p);
+#define DUMP_EDNS_VER	dump_string(p, "Version: "); CHECK_RET(p); wire_ednsversion_to_str(p); CHECK_RET(p);
+#define DUMP_EDNS_FL	dump_string(p, "FLAGS: "); CHECK_RET(p); wire_ednsflags_to_str(p); CHECK_RET(p);
+#define DUMP_EDNS_RC	dump_string(p, "RCODE: "); CHECK_RET(p); wire_ednsrcode_to_str(p); CHECK_RET(p);
+#define DUMP_EDNS_US	dump_string(p, "UDPSIZE: "); CHECK_RET(p); wire_ednsudpsize_to_str(p); CHECK_RET(p);
 #define DUMP_EDNS_OPT	wire_ednsopt_to_str(p); CHECK_RET(p);
 #define DUMP_APL	wire_apl_to_str(p); CHECK_RET(p);
 #define DUMP_LOC	wire_loc_to_str(p); CHECK_RET(p);
@@ -1948,16 +1937,18 @@ static int dump_opt(DUMP_PARAMS)
 
 	if (p->style->wrap) {
 		WRAP_INIT;
-		DUMP_EDNS_FL; WRAP_LINE;
-		DUMP_EDNS_RC; WRAP_LINE;
+		DUMP_EDNS_VER; WRAP_LINE;
+		DUMP_EDNS_FL;  WRAP_LINE;
+		DUMP_EDNS_RC;  WRAP_LINE;
 		DUMP_EDNS_US;
 		while (p->in_max > 0) {
 			WRAP_LINE; DUMP_EDNS_OPT;
 		}
 		WRAP_END;
 	} else {
-		DUMP_EDNS_FL; DUMP_SPACE;
-		DUMP_EDNS_RC; DUMP_SPACE;
+		DUMP_EDNS_VER; DUMP_SPACE;
+		DUMP_EDNS_FL;  DUMP_SPACE;
+		DUMP_EDNS_RC;  DUMP_SPACE;
 		DUMP_EDNS_US;
 		while (p->in_max > 0) {
 			DUMP_SPACE; DUMP_EDNS_OPT;
