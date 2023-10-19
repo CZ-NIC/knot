@@ -1,3 +1,40 @@
+Knot DNS 3.3.2 (2023-10-20)
+===========================
+
+Features:
+---------
+ - knotd: support for IXFR from AXFR computation (see 'zone.ixfr-from-axfr')
+ - knotd: support benevolent IXFR (see 'zone.ixfr-benevolent')
+ - knot-exporter: new configuration option '--no-zone-serial' #880
+
+Improvements:
+-------------
+ - libs: upgraded embedded libngtcp2 to 1.0.0
+ - knotd: added logging of new SOA serial when signing is finished
+ - knotd: unified some XDP-related logging
+ - keymgr: improved error message if a key file is not accessible
+ - keymgr: added offline RRSIGs validation at the end of their validity intervals
+ - kdig: upgraded EDNS presentation format to draft version -02
+ - kdig: simplified QUIC connection without extra PING frames
+ - kzonecheck: removed requirement that DS is at delegation point
+ - doc: various fixes and improvements
+
+Bugfixes:
+---------
+ - knotd: logged incorrect new SOA serial if 'zonefile-load: difference' is set #875
+ - knotd: more signing threads with a PKCS #11 keystore has no effect #876
+ - knotd: DNAME record returned with query domain name instead of actual name #873
+ - knotd: failed to import configuration file if mod-geoip is in use  #881
+ - knotd: failed to sign RRSet that fits to 64k only if compressed
+ - knotd: broken zone update context upon failed operation over control interface
+ - keymgr: offline RRSIGs not refreshed if 'rrsig-refresh' is not set
+ - knsupdate: incorrect processing of @ in the delete operation #879
+ - knot-exporter: failed to parse knotd PIDs on FreeBSD
+
+Packaging:
+----------
+ - docker: added support for (inter-container) D-Bus signaling
+
 Knot DNS 3.3.1 (2023-09-11)
 ===========================
 
