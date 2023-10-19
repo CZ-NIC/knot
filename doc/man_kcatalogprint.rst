@@ -1,7 +1,7 @@
 .. highlight:: console
 
-kcatalogprint – Knot DNS catalog print utility
-==============================================
+``kcatalogprint`` – Knot DNS catalog print utility
+==================================================
 
 Synopsis
 --------
