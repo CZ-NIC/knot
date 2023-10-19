@@ -118,9 +118,13 @@ typedef struct {
 	param_handle_f handler;
 } param_t;
 
-inline static void print_version(const char *program_name)
+inline static void print_version(const char *program_name, bool print_config)
 {
-	printf("%s (Knot DNS), version %s\n", program_name, PACKAGE_VERSION);
+	if (print_config) {
+		printf("%s (Knot DNS)\n%s\n", program_name, CONFIGURE_SUMMARY);
+	} else {
+		printf("%s (Knot DNS), version %s\n", program_name, PACKAGE_VERSION);
+	}
 }
 
 /*!

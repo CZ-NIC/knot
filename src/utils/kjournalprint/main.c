@@ -353,6 +353,9 @@ int main(int argc, char *argv[])
 	signal_ctx.close_db = &journal_db;
 	signal_init_std();
 
+	bool version = false;
+	bool version_config = false;
+
 	int opt = 0;
 	while ((opt = getopt_long(argc, argv, "c:C:D:l:s:zHdnxXhV", opts, NULL)) != -1) {
 		switch (opt) {
@@ -404,12 +407,19 @@ int main(int argc, char *argv[])
 			print_help();
 			goto success;
 		case 'V':
-			print_version(PROGRAM_NAME);
-			goto success;
+			version_config = version;
+			version = true;
+			break;
 		default:
 			print_help();
 			goto failure;
 		}
+	}
+
+	/* If selected, print the version/configuration and exit. */
+	if (version) {
+		print_version(PROGRAM_NAME, version_config);
+		return EXIT_SUCCESS;
 	}
 
 	// Backward compatibility.

@@ -1235,6 +1235,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 
 	int opt = 0, arg;
 	bool default_at_once = true;
+	bool version = false, version_config = false;
 	double argf;
 	char *argcp, *local_ip = NULL, *filename = NULL;
 	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:m:G:", opts, NULL)) != -1) {
@@ -1243,8 +1244,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			print_help();
 			exit(EXIT_SUCCESS);
 		case 'V':
-			print_version(PROGRAM_NAME);
-			exit(EXIT_SUCCESS);
+			version_config = version;
+			version = true;
+			break;
 		case 't':
 			assert(optarg);
 			argf = atof(optarg);
@@ -1379,6 +1381,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			print_help();
 			return false;
 		}
+	}
+	if (version) {
+		print_version(PROGRAM_NAME, version_config);
+		exit(EXIT_SUCCESS);
 	}
 	if (filename == NULL) {
 		print_help();

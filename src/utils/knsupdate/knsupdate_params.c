@@ -197,6 +197,8 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 
 	/* Command line options processing. */
 	int opt = 0;
+	bool version = false;
+	bool version_config = false;
 	while ((opt = getopt_long(argc, argv, "dhDvVp:t:r:y:k:", opts, NULL))
 	       != -1) {
 		switch (opt) {
@@ -212,9 +214,9 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			params->protocol = PROTO_TCP;
 			break;
 		case 'V':
-			print_version(PROGRAM_NAME);
-			params->stop = true;
-			return KNOT_EOK;
+			version_config = version;
+			version = true;
+			break;
 		case 'p':
 			free(params->server->service);
 			params->server->service = strdup(optarg);
@@ -257,6 +259,13 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			print_help();
 			return KNOT_ENOTSUP;
 		}
+	}
+
+	/* If selected, print the version/configuration and return. */
+	if (version) {
+		print_version(PROGRAM_NAME, version_config);
+		params->stop = true;
+		return KNOT_EOK;
 	}
 
 	/* No retries for TCP. */

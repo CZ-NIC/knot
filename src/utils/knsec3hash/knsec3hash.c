@@ -108,6 +108,9 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
+	bool version = false;
+	bool version_config = false;
+
 	int opt = 0;
 	while ((opt = getopt_long(argc, argv, "hV", options, NULL)) != -1) {
 		switch(opt) {
@@ -115,12 +118,17 @@ int main(int argc, char *argv[])
 			print_help();
 			return EXIT_SUCCESS;
 		case 'V':
-			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
+			version_config = version;
+			version = true;
+			break;
 		default:
 			print_help();
 			return EXIT_FAILURE;
 		}
+	}
+	if (version) {
+		print_version(PROGRAM_NAME, version_config);
+		return EXIT_SUCCESS;
 	}
 
 	bool new_params = false;

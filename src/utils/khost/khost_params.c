@@ -258,6 +258,8 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 
 	// Command line options processing.
 	int opt = 0;
+	bool version = false;
+	bool version_config = false;
 	while ((opt = getopt_long(argc, argv, "46adhrsTvVwc:t:R:W:", opts, NULL))
 	       != -1) {
 		switch (opt) {
@@ -294,9 +296,9 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 			conf->style.show_footer = true;
 			break;
 		case 'V':
-			print_version(PROGRAM_NAME);
-			params->stop = false;
-			return KNOT_EOK;
+			version_config = version;
+			version = true;
+			break;
 		case 'w':
 			conf->wait = -1;
 			break;
@@ -338,6 +340,13 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 			print_help();
 			return KNOT_ENOTSUP;
 		}
+	}
+
+	// If selected, print the version/configuration and return.
+	if (version) {
+		print_version(PROGRAM_NAME, version_config);
+		params->stop = false;
+		return KNOT_EOK;
 	}
 
 	// Process non-option parameters.

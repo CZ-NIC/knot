@@ -326,6 +326,9 @@ int main(int argc, char *argv[])
 
 	list_params.color = isatty(STDOUT_FILENO);
 
+	bool version = false;
+	bool version_config = false;
+
 	int opt = 0, parm = 0;
 	while ((opt = getopt_long(argc, argv, "c:C:D:t:ejlbxXhV", opts, NULL)) != -1) {
 		switch (opt) {
@@ -376,12 +379,19 @@ int main(int argc, char *argv[])
 			print_help();
 			goto success;
 		case 'V':
-			print_version(PROGRAM_NAME);
-			goto success;
+			version_config = version;
+			version = true;
+			break;
 		default:
 			print_help();
 			goto failure;
 		}
+	}
+
+	/* If selected, print the version/configuration and exit. */
+	if (version) {
+		print_version(PROGRAM_NAME, version_config);
+		return EXIT_SUCCESS;
 	}
 
 	signal_ctx.color = list_params.color;

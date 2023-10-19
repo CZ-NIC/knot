@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
 {
 	const char *origin = NULL;
 	bool verbose = false, print = false;
+	bool version = false, version_config = false;
 	semcheck_optional_t optional = SEMCHECK_DNSSEC_AUTO; // default value for --dnssec
 	knot_time_t check_time = (knot_time_t)time(NULL);
 
@@ -102,8 +103,9 @@ int main(int argc, char *argv[])
 			print_help();
 			return EXIT_SUCCESS;
 		case 'V':
-			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
+			version_config = version;
+			version = true;
+			break;
 		case 'd':
 			optional = str2bool(optarg) ? SEMCHECK_DNSSEC_ON : SEMCHECK_DNSSEC_OFF;
 			break;
@@ -118,6 +120,12 @@ int main(int argc, char *argv[])
 			print_help();
 			return EXIT_FAILURE;
 		}
+	}
+
+	/* If selected, print the version/configuration and exit. */
+	if (version) {
+		print_version(PROGRAM_NAME, version_config);
+		return EXIT_SUCCESS;
 	}
 
 	/* Check if there's at least one remaining non-option. */

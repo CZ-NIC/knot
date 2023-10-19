@@ -95,6 +95,9 @@ int main(int argc, char **argv)
 	params.color = isatty(STDOUT_FILENO);
 	params.color_force = false;
 
+	bool version = false;
+	bool version_config = false;
+
 	/* Parse command line arguments */
 	int opt = 0;
 	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:befxXvhV", opts, NULL)) != -1) {
@@ -147,12 +150,19 @@ int main(int argc, char **argv)
 			print_help();
 			return EXIT_SUCCESS;
 		case 'V':
-			print_version(PROGRAM_NAME);
-			return EXIT_SUCCESS;
+			version_config = version;
+			version = true;
+			break;
 		default:
 			print_help();
 			return EXIT_FAILURE;
 		}
+	}
+
+	/* If selected, print the version/configuration and exit. */
+	if (version) {
+		print_version(PROGRAM_NAME, version_config);
+		return EXIT_SUCCESS;
 	}
 
 	signal_ctx.color = params.color;
