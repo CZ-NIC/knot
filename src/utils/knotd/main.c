@@ -357,14 +357,19 @@ static void print_help(void)
 	       " -d, --daemonize=[dir]      Run the server as a daemon (with new root directory).\n"
 	       " -v, --verbose              Enable debug output.\n"
 	       " -h, --help                 Print the program help.\n"
-	       " -V, --version              Print the program version.\n",
+	       " -V, --version              Print the program version.\n"
+	       "                            If used multiple times, print the configuration summary.\n",
 	       PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR,
 	       CONF_MAPSIZE, RUN_DIR "/knot.sock");
 }
 
-static void print_version(void)
+static void print_version(bool print_config)
 {
-	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
+	if (print_config) {
+		printf("%s\n", CONFIGURE_SUMMARY);
+	} else {
+		printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
+	}
 }
 
 static int set_config(const char *confdb, const char *config, size_t max_conf_size)
@@ -429,6 +434,8 @@ int main(int argc, char **argv)
 	const char *daemon_root = "/";
 	char *socket = NULL;
 	bool verbose = false;
+	bool version = false;
+	bool version_config = false;
 
 	/* Long options. */
 	struct option opts[] = {
@@ -480,12 +487,19 @@ int main(int argc, char **argv)
 			print_help();
 			return EXIT_SUCCESS;
 		case 'V':
-			print_version();
-			return EXIT_SUCCESS;
+			version_config = version;
+			version = true;
+			break;
 		default:
 			print_help();
 			return EXIT_FAILURE;
 		}
+	}
+
+	/* If selected, print the version/configuration and exit. */
+	if (version) {
+		print_version(version_config);
+		return EXIT_SUCCESS;
 	}
 
 	/* Check for non-option parameters. */
