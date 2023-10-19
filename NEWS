@@ -63,7 +63,7 @@ Packaging:
  - debian,ubuntu: new self-hosted repository (see https://pkg.labs.nic.cz/doc/)
  - docker: upgraded to Debian bookworm-slim
 
-Knot DNS 3.2.9 (2023-27-07)
+Knot DNS 3.2.9 (2023-07-27)
 ===========================
 
 Improvements:
@@ -80,7 +80,7 @@ Bugfixes:
  - knotd: failed to active D-Bus notifications if not started as systemd service
  - kjournalprint: database transaction not properly closed when terminated prematurely
 
-Knot DNS 3.2.8 (2023-26-06)
+Knot DNS 3.2.8 (2023-06-26)
 ===========================
 
 Improvements:
