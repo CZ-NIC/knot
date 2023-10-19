@@ -10,12 +10,12 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
-SCENARIO = random.choice(range(36))
+SCENARIO = random.choice(range(72))
 CDS = bool(SCENARIO % 2)
-DNSKEY_MASTER = 0 # ((SCENARIO // 2) % 3) # scenario with on-master-DNSKEYs is not supported since we would need benevolent-IXFR on signers
 SIGNERS3 = bool((SCENARIO // 2) % 2)
 SIGNER1ROLL = (SCENARIO // 4) % 3
-SIGNER2ROLL = (SCENARIO // 4) // 3
+SIGNER2ROLL = (SCENARIO // 12) % 3
+DNSKEY_MASTER = (SCENARIO // 36) % 2
 ROLL_LOG = [ "ZSK", "KSK", "CSK" ]
 check_log("SCENARIO %d, SIGNERS3 enabled %s, SIGNER1ROLL %s, SIGNER2ROLL %s, CDS enabled %s, DNSKEY master %d" % \
           (SCENARIO, SIGNERS3, ROLL_LOG[SIGNER1ROLL], ROLL_LOG[SIGNER2ROLL], str(CDS), DNSKEY_MASTER))
@@ -63,8 +63,10 @@ def check_same_dnskey(server1, server2, server3, tst):
 def configure_dnssec(server1, master, server2, server3, roll):
     t.link(zone, master, server1, ddns=True)
     server1.tcp_remote_io_timeout = 1500
-    if DNSKEY_MASTER < 2:
+    if DNSKEY_MASTER < 2: # NOTE DNSKEY_MASTER==2 unused so far due to instability
         server1.ddns_master = ""
+    if DNSKEY_MASTER > 0:
+        server1.ixfr_benevolent = True
 
     server1.dnssec(zone).enable = True
     server1.dnssec(zone).single_type_signing = (roll == 2)
