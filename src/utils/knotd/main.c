@@ -366,7 +366,7 @@ static void print_help(void)
 static void print_version(bool print_config)
 {
 	if (print_config) {
-		printf("%s\n", CONFIGURE_SUMMARY);
+		printf("%s\n", configure_summary);
 	} else {
 		printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
 	}

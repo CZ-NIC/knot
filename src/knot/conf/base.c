@@ -30,6 +30,8 @@
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 
+const char *configure_summary = CONFIGURE_SUMMARY;
+
 // The active configuration.
 conf_t *s_conf;
 

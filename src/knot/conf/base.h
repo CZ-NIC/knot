@@ -203,6 +203,8 @@ typedef enum {
 	CONF_UPD_FCONFIO  = 1 << 2, /*!< Reuse previous confio reload context. */
 } conf_update_flag_t;
 
+extern const char *configure_summary;
+
 /*!
  * Returns the active configuration.
  */
