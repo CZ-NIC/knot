@@ -24,9 +24,7 @@ AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)
 AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
 AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
 
-# Store ./configure parameters and CFLAGS
-AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$*"],[Params passed to configure])
-AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environment])
+AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$ac_configure_args"],[Params passed to configure])
 
 AC_CONFIG_FILES([src/libknot/version.h
                  src/libdnssec/version.h
