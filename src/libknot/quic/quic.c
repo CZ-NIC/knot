@@ -828,6 +828,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 	ngtcp2_transport_params params;
 	ngtcp2_transport_params_default(&params);
 
+	params.disable_active_migration = true;
 	params.initial_max_streams_uni = 0;
 	params.initial_max_streams_bidi = 1024;
 	params.initial_max_stream_data_bidi_local = NGTCP2_MAX_VARINT;
