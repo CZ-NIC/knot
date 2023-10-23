@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,6 +35,8 @@
 #include "contrib/string.h"
 #include "contrib/ctype.h"
 #include "contrib/tolower.h"
+
+const char *configure_summary = CONFIGURE_SUMMARY;
 
 uint8_t *memdup(const uint8_t *data, size_t data_size)
 {

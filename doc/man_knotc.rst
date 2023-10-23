@@ -65,7 +65,8 @@ Options
   Print the program help.
 
 **-V**, **--version**
-  Print the program version.
+  Print the program version. If used multiple times, print the compile time
+  configuration summary.
 
 Actions
 .......

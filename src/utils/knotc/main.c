@@ -82,7 +82,7 @@ int main(int argc, char **argv)
 		{ "color",         no_argument,       NULL, 'X' },
 		{ "verbose",       no_argument,       NULL, 'v' },
 		{ "help",          no_argument,       NULL, 'h' },
-		{ "version",       no_argument,       NULL, 'V' },
+		{ "version",       optional_argument, NULL, 'V' },
 		{ NULL }
 	};
 
@@ -97,7 +97,7 @@ int main(int argc, char **argv)
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:befxXvhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:befxXvhV::", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			params.orig_config = optarg;
@@ -147,7 +147,7 @@ int main(int argc, char **argv)
 			print_help();
 			return EXIT_SUCCESS;
 		case 'V':
-			print_version(PROGRAM_NAME);
+			print_version(PROGRAM_NAME, optarg != NULL);
 			return EXIT_SUCCESS;
 		default:
 			print_help();

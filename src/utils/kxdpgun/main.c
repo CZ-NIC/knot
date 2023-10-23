@@ -1213,7 +1213,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
 	struct option opts[] = {
 		{ "help",       no_argument,       NULL, 'h' },
-		{ "version",    no_argument,       NULL, 'V' },
+		{ "version",    optional_argument, NULL, 'V' },
 		{ "duration",   required_argument, NULL, 't' },
 		{ "qps",        required_argument, NULL, 'Q' },
 		{ "batch",      required_argument, NULL, 'b' },
@@ -1237,13 +1237,13 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL, *filename = NULL;
-	while ((opt = getopt_long(argc, argv, "hVt:Q:b:rp:T::U::F:I:l:i:L:R:v:m:G:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:l:i:L:R:v:m:G:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
 			exit(EXIT_SUCCESS);
 		case 'V':
-			print_version(PROGRAM_NAME);
+			print_version(PROGRAM_NAME, optarg != NULL);
 			exit(EXIT_SUCCESS);
 		case 't':
 			assert(optarg);

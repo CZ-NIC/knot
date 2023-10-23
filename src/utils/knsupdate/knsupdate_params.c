@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -190,14 +190,14 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 
 	// Long options.
 	struct option opts[] = {
-		{ "help",    no_argument, NULL, 'h' },
-		{ "version", no_argument, NULL, 'V' },
+		{ "help",    no_argument,       NULL, 'h' },
+		{ "version", optional_argument, NULL, 'V' },
 		{ NULL }
 	};
 
 	/* Command line options processing. */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "dhDvVp:t:r:y:k:", opts, NULL))
+	while ((opt = getopt_long(argc, argv, "dhDvV::p:t:r:y:k:", opts, NULL))
 	       != -1) {
 		switch (opt) {
 		case 'd':
@@ -212,7 +212,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			params->protocol = PROTO_TCP;
 			break;
 		case 'V':
-			print_version(PROGRAM_NAME);
+			print_version(PROGRAM_NAME, optarg != NULL);
 			params->stop = true;
 			return KNOT_EOK;
 		case 'p':
