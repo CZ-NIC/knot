@@ -320,15 +320,11 @@ int get_domains(resolv_conf_t *conf)
 
 				// Find length of the token.
 				len = strcspn(pos, SEP_CHARS);
-				pos += len;
-
-				// Check if the token is not empty.
 				if (len == 0) {
 					break;
 				}
 
 				// Copy of the second token.
-				len = strcspn(pos, SEP_CHARS);
 				free(value);
 				value = strndup(pos, len);
 			}
