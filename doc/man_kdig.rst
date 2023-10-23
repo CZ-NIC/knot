@@ -111,7 +111,8 @@ Options
   An explicit *query_type* specification. See possible values above.
 
 **-V**, **--version**
-  Print the program version.
+  Print the program version. The option **-VV** makes the program
+  print the compile time configuration summary.
 
 **-x** *address*
   Send a reverse (PTR) query for IPv4 or IPv6 *address*. The correct name, class

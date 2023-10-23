@@ -57,7 +57,8 @@ Options
   Enable verbose output.
 
 **-V**, **--version**
-  Print the program version.
+  Print the program version. The option **-VV** makes the program
+  print the compile time configuration summary.
 
 **-w**
   Wait forever for the reply.

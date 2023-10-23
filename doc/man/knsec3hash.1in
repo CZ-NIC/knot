@@ -35,6 +35,8 @@ knsec3hash \- Simple utility to compute NSEC3 hash
 \fBknsec3hash\fP \fIsalt\fP \fIalgorithm\fP \fIiterations\fP \fIname\fP
 .sp
 \fBknsec3hash\fP \fIalgorithm\fP \fIflags\fP \fIiterations\fP \fIsalt\fP \fIname\fP
+.sp
+\fBknsec3hash\fP [\fI\-h\fP] [\fI\-V\fP]
 .SH DESCRIPTION
 .sp
 This utility generates a NSEC3 hash for a given domain name and parameters of NSEC3 hash.
@@ -55,6 +57,16 @@ Specifies the domain name to be hashed.
 .TP
 \fIflags\fP
 Specifies NSEC3 flags as an unsigned integer.
+.UNINDENT
+.SS Options
+.INDENT 0.0
+.TP
+\fB\-h\fP, \fB\-\-help\fP
+Print the program help.
+.TP
+\fB\-V\fP, \fB\-\-version\fP
+Print the program version. The option \fB\-VV\fP makes the program
+print the compile time configuration summary.
 .UNINDENT
 .SH EXIT VALUES
 .sp

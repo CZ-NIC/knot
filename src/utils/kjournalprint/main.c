@@ -346,7 +346,7 @@ int main(int argc, char *argv[])
 		{ "mono",      no_argument,       NULL, 'x' },
 		{ "color",     no_argument,       NULL, 'X' },
 		{ "help",      no_argument,       NULL, 'h' },
-		{ "version",   no_argument,       NULL, 'V' },
+		{ "version",   optional_argument, NULL, 'V' },
 		{ NULL }
 	};
 
@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
 	signal_init_std();
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:D:l:s:zHdnxXhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:D:l:s:zHdnxXhV::", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
@@ -404,7 +404,7 @@ int main(int argc, char *argv[])
 			print_help();
 			goto success;
 		case 'V':
-			print_version(PROGRAM_NAME);
+			print_version(PROGRAM_NAME, optarg != NULL);
 			goto success;
 		default:
 			print_help();

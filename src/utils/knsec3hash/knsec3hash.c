@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -103,19 +103,19 @@ static bool parse_nsec3_params(dnssec_nsec3_params_t *params, const char *salt_s
 int main(int argc, char *argv[])
 {
 	struct option options[] = {
-		{ "help",    no_argument, NULL, 'h' },
-		{ "version", no_argument, NULL, 'V' },
+		{ "help",    no_argument,       NULL, 'h' },
+		{ "version", optional_argument, NULL, 'V' },
 		{ NULL }
 	};
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "hV", options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV::", options, NULL)) != -1) {
 		switch(opt) {
 		case 'h':
 			print_help();
 			return EXIT_SUCCESS;
 		case 'V':
-			print_version(PROGRAM_NAME);
+			print_version(PROGRAM_NAME, optarg != NULL);
 			return EXIT_SUCCESS;
 		default:
 			print_help();

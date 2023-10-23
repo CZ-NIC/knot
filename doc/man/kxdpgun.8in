@@ -136,7 +136,8 @@ with \fB\-\-quic=R\fP or with low QPS. Otherwise, too many files are generated.
 Print the program help.
 .TP
 \fB\-V\fP, \fB\-\-version\fP
-Print the program version.
+Print the program version. The option \fB\-VV\fP makes the program
+print the compile time configuration summary.
 .UNINDENT
 .SS Queries file format
 .sp
