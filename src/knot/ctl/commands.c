@@ -21,7 +21,7 @@
 
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
-#include "knot/conf/base.h"
+#include "knot/conf/conf.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
 #include "knot/dnssec/key-events.h"

@@ -44,6 +44,8 @@
 #define DFLT_MAX_BG_WORKERS		10
 #define FALLBACK_MAX_TCP_CLIENTS	100
 
+const char *configure_summary = CONFIGURE_SUMMARY;
+
 bool conf_db_exists(
 	const char *db_dir)
 {

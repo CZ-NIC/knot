@@ -120,8 +120,12 @@ typedef struct {
 
 inline static void print_version(const char *program_name, bool print_config)
 {
+#ifndef CONFIGURE_SUMMARY_VAR
+	const char *configure_summary = CONFIGURE_SUMMARY;
+#endif
+
 	if (print_config) {
-		printf("%s (Knot DNS)\n%s\n", program_name, CONFIGURE_SUMMARY);
+		printf("%s (Knot DNS)\n%s\n", program_name, configure_summary);
 	} else {
 		printf("%s (Knot DNS), version %s\n", program_name, PACKAGE_VERSION);
 	}

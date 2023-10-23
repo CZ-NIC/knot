@@ -78,6 +78,9 @@ typedef struct {
 	size_t len;
 } conf_mod_id_t;
 
+#define CONFIGURE_SUMMARY_VAR
+extern const char *configure_summary;
+
 /*!
  * Check if the configuration database exists on the filesystem.
  *
