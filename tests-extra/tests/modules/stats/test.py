@@ -65,20 +65,20 @@ check_item(knot, "server", "zone-count", 2)
 check_item(knot, "zone", "max-ttl", 3600, zone=knot.zones["example."])
 check_item(knot, "zone", "max-ttl", 518400, zone=knot.zones["."])
 
-resp = knot.dig(zones[0].name, "SOA", tries=1, udp=True)
+resp = knot.dig(zones[0].name, "SOA", tries=1, udp=True, xdp=False)
 query_size1 = resp.query_size()
 reply_size1 = resp.response_size()
 
-resp = knot.dig(zones[0].name, "NS", tries=1, udp=False)
+resp = knot.dig(zones[0].name, "NS", tries=1, udp=False, xdp=False)
 query_size2 = resp.query_size()
 reply_size2 = resp.response_size()
 
-resp = knot.dig(zones[1].name, "TYPE11", tries=1, udp=True)
+resp = knot.dig(zones[1].name, "TYPE11", tries=1, udp=True, xdp=False)
 query_size3 = resp.query_size()
 reply_size3 = resp.response_size()
 
 # Successful transfer.
-resp = knot.dig(zones[0].name, "AXFR", tries=1)
+resp = knot.dig(zones[0].name, "AXFR", tries=1, xdp=False)
 resp.check_xfr(rcode="NOERROR")
 xfr_query_size = resp.query_size()
 # Cannot get xfr_reply_size :-/

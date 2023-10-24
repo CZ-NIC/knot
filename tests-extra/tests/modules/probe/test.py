@@ -27,7 +27,10 @@ class TestItem(object):
                     libknot.probe.KnotProbeDataProto.TCP
         compare(data.proto, ref_proto.value, "proto")
         compare(data.addr_str(data.local_addr), server.addr, "local address")
-        compare(data.local_port, server.port, "local port")
+        if data.local_port == server.xdp_port:
+            compare(data.local_port, server.xdp_port, "local XDP port")
+        else:
+            compare(data.local_port, server.port, "local port")
 
         compare(data.qname_str(), str(dns.name.from_text(self.qname)), "qname")
         compare(data.query_type, dns.rdatatype.from_text(self.qtype), "qtype")

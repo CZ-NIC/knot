@@ -7,7 +7,7 @@ import threading
 
 t = Test(tsig=False)
 
-master = t.server("knot")
+master = t.server("knot", xdp_enable=False) # otherwise formwarding DDNS may fail
 slave = t.server("knot")
 
 zone = t.zone("example.", storage=".")
