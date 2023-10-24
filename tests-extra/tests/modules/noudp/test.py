@@ -4,6 +4,7 @@
 
 import os
 import re
+import random
 import dns.flags
 from dnstest.test import Test
 from dnstest.module import ModNoudp
@@ -37,11 +38,13 @@ for _ in range(0, 10):
     resp = knot.dig(zone_notc[0].name, "SOA", udp=True)
     resp.check(noflags="TC")
 
+consistent_xdp = random.choice([False, True])
+
 for _ in range(0, 5):
-    resp = knot.dig(zone_50_50[0].name, "SOA", udp=True)
+    resp = knot.dig(zone_50_50[0].name, "SOA", udp=True, xdp=consistent_xdp)
     resp.check(noflags="TC")
 
-    resp = knot.dig(zone_50_50[0].name, "SOA", udp=True)
+    resp = knot.dig(zone_50_50[0].name, "SOA", udp=True, xdp=consistent_xdp)
     resp.check(flags="TC")
 
 t.end()

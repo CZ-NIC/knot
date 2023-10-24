@@ -128,7 +128,10 @@ slave.zones_wait(zones, after_update15, equal=True, greater=False)
 
 # update master by adding delegation with nontrivial NONAUTH nodes
 for zone in zones:
-    up = master.update(zone)
+    if zone in zone0:
+        up = master0.update(zone)
+    else:
+        up = master.update(zone)
     if random.random() < 0.5:
         up.add("deleg390280", 3600, "NS", "a.ns.deleg390280")
         up.add("a.ns.deleg390280", 3600, "A", "1.2.54.30")
@@ -140,12 +143,18 @@ for zone in zones:
 # update master by making empty-non-terminal from non-empty-non-terminal
 # above a delegation (create first)
 for zone in zones:
-    up = master.update(zone)
+    if zone in zone0:
+        up = master0.update(zone)
+    else:
+        up = master.update(zone)
     up.add("ent", 3600, "A", "1.2.3.4")
     up.add("deleg.ent", 3600, "NS", "ns2.example.net.")
     up.send("NOERROR")
     t.sleep(1)
-    up = master.update(zone)
+    if zone in zone0:
+        up = master0.update(zone)
+    else:
+        up = master.update(zone)
     up.delete("ent", "A")
     up.send("NOERROR")
 

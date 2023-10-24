@@ -65,23 +65,34 @@ check_item(knot, "server", "zone-count", 2)
 check_item(knot, "zone", "max-ttl", 3600, zone=knot.zones["example."])
 check_item(knot, "zone", "max-ttl", 518400, zone=knot.zones["."])
 
-resp = knot.dig(zones[0].name, "SOA", tries=1, udp=True)
+xdp = knot.xdp_port is not None and knot.xdp_port > 0
+xdp_str = "-xdp" if xdp else ""
+
+resp = knot.dig(zones[0].name, "SOA", tries=1, udp=True, xdp=xdp)
 query_size1 = resp.query_size()
 reply_size1 = resp.response_size()
 
-resp = knot.dig(zones[0].name, "NS", tries=1, udp=False)
+resp = knot.dig(zones[0].name, "NS", tries=1, udp=False, xdp=xdp)
 query_size2 = resp.query_size()
 reply_size2 = resp.response_size()
 
-resp = knot.dig(zones[1].name, "TYPE11", tries=1, udp=True)
+resp = knot.dig(zones[1].name, "TYPE11", tries=1, udp=True, xdp=xdp)
 query_size3 = resp.query_size()
 reply_size3 = resp.response_size()
 
 # Successful transfer.
-resp = knot.dig(zones[0].name, "AXFR", tries=1)
+resp = knot.dig(zones[0].name, "AXFR", tries=1, xdp=xdp)
 resp.check_xfr(rcode="NOERROR")
 xfr_query_size = resp.query_size()
 # Cannot get xfr_reply_size :-/
+
+# Check request protocol metrics.
+check_item(knot, "mod-stats", "request-protocol", 2, "udp%s" % proto + xdp_str)
+check_item(knot, "mod-stats", "request-protocol", 1, "udp%s" % proto + xdp_str, zone=zones[0])
+check_item(knot, "mod-stats", "request-protocol", 1, "udp%s" % proto + xdp_str, zone=zones[1])
+
+check_item(knot, "mod-stats", "request-protocol", 2, "tcp%s" % proto + xdp_str)
+check_item(knot, "mod-stats", "request-protocol", 2, "tcp%s" % proto + xdp_str, zone=zones[0])
 
 # Successful update.
 up = knot.update(zones[1])
@@ -89,14 +100,6 @@ up.add(zones[1].name, "3600", "AAAA", "::1")
 up.send("NOERROR")
 ddns_query_size = up.query_size()
 # Due to DDNS bulk processing, failed RCODE and response-bytes are not incremented!
-
-# Check request protocol metrics.
-check_item(knot, "mod-stats", "request-protocol", 2, "udp%s" % proto)
-check_item(knot, "mod-stats", "request-protocol", 1, "udp%s" % proto, zone=zones[0])
-check_item(knot, "mod-stats", "request-protocol", 1, "udp%s" % proto, zone=zones[1])
-
-check_item(knot, "mod-stats", "request-protocol", 3, "tcp%s" % proto)
-check_item(knot, "mod-stats", "request-protocol", 2, "tcp%s" % proto, zone=zones[0])
 
 # Check request/response bytes metrics.
 check_item(knot, "mod-stats", "request-bytes",  query_size1 + query_size2 + query_size3,

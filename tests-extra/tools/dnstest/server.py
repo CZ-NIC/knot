@@ -160,6 +160,7 @@ class Server(object):
         self.addr = None
         self.addr_extra = list()
         self.port = 53 # Needed for keymgr when port not yet generated
+        self.xdp_port = None # 0 indicates that XDP is enabled but port not yet assigned
         self.quic_port = None
         self.cert_key = str()
         self.udp_workers = None
@@ -252,6 +253,13 @@ class Server(object):
             time.sleep(2)
 
         return False
+
+    def query_port(self, xdp=None):
+        if self.xdp_port is None or self.xdp_port == 0:
+            xdp = False
+        if xdp is None:
+            xdp = (random.random() < 0.8)
+        return self.xdp_port if xdp else self.port
 
     def set_master(self, zone, slave=None, ddns=False, ixfr=False, journal_content="changes"):
         '''Set the server as a master for the zone'''
@@ -555,7 +563,7 @@ class Server(object):
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
             tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
-            log_no_sep=False, tsig=None, addr=None, source=None):
+            log_no_sep=False, tsig=None, addr=None, source=None, xdp=None):
 
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
@@ -700,18 +708,18 @@ class Server(object):
             try:
                 if rtype.upper() == "AXFR":
                     resp = dns.query.xfr(addr, rname, rtype, rclass,
-                                         port=self.port, lifetime=timeout,
+                                         port=self.query_port(xdp), lifetime=timeout,
                                          use_udp=udp, **key_params)
                 elif rtype.upper() == "IXFR":
                     resp = dns.query.xfr(addr, rname, rtype, rclass,
-                                         port=self.port, lifetime=timeout,
+                                         port=self.query_port(xdp), lifetime=timeout,
                                          use_udp=udp, serial=int(serial),
                                          **key_params)
                 elif udp:
-                    resp = dns.query.udp(query, addr, port=self.port,
+                    resp = dns.query.udp(query, addr, port=self.query_port(xdp),
                                          timeout=timeout, source=source)
                 else:
-                    resp = dns.query.tcp(query, addr, port=self.port,
+                    resp = dns.query.tcp(query, addr, port=self.query_port(xdp),
                                          timeout=timeout, source=source)
 
                 if not log_no_sep:
@@ -1338,9 +1346,10 @@ class Knot(Server):
         self._bool(s, "automatic-acl", self.auto_acl)
         s.end()
 
-        if self.quic_log:
+        if self.xdp_port is not None and self.xdp_port > 0:
             s.begin("xdp")
-            s.item_str("quic-log", "on")
+            s.item_str("listen", "%s@%s" % (self.addr, self.xdp_port))
+            s.item_str("tcp", "on")
             s.end()
 
         s.begin("control")
@@ -1383,7 +1392,7 @@ class Knot(Server):
                         if master.addr.startswith("/"):
                             s.item_str("address", "%s" % master.addr)
                         else:
-                            s.item_str("address", "%s@%s" % (master.addr, master.port))
+                            s.item_str("address", "%s@%s" % (master.addr, master.query_port()))
                     if self.tsig:
                         s.item_str("key", self.tsig.name)
                     if self.via:
@@ -1406,7 +1415,7 @@ class Knot(Server):
                         if slave.addr.startswith("/"):
                             s.item_str("address", "%s" % slave.addr)
                         else:
-                            s.item_str("address", "%s@%s" % (slave.addr, slave.port))
+                            s.item_str("address", "%s@%s" % (slave.addr, slave.query_port()))
                     if self.via:
                         s.item_str("via", self.via)
                     if self.tsig:

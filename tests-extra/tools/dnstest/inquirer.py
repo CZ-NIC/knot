@@ -37,18 +37,19 @@ class Inquirer:
                 _queries.append(query)
 
         while self.active:
+            _port = server.query_port()
             try:
                 for q in _queries:
                     if _tcp:
-                        dns.query.tcp(q, server.addr, port=server.port,
+                        dns.query.tcp(q, server.addr, port=_port,
                                       timeout=0.05)
                     elif _malformed:
                         wiretrunc = q.to_wire()[0:10]
                         af = socket.AF_INET6 if ":" in str(server.addr) else socket.AF_INET
                         sock = socket.socket(af, socket.SOCK_DGRAM)
-                        sock.sendto(wiretrunc, (server.addr, server.port))
+                        sock.sendto(wiretrunc, (server.addr, _port))
                     else:
-                        dns.query.udp(q, server.addr, port=server.port,
+                        dns.query.udp(q, server.addr, port=_port,
                                       timeout=0.02)
             except:
                 pass
