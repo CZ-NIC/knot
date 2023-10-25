@@ -51,9 +51,10 @@ for i in range(UPDATES):
 
     zone_rem = []
     REM_PERCENT = REM_ZONES * 100 / len(master.zones) + 1
-    for z in master.zones:
-        if z != catz[0].name and random.random() * 100  < REM_PERCENT:
-            zone_rem.append(z)
+    while len(zone_rem) == 0:
+        for z in master.zones:
+            if z != catz[0].name and random.random() * 100  < REM_PERCENT:
+                zone_rem.append(z)
     serial_bef_rem = slave.zone_wait(catz, tsig=True)
     for z in zone_rem:
         master.zones.pop(z)
