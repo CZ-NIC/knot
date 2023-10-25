@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 		{ "print",   no_argument,       NULL, 'p' },
 		{ "verbose", no_argument,       NULL, 'v' },
 		{ "help",    no_argument,       NULL, 'h' },
-		{ "version", no_argument,       NULL, 'V' },
+		{ "version", optional_argument, NULL, 'V' },
 		{ NULL }
 	};
 
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "o:t:d:pvVh", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "o:t:d:pvV::h", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'o':
 			origin = optarg;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 			print_help();
 			return EXIT_SUCCESS;
 		case 'V':
-			print_version(PROGRAM_NAME);
+			print_version(PROGRAM_NAME, optarg != NULL);
 			return EXIT_SUCCESS;
 		case 'd':
 			optional = str2bool(optarg) ? SEMCHECK_DNSSEC_ON : SEMCHECK_DNSSEC_OFF;

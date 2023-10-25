@@ -2516,12 +2516,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		*index += add;
 		break;
 	case 'V':
-		if (len > 1) {
-			ERR("invalid option -%s", opt);
-			return KNOT_ENOTSUP;
-		}
-
-		print_version(PROGRAM_NAME);
+		print_version(PROGRAM_NAME, len > 1);
 		params->stop = true;
 		break;
 	case 'x':
@@ -2597,8 +2592,8 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		if (strcmp(opt, "-help") == 0) {
 			print_help();
 			params->stop = true;
-		} else if (strcmp(opt, "-version") == 0) {
-			print_version(PROGRAM_NAME);
+		} else if (strncmp(opt, "-version", 8) == 0) {
+			print_version(PROGRAM_NAME, strlen(opt) > 9);
 			params->stop = true;
 		} else {
 			ERR("invalid option: -%s", opt);

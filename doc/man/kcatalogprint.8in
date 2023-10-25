@@ -63,7 +63,8 @@ Filter the output by member zone name.
 Print the program help.
 .TP
 \fB\-V\fP, \fB\-\-version\fP
-Print the program version.
+Print the program version. The option \fB\-VV\fP makes the program
+print the compile time configuration summary.
 .UNINDENT
 .SH EXIT VALUES
 .sp

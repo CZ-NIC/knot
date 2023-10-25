@@ -55,7 +55,8 @@ Options
   Print the program help.
 
 **-V**, **--version**
-  Print the program version.
+  Print the program version. The option **-VV** makes the program
+  print the compile time configuration summary.
 
 Exit values
 -----------

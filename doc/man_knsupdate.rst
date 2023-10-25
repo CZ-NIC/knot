@@ -54,7 +54,8 @@ Options
   Use a TCP connection.
 
 **-V**, **--version**
-  Print the program version.
+  Print the program version. The option **-VV** makes the program
+  print the compile time configuration summary.
 
 **-y** [*alg*:]\ *name*:*key*
   Use the TSIG key with a name *name* to authenticate the request. The *alg*

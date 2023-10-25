@@ -24,10 +24,6 @@ AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)
 AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
 AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
 
-# Store ./configure parameters and CFLAGS
-AC_DEFINE_UNQUOTED([CONFIGURE_PARAMS],["$*"],[Params passed to configure])
-AC_DEFINE_UNQUOTED([CONFIGURE_CFLAGS],["$CFLAGS"],[Passed CFLAGS from environment])
-
 AC_CONFIG_FILES([src/libknot/version.h
                  src/libdnssec/version.h
                  src/libzscanner/version.h])
@@ -792,9 +788,10 @@ filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
 filtered_cppflags=$(echo -n "$CPPFLAGS" | \
                     sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
+filtered_config_params=$(echo -n "$ac_configure_args" | \
+                         sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
 
-result_msg_base="  Knot DNS $VERSION
-
+result_msg_base="
     Target:   $host_os $host_cpu $endianity
     Compiler: ${CC}
     CFLAGS:   ${filtered_cflags} ${filtered_cppflags}
@@ -841,7 +838,7 @@ result_msg_base="  Knot DNS $VERSION
     LibFuzzer:              ${with_fuzzer}
     OSS-Fuzz:               ${with_oss_fuzz}"
 
-result_msg_esc=$(echo -n "$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
+result_msg_esc=$(echo -n "    Configure:$filtered_config_params\n$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
 
 AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY],["$result_msg_esc"],[Configure summary])
 
@@ -872,5 +869,6 @@ AC_CONFIG_FILES([doc/modules.rst],
 
 AC_OUTPUT
 AC_MSG_RESULT([
+  Knot DNS $VERSION
 $result_msg_base
 ])

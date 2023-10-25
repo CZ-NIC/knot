@@ -1900,7 +1900,7 @@ static int server_status(ctl_args_t *args)
 		               conf()->cache.srv_xdp_threads, conf()->cache.srv_bg_threads,
 		               running_bkg_wrk, wrk_queue);
 	} else if (strcasecmp(type, "configure") == 0) {
-		ret = snprintf(buff, sizeof(buff), "%s", CONFIGURE_SUMMARY);
+		ret = snprintf(buff, sizeof(buff), "%s", configure_summary);
 	} else if (strcasecmp(type, "cert-key") == 0) {
 		uint8_t pin[128];
 		size_t pin_len = server_cert_pin(args->server, pin, sizeof(pin));
