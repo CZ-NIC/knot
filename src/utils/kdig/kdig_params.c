@@ -2592,8 +2592,8 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		if (strcmp(opt, "-help") == 0) {
 			print_help();
 			params->stop = true;
-		} else if (strcmp(opt, "-version") == 0) {
-			print_version(PROGRAM_NAME, false);
+		} else if (strncmp(opt, "-version", 8) == 0) {
+			print_version(PROGRAM_NAME, strlen(opt) > 9);
 			params->stop = true;
 		} else {
 			ERR("invalid option: -%s", opt);
