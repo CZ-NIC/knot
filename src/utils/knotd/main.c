@@ -44,6 +44,7 @@
 #include "knot/common/systemd.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
+#include "utils/common/params.h"
 
 #define PROGRAM_NAME "knotd"
 
@@ -362,11 +363,6 @@ static void print_help(void)
 	       CONF_MAPSIZE, RUN_DIR "/knot.sock");
 }
 
-static void print_version(void)
-{
-	printf("%s (Knot DNS), version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
-}
-
 static int set_config(const char *confdb, const char *config, size_t max_conf_size)
 {
 	if (config != NULL && confdb != NULL) {
@@ -439,7 +435,7 @@ int main(int argc, char **argv)
 		{ "daemonize",     optional_argument, NULL, 'd' },
 		{ "verbose",       no_argument,       NULL, 'v' },
 		{ "help",          no_argument,       NULL, 'h' },
-		{ "version",       no_argument,       NULL, 'V' },
+		{ "version",       optional_argument, NULL, 'V' },
 		{ NULL }
 	};
 
@@ -448,7 +444,7 @@ int main(int argc, char **argv)
 
 	/* Parse command line arguments. */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:m:s:dvhV", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:m:s:dvhV::", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			config = optarg;
@@ -480,7 +476,7 @@ int main(int argc, char **argv)
 			print_help();
 			return EXIT_SUCCESS;
 		case 'V':
-			print_version();
+			print_version(PROGRAM_NAME, optarg != NULL);
 			return EXIT_SUCCESS;
 		default:
 			print_help();
