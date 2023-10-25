@@ -36,7 +36,7 @@
  */
 static void print_help(void)
 {
-	printf("Usage:   " PROGRAM_NAME " <salt> <algorithm> <iterations> <domain-name>\n");
+	printf("Usage:   " PROGRAM_NAME " [-h | -V] <salt> <algorithm> <iterations> <domain-name>\n");
 	printf("Example: " PROGRAM_NAME " c01dcafe 1 10 knot-dns.cz\n");
 	printf("Alternative usage: "PROGRAM_NAME " <algorithm> <flags> <iterations> <salt> <domain-name>\n");
 	printf("Example: " PROGRAM_NAME " 1 0 10 c01dcafe knot-dns.cz\n");
