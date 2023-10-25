@@ -10,6 +10,8 @@ Synopsis
 
 :program:`knsec3hash` *algorithm* *flags* *iterations* *salt* *name*
 
+:program:`knsec3hash` [*-h*] [*-V*]
+
 Description
 -----------
 
@@ -32,6 +34,16 @@ Parameters
 
 *flags*
   Specifies NSEC3 flags as an unsigned integer.
+
+Options
+.......
+
+**-h**, **--help**
+  Print the program help.
+
+**-V**, **--version**
+  Print the program version. The option **-VV** makes the program
+  print the compile time configuration summary.
 
 Exit values
 -----------
