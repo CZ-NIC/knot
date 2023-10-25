@@ -21,6 +21,12 @@ Python modules:
 To install necessary Python modules using pip, run:
 $ pip install -r requirements.txt
 
+Optional loopback addresses configuration:
+------------------------------------------
+
+for i in {1..64}; do sudo ip address add 127.0.1.$i/32 dev lo; done
+for i in {1..64}; do sudo ip address add ::1$i/128 dev lo; done
+
 Ubuntu:
 -------
 
