@@ -47,14 +47,9 @@ def upd_check_zones(master, slave, zones, prev_serials):
     t.xfr_diff(master, slave, zones, prev_serials)
     return serials
 
-try:
-    t.start()
-except Failed as e:
-    stderr = t.out_dir + "/" + str(e).split("'")[1] + "/stderr"
-    with open(stderr) as fstderr:
-        if "QUIC" in fstderr.readline():
-            raise Skip("QUIC support not compiled in")
-    raise e
+master.check_quic()
+
+t.start()
 
 # Check initial AXFR without cert-key-based authentication
 serials = master.zones_wait(zones)

@@ -14,7 +14,7 @@ import time
 import dns.message
 import dns.query
 import dns.update
-from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, DEVNULL
+from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, run, DEVNULL
 from dnstest.utils import *
 from dnstest.context import Context
 import dnstest.config
@@ -1743,6 +1743,13 @@ class Knot(Server):
             self.ctl_params += self.ctl_params_append
 
         return s.conf
+
+    def check_quic(self):
+        res = run([self.daemon_bin, '-VV'], stdout=PIPE)
+        for line in res.stdout.decode('ascii').split("\n"):
+            if "DoQ support" in line and "no" not in line:
+                return
+        raise Skip("QUIC support not available")
 
 class Dummy(Server):
     ''' Dummy name server. '''
