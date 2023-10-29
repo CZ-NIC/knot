@@ -1,3 +1,20 @@
+Knot DNS 3.2.11 (2023-10-30)
+============================
+
+Improvements:
+-------------
+ - keymgr: improved error message if a key file is not accessible
+ - keymgr: added offline RRSIGs validation at the end of their validity intervals
+ - doc: fixed some typos
+
+Bugfixes:
+---------
+ - knotd: DNAME record returned with query domain name instead of actual name #873
+ - knotd: failed to import configuration file if mod-geoip is in use  #881
+ - knotd: failed to sign RRSet that fits to 64k only if compressed
+ - keymgr: offline RRSIGs not refreshed if 'rrsig-refresh' is not set
+ - knsupdate: incorrect processing of @ in the delete operation #879
+
 Knot DNS 3.2.10 (2023-09-11)
 ============================
 
