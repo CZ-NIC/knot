@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -339,7 +339,7 @@ int convert_pubkey_to_dnskey(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	switch ((gnutls_pk_algorithm_t)algorithm) {
 	case GNUTLS_PK_RSA: return rsa_pubkey_to_rdata(key, rdata);
-	case GNUTLS_PK_EC:  return ecdsa_pubkey_to_rdata(key, rdata);
+	case GNUTLS_PK_ECDSA: return ecdsa_pubkey_to_rdata(key, rdata);
 #ifdef HAVE_ED25519
 	case GNUTLS_PK_EDDSA_ED25519: return eddsa_pubkey_to_rdata(key, rdata);
 #endif
@@ -363,7 +363,7 @@ int convert_dnskey_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
 
 	switch(gnutls_alg) {
 	case GNUTLS_PK_RSA: return rsa_rdata_to_pubkey(rdata, key);
-	case GNUTLS_PK_EC:  return ecdsa_rdata_to_pubkey(rdata, key);
+	case GNUTLS_PK_ECDSA: return ecdsa_rdata_to_pubkey(rdata, key);
 #ifdef HAVE_ED25519
 	case GNUTLS_PK_EDDSA_ED25519: return eddsa_rdata_to_pubkey(rdata, key);
 #endif
