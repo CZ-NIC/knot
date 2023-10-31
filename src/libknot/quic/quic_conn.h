@@ -73,8 +73,8 @@ typedef enum {
 } knot_quic_conn_flag_t;
 
 typedef struct knot_quic_conn {
-	knot_quic_ucw_node_t timeout; // MUST be first field of the struct
-	uint64_t last_ts;
+	int heap_node_placeholder; // MUST be first field of the struct
+	uint64_t next_expiry;
 
 	nc_conn_ref_placeholder_t conn_ref; // placeholder for internal struct ngtcp2_crypto_conn_ref
 
@@ -117,7 +117,7 @@ typedef struct knot_quic_table {
 	const char *qlog_dir;
 	uint64_t hash_secret[4];
 	struct knot_quic_creds *creds;
-	knot_quic_ucw_list_t timeout;
+	struct heap *expiry_heap;
 	knot_quic_cid_t *conns[];
 } knot_quic_table_t;
 
@@ -199,10 +199,9 @@ knot_quic_conn_t *quic_table_lookup(const struct ngtcp2_cid *cid,
                                     knot_quic_table_t *table);
 
 /*!
- * \brief Put the connection on the end of timeout queue.
+ * \brief Re-schedule connection expiry timer.
  */
-void quic_conn_mark_used(knot_quic_conn_t *conn, knot_quic_table_t *table,
-                         uint64_t now);
+void quic_conn_mark_used(knot_quic_conn_t *conn, knot_quic_table_t *table);
 
 /*!
  * \brief Remove connection/CID link from table.
@@ -303,6 +302,11 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *conn, int64_t stream_id,
  */
 void knot_quic_stream_mark_sent(knot_quic_conn_t *conn, int64_t stream_id,
                                 size_t amount_sent);
+
+/*!
+ * \brief (Un)block the connetcion for incoming/outgoing traffic and sweep.
+ */
+void knot_quic_conn_block(knot_quic_conn_t *conn, bool block);
 
 /*!
  * \brief Free rest of resources of closed conns.
