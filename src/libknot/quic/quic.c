@@ -437,18 +437,7 @@ static uint64_t get_timestamp(void)
 
 uint64_t quic_conn_get_timeout(knot_quic_conn_t *conn)
 {
-	// This effectively obtains the locally configured conn timeout.
-	// It would be possible to obey negotitated idle timeout by employing remote params,
-	// but this would differ per-connection and the whole idea of maintaining
-	// to-be-timeouted connections in simple linear list requires that
-	// the idle timeout is homogeneous among conns.
-	// Anyway, we also violate RFC9000/10.1 (Probe Timeout) for the same reason.
-	// TODO for the future: refactor conn table to use some tree/heap
-	// for to-be-timeouted conns, and use ngtcp2_conn_get_expiry() and
-	// ngtcp2_conn_handle_expiry() appropriately.
-	const ngtcp2_transport_params *params = ngtcp2_conn_get_local_transport_params(conn->conn);
-
-	return conn->last_ts + params->max_idle_timeout;
+	return ngtcp2_conn_get_expiry(conn->conn);
 }
 
 bool quic_conn_timeout(knot_quic_conn_t *conn, uint64_t *now)
@@ -876,7 +865,6 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 	if (conn == NULL) {
 		return ENOMEM;
 	}
-	quic_conn_mark_used(conn, table, now);
 
 	ngtcp2_path path;
 	path.remote.addr = (struct sockaddr *)dest;
@@ -986,7 +974,6 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			ret = KNOT_ENOMEM;
 			goto finish;
 		}
-		quic_conn_mark_used(conn, table, now);
 
 		ret = conn_new(&conn->conn, &path, &dcid, &scid, &odcid, decoded_cids.version,
 		               now, idle_timeout, conn, true, header.tokenlen > 0);
@@ -1023,7 +1010,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		goto finish;
 	}
 
-	quic_conn_mark_used(conn, table, now);
+	quic_conn_mark_used(conn, table);
 
 	ret = KNOT_EOK;
 finish:
