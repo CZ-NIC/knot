@@ -68,6 +68,8 @@ def parse_args(cmd_args):
                         help="number of available loopback addresses per each IP version")
     parser.add_argument("-e", "--exit-on-error", dest="error_exit", \
                         action="store_true", help="stop execution on error")
+    parser.add_argument("-x", "--xdp", dest="xdp", \
+                        action="store_true", help="allow XDP testing")
     parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                         help="([exclude] | run) specific (test set | [test case])")
     args = parser.parse_args(cmd_args)
@@ -78,6 +80,7 @@ def parse_args(cmd_args):
     params.addresses = max(int(args.addresses), 1) if args.addresses else 1
     params.common_data_dir = os.path.join(current_dir, "data")
     params.exit_on_error = args.error_exit
+    params.xdp = args.xdp
 
     # Process tests/cases arguments.
     excluded = dict()
