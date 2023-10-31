@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -189,7 +189,7 @@ int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool 
 	return ret >= 0 ? KNOT_EOK : ret;
 }
 
-int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx, knot_time_t *expires)
+int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx)
 {
 	dnssec_sign_ctx_t *sign_ctx;
 	int ret = dnssec_sign_new(&sign_ctx, key->key);
@@ -198,13 +198,13 @@ int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_
 	}
 
 	if (!knot_rrset_empty(&r->dnskey) && knot_zone_sign_use_key(key, &r->dnskey)) {
-		ret = knot_sign_rrset(&r->rrsig, &r->dnskey, key->key, sign_ctx, kctx, NULL, expires);
+		ret = knot_sign_rrset(&r->rrsig, &r->dnskey, key->key, sign_ctx, kctx, NULL);
 	}
 	if (ret == KNOT_EOK && !knot_rrset_empty(&r->cdnskey) && knot_zone_sign_use_key(key, &r->cdnskey)) {
-		ret = knot_sign_rrset(&r->rrsig, &r->cdnskey, key->key, sign_ctx, kctx, NULL, expires);
+		ret = knot_sign_rrset(&r->rrsig, &r->cdnskey, key->key, sign_ctx, kctx, NULL);
 	}
 	if (ret == KNOT_EOK && !knot_rrset_empty(&r->cds) && knot_zone_sign_use_key(key, &r->cds)) {
-		ret = knot_sign_rrset(&r->rrsig, &r->cds, key->key, sign_ctx, kctx, NULL, expires);
+		ret = knot_sign_rrset(&r->rrsig, &r->cds, key->key, sign_ctx, kctx, NULL);
 	}
 
 	dnssec_sign_free(sign_ctx);

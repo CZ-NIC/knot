@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -205,11 +205,13 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 		goto init_error;
 	}
 
-	ctx->policy = calloc(1, sizeof(*ctx->policy));
+	ctx->policy = calloc(1, sizeof(*ctx->policy) + sizeof(*ctx->stats));
 	if (ctx->policy == NULL) {
 		ret = KNOT_ENOMEM;
 		goto init_error;
 	}
+	ctx->stats = (void *)ctx->policy + sizeof(*ctx->policy);
+	knot_spin_init(&ctx->stats->lock);
 
 	ret = kasp_db_get_saved_ttls(ctx->kasp_db, zone_name,
 	                             &ctx->policy->saved_max_ttl,
@@ -279,6 +281,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 	}
 
 	if (ctx->policy != NULL) {
+		knot_spin_destroy(&ctx->stats->lock);
 		free(ctx->policy->string);
 		knot_dynarray_foreach(parent, knot_kasp_parent_t, i, ctx->policy->parents) {
 			free(i->addr);

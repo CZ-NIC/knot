@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@
  * \param sign_ctx    Signing context.
  * \param dnssec_ctx  DNSSEC context.
  * \param mm          Memory context.
- * \param expires     Out: When will the new RRSIG expire.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -40,8 +39,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs,
                     const dnssec_key_t *key,
                     dnssec_sign_ctx_t *sign_ctx,
                     const kdnssec_ctx_t *dnssec_ctx,
-                    knot_mm_t *mm,
-                    knot_time_t *expires);
+                    knot_mm_t *mm);
 
 /*!
  * \brief Create RRSIG RR for given RR set, choose which key to use.

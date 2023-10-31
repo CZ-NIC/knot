@@ -37,6 +37,8 @@ static int pregenerate_once(kdnssec_ctx_t *ctx, knot_time_t *next)
 {
 	zone_sign_reschedule_t resch = { 0 };
 
+	memset(ctx->stats, 0, sizeof(*ctx->stats));
+
 	// generate ZSKs
 	int ret = knot_dnssec_key_rollover(ctx, KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 	if (ret != KNOT_EOK) {
@@ -245,6 +247,9 @@ static int ksr_once(kdnssec_ctx_t *ctx, char **buf, size_t *buf_size, knot_time_
 {
 	knot_rrset_t *dnskey = NULL;
 	zone_keyset_t keyset = { 0 };
+
+	memset(ctx->stats, 0, sizeof(*ctx->stats));
+
 	int ret = load_dnskey_rrset(ctx, &dnskey, &keyset);
 	if (ret != KNOT_EOK) {
 		goto done;
@@ -322,10 +327,10 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 	zone_keyset_t keyset = { 0 };
 	char *buf = NULL;
 	size_t buf_size = 4096;
-	knot_time_t rrsigs_expire = 0;
 
 	ctx->now = now;
 	ctx->policy->dnskey_ttl = zsk->ttl;
+	memset(ctx->stats, 0, sizeof(*ctx->stats));
 
 	knot_timediff_t rrsig_refresh = ctx->policy->rrsig_refresh_before;
 	if (rrsig_refresh == UINT32_MAX) { // not setting rrsig-refresh prohibited by documentation, but we need to do something
@@ -352,7 +357,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 
 	// no check if the KSK used for signing (in keyset) is contained in DNSKEY record being signed (in KSR) !
 	for (int i = 0; i < keyset.count; i++) {
-		ret = key_records_sign(&keyset.keys[i], &r, ctx, &rrsigs_expire);
+		ret = key_records_sign(&keyset.keys[i], &r, ctx);
 		if (ret != KNOT_EOK) {
 			goto done;
 		}
@@ -362,7 +367,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 		print_header("SignedKeyResponse "KSR_SKR_VER, ctx->now, buf);
 		*next_sign = knot_time_min(
 			knot_get_next_zone_key_event(&keyset),
-			knot_time_add(rrsigs_expire, -rrsig_refresh)
+			knot_time_add(ctx->stats->expire, -rrsig_refresh)
 		);
 	}
 
