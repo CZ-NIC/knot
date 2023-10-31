@@ -38,6 +38,7 @@ struct knot_quic_session;
 
 typedef enum {
 	KNOT_QUIC_SEND_IGNORE_LASTBYTE = (1 << 0),
+	KNOT_QUIC_SEND_IGNORE_BLOCKED  = (1 << 1),
 } knot_quic_send_flag_t;
 
 typedef struct knot_quic_reply {

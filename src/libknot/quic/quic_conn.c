@@ -34,6 +34,15 @@
 #define STREAM_INCR 4 // DoQ only uses client-initiated bi-directional streams, so stream IDs increment by four
 #define BUCKETS_PER_CONNS 8 // Each connecion has several dCIDs, and each CID takes one hash table bucket.
 
+#ifdef HAVE_ATOMIC
+ #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
+#else
+ #warning "Obuf limits can be inaccurate"
+ #define ATOMIC_ADD(dst, val) ((dst) += (val))
+ #define ATOMIC_SUB(dst, val) ((dst) -= (val))
+#endif
+
 _public_
 knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
                                        size_t udp_payload, struct knot_quic_creds *creds)
@@ -88,7 +97,9 @@ void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_sweep_stats *st
 	knot_quic_conn_t *c, *next;
 	list_t *tto = (list_t *)&table->timeout;
 	WALK_LIST_DELSAFE(c, next, *tto) {
-		if (quic_conn_timeout(c, &now)) {
+		if (c->flags & KNOT_QUIC_CONN_BLOCKED) {
+			continue;
+		} else if (quic_conn_timeout(c, &now)) {
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_TIMEOUT);
 			knot_quic_table_rem(c, table);
 		} else if (table->usage > table->max_conns) {
@@ -434,7 +445,7 @@ uint8_t *knot_quic_stream_add_data(knot_quic_conn_t *conn, int64_t stream_id,
 	add_tail((list_t *)&s->outbufs, (node_t *)obuf);
 	s->obufs_size += obuf->len;
 	conn->obufs_size += obuf->len;
-	conn->quic_table->obufs_size += obuf->len;
+	ATOMIC_ADD(conn->quic_table->obufs_size, obuf->len);
 
 	return obuf->buf + prefix;
 }
@@ -455,7 +466,7 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *conn, int64_t stream_id,
 		assert(HEAD(*obs) != first); // help CLANG analyzer understand what rem_node did and that further usage of HEAD(*obs) is safe
 		s->obufs_size -= first->len;
 		conn->obufs_size -= first->len;
-		conn->quic_table->obufs_size -= first->len;
+		ATOMIC_SUB(conn->quic_table->obufs_size, first->len);
 		s->first_offset += first->len;
 		free(first);
 		if (s->unsent_obuf == first) {

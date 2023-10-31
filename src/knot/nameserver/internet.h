@@ -69,11 +69,3 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 	    process_query_verify(qdata) != KNOT_EOK) { \
 		return KNOT_STATE_FAIL; \
 	}
-
-/*! \brief Require the zone not to be frozen. */
-#define NS_NEED_NOT_FROZEN(qdata) \
-	if ((qdata)->extra->zone->events.ufrozen) { \
-		(qdata)->rcode = KNOT_RCODE_REFUSED; \
-		(qdata)->rcode_ede = KNOT_EDNS_EDE_NOT_READY; \
-		return KNOT_STATE_FAIL; \
-	}

@@ -179,7 +179,8 @@ Actions
 **zone-freeze** [*zone*...]
   Trigger a zone freeze. All running events will be finished and all new and pending
   (planned) zone-changing events (load, refresh, update, flush, and DNSSEC signing)
-  will be held up until the zone is thawed. (#)
+  will be held up until the zone is thawed. Up to 8 (this limit is hardcoded) DDNS
+  updates per zone will be queued, subsequent updates will be refused. (#)
 
 **zone-thaw** [*zone*...]
   Trigger dismissal of zone freeze. (#)

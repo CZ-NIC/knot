@@ -28,6 +28,8 @@
 #include "knot/zone/zone.h"
 #include "libdnssec/random.h"
 #include "libknot/libknot.h"
+#include "libknot/quic/quic_conn.h"
+#include "libknot/quic/quic.h"
 #include "contrib/net.h"
 #include "contrib/time.h"
 
@@ -49,6 +51,31 @@ static void init_qdata_from_request(knotd_qdata_t *qdata,
 	qdata->extra = extra;
 	memset(extra, 0, sizeof(*extra));
 	qdata->extra->zone = zone;
+}
+
+static int ddnsq_alloc_reply(knot_quic_reply_t *r)
+{
+	r->out_payload->iov_len = KNOT_WIRE_MAX_PKTSIZE;
+
+	return KNOT_EOK;
+}
+
+static int ddnsq_send_reply(knot_quic_reply_t *r)
+{
+	int fd = *(int *)r->sock;
+	int ret = net_dgram_send(fd, r->out_payload->iov_base, r->out_payload->iov_len, r->ip_rem);
+	if (ret < 0) {
+		return knot_map_errno();
+	} else if (ret == r->out_payload->iov_len) {
+		return KNOT_EOK;
+	} else {
+		return KNOT_EAGAIN;
+	}
+}
+
+static void ddnsq_free_reply(knot_quic_reply_t *r)
+{
+	r->out_payload->iov_len = 0;
 }
 
 static int check_prereqs(knot_request_t *request,
@@ -337,6 +364,33 @@ static void send_update_response(conf_t *conf, zone_t *zone, knot_request_t *req
 			init_qdata_from_request(&qdata, zone, req, NULL, &extra);
 			(void)process_query_sign_response(req->resp, &qdata);
 		}
+
+#ifdef ENABLE_QUIC
+		if (req->quic_conn != NULL) {
+			uint8_t op_buf[KNOT_WIRE_MAX_PKTSIZE];
+			struct iovec out_payload = { .iov_base = op_buf, .iov_len = sizeof(op_buf) };
+			knot_quic_reply_t rpl = {
+				.ip_rem = &req->remote,
+				.ip_loc = &req->source,
+				.in_payload = NULL,
+				.out_payload = &out_payload,
+				.sock = &req->fd,
+				.alloc_reply = ddnsq_alloc_reply,
+				.send_reply = ddnsq_send_reply,
+				.free_reply = ddnsq_free_reply
+			};
+
+			void *succ = knot_quic_stream_add_data(req->quic_conn, req->quic_stream,
+			                                       req->resp->wire, req->resp->size);
+			if (succ != NULL) { // else ENOMEM
+				(void)knot_quic_send(req->quic_conn->quic_table, req->quic_conn,
+				                     &rpl, 4, KNOT_QUIC_SEND_IGNORE_BLOCKED);
+			}
+			req->quic_conn->flags &= ~KNOT_QUIC_CONN_BLOCKED;
+		} else // NOTE ties to 'if' below
+#else
+		assert(req->quic_conn == NULL);
+#endif // ENABLE_QUIC
 
 		if (net_is_stream(req->fd)) {
 			net_dns_tcp_send(req->fd, req->resp->wire, req->resp->size,

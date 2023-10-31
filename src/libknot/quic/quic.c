@@ -932,6 +932,10 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		goto finish;
 	}
 
+	if (conn != NULL && (conn->flags & KNOT_QUIC_CONN_BLOCKED)) {
+		return KNOT_EOK;
+	}
+
 	ngtcp2_path path;
 	path.remote.addr = (struct sockaddr *)reply->ip_rem;
 	path.remote.addrlen = addr_len((struct sockaddr_in6 *)reply->ip_rem);
@@ -1179,6 +1183,8 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
 {
 	if (reply->handle_ret < 0) {
 		return reply->handle_ret;
+	} else if ((conn->flags & KNOT_QUIC_CONN_BLOCKED) && !(flags & KNOT_QUIC_SEND_IGNORE_BLOCKED)) {
+		return KNOT_EOK;
 	} else if (reply->handle_ret > 0) {
 		return send_special(quic_table, reply, conn);
 	} else if (conn == NULL) {
