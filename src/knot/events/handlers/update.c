@@ -53,6 +53,7 @@ static void init_qdata_from_request(knotd_qdata_t *qdata,
 	qdata->extra->zone = zone;
 }
 
+#ifdef ENABLE_QUIC
 static int ddnsq_alloc_reply(knot_quic_reply_t *r)
 {
 	r->out_payload->iov_len = KNOT_WIRE_MAX_PKTSIZE;
@@ -77,6 +78,7 @@ static void ddnsq_free_reply(knot_quic_reply_t *r)
 {
 	r->out_payload->iov_len = 0;
 }
+#endif // ENABLE_QUIC
 
 static int check_prereqs(knot_request_t *request,
                          zone_update_t *update,
