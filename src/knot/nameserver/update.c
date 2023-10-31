@@ -75,8 +75,8 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 
 #ifdef ENABLE_QUIC
 	if (qdata->params->quic_conn != NULL) {
-		qdata->params->quic_conn->flags |= KNOT_QUIC_CONN_BLOCKED;
 		req->quic_conn = qdata->params->quic_conn;
+		knot_quic_conn_block(req->quic_conn, true);
 		assert(qdata->params->quic_stream >= 0);
 		req->quic_stream = qdata->params->quic_stream;
 	}
