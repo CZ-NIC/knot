@@ -17,12 +17,14 @@
 #include <assert.h>
 #include <gnutls/gnutls.h>
 #include <ngtcp2/ngtcp2.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "libknot/quic/quic_conn.h"
 
 #include "contrib/macros.h"
 #include "contrib/openbsd/siphash.h"
+#include "contrib/ucw/heap.h"
 #include "contrib/ucw/lists.h"
 #include "libdnssec/random.h"
 #include "libknot/attribute.h"
@@ -33,6 +35,13 @@
 
 #define STREAM_INCR 4 // DoQ only uses client-initiated bi-directional streams, so stream IDs increment by four
 #define BUCKETS_PER_CONNS 8 // Each connecion has several dCIDs, and each CID takes one hash table bucket.
+
+static int cmp_expiry_heap_nodes(void *c1, void *c2)
+{
+	if (((knot_quic_conn_t *)c1)->next_expiry < ((knot_quic_conn_t *)c2)->next_expiry) return -1;
+	if (((knot_quic_conn_t *)c1)->next_expiry > ((knot_quic_conn_t *)c2)->next_expiry) return 1;
+	return 0;
+}
 
 _public_
 knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
@@ -50,7 +59,13 @@ knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_
 	res->ibufs_max = max_ibufs;
 	res->obufs_max = max_obufs;
 	res->udp_payload_limit = udp_payload;
-	init_list((list_t *)&res->timeout);
+
+	res->expiry_heap = malloc(sizeof(struct heap));
+	if (res->expiry_heap == NULL || !heap_init(res->expiry_heap, cmp_expiry_heap_nodes, 0)) {
+		free(res->expiry_heap);
+		free(res);
+		return NULL;
+	}
 
 	res->creds = creds;
 
@@ -66,9 +81,8 @@ _public_
 void knot_quic_table_free(knot_quic_table_t *table)
 {
 	if (table != NULL) {
-		knot_quic_conn_t *c, *next;
-		list_t *tto = (list_t *)&table->timeout;
-		WALK_LIST_DELSAFE(c, next, *tto) {
+		while (!EMPTY_HEAP(table->expiry_heap)) {
+			knot_quic_conn_t *c = *(knot_quic_conn_t **)HHEAD(table->expiry_heap);
 			knot_quic_table_rem(c, table);
 			knot_quic_cleanup(&c, 1);
 		}
@@ -77,6 +91,8 @@ void knot_quic_table_free(knot_quic_table_t *table)
 		assert(table->ibufs_size == 0);
 		assert(table->obufs_size == 0);
 
+		heap_deinit(table->expiry_heap);
+		free(table->expiry_heap);
 		free(table);
 	}
 }
@@ -85,14 +101,10 @@ _public_
 void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_sweep_stats *stats)
 {
 	uint64_t now = 0;
-	knot_quic_conn_t *c, *next;
-	list_t *tto = (list_t *)&table->timeout;
-	WALK_LIST_DELSAFE(c, next, *tto) {
-		if (c->flags & KNOT_QUIC_CONN_BLOCKED) {
-			continue;
-		} else if (quic_conn_timeout(c, &now)) {
-			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_TIMEOUT);
-			knot_quic_table_rem(c, table);
+	while (!EMPTY_HEAP(table->expiry_heap)) {
+		knot_quic_conn_t *c = *(knot_quic_conn_t **)HHEAD(table->expiry_heap);
+		if ((c->flags & KNOT_QUIC_CONN_BLOCKED)) {
+			break; // highly inprobable
 		} else if (table->usage > table->max_conns) {
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_CONN);
 			knot_quic_table_rem(c, table);
@@ -102,19 +114,25 @@ void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_sweep_stats *st
 			// it would be possible to send by using ngtcp2_conn_get_path()...
 			// (also applies to below case)
 		} else if (table->obufs_size > table->obufs_max) {
-			if (c->obufs_size > 0) {
-				knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_OBUF);
-				knot_quic_table_rem(c, table);
-			}
+			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_OBUF);
+			knot_quic_table_rem(c, table);
 		} else if (table->ibufs_size > table->ibufs_max) {
-			if (c->ibufs_size > 0) {
-				knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_IBUF);
+			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_IBUF);
+			knot_quic_table_rem(c, table);
+		} else if (quic_conn_timeout(c, &now)) {
+			int ret = ngtcp2_conn_handle_expiry(c->conn, now);
+			if (ret != NGTCP2_NO_ERROR) { // usually NGTCP2_ERR_IDLE_CLOSE or NGTCP2_ERR_HANDSHAKE_TIMEOUT
+				knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_TIMEOUT);
 				knot_quic_table_rem(c, table);
+			} else {
+				quic_conn_mark_used(c, table);
 			}
-		} else {
-			break;
 		}
 		knot_quic_cleanup(&c, 1);
+
+		if (*(knot_quic_conn_t **)HHEAD(table->expiry_heap) == c) { // HHEAD already handled, NOOP, avoid infinite loop
+			break;
+		}
 	}
 }
 
@@ -162,8 +180,15 @@ knot_quic_conn_t *quic_table_add(ngtcp2_conn *ngconn, const ngtcp2_cid *cid,
 	conn->stream_inprocess = -1;
 	conn->qlog_fd = -1;
 
+	conn->next_expiry = UINT64_MAX;
+	if (!heap_insert(table->expiry_heap, (heap_val_t *)conn)) {
+		free(conn);
+		return NULL;
+	}
+
 	knot_quic_cid_t **addto = quic_table_insert(conn, cid, table);
 	if (addto == NULL) {
+		heap_delete(table->expiry_heap, heap_find(table->expiry_heap, (heap_val_t *)conn));
 		free(conn);
 		return NULL;
 	}
@@ -190,16 +215,15 @@ knot_quic_conn_t *quic_table_lookup(const ngtcp2_cid *cid, knot_quic_table_t *ta
 	return *pcid == NULL ? NULL : (*pcid)->conn;
 }
 
-void quic_conn_mark_used(knot_quic_conn_t *conn, knot_quic_table_t *table,
-                          uint64_t now)
+static void conn_heap_reschedule(knot_quic_conn_t *conn, knot_quic_table_t *table)
 {
-	node_t *n = (node_t *)&conn->timeout;
-	list_t *l = (list_t *)&table->timeout;
-	if (n->next != NULL) {
-		rem_node(n);
-	}
-	add_tail(l, n);
-	conn->last_ts = now;
+	heap_replace(table->expiry_heap, heap_find(table->expiry_heap, (heap_val_t *)conn), (heap_val_t *)conn);
+}
+
+void quic_conn_mark_used(knot_quic_conn_t *conn, knot_quic_table_t *table)
+{
+	conn->next_expiry = quic_conn_get_timeout(conn);
+	conn_heap_reschedule(conn, table);
 }
 
 void quic_table_rem2(knot_quic_cid_t **pcid, knot_quic_table_t *table)
@@ -258,7 +282,8 @@ void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 		quic_table_rem2(pcid, table);
 	}
 
-	rem_node((node_t *)&conn->timeout);
+	int pos = heap_find(table->expiry_heap, (heap_val_t *)conn);
+	heap_delete(table->expiry_heap, pos);
 
 	free(scids);
 
@@ -512,6 +537,19 @@ void knot_quic_stream_mark_sent(knot_quic_conn_t *conn, int64_t stream_id,
 		if (s->unsent_obuf->node.next == NULL) { // already behind the tail of list
 			s->unsent_obuf = NULL;
 		}
+	}
+}
+
+_public_
+void knot_quic_conn_block(knot_quic_conn_t *conn, bool block)
+{
+	if (block) {
+		conn->flags |= KNOT_QUIC_CONN_BLOCKED;
+		conn->next_expiry = UINT64_MAX;
+		conn_heap_reschedule(conn, conn->quic_table);
+	} else {
+		conn->flags &= ~KNOT_QUIC_CONN_BLOCKED;
+		quic_conn_mark_used(conn, conn->quic_table);
 	}
 }
 
