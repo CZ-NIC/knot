@@ -193,9 +193,8 @@ class Test(object):
         srv.valgrind_log = srv.dir + "/valgrind"
         srv.confile = srv.dir + "/%s.conf" % srv.name
 
-        xdp_enable = (xdp_enable and \
+        xdp_enable = (params.xdp and xdp_enable and \
                       server == "knot" and \
-                      os.geteuid() == 0 and \
                       srv.addr.startswith("::") and \
                       random.choice([False, True]) and \
                       self._gen_lock_file(srv.name))
