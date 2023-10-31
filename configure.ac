@@ -793,7 +793,7 @@ filtered_config_params=$(echo -n "$ac_configure_args" | \
 
 result_msg_base="
     Target:   $host_os $host_cpu $endianity
-    Compiler: ${CC}
+    Compiler: ${CC} (C11 $ac_cv_prog_cc_c11)
     CFLAGS:   ${filtered_cflags} ${filtered_cppflags}
     LIBS:     ${LIBS} ${LDFLAGS}
     LibURCU:  ${liburcu_LIBS} ${liburcu_CFLAGS}
