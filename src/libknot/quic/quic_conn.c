@@ -97,8 +97,18 @@ void knot_quic_table_free(knot_quic_table_t *table)
 	}
 }
 
+static void send_excessive_load(knot_quic_conn_t *conn, struct knot_quic_reply *reply,
+                                knot_quic_table_t *table)
+{
+	if (reply != NULL) {
+		reply->handle_ret = KNOT_QUIC_ERR_EXCESSIVE_LOAD;
+		(void)knot_quic_send(table, conn, reply, 0, 0);
+	}
+}
+
 _public_
-void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_sweep_stats *stats)
+void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_quic_reply *sweep_reply,
+                           struct knot_sweep_stats *stats)
 {
 	uint64_t now = 0;
 	while (!EMPTY_HEAP(table->expiry_heap)) {
@@ -107,17 +117,15 @@ void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_sweep_stats *st
 			break; // highly inprobable
 		} else if (table->usage > table->max_conns) {
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_CONN);
+			send_excessive_load(c, sweep_reply, table);
 			knot_quic_table_rem(c, table);
-			// NOTE here it would be correct to send Immediate close
-			// with DoQ errcode DOQ_EXCESSIVE_LOAD
-			// nowever, we don't do this for the sake of simplicty
-			// it would be possible to send by using ngtcp2_conn_get_path()...
-			// (also applies to below case)
 		} else if (table->obufs_size > table->obufs_max) {
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_OBUF);
+			send_excessive_load(c, sweep_reply, table);
 			knot_quic_table_rem(c, table);
 		} else if (table->ibufs_size > table->ibufs_max) {
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_IBUF);
+			send_excessive_load(c, sweep_reply, table);
 			knot_quic_table_rem(c, table);
 		} else if (quic_conn_timeout(c, &now)) {
 			int ret = ngtcp2_conn_handle_expiry(c->conn, now);
@@ -125,6 +133,10 @@ void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_sweep_stats *st
 				knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_TIMEOUT);
 				knot_quic_table_rem(c, table);
 			} else {
+				if (sweep_reply != NULL) {
+					sweep_reply->handle_ret = KNOT_EOK;
+					(void)knot_quic_send(table, c, sweep_reply, 0, 0);
+				}
 				quic_conn_mark_used(c, table);
 			}
 		}
