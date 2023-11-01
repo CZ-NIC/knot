@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,14 +96,15 @@ static inline void knot_spin_lock(knot_spin_t *lock)
 	while (__sync_lock_test_and_set(lock, 1)) {
 	}
 #elif defined(HAVE_ATOMIC)
-	int expected = 0;
-        while (!__atomic_compare_exchange_n(lock, &expected, 1, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
-		expected = 0;
+	bool expected = false;
+	while (!__atomic_compare_exchange_n(lock, &expected, true, false,
+	                                    __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+		expected = false;
 	}
 #elif defined(HAVE_STDATOMIC)
-	int expected = 0;
-	while (!atomic_compare_exchange_strong(lock, &expected, false)) {
-		expected = 0;
+	bool expected = false;
+	while (!atomic_compare_exchange_strong(lock, &expected, true)) {
+		expected = false;
 	}
 #elif defined(APPLE_SPIN_NEW)
 	os_unfair_lock_lock(lock);
