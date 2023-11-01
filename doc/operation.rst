@@ -1190,6 +1190,12 @@ If a backup fails, the backup directory containing incomplete backup is retained
 For repeated backup attempts to the same directory, it must be removed or renamed
 manually first.
 
+.. NOTE::
+   When backing up or restoring a catalog zone, it's necessary to make sure that
+   the contents of the catalog doesn't change during the backup or restore.
+   An easy solution is to use ``knotc zone-freeze`` on the catalog zone for the
+   time of backup and restore.
+
 Offline restore
 ---------------
 
