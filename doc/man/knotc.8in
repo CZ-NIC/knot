@@ -168,8 +168,9 @@ or omitted from the backup. By default, filters \fB+zonefile\fP, \fB+timers\fP,
 \fB+kaspdb\fP, \fB+catalog\fP, \fB+nojournal\fP, and \fB+noquic\fP are set. Setting
 a filter for an item doesn\(aqt change default settings for other items.
 If zone flushing is disabled, the original zone file is backed up instead of
-writing out zone contents to a file. See \fI\%Notes\fP below about
-the directory permissions. (#)
+writing out zone contents to a file. When backing\-up a catalog zone, it
+is recommended to prevent ongoing changes to it by use of \fBzone\-freeze\fP\&.
+See \fI\%Notes\fP below about the directory permissions. (#)
 .TP
 \fBzone\-restore\fP [\fIzone\fP\&...] \fB+backupdir\fP \fIdirectory\fP [\fIfilter\fP\&...]
 Trigger a zone data and metadata restore from a specified backup directory.
@@ -245,7 +246,9 @@ Available filters are \fB+expire\fP, \fB+zonefile\fP, \fB+journal\fP, \fB+timers
 \fB+kaspdb\fP, and \fB+catalog\fP\&. If no filter is specified, all filters are enabled.
 If the zone is no longer configured, add \fB+orphan\fP parameter (zone file cannot
 be purged in this case). When purging orphans, always check the server log for
-possible errors. This command always requires the force option. (#)
+possible errors. For proper operation, it\(aqs necessary to prevent ongoing changes
+to the zone and a trigger of zone related events during purge; use of
+\fBzone\-freeze\fP is advisable. This command always requires the force option. (#)
 .TP
 \fBzone\-stats\fP \fIzone\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
 Show zone statistics counter(s). To print also counters with value 0, use
