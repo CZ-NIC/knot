@@ -53,6 +53,7 @@
 #define QUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
 #define QUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
 #define QUIC_SEND_CONN_CLOSE             (-KNOT_QUIC_HANDLE_RET_CLOSE)
+#define QUIC_SEND_EXCESSIVE_LOAD         (-KNOT_QUIC_ERR_EXCESSIVE_LOAD)
 
 #define TLS_CALLBACK_ERR     (-1)
 
@@ -1050,9 +1051,17 @@ static int send_stream(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	ngtcp2_vec vec = { .base = data, .len = len };
 	ngtcp2_pkt_info pi = { 0 };
 
-	ret = ngtcp2_conn_writev_stream(relay->conn, NULL, &pi, rpl->out_payload->iov_base,
-	                                rpl->out_payload->iov_len, sent, fl, stream_id,
-	                                &vec, (stream_id >= 0 ? 1 : 0), get_timestamp());
+	struct sockaddr_storage path_loc = { 0 }, path_rem = { 0 };
+	ngtcp2_path path = { .local  = { .addr = (struct sockaddr *)&path_loc, .addrlen = sizeof(path_loc) },
+	                     .remote = { .addr = (struct sockaddr *)&path_rem, .addrlen = sizeof(path_rem) },
+	                     .user_data = NULL };
+	bool find_path = (rpl->ip_rem == NULL);
+	assert(find_path == (bool)(rpl->ip_loc == NULL));
+
+	ret = ngtcp2_conn_writev_stream(relay->conn, find_path ? &path : NULL, &pi,
+	                                rpl->out_payload->iov_base, rpl->out_payload->iov_len,
+	                                sent, fl, stream_id, &vec,
+	                                (stream_id >= 0 ? 1 : 0), get_timestamp());
 	if (ret <= 0) {
 		rpl->free_reply(rpl);
 		return ret;
@@ -1063,7 +1072,15 @@ static int send_stream(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 
 	rpl->out_payload->iov_len = ret;
 	rpl->ecn = pi.ecn;
+	if (find_path) {
+		rpl->ip_loc = &path_loc;
+		rpl->ip_rem = &path_rem;
+	}
 	ret = rpl->send_reply(rpl);
+	if (find_path) {
+		rpl->ip_loc = NULL;
+		rpl->ip_rem = NULL;
+	}
 	if (ret == KNOT_EOK) {
 		return 1;
 	}
@@ -1082,10 +1099,11 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	ngtcp2_version_cid decoded_cids = { 0 };
 	ngtcp2_cid scid = { 0 }, dcid = { 0 };
 
-	int dvc_ret = ngtcp2_pkt_decode_version_cid(&decoded_cids,
-	                                            rpl->in_payload->iov_base,
-	                                            rpl->in_payload->iov_len,
-	                                            SERVER_DEFAULT_SCIDLEN);
+	int dvc_ret = rpl->in_payload == NULL ? NGTCP2_ERR_FATAL :
+		ngtcp2_pkt_decode_version_cid(&decoded_cids,
+		                              rpl->in_payload->iov_base,
+		                              rpl->in_payload->iov_len,
+		                              SERVER_DEFAULT_SCIDLEN);
 
 	uint8_t rnd = 0;
 	dnssec_random_buffer(&rnd, sizeof(rnd));
@@ -1098,6 +1116,14 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	ngtcp2_ccerr ccerr;
 	ngtcp2_ccerr_default(&ccerr);
 	ngtcp2_pkt_info pi = { 0 };
+
+	struct sockaddr_storage path_loc = { 0 }, path_rem = { 0 };
+	ngtcp2_path path = { .local  = { .addr = (struct sockaddr *)&path_loc, .addrlen = sizeof(path_loc) },
+	                     .remote = { .addr = (struct sockaddr *)&path_rem, .addrlen = sizeof(path_rem) },
+	                     .user_data = NULL };
+	bool find_path = (rpl->ip_rem == NULL);
+	assert(find_path == (bool)(rpl->ip_loc == NULL));
+	assert(!find_path || rpl->handle_ret == -QUIC_SEND_EXCESSIVE_LOAD);
 
 	switch (rpl->handle_ret) {
 	case -QUIC_SEND_VERSION_NEGOTIATION:
@@ -1141,7 +1167,16 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 		break;
 	case -QUIC_SEND_CONN_CLOSE:
 		ret = ngtcp2_conn_write_connection_close(
-			relay->conn, NULL, &pi, rpl->out_payload->iov_base, rpl->out_payload->iov_len, &ccerr, now
+			relay->conn, NULL, &pi, rpl->out_payload->iov_base,
+			rpl->out_payload->iov_len, &ccerr, now
+		);
+		break;
+	case -QUIC_SEND_EXCESSIVE_LOAD:
+		ccerr.type = NGTCP2_CCERR_TYPE_APPLICATION;
+		ccerr.error_code = KNOT_QUIC_ERR_EXCESSIVE_LOAD;
+		ret = ngtcp2_conn_write_connection_close(
+			relay->conn, find_path ? &path : NULL, &pi, rpl->out_payload->iov_base,
+			rpl->out_payload->iov_len, &ccerr, now
 		);
 		break;
 	default:
@@ -1154,7 +1189,15 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	} else {
 		rpl->out_payload->iov_len = ret;
 		rpl->ecn = pi.ecn;
+		if (find_path) {
+			rpl->ip_loc = &path_loc;
+			rpl->ip_rem = &path_rem;
+		}
 		ret = rpl->send_reply(rpl);
+		if (find_path) {
+			rpl->ip_loc = NULL;
+			rpl->ip_rem = NULL;
+		}
 	}
 	return ret;
 }

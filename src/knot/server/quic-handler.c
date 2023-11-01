@@ -26,6 +26,13 @@
 #include "libknot/quic/quic.h"
 #include "libknot/xdp/tcp_iobuf.h"
 
+#define SWEEP_BUF_SIZE 4096
+
+typedef union {
+	struct cmsghdr cmsg;
+	uint8_t buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+} cmsg_pktinfo_t;
+
 static void quic_log_cb(const char *line)
 {
 	log_fmt(LOG_DEBUG, LOG_SOURCE_QUIC, "QUIC, %s", line);
@@ -128,12 +135,77 @@ void quic_reconfigure_table(knot_quic_table_t *table)
 	}
 }
 
-void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats)
+int uq_alloc_sweep(struct knot_quic_reply *r)
 {
-	if (table != NULL) {
-		knot_quic_table_sweep(table, stats);
-		log_swept(stats, false);
+	r->out_payload->iov_len = SWEEP_BUF_SIZE;
+	return KNOT_EOK;
+}
+
+int uq_send_sweep(struct knot_quic_reply *r)
+{
+	int fd = (int)(size_t)r->sock;
+
+	cmsg_pktinfo_t cmsg = { 0 };
+	if (r->ip_loc->ss_family == AF_INET6) {
+		cmsg.cmsg.cmsg_level = IPPROTO_IPV6;
+		cmsg.cmsg.cmsg_type = IPV6_PKTINFO;
+		cmsg.cmsg.cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+		memcpy(&((struct in6_pktinfo *)CMSG_DATA(&cmsg.cmsg))->ipi6_addr,
+		       &((const struct sockaddr_in6 *)r->ip_loc)->sin6_addr,
+		       sizeof(struct in6_addr));
+	} else {
+		cmsg.cmsg.cmsg_level = IPPROTO_IP;
+		cmsg.cmsg.cmsg_type = IP_PKTINFO;
+		cmsg.cmsg.cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
+		memcpy(&((struct in_pktinfo *)CMSG_DATA(&cmsg.cmsg))->ipi_addr,
+		       &((const struct sockaddr_in *)r->ip_loc)->sin_addr,
+		       sizeof(struct in_addr));
+	} // this only says "send it with given outgoing IP address"
+
+	assert(r->ip_rem != NULL);
+	struct msghdr msg = {
+		.msg_iov = r->out_payload,
+		.msg_iovlen = 1,
+		.msg_name = (void *)r->ip_rem,
+		.msg_namelen = r->ip_rem->ss_family == AF_INET6 ? sizeof(struct sockaddr_in6) :
+		                                                  sizeof(struct sockaddr_in),
+		.msg_control = &cmsg,
+		.msg_controllen = sizeof(cmsg),
+	};
+
+	int ret = net_msg_send(fd, &msg, 0);
+	if (ret < 0) {
+		return ret;
+	} else if (ret == r->out_payload->iov_len) {
+		return KNOT_EOK;
+	} else {
+		return KNOT_EAGAIN;
 	}
+}
+
+void uq_free_sweep(struct knot_quic_reply *r)
+{
+	(void)r;
+}
+
+void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats, int fd)
+{
+	if (table == NULL) {
+		return;
+	}
+
+	uint8_t sendbuf[SWEEP_BUF_SIZE];
+	struct iovec r_iov = { .iov_base = sendbuf };
+	knot_quic_reply_t r = {
+		.sock = (void *)(size_t)fd,
+		.out_payload = &r_iov,
+		.alloc_reply = uq_alloc_sweep,
+		.send_reply = uq_send_sweep,
+		.free_reply = uq_free_sweep,
+	};
+
+	knot_quic_table_sweep(table, &r, stats);
+	log_swept(stats, false);
 }
 
 void quic_unmake_table(knot_quic_table_t *table)
