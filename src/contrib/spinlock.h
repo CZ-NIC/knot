@@ -21,11 +21,11 @@
 #pragma once
 
 #if (__STDC_VERSION__ >= 201112L) && !defined(__STDC_NO_ATOMICS__)
-#  define HAVE_STDATOMIC
-#  include <stdbool.h>
-#  include <stdatomic.h>
+  #define HAVE_STDATOMIC
+  #include <stdatomic.h>
+  #include <stdbool.h>
 #else	/* POSIX pthread spinlock. */
-#  include <pthread.h>
+  #include <pthread.h>
 #endif
 
 /*! \brief Spinlock lock variable type. */
