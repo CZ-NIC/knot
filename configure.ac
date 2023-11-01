@@ -752,13 +752,6 @@ AC_LINK_IFELSE(
   [AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])]
 )
 
-# Check for '__sync' compiler builtin atomic functions.
-AC_LINK_IFELSE(
-  [AC_LANG_PROGRAM([[#include <stdint.h>]],
-                   [[int val = 0; __sync_add_and_fetch(&val, 1);]])],
-  [AC_DEFINE(HAVE_SYNC_ATOMIC, 1, [Define to 1 if you have '__sync' functions.])]
-)
-
 # Prepare CFLAG_VISIBILITY to be used where needed
 gl_VISIBILITY()
 
