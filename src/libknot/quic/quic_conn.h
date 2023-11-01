@@ -33,6 +33,7 @@
 
 struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
 struct knot_quic_creds;
+struct knot_quic_reply;
 struct knot_sweep_stats;
 
 // those are equivalent to contrib/ucw/lists.h , just must not be included.
@@ -146,9 +147,11 @@ void knot_quic_table_free(knot_quic_table_t *table);
  * \brief Close timed out connections and some oldest ones if table full.
  *
  * \param table       QUIC table to be cleaned up.
+ * \param sweep_reply Optional: reply structure to send sweep-initiated packets to the client.
  * \param stats       Out: sweep statistics.
  */
-void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_sweep_stats *stats);
+void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_quic_reply *sweep_reply,
+                           struct knot_sweep_stats *stats);
 
 /*!
  * \brief Add new connection/CID link to table.

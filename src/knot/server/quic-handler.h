@@ -61,8 +61,9 @@ void quic_reconfigure_table(knot_quic_table_t *table);
  *
  * \param table    QUIC connection table.
  * \param stats    Statistics to be updated.
+ * \param sock_fd  Socket to send sweep replies through.
  */
-void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats);
+void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats, int sock_fd);
 
 /*!
  * \brief Deallocate QUIC connecton table.

@@ -877,7 +877,7 @@ void *xdp_gun_thread(void *_ctx)
 
 #ifdef ENABLE_QUIC
 		if (ctx->quic) {
-			(void)knot_quic_table_sweep(quic_table, &sweep_stats);
+			(void)knot_quic_table_sweep(quic_table, NULL, &sweep_stats);
 		}
 #endif // ENABLE_QUIC
 

@@ -165,10 +165,11 @@ void cmsg_handle(const struct msghdr *rx, struct msghdr *tx,
 	}
 }
 
-static void udp_sweep(udp_context_t *ctx, _unused_ void *d)
+static void udp_sweep(udp_context_t *ctx, void *d)
 {
 #ifdef ENABLE_QUIC
-	quic_sweep_table(ctx->quic_table, &ctx->quic_closed);
+	int fd = *(int *)d; // NOTE both udp_msg_ctx_t and udp_mmsg_ctx_t have 'fd' as first item
+	quic_sweep_table(ctx->quic_table, &ctx->quic_closed, fd);
 	quic_reconfigure_table(ctx->quic_table);
 #endif // ENABLE_QUIC
 }
