@@ -31,6 +31,7 @@
 #include "libknot/quic/quic_conn.h"
 
 #define KNOT_QUIC_PIN_LEN	32
+#define DOQ_EXCESSIVE_LOAD	0x4
 
 struct gnutls_x509_crt_int;
 struct knot_quic_creds;
