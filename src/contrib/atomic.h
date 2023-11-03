@@ -20,8 +20,9 @@
 
 #pragma once
 
-#if (__STDC_VERSION__ >= 201112L) && !defined(__STDC_NO_ATOMICS__)
- #include <stdatomic.h>              /* C11 */
+#if (__STDC_VERSION__ >= 201112L) && \
+    !defined(__STDC_NO_ATOMICS__)    /* C11 */
+ #include <stdatomic.h>
 
  #define ATOMIC_SET(dst, val) atomic_store_explicit(&(dst), (val), memory_order_relaxed)
  #define ATOMIC_GET(src)      atomic_load_explicit(&(src), memory_order_relaxed)
