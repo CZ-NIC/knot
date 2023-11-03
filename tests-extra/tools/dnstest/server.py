@@ -1346,11 +1346,14 @@ class Knot(Server):
         self._bool(s, "automatic-acl", self.auto_acl)
         s.end()
 
-        s.begin("xdp")
-        s.item_str("tcp", "on")
-        if self.xdp_port is not None and self.xdp_port > 0:
+        if params.xdp and self.xdp_port is not None and self.xdp_port > 0:
+            s.begin("xdp")
             s.item_str("listen", "%s@%s" % (self.addr, self.xdp_port))
-        s.end()
+            s.item_str("tcp", "on")
+            if self.quic_port:
+                s.item_str("quic", "on")
+                s.item_str("quic-port", self.quic_port)
+            s.end()
 
         s.begin("control")
         s.item_str("listen", "knot.sock")
