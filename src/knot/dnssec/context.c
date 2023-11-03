@@ -212,7 +212,7 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 	                             &ctx->policy->saved_max_ttl,
 	                             &ctx->policy->saved_key_ttl);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
-		return ret;
+		goto init_error;
 	}
 
 	conf_val_t policy_id;
