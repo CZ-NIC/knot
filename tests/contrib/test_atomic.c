@@ -23,8 +23,8 @@
 #define THREADS 16
 #define CYCLES 100000
 
-static volatile long int counter_add = 0;
-static volatile long int counter_sub = 0;
+static volatile knot_atomic_size_t counter_add = 0;
+static volatile knot_atomic_size_t counter_sub = 0;
 
 static int thread(struct dthread *thread)
 {
