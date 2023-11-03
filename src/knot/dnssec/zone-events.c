@@ -172,9 +172,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	update_policy_from_zone(ctx.policy, update->new_cont);
 
 	if (ctx.policy->rrsig_refresh_before < ctx.policy->zone_maximal_ttl + ctx.policy->propagation_delay) {
-		log_zone_error(zone_name, "DNSSEC, rrsig-refresh too low to prevent expired RRSIGs in resolver caches");
-		result = KNOT_EINVAL;
-		goto done;
+		log_zone_warning(zone_name, "DNSSEC, rrsig-refresh too low to prevent expired RRSIGs in resolver caches");
 	}
 	if (ctx.policy->rrsig_lifetime <= ctx.policy->rrsig_refresh_before) {
 		log_zone_error(zone_name, "DNSSEC, rrsig-lifetime lower than rrsig-refresh");
