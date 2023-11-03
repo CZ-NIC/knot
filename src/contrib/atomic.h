@@ -37,14 +37,6 @@
  #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
 
  typedef size_t knot_atomic_size_t;
-#elif HAVE_SYNC_ATOMIC               /* obsolete GCC, partial support only. */
- #warning "Full atomic operations not availabe, using partially unreliable replacement."
- #define ATOMIC_SET(dst, val) ((dst) = (val))
- #define ATOMIC_GET(src)      __sync_fetch_and_or(&(src), 0)
- #define ATOMIC_ADD(dst, val) __sync_add_and_fetch(&(dst), (val))
- #define ATOMIC_SUB(dst, val) __sync_sub_and_fetch(&(dst), (val))
-
- typedef size_t knot_atomic_size_t;
 #else                                /* Fallback, non-atomic. */
  #warning "Atomic operations not availabe, using unreliable replacement."
  #define ATOMIC_SET(dst, val) ((dst) = (val))
