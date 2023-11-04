@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,20 +18,11 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "contrib/atomic.h"
 #include "knot/include/module.h"
 #include "libknot/libknot.h"
 #include "contrib/string.h"
 #include "libdnssec/random.h"
-
-#ifdef HAVE_ATOMIC
-#define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
-#define ATOMIC_GET(src)      __atomic_load_n(&(src), __ATOMIC_RELAXED)
-#define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
-#else
-#define ATOMIC_SET(dst, val) ((dst) = (val))
-#define ATOMIC_GET(src)      (src)
-#define ATOMIC_ADD(dst, val) ((dst) += (val))
-#endif
 
 #define BADCOOKIE_CTR_INIT	1
 
@@ -65,7 +56,7 @@ typedef struct {
 	pthread_t update_secret;
 	uint32_t secret_lifetime;
 	uint32_t badcookie_slip;
-	uint16_t badcookie_ctr; // Counter for BADCOOKIE answers.
+	knot_atomic_uint16_t badcookie_ctr; // Counter for BADCOOKIE answers.
 } cookies_ctx_t;
 
 static void update_ctr(cookies_ctx_t *ctx)
