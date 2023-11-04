@@ -36,6 +36,7 @@
 #include "knot/zone/zonefile.h"
 #include "libknot/libknot.h"
 #include "libknot/yparser/yptrafo.h"
+#include "contrib/atomic.h"
 #include "contrib/files.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
@@ -1597,7 +1598,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	return selective_zone_purge(conf(), zone, params);
 }
 
-static int send_stats_ctr(mod_ctr_t *ctr, uint64_t **stats_vals, unsigned threads,
+static int send_stats_ctr(mod_ctr_t *ctr, knot_atomic_uint64_t **stats_vals, unsigned threads,
                           ctl_args_t *args, knot_ctl_data_t *data)
 {
 	char index[128];

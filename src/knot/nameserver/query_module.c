@@ -32,17 +32,6 @@
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
 
-#ifdef HAVE_ATOMIC
- #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
-#else
- #warning "Statistics data can be inaccurate"
- #define ATOMIC_ADD(dst, val) ((dst) += (val))
- #define ATOMIC_SUB(dst, val) ((dst) -= (val))
- #define ATOMIC_SET(dst, val) ((dst) = (val))
-#endif
-
 _public_
 int knotd_conf_check_ref(knotd_conf_check_args_t *args)
 {
@@ -313,8 +302,8 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 		stats += mod->stats_count;
 
 		for (unsigned i = 0; i < threads; i++) {
-			uint64_t *new_vals = realloc(mod->stats_vals[i],
-			                             (offset + idx_count) * sizeof(*new_vals));
+			knot_atomic_uint64_t *new_vals = realloc(mod->stats_vals[i],
+			                                 (offset + idx_count) * sizeof(*new_vals));
 			if (new_vals == NULL) {
 				knotd_mod_stats_free(mod);
 				return KNOT_ENOMEM;
