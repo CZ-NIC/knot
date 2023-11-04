@@ -77,7 +77,8 @@ const stats_item_t zone_contents_stats[] = {
 	{ 0 }
 };
 
-uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads)
+uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t offset,
+                           unsigned threads)
 {
 	uint64_t res = 0;
 	for (unsigned i = 0; i < threads; i++) {
