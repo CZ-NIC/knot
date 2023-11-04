@@ -29,6 +29,8 @@
 #include <stdint.h>
 #include <sys/uio.h>
 
+#include "contrib/atomic.h"
+
 #define MAX_STREAMS_PER_CONN 10 // this limits the number of un-finished streams per conn (i.e. if response has been recvd with FIN, it doesn't count)
 
 struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
@@ -111,7 +113,7 @@ typedef struct knot_quic_table {
 	size_t ibufs_max;
 	size_t obufs_max;
 	size_t ibufs_size;
-	size_t obufs_size;
+	knot_atomic_size_t obufs_size;
 	size_t udp_payload_limit; // for simplicity not distinguishing IPv4/6
 	void (*log_cb)(const char *);
 	const char *qlog_dir;
