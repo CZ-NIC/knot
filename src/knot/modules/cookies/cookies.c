@@ -50,7 +50,7 @@ int cookies_conf_check(knotd_conf_check_args_t *args)
 
 typedef struct {
 	struct {
-		uint64_t variable;
+		knot_atomic_uint64_t variable;
 		uint64_t constant;
 	} secret;
 	pthread_t update_secret;
