@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "contrib/atomic.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/context.h"
@@ -23,12 +24,6 @@
 #include "knot/include/module.h"
 #include "knot/server/server.h"
 #include "contrib/ucw/lists.h"
-
-#ifdef HAVE_ATOMIC
- #define ATOMIC_GET(src) __atomic_load_n(&(src), __ATOMIC_RELAXED)
-#else
- #define ATOMIC_GET(src) (src)
-#endif
 
 #define KNOTD_STAGES (KNOTD_STAGE_END + 1)
 
@@ -91,7 +86,7 @@ struct knotd_mod {
 	zone_keyset_t *keyset;
 	zone_sign_ctx_t *sign_ctx;
 	mod_ctr_t *stats_info;
-	uint64_t **stats_vals;
+	knot_atomic_uint64_t **stats_vals;
 	uint32_t stats_count;
 	void *ctx;
 };

@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "contrib/atomic.h"
 #include "knot/server/server.h"
 
 typedef uint64_t (*stats_server_val_f)(server_t *server);
@@ -49,7 +50,8 @@ extern const stats_item_t zone_contents_stats[];
 /*!
  * \brief Read out value of single counter summed across threads.
  */
-uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads);
+uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t offset,
+                           unsigned threads);
 
 /*!
  * \brief Reconfigures the statistics facility.
