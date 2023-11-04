@@ -30,19 +30,27 @@
  #define ATOMIC_SUB(dst, val) (void)atomic_fetch_sub_explicit(&(dst), (val), memory_order_relaxed)
 
  typedef atomic_size_t knot_atomic_size_t;
+ typedef atomic_uint_fast64_t knot_atomic_uint64_t;
 #elif HAVE_ATOMIC                    /* GCC */
+ #include <stdint.h>
+
  #define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
  #define ATOMIC_GET(src)      __atomic_load_n(&(src), __ATOMIC_RELAXED)
  #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
  #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
 
  typedef size_t knot_atomic_size_t;
+ typedef uint64_t knot_atomic_uint64_t;
 #else                                /* Fallback, non-atomic. */
  #warning "Atomic operations not availabe, using unreliable replacement."
+
+ #include <stdint.h>
+
  #define ATOMIC_SET(dst, val) ((dst) = (val))
  #define ATOMIC_GET(src)      (src)
  #define ATOMIC_ADD(dst, val) ((dst) += (val))
  #define ATOMIC_SUB(dst, val) ((dst) -= (val))
 
  typedef size_t knot_atomic_size_t;
+ typedef uint64_t knot_atomic_uint64_t;
 #endif
