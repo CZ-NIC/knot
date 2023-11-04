@@ -34,15 +34,6 @@
 #define STREAM_INCR 4 // DoQ only uses client-initiated bi-directional streams, so stream IDs increment by four
 #define BUCKETS_PER_CONNS 8 // Each connecion has several dCIDs, and each CID takes one hash table bucket.
 
-#ifdef HAVE_ATOMIC
- #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
-#else
- #warning "Obuf limits can be inaccurate"
- #define ATOMIC_ADD(dst, val) ((dst) += (val))
- #define ATOMIC_SUB(dst, val) ((dst) -= (val))
-#endif
-
 _public_
 knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
                                        size_t udp_payload, struct knot_quic_creds *creds)
