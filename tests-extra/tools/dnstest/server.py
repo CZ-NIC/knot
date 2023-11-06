@@ -1350,6 +1350,9 @@ class Knot(Server):
             s.begin("xdp")
             s.item_str("listen", "%s@%s" % (self.addr, self.xdp_port))
             s.item_str("tcp", "on")
+            if self.quic_port:
+                s.item_str("quic", "on")
+                s.item_str("quic-port", self.quic_port)
             s.end()
 
         s.begin("control")

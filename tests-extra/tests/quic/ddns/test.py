@@ -15,8 +15,8 @@ def check_dnskey(a, b, zones):
 key = Tsig() if random.choice([True, False]) else False
 t = Test(quic=True, tsig=key)
 
-sender = t.server("knot", tsig=key)
-recver = t.server("knot", tsig=key)
+sender = t.server("knot", tsig=key, xdp_enable=False)
+recver = t.server("knot", tsig=key, xdp_enable=False)
 zones = t.zone("catalog.") # zero TTL -> faster roll-over
 
 t.link(zones, sender)
