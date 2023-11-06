@@ -377,13 +377,12 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 	int ret = KNOT_EOK;
-	int ret_deinit;
 
 	if (ctx->backup_zonefile) {
 		ret = backup_zonefile(conf, zone, ctx);
 		if (ret != KNOT_EOK) {
 			LOG_MARK_FAIL("zone file");
-			goto done;
+			return ret;
 		}
 	}
 
@@ -395,13 +394,13 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
 			if (ret != KNOT_EOK) {
 				LOG_MARK_FAIL("KASP database");
-				goto done;
+				return ret;
 			}
 
 			ret = backup_keystore(conf, zone, ctx);
 			if (ret != KNOT_EOK) {
 				ctx->failed = true;
-				goto done;
+				return ret;
 			}
 		}
 	}
@@ -416,14 +415,14 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 	if (ret != KNOT_EOK) {
 		LOG_MARK_FAIL("journal");
-		goto done;
+		return ret;
 	}
 
 	if (ctx->backup_timers) {
 		ret = knot_lmdb_open(&ctx->bck_timer_db);
 		if (ret != KNOT_EOK) {
 			LOG_MARK_FAIL("timers open");
-			goto done;
+			return ret;
 		}
 		if (ctx->restore_mode) {
 			ret = zone_timers_read(&ctx->bck_timer_db, zone->name, &zone->timers);
@@ -434,14 +433,11 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		}
 		if (ret != KNOT_EOK) {
 			LOG_MARK_FAIL("timers");
-			goto done;
+			return ret;
 		}
 	}
 
-done:
-	ret_deinit = zone_backup_deinit(ctx);
-	zone->backup_ctx = NULL;
-	return (ret != KNOT_EOK) ? ret : ret_deinit;
+	return ret;
 }
 
 int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
