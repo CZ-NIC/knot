@@ -40,12 +40,6 @@ int event_backup(conf_t *conf, zone_t *zone)
 		goto done;
 	}
 
-	char *back_dir = strdup(ctx->backup_dir);
-	if (back_dir == NULL) {
-		ret = KNOT_ENOMEM;
-		goto done;
-	}
-
 	if (restore) {
 		// expire zone
 		zone_contents_t *expired = zone_switch_contents(zone, NULL);
@@ -59,7 +53,8 @@ int event_backup(conf_t *conf, zone_t *zone)
 	ret = zone_backup(conf, zone);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone %s '%s'",
-		              restore ? "restored from" : "backed up to", back_dir);
+		              restore ? "restored from" : "backed up to",
+		              ctx->backup_dir);
 	} else {
 		log_zone_warning(zone->name, "zone %s failed (%s)",
 		                 restore ? "restore" : "backup", knot_strerror(ret));
@@ -68,8 +63,6 @@ int event_backup(conf_t *conf, zone_t *zone)
 	if (restore && ret == KNOT_EOK) {
 		zone_reset(conf, zone);
 	}
-
-	free(back_dir);
 
 done:
 	ret_deinit = zone_backup_deinit(ctx);
