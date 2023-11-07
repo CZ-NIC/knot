@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,10 +16,7 @@
 
 #pragma once
 
-#include <time.h>
-
-#include "knot/zone/zone.h"
-#include "knot/updates/changesets.h"
+#include "contrib/time.h"
 #include "knot/updates/zone-update.h"
 #include "knot/dnssec/context.h"
 
@@ -51,17 +48,6 @@ typedef struct {
 	bool plan_ds_check;
 	bool plan_dnskey_sync;
 } zone_sign_reschedule_t;
-
-/*!
- * \brief Generate/rollover keys in keystore as needed.
- *
- * \param kctx       Pointers to the keytore, policy, etc.
- * \param zone_name  Zone name.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-int knot_dnssec_sign_process_events(const kdnssec_ctx_t *kctx,
-                                    const knot_dname_t *zone_name);
 
 /*!
  * \brief DNSSEC re-sign zone, store new records into changeset. Valid signatures
@@ -132,4 +118,5 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx);
  *
  * \return KNOT_E*
  */
-int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf, knot_time_t now, bool incremental);
+int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
+                              knot_time_t now, bool incremental);

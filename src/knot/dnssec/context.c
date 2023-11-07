@@ -326,11 +326,13 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 		return KNOT_ENOMEM;
 	}
 
-	ctx->policy = calloc(1, sizeof(*ctx->policy));
+	ctx->policy = calloc(1, sizeof(*ctx->policy) + sizeof(*ctx->stats));
 	if (ctx->policy == NULL) {
 		free(ctx->zone);
 		return KNOT_ENOMEM;
 	}
+	ctx->stats = (void *)ctx->policy + sizeof(*ctx->policy);
+	knot_spin_init(&ctx->stats->lock);
 
 	policy_from_zone(ctx->policy, zone);
 	if (conf != NULL) {
