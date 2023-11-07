@@ -11,7 +11,8 @@ from dnstest.libknot import libknot
 
 class TestItem(object):
     def __init__(self, qname: str, qtype: str, udp: bool, dnssec: bool, rcode: str,
-            ede: int = libknot.probe.KnotProbeData.EDE_NONE, aa: bool = False, nsid: bool = False):
+                 ede: int = libknot.probe.KnotProbeData.EDE_NONE, aa: bool = False,
+                 nsid: bool = False, xdp: bool = False):
         self.qname = qname
         self.qtype = qtype
         self.udp = udp
@@ -20,6 +21,7 @@ class TestItem(object):
         self.ede = ede
         self.aa = aa
         self.nsid = nsid
+        self.xdp = xdp
 
     def check(self, data, server):
         compare(data.ip, 6 if ":" in server.addr else 4, "IP version")
@@ -27,7 +29,10 @@ class TestItem(object):
                     libknot.probe.KnotProbeDataProto.TCP
         compare(data.proto, ref_proto.value, "proto")
         compare(data.addr_str(data.local_addr), server.addr, "local address")
-        compare(data.local_port, server.port, "local port")
+        if self.xdp and server.xdp_port is not None and server.xdp_port > 0:
+            compare(data.local_port, server.xdp_port, "local XDP port")
+        else:
+            compare(data.local_port, server.port, "local port")
 
         compare(data.qname_str(), str(dns.name.from_text(self.qname)), "qname")
         compare(data.query_type, dns.rdatatype.from_text(self.qtype), "qtype")
@@ -57,7 +62,7 @@ class TestItem(object):
 tests = [TestItem("ns1.example.", "A", udp=True, dnssec=False, rcode="NOERROR", aa=True),
          TestItem("not-exists.example.", "A", udp=False, dnssec=True, rcode="NXDOMAIN", aa=True),
          TestItem("example.", "SOA", udp=True, dnssec=True, rcode="NOERROR", aa=True, nsid=True),
-         TestItem(".", "SOA", udp=True, dnssec=False, rcode="REFUSED"),
+         TestItem(".", "SOA", udp=True, dnssec=False, rcode="REFUSED", xdp=True),
          TestItem(".", "SOA", udp=True, dnssec=True, rcode="REFUSED", ede=20)]
 
 t = Test(stress=False, tsig=False)
@@ -77,7 +82,7 @@ t.start()
 t.sleep(1) # Not zone_wait() as it would generate probe data!
 
 for item in tests:
-    resp = server.dig(item.qname, item.qtype, udp=item.udp, dnssec=item.dnssec, nsid=item.nsid)
+    resp = server.dig(item.qname, item.qtype, udp=item.udp, dnssec=item.dnssec, nsid=item.nsid, xdp=item.xdp)
     probe.consume(data)
     compare(data.used, 1, "data array occupation")
     item.check(data[0], server)

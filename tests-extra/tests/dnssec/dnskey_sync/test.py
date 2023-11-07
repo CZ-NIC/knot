@@ -82,10 +82,10 @@ def configure_dnssec(server1, master, server2, server3, roll):
 
 t = Test()
 
-master = t.server("knot")
-signer1 = t.server("knot")
-signer2 = t.server("knot")
-signer3 = t.server("knot")
+master = t.server("knot", xdp_enable=False) # DDNS over XDP not supported
+signer1 = t.server("knot", xdp_enable=False)
+signer2 = t.server("knot", xdp_enable=False)
+signer3 = t.server("knot", xdp_enable=False)
 zone = t.zone("catalog.") # has zero TTL => faster key rollovers
 
 configure_dnssec(signer1, master, signer2, signer3, SIGNER1ROLL)

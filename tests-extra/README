@@ -24,20 +24,32 @@ $ pip install -r requirements.txt
 Optional loopback addresses configuration:
 ------------------------------------------
 
-for i in {1..64}; do sudo ip address add 127.0.1.$i/32 dev lo; done
-for i in {1..64}; do sudo ip address add ::1$i/128 dev lo; done
+# for i in {1..64}; do sudo ip address add 127.0.1.$i/32 dev lo; done
+# for i in {1..64}; do sudo ip address add ::1$i/128 dev lo; done
 
 Ubuntu:
 -------
 
 Disable apparmor protection for system Bind:
-# sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
+$ sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
 or
-# sudo ln -s /etc/apparmor.d/usr.sbin.named /etc/apparmor.d/disable/
-# sudo /etc/init.d/apparmor restart
+$ sudo ln -s /etc/apparmor.d/usr.sbin.named /etc/apparmor.d/disable/
+$ sudo /etc/init.d/apparmor restart
 
 Allow ptrace:
 # echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
 or
 # vim /etc/sysctl.d/10-ptrace.conf
 # kernel.yama.ptrace_scope = 0
+
+XDP:
+----
+
+XDP testing with Valgrind requires running under root. Testing with ASAN is
+possible if lsof has two following capabilities:
+
+$ sudo setcap "CAP_SYS_PTRACE,CAP_DAC_OVERRIDE+ep" `which lsof`
+
+And knotd has set:
+
+$ sudo setcap "CAP_NET_RAW,CAP_NET_ADMIN,CAP_SYS_ADMIN,CAP_IPC_LOCK,CAP_SYS_PTRACE+ep" `readlink -f ../src/knotd`
