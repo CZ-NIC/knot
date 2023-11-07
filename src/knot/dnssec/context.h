@@ -16,11 +16,9 @@
 
 #pragma once
 
-#include <time.h>
-
 #include "libdnssec/keystore.h"
-
 #include "contrib/spinlock.h"
+#include "contrib/time.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/policy.h"

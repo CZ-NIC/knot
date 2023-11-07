@@ -448,7 +448,8 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx)
 	}
 }
 
-int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf, knot_time_t now, bool incremental)
+int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
+                              knot_time_t now, bool incremental)
 {
 	kdnssec_ctx_t ctx = { 0 };
 	int ret = kdnssec_validation_ctx(conf, &ctx, update->new_cont);
