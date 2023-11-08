@@ -20,8 +20,8 @@
 
 #pragma once
 
-#if (__STDC_VERSION__ >= 201112L) && \
-    !defined(__STDC_NO_ATOMICS__)    /* C11 */
+#if 0
+//#if (__STDC_VERSION__ >= 201112L) && !defined(__STDC_NO_ATOMICS__)    /* C11 */
  #include <stdatomic.h>
 
  #define ATOMIC_SET(dst, val) atomic_store_explicit(&(dst), (val), memory_order_relaxed)
@@ -32,7 +32,7 @@
  typedef atomic_size_t knot_atomic_size_t;
  typedef atomic_uint_fast16_t knot_atomic_uint16_t;
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
-#elif HAVE_ATOMIC                    /* GCC */
+//#elif HAVE_ATOMIC                    /* GCC */
  #include <stdint.h>
 
  #define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
@@ -44,7 +44,7 @@
  typedef uint16_t knot_atomic_uint16_t;
  typedef uint64_t knot_atomic_uint64_t;
 #else                                /* Fallback, non-atomic. */
- #warning "Atomic operations not availabe, using unreliable replacement."
+// #warning "Atomic operations not availabe, using unreliable replacement."
 
  #include <stdint.h>
 
