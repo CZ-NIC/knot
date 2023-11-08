@@ -60,6 +60,35 @@ static int thread_set(struct dthread *thread)
 	return 0;
 }
 
+static void *pthread_set(void *thread)
+{
+	int i;
+
+	for (i = 0; i < CYCLES; i++) {
+		ATOMIC_SET(atomic_var, UPPER);
+		volatile u_int64_t read = ATOMIC_GET(atomic_var);
+		if (read != UPPER && read != LOWER) {
+			// Non-atomic counter, won't be accurate!
+			// However, it's sufficient for fault detection.
+			errors_set_get++;
+		}
+	}
+
+	return NULL;
+}
+
+static void *pthread_disturb(void *thread)
+{
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+	for (;;) {
+		ATOMIC_SET(atomic_var, LOWER);
+	}
+
+	return NULL;
+}
+
 // Signal handler
 static void interrupt_handle(int s)
 {
@@ -92,6 +121,18 @@ int main(int argc, char *argv[])
 	dt_delete(&unit);
 
 	is_int(0, errors_set_get, "atomicity of ATOMIC_SET / ATOMIC_GET");
+
+	// Test for atomicity of ATOMIC_SET and ATOMIC_GET (more aggressive form).
+	errors_set_get = 0;
+	pthread_t worker, disturber;
+
+	pthread_create(&disturber, NULL, &pthread_disturb, NULL);
+	pthread_create(&worker, NULL, &pthread_set, NULL);
+	pthread_join(worker, NULL);
+	pthread_cancel(disturber);
+	pthread_join(disturber, NULL);
+
+	is_int(0, errors_set_get, "atomicity of ATOMIC_SET / ATOMIC_GET (test 2)");
 
 	return 0;
 }
