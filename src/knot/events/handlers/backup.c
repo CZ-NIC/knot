@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,16 +31,13 @@ int event_backup(conf_t *conf, zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
+	int ret, ret_deinit;
 	bool restore = ctx->restore_mode;
 
 	if (!restore && ctx->failed) {
 		// No need to proceed with already faulty backup.
-		return KNOT_EOK;
-	}
-
-	char *back_dir = strdup(ctx->backup_dir);
-	if (back_dir == NULL) {
-		 return KNOT_ENOMEM;
+		ret = KNOT_EOK;
+		goto done;
 	}
 
 	if (restore) {
@@ -53,10 +50,11 @@ int event_backup(conf_t *conf, zone_t *zone)
 		zone->zonefile.exists = false;
 	}
 
-	int ret = zone_backup(conf, zone);
+	ret = zone_backup(conf, zone);
 	if (ret == KNOT_EOK) {
 		log_zone_info(zone->name, "zone %s '%s'",
-		              restore ? "restored from" : "backed up to", back_dir);
+		              restore ? "restored from" : "backed up to",
+		              ctx->backup_dir);
 	} else {
 		log_zone_warning(zone->name, "zone %s failed (%s)",
 		                 restore ? "restore" : "backup", knot_strerror(ret));
@@ -66,6 +64,8 @@ int event_backup(conf_t *conf, zone_t *zone)
 		zone_reset(conf, zone);
 	}
 
-	free(back_dir);
-	return ret;
+done:
+	ret_deinit = zone_backup_deinit(ctx);
+	zone->backup_ctx = NULL;
+	return (ret != KNOT_EOK) ? ret : ret_deinit;
 }
