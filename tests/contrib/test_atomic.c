@@ -22,17 +22,39 @@
 
 #define THREADS 16
 #define CYCLES 100000
+#define UPPER 0xffffffff00000000
+#define LOWER 0x00000000ffffffff
 
 static volatile knot_atomic_size_t counter_add = 0;
 static volatile knot_atomic_size_t counter_sub = 0;
+static volatile knot_atomic_uint64_t atomic_var;
+static int errors_set_get = 0;
 
-static int thread(struct dthread *thread)
+static int thread_add(struct dthread *thread)
 {
 	int i;
 
 	for (i = 0; i < CYCLES; i++) {
 		ATOMIC_ADD(counter_add, 7);
 		ATOMIC_SUB(counter_sub, 7);
+	}
+
+	return 0;
+}
+
+static int thread_set(struct dthread *thread)
+{
+	int i;
+	u_int64_t val = (dt_get_id(thread) % 2) ? UPPER : LOWER;
+
+	for (i = 0; i < CYCLES; i++) {
+		ATOMIC_SET(atomic_var, val);
+		volatile u_int64_t read = ATOMIC_GET(atomic_var);
+		if (read != UPPER && read != LOWER) {
+			// Non-atomic counter, won't be accurate!
+			// However, it's sufficient for fault detection.
+			errors_set_get++;
+		}
 	}
 
 	return 0;
@@ -54,13 +76,22 @@ int main(int argc, char *argv[])
 	sa.sa_flags = 0;
 	sigaction(SIGALRM, &sa, NULL); // Interrupt
 
-	dt_unit_t *unit = dt_create(THREADS, thread, NULL, NULL);
+	// Test for atomicity of ATOMIC_ADD and ATOMIC_SUB.
+	dt_unit_t *unit = dt_create(THREADS, thread_add, NULL, NULL);
 	dt_start(unit);
 	dt_join(unit);
 	dt_delete(&unit);
 
 	is_int(THREADS * CYCLES * 7,  counter_add, "atomicity of ATOMIC_ADD");
 	is_int(THREADS * CYCLES * 7, -counter_sub, "atomicity of ATOMIC_SUB");
+
+	// Test for atomicity of ATOMIC_SET and ATOMIC_GET.
+	unit = dt_create(THREADS, thread_set, NULL, NULL);
+	dt_start(unit);
+	dt_join(unit);
+	dt_delete(&unit);
+
+	is_int(0, errors_set_get, "atomicity of ATOMIC_SET / ATOMIC_GET");
 
 	return 0;
 }
