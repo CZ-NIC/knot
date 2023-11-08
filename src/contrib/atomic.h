@@ -20,7 +20,8 @@
 
 #pragma once
 
-#ifdef HAVE_C11_ATOMIC           /* C11 */
+#if 0
+//#ifdef HAVE_C11_ATOMIC           /* C11 */
  #define KNOT_HAVE_ATOMIC
 
  #include <stdatomic.h>
@@ -34,7 +35,7 @@
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
  typedef atomic_size_t knot_atomic_size_t;
  typedef atomic_bool knot_atomic_bool;
-#elif defined(HAVE_GCC_ATOMIC)   /* GCC __atomic */
+//#elif defined(HAVE_GCC_ATOMIC)   /* GCC __atomic */
  #define KNOT_HAVE_ATOMIC
 
  #include <stdint.h>
