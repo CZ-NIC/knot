@@ -120,6 +120,8 @@ int main(int argc, char *argv[])
 
 	is_int(0, errors_set_get, "atomicity of ATOMIC_SET / ATOMIC_GET");
 
+#if !defined(__APPLE__) && !defined(__NetBSD__)  // broken PTHREAD_CANCEL_ASYNCHRONOUS
+
 	// Test for atomicity of ATOMIC_SET and ATOMIC_GET (more aggressive form).
 	errors_set_get = 0;
 	pthread_t worker, disturber;
@@ -131,6 +133,8 @@ int main(int argc, char *argv[])
 	pthread_join(disturber, NULL);
 
 	is_int(0, errors_set_get, "atomicity of ATOMIC_SET / ATOMIC_GET (test 2)");
+
+#endif // !__APPLE__ && !__NetBSD__
 
 	return 0;
 }
