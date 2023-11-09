@@ -1380,23 +1380,32 @@ conf_remote_t conf_remote_txn(
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 
 	// Get indexed remote address.
+	uint16_t addr_skipped[1 + AF_INET6] = { 0 };
 	val = conf_id_get_txn(conf, txn, C_RMT, C_ADDR, id);
 	for (size_t i = 0; val.code == KNOT_EOK && i < index; i++) {
 		if (i == 0) {
 			conf_val(&val);
 		}
+
+		struct sockaddr_storage addr = conf_addr(&val, rundir);
+		assert(addr.ss_family <= AF_INET6);
+		addr_skipped[addr.ss_family]++;
+
 		conf_val_next(&val);
 	}
 	// Index overflow causes empty socket.
 	out.addr = conf_addr_alt(&val, rundir, out.quic);
 
 	// Get outgoing address if family matches (optional).
+	uint16_t via_pos = 0;
 	val = conf_id_get_txn(conf, txn, C_RMT, C_VIA, id);
 	while (val.code == KNOT_EOK) {
 		struct sockaddr_storage via = conf_addr(&val, rundir);
 		if (via.ss_family == out.addr.ss_family) {
-			out.via = conf_addr(&val, rundir);
-			break;
+			out.via = conf_addr(&val, rundir); // Use this candidate.
+			if (addr_skipped[out.addr.ss_family] <= via_pos++) {
+				break;
+			}
 		}
 		conf_val_next(&val);
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -257,6 +257,72 @@ static void test_mix_ref(void)
 	test_conf_free();
 }
 
+static void check_addrs(struct sockaddr_storage *addr, struct sockaddr_storage *via,
+                        int family, const char *addr_str, const char *via_str)
+{
+	struct sockaddr_storage ref = { 0 };
+
+	int set_ret = sockaddr_set(&ref, family, addr_str, 0);
+	int cmp_ret = sockaddr_cmp(&ref, addr, true);
+	is_int(KNOT_EOK, set_ret, "set address '%s'", addr_str);
+	is_int(KNOT_EOK, cmp_ret, "cmp address '%s'", addr_str);
+
+	if (via_str != NULL) {
+		set_ret = sockaddr_set(&ref, family, via_str, 0);
+		cmp_ret = sockaddr_cmp(&ref, via, true);
+		is_int(KNOT_EOK, set_ret, "set via '%s'", via_str);
+		is_int(KNOT_EOK, cmp_ret, "cmp via '%s'", via_str);
+	} else {
+		cmp_ret = sockaddr_cmp(&ref, via, true);
+		is_int(AF_UNSPEC, via->ss_family, "empty via");
+	}
+}
+
+static void test_conf_remote(void)
+{
+	const char *conf_string =
+		"remote:\n"
+		"  - id: r1\n"
+		"    address: [1::2, 1.0.0.2, 2::2, 3::2, 2.0.0.2]\n"
+		"    via:     [1::1, 2::1, 1.0.0.1, 2.0.0.1]\n"
+		"  - id: r2\n"
+		"    address: [1::2, 1.0.0.2, 2::2]\n"
+		"    via:     [1::1, 2::1, 3::1]\n"
+		"template:\n"
+		"  - id: t1\n"
+		"    notify: r1\n"
+		"  - id: t2\n"
+		"    notify: r2\n";
+
+	int ret = test_conf(conf_string, NULL);
+	is_int(KNOT_EOK, ret, "Prepare configuration");
+
+	conf_remote_t r;
+	conf_val_t id;
+
+	id = conf_rawid_get(conf(), C_TPL, C_NOTIFY, (const uint8_t *)"t1", 3);
+	r = conf_remote(conf(), &id, 0);
+	check_addrs(&r.addr, &r.via, AF_INET6, "1::2", "1::1");
+	r = conf_remote(conf(), &id, 1);
+	check_addrs(&r.addr, &r.via, AF_INET, "1.0.0.2", "1.0.0.1");
+	r = conf_remote(conf(), &id, 2);
+	check_addrs(&r.addr, &r.via, AF_INET6, "2::2", "2::1");
+	r = conf_remote(conf(), &id, 3);
+	check_addrs(&r.addr, &r.via, AF_INET6, "3::2", "2::1");
+	r = conf_remote(conf(), &id, 4);
+	check_addrs(&r.addr, &r.via, AF_INET, "2.0.0.2", "2.0.0.1");
+
+	id = conf_rawid_get(conf(), C_TPL, C_NOTIFY, (const uint8_t *)"t2", 3);
+	r = conf_remote(conf(), &id, 0);
+	check_addrs(&r.addr, &r.via, AF_INET6, "1::2", "1::1");
+	r = conf_remote(conf(), &id, 1);
+	check_addrs(&r.addr, &r.via, AF_INET, "1.0.0.2", NULL);
+	r = conf_remote(conf(), &id, 2);
+	check_addrs(&r.addr, &r.via, AF_INET6, "2::2", "2::1");
+
+	test_conf_free();
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -269,6 +335,9 @@ int main(int argc, char *argv[])
 
 	diag("mixed references");
 	test_mix_ref();
+
+	diag("conf_remote");
+	test_conf_remote();
 
 	return 0;
 }
