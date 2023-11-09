@@ -50,6 +50,7 @@ static void print_help(void)
 	       " -b, --blocking	          "SPACE"Zone event trigger commands wait until the event is finished.\n"
 	       " -e, --extended           "SPACE"Show extended output.\n"
 	       " -f, --force              "SPACE"Forced operation. Overrides some checks.\n"
+	       " -j, --json               "SPACE"Output formated as JSON.\n"
 	       " -x, --mono               "SPACE"Don't color the output.\n"
 	       " -X, --color              "SPACE"Force output colorization.\n"
 	       " -v, --verbose            "SPACE"Enable debug output.\n"
@@ -78,6 +79,7 @@ int main(int argc, char **argv)
 		{ "blocking",      no_argument,       NULL, 'b' },
 		{ "extended",      no_argument,       NULL, 'e' },
 		{ "force",         no_argument,       NULL, 'f' },
+		{ "json",          no_argument,       NULL, 'j' },
 		{ "mono",          no_argument,       NULL, 'x' },
 		{ "color",         no_argument,       NULL, 'X' },
 		{ "verbose",       no_argument,       NULL, 'v' },
@@ -97,7 +99,7 @@ int main(int argc, char **argv)
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:befxXvhV::", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+c:C:m:s:t:befjxXvhV::", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			params.orig_config = optarg;
@@ -132,6 +134,9 @@ int main(int argc, char **argv)
 			break;
 		case 'f':
 			params.force = true;
+			break;
+		case 'j':
+			params.json = true;
 			break;
 		case 'v':
 			params.verbose = true;

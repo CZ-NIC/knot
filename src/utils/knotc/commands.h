@@ -50,6 +50,7 @@ typedef struct {
 	bool color;
 	bool color_force;
 	bool blocking;
+	bool json;
 } cmd_args_t;
 
 /*! \brief Command callback description. */

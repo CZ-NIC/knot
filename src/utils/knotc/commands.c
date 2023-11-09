@@ -28,6 +28,7 @@
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-load.h"
 #include "contrib/color.h"
+#include "contrib/json.h"
 #include "contrib/macros.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
@@ -203,7 +204,7 @@ static int get_conf_key(const char *key, knot_ctl_data_t *data)
 }
 
 static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
-                        knot_ctl_data_t *data, bool *empty)
+                        knot_ctl_data_t *data, bool *empty, jsonw_t *json_ctx)
 {
 	const char *error = (*data)[KNOT_CTL_IDX_ERROR];
 	const char *flags = (*data)[KNOT_CTL_IDX_FLAGS];
@@ -282,17 +283,28 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	case CTL_ZONE_ABORT:
 	case CTL_ZONE_PURGE:
 		if (data_type == KNOT_CTL_TYPE_DATA) {
-			printf("%s%s%s%s%s%s%s%s%s%s",
-			       (!(*empty)     ? "\n"          : ""),
-			       (error != NULL ? "error: "     : ""),
-			       (zone  != NULL ? "["           : ""),
-			       (zone  != NULL ? status_col    : ""),
-			       (zone  != NULL ? zone          : ""),
-			       (zone  != NULL ? COL_RST(col)  : ""),
-			       (zone  != NULL ? "]"           : ""),
-			       (error != NULL ? " ("          : ""),
-			       (error != NULL ? error         : ""),
-			       (error != NULL ? ")"           : ""));
+			if (args->json) {
+				if (!(*empty)) {
+					jsonw_end(json_ctx);
+				}
+				if (error != NULL) {
+					jsonw_str(json_ctx, "error", error);
+				} else {
+					jsonw_object(json_ctx, zone);
+				}
+			} else {
+				printf("%s%s%s%s%s%s%s%s%s%s",
+				       (!(*empty)     ? "\n"          : ""),
+				       (error != NULL ? "error: "     : ""),
+				       (zone  != NULL ? "["           : ""),
+				       (zone  != NULL ? status_col    : ""),
+				       (zone  != NULL ? zone          : ""),
+				       (zone  != NULL ? COL_RST(col)  : ""),
+				       (zone  != NULL ? "]"           : ""),
+				       (error != NULL ? " ("          : ""),
+				       (error != NULL ? error         : ""),
+				       (error != NULL ? ")"           : ""));
+			}
 			*empty = false;
 		}
 		if (args->desc->cmd == CTL_ZONE_STATUS && type != NULL) {
@@ -305,9 +317,17 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 				return;
 			}
 
-			printf("%s %s: %s%s%s",
-			       (first_status_item ? "" : " |"),
-			       type, COL_BOLD(col), value, COL_RST(col));
+			if (args->json) {
+				if (strncmp(value, "-", sizeof("-")) == 0) {
+					jsonw_null(json_ctx, type);
+				} else {
+					jsonw_str(json_ctx, type, value);
+				}
+			} else {
+				printf("%s %s: %s%s%s",
+				       (first_status_item ? "" : " |"),
+				       type, COL_BOLD(col), value, COL_RST(col));
+			}
 			first_status_item = false;
 		}
 		break;
@@ -386,7 +406,7 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	}
 }
 
-static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
+static void format_block(ctl_cmd_t cmd, jsonw_t *json_ctx, bool failed, bool empty)
 {
 	switch (cmd) {
 	case CTL_STATUS:
@@ -436,7 +456,12 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_CONF_GET:
 	case CTL_ZONE_STATS:
 	case CTL_STATS:
-		printf("%s", empty ? "" : "\n");
+		if (json_ctx) {
+			jsonw_end(json_ctx);
+			jsonw_end(json_ctx);
+		} else {
+			printf("%s", empty ? "" : "\n");
+		}
 		break;
 	default:
 		assert(0);
@@ -448,6 +473,15 @@ static int ctl_receive(cmd_args_t *args)
 	bool failed = false;
 	bool empty = true;
 
+	jsonw_t *json = NULL;
+	if (args->json) {
+		json = jsonw_new(stdout, "  ");
+		if (json == NULL) {
+			return KNOT_ENOMEM;
+		}
+		jsonw_list(json, NULL);
+	}
+
 	while (true) {
 		knot_ctl_type_t type;
 		knot_ctl_data_t data;
@@ -455,22 +489,26 @@ static int ctl_receive(cmd_args_t *args)
 		int ret = knot_ctl_receive(args->ctl, &type, &data);
 		if (ret != KNOT_EOK) {
 			log_error(CTL_LOG_STR" (%s)", knot_strerror(ret));
+			jsonw_free(&json);
 			return ret;
 		}
 
 		switch (type) {
 		case KNOT_CTL_TYPE_END:
 			log_error(CTL_LOG_STR" (%s)", knot_strerror(KNOT_EMALF));
+			jsonw_free(&json);
 			return KNOT_EMALF;
 		case KNOT_CTL_TYPE_BLOCK:
-			format_block(args->desc->cmd, failed, empty);
+			format_block(args->desc->cmd, json, failed, empty);
+			jsonw_free(&json);
 			return failed ? KNOT_ERROR : KNOT_EOK;
 		case KNOT_CTL_TYPE_DATA:
 		case KNOT_CTL_TYPE_EXTRA:
-			format_data(args, type, &data, &empty);
+			format_data(args, type, &data, &empty, json);
 			break;
 		default:
 			assert(0);
+			jsonw_free(&json);
 			return KNOT_EINVAL;
 		}
 
@@ -479,6 +517,7 @@ static int ctl_receive(cmd_args_t *args)
 		}
 	}
 
+	jsonw_free(&json);
 	return KNOT_EOK;
 }
 

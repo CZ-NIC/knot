@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -223,6 +223,16 @@ int process_cmd(int argc, const char **argv, params_t *params)
 		return KNOT_ENOENT;
 	}
 
+	/* Test availability of json format*/
+	if (params->json) {
+		switch (desc->cmd) {
+			case CTL_ZONE_STATUS:
+				break;
+			default:
+				return KNOT_ENOTSUP;
+		}
+	}
+
 	/* Check for exit. */
 	if (desc->fcn == NULL) {
 		return KNOT_CTL_ESTOP;
@@ -243,7 +253,8 @@ int process_cmd(int argc, const char **argv, params_t *params)
 		.extended = params->extended,
 		.color = params->color,
 		.color_force = params->color_force,
-		.blocking = params->blocking
+		.blocking = params->blocking,
+		.json = params->json,
 	};
 
 	/* Check for special flags after command. */
