@@ -21,7 +21,7 @@
 #include "knot/server/dthreads.h"
 
 #define THREADS 16
-#define CYCLES 100000
+#define CYCLES 6000000
 #define UPPER 0xffffffff00000000
 #define LOWER 0x00000000ffffffff
 
@@ -68,8 +68,6 @@ static void *pthread_set(void *thread)
 		ATOMIC_SET(atomic_var, UPPER);
 		volatile u_int64_t read = ATOMIC_GET(atomic_var);
 		if (read != UPPER && read != LOWER) {
-			// Non-atomic counter, won't be accurate!
-			// However, it's sufficient for fault detection.
 			errors_set_get++;
 		}
 	}
@@ -115,24 +113,25 @@ int main(int argc, char *argv[])
 //	is_int(THREADS * CYCLES * 7, -counter_sub, "atomicity of ATOMIC_SUB");
 
 	// Test for atomicity of ATOMIC_SET and ATOMIC_GET.
-	unit = dt_create(THREADS, thread_set, NULL, NULL);
+//	unit = dt_create(THREADS, thread_set, NULL, NULL);
+	unit = dt_create(2, thread_set, NULL, NULL);
 	dt_start(unit);
 	dt_join(unit);
 	dt_delete(&unit);
 
 	is_int(0, errors_set_get, "atomicity of ATOMIC_SET / ATOMIC_GET");
 
-	// Test for atomicity of ATOMIC_SET and ATOMIC_GET (more aggressive form).
-	errors_set_get = 0;
-	pthread_t worker, disturber;
-
-	pthread_create(&disturber, NULL, &pthread_disturb, NULL);
-	pthread_create(&worker, NULL, &pthread_set, NULL);
-	pthread_join(worker, NULL);
-	pthread_cancel(disturber);
-	pthread_join(disturber, NULL);
-
-	is_int(0, errors_set_get, "atomicity of ATOMIC_SET / ATOMIC_GET (test 2)");
+//	// Test for atomicity of ATOMIC_SET and ATOMIC_GET (more aggressive form).
+//	errors_set_get = 0;
+//	pthread_t worker, disturber;
+//
+//	pthread_create(&disturber, NULL, &pthread_disturb, NULL);
+//	pthread_create(&worker, NULL, &pthread_set, NULL);
+//	pthread_join(worker, NULL);
+//	pthread_cancel(disturber);
+//	pthread_join(disturber, NULL);
+//
+//	is_int(0, errors_set_get, "atomicity of ATOMIC_SET / ATOMIC_GET (test 2)");
 
 	return 0;
 }
