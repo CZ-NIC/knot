@@ -21,7 +21,7 @@
 #include "knot/server/dthreads.h"
 
 #define THREADS 16
-#define CYCLES 100000
+#define CYCLES 6000000
 #define UPPER 0xffffffff00000000
 #define LOWER 0x00000000ffffffff
 
