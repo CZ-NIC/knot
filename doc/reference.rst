@@ -1362,13 +1362,33 @@ remote is reached.
 via
 ---
 
-An ordered list of source IP addresses. The first address with the same family
-as the destination address is used as a source address for communication with
-the remote. This option can help if the server listens on more addresses.
+An ordered list of source IP addresses which are used as source addresses
+for communication with the remote. For the N-th :ref:`remote address <remote_address>`,
+the last, but at most N-th, specified :ref:`via address<remote_via>`
+of the same family is used.
+This option can help if the server listens on more addresses.
 Optional source port (default is random) can be appended
 to the address using ``@`` separator.
 
 *Default:* not set
+
+.. NOTE::
+
+  For the following configuration:
+
+  ::
+
+    remote:
+      - id: example
+        address: [198.51.100.10, 2001:db8::10, 198.51.100.20, 2001:db8::20]
+        via: [198.51.100.1, 198.51.100.2, 2001:db8::1]
+
+  the (``via`` -> ``address``) mapping is:
+
+  - ``198.51.100.1`` -> ``198.51.100.10``
+  - ``2001:db8::1`` ->  ``2001:db8::10``
+  - ``198.51.100.2`` -> ``198.51.100.20``
+  - ``2001:db8::1`` -> ``2001:db8::20``
 
 .. _remote_quic:
 

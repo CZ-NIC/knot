@@ -1242,13 +1242,47 @@ no more addresses will be tried for this remote.
 .UNINDENT
 .SS via
 .sp
-An ordered list of source IP addresses. The first address with the same family
-as the destination address is used as a source address for communication with
-the remote. This option can help if the server listens on more addresses.
+An ordered list of source IP addresses which are used as source addresses
+for communication with the remote. For the N\-th \fI\%remote address\fP,
+the last, but at most N\-th, specified \fI\%via address\fP
+of the same family is used.
+This option can help if the server listens on more addresses.
 Optional source port (default is random) can be appended
 to the address using \fB@\fP separator.
 .sp
 \fIDefault:\fP not set
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+For the following configuration:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+remote:
+  \- id: example
+    address: [198.51.100.10, 2001:db8::10, 198.51.100.20, 2001:db8::20]
+    via: [198.51.100.1, 198.51.100.2, 2001:db8::1]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+the (\fBvia\fP \-> \fBaddress\fP) mapping is:
+.INDENT 0.0
+.IP \(bu 2
+\fB198.51.100.1\fP \-> \fB198.51.100.10\fP
+.IP \(bu 2
+\fB2001:db8::1\fP \->  \fB2001:db8::10\fP
+.IP \(bu 2
+\fB198.51.100.2\fP \-> \fB198.51.100.20\fP
+.IP \(bu 2
+\fB2001:db8::1\fP \-> \fB2001:db8::20\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
 .SS quic
 .sp
 If this option is set, the QUIC protocol will be used for outgoing communication
