@@ -28,7 +28,8 @@
 static volatile knot_atomic_size_t counter_add = 0;
 static volatile knot_atomic_size_t counter_sub = 0;
 static volatile knot_atomic_uint64_t atomic_var;
-static int errors_set_get = 0;
+//static int errors_set_get = 0;
+int errors_set_get = 0;
 
 static int thread_add(struct dthread *thread)
 {
