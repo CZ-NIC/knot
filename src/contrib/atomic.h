@@ -31,8 +31,10 @@
  typedef atomic_uint_fast16_t knot_atomic_uint16_t;
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
  typedef atomic_size_t knot_atomic_size_t;
+ typedef atomic_bool knot_atomic_bool;
 #elif HAVE_ATOMIC                    /* GCC */
  #include <stdint.h>
+ #include <stdbool.h>
 
  #define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
  #define ATOMIC_GET(src)      __atomic_load_n(&(src), __ATOMIC_RELAXED)
@@ -42,10 +44,12 @@
  typedef uint16_t knot_atomic_uint16_t;
  typedef uint64_t knot_atomic_uint64_t;
  typedef size_t knot_atomic_size_t;
+ typedef bool knot_atomic_bool;
 #else                                /* Fallback, non-atomic. */
  #warning "Atomic operations not availabe, using unreliable replacement."
 
  #include <stdint.h>
+ #include <stdbool.h>
 
  #define ATOMIC_SET(dst, val) ((dst) = (val))
  #define ATOMIC_GET(src)      (src)
@@ -55,4 +59,5 @@
  typedef uint16_t knot_atomic_uint16_t;
  typedef uint64_t knot_atomic_uint64_t;
  typedef size_t knot_atomic_size_t;
+ typedef bool knot_atomic_bool;
 #endif
