@@ -97,13 +97,13 @@ static bool keytag_in_use(kdnssec_ctx_t *ctx, uint16_t keytag)
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		uint16_t used = dnssec_key_get_keytag(ctx->zone->keys[i].key);
 		if (used == keytag) {
-			return true;
+			return false;
 		}
 	}
-	return false;
+	return (ctx->zone->num_keys > 0);
 }
 
-#define GENERATE_KEYTAG_ATTEMPTS (20)
+#define GENERATE_KEYTAG_ATTEMPTS (2000000L)
 
 static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
                                       kdnssec_generate_flags_t flags,
