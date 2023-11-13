@@ -406,8 +406,12 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 				bool frozen = ufrozen && ufreeze_applies(i);
 				ret = snprintf(buff, sizeof(buff), frozen ? "frozen" : "pending");
 			} else {
-				ret = knot_time_print(TIME_PRINT_HUMAN_MIXED,
-				                      ev_time, buff, sizeof(buff));
+				knot_time_print_t format = TIME_PRINT_HUMAN_MIXED;
+				if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS],
+				                 CTL_FLAG_STATUS_UNIXTIME)) {
+					format = TIME_PRINT_UNIX;
+				}
+				ret = knot_time_print(format, ev_time, buff, sizeof(buff));
 			}
 			if (ret < 0 || ret >= sizeof(buff)) {
 				return KNOT_ESPACE;
