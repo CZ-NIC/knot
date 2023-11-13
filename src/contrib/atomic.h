@@ -20,8 +20,8 @@
 
 #pragma once
 
-#if (__STDC_VERSION__ >= 201112L) && !defined(__STDC_NO_ATOMICS__)
- #define KNOT_HAVE_ATOMIC            /* C11 */
+#ifdef HAVE_C11_ATOMIC           /* C11 */
+ #define KNOT_HAVE_ATOMIC
 
  #include <stdatomic.h>
 
@@ -34,7 +34,7 @@
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
  typedef atomic_size_t knot_atomic_size_t;
  typedef atomic_bool knot_atomic_bool;
-#elif defined(HAVE_ATOMIC)           /* GCC */
+#elif defined(HAVE_GCC_ATOMIC)   /* GCC __atomic */
  #define KNOT_HAVE_ATOMIC
 
  #include <stdint.h>
@@ -49,7 +49,7 @@
  typedef uint64_t knot_atomic_uint64_t;
  typedef size_t knot_atomic_size_t;
  typedef bool knot_atomic_bool;
-#else                                /* Fallback, non-atomic. */
+#else                            /* Fallback, non-atomic. */
  #warning "Atomic operations not availabe, using unreliable replacement."
 
  #include <stdint.h>
