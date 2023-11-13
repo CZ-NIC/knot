@@ -149,7 +149,7 @@ jsonw_t *jsonw_new(FILE *out, const char *indent)
 
 void jsonw_free(jsonw_t **w)
 {
-	if (w == NULL) {
+	if (w == NULL || *w == NULL) {
 		return;
 	}
 
