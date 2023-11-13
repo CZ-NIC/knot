@@ -318,8 +318,11 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 			}
 
 			if (args->json) {
+				unsigned long value_ulong = 0;
 				if (strncmp(value, "-", sizeof("-")) == 0) {
 					jsonw_null(json_ctx, type);
+				} else if (sscanf(value, "%lu", &value_ulong) == 1) {
+					jsonw_ulong(json_ctx, type, value_ulong);
 				} else {
 					jsonw_str(json_ctx, type, value);
 				}
