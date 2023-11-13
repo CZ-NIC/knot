@@ -745,11 +745,23 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread_np.h>]], [[cpuset_t set; CPU
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset_create(); cpuset_destroy(set);]])],
 [AC_DEFINE(HAVE_CPUSET_NETBSD, 1, [Define if cpuset_t and cpuset(3) exists.])])
 
-# Check for '__atomic' compiler builtin atomic functions.
+# Check for a C11 or GCC-style '__atomic' compiler builtin atomic functions.
+atomic_type="no"
 AC_LINK_IFELSE(
-  [AC_LANG_PROGRAM([[#include <stdint.h>]],
-                   [[uint64_t val = 0; __atomic_add_fetch(&val, 1, __ATOMIC_RELAXED);]])],
-  [AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])]
+  [AC_LANG_PROGRAM([[#if (__STDC_VERSION__ < 201112L) || defined(__STDC_NO_ATOMICS__)
+                     #error "No C11 atomics"
+                     #endif
+                     #include <stdatomic.h>]],
+                   [[atomic_uint_fast64_t val = 0;]]
+                   [[atomic_fetch_add_explicit(&val, 1, memory_order_relaxed);]])],
+  [AC_DEFINE(HAVE_C11_ATOMIC, 1, [Define to 1 if you have C11 'atomic' functions.])
+   atomic_type="c11"],
+  AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM([[#include <stdint.h>]],
+                     [[uint64_t val = 0; __atomic_add_fetch(&val, 1, __ATOMIC_RELAXED);]])],
+    [AC_DEFINE(HAVE_GCC_ATOMIC, 1, [Define to 1 if you have GCC-style '__atomic' functions.])
+     atomic_type="__atomic"]
+  )
 )
 
 # Prepare CFLAG_VISIBILITY to be used where needed
@@ -829,7 +841,8 @@ result_msg_base="
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
     LibFuzzer:              ${with_fuzzer}
-    OSS-Fuzz:               ${with_oss_fuzz}"
+    OSS-Fuzz:               ${with_oss_fuzz}
+    Atomic support:         ${atomic_type}"
 
 result_msg_esc=$(echo -n "    Configure:$filtered_config_params\n$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
 
