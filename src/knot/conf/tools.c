@@ -991,6 +991,11 @@ int check_zone(
 			args->err_str = "'zonefile-load: difference-no-serial' requires 'journal-content: all'";
 			return KNOT_EINVAL;
 		}
+	} else if (zf_load_val == ZONEFILE_LOAD_WHOLE) {
+		if (conf_opt(&journal) == JOURNAL_CONTENT_ALL) {
+			args->err_str = "'zonefile-load: whole' not compatible with 'journal-content: all'";
+			return KNOT_EINVAL;
+		}
 	}
 
 	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
