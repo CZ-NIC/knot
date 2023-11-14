@@ -19,17 +19,10 @@
 
 #include "knot/conf/schema.h"
 #include "knot/include/module.h"
+#include "contrib/atomic.h"
 #include "contrib/string.h"
 #include "contrib/time.h"
 #include "libknot/libknot.h"
-
-#ifdef HAVE_ATOMIC
-#define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
-#define ATOMIC_GET(src)      __atomic_load_n(&(src), __ATOMIC_RELAXED)
-#else
-#define ATOMIC_SET(dst, val) ((dst) = (val))
-#define ATOMIC_GET(src)      (src)
-#endif
 
 #define MOD_PATH       "\x04""path"
 #define MOD_CHANNELS   "\x08""channels"
@@ -45,7 +38,7 @@ const yp_item_t probe_conf[] = {
 typedef struct {
 	knot_probe_t **probes;
 	size_t probe_count;
-	uint64_t *last_times;
+	knot_atomic_uint64_t *last_times;
 	uint64_t min_diff_ns;
 	char *path;
 } probe_ctx_t;
@@ -139,7 +132,7 @@ int probe_load(knotd_mod_t *mod)
 		return KNOT_ENOMEM;
 	}
 
-	ctx->last_times = calloc(ctx->probe_count, sizeof(uint64_t));
+	ctx->last_times = calloc(ctx->probe_count, sizeof(*ctx->last_times));
 	if (ctx->last_times == NULL) {
 		free_probe_ctx(ctx);
 		return KNOT_ENOMEM;

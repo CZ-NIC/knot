@@ -16,8 +16,7 @@
 
 #pragma once
 
-#include <stdatomic.h>
-
+#include "contrib/atomic.h"
 #include "knot/conf/conf.h"
 #include "knot/catalog/catalog_update.h"
 #include "knot/common/evsched.h"
@@ -123,7 +122,7 @@ typedef struct server {
 
 	/*! \brief Pending changes to catalog member zones, update indication. */
 	catalog_update_t catalog_upd;
-	atomic_bool catalog_upd_signal;
+	knot_atomic_bool catalog_upd_signal;
 
 	/*! \brief Context of pending zones' backup. */
 	zone_backup_ctxs_t backup_ctxs;
