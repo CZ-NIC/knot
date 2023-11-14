@@ -565,7 +565,8 @@ either in the log or via ``knotc zone-status``. There is no special log for fini
 .. NOTE::
    There are never two key rollovers running in parallel for one zone. If
    a rollover is triggered while another is in progress, it waits until the
-   first one is finished.
+   first one is finished. Note that a rollover might be considered finished
+   when the old key is retired or waiting to be deleted.
 
 The ZSK rollover is performed with Pre-publish method, KSK rollover uses Double-Signature
 scheme, as described in :rfc:`6781`.
