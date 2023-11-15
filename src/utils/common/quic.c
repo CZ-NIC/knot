@@ -471,7 +471,6 @@ int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx, const quic_params_t *para
 	ctx->stream.id = -1;
 	set_application_error(ctx, DOQ_NO_ERROR, NULL, 0);
 	if (quic_generate_secret(ctx->secret, sizeof(ctx->secret)) != KNOT_EOK) {
-		tls_ctx_deinit(ctx->tls);
 		return KNOT_ENOMEM;
 	}
 
@@ -485,7 +484,6 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 {
 	if (connect(sockfd, (const struct sockaddr *)(dst_addr->ai_addr),
 	            dst_addr->ai_addrlen) != 0) {
-		tls_ctx_deinit(ctx->tls);
 		return knot_map_errno();
 	}
 
@@ -493,13 +491,11 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	scid.datalen = NGTCP2_MAX_CIDLEN;
 	int ret = dnssec_random_buffer(scid.data, scid.datalen);
 	if (ret != DNSSEC_EOK) {
-		tls_ctx_deinit(ctx->tls);
 		return ret;
 	}
 	dcid.datalen = 18;
 	ret = dnssec_random_buffer(dcid.data, dcid.datalen);
 	if (ret != DNSSEC_EOK) {
-		tls_ctx_deinit(ctx->tls);
 		return ret;
 	}
 
@@ -521,7 +517,6 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	socklen_t src_addr_len = sizeof(src_addr);
 	ret = getsockname(sockfd, (struct sockaddr *)&src_addr, &src_addr_len);
 	if (ret < 0) {
-		tls_ctx_deinit(ctx->tls);
 		return knot_map_errno();
 	}
 	ngtcp2_path path = {
@@ -539,7 +534,6 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	if (ngtcp2_conn_client_new(&ctx->conn, &dcid, &scid, &path,
 	                           NGTCP2_PROTO_VER_V1, &quic_client_callbacks,
 	                           &settings, &params, NULL, ctx) != 0) {
-		tls_ctx_deinit(ctx->tls);
 		return KNOT_NET_ECONNECT;
 	}
 
@@ -547,7 +541,6 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	        GNUTLS_HANDSHAKE_ANY, GNUTLS_HOOK_POST, hook_func);
 	ret = ngtcp2_crypto_gnutls_configure_client_session(ctx->tls->session);
 	if (ret != KNOT_EOK) {
-		tls_ctx_deinit(ctx->tls);
 		return KNOT_NET_ECONNECT;
 	}
 	gnutls_session_set_ptr(ctx->tls->session, ctx);
@@ -563,23 +556,19 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 
 	ret = quic_send(ctx, sockfd, dst_addr->ai_family);
 	if (ret != KNOT_EOK) {
-		tls_ctx_deinit(ctx->tls);
 		return ret;
 	}
 
 	ret = poll(&pfd, 1, ctx->tls->wait * 1000);
 	if (ret == 0) {
 		WARN("QUIC, peer took too long to respond");
-		tls_ctx_deinit(ctx->tls);
 		return KNOT_NET_ECONNECT;
 	} else if (ret < 0) {
-		tls_ctx_deinit(ctx->tls);
 		return knot_map_errno();
 	}
 
 	ret = quic_recv(ctx, sockfd);
 	if (ret != KNOT_EOK) {
-		tls_ctx_deinit(ctx->tls);
 		return ret;
 	}
 
