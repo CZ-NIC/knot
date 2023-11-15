@@ -367,8 +367,6 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 		ret = request_send(last, timeout_ms, &reused_fd);
 		if (reused_fd) {
 			req->layer.flags |= KNOT_REQUESTOR_REUSED;
-		} else {
-			req->layer.flags &= ~KNOT_REQUESTOR_REUSED;
 		}
 		if (last->flags & KNOT_REQUEST_QUIC) {
 			req->layer.flags |= KNOT_REQUESTOR_QUIC;
