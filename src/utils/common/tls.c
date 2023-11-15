@@ -510,6 +510,7 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 	                             ctx->credentials);
 	if (ret != GNUTLS_E_SUCCESS) {
 		gnutls_deinit(ctx->session);
+		ctx->session = NULL;
 		return KNOT_ERROR;
 	}
 
@@ -526,7 +527,7 @@ int tls_ctx_setup_remote_endpoint(tls_ctx_t *ctx, const gnutls_datum_t *alpn,
 	if (alpn != NULL) {
 		ret = gnutls_alpn_set_protocols(ctx->session, alpn, alpn_size, 0);
 		if (ret != GNUTLS_E_SUCCESS) {
-			gnutls_deinit(ctx->session);
+			tls_ctx_deinit(ctx);
 			return KNOT_NET_ECONNECT;
 		}
 	}
@@ -537,7 +538,7 @@ int tls_ctx_setup_remote_endpoint(tls_ctx_t *ctx, const gnutls_datum_t *alpn,
 		ret = gnutls_set_default_priority(ctx->session);
 	}
 	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_deinit(ctx->session);
+		tls_ctx_deinit(ctx);
 		return KNOT_EINVAL;
 	}
 
@@ -545,7 +546,7 @@ int tls_ctx_setup_remote_endpoint(tls_ctx_t *ctx, const gnutls_datum_t *alpn,
 		ret = gnutls_server_name_set(ctx->session, GNUTLS_NAME_DNS, remote,
 		                             strlen(remote));
 		if (ret != GNUTLS_E_SUCCESS) {
-			gnutls_deinit(ctx->session);
+			tls_ctx_deinit(ctx);
 			return KNOT_EINVAL;
 		}
 	}
@@ -567,7 +568,7 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, bool fastopen,
 		gnutls_transport_set_fastopen(ctx->session, sockfd, (struct sockaddr *)addr,
 		                              sockaddr_len(addr), 0);
 #else
-		gnutls_deinit(ctx->session);
+		tls_ctx_deinit(ctx);
 		return KNOT_ENOTSUP;
 #endif
 	} else {
@@ -589,7 +590,7 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, bool fastopen,
 		if (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0) {
 			if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
 				WARN("TLS, peer took too long to respond");
-				gnutls_deinit(ctx->session);
+				tls_ctx_deinit(ctx);
 				return KNOT_NET_ETIMEOUT;
 			}
 		}
