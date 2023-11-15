@@ -74,6 +74,11 @@ forwarded to.
 
 *Required*
 
+.. NOTE::
+   If the remote has more addresses configured, other addresses are used
+   sequentially as fallback. In this case, for the N-th address the N-th via address
+   is taken if configured.
+
 .. _mod-dnsproxy_timeout:
 
 timeout
