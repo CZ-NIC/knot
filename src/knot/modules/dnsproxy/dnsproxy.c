@@ -51,14 +51,59 @@ int dnsproxy_conf_check(knotd_conf_check_args_t *args)
 }
 
 typedef struct {
-	struct sockaddr_storage remote;
-	struct sockaddr_storage via;
+	knotd_conf_t remote;
+	knotd_conf_t via;
 	knotd_conf_t addr;
 	bool fallback;
 	bool tfo;
 	bool catch_nxdomain;
 	int timeout;
 } dnsproxy_t;
+
+static int fwd(dnsproxy_t *proxy, knot_pkt_t *pkt, knotd_qdata_t *qdata, int addr_pos)
+{
+	/* Capture layer context. */
+	const knot_layer_api_t *capture = query_capture_api();
+	struct capture_param capture_param = {
+		.sink = pkt,
+		.orig_qname = qdata->extra->orig_qname
+	};
+
+	/* Create a forwarding request. */
+	knot_requestor_t re;
+	int ret = knot_requestor_init(&re, capture, &capture_param, qdata->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_request_flag_t flags = KNOT_REQUEST_NONE;
+	if (!net_is_stream(qdata->params->socket)) {
+		flags = KNOT_REQUEST_UDP;
+	} else if (proxy->tfo) {
+		flags = KNOT_REQUEST_TFO;
+	}
+
+	const struct sockaddr_storage *dst = &proxy->remote.multi[addr_pos].addr;
+	const struct sockaddr_storage *src = NULL;
+	if (proxy->via.count > 0) { // Simplified via address selection!
+		int via_pos = (addr_pos < proxy->via.count) ? addr_pos : 0;
+		src = &proxy->via.multi[via_pos].addr;
+	}
+	knot_request_t *req = knot_request_make(re.mm, dst, src, qdata->query, NULL,
+	                                        flags);
+	if (req == NULL) {
+		knot_requestor_clear(&re);
+		return KNOT_ENOMEM;
+	}
+
+	/* Forward request. */
+	ret = knot_requestor_exec(&re, req, proxy->timeout);
+
+	knot_request_free(req, re.mm);
+	knot_requestor_clear(&re);
+
+	return ret;
+}
 
 static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
                                   knotd_qdata_t *qdata, knotd_mod_t *mod)
@@ -87,40 +132,16 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 		                 qdata->query->max_size, qdata->query->tsig_rr);
 	}
 
-	/* Capture layer context. */
-	const knot_layer_api_t *capture = query_capture_api();
-	struct capture_param capture_param = {
-		.sink = pkt,
-		.orig_qname = qdata->extra->orig_qname
-	};
+	int ret = KNOT_EOK;
 
-	/* Create a forwarding request. */
-	knot_requestor_t re;
-	int ret = knot_requestor_init(&re, capture, &capture_param, qdata->mm);
-	if (ret != KNOT_EOK) {
-		return state; /* Ignore, not enough memory. */
+	/* Try to forward the packet. */
+	assert(proxy->remote.count > 0);
+	for (int i = 0; i < proxy->remote.count; i++) {
+		ret = fwd(proxy, pkt, qdata, i);
+		if (ret == KNOT_EOK) {
+			break;
+		}
 	}
-
-	knot_request_flag_t flags = KNOT_REQUEST_NONE;
-	if (!net_is_stream(qdata->params->socket)) {
-		flags = KNOT_REQUEST_UDP;
-	} else if (proxy->tfo) {
-		flags = KNOT_REQUEST_TFO;
-	}
-	const struct sockaddr_storage *dst = &proxy->remote;
-	const struct sockaddr_storage *src = &proxy->via;
-	knot_request_t *req = knot_request_make(re.mm, dst, src, qdata->query, NULL,
-	                                        flags);
-	if (req == NULL) {
-		knot_requestor_clear(&re);
-		return state; /* Ignore, not enough memory. */
-	}
-
-	/* Forward request. */
-	ret = knot_requestor_exec(&re, req, proxy->timeout);
-
-	knot_request_free(req, re.mm);
-	knot_requestor_clear(&re);
 
 	/* Check result. */
 	if (ret != KNOT_EOK) {
@@ -145,21 +166,15 @@ int dnsproxy_load(knotd_mod_t *mod)
 		return KNOT_ENOMEM;
 	}
 
-	knotd_conf_t remote = knotd_conf_mod(mod, MOD_REMOTE);
-	knotd_conf_t conf = knotd_conf(mod, C_RMT, C_ADDR, &remote);
-	if (conf.count > 0) {
-		proxy->remote = conf.multi[0].addr;
-		knotd_conf_free(&conf);
-	}
-	conf = knotd_conf(mod, C_RMT, C_VIA, &remote);
-	if (conf.count > 0) {
-		proxy->via = conf.multi[0].addr;
-		knotd_conf_free(&conf);
-	}
+	knotd_conf_t remote_id = knotd_conf_mod(mod, MOD_REMOTE);
+
+	proxy->remote = knotd_conf(mod, C_RMT, C_ADDR, &remote_id);
+
+	proxy->via = knotd_conf(mod, C_RMT, C_VIA, &remote_id);
 
 	proxy->addr = knotd_conf_mod(mod, MOD_ADDRESS);
 
-	conf = knotd_conf_mod(mod, MOD_TIMEOUT);
+	knotd_conf_t conf = knotd_conf_mod(mod, MOD_TIMEOUT);
 	proxy->timeout = conf.single.integer;
 
 	conf = knotd_conf_mod(mod, MOD_FALLBACK);
@@ -184,6 +199,8 @@ void dnsproxy_unload(knotd_mod_t *mod)
 {
 	dnsproxy_t *ctx = knotd_mod_ctx(mod);
 	if (ctx != NULL) {
+		knotd_conf_free(&ctx->remote);
+		knotd_conf_free(&ctx->via);
 		knotd_conf_free(&ctx->addr);
 	}
 	free(ctx);
