@@ -307,7 +307,7 @@ void knot_quic_stream_mark_sent(knot_quic_conn_t *conn, int64_t stream_id,
                                 size_t amount_sent);
 
 /*!
- * \brief (Un)block the connetcion for incoming/outgoing traffic and sweep.
+ * \brief (Un)block the connection for incoming/outgoing traffic and sweep.
  */
 void knot_quic_conn_block(knot_quic_conn_t *conn, bool block);
 
