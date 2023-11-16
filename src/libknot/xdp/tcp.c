@@ -74,6 +74,7 @@ static void next_node_ptr(knot_tcp_conn_t **ptr)
 {
 	if (*ptr != NULL) {
 		*ptr = (*ptr)->list_node_placeholder.list_node_next;
+		assert(*ptr != NULL);
 		if ((*ptr)->list_node_placeholder.list_node_next == NULL) { // detected tail of list
 			*ptr = NULL;
 		}
@@ -121,6 +122,9 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size, knot_tcp_table_t *secret_share
 static void del_conn(knot_tcp_conn_t *conn)
 {
 	if (conn != NULL) {
+		assert(tcp_conn_node(conn)->prev == NULL);
+		assert(tcp_conn_node(conn)->next == NULL); // conn is already removed from table's linked-list
+
 		free(conn->inbuf.iov_base);
 		while (conn->outbufs != NULL) {
 			struct knot_tcp_outbuf *next = conn->outbufs->next;
