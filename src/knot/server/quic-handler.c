@@ -182,7 +182,7 @@ void uq_free_sweep(struct knot_quic_reply *r)
 	(void)r;
 }
 
-void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats, int sock_fd)
+void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats, int fd)
 {
 	if (table == NULL) {
 		return;
@@ -191,7 +191,7 @@ void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats, int s
 	uint8_t sendbuf[SWEEP_BUF_SIZE];
 	struct iovec r_iov = { .iov_base = sendbuf };
 	knot_quic_reply_t r = {
-		.sock = (void *)(size_t)sock_fd,
+		.sock = (void *)(size_t)fd,
 		.out_payload = &r_iov,
 		.alloc_reply = uq_alloc_sweep,
 		.send_reply = uq_send_sweep,

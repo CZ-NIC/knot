@@ -31,7 +31,11 @@
 #include "libknot/quic/quic_conn.h"
 
 #define KNOT_QUIC_PIN_LEN	32
-#define DOQ_EXCESSIVE_LOAD	0x4
+
+#define KNOT_QUIC_HANDLE_RET_CLOSE	2000
+
+// RFC 9250
+#define KNOT_QUIC_ERR_EXCESSIVE_LOAD	0x4
 
 struct gnutls_x509_crt_int;
 struct knot_quic_creds;
@@ -58,8 +62,6 @@ typedef struct knot_quic_reply {
 	int (*send_reply)(struct knot_quic_reply *);
 	void (*free_reply)(struct knot_quic_reply *);
 } knot_quic_reply_t;
-
-#define KNOT_QUIC_HANDLE_RET_CLOSE  (2000)
 
 /*!
  * \brief Check if session ticket can be taken out of this connection.

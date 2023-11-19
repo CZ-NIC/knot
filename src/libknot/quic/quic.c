@@ -53,7 +53,7 @@
 #define QUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
 #define QUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
 #define QUIC_SEND_CONN_CLOSE             (-KNOT_QUIC_HANDLE_RET_CLOSE)
-#define QUIC_SEND_EXCESSIVE_LOAD         (-DOQ_EXCESSIVE_LOAD)
+#define QUIC_SEND_EXCESSIVE_LOAD         (-KNOT_QUIC_ERR_EXCESSIVE_LOAD)
 
 #define TLS_CALLBACK_ERR     (-1)
 
@@ -1175,7 +1175,7 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 		break;
 	case -QUIC_SEND_EXCESSIVE_LOAD:
 		ccerr.type = NGTCP2_CCERR_TYPE_APPLICATION;
-		ccerr.error_code = DOQ_EXCESSIVE_LOAD;
+		ccerr.error_code = KNOT_QUIC_ERR_EXCESSIVE_LOAD;
 		ret = ngtcp2_conn_write_connection_close(
 			relay->conn, find_path ? &path : NULL, &pi, rpl->out_payload->iov_base, rpl->out_payload->iov_len, &ccerr, now
 		);
