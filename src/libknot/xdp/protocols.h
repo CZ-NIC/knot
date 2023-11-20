@@ -303,6 +303,12 @@ inline static void prot_write_tcp(void *data, const knot_xdp_msg_t *msg, void *d
 	tcp->window  = htobe16(msg->win);
 	tcp->check   = 0; // Temporarily initialize before checksum calculation.
 
+	tcp->res1 = 0;
+	tcp->urg = 0;
+	tcp->ece = 0;
+	tcp->cwr = 0;
+	tcp->urg_ptr = 0;
+
 	tcp->syn = ((msg->flags & KNOT_XDP_MSG_SYN) ? 1 : 0);
 	tcp->ack = ((msg->flags & KNOT_XDP_MSG_ACK) ? 1 : 0);
 	tcp->fin = ((msg->flags & KNOT_XDP_MSG_FIN) ? 1 : 0);
