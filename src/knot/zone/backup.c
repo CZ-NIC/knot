@@ -480,6 +480,11 @@ int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
 	return ret;
 }
 
+int zone_backup_keysonly(zone_backup_ctx_t *ctx, conf_t *conf, zone_t *zone)
+{
+	return backup_kaspdb(ctx, conf, zone, kasp_db_backup_keys);
+}
+
 static int backup_quic_file(zone_backup_ctx_t *ctx, char *file, char *subdir,
                             const char *desc, bool required, bool *success)
 {

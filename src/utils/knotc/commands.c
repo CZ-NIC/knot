@@ -703,6 +703,8 @@ const filter_desc_t zone_backup_filters[] = {
 	{ "+notimers",    CTL_FILTER_BACKUP_NOTIMERS,   false },
 	{ "+kaspdb",      CTL_FILTER_BACKUP_KASPDB,     false },
 	{ "+nokaspdb",    CTL_FILTER_BACKUP_NOKASPDB,   false },
+	{ "+keysonly",    CTL_FILTER_BACKUP_KEYSONLY,   false },
+	{ "+nokeysonly",  CTL_FILTER_BACKUP_NOKEYSONLY, false },
 	{ "+catalog",     CTL_FILTER_BACKUP_CATALOG,    false },
 	{ "+nocatalog",   CTL_FILTER_BACKUP_NOCATALOG,  false },
 	{ "+quic",        CTL_FILTER_BACKUP_QUIC,       false },
