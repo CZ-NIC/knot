@@ -294,3 +294,14 @@ void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf);
  * \return KNOT_E*
  */
 int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db);
+
+/*!
+ * \brief Backup basic KASP DB key metadata for one zone to a backup location.
+ *
+ * \param zone         Name of the zone which keys' metadata are to be backed up.
+ * \param db           DB to backup from.
+ * \param backup_db    DB to backup to.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_backup_keys(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db);
