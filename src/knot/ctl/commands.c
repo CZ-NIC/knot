@@ -517,7 +517,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	// Evaluate filters (and possibly fail) before writing to the filesystem.
-	bool filter_zonefile, filter_journal, filter_timers, filter_kaspdb,
+	bool filter_zonefile, filter_journal, filter_timers, filter_kaspdb, filter_keysonly,
 	     filter_catalog, filter_quic;
 
 	// The default filter values are set just in this paragraph.
@@ -529,6 +529,8 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	                          CTL_FILTER_BACKUP_TIMERS, CTL_FILTER_BACKUP_NOTIMERS) &&
 	    eval_opposite_filters(args, &filter_kaspdb, true,
 	                          CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB) &&
+	    eval_opposite_filters(args, &filter_keysonly, false,
+	                          CTL_FILTER_BACKUP_KEYSONLY, CTL_FILTER_BACKUP_NOKEYSONLY) &&
 	    eval_opposite_filters(args, &filter_catalog, true,
 	                          CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG) &&
 	    eval_opposite_filters(args, &filter_quic, false,
@@ -559,6 +561,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	ctx->backup_journal = filter_journal;
 	ctx->backup_timers = filter_timers;
 	ctx->backup_kaspdb = filter_kaspdb;
+	ctx->backup_keys = filter_kaspdb || filter_keysonly;
 	ctx->backup_catalog = filter_catalog;
 	ctx->backup_quic = filter_quic;
 

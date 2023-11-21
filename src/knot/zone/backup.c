@@ -406,12 +406,14 @@ int zone_backup(conf_t *conf, zone_t *zone)
 				LOG_MARK_FAIL("KASP database");
 				return ret;
 			}
+		}
+	}
 
-			ret = backup_keystore(conf, zone, ctx);
-			if (ret != KNOT_EOK) {
-				ctx->failed = true;
-				return ret;
-			}
+	if (ctx->backup_keys) {
+		ret = backup_keystore(conf, zone, ctx);
+		if (ret != KNOT_EOK) {
+			ctx->failed = true;
+			return ret;
 		}
 	}
 

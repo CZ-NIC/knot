@@ -36,7 +36,8 @@ typedef struct zone_backup_ctx {
 	bool backup_zonefile;               // if true, also backup zone contents to a zonefile
 	bool backup_journal;                // if true, also backup journal
 	bool backup_timers;                 // if true, also backup timers
-	bool backup_kaspdb;                 // if true, also backup KASP database
+	bool backup_kaspdb;                 // if true, also backup KASP database (without keys)
+	bool backup_keys;                   // if true, also backup keys
 	bool backup_catalog;                // if true, also backup zone catalog
 	bool backup_quic;                   // if true, also backup QUIC server key and certificate
 	bool backup_global;                 // perform global backup for all zones
