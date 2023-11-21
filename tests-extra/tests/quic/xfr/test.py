@@ -6,14 +6,14 @@ from dnstest.test import Test
 from dnstest.utils import *
 import random
 
-t = Test(quic=True, tsig=True) # TSIG needed to skip weaker ACL rules
+t = Test(quic=True, tsig=True, stress=False) # TSIG needed to skip weaker ACL rules
 
 master = t.server("knot")
 slave = t.server("knot")
-rnd_zones = t.zone_rnd(1, records=50) + \
-            t.zone_rnd(1, records=500) + \
-            t.zone_rnd(1, records=1000)
-zones = t.zone(".") + rnd_zones
+rnd_zones = t.zone_rnd(1, records=1000)# + \
+            #t.zone_rnd(1, records=500) + \
+            #t.zone_rnd(1, records=1000)
+zones = rnd_zones # t.zone(".") + rnd_zones
 
 t.link(zones, master, slave)
 

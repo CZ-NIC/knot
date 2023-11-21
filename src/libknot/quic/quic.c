@@ -1009,6 +1009,8 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	ret = ngtcp2_conn_read_pkt(conn->conn, &path, &pi, reply->in_payload->iov_base,
 	                           reply->in_payload->iov_len, now);
 
+	printf("handle %zu (%d)\n", reply->in_payload->iov_len, ret);
+
 	*out_conn = conn;
 	if (ret == NGTCP2_ERR_DRAINING) { // received CONNECTION_CLOSE from the counterpart
 		knot_quic_table_rem(conn, table);
@@ -1074,6 +1076,7 @@ static int send_stream(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 		rpl->free_reply(rpl);
 		return ret;
 	}
+	printf("sent %zd\n", *sent);
 	if (*sent < 0) {
 		*sent = 0;
 	}

@@ -59,6 +59,7 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 		.msg_controllen = sizeof(tos),
 	};
 	ret = net_msg_recv(fd, &msg, timeout_ms);
+	printf("qex %d\n", ret);
 	if (ret == 0) {
 		return KNOT_ECONN;
 	} else if (ret < 0) {

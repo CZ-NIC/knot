@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <gnutls/gnutls.h>
 #include <ngtcp2/ngtcp2.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "libknot/quic/quic_conn.h"
@@ -375,6 +376,7 @@ int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
 	}
 
 	struct iovec in = { (void *)data, len };
+	printf("recv %zu\n", len);
 	ssize_t prev_ibufs_size = conn->ibufs_size;
 	int ret = knot_tcp_inbufs_upd(&stream->inbuf, in, true,
 	                              &stream->inbufs, &conn->ibufs_size);

@@ -1018,6 +1018,7 @@ static int ixfr_consume(knot_pkt_t *pkt, struct refresh_data *data)
 	// Process answer packet
 	xfr_stats_add(&data->stats, pkt->size + knot_rrset_size(pkt->tsig_rr));
 	next = ixfr_consume_packet(pkt, data);
+	IXFRIN_LOG(LOG_INFO, data, "consumed pkt %zu next %d", pkt->size, next);
 
 	// Finalize
 	if (next == KNOT_STATE_DONE) {
