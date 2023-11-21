@@ -339,6 +339,7 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 
 	/* Handle each received message. */
 	unsigned j = 0;
+	//printf("rcvd %u\n", rq->rcvd);
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		struct msghdr *rx = &rq->msgs[RX][i].msg_hdr;
 		struct msghdr *tx = &rq->msgs[TX][j].msg_hdr;
