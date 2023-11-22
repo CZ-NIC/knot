@@ -19,19 +19,20 @@ Smaller resolvers might choose more than a single millisecond to get longer half
 as it's advisable to allow at least several queries per tick.
 
 Size (`loads_bits`):
- - The KRU takes 16 bytes * length + some small constant.
+ - The KRU takes 128 bytes * length + some small constants.
  - The length should probably be at least something like the square of the number of utilized CPUs.
    But this most likely won't be a limiting factor.
- - The length should be at least some multiple of max.number of heavy hitters to track.
-   - The square of this ratio gives roughly the false-positive rate.
+ - TODO: more info
    - Cache: it has fixed size in bytes, so we can estimate the number of keepable items,
      and/or we can choose how much of additional bytes to use for KRU.
 
 */
 
+#include <assert.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "knot/modules/rrl/kru.h"
 #include "contrib/openbsd/siphash.h"
@@ -44,21 +45,14 @@ Size (`loads_bits`):
 	#define ALIGNED(_bytes)
 #endif
 
-
-struct load {
-	uint32_t load, time;
-// align to keep the whole struct in a single cache line
-} ALIGNED(8);
-
-/// Catch up the time drift.  Trivial version decaying to half on each tick.
-static inline void update_time_trivial(struct load *l, uint32_t time_now, uint32_t ticklen_log)
-{
-	const uint32_t ticks = (time_now - l->time) >> ticklen_log;
-	if (!ticks)
-		return;
-	l->time = time_now;
-	l->load >>= ticks;
-}
+/// Block of loads sharing the same time, so that we're more space-efficient.
+/// It's exactly a single cache line.
+struct load_cl {
+	uint32_t time;
+	#define LOADS_LEN 15
+	uint32_t loads[LOADS_LEN];
+} ALIGNED_CPU_CACHE;
+static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
 
 /// Parametrization for speed of decay.
 struct decay_config {
@@ -73,7 +67,7 @@ struct decay_config {
 typedef const struct decay_config decay_cfg_t;
 
 /// Catch up the time drift with configurably slower decay.
-static void update_time(struct load *l, const uint32_t time_now, decay_cfg_t *decay)
+static void update_time(struct load_cl *l, const uint32_t time_now, decay_cfg_t *decay)
 {
 	// We get `ticks` in this loop:
 	//  - first, non-atomic check that no tick's happened (typical under attack)
@@ -88,20 +82,27 @@ static void update_time(struct load *l, const uint32_t time_now, decay_cfg_t *de
 		if (ticks > (uint32_t)-1024)
 			return;
 	}
+	// If we passed here, we should be the only thread updating l->time "right now".
+
 	// Don't bother with complex computations if lots of ticks have passed.
 	// TODO: maybe store max_ticks_log precomputed inside *decay? (or (1 << max_ticks_log)-1)
 	const uint32_t max_ticks_log = /* ticks to shift by one bit */ decay->half_life_log
-					/* + log2(bit count) */ + 3 + sizeof(l->load);
+					/* + log2(bit count) */ + 3 + sizeof(l->loads[0]);
 	if (ticks >> max_ticks_log > 0) {
-		l->load = 0;
+		memset(l->loads, 0, sizeof(l->loads));
 		return;
 	}
-	// Decay: first do the "fractional part of the bit shift".
+
+	// some computations pulled outside of the cycle
 	const uint32_t decay_frac = ticks & (((uint32_t)1 << decay->half_life_log) - 1);
-	uint64_t m = (uint64_t)l->load * decay->scales[decay_frac];
-	uint32_t l1 = (m >> 32) + /*rounding*/((m >> 31) & 1);
-	// finally the non-fractional part of the bit shift
-	l->load = l1 >> (ticks >> decay->half_life_log);
+	const uint32_t load_nonfrac_shift = ticks >> decay->half_life_log;
+	for (int i = 0; i < LOADS_LEN; ++i) {
+		// decay: first do the "fractional part of the bit shift"
+		uint64_t m = (uint64_t)l->loads[i] * decay->scales[decay_frac];
+		uint32_t l1 = (m >> 32) + /*rounding*/((m >> 31) & 1);
+		// finally the non-fractional part of the bit shift
+		l->loads[i] = l1 >> load_nonfrac_shift;
+	}
 }
 /// Half-life of 32 ticks, consequently forgetting in about 1k ticks.
 /// Experiment: if going by a single tick, fix-point at load 23 after 874 steps,
@@ -123,38 +124,75 @@ const struct decay_config DECAY_32 = {
 struct kru {
 	/// Length of a tick, stored as binary logarithm.
 	uint32_t ticklen_log;
-	/// Length of `loads`, stored as binary logarithm.
+	/// Length of `loads_cls`, stored as binary logarithm.
 	uint32_t loads_bits;
+	/// Optimum: log2(max. number of limited users) - loads_bits - 1
+	uint32_t prob_bits;
 	/// Hashing secret.  Random but shared by all users of the table.
 	SIPHASH_KEY hash_key;
 
-	/// These are read-write, so avoid sharing a cache line with the constants above.
-	struct load loads[][2] ALIGNED_CPU_CACHE;
+	#define TABLE_COUNT 2
+	/// These are read-write.  Each struct has exactly one cache line.
+	struct load_cl load_cls[][TABLE_COUNT];
 };
+
 
 /// Update limiting and return true iff it hit the limit instead.
 bool kru_limited(struct kru *kru, uint64_t hash, uint32_t time_now, uint32_t price)
 {
-	// Compute the two locations in table
+	assert(sizeof(hash) * 8 >= TABLE_COUNT * kru->loads_bits + LOADS_LEN * kru->prob_bits);
+	/*
+		Given 64-bit hash + TABLE_COUNT cache-lines of 15 items:
+		prob_bits -> max loads_bits  | opt. heavy-hitter limit (see prob_bits comment)
+		1 -> 24  | 2^26
+		2 -> 17  | 2^20
+		3 -> 9   | 2^13
+		We might just need longer hash, e.g. an array of SIPHASHes.
+	*/
+
+	// Choose two struct load_cl, i.e. two cache-lines to operate on,
+	// and update their notion of time.
+	struct load_cl *l[TABLE_COUNT];
 	const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
-	struct load *l0 = &kru->loads[hash & loads_mask][0];
-	struct load *l1 = &kru->loads[(hash >> 32) & loads_mask][1];
-	// Refresh their loads
-	update_time(l0, time_now, &DECAY_32);
-	const uint32_t l0_l = l0->load;
-	update_time(l1, time_now, &DECAY_32);
-	const uint32_t l1_l = l1->load;
-	// Check whether we shot over the limit
+	for (int li = 0; li < TABLE_COUNT; ++li) {
+		l[li] = &kru->load_cls[hash & loads_mask][li];
+		hash >>= kru->loads_bits;
+		update_time(l[li], time_now, &DECAY_32);
+	}
+
+	const uint64_t prob_mask = (1 << kru->prob_bits) - 1;
 	const uint32_t limit = -price;
-	if (l0_l >= limit && l1_l >= limit)
-		return true;
+	// Check if an index indicates that we're under the limit.
+	uint64_t prnd = hash;
+	for (int li = 0; li < TABLE_COUNT; ++li) {
+		for (int i = 0; i < LOADS_LEN; ++i) {
+			unsigned int skip = prnd & prob_mask;
+			prnd >>= kru->prob_bits;
+			if (skip != 0) // TODO: exception to avoid skipping all in a table?
+				continue;
+			if (l[li]->loads[i] < limit)
+				goto under_limit;
+		}
+	}
+	return true; // All positions were on the limit or higher.
+under_limit:
 	// Update the loads, saturating to max. value (-1).
 	// We're trying hard to avoid overflow even in case of races.
+	//  __builtin_add_overflow: GCC+clang most likely suffice for us
 	// TODO: check that all is OK, maybe use stdatomic.h
 	//  or addition with saturation might be easy and efficient in x86 asm
-	//  or __builtin_add_overflow (GCC+clang most likely suffice for us)
-	l0->load = (l0_l >= limit) ? -1 : l0_l + price;
-	l1->load = (l1_l >= limit) ? -1 : l1_l + price;
+	prnd = hash;
+	for (int li = 0; li < TABLE_COUNT; ++li) {
+		for (int i = 0; i < LOADS_LEN; ++i) {
+			unsigned int skip = prnd & prob_mask;
+			prnd >>= kru->prob_bits;
+			if (skip != 0) // TODO: exception to avoid skipping all in a table?
+				continue;
+			uint32_t * const load = &l[li]->loads[i];
+			if (__builtin_add_overflow(*load, price, load))
+				*load = -1;
+		}
+	}
 	return false;
 }
 
@@ -162,10 +200,10 @@ bool kru_limited(struct kru *kru, uint64_t hash, uint32_t time_now, uint32_t pri
 #include <stdio.h>
 void test_decay32(void)
 {
-	struct load l = { .load = -1, .time = 0 };
+	struct load_cl l = { .loads[0] = -1, .time = 0 };
 	for (uint32_t time = 0; time < 1030; ++time) {
 		update_time(&l, time, &DECAY_32);
-		printf("%d: %zd\n", time, (size_t)l.load);
+		printf("%d: %zd\n", time, (size_t)l.loads[0]);
 	}
 }
 
