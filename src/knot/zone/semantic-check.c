@@ -65,7 +65,7 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"invalid algorithm in NSEC3PARAM",
 
 	[SEM_ERR_DS_RDATA_ALG] =
-	"invalid algorithm in DS",
+	"unknown algorithm in DS",
 	[SEM_ERR_DS_RDATA_DIGLEN] =
 	"invalid digest length in DS",
 	[SEM_ERR_DS_APEX] =
@@ -330,26 +330,29 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 
 	for (int i = 0; i < dss->count; i++) {
 		knot_rdata_t *ds = knot_rdataset_at(dss, i);
-		uint16_t keytag = knot_ds_key_tag(ds);
 		uint8_t digest_type = knot_ds_digest_type(ds);
+		uint16_t digest_size = knot_ds_digest_len(ds);
+
+		// Sizes of known digest algorithms.
+		const uint16_t digest_sizes[] = { 0, 20, 32, 32, 48 };
+
+		sem_error_t err;
+		if (digest_type == 0 ||
+		    digest_type >= sizeof(digest_sizes) / sizeof(digest_sizes[0])) {
+			err = SEM_ERR_DS_RDATA_ALG;
+		} else if (digest_sizes[digest_type] != digest_size) {
+			err = SEM_ERR_DS_RDATA_DIGLEN;
+		} else {
+			continue;
+		}
 
 		char info[64] = "";
-		(void)snprintf(info, sizeof(info), "(keytag %d)", keytag);
+		uint16_t keytag = knot_ds_key_tag(ds);
+		(void)snprintf(info, sizeof(info), "(keytag %d, algorithm %d)",
+		               keytag, digest_type);
 
-		if (!dnssec_algorithm_digest_support(digest_type)) {
-			data->handler->cb(data->handler, data->zone, node->owner,
-			                  SEM_ERR_DS_RDATA_ALG, info);
-		} else {
-			// Sizes for different digest algorithms.
-			const uint16_t digest_sizes [] = { 0, 20, 32, 32, 48};
-
-			uint16_t digest_size = knot_ds_digest_len(ds);
-
-			if (digest_sizes[digest_type] != digest_size) {
-				data->handler->cb(data->handler, data->zone, node->owner,
-				                  SEM_ERR_DS_RDATA_DIGLEN, info);
-			}
-		}
+		data->handler->cb(data->handler, data->zone, node->owner,
+		                  err, info);
 	}
 
 	return KNOT_EOK;
