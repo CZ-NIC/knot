@@ -122,8 +122,6 @@ const struct decay_config DECAY_32 = {
 
 
 struct kru {
-	/// Length of a tick, stored as binary logarithm.
-	uint32_t ticklen_log;
 	/// Length of `loads_cls`, stored as binary logarithm.
 	uint32_t loads_bits;
 	/// Optimum: log2(max. number of limited users) - loads_bits - 1
