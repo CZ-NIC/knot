@@ -43,25 +43,37 @@ typedef union {
 
 static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeout_ms)
 {
-	int fd = (int)(size_t)r->sock;
-
-	int ret = knot_quic_send(conn->quic_table, conn, r, QUIC_MAX_SEND_PER_RECV, 0);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	int fd = (int)(size_t)r->sock, ret, timeout_remain = timeout_ms;
 
 	cmsg_tos_t tos = { 0 };
-	r->in_payload->iov_len = QUIC_BUF_SIZE;
 	struct msghdr msg = {
 		.msg_iov = r->in_payload,
 		.msg_iovlen = 1,
 		.msg_control = &tos,
 		.msg_controllen = sizeof(tos),
 	};
-	ret = net_msg_recv(fd, &msg, timeout_ms);
-	if (ret == 0) {
-		return KNOT_ECONN;
-	} else if (ret < 0) {
+
+	do {
+		ret = knot_quic_send(conn->quic_table, conn, r, QUIC_MAX_SEND_PER_RECV, 0);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		int64_t quic_timeout_ms = quic_conn_next_timeout(conn);
+
+		r->in_payload->iov_len = QUIC_BUF_SIZE;
+
+		ret = net_msg_recv(fd, &msg, quic_timeout_ms);
+		if (ret == 0 || ret == KNOT_ECONN || ret == KNOT_ETIMEOUT) {
+			ret = knot_quic_hanle_expiry(conn);
+		}
+
+		timeout_remain -= quic_timeout_ms;
+		if (timeout_remain <= 0) {
+			ret = KNOT_ECONN;
+		}
+	} while (ret == KNOT_EOK);
+	if (ret < 0) {
 		return ret;
 	}
 	r->in_payload->iov_len = ret;

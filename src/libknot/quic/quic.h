@@ -140,6 +140,10 @@ uint64_t quic_conn_get_timeout(knot_quic_conn_t *conn);
  */
 bool quic_conn_timeout(knot_quic_conn_t *conn, uint64_t *now);
 
+int64_t quic_conn_next_timeout(knot_quic_conn_t *conn);
+
+int knot_quic_hanle_expiry(knot_quic_conn_t *c);
+
 /*!
  * \brief Returns measured connection RTT in usecs.
  */
