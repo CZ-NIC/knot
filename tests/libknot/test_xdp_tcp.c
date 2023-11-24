@@ -441,7 +441,7 @@ void test_many(void)
 	                     INFTY, rls, CONNS, &stats);
 	is_int(KNOT_EOK, ret, "many/timeout2: OK");
 	is_int(0, stats.counters[KNOT_SWEEP_CTR_TIMEOUT], "many/timeout2: close count");
-	is_int(CONNS - 1, stats.counters[KNOT_SWEEP_CTR_LIMIT_CONN], "may/timeout2: reset count");
+	is_int(CONNS - 1, stats.counters[KNOT_SWEEP_CTR_TIMEOUT_RST], "may/timeout2: reset count");
 	ret = knot_tcp_send(test_sock, rls, CONNS, CONNS);
 	is_int(KNOT_EOK, ret, "many/timeout2: send OK");
 	check_sent(0, CONNS - 1, 0, 0);

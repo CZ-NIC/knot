@@ -39,16 +39,17 @@ typedef struct knot_tcp_outbuf {
 } knot_tcp_outbuf_t;
 
 typedef enum {
-	KNOT_SWEEP_CTR_TIMEOUT    = 0,
-	KNOT_SWEEP_CTR_LIMIT_CONN = 1,
-	KNOT_SWEEP_CTR_LIMIT_IBUF = 2,
-	KNOT_SWEEP_CTR_LIMIT_OBUF = 3,
+	KNOT_SWEEP_CTR_TIMEOUT     = 0,
+	KNOT_SWEEP_CTR_LIMIT_CONN  = 1,
+	KNOT_SWEEP_CTR_LIMIT_IBUF  = 2,
+	KNOT_SWEEP_CTR_LIMIT_OBUF  = 3,
+	KNOT_SWEEP_CTR_TIMEOUT_RST = 4,
 } knot_sweep_counter_t;
 
 typedef struct knot_sweep_stats {
 	uint64_t last_log; // in seconds
 	uint32_t total;
-	uint32_t counters[4];
+	uint32_t counters[5];
 } knot_sweep_stats_t;
 
 typedef struct knot_tcp_inbufs_upd_res {
