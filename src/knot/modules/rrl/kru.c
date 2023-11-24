@@ -28,6 +28,7 @@ Size (`loads_bits`):
 
 */
 
+#include <stdlib.h>
 #include <assert.h>
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -127,13 +128,26 @@ struct kru {
 	/// Optimum: log2(max. number of limited users) - loads_bits - 1
 	uint32_t prob_bits;
 	/// Hashing secret.  Random but shared by all users of the table.
-	SIPHASH_KEY hash_key;
+	SIPHASH_KEY hash_key;  // TODO use or remove
 
 	#define TABLE_COUNT 2
 	/// These are read-write.  Each struct has exactly one cache line.
 	struct load_cl load_cls[][TABLE_COUNT];
 };
 
+struct kru *kru_init(uint32_t loads_bits, uint32_t prob_bits)
+{
+	struct kru *kru = calloc(1, sizeof(struct kru) + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits));
+
+	kru->loads_bits = loads_bits;
+	kru->prob_bits = prob_bits;
+	// hash_key not initialized
+
+	return kru;
+}
+void kru_destroy(struct kru *kru) {
+	free(kru);
+}
 
 /// Update limiting and return true iff it hit the limit instead.
 bool kru_limited(struct kru *kru, uint64_t hash, uint32_t time_now, uint32_t price)
@@ -196,6 +210,7 @@ under_limit:
 
 
 #include <stdio.h>
+#include <inttypes.h>
 void test_decay32(void)
 {
 	struct load_cl l = { .loads[0] = -1, .time = 0 };
@@ -205,9 +220,94 @@ void test_decay32(void)
 	}
 }
 
+
+struct test_ctx {
+	struct kru *kru;
+	uint32_t time;
+	uint32_t price;
+	size_t cnt;
+	struct test_cat {
+		char *name;
+		uint64_t id_min, id_max;
+	} *cats;  // categories
+};
+
+void test_stage(struct test_ctx *ctx, uint32_t dur, uint64_t *freq) {
+	printf("STAGE: ");
+	for (size_t cat = 0; cat < ctx->cnt; ++cat) {
+		printf("%" PRIu64 ", ", freq[cat]);
+	}
+	printf("ticks %" PRIu32 "-%" PRIu32 "\n", ctx->time, ctx->time + dur - 1);
+
+	uint64_t freq_bounds[ctx->cnt];
+	freq_bounds[0] = freq[0];
+	for (size_t cat = 1; cat < ctx->cnt; ++cat) {
+		freq_bounds[cat] = freq_bounds[cat-1] + freq[cat];
+	}
+
+	uint64_t cat_limited[ctx->cnt], cat_total[ctx->cnt];
+	for (size_t cat = 0; cat < ctx->cnt; ++cat) {
+		cat_limited[cat] = 0;
+		cat_total[cat] = 0;
+	}
+
+	for (uint64_t end_time = ctx->time + dur; ctx->time < end_time; ctx->time++) {
+		for (uint64_t i = 0; i < freq_bounds[ctx->cnt-1]; i++) {
+			long rnd = random() % freq_bounds[ctx->cnt-1];  // TODO initialize random generator
+			size_t cat;
+			for (cat = 0; freq_bounds[cat] < rnd; cat++);
+
+			uint64_t id = random() % (ctx->cats[cat].id_max - ctx->cats[cat].id_min + 1) + ctx->cats[cat].id_min;
+
+			cat_total[cat]++;
+			cat_limited[cat] += kru_limited(ctx->kru, id, ctx->time, ctx->price);  // TODO use hash of id instead of just id
+		}
+	}
+	for (size_t cat = 0; cat < ctx->cnt; ++cat) {
+		printf("  %-15s:  %" PRIu64 "/%" PRIu64 "\n", ctx->cats[cat].name, cat_limited[cat], cat_total[cat]);
+	}
+	printf("\n");
+}
+
+#define TEST_STAGE(duration, ...) test_stage(&ctx, duration, (uint64_t[]) {__VA_ARGS__});
+
+void test(void) { // TODO more descriptive name
+	struct kru *kru = kru_init(16,2);
+
+	struct test_cat cats[] = {
+		{ "normal",       1,1000  },   // normal queries come from 1000 different addreses indexed 1-1000
+		{ "attackers", 1001,1002  }    // attackers use only two adresses indexed 1001,1002
+	};
+
+	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(struct test_cat),
+		.price = 1<<23  // same price for all packets
+	};
+
+	// in each out of 100 ticks send around 1000 queries from random normal addresses and 5000 from each of the two attackers
+	TEST_STAGE( 100,  1000, 10000); // (duration, normal, attackers)
+
+	// one more tick with the same distribution
+	TEST_STAGE( 1,  1000, 10000);
+
+	// several ticks with more balanced distribution
+	TEST_STAGE( 1,    1000, 50);
+	TEST_STAGE( 1,    1000, 50);
+	TEST_STAGE( 1,    1000, 50);
+	TEST_STAGE( 1,    1000, 50);
+	TEST_STAGE( 1,    1000, 50);
+	TEST_STAGE( 1,    1000, 50);
+	TEST_STAGE( 100,  1000, 50);
+
+	kru_destroy(kru);
+}
+
+#undef TEST_STAGE
+
 int main(int argc, char **argv)
 {
-	struct kru kru __attribute__((unused));
-	test_decay32();
+	test();
+
+	// struct kru kru __attribute__((unused));
+	// test_decay32();
 	return 0;
 }
