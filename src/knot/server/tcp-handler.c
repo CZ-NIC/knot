@@ -335,11 +335,6 @@ int tcp_master(dthread_t *thread)
 		}
 	}
 
-	/* Initialize sweep interval and TCP configuration. */
-	struct timespec next_sweep;
-	update_sweep_timer(&next_sweep);
-	update_tcp_conf(&tcp);
-
 	/* Prepare initial buffer for listening and bound sockets. */
 	if (fdset_init(&tcp.set, FDSET_RESIZE_STEP) != KNOT_EOK) {
 		goto finish;
@@ -352,6 +347,11 @@ int tcp_master(dthread_t *thread)
 	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
+
+	/* Initialize sweep interval and TCP configuration. */
+	struct timespec next_sweep;
+	update_sweep_timer(&next_sweep);
+	update_tcp_conf(&tcp);
 
 	for (;;) {
 		/* Check for cancellation. */
