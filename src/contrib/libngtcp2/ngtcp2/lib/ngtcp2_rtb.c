@@ -36,200 +36,9 @@
 #include "ngtcp2_rst.h"
 #include "ngtcp2_unreachable.h"
 #include "ngtcp2_tstamp.h"
-
-ngtcp2_objalloc_def(frame_chain, ngtcp2_frame_chain, oplent);
+#include "ngtcp2_frame_chain.h"
 
 ngtcp2_objalloc_def(rtb_entry, ngtcp2_rtb_entry, oplent);
-
-int ngtcp2_frame_chain_new(ngtcp2_frame_chain **pfrc, const ngtcp2_mem *mem) {
-  *pfrc = ngtcp2_mem_malloc(mem, sizeof(ngtcp2_frame_chain));
-  if (*pfrc == NULL) {
-    return NGTCP2_ERR_NOMEM;
-  }
-
-  ngtcp2_frame_chain_init(*pfrc);
-
-  return 0;
-}
-
-int ngtcp2_frame_chain_objalloc_new(ngtcp2_frame_chain **pfrc,
-                                    ngtcp2_objalloc *objalloc) {
-  *pfrc = ngtcp2_objalloc_frame_chain_get(objalloc);
-  if (*pfrc == NULL) {
-    return NGTCP2_ERR_NOMEM;
-  }
-
-  ngtcp2_frame_chain_init(*pfrc);
-
-  return 0;
-}
-
-int ngtcp2_frame_chain_extralen_new(ngtcp2_frame_chain **pfrc, size_t extralen,
-                                    const ngtcp2_mem *mem) {
-  *pfrc = ngtcp2_mem_malloc(mem, sizeof(ngtcp2_frame_chain) + extralen);
-  if (*pfrc == NULL) {
-    return NGTCP2_ERR_NOMEM;
-  }
-
-  ngtcp2_frame_chain_init(*pfrc);
-
-  return 0;
-}
-
-int ngtcp2_frame_chain_stream_datacnt_objalloc_new(ngtcp2_frame_chain **pfrc,
-                                                   size_t datacnt,
-                                                   ngtcp2_objalloc *objalloc,
-                                                   const ngtcp2_mem *mem) {
-  size_t need, avail = sizeof(ngtcp2_frame) - sizeof(ngtcp2_stream);
-
-  if (datacnt > 1) {
-    need = sizeof(ngtcp2_vec) * (datacnt - 1);
-
-    if (need > avail) {
-      return ngtcp2_frame_chain_extralen_new(pfrc, need - avail, mem);
-    }
-  }
-
-  return ngtcp2_frame_chain_objalloc_new(pfrc, objalloc);
-}
-
-int ngtcp2_frame_chain_new_token_objalloc_new(ngtcp2_frame_chain **pfrc,
-                                              const uint8_t *token,
-                                              size_t tokenlen,
-                                              ngtcp2_objalloc *objalloc,
-                                              const ngtcp2_mem *mem) {
-  size_t avail = sizeof(ngtcp2_frame) - sizeof(ngtcp2_new_token);
-  int rv;
-  uint8_t *p;
-  ngtcp2_frame *fr;
-
-  if (tokenlen > avail) {
-    rv = ngtcp2_frame_chain_extralen_new(pfrc, tokenlen - avail, mem);
-  } else {
-    rv = ngtcp2_frame_chain_objalloc_new(pfrc, objalloc);
-  }
-  if (rv != 0) {
-    return rv;
-  }
-
-  fr = &(*pfrc)->fr;
-  fr->type = NGTCP2_FRAME_NEW_TOKEN;
-
-  p = (uint8_t *)fr + sizeof(ngtcp2_new_token);
-  memcpy(p, token, tokenlen);
-
-  fr->new_token.token = p;
-  fr->new_token.tokenlen = tokenlen;
-
-  return 0;
-}
-
-void ngtcp2_frame_chain_del(ngtcp2_frame_chain *frc, const ngtcp2_mem *mem) {
-  ngtcp2_frame_chain_binder *binder;
-
-  if (frc == NULL) {
-    return;
-  }
-
-  binder = frc->binder;
-  if (binder && --binder->refcount == 0) {
-    ngtcp2_mem_free(mem, binder);
-  }
-
-  ngtcp2_mem_free(mem, frc);
-}
-
-void ngtcp2_frame_chain_objalloc_del(ngtcp2_frame_chain *frc,
-                                     ngtcp2_objalloc *objalloc,
-                                     const ngtcp2_mem *mem) {
-  ngtcp2_frame_chain_binder *binder;
-
-  if (frc == NULL) {
-    return;
-  }
-
-  switch (frc->fr.type) {
-  case NGTCP2_FRAME_CRYPTO:
-  case NGTCP2_FRAME_STREAM:
-    if (frc->fr.stream.datacnt &&
-        sizeof(ngtcp2_vec) * (frc->fr.stream.datacnt - 1) >
-            sizeof(ngtcp2_frame) - sizeof(ngtcp2_stream)) {
-      ngtcp2_frame_chain_del(frc, mem);
-
-      return;
-    }
-
-    break;
-  case NGTCP2_FRAME_NEW_TOKEN:
-    if (frc->fr.new_token.tokenlen >
-        sizeof(ngtcp2_frame) - sizeof(ngtcp2_new_token)) {
-      ngtcp2_frame_chain_del(frc, mem);
-
-      return;
-    }
-
-    break;
-  }
-
-  binder = frc->binder;
-  if (binder && --binder->refcount == 0) {
-    ngtcp2_mem_free(mem, binder);
-  }
-
-  frc->binder = NULL;
-
-  ngtcp2_objalloc_frame_chain_release(objalloc, frc);
-}
-
-void ngtcp2_frame_chain_init(ngtcp2_frame_chain *frc) {
-  frc->next = NULL;
-  frc->binder = NULL;
-}
-
-void ngtcp2_frame_chain_list_objalloc_del(ngtcp2_frame_chain *frc,
-                                          ngtcp2_objalloc *objalloc,
-                                          const ngtcp2_mem *mem) {
-  ngtcp2_frame_chain *next;
-
-  for (; frc; frc = next) {
-    next = frc->next;
-
-    ngtcp2_frame_chain_objalloc_del(frc, objalloc, mem);
-  }
-}
-
-int ngtcp2_frame_chain_binder_new(ngtcp2_frame_chain_binder **pbinder,
-                                  const ngtcp2_mem *mem) {
-  *pbinder = ngtcp2_mem_calloc(mem, 1, sizeof(ngtcp2_frame_chain_binder));
-  if (*pbinder == NULL) {
-    return NGTCP2_ERR_NOMEM;
-  }
-
-  return 0;
-}
-
-int ngtcp2_bind_frame_chains(ngtcp2_frame_chain *a, ngtcp2_frame_chain *b,
-                             const ngtcp2_mem *mem) {
-  ngtcp2_frame_chain_binder *binder;
-  int rv;
-
-  assert(b->binder == NULL);
-
-  if (a->binder == NULL) {
-    rv = ngtcp2_frame_chain_binder_new(&binder, mem);
-    if (rv != 0) {
-      return rv;
-    }
-
-    a->binder = binder;
-    ++a->binder->refcount;
-  }
-
-  b->binder = a->binder;
-  ++b->binder->refcount;
-
-  return 0;
-}
 
 static void rtb_entry_init(ngtcp2_rtb_entry *ent, const ngtcp2_pkt_hd *hd,
                            ngtcp2_frame_chain *frc, ngtcp2_tstamp ts,
@@ -414,7 +223,6 @@ static ngtcp2_ssize rtb_reclaim_frame(ngtcp2_rtb *rtb, uint8_t flags,
   ngtcp2_range gap, range;
   size_t num_reclaimed = 0;
   int rv;
-  int streamfrq_empty;
 
   assert(ent->flags & NGTCP2_RTB_ENTRY_FLAG_RETRANSMITTABLE);
 
@@ -469,7 +277,6 @@ static ngtcp2_ssize rtb_reclaim_frame(ngtcp2_rtb *rtb, uint8_t flags,
       ngtcp2_vec_copy(nfrc->fr.stream.data, fr->stream.data,
                       fr->stream.datacnt);
 
-      streamfrq_empty = ngtcp2_strm_streamfrq_empty(strm);
       rv = ngtcp2_strm_streamfrq_push(strm, nfrc);
       if (rv != 0) {
         ngtcp2_frame_chain_objalloc_del(nfrc, rtb->frc_objalloc, rtb->mem);
@@ -481,9 +288,6 @@ static ngtcp2_ssize rtb_reclaim_frame(ngtcp2_rtb *rtb, uint8_t flags,
         if (rv != 0) {
           return rv;
         }
-      }
-      if (streamfrq_empty) {
-        ++conn->tx.strmq_nretrans;
       }
 
       ++num_reclaimed;
@@ -752,6 +556,10 @@ static int rtb_process_acked_pkt(ngtcp2_rtb *rtb, ngtcp2_rtb_entry *ent,
 
   for (frc = ent->frc; frc; frc = frc->next) {
     if (frc->binder) {
+      if (frc->binder->flags & NGTCP2_FRAME_CHAIN_BINDER_FLAG_ACK) {
+        continue;
+      }
+
       frc->binder->flags |= NGTCP2_FRAME_CHAIN_BINDER_FLAG_ACK;
     }
 
@@ -833,7 +641,7 @@ static int rtb_process_acked_pkt(ngtcp2_rtb *rtb, ngtcp2_rtb_entry *ent,
       if (strm == NULL) {
         break;
       }
-      strm->flags |= NGTCP2_STRM_FLAG_RST_ACKED;
+      strm->flags |= NGTCP2_STRM_FLAG_RESET_STREAM_ACKED;
       rv = ngtcp2_conn_close_stream_if_shut_rdwr(conn, strm);
       if (rv != 0) {
         return rv;
@@ -842,6 +650,12 @@ static int rtb_process_acked_pkt(ngtcp2_rtb *rtb, ngtcp2_rtb_entry *ent,
     case NGTCP2_FRAME_RETIRE_CONNECTION_ID:
       ngtcp2_conn_untrack_retired_dcid_seq(conn,
                                            frc->fr.retire_connection_id.seq);
+      break;
+    case NGTCP2_FRAME_NEW_CONNECTION_ID:
+      assert(conn->scid.num_in_flight);
+
+      --conn->scid.num_in_flight;
+
       break;
     case NGTCP2_FRAME_DATAGRAM:
     case NGTCP2_FRAME_DATAGRAM_LEN:
@@ -1419,7 +1233,6 @@ static int rtb_on_pkt_lost_resched_move(ngtcp2_rtb *rtb, ngtcp2_conn *conn,
   ngtcp2_stream *sfr;
   ngtcp2_strm *strm;
   int rv;
-  int streamfrq_empty;
 
   ngtcp2_log_pkt_lost(rtb->log, ent->hd.pkt_num, ent->hd.type, ent->hd.flags,
                       ent->ts);
@@ -1489,7 +1302,6 @@ static int rtb_on_pkt_lost_resched_move(ngtcp2_rtb *rtb, ngtcp2_conn *conn,
         ngtcp2_frame_chain_objalloc_del(frc, rtb->frc_objalloc, rtb->mem);
         break;
       }
-      streamfrq_empty = ngtcp2_strm_streamfrq_empty(strm);
       rv = ngtcp2_strm_streamfrq_push(strm, frc);
       if (rv != 0) {
         ngtcp2_frame_chain_objalloc_del(frc, rtb->frc_objalloc, rtb->mem);
@@ -1501,9 +1313,6 @@ static int rtb_on_pkt_lost_resched_move(ngtcp2_rtb *rtb, ngtcp2_conn *conn,
         if (rv != 0) {
           return rv;
         }
-      }
-      if (streamfrq_empty) {
-        ++conn->tx.strmq_nretrans;
       }
       break;
     case NGTCP2_FRAME_CRYPTO:

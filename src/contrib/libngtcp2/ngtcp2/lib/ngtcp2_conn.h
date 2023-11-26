@@ -418,14 +418,14 @@ struct ngtcp2_conn {
     /* num_retired is the number of retired Connection ID still
        included in set. */
     size_t num_retired;
+    /* num_in_flight is the number of NEW_CONNECTION_ID frames that
+       are in-flight and not acknowledged yet. */
+    size_t num_in_flight;
   } scid;
 
   struct {
     /* strmq contains ngtcp2_strm which has frames to send. */
     ngtcp2_pq strmq;
-    /* strmq_nretrans is the number of entries in strmq which has
-       stream data to resent. */
-    size_t strmq_nretrans;
     /* ack is ACK frame.  The underlying buffer is reused. */
     ngtcp2_frame *ack;
     /* max_ack_ranges is the number of additional ngtcp2_ack_range
@@ -908,19 +908,6 @@ ngtcp2_tstamp ngtcp2_conn_lost_pkt_expiry(ngtcp2_conn *conn);
  * ngtcp2_conn_remove_lost_pkt removes the expired lost packet.
  */
 void ngtcp2_conn_remove_lost_pkt(ngtcp2_conn *conn, ngtcp2_tstamp ts);
-
-/*
- * ngtcp2_conn_resched_frames reschedules frames linked from |*pfrc|
- * for retransmission.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGTCP2_ERR_NOMEM
- *     Out of memory.
- */
-int ngtcp2_conn_resched_frames(ngtcp2_conn *conn, ngtcp2_pktns *pktns,
-                               ngtcp2_frame_chain **pfrc);
 
 uint64_t ngtcp2_conn_tx_strmq_first_cycle(ngtcp2_conn *conn);
 
