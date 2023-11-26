@@ -36,8 +36,6 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.h
-src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr2.c
-src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr2.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_buf.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_buf.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_cc.c
@@ -55,6 +53,8 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_frame_chain.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_frame_chain.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_gaptr.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_gaptr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_idtr.c
