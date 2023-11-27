@@ -137,7 +137,7 @@ struct kru {
 
 struct kru *kru_init(uint32_t loads_bits, uint32_t prob_bits)
 {
-	struct kru *kru = calloc(1, sizeof(struct kru) + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits));
+	struct kru *kru = calloc(1, offsetof(struct kru, load_cls) + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits));
 
 	kru->loads_bits = loads_bits;
 	kru->prob_bits = prob_bits;
