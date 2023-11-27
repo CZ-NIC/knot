@@ -1105,6 +1105,7 @@ static void print_help(void)
 	       "                          "SPACE" (default is %s)\n"
 	       " -i, --infile <file>      "SPACE"Path to a file with query templates.\n"
 	       " -I, --interface <ifname> "SPACE"Override auto-detected interface for outgoing communication.\n"
+	       " -B, --binary             "SPACE"Specify that input file is in binary format (format <length:2><wire:length>).\n"
 	       " -l, --local <ip[/prefix]>"SPACE"Override auto-detected source IP address or subnet.\n"
 	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
@@ -1226,6 +1227,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "interface",  required_argument, NULL, 'I' },
 		{ "local",      required_argument, NULL, 'l' },
 		{ "infile",     required_argument, NULL, 'i' },
+		{ "binary",     no_argument,       NULL, 'B' },
 		{ "local-mac",  required_argument, NULL, 'L' },
 		{ "remote-mac", required_argument, NULL, 'R' },
 		{ "vlan",       required_argument, NULL, 'v' },
@@ -1234,10 +1236,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	};
 
 	int opt = 0, arg;
-	bool default_at_once = true;
+	bool default_at_once = true, binary_input = false;
 	double argf;
 	char *argcp, *local_ip = NULL, *filename = NULL;
-	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:l:i:L:R:v:m:G:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:l:i:BL:R:v:m:G:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1344,6 +1346,11 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			break;
 		case 'i':
 			filename = optarg;
+			binary_input = false;
+			break;
+		case 'B':
+			filename = optarg;
+			binary_input = true;
 			break;
 		case 'L':
 			if (mac_sscan(optarg, ctx->local_mac) != KNOT_EOK) {
