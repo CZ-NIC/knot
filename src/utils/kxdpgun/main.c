@@ -1133,8 +1133,9 @@ static void print_help(void)
 	       "                          "SPACE" (default is %d for UDP/TCP, %u for QUIC)\n"
 	       " -F, --affinity <spec>    "SPACE"CPU affinity in the format [<cpu_start>][s<cpu_step>].\n"
 	       "                          "SPACE" (default is %s)\n"
-	       " -i, --infile <file>      "SPACE"Path to a file with query templates.\n"
 	       " -I, --interface <ifname> "SPACE"Override auto-detected interface for outgoing communication.\n"
+	       " -i, --infile <file>      "SPACE"Path to a file with query templates.\n"
+	       " -B, --binary             "SPACE"Specify that input file is in binary format (<length:2><wire:length>).\n"
 	       " -l, --local <ip[/prefix]>"SPACE"Override auto-detected source IP address or subnet.\n"
 	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
@@ -1254,8 +1255,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "quic",       optional_argument, NULL, 'U' },
 		{ "affinity",   required_argument, NULL, 'F' },
 		{ "interface",  required_argument, NULL, 'I' },
-		{ "local",      required_argument, NULL, 'l' },
 		{ "infile",     required_argument, NULL, 'i' },
+		{ "binary",     no_argument,       NULL, 'B' },
+		{ "local",      required_argument, NULL, 'l' },
 		{ "local-mac",  required_argument, NULL, 'L' },
 		{ "remote-mac", required_argument, NULL, 'R' },
 		{ "vlan",       required_argument, NULL, 'v' },
@@ -1268,8 +1270,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	int opt = 0, arg;
 	bool default_at_once = true;
 	double argf;
-	char *argcp, *local_ip = NULL, *filename = NULL;
-	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:l:i:L:R:v:e:m:G:", opts, NULL)) != -1) {
+	char *argcp, *local_ip = NULL;
+	input_t input = { .format = TXT };
+	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:i:Bl:L:R:v:e:m:G:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1368,11 +1371,14 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		case 'I':
 			strlcpy(ctx->dev, optarg, IFNAMSIZ);
 			break;
+		case 'i':
+			input.path = optarg;
+			break;
+		case 'B':
+			input.format = BIN;
+			break;
 		case 'l':
 			local_ip = optarg;
-			break;
-		case 'i':
-			filename = optarg;
 			break;
 		case 'L':
 			if (mac_sscan(optarg, ctx->local_mac) != KNOT_EOK) {
@@ -1422,12 +1428,12 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			return false;
 		}
 	}
-	if (filename == NULL) {
+	if (input.path == NULL) {
 		print_help();
 		return false;
 	}
 	size_t qcount = ctx->duration / 1000000 * ctx->qps;
-	if (!load_queries(filename, ctx->edns_size, ctx->msgid, qcount)) {
+	if (!load_queries(&input, ctx->edns_size, ctx->msgid, qcount)) {
 		return false;
 	}
 	if (global_payloads == NULL || argc - optind != 1) {
