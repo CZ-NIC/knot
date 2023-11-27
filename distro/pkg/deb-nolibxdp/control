@@ -8,7 +8,6 @@ Uploaders:
 Build-Depends-Indep:
  python3-setuptools,
  python3-sphinx,
- python3-sphinx-panels,
 Build-Depends:
  autoconf,
  automake,
