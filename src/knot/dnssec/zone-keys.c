@@ -85,6 +85,7 @@ static int generate_dnssec_key(dnssec_keystore_t *keystore,
 	return KNOT_EOK;
 
 fail:
+	(void)dnssec_keystore_remove(keystore, *id);
 	dnssec_key_free(*key);
 	*key = NULL;
 	free(*id);
@@ -124,9 +125,6 @@ static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
 	}
 
 	for (size_t i = 0; i < GENERATE_KEYTAG_ATTEMPTS; i++) {
-		dnssec_key_free(*key);
-		free(*id);
-
 		int ret = generate_dnssec_key(ctx->keystore, ctx->zone->dname, label,
 		                              ctx->policy->algorithm, size, flags,
 		                              id, key);
@@ -136,6 +134,10 @@ static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
 		if (!keytag_in_use(ctx, dnssec_key_get_keytag(*key))) {
 			return KNOT_EOK;
 		}
+
+		(void)dnssec_keystore_remove(ctx->keystore, *id);
+		dnssec_key_free(*key);
+		free(*id);
 	}
 
 	log_zone_notice(ctx->zone->dname, "generated key with conflicting keytag %hu",
@@ -179,6 +181,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	r = kasp_zone_append(ctx->zone, key);
 	free(key);
 	if (r != KNOT_EOK) {
+		(void)dnssec_keystore_remove(ctx->keystore, id);
 		dnssec_key_free(dnskey);
 		free(id);
 		return r;
