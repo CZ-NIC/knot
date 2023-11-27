@@ -681,13 +681,16 @@ int knot_tcp_sweep(knot_tcp_table_t *tcp_table,
 	// reset connections to free their count, and old ones
 	knot_tcp_conn_t *conn, *next;
 	WALK_LIST_DELSAFE(conn, next, *tcp_table_timeout(tcp_table)) {
-		if ((free_conns <= 0 && now - conn->last_active < reset_timeout) || rl == rl_max) {
+		bool active = now - conn->last_active < reset_timeout;
+		if ((free_conns <= 0 && active) || rl == rl_max) {
 			break;
 		}
 
+		knot_sweep_counter_t ctr = active ? KNOT_SWEEP_CTR_LIMIT_CONN :
+		                                    KNOT_SWEEP_CTR_TIMEOUT_RST;
 		rl->conn = conn;
 		sweep_reset(tcp_table, rl, &free_conns, &free_inbuf, &free_outbuf,
-		            stats, KNOT_SWEEP_CTR_LIMIT_CONN);
+		            stats, ctr);
 		rl++;
 	}
 

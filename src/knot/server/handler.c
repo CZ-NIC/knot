@@ -16,6 +16,8 @@
 
 #include "knot/server/handler.h"
 
+#include "contrib/string.h"
+#include "contrib/openbsd/strlcat.h"
 #include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
 #include "knot/common/log.h"
@@ -136,16 +138,35 @@ void log_swept(knot_sweep_stats_t *stats, bool tcp)
 
 	const char *proto = tcp ? "TCP" : "QUIC";
 
-	uint32_t timedout = stats->counters[KNOT_SWEEP_CTR_TIMEOUT];
-	uint32_t limit_conn = stats->counters[KNOT_SWEEP_CTR_LIMIT_CONN];
-	uint32_t limit_ibuf = stats->counters[KNOT_SWEEP_CTR_LIMIT_IBUF];
-	uint32_t limit_obuf = stats->counters[KNOT_SWEEP_CTR_LIMIT_OBUF];
+	struct desc {
+		knot_sweep_counter_t idx;
+		const char *name;
+	};
+	const struct desc descs[] = {
+		{ KNOT_SWEEP_CTR_TIMEOUT, "inactive" },
+		{ KNOT_SWEEP_CTR_LIMIT_CONN, "count limit" },
+		{ KNOT_SWEEP_CTR_LIMIT_IBUF, "inbuf limit" },
+		{ KNOT_SWEEP_CTR_LIMIT_OBUF, "outbuf limit" },
+		{ KNOT_SWEEP_CTR_TIMEOUT_RST, "reset timeout" },
+		{ 0, NULL },
+	};
 
-	if (tcp || stats->total != timedout) {
-		log_notice("%s, connection sweep, closed %u, count limit %u, inbuf limit %u, outbuf limit %u",
-		           proto, timedout, limit_conn, limit_ibuf, limit_obuf);
+	uint32_t inactive = stats->counters[KNOT_SWEEP_CTR_TIMEOUT];
+	if (tcp || stats->total != inactive) {
+		char buf[256] = "terminated connections";
+		for (const struct desc *d = descs; d->name != NULL; d++) {
+			if (stats->counters[d->idx] == 0) {
+				continue;
+			}
+			char *item = sprintf_alloc(", %s %u", d->name, stats->counters[d->idx]);
+			if (item != NULL) {
+				strlcat(buf, item, sizeof(buf));
+				free(item);
+			}
+		}
+		log_notice("%s, %s", proto, buf);
 	} else {
-		log_debug("%s, timed out connections %u", proto, timedout);
+		log_debug("%s, terminated inactive connections %u", proto, inactive);
 	}
 
 	knot_sweep_stats_reset(stats);
