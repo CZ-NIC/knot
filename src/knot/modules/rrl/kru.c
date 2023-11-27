@@ -46,6 +46,13 @@ Size (`loads_bits`):
 	#define ALIGNED(_bytes)
 #endif
 
+void *memzero(void *s, size_t n)
+{
+	typedef void *(*memset_t)(void *, int, size_t);
+	static volatile memset_t volatile_memset = memset;
+	return volatile_memset(s, 0, n);
+}
+
 /// Block of loads sharing the same time, so that we're more space-efficient.
 /// It's exactly a single cache line.
 struct load_cl {
@@ -104,6 +111,7 @@ static void update_time(struct load_cl *l, const uint32_t time_now, decay_cfg_t 
 		// finally the non-fractional part of the bit shift
 		l->loads[i] = l1 >> load_nonfrac_shift;
 	}
+
 }
 /// Half-life of 32 ticks, consequently forgetting in about 1k ticks.
 /// Experiment: if going by a single tick, fix-point at load 23 after 874 steps,
@@ -141,7 +149,7 @@ struct kru *kru_init(uint32_t loads_bits, uint32_t prob_bits)
 
 	kru->loads_bits = loads_bits;
 	kru->prob_bits = prob_bits;
-	// hash_key not initialized
+	// hash_key zero-initialized
 
 	return kru;
 }
@@ -216,7 +224,7 @@ void test_decay32(void)
 	struct load_cl l = { .loads[0] = -1, .time = 0 };
 	for (uint32_t time = 0; time < 1030; ++time) {
 		update_time(&l, time, &DECAY_32);
-		printf("%d: %zd\n", time, (size_t)l.loads[0]);
+		printf("%3d: %08zx\n", time, (size_t)l.loads[0]);
 	}
 }
 
@@ -245,9 +253,9 @@ void test_stage(struct test_ctx *ctx, uint32_t dur, uint64_t *freq) {
 		freq_bounds[cat] = freq_bounds[cat-1] + freq[cat];
 	}
 
-	uint64_t cat_limited[ctx->cnt], cat_total[ctx->cnt];
+	uint64_t cat_passed[ctx->cnt], cat_total[ctx->cnt];
 	for (size_t cat = 0; cat < ctx->cnt; ++cat) {
-		cat_limited[cat] = 0;
+		cat_passed[cat] = 0;
 		cat_total[cat] = 0;
 	}
 
@@ -255,16 +263,21 @@ void test_stage(struct test_ctx *ctx, uint32_t dur, uint64_t *freq) {
 		for (uint64_t i = 0; i < freq_bounds[ctx->cnt-1]; i++) {
 			long rnd = random() % freq_bounds[ctx->cnt-1];  // TODO initialize random generator
 			size_t cat;
-			for (cat = 0; freq_bounds[cat] < rnd; cat++);
+			for (cat = 0; freq_bounds[cat] <= rnd; cat++);
 
 			uint64_t id = random() % (ctx->cats[cat].id_max - ctx->cats[cat].id_min + 1) + ctx->cats[cat].id_min;
 
 			cat_total[cat]++;
-			cat_limited[cat] += kru_limited(ctx->kru, id, ctx->time, ctx->price);  // TODO use hash of id instead of just id
+			uint64_t hash = SipHash24(&ctx->kru->hash_key, &id, sizeof(id));
+			cat_passed[cat] += !kru_limited(ctx->kru, hash, ctx->time, ctx->price);
 		}
 	}
 	for (size_t cat = 0; cat < ctx->cnt; ++cat) {
-		printf("  %-15s:  %" PRIu64 "/%" PRIu64 "\n", ctx->cats[cat].name, cat_limited[cat], cat_total[cat]);
+		printf("  %-15s:  %8.2f /%10.2f per tick, %8" PRIu64 " /%10" PRIu64 " in total, %8.4f %% passed \n",
+				ctx->cats[cat].name,
+				(float)cat_passed[cat] / dur, (float)cat_total[cat] / dur,
+				cat_passed[cat], cat_total[cat],
+				100.0 * cat_passed[cat] / cat_total[cat]);
 	}
 	printf("\n");
 }
@@ -280,23 +293,21 @@ void test(void) { // TODO more descriptive name
 	};
 
 	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(struct test_cat),
-		.price = 1<<23  // same price for all packets
+		.price = 1<<24  // same price for all packets
 	};
 
-	// in each out of 100 ticks send around 1000 queries from random normal addresses and 5000 from each of the two attackers
-	TEST_STAGE( 100,  1000, 10000); // (duration, normal, attackers)
+	// in each out of 10 ticks send around 1000 queries from random normal addresses and 500000 from each of the two attackers
+	TEST_STAGE( 10,    1000, 1000000); // (duration, normal, attackers)
 
-	// one more tick with the same distribution
-	TEST_STAGE( 1,  1000, 10000);
+	TEST_STAGE( 10,    1000, 1000000);
+	TEST_STAGE( 100,   1000, 100000);
+	TEST_STAGE( 100,   1000, 10000);
+	TEST_STAGE( 100,   1000, 1000);
+	TEST_STAGE( 100,   1000, 100);
+	TEST_STAGE( 100,   1000, 10);
+	TEST_STAGE( 10000, 1000, 2);  // both categories have the same frequency per individual
 
-	// several ticks with more balanced distribution
-	TEST_STAGE( 1,    1000, 50);
-	TEST_STAGE( 1,    1000, 50);
-	TEST_STAGE( 1,    1000, 50);
-	TEST_STAGE( 1,    1000, 50);
-	TEST_STAGE( 1,    1000, 50);
-	TEST_STAGE( 1,    1000, 50);
-	TEST_STAGE( 100,  1000, 50);
+	TEST_STAGE( 100,   1000, 10000); // another attack after period without limitation
 
 	kru_destroy(kru);
 }
