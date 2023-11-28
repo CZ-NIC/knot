@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -94,13 +94,13 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	              "zone_count: %d\n",
 	              label_file_head,
 	              ctx->backup_format, ident, started_time, finished_time, PACKAGE_VERSION,
-	              ctx->backup_zonefile ? "" : "no",
-	              ctx->backup_journal ? "" : "no",
-	              ctx->backup_timers ? "" : "no",
-	              ctx->backup_kaspdb ? "" : "no",
-	              ctx->backup_keysonly ? "" : "no",
-	              ctx->backup_catalog ? "" : "no",
-	              ctx->backup_quic ? "" : "no",
+	              ctx->backup_params & BACKUP_PARAM_ZONEFILE ? "" : "no",
+	              ctx->backup_params & BACKUP_PARAM_JOURNAL ? "" : "no",
+	              ctx->backup_params & BACKUP_PARAM_TIMERS ? "" : "no",
+	              ctx->backup_params & BACKUP_PARAM_KASPDB ? "" : "no",
+	              ctx->backup_params & BACKUP_PARAM_KEYSONLY ? "" : "no",
+	              ctx->backup_params & BACKUP_PARAM_CATALOG ? "" : "no",
+	              ctx->backup_params & BACKUP_PARAM_QUIC ? "" : "no",
 	              ctx->backup_dir,
 	              ctx->zone_count);
 
