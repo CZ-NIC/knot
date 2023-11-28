@@ -1236,9 +1236,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	};
 
 	int opt = 0, arg;
-	bool default_at_once = true, binary_input = false;
+	bool default_at_once = true;
 	double argf;
-	char *argcp, *local_ip = NULL, *filename = NULL;
+	char *argcp, *local_ip = NULL;
+	input_t input = { 0 };
 	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:l:i:BL:R:v:m:G:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
@@ -1345,12 +1346,10 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			local_ip = optarg;
 			break;
 		case 'i':
-			filename = optarg;
-			binary_input = false;
+			input.path = optarg;
 			break;
 		case 'B':
-			filename = optarg;
-			binary_input = true;
+			input.format = BIN;
 			break;
 		case 'L':
 			if (mac_sscan(optarg, ctx->local_mac) != KNOT_EOK) {
@@ -1387,12 +1386,12 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			return false;
 		}
 	}
-	if (filename == NULL) {
+	if (input.path == NULL) {
 		print_help();
 		return false;
 	}
 	size_t qcount = ctx->duration / 1000000 * ctx->qps;
-	if (!load_queries(filename, ctx->edns_size, ctx->msgid, qcount)) {
+	if (!load_queries(&input, ctx->edns_size, ctx->msgid, qcount)) {
 		return false;
 	}
 	if (global_payloads == NULL || argc - optind != 1) {
