@@ -59,10 +59,13 @@ void quic_reconfigure_table(knot_quic_table_t *table);
 /*!
  * \brief Sweep idle or excessive QUIC connections.
  *
+ * \note This function cannot be used with XDP.
+ *
  * \param table    QUIC connection table.
  * \param stats    Statistics to be updated.
+ * \param fd       Standard socket descriptor to send sweep replies through.
  */
-void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats);
+void quic_sweep_table(knot_quic_table_t *table, knot_sweep_stats_t *stats, int fd);
 
 /*!
  * \brief Deallocate QUIC connecton table.

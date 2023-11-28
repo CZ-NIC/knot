@@ -388,7 +388,7 @@ static void send_update_response(conf_t *conf, zone_t *zone, knot_request_t *req
 				(void)knot_quic_send(req->quic_conn->quic_table, req->quic_conn,
 				                     &rpl, 4, KNOT_QUIC_SEND_IGNORE_BLOCKED);
 			}
-			req->quic_conn->flags &= ~KNOT_QUIC_CONN_BLOCKED;
+			knot_quic_conn_block(req->quic_conn, false);
 		} else // NOTE ties to 'if' below
 #else
 		assert(req->quic_conn == NULL);

@@ -342,7 +342,8 @@ void xdp_handle_send(xdp_handle_ctx_t *ctx)
 void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 {
 #ifdef ENABLE_QUIC
-	quic_sweep_table(ctx->quic_table, &ctx->quic_closed);
+	knot_quic_table_sweep(ctx->quic_table, NULL, &ctx->quic_closed);
+	log_swept(&ctx->quic_closed, false);
 	quic_reconfigure_table(ctx->quic_table);
 #endif // ENABLE_QUIC
 
