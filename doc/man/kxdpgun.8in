@@ -90,6 +90,11 @@ CPU ID increment for next thread (default is 0s1).
 \fB\-i\fP, \fB\-\-infile\fP \fIfilename\fP
 Path to a file with query templates.
 .TP
+\fB\-B\fP, \fB\-\-binary\fP
+Specify that input file is in binary format. This format is similar to the
+TCP DNS message format. The file contains records formated as 2\-octet length
+(network order) followed by a message in DNS wire format.
+.TP
 \fB\-I\fP, \fB\-\-interface\fP \fIinterface\fP
 Network interface for outgoing communication. This can be useful in situations
 when the interfaces are in a bond for example.
