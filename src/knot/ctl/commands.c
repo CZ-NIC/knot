@@ -91,6 +91,19 @@ static bool eval_opposite_filters(ctl_args_t *args, bool *param, bool dflt,
 	return !(set && unset);
 }
 
+static bool eval_backup_filters(ctl_args_t *args, knot_backup_params_t *filters,
+                                const backup_filter_list_t *item)
+{
+	bool val;
+	bool ret = eval_opposite_filters(args, &val, BACKUP_PARAM_DFLT & item->param,
+	                                 item->filter, item->neg_filter);
+	if (ret) {
+		*filters |= item->param * val;
+	}
+
+	return ret;
+}
+
 static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t event,
                             bool user)
 {
@@ -520,26 +533,15 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	// Evaluate filters (and possibly fail) before writing to the filesystem.
-	bool filter_zonefile, filter_journal, filter_timers, filter_kaspdb, filter_keysonly,
-	     filter_catalog, filter_quic;
-
-	// The default filter values are set just in this paragraph.
-	if (!(eval_opposite_filters(args, &filter_zonefile, true,
-	                            CTL_FILTER_BACKUP_ZONEFILE, CTL_FILTER_BACKUP_NOZONEFILE) &&
-	    eval_opposite_filters(args, &filter_journal, false,
-	                          CTL_FILTER_BACKUP_JOURNAL, CTL_FILTER_BACKUP_NOJOURNAL) &&
-	    eval_opposite_filters(args, &filter_timers, true,
-	                          CTL_FILTER_BACKUP_TIMERS, CTL_FILTER_BACKUP_NOTIMERS) &&
-	    eval_opposite_filters(args, &filter_kaspdb, true,
-	                          CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB) &&
-	    eval_opposite_filters(args, &filter_keysonly, false,
-	                          CTL_FILTER_BACKUP_KEYSONLY, CTL_FILTER_BACKUP_NOKEYSONLY) &&
-	    eval_opposite_filters(args, &filter_catalog, true,
-	                          CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG) &&
-	    eval_opposite_filters(args, &filter_quic, false,
-	                          CTL_FILTER_BACKUP_QUIC, CTL_FILTER_BACKUP_NOQUIC))) {
-		return KNOT_EXPARAM;
+	knot_backup_params_t filters = 0;
+	for (const backup_filter_list_t *item = backup_filters; item->name != NULL; item++) {
+		if (!eval_backup_filters(args, &filters, item)) {
+			return KNOT_EXPARAM;
+		}
 	}
+
+	// Priority of '+kaspdb' over '+keysonly'.
+	filters &= ~((bool)(filters & BACKUP_PARAM_KASPDB) * BACKUP_PARAM_KEYSONLY);
 
 	bool forced = ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE);
 
@@ -560,13 +562,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	assert(ctx != NULL);
-	ctx->backup_zonefile = filter_zonefile;
-	ctx->backup_journal = filter_journal;
-	ctx->backup_timers = filter_timers;
-	ctx->backup_kaspdb = filter_kaspdb;
-	ctx->backup_keysonly = filter_keysonly && !filter_kaspdb; // Priority of '+kaspdb'.
-	ctx->backup_catalog = filter_catalog;
-	ctx->backup_quic = filter_quic;
+	ctx->backup_params = filters;
 
 	zone_backups_add(&args->server->backup_ctxs, ctx);
 
@@ -610,7 +606,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 		}
 	}
 
-	if (ctx->backup_keysonly) {
+	if (ctx->backup_params & BACKUP_PARAM_KEYSONLY) {
 		ret = zone_backup_keysonly(ctx, conf(), zone);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -623,8 +619,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 			}
 		}
 
-		if (!ctx->backup_zonefile && !ctx->backup_journal && !ctx->backup_timers &&
-		    !ctx->backup_kaspdb && !ctx->backup_catalog) {
+		if (!(ctx->backup_params & BACKUP_PARAM_EVENT)) {
 			return ret;
 		}
 	}
