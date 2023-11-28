@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "contrib/string.h"
 #include "knot/catalog/catalog_db.h"
 #include "knot/common/log.h"
+#include "knot/ctl/commands.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/journal/journal_metadata.h"
@@ -41,6 +42,17 @@
 
 // Current backup format version for output. Don't decrease it.
 #define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.
+
+const backup_filter_list_t backup_filters[] = {
+	{ "zonefile", BACKUP_PARAM_ZONEFILE, CTL_FILTER_BACKUP_ZONEFILE, CTL_FILTER_BACKUP_NOZONEFILE },
+	{ "journal",  BACKUP_PARAM_JOURNAL,  CTL_FILTER_BACKUP_JOURNAL,  CTL_FILTER_BACKUP_NOJOURNAL },
+	{ "timers",   BACKUP_PARAM_TIMERS,   CTL_FILTER_BACKUP_TIMERS,   CTL_FILTER_BACKUP_NOTIMERS },
+	{ "kaspdb",   BACKUP_PARAM_KASPDB,   CTL_FILTER_BACKUP_KASPDB,   CTL_FILTER_BACKUP_NOKASPDB },
+	{ "keysonly", BACKUP_PARAM_KEYSONLY, CTL_FILTER_BACKUP_KEYSONLY, CTL_FILTER_BACKUP_NOKEYSONLY },
+	{ "catalog",  BACKUP_PARAM_CATALOG,  CTL_FILTER_BACKUP_CATALOG,  CTL_FILTER_BACKUP_NOCATALOG },
+	{ "quic",     BACKUP_PARAM_QUIC,     CTL_FILTER_BACKUP_QUIC,     CTL_FILTER_BACKUP_NOQUIC },
+	{ NULL },
+};
 
 static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 {
@@ -413,7 +425,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 
 	int ret = KNOT_EOK;
 
-	if (ctx->backup_zonefile) {
+	if (ctx->backup_params & BACKUP_PARAM_ZONEFILE) {
 		ret = backup_zonefile(conf, zone, ctx);
 		if (ret != KNOT_EOK) {
 			LOG_MARK_FAIL("zone file");
@@ -421,7 +433,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	if (ctx->backup_kaspdb) {
+	if (ctx->backup_params & BACKUP_PARAM_KASPDB) {
 		ret = backup_kaspdb(ctx, conf, zone, kasp_db_backup);
 		if (ret != KNOT_EOK) {
 			// Errors already logged in detail.
@@ -429,12 +441,12 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	if (ctx->backup_journal) {
+	if (ctx->backup_params & BACKUP_PARAM_JOURNAL) {
 		knot_lmdb_db_t *j_from = zone_journaldb(zone), *j_to = &ctx->bck_journal;
 		BACKUP_SWAP(ctx, j_from, j_to);
 
 		ret = journal_copy_with_md(j_from, j_to, zone->name);
-	} else if (ctx->restore_mode && ctx->backup_zonefile) {
+	} else if (ctx->restore_mode && (ctx->backup_params & BACKUP_PARAM_ZONEFILE)) {
 		ret = journal_scrape_with_md(zone_journal(zone), true);
 	}
 	if (ret != KNOT_EOK) {
@@ -442,7 +454,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	if (ctx->backup_timers) {
+	if (ctx->backup_params & BACKUP_PARAM_TIMERS) {
 		ret = knot_lmdb_open(&ctx->bck_timer_db);
 		if (ret != KNOT_EOK) {
 			LOG_MARK_FAIL("timers open");
@@ -467,7 +479,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
                   const knot_dname_t *zone_only)
 {
-	if (!ctx->backup_catalog) {
+	if (!(ctx->backup_params & BACKUP_PARAM_CATALOG)) {
 		return KNOT_EOK;
 	}
 
@@ -519,7 +531,7 @@ done:
 
 int backup_quic(zone_backup_ctx_t *ctx, bool quic_on)
 {
-	if (!ctx->backup_quic) {
+	if (!(ctx->backup_params & BACKUP_PARAM_QUIC)) {
 		return KNOT_EOK;
 	}
 
