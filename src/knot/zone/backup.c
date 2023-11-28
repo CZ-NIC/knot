@@ -388,7 +388,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 
 	int ret = KNOT_EOK;
 
-	if (ctx->backup_zonefile) {
+	if (ctx->backup_params & BACKUP_PARAM_ZONEFILE) {
 		ret = backup_zonefile(conf, zone, ctx);
 		if (ret != KNOT_EOK) {
 			LOG_MARK_FAIL("zone file");
@@ -396,7 +396,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	if (ctx->backup_kaspdb) {
+	if (ctx->backup_params & BACKUP_PARAM_KASPDB) {
 		knot_lmdb_db_t *kasp_from = zone_kaspdb(zone), *kasp_to = &ctx->bck_kasp_db;
 		BACKUP_SWAP(ctx, kasp_from, kasp_to);
 
@@ -409,7 +409,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	if (ctx->backup_keys) {
+	if (ctx->backup_params & BACKUP_PARAM_KEYS) {
 		ret = backup_keystore(conf, zone, ctx);
 		if (ret != KNOT_EOK) {
 			ctx->failed = true;
@@ -417,12 +417,12 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	if (ctx->backup_journal) {
+	if (ctx->backup_params & BACKUP_PARAM_JOURNAL) {
 		knot_lmdb_db_t *j_from = zone_journaldb(zone), *j_to = &ctx->bck_journal;
 		BACKUP_SWAP(ctx, j_from, j_to);
 
 		ret = journal_copy_with_md(j_from, j_to, zone->name);
-	} else if (ctx->restore_mode && ctx->backup_zonefile) {
+	} else if (ctx->restore_mode && ctx->backup_params & BACKUP_PARAM_ZONEFILE) {
 		ret = journal_scrape_with_md(zone_journal(zone), true);
 	}
 	if (ret != KNOT_EOK) {
@@ -430,7 +430,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 		return ret;
 	}
 
-	if (ctx->backup_timers) {
+	if (ctx->backup_params & BACKUP_PARAM_TIMERS) {
 		ret = knot_lmdb_open(&ctx->bck_timer_db);
 		if (ret != KNOT_EOK) {
 			LOG_MARK_FAIL("timers open");
@@ -455,7 +455,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
                   const knot_dname_t *zone_only)
 {
-	if (!ctx->backup_catalog) {
+	if (!(ctx->backup_params & BACKUP_PARAM_CATALOG)) {
 		return KNOT_EOK;
 	}
 
@@ -502,7 +502,7 @@ done:
 
 int backup_quic(zone_backup_ctx_t *ctx, bool quic_on)
 {
-	if (!ctx->backup_quic) {
+	if (!(ctx->backup_params & BACKUP_PARAM_QUIC)) {
 		return KNOT_EOK;
 	}
 

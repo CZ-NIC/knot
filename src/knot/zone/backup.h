@@ -29,17 +29,25 @@ typedef enum {
 	BACKUP_FORMAT_TERM,
 } knot_backup_format_t;
 
+typedef enum {
+	BACKUP_PARAM_ZONEFILE = 1 << 0, // backup zone contents to a zonefile
+	BACKUP_PARAM_JOURNAL =  1 << 1, // backup journal
+	BACKUP_PARAM_TIMERS =   1 << 2, // backup timers
+	BACKUP_PARAM_KASPDB =   1 << 3, // backup KASP database (without keys)
+	BACKUP_PARAM_KEYS =     1 << 4, // backup keys
+	BACKUP_PARAM_CATALOG =  1 << 5, // backup zone catalog
+	BACKUP_PARAM_QUIC =     1 << 6, // backup QUIC server key and certificate
+} knot_backup_params_t;
+
+#define BACKUP_PARAM_DFLT  (BACKUP_PARAM_ZONEFILE | BACKUP_PARAM_TIMERS | \
+                            BACKUP_PARAM_KASPDB | \ BACKUP_PARAM_KEYS | \
+                            BACKUP_PARAM_CATALOG)
+
 typedef struct zone_backup_ctx {
 	node_t n;                           // ability to be put into list_t
 	bool restore_mode;                  // if true, this is not a backup, but restore
 	bool forced;                        // if true, the force flag has been set
-	bool backup_zonefile;               // if true, also backup zone contents to a zonefile
-	bool backup_journal;                // if true, also backup journal
-	bool backup_timers;                 // if true, also backup timers
-	bool backup_kaspdb;                 // if true, also backup KASP database (without keys)
-	bool backup_keys;                   // if true, also backup keys
-	bool backup_catalog;                // if true, also backup zone catalog
-	bool backup_quic;                   // if true, also backup QUIC server key and certificate
+	knot_backup_params_t backup_params; // bit-mapped list of backup components
 	bool backup_global;                 // perform global backup for all zones
 	ssize_t readers;                    // when decremented to 0, all zones done, free this context
 	pthread_mutex_t readers_mutex;      // mutex covering readers counter
