@@ -133,8 +133,6 @@ const struct decay_config DECAY_32 = {
 struct kru {
 	/// Length of `loads_cls`, stored as binary logarithm.
 	uint32_t loads_bits;
-	/// Optimum: log2(max. number of limited users) - loads_bits - 1
-	uint32_t prob_bits;
 	/// Hashing secret.  Random but shared by all users of the table.
 	SIPHASH_KEY hash_key;  // TODO use or remove
 
@@ -143,12 +141,11 @@ struct kru {
 	struct load_cl load_cls[][TABLE_COUNT];
 };
 
-struct kru *kru_init(uint32_t loads_bits, uint32_t prob_bits)
+struct kru *kru_init(uint32_t loads_bits)
 {
 	struct kru *kru = calloc(1, offsetof(struct kru, load_cls) + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits));
 
 	kru->loads_bits = loads_bits;
-	kru->prob_bits = prob_bits;
 	// hash_key zero-initialized
 
 	return kru;
@@ -157,11 +154,41 @@ void kru_destroy(struct kru *kru) {
 	free(kru);
 }
 
+
+/// Choose almost uniformly 4 bits out of 15, consume ~15 bits from hash, return bitmap.
+uint32_t choose_4_15(uint64_t *hash) {
+	// We use just a little less that 15 bits:  15 * 14 * 13 * 12  =  2^15 - 8
+	// If the hash has exactly 15 bits, 4 combinations have higher probabilities by at most 0.003.
+	// We can save 4 bits from ordering of chosen bits, if needed.
+
+	uint32_t chosen_last;
+		// bitmap containing one chosen bit out of 15, after shifts caused by previously chosen bits;
+		// each previous bit to the right of the last one (or on same position) causes shift by one to the left;
+		// shifts caused by the previous bits should be applied one-by-one ordered from the rightmost bit
+
+	uint32_t chosen_unshifted[4] = {0};
+		// bitmaps before left shifts with reverted left shifts that would be caused by the following bits;
+		// those bitmaps can be used invariant to their order to recognize shifts in the following bit
+
+	uint32_t chosen_all = 0;
+	for (size_t i = 0; i < 4; i++) {
+		chosen_unshifted[i] = chosen_last = 1 << *hash % (15-i);
+		*hash /= (15-i);
+		for (size_t j = 0; j < i; j++) {
+			chosen_last <<= chosen_unshifted[i] >= chosen_unshifted[j];
+			chosen_unshifted[j] >>= chosen_unshifted[i] < chosen_unshifted[j];
+		}
+		chosen_all |= chosen_last;
+	}
+	return chosen_all;
+}
+
 /// Update limiting and return true iff it hit the limit instead.
 bool kru_limited(struct kru *kru, uint64_t hash, uint32_t time_now, uint32_t price)
 {
-	assert(sizeof(hash) * 8 >= TABLE_COUNT * kru->loads_bits + LOADS_LEN * kru->prob_bits);
+	assert(sizeof(hash) * 8 >= TABLE_COUNT * (kru->loads_bits + 15));
 	/*
+		TODO: update/remove this comment, prob_bits were removed.
 		Given 64-bit hash + TABLE_COUNT cache-lines of 15 items:
 		prob_bits -> max loads_bits  | opt. heavy-hitter limit (see prob_bits comment)
 		1 -> 24  | 2^26
@@ -180,15 +207,16 @@ bool kru_limited(struct kru *kru, uint64_t hash, uint32_t time_now, uint32_t pri
 		update_time(l[li], time_now, &DECAY_32);
 	}
 
-	const uint64_t prob_mask = (1 << kru->prob_bits) - 1;
 	const uint32_t limit = -price;
 	// Check if an index indicates that we're under the limit.
 	uint64_t prnd = hash;
 	for (int li = 0; li < TABLE_COUNT; ++li) {
+		assert(LOADS_LEN == 15);
+		uint32_t chosen_loads = choose_4_15(&prnd);
 		for (int i = 0; i < LOADS_LEN; ++i) {
-			unsigned int skip = prnd & prob_mask;
-			prnd >>= kru->prob_bits;
-			if (skip != 0) // TODO: exception to avoid skipping all in a table?
+			bool use_load = chosen_loads & 1;
+			chosen_loads >>= 1;
+			if (!use_load)
 				continue;
 			if (l[li]->loads[i] < limit)
 				goto under_limit;
@@ -203,14 +231,17 @@ under_limit:
 	//  or addition with saturation might be easy and efficient in x86 asm
 	prnd = hash;
 	for (int li = 0; li < TABLE_COUNT; ++li) {
+		size_t cnt=0;
+		uint32_t chosen_loads = choose_4_15(&prnd);
 		for (int i = 0; i < LOADS_LEN; ++i) {
-			unsigned int skip = prnd & prob_mask;
-			prnd >>= kru->prob_bits;
-			if (skip != 0) // TODO: exception to avoid skipping all in a table?
+			bool use_load = chosen_loads & 1;
+			chosen_loads >>= 1;
+			if (!use_load)
 				continue;
 			uint32_t * const load = &l[li]->loads[i];
 			if (__builtin_add_overflow(*load, price, load))
 				*load = -1;
+			cnt++;
 		}
 	}
 	return false;
@@ -228,6 +259,47 @@ void test_decay32(void)
 	}
 }
 
+void test_choose_4_15() {
+	#define MAX_HASH    (15*14*13*12) // uniform distribution expected
+	//#define MAX_HASH    (1<<15)     // case with exactly 15 bits, a little biased
+	#define MAX_BITMAP  (1<<15)
+	#define HIST_LEN    (10000)
+
+	uint32_t chosen_cnts[MAX_BITMAP] = {0};
+	for (uint64_t i = 0; i < MAX_HASH; i++) {
+		uint64_t hash = i;
+		uint32_t chosen = choose_4_15(&hash);
+		if (chosen > MAX_BITMAP) {
+			printf("bitmap out of range: %d %d\n", i, chosen);
+			return;
+		}
+		chosen_cnts[chosen]++;
+	}
+	uint32_t hist[HIST_LEN] = {0};
+	for (size_t i = 0; i < MAX_BITMAP; i++) {
+		if (chosen_cnts[i] > HIST_LEN) {
+			printf("short hist: %d %d\n", i, chosen_cnts[i]);
+			return;
+		}
+		hist[chosen_cnts[i]]++;
+	}
+	int nonzero = 0;
+	for (size_t i = 0; i < sizeof(hist)/sizeof(uint32_t); i++) {
+		if (hist[i] == 0) continue;
+		printf("%2d: %5d\n", i, hist[i]);
+		if (i > 0) nonzero++;
+	}
+
+	if (nonzero = 1) {
+		printf("Uniform.\n");
+	} else {
+		printf("Not uniform.\n");
+	}
+
+	#undef MAX_HASH
+	#undef MAX_BITMAP
+	#undef HIST_LEN
+}
 
 struct test_ctx {
 	struct kru *kru;
@@ -285,19 +357,20 @@ void test_stage(struct test_ctx *ctx, uint32_t dur, uint64_t *freq) {
 #define TEST_STAGE(duration, ...) test_stage(&ctx, duration, (uint64_t[]) {__VA_ARGS__});
 
 void test(void) { // TODO more descriptive name
-	struct kru *kru = kru_init(16,2);
+	struct kru *kru = kru_init(16);
 
 	struct test_cat cats[] = {
 		{ "normal",       1,1000  },   // normal queries come from 1000 different addreses indexed 1-1000
-		{ "attackers", 1001,1002  }    // attackers use only two adresses indexed 1001,1002
+		{ "attackers", 1001,1001  }    // attackers use only two adresses indexed 1001,1002
 	};
 
 	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(struct test_cat),
-		.price = 1<<24  // same price for all packets
+		.price = 1<<23  // same price for all packets
 	};
 
 	// in each out of 10 ticks send around 1000 queries from random normal addresses and 500000 from each of the two attackers
-	TEST_STAGE( 10,    1000, 1000000); // (duration, normal, attackers)
+	TEST_STAGE( 1,     1000, 1000000); // (duration, normal, attackers)
+	TEST_STAGE( 10,    1000, 1000000);
 
 	TEST_STAGE( 10,    1000, 1000000);
 	TEST_STAGE( 100,   1000, 100000);
@@ -314,8 +387,11 @@ void test(void) { // TODO more descriptive name
 
 #undef TEST_STAGE
 
+
 int main(int argc, char **argv)
 {
+	//test_choose_4_15();
+
 	test();
 
 	// struct kru kru __attribute__((unused));
