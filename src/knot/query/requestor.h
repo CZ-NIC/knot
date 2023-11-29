@@ -42,6 +42,7 @@ typedef enum {
 	KNOT_REQUESTOR_CLOSE  = 1 << 0, /*!< Close the connection indication. */
 	KNOT_REQUESTOR_REUSED = 1 << 1, /*!< Reused FD indication (RO). */
 	KNOT_REQUESTOR_QUIC   = 1 << 2, /*!< QUIC used indication (RO). */
+	KNOT_REQUESTOR_IOFAIL = 1 << 3, /*!< Encountered error sending/recving data. */
 } knot_requestor_flag_t;
 
 /*! \brief Requestor structure.
