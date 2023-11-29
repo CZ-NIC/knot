@@ -1375,6 +1375,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	// while loop runs 0x or 1x; IXFR to AXFR failover
 	while (ret = knot_requestor_exec(&requestor, req, timeout),
 	       ret = (data.ret == KNOT_EOK ? ret : data.ret),
+	       !(requestor.layer.flags & KNOT_REQUESTOR_IOFAIL) &&
 	       data.fallback_axfr && ret != KNOT_EOK) {
 		REFRESH_LOG(LOG_WARNING, &data,
 		            "fallback to AXFR (%s)", knot_strerror(ret));

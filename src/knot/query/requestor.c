@@ -320,6 +320,8 @@ static int request_reset(knot_requestor_t *req, knot_request_t *last)
 	knot_layer_reset(&req->layer);
 	tsig_reset(&last->tsig);
 
+	req->layer.flags &= ~KNOT_REQUESTOR_IOFAIL;
+
 	if (req->layer.flags & KNOT_REQUESTOR_CLOSE) {
 		req->layer.flags &= ~KNOT_REQUESTOR_CLOSE;
 		if (last->fd >= 0) {
@@ -365,6 +367,9 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 	if (req->layer.state == KNOT_STATE_CONSUME) {
 		bool reused_fd = false;
 		ret = request_send(last, timeout_ms, &reused_fd);
+		if (ret != KNOT_EOK) {
+			req->layer.flags |= KNOT_REQUESTOR_IOFAIL;
+		}
 		if (reused_fd) {
 			req->layer.flags |= KNOT_REQUESTOR_REUSED;
 		}
@@ -381,6 +386,7 @@ static int request_consume(knot_requestor_t *req, knot_request_t *last,
 {
 	int ret = request_recv(last, timeout_ms);
 	if (ret < 0) {
+		req->layer.flags |= KNOT_REQUESTOR_IOFAIL;
 		return ret;
 	}
 
