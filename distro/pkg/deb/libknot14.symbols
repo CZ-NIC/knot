@@ -115,6 +115,7 @@ libknot.so.14 libknot14 #MINVER#
  knot_probe_tcp_rtt@Base 3.3.0
  knot_quic_cleanup@Base 3.3.0
  knot_quic_client@Base 3.3.0
+ knot_quic_conn_block@Base 3.3.3
  knot_quic_conn_get_stream@Base 3.3.0
  knot_quic_conn_local_port@Base 3.3.0
  knot_quic_conn_new_stream@Base 3.3.0
