@@ -86,7 +86,7 @@ static unsigned addr_len(const struct sockaddr_in6 *ss)
 _public_
 bool knot_quic_session_available(knot_quic_conn_t *conn)
 {
-	return !(conn->flags & KNOT_QUIC_CONN_SESSION_TAKEN) &&
+	return conn != NULL && !(conn->flags & KNOT_QUIC_CONN_SESSION_TAKEN) &&
 	       (gnutls_session_get_flags(conn->tls_session) & GNUTLS_SFLAGS_SESSION_TICKET);
 }
 
@@ -859,6 +859,10 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 	ngtcp2_cid scid = { 0 }, dcid = { 0 };
 	uint64_t now = get_timestamp();
 
+	if (table == NULL || dest == NULL || via == NULL || out_conn == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	init_random_cid(&scid, 0);
 	init_random_cid(&dcid, 0);
 
@@ -897,6 +901,9 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
                      uint64_t idle_timeout, knot_quic_conn_t **out_conn)
 {
 	*out_conn = NULL;
+	if (table == NULL || reply == NULL || out_conn == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	ngtcp2_version_cid decoded_cids = { 0 };
 	ngtcp2_cid scid = { 0 }, dcid = { 0 }, odcid = { 0 };
@@ -1207,7 +1214,9 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
                    knot_quic_reply_t *reply, unsigned max_msgs,
                    knot_quic_send_flag_t flags)
 {
-	if (reply->handle_ret < 0) {
+	if (quic_table == NULL || conn == NULL || reply == NULL) {
+		return KNOT_EINVAL;
+	} else if (reply->handle_ret < 0) {
 		return reply->handle_ret;
 	} else if (reply->handle_ret > 0) {
 		return send_special(quic_table, reply, conn);

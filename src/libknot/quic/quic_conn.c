@@ -50,7 +50,8 @@ knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_
 	size_t table_size = max_conns * BUCKETS_PER_CONNS;
 
 	knot_quic_table_t *res = calloc(1, sizeof(*res) + table_size * sizeof(res->conns[0]));
-	if (res == NULL) {
+	if (res == NULL || creds == NULL) {
+		free(res);
 		return NULL;
 	}
 
@@ -111,6 +112,10 @@ void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_quic_reply *swe
                            struct knot_sweep_stats *stats)
 {
 	uint64_t now = 0;
+	if (table == NULL || stats == NULL) {
+		return;
+	}
+
 	while (!EMPTY_HEAP(table->expiry_heap)) {
 		knot_quic_conn_t *c = *(knot_quic_conn_t **)HHEAD(table->expiry_heap);
 		if (table->usage > table->max_conns) {
@@ -265,7 +270,7 @@ void knot_quic_conn_stream_free(knot_quic_conn_t *conn, int64_t stream_id)
 _public_
 void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 {
-	if (conn->conn == NULL) {
+	if (conn == NULL || conn->conn == NULL || table == NULL) {
 		return;
 	}
 
@@ -308,7 +313,7 @@ _public_
 knot_quic_stream_t *knot_quic_conn_get_stream(knot_quic_conn_t *conn,
                                               int64_t stream_id, bool create)
 {
-	if (stream_id % 4 != 0) {
+	if (stream_id % 4 != 0 || conn == NULL) {
 		return NULL;
 	}
 	stream_id /= 4;
@@ -400,7 +405,7 @@ static void stream_outprocess(knot_quic_conn_t *conn, knot_quic_stream_t *stream
 int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
                                const uint8_t *data, size_t len, bool fin)
 {
-	if (len == 0) {
+	if (len == 0 || conn == NULL || data == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -432,7 +437,7 @@ _public_
 knot_quic_stream_t *knot_quic_stream_get_process(knot_quic_conn_t *conn,
                                                  int64_t *stream_id)
 {
-	if (conn->stream_inprocess < 0) {
+	if (conn == NULL || conn->stream_inprocess < 0) {
 		return NULL;
 	}
 
