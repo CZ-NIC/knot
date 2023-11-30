@@ -31,7 +31,7 @@ void test_choose_4_15() {
 		uint64_t hash = i;
 		uint32_t chosen = choose_4_15(&hash);
 		if (chosen > MAX_BITMAP) {
-			printf("bitmap out of range: %d %d\n", i, chosen);
+			printf("bitmap out of range: %ld %d\n", i, chosen);
 			return;
 		}
 		chosen_cnts[chosen]++;
@@ -39,7 +39,7 @@ void test_choose_4_15() {
 	uint32_t hist[HIST_LEN] = {0};
 	for (size_t i = 0; i < MAX_BITMAP; i++) {
 		if (chosen_cnts[i] > HIST_LEN) {
-			printf("short hist: %d %d\n", i, chosen_cnts[i]);
+			printf("short hist: %zd %d\n", i, chosen_cnts[i]);
 			return;
 		}
 		hist[chosen_cnts[i]]++;
@@ -47,11 +47,11 @@ void test_choose_4_15() {
 	int nonzero = 0;
 	for (size_t i = 0; i < sizeof(hist)/sizeof(uint32_t); i++) {
 		if (hist[i] == 0) continue;
-		printf("%2d: %5d\n", i, hist[i]);
+		printf("%2zd: %5d\n", i, hist[i]);
 		if (i > 0) nonzero++;
 	}
 
-	if (nonzero = 1) {
+	if (nonzero == 1) {
 		printf("Uniform.\n");
 	} else {
 		printf("Not uniform.\n");
