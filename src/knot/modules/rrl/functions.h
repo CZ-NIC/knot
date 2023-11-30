@@ -23,41 +23,11 @@
 #include "libknot/libknot.h"
 #include "knot/include/module.h"
 #include "contrib/openbsd/siphash.h"
+#include "knot/modules/rrl/kru.h"
 
-/*!
- * \brief RRL hash bucket.
- */
-typedef struct {
-	unsigned hop;        /* Hop bitmap. */
-	uint64_t netblk;     /* Prefix associated. */
-	uint16_t ntok;       /* Tokens available. */
-	uint8_t  cls;        /* Bucket class. */
-	uint8_t  flags;      /* Flags. */
-	uint32_t qname;      /* imputed(QNAME) hash. */
-	uint32_t time;       /* Timestamp. */
-} rrl_item_t;
 
-/*!
- * \brief RRL hash bucket table.
- *
- * Table is fixed size, so collisions may occur and are dealt with
- * in a way, that hashbucket rate is reset and enters slow-start for 1 dt.
- * When a bucket is in a slow-start mode, it cannot reset again for the time
- * period.
- *
- * To avoid lock contention, N locks are created and distributed amongst buckets.
- * As of now lock K for bucket N is calculated as K = N % (num_buckets).
- */
+typedef struct kru rrl_table_t;
 
-typedef struct {
-	SIPHASH_KEY key;     /* Siphash key. */
-	uint32_t rate;       /* Configured RRL limit. */
-	pthread_mutex_t ll;
-	pthread_mutex_t *lk; /* Table locks. */
-	unsigned lk_count;   /* Table lock count (granularity). */
-	size_t size;         /* Number of buckets. */
-	rrl_item_t arr[];    /* Buckets. */
-} rrl_table_t;
 
 /*! \brief RRL request flags. */
 typedef enum {
@@ -77,8 +47,8 @@ typedef struct {
 
 /*!
  * \brief Create a RRL table.
- * \param size Fixed hashtable size (reasonable large prime is recommended).
- * \param rate Rate (in pkts/sec).
+ * \param size Fixed hashtable size (reasonable large prime is recommended). // TODO remove, not used
+ * \param rate Rate (in pkts/sec).  // TODO remove, not used
  * \return created table or NULL.
  */
 rrl_table_t *rrl_create(size_t size, uint32_t rate);

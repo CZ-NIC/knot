@@ -25,18 +25,13 @@
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
 
-/* Hopscotch defines. */
-#define HOP_LEN (sizeof(unsigned)*8)
 /* Limits (class, ipv6 remote, dname) */
 #define RRL_CLSBLK_MAXLEN (1 + 8 + 255)
 /* CIDR block prefix lengths for v4/v6 */
 #define RRL_V4_PREFIX_LEN 3 /* /24 */
 #define RRL_V6_PREFIX_LEN 7 /* /56 */
 /* Defaults */
-#define RRL_SSTART 2 /* 1/Nth of the rate for slow start */
 #define RRL_PSIZE_LARGE 1024
-#define RRL_CAPACITY 4 /* Window size in seconds */
-#define RRL_LOCK_GRANULARITY 32 /* Last digit granularity */
 
 /* Classification */
 enum {
@@ -188,81 +183,6 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	return blklen;
 }
 
-static int bucket_free(rrl_item_t *bucket, uint32_t now)
-{
-	return bucket->cls == CLS_NULL || (bucket->time + 1 < now);
-}
-
-static int bucket_match(rrl_item_t *bucket, rrl_item_t *match)
-{
-	return bucket->cls    == match->cls &&
-	       bucket->netblk == match->netblk &&
-	       bucket->qname  == match->qname;
-}
-
-static int find_free(rrl_table_t *tbl, unsigned id, uint32_t now)
-{
-	for (int i = id; i < tbl->size; i++) {
-		if (bucket_free(&tbl->arr[i], now)) {
-			return i - id;
-		}
-	}
-	for (int i = 0; i < id; i++) {
-		if (bucket_free(&tbl->arr[i], now)) {
-			return i + (tbl->size - id);
-		}
-	}
-
-	/* this happens if table is full... force vacate current elm */
-	return id;
-}
-
-static inline unsigned find_match(rrl_table_t *tbl, uint32_t id, rrl_item_t *m)
-{
-	unsigned new_id = 0;
-	unsigned hop = 0;
-	unsigned match_bitmap = tbl->arr[id].hop;
-	while (match_bitmap != 0) {
-		hop = __builtin_ctz(match_bitmap); /* offset of next potential match */
-		new_id = (id + hop) % tbl->size;
-		if (bucket_match(&tbl->arr[new_id], m)) {
-			return hop;
-		} else {
-			match_bitmap &= ~(1 << hop); /* clear potential match */
-		}
-	}
-
-	return HOP_LEN + 1;
-}
-
-static inline unsigned reduce_dist(rrl_table_t *tbl, unsigned id, unsigned dist, unsigned *free_id)
-{
-	unsigned rd = HOP_LEN - 1;
-	while (rd > 0) {
-		unsigned vacate_id = (tbl->size + *free_id - rd) % tbl->size; /* bucket to be vacated */
-		if (tbl->arr[vacate_id].hop != 0) {
-			unsigned hop = __builtin_ctz(tbl->arr[vacate_id].hop);  /* offset of first valid bucket */
-			if (hop < rd) { /* only offsets in <vacate_id, free_id> are interesting */
-				unsigned new_id = (vacate_id + hop) % tbl->size; /* this item will be displaced to [free_id] */
-				unsigned keep_hop = tbl->arr[*free_id].hop; /* unpredictable padding */
-				memcpy(tbl->arr + *free_id, tbl->arr + new_id, sizeof(rrl_item_t));
-				tbl->arr[*free_id].hop = keep_hop;
-				tbl->arr[new_id].cls = CLS_NULL;
-				tbl->arr[vacate_id].hop &= ~(1 << hop);
-				tbl->arr[vacate_id].hop |= 1 << rd;
-				*free_id = new_id;
-				return dist - (rd - hop);
-			}
-		}
-		--rd;
-	}
-
-	assert(rd == 0); /* this happens with p=1/fact(HOP_LEN) */
-	*free_id = id;
-	dist = 0; /* force vacate initial element */
-	return dist;
-}
-
 static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss)
 {
 	const void *addr;
@@ -284,7 +204,7 @@ static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage
 }
 
 static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
-                          uint16_t flags, uint8_t cls, const knot_dname_t *qname)
+                          uint16_t flags, uint8_t cls, const knot_dname_t *qname) // TODO remove or adapt, not used
 {
 	if (mod == NULL || ss == NULL) {
 		return;
@@ -308,154 +228,18 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 	              addr_str, rrl_clsstr(cls), qname_str, what);
 }
 
-static void rrl_lock(rrl_table_t *tbl, int lk_id)
-{
-	assert(lk_id > -1);
-	pthread_mutex_lock(tbl->lk + lk_id);
-}
-
-static void rrl_unlock(rrl_table_t *tbl, int lk_id)
-{
-	assert(lk_id > -1);
-	pthread_mutex_unlock(tbl->lk + lk_id);
-}
-
-static int rrl_setlocks(rrl_table_t *tbl, uint32_t granularity)
-{
-	assert(!tbl->lk); /* Cannot change while locks are used. */
-	assert(granularity <= tbl->size / 10); /* Due to int. division err. */
-
-	if (pthread_mutex_init(&tbl->ll, NULL) < 0) {
-		return KNOT_ENOMEM;
-	}
-
-	/* Alloc new locks. */
-	tbl->lk = malloc(granularity * sizeof(pthread_mutex_t));
-	if (!tbl->lk) {
-		return KNOT_ENOMEM;
-	}
-	memset(tbl->lk, 0, granularity * sizeof(pthread_mutex_t));
-
-	/* Initialize. */
-	for (size_t i = 0; i < granularity; ++i) {
-		if (pthread_mutex_init(tbl->lk + i, NULL) < 0) {
-			break;
-		}
-		++tbl->lk_count;
-	}
-
-	/* Incomplete initialization */
-	if (tbl->lk_count != granularity) {
-		for (size_t i = 0; i < tbl->lk_count; ++i) {
-			pthread_mutex_destroy(tbl->lk + i);
-		}
-		free(tbl->lk);
-		tbl->lk_count = 0;
-		return KNOT_ERROR;
-	}
-
-	return KNOT_EOK;
-}
-
 rrl_table_t *rrl_create(size_t size, uint32_t rate)
 {
 	if (size == 0) {
 		return NULL;
 	}
 
-	const size_t tbl_len = sizeof(rrl_table_t) + size * sizeof(rrl_item_t);
-	rrl_table_t *tbl = calloc(1, tbl_len);
+	rrl_table_t *tbl = kru_init(16);  // TODO set loads_bits
 	if (!tbl) {
-		return NULL;
-	}
-	tbl->size = size;
-	tbl->rate = rate;
-
-	if (dnssec_random_buffer((uint8_t *)&tbl->key, sizeof(tbl->key)) != DNSSEC_EOK) {
-		free(tbl);
-		return NULL;
-	}
-
-	if (rrl_setlocks(tbl, RRL_LOCK_GRANULARITY) != KNOT_EOK) {
-		free(tbl);
 		return NULL;
 	}
 
 	return tbl;
-}
-
-static knot_dname_t *buf_qname(uint8_t *buf)
-{
-	return buf + sizeof(uint8_t) + sizeof(uint64_t);
-}
-
-/*! \brief Get bucket for current combination of parameters. */
-static rrl_item_t *rrl_hash(rrl_table_t *tbl, const struct sockaddr_storage *remote,
-                            rrl_req_t *req, const knot_dname_t *zone, uint32_t stamp,
-                            int *lock, uint8_t *buf, size_t buf_len)
-{
-	int len = rrl_classify(buf, buf_len, remote, req, zone);
-	if (len < 0) {
-		return NULL;
-	}
-
-	uint32_t id = SipHash24(&tbl->key, buf, len) % tbl->size;
-
-	/* Lock for lookup. */
-	pthread_mutex_lock(&tbl->ll);
-
-	/* Find an exact match in <id, id + HOP_LEN). */
-	knot_dname_t *qname = buf_qname(buf);
-	uint64_t netblk;
-	memcpy(&netblk, buf + sizeof(uint8_t), sizeof(netblk));
-	rrl_item_t match = {
-		.hop = 0,
-		.netblk = netblk,
-		.ntok = tbl->rate * RRL_CAPACITY,
-		.cls = buf[0],
-		.flags = RRL_BF_NULL,
-		.qname = SipHash24(&tbl->key, qname, knot_dname_size(qname)),
-		.time = stamp
-	};
-
-	unsigned dist = find_match(tbl, id, &match);
-	if (dist > HOP_LEN) { /* not an exact match, find free element [f] */
-		dist = find_free(tbl, id, stamp);
-	}
-
-	/* Reduce distance to fit <id, id + HOP_LEN) */
-	unsigned free_id = (id + dist) % tbl->size;
-	while (dist >= HOP_LEN) {
-		dist = reduce_dist(tbl, id, dist, &free_id);
-	}
-
-	/* Assign granular lock and unlock lookup. */
-	*lock = free_id % tbl->lk_count;
-	rrl_lock(tbl, *lock);
-	pthread_mutex_unlock(&tbl->ll);
-
-	/* found free bucket which is in <id, id + HOP_LEN) */
-	tbl->arr[id].hop |= (1 << dist);
-	rrl_item_t *bucket = &tbl->arr[free_id];
-	assert(free_id == (id + dist) % tbl->size);
-
-	/* Inspect bucket state. */
-	unsigned hop = bucket->hop;
-	if (bucket->cls == CLS_NULL) {
-		memcpy(bucket, &match, sizeof(rrl_item_t));
-		bucket->hop = hop;
-	}
-	/* Check for collisions. */
-	if (!bucket_match(bucket, &match)) {
-		if (!(bucket->flags & RRL_BF_SSTART)) {
-			memcpy(bucket, &match, sizeof(rrl_item_t));
-			bucket->hop = hop;
-			bucket->ntok = tbl->rate + tbl->rate / RRL_SSTART;
-			bucket->flags |= RRL_BF_SSTART;
-		}
-	}
-
-	return bucket;
 }
 
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
@@ -466,64 +250,16 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 	}
 
 	uint8_t buf[RRL_CLSBLK_MAXLEN];
-
-	/* Calculate hash and fetch */
-	int ret = KNOT_EOK;
-	int lock = -1;
-	uint32_t now = time_now().tv_sec;
-	rrl_item_t *bucket = rrl_hash(rrl, remote, req, zone, now, &lock, buf, sizeof(buf));
-	if (!bucket) {
-		if (lock > -1) {
-			rrl_unlock(rrl, lock);
-		}
+	size_t buf_len = rrl_classify(buf, RRL_CLSBLK_MAXLEN, remote, req, zone);
+	if (buf_len < 0) {
 		return KNOT_ERROR;
 	}
 
-	/* Calculate rate for dT */
-	uint32_t dt = now - bucket->time;
-	if (dt > RRL_CAPACITY) {
-		dt = RRL_CAPACITY;
-	}
-	/* Visit bucket. */
-	bucket->time = now;
-	if (dt > 0) { /* Window moved. */
+	struct timespec now_ts = {0};
+	clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
+	uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
 
-		/* Check state change. */
-		if ((bucket->ntok > 0 || dt > 1) && (bucket->flags & RRL_BF_ELIMIT)) {
-			bucket->flags &= ~RRL_BF_ELIMIT;
-			rrl_log_state(mod, remote, bucket->flags, bucket->cls,
-			              knot_pkt_qname(req->query));
-		}
-
-		/* Add new tokens. */
-		uint32_t dn = rrl->rate * dt;
-		if (bucket->flags & RRL_BF_SSTART) { /* Bucket in slow-start. */
-			bucket->flags &= ~RRL_BF_SSTART;
-		}
-		bucket->ntok += dn;
-		if (bucket->ntok > RRL_CAPACITY * rrl->rate) {
-			bucket->ntok = RRL_CAPACITY * rrl->rate;
-		}
-	}
-
-	/* Last item taken. */
-	if (bucket->ntok == 1 && !(bucket->flags & RRL_BF_ELIMIT)) {
-		bucket->flags |= RRL_BF_ELIMIT;
-		rrl_log_state(mod, remote, bucket->flags, bucket->cls,
-		              knot_pkt_qname(req->query));
-	}
-
-	/* Decay current bucket. */
-	if (bucket->ntok > 0) {
-		--bucket->ntok;
-	} else if (bucket->ntok == 0) {
-		ret = KNOT_ELIMIT;
-	}
-
-	if (lock > -1) {
-		rrl_unlock(rrl, lock);
-	}
-	return ret;
+	return kru_limited(rrl, buf, buf_len, now, 1<<29) ? KNOT_ELIMIT : KNOT_EOK;  // TODO set price
 }
 
 bool rrl_slip_roll(int n_slip)
@@ -540,15 +276,5 @@ bool rrl_slip_roll(int n_slip)
 
 void rrl_destroy(rrl_table_t *rrl)
 {
-	if (rrl) {
-		if (rrl->lk_count > 0) {
-			pthread_mutex_destroy(&rrl->ll);
-		}
-		for (size_t i = 0; i < rrl->lk_count; ++i) {
-			pthread_mutex_destroy(rrl->lk + i);
-		}
-		free(rrl->lk);
-	}
-
-	free(rrl);
+	kru_destroy(rrl);
 }

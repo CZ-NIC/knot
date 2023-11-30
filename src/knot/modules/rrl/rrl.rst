@@ -60,6 +60,8 @@ A module identifier.
 rate-limit
 ..........
 
+XXX not used XXX
+
 Rate limiting is based on the token bucket scheme. A rate basically
 represents a number of tokens available each second. Each response is
 processed and classified (based on several discriminators, e.g.
@@ -75,6 +77,8 @@ Number of available tokens is recalculated each second.
 
 table-size
 ..........
+
+XXX not used XXX
 
 Size of the hash table in a number of buckets. The larger the hash table, the lesser
 the probability of a hash collision, but at the expense of additional memory costs.
