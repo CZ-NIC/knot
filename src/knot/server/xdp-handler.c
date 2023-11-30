@@ -470,7 +470,7 @@ void xdp_handle_sweep(xdp_handle_ctx_t *ctx)
 
 	int ret = KNOT_EOK;
 	uint32_t prev_total;
-	knot_tcp_relay_t sweep_relays[XDP_BATCHLEN];
+	knot_tcp_relay_t sweep_relays[XDP_BATCHLEN] = { 0 };
 	do {
 		knot_xdp_send_prepare(ctx->sock);
 
