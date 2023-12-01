@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``kdig`` – Advanced DNS lookup utility
 ======================================

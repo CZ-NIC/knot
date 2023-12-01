@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``kcatalogprint`` – Knot DNS catalog print utility
 ==================================================

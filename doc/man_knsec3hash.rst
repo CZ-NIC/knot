@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``knsec3hash`` – NSEC hash computation utility
 ==============================================

@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``kjournalprint`` – Knot DNS journal print utility
 ==================================================

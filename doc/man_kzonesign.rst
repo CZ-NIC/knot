@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``kzonesign`` – DNSSEC signing utility
 ======================================
