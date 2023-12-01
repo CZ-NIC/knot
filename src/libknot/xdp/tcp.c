@@ -177,6 +177,7 @@ static knot_tcp_conn_t **tcp_table_re_lookup(knot_tcp_conn_t *conn,
 
 static void rem_align_pointers(knot_tcp_conn_t *to_rem, knot_tcp_table_t *table)
 {
+	assert(tcp_conn_node(to_rem)->next != NULL);
 	if (to_rem == table->next_close) {
 		next_node_ptr(&table->next_close);
 	}
@@ -454,7 +455,8 @@ _public_
 int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
                         bool ignore_lastbyte, uint8_t *data, uint32_t len)
 {
-	if (relay == NULL || tcp_table == NULL || relay->conn == NULL) {
+	if (relay == NULL || tcp_table == NULL || relay->conn == NULL ||
+	    (relay->answer & XDP_TCP_FREE)) { // such conn is already removed from tcp_table, danger!
 		return KNOT_EINVAL;
 	}
 	int ret = knot_tcp_outbufs_add(&relay->conn->outbufs, data, len, ignore_lastbyte,
