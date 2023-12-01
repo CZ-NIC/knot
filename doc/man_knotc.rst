@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``knotc`` – Knot DNS control utility
 ====================================

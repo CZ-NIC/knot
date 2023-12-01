@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``khost`` – Simple DNS lookup utility
 =====================================

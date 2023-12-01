@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``kzonecheck`` – Knot DNS zone file checking tool
 =================================================

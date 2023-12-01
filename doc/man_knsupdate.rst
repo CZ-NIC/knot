@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``knsupdate`` – Dynamic DNS update utility
 ==========================================
