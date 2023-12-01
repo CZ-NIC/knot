@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/types.h>
+
+#define LMDB_DIR_MODE   0770
+#define LMDB_FILE_MODE  0660
 
 /*!
  * Gets the absolute path.

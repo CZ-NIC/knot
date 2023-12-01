@@ -31,8 +31,6 @@
 #include "libknot/error.h"
 
 #define READER_LOCK_CLEAN_MAX_FREQ 3 // minimal interval between reader-lock-table cleanups
-#define LMDB_DIR_MODE   0770
-#define LMDB_FILE_MODE  0660
 
 static void err_to_knot(int *err)
 {
