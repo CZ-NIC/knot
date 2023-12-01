@@ -2050,7 +2050,7 @@ rrsig-refresh
 A period how long at least before a signature expiration the signature will be refreshed,
 in order to prevent expired RRSIGs on secondary servers or resolvers' caches.
 
-*Default:* :ref:`policy_propagation-delay` + :ref:`policy_zone-max-ttl`
+*Default:* 0.1 * :ref:`policy_rrsig-lifetime` + :ref:`policy_propagation-delay` + :ref:`policy_zone-max-ttl`
 
 .. _policy_rrsig-pre-refresh:
 
