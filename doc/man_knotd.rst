@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``knotd`` – Knot DNS server daemon
 ==================================

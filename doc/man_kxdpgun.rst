@@ -1,4 +1,4 @@
-.. highlight:: console
+.. highlight:: none
 
 ``kxdpgun`` – DNS benchmarking tool
 ===================================
