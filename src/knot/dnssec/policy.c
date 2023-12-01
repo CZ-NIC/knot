@@ -41,8 +41,13 @@ void update_policy_from_zone(knot_kasp_policy_t *policy,
 	if (policy->zone_maximal_ttl == UINT32_MAX) {
 		policy->zone_maximal_ttl = zone->max_ttl;
 		if (policy->rrsig_refresh_before == UINT32_MAX) {
-			policy->rrsig_refresh_before = policy->propagation_delay +
-			                               policy->zone_maximal_ttl;
+			uint32_t min = policy->propagation_delay +
+			               policy->zone_maximal_ttl;
+			uint32_t reserve = 0.1 * policy->rrsig_lifetime;
+			policy->rrsig_refresh_before = MIN(
+				policy->rrsig_lifetime - policy->rrsig_prerefresh - 1,
+				min + reserve
+			);
 		}
 	}
 	if (policy->saved_max_ttl == 0) { // possibly not set yet
