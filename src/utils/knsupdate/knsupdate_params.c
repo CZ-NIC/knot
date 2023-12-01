@@ -26,6 +26,7 @@
 #include "utils/common/netio.h"
 #include "libknot/libknot.h"
 #include "libknot/tsig.h"
+#include "contrib/base64.h"
 #include "contrib/mempattern.h"
 #include "contrib/strtonum.h"
 #include "contrib/ucw/mempool.h"
@@ -90,6 +91,8 @@ static int knsupdate_init(knsupdate_params_t *params)
 	init_list(&params->update_list);
 	init_list(&params->prereq_list);
 
+	tls_params_init(&params->tls_params);
+
 	/* Initialize memory context. */
 	mm_ctx_mempool(&params->mm, MM_DEFAULT_BLKSIZE);
 
@@ -142,6 +145,9 @@ void knsupdate_clean(knsupdate_params_t *params)
 	knot_pkt_free(params->answer);
 	knot_tsig_key_deinit(&params->tsig_key);
 
+	tls_params_clean(&params->tls_params);
+	quic_params_clean(&params->quic_params);
+
 	/* Clean up the structure. */
 	mp_delete(params->mm.ctx);
 	memset(params, 0, sizeof(*params));
@@ -172,9 +178,30 @@ void knsupdate_reset(knsupdate_params_t *params)
 
 static void print_help(void)
 {
-	printf("Usage: %s [-h | -V] [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
-	       "                 [-p port] [-t timeout] [-r retries] [filename]\n",
-	       PROGRAM_NAME);
+	printf("Usage:\n"
+	       " %s [-v] [options] [filename]\n"
+	       " %s [-q] [quic_options] [options] [filename]\n"
+	       "\n"
+	       "Options:\n"
+	       "  -v, --tcp              Use TCP protocol.\n"
+	       "  -q, --quic             Use QUIC protocol.\n"
+	       "  -p, --port <num>       Remote port.\n"
+	       "  -r, --retry <num>      Number of retries over UDP.\n"
+	       "  -t, --timeout <num>    Update timeout.\n"
+	       "  -y, --tsig <str>       TSIG key in the form [alg:]name:key.\n"
+	       "  -k, --tsigfile <path>  Path to a TSIG key file.\n"
+	       "  -d, --debug            Debug mode output.\n"
+	       "  -h, --help             Print the program help.\n"
+	       "  -V, --version          Print the program version.\n"
+	       "\n"
+	       "QUIC options:\n"
+	       "  -H, --hostname <str>   Remote hostname.\n"
+	       "  --pin <base64>         Certificate key PIN.\n"
+	       "  --ca <path>            Path to a CA file.\n"
+	       "  --certfile <path>      Path to a client certificate file.\n"
+	       "  --keyfile <path>       Path to a client key file.\n"
+	       "  --sni <str>            Remote SNI.\n",
+	       PROGRAM_NAME, PROGRAM_NAME);
 }
 
 int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
@@ -188,20 +215,40 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 		return ret;
 	}
 
-	// Long options.
+	enum {
+		PIN = 1000,
+		CA,
+		CERTFILE,
+		KEYFILE,
+		SNI,
+	};
+
 	struct option opts[] = {
-		{ "help",    no_argument,       NULL, 'h' },
-		{ "version", optional_argument, NULL, 'V' },
+		{ "debug",    no_argument,       NULL, 'd' },
+		{ "help",     no_argument,       NULL, 'h' },
+		{ "tcp",      no_argument,       NULL, 'v' },
+		{ "quic",     no_argument,       NULL, 'q' },
+		{ "version",  optional_argument, NULL, 'V' },
+		{ "port",     required_argument, NULL, 'p' },
+		{ "retry",    required_argument, NULL, 'r' },
+		{ "timeout",  required_argument, NULL, 't' },
+		{ "tsig",     required_argument, NULL, 'y' },
+		{ "tsigfile", required_argument, NULL, 'k' },
+		{ "hostname", required_argument, NULL, 'H' },
+		{ "pin",      required_argument, NULL, PIN },
+		{ "ca",       optional_argument, NULL, CA },
+		{ "certfile", required_argument, NULL, CERTFILE },
+		{ "keyfile",  required_argument, NULL, KEYFILE },
+		{ "sni",      required_argument, NULL, SNI },
 		{ NULL }
 	};
 
-	/* Command line options processing. */
+	bool default_port = true;
+
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "dhDvV::p:t:r:y:k:", opts, NULL))
-	       != -1) {
+	while ((opt = getopt_long(argc, argv, "dhvqV::p:r:t:y:k:H:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'd':
-		case 'D': /* Extra debugging. */
 			msg_enable_debug(1);
 			break;
 		case 'h':
@@ -211,17 +258,25 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 		case 'v':
 			params->protocol = PROTO_TCP;
 			break;
+		case 'q':
+			params->protocol = PROTO_UDP;
+
+			params->tls_params.enable = true;
+			params->quic_params.enable = true;
+
+			if (default_port) {
+				free(params->server->service);
+				params->server->service = strdup(DEFAULT_DNS_QUIC_PORT);
+			}
+			break;
 		case 'V':
 			print_version(PROGRAM_NAME, optarg != NULL);
 			params->stop = true;
 			return KNOT_EOK;
 		case 'p':
+			default_port = false;
 			free(params->server->service);
 			params->server->service = strdup(optarg);
-			if (!params->server->service) {
-				ERR("failed to set default port '%s'", optarg);
-				return KNOT_ENOMEM;
-			}
 			break;
 		case 'r':
 			ret = str_to_u32(optarg, &params->retries);
@@ -241,7 +296,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			knot_tsig_key_deinit(&params->tsig_key);
 			ret = knot_tsig_key_init_str(&params->tsig_key, optarg);
 			if (ret != KNOT_EOK) {
-				ERR("failed to parse key '%s'", optarg);
+				ERR("failed to parse TSIG key '%s'", optarg);
 				return ret;
 			}
 			break;
@@ -249,9 +304,58 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			knot_tsig_key_deinit(&params->tsig_key);
 			ret = knot_tsig_key_init_file(&params->tsig_key, optarg);
 			if (ret != KNOT_EOK) {
-				ERR("failed to parse keyfile '%s'", optarg);
+				ERR("failed to parse TSIG keyfile '%s'", optarg);
 				return ret;
 			}
+			break;
+		case 'H':
+			free(params->tls_params.hostname);
+			params->tls_params.hostname = strdup(optarg);
+			break;
+		case PIN:;
+			uint8_t pin[64] = { 0 };
+			ret = knot_base64_decode((const uint8_t *)optarg, strlen(optarg), pin, sizeof(pin));
+			if (ret < 0) {
+				ERR("invalid certificate pin %s", optarg);
+				return ret;
+			} else if (ret != CERT_PIN_LEN) { // Check for 256-bit value.
+				ERR("invalid SHA256 hash length of certificate pin %s", optarg);
+				return KNOT_EINVAL;
+			}
+
+			uint8_t *item = malloc(1 + ret); // 1 ~ leading data length.
+			if (item == NULL) {
+				return KNOT_ENOMEM;
+			}
+			item[0] = ret;
+			memcpy(&item[1], pin, ret);
+
+			if (ptrlist_add(&params->tls_params.pins, item, NULL) == NULL) {
+				return KNOT_ENOMEM;
+			}
+
+			break;
+		case CA:
+			if (optarg == NULL) {
+				params->tls_params.system_ca = true;
+				break;
+			}
+			if (ptrlist_add(&params->tls_params.ca_files, strdup(optarg), NULL) == NULL) {
+				ERR("failed to set CA file '%s'", optarg);
+				return KNOT_ENOMEM;
+			}
+			break;
+		case CERTFILE:
+			free(params->tls_params.certfile);
+			params->tls_params.certfile = strdup(optarg);
+			break;
+		case KEYFILE:
+			free(params->tls_params.keyfile);
+			params->tls_params.keyfile = strdup(optarg);
+			break;
+		case SNI:
+			free(params->tls_params.sni);
+			params->tls_params.sni = strdup(optarg);
 			break;
 		default:
 			print_help();
@@ -259,8 +363,8 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 		}
 	}
 
-	/* No retries for TCP. */
-	if (params->protocol == PROTO_TCP) {
+	/* Retries only for UDP. */
+	if (params->protocol == PROTO_TCP || params->quic_params.enable) {
 		params->retries = 0;
 	} else {
 		/* If wait/tries < 1 s, set 1 second for each try. */
@@ -277,7 +381,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 		ptrlist_add(&params->qfiles, argv[optind], &params->mm);
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 int knsupdate_set_ttl(knsupdate_params_t *params, const uint32_t ttl)

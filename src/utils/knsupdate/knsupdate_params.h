@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,7 +20,9 @@
 
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
+#include "utils/common/quic.h"
 #include "utils/common/sign.h"
+#include "utils/common/tls.h"
 #include "libknot/libknot.h"
 #include "libzscanner/scanner.h"
 #include "contrib/ucw/lists.h"
@@ -63,6 +65,10 @@ typedef struct {
 	style_t		style;
 	/*!< Memory context. */
 	knot_mm_t	mm;
+	/*!< TLS params. */
+	tls_params_t	tls_params;
+	/*!< QUIC params. */
+	quic_params_t	quic_params;
 } knsupdate_params_t;
 
 int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[]);

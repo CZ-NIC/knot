@@ -6,7 +6,9 @@
 Synopsis
 --------
 
-:program:`knsupdate` [*options*] [*filename*]
+:program:`knsupdate` [**-v**] [*options*] [*filename*]
+
+:program:`knsupdate` [**-q**] [*quic_options*] [*options*] [*filename*]
 
 Description
 -----------
@@ -28,39 +30,67 @@ Parameters
 Options
 .......
 
-**-d**
+**-v**, **--tcp**
+  Use a TCP connection.
+
+**-q**, **--quic**
+  Use a QUIC connection.
+
+**-p**, **--port** *number*
+  Set the port to use for connections to the server (if not explicitly specified
+  in the update). The default is 53 for UDP/TCP or 853 for QUIC.
+
+**-r**, **--retry** *count*
+  The number of retries for UDP requests. The default is 3.
+
+**-t**, **--timeout** *seconds*
+  The total timeout (for all UDP update tries) of the update request in seconds.
+  The default is 12. If set to zero, the timeout is infinite.
+
+**-y**, **--tsig** [*alg*:]\ *name*:*key*
+  Use the TSIG key with a name *name* to authenticate the request. The *alg*
+  part specifies the algorithm (the default is hmac-sha256) and *key* specifies
+  the shared secret encoded in Base64.
+
+**-k**, **--tsigfile** *path*
+  Use the TSIG key stored in a file *keyfile* to authenticate the request. The
+  file should contain the key in the same format, which is accepted by the
+  **-y** option.
+
+**-d**, **--debug**
   Enable debug messages.
 
 **-h**, **--help**
   Print the program help.
 
-**-k** *keyfile*
-  Use the TSIG key stored in a file *keyfile* to authenticate the request. The
-  file should contain the key in the same format, which is accepted by the
-  **-y** option.
-
-**-p** *port*
-  Set the port to use for connections to the server (if not explicitly specified
-  in the update). The default is 53.
-
-**-r** *retries*
-  The number of retries for UDP requests. The default is 3.
-
-**-t** *timeout*
-  The total timeout (for all UDP update tries) of the update request in seconds.
-  The default is 12. If set to zero, the timeout is infinite.
-
-**-v**
-  Use a TCP connection.
-
 **-V**, **--version**
   Print the program version. The option **-VV** makes the program
   print the compile time configuration summary.
 
-**-y** [*alg*:]\ *name*:*key*
-  Use the TSIG key with a name *name* to authenticate the request. The *alg*
-  part specifies the algorithm (the default is hmac-sha256) and *key* specifies
-  the shared secret encoded in Base64.
+QUIC options
+............
+
+**-H**, **--hostname** *string*
+  Enable remote server hostname validation.
+
+**--pin** *base64*
+  Use Out-of-Band key-pinned privacy profile
+  (RFC 7858#section-4.2). The PIN must be a Base64 encoded SHA-256 hash of the
+  X.509 SubjectPublicKeyInfo. Can be specified multiple times.
+
+**--ca** *path*
+  Enable certificate validation. Certification authority certificates
+  are loaded from the specified PEM file (default is system certificate storage
+  if no argument is provided). Can be specified multiple times.
+
+**--certfile** *path*
+  Path to a client certificate file.
+
+**--keyfile** *path*
+  Path to a client key file.
+
+**--sni** *string*
+  Use specified Server Name Indication.
 
 Commands
 ........
