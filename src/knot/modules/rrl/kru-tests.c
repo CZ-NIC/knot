@@ -64,73 +64,96 @@ void test_choose_4_15() {
 
 struct test_ctx {
 	struct kru *kru;
-	uint32_t time;
-	uint32_t price;
-	size_t cnt;
-	struct test_cat {
+	uint32_t time;        // last time
+	uint32_t begin_time;  // time when stats were cleared
+	uint32_t price;       // price of all queries
+	size_t cnt;           // count of categories
+	struct test_cat {     // categories of users
 		char *name;
-		uint64_t id_min, id_max;
-	} *cats;  // categories
+		uint64_t id_min, id_max;  // there is (id_max - id_min + 1) unique users in the category
+		uint64_t freq;            // number of queries per tick from the category (each from random user)
+		uint64_t passed, total;   // accumulating statistic variables
+	} *cats;
 };
 
-void test_stage(struct test_ctx *ctx, uint32_t dur, uint64_t *freq) {
-	printf("STAGE: ");
-	for (size_t cat = 0; cat < ctx->cnt; ++cat) {
-		printf("%" PRIu64 ", ", freq[cat]);
-	}
-	printf("ticks %" PRIu32 "-%" PRIu32 "\n", ctx->time, ctx->time + dur - 1);
-
+void test_stage(struct test_ctx *ctx, uint32_t dur) {
 	uint64_t freq_bounds[ctx->cnt];
-	freq_bounds[0] = freq[0];
+	freq_bounds[0] = ctx->cats[0].freq;
 	for (size_t cat = 1; cat < ctx->cnt; ++cat) {
-		freq_bounds[cat] = freq_bounds[cat-1] + freq[cat];
-	}
-
-	uint64_t cat_passed[ctx->cnt], cat_total[ctx->cnt];
-	for (size_t cat = 0; cat < ctx->cnt; ++cat) {
-		cat_passed[cat] = 0;
-		cat_total[cat] = 0;
+		freq_bounds[cat] = freq_bounds[cat-1] + ctx->cats[cat].freq;
 	}
 
 	for (uint64_t end_time = ctx->time + dur; ctx->time < end_time; ctx->time++) {
 		for (uint64_t i = 0; i < freq_bounds[ctx->cnt-1]; i++) {
-			long rnd = random() % freq_bounds[ctx->cnt-1];  // TODO initialize random generator
+			uint64_t rnd = random() % freq_bounds[ctx->cnt-1];  // TODO initialize random generator
 			size_t cat;
 			for (cat = 0; freq_bounds[cat] <= rnd; cat++);
 
 			uint64_t id = random() % (ctx->cats[cat].id_max - ctx->cats[cat].id_min + 1) + ctx->cats[cat].id_min;
 
-			cat_total[cat]++;
-			cat_passed[cat] += !kru_limited(ctx->kru, &id, sizeof(id), ctx->time, ctx->price);
+			ctx->cats[cat].total++;
+			ctx->cats[cat].passed += !kru_limited(ctx->kru, &id, sizeof(id), ctx->time, ctx->price);
 		}
 	}
-	for (size_t cat = 0; cat < ctx->cnt; ++cat) {
-		printf("  %-15s:  %8.2f /%10.2f per tick, %8" PRIu64 " /%10" PRIu64 " in total, %8.4f %% passed \n",
-				ctx->cats[cat].name,
-				(float)cat_passed[cat] / dur, (float)cat_total[cat] / dur,
-				cat_passed[cat], cat_total[cat],
-				100.0 * cat_passed[cat] / cat_total[cat]);
-	}
-	printf("\n");
 }
 
-#define TEST_STAGE(duration, ...) test_stage(&ctx, duration, (uint64_t[]) {__VA_ARGS__});
+void test_clear_stats(struct test_ctx *ctx) {
+	for (size_t i = 0; i < ctx->cnt; i++) {
+		ctx->cats[i].passed = 0;
+		ctx->cats[i].total = 0;
+	}
+	ctx->begin_time = ctx->time;
+}
 
-void test(void) { // TODO more descriptive name
+void test_print_stats(struct test_ctx *ctx) {
+	printf("TICKS %" PRIu32 "-%" PRIu32, ctx->begin_time, ctx->time - 1);
+
+	int price_log = 0;
+	for (uint32_t price = ctx->price; price >>= 1; price_log++);
+	if (ctx->price == (1 << price_log)) {
+		printf(", price 2^%d\n", price_log);
+	} else {
+		printf(", price 0x%x\n", ctx->price);
+	}
+
+	uint32_t dur = ctx->time - ctx->begin_time;
+	for (size_t cat = 0; cat < ctx->cnt; ++cat) {
+		uint64_t users = ctx->cats[cat].id_max - ctx->cats[cat].id_min + 1;
+		char name_users[30];
+		snprintf(name_users, sizeof(name_users), "%s (%" PRIu64 "):", ctx->cats[cat].name, users);
+
+		printf("  %-25spassed: %8.4f %%,    per tick:%11.2f /%11.2f,    per tick and user:%8.2f /%10.2f\n",
+				name_users,
+				100.0 * ctx->cats[cat].passed / ctx->cats[cat].total,
+				(float)ctx->cats[cat].passed / dur,         (float)ctx->cats[cat].total / dur,
+				(float)ctx->cats[cat].passed / dur / users, (float)ctx->cats[cat].total / dur / users);
+	}
+	printf("\n");
+
+	test_clear_stats(ctx);
+}
+
+#define TEST_STAGE(duration, ...) { \
+	uint64_t freq[] = {__VA_ARGS__}; \
+	for (size_t i = 0; i < sizeof(cats) / sizeof(*cats); i++) cats[i].freq = freq[i]; \
+	test_stage(&ctx, duration); \
+	test_print_stats(&ctx); }
+
+void test_single_attacker(void) {
 	struct kru *kru = kru_init(16);
 
 	struct test_cat cats[] = {
 		{ "normal",       1,1000  },   // normal queries come from 1000 different addreses indexed 1-1000
-		{ "attackers", 1001,1001  }    // attackers use only two adresses indexed 1001,1002
+		{ "attackers", 1001,1001  }    // attacker use only one address indexed 1001
 	};
 
-	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(struct test_cat),
+	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(*cats),
 		.price = 1<<23  // same price for all packets
 	};
+	test_clear_stats(&ctx);
 
-	// in each out of 10 ticks send around 1000 queries from random normal addresses and 500000 from each of the two attackers
-	TEST_STAGE( 1,     1000, 1000000); // (duration, normal, attackers)
-	TEST_STAGE( 10,    1000, 1000000);
+	// in each out of 10 ticks send around 1000 queries from random normal addresses and 1000000 from the attacker
+	TEST_STAGE( 10,    1000, 1000000); // (duration, normal, attackers)
 
 	TEST_STAGE( 10,    1000, 1000000);
 	TEST_STAGE( 100,   1000, 100000);
@@ -138,21 +161,49 @@ void test(void) { // TODO more descriptive name
 	TEST_STAGE( 100,   1000, 1000);
 	TEST_STAGE( 100,   1000, 100);
 	TEST_STAGE( 100,   1000, 10);
-	TEST_STAGE( 10000, 1000, 2);  // both categories have the same frequency per individual
+	TEST_STAGE( 10000, 1000, 1);  // both categories have the same frequency per user
 
-	TEST_STAGE( 100,   1000, 10000); // another attack after period without limitation
+	TEST_STAGE( 100,   1000, 10000); // another attack after a period without limitation
 
 	kru_destroy(kru);
 }
 
 #undef TEST_STAGE
 
+void test_multi_attackers(void) {
+	struct kru *kru = kru_init(16);
+
+	struct test_cat cats[] = {
+		{ "normal",         1,100000,  100000 },   // 100000 normal queries per tick, ~1 per user
+		{ "attackers", 100001,100001,  10     }    // 1 attacker, 10 queries per tick; both will rise by the same factor
+	};
+
+	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(*cats),
+		.price = 1<<25  // same price for all packets
+	};
+	test_clear_stats(&ctx);
+
+	for (size_t i = 0; i < 17; i++) {
+		// hidden ticks with new setting, not counted to stats
+		test_stage(&ctx, 10);
+		test_clear_stats(&ctx);
+
+		// counted ticks
+		test_stage(&ctx, 10);
+		test_print_stats(&ctx);
+
+		// double attackers, keep the same number of queries per attacker
+		cats[1].id_max += cats[1].id_max - cats[1].id_min + 1;  // new ids were unused so far
+		cats[1].freq *= 2;
+	}
+
+	kru_destroy(kru);
+}
 
 int main(int argc, char **argv)
 {
-	//test_choose_4_15();
-
-	test();
+	// test_single_attacker();
+	test_multi_attackers();
 
 	// struct kru kru __attribute__((unused));
 	// test_decay32();
