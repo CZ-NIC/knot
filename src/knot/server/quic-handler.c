@@ -155,11 +155,19 @@ int uq_send_sweep(struct knot_quic_reply *r)
 		       sizeof(struct in6_addr));
 	} else {
 		cmsg.cmsg.cmsg_level = IPPROTO_IP;
+#if defined(IP_PKTINFO)
 		cmsg.cmsg.cmsg_type = IP_PKTINFO;
 		cmsg.cmsg.cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
 		memcpy(&((struct in_pktinfo *)CMSG_DATA(&cmsg.cmsg))->ipi_addr,
 		       &((const struct sockaddr_in *)r->ip_loc)->sin_addr,
 		       sizeof(struct in_addr));
+#elif defined(IP_SENDSRCADDR)
+		cmsg.cmsg.cmsg_type = IP_SENDSRCADDR;
+		cmsg.cmsg.cmsg_len = CMSG_LEN(sizeof(struct in_addr));
+		memcpy((struct in_addr *)CMSG_DATA(&cmsg),
+		       &((const struct sockaddr_in *)r->ip_loc)->sin_addr,
+		       sizeof(struct in_addr));
+#endif
 	} // this only says "send it with given outgoing IP address"
 
 	assert(r->ip_rem != NULL);
