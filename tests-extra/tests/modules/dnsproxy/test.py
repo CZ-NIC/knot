@@ -133,6 +133,12 @@ fallback_checks(local, zone_local[0], zone_remote[0], nxdomain=True)
 resp = local.dig("remote.test", "A")
 resp.check(rcode="NOERROR", flags="AA", rdata="1.1.1.2")
 
+# Remote not available, responded locally.
+remote.stop()
+resp = local.dig("remote.test", "A")
+resp.check(rcode="NXDOMAIN", flags="AA")
+remote.start()
+
 ### Per zone, fallback
 
 local.clear_modules(None)
@@ -150,5 +156,10 @@ if not is_subzone(zone_remote[0], zone_local[0]):
     resp.check(rcode="REFUSED", noflags="AA")
 else:
     resp.check(rcode="NXDOMAIN", flags="AA")
+
+# Remote not available, responded locally.
+remote.stop()
+resp = local.dig("dns1.test", "A")
+resp.check(rcode="NOERROR", flags="AA", rdata="192.0.2.1", nordata="192.0.2.2")
 
 t.end()
