@@ -279,6 +279,9 @@ int process_cmd(int argc, const char **argv, params_t *params)
 	if (args.blocking) {
 		strlcat(args.flags, CTL_FLAG_BLOCKING, sizeof(args.flags));
 	}
+	if (args.json) {
+		strlcat(args.flags, CTL_FLAG_STATUS_UNIXTIME, sizeof(args.flags));
+	}
 
 	/* Set control interface if necessary. */
 	int cmd_timeout = params->timeout != -1 ? params->timeout : DEFAULT_CTL_TIMEOUT_MS;
