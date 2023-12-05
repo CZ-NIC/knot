@@ -70,9 +70,16 @@ static node_t *tcp_conn_node(knot_tcp_conn_t *conn)
 	return (node_t *)&conn->list_node_placeholder;
 }
 
+static bool conn_removed(knot_tcp_conn_t *conn)
+{
+	return tcp_conn_node(conn)->next == NULL;
+}
+
 static void next_node_ptr(knot_tcp_conn_t **ptr)
 {
 	if (*ptr != NULL) {
+		assert(!conn_removed(*ptr));
+
 		*ptr = (*ptr)->list_node_placeholder.list_node_next;
 		if ((*ptr)->list_node_placeholder.list_node_next == NULL) { // detected tail of list
 			*ptr = NULL;
@@ -174,6 +181,7 @@ static knot_tcp_conn_t **tcp_table_re_lookup(knot_tcp_conn_t *conn,
 
 static void rem_align_pointers(knot_tcp_conn_t *to_rem, knot_tcp_table_t *table)
 {
+	assert(!conn_removed(to_rem));
 	if (to_rem == table->next_close) {
 		next_node_ptr(&table->next_close);
 	}
@@ -451,7 +459,7 @@ _public_
 int knot_tcp_reply_data(knot_tcp_relay_t *relay, knot_tcp_table_t *tcp_table,
                         bool ignore_lastbyte, uint8_t *data, uint32_t len)
 {
-	if (relay == NULL || tcp_table == NULL || relay->conn == NULL) {
+	if (relay == NULL || tcp_table == NULL || relay->conn == NULL || conn_removed(relay->conn)) {
 		return KNOT_EINVAL;
 	}
 	int ret = knot_tcp_outbufs_add(&relay->conn->outbufs, data, len, ignore_lastbyte,
@@ -727,8 +735,15 @@ void knot_tcp_cleanup(knot_tcp_table_t *tcp_table, knot_tcp_relay_t relays[],
 	(void)tcp_table;
 	for (uint32_t i = 0; i < relay_count; i++) {
 		if (relays[i].answer & XDP_TCP_FREE) {
+			assert(conn_removed(relays[i].conn));
+			assert(relays[i].conn != tcp_table->next_close);
+			assert(relays[i].conn != tcp_table->next_ibuf);
+			assert(relays[i].conn != tcp_table->next_obuf);
+			assert(relays[i].conn != tcp_table->next_resend);
+
 			del_conn(relays[i].conn);
 		}
 		free(relays[i].inbf);
 	}
+	memset(relays, 0, relay_count * sizeof(relays[0]));
 }
