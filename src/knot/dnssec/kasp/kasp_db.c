@@ -596,10 +596,10 @@ int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t 
 {
 	size_t n_prefs = zone_related_classes_size + 1; // NOTE: this and following must match number of record types
 	MDB_val prefixes[n_prefs];
-	prefixes[0] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST); // we copy all policy-last records, that doesn't harm
-	for (size_t i = 1; i < n_prefs; i++) {
-		prefixes[i] = make_key_str(zone_related_classes[i - 1], zone, NULL);
+	for (size_t i = 0; i < n_prefs - 1; i++) {
+		prefixes[i] = make_key_str(classes[i], zone, NULL);
 	}
+	prefixes[n_prefs] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST); // we copy all policy-last records, that doesn't harm
 
 	int ret = knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs);
 
