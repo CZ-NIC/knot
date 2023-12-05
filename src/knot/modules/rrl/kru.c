@@ -183,10 +183,16 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 		hash >>= 1;
 		int32_t * const load = &l_c[i];
 		if (__builtin_add_overflow(*load, sign * (int32_t)price, load)) {
-			if (++over_limit > TABLE_COUNT * LOADS_LEN / 2)
-				return true; // TODO: equality?
+			++over_limit;
 			*load = sign * (int32_t)((1ull<<31) - 1);
+		} else {
+			if ((sign > 0 && *load > (1<<30)) ||
+			    (sign < 0 && *load < -(1<<30))) {
+				++over_limit;
+			}
 		}
+		if (over_limit > TABLE_COUNT * LOADS_LEN / 2)
+			return true; // TODO: equality?
 	}
 	// Not limited, so copy the updated loads back.
 	for (int li = 0; li < TABLE_COUNT; ++li)
