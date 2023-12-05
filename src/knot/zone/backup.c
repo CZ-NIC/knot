@@ -379,6 +379,31 @@ done:
 	return ret;
 }
 
+static int backup_kaspdb(zone_backup_ctx_t *ctx, conf_t *conf, zone_t *zone,
+                         int (*kaspdb_backup_cb)(const knot_dname_t *zone,
+                                                 knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db))
+{
+	knot_lmdb_db_t *kasp_from = zone_kaspdb(zone), *kasp_to = &ctx->bck_kasp_db;
+	BACKUP_SWAP(ctx, kasp_from, kasp_to);
+
+	if (knot_lmdb_exists(kasp_from) != KNOT_ENODB) {
+		int ret = kaspdb_backup_cb(zone->name, kasp_from, kasp_to);
+		if (ret != KNOT_EOK) {
+			LOG_MARK_FAIL("KASP database");
+			return ret;
+		}
+
+		ret = backup_keystore(conf, zone, ctx);
+		if (ret != KNOT_EOK) {
+			// Errors already logged in detail.
+			ctx->failed = true;
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 int zone_backup(conf_t *conf, zone_t *zone)
 {
 	zone_backup_ctx_t *ctx = zone->backup_ctx;
@@ -397,21 +422,10 @@ int zone_backup(conf_t *conf, zone_t *zone)
 	}
 
 	if (ctx->backup_kaspdb) {
-		knot_lmdb_db_t *kasp_from = zone_kaspdb(zone), *kasp_to = &ctx->bck_kasp_db;
-		BACKUP_SWAP(ctx, kasp_from, kasp_to);
-
-		if (knot_lmdb_exists(kasp_from) != KNOT_ENODB) {
-			ret = kasp_db_backup(zone->name, kasp_from, kasp_to);
-			if (ret != KNOT_EOK) {
-				LOG_MARK_FAIL("KASP database");
-				return ret;
-			}
-
-			ret = backup_keystore(conf, zone, ctx);
-			if (ret != KNOT_EOK) {
-				ctx->failed = true;
-				return ret;
-			}
+		ret = backup_kaspdb(ctx, conf, zone, kasp_db_backup);
+		if (ret != KNOT_EOK) {
+			// Errors already logged in detail.
+			return ret;
 		}
 	}
 
