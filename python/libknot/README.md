@@ -88,6 +88,21 @@ finally:
         print(zone)
 ```
 
+```python3
+    # Print expirations as unixtime for all secondary zones
+    ctl.send_block(cmd="zone-status", flags="u")
+    resp = ctl.receive_block()
+    for zone in resp:
+        if resp[zone]["role"] == "master":
+            continue
+
+        expiration = resp[zone]["expiration"]
+        if expiration == "-":
+            print("Zone %s not loaded" % zone)
+        else:
+            print("Zone %s expires at %s" % (zone, resp[zone]["expiration"]))
+```
+
 ## Probe module
 
 Using this module it's possible to receive traffic data from a running daemon with
