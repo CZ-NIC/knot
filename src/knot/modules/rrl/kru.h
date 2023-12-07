@@ -10,6 +10,9 @@
 #elif defined(KRU_IMPL_median16bit_simd)
 #define KRU_IMPL_FILE "knot/modules/rrl/kru_median16bit_simd.c"
 
+#elif defined(KRU_IMPL_ss16bit)
+#define KRU_IMPL_FILE "knot/modules/rrl/kru_ss16bit.c"
+
 #else // default
 #warning Using min32bit as KRU implementation.
 #define KRU_IMPL_min32bit
