@@ -279,7 +279,9 @@ void knot_qreq_close(struct knot_quic_reply *r, bool send_close)
 
 	knot_quic_table_rem(conn, table);
 	knot_quic_cleanup(&conn, 1);
-	knot_quic_free_creds(table->creds);
+	if (table != NULL) {
+		knot_quic_free_creds(table->creds);
+	}
 	knot_quic_table_free(table);
 	free(r);
 }
