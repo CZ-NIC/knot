@@ -908,6 +908,10 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	ngtcp2_version_cid decoded_cids = { 0 };
 	ngtcp2_cid scid = { 0 }, dcid = { 0 }, odcid = { 0 };
 	uint64_t now = get_timestamp();
+	if (reply->in_payload->iov_len < 1) {
+		reply->handle_ret = KNOT_EOK;
+		return KNOT_EOK;
+	}
 	int ret = ngtcp2_pkt_decode_version_cid(&decoded_cids,
 	                                        reply->in_payload->iov_base,
 	                                        reply->in_payload->iov_len,
