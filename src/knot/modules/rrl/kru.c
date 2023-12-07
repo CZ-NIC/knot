@@ -4,10 +4,14 @@ FIXME: clean up.  Lots of comments in the file are wrong now, etc.
 
 KRU estimates recently pricey inputs
 
-Authors of the simple agorithm (without aging, etc.):
+Authors of the simple agorithm (without aging, multi-choice, etc.):
   Metwally, D. Agrawal, and A. E. Abbadi.
   Efficient computation of frequent and top-k elements in data streams.
   In International Conference on Database Theory, 2005.
+
+With TABLE_COUNT > 1 we're improving reliability by utilizing the property that
+longest buckets (cache-lines) get very much shortened, already by providing two choices:
+  https://en.wikipedia.org/wiki/2-choice_hashing
 
 The point is to answer point-queries that estimate if the item has been heavily used recently.
 To give more weight to recent usage, we use aging via exponential decay (simple to compute).
@@ -137,7 +141,7 @@ struct kru {
 	/// Hashing secret.  Random but shared by all users of the table.
 	SIPHASH_KEY hash_key;  // TODO use or remove
 
-	#define TABLE_COUNT 1
+	#define TABLE_COUNT 2
 	/// These are read-write.  Each struct has exactly one cache line.
 	struct load_cl load_cls[][TABLE_COUNT];
 };
@@ -166,35 +170,42 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 	uint64_t hash = SipHash24(&kru->hash_key, buf, buf_len);
 	assert(sizeof(hash) * 8 >= TABLE_COUNT * (kru->loads_bits + 16));
 
-	// Choose the cache-line to operate on
-	static_assert(TABLE_COUNT == 1);
-	struct load_cl *lcl;
+	// Choose the cache-lines to operate on
+	struct load_cl *l[TABLE_COUNT];
 	const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
-	lcl = &kru->load_cls[hash & loads_mask][0];
-	hash >>= kru->loads_bits;
-	update_time(lcl, time_now, &DECAY_32);
+	for (int li = 0; li < TABLE_COUNT; ++li) {
+		l[li] = &kru->load_cls[hash & loads_mask][li];
+		hash >>= kru->loads_bits;
+		update_time(l[li], time_now, &DECAY_32);
+	}
 
-	uint16_t id = hash;
+	uint16_t id = hash; // TODO: really share the same in all tables?
 	hash >>= 16;
 
 	// Find matching element.  Matching 16 bits in addition to loads_bits.
-	for (int i = 0; i < LOADS_LEN; ++i) if (lcl->ids[i] == id) {
-		uint16_t * const load = &lcl->loads[i];
-		if (__builtin_add_overflow(*load, price, load)) {
-			*load = (1<<16) - 1;
-			return true;
-		} else {
-			return false;
-		}
-	}
+	for (int li = 0; li < TABLE_COUNT; ++li)
+		for (int i = 0; i < LOADS_LEN; ++i)
+			if (l[li]->ids[i] == id) {
+				uint16_t * const load = &l[li]->loads[i];
+				if (__builtin_add_overflow(*load, price, load)) {
+					*load = (1<<16) - 1;
+					return true;
+				} else {
+					return false;
+				}
+			}
 
 	// Find the smallest count and replace it.
+	int min_li = 0;
 	int min_i = 0;
-	for (int i = 1; i < LOADS_LEN; ++i)
-		if (lcl->loads[i] < lcl->loads[min_i])
-			min_i = i;
-	lcl->ids[min_i] = id;
-	uint16_t * const load = &lcl->loads[min_i];
+	for (int li = 0; li < TABLE_COUNT; ++li)
+		for (int i = 0; i < LOADS_LEN; ++i)
+			if (l[li]->loads[i] < l[min_li]->loads[min_i]) {
+				min_li = li;
+				min_i = i;
+			}
+	l[min_li]->ids[min_i] = id;
+	uint16_t * const load = &l[min_li]->loads[min_i];
 	if (__builtin_add_overflow(*load, price, load))
 		*load = (1<<16) - 1;
 	return false; // Let's not limit it, though its questionable.

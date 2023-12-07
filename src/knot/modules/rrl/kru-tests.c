@@ -130,7 +130,7 @@ void test_single_attacker(void) {
 #undef TEST_STAGE
 
 void test_multi_attackers(void) {
-	struct kru *kru = kru_init(16);
+	struct kru *kru = kru_init(12);
 
 	struct test_cat cats[] = {
 		{ "normal",         1,100000,  100000 },   // 100000 normal queries per tick, ~1 per user
