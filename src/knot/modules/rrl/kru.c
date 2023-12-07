@@ -1,6 +1,13 @@
 /** @file
 
-KRU is a variant of Count sketch with aging
+FIXME: clean up.  Lots of comments in the file are wrong now, etc.
+
+KRU estimates recently pricey inputs
+
+Authors of the simple agorithm (without aging, etc.):
+  Metwally, D. Agrawal, and A. E. Abbadi.
+  Efficient computation of frequent and top-k elements in data streams.
+  In International Conference on Database Theory, 2005.
 
 The point is to answer point-queries that estimate if the item has been heavily used recently.
 To give more weight to recent usage, we use aging via exponential decay (simple to compute).
@@ -51,9 +58,10 @@ Size (`loads_bits` = log2 length):
 /// Block of loads sharing the same time, so that we're more space-efficient.
 /// It's exactly a single cache line.
 struct load_cl {
-	uint32_t time;
+	_Atomic uint32_t time;
 	#define LOADS_LEN 15
-	int32_t loads[LOADS_LEN];
+	uint16_t loads[LOADS_LEN];
+	uint16_t ids[LOADS_LEN];
 } ALIGNED_CPU_CACHE;
 static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
 
@@ -64,7 +72,7 @@ struct decay_config {
 	/// Exponential decay with half-life of (2 ^ half_life_log) ticks.
 	uint32_t half_life_log;
 	/// Precomputed scaling constants.  Indexed by tick count [1 .. 2^half_life_log - 1],
-	///   contains the corresponding factor of decay (<1, scaled to 2^31 and rounded).
+	///   contains the corresponding factor of decay (<1, scaled to 2^16 and rounded).
 	int32_t scales[];
 };
 typedef const struct decay_config decay_cfg_t;
@@ -101,27 +109,24 @@ static void update_time(struct load_cl *l, const uint32_t time_now, decay_cfg_t 
 	const uint32_t load_nonfrac_shift = ticks >> decay->half_life_log;
 	for (int i = 0; i < LOADS_LEN; ++i) {
 		// decay: first do the "fractional part of the bit shift"
-		int64_t m = (int64_t)l->loads[i] * decay->scales[decay_frac];
-		int32_t l1 = m >> 31;
+		int32_t m = (int32_t)l->loads[i] * decay->scales[decay_frac];
+		int32_t l1 = (m >> 16) + /*rounding*/((m >> 15)&1);
 		// finally the non-fractional part of the bit shift
 		l->loads[i] = l1 >> load_nonfrac_shift;
-		// rounding during signed shift(s) would be too complicated?
 	}
 }
-/// Half-life of 32 ticks, consequently forgetting in about 1k ticks.
-/// Experiment: if going by a single tick, after 840 steps +0 (or fixed at -46),
+/// Half-life of 32 ticks, consequently forgetting in about 330 ticks due to imprecision.
+/// Experiment: if going by a single tick, after 330 steps fixed-point at +-23,
 ///  but accuracy at the beginning of that (first 32 ticks) is very good,
-///  getting from max 2^31 - 1 to 2^30 - 9 or -2^31 to -2^30 - 17.
-///  Max. decay per tick is 46016146.
+///  getting from max 2^15 - 1 to 2^14 + 2 or -2^15 to -2^14 - 3.
+///  Max. decay per tick is 702 but for limit computation it will be more like 350.
 const struct decay_config DECAY_32 = {
 	.ticklen_log = 0,
 	.half_life_log = 5,
-	.scales = { // ghci> map (\i -> round(2^31 * 0.5 ** (i/32))) [1..31]
-		0, 2101467502,2056437387,2012372174,1969251188,1927054196,1885761398,
-		1845353420,1805811301,1767116489,1729250827,1692196547,1655936265,
-		1620452965,1585730000,1551751076,1518500250,1485961921,1454120821,
-		1422962010,1392470869,1362633090,1333434672,1304861917,1276901417,
-		1249540052,1222764986,1196563654,1170923762,1145833280,1121280436,1097253708
+	.scales = { // ghci> map (\i -> round(2^16 * 0.5 ** (i/32))) [1..31]
+		0,64132,62757,61413,60097,58809,57549,56316,55109,53928,52773,
+		51642,50535,49452,48393,47356,46341,45348,44376,43425,42495,41584,
+		40693,39821,38968,38133,37316,36516,35734,34968,34219,33486
 	}
 };
 
@@ -132,7 +137,7 @@ struct kru {
 	/// Hashing secret.  Random but shared by all users of the table.
 	SIPHASH_KEY hash_key;  // TODO use or remove
 
-	#define TABLE_COUNT 2
+	#define TABLE_COUNT 1
 	/// These are read-write.  Each struct has exactly one cache line.
 	struct load_cl load_cls[][TABLE_COUNT];
 };
@@ -159,43 +164,38 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 {
 
 	uint64_t hash = SipHash24(&kru->hash_key, buf, buf_len);
-	assert(sizeof(hash) * 8 >= TABLE_COUNT * (kru->loads_bits + LOADS_LEN));
+	assert(sizeof(hash) * 8 >= TABLE_COUNT * (kru->loads_bits + 16));
 
-	// Choose two struct load_cl, i.e. two cache-lines to operate on,
-	// update their notion of time, and copy all their loads.
-	struct load_cl *l[TABLE_COUNT];
-	int32_t l_c[TABLE_COUNT * LOADS_LEN];
+	// Choose the cache-line to operate on
+	static_assert(TABLE_COUNT == 1);
+	struct load_cl *lcl;
 	const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
-	for (int li = 0; li < TABLE_COUNT; ++li) {
-		l[li] = &kru->load_cls[hash & loads_mask][li];
-		hash >>= kru->loads_bits;
-		update_time(l[li], time_now, &DECAY_32);
-		memcpy(&l_c[li * LOADS_LEN], l[li]->loads, sizeof(l[li]->loads));
+	lcl = &kru->load_cls[hash & loads_mask][0];
+	hash >>= kru->loads_bits;
+	update_time(lcl, time_now, &DECAY_32);
+
+	uint16_t id = hash;
+	hash >>= 16;
+
+	// Find matching element.  Matching 16 bits in addition to loads_bits.
+	for (int i = 0; i < LOADS_LEN; ++i) if (lcl->ids[i] == id) {
+		uint16_t * const load = &lcl->loads[i];
+		if (__builtin_add_overflow(*load, price, load)) {
+			*load = (1<<16) - 1;
+			return true;
+		} else {
+			return false;
+		}
 	}
 
-	// Update the copied loads, saturating to max. value.
-	// __builtin_add_overflow: GCC+clang most likely suffice for us
-	// TODO: check that all is OK, maybe use addition with saturation in x86 asm
-	// The estimate is median of values, so we only count how many are over limit.
-	int over_limit = 0;
-	for (int i = 0; i < TABLE_COUNT * LOADS_LEN; ++i) {
-		const int32_t sign = 2 * ((int32_t)hash&1) - 1; // 0 or 1  ->  -1 or 1
-		hash >>= 1;
-		int32_t * const load = &l_c[i];
-		if (__builtin_add_overflow(*load, sign * (int32_t)price, load)) {
-			++over_limit;
-			*load = sign * (int32_t)((1ull<<31) - 1);
-		} else {
-			if ((sign > 0 && *load > (1<<30)) ||
-			    (sign < 0 && *load < -(1<<30))) {
-				++over_limit;
-			}
-		}
-		if (over_limit > TABLE_COUNT * LOADS_LEN / 2)
-			return true; // TODO: equality?
-	}
-	// Not limited, so copy the updated loads back.
-	for (int li = 0; li < TABLE_COUNT; ++li)
-		memcpy(l[li]->loads, &l_c[li * LOADS_LEN], sizeof(l[li]->loads));
-	return false;
+	// Find the smallest count and replace it.
+	int min_i = 0;
+	for (int i = 1; i < LOADS_LEN; ++i)
+		if (lcl->loads[i] < lcl->loads[min_i])
+			min_i = i;
+	lcl->ids[min_i] = id;
+	uint16_t * const load = &lcl->loads[min_i];
+	if (__builtin_add_overflow(*load, price, load))
+		*load = (1<<16) - 1;
+	return false; // Let's not limit it, though its questionable.
 }
