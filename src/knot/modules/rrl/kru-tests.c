@@ -11,15 +11,7 @@ void *memzero(void *s, size_t n)
 
 #include <knot/modules/rrl/kru.c>
 
-void test_decay32(void)
-{
-	struct load_cl l = { .loads[0] = -1, .time = 0 };
-	for (uint32_t time = 0; time < 1030; ++time) {
-		update_time(&l, time, &DECAY_32);
-		printf("%3d: %08zx\n", time, (size_t)l.loads[0]);
-	}
-}
-
+#ifdef KRU_IMPL_min32bit
 void test_choose_4_15() {
 	#define MAX_HASH    (15*14*13*12) // uniform distribution expected
 	//#define MAX_HASH    (1<<15)     // case with exactly 15 bits, a little biased
@@ -60,6 +52,26 @@ void test_choose_4_15() {
 	#undef MAX_HASH
 	#undef MAX_BITMAP
 	#undef HIST_LEN
+}
+#endif
+
+void test_decay32(void)
+{
+#if defined(KRU_IMPL_min32bit)
+	struct load_cl l = { .loads[0] = -1, .time = 0 };
+	for (uint32_t time = 0; time < 1030; ++time) {
+		update_time(&l, time, &DECAY_32);
+		printf("%3d: %08zx\n", time, (size_t)l.loads[0]);
+	}
+#elif defined(KRU_IMPL_median32bit)
+	struct load_cl l = { .loads[0] = (1ull<<31) - 1, .loads[1] = -(1ll<<31), .time = 0 };
+	for (uint32_t time = 0; time < 850; ++time) {
+		update_time(&l, time, &DECAY_32);
+		printf("%3d: %08d %08d\n", time, (int)l.loads[0], (int)l.loads[1]);
+	}
+#else
+#warn test_decay32 empty
+#endif
 }
 
 struct test_ctx {
