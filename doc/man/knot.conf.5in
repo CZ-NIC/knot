@@ -2389,6 +2389,14 @@ When \fBdifference\fP is configured and there are no zone contents yet (cold sta
 and no zone contents in the journal), it behaves the same way as \fBwhole\fP\&.
 .sp
 \fIDefault:\fP \fBwhole\fP
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+See Handling, zone file, journal, changes, serials for guidance
+how to configure this and related options for reliable operation.
+.UNINDENT
+.UNINDENT
 .SS journal\-content
 .sp
 Selects how the journal shall be used to store zone and its changes.
@@ -2404,6 +2412,18 @@ Possible values:
 .UNINDENT
 .sp
 \fIDefault:\fP \fBchanges\fP
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+When this option is changed from a previous different value, it must be noted
+that the journal still contains stuff respective to the previous value of this option.
+For example, changing this option to \fBnone\fP does not purge the journal. Also, changing
+this value from \fBall\fP to \fBchanges\fP does not cause the deletion of the zone\-in\-journal
+and the behaviour of zone load procedures might be different than expected. It is
+recommended to consider purging the journal when this option is changed.
+.UNINDENT
+.UNINDENT
 .SS journal\-max\-usage
 .sp
 Policy how much space in journal DB will the zone\(aqs journal occupy.
