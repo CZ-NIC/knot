@@ -118,12 +118,14 @@ libknot.so.14 libknot14 #MINVER#
  knot_quic_conn_get_stream@Base 3.3.0
  knot_quic_conn_local_port@Base 3.3.0
  knot_quic_conn_new_stream@Base 3.3.0
+ knot_quic_conn_next_timeout@Base 3.3.3
  knot_quic_conn_pin@Base 3.3.0
  knot_quic_conn_rtt@Base 3.3.0
  knot_quic_conn_stream_free@Base 3.3.0
  knot_quic_creds_cert@Base 3.3.0
  knot_quic_free_creds@Base 3.3.0
  knot_quic_handle@Base 3.3.0
+ knot_quic_hanle_expiry@Base 3.3.3
  knot_quic_init_creds@Base 3.3.0
  knot_quic_init_creds_peer@Base 3.3.0
  knot_quic_send@Base 3.3.0

@@ -60,7 +60,7 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 			return ret;
 		}
 
-		int64_t quic_timeout_ms = quic_conn_next_timeout(conn);
+		int64_t quic_timeout_ms = knot_quic_conn_next_timeout(conn);
 		quic_timeout_ms = MIN(quic_timeout_ms, timeout_remain);
 		quic_timeout_ms = MIN(quic_timeout_ms, timeout_ms / 2);
 
