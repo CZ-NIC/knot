@@ -61,11 +61,39 @@ static bool match_type(uint16_t type, conf_val_t *types)
 	return false;
 }
 
+static bool match_pattern(const knot_dname_t *rr_owner, const knot_dname_t *name)
+{
+	while (true) {
+		uint8_t name_len = *name++;
+		uint8_t owner_len = *rr_owner++;
+
+		if (name_len == 1 && *name == '*') {
+			if (owner_len == 0) {
+				return false;
+			}
+		} else if (name_len != owner_len) {
+			return false;
+		} else if (name_len == 0) {
+			assert(owner_len == 0);
+			return true;
+		} else if (memcmp(name, rr_owner, name_len) != 0) {
+			return false;
+		}
+
+		name += name_len;
+		rr_owner += owner_len;
+	}
+}
+
 static bool match_name(const knot_dname_t *rr_owner, const knot_dname_t *name,
                        acl_update_owner_match_t match)
 {
 	if (name == NULL) {
 		return true;
+	}
+
+	if (match == ACL_UPDATE_MATCH_PATTERN) {
+		return match_pattern(rr_owner, name);
 	}
 
 	int ret = knot_dname_in_bailiwick(rr_owner, name);
