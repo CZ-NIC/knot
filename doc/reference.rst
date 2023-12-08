@@ -2597,6 +2597,10 @@ and no zone contents in the journal), it behaves the same way as ``whole``.
 
 *Default:* ``whole``
 
+.. NOTE::
+   See :ref:`Handling, zone file, journal, changes, serials` for guidance on
+   configuring these and related options to ensure reliable operation.
+
 .. _zone_journal-content:
 
 journal-content
@@ -2611,6 +2615,14 @@ Possible values:
 - ``all`` – Zone contents and history is stored in journal.
 
 *Default:* ``changes``
+
+.. WARNING::
+   When this option is changed, the journal still contains data respective to
+   the previous setting. For example, changing it to ``none`` does not purge
+   the journal. Also, changing it from ``all`` to ``changes``
+   does not cause the deletion of the zone-in-journal and the behaviour of the
+   zone loading procedure might be different than expected. It is recommended
+   to consider purging the journal when this option is changed.
 
 .. _zone_journal-max-usage:
 
