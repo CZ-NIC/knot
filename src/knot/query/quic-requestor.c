@@ -21,6 +21,7 @@
 #include "knot/query/quic-requestor.h"
 
 #include "contrib/conn_pool.h"
+#include "contrib/macros.h"
 #include "contrib/net.h"
 #include "contrib/time.h"
 #include "knot/common/log.h" // please use this only for tiny stuff like quic-log
@@ -43,25 +44,39 @@ typedef union {
 
 static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeout_ms)
 {
-	int fd = (int)(size_t)r->sock;
-
-	int ret = knot_quic_send(conn->quic_table, conn, r, QUIC_MAX_SEND_PER_RECV, 0);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	int fd = (int)(size_t)r->sock, ret, timeout_remain = timeout_ms;
 
 	cmsg_tos_t tos = { 0 };
-	r->in_payload->iov_len = QUIC_BUF_SIZE;
 	struct msghdr msg = {
 		.msg_iov = r->in_payload,
 		.msg_iovlen = 1,
 		.msg_control = &tos,
 		.msg_controllen = sizeof(tos),
 	};
-	ret = net_msg_recv(fd, &msg, timeout_ms);
-	if (ret == 0) {
-		return KNOT_ECONN;
-	} else if (ret < 0) {
+
+	do {
+		ret = knot_quic_send(conn->quic_table, conn, r, QUIC_MAX_SEND_PER_RECV, 0);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		int64_t quic_timeout_ms = quic_conn_next_timeout(conn);
+		quic_timeout_ms = MIN(quic_timeout_ms, timeout_remain);
+		quic_timeout_ms = MIN(quic_timeout_ms, timeout_ms / 2);
+
+		r->in_payload->iov_len = QUIC_BUF_SIZE;
+
+		ret = net_msg_recv(fd, &msg, quic_timeout_ms);
+		if (ret == 0 || ret == KNOT_ECONN || ret == KNOT_ETIMEOUT) {
+			ret = knot_quic_hanle_expiry(conn);
+		}
+
+		timeout_remain -= quic_timeout_ms;
+		if (timeout_remain <= 0 && ret == KNOT_EOK) {
+			ret = KNOT_ECONN;
+		}
+	} while (ret == KNOT_EOK);
+	if (ret < 0) {
 		return ret;
 	}
 	r->in_payload->iov_len = ret;
@@ -236,16 +251,14 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 
 	struct timespec t_start = time_now(), t_cur;
 	while (stream->inbufs == NULL) {
-		int ret = quic_exchange(conn, r, timeout_ms);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
 		t_cur = time_now();
-		if (time_diff_ms(&t_start, &t_cur) > timeout_ms) {
+		int tdiff = time_diff_ms(&t_start, &t_cur);
+		if (tdiff > timeout_ms) {
 			return KNOT_NET_ETIMEOUT;
 		}
-		if (conn->streams_count == 0) {
-			return KNOT_ECONN;
+		int ret = quic_exchange(conn, r, timeout_ms - tdiff);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 	}
 
