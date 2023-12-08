@@ -1113,12 +1113,15 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	uint64_t now = get_timestamp();
 	ngtcp2_version_cid decoded_cids = { 0 };
 	ngtcp2_cid scid = { 0 }, dcid = { 0 };
+	int dvc_ret = NGTCP2_ERR_FATAL;
 
-	int dvc_ret = rpl->in_payload == NULL ? NGTCP2_ERR_FATAL :
-		ngtcp2_pkt_decode_version_cid(&decoded_cids,
-		                              rpl->in_payload->iov_base,
-		                              rpl->in_payload->iov_len,
-		                              SERVER_DEFAULT_SCIDLEN);
+	if ((rpl->handle_ret == -QUIC_SEND_VERSION_NEGOTIATION ||
+	     rpl->handle_ret == -QUIC_SEND_RETRY) &&
+	    rpl->in_payload != NULL && rpl->in_payload->iov_len > 0) {
+		dvc_ret = ngtcp2_pkt_decode_version_cid(
+			&decoded_cids, rpl->in_payload->iov_base,
+			rpl->in_payload->iov_len, SERVER_DEFAULT_SCIDLEN);
+	}
 
 	uint8_t rnd = 0;
 	dnssec_random_buffer(&rnd, sizeof(rnd));
