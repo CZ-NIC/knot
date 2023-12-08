@@ -370,6 +370,10 @@ pkg:debian-10:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/debian-10
 
+pkg:ubuntu-24.04:
+  <<: *pkg_test_deb
+  image: $CI_REGISTRY/packaging/apkg/test/ubuntu-24.04
+
 pkg:ubuntu-22.04:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/ubuntu-22.04
