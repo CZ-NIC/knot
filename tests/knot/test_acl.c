@@ -21,7 +21,7 @@
 
 #include "test_conf.h"
 #include "libknot/libknot.h"
-#include "knot/updates/acl.h"
+#include "knot/updates/acl.c"
 #include "contrib/sockaddr.h"
 
 #define ZONE	"example.zone"
@@ -303,12 +303,44 @@ static void test_acl_allowed(void)
 	knot_dname_free(key3_name, NULL);
 }
 
+void check_pattern(const char *name_str, const char *pattern_str, bool match)
+{
+	knot_dname_t *name = knot_dname_from_str_alloc(name_str);
+	knot_dname_t *pattern = knot_dname_from_str_alloc(pattern_str);
+
+	ok(match_pattern(name, pattern) == match, "'%s' %s '%s'",
+	   name_str, match ? "matched" : "not matched by", pattern_str);
+
+	knot_dname_free(name, NULL);
+	knot_dname_free(pattern, NULL);
+}
+
+static void test_match_pattern(void)
+{
+	check_pattern(".", "*", false);
+	check_pattern("a", "a", true);
+	check_pattern("a", "*", true);
+	check_pattern("*", "*", true);
+	check_pattern("a", "aa", false);
+	check_pattern("aa", "a", false);
+	check_pattern("a.b", "*", false);
+	check_pattern("a.b", "*.*", true);
+	check_pattern("a.b", "a.b", true);
+	check_pattern("a.b", "*.*b", false);
+	check_pattern("a.b", "*.*.*", false);
+	check_pattern("abc", "*", true);
+	check_pattern("a.bc.*", "a.*.*", true);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
 
 	diag("acl_allowed");
 	test_acl_allowed();
+
+	diag("match_pattern");
+	test_match_pattern();
 
 	return 0;
 }
