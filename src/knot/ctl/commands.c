@@ -595,19 +595,22 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 		return KNOT_EPROGRESS;
 	}
 
+	ctx->zone_count++;
+
+	int ret;
+	if (!ctx->backup_global) {
+		ret = global_backup(ctx, zone_catalog(zone), zone->name);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	zone->backup_ctx = ctx;
 	pthread_mutex_lock(&ctx->readers_mutex);
 	ctx->readers++;
 	pthread_mutex_unlock(&ctx->readers_mutex);
-	ctx->zone_count++;
 
-	int ret = schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
-
-	if (ret == KNOT_EOK && !ctx->backup_global && (ctx->restore_mode || !ctx->failed)) {
-		ret = global_backup(ctx, zone_catalog(zone), zone->name);
-	}
-
-	return ret;
+	return schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
 }
 
 static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
