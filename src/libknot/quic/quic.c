@@ -450,15 +450,15 @@ bool quic_conn_timeout(knot_quic_conn_t *conn, uint64_t *now)
 }
 
 _public_
-int64_t quic_conn_next_timeout(knot_quic_conn_t *conn)
+int64_t knot_quic_conn_next_timeout(knot_quic_conn_t *conn)
 {
 	return (((int64_t)quic_conn_get_timeout(conn) - (int64_t)get_timestamp()) / 1000000L);
 }
 
 _public_
-int knot_quic_hanle_expiry(knot_quic_conn_t *c)
+int knot_quic_hanle_expiry(knot_quic_conn_t *conn)
 {
-	return ngtcp2_conn_handle_expiry(c->conn, get_timestamp()) == NGTCP2_NO_ERROR ? KNOT_EOK : KNOT_ECONN;
+	return ngtcp2_conn_handle_expiry(conn->conn, get_timestamp()) == NGTCP2_NO_ERROR ? KNOT_EOK : KNOT_ECONN;
 }
 
 _public_
