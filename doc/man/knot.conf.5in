@@ -1406,7 +1406,7 @@ acl:
     deny: BOOL
     update\-type: STR ...
     update\-owner: key | zone | name
-    update\-owner\-match: sub\-or\-equal | equal | sub
+    update\-owner\-match: sub\-or\-equal | equal | sub | pattern
     update\-owner\-name: STR ...
 .ft P
 .fi
@@ -1523,6 +1523,11 @@ name set by \fI\%update\-owner\fP\&.
 .IP \(bu 2
 \fBsub\fP — The owner of each updated RR must be a subdomain of, but MUST NOT
 be equal to at least one domain name set by \fI\%update\-owner\fP\&.
+.IP \(bu 2
+\fBpattern\fP — The owner of each updated RR must match a pattern specified by
+\fI\%update\-owner\fP\&. The pattern can be an arbitrary FQDN or non\-FQDN
+domain name. If a label consists of one \fB*\fP (asterisk) character, it
+matches any label. More asterisk labels can be specified.
 .UNINDENT
 .sp
 \fIDefault:\fP \fBsub\-or\-equal\fP

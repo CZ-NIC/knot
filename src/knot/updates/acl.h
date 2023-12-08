@@ -40,9 +40,10 @@ typedef enum {
 
 /*! \bref ACL update owner comparison options. */
 typedef enum {
-	ACL_UPDATE_MATCH_SUBEQ = 0,
-	ACL_UPDATE_MATCH_EQ    = 1,
-	ACL_UPDATE_MATCH_SUB   = 2,
+	ACL_UPDATE_MATCH_SUBEQ   = 0,
+	ACL_UPDATE_MATCH_EQ      = 1,
+	ACL_UPDATE_MATCH_SUB     = 2,
+	ACL_UPDATE_MATCH_PATTERN = 3,
 } acl_update_owner_match_t;
 
 /*!

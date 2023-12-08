@@ -118,9 +118,10 @@ static const knot_lookup_t acl_update_owner[] = {
 };
 
 static const knot_lookup_t acl_update_owner_match[] = {
-	{ ACL_UPDATE_MATCH_SUBEQ, "sub-or-equal" },
-	{ ACL_UPDATE_MATCH_EQ,    "equal" },
-	{ ACL_UPDATE_MATCH_SUB,   "sub" },
+	{ ACL_UPDATE_MATCH_SUBEQ,   "sub-or-equal" },
+	{ ACL_UPDATE_MATCH_EQ,      "equal" },
+	{ ACL_UPDATE_MATCH_SUB,     "sub" },
+	{ ACL_UPDATE_MATCH_PATTERN, "pattern" },
 	{ 0, NULL }
 };
 

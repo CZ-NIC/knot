@@ -1529,7 +1529,7 @@ and dynamic DNS update) which are allowed to be processed or denied.
      deny: BOOL
      update-type: STR ...
      update-owner: key | zone | name
-     update-owner-match: sub-or-equal | equal | sub
+     update-owner-match: sub-or-equal | equal | sub | pattern
      update-owner-name: STR ...
 
 .. _acl_id:
@@ -1666,6 +1666,10 @@ Possible values:
   name set by :ref:`acl_update-owner`.
 - ``sub`` — The owner of each updated RR must be a subdomain of, but MUST NOT
   be equal to at least one domain name set by :ref:`acl_update-owner`.
+- ``pattern`` — The owner of each updated RR must match a pattern specified by
+  :ref:`acl_update-owner`. The pattern can be an arbitrary FQDN or non-FQDN
+  domain name. If a label consists of one ``*`` (asterisk) character, it
+  matches any label. More asterisk labels can be specified.
 
 *Default:* ``sub-or-equal``
 
