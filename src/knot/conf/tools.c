@@ -38,6 +38,7 @@
 #include "knot/conf/module.h"
 #include "knot/conf/schema.h"
 #include "knot/common/log.h"
+#include "knot/updates/acl.h"
 #include "knot/zone/serial.h"
 #include "libknot/errcode.h"
 #ifdef ENABLE_QUIC
@@ -842,6 +843,23 @@ int check_acl(
 	    (addr.code != KNOT_ENOENT || key.code != KNOT_ENOENT)) {
 		args->err_str = "specified ACL/remote together with address or key";
 		return KNOT_EINVAL;
+	}
+
+	conf_val_t upd_owner = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
+	                                          C_UPDATE_OWNER, args->id, args->id_len);
+	conf_val_t upd_name = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
+	                                         C_UPDATE_OWNER_NAME, args->id, args->id_len);
+	switch (conf_opt(&upd_owner)) {
+	case ACL_UPDATE_OWNER_NAME:
+		if (upd_name.code != KNOT_EOK) {
+			CONF_LOG(LOG_NOTICE, "'update-owner-name' not specified");
+		}
+		break;
+	default:
+		if (upd_name.code == KNOT_EOK) {
+			CONF_LOG(LOG_NOTICE, "'update-owner-name' requires 'update-owner: name'");
+		}
+		break;
 	}
 
 	return KNOT_EOK;
