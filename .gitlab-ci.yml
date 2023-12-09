@@ -366,6 +366,10 @@ pkg:debian-11:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/debian-11
 
+pkg:ubuntu-24.04:
+  <<: *pkg_test_deb
+  image: $CI_REGISTRY/packaging/apkg/test/ubuntu-24.04
+
 pkg:ubuntu-22.04:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/ubuntu-22.04
@@ -374,13 +378,13 @@ pkg:ubuntu-20.04:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/ubuntu-20.04
 
-pkg:fedora-37:
+pkg:fedora-39:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/test/fedora-37
+  image: $CI_REGISTRY/packaging/apkg/test/fedora-39
 
-pkg:fedora-36:
+pkg:fedora-38:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/test/fedora-36
+  image: $CI_REGISTRY/packaging/apkg/test/fedora-38
 
 pkg:alma-9:
   <<: *pkg_test
