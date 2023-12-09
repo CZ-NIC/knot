@@ -962,87 +962,6 @@
 	ipv6_addr_write = ipv6_addr %_ipv6_addr_write;
 	# END
 
-	# BEGIN - apl record processing
-	action _apl_init {
-		memset(&(s->apl), 0, sizeof(s->apl));
-	}
-	action _apl_excl_flag {
-		s->apl.excl_flag = 128; // dec 128  = bin 10000000.
-	}
-	action _apl_addr_1 {
-		s->apl.addr_family = 1;
-	}
-	action _apl_addr_2 {
-		s->apl.addr_family = 2;
-	}
-	action _apl_prefix_length {
-		if ((s->apl.addr_family == 1 && s->number64 <= 32) ||
-		    (s->apl.addr_family == 2 && s->number64 <= 128)) {
-			s->apl.prefix_length = (uint8_t)(s->number64);
-		} else {
-			WARN(ZS_BAD_APL);
-			fhold; fgoto err_line;
-		}
-	}
-	action _apl_exit {
-		// Copy address to buffer.
-		uint8_t len;
-		switch (s->apl.addr_family) {
-		case 1:
-			len = ZS_INET4_ADDR_LENGTH;
-			memcpy(s->buffer, s->addr, len);
-			break;
-		case 2:
-			len = ZS_INET6_ADDR_LENGTH;
-			memcpy(s->buffer, s->addr, len);
-			break;
-		default:
-			WARN(ZS_BAD_APL);
-			fhold; fgoto err_line;
-		}
-		// Find prefix without trailing zeroes.
-		while (len > 0) {
-			if ((s->buffer[len - 1] & 255) != 0) {
-				break;
-			}
-			len--;
-		}
-		// Check for rdata overflow.
-		if (rdata_tail + 4 + len > rdata_stop + 1) {
-			WARN(ZS_RDATA_OVERFLOW);
-			fhold; fgoto err_line;
-		}
-		// Write address family.
-		uint16_t af = htons(s->apl.addr_family);
-		memcpy(rdata_tail, &af, sizeof(af));
-		rdata_tail += 2;
-		// Write prefix length in bits.
-		*(rdata_tail) = s->apl.prefix_length;
-		rdata_tail += 1;
-		// Write negation flag + prefix length in bytes.
-		*(rdata_tail) = len + s->apl.excl_flag;
-		rdata_tail += 1;
-		// Write address prefix non-null data.
-		memcpy(rdata_tail, s->buffer, len);
-		rdata_tail += len;
-	}
-	action _apl_error {
-		WARN(ZS_BAD_APL);
-		fhold; fgoto err_line;
-	}
-
-	apl = ('!'? $_apl_excl_flag .
-	       ( ('1' $_apl_addr_1 . ':' . ipv4_addr . '/' . number
-	          %_apl_prefix_length)
-	       | ('2' $_apl_addr_2 . ':' . ipv6_addr . '/' . number
-	          %_apl_prefix_length)
-	       )
-	      ) >_apl_init %_apl_exit $!_apl_error;
-
-	# Array of APL records (can be empty).
-	apl_array = apl? . (sep . apl)* . sep?;
-	# END
-
 	# BEGIN - Hexadecimal string array processing
 	action _first_hex_char {
 		if (rdata_tail <= rdata_stop) {
@@ -1381,22 +1300,15 @@
 	    | "CNAME"i      %{ type_num(KNOT_RRTYPE_CNAME, &rdata_tail); }
 	    | "SOA"i        %{ type_num(KNOT_RRTYPE_SOA, &rdata_tail); }
 	    | "PTR"i        %{ type_num(KNOT_RRTYPE_PTR, &rdata_tail); }
-	    | "HINFO"i      %{ type_num(KNOT_RRTYPE_HINFO, &rdata_tail); }
-	    | "MINFO"i      %{ type_num(KNOT_RRTYPE_MINFO, &rdata_tail); }
 	    | "MX"i         %{ type_num(KNOT_RRTYPE_MX, &rdata_tail); }
 	    | "TXT"i        %{ type_num(KNOT_RRTYPE_TXT, &rdata_tail); }
-	    | "RP"i         %{ type_num(KNOT_RRTYPE_RP, &rdata_tail); }
-	    | "AFSDB"i      %{ type_num(KNOT_RRTYPE_AFSDB, &rdata_tail); }
-	    | "RT"i         %{ type_num(KNOT_RRTYPE_RT, &rdata_tail); }
 	    | "KEY"i        %{ type_num(KNOT_RRTYPE_KEY, &rdata_tail); }
 	    | "AAAA"i       %{ type_num(KNOT_RRTYPE_AAAA, &rdata_tail); }
 	    | "LOC"i        %{ type_num(KNOT_RRTYPE_LOC, &rdata_tail); }
 	    | "SRV"i        %{ type_num(KNOT_RRTYPE_SRV, &rdata_tail); }
 	    | "NAPTR"i      %{ type_num(KNOT_RRTYPE_NAPTR, &rdata_tail); }
-	    | "KX"i         %{ type_num(KNOT_RRTYPE_KX, &rdata_tail); }
 	    | "CERT"i       %{ type_num(KNOT_RRTYPE_CERT, &rdata_tail); }
 	    | "DNAME"i      %{ type_num(KNOT_RRTYPE_DNAME, &rdata_tail); }
-	    | "APL"i        %{ type_num(KNOT_RRTYPE_APL, &rdata_tail); }
 	    | "DS"i         %{ type_num(KNOT_RRTYPE_DS, &rdata_tail); }
 	    | "SSHFP"i      %{ type_num(KNOT_RRTYPE_SSHFP, &rdata_tail); }
 	    | "IPSECKEY"i   %{ type_num(KNOT_RRTYPE_IPSECKEY, &rdata_tail); }
@@ -1447,22 +1359,15 @@
 	    | "CNAME"i      %{ window_add_bit(KNOT_RRTYPE_CNAME, s); }
 	    | "SOA"i        %{ window_add_bit(KNOT_RRTYPE_SOA, s); }
 	    | "PTR"i        %{ window_add_bit(KNOT_RRTYPE_PTR, s); }
-	    | "HINFO"i      %{ window_add_bit(KNOT_RRTYPE_HINFO, s); }
-	    | "MINFO"i      %{ window_add_bit(KNOT_RRTYPE_MINFO, s); }
 	    | "MX"i         %{ window_add_bit(KNOT_RRTYPE_MX, s); }
 	    | "TXT"i        %{ window_add_bit(KNOT_RRTYPE_TXT, s); }
-	    | "RP"i         %{ window_add_bit(KNOT_RRTYPE_RP, s); }
-	    | "AFSDB"i      %{ window_add_bit(KNOT_RRTYPE_AFSDB, s); }
-	    | "RT"i         %{ window_add_bit(KNOT_RRTYPE_RT, s); }
 	    | "KEY"i        %{ window_add_bit(KNOT_RRTYPE_KEY, s); }
 	    | "AAAA"i       %{ window_add_bit(KNOT_RRTYPE_AAAA, s); }
 	    | "LOC"i        %{ window_add_bit(KNOT_RRTYPE_LOC, s); }
 	    | "SRV"i        %{ window_add_bit(KNOT_RRTYPE_SRV, s); }
 	    | "NAPTR"i      %{ window_add_bit(KNOT_RRTYPE_NAPTR, s); }
-	    | "KX"i         %{ window_add_bit(KNOT_RRTYPE_KX, s); }
 	    | "CERT"i       %{ window_add_bit(KNOT_RRTYPE_CERT, s); }
 	    | "DNAME"i      %{ window_add_bit(KNOT_RRTYPE_DNAME, s); }
-	    | "APL"i        %{ window_add_bit(KNOT_RRTYPE_APL, s); }
 	    | "DS"i         %{ window_add_bit(KNOT_RRTYPE_DS, s); }
 	    | "SSHFP"i      %{ window_add_bit(KNOT_RRTYPE_SSHFP, s); }
 	    | "IPSECKEY"i   %{ window_add_bit(KNOT_RRTYPE_IPSECKEY, s); }
@@ -1934,14 +1839,6 @@
 		 sep . time32 . sep . time32 . sep . time32)
 		$!_r_data_error %_ret . all_wchar;
 
-	r_data_hinfo :=
-		(text_string . sep . text_string)
-		$!_r_data_error %_ret . all_wchar;
-
-	r_data_minfo :=
-		(r_dname . sep . r_dname)
-		$!_r_data_error %_ret . all_wchar;
-
 	r_data_mx :=
 		(num16 . sep . r_dname)
 		$!_r_data_error %_ret . all_wchar;
@@ -1969,10 +1866,6 @@
 
 	r_data_cert :=
 		(cert_type . sep . num16 . sep . dns_alg . sep . base64)
-		$!_r_data_error %_ret . end_wchar;
-
-	r_data_apl :=
-		(apl_array)
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_ds :=
@@ -2066,15 +1959,7 @@
 			fcall r_data_ns;
 		case KNOT_RRTYPE_SOA:
 			fcall r_data_soa;
-		case KNOT_RRTYPE_HINFO:
-			fcall r_data_hinfo;
-		case KNOT_RRTYPE_MINFO:
-		case KNOT_RRTYPE_RP:
-			fcall r_data_minfo;
 		case KNOT_RRTYPE_MX:
-		case KNOT_RRTYPE_AFSDB:
-		case KNOT_RRTYPE_RT:
-		case KNOT_RRTYPE_KX:
 		case KNOT_RRTYPE_LP:
 			fcall r_data_mx;
 		case KNOT_RRTYPE_TXT:
@@ -2090,8 +1975,6 @@
 			fcall r_data_naptr;
 		case KNOT_RRTYPE_CERT:
 			fcall r_data_cert;
-		case KNOT_RRTYPE_APL:
-			fcall r_data_apl;
 		case KNOT_RRTYPE_DS:
 		case KNOT_RRTYPE_CDS:
 			fcall r_data_ds;
@@ -2151,15 +2034,9 @@
 		case KNOT_RRTYPE_PTR:
 		case KNOT_RRTYPE_DNAME:
 		case KNOT_RRTYPE_SOA:
-		case KNOT_RRTYPE_HINFO:
-		case KNOT_RRTYPE_MINFO:
 		case KNOT_RRTYPE_MX:
-		case KNOT_RRTYPE_AFSDB:
-		case KNOT_RRTYPE_RT:
-		case KNOT_RRTYPE_KX:
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
-		case KNOT_RRTYPE_RP:
 		case KNOT_RRTYPE_AAAA:
 		case KNOT_RRTYPE_LOC:
 		case KNOT_RRTYPE_SRV:
@@ -2194,7 +2071,6 @@
 		case KNOT_RRTYPE_HTTPS:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
-		case KNOT_RRTYPE_APL:
 		default:
 			fcall hex_r_data;
 		}
@@ -2233,22 +2109,15 @@
 		| "CNAME"i      %{ s->r_type = KNOT_RRTYPE_CNAME; }
 		| "SOA"i        %{ s->r_type = KNOT_RRTYPE_SOA; }
 		| "PTR"i        %{ s->r_type = KNOT_RRTYPE_PTR; }
-		| "HINFO"i      %{ s->r_type = KNOT_RRTYPE_HINFO; }
-		| "MINFO"i      %{ s->r_type = KNOT_RRTYPE_MINFO; }
 		| "MX"i         %{ s->r_type = KNOT_RRTYPE_MX; }
 		| "TXT"i        %{ s->r_type = KNOT_RRTYPE_TXT; }
-		| "RP"i         %{ s->r_type = KNOT_RRTYPE_RP; }
-		| "AFSDB"i      %{ s->r_type = KNOT_RRTYPE_AFSDB; }
-		| "RT"i         %{ s->r_type = KNOT_RRTYPE_RT; }
 		| "KEY"i        %{ s->r_type = KNOT_RRTYPE_KEY; }
 		| "AAAA"i       %{ s->r_type = KNOT_RRTYPE_AAAA; }
 		| "LOC"i        %{ s->r_type = KNOT_RRTYPE_LOC; }
 		| "SRV"i        %{ s->r_type = KNOT_RRTYPE_SRV; }
 		| "NAPTR"i      %{ s->r_type = KNOT_RRTYPE_NAPTR; }
-		| "KX"i         %{ s->r_type = KNOT_RRTYPE_KX; }
 		| "CERT"i       %{ s->r_type = KNOT_RRTYPE_CERT; }
 		| "DNAME"i      %{ s->r_type = KNOT_RRTYPE_DNAME; }
-		| "APL"i        %{ s->r_type = KNOT_RRTYPE_APL; }
 		| "DS"i         %{ s->r_type = KNOT_RRTYPE_DS; }
 		| "SSHFP"i      %{ s->r_type = KNOT_RRTYPE_SSHFP; }
 		| "IPSECKEY"i   %{ s->r_type = KNOT_RRTYPE_IPSECKEY; }
