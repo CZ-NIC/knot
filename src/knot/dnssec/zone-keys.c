@@ -459,9 +459,9 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 /*!
  * \brief Load private keys for active keys.
  */
-static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
+static int load_private_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 {
-	assert(keystore);
+	assert(ctx);
 	assert(keyset);
 
 	for (size_t i = 0; i < keyset->count; i++) {
@@ -469,17 +469,21 @@ static int load_private_keys(dnssec_keystore_t *keystore, zone_keyset_t *keyset)
 		if (!key->is_active && !key->is_ksk_active_plus && !key->is_zsk_active_plus) {
 			continue;
 		}
-		int r = dnssec_keystore_get_private(keystore, key->id, key->key);
-		switch (r) {
+		int ret = dnssec_keystore_get_private(ctx->keystore, key->id, key->key);
+		switch (ret) {
 		case DNSSEC_EOK:
 		case DNSSEC_KEY_ALREADY_PRESENT:
 			break;
 		default:
-			return r;
+			ret = knot_error_from_libdnssec(ret);
+			log_zone_error(ctx->zone->dname,
+			               "DNSSEC, key %d, failed to load private key (%s)",
+			               dnssec_key_get_keytag(key->key), knot_strerror(ret));
+			return ret;
 		}
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -569,11 +573,8 @@ int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
 		return ret;
 	}
 
-	ret = load_private_keys(ctx->keystore, &keyset);
-	ret = knot_error_from_libdnssec(ret);
+	ret = load_private_keys(ctx, &keyset);
 	if (ret != KNOT_EOK) {
-		log_zone_error(ctx->zone->dname, "DNSSEC, failed to load private "
-		               "keys (%s)", knot_strerror(ret));
 		free_zone_keys(&keyset);
 		return ret;
 	}
