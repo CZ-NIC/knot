@@ -57,74 +57,8 @@ struct load_cl {
 } ALIGNED_CPU_CACHE;
 static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
 
-/// Parametrization for speed of decay.
-struct decay_config {
-	/// Length of one tick is 2 ^ ticklen_log.
-	uint32_t ticklen_log;
-	/// Exponential decay with half-life of (2 ^ half_life_log) ticks.
-	uint32_t half_life_log;
-	/// Precomputed scaling constants.  Indexed by tick count [1 .. 2^half_life_log - 1],
-	///   contains the corresponding factor of decay (<1, scaled to 2^31 and rounded).
-	int32_t scales[];
-};
-typedef const struct decay_config decay_cfg_t;
-
-/// Catch up the time drift with configurably slower decay.
-static void update_time(struct load_cl *l, const uint32_t time_now, decay_cfg_t *decay)
-{
-	// We get `ticks` in this loop:
-	//  - first, non-atomic check that no tick's happened (typical under attack)
-	//  - on the second pass we advance l->time atomically
-	uint32_t ticks;
-	uint32_t time_last = l->time;
-	for (int i = 1; i < 2; ++i,time_last = atomic_exchange(&l->time, time_now)) {
-		ticks = (time_now - time_last) >> decay->ticklen_log;
-		if (!ticks)
-			return;
-		// We accept some desynchronization of time_now (e.g. from different threads).
-		if (ticks > (uint32_t)-1024)
-			return;
-	}
-	// If we passed here, we should be the only thread updating l->time "right now".
-
-	// Don't bother with complex computations if lots of ticks have passed.
-	// TODO: maybe store max_ticks_log precomputed inside *decay? (or (1 << max_ticks_log)-1)
-	const uint32_t max_ticks_log = /* ticks to shift by one bit */ decay->half_life_log
-					/* + log2(bit count) */ + 3 + sizeof(l->loads[0]);
-	if (ticks >> max_ticks_log > 0) {
-		memset(l->loads, 0, sizeof(l->loads));
-		return;
-	}
-
-	// some computations pulled outside of the cycle
-	const uint32_t decay_frac = ticks & (((uint32_t)1 << decay->half_life_log) - 1);
-	const uint32_t load_nonfrac_shift = ticks >> decay->half_life_log;
-	for (int i = 0; i < LOADS_LEN; ++i) {
-		// decay: first do the "fractional part of the bit shift"
-		int64_t m = (int64_t)l->loads[i] * decay->scales[decay_frac];
-		int32_t l1 = m >> 31;
-		// finally the non-fractional part of the bit shift
-		l->loads[i] = l1 >> load_nonfrac_shift;
-		// rounding during signed shift(s) would be too complicated?
-	}
-}
-/// Half-life of 32 ticks, consequently forgetting in about 1k ticks.
-/// Experiment: if going by a single tick, after 840 steps +0 (or fixed at -46),
-///  but accuracy at the beginning of that (first 32 ticks) is very good,
-///  getting from max 2^31 - 1 to 2^30 - 9 or -2^31 to -2^30 - 17.
-///  Max. decay per tick is 46016146.
-const struct decay_config DECAY_32 = {
-	.ticklen_log = 0,
-	.half_life_log = 5,
-	.scales = { // ghci> map (\i -> round(2^31 * 0.5 ** (i/32))) [1..31]
-		0, 2101467502,2056437387,2012372174,1969251188,1927054196,1885761398,
-		1845353420,1805811301,1767116489,1729250827,1692196547,1655936265,
-		1620452965,1585730000,1551751076,1518500250,1485961921,1454120821,
-		1422962010,1392470869,1362633090,1333434672,1304861917,1276901417,
-		1249540052,1222764986,1196563654,1170923762,1145833280,1121280436,1097253708
-	}
-};
-
+#define KRU_DECAY_BITS 31
+#include "knot/modules/rrl/kru-decay.c"
 
 struct kru {
 	/// Length of `loads_cls`, stored as binary logarithm.
