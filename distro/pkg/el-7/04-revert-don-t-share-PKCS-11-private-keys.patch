@@ -1,6 +1,6 @@
-From 8b91079db3dc1666ad0bf82bc8088ecf2232e1d3 Mon Sep 17 00:00:00 2001
+From 1bad8f831a9fd506516549ac7461f97c689a0c46 Mon Sep 17 00:00:00 2001
 From: Daniel Salzman <daniel.salzman@nic.cz>
-Date: Fri, 20 Oct 2023 11:07:56 +0200
+Date: Mon, 11 Dec 2023 17:08:23 +0100
 Subject: [PATCH] Revert "zone-sign: don't share PKCS 11 private keys by
  multiple signing threads"
 
@@ -8,12 +8,12 @@ This reverts commit 7d63e8e0825e03b8e0608e87b86968c452755c93.
 ---
  src/knot/dnssec/zone-keys.c | 38 +++----------------------------------
  src/libdnssec/key.h         |  4 ++--
- src/libdnssec/key/key.c     | 20 +------------------
+ src/libdnssec/key/key.c     | 24 +----------------------
  tests/libdnssec/test_key.c  |  4 ++--
- 4 files changed, 8 insertions(+), 58 deletions(-)
+ 4 files changed, 8 insertions(+), 62 deletions(-)
 
 diff --git a/src/knot/dnssec/zone-keys.c b/src/knot/dnssec/zone-keys.c
-index 54f95a616..a76c4be49 100644
+index cd6bf0bb3..d5cccc759 100644
 --- a/src/knot/dnssec/zone-keys.c
 +++ b/src/knot/dnssec/zone-keys.c
 @@ -1,4 +1,4 @@
@@ -22,7 +22,7 @@ index 54f95a616..a76c4be49 100644
  
      This program is free software: you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published by
-@@ -639,21 +639,6 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_key_digest_t digesttype,
+@@ -642,21 +642,6 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_key_digest_t digesttype,
  	return ret;
  }
  
@@ -44,7 +44,7 @@ index 54f95a616..a76c4be49 100644
  zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t *dnssec_ctx)
  {
  	zone_sign_ctx_t *ctx = calloc(1, sizeof(*ctx) + keyset->count * sizeof(*ctx->sign_ctxs));
-@@ -662,24 +647,11 @@ zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t
+@@ -665,24 +650,11 @@ zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t
  	}
  
  	ctx->sign_ctxs = (dnssec_sign_ctx_t **)(ctx + 1);
@@ -71,7 +71,7 @@ index 54f95a616..a76c4be49 100644
  		if (ret != DNSSEC_EOK) {
  			zone_sign_ctx_free(ctx);
  			return NULL;
-@@ -716,12 +688,8 @@ void zone_sign_ctx_free(zone_sign_ctx_t *ctx)
+@@ -719,12 +691,8 @@ void zone_sign_ctx_free(zone_sign_ctx_t *ctx)
  {
  	if (ctx != NULL) {
  		for (size_t i = 0; i < ctx->count; i++) {
@@ -104,7 +104,7 @@ index aa8002b4a..2a69d377f 100644
  dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key);
  
 diff --git a/src/libdnssec/key/key.c b/src/libdnssec/key/key.c
-index 9875a69c8..f36316712 100644
+index 4574bbefb..f36316712 100644
 --- a/src/libdnssec/key/key.c
 +++ b/src/libdnssec/key/key.c
 @@ -1,4 +1,4 @@
@@ -113,7 +113,7 @@ index 9875a69c8..f36316712 100644
  
      This program is free software: you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published by
-@@ -141,24 +141,6 @@ dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key)
+@@ -141,28 +141,6 @@ dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key)
  		return NULL;
  	}
  
@@ -122,10 +122,14 @@ index 9875a69c8..f36316712 100644
 -
 -		gnutls_privkey_type_t type = gnutls_privkey_get_type(key->private_key);
 -		if (type == GNUTLS_PRIVKEY_PKCS11) {
+-#ifdef ENABLE_PKCS11
 -			gnutls_pkcs11_privkey_t tmp;
 -			gnutls_privkey_export_pkcs11(key->private_key, &tmp);
 -			gnutls_privkey_import_pkcs11(dup->private_key, tmp,
 -			                             GNUTLS_PRIVKEY_IMPORT_AUTO_RELEASE);
+-#else
+-			assert(0);
+-#endif // ENABLE_PKCS11
 -		} else {
 -			assert(type == GNUTLS_PRIVKEY_X509);
 -			gnutls_x509_privkey_t tmp;
