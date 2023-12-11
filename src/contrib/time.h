@@ -88,6 +88,11 @@ inline static int knot_time_cmp(knot_time_t a, knot_time_t b)
 {
 	return (a == b ? 0 : 1) * ((a && b) == 0 ? -1 : 1) * (a < b ? -1 : 1);
 }
+inline static bool knot_time_lt (knot_time_t a, knot_time_t b) { return knot_time_cmp(a, b) < 0; }
+inline static bool knot_time_leq(knot_time_t a, knot_time_t b) { return knot_time_cmp(a, b) <= 0; }
+inline static bool knot_time_eq (knot_time_t a, knot_time_t b) { return knot_time_cmp(a, b) == 0; }
+inline static bool knot_time_geq(knot_time_t a, knot_time_t b) { return knot_time_cmp(a, b) >= 0; }
+inline static bool knot_time_gt (knot_time_t a, knot_time_t b) { return knot_time_cmp(a, b) > 0; }
 
 /*!
  * \brief Return the smaller (=earlier) from given two timestamps.

@@ -42,7 +42,7 @@ int key_records_dump(char **buf, size_t *buf_size, const key_records_t *r, bool 
 int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_t *kctx);
 
 // WARNING this modifies 'kctx' with updated timestamp and with zone_keys from r->dnskey
-int key_records_verify(key_records_t *r, kdnssec_ctx_t *kctx, knot_time_t timestamp);
+int key_records_verify(key_records_t *r, kdnssec_ctx_t *kctx, knot_time_t timestamp, knot_time_t min_valid);
 
 size_t key_records_serialized_size(const key_records_t *r);
 

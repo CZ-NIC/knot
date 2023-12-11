@@ -338,8 +338,10 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 	if (conf != NULL) {
 		conf_val_t policy_id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->apex->owner);
 		conf_id_fix_default(&policy_id);
-		conf_val_t num_threads = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, &policy_id);
-		ctx->policy->signing_threads = conf_int(&num_threads);
+		conf_val_t val = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, &policy_id);
+		ctx->policy->signing_threads = conf_int(&val);
+		val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, &policy_id);
+		ctx->policy->rrsig_refresh_before = conf_int_alt(&val, true);
 	} else {
 		ctx->policy->signing_threads = MAX(dt_optimal_size(), 1);
 	}

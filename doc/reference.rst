@@ -2056,6 +2056,10 @@ in order to prevent expired RRSIGs on secondary servers or resolvers' caches.
 
 *Default:* 0.1 * :ref:`policy_rrsig-lifetime` + :ref:`policy_propagation-delay` + :ref:`policy_zone-max-ttl`
 
+If :ref:`zone_dnssec-validation` is enabled:
+
+*Default:* ``1d`` (1 day)
+
 .. _policy_rrsig-pre-refresh:
 
 rrsig-pre-refresh
@@ -2744,7 +2748,9 @@ List of DNSSEC checks:
 
 The validation is not affected by :ref:`zone_dnssec-policy` configuration,
 except for :ref:`policy_signing-threads` option, which specifies the number
-of threads for parallel validation.
+of threads for parallel validation, and :ref:`policy_rrsig-refresh`, which
+defines minimal allowed remaining RRSIG validity (otherwise a warning is
+logged).
 
 .. NOTE::
 

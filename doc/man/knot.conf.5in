@@ -1869,6 +1869,10 @@ A period how long at least before a signature expiration the signature will be r
 in order to prevent expired RRSIGs on secondary servers or resolvers\(aq caches.
 .sp
 \fIDefault:\fP 0.1 * \fI\%rrsig\-lifetime\fP + \fI\%propagation\-delay\fP + \fI\%zone\-max\-ttl\fP
+.sp
+If \fI\%dnssec\-validation\fP is enabled:
+.sp
+\fIDefault:\fP \fB1d\fP (1 day)
 .SS rrsig\-pre\-refresh
 .sp
 A period how long at most before a signature refresh time the signature might be refreshed,
@@ -2522,7 +2526,9 @@ Every NSEC(3) RR is linked to the lexicographically next one.
 .sp
 The validation is not affected by \fI\%dnssec\-policy\fP configuration,
 except for \fI\%signing\-threads\fP option, which specifies the number
-of threads for parallel validation.
+of threads for parallel validation, and \fI\%rrsig\-refresh\fP, which
+defines minimal allowed remaining RRSIG validity (otherwise a warning is
+logged).
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
