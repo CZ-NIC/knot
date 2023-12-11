@@ -63,13 +63,13 @@ Size (`loads_bits` = log2 length):
 /// It's exactly a single cache line.
 struct load_cl {
 	_Atomic uint32_t time;
-	#define LOADS_LEN 15
-	uint16_t loads[LOADS_LEN];
+	#define LOADS_LEN 10
+	uint32_t loads[LOADS_LEN];
 	uint16_t ids[LOADS_LEN];
 } ALIGNED_CPU_CACHE;
 static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
 
-#define KRU_DECAY_BITS 16
+#define KRU_DECAY_BITS 32
 #include "knot/modules/rrl/kru-decay.c"
 
 struct kru {
@@ -123,9 +123,9 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 	for (int li = 0; li < TABLE_COUNT; ++li)
 		for (int i = 0; i < LOADS_LEN; ++i)
 			if (l[li]->ids[i] == id) {
-				uint16_t * const load = &l[li]->loads[i];
+				uint32_t * const load = &l[li]->loads[i];
 				if (__builtin_add_overflow(*load, price, load)) {
-					*load = (1<<16) - 1;
+					*load = -1;
 					return true;
 				} else {
 					return false;
@@ -142,8 +142,8 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 				min_i = i;
 			}
 	l[min_li]->ids[min_i] = id;
-	uint16_t * const load = &l[min_li]->loads[min_i];
+	uint32_t * const load = &l[min_li]->loads[min_i];
 	if (__builtin_add_overflow(*load, price, load))
-		*load = (1<<16) - 1;
+		*load = -1;
 	return false; // Let's not limit it, though its questionable.
 }

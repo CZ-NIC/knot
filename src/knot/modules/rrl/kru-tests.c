@@ -63,7 +63,7 @@ void test_decay32(void)
 		update_time(&l, time, &DECAY_32);
 		printf("%3d: %08zx\n", time, (size_t)l.loads[0]);
 	}
-#elif defined(KRU_IMPL_median32bit)
+#elif defined(KRU_IMPL_median32bit) || defined(KRU_IMPL_ss32bit)
 	struct load_cl l = { .loads[0] = (1ull<<31) - 1, .loads[1] = -(1ll<<31), .time = 0 };
 	for (uint32_t time = 0; time < 850; ++time) {
 		update_time(&l, time, &DECAY_32);
@@ -82,7 +82,7 @@ void test_decay32(void)
 		printf("%3d: %08d %08d\n", time, (int)l.loads[0], (int)l.loads[1]);
 	}
 #else
-#warn test_decay32 empty
+#warning test_decay32 empty
 #endif
 }
 
@@ -215,11 +215,13 @@ void test_multi_attackers(void) {
 
 	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(*cats),
 #if defined(KRU_IMPL_median16bit_simd)
-		.price = 1<<7  // same price for all packets
+		.price = 1<<7
 #elif defined(KRU_IMPL_ss16bit)
-		.price = 1<<10  // same price for all packets
+		.price = 1<<9
+#elif defined(KRU_IMPL_ss32bit)
+		.price = 1<<25
 #else
-		.price = 1<<25  // same price for all packets
+		.price = 1<<25
 #endif
 	};
 	test_clear_stats(&ctx);
@@ -243,7 +245,7 @@ void test_multi_attackers(void) {
 
 int main(int argc, char **argv)
 {
-	// test_single_attacker();
+	//test_single_attacker();
 	test_multi_attackers();
 
 	// struct kru kru __attribute__((unused));

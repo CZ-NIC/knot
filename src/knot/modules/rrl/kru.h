@@ -13,6 +13,9 @@
 #elif defined(KRU_IMPL_ss16bit)
 #define KRU_IMPL_FILE "knot/modules/rrl/kru_ss16bit.c"
 
+#elif defined(KRU_IMPL_ss32bit)
+#define KRU_IMPL_FILE "knot/modules/rrl/kru_ss32bit.c"
+
 #else // default
 #warning Using min32bit as KRU implementation.
 #define KRU_IMPL_min32bit
