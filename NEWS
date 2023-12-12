@@ -1,3 +1,38 @@
+Knot DNS 3.3.3 (2023-12-13)
+===========================
+
+Features:
+---------
+ - knotd: new 'pattern' mode of ACL update owner matching (see 'acl.update-owner-match')
+ - knotc: new '+keysonly' filter for zone backup/restore
+
+Improvements:
+-------------
+ - knotd: zone purging waits for finished zone expiration for better reliability
+ - knotd: remote configuration considers more 'via' with the same address family
+ - knotd: refresh doesn't fall back from IXFR to AXFR upon a network error
+ - knotd: increased default for 'policy.rrsig-refresh' by (0.1 * 'rrsig-lifetime')
+ - knotd: new control flag 'u' for unix time output format from zone status
+ - knotd: extended check for inconsistent acl settings
+ - knotd/libknot: simplified TCP/QUIC sweep logging
+ - mod-dnsproxy: all configured remote addresses are used for fallback operation
+ - mod-dnsproxy: module responds locally if forwarding fails instead of SERVFAIL
+ - libs: upgraded embedded libngtcp2 to 1.1.0
+ - doc: various fixes and extensions
+
+Bugfixes:
+---------
+ - knotd: zone backup fails due to improper backup context deinitialization #891
+ - knotd: failed to sign the zone if maximum zone's TTL is too high
+ - knotd: malformed TCP header if used with QUIC in the generic XDP mode
+ - knotd: server can crash when processing new TCP connections over XDP
+ - knotd: incorrect initialization of TCP limits
+ - knotd: orphaned PEM file not deleted when key generation fails
+ - knotd/libknot: connection timeouts over QUIC due to incomplete retransfer handling #894
+ - kdig: crashed when querying DNS over TLS if TLS handshake times out #896
+ - kzonecheck: failed to check DS with SHA-1 or GOST if not supported by local policy
+ - libdnssec: failed to compile with GnuTLS if PKCS #11 support is disabled
+
 Knot DNS 3.3.2 (2023-10-20)
 ===========================
 
