@@ -714,6 +714,11 @@ static int zone_keys_load(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
+	if (zone->contents == NULL) {
+		log_zone_notice(zone->name, "zone is not loaded yet");
+		return KNOT_EOK;
+	}
+
 	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
 }
 
