@@ -61,11 +61,14 @@ static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
 #define KRU_DECAY_BITS 32
 #include "knot/modules/rrl/kru-decay.c"
 
+#define HASHES_CNT 2
+#include "knot/modules/rrl/kru-hash.c"
+
 struct kru {
 	/// Length of `loads_cls`, stored as binary logarithm.
 	uint32_t loads_bits;
 	/// Hashing secret.  Random but shared by all users of the table.
-	SIPHASH_KEY hash_key;  // TODO use or remove
+	HASH_KEY_T hash_key;  // TODO use or remove
 
 	#define TABLE_COUNT 2
 	/// These are read-write.  Each struct has exactly one cache line.
@@ -78,7 +81,7 @@ struct kru *kru_init(uint32_t loads_bits)
 
 	kru->loads_bits = loads_bits;
 
-	if (dnssec_random_buffer((uint8_t *)&kru->hash_key, sizeof(kru->hash_key)) != DNSSEC_EOK) {
+	if (HASH_INIT(kru->hash_key)) {
 		free(kru);
 		return NULL;
 	}
@@ -121,8 +124,8 @@ uint32_t choose_4_15(uint64_t *hash) {
 /// Update limiting and return true iff it hit the limit instead.
 bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, uint32_t price)
 {
-	uint64_t hash = SipHash24(&kru->hash_key, buf, buf_len);
-	assert(sizeof(hash) * 8 >= TABLE_COUNT * (kru->loads_bits + 15));
+	HASH_FROM_BUF(kru->hash_key, buf, buf_len);
+	assert(HASH_BITS * 8 >= TABLE_COUNT * (kru->loads_bits + 15));
 	/*
 		TODO: update/remove this comment, prob_bits were removed.
 		Given 64-bit hash + TABLE_COUNT cache-lines of 15 items:
@@ -136,15 +139,15 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 	// Choose two struct load_cl, i.e. two cache-lines to operate on,
 	// and update their notion of time.
 	struct load_cl *l[TABLE_COUNT];
-	const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
+	//const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
 	for (int li = 0; li < TABLE_COUNT; ++li) {
-		l[li] = &kru->load_cls[hash & loads_mask][li];
-		hash >>= kru->loads_bits;
+		l[li] = &kru->load_cls[HASH_GET_BITS(kru->loads_bits)][li];
 		update_time(l[li], time_now, &DECAY_32);
 	}
 
 	const uint32_t limit = -price;
 	// Check if an index indicates that we're under the limit.
+	uint64_t hash = HASH_GET_BITS(TABLE_COUNT * 15);
 	uint64_t prnd = hash;
 	for (int li = 0; li < TABLE_COUNT; ++li) {
 		assert(LOADS_LEN == 15);

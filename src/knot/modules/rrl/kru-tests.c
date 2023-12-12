@@ -86,6 +86,24 @@ void test_decay32(void)
 #endif
 }
 
+#ifdef HASH_KEY_T
+void test_hash(void)
+{
+	HASH_KEY_T key;
+	(void) HASH_INIT(key);
+
+	char str[] = "abcd";
+	HASH_FROM_BUF(key, str, sizeof(str));
+	// hashes[0] = -1;
+	// hashes[1] = 0;
+	// hashes[2] = -1;
+
+	for (size_t i = 0; i < HASH_BITS; i += 7) {
+		printf("%ld\n", HASH_GET_BITS(7));
+	}
+}
+#endif
+
 struct test_ctx {
 	struct kru *kru;
 	uint32_t time;        // last time
@@ -172,13 +190,12 @@ void test_single_attacker(void) {
 	};
 
 	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(*cats),
-#if defined(KRU_IMPL_median16bit_simd)
-		.price = 1<<6  // same price for all packets
-#elif defined(KRU_IMPL_ss16bit)
-		.price = 1<<10  // same price for all packets
-#else
-		.price = 1<<23  // same price for all packets
+		.price = 1<<(KRU_DECAY_BITS
+				-7
+#if defined(KRU_IMPL_median32bit) || defined(KRU_IMPL_median16bit_simd)
+				-1
 #endif
+			)
 	};
 	test_clear_stats(&ctx);
 
@@ -202,11 +219,7 @@ void test_single_attacker(void) {
 
 void test_multi_attackers(void) {
 
-#if defined(KRU_IMPL_ss16bit)
-	struct kru *kru = kru_init(12);
-#else
-	struct kru *kru = kru_init(16);
-#endif
+	struct kru *kru = kru_init(13);
 
 	struct test_cat cats[] = {
 		{ "normal",         1,100000,  100000 },   // 100000 normal queries per tick, ~1 per user
@@ -214,15 +227,12 @@ void test_multi_attackers(void) {
 	};
 
 	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(*cats),
-#if defined(KRU_IMPL_median16bit_simd)
-		.price = 1<<7
-#elif defined(KRU_IMPL_ss16bit)
-		.price = 1<<9
-#elif defined(KRU_IMPL_ss32bit)
-		.price = 1<<25
-#else
-		.price = 1<<25
+		.price = 1<<(KRU_DECAY_BITS
+				-7
+#if defined(KRU_IMPL_median32bit) || defined(KRU_IMPL_median16bit_simd)
+				-1
 #endif
+			)
 	};
 	test_clear_stats(&ctx);
 
@@ -250,5 +260,6 @@ int main(int argc, char **argv)
 
 	// struct kru kru __attribute__((unused));
 	// test_decay32();
+	// test_hash();
 	return 0;
 }
