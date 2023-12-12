@@ -36,7 +36,8 @@ typedef struct zone_backup_ctx {
 	bool backup_zonefile;               // if true, also backup zone contents to a zonefile
 	bool backup_journal;                // if true, also backup journal
 	bool backup_timers;                 // if true, also backup timers
-	bool backup_kaspdb;                 // if true, also backup KASP database
+	bool backup_kaspdb;                 // if true, also backup KASP database (incl. keys)
+	bool backup_keysonly;               // if true, also backup keys (without KASP db)
 	bool backup_catalog;                // if true, also backup zone catalog
 	bool backup_quic;                   // if true, also backup QUIC server key and certificate
 	bool backup_global;                 // perform global backup for all zones
@@ -68,6 +69,7 @@ int zone_backup(conf_t *conf, zone_t *zone);
 
 int global_backup(zone_backup_ctx_t *ctx, catalog_t *catalog,
                   const knot_dname_t *zone_only);
+int zone_backup_keysonly(zone_backup_ctx_t *ctx, conf_t *conf, zone_t *zone);
 
 void zone_backups_init(zone_backup_ctxs_t *ctxs);
 void zone_backups_deinit(zone_backup_ctxs_t *ctxs);

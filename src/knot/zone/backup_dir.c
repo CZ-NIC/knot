@@ -89,8 +89,8 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	              "started_time: %s\n"
 	              "finished_time: %s\n"
 	              "knot_version: %s\n"
-	              "parameters: +%szonefile +%sjournal +%stimers +%skaspdb +%scatalog "
-	                  "+%squic +backupdir %s\n"
+	              "parameters: +%szonefile +%sjournal +%stimers +%skaspdb +%skeysonly "
+	                  "+%scatalog +%squic +backupdir %s\n"
 	              "zone_count: %d\n",
 	              label_file_head,
 	              ctx->backup_format, ident, started_time, finished_time, PACKAGE_VERSION,
@@ -98,6 +98,7 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	              ctx->backup_journal ? "" : "no",
 	              ctx->backup_timers ? "" : "no",
 	              ctx->backup_kaspdb ? "" : "no",
+	              ctx->backup_keysonly ? "" : "no",
 	              ctx->backup_catalog ? "" : "no",
 	              ctx->backup_quic ? "" : "no",
 	              ctx->backup_dir,

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,11 @@ static const keyclass_t zone_related_classes[] = {
 	KASPDBKEY_SAVED_TTLS,
 };
 static const size_t zone_related_classes_size = sizeof(zone_related_classes) / sizeof(*zone_related_classes);
+
+static const keyclass_t key_related_classes[] = {
+	KASPDBKEY_PARAMS,
+};
+static const size_t key_related_classes_size = sizeof(key_related_classes) / sizeof(*key_related_classes);
 
 static bool is_zone_related_class(uint8_t class)
 {
@@ -592,13 +597,21 @@ void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf)
 	}
 }
 
-int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db)
+static int kasp_db_backup_generic(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db,
+                                  const keyclass_t *classes, const size_t classes_size)
 {
-	size_t n_prefs = zone_related_classes_size + 1; // NOTE: this and following must match number of record types
-	MDB_val prefixes[n_prefs];
-	prefixes[0] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST); // we copy all policy-last records, that doesn't harm
-	for (size_t i = 1; i < n_prefs; i++) {
-		prefixes[i] = make_key_str(zone_related_classes[i - 1], zone, NULL);
+	size_t n_prefs = classes_size;
+
+	// NOTE: for full KASP db backup, this must match number of record types
+	MDB_val prefixes[n_prefs + 1]; // last one reserved for KASPDBKEY_POLICYLAST
+
+	for (size_t i = 0; i < n_prefs; i++) {
+		prefixes[i] = make_key_str(classes[i], zone, NULL);
+	}
+
+	if (classes == zone_related_classes) {
+		// we copy all policy-last records, that doesn't harm
+		prefixes[n_prefs++] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST);
 	}
 
 	int ret = knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs);
@@ -607,4 +620,16 @@ int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t 
 		free(prefixes[i].mv_data);
 	}
 	return ret;
+}
+
+int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db)
+{
+	return kasp_db_backup_generic(zone, db, backup_db,
+	                              zone_related_classes, zone_related_classes_size);
+}
+
+int kasp_db_backup_keys(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db)
+{
+	return kasp_db_backup_generic(zone, db, backup_db,
+	                              key_related_classes, key_related_classes_size);
 }
