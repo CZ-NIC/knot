@@ -1363,7 +1363,7 @@ assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
 
   if (ngtcp2_crypto_read_write_crypto_data(
           conn, NGTCP2_ENCRYPTION_LEVEL_INITIAL, NULL, 0) != 0) {
-assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
+/*assert(0);*/    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   return 0;

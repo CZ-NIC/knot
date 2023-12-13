@@ -474,6 +474,8 @@ ngtcp2_crypto_gnutls_from_ngtcp2_encryption_level(
   }
 }
 
+#include <stdio.h>
+
 int ngtcp2_crypto_read_write_crypto_data(
     ngtcp2_conn *conn, ngtcp2_encryption_level encryption_level,
     const uint8_t *data, size_t datalen) {
@@ -489,6 +491,7 @@ int ngtcp2_crypto_read_write_crypto_data(
       if (!gnutls_error_is_fatal(rv)) {
         return 0;
       }
+      printf("RVCD1 %d (%s)\n", rv, gnutls_strerror(rv));
       gnutls_alert_send_appropriate(session, rv);
       return -1;
     }
@@ -500,6 +503,7 @@ int ngtcp2_crypto_read_write_crypto_data(
       if (!gnutls_error_is_fatal(rv)) {
         return 0;
       }
+      printf("RVCD2 %d (%s)\n", rv, gnutls_strerror(rv));
       gnutls_alert_send_appropriate(session, rv);
       return -1;
     }
