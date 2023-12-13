@@ -792,7 +792,7 @@ int ngtcp2_crypto_encrypt_cb(uint8_t *dest, const ngtcp2_crypto_aead *aead,
                              const uint8_t *aad, size_t aadlen) {
   if (ngtcp2_crypto_encrypt(dest, aead, aead_ctx, plaintext, plaintextlen,
                             nonce, noncelen, aad, aadlen) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
@@ -813,7 +813,7 @@ int ngtcp2_crypto_hp_mask_cb(uint8_t *dest, const ngtcp2_crypto_cipher *hp,
                              const ngtcp2_crypto_cipher_ctx *hp_ctx,
                              const uint8_t *sample) {
   if (ngtcp2_crypto_hp_mask(dest, hp, hp_ctx, sample) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
@@ -833,7 +833,7 @@ int ngtcp2_crypto_update_key_cb(
                                rx_iv, tx_aead_ctx, tx_key, tx_iv,
                                current_rx_secret, current_tx_secret,
                                secretlen) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
@@ -1354,16 +1354,16 @@ int ngtcp2_crypto_client_initial_cb(ngtcp2_conn *conn, void *user_data) {
   if (ngtcp2_crypto_derive_and_install_initial_key(
           conn, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
           ngtcp2_conn_get_client_chosen_version(conn), dcid) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   if (crypto_set_local_transport_params(conn, tls) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   if (ngtcp2_crypto_read_write_crypto_data(
           conn, NGTCP2_ENCRYPTION_LEVEL_INITIAL, NULL, 0) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   return 0;
@@ -1376,7 +1376,7 @@ int ngtcp2_crypto_recv_retry_cb(ngtcp2_conn *conn, const ngtcp2_pkt_hd *hd,
   if (ngtcp2_crypto_derive_and_install_initial_key(
           conn, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
           ngtcp2_conn_get_client_chosen_version(conn), &hd->scid) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   return 0;
@@ -1390,7 +1390,7 @@ int ngtcp2_crypto_recv_client_initial_cb(ngtcp2_conn *conn,
   if (ngtcp2_crypto_derive_and_install_initial_key(
           conn, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
           ngtcp2_conn_get_client_chosen_version(conn), dcid) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   return 0;
@@ -1404,7 +1404,7 @@ int ngtcp2_crypto_version_negotiation_cb(ngtcp2_conn *conn, uint32_t version,
   if (ngtcp2_crypto_derive_and_install_vneg_initial_key(
           conn, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, version,
           client_dcid) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   return 0;

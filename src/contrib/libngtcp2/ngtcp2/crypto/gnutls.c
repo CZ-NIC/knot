@@ -536,7 +536,7 @@ int ngtcp2_crypto_get_path_challenge_data_cb(ngtcp2_conn *conn, uint8_t *data,
   (void)user_data;
 
   if (gnutls_rnd(GNUTLS_RND_RANDOM, data, NGTCP2_PATH_CHALLENGE_DATALEN) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   return 0;

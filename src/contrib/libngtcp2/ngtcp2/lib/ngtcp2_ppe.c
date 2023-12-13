@@ -126,7 +126,7 @@ ngtcp2_ssize ngtcp2_ppe_final(ngtcp2_ppe *ppe, const uint8_t **ppkt) {
   rv = cc->encrypt(payload, &cc->aead, &cc->ckm->aead_ctx, payload, payloadlen,
                    ppe->nonce, cc->ckm->iv.len, buf->begin, ppe->hdlen);
   if (rv != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   buf->last = payload + payloadlen + cc->aead.max_overhead;
@@ -136,7 +136,7 @@ ngtcp2_ssize ngtcp2_ppe_final(ngtcp2_ppe *ppe, const uint8_t **ppkt) {
 
   rv = cc->hp_mask(mask, &cc->hp, &cc->hp_ctx, buf->begin + ppe->sample_offset);
   if (rv != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   p = buf->begin;

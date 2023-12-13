@@ -561,7 +561,7 @@ static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	assert(ctx->conn == conn);
 
 	if (!init_unique_cid(cid, cidlen, ctx->quic_table)) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	knot_quic_cid_t **addto = quic_table_insert(ctx, cid, ctx->quic_table);
@@ -571,7 +571,7 @@ static int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	    ngtcp2_crypto_generate_stateless_reset_token(
 	            token, (uint8_t *)ctx->quic_table->hash_secret,
 	            sizeof(ctx->quic_table->hash_secret), cid) != 0) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	return 0;
@@ -610,7 +610,7 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 		knot_quic_conn_pin(ctx, pin, &pin_size, false);
 		if (pin_size != creds->peer_pin_len ||
 		    const_time_memcmp(pin, creds->peer_pin, pin_size) != 0) {
-			return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);			return NGTCP2_ERR_CALLBACK_FAILURE;
 		}
 		return 0;
 	}
@@ -627,11 +627,11 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 			sizeof(ctx->quic_table->hash_secret),
 			path.remote.addr, path.remote.addrlen, ts);
 	if (tokenlen < 0) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	if (ngtcp2_conn_submit_new_token(ctx->conn, token, tokenlen) != 0) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	return 0;

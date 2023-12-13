@@ -387,7 +387,7 @@ static int conn_process_lost_datagram(ngtcp2_conn *conn,
       rv = conn->callbacks.lost_datagram(conn, frc->fr.datagram.dgram_id,
                                          conn->user_data);
       if (rv != 0) {
-        return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);        return NGTCP2_ERR_CALLBACK_FAILURE;
       }
       break;
     }
@@ -595,7 +595,7 @@ static int rtb_process_acked_pkt(ngtcp2_rtb *rtb, ngtcp2_rtb_entry *ent,
             conn, strm->stream_id, prev_stream_offset, datalen, conn->user_data,
             strm->stream_user_data);
         if (rv != 0) {
-          return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);          return NGTCP2_ERR_CALLBACK_FAILURE;
         }
       }
 
@@ -666,7 +666,7 @@ static int rtb_process_acked_pkt(ngtcp2_rtb *rtb, ngtcp2_rtb_entry *ent,
       rv = conn->callbacks.ack_datagram(conn, frc->fr.datagram.dgram_id,
                                         conn->user_data);
       if (rv != 0) {
-        return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);        return NGTCP2_ERR_CALLBACK_FAILURE;
       }
       break;
     }
@@ -1336,7 +1336,7 @@ static int rtb_on_pkt_lost_resched_move(ngtcp2_rtb *rtb, ngtcp2_conn *conn,
         rv = conn->callbacks.lost_datagram(conn, frc->fr.datagram.dgram_id,
                                            conn->user_data);
         if (rv != 0) {
-          return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);          return NGTCP2_ERR_CALLBACK_FAILURE;
         }
       }
 

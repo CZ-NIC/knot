@@ -94,7 +94,7 @@ static int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
 	int ret = knot_tcp_inbufs_upd(&ctx->stream.in_buffer, in, true,
 	                &ctx->stream.in_parsed, &ctx->stream.in_parsed_total);
 	if (ret != KNOT_EOK) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	ctx->idle_ts = quic_timestamp();
@@ -109,7 +109,7 @@ static int stream_open_cb(ngtcp2_conn *conn, int64_t stream_id,
 
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
 	set_application_error(ctx, DOQ_PROTOCOL_ERROR, NULL, 0);
-	return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);	return NGTCP2_ERR_CALLBACK_FAILURE;
 }
 
 static int acked_stream_data_offset_cb(ngtcp2_conn *conn, int64_t stream_id,
@@ -167,7 +167,7 @@ static int extend_max_bidi_streams_cb(ngtcp2_conn *conn, uint64_t max_streams,
 	if(max_streams > 0) {
 		int ret = quic_open_bidi_stream(ctx);
 		if (ret != KNOT_EOK) {
-			return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);			return NGTCP2_ERR_CALLBACK_FAILURE;
 		}
 	}
 	return 0;
@@ -189,13 +189,13 @@ static int get_new_connection_id_cb(ngtcp2_conn *conn, ngtcp2_cid *cid,
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
 
 	if (dnssec_random_buffer(cid->data, cidlen) != DNSSEC_EOK) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 	cid->datalen = cidlen;
 
 	if (ngtcp2_crypto_generate_stateless_reset_token(token, ctx->secret,
 	                sizeof(ctx->secret), cid) != 0) {
-		return NGTCP2_ERR_CALLBACK_FAILURE;
+assert(0);		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	return 0;
