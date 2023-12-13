@@ -44,7 +44,7 @@ static void update_time(struct load_cl *l, const uint32_t time_now, decay_cfg_t 
 	uint32_t time_last = l->time;
 	for (int i = 1; i < 2; ++i,time_last = atomic_exchange(&l->time, time_now)) {
 		ticks = (time_now - time_last) >> decay->ticklen_log;
-		if (!ticks)
+		if (__builtin_expect(!ticks, true)) // we optimize for time not advancing
 			return;
 		// We accept some desynchronization of time_now (e.g. from different threads).
 		if (ticks > (uint32_t)-1024)
