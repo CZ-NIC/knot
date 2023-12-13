@@ -24,6 +24,7 @@
 
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 // FIXME: review the whole header; for now at least the main APIs should appear
 
