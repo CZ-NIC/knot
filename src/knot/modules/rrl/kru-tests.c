@@ -75,7 +75,7 @@ void test_decay32(void)
 		update_time(&l, time, &DECAY_32);
 		printf("%3d: %08d %08d\n", time, (int)l.loads[0], (int)l.loads[1]);
 	}
-#elif defined(KRU_IMPL_ss16bit)
+#elif defined(KRU_IMPL_ss16bit) || defined(KRU_IMPL_ss16bit_simd)
 	struct load_cl l = { .loads[0] = (1ull<<16) - 1, .loads[1] = (1ll<<16) - 1, .time = 0 };
 	for (uint32_t time = 0; time < 340; ++time) {
 		update_time(&l, time, &DECAY_32);

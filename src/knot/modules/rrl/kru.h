@@ -13,6 +13,12 @@
 #elif defined(KRU_IMPL_ss16bit)
 #define KRU_IMPL_FILE "knot/modules/rrl/kru_ss16bit.c"
 
+#elif defined(KRU_IMPL_ss16bit_simd)
+#define USE_AES 1
+#define USE_AVX2 1
+#define USE_SSE41 1
+#define KRU_IMPL_FILE "knot/modules/rrl/kru_ss16bit.c"
+
 #elif defined(KRU_IMPL_ss32bit)
 #define KRU_IMPL_FILE "knot/modules/rrl/kru_ss32bit.c"
 
