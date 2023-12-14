@@ -55,6 +55,17 @@ Size (`loads_bits` = log2 length):
 	#define ALIGNED(_bytes)
 #endif
 
+// new-ish x86 (2015+ usually, Atom 2021+)
+// TODO: improve this?
+// SSE4.2 is in x86-64-v2, i.e. basically any reasonable x86 today
+// AES is not in these levels but also in all reasonable x86
+#ifdef __clang__
+	#pragma clang attribute push (__attribute__((target("arch=x86-64-v3,aes"))), \
+							apply_to = function)
+#else
+	#pragma GCC target("arch=x86-64-v3,aes")
+#endif
+
 /// Block of loads sharing the same time, so that we're more space-efficient.
 /// It's exactly a single cache line.
 struct load_cl {
@@ -255,3 +266,7 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 		*load = (1<<16) - 1;
 	return false; // Let's not limit it, though its questionable.
 }
+
+#ifdef __clang__
+	#pragma clang attribute pop
+#endif
