@@ -48,7 +48,7 @@ Size (`loads_bits` = log2 length):
 /// Block of loads sharing the same time, so that we're more space-efficient.
 /// It's exactly a single cache line.
 struct load_cl {
-	uint32_t time;
+	_Atomic uint32_t time;
 	#define LOADS_LEN 15
 	int32_t loads[LOADS_LEN];
 } ALIGNED_CPU_CACHE;
