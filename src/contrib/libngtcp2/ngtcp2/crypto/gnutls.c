@@ -492,6 +492,7 @@ int ngtcp2_crypto_read_write_crypto_data(
         return 0;
       }
       printf("RVCD1 %d (%s)\n", rv, gnutls_strerror(rv));
+      fflush(stdout);
       gnutls_alert_send_appropriate(session, rv);
       return -1;
     }
@@ -504,6 +505,7 @@ int ngtcp2_crypto_read_write_crypto_data(
         return 0;
       }
       printf("RVCD2 %d (%s)\n", rv, gnutls_strerror(rv));
+      fflush(stdout);
       gnutls_alert_send_appropriate(session, rv);
       return -1;
     }

@@ -464,7 +464,7 @@ static int conn_call_client_initial(ngtcp2_conn *conn) {
 
   rv = conn->callbacks.client_initial(conn, conn->user_data);
   if (rv != 0) {
-assert(0);    return NGTCP2_ERR_CALLBACK_FAILURE;
+/*assert(0);*/    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   return 0;
