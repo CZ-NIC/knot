@@ -84,6 +84,11 @@ struct kru {
 
 struct kru *kru_init(uint32_t loads_bits)
 {
+	if (HASH_BITS < TABLE_COUNT * loads_bits + 16/*ids are 16-bit*/) {
+		assert(false);
+		return NULL;
+	}
+
 	struct kru *kru = calloc(1, offsetof(struct kru, load_cls) + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits));
 
 	kru->loads_bits = loads_bits;
@@ -104,7 +109,6 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 {
 
 	HASH_FROM_BUF(kru->hash_key, buf, buf_len);
-	assert(HASH_BITS * 8 >= TABLE_COUNT * (kru->loads_bits + 16));
 
 	// Choose the cache-lines to operate on
 	struct load_cl *l[TABLE_COUNT];
@@ -114,7 +118,7 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 		update_time(l[li], time_now, &DECAY_32);
 	}
 
-	uint16_t id = HASH_GET_BITS(16); // TODO: really share the same in all tables?
+	uint16_t id = HASH_GET_BITS(16);
 	const uint32_t limit = (1<<16) - price;
 
 	// Find matching element.  Matching 16 bits in addition to loads_bits.
