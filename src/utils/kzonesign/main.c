@@ -117,7 +117,7 @@ static int zonesign(sign_params_t *params)
 			goto fail;
 		}
 
-		ret = knot_dnssec_validate_zone(&up, conf(), params->timestamp, false);
+		ret = knot_dnssec_validate_zone(&up, conf(), params->timestamp, false, NULL);
 		if (ret != KNOT_EOK) {
 			ERR2("DNSSEC validation failed (%s)", knot_strerror(ret));
 			char type_str[16];
