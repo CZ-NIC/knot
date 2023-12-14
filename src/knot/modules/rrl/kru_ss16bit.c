@@ -191,7 +191,8 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 		if (_mm256_testz_si256(match_mask, match_mask))
 			continue; // no match of id
 		int index = _bit_scan_reverse(_mm256_movemask_epi8(match_mask)) / 2 - 1;
-		if (index >= 0 && index < LOADS_LEN) {
+		// there's a small possibility that we hit equality only on the -1 index
+		if (index >= 0) {
 			load = &l[li]->loads[index];
 			goto load_found;
 		}
