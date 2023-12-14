@@ -82,7 +82,7 @@ void test_decay32(void)
 		printf("%3d: %08d %08d\n", time, (int)l.loads[0], (int)l.loads[1]);
 	}
 #else
-#warning test_decay32 empty
+	assert(0);
 #endif
 }
 

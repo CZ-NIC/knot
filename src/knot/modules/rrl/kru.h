@@ -4,6 +4,9 @@
 #if defined(KRU_IMPL_min32bit)
 #define KRU_IMPL_FILE "knot/modules/rrl/kru_min32bit.c"
 
+#elif defined(KRU_IMPL_min32bit_updatemin)
+#define KRU_IMPL_FILE "knot/modules/rrl/kru_min32bit_updatemin.c"
+
 #elif defined(KRU_IMPL_median32bit)
 #define KRU_IMPL_FILE "knot/modules/rrl/kru_median32bit.c"
 
