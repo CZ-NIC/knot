@@ -449,16 +449,18 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx)
 }
 
 int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
-                              knot_time_t now, bool incremental)
+                              knot_time_t now, bool incremental, size_t *count)
 {
 	kdnssec_ctx_t ctx = { 0 };
 	int ret = kdnssec_validation_ctx(conf, &ctx, update->new_cont);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	if (now != 0) {
 		ctx.now = now;
 	}
-	if (ret == KNOT_EOK) {
-		ret = knot_zone_check_nsec_chain(update, &ctx, incremental);
-	}
+
+	ret = knot_zone_check_nsec_chain(update, &ctx, incremental);
 	if (ret == KNOT_EOK) {
 		assert(ctx.validation_mode);
 		if (incremental) {
@@ -467,6 +469,11 @@ int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
 			ret = knot_zone_sign(update, NULL, &ctx);
 		}
 	}
+
+	if (count != NULL) {
+		*count = ctx.stats->rrsig_count;
+	}
+
 	kdnssec_ctx_deinit(&ctx);
 	return ret;
 }

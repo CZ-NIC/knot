@@ -320,6 +320,10 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 		                           sign_ctx->dnssec_ctx, 0, skip_crypto, &ret, &valid_at)) {
 			valid_exists = true;
 		}
+
+		knot_spin_lock(&sign_ctx->dnssec_ctx->stats->lock);
+		sign_ctx->dnssec_ctx->stats->rrsig_count++;
+		knot_spin_unlock(&sign_ctx->dnssec_ctx->stats->lock);
 	}
 
 	return valid_exists ? ret : KNOT_DNSSEC_ENOSIG;
