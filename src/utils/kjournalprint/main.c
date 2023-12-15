@@ -342,7 +342,6 @@ int main(int argc, char *argv[])
 		{ "zone-list", no_argument,       NULL, 'z' },
 		{ "check",     no_argument,       NULL, 'H' },
 		{ "debug",     no_argument,       NULL, 'd' },
-		{ "no-color",  no_argument,       NULL, 'n' },
 		{ "mono",      no_argument,       NULL, 'x' },
 		{ "color",     no_argument,       NULL, 'X' },
 		{ "help",      no_argument,       NULL, 'h' },
@@ -354,7 +353,7 @@ int main(int argc, char *argv[])
 	signal_init_std();
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:D:l:s:zHdnxXhV::", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:C:D:l:s:zHdxXhV::", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
@@ -393,7 +392,6 @@ int main(int argc, char *argv[])
 		case 'd':
 			params.debug = true;
 			break;
-		case 'n':
 		case 'x':
 			params.color = false;
 			break;
