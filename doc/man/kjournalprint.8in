@@ -80,9 +80,6 @@ Debug mode brief output.
 \fB\-x\fP, \fB\-\-mono\fP
 Don\(aqt generate colorized output.
 .TP
-\fB\-n\fP, \fB\-\-no\-color\fP
-An alias for \fB\-x\fP\&. Use of this option is deprecated, it will be removed in the future.
-.TP
 \fB\-X\fP, \fB\-\-color\fP
 Force colorized output.
 .TP
