@@ -306,7 +306,6 @@ int main(int argc, char *argv[])
 		{ "tsig",     required_argument, NULL, 't' },
 		{ "extended", no_argument,       NULL, 'e' },
 		{ "list",     no_argument,       NULL, 'l' },
-		{ "brief",    no_argument,       NULL, 'b' }, // Legacy.
 		{ "mono",     no_argument,       NULL, 'x' },
 		{ "color",    no_argument,       NULL, 'X' },
 		{ "help",     no_argument,       NULL, 'h' },
@@ -362,9 +361,6 @@ int main(int argc, char *argv[])
 			break;
 		case 'l':
 			just_list = true;
-			break;
-		case 'b':
-			WARN2("option '--brief' is deprecated and enabled by default");
 			break;
 		case 'x':
 			list_params.color = false;
