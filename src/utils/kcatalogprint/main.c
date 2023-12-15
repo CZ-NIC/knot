@@ -155,13 +155,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// Backward compatibility.
 	if (argc - optind > 0) {
-		WARN2("obsolete parameter specified");
-		if (util_conf_init_justdb("catalog-db", argv[optind]) != KNOT_EOK) {
-			goto failure;
-		}
-		optind++;
+		print_help();
+		goto failure;
 	}
 
 	if (util_conf_init_default(true) != KNOT_EOK) {
