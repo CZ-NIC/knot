@@ -410,15 +410,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// Backward compatibility.
-	if ((justlist && (argc - optind > 0)) || (!justlist && (argc - optind > 1))) {
-		WARN2("obsolete parameter specified");
-		if (util_conf_init_justdb("journal-db", argv[optind]) != KNOT_EOK) {
-			goto failure;
-		}
-		optind++;
-	}
-
 	signal_ctx.color = params.color;
 
 	if (util_conf_init_default(true) != KNOT_EOK) {
