@@ -14,7 +14,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#define __APPLE_USE_RFC_3542
+#ifdef __APPLE__
+#define __APPLE_USE_RFC_3542 // IPV6_PKTINFO
+#endif
 
 #include <assert.h>
 #include <dlfcn.h>
