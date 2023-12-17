@@ -207,17 +207,8 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 	}
 #endif
 
-	if (load) {
-	load_found:;
-		const uint32_t limit = (1<<16) - price;
-		if (*load >= limit) return true;
-		if (__builtin_add_overflow(*load, price, load)) {
-			*load = (1<<16) - 1;
-			return true;
-		} else {
-			return false;
-		}
-	}
+	if (load)
+		goto load_found;
 
 	// No match, so find position of the smallest load.
 	int min_li = 0;
@@ -271,9 +262,15 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 
 	l[min_li]->ids[min_i] = id;
 	load = &l[min_li]->loads[min_i]; // TODO: goto load_found?
-	if (__builtin_add_overflow(*load, price, load))
+load_found:;
+	const uint32_t limit = (1<<16) - price;
+	if (*load >= limit) return true;
+	if (__builtin_add_overflow(*load, price, load)) {
 		*load = (1<<16) - 1;
-	return false; // Let's not limit it, though its questionable.
+		return true;
+	} else {
+		return false;
+	}
 }
 
 #ifdef __clang__
