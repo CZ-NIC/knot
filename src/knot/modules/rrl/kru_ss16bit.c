@@ -170,10 +170,13 @@ bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, 
 	// Choose the cache-lines to operate on
 	struct load_cl *l[TABLE_COUNT];
 	//const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
+	// Fetch the two cache-lines in parallel before we really touch them.
 	for (int li = 0; li < TABLE_COUNT; ++li) {
 		l[li] = &kru->load_cls[HASH_GET_BITS(kru->loads_bits)][li];
-		update_time(l[li], time_now, &DECAY_32);
+		__builtin_prefetch(l[li], 0); // hope for read-only access
 	}
+	for (int li = 0; li < TABLE_COUNT; ++li)
+		update_time(l[li], time_now, &DECAY_32);
 
 	uint16_t id = HASH_GET_BITS(16);
 
