@@ -118,7 +118,12 @@ struct kru *kru_init(uint32_t loads_bits)
 		return NULL;
 	}
 
-	struct kru *kru = calloc(1, offsetof(struct kru, load_cls) + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits));
+	struct kru *kru;
+	size_t size = offsetof(struct kru, load_cls)
+		    + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits);
+	// ensure good alignment
+	if (posix_memalign((void **)&kru, 64, size) != 0)
+		return NULL;
 
 	kru->loads_bits = loads_bits;
 
