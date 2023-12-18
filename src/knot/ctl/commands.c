@@ -1469,7 +1469,7 @@ static int catalog_orphans_sweep(server_t *server)
 			          knot_strerror(ret));
 		}
 	} else {
-		log_error("can't open catalog for purging (%s)",
+		log_error("can not open catalog for purging (%s)",
 		          knot_strerror(ret));
 	}
 

@@ -99,7 +99,7 @@
 static int check_args(cmd_args_t *args, int min, int max)
 {
 	if (max == 0 && args->argc > 0) {
-		log_error("command doesn't take arguments");
+		log_error("command does not take arguments");
 		return KNOT_EINVAL;
 	} else if (min == max && args->argc != min) {
 		log_error("command requires %i arguments", min);

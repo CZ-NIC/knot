@@ -705,7 +705,7 @@ int check_policy(
 
 	unsigned algorithm = conf_opt(&alg);
 	if (algorithm < DNSSEC_KEY_ALGORITHM_RSA_SHA256) {
-		CONF_LOG(LOG_NOTICE, "algorithm %u is deprecated and shouldn't be used for DNSSEC signing",
+		CONF_LOG(LOG_NOTICE, "algorithm %u is deprecated and should not be used for DNSSEC signing",
 		         algorithm);
 	}
 
