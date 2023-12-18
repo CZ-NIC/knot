@@ -63,6 +63,7 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 		int64_t quic_timeout_ms = knot_quic_conn_next_timeout(conn);
 		quic_timeout_ms = MIN(quic_timeout_ms, timeout_remain);
 		quic_timeout_ms = MIN(quic_timeout_ms, timeout_ms / 2);
+		quic_timeout_ms = MAX(quic_timeout_ms, 1);
 
 		r->in_payload->iov_len = QUIC_BUF_SIZE;
 

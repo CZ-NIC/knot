@@ -282,6 +282,7 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 	}
 	knot_pkt_free(request->query);
 	knot_pkt_free(request->resp);
+	dnssec_binary_free(&request->sign.tsig_key.secret);
 	tsig_cleanup(&request->tsig);
 
 	mm_free(mm, request);
