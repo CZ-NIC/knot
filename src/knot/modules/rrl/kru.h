@@ -1,43 +1,39 @@
 
 #pragma once
 
-#if defined(KRU_IMPL_min32bit)
-#define KRU_IMPL_FILE "knot/modules/rrl/kru_min32bit.c"
-
-#elif defined(KRU_IMPL_min32bit_updatemin)
-#define KRU_IMPL_FILE "knot/modules/rrl/kru_min32bit_updatemin.c"
-
-#elif defined(KRU_IMPL_median32bit)
-#define KRU_IMPL_FILE "knot/modules/rrl/kru_median32bit.c"
-
-#elif defined(KRU_IMPL_median16bit_simd)
-#define KRU_IMPL_FILE "knot/modules/rrl/kru_median16bit_simd.c"
-
-#elif defined(KRU_IMPL_ss16bit)
-#define KRU_IMPL_FILE "knot/modules/rrl/kru_ss16bit.c"
-
-#elif defined(KRU_IMPL_ss16bit_simd)
-#define USE_AES 1
-#define USE_AVX2 1
-#define USE_SSE41 1
-#define KRU_IMPL_FILE "knot/modules/rrl/kru_ss16bit.c"
-
-#elif defined(KRU_IMPL_ss32bit)
-#define KRU_IMPL_FILE "knot/modules/rrl/kru_ss32bit.c"
-
-#else // default
-#warning Using min32bit as KRU implementation.
-#define KRU_IMPL_min32bit
-#define KRU_IMPL_FILE "knot/modules/rrl/kru_min32bit.c"
-#endif
-
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 // FIXME: review the whole header; for now at least the main APIs should appear
 
 struct kru;
-struct kru *kru_init(uint32_t loads_bits);
-void kru_destroy(struct kru *kru);
-bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, uint32_t price);
+
+/// Usage: KRU.limited(...)
+struct kru_api {
+	/// Create a new KRU structure that can truck up to 1 << capacity_log
+	/// limited keys (and basically arbitrary amount of non-limited keys).
+	/// Use simply free() to destroy this structure.
+	struct kru * (*create)(int capacity_log);
+
+	// TODO: probably allow to split creation as follows.
+	//size_t (*get_size)(int capacity_log);
+	//void (*initialize)(struct kru *kru);
+
+	/// Determine if a key should get limited (and update the KRU).
+	/// key needs to be aligned to a multiple of 16 bytes.
+	bool (*limited)(struct kru *kru, char key[static const 16],
+			uint32_t time_now, uint16_t price);
+};
+// The functions are stored this way to make it easier to switch
+// implementation based on detected CPU.
+extern struct kru_api KRU;
+
+
+#if __GNUC__ >= 4 || __clang_major__ >= 4
+	#define ALIGNED_CPU_CACHE __attribute__((aligned(64)))
+	#define ALIGNED(_bytes)   __attribute__((aligned(_bytes)))
+#else
+	#define ALIGNED_CPU_CACHE
+	#define ALIGNED(_bytes)
+#endif
+

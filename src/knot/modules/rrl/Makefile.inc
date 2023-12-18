@@ -1,7 +1,8 @@
 knot_modules_rrl_la_SOURCES = knot/modules/rrl/rrl.c \
                               knot/modules/rrl/functions.c \
                               knot/modules/rrl/functions.h \
-                              knot/modules/rrl/kru.c \
+                              knot/modules/rrl/kru-generic.c \
+                              knot/modules/rrl/kru-avx2.c \
                               knot/modules/rrl/kru.h
 EXTRA_DIST +=                 knot/modules/rrl/rrl.rst
 

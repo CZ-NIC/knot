@@ -47,25 +47,6 @@ Size (`loads_bits` = log2 length):
 
 #include "knot/modules/rrl/kru.h"
 
-#if __GNUC__ >= 4
-	#define ALIGNED_CPU_CACHE __attribute__((aligned(64)))
-	#define ALIGNED(_bytes)   __attribute__((aligned(_bytes)))
-#else
-	#define ALIGNED_CPU_CACHE
-	#define ALIGNED(_bytes)
-#endif
-
-// new-ish x86 (2015+ usually, Atom 2021+)
-// TODO: improve this?
-// SSE4.2 is in x86-64-v2, i.e. basically any reasonable x86 today
-// AES is not in these levels but also in all reasonable x86
-#ifdef __clang__
-	#pragma clang attribute push (__attribute__((target("arch=x86-64-v3,aes"))), \
-							apply_to = function)
-#else
-	#pragma GCC target("arch=x86-64-v3,aes")
-#endif
-
 /// Block of loads sharing the same time, so that we're more space-efficient.
 /// It's exactly a single cache line.
 struct load_cl {
@@ -76,15 +57,22 @@ struct load_cl {
 } ALIGNED_CPU_CACHE;
 static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
 
-#define KRU_DECAY_BITS 16
-#include "knot/modules/rrl/kru-decay.c"
 
+#include "knot/modules/rrl/kru-decay.inc.c"
+
+
+#include "libdnssec/error.h"
+#include "libdnssec/random.h"
+typedef uint64_t hash_t;
 #if USE_AES
-	#define HASHES_CNT 2
+	/// 4-8 rounds should be an OK choice, most likely.  TODO: confirm
+	#define AES_ROUNDS 4
 #else
-	#define HASHES_CNT 1
+	#include "contrib/openbsd/siphash.h"
+	/// 1,3 should be OK choice, probably.  TODO: confirm
+	#define hash(_k, _p, _l)  SipHash((_k), 1, 3, (_p), (_l))
 #endif
-#include "knot/modules/rrl/kru-hash.c"
+
 
 #if USE_AVX2 || USE_SSE41 || USE_AES
 	#include <immintrin.h>
@@ -93,14 +81,12 @@ static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
 
 struct kru {
 #if USE_AES
-	/// 4-8 rounds should be an OK choice, most likely.  TODO: confirm
-	#define AES_ROUNDS 4
 	/// Hashing secret.  Random but shared by all users of the table.
 	/// Let's not make it too large, so that header fits into 64 Bytes.
 	char hash_key[48] ALIGNED(32);
 #else
 	/// Hashing secret.  Random but shared by all users of the table.
-	HASH_KEY_T hash_key;
+	SIPHASH_KEY hash_key;
 #endif
 
 	/// Length of `loads_cls`, stored as binary logarithm.
@@ -111,14 +97,29 @@ struct kru {
 	struct load_cl load_cls[][TABLE_COUNT];
 };
 
-struct kru *kru_init(uint32_t loads_bits)
+/// Convert capacity_log to loads_bits
+static inline int32_t capacity2loads(int capacity_log)
 {
-	if (HASH_BITS < TABLE_COUNT * loads_bits + 16/*ids are 16-bit*/) {
+	static_assert(LOADS_LEN == 15 && TABLE_COUNT == 2, "");
+	// So, the pair of cache lines hold up to 2*15 elements.
+	// Let's say that we can reliably store 16 = 1 << (1+3).
+	// (probably more but certainly not 1 << 5)
+	const int shift = 1 + 3;
+	int loads_bits = capacity_log - shift;
+	// Let's behave reasonably for weird capacity_log values.
+	return loads_bits > 0 ? loads_bits : 1;
+}
+
+static struct kru *kru_create(int capacity_log)
+{
+	struct kru *kru;
+	uint32_t loads_bits = capacity2loads(capacity_log);
+	if (8 * sizeof(hash_t) < TABLE_COUNT * loads_bits
+				+ 8 * sizeof(kru->load_cls[0]->ids[0])) {
 		assert(false);
 		return NULL;
 	}
 
-	struct kru *kru;
 	size_t size = offsetof(struct kru, load_cls)
 		    + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits);
 	// ensure good alignment
@@ -127,58 +128,50 @@ struct kru *kru_init(uint32_t loads_bits)
 
 	kru->loads_bits = loads_bits;
 
-	if (HASH_INIT(kru->hash_key)) {
+	if (dnssec_random_buffer((uint8_t *)&kru->hash_key, sizeof(kru->hash_key)) != DNSSEC_EOK) {
 		free(kru);
 		return NULL;
 	}
 
 	return kru;
 }
-void kru_destroy(struct kru *kru) {
-	free(kru);
-}
 
 /// Update limiting and return true iff it hit the limit instead.
-bool kru_limited(struct kru *kru, void *buf, size_t buf_len, uint32_t time_now, uint32_t price)
+static bool kru_limited(struct kru *kru, char key[static const 16], uint32_t time_now, uint16_t price)
 {
-	// Obtain hashes of *buf.
+	// Obtain hash of *buf.
+	uint64_t hash;
 #if !USE_AES
-	HASH_FROM_BUF(kru->hash_key, buf, buf_len);
+	hash = hash(&kru->hash_key, key, 16);
 #else
-	int hash_remaining_bits = HASH_BITS;
-	uint64_t hashes[2] ALIGNED(16);
 	{
 		__m128i h; /// hashing state
-		// Load the *buf into `h`.  Zero-padding gets complicated.
-		char buf_pad[sizeof(h)] ALIGNED(16);
-		if (buf_len > sizeof(h))
-			abort(); // TODO: we probably don't need more than 128 bits, but...
-		memcpy(buf_pad, buf, buf_len);
-		memset(buf_pad + buf_len, 0, sizeof(buf_pad) - buf_len);
-		h = _mm_load_si128((void*)buf_pad);
+		h = _mm_load_si128((__m128i *)key);
 		// Now do the the hashing itself.
-		__m128i *key = (void*)kru->hash_key;
+		__m128i *aes_key = (void*)kru->hash_key;
 		for (int i = 0; i < AES_ROUNDS; ++i) {
 			int key_id = i % (sizeof(kru->hash_key) / sizeof(__m128i));
-			h = _mm_aesenc_si128(h, _mm_load_si128(&key[key_id]));
+			h = _mm_aesenc_si128(h, _mm_load_si128(&aes_key[key_id]));
 		}
-		memcpy(hashes, &h, sizeof(h));
+		memcpy(&hash, &h, sizeof(hash));
 	}
 	//FIXME: gcc 12 is apparently mixing code of hashing with update_time() ?!
 #endif
 
 	// Choose the cache-lines to operate on
 	struct load_cl *l[TABLE_COUNT];
-	//const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
+	const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
 	// Fetch the two cache-lines in parallel before we really touch them.
 	for (int li = 0; li < TABLE_COUNT; ++li) {
-		l[li] = &kru->load_cls[HASH_GET_BITS(kru->loads_bits)][li];
+		l[li] = &kru->load_cls[hash & loads_mask][li];
 		__builtin_prefetch(l[li], 0); // hope for read-only access
+		hash >>= kru->loads_bits;
 	}
 	for (int li = 0; li < TABLE_COUNT; ++li)
 		update_time(l[li], time_now, &DECAY_32);
 
-	uint16_t id = HASH_GET_BITS(16);
+	uint16_t id = hash;
+	hash >>= 16;
 
 	// Find matching element.  Matching 16 bits in addition to loads_bits.
 	uint16_t *load = NULL;
@@ -273,6 +266,8 @@ load_found:;
 	}
 }
 
-#ifdef __clang__
-	#pragma clang attribute pop
-#endif
+struct kru_api KRU_API_NAME = {
+	.create = kru_create,
+	.limited = kru_limited,
+};
+

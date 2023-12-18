@@ -25,8 +25,8 @@
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
 
-/* Limits (class, ipv6 remote, dname) */
-#define RRL_CLSBLK_MAXLEN (1 + 8 + 255)
+/* Limits (class, ipv6 remote, FIXME dname) */
+#define RRL_CLSBLK_MAXLEN 16
 /* CIDR block prefix lengths for v4/v6 */
 #define RRL_V4_PREFIX_LEN 3 /* /24 */
 #define RRL_V6_PREFIX_LEN 7 /* /56 */
@@ -127,31 +127,6 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	return ret;
 }
 
-static int rrl_clsname(uint8_t *dst, size_t maxlen, uint8_t cls, rrl_req_t *req,
-                       const knot_dname_t *name)
-{
-	if (name == NULL) {
-		/* Fallback for errors etc. */
-		name = (const knot_dname_t *)"\x00";
-	}
-
-	switch (cls) {
-	case CLS_ERROR:    /* Could be a non-existent zone or garbage. */
-	case CLS_NXDOMAIN: /* Queries to non-existent names in zone. */
-	case CLS_WILDCARD: /* Queries to names covered by a wildcard. */
-		break;
-	default:
-		/* Use QNAME */
-		if (req->query) {
-			name = knot_pkt_qname(req->query);
-		}
-		break;
-	}
-
-	/* Write to wire */
-	return knot_dname_to_wire(dst, name, maxlen);
-}
-
 static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_storage *remote,
                         rrl_req_t *req, const knot_dname_t *name)
 {
@@ -172,13 +147,7 @@ static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_stora
 	memcpy(dst + blklen, &netblk, sizeof(netblk));
 	blklen += sizeof(netblk);
 
-	/* Name */
-	int ret = rrl_clsname(dst + blklen, maxlen - blklen, cls, req, name);
-	if (ret < 0) {
-		return ret;
-	}
-	uint8_t len = ret;
-	blklen += len;
+	/* Name not considered anymore. */
 
 	return blklen;
 }
@@ -234,7 +203,7 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 		return NULL;
 	}
 
-	rrl_table_t *tbl = kru_init(16);  // TODO set loads_bits
+	rrl_table_t *tbl = KRU.create(20);  // TODO set loads_bits
 	if (!tbl) {
 		return NULL;
 	}
@@ -249,7 +218,7 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t buf[RRL_CLSBLK_MAXLEN];
+	uint8_t buf[RRL_CLSBLK_MAXLEN] ALIGNED(16) = { 0 };
 	size_t buf_len = rrl_classify(buf, RRL_CLSBLK_MAXLEN, remote, req, zone);
 	if (buf_len < 0) {
 		return KNOT_ERROR;
@@ -259,7 +228,7 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
 	uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
 
-	return kru_limited(rrl, buf, buf_len, now, 1<<30) ? KNOT_ELIMIT : KNOT_EOK;  // TODO set price
+	return KRU.limited(rrl, (char *)buf, now, 1<<14) ? KNOT_ELIMIT : KNOT_EOK;  // TODO set price
 }
 
 bool rrl_slip_roll(int n_slip)
@@ -276,5 +245,5 @@ bool rrl_slip_roll(int n_slip)
 
 void rrl_destroy(rrl_table_t *rrl)
 {
-	kru_destroy(rrl);
+	free(rrl);
 }
