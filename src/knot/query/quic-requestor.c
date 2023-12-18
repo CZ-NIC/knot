@@ -44,7 +44,7 @@ typedef union {
 
 static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeout_ms)
 {
-	int fd = (int)(size_t)r->sock, ret, timeout_remain = timeout_ms;
+	int fd = (int)(size_t)r->sock, ret, timeout_remain = timeout_ms, j = 0;
 
 	cmsg_tos_t tos = { 0 };
 	struct msghdr msg = {
@@ -55,6 +55,10 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 	};
 
 	do {
+		if (j++ > 0) {
+			log_notice("QEX j %d", j);
+		}
+
 		ret = knot_quic_send(conn->quic_table, conn, r, QUIC_MAX_SEND_PER_RECV, 0);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -221,8 +225,12 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 	}
 
 	struct timespec t_start = time_now(), t_cur;
+	int i = 0;
 	while (!(conn->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE) && sessticket == CONN_POOL_FD_INVALID) {
 		t_cur = time_now();
+		if (i++ > 0 && time_diff_ms(&t_start, &t_cur) <= timeout_ms) {
+			log_notice("QCONN i %d\n", i);
+		}
 		if (time_diff_ms(&t_start, &t_cur) > timeout_ms ||
 		    (ret = quic_exchange(conn, r, timeout_ms)) != KNOT_EOK) {
 			knot_qreq_close(r, false);
@@ -246,6 +254,7 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 {
 	knot_quic_conn_t *conn = r->in_ctx;
 	knot_quic_stream_t *stream = &conn->streams[conn->streams_count - 1];
+	int i = 0;
 
 	assert(conn->streams_count != 0);
 
@@ -255,6 +264,9 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 		int tdiff = time_diff_ms(&t_start, &t_cur);
 		if (tdiff > timeout_ms) {
 			return KNOT_NET_ETIMEOUT;
+		}
+		if (i++ > 0) {
+			log_notice("QRECV i %d", i);
 		}
 		int ret = quic_exchange(conn, r, timeout_ms - tdiff);
 		if (ret != KNOT_EOK) {
