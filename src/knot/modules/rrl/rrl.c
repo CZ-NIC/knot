@@ -23,10 +23,10 @@
 #define MOD_TBL_SIZE		"\x0A""table-size"
 #define MOD_WHITELIST		"\x09""whitelist"
 
-const yp_item_t rrl_conf[] = {
-	{ MOD_RATE_LIMIT, YP_TINT, YP_VINT = { 1, INT32_MAX } },
+const yp_item_t rrl_conf[] = {  // TODO update parameters
+	{ MOD_RATE_LIMIT, YP_TINT, YP_VINT = { 1, INT32_MAX } },         // ignored
 	{ MOD_SLIP,       YP_TINT, YP_VINT = { 0, 100, 1 } },
-	{ MOD_TBL_SIZE,   YP_TINT, YP_VINT = { 1, INT32_MAX, 393241 } },
+	{ MOD_TBL_SIZE,   YP_TINT, YP_VINT = { 1, INT32_MAX, 393241 } }, // ignored
 	{ MOD_WHITELIST,  YP_TNET, YP_VNONE, YP_FMULTI },
 	{ NULL }
 };
