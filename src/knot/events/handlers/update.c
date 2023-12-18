@@ -404,22 +404,13 @@ static void send_update_response(conf_t *conf, zone_t *zone, knot_request_t *req
 	}
 }
 
-static void free_request(knot_request_t *req)
-{
-	close(req->fd);
-	knot_pkt_free(req->query);
-	knot_pkt_free(req->resp);
-	dnssec_binary_free(&req->sign.tsig_key.secret);
-	free(req);
-}
-
 static void send_update_responses(conf_t *conf, zone_t *zone, list_t *updates)
 {
 	ptrnode_t *node, *nxt;
 	WALK_LIST_DELSAFE(node, nxt, *updates) {
 		knot_request_t *req = node->d;
 		send_update_response(conf, zone, req);
-		free_request(req);
+		knot_request_free(req, NULL);
 	}
 	ptrlist_free(updates, NULL);
 }
