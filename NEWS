@@ -1,3 +1,22 @@
+Knot DNS 3.2.12 (2023-12-19)
+============================
+
+Improvements:
+-------------
+ - knotd: zone purging waits for finished zone expiration for better reliability
+ - doc: various fixes and extensions
+
+Bugfixes:
+---------
+ - knotd: zone backup fails due to improper backup context deinitialization #891
+ - knotd: failed to sign the zone if maximum zone's TTL is too high
+ - knotd: malformed TCP header if used with QUIC in the generic XDP mode
+ - knotd: incorrect initialization of TCP limits
+ - knotd: orphaned PEM file not deleted when key generation fails
+ - knotd: server can crash when processing new TCP connections over XDP
+ - kdig: crashed when querying DNS over TLS if TLS handshake times out #896
+ - kzonecheck: failed to check DS with SHA-1 or GOST if not supported by local policy
+
 Knot DNS 3.2.11 (2023-10-30)
 ============================
 
