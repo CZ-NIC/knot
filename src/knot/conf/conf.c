@@ -602,8 +602,9 @@ void conf_mix_iter_next(
 	}
 }
 
-int64_t conf_int(
-	conf_val_t *val)
+int64_t conf_int_alt(
+	conf_val_t *val,
+	bool alternative)
 {
 	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TINT ||
@@ -614,7 +615,7 @@ int64_t conf_int(
 		conf_val(val);
 		return yp_int(val->data);
 	} else {
-		return val->item->var.i.dflt;
+		return alternative ? val->item->var.i.dflt_alt : val->item->var.i.dflt;
 	}
 }
 

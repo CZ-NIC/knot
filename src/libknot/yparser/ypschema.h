@@ -130,6 +130,8 @@ typedef union {
 		int64_t dflt;
 		/*! Possible unit type. */
 		yp_style_t unit;
+		/*! Alternative default value. */
+		int64_t dflt_alt;
 	} i;
 	/*! Boolean variables. */
 	struct {
