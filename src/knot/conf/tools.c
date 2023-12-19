@@ -993,8 +993,7 @@ int check_zone(
 		}
 	} else if (zf_load_val == ZONEFILE_LOAD_WHOLE) {
 		if (conf_opt(&journal) == JOURNAL_CONTENT_ALL) {
-			args->err_str = "'zonefile-load: whole' not compatible with 'journal-content: all'";
-			return KNOT_EINVAL;
+			CONF_LOG(LOG_NOTICE, "'zonefile-load: whole' not compatible with 'journal-content: all'");
 		}
 	}
 
