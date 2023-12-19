@@ -780,11 +780,7 @@ int check_policy(
 
 	if (conf_bool(&nsec3)) {
 		uint16_t iters = conf_int(&nsec3_iters);
-		if (nsec3_iters.code != KNOT_EOK && iters != 0) {
-			CONF_LOG(LOG_WARNING, "policy[%s].nsec3-iterations defaults to %u, "
-			                      "since version 3.2 the default becomes 0", args->id, iters);
-		}
-		if (iters > 20) {
+		if (iters > 0) {
 			CONF_LOG(LOG_NOTICE, "policy[%s].nsec3-iterations=%u is too high, "
 			                     "the recommended value is 0", args->id, iters);
 		}
