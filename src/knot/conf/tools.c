@@ -704,10 +704,6 @@ int check_policy(
 	                                            C_NSEC3_ITER, args->id, args->id_len);
 
 	unsigned algorithm = conf_opt(&alg);
-	if (algorithm < DNSSEC_KEY_ALGORITHM_RSA_SHA256) {
-		CONF_LOG(LOG_NOTICE, "algorithm %u is deprecated and should not be used for DNSSEC signing",
-		         algorithm);
-	}
 
 	int64_t ksk_size = conf_int(&ksk);
 	if (ksk_size != YP_NIL && !dnssec_algorithm_key_size_check(algorithm, ksk_size)) {
