@@ -40,10 +40,9 @@ void quic_params_clean(quic_params_t *params);
 #define QUIC_PRIORITY        "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_GROUPS
 
 typedef enum {
-	OPENING,
-	CONNECTED,
-	CLOSING,
-	CLOSED
+	CLOSED,    // Initialized
+	CONNECTED, // RTT-0
+	VERIFIED,  // RTT-1
 } quic_state_t;
 
 typedef enum {
@@ -91,7 +90,6 @@ typedef struct {
 	ngtcp2_conn *conn;
 	ngtcp2_pkt_info pi;
 	quic_state_t state;
-	uint64_t idle_ts;
 } quic_ctx_t;
 
 extern const gnutls_datum_t doq_alpn;
