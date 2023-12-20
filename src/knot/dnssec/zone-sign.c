@@ -488,13 +488,16 @@ static int sign_node_rrsets(const zone_node_t *node,
 		if (sign_ctx->dnssec_ctx->validation_mode) {
 			knot_time_t until = 0;
 			result = knot_validate_rrsigs(&rrset, &rrsigs, sign_ctx, skip_crypto, &until);
+			knot_time_t diff = knot_time_diff(until, sign_ctx->dnssec_ctx->now);
 			if (result != KNOT_EOK) {
 				hint->node = node->owner;
 				hint->rrtype = rrset.type;
-			} else if (knot_time_lt(until, sign_ctx->dnssec_ctx->now + sign_ctx->dnssec_ctx->policy->rrsig_refresh_before)) {
+			} else if (diff < sign_ctx->dnssec_ctx->policy->rrsig_refresh_before) {
 				hint->node = node->owner;
 				hint->rrtype = rrset.type;
 				hint->warning = KNOT_ESOON_EXPIRE;
+				assert(until > 0);
+				hint->remaining_secs = MAX(0, diff);
 			}
 		} else if (sign_ctx->dnssec_ctx->rrsig_drop_existing) {
 			result = force_resign_rrset(&rrset, &rrsigs,
