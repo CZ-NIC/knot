@@ -53,8 +53,8 @@ $knotd_interface->connect_to_signal('zone_ksk_submission', sub
 
 $knotd_interface->connect_to_signal('zone_dnssec_invalid', sub
 {
-    my ($zone) = @_;
-    print "Invalid DNSSEC for zone=$zone\n";
+    my ($zone, $remaining) = @_;
+    print "Invalid DNSSEC for zone=$zone remaining=$remaining seconds\n";
 });
 
 # Main loop

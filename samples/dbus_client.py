@@ -29,8 +29,8 @@ def sig_submission(sender, path, interface, signal, args):
     print("Ready KSK for zone=%s keytag=%u keyid=%s" % (zone, key_tag, kasp_id))
 
 def sig_invalid(sender, path, interface, signal, args):
-    (zone) = args
-    print("Invalid DNSSEC for zone=%s" % (zone))
+    (zone, remaining) = args
+    print("Invalid DNSSEC for zone=%s remaining=%d seconds" % (zone, remaining))
 
 if __name__ == '__main__':
     loop = dasbus.loop.EventLoop()

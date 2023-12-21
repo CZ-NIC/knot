@@ -1570,7 +1570,7 @@ class Knot(Server):
         have_policy = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
-            if not z.dnssec.enable:
+            if not z.dnssec.enable and not z.dnssec.validate:
                 continue
 
             if (z.dnssec.shared_policy_with or z.name) != z.name:
@@ -1737,6 +1737,8 @@ class Knot(Server):
 
             if z.dnssec.enable:
                 s.item_str("dnssec-signing", "off" if z.dnssec.disable else "on")
+
+            if z.dnssec.enable or z.dnssec.validate:
                 s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
 
             self._bool(s, "dnssec-validation", z.dnssec.validate)

@@ -454,13 +454,20 @@ void conf_mix_iter_next(
 /*!
  * Gets the numeric value of the item.
  *
- * \param[in] val  Item value.
+ * \param[in] val          Item value.
+ * \param[in] alternative  Use alternative default value.
  *
  * \return Integer.
  */
-int64_t conf_int(
-	conf_val_t *val
+int64_t conf_int_alt(
+	conf_val_t *val,
+	bool alternative
 );
+inline static int64_t conf_int(
+	conf_val_t *val)
+{
+	return conf_int_alt(val, false);
+}
 
 /*!
  * Gets the boolean value of the item.

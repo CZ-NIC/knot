@@ -557,14 +557,15 @@ catalog zones and their members) are loaded or successfully bootstrapped.
 the signal parameters are \fIzone name\fP and \fIzone SOA serial\fP\&.
 .IP \(bu 2
 \fBkeys\-updated\fP \- The signal \fBkeys_updated\fP is emitted when a DNSSEC key set
-of this zone is updated.
+is updated; the signal parameter is \fIzone name\fP\&.
 .IP \(bu 2
 \fBksk\-submission\fP – The signal \fBzone_ksk_submission\fP is emitted if there is
 a ready KSK present when the zone is signed; the signal parameters are
 \fIzone name\fP, \fIKSK keytag\fP, and \fIKSK KASP id\fP\&.
 .IP \(bu 2
 \fBdnssec\-invalid\fP – The signal \fBzone_dnssec_invalid\fP is emitted when DNSSEC
-validation fails; the signal parameter is \fIzone name\fP\&.
+validation fails; the signal parameters are \fIzone name\fP, and \fIremaining seconds\fP
+until an RRSIG expires.
 .UNINDENT
 .sp
 \fBNOTE:\fP
@@ -1869,6 +1870,10 @@ A period how long at least before a signature expiration the signature will be r
 in order to prevent expired RRSIGs on secondary servers or resolvers\(aq caches.
 .sp
 \fIDefault:\fP 0.1 * \fI\%rrsig\-lifetime\fP + \fI\%propagation\-delay\fP + \fI\%zone\-max\-ttl\fP
+.sp
+If \fI\%dnssec\-validation\fP is enabled:
+.sp
+\fIDefault:\fP \fB1d\fP (1 day)
 .SS rrsig\-pre\-refresh
 .sp
 A period how long at most before a signature refresh time the signature might be refreshed,
@@ -2522,7 +2527,9 @@ Every NSEC(3) RR is linked to the lexicographically next one.
 .sp
 The validation is not affected by \fI\%dnssec\-policy\fP configuration,
 except for \fI\%signing\-threads\fP option, which specifies the number
-of threads for parallel validation.
+of threads for parallel validation, and \fI\%rrsig\-refresh\fP, which
+defines minimal allowed remaining RRSIG validity (otherwise a warning is
+logged).
 .sp
 \fBNOTE:\fP
 .INDENT 0.0

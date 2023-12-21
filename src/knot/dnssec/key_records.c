@@ -211,7 +211,7 @@ int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_
 	return ret;
 }
 
-int key_records_verify(key_records_t *r, kdnssec_ctx_t *kctx, knot_time_t timestamp)
+int key_records_verify(key_records_t *r, kdnssec_ctx_t *kctx, knot_time_t timestamp, knot_time_t min_valid)
 {
 	kctx->now = timestamp;
 	int ret = kasp_zone_keys_from_rr(kctx->zone, &r->dnskey.rrs, false, &kctx->keytag_conflict);
@@ -224,12 +224,17 @@ int key_records_verify(key_records_t *r, kdnssec_ctx_t *kctx, knot_time_t timest
 		return KNOT_ENOMEM;
 	}
 
-	ret = knot_validate_rrsigs(&r->dnskey, &r->rrsig, sign_ctx, false);
+	knot_time_t until = 0;
+	ret = knot_validate_rrsigs(&r->dnskey, &r->rrsig, sign_ctx, false, &until);
 	if (ret == KNOT_EOK && !knot_rrset_empty(&r->cdnskey)) {
-		ret = knot_validate_rrsigs(&r->cdnskey, &r->rrsig, sign_ctx, false);
+		ret = knot_validate_rrsigs(&r->cdnskey, &r->rrsig, sign_ctx, false, &until);
 	}
 	if (ret == KNOT_EOK && !knot_rrset_empty(&r->cds)) {
-		ret = knot_validate_rrsigs(&r->cds, &r->rrsig, sign_ctx, false);
+		ret = knot_validate_rrsigs(&r->cds, &r->rrsig, sign_ctx, false, &until);
+	}
+
+	if (ret == KNOT_EOK && knot_time_lt(until, min_valid)) {
+		ret = KNOT_ESOON_EXPIRE;
 	}
 
 	zone_sign_ctx_free(sign_ctx);

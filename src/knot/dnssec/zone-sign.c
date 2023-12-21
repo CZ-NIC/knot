@@ -300,9 +300,10 @@ static bool key_used(bool ksk, bool zsk, uint16_t type,
 int knot_validate_rrsigs(const knot_rrset_t *covered,
                          const knot_rrset_t *rrsigs,
                          zone_sign_ctx_t *sign_ctx,
-                         bool skip_crypto)
+                         bool skip_crypto,
+                         knot_time_t *valid_until)
 {
-	if (covered == NULL || rrsigs == NULL || sign_ctx == NULL) {
+	if (covered == NULL || rrsigs == NULL || sign_ctx == NULL || valid_until == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -319,6 +320,8 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
 		                           sign_ctx->dnssec_ctx, 0, skip_crypto, &ret, &valid_at)) {
 			valid_exists = true;
+			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
+			note_earliest_expiration(valid_rr, sign_ctx->dnssec_ctx->now, valid_until);
 		}
 
 		knot_spin_lock(&sign_ctx->dnssec_ctx->stats->lock);
@@ -483,10 +486,18 @@ static int sign_node_rrsets(const zone_node_t *node,
 		}
 
 		if (sign_ctx->dnssec_ctx->validation_mode) {
-			result = knot_validate_rrsigs(&rrset, &rrsigs, sign_ctx, skip_crypto);
+			knot_time_t until = 0;
+			result = knot_validate_rrsigs(&rrset, &rrsigs, sign_ctx, skip_crypto, &until);
+			knot_time_t diff = knot_time_diff(until, sign_ctx->dnssec_ctx->now);
 			if (result != KNOT_EOK) {
 				hint->node = node->owner;
 				hint->rrtype = rrset.type;
+			} else if (diff < sign_ctx->dnssec_ctx->policy->rrsig_refresh_before) {
+				hint->node = node->owner;
+				hint->rrtype = rrset.type;
+				hint->warning = KNOT_ESOON_EXPIRE;
+				assert(until > 0);
+				hint->remaining_secs = MAX(0, diff);
 			}
 		} else if (sign_ctx->dnssec_ctx->rrsig_drop_existing) {
 			result = force_resign_rrset(&rrset, &rrsigs,

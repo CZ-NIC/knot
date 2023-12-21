@@ -172,6 +172,7 @@ static const struct error errors[] = {
 	{ KNOT_NO_PUBLIC_KEY,         "no public key" },
 	{ KNOT_NO_PRIVATE_KEY,        "no private key" },
 	{ KNOT_NO_READY_KEY,          "no key ready for submission" },
+	{ KNOT_ESOON_EXPIRE,          "oncoming RRSIG expiration" },
 
 	/* Terminator */
 	{ KNOT_ERROR, NULL }

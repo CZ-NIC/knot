@@ -607,13 +607,14 @@ Possible values:
   - ``stopped`` when the server shutdown sequence is initiated.
 - ``zone-updated`` – The signal ``zone_updated`` is emitted when a zone has been updated;
   the signal parameters are `zone name` and `zone SOA serial`.
-- ``keys-updated`` - The signal ``keys_updated`` is emitted when a DNSSEC key set 
-  of this zone is updated.
+- ``keys-updated`` - The signal ``keys_updated`` is emitted when a DNSSEC key set
+  is updated; the signal parameter is `zone name`.
 - ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if there is
   a ready KSK present when the zone is signed; the signal parameters are
   `zone name`, `KSK keytag`, and `KSK KASP id`.
 - ``dnssec-invalid`` – The signal ``zone_dnssec_invalid`` is emitted when DNSSEC
-  validation fails; the signal parameter is `zone name`.
+  validation fails; the signal parameters are `zone name`, and `remaining seconds`
+  until an RRSIG expires.
 
 .. NOTE::
    This function requires systemd version at least 221.
@@ -2056,6 +2057,10 @@ in order to prevent expired RRSIGs on secondary servers or resolvers' caches.
 
 *Default:* 0.1 * :ref:`policy_rrsig-lifetime` + :ref:`policy_propagation-delay` + :ref:`policy_zone-max-ttl`
 
+If :ref:`zone_dnssec-validation` is enabled:
+
+*Default:* ``1d`` (1 day)
+
 .. _policy_rrsig-pre-refresh:
 
 rrsig-pre-refresh
@@ -2744,7 +2749,9 @@ List of DNSSEC checks:
 
 The validation is not affected by :ref:`zone_dnssec-policy` configuration,
 except for :ref:`policy_signing-threads` option, which specifies the number
-of threads for parallel validation.
+of threads for parallel validation, and :ref:`policy_rrsig-refresh`, which
+defines minimal allowed remaining RRSIG validity (otherwise a warning is
+logged).
 
 .. NOTE::
 

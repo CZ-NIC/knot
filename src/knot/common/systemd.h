@@ -108,6 +108,7 @@ void systemd_emit_zone_submission(const knot_dname_t *zone_name, uint16_t keytag
 /*!
  * \brief Emit event signal for failed DNSSEC validation.
  *
- * \param zone_name  Zone name.
+ * \param zone_name       Zone name.
+ * \param remaining_secs  Remaining time until a RRSIG expires.
  */
-void systemd_emit_zone_invalid(const knot_dname_t *zone_name);
+void systemd_emit_zone_invalid(const knot_dname_t *zone_name, uint32_t remaining_secs);

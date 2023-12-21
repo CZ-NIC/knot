@@ -81,13 +81,15 @@ keyptr_dynarray_t knot_zone_sign_get_cdnskeys(const kdnssec_ctx_t *ctx,
  * \param rrsigs         RRSIG with signatures.
  * \param sign_ctx       Signing context (with keys == NULL)
  * \param skip_crypto    Crypto operations might be skipped as they had been successful earlier.
+ * \param valid_until    End of soonest RRSIG validity.
  *
  * \return KNOT_E*
  */
 int knot_validate_rrsigs(const knot_rrset_t *covered,
                          const knot_rrset_t *rrsigs,
                          zone_sign_ctx_t *sign_ctx,
-                         bool skip_crypto);
+                         bool skip_crypto,
+                         knot_time_t *valid_until);
 
 /*!
  * \brief Update zone signatures and store performed changes in update.
