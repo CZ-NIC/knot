@@ -116,10 +116,8 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx);
  * \param now            If not zero: adjust "now" to this timestamp.
  * \param incremental    Try to validate incrementally.
  * \param log_plan       Log the result and plan subsequent validation event.
- * \param count          (optional)output: number of validated signatures.
  *
  * \return KNOT_E*
  */
 int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
-                              knot_time_t now, bool incremental,
-                              bool log_plan, size_t *count);
+                              knot_time_t now, bool incremental, bool log_plan);

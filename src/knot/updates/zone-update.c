@@ -942,8 +942,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
 	if (conf_bool(&val)) {
 		bool incr_valid = update->flags & UPDATE_INCREMENTAL;
-		size_t count = 0;
-		ret = knot_dnssec_validate_zone(update, conf, 0, incr_valid, true, &count);
+		ret = knot_dnssec_validate_zone(update, conf, 0, incr_valid, true);
 		if (ret != KNOT_EOK) {
 			discard_adds_tree(update);
 			return ret;

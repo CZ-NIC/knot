@@ -467,8 +467,7 @@ static void log_validation_error(zone_update_t *update, const char *msg_valid,
 }
 
 int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
-                              knot_time_t now, bool incremental,
-                              bool log_plan, size_t *count)
+                              knot_time_t now, bool incremental, bool log_plan)
 {
 	kdnssec_ctx_t ctx = { 0 };
 	int ret = kdnssec_validation_ctx(conf, &ctx, update->new_cont);
@@ -488,16 +487,9 @@ int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
 			ret = knot_zone_sign(update, NULL, &ctx);
 		}
 	}
-
-	if (count != NULL) {
-		*count = ctx.stats->rrsig_count;
-	}
-
 end:
-	kdnssec_ctx_deinit(&ctx);
-
-	const char *msg_valid = incremental ? "incremental " : "";
 	if (log_plan) {
+		const char *msg_valid = incremental ? "incremental " : "";
 		if (ret != KNOT_EOK) {
 			log_validation_error(update, msg_valid, ret, false);
 			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
@@ -508,13 +500,29 @@ end:
 			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
 				systemd_emit_zone_invalid(update->zone->name, update->validation_hint.remaining_secs);
 			}
-		} else if (count != NULL) {
-			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful, checked RRSIGs %zu",
-			              msg_valid, *count);
 		} else {
-			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful", msg_valid);
+			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful, checked RRSIGs %zu",
+			              msg_valid, ctx.stats->rrsig_count);
+		}
+
+		conf_val_t val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
+		bool configured = conf_bool(&val);
+		bool bogus = (ret != KNOT_EOK);
+		bool running = (update->zone->contents == update->new_cont);
+		bool may_expire = zone_is_slave(conf, update->zone);
+		knot_time_t expire = (ctx.stats != NULL ? ctx.stats->expire : 0);
+		assert(bogus || knot_time_geq(expire, ctx.now));
+
+		if (running && bogus && may_expire) {
+			zone_events_schedule_now(update->zone, ZONE_EVENT_EXPIRE);
+		}
+		if (configured && !bogus) {
+			zone_events_schedule_at(update->zone, ZONE_EVENT_VALIDATE, // this works for incremental verify as well, re-planning on later
+			                        knot_time_add(expire, 1));         // is a NOOP, sooner is proper
 		}
 	}
+
+	kdnssec_ctx_deinit(&ctx);
 
 	return ret;
 }

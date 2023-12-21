@@ -250,6 +250,7 @@ src/knot/events/handlers/load.c
 src/knot/events/handlers/notify.c
 src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
+src/knot/events/handlers/validate.c
 src/knot/events/replan.c
 src/knot/events/replan.h
 src/knot/include/module.h

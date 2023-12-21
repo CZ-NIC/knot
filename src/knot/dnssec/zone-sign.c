@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -326,6 +326,7 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 
 		knot_spin_lock(&sign_ctx->dnssec_ctx->stats->lock);
 		sign_ctx->dnssec_ctx->stats->rrsig_count++;
+		sign_ctx->dnssec_ctx->stats->expire = knot_time_min(sign_ctx->dnssec_ctx->stats->expire, *valid_until);
 		knot_spin_unlock(&sign_ctx->dnssec_ctx->stats->lock);
 	}
 

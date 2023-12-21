@@ -93,6 +93,7 @@ libknotd_la_SOURCES = \
 	knot/events/handlers/notify.c		\
 	knot/events/handlers/refresh.c		\
 	knot/events/handlers/update.c		\
+	knot/events/handlers/validate.c		\
 	knot/events/replan.c			\
 	knot/events/replan.h			\
 	knot/nameserver/axfr.c			\
