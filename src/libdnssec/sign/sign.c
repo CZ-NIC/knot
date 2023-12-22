@@ -354,11 +354,9 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_
 	};
 
 	unsigned gnutls_flags = 0;
-#ifdef HAVE_GNUTLS_REPRODUCIBLE
 	if (flags & DNSSEC_SIGN_REPRODUCIBLE) {
 		gnutls_flags |= GNUTLS_PRIVKEY_FLAG_REPRODUCIBLE;
 	}
-#endif
 
 	assert(ctx->key->private_key);
 	_cleanup_datum_ gnutls_datum_t raw = { 0 };

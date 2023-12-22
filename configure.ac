@@ -150,13 +150,6 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.10], [
         [enable_ed448=no],
         [#include <gnutls/gnutls.h>])
 
-    AC_CHECK_DECL([GNUTLS_PRIVKEY_FLAG_REPRODUCIBLE],
-        [AC_DEFINE([HAVE_GNUTLS_REPRODUCIBLE], [1], [GnuTLS reproducible signing available])
-         # Ensure the version is at least 3.6.10
-         AC_CHECK_FUNC([gnutls_aead_cipher_encryptv2], [enable_repro_signing=yes], [enable_repro_signing=no])],
-        [enable_repro_signing=no],
-        [#include <gnutls/abstract.h>])
-
     AC_CHECK_FUNC([gnutls_privkey_sign_data2],
         [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
 
@@ -831,7 +824,6 @@ result_msg_base="
     POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
     Ed448 support:          ${enable_ed448}
-    Reproducible signing:   ${enable_repro_signing}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
