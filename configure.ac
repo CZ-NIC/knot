@@ -320,54 +320,10 @@ AC_ARG_WITH([memory-allocator],
 AS_IF([test "$with_memory_allocator" = ""], [with_memory_allocator="auto"])
 AC_SUBST([malloc_LIBS])
 
-dnl Check for userspace-rcu library
-AC_ARG_WITH(urcu,
-[  --with-urcu=DIR        where to find userspace-rcu library])
-
 AS_IF([test "$enable_daemon" = "yes"],[
 
-AS_IF([test "$with_urcu" != "no"], [
-  PKG_CHECK_MODULES([liburcu], liburcu, [
-    liburcu_PKGCONFIG="liburcu >= 0.4.0"
-    AC_SUBST([liburcu_PKGCONFIG])
-    with_urcu=yes
-  ],[
-    for try_urcu in "$with_urcu" "" "/usr/local"; do
-      save_LIBS="$LIBS"
-      save_CPPFLAGS="$CPPFLAGS"
-
-      AS_IF([test -d "$try_urcu"], [
-        liburcu_CFLAGS="-I$try_urcu/include"
-        liburcu_LIBS="-L$try_urcu/lib"
-      ],[
-        liburcu_CFLAGS=""
-        liburcu_LIBS=""
-      ])
-
-      CPPFLAGS="$CPPFLAGS $liburcu_CFLAGS"
-      LIBS="$LIBS $liburcu_LIBS"
-
-      AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [
-        with_urcu=yes
-        liburcu_LIBS="$liburcu_LIBS -lurcu"
-        AC_SUBST([liburcu_CFLAGS])
-        AC_SUBST([liburcu_LIBS])
-        break
-      ],[
-        CPPFLAGS="$save_CPPFLAGS"
-        LIBS="$save_LIBS"
-        with_urcu=no
-        # do not cache result of AC_SEARCH_LIBS test
-        unset ac_cv_search_rcu_set_pointer_sym
-      ])
-    done
-    CPPFLAGS="$save_CPPFLAGS"
-    LIBS="$save_LIBS"
-
-    AS_IF([test "$with_urcu" = "no"],[
-      AC_MSG_ERROR([liburcu is required])
-      ])
-  ])
+PKG_CHECK_MODULES([liburcu], [liburcu], [], [
+  AC_MSG_ERROR([liburcu not found])
 ])
 
 ])
