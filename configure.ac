@@ -532,9 +532,9 @@ AS_IF([test "$enable_quic" != "no"], [
 # Dependencies needed for Knot DNS utilities
 ############################################
 
-dnl Check for libidn.
+dnl Check for libidn2.
 AC_ARG_WITH(libidn,
-  AS_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU libidn2 or libidn)]),
+  AS_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU libidn2)]),
   with_libidn=$withval,
   with_libidn=yes
 )
@@ -551,16 +551,9 @@ AS_IF([test "$enable_utilities" = "yes"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
       with_libidn=libidn2
       AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
-      AC_DEFINE([LIBIDN_HEADER], [<idn2.h>], [Define to proper libidn header])
     ], [
-      PKG_CHECK_MODULES([libidn], [libidn >= 0.0.0], [
-        with_libidn=libidn
-        AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
-        AC_DEFINE([LIBIDN_HEADER], [<idna.h>], [Define to proper libidn header])
-      ], [
-        with_libidn=no
-        AC_MSG_WARN([libidn2 or libidn not found])
-      ])
+      with_libidn=no
+      AC_MSG_WARN([libidn2 not found])
     ])
   ])
 
