@@ -161,7 +161,7 @@ static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
 
 static void tls_session_ticket_key_free(gnutls_datum_t *ticket)
 {
-	gnutls_memset(ticket->data, 0, ticket->size);
+	memzero(ticket->data, ticket->size);
 	gnutls_free(ticket->data);
 }
 
