@@ -202,34 +202,6 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 	}
 }
 
-#ifndef HAVE_SIGN_DATA2
-/*!
- * Get digest algorithm used with a given key.
- */
-static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
-{
-	uint8_t algorithm = dnssec_key_get_algorithm(key);
-
-	switch ((dnssec_key_algorithm_t)algorithm) {
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
-		return GNUTLS_DIG_SHA1;
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
-		return GNUTLS_DIG_SHA256;
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
-		return GNUTLS_DIG_SHA512;
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
-		return GNUTLS_DIG_SHA384;
-	case DNSSEC_KEY_ALGORITHM_ED25519:
-	case DNSSEC_KEY_ALGORITHM_ED448:
-		return GNUTLS_DIG_SHA512;
-	default:
-		return GNUTLS_DIG_UNKNOWN;
-	}
-}
-#endif
-
 static gnutls_sign_algorithm_t algo_dnssec2gnutls(dnssec_key_algorithm_t algorithm)
 {
 	switch (algorithm) {
@@ -360,16 +332,9 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_
 
 	assert(ctx->key->private_key);
 	_cleanup_datum_ gnutls_datum_t raw = { 0 };
-#ifdef HAVE_SIGN_DATA2
 	int result = gnutls_privkey_sign_data2(ctx->key->private_key,
 					       ctx->sign_algorithm,
 					       gnutls_flags, &data, &raw);
-#else
-	gnutls_digest_algorithm_t digest_algorithm = get_digest_algorithm(ctx->key);
-	int result = gnutls_privkey_sign_data(ctx->key->private_key,
-					      digest_algorithm,
-					      gnutls_flags, &data, &raw);
-#endif
 	if (result < 0) {
 		return DNSSEC_SIGN_ERROR;
 	}
