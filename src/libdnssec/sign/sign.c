@@ -360,16 +360,9 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_
 
 	assert(ctx->key->private_key);
 	_cleanup_datum_ gnutls_datum_t raw = { 0 };
-#ifdef HAVE_SIGN_DATA2
 	int result = gnutls_privkey_sign_data2(ctx->key->private_key,
 					       ctx->sign_algorithm,
 					       gnutls_flags, &data, &raw);
-#else
-	gnutls_digest_algorithm_t digest_algorithm = get_digest_algorithm(ctx->key);
-	int result = gnutls_privkey_sign_data(ctx->key->private_key,
-					      digest_algorithm,
-					      gnutls_flags, &data, &raw);
-#endif
 	if (result < 0) {
 		return DNSSEC_SIGN_ERROR;
 	}
