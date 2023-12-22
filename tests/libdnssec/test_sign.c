@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,7 +57,6 @@ static const dnssec_binary_t signed_ecdsa = { .size = 64, .data = (uint8_t []) {
 	0xad, 0x2f,
 }};
 
-#ifdef HAVE_ED25519
 static const dnssec_binary_t signed_ed25519 = { .size = 64, .data = (uint8_t []) {
 		0x0a, 0x9e, 0x51, 0x5f, 0x16, 0x89, 0x49, 0x27,
 		0x0e, 0x98, 0x34, 0xd3, 0x48, 0xef, 0x5a, 0x6e,
@@ -67,8 +66,7 @@ static const dnssec_binary_t signed_ed25519 = { .size = 64, .data = (uint8_t [])
 		0x1d, 0x08, 0x10, 0x20, 0x1c, 0x01, 0x77, 0x1b,
 		0x5a, 0x48, 0xd6, 0xe5, 0x1c, 0xf9, 0xe3, 0xe0,
 		0x70, 0x34, 0x5e, 0x02, 0x49, 0xfb, 0x9e, 0x05,
-	}};
-#endif
+}};
 
 #ifdef HAVE_ED448
 static const dnssec_binary_t signed_ed448 = { .size = 114, .data = (uint8_t []) {
@@ -82,7 +80,7 @@ static const dnssec_binary_t signed_ed448 = { .size = 114, .data = (uint8_t []) 
 	0xe9, 0xb9, 0x76, 0xb8, 0xa6, 0xa9, 0x0a, 0x4f, 0x18, 0xe1, 0x62, 0x27,
 	0x74, 0x99, 0x01, 0x98, 0x5f, 0xdb, 0xea, 0xdf, 0xab, 0x59, 0x6c, 0x79,
 	0xe2, 0xc2, 0x2a, 0x91, 0x29, 0x00
-	}};
+}};
 #endif
 
 static dnssec_binary_t binary_set_string(char *str)
@@ -188,10 +186,8 @@ int main(void)
 	check_key(&SAMPLE_RSA_KEY, &input_data, &signed_rsa, true);
 	diag("ECDSA signing");
 	check_key(&SAMPLE_ECDSA_KEY, &input_data, &signed_ecdsa, false);
-#ifdef HAVE_ED25519
 	diag("ED25519 signing");
 	check_key(&SAMPLE_ED25519_KEY, &input_data, &signed_ed25519, true);
-#endif
 #ifdef HAVE_ED448
 	diag("ED448 signing");
 	check_key(&SAMPLE_ED448_KEY, &input_data, &signed_ed448, true);

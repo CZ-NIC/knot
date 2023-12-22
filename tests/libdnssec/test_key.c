@@ -192,9 +192,7 @@ int main(void)
 	static const keyinfo_t keys[] = {
 		{ "RSA",     &SAMPLE_RSA_KEY },
 		{ "ECDSA",   &SAMPLE_ECDSA_KEY },
-#ifdef HAVE_ED25519
 		{ "ED25519", &SAMPLE_ED25519_KEY },
-#endif
 #ifdef HAVE_ED448
 		{ "ED448",   &SAMPLE_ED448_KEY },
 #endif
