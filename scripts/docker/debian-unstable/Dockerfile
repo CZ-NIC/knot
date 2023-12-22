@@ -14,7 +14,7 @@ RUN apt-get -y install \
 	libedit-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
-	libidn2-0-dev \
+	libidn2-dev \
 	liblmdb-dev \
 	libmaxminddb-dev \
 	libmnl-dev \

@@ -10,7 +10,7 @@ ENV BUILD_PKGS \
     libedit-dev \
     libfstrm-dev \
     libgnutls28-dev \
-    libidn2-0-dev \
+    libidn2-dev \
     liblmdb-dev \
     libmaxminddb-dev \
     libmnl-dev \
@@ -64,7 +64,7 @@ ENV RUNTIME_PKGS \
     libedit2 \
     libfstrm0 \
     libgnutls30 \
-    libidn2-0 \
+    libidn2 \
     liblmdb0 \
     libmaxminddb0 \
     libmnl0 \
