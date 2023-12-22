@@ -150,10 +150,6 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.10], [
         [enable_ed448=no],
         [#include <gnutls/gnutls.h>])
 
-    AC_CHECK_FUNC([gnutls_memset],
-        [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset available])
-         gnutls_memset=yes], [gnutls_memset=no])
-
     AC_CHECK_FUNC([gnutls_early_cipher_get],
         [AC_DEFINE([HAVE_GNUTLS_QUIC], [1], [gnutls_early_cipher_get available])
          gnutls_quic=yes], [gnutls_quic=no])
@@ -712,7 +708,7 @@ AC_CHECK_FUNC([explicit_memset], [
   AC_DEFINE([HAVE_EXPLICIT_MEMSET], [1], [explicit_memset available])
   explicit_memset=yes], [explicit_memset=no]
 )
-AM_CONDITIONAL([USE_GNUTLS_MEMSET], [test "$explicit_bzero" = "no" -a "$explicit_memset" = "no" -a "$gnutls_memset" = "yes"])
+AM_CONDITIONAL([USE_GNUTLS_MEMSET], [test "$explicit_bzero" = "no" -a "$explicit_memset" = "no"])
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
