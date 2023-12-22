@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -281,9 +281,7 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 static gnutls_ecc_curve_t choose_ecdsa_curve(size_t pubkey_size)
 {
 	switch (pubkey_size) {
-#ifdef HAVE_ED25519
 	case 32: return GNUTLS_ECC_CURVE_ED25519;
-#endif
 #ifdef HAVE_ED448
 	case 57: return GNUTLS_ECC_CURVE_ED448;
 #endif
@@ -334,7 +332,6 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	return dnssec_pem_from_x509(key, pem);
 }
 
-#if defined(HAVE_ED25519) || defined(HAVE_ED448)
 static void eddsa_extract_public_params(dnssec_key_t *key, gnutls_ecc_curve_t *curve,
 					gnutls_datum_t *x)
 {
@@ -371,7 +368,6 @@ static int eddsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 
 	return dnssec_pem_from_x509(key, pem);
 }
-#endif
 
 int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary_t *pem)
 {
@@ -385,15 +381,11 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return ecdsa_params_to_pem(key, params, pem);
-#ifdef HAVE_ED25519
 	case DNSSEC_KEY_ALGORITHM_ED25519:
-#endif
 #ifdef HAVE_ED448
 	case DNSSEC_KEY_ALGORITHM_ED448:
 #endif
-#if defined(HAVE_ED25519) || defined(HAVE_ED448)
 		return eddsa_params_to_pem(key, params, pem);
-#endif
 	default:
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}

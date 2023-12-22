@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -244,10 +244,8 @@ static gnutls_sign_algorithm_t algo_dnssec2gnutls(dnssec_key_algorithm_t algorit
 		return GNUTLS_SIGN_RSA_SHA512;
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return GNUTLS_SIGN_ECDSA_SHA384;
-#ifdef HAVE_ED25519
 	case DNSSEC_KEY_ALGORITHM_ED25519:
 		return GNUTLS_SIGN_EDDSA_ED25519;
-#endif
 #ifdef HAVE_ED448
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return GNUTLS_SIGN_EDDSA_ED448;
