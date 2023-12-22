@@ -134,7 +134,7 @@ AC_ARG_ENABLE([fastparser],
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
-PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
+PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.10], [
     save_CFLAGS=$CFLAGS
     save_LIBS=$LIBS
     CFLAGS="$CFLAGS $gnutls_CFLAGS"

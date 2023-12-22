@@ -1721,8 +1721,6 @@ Possible values:
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-Ed25519 algorithm is only available if compiled with GnuTLS 3.6.0+.
-.sp
 Ed448 algorithm is only available if compiled with GnuTLS 3.6.12+ and Nettle 3.6+.
 .UNINDENT
 .UNINDENT

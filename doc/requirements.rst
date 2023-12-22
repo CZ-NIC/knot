@@ -61,7 +61,7 @@ Required libraries
 Knot DNS requires a few libraries to be available:
 
 * libedit
-* gnutls >= 3.3
+* gnutls >= 3.6.10
 * liburcu >= 0.5.4
 * lmdb >= 0.9.15
 
