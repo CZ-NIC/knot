@@ -517,6 +517,9 @@ end:
 			zone_events_schedule_now(update->zone, ZONE_EVENT_EXPIRE);
 		}
 		if (configured && !bogus) {
+			if (!incremental) {
+				zone_events_schedule_at(update->zone, ZONE_EVENT_VALIDATE, 0); // cancel previously planned re-check when fully re-checked
+			}
 			zone_events_schedule_at(update->zone, ZONE_EVENT_VALIDATE, // this works for incremental verify as well, re-planning on later
 			                        knot_time_add(expire, 1));         // is a NOOP, sooner is proper
 		}
