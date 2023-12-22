@@ -94,10 +94,8 @@ gnutls_pk_algorithm_t algorithm_to_gnutls(dnssec_key_algorithm_t dnssec)
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return GNUTLS_PK_ECDSA;
-#ifdef HAVE_ED25519
 	case DNSSEC_KEY_ALGORITHM_ED25519:
 		return GNUTLS_PK_EDDSA_ED25519;
-#endif
 #ifdef HAVE_ED448
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return GNUTLS_PK_EDDSA_ED448;
@@ -119,11 +117,7 @@ bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algorithm, bool enable
 		return true; // those are always reproducible
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
-#ifdef HAVE_GNUTLS_REPRODUCIBLE
-		return enabled; // Reproducible only if GnuTLS supports && enabled
-#else
-		return false;
-#endif
+		return enabled; // reproducible only if GnuTLS supports && enabled
 	default:
 		return false;
 	}

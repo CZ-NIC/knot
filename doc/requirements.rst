@@ -60,9 +60,9 @@ Required libraries
 
 Knot DNS requires a few libraries to be available:
 
+* gnutls >= 3.6.10
 * libedit
-* gnutls >= 3.3
-* liburcu >= 0.5.4
+* liburcu
 * lmdb >= 0.9.15
 
 .. NOTE::
@@ -72,9 +72,9 @@ Knot DNS requires a few libraries to be available:
 Optional libraries
 ==================
 
-International Domain Names support (IDNA2008 or IDNA2003) in :doc:`kdig<man_kdig>`:
+International Domain Names support (IDNA2008) in :doc:`kdig<man_kdig>`:
 
-* libidn2 (or libidn)
+* libidn2
 
 Systemd's startup notification mechanism and journald logging:
 

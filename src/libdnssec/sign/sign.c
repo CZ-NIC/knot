@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -202,34 +202,6 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 	}
 }
 
-#ifndef HAVE_SIGN_DATA2
-/*!
- * Get digest algorithm used with a given key.
- */
-static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
-{
-	uint8_t algorithm = dnssec_key_get_algorithm(key);
-
-	switch ((dnssec_key_algorithm_t)algorithm) {
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
-		return GNUTLS_DIG_SHA1;
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
-		return GNUTLS_DIG_SHA256;
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
-		return GNUTLS_DIG_SHA512;
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
-		return GNUTLS_DIG_SHA384;
-	case DNSSEC_KEY_ALGORITHM_ED25519:
-	case DNSSEC_KEY_ALGORITHM_ED448:
-		return GNUTLS_DIG_SHA512;
-	default:
-		return GNUTLS_DIG_UNKNOWN;
-	}
-}
-#endif
-
 static gnutls_sign_algorithm_t algo_dnssec2gnutls(dnssec_key_algorithm_t algorithm)
 {
 	switch (algorithm) {
@@ -244,10 +216,8 @@ static gnutls_sign_algorithm_t algo_dnssec2gnutls(dnssec_key_algorithm_t algorit
 		return GNUTLS_SIGN_RSA_SHA512;
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return GNUTLS_SIGN_ECDSA_SHA384;
-#ifdef HAVE_ED25519
 	case DNSSEC_KEY_ALGORITHM_ED25519:
 		return GNUTLS_SIGN_EDDSA_ED25519;
-#endif
 #ifdef HAVE_ED448
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return GNUTLS_SIGN_EDDSA_ED448;
@@ -356,24 +326,15 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_
 	};
 
 	unsigned gnutls_flags = 0;
-#ifdef HAVE_GNUTLS_REPRODUCIBLE
 	if (flags & DNSSEC_SIGN_REPRODUCIBLE) {
 		gnutls_flags |= GNUTLS_PRIVKEY_FLAG_REPRODUCIBLE;
 	}
-#endif
 
 	assert(ctx->key->private_key);
 	_cleanup_datum_ gnutls_datum_t raw = { 0 };
-#ifdef HAVE_SIGN_DATA2
 	int result = gnutls_privkey_sign_data2(ctx->key->private_key,
 					       ctx->sign_algorithm,
 					       gnutls_flags, &data, &raw);
-#else
-	gnutls_digest_algorithm_t digest_algorithm = get_digest_algorithm(ctx->key);
-	int result = gnutls_privkey_sign_data(ctx->key->private_key,
-					      digest_algorithm,
-					      gnutls_flags, &data, &raw);
-#endif
 	if (result < 0) {
 		return DNSSEC_SIGN_ERROR;
 	}

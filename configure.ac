@@ -134,7 +134,7 @@ AC_ARG_ENABLE([fastparser],
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
-PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
+PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.10], [
     save_CFLAGS=$CFLAGS
     save_LIBS=$LIBS
     CFLAGS="$CFLAGS $gnutls_CFLAGS"
@@ -144,34 +144,11 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.3], [
     AS_IF([test "$enable_pkcs11" = yes],
         [AC_DEFINE([ENABLE_PKCS11], [1], [PKCS #11 support available])])
 
-    AC_CHECK_DECL([GNUTLS_PK_EDDSA_ED25519],
-        [AC_DEFINE([HAVE_ED25519], [1], [GnuTLS ED25519 support available])
-         enable_ed25519=yes],
-        [enable_ed25519=no],
-        [#include <gnutls/gnutls.h>])
-
     AC_CHECK_DECL([GNUTLS_SIGN_EDDSA_ED448],
         [AC_DEFINE([HAVE_ED448], [1], [GnuTLS ED448 support available])
          enable_ed448=yes],
         [enable_ed448=no],
         [#include <gnutls/gnutls.h>])
-
-    AC_CHECK_DECL([GNUTLS_PRIVKEY_FLAG_REPRODUCIBLE],
-        [AC_DEFINE([HAVE_GNUTLS_REPRODUCIBLE], [1], [GnuTLS reproducible signing available])
-         # Ensure the version is at least 3.6.10
-         AC_CHECK_FUNC([gnutls_aead_cipher_encryptv2], [enable_repro_signing=yes], [enable_repro_signing=no])],
-        [enable_repro_signing=no],
-        [#include <gnutls/abstract.h>])
-
-    AC_CHECK_FUNC([gnutls_privkey_sign_data2],
-        [AC_DEFINE([HAVE_SIGN_DATA2], [1], [gnutls_privkey_sign_data2 available])])
-
-    AC_CHECK_FUNC([gnutls_privkey_export_x509],
-        [AC_DEFINE([HAVE_EXPORT_X509], [1], [gnutls_privkey_export_x509 available])])
-
-    AC_CHECK_FUNC([gnutls_memset],
-        [AC_DEFINE([HAVE_GNUTLS_MEMSET], [1], [gnutls_memset available])
-         gnutls_memset=yes], [gnutls_memset=no])
 
     AC_CHECK_FUNC([gnutls_early_cipher_get],
         [AC_DEFINE([HAVE_GNUTLS_QUIC], [1], [gnutls_early_cipher_get available])
@@ -343,54 +320,10 @@ AC_ARG_WITH([memory-allocator],
 AS_IF([test "$with_memory_allocator" = ""], [with_memory_allocator="auto"])
 AC_SUBST([malloc_LIBS])
 
-dnl Check for userspace-rcu library
-AC_ARG_WITH(urcu,
-[  --with-urcu=DIR        where to find userspace-rcu library])
-
 AS_IF([test "$enable_daemon" = "yes"],[
 
-AS_IF([test "$with_urcu" != "no"], [
-  PKG_CHECK_MODULES([liburcu], liburcu, [
-    liburcu_PKGCONFIG="liburcu >= 0.4.0"
-    AC_SUBST([liburcu_PKGCONFIG])
-    with_urcu=yes
-  ],[
-    for try_urcu in "$with_urcu" "" "/usr/local"; do
-      save_LIBS="$LIBS"
-      save_CPPFLAGS="$CPPFLAGS"
-
-      AS_IF([test -d "$try_urcu"], [
-        liburcu_CFLAGS="-I$try_urcu/include"
-        liburcu_LIBS="-L$try_urcu/lib"
-      ],[
-        liburcu_CFLAGS=""
-        liburcu_LIBS=""
-      ])
-
-      CPPFLAGS="$CPPFLAGS $liburcu_CFLAGS"
-      LIBS="$LIBS $liburcu_LIBS"
-
-      AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [
-        with_urcu=yes
-        liburcu_LIBS="$liburcu_LIBS -lurcu"
-        AC_SUBST([liburcu_CFLAGS])
-        AC_SUBST([liburcu_LIBS])
-        break
-      ],[
-        CPPFLAGS="$save_CPPFLAGS"
-        LIBS="$save_LIBS"
-        with_urcu=no
-        # do not cache result of AC_SEARCH_LIBS test
-        unset ac_cv_search_rcu_set_pointer_sym
-      ])
-    done
-    CPPFLAGS="$save_CPPFLAGS"
-    LIBS="$save_LIBS"
-
-    AS_IF([test "$with_urcu" = "no"],[
-      AC_MSG_ERROR([liburcu is required])
-      ])
-  ])
+PKG_CHECK_MODULES([liburcu], [liburcu], [], [
+  AC_MSG_ERROR([liburcu not found])
 ])
 
 ])
@@ -599,9 +532,9 @@ AS_IF([test "$enable_quic" != "no"], [
 # Dependencies needed for Knot DNS utilities
 ############################################
 
-dnl Check for libidn.
+dnl Check for libidn2.
 AC_ARG_WITH(libidn,
-  AS_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU libidn2 or libidn)]),
+  AS_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU libidn2)]),
   with_libidn=$withval,
   with_libidn=yes
 )
@@ -618,16 +551,9 @@ AS_IF([test "$enable_utilities" = "yes"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
       with_libidn=libidn2
       AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
-      AC_DEFINE([LIBIDN_HEADER], [<idn2.h>], [Define to proper libidn header])
     ], [
-      PKG_CHECK_MODULES([libidn], [libidn >= 0.0.0], [
-        with_libidn=libidn
-        AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
-        AC_DEFINE([LIBIDN_HEADER], [<idna.h>], [Define to proper libidn header])
-      ], [
-        with_libidn=no
-        AC_MSG_WARN([libidn2 or libidn not found])
-      ])
+      with_libidn=no
+      AC_MSG_WARN([libidn2 not found])
     ])
   ])
 
@@ -731,7 +657,7 @@ AC_CHECK_FUNC([explicit_memset], [
   AC_DEFINE([HAVE_EXPLICIT_MEMSET], [1], [explicit_memset available])
   explicit_memset=yes], [explicit_memset=no]
 )
-AM_CONDITIONAL([USE_GNUTLS_MEMSET], [test "$explicit_bzero" = "no" -a "$explicit_memset" = "no" -a "$gnutls_memset" = "yes"])
+AM_CONDITIONAL([USE_GNUTLS_MEMSET], [test "$explicit_bzero" = "no" -a "$explicit_memset" = "no"])
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
@@ -836,9 +762,7 @@ result_msg_base="
     Systemd integration:    ${enable_systemd}
     POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
-    Ed25519 support:        ${enable_ed25519}
     Ed448 support:          ${enable_ed448}
-    Reproducible signing:   ${enable_repro_signing}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}

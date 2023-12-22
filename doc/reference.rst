@@ -1897,8 +1897,6 @@ Possible values:
 - ``ed448``
 
 .. NOTE::
-   Ed25519 algorithm is only available if compiled with GnuTLS 3.6.0+.
-
    Ed448 algorithm is only available if compiled with GnuTLS 3.6.12+ and Nettle 3.6+.
 
 *Default:* ``ecdsap256sha256``
