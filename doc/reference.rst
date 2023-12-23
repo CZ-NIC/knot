@@ -727,6 +727,7 @@ Various options related to XDP listening, especially TCP.
      tcp-idle-reset-timeout: TIME
      tcp-resend-timeout: TIME
      route-check: BOOL
+     ring-size: INT
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -908,6 +909,21 @@ Change of this parameter requires restart of the Knot server to take effect.
    Only VLAN 802.1Q is supported.
 
 *Default:* ``off``
+
+.. _xdp_ring-size:
+
+ring-size
+---------
+
+Size of RX, FQ, TX, and CQ rings.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+.. NOTE::
+   This value should be at least as high as the configured RX size of the
+   network device in the XDP mode.
+
+*Default:* ``2048``
 
 .. _control section:
 
