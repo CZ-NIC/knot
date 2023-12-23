@@ -677,6 +677,7 @@ xdp:
     tcp\-idle\-reset\-timeout: TIME
     tcp\-resend\-timeout: TIME
     route\-check: BOOL
+    ring\-size: INT
 .ft P
 .fi
 .UNINDENT
@@ -842,6 +843,21 @@ Only VLAN 802.1Q is supported.
 .UNINDENT
 .sp
 \fIDefault:\fP \fBoff\fP
+.SS ring\-size
+.sp
+Size of RX, FQ, TX, and CQ rings.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This value should be at least as high as the configured RX size of the
+network device in the XDP mode.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP \fB2048\fP
 .SH CONTROL SECTION
 .sp
 Configuration of the server control interface.
