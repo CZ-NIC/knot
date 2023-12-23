@@ -53,8 +53,9 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
 
 /*! \brief Configuration of XDP socket. */
 struct knot_xdp_config {
-	bool force_generic; /*!< Use generic XDP mode (avoid driver/hadrware implementation). */
-	bool force_copy;    /*!< Force copying packet data between kernel and user-space (avoid zero-copy). */
+	uint32_t ring_size;  /*!< Size of RX and TX rings (must be power of 2). */
+	bool force_generic;  /*!< Use generic XDP mode (avoid driver/hadrware implementation). */
+	bool force_copy;     /*!< Force copying packet data between kernel and user-space (avoid zero-copy). */
 };
 
 /*! \brief Configuration of XDP socket. */

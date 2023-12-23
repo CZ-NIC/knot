@@ -60,6 +60,8 @@ struct kxsk_umem {
 
 	/*! The memory frames. */
 	struct umem_frame *frames;
+	/*! Size of RX and TX rings. */
+	uint32_t ring_size;
 	/*! The number of free frames (for TX). */
 	uint32_t tx_free_count;
 	/*! Stack of indices of the free frames (for TX). */

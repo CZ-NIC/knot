@@ -149,7 +149,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.sending_mode = "",
 	.target_port = 0,
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
-	.xdp_config = { 0 },
+	.xdp_config = { .ring_size = 2048 },
 };
 
 static void sigterm_handler(int signo)
