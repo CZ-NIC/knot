@@ -32,7 +32,7 @@ t.start()
 
 serial = master.zone_wait(catz, tsig=True)
 
-master.key_gen(stuckzone[0].name, ksk="true", zsk="true", ready="+0", active="+100")
+master.key_gen(stuckzone[0].name, ksk="true", zsk="true", ready="+0", active="0")
 master.ctl("zone-sign")
 t.sleep(4)
 

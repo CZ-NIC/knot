@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,6 +90,39 @@ static knot_kasp_key_t *key_get_by_id(kdnssec_ctx_t *ctx, const char *keyid)
 		}
 	}
 	return NULL;
+}
+
+static int clear_future_timer(knot_time_t *timer, knot_time_t now)
+{
+	if (*timer > now) { // includes the fact that *timer != 0
+		*timer = 0;
+		return 1;
+	}
+	return 0;
+}
+
+// this is intended for automatic key management with keys imported from Bind
+static void clear_future_timers(knot_kasp_key_t *key, kdnssec_ctx_t *ctx)
+{
+	int change = 0;
+	// untouched timer created, as it should be never in the future
+	change += clear_future_timer(&key->timing.pre_active, ctx->now);
+	change += clear_future_timer(&key->timing.publish, ctx->now);
+	change += clear_future_timer(&key->timing.ready, ctx->now);
+	change += clear_future_timer(&key->timing.active, ctx->now);
+	change += clear_future_timer(&key->timing.retire_active, ctx->now);
+	if (key->timing.retire_active == 0) { // otherwise those timers are in the future normally
+		change += clear_future_timer(&key->timing.retire, ctx->now);
+		change += clear_future_timer(&key->timing.remove, ctx->now);
+	}
+	// untouched timer post_active, as it's normally in the future and it's not importable from Bind anyway
+	// untouched timer revoke as that is another topic
+
+	if (change > 0) {
+		log_zone_notice(ctx->zone->dname , "DNSSEC, cleared future timers of auto-managed key %hu",
+		                dnssec_key_get_keytag(key->key));
+		(void)kdnssec_ctx_commit(ctx);
+	}
 }
 
 static int generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
@@ -395,6 +428,7 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 		    (key->is_zsk && !(flags & KEY_ROLL_ALLOW_ZSK_ROLL))) {
 			continue;
 		}
+		clear_future_timers(key, ctx);
 		if (key->is_ksk) {
 			switch (get_key_state(key, ctx->now)) {
 			case DNSSEC_KEY_STATE_PRE_ACTIVE:

@@ -1001,6 +1001,10 @@ class Bind(Server):
         if value and value != True:
             conf.item_str(name, value)
 
+    def _int(self, conf, name, value):
+        if value is not None:
+            conf.item(name, str(value))
+
     def get_config(self):
         s = dnstest.config.BindConf()
         s.begin("options")
@@ -1056,6 +1060,33 @@ class Bind(Server):
                     self._key(s, keys, master.tsig, master.name)
                 for slave in z.slaves:
                     self._key(s, keys, slave.tsig, slave.name)
+
+        for zone in sorted(self.zones):
+            z = self.zones[zone]
+            if not z.dnssec.enable:
+                continue
+
+            s.begin("dnssec-policy", z.name)
+            s.begin("keys")
+            zsk_life = "unlimited" if z.dnssec.zsk_lifetime is None else z.dnssec.zsk_lifetime
+            ksk_life = "unlimited" if z.dnssec.ksk_lifetime is None else z.dnssec.ksk_lifetime
+            alg = "ecdsa256" if z.dnssec.alg is None else z.dnssec.alg
+            if z.dnssec.single_type_signing:
+                s.item("csk", "lifetime %s algorithm %s" % (ksk_life, alg))
+            else:
+                s.item("zsk", "lifetime %s algorithm %s" % (zsk_life, alg))
+                s.item("ksk", "lifetime %s algorithm %s" % (ksk_life, alg))
+            s.end()
+            self._int(s, "dnskey-ttl", z.dnssec.dnskey_ttl)
+            self._int(s, "max-zone-ttl", z.dnssec.zone_max_ttl)
+            self._int(s, "zone-propagation-delay", z.dnssec.propagation_delay)
+            self._int(s, "signatures-validity", z.dnssec.rrsig_lifetime)
+            self._int(s, "signatures-refresh", z.dnssec.rrsig_refresh)
+            s.item("publish-safety", "1")
+            s.item("retire-safety", "1")
+            s.item("parent-ds-ttl", "5")
+            s.item("parent-propagation-delay", "5")
+            s.end()
 
         for zone in sorted(self.zones):
             z = self.zones[zone]
@@ -1125,9 +1156,13 @@ class Bind(Server):
 
             if z.dnssec.enable:
                 s.item("inline-signing", "yes")
-                s.item("auto-dnssec", "maintain")
+                s.item("dnssec-policy", z.name)
                 s.item_str("key-directory", self.keydir)
-
+                if z.dnssec.ksk_sbm_check:
+                    parents = ""
+                    for parent in z.dnssec.ksk_sbm_check:
+                        parents += "%s port %i; " % (parent.addr, parent.port)
+                    s.item("parental-agents", "{ %s}" % parents)
             s.end()
 
         self.start_params = ["-c", self.confile, "-g"]
@@ -1143,7 +1178,7 @@ class Bind(Server):
                 continue
 
             # unrelated: generate keys as Bind won't do
-            ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'RSASHA256', '-b', '1024', '-K', self.keydir ]
+            ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'ECDSA256', '-K', self.keydir ]
             if z.dnssec.nsec3:
                 ps += ['-3']
             k1 = check_output(ps + [z.name], stderr=DEVNULL)

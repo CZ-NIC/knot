@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -401,7 +401,7 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 
 void bind_privkey_to_timing(bind_privkey_t *params, knot_kasp_key_timing_t *timing)
 {
-	// timing->created remains "now"
+	timing->created = (knot_time_t)params->time_created;
 	timing->publish = (knot_time_t)params->time_publish;
 	timing->ready   = 0;
 	timing->active  = (knot_time_t)params->time_activate;
