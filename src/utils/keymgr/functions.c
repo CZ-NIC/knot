@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -364,7 +364,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 		return KNOT_EINVAL;
 	}
 
-	knot_kasp_key_timing_t timing = { ctx->now, 0 };
+	knot_kasp_key_timing_t timing = { 0 };
 	dnssec_key_t *key = NULL;
 	char *keyid = NULL;
 
@@ -866,6 +866,7 @@ typedef struct {
 } timer_ctx_t;
 
 static const timer_ctx_t timers[] = {
+	{ "created",       offsetof(knot_kasp_key_timing_t, created) },
 	{ "pre-active",    offsetof(knot_kasp_key_timing_t, pre_active) },
 	{ "publish",       offsetof(knot_kasp_key_timing_t, publish) },
 	{ "ready",         offsetof(knot_kasp_key_timing_t, ready) },
