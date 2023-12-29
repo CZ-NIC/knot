@@ -1654,7 +1654,7 @@ really reasonable when records are generated dynamically
 \fIDefault:\fP computed after zone is loaded
 .SS ksk\-lifetime
 .sp
-A period between KSK activation and the next rollover initiation.
+A period between KSK generation and the next rollover initiation.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0

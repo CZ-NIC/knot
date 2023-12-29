@@ -1834,7 +1834,7 @@ Declare (override) maximal TTL value among all the records in zone.
 ksk-lifetime
 ------------
 
-A period between KSK activation and the next rollover initiation.
+A period between KSK generation and the next rollover initiation.
 
 .. NOTE::
    KSK key lifetime is also influenced by propagation-delay, dnskey-ttl,
