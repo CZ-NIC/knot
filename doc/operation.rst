@@ -330,7 +330,7 @@ The history is stored in changesets – differences of zone contents between two
 (usually subsequent) zone versions (specified by SOA serials).
 
 Journals of all zones are stored in a common LMDB database. Huge changesets are
-split into 70 KiB [#fn-hc]_ blocks to prevent fragmentation of the DB. The
+split into 15-70 KiB [#fn-hc]_ blocks to prevent fragmentation of the DB. The
 journal does each operation in one transaction to keep consistency of the DB and performance.
 
 Each zone journal has its own occupation limits :ref:`maximum usage <zone_journal-max-usage>`
