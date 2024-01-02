@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,8 @@ int event_dnssec(conf_t *conf, zone_t *zone);
 /*! \brief NOT A HANDLER, just a helper function to reschedule based on reschedule_t */
 void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
                              const zone_sign_reschedule_t *refresh, bool zone_changed);
+/*! \brief Validate the wole zone's DNSSEC. */
+int event_validate(conf_t *conf, zone_t *zone);
 /*! \brief Freeze those events causing zone contents change. */
 int event_ufreeze(conf_t *conf, zone_t *zone);
 /*! \brief Unfreeze zone updates. */

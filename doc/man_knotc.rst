@@ -162,6 +162,10 @@ Actions
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
   This command is valid for zones with DNSSEC signing enabled. (#)
 
+**zone-validate** [*zone*...]
+  Trigger a DNSSEC validation of the zone. If the validation fails and the
+  zone is secondary, the zone expires immediately! (#)
+
 **zone-keys-load** [*zone*...]
   Trigger a load of DNSSEC keys and other signing material from KASP database
   (which might have been altered manually). If suitable, re-sign the zone

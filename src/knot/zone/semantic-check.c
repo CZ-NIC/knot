@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -508,7 +508,7 @@ static sem_error_t err_dnssec2sem(int ret, uint16_t rrtype, char *info, size_t l
 static int verify_dnssec(zone_contents_t *zone, sem_handler_t *handler, time_t time)
 {
 	zone_update_t fake_up = { .new_cont = zone, };
-	int ret = knot_dnssec_validate_zone(&fake_up, NULL, time, false, NULL);
+	int ret = knot_dnssec_validate_zone(&fake_up, NULL, time, false, false);
 	if (fake_up.validation_hint.node != NULL) { // validation found an issue
 		char info[64] = "";
 		sem_error_t err = err_dnssec2sem(ret, fake_up.validation_hint.rrtype, info, sizeof(info));

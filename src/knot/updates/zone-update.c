@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -894,23 +894,6 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
 	return ret;
 }
 
-static void log_validation_error(zone_update_t *update, const char *msg_valid,
-                                 int ret, bool warning)
-{
-	unsigned level = warning ? LOG_WARNING : LOG_ERR;
-
-	log_fmt_zone(level, LOG_SOURCE_ZONE, update->zone->name, NULL,
-	             "DNSSEC, %svalidation failed (%s)", msg_valid, knot_strerror(ret));
-
-	char type_str[16];
-	knot_dname_txt_storage_t name_str;
-	if (knot_dname_to_str(name_str, update->validation_hint.node, sizeof(name_str)) != NULL &&
-	    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
-		log_fmt_zone(level, LOG_SOURCE_ZONE, update->zone->name, NULL,
-		             "DNSSEC, validation hint: %s %s", name_str, type_str);
-	}
-}
-
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (conf == NULL || update == NULL) {
@@ -959,25 +942,10 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
 	if (conf_bool(&val)) {
 		bool incr_valid = update->flags & UPDATE_INCREMENTAL;
-		const char *msg_valid = incr_valid ? "incremental " : "";
-
-		size_t count = 0;
-		ret = knot_dnssec_validate_zone(update, conf, 0, incr_valid, &count);
+		ret = knot_dnssec_validate_zone(update, conf, 0, incr_valid, true);
 		if (ret != KNOT_EOK) {
-			log_validation_error(update, msg_valid, ret, false);
-			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
-				systemd_emit_zone_invalid(update->zone->name, 0);
-			}
 			discard_adds_tree(update);
 			return ret;
-		} else if (update->validation_hint.warning != KNOT_EOK) {
-			log_validation_error(update, msg_valid, update->validation_hint.warning, true);
-			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
-				systemd_emit_zone_invalid(update->zone->name, update->validation_hint.remaining_secs);
-			}
-		} else {
-			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful, checked RRSIGs %zu",
-			              msg_valid, count);
 		}
 	}
 

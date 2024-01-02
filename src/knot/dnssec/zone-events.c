@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/common/log.h"
+#include "knot/common/systemd.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/key_records.h"
 #include "knot/dnssec/policy.h"
@@ -448,13 +449,30 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx)
 	}
 }
 
+static void log_validation_error(zone_update_t *update, const char *msg_valid,
+                                 int ret, bool warning)
+{
+	unsigned level = warning ? LOG_WARNING : LOG_ERR;
+
+	log_fmt_zone(level, LOG_SOURCE_ZONE, update->zone->name, NULL,
+	             "DNSSEC, %svalidation failed (%s)", msg_valid, knot_strerror(ret));
+
+	char type_str[16];
+	knot_dname_txt_storage_t name_str;
+	if (knot_dname_to_str(name_str, update->validation_hint.node, sizeof(name_str)) != NULL &&
+	    knot_rrtype_to_string(update->validation_hint.rrtype, type_str, sizeof(type_str)) >= 0) {
+		log_fmt_zone(level, LOG_SOURCE_ZONE, update->zone->name, NULL,
+		             "DNSSEC, validation hint: %s %s", name_str, type_str);
+	}
+}
+
 int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
-                              knot_time_t now, bool incremental, size_t *count)
+                              knot_time_t now, bool incremental, bool log_plan)
 {
 	kdnssec_ctx_t ctx = { 0 };
 	int ret = kdnssec_validation_ctx(conf, &ctx, update->new_cont);
 	if (ret != KNOT_EOK) {
-		return ret;
+		goto end;
 	}
 	if (now != 0) {
 		ctx.now = now;
@@ -469,11 +487,45 @@ int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
 			ret = knot_zone_sign(update, NULL, &ctx);
 		}
 	}
+end:
+	if (log_plan) {
+		const char *msg_valid = incremental ? "incremental " : "";
+		if (ret != KNOT_EOK) {
+			log_validation_error(update, msg_valid, ret, false);
+			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
+				systemd_emit_zone_invalid(update->zone->name, 0);
+			}
+		} else if (update->validation_hint.warning != KNOT_EOK) {
+			log_validation_error(update, msg_valid, update->validation_hint.warning, true);
+			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
+				systemd_emit_zone_invalid(update->zone->name, update->validation_hint.remaining_secs);
+			}
+		} else {
+			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful, checked RRSIGs %zu",
+			              msg_valid, ctx.stats->rrsig_count);
+		}
 
-	if (count != NULL) {
-		*count = ctx.stats->rrsig_count;
+		conf_val_t val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
+		bool configured = conf_bool(&val);
+		bool bogus = (ret != KNOT_EOK);
+		bool running = (update->zone->contents == update->new_cont);
+		bool may_expire = zone_is_slave(conf, update->zone);
+		knot_time_t expire = (ctx.stats != NULL ? ctx.stats->expire : 0);
+		assert(bogus || knot_time_geq(expire, ctx.now));
+
+		if (running && bogus && may_expire) {
+			zone_events_schedule_now(update->zone, ZONE_EVENT_EXPIRE);
+		}
+		if (configured && !bogus) {
+			if (!incremental) {
+				zone_events_schedule_at(update->zone, ZONE_EVENT_VALIDATE, 0); // cancel previously planned re-check when fully re-checked
+			}
+			zone_events_schedule_at(update->zone, ZONE_EVENT_VALIDATE, // this works for incremental verify as well, re-planning on later
+			                        knot_time_add(expire, 1));         // is a NOOP, sooner is proper
+		}
 	}
 
 	kdnssec_ctx_deinit(&ctx);
+
 	return ret;
 }

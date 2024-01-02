@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -115,9 +115,9 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx);
  * \param conf           Knot configuration.
  * \param now            If not zero: adjust "now" to this timestamp.
  * \param incremental    Try to validate incrementally.
- * \param count          (optional)output: number of validated signatures.
+ * \param log_plan       Log the result and plan subsequent validation event.
  *
  * \return KNOT_E*
  */
 int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
-			      knot_time_t now, bool incremental, size_t *count);
+                              knot_time_t now, bool incremental, bool log_plan);

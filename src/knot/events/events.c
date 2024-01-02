@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_BACKUP,       event_backup,      "backup/restore" },
 	{ ZONE_EVENT_NOTIFY,       event_notify,      "notify" },
 	{ ZONE_EVENT_DNSSEC,       event_dnssec,      "re-sign" },
+	{ ZONE_EVENT_VALIDATE,     event_validate,    "DNSSEC-validate" },
 	{ ZONE_EVENT_UFREEZE,      event_ufreeze,     "update-freeze" },
 	{ ZONE_EVENT_UTHAW,        event_uthaw,       "update-thaw" },
 	{ ZONE_EVENT_DS_CHECK,     event_ds_check,    "DS-check" },

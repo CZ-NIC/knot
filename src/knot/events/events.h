@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ typedef enum zone_event_type {
 	ZONE_EVENT_BACKUP,
 	ZONE_EVENT_NOTIFY,
 	ZONE_EVENT_DNSSEC,
+	ZONE_EVENT_VALIDATE,
 	ZONE_EVENT_UFREEZE,
 	ZONE_EVENT_UTHAW,
 	ZONE_EVENT_DS_CHECK,

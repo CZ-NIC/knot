@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -117,7 +117,7 @@ static int zonesign(sign_params_t *params)
 			goto fail;
 		}
 
-		ret = knot_dnssec_validate_zone(&up, conf(), params->timestamp, false, NULL);
+		ret = knot_dnssec_validate_zone(&up, conf(), params->timestamp, false, false);
 		if (ret != KNOT_EOK) {
 			ERR2("DNSSEC validation failed (%s)", knot_strerror(ret));
 			char type_str[16];

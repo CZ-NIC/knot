@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -704,6 +704,11 @@ static int zone_sign(zone_t *zone, _unused_ ctl_args_t *args)
 
 	zone_set_flag(zone, ZONE_FORCE_RESIGN);
 	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
+}
+
+static int zone_validate(zone_t *zone, _unused_ ctl_args_t *args)
+{
+	return schedule_trigger(zone, args, ZONE_EVENT_VALIDATE, true);
 }
 
 static int zone_keys_load(zone_t *zone, _unused_ ctl_args_t *args)
@@ -1871,6 +1876,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply_backup(args, true);
 	case CTL_ZONE_SIGN:
 		return zones_apply(args, zone_sign);
+	case CTL_ZONE_VALIDATE:
+		return zones_apply(args, zone_validate);
 	case CTL_ZONE_KEYS_LOAD:
 		return zones_apply(args, zone_keys_load);
 	case CTL_ZONE_KEY_ROLL:
@@ -2329,6 +2336,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone },
 	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone },
 	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone },
+	[CTL_ZONE_VALIDATE]   = { "zone-validate",      ctl_zone },
 	[CTL_ZONE_KEYS_LOAD]  = { "zone-keys-load",     ctl_zone },
 	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone },
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
