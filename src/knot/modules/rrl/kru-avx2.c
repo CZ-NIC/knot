@@ -47,7 +47,7 @@ static void detect_CPU_avx2(void)
 
 #else
 
-struct const kru_api KRU_AVX2 = {NULL, NULL};
+const struct kru_api KRU_AVX2 = {NULL, NULL};
 
 #endif
 
