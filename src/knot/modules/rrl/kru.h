@@ -34,6 +34,7 @@ struct kru_api {
 // The functions are stored this way to make it easier to switch
 // implementation based on detected CPU.
 extern struct kru_api KRU;
+extern const struct kru_api KRU_GENERIC, KRU_AVX2; // for tests only
 
 
 #if __GNUC__ >= 4 || __clang_major__ >= 4

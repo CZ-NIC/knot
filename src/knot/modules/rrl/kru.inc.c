@@ -198,9 +198,6 @@ static bool kru_limited(struct kru *kru, char key[static const 16], uint32_t tim
 	}
 #endif
 
-	if (load)
-		goto load_found;
-
 	// No match, so find position of the smallest load.
 	int min_li = 0;
 	int min_i = 0;
@@ -254,22 +251,20 @@ static bool kru_limited(struct kru *kru, char key[static const 16], uint32_t tim
 	l[min_li]->ids[min_i] = id;
 	load = &l[min_li]->loads[min_i]; // TODO: goto load_found?
 load_found:;
+
 	static_assert(ATOMIC_CHAR16_T_LOCK_FREE == 2, "insufficient atomics");
 	_Atomic uint16_t *load_at = (_Atomic uint16_t *)load;
 	const uint32_t limit = (1<<16) - price;
-	if (*load_at >= limit) return true;
-	uint16_t load_old = atomic_fetch_add(load_at, price);
-	uint16_t unused;
-	if (__builtin_add_overflow(load_old, price, &unused)) {
-		*load_at = (1<<16) - 1; // multiple increases happened at once
-		return true;
-	} else {
-		return false;
-	}
+	uint16_t load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
+	do {
+		if (load_orig >= limit)
+			return true;
+	} while (!atomic_compare_exchange_weak_explicit(load_at, &load_orig, load_orig + price, memory_order_relaxed, memory_order_relaxed));
+		// TODO: check correctness under memory_order_relaxed
+	return false;
 }
 
-struct kru_api KRU_API_NAME = {
-	.create = kru_create,
-	.limited = kru_limited,
-};
-
+#define KRU_API_INITIALIZER { \
+	.create = kru_create, \
+	.limited = kru_limited, \
+}

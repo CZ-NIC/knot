@@ -19,20 +19,19 @@ struct decay_config {
 static void update_time(struct load_cl *l, const uint32_t time_now,
 			const struct decay_config *decay)
 {
-	// We get `ticks` in this loop:
-	//  - first, non-atomic check that no tick's happened (typical under attack)
-	//  - on the second pass we advance l->time atomically
 	uint32_t ticks;
-	uint32_t time_last = l->time;
-	for (int i = 1; i < 2; ++i,time_last = atomic_exchange(&l->time, time_now)) {
+	uint32_t time_last = atomic_load_explicit(&l->time, memory_order_relaxed);
+	do {
 		ticks = (time_now - time_last) >> decay->ticklen_log;
 		if (__builtin_expect(!ticks, true)) // we optimize for time not advancing
 			return;
 		// We accept some desynchronization of time_now (e.g. from different threads).
 		if (ticks > (uint32_t)-1024)
 			return;
-	}
-	// If we passed here, we should be the only thread updating l->time "right now".
+	} while (!atomic_compare_exchange_weak_explicit(&l->time, &time_last, time_now, memory_order_relaxed, memory_order_relaxed));
+		// TODO: check correctness under memory_order_relaxed
+
+	// If we passed here, we have acquired a time difference we are responsibe for.
 
 	// Don't bother with complex computations if lots of ticks have passed.
 	const uint32_t max_ticks_log = /* ticks to shift by one bit */ decay->half_life_log
@@ -46,13 +45,18 @@ static void update_time(struct load_cl *l, const uint32_t time_now,
 	const uint32_t decay_frac = ticks & (((uint32_t)1 << decay->half_life_log) - 1);
 	const uint32_t load_nonfrac_shift = ticks >> decay->half_life_log;
 	for (int i = 0; i < LOADS_LEN; ++i) {
-		// decay: first do the "fractibonal part of the bit shift"
-		DECAY_TL m = (DECAY_TL)l->loads[i] * decay->scales[decay_frac];
-		DECAY_T l1 = (m >> DECAY_BITS) + /*rounding*/((m >> (DECAY_BITS-1)) & 1);
-		// finally the non-fractional part of the bit shift
-		l->loads[i] = l1 >> load_nonfrac_shift;
+		// We perform decay for the acquired time difference; decays from different threads are commutative.
+		_Atomic DECAY_T *load_at = (_Atomic DECAY_T *)&l->loads[i];
+		DECAY_T l1, load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
+		do {
+			// decay: first do the "fractibonal part of the bit shift"
+			DECAY_TL m = (DECAY_TL)load_orig * decay->scales[decay_frac];
+			l1 = (m >> DECAY_BITS) + /*rounding*/((m >> (DECAY_BITS-1)) & 1);
+			// finally the non-fractional part of the bit shift
+			l1 = l1 >> load_nonfrac_shift;
+		} while (!atomic_compare_exchange_weak_explicit(load_at, &load_orig, l1, memory_order_relaxed, memory_order_relaxed));
+			// TODO: check correctness under memory_order_relaxed
 	}
-
 }
 
 /// Half-life of 32 ticks, consequently forgetting in a couple hundred ticks.
@@ -68,4 +72,3 @@ static const struct decay_config DECAY_32 = {
 		40693,39821,38968,38133,37316,36516,35734,34968,34219,33486
 	}
 };
-
