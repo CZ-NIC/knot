@@ -68,6 +68,7 @@ uint32_t fakeclock_tick = 0;
 
 void fakeclock_init(void) {
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &fakeclock_start);
+	fakeclock_tick = 0;
 }
 int fakeclock_gettime(clockid_t clockid, struct timespec *tp) {
 	uint32_t inc_msec = fakeclock_tick;
@@ -153,42 +154,14 @@ static void* rrl_runnable(void *arg)
 	}
 }
 
-int main(int argc, char *argv[])
-{
-	plan_lazy();
 
-	dnssec_crypto_init();
+void test_rrl(char *impl_name, rrl_req_t rq, knot_dname_t *zone) {
+
 	fakeclock_init();
-
-	/* Prepare query. */
-	knot_pkt_t *query = knot_pkt_new(NULL, 512, NULL);
-	if (query == NULL) {
-		return KNOT_ERROR; /* Fatal */
-	}
-
-	knot_dname_t *qname = knot_dname_from_str_alloc("beef.");
-	int ret = knot_pkt_put_question(query, qname, KNOT_CLASS_IN, KNOT_RRTYPE_A);
-	knot_dname_free(qname, NULL);
-	if (ret != KNOT_EOK) {
-		knot_pkt_free(query);
-		return KNOT_ERROR; /* Fatal */
-	}
-
-	/* Prepare response */
-	uint8_t rbuf[65535];
-	size_t rlen = sizeof(rbuf);
-	memcpy(rbuf, query->wire, query->size);
-	knot_wire_flags_set_qr(rbuf);
-
-	rrl_req_t rq;
-	rq.wire = rbuf;
-	rq.len = rlen;
-	rq.query = query;
-	rq.flags = 0;
 
 	/* 1. create rrl table */
 	rrl_table_t *rrl = rrl_create(1, 1);  // XXX parameters ignored
-	ok(rrl != NULL, "rrl: create");
+	ok(rrl != NULL, "rrl(%s): create", impl_name);
 
 	if (KRU.create == KRU_GENERIC.create) {
 		struct kru_generic *kru = (struct kru_generic *) rrl;
@@ -202,13 +175,11 @@ int main(int argc, char *argv[])
 
 
 	/* 2. N unlimited requests. */
-	knot_dname_t *zone = knot_dname_from_str_alloc("rrl.");
-
 	struct sockaddr_storage addr;
 	struct sockaddr_storage addr6;
 	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
 	sockaddr_set(&addr6, AF_INET6, "1122:3344:5566:7788::aabb", 0);
-	ret = 0;
+	int ret = 0;
 	for (unsigned i = 0; i < RRL_INITIAL_LIMIT_MIN; ++i) {
 		if (rrl_query(rrl, &addr, &rq, zone, NULL) != KNOT_EOK ||
 		    rrl_query(rrl, &addr6, &rq, zone, NULL) != KNOT_EOK) {
@@ -216,39 +187,26 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-	is_int(0, ret, "rrl: unlimited IPv4/v6 requests");
+	is_int(0, ret, "rrl(%s): unlimited IPv4/v6 requests", impl_name);
 
-	/* 3. Endian-independent hash input buffer. */
-	// TODO fix the expected outcomes; they differ as qname is now not considered
-#if 0
-	uint8_t buf[RRL_CLSBLK_MAXLEN];
-	// CLS_LARGE + remote + dname wire.
-	uint8_t expectedv4[] = "\x10\x01\x02\x03\x00\x00\x00\x00\x00\x04""beef";
-	rrl_classify(buf, sizeof(buf), &addr, &rq, qname);
-	is_int(0, memcmp(buf, expectedv4, sizeof(expectedv4)), "rrl: IPv4 hash input buffer");
-	uint8_t expectedv6[] = "\x10\x11\x22\x33\x44\x55\x66\x77\x00\x04""beef";
-	rrl_classify(buf, sizeof(buf), &addr6, &rq, qname);
-	is_int(0, memcmp(buf, expectedv6, sizeof(expectedv6)), "rrl: IPv6 hash input buffer");
-#endif
-
-	/* 5. limited request */
+	/* 3. limited request */
 	ret = rrl_query(rrl, &addr, &rq, zone, NULL);
-	is_int(KNOT_ELIMIT, ret, "rrl: blocked IPv4 request");
+	is_int(KNOT_ELIMIT, ret, "rrl(%s): blocked IPv4 request", impl_name);
 
-	/* 6. limited IPv6 request */
+	/* 4. limited IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone, NULL);
-	is_int(KNOT_ELIMIT, ret, "rrl: blocked IPv6 request");
+	is_int(KNOT_ELIMIT, ret, "rrl(%s): blocked IPv6 request", impl_name);
 
-	/* 7. unblocked request */
+	/* 5. unblocked request */
 	fakeclock_tick = 32;
 	ret = rrl_query(rrl, &addr, &rq, zone, NULL);
-	is_int(KNOT_EOK, ret, "rrl: unblocked IPv4 request");
+	is_int(KNOT_EOK, ret, "rrl(%s): unblocked IPv4 request", impl_name);
 
-	/* 8. unblocked IPv6 request */
+	/* 6. unblocked IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone, NULL);
-	is_int(KNOT_EOK, ret, "rrl: unblocked IPv6 request");
+	is_int(KNOT_EOK, ret, "rrl(%s): unblocked IPv6 request", impl_name);
 
-	/* 9+. parallel tests */
+	/* 7+. parallel tests */
 	struct stage stages[] = {
 		/* first tick, last tick, hosts */
 		{32, 32, {
@@ -309,15 +267,73 @@ int main(int argc, char *argv[])
 		uint32_t ticks = stages[si].last_tick - stages[si].first_tick + 1;
 		for (size_t i = 0; h[i].queries_per_tick; i++) {
 			ok( h[i].min_passed * ticks <= h[i].passed && h[i].passed <= h[i].max_passed * ticks,
-				"rrl: stage %d, addr %s: %.2f <= %.4f <= %.2f", si, h[i].addr_format, h[i].min_passed, (double)h[i].passed / ticks, h[i].max_passed);
+				"rrl(%s): stage %d, addr %s: %.2f <= %.4f <= %.2f", impl_name, si, h[i].addr_format, h[i].min_passed, (double)h[i].passed / ticks, h[i].max_passed);
 		}
 	} while (stages[++si].first_tick);
 
-	// ok(0, "0");
+	rrl_destroy(rrl);
+}
+
+int main(int argc, char *argv[])
+{
+	plan_lazy();
+
+	dnssec_crypto_init();
+
+	/* Prepare query. */
+	knot_pkt_t *query = knot_pkt_new(NULL, 512, NULL);
+	if (query == NULL) {
+		return KNOT_ERROR; /* Fatal */
+	}
+
+	knot_dname_t *qname = knot_dname_from_str_alloc("beef.");
+	int ret = knot_pkt_put_question(query, qname, KNOT_CLASS_IN, KNOT_RRTYPE_A);
+	knot_dname_free(qname, NULL);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(query);
+		return KNOT_ERROR; /* Fatal */
+	}
+
+	/* Prepare response */
+	uint8_t rbuf[65535];
+	size_t rlen = sizeof(rbuf);
+	memcpy(rbuf, query->wire, query->size);
+	knot_wire_flags_set_qr(rbuf);
+
+	rrl_req_t rq;
+	rq.wire = rbuf;
+	rq.len = rlen;
+	rq.query = query;
+	rq.flags = 0;
+
+	/* 1. Endian-independent hash input buffer. */
+	// TODO fix the expected outcomes; they differ as qname is now not considered
+#if 0
+	uint8_t buf[RRL_CLSBLK_MAXLEN];
+	// CLS_LARGE + remote + dname wire.
+	uint8_t expectedv4[] = "\x10\x01\x02\x03\x00\x00\x00\x00\x00\x04""beef";
+	rrl_classify(buf, sizeof(buf), &addr, &rq, qname);
+	is_int(0, memcmp(buf, expectedv4, sizeof(expectedv4)), "rrl: IPv4 hash input buffer");
+	uint8_t expectedv6[] = "\x10\x11\x22\x33\x44\x55\x66\x77\x00\x04""beef";
+	rrl_classify(buf, sizeof(buf), &addr6, &rq, qname);
+	is_int(0, memcmp(buf, expectedv6, sizeof(expectedv6)), "rrl: IPv6 hash input buffer");
+#endif
+
+	knot_dname_t *zone = knot_dname_from_str_alloc("rrl.");
+
+	assert(KRU_GENERIC.create != KRU_AVX2.create);
+	bool test_avx2 = (KRU.create == KRU_AVX2.create);
+
+	KRU = KRU_GENERIC;
+	test_rrl("KRU_GENERIC", rq, zone);
+
+	if (test_avx2) {
+		KRU = KRU_AVX2;
+		test_rrl("KRU_AVX2", rq, zone);
+	}
 
 	knot_dname_free(zone, NULL);
 	knot_pkt_free(query);
-	rrl_destroy(rrl);
 	dnssec_crypto_cleanup();
 	return 0;
 }
