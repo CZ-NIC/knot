@@ -26,8 +26,8 @@
 #define USE_AVX2 1
 #define USE_SSE41 1
 
-#define KRU_API_NAME KRU_AVX2
 #include "knot/modules/rrl/kru.inc.c"
+const struct kru_api KRU_AVX2 = KRU_API_INITIALIZER;
 
 #ifdef __clang__
 	#pragma clang attribute pop
@@ -41,14 +41,14 @@ static void detect_CPU_avx2(void)
 {
 	// Checking just AES+AVX2 will most likely be OK even if we used arch=x86-64-v3
 	if (__builtin_cpu_supports("aes") && __builtin_cpu_supports("avx2")) {
-		KRU = KRU_API_NAME;
+		KRU = KRU_AVX2;
 	}
 }
 
 #else
 
 #include "kru.h"
-const struct kru_api KRU_AVX2 = {NULL, NULL};
+const struct kru_api KRU_AVX2 = {NULL};
 
 #endif
 

@@ -266,7 +266,7 @@ load_found:;
 	}
 }
 
-const struct kru_api KRU_API_NAME = {
-	.create = kru_create,
-	.limited = kru_limited,
-};
+#define KRU_API_INITIALIZER { \
+	.create = kru_create, \
+	.limited = kru_limited, \
+}

@@ -1,6 +1,5 @@
 
-#define KRU_API_NAME KRU_GENERIC
-
 #include "knot/modules/rrl/kru.inc.c"
 
-struct kru_api KRU = KRU_GENERIC; // generic version is the default
+const struct kru_api KRU_GENERIC = KRU_API_INITIALIZER;
+struct kru_api KRU = KRU_API_INITIALIZER; // generic version is the default
