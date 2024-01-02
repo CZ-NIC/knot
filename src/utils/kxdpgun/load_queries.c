@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ enum qflags {
 
 struct pkt_payload *global_payloads = NULL;
 
-void free_global_payloads()
+void free_global_payloads(void)
 {
 	struct pkt_payload *g_payloads_p = global_payloads, *tmp;
 	while (g_payloads_p != NULL) {
