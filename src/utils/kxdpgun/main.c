@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@
 #include <gnutls/gnutls.h>
 #include "libknot/quic/quic.h"
 #endif // ENABLE_QUIC
+#include "contrib/json.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcat.h"
@@ -129,6 +130,7 @@ typedef struct {
 	bool		tcp;
 	bool		quic;
 	bool		quic_full_handshake;
+	bool            json_output;
 	const char 	*qlog_dir;
 	const char	*sending_mode;
 	xdp_gun_ignore_t  ignore1;
@@ -245,6 +247,61 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv, uin
 	printf("duration: %"PRIu64" s\n", (st->duration / (1000 * 1000)));
 
 	pthread_mutex_unlock(&st->mutex);
+}
+
+inline static uint64_t timer_us_timestamp(void)
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return ((long)ts.tv_sec * 1000000) + (ts.tv_nsec / 1000);
+}
+
+static void print_stats_json(kxdpgun_stats_t *st, int argc, char **argv, uint64_t since, uint64_t until, xdp_gun_ctx_t *ctx)
+{
+	jsonw_t *w = jsonw_new(stdout, "  ");
+	uint64_t runid = timer_us_timestamp();
+
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "header");
+	jsonw_ulong(w, "runid", runid);
+	jsonw_ulong(w, "schema_version", 20221207);
+	jsonw_bool(w, "merged", true);
+	jsonw_ulong(w, "time_units_per_sec", 1000000);
+	jsonw_str(w, "generator", "kxdpgun");
+	jsonw_list(w, "generator_params");
+	for (int idx = 1; idx < argc; ++idx) {
+		jsonw_str(w, NULL, argv[idx]);
+	}
+	jsonw_end(w);
+	jsonw_str(w, "generator_version", PACKAGE_VERSION);
+	jsonw_int(w, "stats_interval", ctx->duration);
+	// jsonw_int(w, "timeout", 1000000);
+	jsonw_str(w, "interface", ctx->dev);
+	jsonw_ulong(w, "threads", ctx->n_threads);
+	jsonw_end(w);
+
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "stats_sum");
+	jsonw_ulong(w, "runid", runid);
+	jsonw_ulong(w, "since", since);
+	jsonw_ulong(w, "until", until);
+	unsigned long requests = st->qry_sent;
+	if (requests && (ctx->tcp || ctx->quic)) {
+		requests = st->synack_recv;
+	}
+	jsonw_ulong(w, "requests", requests);
+	jsonw_ulong(w, "answers", st->ans_recv);
+	jsonw_object(w, "responses");
+	for (int i = 0; i < RCODE_MAX; i++) {
+		if (st->rcodes_recv[i] > 0) {
+			const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, i);
+			const char *rcname = rcode == NULL ? "unknown" : rcode->name;
+			jsonw_ulong(w, rcname, st->rcodes_recv[i]);
+		}
+	}
+	jsonw_end(w);
+	jsonw_end(w);
+	jsonw_free(&w);
 }
 
 inline static void timer_start(struct timespec *timesp)
@@ -533,7 +590,7 @@ void *xdp_gun_thread(void *_ctx)
 		return NULL;
 	}
 
-	if (ctx->thread_id == 0) {
+	if (ctx->json_output == false && ctx->thread_id == 0) {
 		INFO2("using interface %s, XDP threads %u, %s%s%s, %s mode",
 		      ctx->dev, ctx->n_threads,
 		      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
@@ -930,18 +987,20 @@ void *xdp_gun_thread(void *_ctx)
 	knot_quic_free_creds(quic_creds);
 #endif // ENABLE_QUIC
 
-	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
-	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
-		(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, local_stats.ans_recv);
+	if (ctx->json_output == false) {
+		char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
+		if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
+			(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, local_stats.ans_recv);
+		}
+		if (lost > 0) {
+			(void)snprintf(lost_str, sizeof(lost_str), ", lost %"PRIu64, lost);
+		}
+		if (errors > 0) {
+			(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
+		}
+		INFO2("thread#%02u: sent %"PRIu64"%s%s%s",
+		      ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
 	}
-	if (lost > 0) {
-		(void)snprintf(lost_str, sizeof(lost_str), ", lost %"PRIu64, lost);
-	}
-	if (errors > 0) {
-		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
-	}
-	INFO2("thread#%02u: sent %"PRIu64"%s%s%s",
-	      ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
 	local_stats.duration = ctx->duration;
 	collect_stats(&global_stats, &local_stats);
 
@@ -1105,6 +1164,7 @@ static void print_help(void)
 	       "                          "SPACE" (default is %s)\n"
 	       " -i, --infile <file>      "SPACE"Path to a file with query templates.\n"
 	       " -I, --interface <ifname> "SPACE"Override auto-detected interface for outgoing communication.\n"
+	       " -j, --json               "SPACE"Format output as JSON.\n"
 	       " -l, --local <ip[/prefix]>"SPACE"Override auto-detected source IP address or subnet.\n"
 	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
@@ -1230,6 +1290,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "remote-mac", required_argument, NULL, 'R' },
 		{ "vlan",       required_argument, NULL, 'v' },
 		{ "mode",       required_argument, NULL, 'm' },
+		{ "json",       no_argument,       NULL, 'j' },
 		{ NULL }
 	};
 
@@ -1237,7 +1298,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL, *filename = NULL;
-	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:l:i:L:R:v:m:G:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:l:i:L:R:v:m:G:j", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1375,6 +1436,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				return false;
 			}
 			break;
+		case 'j':
+			ctx->json_output = true;
+			break;
 		default:
 			print_help();
 			return false;
@@ -1471,13 +1535,19 @@ int main(int argc, char *argv[])
 	usleep(1000000);
 
 	xdp_trigger = KXDPGUN_START;
+	long time_since = timer_us_timestamp();
 	usleep(1000000);
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		pthread_join(threads[i], NULL);
 	}
+	long time_until = timer_us_timestamp();
 	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
-		print_stats(&global_stats, ctx.tcp, ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP), ctx.qps * ctx.n_threads);
+		if (ctx.json_output) {
+			print_stats_json(&global_stats, argc, argv, time_since, time_until, &ctx);
+		} else {
+			print_stats(&global_stats, ctx.tcp, ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP), ctx.qps * ctx.n_threads);
+		}
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 

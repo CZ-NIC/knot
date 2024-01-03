@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -217,6 +217,13 @@ void jsonw_int(jsonw_t *w, const char *key, int value)
 	fprintf(w->out, "%d", value);
 }
 
+void jsonw_double(jsonw_t *w, const char *key, double value)
+{
+	assert(w);
+
+	align_key(w, key);
+	fprintf(w->out, "%.4f", value);
+}
 
 void jsonw_bool(jsonw_t *w, const char *key, bool value)
 {
