@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,6 +80,11 @@ void jsonw_ulong(jsonw_t *w, const char *key, unsigned long value);
  * Write integer as JSON.
  */
 void jsonw_int(jsonw_t *w, const char *key, int value);
+
+/*!
+ * Write double as JSON.
+ */
+void jsonw_double(jsonw_t *w, const char *key, double value);
 
 /*!
  * Write boolean value as JSON.
