@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -140,7 +140,7 @@ static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
 		free(*id);
 	}
 
-	log_zone_notice(ctx->zone->dname, "generated key with conflicting keytag %hu",
+	log_zone_notice(ctx->zone->dname, "DNSSEC, generated key with conflicting keytag %hu",
 	                dnssec_key_get_keytag(*key));
 	return KNOT_EOK;
 }
