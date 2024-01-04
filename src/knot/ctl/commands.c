@@ -551,7 +551,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	// The present timer db size is not up-to-date, use the maximum one.
 	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE);
 
-	int ret = zone_backup_init(restore_mode, forced,
+	int ret = zone_backup_init(restore_mode, filters, forced,
 	                           args->data[KNOT_CTL_IDX_DATA],
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           conf_int(&timer_db_size),
@@ -563,7 +563,6 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	}
 
 	assert(ctx != NULL);
-	ctx->backup_params = filters;
 
 	zone_backups_add(&args->server->backup_ctxs, ctx);
 
