@@ -624,7 +624,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 		}
 
 		if (!ctx->backup_zonefile && !ctx->backup_journal && !ctx->backup_timers &&
-		    !ctx->backup_kaspdb && !ctx->backup_catalog && !ctx->backup_quic) {
+		    !ctx->backup_kaspdb && !ctx->backup_catalog) {
 			return ret;
 		}
 	}
