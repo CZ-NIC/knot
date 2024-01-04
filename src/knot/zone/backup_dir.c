@@ -34,6 +34,7 @@
 #define LABEL_FILE_HEAD         "label: Knot DNS Backup\n"
 #define LABEL_FILE_FORMAT       "backup_format: %d\n"
 #define LABEL_FILE_PARAMS       "parameters: "
+#define LABEL_FILE_BACKUPDIR    "backupdir "
 #define LABEL_FILE_TIME_FORMAT  "%Y-%m-%d %H:%M:%S %Z"
 
 #define FNAME_MAX (MAX(sizeof(LABEL_FILE), sizeof(LOCK_FILE)))
@@ -76,6 +77,31 @@ static void print_params(char *buf, knot_backup_params_t params)
 	assert(remain > 1);
 }
 
+static knot_backup_params_t parse_params(const char *str)
+{
+	knot_backup_params_t params = 0;
+
+	// Checking for positive filters only, negative assumed otherwise.
+	while ((str = strchr(str, '+')) != NULL) {
+		str++;
+		for (const backup_filter_list_t *item = backup_filters;
+		     item->name != NULL; item++) {
+			if (strncmp(str, item->name,
+			            strlen(item->name)) == 0) {
+				params |= item->param;
+				break;
+			}
+		}
+		// Avoid getting fooled by the backup directory path.
+		if (strncmp(str, LABEL_FILE_BACKUPDIR,
+		            sizeof(LABEL_FILE_BACKUPDIR) - 1) == 0) {
+			break;
+		}
+	}
+
+	return params;
+}
+
 static int make_label_file(zone_backup_ctx_t *ctx)
 {
 	PREPARE_PATH(label_path, label_file_name);
@@ -109,7 +135,7 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	              "started_time: %s\n"
 	              "finished_time: %s\n"
 	              "knot_version: %s\n"
-	              LABEL_FILE_PARAMS "%s+backupdir %s\n"
+	              LABEL_FILE_PARAMS "%s+" LABEL_FILE_BACKUPDIR "%s\n"
 	              "zone_count: %d\n",
 	              label_file_head,
 	              ctx->backup_format, ident, started_time, finished_time, PACKAGE_VERSION,
@@ -134,6 +160,11 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 		if (ret == KNOT_ENOENT) {
 			if (ctx->forced) {
 				ctx->backup_format = BACKUP_FORMAT_1;
+				// No contents info available, it's user's responsibility here.
+				// Set backup components existing in BACKUP_FORMAT_1 only.
+				ctx->in_backup = BACKUP_PARAM_ZONEFILE | BACKUP_PARAM_JOURNAL |
+				                 BACKUP_PARAM_TIMERS | BACKUP_PARAM_KASPDB |
+				                 BACKUP_PARAM_CATALOG;
 				ret = KNOT_EOK;
 			} else {
 				ret = KNOT_EMALF;
@@ -144,7 +175,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 
 	// getline() from an empty file results in EAGAIN, therefore avoid doing so.
 	if (!S_ISREG(sb.st_mode) || sb.st_size == 0) {
-		return ret;
+		return KNOT_EMALF;
 	}
 
 	FILE *file = fopen(label_path, "r");
@@ -165,18 +196,29 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 		goto done;
 	}
 
-	while (knot_getline(&line, &line_size, file) != -1) {
+	unsigned int remain = 3; // Bit-mapped "punch card" for lines to get data from.
+	while (remain > 0 && knot_getline(&line, &line_size, file) != -1) {
 		int value;
 		if (sscanf(line, LABEL_FILE_FORMAT, &value) != 0) {
 			if (value >= BACKUP_FORMAT_TERM) {
 				ret = KNOT_ENOTSUP;
-			} else if (value > BACKUP_FORMAT_1) {
+				goto done;
+			} else if (value <= BACKUP_FORMAT_1) {
+				ret = KNOT_EMALF;
+				goto done;
+			} else {
 				ctx->backup_format = value;
-				ret = KNOT_EOK;
+				remain &= ~1;
+				continue;
 			}
-			break;
+		}
+		if (strncmp(line, LABEL_FILE_PARAMS, sizeof(LABEL_FILE_PARAMS) - 1) == 0) {
+			ctx->in_backup = parse_params(line + sizeof(LABEL_FILE_PARAMS) - 1);
+			remain &= ~2;
 		}
 	}
+
+	ret = (remain == 0) ? KNOT_EOK : KNOT_EMALF;
 
 done:
 	free(line);
@@ -207,7 +249,7 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 	size_t full_path_size = path_size(ctx);
 	char full_path[full_path_size];
 
-	// Check for existence of a label file and the backup format used.
+	// Check for existence of a label file, the backup format used, and available data.
 	if (ctx->restore_mode) {
 		ret = get_backup_format(ctx);
 		if (ret != KNOT_EOK) {
