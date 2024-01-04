@@ -33,6 +33,7 @@
 
 #define LABEL_FILE_HEAD         "label: Knot DNS Backup\n"
 #define LABEL_FILE_FORMAT       "backup_format: %d\n"
+#define LABEL_FILE_PARAMS       "parameters: "
 #define LABEL_FILE_TIME_FORMAT  "%Y-%m-%d %H:%M:%S %Z"
 
 #define FNAME_MAX (MAX(sizeof(LABEL_FILE), sizeof(LOCK_FILE)))
@@ -45,6 +46,25 @@ static const char *label_file_name = LABEL_FILE;
 static const char *lock_file_name =  LOCK_FILE;
 static const char *label_file_head = LABEL_FILE_HEAD;
 
+typedef struct {
+	const char *name;
+	knot_backup_params_t param;
+} filter_list_t;
+
+const filter_list_t backup_filters[] = {
+	{ "zonefile", BACKUP_PARAM_ZONEFILE },
+	{ "journal",  BACKUP_PARAM_JOURNAL },
+	{ "timers",   BACKUP_PARAM_TIMERS },
+	{ "kaspdb",   BACKUP_PARAM_KASPDB },
+	{ "keysonly", BACKUP_PARAM_KEYSONLY },
+	{ "catalog",  BACKUP_PARAM_CATALOG },
+	{ "quic",     BACKUP_PARAM_QUIC },
+	{ NULL },
+};
+
+#define PARAMS_MAX_LENGTH  80 // At least longest params string without
+                              // '+backupdir' ... (incl. \0).
+
 static void get_full_path(zone_backup_ctx_t *ctx, const char *filename,
                           char *full_path, size_t full_path_size)
 {
@@ -56,6 +76,17 @@ static size_t path_size(zone_backup_ctx_t *ctx)
 	// The \0 terminator is already included in the sizeof()/FNAME_MAX value,
 	// thus the sum covers one additional char for '/'.
 	return (strlen(ctx->backup_dir) + 1 + FNAME_MAX);
+}
+
+static void print_params(char *buf, knot_backup_params_t params)
+{
+	for (int i = 0, remain = PARAMS_MAX_LENGTH; backup_filters[i].name != NULL; i++) {
+		int n = snprintf(buf, remain, "+%s%s ",
+		                 (params & backup_filters[i].param) ? "" : "no",
+		                 backup_filters[i].name);
+		buf += n;
+		remain -= n;
+	}
 }
 
 static int make_label_file(zone_backup_ctx_t *ctx)
@@ -82,6 +113,8 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	strftime(finished_time, sizeof(finished_time), LABEL_FILE_TIME_FORMAT, &tm);
 
 	// Print the label contents.
+	char params_str[PARAMS_MAX_LENGTH];
+	print_params(params_str, ctx->backup_params);
 	int ret = fprintf(file,
 	              "%s"
 	              LABEL_FILE_FORMAT
@@ -89,19 +122,11 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	              "started_time: %s\n"
 	              "finished_time: %s\n"
 	              "knot_version: %s\n"
-	              "parameters: +%szonefile +%sjournal +%stimers +%skaspdb +%skeysonly "
-	                  "+%scatalog +%squic +backupdir %s\n"
+	              LABEL_FILE_PARAMS "%s+backupdir %s\n"
 	              "zone_count: %d\n",
 	              label_file_head,
 	              ctx->backup_format, ident, started_time, finished_time, PACKAGE_VERSION,
-	              ctx->backup_params & BACKUP_PARAM_ZONEFILE ? "" : "no",
-	              ctx->backup_params & BACKUP_PARAM_JOURNAL ? "" : "no",
-	              ctx->backup_params & BACKUP_PARAM_TIMERS ? "" : "no",
-	              ctx->backup_params & BACKUP_PARAM_KASPDB ? "" : "no",
-	              ctx->backup_params & BACKUP_PARAM_KEYSONLY ? "" : "no",
-	              ctx->backup_params & BACKUP_PARAM_CATALOG ? "" : "no",
-	              ctx->backup_params & BACKUP_PARAM_QUIC ? "" : "no",
-	              ctx->backup_dir,
+	              params_str, ctx->backup_dir,
 	              ctx->zone_count);
 
 	ret = (ret < 0) ? knot_map_errno() : KNOT_EOK;
