@@ -53,6 +53,7 @@ typedef struct zone_backup_ctx {
 	bool restore_mode;                  // if true, this is not a backup, but restore
 	bool forced;                        // if true, the force flag has been set
 	knot_backup_params_t backup_params; // bit-mapped list of backup components
+	knot_backup_params_t in_backup;     // bit-mapped list of components available in backup
 	bool backup_global;                 // perform global backup for all zones
 	ssize_t readers;                    // when decremented to 0, all zones done, free this context
 	pthread_mutex_t readers_mutex;      // mutex covering readers counter
@@ -72,7 +73,8 @@ typedef struct {
 	pthread_mutex_t mutex;
 } zone_backup_ctxs_t;
 
-int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
+int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool forced,
+                     const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx);
 

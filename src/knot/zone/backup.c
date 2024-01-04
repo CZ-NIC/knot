@@ -53,7 +53,10 @@ static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 
 #define BACKUP_SWAP(ctx, from, to) _backup_swap((ctx), (void **)&(from), (void **)&(to))
 
-int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
+#define MISSING_FROM_BACKUP(request, stored) (((request) ^ (stored)) & (request))
+
+int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool forced,
+                     const char *backup_dir,
                      size_t kasp_db_size, size_t timer_db_size, size_t journal_db_size,
                      size_t catalog_db_size, zone_backup_ctx_t **out_ctx)
 {
@@ -68,6 +71,8 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 		return KNOT_ENOMEM;
 	}
 	ctx->restore_mode = restore_mode;
+	ctx->backup_params = filters;
+	ctx->in_backup = 0; // In case the label file is manipulated.
 	ctx->forced = forced;
 	ctx->backup_format = BACKUP_VERSION;
 	ctx->backup_global = false;
@@ -79,11 +84,23 @@ int zone_backup_init(bool restore_mode, bool forced, const char *backup_dir,
 	memcpy(ctx->backup_dir, backup_dir, backup_dir_len);
 
 	// Backup directory, lock file, label file.
-	// In restore, set the backup format.
+	// In restore, set the backup format and available data.
 	int ret = backupdir_init(ctx);
 	if (ret != KNOT_EOK) {
 		free(ctx);
 		return ret;
+	}
+
+	// For restore, check that there are all required data components in the backup.
+	if (restore_mode) {
+		// '+kaspdb' in backup provides data also for '+keysonly' restore.
+		knot_backup_params_t available = ctx->in_backup |
+			((bool)(ctx->in_backup & BACKUP_PARAM_KASPDB) * BACKUP_PARAM_KEYSONLY);
+
+		if (MISSING_FROM_BACKUP(filters, available)) {
+			free(ctx);
+			return KNOT_EBACKUPDATA;
+		}
 	}
 
 	pthread_mutex_init(&ctx->readers_mutex, NULL);
