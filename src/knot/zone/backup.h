@@ -40,6 +40,9 @@ typedef enum {
 	BACKUP_PARAM_QUIC =     1 << 6, // backup QUIC server key and certificate
 } knot_backup_params_t;
 
+#define BACKUP_PARAM_DFLT  (BACKUP_PARAM_ZONEFILE | BACKUP_PARAM_TIMERS | \
+                            BACKUP_PARAM_KASPDB | BACKUP_PARAM_CATALOG)
+
 /*! \bref Backup components done in event. */
 #define BACKUP_PARAM_EVENT (BACKUP_PARAM_ZONEFILE | BACKUP_PARAM_JOURNAL | \
                             BACKUP_PARAM_TIMERS | BACKUP_PARAM_KASPDB | \

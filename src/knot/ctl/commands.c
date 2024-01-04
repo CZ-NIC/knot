@@ -84,13 +84,13 @@ static struct {
  * \return false if there is a filter conflict, true otherwise.
  */
 static bool eval_opposite_filters(ctl_args_t *args, knot_backup_params_t *filters,
-                                  knot_backup_params_t param, bool dflt,
+                                  knot_backup_params_t param,
                                   int filter, int neg_filter)
 {
 	bool set = MATCH_AND_FILTER(args, filter);
 	bool unset = MATCH_AND_FILTER(args, neg_filter);
 
-	bool val = dflt ? (set || !unset) : (set && !unset);
+	bool val = (BACKUP_PARAM_DFLT & param) ? (set || !unset) : (set && !unset);
 	*filters |= param * val;
 	return !(set && unset);
 }
@@ -526,20 +526,19 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	// Evaluate filters (and possibly fail) before writing to the filesystem.
 	knot_backup_params_t filters = 0;
 
-	// The default filter values are set just in this paragraph.
-	if (!(eval_opposite_filters(args, &filters, BACKUP_PARAM_ZONEFILE, true,
+	if (!(eval_opposite_filters(args, &filters, BACKUP_PARAM_ZONEFILE,
 	                            CTL_FILTER_BACKUP_ZONEFILE, CTL_FILTER_BACKUP_NOZONEFILE) &&
-	    eval_opposite_filters(args, &filters, BACKUP_PARAM_JOURNAL, false,
+	    eval_opposite_filters(args, &filters, BACKUP_PARAM_JOURNAL,
 	                          CTL_FILTER_BACKUP_JOURNAL, CTL_FILTER_BACKUP_NOJOURNAL) &&
-	    eval_opposite_filters(args, &filters, BACKUP_PARAM_TIMERS, true,
+	    eval_opposite_filters(args, &filters, BACKUP_PARAM_TIMERS,
 	                          CTL_FILTER_BACKUP_TIMERS, CTL_FILTER_BACKUP_NOTIMERS) &&
-	    eval_opposite_filters(args, &filters, BACKUP_PARAM_KASPDB, true,
+	    eval_opposite_filters(args, &filters, BACKUP_PARAM_KASPDB,
 	                          CTL_FILTER_BACKUP_KASPDB, CTL_FILTER_BACKUP_NOKASPDB) &&
-	    eval_opposite_filters(args, &filters, BACKUP_PARAM_KEYSONLY, false,  // Adjusted later.
+	    eval_opposite_filters(args, &filters, BACKUP_PARAM_KEYSONLY,   // To be adjusted later.
 	                          CTL_FILTER_BACKUP_KEYSONLY, CTL_FILTER_BACKUP_NOKEYSONLY) &&
-	    eval_opposite_filters(args, &filters, BACKUP_PARAM_CATALOG, true,
+	    eval_opposite_filters(args, &filters, BACKUP_PARAM_CATALOG,
 	                          CTL_FILTER_BACKUP_CATALOG, CTL_FILTER_BACKUP_NOCATALOG) &&
-	    eval_opposite_filters(args, &filters, BACKUP_PARAM_QUIC, false,
+	    eval_opposite_filters(args, &filters, BACKUP_PARAM_QUIC,
 	                          CTL_FILTER_BACKUP_QUIC, CTL_FILTER_BACKUP_NOQUIC))) {
 		return KNOT_EXPARAM;
 	}
