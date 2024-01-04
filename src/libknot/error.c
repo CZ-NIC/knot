@@ -106,6 +106,7 @@ static const struct error errors[] = {
 	{ KNOT_EUNREACH,     "remote known to be unreachable" },
 	{ KNOT_EBADCERTKEY,  "unknown certificate key" },
 	{ KNOT_EFACCES,      "file permission denied" },
+	{ KNOT_EBACKUPDATA,  "requested data not in backup" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 
