@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "contrib/time.h"
 #include "libdnssec/nsec.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
@@ -38,6 +39,7 @@ typedef struct zone_contents {
 	size_t size;
 	uint32_t max_ttl;
 	bool dnssec;
+	knot_time_t dnssec_expire;
 } zone_contents_t;
 
 /*!

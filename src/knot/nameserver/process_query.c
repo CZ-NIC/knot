@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -364,6 +364,7 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 	if (knot_pkt_edns_option(qdata->query, KNOT_EDNS_OPTION_EXPIRE) != NULL &&
 	    qdata->extra->contents != NULL && !qdata->extra->zone->is_catalog_flag) {
 		int64_t timer = qdata->extra->zone->timers.next_expire;
+		timer = knot_time_min(timer, qdata->extra->contents->dnssec_expire); // NOOP if zero
 		timer = (timer == 0 ? zone_soa_expire(qdata->extra->zone) : timer - time(NULL));
 		timer = MAX(timer, 0);
 		uint32_t timer_be;
