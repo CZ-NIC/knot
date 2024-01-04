@@ -358,26 +358,33 @@ catalog_update_t *zone_catalog_upd(const zone_t *zone)
 	return &zone->server->catalog_upd;
 }
 
+static int journal_insert_flush(conf_t *conf, zone_t *zone,
+                                changeset_t *change, changeset_t *extra,
+                                const zone_diff_t *diff)
+{
+	zone_journal_t j = { zone_journaldb(zone), zone->name, conf };
+
+	int ret = journal_insert(j, change, extra, diff);
+	if (ret == KNOT_EBUSY) {
+		log_zone_notice(zone->name, "journal, flushing the zone to allow old changesets cleanup to free space");
+
+		/* Transaction rolled back, journal released, we may flush. */
+		ret = flush_journal(conf, zone, true, false);
+		if (ret == KNOT_EOK) {
+			ret = journal_insert(j, change, extra, diff);
+		}
+	}
+
+	return ret;
+}
+
 int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset_t *extra)
 {
 	if (conf == NULL || zone == NULL || change == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	zone_journal_t j = { zone_journaldb(zone), zone->name, conf };
-
-	int ret = journal_insert(j, change, extra, NULL);
-	if (ret == KNOT_EBUSY) {
-		log_zone_notice(zone->name, "journal is full, flushing");
-
-		/* Transaction rolled back, journal released, we may flush. */
-		ret = flush_journal(conf, zone, true, false);
-		if (ret == KNOT_EOK) {
-			ret = journal_insert(j, change, extra, NULL);
-		}
-	}
-
-	return ret;
+	return journal_insert_flush(conf, zone, change, extra, NULL);
 }
 
 int zone_diff_store(conf_t *conf, zone_t *zone, const zone_diff_t *diff)
@@ -386,20 +393,7 @@ int zone_diff_store(conf_t *conf, zone_t *zone, const zone_diff_t *diff)
 		return KNOT_EINVAL;
 	}
 
-	zone_journal_t j = { zone_journaldb(zone), zone->name, conf };
-
-	int ret = journal_insert(j, NULL, NULL, diff);
-	if (ret == KNOT_EBUSY) {
-		log_zone_notice(zone->name, "journal is full, flushing");
-
-		/* Transaction rolled back, journal released, we may flush. */
-		ret = flush_journal(conf, zone, true, false);
-		if (ret == KNOT_EOK) {
-			ret = journal_insert(j, NULL, NULL, diff);
-		}
-	}
-
-	return ret;
+	return journal_insert_flush(conf, zone, NULL, NULL, diff);
 }
 
 int zone_changes_clear(conf_t *conf, zone_t *zone)
