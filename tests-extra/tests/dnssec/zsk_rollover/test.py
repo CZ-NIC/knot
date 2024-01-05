@@ -53,6 +53,13 @@ def wait4key(t, server, zone, dnskeys, not_keytag, min_wait, max_wait, step):
         set_err("%s failed" % step)
     detail_log(SEP)
 
+def check_same_rrsig(server, zone, last):
+    resp = server.dig(zone[0].name, "NS", dnssec=True)
+    resp.check_count(1, "RRSIG")
+    if last is not None:
+        last.diff(resp)
+    return resp
+
 t = Test()
 
 unsigned_master = t.server("knot")
@@ -73,6 +80,7 @@ master.dnssec(zone).nsec3_salt_lifetime = -1
 
 t.start()
 master.zone_wait(zone)
+rrsig_init = check_same_rrsig(master, zone, None)
 
 def uns_mas_updater(server, z):
     for i in range(8):
@@ -89,6 +97,7 @@ threading.Thread(target=uns_mas_updater, args=[unsigned_master, zone[0]]).start(
 check_salt(master, zone, True)
 
 wait4key(t, master, zone, 3, -1, 6, 20, "ZSK publish") # new ZSK published
+check_same_rrsig(master, zone, rrsig_init)
 old_key = zsk_keytag(master, zone)
 check_salt(master, zone, False)
 
@@ -98,9 +107,11 @@ up = master.update(zone)
 up.delete("longttl.example.com.", "A") # zone max TTL decreases
 up.send()
 t.sleep(2)
-master.ctl("zone-sign")
+master.ctl("zone-sign", wait=True)
+rrsig_new = check_same_rrsig(master, zone, None)
 
 wait4key(t, master, zone, 2, old_key, 9, 14, "ZSK remove") # old ZSK removed
 check_salt(master, zone, False)
+check_same_rrsig(master, zone, rrsig_new)
 
 t.end()
