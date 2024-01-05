@@ -100,6 +100,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool soa_rrsigs_ok,
 			ctx->zone->nsec3_salt_created = ctx->now;
 			ret = kdnssec_ctx_commit(ctx);
 			*salt_changed = ctx->now;
+			*when_resalt = 0;
 		}
 		// continue to planning next resalt even if NOK
 		if (ctx->policy->nsec3_salt_lifetime > 0) {
