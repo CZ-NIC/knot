@@ -347,7 +347,7 @@ static int axfr_finalize(struct refresh_data *data)
 	int ret;
 
 	if (data->ixfr_from_axfr && data->axfr_style_ixfr) {
-		ret = zone_update_from_differences(&up, data->zone, NULL, new_zone, UPDATE_INCREMENTAL, false, false);
+		ret = zone_update_from_differences(&up, data->zone, NULL, new_zone, UPDATE_INCREMENTAL, dnssec_enable, false);
 	} else {
 		ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
 	}
