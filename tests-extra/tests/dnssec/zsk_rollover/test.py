@@ -6,6 +6,8 @@ Check of automatic ZSK rollover with changing zone TTLs.
 
 from dnstest.utils import *
 from dnstest.test import Test
+import threading
+import time
 
 def get_salt(server, zone):
     resp = server.dig(zone[0].name, "NSEC3PARAM")
@@ -53,9 +55,13 @@ def wait4key(t, server, zone, dnskeys, not_keytag, min_wait, max_wait, step):
 
 t = Test()
 
+unsigned_master = t.server("knot")
 master = t.server("knot")
 zone = t.zone("example.com.", storage=".")
-t.link(zone, master, ddns=True)
+t.link(zone, unsigned_master, master, ddns=True)
+
+unsigned_master.zones[zone[0].name].journal_content = "none"
+master.ixfr_from_axfr = True
 
 master.dnssec(zone).enable = True
 master.dnssec(zone).manual = False
@@ -67,6 +73,19 @@ master.dnssec(zone).nsec3_salt_lifetime = -1
 
 t.start()
 master.zone_wait(zone)
+
+def uns_mas_updater(server, z):
+    for i in range(8):
+        up = server.update(z)
+        up.add("dojewo", 2, "A", "1.2.3." + str(i))
+        try:
+            up.try_send()
+        except:
+            pass
+        time.sleep(4)
+
+threading.Thread(target=uns_mas_updater, args=[unsigned_master, zone[0]]).start()
+
 check_salt(master, zone, True)
 
 wait4key(t, master, zone, 3, -1, 6, 20, "ZSK publish") # new ZSK published
@@ -78,6 +97,7 @@ check_salt(master, zone, True)
 up = master.update(zone)
 up.delete("longttl.example.com.", "A") # zone max TTL decreases
 up.send()
+t.sleep(2)
 master.ctl("zone-sign")
 
 wait4key(t, master, zone, 2, old_key, 9, 14, "ZSK remove") # old ZSK removed
