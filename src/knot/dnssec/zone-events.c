@@ -101,6 +101,7 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool soa_rrsigs_ok,
 			ctx->zone->nsec3_salt_created = ctx->now;
 			ret = kdnssec_ctx_commit(ctx);
 			*salt_changed = ctx->now;
+			*when_resalt = 0;
 		}
 		// continue to planning next resalt even if NOK
 		if (ctx->policy->nsec3_salt_lifetime > 0) {
@@ -216,8 +217,9 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	// perform nsec3resalt if pending
 	if (roll_flags & KEY_ROLL_ALLOW_NSEC3RESALT) {
-		knot_rdataset_t *rrsig = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_RRSIG);
-		bool issbaz = is_soa_signed_by_all_zsks(&keyset, rrsig);
+		bool issbaz = update->zone->contents == NULL
+		            ? true /* dont perform opportunistic resalt upon cold start */
+		            : is_soa_signed_by_all_zsks(&keyset, node_rdataset(update->zone->contents->apex, KNOT_RRTYPE_RRSIG));
 		result = knot_dnssec_nsec3resalt(&ctx, issbaz, &reschedule->last_nsec3resalt, &reschedule->next_nsec3resalt);
 		if (result != KNOT_EOK) {
 			log_zone_error(zone_name, "DNSSEC, failed to update NSEC3 salt (%s)",
