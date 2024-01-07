@@ -299,6 +299,9 @@ class Test(object):
     def sleep(self, seconds):
         time.sleep(seconds)
 
+    def pause(self, msg=None):
+        input(test_info() + ((", " + msg) if msg else ""))
+
     def rel_sleep(self, seconds):
         timenow = time.time()
         res = timenow - self.rel_time
