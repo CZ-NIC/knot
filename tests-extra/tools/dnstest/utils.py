@@ -26,13 +26,15 @@ def prepare_dir(path):
 def test_info():
     '''Get current test case name'''
 
-    info = ""
+    info = None
     frames = inspect.getouterframes(inspect.currentframe())
     for frame in frames:
         frame_dir = os.path.normpath(os.path.dirname(frame[1]))
-        if frame_dir in Context().test_dir:
-            info = "%s#%i" % (frame_dir, frame[2])
-            break
+        if Context().test_dir in frame_dir:
+            if info:
+                info += "<-%i" % frame[2]
+            else:
+                info = "%s#%i" % (frame_dir, frame[2])
     parts = info.split("/")
 
     if len(parts) > 1:

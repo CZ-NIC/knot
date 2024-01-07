@@ -171,14 +171,15 @@ class Response(object):
         compare(edns_ver, self.resp.edns, "EDNS VERSION")
 
         # Check rcode.
-        if type(rcode) is not str:
-            rc = dns.rcode.to_text(rcode)
-        else:
-            rc = rcode
-        compare(dns.rcode.to_text(self.resp.rcode()), rc, "RCODE")
+        if rcode is not None:
+            if type(rcode) is not str:
+                rc = dns.rcode.to_text(rcode)
+            else:
+                rc = rcode
+            compare(dns.rcode.to_text(self.resp.rcode()), rc, "RCODE")
 
         # Check rdata only if NOERROR.
-        if rc == "NOERROR":
+        if rcode is None or rc == "NOERROR":
             self.check_record(section="answer", rtype=self.rtype, ttl=ttl,
                               rdata=rdata, nordata=nordata)
 
