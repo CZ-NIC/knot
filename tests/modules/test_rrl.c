@@ -34,14 +34,17 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 
 #define RRL_PRICE_LOG 9   // XXX same constant as the hardcoded one in rrl_query function
 
-// expected limits for parallel test
-#define RRL_INITIAL_LIMIT_MIN    ((1 << (16 - RRL_PRICE_LOG)) - 1)
-#define RRL_INITIAL_LIMIT_MAX    (1 << (16 - RRL_PRICE_LOG))
-#define RRL_LONGTERM_LIMIT_MIN   (RRL_INITIAL_LIMIT_MAX / 2.0 / 32)
-#define RRL_LONGTERM_LIMIT_MAX   (RRL_INITIAL_LIMIT_MAX / 2.0 / 32 + 1)
-#define RRL_MAX_FP_RATIO         (0.00001)
+#define RRL_THREADS 8
+//#define RRL_SYNC_WITH_REAL_TIME
 
-#define RRL_THREADS 1  // TODO increase and fix
+
+// expected limits for parallel test
+#define RRL_FIRST_BLOCKED        (1 << (16 - RRL_PRICE_LOG))
+#define RRL_INITIAL_LIMIT_MIN    (RRL_FIRST_BLOCKED - 1)
+#define RRL_INITIAL_LIMIT_MAX    (RRL_INITIAL_LIMIT_MIN + RRL_THREADS - 1)  // races may occur on first insertion into table
+#define RRL_LONGTERM_LIMIT_MIN   (RRL_FIRST_BLOCKED / 2.0 / 32)
+#define RRL_LONGTERM_LIMIT_MAX   (RRL_FIRST_BLOCKED / 2.0 / 32 + 1)
+#define RRL_MAX_FP_RATIO         (0.00001)
 
 #define BATCH_QUERIES_LOG  3   // threads acquire queries in batches of 8
 #define HOSTS_LOG          3   // at most 6 attackers + 2 wildcard addresses for normal users
@@ -129,6 +132,16 @@ static void* rrl_runnable(void *arg)
 			++si;
 			if (!d->stages[si].first_tick) return NULL;
 		}
+
+#ifdef RRL_SYNC_WITH_REAL_TIME
+		{
+			struct timespec ts_fake, ts_real;
+			do {
+				fakeclock_gettime(CLOCK_MONOTONIC_COARSE, &ts_fake);
+				clock_gettime(CLOCK_MONOTONIC_COARSE, &ts_real);
+			} while (!((ts_real.tv_sec > ts_fake.tv_sec) || ((ts_real.tv_sec == ts_fake.tv_sec) && (ts_real.tv_nsec >= ts_fake.tv_nsec))));
+		}
+#endif
 
 		if (tick >= d->stages[si].first_tick) {
 			uint32_t qi2 = 0;
