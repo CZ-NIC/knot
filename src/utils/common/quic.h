@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,10 +40,9 @@ void quic_params_clean(quic_params_t *params);
 #define QUIC_PRIORITY        "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_GROUPS
 
 typedef enum {
-	OPENING,
-	CONNECTED,
-	CLOSING,
-	CLOSED
+	CLOSED,    // Initialized
+	CONNECTED, // RTT-0
+	VERIFIED,  // RTT-1
 } quic_state_t;
 
 typedef enum {
@@ -83,7 +82,6 @@ typedef struct {
 		struct knot_tcp_inbufs_upd_res *in_parsed;
 		size_t in_parsed_it;
 		size_t in_parsed_total;
-		int resets;
 	} stream;
 	ngtcp2_ccerr last_err;
 	uint8_t secret[32];
@@ -91,7 +89,6 @@ typedef struct {
 	ngtcp2_conn *conn;
 	ngtcp2_pkt_info pi;
 	quic_state_t state;
-	uint64_t idle_ts;
 } quic_ctx_t;
 
 extern const gnutls_datum_t doq_alpn;
