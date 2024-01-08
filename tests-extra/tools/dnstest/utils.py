@@ -26,12 +26,12 @@ def prepare_dir(path):
 def test_info():
     '''Get current test case name'''
 
-    info = None
+    info = ""
     frames = inspect.getouterframes(inspect.currentframe())
     for frame in frames:
         frame_dir = os.path.normpath(os.path.dirname(frame[1]))
         if Context().test_dir in frame_dir:
-            if info:
+            if len(info) > 0:
                 info += "<-%i" % frame[2]
             else:
                 info = "%s#%i" % (frame_dir, frame[2])
