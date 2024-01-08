@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -266,21 +266,41 @@ static bool node_contains_rr(const zone_node_t *node,
 
 /*!< \brief Returns true if CNAME is in this node. */
 static bool adding_to_cname(const knot_dname_t *owner,
+                            zone_update_t *update,
                             const zone_node_t *node)
 {
 	if (node == NULL) {
-		// Node did not exist before update.
+		// Node did not exist before update, juch check DNAMEs above.
+
+		while ((owner = knot_wire_next_label(owner, NULL)) != NULL &&
+		       (node = zone_update_get_node(update, owner)) == NULL);
+
+		for ( ; node != NULL; node = node->parent) {
+			knot_rrset_t dname = node_rrset(node, KNOT_RRTYPE_DNAME);
+			if (!knot_rrset_empty(&dname)) {
+				// DNAME above
+				return true;
+			}
+		}
+
 		return false;
 	}
 
 	knot_rrset_t cname = node_rrset(node, KNOT_RRTYPE_CNAME);
-	if (knot_rrset_empty(&cname)) {
-		// Node did not contain CNAME before update.
-		return false;
+	if (!knot_rrset_empty(&cname)) {
+		// CNAME present
+		return true;
 	}
 
-	// CNAME present
-	return true;
+	while ((node = node->parent) != NULL) {
+		knot_rrset_t dname = node_rrset(node, KNOT_RRTYPE_DNAME);
+		if (!knot_rrset_empty(&dname)) {
+			// DNAME above
+			return true;
+		}
+	}
+
+	return false;
 }
 
 /*!< \brief Used to ignore SOA deletions and SOAs with lower serial than zone. */
@@ -315,12 +335,29 @@ static int add_rr_to_changeset(const knot_rrset_t *rr, zone_update_t *update)
 	return zone_update_add(update, rr);
 }
 
-/*!< \brief Processes CNAME addition (replace or ignore) */
+int node_empty_cb(zone_node_t *node, _unused_ void *ctx)
+{
+	return node_empty(node) ? KNOT_EOK : KNOT_ESEMCHECK;
+}
+
+bool subtree_empty(zone_contents_t *zone, const zone_node_t *node)
+{
+	if (node == NULL) {
+		return true;
+	}
+	int ret = zone_tree_sub_apply(zone->nodes, node->owner, true, node_empty_cb, NULL);
+	return (ret == KNOT_EOK);
+}
+
+/*!< \brief Processes CNAME/DNAME addition (replace or ignore) */
 static int process_add_cname(const zone_node_t *node,
                              const knot_rrset_t *rr,
+                             uint16_t type,
                              zone_update_t *update)
 {
-	knot_rrset_t cname = node_rrset(node, KNOT_RRTYPE_CNAME);
+	assert(type == KNOT_RRTYPE_CNAME || type == KNOT_RRTYPE_DNAME);
+
+	knot_rrset_t cname = node_rrset(node, type);
 	if (!knot_rrset_empty(&cname)) {
 		// If they are identical, ignore.
 		if (knot_rrset_equal(&cname, rr, true)) {
@@ -333,8 +370,17 @@ static int process_add_cname(const zone_node_t *node,
 		}
 
 		return add_rr_to_changeset(rr, update);
-	} else if (!node_empty(node)) {
+	} else if (type == KNOT_RRTYPE_CNAME && !node_empty(node)) {
 		// Other occupied node => ignore.
+		return KNOT_EOK;
+	} else if (type == KNOT_RRTYPE_DNAME && !subtree_empty(update->new_cont, node)) {
+		// Equivalent to above, ignore.
+		return KNOT_EOK;
+	} else if (type == KNOT_RRTYPE_DNAME && node_rrtype_exists(node, KNOT_RRTYPE_CNAME)) {
+		// RFC 6672 §5.2.
+		return KNOT_EOK;
+	} else if (type == KNOT_RRTYPE_CNAME && adding_to_cname(rr->owner, update, node)) {
+		// DNAME exists above CNAME, ignore.
 		return KNOT_EOK;
 	} else {
 		// Can add.
@@ -395,7 +441,7 @@ static int process_add_normal(const zone_node_t *node,
                               const knot_rrset_t *rr,
                               zone_update_t *update)
 {
-	if (adding_to_cname(rr->owner, node)) {
+	if (adding_to_cname(rr->owner, update, node)) {
 		// Adding RR to CNAME node, ignore.
 		return KNOT_EOK;
 	}
@@ -415,7 +461,8 @@ static int process_add(const knot_rrset_t *rr,
 {
 	switch(rr->type) {
 	case KNOT_RRTYPE_CNAME:
-		return process_add_cname(node, rr, update);
+	case KNOT_RRTYPE_DNAME:
+		return process_add_cname(node, rr, rr->type, update);
 	case KNOT_RRTYPE_SOA:
 		return process_add_soa(node, rr, update);
 	case KNOT_RRTYPE_NSEC3PARAM:
@@ -531,36 +578,6 @@ static int process_remove(const knot_rrset_t *rr,
 	}
 }
 
-/*!< \brief Checks whether addition has not violated DNAME rules. */
-static bool sem_check(const knot_rrset_t *rr, const zone_node_t *zone_node,
-                      zone_update_t *update)
-{
-	const zone_node_t *added_node = zone_contents_find_node(update->new_cont, rr->owner);
-
-	// we do this sem check AFTER adding the RR, so the node must exist
-	assert(added_node != NULL);
-
-	for (const zone_node_t *parent = added_node->parent;
-	     parent != NULL; parent = parent->parent) {
-		if (node_rrtype_exists(parent, KNOT_RRTYPE_DNAME)) {
-			// Parent has DNAME RRSet, refuse update
-			return false;
-		}
-	}
-
-	if (rr->type != KNOT_RRTYPE_DNAME || zone_node == NULL) {
-		return true;
-	}
-
-	// Check that we have not created node with DNAME children.
-	if (zone_node->children > 0) {
-		// Updated node has children and DNAME was added, refuse update
-		return false;
-	}
-
-	return true;
-}
-
 /*!< \brief Checks whether we can accept this RR. */
 static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
                         uint16_t *rcode)
@@ -605,13 +622,7 @@ static int process_rr(const knot_rrset_t *rr, zone_update_t *update)
 	const zone_node_t *node = zone_update_get_node(update, rr->owner);
 
 	if (is_addition(rr)) {
-		int ret = process_add(rr, node, update);
-		if (ret == KNOT_EOK) {
-			if (!sem_check(rr, node, update)) {
-				return KNOT_EDENIED;
-			}
-		}
-		return ret;
+		return process_add(rr, node, update);
 	} else if (is_removal(rr)) {
 		return process_remove(rr, node, update);
 	} else {
