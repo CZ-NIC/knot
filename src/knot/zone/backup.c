@@ -109,8 +109,11 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 		knot_backup_params_t available = ctx->in_backup |
 			((bool)(ctx->in_backup & BACKUP_PARAM_KASPDB) * BACKUP_PARAM_KEYSONLY);
 
-		if (MISSING_FROM_BACKUP(filters, available)) {
-			free(ctx);
+		filters = MISSING_FROM_BACKUP(filters, available);
+		if (filters) {
+			// ctx needed for logging, will be freed later.
+			*out_ctx = ctx;
+			ctx->backup_params = filters;
 			return KNOT_EBACKUPDATA;
 		}
 	}

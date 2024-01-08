@@ -507,6 +507,33 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
 }
 
+static void report_insufficient_backup(ctl_args_t *args, zone_backup_ctx_t *ctx)
+{
+	const char *msg = "missing in backup:%s";
+	char list[128];  // It must hold the longest list of components + 1.
+	int remain = sizeof(list);
+	char *buf = list;
+
+	for (const backup_filter_list_t *item = backup_filters;
+	     item->name != NULL; item++) {
+		if (ctx->backup_params & item->param) {
+			int n = snprintf(buf, remain, " %s,", item->name);
+			buf += n;
+			remain -= n;
+		}
+	}
+	assert(remain > 1);
+
+	assert(buf > list);
+	*(--buf) = '\0';
+
+	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		log_warning(msg, list);
+	} else {
+		log_zone_str_warning(args->data[KNOT_CTL_IDX_ZONE], msg, list);
+	}
+}
+
 static int init_backup(ctl_args_t *args, bool restore_mode)
 {
 	if (!MATCH_AND_FILTER(args, CTL_FILTER_BACKUP_OUTDIR)) {
@@ -557,6 +584,12 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	                           knot_lmdb_copy_size(&args->server->journaldb),
 	                           knot_lmdb_copy_size(&args->server->catalog.db),
 	                           &ctx);
+
+	if (ret == KNOT_EBACKUPDATA) {
+		report_insufficient_backup(args, ctx);
+		free(ctx);
+	}
+
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
