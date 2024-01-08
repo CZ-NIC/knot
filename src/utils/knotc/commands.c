@@ -607,6 +607,11 @@ static int zone_check(const knot_dname_t *dname, void *data)
 {
 	cmd_args_t *args = data;
 
+	conf_val_t load = conf_zone_get(conf(), C_ZONEFILE_LOAD, dname);
+	if (conf_opt(&load) == ZONEFILE_LOAD_NONE) {
+		return KNOT_EOK;
+	}
+
 	zone_contents_t *contents = NULL;
 	conf_val_t mode = conf_zone_get(conf(), C_SEM_CHECKS, dname);
 	int ret = zone_load_contents(conf(), dname, &contents, conf_opt(&mode), args->force);
