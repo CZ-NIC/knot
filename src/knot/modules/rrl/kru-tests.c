@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
+#include <pthread.h>
 
 void *memzero(void *s, size_t n)
 {
@@ -9,52 +12,10 @@ void *memzero(void *s, size_t n)
 	return volatile_memset(s, 0, n);
 }
 
-#include <knot/modules/rrl/kru.c>
+#include <knot/modules/rrl/kru.h>
+#define KRU_DECAY_BITS 16
 
-#ifdef KRU_IMPL_min32bit
-void test_choose_4_15() {
-	#define MAX_HASH    (15*14*13*12) // uniform distribution expected
-	//#define MAX_HASH    (1<<15)     // case with exactly 15 bits, a little biased
-	#define MAX_BITMAP  (1<<15)
-	#define HIST_LEN    (10000)
-
-	uint32_t chosen_cnts[MAX_BITMAP] = {0};
-	for (uint64_t i = 0; i < MAX_HASH; i++) {
-		uint64_t hash = i;
-		uint32_t chosen = choose_4_15(&hash);
-		if (chosen > MAX_BITMAP) {
-			printf("bitmap out of range: %ld %d\n", i, chosen);
-			return;
-		}
-		chosen_cnts[chosen]++;
-	}
-	uint32_t hist[HIST_LEN] = {0};
-	for (size_t i = 0; i < MAX_BITMAP; i++) {
-		if (chosen_cnts[i] > HIST_LEN) {
-			printf("short hist: %zd %d\n", i, chosen_cnts[i]);
-			return;
-		}
-		hist[chosen_cnts[i]]++;
-	}
-	int nonzero = 0;
-	for (size_t i = 0; i < sizeof(hist)/sizeof(uint32_t); i++) {
-		if (hist[i] == 0) continue;
-		printf("%2zd: %5d\n", i, hist[i]);
-		if (i > 0) nonzero++;
-	}
-
-	if (nonzero == 1) {
-		printf("Uniform.\n");
-	} else {
-		printf("Not uniform.\n");
-	}
-
-	#undef MAX_HASH
-	#undef MAX_BITMAP
-	#undef HIST_LEN
-}
-#endif
-
+/*
 void test_decay32(void)
 {
 #if defined(KRU_IMPL_min32bit)
@@ -85,6 +46,7 @@ void test_decay32(void)
 	assert(0);
 #endif
 }
+*/
 
 #ifdef HASH_KEY_T
 void test_hash(void)
@@ -103,6 +65,9 @@ void test_hash(void)
 	}
 }
 #endif
+
+
+/*===  benchmarking manageable number of attackers  ===*/
 
 struct test_ctx {
 	struct kru *kru;
@@ -131,10 +96,11 @@ void test_stage(struct test_ctx *ctx, uint32_t dur) {
 			size_t cat;
 			for (cat = 0; freq_bounds[cat] <= rnd; cat++);
 
-			uint64_t id = random() % (ctx->cats[cat].id_max - ctx->cats[cat].id_min + 1) + ctx->cats[cat].id_min;
+			uint64_t key[2] = {0,};
+			key[0] = random() % (ctx->cats[cat].id_max - ctx->cats[cat].id_min + 1) + ctx->cats[cat].id_min;
 
 			ctx->cats[cat].total++;
-			ctx->cats[cat].passed += !kru_limited(ctx->kru, &id, sizeof(id), ctx->time, ctx->price);
+			ctx->cats[cat].passed += !KRU.limited(ctx->kru, (char *)key, ctx->time, ctx->price);
 		}
 	}
 }
@@ -182,7 +148,7 @@ void test_print_stats(struct test_ctx *ctx) {
 	test_print_stats(&ctx); }
 
 void test_single_attacker(void) {
-	struct kru *kru = kru_init(16);
+	struct kru *kru = KRU.create(16);
 
 	struct test_cat cats[] = {
 		{ "normal",       1,1000  },   // normal queries come from 1000 different addreses indexed 1-1000
@@ -212,14 +178,14 @@ void test_single_attacker(void) {
 
 	TEST_STAGE( 100,   1000, 10000); // another attack after a period without limitation
 
-	kru_destroy(kru);
+	free(kru);
 }
 
 #undef TEST_STAGE
 
 void test_multi_attackers(void) {
 
-	struct kru *kru = kru_init(13);
+	struct kru *kru = KRU.create(15);
 
 	struct test_cat cats[] = {
 		{ "normal",         1,100000,  100000 },   // 100000 normal queries per tick, ~1 per user
@@ -250,13 +216,91 @@ void test_multi_attackers(void) {
 		cats[1].freq *= 2;
 	}
 
-	kru_destroy(kru);
+	free(kru);
 }
+
+
+/*=== benchmarking time performance ===*/
+
+#define TIMED_TESTS_TABLE_SIZE_LOG        16
+#define TIMED_TESTS_PRICE           (1 <<  9)
+#define TIMED_TESTS_QUERIES         (1 << 26) // 28
+#define TIMED_TESTS_MAX_THREADS           12
+#define TIMED_TESTS_WAIT_BEFORE_SEC        2  // 60
+
+struct timed_test_ctx {
+	struct kru *kru;
+	uint64_t first_query, increment;
+	int key_mult;
+};
+
+
+void *timed_runnable(void *arg) {
+	struct timed_test_ctx *ctx = arg;
+	uint64_t key[2] = {0,};
+
+	for (uint64_t i = ctx->first_query; i < TIMED_TESTS_QUERIES; i += ctx->increment) {
+		struct timespec now_ts = {0};
+		clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
+		uint32_t now_msec = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
+
+		key[0] = i * ctx->key_mult;
+		KRU.limited(ctx->kru, (char *)key, now_msec, TIMED_TESTS_PRICE);
+	}
+	return NULL;
+}
+
+void timed_tests() {
+	struct kru *kru;
+	struct timed_test_ctx ctx[TIMED_TESTS_MAX_THREADS];
+	pthread_t thr[TIMED_TESTS_MAX_THREADS];
+	struct timespec begin_ts, end_ts;
+	uint64_t diff_nsec;
+	struct timespec wait_ts = {TIMED_TESTS_WAIT_BEFORE_SEC, 0};
+
+
+	for (int threads = 1; threads <= TIMED_TESTS_MAX_THREADS; threads++) {
+		for (int collide = 0; collide < 2; collide++) {
+			nanosleep(&wait_ts, NULL);
+			printf("%3d threads, %-15s:  ", threads, (collide ? "single query" : "unique queries"));
+
+			kru = KRU.create(TIMED_TESTS_TABLE_SIZE_LOG);
+			clock_gettime(CLOCK_REALTIME, &begin_ts);
+
+			for (int t = 0; t < threads; t++) {
+				ctx[t].kru = kru;
+				ctx[t].first_query = t;
+				ctx[t].increment  = threads;
+				ctx[t].key_mult = 1 - collide;;
+				pthread_create(thr + t, NULL, &timed_runnable, ctx + t);
+			}
+
+			for (int t = 0; t < threads; t++) {
+				pthread_join(thr[t], NULL);
+			}
+
+			clock_gettime(CLOCK_REALTIME, &end_ts);
+			free(kru);
+
+			diff_nsec = (end_ts.tv_sec - begin_ts.tv_sec) * 1000000000ll + end_ts.tv_nsec - begin_ts.tv_nsec;
+			double diff_sec = diff_nsec / 1000000000.0;
+			printf("%7.2f MQPS,  %7.2f MQPS per thread,  %2.4f s total\n",
+				TIMED_TESTS_QUERIES / diff_sec / 1000000,
+				TIMED_TESTS_QUERIES / diff_sec / 1000000 / threads,
+				diff_sec);
+		}
+		printf("\n");
+	}
+}
+
+
+/*===*/
 
 int main(int argc, char **argv)
 {
 	//test_single_attacker();
-	test_multi_attackers();
+	//test_multi_attackers();
+	timed_tests();
 
 	// struct kru kru __attribute__((unused));
 	// test_decay32();

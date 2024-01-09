@@ -200,9 +200,6 @@ static bool kru_limited(struct kru *kru, char key[static const 16], uint32_t tim
 	}
 #endif
 
-	if (load)
-		goto load_found;
-
 	// No match, so find position of the smallest load.
 	int min_li = 0;
 	int min_i = 0;
