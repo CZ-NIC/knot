@@ -76,7 +76,7 @@ static void print_params(char *buf, knot_backup_params_t params)
 	}
 }
 
-static knot_backup_params_t parse_params(char *str)
+static knot_backup_params_t parse_params(const char *str)
 {
 	knot_backup_params_t params = 0;
 
