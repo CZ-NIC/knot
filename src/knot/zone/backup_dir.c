@@ -195,7 +195,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 		goto done;
 	}
 
-	int remain = 2; // Number of lines to get data from.
+	unsigned int remain = 3; // Bit-mapped "punch card" for lines to get data from.
 	while (remain > 0 && knot_getline(&line, &line_size, file) != -1) {
 		int value;
 		if (sscanf(line, LABEL_FILE_FORMAT, &value) != 0) {
@@ -207,13 +207,13 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 				goto done;
 			} else {
 				ctx->backup_format = value;
-				remain--;
+				remain &= ~1;
 				continue;
 			}
 		}
 		if (strncmp(line, LABEL_FILE_PARAMS, sizeof(LABEL_FILE_PARAMS) - 1) == 0) {
 			ctx->in_backup = parse_params(line + sizeof(LABEL_FILE_PARAMS) - 1);
-			remain--;
+			remain &= ~2;
 		}
 	}
 
