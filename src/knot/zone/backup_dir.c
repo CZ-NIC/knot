@@ -173,7 +173,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 
 	// getline() from an empty file results in EAGAIN, therefore avoid doing so.
 	if (!S_ISREG(sb.st_mode) || sb.st_size == 0) {
-		return ret;
+		return KNOT_EMALF;
 	}
 
 	FILE *file = fopen(label_path, "r");
@@ -202,7 +202,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 				ret = KNOT_ENOTSUP;
 				goto done;
 			} else if (value <= BACKUP_FORMAT_1) {
-				// KNOT_EMALF;
+				ret = KNOT_EMALF;
 				goto done;
 			} else {
 				ctx->backup_format = value;
@@ -216,9 +216,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 		}
 	}
 
-	if (remain == 0) {
-		ret = KNOT_EOK;  // KNOT_EMALF otherwise.
-	}
+	ret = (remain == 0) ? KNOT_EOK : KNOT_EMALF;
 
 done:
 	free(line);
