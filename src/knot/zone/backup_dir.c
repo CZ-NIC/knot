@@ -44,7 +44,7 @@
 		get_full_path(ctx, file, var, var_size);
 
 #define PARAMS_MAX_LENGTH  128 // At least longest params string without
-                               // '+backupdir' ... (incl. \0).
+                               // '+backupdir' ... (incl. \0) plus 1 for assert().
 
 static const char *label_file_name = LABEL_FILE;
 static const char *lock_file_name =  LOCK_FILE;
@@ -74,6 +74,7 @@ static void print_params(char *buf, knot_backup_params_t params)
 		buf += n;
 		remain -= n;
 	}
+	assert(remain > 0);
 }
 
 static knot_backup_params_t parse_params(const char *str)
