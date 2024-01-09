@@ -94,6 +94,44 @@ requirements, e.g. dir/\*.conf. Matching files are processed in sorted order.
 
 *Default:* not set
 
+.. _clearing configuration sections:
+
+Clearing configuration sections
+===============================
+
+It's possible to clear specified configuration sections at given phases
+of the configuration parsing.
+
+::
+
+ clear: STR
+
+.. _clear:
+
+clear
+-----
+
+A matching pattern specifying configuration sections that are cleared when
+this item is parsed. This allows overriding of existing configuration
+in the configuration database when including a configuration file or
+ensures that some configuration wasn't specified in previous includes.
+
+.. NOTE::
+   For the pattern matching the POSIX function
+   `fnmatch() <https://pubs.opengroup.org/onlinepubs/9699919799/functions/fnmatch.html>`_
+   is used. On Linux, the GNU extension
+   `FNM_EXTMATCH <https://www.gnu.org/software/libc/manual/html_node/Wildcard-Matching.html#index-FNM_005fEXTMATCH>`_
+   is enabled, which allows extended pattern matching.
+   Examples:
+
+   - ``clear: zone`` – Clears the ``zone`` section.
+   - ``clear: mod-*`` – Clears all module sections.
+   - ``clear: "[!z]*"`` – Clears all sections not beginning with letter ``z``.
+   - ``clear: !(zone)`` – (GNU only) Clears all sections except the ``zone`` one.
+   - ``clear: @(zone|template)`` – (GNU only) Clears the ``zone`` and ``template`` sections.
+
+*Default:* not set
+
 .. _module section:
 
 ``module`` section

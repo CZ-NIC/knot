@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@
 #define C_CERT_FILE		"\x09""cert-file"
 #define C_CERT_KEY		"\x08""cert-key"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
+#define C_CLEAR			"\x05""clear"
 #define C_COMMENT		"\x07""comment"
 #define C_CONFIG		"\x06""config"
 #define C_CTL			"\x07""control"

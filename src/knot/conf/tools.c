@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <fnmatch.h>
 #include <glob.h>
 #include <inttypes.h>
 #include <libgen.h>
@@ -35,6 +36,7 @@
 #include "knot/catalog/catalog_db.h"
 #include "knot/conf/tools.h"
 #include "knot/conf/conf.h"
+#include "knot/conf/confdb.h"
 #include "knot/conf/module.h"
 #include "knot/conf/schema.h"
 #include "knot/common/log.h"
@@ -1095,7 +1097,7 @@ static int glob_error(
 int include_file(
 	knotd_conf_check_args_t *args)
 {
-	if (args->data_len == 0) {
+	if (args->data_len == 1) {
 		return KNOT_YP_ENODATA;
 	}
 
@@ -1201,4 +1203,116 @@ int load_module(
 	args->item = section->var.g.id;
 
 	return ret;
+}
+
+static int clear_conf_section_data(
+	knotd_conf_check_extra_t *extra,
+	const yp_item_t *section,
+	const uint8_t *id,
+	size_t id_len,
+	bool purge)
+{
+	for (yp_item_t *i = section->sub_items; i->name != NULL; i++) {
+		// Skip the identifier item (will be cleared later).
+		if ((section->flags & YP_FMULTI) != 0 && section->var.g.id == i) {
+			continue;
+		}
+
+		// Clear the section item (for possibly specified identifier).
+		int ret = conf_db_unset(extra->conf, extra->txn, section->name,
+		                        i->name, id, id_len, NULL, 0, purge);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static int clear_conf_section(
+	knotd_conf_check_extra_t *extra,
+	const yp_item_t *section)
+{
+	if (section->flags & YP_FMULTI) {
+		// Clear a section for each identifier.
+		conf_iter_t iter;
+		int ret = conf_db_iter_begin(extra->conf, extra->txn, section->name, &iter);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			return ret;
+		}
+
+		uint8_t id[YP_MAX_ID_LEN];
+		size_t id_len;
+		while (ret == KNOT_EOK) {
+			// Get the identifier and copy it because of next DB update.
+			const uint8_t *tmp_id;
+			ret = conf_db_iter_id(extra->conf, &iter, &tmp_id, &id_len);
+			if (ret != KNOT_EOK) {
+				conf_db_iter_finish(extra->conf, &iter);
+				return ret;
+			}
+			memcpy(id, tmp_id, id_len);
+
+			ret = clear_conf_section_data(extra, section, id, id_len, false);
+			if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+				conf_db_iter_finish(extra->conf, &iter);
+				return ret;
+			}
+
+			// Clear the identifier itself.
+			ret = conf_db_iter_del(extra->conf, &iter);
+			if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+				conf_db_iter_finish(extra->conf, &iter);
+				return ret;
+			}
+
+			ret = conf_db_iter_next(extra->conf, &iter);
+		}
+	} else {
+		// Clear a simple section without identifiers.
+		int ret = clear_conf_section_data(extra, section, NULL, 0, false);
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+			return ret;
+		}
+	}
+
+	// Clear the section keys.
+	int ret = clear_conf_section_data(extra, section, NULL, 0, true);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		return ret;
+	}
+
+	// Clear the section itself.
+	return conf_db_unset(extra->conf, extra->txn, section->name,
+	                     NULL, NULL, 0, NULL, 0, true);
+}
+
+int clear_conf(
+	knotd_conf_check_args_t *args)
+{
+	if (args->data_len == 1) {
+		return KNOT_YP_ENODATA;
+	}
+
+	int flags = FNM_NOESCAPE;
+#ifdef FNM_EXTMATCH
+	flags |= FNM_EXTMATCH;
+#endif
+
+	for (yp_item_t *item = args->extra->conf->schema; item->name != NULL; item++) {
+		if (item->type != YP_TGRP || // Non-section item (include, clear)
+		    fnmatch((const char *)args->data, (const char *)item->name + 1, flags)) {
+			continue;
+		}
+
+		int ret = clear_conf_section(args->extra, item);
+		if (ret == KNOT_EOK || ret == KNOT_ENOENT) {
+			CONF_LOG(LOG_DEBUG, "clearing section '%s'", item->name + 1);
+		} else {
+			CONF_LOG(LOG_WARNING, "failed to clear section '%s' (%s)",
+			         item->name + 1, knot_strerror(ret));
+		}
+	}
+
+	return KNOT_EOK;
 }
