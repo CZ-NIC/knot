@@ -513,7 +513,7 @@ static void report_insufficient_backup(ctl_args_t *args, zone_backup_ctx_t *ctx)
 	assert(ctx->backup_params);
 
 	const char *msg = "missing in backup:%s";
-	char list[64];  // It must hold the longest possible list of missing components.
+	char list[128];  // It must hold the longest possible list of missing components.
 	int remain = sizeof(list);
 	char *buf = list;
 
