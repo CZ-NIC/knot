@@ -27,6 +27,7 @@ slave.ctl("zone-freeze")
 for i in range(4):
     for zone in zones:
         master.update_zonefile(zone, random=True)
+        master.zones[zone.name].zfile.update_soa(retry=10)
     master.reload()
     serials[i+1] = master.zones_wait(zones, serials[i])
 
