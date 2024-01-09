@@ -511,7 +511,7 @@ static int zone_flush(zone_t *zone, ctl_args_t *args)
 static void report_insufficient_backup(ctl_args_t *args, zone_backup_ctx_t *ctx)
 {
 	const char *msg = "missing in backup:%s";
-	char list[128];  // It must hold the longest possible list of missing components.
+	char list[128];  // It must hold the longest list of components + 1.
 	int remain = sizeof(list);
 	char *buf = list;
 
@@ -524,6 +524,7 @@ static void report_insufficient_backup(ctl_args_t *args, zone_backup_ctx_t *ctx)
 		}
 	}
 
+	assert(remain > 0);
 	assert(buf > list);
 	*(--buf) = '\0';
 
