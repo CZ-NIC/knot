@@ -136,6 +136,45 @@ current file. The pattern can be an arbitrary string meeting POSIX \fIglob\fP
 requirements, e.g. dir/*.conf. Matching files are processed in sorted order.
 .sp
 \fIDefault:\fP not set
+.SH CLEARING CONFIGURATION SECTIONS
+.sp
+It\(aqs possible to clear specified configuration sections at given phases
+of the configuration parsing.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+clear: STR
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS clear
+.sp
+A matching pattern specifying configuration sections that are cleared when
+this item is parsed. This allows overriding of existing configuration
+in the configuration database when including a configuration file or
+ensure that some configuration wasn\(aqt specified in previous includes.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+For the pattern matching the POSIX function \fBfnmatch()\fP is used. On Linux
+the GNU extension is enabled, which allows extended pattern matching support.
+Examples:
+.INDENT 0.0
+.IP \(bu 2
+\fBclear: zone\fP – Clears the \fBzone\fP section.
+.IP \(bu 2
+\fBclear: !(zone)\fP – (GNU) Clears all zones except the \fBzone\fP one.
+.IP \(bu 2
+\fBclear: @(zone|template)\fP – (GNU) Clears the \fBzone\fP and \fBtemplate\fP sections.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP not set
 .SH MODULE SECTION
 .sp
 Dynamic modules loading configuration.
