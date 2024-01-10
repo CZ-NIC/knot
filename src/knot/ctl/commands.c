@@ -92,10 +92,10 @@ static bool eval_opposite_filters(ctl_args_t *args, bool *param, bool dflt,
 }
 
 static bool eval_backup_filters(ctl_args_t *args, knot_backup_params_t *filters,
-                                const backup_filter_list_t *item)
+                                const backup_filter_list_t *item, knot_backup_params_t dflts)
 {
 	bool val;
-	bool ret = eval_opposite_filters(args, &val, BACKUP_PARAM_DFLT & item->param,
+	bool ret = eval_opposite_filters(args, &val, dflts & item->param,
 	                                 item->filter, item->neg_filter);
 	if (ret) {
 		*filters |= item->param * val;
@@ -561,8 +561,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 
 	// Evaluate filters (and possibly fail) before writing to the filesystem.
 	knot_backup_params_t filters = 0;
+	knot_backup_params_t dflts = restore_mode ? BACKUP_PARAM_DFLT_R : BACKUP_PARAM_DFLT_B;
 	for (const backup_filter_list_t *item = backup_filters; item->name != NULL; item++) {
-		if (!eval_backup_filters(args, &filters, item)) {
+		if (!eval_backup_filters(args, &filters, item, dflts)) {
 			return KNOT_EXPARAM;
 		}
 	}
