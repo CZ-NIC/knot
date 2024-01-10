@@ -84,7 +84,7 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 	}
 	ctx->restore_mode = restore_mode;
 	ctx->backup_params = filters;
-	ctx->in_backup = 0; // In case the label file is manipulated.
+	ctx->in_backup = 0; // Just to be sure.
 	ctx->forced = forced;
 	ctx->backup_format = BACKUP_VERSION;
 	ctx->backup_global = false;
