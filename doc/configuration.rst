@@ -377,6 +377,19 @@ which must be used for the transaction security::
      - domain: example.net.
        acl: owner_rule3_net
 
+.. _Handling CNAME and DNAME-related updates:
+
+Handling CNAME and DNAME-related updates
+----------------------------------------
+
+In general, no RR must exist beside a CNAME or below a DNAME. Whenever
+such a CNAME or DNAME-related semantic rule is vialoated by an RR addition
+in DDNS (this means addition of a CNAME beside an existing record, addition of
+another record beside a CNAME, addition of a DNAME above an existing record,
+addition of another record below a DNAME), such an RR addition is silently ignored.
+However, other RRs from the same DDNS update are processed normally. This is slightly
+non-compliant with RFC 6672 (in particular, no RR occlusion takes place).
+
 .. _dnssec:
 
 Automatic DNSSEC signing
