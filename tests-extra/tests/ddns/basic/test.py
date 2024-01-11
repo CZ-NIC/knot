@@ -666,6 +666,26 @@ def do_refusal_tests(master, zone, dnssec=False):
     up.send("NOERROR")
     check_soa(master, prev_soa)
 
+    # Out-of-apex NSEC3PARAM
+    check_log("Out-of-apex NSEC3PARAM")
+    up = master.update(zone)
+    up.add("mx.ddns.", 3600, "NSEC3PARAM", "1 0 0 -")
+    up.send("REFUSED")
+    check_soa(master, prev_soa)
+
+    # Added NSEC3PARAM
+    check_log("Added NSEC3PARAM")
+    up = master.update(zone)
+    up.add("ddns.", 3600, "NSEC3PARAM", "1 0 0 -")
+    up.send("REFUSED" if master.dnssec(zone).nsec3 else "NOERROR")
+    resp = master.dig("ddns.", "NSEC3PARAM")
+    resp.check_count(1, "NSEC3PARAM")
+    if master.dnssec(zone).nsec3:
+        check_soa(master, prev_soa)
+        resp.check(nordata="1 0 0 -")
+    else:
+        resp.check(rdata="1 0 0 -")
+
     if dnssec:
         # Add DNSKEY
         check_log("non-apex DNSKEY addition")
