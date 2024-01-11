@@ -156,6 +156,8 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 
 		ret = process_single_update(req, up, &qdata);
 		if (ret != KNOT_EOK) {
+			log_zone_error(zone->name, "DDNS, dropping %zu updates in a bulk",
+			               list_size(requests));
 			return ret;
 		}
 	}
