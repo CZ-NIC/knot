@@ -671,6 +671,27 @@ int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
 	return ret;
 }
 
+int ddns_precheck_update(const knot_pkt_t *query, zone_update_t *update,
+                         uint16_t *rcode)
+{
+	if (query == NULL || rcode == NULL || update == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Check all RRs in the authority section.
+	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
+	const knot_rrset_t *authority_rr = (authority->count > 0) ? knot_pkt_rr(authority, 0) : NULL;
+	for (uint16_t i = 0; i < authority->count; ++i) {
+		int ret = check_update(&authority_rr[i], query, rcode);
+		if (ret != KNOT_EOK) {
+			assert(*rcode != KNOT_RCODE_NOERROR);
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 int ddns_process_update(const knot_pkt_t *query, zone_update_t *update,
                         uint16_t *rcode)
 {
@@ -688,18 +709,11 @@ int ddns_process_update(const knot_pkt_t *query, zone_update_t *update,
 	const knot_rrset_t *authority_rr = (authority->count > 0) ? knot_pkt_rr(authority, 0) : NULL;
 	for (uint16_t i = 0; i < authority->count; ++i) {
 		const knot_rrset_t *rr = &authority_rr[i];
-		// Check if RR is correct.
-		int ret = check_update(rr, query, rcode);
-		if (ret != KNOT_EOK) {
-			assert(*rcode != KNOT_RCODE_NOERROR);
-			return ret;
-		}
-
 		if (skip_soa(rr, sn_old)) {
 			continue;
 		}
 
-		ret = process_rr(rr, update);
+		int ret = process_rr(rr, update);
 		if (ret != KNOT_EOK) {
 			*rcode = ret_to_rcode(ret);
 			return ret;

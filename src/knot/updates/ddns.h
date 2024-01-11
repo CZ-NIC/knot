@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,6 +29,18 @@
  * \return KNOT_E*
  */
 int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
+                         uint16_t *rcode);
+
+/*!
+ * \brief Performs a pre-check of the update'S sanity.
+ *
+ * \param query      DNS message containing the update.
+ * \param update     Zone to be checked.
+ * \param rcode      Returned DNS RCODE.
+ *
+ * \return KNOT_E*
+ */
+int ddns_precheck_update(const knot_pkt_t *query, zone_update_t *update,
                          uint16_t *rcode);
 
 /*!
