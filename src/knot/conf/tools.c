@@ -1278,7 +1278,7 @@ int clear_conf(
 
 	int flags = FNM_NOESCAPE;
 #ifdef FNM_EXTMATCH
-	flags += FNM_EXTMATCH;
+	flags |= FNM_EXTMATCH;
 #endif
 //	conf_db_raw_dump(args->extra->conf, args->extra->txn, "/tmp/before.txt");
 
