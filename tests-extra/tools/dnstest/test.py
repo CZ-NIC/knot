@@ -188,6 +188,8 @@ class Test(object):
         srv.fout = srv.dir + "/stdout"
         srv.ferr = srv.dir + "/stderr"
         srv.valgrind_log = srv.dir + "/valgrind"
+        srv.session_log = srv.dir + "/secrets.log"
+        srv.quic_log = srv.dir + "/quic.log"
         srv.confile = srv.dir + "/%s.conf" % srv.name
 
         xdp_enable = (params.xdp and xdp_enable and \

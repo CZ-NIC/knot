@@ -219,6 +219,7 @@ class Server(object):
         self.fout = None
         self.ferr = None
         self.valgrind_log = None
+        self.session_log = None
         self.confile = None
 
         self.binding_errors = 0
@@ -332,6 +333,9 @@ class Server(object):
             if os.path.isfile(self.valgrind_log):
                 copyfile(self.valgrind_log, self.valgrind_log + str(int(time.time())))
 
+            if os.path.isfile(self.session_log):
+                copyfile(self.session_log, self.session_log + str(int(time.time())))
+
             if os.path.isfile(self.fout):
                 copyfile(self.fout, self.fout + str(int(time.time())))
 
@@ -342,7 +346,8 @@ class Server(object):
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
                                   self.start_params,
                                   stdout=open(self.fout, mode=mode),
-                                  stderr=open(self.ferr, mode=mode))
+                                  stderr=open(self.ferr, mode=mode),
+                                  env=dict(os.environ, SSLKEYLOGFILE=self.session_log))
 
             if self.valgrind:
                 time.sleep(Server.START_WAIT_VALGRIND)
@@ -1791,6 +1796,8 @@ class Knot(Server):
         s.begin("log")
         s.id_item("target", "stdout")
         s.item_str("any", "debug")
+        s.id_item("target", self.quic_log)
+        s.item_str("quic", "debug")
         s.end()
 
         self.start_params = ["-c", self.confile]

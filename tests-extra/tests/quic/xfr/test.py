@@ -5,6 +5,7 @@
 from dnstest.test import Test
 from dnstest.utils import *
 import random
+import subprocess
 
 t = Test(quic=True, tsig=True) # TSIG needed to skip weaker ACL rules
 
@@ -51,6 +52,14 @@ master.check_quic()
 
 t.start()
 
+tcpdump_pcap = t.out_dir + "/traffic.pcap"
+tcpdump_fout = t.out_dir + "/tcpdump.out"
+tcpdump_ferr = t.out_dir + "/tcpdump.err"
+
+tcpdump_proc = subprocess.Popen(["tcpdump", "-i", "lo", "-w", tcpdump_pcap,
+                                 "port", str(master.quic_port), "or", "port", str(slave.quic_port)],
+                                stdout=open(tcpdump_fout, mode="a"), stderr=open(tcpdump_ferr, mode="a"))
+
 # Check initial AXFR without cert-key-based authentication
 serials = master.zones_wait(zones)
 slave.zones_wait(zones, serials, equal=True, greater=False)
@@ -89,5 +98,7 @@ slave.fill_cert_key()
 master.gen_confile()
 master.reload()
 serials = upd_check_zones(master, slave, rnd_zones, serials)
+
+tcpdump_proc.terminate()
 
 t.end()

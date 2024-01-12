@@ -53,3 +53,9 @@ $ sudo setcap "CAP_SYS_PTRACE,CAP_DAC_OVERRIDE+ep" `which lsof`
 And knotd has set:
 
 $ sudo setcap "CAP_NET_RAW,CAP_NET_ADMIN,CAP_SYS_ADMIN,CAP_IPC_LOCK,CAP_SYS_PTRACE+ep" `readlink -f ../src/knotd`
+
+Tcpdump:
+--------
+
+$ sudo setcap "CAP_NET_RAW+ep" `which tcpdump`
+
