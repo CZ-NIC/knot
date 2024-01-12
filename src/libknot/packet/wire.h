@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1006,12 +1006,14 @@ static inline int knot_wire_is_pointer(const uint8_t *pos)
 /*!
  * \brief Creates a DNS packet pointer and stores it in wire format.
  *
- * \param pos Position where tu put the pointer.
- * \param ptr Relative position of the item to which the pointer should point in
- *            the wire format of the packet.
+ * \param wire Beginning of the packet wire.
+ * \param pos  Position where tu put the pointer.
+ * \param ptr  Relative position of the item to which the pointer should point in
+ *             the wire format of the packet.
  */
-static inline void knot_wire_put_pointer(uint8_t *pos, uint16_t ptr)
+static inline void knot_wire_put_pointer(const uint8_t *wire, uint8_t *pos, uint16_t ptr)
 {
+	assert(wire + ptr < pos);
 	knot_wire_write_u16(pos, ptr);		// Write pointer offset.
 	assert((pos[0] & KNOT_WIRE_PTR) == 0);	// Check for maximal offset.
 	pos[0] |= KNOT_WIRE_PTR;		// Add pointer mark.
