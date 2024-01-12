@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -242,7 +242,7 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 		if (written + sizeof(uint16_t) > max) {
 			return KNOT_ESPACE;
 		}
-		knot_wire_put_pointer(dst + written, compr_ptr - compr->wire);
+		knot_wire_put_pointer(compr->wire, dst + written, compr_ptr - compr->wire);
 		written += sizeof(uint16_t);
 	}
 
@@ -284,14 +284,14 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 	// Write result.
 	if (owner_pointer > 0) {
 		WRITE_OWNER_CHECK(sizeof(uint16_t), dst_avail);
-		knot_wire_put_pointer(*dst, owner_pointer);
+		knot_wire_put_pointer(compr->wire, *dst, owner_pointer);
 		WRITE_OWNER_INCR(dst, dst_avail, sizeof(uint16_t));
 	// Check for coincidence with previous RR set.
 	} else if (compr != NULL && compr->suffix.pos != 0 && *rrset->owner != '\0' &&
 	           dname_equal_wire(rrset->owner, compr->wire + compr->suffix.pos,
 	                            compr->wire)) {
 		WRITE_OWNER_CHECK(sizeof(uint16_t), dst_avail);
-		knot_wire_put_pointer(*dst, compr->suffix.pos);
+		knot_wire_put_pointer(compr->wire, *dst, compr->suffix.pos);
 		compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER,
 		              compr->wire + compr->suffix.pos,
 		              knot_dname_size(rrset->owner));
