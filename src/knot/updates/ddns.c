@@ -388,31 +388,6 @@ static int process_add_cname(const zone_node_t *node,
 	}
 }
 
-/*!< \brief Processes NSEC3PARAM addition (ignore when not removed, or non-apex) */
-static int process_add_nsec3param(const zone_node_t *node,
-                                  const knot_rrset_t *rr,
-                                  zone_update_t *update)
-{
-	if (node == NULL || !node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
-		// Ignore non-apex additions
-		char *owner = knot_dname_to_str_alloc(rr->owner);
-		log_warning("DDNS, refusing to add NSEC3PARAM to non-apex "
-		            "node '%s'", owner);
-		free(owner);
-		return KNOT_EDENIED;
-	}
-	knot_rrset_t param = node_rrset(node, KNOT_RRTYPE_NSEC3PARAM);
-	if (knot_rrset_empty(&param)) {
-		return add_rr_to_changeset(rr, update);
-	}
-
-	char *owner = knot_dname_to_str_alloc(rr->owner);
-	log_warning("DDNS, refusing to add second NSEC3PARAM to node '%s'", owner);
-	free(owner);
-
-	return KNOT_EOK;
-}
-
 /*!
  * \brief Processes SOA addition (ignore when non-apex), lower serials
  *        dropped before.
@@ -465,8 +440,6 @@ static int process_add(const knot_rrset_t *rr,
 		return process_add_cname(node, rr, rr->type, update);
 	case KNOT_RRTYPE_SOA:
 		return process_add_soa(node, rr, update);
-	case KNOT_RRTYPE_NSEC3PARAM:
-		return process_add_nsec3param(node, rr, update);
 	default:
 		return process_add_normal(node, rr, update);
 	}
@@ -580,15 +553,28 @@ static int process_remove(const knot_rrset_t *rr,
 
 /*!< \brief Checks whether we can accept this RR. */
 static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
-                        uint16_t *rcode)
+                        const zone_contents_t *zone, uint16_t *rcode)
 {
 	/* Accept both subdomain and dname match. */
 	const knot_dname_t *owner = rrset->owner;
 	const knot_dname_t *qname = knot_pkt_qname(query);
+	assert(knot_dname_is_equal(qname, zone->apex->owner));
 	const int in_bailiwick = knot_dname_in_bailiwick(owner, qname);
 	if (in_bailiwick < 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
+	}
+
+	if (rrset->type == KNOT_RRTYPE_NSEC3PARAM) {
+		if (!knot_dname_is_equal(rrset->owner, zone->apex->owner)) {
+			log_warning("DDNS, refusing to add NSEC3PARAM to non-apex node");
+			*rcode = KNOT_RCODE_REFUSED;
+			return KNOT_EDENIED;
+		} else if (node_rrtype_exists(zone->apex, rrset->type)) {
+			log_warning("DDNS, refusing to add second NSEC3PARAM to zone apex");
+			*rcode = KNOT_RCODE_REFUSED;
+			return KNOT_EDENIED;
+		}
 	}
 
 	if (rrset->rclass == knot_pkt_qclass(query)) {
@@ -671,6 +657,27 @@ int ddns_process_prereqs(const knot_pkt_t *query, zone_update_t *update,
 	return ret;
 }
 
+int ddns_precheck_update(const knot_pkt_t *query, zone_update_t *update,
+                         uint16_t *rcode)
+{
+	if (query == NULL || rcode == NULL || update == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Check all RRs in the authority section.
+	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
+	const knot_rrset_t *authority_rr = (authority->count > 0) ? knot_pkt_rr(authority, 0) : NULL;
+	for (uint16_t i = 0; i < authority->count; ++i) {
+		int ret = check_update(&authority_rr[i], query, update->new_cont, rcode);
+		if (ret != KNOT_EOK) {
+			assert(*rcode != KNOT_RCODE_NOERROR);
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 int ddns_process_update(const knot_pkt_t *query, zone_update_t *update,
                         uint16_t *rcode)
 {
@@ -688,18 +695,11 @@ int ddns_process_update(const knot_pkt_t *query, zone_update_t *update,
 	const knot_rrset_t *authority_rr = (authority->count > 0) ? knot_pkt_rr(authority, 0) : NULL;
 	for (uint16_t i = 0; i < authority->count; ++i) {
 		const knot_rrset_t *rr = &authority_rr[i];
-		// Check if RR is correct.
-		int ret = check_update(rr, query, rcode);
-		if (ret != KNOT_EOK) {
-			assert(*rcode != KNOT_RCODE_NOERROR);
-			return ret;
-		}
-
 		if (skip_soa(rr, sn_old)) {
 			continue;
 		}
 
-		ret = process_rr(rr, update);
+		int ret = process_rr(rr, update);
 		if (ret != KNOT_EOK) {
 			*rcode = ret_to_rcode(ret);
 			return ret;

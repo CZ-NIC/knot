@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -94,6 +94,15 @@ static int check_prereqs(knot_request_t *request,
 		return ret;
 	}
 
+	ret = ddns_precheck_update(request->query, update, &rcode);
+	if (ret != KNOT_EOK) {
+		UPDATE_LOG(LOG_WARNING, qdata, "broken update format (%s)",
+		           knot_strerror(ret));
+		assert(rcode != KNOT_RCODE_NOERROR);
+		knot_wire_set_rcode(request->resp->wire, rcode);
+		return ret;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -147,6 +156,8 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 
 		ret = process_single_update(req, up, &qdata);
 		if (ret != KNOT_EOK) {
+			log_zone_error(zone->name, "DDNS, dropping %zu updates in a bulk",
+			               list_size(requests));
 			return ret;
 		}
 	}
