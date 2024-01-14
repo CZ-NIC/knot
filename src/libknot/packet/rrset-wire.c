@@ -170,6 +170,9 @@ static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
 		written += (len); \
 	}
 
+#define CHECK_NEXT_LABEL(res) \
+	if (res == NULL) { return KNOT_EINVAL; }
+
 /*!
  * \brief Write compressed domain name to the destination wire.
  *
@@ -198,6 +201,7 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	int suffix_labels = compr->suffix.labels;
 	while (suffix_labels > name_labels) {
 		suffix = knot_wire_next_label(suffix, compr->wire);
+		CHECK_NEXT_LABEL(suffix);
 		--suffix_labels;
 	}
 
@@ -207,6 +211,7 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	while (name_labels > suffix_labels) {
 		WRITE_LABEL(dst, written, dname, max, (*dname + 1));
 		dname = knot_wire_next_label(dname, NULL);
+		CHECK_NEXT_LABEL(dname);
 		--name_labels;
 	}
 
@@ -217,7 +222,9 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	while (dname[0] != '\0') {
 		// Next labels.
 		const knot_dname_t *next_dname = knot_wire_next_label(dname, NULL);
+		CHECK_NEXT_LABEL(next_dname);
 		const knot_dname_t *next_suffix = knot_wire_next_label(suffix, compr->wire);
+		CHECK_NEXT_LABEL(next_suffix);
 
 		// Two labels match, extend suffix length.
 		if (!label_is_equal(dname, suffix)) {
