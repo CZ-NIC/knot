@@ -1027,9 +1027,15 @@ _pure_ _mustcheck_
 static inline const uint8_t *knot_wire_seek_label(const uint8_t *lp, const uint8_t *wire)
 {
 	while (knot_wire_is_pointer(lp)) {
-		if (!wire)
+		if (!wire) {
 			return NULL;
-		lp = wire + knot_wire_get_pointer(lp);
+		}
+		const uint8_t *new_lp = wire + knot_wire_get_pointer(lp);
+		if (new_lp >= lp) {
+			assert(0);
+			return NULL;
+		}
+		lp = new_lp;
 	}
 	return lp;
 }
