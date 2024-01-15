@@ -263,10 +263,12 @@ to access the database (e.g. \fIsudo \-u knot knotc conf\-init\fP). (*)
 \fBconf\-check\fP
 Check the server configuration. (*)
 .TP
-\fBconf\-import\fP \fIfilename\fP
+\fBconf\-import\fP \fIfilename\fP [+nopurge]
 Import a configuration file into the configuration database. If the database
 doesn\(aqt exist yet, execute this command as an intended user to ensure the server
 is permitted to access the database (e.g. \fIsudo \-u knot knotc conf\-import ...\fP).
+An optional filter \fB+nopurge\fP prevents possibly existing configuration
+database from purging before the import itself.
 Also ensure the server is not using the configuration database at the same time! (*)
 .TP
 \fBconf\-export\fP [\fIfilename\fP]

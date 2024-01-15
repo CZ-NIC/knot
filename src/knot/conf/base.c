@@ -810,7 +810,7 @@ int conf_import(
 	}
 
 	// Initialize the DB.
-	ret = conf_db_init(conf, &txn, true);
+	ret = conf_db_init(conf, &txn, !(flags & IMPORT_NO_PURGE));
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
 		goto import_error;
