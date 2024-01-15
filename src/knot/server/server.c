@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1011,7 +1011,7 @@ static int reload_conf(conf_t *new_conf)
 		log_info("reloading configuration file '%s'", filename);
 
 		/* Import the configuration file. */
-		ret = conf_import(new_conf, filename, true, false);
+		ret = conf_import(new_conf, filename, IMPORT_FILE);
 		if (ret != KNOT_EOK) {
 			log_error("failed to load configuration file (%s)",
 			          knot_strerror(ret));

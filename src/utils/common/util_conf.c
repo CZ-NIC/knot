@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -69,7 +69,7 @@ int util_conf_init_file(const char *conffile)
 		return ret;
 	}
 
-	ret = conf_import(conf(), conffile, true, false);
+	ret = conf_import(conf(), conffile, IMPORT_FILE);
 	if (ret != KNOT_EOK) {
 		ERR2("failed opening configuration file '%s' (%s)",
 		     conffile, knot_strerror(ret));
@@ -91,7 +91,7 @@ int util_conf_init_justdb(const char *db_type, const char *db_path)
 		return KNOT_ENOMEM;
 	}
 
-	ret = conf_import(conf(), conf_str, false, false);
+	ret = conf_import(conf(), conf_str, 0);
 	free(conf_str);
 	if (ret != KNOT_EOK) {
 		ERR2("failed creating temporary configuration (%s)", knot_strerror(ret));
