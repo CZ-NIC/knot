@@ -64,7 +64,7 @@ ENV RUNTIME_PKGS \
     libedit2 \
     libfstrm0 \
     libgnutls30 \
-    libidn2 \
+    libidn2-0 \
     liblmdb0 \
     libmaxminddb0 \
     libmnl0 \
