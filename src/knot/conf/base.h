@@ -96,6 +96,8 @@ typedef enum {
 	IMPORT_FILE         = 1 << 0,
 	/*! Cache reinitialization is needed. */
 	IMPORT_REINIT_CACHE = 1 << 1,
+	/*! Don't purge the confdb if non-empty before the import. */
+	IMPORT_NO_PURGE     = 1 << 2,
 } import_flag_t;
 
 knot_dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
