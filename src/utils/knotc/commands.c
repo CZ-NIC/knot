@@ -966,7 +966,7 @@ static int cmd_conf_init(cmd_args_t *args)
 			return KNOT_EDENIED;
 		}
 
-		ret = conf_import(conf(), "", false, false);
+		ret = conf_import(conf(), "", 0);
 	}
 
 	if (ret == KNOT_EOK) {
@@ -1146,7 +1146,7 @@ static int cmd_conf_import(cmd_args_t *args)
 			ret = conf_mod_load_common(new_conf);
 			if (ret == KNOT_EOK) {
 				log_debug("importing confdb from file '%s'", args->argv[0]);
-				ret = conf_import(new_conf, args->argv[0], true, false);
+				ret = conf_import(new_conf, args->argv[0], IMPORT_FILE);
 			}
 			conf_free(new_conf);
 		}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ static inline int test_conf(const char *conf_str, const yp_item_t *schema)
 		return ret;
 	}
 
-	ret = conf_import(new_conf, conf_str, false, false);
+	ret = conf_import(new_conf, conf_str, 0);
 	if (ret != KNOT_EOK) {
 		conf_free(new_conf);
 		return ret;
