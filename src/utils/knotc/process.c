@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -124,7 +124,7 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 
 	/* Import the config file. */
 	if (import) {
-		ret = conf_import(new_conf, params->config, true, false);
+		ret = conf_import(new_conf, params->config, IMPORT_FILE);
 		if (ret != KNOT_EOK) {
 			log_error("failed to load configuration file '%s' (%s)",
 			          params->config, knot_strerror(ret));

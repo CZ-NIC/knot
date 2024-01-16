@@ -690,6 +690,8 @@ static int cmd_zone_ctl(cmd_args_t *args)
 	return ctl_receive(args);
 }
 
+#define FILTER_IMPORT_NOPURGE	 "+nopurge"
+
 typedef struct {
 	const char *name;
 	char id;
@@ -966,7 +968,7 @@ static int cmd_conf_init(cmd_args_t *args)
 			return KNOT_EDENIED;
 		}
 
-		ret = conf_import(conf(), "", false, false);
+		ret = conf_import(conf(), "", 0);
 	}
 
 	if (ret == KNOT_EOK) {
@@ -1124,15 +1126,26 @@ static int cmd_conf_check(cmd_args_t *args) // Similar to conf_io_check().
 
 static int cmd_conf_import(cmd_args_t *args)
 {
-	int ret = check_args(args, 1, 1);
+	int ret = check_args(args, 1, 2);
 	if (ret != KNOT_EOK) {
 		return ret;
+	}
+
+	import_flag_t flags = IMPORT_FILE;
+	if (args->argc == 2) {
+		const char *filter = args->argv[1];
+		if (strcmp(filter, FILTER_IMPORT_NOPURGE) == 0) {
+			flags |= IMPORT_NO_PURGE;
+		} else {
+			log_error("unknown filter: %s", filter);
+			return KNOT_EINVAL;
+		}
 	}
 
 	ret = conf_db_check(conf(), &conf()->read_txn);
 	if ((ret >= KNOT_EOK || ret == KNOT_CONF_EVERSION)) {
 		if (ret != KNOT_EOK && !args->force) {
-			log_error("use force option to overwrite the existing "
+			log_error("use force option to modify/overwrite the existing "
 			          "destination and ensure the server is not running!");
 			return KNOT_EDENIED;
 		}
@@ -1146,7 +1159,7 @@ static int cmd_conf_import(cmd_args_t *args)
 			ret = conf_mod_load_common(new_conf);
 			if (ret == KNOT_EOK) {
 				log_debug("importing confdb from file '%s'", args->argv[0]);
-				ret = conf_import(new_conf, args->argv[0], true, false);
+				ret = conf_import(new_conf, args->argv[0], flags);
 			}
 			conf_free(new_conf);
 		}
@@ -1336,7 +1349,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ "",                  "",                                           "" },
 	{ CMD_CONF_INIT,       "",                                           "Initialize the confdb. (*)" },
 	{ CMD_CONF_CHECK,      "",                                           "Check the server configuration. (*)" },
-	{ CMD_CONF_IMPORT,     " <filename>",                                "Import a config file into the confdb. (*)" },
+	{ CMD_CONF_IMPORT,     " <filename> [+nopurge]",                     "Import a config file into the confdb. (*)" },
 	{ CMD_CONF_EXPORT,     "[<filename>]",                               "Export the confdb into a config file or stdout. (*)" },
 	{ CMD_CONF_LIST,       "[<item>...]",                                "List the confdb sections or section items." },
 	{ CMD_CONF_READ,       "[<item>...]",                                "Get the item from the active confdb." },

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -795,8 +795,7 @@ parse_error:
 int conf_import(
 	conf_t *conf,
 	const char *input,
-	bool is_file,
-	bool reinit_cache)
+	import_flag_t flags)
 {
 	if (conf == NULL || input == NULL) {
 		return KNOT_EINVAL;
@@ -811,14 +810,14 @@ int conf_import(
 	}
 
 	// Initialize the DB.
-	ret = conf_db_init(conf, &txn, true);
+	ret = conf_db_init(conf, &txn, !(flags & IMPORT_NO_PURGE));
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
 		goto import_error;
 	}
 
 	// Parse and import given file.
-	ret = conf_parse(conf, &txn, input, is_file);
+	ret = conf_parse(conf, &txn, input, flags & IMPORT_FILE);
 	if (ret != KNOT_EOK) {
 		conf->api->txn_abort(&txn);
 		goto import_error;
@@ -839,12 +838,12 @@ int conf_import(
 	}
 
 	// Update cached values.
-	init_cache(conf, reinit_cache);
+	init_cache(conf, flags & IMPORT_REINIT_CACHE);
 
 	// Reset the filename.
 	free(conf->filename);
 	conf->filename = NULL;
-	if (is_file) {
+	if (flags & IMPORT_FILE) {
 		conf->filename = strdup(input);
 	}
 

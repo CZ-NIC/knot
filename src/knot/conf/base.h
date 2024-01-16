@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,6 +89,16 @@ typedef struct {
 	/*! Module type. */
 	module_type_t type;
 } module_t;
+
+/*! Configuration import flags. */
+typedef enum {
+	/*! Input string is a filename. */
+	IMPORT_FILE         = 1 << 0,
+	/*! Cache reinitialization is needed. */
+	IMPORT_REINIT_CACHE = 1 << 1,
+	/*! Don't purge the confdb if non-empty before the import. */
+	IMPORT_NO_PURGE     = 1 << 2,
+} import_flag_t;
 
 knot_dynarray_declare(mod, module_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
 knot_dynarray_declare(old_schema, yp_item_t *, DYNARRAY_VISIBILITY_NORMAL, 16)
@@ -295,18 +305,16 @@ int conf_parse(
 /*!
  * Imports textual configuration.
  *
- * \param[in] conf          Configuration.
- * \param[in] input         Configuration string or input filename.
- * \param[in] is_file       Specifies if the input is string or filename.
- * \param[in] reinit_cache  Indication if cache reinitialization needed.
+ * \param[in] conf   Configuration.
+ * \param[in] input  Configuration string or input filename.
+ * \param[in] flags  Import flags.
  *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_import(
 	conf_t *conf,
 	const char *input,
-	bool is_file,
-	bool reinit_cache
+	import_flag_t flags
 );
 
 /*!
