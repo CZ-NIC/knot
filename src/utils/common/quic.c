@@ -527,6 +527,11 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 		.user_data = NULL
 	};
 
+	if (ctx->conn) {
+		ngtcp2_conn_del(ctx->conn);
+		ctx->conn = NULL;
+	}
+
 	if (ngtcp2_conn_client_new(&ctx->conn, &dcid, &scid, &path,
 	                           NGTCP2_PROTO_VER_V1, &quic_client_callbacks,
 	                           &settings, &params, NULL, ctx) != 0) {
