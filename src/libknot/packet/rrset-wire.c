@@ -73,6 +73,7 @@ static bool dname_equal_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 {
 	assert(d1);
 	assert(d2);
+	assert(wire);
 
 	d2 = knot_wire_seek_label(d2, wire);
 
@@ -80,7 +81,7 @@ static bool dname_equal_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 		if (!label_is_equal(d1, d2)) {
 			return false;
 		}
-		d1 = knot_wire_next_label(d1, NULL);
+		d1 = knot_dname_next_label(d1);
 		d2 = knot_wire_next_label(d2, wire);
 	}
 
@@ -170,7 +171,7 @@ static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
 		written += (len); \
 	}
 
-#define CHECK_NEXT_LABEL(res) \
+#define CHECK_WIRE_NEXT_LABEL(res) \
 	if (res == NULL) { return KNOT_EINVAL; }
 
 /*!
@@ -201,7 +202,7 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	int suffix_labels = compr->suffix.labels;
 	while (suffix_labels > name_labels) {
 		suffix = knot_wire_next_label(suffix, compr->wire);
-		CHECK_NEXT_LABEL(suffix);
+		CHECK_WIRE_NEXT_LABEL(suffix);
 		--suffix_labels;
 	}
 
@@ -210,8 +211,7 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	uint16_t written = 0;
 	while (name_labels > suffix_labels) {
 		WRITE_LABEL(dst, written, dname, max, (*dname + 1));
-		dname = knot_wire_next_label(dname, NULL);
-		CHECK_NEXT_LABEL(dname);
+		dname = knot_dname_next_label(dname);
 		--name_labels;
 	}
 
@@ -221,10 +221,9 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	const knot_dname_t *compr_ptr = suffix;
 	while (dname[0] != '\0') {
 		// Next labels.
-		const knot_dname_t *next_dname = knot_wire_next_label(dname, NULL);
-		CHECK_NEXT_LABEL(next_dname);
+		const knot_dname_t *next_dname = knot_dname_next_label(dname);
 		const knot_dname_t *next_suffix = knot_wire_next_label(suffix, compr->wire);
-		CHECK_NEXT_LABEL(next_suffix);
+		CHECK_WIRE_NEXT_LABEL(next_suffix);
 
 		// Two labels match, extend suffix length.
 		if (!label_is_equal(dname, suffix)) {

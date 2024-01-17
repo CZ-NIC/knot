@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,11 +62,11 @@ static int dname_align(const uint8_t **d1, uint8_t d1_labels,
 	assert(d1 && d2);
 
 	for (unsigned j = d1_labels; j < d2_labels; ++j) {
-		*d2 = knot_wire_next_label(*d2, NULL);
+		*d2 = knot_dname_next_label(*d2);
 	}
 
 	for (unsigned j = d2_labels; j < d1_labels; ++j) {
-		*d1 = knot_wire_next_label(*d1, NULL);
+		*d1 = knot_dname_next_label(*d1);
 	}
 
 	return (d1_labels < d2_labels) ? d1_labels : d2_labels;
@@ -573,8 +573,8 @@ size_t knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 		}
 
 		/* Next label. */
-		d1 = knot_wire_next_label(d1, NULL);
-		d2 = knot_wire_next_label(d2, NULL);
+		d1 = knot_dname_next_label(d1);
+		d2 = knot_dname_next_label(d2);
 		--common;
 	}
 
@@ -614,7 +614,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 	while (prefix_lbs > 0) {
 		memcpy(dst, name, *name + 1);
 		dst += *name + 1;
-		name = knot_wire_next_label(name, NULL);
+		name = knot_dname_next_label(name);
 		--prefix_lbs;
 	}
 
@@ -622,7 +622,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 	while (*suffix != '\0') {
 		memcpy(dst, suffix, *suffix + 1);
 		dst += *suffix + 1;
-		suffix = knot_wire_next_label(suffix, NULL);
+		suffix = knot_dname_next_label(suffix);
 	}
 
 	*dst = '\0';
@@ -684,8 +684,8 @@ inline static bool dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2
 
 	while (*d1 != '\0' || *d2 != '\0') {
 		if (label_is_equal(d1, d2, no_case)) {
-			d1 = knot_wire_next_label(d1, NULL);
-			d2 = knot_wire_next_label(d2, NULL);
+			d1 = knot_dname_next_label(d1);
+			d2 = knot_dname_next_label(d2);
 		} else {
 			return false;
 		}
@@ -794,7 +794,7 @@ int knot_dname_in_bailiwick(const knot_dname_t *name, const knot_dname_t *bailiw
 	}
 
 	for (int i = 0; i < label_diff; ++i) {
-		name = knot_wire_next_label(name, NULL);
+		name = knot_dname_next_label(name);
 	}
 
 	return knot_dname_is_equal(name, bailiwick) ? label_diff : KNOT_EOUTOFZONE;

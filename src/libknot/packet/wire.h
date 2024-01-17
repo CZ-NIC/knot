@@ -1028,10 +1028,8 @@ static inline uint16_t knot_wire_get_pointer(const uint8_t *pos)
 _pure_ _mustcheck_
 static inline const uint8_t *knot_wire_seek_label(const uint8_t *lp, const uint8_t *wire)
 {
+	assert(wire);
 	while (knot_wire_is_pointer(lp)) {
-		if (!wire) {
-			return NULL;
-		}
 		const uint8_t *new_lp = wire + knot_wire_get_pointer(lp);
 		if (new_lp >= lp) {
 			assert(0);
@@ -1045,9 +1043,18 @@ static inline const uint8_t *knot_wire_seek_label(const uint8_t *lp, const uint8
 _pure_ _mustcheck_
 static inline const uint8_t *knot_wire_next_label(const uint8_t *lp, const uint8_t *wire)
 {
-	if (!lp || !lp[0]) /* No label after final label. */
-		return NULL;
+	assert(lp);
+	assert(lp[0] > 0); // Not a terminal label.
 	return knot_wire_seek_label(lp + (lp[0] + sizeof(uint8_t)), wire);
+}
+
+_pure_ _mustcheck_
+static inline const uint8_t *knot_dname_next_label(const uint8_t *lp)
+{
+	assert(lp);
+	assert(lp[0] > 0); // Not a terminal label.
+	assert(!knot_wire_is_pointer(lp));
+	return lp + (lp[0] + sizeof(uint8_t));
 }
 
 /*! @} */

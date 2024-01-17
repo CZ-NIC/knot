@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ int catalog_bailiwick_shift(const knot_dname_t *subname, const knot_dname_t *nam
 		if (*res == '\0') {
 			return -1;
 		}
-		res = knot_wire_next_label(res, NULL);
+		res = knot_dname_next_label(res);
 	}
 	return res - subname;
 }

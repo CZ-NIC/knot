@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ static int ds_push_begin(knot_layer_t *layer, void *params)
 static int parent_soa_produce(struct ds_push_data *data, knot_pkt_t *pkt)
 {
 	assert(data->parent_query[0] != '\0');
-	data->parent_query = knot_wire_next_label(data->parent_query, NULL);
+	data->parent_query = knot_dname_next_label(data->parent_query);
 
 	int ret = knot_pkt_put_question(pkt, data->parent_query, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {

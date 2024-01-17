@@ -203,7 +203,7 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 	 * records are only present in a parent zone.
 	 */
 	if (qtype == KNOT_RRTYPE_DS) {
-		const knot_dname_t *parent = knot_wire_next_label(qname, NULL);
+		const knot_dname_t *parent = knot_dname_next_label(qname);
 		zone = knot_zonedb_find_suffix(zonedb, parent);
 		/* If zone does not exist, search for its parent zone,
 		   this will later result to NODATA answer. */
