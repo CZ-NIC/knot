@@ -25,134 +25,22 @@
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
 
-/* Limits (class, ipv6 remote, FIXME dname) */
-#define RRL_CLSBLK_MAXLEN 16
 /* CIDR block prefix lengths for v4/v6 */
-#define RRL_V4_PREFIX_LEN 3 /* /24 */
-#define RRL_V6_PREFIX_LEN 7 /* /56 */
-/* Defaults */
-#define RRL_PSIZE_LARGE 1024
+// Hardcoded also in unit tests.
 
-/* Classification */
-enum {
-	CLS_NULL     = 0 << 0, /* Empty bucket. */
-	CLS_NORMAL   = 1 << 0, /* Normal response. */
-	CLS_ERROR    = 1 << 1, /* Error response. */
-	CLS_NXDOMAIN = 1 << 2, /* NXDOMAIN (special case of error). */
-	CLS_EMPTY    = 1 << 3, /* Empty response. */
-	CLS_LARGE    = 1 << 4, /* Response size over threshold (1024k). */
-	CLS_WILDCARD = 1 << 5, /* Wildcard query. */
-	CLS_ANY      = 1 << 6, /* ANY query (spec. class). */
-	CLS_DNSSEC   = 1 << 7  /* DNSSEC related RR query (spec. class) */
-};
+#define RRL_V4_PREFIXES (uint8_t[])  {     24,      28,      32}
+#define RRL_V4_PRICES   (uint16_t[]) { 1 << 5, 1 <<  7, 1 <<  9}
 
-/* Classification string. */
-struct cls_name {
-	int code;
-	const char *name;
-};
+#define RRL_V6_PREFIXES (uint8_t[])  {     32,     56,      64,     128}
+#define RRL_V6_PRICES   (uint16_t[]) { 1 << 0, 1 << 5, 1 <<  7, 1 <<  9}
 
-static const struct cls_name rrl_cls_names[] = {
-	{ CLS_NORMAL,   "POSITIVE" },
-	{ CLS_ERROR,    "ERROR" },
-	{ CLS_NXDOMAIN, "NXDOMAIN"},
-	{ CLS_EMPTY,    "EMPTY"},
-	{ CLS_LARGE,    "LARGE"},
-	{ CLS_WILDCARD, "WILDCARD"},
-	{ CLS_ANY,      "ANY"},
-	{ CLS_DNSSEC,   "DNSSEC"},
-	{ CLS_NULL,     "NULL"},
-	{ CLS_NULL,     NULL}
-};
+#define RRL_V4_PREFIXES_CNT (sizeof(RRL_V4_PREFIXES) / sizeof(*RRL_V4_PREFIXES))
+#define RRL_V6_PREFIXES_CNT (sizeof(RRL_V6_PREFIXES) / sizeof(*RRL_V6_PREFIXES))
+#define RRL_MAX_PREFIXES_CNT ((RRL_V4_PREFIXES_CNT > RRL_V6_PREFIXES_CNT) ? RRL_V4_PREFIXES_CNT : RRL_V6_PREFIXES_CNT)
 
-static inline const char *rrl_clsstr(int code)
-{
-	for (const struct cls_name *c = rrl_cls_names; c->name; c++) {
-		if (c->code == code) {
-			return c->name;
-		}
-	}
 
-	return "unknown class";
-}
-
-/* Bucket flags. */
-enum {
-	RRL_BF_NULL   = 0 << 0, /* No flags. */
-	RRL_BF_SSTART = 1 << 0, /* Bucket in slow-start after collision. */
-	RRL_BF_ELIMIT = 1 << 1  /* Bucket is rate-limited. */
-};
-
-static uint8_t rrl_clsid(rrl_req_t *p)
-{
-	/* Check error code */
-	int ret = CLS_NULL;
-	switch (knot_wire_get_rcode(p->wire)) {
-	case KNOT_RCODE_NOERROR: ret = CLS_NORMAL; break;
-	case KNOT_RCODE_NXDOMAIN: return CLS_NXDOMAIN; break;
-	default: return CLS_ERROR; break;
-	}
-
-	/* Check if answered from a qname */
-	if (ret == CLS_NORMAL && p->flags & RRL_REQ_WILDCARD) {
-		return CLS_WILDCARD;
-	}
-
-	/* Check query type for spec. classes. */
-	if (p->query) {
-		switch(knot_pkt_qtype(p->query)) {
-		case KNOT_RRTYPE_ANY:      /* ANY spec. class */
-			return CLS_ANY;
-			break;
-		case KNOT_RRTYPE_DNSKEY:
-		case KNOT_RRTYPE_RRSIG:
-		case KNOT_RRTYPE_DS:      /* DNSSEC-related RR class. */
-			return CLS_DNSSEC;
-			break;
-		default:
-			break;
-		}
-	}
-
-	/* Check packet size for threshold. */
-	if (p->len >= RRL_PSIZE_LARGE) {
-		return CLS_LARGE;
-	}
-
-	/* Check ancount */
-	if (knot_wire_get_ancount(p->wire) == 0) {
-		return CLS_EMPTY;
-	}
-
-	return ret;
-}
-
-static int rrl_classify(uint8_t *dst, size_t maxlen, const struct sockaddr_storage *remote,
-                        rrl_req_t *req, const knot_dname_t *name)
-{
-	/* Class */
-	uint8_t cls = rrl_clsid(req);
-	*dst = cls;
-	int blklen = sizeof(cls);
-
-	/* Address (in network byteorder, adjust masks). */
-	uint64_t netblk = 0;
-	if (remote->ss_family == AF_INET6) {
-		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
-		memcpy(&netblk, &ipv6->sin6_addr, RRL_V6_PREFIX_LEN);
-	} else {
-		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
-		memcpy(&netblk, &ipv4->sin_addr, RRL_V4_PREFIX_LEN);
-	}
-	memcpy(dst + blklen, &netblk, sizeof(netblk));
-	blklen += sizeof(netblk);
-
-	/* Name not considered anymore. */
-
-	return blklen;
-}
-
-static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss)
+/*
+static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss) // TODO remove or adapt
 {
 	const void *addr;
 	const char *suffix;
@@ -196,6 +84,7 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 	knotd_mod_log(mod, LOG_NOTICE, "address/subnet %s, class %s, qname %s, %s limiting",
 	              addr_str, rrl_clsstr(cls), qname_str, what);
 }
+*/
 
 rrl_table_t *rrl_create(size_t size, uint32_t rate)
 {
@@ -218,17 +107,25 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t buf[RRL_CLSBLK_MAXLEN] ALIGNED(16) = { 0 };
-	size_t buf_len = rrl_classify(buf, RRL_CLSBLK_MAXLEN, remote, req, zone);
-	if (buf_len < 0) {
-		return KNOT_ERROR;
-	}
-
 	struct timespec now_ts = {0};
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
 	uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
 
-	return KRU.limited(rrl, (char *)buf, now, 1<<9) ? KNOT_ELIMIT : KNOT_EOK;  // TODO set price
+	uint8_t key[16] ALIGNED(16) = {0, };
+	if (remote->ss_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
+		memcpy(key, &ipv6->sin6_addr, 16);
+
+		return KRU.limited_multi_prefix_or(rrl, now, 1, key, RRL_V6_PREFIXES, RRL_V6_PRICES, RRL_V6_PREFIXES_CNT)
+			? KNOT_ELIMIT : KNOT_EOK;
+
+	} else {
+		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
+		memcpy(key, &ipv4->sin_addr, 4);
+
+		return KRU.limited_multi_prefix_or(rrl, now, 0, key, RRL_V4_PREFIXES, RRL_V4_PRICES, RRL_V4_PREFIXES_CNT)
+			? KNOT_ELIMIT : KNOT_EOK;
+	}
 }
 
 bool rrl_slip_roll(int n_slip)

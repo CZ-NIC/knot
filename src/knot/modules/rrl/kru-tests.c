@@ -72,11 +72,11 @@ void test_stage(struct test_ctx *ctx, uint32_t dur) {
 			size_t cat;
 			for (cat = 0; freq_bounds[cat] <= rnd; cat++);
 
-			uint64_t key[2] = {0,};
+			uint64_t key[2] ALIGNED(16) = {0};
 			key[0] = random() % (ctx->cats[cat].id_max - ctx->cats[cat].id_min + 1) + ctx->cats[cat].id_min;
 
 			ctx->cats[cat].total++;
-			ctx->cats[cat].passed += !KRU.limited(ctx->kru, (char *)key, ctx->time, ctx->price);
+			ctx->cats[cat].passed += !KRU.limited(ctx->kru, ctx->time, (uint8_t *)key, ctx->price);
 		}
 	}
 }
@@ -198,11 +198,15 @@ void test_multi_attackers(void) {
 
 /*=== benchmarking time performance ===*/
 
-#define TIMED_TESTS_TABLE_SIZE_LOG        16
-#define TIMED_TESTS_PRICE           (1 <<  9)
-#define TIMED_TESTS_QUERIES         (1 << 26) // 28
-#define TIMED_TESTS_MAX_THREADS           12
-#define TIMED_TESTS_WAIT_BEFORE_SEC        2  // 60
+#define TIMED_TESTS_TABLE_SIZE_LOG             16
+#define TIMED_TESTS_PRICE                (1 <<  9)
+#define TIMED_TESTS_QUERIES              (1 << 26)
+#define TIMED_TESTS_TIME_UPDATE_PERIOD          4
+#define TIMED_TESTS_MAX_THREADS                64
+#define TIMED_TESTS_WAIT_BEFORE_SEC             2
+
+#define TIMED_TESTS_BATCH_SIZE                  1  // each query still counted individually in MQPS; should be set to 1 if PREFIXES are set
+#define TIMED_TESTS_PREFIXES                    (uint8_t []){64, 65, 66, 67}  // one query contains all prefixes, MQPS is lowered
 
 struct timed_test_ctx {
 	struct kru *kru;
@@ -213,15 +217,42 @@ struct timed_test_ctx {
 
 void *timed_runnable(void *arg) {
 	struct timed_test_ctx *ctx = arg;
-	uint64_t key[2] = {0,};
 
-	for (uint64_t i = ctx->first_query; i < TIMED_TESTS_QUERIES; i += ctx->increment) {
-		struct timespec now_ts = {0};
-		clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
-		uint32_t now_msec = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
+	struct timespec now_ts = {0};
+	uint32_t now_msec = 0;
+	uint64_t now_last_update = -TIMED_TESTS_TIME_UPDATE_PERIOD * ctx->increment;
 
-		key[0] = i * ctx->key_mult;
-		KRU.limited(ctx->kru, (char *)key, now_msec, TIMED_TESTS_PRICE);
+#ifdef TIMED_TESTS_PREFIXES
+	uint16_t prices[sizeof(TIMED_TESTS_PREFIXES)];
+#else
+	uint16_t prices[TIMED_TESTS_BATCH_SIZE];
+#endif
+	for (size_t j = 0; j < sizeof(prices)/sizeof(*prices); j++) {
+		prices[j] = TIMED_TESTS_PRICE;
+	}
+
+	for (uint64_t i = ctx->first_query; i < TIMED_TESTS_QUERIES; ) {
+		if (i >= now_last_update + TIMED_TESTS_TIME_UPDATE_PERIOD * ctx->increment) {
+			clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
+			now_msec = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
+			now_last_update = i;
+		}
+
+		uint64_t key_values[TIMED_TESTS_BATCH_SIZE * 2] = {0,};
+		uint8_t *keys[TIMED_TESTS_BATCH_SIZE];
+
+		for (size_t j = 0; j < TIMED_TESTS_BATCH_SIZE; j++) {
+			key_values[2 * j] = i * ctx->key_mult;
+			key_values[2 * j + 1] = 0xFFFFFFFFFFFFFFFFll;
+			keys[j] = (uint8_t *)(key_values + 2 * j);
+			i += ctx->increment;
+		}
+
+#ifdef TIMED_TESTS_PREFIXES
+		KRU.limited_multi_prefix_or(ctx->kru, now_msec, 0, keys[0], TIMED_TESTS_PREFIXES, prices, sizeof(TIMED_TESTS_PREFIXES));
+#else
+		KRU.limited_multi_or_nobreak(ctx->kru, now_msec, keys, prices, TIMED_TESTS_BATCH_SIZE);
+#endif
 	}
 	return NULL;
 }
@@ -235,7 +266,7 @@ void timed_tests() {
 	struct timespec wait_ts = {TIMED_TESTS_WAIT_BEFORE_SEC, 0};
 
 
-	for (int threads = 1; threads <= TIMED_TESTS_MAX_THREADS; threads++) {
+	for (int threads = 1; threads <= TIMED_TESTS_MAX_THREADS; threads *= 2) {
 		for (int collide = 0; collide < 2; collide++) {
 			nanosleep(&wait_ts, NULL);
 			printf("%3d threads, %-15s:  ", threads, (collide ? "single query" : "unique queries"));

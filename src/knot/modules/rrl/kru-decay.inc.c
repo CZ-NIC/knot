@@ -16,7 +16,7 @@ struct decay_config {
 };
 
 /// Catch up the time drift with configurably slower decay.
-static void update_time(struct load_cl *l, const uint32_t time_now,
+static inline void update_time(struct load_cl *l, const uint32_t time_now,
 			const struct decay_config *decay)
 {
 	uint32_t ticks;
