@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -132,7 +132,7 @@ static const knot_dname_t *get_uniq(const knot_dname_t *ptr_owner,
 	int labels = knot_dname_labels(ptr_owner, NULL);
 	labels -= knot_dname_labels(catz, NULL);
 	assert(labels >= 2);
-	return ptr_owner + knot_dname_prefixlen(ptr_owner, labels - 2, NULL);
+	return ptr_owner + knot_dname_prefixlen(ptr_owner, labels - 2);
 }
 
 static bool same_uniq(const knot_dname_t *owner1, const knot_dname_t *catz1,

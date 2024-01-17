@@ -190,7 +190,7 @@ _public_
 int knot_dname_unpack(uint8_t *dst, const knot_dname_t *src,
                       size_t maxlen, const uint8_t *pkt)
 {
-	if (dst == NULL || src == NULL) {
+	if (dst == NULL || src == NULL || pkt == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -533,7 +533,7 @@ size_t knot_dname_size(const knot_dname_t *name)
 _public_
 size_t knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt)
 {
-	if (name == NULL) {
+	if (name == NULL || pkt == NULL) {
 		return 0;
 	}
 
@@ -596,7 +596,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 	}
 	size_t prefix_lbs = dname_lbs - labels;
 
-	size_t prefix_len = knot_dname_prefixlen(name, prefix_lbs, NULL);
+	size_t prefix_len = knot_dname_prefixlen(name, prefix_lbs);
 	size_t suffix_len = knot_dname_size(suffix);
 	if (prefix_len == 0 || suffix_len == 0) {
 		return NULL;
@@ -707,7 +707,7 @@ bool knot_dname_is_case_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 }
 
 _public_
-size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt)
+size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels)
 {
 	if (name == NULL) {
 		return 0;
@@ -718,13 +718,10 @@ size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t
 		return 0;
 	}
 
-	/* Seek first real label occurrence. */
-	name = knot_wire_seek_label(name, pkt);
-
 	size_t len = 0;
 	while (*name != '\0') {
 		len += *name + 1;
-		name = knot_wire_next_label(name, pkt);
+		name = knot_dname_next_label(name);
 		if (--nlabels == 0) { /* Count N first labels only. */
 			break;
 		}
@@ -743,7 +740,8 @@ size_t knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 	size_t count = 0;
 	while (*name != '\0') {
 		++count;
-		name = knot_wire_next_label(name, pkt);
+		name = (pkt == NULL) ? knot_dname_next_label(name) :
+		                       knot_wire_next_label(name, pkt);
 		if (name == NULL) {
 			return 0;
 		}
