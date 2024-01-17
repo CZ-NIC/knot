@@ -218,8 +218,10 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t buf[RRL_CLSBLK_MAXLEN] ALIGNED(16) = { 0 };
-	size_t buf_len = rrl_classify(buf, RRL_CLSBLK_MAXLEN, remote, req, zone);
+	struct kru_query query = {0};
+	query.price = 1<<9;  // TODO set price
+	assert(sizeof(query.key) >= RRL_CLSBLK_MAXLEN);
+	size_t buf_len = rrl_classify(query.key, RRL_CLSBLK_MAXLEN, remote, req, zone);
 	if (buf_len < 0) {
 		return KNOT_ERROR;
 	}
@@ -228,7 +230,7 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
 	uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
 
-	return KRU.limited(rrl, (char *)buf, now, 1<<9) ? KNOT_ELIMIT : KNOT_EOK;  // TODO set price
+	return KRU.limited(rrl, now, &query) ? KNOT_ELIMIT : KNOT_EOK;
 }
 
 bool rrl_slip_roll(int n_slip)

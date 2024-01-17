@@ -136,17 +136,23 @@ static struct kru *kru_create(int capacity_log)
 	return kru;
 }
 
-/// Update limiting and return true iff it hit the limit instead.
-static bool kru_limited(struct kru *kru, char key[static const 16], uint32_t time_now, uint16_t price)
+struct query_ctx {
+	struct load_cl *l[TABLE_COUNT];
+	uint32_t time_now;
+	uint16_t price;
+	uint16_t id;
+};
+
+static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, struct kru_query *query, struct query_ctx *ctx)
 {
 	// Obtain hash of *buf.
 	uint64_t hash;
 #if !USE_AES
-	hash = hash(&kru->hash_key, key, 16);
+	hash = hash(&kru->hash_key, query->key, 16);
 #else
 	{
 		__m128i h; /// hashing state
-		h = _mm_load_si128((__m128i *)key);
+		h = _mm_load_si128((__m128i *)query->key);
 		// Now do the the hashing itself.
 		__m128i *aes_key = (void*)kru->hash_key;
 		for (int i = 0; i < AES_ROUNDS; ++i) {
@@ -166,35 +172,44 @@ static bool kru_limited(struct kru *kru, char key[static const 16], uint32_t tim
 		l[li] = &kru->load_cls[hash & loads_mask][li];
 		__builtin_prefetch(l[li], 0); // hope for read-only access
 		hash >>= kru->loads_bits;
+		ctx->l[li] = l[li];
 	}
-	for (int li = 0; li < TABLE_COUNT; ++li)
-		update_time(l[li], time_now, &DECAY_32);
 
-	uint16_t id = hash;
-	hash >>= 16;
+	ctx->time_now = time_now;
+	ctx->price = query->price;
+	ctx->id = hash;
+}
+
+static inline bool kru_limited_process(struct kru *kru, struct query_ctx *ctx)
+{
+	for (int li = 0; li < TABLE_COUNT; ++li) {
+		update_time(ctx->l[li], ctx->time_now, &DECAY_32);
+	}
+
+	uint16_t id = ctx->id;
 
 	// Find matching element.  Matching 16 bits in addition to loads_bits.
 	uint16_t *load = NULL;
 #if !USE_AVX2
 	for (int li = 0; li < TABLE_COUNT; ++li)
 		for (int i = 0; i < LOADS_LEN; ++i)
-			if (l[li]->ids[i] == id) {
-				load = &l[li]->loads[i];
+			if (ctx->l[li]->ids[i] == id) {
+				load = &ctx->l[li]->loads[i];
 				goto load_found;
 			}
 #else
 	const __m256i id_v = _mm256_set1_epi16(id);
 	for (int li = 0; li < TABLE_COUNT; ++li) {
-		static_assert(LOADS_LEN == 15 && sizeof(l[li]->ids[0]) == 2, "");
+		static_assert(LOADS_LEN == 15 && sizeof(ctx->l[li]->ids[0]) == 2, "");
 		// unfortunately we can't use aligned load here
-		__m256i ids_v = _mm256_loadu_si256(((__m256i *)&l[li]->ids[-1]));
+		__m256i ids_v = _mm256_loadu_si256(((__m256i *)&ctx->l[li]->ids[-1]));
 		__m256i match_mask = _mm256_cmpeq_epi16(ids_v, id_v);
 		if (_mm256_testz_si256(match_mask, match_mask))
 			continue; // no match of id
 		int index = _bit_scan_reverse(_mm256_movemask_epi8(match_mask)) / 2 - 1;
 		// there's a small possibility that we hit equality only on the -1 index
 		if (index >= 0) {
-			load = &l[li]->loads[index];
+			load = &ctx->l[li]->loads[index];
 			goto load_found;
 		}
 	}
@@ -206,7 +221,7 @@ static bool kru_limited(struct kru *kru, char key[static const 16], uint32_t tim
 #if !USE_SSE41
 	for (int li = 0; li < TABLE_COUNT; ++li)
 		for (int i = 0; i < LOADS_LEN; ++i)
-			if (l[li]->loads[i] < l[min_li]->loads[min_i]) {
+			if (ctx->l[li]->loads[i] < ctx->l[min_li]->loads[min_i]) {
 				min_li = li;
 				min_i = i;
 			}
@@ -217,8 +232,8 @@ static bool kru_limited(struct kru *kru, char key[static const 16], uint32_t tim
 		//  where the .loads array take 15 16-bit values at the very end.
 		static_assert((offsetof(struct load_cl, loads) - 2) % 16 == 0,
 				"bad alignment of struct load_cl::loads");
-		static_assert(LOADS_LEN == 15 && sizeof(l[li]->loads[0]) == 2, "");
-		__m128i *l_v = ((__m128i *)(&l[li]->loads[-1]));
+		static_assert(LOADS_LEN == 15 && sizeof(ctx->l[li]->loads[0]) == 2, "");
+		__m128i *l_v = ((__m128i *)(&ctx->l[li]->loads[-1]));
 		__m128i l0 = _mm_load_si128(l_v);
 		__m128i l1 = _mm_load_si128(l_v + 1);
 		// We want to avoid the first item in l0, so we maximize it.
@@ -250,12 +265,13 @@ static bool kru_limited(struct kru *kru, char key[static const 16], uint32_t tim
 		--min_i;
 #endif
 
-	l[min_li]->ids[min_i] = id;
-	load = &l[min_li]->loads[min_i]; // TODO: goto load_found?
+	ctx->l[min_li]->ids[min_i] = id;
+	load = &ctx->l[min_li]->loads[min_i]; // TODO: goto load_found?
 load_found:;
 
 	static_assert(ATOMIC_CHAR16_T_LOCK_FREE == 2, "insufficient atomics");
 	_Atomic uint16_t *load_at = (_Atomic uint16_t *)load;
+	const uint16_t price = ctx->price;
 	const uint32_t limit = (1<<16) - price;
 	uint16_t load_orig = *load_at;
 	do {
@@ -265,7 +281,45 @@ load_found:;
 	return false;
 }
 
+static bool kru_limited_multi_or(struct kru *kru, uint32_t time_now, struct kru_query *queries, size_t queries_cnt) {
+	struct query_ctx ctx[queries_cnt];
+
+	for (size_t i = 0; i < queries_cnt; i++) {
+		kru_limited_prefetch(kru, time_now, queries + i, ctx + i);
+	}
+	for (size_t i = 0; i < queries_cnt; i++) {
+		if (kru_limited_process(kru, ctx + i))
+			return true;
+	}
+
+	return false;
+}
+
+static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, struct kru_query *queries, size_t queries_cnt) {
+	struct query_ctx ctx[queries_cnt];
+	bool ret = false;
+
+	for (size_t i = 0; i < queries_cnt; i++) {
+		kru_limited_prefetch(kru, time_now, queries + i, ctx + i);
+	}
+	for (size_t i = 0; i < queries_cnt; i++) {
+		if (kru_limited_process(kru, ctx + i))
+			ret = true;
+	}
+
+	return ret;
+}
+
+
+/// Update limiting and return true iff it hit the limit instead.
+static bool kru_limited(struct kru *kru, uint32_t time_now, struct kru_query *query)
+{
+	return kru_limited_multi_or(kru, time_now, query, 1);
+}
+
 #define KRU_API_INITIALIZER { \
 	.create = kru_create, \
 	.limited = kru_limited, \
+	.limited_multi_or = kru_limited_multi_or, \
+	.limited_multi_or_nobreak = kru_limited_multi_or_nobreak, \
 }

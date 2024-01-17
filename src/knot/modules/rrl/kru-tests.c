@@ -96,11 +96,13 @@ void test_stage(struct test_ctx *ctx, uint32_t dur) {
 			size_t cat;
 			for (cat = 0; freq_bounds[cat] <= rnd; cat++);
 
-			uint64_t key[2] = {0,};
+			struct kru_query query = {0};
+			query.price = ctx->price;
+			uint64_t *key = (uint64_t *) query.key;
 			key[0] = random() % (ctx->cats[cat].id_max - ctx->cats[cat].id_min + 1) + ctx->cats[cat].id_min;
 
 			ctx->cats[cat].total++;
-			ctx->cats[cat].passed += !KRU.limited(ctx->kru, (char *)key, ctx->time, ctx->price);
+			ctx->cats[cat].passed += !KRU.limited(ctx->kru, ctx->time, &query);
 		}
 	}
 }
@@ -222,11 +224,13 @@ void test_multi_attackers(void) {
 
 /*=== benchmarking time performance ===*/
 
-#define TIMED_TESTS_TABLE_SIZE_LOG        16
-#define TIMED_TESTS_PRICE           (1 <<  9)
-#define TIMED_TESTS_QUERIES         (1 << 26) // 28
-#define TIMED_TESTS_MAX_THREADS           12
-#define TIMED_TESTS_WAIT_BEFORE_SEC        2  // 60
+#define TIMED_TESTS_TABLE_SIZE_LOG             16
+#define TIMED_TESTS_PRICE                (1 <<  9)
+#define TIMED_TESTS_QUERIES              (1 << 28) // 28
+#define TIMED_TESTS_BATCH_SIZE                  8
+#define TIMED_TESTS_TIME_UPDATE_PERIOD          8
+#define TIMED_TESTS_MAX_THREADS                64
+#define TIMED_TESTS_WAIT_BEFORE_SEC             2  // 60
 
 struct timed_test_ctx {
 	struct kru *kru;
@@ -237,15 +241,26 @@ struct timed_test_ctx {
 
 void *timed_runnable(void *arg) {
 	struct timed_test_ctx *ctx = arg;
-	uint64_t key[2] = {0,};
 
-	for (uint64_t i = ctx->first_query; i < TIMED_TESTS_QUERIES; i += ctx->increment) {
-		struct timespec now_ts = {0};
-		clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
-		uint32_t now_msec = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
+	struct timespec now_ts = {0};
+	uint32_t now_msec = 0;
+	uint64_t now_last_update = -TIMED_TESTS_TIME_UPDATE_PERIOD * ctx->increment;
 
-		key[0] = i * ctx->key_mult;
-		KRU.limited(ctx->kru, (char *)key, now_msec, TIMED_TESTS_PRICE);
+	for (uint64_t i = ctx->first_query; i < TIMED_TESTS_QUERIES; ) {
+		if (i >= now_last_update + TIMED_TESTS_TIME_UPDATE_PERIOD * ctx->increment) {
+			clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
+			now_msec = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
+			now_last_update = i;
+		}
+
+		struct kru_query queries[TIMED_TESTS_BATCH_SIZE] = {0,};
+		for (size_t j = 0; j < TIMED_TESTS_BATCH_SIZE; j++) {
+			*(uint64_t *)queries[j].key = i * ctx->key_mult;
+			queries[j].price = TIMED_TESTS_PRICE;
+			i += ctx->increment;
+		}
+
+		KRU.limited_multi_or_nobreak(ctx->kru, now_msec, queries, TIMED_TESTS_BATCH_SIZE);
 	}
 	return NULL;
 }
@@ -259,7 +274,7 @@ void timed_tests() {
 	struct timespec wait_ts = {TIMED_TESTS_WAIT_BEFORE_SEC, 0};
 
 
-	for (int threads = 1; threads <= TIMED_TESTS_MAX_THREADS; threads++) {
+	for (int threads = 1; threads <= TIMED_TESTS_MAX_THREADS; threads *= 2) {
 		for (int collide = 0; collide < 2; collide++) {
 			nanosleep(&wait_ts, NULL);
 			printf("%3d threads, %-15s:  ", threads, (collide ? "single query" : "unique queries"));
