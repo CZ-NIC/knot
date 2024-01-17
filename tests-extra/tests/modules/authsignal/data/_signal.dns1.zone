@@ -1,0 +1,5 @@
+$ORIGIN _signal.dns1.
+$TTL 7200
+
+@	SOA	dns1 hostmaster 2010111213 10800 3600 1209600 7200
+	NS	dns1
