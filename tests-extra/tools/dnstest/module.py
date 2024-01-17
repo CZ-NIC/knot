@@ -425,3 +425,9 @@ class ModProbe(KnotModule):
         conf.end()
 
         return conf
+
+class ModAuthSignal(KnotModule):
+    '''AuthSignal module'''
+
+    mod_name = "authsignal"
+    empty = True
