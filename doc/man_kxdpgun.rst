@@ -85,6 +85,10 @@ Options
 **-v**, **--vlan** *id*
   Add VLAN 802.1Q header with the given id. VLAN offloading should be disabled.
 
+**-e**, **--edns-size** *size*
+  EDNS UDP payload size, range 512-4096 (default is 1232). Note that over XDP
+  the maximum supported MTU is 1790.
+
 **-m**, **--mode** *mode*
   Set the XDP mode. Supported values are:
 
