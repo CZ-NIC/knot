@@ -108,6 +108,10 @@ Override auto\-detected remote MAC address.
 \fB\-v\fP, \fB\-\-vlan\fP \fIid\fP
 Add VLAN 802.1Q header with the given id. VLAN offloading should be disabled.
 .TP
+\fB\-e\fP, \fB\-\-edns\-size\fP \fIsize\fP
+EDNS UDP payload size, range 512\-4096 (default is 1232). Note that over XDP
+the maximum supported MTU is 1790.
+.TP
 \fB\-m\fP, \fB\-\-mode\fP \fImode\fP
 Set the XDP mode. Supported values are:
 .INDENT 7.0

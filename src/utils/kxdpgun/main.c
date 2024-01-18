@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1109,6 +1109,7 @@ static void print_help(void)
 	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
 	       " -v, --vlan <id>          "SPACE"Add VLAN 802.1Q header with the given id.\n"
+	       " -e, --edns-size <size>   "SPACE"EDNS UDP payload size, range 512-4096 (default 1232)\n"
 	       " -m, --mode <mode>        "SPACE"Set XDP mode (auto, copy, generic).\n"
 	       " -G, --qlog <path>        "SPACE"Output directory for qlog (useful for QUIC only).\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
@@ -1221,7 +1222,6 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "port",       required_argument, NULL, 'p' },
 		{ "tcp",        optional_argument, NULL, 'T' },
 		{ "quic",       optional_argument, NULL, 'U' },
-		{ "qlog",       required_argument, NULL, 'G' },
 		{ "affinity",   required_argument, NULL, 'F' },
 		{ "interface",  required_argument, NULL, 'I' },
 		{ "local",      required_argument, NULL, 'l' },
@@ -1229,7 +1229,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "local-mac",  required_argument, NULL, 'L' },
 		{ "remote-mac", required_argument, NULL, 'R' },
 		{ "vlan",       required_argument, NULL, 'v' },
+		{ "edns-size",  required_argument, NULL, 'e' },
 		{ "mode",       required_argument, NULL, 'm' },
+		{ "qlog",       required_argument, NULL, 'G' },
 		{ NULL }
 	};
 
@@ -1237,7 +1239,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL, *filename = NULL;
-	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:l:i:L:R:v:m:G:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:l:i:L:R:v:e:m:G:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1323,9 +1325,6 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			return false;
 #endif // ENABLE_QUIC
 			break;
-		case 'G':
-			ctx->qlog_dir = optarg;
-			break;
 		case 'F':
 			assert(optarg);
 			if ((arg = atoi(optarg)) > 0) {
@@ -1368,12 +1367,25 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				return false;
 			}
 			break;
+		case 'e':
+			assert(optarg);
+			arg = atoi(optarg);
+			if (arg >= 512 && arg <= 4096) {
+				ctx->edns_size = arg;
+			} else {
+				ERR2("invalid edns size '%s'", optarg);
+				return false;
+			}
+			break;
 		case 'm':
 			assert(optarg);
 			if (set_mode(optarg, &ctx->xdp_config) != KNOT_EOK) {
 				ERR2("invalid mode '%s'", optarg);
 				return false;
 			}
+			break;
+		case 'G':
+			ctx->qlog_dir = optarg;
 			break;
 		default:
 			print_help();
