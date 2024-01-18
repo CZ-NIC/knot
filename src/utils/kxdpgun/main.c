@@ -1222,7 +1222,6 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "port",       required_argument, NULL, 'p' },
 		{ "tcp",        optional_argument, NULL, 'T' },
 		{ "quic",       optional_argument, NULL, 'U' },
-		{ "qlog",       required_argument, NULL, 'G' },
 		{ "affinity",   required_argument, NULL, 'F' },
 		{ "interface",  required_argument, NULL, 'I' },
 		{ "local",      required_argument, NULL, 'l' },
@@ -1232,6 +1231,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "vlan",       required_argument, NULL, 'v' },
 		{ "edns-size",  required_argument, NULL, 'e' },
 		{ "mode",       required_argument, NULL, 'm' },
+		{ "qlog",       required_argument, NULL, 'G' },
 		{ NULL }
 	};
 
@@ -1325,9 +1325,6 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			return false;
 #endif // ENABLE_QUIC
 			break;
-		case 'G':
-			ctx->qlog_dir = optarg;
-			break;
 		case 'F':
 			assert(optarg);
 			if ((arg = atoi(optarg)) > 0) {
@@ -1386,6 +1383,9 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				ERR2("invalid mode '%s'", optarg);
 				return false;
 			}
+			break;
+		case 'G':
+			ctx->qlog_dir = optarg;
 			break;
 		default:
 			print_help();
