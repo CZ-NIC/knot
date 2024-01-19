@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1060,7 +1060,7 @@ static int str_label(
 	size_t index = labels - right_index - 1;
 
 	// Create a dname from the single label.
-	size_t prefix_len = knot_dname_prefixlen(zone, index, NULL);
+	size_t prefix_len = knot_dname_prefixlen(zone, index);
 	size_t label_len = *(zone + prefix_len);
 	memcpy(label, zone + prefix_len, 1 + label_len);
 	label[1 + label_len] = '\0';

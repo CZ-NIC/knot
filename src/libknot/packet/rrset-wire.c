@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,6 +73,7 @@ static bool dname_equal_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 {
 	assert(d1);
 	assert(d2);
+	assert(wire);
 
 	d2 = knot_wire_seek_label(d2, wire);
 
@@ -80,7 +81,7 @@ static bool dname_equal_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 		if (!label_is_equal(d1, d2)) {
 			return false;
 		}
-		d1 = knot_wire_next_label(d1, NULL);
+		d1 = knot_dname_next_label(d1);
 		d2 = knot_wire_next_label(d2, wire);
 	}
 
@@ -170,6 +171,9 @@ static int write_rdata_naptr_header(const uint8_t **src, size_t *src_avail,
 		written += (len); \
 	}
 
+#define CHECK_WIRE_NEXT_LABEL(res) \
+	if (res == NULL) { return KNOT_EINVAL; }
+
 /*!
  * \brief Write compressed domain name to the destination wire.
  *
@@ -198,6 +202,7 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	int suffix_labels = compr->suffix.labels;
 	while (suffix_labels > name_labels) {
 		suffix = knot_wire_next_label(suffix, compr->wire);
+		CHECK_WIRE_NEXT_LABEL(suffix);
 		--suffix_labels;
 	}
 
@@ -206,7 +211,7 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	uint16_t written = 0;
 	while (name_labels > suffix_labels) {
 		WRITE_LABEL(dst, written, dname, max, (*dname + 1));
-		dname = knot_wire_next_label(dname, NULL);
+		dname = knot_dname_next_label(dname);
 		--name_labels;
 	}
 
@@ -216,8 +221,9 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 	const knot_dname_t *compr_ptr = suffix;
 	while (dname[0] != '\0') {
 		// Next labels.
-		const knot_dname_t *next_dname = knot_wire_next_label(dname, NULL);
+		const knot_dname_t *next_dname = knot_dname_next_label(dname);
 		const knot_dname_t *next_suffix = knot_wire_next_label(suffix, compr->wire);
+		CHECK_WIRE_NEXT_LABEL(next_suffix);
 
 		// Two labels match, extend suffix length.
 		if (!label_is_equal(dname, suffix)) {
@@ -242,7 +248,7 @@ static int compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max
 		if (written + sizeof(uint16_t) > max) {
 			return KNOT_ESPACE;
 		}
-		knot_wire_put_pointer(dst + written, compr_ptr - compr->wire);
+		knot_wire_put_pointer(compr->wire, dst + written, compr_ptr - compr->wire);
 		written += sizeof(uint16_t);
 	}
 
@@ -284,14 +290,14 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 	// Write result.
 	if (owner_pointer > 0) {
 		WRITE_OWNER_CHECK(sizeof(uint16_t), dst_avail);
-		knot_wire_put_pointer(*dst, owner_pointer);
+		knot_wire_put_pointer(compr->wire, *dst, owner_pointer);
 		WRITE_OWNER_INCR(dst, dst_avail, sizeof(uint16_t));
 	// Check for coincidence with previous RR set.
 	} else if (compr != NULL && compr->suffix.pos != 0 && *rrset->owner != '\0' &&
 	           dname_equal_wire(rrset->owner, compr->wire + compr->suffix.pos,
 	                            compr->wire)) {
 		WRITE_OWNER_CHECK(sizeof(uint16_t), dst_avail);
-		knot_wire_put_pointer(*dst, compr->suffix.pos);
+		knot_wire_put_pointer(compr->wire, *dst, compr->suffix.pos);
 		compr_set_ptr(compr, KNOT_COMPR_HINT_OWNER,
 		              compr->wire + compr->suffix.pos,
 		              knot_dname_size(rrset->owner));

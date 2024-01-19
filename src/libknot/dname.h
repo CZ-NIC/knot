@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ typedef char knot_dname_txt_storage_t[KNOT_DNAME_TXT_MAXLEN + 1];
  *
  * \param name  Name on the wire.
  * \param endp  Name boundary.
- * \param pkt   Wire.
+ * \param pkt   Wire (can be NULL if not compressed).
  *
  * \retval (compressed) size of the domain name.
  * \retval KNOT_EINVAL
@@ -195,7 +195,7 @@ size_t knot_dname_size(const knot_dname_t *name);
  * \brief Returns full size of the given domain name (expanded compression ptrs).
  *
  * \param name  Domain name to get the size of.
- * \param pkt   Related packet (or NULL if unpacked)
+ * \param pkt   Related packet.
  *
  * \retval size of the domain name.
  * \retval 0 if invalid argument.
@@ -295,12 +295,11 @@ bool knot_dname_is_case_equal(const knot_dname_t *d1, const knot_dname_t *d2);
  *
  * \param name     Domain name.
  * \param nlabels  First N labels.
- * \param pkt      Related packet (or NULL if not compressed).
  *
  * \return Length of the prefix.
  */
 _pure_
-size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt);
+size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels);
 
 /*!
  * \brief Return number of labels in the domain name.

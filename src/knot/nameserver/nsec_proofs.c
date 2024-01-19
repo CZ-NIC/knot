@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -121,11 +121,11 @@ static const knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
 	size_t ce_labels = knot_dname_labels(closest_encloser, NULL);
 	size_t qname_labels = knot_dname_labels(name, NULL);
 	for (int i = 0; i < (qname_labels - ce_labels - 1); ++i) {
-		name = knot_wire_next_label(name, NULL);
+		name = knot_dname_next_label(name);
 	}
 
 	// the common labels should match
-	assert(knot_dname_is_equal(knot_wire_next_label(name, NULL), closest_encloser));
+	assert(knot_dname_is_equal(knot_dname_next_label(name), closest_encloser));
 
 	return name;
 }

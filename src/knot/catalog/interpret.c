@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -105,7 +105,7 @@ static const knot_dname_t *property_get_member(const zone_node_t *prop_node,
 	knot_rdataset_t *ptr = node_rdataset(prop_node->parent, KNOT_RRTYPE_PTR);
 	if (ptr == NULL) {
 		// fallback: search in provided complete zone contents
-		const knot_dname_t *memb_name = knot_wire_next_label(prop_node->owner, NULL);
+		const knot_dname_t *memb_name = knot_dname_next_label(prop_node->owner);
 		const zone_node_t *memb_node = zone_contents_find_node(complete_conts, memb_name);
 		ptr = node_rdataset(memb_node, KNOT_RRTYPE_PTR);
 		if (memb_node != NULL) {

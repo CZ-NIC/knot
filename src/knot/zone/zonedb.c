@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -153,7 +153,7 @@ zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *zone_name
 			return NULL;
 		}
 
-		zone_name = knot_wire_next_label(zone_name, NULL);
+		zone_name = knot_dname_next_label(zone_name);
 	}
 }
 

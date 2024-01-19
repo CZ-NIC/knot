@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -241,7 +241,7 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
 			return ret;
 		}
 		zone_node_t *parent = NULL;
-		ret = zone_tree_add_node(tree, apex, knot_wire_next_label(dname, NULL), new_cb, new_cb_ctx, &parent);
+		ret = zone_tree_add_node(tree, apex, knot_dname_next_label(dname), new_cb, new_cb_ctx, &parent);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
