@@ -96,13 +96,11 @@ void test_stage(struct test_ctx *ctx, uint32_t dur) {
 			size_t cat;
 			for (cat = 0; freq_bounds[cat] <= rnd; cat++);
 
-			struct kru_query query = {0};
-			query.price = ctx->price;
-			uint64_t *key = (uint64_t *) query.key;
+			uint64_t key[2] ALIGNED(16) = {0};
 			key[0] = random() % (ctx->cats[cat].id_max - ctx->cats[cat].id_min + 1) + ctx->cats[cat].id_min;
 
 			ctx->cats[cat].total++;
-			ctx->cats[cat].passed += !KRU.limited(ctx->kru, ctx->time, &query);
+			ctx->cats[cat].passed += !KRU.limited(ctx->kru, ctx->time, (uint8_t *)key, ctx->price);
 		}
 	}
 }
@@ -227,8 +225,8 @@ void test_multi_attackers(void) {
 #define TIMED_TESTS_TABLE_SIZE_LOG             16
 #define TIMED_TESTS_PRICE                (1 <<  9)
 #define TIMED_TESTS_QUERIES              (1 << 28) // 28
-#define TIMED_TESTS_BATCH_SIZE                  8
-#define TIMED_TESTS_TIME_UPDATE_PERIOD          8
+#define TIMED_TESTS_BATCH_SIZE                  4
+#define TIMED_TESTS_TIME_UPDATE_PERIOD          4
 #define TIMED_TESTS_MAX_THREADS                64
 #define TIMED_TESTS_WAIT_BEFORE_SEC             2  // 60
 
@@ -253,14 +251,18 @@ void *timed_runnable(void *arg) {
 			now_last_update = i;
 		}
 
-		struct kru_query queries[TIMED_TESTS_BATCH_SIZE] = {0,};
+		uint64_t key_values[TIMED_TESTS_BATCH_SIZE * 2] = {0,};
+		uint8_t *keys[TIMED_TESTS_BATCH_SIZE];
+		uint16_t prices[TIMED_TESTS_BATCH_SIZE];
+
 		for (size_t j = 0; j < TIMED_TESTS_BATCH_SIZE; j++) {
-			*(uint64_t *)queries[j].key = i * ctx->key_mult;
-			queries[j].price = TIMED_TESTS_PRICE;
+			key_values[2 * j] = i * ctx->key_mult;
+			keys[j] = (uint8_t *)(key_values + 2 * j);
+			prices[j] = TIMED_TESTS_PRICE;
 			i += ctx->increment;
 		}
 
-		KRU.limited_multi_or_nobreak(ctx->kru, now_msec, queries, TIMED_TESTS_BATCH_SIZE);
+		KRU.limited_multi_or_nobreak(ctx->kru, now_msec, keys, prices, TIMED_TESTS_BATCH_SIZE);
 	}
 	return NULL;
 }

@@ -141,18 +141,20 @@ struct query_ctx {
 	uint32_t time_now;
 	uint16_t price;
 	uint16_t id;
+	uint16_t *load;
 };
 
-static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, struct kru_query *query, struct query_ctx *ctx)
+/// Phase 1/3 of a query -- hash, prefetch, ctx init. Based on one 16-byte key.
+static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint8_t key[static 16], uint16_t price, struct query_ctx *ctx)
 {
 	// Obtain hash of *buf.
 	uint64_t hash;
 #if !USE_AES
-	hash = hash(&kru->hash_key, query->key, 16);
+	hash = hash(&kru->hash_key, key, 16);
 #else
 	{
 		__m128i h; /// hashing state
-		h = _mm_load_si128((__m128i *)query->key);
+		h = _mm_load_si128((__m128i *)key);
 		// Now do the the hashing itself.
 		__m128i *aes_key = (void*)kru->hash_key;
 		for (int i = 0; i < AES_ROUNDS; ++i) {
@@ -176,25 +178,94 @@ static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, stru
 	}
 
 	ctx->time_now = time_now;
-	ctx->price = query->price;
+	ctx->price = price;
 	ctx->id = hash;
 }
 
-static inline bool kru_limited_process(struct kru *kru, struct query_ctx *ctx)
+
+/// Phase 1/3 of multiple queries -- hash, prefetch, ctx[queries_cnt] init. Uses different bit prefixes of one 16-byte key.
+static inline void kru_limited_prefetch_multi_prefix(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, uint16_t *prices, size_t queries_cnt, struct query_ctx *ctx)
+{
+	// TODO rewrite efficiently
+
+	uint8_t keys[queries_cnt][16] ALIGNED(16);
+	for (size_t i = 0; i < queries_cnt; i++) {
+		memset(keys[i], 0, 16);
+		memcpy(keys[i], key, (prefixes[i] + 7) / 8);
+		if (prefixes[i] % 8) {
+			keys[i][prefixes[i] / 8] &= (0xFF00 >> (prefixes[i] % 8));
+		}
+	}
+
+	for (size_t k = 0; k < queries_cnt; k++) {
+		//kru_limited_prefetch(kru, time_now, keys[k], prices[k], ctx + k);
+		uint8_t *key = keys[k];
+		uint16_t price = prices[k];
+
+
+		// Obtain hash of *buf.
+		uint64_t hash;
+
+#if !USE_AES
+		SIPHASH_KEY hash_key = kru->hash_key;
+		hash_key.k0 ^= prefixes[k];
+		hash_key.k1 ^= namespace;
+		hash = hash(&hash_key, key, 16);
+#else
+		{
+			char hash_key[48] ALIGNED(32);
+			memcpy(hash_key, kru->hash_key, 48);
+			hash_key[0] ^= prefixes[k];
+			hash_key[1] ^= namespace;
+
+			__m128i h; /// hashing state
+			h = _mm_load_si128((__m128i *)key);
+			// Now do the the hashing itself.
+			__m128i *aes_key = (void*)hash_key; // kru->hash_key
+			for (int i = 0; i < AES_ROUNDS; ++i) {
+				int key_id = i % (sizeof(kru->hash_key) / sizeof(__m128i));
+				h = _mm_aesenc_si128(h, _mm_load_si128(&aes_key[key_id]));
+			}
+			memcpy(&hash, &h, sizeof(hash));
+		}
+		//FIXME: gcc 12 is apparently mixing code of hashing with update_time() ?!
+#endif
+
+		// Choose the cache-lines to operate on
+		struct load_cl *l[TABLE_COUNT];
+		const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
+		// Fetch the two cache-lines in parallel before we really touch them.
+		for (int li = 0; li < TABLE_COUNT; ++li) {
+			l[li] = &kru->load_cls[hash & loads_mask][li];
+			__builtin_prefetch(l[li], 0); // hope for read-only access
+			hash >>= kru->loads_bits;
+			ctx[k].l[li] = l[li];
+		}
+
+		ctx[k].time_now = time_now;
+		ctx[k].price = price;
+		ctx[k].id = hash;
+
+
+	}
+}
+
+/// Phase 2/3 of a query -- returns answer with no state modification.
+static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 {
 	for (int li = 0; li < TABLE_COUNT; ++li) {
 		update_time(ctx->l[li], ctx->time_now, &DECAY_32);
 	}
 
-	uint16_t id = ctx->id;
+	const uint16_t id = ctx->id;
 
 	// Find matching element.  Matching 16 bits in addition to loads_bits.
-	uint16_t *load = NULL;
+	ctx->load = NULL;
 #if !USE_AVX2
 	for (int li = 0; li < TABLE_COUNT; ++li)
 		for (int i = 0; i < LOADS_LEN; ++i)
 			if (ctx->l[li]->ids[i] == id) {
-				load = &ctx->l[li]->loads[i];
+				ctx->load = &ctx->l[li]->loads[i];
 				goto load_found;
 			}
 #else
@@ -209,68 +280,83 @@ static inline bool kru_limited_process(struct kru *kru, struct query_ctx *ctx)
 		int index = _bit_scan_reverse(_mm256_movemask_epi8(match_mask)) / 2 - 1;
 		// there's a small possibility that we hit equality only on the -1 index
 		if (index >= 0) {
-			load = &ctx->l[li]->loads[index];
+			ctx->load = &ctx->l[li]->loads[index];
 			goto load_found;
 		}
 	}
 #endif
 
-	// No match, so find position of the smallest load.
-	int min_li = 0;
-	int min_i = 0;
+	return false;
+
+load_found:;
+	static_assert(ATOMIC_CHAR16_T_LOCK_FREE == 2, "insufficient atomics");
+	const uint16_t price = ctx->price;
+	const uint32_t limit = (1<<16) - price;
+	return (*ctx->load >= limit);
+}
+
+/// Phase 3/3 of a query -- state update, overrides previous answer in case of race. Not needed if blocked by fetch phase.
+static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
+{
+	_Atomic uint16_t *load_at;
+	if (!ctx->load) {
+		// No match, so find position of the smallest load.
+		int min_li = 0;
+		int min_i = 0;
 #if !USE_SSE41
-	for (int li = 0; li < TABLE_COUNT; ++li)
-		for (int i = 0; i < LOADS_LEN; ++i)
-			if (ctx->l[li]->loads[i] < ctx->l[min_li]->loads[min_i]) {
-				min_li = li;
-				min_i = i;
-			}
+		for (int li = 0; li < TABLE_COUNT; ++li)
+			for (int i = 0; i < LOADS_LEN; ++i)
+				if (ctx->l[li]->loads[i] < ctx->l[min_li]->loads[min_i]) {
+					min_li = li;
+					min_i = i;
+				}
 #else
-	int min_val = 0;
-	for (int li = 0; li < TABLE_COUNT; ++li) {
-		// BEWARE: we're relying on the exact memory layout of struct load_cl,
-		//  where the .loads array take 15 16-bit values at the very end.
-		static_assert((offsetof(struct load_cl, loads) - 2) % 16 == 0,
-				"bad alignment of struct load_cl::loads");
-		static_assert(LOADS_LEN == 15 && sizeof(ctx->l[li]->loads[0]) == 2, "");
-		__m128i *l_v = ((__m128i *)(&ctx->l[li]->loads[-1]));
-		__m128i l0 = _mm_load_si128(l_v);
-		__m128i l1 = _mm_load_si128(l_v + 1);
-		// We want to avoid the first item in l0, so we maximize it.
-		l0 = _mm_insert_epi16(l0, (1<<16)-1, 0);
+		int min_val = 0;
+		for (int li = 0; li < TABLE_COUNT; ++li) {
+			// BEWARE: we're relying on the exact memory layout of struct load_cl,
+			//  where the .loads array take 15 16-bit values at the very end.
+			static_assert((offsetof(struct load_cl, loads) - 2) % 16 == 0,
+					"bad alignment of struct load_cl::loads");
+			static_assert(LOADS_LEN == 15 && sizeof(ctx->l[li]->loads[0]) == 2, "");
+			__m128i *l_v = ((__m128i *)(&ctx->l[li]->loads[-1]));
+			__m128i l0 = _mm_load_si128(l_v);
+			__m128i l1 = _mm_load_si128(l_v + 1);
+			// We want to avoid the first item in l0, so we maximize it.
+			l0 = _mm_insert_epi16(l0, (1<<16)-1, 0);
 
-		// Only one instruction can find minimum and its position,
-		// and it works on 8x uint16_t.
-		__m128i mp0 = _mm_minpos_epu16(l0);
-		__m128i mp1 = _mm_minpos_epu16(l1);
-		int min0 = _mm_extract_epi16(mp0, 0);
-		int min1 = _mm_extract_epi16(mp1, 0);
-		int min01, min_ix;
-		if (min0 < min1) {
-			min01 = min0;
-			min_ix = _mm_extract_epi16(mp0, 1);
-		} else {
-			min01 = min1;
-			min_ix = 8 + _mm_extract_epi16(mp1, 1);
-		}
+			// Only one instruction can find minimum and its position,
+			// and it works on 8x uint16_t.
+			__m128i mp0 = _mm_minpos_epu16(l0);
+			__m128i mp1 = _mm_minpos_epu16(l1);
+			int min0 = _mm_extract_epi16(mp0, 0);
+			int min1 = _mm_extract_epi16(mp1, 0);
+			int min01, min_ix;
+			if (min0 < min1) {
+				min01 = min0;
+				min_ix = _mm_extract_epi16(mp0, 1);
+			} else {
+				min01 = min1;
+				min_ix = 8 + _mm_extract_epi16(mp1, 1);
+			}
 
-		if (li == 0 || min_val > min01) {
-			min_li = li;
-			min_i = min_ix;
-			min_val = min01;
+			if (li == 0 || min_val > min01) {
+				min_li = li;
+				min_i = min_ix;
+				min_val = min01;
+			}
 		}
-	}
-	// now, min_i (and min_ix) is offset by one due to alignment of .loads
-	if (min_i != 0) // zero is very unlikely
-		--min_i;
+		// now, min_i (and min_ix) is offset by one due to alignment of .loads
+		if (min_i != 0) // zero is very unlikely
+			--min_i;
 #endif
 
-	ctx->l[min_li]->ids[min_i] = id;
-	load = &ctx->l[min_li]->loads[min_i]; // TODO: goto load_found?
-load_found:;
+		ctx->l[min_li]->ids[min_i] = ctx->id;
+		load_at = (_Atomic uint16_t *)&ctx->l[min_li]->loads[min_i];
+	} else {
+		load_at = (_Atomic uint16_t *)ctx->load;
+	}
 
 	static_assert(ATOMIC_CHAR16_T_LOCK_FREE == 2, "insufficient atomics");
-	_Atomic uint16_t *load_at = (_Atomic uint16_t *)load;
 	const uint16_t price = ctx->price;
 	const uint32_t limit = (1<<16) - price;
 	uint16_t load_orig = *load_at;
@@ -281,40 +367,71 @@ load_found:;
 	return false;
 }
 
-static bool kru_limited_multi_or(struct kru *kru, uint32_t time_now, struct kru_query *queries, size_t queries_cnt) {
+static bool kru_limited_multi_or(struct kru *kru, uint32_t time_now, uint8_t **keys, uint16_t *prices, size_t queries_cnt)
+{
 	struct query_ctx ctx[queries_cnt];
 
 	for (size_t i = 0; i < queries_cnt; i++) {
-		kru_limited_prefetch(kru, time_now, queries + i, ctx + i);
+		kru_limited_prefetch(kru, time_now, keys[i], prices[i], ctx + i);
 	}
 	for (size_t i = 0; i < queries_cnt; i++) {
-		if (kru_limited_process(kru, ctx + i))
+		if (kru_limited_fetch(kru, ctx + i))
 			return true;
 	}
+	bool ret = false;
 
-	return false;
+	for (size_t i = 0; i < queries_cnt; i++) {
+		ret |= kru_limited_update(kru, ctx + i);
+	}
+
+	return ret;
 }
 
-static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, struct kru_query *queries, size_t queries_cnt) {
+static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, uint8_t **keys, uint16_t *prices, size_t queries_cnt)
+{
 	struct query_ctx ctx[queries_cnt];
 	bool ret = false;
 
 	for (size_t i = 0; i < queries_cnt; i++) {
-		kru_limited_prefetch(kru, time_now, queries + i, ctx + i);
+		kru_limited_prefetch(kru, time_now, keys[i], prices[i], ctx + i);
 	}
 	for (size_t i = 0; i < queries_cnt; i++) {
-		if (kru_limited_process(kru, ctx + i))
+		if (kru_limited_fetch(kru, ctx + i))
+			ret = true;
+	}
+	if (ret) return true;
+
+	for (size_t i = 0; i < queries_cnt; i++) {
+		if (kru_limited_update(kru, ctx + i))
 			ret = true;
 	}
 
 	return ret;
 }
 
+static bool kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, uint16_t *prices, size_t queries_cnt)
+{
+	struct query_ctx ctx[queries_cnt];
+
+	kru_limited_prefetch_multi_prefix(kru, time_now, namespace, key, prefixes, prices, queries_cnt, ctx);
+
+	for (size_t i = 0; i < queries_cnt; i++) {
+		if (kru_limited_fetch(kru, ctx + i))
+			return true;
+	}
+
+	bool ret = false;
+	for (size_t i = 0; i < queries_cnt; i++) {
+		ret |= kru_limited_update(kru, ctx + i);
+	}
+
+	return ret;
+}
 
 /// Update limiting and return true iff it hit the limit instead.
-static bool kru_limited(struct kru *kru, uint32_t time_now, struct kru_query *query)
+static bool kru_limited(struct kru *kru, uint32_t time_now, uint8_t key[static 16], uint16_t price)
 {
-	return kru_limited_multi_or(kru, time_now, query, 1);
+	return kru_limited_multi_or(kru, time_now, &key, &price, 1);
 }
 
 #define KRU_API_INITIALIZER { \
@@ -322,4 +439,5 @@ static bool kru_limited(struct kru *kru, uint32_t time_now, struct kru_query *qu
 	.limited = kru_limited, \
 	.limited_multi_or = kru_limited_multi_or, \
 	.limited_multi_or_nobreak = kru_limited_multi_or_nobreak, \
+	.limited_multi_prefix_or = kru_limited_multi_prefix_or, \
 }

@@ -16,11 +16,6 @@
 
 struct kru;
 
-struct kru_query {
-	uint8_t key[16] ALIGNED(16);
-	uint16_t price;
-};
-
 /// Usage: KRU.limited(...)
 struct kru_api {
 	/// Create a new KRU structure that can truck up to 1 << capacity_log
@@ -34,15 +29,20 @@ struct kru_api {
 
 	/// Determine if a key should get limited (and update the KRU).
 	/// key needs to be aligned to a multiple of 16 bytes.
-	bool (*limited)(struct kru *kru, uint32_t time_now, struct kru_query *query);
+	bool (*limited)(struct kru *kru, uint32_t time_now, uint8_t key[static const 16], uint16_t price);
 
-	bool (*limited_multi_or)(struct kru *kru, uint32_t time_now, struct kru_query *queries, size_t queries_cnt);
-	bool (*limited_multi_or_nobreak)(struct kru *kru, uint32_t time_now, struct kru_query *queries, size_t queries_cnt);
+	/// Multiple queries. Returns OR of answers. Updates KRU only if no query is blocked (and possibly on race).
+	bool (*limited_multi_or)(struct kru *kru, uint32_t time_now, uint8_t **keys, uint16_t *prices, size_t queries_cnt);
+
+	/// Same as previous but without short-circuit evaluation; for time measurement purposes.
+	bool (*limited_multi_or_nobreak)(struct kru *kru, uint32_t time_now, uint8_t ** keys, uint16_t *prices, size_t queries_cnt);
+
+	/// Multiple queries based on different prefixes of a single key. Returns OR of answers. Updates KRU only if no query is blocked.
+	/// The key of i-th query consists of prefixes[i] bits of key, prefixes[i], and namespace.
+	bool (*limited_multi_prefix_or)(struct kru *kru, uint32_t time_now,
+			uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, uint16_t *prices, size_t queries_cnt);
 };
 // The functions are stored this way to make it easier to switch
 // implementation based on detected CPU.
 extern struct kru_api KRU;
 extern const struct kru_api KRU_GENERIC, KRU_AVX2; // for tests only
-
-
-
