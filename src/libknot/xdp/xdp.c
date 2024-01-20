@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -380,9 +380,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	}
 	if (unlikely(socket->send_mock != NULL)) {
 		int ret = socket->send_mock(socket, msgs, count, sent);
-		for (uint32_t i = 0; i < count; ++i) {
-			free_unsent(socket, &msgs[i]);
-		}
+		knot_xdp_send_free(socket, msgs, count);
 		return ret;
 	}
 
@@ -394,9 +392,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 */
 	if (xsk_prod_nb_free(&socket->tx, count) < count) {
 		/* This situation was sometimes observed in the emulated XDP mode. */
-		for (uint32_t i = 0; i < count; ++i) {
-			free_unsent(socket, &msgs[i]);
-		}
+		knot_xdp_send_free(socket, msgs, count);
 		return KNOT_ENOBUFS;
 	}
 	uint32_t idx = socket->tx.cached_prod;
