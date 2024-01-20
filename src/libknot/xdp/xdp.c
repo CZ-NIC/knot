@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 #include <linux/if_ether.h>
 #include <linux/udp.h>
+#include <poll.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -519,6 +520,11 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 		return;
 	}
 
+	struct pollfd fd = {
+		.fd = xsk_socket__fd(socket->xsk),
+		.events = POLLOUT | POLLIN
+	};
+
 	struct kxsk_umem *const umem = socket->umem;
 	struct xsk_ring_prod *const fq = &umem->fq;
 
@@ -526,8 +532,7 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
 	while (reserved != count) {
 		if (xsk_ring_prod__needs_wakeup(fq)) {
-			(void)recvfrom(xsk_socket__fd(socket->xsk), NULL, 0,
-			               MSG_DONTWAIT, NULL, NULL);
+			(void)poll(&fd, 1, 1000);
 		}
 		reserved = xsk_ring_prod__reserve(fq, count, &idx);
 	}
@@ -540,8 +545,7 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 
 	xsk_ring_prod__submit(fq, reserved);
 	if (xsk_ring_prod__needs_wakeup(fq)) {
-		(void)recvfrom(xsk_socket__fd(socket->xsk), NULL, 0,
-		               MSG_DONTWAIT, NULL, NULL);
+		(void)poll(&fd, 1, 1000);
 	}
 }
 
