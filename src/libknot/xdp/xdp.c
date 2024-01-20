@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,8 +50,8 @@
 /* It's recommended that the FQ ring size >= HW RX ring size + AF_XDP RX ring size. */
 #define RING_LEN_FQ		FRAME_COUNT_HW + FRAME_COUNT_RX
 
-#define ALLOC_RETRY_NUM		15
-#define ALLOC_RETRY_DELAY	20 // In nanoseconds.
+#define RETRY_NUM		15
+#define RETRY_DELAY		20 // In nanoseconds.
 
 /* With recent compilers we statically check #defines for settings that
  * get refused by AF_XDP drivers (in current versions, at least). */
@@ -143,7 +143,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	xsk_info->iface = iface;
 	xsk_info->umem = umem;
 
-	uint16_t bind_flags = 0;
+	uint16_t bind_flags = XDP_USE_NEED_WAKEUP;
 	if (config != NULL && config->force_copy) {
 		bind_flags |= XDP_COPY;
 	}
@@ -301,12 +301,15 @@ static struct umem_frame *alloc_tx_frame(knot_xdp_socket_t *socket)
 		return malloc(sizeof(struct umem_frame));
 	}
 
-	const struct timespec delay = { .tv_nsec = ALLOC_RETRY_DELAY };
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
 	struct kxsk_umem *umem = socket->umem;
 
 	for (int i = 0; unlikely(umem->tx_free_count == 0); i++) {
-		if (i == ALLOC_RETRY_NUM) {
+		if (i == RETRY_NUM) {
 			return NULL;
+		}
+		if (xsk_ring_prod__needs_wakeup(&socket->tx)) {
+			(void)sendmsg(xsk_socket__fd(socket->xsk), NULL, MSG_DONTWAIT);
 		}
 		nanosleep(&delay, NULL);
 		knot_xdp_send_prepare(socket);
@@ -391,10 +394,17 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 * and the API doesn't allow "cancelling reservations".
 	 * Therefore we handle `socket->tx.cached_prod` by hand.
 	 */
-	if (xsk_prod_nb_free(&socket->tx, count) < count) {
-		/* This situation was sometimes observed in the emulated XDP mode. */
-		knot_xdp_send_free(socket, msgs, count);
-		return KNOT_ENOBUFS;
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
+	for (int i = 0; unlikely(xsk_prod_nb_free(&socket->tx, count) < count); i++) {
+		if (i == RETRY_NUM) {
+			knot_xdp_send_free(socket, msgs, count);
+			return KNOT_ENOBUFS;
+		}
+		if (xsk_ring_prod__needs_wakeup(&socket->tx)) {
+			(void)sendto(xsk_socket__fd(socket->xsk), NULL, 0,
+			             MSG_DONTWAIT, NULL, 0);
+		}
+		nanosleep(&delay, NULL);
 	}
 	uint32_t idx = socket->tx.cached_prod;
 
@@ -421,7 +431,6 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	assert(*sent <= count);
 	socket->tx.cached_prod = idx;
 	xsk_ring_prod__submit(&socket->tx, *sent);
-	socket->kernel_needs_wakeup = true;
 
 	return KNOT_EOK;
 }
@@ -442,34 +451,19 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 		return KNOT_EINVAL;
 	}
 
-	/* Trigger sending queued packets. */
-	if (!socket->kernel_needs_wakeup) {
+	if (!xsk_ring_prod__needs_wakeup(&socket->tx)) {
 		return KNOT_EOK;
 	}
 
 	int ret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
-	const bool is_ok = (ret >= 0);
-	// List of "safe" errors taken from
-	// https://github.com/torvalds/linux/blame/master/samples/bpf/xdpsock_user.c
-	const bool is_again = !is_ok && (errno == ENOBUFS || errno == EAGAIN
-	                                || errno == EBUSY || errno == ENETDOWN);
-	// Some of the !is_ok cases are a little unclear - what to do about the syscall,
-	// including how caller of _sendmsg_finish() should react.
-	if (is_ok || !is_again) {
-		socket->kernel_needs_wakeup = false;
-	}
-	if (is_again) {
-		return KNOT_EAGAIN;
-	} else if (is_ok) {
+	if (ret >= 0) {
 		return KNOT_EOK;
+	} else if (errno == ENOBUFS || errno == EAGAIN || errno == EBUSY ||
+	           errno == ENETDOWN) {
+		return KNOT_EAGAIN;
 	} else {
 		return -errno;
 	}
-	/* This syscall might be avoided with a newer kernel feature (>= 5.4):
-	   https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-use-need-wakeup-bind-flag
-	   Unfortunately it's not easy to continue supporting older kernels
-	   when using this feature on newer ones.
-	 */
 }
 
 _public_
@@ -529,8 +523,12 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	struct xsk_ring_prod *const fq = &umem->fq;
 
 	uint32_t idx = 0;
-	const uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
+	uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
 	while (reserved != count) {
+		if (xsk_ring_prod__needs_wakeup(fq)) {
+			(void)recvfrom(xsk_socket__fd(socket->xsk), NULL, 0,
+			               MSG_DONTWAIT, NULL, NULL);
+		}
 		reserved = xsk_ring_prod__reserve(fq, count, &idx);
 	}
 
@@ -541,6 +539,10 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	}
 
 	xsk_ring_prod__submit(fq, reserved);
+	if (xsk_ring_prod__needs_wakeup(fq)) {
+		(void)recvfrom(xsk_socket__fd(socket->xsk), NULL, 0,
+		               MSG_DONTWAIT, NULL, NULL);
+	}
 }
 
 _public_
