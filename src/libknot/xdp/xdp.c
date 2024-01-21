@@ -47,7 +47,7 @@
 #define RING_LEN_CQ		FRAME_COUNT_TX
 #define RING_LEN_RX		FRAME_COUNT_RX
 /* It's recommended that the FQ ring size >= HW RX ring size + AF_XDP RX ring size. */
-#define RING_LEN_FQ		8192
+#define RING_LEN_FQ		(2 * FRAME_COUNT_RX)
 
 #define ALLOC_RETRY_NUM		15
 #define ALLOC_RETRY_DELAY	20 // In nanoseconds.
@@ -67,7 +67,7 @@ struct umem_frame {
 	uint8_t bytes[FRAME_SIZE];
 };
 
-static int configure_xsk_umem(struct kxsk_umem **out_umem)
+static int configure_xsk_umem(struct kxsk_umem **out_umem, bool extra_frames)
 {
 	/* Allocate memory and call driver to create the UMEM. */
 	struct kxsk_umem *umem = calloc(1,
@@ -77,8 +77,10 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 		return KNOT_ENOMEM;
 	}
 
+	size_t frame_count = FRAME_COUNT + (extra_frames ? FRAME_COUNT_RX : 0);
+
 	int ret = posix_memalign((void **)&umem->frames, getpagesize(),
-	                         FRAME_SIZE * FRAME_COUNT);
+	                         FRAME_SIZE * frame_count);
 	if (ret != 0) {
 		free(umem);
 		return KNOT_ENOMEM;
@@ -91,7 +93,7 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 		.frame_headroom = KNOT_XDP_PKT_ALIGNMENT,
 	};
 
-	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * FRAME_COUNT,
+	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * frame_count,
 	                       &umem->fq, &umem->cq, &config);
 	if (ret != KNOT_EOK) {
 		free(umem->frames);
@@ -114,11 +116,10 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 		return KNOT_ERROR;
 	}
 	assert(idx == 0);
-	assert(FRAME_COUNT == FRAME_COUNT_TX + FRAME_COUNT_RX);
-	for (uint32_t i = FRAME_COUNT_TX; i < FRAME_COUNT; ++i) {
+	for (uint32_t i = FRAME_COUNT_TX; i < frame_count; ++i) {
 		*xsk_ring_prod__fill_addr(&umem->fq, idx++) = i * FRAME_SIZE;
 	}
-	xsk_ring_prod__submit(&umem->fq, FRAME_COUNT_RX);
+	xsk_ring_prod__submit(&umem->fq, frame_count - FRAME_COUNT_TX);
 
 	return KNOT_EOK;
 }
@@ -186,7 +187,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 
 	/* Initialize shared packet_buffer for umem usage. */
 	struct kxsk_umem *umem = NULL;
-	ret = configure_xsk_umem(&umem);
+	ret = configure_xsk_umem(&umem, xdp_config->extra_frames);
 	if (ret != KNOT_EOK) {
 		kxsk_iface_free(iface);
 		return ret;
