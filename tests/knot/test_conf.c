@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -273,7 +273,6 @@ static void check_addrs(struct sockaddr_storage *addr, struct sockaddr_storage *
 		is_int(KNOT_EOK, set_ret, "set via '%s'", via_str);
 		is_int(KNOT_EOK, cmp_ret, "cmp via '%s'", via_str);
 	} else {
-		cmp_ret = sockaddr_cmp(&ref, via, true);
 		is_int(AF_UNSPEC, via->ss_family, "empty via");
 	}
 }
