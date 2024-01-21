@@ -529,12 +529,20 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 		return;
 	}
 
+	const struct timespec delay = { .tv_nsec = ALLOC_RETRY_DELAY };
+
 	struct kxsk_umem *const umem = socket->umem;
 	struct xsk_ring_prod *const fq = &umem->fq;
 
 	uint32_t idx = 0;
-	const uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
-	assert(reserved == count);
+	uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
+	for (int i = 0; unlikely(reserved < count); i++) {
+		if (i == ALLOC_RETRY_NUM) {
+			return;
+		}
+		nanosleep(&delay, NULL);
+		reserved = xsk_ring_prod__reserve(fq, count, &idx);
+	}
 
 	for (uint32_t i = 0; i < reserved; ++i) {
 		uint8_t *uframe_p = msg_uframe_ptr(&msgs[i]);
