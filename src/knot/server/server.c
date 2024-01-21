@@ -253,7 +253,8 @@ static size_t quic_rmt_count(conf_t *conf)
 }
 
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
-                                      bool udp, bool tcp, uint16_t quic, unsigned *thread_id_start)
+                                      bool udp, bool tcp, uint16_t quic, unsigned *thread_id_start,
+                                      bool extra_frames)
 {
 #ifndef ENABLE_XDP
 	assert(0);
@@ -295,17 +296,18 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 		xdp_flags |= KNOT_XDP_FILTER_ROUTE;
 	}
 
+	knot_xdp_config_t xdp_config = { .extra_frames = extra_frames };
 	for (int i = 0; i < iface.queues; i++) {
 		knot_xdp_load_bpf_t mode =
 			(i == 0 ? KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 		ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
-		                    xdp_flags, iface.port, quic, mode, NULL);
+		                    xdp_flags, iface.port, quic, mode, &xdp_config);
 		if (ret == -EBUSY && i == 0) {
 			log_notice("XDP interface %s@%u is busy, retrying initialization",
 			           iface.name, iface.port);
 			ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
 			                    xdp_flags, iface.port, quic,
-			                    KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD, NULL);
+			                    KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD, &xdp_config);
 		}
 		if (ret != KNOT_EOK) {
 			log_warning("failed to initialize XDP interface %s@%u, queue %d (%s)",
@@ -733,6 +735,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	bool route_check = conf->cache.xdp_route_check;
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
+	conf_val_t extra_frames_val = conf_get(conf, C_XDP, C_EXTRA_FRAMES);
+	bool extra_frames = conf_bool(&extra_frames_val);
 	while (lisxdp_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
@@ -740,7 +744,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		log_info("binding to XDP interface %s", addr_str);
 
 		iface_t *new_if = server_init_xdp_iface(&addr, route_check, xdp_udp,
-		                                        xdp_tcp, xdp_quic, &thread_id);
+		                                        xdp_tcp, xdp_quic, &thread_id,
+		                                        extra_frames);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;

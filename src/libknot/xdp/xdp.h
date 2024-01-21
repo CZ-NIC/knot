@@ -55,6 +55,7 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
 struct knot_xdp_config {
 	bool force_generic; /*!< Use generic XDP mode (avoid driver/hadrware implementation). */
 	bool force_copy;    /*!< Force copying packet data between kernel and user-space (avoid zero-copy). */
+	bool extra_frames;  /*!< Extra FQ frames. */
 };
 
 /*! \brief Configuration of XDP socket. */
