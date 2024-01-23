@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -445,13 +445,17 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	               get_socktype(params->protocol, KNOT_RRTYPE_SOA),
 	               params->wait,
 	               NET_FLAGS_NONE,
-	               &params->tls_params,
-	               NULL,
-	               &params->quic_params,
 	               NULL,
 	               NULL,
 	               &net);
 	if (ret != KNOT_EOK) {
+		return -1;
+	}
+
+	ret = net_init_crypto(&net, &params->tls_params, NULL, &params->quic_params);
+	if (ret != 0) {
+		ERR("failed to initialize crypto context (%s)", knot_strerror(ret));
+		net_clean(&net);
 		return -1;
 	}
 
