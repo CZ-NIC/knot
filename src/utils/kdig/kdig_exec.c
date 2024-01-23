@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -871,8 +871,7 @@ static int process_query(const query_t *query, net_t *net)
 		for (size_t i = 0; i <= query->retries; i++) {
 			// Initialize network structure for current server.
 			ret = net_init(query->local, remote, iptype, socktype,
-			               query->wait, flags, &query->tls,
-			               &query->https, &query->quic,
+			               query->wait, flags,
 			               (struct sockaddr *)&query->proxy.src,
 			               (struct sockaddr *)&query->proxy.dst,
 			               net);
@@ -886,6 +885,14 @@ static int process_query(const query_t *query, net_t *net)
 
 			// Loop over all resolved addresses for remote.
 			while (net->srv != NULL) {
+				ret = net_init_crypto(net, &query->tls, &query->https,
+				                      &query->quic);
+				if (ret != 0) {
+					ERR("failed to initialize crypto context (%s)",
+					    knot_strerror(ret));
+					break;
+				}
+
 				ret = process_query_packet(out_packet, net,
 				                           query,
 				                           query->ignore_tc,
@@ -1216,8 +1223,7 @@ static int process_xfr(const query_t *query, net_t *net)
 	    get_sockname(socktype));
 
 	// Initialize network structure.
-	ret = net_init(query->local, remote, iptype, socktype, query->wait,
-	               flags, &query->tls, &query->https, &query->quic,
+	ret = net_init(query->local, remote, iptype, socktype, query->wait, flags,
 	               (struct sockaddr *)&query->proxy.src,
 	               (struct sockaddr *)&query->proxy.dst,
 	               net);
@@ -1229,6 +1235,14 @@ static int process_xfr(const query_t *query, net_t *net)
 
 	// Loop over all resolved addresses for remote.
 	while (net->srv != NULL) {
+		ret = net_init_crypto(net, &query->tls, &query->https,
+		                      &query->quic);
+		if (ret != 0) {
+			ERR("failed to initialize crypto context (%s)",
+			    knot_strerror(ret));
+			break;
+		}
+
 		ret = process_xfr_packet(out_packet, net,
 		                         query,
 		                         &sign_ctx,

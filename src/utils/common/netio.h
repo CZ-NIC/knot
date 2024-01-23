@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -159,9 +159,9 @@ void get_addr_str(const struct sockaddr_storage *ss,
  * \param iptype	IP version.
  * \param socktype	Socket type.
  * \param wait		Network timeout interval.
- * \param tls_params	TLS parameters.
- * \param https_params	HTTPS parameters.
  * \param flags		Connection flags.
+ * \param proxy_src	Proxy source address.
+ * \param proxy_dst	Proxy destination address.
  * \param net		Network structure to initialize.
  *
  * \retval KNOT_EOK	if success.
@@ -173,12 +173,25 @@ int net_init(const srv_info_t      *local,
              const int             socktype,
              const int             wait,
              const net_flags_t     flags,
-             const tls_params_t    *tls_params,
-             const https_params_t  *https_params,
-             const quic_params_t   *quic_params,
              const struct sockaddr *proxy_src,
              const struct sockaddr *proxy_dst,
              net_t                 *net);
+
+/*!
+ * \brief (Re)initializes crypto protocols in network structure.
+ *
+ * \param net		Network structure to initialize.
+ * \param tls_params	TLS parameters.
+ * \param https_params	HTTPS parameters.
+ * \param quic_params   QUIC parameters.
+ *
+ * \retval KNOT_EOK	if success.
+ * \retval errcode	if error.
+ */
+int net_init_crypto(net_t                 *net,
+                    const tls_params_t    *tls_params,
+                    const https_params_t  *https_params,
+                    const quic_params_t   *quic_params);
 
 /*!
  * \brief Creates socket and connects (if TCP) to remote address specified

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -221,9 +221,6 @@ int net_init(const srv_info_t      *local,
              const int             socktype,
              const int             wait,
              const net_flags_t     flags,
-             const tls_params_t    *tls_params,
-             const https_params_t  *https_params,
-             const quic_params_t   *quic_params,
              const struct sockaddr *proxy_src,
              const struct sockaddr *proxy_dst,
              net_t                 *net)
@@ -288,48 +285,64 @@ int net_init(const srv_info_t      *local,
 		return KNOT_EINVAL;
 	}
 
-	// Prepare for TLS.
-	if (tls_params != NULL && tls_params->enable) {
-		int ret = 0;
+	return KNOT_EOK;
+}
+
+int net_init_crypto(net_t                 *net,
+                    const tls_params_t    *tls_params,
+                    const https_params_t  *https_params,
+                    const quic_params_t   *quic_params)
+{
+	if (net == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	if (tls_params == NULL || !tls_params->enable) {
+		return KNOT_EOK;
+	}
+
+	tls_ctx_deinit(&net->tls);
 #ifdef LIBNGHTTP2
-		// Prepare for HTTPS.
-		if (https_params != NULL && https_params->enable) {
-			ret = tls_ctx_init(&net->tls, tls_params,
-			                   GNUTLS_NONBLOCK, net->wait);
-			if (ret != KNOT_EOK) {
-				net_clean(net);
-				return ret;
-			}
-			ret = https_ctx_init(&net->https, &net->tls, https_params);
-			if (ret != KNOT_EOK) {
-				net_clean(net);
-				return ret;
-			}
-		} else
+	// Prepare for HTTPS.
+	if (https_params != NULL && https_params->enable) {
+		int ret = tls_ctx_init(&net->tls, tls_params,
+		                       GNUTLS_NONBLOCK, net->wait);
+		if (ret != KNOT_EOK) {
+			net_clean(net);
+			return ret;
+		}
+		https_ctx_deinit(&net->https);
+		ret = https_ctx_init(&net->https, &net->tls, https_params);
+		if (ret != KNOT_EOK) {
+			net_clean(net);
+			return ret;
+		}
+	} else
 #endif //LIBNGHTTP2
 #ifdef ENABLE_QUIC
-		if (quic_params != NULL && quic_params->enable) {
-			ret = tls_ctx_init(&net->tls, tls_params,
-			        GNUTLS_NONBLOCK | GNUTLS_ENABLE_EARLY_DATA |
-			        GNUTLS_NO_END_OF_EARLY_DATA, net->wait);
-			if (ret != KNOT_EOK) {
-				net_clean(net);
-				return ret;
-			}
-			ret = quic_ctx_init(&net->quic, &net->tls, quic_params);
-			if (ret != KNOT_EOK) {
-				net_clean(net);
-				return ret;
-			}
-		} else
+	if (quic_params != NULL && quic_params->enable) {
+		int ret = tls_ctx_init(&net->tls, tls_params,
+		                       GNUTLS_NONBLOCK | GNUTLS_ENABLE_EARLY_DATA |
+		                       GNUTLS_NO_END_OF_EARLY_DATA, net->wait);
+		if (ret != KNOT_EOK) {
+			net_clean(net);
+			return ret;
+		}
+		quic_ctx_deinit(&net->quic);
+		ret = quic_ctx_init(&net->quic, &net->tls, quic_params);
+		if (ret != KNOT_EOK) {
+			net_clean(net);
+			return ret;
+		}
+	} else
 #endif //ENABLE_QUIC
-		{
-			ret = tls_ctx_init(&net->tls, tls_params,
-			                   GNUTLS_NONBLOCK, net->wait);
-			if (ret != KNOT_EOK) {
-				net_clean(net);
-				return ret;
-			}
+	{
+		int ret = tls_ctx_init(&net->tls, tls_params,
+		                       GNUTLS_NONBLOCK, net->wait);
+		if (ret != KNOT_EOK) {
+			net_clean(net);
+			return ret;
 		}
 	}
 

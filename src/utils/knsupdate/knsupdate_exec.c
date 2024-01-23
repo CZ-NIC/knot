@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -447,9 +447,6 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	               NET_FLAGS_NONE,
 	               NULL,
 	               NULL,
-	               NULL,
-		       NULL,
-		       NULL,
 	               &net);
 	if (ret != KNOT_EOK) {
 		return -1;
