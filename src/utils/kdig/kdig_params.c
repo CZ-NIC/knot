@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -2295,8 +2295,9 @@ void complete_queries(list_t *queries, const query_t *conf)
 			q->operation = OPERATION_XFR;
 		}
 
-		// No retries for TCP.
-		if (q->protocol == PROTO_TCP) {
+		// Retries only apply to pure UDP.
+		if (q->protocol == PROTO_TCP ||
+		    q->tls.enable || q->https.enable || q->quic.enable) {
 			q->retries = 0;
 		}
 
