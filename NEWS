@@ -1,3 +1,36 @@
+Knot DNS 3.3.4 (2024-01-24)
+===========================
+
+Features:
+---------
+ - knotd: new configuration item for clearing configuration sections (see 'clear')
+ - knotc: configuration import can preserve database contents (see '+nopurge' flag)
+ - kxdpgun: new parameter for setting UDP payload size in EDNS (see '--edns-size') #915
+
+Improvements:
+-------------
+ - knotd: extended configuration check for 'zonefile-load' and 'journal-content'
+ - knotd: lowered check limit for additional NSEC3 iterations to 0
+ - knotd: lowered severity level of an informational backup log
+ - knotd: better log message when flushing the journal
+ - knotd: zone restore checks if requested contents are in the provided backup
+ - knotc: '+quic' is default for zone backup, '+noquic' is default for zone restore
+ - kdig: better processing of timeouts and reduced sent datagrams over QUIC
+ - kdig: no retries are attempted over QUIC
+ - keymgr: improved compatibility with bind9-generated keys
+ - libs: some improvements in XDP buffer allocation
+ - libs: upgraded embedded libngtcp2 to 1.2.0
+ - doc: various fixes and updates
+
+Bugfixes:
+---------
+ - knotd: failed to build on macOS #909
+ - knotd: 'nsec3-salt-lifetime: -1' doesn't work if 'ixfr-from-axfr' is enabled
+ - knotd: unnecessarily updated RRSIGs if 'ixfr-from-axfr' and signing are enabled
+ - knotc: zone check complains about missing zone file #913
+ - kdig: failed to try another target address over QUIC
+ - libknot: infinite loop in knot_rrset_to_wire_extra() #916
+
 Knot DNS 3.3.3 (2023-12-13)
 ===========================
 
