@@ -16,12 +16,6 @@ diff --git a/src/knot/dnssec/zone-keys.c b/src/knot/dnssec/zone-keys.c
 index cd6bf0bb3..d5cccc759 100644
 --- a/src/knot/dnssec/zone-keys.c
 +++ b/src/knot/dnssec/zone-keys.c
-@@ -1,4 +1,4 @@
--/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-+/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
- 
-     This program is free software: you can redistribute it and/or modify
-     it under the terms of the GNU General Public License as published by
 @@ -642,21 +642,6 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_key_digest_t digesttype,
  	return ret;
  }
