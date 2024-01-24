@@ -17,6 +17,9 @@ zones = t.zone(".") + rnd_zones
 
 t.link(zones, master, slave)
 
+for z in zones:
+    master.zones[z.name].zfile.update_soa(retry=10) # WARNING this inhibits the effect of some issue that QUIC communication fails sometimes. This SHOULD be removed and the QUIC issue fixed!
+
 for z in rnd_zones:
     master.dnssec(z).enable = True
 
