@@ -545,7 +545,8 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 
 	xsk_ring_prod__submit(fq, reserved);
 	if (xsk_ring_prod__needs_wakeup(fq)) {
-		(void)poll(&fd, 1, 1000);
+		int ret = poll(&fd, 1, 1000);
+		printf("poll %i\n", ret);
 	}
 }
 
