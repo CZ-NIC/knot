@@ -537,16 +537,15 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	xsk_ring_prod__submit(fq, count);
 }
 
+// The number of busy frames
+#define RING_BUSY(ring) ((*(ring)->producer - *(ring)->consumer) & (ring)->mask)
+
 _public_
 void knot_xdp_socket_info(const knot_xdp_socket_t *socket, FILE *file)
 {
 	if (socket == NULL || file == NULL) {
 		return;
 	}
-
-	// The number of busy frames
-	#define RING_BUSY(ring) \
-		((*(ring)->producer - *(ring)->consumer) & (ring)->mask)
 
 	#define RING_PRINFO(name, ring) \
 		fprintf(file, "Ring %s: size %4d, busy %4d (prod %4d, cons %4d)\n", \
@@ -566,4 +565,40 @@ void knot_xdp_socket_info(const knot_xdp_socket_t *socket, FILE *file)
 	RING_PRINFO("TX", &socket->tx);
 	RING_PRINFO("CQ", &socket->umem->cq);
 	fprintf(file, "TX free frames: %4d\n", tx_freef);
+}
+
+_public_
+int knot_xdp_socket_stats(knot_xdp_socket_t *socket, knot_xdp_stats_t *stats)
+{
+	if (socket == NULL || stats == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	memset(stats, 0, sizeof(*stats));
+
+	stats->if_name = socket->iface->if_name;
+	stats->if_index = socket->iface->if_index;
+	stats->if_queue = socket->iface->if_queue;
+
+	struct xdp_statistics xdp_stats;
+	socklen_t optlen = sizeof(xdp_stats);
+
+	int fd = knot_xdp_socket_fd(socket);
+	int ret = getsockopt(fd, SOL_XDP, XDP_STATISTICS, &xdp_stats, &optlen);
+	if (ret != 0) {
+		return knot_map_errno();
+	} else if (optlen != sizeof(xdp_stats)) {
+		return KNOT_EINVAL;
+	}
+
+	size_t common_size = MIN(sizeof(xdp_stats), sizeof(stats->socket));
+	memcpy(&stats->socket, &xdp_stats, common_size);
+
+	stats->rings.fq_free = RING_BUSY(&socket->umem->fq);
+	stats->rings.tx_free = socket->umem->tx_free_count;
+	stats->rings.rx_fill = RING_BUSY(&socket->rx);
+	stats->rings.tx_fill = RING_BUSY(&socket->tx);
+	stats->rings.cq_fill = RING_BUSY(&socket->umem->cq);
+
+	return KNOT_EOK;
 }
