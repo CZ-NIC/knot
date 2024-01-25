@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,6 +59,27 @@ struct knot_xdp_config {
 
 /*! \brief Configuration of XDP socket. */
 typedef struct knot_xdp_config knot_xdp_config_t;
+
+typedef struct {
+	const char *if_name;
+	int if_index;
+	unsigned if_queue;
+	struct {
+		uint64_t rx_dropped;
+		uint64_t rx_invalid;
+		uint64_t tx_invalid;
+		uint64_t rx_full;
+		uint64_t fq_empty;
+		uint64_t tx_empty;
+	} socket;
+	struct {
+		uint16_t fq_free;
+		uint16_t tx_free;
+		uint16_t rx_fill;
+		uint16_t tx_fill;
+		uint16_t cq_fill;
+	} rings;
+} knot_xdp_stats_t;
 
 /*!
  * \brief Initialize XDP socket.
@@ -194,5 +215,7 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
  * \param file    Output file.
  */
 void knot_xdp_socket_info(const knot_xdp_socket_t *socket, FILE *file);
+
+int knot_xdp_socket_stats(knot_xdp_socket_t *socket, knot_xdp_stats_t *stats);
 
 /*! @} */
