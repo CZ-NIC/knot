@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,60 +25,8 @@
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
 
-struct {
-	bool active_dumper;
-	pthread_t dumper;
-	uint32_t timer;
-	server_t *server;
-} stats = { 0 };
-
-typedef struct {
-	FILE *fd;
-	const list_t *query_modules;
-	const knot_dname_t *zone;
-	unsigned threads;
-	int level;
-	bool zone_emitted;
-	bool zone_name_emitted;
-	bool module_emitted;
-} dump_ctx_t;
-
-#define DUMP_STR(fd, level, name, ...) do { \
-	fprintf(fd, "%-.*s"name":\n", level, "    ", ##__VA_ARGS__); \
-} while (0)
-
-#define DUMP_CTR(fd, level, name, idx, val) do { \
-	fprintf(fd, "%-.*s"name": %"PRIu64"\n", level, "    ", idx, val); \
-} while (0)
-
-static uint64_t server_zone_count(server_t *server)
-{
-	return knot_zonedb_size(server->zone_db);
-}
-
-const stats_item_t server_stats[] = {
-	{ "zone-count", { .server_val = server_zone_count } },
-	{ 0 }
-};
-
-static uint64_t zone_size(zone_t *zone)
-{
-	return zone->contents != NULL ? zone->contents->size : 0;
-}
-
-static uint64_t zone_max_ttl(zone_t *zone)
-{
-	return zone->contents != NULL ? zone->contents->max_ttl : 0;
-}
-
-const stats_item_t zone_contents_stats[] = {
-	{ "size",    { .zone_val = zone_size } },
-	{ "max-ttl", { .zone_val = zone_max_ttl } },
-	{ 0 }
-};
-
-uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t offset,
-                           unsigned threads)
+static uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t offset,
+                                  unsigned threads)
 {
 	uint64_t res = 0;
 	for (unsigned i = 0; i < threads; i++) {
@@ -87,78 +35,102 @@ uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t offset,
 	return res;
 }
 
-static void dump_common(dump_ctx_t *ctx, knotd_mod_t *mod)
-{
-	// Dump zone name.
-	if (ctx->zone != NULL) {
-		// Prevent from zone section override.
-		if (!ctx->zone_emitted) {
-			ctx->level = 0;
-			DUMP_STR(ctx->fd, ctx->level++, "zone");
-			ctx->zone_emitted = true;
-		}
-
-		if (!ctx->zone_name_emitted) {
-			ctx->level = 1;
-			knot_dname_txt_storage_t name;
-			if (knot_dname_to_str(name, ctx->zone, sizeof(name)) == NULL) {
-				return;
-			}
-			DUMP_STR(ctx->fd, ctx->level++, "\"%s\"", name);
-			ctx->zone_name_emitted = true;
-		}
-	}
-
-	if (!ctx->module_emitted) {
-		DUMP_STR(ctx->fd, ctx->level++, "%s", mod->id->name + 1);
-		ctx->module_emitted = true;
-	}
+#define DUMP_VAL(params, it, val) { \
+	(params).item = (it); \
+	(params).value = (val); \
+	int ret = fcn(&(params), ctx); \
+	if (ret != KNOT_EOK) { \
+		return ret; \
+	} \
 }
 
-static void dump_counter(dump_ctx_t *ctx, knotd_mod_t *mod, mod_ctr_t *ctr)
+int stats_server(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 {
-	uint64_t counter = stats_get_counter(mod->stats_vals, ctr->offset, ctx->threads);
-	if (counter == 0) {
-		// Skip empty counter.
-		return;
+	stats_dump_params_t params = { .section = "server" };
+
+	if (ctx->section != NULL && strcasecmp(ctx->section, params.section) != 0) {
+		return KNOT_EOK;
 	}
 
-	dump_common(ctx, mod);
+	DUMP_VAL(params, "zone-count", knot_zonedb_size(ctx->server->zone_db));
 
-	DUMP_CTR(ctx->fd, ctx->level, "%s", ctr->name, counter);
+	return KNOT_EOK;
 }
 
-static void dump_counters(dump_ctx_t *ctx, knotd_mod_t *mod, mod_ctr_t *ctr)
+int stats_zone(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 {
-	bool counter_emitted = false;
-	for (uint32_t j = 0; j < ctr->count; j++) {
-		uint64_t counter = stats_get_counter(mod->stats_vals, ctr->offset + j, ctx->threads);
-		if (counter == 0) {
-			// Skip empty counter.
-			continue;
-		}
+	knot_dname_txt_storage_t zone;
+	stats_dump_params_t params = { .section = "zone", .zone = zone };
 
-		dump_common(ctx, mod);
+	if (ctx->section != NULL && strcasecmp(ctx->section, params.section) != 0) {
+		return KNOT_EOK;
+	}
 
-		if (!counter_emitted) {
-			DUMP_STR(ctx->fd, ctx->level, "%s", ctr->name);
-			counter_emitted = true;
-		}
+	assert(ctx->zone);
+	zone_contents_t *contents = ctx->zone->contents;
+
+	if (knot_dname_to_str(zone, ctx->zone->name, sizeof(zone)) == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	DUMP_VAL(params, "size", contents != NULL ? contents->size : 0);
+	DUMP_VAL(params, "max-ttl", contents != NULL ? contents->max_ttl : 0);
+
+	return KNOT_EOK;
+}
+
+static int stats_counter(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx,
+                         stats_dump_params_t *params, knotd_mod_t *mod, mod_ctr_t *ctr)
+{
+	params->id = NULL;
+	params->value_pos = 0;
+
+	uint64_t val = stats_get_counter(mod->stats_vals, ctr->offset, ctx->threads);
+
+	DUMP_VAL(*params, ctr->name, val);
+
+	return KNOT_EOK;
+}
+
+static int stats_counters(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx,
+                          stats_dump_params_t *params, knotd_mod_t *mod, mod_ctr_t *ctr)
+{
+	char id[64];
+	params->id = id;
+	params->value_pos = 0;
+	params->item_begin = true;
+
+	for (uint32_t i = 0; i < ctr->count; i++) {
+		uint64_t val = stats_get_counter(mod->stats_vals, ctr->offset + i,
+		                                 ctx->threads);
 
 		if (ctr->idx_to_str != NULL) {
-			char *str = ctr->idx_to_str(j, ctr->count);
-			if (str != NULL) {
-				DUMP_CTR(ctx->fd, ctx->level + 1, "%s", str, counter);
-				free(str);
+			char *str = ctr->idx_to_str(i, ctr->count);
+			if (str == NULL) {
+				continue;
 			}
+			(void)snprintf(id, sizeof(id), "%s", str);
+			free(str);
 		} else {
-			DUMP_CTR(ctx->fd, ctx->level + 1, "%u", j, counter);
+			(void)snprintf(id, sizeof(id), "%u", i);
 		}
+
+		DUMP_VAL(*params, ctr->name, val);
+		params->value_pos++;
 	}
+
+	return KNOT_EOK;
 }
 
-static void dump_modules(dump_ctx_t *ctx)
+int stats_modules(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 {
+	if (ctx->section != NULL && strncasecmp(ctx->section, "mod-", strlen("mod-")) != 0) {
+		return KNOT_EOK;
+	}
+
+	knot_dname_txt_storage_t zone;
+	stats_dump_params_t params = { 0 };
+
 	knotd_mod_t *mod;
 	WALK_LIST(mod, *ctx->query_modules) {
 		// Skip modules without statistics.
@@ -170,39 +142,114 @@ static void dump_modules(dump_ctx_t *ctx)
 			ctx->threads = knotd_mod_threads(mod);
 		}
 
+		params.section = mod->id->name + 1;
+		params.module_begin = true;
+		if (ctx->zone != NULL && params.zone == NULL) {
+			params.zone = knot_dname_to_str(zone, ctx->zone->name,
+			                                sizeof(zone));
+			if (params.zone == NULL) {
+				return KNOT_EINVAL;
+			}
+		}
+
 		// Dump module counters.
-		ctx->module_emitted = false;
 		for (int i = 0; i < mod->stats_count; i++) {
 			mod_ctr_t *ctr = mod->stats_info + i;
 			if (ctr->name == NULL) {
 				// Empty counter.
 				continue;
 			}
-			if (ctr->count == 1) {
-				// Simple counter.
-				dump_counter(ctx, mod, ctr);
-			} else {
-				// Array of counters.
-				dump_counters(ctx, mod, ctr);
+			int ret = (ctr->count == 1) ?
+			          stats_counter(fcn, ctx, &params, mod, ctr) :
+			          stats_counters(fcn, ctx, &params, mod, ctr);
+			if (ret != KNOT_EOK) {
+				return ret;
 			}
 		}
-		if (ctx->module_emitted) {
-			ctx->level--;
-		}
 	}
+
+	return KNOT_EOK;
 }
 
-static void zone_stats_dump(zone_t *zone, dump_ctx_t *ctx)
+struct {
+	bool active_dumper;
+	pthread_t dumper;
+	uint32_t timer;
+	server_t *server;
+} stats = { 0 };
+
+typedef struct {
+	FILE *fd;
+	bool section_emitted;
+	bool zone_section_emitted;
+	bool zone_emitted;
+	bool id_emitted;
+} dump_ctx_t;
+
+static int dump_ctr(stats_dump_params_t *params, stats_dump_ctx_t *dump_ctx)
+{
+	dump_ctx_t *ctx = dump_ctx->ctx;
+
+	if (params->value == 0) {
+		return KNOT_EOK;
+	}
+
+	const char *INDENT = "      ";
+	unsigned indent = 0;
+
+	if (params->zone != NULL) {
+		if (!ctx->zone_section_emitted) {
+			fprintf(ctx->fd, "zone:\n");
+			ctx->zone_section_emitted = true;
+		}
+
+		if (!ctx->zone_emitted) {
+			fprintf(ctx->fd, " \"%s\":\n", params->zone);
+			ctx->zone_emitted = true;
+		}
+		indent += 2;
+	}
+
+	if (!ctx->section_emitted || params->module_begin) {
+		fprintf(ctx->fd, "%-.*s%s:\n", indent, INDENT, params->section);
+		ctx->section_emitted = true;
+		params->module_begin = false;
+	}
+	indent++;
+
+	if (params->id != NULL) {
+		if (params->item_begin) {
+			fprintf(ctx->fd, "%-.*s%s:\n", indent, INDENT, params->item);
+			params->item_begin = false;
+		}
+		indent++;
+		fprintf(ctx->fd, "%-.*s%s: %"PRIu64"\n", indent, INDENT,
+		        params->id, params->value);
+	} else {
+		fprintf(ctx->fd, "%-.*s%s: %"PRIu64"\n", indent, INDENT,
+		        params->item, params->value);
+	}
+
+	return KNOT_EOK;
+}
+
+static void zone_stats_dump(zone_t *zone, stats_dump_ctx_t *dump_ctx)
 {
 	if (EMPTY_LIST(zone->query_modules)) {
 		return;
 	}
 
-	ctx->query_modules = &zone->query_modules;
-	ctx->zone = zone->name;
-	ctx->zone_name_emitted = false;
+	// Reset per-zone context.
+	dump_ctx_t *ctx = dump_ctx->ctx;
+	*ctx = (dump_ctx_t){
+		.fd = ctx->fd,
+		.zone_section_emitted = ctx->zone_section_emitted,
+	};
 
-	dump_modules(ctx);
+	dump_ctx->zone = zone;
+	dump_ctx->query_modules = &zone->query_modules;
+
+	(void)stats_modules(dump_ctr, dump_ctx);
 }
 
 static void dump_to_file(conf_t *conf, FILE *fd, server_t *server)
@@ -225,22 +272,24 @@ static void dump_to_file(conf_t *conf, FILE *fd, server_t *server)
 	        "identity: %s\n",
 	        date, ident);
 
-	dump_ctx_t ctx = {
-		.fd = fd,
+	dump_ctx_t ctx = { .fd = fd };
+
+	stats_dump_ctx_t dump_ctx = {
+		.server = server,
 		.query_modules = conf->query_modules,
+		.ctx = &ctx,
 	};
 
-	// Dump server statistics.
-	DUMP_STR(ctx.fd, ctx.level, "server");
-	for (const stats_item_t *item = server_stats; item->name != NULL; item++) {
-		DUMP_CTR(ctx.fd, ctx.level + 1, "%s", item->name, item->server_val(server));
-	}
+	// Dump server counters.
+	(void)stats_server(dump_ctr, &dump_ctx);
 
-	// Dump global statistics.
-	dump_modules(&ctx);
+	// Dump global module counters.
+	ctx = (dump_ctx_t){ .fd = fd };
+	(void)stats_modules(dump_ctr, &dump_ctx);
 
-	// Dump zone statistics.
-	knot_zonedb_foreach(server->zone_db, zone_stats_dump, &ctx);
+	// Dump per zone module counters (fixed zone counters not included).
+	ctx = (dump_ctx_t){ .fd = fd };
+	knot_zonedb_foreach(server->zone_db, zone_stats_dump, &dump_ctx);
 }
 
 static void dump_stats(server_t *server)
@@ -322,7 +371,6 @@ void stats_reconfigure(conf_t *conf, server_t *server)
 		return;
 	}
 
-	// Update server context.
 	stats.server = server;
 
 	conf_val_t val = conf_get(conf, C_STATS, C_TIMER);
