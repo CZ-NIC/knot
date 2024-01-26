@@ -1667,213 +1667,81 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 	return selective_zone_purge(conf(), zone, params);
 }
 
-static int send_stats_ctr(mod_ctr_t *ctr, knot_atomic_uint64_t **stats_vals, unsigned threads,
-                          ctl_args_t *args, knot_ctl_data_t *data)
+int dump_ctr(stats_dump_params_t *params, stats_dump_ctx_t *ctx)
 {
-	char index[128];
-	char value[32];
+	ctl_args_t *args = ctx->ctx;
 
-	if (ctr->count == 1) {
-		uint64_t counter = stats_get_counter(stats_vals, ctr->offset, threads);
-		int ret = snprintf(value, sizeof(value), "%"PRIu64, counter);
-		if (ret <= 0 || ret >= sizeof(value)) {
-			return KNOT_ESPACE;
-		}
-
-		(*data)[KNOT_CTL_IDX_ID] = NULL;
-		(*data)[KNOT_CTL_IDX_DATA] = value;
-
-		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, data);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	} else {
-		bool force = ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS],
-		                          CTL_FLAG_FORCE);
-
-		for (uint32_t i = 0; i < ctr->count; i++) {
-			uint64_t counter = stats_get_counter(stats_vals, ctr->offset + i, threads);
-
-			// Skip empty counters.
-			if (counter == 0 && !force) {
-				continue;
-			}
-
-			int ret;
-			if (ctr->idx_to_str) {
-				char *str = ctr->idx_to_str(i, ctr->count);
-				if (str == NULL) {
-					continue;
-				}
-				ret = snprintf(index, sizeof(index), "%s", str);
-				free(str);
-			} else {
-				ret = snprintf(index, sizeof(index), "%u", i);
-			}
-			if (ret <= 0 || ret >= sizeof(index)) {
-				return KNOT_ESPACE;
-			}
-
-			ret = snprintf(value, sizeof(value), "%"PRIu64, counter);
-			if (ret <= 0 || ret >= sizeof(value)) {
-				return KNOT_ESPACE;
-			}
-
-			(*data)[KNOT_CTL_IDX_ID] = index;
-			(*data)[KNOT_CTL_IDX_DATA] = value;
-
-			knot_ctl_type_t type = (i == 0) ? KNOT_CTL_TYPE_DATA :
-			                                  KNOT_CTL_TYPE_EXTRA;
-			ret = knot_ctl_send(args->ctl, type, data);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
+	if (ctx->item != NULL && strcasecmp(ctx->item, params->item) != 0) {
+		return KNOT_EOK;
 	}
+	ctx->match = true;
 
-	return KNOT_EOK;
-}
-
-static int modules_stats(list_t *query_modules, ctl_args_t *args, knot_ctl_data_t *data)
-{
-	if (query_modules == NULL) {
+	if (params->value == 0 &&
+	    !ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
 		return KNOT_EOK;
 	}
 
-	const char *section = args->data[KNOT_CTL_IDX_SECTION];
-	const char *item = args->data[KNOT_CTL_IDX_ITEM];
+	char value[32];
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_SECTION] = params->section,
+		[KNOT_CTL_IDX_ITEM] = params->item,
+		[KNOT_CTL_IDX_ID] = params->id,
+		[KNOT_CTL_IDX_ZONE] = params->zone,
+		[KNOT_CTL_IDX_DATA] = value,
+	};
 
-	bool section_found = (section == NULL) ? true : false;
-	bool item_found = (item == NULL) ? true : false;
+	knot_ctl_type_t type = (params->value_pos == 0) ?
+	                       KNOT_CTL_TYPE_DATA : KNOT_CTL_TYPE_EXTRA;
 
-	knotd_mod_t *mod;
-	WALK_LIST(mod, *query_modules) {
-		// Skip modules without statistics.
-		if (mod->stats_count == 0) {
-			continue;
-		}
-
-		// Check for specific module.
-		if (section != NULL) {
-			if (section_found) {
-				break;
-			} else if (strcasecmp(mod->id->name + 1, section) == 0) {
-				section_found = true;
-			} else {
-				continue;
-			}
-		}
-
-		(*data)[KNOT_CTL_IDX_SECTION] = mod->id->name + 1;
-
-		unsigned threads = knotd_mod_threads(mod);
-
-		for (int i = 0; i < mod->stats_count; i++) {
-			mod_ctr_t *ctr = mod->stats_info + i;
-
-			// Skip empty counter.
-			if (ctr->name == NULL) {
-				continue;
-			}
-
-			// Check for specific counter.
-			if (item != NULL) {
-				if (item_found) {
-					break;
-				} else if (strcasecmp(ctr->name, item) == 0) {
-					item_found = true;
-				} else {
-					continue;
-				}
-			}
-
-			(*data)[KNOT_CTL_IDX_ITEM] = ctr->name;
-
-			// Send the counters.
-			int ret = send_stats_ctr(ctr, mod->stats_vals, threads, args, data);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
+	int ret = snprintf(value, sizeof(value), "%"PRIu64, params->value);
+	if (ret <= 0 || ret >= sizeof(value)) {
+		return KNOT_ESPACE;
 	}
 
-	return (section_found && item_found) ? KNOT_EOK : KNOT_ENOENT;
+	return knot_ctl_send(args->ctl, type, &data);
 }
 
 static int common_stats(ctl_args_t *args, zone_t *zone)
 {
-	const char *section = args->data[KNOT_CTL_IDX_SECTION];
-	const char *item = args->data[KNOT_CTL_IDX_ITEM];
-
-	char value[32];
-	knot_ctl_data_t data = {
-		[KNOT_CTL_IDX_DATA] = value
+	stats_dump_ctx_t dump_ctx = {
+		.server = args->server,
+		.zone = zone,
+		.section = args->data[KNOT_CTL_IDX_SECTION],
+		.item = args->data[KNOT_CTL_IDX_ITEM],
+		.ctx = args,
 	};
 
-	knot_dname_txt_storage_t name = "";
-	if (zone != NULL) {
-		if (knot_dname_to_str(name, zone->name, sizeof(name)) == NULL) {
-			return KNOT_EINVAL;
-		}
-		data[KNOT_CTL_IDX_ZONE] = name;
+#define STATS_CHECK(ret, send) { \
+	if (ret != KNOT_EOK) { \
+		if ((send)) { /* Prevents duplicit zone error logs. */ \
+			send_error(args, knot_strerror(ret)); \
+		} \
+		return ret; \
+	} \
+}
+	if (zone == NULL) {
+		int ret = stats_server(dump_ctr, &dump_ctx);
+		STATS_CHECK(ret, true);
+
+		ret = stats_xdp(dump_ctr, &dump_ctx);
+		STATS_CHECK(ret, true);
+
+		dump_ctx.query_modules = conf()->query_modules;
+		ret = stats_modules(dump_ctr, &dump_ctx);
+		STATS_CHECK(ret, true);
+	} else {
+		int ret = stats_zone(dump_ctr, &dump_ctx);
+		STATS_CHECK(ret, false);
+
+		dump_ctx.query_modules = &zone->query_modules;
+		ret = stats_modules(dump_ctr, &dump_ctx);
+		STATS_CHECK(ret, false);
 	}
 
-	bool found = (section == NULL) ? true : false;
-
-	// Process zone metrics.
-	const char *section_name = (zone != NULL) ? "zone" : "server";
-	if (section == NULL || strcasecmp(section, section_name) == 0) {
-		data[KNOT_CTL_IDX_SECTION] = section_name;
-
-		const stats_item_t *items = (zone != NULL) ? zone_contents_stats :
-		                                             server_stats;
-		for (const stats_item_t *i = items; i->name != NULL; i++) {
-			if (item != NULL) {
-				if (found) {
-					break;
-				} else if (strcmp(i->name, item) == 0) {
-					found = true;
-				} else {
-					continue;
-				}
-			} else {
-				found = true;
-			}
-
-			data[KNOT_CTL_IDX_ITEM] = i->name;
-			int ret = snprintf(value, sizeof(value), "%"PRIu64,
-			                   (zone != NULL) ? i->zone_val(zone) :
-			                                    i->server_val(args->server));
-			if (ret <= 0 || ret >= sizeof(value)) {
-				ret = KNOT_ESPACE;
-				send_error(args, knot_strerror(ret));
-				return ret;
-			}
-
-			ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
-			if (ret != KNOT_EOK) {
-				send_error(args, knot_strerror(ret));
-				return ret;
-			}
-		}
+	if (!dump_ctx.match) {
+		STATS_CHECK(KNOT_EINVAL, zone == NULL);
 	}
-
-	if (section == NULL || strncasecmp(section, "mod-", strlen("mod-")) == 0) {
-		list_t *query_modules = (zone != NULL) ? &zone->query_modules :
-		                                         conf()->query_modules;
-		int ret = modules_stats(query_modules, args, &data);
-		if (ret != KNOT_EOK) {
-			send_error(args, knot_strerror(ret));
-			return ret;
-		}
-
-		found = true;
-	}
-
-	if (!found) {
-		send_error(args, knot_strerror(KNOT_EINVAL));
-		return KNOT_EINVAL;
-	}
+#undef STATS_CHECK
 
 	return KNOT_EOK;
 }
