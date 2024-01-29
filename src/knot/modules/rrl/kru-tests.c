@@ -224,11 +224,13 @@ void test_multi_attackers(void) {
 
 #define TIMED_TESTS_TABLE_SIZE_LOG             16
 #define TIMED_TESTS_PRICE                (1 <<  9)
-#define TIMED_TESTS_QUERIES              (1 << 28) // 28
-#define TIMED_TESTS_BATCH_SIZE                  4
+#define TIMED_TESTS_QUERIES              (1 << 26)
 #define TIMED_TESTS_TIME_UPDATE_PERIOD          4
 #define TIMED_TESTS_MAX_THREADS                64
-#define TIMED_TESTS_WAIT_BEFORE_SEC             2  // 60
+#define TIMED_TESTS_WAIT_BEFORE_SEC             2
+
+#define TIMED_TESTS_BATCH_SIZE                  1  // each query still counted individually in MQPS; should be set to 1 if PREFIXES are set
+#define TIMED_TESTS_PREFIXES                    (uint8_t []){64, 65, 66, 67}  // one query contains all prefixes, MQPS is lowered
 
 struct timed_test_ctx {
 	struct kru *kru;
@@ -244,6 +246,15 @@ void *timed_runnable(void *arg) {
 	uint32_t now_msec = 0;
 	uint64_t now_last_update = -TIMED_TESTS_TIME_UPDATE_PERIOD * ctx->increment;
 
+#ifdef TIMED_TESTS_PREFIXES
+	uint16_t prices[sizeof(TIMED_TESTS_PREFIXES)];
+#else
+	uint16_t prices[TIMED_TESTS_BATCH_SIZE];
+#endif
+	for (size_t j = 0; j < sizeof(prices)/sizeof(*prices); j++) {
+		prices[j] = TIMED_TESTS_PRICE;
+	}
+
 	for (uint64_t i = ctx->first_query; i < TIMED_TESTS_QUERIES; ) {
 		if (i >= now_last_update + TIMED_TESTS_TIME_UPDATE_PERIOD * ctx->increment) {
 			clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
@@ -253,16 +264,19 @@ void *timed_runnable(void *arg) {
 
 		uint64_t key_values[TIMED_TESTS_BATCH_SIZE * 2] = {0,};
 		uint8_t *keys[TIMED_TESTS_BATCH_SIZE];
-		uint16_t prices[TIMED_TESTS_BATCH_SIZE];
 
 		for (size_t j = 0; j < TIMED_TESTS_BATCH_SIZE; j++) {
 			key_values[2 * j] = i * ctx->key_mult;
+			key_values[2 * j + 1] = 0xFFFFFFFFFFFFFFFFll;
 			keys[j] = (uint8_t *)(key_values + 2 * j);
-			prices[j] = TIMED_TESTS_PRICE;
 			i += ctx->increment;
 		}
 
+#ifdef TIMED_TESTS_PREFIXES
+		KRU.limited_multi_prefix_or(ctx->kru, now_msec, 0, keys[0], TIMED_TESTS_PREFIXES, prices, sizeof(TIMED_TESTS_PREFIXES));
+#else
 		KRU.limited_multi_or_nobreak(ctx->kru, now_msec, keys, prices, TIMED_TESTS_BATCH_SIZE);
+#endif
 	}
 	return NULL;
 }

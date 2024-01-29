@@ -37,7 +37,6 @@ Size (`loads_bits` = log2 length):
      and/or we can choose how much of additional bytes to use for KRU.
 
 */
-
 #include <stdlib.h>
 #include <assert.h>
 #include <stdatomic.h>
@@ -69,8 +68,6 @@ typedef uint64_t hash_t;
 	#define AES_ROUNDS 4
 #else
 	#include "contrib/openbsd/siphash.h"
-	/// 1,3 should be OK choice, probably.  TODO: confirm
-	#define hash(_k, _p, _l)  SipHash((_k), 1, 3, (_p), (_l))
 #endif
 
 
@@ -87,6 +84,9 @@ struct kru {
 #else
 	/// Hashing secret.  Random but shared by all users of the table.
 	SIPHASH_KEY hash_key;
+
+	/// 1,3 should be OK choice, probably.  TODO: confirm
+	#define hash(_k, _p, _l)  SipHash((_k), 1, 3, (_p), (_l))
 #endif
 
 	/// Length of `loads_cls`, stored as binary logarithm.
@@ -167,14 +167,13 @@ static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint
 #endif
 
 	// Choose the cache-lines to operate on
-	struct load_cl *l[TABLE_COUNT];
 	const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
 	// Fetch the two cache-lines in parallel before we really touch them.
 	for (int li = 0; li < TABLE_COUNT; ++li) {
-		l[li] = &kru->load_cls[hash & loads_mask][li];
-		__builtin_prefetch(l[li], 0); // hope for read-only access
+		struct load_cl * const l = &kru->load_cls[hash & loads_mask][li];
+		__builtin_prefetch(l, 0); // hope for read-only access
 		hash >>= kru->loads_bits;
-		ctx->l[li] = l[li];
+		ctx->l[li] = l;
 	}
 
 	ctx->time_now = time_now;
@@ -183,71 +182,80 @@ static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint
 }
 
 
-/// Phase 1/3 of multiple queries -- hash, prefetch, ctx[queries_cnt] init. Uses different bit prefixes of one 16-byte key.
-static inline void kru_limited_prefetch_multi_prefix(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, uint16_t *prices, size_t queries_cnt, struct query_ctx *ctx)
+/// Phase 1/3 of a query -- hash, prefetch, ctx init. Based on a bit prefix of one 16-byte key.
+static inline void kru_limited_prefetch_prefix(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t prefix, uint16_t price, struct query_ctx *ctx)
 {
-	// TODO rewrite efficiently
-
-	uint8_t keys[queries_cnt][16] ALIGNED(16);
-	for (size_t i = 0; i < queries_cnt; i++) {
-		memset(keys[i], 0, 16);
-		memcpy(keys[i], key, (prefixes[i] + 7) / 8);
-		if (prefixes[i] % 8) {
-			keys[i][prefixes[i] / 8] &= (0xFF00 >> (prefixes[i] % 8));
-		}
-	}
-
-	for (size_t k = 0; k < queries_cnt; k++) {
-		//kru_limited_prefetch(kru, time_now, keys[k], prices[k], ctx + k);
-		uint8_t *key = keys[k];
-		uint16_t price = prices[k];
-
-
-		// Obtain hash of *buf.
-		uint64_t hash;
+	// Obtain hash of *buf.
+	uint64_t hash;
 
 #if !USE_AES
-		SIPHASH_KEY hash_key = kru->hash_key;
-		hash_key.k0 ^= prefixes[k];
-		hash_key.k1 ^= namespace;
-		hash = hash(&hash_key, key, 16);
-#else
-		{
-			char hash_key[48] ALIGNED(32);
-			memcpy(hash_key, kru->hash_key, 48);
-			hash_key[0] ^= prefixes[k];
-			hash_key[1] ^= namespace;
+	{
+		/// 1,3 should be OK choice, probably.  TODO: confirm
+		const int rc = 1, rf = 3;
 
-			__m128i h; /// hashing state
-			h = _mm_load_si128((__m128i *)key);
-			// Now do the the hashing itself.
-			__m128i *aes_key = (void*)hash_key; // kru->hash_key
-			for (int i = 0; i < AES_ROUNDS; ++i) {
-				int key_id = i % (sizeof(kru->hash_key) / sizeof(__m128i));
-				h = _mm_aesenc_si128(h, _mm_load_si128(&aes_key[key_id]));
-			}
-			memcpy(&hash, &h, sizeof(hash));
+		// Hash prefix of key, prefix size, and namespace together.
+		SIPHASH_CTX hctx;
+		SipHash_Init(&hctx, &kru->hash_key);
+		SipHash_Update(&hctx, rc, rf, &namespace, sizeof(namespace));
+		SipHash_Update(&hctx, rc, rf, &prefix, sizeof(prefix));
+		SipHash_Update(&hctx, rc, rf, key, prefix / 8);
+		if (prefix % 8) {
+			const uint8_t masked_byte = key[prefix / 8] & (0xFF00 >> (prefix % 8));
+			SipHash_Update(&hctx, rc, rf, &masked_byte, 1);
 		}
-		//FIXME: gcc 12 is apparently mixing code of hashing with update_time() ?!
+		hash = SipHash_End(&hctx, rc, rf);
+	}
+#else
+	{
+
+		__m128i h; /// hashing state
+		h = _mm_load_si128((__m128i *)key);
+
+		{ // Keep only the prefix.
+			const uint8_t p = prefix;
+
+			// Prefix mask (1...0) -> little endian byte array (0x00 ... 0x00 0xFF ... 0xFF).
+			__m128i mask = _mm_set_epi64x(
+					(p < 64 ? (p == 0 ? 0 : -1ll << (64 - p)) : -1ll),  // higher 64 bits (1...) -> second half of byte array (... 0xFF)
+					(p <= 64 ? 0 : -1ll << (128 - p)));                 // lower  64 bits (...0) ->  first half of byte array (0x00 ...)
+
+			// Swap mask endianness (0x11 ... 0x11 0x00 ... 0x00).
+			mask = _mm_shuffle_epi8(mask,
+					_mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15));
+
+			// Apply mask.
+			h = _mm_and_si128(h, mask);
+		}
+
+		// Now do the the hashing itself.
+		__m128i *aes_key = (void*)kru->hash_key;
+		{
+			// Mix namespace and prefix size into the first aes key.
+			__m128i aes_key1 = _mm_insert_epi16(_mm_load_si128(aes_key), (namespace << 8) | prefix, 0);
+			h = _mm_aesenc_si128(h, aes_key1);
+		}
+		for (int j = 1; j < AES_ROUNDS; ++j) {
+			int key_id = j % (sizeof(kru->hash_key) / sizeof(__m128i));
+			h = _mm_aesenc_si128(h, _mm_load_si128(&aes_key[key_id]));
+		}
+		memcpy(&hash, &h, sizeof(hash));
+	}
+	//FIXME: gcc 12 is apparently mixing code of hashing with update_time() ?!
 #endif
 
-		// Choose the cache-lines to operate on
-		struct load_cl *l[TABLE_COUNT];
-		const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
-		// Fetch the two cache-lines in parallel before we really touch them.
-		for (int li = 0; li < TABLE_COUNT; ++li) {
-			l[li] = &kru->load_cls[hash & loads_mask][li];
-			__builtin_prefetch(l[li], 0); // hope for read-only access
-			hash >>= kru->loads_bits;
-			ctx[k].l[li] = l[li];
-		}
-
-		ctx[k].time_now = time_now;
-		ctx[k].price = price;
-		ctx[k].id = hash;
-
-
+	// Choose the cache-lines to operate on
+	const uint32_t loads_mask = (1 << kru->loads_bits) - 1;
+	// Fetch the two cache-lines in parallel before we really touch them.
+	for (int li = 0; li < TABLE_COUNT; ++li) {
+		struct load_cl * const l = &kru->load_cls[hash & loads_mask][li];
+		__builtin_prefetch(l, 0); // hope for read-only access
+		hash >>= kru->loads_bits;
+		ctx->l[li] = l;
 	}
+
+	ctx->time_now = time_now;
+	ctx->price = price;
+	ctx->id = hash;
 }
 
 /// Phase 2/3 of a query -- returns answer with no state modification.
@@ -295,7 +303,8 @@ load_found:;
 	return (*ctx->load >= limit);
 }
 
-/// Phase 3/3 of a query -- state update, overrides previous answer in case of race. Not needed if blocked by fetch phase.
+/// Phase 3/3 of a query -- state update, return value overrides previous answer in case of race.
+/// Not needed if blocked by fetch phase.
 static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
 {
 	_Atomic uint16_t *load_at;
@@ -413,7 +422,9 @@ static bool kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint
 {
 	struct query_ctx ctx[queries_cnt];
 
-	kru_limited_prefetch_multi_prefix(kru, time_now, namespace, key, prefixes, prices, queries_cnt, ctx);
+	for (size_t i = 0; i < queries_cnt; i++) {
+		kru_limited_prefetch_prefix(kru, time_now, namespace, key, prefixes[i], prices[i], ctx + i);
+	}
 
 	for (size_t i = 0; i < queries_cnt; i++) {
 		if (kru_limited_fetch(kru, ctx + i))
