@@ -298,7 +298,6 @@ static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 	return false;
 
 load_found:;
-	static_assert(ATOMIC_CHAR16_T_LOCK_FREE == 2, "insufficient atomics");
 	const uint16_t price = ctx->price;
 	const uint32_t limit = (1<<16) - price;
 	return (*ctx->load >= limit);
