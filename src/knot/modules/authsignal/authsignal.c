@@ -29,8 +29,7 @@ static knotd_in_state_t signal_query(knotd_in_state_t state, knot_pkt_t *pkt,
 	// Check for prefix mismatch.
 	char *prefix = "\x07_dsboot";
 	size_t prefix_len = strlen(prefix);
-
-	if (memcmp(qdata->name, prefix, prefix_len) != 0) {
+	if (knot_dname_prefixlen(qdata->name, 1) != prefix_len || memcmp(qdata->name, prefix, prefix_len) != 0) {
 		// promote NXDOMAIN to NODATA to accommodate synthesis below (= may be ENT)
 		qdata->rcode = KNOT_RCODE_NOERROR;
 		return KNOTD_IN_STATE_NODATA;
