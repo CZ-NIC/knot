@@ -8,6 +8,5 @@ endif
 if SHARED_MODULE_authsignal
 knot_modules_authsignal_la_LDFLAGS = $(KNOTD_MOD_LDFLAGS)
 knot_modules_authsignal_la_CPPFLAGS = $(KNOTD_MOD_CPPFLAGS)
-knot_modules_authsignal_la_LIBADD = $(libcontrib_LIBS)
 pkglib_LTLIBRARIES += knot/modules/authsignal.la
 endif
