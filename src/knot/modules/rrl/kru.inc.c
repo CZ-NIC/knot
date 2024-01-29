@@ -68,6 +68,12 @@ typedef uint64_t hash_t;
 	#define AES_ROUNDS 4
 #else
 	#include "contrib/openbsd/siphash.h"
+
+	/// 1,3 should be OK choice, probably.  TODO: confirm
+	enum {
+		SIPHASH_RC = 1,
+		SIPHASH_RF = 3,
+	};
 #endif
 
 
@@ -75,6 +81,7 @@ typedef uint64_t hash_t;
 	#include <immintrin.h>
 	#include <x86intrin.h>
 #endif
+
 
 struct kru {
 #if USE_AES
@@ -84,9 +91,6 @@ struct kru {
 #else
 	/// Hashing secret.  Random but shared by all users of the table.
 	SIPHASH_KEY hash_key;
-
-	/// 1,3 should be OK choice, probably.  TODO: confirm
-	#define hash(_k, _p, _l)  SipHash((_k), 1, 3, (_p), (_l))
 #endif
 
 	/// Length of `loads_cls`, stored as binary logarithm.
@@ -150,7 +154,7 @@ static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint
 	// Obtain hash of *buf.
 	hash_t hash;
 #if !USE_AES
-	hash = hash(&kru->hash_key, key, 16);
+	hash = SipHash(&kru->hash_key, SIPHASH_RC, SIPHASH_RF, key, 16);
 #else
 	{
 		__m128i h; /// hashing state
@@ -189,8 +193,7 @@ static inline void kru_limited_prefetch_prefix(struct kru *kru, uint32_t time_no
 
 #if !USE_AES
 	{
-		/// 1,3 should be OK choice, probably.  TODO: confirm
-		const int rc = 1, rf = 3;
+		const int rc = SIPHASH_RC, rf = SIPHASH_RF;
 
 		// Hash prefix of key, prefix size, and namespace together.
 		SIPHASH_CTX hctx;
