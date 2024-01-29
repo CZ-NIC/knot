@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -663,6 +663,41 @@ knot_rrset_t knotd_qdata_zone_apex_rrset(const knotd_qdata_t *qdata, uint16_t ty
 	}
 
 	return node_rrset(qdata->extra->contents->apex, type);
+}
+
+_public_
+int knotd_qdata_zone_rrset(const knotd_qdata_t *qdata, const knot_dname_t *zone_name,
+                           const knot_dname_t *node_name, uint16_t type,
+                           knot_rrset_t *out)
+{
+	if (qdata == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const zone_contents_t *contents = qdata->extra->contents;
+	if (zone_name != NULL) {
+		server_t *server = qdata->params->server;
+		zone_t *zone = knot_zonedb_find(server->zone_db, zone_name);
+		if (zone == NULL) {
+			return KNOT_ENOZONE;
+		}
+		contents = zone->contents;
+	}
+	if (contents == NULL) {
+		return KNOT_EEMPTYZONE;
+	}
+
+	const zone_node_t *node = contents->apex;
+	if (node_name != NULL) {
+		node = zone_contents_find_node(contents, node_name); // NSEC3 not considered.
+	}
+	if (node == NULL) {
+		return KNOT_ENONODE;
+	}
+
+	*out = node_rrset(node, type);
+
+	return KNOT_EOK;
 }
 
 _public_

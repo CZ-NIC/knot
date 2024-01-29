@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -486,6 +486,20 @@ const knot_dname_t *knotd_qdata_zone_name(const knotd_qdata_t *qdata);
  * \return A copy of the zone apex rrset.
  */
 knot_rrset_t knotd_qdata_zone_apex_rrset(const knotd_qdata_t *qdata, uint16_t type);
+
+/*!
+ * Gets a rrset of the given type.
+ *
+ * \param[in] qdata      Query data.
+ * \param[in] zone_name  Optional zone name, the current one otherwise.
+ * \param[in] node_name  Optional node name, apex otherwise.
+ * \param[out] out       Destination rrset to store the output to.
+ *
+ * \return Error code (KNOT_ENOZONE, KNOT_EEMPTYZONE, KNOT_ENONODE), KNOT_EOK if success.
+ */
+int knotd_qdata_zone_rrset(const knotd_qdata_t *qdata, const knot_dname_t *zone_name,
+                           const knot_dname_t *node_name, uint16_t type,
+                           knot_rrset_t *out);
 
 /*! General query processing states. */
 typedef enum {
