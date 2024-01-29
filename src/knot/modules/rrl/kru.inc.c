@@ -148,7 +148,7 @@ struct query_ctx {
 static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint8_t key[static 16], uint16_t price, struct query_ctx *ctx)
 {
 	// Obtain hash of *buf.
-	uint64_t hash;
+	hash_t hash;
 #if !USE_AES
 	hash = hash(&kru->hash_key, key, 16);
 #else
@@ -163,7 +163,6 @@ static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint
 		}
 		memcpy(&hash, &h, sizeof(hash));
 	}
-	//FIXME: gcc 12 is apparently mixing code of hashing with update_time() ?!
 #endif
 
 	// Choose the cache-lines to operate on
@@ -186,7 +185,7 @@ static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint
 static inline void kru_limited_prefetch_prefix(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t prefix, uint16_t price, struct query_ctx *ctx)
 {
 	// Obtain hash of *buf.
-	uint64_t hash;
+	hash_t hash;
 
 #if !USE_AES
 	{
@@ -240,7 +239,6 @@ static inline void kru_limited_prefetch_prefix(struct kru *kru, uint32_t time_no
 		}
 		memcpy(&hash, &h, sizeof(hash));
 	}
-	//FIXME: gcc 12 is apparently mixing code of hashing with update_time() ?!
 #endif
 
 	// Choose the cache-lines to operate on
@@ -258,7 +256,7 @@ static inline void kru_limited_prefetch_prefix(struct kru *kru, uint32_t time_no
 	ctx->id = hash;
 }
 
-/// Phase 2/3 of a query -- returns answer with no state modification.
+/// Phase 2/3 of a query -- returns answer with no state modification (except update_time).
 static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 {
 	for (int li = 0; li < TABLE_COUNT; ++li) {
@@ -281,7 +279,7 @@ static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 	for (int li = 0; li < TABLE_COUNT; ++li) {
 		static_assert(LOADS_LEN == 15 && sizeof(ctx->l[li]->ids[0]) == 2, "");
 		// unfortunately we can't use aligned load here
-		__m256i ids_v = _mm256_loadu_si256(((__m256i *)&ctx->l[li]->ids[-1]));
+		__m256i ids_v = _mm256_loadu_si256((__m256i *)(ctx->l[li]->ids - 1));
 		__m256i match_mask = _mm256_cmpeq_epi16(ids_v, id_v);
 		if (_mm256_testz_si256(match_mask, match_mask))
 			continue; // no match of id
@@ -327,7 +325,7 @@ static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
 			static_assert((offsetof(struct load_cl, loads) - 2) % 16 == 0,
 					"bad alignment of struct load_cl::loads");
 			static_assert(LOADS_LEN == 15 && sizeof(ctx->l[li]->loads[0]) == 2, "");
-			__m128i *l_v = ((__m128i *)(&ctx->l[li]->loads[-1]));
+			__m128i *l_v = (__m128i *)(ctx->l[li]->loads - 1);
 			__m128i l0 = _mm_load_si128(l_v);
 			__m128i l1 = _mm_load_si128(l_v + 1);
 			// We want to avoid the first item in l0, so we maximize it.
