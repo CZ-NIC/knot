@@ -14,7 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "knot/nameserver/query_module.h"
+#include "knot/include/module.h"
 
 static knotd_in_state_t signal_query(knotd_in_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
@@ -26,10 +26,12 @@ static knotd_in_state_t signal_query(knotd_in_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
+	unsigned name_len = knot_dname_size(qdata->name);
+
 	// Check for prefix mismatch.
-	char *prefix = "\x07_dsboot";
-	size_t prefix_len = strlen(prefix);
-	if (knot_dname_prefixlen(qdata->name, 1) != prefix_len || memcmp(qdata->name, prefix, prefix_len) != 0) {
+	const char *prefix = "\x07_dsboot";
+	const size_t prefix_len = 8;
+	if (name_len < prefix_len || memcmp(qdata->name, prefix, prefix_len) != 0) {
 		// promote NXDOMAIN to NODATA to accommodate synthesis below (= may be ENT)
 		qdata->rcode = KNOT_RCODE_NOERROR;
 		return KNOTD_IN_STATE_NODATA;
@@ -45,20 +47,16 @@ static knotd_in_state_t signal_query(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	// Copy target zone name
 	knot_dname_storage_t target;
-	unsigned name_len = knot_dname_size(qdata->name) - knot_dname_size(mod->zone) - prefix_len;
-	memcpy(target, qdata->name + prefix_len, name_len);
-	target[name_len] = '\0';
-
-	// Fetch zone
-	server_t *server = qdata->params->server;
-	zone_t *zone = knot_zonedb_find(server->zone_db, target);
-	if (zone == NULL) {  // unknown zone
-		return state;
-	}
+	unsigned target_len = name_len - knot_dname_size(knotd_qdata_zone_name(qdata)) - prefix_len;
+	memcpy(target, qdata->name + prefix_len, target_len);
+	target[target_len] = '\0';
 
 	// Fetch CDS/CDNSKEY rrset
-	knot_rrset_t rrset = node_rrset(zone->contents->apex, qtype);
-	if (rrset.owner == NULL) {  // zone apex doesn't have requested type
+	knot_rrset_t rrset;
+	int ret = knotd_qdata_zone_rrset(qdata, target, NULL, qtype, &rrset);
+	if (ret == KNOT_ENOZONE) { // unknown zone
+		return state;
+	} else if (ret != KNOT_EOK || knot_rrset_empty(&rrset)) { // zone apex doesn't have requested type
 		// promote NXDOMAIN to NODATA to accommodate synthesis of other qtype
 		qdata->rcode = KNOT_RCODE_NOERROR;
 		return KNOTD_IN_STATE_NODATA;
