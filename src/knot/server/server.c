@@ -254,7 +254,7 @@ static size_t quic_rmt_count(conf_t *conf)
 
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
                                       bool udp, bool tcp, uint16_t quic, unsigned *thread_id_start,
-                                      bool extra_frames)
+                                      bool extra_frames, bool force_copy)
 {
 #ifndef ENABLE_XDP
 	assert(0);
@@ -296,7 +296,7 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 		xdp_flags |= KNOT_XDP_FILTER_ROUTE;
 	}
 
-	knot_xdp_config_t xdp_config = { .extra_frames = extra_frames };
+	knot_xdp_config_t xdp_config = { .force_copy = force_copy, .extra_frames = extra_frames };
 	for (int i = 0; i < iface.queues; i++) {
 		knot_xdp_load_bpf_t mode =
 			(i == 0 ? KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
@@ -737,6 +737,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	                     s->handlers[IO_TCP].handler.unit->size;
 	conf_val_t extra_frames_val = conf_get(conf, C_XDP, C_EXTRA_FRAMES);
 	bool extra_frames = conf_bool(&extra_frames_val);
+	conf_val_t force_copy_val = conf_get(conf, C_XDP, C_FORCE_COPY);
+	bool force_copy = conf_bool(&force_copy_val);
 	while (lisxdp_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
@@ -745,7 +747,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 		iface_t *new_if = server_init_xdp_iface(&addr, route_check, xdp_udp,
 		                                        xdp_tcp, xdp_quic, &thread_id,
-		                                        extra_frames);
+		                                        extra_frames, force_copy);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
