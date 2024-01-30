@@ -51,7 +51,6 @@
 /* It's recommended that the FQ ring size >= HW RX ring size + AF_XDP RX ring size. */
 #define RING_LEN_FQ		FRAME_COUNT_HW + FRAME_COUNT_RX
 
-#define RETRY_NUM		15
 #define RETRY_DELAY		20 // In nanoseconds.
 
 /* With recent compilers we statically check #defines for settings that
@@ -302,15 +301,13 @@ static struct umem_frame *alloc_tx_frame(knot_xdp_socket_t *socket)
 		return malloc(sizeof(struct umem_frame));
 	}
 
-	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
 	struct kxsk_umem *umem = socket->umem;
 
-	for (int i = 0; unlikely(umem->tx_free_count == 0); i++) {
-		if (i == RETRY_NUM) {
-			return NULL;
-		}
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
+	while (unlikely(umem->tx_free_count == 0)) {
 		if (xsk_ring_prod__needs_wakeup(&socket->tx)) {
-			(void)sendmsg(xsk_socket__fd(socket->xsk), NULL, MSG_DONTWAIT);
+			(void)sendto(xsk_socket__fd(socket->xsk), NULL, 0,
+			             MSG_DONTWAIT, NULL, 0);
 		}
 		nanosleep(&delay, NULL);
 		knot_xdp_send_prepare(socket);
@@ -396,11 +393,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 * Therefore we handle `socket->tx.cached_prod` by hand.
 	 */
 	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
-	for (int i = 0; unlikely(xsk_prod_nb_free(&socket->tx, count) < count); i++) {
-		if (i == RETRY_NUM) {
-			knot_xdp_send_free(socket, msgs, count);
-			return KNOT_ENOBUFS;
-		}
+	while (unlikely(xsk_prod_nb_free(&socket->tx, count) < count)) {
 		if (xsk_ring_prod__needs_wakeup(&socket->tx)) {
 			(void)sendto(xsk_socket__fd(socket->xsk), NULL, 0,
 			             MSG_DONTWAIT, NULL, 0);
@@ -530,10 +523,12 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 
 	uint32_t idx = 0;
 	uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
-	while (reserved != count) {
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
+	while (unlikely(reserved != count)) {
 		if (xsk_ring_prod__needs_wakeup(fq)) {
 			(void)poll(&fd, 1, 1000);
 		}
+		nanosleep(&delay, NULL);
 		reserved = xsk_ring_prod__reserve(fq, count, &idx);
 	}
 
