@@ -8,7 +8,9 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
-ZONE = "sub.example.com."
+import os
+import random
+import shutil
 
 def pregenerate_key(server, zone, alg):
     class a_class_with_name:
@@ -20,16 +22,16 @@ def pregenerate_key(server, zone, alg):
 
 # check zone if keys are present and used for signing
 def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
-    qdnskeys = server.dig(ZONE, "DNSKEY", bufsize=4096)
+    qdnskeys = server.dig(zone.name, "DNSKEY", bufsize=4096)
     found_dnskeys = qdnskeys.count("DNSKEY")
 
-    qdnskeyrrsig = server.dig(ZONE, "DNSKEY", dnssec=True, bufsize=4096)
+    qdnskeyrrsig = server.dig(zone.name, "DNSKEY", dnssec=True, bufsize=4096)
     found_rrsigs = qdnskeyrrsig.count("RRSIG")
 
-    qcdnskey = server.dig(ZONE, "CDNSKEY", bufsize=4096)
+    qcdnskey = server.dig(zone.name, "CDNSKEY", bufsize=4096)
     found_cdnskeys = qcdnskey.count("CDNSKEY")
 
-    qsoa = server.dig(ZONE, "SOA", dnssec=True, bufsize=4096)
+    qsoa = server.dig(zone.name, "SOA", dnssec=True, bufsize=4096)
     found_soa_rrsigs = qsoa.count("RRSIG")
 
     check_log("DNSKEYs: %d (expected %d)" % (found_dnskeys, dnskeys));
@@ -58,10 +60,10 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
     server.zone_backup(zone, flush=True)
     server.zone_verify(zone)
 
-def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
+def wait_for_rrsig_count(t, server, zone, rrtype, rrsig_count, timeout):
     rtime = 0.0
     while True:
-        qdnskeyrrsig = server.dig(ZONE, rrtype, dnssec=True, bufsize=4096)
+        qdnskeyrrsig = server.dig(zone.name, rrtype, dnssec=True, bufsize=4096)
         found_rrsigs = qdnskeyrrsig.count("RRSIG")
         if found_rrsigs == rrsig_count:
             break
@@ -70,10 +72,10 @@ def wait_for_rrsig_count(t, server, rrtype, rrsig_count, timeout):
         if rtime > timeout:
             break
 
-def wait_for_dnskey_count(t, server, dnskey_count, timeout):
+def wait_for_dnskey_count(t, server, zone, dnskey_count, timeout):
     rtime = 0.0
     while True:
-        qdnskeyrrsig = server.dig(ZONE, "DNSKEY", dnssec=True, bufsize=4096)
+        qdnskeyrrsig = server.dig(zone.name, "DNSKEY", dnssec=True, bufsize=4096)
         found_dnskeys = qdnskeyrrsig.count("DNSKEY")
         if found_dnskeys == dnskey_count:
             break
@@ -85,24 +87,29 @@ def wait_for_dnskey_count(t, server, dnskey_count, timeout):
 def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, desc):
     check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
 
-    server.ctl("zone-key-rollover %s ksk" % zone[0].name)
+    server.ctl("zone-key-rollover %s ksk" % zone.name)
+    qdnskeys = server.dig(zone.name, "DNSKEY", bufsize=4096)
+    t.sleep(server.dnssec(zone).propagation_delay + qdnskeys.resp.answer[0].ttl)
 
-    wait_for_dnskey_count(t, server, total_keys, 20)
     check_zone(server, zone, total_keys, 2, 1, 1 if before_keys > 1 else 2, desc + ": both keys active")
 
-    wait_for_rrsig_count(t, server, "DNSKEY", 1, 24)
+    wait_for_rrsig_count(t, server, zone, "DNSKEY", 1, 24)
     check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old key removed")
 
 t = Test(tsig=False)
 
 parent = t.server("knot")
-parent_zone = t.zone("com.", storage=".")
+parent_zone = t.zone_rnd(1)
 t.link(parent_zone, parent, ddns=True)
 
 parent.dnssec(parent_zone).enable = True
 
+ZONE = "sub." * random.randint(1, 8) + parent_zone[0].name
+child_zf = t.out_dir + "/" + ZONE + "zone"
+shutil.copyfile(t.data_dir + "generic.zone" , child_zf)
+
 child = t.server("knot")
-child_zone = t.zone(ZONE, storage=".")
+child_zone = t.zone(ZONE, file_name=child_zf)
 t.link(child_zone, child)
 
 child.zonefile_sync = 24 * 60 * 60
@@ -130,7 +137,7 @@ child.zone_wait(child_zone)
 t.sleep(9)
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
-watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover")
+watch_ksk_rollover(t, child, child_zone[0], 2, 2, 3, "KSK rollover")
 
 resp = parent.dig(ZONE, "DS")
 resp.check_count(1, rtype="DS")
