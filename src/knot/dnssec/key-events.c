@@ -848,6 +848,18 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		return knot_dnssec_key_rollover(ctx, flags, reschedule);
 	}
 
+	if (ret == KNOT_EOK && next.time > 0) {
+		char time_str[64] = { 0 }, *k_u_msg = reschedule->keys_changed ? "keys updated, " : "";
+		struct tm time_gm = { 0 };
+		time_t nt = next.time;
+		localtime_r(&nt, &time_gm);
+		strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
+
+		log_zone_info(ctx->zone->dname, "DNSSEC, %snext event %s %s %d at %s",
+		              k_u_msg, roll_action_name(next.type), next.ksk ? "KSK" : "ZSK",
+		              dnssec_key_get_keytag(next.key->key), time_str);
+	}
+
 	if (ret == KNOT_EOK && reschedule->keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
 		if (ret == KNOT_EOK && (ctx->dbus_event & DBUS_EVENT_KEYS_UPDATED)) {
