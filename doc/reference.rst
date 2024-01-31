@@ -2226,6 +2226,10 @@ It's possible to manage both child and parent zones by the same Knot DNS server.
 .. NOTE::
    Module :ref:`Onlinesign<mod-onlinesign>` doesn't support DS push.
 
+.. NOTE::
+   When turning this feature on while a KSK roll-over is already running, it might
+   not take effect for the already-running roll-over.
+
 *Default:* not set
 
 .. _policy_dnskey-sync:

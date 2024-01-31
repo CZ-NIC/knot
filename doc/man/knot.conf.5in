@@ -2028,6 +2028,14 @@ Module Onlinesign doesn\(aqt support DS push.
 .UNINDENT
 .UNINDENT
 .sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+When turning this feature on while a KSK roll\-over is already running, it might
+not take effect for the already\-running roll\-over.
+.UNINDENT
+.UNINDENT
+.sp
 \fIDefault:\fP not set
 .SS dnskey\-sync
 .sp
