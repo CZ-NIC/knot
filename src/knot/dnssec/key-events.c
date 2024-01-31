@@ -293,7 +293,8 @@ typedef enum {
 
 typedef struct {
 	roll_action_type_t type;
-	bool ksk;
+	bool ksk; // These flags seem redundant, but are needed to avoid ASAN
+	bool zsk; // heap-use-after-free if the key is accessed directly during key generation.
 	knot_time_t time;
 	knot_kasp_key_t *key;
 	uint16_t ready_keytag;
@@ -525,6 +526,7 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 		if (knot_time_cmp(keytime, res.time) < 0) {
 			res.key = key;
 			res.ksk = key->is_ksk;
+			res.zsk = key->is_zsk;
 			res.time = keytime;
 			res.type = restype;
 		}
@@ -677,6 +679,28 @@ static int exec_really_remove(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
 	assert(!ctx->keep_deleted_keys);
 	return kdnssec_delete_key(ctx, key);
+}
+
+static void log_next_event(kdnssec_ctx_t *ctx, roll_action_t *next)
+{
+	char time_str[64] = "";
+	struct tm time_gm = { 0 };
+	time_t nt = next->time;
+	localtime_r(&nt, &time_gm);
+	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
+
+	if (next->type == GENERATE) {
+		const char *key_type = ctx->policy->single_type_signing ?
+			"CSK" : (next->ksk ? "KSK" : "ZSK");
+		log_zone_info(ctx->zone->dname, "DNSSEC, next key action, %s, generate at %s",
+		              key_type, time_str);
+	} else {
+		const char *key_type = next->ksk ?
+			(next->zsk ? "CSK" : "KSK") : "ZSK";
+		log_zone_info(ctx->zone->dname, "DNSSEC, next key action, %s tag %hu, %s at %s",
+		              key_type, dnssec_key_get_keytag(next->key->key),
+		              roll_action_name(next->type), time_str);
+	}
 }
 
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
@@ -846,6 +870,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 
 	if (ret == KNOT_EOK && knot_time_cmp(reschedule->next_rollover, ctx->now) <= 0) {
 		return knot_dnssec_key_rollover(ctx, flags, reschedule);
+	}
+
+	if (ret == KNOT_EOK && next.time > 0) {
+		log_next_event(ctx, &next);
 	}
 
 	if (ret == KNOT_EOK && reschedule->keys_changed) {
