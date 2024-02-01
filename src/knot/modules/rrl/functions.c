@@ -112,9 +112,9 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 		return NULL;
 	}
 
-	const uint16_t base_price = (1 << 10) * 1000 / rate;
-		// max price decay per 32 ticks:  (1 << 16) / 2
-		// rate limit per 32 ticks:       rate / 1000 * 32
+	const uint16_t base_price = 14043013 / rate;
+		// max price decay per tick:  1404.30134
+		// rate limit per tick:       rate / 1000
 
 	for (size_t i = 0; i < RRL_V4_PREFIXES_CNT; i++) {
 		tbl->v4_prices[i] = base_price / RRL_V4_RATE_MULT[i];
