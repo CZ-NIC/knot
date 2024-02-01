@@ -35,7 +35,7 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #define RRL_PRICE_LOG 9   // highest price of all prefixes, same for IPv4 and IPv6
 
 #define RRL_TABLE_SIZE  (1 << 20)
-#define RRL_RATE_LIMIT  ((1 << (15 - RRL_PRICE_LOG)) / 32 * 1000)
+#define RRL_RATE_LIMIT  (14043013 / (1 << RRL_PRICE_LOG))
 
 #define RRL_THREADS 8
 //#define RRL_SYNC_WITH_REAL_TIME
