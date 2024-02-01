@@ -34,11 +34,15 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 
 #define RRL_PRICE_LOG 9   // highest price of all prefixes, same for IPv4 and IPv6
 
+#define RRL_TABLE_SIZE  (1 << 20)
+#define RRL_RATE_LIMIT  (1404301 / (1 << RRL_PRICE_LOG))
+
 #define RRL_THREADS 8
 //#define RRL_SYNC_WITH_REAL_TIME
 
-uint32_t initial_limit(uint16_t price_log) {
-	return (1 << (16 - price_log)) - 1;
+uint32_t initial_limit(uint16_t rate_mult) {
+	// return (1 << (16 - price_log)) - 1;
+	return (1 << (16 - RRL_PRICE_LOG)) * rate_mult - 1;
 }
 
 // expected limits for parallel test (for largest prefix)
@@ -190,14 +194,14 @@ void test_rrl(char *impl_name, rrl_req_t rq, knot_dname_t *zone) {
 	fakeclock_init();
 
 	/* create rrl table */
-	rrl_table_t *rrl = rrl_create(1, 1);  // XXX parameters ignored
+	rrl_table_t *rrl = rrl_create(RRL_TABLE_SIZE, RRL_RATE_LIMIT);
 	ok(rrl != NULL, "rrl(%s): create", impl_name);
 
-	if (KRU.create == KRU_GENERIC.create) {
-		struct kru_generic *kru = (struct kru_generic *) rrl;
+	if (KRU.initialize == KRU_GENERIC.initialize) {
+		struct kru_generic *kru = (struct kru_generic *) rrl->kru;
 		memset(&kru->hash_key, RRL_SEED_GENERIC, sizeof(kru->hash_key));
-	} else if (KRU.create == KRU_AVX2.create) {
-		struct kru_avx2 *kru = (struct kru_avx2 *) rrl;
+	} else if (KRU.initialize == KRU_AVX2.initialize) {
+		struct kru_avx2 *kru = (struct kru_avx2 *) rrl->kru;
 		memset(&kru->hash_key, RRL_SEED_AVX2, sizeof(kru->hash_key));
 	} else {
 		assert(0);
@@ -229,7 +233,7 @@ void test_rrl(char *impl_name, rrl_req_t rq, knot_dname_t *zone) {
 
 	/* different namespaces for IPv4 and IPv6 */
 	ret = count_passing_queries(rrl, AF_INET6, "0102:0304:%x::", 0,0xffff, 1 << 16);
-	is_int(initial_limit(0), ret, "rrl(%s): different namespaces for IPv4 and IPv6 (needs limit on IPv6 /32)", impl_name);
+	is_int(initial_limit(512), ret, "rrl(%s): different namespaces for IPv4 and IPv6 (needs limit on IPv6 /32)", impl_name);
 
 	/* unblocked request */
 	fakeclock_tick = 32;
@@ -241,21 +245,21 @@ void test_rrl(char *impl_name, rrl_req_t rq, knot_dname_t *zone) {
 	is_int(KNOT_EOK, ret, "rrl(%s): unblocked IPv6 request", impl_name);
 
 	/* IPv4 multi-prefix tests */
-	int limit = initial_limit(9);
+	int limit = initial_limit(1);
 	ret = count_passing_queries(rrl, AF_INET, "128.0.0.0", 0,0, 1 << 16);
 	is_int(limit, ret, "rrl(%s): IPv4 limit for /32", impl_name);
 
 	ret = count_passing_queries(rrl, AF_INET, "128.0.0.1", 0,0, 1);
 	is_int(-1, ret, "rrl(%s): IPv4 limit for /32 not applied for /31", impl_name);
 
-	limit = initial_limit(7) - initial_limit(9) - 1;
+	limit = initial_limit(4) - initial_limit(1) - 1;
 	ret = count_passing_queries(rrl, AF_INET, "128.0.0.%d", 2,15, 1 << 16);
 	is_int(limit, ret, "rrl(%s): IPv4 limit for /28", impl_name);
 
 	ret = count_passing_queries(rrl, AF_INET, "128.0.0.16", 0,0, 1);
 	is_int(-1, ret, "rrl(%s): IPv4 limit for /28 not applied for /27", impl_name);
 
-	limit = initial_limit(5) - initial_limit(7) - 1;
+	limit = initial_limit(16) - initial_limit(4) - 1;
 	ret = count_passing_queries(rrl, AF_INET, "128.0.0.%d", 17,255, 1 << 16);
 	is_int(limit, ret, "rrl(%s): IPv4 limit for /24", impl_name);
 
@@ -264,21 +268,21 @@ void test_rrl(char *impl_name, rrl_req_t rq, knot_dname_t *zone) {
 
 
 	/* IPv6 multi-prefix tests */
-	limit = initial_limit(9);
+	limit = initial_limit(1);
 	ret = count_passing_queries(rrl, AF_INET6, "8000::", 0,0, 1 << 16);
 	is_int(limit, ret, "rrl(%s): IPv6 limit for /128", impl_name);
 
 	ret = count_passing_queries(rrl, AF_INET6, "8000::1", 0,0, 1);
 	is_int(-1, ret, "rrl(%s): IPv6 limit for /128 not applied for /127", impl_name);
 
-	limit = initial_limit(7) - initial_limit(9) - 1;
+	limit = initial_limit(4) - initial_limit(1) - 1;
 	ret = count_passing_queries(rrl, AF_INET6, "8000:0:0:0:%02x00::", 0x01,0xff, 1 << 16);
 	is_int(limit, ret, "rrl(%s): IPv6 limit for /64", impl_name);
 
 	ret = count_passing_queries(rrl, AF_INET6, "8000:0:0:1::", 0,0, 1);
 	is_int(-1, ret, "rrl(%s): IPv6 limit for /64 not applied for /63", impl_name);
 
-	limit = initial_limit(5) - initial_limit(7) - 1;
+	limit = initial_limit(16) - initial_limit(4) - 1;
 	ret = count_passing_queries(rrl, AF_INET6, "8000:0:0:00%02x::", 0x01,0xff, 1 << 16);
 	is_int(limit, ret, "rrl(%s): IPv6 limit for /56", impl_name);
 
@@ -403,8 +407,8 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *zone = knot_dname_from_str_alloc("rrl.");
 
-	assert(KRU_GENERIC.create != KRU_AVX2.create);
-	bool test_avx2 = (KRU.create == KRU_AVX2.create);
+	assert(KRU_GENERIC.initialize != KRU_AVX2.initialize);
+	bool test_avx2 = (KRU.initialize == KRU_AVX2.initialize);
 
 	KRU = KRU_GENERIC;
 	test_rrl("KRU_GENERIC", rq, zone);

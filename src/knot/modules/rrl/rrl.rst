@@ -60,16 +60,10 @@ A module identifier.
 rate-limit
 ..........
 
-XXX not used XXX
+Maximal allowed number of queries per second from a single host.
 
-Rate limiting is based on the token bucket scheme. A rate basically
-represents a number of tokens available each second. Each response is
-processed and classified (based on several discriminators, e.g.
-source netblock, query type, zone name, rcode, etc.). Classified responses are
-then hashed and assigned to a bucket containing number of available
-tokens, timestamp and metadata. When available tokens are exhausted,
-response is dropped or sent as truncated (see :ref:`mod-rrl_slip`).
-Number of available tokens is recalculated each second.
+Rate limiting is performed on the whole address and several chosen prefixes.
+The limits of prefixes are constant multiples of `rate-limit`.
 
 *Required*
 
@@ -78,16 +72,18 @@ Number of available tokens is recalculated each second.
 table-size
 ..........
 
-XXX not used XXX
+Maximal number of stored hosts/networks with their current frequencies of queries.
+The data structure tries to store only the most frequent sources and the table size is internally a little bigger,
+so it is safe to set it according to the expected maximal number of limited sources.
 
-Size of the hash table in a number of buckets. The larger the hash table, the lesser
-the probability of a hash collision, but at the expense of additional memory costs.
-Each bucket is estimated roughly to 32 bytes. The size should be selected as
-a reasonably large prime due to better hash function distribution properties.
-Hash table is internally chained and works well up to a fill rate of 90 %, general
-rule of thumb is to select a prime near 1.2 * maximum_qps.
+Use `4 * maximum_qps / rate-limit`,
+where `maximum_qps` is the number of queries which can be handled by the server per second.
+There is at most `maximum_qps / rate-limit` limited sources for each of `4` prefixes.
+The value will be rounded up to the nearest power of two.
 
-*Default:* ``393241``
+The memory occupied by the data structure is `8 * table-size B`.
+
+*Default:* ``524288``
 
 .. _mod-rrl_slip:
 

@@ -112,30 +112,40 @@ static inline int32_t capacity2loads(int capacity_log)
 	return loads_bits > 0 ? loads_bits : 1;
 }
 
-static struct kru *kru_create(int capacity_log)
+static size_t kru_get_size(int capacity_log)
 {
-	struct kru *kru;
 	uint32_t loads_bits = capacity2loads(capacity_log);
 	if (8 * sizeof(hash_t) < TABLE_COUNT * loads_bits
-				+ 8 * sizeof(kru->load_cls[0]->ids[0])) {
+				+ 8 * sizeof(((struct kru *)0)->load_cls[0]->ids[0])) {
 		assert(false);
-		return NULL;
+		return 0;
 	}
 
-	size_t size = offsetof(struct kru, load_cls)
+	return offsetof(struct kru, load_cls)
 		    + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits);
-	// ensure good alignment
-	if (posix_memalign((void **)&kru, 64, size) != 0)
-		return NULL;
+}
+
+
+static bool kru_initialize(struct kru *kru, int capacity_log)
+{
+	if (!kru) {
+		return false;
+	}
+
+	uint32_t loads_bits = capacity2loads(capacity_log);
+	if (8 * sizeof(hash_t) < TABLE_COUNT * loads_bits
+				+ 8 * sizeof(((struct kru *)0)->load_cls[0]->ids[0])) {
+		assert(false);
+		return false;
+	}
 
 	kru->loads_bits = loads_bits;
 
 	if (dnssec_random_buffer((uint8_t *)&kru->hash_key, sizeof(kru->hash_key)) != DNSSEC_EOK) {
-		free(kru);
-		return NULL;
+		return false;
 	}
 
-	return kru;
+	return true;
 }
 
 struct query_ctx {
@@ -446,7 +456,8 @@ static bool kru_limited(struct kru *kru, uint32_t time_now, uint8_t key[static 1
 }
 
 #define KRU_API_INITIALIZER { \
-	.create = kru_create, \
+	.get_size = kru_get_size, \
+	.initialize = kru_initialize, \
 	.limited = kru_limited, \
 	.limited_multi_or = kru_limited_multi_or, \
 	.limited_multi_or_nobreak = kru_limited_multi_or_nobreak, \

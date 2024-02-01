@@ -124,7 +124,9 @@ void test_print_stats(struct test_ctx *ctx) {
 	test_print_stats(&ctx); }
 
 void test_single_attacker(void) {
-	struct kru *kru = KRU.create(16);
+	struct kru *kru = NULL;
+	posix_memalign((void **)&kru, 64, KRU.get_size(16));
+	KRU.initialize(kru, 16);
 
 	struct test_cat cats[] = {
 		{ "normal",       1,1000  },   // normal queries come from 1000 different addreses indexed 1-1000
@@ -160,8 +162,9 @@ void test_single_attacker(void) {
 #undef TEST_STAGE
 
 void test_multi_attackers(void) {
-
-	struct kru *kru = KRU.create(15);
+	struct kru *kru = NULL;
+	posix_memalign((void **)&kru, 64, KRU.get_size(15));
+	KRU.initialize(kru, 15);
 
 	struct test_cat cats[] = {
 		{ "normal",         1,100000,  100000 },   // 100000 normal queries per tick, ~1 per user
@@ -258,7 +261,7 @@ void *timed_runnable(void *arg) {
 }
 
 void timed_tests() {
-	struct kru *kru;
+	struct kru *kru = NULL;
 	struct timed_test_ctx ctx[TIMED_TESTS_MAX_THREADS];
 	pthread_t thr[TIMED_TESTS_MAX_THREADS];
 	struct timespec begin_ts, end_ts;
@@ -271,7 +274,8 @@ void timed_tests() {
 			nanosleep(&wait_ts, NULL);
 			printf("%3d threads, %-15s:  ", threads, (collide ? "single query" : "unique queries"));
 
-			kru = KRU.create(TIMED_TESTS_TABLE_SIZE_LOG);
+			posix_memalign((void **)&kru, 64, KRU.get_size(TIMED_TESTS_TABLE_SIZE_LOG));
+			KRU.initialize(kru, TIMED_TESTS_TABLE_SIZE_LOG);
 			clock_gettime(CLOCK_REALTIME, &begin_ts);
 
 			for (int t = 0; t < threads; t++) {
@@ -287,7 +291,7 @@ void timed_tests() {
 			}
 
 			clock_gettime(CLOCK_REALTIME, &end_ts);
-			free(kru);
+			free(kru); kru = NULL;
 
 			diff_nsec = (end_ts.tv_sec - begin_ts.tv_sec) * 1000000000ll + end_ts.tv_nsec - begin_ts.tv_nsec;
 			double diff_sec = diff_nsec / 1000000000.0;

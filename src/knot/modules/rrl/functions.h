@@ -26,8 +26,7 @@
 #include "knot/modules/rrl/kru.h"
 
 
-typedef struct kru rrl_table_t;
-
+typedef struct rrl_table rrl_table_t;
 
 /*! \brief RRL request flags. */
 typedef enum {

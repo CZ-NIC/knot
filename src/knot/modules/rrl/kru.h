@@ -18,21 +18,24 @@ struct kru;
 
 /// Usage: KRU.limited(...)
 struct kru_api {
-	/// Create a new KRU structure that can track roughly 2^capacity_log limited keys.
+	/// Initialize a new KRU structure that can track roughly 2^capacity_log limited keys.
 	///
-	/// Use simply free() to destroy this structure.
-	/// RAM: the current parametrization will use 8 bytes * 2^capacity_log.
+	/// The kru parameter should point to a preallocated memory
+	/// of size returned by get_size aligned to 64-bytes;
+	/// deallocate the memory to destroy KRU.
+	/// RAM: the current parametrization will use roughly 8 bytes * 2^capacity_log.
 	///
 	/// The number of non-limited keys is basically arbitrary,
 	/// but the total sum of prices per tick (for queries returning false)
 	/// should not get over roughly 2^(capacity_log + 15).
 	/// Note that the _multi variants increase these totals
 	/// by tracking multiple keys in a single query.
-	struct kru * (*create)(int capacity_log);
+	///
+	/// Returns false if kru is NULL or other failure occurs.
+	bool (*initialize)(struct kru *kru, int capacity_log);
 
-	// TODO: probably allow to split creation as follows.
-	//size_t (*get_size)(int capacity_log);
-	//void (*initialize)(struct kru *kru);
+	/// Calculate size of the KRU structure.
+	size_t (*get_size)(int capacity_log);
 
 	/// Determine if a key should get limited (and update the KRU).
 	/// key needs to be aligned to a multiple of 16 bytes.
