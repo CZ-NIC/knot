@@ -112,8 +112,8 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 		return NULL;
 	}
 
-	const uint16_t base_price = 14043013 / rate;
-		// max price decay per tick:  1404.30134
+	const uint16_t base_price = 1404301 / rate;
+		// max price decay per tick:  1404.301
 		// rate limit per tick:       rate / 1000
 
 	for (size_t i = 0; i < RRL_V4_PREFIXES_CNT; i++) {
