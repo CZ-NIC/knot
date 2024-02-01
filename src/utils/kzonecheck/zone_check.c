@@ -20,6 +20,7 @@
 #include "utils/kzonecheck/zone_check.h"
 
 #include "knot/zone/contents.h"
+#include "knot/zone/digest.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/msg.h"
@@ -62,7 +63,7 @@ static void print_statistics(err_handler_stats_t *stats)
 	}
 }
 
-int zone_check(const char *zone_file, const knot_dname_t *zone_name,
+int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd,
                semcheck_optional_t optional, time_t time, bool print)
 {
 	err_handler_stats_t stats = {
@@ -100,6 +101,16 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name,
 			ret = KNOT_EINVAL;
 		} else {
 			ret = KNOT_ESEMCHECK;
+		}
+	}
+
+	if (zonemd) {
+		ret = zone_contents_digest_verify(contents);
+		if (ret != KNOT_EOK) {
+			if (stats.error_count > 0 && !stats.handler.error) {
+				fprintf(stderr, "\n");
+			}
+			ERR2("invalid ZONEMD");
 		}
 	}
 
