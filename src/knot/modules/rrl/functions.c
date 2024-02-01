@@ -28,16 +28,21 @@
 /* CIDR block prefix lengths for v4/v6 */
 // Hardcoded also in unit tests.
 
-#define RRL_V4_PREFIXES (uint8_t[])  {     24,      28,      32}
-#define RRL_V4_PRICES   (uint16_t[]) { 1 << 5, 1 <<  7, 1 <<  9}
+#define RRL_V4_PREFIXES  (uint8_t[])  {  24,  28,  32}
+#define RRL_V4_RATE_MULT (uint16_t[]) {  16,   4,   1}
 
-#define RRL_V6_PREFIXES (uint8_t[])  {     32,     56,      64,     128}
-#define RRL_V6_PRICES   (uint16_t[]) { 1 << 0, 1 << 5, 1 <<  7, 1 <<  9}
+#define RRL_V6_PREFIXES  (uint8_t[])  {  32,  56,  64, 128}
+#define RRL_V6_RATE_MULT (uint16_t[]) { 512,  16,   4,   1}
 
 #define RRL_V4_PREFIXES_CNT (sizeof(RRL_V4_PREFIXES) / sizeof(*RRL_V4_PREFIXES))
 #define RRL_V6_PREFIXES_CNT (sizeof(RRL_V6_PREFIXES) / sizeof(*RRL_V6_PREFIXES))
 #define RRL_MAX_PREFIXES_CNT ((RRL_V4_PREFIXES_CNT > RRL_V6_PREFIXES_CNT) ? RRL_V4_PREFIXES_CNT : RRL_V6_PREFIXES_CNT)
 
+struct rrl_table {
+	struct kru *kru;
+	uint16_t v4_prices[RRL_V4_PREFIXES_CNT];
+	uint16_t v6_prices[RRL_V6_PREFIXES_CNT];
+};
 
 /*
 static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss) // TODO remove or adapt
@@ -92,9 +97,31 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 		return NULL;
 	}
 
-	rrl_table_t *tbl = KRU.create(20);  // TODO set loads_bits
+	size--;
+	size_t capacity_log = 1;
+	while (size >>= 1) capacity_log++;
+
+	rrl_table_t *tbl = malloc(sizeof(rrl_table_t));
 	if (!tbl) {
 		return NULL;
+	}
+
+	tbl->kru = KRU.create(capacity_log);
+	if (!tbl->kru) {
+		free(tbl);
+		return NULL;
+	}
+
+	const uint16_t base_price = (1 << 10) * 1000 / rate;
+		// max price decay per 32 ticks:  (1 << 16) / 2
+		// rate limit per 32 ticks:       rate / 1000 * 32
+
+	for (size_t i = 0; i < RRL_V4_PREFIXES_CNT; i++) {
+		tbl->v4_prices[i] = base_price / RRL_V4_RATE_MULT[i];
+	}
+
+	for (size_t i = 0; i < RRL_V6_PREFIXES_CNT; i++) {
+		tbl->v6_prices[i] = base_price / RRL_V6_RATE_MULT[i];
 	}
 
 	return tbl;
@@ -116,14 +143,14 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
 		memcpy(key, &ipv6->sin6_addr, 16);
 
-		return KRU.limited_multi_prefix_or(rrl, now, 1, key, RRL_V6_PREFIXES, RRL_V6_PRICES, RRL_V6_PREFIXES_CNT)
+		return KRU.limited_multi_prefix_or(rrl->kru, now, 1, key, RRL_V6_PREFIXES, rrl->v6_prices, RRL_V6_PREFIXES_CNT)
 			? KNOT_ELIMIT : KNOT_EOK;
 
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
 		memcpy(key, &ipv4->sin_addr, 4);
 
-		return KRU.limited_multi_prefix_or(rrl, now, 0, key, RRL_V4_PREFIXES, RRL_V4_PRICES, RRL_V4_PREFIXES_CNT)
+		return KRU.limited_multi_prefix_or(rrl->kru, now, 0, key, RRL_V4_PREFIXES, rrl->v4_prices, RRL_V4_PREFIXES_CNT)
 			? KNOT_ELIMIT : KNOT_EOK;
 	}
 }
@@ -142,5 +169,6 @@ bool rrl_slip_roll(int n_slip)
 
 void rrl_destroy(rrl_table_t *rrl)
 {
+	free(rrl->kru);
 	free(rrl);
 }
