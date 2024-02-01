@@ -2035,7 +2035,8 @@ A period between ZSK activation and the next rollover initiation.
    and after this, a new ZSK is generated to replace it within
    following roll-over.
 
-   ZSK key lifetime is also influenced by propagation-delay and dnskey-ttl
+   As a consequence, in normal operation, this results in the period
+   of ZSK generation being `zsk-lifetime + propagation-delay + dnskey_ttl`.
 
    Zero (aka infinity) value causes no ZSK rollover as a result.
 
