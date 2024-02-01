@@ -59,6 +59,9 @@ Zone origin. If not specified, the origin is determined from the file name
 Also check DNSSEC\-related records. The default is to decide based on the
 existence of a RRSIG for SOA.
 .TP
+\fB\-Z\fP, \fB\-\-zonemd\fP
+Also check the zone hash against a ZONEMD record, which is required to exist.
+.TP
 \fB\-t\fP, \fB\-\-time\fP \fItime\fP
 Current time specification. Use UNIX timestamp, YYYYMMDDHHmmSS
 format, or [+/\-]\fItime\fP[unit] format, where unit can be \fBY\fP, \fBM\fP,
