@@ -35,7 +35,9 @@ static inline bool IS_ERR_OR_NULL(const void *ptr)
 	return (ptr == NULL) || (unsigned long)ptr >= (unsigned long)-4095;
 }
 
-static int prog_load(struct bpf_object **pobj, int *prog_fd)
+#include <linux/limits.h>
+
+static int prog_load(const char *iface, struct bpf_object **pobj, int *prog_fd)
 {
 	struct bpf_program *prog, *first_prog = NULL;
 	struct bpf_object *obj;
@@ -63,6 +65,13 @@ static int prog_load(struct bpf_object **pobj, int *prog_fd)
 		return KNOT_EINVAL;
 	}
 
+	char pin_dir[PATH_MAX];
+	snprintf(pin_dir, sizeof(pin_dir), "/sys/fs/bpf/knot/%s", iface);
+	ret = bpf_object__pin_maps(obj, pin_dir);
+	if (ret != 0) {
+		
+	}
+
 	*pobj = obj;
 	*prog_fd = bpf_program__fd(first_prog);
 
@@ -78,7 +87,7 @@ static int ensure_prog(struct kxsk_iface *iface, bool overwrite, bool generic_xd
 	/* Use libbpf for extracting BPF byte-code from BPF-ELF object, and
 	 * loading this into the kernel via bpf-syscall. */
 	int prog_fd;
-	int ret = prog_load(&iface->prog_obj, &prog_fd);
+	int ret = prog_load(iface->if_name, &iface->prog_obj, &prog_fd);
 	if (ret != KNOT_EOK) {
 		return KNOT_EPROGRAM;
 	}
