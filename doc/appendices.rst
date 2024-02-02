@@ -103,24 +103,3 @@ support.
    A command similar to the following may be used to verify what algorithms are supported:
    ``$ pkcs11-tool --modul /usr/lib64/pkcs11/libsofthsm2.so -M``.
 .. [#fn-utimaco] Requires setting the number of background workers to 1!
-
-The following table summarizes supported DNSSEC algorithm numbers and minimal
-GnuTLS library version required. Any algorithm may work with older library,
-however the supported operations may be limited (e.g. private key import).
-
-.. list-table::
-   :header-rows: 1
-   :stub-columns: 1
-
-   * -
-     - `Numbers <https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml#dns-sec-alg-numbers-1>`_
-     - GnuTLS version
-   * - ED25519
-     - 15
-     - 3.6.0 or newer
-   * - ECDSA
-     - 13, 14
-     - 3.4.8 or newer
-   * - RSA
-     - 5, 7, 8, 10
-     - 3.4.6 or newer
