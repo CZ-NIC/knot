@@ -67,9 +67,10 @@ the following symbols:
 .UNINDENT
 .sp
 The configuration consists of several fixed sections and optional module
-sections. There are 16 fixed sections (\fBmodule\fP, \fBserver\fP, \fBxdp\fP, \fBcontrol\fP,
+sections. There are 17 fixed sections (\fBmodule\fP, \fBserver\fP, \fBxdp\fP, \fBcontrol\fP,
 \fBlog\fP, \fBstatistics\fP, \fBdatabase\fP, \fBkeystore\fP, \fBkey\fP, \fBremote\fP,
-\fBremotes\fP, \fBacl\fP, \fBsubmission\fP, \fBpolicy\fP, \fBtemplate\fP, \fBzone\fP).
+\fBremotes\fP, \fBacl\fP, \fBsubmission\fP, \fBdnskey\-sync\fP, \fBpolicy\fP, \fBtemplate\fP,
+\fBzone\fP).
 Module sections are prefixed with the \fBmod\-\fP prefix (e.g. \fBmod\-stats\fP).
 .sp
 Most of the sections (e.g. \fBzone\fP) are sequences of settings blocks. Each
@@ -964,7 +965,7 @@ Minimum severity level for messages related to QUIC to be logged.
 Minimum severity level for all message types, except \fBquic\fP, to be logged.
 .sp
 \fIDefault:\fP not set
-.SH STATS SECTION
+.SH STATISTICS SECTION
 .sp
 Periodic server statistics dumping.
 .INDENT 0.0

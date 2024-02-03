@@ -32,9 +32,10 @@ the following symbols:
 - ``|`` – Choice
 
 The configuration consists of several fixed sections and optional module
-sections. There are 16 fixed sections (``module``, ``server``, ``xdp``, ``control``,
+sections. There are 17 fixed sections (``module``, ``server``, ``xdp``, ``control``,
 ``log``, ``statistics``, ``database``, ``keystore``, ``key``, ``remote``,
-``remotes``, ``acl``, ``submission``, ``policy``, ``template``, ``zone``).
+``remotes``, ``acl``, ``submission``, ``dnskey-sync``, ``policy``, ``template``,
+``zone``).
 Module sections are prefixed with the ``mod-`` prefix (e.g. ``mod-stats``).
 
 Most of the sections (e.g. ``zone``) are sequences of settings blocks. Each
@@ -1045,8 +1046,8 @@ Minimum severity level for all message types, except ``quic``, to be logged.
 
 .. _stats section:
 
-``stats`` section
-=================
+``statistics`` section
+======================
 
 Periodic server statistics dumping.
 
