@@ -61,6 +61,11 @@ typedef struct {
 typedef int (*stats_dump_ctr_f)(stats_dump_params_t *, stats_dump_ctx_t *);
 
 /*!
+ * \brief XDP metrics.
+ */
+int stats_xdp(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx);
+
+/*!
  * \brief Server metrics.
  */
 int stats_server(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx);

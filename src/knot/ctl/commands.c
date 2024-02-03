@@ -1724,6 +1724,9 @@ static int common_stats(ctl_args_t *args, zone_t *zone)
 		int ret = stats_server(ctl_dump_ctr, &dump_ctx);
 		STATS_CHECK(ret, true);
 
+		ret = stats_xdp(ctl_dump_ctr, &dump_ctx);
+		STATS_CHECK(ret, true);
+
 		dump_ctx.query_modules = conf()->query_modules;
 		ret = stats_modules(ctl_dump_ctr, &dump_ctx);
 		STATS_CHECK(ret, true);
