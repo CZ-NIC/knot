@@ -24,6 +24,7 @@
 #include "knot/common/stats.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
+#include "libknot/xdp.h"
 
 static uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t offset,
                                   unsigned threads)
@@ -33,6 +34,51 @@ static uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t of
 		res += ATOMIC_GET(stats_vals[i][offset]);
 	}
 	return res;
+}
+
+int stats_xdp(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
+{
+#ifdef ENABLE_XDP
+#define DUMP(structure, item_name) { \
+	params.item_begin = true; \
+	params.item = #item_name; \
+	params.id = id; \
+	params.value = s.structure.item_name; \
+	int ret = fcn(&params, ctx); \
+	if (ret != KNOT_EOK) { \
+		return ret; \
+	} \
+}
+	stats_dump_params_t params = { .section = "xdp" };
+
+	if (ctx->section != NULL && strcasecmp(ctx->section, params.section) != 0) {
+		return KNOT_EOK;
+	}
+
+	for (const iface_t *i = ctx->server->ifaces;
+	     i != ctx->server->ifaces + ctx->server->n_ifaces; i++) {
+		for (int j = 0; j < i->fd_xdp_count; j++) {
+			knot_xdp_stats_t s;
+			knot_xdp_socket_stats(i->xdp_sockets[j], &s);
+
+			char id[64];
+			(void)snprintf(id, sizeof(id), "%s_%i", s.if_name, s.if_queue);
+			DUMP(socket, rx_dropped);
+			DUMP(socket, rx_invalid);
+			DUMP(socket, tx_invalid);
+			DUMP(socket, rx_full);
+			DUMP(socket, fq_empty);
+			DUMP(socket, tx_empty);
+			DUMP(rings, fq_free);
+			DUMP(rings, tx_free);
+			DUMP(rings, rx_fill);
+			DUMP(rings, tx_fill);
+			DUMP(rings, cq_fill);
+		}
+	}
+#undef DUMP
+#endif
+	return KNOT_EOK;
 }
 
 #define DUMP_VAL(params, it, val) { \
@@ -282,6 +328,10 @@ static void dump_to_file(conf_t *conf, FILE *fd, server_t *server)
 
 	// Dump server counters.
 	(void)stats_server(dump_ctr, &dump_ctx);
+
+	// Dump XDP counters.
+	ctx = (dump_ctx_t){ .fd = fd };
+	(void)stats_xdp(dump_ctr, &dump_ctx);
 
 	// Dump global module counters.
 	ctx = (dump_ctx_t){ .fd = fd };
