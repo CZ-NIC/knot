@@ -49,8 +49,7 @@
 /* It's recommended that the FQ ring size >= HW RX ring size + AF_XDP RX ring size. */
 #define RING_LEN_FQ		8192
 
-#define ALLOC_RETRY_NUM		15
-#define ALLOC_RETRY_DELAY	20 // In nanoseconds.
+#define RETRY_DELAY		20 // In nanoseconds.
 
 /* With recent compilers we statically check #defines for settings that
  * get refused by AF_XDP drivers (in current versions, at least). */
@@ -300,13 +299,10 @@ static struct umem_frame *alloc_tx_frame(knot_xdp_socket_t *socket)
 		return malloc(sizeof(struct umem_frame));
 	}
 
-	const struct timespec delay = { .tv_nsec = ALLOC_RETRY_DELAY };
 	struct kxsk_umem *umem = socket->umem;
 
-	for (int i = 0; unlikely(umem->tx_free_count == 0); i++) {
-		if (i == ALLOC_RETRY_NUM) {
-			return NULL;
-		}
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
+	while (unlikely(umem->tx_free_count == 0)) {
 		nanosleep(&delay, NULL);
 		knot_xdp_send_prepare(socket);
 	}
@@ -390,10 +386,9 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 * and the API doesn't allow "cancelling reservations".
 	 * Therefore we handle `socket->tx.cached_prod` by hand.
 	 */
-	if (xsk_prod_nb_free(&socket->tx, count) < count) {
-		/* This situation was sometimes observed in the emulated XDP mode. */
-		knot_xdp_send_free(socket, msgs, count);
-		return KNOT_ENOBUFS;
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
+	while (unlikely(xsk_prod_nb_free(&socket->tx, count) < count)) {
+		nanosleep(&delay, NULL);
 	}
 	uint32_t idx = socket->tx.cached_prod;
 
@@ -528,16 +523,18 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	struct xsk_ring_prod *const fq = &umem->fq;
 
 	uint32_t idx = 0;
-	const uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
-	assert(reserved == count);
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
+	while (unlikely(xsk_ring_prod__reserve(fq, count, &idx) != count)) {
+		nanosleep(&delay, NULL);
+	}
 
-	for (uint32_t i = 0; i < reserved; ++i) {
+	for (uint32_t i = 0; i < count; ++i) {
 		uint8_t *uframe_p = msg_uframe_ptr(&msgs[i]);
 		uint64_t offset = uframe_p - umem->frames->bytes;
 		*xsk_ring_prod__fill_addr(fq, idx++) = offset;
 	}
 
-	xsk_ring_prod__submit(fq, reserved);
+	xsk_ring_prod__submit(fq, count);
 }
 
 _public_
