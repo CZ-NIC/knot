@@ -35,8 +35,6 @@ static inline bool IS_ERR_OR_NULL(const void *ptr)
 	return (ptr == NULL) || (unsigned long)ptr >= (unsigned long)-4095;
 }
 
-#include <linux/limits.h>
-
 static int prog_load(const char *iface, struct bpf_object **pobj, int *prog_fd)
 {
 	struct bpf_program *prog, *first_prog = NULL;
@@ -65,11 +63,32 @@ static int prog_load(const char *iface, struct bpf_object **pobj, int *prog_fd)
 		return KNOT_EINVAL;
 	}
 
-	char pin_dir[PATH_MAX];
-	snprintf(pin_dir, sizeof(pin_dir), "/sys/fs/bpf/knot/%s", iface);
-	ret = bpf_object__pin_maps(obj, pin_dir);
+	struct bpf_map *opts_map = bpf_object__find_map_by_name(obj, "opts_map");
+	if (opts_map == NULL) {
+		bpf_object__close(obj);
+		return KNOT_EINVAL;
+	}
+
+	char pin_dir[64];
+	snprintf(pin_dir, sizeof(pin_dir), "/sys/fs/bpf/knot/opts_%s", iface);
+	ret = bpf_map__set_pin_path(opts_map, pin_dir);
 	if (ret != 0) {
-		
+		bpf_object__close(obj);
+		return KNOT_EINVAL;
+	}
+
+	/* Existing/previous XDP prog might not have cleaned up */
+	if (access(pin_dir, F_OK) != -1 ) {
+		ret = unlink(pin_dir);
+		if (ret) {
+			bpf_object__close(obj);
+			return knot_map_errno();
+		}
+	}
+	ret = bpf_map__pin(opts_map, NULL);
+	if (ret != 0) {
+		bpf_object__close(obj);
+		return ret;
 	}
 
 	*pobj = obj;
@@ -128,6 +147,13 @@ static int ensure_prog(struct kxsk_iface *iface, bool overwrite, bool generic_xd
 
 static void unget_bpf_maps(struct kxsk_iface *iface)
 {
+	/*
+	 * TODO This line does nothing.
+	 * `knotd` currently lacks the ability to unpin maps due to
+	 * the dropping of user capabilities post-initialization, resulting in
+	 * an EACCES error upon attempted call.
+	 */
+	bpf_object__unpin_maps(iface->prog_obj, NULL);
 	if (iface->opts_map_fd >= 0) {
 		close(iface->opts_map_fd);
 	}
