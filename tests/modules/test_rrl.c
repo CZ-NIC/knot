@@ -197,10 +197,10 @@ void test_rrl(char *impl_name, rrl_req_t rq, knot_dname_t *zone) {
 	rrl_table_t *rrl = rrl_create(RRL_TABLE_SIZE, RRL_RATE_LIMIT);
 	ok(rrl != NULL, "rrl(%s): create", impl_name);
 
-	if (KRU.create == KRU_GENERIC.create) {
+	if (KRU.initialize == KRU_GENERIC.initialize) {
 		struct kru_generic *kru = (struct kru_generic *) rrl->kru;
 		memset(&kru->hash_key, RRL_SEED_GENERIC, sizeof(kru->hash_key));
-	} else if (KRU.create == KRU_AVX2.create) {
+	} else if (KRU.initialize == KRU_AVX2.initialize) {
 		struct kru_avx2 *kru = (struct kru_avx2 *) rrl->kru;
 		memset(&kru->hash_key, RRL_SEED_AVX2, sizeof(kru->hash_key));
 	} else {
@@ -407,8 +407,8 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *zone = knot_dname_from_str_alloc("rrl.");
 
-	assert(KRU_GENERIC.create != KRU_AVX2.create);
-	bool test_avx2 = (KRU.create == KRU_AVX2.create);
+	assert(KRU_GENERIC.initialize != KRU_AVX2.initialize);
+	bool test_avx2 = (KRU.initialize == KRU_AVX2.initialize);
 
 	KRU = KRU_GENERIC;
 	test_rrl("KRU_GENERIC", rq, zone);

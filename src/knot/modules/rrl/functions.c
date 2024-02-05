@@ -39,9 +39,9 @@
 #define RRL_MAX_PREFIXES_CNT ((RRL_V4_PREFIXES_CNT > RRL_V6_PREFIXES_CNT) ? RRL_V4_PREFIXES_CNT : RRL_V6_PREFIXES_CNT)
 
 struct rrl_table {
-	struct kru *kru;
 	uint16_t v4_prices[RRL_V4_PREFIXES_CNT];
 	uint16_t v6_prices[RRL_V6_PREFIXES_CNT];
+	uint8_t kru[] ALIGNED(64);
 };
 
 /*
@@ -93,22 +93,17 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 
 rrl_table_t *rrl_create(size_t size, uint32_t rate)
 {
-	if (size == 0) {
-		return NULL;
-	}
-
 	size--;
 	size_t capacity_log = 1;
 	while (size >>= 1) capacity_log++;
 
-	rrl_table_t *tbl = malloc(sizeof(rrl_table_t));
-	if (!tbl) {
+	rrl_table_t *rrl;
+	if (posix_memalign((void **)&rrl, 64, offsetof(struct rrl_table, kru) + KRU.get_size(capacity_log)) != 0) {
 		return NULL;
 	}
 
-	tbl->kru = KRU.create(capacity_log);
-	if (!tbl->kru) {
-		free(tbl);
+	if (!KRU.initialize((struct kru *)rrl->kru, capacity_log)) {
+		free(rrl);
 		return NULL;
 	}
 
@@ -117,14 +112,14 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 		// rate limit per tick:       rate / 1000
 
 	for (size_t i = 0; i < RRL_V4_PREFIXES_CNT; i++) {
-		tbl->v4_prices[i] = base_price / RRL_V4_RATE_MULT[i];
+		rrl->v4_prices[i] = base_price / RRL_V4_RATE_MULT[i];
 	}
 
 	for (size_t i = 0; i < RRL_V6_PREFIXES_CNT; i++) {
-		tbl->v6_prices[i] = base_price / RRL_V6_RATE_MULT[i];
+		rrl->v6_prices[i] = base_price / RRL_V6_RATE_MULT[i];
 	}
 
-	return tbl;
+	return rrl;
 }
 
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
@@ -143,14 +138,14 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
 		memcpy(key, &ipv6->sin6_addr, 16);
 
-		return KRU.limited_multi_prefix_or(rrl->kru, now, 1, key, RRL_V6_PREFIXES, rrl->v6_prices, RRL_V6_PREFIXES_CNT)
+		return KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now, 1, key, RRL_V6_PREFIXES, rrl->v6_prices, RRL_V6_PREFIXES_CNT)
 			? KNOT_ELIMIT : KNOT_EOK;
 
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
 		memcpy(key, &ipv4->sin_addr, 4);
 
-		return KRU.limited_multi_prefix_or(rrl->kru, now, 0, key, RRL_V4_PREFIXES, rrl->v4_prices, RRL_V4_PREFIXES_CNT)
+		return KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now, 0, key, RRL_V4_PREFIXES, rrl->v4_prices, RRL_V4_PREFIXES_CNT)
 			? KNOT_ELIMIT : KNOT_EOK;
 	}
 }
@@ -169,6 +164,5 @@ bool rrl_slip_roll(int n_slip)
 
 void rrl_destroy(rrl_table_t *rrl)
 {
-	free(rrl->kru);
 	free(rrl);
 }
