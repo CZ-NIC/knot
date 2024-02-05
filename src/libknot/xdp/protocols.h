@@ -90,7 +90,7 @@ inline static void *prot_read_tcp(void *data, knot_xdp_msg_t *msg, uint16_t *src
 			continue;
 		}
 
-		if (opts + 1 > hdr_end || opts + opts[1] > hdr_end) {
+		if (opts + 1 > hdr_end || opts + opts[1] > hdr_end || opts[1] < 2) {
 			// Malformed option.
 			break;
 		}
