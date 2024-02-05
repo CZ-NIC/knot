@@ -25,8 +25,11 @@
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
   void __asan_poison_memory_region(void const volatile *addr, size_t size);
   void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   #define ASAN_POISON_MEMORY_REGION(addr, size) \
     __asan_poison_memory_region((addr), (size))
+#pragma GCC diagnostic pop
   #define ASAN_UNPOISON_MEMORY_REGION(addr, size) \
     __asan_unpoison_memory_region((addr), (size))
 #else
