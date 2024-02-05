@@ -57,14 +57,13 @@ static inline void update_time(struct load_cl *l, const uint32_t time_now,
 	}
 }
 
-/// Half-life of 32 ticks, consequently forgetting in about 1k ticks.
+/// Half-life of 32 ticks, consequently forgetting in a couple hundred ticks.
 static const struct decay_config DECAY_32 = {
 	.ticklen_log = 0,
 	.half_life_log = 5,
-	/// Experiment: if going by a single tick, after 330 steps fixed-point at +-23,
+	/// Experiment: if going by a single tick, after 362 steps fixed-point at 23,
 	///  but accuracy at the beginning of that (first 32 ticks) is very good,
-	///  getting from max 2^15 - 1 to 2^14 + 2 or -2^15 to -2^14 - 3.
-	///  Max. decay per tick is 702 but for limit computation it will be more like 350.
+	///  getting from max 2^16 - 1 to 2^15 + 5.  Max. decay per tick is 1404.
 	.scales = { // ghci> map (\i -> round(2^16 * 0.5 ** (i/32))) [1..31]
 		0,64132,62757,61413,60097,58809,57549,56316,55109,53928,52773,
 		51642,50535,49452,48393,47356,46341,45348,44376,43425,42495,41584,

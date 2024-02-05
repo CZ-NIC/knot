@@ -22,20 +22,18 @@ That has applications for garbage collection of cache and various limiting scena
 ### Choosing parameters
 
 For limiting, `time` is probably in milliseconds from kr_now().
-In case of DECAY_32, we get at most 46M per tick which gives 46G per second.
-Say, if we want p QPS, we add `46G / p` for each query.
+In case of DECAY_32, we get at most 1404 per tick which gives 1.4M per second.
+Say, if we want p QPS, we add `1.4M / p` for each query.
 
 Tick length (`ticklen_log`) will need to be chosen the same for all users of a given table.
-Smaller resolvers might choose more than a single millisecond to get longer half-life.
+Smaller resolvers might choose more than a single millisecond to get longer half-life
+and also to get capability of setting lower limits.
 
 Size (`loads_bits` = log2 length):
- - The KRU takes 128 bytes * length * TABLE_COUNT + some small constants.
+ - The KRU takes 64 bytes * length * TABLE_COUNT + some small constants.
+   As TABLE_COUNT == 2 and loads_bits = capacity_log >> 4, we get capacity * 8 Bytes.
  - The length should probably be at least something like the square of the number of utilized CPUs.
    But this most likely won't be a limiting factor.
- - TODO: more info
-   - Cache: it has fixed size in bytes, so we can estimate the number of keepable items,
-     and/or we can choose how much of additional bytes to use for KRU.
-
 */
 #include <stdlib.h>
 #include <assert.h>
