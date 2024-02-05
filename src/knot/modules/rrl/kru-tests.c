@@ -12,41 +12,17 @@ void *memzero(void *s, size_t n)
 	return volatile_memset(s, 0, n);
 }
 
-#include <knot/modules/rrl/kru.h>
 #define KRU_DECAY_BITS 16
+#include <knot/modules/rrl/kru-generic.c>
 
-/*
 void test_decay32(void)
 {
-#if defined(KRU_IMPL_min32bit)
-	struct load_cl l = { .loads[0] = -1, .time = 0 };
-	for (uint32_t time = 0; time < 1030; ++time) {
+	struct load_cl l = { .loads[0] = (1ull<<16) - 1, .time = 0 };
+	for (uint32_t time = 0; time < 365; ++time) {
 		update_time(&l, time, &DECAY_32);
-		printf("%3d: %08zx\n", time, (size_t)l.loads[0]);
+		printf("%3d: %5d\n", time, (int)l.loads[0]);
 	}
-#elif defined(KRU_IMPL_median32bit) || defined(KRU_IMPL_ss32bit)
-	struct load_cl l = { .loads[0] = (1ull<<31) - 1, .loads[1] = -(1ll<<31), .time = 0 };
-	for (uint32_t time = 0; time < 850; ++time) {
-		update_time(&l, time, &DECAY_32);
-		printf("%3d: %08d %08d\n", time, (int)l.loads[0], (int)l.loads[1]);
-	}
-#elif defined(KRU_IMPL_median16bit_simd)
-	struct load_cl l = { .loads[0] = (1ull<<15) - 1, .loads[1] = -(1ll<<15), .time = 0 };
-	for (uint32_t time = 0; time < 340; ++time) {
-		update_time(&l, time, &DECAY_32);
-		printf("%3d: %08d %08d\n", time, (int)l.loads[0], (int)l.loads[1]);
-	}
-#elif defined(KRU_IMPL_ss16bit) || defined(KRU_IMPL_ss16bit_simd)
-	struct load_cl l = { .loads[0] = (1ull<<16) - 1, .loads[1] = (1ll<<16) - 1, .time = 0 };
-	for (uint32_t time = 0; time < 340; ++time) {
-		update_time(&l, time, &DECAY_32);
-		printf("%3d: %08d %08d\n", time, (int)l.loads[0], (int)l.loads[1]);
-	}
-#else
-	assert(0);
-#endif
 }
-*/
 
 #ifdef HASH_KEY_T
 void test_hash(void)
