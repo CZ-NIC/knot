@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx
 		}
 	}
 
-	size_t buf_req = knot_rrset_size(rrset);
+	size_t buf_req = knot_rrset_size_estimate(rrset);
 	if (buf_req > ctx->buf_size) {
 		uint8_t *newbuf = realloc(ctx->buf, buf_req);
 		if (newbuf == NULL) {
