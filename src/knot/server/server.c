@@ -718,7 +718,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 			free(rundir);
 			return KNOT_ERROR;
 		}
-		new_if->quic = true;
+		new_if->tls = true;
 		memcpy(&newlist[real_nifs++], new_if, sizeof(*newlist));
 		free(new_if);
 

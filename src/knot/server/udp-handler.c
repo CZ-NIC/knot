@@ -153,7 +153,7 @@ void cmsg_handle(const struct msghdr *rx, struct msghdr *tx,
 	}
 
 	struct cmsghdr *cmsg = CMSG_FIRSTHDR(tx);
-	if (iface->quic) {
+	if (iface->tls) {
 		*p_ecn = NULL;
 		while (cmsg != NULL) {
 			cmsg_handle_ecn(p_ecn, cmsg);
@@ -246,9 +246,9 @@ static void udp_msg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 
 	/* Process received pkt. */
 	knotd_qdata_params_t params = params_init(
-		iface->quic ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP,
+		iface->tls ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP,
 		&rq->addr, local, rq->fd, ctx->server, ctx->thread_id);
-	if (iface->quic) {
+	if (iface->tls) {
 #ifdef ENABLE_QUIC
 		quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
 		             ctx->quic_table, &rq->iov[RX], &rq->msg[TX], p_ecn);
@@ -357,9 +357,9 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 		const sockaddr_t *local = local_addr(&ctx->local, iface);
 
 		knotd_qdata_params_t params = params_init(
-			iface->quic ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP,
+			iface->tls ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP,
 			&rq->addrs[i], local, rq->fd, ctx->server, ctx->thread_id);
-		if (iface->quic) {
+		if (iface->tls) {
 #ifdef ENABLE_QUIC
 			quic_handler(&params, &ctx->layer, ctx->quic_idle_close,
 			             ctx->quic_table, rx->msg_iov, tx, p_ecn);
@@ -432,7 +432,7 @@ static int xdp_mmsg_recv(_unused_ int fd, void *d)
 
 static void xdp_mmsg_handle(udp_context_t *ctx, _unused_ const iface_t *iface, void *d)
 {
-	assert(!iface->quic);
+	assert(!iface->tls);
 	xdp_handle_msgs(d, &ctx->layer, ctx->server, ctx->thread_id);
 }
 
@@ -520,7 +520,7 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 		if (ret < 0) {
 			return 0;
 		}
-		if (i->quic) {
+		if (i->tls) {
 			*quic = true;
 		}
 	}
