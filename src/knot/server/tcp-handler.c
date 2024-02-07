@@ -114,8 +114,8 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 	}
 
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
-		if (i->fd_tcp_count == 0 || i->quic) { // Ignore XDP and QUIC interfaces.
-			assert(i->fd_xdp_count > 0 || i->quic);
+		if (i->fd_tcp_count == 0 || i->tls) { // Ignore XDP and QUIC interfaces.
+			assert(i->fd_xdp_count > 0 || i->tls);
 			continue;
 		}
 
