@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,6 +32,43 @@ static bool check_rrset(const knot_rrset_t *rrset, const knot_dname_t *owner,
 	                                       knot_dname_is_equal(rrset->owner, owner);
 	return rrset->type == type && rrset->rclass == rclass && dname_cmp &&
 	       rrset->ttl == ttl && rrset->rrs.count == 0; // We do not test rdataset here
+}
+
+static void check_size(knot_rrset_t *rrset, uint8_t *rdata, size_t rdata_len)
+{
+	const size_t per_record_const = 10;
+	const size_t owner_len = knot_dname_size(rrset->owner);
+	assert(owner_len == 13);
+
+	static size_t real = 0, estim = 0;
+	if (rdata_len > 0) {
+		real  += owner_len + per_record_const + rdata_len;
+		estim += owner_len + per_record_const + rdata_len + (rdata_len & 1);
+		assert(real <= estim);
+	}
+
+	int ret = knot_rrset_add_rdata(rrset, rdata, rdata_len, NULL);
+	is_int(ret, KNOT_EOK, "knot_rrset_add_rdata()");
+
+	is_int(real, knot_rrset_size(rrset), "knot_rrset_size()");
+	is_int(estim, knot_rrset_size_estimate(rrset), "knot_rrset_size_estimate()");
+}
+
+static void test_rrset_size(void)
+{
+	knot_dname_t *owner = knot_dname_from_str_alloc("rrset.owner.");
+	assert(owner);
+
+	knot_rrset_t rrset;
+	knot_rrset_init(&rrset, owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 7200);
+
+	check_size(&rrset, (uint8_t *)"\x01""a",   2);
+	check_size(&rrset, (uint8_t *)"\x02""ab",  3);
+	check_size(&rrset, (uint8_t *)"\x03""abc", 4);
+	check_size(&rrset, (uint8_t *)"\x03""de",  3);
+	check_size(&rrset, (uint8_t *)"\x01""f",   2);
+
+	knot_rrset_clear(&rrset, NULL);
 }
 
 int main(int argc, char *argv[])
@@ -116,6 +153,9 @@ int main(int argc, char *argv[])
 	// "Test" freeing
 	knot_rrset_free(rrset, NULL);
 	knot_rrset_free(copy, NULL);
+
+	// Test rrset size computation functions.
+	test_rrset_size();
 
 	return 0;
 }

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -185,10 +185,27 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
 int knot_rrset_rr_to_canonical(knot_rrset_t *rrset);
 
 /*!
- * \brief Size of rrset in wire format.
+ * \brief Size of rrset in wire format (without compression).
  *
  * \retval size in bytes
  */
 size_t knot_rrset_size(const knot_rrset_t *rrset);
+
+/*!
+ * \brief Fast estimate of knot_rrset_size(); it can return slightly larger values.
+ */
+inline static size_t knot_rrset_size_estimate(const knot_rrset_t *rrset)
+{
+	if (rrset == NULL) {
+		return 0;
+	}
+
+	/* 8B = TYPE + CLASS + TTL + RDLENGTH - sizeof(knot_rdata_t::len)
+	 * We over-estimate by the count of padding bytes (<= rrset->rrs.count) */
+	size_t estim = rrset->rrs.size
+		+ rrset->rrs.count * (knot_dname_size(rrset->owner) + 8);
+
+	return estim;
+}
 
 /*! @} */
