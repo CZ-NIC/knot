@@ -283,7 +283,7 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query,
-                 struct knot_quic_conn *conn)
+                 struct gnutls_session_int *tls_session)
 {
 	if (acl == NULL || addr == NULL || tsig == NULL) {
 		return false;
@@ -292,7 +292,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 #ifdef ENABLE_QUIC
 	uint8_t session_pin[KNOT_QUIC_PIN_LEN];
 	size_t session_pin_size = sizeof(session_pin);
-	knot_quic_conn_pin(conn, session_pin, &session_pin_size, false);
+	knot_quic_conn_pin2(tls_session, session_pin, &session_pin_size, false);
 #else
 	uint8_t session_pin[1];
 	size_t session_pin_size = 0;
@@ -392,7 +392,7 @@ next_acl:
 }
 
 bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig, struct knot_quic_conn *conn)
+                 knot_tsig_key_t *tsig, struct gnutls_session_int *tls_session)
 {
 	if (!conf->cache.srv_auto_acl) {
 		return false;
@@ -401,7 +401,7 @@ bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *
 #ifdef ENABLE_QUIC
 	uint8_t session_pin[KNOT_QUIC_PIN_LEN];
 	size_t session_pin_size = sizeof(session_pin);
-	knot_quic_conn_pin(conn, session_pin, &session_pin_size, false);
+	knot_quic_conn_pin2(tls_session, session_pin, &session_pin_size, false);
 #else
 	uint8_t session_pin[1];
 	size_t session_pin_size = 0;

@@ -256,3 +256,106 @@ void knot_quic_free_creds(struct knot_quic_creds *creds)
 	}
 	free(creds);
 }
+
+_public_
+int knot_quic_conn_session(struct gnutls_session_int **session,
+                           struct knot_quic_creds *creds,
+                           const char *sess_prio,
+                           const char *alpn,
+                           bool early_data,
+                           bool server)
+{
+	int ret = gnutls_init(session,
+		(server ? GNUTLS_SERVER : GNUTLS_CLIENT) |
+		(early_data ? GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET | GNUTLS_NO_END_OF_EARLY_DATA : 0)
+	);
+	if (ret == GNUTLS_E_SUCCESS) {
+		gnutls_certificate_send_x509_rdn_sequence(*session, 1);
+		gnutls_certificate_server_set_request(*session, GNUTLS_CERT_REQUEST);
+		ret = gnutls_priority_set_direct(*session, sess_prio, NULL);
+	}
+	if (server && ret == GNUTLS_E_SUCCESS) {
+		ret = gnutls_session_ticket_enable_server(*session, &creds->tls_ticket_key);
+	}
+	if (ret == GNUTLS_E_SUCCESS) {
+		const gnutls_datum_t alpn_datum = { (void *)alpn, strlen(alpn) };
+		gnutls_alpn_set_protocols(*session, &alpn_datum, 1, GNUTLS_ALPN_MANDATORY);
+		if (early_data) {
+			gnutls_record_set_max_early_data_size(*session, 0xffffffffu);
+		}
+		if (server) {
+			gnutls_anti_replay_enable(*session, creds->tls_anti_replay);
+		}
+		ret = gnutls_credentials_set(*session, GNUTLS_CRD_CERTIFICATE, creds->tls_cert);
+	}
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(*session);
+		*session = NULL;
+	}
+	return ret;
+}
+
+_public_
+void knot_quic_conn_pin2(struct gnutls_session_int *session, uint8_t *pin, size_t *pin_size, bool local)
+{
+	if (session == NULL) {
+		goto error;
+	}
+
+	const gnutls_datum_t *data = NULL;
+	if (local) {
+		data = gnutls_certificate_get_ours(session);
+	} else {
+		unsigned count = 0;
+		data = gnutls_certificate_get_peers(session, &count);
+		if (count == 0) {
+			goto error;
+		}
+	}
+	if (data == NULL) {
+		goto error;
+	}
+
+	gnutls_x509_crt_t cert;
+	int ret = gnutls_x509_crt_init(&cert);
+	if (ret != GNUTLS_E_SUCCESS) {
+		goto error;
+	}
+
+	ret = gnutls_x509_crt_import(cert, data, GNUTLS_X509_FMT_DER);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_x509_crt_deinit(cert);
+		goto error;
+	}
+
+	ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256, pin, pin_size);
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_x509_crt_deinit(cert);
+		goto error;
+	}
+
+	gnutls_x509_crt_deinit(cert);
+
+	return;
+error:
+	if (pin_size != NULL) {
+		*pin_size = 0;
+	}
+}
+
+_public_
+int knot_quic_conn_pin_check(struct gnutls_session_int *session,
+                             struct knot_quic_creds *creds)
+{
+	if (creds->peer_pin_len == 0) {
+		return KNOT_EOK;
+	}
+	uint8_t pin[KNOT_QUIC_PIN_LEN];
+	size_t pin_size = sizeof(pin);
+	knot_quic_conn_pin2(session, pin, &pin_size, false);
+	if (pin_size != creds->peer_pin_len ||
+	    const_time_memcmp(pin, creds->peer_pin, pin_size) != 0) {
+		return KNOT_EBADCERTKEY;
+	}
+	return KNOT_EOK;
+}

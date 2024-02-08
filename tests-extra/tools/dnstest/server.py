@@ -162,6 +162,7 @@ class Server(object):
         self.port = 53 # Needed for keymgr when port not yet generated
         self.xdp_port = None # 0 indicates that XDP is enabled but port not yet assigned
         self.quic_port = None
+        self.tls_port = None
         self.cert_key = str()
         self.udp_workers = None
         self.bg_workers = None
@@ -1367,6 +1368,8 @@ class Knot(Server):
             s.item_str("listen", "%s@%s" % (self.addr, self.port))
         if self.quic_port:
             s.item_str("listen-quic", "%s@%s" % (self.addr, self.quic_port))
+        if self.tls_port:
+            s.item_str("listen-tls", "%s@%s" % (self.addr, self.tls_port))
         if self.udp_workers:
             s.item_str("udp-workers", self.udp_workers)
         if self.bg_workers:
@@ -1427,9 +1430,9 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", master.name)
-                    if master.quic_port:
-                        s.item_str("address", "%s@%s" % (master.addr, master.quic_port))
-                        s.item_str("quic", "on")
+                    if master.quic_port or master.tls_port:
+                        s.item_str("address", "%s@%s" % (master.addr, master.quic_port or master.tls_port))
+                        s.item_str("tls" if master.tls_port else "quic", "on")
                         if master.cert_key:
                             s.item_str("cert-key", master.cert_key)
                     else:
@@ -1450,9 +1453,9 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", slave.name)
-                    if slave.quic_port:
-                        s.item_str("address", "%s@%s" % (slave.addr, slave.quic_port))
-                        s.item_str("quic", "on")
+                    if slave.quic_port or slave.tls_port:
+                        s.item_str("address", "%s@%s" % (slave.addr, slave.quic_port or slave.tls_port))
+                        s.item_str("tls" if slave.tls_port else "quic", "on")
                         if slave.cert_key:
                             s.item_str("cert-key", slave.cert_key)
                     else:
@@ -1484,9 +1487,9 @@ class Knot(Server):
                         s.begin("remote")
                         have_remote = True
                     s.id_item("id", remote.name)
-                    if remote.quic_port:
-                        s.item_str("address", "%s@%s" % (remote.addr, remote.quic_port))
-                        s.item_str("quic", "on")
+                    if remote.quic_port or remote.tls_port:
+                        s.item_str("address", "%s@%s" % (remote.addr, remote.quic_port or remote.tls_port))
+                        s.item_str("tls" if remote.tls_port else "quic", "on")
                         if remote.cert_key:
                             s.item_str("cert-key", remote.cert_key)
                     else:

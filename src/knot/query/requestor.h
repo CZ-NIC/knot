@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,11 +23,13 @@
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/query/layer.h"
 #include "knot/query/query.h"
+#include "knot/query/tls-requestor.h"
 #include "libknot/mm_ctx.h"
 #include "libknot/rrtype/tsig.h"
 
 struct knot_quic_creds;
 struct knot_quic_reply;
+struct knot_tls_req_ctx;
 
 typedef enum {
 	KNOT_REQUEST_NONE = 0,       /*!< Empty flag. */
@@ -36,6 +38,7 @@ typedef enum {
 	KNOT_REQUEST_KEEP = 1 << 2,  /*!< Keep upstream TCP connection in pool for later reuse. */
 	KNOT_REQUEST_QUIC = 1 << 3,  /*!< Use QUIC/UDP for requests. */
 	KNOT_REQUEST_FWD  = 1 << 4,  /*!< Forwarded message, don't modify (TSIG, PADDING). */
+	KNOT_REQUEST_TLS  = 1 << 5,  /*!< Use DoT for requests. */
 } knot_request_flag_t;
 
 typedef enum {
@@ -43,6 +46,7 @@ typedef enum {
 	KNOT_REQUESTOR_REUSED = 1 << 1, /*!< Reused FD indication (RO). */
 	KNOT_REQUESTOR_QUIC   = 1 << 2, /*!< QUIC used indication (RO). */
 	KNOT_REQUESTOR_IOFAIL = 1 << 3, /*!< Encountered error sending/recving data. */
+	KNOT_REQUESTOR_TLS    = 1 << 4, /*!< DoT used indication (RO). */
 } knot_requestor_flag_t;
 
 /*! \brief Requestor structure.
@@ -57,9 +61,14 @@ typedef struct {
 /*! \brief Request data (socket, payload, response, TSIG and endpoints). */
 typedef struct {
 	int fd;
-	struct knot_quic_reply *quic_ctx;
-	struct knot_quic_conn *quic_conn;
-	int64_t quic_stream;
+	union {
+		struct {
+			struct knot_quic_reply *quic_ctx;
+			struct knot_quic_conn *quic_conn;
+			int64_t quic_stream;
+		};
+		knot_tls_req_ctx_t tls_req_ctx;
+	};
 	knot_request_flag_t flags;
 	struct sockaddr_storage remote, source;
 	knot_pkt_t *query;
@@ -73,6 +82,17 @@ typedef struct {
 	size_t pin_len;
 	uint8_t pin[];
 } knot_request_t;
+
+static inline knotd_query_proto_t flags2proto(unsigned layer_flags)
+{
+	knotd_query_proto_t proto = KNOTD_QUERY_PROTO_TCP;
+	if ((layer_flags & KNOT_REQUESTOR_QUIC)) {
+		proto = KNOTD_QUERY_PROTO_QUIC;
+	} else if ((layer_flags & KNOT_REQUESTOR_TLS)) {
+		proto = KNOTD_QUERY_PROTO_TLS;
+	}
+	return proto;
+}
 
 /*!
  * \brief Make request out of endpoints and query.

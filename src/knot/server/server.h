@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -119,6 +119,7 @@ typedef struct server {
 	iface_t *ifaces;
 	size_t n_ifaces;
 	bool quic_active;
+	bool tls_active;
 
 	/*! \brief Pending changes to catalog member zones, update indication. */
 	catalog_update_t catalog_upd;

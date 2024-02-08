@@ -1376,6 +1376,8 @@ conf_remote_t conf_remote_txn(
 
 	conf_val_t val = conf_id_get_txn(conf, txn, C_RMT, C_QUIC, id);
 	out.quic = conf_bool(&val);
+	val = conf_id_get_txn(conf, txn, C_RMT, C_TLS, id);
+	out.tls = conf_bool(&val);
 
 	conf_val_t rundir_val = conf_get_txn(conf, txn, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
@@ -1395,7 +1397,7 @@ conf_remote_t conf_remote_txn(
 		conf_val_next(&val);
 	}
 	// Index overflow causes empty socket.
-	out.addr = conf_addr_alt(&val, rundir, out.quic);
+	out.addr = conf_addr_alt(&val, rundir, out.quic || out.tls);
 
 	// Get outgoing address if family matches (optional).
 	uint16_t via_pos = 0;

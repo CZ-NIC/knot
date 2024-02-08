@@ -118,15 +118,19 @@ enum {
 	PROTOCOL_UDP4 = 0,
 	PROTOCOL_TCP4,
 	PROTOCOL_QUIC4,
+	PROTOCOL_TLS4,
 	PROTOCOL_UDP6,
 	PROTOCOL_TCP6,
 	PROTOCOL_QUIC6,
+	PROTOCOL_TLS6,
 	PROTOCOL_UDP4_XDP,
 	PROTOCOL_TCP4_XDP,
 	PROTOCOL_QUIC4_XDP,
+	PROTOCOL_TLS4_XDP,
 	PROTOCOL_UDP6_XDP,
 	PROTOCOL_TCP6_XDP,
 	PROTOCOL_QUIC6_XDP,
+	PROTOCOL_TLS6_XDP,
 	PROTOCOL__COUNT
 };
 
@@ -136,15 +140,19 @@ static char *protocol_to_str(uint32_t idx, uint32_t count)
 	case PROTOCOL_UDP4:      return strdup("udp4");
 	case PROTOCOL_TCP4:      return strdup("tcp4");
 	case PROTOCOL_QUIC4:     return strdup("quic4");
+	case PROTOCOL_TLS4:      return strdup("tls4");
 	case PROTOCOL_UDP6:      return strdup("udp6");
 	case PROTOCOL_TCP6:      return strdup("tcp6");
 	case PROTOCOL_QUIC6:     return strdup("quic6");
+	case PROTOCOL_TLS6:      return strdup("tls6");
 	case PROTOCOL_UDP4_XDP:  return strdup("udp4-xdp");
 	case PROTOCOL_TCP4_XDP:  return strdup("tcp4-xdp");
 	case PROTOCOL_QUIC4_XDP: return strdup("quic4-xdp");
+	case PROTOCOL_TLS4_XDP:  return strdup("tls4-xdp");
 	case PROTOCOL_UDP6_XDP:  return strdup("udp6-xdp");
 	case PROTOCOL_TCP6_XDP:  return strdup("tcp6-xdp");
 	case PROTOCOL_QUIC6_XDP: return strdup("quic6-xdp");
+	case PROTOCOL_TLS6_XDP:  return strdup("tls6-xdp");
 	default:                 assert(0); return NULL;
 	}
 }
@@ -502,6 +510,7 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 	}
 
 	// Count the request protocol.
+	// FIXME add DoT
 	if (stats->protocol) {
 		bool xdp = qdata->params->xdp_msg != NULL;
 		if (knotd_qdata_remote_addr(qdata)->ss_family == AF_INET) {
@@ -521,6 +530,10 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_QUIC4, 1);
 				}
+			} else if (qdata->params->proto == KNOTD_QUERY_PROTO_TLS) {
+				assert(!xdp);
+				knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+				                     PROTOCOL_TLS4, 1);
 			} else {
 				if (xdp) {
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
@@ -547,6 +560,10 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_QUIC6, 1);
 				}
+			} else if (qdata->params->proto == KNOTD_QUERY_PROTO_TLS) {
+				assert(!xdp);
+				knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+				                     PROTOCOL_TLS6, 1);
 			} else {
 				if (xdp) {
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,

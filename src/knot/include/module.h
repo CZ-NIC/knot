@@ -393,6 +393,7 @@ typedef enum {
 	KNOTD_QUERY_PROTO_UDP  = KNOT_PROBE_PROTO_UDP,  /*!< Pure UDP. */
 	KNOTD_QUERY_PROTO_TCP  = KNOT_PROBE_PROTO_TCP,  /*!< Pure TCP. */
 	KNOTD_QUERY_PROTO_QUIC = KNOT_PROBE_PROTO_QUIC, /*!< QUIC/UDP. */
+	KNOTD_QUERY_PROTO_TLS  = KNOT_PROBE_PROTO_TLS,  /*!< DoT. */
 } knotd_query_proto_t;
 
 /*! Query processing specific flags. */
@@ -410,6 +411,7 @@ typedef struct {
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
 	const struct knot_xdp_msg *xdp_msg;    /*!< Possible XDP message context. */
+	struct gnutls_session_int *tls_session;/*!< TLS session (QUIC or DoT). */
 	struct knot_quic_conn *quic_conn;      /*!< QUIC connection context. */
 	int64_t quic_stream;                   /*!< QUIC stream ID inside quic_conn. */
 	uint32_t measured_rtt;                 /*!< Measured RTT in usecs: QUIC or TCP-XDP. */

@@ -861,12 +861,18 @@ int check_remote(
 		return KNOT_EINVAL;
 	}
 
+	conf_val_t tls = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
+	                                    C_TLS, args->id, args->id_len);
 	conf_val_t quic = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
 	                                     C_QUIC, args->id, args->id_len);
 	if (quic.code == KNOT_EOK) {
 #ifdef ENABLE_QUIC
-		(void)0;
+		if (conf_bool(&quic) && conf_bool(&tls)) {
+			args->err_str = "remote can't use both QUIC and TLS";
+			return KNOT_EINVAL;
+		}
 #else
+		(void)tls;
 		args->err_str = "QUIC not available";
 		return KNOT_EINVAL;
 #endif

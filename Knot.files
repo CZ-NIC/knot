@@ -319,6 +319,8 @@ src/knot/query/quic-requestor.c
 src/knot/query/quic-requestor.h
 src/knot/query/requestor.c
 src/knot/query/requestor.h
+src/knot/query/tls-requestor.c
+src/knot/query/tls-requestor.h
 src/knot/server/dthreads.c
 src/knot/server/dthreads.h
 src/knot/server/handler.c
@@ -483,6 +485,8 @@ src/libknot/quic/quic.c
 src/libknot/quic/quic.h
 src/libknot/quic/quic_conn.c
 src/libknot/quic/quic_conn.h
+src/libknot/quic/tls.c
+src/libknot/quic/tls.h
 src/libknot/quic/tls_common.c
 src/libknot/quic/tls_common.h
 src/libknot/rdata.h

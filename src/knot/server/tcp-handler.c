@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 #include "knot/common/fdset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
+#include "libknot/quic/tls.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
@@ -57,6 +58,7 @@ typedef struct tcp_context {
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
+	struct knot_tls_ctx *tls_ctx;    /*!< DoT answering context. */
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
@@ -76,6 +78,16 @@ static void update_tcp_conf(tcp_context_t *tcp)
 	tcp->idle_timeout = pconf->cache.srv_tcp_idle_timeout;
 	tcp->io_timeout = pconf->cache.srv_tcp_io_timeout;
 	rcu_read_unlock();
+
+	if (tcp->tls_ctx != NULL) {
+		tcp->tls_ctx->io_timeout_ms = tcp->io_timeout;
+	}
+}
+
+static void free_tls_ctx(fdset_t *set, int idx)
+{
+	void *tls_conn = *fdset_ctx2(set, idx);
+	knot_tls_conn_del(tls_conn);
 }
 
 /*! \brief Sweep TCP connection. */
@@ -93,6 +105,8 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, _unused_ void *data)
 		log_notice("TCP, terminated inactive client, address %s", addr_str);
 	}
 
+	free_tls_ctx(set, idx);
+
 	return FDSET_SWEEP;
 }
 
@@ -108,15 +122,14 @@ static void tcp_log_error(const struct sockaddr_storage *ss, const char *operati
 }
 
 static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
-                               fdset_t *fds, int thread_id)
+                               fdset_t *fds, int thread_id, bool *tls)
 {
 	if (n_ifaces == 0) {
 		return 0;
 	}
 
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
-		if (i->fd_tcp_count == 0 || i->tls) { // Ignore XDP and QUIC interfaces.
-			assert(i->fd_xdp_count > 0 || i->tls);
+		if (i->fd_tcp_count == 0) { // Ignore XDP interfaces.
 			continue;
 		}
 
@@ -134,23 +147,33 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 		if (ret < 0) {
 			return 0;
 		}
+		if (i->tls) {
+			*tls = true;
+		}
 	}
 
 	return fdset_get_length(fds);
 }
 
-static int tcp_handle(tcp_context_t *tcp, int fd, const sockaddr_t *remote,
+static int tcp_handle(tcp_context_t *tcp, int fd, void *tls_conn, const sockaddr_t *remote,
                       const sockaddr_t *local, struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	knotd_qdata_params_t params = params_init(KNOTD_QUERY_PROTO_TCP, remote, local,
-	                                          fd, tcp->server, tcp->thread_id);
+	knotd_qdata_params_t params = params_init(tls_conn != NULL ? KNOTD_QUERY_PROTO_TLS : KNOTD_QUERY_PROTO_TCP,
+	                                          remote, local, fd, tcp->server, tcp->thread_id);
 
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Receive data. */
-	int recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout);
+	int recv;
+	if (tls_conn != NULL) {
+		assert(tcp->tls_ctx != NULL);
+		params.tls_session = ((knot_tls_conn_t *)tls_conn)->session;
+		recv = knot_tls_recv_dns(tls_conn, rx->iov_base, rx->iov_len);
+	} else {
+		recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout);
+	}
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {
@@ -166,8 +189,13 @@ static int tcp_handle(tcp_context_t *tcp, int fd, const sockaddr_t *remote,
 		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && send_state(tcp->layer.state)) {
-			int sent = net_dns_tcp_send(fd, ans->wire, ans->size,
-			                            tcp->io_timeout, NULL);
+			int sent;
+			if (tls_conn != NULL) {
+				sent = knot_tls_send_dns(tls_conn, ans->wire, ans->size);
+			} else {
+				sent = net_dns_tcp_send(fd, ans->wire, ans->size,
+				                        tcp->io_timeout, NULL);
+			}
 			if (sent != ans->size) {
 				tcp_log_error(params.remote, "send", sent);
 				handle_finish(&tcp->layer);
@@ -223,7 +251,17 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 		}
 	}
 
-	int ret = tcp_handle(tcp, fd, remote, local, &tcp->iov[0], &tcp->iov[1]);
+	void *tls_conn = *fdset_ctx2(&tcp->set, i);
+	assert(iface->tls || tls_conn == NULL);
+	if (iface->tls && tls_conn == NULL) {
+		tls_conn = knot_tls_conn_new(tcp->tls_ctx, fd);
+		if (tls_conn == NULL) {
+			return KNOT_ERROR; // FIXME
+		}
+		*fdset_ctx2(&tcp->set, i) = tls_conn;
+	}
+
+	int ret = tcp_handle(tcp, fd, tls_conn, remote, local, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		(void)fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
@@ -274,6 +312,7 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
+			free_tls_ctx(set, idx);
 			fdset_it_remove(&it);
 		}
 	}
@@ -330,9 +369,10 @@ int tcp_master(dthread_t *thread)
 	}
 
 	/* Set descriptors for the configured interfaces. */
+	bool tls = false;
 	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces,
 	                                      handler->server->n_ifaces,
-	                                      &tcp.set, thread_id);
+	                                      &tcp.set, thread_id, &tls);
 	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
@@ -341,6 +381,14 @@ int tcp_master(dthread_t *thread)
 	struct timespec next_sweep;
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
+
+	if (tls) {
+		tcp.tls_ctx = knot_tls_ctx_new(handler->server->quic_creds,
+		                               true, tcp.io_timeout);
+		if (tcp.tls_ctx == NULL) {
+			goto finish;
+		}
+	}
 
 	for (;;) {
 		/* Check for cancellation. */
@@ -360,6 +408,7 @@ int tcp_master(dthread_t *thread)
 	}
 
 finish:
+	knot_tls_ctx_free(tcp.tls_ctx);
 	free(tcp.iov[0].iov_base);
 	free(tcp.iov[1].iov_base);
 	mp_delete(mm.ctx);

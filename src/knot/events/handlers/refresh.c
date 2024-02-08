@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,20 +67,17 @@
  * \endverbatim
  */
 
-#define PROTO(data) \
-	((data)->layer->flags & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP
-
 #define REFRESH_LOG(priority, data, msg...) \
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_REFRESH, LOG_DIRECTION_NONE, \
 	       (data)->remote, 0, false, msg)
 
 #define AXFRIN_LOG(priority, data, msg...) \
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_AXFR, LOG_DIRECTION_IN, \
-	       (data)->remote, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
+	       (data)->remote, flags2proto((data)->layer->flags), (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
 
 #define IXFRIN_LOG(priority, data, msg...) \
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_IXFR, LOG_DIRECTION_IN, \
-	       (data)->remote, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
+	       (data)->remote, flags2proto((data)->layer->flags), (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
 
 enum state {
 	REFRESH_STATE_INVALID = 0,
@@ -1197,9 +1194,7 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		                 data->xfr_type == XFR_TYPE_UPTODATE ?
 		                 LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
 		                 LOG_DIRECTION_IN, data->remote,
-		                 (layer->flags & KNOT_REQUESTOR_QUIC ?
-		                  KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP),
-		                 &data->stats);
+		                 flags2proto(layer->flags), &data->stats);
 
 		/*
 		 * TODO: Move finialization into finish

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -482,7 +482,6 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 #endif
 	} else { // UDP thread.
 		if (iface->fd_udp_count == 0) { // No UDP interfaces.
-			assert(iface->fd_xdp_count > 0);
 			return -1;
 		}
 #ifdef ENABLE_REUSEPORT

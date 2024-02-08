@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "knot/query/requestor.h"
 #ifdef ENABLE_QUIC
 #include "knot/query/quic-requestor.h"
+#include "libknot/quic/tls.h"
 #endif // ENABLE_QUIC
 #include "libknot/errcode.h"
 #include "contrib/conn_pool.h"
@@ -37,6 +38,11 @@ static bool use_tcp(knot_request_t *request)
 static bool use_quic(knot_request_t *request)
 {
 	return (request->flags & KNOT_REQUEST_QUIC) != 0;
+}
+
+static bool use_tls(knot_request_t *request)
+{
+	return (request->flags & KNOT_REQUEST_TLS) != 0;
 }
 
 static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer)
@@ -104,6 +110,19 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 #endif // ENABLE_QUIC
 	}
 
+	if (use_tls(request)) {
+		assert(!use_quic(request));
+
+		int ret = knot_tls_req_ctx_init(&request->tls_req_ctx, request->fd,
+		                                request->creds, request->pin,
+		                                request->pin_len, timeout_ms);
+		if (ret != KNOT_EOK) {
+			close(request->fd);
+			request->fd = -1;
+			return ret;
+		}
+	}
+
 	return KNOT_EOK;
 }
 
@@ -124,7 +143,9 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 	                                    &request->remote : NULL;
 
 	/* Send query. */
-	if (use_quic(request)) {
+	if (use_tls(request)) {
+		ret = knot_tls_send_dns(request->tls_req_ctx.conn, wire, wire_len);
+	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
 		struct iovec tosend = { wire, wire_len };
 		return knot_qreq_send(request->quic_ctx, &tosend);
@@ -162,7 +183,9 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	}
 
 	/* Receive it */
-	if (use_quic(request)) {
+	if (use_tls(request)) {
+		ret = knot_tls_recv_dns(request->tls_req_ctx.conn, resp->wire, resp->max_size);
+	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
 		struct iovec recvd = { resp->wire, resp->max_size };
 		ret = knot_qreq_recv(request->quic_ctx, &recvd, timeout_ms);
@@ -232,7 +255,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 
 	request->edns = edns;
 	request->creds = creds;
-	if (flags & KNOT_REQUEST_QUIC && pin_len > 0) {
+	if ((flags & (KNOT_REQUEST_QUIC | KNOT_REQUEST_TLS)) && pin_len > 0) {
 		request->pin_len = pin_len;
 		memcpy(request->pin, pin, pin_len);
 	}
@@ -248,7 +271,10 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
                                   knot_request_flag_t flags)
 {
 	if (remote->quic) {
+		assert(!remote->tls);
 		flags |= KNOT_REQUEST_QUIC;
+	} else if (remote->tls) {
+		flags |= KNOT_REQUEST_TLS;
 	}
 
 	return knot_request_make_generic(mm, &remote->addr, &remote->via,
@@ -263,14 +289,19 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 	}
 
 	if (request->quic_ctx != NULL) {
+		if (use_quic(request)) {
 #ifdef ENABLE_QUIC
-		knot_qreq_close(request->quic_ctx, true);
+			knot_qreq_close(request->quic_ctx, true);
 #else
-		assert(0);
+			assert(0);
 #endif // ENABLE_QUIC
+		} else {
+			assert(use_tls(request));
+			knot_tls_req_ctx_deinit(&request->tls_req_ctx);
+		}
 	}
 
-	if (request->fd >= 0 && use_tcp(request) &&
+	if (request->fd >= 0 && use_tcp(request) && !use_tls(request) &&
 	    (request->flags & KNOT_REQUEST_KEEP)) {
 		request->fd = (int)conn_pool_put(global_conn_pool,
 		                                 &request->source,
@@ -352,7 +383,7 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 
 	if (last->edns != NULL && !last->edns->no_edns) {
 		ret = query_put_edns(last->query, last->edns,
-		                     (last->flags & KNOT_REQUEST_QUIC));
+		                     (last->flags & (KNOT_REQUEST_QUIC | KNOT_REQUEST_TLS)));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -376,6 +407,9 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 		}
 		if (last->flags & KNOT_REQUEST_QUIC) {
 			req->layer.flags |= KNOT_REQUESTOR_QUIC;
+		}
+		if (last->flags & KNOT_REQUEST_TLS) {
+			req->layer.flags |= KNOT_REQUESTOR_TLS;
 		}
 	}
 

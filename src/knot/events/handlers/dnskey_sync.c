@@ -26,8 +26,7 @@
 
 #define DNSKEY_SYNC_LOG(priority, zone, remote, flags, fmt, ...) \
 	ns_log(priority, zone, LOG_OPERATION_DNSKEY_SYNC, LOG_DIRECTION_OUT, remote, \
-	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
-	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
+	       flags2proto(flags), ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
 
 static const unsigned remote_rrs[] = { KNOT_RRTYPE_DNSKEY, KNOT_RRTYPE_CDNSKEY, KNOT_RRTYPE_CDS };
 #define REMOTE_NTYPES (sizeof(remote_rrs) / sizeof(remote_rrs[0]))

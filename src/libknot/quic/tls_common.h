@@ -64,3 +64,46 @@ int knot_quic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_i
  * \brief Deinit server TLS certificate for DoQ.
  */
 void knot_quic_free_creds(struct knot_quic_creds *creds);
+
+/*!
+ * \brief Initialize GnuTLS session with credentials, ALPN, etc.
+ *
+ * \param session      Out: initialized GnuTLS session struct.
+ * \param creds        Certificate credentials.
+ * \param sess_prio    Session priority configuration.
+ * \param alpn         ALPN.
+ * \param early_data   Allow early data.
+ * \param server       Shoud be server session (otherwise client).
+ *
+ * \return KNOT_E*
+ */
+int knot_quic_conn_session(struct gnutls_session_int **session,
+                           struct knot_quic_creds *creds,
+                           const char *sess_prio,
+                           const char *alpn,
+                           bool early_data,
+                           bool server);
+
+/*!
+ * \brief Gets local or remote certificate pin.
+ *
+ * \note Zero output pin_size value means no certificate available or error.
+ *
+ * \param session   TLS connection.
+ * \param pin       Output certificate pin.
+ * \param pin_size  Input size of the storage / output size of the stored pin.
+ * \param local     Local or remote certificate indication.
+ */
+void knot_quic_conn_pin2(struct gnutls_session_int *session, uint8_t *pin,
+                         size_t *pin_size, bool local);
+
+/*!
+ * \brief Checks remote certificate pin in the session against credentials.
+ *
+ * \param session   TLS connection.
+ * \param creds     TLS credentials.
+ *
+ * \return KNOT_EOK or KNOT_EBADCERTKEY
+ */
+int knot_quic_conn_pin_check(struct gnutls_session_int *session,
+                             struct knot_quic_creds *creds);

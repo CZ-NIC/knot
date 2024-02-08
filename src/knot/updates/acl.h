@@ -65,7 +65,7 @@ typedef enum {
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query,
-                 struct knot_quic_conn *conn);
+                 struct gnutls_session_int *tls_session);
 
 /*!
  * \brief Checks if the address and/or tsig key matches a remote from the list.
@@ -84,4 +84,4 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
  * \retval True if authenticated.
  */
 bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig, struct knot_quic_conn *conn);
+                 knot_tsig_key_t *tsig, struct gnutls_session_int *tls_session);

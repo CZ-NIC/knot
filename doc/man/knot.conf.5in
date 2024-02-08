@@ -268,6 +268,7 @@ server:
     dbus\-init\-delay: TIME
     listen: ADDR[@INT] | STR ...
     listen\-quic: ADDR[@INT] ...
+    listen\-tls: ADDR[@INT] ...
 .ft P
 .fi
 .UNINDENT
@@ -654,6 +655,22 @@ One or more IP addresses (and optionally ports) where the server listens
 for incoming queries over QUIC protocol.
 .sp
 Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP not set
+.SS listen\-tls
+.sp
+One or more IP addresses (and optionally ports) where the server listens
+for incoming queries over TLS protocol (DoT).
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Incoming DDNS over TLS isn\(aqt supported.
+The server always responds with SERVFAIL.
+.UNINDENT
+.UNINDENT
 .sp
 \fIDefault:\fP not set
 .SH XDP SECTION
@@ -1249,6 +1266,7 @@ remote:
     address: ADDR[@INT] | STR ...
     via: ADDR[@INT] ...
     quic: BOOL
+    tls: BOOL
     key: key_id
     cert\-key: BASE64 ...
     block\-notify\-after\-transfer: BOOL
@@ -1337,6 +1355,12 @@ session tickets are used for reopening connections to recently (up to 1 day)
 queried remotes.
 .UNINDENT
 .UNINDENT
+.sp
+\fIDefault:\fP \fBoff\fP
+.SS tls
+.sp
+If this option is set, the TLS (DoT) protocol will be used for outgoing communication
+with this remote.
 .sp
 \fIDefault:\fP \fBoff\fP
 .SS key

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -83,8 +83,7 @@ static const knot_layer_api_t NOTIFY_API = {
 
 #define NOTIFY_OUT_LOG(priority, zone, remote, flags, fmt, ...) \
 	ns_log(priority, zone, LOG_OPERATION_NOTIFY, LOG_DIRECTION_OUT, remote, \
-	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
-	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
+	       flags2proto(flags), ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
 
 static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
                        const conf_remote_t *slave, int timeout, bool retry)

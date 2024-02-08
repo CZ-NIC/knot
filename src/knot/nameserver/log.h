@@ -81,6 +81,8 @@ static inline const char *log_conn_info(knotd_query_proto_t proto, bool pool)
 		return pool ? " TCP/pool" : " TCP";
 	case KNOTD_QUERY_PROTO_QUIC:
 		return pool ? " QUIC/0-RTT" : " QUIC";
+	case KNOTD_QUERY_PROTO_TLS:
+		return " TLS";
 	default:
 		return "";
 	}

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,7 +55,12 @@ inline static knotd_qdata_params_t params_init(knotd_query_proto_t proto,
 inline static void params_update(knotd_qdata_params_t *params, uint32_t rtt,
                                  struct knot_quic_conn *conn, int64_t stream_id)
 {
+#ifdef ENABLE_QUIC
 	params->quic_conn = conn;
+	params->tls_session = conn == NULL ? NULL : conn->tls_session;
+#else
+	assert(conn == NULL);
+#endif
 	params->quic_stream = stream_id;
 	params->measured_rtt = rtt;
 }
@@ -83,7 +88,12 @@ inline static void params_xdp_update(knotd_qdata_params_t *params,
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
 	params->local = (struct sockaddr_storage *)&msg->ip_to;
 	params->xdp_msg = msg;
+#ifdef ENABLE_QUIC
 	params->quic_conn = conn;
+	params->tls_session = conn == NULL ? NULL : conn->tls_session;
+#else
+	assert(conn == NULL);
+#endif
 	params->measured_rtt = rtt;
 }
 #endif // ENABLE_XDP
