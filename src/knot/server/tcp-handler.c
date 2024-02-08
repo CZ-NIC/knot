@@ -114,8 +114,7 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 	}
 
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
-		if (i->fd_tcp_count == 0 || i->tls) { // Ignore XDP and QUIC interfaces.
-			assert(i->fd_xdp_count > 0 || i->tls);
+		if (i->fd_tcp_count == 0) { // Ignore XDP interfaces.
 			continue;
 		}
 
@@ -138,12 +137,12 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 	return fdset_get_length(fds);
 }
 
-static int tcp_handle(tcp_context_t *tcp, int fd, const sockaddr_t *remote,
+static int tcp_handle(tcp_context_t *tcp, int fd, bool tls, const sockaddr_t *remote,
                       const sockaddr_t *local, struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	knotd_qdata_params_t params = params_init(KNOTD_QUERY_PROTO_TCP, remote, local,
-	                                          fd, tcp->server, tcp->thread_id);
+	knotd_qdata_params_t params = params_init(tls ? KNOTD_QUERY_PROTO_TLS : KNOTD_QUERY_PROTO_TCP,
+	                                          remote, local, fd, tcp->server, tcp->thread_id);
 
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
@@ -222,7 +221,7 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 		}
 	}
 
-	int ret = tcp_handle(tcp, fd, remote, local, &tcp->iov[0], &tcp->iov[1]);
+	int ret = tcp_handle(tcp, fd, iface->tls, remote, local, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		(void)fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);

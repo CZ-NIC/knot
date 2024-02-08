@@ -57,10 +57,6 @@
 
 #define TLS_CALLBACK_ERR     (-1)
 
-const gnutls_datum_t doq_alpn = {
-	(unsigned char *)"doq", 3
-};
-
 typedef struct knot_quic_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
@@ -374,33 +370,60 @@ static ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref)
 	return ((knot_quic_conn_t *)conn_ref->user_data)->conn;
 }
 
+_public_
+int knot_quic_conn_session(struct gnutls_session_int **session,
+                           struct knot_quic_creds *creds,
+                           const char *sess_prio,
+                           const char *alpn,
+                           bool early_data,
+                           bool server)
+{
+	int ret = gnutls_init(session,
+		(server ? GNUTLS_SERVER : GNUTLS_CLIENT) |
+		(early_data ? GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET | GNUTLS_NO_END_OF_EARLY_DATA : 0)
+	);
+	if (ret == GNUTLS_E_SUCCESS) {
+		gnutls_certificate_send_x509_rdn_sequence(*session, 1);
+		gnutls_certificate_server_set_request(*session, GNUTLS_CERT_REQUEST);
+		ret = gnutls_priority_set_direct(*session, sess_prio, NULL);
+	}
+	if (server && ret == GNUTLS_E_SUCCESS) {
+		ret = gnutls_session_ticket_enable_server(*session, &creds->tls_ticket_key);
+	}
+	if (ret == GNUTLS_E_SUCCESS) {
+		const gnutls_datum_t alpn_datum = { (void *)alpn, strlen(alpn) };
+		gnutls_alpn_set_protocols(*session, &alpn_datum, 1, GNUTLS_ALPN_MANDATORY);
+		if (early_data) {
+			gnutls_record_set_max_early_data_size(*session, 0xffffffffu);
+		}
+		if (server) {
+			gnutls_anti_replay_enable(*session, creds->tls_anti_replay);
+		}
+		ret = gnutls_credentials_set(*session, GNUTLS_CRD_CERTIFICATE, creds->tls_cert);
+	}
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_deinit(*session);
+		*session = NULL;
+	}
+	return ret;
+}
+
 static int tls_init_conn_session(knot_quic_conn_t *conn, bool server)
 {
-	if (gnutls_init(&conn->tls_session, (server ? GNUTLS_SERVER : GNUTLS_CLIENT) |
-	                GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET |
-	                GNUTLS_NO_END_OF_EARLY_DATA) != GNUTLS_E_SUCCESS) {
+	int ret = knot_quic_conn_session(&conn->tls_session, conn->quic_table->creds,
+	                                 QUIC_PRIORITIES, "doq", true, server);
+	if (ret != GNUTLS_E_SUCCESS) {
 		return TLS_CALLBACK_ERR;
 	}
 
-	gnutls_certificate_send_x509_rdn_sequence(conn->tls_session, 1);
-	gnutls_certificate_server_set_request(conn->tls_session, GNUTLS_CERT_REQUEST);
-
-	if (gnutls_priority_set_direct(conn->tls_session, QUIC_PRIORITIES,
-	                               NULL) != GNUTLS_E_SUCCESS) {
+	if (server) {
+		ret = ngtcp2_crypto_gnutls_configure_server_session(conn->tls_session);
+	} else {
+		ret = ngtcp2_crypto_gnutls_configure_client_session(conn->tls_session);
+	}
+	if (ret != NGTCP2_NO_ERROR) {
 		return TLS_CALLBACK_ERR;
 	}
-
-	if (server && gnutls_session_ticket_enable_server(conn->tls_session,
-	                &conn->quic_table->creds->tls_ticket_key) != GNUTLS_E_SUCCESS) {
-		return TLS_CALLBACK_ERR;
-	}
-
-	int ret = ngtcp2_crypto_gnutls_configure_server_session(conn->tls_session);
-	if (ret != 0) {
-		return TLS_CALLBACK_ERR;
-	}
-
-	gnutls_record_set_max_early_data_size(conn->tls_session, 0xffffffffu);
 
 	conn->conn_ref = (nc_conn_ref_placeholder_t) {
 		.get_conn = get_conn,
@@ -409,17 +432,6 @@ static int tls_init_conn_session(knot_quic_conn_t *conn, bool server)
 
 	_Static_assert(sizeof(nc_conn_ref_placeholder_t) == sizeof(ngtcp2_crypto_conn_ref), "invalid placeholder for conn_ref");
 	gnutls_session_set_ptr(conn->tls_session, &conn->conn_ref);
-
-	if (server) {
-		gnutls_anti_replay_enable(conn->tls_session, conn->quic_table->creds->tls_anti_replay);
-
-	}
-	if (gnutls_credentials_set(conn->tls_session, GNUTLS_CRD_CERTIFICATE,
-	                           conn->quic_table->creds->tls_cert) != GNUTLS_E_SUCCESS) {
-		return TLS_CALLBACK_ERR;
-	}
-
-	gnutls_alpn_set_protocols(conn->tls_session, &doq_alpn, 1, GNUTLS_ALPN_MANDATORY);
 
 	ngtcp2_conn_set_tls_native_handle(conn->conn, conn->tls_session);
 

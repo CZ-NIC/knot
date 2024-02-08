@@ -393,6 +393,7 @@ typedef enum {
 	KNOTD_QUERY_PROTO_UDP  = KNOT_PROBE_PROTO_UDP,  /*!< Pure UDP. */
 	KNOTD_QUERY_PROTO_TCP  = KNOT_PROBE_PROTO_TCP,  /*!< Pure TCP. */
 	KNOTD_QUERY_PROTO_QUIC = KNOT_PROBE_PROTO_QUIC, /*!< QUIC/UDP. */
+	KNOTD_QUERY_PROTO_TLS  = KNOT_PROBE_PROTO_TLS,  /*!< DoT. */
 } knotd_query_proto_t;
 
 /*! Query processing specific flags. */

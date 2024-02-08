@@ -361,7 +361,7 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
  * \retval Pointer to a new initialized interface.
  * \retval NULL if error.
  */
-static iface_t *server_init_iface(struct sockaddr_storage *addr, bool quic,
+static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
                                   int udp_thread_count, int tcp_thread_count,
                                   bool tcp_reuseport, bool socket_affinity)
 {
@@ -378,14 +378,14 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool quic,
 
 	int udp_socket_count = 1;
 	int udp_bind_flags = 0;
-	int tcp_socket_count = !quic ? 1 : 0;
+	int tcp_socket_count = 1;
 	int tcp_bind_flags = 0;
 
 #ifdef ENABLE_REUSEPORT
 	udp_socket_count = udp_thread_count;
 	udp_bind_flags |= NET_BIND_MULTIPLE;
 
-	if (!quic && tcp_reuseport) {
+	if (tcp_reuseport) {
 		tcp_socket_count = tcp_thread_count;
 		tcp_bind_flags |= NET_BIND_MULTIPLE;
 	}
@@ -457,7 +457,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool quic,
 			warn_flag_misc = false;
 		}
 
-		if (quic) {
+		if (tls) {
 			ret = net_cmsg_ecn_enable(sock, addr->ss_family);
 			if (ret != KNOT_EOK && ret != KNOT_ENOTSUP && warn_ecn) {
 				log_warning("failed to enable ECN for QUIC");
@@ -706,12 +706,15 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		conf_val_next(&listen_val);
 	}
 	while (liquic_val.code == KNOT_EOK) {
+		bool also_dot = true; // FIXME configuration QUIConly/TLSonly/QUIC+TLS
+
 		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 		log_info("binding to QUIC interface %s", addr_str);
 
-		iface_t *new_if = server_init_iface(&addr, true, size_udp, 0,
+		iface_t *new_if = server_init_iface(&addr, true, size_udp,
+		                                    also_dot ? size_tcp : 0,
 		                                    false, socket_affinity);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);

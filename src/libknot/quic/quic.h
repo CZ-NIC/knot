@@ -127,6 +127,23 @@ int knot_quic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_i
 void knot_quic_free_creds(struct knot_quic_creds *creds);
 
 /*!
+ * \brief TODO
+ * \param session
+ * \param creds
+ * \param sess_prio
+ * \param alpn
+ * \param early_data
+ * \param server
+ * \return
+ */
+int knot_quic_conn_session(struct gnutls_session_int **session,
+                           struct knot_quic_creds *creds,
+                           const char *sess_prio,
+                           const char *alpn,
+                           bool early_data,
+                           bool server);
+
+/*!
  * \brief Returns timeout value for the connection.
  */
 uint64_t quic_conn_get_timeout(knot_quic_conn_t *conn);

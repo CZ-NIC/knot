@@ -122,10 +122,12 @@ libknot_la_CPPFLAGS += $(libngtcp2_CFLAGS) $(gnutls_CFLAGS)
 libknot_la_LIBADD   += $(libngtcp2_LIBS) $(gnutls_LIBS)
 
 nobase_include_libknot_HEADERS += \
+	libknot/quic/tls.h			\
 	libknot/quic/quic.h			\
 	libknot/quic/quic_conn.h
 
 libknot_la_SOURCES  += \
+	libknot/quic/tls.c			\
 	libknot/quic/quic.c			\
 	libknot/quic/quic_conn.c
 
