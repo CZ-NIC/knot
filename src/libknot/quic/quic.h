@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,18 +113,6 @@ uint32_t knot_quic_conn_rtt(knot_quic_conn_t *conn);
  * \brief Returns the port from local-address of given conn IN BIG ENDIAN.
  */
 uint16_t knot_quic_conn_local_port(knot_quic_conn_t *conn);
-
-/*!
- * \brief Gets local or remote certificate pin.
- *
- * \note Zero output pin_size value means no certificate available or error.
- *
- * \param conn      QUIC connection.
- * \param pin       Output certificate pin.
- * \param pin_size  Input size of the storage / output size of the stored pin.
- * \param local     Local or remote certificate indication.
- */
-void knot_quic_conn_pin(knot_quic_conn_t *conn, uint8_t *pin, size_t *pin_size, bool local);
 
 /*!
  * \brief Create new outgoing QUIC connection.

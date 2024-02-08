@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 
+#include "libknot/quic/tls_common.h"
 #include "libknot/tsig.h"
 #include "knot/conf/conf.h"
 
@@ -51,21 +52,21 @@ typedef enum {
  *
  * If a proper ACL rule is found and tsig.name is not empty, tsig.secret is filled.
  *
- * \param conf       Configuration.
- * \param acl        Pointer to ACL config multivalued identifier.
- * \param action     ACL action.
- * \param addr       IP address.
- * \param tsig       TSIG parameters.
- * \param zone_name  Zone name.
- * \param query      Update query.
- * \param conn       Possible QUIC connection.
+ * \param conf         Configuration.
+ * \param acl          Pointer to ACL config multivalued identifier.
+ * \param action       ACL action.
+ * \param addr         IP address.
+ * \param tsig         TSIG parameters.
+ * \param zone_name    Zone name.
+ * \param query        Update query.
+ * \param tls_session  Possible TLS session.
  *
  * \retval True if authenticated.
  */
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query,
-                 struct knot_quic_conn *conn);
+                 struct gnutls_session_int *tls_session);
 
 /*!
  * \brief Checks if the address and/or tsig key matches a remote from the list.
@@ -75,13 +76,13 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
  *
  * If a proper REMOTE is found and tsig.name is not empty, tsig.secret is filled.
  *
- * \param conf       Configuration.
- * \param rmts       Pointer to REMOTE config multivalued identifier.
- * \param addr       IP address.
- * \param tsig       TSIG parameters.
- * \param conn       Possible QUIC connection.
+ * \param conf         Configuration.
+ * \param rmts         Pointer to REMOTE config multivalued identifier.
+ * \param addr         IP address.
+ * \param tsig         TSIG parameters.
+ * \param tls_session  Possible TLS session.
  *
  * \retval True if authenticated.
  */
 bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig, struct knot_quic_conn *conn);
+                 knot_tsig_key_t *tsig, struct gnutls_session_int *tls_session);

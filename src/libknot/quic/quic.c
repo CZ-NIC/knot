@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,6 @@
 
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
-#include "contrib/string.h"
 #include "contrib/ucw/lists.h"
 #include "libknot/endian.h"
 #include "libdnssec/error.h"
@@ -57,19 +56,6 @@
 #define QUIC_SEND_EXCESSIVE_LOAD         (-KNOT_QUIC_ERR_EXCESSIVE_LOAD)
 
 #define TLS_CALLBACK_ERR     (-1)
-
-const gnutls_datum_t doq_alpn = {
-	(unsigned char *)"doq", 3
-};
-
-typedef struct knot_quic_creds {
-	gnutls_certificate_credentials_t tls_cert;
-	gnutls_anti_replay_t tls_anti_replay;
-	gnutls_datum_t tls_ticket_key;
-	bool peer;
-	uint8_t peer_pin_len;
-	uint8_t peer_pin[];
-} knot_quic_creds_t;
 
 typedef struct knot_quic_session {
 	node_t n;
@@ -160,50 +146,29 @@ static ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref)
 
 static int tls_init_conn_session(knot_quic_conn_t *conn, bool server)
 {
-	if (gnutls_init(&conn->tls_session, (server ? GNUTLS_SERVER : GNUTLS_CLIENT) |
-	                GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET |
-	                GNUTLS_NO_END_OF_EARLY_DATA) != GNUTLS_E_SUCCESS) {
+	int ret = knot_quic_conn_session(&conn->tls_session, conn->quic_table->creds,
+	                                 QUIC_PRIORITIES, "\x03""doq", true, server);
+	if (ret != KNOT_EOK) {
 		return TLS_CALLBACK_ERR;
 	}
 
-	gnutls_certificate_send_x509_rdn_sequence(conn->tls_session, 1);
-	gnutls_certificate_server_set_request(conn->tls_session, GNUTLS_CERT_REQUEST);
-
-	if (gnutls_priority_set_direct(conn->tls_session, QUIC_PRIORITIES,
-	                               NULL) != GNUTLS_E_SUCCESS) {
+	if (server) {
+		ret = ngtcp2_crypto_gnutls_configure_server_session(conn->tls_session);
+	} else {
+		ret = ngtcp2_crypto_gnutls_configure_client_session(conn->tls_session);
+	}
+	if (ret != NGTCP2_NO_ERROR) {
 		return TLS_CALLBACK_ERR;
 	}
-
-	if (server && gnutls_session_ticket_enable_server(conn->tls_session,
-	                &conn->quic_table->creds->tls_ticket_key) != GNUTLS_E_SUCCESS) {
-		return TLS_CALLBACK_ERR;
-	}
-
-	int ret = ngtcp2_crypto_gnutls_configure_server_session(conn->tls_session);
-	if (ret != 0) {
-		return TLS_CALLBACK_ERR;
-	}
-
-	gnutls_record_set_max_early_data_size(conn->tls_session, 0xffffffffu);
 
 	conn->conn_ref = (nc_conn_ref_placeholder_t) {
 		.get_conn = get_conn,
 		.user_data = conn
 	};
 
-	_Static_assert(sizeof(nc_conn_ref_placeholder_t) == sizeof(ngtcp2_crypto_conn_ref), "invalid placeholder for conn_ref");
+	_Static_assert(sizeof(nc_conn_ref_placeholder_t) == sizeof(ngtcp2_crypto_conn_ref),
+	               "invalid placeholder for conn_ref");
 	gnutls_session_set_ptr(conn->tls_session, &conn->conn_ref);
-
-	if (server) {
-		gnutls_anti_replay_enable(conn->tls_session, conn->quic_table->creds->tls_anti_replay);
-
-	}
-	if (gnutls_credentials_set(conn->tls_session, GNUTLS_CRD_CERTIFICATE,
-	                           conn->quic_table->creds->tls_cert) != GNUTLS_E_SUCCESS) {
-		return TLS_CALLBACK_ERR;
-	}
-
-	gnutls_alpn_set_protocols(conn->tls_session, &doq_alpn, 1, GNUTLS_ALPN_MANDATORY);
 
 	ngtcp2_conn_set_tls_native_handle(conn->conn, conn->tls_session);
 
@@ -258,54 +223,6 @@ uint16_t knot_quic_conn_local_port(knot_quic_conn_t *conn)
 {
 	const ngtcp2_path *path = ngtcp2_conn_get_path(conn->conn);
 	return ((const struct sockaddr_in6 *)path->local.addr)->sin6_port;
-}
-
-_public_
-void knot_quic_conn_pin(knot_quic_conn_t *conn, uint8_t *pin, size_t *pin_size, bool local)
-{
-	if (conn == NULL) {
-		goto error;
-	}
-
-	const gnutls_datum_t *data = NULL;
-	if (local) {
-		data = gnutls_certificate_get_ours(conn->tls_session);
-	} else {
-		unsigned count = 0;
-		data = gnutls_certificate_get_peers(conn->tls_session, &count);
-		if (count == 0) {
-			goto error;
-		}
-	}
-	if (data == NULL) {
-		goto error;
-	}
-
-	gnutls_x509_crt_t cert;
-	int ret = gnutls_x509_crt_init(&cert);
-	if (ret != GNUTLS_E_SUCCESS) {
-		goto error;
-	}
-
-	ret = gnutls_x509_crt_import(cert, data, GNUTLS_X509_FMT_DER);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_x509_crt_deinit(cert);
-		goto error;
-	}
-
-	ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256, pin, pin_size);
-	if (ret != GNUTLS_E_SUCCESS) {
-		gnutls_x509_crt_deinit(cert);
-		goto error;
-	}
-
-	gnutls_x509_crt_deinit(cert);
-
-	return;
-error:
-	if (pin_size != NULL) {
-		*pin_size = 0;
-	}
 }
 
 static void knot_quic_rand_cb(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx)
@@ -385,18 +302,8 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 	ctx->flags |= KNOT_QUIC_CONN_HANDSHAKE_DONE;
 
 	if (!ngtcp2_conn_is_server(conn)) {
-		knot_quic_creds_t *creds = ctx->quic_table->creds;
-		if (creds->peer_pin_len == 0) {
-			return 0;
-		}
-		uint8_t pin[KNOT_QUIC_PIN_LEN];
-		size_t pin_size = sizeof(pin);
-		knot_quic_conn_pin(ctx, pin, &pin_size, false);
-		if (pin_size != creds->peer_pin_len ||
-		    const_time_memcmp(pin, creds->peer_pin, pin_size) != 0) {
-			return NGTCP2_ERR_CALLBACK_FAILURE;
-		}
-		return 0;
+		return knot_quic_conn_pin_check(ctx->tls_session, ctx->quic_table->creds)
+		       == KNOT_EOK ? 0 : NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,6 +29,8 @@ typedef struct {
 	struct sockaddr_storage via;
 	/*! QUIC context. */
 	bool quic;
+	/*! TLS context. */
+	bool tls;
 	/*! TSIG key. */
 	knot_tsig_key_t key;
 	/*! Suppress sending NOTIFY after zone transfer from this master. */

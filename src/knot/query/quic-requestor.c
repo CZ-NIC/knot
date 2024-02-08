@@ -28,7 +28,6 @@
 #include "knot/conf/conf.h" // please use this only for tiny stuff like quic-log
 #include "knot/server/handler.h"
 #include "libknot/error.h"
-#include "libknot/quic/quic.h"
 
 #define QUIC_BUF_SIZE 4096
 

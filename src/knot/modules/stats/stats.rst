@@ -73,9 +73,11 @@ If enabled, all incoming requests are counted by the network protocol:
 * udp4 - UDP over IPv4
 * tcp4 - TCP over IPv4
 * quic4 - QUIC over IPv4
+* tls4 - TLS over IPv4
 * udp6 - UDP over IPv6
 * tcp6 - TCP over IPv6
 * quic6 - QUIC over IPv6
+* tls6 - TLS over IPv6
 * udp4-xdp - UDP over IPv4 through XDP
 * tcp4-xdp - TCP over IPv4 through XDP
 * quic4-xdp - QUIC over IPv4 through XDP

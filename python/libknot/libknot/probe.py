@@ -12,9 +12,9 @@ class KnotProbeDataProto(enum.IntEnum):
 
     UDP = 0
     TCP = 1
-    QUIC = 3
-    TLS = 4
-    HTTPS = 5
+    QUIC = 2
+    TLS = 3
+    HTTPS = 4
 
 
 class KnotProbeDataDNSHdr(ctypes.BigEndianStructure):
@@ -132,8 +132,10 @@ class KnotProbeData(ctypes.Structure):
             string += COL("UDP", GRN)
         elif self.proto == KnotProbeDataProto.TCP:
             string += COL("TCP", RED)
-        else:
+        elif self.proto == KnotProbeDataProto.QUIC:
             string += COL("QUIC", ORG)
+        else:
+            string += COL("TLS", YELW)
         if self.tcp_rtt > 0:
             string += ", RTT %.2f ms" % (self.tcp_rtt / 1000)
         string += "\n ID %u, " % self.query_hdr.id

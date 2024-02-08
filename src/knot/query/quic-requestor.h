@@ -17,9 +17,7 @@
 #pragma once
 
 #include "contrib/sockaddr.h"
-
-struct knot_quic_creds;
-struct knot_quic_reply;
+#include "libknot/quic/quic.h"
 
 int knot_qreq_connect(struct knot_quic_reply **out,
                       int fd,

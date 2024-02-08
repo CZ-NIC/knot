@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,8 +28,7 @@
 
 #define DS_CHECK_LOG(priority, zone, remote, flags, fmt, ...) \
 	ns_log(priority, zone, LOG_OPERATION_DS_CHECK, LOG_DIRECTION_OUT, remote, \
-	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
-	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
+	       flags2proto(flags), ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
 
 static bool match_key_ds(knot_kasp_key_t *key, knot_rdata_t *ds)
 {

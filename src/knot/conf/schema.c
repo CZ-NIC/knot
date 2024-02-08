@@ -246,6 +246,7 @@ static const yp_item_t desc_server[] = {
 	{ C_DBUS_INIT_DELAY,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 1, YP_STIME } },
 	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
 	{ C_LISTEN_QUIC,          YP_TADDR, YP_VADDR = { 853 }, YP_FMULTI, { check_listen } },
+	{ C_LISTEN_TLS,           YP_TADDR, YP_VADDR = { 853 }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
@@ -339,6 +340,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_ADDR,             YP_TADDR, YP_VADDR = { 53, 853 }, YP_FMULTI },
 	{ C_VIA,              YP_TADDR, YP_VNONE, YP_FMULTI },
 	{ C_QUIC,             YP_TBOOL, YP_VNONE },
+	{ C_TLS,              YP_TBOOL, YP_VNONE },
 	{ C_KEY,              YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
 	{ C_CERT_KEY,         YP_TB64,  YP_VNONE, YP_FMULTI, { check_cert_pin } },
 	{ C_BLOCK_NOTIFY_XFR, YP_TBOOL, YP_VNONE },
