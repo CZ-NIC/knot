@@ -1360,6 +1360,7 @@ Pre-requisites
 
     ethtool -K <interface> tx-vlan-offload off rx-vlan-offload off
 
+.. _Mode XDP_optimizations:
 
 Optimizations
 -------------
@@ -1371,6 +1372,8 @@ Some helpful commands::
  ethtool -L <interface> combined <?>
  ethtool -G <interface> rx <?> tx <?>
  renice -n 19 -p $(pgrep '^ksoftirqd/[0-9]*$')
+
+.. _Mode XDP_limitations:
 
 Limitations
 -----------
