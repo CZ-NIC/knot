@@ -26,7 +26,7 @@
 #include "libknot/error.h"
 #include "libknot/quic/quic.h"
 
-knot_tls_ctx_t *knot_tls_ctx_new(struct knot_quic_creds *creds,
+knot_tls_ctx_t *knot_tls_ctx_new(const struct knot_quic_creds *creds,
                                  bool server,
                                  unsigned handshake_timeout_ms,
                                  unsigned io_timeout_ms,
@@ -37,6 +37,7 @@ knot_tls_ctx_t *knot_tls_ctx_new(struct knot_quic_creds *creds,
 		return NULL;
 	}
 	res->server = server;
+	res->creds = creds;
 	res->handshake_timeout_ms = handshake_timeout_ms;
 	res->io_timeout_ms = io_timeout_ms;
 	res->idle_timeout_ms = idle_timeout_ms;
@@ -92,10 +93,11 @@ knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd)
 	gnutls_transport_set_ptr(res->session, res);
 	gnutls_transport_set_pull_timeout_function(res->session, poll_func);
 	gnutls_transport_set_pull_function(res->session, pull_func);
-	gnutls_transport_set_push_function(res->session, push_func);
+	gnutls_transport_set_push_function(res->session, push_func); // TODO employ gnutls_transport_set_vec_push_function for optimization
 	gnutls_handshake_set_timeout(res->session, ctx->handshake_timeout_ms);
 	gnutls_record_set_timeout(res->session, ctx->io_timeout_ms);
 
+	return res;
 fail:
 	gnutls_deinit(res->session);
 	free(res);
@@ -173,6 +175,22 @@ ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size)
 			return KNOT_ESPACE;
 		}
 		ret = knot_tls_recv(conn, data, dns_len);
+	}
+	return ret;
+}
+
+_public_
+ssize_t knot_tls_send_dns(knot_tls_conn_t *conn, void *data, size_t size)
+{
+	if (size > UINT16_MAX) {
+		return KNOT_EINVAL;
+	}
+	uint16_t dns_len = htons(size);
+	ssize_t ret = knot_tls_send(conn, &dns_len, sizeof(dns_len)); // TODO invent a way how to send length and data at once
+	if (ret > 0 && ret < sizeof(dns_len)) {
+		ret = KNOT_EMALF;
+	} else if (ret == sizeof(dns_len)) {
+		ret = knot_tls_send(conn, data, size);
 	}
 	return ret;
 }

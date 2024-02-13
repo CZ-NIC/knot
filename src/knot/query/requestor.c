@@ -24,6 +24,7 @@
 #include "knot/query/quic-requestor.h"
 #endif // ENABLE_QUIC
 #include "libknot/errcode.h"
+#include "libknot/quic/tls.h"
 #include "contrib/conn_pool.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
@@ -37,6 +38,11 @@ static bool use_tcp(knot_request_t *request)
 static bool use_quic(knot_request_t *request)
 {
 	return (request->flags & KNOT_REQUEST_QUIC) != 0;
+}
+
+static bool use_tls(knot_request_t *request)
+{
+	return (request->flags & KNOT_REQUEST_TLS) != 0;
 }
 
 static bool is_answer_to_query(const knot_pkt_t *query, const knot_pkt_t *answer)
@@ -104,6 +110,32 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 #endif // ENABLE_QUIC
 	}
 
+	if (use_tls(request)) {
+		assert(!use_quic(request));
+
+		struct knot_quic_creds *creds = knot_quic_init_creds_peer(request->creds,
+									  peer_pin, peer_pin_len);
+		if (creds == NULL) {
+			free(r);
+			return KNOT_ENOMEM;
+		}
+
+		request->tls_ctx = knot_tls_ctx_new(request->creds, false, timeout_ms, timeout_ms, timeout_ms); // FIXME timeouts
+		if (request->tls_ctx == NULL) {
+			close(request->fd);
+			request->fd = -1;
+			return KNOT_ERROR; // FIXME
+		}
+
+		request->tls_conn = knot_tls_conn_new(request->tls_ctx, request->fd);
+		if (request->tls_conn == NULL) {
+			knot_tls_ctx_free(request->tls_ctx);
+			close(request->fd);
+			request->fd = -1;
+			return KNOT_ERROR; // FIXME useless cleanups?
+		}
+	}
+
 	return KNOT_EOK;
 }
 
@@ -124,7 +156,9 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 	                                    &request->remote : NULL;
 
 	/* Send query. */
-	if (use_quic(request)) {
+	if (use_tls(request)) {
+		ret = knot_tls_send_dns(request->tls_conn, wire, wire_len);
+	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
 		struct iovec tosend = { wire, wire_len };
 		return knot_qreq_send(request->quic_ctx, &tosend);
@@ -162,7 +196,9 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	}
 
 	/* Receive it */
-	if (use_quic(request)) {
+	if (use_tls(request)) {
+		ret = knot_tls_recv_dns(request->tls_conn, resp->wire, resp->max_size);
+	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
 		struct iovec recvd = { resp->wire, resp->max_size };
 		ret = knot_qreq_recv(request->quic_ctx, &recvd, timeout_ms);
@@ -248,7 +284,7 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
                                   knot_request_flag_t flags)
 {
 	if (remote->quic) {
-		flags |= KNOT_REQUEST_QUIC;
+		flags |= KNOT_REQUEST_TLS; // FIXME this is temporary, return QUIC here!!!
 	}
 
 	return knot_request_make_generic(mm, &remote->addr, &remote->via,
@@ -264,13 +300,21 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 
 	if (request->quic_ctx != NULL) {
 #ifdef ENABLE_QUIC
-		knot_qreq_close(request->quic_ctx, true);
+		if (use_quic(request)) {
+			knot_qreq_close(request->quic_ctx, true);
+		} else {
+			assert(use_tls(request));
+			if (request->tls_conn != NULL) {
+				knot_tls_conn_del(request->tls_conn);
+			}
+			knot_tls_ctx_free(request->tls_ctx);
+		}
 #else
 		assert(0);
 #endif // ENABLE_QUIC
 	}
 
-	if (request->fd >= 0 && use_tcp(request) &&
+	if (request->fd >= 0 && use_tcp(request) && !use_tls(request) &&
 	    (request->flags & KNOT_REQUEST_KEEP)) {
 		request->fd = (int)conn_pool_put(global_conn_pool,
 		                                 &request->source,
@@ -352,7 +396,7 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 
 	if (last->edns != NULL && !last->edns->no_edns) {
 		ret = query_put_edns(last->query, last->edns,
-		                     (last->flags & KNOT_REQUEST_QUIC));
+		                     (last->flags & (KNOT_REQUEST_QUIC | KNOT_REQUEST_TLS)));
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -376,6 +420,9 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 		}
 		if (last->flags & KNOT_REQUEST_QUIC) {
 			req->layer.flags |= KNOT_REQUESTOR_QUIC;
+		}
+		if (last->flags & KNOT_REQUEST_TLS) {
+			req->layer.flags |= KNOT_REQUESTOR_TLS;
 		}
 	}
 

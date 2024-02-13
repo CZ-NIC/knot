@@ -19,8 +19,8 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-typedef struct {
-	struct knot_quic_creds *creds;
+typedef struct knot_tls_ctx {
+	const struct knot_quic_creds *creds;
 
 	unsigned handshake_timeout_ms;
 	unsigned io_timeout_ms;
@@ -29,14 +29,14 @@ typedef struct {
 	bool server;
 } knot_tls_ctx_t;
 
-typedef struct {
+typedef struct knot_tls_conn {
 	struct gnutls_session_int *session;
 	bool handshake_done;
 	int fd;
 	int timeout;
 } knot_tls_conn_t;
 
-knot_tls_ctx_t *knot_tls_ctx_new(struct knot_quic_creds *creds,
+knot_tls_ctx_t *knot_tls_ctx_new(const struct knot_quic_creds *creds,
                                  bool server,
                                  unsigned handshake_timeout_ms,
                                  unsigned io_timeout_ms,
@@ -55,3 +55,5 @@ ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size);
 ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size);
 
 ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size);
+
+ssize_t knot_tls_send_dns(knot_tls_conn_t *conn, void *data, size_t size);

@@ -146,7 +146,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, knot_tls_conn_t *tls_conn, con
                       const sockaddr_t *local, struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	knotd_qdata_params_t params = params_init(tls ? KNOTD_QUERY_PROTO_TLS : KNOTD_QUERY_PROTO_TCP,
+	knotd_qdata_params_t params = params_init(tls_conn != NULL ? KNOTD_QUERY_PROTO_TLS : KNOTD_QUERY_PROTO_TCP,
 	                                          remote, local, fd, tcp->server, tcp->thread_id);
 
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
@@ -177,7 +177,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, knot_tls_conn_t *tls_conn, con
 		if (ans->size > 0 && send_state(tcp->layer.state)) {
 			int sent;
 			if (tls_conn != NULL) {
-				sent = knot_tls_send(tls_conn, ans->wire, ans->size);
+				sent = knot_tls_send_dns(tls_conn, ans->wire, ans->size);
 			} else {
 				sent = net_dns_tcp_send(fd, ans->wire, ans->size,
 				                        tcp->io_timeout, NULL);
@@ -356,6 +356,11 @@ int tcp_master(dthread_t *thread)
 		goto finish; /* Terminate on zero interfaces. */
 	}
 
+	/* Initialize sweep interval and TCP configuration. */
+	struct timespec next_sweep;
+	update_sweep_timer(&next_sweep);
+	update_tcp_conf(&tcp);
+
 	if (tls) {
 		tcp.tls_ctx = knot_tls_ctx_new(handler->server->quic_creds,
 		                               true, tcp.io_timeout,
@@ -364,11 +369,6 @@ int tcp_master(dthread_t *thread)
 			goto finish;
 		}
 	}
-
-	/* Initialize sweep interval and TCP configuration. */
-	struct timespec next_sweep;
-	update_sweep_timer(&next_sweep);
-	update_tcp_conf(&tcp);
 
 	for (;;) {
 		/* Check for cancellation. */

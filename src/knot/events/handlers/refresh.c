@@ -1191,15 +1191,20 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	// Transfer completed
 	if (next == KNOT_STATE_DONE) {
+		knotd_query_proto_t proto = KNOTD_QUERY_PROTO_TCP;
+		if ((layer->flags & KNOT_REQUESTOR_QUIC)) {
+			proto = KNOTD_QUERY_PROTO_QUIC;
+		} else if ((layer->flags & KNOT_REQUESTOR_TLS)) {
+			proto = KNOTD_QUERY_PROTO_TLS;
+		}
+
 		// Log transfer even if we still can fail
 		xfr_log_finished(data->zone->name,
 		                 data->xfr_type == XFR_TYPE_IXFR ||
 		                 data->xfr_type == XFR_TYPE_UPTODATE ?
 		                 LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
 		                 LOG_DIRECTION_IN, data->remote,
-		                 (layer->flags & KNOT_REQUESTOR_QUIC ?
-		                  KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP),
-		                 &data->stats);
+		                 proto, &data->stats);
 
 		/*
 		 * TODO: Move finialization into finish

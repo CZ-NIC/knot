@@ -36,6 +36,7 @@ typedef enum {
 	KNOT_REQUEST_KEEP = 1 << 2,  /*!< Keep upstream TCP connection in pool for later reuse. */
 	KNOT_REQUEST_QUIC = 1 << 3,  /*!< Use QUIC/UDP for requests. */
 	KNOT_REQUEST_FWD  = 1 << 4,  /*!< Forwarded message, don't modify (TSIG, PADDING). */
+	KNOT_REQUEST_TLS  = 1 << 5,  /*!< Use DoT for requests. */
 } knot_request_flag_t;
 
 typedef enum {
@@ -43,6 +44,7 @@ typedef enum {
 	KNOT_REQUESTOR_REUSED = 1 << 1, /*!< Reused FD indication (RO). */
 	KNOT_REQUESTOR_QUIC   = 1 << 2, /*!< QUIC used indication (RO). */
 	KNOT_REQUESTOR_IOFAIL = 1 << 3, /*!< Encountered error sending/recving data. */
+	KNOT_REQUESTOR_TLS    = 1 << 4, /*!< DoT used indication (RO). */
 } knot_requestor_flag_t;
 
 /*! \brief Requestor structure.
@@ -57,9 +59,17 @@ typedef struct {
 /*! \brief Request data (socket, payload, response, TSIG and endpoints). */
 typedef struct {
 	int fd;
-	struct knot_quic_reply *quic_ctx;
-	struct knot_quic_conn *quic_conn;
-	int64_t quic_stream;
+	union {
+		struct {
+			struct knot_quic_reply *quic_ctx;
+			struct knot_quic_conn *quic_conn;
+			int64_t quic_stream;
+		};
+		struct {
+			struct knot_tls_ctx *tls_ctx;
+			struct knot_tls_conn *tls_conn;
+		};
+	};
 	knot_request_flag_t flags;
 	struct sockaddr_storage remote, source;
 	knot_pkt_t *query;
