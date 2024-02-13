@@ -168,6 +168,7 @@ ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size)
 	if (ret > 0 && ret < sizeof(dns_len)) {
 		ret = KNOT_EMALF;
 	} else if (ret == sizeof(dns_len)) {
+		dns_len = ntohs(dns_len);
 		if (dns_len > size) {
 			return KNOT_ESPACE;
 		}
