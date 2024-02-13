@@ -20,7 +20,7 @@ static inline void update_time(struct load_cl *l, const uint32_t time_now,
 			const struct decay_config *decay)
 {
 	uint32_t ticks;
-	uint32_t time_last = l->time;
+	uint32_t time_last = atomic_load_explicit(&l->time, memory_order_relaxed);
 	do {
 		ticks = (time_now - time_last) >> decay->ticklen_log;
 		if (__builtin_expect(!ticks, true)) // we optimize for time not advancing
@@ -28,7 +28,8 @@ static inline void update_time(struct load_cl *l, const uint32_t time_now,
 		// We accept some desynchronization of time_now (e.g. from different threads).
 		if (ticks > (uint32_t)-1024)
 			return;
-	} while (!atomic_compare_exchange_weak(&l->time, &time_last, time_now));
+	} while (!atomic_compare_exchange_weak_explicit(&l->time, &time_last, time_now, memory_order_relaxed, memory_order_relaxed));
+		// TODO: check correctness under memory_order_relaxed
 
 	// If we passed here, we have acquired a time difference we are responsibe for.
 
@@ -46,14 +47,15 @@ static inline void update_time(struct load_cl *l, const uint32_t time_now,
 	for (int i = 0; i < LOADS_LEN; ++i) {
 		// We perform decay for the acquired time difference; decays from different threads are commutative.
 		_Atomic DECAY_T *load_at = (_Atomic DECAY_T *)&l->loads[i];
-		DECAY_T load_orig = *load_at, l1;
+		DECAY_T l1, load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
 		do {
 			// decay: first do the "fractibonal part of the bit shift"
 			DECAY_TL m = (DECAY_TL)load_orig * decay->scales[decay_frac];
 			l1 = (m >> DECAY_BITS) + /*rounding*/((m >> (DECAY_BITS-1)) & 1);
 			// finally the non-fractional part of the bit shift
 			l1 = l1 >> load_nonfrac_shift;
-		} while (!atomic_compare_exchange_weak(load_at, &load_orig, l1));
+		} while (!atomic_compare_exchange_weak_explicit(load_at, &load_orig, l1, memory_order_relaxed, memory_order_relaxed));
+			// TODO: check correctness under memory_order_relaxed
 	}
 }
 

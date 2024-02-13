@@ -376,11 +376,12 @@ static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
 	static_assert(ATOMIC_CHAR16_T_LOCK_FREE == 2, "insufficient atomics");
 	const uint16_t price = ctx->price;
 	const uint32_t limit = (1<<16) - price;
-	uint16_t load_orig = *load_at;
+	uint16_t load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
 	do {
 		if (load_orig >= limit)
 			return true;
-	} while (!atomic_compare_exchange_weak(load_at, &load_orig, load_orig + price));
+	} while (!atomic_compare_exchange_weak_explicit(load_at, &load_orig, load_orig + price, memory_order_relaxed, memory_order_relaxed));
+		// TODO: check correctness under memory_order_relaxed
 	return false;
 }
 
