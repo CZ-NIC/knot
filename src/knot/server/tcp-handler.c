@@ -36,6 +36,7 @@
 #include "knot/common/fdset.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
+#include "libknot/quic/tls.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
@@ -57,6 +58,7 @@ typedef struct tcp_context {
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
+	knot_tls_ctx_t *tls_ctx;         /*!< DoT answering context. */
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
@@ -107,7 +109,7 @@ static void tcp_log_error(const struct sockaddr_storage *ss, const char *operati
 }
 
 static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
-                               fdset_t *fds, int thread_id)
+                               fdset_t *fds, int thread_id, bool *tls)
 {
 	if (n_ifaces == 0) {
 		return 0;
@@ -132,12 +134,15 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 		if (ret < 0) {
 			return 0;
 		}
+		if (i->tls) {
+			*tls = true;
+		}
 	}
 
 	return fdset_get_length(fds);
 }
 
-static int tcp_handle(tcp_context_t *tcp, int fd, bool tls, const sockaddr_t *remote,
+static int tcp_handle(tcp_context_t *tcp, int fd, knot_tls_conn_t *tls_conn, const sockaddr_t *remote,
                       const sockaddr_t *local, struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
@@ -148,7 +153,13 @@ static int tcp_handle(tcp_context_t *tcp, int fd, bool tls, const sockaddr_t *re
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Receive data. */
-	int recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout);
+	int recv;
+	if (tls_conn != NULL) {
+		assert(tcp->tls_ctx != NULL);
+		recv = knot_tls_recv_dns(tls_conn, rx->iov_base, rx->iov_len);
+	} else {
+		recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout);
+	}
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {
@@ -164,8 +175,13 @@ static int tcp_handle(tcp_context_t *tcp, int fd, bool tls, const sockaddr_t *re
 		knot_layer_produce(&tcp->layer, ans);
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && send_state(tcp->layer.state)) {
-			int sent = net_dns_tcp_send(fd, ans->wire, ans->size,
-			                            tcp->io_timeout, NULL);
+			int sent;
+			if (tls_conn != NULL) {
+				sent = knot_tls_send(tls_conn, ans->wire, ans->size);
+			} else {
+				sent = net_dns_tcp_send(fd, ans->wire, ans->size,
+				                        tcp->io_timeout, NULL);
+			}
 			if (sent != ans->size) {
 				tcp_log_error(params.remote, "send", sent);
 				handle_finish(&tcp->layer);
@@ -221,11 +237,15 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 		}
 	}
 
-	int ret = tcp_handle(tcp, fd, iface->tls, remote, local, &tcp->iov[0], &tcp->iov[1]);
+	knot_tls_conn_t *tls_conn = iface->tls ? knot_tls_conn_new(tcp->tls_ctx, fd) : NULL;
+
+	int ret = tcp_handle(tcp, fd, tls_conn, remote, local, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		(void)fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
 	}
+
+	knot_tls_conn_del(tls_conn);
 
 	return ret;
 }
@@ -328,11 +348,21 @@ int tcp_master(dthread_t *thread)
 	}
 
 	/* Set descriptors for the configured interfaces. */
+	bool tls = false;
 	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces,
 	                                      handler->server->n_ifaces,
-	                                      &tcp.set, thread_id);
+	                                      &tcp.set, thread_id, &tls);
 	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
+	}
+
+	if (tls) {
+		tcp.tls_ctx = knot_tls_ctx_new(handler->server->quic_creds,
+		                               true, tcp.io_timeout,
+		                               tcp.io_timeout, tcp.idle_timeout);
+		if (tcp.tls_ctx == NULL) {
+			goto finish;
+		}
 	}
 
 	/* Initialize sweep interval and TCP configuration. */
@@ -358,6 +388,7 @@ int tcp_master(dthread_t *thread)
 	}
 
 finish:
+	knot_tls_ctx_free(tcp.tls_ctx);
 	free(tcp.iov[0].iov_base);
 	free(tcp.iov[1].iov_base);
 	mp_delete(mm.ctx);

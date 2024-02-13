@@ -17,6 +17,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <sys/types.h>
 
 typedef struct {
 	struct knot_quic_creds *creds;
@@ -24,19 +25,33 @@ typedef struct {
 	unsigned handshake_timeout_ms;
 	unsigned io_timeout_ms;
 	unsigned idle_timeout_ms;
+
+	bool server;
 } knot_tls_ctx_t;
 
 typedef struct {
 	struct gnutls_session_int *session;
+	bool handshake_done;
+	int fd;
+	int timeout;
 } knot_tls_conn_t;
 
 knot_tls_ctx_t *knot_tls_ctx_new(struct knot_quic_creds *creds,
+                                 bool server,
                                  unsigned handshake_timeout_ms,
                                  unsigned io_timeout_ms,
                                  unsigned idle_timeout_ms);
 
-void knot_tls_ctx_free();
+void knot_tls_ctx_free(knot_tls_ctx_t *ctx);
 
-knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd, bool server);
+knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd);
 
-void knot_tls_conn_close();
+void knot_tls_conn_del(knot_tls_conn_t *conn);
+
+int knot_tls_handshake(knot_tls_conn_t *conn);
+
+ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size);
+
+ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size);
+
+ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size);

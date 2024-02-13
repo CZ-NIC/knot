@@ -329,6 +329,8 @@ src/knot/server/server.c
 src/knot/server/server.h
 src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
+src/knot/server/tls-handler.c
+src/knot/server/tls-handler.h
 src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/xdp-handler.c

@@ -225,6 +225,8 @@ if ENABLE_QUIC
 libknotd_la_SOURCES += \
 	knot/query/quic-requestor.c		\
 	knot/query/quic-requestor.h		\
+	knot/server/tls-handler.c		\
+	knot/server/tls-handler.h		\
 	knot/server/quic-handler.c		\
 	knot/server/quic-handler.h
 endif ENABLE_QUIC
