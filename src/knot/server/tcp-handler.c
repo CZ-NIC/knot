@@ -81,8 +81,9 @@ static void update_tcp_conf(tcp_context_t *tcp)
 }
 
 /*! \brief Sweep TCP connection. */
-static fdset_sweep_state_t tcp_sweep(fdset_t *set, int fd, _unused_ void *data)
+static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, _unused_ void *data)
 {
+	const int fd = fdset_get_fd(set, idx);
 	assert(set && fd >= 0);
 
 	/* Best-effort, name and shame. */
