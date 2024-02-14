@@ -38,6 +38,7 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/module.h"
+#include "knot/common/dbus.h"
 #include "knot/common/log.h"
 #include "knot/common/process.h"
 #include "knot/common/stats.h"
@@ -237,7 +238,7 @@ static void check_loaded(server_t *server)
 	knot_zonedb_iter_free(it);
 
 	finished = true;
-	systemd_emit_running(true);
+	dbus_emit_running(true);
 }
 
 /*! \brief Event loop listening for signals and remote commands. */
@@ -333,7 +334,7 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 	}
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
-		systemd_emit_running(false);
+		dbus_emit_running(false);
 	}
 
 	/* Unbind the control socket. */
@@ -565,14 +566,9 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (conf()->cache.srv_dbus_event != DBUS_EVENT_NONE) {
-		ret = systemd_dbus_open();
-		if (ret != KNOT_EOK) {
-			log_error("d-bus: failed to open system bus (%s)",
-			          knot_strerror(ret));
-		} else {
-			log_info("d-bus: connected to system bus");
-		}
+	/* Connect to the system D-bus. */
+	if (conf()->cache.srv_dbus_event != DBUS_EVENT_NONE &&
+	    dbus_open() == KNOT_EOK) {
 		int64_t delay = conf_get_int(conf(), C_SRV, C_DBUS_INIT_DELAY);
 		sleep(delay);
 	}
@@ -590,7 +586,7 @@ int main(int argc, char **argv)
 		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf());
-		systemd_dbus_close();
+		dbus_close();
 		log_close();
 		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
@@ -631,7 +627,7 @@ int main(int argc, char **argv)
 		rcu_unregister_thread();
 		pid_cleanup();
 		conf_free(conf());
-		systemd_dbus_close();
+		dbus_close();
 		log_close();
 		dnssec_crypto_cleanup();
 		return EXIT_FAILURE;
@@ -655,7 +651,7 @@ int main(int argc, char **argv)
 	/* Unhook from RCU. */
 	rcu_unregister_thread();
 
-	systemd_dbus_close();
+	dbus_close();
 
 	log_info("shutting down");
 	log_close();

@@ -14,7 +14,8 @@ if HAVE_DAEMON
 LDADD += \
 	$(top_builddir)/src/libknotd.la		\
 	$(liburcu_LIBS)				\
-	$(systemd_LIBS)
+	$(systemd_LIBS)				\
+	$(libdbus_LIBS)
 endif HAVE_DAEMON
 
 LDADD += \

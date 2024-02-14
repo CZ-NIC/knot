@@ -17,8 +17,8 @@
 #include <assert.h>
 
 #include "contrib/macros.h"
+#include "knot/common/dbus.h"
 #include "knot/common/log.h"
-#include "knot/common/systemd.h"
 #include "knot/dnssec/kasp/keystate.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/policy.h"
@@ -879,7 +879,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	if (ret == KNOT_EOK && reschedule->keys_changed) {
 		ret = kdnssec_ctx_commit(ctx);
 		if (ret == KNOT_EOK && (ctx->dbus_event & DBUS_EVENT_KEYS_UPDATED)) {
-			systemd_emit_keys_updated(ctx->zone->dname);
+			dbus_emit_keys_updated(ctx->zone->dname);
 		}
 	}
 
@@ -889,7 +889,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 		log_fmt_zone(LOG_NOTICE, LOG_SOURCE_ZONE, ctx->zone->dname, param,
 		             "DNSSEC, KSK submission, waiting for confirmation");
 		if (ctx->dbus_event & DBUS_EVENT_ZONE_SUBMISSION) {
-			systemd_emit_zone_submission(ctx->zone->dname, ready_keytag, ready_keyid);
+			dbus_emit_zone_submission(ctx->zone->dname, ready_keytag, ready_keyid);
 		}
 	}
 

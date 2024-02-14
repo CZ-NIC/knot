@@ -254,6 +254,10 @@ AC_ARG_ENABLE([systemd],
     AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
     [enable_systemd="$enableval"], [enable_systemd=auto])
 
+AC_ARG_ENABLE([dbus],
+    AS_HELP_STRING([--enable-dbus=auto|systemd|libdbus|no], [enable D-bus support [default=auto]]),
+    [enable_dbus="$enableval"], [enable_dbus=auto])
+
 AS_IF([test "$enable_daemon" = "yes"],[
 
 AS_IF([test "$enable_systemd" != "no"],[
@@ -265,12 +269,26 @@ AS_IF([test "$enable_systemd" != "no"],[
     [*],[AC_MSG_ERROR([Invalid value of --enable-systemd.])])
     ])
 
-AS_IF([test "$enable_systemd" = "yes"],[
-  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])
-  AC_CHECK_HEADER([systemd/sd-bus.h],
-                  [AC_DEFINE([ENABLE_DBUS], [1], [systemd D-Bus available])],
-                  [enable_systemd="yes (without D-Bus)"])
-])
+AS_IF([test "$enable_dbus" != "no"],[
+  AS_CASE([$enable_dbus],
+    [auto],[AS_IF([test "$enable_systemd" = "yes"],
+             [AC_DEFINE([ENABLE_DBUS_SYSTEMD], [1], [systemd D-Bus available])
+              enable_dbus=systemd],
+             [PKG_CHECK_MODULES([libdbus], [dbus-1],
+               [AC_DEFINE([ENABLE_DBUS_LIBDBUS], [1], [libdbus D-Bus available])
+                enable_dbus=libdbus],
+               [enable_dbus=no])])],
+    [systemd],[AS_IF([test "$enable_systemd" = "yes"],
+                [AC_DEFINE([ENABLE_DBUS_SYSTEMD], [1], [systemd D-Bus available])
+                 enable_dbus=systemd],
+                [AC_MSG_ERROR([systemd >= 221 not available.])])],
+    [libdbus],[PKG_CHECK_MODULES([libdbus], [dbus-1],
+                [AC_DEFINE([ENABLE_DBUS_LIBDBUS], [1], [libdbus D-Bus available])
+                 enable_dbus=libdbus],
+                [AC_MSG_ERROR([libdbus not available.])])],
+    [no],[enable_dbus=no],
+    [*],[AC_MSG_ERROR([Invalid value of --enable-dbus.])])
+    ])
 
 ]) dnl enable_daemon
 
@@ -761,6 +779,7 @@ result_msg_base="
     Utilities with Dnstap:  ${enable_dnstap}
     MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}
+    D-Bus support:          ${enable_dbus}
     POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
     Ed448 support:          ${enable_ed448}
