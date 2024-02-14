@@ -16,6 +16,18 @@
 
 #pragma once
 
-#include "knot/include/module.h"
-#include "knot/query/layer.h"
+#include <stdint.h>
 
+typedef struct {
+	struct knot_tls_ctx *ctx;
+	struct knot_tls_conn *conn;
+} knot_tls_req_ctx_t;
+
+struct knot_quic_creds;
+
+int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
+                          const struct knot_quic_creds *local_creds,
+                          const uint8_t *peer_pin, uint8_t peer_pin_len,
+                          int io_timeout_ms);
+
+void knot_tls_req_ctx_deinit(knot_tls_req_ctx_t *ctx);

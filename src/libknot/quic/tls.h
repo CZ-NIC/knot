@@ -20,7 +20,7 @@
 #include <sys/types.h>
 
 typedef struct knot_tls_ctx {
-	const struct knot_quic_creds *creds;
+	struct knot_quic_creds *creds;
 
 	unsigned handshake_timeout_ms;
 	unsigned io_timeout_ms;
@@ -36,7 +36,7 @@ typedef struct knot_tls_conn {
 	int timeout;
 } knot_tls_conn_t;
 
-knot_tls_ctx_t *knot_tls_ctx_new(const struct knot_quic_creds *creds,
+knot_tls_ctx_t *knot_tls_ctx_new(struct knot_quic_creds *creds,
                                  bool server,
                                  unsigned handshake_timeout_ms,
                                  unsigned io_timeout_ms,

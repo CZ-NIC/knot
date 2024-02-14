@@ -317,6 +317,8 @@ src/knot/query/quic-requestor.c
 src/knot/query/quic-requestor.h
 src/knot/query/requestor.c
 src/knot/query/requestor.h
+src/knot/query/tls-requestor.c
+src/knot/query/tls-requestor.h
 src/knot/server/dthreads.c
 src/knot/server/dthreads.h
 src/knot/server/handler.c
@@ -329,8 +331,6 @@ src/knot/server/server.c
 src/knot/server/server.h
 src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
-src/knot/server/tls-handler.c
-src/knot/server/tls-handler.h
 src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/xdp-handler.c

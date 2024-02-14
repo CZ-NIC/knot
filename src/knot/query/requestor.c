@@ -22,9 +22,9 @@
 #include "knot/query/requestor.h"
 #ifdef ENABLE_QUIC
 #include "knot/query/quic-requestor.h"
+#include "libknot/quic/tls.h"
 #endif // ENABLE_QUIC
 #include "libknot/errcode.h"
-#include "libknot/quic/tls.h"
 #include "contrib/conn_pool.h"
 #include "contrib/mempattern.h"
 #include "contrib/net.h"
@@ -113,26 +113,13 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 	if (use_tls(request)) {
 		assert(!use_quic(request));
 
-		struct knot_quic_creds *creds = knot_quic_init_creds_peer(request->creds,
-									  peer_pin, peer_pin_len);
-		if (creds == NULL) {
-			free(r);
-			return KNOT_ENOMEM;
-		}
-
-		request->tls_ctx = knot_tls_ctx_new(request->creds, false, timeout_ms, timeout_ms, timeout_ms); // FIXME timeouts
-		if (request->tls_ctx == NULL) {
+		int ret = knot_tls_req_ctx_init(&request->tls_req_ctx, request->fd,
+		                                request->creds, request->pin,
+		                                request->pin_len, timeout_ms);
+		if (ret != KNOT_EOK) {
 			close(request->fd);
 			request->fd = -1;
-			return KNOT_ERROR; // FIXME
-		}
-
-		request->tls_conn = knot_tls_conn_new(request->tls_ctx, request->fd);
-		if (request->tls_conn == NULL) {
-			knot_tls_ctx_free(request->tls_ctx);
-			close(request->fd);
-			request->fd = -1;
-			return KNOT_ERROR; // FIXME useless cleanups?
+			return ret;
 		}
 	}
 
@@ -157,7 +144,7 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 
 	/* Send query. */
 	if (use_tls(request)) {
-		ret = knot_tls_send_dns(request->tls_conn, wire, wire_len);
+		ret = knot_tls_send_dns(request->tls_req_ctx.conn, wire, wire_len);
 	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
 		struct iovec tosend = { wire, wire_len };
@@ -197,7 +184,7 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 
 	/* Receive it */
 	if (use_tls(request)) {
-		ret = knot_tls_recv_dns(request->tls_conn, resp->wire, resp->max_size);
+		ret = knot_tls_recv_dns(request->tls_req_ctx.conn, resp->wire, resp->max_size);
 	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
 		struct iovec recvd = { resp->wire, resp->max_size };
@@ -304,10 +291,7 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 			knot_qreq_close(request->quic_ctx, true);
 		} else {
 			assert(use_tls(request));
-			if (request->tls_conn != NULL) {
-				knot_tls_conn_del(request->tls_conn);
-			}
-			knot_tls_ctx_free(request->tls_ctx);
+			knot_tls_req_ctx_deinit(&request->tls_req_ctx);
 		}
 #else
 		assert(0);

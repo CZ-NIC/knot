@@ -776,7 +776,7 @@ class Server(object):
 
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
-        attempts = 60 if not self.valgrind else 100
+        attempts = 6 if not self.valgrind else 10
         for t in range(attempts):
             try:
                 if use_ctl:

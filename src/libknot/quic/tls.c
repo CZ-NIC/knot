@@ -26,7 +26,7 @@
 #include "libknot/error.h"
 #include "libknot/quic/quic.h"
 
-knot_tls_ctx_t *knot_tls_ctx_new(const struct knot_quic_creds *creds,
+knot_tls_ctx_t *knot_tls_ctx_new(struct knot_quic_creds *creds,
                                  bool server,
                                  unsigned handshake_timeout_ms,
                                  unsigned io_timeout_ms,

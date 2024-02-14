@@ -23,6 +23,9 @@
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/query/layer.h"
 #include "knot/query/query.h"
+#ifdef ENABLE_QUIC
+#include "knot/query/tls-requestor.h"
+#endif // ENABLE_QUIC
 #include "libknot/mm_ctx.h"
 #include "libknot/rrtype/tsig.h"
 
@@ -65,10 +68,7 @@ typedef struct {
 			struct knot_quic_conn *quic_conn;
 			int64_t quic_stream;
 		};
-		struct {
-			struct knot_tls_ctx *tls_ctx;
-			struct knot_tls_conn *tls_conn;
-		};
+		knot_tls_req_ctx_t tls_req_ctx;
 	};
 	knot_request_flag_t flags;
 	struct sockaddr_storage remote, source;
