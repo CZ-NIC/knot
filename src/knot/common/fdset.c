@@ -326,8 +326,7 @@ void fdset_sweep(fdset_t *set, const fdset_sweep_cb_t cb, void *data)
 	while (idx < set->n) {
 		/* Check sweep state, remove if requested. */
 		if (set->timeout[idx] > 0 && set->timeout[idx] <= now.tv_sec) {
-			const int fd = fdset_get_fd(set, idx);
-			if (cb(set, fd, data) == FDSET_SWEEP) {
+			if (cb(set, idx, data) == FDSET_SWEEP) {
 				(void)fdset_remove(set, idx);
 				continue;
 			}
