@@ -45,6 +45,7 @@ typedef struct {
 	unsigned n;                   /*!< Active fds. */
 	unsigned size;                /*!< Array size (allocated). */
 	void **ctx;                   /*!< Context for each fd. */
+	void **ctx2;                  /*!< Another context for each fd. */
 	time_t *timeout;              /*!< Timeout for each fd (seconds precision). */
 #if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 #ifdef HAVE_EPOLL
@@ -268,6 +269,16 @@ inline static void *fdset_it_get_ctx(const fdset_it_t *it)
 	assert(it);
 
 	return it->set->ctx[fdset_it_get_idx(it)];
+}
+
+/*!
+ * \brief Get a read/write pointer on (void *) second context.
+ */
+inline static void **fdset_ctx2(const fdset_t *set, const unsigned idx)
+{
+	assert(set && idx < set->n);
+
+	return &set->ctx2[idx];
 }
 
 /*!

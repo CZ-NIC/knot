@@ -95,6 +95,9 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, _unused_ void *data)
 		log_notice("TCP, terminated inactive client, address %s", addr_str);
 	}
 
+	void *tls_conn = *fdset_ctx2(set, idx);
+	knot_tls_conn_del(tls_conn);
+
 	return FDSET_SWEEP;
 }
 
@@ -238,15 +241,21 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 		}
 	}
 
-	knot_tls_conn_t *tls_conn = iface->tls ? knot_tls_conn_new(tcp->tls_ctx, fd) : NULL;
+	knot_tls_conn_t *tls_conn = *fdset_ctx2(&tcp->set, i);
+	assert(iface->tls || tls_conn == NULL);
+	if (iface->tls && tls_conn == NULL) {
+		tls_conn = knot_tls_conn_new(tcp->tls_ctx, fd);
+		if (tls_conn == NULL) {
+			return KNOT_ERROR; // FIXME
+		}
+		*fdset_ctx2(&tcp->set, i) = tls_conn;
+	}
 
 	int ret = tcp_handle(tcp, fd, tls_conn, remote, local, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		(void)fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
 	}
-
-	knot_tls_conn_del(tls_conn);
 
 	return ret;
 }
@@ -293,6 +302,8 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
+			void *tls_conn = *fdset_ctx2(set, idx);
+			knot_tls_conn_del(tls_conn);
 			fdset_it_remove(&it);
 		}
 	}
