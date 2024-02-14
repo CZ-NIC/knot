@@ -19,8 +19,8 @@
 #include <urcu.h>
 
 #include "knot/catalog/interpret.h"
+#include "knot/common/dbus.h"
 #include "knot/common/log.h"
-#include "knot/common/systemd.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/server/server.h"
 #include "knot/updates/zone-update.h"
@@ -1007,8 +1007,8 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_UPDATED) {
-		systemd_emit_zone_updated(update->zone->name,
-		                          zone_contents_serial(update->zone->contents));
+		dbus_emit_zone_updated(update->zone->name,
+		                       zone_contents_serial(update->zone->contents));
 	}
 
 	memset(update, 0, sizeof(*update));

@@ -20,8 +20,8 @@
 #include "libdnssec/random.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
+#include "knot/common/dbus.h"
 #include "knot/common/log.h"
-#include "knot/common/systemd.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/key_records.h"
 #include "knot/dnssec/policy.h"
@@ -497,12 +497,12 @@ end:
 		if (ret != KNOT_EOK) {
 			log_validation_error(update, msg_valid, ret, false);
 			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
-				systemd_emit_zone_invalid(update->zone->name, 0);
+				dbus_emit_zone_invalid(update->zone->name, 0);
 			}
 		} else if (update->validation_hint.warning != KNOT_EOK) {
 			log_validation_error(update, msg_valid, update->validation_hint.warning, true);
 			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
-				systemd_emit_zone_invalid(update->zone->name, update->validation_hint.remaining_secs);
+				dbus_emit_zone_invalid(update->zone->name, update->validation_hint.remaining_secs);
 			}
 		} else {
 			log_zone_info(update->zone->name, "DNSSEC, %svalidation successful, checked RRSIGs %zu",
