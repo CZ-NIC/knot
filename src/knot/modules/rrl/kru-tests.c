@@ -12,15 +12,48 @@ void *memzero(void *s, size_t n)
 	return volatile_memset(s, 0, n);
 }
 
-#define KRU_DECAY_BITS 16
 #include <knot/modules/rrl/kru-generic.c>
 
-void test_decay32(void)
+void test_max_decay(void)
 {
-	struct load_cl l = { .loads[0] = (1ull<<16) - 1, .time = 0 };
-	for (uint32_t time = 0; time < 365; ++time) {
-		update_time(&l, time, &DECAY_32);
-		printf("%3d: %5d\n", time, (int)l.loads[0]);
+	struct decay_config decay;
+	int cnt = 0;
+	for (uint32_t max_decay32 = 1; max_decay32 < (1 << 31); max_decay32+=65537) {
+		decay_initialize(&decay, max_decay32);
+		uint32_t sum = (1 << 16) - 1;
+		for (size_t i = 0; i < 65536; ) {
+			struct load_cl l = { .time = 0 };
+			for (size_t j = 0; j < LOADS_LEN; j++) l.loads[j] = (1ull << 16) - 1;
+			update_time(&l, 1, &decay);
+			for (size_t j = 0; (j < LOADS_LEN) && (i < 65536); j++, i++) sum += l.loads[j];
+		}
+		uint32_t ret = (1ull << 32) - 1 - sum;
+		if (ret - max_decay32 == 0) continue;
+		if (++cnt >= 100) {
+			printf("      ...\n");
+			break;
+		}
+		printf("%9u -> %9u [diff %9d] (%f)\n", max_decay32, ret, ret - max_decay32, decay.shift_bits);
+	}
+}
+void test_decay(uint32_t max_decay32)
+{
+	printf("max_decay32: %d, max_decay16: %0.4f\n", max_decay32, (double)max_decay32 / (1<<16));
+	printf("      tick   decay each tick   single decay\n");
+	struct decay_config decay;
+	decay_initialize(&decay, max_decay32);
+	struct load_cl l  = { .loads[0] = (1ull<<16) - 1, .time = 0 };
+	uint32_t checkpoint = 1;
+	int zeros_to_end = 2;
+	for (uint64_t time = 0;; ++time) {
+		struct load_cl l2  = { .loads[0] = (1ull<<16) - 1, .time = 0 };
+		update_time(&l, time, &decay);
+		update_time(&l2, time, &decay);
+		if (time == checkpoint) {
+			checkpoint <<= 1;
+			printf("%10ld:       %5d            %5d        [diff %9d]\n", time, (int)l.loads[0], (int)l2.loads[0], (int)l2.loads[0] - (int)l.loads[0]);
+			if ((l2.loads[0] == 0) && (--zeros_to_end == 0)) break;
+		}
 	}
 }
 
@@ -125,8 +158,8 @@ void test_print_stats(struct test_ctx *ctx) {
 
 void test_single_attacker(void) {
 	struct kru *kru = NULL;
-	posix_memalign((void **)&kru, 64, KRU.get_size(16));
-	KRU.initialize(kru, 16);
+	if (posix_memalign((void **)&kru, 64, KRU.get_size(16))) abort();
+	KRU.initialize(kru, 16, (1404ll << (KRU_PRICE_BITS - 16)));
 
 	struct test_cat cats[] = {
 		{ "normal",       1,1000  },   // normal queries come from 1000 different addreses indexed 1-1000
@@ -134,7 +167,7 @@ void test_single_attacker(void) {
 	};
 
 	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(*cats),
-		.price = 1<<(KRU_DECAY_BITS
+		.price = 1<<(KRU_PRICE_BITS
 				-7
 #if defined(KRU_IMPL_median32bit) || defined(KRU_IMPL_median16bit_simd)
 				-1
@@ -163,8 +196,8 @@ void test_single_attacker(void) {
 
 void test_multi_attackers(void) {
 	struct kru *kru = NULL;
-	posix_memalign((void **)&kru, 64, KRU.get_size(15));
-	KRU.initialize(kru, 15);
+	if (posix_memalign((void **)&kru, 64, KRU.get_size(15))) abort();
+	KRU.initialize(kru, 15, (1404ll << (KRU_PRICE_BITS - 16)));
 
 	struct test_cat cats[] = {
 		{ "normal",         1,100000,  100000 },   // 100000 normal queries per tick, ~1 per user
@@ -172,7 +205,7 @@ void test_multi_attackers(void) {
 	};
 
 	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(*cats),
-		.price = 1<<(KRU_DECAY_BITS
+		.price = 1<<(KRU_PRICE_BITS
 				-7
 #if defined(KRU_IMPL_median32bit) || defined(KRU_IMPL_median16bit_simd)
 				-1
@@ -202,7 +235,7 @@ void test_multi_attackers(void) {
 /*=== benchmarking time performance ===*/
 
 #define TIMED_TESTS_TABLE_SIZE_LOG             16
-#define TIMED_TESTS_PRICE                (1 <<  9)
+#define TIMED_TESTS_PRICE               ((1 << (KRU_PRICE_BITS - 7)) + 1)
 #define TIMED_TESTS_QUERIES              (1 << 26)
 #define TIMED_TESTS_TIME_UPDATE_PERIOD          4
 #define TIMED_TESTS_MAX_THREADS                64
@@ -226,9 +259,9 @@ void *timed_runnable(void *arg) {
 	uint64_t now_last_update = -TIMED_TESTS_TIME_UPDATE_PERIOD * ctx->increment;
 
 #ifdef TIMED_TESTS_PREFIXES
-	uint16_t prices[sizeof(TIMED_TESTS_PREFIXES)];
+	kru_price_t prices[sizeof(TIMED_TESTS_PREFIXES)];
 #else
-	uint16_t prices[TIMED_TESTS_BATCH_SIZE];
+	kru_price_t prices[TIMED_TESTS_BATCH_SIZE];
 #endif
 	for (size_t j = 0; j < sizeof(prices)/sizeof(*prices); j++) {
 		prices[j] = TIMED_TESTS_PRICE;
@@ -274,8 +307,10 @@ void timed_tests() {
 			nanosleep(&wait_ts, NULL);
 			printf("%3d threads, %-15s:  ", threads, (collide ? "single query" : "unique queries"));
 
-			posix_memalign((void **)&kru, 64, KRU.get_size(TIMED_TESTS_TABLE_SIZE_LOG));
-			KRU.initialize(kru, TIMED_TESTS_TABLE_SIZE_LOG);
+			if (posix_memalign((void **)&kru, 64, KRU.get_size(TIMED_TESTS_TABLE_SIZE_LOG))) {
+				abort();
+			}
+			KRU.initialize(kru, TIMED_TESTS_TABLE_SIZE_LOG, (1404ll << (KRU_PRICE_BITS - 16)));
 			clock_gettime(CLOCK_REALTIME, &begin_ts);
 
 			for (int t = 0; t < threads; t++) {
@@ -305,16 +340,44 @@ void timed_tests() {
 }
 
 
+/*=== benchmarking randomized fractional increments ===*/
+
+void test_count_unlimited() {
+	const size_t table_size_log = 5;
+	assert(KRU_PRICE_BITS > 16);
+	uint8_t key[16] = {};
+	struct kru *kru = NULL;
+	if (posix_memalign((void **)&kru, 64, KRU.get_size(table_size_log))) {
+		abort();
+	}
+	for (int price_log = 16; price_log >= 0; price_log--) {
+		printf("price 2^%d:\n", price_log);
+		const kru_price_t price = 1 << price_log;
+		const kru_price_t exp_limit = KRU_LIMIT / price;
+		for (size_t i = 0; i < 4; i++) {
+			memzero(kru, KRU.get_size(table_size_log));
+			KRU.initialize(kru, table_size_log, (1404ll << (KRU_PRICE_BITS - 16)));
+			for (uint64_t q = 0; q < -1ll; q++) {
+				if (KRU.limited(kru, 0, key, price)) {
+					printf("  blocked after %10lu queries, diff %10ld (%8.5f %%)\n", q, q - exp_limit, ((double)((signed)q - (signed)exp_limit)/exp_limit) * 100);
+					break;
+				}
+			}
+		}
+	}
+}
+
 /*===*/
 
 int main(int argc, char **argv)
 {
-	//test_single_attacker();
-	//test_multi_attackers();
+	// test_single_attacker();
+	// test_multi_attackers();
+	// test_count_unlimited();
 	timed_tests();
 
-	// struct kru kru __attribute__((unused));
-	// test_decay32();
 	// test_hash();
+	// test_decay(84214);
+	// test_max_decay();   // use with least significant bits in rand_bits for exact match
 	return 0;
 }

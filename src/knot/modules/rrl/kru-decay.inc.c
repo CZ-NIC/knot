@@ -1,19 +1,31 @@
 
-#define DECAY_BITS 16
-#define DECAY_T  uint16_t
-#define DECAY_TL uint32_t
-#define DECAY_T_BITS_LOG 4
+#include <math.h>
 
 /// Parametrization for speed of decay.
 struct decay_config {
+	/// Bit shift per tick, fractional
+	double shift_bits;
+	//uint32_t tick_mult;
+
+	/// Ticks to get zero loads
+	uint32_t max_ticks;
+
 	/// Length of one tick is 2 ^ ticklen_log.
 	uint32_t ticklen_log;
-	/// Exponential decay with half-life of (2 ^ half_life_log) ticks.
-	uint32_t half_life_log;
-	/// Precomputed scaling constants.  Indexed by tick count [1 .. 2^half_life_log - 1],
-	///   contains the corresponding factor of decay (<1, scaled to 2^32 and rounded).
-	DECAY_T scales[];
+
+	uint32_t mult_cache[32];
 };
+
+static inline void decay_initialize(struct decay_config *decay, kru_price_t max_decay) {
+	decay->shift_bits = log2(KRU_LIMIT - 1) - log2(KRU_LIMIT - 1 - max_decay);
+	decay->max_ticks = 18 / decay->shift_bits;
+	// decay->tick_mult = exp2(32 - decay->shift_bits) + 0.5; // for integer aritmetic, disabled
+	decay->ticklen_log = 0;
+
+	for (size_t ticks = 0; ticks < sizeof(decay->mult_cache) / sizeof(*decay->mult_cache); ticks++) {
+		decay->mult_cache[ticks] = exp2(32 - decay->shift_bits * ticks) + 0.5;
+	}
+}
 
 /// Catch up the time drift with configurably slower decay.
 static inline void update_time(struct load_cl *l, const uint32_t time_now,
@@ -33,42 +45,42 @@ static inline void update_time(struct load_cl *l, const uint32_t time_now,
 
 	// If we passed here, we have acquired a time difference we are responsibe for.
 
-	// Don't bother with complex computations if lots of ticks have passed.
-	const uint32_t max_ticks_log = /* ticks to shift by one bit */ decay->half_life_log
-					/* + log2(bit count) */ + DECAY_T_BITS_LOG;
-	if (ticks >> max_ticks_log > 0) {
+	// Don't bother with complex computations if lots of ticks have passed. (little to no speed-up)
+	if (ticks > decay->max_ticks) {
 		memset(l->loads, 0, sizeof(l->loads));
 		return;
 	}
 
-	// some computations pulled outside of the cycle
-	const uint32_t decay_frac = ticks & (((uint32_t)1 << decay->half_life_log) - 1);
-	const uint32_t load_nonfrac_shift = ticks >> decay->half_life_log;
+	uint32_t mult;
+	if (__builtin_expect(ticks < sizeof(decay->mult_cache) / sizeof(*decay->mult_cache), 1)) {
+		mult = decay->mult_cache[ticks];
+	} else {
+		mult = exp2(32 - decay->shift_bits * ticks) + 0.5;
+	}
+
+	// Using integer arithmetic instead -- no speed-up
+	/*
+	uint64_t mult = 1ull << 32;
+	{
+		uint32_t t = ticks;
+		uint64_t m = decay->tick_mult;
+		do {
+			if (t & 1) mult = (mult * m) >> 32;
+			m = (m * m) >> 32;
+		} while (t >>= 1);
+	}
+	*/
+
 	for (int i = 0; i < LOADS_LEN; ++i) {
 		// We perform decay for the acquired time difference; decays from different threads are commutative.
-		_Atomic DECAY_T *load_at = (_Atomic DECAY_T *)&l->loads[i];
-		DECAY_T l1, load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
+		_Atomic uint16_t *load_at = (_Atomic uint16_t *)&l->loads[i];
+		uint16_t l1, load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
+		const uint16_t rnd = rand_bits(16);
 		do {
-			// decay: first do the "fractibonal part of the bit shift"
-			DECAY_TL m = (DECAY_TL)load_orig * decay->scales[decay_frac];
-			l1 = (m >> DECAY_BITS) + /*rounding*/((m >> (DECAY_BITS-1)) & 1);
-			// finally the non-fractional part of the bit shift
-			l1 = l1 >> load_nonfrac_shift;
+			uint64_t m = (((uint64_t)load_orig << 16)) * mult;
+			m = (m >> 32) + ((m >> 31) & 1);
+			l1 = (m >> 16) + (rnd < (uint16_t)m);
 		} while (!atomic_compare_exchange_weak_explicit(load_at, &load_orig, l1, memory_order_relaxed, memory_order_relaxed));
 			// TODO: check correctness under memory_order_relaxed
 	}
 }
-
-/// Half-life of 32 ticks, consequently forgetting in a couple hundred ticks.
-static const struct decay_config DECAY_32 = {
-	.ticklen_log = 0,
-	.half_life_log = 5,
-	/// Experiment: if going by a single tick, after 362 steps fixed-point at 23,
-	///  but accuracy at the beginning of that (first 32 ticks) is very good,
-	///  getting from max 2^16 - 1 to 2^15 + 5.  Max. decay per tick is 1404.
-	.scales = { // ghci> map (\i -> round(2^16 * 0.5 ** (i/32))) [1..31]
-		0,64132,62757,61413,60097,58809,57549,56316,55109,53928,52773,
-		51642,50535,49452,48393,47356,46341,45348,44376,43425,42495,41584,
-		40693,39821,38968,38133,37316,36516,35734,34968,34219,33486
-	}
-};

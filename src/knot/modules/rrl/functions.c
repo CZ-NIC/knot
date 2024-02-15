@@ -28,19 +28,19 @@
 /* CIDR block prefix lengths for v4/v6 */
 // Hardcoded also in unit tests.
 
-#define RRL_V4_PREFIXES  (uint8_t[])  {  24,  28,  32}
-#define RRL_V4_RATE_MULT (uint16_t[]) {  16,   4,   1}
+#define RRL_V4_PREFIXES  (uint8_t[])       {    18,   20,  24,  32}
+#define RRL_V4_RATE_MULT (kru_price_t[])   { 12288, 4096, 512,  16}
 
-#define RRL_V6_PREFIXES  (uint8_t[])  {  32,  56,  64, 128}
-#define RRL_V6_RATE_MULT (uint16_t[]) { 512,  16,   4,   1}
+#define RRL_V6_PREFIXES  (uint8_t[])       {    32,   48,  56,  64,  128}
+#define RRL_V6_RATE_MULT (kru_price_t[])   {  1024,   64,  16,   4,    1}
 
 #define RRL_V4_PREFIXES_CNT (sizeof(RRL_V4_PREFIXES) / sizeof(*RRL_V4_PREFIXES))
 #define RRL_V6_PREFIXES_CNT (sizeof(RRL_V6_PREFIXES) / sizeof(*RRL_V6_PREFIXES))
 #define RRL_MAX_PREFIXES_CNT ((RRL_V4_PREFIXES_CNT > RRL_V6_PREFIXES_CNT) ? RRL_V4_PREFIXES_CNT : RRL_V6_PREFIXES_CNT)
 
 struct rrl_table {
-	uint16_t v4_prices[RRL_V4_PREFIXES_CNT];
-	uint16_t v6_prices[RRL_V6_PREFIXES_CNT];
+	kru_price_t v4_prices[RRL_V4_PREFIXES_CNT];
+	kru_price_t v6_prices[RRL_V6_PREFIXES_CNT];
 	uint8_t kru[] ALIGNED(64);
 };
 
@@ -91,7 +91,7 @@ static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 }
 */
 
-rrl_table_t *rrl_create(size_t size, uint32_t rate)
+rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit)
 {
 	size--;
 	size_t capacity_log = 1;
@@ -102,14 +102,14 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 		return NULL;
 	}
 
-	if (!KRU.initialize((struct kru *)rrl->kru, capacity_log)) {
+	const kru_price_t base_price = KRU_LIMIT / instant_limit;
+	const kru_price_t max_decay = rate_limit > 1000ll * instant_limit ? base_price :
+		(uint64_t) base_price * rate_limit / 1000;
+
+	if (!KRU.initialize((struct kru *)rrl->kru, capacity_log, max_decay)) {
 		free(rrl);
 		return NULL;
 	}
-
-	const uint16_t base_price = 1404301 / rate;
-		// max price decay per tick:  1404.301
-		// rate limit per tick:       rate / 1000
 
 	for (size_t i = 0; i < RRL_V4_PREFIXES_CNT; i++) {
 		rrl->v4_prices[i] = base_price / RRL_V4_RATE_MULT[i];
