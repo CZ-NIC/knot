@@ -16,6 +16,7 @@
 
 #include <gnutls/gnutls.h>
 #include <poll.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "libknot/quic/tls.h"
@@ -134,32 +135,42 @@ int knot_tls_handshake(knot_tls_conn_t *conn)
 	return ret;
 }
 
-static ssize_t io_call(knot_tls_conn_t *conn, void *data, size_t size,
-                       ssize_t (*io_func)(struct gnutls_session_int *, void *, size_t))
+static ssize_t tls_io_fun(knot_tls_conn_t *conn, void *data, size_t size,
+			  ssize_t (*io_cb)(gnutls_session_t, void *, size_t))
 {
-	ssize_t res = knot_tls_handshake(conn);
+	ssize_t res = knot_tls_handshake(conn), orig_size = size;
 	if (res != KNOT_EOK) {
 		return res;
 	}
 
 	do {
-		res = io_func(conn->session, data, size);
-	} while (eagain_rcode(res));
+		res = io_cb(conn->session, data, size);
+		if (res > 0) {
+			data += res;
+			size -= res;
+		}
+	} while (eagain_rcode(res) || (res > 0 && size > 0));
 	// TODO filter error codes?
-	return res;
+	return res > 0 ? orig_size : res;
+}
+
+static ssize_t gnutls_record_send_noconst(gnutls_session_t session,
+                                          void *data, size_t data_size)
+{
+	// just a wrapper, parameter 'data' is not (const void *) here
+	return gnutls_record_send(session, data, data_size);
 }
 
 _public_
 ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size)
 {
-	return io_call(conn, data, size, gnutls_record_recv);
+	return tls_io_fun(conn, data, size, gnutls_record_recv);
 }
 
 _public_
 ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size)
 {
-	return io_call(conn, data, size, (ssize_t (*)(struct gnutls_session_int *, void *, size_t)) // workaround for const
-	                                 gnutls_record_send);
+	return tls_io_fun(conn, data, size, gnutls_record_send_noconst);
 }
 
 _public_
