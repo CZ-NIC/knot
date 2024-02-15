@@ -2035,7 +2035,8 @@ A period between ZSK activation and the next rollover initiation.
    and after this, a new ZSK is generated to replace it within
    following roll-over.
 
-   ZSK key lifetime is also influenced by propagation-delay and dnskey-ttl
+   As a consequence, in normal operation, this results in the period
+   of ZSK generation being `zsk-lifetime + propagation-delay + dnskey_ttl`.
 
    Zero (aka infinity) value causes no ZSK rollover as a result.
 
@@ -2225,6 +2226,10 @@ It's possible to manage both child and parent zones by the same Knot DNS server.
 
 .. NOTE::
    Module :ref:`Onlinesign<mod-onlinesign>` doesn't support DS push.
+
+.. NOTE::
+   When turning this feature on while a KSK roll-over is already running, it might
+   not take effect for the already-running roll-over.
 
 *Default:* not set
 

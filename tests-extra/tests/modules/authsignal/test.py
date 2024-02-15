@@ -46,7 +46,7 @@ for (rdtype, result) in records:
     resp.check(result, rcode="NOERROR", flags="QR AA", ttl=7200)
     check_rrsig(resp, 1)
 
-# Check
+# Check NODATA on incorrect qtype
 resp = knot.dig("_dsboot.example.net._signal.dns1.", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA")
 check_nsec(resp, 1)
@@ -63,5 +63,12 @@ for (rdtype, _) in records:
     exp_rcode = "NXDOMAIN" if not onlinesign else "NOERROR"  # Onlinesign promotes NXDOMAIN to NODATA
     resp.check(rcode=exp_rcode, flags="QR AA")
     check_nsec(resp, 1)
+
+# Check SERVFAIL if the target zone is expired
+knot.ctl("-f zone-purge " + zone[1].name)
+t.sleep(1)
+for (rdtype, result) in records:
+    resp = knot.dig("_dsboot.example.net._signal.dns1.", rdtype, dnssec=True)
+    resp.check(nordata=result, rcode="SERVFAIL")
 
 t.end()
