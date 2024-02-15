@@ -419,6 +419,9 @@ only stored in the journal.
    current SOA serial in the zone (not in the zone file) if manually updated!
    This is important to ensure consistency of the journal and outgoing IXFR.
 
+.. NOTE::
+   This mode is not suitable if the zone can be modified externally (e.g. DDNS, knotc).
+
 Example 4
 ---------
 
@@ -435,6 +438,9 @@ However, this requires setting :ref:`zone_journal-content` to `all` so that
 the information about the last real SOA serial is preserved in case of server re-start.
 The sizing of journal limits needs to be taken into consideration
 (see :ref:`Journal behaviour`).
+
+.. NOTE::
+   This mode is not suitable if the zone can be modified externally (e.g. DDNS, knotc).
 
 .. _Zone bootstrap:
 
