@@ -113,6 +113,9 @@ static void process_data(zs_scanner_t *scanner)
 		zc->ret = KNOT_ENOMEM;
 		return;
 	}
+	if (scanner->r_owner_type == ZS_OWNER_IMPLICIT) {
+		zc->implicit_owner = true;
+	}
 
 	knot_rrset_t rr;
 	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class, scanner->r_ttl);

@@ -20,4 +20,4 @@
 #include "libknot/libknot.h"
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd,
-               semcheck_optional_t optional, time_t time, bool print);
+	       semcheck_optional_t optional, time_t time, bool print, bool implicit);

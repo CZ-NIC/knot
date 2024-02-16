@@ -64,7 +64,7 @@ static void print_statistics(err_handler_stats_t *stats)
 }
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd,
-               semcheck_optional_t optional, time_t time, bool print)
+               semcheck_optional_t optional, time_t time, bool print, bool implicit)
 {
 	err_handler_stats_t stats = {
 		.handler = { .cb = err_callback },
@@ -87,6 +87,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 	zl.creator->master = true;
 
 	zone_contents_t *contents = zonefile_load(&zl);
+	bool implicit_detected = zl.creator->implicit_owner;
 	zonefile_close(&zl);
 	if (contents == NULL && !stats.handler.error) {
 		ERR2("failed to run semantic checks");
@@ -102,6 +103,11 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 		} else {
 			ret = KNOT_ESEMCHECK;
 		}
+	}
+
+	if (implicit && implicit_detected) {
+		ret = KNOT_ERROR;
+		ERR2("implicit record owner detected");
 	}
 
 	if (zonemd) {

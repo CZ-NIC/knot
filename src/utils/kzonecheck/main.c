@@ -41,6 +41,7 @@ static void print_help(void)
 	       "                              (default filename without .zone)\n"
 	       " -d, --dnssec <on|off>       Also check DNSSEC-related records.\n"
 	       " -Z, --zonemd                Also check ZONEMD.\n"
+	       " -i, --implicit              Also check implicit record owner.\n"
 	       " -t, --time <timestamp>      Current time specification.\n"
 	       "                              (default current UNIX time)\n"
 	       " -p, --print                 Print the zone on stdout.\n"
@@ -67,7 +68,7 @@ static bool str2bool(const char *s)
 int main(int argc, char *argv[])
 {
 	const char *origin = NULL;
-	bool zonemd = false, verbose = false, print = false;
+	bool zonemd = false, verbose = false, print = false, implicit = false;
 	semcheck_optional_t optional = SEMCHECK_DNSSEC_AUTO; // default value for --dnssec
 	knot_time_t check_time = (knot_time_t)time(NULL);
 
@@ -77,6 +78,7 @@ int main(int argc, char *argv[])
 		{ "time",    required_argument, NULL, 't' },
 		{ "dnssec",  required_argument, NULL, 'd' },
 		{ "zonemd",  no_argument,       NULL, 'z' },
+		{ "implicit",no_argument,       NULL, 'i' },
 		{ "print",   no_argument,       NULL, 'p' },
 		{ "verbose", no_argument,       NULL, 'v' },
 		{ "help",    no_argument,       NULL, 'h' },
@@ -89,7 +91,7 @@ int main(int argc, char *argv[])
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "o:t:d:ZpvV::h", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "o:t:d:ZipvV::h", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'o':
 			origin = optarg;
@@ -111,6 +113,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'Z':
 			zonemd = true;
+			break;
+		case 'i':
+			implicit = true;
 			break;
 		case 't':
 			if (knot_time_parse("YMDhms|#|+-#U|+-#",
@@ -169,7 +174,7 @@ int main(int argc, char *argv[])
 		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_UPTO(LOG_DEBUG));
 	}
 
-	int ret = zone_check(filename, zone, zonemd, optional, (time_t)check_time, print);
+	int ret = zone_check(filename, zone, zonemd, optional, (time_t)check_time, print, implicit);
 	log_close();
 	if (ret == KNOT_EOK) {
 		if (verbose && !print) {
