@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include "utils/kzonecheck/zone_check.h"
 
 #include "knot/zone/contents.h"
+#include "knot/zone/digest.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zone-dump.h"
 #include "utils/common/msg.h"
@@ -62,7 +63,7 @@ static void print_statistics(err_handler_stats_t *stats)
 	}
 }
 
-int zone_check(const char *zone_file, const knot_dname_t *zone_name,
+int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd,
                semcheck_optional_t optional, time_t time, bool print)
 {
 	err_handler_stats_t stats = {
@@ -71,7 +72,15 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name,
 
 	zloader_t zl;
 	int ret = zonefile_open(&zl, zone_file, zone_name, optional, time);
-	if (ret != KNOT_EOK) {
+	switch (ret) {
+	case KNOT_EOK:
+		break;
+	case KNOT_EACCES:
+	case KNOT_EFILE:
+		ERR2("failed to load the zone file");
+		return ret;
+	default:
+		ERR2("failed to run semantic checks (%s)", knot_strerror(ret));
 		return ret;
 	}
 	zl.err_handler = (sem_handler_t *)&stats;
@@ -80,21 +89,39 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name,
 	zone_contents_t *contents = zonefile_load(&zl);
 	zonefile_close(&zl);
 	if (contents == NULL && !stats.handler.error) {
+		ERR2("failed to run semantic checks");
 		return KNOT_ERROR;
 	}
 
 	if (stats.error_count > 0) {
 		print_statistics(&stats);
-		ret = stats.handler.error ? KNOT_EZONEINVAL : KNOT_ESEMCHECK;
-		if (print) {
+		if (stats.handler.error) {
 			fprintf(stderr, "\n");
+			ERR2("serious semantic error detected");
+			ret = KNOT_EINVAL;
+		} else {
+			ret = KNOT_ESEMCHECK;
+		}
+	}
+
+	if (zonemd) {
+		ret = zone_contents_digest_verify(contents);
+		if (ret != KNOT_EOK) {
+			if (stats.error_count > 0 && !stats.handler.error) {
+				fprintf(stderr, "\n");
+			}
+			ERR2("invalid ZONEMD");
 		}
 	}
 
 	if (print) {
+		if (ret != KNOT_EOK) {
+			fprintf(stderr, "\n");
+		}
 		printf(";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
 		zone_dump_text(contents, stdout, false, NULL);
 	}
+
 	zone_contents_deep_free(contents);
 
 	return ret;

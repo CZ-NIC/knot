@@ -36,6 +36,9 @@ Options
   Also check DNSSEC-related records. The default is to decide based on the
   existence of a RRSIG for SOA.
 
+**-Z**, **--zonemd**
+  Also check the zone hash against a ZONEMD record, which is required to exist.
+
 **-t**, **--time** *time*
   Current time specification. Use UNIX timestamp, YYYYMMDDHHmmSS
   format, or [+/-]\ *time*\ [unit] format, where unit can be **Y**, **M**,
