@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -79,6 +79,11 @@ typedef struct {
 	uint8_t *param_position;
 	int32_t last_key;
 } zs_svcb_t;
+
+typedef enum {
+	ZS_OWNER_IMPLICIT,
+	ZS_OWNER_EXPLICIT,
+} zs_owner_type_t;
 
 /*! \brief Scanner states describing the result. */
 typedef enum {
@@ -252,6 +257,8 @@ struct zs_scanner {
 	uint32_t r_data_length;
 	/*! Current rdata. */
 	uint8_t  r_data[ZS_MAX_RDATA_LENGTH];
+	/*! Owner type specification. */
+	zs_owner_type_t r_owner_type;
 
 	/*
 	 * Example: a. IN 60 MX 1 b. ; A comment
@@ -263,6 +270,7 @@ struct zs_scanner {
 	 *          r_type = 15
 	 *          r_data_length = 5
 	 *          r_data = 0001016200
+	 *          r_owner_type = ZS_OWNER_EXPLICIT
 	 *          buffer_length = 11
 	 *          buffer = " A comment"
 	 */

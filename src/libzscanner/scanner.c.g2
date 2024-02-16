@@ -3186,6 +3186,7 @@ tr4206:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -3198,6 +3199,7 @@ tr4208:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		if (s->multiline == true) {
@@ -3217,6 +3219,7 @@ tr4209:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		if (s->multiline == false) {
@@ -3243,6 +3246,7 @@ tr4279:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -3262,6 +3266,7 @@ tr4280:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -3277,6 +3282,7 @@ tr4270:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -3292,6 +3298,7 @@ tr4272:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		if (s->multiline == true) {
@@ -3314,6 +3321,7 @@ tr4273:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		if (s->multiline == false) {
@@ -16675,6 +16683,7 @@ tr4215:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -16694,6 +16703,7 @@ tr4217:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -16713,6 +16723,7 @@ tr4218:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -25527,6 +25538,7 @@ tr4228:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -25546,6 +25558,7 @@ tr4229:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -25565,6 +25578,7 @@ tr4230:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -26286,6 +26300,7 @@ tr886:
 tr881:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -26336,6 +26351,7 @@ tr4248:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -26643,11 +26659,13 @@ tr779:
 tr767:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	goto st193;
 tr768:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == true) {
@@ -26660,6 +26678,7 @@ tr768:
 tr769:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == false) {
@@ -26672,6 +26691,7 @@ tr769:
 tr770:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -26753,6 +26773,7 @@ tr777:
 tr771:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -26882,6 +26903,7 @@ tr841:
 tr875:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -27000,6 +27022,7 @@ tr4213:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -27018,6 +27041,7 @@ tr4281:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -27033,6 +27057,7 @@ tr4277:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -27079,6 +27104,7 @@ tr4286:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st1401;
 tr4312:
@@ -27118,6 +27144,7 @@ tr4312:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st1401;
 st1401:
@@ -27301,6 +27328,7 @@ tr792:
 tr781:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
@@ -27314,6 +27342,7 @@ tr781:
 tr782:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == true) {
@@ -27334,6 +27363,7 @@ tr782:
 tr783:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == false) {
@@ -27354,6 +27384,7 @@ tr783:
 tr784:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -27443,6 +27474,7 @@ tr791:
 tr785:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -27875,6 +27907,7 @@ tr984:
 tr809:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{ s->r_type = KNOT_RRTYPE_A; }
 	{
@@ -27884,6 +27917,7 @@ tr809:
 tr810:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == true) {
@@ -27900,6 +27934,7 @@ tr810:
 tr811:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == false) {
@@ -27916,6 +27951,7 @@ tr811:
 tr812:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -28893,6 +28929,7 @@ tr911:
 tr872:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -28902,6 +28939,7 @@ tr872:
 tr873:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == true) {
@@ -28918,6 +28956,7 @@ tr873:
 tr874:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == false) {
@@ -28941,6 +28980,7 @@ tr4283:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st206;
 tr4284:
@@ -28960,6 +29000,7 @@ tr4284:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st206;
 tr4285:
@@ -28979,6 +29020,7 @@ tr4285:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st206;
 st206:
@@ -29092,6 +29134,7 @@ tr922:
 tr876:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -29114,6 +29157,7 @@ tr4287:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st207;
 st207:
@@ -29956,6 +30000,7 @@ tr4288:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st210;
 tr4289:
@@ -29975,6 +30020,7 @@ tr4289:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st210;
 tr4290:
@@ -29994,6 +30040,7 @@ tr4290:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st210;
 st210:
@@ -32172,6 +32219,7 @@ tr930:
 tr895:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -32198,6 +32246,7 @@ tr4291:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st227;
 st227:
@@ -32329,6 +32378,7 @@ tr901:
 tr894:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -32375,6 +32425,7 @@ tr4221:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -32999,6 +33050,7 @@ tr885:
 tr878:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->number64 <= UINT32_MAX) {
@@ -33016,6 +33068,7 @@ tr878:
 tr879:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == true) {
@@ -33040,6 +33093,7 @@ tr879:
 tr880:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == false) {
@@ -33139,6 +33193,7 @@ tr888:
 tr882:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -33351,6 +33406,7 @@ tr900:
 tr891:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{ s->r_type = KNOT_RRTYPE_A; }
 	{
@@ -33364,6 +33420,7 @@ tr891:
 tr892:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == true) {
@@ -33384,6 +33441,7 @@ tr892:
 tr893:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == false) {
@@ -33696,6 +33754,7 @@ tr902:
 tr896:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -33918,6 +33977,7 @@ tr4225:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -36201,6 +36261,7 @@ case 260:
 tr903:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (*wrap == WRAP_NONE) {
@@ -36299,6 +36360,7 @@ tr903:
 tr905:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == true) {
@@ -36404,6 +36466,7 @@ tr905:
 tr906:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		if (s->multiline == false) {
@@ -36509,6 +36572,7 @@ tr906:
 tr907:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -36673,6 +36737,7 @@ case 261:
 tr908:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -37148,6 +37213,7 @@ tr989:
 tr897:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -37350,6 +37416,7 @@ tr4292:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	goto st264;
 st264:
@@ -37716,6 +37783,7 @@ tr4222:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -38286,6 +38354,7 @@ tr4226:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -38978,6 +39047,7 @@ tr983:
 tr813:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -39110,6 +39180,7 @@ tr821:
 tr814:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->line_counter++;
@@ -39385,6 +39456,7 @@ tr822:
 tr815:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -40520,6 +40592,7 @@ tr4214:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -40538,6 +40611,7 @@ tr4282:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;
@@ -40553,6 +40627,7 @@ tr4278:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer_length = 0;
@@ -40615,6 +40690,7 @@ tr4249:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {goto st307;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	{
 		s->buffer[0] = 0;

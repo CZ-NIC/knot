@@ -7175,6 +7175,7 @@ _match:
 	case 31:
 	{
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	break;
 	case 32:
@@ -7183,6 +7184,7 @@ _match:
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			p--; {cs = 307;goto _again;}
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	break;
 	case 33:

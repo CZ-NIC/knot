@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -311,12 +311,14 @@
 	}
 	action _r_owner_exit {
 		s->r_owner_length = s->dname_tmp_length;
+		s->r_owner_type = ZS_OWNER_EXPLICIT;
 	}
 	action _r_owner_empty_exit {
 		if (s->r_owner_length == 0) {
 			WARN(ZS_BAD_PREVIOUS_OWNER);
 			fhold; fgoto err_line;
 		}
+		s->r_owner_type = ZS_OWNER_IMPLICIT;
 	}
 	action _r_owner_error {
 		s->r_owner_length = 0;

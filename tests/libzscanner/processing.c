@@ -77,7 +77,8 @@ void debug_process_record(zs_scanner_t *s)
 
 	print_wire_dname(s->r_owner, s->r_owner_length);
 
-	printf(" \\# %u ", s->r_data_length);
+	const char *type = s->r_owner_type == ZS_OWNER_IMPLICIT ? "IMPL " : "";
+	printf(" %s\\# %u ", type, s->r_data_length);
 
 	int block = *((int *)(s->process.data));
 	for (i = 0; i < s->r_data_length; i++) {
