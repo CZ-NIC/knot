@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -146,6 +146,15 @@ int main(int argc, char *argv[])
 		zonename = strdup(origin);
 	}
 
+	knot_dname_storage_t zone;
+	if (knot_dname_from_str(zone, zonename, sizeof(zone)) == NULL) {
+		ERR2("invalid zone name");
+		free(zonename);
+		return EXIT_FAILURE;
+	}
+	free(zonename);
+	knot_dname_to_lower(zone);
+
 	log_init();
 	log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, 0);
 	log_levels_set(LOG_TARGET_STDERR, LOG_SOURCE_ANY, 0);
@@ -155,31 +164,14 @@ int main(int argc, char *argv[])
 		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_UPTO(LOG_DEBUG));
 	}
 
-	knot_dname_t *dname = knot_dname_from_str_alloc(zonename);
-	knot_dname_to_lower(dname);
-	free(zonename);
-	int ret = zone_check(filename, dname, optional, (time_t)check_time, print);
-	knot_dname_free(dname, NULL);
-
+	int ret = zone_check(filename, zone, optional, (time_t)check_time, print);
 	log_close();
-
-	switch (ret) {
-	case KNOT_EOK:
-		if (verbose) {
-			INFO2("No semantic error found");
+	if (ret == KNOT_EOK) {
+		if (verbose && !print) {
+			INFO2("No error found");
 		}
 		return EXIT_SUCCESS;
-	case KNOT_EZONEINVAL:
-		ERR2("serious semantic error detected");
-		// FALLTHROUGH
-	case KNOT_ESEMCHECK:
-		return EXIT_FAILURE;
-	case KNOT_EACCES:
-	case KNOT_EFILE:
-		ERR2("failed to load the zone file");
-		return EXIT_FAILURE;
-	default:
-		ERR2("failed to run semantic checks (%s)", knot_strerror(ret));
+	} else {
 		return EXIT_FAILURE;
 	}
 }
