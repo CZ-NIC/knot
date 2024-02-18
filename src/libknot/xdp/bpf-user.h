@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,8 +60,10 @@ struct kxsk_umem {
 
 	/*! The memory frames. */
 	struct umem_frame *frames;
+	/*! Size of RX and TX rings. */
+	uint16_t ring_size;
 	/*! The number of free frames (for TX). */
-	uint32_t tx_free_count;
+	uint16_t tx_free_count;
 	/*! Stack of indices of the free frames (for TX). */
 	uint16_t tx_free_indices[];
 };
