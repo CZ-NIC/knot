@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 #include <linux/if_ether.h>
 #include <linux/udp.h>
+#include <poll.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -147,7 +148,7 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	xsk_info->iface = iface;
 	xsk_info->umem = umem;
 
-	uint16_t bind_flags = 0;
+	uint16_t bind_flags = XDP_USE_NEED_WAKEUP;
 	if (config != NULL && config->force_copy) {
 		bind_flags |= XDP_COPY;
 	}
@@ -309,6 +310,10 @@ static struct umem_frame *alloc_tx_frame(knot_xdp_socket_t *socket)
 
 	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
 	while (unlikely(umem->tx_free_count == 0)) {
+		if (xsk_ring_prod__needs_wakeup(&socket->tx)) {
+			(void)sendto(xsk_socket__fd(socket->xsk), NULL, 0,
+			             MSG_DONTWAIT, NULL, 0);
+		}
 		nanosleep(&delay, NULL);
 		knot_xdp_send_prepare(socket);
 	}
@@ -394,6 +399,10 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 */
 	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
 	while (unlikely(xsk_prod_nb_free(&socket->tx, count) < count)) {
+		if (xsk_ring_prod__needs_wakeup(&socket->tx)) {
+			(void)sendto(xsk_socket__fd(socket->xsk), NULL, 0,
+			             MSG_DONTWAIT, NULL, 0);
+		}
 		nanosleep(&delay, NULL);
 	}
 	uint32_t idx = socket->tx.cached_prod;
@@ -421,7 +430,6 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	assert(*sent <= count);
 	socket->tx.cached_prod = idx;
 	xsk_ring_prod__submit(&socket->tx, *sent);
-	socket->kernel_needs_wakeup = true;
 
 	return KNOT_EOK;
 }
@@ -442,34 +450,19 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 		return KNOT_EINVAL;
 	}
 
-	/* Trigger sending queued packets. */
-	if (!socket->kernel_needs_wakeup) {
+	if (!xsk_ring_prod__needs_wakeup(&socket->tx)) {
 		return KNOT_EOK;
 	}
 
 	int ret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
-	const bool is_ok = (ret >= 0);
-	// List of "safe" errors taken from
-	// https://github.com/torvalds/linux/blame/master/samples/bpf/xdpsock_user.c
-	const bool is_again = !is_ok && (errno == ENOBUFS || errno == EAGAIN
-	                                || errno == EBUSY || errno == ENETDOWN);
-	// Some of the !is_ok cases are a little unclear - what to do about the syscall,
-	// including how caller of _sendmsg_finish() should react.
-	if (is_ok || !is_again) {
-		socket->kernel_needs_wakeup = false;
-	}
-	if (is_again) {
-		return KNOT_EAGAIN;
-	} else if (is_ok) {
+	if (ret >= 0) {
 		return KNOT_EOK;
+	} else if (errno == ENOBUFS || errno == EAGAIN || errno == EBUSY ||
+	           errno == ENETDOWN) {
+		return KNOT_EAGAIN;
 	} else {
 		return -errno;
 	}
-	/* This syscall might be avoided with a newer kernel feature (>= 5.4):
-	   https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-use-need-wakeup-bind-flag
-	   Unfortunately it's not easy to continue supporting older kernels
-	   when using this feature on newer ones.
-	 */
 }
 
 _public_
@@ -525,22 +518,35 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 		return;
 	}
 
+	struct pollfd fd = {
+		.fd = xsk_socket__fd(socket->xsk),
+		.events = POLLOUT | POLLIN
+	};
+
 	struct kxsk_umem *const umem = socket->umem;
 	struct xsk_ring_prod *const fq = &umem->fq;
 
 	uint32_t idx = 0;
+	uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
 	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
-	while (unlikely(xsk_ring_prod__reserve(fq, count, &idx) != count)) {
+	while (unlikely(reserved != count)) {
+		if (xsk_ring_prod__needs_wakeup(fq)) {
+			(void)poll(&fd, 1, 1000);
+		}
 		nanosleep(&delay, NULL);
+		reserved = xsk_ring_prod__reserve(fq, count, &idx);
 	}
 
-	for (uint32_t i = 0; i < count; ++i) {
+	for (uint32_t i = 0; i < reserved; ++i) {
 		uint8_t *uframe_p = msg_uframe_ptr(&msgs[i]);
 		uint64_t offset = uframe_p - umem->frames->bytes;
 		*xsk_ring_prod__fill_addr(fq, idx++) = offset;
 	}
 
-	xsk_ring_prod__submit(fq, count);
+	xsk_ring_prod__submit(fq, reserved);
+	if (xsk_ring_prod__needs_wakeup(fq)) {
+		(void)poll(&fd, 1, 1000);
+	}
 }
 
 // The number of busy frames
