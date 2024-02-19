@@ -166,6 +166,8 @@ typedef struct {
 		uint32_t srv_quic_idle_close;
 		uint16_t xdp_quic;
 		uint16_t xdp_ring_size;
+		uint16_t xdp_busypoll_budget;
+		uint16_t xdp_busypoll_timeout;
 		int ctl_timeout;
 		bool xdp_udp;
 		bool xdp_tcp;

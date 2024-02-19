@@ -728,6 +728,8 @@ Various options related to XDP listening, especially TCP.
      tcp-resend-timeout: TIME
      route-check: BOOL
      ring-size: INT
+     busypoll-budget: INT
+     busypoll-timeout: INT
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -924,6 +926,41 @@ Change of this parameter requires restart of the Knot server to take effect.
    network device in the XDP mode.
 
 *Default:* ``2048``
+
+.. _xdp_busypoll-budget:
+
+busypoll-budget
+---------------
+
+If set to a positive value, preferred busy polling is enabled with the
+specified budget.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+.. NOTE::
+
+   Preferred busy polling also requires setting ``napi_defer_hard_irqs`` and
+   ``gro_flush_timeout`` for the appropriate network interface. E.g.::
+
+     echo 2 | sudo tee /sys/class/net/<interface>/napi_defer_hard_irqs
+     echo 200000 | sudo tee /sys/class/net/<interface>/gro_flush_timeout
+
+.. NOTE::
+
+   A recommended value is between 8 and 64.
+
+*Default:* ``0`` (disabled)
+
+.. _xdp_busypoll-timeout:
+
+busypoll-timeout
+----------------
+
+Timeout of preferrred busy polling if enabled by :ref:`xdp_busypoll-budget`.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* ``20`` (20 microseconds)
 
 .. _control section:
 

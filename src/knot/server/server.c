@@ -732,7 +732,11 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	bool xdp_tcp = conf->cache.xdp_tcp;
 	uint16_t xdp_quic = conf->cache.xdp_quic;
 	bool route_check = conf->cache.xdp_route_check;
-	knot_xdp_config_t xdp_config = { .ring_size = conf->cache.xdp_ring_size };
+	knot_xdp_config_t xdp_config = {
+		.ring_size = conf->cache.xdp_ring_size,
+		.busy_poll_budget = conf->cache.xdp_busypoll_budget,
+		.busy_poll_timeout = conf->cache.xdp_busypoll_timeout,
+	 };
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
@@ -1136,6 +1140,8 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_xdp_quic = true;
 	static bool warn_route_check = true;
 	static bool warn_ring_size = true;
+	static bool warn_busypoll_budget = true;
+	static bool warn_busypoll_timeout = true;
 	static bool warn_rmt_pool_limit = true;
 
 	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT)) {
@@ -1197,6 +1203,16 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_ring_size && conf->cache.xdp_ring_size != conf_get_int(conf, C_XDP, C_RING_SIZE)) {
 		log_warning(msg, &C_RING_SIZE[1]);
 		warn_ring_size = false;
+	}
+
+	if (warn_busypoll_budget && conf->cache.xdp_busypoll_budget != conf_get_int(conf, C_XDP, C_BUSYPOLL_BUDGET)) {
+		log_warning(msg, &C_BUSYPOLL_BUDGET[1]);
+		warn_busypoll_budget = false;
+	}
+
+	if (warn_busypoll_timeout && conf->cache.xdp_busypoll_timeout != conf_get_int(conf, C_XDP, C_BUSYPOLL_TIMEOUT)) {
+		log_warning(msg, &C_BUSYPOLL_TIMEOUT[1]);
+		warn_busypoll_timeout = false;
 	}
 
 	if (warn_rmt_pool_limit && global_conn_pool != NULL &&
