@@ -90,6 +90,9 @@ struct knot_xdp_socket {
 	/*! Mapping of interface indices to VLAN tags. */
 	uint16_t *vlan_map;
 	uint16_t vlan_map_max;
+
+	/*! Enabled preferred busy polling. */
+	bool busy_poll;
 };
 
 /*!

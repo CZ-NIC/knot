@@ -136,6 +136,37 @@ static void deconfigure_xsk_umem(struct kxsk_umem *umem)
 	free(umem);
 }
 
+static int enable_busypoll(int socket, unsigned timeout_us, unsigned budget)
+{
+	if (timeout_us == 0) {
+		return KNOT_EOK;
+	}
+
+#if defined(SO_PREFER_BUSY_POLL) && defined(SO_BUSY_POLL_BUDGET)
+	int opt_val = 1;
+	if (setsockopt(socket, SOL_SOCKET, SO_PREFER_BUSY_POLL,
+	               &opt_val, sizeof(opt_val)) != 0) {
+		return knot_map_errno();
+	}
+
+	opt_val = timeout_us;
+	if (setsockopt(socket, SOL_SOCKET, SO_BUSY_POLL,
+	               &opt_val, sizeof(opt_val)) != 0) {
+		return knot_map_errno();
+	}
+
+	opt_val = budget;
+	if (setsockopt(socket, SOL_SOCKET, SO_BUSY_POLL_BUDGET,
+	               &opt_val, sizeof(opt_val)) != 0) {
+		return knot_map_errno();
+	}
+
+	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif
+}
+
 static int configure_xsk_socket(struct kxsk_umem *umem,
                                 const struct kxsk_iface *iface,
                                 knot_xdp_socket_t **out_sock,
@@ -166,6 +197,17 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	if (ret != 0) {
 		free(xsk_info);
 		return ret;
+	}
+
+	if (config != NULL && config->busypoll_timeout > 0) {
+		ret = enable_busypoll(xsk_socket__fd(xsk_info->xsk),
+		                      config->busypoll_timeout, config->busypoll_budget);
+		if (ret != KNOT_EOK) {
+			xsk_socket__delete(xsk_info->xsk);
+			free(xsk_info);
+			return ret;
+		}
+		xsk_info->busy_poll = true;
 	}
 
 	*out_sock = xsk_info;
@@ -310,7 +352,7 @@ static struct umem_frame *alloc_tx_frame(knot_xdp_socket_t *socket)
 
 	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
 	while (unlikely(umem->tx_free_count == 0)) {
-		if (xsk_ring_prod__needs_wakeup(&socket->tx)) {
+		if (socket->busy_poll || xsk_ring_prod__needs_wakeup(&socket->tx)) {
 			(void)sendto(xsk_socket__fd(socket->xsk), NULL, 0,
 			             MSG_DONTWAIT, NULL, 0);
 		}
@@ -399,7 +441,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 */
 	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
 	while (unlikely(xsk_prod_nb_free(&socket->tx, count) < count)) {
-		if (xsk_ring_prod__needs_wakeup(&socket->tx)) {
+		if (socket->busy_poll || xsk_ring_prod__needs_wakeup(&socket->tx)) {
 			(void)sendto(xsk_socket__fd(socket->xsk), NULL, 0,
 			             MSG_DONTWAIT, NULL, 0);
 		}
@@ -450,7 +492,7 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 		return KNOT_EINVAL;
 	}
 
-	if (!xsk_ring_prod__needs_wakeup(&socket->tx)) {
+	if (socket->busy_poll || !xsk_ring_prod__needs_wakeup(&socket->tx)) {
 		return KNOT_EOK;
 	}
 
@@ -530,7 +572,7 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
 	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
 	while (unlikely(reserved != count)) {
-		if (xsk_ring_prod__needs_wakeup(fq)) {
+		if (socket->busy_poll || xsk_ring_prod__needs_wakeup(fq)) {
 			(void)poll(&fd, 1, 1000);
 		}
 		nanosleep(&delay, NULL);
@@ -544,7 +586,7 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	}
 
 	xsk_ring_prod__submit(fq, reserved);
-	if (xsk_ring_prod__needs_wakeup(fq)) {
+	if (socket->busy_poll || xsk_ring_prod__needs_wakeup(fq)) {
 		(void)poll(&fd, 1, 1000);
 	}
 }
