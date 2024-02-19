@@ -56,6 +56,8 @@ struct knot_xdp_config {
 	uint16_t ring_size;  /*!< Size of RX and TX rings (must be power of 2). */
 	bool force_generic;  /*!< Use generic XDP mode (avoid driver/hadrware implementation). */
 	bool force_copy;     /*!< Force copying packet data between kernel and user-space (avoid zero-copy). */
+	unsigned busy_poll_timeout; // microseconds
+	unsigned busy_poll_budget;
 };
 
 /*! \brief Configuration of XDP socket. */
