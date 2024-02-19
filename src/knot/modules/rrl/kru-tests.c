@@ -12,8 +12,8 @@ void *memzero(void *s, size_t n)
 	return volatile_memset(s, 0, n);
 }
 
-#define KRU_DECAY_BITS 16
 #include <knot/modules/rrl/kru-generic.c>
+#define KRU_DECAY_BITS KRU_LOAD_BITS
 
 void test_decay32(void)
 {
@@ -202,7 +202,7 @@ void test_multi_attackers(void) {
 /*=== benchmarking time performance ===*/
 
 #define TIMED_TESTS_TABLE_SIZE_LOG             16
-#define TIMED_TESTS_PRICE                (1 <<  9)
+#define TIMED_TESTS_PRICE                (1 << (KRU_LOAD_BITS - 7))
 #define TIMED_TESTS_QUERIES              (1 << 26)
 #define TIMED_TESTS_TIME_UPDATE_PERIOD          4
 #define TIMED_TESTS_MAX_THREADS                64
@@ -226,9 +226,9 @@ void *timed_runnable(void *arg) {
 	uint64_t now_last_update = -TIMED_TESTS_TIME_UPDATE_PERIOD * ctx->increment;
 
 #ifdef TIMED_TESTS_PREFIXES
-	uint16_t prices[sizeof(TIMED_TESTS_PREFIXES)];
+	kru_load_t prices[sizeof(TIMED_TESTS_PREFIXES)];
 #else
-	uint16_t prices[TIMED_TESTS_BATCH_SIZE];
+	kru_load_t prices[TIMED_TESTS_BATCH_SIZE];
 #endif
 	for (size_t j = 0; j < sizeof(prices)/sizeof(*prices); j++) {
 		prices[j] = TIMED_TESTS_PRICE;

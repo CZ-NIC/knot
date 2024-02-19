@@ -46,8 +46,8 @@ typedef struct {
 
 /*!
  * \brief Create a RRL table.
- * \param size Fixed hashtable size (reasonable large prime is recommended). // TODO remove, not used
- * \param rate Rate (in pkts/sec).  // TODO remove, not used
+ * \param size Fixed table size.
+ * \param rate Rate (in pkts/sec).
  * \return created table or NULL.
  */
 rrl_table_t *rrl_create(size_t size, uint32_t rate);

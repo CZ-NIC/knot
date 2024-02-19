@@ -32,23 +32,26 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #include <stdatomic.h>
 
 
-#define RRL_PRICE_LOG 9   // highest price of all prefixes, same for IPv4 and IPv6
+#define RRL_BASE_PRICE_LOG (KRU_LOAD_BITS - 7)   // desired log of highest price of all prefixes, same for IPv4 and IPv6
 
-#define RRL_TABLE_SIZE  (1 << 20)
-#define RRL_RATE_LIMIT  (1404301 / (1 << RRL_PRICE_LOG))
+#define RRL_TABLE_SIZE     (1 << 20)
+#define RRL_RATE_LIMIT     ((uint64_t)KRU_MAX_DECAY * 1000 / (1 << RRL_BASE_PRICE_LOG))
+
+#define RRL_BASE_PRICE     ((uint64_t)KRU_MAX_DECAY * 1000 / RRL_RATE_LIMIT)
+
 
 #define RRL_THREADS 8
 //#define RRL_SYNC_WITH_REAL_TIME
 
-uint32_t initial_limit(uint16_t rate_mult) {
+uint32_t initial_limit(kru_load_t rate_mult) {
 	// return (1 << (16 - price_log)) - 1;
-	return (1 << (16 - RRL_PRICE_LOG)) * rate_mult - 1;
+	return ((1ll << KRU_LOAD_BITS) - 1) / (RRL_BASE_PRICE / rate_mult);
 }
 
 // expected limits for parallel test (for largest prefix)
-#define RRL_FIRST_BLOCKED        (1 << (16 - RRL_PRICE_LOG))
-#define RRL_INITIAL_LIMIT_MIN    (RRL_FIRST_BLOCKED - 1)
+#define RRL_INITIAL_LIMIT_MIN    (((1ll << KRU_LOAD_BITS) - 1) / RRL_BASE_PRICE)
 #define RRL_INITIAL_LIMIT_MAX    (RRL_INITIAL_LIMIT_MIN + RRL_THREADS - 1)  // races may occur on first insertion into table
+#define RRL_FIRST_BLOCKED        (RRL_INITIAL_LIMIT_MIN + 1)
 #define RRL_LONGTERM_LIMIT_MIN   (RRL_FIRST_BLOCKED / 2.0 / 32)
 #define RRL_LONGTERM_LIMIT_MAX   (RRL_FIRST_BLOCKED / 2.0 / 32 + 1)
 #define RRL_MAX_FP_RATIO         (0.00001)

@@ -44,13 +44,22 @@ Size (`loads_bits` = log2 length):
 
 #include "knot/modules/rrl/kru.h"
 
+
+#if KRU_LOAD_BITS == 32
+	#define LOADS_LEN 10
+#elif KRU_LOAD_BITS == 16
+	#define LOADS_LEN 15
+#else
+	#error KRU_LOAD_BITS should be set to 16 or 32.
+#endif
+
+
 /// Block of loads sharing the same time, so that we're more space-efficient.
 /// It's exactly a single cache line.
 struct load_cl {
 	_Atomic uint32_t time;
-	#define LOADS_LEN 15
 	uint16_t ids[LOADS_LEN];
-	uint16_t loads[LOADS_LEN];
+	kru_load_t loads[LOADS_LEN];
 } ALIGNED_CPU_CACHE;
 static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
 
@@ -102,11 +111,16 @@ struct kru {
 /// Convert capacity_log to loads_bits
 static inline int32_t capacity2loads(int capacity_log)
 {
+#if KRU_LOAD_BITS == 16
 	static_assert(LOADS_LEN == 15 && TABLE_COUNT == 2, "");
 	// So, the pair of cache lines hold up to 2*15 elements.
 	// Let's say that we can reliably store 16 = 1 << (1+3).
 	// (probably more but certainly not 1 << 5)
 	const int shift = 1 + 3;
+#else // 32
+	static_assert(LOADS_LEN == 10 && TABLE_COUNT == 2, "");
+	const int shift = 1 + 2;
+#endif
 	int loads_bits = capacity_log - shift;
 	// Let's behave reasonably for weird capacity_log values.
 	return loads_bits > 0 ? loads_bits : 1;
@@ -151,13 +165,13 @@ static bool kru_initialize(struct kru *kru, int capacity_log)
 struct query_ctx {
 	struct load_cl *l[TABLE_COUNT];
 	uint32_t time_now;
-	uint16_t price;
+	kru_load_t price;
 	uint16_t id;
-	uint16_t *load;
+	kru_load_t *load;
 };
 
 /// Phase 1/3 of a query -- hash, prefetch, ctx init. Based on one 16-byte key.
-static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint8_t key[static 16], uint16_t price, struct query_ctx *ctx)
+static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint8_t key[static 16], kru_load_t price, struct query_ctx *ctx)
 {
 	// Obtain hash of *buf.
 	hash_t hash;
@@ -194,7 +208,7 @@ static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint
 
 
 /// Phase 1/3 of a query -- hash, prefetch, ctx init. Based on a bit prefix of one 16-byte key.
-static inline void kru_limited_prefetch_prefix(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t prefix, uint16_t price, struct query_ctx *ctx)
+static inline void kru_limited_prefetch_prefix(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t prefix, kru_load_t price, struct query_ctx *ctx)
 {
 	// Obtain hash of *buf.
 	hash_t hash;
@@ -278,7 +292,7 @@ static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 
 	// Find matching element.  Matching 16 bits in addition to loads_bits.
 	ctx->load = NULL;
-#if !USE_AVX2
+#if !USE_AVX2 || (KRU_LOAD_BITS == 32)  // TODO 32-bit SIMD version
 	for (int li = 0; li < TABLE_COUNT; ++li)
 		for (int i = 0; i < LOADS_LEN; ++i)
 			if (ctx->l[li]->ids[i] == id) {
@@ -306,8 +320,8 @@ static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 	return false;
 
 load_found:;
-	const uint16_t price = ctx->price;
-	const uint32_t limit = (1<<16) - price;
+	const kru_load_t price = ctx->price;
+	const kru_load_t limit = -price;
 	return (*ctx->load >= limit);
 }
 
@@ -315,12 +329,12 @@ load_found:;
 /// Not needed if blocked by fetch phase.
 static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
 {
-	_Atomic uint16_t *load_at;
+	_Atomic kru_load_t *load_at;
 	if (!ctx->load) {
 		// No match, so find position of the smallest load.
 		int min_li = 0;
 		int min_i = 0;
-#if !USE_SSE41
+#if !USE_SSE41 || (KRU_LOAD_BITS == 32)  // TODO 32-bit SIMD version
 		for (int li = 0; li < TABLE_COUNT; ++li)
 			for (int i = 0; i < LOADS_LEN; ++i)
 				if (ctx->l[li]->loads[i] < ctx->l[min_li]->loads[min_i]) {
@@ -368,15 +382,20 @@ static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
 #endif
 
 		ctx->l[min_li]->ids[min_i] = ctx->id;
-		load_at = (_Atomic uint16_t *)&ctx->l[min_li]->loads[min_i];
+		load_at = (_Atomic kru_load_t *)&ctx->l[min_li]->loads[min_i];
 	} else {
-		load_at = (_Atomic uint16_t *)ctx->load;
+		load_at = (_Atomic kru_load_t *)ctx->load;
 	}
 
+#if KRU_LOAD_BITS == 16
 	static_assert(ATOMIC_CHAR16_T_LOCK_FREE == 2, "insufficient atomics");
-	const uint16_t price = ctx->price;
-	const uint32_t limit = (1<<16) - price;
-	uint16_t load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
+#else // 32
+	static_assert(ATOMIC_CHAR32_T_LOCK_FREE == 2, "insufficient atomics");
+#endif
+
+	const kru_load_t price = ctx->price;
+	const kru_load_t limit = -price;
+	kru_load_t load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
 	do {
 		if (load_orig >= limit)
 			return true;
@@ -385,7 +404,7 @@ static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
 	return false;
 }
 
-static bool kru_limited_multi_or(struct kru *kru, uint32_t time_now, uint8_t **keys, uint16_t *prices, size_t queries_cnt)
+static bool kru_limited_multi_or(struct kru *kru, uint32_t time_now, uint8_t **keys, kru_load_t *prices, size_t queries_cnt)
 {
 	struct query_ctx ctx[queries_cnt];
 
@@ -405,7 +424,7 @@ static bool kru_limited_multi_or(struct kru *kru, uint32_t time_now, uint8_t **k
 	return ret;
 }
 
-static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, uint8_t **keys, uint16_t *prices, size_t queries_cnt)
+static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, uint8_t **keys, kru_load_t *prices, size_t queries_cnt)
 {
 	struct query_ctx ctx[queries_cnt];
 	bool ret = false;
@@ -427,7 +446,7 @@ static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, uin
 	return ret;
 }
 
-static bool kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, uint16_t *prices, size_t queries_cnt)
+static bool kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_load_t *prices, size_t queries_cnt)
 {
 	struct query_ctx ctx[queries_cnt];
 
@@ -449,7 +468,7 @@ static bool kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint
 }
 
 /// Update limiting and return true iff it hit the limit instead.
-static bool kru_limited(struct kru *kru, uint32_t time_now, uint8_t key[static 16], uint16_t price)
+static bool kru_limited(struct kru *kru, uint32_t time_now, uint8_t key[static 16], kru_load_t price)
 {
 	return kru_limited_multi_or(kru, time_now, &key, &price, 1);
 }
