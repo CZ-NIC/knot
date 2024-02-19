@@ -732,7 +732,11 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	bool xdp_tcp = conf->cache.xdp_tcp;
 	uint16_t xdp_quic = conf->cache.xdp_quic;
 	bool route_check = conf->cache.xdp_route_check;
-	knot_xdp_config_t xdp_config = { .ring_size = conf->cache.xdp_ring_size };
+	knot_xdp_config_t xdp_config = {
+		.ring_size = conf->cache.xdp_ring_size,
+		.busy_poll_budget = conf_get_int(conf, C_XDP, C_BUSYPOLL_BUDGET),
+		.busy_poll_timeout = conf_get_int(conf, C_XDP, C_BUSYPOLL_TIMEOUT),
+	 };
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
