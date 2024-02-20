@@ -31,7 +31,8 @@ knotd_stdio_CPPFLAGS =				\
 	$(libkqueue_CFLAGS)			\
 	$(liburcu_CFLAGS)			\
 	$(lmdb_CFLAGS)				\
-	$(systemd_CFLAGS)
+	$(systemd_CFLAGS)			\
+	$(libdbus_CFLAGS)
 
 knotd_stdio_LDADD = \
 	$(top_builddir)/src/libknotd.la		\
@@ -43,7 +44,8 @@ knotd_stdio_LDADD = \
 	$(gnutls_LIBS)				\
 	$(liburcu_LIBS)				\
 	$(lmdb_LIBS)				\
-	$(systemd_LIBS)
+	$(systemd_LIBS)				\
+	$(libdbus_LIBS)
 
 BUILT_SOURCES = knotd_wrap/main.c
 CLEANFILES = knotd_wrap/main.c
