@@ -656,7 +656,7 @@ Possible values:
   until an RRSIG expires.
 
 .. NOTE::
-   This function requires systemd version at least 221.
+   This function requires systemd version at least 221 or libdbus.
 
 Change of this parameter requires restart of the Knot server to take effect.
 

@@ -618,7 +618,7 @@ until an RRSIG expires.
 \fBNOTE:\fP
 .INDENT 0.0
 .INDENT 3.5
-This function requires systemd version at least 221.
+This function requires systemd version at least 221 or libdbus.
 .UNINDENT
 .UNINDENT
 .sp
