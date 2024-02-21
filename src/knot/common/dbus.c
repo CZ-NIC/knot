@@ -130,7 +130,11 @@ static void emit_event(const char *event, char *first_arg_type, ...)
 		va_end(args);
 		goto failed;
 	}
-	ret = sd_bus_message_send(msg);
+	/*
+	 * \note sd_bus_message_send(msg) or even sd_bus_emit_signalv() can
+	 *       be used with a newer systemd.
+	 */
+	ret = sd_bus_send(sd_bus_message_get_bus(msg), msg, NULL);
 	if (ret < 0) {
 		sd_bus_message_unref(msg);
 		va_end(args);
