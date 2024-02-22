@@ -88,10 +88,10 @@ typedef struct {
 	} socket;
 	/*! States of rings of the XDP socket. */
 	struct {
-		/*! Free FQ ring buffer to fill. */
-		uint16_t fq_free;
-		/*! Free TX buffers to use. */
-		uint16_t tx_free;
+		/*! Busy buffers from FQ ring. */
+		uint16_t fq_busy;
+		/*! Busy TX buffers. */
+		uint16_t tx_busy;
 		/*! Pending buffers in TX ring. */
 		uint16_t rx_fill;
 		/*! Pending buffers in RX ring. */

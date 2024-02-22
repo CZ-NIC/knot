@@ -69,8 +69,8 @@ int stats_xdp(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 			DUMP(socket, rx_full);
 			DUMP(socket, fq_empty);
 			DUMP(socket, tx_empty);
-			DUMP(rings, fq_free);
-			DUMP(rings, tx_free);
+			DUMP(rings, fq_busy);
+			DUMP(rings, tx_busy);
 			DUMP(rings, rx_fill);
 			DUMP(rings, tx_fill);
 			DUMP(rings, cq_fill);

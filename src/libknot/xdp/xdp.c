@@ -648,8 +648,8 @@ int knot_xdp_socket_stats(knot_xdp_socket_t *socket, knot_xdp_stats_t *stats)
 	size_t common_size = MIN(sizeof(xdp_stats), sizeof(stats->socket));
 	memcpy(&stats->socket, &xdp_stats, common_size);
 
-	stats->rings.fq_free = RING_BUSY(&socket->umem->fq);
-	stats->rings.tx_free = socket->umem->tx_free_count;
+	stats->rings.fq_busy = 2 * socket->umem->ring_size - RING_BUSY(&socket->umem->fq);
+	stats->rings.tx_busy = socket->umem->ring_size - socket->umem->tx_free_count;
 	stats->rings.rx_fill = RING_BUSY(&socket->rx);
 	stats->rings.tx_fill = RING_BUSY(&socket->tx);
 	stats->rings.cq_fill = RING_BUSY(&socket->umem->cq);
