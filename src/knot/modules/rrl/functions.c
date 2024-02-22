@@ -29,18 +29,18 @@
 // Hardcoded also in unit tests.
 
 #define RRL_V4_PREFIXES  (uint8_t[])  {  24,  28,  32}
-#define RRL_V4_RATE_MULT (kru_load_t[])   {  16,   4,   1}
+#define RRL_V4_RATE_MULT (kru_price_t[])   {  16,   4,   1}
 
 #define RRL_V6_PREFIXES  (uint8_t[])  {  32,  56,  64, 128}
-#define RRL_V6_RATE_MULT (kru_load_t[])   { 512,  16,   4,   1}
+#define RRL_V6_RATE_MULT (kru_price_t[])   { 512,  16,   4,   1}
 
 #define RRL_V4_PREFIXES_CNT (sizeof(RRL_V4_PREFIXES) / sizeof(*RRL_V4_PREFIXES))
 #define RRL_V6_PREFIXES_CNT (sizeof(RRL_V6_PREFIXES) / sizeof(*RRL_V6_PREFIXES))
 #define RRL_MAX_PREFIXES_CNT ((RRL_V4_PREFIXES_CNT > RRL_V6_PREFIXES_CNT) ? RRL_V4_PREFIXES_CNT : RRL_V6_PREFIXES_CNT)
 
 struct rrl_table {
-	kru_load_t v4_prices[RRL_V4_PREFIXES_CNT];
-	kru_load_t v6_prices[RRL_V6_PREFIXES_CNT];
+	kru_price_t v4_prices[RRL_V4_PREFIXES_CNT];
+	kru_price_t v6_prices[RRL_V6_PREFIXES_CNT];
 	uint8_t kru[] ALIGNED(64);
 };
 
@@ -107,7 +107,7 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 		return NULL;
 	}
 
-	const kru_load_t base_price = (uint64_t)KRU_MAX_DECAY * 1000 / rate;
+	const kru_price_t base_price = (uint64_t)KRU_MAX_DECAY * 1000 / rate;
 		// rate limit per tick:       rate / 1000
 
 	for (size_t i = 0; i < RRL_V4_PREFIXES_CNT; i++) {

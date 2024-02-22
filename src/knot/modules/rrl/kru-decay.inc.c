@@ -1,16 +1,8 @@
 
-#define DECAY_BITS KRU_LOAD_BITS
-#define DECAY_T kru_load_t
-
-#if KRU_LOAD_BITS == 16
+#define DECAY_BITS 16
+#define DECAY_T  uint16_t
 #define DECAY_TL uint32_t
 #define DECAY_T_BITS_LOG 4
-
-#elif KRU_LOAD_BITS == 32
-#define DECAY_TL uint64_t
-#define DECAY_T_BITS_LOG 5
-
-#endif
 
 /// Parametrization for speed of decay.
 struct decay_config {
@@ -71,7 +63,6 @@ static inline void update_time(struct load_cl *l, const uint32_t time_now,
 static const struct decay_config DECAY_32 = {
 	.ticklen_log = 0,
 	.half_life_log = 5,
-#if DECAY_BITS == 16
 	/// Experiment: if going by a single tick, after 362 steps fixed-point at 23,
 	///  but accuracy at the beginning of that (first 32 ticks) is very good,
 	///  getting from max 2^16 - 1 to 2^15 + 5.  Max. decay per tick is 1404.
@@ -80,13 +71,4 @@ static const struct decay_config DECAY_32 = {
 		51642,50535,49452,48393,47356,46341,45348,44376,43425,42495,41584,
 		40693,39821,38968,38133,37316,36516,35734,34968,34219,33486
 	}
-#elif DECAY_BITS == 32
-	.scales = { // ghci> map (\i -> round(2^32 * 0.5 ** (i/32))) [1..31]
-		0, 4202935003,4112874773,4024744348,3938502376,3854108391,3771522796,
-		3690706840,3611622603,3534232978,3458501653,3384393094,3311872529,
-		3240905930,3171459999,3103502151,3037000500,2971923842,2908241642,
-		2845924021,2784941738,2725266179,2666869345,2609723834,2553802834,
-		2499080105,2445529972,2393127307,2341847524,2291666561,2242560872,2194507417
-	}
-#endif
 };

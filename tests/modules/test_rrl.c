@@ -32,24 +32,21 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #include <stdatomic.h>
 
 
-#define RRL_BASE_PRICE_LOG (KRU_LOAD_BITS - 7)   // desired log of highest price of all prefixes, same for IPv4 and IPv6
-
+#define RRL_BASE_PRICE_LOG (KRU_PRICE_BITS - 7)   // desired log of highest price of all prefixes, same for IPv4 and IPv6
 #define RRL_TABLE_SIZE     (1 << 20)
-#define RRL_RATE_LIMIT     ((uint64_t)KRU_MAX_DECAY * 1000 / (1 << RRL_BASE_PRICE_LOG))
-
+#define RRL_RATE_LIMIT     ((uint64_t)KRU_MAX_DECAY * 1000 / (1ll << RRL_BASE_PRICE_LOG))
 #define RRL_BASE_PRICE     ((uint64_t)KRU_MAX_DECAY * 1000 / RRL_RATE_LIMIT)
-
 
 #define RRL_THREADS 8
 //#define RRL_SYNC_WITH_REAL_TIME
 
-uint32_t initial_limit(kru_load_t rate_mult) {
+uint32_t initial_limit(kru_price_t rate_mult) {
 	// return (1 << (16 - price_log)) - 1;
-	return ((1ll << KRU_LOAD_BITS) - 1) / (RRL_BASE_PRICE / rate_mult);
+	return (KRU_LIMIT - 1) / (RRL_BASE_PRICE / rate_mult);
 }
 
 // expected limits for parallel test (for largest prefix)
-#define RRL_INITIAL_LIMIT_MIN    (((1ll << KRU_LOAD_BITS) - 1) / RRL_BASE_PRICE)
+#define RRL_INITIAL_LIMIT_MIN    ((KRU_LIMIT - 1) / RRL_BASE_PRICE)
 #define RRL_INITIAL_LIMIT_MAX    (RRL_INITIAL_LIMIT_MIN + RRL_THREADS - 1)  // races may occur on first insertion into table
 #define RRL_FIRST_BLOCKED        (RRL_INITIAL_LIMIT_MIN + 1)
 #define RRL_LONGTERM_LIMIT_MIN   (RRL_FIRST_BLOCKED / 2.0 / 32)
@@ -90,6 +87,9 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp) {
 	return 0;
 }
 
+#define is_int_approx(exp, max_diff, val, format, ...) \
+	ok(((exp) - (max_diff) <= (val)) && ((val) <= (exp) + (max_diff)), \
+			format ", %d <= %d <= %d", __VA_ARGS__, (exp) - (max_diff), (val), (exp) + (max_diff))
 
 
 struct host {
@@ -236,7 +236,7 @@ void test_rrl(char *impl_name, rrl_req_t rq, knot_dname_t *zone) {
 
 	/* different namespaces for IPv4 and IPv6 */
 	ret = count_passing_queries(rrl, AF_INET6, "0102:0304:%x::", 0,0xffff, 1 << 16);
-	is_int(initial_limit(512), ret, "rrl(%s): different namespaces for IPv4 and IPv6 (needs limit on IPv6 /32)", impl_name);
+	is_int_approx(initial_limit(512), 4, ret, "rrl(%s): different namespaces for IPv4 and IPv6 (needs limit on IPv6 /32)", impl_name);
 
 	/* unblocked request */
 	fakeclock_tick = 32;

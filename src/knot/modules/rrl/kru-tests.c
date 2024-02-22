@@ -13,7 +13,6 @@ void *memzero(void *s, size_t n)
 }
 
 #include <knot/modules/rrl/kru-generic.c>
-#define KRU_DECAY_BITS KRU_LOAD_BITS
 
 void test_decay32(void)
 {
@@ -125,7 +124,7 @@ void test_print_stats(struct test_ctx *ctx) {
 
 void test_single_attacker(void) {
 	struct kru *kru = NULL;
-	posix_memalign((void **)&kru, 64, KRU.get_size(16));
+	if (posix_memalign((void **)&kru, 64, KRU.get_size(16))) abort();
 	KRU.initialize(kru, 16);
 
 	struct test_cat cats[] = {
@@ -134,7 +133,7 @@ void test_single_attacker(void) {
 	};
 
 	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(*cats),
-		.price = 1<<(KRU_DECAY_BITS
+		.price = 1<<(KRU_PRICE_BITS
 				-7
 #if defined(KRU_IMPL_median32bit) || defined(KRU_IMPL_median16bit_simd)
 				-1
@@ -163,7 +162,7 @@ void test_single_attacker(void) {
 
 void test_multi_attackers(void) {
 	struct kru *kru = NULL;
-	posix_memalign((void **)&kru, 64, KRU.get_size(15));
+	if (posix_memalign((void **)&kru, 64, KRU.get_size(15))) abort();
 	KRU.initialize(kru, 15);
 
 	struct test_cat cats[] = {
@@ -172,7 +171,7 @@ void test_multi_attackers(void) {
 	};
 
 	struct test_ctx ctx = {.kru = kru, .time = 0, .cats = cats, .cnt = sizeof(cats)/sizeof(*cats),
-		.price = 1<<(KRU_DECAY_BITS
+		.price = 1<<(KRU_PRICE_BITS
 				-7
 #if defined(KRU_IMPL_median32bit) || defined(KRU_IMPL_median16bit_simd)
 				-1
@@ -202,7 +201,7 @@ void test_multi_attackers(void) {
 /*=== benchmarking time performance ===*/
 
 #define TIMED_TESTS_TABLE_SIZE_LOG             16
-#define TIMED_TESTS_PRICE                (1 << (KRU_LOAD_BITS - 7))
+#define TIMED_TESTS_PRICE               ((1 << (KRU_PRICE_BITS - 7)) + 1)
 #define TIMED_TESTS_QUERIES              (1 << 26)
 #define TIMED_TESTS_TIME_UPDATE_PERIOD          4
 #define TIMED_TESTS_MAX_THREADS                64
@@ -226,9 +225,9 @@ void *timed_runnable(void *arg) {
 	uint64_t now_last_update = -TIMED_TESTS_TIME_UPDATE_PERIOD * ctx->increment;
 
 #ifdef TIMED_TESTS_PREFIXES
-	kru_load_t prices[sizeof(TIMED_TESTS_PREFIXES)];
+	kru_price_t prices[sizeof(TIMED_TESTS_PREFIXES)];
 #else
-	kru_load_t prices[TIMED_TESTS_BATCH_SIZE];
+	kru_price_t prices[TIMED_TESTS_BATCH_SIZE];
 #endif
 	for (size_t j = 0; j < sizeof(prices)/sizeof(*prices); j++) {
 		prices[j] = TIMED_TESTS_PRICE;
@@ -274,7 +273,9 @@ void timed_tests() {
 			nanosleep(&wait_ts, NULL);
 			printf("%3d threads, %-15s:  ", threads, (collide ? "single query" : "unique queries"));
 
-			posix_memalign((void **)&kru, 64, KRU.get_size(TIMED_TESTS_TABLE_SIZE_LOG));
+			if (posix_memalign((void **)&kru, 64, KRU.get_size(TIMED_TESTS_TABLE_SIZE_LOG))) {
+				abort();
+			}
 			KRU.initialize(kru, TIMED_TESTS_TABLE_SIZE_LOG);
 			clock_gettime(CLOCK_REALTIME, &begin_ts);
 
@@ -305,12 +306,40 @@ void timed_tests() {
 }
 
 
+/*=== benchmarking randomized fractional increments ===*/
+
+void test_count_unlimited() {
+	const size_t table_size_log = 5;
+	assert(KRU_PRICE_BITS > 16);
+	uint8_t key[16] = {};
+	struct kru *kru = NULL;
+	if (posix_memalign((void **)&kru, 64, KRU.get_size(table_size_log))) {
+		abort();
+	}
+	for (int price_log = 16; price_log >= 0; price_log--) {
+		printf("price 2^%d:\n", price_log);
+		const kru_price_t price = 1 << price_log;
+		const kru_price_t exp_limit = KRU_LIMIT / price;
+		for (size_t i = 0; i < 4; i++) {
+			memzero(kru, KRU.get_size(table_size_log));
+			KRU.initialize(kru, table_size_log);
+			for (uint64_t q = 0; q < -1ll; q++) {
+				if (KRU.limited(kru, 0, key, price)) {
+					printf("  blocked after %10lu queries, diff %10ld (%8.5f %%)\n", q, q - exp_limit, ((double)((signed)q - (signed)exp_limit)/exp_limit) * 100);
+					break;
+				}
+			}
+		}
+	}
+}
+
 /*===*/
 
 int main(int argc, char **argv)
 {
 	//test_single_attacker();
 	//test_multi_attackers();
+	//test_count_unlimited();
 	timed_tests();
 
 	// struct kru kru __attribute__((unused));

@@ -14,14 +14,14 @@
 	#define ALIGNED(_bytes)
 #endif
 
-#define KRU_LOAD_BITS 32
-#if KRU_LOAD_BITS == 32
-	typedef uint32_t kru_load_t;
-	#define KRU_MAX_DECAY 92032293
-#elif KRU_LOAD_BITS == 16
-	typedef uint16_t kru_load_t;
-	#define KRU_MAX_DECAY 1404
-#endif
+
+// An unsigned integral type used for prices, blocking occurs when sum of prices overflows.
+// Greater than 16-bit type enables randomized fractional incrementing as the internal counters are still 16-bit.
+typedef uint32_t kru_price_t;
+
+#define KRU_PRICE_BITS (8 * sizeof(kru_price_t))
+#define KRU_MAX_DECAY (1404ll << (KRU_PRICE_BITS - 16))
+#define KRU_LIMIT     (((kru_price_t)-1ll) - (1ll << (KRU_PRICE_BITS - 16)) + 2)
 
 struct kru;
 
@@ -29,7 +29,7 @@ struct kru;
 struct kru_api {
 	/// Initialize a new KRU structure that can track roughly 2^capacity_log limited keys.
 	///
-	/// The kru parameter should point to a preallocated memory
+	/// The kru parameter should point to a zeroed preallocated memory
 	/// of size returned by get_size aligned to 64-bytes;
 	/// deallocate the memory to destroy KRU.
 	/// RAM: the current parametrization will use roughly 8 (or 16 for 32-bit version) bytes * 2^capacity_log.
@@ -48,18 +48,18 @@ struct kru_api {
 
 	/// Determine if a key should get limited (and update the KRU).
 	/// key needs to be aligned to a multiple of 16 bytes.
-	bool (*limited)(struct kru *kru, uint32_t time_now, uint8_t key[static const 16], kru_load_t price);
+	bool (*limited)(struct kru *kru, uint32_t time_now, uint8_t key[static const 16], kru_price_t price);
 
 	/// Multiple queries. Returns OR of answers. Updates KRU only if no query is blocked (and possibly on race).
-	bool (*limited_multi_or)(struct kru *kru, uint32_t time_now, uint8_t **keys, kru_load_t *prices, size_t queries_cnt);
+	bool (*limited_multi_or)(struct kru *kru, uint32_t time_now, uint8_t **keys, kru_price_t *prices, size_t queries_cnt);
 
 	/// Same as previous but without short-circuit evaluation; for time measurement purposes.
-	bool (*limited_multi_or_nobreak)(struct kru *kru, uint32_t time_now, uint8_t ** keys, kru_load_t *prices, size_t queries_cnt);
+	bool (*limited_multi_or_nobreak)(struct kru *kru, uint32_t time_now, uint8_t ** keys, kru_price_t *prices, size_t queries_cnt);
 
 	/// Multiple queries based on different prefixes of a single key. Returns OR of answers. Updates KRU only if no query is blocked.
 	/// The key of i-th query consists of prefixes[i] bits of key, prefixes[i], and namespace.
 	bool (*limited_multi_prefix_or)(struct kru *kru, uint32_t time_now,
-			uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_load_t *prices, size_t queries_cnt);
+			uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt);
 };
 // The functions are stored this way to make it easier to switch
 // implementation based on detected CPU.
