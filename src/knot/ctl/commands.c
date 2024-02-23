@@ -1719,6 +1719,7 @@ static int common_stats(ctl_args_t *args, zone_t *zone)
 		return ret; \
 	} \
 }
+
 	if (zone == NULL) {
 		int ret = stats_server(dump_ctr, &dump_ctx);
 		STATS_CHECK(ret, true);
