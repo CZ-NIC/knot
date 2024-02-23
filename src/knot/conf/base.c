@@ -238,6 +238,9 @@ static void init_cache(
 
 	conf->cache.xdp_ring_size = running_ring_size;
 
+	val = conf_get(conf, C_XDP, C_STATS);
+	conf->cache.xdp_stats = conf_bool(&val);
+
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
 	/* infinite_adjust() call isn't needed, 0 is adjusted later anyway. */

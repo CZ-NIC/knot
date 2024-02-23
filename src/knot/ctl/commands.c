@@ -1723,8 +1723,10 @@ static int common_stats(ctl_args_t *args, zone_t *zone)
 		int ret = stats_server(dump_ctr, &dump_ctx);
 		STATS_CHECK(ret, true);
 
-		ret = stats_xdp(dump_ctr, &dump_ctx);
-		STATS_CHECK(ret, true);
+		if (conf()->cache.xdp_stats) {
+			ret = stats_xdp(dump_ctr, &dump_ctx);
+			STATS_CHECK(ret, true);
+		}
 
 		dump_ctx.query_modules = conf()->query_modules;
 		ret = stats_modules(dump_ctr, &dump_ctx);

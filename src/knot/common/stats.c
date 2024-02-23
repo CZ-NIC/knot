@@ -330,8 +330,10 @@ static void dump_to_file(conf_t *conf, FILE *fd, server_t *server)
 	(void)stats_server(dump_ctr, &dump_ctx);
 
 	// Dump XDP counters.
-	ctx = (dump_ctx_t){ .fd = fd };
-	(void)stats_xdp(dump_ctr, &dump_ctx);
+	if (conf->cache.xdp_stats) {
+		ctx = (dump_ctx_t){ .fd = fd };
+		(void)stats_xdp(dump_ctr, &dump_ctx);
+	}
 
 	// Dump global module counters.
 	ctx = (dump_ctx_t){ .fd = fd };
