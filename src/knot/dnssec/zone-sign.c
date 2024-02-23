@@ -137,6 +137,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 
 		int ret = knot_check_signature(covered, rrsigs, i, key, ctx,
 					       dnssec_ctx, refresh, skip_crypto);
+		ret = knot_error_from_libdnssec(ret);
 		if (ret == KNOT_EOK) {
 			if (at != NULL) {
 				*at = i;
@@ -175,20 +176,21 @@ static void note_earliest_expiration(const knot_rdata_t *rrsig, knot_time_t now,
 	*expires_at = knot_time_min(current, *expires_at);
 }
 
-bool rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
+int rrsig_covers_type(const knot_rrset_t *rrsig, uint16_t type)
 {
+	int res = 0;
 	if (knot_rrset_empty(rrsig)) {
-		return false;
+		return res;
 	}
 	assert(rrsig->type == KNOT_RRTYPE_RRSIG);
 	knot_rdata_t *one_rr = rrsig->rrs.rdata;
 	for (int i = 0; i < rrsig->rrs.count; i++) {
 		if (type == knot_rrsig_type_covered(one_rr)) {
-			return true;
+			res++;
 		}
 		one_rr = knot_rdataset_next(one_rr);
 	}
-	return false;
+	return res;
 }
 
 /*!
@@ -307,19 +309,19 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 		return KNOT_EINVAL;
 	}
 
-	bool valid_exists = false;
-	int ret = KNOT_EOK;
+	int ret = KNOT_EOK, valid_count = 0, optional_count = 0;
 	for (size_t i = 0; i < sign_ctx->count; i++) {
 		const knot_kasp_key_t *key = &sign_ctx->dnssec_ctx->zone->keys[i];
+		bool optional = false;
 		if (!key_used(key->is_ksk, key->is_zsk, covered->type,
 		              covered->owner, sign_ctx->dnssec_ctx->zone->dname)) {
-			continue;
+			optional = true;
 		}
 
 		uint16_t valid_at;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
 		                           sign_ctx->dnssec_ctx, 0, skip_crypto, &ret, &valid_at)) {
-			valid_exists = true;
+			valid_count++;
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
 			note_earliest_expiration(valid_rr, sign_ctx->dnssec_ctx->now, valid_until);
 		}
@@ -330,7 +332,15 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 		knot_spin_unlock(&sign_ctx->dnssec_ctx->stats->lock);
 	}
 
-	return valid_exists ? ret : KNOT_DNSSEC_ENOSIG;
+	printf("vc %d oc %d cnt %d ret %d\n", valid_count, optional_count, rrsig_covers_type(rrsigs, covered->type), ret);
+
+	if (valid_count > optional_count && valid_count == rrsig_covers_type(rrsigs, covered->type)) {
+		return KNOT_EOK;
+	} else if (ret == KNOT_EOK) {
+		return KNOT_DNSSEC_ENOSIG;
+	} else {
+		return ret;
+	}
 }
 
 /*!
