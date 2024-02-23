@@ -29,16 +29,13 @@
 #include <netinet/in.h>
 
 #include "libknot/quic/quic_conn.h"
-
-#define KNOT_QUIC_PIN_LEN	32
+#include "libknot/quic/tls_common.h"
 
 #define KNOT_QUIC_HANDLE_RET_CLOSE	2000
 
 // RFC 9250
 #define KNOT_QUIC_ERR_EXCESSIVE_LOAD	0x4
 
-struct gnutls_x509_crt_int;
-struct knot_quic_creds;
 struct knot_quic_session;
 
 typedef enum {
@@ -86,45 +83,6 @@ struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn);
  * \return KNOT_E*
  */
 int knot_quic_session_load(knot_quic_conn_t *conn, struct knot_quic_session *session);
-
-/*!
- * \brief Init server TLS certificate for DoQ.
- *
- * \param cert_file     X509 certificate PEM file path/name (NULL if auto-generated).
- * \param key_file      Key PEM file path/name.
- *
- * \return Initialized creds.
- */
-struct knot_quic_creds *knot_quic_init_creds(const char *cert_file,
-                                             const char *key_file);
-
-/*!
- * \brief Init peer TLS certificate for DoQ.
- *
- * \param local_creds   Local credentials if server.
- * \param peer_pin      Optional peer certificate pin to check.
- * \param peer_pin_len  Length of the peer pin. Set 0 if not specified.
- *
- * \return Initialized creds.
- */
-struct knot_quic_creds *knot_quic_init_creds_peer(const struct knot_quic_creds *local_creds,
-                                                  const uint8_t *peer_pin,
-                                                  uint8_t peer_pin_len);
-
-/*!
- * \brief Gets the certificate from credentials.
- *
- * \param creds  TLS credentials.
- * \param cert   Output certificate.
- *
- * \return KNOT_E*
- */
-int knot_quic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_int **cert);
-
-/*!
- * \brief Deinit server TLS certificate for DoQ.
- */
-void knot_quic_free_creds(struct knot_quic_creds *creds);
 
 /*!
  * \brief Returns timeout value for the connection.

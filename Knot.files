@@ -483,6 +483,8 @@ src/libknot/quic/quic.c
 src/libknot/quic/quic.h
 src/libknot/quic/quic_conn.c
 src/libknot/quic/quic_conn.h
+src/libknot/quic/tls_common.c
+src/libknot/quic/tls_common.h
 src/libknot/rdata.h
 src/libknot/rdataset.c
 src/libknot/rdataset.h
