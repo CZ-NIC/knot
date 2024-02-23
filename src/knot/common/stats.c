@@ -190,6 +190,13 @@ int stats_modules(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 
 		params.section = mod->id->name + 1;
 		params.module_begin = true;
+		if (ctx->zone != NULL && params.zone == NULL) {
+			params.zone = knot_dname_to_str(zone, ctx->zone->name,
+			                                sizeof(zone));
+			if (params.zone == NULL) {
+				return KNOT_EINVAL;
+			}
+		}
 
 		// Dump module counters.
 		for (int i = 0; i < mod->stats_count; i++) {
@@ -197,13 +204,6 @@ int stats_modules(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 			if (ctr->name == NULL) {
 				// Empty counter.
 				continue;
-			}
-			if (ctx->zone != NULL && params.zone == NULL) {
-				params.zone = knot_dname_to_str(zone, ctx->zone->name,
-				                                sizeof(zone));
-				if (params.zone == NULL) {
-					return KNOT_EINVAL;
-				}
 			}
 			int ret = (ctr->count == 1) ?
 			          stats_counter(fcn, ctx, &params, mod, ctr) :
