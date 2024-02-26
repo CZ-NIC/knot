@@ -250,8 +250,8 @@ Actions
   database from purging before the import itself.
   Also ensure the server is not using the configuration database at the same time! (*)
 
-**conf-export** [*filename*]
-  Export the configuration database into a config file or stdout. (*)
+**conf-export** [*filename*] [+schema]
+  Export the configuration database (or JSON schema) into a file or stdout. (*)
 
 **conf-list** [*item*]
   List the configuration database sections or section items.

@@ -331,3 +331,16 @@ int conf_export(
 	const char *file_name,
 	yp_style_t style
 );
+
+/*!
+ * Exports configuration schema in JSON.
+ *
+ * \param[in] conf       Configuration.
+ * \param[in] file_name  Output filename (stdout is used if NULL).
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int conf_export_schema(
+	conf_t *conf,
+	const char *file_name
+);

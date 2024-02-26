@@ -688,6 +688,7 @@ static int cmd_zone_ctl(cmd_args_t *args)
 }
 
 #define FILTER_IMPORT_NOPURGE	 "+nopurge"
+#define FILTER_EXPORT_SCHEMA	 "+schema"
 
 typedef struct {
 	const char *name;
@@ -1173,22 +1174,45 @@ static int cmd_conf_import(cmd_args_t *args)
 
 static int cmd_conf_export(cmd_args_t *args)
 {
-	int ret = check_args(args, 0, 1);
+	int ret = check_args(args, 0, 2);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	// Stdout is the default output file.
 	const char *file_name = NULL;
-	if (args->argc > 0) {
-		file_name = args->argv[0];
-		log_debug("exporting confdb into file '%s'", file_name);
+	bool export_schema = false;
+	for (int i = 0; i < args->argc; i++) {
+		if (args->argv[i][0] == '+') {
+			if (strcmp(args->argv[i], FILTER_EXPORT_SCHEMA) == 0) {
+				export_schema = true;
+			} else {
+				log_error("unknown filter: %s", args->argv[i]);
+				return KNOT_EINVAL;
+			}
+		} else if (file_name == NULL) {
+			file_name = args->argv[i];
+		} else {
+			log_error("command does not take 2 arguments");
+			return KNOT_EINVAL;
+		}
 	}
 
-	ret = conf_export(conf(), file_name, YP_SNONE);
+	if (file_name != NULL) {
+		if (export_schema) {
+			log_debug("exporting JSON schema into file '%s'", file_name);
+		} else {
+			log_debug("exporting confdb into file '%s'", file_name);
+		}
+	}
 
+	if (export_schema) {
+		ret = conf_export_schema(conf(), file_name);
+	} else {
+		ret = conf_export(conf(), file_name, YP_SNONE);
+	}
 	if (ret == KNOT_EOK) {
-		if (args->argc > 0) {
+		if (file_name != NULL) {
 			log_info("OK");
 		}
 	} else {
@@ -1345,7 +1369,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_CONF_INIT,       "",                                           "Initialize the confdb. (*)" },
 	{ CMD_CONF_CHECK,      "",                                           "Check the server configuration. (*)" },
 	{ CMD_CONF_IMPORT,     " <filename> [+nopurge]",                     "Import a config file into the confdb. (*)" },
-	{ CMD_CONF_EXPORT,     "[<filename>]",                               "Export the confdb into a config file or stdout. (*)" },
+	{ CMD_CONF_EXPORT,     "[<filename>] [+schema]",                     "Export the confdb (or JSON schema) into a file or stdout. (*)" },
 	{ CMD_CONF_LIST,       "[<item>...]",                                "List the confdb sections or section items." },
 	{ CMD_CONF_READ,       "[<item>...]",                                "Get the item from the active confdb." },
 	{ CMD_CONF_BEGIN,      "",                                           "Begin a writing confdb transaction." },

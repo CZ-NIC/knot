@@ -27,6 +27,7 @@
 #include "libknot/yparser/ypformat.h"
 #include "libknot/yparser/yptrafo.h"
 #include "contrib/files.h"
+#include "contrib/json.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 
@@ -1070,6 +1071,233 @@ export_error:
 		fclose(fp);
 	}
 	free(buff);
+
+	return ret;
+}
+
+/*
+ * Execute the provided block of code twice: first to handle a JSON schema for
+ * a single item, and then to define an array of these items.
+ */
+#define SINGLE_OR_ARRAY(code_block) \
+do { \
+	if (item->flags & YP_FMULTI) { \
+		jsonw_list(w, "oneOf"); \
+		jsonw_object(w, NULL); \
+		{ code_block } \
+		jsonw_end(w); \
+		jsonw_object(w, NULL); \
+		jsonw_str(w, "type", "array"); \
+		jsonw_object(w, "items"); \
+	} \
+	{ code_block } \
+	if (item->flags & YP_FMULTI) { \
+		jsonw_end(w); \
+		jsonw_end(w); \
+		jsonw_end(w); \
+	} \
+} while (0)
+
+static int export_group_items(jsonw_t *w, const yp_item_t *item, bool array);
+
+static void export_type(jsonw_t *w, const yp_item_t *item)
+{
+	switch (item->type) {
+	case YP_TINT:
+		SINGLE_OR_ARRAY(
+			switch (item->var.i.unit) {
+			case YP_SSIZE:
+				jsonw_str(w, "$ref", "#/$defs/int_size");
+				break;
+			case YP_STIME:
+				jsonw_str(w, "$ref", "#/$defs/int_time");
+				break;
+			default:
+				jsonw_str(w, "$ref", "#/$defs/int");
+				break;
+			}
+		);
+		break;
+	case YP_TBOOL:
+		SINGLE_OR_ARRAY(
+			jsonw_str(w, "$ref", "#/$defs/switch");
+		);
+		break;
+	case YP_TOPT:
+		SINGLE_OR_ARRAY(
+			jsonw_str(w, "type", "string");
+			jsonw_list(w, "enum");
+			for (const knot_lookup_t *o = item->var.o.opts;
+			     o->name != NULL; ++o) {
+				jsonw_str(w, NULL, o->name);
+			}
+			jsonw_end(w);
+		);
+		break;
+	case YP_TSTR:
+		SINGLE_OR_ARRAY(
+			jsonw_str(w, "type", "string");
+		);
+		break;
+	case YP_TDNAME:
+		SINGLE_OR_ARRAY(
+			jsonw_str(w, "$ref", "#/$defs/dname");
+		);
+		break;
+	case YP_TB64:
+		SINGLE_OR_ARRAY(
+			jsonw_str(w, "$ref", "#/$defs/base64");
+		);
+		break;
+	case YP_TGRP:
+		export_group_items(w, item->sub_items, item->flags & YP_FMULTI);
+		break;
+	case YP_THEX:
+	case YP_TADDR:
+	case YP_TNET:
+	case YP_TDATA:
+	case YP_TREF:
+		SINGLE_OR_ARRAY(
+			jsonw_str(w, "type", "string");
+		);
+		break;
+	default:
+		assert(0);
+		break;
+	}
+}
+
+static int export_group_items(jsonw_t *w, const yp_item_t *item, bool array)
+{
+	assert(w != NULL && item != NULL);
+
+	if (array) {
+		jsonw_list(w, "type");
+		jsonw_str(w, NULL, "array");
+		jsonw_str(w, NULL, "null");
+		jsonw_end(w);
+		jsonw_object(w, "items");
+	}
+
+	jsonw_list(w, "type");
+	jsonw_str(w, NULL, "object");
+	jsonw_str(w, NULL, "null");
+	jsonw_end(w);
+	jsonw_bool(w, "additionalProperties", false);
+	jsonw_object(w, "properties");
+	for (; item->name != NULL; ++item) {
+		jsonw_object(w, item->name + 1);
+		export_type(w, item);
+		jsonw_end(w);
+	}
+	jsonw_end(w);
+
+	if (array) {
+		jsonw_end(w);
+	}
+
+	return KNOT_EOK;
+}
+
+int conf_export_schema(
+	conf_t *conf,
+	const char *file_name)
+{
+	if (conf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	FILE *fp = (file_name != NULL) ? fopen(file_name, "w") : stdout;
+	if (fp == NULL) {
+		return knot_map_errno();
+	}
+
+	jsonw_t *w = jsonw_new(fp, "  ");
+	jsonw_object(w, NULL);
+
+	// JSON-Schema header
+	jsonw_str(w, "$schema", "https://json-schema.org/draft/2020-12/schema");
+	jsonw_str(w, "$id", "https://knot-dns.cz/config.schema.json");
+	jsonw_str(w, "title", "Knot DNS configuration schema");
+	jsonw_str(w, "description", "Version Knot DNS " PACKAGE_VERSION);
+
+	// Define own types
+	jsonw_object(w, "$defs");
+	// Switch type
+	jsonw_object(w, "switch");
+	jsonw_list(w, "oneOf");
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "boolean");
+	jsonw_end(w);
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "string");
+	jsonw_list(w, "enum");
+	jsonw_str(w, NULL, "on");
+	jsonw_str(w, NULL, "off");
+	jsonw_str(w, NULL, "true");
+	jsonw_str(w, NULL, "false");
+	jsonw_end(w);
+	jsonw_end(w);
+	jsonw_end(w);
+	jsonw_end(w);
+	// Base64 type
+	jsonw_object(w, "base64");
+	jsonw_str(w, "type", "string");
+	jsonw_str(w, "pattern", "^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]===)?$");
+	jsonw_end(w);
+	// DNAME type
+	jsonw_object(w, "dname");
+	jsonw_str(w, "type", "string");
+	jsonw_str(w, "pattern", "^(([a-zA-Z0-9_*/-]|(\\\\[^0-9])|(\\\\(([0-1][0-9][0-9])|(2[0-4][0-9])|(25[0-5]))))\\.?)+$");
+	jsonw_end(w);
+	// Integer type
+	jsonw_object(w, "int");
+	jsonw_list(w, "oneOf");
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "integer");
+	jsonw_end(w);
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "string");
+	jsonw_str(w, "pattern", "^[+-]?[0-9]+$");
+	jsonw_end(w);
+	jsonw_end(w);
+	jsonw_end(w);
+	// Size integer type
+	jsonw_object(w, "int_size");
+	jsonw_list(w, "oneOf");
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "integer");
+	jsonw_end(w);
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "string");
+	jsonw_str(w, "pattern", "^[+-]?[0-9]+[BKMG]?$");
+	jsonw_end(w);
+	jsonw_end(w);
+	jsonw_end(w);
+	// Time integer type
+	jsonw_object(w, "int_time");
+	jsonw_list(w, "oneOf");
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "integer");
+	jsonw_end(w);
+	jsonw_object(w, NULL);
+	jsonw_str(w, "type", "string");
+	jsonw_str(w, "pattern", "^[+-]?[0-9]+[smhd]?$");
+	jsonw_end(w);
+	jsonw_end(w);
+	jsonw_end(w);
+	// END
+	jsonw_end(w);
+
+	// Export configuration schema
+	int ret = export_group_items(w, conf->schema, false);
+
+	jsonw_end(w);
+	jsonw_free(&w);
+
+	if (file_name != NULL) {
+		fclose(fp);
+	}
 
 	return ret;
 }
