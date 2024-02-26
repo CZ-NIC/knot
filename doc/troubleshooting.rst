@@ -9,7 +9,7 @@ First of all, check the logs. Enabling at least the ``warning`` message
 severity may help you to identify some problems. See the :ref:`log section`
 for details.
 
-..  _Submitting a bugreport:
+.. _Submitting a bugreport:
 
 Reporting bugs
 ==============
@@ -46,7 +46,7 @@ addition at least the following information:
 If possible, please provide a minimal configuration file and zone files which
 can be used to reproduce the bug.
 
-..  _Generating backtrace:
+.. _Generating backtrace:
 
 Generating backtrace
 ====================
@@ -109,7 +109,7 @@ you may try the single-purpose ``pstack`` utility::
 
     $ pstack $(pidof knotd) > backtrace.txt
 
-..  _Bus error:
+.. _Bus error:
 
 Crash caused by a Bus error
 ===========================
