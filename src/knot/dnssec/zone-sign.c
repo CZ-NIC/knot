@@ -99,7 +99,7 @@ static bool apex_dnssec_changed(zone_update_t *update)
  * \param policy          DNSSEC policy.
  * \param skip_crypto     All RRSIGs in this node have been verified, just check validity.
  * \param refresh         Consider RRSIG expired when gonna expire this soon.
- * \param found_invalid   Out: some matching but expired%invalid RRSIG found.
+ * \param invalid_map     Out: all found valid (bit 0x1) and invalid (0x2) positions of RRSIG with matching algo+keytag+type.
  * \param at              Out: RRSIG position.
  *
  * \return The signature exists and is valid.
@@ -111,7 +111,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   const kdnssec_ctx_t *dnssec_ctx,
 				   knot_timediff_t refresh,
 				   bool skip_crypto,
-				   int *found_invalid,
+				   uint8_t *invalid_map,
 				   uint16_t *at)
 {
 	assert(key);
@@ -141,13 +141,14 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 			if (at != NULL) {
 				*at = i;
 			}
-			if (found_invalid == NULL) {
+			if (invalid_map == NULL) {
 				return true;
 			} else {
+				invalid_map[i] |= 0x1;
 				found_valid = true; // continue searching for invalid RRSIG
 			}
-		} else if (found_invalid != NULL) {
-			*found_invalid = ret;
+		} else if (invalid_map != NULL) {
+			invalid_map[i] |= 0x2;
 		}
 	}
 
@@ -307,8 +308,10 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 		return KNOT_EINVAL;
 	}
 
+	uint8_t val_inval_map[rrsigs->rrs.count];
+	memset(val_inval_map, 0, sizeof(val_inval_map));
+
 	bool valid_exists = false;
-	int ret = KNOT_EOK;
 	for (size_t i = 0; i < sign_ctx->count; i++) {
 		const knot_kasp_key_t *key = &sign_ctx->dnssec_ctx->zone->keys[i];
 		if (!key_used(key->is_ksk, key->is_zsk, covered->type,
@@ -318,7 +321,7 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 
 		uint16_t valid_at;
 		if (valid_signature_exists(covered, rrsigs, key->key, sign_ctx->sign_ctxs[i],
-		                           sign_ctx->dnssec_ctx, 0, skip_crypto, &ret, &valid_at)) {
+		                           sign_ctx->dnssec_ctx, 0, skip_crypto, val_inval_map, &valid_at)) {
 			valid_exists = true;
 			knot_rdata_t *valid_rr = knot_rdataset_at(&rrsigs->rrs, valid_at);
 			note_earliest_expiration(valid_rr, sign_ctx->dnssec_ctx->now, valid_until);
@@ -330,7 +333,13 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 		knot_spin_unlock(&sign_ctx->dnssec_ctx->stats->lock);
 	}
 
-	return valid_exists ? ret : KNOT_DNSSEC_ENOSIG;
+	for (int i = 0; i < rrsigs->rrs.count; i++) {
+		if (val_inval_map[i] == 0x2 /* found invalid && not found valid */) {
+			return KNOT_DNSSEC_ENOSIG;
+		}
+	}
+
+	return valid_exists ? KNOT_EOK : KNOT_DNSSEC_ENOSIG;
 }
 
 /*!
