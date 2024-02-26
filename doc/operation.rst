@@ -35,6 +35,13 @@ or to the corresponding manual page.
 Also, the server needs to create :ref:`server_rundir` and :ref:`zone_storage`
 directories in order to run properly.
 
+.. NOTE::
+
+   Avoid editing of or other manipulation with configuration file during start
+   or reload of :doc:`knotd<man_knotd>` or start of :doc:`knotc<man_knotc>`
+   and other :doc:`utilities<utilities>` which use it. There is a risk of
+   malfunction or a :ref:`crash<Bus error>` otherwise.
+
 .. _Configuration database:
 
 Configuration database
@@ -199,10 +206,10 @@ Knot DNS allows you to read or change zone contents online using the server
 control interface.
 
 .. WARNING::
-   Avoid concurrent zone access when a zone event (zone file load, refresh,
-   DNSSEC signing, dynamic update) is in progress or pending. In such a case
-   zone events must be frozen before. For more information on how to freeze the
-   zone read :ref:`Editing zone file`.
+   Avoid concurrent zone access from a third party software when a zone event
+   (zone file load, refresh, DNSSEC signing, dynamic update) is in progress or
+   pending. In such a case, zone events must be frozen before. For more
+   information on how to freeze the zone read :ref:`Editing zone file`.
 
 To get contents of all configured zones, or a specific zone contents, or zone
 records with a specific owner, or even with a specific record type::
@@ -270,9 +277,9 @@ Reading and editing the zone file safely
 ========================================
 
 It's always possible to read and edit zone contents via zone file manipulation.
-It may lead to confusion, however, if the zone contents are continuously being
-changed by DDNS, DNSSEC signing and the like. In such a case, the safe way to
-modify the zone file is to freeze zone events first::
+It may lead to confusion or even a :ref:`program crash<Bus error>`, however, if
+the zone contents are continuously being changed by DDNS, DNSSEC signing and the like.
+In such a case, the safe way to modify the zone file is to freeze zone events first::
 
     $ knotc -b zone-freeze example.com.
     $ knotc -b zone-flush example.com.
