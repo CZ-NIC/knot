@@ -108,3 +108,16 @@ If you fail to get a backtrace of a running process using the previous method,
 you may try the single-purpose ``pstack`` utility::
 
     $ pstack $(pidof knotd) > backtrace.txt
+
+..  _Bus error:
+
+Crash caused by a Bus error
+===========================
+
+Zone files and a configuration file are usually accessed as
+`mmaped <https://pubs.opengroup.org/onlinepubs/9699919799/functions/mmap.html>`_
+files. If such files are changed or truncated at the same time when those files
+are being loaded/reloaded by the program, it may result in `Bus error
+(SIGBUS) <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html>`_
+and a program crash. If you encounter a Bus error, first check that there isn't
+a concurrent write access from an external program to the respective files.
