@@ -12,6 +12,7 @@ import libknot
 import libknot.control
 
 from prometheus_client.core import REGISTRY
+from prometheus_client.core import CounterMetricFamily
 from prometheus_client.core import GaugeMetricFamily
 from prometheus_client.exposition import MetricsHandler
 
@@ -71,8 +72,11 @@ class KnotCollector(object):
 
         def metric_families_append(family, labels, labels_val, data):
             m = metric_families.get(family, GaugeMetricFamily(family, '', labels=labels))
+            c = metric_families.get(family + '_total', CounterMetricFamily(family, '', labels=labels))
             m.add_metric(labels_val, data)
+            c.add_metric(labels_val, data)
             metric_families[family] = m
+            metric_families[family + '_total'] = c
 
         if self.collect_meminfo:
             # Get global metrics.
