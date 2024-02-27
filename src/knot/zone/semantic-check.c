@@ -75,6 +75,8 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"missing DNSKEY",
 	[SEM_ERR_DNSKEY_INVALID] =
 	"invalid DNSKEY",
+	[SEM_ERR_DNSKEY_KEYTAG_LIMIT] =
+	"many DNSKEYs with equal keytag",
 
 	[SEM_ERR_CDS_NONE] =
 	"missing CDS",
@@ -500,6 +502,8 @@ static sem_error_t err_dnssec2sem(int ret, uint16_t rrtype, char *info, size_t l
 		return SEM_ERR_NSEC_RDATA_CHAIN;
 	case KNOT_DNSSEC_ENSEC3_OPTOUT:
 		return SEM_ERR_NSEC3_INSECURE_DELEGATION_OPT;
+	case KNOT_DNSSEC_EKEYTAG_LIMIT:
+		return SEM_ERR_DNSKEY_KEYTAG_LIMIT;
 	default:
 		return SEM_ERR_UNKNOWN;
 	}
