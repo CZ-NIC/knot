@@ -104,7 +104,7 @@ static bool keytag_in_use(kdnssec_ctx_t *ctx, uint16_t keytag)
 	return false;
 }
 
-#define GENERATE_KEYTAG_ATTEMPTS (20)
+#define GENERATE_KEYTAG_ATTEMPTS (40)
 
 static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
                                       kdnssec_generate_flags_t flags,
@@ -131,7 +131,9 @@ static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		if (!keytag_in_use(ctx, dnssec_key_get_keytag(*key))) {
+		uint16_t keytag = dnssec_key_get_keytag(*key);
+		if (!keytag_in_use(ctx, keytag) &&
+		    keytag % ctx->policy->keytag_modulo == ctx->policy->keytag_remain) {
 			return KNOT_EOK;
 		}
 

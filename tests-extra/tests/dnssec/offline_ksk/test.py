@@ -141,6 +141,7 @@ knot.dnssec(zone).manual = True
 knot.dnssec(zone).offline_ksk = True
 knot.dnssec(zone).dnskey_ttl = 2
 knot.dnssec(zone).zone_max_ttl = 3
+knot.dnssec(zone).keytag_modulo = "0/2"
 # optional
 knot.dnssec(zone).alg = "ECDSAP384SHA384"
 knot.dnssec(zone).zsk_lifetime = STARTUP + 6 * TICK # see ksk1 lifetime
@@ -163,6 +164,7 @@ signer.dnssec(zone).enable = True
 signer.dnssec(zone).manual = True
 signer.dnssec(zone).offline_ksk = True
 signer.dnssec(zone).rrsig_refresh = 2
+signer.dnssec(zone).keytag_modulo = "1/2"
 # optional
 signer.dnssec(zone).alg = "ECDSAP384SHA384"
 signer.dnssec(zone).cds_publish = random.choice(["none", "rollover"])

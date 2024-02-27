@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -132,5 +132,7 @@ typedef struct {
 	bool incremental;
 	bool key_label;
 	unsigned unsafe;
+	uint32_t keytag_remain;
+	uint32_t keytag_modulo;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??
