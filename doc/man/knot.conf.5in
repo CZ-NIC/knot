@@ -2577,6 +2577,8 @@ List of DNSSEC checks:
 .IP \(bu 2
 Every zone RRSet is correctly signed by at least one present DNSKEY.
 .IP \(bu 2
+For every RRSIG there are at most 3 non\-matching DNSKEYs with the same keytag.
+.IP \(bu 2
 DNSKEY RRSet is signed by KSK.
 .IP \(bu 2
 NSEC(3) RR exists for each name (unless opt\-out) with correct bitmap.

@@ -2786,6 +2786,7 @@ is cancelled with an error, and either none or previous zone state is published.
 List of DNSSEC checks:
 
 - Every zone RRSet is correctly signed by at least one present DNSKEY.
+- For every RRSIG there are at most 3 non-matching DNSKEYs with the same keytag.
 - DNSKEY RRSet is signed by KSK.
 - NSEC(3) RR exists for each name (unless opt-out) with correct bitmap.
 - Every NSEC(3) RR is linked to the lexicographically next one.

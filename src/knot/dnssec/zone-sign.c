@@ -89,6 +89,9 @@ static bool apex_dnssec_changed(zone_update_t *update)
 
 /*- private API - signing of in-zone nodes -----------------------------------*/
 
+#define VALID_SIG_FOUND		(1 << 7)
+#define VALID_KEYTAG_LIMIT	3
+
 /*!
  * \brief Check if there is a valid signature for a given RR set and key.
  *
@@ -99,7 +102,8 @@ static bool apex_dnssec_changed(zone_update_t *update)
  * \param policy          DNSSEC policy.
  * \param skip_crypto     All RRSIGs in this node have been verified, just check validity.
  * \param refresh         Consider RRSIG expired when gonna expire this soon.
- * \param invalid_map     Out: all found valid (bit 0x1) and invalid (0x2) positions of RRSIG with matching algo+keytag+type.
+ * \param invalid_map     Out: found valid (bit VALID_SIG_FOUND) and invalid count
+ *                             positions of RRSIG with matching algo+keytag+type.
  * \param at              Out: RRSIG position.
  *
  * \return The signature exists and is valid.
@@ -144,11 +148,13 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 			if (invalid_map == NULL) {
 				return true;
 			} else {
-				invalid_map[i] |= 0x1;
+				invalid_map[i] |= VALID_SIG_FOUND;
 				found_valid = true; // continue searching for invalid RRSIG
 			}
 		} else if (invalid_map != NULL) {
-			invalid_map[i] |= 0x2;
+			if ((++invalid_map[i] & ~VALID_SIG_FOUND) == VALID_KEYTAG_LIMIT) {
+				return found_valid;
+			}
 		}
 	}
 
@@ -325,8 +331,11 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 	}
 
 	for (int i = 0; i < rrsigs->rrs.count; i++) {
-		if (val_inval_map[i] == 0x2 /* found invalid && not found valid */) {
+		uint8_t val = val_inval_map[i];
+		if (val > 0 && val < VALID_KEYTAG_LIMIT /* found invalid && not found valid */) {
 			return KNOT_DNSSEC_ENOSIG;
+		} else if ((val & ~VALID_SIG_FOUND) >= VALID_KEYTAG_LIMIT) {
+			return KNOT_DNSSEC_EKEYTAG_LIMIT;
 		}
 	}
 
