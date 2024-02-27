@@ -84,6 +84,7 @@
 #define C_DELETE_DELAY		"\x0C""delete-delay"
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
+#define C_KEYTAG_MODULO		"\x0D""keytag-modulo"
 #define C_KEY_FILE		"\x08""key-file"
 #define C_KEY_LABEL		"\x09""key-label"
 #define C_KSK_LIFETIME		"\x0C""ksk-lifetime"

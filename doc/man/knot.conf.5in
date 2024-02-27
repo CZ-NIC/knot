@@ -1446,8 +1446,9 @@ An ordered list of \fI\%references\fP to remote server definitions.
 .SH ACL SECTION
 .sp
 Access control list rule definitions. An ACL rule is a description of one
-or more authorized operations (zone transfer request, zone change notification,
-and dynamic DNS update) which are allowed to be processed or denied.
+or more authorized actions (zone transfer request, zone change notification,
+and dynamic DNS update) which are allowed to be processed or denied. Normal
+DNS queries are always allowed.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -1516,7 +1517,7 @@ This option cannot be specified along with the \fI\%address\fP or
 \fIDefault:\fP not set
 .SS action
 .sp
-An ordered list of allowed (or denied) actions.
+An ordered list of allowed, or denied, actions (request types).
 .sp
 Possible values:
 .INDENT 0.0
@@ -1705,6 +1706,7 @@ policy:
     ksk\-shared: BOOL
     dnskey\-ttl: TIME
     zone\-max\-ttl: TIME
+    keytag\-modulo: INT/INT
     ksk\-lifetime: TIME
     zsk\-lifetime: TIME
     delete\-delay: TIME
@@ -1854,6 +1856,23 @@ really reasonable when records are generated dynamically
 .UNINDENT
 .sp
 \fIDefault:\fP computed after zone is loaded
+.SS keytag\-modulo
+.sp
+Specifies that the keytags of any generated keys shall be congruent by specified modulo.
+The option value must be a string in the format \fBR/M\fP, where \fBR < M <= 256\fP are
+positive integers. Whenever a DNSSEC key is generated, it is ensured
+that \fBkeytag % M == R\fP\&. This prevents keytag conflict in DNSSEC Offline KSK
+or DNSSEC multi\-signer (and possibly other) setups.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This only applies to newly generated keys when they are generated. Keys from
+before this option and keys imported from elsewhere might not fulfill the policy.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP \fB0/1\fP
 .SS ksk\-lifetime
 .sp
 A period (in seconds) between KSK generation and the next rollover initiation.
@@ -2319,6 +2338,7 @@ where DDD is corresponding decimal ASCII code.
 An ordered list of references \fI\%remote\fP and
 \fI\%remotes\fP to zone primary servers
 (formerly known as master servers).
+Empty value is allowed for template value overriding.
 .sp
 \fIDefault:\fP not set
 .SS ddns\-master
@@ -2337,6 +2357,7 @@ combination with \fI\%dnssec\-signing\fP enabled.
 An ordered list of references \fI\%remote\fP and
 \fI\%remotes\fP to secondary servers to which notify
 message is sent if the zone changes.
+Empty value is allowed for template value overriding.
 .sp
 \fIDefault:\fP not set
 .SS acl
@@ -2626,7 +2647,7 @@ A configured policy called "default" won\(aqt be used unless explicitly referenc
 .SS ds\-push
 .sp
 Per zone configuration of \fI\%ds\-push\fP\&. This option overrides possible
-per policy option.
+per policy option. Empty value is allowed for template value overriding.
 .sp
 \fIDefault:\fP not set
 .SS zonemd\-verify

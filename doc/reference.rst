@@ -1872,6 +1872,7 @@ DNSSEC policy configuration.
      ksk-shared: BOOL
      dnskey-ttl: TIME
      zone-max-ttl: TIME
+     keytag-modulo: INT/INT
      ksk-lifetime: TIME
      zsk-lifetime: TIME
      delete-delay: TIME
@@ -2024,6 +2025,23 @@ Declare (override) maximal TTL value among all the records in zone.
    (e.g. by a :ref:`module<mod-synthrecord>`).
 
 *Default:* computed after zone is loaded
+
+.. _policy_keytag-modulo:
+
+keytag-modulo
+-------------
+
+Specifies that the keytags of any generated keys shall be congruent by specified modulo.
+The option value must be a string in the format ``R/M``, where ``R < M <= 256`` are
+positive integers. Whenever a DNSSEC key is generated, it is ensured
+that ``keytag % M == R``. This prevents keytag conflict in :ref:`DNSSEC Offline KSK`
+or :ref:`DNSSEC multi-signer` (and possibly other) setups.
+
+.. NOTE::
+   This only applies to newly generated keys when they are generated. Keys from
+   before this option and keys imported from elsewhere might not fulfill the policy.
+
+*Default:* ``0/1``
 
 .. _policy_ksk-lifetime:
 
