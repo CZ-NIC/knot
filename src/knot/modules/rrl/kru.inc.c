@@ -47,7 +47,7 @@ Size (`loads_bits` = log2 length):
 #include <stddef.h>
 #include <string.h>
 
-#include "knot/modules/rrl/kru.h"
+#include "./kru.h"
 
 /// Block of loads sharing the same time, so that we're more space-efficient.
 /// It's exactly a single cache line.
@@ -68,7 +68,7 @@ inline static uint64_t rand_bits(unsigned int bits) {
 	return state >> (64 - bits);
 }
 
-#include "knot/modules/rrl/kru-decay.inc.c"
+#include "./kru-decay.inc.c"
 
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"

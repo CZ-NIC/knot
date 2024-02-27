@@ -40,7 +40,7 @@
 #define USE_AVX2 1
 #define USE_SSE41 1
 
-#include "knot/modules/rrl/kru.inc.c"
+#include "./kru.inc.c"
 const struct kru_api KRU_AVX2 = KRU_API_INITIALIZER;
 
 #ifdef __clang__
@@ -60,7 +60,7 @@ static void detect_CPU_avx2(void)
 
 #else
 
-#include "kru.h"
+#include "./kru.h"
 const struct kru_api KRU_AVX2 = {NULL};
 
 #endif
