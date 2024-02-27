@@ -280,6 +280,8 @@ if DOUBLE_DS:
     child.dnssec(child_zone).cds_publish = "double-ds"
 child.dnssec(child_zone).cds_digesttype = CDS_DT
 
+slave.dnssec(child_zone).validate = True
+
 # parameters
 ZONE = "example.com."
 
