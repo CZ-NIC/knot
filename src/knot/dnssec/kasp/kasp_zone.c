@@ -382,7 +382,7 @@ int kasp_zone_keys_from_rr(knot_kasp_zone_t *zone,
 		zone->keys[i].is_pub_only = true;
 
 		zone->keys[i].is_ksk = (knot_dnskey_flags(zkey) == DNSKEY_FLAGS_KSK);
-		zone->keys[i].is_zsk = policy_single_type_signing || !zone->keys[i].is_ksk;
+		zone->keys[i].is_zsk = true; // doesn't hurt in case of validation, any KSK might behave like ZSK that is published but not active
 
 		zone->keys[i].timing.publish = 1;
 		zone->keys[i].timing.active = 1;
