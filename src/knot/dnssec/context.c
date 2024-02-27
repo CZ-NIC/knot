@@ -24,6 +24,7 @@
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/dnssec/key_records.h"
 #include "knot/server/dthreads.h"
+#include "knot/zone/serial.h"
 
 knot_dynarray_define(parent, knot_kasp_parent_t, DYNARRAY_VISIBILITY_NORMAL)
 
@@ -167,6 +168,11 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	while (val.code == KNOT_EOK) {
 		policy->unsafe |= conf_opt(&val);
 		conf_val_next(&val);
+	}
+
+	val = conf_id_get(conf, C_POLICY, C_KEYTAG_MODULO, id);
+	if (serial_modulo_parse(conf_str(&val), &policy->keytag_remain, &policy->keytag_modulo) != KNOT_EOK) {
+		assert(0); // cannot happen - ensured by conf check
 	}
 }
 

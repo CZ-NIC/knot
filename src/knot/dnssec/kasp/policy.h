@@ -132,5 +132,7 @@ typedef struct {
 	bool incremental;
 	bool key_label;
 	unsigned unsafe;
+	uint32_t keytag_remain;
+	uint32_t keytag_modulo;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??
