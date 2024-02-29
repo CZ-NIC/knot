@@ -312,7 +312,7 @@ int knot_validate_rrsigs(const knot_rrset_t *covered,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t val_inval_map[rrsigs->rrs.count];
+	uint8_t val_inval_map[1 + rrsigs->rrs.count]; // Ensure the size isn't 0 (UBSAN).
 	memset(val_inval_map, 0, sizeof(val_inval_map));
 
 	bool valid_exists = false;
