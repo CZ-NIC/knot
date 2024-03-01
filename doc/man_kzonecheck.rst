@@ -36,7 +36,7 @@ Options
   Also check DNSSEC-related records. The default is to decide based on the
   existence of a RRSIG for SOA.
 
-**-Z**, **--zonemd**
+**-z**, **--zonemd**
   Also check the zone hash against a ZONEMD record, which is required to exist.
 
 **-t**, **--time** *time*
