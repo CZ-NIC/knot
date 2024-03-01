@@ -40,7 +40,7 @@ static void print_help(void)
 	       " -o, --origin <zone_origin>  Zone name.\n"
 	       "                              (default filename without .zone)\n"
 	       " -d, --dnssec <on|off>       Also check DNSSEC-related records.\n"
-	       " -Z, --zonemd                Also check ZONEMD.\n"
+	       " -z, --zonemd                Also check ZONEMD.\n"
 	       " -t, --time <timestamp>      Current time specification.\n"
 	       "                              (default current UNIX time)\n"
 	       " -p, --print                 Print the zone on stdout.\n"
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "o:t:d:ZpvV::h", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "o:t:d:zpvV::h", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'o':
 			origin = optarg;
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 		case 'd':
 			optional = str2bool(optarg) ? SEMCHECK_DNSSEC_ON : SEMCHECK_DNSSEC_OFF;
 			break;
-		case 'Z':
+		case 'z':
 			zonemd = true;
 			break;
 		case 't':
