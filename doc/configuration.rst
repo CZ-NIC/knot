@@ -481,6 +481,11 @@ convenience delay the submission is started. The server publishes CDS and CDNSKE
 and the user shall propagate them to the parent. The server periodically checks for
 DS at the parent zone and when positive, finishes the rollover.
 
+.. NOTE::
+   As the key timestamp semantics differ between the automatic and manual key
+   management, all key timestamps set in the future, either manually or during
+   a key import, are ignorred (cleared).
+
 .. _dnssec-manual-key-management:
 
 Manual key management
@@ -527,22 +532,6 @@ will be added into the zone). Remember to update the DS record in the
 parent zone to include a reference to the new key. This must happen within one
 day (in this case) including a delay required to propagate the new DS to
 caches.
-
-.. WARNING::
-   If you ever decide to switch from manual key management to automatic key management,
-   note that the automatic key management uses
-   :ref:`policy_zsk-lifetime` and :ref:`policy_ksk-lifetime` policy configuration
-   options to schedule key rollovers and it internally uses timestamps of keys differently
-   than in the manual case. As a consequence it might break if the ``retire`` or ``remove`` timestamps
-   are set for the manually generated keys currently in use. Make sure to set these timestamps
-   to zero using :doc:`keymgr<man_keymgr>`:
-
-   .. code-block:: console
-
-       $ keymgr myzone.test. set <key_id> retire=0 remove=0
-
-   and configure your policy suitably according to :ref:`dnssec-automatic-zsk-management`
-   and :ref:`dnssec-automatic-ksk-management`.
 
 .. _dnssec-signing:
 
