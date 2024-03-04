@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -598,7 +598,7 @@ static void wire_text_to_str(rrset_dump_params_t *p, size_t in_len,
 	CHECK_INMAX(in_len)
 
 	// Check if quotation can ever be disabled (parser protection fallback).
-	if (!quote) {
+	if (!quote && !alpn_mode) {
 		for (size_t i = 0; i < in_len; i++) {
 			if (p->in[i] == ' ') { // Other WS characters are encoded.
 				quote = true;
@@ -1515,7 +1515,11 @@ static void wire_svcparam_to_str(rrset_dump_params_t *p)
 			wire_value_list_to_str(p, wire_svcb_paramkey_to_str, p->in + val_len);
 			break;
 		case KNOT_SVCB_PARAM_ALPN:
+			dump_string(p, "\"");
+			CHECK_PRET
 			wire_value_list_to_str(p, wire_text_to_str_alpn, p->in + val_len);
+			dump_string(p, "\"");
+			CHECK_PRET
 			break;
 		case KNOT_SVCB_PARAM_NDALPN:
 			p->ret = -1; // must not have value
