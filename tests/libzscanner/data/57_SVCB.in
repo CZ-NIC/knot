@@ -10,6 +10,7 @@ $TTL	1
 @	SVCB	1	.	alpn="abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\053"    ; Text string of maximal length (255 chars)
 @	SVCB	1	.	alpn="part1,part2,part3\\,part4\\\\"
 @	SVCB	1	.	alpn=part1\,\p\a\r\t2\044part3\092,part4\092\\
+@	SVCB	1	.	alpn=foo\\\092,bar
 @	SVCB	1	.	no-default-alpn
 @	SVCB	1	.	port=0
 @	SVCB	1	.	port="65535"
@@ -63,6 +64,11 @@ example.com.	SVCB	16 foo.example.org. alpn=f\\\092oo\092,bar,h2
 @	SVCB	1	.	alpn=
 @	SVCB	1	.	alpn=a,
 @	SVCB	1	.	alpn=a,,b
+@	SVCB	1	.	alpn=a\
+@	SVCB	1	.	alpn=a\\
+@	SVCB	1	.	alpn=a\\b
+@	SVCB	1	.	alpn=a\\\b
+@	SVCB	1	.	alpn=a\\092,b
 @	SVCB	1	.	alpn="abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\0536"    ; Text string overflow (256 chars)
 @	SVCB	1	.	no-default-alpn=
 @	SVCB	1	.	no-default-alpn=h1

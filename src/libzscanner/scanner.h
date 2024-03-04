@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -157,6 +157,8 @@ struct zs_scanner {
 	bool     long_string;
 	/*! Comma separated string list indication (svcb parsing). */
 	bool     comma_list;
+	/*! Indication of a non-applied backslash. */
+	bool     pending_backslash;
 
 	/*! Pointer to the actual dname storage (origin/owner/rdata). */
 	uint8_t  *dname;

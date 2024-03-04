@@ -6983,6 +6983,7 @@ _match:
 		// Reset per-record contexts.
 		s->long_string = false;
 		s->comma_list = false;
+		s->pending_backslash = false;
 
 		s->state = ZS_STATE_ERROR;
 
@@ -7528,24 +7529,31 @@ _match:
 	break;
 	case 68:
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {cs = 307;goto _again;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {cs = 307;goto _again;}
 			}
 		}
 	}
@@ -8844,11 +8852,16 @@ _match:
 	case 292:
 	{
 		s->comma_list = true;
+		s->pending_backslash = false;
 	}
 	break;
 	case 293:
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {cs = 307;goto _again;}
+		}
 	}
 	break;
 	case 294:
