@@ -40865,6 +40865,7 @@ tr1008:
 		// Reset per-record contexts.
 		s->long_string = false;
 		s->comma_list = false;
+		s->pending_backslash = false;
 
 		s->state = ZS_STATE_ERROR;
 
@@ -40909,6 +40910,7 @@ tr1010:
 		// Reset per-record contexts.
 		s->long_string = false;
 		s->comma_list = false;
+		s->pending_backslash = false;
 
 		s->state = ZS_STATE_ERROR;
 
@@ -41367,24 +41369,31 @@ tr1033:
 	goto st319;
 tr1037:
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -41416,24 +41425,31 @@ tr1045:
 		rdata_tail++;
 	}
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -41484,24 +41500,31 @@ case 319:
 	goto tr1032;
 tr1036:
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -41514,24 +41537,31 @@ tr1044:
 		rdata_tail++;
 	}
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -41551,24 +41581,31 @@ case 1409:
 	goto st0;
 tr1038:
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -41603,24 +41640,31 @@ tr1046:
 		rdata_tail++;
 	}
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -41674,24 +41718,31 @@ case 1410:
 	goto tr1032;
 tr1039:
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -41701,24 +41752,31 @@ tr1047:
 		rdata_tail++;
 	}
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -41866,24 +41924,31 @@ tr1048:
 	goto st324;
 tr1052:
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -41915,24 +41980,31 @@ tr1061:
 		rdata_tail++;
 	}
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -42006,24 +42078,31 @@ tr1049:
 	goto st325;
 tr1053:
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -42055,24 +42134,31 @@ tr1062:
 		rdata_tail++;
 	}
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -42122,24 +42208,31 @@ case 325:
 	goto tr1032;
 tr1054:
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -42149,24 +42242,31 @@ tr1063:
 		rdata_tail++;
 	}
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -42187,24 +42287,31 @@ case 326:
 	goto tr1056;
 tr1055:
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -42214,24 +42321,31 @@ tr1064:
 		rdata_tail++;
 	}
 	{
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					p--; {goto st307;}
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				p--; {goto st307;}
 			}
 		}
 	}
@@ -57047,6 +57161,10 @@ tr1951:
 	}
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->item_length = rdata_tail - s->item_length2_location - 2;
@@ -57083,6 +57201,10 @@ tr1952:
 	}
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->item_length = rdata_tail - s->item_length2_location - 2;
@@ -57126,6 +57248,10 @@ tr1953:
 	}
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->item_length = rdata_tail - s->item_length2_location - 2;
@@ -57169,6 +57295,10 @@ tr1954:
 	}
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->item_length = rdata_tail - s->item_length2_location - 2;
@@ -58174,6 +58304,7 @@ case 609:
 tr1949:
 	{
 		s->comma_list = true;
+		s->pending_backslash = false;
 	}
 	{
 		if (rdata_tail < rdata_stop) {
@@ -58264,6 +58395,10 @@ tr1955:
 	}
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->item_length = rdata_tail - s->item_length2_location - 2;
@@ -58568,6 +58703,10 @@ tr1956:
 	}
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->item_length = rdata_tail - s->item_length2_location - 2;
@@ -58919,6 +59058,10 @@ tr1957:
 	}
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->item_length = rdata_tail - s->item_length2_location - 2;
@@ -59590,6 +59733,10 @@ tr2128:
 	}
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->item_length = rdata_tail - s->item_length2_location - 2;
@@ -59686,6 +59833,10 @@ tr1958:
 	}
 	{
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			p--; {goto st307;}
+		}
 	}
 	{
 		s->item_length = rdata_tail - s->item_length2_location - 2;
@@ -61488,6 +61639,7 @@ case 696:
 tr1950:
 	{
 		s->comma_list = true;
+		s->pending_backslash = false;
 	}
 	{
 		if (rdata_tail < rdata_stop) {
@@ -61552,6 +61704,7 @@ case 697:
 tr2127:
 	{
 		s->comma_list = true;
+		s->pending_backslash = false;
 	}
 	{
 		if (rdata_tail < rdata_stop) {

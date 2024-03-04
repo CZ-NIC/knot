@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,6 +96,7 @@ enum err_codes {
 	ZS_MISSING_SVCB_MANDATORY,
 	ZS_EMPTY_LIST_ITEM,
 	ZS_FILE_ACCESS,
+	ZS_BAD_ALPN_BACKSLASH,
 };
 
 /*!
