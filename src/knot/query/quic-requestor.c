@@ -87,6 +87,7 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 	if (hconn == NULL) {
 		return KNOT_EOK;
 	} else if (hconn != conn) {
+		knot_quic_cleanup(&hconn, 1);
 		return KNOT_ESEMCHECK;
 	}
 
