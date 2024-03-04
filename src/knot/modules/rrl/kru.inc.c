@@ -54,6 +54,14 @@ struct load_cl {
 } ALIGNED_CPU_CACHE;
 static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
 
+inline static uint64_t rand_bits(unsigned int bits) {
+	static _Thread_local uint64_t state = 3723796604792068981ull;
+	const uint64_t prime1 = 11737314301796036329ull;
+	const uint64_t prime2 = 3107264277052274849ull;
+	state = prime1 * state + prime2;
+	//return state & ((1 << bits) - 1);
+	return state >> (64 - bits);
+}
 
 #include "knot/modules/rrl/kru-decay.inc.c"
 
@@ -74,14 +82,6 @@ typedef uint64_t hash_t;
 	};
 #endif
 
-inline static uint64_t rand_bits(unsigned int bits) {
-	static _Thread_local uint64_t state = 3723796604792068981ull;
-	const uint64_t prime1 = 11737314301796036329ull;
-	const uint64_t prime2 = 3107264277052274849ull;
-	state = prime1 * state + prime2;
-	return state & ((1ll << bits) - 1);
-}
-
 #if USE_AVX2 || USE_SSE41 || USE_AES
 	#include <immintrin.h>
 	#include <x86intrin.h>
@@ -97,6 +97,7 @@ struct kru {
 	/// Hashing secret.  Random but shared by all users of the table.
 	SIPHASH_KEY hash_key;
 #endif
+	struct decay_config decay;
 
 	/// Length of `loads_cls`, stored as binary logarithm.
 	uint32_t loads_bits;
@@ -133,7 +134,7 @@ static size_t kru_get_size(int capacity_log)
 }
 
 
-static bool kru_initialize(struct kru *kru, int capacity_log)
+static bool kru_initialize(struct kru *kru, int capacity_log, kru_price_t max_decay)
 {
 	if (!kru) {
 		return false;
@@ -151,6 +152,8 @@ static bool kru_initialize(struct kru *kru, int capacity_log)
 	if (dnssec_random_buffer((uint8_t *)&kru->hash_key, sizeof(kru->hash_key)) != DNSSEC_EOK) {
 		return false;
 	}
+
+	decay_initialize(&kru->decay, max_decay);
 
 	return true;
 }
@@ -298,7 +301,7 @@ static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 	}
 
 	for (int li = 0; li < TABLE_COUNT; ++li) {
-		update_time(ctx->l[li], ctx->time_now, &DECAY_32);
+		update_time(ctx->l[li], ctx->time_now, &kru->decay);
 	}
 
 	const uint16_t id = ctx->id;

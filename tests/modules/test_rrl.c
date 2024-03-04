@@ -32,6 +32,8 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #include <stdatomic.h>
 
 
+#define KRU_MAX_DECAY (1404ll << (KRU_PRICE_BITS - 16))
+
 #define RRL_BASE_PRICE_LOG (KRU_PRICE_BITS - 7)   // desired log of highest price of all prefixes, same for IPv4 and IPv6
 #define RRL_TABLE_SIZE     (1 << 20)
 #define RRL_RATE_LIMIT     ((uint64_t)KRU_MAX_DECAY * 1000 / (1ll << RRL_BASE_PRICE_LOG))

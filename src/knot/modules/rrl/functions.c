@@ -102,7 +102,8 @@ rrl_table_t *rrl_create(size_t size, uint32_t rate)
 		return NULL;
 	}
 
-	if (!KRU.initialize((struct kru *)rrl->kru, capacity_log)) {
+#define KRU_MAX_DECAY (1404ll << (KRU_PRICE_BITS - 16))
+	if (!KRU.initialize((struct kru *)rrl->kru, capacity_log, KRU_MAX_DECAY)) {
 		free(rrl);
 		return NULL;
 	}

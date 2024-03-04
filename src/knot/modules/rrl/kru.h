@@ -17,10 +17,10 @@
 
 // An unsigned integral type used for prices, blocking occurs when sum of prices overflows.
 // Greater than 16-bit type enables randomized fractional incrementing as the internal counters are still 16-bit.
+// Exponential decay always uses randomized rounding on 32 bits.
 typedef uint32_t kru_price_t;
 
 #define KRU_PRICE_BITS (8 * sizeof(kru_price_t))
-#define KRU_MAX_DECAY (1404ll << (KRU_PRICE_BITS - 16))
 #define KRU_LIMIT     (((kru_price_t)-1ll) - (1ll << (KRU_PRICE_BITS - 16)) + 2)
 
 struct kru;
@@ -41,7 +41,7 @@ struct kru_api {
 	/// by tracking multiple keys in a single query.
 	///
 	/// Returns false if kru is NULL or other failure occurs.
-	bool (*initialize)(struct kru *kru, int capacity_log);
+	bool (*initialize)(struct kru *kru, int capacity_log, kru_price_t max_decay);
 
 	/// Calculate size of the KRU structure.
 	size_t (*get_size)(int capacity_log);
