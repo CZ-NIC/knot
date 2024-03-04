@@ -8,6 +8,7 @@ EXTRA_DIST +=                 knot/modules/rrl/rrl.rst
 
 if STATIC_MODULE_rrl
 libknotd_la_SOURCES += $(knot_modules_rrl_la_SOURCES)
+libknotd_la_LIBADD += $(math_LIBS)
 endif
 
 if SHARED_MODULE_rrl
