@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -116,6 +116,7 @@
 		// Reset per-record contexts.
 		s->long_string = false;
 		s->comma_list = false;
+		s->pending_backslash = false;
 
 		s->state = ZS_STATE_ERROR;
 
@@ -656,24 +657,31 @@
 	}
 
 	action _comma_list {
-		uint8_t *last_two = rdata_tail - 2;
-		uint16_t current_len = rdata_tail - s->item_length_location - 2;
 		if (s->comma_list) {
+			uint8_t *last_two = rdata_tail - 2;
+			uint16_t current_len = rdata_tail - s->item_length_location - 2;
 			if (last_two[1] == ',') {
 				if (current_len <= 1) {
 					WARN(ZS_EMPTY_LIST_ITEM);
 					fhold; fgoto err_line;
-				} else if (last_two[0] != '\\') { // Start a new item.
+				} else if (last_two[0] != '\\' || !s->pending_backslash) { // Start a new item.
 					*(s->item_length_location) = current_len;
 					s->item_length_location = rdata_tail - 1;
 				} else { // Remove backslash.
 					last_two[0] = ',';
 					rdata_tail--;
+					s->pending_backslash = false;
 				}
-			} else if (current_len > 1 && last_two[1] == '\\') {
-				if (last_two[0] == '\\') { // Remove backslash.
+			} else if (last_two[1] == '\\') {
+				if (s->pending_backslash) { // Remove backslash.
 					rdata_tail--;
+					s->pending_backslash = false;
+				} else {
+					s->pending_backslash = true;
 				}
+			} else if (s->pending_backslash) {
+				WARN(ZS_BAD_ALPN_BACKSLASH);
+				fhold; fgoto err_line;
 			}
 		}
 	}
@@ -1800,9 +1808,14 @@
 
 	action _alpnl_init {
 		s->comma_list = true;
+		s->pending_backslash = false;
 	}
 	action _alpnl_exit {
 		s->comma_list = false;
+		if (s->pending_backslash) {
+			WARN(ZS_BAD_ALPN_BACKSLASH);
+			fhold; fgoto err_line;
+		}
 	}
 
 	action _mandatory_init {
