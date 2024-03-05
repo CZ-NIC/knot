@@ -1,3 +1,26 @@
+Knot DNS 3.3.5 (2024-03-06)
+===========================
+
+Features:
+---------
+ - knotd: new module mod-authsignal for automatic authenticated DNSSEC
+          bootstrapping records synthesis (Thanks to Peter Thomassen)
+ - kzonecheck: new optional ZONEMD verification (see option '-z')
+
+Improvements:
+-------------
+ - knotd: new DNSSEC key rollover log informs about next planned key action
+ - knotd, kzonecheck: added limit on non-matching keys with a duplicate keytag
+ - knot-exporter: added counter-type variant for each metric (Thanks to Marcel Koch)
+ - libs: upgraded embedded libngtcp2 to 1.3.0
+ - doc: various fixes and updates
+
+Bugfixes:
+---------
+ - knotd, kzonecheck: failed to validate RRSIG if there are more keys with the same keytag
+ - knotd, kzonecheck: failed to validate zone with more CSK keys
+ - libknot: insufficient check for malformed TCP header options over XDP
+
 Knot DNS 3.3.4 (2024-01-24)
 ===========================
 
