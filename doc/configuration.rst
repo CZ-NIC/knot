@@ -559,6 +559,7 @@ The signing is initiated on the following occasions:
 - Zone reload
 - Reaching the signature refresh period
 - Key set changed due to rollover event
+- NSEC3 salt is changed
 - Received DDNS update
 - Forced zone re-sign via server control interface
 
