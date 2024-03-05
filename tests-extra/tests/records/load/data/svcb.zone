@@ -84,3 +84,11 @@ example9   TYPE64   \# 35 (
 02                                                 ; alpn length 2
 68 32                                              ; alpn value
 )
+
+example10 SVCB 1 . alpn=\\\\
+example11 SVCB 1 . alpn=\"
+example12 SVCB 1 . alpn=a\\,
+example12 SVCB 1 . alpn=foo\\\092,bar
+
+example20 SVCB 1 . alpn=\ 
+example21 SVCB 1 . alpn=a\ b
