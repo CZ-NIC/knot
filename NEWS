@@ -20,6 +20,7 @@ Bugfixes:
  - knotd, kzonecheck: failed to validate RRSIG if there are more keys with the same keytag
  - knotd, kzonecheck: failed to validate zone with more CSK keys
  - libknot: insufficient check for malformed TCP header options over XDP
+ - libzscanner: incorrect alpn processing #923
 
 Knot DNS 3.3.4 (2024-01-24)
 ===========================
