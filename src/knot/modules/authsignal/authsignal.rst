@@ -18,6 +18,7 @@ Automatic forward records
 .........................
 
 ::
+
    mod-onlinesign:
      - id: authsignal
        nsec-bitmap: [CDS, CDNSKEY]
