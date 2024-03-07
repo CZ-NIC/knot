@@ -19,23 +19,30 @@
 #include "knot/modules/rrl/functions.h"
 
 #define MOD_RATE_LIMIT		"\x0A""rate-limit"
+#define MOD_INSTANT_LIMIT		"\x0D""instant-limit"
 #define MOD_SLIP		"\x04""slip"
 #define MOD_TBL_SIZE		"\x0A""table-size"
 #define MOD_WHITELIST		"\x09""whitelist"
 
 const yp_item_t rrl_conf[] = {
-	{ MOD_RATE_LIMIT, YP_TINT, YP_VINT = { 22, INT32_MAX } },  // TODO: set max value not to get zero price (for any prefix?)
-	{ MOD_SLIP,       YP_TINT, YP_VINT = { 0, 100, 1 } },
-	{ MOD_TBL_SIZE,   YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
-	{ MOD_WHITELIST,  YP_TNET, YP_VNONE, YP_FMULTI },
+	{ MOD_INSTANT_LIMIT, YP_TINT, YP_VINT = { 1,  (1ll << 32) / 12288 - 1, 50 } },
+	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 1, ((1ll << 32) / 12288 - 1) * 1000 } },
+	{ MOD_SLIP,          YP_TINT, YP_VINT = { 0, 100, 1 } },
+	{ MOD_TBL_SIZE,      YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
+	{ MOD_WHITELIST,     YP_TNET, YP_VNONE, YP_FMULTI },
 	{ NULL }
 };
 
 int rrl_conf_check(knotd_conf_check_args_t *args)
 {
-	knotd_conf_t limit = knotd_conf_check_item(args, MOD_RATE_LIMIT);
-	if (limit.count == 0) {
+	knotd_conf_t rate_limit = knotd_conf_check_item(args, MOD_RATE_LIMIT);
+	knotd_conf_t instant_limit = knotd_conf_check_item(args, MOD_INSTANT_LIMIT);
+	if (rate_limit.count == 0) {
 		args->err_str = "no rate limit specified";
+		return KNOT_EINVAL;
+	}
+	if (rate_limit.single.integer > 1000ll * instant_limit.single.integer) {  // TODO keep or ignore?
+		args->err_str = "rate limit per msec is higher than instant limit";
 		return KNOT_EINVAL;
 	}
 
@@ -164,9 +171,10 @@ int rrl_load(knotd_mod_t *mod)
 	}
 
 	// Create table.
-	uint32_t rate = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
+	uint32_t instant_limit = knotd_conf_mod(mod, MOD_INSTANT_LIMIT).single.integer;
+	uint32_t rate_limit = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
 	size_t size = knotd_conf_mod(mod, MOD_TBL_SIZE).single.integer;
-	ctx->rrl = rrl_create(size, rate);
+	ctx->rrl = rrl_create(size, instant_limit, rate_limit);
 	if (ctx->rrl == NULL) {
 		ctx_free(ctx);
 		return KNOT_ENOMEM;

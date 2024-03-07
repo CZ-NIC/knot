@@ -44,6 +44,7 @@ Module reference
  mod-rrl:
    - id: STR
      rate-limit: INT
+     instant-limit: INT
      slip: INT
      table-size: INT
      whitelist: ADDR[/INT] | ADDR-ADDR | STR ...
@@ -68,6 +69,11 @@ The limits of prefixes are constant multiples of `rate-limit`.
 *Required*
 
 .. _mod-rrl_table-size:
+
+instant-limit
+-------------
+
+TODO
 
 table-size
 ..........

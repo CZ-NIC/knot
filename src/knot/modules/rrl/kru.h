@@ -21,7 +21,9 @@
 typedef uint32_t kru_price_t;
 
 #define KRU_PRICE_BITS (8 * sizeof(kru_price_t))
-#define KRU_LIMIT     (((kru_price_t)-1ll) - (1ll << (KRU_PRICE_BITS - 16)) + 2)
+
+// maximal allowed sum of prices without limiting
+#define KRU_LIMIT     (((kru_price_t)-1ll) - (1ll << (KRU_PRICE_BITS - 16)) + 1)
 
 struct kru;
 

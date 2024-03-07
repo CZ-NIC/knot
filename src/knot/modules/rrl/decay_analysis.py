@@ -91,15 +91,55 @@ def prefixes(bits, base_qps, decay_funcs):
 	print()
 
 
+BITS=32
 print("PREFIX     DECAY   PRICE      TICKS FROM BLOCKING WITH LIMITS...")
 sys.stdout.write("          "); V(HEADER);
 print();
 
-prefixes(16, 1404 / 12288 * 1000, exp_decay(1/32));
-prefixes(32, 1404 / 12288 * 1000, exp_decay(1/256));
+
+# === 16-bit vs. 32-bit vs. 16-bit sqrt instant limits ===
+
+# prefixes(16, 1404 / 12288 * 1000, exp_decay(1/32));
+# prefixes(32, 1404 / 12288 * 1000, exp_decay(1/256));
+#
+# print("sqrt prices' ratios:")
+# prefixes(16, 1404 / 12288 * 1000,
+# 	[exp_decay(-math.log2(1 - math.sqrt(mult) / 1536)) for mult in RATE_MULT])
 
 
-print("sqrt prices' ratios:")
-prefixes(16, 1404 / 12288 * 1000,
-	[exp_decay(-math.log2(1 - math.sqrt(mult) / 1536)) for mult in RATE_MULT])
+# === contant instant limit vs constant ratio instant/rate ===
 
+# prefixes(32,    1, exp_decay(1/256 / 128));        # rate    1 QPS, instant limit 50
+# prefixes(32, 2000, exp_decay(1/256 / 128));        # rate 2000 QPS, same decay
+# prefixes(32, 2000, exp_decay(1/256 / 128 * 2000)); # rate 2000 QPS, instant limit 50
+
+
+# === decays given by rate and instant limits of KRU.initialize ===
+
+class KruInfo:
+    def __init__(self, rate_limit, instant_limit):
+        self.rate_limit = rate_limit
+        self.instant_limit = instant_limit
+        self.base_price = (2 ** 32) // (self.instant_limit + 1)
+        self.max_decay = min(2**32 - 1, (self.base_price * self.rate_limit) // 1000)
+        self.decay_mult_per_tick = (2**32 - self.max_decay) / 2**32
+        self.decay_shift_per_tick = -math.log2(self.decay_mult_per_tick)
+    def get_decay(self):
+        return exp_decay(self.decay_shift_per_tick)
+
+def kru_decay(rate_limit, instant_limit):
+    sys.stdout.write(f"{rate_limit} QPS rate-limit, {instant_limit} Q instant-limit: ")
+    info = KruInfo(rate_limit, instant_limit)
+    prefixes(32, rate_limit, info.get_decay())
+
+
+kru_decay(114, 50)
+
+# default instant limit (50), different rate limits
+for rate in [1, 10, 50, 100, 1000, 2000]:
+    info = KruInfo(rate, 50)
+    shift = info.decay_shift_per_tick
+    shift_inv = 1/shift
+    price = info.base_price
+    max_decay = int(info.get_decay()(1))
+    print(f"instant: {50}, rate: {rate:5d}, decay shift: 1/{shift_inv:10.3f}, price: {price}, max decay: {max_decay:10d}")
