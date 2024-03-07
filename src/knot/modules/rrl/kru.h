@@ -34,11 +34,11 @@ struct kru_api {
 	/// The kru parameter should point to a zeroed preallocated memory
 	/// of size returned by get_size aligned to 64-bytes;
 	/// deallocate the memory to destroy KRU.
-	/// RAM: the current parametrization will use roughly 8 (or 16 for 32-bit version) bytes * 2^capacity_log.
+	/// RAM: the current parametrization will use roughly 8 bytes * 2^capacity_log.
 	///
 	/// The number of non-limited keys is basically arbitrary,
 	/// but the total sum of prices per tick (for queries returning false)
-	/// should not get over roughly 2^(capacity_log + 15).  // TODO adjust for 32 bits?
+	/// should not get over roughly 2^(capacity_log + 15).
 	/// Note that the _multi variants increase these totals
 	/// by tracking multiple keys in a single query.
 	///

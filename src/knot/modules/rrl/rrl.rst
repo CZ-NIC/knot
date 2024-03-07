@@ -45,8 +45,8 @@ Module reference
    - id: STR
      rate-limit: INT
      instant-limit: INT
-     slip: INT
      table-size: INT
+     slip: INT
      whitelist: ADDR[/INT] | ADDR-ADDR | STR ...
 
 .. _mod-rrl_id:
@@ -61,30 +61,54 @@ A module identifier.
 rate-limit
 ..........
 
-Maximal allowed number of queries per second from a single host.
+Maximal allowed number of queries per second from a single IPv6 address;
+the limit for an IPv4 address is 16x higher.
 
-Rate limiting is performed on the whole address and several chosen prefixes.
+Rate limiting is performed for the whole address and several chosen prefixes.
 The limits of prefixes are constant multiples of `rate-limit`.
+
+The specific prefixes and multipliers are
+for IPv6 /128: 1, /64: 4, /56: 16, /48: 64, /32: 1024;
+for IPv4 /32: 16, /24: 512, /20: 4096, /18: 12288.
+
+With each host/network, a counter of unrestricted responses is associated
+and it is lowered by a constant fraction of its value each millisecond;
+a response is restricted if a counter would exceed its capacity otherwise.
+The specified rate limit is reached, when the number of queries is the same every millisecond;
+sending many queries once a second or even a larger timespan leads to a more strict limiting.
 
 *Required*
 
-.. _mod-rrl_table-size:
+.. _mod-rrl_instant-limit:
 
 instant-limit
--------------
+.............
 
-TODO
+Maximal allowed number of queries at a single point in time from a single IPv6 address.
+The limits for IPv4 addresses and prefixes use the same multipliers as for `rate-limit`.
+
+This limit is reached when many queries come from a new host/network,
+or after a longer time of inactivity.
+
+The `instant-limit` sets the actual capacity of each counter of responses,
+and together with the `rate-limit` they set the fraction by which the counter is periodically lowered.
+The `instant-limit` may be at least `rate-limit / 1000`, at which point the counters are zeroed each millisecond.
+
+*Default:* ``50``
+
+.. _mod-rrl_table-size:
 
 table-size
 ..........
 
-Maximal number of stored hosts/networks with their current frequencies of queries.
+Maximal number of stored hosts/networks with their counters.
 The data structure tries to store only the most frequent sources and the table size is internally a little bigger,
 so it is safe to set it according to the expected maximal number of limited sources.
 
-Use `4 * maximum_qps / rate-limit`,
+Use `1.4 * maximum_qps / rate-limit`,
 where `maximum_qps` is the number of queries which can be handled by the server per second.
-There is at most `maximum_qps / rate-limit` limited sources for each of `4` prefixes.
+There is at most `maximum_qps / rate-limit` limited hosts;
+larger networks have higher limits and so require only a fraction of the value.
 The value will be rounded up to the nearest power of two.
 
 The memory occupied by the data structure is `8 * table-size B`.
