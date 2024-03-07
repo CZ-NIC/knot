@@ -1,0 +1,34 @@
+module:
+  - id: custom-mod
+
+server:
+  identity: Knot DNS
+  udp-workers: 1
+  async-start: off
+  tcp-reuseport: false
+  tcp-fastopen: true
+  socket-affinity: on
+  tcp-idle-timeout: 1
+  quic-idle-close-timeout: 1s
+  remote-pool-timeout: 1m
+  dbus-init-delay: 1h
+  quic-outbuf-max-size: 1
+  udp-max-payload: 1B
+  udp-max-payload-ipv4: 1K
+  udp-max-payload-ipv6: 1M
+  proxy-allowlist: 127.0.0.1
+  dbus-event: [ none ]
+  listen: [ 127.0.0.1@53, "::1@53" ]
+  listen-quic:
+    - 127.0.0.19@853
+    - ::1
+xdp:
+  tcp-idle-close-timeout: 1d
+  tcp-inbuf-max-size: 1G
+
+log:
+  - target: stdout
+    server: critical
+key:
+  - id: example.com
+    secret: y9dcNKX6XZAUzaXUDFYGQA==
