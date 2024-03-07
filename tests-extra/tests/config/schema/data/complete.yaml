@@ -1,0 +1,42 @@
+# Valid configuration file
+module:
+  - id: custom-mod
+server:
+  identity: Knot DNS
+  udp-workers: 1
+  async-start: off
+  tcp-reuseport: false
+  tcp-fastopen: "true"
+  socket-affinity: on
+  tcp-idle-timeout: 1
+  quic-idle-close-timeout: 1s
+  remote-pool-timeout: "1m"
+  dbus-init-delay: 1h
+  quic-outbuf-max-size: 1
+  udp-max-payload: 1B
+  udp-max-payload-ipv4: 1K
+  udp-max-payload-ipv6: 1M
+  proxy-allowlist: 127.0.0.1
+  dbus-event: [ none ]
+  listen: [ 127.0.0.1@53, fedc::1@53, ::1@53 ]
+  listen-quic:
+    - 127.0.0.19@853
+    - ::1
+xdp:
+  listen: ::1
+  listen: lo
+  tcp-idle-close-timeout: 1d
+  tcp-inbuf-max-size: 1G
+log:
+  - target: stdout
+    server: critical
+    zone: "debug"
+key:
+  - id: example.com
+    secret: y9dcNKX6XZAUzaXUDFYGQA==
+zone:
+  - domain: 16-29.23.16.172.in-addr.arpa.
+  - domain: "0/25.2.0.192.in-addr.arpa."
+  - domain: t\ es\t.\125
+statistics:
+acl:

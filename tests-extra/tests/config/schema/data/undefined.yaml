@@ -1,0 +1,3 @@
+# Undefined property should return error
+test:
+  - id: test
