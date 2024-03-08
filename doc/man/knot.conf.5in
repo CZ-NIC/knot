@@ -2791,9 +2791,8 @@ has the \fIgroup\fP property defined, matching another catalog template.
 .INDENT 3.5
 This option must be set if and only if \fI\%catalog\-role\fP is \fIinterpret\fP\&.
 .sp
-Nested catalog zones aren\(aqt supported. Therefore catalog templates can\(aqt use
-\fI\%catalog\-template\fP, \fI\%catalog\-role\fP, \fI\%catalog\-zone\fP,
-and \fI\%catalog\-group\fP options.
+Nested catalog zones aren\(aqt supported. Therefore catalog templates can\(aqt
+contain \fI\%catalog\-role\fP set to \fBinterpret\fP or \fBgenerate\fP\&.
 .UNINDENT
 .UNINDENT
 .sp

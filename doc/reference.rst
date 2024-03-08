@@ -3014,9 +3014,8 @@ has the *group* property defined, matching another catalog template.
 .. NOTE::
    This option must be set if and only if :ref:`zone_catalog-role` is *interpret*.
 
-   Nested catalog zones aren't supported. Therefore catalog templates can't use
-   :ref:`zone_catalog-template`, :ref:`zone_catalog-role`, :ref:`zone_catalog-zone`,
-   and :ref:`zone_catalog-group` options.
+   Nested catalog zones aren't supported. Therefore catalog templates can't
+   contain :ref:`zone_catalog-role` set to ``interpret`` or ``generate``.
 
 *Default:* not set
 
