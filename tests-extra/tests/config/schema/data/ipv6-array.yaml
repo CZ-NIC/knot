@@ -1,2 +1,0 @@
-server:
-  listen: [ ::1@53 ]

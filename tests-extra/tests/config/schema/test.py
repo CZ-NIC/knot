@@ -5,21 +5,23 @@
 import os
 import yaml
 
-from dnstest.test import Test
-from dnstest.utils import Failed
 from json import load, JSONDecodeError
 from jsonschema import validate, ValidationError
 from yaml.parser import ParserError
 
-VALID = [ 'complete.yaml']
+from dnstest.test import Test
+from dnstest.utils import Failed
+from kyaml import KnotYAMLLoader
+
+VALID = [ 'complete.yaml' ]
 INVALID = [ 'undefined.yaml', 'base64.yaml', 'enum.yaml' ]
 FALSE_VALID = [ 'dname.yaml' ]
-FALSE_INVALID = [ 'ipv6-array.yaml' ]
+FALSE_INVALID = [ ]
 
 def validate_file(conf_path):
         try:
                 with open(conf_path, 'r') as conf_file:
-                        conf = yaml.safe_load(conf_file)
+                        conf = yaml.load(conf_file, KnotYAMLLoader)
                         validate(conf, schema)
         except Exception:
                 raise
@@ -65,6 +67,8 @@ for conf_name in FALSE_INVALID:
                 raise Failed("False invalid configuration %s was fixed" % conf_name)
         except ParserError:
                 pass
+        except Failed:
+                raise
         except Exception:
                 raise Failed("Failed to validate %s" % conf_name)
 

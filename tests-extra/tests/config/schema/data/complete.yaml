@@ -1,3 +1,4 @@
+# Valid configuration file
 module:
   - id: custom-mod
 
@@ -18,11 +19,12 @@ server:
   udp-max-payload-ipv6: 1M
   proxy-allowlist: 127.0.0.1
   dbus-event: [ none ]
-  listen: [ 127.0.0.1@53, "::1@53" ]
+  listen: [ 127.0.0.1@53, fedc::1@53, ::1@53 ]
   listen-quic:
     - 127.0.0.19@853
     - ::1
 xdp:
+  listen: ::1
   tcp-idle-close-timeout: 1d
   tcp-inbuf-max-size: 1G
 
