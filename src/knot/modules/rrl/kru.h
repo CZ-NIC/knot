@@ -58,9 +58,11 @@ struct kru_api {
 	/// Same as previous but without short-circuit evaluation; for time measurement purposes.
 	bool (*limited_multi_or_nobreak)(struct kru *kru, uint32_t time_now, uint8_t ** keys, kru_price_t *prices, size_t queries_cnt);
 
-	/// Multiple queries based on different prefixes of a single key. Returns OR of answers. Updates KRU only if no query is blocked.
+	/// Multiple queries based on different prefixes of a single key.
+	/// Returns a prefix (value in prefixes) on which the key is blocked, or zero if all queries passed.
+	/// Updates KRU only if no query is blocked.
 	/// The key of i-th query consists of prefixes[i] bits of key, prefixes[i], and namespace.
-	bool (*limited_multi_prefix_or)(struct kru *kru, uint32_t time_now,
+	uint8_t (*limited_multi_prefix_or)(struct kru *kru, uint32_t time_now,
 			uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt);
 };
 // The functions are stored this way to make it easier to switch

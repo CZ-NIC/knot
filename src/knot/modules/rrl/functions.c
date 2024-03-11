@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <time.h>
+#include <stdatomic.h>
 
 #include "knot/modules/rrl/functions.h"
 #include "contrib/musl/inet_ntop.h"
@@ -41,57 +42,39 @@
 struct rrl_table {
 	kru_price_t v4_prices[RRL_V4_PREFIXES_CNT];
 	kru_price_t v6_prices[RRL_V6_PREFIXES_CNT];
+	uint32_t log_period;
+	_Atomic uint32_t log_time;
 	uint8_t kru[] ALIGNED(64);
 };
 
-/*
-static void subnet_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss) // TODO remove or adapt
+static void addr_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss)
 {
 	const void *addr;
-	const char *suffix;
 
 	if (ss->ss_family == AF_INET6) {
 		addr = &((struct sockaddr_in6 *)ss)->sin6_addr;
-		suffix = "/56";
 	} else {
 		addr = &((struct sockaddr_in *)ss)->sin_addr;
-		suffix = "/24";
 	}
 
-	if (knot_inet_ntop(ss->ss_family, addr, dst, maxlen) != NULL) {
-		strlcat(dst, suffix, maxlen);
-	} else {
+	if (knot_inet_ntop(ss->ss_family, addr, dst, maxlen) == NULL) {
 		dst[0] = '\0';
 	}
 }
 
-static void rrl_log_state(knotd_mod_t *mod, const struct sockaddr_storage *ss,
-                          uint16_t flags, uint8_t cls, const knot_dname_t *qname) // TODO remove or adapt, not used
+static void rrl_log_limited(knotd_mod_t *mod, const struct sockaddr_storage *ss, const uint8_t prefix)
 {
 	if (mod == NULL || ss == NULL) {
 		return;
 	}
 
 	char addr_str[SOCKADDR_STRLEN];
-	subnet_tostr(addr_str, sizeof(addr_str), ss);
+	addr_tostr(addr_str, sizeof(addr_str), ss);
 
-	const char *what = "leaves";
-	if (flags & RRL_BF_ELIMIT) {
-		what = "enters";
-	}
-
-	knot_dname_txt_storage_t buf;
-	char *qname_str = knot_dname_to_str(buf, qname, sizeof(buf));
-	if (qname_str == NULL) {
-		qname_str = "?";
-	}
-
-	knotd_mod_log(mod, LOG_NOTICE, "address/subnet %s, class %s, qname %s, %s limiting",
-	              addr_str, rrl_clsstr(cls), qname_str, what);
+	knotd_mod_log(mod, LOG_NOTICE, "address %s limited on /%d", addr_str, prefix);
 }
-*/
 
-rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit)
+rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit, uint32_t log_period)
 {
 	size--;
 	size_t capacity_log = 1;
@@ -119,6 +102,15 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit
 		rrl->v6_prices[i] = base_price / RRL_V6_RATE_MULT[i];
 	}
 
+	rrl->log_period = log_period;
+
+	{
+		struct timespec now_ts = {0};
+		clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
+		uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
+		rrl->log_time = now - log_period;
+	}
+
 	return rrl;
 }
 
@@ -134,20 +126,32 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 	uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
 
 	uint8_t key[16] ALIGNED(16) = {0, };
+	uint8_t limited_prefix;
 	if (remote->ss_family == AF_INET6) {
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
 		memcpy(key, &ipv6->sin6_addr, 16);
 
-		return KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now, 1, key, RRL_V6_PREFIXES, rrl->v6_prices, RRL_V6_PREFIXES_CNT)
-			? KNOT_ELIMIT : KNOT_EOK;
-
+		limited_prefix = KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now,
+				1, key, RRL_V6_PREFIXES, rrl->v6_prices, RRL_V6_PREFIXES_CNT);
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
 		memcpy(key, &ipv4->sin_addr, 4);
 
-		return KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now, 0, key, RRL_V4_PREFIXES, rrl->v4_prices, RRL_V4_PREFIXES_CNT)
-			? KNOT_ELIMIT : KNOT_EOK;
+		limited_prefix = KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now,
+				0, key, RRL_V4_PREFIXES, rrl->v4_prices, RRL_V4_PREFIXES_CNT);
 	}
+
+	uint32_t log_time_orig = atomic_load_explicit(&rrl->log_time, memory_order_relaxed);
+	if (rrl->log_period && limited_prefix && (now - log_time_orig + 1024 >= rrl->log_period + 1024)) {
+		do {
+			if (atomic_compare_exchange_weak_explicit(&rrl->log_time, &log_time_orig, now, memory_order_relaxed, memory_order_relaxed)) {
+				rrl_log_limited(mod, remote, limited_prefix);
+				break;
+			}
+		} while (now - log_time_orig + 1024 >= rrl->log_period + 1024);
+	}
+
+	return limited_prefix ? KNOT_ELIMIT : KNOT_EOK;
 }
 
 bool rrl_slip_roll(int n_slip)

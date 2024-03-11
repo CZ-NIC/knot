@@ -48,6 +48,8 @@ Module reference
      table-size: INT
      slip: INT
      whitelist: ADDR[/INT] | ADDR-ADDR | STR ...
+     log-period: INT
+
 
 .. _mod-rrl_id:
 
@@ -161,3 +163,16 @@ or network ranges to exempt from rate limiting.
 Empty list means that no incoming connection will be white-listed.
 
 *Default:* not set
+
+log-period
+..........
+
+Minimal time in milliseconds between two log messages,
+or zero to disable logging.
+
+If a response is limited, the address and the prefix on which it was blocked is logged
+and logging is disabled for the `log-period` msec.
+As long as limiting is needed, one source is logged each period
+and sources with more blocked queries have greater probability to be chosen.
+
+*Default:* ``0``

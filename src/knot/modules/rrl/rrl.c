@@ -23,6 +23,7 @@
 #define MOD_SLIP		"\x04""slip"
 #define MOD_TBL_SIZE		"\x0A""table-size"
 #define MOD_WHITELIST		"\x09""whitelist"
+#define MOD_LOG_PERIOD		"\x0A""log-period"
 
 const yp_item_t rrl_conf[] = {
 	{ MOD_INSTANT_LIMIT, YP_TINT, YP_VINT = { 1,  (1ll << 32) / 12288 - 1, 50 } },
@@ -30,6 +31,7 @@ const yp_item_t rrl_conf[] = {
 	{ MOD_SLIP,          YP_TINT, YP_VINT = { 0, 100, 1 } },
 	{ MOD_TBL_SIZE,      YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
 	{ MOD_WHITELIST,     YP_TNET, YP_VNONE, YP_FMULTI },
+	{ MOD_LOG_PERIOD,    YP_TINT, YP_VINT = { 0, INT32_MAX, 0 } },
 	{ NULL }
 };
 
@@ -174,7 +176,8 @@ int rrl_load(knotd_mod_t *mod)
 	uint32_t instant_limit = knotd_conf_mod(mod, MOD_INSTANT_LIMIT).single.integer;
 	uint32_t rate_limit = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
 	size_t size = knotd_conf_mod(mod, MOD_TBL_SIZE).single.integer;
-	ctx->rrl = rrl_create(size, instant_limit, rate_limit);
+	uint32_t log_period = knotd_conf_mod(mod, MOD_LOG_PERIOD).single.integer;
+	ctx->rrl = rrl_create(size, instant_limit, rate_limit, log_period);
 	if (ctx->rrl == NULL) {
 		ctx_free(ctx);
 		return KNOT_ENOMEM;
