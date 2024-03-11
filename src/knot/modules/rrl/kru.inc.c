@@ -456,7 +456,7 @@ static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, uin
 	return ret;
 }
 
-static bool kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt)
+static uint8_t kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt)
 {
 	struct query_ctx ctx[queries_cnt];
 
@@ -466,15 +466,16 @@ static bool kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint
 
 	for (size_t i = 0; i < queries_cnt; i++) {
 		if (kru_limited_fetch(kru, ctx + i))
-			return true;
+			return prefixes[i];
 	}
 
-	bool ret = false;
+	uint8_t prefix = 0;
 	for (size_t i = 0; i < queries_cnt; i++) {
-		ret |= kru_limited_update(kru, ctx + i);
+		bool ret = kru_limited_update(kru, ctx + i);
+		prefix = (ret ? prefixes[i] : prefix);
 	}
 
-	return ret;
+	return prefix;
 }
 
 /// Update limiting and return true iff it hit the limit instead.

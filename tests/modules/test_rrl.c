@@ -218,7 +218,7 @@ void test_rrl(void) {
 	fakeclock_init();
 
 	/* create rrl table */
-	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT);
+	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, 0);
 	ok(rrl != NULL, "rrl(%s): create", impl_name);
 
 	if (KRU.initialize == KRU_GENERIC.initialize) {

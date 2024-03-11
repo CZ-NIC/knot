@@ -50,7 +50,7 @@ typedef struct {
  * \param rate Rate (in pkts/sec).
  * \return created table or NULL.
  */
-rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit);
+rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit, uint32_t log_period);
 
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
