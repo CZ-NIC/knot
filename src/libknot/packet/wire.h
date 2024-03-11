@@ -1025,7 +1025,7 @@ static inline uint16_t knot_wire_get_pointer(const uint8_t *pos)
 	return (knot_wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
 }
 
-_pure_ _mustcheck_
+_pure_ _mustcheck_ _nonnull_(2)
 static inline const uint8_t *knot_wire_seek_label(const uint8_t *lp, const uint8_t *wire)
 {
 	assert(wire);
@@ -1040,7 +1040,7 @@ static inline const uint8_t *knot_wire_seek_label(const uint8_t *lp, const uint8
 	return lp;
 }
 
-_pure_ _mustcheck_
+_pure_ _mustcheck_ _nonnull_(1, 2)
 static inline const uint8_t *knot_wire_next_label(const uint8_t *lp, const uint8_t *wire)
 {
 	assert(lp);
@@ -1048,7 +1048,7 @@ static inline const uint8_t *knot_wire_next_label(const uint8_t *lp, const uint8
 	return knot_wire_seek_label(lp + (lp[0] + sizeof(uint8_t)), wire);
 }
 
-_pure_ _mustcheck_
+_pure_ _mustcheck_ _nonnull_(1)
 static inline const uint8_t *knot_dname_next_label(const uint8_t *lp)
 {
 	assert(lp);

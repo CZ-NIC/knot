@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,17 +35,19 @@
 
 /*! \brief GNU C function attributes. */
 #if __GNUC__ >= 3
-#define _pure_      __attribute__ ((pure))
-#define _const_     __attribute__ ((const))
-#define _noreturn_  __attribute__ ((noreturn))
-#define _malloc_    __attribute__ ((malloc))
-#define _mustcheck_ __attribute__ ((warn_unused_result))
+#define _pure_         __attribute__ ((pure))
+#define _const_        __attribute__ ((const))
+#define _noreturn_     __attribute__ ((noreturn))
+#define _malloc_       __attribute__ ((malloc))
+#define _mustcheck_    __attribute__ ((warn_unused_result))
+#define _nonnull_(...) __attribute__ ((nonnull(__VA_ARGS__)))
 #else
 #define _pure_
 #define _const_
 #define _noreturn_
 #define _malloc_
 #define _mustcheck_
+#define _nonnull_
 #endif
 
 /*! @} */
