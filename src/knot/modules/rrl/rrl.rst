@@ -78,6 +78,10 @@ a response is restricted if a counter would exceed its capacity otherwise.
 The specified rate limit is reached, when the number of queries is the same every millisecond;
 sending many queries once a second or even a larger timespan leads to a more strict limiting.
 
+For example, if the server is able to handle `maximum_qps` queries per second
+and we want at most quarter of it to be consumed by one IPv4 /18 network,
+we can set `rate-limit` to `maximum_qps / (4 * 12288)`.
+
 *Required*
 
 .. _mod-rrl_instant-limit:
