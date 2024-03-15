@@ -77,12 +77,12 @@ void knot_quic_free_creds(struct knot_quic_creds *creds);
  *
  * \return KNOT_E*
  */
-int knot_quic_conn_session(struct gnutls_session_int **session,
-                           struct knot_quic_creds *creds,
-                           const char *priority,
-                           const char *alpn,
-                           bool early_data,
-                           bool server);
+int knot_tls_session(struct gnutls_session_int **session,
+                     struct knot_quic_creds *creds,
+                     const char *priority,
+                     const char *alpn,
+                     bool early_data,
+                     bool server);
 
 /*!
  * \brief Gets local or remote certificate pin.
@@ -94,8 +94,8 @@ int knot_quic_conn_session(struct gnutls_session_int **session,
  * \param pin_size  Input size of the storage / output size of the stored pin.
  * \param local     Local or remote certificate indication.
  */
-void knot_quic_conn_pin2(struct gnutls_session_int *session, uint8_t *pin,
-                         size_t *pin_size, bool local);
+void knot_tls_pin(struct gnutls_session_int *session, uint8_t *pin,
+                  size_t *pin_size, bool local);
 
 /*!
  * \brief Checks remote certificate pin in the session against credentials.
@@ -105,5 +105,5 @@ void knot_quic_conn_pin2(struct gnutls_session_int *session, uint8_t *pin,
  *
  * \return KNOT_EOK or KNOT_EBADCERTKEY
  */
-int knot_quic_conn_pin_check(struct gnutls_session_int *session,
-                             struct knot_quic_creds *creds);
+int knot_tls_pin_check(struct gnutls_session_int *session,
+                       struct knot_quic_creds *creds);

@@ -724,7 +724,7 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		int pin_size = 0;
 		uint8_t bin_pin[KNOT_TLS_PIN_LEN], pin[2 * KNOT_TLS_PIN_LEN];
 		size_t bin_pin_size = sizeof(bin_pin);
-		knot_quic_conn_pin2(qdata->params->tls_session, bin_pin, &bin_pin_size, false);
+		knot_tls_pin(qdata->params->tls_session, bin_pin, &bin_pin_size, false);
 		if (bin_pin_size > 0) {
 			pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin));
 		}

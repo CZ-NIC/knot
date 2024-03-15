@@ -146,8 +146,8 @@ static ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref)
 
 static int tls_init_conn_session(knot_quic_conn_t *conn, bool server)
 {
-	int ret = knot_quic_conn_session(&conn->tls_session, conn->quic_table->creds,
-	                                 QUIC_PRIORITIES, "\x03""doq", true, server);
+	int ret = knot_tls_session(&conn->tls_session, conn->quic_table->creds,
+	                           QUIC_PRIORITIES, "\x03""doq", true, server);
 	if (ret != KNOT_EOK) {
 		return TLS_CALLBACK_ERR;
 	}
@@ -302,7 +302,7 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 	ctx->flags |= KNOT_QUIC_CONN_HANDSHAKE_DONE;
 
 	if (!ngtcp2_conn_is_server(conn)) {
-		return knot_quic_conn_pin_check(ctx->tls_session, ctx->quic_table->creds)
+		return knot_tls_pin_check(ctx->tls_session, ctx->quic_table->creds)
 		       == KNOT_EOK ? 0 : NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 

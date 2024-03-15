@@ -107,8 +107,8 @@ knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd)
 	res->ctx = ctx;
 	res->fd = sock_fd;
 
-	int ret = knot_quic_conn_session(&res->session, ctx->creds, TLS_PRIORITIES,
-	                                 "\x03""dot", false, ctx->server);
+	int ret = knot_tls_session(&res->session, ctx->creds, TLS_PRIORITIES,
+	                           "\x03""dot", false, ctx->server);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
@@ -159,7 +159,7 @@ int knot_tls_handshake(knot_tls_conn_t *conn)
 
 	if (ret == KNOT_EOK) {
 		conn->handshake_done = true;
-		ret = knot_quic_conn_pin_check(conn->session, conn->ctx->creds);
+		ret = knot_tls_pin_check(conn->session, conn->ctx->creds);
 	}
 	return ret;
 }

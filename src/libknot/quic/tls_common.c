@@ -258,12 +258,12 @@ void knot_quic_free_creds(struct knot_quic_creds *creds)
 }
 
 _public_
-int knot_quic_conn_session(struct gnutls_session_int **session,
-                           struct knot_quic_creds *creds,
-                           const char *priority,
-                           const char *alpn,
-                           bool early_data,
-                           bool server)
+int knot_tls_session(struct gnutls_session_int **session,
+                     struct knot_quic_creds *creds,
+                     const char *priority,
+                     const char *alpn,
+                     bool early_data,
+                     bool server)
 {
 	if (session == NULL || creds == NULL || priority == NULL || alpn == NULL) {
 		return KNOT_EINVAL;
@@ -305,7 +305,8 @@ int knot_quic_conn_session(struct gnutls_session_int **session,
 }
 
 _public_
-void knot_quic_conn_pin2(struct gnutls_session_int *session, uint8_t *pin, size_t *pin_size, bool local)
+void knot_tls_pin(struct gnutls_session_int *session, uint8_t *pin,
+                  size_t *pin_size, bool local)
 {
 	if (session == NULL) {
 		goto error;
@@ -353,8 +354,8 @@ error:
 }
 
 _public_
-int knot_quic_conn_pin_check(struct gnutls_session_int *session,
-                             struct knot_quic_creds *creds)
+int knot_tls_pin_check(struct gnutls_session_int *session,
+                       struct knot_quic_creds *creds)
 {
 	if (creds->peer_pin_len == 0) {
 		return KNOT_EOK;
@@ -362,10 +363,11 @@ int knot_quic_conn_pin_check(struct gnutls_session_int *session,
 
 	uint8_t pin[KNOT_TLS_PIN_LEN];
 	size_t pin_size = sizeof(pin);
-	knot_quic_conn_pin2(session, pin, &pin_size, false);
+	knot_tls_pin(session, pin, &pin_size, false);
 	if (pin_size != creds->peer_pin_len ||
 	    const_time_memcmp(pin, creds->peer_pin, pin_size) != 0) {
 		return KNOT_EBADCERTKEY;
 	}
+
 	return KNOT_EOK;
 }

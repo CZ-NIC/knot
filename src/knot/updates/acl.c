@@ -288,7 +288,7 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 
 	uint8_t session_pin[KNOT_TLS_PIN_LEN];
 	size_t session_pin_size = sizeof(session_pin);
-	knot_quic_conn_pin2(tls_session, session_pin, &session_pin_size, false);
+	knot_tls_pin(tls_session, session_pin, &session_pin_size, false);
 
 	bool forward = false;
 	if (action == ACL_ACTION_UPDATE) {
@@ -392,7 +392,7 @@ bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *
 
 	uint8_t session_pin[KNOT_TLS_PIN_LEN];
 	size_t session_pin_size = sizeof(session_pin);
-	knot_quic_conn_pin2(tls_session, session_pin, &session_pin_size, false);
+	knot_tls_pin(tls_session, session_pin, &session_pin_size, false);
 
 	conf_mix_iter_t iter;
 	conf_mix_iter_init(conf, rmts, &iter);
