@@ -47,8 +47,6 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn_stat.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.h
-src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conversion.c
-src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conversion.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.c
@@ -99,10 +97,14 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_rst.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_rst.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_rtb.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_rtb.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_settings.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_settings.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_transport_params.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_transport_params.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_tstamp.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_unreachable.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_unreachable.h

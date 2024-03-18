@@ -151,8 +151,6 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn_stat.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.h \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conversion.c \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conversion.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.c \
@@ -203,10 +201,14 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rst.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rtb.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rtb.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_settings.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_settings.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_str.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_strm.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_transport_params.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_transport_params.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_tstamp.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_unreachable.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_unreachable.h \
