@@ -62,25 +62,20 @@ A module identifier.
 rate-limit
 ..........
 
-Maximal allowed number of queries per second from a single IPv6 address;
-the limit for an IPv4 address is 16x higher.
+Maximal allowed number of queries per second from a single IPv6 or IPv4 address.
 
 Rate limiting is performed for the whole address and several chosen prefixes.
 The limits of prefixes are constant multiples of `rate-limit`.
 
-The specific prefixes and multipliers are
-for IPv6 /128: 1, /64: 4, /56: 16, /48: 64, /32: 1024;
-for IPv4 /32: 16, /24: 512, /20: 4096, /18: 12288.
+The specific prefixes and multipliers, which might be adjusted in the future, are
+for IPv6 /128: 1, /64: 2, /56: 3, /48: 4, /32: 64;
+for IPv4 /32: 1, /24: 32, /20: 256, /18: 768.
 
 With each host/network, a counter of unrestricted responses is associated
 and it is lowered by a constant fraction of its value each millisecond;
 a response is restricted if a counter would exceed its capacity otherwise.
 The specified rate limit is reached, when the number of queries is the same every millisecond;
 sending many queries once a second or even a larger timespan leads to a more strict limiting.
-
-For example, if the server is able to handle `maximum_qps` queries per second
-and we want at most quarter of it to be consumed by one IPv4 /18 network,
-we can set `rate-limit` to `maximum_qps / (4 * 12288)`.
 
 *Required*
 

@@ -29,11 +29,11 @@
 /* CIDR block prefix lengths for v4/v6 */
 // Hardcoded also in unit tests.
 
-#define RRL_V4_PREFIXES  (uint8_t[])       {    18,   20,  24,  32}
-#define RRL_V4_RATE_MULT (kru_price_t[])   { 12288, 4096, 512,  16}
+#define RRL_V4_PREFIXES  (uint8_t[])       {  18,  20, 24, 32 }
+#define RRL_V4_RATE_MULT (kru_price_t[])   { 768, 256, 32,  1 }
 
-#define RRL_V6_PREFIXES  (uint8_t[])       {    32,   48,  56,  64,  128}
-#define RRL_V6_RATE_MULT (kru_price_t[])   {  1024,   64,  16,   4,    1}
+#define RRL_V6_PREFIXES  (uint8_t[])       { 32, 48, 56, 64, 128 }
+#define RRL_V6_RATE_MULT (kru_price_t[])   { 64,  4,  3,  2,   1 }
 
 #define RRL_V4_PREFIXES_CNT (sizeof(RRL_V4_PREFIXES) / sizeof(*RRL_V4_PREFIXES))
 #define RRL_V6_PREFIXES_CNT (sizeof(RRL_V6_PREFIXES) / sizeof(*RRL_V6_PREFIXES))

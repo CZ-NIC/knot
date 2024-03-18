@@ -33,8 +33,8 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 
 
 #define RRL_TABLE_SIZE     (1 << 20)
-#define RRL_INSTANT_LIMIT  (1 << 4)
-#define RRL_RATE_LIMIT     (1 << 13)
+#define RRL_INSTANT_LIMIT  (1 << 8)
+#define RRL_RATE_LIMIT     (1 << 17)
 #define RRL_BASE_PRICE     (KRU_LIMIT / RRL_INSTANT_LIMIT)
 
 #define RRL_THREADS 8
@@ -247,7 +247,7 @@ void test_rrl(void) {
 	count_test("IPv4 instant limit /24 not applied on /23", -1, 0,
 			AF_INET, "128.0.1.0", 0, 0);
 
-	count_test("IPv4 instant limit /20", INST(V4, 20) - INST(V4, 24) - 1, 0.01,
+	count_test("IPv4 instant limit /20", INST(V4, 20) - INST(V4, 24) - 1, 0.001,
 			AF_INET, "128.0.%d.%d", 2, 15);
 
 	count_test("IPv4 instant limit /20 not applied on /19", -1, 0,
@@ -282,13 +282,13 @@ void test_rrl(void) {
 	count_test("IPv6 instant limit /56 not applied on /55", -1, 0,
 			AF_INET6, "8000:0:0:0100::", 0, 0);
 
-	count_test("IPv6 instant limit /48", INST(V6, 48) - INST(V6, 56) - 1, 0,
+	count_test("IPv6 instant limit /48", INST(V6, 48) - INST(V6, 56) - 1, 0.01,
 			AF_INET6, "8000:0:0:%02x%02x::", 0x02, 0xff);
 
 	count_test("IPv6 instant limit /48 not applied on /47", -1, 0,
 			AF_INET6, "8000:0:1::", 0, 0);
 
-	count_test("IPv6 instant limit /32", INST(V6, 32) - INST(V6, 48) - 1, 0,
+	count_test("IPv6 instant limit /32", INST(V6, 32) - INST(V6, 48) - 1, 0.001,
 			AF_INET6, "8000:0:%02x%02x::", 0x02, 0xff);
 
 	count_test("IPv6 instant limit /32 not applied on /31", -1, 0,

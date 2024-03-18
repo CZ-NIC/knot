@@ -77,7 +77,7 @@ def lin_decay(sub, max_ticks=math.inf):
 
 
 PREFIXES  = ["v6/128", "v6/64", "v6/56", "v6/48", "v6/32", "v4/32", "v4/24", "v4/20", "v4/18"]
-RATE_MULT = [       1,       4,      16,      64,    1024,      16,     512,    4096,   12288]
+RATE_MULT = [       1,       2,       3,       4,      64,       1,      32,     256,     768]
 
 def prefixes(bits, base_qps, decay_funcs):
 	if type(decay_funcs) is not list: decay_funcs = [decay_funcs] * len(PREFIXES)
