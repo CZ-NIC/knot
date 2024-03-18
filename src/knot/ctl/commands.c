@@ -1682,6 +1682,11 @@ int dump_ctr(stats_dump_params_t *params, stats_dump_ctx_t *ctx)
 	}
 
 	char value[32];
+	int ret = snprintf(value, sizeof(value), "%"PRIu64, params->value);
+	if (ret <= 0 || ret >= sizeof(value)) {
+		return KNOT_ESPACE;
+	}
+
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_SECTION] = params->section,
 		[KNOT_CTL_IDX_ITEM] = params->item,
@@ -1692,11 +1697,6 @@ int dump_ctr(stats_dump_params_t *params, stats_dump_ctx_t *ctx)
 
 	knot_ctl_type_t type = (params->value_pos == 0) ?
 	                       KNOT_CTL_TYPE_DATA : KNOT_CTL_TYPE_EXTRA;
-
-	int ret = snprintf(value, sizeof(value), "%"PRIu64, params->value);
-	if (ret <= 0 || ret >= sizeof(value)) {
-		return KNOT_ESPACE;
-	}
 
 	return knot_ctl_send(args->ctl, type, &data);
 }
