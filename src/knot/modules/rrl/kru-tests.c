@@ -101,7 +101,7 @@ void test_stage(struct test_ctx *ctx, uint32_t dur) {
 
 	for (uint64_t end_time = ctx->time + dur; ctx->time < end_time; ctx->time++) {
 		for (uint64_t i = 0; i < freq_bounds[ctx->cnt-1]; i++) {
-			uint64_t rnd = random() % freq_bounds[ctx->cnt-1];  // TODO initialize random generator
+			uint64_t rnd = random() % freq_bounds[ctx->cnt-1];  // uses fixed seed
 			size_t cat;
 			for (cat = 0; freq_bounds[cat] <= rnd; cat++);
 

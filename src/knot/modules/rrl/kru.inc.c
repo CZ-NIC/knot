@@ -1,7 +1,20 @@
-/** @file
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
-FIXME: clean up.  Lots of comments in the file are wrong now, etc.
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/*
 KRU estimates recently pricey inputs
 
 Authors of the simple agorithm (without aging, multi-choice, etc.):
@@ -18,16 +31,7 @@ To give more weight to recent usage, we use aging via exponential decay (simple 
 That has applications for garbage collection of cache and various limiting scenario
 (excessive rate, traffic, CPU, maybe RAM).
 
-
 ### Choosing parameters
-
-For limiting, `time` is probably in milliseconds from kr_now().
-In case of DECAY_32, we get at most 1404 per tick which gives 1.4M per second.
-Say, if we want p QPS, we add `1.4M / p` for each query.
-
-Tick length (`ticklen_log`) will need to be chosen the same for all users of a given table.
-Smaller resolvers might choose more than a single millisecond to get longer half-life
-and also to get capability of setting lower limits.
 
 Size (`loads_bits` = log2 length):
  - The KRU takes 64 bytes * length * TABLE_COUNT + some small constants.
@@ -35,6 +39,7 @@ Size (`loads_bits` = log2 length):
  - The length should probably be at least something like the square of the number of utilized CPUs.
    But this most likely won't be a limiting factor.
 */
+
 #include <stdlib.h>
 #include <assert.h>
 #include <stdatomic.h>
@@ -65,17 +70,16 @@ inline static uint64_t rand_bits(unsigned int bits) {
 
 #include "knot/modules/rrl/kru-decay.inc.c"
 
-
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
 typedef uint64_t hash_t;
 #if USE_AES
-	/// 4-8 rounds should be an OK choice, most likely.  TODO: confirm
+	/// 4-8 rounds should be an OK choice, most likely.
 	#define AES_ROUNDS 4
 #else
 	#include "contrib/openbsd/siphash.h"
 
-	/// 1,3 should be OK choice, probably.  TODO: confirm
+	/// 1,3 should be OK choice, probably.
 	enum {
 		SIPHASH_RC = 1,
 		SIPHASH_RF = 3,
@@ -86,7 +90,6 @@ typedef uint64_t hash_t;
 	#include <immintrin.h>
 	#include <x86intrin.h>
 #endif
-
 
 struct kru {
 #if USE_AES
@@ -132,7 +135,6 @@ static size_t kru_get_size(int capacity_log)
 	return offsetof(struct kru, load_cls)
 		    + sizeof(struct load_cl) * TABLE_COUNT * (1 << loads_bits);
 }
-
 
 static bool kru_initialize(struct kru *kru, int capacity_log, kru_price_t max_decay)
 {
@@ -410,7 +412,6 @@ static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
 		if (load_orig >= limit)
 			return true;
 	} while (!atomic_compare_exchange_weak_explicit(load_at, &load_orig, load_orig + price, memory_order_relaxed, memory_order_relaxed));
-		// TODO: check correctness under memory_order_relaxed
 	return false;
 }
 
@@ -456,7 +457,8 @@ static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, uin
 	return ret;
 }
 
-static uint8_t kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt)
+static uint8_t kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint8_t namespace,
+                                           uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt)
 {
 	struct query_ctx ctx[queries_cnt];
 

@@ -379,19 +379,6 @@ int main(int argc, char *argv[])
 
 	dnssec_crypto_init();
 
-	/* 1. Endian-independent hash input buffer. */
-	// TODO fix the expected outcomes; they differ as qname is now not considered
-#if 0
-	uint8_t buf[RRL_CLSBLK_MAXLEN];
-	// CLS_LARGE + remote + dname wire.
-	uint8_t expectedv4[] = "\x10\x01\x02\x03\x00\x00\x00\x00\x00\x04""beef";
-	rrl_classify(buf, sizeof(buf), &addr, &rq, qname);
-	is_int(0, memcmp(buf, expectedv4, sizeof(expectedv4)), "rrl: IPv4 hash input buffer");
-	uint8_t expectedv6[] = "\x10\x11\x22\x33\x44\x55\x66\x77\x00\x04""beef";
-	rrl_classify(buf, sizeof(buf), &addr6, &rq, qname);
-	is_int(0, memcmp(buf, expectedv6, sizeof(expectedv6)), "rrl: IPv6 hash input buffer");
-#endif
-
 	assert(KRU_GENERIC.initialize != KRU_AVX2.initialize);
 	bool test_avx2 = (KRU.initialize == KRU_AVX2.initialize);
 

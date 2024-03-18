@@ -43,7 +43,7 @@ int rrl_conf_check(knotd_conf_check_args_t *args)
 		args->err_str = "no rate limit specified";
 		return KNOT_EINVAL;
 	}
-	if (rate_limit.single.integer > 1000ll * instant_limit.single.integer) {  // TODO keep or ignore?
+	if (rate_limit.single.integer > 1000ll * instant_limit.single.integer) {
 		args->err_str = "rate limit per msec is higher than instant limit";
 		return KNOT_EINVAL;
 	}
