@@ -1683,7 +1683,9 @@ int dump_ctr(stats_dump_params_t *params, stats_dump_ctx_t *ctx)
 
 	char value[32];
 	int ret = snprintf(value, sizeof(value), "%"PRIu64, params->value);
-	if (ret <= 0 || ret >= sizeof(value)) {
+	if (ret <= 0) {
+		return KNOT_ERROR;
+	} else if (ret >= sizeof(value)) {
 		return KNOT_ESPACE;
 	}
 
