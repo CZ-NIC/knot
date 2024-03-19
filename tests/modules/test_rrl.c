@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,11 +15,15 @@
  */
 
 #include <tap/basic.h>
+#include <pthread.h>
 #include <sched.h>
+#include <stdio.h>
+#include <stdatomic.h>
 
 #include "libdnssec/crypto.h"
 #include "libdnssec/random.h"
 #include "libknot/libknot.h"
+#include "contrib/openbsd/siphash.h"
 #include "contrib/sockaddr.h"
 
 #include "time.h"
@@ -27,10 +31,6 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #define clock_gettime fakeclock_gettime
 #include "knot/modules/rrl/functions.c"
 #undef clock_gettime
-
-#include <stdio.h>
-#include <stdatomic.h>
-
 
 #define RRL_TABLE_SIZE     (1 << 20)
 #define RRL_INSTANT_LIMIT  (1 << 8)
@@ -43,7 +43,6 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #define BATCH_QUERIES_LOG  3   // threads acquire queries in batches of 8
 #define HOSTS_LOG          3   // at most 6 attackers + 2 wildcard addresses for normal users
 #define TICK_QUERIES_LOG  13   // at most 1024 queries per host per tick
-
 
 // Accessing RRL configuration of INSTANT/RATE limits for V4/V6 and specific prefix.
 #define LIMIT(type, Vx, prefix) (RRL_MULT(Vx, prefix) * RRL_ ## type ## _LIMIT)
@@ -80,16 +79,18 @@ struct kru_avx2 {
 	// ...
 };
 
-
 /* Override time in RRL module. */
 struct timespec fakeclock_start;
 uint32_t fakeclock_tick = 0;
 
-void fakeclock_init(void) {
+void fakeclock_init(void)
+{
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &fakeclock_start);
 	fakeclock_tick = 0;
 }
-int fakeclock_gettime(clockid_t clockid, struct timespec *tp) {
+
+int fakeclock_gettime(clockid_t clockid, struct timespec *tp)
+{
 	uint32_t inc_msec = fakeclock_tick;
 	tp->tv_sec = fakeclock_start.tv_sec + (fakeclock_start.tv_nsec / 1000000 + inc_msec) / 1000;
 	tp->tv_nsec = (fakeclock_start.tv_nsec + (inc_msec % 1000) * 1000000) % 1000000000;
@@ -109,18 +110,14 @@ struct stage {
 	struct host hosts[1 << HOSTS_LOG];
 };
 
-
-/*! \brief Unit runnable. */
 struct runnable_data {
 	rrl_table_t *rrl;
-	rrl_req_t *rq;
-	knot_dname_t *zone;
 	int prime;
 	_Atomic uint32_t *queries_acquired, *queries_done;
 	struct stage *stages;
 };
 
-static void* rrl_runnable(void *arg)
+static void *rrl_runnable(void *arg)
 {
 	struct runnable_data *d = (struct runnable_data *)arg;
 	size_t si = 0;
@@ -153,7 +150,8 @@ static void* rrl_runnable(void *arg)
 			do {
 				fakeclock_gettime(CLOCK_MONOTONIC_COARSE, &ts_fake);
 				clock_gettime(CLOCK_MONOTONIC_COARSE, &ts_real);
-			} while (!((ts_real.tv_sec > ts_fake.tv_sec) || ((ts_real.tv_sec == ts_fake.tv_sec) && (ts_real.tv_nsec >= ts_fake.tv_nsec))));
+			} while (!((ts_real.tv_sec > ts_fake.tv_sec) ||
+				   ((ts_real.tv_sec == ts_fake.tv_sec) && (ts_real.tv_nsec >= ts_fake.tv_nsec))));
 		}
 #endif
 
@@ -168,10 +166,11 @@ static void* rrl_runnable(void *arg)
 				uint32_t hqi = (qi % (1 << TICK_QUERIES_LOG)) >> HOSTS_LOG;  // host query index within tick
 				if (hqi >= d->stages[si].hosts[hi].queries_per_tick) continue;
 				hqi += (qi >> TICK_QUERIES_LOG) * d->stages[si].hosts[hi].queries_per_tick;  // across ticks
-				snprintf(addr_str, sizeof(addr_str), d->stages[si].hosts[hi].addr_format, hqi % 0xff, (hqi >> 8) % 0xff, (hqi >> 16) % 0xff);
+				snprintf(addr_str, sizeof(addr_str), d->stages[si].hosts[hi].addr_format,
+				         hqi % 0xff, (hqi >> 8) % 0xff, (hqi >> 16) % 0xff);
 				sockaddr_set(&addr, d->stages[si].hosts[hi].addr_family, addr_str, 0);
 
-				if (rrl_query(d->rrl, &addr, d->rq, d->zone, NULL) == KNOT_EOK) {
+				if (rrl_query(d->rrl, &addr, NULL) == KNOT_EOK) {
 					atomic_fetch_add(&d->stages[si].hosts[hi].passed, 1);
 				}
 
@@ -185,11 +184,11 @@ char *impl_name = "";
 rrl_table_t *rrl = NULL;
 
 void count_test(char *desc, int expected_passing, double margin_fract,
-		int addr_family, char *addr_format, uint32_t min_value, uint32_t max_value) {
+		int addr_family, char *addr_format, uint32_t min_value, uint32_t max_value)
+{
 	uint32_t max_queries = expected_passing > 0 ? 2 * expected_passing : -expected_passing;
 	struct sockaddr_storage addr;
 	char addr_str[40];
-	rrl_req_t rq = {0,};
 	int cnt = -1;
 
 	for (size_t i = 0; i < max_queries; i++) {
@@ -197,7 +196,7 @@ void count_test(char *desc, int expected_passing, double margin_fract,
 				i % (max_value - min_value + 1) + min_value,
 				i / (max_value - min_value + 1) % 256);
 		sockaddr_set(&addr, addr_family, addr_str, 0);
-		if (rrl_query(rrl, &addr, &rq, NULL, NULL) != KNOT_EOK) {
+		if (rrl_query(rrl, &addr, NULL) != KNOT_EOK) {
 			cnt = i;
 			break;
 		}
@@ -208,18 +207,20 @@ void count_test(char *desc, int expected_passing, double margin_fract,
 		is_int(expected_passing, cnt, "rrl(%s): %-48s [%7d ]", impl_name, desc, expected_passing);
 	} else {
 		int max_diff = expected_passing * margin_fract;
-		ok((expected_passing - max_diff <= cnt) && (cnt <= expected_passing + max_diff), \
-			"rrl(%s): %-48s [%7d    <=%7d      <=%7d    ]", impl_name, desc, expected_passing - max_diff, cnt, expected_passing + max_diff);
+		ok((expected_passing - max_diff <= cnt) && (cnt <= expected_passing + max_diff),
+			"rrl(%s): %-48s [%7d    <=%7d      <=%7d    ]", impl_name, desc,
+			expected_passing - max_diff, cnt, expected_passing + max_diff);
 	}
 }
 
-void test_rrl(void) {
-
+void test_rrl(void)
+{
 	fakeclock_init();
 
 	/* create rrl table */
 	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, 0);
 	ok(rrl != NULL, "rrl(%s): create", impl_name);
+	assert(rrl);
 
 	if (KRU.initialize == KRU_GENERIC.initialize) {
 		struct kru_generic *kru = (struct kru_generic *) rrl->kru;
@@ -258,7 +259,6 @@ void test_rrl(void) {
 
 	count_test("IPv4 instant limit /18 not applied on /17", -1, 0,
 			AF_INET, "128.0.64.0", 0, 0);
-
 
 	/* IPv6 multi-prefix tests */
 	static_assert(RRL_V6_PREFIXES_CNT == 5,
@@ -303,7 +303,6 @@ void test_rrl(void) {
 	count_test("IPv6 rate limit /128 after 1 msec", RATEM(V6, 128), 0,
 			AF_INET6, "8000::", 0, 0);
 
-
 	/* parallel tests */
 	struct stage stages[] = {
 		/* first tick, last tick, hosts */
@@ -345,15 +344,12 @@ void test_rrl(void) {
 	int primes[] = {3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61};
 	assert(sizeof(primes)/sizeof(*primes) >= RRL_THREADS);
 
-	rrl_req_t rq = {0,};
 	for (unsigned i = 0; i < RRL_THREADS; ++i) {
 		rd[i].rrl = rrl;
 		rd[i].queries_acquired = &queries_acquired;
 		rd[i].queries_done = &queries_done;
 		rd[i].prime = primes[i];
 		rd[i].stages = stages;
-		rd[i].zone = NULL;
-		rd[i].rq = &rq;
 		pthread_create(thr + i, NULL, &rrl_runnable, rd + i);
 	}
 	for (unsigned i = 0; i < RRL_THREADS; ++i) {
@@ -366,7 +362,8 @@ void test_rrl(void) {
 		uint32_t ticks = stages[si].last_tick - stages[si].first_tick + 1;
 		for (size_t i = 0; h[i].queries_per_tick; i++) {
 			ok( h[i].min_passed * ticks <= h[i].passed && h[i].passed <= h[i].max_passed * ticks,
-				"rrl(%s): parallel stage %d, addr %-25s [%10.2f <=%12.4f <=%10.2f ]", impl_name, si, h[i].addr_format, h[i].min_passed, (double)h[i].passed / ticks, h[i].max_passed);
+				"rrl(%s): parallel stage %d, addr %-25s [%10.2f <=%12.4f <=%10.2f ]", impl_name,
+				si, h[i].addr_format, h[i].min_passed, (double)h[i].passed / ticks, h[i].max_passed);
 		}
 	} while (stages[++si].first_tick);
 

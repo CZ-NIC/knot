@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,16 +14,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
-#include <time.h>
 #include <stdatomic.h>
+#include <time.h>
 
 #include "knot/modules/rrl/functions.h"
+#include "knot/modules/rrl/kru.h"
 #include "contrib/musl/inet_ntop.h"
-#include "contrib/openbsd/strlcat.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
-#include "libdnssec/error.h"
 #include "libdnssec/random.h"
 
 /* CIDR block prefix lengths for v4/v6 */
@@ -39,6 +37,10 @@
 #define RRL_V6_PREFIXES_CNT (sizeof(RRL_V6_PREFIXES) / sizeof(*RRL_V6_PREFIXES))
 #define RRL_MAX_PREFIXES_CNT ((RRL_V4_PREFIXES_CNT > RRL_V6_PREFIXES_CNT) ? RRL_V4_PREFIXES_CNT : RRL_V6_PREFIXES_CNT)
 
+#ifndef CLOCK_MONOTONIC_COARSE
+#define CLOCK_MONOTONIC_COARSE CLOCK_MONOTONIC
+#endif
+
 struct rrl_table {
 	kru_price_t v4_prices[RRL_V4_PREFIXES_CNT];
 	kru_price_t v6_prices[RRL_V6_PREFIXES_CNT];
@@ -49,6 +51,8 @@ struct rrl_table {
 
 static void addr_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss)
 {
+	assert(ss);
+
 	const void *addr;
 
 	if (ss->ss_family == AF_INET6) {
@@ -64,7 +68,7 @@ static void addr_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *
 
 static void rrl_log_limited(knotd_mod_t *mod, const struct sockaddr_storage *ss, const uint8_t prefix)
 {
-	if (mod == NULL || ss == NULL) {
+	if (mod == NULL) {
 		return;
 	}
 
@@ -76,6 +80,10 @@ static void rrl_log_limited(knotd_mod_t *mod, const struct sockaddr_storage *ss,
 
 rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit, uint32_t log_period)
 {
+	if (size == 0 || instant_limit == 0 || rate_limit == 0) {
+		return NULL;
+	}
+
 	size--;
 	size_t capacity_log = 1;
 	while (size >>= 1) capacity_log++;
@@ -104,20 +112,17 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit
 
 	rrl->log_period = log_period;
 
-	{
-		struct timespec now_ts = {0};
-		clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
-		uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
-		rrl->log_time = now - log_period;
-	}
+	struct timespec now_ts = {0};
+	clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
+	uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
+	rrl->log_time = now - log_period;
 
 	return rrl;
 }
 
-int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
-              rrl_req_t *req, const knot_dname_t *zone, knotd_mod_t *mod)
+int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, knotd_mod_t *mod)
 {
-	if (!rrl || !req || !remote) {
+	if (rrl == NULL || remote == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -144,7 +149,8 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote,
 	uint32_t log_time_orig = atomic_load_explicit(&rrl->log_time, memory_order_relaxed);
 	if (rrl->log_period && limited_prefix && (now - log_time_orig + 1024 >= rrl->log_period + 1024)) {
 		do {
-			if (atomic_compare_exchange_weak_explicit(&rrl->log_time, &log_time_orig, now, memory_order_relaxed, memory_order_relaxed)) {
+			if (atomic_compare_exchange_weak_explicit(&rrl->log_time, &log_time_orig, now,
+			                                          memory_order_relaxed, memory_order_relaxed)) {
 				rrl_log_limited(mod, remote, limited_prefix);
 				break;
 			}

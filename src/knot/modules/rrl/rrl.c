@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,11 +15,10 @@
  */
 
 #include "knot/include/module.h"
-#include "knot/nameserver/process_query.h" // Dependency on qdata->extra!
 #include "knot/modules/rrl/functions.h"
 
 #define MOD_RATE_LIMIT		"\x0A""rate-limit"
-#define MOD_INSTANT_LIMIT		"\x0D""instant-limit"
+#define MOD_INSTANT_LIMIT	"\x0D""instant-limit"
 #define MOD_SLIP		"\x04""slip"
 #define MOD_TBL_SIZE		"\x0A""table-size"
 #define MOD_WHITELIST		"\x09""whitelist"
@@ -44,7 +43,7 @@ int rrl_conf_check(knotd_conf_check_args_t *args)
 		return KNOT_EINVAL;
 	}
 	if (rate_limit.single.integer > 1000ll * instant_limit.single.integer) {
-		args->err_str = "rate limit per msec is higher than instant limit";
+		args->err_str = "rate limit per millisecond is higher than instant limit";
 		return KNOT_EINVAL;
 	}
 
@@ -56,32 +55,6 @@ typedef struct {
 	int slip;
 	knotd_conf_t whitelist;
 } rrl_ctx_t;
-
-static const knot_dname_t *name_from_rrsig(const knot_rrset_t *rr)
-{
-	if (rr == NULL) {
-		return NULL;
-	}
-	if (rr->type != KNOT_RRTYPE_RRSIG) {
-		return NULL;
-	}
-
-	// This is a signature.
-	return knot_rrsig_signer_name(rr->rrs.rdata);
-}
-
-static const knot_dname_t *name_from_authrr(const knot_rrset_t *rr)
-{
-	if (rr == NULL) {
-		return NULL;
-	}
-	if (rr->type != KNOT_RRTYPE_NS && rr->type != KNOT_RRTYPE_SOA) {
-		return NULL;
-	}
-
-	// This is a valid authority RR.
-	return rr->owner;
-}
 
 static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
@@ -105,41 +78,7 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
-	rrl_req_t req = {
-		.wire = pkt->wire,
-		.query = qdata->query
-	};
-
-	if (!EMPTY_LIST(qdata->extra->wildcards)) {
-		req.flags = RRL_REQ_WILDCARD;
-	}
-
-	// Take the zone name if known.
-	const knot_dname_t *zone_name = knotd_qdata_zone_name(qdata);
-
-	// Take the signer name as zone name if there is an RRSIG.
-	if (zone_name == NULL) {
-		const knot_pktsection_t *ans = knot_pkt_section(pkt, KNOT_ANSWER);
-		for (int i = 0; i < ans->count; i++) {
-			zone_name = name_from_rrsig(knot_pkt_rr(ans, i));
-			if (zone_name != NULL) {
-				break;
-			}
-		}
-	}
-
-	// Take the NS or SOA owner name if there is no RRSIG.
-	if (zone_name == NULL) {
-		const knot_pktsection_t *auth = knot_pkt_section(pkt, KNOT_AUTHORITY);
-		for (int i = 0; i < auth->count; i++) {
-			zone_name = name_from_authrr(knot_pkt_rr(auth, i));
-			if (zone_name != NULL) {
-				break;
-			}
-		}
-	}
-
-	if (rrl_query(ctx->rrl, knotd_qdata_remote_addr(qdata), &req, zone_name, mod) == KNOT_EOK) {
+	if (rrl_query(ctx->rrl, knotd_qdata_remote_addr(qdata), mod) == KNOT_EOK) {
 		// Rate limiting not applied.
 		return state;
 	}
@@ -166,13 +105,11 @@ static void ctx_free(rrl_ctx_t *ctx)
 
 int rrl_load(knotd_mod_t *mod)
 {
-	// Create RRL context.
 	rrl_ctx_t *ctx = calloc(1, sizeof(rrl_ctx_t));
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	// Create table.
 	uint32_t instant_limit = knotd_conf_mod(mod, MOD_INSTANT_LIMIT).single.integer;
 	uint32_t rate_limit = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
 	size_t size = knotd_conf_mod(mod, MOD_TBL_SIZE).single.integer;
@@ -183,19 +120,14 @@ int rrl_load(knotd_mod_t *mod)
 		return KNOT_ENOMEM;
 	}
 
-	// Get slip.
 	ctx->slip = knotd_conf_mod(mod, MOD_SLIP).single.integer;
-
-	// Get whitelist.
 	ctx->whitelist = knotd_conf_mod(mod, MOD_WHITELIST);
 
-	// Set up statistics counters.
 	int ret = knotd_mod_stats_add(mod, "slipped", 1, NULL);
 	if (ret != KNOT_EOK) {
 		ctx_free(ctx);
 		return ret;
 	}
-
 	ret = knotd_mod_stats_add(mod, "dropped", 1, NULL);
 	if (ret != KNOT_EOK) {
 		ctx_free(ctx);
@@ -204,7 +136,7 @@ int rrl_load(knotd_mod_t *mod)
 
 	knotd_mod_ctx_set(mod, ctx);
 
-	return knotd_mod_hook(mod, KNOTD_STAGE_END, ratelimit_apply);
+	return knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, ratelimit_apply);
 }
 
 void rrl_unload(knotd_mod_t *mod)

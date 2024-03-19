@@ -4,6 +4,8 @@ knot_modules_rrl_la_SOURCES = knot/modules/rrl/rrl.c \
                               knot/modules/rrl/kru-generic.c \
                               knot/modules/rrl/kru-avx2.c \
                               knot/modules/rrl/kru.h
+noinst_HEADERS =              knot/modules/rrl/kru-decay.inc.c \
+                              knot/modules/rrl/kru.inc.c
 EXTRA_DIST +=                 knot/modules/rrl/rrl.rst
 
 if STATIC_MODULE_rrl
