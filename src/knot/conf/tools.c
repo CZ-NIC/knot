@@ -951,13 +951,42 @@ int check_template(
 
 #define CHECK_CATZ_TPL(option, option_string) \
 { \
-	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
-	                                    C_TPL, option, catalog_tpl.data, \
-	                                    catalog_tpl.len); \
+	val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
+	                         C_TPL, option, tpl->data, tpl->len); \
 	if (val.code == KNOT_EOK) { \
-		args->err_str = "'" option_string "' in a catalog template"; \
+		args->err_str = "'" option_string "' not compatible with the role"; \
 		return KNOT_EINVAL; \
 	} \
+}
+
+static int sub_check_catalog_tpl(
+	knotd_conf_check_args_t *args,
+	conf_val_t *tpl)
+{
+	conf_val_t val = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
+	                                    C_TPL, C_CATALOG_ROLE, tpl->data, tpl->len);
+	switch (conf_opt(&val)) {
+	case CATALOG_ROLE_MEMBER:
+		val = conf_rawid_get_txn(args->extra->conf, args->extra->txn,
+		                         C_TPL, C_CATALOG_ZONE, tpl->data, tpl->len);
+		if (val.code != KNOT_EOK) {
+			args->err_str = "no catalog zone defined";
+			return KNOT_EINVAL;
+		}
+		CHECK_CATZ_TPL(C_CATALOG_TPL, "catalog-template");
+		return KNOT_EOK;
+	case CATALOG_ROLE_INTERPRET:
+		args->err_str = "catalog role interpret in a catalog template";
+		return KNOT_EINVAL;
+	case CATALOG_ROLE_GENERATE:
+		args->err_str = "catalog role generate in a catalog template";
+		return KNOT_EINVAL;
+	default:
+		CHECK_CATZ_TPL(C_CATALOG_TPL,   "catalog-template");
+		CHECK_CATZ_TPL(C_CATALOG_ZONE,  "catalog-zone");
+		CHECK_CATZ_TPL(C_CATALOG_GROUP, "catalog-group");
+		return KNOT_EOK;
+	}
 }
 
 int check_zone(
@@ -1045,10 +1074,9 @@ int check_zone(
 	if (role == CATALOG_ROLE_INTERPRET) {
 		conf_val(&catalog_tpl);
 		while (catalog_tpl.code == KNOT_EOK) {
-			CHECK_CATZ_TPL(C_CATALOG_TPL,   "catalog-template");
-			CHECK_CATZ_TPL(C_CATALOG_ROLE,  "catalog-role");
-			CHECK_CATZ_TPL(C_CATALOG_ZONE,  "catalog-zone");
-			CHECK_CATZ_TPL(C_CATALOG_GROUP, "catalog-group");
+			if (sub_check_catalog_tpl(args, &catalog_tpl) != KNOT_EOK) {
+				return KNOT_EINVAL;
+			}
 			conf_val_next(&catalog_tpl);
 		}
 	}
