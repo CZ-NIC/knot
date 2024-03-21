@@ -73,7 +73,8 @@ struct kru_api {
 
 	/// Multiple queries based on different prefixes of a single key.
 	/// Returns a prefix (value in prefixes) on which the key is blocked, or zero if all queries passed.
-	/// Updates KRU only if no query is blocked.
+	/// Updates KRU only if no query is blocked, unless a race condition occurs --
+	/// in such a case all longer prefixes might have been updated.
 	/// The key of i-th query consists of prefixes[i] bits of key, prefixes[i], and namespace.
 	uint8_t (*limited_multi_prefix_or)(struct kru *kru, uint32_t time_now,
 			uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt);

@@ -471,13 +471,12 @@ static uint8_t kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, u
 			return prefixes[i];
 	}
 
-	uint8_t prefix = 0;
-	for (size_t i = 0; i < queries_cnt; i++) {
-		bool ret = kru_limited_update(kru, ctx + i);
-		prefix = (ret ? prefixes[i] : prefix);
+	for (int i = queries_cnt - 1; i >= 0; i--) {
+		if (kru_limited_update(kru, ctx + i))
+			return prefixes[i];
 	}
 
-	return prefix;
+	return 0;
 }
 
 /// Update limiting and return true iff it hit the limit instead.
