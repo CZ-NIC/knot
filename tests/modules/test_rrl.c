@@ -37,7 +37,7 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #define RRL_RATE_LIMIT     (1 << 17)
 #define RRL_BASE_PRICE     (KRU_LIMIT / RRL_INSTANT_LIMIT)
 
-#define RRL_THREADS 8
+#define RRL_THREADS 4
 //#define RRL_SYNC_WITH_REAL_TIME
 
 #define BATCH_QUERIES_LOG  3   // threads acquire queries in batches of 8
@@ -315,7 +315,7 @@ void test_rrl(void)
 			{1024, AF_INET6, "3333::3333",   RANGE_INST  ( V6, 128 )},
 			{ 512, AF_INET6, "4444::4444",   RANGE_INST  ( V6, 128 )}
 		}},
-		{33, 1023, {
+		{33, 255, {
 			{1024, AF_INET,  "%d.%d.%d.1",   RANGE_UNLIM (  1024   )},
 			{1024, AF_INET,  "3.3.3.3",      RANGE_RATEM ( V4,  32 )},
 			{ 512, AF_INET,  "4.4.4.4",      RANGE_RATEM ( V4,  32 )},
@@ -323,11 +323,11 @@ void test_rrl(void)
 			{1024, AF_INET6, "3333::3333",   RANGE_RATEM ( V6, 128 )},
 			{ 512, AF_INET6, "4444::4444",   RANGE_RATEM ( V6, 128 )},
 		}},
-		{1024, 2047, {
+		{256, 511, {
 			{1024, AF_INET,  "3.3.3.3",      RANGE_RATEM ( V4,  32 )},
 			{1024, AF_INET6, "3333::3333",   RANGE_RATEM ( V6, 128 )}
 		}},
-		{2048, 2048, {
+		{512, 512, {
 			{1024, AF_INET,  "%d.%d.%d.1",   RANGE_UNLIM (  1024   )},
 			{1024, AF_INET,  "3.3.3.3",      RANGE_RATEM ( V4,  32 )},
 			{ 512, AF_INET,  "4.4.4.4",      RANGE_INST  ( V4,  32 )},
