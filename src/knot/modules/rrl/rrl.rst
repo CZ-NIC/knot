@@ -49,6 +49,7 @@ Module reference
      slip: INT
      whitelist: ADDR[/INT] | ADDR-ADDR | STR ...
      log-period: INT
+     dry-run: BOOL
 
 .. _mod-rrl_id:
 
@@ -179,3 +180,13 @@ As long as limiting is needed, one source is logged each period
 and sources with more blocked queries have greater probability to be chosen.
 
 *Default:* ``0`` (disabled)
+
+.. _mod-rrl_dry-run:
+
+dry-run
+.......
+
+If enabled, the module doesn't alter any response. Only query classification
+is performed with possible statistics counter incrementation.
+
+*Default:* ``off``

@@ -23,6 +23,7 @@
 #define MOD_TBL_SIZE		"\x0A""table-size"
 #define MOD_WHITELIST		"\x09""whitelist"
 #define MOD_LOG_PERIOD		"\x0A""log-period"
+#define MOD_DRY_RUN		"\x07""dry-run"
 
 const yp_item_t rrl_conf[] = {
 	{ MOD_INSTANT_LIMIT, YP_TINT, YP_VINT = { 1,  (1ll << 32) / 12288 - 1, 50 } },
@@ -31,6 +32,7 @@ const yp_item_t rrl_conf[] = {
 	{ MOD_TBL_SIZE,      YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
 	{ MOD_WHITELIST,     YP_TNET, YP_VNONE, YP_FMULTI },
 	{ MOD_LOG_PERIOD,    YP_TINT, YP_VINT = { 0, INT32_MAX, 0 } },
+	{ MOD_DRY_RUN,       YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 
@@ -53,6 +55,7 @@ int rrl_conf_check(knotd_conf_check_args_t *args)
 typedef struct {
 	rrl_table_t *rrl;
 	int slip;
+	bool dry_run;
 	knotd_conf_t whitelist;
 } rrl_ctx_t;
 
@@ -87,11 +90,11 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 		// Slip the answer.
 		knotd_mod_stats_incr(mod, qdata->params->thread_id, 0, 0, 1);
 		qdata->err_truncated = true;
-		return KNOTD_STATE_FAIL;
+		return ctx->dry_run ? state : KNOTD_STATE_FAIL;
 	} else {
 		// Drop the answer.
 		knotd_mod_stats_incr(mod, qdata->params->thread_id, 1, 0, 1);
-		return KNOTD_STATE_NOOP;
+		return ctx->dry_run ? state : KNOTD_STATE_NOOP;
 	}
 }
 
@@ -121,6 +124,7 @@ int rrl_load(knotd_mod_t *mod)
 	}
 
 	ctx->slip = knotd_conf_mod(mod, MOD_SLIP).single.integer;
+	ctx->dry_run = knotd_conf_mod(mod, MOD_DRY_RUN).single.boolean;
 	ctx->whitelist = knotd_conf_mod(mod, MOD_WHITELIST);
 
 	int ret = knotd_mod_stats_add(mod, "slipped", 1, NULL);
