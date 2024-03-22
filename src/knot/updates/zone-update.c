@@ -979,7 +979,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return ret;
 	}
 
-	if (dnssec && zone_is_slave(conf, update->zone)) {
+	if (dnssec) {
 		ret = zone_set_lastsigned_serial(update->zone,
 		                                 zone_contents_serial(update->new_cont));
 		if (ret != KNOT_EOK) {
