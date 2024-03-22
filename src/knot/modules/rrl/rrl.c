@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,27 +15,38 @@
  */
 
 #include "knot/include/module.h"
-#include "knot/nameserver/process_query.h" // Dependency on qdata->extra!
 #include "knot/modules/rrl/functions.h"
+#include "knot/modules/rrl/kru.h"
 
 #define MOD_RATE_LIMIT		"\x0A""rate-limit"
+#define MOD_INSTANT_LIMIT	"\x0D""instant-limit"
 #define MOD_SLIP		"\x04""slip"
 #define MOD_TBL_SIZE		"\x0A""table-size"
 #define MOD_WHITELIST		"\x09""whitelist"
+#define MOD_LOG_PERIOD		"\x0A""log-period"
+#define MOD_DRY_RUN		"\x07""dry-run"
 
 const yp_item_t rrl_conf[] = {
-	{ MOD_RATE_LIMIT, YP_TINT, YP_VINT = { 1, INT32_MAX } },
-	{ MOD_SLIP,       YP_TINT, YP_VINT = { 0, 100, 1 } },
-	{ MOD_TBL_SIZE,   YP_TINT, YP_VINT = { 1, INT32_MAX, 393241 } },
-	{ MOD_WHITELIST,  YP_TNET, YP_VNONE, YP_FMULTI },
+	{ MOD_INSTANT_LIMIT, YP_TINT, YP_VINT = { 1,  (1ll << 32) / 12288 - 1, 50 } },
+	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 1, ((1ll << 32) / 12288 - 1) * 1000 } },
+	{ MOD_SLIP,          YP_TINT, YP_VINT = { 0, 100, 1 } },
+	{ MOD_TBL_SIZE,      YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
+	{ MOD_WHITELIST,     YP_TNET, YP_VNONE, YP_FMULTI },
+	{ MOD_LOG_PERIOD,    YP_TINT, YP_VINT = { 0, INT32_MAX, 0 } },
+	{ MOD_DRY_RUN,       YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 
 int rrl_conf_check(knotd_conf_check_args_t *args)
 {
-	knotd_conf_t limit = knotd_conf_check_item(args, MOD_RATE_LIMIT);
-	if (limit.count == 0) {
+	knotd_conf_t rate_limit = knotd_conf_check_item(args, MOD_RATE_LIMIT);
+	knotd_conf_t instant_limit = knotd_conf_check_item(args, MOD_INSTANT_LIMIT);
+	if (rate_limit.count == 0) {
 		args->err_str = "no rate limit specified";
+		return KNOT_EINVAL;
+	}
+	if (rate_limit.single.integer > 1000ll * instant_limit.single.integer) {
+		args->err_str = "rate limit per millisecond is higher than instant limit";
 		return KNOT_EINVAL;
 	}
 
@@ -45,34 +56,9 @@ int rrl_conf_check(knotd_conf_check_args_t *args)
 typedef struct {
 	rrl_table_t *rrl;
 	int slip;
+	bool dry_run;
 	knotd_conf_t whitelist;
 } rrl_ctx_t;
-
-static const knot_dname_t *name_from_rrsig(const knot_rrset_t *rr)
-{
-	if (rr == NULL) {
-		return NULL;
-	}
-	if (rr->type != KNOT_RRTYPE_RRSIG) {
-		return NULL;
-	}
-
-	// This is a signature.
-	return knot_rrsig_signer_name(rr->rrs.rdata);
-}
-
-static const knot_dname_t *name_from_authrr(const knot_rrset_t *rr)
-{
-	if (rr == NULL) {
-		return NULL;
-	}
-	if (rr->type != KNOT_RRTYPE_NS && rr->type != KNOT_RRTYPE_SOA) {
-		return NULL;
-	}
-
-	// This is a valid authority RR.
-	return rr->owner;
-}
 
 static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
@@ -96,41 +82,7 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
-	rrl_req_t req = {
-		.wire = pkt->wire,
-		.query = qdata->query
-	};
-
-	if (!EMPTY_LIST(qdata->extra->wildcards)) {
-		req.flags = RRL_REQ_WILDCARD;
-	}
-
-	// Take the zone name if known.
-	const knot_dname_t *zone_name = knotd_qdata_zone_name(qdata);
-
-	// Take the signer name as zone name if there is an RRSIG.
-	if (zone_name == NULL) {
-		const knot_pktsection_t *ans = knot_pkt_section(pkt, KNOT_ANSWER);
-		for (int i = 0; i < ans->count; i++) {
-			zone_name = name_from_rrsig(knot_pkt_rr(ans, i));
-			if (zone_name != NULL) {
-				break;
-			}
-		}
-	}
-
-	// Take the NS or SOA owner name if there is no RRSIG.
-	if (zone_name == NULL) {
-		const knot_pktsection_t *auth = knot_pkt_section(pkt, KNOT_AUTHORITY);
-		for (int i = 0; i < auth->count; i++) {
-			zone_name = name_from_authrr(knot_pkt_rr(auth, i));
-			if (zone_name != NULL) {
-				break;
-			}
-		}
-	}
-
-	if (rrl_query(ctx->rrl, knotd_qdata_remote_addr(qdata), &req, zone_name, mod) == KNOT_EOK) {
+	if (rrl_query(ctx->rrl, knotd_qdata_remote_addr(qdata), mod) == KNOT_EOK) {
 		// Rate limiting not applied.
 		return state;
 	}
@@ -139,11 +91,11 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 		// Slip the answer.
 		knotd_mod_stats_incr(mod, qdata->params->thread_id, 0, 0, 1);
 		qdata->err_truncated = true;
-		return KNOTD_STATE_FAIL;
+		return ctx->dry_run ? state : KNOTD_STATE_FAIL;
 	} else {
 		// Drop the answer.
 		knotd_mod_stats_incr(mod, qdata->params->thread_id, 1, 0, 1);
-		return KNOTD_STATE_NOOP;
+		return ctx->dry_run ? state : KNOTD_STATE_NOOP;
 	}
 }
 
@@ -157,43 +109,47 @@ static void ctx_free(rrl_ctx_t *ctx)
 
 int rrl_load(knotd_mod_t *mod)
 {
-	// Create RRL context.
 	rrl_ctx_t *ctx = calloc(1, sizeof(rrl_ctx_t));
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	// Create table.
-	uint32_t rate = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
+	uint32_t instant_limit = knotd_conf_mod(mod, MOD_INSTANT_LIMIT).single.integer;
+	uint32_t rate_limit = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
 	size_t size = knotd_conf_mod(mod, MOD_TBL_SIZE).single.integer;
-	ctx->rrl = rrl_create(size, rate);
+	uint32_t log_period = knotd_conf_mod(mod, MOD_LOG_PERIOD).single.integer;
+	ctx->rrl = rrl_create(size, instant_limit, rate_limit, log_period);
 	if (ctx->rrl == NULL) {
 		ctx_free(ctx);
 		return KNOT_ENOMEM;
 	}
 
-	// Get slip.
 	ctx->slip = knotd_conf_mod(mod, MOD_SLIP).single.integer;
-
-	// Get whitelist.
+	ctx->dry_run = knotd_conf_mod(mod, MOD_DRY_RUN).single.boolean;
 	ctx->whitelist = knotd_conf_mod(mod, MOD_WHITELIST);
 
-	// Set up statistics counters.
 	int ret = knotd_mod_stats_add(mod, "slipped", 1, NULL);
 	if (ret != KNOT_EOK) {
 		ctx_free(ctx);
 		return ret;
 	}
-
 	ret = knotd_mod_stats_add(mod, "dropped", 1, NULL);
 	if (ret != KNOT_EOK) {
 		ctx_free(ctx);
 		return ret;
 	}
 
+	/* The explicit reference of the AVX2 variant ensures the optimized
+	 * code isn't removed by linker if linking statically.
+	 * Check: nm ./src/.libs/knotd | grep KRU_
+	 * https://stackoverflow.com/a/28663156/587396
+	 */
+	knotd_mod_log(mod, LOG_DEBUG, "using %s implementation",
+	              KRU.limited == KRU_AVX2.limited ? "optimized" : "generic");
+
 	knotd_mod_ctx_set(mod, ctx);
 
-	return knotd_mod_hook(mod, KNOTD_STAGE_END, ratelimit_apply);
+	return knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, ratelimit_apply);
 }
 
 void rrl_unload(knotd_mod_t *mod)

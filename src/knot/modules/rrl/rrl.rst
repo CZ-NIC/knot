@@ -44,9 +44,12 @@ Module reference
  mod-rrl:
    - id: STR
      rate-limit: INT
-     slip: INT
+     instant-limit: INT
      table-size: INT
+     slip: INT
      whitelist: ADDR[/INT] | ADDR-ADDR | STR ...
+     log-period: INT
+     dry-run: BOOL
 
 .. _mod-rrl_id:
 
@@ -60,30 +63,61 @@ A module identifier.
 rate-limit
 ..........
 
-Rate limiting is based on the token bucket scheme. A rate basically
-represents a number of tokens available each second. Each response is
-processed and classified (based on several discriminators, e.g.
-source netblock, query type, zone name, rcode, etc.). Classified responses are
-then hashed and assigned to a bucket containing number of available
-tokens, timestamp and metadata. When available tokens are exhausted,
-response is dropped or sent as truncated (see :ref:`mod-rrl_slip`).
-Number of available tokens is recalculated each second.
+Maximal allowed number of queries per second from a single IPv6 or IPv4 address.
+
+Rate limiting is performed for the whole address and several chosen prefixes.
+The limits of prefixes are constant multiples of `rate-limit`.
+
+The specific prefixes and multipliers, which might be adjusted in the future, are
+for IPv6 /128: 1, /64: 2, /56: 3, /48: 4, /32: 64;
+for IPv4 /32: 1, /24: 32, /20: 256, /18: 768.
+
+With each host/network, a counter of unrestricted responses is associated
+and it is lowered by a constant fraction of its value each millisecond;
+a response is restricted if a counter would exceed its capacity otherwise.
+The specified rate limit is reached, when the number of queries is the same every millisecond;
+sending many queries once a second or even a larger timespan leads to a more strict limiting.
 
 *Required*
+
+.. _mod-rrl_instant-limit:
+
+instant-limit
+.............
+
+Maximal allowed number of queries at a single point in time from a single IPv6 address.
+The limits for IPv4 addresses and prefixes use the same multipliers as for `rate-limit`.
+
+This limit is reached when many queries come from a new host/network,
+or after a longer time of inactivity.
+
+The `instant-limit` sets the actual capacity of each counter of responses,
+and together with the `rate-limit` they set the fraction by which the counter
+is periodically lowered.
+The `instant-limit` may be at least `rate-limit / 1000`, at which point the
+counters are zeroed each millisecond.
+
+*Default:* ``50``
 
 .. _mod-rrl_table-size:
 
 table-size
 ..........
 
-Size of the hash table in a number of buckets. The larger the hash table, the lesser
-the probability of a hash collision, but at the expense of additional memory costs.
-Each bucket is estimated roughly to 32 bytes. The size should be selected as
-a reasonably large prime due to better hash function distribution properties.
-Hash table is internally chained and works well up to a fill rate of 90 %, general
-rule of thumb is to select a prime near 1.2 * maximum_qps.
+Maximal number of stored hosts/networks with their counters.
+The data structure tries to store only the most frequent sources and the
+table size is internally a little bigger,
+so it is safe to set it according to the expected maximal number of limited sources.
 
-*Default:* ``393241``
+Use `1.4 * maximum_qps / rate-limit`,
+where `maximum_qps` is the number of queries which can be handled by the server per second.
+There is at most `maximum_qps / rate-limit` limited hosts;
+larger networks have higher limits and so require only a fraction of the value.
+The value will be rounded up to the nearest power of two.
+
+The memory occupied by the data structure is `8 * table-size B`.
+
+*Default:* ``524288``
 
 .. _mod-rrl_slip:
 
@@ -131,3 +165,28 @@ or network ranges to exempt from rate limiting.
 Empty list means that no incoming connection will be white-listed.
 
 *Default:* not set
+
+.. _mod-rrl_log-period:
+
+log-period
+..........
+
+Minimal time in milliseconds between two log messages,
+or zero to disable logging.
+
+If a response is limited, the address and the prefix on which it was blocked is logged
+and logging is disabled for the `log-period` milliseconds.
+As long as limiting is needed, one source is logged each period
+and sources with more blocked queries have greater probability to be chosen.
+
+*Default:* ``0`` (disabled)
+
+.. _mod-rrl_dry-run:
+
+dry-run
+.......
+
+If enabled, the module doesn't alter any response. Only query classification
+is performed with possible statistics counter incrementation.
+
+*Default:* ``off``
