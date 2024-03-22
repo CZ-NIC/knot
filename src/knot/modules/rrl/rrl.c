@@ -16,6 +16,7 @@
 
 #include "knot/include/module.h"
 #include "knot/modules/rrl/functions.h"
+#include "knot/modules/rrl/kru.h"
 
 #define MOD_RATE_LIMIT		"\x0A""rate-limit"
 #define MOD_INSTANT_LIMIT	"\x0D""instant-limit"
@@ -137,6 +138,14 @@ int rrl_load(knotd_mod_t *mod)
 		ctx_free(ctx);
 		return ret;
 	}
+
+	/* The explicit reference of the AVX2 variant ensures the optimized
+	 * code isn't removed by linker if linking statically.
+	 * Check: nm ./src/.libs/knotd | grep KRU_
+	 * https://stackoverflow.com/a/28663156/587396
+	 */
+	knotd_mod_log(mod, LOG_DEBUG, "using %s implementation",
+	              KRU.limited == KRU_AVX2.limited ? "optimized" : "generic");
 
 	knotd_mod_ctx_set(mod, ctx);
 
