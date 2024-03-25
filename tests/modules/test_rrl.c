@@ -166,7 +166,7 @@ static void *rrl_runnable(void *arg)
 				uint32_t hqi = (qi % (1 << TICK_QUERIES_LOG)) >> HOSTS_LOG;  // host query index within tick
 				if (hqi >= d->stages[si].hosts[hi].queries_per_tick) continue;
 				hqi += (qi >> TICK_QUERIES_LOG) * d->stages[si].hosts[hi].queries_per_tick;  // across ticks
-				snprintf(addr_str, sizeof(addr_str), d->stages[si].hosts[hi].addr_format,
+				(void)snprintf(addr_str, sizeof(addr_str), d->stages[si].hosts[hi].addr_format,
 				         hqi % 0xff, (hqi >> 8) % 0xff, (hqi >> 16) % 0xff);
 				sockaddr_set(&addr, d->stages[si].hosts[hi].addr_family, addr_str, 0);
 
@@ -192,7 +192,7 @@ void count_test(char *desc, int expected_passing, double margin_fract,
 	int cnt = -1;
 
 	for (size_t i = 0; i < max_queries; i++) {
-		snprintf(addr_str, sizeof(addr_str), addr_format,
+		(void)snprintf(addr_str, sizeof(addr_str), addr_format,
 				i % (max_value - min_value + 1) + min_value,
 				i / (max_value - min_value + 1) % 256);
 		sockaddr_set(&addr, addr_family, addr_str, 0);
