@@ -239,8 +239,8 @@ static inline void kru_limited_prefetch_prefix(struct kru *kru, uint32_t time_no
 
 			// Prefix mask (1...0) -> little endian byte array (0x00 ... 0x00 0xFF ... 0xFF).
 			__m128i mask = _mm_set_epi64x(
-					(p < 64 ? (p == 0 ? 0 : -1ll << (64 - p)) : -1ll),  // higher 64 bits (1...) -> second half of byte array (... 0xFF)
-					(p <= 64 ? 0 : -1ll << (128 - p)));                 // lower  64 bits (...0) ->  first half of byte array (0x00 ...)
+					(p < 64 ? (p == 0 ? 0 : (uint64_t)-1 << (64 - p)) : (uint64_t)-1),  // higher 64 bits (1...) -> second half of byte array (... 0xFF)
+					(p <= 64 ? 0 : (uint64_t)-1 << (128 - p)));                 // lower  64 bits (...0) ->  first half of byte array (0x00 ...)
 
 			// Swap mask endianness (0x11 ... 0x11 0x00 ... 0x00).
 			mask = _mm_shuffle_epi8(mask,
@@ -296,7 +296,7 @@ static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 		ctx->price16 = price >> fract_bits;
 		ctx->limit16 = -ctx->price16;
 
-		if (fract_bits && fract) {
+		if ((fract_bits > 0) && (fract > 0)) {
 			ctx->price16 += (rand_bits(fract_bits) < fract);
 			ctx->limit16--;
 		}
@@ -322,7 +322,7 @@ static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 	for (int li = 0; li < TABLE_COUNT; ++li) {
 		static_assert(LOADS_LEN == 15 && sizeof(ctx->l[li]->ids[0]) == 2, "");
 		// unfortunately we can't use aligned load here
-		__m256i ids_v = _mm256_loadu_si256((__m256i *)(ctx->l[li]->ids - 1));
+		__m256i ids_v = _mm256_loadu_si256((__m256i *)((uint16_t *)ctx->l[li]->ids - 1));
 		__m256i match_mask = _mm256_cmpeq_epi16(ids_v, id_v);
 		if (_mm256_testz_si256(match_mask, match_mask))
 			continue; // no match of id
@@ -365,7 +365,7 @@ static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
 			static_assert((offsetof(struct load_cl, loads) - 2) % 16 == 0,
 					"bad alignment of struct load_cl::loads");
 			static_assert(LOADS_LEN == 15 && sizeof(ctx->l[li]->loads[0]) == 2, "");
-			__m128i *l_v = (__m128i *)(ctx->l[li]->loads - 1);
+			__m128i *l_v = (__m128i *)((uint16_t *)ctx->l[li]->loads - 1);
 			__m128i l0 = _mm_load_si128(l_v);
 			__m128i l1 = _mm_load_si128(l_v + 1);
 			// We want to avoid the first item in l0, so we maximize it.

@@ -89,9 +89,11 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit
 	while (size >>= 1) capacity_log++;
 
 	rrl_table_t *rrl;
-	if (posix_memalign((void **)&rrl, 64, offsetof(struct rrl_table, kru) + KRU.get_size(capacity_log)) != 0) {
+	size_t rrl_size = offsetof(struct rrl_table, kru) + KRU.get_size(capacity_log);
+	if (posix_memalign((void **)&rrl, 64, rrl_size) != 0) {
 		return NULL;
 	}
+	memset(rrl, 0, rrl_size);
 
 	const kru_price_t base_price = KRU_LIMIT / instant_limit;
 	const kru_price_t max_decay = rate_limit > 1000ll * instant_limit ? base_price :

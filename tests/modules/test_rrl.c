@@ -101,7 +101,7 @@ struct host {
 	uint32_t queries_per_tick;
 	int addr_family;
 	char *addr_format;
-	double min_passed, max_passed;
+	uint32_t min_passed, max_passed;
 	_Atomic uint32_t passed;
 };
 
@@ -208,7 +208,7 @@ void count_test(char *desc, int expected_passing, double margin_fract,
 	} else {
 		int max_diff = expected_passing * margin_fract;
 		ok((expected_passing - max_diff <= cnt) && (cnt <= expected_passing + max_diff),
-			"rrl(%s): %-48s [%7d    <=%7d      <=%7d    ]", impl_name, desc,
+			"rrl(%s): %-48s [%7d <=%7d      <=%7d ]", impl_name, desc,
 			expected_passing - max_diff, cnt, expected_passing + max_diff);
 	}
 }
@@ -362,7 +362,7 @@ void test_rrl(void)
 		uint32_t ticks = stages[si].last_tick - stages[si].first_tick + 1;
 		for (size_t i = 0; h[i].queries_per_tick; i++) {
 			ok( h[i].min_passed * ticks <= h[i].passed && h[i].passed <= h[i].max_passed * ticks,
-				"rrl(%s): parallel stage %d, addr %-25s [%10.2f <=%12.4f <=%10.2f ]", impl_name,
+				"rrl(%s): parallel stage %d, addr %-25s [%7d <=%12.4f <=%7d ]", impl_name,
 				si, h[i].addr_format, h[i].min_passed, (double)h[i].passed / ticks, h[i].max_passed);
 		}
 	} while (stages[++si].first_tick);

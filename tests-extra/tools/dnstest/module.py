@@ -120,7 +120,7 @@ class ModRRL(KnotModule):
     def __init__(self, rate_limit, slip=None, table_size=None, whitelist=None, instant_limit=None):
         super().__init__()
         self.rate_limit = rate_limit
-        self.instant_limit = instant_limit
+        self.instant_limit = instant_limit if instant_limit else rate_limit
         self.slip = slip
         self.table_size = table_size
         self.whitelist = whitelist
@@ -132,8 +132,7 @@ class ModRRL(KnotModule):
         conf.begin(self.conf_name)
         conf.id_item("id", self.conf_id)
         conf.item_str("rate-limit", self.rate_limit)
-        if self.instant_limit:
-            conf.item_str("instant-limit", self.instant_limit)
+        conf.item_str("instant-limit", self.instant_limit)
         if self.slip or self.slip == 0:
             conf.item_str("slip", self.slip)
         if self.table_size:

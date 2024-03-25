@@ -32,7 +32,8 @@ static inline void decay_initialize(struct decay_config *decay, kru_price_t max_
 	decay->shift_bits = log2(KRU_LIMIT - 1) - log2(KRU_LIMIT - 1 - max_decay);
 	decay->max_ticks = 18 / decay->shift_bits;
 
-	for (size_t ticks = 0; ticks < sizeof(decay->mult_cache) / sizeof(*decay->mult_cache); ticks++) {
+	decay->mult_cache[0] = 0;  // not used
+	for (size_t ticks = 1; ticks < sizeof(decay->mult_cache) / sizeof(*decay->mult_cache); ticks++) {
 		decay->mult_cache[ticks] = exp2(32 - decay->shift_bits * ticks) + 0.5;
 	}
 }
