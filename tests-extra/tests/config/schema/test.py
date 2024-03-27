@@ -14,9 +14,7 @@ from dnstest.utils import Failed
 from kyaml import KnotYAMLLoader
 
 VALID = [ 'complete.yaml' ]
-INVALID = [ 'undefined.yaml', 'base64.yaml', 'enum.yaml' ]
-FALSE_VALID = [ 'dname.yaml' ]
-FALSE_INVALID = [ ]
+INVALID = [ 'undefined.yaml', 'base64.yaml', 'enum.yaml', 'dname.yaml' ]
 
 def validate_file(conf_path):
         try:
@@ -47,29 +45,12 @@ for conf_name in VALID:
                 raise Failed("Failed to validate %s" % conf_name)
 
 for conf_name in INVALID:
-        try:                        
+        try:
                 validate_file(os.path.join(t.data_dir, conf_name))
                 raise Failed("Validation of invalid configuration '%s' failed" % conf_name)
         except ValidationError:
                 pass
         except:
-                raise Failed("Failed to validate %s" % conf_name)
-
-for conf_name in FALSE_VALID:
-        try:                        
-                validate_file(os.path.join(t.data_dir, conf_name))
-        except Exception:
-                raise Failed("False valid configuration %s was fixed" % conf_name)
-
-for conf_name in FALSE_INVALID:
-        try:                        
-                validate_file(os.path.join(t.data_dir, conf_name))
-                raise Failed("False invalid configuration %s was fixed" % conf_name)
-        except ParserError:
-                pass
-        except Failed:
-                raise
-        except Exception:
                 raise Failed("Failed to validate %s" % conf_name)
 
 t.end()
