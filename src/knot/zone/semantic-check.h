@@ -35,6 +35,7 @@ typedef enum {
 typedef enum {
 	// Mandatory checks.
 	SEM_ERR_SOA_NONE,
+	SEM_ERR_SOA_MULTIPLE,
 
 	SEM_ERR_CNAME_EXTRA_RECORDS,
 	SEM_ERR_CNAME_MULTIPLE,

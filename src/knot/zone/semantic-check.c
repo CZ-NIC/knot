@@ -29,6 +29,8 @@
 static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	[SEM_ERR_SOA_NONE] =
 	"missing SOA at the zone apex",
+	[SEM_ERR_SOA_MULTIPLE] =
+	"multiple SOA records",
 
 	[SEM_ERR_CNAME_EXTRA_RECORDS] =
 	"another record exists beside CNAME",
