@@ -1240,7 +1240,7 @@ int conf_export_schema(
 	// DNAME type
 	jsonw_object(w, "dname");
 	jsonw_str(w, "type", "string");
-	jsonw_str(w, "pattern", "^(([a-zA-Z0-9_*/-]|(\\[^0-9])|(\\(([0-1][0-9][0-9])|(2[0-4][0-9])|(25[0-5]))))+)(.(([a-zA-Z0-9_*/-]|(\\[^0-9])|(\\(([0-1][0-9][0-9])|(2[0-4][0-9])|(25[0-5]))))+))+(.)?$");
+	jsonw_str(w, "pattern", "^([a-zA-Z0-9_*/\\-]+)(.([a-zA-Z0-9_*/\\-]+))+(.)?$");
 	jsonw_end(w);
 	// Size integer type
 	jsonw_object(w, "int_size");
