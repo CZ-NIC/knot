@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -79,12 +79,6 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 {
 	if (zc == NULL || rr == NULL || rr->rrs.count != 1) {
 		return KNOT_EINVAL;
-	}
-
-	if (rr->type == KNOT_RRTYPE_SOA &&
-	    node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_SOA)) {
-		// Ignore extra SOA
-		return KNOT_EOK;
 	}
 
 	zone_node_t *node = NULL;
@@ -219,10 +213,11 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	if (!node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
+	knot_rdataset_t *soa = node_rdataset(zc->z->apex, KNOT_RRTYPE_SOA);
+	if (soa == NULL || soa->count != 1) {
+		sem_error_t code = (soa == NULL) ? SEM_ERR_SOA_NONE : SEM_ERR_SOA_MULTIPLE;
 		loader->err_handler->error = true;
-		loader->err_handler->cb(loader->err_handler, zc->z, NULL,
-		                        SEM_ERR_SOA_NONE, NULL);
+		loader->err_handler->cb(loader->err_handler, zc->z, NULL, code, NULL);
 		goto fail;
 	}
 

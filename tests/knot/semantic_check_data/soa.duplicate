@@ -1,0 +1,5 @@
+$ORIGIN example.com.
+
+@       SOA     dns1 hostmaster 1 1000 360 10000 7200
+@       NS      example.net.
+@       SOA     dns1 hostmaster 1 1000 360 10000 7200

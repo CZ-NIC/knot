@@ -1,0 +1,3 @@
+$ORIGIN example.com.
+
+@       NS      example.net.

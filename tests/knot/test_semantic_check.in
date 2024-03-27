@@ -48,6 +48,8 @@ if [ ! -x $KZONECHECK ]; then
 fi
 
 # error messages exported from knot/src/zone/semantic-check.c
+SOA_NONE="missing SOA at the zone apex"
+SOA_MULTIPLE="multiple SOA records"
 CDNSKEY_NONE="missing CDNSKEY"
 CDNSKEY_NO_CDS="CDNSKEY without corresponding CDS"
 CDNSKEY_DELETE="invalid CDNSKEY/CDS for DNSSEC delete algorithm"
@@ -73,6 +75,8 @@ RRSIG_UNVERIFIABLE="no valid signature for a record"
 
 plan_lazy
 
+expect_error "soa.missing"           1 1 "$SOA_MISSING"
+expect_error "soa.multiple"          1 1 "$SOA_MULTIPLE"
 expect_error "cname_extra_01.zone"   1 1 "$CNAME_EXTRA_RECORDS"
 expect_error "cname_extra_02.signed" 1 1 "$CNAME_EXTRA_RECORDS"
 expect_error "cname_multiple.zone"   1 1 "$CNAME_MULTIPLE"
@@ -125,6 +129,7 @@ expect_error "cdnskey.delete.invalid.cds" 0 1 "$CDNSKEY_DELETE"
 expect_error "cdnskey.delete.invalid.cdnskey" 0 1 "$CDNSKEY_DELETE"
 expect_error "delegation.signed" 0 1 "$NSEC_RDATA_BITMAP"
 
+test_correct "soa.duplicate"
 test_correct "rrsig_ttl.signed"
 test_correct "no_error_delegation_bitmap.signed"
 test_correct "no_error_nsec3_optout.signed"
