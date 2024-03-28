@@ -44,6 +44,7 @@
 #include "libknot/wire.h"
 
 #define SERVER_DEFAULT_SCIDLEN 18
+#define QUIC_REGULAR_TOKEN_TIMEOUT (24 * 3600 * 1000000000LLU)
 
 #define QUIC_DEFAULT_VERSION "-VERS-ALL:+VERS-TLS1.3"
 #define QUIC_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-X25519:+GROUP-SECP256R1:+GROUP-SECP384R1:+GROUP-SECP521R1"
@@ -971,14 +972,25 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		}
 
 		if (header.tokenlen > 0) {
-			ret = ngtcp2_crypto_verify_retry_token(
-				&odcid, header.token, header.tokenlen,
-				(const uint8_t *)table->hash_secret,
-				sizeof(table->hash_secret), header.version,
-				(const struct sockaddr *)reply->ip_rem,
-				addr_len((struct sockaddr_in6 *)reply->ip_rem),
-				&dcid, idle_timeout, now // NOTE setting retry token validity to idle_timeout for simplicity
-			);
+			if (header.token[0] == NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY) {
+				ret = ngtcp2_crypto_verify_retry_token(
+					&odcid, header.token, header.tokenlen,
+					(const uint8_t *)table->hash_secret,
+					sizeof(table->hash_secret), header.version,
+					(const struct sockaddr *)reply->ip_rem,
+					addr_len((struct sockaddr_in6 *)reply->ip_rem),
+					&dcid, idle_timeout, now // NOTE setting retry token validity to idle_timeout for simplicity
+				);
+			} else {
+				ret = ngtcp2_crypto_verify_regular_token(
+					header.token, header.tokenlen,
+					(const uint8_t *)table->hash_secret,
+					sizeof(table->hash_secret),
+					(const struct sockaddr *)reply->ip_rem,
+					addr_len((struct sockaddr_in6 *)reply->ip_rem),
+					QUIC_REGULAR_TOKEN_TIMEOUT, now
+				);
+			}
 			if (ret != 0) {
 				ret = KNOT_EOK;
 				goto finish;
