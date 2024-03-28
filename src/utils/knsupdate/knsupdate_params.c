@@ -274,6 +274,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			params->stop = true;
 			return KNOT_EOK;
 		case 'p':
+			assert(optarg);
 			default_port = false;
 			free(params->server->service);
 			params->server->service = strdup(optarg);
@@ -309,10 +310,12 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			}
 			break;
 		case 'H':
+			assert(optarg);
 			free(params->tls_params.hostname);
 			params->tls_params.hostname = strdup(optarg);
 			break;
 		case PIN:;
+			assert(optarg);
 			uint8_t pin[64] = { 0 };
 			ret = knot_base64_decode((const uint8_t *)optarg, strlen(optarg), pin, sizeof(pin));
 			if (ret < 0) {
@@ -346,14 +349,17 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			}
 			break;
 		case CERTFILE:
+			assert(optarg);
 			free(params->tls_params.certfile);
 			params->tls_params.certfile = strdup(optarg);
 			break;
 		case KEYFILE:
+			assert(optarg);
 			free(params->tls_params.keyfile);
 			params->tls_params.keyfile = strdup(optarg);
 			break;
 		case SNI:
+			assert(optarg);
 			free(params->tls_params.sni);
 			params->tls_params.sni = strdup(optarg);
 			break;
