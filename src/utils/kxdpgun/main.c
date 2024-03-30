@@ -576,7 +576,7 @@ void *xdp_gun_thread(void *_ctx)
 	ctx->target_ip.sin6_port = htobe16(ctx->target_port);
 	knot_sweep_stats_t sweep_stats = { 0 };
 
-	uint16_t local_ports[QUIC_THREAD_PORTS];
+	uint16_t local_ports[QUIC_THREAD_PORTS] = { 0 };
 	uint16_t port = LOCAL_PORT_MIN;
 	for (int i = 0; ctx->quic && i < QUIC_THREAD_PORTS; ++i) {
 		local_ports[i] = adjust_port(ctx, port);
