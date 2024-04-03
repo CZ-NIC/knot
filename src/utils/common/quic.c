@@ -564,6 +564,10 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 		ret = poll(&pfd, 1, timeout);
 		if (ret == 0) {
 			ret = ngtcp2_conn_handle_expiry(ctx->conn, quic_timestamp());
+			if (ret != 0) {
+				WARN("QUIC, failed to send");
+				return KNOT_ECONNABORTED;
+			}
 		} else if (ret < 0) {
 			return knot_map_errno();
 		}
@@ -658,6 +662,10 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 			return knot_map_errno();
 		} else if (ret == 0) {
 			ret = ngtcp2_conn_handle_expiry(ctx->conn, quic_timestamp());
+			if (ret != 0) {
+				WARN("QUIC, failed to send");
+				return KNOT_ECONNABORTED;
+			}
 			continue;
 		}
 		ret = quic_recv(ctx, sockfd);
@@ -701,6 +709,10 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 			return knot_map_errno();
 		} else if (ret == 0) {
 			ret = ngtcp2_conn_handle_expiry(ctx->conn, quic_timestamp());
+			if (ret != 0) {
+				WARN("QUIC, failed to send");
+				return KNOT_ECONNABORTED;
+			}
 			WARN("QUIC, peer took too long to respond");
 			goto send;
 		}
