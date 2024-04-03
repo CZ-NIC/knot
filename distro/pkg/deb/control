@@ -30,7 +30,7 @@ Build-Depends:
  libtool,
  liburcu-dev,
  libxdp-dev,
- pkg-config,
+ pkgconf,
  protobuf-c-compiler,
  python3-all,
  softhsm2 <!nocheck>,
