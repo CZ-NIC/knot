@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,61 +38,68 @@
 #include "contrib/net.h"
 
 #define FRAME_SIZE		2048
-
-#define FRAME_COUNT_TX		2048
-#define FRAME_COUNT_RX		2048
-#define FRAME_COUNT		(FRAME_COUNT_TX + FRAME_COUNT_RX)
-
-#define RING_LEN_TX		FRAME_COUNT_TX
-#define RING_LEN_CQ		FRAME_COUNT_TX
-#define RING_LEN_RX		FRAME_COUNT_RX
-/* It's recommended that the FQ ring size >= HW RX ring size + AF_XDP RX ring size. */
-#define RING_LEN_FQ		8192
-
-#define ALLOC_RETRY_NUM		15
-#define ALLOC_RETRY_DELAY	20 // In nanoseconds.
-
-/* With recent compilers we statically check #defines for settings that
- * get refused by AF_XDP drivers (in current versions, at least). */
-#if (__STDC_VERSION__ >= 201112L)
-#define IS_POWER_OF_2(n) (((n) & (n - 1)) == 0)
-_Static_assert((FRAME_SIZE == 4096 || FRAME_SIZE == 2048)
-	&& IS_POWER_OF_2(RING_LEN_TX) && IS_POWER_OF_2(RING_LEN_RX)
-	&& IS_POWER_OF_2(RING_LEN_CQ) && IS_POWER_OF_2(RING_LEN_FQ)
-	&& FRAME_COUNT_TX <= (1 << 16) /* see tx_free_indices */
-	, "Incorrect #define combination for AF_XDP.");
-#endif
+#define DEFAULT_RING_SIZE	2048
+#define RETRY_DELAY		20 // In nanoseconds.
 
 struct umem_frame {
 	uint8_t bytes[FRAME_SIZE];
 };
 
-static int configure_xsk_umem(struct kxsk_umem **out_umem)
+static bool valid_config(const knot_xdp_config_t *config)
+{
+	if (FRAME_SIZE != 2048 && FRAME_SIZE != 4096) {
+		return false;
+	}
+
+	if (config == NULL) {
+		return true;
+	}
+
+	if ((config->ring_size & (config->ring_size - 1)) != 0) {
+		return false;
+	}
+
+	return true;
+}
+
+static uint32_t ring_size(const knot_xdp_config_t *config)
+{
+	return config != NULL ? config->ring_size : DEFAULT_RING_SIZE;
+}
+
+static int configure_xsk_umem(struct kxsk_umem **out_umem, uint32_t ring_size)
 {
 	/* Allocate memory and call driver to create the UMEM. */
 	struct kxsk_umem *umem = calloc(1,
 		offsetof(struct kxsk_umem, tx_free_indices)
-		+ sizeof(umem->tx_free_indices[0]) * FRAME_COUNT_TX);
+		+ sizeof(umem->tx_free_indices[0]) * ring_size);
 	if (umem == NULL) {
 		return KNOT_ENOMEM;
 	}
+	umem->ring_size = ring_size;
+
+	/* It's recommended that the FQ ring size >= HW RX ring size + AF_XDP RX ring size.
+	 * However, the performance is better if FQ size == AF_XDP RX size. */
+	const uint32_t FQ_SIZE = umem->ring_size;
+	const uint32_t CQ_SIZE = umem->ring_size;
+	const uint32_t FRAMES = FQ_SIZE + CQ_SIZE;
 
 	int ret = posix_memalign((void **)&umem->frames, getpagesize(),
-	                         FRAME_SIZE * FRAME_COUNT);
+	                         FRAME_SIZE * FRAMES);
 	if (ret != 0) {
 		free(umem);
 		return KNOT_ENOMEM;
 	}
 
-	const struct xsk_umem_config config = {
-		.fill_size = RING_LEN_FQ,
-		.comp_size = RING_LEN_CQ,
+	const struct xsk_umem_config umem_config = {
+		.fill_size = FQ_SIZE,
+		.comp_size = CQ_SIZE,
 		.frame_size = FRAME_SIZE,
 		.frame_headroom = KNOT_XDP_PKT_ALIGNMENT,
 	};
 
-	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * FRAME_COUNT,
-	                       &umem->fq, &umem->cq, &config);
+	ret = xsk_umem__create(&umem->umem, umem->frames, FRAME_SIZE * FRAMES,
+	                       &umem->fq, &umem->cq, &umem_config);
 	if (ret != KNOT_EOK) {
 		free(umem->frames);
 		free(umem);
@@ -101,24 +108,23 @@ static int configure_xsk_umem(struct kxsk_umem **out_umem)
 	*out_umem = umem;
 
 	/* Designate the starting chunk of buffers for TX, and put them onto the stack. */
-	umem->tx_free_count = FRAME_COUNT_TX;
-	for (uint32_t i = 0; i < FRAME_COUNT_TX; ++i) {
+	umem->tx_free_count = CQ_SIZE;
+	for (uint32_t i = 0; i < CQ_SIZE; ++i) {
 		umem->tx_free_indices[i] = i;
 	}
 
 	/* Designate the rest of buffers for RX, and pass them to the driver. */
 	uint32_t idx = 0;
-	ret = xsk_ring_prod__reserve(&umem->fq, FRAME_COUNT_RX, &idx);
-	if (ret != FRAME_COUNT_RX) {
+	ret = xsk_ring_prod__reserve(&umem->fq, FQ_SIZE, &idx);
+	if (ret != FQ_SIZE) {
 		assert(0);
 		return KNOT_ERROR;
 	}
 	assert(idx == 0);
-	assert(FRAME_COUNT == FRAME_COUNT_TX + FRAME_COUNT_RX);
-	for (uint32_t i = FRAME_COUNT_TX; i < FRAME_COUNT; ++i) {
+	for (uint32_t i = CQ_SIZE; i < CQ_SIZE + FQ_SIZE; ++i) {
 		*xsk_ring_prod__fill_addr(&umem->fq, idx++) = i * FRAME_SIZE;
 	}
-	xsk_ring_prod__submit(&umem->fq, FRAME_COUNT_RX);
+	xsk_ring_prod__submit(&umem->fq, FQ_SIZE);
 
 	return KNOT_EOK;
 }
@@ -128,6 +134,33 @@ static void deconfigure_xsk_umem(struct kxsk_umem *umem)
 	(void)xsk_umem__delete(umem->umem);
 	free(umem->frames);
 	free(umem);
+}
+
+static int enable_busypoll(int socket, unsigned timeout_us, unsigned budget)
+{
+#if defined(SO_PREFER_BUSY_POLL) && defined(SO_BUSY_POLL_BUDGET)
+	int opt_val = 1;
+	if (setsockopt(socket, SOL_SOCKET, SO_PREFER_BUSY_POLL,
+	               &opt_val, sizeof(opt_val)) != 0) {
+		return knot_map_errno();
+	}
+
+	opt_val = timeout_us;
+	if (setsockopt(socket, SOL_SOCKET, SO_BUSY_POLL,
+	               &opt_val, sizeof(opt_val)) != 0) {
+		return knot_map_errno();
+	}
+
+	opt_val = budget;
+	if (setsockopt(socket, SOL_SOCKET, SO_BUSY_POLL_BUDGET,
+	               &opt_val, sizeof(opt_val)) != 0) {
+		return knot_map_errno();
+	}
+
+	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif
 }
 
 static int configure_xsk_socket(struct kxsk_umem *umem,
@@ -142,14 +175,14 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	xsk_info->iface = iface;
 	xsk_info->umem = umem;
 
-	uint16_t bind_flags = 0;
+	uint16_t bind_flags = XDP_USE_NEED_WAKEUP;
 	if (config != NULL && config->force_copy) {
 		bind_flags |= XDP_COPY;
 	}
 
 	const struct xsk_socket_config sock_conf = {
-		.tx_size = RING_LEN_TX,
-		.rx_size = RING_LEN_RX,
+		.tx_size = umem->ring_size,
+		.rx_size = umem->ring_size,
 		.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD,
 		.bind_flags = bind_flags,
 	};
@@ -162,6 +195,17 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 		return ret;
 	}
 
+	if (config != NULL && config->busy_poll_budget > 0) {
+		ret = enable_busypoll(xsk_socket__fd(xsk_info->xsk),
+		                      config->busy_poll_timeout, config->busy_poll_budget);
+		if (ret != KNOT_EOK) {
+			xsk_socket__delete(xsk_info->xsk);
+			free(xsk_info);
+			return ret;
+		}
+		xsk_info->busy_poll = true;
+	}
+
 	*out_sock = xsk_info;
 	return KNOT_EOK;
 }
@@ -171,7 +215,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
                   knot_xdp_filter_flag_t flags, uint16_t udp_port, uint16_t quic_port,
                   knot_xdp_load_bpf_t load_bpf, const knot_xdp_config_t *xdp_config)
 {
-	if (socket == NULL || if_name == NULL ||
+	if (socket == NULL || if_name == NULL || !valid_config(xdp_config) ||
 	    (udp_port == quic_port && (flags & KNOT_XDP_FILTER_UDP) && (flags & KNOT_XDP_FILTER_QUIC)) ||
 	    (flags & (KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_TCP | KNOT_XDP_FILTER_QUIC)) == 0) {
 		return KNOT_EINVAL;
@@ -186,7 +230,7 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 
 	/* Initialize shared packet_buffer for umem usage. */
 	struct kxsk_umem *umem = NULL;
-	ret = configure_xsk_umem(&umem);
+	ret = configure_xsk_umem(&umem, ring_size(xdp_config));
 	if (ret != KNOT_EOK) {
 		kxsk_iface_free(iface);
 		return ret;
@@ -265,7 +309,7 @@ static void tx_free_relative(struct kxsk_umem *umem, uint64_t addr_relative)
 {
 	/* The address may not point to *start* of buffer, but `/` solves that. */
 	uint64_t index = addr_relative / FRAME_SIZE;
-	assert(index < FRAME_COUNT);
+	assert(index < umem->ring_size);
 	umem->tx_free_indices[umem->tx_free_count++] = index;
 }
 
@@ -284,7 +328,7 @@ void knot_xdp_send_prepare(knot_xdp_socket_t *socket)
 	if (completed == 0) {
 		return;
 	}
-	assert(umem->tx_free_count + completed <= FRAME_COUNT_TX);
+	assert(umem->tx_free_count + completed <= umem->ring_size);
 
 	for (uint32_t i = 0; i < completed; ++i) {
 		uint64_t addr_relative = *xsk_ring_cons__comp_addr(cq, idx++);
@@ -300,12 +344,13 @@ static struct umem_frame *alloc_tx_frame(knot_xdp_socket_t *socket)
 		return malloc(sizeof(struct umem_frame));
 	}
 
-	const struct timespec delay = { .tv_nsec = ALLOC_RETRY_DELAY };
 	struct kxsk_umem *umem = socket->umem;
 
-	for (int i = 0; unlikely(umem->tx_free_count == 0); i++) {
-		if (i == ALLOC_RETRY_NUM) {
-			return NULL;
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
+	while (unlikely(umem->tx_free_count == 0)) {
+		if (socket->busy_poll || xsk_ring_prod__needs_wakeup(&socket->tx)) {
+			(void)sendto(xsk_socket__fd(socket->xsk), NULL, 0,
+			             MSG_DONTWAIT, NULL, 0);
 		}
 		nanosleep(&delay, NULL);
 		knot_xdp_send_prepare(socket);
@@ -380,9 +425,7 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	}
 	if (unlikely(socket->send_mock != NULL)) {
 		int ret = socket->send_mock(socket, msgs, count, sent);
-		for (uint32_t i = 0; i < count; ++i) {
-			free_unsent(socket, &msgs[i]);
-		}
+		knot_xdp_send_free(socket, msgs, count);
 		return ret;
 	}
 
@@ -392,12 +435,13 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	 * and the API doesn't allow "cancelling reservations".
 	 * Therefore we handle `socket->tx.cached_prod` by hand.
 	 */
-	if (xsk_prod_nb_free(&socket->tx, count) < count) {
-		/* This situation was sometimes observed in the emulated XDP mode. */
-		for (uint32_t i = 0; i < count; ++i) {
-			free_unsent(socket, &msgs[i]);
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
+	while (unlikely(xsk_prod_nb_free(&socket->tx, count) < count)) {
+		if (socket->busy_poll || xsk_ring_prod__needs_wakeup(&socket->tx)) {
+			(void)sendto(xsk_socket__fd(socket->xsk), NULL, 0,
+			             MSG_DONTWAIT, NULL, 0);
 		}
-		return KNOT_ENOBUFS;
+		nanosleep(&delay, NULL);
 	}
 	uint32_t idx = socket->tx.cached_prod;
 
@@ -424,7 +468,6 @@ int knot_xdp_send(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[],
 	assert(*sent <= count);
 	socket->tx.cached_prod = idx;
 	xsk_ring_prod__submit(&socket->tx, *sent);
-	socket->kernel_needs_wakeup = true;
 
 	return KNOT_EOK;
 }
@@ -445,34 +488,19 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 		return KNOT_EINVAL;
 	}
 
-	/* Trigger sending queued packets. */
-	if (!socket->kernel_needs_wakeup) {
+	if (!socket->busy_poll && !xsk_ring_prod__needs_wakeup(&socket->tx)) {
 		return KNOT_EOK;
 	}
 
 	int ret = sendto(xsk_socket__fd(socket->xsk), NULL, 0, MSG_DONTWAIT, NULL, 0);
-	const bool is_ok = (ret >= 0);
-	// List of "safe" errors taken from
-	// https://github.com/torvalds/linux/blame/master/samples/bpf/xdpsock_user.c
-	const bool is_again = !is_ok && (errno == ENOBUFS || errno == EAGAIN
-	                                || errno == EBUSY || errno == ENETDOWN);
-	// Some of the !is_ok cases are a little unclear - what to do about the syscall,
-	// including how caller of _sendmsg_finish() should react.
-	if (is_ok || !is_again) {
-		socket->kernel_needs_wakeup = false;
-	}
-	if (is_again) {
-		return KNOT_EAGAIN;
-	} else if (is_ok) {
+	if (ret >= 0) {
 		return KNOT_EOK;
+	} else if (errno == ENOBUFS || errno == EAGAIN || errno == EBUSY ||
+	           errno == ENETDOWN) {
+		return KNOT_EAGAIN;
 	} else {
 		return -errno;
 	}
-	/* This syscall might be avoided with a newer kernel feature (>= 5.4):
-	   https://www.kernel.org/doc/html/latest/networking/af_xdp.html#xdp-use-need-wakeup-bind-flag
-	   Unfortunately it's not easy to continue supporting older kernels
-	   when using this feature on newer ones.
-	 */
 }
 
 _public_
@@ -532,17 +560,27 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
 	struct xsk_ring_prod *const fq = &umem->fq;
 
 	uint32_t idx = 0;
-	const uint32_t reserved = xsk_ring_prod__reserve(fq, count, &idx);
-	assert(reserved == count);
+	const struct timespec delay = { .tv_nsec = RETRY_DELAY };
+	while (unlikely(xsk_ring_prod__reserve(fq, count, &idx) != count)) {
+		if (socket->busy_poll || xsk_ring_prod__needs_wakeup(fq)) {
+			(void)recvfrom(xsk_socket__fd(socket->xsk), NULL, 0,
+			               MSG_DONTWAIT, NULL, NULL);
+		}
+		nanosleep(&delay, NULL);
+	}
 
-	for (uint32_t i = 0; i < reserved; ++i) {
+	for (uint32_t i = 0; i < count; ++i) {
 		uint8_t *uframe_p = msg_uframe_ptr(&msgs[i]);
 		uint64_t offset = uframe_p - umem->frames->bytes;
 		*xsk_ring_prod__fill_addr(fq, idx++) = offset;
 	}
 
-	xsk_ring_prod__submit(fq, reserved);
+	xsk_ring_prod__submit(fq, count);
+	// recvfrom() here slightly worsens the performance, poll is called later anyway.
 }
+
+// The number of busy frames
+#define RING_BUSY(ring) ((*(ring)->producer - *(ring)->consumer) & (ring)->mask)
 
 _public_
 void knot_xdp_socket_info(const knot_xdp_socket_t *socket, FILE *file)
@@ -551,10 +589,6 @@ void knot_xdp_socket_info(const knot_xdp_socket_t *socket, FILE *file)
 		return;
 	}
 
-	// The number of busy frames
-	#define RING_BUSY(ring) \
-		((*(ring)->producer - *(ring)->consumer) & (ring)->mask)
-
 	#define RING_PRINFO(name, ring) \
 		fprintf(file, "Ring %s: size %4d, busy %4d (prod %4d, cons %4d)\n", \
 		        name, (unsigned)(ring)->size, \
@@ -562,15 +596,51 @@ void knot_xdp_socket_info(const knot_xdp_socket_t *socket, FILE *file)
 		        (unsigned)*(ring)->producer, (unsigned)*(ring)->consumer)
 
 	const int rx_busyf = RING_BUSY(&socket->umem->fq) + RING_BUSY(&socket->rx);
-	fprintf(file, "\nLOST RX frames: %4d", (int)(FRAME_COUNT_RX - rx_busyf));
+	fprintf(file, "\nLOST RX frames: %4d", (int)(socket->umem->ring_size - rx_busyf));
 
 	const int tx_busyf = RING_BUSY(&socket->umem->cq) + RING_BUSY(&socket->tx);
 	const int tx_freef = socket->umem->tx_free_count;
-	fprintf(file, "\nLOST TX frames: %4d\n", (int)(FRAME_COUNT_TX - tx_busyf - tx_freef));
+	fprintf(file, "\nLOST TX frames: %4d\n", (int)(socket->umem->ring_size - tx_busyf - tx_freef));
 
 	RING_PRINFO("FQ", &socket->umem->fq);
 	RING_PRINFO("RX", &socket->rx);
 	RING_PRINFO("TX", &socket->tx);
 	RING_PRINFO("CQ", &socket->umem->cq);
 	fprintf(file, "TX free frames: %4d\n", tx_freef);
+}
+
+_public_
+int knot_xdp_socket_stats(knot_xdp_socket_t *socket, knot_xdp_stats_t *stats)
+{
+	if (socket == NULL || stats == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	memset(stats, 0, sizeof(*stats));
+
+	stats->if_name = socket->iface->if_name;
+	stats->if_index = socket->iface->if_index;
+	stats->if_queue = socket->iface->if_queue;
+
+	struct xdp_statistics xdp_stats;
+	socklen_t optlen = sizeof(xdp_stats);
+
+	int fd = knot_xdp_socket_fd(socket);
+	int ret = getsockopt(fd, SOL_XDP, XDP_STATISTICS, &xdp_stats, &optlen);
+	if (ret != 0) {
+		return knot_map_errno();
+	} else if (optlen != sizeof(xdp_stats)) {
+		return KNOT_EINVAL;
+	}
+
+	size_t common_size = MIN(sizeof(xdp_stats), sizeof(stats->socket));
+	memcpy(&stats->socket, &xdp_stats, common_size);
+
+	stats->rings.tx_busy = socket->umem->ring_size - socket->umem->tx_free_count;
+	stats->rings.fq_fill = RING_BUSY(&socket->umem->fq);
+	stats->rings.rx_fill = RING_BUSY(&socket->rx);
+	stats->rings.tx_fill = RING_BUSY(&socket->tx);
+	stats->rings.cq_fill = RING_BUSY(&socket->umem->cq);
+
+	return KNOT_EOK;
 }

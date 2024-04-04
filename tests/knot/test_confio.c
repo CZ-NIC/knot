@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -999,7 +999,7 @@ static const yp_item_t desc_server[] = {
 static const yp_item_t desc_xdp[] = {
 	{ C_UDP,                YP_TBOOL, YP_VNONE },
 	{ C_TCP,                YP_TBOOL, YP_VNONE },
-	{ C_QUIC,               YP_TBOOL,  YP_VNONE },
+	{ C_QUIC,               YP_TBOOL, YP_VNONE },
 	{ C_TCP_MAX_CLIENTS,    YP_TINT,  YP_VNONE },
 	{ C_TCP_INBUF_MAX_SIZE, YP_TINT,  YP_VNONE },
 	{ C_TCP_OUTBUF_MAX_SIZE,YP_TINT,  YP_VNONE },
@@ -1007,6 +1007,9 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP_IDLE_RESET,     YP_TINT,  YP_VNONE },
 	{ C_TCP_RESEND,         YP_TINT,  YP_VNONE },
 	{ C_ROUTE_CHECK,        YP_TBOOL, YP_VNONE },
+	{ C_RING_SIZE,          YP_TINT,  YP_VNONE },
+	{ C_BUSYPOLL_BUDGET,    YP_TINT,  YP_VNONE },
+	{ C_BUSYPOLL_TIMEOUT,   YP_TINT,  YP_VNONE },
 	{ NULL }
 };
 

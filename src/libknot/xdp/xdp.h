@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,12 +53,53 @@ typedef struct knot_xdp_socket knot_xdp_socket_t;
 
 /*! \brief Configuration of XDP socket. */
 struct knot_xdp_config {
-	bool force_generic; /*!< Use generic XDP mode (avoid driver/hadrware implementation). */
-	bool force_copy;    /*!< Force copying packet data between kernel and user-space (avoid zero-copy). */
+	uint16_t ring_size;  /*!< Size of RX and TX rings (must be power of 2). */
+	bool force_generic;  /*!< Use generic XDP mode (avoid driver/hardware implementation). */
+	bool force_copy;     /*!< Force copying packet data between kernel and user-space (avoid zero-copy). */
+	unsigned busy_poll_timeout; /*!< Preferred busy poll budget (0 means disabled). */
+	unsigned busy_poll_budget;  /*!< Preferred busy poll timeout (in microseconds) . */
 };
 
 /*! \brief Configuration of XDP socket. */
 typedef struct knot_xdp_config knot_xdp_config_t;
+
+/*! \brief Various statistics of an XDP socket (optimally kernel >=5.9). */
+typedef struct {
+	/*! Interface name. */
+	const char *if_name;
+	/*! Interface name index (derived from ifname). */
+	int if_index;
+	/*! Network card queue id. */
+	unsigned if_queue;
+	/*! Counters (xdp_statistics) retrieved from the kernel via XDP_STATISTICS. */
+	struct {
+		/*! Dropped for other reasons. */
+		uint64_t rx_dropped;
+		/*! Dropped due to invalid descriptor. */
+		uint64_t rx_invalid;
+		/*! Dropped due to invalid descriptor. */
+		uint64_t tx_invalid;
+		/*! Dropped due to rx ring being full. */
+		uint64_t rx_full;
+		/*! Failed to retrieve item from fill ring. */
+		uint64_t fq_empty;
+		/*! Failed to retrieve item from tx ring. */
+		uint64_t tx_empty;
+	} socket;
+	/*! States of rings of the XDP socket. */
+	struct {
+		/*! Busy TX buffers. */
+		uint16_t tx_busy;
+		/*! Free buffers to consume from FQ ring. */
+		uint16_t fq_fill;
+		/*! Pending buffers in TX ring. */
+		uint16_t rx_fill;
+		/*! Pending buffers in RX ring. */
+		uint16_t tx_fill;
+		/*! Pending buffers in CQ ring. */
+		uint16_t cq_fill;
+	} rings;
+} knot_xdp_stats_t;
 
 /*!
  * \brief Initialize XDP socket.
@@ -194,5 +235,15 @@ void knot_xdp_recv_finish(knot_xdp_socket_t *socket, const knot_xdp_msg_t msgs[]
  * \param file    Output file.
  */
 void knot_xdp_socket_info(const knot_xdp_socket_t *socket, FILE *file);
+
+/*!
+ * \brief Gets various statistics of the XDP socket.
+ *
+ * \param socket  XDP socket.
+ * \param stats   Output structure.
+ *
+ * \return KNOT_E*
+ */
+int knot_xdp_socket_stats(knot_xdp_socket_t *socket, knot_xdp_stats_t *stats);
 
 /*! @} */

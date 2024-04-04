@@ -129,6 +129,9 @@ static void init_cache(
 	static bool   running_xdp_tcp;
 	static uint16_t running_xdp_quic;
 	static bool   running_route_check;
+	static uint16_t running_ring_size;
+	static uint16_t running_busypoll_budget;
+	static uint16_t running_busypoll_timeout;
 	static size_t running_udp_threads;
 	static size_t running_tcp_threads;
 	static size_t running_xdp_threads;
@@ -147,6 +150,9 @@ static void init_cache(
 			running_xdp_quic = conf_get_int(conf, C_XDP, C_QUIC_PORT);
 		}
 		running_route_check = conf_get_bool(conf, C_XDP, C_ROUTE_CHECK);
+		running_ring_size = conf_get_int(conf, C_XDP, C_RING_SIZE);
+		running_busypoll_budget = conf_get_int(conf, C_XDP, C_BUSYPOLL_BUDGET);
+		running_busypoll_timeout = conf_get_int(conf, C_XDP, C_BUSYPOLL_TIMEOUT);
 		running_udp_threads = conf_udp_threads(conf);
 		running_tcp_threads = conf_tcp_threads(conf);
 		running_xdp_threads = conf_xdp_threads(conf);
@@ -233,6 +239,12 @@ static void init_cache(
 	conf->cache.xdp_quic = running_xdp_quic;
 
 	conf->cache.xdp_route_check = running_route_check;
+
+	conf->cache.xdp_ring_size = running_ring_size;
+
+	conf->cache.xdp_busypoll_budget = running_busypoll_budget;
+
+	conf->cache.xdp_busypoll_timeout = running_busypoll_timeout;
 
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;

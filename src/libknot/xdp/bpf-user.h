@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,8 +60,10 @@ struct kxsk_umem {
 
 	/*! The memory frames. */
 	struct umem_frame *frames;
+	/*! Size of RX and TX rings. */
+	uint16_t ring_size;
 	/*! The number of free frames (for TX). */
-	uint32_t tx_free_count;
+	uint16_t tx_free_count;
 	/*! Stack of indices of the free frames (for TX). */
 	uint16_t tx_free_indices[];
 };
@@ -82,15 +84,15 @@ struct knot_xdp_socket {
 	/*! If non-NULL, it's a mocked socket with this send function. */
 	int (*send_mock)(struct knot_xdp_socket *, const knot_xdp_msg_t[], uint32_t, uint32_t *);
 
-	/*! The kernel has to be woken up by a syscall indication. */
-	bool kernel_needs_wakeup;
-
 	/*! The limit of frame size. */
 	unsigned frame_limit;
 
 	/*! Mapping of interface indices to VLAN tags. */
 	uint16_t *vlan_map;
 	uint16_t vlan_map_max;
+
+	/*! Enabled preferred busy polling. */
+	bool busy_poll;
 };
 
 /*!

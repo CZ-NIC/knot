@@ -253,7 +253,8 @@ static size_t quic_rmt_count(conf_t *conf)
 }
 
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
-                                      bool udp, bool tcp, uint16_t quic, unsigned *thread_id_start)
+                                      bool udp, bool tcp, uint16_t quic, unsigned *thread_id_start,
+                                      const knot_xdp_config_t *xdp_config)
 {
 #ifndef ENABLE_XDP
 	assert(0);
@@ -299,13 +300,13 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 		knot_xdp_load_bpf_t mode =
 			(i == 0 ? KNOT_XDP_LOAD_BPF_ALWAYS : KNOT_XDP_LOAD_BPF_NEVER);
 		ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
-		                    xdp_flags, iface.port, quic, mode, NULL);
+		                    xdp_flags, iface.port, quic, mode, xdp_config);
 		if (ret == -EBUSY && i == 0) {
 			log_notice("XDP interface %s@%u is busy, retrying initialization",
 			           iface.name, iface.port);
 			ret = knot_xdp_init(new_if->xdp_sockets + i, iface.name, i,
 			                    xdp_flags, iface.port, quic,
-			                    KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD, NULL);
+			                    KNOT_XDP_LOAD_BPF_ALWAYS_UNLOAD, xdp_config);
 		}
 		if (ret != KNOT_EOK) {
 			log_warning("failed to initialize XDP interface %s@%u, queue %d (%s)",
@@ -731,6 +732,11 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	bool xdp_tcp = conf->cache.xdp_tcp;
 	uint16_t xdp_quic = conf->cache.xdp_quic;
 	bool route_check = conf->cache.xdp_route_check;
+	knot_xdp_config_t xdp_config = {
+		.ring_size = conf->cache.xdp_ring_size,
+		.busy_poll_budget = conf->cache.xdp_busypoll_budget,
+		.busy_poll_timeout = conf->cache.xdp_busypoll_timeout,
+	 };
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
@@ -740,7 +746,8 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		log_info("binding to XDP interface %s", addr_str);
 
 		iface_t *new_if = server_init_xdp_iface(&addr, route_check, xdp_udp,
-		                                        xdp_tcp, xdp_quic, &thread_id);
+		                                        xdp_tcp, xdp_quic, &thread_id,
+		                                        &xdp_config);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
@@ -1132,6 +1139,9 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_xdp_tcp = true;
 	static bool warn_xdp_quic = true;
 	static bool warn_route_check = true;
+	static bool warn_ring_size = true;
+	static bool warn_busypoll_budget = true;
+	static bool warn_busypoll_timeout = true;
 	static bool warn_rmt_pool_limit = true;
 
 	if (warn_tcp_reuseport && conf->cache.srv_tcp_reuseport != conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT)) {
@@ -1188,6 +1198,21 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_route_check && conf->cache.xdp_route_check != conf_get_bool(conf, C_XDP, C_ROUTE_CHECK)) {
 		log_warning(msg, &C_ROUTE_CHECK[1]);
 		warn_route_check = false;
+	}
+
+	if (warn_ring_size && conf->cache.xdp_ring_size != conf_get_int(conf, C_XDP, C_RING_SIZE)) {
+		log_warning(msg, &C_RING_SIZE[1]);
+		warn_ring_size = false;
+	}
+
+	if (warn_busypoll_budget && conf->cache.xdp_busypoll_budget != conf_get_int(conf, C_XDP, C_BUSYPOLL_BUDGET)) {
+		log_warning(msg, &C_BUSYPOLL_BUDGET[1]);
+		warn_busypoll_budget = false;
+	}
+
+	if (warn_busypoll_timeout && conf->cache.xdp_busypoll_timeout != conf_get_int(conf, C_XDP, C_BUSYPOLL_TIMEOUT)) {
+		log_warning(msg, &C_BUSYPOLL_TIMEOUT[1]);
+		warn_busypoll_timeout = false;
 	}
 
 	if (warn_rmt_pool_limit && global_conn_pool != NULL &&

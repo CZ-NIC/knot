@@ -677,6 +677,9 @@ xdp:
     tcp\-idle\-reset\-timeout: TIME
     tcp\-resend\-timeout: TIME
     route\-check: BOOL
+    ring\-size: INT
+    busypoll\-budget: INT
+    busypoll\-timeout: INT
 .ft P
 .fi
 .UNINDENT
@@ -842,6 +845,62 @@ Only VLAN 802.1Q is supported.
 .UNINDENT
 .sp
 \fIDefault:\fP \fBoff\fP
+.SS ring\-size
+.sp
+Size of RX, FQ, TX, and CQ rings.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+This value should be at least as high as the configured RX size of the
+network device in the XDP mode.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP \fB2048\fP
+.SS busypoll\-budget
+.sp
+If set to a positive value, preferred busy polling is enabled with the
+specified budget.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Preferred busy polling also requires setting \fBnapi_defer_hard_irqs\fP and
+\fBgro_flush_timeout\fP for the appropriate network interface. E.g.:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+echo 2 | sudo tee /sys/class/net/<interface>/napi_defer_hard_irqs
+echo 200000 | sudo tee /sys/class/net/<interface>/gro_flush_timeout
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+A recommended value is between 8 and 64.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP \fB0\fP (disabled)
+.SS busypoll\-timeout
+.sp
+Timeout of preferrred busy polling if enabled by \fI\%busypoll\-budget\fP\&.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP \fB20\fP (20 microseconds)
 .SH CONTROL SECTION
 .sp
 Configuration of the server control interface.

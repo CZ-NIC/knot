@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,35 +23,62 @@
 #include "contrib/atomic.h"
 #include "knot/server/server.h"
 
-typedef uint64_t (*stats_server_val_f)(server_t *server);
-typedef uint64_t (*stats_zone_val_f)(zone_t *zone);
-
 /*!
- * \brief Statistics metrics item.
+ * \brief Parameters for a statistic metric dump callback.
  */
 typedef struct {
-	const char *name;                       /*!< Metrics name. */
-	union {
-		stats_server_val_f server_val;  /*!< Server metrics value getter. */
-		stats_zone_val_f zone_val;      /*!< Zone metrics value getter. */
-	};
-} stats_item_t;
+	const char *section;
+	const char *item;
+	const char *id;
+	const char *zone;
+	uint64_t value;
+	unsigned value_pos; // Counted from 0.
+
+	bool module_begin; // Indication of a new module.
+	bool item_begin; // Indication of a new item.
+} stats_dump_params_t;
 
 /*!
- * \brief Basic server metrics.
+ * \brief Statistic metric context.
  */
-extern const stats_item_t server_stats[];
+typedef struct {
+	server_t *server;
+	zone_t *zone;
+	const list_t *query_modules;
+
+	const char *section; // Optional section specification.
+	const char *item; // Optional item specification.
+	bool match; // Indication of non-empty [[section[.item]] selection.
+
+	unsigned threads; // Internal cache for the number of workers.
+
+	void *ctx;
+} stats_dump_ctx_t;
 
 /*!
- * \brief Basic zone metrics.
+ * \brief Statistic metric dump callback.
  */
-extern const stats_item_t zone_contents_stats[];
+typedef int (*stats_dump_ctr_f)(stats_dump_params_t *, stats_dump_ctx_t *);
 
 /*!
- * \brief Read out value of single counter summed across threads.
+ * \brief XDP metrics.
  */
-uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t offset,
-                           unsigned threads);
+int stats_xdp(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx);
+
+/*!
+ * \brief Server metrics.
+ */
+int stats_server(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx);
+
+/*!
+ * \brief Zone metrics.
+ */
+int stats_zone(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx);
+
+/*!
+ * \brief Modules metrics.
+ */
+int stats_modules(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx);
 
 /*!
  * \brief Reconfigures the statistics facility.
