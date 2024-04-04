@@ -172,6 +172,8 @@ static int stats_counters(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx,
 		params->value_pos++;
 	}
 
+	params->id = NULL;
+
 	return KNOT_EOK;
 }
 
