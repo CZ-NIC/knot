@@ -49,6 +49,9 @@ typedef enum {
 #define BACKUP_PARAM_DFLT_R (BACKUP_PARAM_ZONEFILE | BACKUP_PARAM_TIMERS | \
                              BACKUP_PARAM_KASPDB | BACKUP_PARAM_CATALOG)
 
+/*! \bref Empty defaults. */
+#define BACKUP_PARAM_EMPTY  0
+
 /*! \bref Backup components done in event. */
 #define BACKUP_PARAM_EVENT  (BACKUP_PARAM_ZONEFILE | BACKUP_PARAM_JOURNAL | \
                              BACKUP_PARAM_TIMERS | BACKUP_PARAM_KASPDB | \

@@ -143,13 +143,15 @@ Actions
   together with keys (or keys without the KASP database), zone's catalog,
   and the server QUIC key and certificate, respectively, are backed up,
   or omitted from the backup. By default, filters **+zonefile**, **+timers**,
-  **+kaspdb**, **+nokeysonly**, **+catalog**, **+quic**, and **+nojournal**
+  **+kaspdb**, **+catalog**, **+quic**, **+nojournal**, and **+nokeysonly**
   are set for backup. The same defaults are set for restore, with the only
-  difference being **+noquic**. Setting a filter for an item doesn't change
-  default settings for other items. If zone flushing is disabled, the original
-  zone file is backed up instead of writing out zone contents to a file.
-  When backing-up a catalog zone, it is recommended to prevent ongoing changes
-  to it by use of **zone-freeze**.
+  difference being **+noquic**. Setting a filter for an item doesn't change the
+  default settings for other items. The only exception is **+keysonly**, which
+  disables all other filters by default, but they can still be turned on
+  explicitly. If zone flushing is disabled, the original zone file is backed
+  up instead of writing out zone contents to a file. When backing-up a catalog
+  zone, it is recommended to prevent ongoing changes to it by use of
+  **zone-freeze**.
   See :ref:`Notes<notes>` below about the directory permissions. (#)
 
 **zone-restore** [*zone*...] **+backupdir** *directory* [*filter*...]
