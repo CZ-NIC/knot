@@ -252,14 +252,11 @@ static size_t quic_rmt_count(conf_t *conf)
 	return count;
 }
 
+#ifdef ENABLE_XDP
 static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_check,
                                       bool udp, bool tcp, uint16_t quic, unsigned *thread_id_start,
                                       const knot_xdp_config_t *xdp_config)
 {
-#ifndef ENABLE_XDP
-	assert(0);
-	return NULL;
-#else
 	conf_xdp_iface_t iface;
 	int ret = conf_xdp_iface(addr, &iface);
 	if (ret != KNOT_EOK) {
@@ -344,8 +341,8 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 	}
 
 	return new_if;
-#endif
 }
+#endif
 
 /*!
  * \brief Create and initialize new interface.
@@ -728,15 +725,12 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	free(rundir);
 
 	/* XDP sockets. */
-	bool xdp_udp = conf->cache.xdp_udp;
-	bool xdp_tcp = conf->cache.xdp_tcp;
-	uint16_t xdp_quic = conf->cache.xdp_quic;
-	bool route_check = conf->cache.xdp_route_check;
+#ifdef ENABLE_XDP
 	knot_xdp_config_t xdp_config = {
 		.ring_size = conf->cache.xdp_ring_size,
 		.busy_poll_budget = conf->cache.xdp_busypoll_budget,
 		.busy_poll_timeout = conf->cache.xdp_busypoll_timeout,
-	 };
+	};
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
@@ -745,8 +739,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 		log_info("binding to XDP interface %s", addr_str);
 
-		iface_t *new_if = server_init_xdp_iface(&addr, route_check, xdp_udp,
-		                                        xdp_tcp, xdp_quic, &thread_id,
+		iface_t *new_if = server_init_xdp_iface(&addr, conf->cache.xdp_route_check,
+		                                        conf->cache.xdp_udp, conf->cache.xdp_tcp,
+		                                        conf->cache.xdp_quic, &thread_id,
 		                                        &xdp_config);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
@@ -757,11 +752,13 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 		conf_val_next(&lisxdp_val);
 	}
+#endif
+
 	assert(real_nifs <= nifs);
 	nifs = real_nifs;
 
 	/* QUIC credentials initialization. */
-	s->quic_active = xdp_quic > 0 || convent_quic > 0 || quic_rmt_count(conf) > 0;
+	s->quic_active = conf->cache.xdp_quic > 0 || convent_quic > 0 || quic_rmt_count(conf) > 0;
 	if (s->quic_active) {
 		if (init_creds(s, conf) != KNOT_EOK) {
 			server_deinit_iface_list(newlist, nifs);
