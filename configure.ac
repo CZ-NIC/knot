@@ -269,6 +269,9 @@ AS_IF([test "$enable_systemd" != "no"],[
     [*],[AC_MSG_ERROR([Invalid value of --enable-systemd.])])
     ])
 
+AS_IF([test "$enable_systemd" = "yes"],[
+  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
+
 AS_IF([test "$enable_dbus" != "no"],[
   AS_CASE([$enable_dbus],
     [auto],[AS_IF([test "$enable_systemd" = "yes"],
